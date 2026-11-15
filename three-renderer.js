@@ -3258,14 +3258,19 @@ const ThreeRenderer = (function () {
        position against the room's box (uHqAo = halfW, halfD, ceiling y, strength; uHqAo2 = the radius, the floor y) —
        a floor darkens toward the walls, a wall toward the floor / the ceiling / its neighbours, and every PROP's vertical
        face darkens in the half metre over the floor (the contact that grounds a chair). A face's own plane never
-       occludes it (weighted by its normal). One shared function = one program per material kind; strength 0 = off. */
+       occludes it (weighted by its normal). One shared function = one program per material kind; strength 0 = off.
+       THE ROOM NEXT DOOR (2026-11-15, mondo: "the lighting isnt on at first and suddenly turns on as i walk through the
+       door"): the box is the room you STAND in, but the shader runs on everything drawn, and a point OUTSIDE the box read
+       as hard against two walls and the ceiling at once: the Main Hall seen from the Foyer was drawn at 0.3 of its
+       colour (bar the strips in line with the Foyer's own walls) until the crossing swapped the box. Outside the box
+       (past 0.15 of the reach) the walls and the ceiling shade nothing; the floor contact stays, as in a round room. */
     var _HQ_AO = { x: 1e6, y: 1e6, z: 1e6, w: 0 }, _HQ_AO2 = { x: 40, y: 0, z: 0, w: 0 };   // AO2: the reach, the floor, and (THE SEAMLESS FIELD) the box's centre x / z
     function _hqAoHook(shader) {
         shader.uniforms.uHqAo = { value: _HQ_AO }; shader.uniforms.uHqAo2 = { value: _HQ_AO2 };
         shader.vertexShader = 'varying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.vertexShader
             .replace('#include <project_vertex>', '#include <project_vertex>\n#ifdef USE_INSTANCING\nvHqWp = ( modelMatrix * instanceMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * mat3( instanceMatrix ) * objectNormal );\n#else\nvHqWp = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * objectNormal );\n#endif');   // THE INSTANCE PASS: a batched copy's world point
         shader.fragmentShader = 'uniform vec4 uHqAo;\nuniform vec4 uHqAo2;\nvarying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.fragmentShader
-            .replace('#include <map_fragment>', '#include <map_fragment>\nif ( uHqAo.w > 0.0 ) {\n\tvec3 hqN = abs( normalize( vHqWn ) );\n\tfloat hqR = max( uHqAo2.x, 0.001 );\n\tfloat hqFx = 1.0 - smoothstep( 0.0, hqR, uHqAo.x - abs( vHqWp.x - uHqAo2.z ) );\n\tfloat hqFz = 1.0 - smoothstep( 0.0, hqR, uHqAo.y - abs( vHqWp.z - uHqAo2.w ) );\n\tfloat hqFy = 1.0 - smoothstep( 0.0, hqR, vHqWp.y - uHqAo2.y );\n\tfloat hqFc = 1.0 - smoothstep( 0.0, hqR, uHqAo.z - vHqWp.y );\n\tfloat hqAo = 1.0 - uHqAo.w * ( hqFx * ( 1.0 - hqN.x ) + hqFz * ( 1.0 - hqN.z ) + hqFy * ( 1.0 - hqN.y ) + hqFc * ( 1.0 - hqN.y ) * 0.6 );\n\tdiffuseColor.rgb *= clamp( hqAo, 0.3, 1.0 );\n}');
+            .replace('#include <map_fragment>', '#include <map_fragment>\nif ( uHqAo.w > 0.0 ) {\n\tvec3 hqN = abs( normalize( vHqWn ) );\n\tfloat hqR = max( uHqAo2.x, 0.001 );\n\tfloat hqFx = 1.0 - smoothstep( 0.0, hqR, uHqAo.x - abs( vHqWp.x - uHqAo2.z ) );\n\tfloat hqFz = 1.0 - smoothstep( 0.0, hqR, uHqAo.y - abs( vHqWp.z - uHqAo2.w ) );\n\tfloat hqFy = 1.0 - smoothstep( 0.0, hqR, vHqWp.y - uHqAo2.y );\n\tfloat hqFc = 1.0 - smoothstep( 0.0, hqR, uHqAo.z - vHqWp.y );\n\tfloat hqM = hqR * 0.15;\n\tfloat hqIn = step( -hqM, uHqAo.x - abs( vHqWp.x - uHqAo2.z ) ) * step( -hqM, uHqAo.y - abs( vHqWp.z - uHqAo2.w ) ) * step( -hqM, uHqAo.z - vHqWp.y );\n\thqFx *= hqIn; hqFz *= hqIn; hqFc *= hqIn;\n\tfloat hqAo = 1.0 - uHqAo.w * ( hqFx * ( 1.0 - hqN.x ) + hqFz * ( 1.0 - hqN.z ) + hqFy * ( 1.0 - hqN.y ) + hqFc * ( 1.0 - hqN.y ) * 0.6 );\n\tdiffuseColor.rgb *= clamp( hqAo, 0.3, 1.0 );\n}');
     }
     var _shadowsDirty = true;     // consumed when the depth pass re-renders
     var _shadowMotion = false;    // set by per-frame updaters that move casters
@@ -37506,7 +37511,7 @@ const ThreeRenderer = (function () {
             if (!(big >= 0)) big = Infinity;
             if (big > m) m = big;
         });
-        var cap = (m <= 0.6) ? 512 : (m <= 1.15) ? 1024 : 0;
+        var cap = (m <= 0.6) ? 512 : (m <= 2.5) ? 1024 : 0;   // 1.15 -> 2.5 (the same day): Disaster City holds 240 furniture-sized Meshy props (an ATM, a jukebox, a pastry case) at a 2048 sheet each, 3.6 GB
         if (!cap) return;
         _capModelTextures(root, cap, ['map', 'emissiveMap', 'alphaMap']);
         _hqSmallCapped++;
@@ -37972,6 +37977,49 @@ const ThreeRenderer = (function () {
         _mmToldRooms[room] = 1;
         console.warn('[MEM] ' + Math.round(R.misc.mb + R.rigs.mb) + ' of ' + R.budget + ' MB' + (dropping ? ', dropping ' + dropping + ' idle file(s) now' : ' and nothing idle long enough to drop yet') + '. Paste this block to Claude:\n  ' + _mmTopLines(H, R, list, live).join('\n  '));
     }
+    /* the unit models as budget rows (THE WALK DROPS UNIT MODELS TOO): pushed onto `list` as 'r|<url>' */
+    function _mmListRigs(H, live, list) {
+        if (typeof window !== 'undefined' && window.EW_WALK_KEEP_UNITS) return;
+        var keep = {}, worn = _mmWorn(H);
+        _unitModelRigs.forEach(function (rig) { if (rig && rig.url) keep[rig.url] = 1; });
+        _rigCarry.forEach(function (c) { if (c.rig && c.rig.url) keep[c.rig.url] = 1; });
+        _libUrlsAll().forEach(function (u2) { keep[u2] = 1; });
+        _mmRosterUrls(keep);
+        ((H && H.chars) || []).forEach(function (ch) { var d = ch && ch.def; if (d && d.model) keep[d.model] = 1; });
+        for (var r in _unitGlbCache) {
+            var ue = _unitGlbCache[r]; if (!ue) continue;
+            var hit = false;
+            if (ue.root) ue.root.traverse(function (o) {
+                if (hit) return;
+                if (o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) { hit = true; return; }
+                var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+                for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (m && (worn[m.uuid] || (m.map && worn[m.map.uuid]))) { hit = true; return; } }
+            });
+            list.push({ url: 'r|' + r, at: ue.at || 0, bytes: ue._ew_mmBytes || 0, loading: !!ue.loading, failed: !!ue.failed, one: !!keep[r] || r.indexOf('/characters/creator/') >= 0, x: false, live: hit });
+        }
+    }
+    /* THE ROOM GIVES ITS FILES BACK WHEN YOU LEAVE (2026-11-15, mondo: "crashed going into camelot from the woods clearing"; the
+       session before it held 5.5 GB of Disaster City). The budget only ran while a room stood ready, so between rooms nothing was
+       dropped: the city's files were still held while the Woods loaded, and the Woods' while Camelot loaded. When a room is left
+       (not handed to a battle) and the sum is over the budget, every file nothing drawn wears is dropped at once, the oldest
+       first, down to 85 % of the budget: no idle wait, no cap a sweep. Under the budget nothing is touched, so walking between
+       small rooms keeps its warm files. Off: window.EW_NO_LEAVE_SWEEP (or EW_NO_MEM_BUDGET). */
+    function _mmLeaveSweep() {
+        if (_mmOff() || (typeof window !== 'undefined' && window.EW_NO_LEAVE_SWEEP)) return 0;
+        var R = _mmLast = _mmRead(), cap = R.budget * 1048576, tot = (R.misc.mb + R.rigs.mb) * 1048576;
+        if (tot <= cap) return 0;
+        var H = (typeof _hq !== 'undefined') ? _hq : null, live = _mmLive(H), list = [];
+        for (var u in _miscModelCache) {
+            var e = _miscModelCache[u], isLive = false;
+            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) isLive = true; });
+            list.push({ url: u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive });
+        }
+        _mmListRigs(H, live, list);
+        var go = _mmPick(list, Date.now(), 0, tot - cap * MM_FLOOR, 100000), before = _mmFreed;
+        go.forEach(function (k) { if (k.slice(0, 2) === 'r|') _mmRigEvict(k.slice(2)); else _mmEvict(k); });
+        if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: left the room over the budget, ' + go.length + ' file(s) nothing wears dropped (' + ((_mmFreed - before) / 1048576).toFixed(0) + ' MB)'); } catch (x) {} }
+        return go.length;
+    }
     function _mmTick(H, now) {
         if (now - _mmAt < MM_EVERY_MS) return;
         _mmAt = now;
@@ -37993,27 +38041,14 @@ const ThreeRenderer = (function () {
            files (bodies, clothes, hair: every character is built from them), a file still loading or failed. A dropped model
            loads again from the disk store when something asks for it. Off: window.EW_WALK_KEEP_UNITS = true. */
         var miscList = list.slice(), rigN = 0;
-        if (!(typeof window !== 'undefined' && window.EW_WALK_KEEP_UNITS)) {
-            var keep = {}, worn = _mmWorn(H);
-            _unitModelRigs.forEach(function (rig) { if (rig && rig.url) keep[rig.url] = 1; });
-            _rigCarry.forEach(function (c) { if (c.rig && c.rig.url) keep[c.rig.url] = 1; });
-            _libUrlsAll().forEach(function (u2) { keep[u2] = 1; });
-            _mmRosterUrls(keep);
-            ((H && H.chars) || []).forEach(function (ch) { var d = ch && ch.def; if (d && d.model) keep[d.model] = 1; });
-            for (var r in _unitGlbCache) {
-                var ue = _unitGlbCache[r]; if (!ue) continue;
-                var hit = false;
-                if (ue.root) ue.root.traverse(function (o) {
-                    if (hit) return;
-                    if (o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) { hit = true; return; }
-                    var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
-                    for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (m && (worn[m.uuid] || (m.map && worn[m.map.uuid]))) { hit = true; return; } }
-                });
-                list.push({ url: 'r|' + r, at: ue.at || 0, bytes: ue._ew_mmBytes || 0, loading: !!ue.loading, failed: !!ue.failed, one: !!keep[r] || r.indexOf('/characters/creator/') >= 0, x: false, live: hit });
-            }
-        }
-        var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, MM_MAX);
-        if (!go.length) _mmAt = now + 26000;   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
+        _mmListRigs(H, live, list);
+        /* FAR OVER (2026-11-15, his trail: 5.5 GB in Disaster City, then a crash loading Camelot): at 6 files a sweep after two
+           minutes idle, leaving a big room gave its files back over many minutes while the next room loaded on top. Past 1.5x
+           the budget a file nothing wears goes after 15 s, 48 a sweep. */
+        var far = tot > cap * 1.5;
+        if (far) idle = Math.min(idle, 15000);
+        var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, far ? 48 : MM_MAX);
+        if (!go.length) _mmAt = now + (far ? 6000 : 26000);   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
         try { _mmReport(H, R, miscList, live, go.length); } catch (x) {}
         go.forEach(function (k) { if (k.slice(0, 2) === 'r|') { _mmRigEvict(k.slice(2)); rigN++; } else _mmEvict(k); });
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
@@ -45359,6 +45394,40 @@ const ThreeRenderer = (function () {
        And a uniform buffer that IS due to go is forgotten at once and destroyed at the next frame's first render, like the
        vertex buffers above: a dispose in the middle of a frame can no longer pull a buffer from under a draw or a bundle the
        frame has already encoded. Both backends for the count; the late destroy is WebGPU's. */
+    /* THE NEAREST SHEET READ WITH DERIVATIVES (2026-11-15, mondo's crash trail in Disaster City: "Async render pipeline creation
+       failed (renderPipeline_MeshPhongMaterial_3712) ... no definition in scope for identifier: `nodeUniform1_sampler` ...
+       nodeVar0 = text"). three's WGSL builder declares NO sampler for a sheet whose min AND mag filter are Nearest (it reads
+       such a sheet with textureLoad), but its `.grad()` and `.bias()` reads still write textureSampleGrad / textureSampleBias
+       with `<name>_sampler`: the shader names a sampler that was never declared, the pipeline is refused and everything
+       wearing that material is not drawn. The game's ground reads its sheets with `.grad()` (the weighted triplanar, the
+       no-repeat ground, the lava), so any ground wearing a crisp nearest sheet hit it. Now a grad / bias read of such a
+       sheet is written the way three writes its plain read: textureLoad at level 0, which is exactly what a Nearest
+       min filter means (no mip is ever chosen). Every other sheet is untouched. Off: window.EW_NO_NEAREST_GRAD_FIX. */
+    function _ewGpuNearestGrad(r) {
+        var be = r && r.backend;
+        if (!be || be._ew_ng || typeof be.createNodeBuilder !== 'function') return;
+        if (typeof window !== 'undefined' && window.EW_NO_NEAREST_GRAD_FIX) return;
+        be._ew_ng = true;
+        var cnb = be.createNodeBuilder;
+        be.createNodeBuilder = function () {
+            var nb = cnb.apply(this, arguments);
+            try {
+                var P = Object.getPrototypeOf(nb);
+                if (P && !Object.prototype.hasOwnProperty.call(P, '_ew_ng') && typeof P.isUnfilterable === 'function' && typeof P.generateTextureLod === 'function') {
+                    P._ew_ng = true;
+                    ['generateTextureGrad', 'generateTextureBias'].forEach(function (k) {
+                        var o = P[k]; if (typeof o !== 'function') return;
+                        P[k] = function (texture, textureProperty, uvSnippet, x, depthSnippet, offsetSnippet) {
+                            var un = false; try { un = !!texture && texture.isCubeTexture !== true && this.isUnfilterable(texture); } catch (e) { un = false; }
+                            if (un) { _ewGpuInfo.nearestGrad = (_ewGpuInfo.nearestGrad | 0) + 1; return this.generateTextureLod(texture, textureProperty, uvSnippet, depthSnippet, offsetSnippet, '0'); }
+                            return o.apply(this, arguments);
+                        };
+                    });
+                }
+            } catch (e) {}
+            return nb;
+        };
+    }
     function _ewGpuSafeBindings(r) {
         var BN = r._bindings, B = r.backend;
         if (BN && !BN._ewSafe && typeof BN.deleteForRender === 'function' && typeof BN.get === 'function' && typeof BN.delete === 'function') {
@@ -46514,6 +46583,10 @@ const ThreeRenderer = (function () {
             var fz = one.sub(T.smoothstep(0, R, A.y.sub(T.abs(wp.z.sub(A2.w)))));
             var fy = one.sub(T.smoothstep(0, R, wp.y.sub(A2.y)));
             var fc = one.sub(T.smoothstep(0, R, A.z.sub(wp.y)));
+            /* THE ROOM NEXT DOOR (2026-11-15): outside this room's box there is no wall of it to shade by (see _hqAoHook) */
+            var M = R.mul(-0.15), dX = A.x.sub(T.abs(wp.x.sub(A2.z))), dZ = A.y.sub(T.abs(wp.z.sub(A2.w))), dC = A.z.sub(wp.y);
+            var inB = T.step(M, dX).mul(T.step(M, dZ)).mul(T.step(M, dC));
+            fx = fx.mul(inB); fz = fz.mul(inB); fc = fc.mul(inB);
             var ao = one.sub(A.w.mul(fx.mul(n.x.oneMinus()).add(fz.mul(n.z.oneMinus())).add(fy.mul(n.y.oneMinus())).add(fc.mul(n.y.oneMinus()).mul(0.6))));
             return A.w.greaterThan(0).select(T.clamp(ao, 0.3, 1), one);
         });
@@ -49051,6 +49124,7 @@ const ThreeRenderer = (function () {
         r.clear = function () { if (!this.initialized) return; return rawClear.apply(this, arguments); };
         _ewGpuSafeBuffers(r);
         _ewGpuSafeBindings(r);
+        try { _ewGpuNearestGrad(r); } catch (e) {}
         _ewGpuDepthOnlyViews(r);   // THE TEAM OUTLINES: the scene pass's depth-stencil texture, sampled by its depth only
         /* THE SHARED SHADOW DEPTH (W5a, 2026-10-04, mondo: "the transition from exploration to battle is still really laggy"):
            three's node shadow pass gives every material that has a map its own depth colour node (the map's alpha, a
@@ -49149,6 +49223,7 @@ const ThreeRenderer = (function () {
             _ewGpuInfo.ready = true;
             _ewGpuSafeBuffers(r);
             _ewGpuSafeBindings(r);
+            try { _ewGpuNearestGrad(r); } catch (e) {}
             _ewGpuOneWrite(r);
             _ewGpuInterleaveFix(r);
             try { _ewKeepSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the kept shaders failed', e); }
@@ -73750,7 +73825,7 @@ const ThreeRenderer = (function () {
                 var c = [at(cuts[ci], -1), at(cuts[ci + 1], -1), at(cuts[ci + 1], 1), at(cuts[ci], 1)];
                 var p = c.map(function (q) { return [q[0], hAt(q[0], q[1]) + lift, q[1]]; });
                 if (cuts.length > 2 && Math.max(Math.abs(p[1][1] - p[0][1]), Math.abs(p[2][1] - p[3][1])) > 0.3 * (cuts[ci + 1] - cuts[ci]) + 0.02) continue;   // a step in the ground (a retaining wall's line): the line breaks there, never a strip up the step
-                quad(B, [p[0], p[3], p[2], p[1]], [[0, 0], [s, 0], [s, s], [0, s]]);
+                quad(B, [p[0], p[1], p[2], p[3]], [[0, 0], [0, s], [s, s], [s, 0]]);   // ccw seen from above (2026-11-15: the 11-13 rewrite wound these the other way, so the paint faced DOWN and was culled: no lane lines, no crossings)
             }
         };
         var dir = function (a, b) { var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; return { x: dx / L, z: dz / L, L: L }; };
@@ -73856,7 +73931,7 @@ const ThreeRenderer = (function () {
                     flat(Bm, hx, hz, d.x, d.z, R.manholeR * 2, R.manholeR * 2, 0); manholes++;
                 }
                 /* THE OIL STAINS (2026-11-15, the Urban Decay pack; a room asks with gen.stains): a dark patch in a lane now and then, turned four ways, clear of the mouths and the manholes' rhythm */
-                if (info.gen && info.gen.stains) for (var s6 = 11 + (si * 7) % 13; s6 < L - 4; s6 += 23) {
+                if (room && room.terrain && room.terrain.gen && room.terrain.gen.stains) for (var s6 = 11 + (si * 7) % 13; s6 < L - 4; s6 += 23) {
                     var lane6 = ((stains % 2) ? -1 : 1) * Math.min(w * 0.24, 2.4), ox6 = pts[k][0] + d.x * s6 + (-d.z) * lane6, oz6 = pts[k][1] + d.z * s6 + d.x * lane6;
                     if (inOther(ox6, oz6, si, 1.4) || inPad(ox6, oz6, 2.8)) continue;
                     var q6 = stains % 4, sz6 = 2.1 + (stains % 3) * 0.5;
@@ -73913,7 +73988,7 @@ const ThreeRenderer = (function () {
             var yaw = Math.atan2(-de.dx, -de.dz);
             placePlate('SignProhibited1a', de.x - de.dx * 1.2 + (-de.dz) * (de.w / 2 + 0.5), de.z - de.dz * 1.2 + de.dx * (de.w / 2 + 0.5), yaw, R.signH, 0.7);
         });
-        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road markings', 'paint quads', Bw.n / 4, 'kerb', Bk.n / 4, 'manholes', manholes, 'signs', madeSigns.length, 'dead ends', deadEnds.length);
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road markings', 'paint quads', Bw.n / 4, 'kerb', Bk.n / 4, 'manholes', manholes, 'stains', stains, 'signs', madeSigns.length, 'dead ends', deadEnds.length);
     }
     /* THE STREET LAMPS: on the kerb of every street of the plan, alternating sides every `every` metres, clear of the doors' lanes */
     function _hqBuildStreetLamps(room, info, G, TM, rng) {
@@ -95004,6 +95079,7 @@ const ThreeRenderer = (function () {
             }
         } catch (e) {}
         console.log('[HQ] left' + (handed ? ' (the room handed to the battle)' : ''));
+        if (!handed && !(opts && opts.dissolve)) { try { _mmLeaveSweep(); } catch (e) { console.warn('[ThreeRenderer] the leave sweep failed', e); } }   // THE ROOM GIVES ITS FILES BACK WHEN YOU LEAVE
     }
     function _hqRefreshLamps(profile) {
         if (!_hq) return;

@@ -2306,6 +2306,19 @@ memory his readout showed. The readers of a file material's normalMap are creato
 picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
 sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.
 
+## THE ROOM NEXT DOOR (2026-11-15, mondo: "the lighting isnt on at first and suddenly turns on as i walk through the door")
+- Seen: from the Foyer the Main Hall was dark with hard lit strips; one step through the door it was fully lit.
+- Cause: THE ROOM-BOX AO (`_hqAoHook` GLSL, `_ewNodeAo` node renderer). Its box is the room you STAND in (`_hqAoArm`,
+  re-armed at every `_hqStageSwap`), but the shader runs on everything drawn. A point outside the box read as hard
+  against both walls and the ceiling, so every joined room seen through a door was drawn at the clamp (0.3 of its
+  colour), bar the strips in line with the box's own walls. The crossing swapped the box and the room "turned on".
+  Not the lamps, the rig, the lamp budget, the key shadow, the look or the fog (all measured the same on both sides).
+- Fix: outside the box (past 0.15 of the reach, about 8 cm) the walls and ceiling shade nothing; the floor contact
+  term stays, as in a round room. No lights added, no memory touched. Applies to every box room on a stage.
+- Left as is: a box room's own corner shade only shows while you stand in it (small, near its walls).
+- Proof: /mnt/project-files/hall-light-pop/. Cloud repro: WebGPU harness, enter central_egress, wait for the foyer,
+  teleport {deg:195,r:22.5}, first person at {x:0,z:-3.05}, lookAt(4,-20,0).
+
 ## THE WALK DROPS UNIT MODELS TOO (2026-11-15, the main hall crash, fourth pass)
 His [MEM] block after THE UNDRAWN MAPS: `1212 of 700 MB` in central_egress (was 2047): props 257 files 934 MB (worn 535, idle
 399), unit models 56 files 278 MB (worn 81). The menu already held 577 MB / 216 files before the building. The idle props go by
@@ -2328,3 +2341,29 @@ box, speakers, CRT, picture b, exit sign, hook rail), 11 to 1024 (pictures a/c, 
 mop bucket, boxes, coffee table, railing, plant, cabinet, long hook rail), desks and everything larger full (preview:
 scratch caps.js off the CDN files). R2 files untouched. Off: `window.EW_NO_SMALL_PROP_CAP`. `hq.mem().smallCapped`.
 Not browser-run. If he says a prop reads soft: raise its size class here, do not turn the cap off for all.
+
+## THE CITY AT 5.5 GB: THE LEAVE SWEEP + THE NEAREST SHEET READ WITH DERIVATIVES (2026-11-15)
+mondo: "crashed going into camelot from the woods clearing". The trail of the session before: Disaster City at `[MEM] 5716 of 700 MB`
+(props 680 files 5412 MB, 4725 MB of it worn), WGSL errors `no definition in scope for identifier: nodeUniform1_sampler`, one
+`execute_bundle` validation error naming `PointShadowDepthTexture`. Nothing here was run in a browser (RULE #1c).
+- WHY 5.5 GB (measured in Node off the CDN files: `DOOR_HQ.rooms.site_prebuilt_downtown_streets.props` -> catalogue -> GLB image
+  headers): 5411 prop rows, 505 keys, 431 files; about 240 Meshy files wear one 2048² colour sheet (21 MB counted each) = 5035 MB of
+  colour sheets. THE SMALL PROPS (0.6 m / 1.15 m) only brought that to 3723 MB: the city's props are furniture-sized.
+  `_hqSmallPropCap` 1024 class widened 1.15 m -> 2.5 m: 1819 MB (61 files at 512, 235 at 1024, 57 full: statues, machinery,
+  couches, the conference table, palm trees, the boxing ring). A soft-looking prop = raise its class, never switch the cap off.
+- WHY IT WAS NOT GIVEN BACK: `_mmTick` only runs while a room stands ready, waits 120 s idle and drops 6 files a 4 s sweep. Between
+  rooms nothing dropped, so the city's files were held while the Woods loaded and both while Camelot loaded.
+  · `_mmLeaveSweep()` at the end of `_hqLeave` (not on a hand-over to a battle, not on a dissolve): over the budget, every file
+    nothing drawn wears goes at once, oldest first, down to 85 %. Under the budget nothing is touched. Off `window.EW_NO_LEAVE_SWEEP`.
+  · `_mmTick` far over (sum > 1.5x budget): idle wait 15 s, 48 files a sweep, next look in 6 s.
+  · `_mmListRigs(H, live, list)` = the unit-model rows, shared by both.
+- THE SHADER ERROR: three 0.186.1 WGSL declares no `<name>_sampler` for a texture with min AND mag NearestFilter
+  (`isUnfilterable`), but `generateTextureGrad` / `generateTextureBias` still write `textureSampleGrad(tex, <name>_sampler, ...)`.
+  The ground materials read their sheets with `.grad(gx, gy)` (`_ewNodeTerrain`, the calm fluid), so a nearest ground sheet made a
+  shader that did not compile (that ground did not draw). `_ewGpuNearestGrad(r)` (beside `_ewGpuSafeBindings`) patches the node
+  builder's prototype once: an unfilterable sheet read with grad / bias goes through `generateTextureLod(..., '0')` (textureLoad,
+  what a nearest sheet with no mips is anyway). Counter `gpuStatus().nearestGrad`. Off `window.EW_NO_NEAREST_GRAD_FIX`.
+- THE BUNDLE ERROR, NOT FIXED: the trail cut the line at 240 chars ("Texture with 'PointShadowDepthTexture' lab"). Read: a render
+  bundle replayed a bind group whose point-shadow depth texture had been freed (`destroyTexture` is hooked -> `_ew_bunFree`, but the
+  group only re-records on the next tick, so a free after the tick replays once). Seen once at 445 s. index.html's trail now keeps
+  900 chars of a GPU / shader error and the whole `[MEM]` block (3200), so the next trail says the reason.
