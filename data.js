@@ -28473,16 +28473,16 @@ STORY_CUTSCENES.orientation_arrive = {
     /* REBUILT 2026-11-15 for the bigger foyer (mondo: "need a big closeup pan on a big DOOR logo or signage, like this is the god
        damn introduction to DOOR HQ, it needs to be an important moment"; his OK on plan_15nov_foyer.jpg): the lift opens on the
        logo wall, a crane up from the seal, the big close pan down his lockup, then over the recruit's shoulder. Every cut 30+ deg. */
-    end: [{ do: 'door', id: 'street', open: false }, { do: 'show', who: 'player' }],
+    end: [{ do: 'door', id: 'street', open: false, cab: false }, { do: 'show', who: 'player' }],
     beats: [
-        /* 16 · inside the front lift: the doors part, the logo wall framed in the opening; the recruit walks out into it */
-        { dur: 4.6, shot: { cam: [0, 1.2, 7.6, 0, 12, 50], to: { cam: [0, 1.25, 7.3, 0, 12, 50] } },
-          act: [{ at: 0, do: 'hide', who: 'player' }, { at: 0.8, do: 'door', id: 'street', open: true },
-                { at: 2.6, do: 'place', who: 'player', x: 0, z: 5.0, face: 0 }, { at: 2.6, do: 'show', who: 'player' },
-                { at: 2.7, do: 'walk', who: 'player', x: 0, z: 3.2, ms: 1400, face: 0 }] },
+        /* 16 · inside the front lift, through the recruit's eyes: the doors part, the logo wall framed in the opening, a slow step
+           out towards it (the lift's cab stands behind the doors for the scene: three-renderer.js THE CAB) */
+        { dur: 4.6, shot: { cam: [0, 1.6, 7.5, 0, 9, 50], to: { cam: [0, 1.62, 6.0, 0, 11, 50] } },
+          act: [{ at: 0, do: 'hide', who: 'player' }, { at: 0, do: 'door', id: 'street', cab: true }, { at: 0.8, do: 'door', id: 'street', open: true }] },
         /* 17 · low by the seal: a slow crane up from the floor to the wall as the recruit crosses it */
         { dur: 4.4, shot: { cam: [-3.2, 0.8, 2.4, 307, -35, 50], to: { cam: [-3.2, 3.6, 2.4, 337, 14, 50] } },
-          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 3.2, face: 0 }, { at: 0.6, do: 'walk', who: 'player', x: 0, z: 1.2, ms: 1600, face: 0 }] },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 4.4, face: 0 }, { at: 0, do: 'show', who: 'player' },
+                { at: 0.2, do: 'walk', who: 'player', x: 0, z: 1.2, ms: 2600, face: 0 }] },
         /* 18 · THE BIG CLOSE PAN: up on the cube, down past D.O.O.R to the department's name */
         { dur: 5.0, shot: { cam: [2.2, 5.4, -1.6, 38, 16, 34], to: { cam: [2.0, 5.0, -1.8, 22, -12, 34] } },
           act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 1.2, face: 0 }] },
@@ -32107,6 +32107,7 @@ const DOOR_HQ = {
                    white plaster 3 m from every lamp needs far less than the hall's stone 20 m off */
                 lampK: 0.5, keyLamp: 0.3,
                 plate: { x: 6.2, z: -5.2, y: 3.4 },
+                clipBeside: { wall: 'n', above: 3.95 },   // THE CUT BESIDE (three-renderer.js): the hall's upper gallery runs past the tangent into the 7 m atrium
                 look: HQ_ROOM_LOOKS.retro,
             },
             doors: [

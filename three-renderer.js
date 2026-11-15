@@ -79451,6 +79451,24 @@ const ThreeRenderer = (function () {
                 eL.material = eL.material.clone(); eL.material.clippingPlanes = [pL];
                 eR.material = eR.material.clone(); eR.material.clippingPlanes = [pR];
                 motion = { mode: 'elevator', parts: [{ m: eL, x0: eL.position.x, dir: -1 }, { m: eR, x0: eR.position.x, dir: 1 }], travel: half * 0.96 * U, ow: ow, cage: [brace, brace2, seam], clips: [{ dir: -1, plane: pL }, { dir: 1, plane: pR }] };
+                /* THE CAB (2026-11-15, the bigger foyer's shot 16 "inside the front lift"): a brushed car behind the doors, only while a
+                   scene holds them open (the back plate steps aside), so the camera can stand in the lift and watch the doors part */
+                if (door.sealed) {
+                    var cab = new THREE.Group(), cw = ow + 0.5, cd = 2.6, chh = oh + 0.4, cz0 = (-pd / 2 + 0.04);
+                    var cabWall = _hqMat('aluminium', 0.9, 2.4, { color: 0x9ea4aa, shininess: 60, specular: 0x8a8e92 });
+                    var cabFloor = _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 10 });
+                    var cS1 = _hqBox(0.05, chh, cd, cabWall); cS1.position.set(-(cw / 2) * U, (chh / 2) * U, (cz0 - cd / 2) * U);
+                    var cS2 = _hqBox(0.05, chh, cd, cabWall); cS2.position.set((cw / 2) * U, (chh / 2) * U, (cz0 - cd / 2) * U);
+                    var cBk = _hqBox(cw + 0.05, chh, 0.05, cabWall); cBk.position.set(0, (chh / 2) * U, (cz0 - cd) * U);
+                    var cFl = _hqBox(cw + 0.05, 0.04, cd, cabFloor); cFl.position.set(0, 0.0, (cz0 - cd / 2) * U);
+                    var cCl = _hqBox(cw + 0.05, 0.04, cd, cabFloor); cCl.position.set(0, chh * U, (cz0 - cd / 2) * U);
+                    var cPn = new THREE.Mesh(new THREE.BoxGeometry((cw - 0.5) * U, 0.02 * U, (cd - 0.8) * U), _hqBasic(0xfff1d8)); cPn.position.set(0, (chh - 0.03) * U, (cz0 - cd / 2) * U);
+                    var cRl = _hqBox(0.04, 0.04, cd - 0.3, capM); cRl.position.set(-(cw / 2 - 0.06) * U, 0.95 * U, (cz0 - cd / 2) * U);
+                    var cRr = cRl.clone(); cRr.position.x = (cw / 2 - 0.06) * U;
+                    cab.add(cS1, cS2, cBk, cFl, cCl, cPn, cRl, cRr);
+                    cab.visible = false; cab._ew_noInstance = true; cab.traverse(function (o) { o._ew_noInstance = true; });
+                    grp.add(cab); motion.cab = cab; motion.backPlate = back;
+                }
                 renderer.localClippingEnabled = true;
             } else if (leafKey) {
                 var cat = leafCat;
@@ -87564,7 +87582,8 @@ const ThreeRenderer = (function () {
             var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state] && !d.angle) ? 1 : 0);   // THE SUSPICIOUS ANGLE: no swing until measured
             if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;
             if (d.sceneOpen) want = 1;   // a scene holds it open (hq.sceneDoor { id }), locked or not
-            if (mo.cage && (!!d.sceneOpen) !== !!d._cageOff) { d._cageOff = !!d.sceneOpen; mo.cage.forEach(function (c) { c.visible = !d._cageOff; }); }   // (the scene's lift opens clear: no cross braces in the way of the recruit stepping out)   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
+            if (mo.cage && (!!d.sceneOpen) !== !!d._cageOff) { d._cageOff = !!d.sceneOpen; mo.cage.forEach(function (c) { c.visible = !d._cageOff; }); _hq.dirty = true; }
+            if (mo.cab && (!!(d.sceneOpen || d.sceneCab)) !== !!mo.cab.visible) { mo.cab.visible = !!(d.sceneOpen || d.sceneCab); if (mo.backPlate) mo.backPlate.visible = !mo.cab.visible; _hq.dirty = true; }   // THE CAB: up for the whole lift shot   // (the scene's lift opens clear: no cross braces in the way of the recruit stepping out)   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
             _hqDoorMotionStep(d, want, dt);
         }
     }
@@ -89039,6 +89058,7 @@ const ThreeRenderer = (function () {
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickSceneMoves();
         _hqTickDrop();   // THE DROP: the ride down's shaft rides up past the cage
+        try { _hqTickClipBeside(); } catch (e) { if (!_hq._cbWarned) { _hq._cbWarned = true; console.warn('[HQ] clip beside', e); } }   // THE CUT BESIDE
         _hqTickRounds(wdt);
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
@@ -94760,6 +94780,55 @@ const ThreeRenderer = (function () {
         if (d === R.d) return;
         R.d = d; R.root.position.y = d * _hqUnits(); R.root.updateMatrixWorld(true); H.dirty = true;
     }
+    /* THE CUT BESIDE (2026-11-15, the bigger foyer): the main hall's upper gallery runs past the tangent its ground floor keeps, so
+       a box room joined to it that stands taller than 4 m (the foyer's 7 m atrium) had the gallery's floor, rails, doors, lamps and
+       Agent Forrest standing in its air. While you are IN such a room (shell.clipBeside { wall, above }), everything of the rooms
+       beside it that lies on its side of that wall AND above `above` metres is cut away (a per-mesh material copy, two clip planes,
+       intersection); stepping out puts every original back. From inside the room the cut part is behind its own wall anyway. */
+    var _HQ_CLIP_WALL_N = { n: [0, 0, -1], s: [0, 0, 1], e: [1, 0, 0], w: [-1, 0, 0] };
+    function _hqTickClipBeside() {
+        var H = _hq; if (!H || !H.scene) return;
+        H._cbTick = ((H._cbTick || 0) + 1) % 20;
+        var st = H.stage, cur = (st && st.id) || (H.opts && H.opts.room), D = _hqData(), room = D && D.rooms && D.rooms[cur];
+        var cb = room && room.shell && room.shell.clipBeside, sh = room && room.shell;
+        var key = cb ? cur : null;
+        if (H._cbKey && H._cbKey !== key) {   // stepped out: every original back
+            H.scene.traverse(function (o) {
+                if (!o.material) return;
+                if (o._ew_cbOrig) { o.material = o._ew_cbOrig; o._ew_cbOrig = null; }
+                else if (o.material._ew_cb) { o.material.clippingPlanes = null; o.material.needsUpdate = true; }   // a batch built from a copy
+            });
+            H._cbKey = null; H.dirty = true;
+        }
+        if (!key || (H._cbKey === key && H._cbTick !== 0)) return;
+        var roots = [], own = null;
+        if (cur === (H.opts && H.opts.room)) own = H.partRoot; else if (st && st.parts[cur]) own = st.parts[cur].P.partRoot;
+        if (!own) return;
+        if (own !== H.partRoot && H.partRoot) roots.push(H.partRoot);
+        if (st) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P && E.P.partRoot && E.P.partRoot !== own) roots.push(E.P.partRoot); }
+        if (!roots.length) return;
+        var U = _hqUnits(), wn = _HQ_CLIP_WALL_N[cb.wall || 'n'] || _HQ_CLIP_WALL_N.n;
+        var half = (wn[2] !== 0) ? (sh.d || 0) / 2 : (sh.w || 0) / 2;
+        own.updateMatrixWorld(true);
+        var M = own.matrixWorld, NM = new THREE.Matrix3().getNormalMatrix(M);
+        if (!H._cbPlanes) H._cbPlanes = [new THREE.Plane(), new THREE.Plane()];
+        var pW = new THREE.Vector3(wn[0] * half * U, 0, wn[2] * half * U).applyMatrix4(M), nW = new THREE.Vector3(wn[0], 0, wn[2]).applyMatrix3(NM).normalize();
+        H._cbPlanes[0].setFromNormalAndCoplanarPoint(nW, pW);   // kept: beyond the wall
+        var pY = new THREE.Vector3(0, (cb.above || 4) * U, 0).applyMatrix4(M), nY = new THREE.Vector3(0, -1, 0).applyMatrix3(NM).normalize();
+        H._cbPlanes[1].setFromNormalAndCoplanarPoint(nY, pY);   // kept: below `above`
+        var planes = H._cbPlanes;
+        roots.forEach(function (R) {
+            R.traverse(function (o) {
+                if (!o.material || o._ew_cbOrig) return;
+                if (o.material._ew_cb) { if (!o.material.clippingPlanes) { o.material.clippingPlanes = planes; o.material.clipIntersection = true; o.material.needsUpdate = true; } return; }
+                var cp = function (m) { var c = m.clone(); c._ew_cb = true; c.clippingPlanes = planes; c.clipIntersection = true; return c; };
+                o._ew_cbOrig = o.material;
+                o.material = Array.isArray(o.material) ? o.material.map(cp) : cp(o.material);
+            });
+        });
+        if (renderer) renderer.localClippingEnabled = true;
+        H._cbKey = key; H.dirty = true;
+    }
     function _hqPdBuild(room) {
         if (!room || !room.pd || !room.pdDraw) return;
         var U = _hqUnits(), G = _hq.doorGroup, out = [];
@@ -96050,7 +96119,7 @@ const ThreeRenderer = (function () {
         sceneDoor: function (o) {
             var H = _hq; if (!H || !H.scene || !o) return false;
             var U = _hqUnits(), ts = 116;
-            if (o.id) { var dd = null; (H.doors || []).forEach(function (x) { if (x && x.door && x.door.id === o.id) dd = x; }); if (!dd) return false; dd.sceneOpen = !!o.open; return true; }   // a ROOM door the scene opens (scene A's front lift); open: false gives it back
+            if (o.id) { var dd = null; (H.doors || []).forEach(function (x) { if (x && x.door && x.door.id === o.id) dd = x; }); if (!dd) return false; if (o.cab != null) dd.sceneCab = !!o.cab; if (o.open != null || o.cab == null) dd.sceneOpen = !!o.open; return true; }   // a ROOM door the scene opens (scene A's front lift); open: false gives it back
             if (o.remove) { var d0 = H._sceneDoor; if (d0) { d0.dead = true; if (d0.root.parent) d0.root.parent.remove(d0.root); try { _disposeR(d0.root); } catch (e) {} H._sceneDoor = null; H.dirty = true; } return true; }
             if (o.open != null) { var d1 = H._sceneDoor; if (!d1) return false; d1.from = d1.k; d1.to = Math.max(0, Math.min(1, +o.open)); d1.t0 = performance.now(); d1.ms = Math.max(1, o.ms || 900); return true; }
             if (H._sceneDoor) return true;

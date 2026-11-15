@@ -4796,7 +4796,7 @@
                 else if (a.who && a.do === 'walk' && TR.hq.sceneWalk) TR.hq.sceneWalk(a.who, { x: a.x, z: a.z, ms: a.ms, face: a.face });
                 else if (a.do === 'props' && TR.hq.sceneProps) TR.hq.sceneProps({ keys: a.keys, near: a.near, r: a.r, at: a.at, ms: a.ms, light: a.light });
                 else if (a.do === 'key' && TR.hq.sceneKey) TR.hq.sceneKey({ x: a.x, y: a.y, z: a.z, size: a.size });
-                else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ id: a.id, x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove });
+                else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ id: a.id, x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove, cab: a.cab });
                 else if (a.do === 'shaft' && TR.hq.sceneShaft) TR.hq.sceneShaft(a.k);
                 else if (a.do === 'drop' && TR.hq.sceneDrop) TR.hq.sceneDrop({ from: a.from, to: a.to, ms: a.ms, ease: a.ease });   // THE DROP: the ride down's shaft
                 else if (a.do === 'screen' && TR.hq.sceneScreen) TR.hq.sceneScreen({ x: a.x, y: a.y, z: a.z, w: a.w, h: a.h, face: a.face, off: a.off });
