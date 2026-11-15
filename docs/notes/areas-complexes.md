@@ -3503,8 +3503,33 @@ buildings or props or banners"; he corrected shield B (bolt, not a crack) and th
   No statue yet. Public library: limestone, arched ground-storey windows on three sides, a copper dome, a `lion` each side of the portal.
 - THE STREET (`DRESS` = [px, py, key, x, z, face, squares it needs, opts], `BARS` = unseen low walls on barrier squares): four black cars
   on whole squares in the Service court's south-west yard, the lions, four newspaper racks, the pool's fountain.
-- NOT DONE (need mondo's OK on a Meshy concept first): the seated statue, the pink blossom trees. No lawn paint (the ground palette is
+- The seated statue + the pink blossom trees: approved 11-15, placed and waiting for their models (see "CIVIC CENTER, DC PASS 2" below). No lawn paint (the ground palette is
   shared). No far version of the obelisk (it is three parts).
+
+## DISASTER CITY, CIVIC CENTER, DC PASS 2 — the White House + the two pieces that wait for their model (2026-11-15)
+Second side (handoff prompt 3). mondo's answers 11-15: seated statue APPROVED, blossom tree APPROVED, "Owner side makes them" (this account
+has no Meshy key), extra picked: "Mayor's House = White House". All in `docs/disaster-city/districts/C.js`.
+- THE WHITE HOUSE (plot P07-00, building 1, the Mayor's House; same foot, same drawn door on its west front, still no inside): white stone,
+  a flat roof behind a plain parapet, its stone lifted (`glow: 0.45`) so the shaded front still reads white, no shop awning on its door (a `plain` door part), a two-storey four-column portico with a pediment over the door, two lamps on the walk, a flag on the
+  roof. Its west lawn (4 x 4 squares) has the black iron fence on its north and walk sides, the gate facing the portico. `iron()` is a
+  file-level helper now (the plaza's lawns use the same one).
+- THE PIECES THAT WAIT (`HAVE` at the top of C.js): a key is placed only when data.js has a catalogue row `<key>: { file: ...`. Today
+  neither row exists, so the bake places nothing and the city is as before. `CIVIC_HAVE=1 node bake-disaster-city.js --dry-run` shows the
+  placed counts without the rows (dress 27 = 11 + 1 statue + 15 trees, none left out).
+  - `seated_statue` (concept `docs/plans/disaster-city/civic-dc/dc_concept_statue.png`): stands in an open four-column stone temple on the
+    Civic plaza's south-east lawn (plot P06-01, squares 9..10, 10), facing north up the walk at the obelisk. The temple is drawn only when
+    the row exists. NOT in the roof memorial of the Records garden (15 m up, nobody would see it).
+  - `blossom_tree` (concept `dc_concept_tree.png`): 15 trees, each on its own free lawn square: City Hall's front (2), the plaza's
+    south-west lawn round the bandstand (4) + one by the obelisk, the White House lawn's corners (4), the Courthouse plot's south lawns (4).
+- FOR THE OWNER SIDE (it has the Meshy key): make both from the concept pictures (concept -> image-to-3D meshy-t2.5, base y 0, metallic 0,
+  `.opt.glb` beside each, like the Desert's pieces), upload to R2 `Assets/world/props/meshy/`, add the manifest rows + MODEL_LIST, add
+  these two catalogue rows beside THE CIVIC INTERIOR PIECES in data.js, then rerun `node bake-disaster-city.js`:
+  `seated_statue: { file: 'world/props/meshy/seated_statue.glb', base: 'asset', h: 3.4, foot: 1.2, block: true, group: 'Meshy props' },`
+  `blossom_tree:  { file: 'world/props/meshy/blossom_tree.glb', base: 'asset', h: 5.5, foot: 0.35, block: true, group: 'Meshy props' },`
+  The statue's front must be +Z. The tree: no loose falling petals in the prompt (they become floating slivers).
+- THE HARBOUR DOOR: the city's `harbour` door (Bayside's boardwalk) targets `{ room: 'site_prebuilt_bermuda_beach', at: 'quay' }` now
+  (bake-disaster-city.js; asked by the Beach's holder on the board).
+- `CIVIC_DEBUG=cells` prints the free squares of the plaza plots at the moment C.js runs (`.` free, `x` taken, letters = the plan).
 
 ## DISASTER CITY, THE HOLLYWOOD HILLS — the sign on the mountains (2026-11-15)
 mondo 11-15 12:55: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster city, use that/make that
