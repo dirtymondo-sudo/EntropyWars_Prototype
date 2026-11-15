@@ -259,9 +259,10 @@ module.exports.build = function (api) {
         front(w, H, d, BROWN, D); shell(w, H, d, BROWN); box(0, H, 0, w + 0.9, 0.7, d + 0.9, BROWND, { under: true }); box(0, H + 0.7, 0, w - 1.2, 0.5, d - 1.2, BROWND);
         [-1, 1].forEach(s => { box(s * (w / 2 - 0.6), 0, d / 2 + 0.15, 1.2, H, 0.4, BROWND); box(s * (w / 4), 0, d / 2 + 0.12, 0.9, H, 0.3, BROWND); box(D.lx + s * (D.cw / 2 + 0.75), 0, d / 2 + 0.22, 0.8, 4.6, 0.5, BROWND); });
         box(D.lx, 4.6, d / 2 + 0.25, D.cw + 3.2, 0.7, 0.6, BROWND, { under: true }); gable(D.lx, 5.3, d / 2 + 0.25, D.cw + 3.2, 0.6, 1.0, 'z', BROWND, BROWND, 0);
-        panel('f', D.lx, 2.25, D.cw + 0.1, 2.3, d / 2 + 0.02, ['calm_gunmetal', 0x70788a]); box(D.lx, 3.0, d / 2 + 0.1, 1.5, 1.2, 0.16, ['calm_flagstone', 0xd8d4cc]);   // the iron panel over the doors, the skull's stone
-        { const sk = toWorld(D.lx, d / 2 + 0.34), pl = toWorld(D.lx + D.cw / 2 + 0.2, d / 2 + 0.5);
-          props.push({ key: 'skull', x: sk[0], z: sk[1], face: ctx.rot, h: 0.85, y: 3.15 }, { key: 'psx_padlock_1', x: pl[0], z: pl[1], face: ctx.rot, h: 0.34, y: 1.15 }); }
+        panel('f', D.lx, 2.25, D.cw + 0.1, 2.3, d / 2 + 0.02, ['calm_gunmetal', 0x70788a]);   // the iron panel over the doors (the carved plaque hangs on it)
+        { const sk = toWorld(D.lx, d / 2 + 0.24), pl = toWorld(D.lx + D.cw / 2 + 0.2, d / 2 + 0.5);
+          props.push({ key: 'tomb_plaque', x: sk[0], z: sk[1], face: ctx.rot, y: 2.8 },   /* the carved skull-and-bones plaque (Meshy, mondo's OK on the concept 11-15 20:04) in place of the loose skull */
+            { key: 'psx_padlock_1', x: pl[0], z: pl[1], face: ctx.rot, h: 0.34, y: 1.15 }); }
     };
     B.museum = (w, d, row) => {   // the science museum: a glass hall under one long barrel roof, a faceted planetarium globe at its end. WALK-IN
         const D = doorAt(w, -4); Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_lobby_glass_double', storeys: 2 });
