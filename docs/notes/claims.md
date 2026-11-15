@@ -16,7 +16,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 |---|---|---|---|
 | The Estate (plot build, prompt 5 of docs/plans/HANDOFF_PROMPTS.md) | second | 2026-11-15 | first delivery merged (`site_prebuilt_skinwalker_estate`, bake-estate.js); not seen on screen, waits mondo's look |
 | Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 waits mondo's OK |
-| The Desert | owner | 2026-11-15 | interiors build stopped partway |
+| The Desert | free | 2026-11-15 | second side built the three insides of the approved plan (Hangar 18, White Rooms, inside the Great Pyramid; bake-desert-insides.js); not seen on screen, waits mondo's look; the King's Chamber > Turning Tomb door waits his answer |
 | The Woods | owner | 2026-11-15 | trees wait mondo's reaction |
 | The Mountains (+ the Hollywood Hills room, the city's north beach strip in B.js beach() and EDGES.n.cap) | second | 2026-11-15 | plan 2 built: Hills room, Shasta/Olympus swap, north beach; not seen on screen, waits mondo's look |
 | The Beach (plot build: the Shore, the Harbour, the Island; `docs/plans/world-zones/beach-layout.json`) | second | 2026-11-15 | plan 3 posted (14 x 10 plots, The Ocean + The Bermuda Triangle as districts; `beach-layout-3.json`, `beach_plot_plan_3.png`), waits mondo's OK; nothing built |
