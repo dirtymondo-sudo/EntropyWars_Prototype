@@ -3546,6 +3546,7 @@ old textures too except for tilegeneric2a, the calm wood planks, the calm carpet
   E ConcreteGeneric3a, I BrickCinder1a, S ConcretePanels3a, B ConcreteGeneric1a.
 - **Brick**: `bricks_1` / `bricks_3` drew as the calm grey stones under each district's tint; they are grey pack brick of the same value now
   (BrickUrban3a / 4a, BrickMasonry1a / 2a, BrickCinder4a), so the tints still colour them. LESSON: never put a red brick sheet under a tint.
+- **THE PLANKS ARE PLANKS (same day, mondo: "thats wood generic like tree bark, not wood planks" + "yes fix for disaster city too")**: every wood part, boardwalk and the paint palette's wood = `WoodFlooring1a` (E 1b), roof crossings `WoodFlooring2a`, HQ_ARCH_SURFACE.wood `urban:WoodFlooring1a`. Never a WoodGeneric sheet for planks (plain grain, reads as bark; The Woods' LOG cabin keeps it on purpose). The line below is the first pass, superseded.
 - **Wood**: every `wood_planks` / `calm_planks` part -> `WoodGeneric1a` (E 1b, B 1c); building floors -> `WoodFlooring1a..1d` by district, seeded
   by the building id; roof crossings `WoodGeneric2a`. three-renderer.js HQ_ARCH_SURFACE.wood (the bare brown parts) = `urban:WoodGeneric1a` too.
 - **Carpet**: `calm_carpet` -> U CarpetPattern1c, C CarpetPlain1c, S CarpetDiamond1c (the reds, as before).
@@ -3721,6 +3722,12 @@ districts ... the north pole to the north of the castle would be good as a rival
 - **Not done / open**: never seen on screen (no browser run: RULE #1c). The Keep's upper floors, the Undercroft and the Sky Castle are
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
+
+### THE ROOFS' UNDERSIDES (2026-11-15)
+mondo: "There are gaps in the village buildings roofs." An `arch` roof part is drawn from outside only and had no underside, so from the
+street you looked up past the eaves, through the roof, at the sky. bake-camelot.js `sheet().roof` now writes one timber sheet facing down
+under every roof (houses, Chapel, Smithy, Inn, Workshop, the castle's buildings). Checked with an offline drawing of the baked rows from
+street height (project files camelot-kingdom/roof_underside_before_after.png), not in a browser.
 
 ### The map's GO after an area is rebuilt (2026-11-15)
 mondo: "i literally just go to the map/directory and go to camelot kingdon and its still the old one." The map travels only to rooms a save
