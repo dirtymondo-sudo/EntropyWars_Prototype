@@ -5147,7 +5147,7 @@
                     if (_hqSuspended) { if (now - R.at > 1500) fail('the building is paused (close the notice or the pause menu, then press PLAY again)'); return; }
                     if (_questTalkBusy || _questReplayBusy) { if (now - R.at > 8000) fail('another scene is still running'); return; }
                     let up = true;
-                    try { up = !!TR.hq.sceneReady('player'); if (up && O && O.cast) { const s3 = TR.hq.dev.hqScene(); up = !!(s3 && s3.getObjectByName('hq_hq-cast-' + O.cast)) && !!TR.hq.sceneReady(O.cast); } } catch (e) { up = true; }
+                    try { up = !!TR.hq.sceneReady('player'); if (up && O && O.cast) { const s3 = TR.hq.dev.hqScene(); const g3 = s3 && s3.getObjectByName('hq_hq-cast-' + O.cast); let m3 = false; if (g3) g3.traverse(o => { if (o.isMesh) m3 = true; }); up = m3; }   /* (his model in the room; hq.sceneReady asks for an idle clip, which a car never has: that was a full timeout on every play) */ } catch (e) { up = true; }
                     if (up || now - R.at > 8000) { if (!up) console.warn('[SCENE ED] ' + id + ': started without waiting longer for the cast'); start(); }
                     return;
                 }
