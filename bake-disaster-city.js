@@ -419,12 +419,16 @@ escapeAt.forEach(id => {
     const hit = tries.find(t => free(t[1], t[2], '.#') && !nearBridge(gc(t[1]), gc(t[2]))) || tries.find(t => free(t[1], t[2], '.#P') && !nearBridge(gc(t[1]), gc(t[2]))) || tries.find(t => free(t[1], t[2], '.#P'));
     if (!hit) { console.warn('no fire escape spot for', id); return; }
     const side = hit[0], xc = gc(hit[1]), zc = gc(hit[2]); take(hit[1], hit[2]);
-    /* THE STEEL LANDING (2026-11-13, mondo: no raised terrain lump beside a ladder): the halfway landing is a `landing` row, a steel
-       platform the walker stands on (data.js hqTerrainLandings), the ladders as before: the yard to the landing, the landing to the roof */
-    if (side === 'E') features.push({ k: 'landing', x: r3(E + 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 270 }, { k: 'climb', x: r3(E + 1.7), z: r3(zc + 0.6), face: 270, look: 'fireescape' }, { k: 'climb', x: r3(E), z: r3(zc - 0.6), face: 270, look: 'fireescape' });
-    if (side === 'W') features.push({ k: 'landing', x: r3(W - 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 90 }, { k: 'climb', x: r3(W - 1.7), z: r3(zc - 0.6), face: 90, look: 'fireescape' }, { k: 'climb', x: r3(W), z: r3(zc + 0.6), face: 90, look: 'fireescape' });
-    if (side === 'S') features.push({ k: 'landing', x: xc, z: r3(Sz + 0.85), w: 2.6, d: 1.7, h: h2, back: 0 }, { k: 'climb', x: r3(xc - 0.6), z: r3(Sz + 1.7), face: 0, look: 'fireescape' }, { k: 'climb', x: r3(xc + 0.6), z: r3(Sz), face: 0, look: 'fireescape' });
-    if (side === 'N') features.push({ k: 'landing', x: xc, z: r3(Nz - 0.85), w: 2.6, d: 1.7, h: h2, back: 180 }, { k: 'climb', x: r3(xc + 0.6), z: r3(Nz - 1.7), face: 180, look: 'fireescape' }, { k: 'climb', x: r3(xc - 0.6), z: r3(Nz), face: 180, look: 'fireescape' });
+    /* THE STEEL LANDING (2026-11-13, mondo: no raised terrain lump beside a ladder): the landing is a `landing` row, a steel platform the
+       walker stands on (data.js hqTerrainLandings).
+       THE FLUSH LANDING (2026-11-15, mondo: "They dont reach up all the way ... I should just be able to walk off the platform and on to
+       the roof"): the platform was HALF WAY up (a second ladder went on to the roof). It is `flush` now: level with the roof behind it,
+       ONE ladder from the yard up to it, and the walker steps straight off its back onto the roof (no second ladder: it would rise 0 m).
+       `h` is only what a landing with no roof behind it keeps (its building became a walk-in). */
+    if (side === 'E') features.push({ k: 'landing', x: r3(E + 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 270, flush: true }, { k: 'climb', x: r3(E + 1.7), z: r3(zc + 0.6), face: 270, look: 'fireescape' });
+    if (side === 'W') features.push({ k: 'landing', x: r3(W - 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 90, flush: true }, { k: 'climb', x: r3(W - 1.7), z: r3(zc - 0.6), face: 90, look: 'fireescape' });
+    if (side === 'S') features.push({ k: 'landing', x: xc, z: r3(Sz + 0.85), w: 2.6, d: 1.7, h: h2, back: 0, flush: true }, { k: 'climb', x: r3(xc - 0.6), z: r3(Sz + 1.7), face: 0, look: 'fireescape' });
+    if (side === 'N') features.push({ k: 'landing', x: xc, z: r3(Nz - 0.85), w: 2.6, d: 1.7, h: h2, back: 180, flush: true }, { k: 'climb', x: r3(xc + 0.6), z: r3(Nz - 1.7), face: 180, look: 'fireescape' });
     count.escapes++;
 });
 
@@ -716,7 +720,7 @@ const lvLine = lines.length; lines.push('');   // (written once the ground is kn
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
 const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
-lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + b64 + "' },");
+const paintLine = lines.length; lines.push("");   // written last of all: THE TREES STAND IN SOIL may still lay a bed
 lines.push("                features: [");
 dcCtx.lamps = lamps;
 dcRun('build');
@@ -859,6 +863,30 @@ count.levels = lvCount;
     const pc = PROPS.check(dcCtx); count.propCheck = pc.tally;
     fs.writeFileSync(path.join(REPO, 'docs/disaster-city/prop-check.txt'), 'THE PROP CHECK, written by node bake-disaster-city.js. A district file\'s own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.\n' + JSON.stringify(pc.tally) + '\n' + pc.report.map(r => r.join('  ')).join('\n') + '\n');
 }
+/* ── THE TREES STAND IN SOIL (mondo 2026-11-15: "trees are only put on grass or dirt or in a pot ... trees coming out of concrete dont make
+   sense"). THE RULE, checked here on every bake, after every district file, the tree move and the prop pass, so no later tree can land on paving:
+   - an outdoor tree (a `tree` feature, a `palm_tree` prop) stands on a SOIL square: a square whose ground sheet is in SOIL;
+   - a tree on any other sheet (pavement, concrete, tiles, planks, the asphalt) gets a SOIL BED: its whole 3.5 m square is repainted, grass
+     under a broadleaf, sand under a palm in Bayside (one square, one sheet, so the bed is a whole square like every other piece);
+   - Bayside's broadleaf rows (the trees he named, on the cordon's concrete; the district's own list has no trees, only palms) are REMOVED;
+   - a palm inside a building's walls (a lobby, a walled garden's bed) is the district file's own indoor planting and is left alone.
+   The bake THROWS if a tree is still on paving at the end. ── */
+{ const SOIL = ['grass_2', 'desert'], TREE_PROPS = ['palm_tree'], cellOfM = v => Math.floor((v + HALF) / C), tally = { removed: 0, bedded: 0, palmBeds: 0 };
+  const sheetAt = (cx, cy) => (cx < 0 || cy < 0 || cx >= NXP || cy >= 144) ? null : (paint[cy * NXP + cx] ? PAL[paint[cy * NXP + cx] - 1] : 'asphalt');
+  const distAt = (cx, cy) => cx >= 144 ? 'B' : (inCity(cx, cy) ? plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))].d : null);   // past the plots = Bayside's beach
+  const bed = (cx, cy, key) => { const i = PAL.indexOf(key); if (i < 0) throw new Error('THE TREES STAND IN SOIL: no ' + key + ' sheet in the ground palette'); paint[cy * NXP + cx] = i + 1; };
+  for (let i = features.length - 1; i >= 0; i--) { const t = features[i]; if (t.k !== 'tree') continue;
+      const cx = cellOfM(t.x), cy = cellOfM(t.z), sh = sheetAt(cx, cy); if (sh == null || SOIL.indexOf(sh) >= 0) continue;
+      if (distAt(cx, cy) === 'B') { features.splice(i, 1); count.trees--; tally.removed++; } else { bed(cx, cy, 'grass_2'); tally.bedded++; } }
+  props.forEach(q => { if (TREE_PROPS.indexOf(q.key) < 0) return;
+      const cx = cellOfM(q.x), cy = cellOfM(q.z), sh = sheetAt(cx, cy); if (sh == null || SOIL.indexOf(sh) >= 0) return;
+      if (cx < 144 && cellAt(cx, cy) === 'I') return;
+      bed(cx, cy, distAt(cx, cy) === 'B' ? 'desert' : 'grass_2'); tally.palmBeds++; });
+  const bad = features.filter(t => t.k === 'tree').map(t => [t.x, t.z]).concat(props.filter(q => TREE_PROPS.indexOf(q.key) >= 0 && !(cellOfM(q.x) < 144 && cellAt(cellOfM(q.x), cellOfM(q.z)) === 'I')).map(q => [q.x, q.z]))
+      .filter(q => { const sh = sheetAt(cellOfM(q[0]), cellOfM(q[1])); return sh != null && SOIL.indexOf(sh) < 0; });
+  if (bad.length) throw new Error('THE TREES STAND IN SOIL: ' + bad.length + ' tree(s) on paving: ' + JSON.stringify(bad.slice(0, 8)));
+  count.soil = tally;
+  lines[paintLine] = "                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + Buffer.from(paint).toString('base64') + "' },"; }
 /* ── THE INTERIOR POLISH (docs/disaster-city/interior-polish.js; mondo 11-15: "rugs/carpets flickering ... do another polish pass on disaster
    city"): last of all, over every walk-in building whichever district wrote it: props beside a wall off the roof (`floor: true`), no two drawn
    faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */
@@ -900,7 +928,7 @@ lines.push("        },");
 lines.push("        /* DC144-END */");
 const block = lines.join('\n') + '\n';
 console.log(JSON.stringify(Object.assign({ features: features.length, props: props.length, streets: streets.length, bytes: block.length }, count)));
-if (process.env.DC_DUMP) fs.writeFileSync(process.env.DC_DUMP, JSON.stringify({ C, HALF, features, props, bInfo, streets, cells: Array.from({ length: 144 }, (_, cy) => Array.from({ length: 144 }, (_, cx) => cellAt(cx, cy)).join('')), plots: PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, d: p.d, name: p.name })), districts: Object.keys(D).map(k => ({ id: k, label: D[k].label })) }));
+if (process.env.DC_DUMP) fs.writeFileSync(process.env.DC_DUMP, JSON.stringify({ C, HALF, PAL, NXP, paint: Array.from(paint), features, props, bInfo, streets, cells: Array.from({ length: 144 }, (_, cy) => Array.from({ length: 144 }, (_, cx) => cellAt(cx, cy)).join('')), plots: PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, d: p.d, name: p.name })), districts: Object.keys(D).map(k => ({ id: k, label: D[k].label })) }));
 if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const b0 = src.indexOf('        /* DC144-BEGIN'), b1 = src.indexOf('        /* DC144-END */\n');

@@ -40,6 +40,13 @@ run(`(function () {
             });
             (P.marks || []).forEach(m => { if (!B.KNOWN_MARKS[m.k]) errs.push(pid + ': unknown mark kind "' + m.k + '"'); });
             if (!DOOR_HQ.rooms[pdRoomId(id, pid)]) errs.push(pid + ': no room was built');
+            /* THE DRESSING's big pieces block whole squares: the ground floor must still be one walk without them */
+            const R = DOOR_HQ.rooms[pdRoomId(id, pid)], big = {}; ((R && R.pdDraw) || []).forEach(r => { const m = /^big(\\d+)_(\\d+)$/.exec(r.id || ''); if (m) big[m[1] + ',' + m[2]] = 1; });
+            if (Object.keys(big).length && C.length === 12) {
+                const fl = (x, y, cut) => x >= 0 && y >= 0 && x < 12 && y < 12 && './o~'.indexOf(C[y][x]) >= 0 && !(cut && big[x + ',' + y]);
+                const groups = (cut) => { const seen = {}; let n = 0; for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) { if (!fl(x, y, cut) || seen[x + ',' + y]) continue; n++; const q = [[x, y]]; seen[x + ',' + y] = 1; while (q.length) { const c = q.pop(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(d => { const k = (c[0] + d[0]) + ',' + (c[1] + d[1]); if (fl(c[0] + d[0], c[1] + d[1], cut) && !seen[k]) { seen[k] = 1; q.push([c[0] + d[0], c[1] + d[1]]); } }); } } return n; };
+                if (groups(true) !== groups(false)) errs.push(pid + ': a big dressing piece cuts the floor in two');
+            }
         });
         Object.keys(L.board || {}).forEach(s => { if (!L.plots[L.board[s]]) errs.push('slot ' + s + ' names no plot: ' + L.board[s]); });
         if (!L.plots[L.entry]) errs.push('no entry plot'); else {

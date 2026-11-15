@@ -744,3 +744,7 @@ Later, low priority (not for now): the names, wiring dungeons into story mode an
   lever in the world (one lever, one move, one plot), you ride the plot you stand on, a wide view of the whole board shows each
   move, the skateboard crosses plots, every lamp stays lit, the seams are the whole doorway. Notes: areas-complexes.md "PLOT
   DUNGEONS, THE SECOND PASS".
+- 2026-11-15 THE THIRD PASS (mondo: "Make a new lever. Do another pass on all the dungeons, visually and aesthetically"): one iron
+  floor lever (`pd_lever`, its arm swings on the pull) replaces the twelve-lever frame; every look dresses its plots by itself
+  (`PD_DRESS`: torches, statues, machines, trees, decor); dark caps for the wide view; lanterns, pedestals, a turbine battery. Notes:
+  areas-complexes.md "PLOT DUNGEONS, THE THIRD PASS".

@@ -47057,6 +47057,9 @@ const ThreeRenderer = (function () {
             }
             var R = this._ew_reach;
             if (R && object.visible !== false) {
+                if (object.isMesh === true && object.children.length === 0 && !object.isSkinnedMesh && !object.morphTargetInfluences && !_ewRchLoose()) {   // THE LAMP'S TIGHT REACH
+                    if (object.isInstancedMesh ? _ewRchInstOut(object, R.x, R.y, R.z, R.far) : _ewRchBoxOut(object, R.x, R.y, R.z, R.far)) return;
+                }
                 var csp = object._ew_ckSph;
                 if (csp && object._ew_ckFar != null && reachOut(R, csp)) return;   // a chunk past the lamp's reach
                 if (object.children.length > 256 && !object.isClippingGroup && object._ew_bunName && / shell$/.test(object._ew_bunName) && object.layers.test(camera.layers)) {   // a room's shell: still pieces only
@@ -79103,7 +79106,7 @@ const ThreeRenderer = (function () {
                 grp.add(pg);
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
-                if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
+                if (cat.light && !p.noLight && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
                     var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, (cat.light.intensity != null ? cat.light.intensity : 0.6) * _hqLampK(room), (cat.light.dist || 6) * U, 2);   // THE ROOM'S OWN LAMPS (shell.lampK)
                     ppl.position.y = (cat.light.y || 0) * U; grp.add(ppl); _hq.propLights++;
                     if (cat.light.night) { ppl._ew_lampI = ppl.intensity; _hq.clockLamps.push(ppl); }   // THE WORLD CLOCK (Phase 3): on at dusk, off at dawn
@@ -79118,7 +79121,7 @@ const ThreeRenderer = (function () {
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
                 var pblk = null;
-                if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { pblk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(pblk); }   // `rect` (2026-09-14): a rectangular footprint in room axes
+                if (!flip && cat.foot > 0 && !kick && !p.noBlock && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { pblk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(pblk); }   // `rect` (2026-09-14): a rectangular footprint in room axes
                 if (_hqMcWants(p, cat, pblk, onWall, onCeil, flip, kick, tabletop, mount)) _mcFor(grp, pg, pblk, { H: _hq, y: y, need: !pblk });   // THE REAL COLLISION: the proc's own meshes
                 try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
                 return;
@@ -79133,7 +79136,7 @@ const ThreeRenderer = (function () {
                low enough, and its side is solid in the air (no more jumping
                into a cabinet and walking out through the wall of props) */
             var blk = null;
-            if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
+            if (!flip && cat.foot > 0 && !kick && !p.noBlock && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
             /* THE OCEAN PACK (2026-10-27): the row's clip (`anim`) and its swim (`swim`: { r, v, bob } metres — the row's own beats the
                catalogue's, `swim: false` holds it still); the catalogue `turn` doubles as the nose for the swim's heading */
             var swimM = (p.swim === false) ? null : (p.swim || cat.swim || null);
@@ -83642,7 +83645,7 @@ const ThreeRenderer = (function () {
             _hqRideMem.on = true;
             if (!quiet) _hqRideEmit({ kind: 'on' });
         } else {
-            if (R.grind) { R.grind = null; pl.air = true; pl.vy = 1.2; pl.jumpT = -1; }
+            if (R.grind) { var csO = _hqRideClearSide(pl, R, R.grind.rail, R.grind.s); if (csO) { pl.x += csO.nx * 0.8; pl.z += csO.nz * 0.8; } R.grind = null; pl.air = true; pl.vy = 1.2; pl.jumpT = -1; }   // (THE WAY OUT OF A COLLIDER: stepping off a rail, beside it)
             R.on = false; R.v = 0; R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.stance = 0; R.flip = R.roll = R.deckRoll = R.deckSpin = 0; R.bailT = 0;
             R.grade = R.gradeBack = R.pitch = 0; R.vert = null; R.launchKind = null;
             R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.stick = null; R.squash = 0;
@@ -83679,8 +83682,10 @@ const ThreeRenderer = (function () {
         R.flip = 0; R.roll = 0; R.deckRoll = 0; R.deckSpin = 0; R.stance = 0; R.lean = 0;
         R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.squash = 0; R.grabTuck = 0; R.deckTuck = 0; if (R.stick) { R.stick.dx = R.stick.dy = 0; }
         R.vert = null; R.launchKind = null; R.lipT = 9;
+        var csB = R.grind ? _hqRideClearSide(pl, R, R.grind.rail, R.grind.s) : null;   // THE WAY OUT OF A COLLIDER: the fall off a rail goes to its clear side
         if (R.grind) { R.grind = null; pl.air = true; pl.vy = 0.8; pl.jumpT = -1; }
-        R.v *= 0.35; R.bailT = R.bailTotal = S.bailMs / 1000; R.deckAway = R.deckTotal = S.deckBackMs / 1000; R.bailSpin = 0;
+        R.v *= 0.35; if (csB) { R.hd = Math.atan2(csB.nx, csB.nz); R.v = 1.8; }
+        R.bailT = R.bailTotal = S.bailMs / 1000; R.deckAway = R.deckTotal = S.deckBackMs / 1000; R.bailSpin = 0;
         _hqRideEmit({ kind: 'bail', why: why, lost: lost });
     }
     /* the bail's beat: 'fall' for the first bailFall share of the tumble, 'getup' for the rest, null on the deck */
@@ -83923,6 +83928,81 @@ const ThreeRenderer = (function () {
         var travel = R.v < 0 ? R.hd + Math.PI : R.hd;
         return Math.atan2(Math.sin(want - travel), Math.cos(want - travel));
     }
+    /* ══ THE WAY OUT OF A COLLIDER (2026-11-15, mondo: "got stuck clipped inside this fence after i was grinding on it, i cant move") ══
+       A railing's wall (data.js hqTerrainCompile pushRun: 0.12 m thick, as tall as the rail) refuses every step from inside its reach, so a
+       body that came down INSIDE it — a grind that ended on the fence's own line with the rail a little under the wall piece's top (a fence
+       down a slope: the landing fell through to the ground) — stood there for good: no step out is shorter than the wall's reach.
+         · _hqRideClearSide — a grind that ends ON the run (too slow, the balance lost, the board put away) leaves SIDEWAYS, to the side
+           with ground under it (the least drop; never over deep water), so the body comes down clear of the rail's wall;
+         · _hqStuckFree — the body is put on the nearest spot it can stand and walk from (rings out to 8 m; first its own level, never up
+           onto the wall's top or into water; then anywhere);
+         · it runs on every landing whose spot refuses the body (the rider's and the walker's), and _hqStuckWatch runs it for a body that
+           holds a movement key and has not moved for 0.45 s on a spot that refuses it — any collider, any room, on foot or on the board. */
+    function _hqStuckFree(pl) {
+        var H = _hq; if (!H || !pl) return false;
+        var T = H.terrain, best = null;
+        var spot = function (cx, cz, strict) {
+            var fy = _hqSurface(cx, cz, null, false);
+            if (fy === null || fy === undefined || _hqSurface(cx, cz, fy, false) === null) return null;
+            if (strict) {
+                if (fy > pl.y + 0.5 || fy < pl.y - 2.5) return null;   // its own level: not up on the fence's top, not down a cliff
+                if (T && typeof hqTerrainFluidAt === 'function') { var f = hqTerrainFluidAt(T, cx, cz); if (f && hqTerrainHeight(T, cx, cz) < f.y - 0.05) return null; }   // dry ground first
+            }
+            return fy;
+        };
+        try {
+            for (var pass = 0; pass < 2 && !best; pass++)
+                for (var r = 0.3; r <= 8.01 && !best; r += 0.2)
+                    for (var i = 0; i < 16; i++) {
+                        var a = i * Math.PI / 8, cx = pl.x + Math.sin(a) * r, cz = pl.z + Math.cos(a) * r, fy = spot(cx, cz, pass === 0);
+                        if (fy === null) continue;
+                        var sc = Math.abs(fy - pl.y);
+                        if (!best || sc < best.sc) best = { x: cx, z: cz, y: fy, sc: sc };
+                    }
+        } catch (e) { best = null; }
+        if (!best) return false;
+        pl.x = best.x; pl.z = best.z; pl.y = best.y; pl.visY = pl.y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.mvx = 0; pl.mvz = 0; pl.velX = pl.velY = pl.velZ = 0; pl._hopped = true;
+        var R = H.ride; if (R && R.on) { R.v = 0; R.grind = null; R.bal = 0; R.lastY = pl.y; R.onRamp = null; R.rise = 0; }
+        if (pl.entry && pl.entry.group) { var U = _hqUnits(); pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U); }
+        H.dirty = true;
+        return true;
+    }
+    /* a landing: the spot under the feet refuses the body (inside a wall's reach, under its top) → out */
+    function _hqStuckLanded(pl) {
+        var bad = false;
+        try { bad = _hqSurface(pl.x, pl.z, pl.y, true) === null; } catch (e) { bad = false; }
+        return bad ? _hqStuckFree(pl) : false;
+    }
+    /* per frame (the walker's and the rider's): a movement key held, the body not moving, its spot refused → out */
+    function _hqStuckWatch(H, pl, dt) {
+        var W = pl._stuckW || (pl._stuckW = { t: 0, x: pl.x, z: pl.z });
+        var k = H.keys || {}, R = H.ride, riding = !!(R && R.on);
+        var want = !H.paused && !!(k.w || k.a || k.s || k.d || (!riding && (k.up || k.down || k.left || k.right)) || (H.pad && (H.pad.ix || H.pad.iy)));
+        if (!want || pl.air || pl.swim || pl.climb || pl.sit || pl.dash || (H.vehicle && H.vehicle.on) || (riding && (R.grind || R.bailT > 0)) || Math.hypot(pl.x - W.x, pl.z - W.z) > 0.03) { W.t = 0; W.x = pl.x; W.z = pl.z; return false; }
+        W.t += dt;
+        if (W.t < 0.45) return false;
+        W.t = 0;
+        var bad = false;
+        try { bad = _hqSurface(pl.x, pl.z, pl.y, false) === null; } catch (e) { bad = false; }
+        return bad ? _hqStuckFree(pl) : false;
+    }
+    /* the side a grind leaves its rail by: { nx, nz } (unit, across the run) toward ground the body can come down on — null when neither side has any */
+    function _hqRideClearSide(pl, R, rail, s) {
+        var best = null;
+        try {
+            var p = _hqRailAt(rail, s), T = _hq.terrain, pref = ((R.lean || 0) >= 0) ? 1 : -1;
+            [pref, -pref].forEach(function (sd) {
+                var nx = p.tz * sd, nz = -p.tx * sd, cx = p.x + nx * 0.8, cz = p.z + nz * 0.8;
+                if (!_hqAirOK(cx, cz, pl.y) || !_hqAirOK(p.x + nx * 0.45, p.z + nz * 0.45, pl.y)) return;
+                var fy = _hqSurface(cx, cz, null, false);
+                if (fy === null || fy === undefined || fy > pl.y + 0.05) return;
+                if (T && typeof hqTerrainFluidAt === 'function') { var f = hqTerrainFluidAt(T, cx, cz); if (f && hqTerrainHeight(T, cx, cz) < f.y - 0.05) return; }
+                var drop = pl.y - fy;
+                if (!best || drop < best.drop - 0.05) best = { nx: nx, nz: nz, drop: drop };
+            });
+        } catch (e) { best = null; }
+        return best;
+    }
     /* THE RIDE, per frame — in place of _hqTickWalker's movement */
     function _hqTickRide(dt) {
         var H = _hq;
@@ -83974,8 +84054,10 @@ const ThreeRenderer = (function () {
                 /* the end of the run, too slow, or an ollie off */
                 var pts = Math.round(g.pts);
                 if (R.combo && R.combo.tricks.length) { R.combo.pts += g.pts - (TR.grind.pts || 0); _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) }); }
+                var onRun = !edge && g.s >= 0 && g.s <= L;   // too slow, still ON the run: the hop goes sideways (THE WAY OUT OF A COLLIDER)
                 g.s = Math.max(0, Math.min(L, g.s));
                 var pe = _hqRailAt(g.rail, g.s); pl.x = pe.x; pl.z = pe.z; pl.y = pe.y + 0.02;
+                if (onRun) { var csE = _hqRideClearSide(pl, R, g.rail, g.s); if (csE) { R.hd = Math.atan2(csE.nx, csE.nz); R.v = 2.2; R.stance = 0; } }
                 R.grind = null; R.bal = 0;
                 pl.air = true; pl.vy = edge ? S.ollieV * 0.85 : 2.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = false; R.holdOn = false;
                 _hqRideEmit({ kind: edge ? 'ollie' : 'hop', pts: pts });
@@ -84276,6 +84358,8 @@ const ThreeRenderer = (function () {
                     _hqRideComboBank(R);
                     R.airT = 0;
                 }
+                pl.y = ny;
+                if (!pl.air && _hqStuckLanded(pl)) return;   // THE WAY OUT OF A COLLIDER (2026-11-15): a landing inside a railing's wall (a grind's end on the fence's own line)
             }
         }
         pl.y = ny;
@@ -86013,6 +86097,7 @@ const ThreeRenderer = (function () {
         var k = H.keys;
         /* THE SLIDE (Delivery 6): onto the cells, no input, then the cut */
         if (H.snap) { _hqTickSnap(dt); return; }
+        _hqStuckWatch(H, pl, dt);   // THE WAY OUT OF A COLLIDER (2026-11-15): a body that cannot move on a spot that refuses it is put on the nearest ground
         /* SKATEBOARDING (HQ plan 9.8): on the board the frame is the rider's */
         if (H.ride && H.ride.on) { _hqTickRide(dt); return; }
         /* THE DEEP (2026-09-18): aboard the skiff / the bathyscaphe the frame is the helm's; in deep water it is the swimmer's */
@@ -86093,7 +86178,7 @@ const ThreeRenderer = (function () {
                     var dw = hqTerrainFluidAt(_hq.terrain, pl.x, pl.z);
                     if (dw && !dw.sea && ny <= dw.y && (dw.key !== 'water' || dw.y - hqTerrainHeight(_hq.terrain, pl.x, pl.z) > _hq.terrain.rules.wadeMax)) { _hqVoidReturn(pl, pl._landSafe, dw.key === 'lava' ? 0xff7a30 : 0x2a6a8a); return; }
                 }
-                if (ny <= land) { ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); }
+                if (ny <= land) { ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); pl.y = ny; if (_hqStuckLanded(pl)) ny = pl.y; }   // (THE WAY OUT OF A COLLIDER: a landing inside a wall's reach)
             }
             pl.y = ny;
             if (_hq.terrain && _hq.terrain.void && pl.y < _hq.terrain.void.fall) { _hqVoidReturn(pl); return; }
@@ -87033,15 +87118,54 @@ const ThreeRenderer = (function () {
        The fight never holds (renderFrame clears the hold).
        Off: window.EW_HERO_SHADOW_EVERY_FRAME = true (live). ThreeRenderer.hq.dev.heroShadow() = the counts. */
     var _heroFr = null, _heroFrM = null, _heroFrS = null;
-    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 1000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35;
+    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 1000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35, HERO_RIGID_MS = 100, HERO_NEAR_MS = 500, HERO_NEAR_M = 6;
     var _heroF64 = new Float64Array(1), _heroU32 = new Uint32Array(_heroF64.buffer);
     var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '' };
     var _heroBodies = [];
     function _heroMix(h, f) { _heroF64[0] = f; h = Math.imul(h ^ _heroU32[0], 16777619); return Math.imul(h ^ _heroU32[1], 16777619); }
+    /* THE LAMP'S TIGHT REACH (2026-11-15, mondo's F3 in Disaster City: "shadow 564 calls, 943K tris" beside a bedside lamp that
+       reaches 3.5 m): a lamp's six sides drew every piece whose bounding SPHERE touched its reach — a plot-wide merged wall (a
+       sphere of 30 m), a 42 m cell's instanced batch (every copy of it) — 724 draws and 3.5M triangles in the cloud browser for
+       a room with two beds. A caster farther than the lamp's far plane throws nothing into its map, so:
+         · a mesh is drawn in a reach render only when its world BOX comes within the reach (+ REACH_PAD for a swaying piece);
+         · an instanced batch only when one of its copies does (worked out once per lamp place / batch version).
+       The lamp's hold check (_hqHeroGate) counts a piece "in reach" by the same box. Off: window.EW_SHADOW_REACH_LOOSE. */
+    var _RCH_PAD_M = 0.5;
+    function _ewRchSum(e) { return e[12] + e[13] * 1.618 + e[14] * 2.414 + e[0] * 3.3 + e[5] * 5.7 + e[10] * 7.1 + e[1] * 11.3 + e[2] * 13.7 + e[6] * 17.9 + e[4] * 19.3 + e[8] * 23.1 + e[9] * 29.9; }
+    function _ewRchBoxOut(o, x, y, z, far) {
+        var g = o.geometry; if (!g) return false;
+        if (!g.boundingBox) { try { g.computeBoundingBox(); } catch (e) { return false; } }
+        var bb = g.boundingBox; if (!bb || bb.isEmpty()) return false;
+        var k = _ewRchSum(o.matrixWorld.elements), C = o._ew_rchBB;
+        if (!C || C.k !== k || C.g !== g || C.bb !== bb) C = o._ew_rchBB = { k: k, g: g, bb: bb, b: new THREE.Box3().copy(bb).applyMatrix4(o.matrixWorld) };
+        var b = C.b, lim = far + _RCH_PAD_M * _hqUnits();
+        var dx = Math.max(b.min.x - x, 0, x - b.max.x), dy = Math.max(b.min.y - y, 0, y - b.max.y), dz = Math.max(b.min.z - z, 0, z - b.max.z);
+        return dx * dx + dy * dy + dz * dz > lim * lim;
+    }
+    function _ewRchInstOut(o, x, y, z, far) {
+        var g = o.geometry, im = o.instanceMatrix; if (!g || !im) return false;
+        var ver = im.version | 0, k = _ewRchSum(o.matrixWorld.elements), C = o._ew_rchI;
+        if (C && C.x === x && C.y === y && C.z === z && C.far === far && C.v === ver && C.n === o.count && C.k === k) return C.out;
+        if (!g.boundingSphere) { try { g.computeBoundingSphere(); } catch (e) { return false; } }
+        var bs = g.boundingSphere; if (!bs) return false;
+        var a = im.array, W = o.matrixWorld.elements, c = bs.center, out = true, pad = _RCH_PAD_M * _hqUnits();
+        var ws = Math.sqrt(Math.max(W[0] * W[0] + W[1] * W[1] + W[2] * W[2], W[4] * W[4] + W[5] * W[5] + W[6] * W[6], W[8] * W[8] + W[9] * W[9] + W[10] * W[10]));
+        for (var i = 0, n = o.count; i < n; i++) {
+            var j = i * 16, s2 = Math.max(a[j] * a[j] + a[j + 1] * a[j + 1] + a[j + 2] * a[j + 2], a[j + 4] * a[j + 4] + a[j + 5] * a[j + 5] + a[j + 6] * a[j + 6], a[j + 8] * a[j + 8] + a[j + 9] * a[j + 9] + a[j + 10] * a[j + 10]);
+            if (!(s2 > 0)) continue;   // a copy handed back / hidden (a zero matrix)
+            var px = a[j] * c.x + a[j + 4] * c.y + a[j + 8] * c.z + a[j + 12], py = a[j + 1] * c.x + a[j + 5] * c.y + a[j + 9] * c.z + a[j + 13], pz = a[j + 2] * c.x + a[j + 6] * c.y + a[j + 10] * c.z + a[j + 14];
+            var wx = W[0] * px + W[4] * py + W[8] * pz + W[12] - x, wy = W[1] * px + W[5] * py + W[9] * pz + W[13] - y, wz = W[2] * px + W[6] * py + W[10] * pz + W[14] - z;
+            var lim = far + bs.radius * Math.sqrt(s2) * ws + pad;
+            if (wx * wx + wy * wy + wz * wz <= lim * lim) { out = false; break; }
+        }
+        o._ew_rchI = { x: x, y: y, z: z, far: far, v: ver, n: o.count, k: k, out: out };
+        return out;
+    }
+    function _ewRchLoose() { return typeof window !== 'undefined' && !!window.EW_SHADOW_REACH_LOOSE; }
     function _heroLiveMat(m) {
         if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (_heroLiveMat(m[i])) return true; return false; }
         if (!m) return false;
-        return !!(m.isShaderMaterial || m._ew_wind || m.positionNode || (m._ewNode && m._ewNode.k !== 'terrain'));
+        return !!(m.isShaderMaterial || m._ew_wind || m.positionNode || (m._ewNode && m._ewNode.k !== 'terrain' && m._ewNode.k !== 'fluid'));   // a water sheet's ripples move no lamp shadow anyone can see (2026-11-15: the city's water table, 2.4 m under a bedside lamp, kept its map redrawing every frame)
     }
     /* has this matrix carried what hangs on it (within `extW` world units of its origin) past `tol` since `snap[j..]`? */
     function _heroMatMoved(e, snap, j, tol, extW) {
@@ -87137,7 +87261,24 @@ const ThreeRenderer = (function () {
         var mapW = L.shadow.mapSize.width || 512, nearW = (L.shadow.camera && L.shadow.camera.near) || 0, U = _hqUnits();
         /* one texel of a 90-degree side, `d` from the light, is never narrower than 2 d / (sqrt 3 x the side's width) */
         var texelPer = 2 / (1.7320508 * mapW), fleshW = HERO_FLESH_M * U;
-        var h = 2166136261 | 0, moving = false, drift = false, n = 0, list2 = G.list, bodies = _heroBodies; bodies.length = 0;
+        /* THE NEAR LIST (2026-11-15, Disaster City: 31,000 casters each measured against the lamp every frame, inside the frame's
+           matrix walk — half of mondo's "matrix walk 10.8 ms" with the lamp in view): twice a second (and when the list or the
+           lamp's place changes) the casters whose sphere comes within the reach + HERO_NEAR_M are kept (and every instanced /
+           skinned one, which stand wherever their matrices put them); the frames between read only those */
+        if (!G.near || G.nearOf !== G.list || now - G.nearAt > HERO_NEAR_MS || G.nx !== lx || G.ny !== ly || G.nz !== lz || G.nr !== reach) {
+            var nearL = [], padN = HERO_NEAR_M * U, fullL = G.list;
+            for (var ni = 0; ni < fullL.length; ni++) {
+                var no = fullL[ni], ng = no.geometry, nb = ng && ng.boundingSphere;
+                if (!nb) continue;
+                if (no.isInstancedMesh || no.isSkinnedMesh) { nearL.push(no); continue; }
+                var ne = no.matrixWorld.elements, nc = nb.center;
+                var nx = ne[0] * nc.x + ne[4] * nc.y + ne[8] * nc.z + ne[12] - lx, ny = ne[1] * nc.x + ne[5] * nc.y + ne[9] * nc.z + ne[13] - ly, nz = ne[2] * nc.x + ne[6] * nc.y + ne[10] * nc.z + ne[14] - lz;
+                var nlim = reach + padN + nb.radius * Math.sqrt(Math.max(ne[0] * ne[0] + ne[1] * ne[1] + ne[2] * ne[2], ne[4] * ne[4] + ne[5] * ne[5] + ne[6] * ne[6], ne[8] * ne[8] + ne[9] * ne[9] + ne[10] * ne[10]));
+                if (nx * nx + ny * ny + nz * nz <= nlim * nlim) nearL.push(no);
+            }
+            G.near = nearL; G.nearOf = G.list; G.nearAt = now; G.nx = lx; G.ny = ly; G.nz = lz; G.nr = reach;
+        }
+        var h = 2166136261 | 0, moving = false, drift = false, driftSk = false, n = 0, list2 = window.EW_HERO_NO_NEAR ? G.list : G.near, bodies = _heroBodies; bodies.length = 0;
         h = _heroMix(h, lx); h = _heroMix(h, ly); h = _heroMix(h, lz); h = _heroMix(h, reach); h = _heroMix(h, mapW);
         for (var i = 0; i < list2.length; i++) {
             var o = list2[i], g2 = o.geometry, bs = g2 && g2.boundingSphere;
@@ -87149,6 +87290,7 @@ const ThreeRenderer = (function () {
             if (o.isInstancedMesh || o.isSkinnedMesh) rad = 1e9;   // the copies stand wherever their own matrices put them; a body wherever its bones do
             var dx = wx - lx, dy = wy - ly, dz = wz - lz, lim = reach + rad;
             if (rad < 1e8 && dx * dx + dy * dy + dz * dz > lim * lim) continue;
+            if (!o.isSkinnedMesh && !o.morphTargetInfluences && !_ewRchLoose() && (o.isInstancedMesh ? _ewRchInstOut(o, lx, ly, lz, reach) : (rad > reach * 0.25 && _ewRchBoxOut(o, lx, ly, lz, reach)))) continue;   // THE LAMP'S TIGHT REACH: its sphere touches, the piece does not
             var shown = true, q = o;
             for (; q && q !== H.scene; q = q.parent) if (!q.visible) { shown = false; break; }
             if (!shown || !q) continue;
@@ -87163,7 +87305,7 @@ const ThreeRenderer = (function () {
                 if (o.morphTargetInfluences) for (var mi = 0; mi < o.morphTargetInfluences.length; mi++) h = _heroMix(h, o.morphTargetInfluences[mi]);
                 if (_heroLiveMat(o.material)) { moving = true; continue; }
                 bodies.push(o);
-                if (!drift && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) drift = true;
+                if (!driftSk && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) { drift = true; driftSk = true; }
                 continue;
             }
             n++;
@@ -87181,6 +87323,11 @@ const ThreeRenderer = (function () {
         var changed = h !== G.sig;
         if (changed) { G.sig = h; G.since = now; }
         var hold = !moving && !drift && !changed && (now - G.since) >= HERO_STILL_MS && (now - G.drawnAt) < HERO_REFRESH_MS;
+        /* THE SLOW PIECES (2026-11-15, Disaster City: a bedside lava lamp's wax blobs, the only movers in its reach, redrew its
+           six sides every frame): when the only thing that moved is a rigid piece (no body on bones, no live material, no piece
+           joined or left) the map redraws at most every HERO_RIGID_MS (10 a second). Off: window.EW_HERO_RIGID_EVERY_FRAME. */
+        var slow = !hold && drift && !driftSk && !moving && !changed && (now - G.since) >= HERO_STILL_MS && (now - G.drawnAt) < HERO_RIGID_MS && !window.EW_HERO_RIGID_EVERY_FRAME;
+        if (slow) hold = true;
         /* the map draws this frame (the walk's pulse is up): this is where each body stands in it */
         var pulse = !renderer || !renderer.shadowMap || renderer.shadowMap.autoUpdate !== false || !!renderer.shadowMap.needsUpdate;
         if (!hold && pulse) { G.drawnAt = now; for (var bi = 0; bi < bodies.length; bi++) _heroBodyKeep(bodies[bi]); }
@@ -87192,7 +87339,7 @@ const ThreeRenderer = (function () {
         ST.frames++; if (hold) ST.held++; else ST.drawn++;
         if (moving) ST.moving++; if (changed) ST.changed++; if (drift) ST.drift++;
         ST.inReach = n; ST.casters = list2.length;
-        ST.why = hold ? 'held' : (moving ? 'a mover in reach' : (changed ? 'a piece changed' : (drift ? 'a body moved' : ((now - G.since) < HERO_STILL_MS ? 'settling' : 'refresh'))));
+        ST.why = slow ? 'held (slow pieces)' : hold ? 'held' : (moving ? 'a mover in reach' : (changed ? 'a piece changed' : (drift ? 'a body moved' : ((now - G.since) < HERO_STILL_MS ? 'settling' : 'refresh'))));
     }
     function _hqHeroAfterWalk() {
         var H = _hq; if (!H || !H.heroLit || !H.heroLit.isLight) return;
@@ -88247,8 +88394,13 @@ const ThreeRenderer = (function () {
             if (st) { if (top) st.wake.add(top); return; }
         }
     }
+    /* a subtree's checksum over each object's OWN pose (its position, turn and size; its own matrix when it keeps that by hand):
+       what a mover changes. Read without composing a matrix, so the sweep costs a tenth of walking the subtree (2026-11-15,
+       mondo's F3: "matrix walk 10.8 ms" with nothing moving — the sweep composed and multiplied every in-view subtree twice
+       a second to look for a change) */
     function _hqStillSum(o) {
-        var e = o.matrixWorld.elements, s = e[12] + e[13] * 1.618 + e[14] * 2.414 + e[0] * 3.3 + e[5] * 5.7 + e[10] * 7.1 + e[1] * 11.3 + e[2] * 13.7 + e[6] * 17.9, ch = o.children;
+        var p = o.position, q = o.quaternion, sc = o.scale, s = p.x + p.y * 1.618 + p.z * 2.414 + q._x * 3.3 + q._y * 5.7 + q._z * 7.1 + q._w * 11.3 + sc.x * 13.7 + sc.y * 17.9 + sc.z * 19.3, ch = o.children;
+        if (o.matrixAutoUpdate === false) { var e = o.matrix.elements; s += e[12] * 23.1 + e[13] * 29.9 + e[14] * 31.7 + e[0] * 37.3 + e[5] * 41.9 + e[10] * 43.1 + e[1] * 47.7 + e[2] * 53.3 + e[6] * 59.9; }
         for (var i = 0, n = ch.length; i < n; i++) s += _hqStillSum(ch[i]);
         return s;
     }
@@ -88312,8 +88464,8 @@ const ThreeRenderer = (function () {
                 S.movers++; continue;
             }
             if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
-                c.updateMatrixWorld(true); s = _hqStillSum(c);
-                if (s !== SM[i]) { mv.add(c); AT[i] = now; SM[i] = s; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
+                s = _hqStillSum(c);
+                if (s !== SM[i]) { c.updateMatrixWorld(true); mv.add(c); AT[i] = now; SM[i] = s; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
                 S.swept++;
             }
         }
@@ -93329,6 +93481,23 @@ const ThreeRenderer = (function () {
         }
         if (k >= 1) { H.pd = null; H.pdCur = null; if (M.done) { try { M.done(true); } catch (err) { console.warn('[PD] the move\'s end threw', err); } } }
     }
+    /* THE LEVER's PULL (pd.pull(counterId)): the lever prop of that counter (row.pd.lever) throws its arm (the file's node
+       `pd_lever_arm`, hinged on the hub: it swings about the file's z) to the other end of its quadrant, ~0.4 s */
+    function _hqPdPull(cid) {
+        var H = _hq, hit = null; if (!H) return false;
+        (H.props || []).forEach(function (p) { if (p.row && p.row.pd && p.row.pd.lever === cid) hit = p; });
+        if (!hit) return false;
+        var arm = null; hit.grp.traverse(function (o) { if (!arm && o.name === 'pd_lever_arm') arm = o; });
+        if (!arm) return false;
+        var from = arm.rotation.z, to = (hit._pdThrown = !hit._pdThrown) ? -0.84 : 0, t0 = performance.now(), ms = 420;
+        var step = function () {
+            var k = Math.min(1, (performance.now() - t0) / ms), e = k < 0.8 ? (k / 0.8) * (k / 0.8) * 1.06 : 1.06 - 0.06 * (k - 0.8) / 0.2;   // a throw: it speeds up, strikes the stop, settles
+            arm.rotation.z = from + (to - from) * e; arm.updateMatrixWorld(true);
+            if (k < 1 && hit.grp.parent) requestAnimationFrame(step);
+        };
+        step();
+        return true;
+    }
     /* the board changed (map.js wrote it with pdSync): the stage re-reads its neighbours, their poses and the joined spans */
     function _hqPdRefresh() {
         var H = _hq, st = H && H.stage; if (!st) return false;
@@ -94137,7 +94306,7 @@ const ThreeRenderer = (function () {
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
         stage: _hqStageStatus,
-        pd: { move: _hqPdMove, refresh: _hqPdRefresh, at: _hqPdAt, top: _hqPdTop, busy: function () { return !!(_hq && _hq.pd); }, wide: function () { return !!(_hq && _hq.pdWide); },
+        pd: { move: _hqPdMove, pull: _hqPdPull, levers: function () { var r = []; ((_hq && _hq.props) || []).forEach(function (p) { if (p.row && p.row.pd && p.row.pd.lever) p.grp.traverse(function (o) { if (o.name === 'pd_lever_arm') r.push([p.row.pd.lever, +o.rotation.z.toFixed(2)]); }); }); return r; }, refresh: _hqPdRefresh, at: _hqPdAt, top: _hqPdTop, busy: function () { return !!(_hq && _hq.pd); }, wide: function () { return !!(_hq && _hq.pdWide); },
               objs: function () { return (_hq && _hq.pdDrawn || []).map(function (o) { return { id: o.row.id, on: o.grp.visible, off: !!o.grp._ew_pdOff, lit: o.lit, solid: !!o.blk }; }); } },   // THE PLOT DUNGEONS
         batch: function () { return _hqBatchStats(_hq); },   // THE STATIC BATCH (Phase 11): per part { phase, batches, pieces, verts, broken, scanned }
         /* THE FAR SHELLS / THE LOD LEVELS (OPEN_WORLD_PLAN Phase 10): { parts, built, shown, tris, far (m), waiting: [ids] } and

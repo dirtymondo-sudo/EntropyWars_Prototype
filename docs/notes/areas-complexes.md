@@ -2733,6 +2733,28 @@ block). 25 of them, city rooms only: `site_prebuilt_downtown_streets` 18 (bake-d
   `hard` flags in the three rooms; standing on each slab, the ground under it, every rail blocks. NOT SEEN ON SCREEN (RULE #1c).
 - After merging main in Disaster City: `node bake-disaster-city.js` (the tool writes the `landing` rows).
 
+### THE FLUSH LANDING — the platform is level with the roof, you walk straight on (2026-11-15)
+mondo: "They dont reach up all the way, so i cant even jump from the platform to the building to get on top. I should just be able to walk
+off the platform and on to the roof/floor. But when i walk off the platform now, i fall off and clip into the building." Three causes:
+the Disaster City platform was a HALFWAY landing (3.5 m, a second ladder on the wall went on to the 7 m roof); the hidden slab ended AT the
+wall and its rim is not stood on (`bridgeEdge`), so the walker dropped down the strip between slab and wall; and a yard hedge along a
+building's foot reached in over the roof's edge and set a roof walker down on the hedge's top, inside the building.
+- **`flush: true`** on a `landing` row (data.js `hqTerrainLandings`): its top = the tier behind its `back` (the roof), no back guard, the
+  result carries `flush`. With no tier behind it (the building became a walk-in: landings 0 and 10, P01-08-B1 and P06-05-B1) it keeps `h`.
+  bake-disaster-city.js writes every fire escape as ONE flush landing + ONE ladder from the yard (the second ladder is gone: it would rise 0 m).
+- **The lap**: every landing with a mass behind it runs its hidden slab 0.6 m into that mass (all three city rooms): a halfway landing's
+  walker stops at the wall, a flush landing's walks onto the roof.
+- **The mouth** (data.js `_hqTLandingMouths`, run on `info.arch` at compile, the room's rows never written): where a flush landing meets
+  its roof, plain `box` parts on the roof's edge (the landing's width, 0.5 m out to 0.6 m in, up to 1.3 m over the roof) are cut along the
+  edge (a parapet, a coping, a rail up to 0.7 m thick) or lose that stretch of one face (a roof-wide hollow rim, `top: false`). A district
+  needs no gap of its own. Not cut: masses, quads, rings, parts turned off the square.
+- **hqTerrainFeet**: a wall whose top is under the ground at that spot is no wall (the hedge under a roof's edge).
+- Southside P05-08-B1: one roof AC unit stood in the mouth, moved 0.9 m along the edge (districts/S.js).
+- Checked offline (node, the compiled room): all 16 flush landings are level with their roof, a walk off the back in 5 lanes reaches the roof
+  with no drop (one lane set stops 2.5 m in at University P01-04-B1's own roof structure), the three railed sides still block, every roof
+  is in the reach. Cyberpunk streets + the old streets keep their halfway landings and upper ladders (the stair heads need them); the
+  walker there now stops at the wall. NOT SEEN ON SCREEN (RULE #1c). Known: Industrial P01-08-B2's drawn roof cap is 0.25 m over its walked roof.
+
 ### THE PROP PASS, SECOND WAVE (2026-11-13, PR after #1315)
 Eight pieces cut from the packs by bake-pack-pieces.py and wired as catalogue rows (data.js, above ind_factory_red): `public_phone`, `power_pole` (Tacos),
 `garbage_bags` (6twelve), `garbage_bag`, `metal_trash_can` (Trailer Park), `play_slide`, `play_swing`, `play_sandbox` (Cursedlake PS1 Playground, R2
@@ -3193,3 +3215,81 @@ One pass over every walk-in (99 hollow texbuildings) of `site_prebuilt_downtown_
 - three-renderer.js `ThreeRenderer.hq.dev.residents(race)`: a probe's read of the residents (where by the clock, body, asleep, clips).
 - OPEN: the Zombie on its dorm bed (P00-04-B1, asleep 8:00 to 18:00). In the cloud browser its model never finished loading, so the sleep pose is still unseen on screen.
 - Scratch audit after: no floor flicker left, no prop on a roof, the hand worklist 175 down to 24 (the rest are approximations of procedural pieces).
+### PLOT DUNGEONS, THE THIRD PASS (2026-11-15, mondo: "what is up with that lever? It looks nothing like a lever and there are 10 of them in a row ... Make a new lever. Do another pass on all the dungeons, visually and aesthetically")
+- THE LEVER: `pd_lever` (catalogue, R2 `Assets/world/props/meshy/pd_lever.glb`, Meshy concept -> image-to-3d, originals + concept in project
+  files `dungeons/meshy/`): ONE iron floor lever (pedestal, notched quadrant, red-gripped arm), 1.6 m. The Meshy mesh was split offline
+  into two nodes (`pd_lever_base`, `pd_lever_arm`; the arm's origin is the hub) so the arm can swing: three-renderer.js `_hqPdPull`
+  (`hq.pd.pull(counterId)`, the lever prop row carries `pd: { lever: <counter id> }`) throws it about z to the other end of the quadrant
+  (0 <-> -0.84 rad, 0.42 s); map.js `_pdAct` throws the arm, waits 460 ms (`_pd.pulling`), then starts the move. `hq.pd.levers()` = dev read
+  of the arms. The lever stands on a dark plate in a lit frame of the moved plot's colour (the post + cube lamp is gone); its blocker is
+  0.9 m. `signal_lever_frame` (the twelve-lever frame) is no longer used by a dungeon (it stays in the Industrial rail room).
+- THE DRESSING (data.js `PD_DRESS` + `pdDress`, called by `pdRoomDef`): every look dresses its plots by itself from the cells, seeded by
+  level + plot (the same plot always wears the same things; a new level is dressed the day it is written). Per look: `hang` (wall pieces on
+  the wall beside a floor square), `big` (a whole-square blocker centred on a wall square of a room 3+ deep, never in a doorway lane
+  (squares 5-6), never beside a stair, never two touching, even by a corner; each gets a 2.9 m ghost blocker `big<x>_<y>`), `stand` (small
+  floor decor against a wall), `corner`, `litter`, `tops` (an open look's blocks: the street's trees and planters), `field` (a plot with no
+  door at all, a machine's own ground, is strewn all over). Rows are [key, weight, { h | span, y, in, rot }]. Dressing never stands within
+  1.6 squares of a mark or on a trace, never on the plot's edge. Dressing props wear `noBlock`, `noLight`, `mesh: false`, `scatter`
+  (new row flags `noBlock` / `noLight` in three-renderer.js `_hqPlaceProps`): decor never blocks and never takes one of the level's 11
+  lights (a torch keeps its glow). A plot row may wear `dress: false` or its own table. `node bake-dungeons.js` fails a level when a big
+  piece cuts a plot's floor in two.
+- THE WIDE VIEW reads now: a closed look's solid mass wears a dark cap over its top (draw rows `top<i>`, grown over the walls' own
+  thickness) and dark skirts on the plot's outer sides (`skirt_<side><i>`), so from above only the rooms are lit.
+- THE DRAWN PIECES: a `lamp` mark is a signal lantern (foot, post, caged head, cap); a `stand` / `take` stands on a pedestal (foot, shaft
+  in the look's trim, cap); Two to Open's battery is the `steam_turbine` on a lit plinth and its locks are two `retro_control_panel`s on a
+  plinth under their lantern (ghost blockers keep the old sizes); Three Little Worlds' machines are stone (`bricks_3`).
+- THE WORKS LOOK (Traveling Door, Two to Open): the stained drywall is gone, the walls are `urban:MetalCorrugatedPainted3a`.
+- Still stand-in: the fights, the Procession's guardian, no drawn water in Missing Channel, Three Little Worlds is flat.
+## DISASTER CITY, THE LANDMARKS — the old Downtown's pieces in the 144 plots (2026-11-15, mondo's OK 08:15 "Build it as drawn")
+mondo 11-15: "add a canal, like a little mini venice or san antonoio board walk, leading out to the ocean" · "add a parking deck and overpass" ·
+the Collapse "still fits among the other plots" · "Add whatever makes sense in a plot or district". The Grand Prix (the old ring road's lap
+race) is NOT built: he wants it as a SIDEQUEST after the orientation slice. All of it is `docs/disaster-city/districts/L.js` (file L: no district
+of its own; the bake loads it with the district files, after Bayside and Hero Plaza). Rerun `node bake-disaster-city.js`.
+- **THE CANAL** (Bayside, the row-11 plots' north yard, squares cy 133-134): two `plateau` rows with `sink: true, absY: true, h: -2.6`. The room's
+  one sea (`terrain.sea`, -1.45) stands in any ground sunk under it, INSIDE the plots too, so the canal is the bay's own water (no `stream`
+  row, no second water sheet). West avenue's kerb (cx 105) → the bay road (a CULVERT: its six squares stay solid, a dark arch in a stone face
+  either end) → under the boardwalk → through the sand and the shelf's bar to the deep (cx 154). North bank = a plank walk (cy 132, paint
+  `wood_planks`), south bank = the south road's kerb walk. Four footbridges + the boardwalk's bridge are `bridge` rows at y 0.3, thick 0.2
+  (a `deck` row is written into the ground = a DAM across the water; a slab at y 0 leaves a swimmer 1.7 m, under the 1.95 m headroom, so it
+  is a wall to him; 0.3 m is a step the walker and the residents take). A water stair at the west end and the beach are the ways out.
+  Moved, never dropped: the yard's palms and cordon pieces onto the banks, its two parked cars onto the deck, the sunbeds three squares up the
+  sand, Bayside's fourth beach ramp one square south (B.js RAMPS), the tool's infill shop on the mouth cut to one square, the plot fences that
+  crossed the yard cut back to the plot line, Bayside's sea-wall rail stopped either side of the mouth.
+- **THE PARKING DECK + THE OVERPASS** (Medical staging's south band, cx 126-131 · cy 141-142): a `plateau` at 3.5 m, a car `ramp` up its north
+  side from cx 123, `guard` rails, four cars on the roof, an `arch` row for its look (dark bays, PARKING). The overpass = one `bridge` row at
+  3.5 m from the roof over the south road and the canal to a one-square landing on the north walk, a stair east along the walk.
+  LESSONS: a one-square tier's rim reads low on the 0.875 m field, so the bridge runs to the landing's MIDDLE; a pack stair's side walls
+  block a bridge lane they cross, so the stair's top stops at the landing's edge. The ambulance and the tent stand west of the ramp.
+- **THE COLLAPSE** (Hero Plaza, Memorial walk P05-06, the west half; the memorial is untouched): a `hill` (the rubble mound) with stones, blocks,
+  two fallen pillars, two wrecks, three barrel fires, the tape, in the north-west quarter; THE TERRACE (3 x 2 squares at 3.5 m, a stair on its
+  north side) in the south-west quarter. NOT DONE YET: the Downtown fight boards are still cut from the old room
+  (`site_prebuilt_downtown_oldstreets`, HQ_ARENA_RULES within / picks); repointing the 12 x 12 to this plot = a bake-arenas.js run.
+- **THE SET PIECES**: fortune tent + high striker (Night market), subway cart (Rail service), flood masts at the canal's two ends, rowboats on
+  the water (a prop `y` under 1 is a lift over the ground: bed -2.6 + 0.98 = afloat).
+- **CHECKED OFFLINE ONLY** (no browser run: RULE #1c): `hqTerrainInfo` + `hqTerrainHeight` / `hqTerrainFluidAt` / `hqTerrainFeet` walked along
+  every new route in node (kerb → ramp → roof → overpass → landing → stair; the footbridges; the swim from the water stair along the canal;
+  the mouth to the bay and up the sand; the Collapse's stair and mound), the prop check clean (nothing left out, nothing new reported).
+  NOT SEEN ON SCREEN: the water's look in the canal, the culvert faces, the deck's bays and sign, the bridges' piers.
+- Maps: project files `disaster-city-old-pieces/` (plan_*.jpg = the approved plan, built_*.jpg = the baked rows drawn top-down).
+
+## DISASTER CITY, THE MOLE'S RIM (2026-11-15, mondo: "theres still this wall or raised curve by the light house")
+- What it was: a rim of ground 5.25 m high and one height sample (0.875 m) thick along z = 84, x 252 to 311: the whole north side of
+  the breakwater. NOT a kerb stone (PR #1336), not the sea wall, not the canal (PR #1402).
+- Why: districts/B.js `beach()` cuts the beach strip flat to level 0 from z = Z0 south, and the bay north of Bayside deep from z = Z0
+  north. A `sink` plateau cuts only strictly inside its rectangle (data.js hqTerrainCompile: `din <= 0` skips), so on the shared line
+  z = Z0 neither one cut and the city's level there (P11-07, level 3) stayed standing. The height grid has a sample row exactly on 84.
+- Fix: the level-0 cut starts half a metre north of Z0, so the two overlap. One row of the bake changed.
+- RULE: two `sink` rectangles that share an edge must OVERLAP, never just touch. Check offline: sample hqTerrainHeight over the whole
+  field and list samples more than 1 m above both neighbours; after the fix only stairs / ramps (roof flights, the overpass stair, the
+  parking deck ramp) are left.
+
+## DISASTER CITY, THE TREES STAND IN SOIL (2026-11-15, mondo: "trees are only put on grass or dirt or in a pot ... trees coming out of concrete dont make sense. Get rid of these trees")
+THE RULE lives in `bake-disaster-city.js` "THE TREES STAND IN SOIL", the LAST pass of the bake (after every district file, the tree move
+and the prop pass): an outdoor tree (`tree` feature, `palm_tree` prop) stands on a square whose ground sheet is soil (`SOIL` = `grass_2`,
+`desert`). A tree on any other sheet gets a SOIL BED: its whole 3.5 m square is repainted (grass; sand under a Bayside palm). Bayside's
+broadleaf rows on the cordon's concrete (the ones in his screenshot; the district's own tree list is empty) are REMOVED. A palm inside a
+building's walls ('I' square: the hotel lobby, the Private garden's own beds) is the district's indoor planting, left alone. The bake
+THROWS if a tree is still on paving, so a district thread that adds a tree anywhere just rebakes and gets a bed. Tally in the bake's
+print (`soil`): 11-15 = 31 removed (Cordon plaza 8, Mall concourse 8, Street market 7, Security office 5, East shops 3), 127 broadleaf
+beds, 38 palm beds; 399 trees left. No new art, no renderer change (the bed is the ground paint). Unseen in game (RULE #1c). Offer not
+built: a kerb stone / tree grate round a bed standing alone in a plaza.
