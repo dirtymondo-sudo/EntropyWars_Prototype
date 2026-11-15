@@ -64373,11 +64373,14 @@ if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanI
 /* THE RETRO TREE PACK (2026-10-04, mondo's upload): `rt:<file>` = Assets/world/nature/retrotreepack/GLB/<file>.glb. The board's six
    and `pine` draw the pack — tree a birch, tree_2 a spruce, tree_3 the broad oak, tree_4 the tall birch, tree_5 / tree_6 the
    bare ones, pine the small pine, pine_2 the sapling. tree_7 … tree_20 stay the old OBJs for the editor. */
+/* THE PAINTED TREES EVERYWHERE (2026-11-15, mondo: "can you use these trees everywhere, I guess except for the palm trees"): tree, tree_2,
+   tree_3, tree_4 and pine draw the painted `_full` files (bake-trees.py), the same ones as tree_52 ... tree_56. The bare trees, the sapling,
+   the palms and the Christmas pines are as they were. */
 const HQ_TREE_KINDS = {
-    tree:    { model: 'rt:tree_rt_2_1', name: 'birch' },  tree_2:  { model: 'rt:tree_rt_3', name: 'spruce' },  tree_3:  { model: 'rt:tree_rt_4', name: 'oak' },
-    tree_4:  { model: 'rt:tree_rt_2', name: 'tall birch', tall: true },
+    tree:    { model: 'rt:tree_rt_2_1_full', name: 'birch' },  tree_2:  { model: 'rt:tree_rt_3_full', name: 'spruce' },  tree_3:  { model: 'rt:tree_rt_4_full', name: 'oak' },
+    tree_4:  { model: 'rt:tree_rt_2_full', name: 'tall birch', tall: true },
     tree_5:  { model: 'rt:dead_tree_rt_2', name: 'bare tree', dead: true },  tree_6:  { model: 'rt:dead_tree_rt_1', name: 'big bare tree', dead: true },
-    pine:    { model: 'rt:tree_rt_1', name: 'pine' },    pine_2:  { model: 'rt:small_tree_rt_1', name: 'sapling' },
+    pine:    { model: 'rt:tree_rt_1_full', name: 'pine' },    pine_2:  { model: 'rt:small_tree_rt_1', name: 'sapling' },
     tree_7:  { model: 'Tree_2' },      tree_8:  { model: 'Tree_4' },      tree_9:  { model: 'Tree_5' },      tree_10: { model: 'Tree_7' },
     tree_11: { model: 'Tree_8' },      tree_12: { model: 'Tree_10' },
     tree_13: { model: 'DeadTree_1', dead: true },  tree_14: { model: 'DeadTree_3', dead: true },  tree_15: { model: 'DeadTree_4', dead: true },
