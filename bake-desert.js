@@ -320,9 +320,10 @@ Pm('water_tower_west', gx(74), gx(9), {});                                      
   const sand = (x, y) => x > 0 && y > 0 && x < W - 1 && y < W - 1 && PLAN.cells[y][x] === '.' && cell[y][x] === '.' && !inBase(x, y) && !(x >= 12 && x < 48 && y < 36) && !(y >= 22 && y <= 25 && x >= 48)
       && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(q => '.uo'.includes(PLAN.cells[y + q[1]][x + q[0]]) && cell[y + q[1]][x + q[0]] !== 'B');
   let nS = 0, nP = 0, tries = 0;
-  while ((nS < 46 || nP < 34) && tries++ < 20000) { const x = Math.floor(rnd() * W), y = Math.floor(rnd() * W); if (!sand(x, y) || taken.has(x + ',' + y)) continue;
+  const PEARS = 0;   // mondo 11-15 19:30: "dont use the prickly pear cactus for now" (its model + catalogue row stay; set a count here to plant it again)
+  while ((nS < 60 || nP < PEARS) && tries++ < 20000) { const x = Math.floor(rnd() * W), y = Math.floor(rnd() * W); if (!sand(x, y) || taken.has(x + ',' + y)) continue;
       for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) taken.add((x + i) + ',' + (y + j));
-      if (nS < 46 && (nP >= 34 || rnd() < 0.58)) { P('saguaro_cactus', x, y, { face: Math.round(rnd() * 360), h: r2(3.8 + rnd() * 2.6) }); nS++; }
+      if (nS < 60 && (nP >= PEARS || rnd() < 0.58)) { P('saguaro_cactus', x, y, { face: Math.round(rnd() * 360), h: r2(3.8 + rnd() * 2.6) }); nS++; }
       else { P('prickly_pear', x, y, { face: Math.round(rnd() * 360), h: r2(1.1 + rnd() * 0.8) }); nP++; } }
   count.cacti = nS + nP; }
 

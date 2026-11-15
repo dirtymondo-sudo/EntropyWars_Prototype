@@ -3899,3 +3899,5 @@ the roads again. why ... would i want roads and a traffic system and cars if you
   CACTI REMADE (mondo 11-15 19:20, pin on the model sheet: "can you try to get them without the mound"): both cacti made again from a prompt that asks
   for the plant only, cut flat at the foot; same keys and R2 paths, replaced in place (the manifest's new sha fetches them). The first versions are in
   project files `desert-plots/meshy/v1/`. The prickly pear still has a few pale slivers between pads (Meshy's bake).
+
+- **NO PRICKLY PEAR FOR NOW (mondo 11-15 19:30: "just dont use the prickly pear cactus for now").** bake-desert.js `PEARS = 0`: the Desert plants 60 saguaros and no prickly pear. The model, its R2 file and its catalogue row stay (the editor can still place it); set `PEARS` to plant it again.
