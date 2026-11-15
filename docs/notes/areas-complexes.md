@@ -3785,6 +3785,10 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **THE CABIN FLOOR**: the ground rolls a few cm under the cabin and came up through the hollow building's own thin floor. The arch row now has a real board slab, 16 cm
   proud of the ground, wall to wall, and the porch boards sit at the same height. A one-square alley joins the plot's path to the porch.
 - Not seen in game (no browser run). `WOODS_DUMP=1 node bake-woods.js --dry-run` prints the square map.
+- **MONDO'S ANSWERS (2026-11-15, late)**: the full trees: "Good, keep them" (the tree work is closed; do not change the Woods' trees unasked). The cabin's purpose: "Nothing yet": it stays a
+  furnished walk-in with no game role; do not tie a rest spot, a shop, a story beat or an NPC to it until he says what it is for.
+- **THE ESTATE DOOR** (same day): the `estate` door (P01-05, south) now targets the Estate's plot room, `{ room: 'site_prebuilt_skinwalker_estate', at: 'woods' }` (was the retired
+  `site_prebuilt_skinwalker_fields` at `bay`). The door did not move, so bake-estate.js needed no rerun.
 
 ## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
 
