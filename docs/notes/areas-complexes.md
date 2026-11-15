@@ -3840,6 +3840,26 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **THE ESTATE DOOR** (same day): the `estate` door (P01-05, south) now targets the Estate's plot room, `{ room: 'site_prebuilt_skinwalker_estate', at: 'woods' }` (was the retired
   `site_prebuilt_skinwalker_fields` at `bay`). The door did not move, so bake-estate.js needed no rerun.
 
+### THE WOODS: THE LIFE PASS (2026-11-15, mondo: "make the woods come alive and look good ... look at the nature spells for inspiration ... same with the fairy forest"; his "sounds good" on the four looks, "yes lets do per district particles")
+- **The four looks** (bake-woods.js THE LIFE PASS block, before the checks): THE CLEARING = the friendly woods (birch mass; heal flowers, butterflies, bees, ladybugs,
+  rabbits; fireflies). THE REDWOOD TRAIL = ancient and overgrown (taller giants, 8.5 to 13 m mass; thorn vine at the giants' feet and about, small mushrooms, boulders,
+  more ferns / logs / stumps, moths, two eagles, frogs at the Falls; pale green spores; snow falls on the Snowline plot). THE RITUAL GROUND = the fairy forest gone wrong
+  (dark spruce mass with bare trees; a 14-cap `fae_toadstool` ring 10.5 m round the Stones, five giant `fae_mushroom` caps on the lake shore and the Mound, five
+  `crystal_cluster`, small glowing `woods_glowcap`, moths, frogs at the lake; violet motes). DEAD MAN'S CAVE = rot and thorns (bare mass; thorn vine, gas plants, small
+  spore caps, dead snags with crows, frogs at the Pool; ash).
+- **The spell plants as decor**: data.js catalogue `woods_thornvine` / `woods_gasplant` / `woods_healflower` are the garden's own models (the Thornlash / Spore / Rejuvenation
+  family's plants, three-renderer.js `_PLANT_MODEL_URLS`), about 8,000 triangles each, so the counts are kept low (48 / 23 / 44). `woods_glowcap` = the toadstool model
+  small, a glow and no light. NO apple tree (it is a Meshy tree; his rule).
+- **Helpers**: `life(plot, key, o)` = a small thing off the middle of a random open square (shares squares, claims none); `fly()` = the same in the air; `sow(key, n,
+  [square], r)` = a `scatter` row over a disc. Every new glow is `noLight` (the room's ten real lights are the torches and fires).
+- **THE FOREST MASS BY DISTRICT**: `terrain.gen.zones` (data.js THE TREE ZONES, Camelot's), five boxes, the three mountain plots first. Also fixed: Dead Man's Cave had NO
+  feature trees (its kind `dead_tree` does not exist); it plants `tree_6` now.
+- **THE AIR BY DISTRICT** (three-renderer.js `_hqBuildAtmos` / `_hqBuildAtmosOne`): `shell.atmos.zones = [{ x0, z0, x1, z1, kind, color?, n?, speed?, wind? }]` (metres),
+  one Points per zone, particles born in the box and wandering round their own spots. Any room can use it. `H.atmos.obj` is then a group. Viewer-local, nothing relayed.
+- Checked headless: the room compiles, every scatter piece lands on open ground (none in the forest mass), the mass kinds differ by district. NOT seen in game (no browser run).
+- **ASKED FOR, NOT BUILT (mondo, same message): a pass that adds WATERFALLS and LIGHT SHAFTS to rooms** ("might need its own thread"). Today rooms have only `pool` /
+  `stream` / `deck` water, and `_hqLightShaft` returns null (the `light_shaft` prop and `DOOR_HQ.lightShafts` rows draw nothing). The Falls plot and the canopy want them first.
+
 ## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
 
 mondo: "start a thread to start on the desert" · "put the circus in the desert (move it from where it is now) ... i meant district not plot" ·
