@@ -1957,6 +1957,31 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE SPLIT STACK (2026-11-15, why the 1024 px sheets never stacked on mondo's Mac)
+
+mondo's second F3 (20:50 UTC, lamp off the camera): 34.9 FPS, frame 28.6 ms, CPU 21.7 ms at 3,597 meshes (the price line says
+29.8), "Shadow split: sun 1 renders, 33 calls, 25K tris · lamp 0", "Walk visits: scene 1.8K · sun shadow 1.8K · mask 4.7K",
+"Hero lamp: off the camera". So the first F3's 11.5 ms of shadow rows (walk 8.3 + draws 3.2, 829K tris) is the hero lamp's cube
+sides when the lamp is on camera; the sun's map is 1.4 ms. STILL OPEN: his F3 standing where the lamp is in view (the "Hero
+lamp" line says why it redraws).
+
+- Cause (cloud browser census of the shell's looks): the city wears 25 sheets of 1024 x 1024 with one sampling (the calm pack:
+  hedge, concrete, tiles ...; it was 18 when THE SHEET STACK was sized). 25 x 4 MB = 105 MB, over `_hqStackPrep`'s 96 MB bucket
+  limit, so the WHOLE bucket was left out (`skipped.tooBig`): 427 looks / 2,300 pieces kept a look per sheet. Not KTX2 (they
+  are PNG images on every machine).
+- Fix (`_hqStackPrep`): a bucket over the limit is cut into the fewest stacks that each fit, the most worn sheets together in
+  the first (`uses`); each stack is filled the same way as before (the sheet's own picture, on the card), so nothing about a
+  texel changes. All stacks together stay under 320 MB (`_hqStk.bytes`). Off (the bucket left out, as before):
+  `window.EW_HQ_STACK_NO_SPLIT` before the room. `EW_HQ_NO_STACK` still turns every stack off.
+- Cloud (counts only): stacks "128x128 x111 · 1024x1024 x13 · 1024x1024 x12 · 64x128 x8", 144 sheets, no refusal, 0 frame errors.
+  The shell merge, still building when read: 8,376 pieces -> 1,569 draws (his Mac before: 9,024 -> 1,961). Expect ~1,600 on his Mac.
+  Harness of this run: session scratchpad ph/ph.js (jsdelivr modules must be fulfilled, not redirected: a redirect breaks their relative imports).
+- THE SIGN CANVASES ARE NOT WORTH A CUT (same census): 424 canvases on 555 pieces in 200 size / look kinds; 315 of the pieces
+  are see-through or cut-out (never stackable), 87 share one 256 px canvas already. About 130 opaque pieces = 0.6 ms. Dropped
+  from the list.
+- Other things the census showed: 3,534 shell pieces wear no sheet at all (325 looks: lit parts, glass, decals; they merge by
+  colour only), 2,580 wear a wind / terrain node look (trees, hedges: never in the stack).
+
 ## THE SHADOW SPLIT (2026-11-15, the lens only; from mondo's F3 after THE SHEET STACK)
 
 mondo's F3 after #1478 (20:39 UTC, walk, his eyes on the walls not yet answered in words): 22.8 FPS, frame 43.3 ms, CPU 38.7 ms
