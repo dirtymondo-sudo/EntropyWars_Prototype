@@ -1028,6 +1028,22 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   HIS full lockup for dark backgrounds (`DOOR_TEXT.LOGO.onDark`, never redrawn), the seal is 5.2 m (`door_seal` row `size`).
   THE ARRIVAL is four shots: from inside the front lift the doors part on the logo wall, a crane up from the seal, the big
   close pan down the lockup, over the shoulder. The arrival mark is now (0, 5.0).
+- **THE THREE OPEN SHOTS, CHECKED IN THE CODE (2026-11-15, second side; no browser run, so still to be SEEN by mondo)**:
+  (1) THE LIFT DOORS: the foyer's south wall was one whole slab behind the lift, so the camera in the cab saw the back of the
+  wall, never the leaves. `_hqBuildBoxShell` now cuts the doorway of a `sealed` `proc: 'elevator'` door (the door's black back
+  plate fills it when the cab is down); the amber indicator bar goes with the cage (it hung in the open doorway); a scene-held
+  lift parts over 1.25 s (was 0.4 s); the row's `end` puts the recruit on (0, 1.2), so a skip never leaves them in the doorway.
+  (2) THE HALL AND THE ATRIUM (THE CUT BESIDE, rewritten): the hall's mezzanine slab (underside 3.8 m) and upper drum run
+  2.8 m into the foyer's 7 m air. `clipBeside` is now `{ wall, above: 3.75, reach: 2.9 }` (3.95 left the slab's underside
+  hanging over the double doors, hiding the bottom of the logo wall). In the foyer the hall is cut there; IN THE HALL the
+  foyer's own top is cut within `reach` of its wall (it stood across the mezzanine's walkway). The record is the module's
+  (`_hqCb`), not the part's: it used to travel with the part over the crossing, so the hall stayed cut, with stale planes,
+  after the walk from the foyer into it. Only pieces that reach the cut corner get a material copy (the hall keeps its
+  batches); the copy keeps `onBeforeCompile`, `_ewNode`, `ewCol`. ON WEBGPU (his default) `_ewNodeClip` was a union of
+  the planes, so the cut took the whole hall above the line: it now honours `clipIntersection`.
+  (3) LOCKE'S WALK-OFF: a paced walk (`mps`) ran on the cubic ease (three times the pace mid-way, the feet slid);
+  `_updateWalkTweens` + the facing read are linear for a paced walk. She also turned back to the recruit when she stopped:
+  battle.js `walk` act sets her facing to the way she walked.
 - **Not built yet**: A the intro (Sedaniel = DOOR_CAST.sedaniel, the roster Honda Civic; the foyer's entrance lift).
 
 ## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)

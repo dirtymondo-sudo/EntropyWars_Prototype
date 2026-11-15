@@ -29256,7 +29256,7 @@ const ThreeRenderer = (function () {
             if (tw) {
                 // Same segment math as _updateWalkTweens.
                 var gt = Math.max(0, Math.min((now - tw.startTime) / tw.totalMs, 1));
-                var traveled = _easeInOut(gt) * tw.segs;
+                var traveled = (tw.walkTs ? gt : _easeInOut(gt)) * tw.segs;
                 var stepIdx = Math.min(Math.floor(traveled), tw.segs - 1);
                 var from = tw.path[stepIdx], to = tw.path[stepIdx + 1];
                 var ddx = to.x - from.x, ddy = to.y - from.y;
@@ -29529,7 +29529,9 @@ const ThreeRenderer = (function () {
             // Clamped at 0 so a tween armed with a FUTURE startTime (the intro
             // cinematic staggers each team's march) holds at the path start.
             var gt = Math.max(0, Math.min((now - tw.startTime) / tw.totalMs, 1));
-            var traveled = _easeInOut(gt) * tw.segs;
+            /* a PACED walk (opts.mps, a cutscene) keeps ONE speed, the one its clip was matched to: the cubic ease ran the body at
+               three times that pace mid-way and near zero at both ends, so the feet slid (mondo 11-15: walks never slide) */
+            var traveled = (tw.walkTs ? gt : _easeInOut(gt)) * tw.segs;
             var stepIdx = Math.min(Math.floor(traveled), tw.segs - 1);
             var ease = traveled - stepIdx; // linear within the current segment
 
@@ -47126,8 +47128,10 @@ const ThreeRenderer = (function () {
         var base = nm.setupDiffuseColor;   // the other dresses' (they set it on the instance first)
         nm.setupDiffuseColor = function (builder) {
             base.call(this, builder);
-            var wp = T.positionWorld, out = null;
-            for (var j = 0; j < P.length; j++) { var c = wp.dot(P[j].xyz).add(P[j].w).lessThan(0); out = out ? out.or(c) : c; }
+            /* `clipIntersection` (THE CUT BESIDE, 2026-11-15): cut only where EVERY plane cuts, as the classic renderer does. It was
+               always the union here, so on WebGPU the cut took the whole hall above the line, not just its corner over the foyer. */
+            var wp = T.positionWorld, out = null, inter = !!m.clipIntersection;
+            for (var j = 0; j < P.length; j++) { var c = wp.dot(P[j].xyz).add(P[j].w).lessThan(0); out = out ? (inter ? out.and(c) : out.or(c)) : c; }
             if (out) T.Discard(out);
         };
     }
@@ -67915,6 +67919,10 @@ const ThreeRenderer = (function () {
                     /* THE PASSAGES (2026-10-01): a tunnel / a stair past the wall is an opening its own width and height, at its own floor */
                     var dP = _hqPassageSpec(d);
                     if (dP && !dP.inside) { var pY = _hqDoorFloorY(room, d); return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: dP.w / 2 + 0.03, bot: pY > 0.05 ? pY : 0, top: pY + dP.h + 0.03 }; }
+                    /* THE CAB (2026-11-15): a sealed lift with a car behind it (the foyer's front lift) has its doorway cut through the wall too.
+                       The slab stood whole between the car and the leaves, so the camera in the lift saw the back of the wall and never
+                       the doors parting. The door's own black back plate fills the hole whenever the car is not up. */
+                    if (d.proc === 'elevator' && d.sealed) return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: (d.wide ? 2.2 : 1.1) / 2 + 0.03, top: (d.wide ? 2.45 : 2.25) + 0.03 };
                     var dj = _hqDoorJoinOf(d); if (!dj) return null;
                     return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: dj.ow / 2 + 0.03, top: dj.oh + 0.03 };
                 }).filter(Boolean);
@@ -79543,6 +79551,7 @@ const ThreeRenderer = (function () {
                     cab.add(cS1, cS2, cBk, cFl, cCl, cPn, cRl, cRr);
                     cab.visible = false; cab._ew_noInstance = true; cab.traverse(function (o) { o._ew_noInstance = true; });
                     grp.add(cab); motion.cab = cab; motion.backPlate = back;
+                    motion.cage.push(ind);   // the amber bar rode on the leaves' face: with the leaves pocketed it hung in the open doorway, in the middle of the lift's own shot
                 }
                 renderer.localClippingEnabled = true;
             } else if (leafKey) {
@@ -87667,6 +87676,7 @@ const ThreeRenderer = (function () {
         if (d.openT === want && d.openApplied === want) return;
         if (_hqStArmedN > 0 && d.group) _hqStillWake(d.group);   // THE DOORS REST: its matrices are walked from this frame
         var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
+        if (mo.mode === 'elevator' && (d.sceneOpen || d.sceneCab)) speed = 0.8;   // a scene's lift parts over 1.25 s (0.4 s was a flick the lift shot could miss)
         d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
         var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
         if (mo.mode === 'swing') { mo.pivot.rotation.y = mo.dir * mo.angle * k; if (mo.pivot2) mo.pivot2.rotation.y = -mo.dir * mo.angle * k; }   // THE DOUBLE DOOR: the second leaf swings the other way
@@ -94870,54 +94880,92 @@ const ThreeRenderer = (function () {
         if (d === R.d) return;
         R.d = d; R.root.position.y = d * _hqUnits(); R.root.updateMatrixWorld(true); H.dirty = true;
     }
-    /* THE CUT BESIDE (2026-11-15, the bigger foyer): the main hall's upper gallery runs past the tangent its ground floor keeps, so
-       a box room joined to it that stands taller than 4 m (the foyer's 7 m atrium) had the gallery's floor, rails, doors, lamps and
-       Agent Forrest standing in its air. While you are IN such a room (shell.clipBeside { wall, above }), everything of the rooms
-       beside it that lies on its side of that wall AND above `above` metres is cut away (a per-mesh material copy, two clip planes,
-       intersection); stepping out puts every original back. From inside the room the cut part is behind its own wall anyway. */
+    /* THE CUT BESIDE (2026-11-15, the bigger foyer): the main hall's mezzanine and gallery run 2.8 m past the tangent its ground
+       floor keeps, so a box room joined to it that stands taller than the mezzanine (the foyer's 7 m atrium) shares that air with
+       them. A room with shell.clipBeside { wall, above, reach } settles it from both sides, by clip planes on per-mesh material
+       copies (an intersection of two planes; every original goes back when the picture changes):
+         IN that room: everything of the rooms beside it on its side of that wall AND above `above` metres is cut (the slab's
+           underside at 3.8 m, the drum, the gallery, its doors, lamps and people). Only pieces that reach into that corner are
+           touched, so the rest of the hall keeps its batches.
+         BESIDE it (in the hall): the room's own part above `above` within `reach` metres of that wall is cut (its wall top, logo
+           band and ceiling stood across the mezzanine's walkway); past `reach` it is behind the hall's upper drum.
+       The record is the module's, never the part's: a part's keys travel with it over a stage crossing (_hqStageSwap) and the
+       planes are world planes, so the first build left the hall cut, in the wrong place, after the walk from the foyer into it. */
     var _HQ_CLIP_WALL_N = { n: [0, 0, -1], s: [0, 0, 1], e: [1, 0, 0], w: [-1, 0, 0] };
-    function _hqTickClipBeside() {
-        var H = _hq; if (!H || !H.scene) return;
-        H._cbTick = ((H._cbTick || 0) + 1) % 20;
-        var st = H.stage, cur = (st && st.id) || (H.opts && H.opts.room), D = _hqData(), room = D && D.rooms && D.rooms[cur];
-        var cb = room && room.shell && room.shell.clipBeside, sh = room && room.shell;
-        var key = cb ? cur : null;
-        if (H._cbKey && H._cbKey !== key) {   // stepped out: every original back
-            H.scene.traverse(function (o) {
-                if (!o.material) return;
-                if (o._ew_cbOrig) { o.material = o._ew_cbOrig; o._ew_cbOrig = null; }
-                else if (o.material._ew_cb) { o.material.clippingPlanes = null; o.material.needsUpdate = true; }   // a batch built from a copy
-            });
-            H._cbKey = null; H.dirty = true;
+    var _hqCb = { H: null, key: '', objs: [], mats: [], jobs: [], tick: 0 };
+    function _hqCbRestore() {
+        var C = _hqCb;
+        for (var i = 0; i < C.objs.length; i++) { var o = C.objs[i]; if (o && o._ew_cbOrig) { o.material = o._ew_cbOrig; o._ew_cbOrig = null; } }
+        for (var j = 0; j < C.mats.length; j++) { var m = C.mats[j]; if (m && m.clippingPlanes) { m.clippingPlanes = null; m.needsUpdate = true; } }   // a batch may still draw with a copy for a moment
+        C.objs = []; C.mats = []; C.jobs = []; C.key = '';
+        if (C.H) C.H.dirty = true;
+    }
+    function _hqCbCopy(m, planes) {
+        var c = m.clone(); c._ew_cb = true; c.clippingPlanes = planes; c.clipIntersection = true;
+        if (Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile')) c.onBeforeCompile = m.onBeforeCompile;   // clone() drops a patched shader's hook
+        if (Object.prototype.hasOwnProperty.call(m, 'customProgramCacheKey')) c.customProgramCacheKey = m.customProgramCacheKey;
+        if (m._ewNode) c._ewNode = m._ewNode;   // the node renderer's dress reads these off the classic material (_ewNodeDress)
+        if (m.ewCol) c.ewCol = m.ewCol;
+        _hqCb.mats.push(c);
+        return c;
+    }
+    /* may this piece reach the cut corner? (a plain mesh: its box against both planes; anything else is always taken) */
+    var _hqCbV = null;
+    function _hqCbReaches(o, planes) {
+        if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || !o.geometry) return true;
+        var g = o.geometry; if (!g.boundingBox) { try { g.computeBoundingBox(); } catch (e) { return true; } }
+        var bb = g.boundingBox; if (!bb || !isFinite(bb.min.x) || !isFinite(bb.max.x)) return true;
+        var v = _hqCbV || (_hqCbV = new THREE.Vector3()), in0 = false, in1 = false;
+        for (var i = 0; i < 8 && !(in0 && in1); i++) {
+            v.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(o.matrixWorld);
+            if (planes[0].distanceToPoint(v) < 0) in0 = true;
+            if (planes[1].distanceToPoint(v) < 0) in1 = true;
         }
-        if (!key || (H._cbKey === key && H._cbTick !== 0)) return;
-        var roots = [], own = null;
-        if (cur === (H.opts && H.opts.room)) own = H.partRoot; else if (st && st.parts[cur]) own = st.parts[cur].P.partRoot;
-        if (!own) return;
-        if (own !== H.partRoot && H.partRoot) roots.push(H.partRoot);
-        if (st) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P && E.P.partRoot && E.P.partRoot !== own) roots.push(E.P.partRoot); }
-        if (!roots.length) return;
-        var U = _hqUnits(), wn = _HQ_CLIP_WALL_N[cb.wall || 'n'] || _HQ_CLIP_WALL_N.n;
-        var half = (wn[2] !== 0) ? (sh.d || 0) / 2 : (sh.w || 0) / 2;
-        own.updateMatrixWorld(true);
-        var M = own.matrixWorld, NM = new THREE.Matrix3().getNormalMatrix(M);
-        if (!H._cbPlanes) H._cbPlanes = [new THREE.Plane(), new THREE.Plane()];
-        var pW = new THREE.Vector3(wn[0] * half * U, 0, wn[2] * half * U).applyMatrix4(M), nW = new THREE.Vector3(wn[0], 0, wn[2]).applyMatrix3(NM).normalize();
-        H._cbPlanes[0].setFromNormalAndCoplanarPoint(nW, pW);   // kept: beyond the wall
-        var pY = new THREE.Vector3(0, (cb.above || 4) * U, 0).applyMatrix4(M), nY = new THREE.Vector3(0, -1, 0).applyMatrix3(NM).normalize();
-        H._cbPlanes[1].setFromNormalAndCoplanarPoint(nY, pY);   // kept: below `above`
-        var planes = H._cbPlanes;
-        roots.forEach(function (R) {
-            R.traverse(function (o) {
+        return in0 && in1;
+    }
+    function _hqTickClipBeside() {
+        var H = _hq, C = _hqCb;
+        if (!H || !H.scene || !H.partRoot) { if (C.key) _hqCbRestore(); C.H = null; return; }
+        if (C.H !== H) { _hqCbRestore(); C.H = H; }
+        var st = H.stage, cur = (st && st.id) || (H.opts && H.opts.room) || '', room = H.room, sh = room && room.shell;
+        /* who is cut: [{ id, root, cb, shell, own }] */
+        var want = [], nbs = [];
+        if (st) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P && E.P.partRoot && E.P.partRoot !== H.partRoot) nbs.push({ id: id, E: E }); }
+        if (sh && sh.clipBeside) nbs.forEach(function (n) { want.push({ id: n.id, root: n.E.P.partRoot, frame: H.partRoot, cb: sh.clipBeside, shell: sh, own: false }); });
+        nbs.forEach(function (n) { var r2 = n.E.P.room, s2 = r2 && r2.shell; if (s2 && s2.clipBeside && s2.clipBeside.reach > 0) want.push({ id: n.id, root: n.E.P.partRoot, frame: n.E.P.partRoot, cb: s2.clipBeside, shell: s2, own: true }); });
+        var key = want.length ? cur + '>' + want.map(function (w) { return w.id + (w.own ? '*' : ''); }).join(',') : '';
+        if (key !== C.key) {
+            _hqCbRestore();
+            C.key = key; C.tick = 0;
+            C.jobs = want.map(function (w) { w.planes = [new THREE.Plane(), new THREE.Plane()]; return w; });
+        }
+        if (!C.key) return;
+        if (C.tick++ % 20 !== 0) return;
+        var U = _hqUnits();
+        C.jobs.forEach(function (J) {
+            var wn = _HQ_CLIP_WALL_N[J.cb.wall || 'n'] || _HQ_CLIP_WALL_N.n;
+            var half = (wn[2] !== 0) ? (J.shell.d || 0) / 2 : (J.shell.w || 0) / 2;
+            J.frame.updateMatrixWorld(true);
+            var M = J.frame.matrixWorld, NM = new THREE.Matrix3().getNormalMatrix(M);
+            /* planes[0] keeps what is past the line: beyond the wall (in the room), or further in than `reach` metres from it (beside the room) */
+            var at = J.own ? (half - J.cb.reach) : half, sgn = J.own ? -1 : 1;
+            var pW = new THREE.Vector3(wn[0] * at * U, 0, wn[2] * at * U).applyMatrix4(M), nW = new THREE.Vector3(wn[0] * sgn, 0, wn[2] * sgn).applyMatrix3(NM).normalize();
+            J.planes[0].setFromNormalAndCoplanarPoint(nW, pW);
+            var pY = new THREE.Vector3(0, (J.cb.above || 4) * U, 0).applyMatrix4(M), nY = new THREE.Vector3(0, -1, 0).applyMatrix3(NM).normalize();
+            J.planes[1].setFromNormalAndCoplanarPoint(nY, pY);   // kept: below `above`
+            var planes = J.planes;
+            J.root.updateMatrixWorld(false);
+            J.root.traverse(function (o) {
                 if (!o.material || o._ew_cbOrig) return;
-                if (o.material._ew_cb) { if (!o.material.clippingPlanes) { o.material.clippingPlanes = planes; o.material.clipIntersection = true; o.material.needsUpdate = true; } return; }
-                var cp = function (m) { var c = m.clone(); c._ew_cb = true; c.clippingPlanes = planes; c.clipIntersection = true; return c; };
+                if (o.material._ew_cb) return;   // a batch built from a copy: it carries the planes already
+                if (!_hqCbReaches(o, planes)) return;
                 o._ew_cbOrig = o.material;
-                o.material = Array.isArray(o.material) ? o.material.map(cp) : cp(o.material);
+                o.material = Array.isArray(o.material) ? o.material.map(function (m) { return _hqCbCopy(m, planes); }) : _hqCbCopy(o.material, planes);
+                C.objs.push(o);
             });
         });
         if (renderer) renderer.localClippingEnabled = true;
-        H._cbKey = key; H.dirty = true;
+        H.dirty = true;
     }
     function _hqPdBuild(room) {
         if (!room || !room.pd || !room.pdDraw) return;
