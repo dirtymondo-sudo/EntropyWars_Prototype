@@ -3901,3 +3901,43 @@ the roads again. why ... would i want roads and a traffic system and cars if you
   project files `desert-plots/meshy/v1/`. The prickly pear still has a few pale slivers between pads (Meshy's bake).
 
 - **NO PRICKLY PEAR FOR NOW (mondo 11-15 19:30: "just dont use the prickly pear cactus for now").** bake-desert.js `PEARS = 0`: the Desert plants 60 saguaros and no prickly pear. The model, its R2 file and its catalogue row stay (the editor can still place it); set `PEARS` to plant it again.
+
+## THE MOUNTAINS ON PLOTS — the mountain zone, first delivery (2026-11-15)
+
+mondo 11-15 18:17: "there should be a mountain zone with 3 main trails/peaks you can end up. Mt shasta - woods mountain trail, snowy mountain trail that
+leads to north pole village, mountains and woods separate camelot from the north pole. and another mountain trail that leads to mount olympus. And there
+should be a ski loft and ski slopes, for skateboarding." Plan OK'd 19:37 ("okay that's good"; world layout 3, /mnt/project-files/world-zones-plan/).
+
+**Tool + source:** `node bake-mountains.js [--dry-run]` writes TWO rooms into data.js between `MOUNTAINS-BEGIN` / `MOUNTAINS-END` from
+`docs/areas/mountains/layout.json` (16x8 plan, 72 plots, 12x12 squares of 3.5 m a plot). `MTN_DUMP=mtn|pole` prints the walked map.
+- `site_prebuilt_northpole_plots` (plan columns 0-3, 16 plots): the North Pole village. Walk-in Workshop (the old hearth door to the Haunted Hall is
+  inside it), 16 `xmas_house` cottages, the Pole, the village tree, Santa Clause / gnome / yeti with their old lines, the frozen lake (a grind rail).
+- `site_prebuilt_shasta_mountains` (plan columns 4-15, 56 plots): Snowy Pass (Pass Gate, High Pass cairn, rope bridge over the crevasse), the Ski
+  Lodge + slopes (walk-in Lodge, Rental Hut, Warming Hut, Top Station; five runs on the slope sheet so the board rolls them: Bunny Hill, Blue Run,
+  Black Run through the trees, the Big Jump kicker, the Slalom gates, plus the Half-Pipe banks), Mount Shasta (Summit crater + cloud, Helen Lake camp,
+  steam vents with the Lemuria adit, Bunny Flat, Panther Meadows, the spring, the Trailhead), Mount Olympus (Temple walk-in, twelve thrones, Colonnade,
+  Stadium, Amphitheatre, terraces, olive grove, Grand Stair).
+- Ground: `terrain.slope` heights from the plot levels (3.5 m a level, blended), rock = MASS that rises away from the walked ground (cap 26 squares),
+  drifts and cloud = MASS, crevasse sunk. Edges are mountains all round. The tool flood-fills from the spawn with the walker's climb limit: all plots
+  reached, 0 steep steps (it throws otherwise).
+- The plan had three gaps the tool cuts open (written in the tool): a hub override on P06-02, an extra port P05-00 S for the ridge, a two-wide Grand Stair
+  and the Colonnade walk carried through the Cloud Line.
+
+**Ways (all two-way):** Pass Gate <-> North Pole (doors `pass`); the Woods Snowline P00-00 north door `shasta` <-> the Trailhead door `woods`
+(bake-woods.js); links `northpole_camelot` (Camelot's north-gate sleigh road, now the new village's south wall x 45.5), `northpole_haunted`,
+`shasta_lemuria`, `heaven_olympus` (the Grand Stair, north wall), `lodge_olympus`, NEW `vatican_olympus` (Vatican courtyard north wall <-> the Pilgrim
+Stair) and NEW `downtown_mountains` (Disaster City's mountain road: `docs/disaster-city/move.js` ways P08-04 N is `open` now, free door x 105 z -247.6
+<-> the Lodge Yard's south road). HQ bay doors: Shasta at Bunny Flat, Olympus at the Amphitheatre (`bay_olympus`), North Pole on the village's south wall.
+Hub `mountains` groups the three sites on the map.
+
+**Old rooms:** `site_prebuilt_shasta_slopes`, `site_prebuilt_olympus_summit`, `site_prebuilt_northpole_village` are in `DOOR_HQ.retired` (saves /
+Continue / map land in the new rooms); their literals stay as PvP board sources (HQ_ARENA_RULES.picks), no door leads to them.
+
+**Not done / to know:**
+- NOT SEEN ON SCREEN (no browser run; compiled headless only: no NaN, heights -1.6..38.5 m, every door resolves both ways).
+- The chairlift is towers + gondola chairs + a door pair (`lift_bottom` / `lift_top`, same room); nothing rides the cable.
+- The Woods' Upper Shelf has no door up (the plan drew two joins; only the Snowline trail is cut).
+- No encounter tables (HQ_AREA_ENCOUNTERS has none for the old rooms either; those are mondo's baked tables). No Ice Queen placed.
+- No Meshy pieces, nothing new on R2: buildings are texbuilding + arch rows, the rest catalogue props.
+- The big room compiles in ~23 s in node (Woods / Camelot ~10 s; cost is hqTerrain ramps + bridges per node). Watch the load on his Mac.
+- The world plan's Ice Wall and the Deep-to-Area-51 way are still open with him.

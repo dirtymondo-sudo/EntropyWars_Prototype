@@ -70,7 +70,7 @@ module.exports = {
     ways: [
         { plot: 'P04-01', side: 'W', name: 'THE VATICAN GATE', look: 'iron' },
         { plot: 'P03-03', side: 'S', name: 'THE HIGHWAY', look: 'road', open: true },   // THE DESERT ON PLOTS (2026-11-15): the Desert is built; the door is links.downtown_desert
-        { plot: 'P08-04', side: 'N', name: 'THE MOUNTAIN ROAD', look: 'road' },
+        { plot: 'P08-04', side: 'N', name: 'THE MOUNTAIN ROAD', look: 'road', open: true },   // THE MOUNTAINS ON PLOTS (2026-11-15): the Mountains are built; the door is links.downtown_mountains
         { plot: 'P03-09', side: 'E', quay: true }, { plot: 'P03-11', side: 'E', quay: true },
     ],
 };
