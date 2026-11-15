@@ -3808,7 +3808,7 @@ mondo: "start a thread to start on the desert" · "put the circus in the desert 
   four tiers to 14 m, the North Stair; Khafre 35 m (stair west); Menkaure 21 m (stair north); the Sphinx is plateaus + skin, not climbed.
 - **MOVED IN, NOT REMADE:** the old flight line's tower rows are copied whole from the old room by the tool; the old rooms' people keep their own
   lines (the tool reads `say` from the old literals, so the old literals must stay). The carnival's pieces, people and lines are the Circus.
-- **THE WAYS:** link `downtown_desert` (Disaster City south park gate, free door x -64.75 z 241.5 -> the highway's north end, wall n x -161);
+- **THE WAYS:** link `downtown_desert` (Disaster City's own highway way out after the district move: `docs/disaster-city/move.js` ways P03-03 S is `open: true`, so the city tool leaves the fence and barricades off and prints the place; free door x -105 z 247.6 -> the highway's north end, wall n x -161);
   `gobekli_giza` b end -> the Desert's east wall z 73.5 (Robbers' Tunnel); Room 444's bay door = `siteRooms.entry.prebuilt_giza` -> the Tomb Door in
   the Great Pyramid's west face; Hangar 18's `flightline` door -> `hangar`; the White Rooms' `yard` / `stormdrain` -> `ward` / `stormdrain`;
   the tunnel platform's `carnival` door -> `tunnel` (by the ticket booth); the Mandela Room's `mirrors` -> `mirrors`. Room 51 still lands in Hangar 18.

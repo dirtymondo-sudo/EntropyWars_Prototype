@@ -501,6 +501,8 @@ withDice2(() => boundaryPass(viewOf(false)));
     if (!open.length) throw new Error('THE DISTRICT MOVE: the way out at ' + w.plot + ' ' + w.side + ' has no open square on the line');
     const a0 = gx(open[0][0]), a1 = gx(open[open.length - 1][0] + 1), lz = gx(line), off = (w.side === 'N' || w.side === 'W') ? 0.35 : -0.35;
     const seg = hz ? { x0: a0, z0: r3(lz + off), x1: a1, z1: r3(lz + off) } : { x0: r3(lz + off), z0: a0, x1: r3(lz + off), z1: a1 };
+    /* `open: true` (THE DESERT ON PLOTS, 2026-11-15): the zone is built, so no fence, no ghost wall, no barricades; the door is a DOOR_HQ.links row (downtown_desert) standing at the printed place */
+    if (w.open) { const roads = open.filter(q => q[1] === 'R'), use = roads.length ? roads : open; console.log('way out OPEN ' + w.plot + w.side + ' ' + w.name + ': ' + JSON.stringify({ mid: r3((gx(use[0][0]) + gx(use[use.length - 1][0] + 1)) / 2), line: lz, inside: gc(inC), squares: open.map(q => q[0] + q[1]).join(' ') })); count.ways = (count.ways || 0) + 1; return; }
     features.push(Object.assign({ k: 'rail', id: 'dc:way:' + w.plot + w.side }, seg, { model: w.look === 'iron' ? 'bars' : 'guard' }));
     features.push(Object.assign({ k: 'wall', id: 'dc:way:' + w.plot + w.side + ':ghost' }, seg, { h: 6, t: 0.3, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }));
     if (w.look === 'road') open.forEach(q => { if (q[1] !== 'R') return; const m = gc(q[0]), n = gc(inC); props.push({ key: 'item_police_barricade', x: hz ? m : n, z: hz ? n : m, face: hz ? 0 : 90 }); });
