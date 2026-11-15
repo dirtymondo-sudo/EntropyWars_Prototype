@@ -7792,8 +7792,13 @@ const ThreeRenderer = (function () {
         var tex = (sm && sm.map) || null;
         if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var leaf = _foliageGlbLeaf(sm);
-        var m = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
+        /* THE PAINTED TREES (2026-11-15, bake-trees.py): a leaf material named `ewleaf_*` and ONE-SIDED in its file carries both
+           windings with the same out-of-the-puff normals, so it is drawn one-sided (two-sided would flip the normal on a back
+           face and shade the two faces of a sheet apart) and its own picture lifts the shade (an underside is shade green, never black) */
+        var painted = leaf && sm.side === THREE.FrontSide && /^ewleaf_/.test(sm.name || '');
+        var m = new THREE.MeshLambertMaterial({ map: tex, side: painted ? THREE.FrontSide : THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
         if (tint != null) m.color.setHex(tint);
+        if (painted) { m.emissive.copy(m.color).multiplyScalar(0.2); m.emissiveMap = tex; }
         return m;
     }
     function _normalizeFoliageModel(root) {

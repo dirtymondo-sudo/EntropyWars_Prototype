@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 1005 |
+| Asset pack | yes | 1000 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -29,6 +29,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 78 |
+| Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 5 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
@@ -3160,11 +3161,11 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | tree_5 | `Assets/world/nature/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | tree_50 | `Assets/world/nature/OBJ/Tree_6.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_51 | `Assets/world/nature/OBJ/Tree_9.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_52 | `Assets/world/nature/retrotreepack/GLB/tree_rt_4_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_53 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_1_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_54 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_55 | `Assets/world/nature/retrotreepack/GLB/tree_rt_3_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_56 | `Assets/world/nature/retrotreepack/GLB/tree_rt_1_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_52 | `Assets/world/nature/retrotreepack/GLB/tree_rt_4_full.glb` | Built by Claude in code (a bake tool writes the file) | THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack's (Pizza Doggy licence) |
+| tree_53 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_1_full.glb` | Built by Claude in code (a bake tool writes the file) | THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack's (Pizza Doggy licence) |
+| tree_54 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_full.glb` | Built by Claude in code (a bake tool writes the file) | THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack's (Pizza Doggy licence) |
+| tree_55 | `Assets/world/nature/retrotreepack/GLB/tree_rt_3_full.glb` | Built by Claude in code (a bake tool writes the file) | THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack's (Pizza Doggy licence) |
+| tree_56 | `Assets/world/nature/retrotreepack/GLB/tree_rt_1_full.glb` | Built by Claude in code (a bake tool writes the file) | THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack's (Pizza Doggy licence) |
 | tree_6 | `Assets/world/nature/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | tree_7 | `Assets/world/nature/OBJ/Tree_2.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_8 | `Assets/world/nature/OBJ/Tree_4.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
