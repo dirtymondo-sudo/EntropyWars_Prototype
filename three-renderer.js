@@ -46935,8 +46935,13 @@ const ThreeRenderer = (function () {
             var ros = bd.renderObjects, reps = [], dyn = [], seen = new Set();
             for (var i = 0; i < ros.length; i++) {
                 var ro = ros[i], mon = ro.getMonitor(), o = ro.object;
-                var anim = !!(mon.hasAnimation || mon.hasDynamicInstancing(o) || mon.needsVelocity(R) || (o && (o.isSkinnedMesh || o.morphTargetInfluences)));
-                if (mon.hasNode || anim) { ro._ew_rq = 0; ro._ew_rqOk = !anim; dyn.push(ro); }
+                /* THE COPIES REST (2026-11-15): an instanced batch whose buffers are "dynamic" asks three for a full refresh every
+                   frame in every pass, though its copies move only when the instance pass rewrites them. It rests like the others
+                   and is refreshed at once when its matrix / colour buffer's version or its copy count moves.
+                   Off: window.EW_BUN_INST_NO_REST. */
+                var inst = !!(o && o.isInstancedMesh && mon.hasDynamicInstancing(o)) && !(typeof window !== 'undefined' && window.EW_BUN_INST_NO_REST);
+                var anim = !!(mon.hasAnimation || (!inst && mon.hasDynamicInstancing(o)) || mon.needsVelocity(R) || (o && (o.isSkinnedMesh || o.morphTargetInfluences)));
+                if (mon.hasNode || anim || inst) { ro._ew_rq = 0; ro._ew_rqOk = !anim; ro._ew_rqI = (inst && !anim) ? o : null; ro._ew_rqV = NaN; dyn.push(ro); }
                 else if (!seen.has(mon)) { seen.add(mon); reps.push(ro); }
             }
             return (bd._ewRep = { v: bd.version, n: ros.length, reps: reps, dyn: dyn });
@@ -46949,6 +46954,10 @@ const ThreeRenderer = (function () {
             var D = L.dyn, woke = false, held = null, u0, rested;
             for (i = 0; i < D.length; i++) {
                 ro = D[i]; rested = ro._ew_rqOk && ro._ew_rq >= RP_REST;
+                if (ro._ew_rqI) {
+                    var io = ro._ew_rqI, iv = io.instanceMatrix.version + io.count * 8191 + (io.instanceColor ? io.instanceColor.version * 131 : 0);
+                    if (iv !== ro._ew_rqV) { ro._ew_rqV = iv; ro._ew_rq = 0; rested = false; }
+                }
                 if (rested && !woke && ((F + i) % RP_REST) !== 0) { (held || (held = [])).push(ro); continue; }
                 u0 = _ewBun.upN | 0;
                 rpStep(R, ro); asked++;
@@ -47300,7 +47309,8 @@ const ThreeRenderer = (function () {
         if (sc.environment) LG = _ewBunMix(LG, sc.environment.id);
         var lampMoved = LG !== _ewBun.lampG; _ewBun.lampG = LG;
         var G = _ewBunMix(LG, _ewBun.epoch);
-        var objs = 0, quietN = 0, addNB = _ewAddCount(), addMovedB = addNB !== _ewBun.addN, bunEvery = typeof window !== 'undefined' && !!window.EW_BUN_CHECK_EVERY;
+        var objs = 0, quietN = 0, addNB = _ewAddCount(), addMovedB = addNB !== _ewBun.addN, bunEvery = typeof window !== 'undefined' && !!window.EW_BUN_CHECK_EVERY, addAll = typeof window !== 'undefined' && !!window.EW_BUN_ADD_ALL;
+        var BUN_QUIET = 8, BUN_QUIET_LONG = 90;
         _ewBun.addN = addNB;
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
@@ -47314,8 +47324,12 @@ const ThreeRenderer = (function () {
                a recorded group whose signature has not moved for QUIET checks is checked every third frame (its turn by its place
                in the list), and at once on a frame where anything joined the scene (Object3D.add), a resource it holds was freed,
                a pipeline was missing or the lamps changed. A change with none of those tells (a piece hidden or moved by hand)
-               shows at most two frames late. Off: window.EW_BUN_CHECK_EVERY. */
-            if (walk && g.isBundleGroup && st.quiet >= 40 && !addMovedB && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && st.G === G && ((FR + i) % 3) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
+               shows at most two frames late. Off: window.EW_BUN_CHECK_EVERY.
+               2026-11-15 (mondo's F3: "check 7.47 ms/frame" with 67 of 88 groups quiet on the frame he copied — the average was
+               the frames where they were not): quiet after BUN_QUIET still checks (was 40: every re-record anywhere bought the
+               group two seconds of full checks); an add wakes only the group it lands under (`_ew_bunDirty`, set by the add
+               hook; window.EW_BUN_ADD_ALL = the old rule); a group quiet for BUN_QUIET_LONG checks takes every fourth frame. */
+            if (walk && g.isBundleGroup && st.quiet >= BUN_QUIET && (!addMovedB || !addAll) && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && st.G === G && ((FR + i) % (st.quiet >= BUN_QUIET_LONG ? 4 : 3)) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
             /* a demoted group is tried as a still recording again (30 s, then twice as long each time, 8 min at most): what made
                it churn may be out of it by now (THE CHANGERS OUT finds the pieces only while the values are hashed) */
             if (st.dyn && st.dynAt && walk && now - st.dynAt > Math.min(480000, 30000 * Math.pow(2, Math.max(0, (st.dynN | 0) - 1)))) { st.dyn = false; st.dynAt = 0; st.times = []; st.vt = []; }
@@ -86656,6 +86670,7 @@ const ThreeRenderer = (function () {
     function _hqDoorMotionStep(d, want, dt) {
         var mo = d.motion; if (!mo) return;
         if (d.openT === want && d.openApplied === want) return;
+        if (_hqStArmedN > 0 && d.group) _hqStillWake(d.group);   // THE DOORS REST: its matrices are walked from this frame
         var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
         d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
         var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
@@ -86709,6 +86724,7 @@ const ThreeRenderer = (function () {
             if (gap <= 1e-3) Sp.v = 0;
         } else Sp.a += Sp.v * dt;
         if (Sp.a > 2 * Math.PI) Sp.a -= 2 * Math.PI;
+        if (Sp.v && _hqStArmedN > 0) _hqStillWake(Sp.m);   // THE DOORS REST
         Sp.m.rotation.y = Sp.base - Sp.a;
         if (H) H.dirty = true;
         return true;
@@ -88341,7 +88357,15 @@ const ThreeRenderer = (function () {
     function _ewAddCount() {
         if (typeof THREE !== 'undefined' && THREE.Object3D && !THREE.Object3D.prototype._ew_addHookR) {
             var P = THREE.Object3D.prototype, add = P.add;
-            P.add = function () { _ewAddN++; if (_hqStArmedN > 0) _hqStillAdded(this); return add.apply(this, arguments); };
+            P.add = function (x) {
+                _ewAddN++;
+                if (_hqStArmedN > 0) _hqStillAdded(this);
+                /* THE ADD'S OWN GROUP (2026-11-15): the bundle group this lands under (and the one it leaves) is checked this
+                   frame; the others keep their quiet turn (was: any add anywhere had every group of the city checked) */
+                for (var q = this, d = 0; q && d < 32; q = q.parent, d++) if (q._ew_bun) q._ew_bunDirty = true;
+                if (x && x.parent && x.parent !== this) for (q = x.parent, d = 0; q && d < 32; q = q.parent, d++) if (q._ew_bun) q._ew_bunDirty = true;
+                return add.apply(this, arguments);
+            };
             P._ew_addHookR = true;
         }
         return _ewAddN;
@@ -88367,7 +88391,7 @@ const ThreeRenderer = (function () {
        Off: window.EW_HQ_STILL_OFF. Counts: ThreeRenderer.hq.dev.still(). */
     var _hqStWalk = false, _hqStNow = 0, _hqStArmedN = 0, _hqStProto = null;
     var _hqStS = { groups: 0, out: 0, full: 0, tops: 0, fresh: 0, movers: 0, swept: 0, ms: 0 }, _hqStLast = null, _hqStMs = 0;
-    var HQ_STILL_SWEEP_MS = 500, HQ_STILL_HOLD_MS = 4000;
+    var HQ_STILL_SWEEP_MS = 500, HQ_STILL_HOLD_MS = 4000, HQ_STILL_DOOR_HOLD_MS = 30000;
     function _hqStillOff() { return typeof window !== 'undefined' && !!window.EW_HQ_STILL_OFF; }
     function _hqStillArm(g) {
         if (!g || g._ew_st) return;
@@ -88409,9 +88433,10 @@ const ThreeRenderer = (function () {
        property read off each is a slow, megamorphic one) */
     function _hqStillBook(st, n) {
         if (st.C && st.cap >= n) return;
-        var cap = Math.max(16, Math.ceil(n * 1.25)), T = new Float64Array(cap * 10), SM = new Float64Array(cap), AT = new Float64Array(cap), C = new Array(cap);
-        if (st.C) { T.set(st.T); SM.set(st.SM); AT.set(st.AT); for (var i = 0; i < st.cap; i++) C[i] = st.C[i]; }
-        st.T = T; st.SM = SM; st.AT = AT; st.C = C; st.cap = cap;
+        var cap = Math.max(16, Math.ceil(n * 1.25)), T = new Float64Array(cap * 10), SM = new Float64Array(cap), AT = new Float64Array(cap), C = new Array(cap), P = new Array(cap), Q = new Array(cap), SC = new Array(cap);
+        for (var z = 0; z < cap; z++) { C[z] = null; P[z] = null; Q[z] = null; SC[z] = null; }
+        if (st.C) { T.set(st.T); SM.set(st.SM); AT.set(st.AT); for (var i = 0; i < st.cap; i++) { C[i] = st.C[i]; P[i] = st.P[i]; Q[i] = st.Q[i]; SC[i] = st.SC[i]; } }
+        st.T = T; st.SM = SM; st.AT = AT; st.C = C; st.P = P; st.Q = Q; st.SC = SC; st.cap = cap;
     }
     function _hqStillUpdate(force) {
         var st = this._ew_st;
@@ -88426,7 +88451,7 @@ const ThreeRenderer = (function () {
         var moved = own !== st.own; st.own = own;
         var ch = this.children, n = ch.length, now = _hqStNow, mv = st.mv, fr = st.fresh, wk = st.wake, c, i, s, j, p, q, sc;
         _hqStillBook(st, n);
-        var T = st.T, SM = st.SM, AT = st.AT, C = st.C;
+        var T = st.T, SM = st.SM, AT = st.AT, C = st.C, PP = st.P, QQ = st.Q, SS = st.SC;
         if (moved || st.full > 0) {   // the whole group
             var seed = !moved;
             if (st.full > 0) st.full--;
@@ -88434,7 +88459,7 @@ const ThreeRenderer = (function () {
                 c = ch[i]; c.updateMatrixWorld(true); s = _hqStillSum(c);
                 if (seed && C[i] === c && s !== SM[i]) { mv.add(c); AT[i] = now; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
                 C[i] = c; SM[i] = s;
-                j = i * 10; p = c.position; q = c.quaternion; sc = c.scale;
+                j = i * 10; p = PP[i] = c.position; q = QQ[i] = c.quaternion; sc = SS[i] = c.scale;
                 T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
             }
             if (fr.size) fr.clear();
@@ -88446,8 +88471,12 @@ const ThreeRenderer = (function () {
         st.i = n ? i1 % n : 0;
         var hasMv = mv.size > 0, hasFr = fr.size > 0, hasWk = wk.size > 0;
         for (i = 0; i < n; i++) {
-            c = ch[i]; j = i * 10; p = c.position; q = c.quaternion; sc = c.scale;
-            var isNew = C[i] !== c || (hasFr && fr.has(c));   // new at this place, or something landed under it
+            /* (2026-11-15: a kept child's three pose objects are read from the group's own arrays — 11,000 children of many
+               kinds, three property reads off each were half of the walk's own time) */
+            c = ch[i]; j = i * 10;
+            var isNew = C[i] !== c;
+            if (isNew) { p = PP[i] = c.position; q = QQ[i] = c.quaternion; sc = SS[i] = c.scale; }
+            else { p = PP[i]; q = QQ[i]; sc = SS[i]; if (hasFr && fr.has(c)) isNew = true; }   // new at this place, or something landed under it
             if (isNew || T[j] !== p.x || T[j + 1] !== p.y || T[j + 2] !== p.z || T[j + 3] !== q._x || T[j + 4] !== q._y || T[j + 5] !== q._z || T[j + 6] !== q._w || T[j + 7] !== sc.x || T[j + 8] !== sc.y || T[j + 9] !== sc.z) {
                 c.updateMatrixWorld(true); SM[i] = _hqStillSum(c);
                 T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
@@ -88460,7 +88489,7 @@ const ThreeRenderer = (function () {
             if (hasMv && mv.has(c)) {
                 c.updateMatrixWorld(true); s = _hqStillSum(c);
                 if (s !== SM[i]) { SM[i] = s; AT[i] = now; }
-                else if (now - AT[i] > HQ_STILL_HOLD_MS) { mv.delete(c); if (c._ew_bunOutA) { c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; } }   // at rest: back into its group's recording
+                else if (now - AT[i] > (st.hold || HQ_STILL_HOLD_MS)) { mv.delete(c); if (c._ew_bunOutA) { c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; } }   // at rest: back into its group's recording
                 S.movers++; continue;
             }
             if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
@@ -88549,6 +88578,11 @@ const ThreeRenderer = (function () {
     function _hqChunkTick(H, now) {
         var L = H.ckList; if (!L || !L.length) return;
         if (H.shellGroup && !H.shellGroup._ew_st && _hqChunkBig(H)) _hqStillArm(H.shellGroup);   // THE STILL WALK
+        /* THE DOORS REST (2026-11-15, mondo's F3: "Re-recorded most: doors (values 14, tree 17, demoted)"): the door group is a
+           still group too. A leaf that swings is woken by its own tick (_hqDoorMotionStep) and drawn outside the recording while
+           it moves and for HQ_STILL_DOOR_HOLD_MS after, so a swing is one re-record, not one a frame and the group drawn
+           piece by piece in every pass for the next minutes. */
+        if (H.doorGroup && !H.doorGroup._ew_st && _hqChunkBig(H)) { _hqStillArm(H.doorGroup); H.doorGroup._ew_st.hold = HQ_STILL_DOOR_HOLD_MS; }
         var cam = H.camera, off = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || !cam;
         var RU = _hqChunkRules(), pad = RU.pad * _hqUnits(), drawn = 0;
         if (!off) {
@@ -88596,7 +88630,7 @@ const ThreeRenderer = (function () {
             if (C.root.parent) C.root.parent.remove(C.root);
         }
         (H.ckList || []).forEach(function (g) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; _hqStillDisarm(g); });
-        _hqStillDisarm(H.shellGroup);
+        _hqStillDisarm(H.shellGroup); _hqStillDisarm(H.doorGroup);
         H.ckList = null; H.ckDrawn = 0;
     }
     function _hqChunkStats(H) {

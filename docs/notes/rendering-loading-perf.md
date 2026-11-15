@@ -1957,6 +1957,25 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE DOORS REST + THE COPIES REST + THE ADD'S OWN GROUP (2026-11-15, mondo's F3 after THE LAMP'S TIGHT REACH)
+His readout: 20.3 FPS, CPU 39.2; matrix walk 6.5 · bundle check 6.1 · scene replays 4.9 · shadow replays 2.4; "refreshed 1809 of 12710",
+"check 7.47 ms/frame (67 quiet skipped, 21 still-checked)", "Re-recorded most: doors (values 14, tree 17, demoted)".
+- THE DOORS REST: the door group is a still-walk group in a chunked room (`_hqChunkTick` arms it, `st.hold = HQ_STILL_DOOR_HOLD_MS` 30 s).
+  `_hqDoorMotionStep` / the revolving door wake their door (`_hqStillWake(d.group)`), so a leaf that swings is drawn outside the
+  recording while it moves and 30 s after: one re-record a swing. Before, a swing changed the group's values every frame -> demoted
+  (three refreshes each of its pieces in every pass; retried after 30 s .. 8 min, demoted again). Two city doors carry a part that
+  never stops (a spinning way mark): those two are always out (12 meshes).
+- THE COPIES REST (`rpList` / `rpReplay`): a "dynamic" instanced batch asked for a full refresh every frame in every pass (three's
+  `hasDynamicInstancing`); it now rests after RP_REST quiet frames like node objects and is refreshed the frame its
+  instanceMatrix / instanceColor version or count moves (`ro._ew_rqI`, `_ew_rqV`). Off: `window.EW_BUN_INST_NO_REST`.
+- The still walk keeps each kept child's position / quaternion / scale objects in the group's arrays (`st.P/Q/SC`): no property
+  read off 11,000 children of many kinds each frame.
+- THE ADD'S OWN GROUP (`_ewBunTick`): the 7.47 ms average was the frames where the groups were NOT quiet: any Object3D.add anywhere
+  had every group checked, and a re-recorded group needed 40 still checks (2 s) to be quiet again. Now the add hook marks only the
+  bundle group the object lands under and the one it leaves (`_ew_bunDirty`), quiet comes after `BUN_QUIET` 8 checks, and a group
+  quiet for `BUN_QUIET_LONG` 90 checks takes every fourth frame. Old rule: `window.EW_BUN_ADD_ALL`.
+- The sandbox draws one frame every 5 s, so its ms rows and "quiet skipped" are not his; verify by counts (movers, outs, errors).
+
 ## THE LAMP'S TIGHT REACH + THE CHEAP SWEEP (2026-11-15, mondo's F3 at another spot of the city)
 
 His Mac after #1396, standing where a room's bedside lamp (the hero light, reach 3.5 m) is in view: 17.6 fps, CPU 51 ms; "shadow 564 calls,
