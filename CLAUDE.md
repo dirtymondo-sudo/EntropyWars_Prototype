@@ -124,12 +124,15 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
 - `bake-disaster-city.js` (2026-11-13): writes the 144-plot Disaster City room (`site_prebuilt_downtown_streets`; the old streets = `…_oldstreets`) into data.js from
   `docs/disaster-city/city-layout.json`. Notes: areas-complexes.md "DISASTER CITY, THE 144 PLOTS".
+- `bake-dungeons.js` (2026-11-14): checks the plot dungeons (data.js PD_DUNGEONS). Notes: areas-complexes.md "PLOT DUNGEONS, THE BUILD".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
   `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place
   of its original and fetches every listed file as `?h=<sha>`. Notes: docs/notes/models-assets.md "THE ASSETS".
+  `--lossless` (2026-11-14): byte-exact repack (meshopt in place + PNG→lossless WebP, verified) — the one for creator data files;
+  notes models-assets.md "THE LOSSLESS PASS".
   Phase 10: `--lod` also bakes `<name>.lod1.glb` / `.lod2.glb` (geometry only) that the game draws far off.
   Phase 11 (the smooth attach: sliced build, compile warm-up, static batch, bitmaps): notes in
   rendering-loading-perf.md "THE SMOOTH ATTACH".

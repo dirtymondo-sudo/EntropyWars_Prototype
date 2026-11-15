@@ -1683,6 +1683,29 @@ mondo: "now how do we put these models both in the character creator and in the 
   meshy/decor/decor_prompts.json), 32 swap to a model already in the game, 60 are not a model job; + 4 missing spell props + the
   old wishlists' items with no stand-in. Gotcha: iterating DOOR_HQ's keys in the sandbox hangs (lazy getters) — read named tables only.
 
+## THE LOSSLESS PASS (2026-11-14, mondo: "make optimized versions of all of the glbs or models that dont have an optimized version yet ... help the character creator and disaster city load faster")
+- The gap: 2,322 GLBs on R2 had no `.opt.glb` (bucket listed through the API, compared to ASSET_MANIFEST files + alt). 1,922 of them are
+  ones the game names (basename in a game script, or any creator wear / hair / mpfb file); the other 400 (3.1 GB) are per-character
+  Meshy animation exports nothing loads and were left alone. The interior-pass Meshy props were already meshopt + WebP in place (skipped).
+- **`optimize-assets.js --lossless`** (new): NO gltf-transform round trip. The creator's files are data, not plain scenes: wear has
+  3- and 6-byte custom attributes (`_N` i8, `_D_<body>` i16) the code reads by `.array` (gltf-transform pads them to 4 → interleaved
+  attribute → wrong normals/offsets), mpfb_classic_bust / mpfb_shapes keep shapes as vertex RANGES (reorder would scramble them).
+  So the repack keeps every bufferView in place: meshopt ATTRIBUTES (filter NONE) on views whose stride is a multiple of 4, INDICES
+  (sequence codec, not TRIANGLES: no rotation) on u16/u32 index views, anything else raw; PNG → WebP lossless (`exact`), kept only if
+  every pixel decodes back the same; JPEG untouched; already-compressed files skipped. `losslessVerify` decodes every view with
+  meshoptimizer's decoder and compares bytes + pixels + the JSON; nothing that fails it is written. No KTX2 flag, so `_asResolve`
+  also hands these to the creator (wear + hair call `_ktxNoCompress`, which only refuses KTX2 copies).
+- Run: `--lossless --check --flat <mirror>/Assets/opt --root <mirror>`, 4 shards: 1,513 copies, 0 failed, 786 MB → 577 MB
+  (wear ×1.25, hair ×1.44, mpfb ×1.51, PSX Mega Pack ×1.50, elbolilloduro ×1.35). The rest were kept (under 5 % gain: mostly JPEG
+  texture files like hq/models, top_fangs). eagle.glb is a zip, not a GLB (eagle_rigged.glb is the one used).
+- R2 `Assets/opt/<sha8>_<name>.opt.glb`; ASSET_MANIFEST.json rows for each copy + its original (+710 originals) + `alt`. Token
+  `20261114-optall02-cors`.
+- Proof: a bare three r128 page drew 9 originals vs copies (hair, mpfb body, wear helmet + beard, PSX box + armchair, 6twelve store,
+  Meshy apple, retro tree): 0 pixels differ (`/mnt/project-files/optimize-models/original_vs_optimized.png`). Gotcha seen there: GLTFLoader's
+  mesh order changes from one load to the next (async), so two see-through meshes at the same spot (hair + scalp) can swap draw order
+  between ANY two loads, original or not; the creator rebuilds hair in traverse order with its own renderOrder, so it does not care.
+- Next time: rerun the gap script (list the bucket, compare to manifest alt + `.opt.glb` siblings), then the same command on the new files.
+
 ## THE MESHY DECOR (2026-11-03, mondo: "put the 71 new meshy models in the game")
 The 71 decor + spell-prop models Claude made on Meshy (concepts approved by mondo; IDs D02-D92 / S01-S04 in project files
 `meshy/decor/decor_prompts.json`, list MODEL_LIST_EXTRA.md §10A/§10B) are in. Files: R2 `Assets/decor/<name>.glb` (the

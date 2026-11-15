@@ -177,6 +177,9 @@ function build(ctx) {
         return a;
     };
     /* the doorway of a hollow texbuilding row, as data.js hqTexbDoor reads it */
+    /* THE BEDROOMS (11-14): a walk-in's ground row of shop panes on its front, left and right of the real doorway (a pane never over the door) */
+    const groundPanes = (a, W, D, dr) => [[-W / 2 + 0.3, dr.lx - dr.cw / 2 - 0.4], [dr.lx + dr.cw / 2 + 0.4, W / 2 - 0.3]].forEach(v => { const L = v[1] - v[0]; if (L < 3) return;
+        a.wins('f', (v[0] + v[1]) / 2, 0, L, D, 0.45, { n: Math.max(1, Math.round(L / 6)), ww: 2.4, wh: 2.1, key: K.winS, margin: 0.3 }); });
     const doorOf = (row) => { const L = Math.max(2, row.w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols; let col = Math.floor((cols - 1) / 2); if (row.door >= 1) col = Math.min(cols - 1, Math.round(row.door) - 1); return { lx: -L / 2 + (col + 0.5) * cw, cw }; };
 
     /* ── the collision rows ── */
@@ -311,14 +314,14 @@ function build(ctx) {
         a.done();
     })();
     (() => {   // B2 the row house: tan clapboard, a brown gable to the street, a porch
-        const fr = frameOf('P03-00-B2'); solid('P03-00-B2', fr, 6.4);
-        const a = arch(fr, 'P03-00-B2'), W = fr.W, D = fr.D, TN = 0xf0d8a8, BN = 0x8c7468;
-        a.box(0, 0, 0, W + 0.1, 6.4, D + 0.1, K.board, TN, { top: false });
+        const fr = frameOf('P03-00-B2'), row = solid('P03-00-B2', fr, 6.4, { walkin: true, leaf: 'leaf_shabby_wood', keyIn: K.plaster, floorIn: 'wood_planks' });   // THE BEDROOMS (11-14): a walk-in home
+        const a = arch(fr, 'P03-00-B2'), W = fr.W, D = fr.D, TN = 0xf0d8a8, BN = 0x8c7468, dr = doorOf(row);
+        a.shell(W, 6.4, D, K.board, TN, dr);
         a.roof('gable', 0, 6.4, 0, D, 3.6, W, K.rib, BN, { ry: 90, keyEnd: K.board, tintEnd: TN, over: 0.5 });
-        a.floors('fblr', 0, 0, W, D, 2, { pitch: 3.6 }); a.quad(0, 7.0, D / 2 + 0.08, 1.2, 1.4, 0, K.winR, null, { uv: 'fit' });
-        a.box(0, 0, D / 2 + 1.1, W - 1, 0.4, 2.2, K.wood, 0xc8b090); a.roof('shed', 0, 2.9, D / 2 + 1.2, W - 0.6, 0.6, 2.4, K.rib, BN, { under: true, ds: true });
-        a.box(-W / 2 + 0.9, 0.4, D / 2 + 2.0, 0.22, 2.5, 0.22, null, 0xf8f0e0, { n: 2, step: [W - 1.8, 0, 0] });
-        a.panel('f', 0, 0, W, D, 0, 0.4, 1.1, 2.2, K.doorW, 0xc87858);
+        a.floors('blr', 0, 0, W, D, 2, { pitch: 3.6 }); a.wins('f', 0, 0, W, D, 4.2, { pitch: 3.6 }); a.quad(0, 7.0, D / 2 + 0.08, 1.2, 1.4, 0, K.winR, null, { uv: 'fit' });
+        groundPanes(a, W, D, dr);                                                                                            // the front's ground panes, either side of the real door
+        a.box(0, 0, D / 2 + 1.1, W - 1, 0.12, 2.2, K.wood, 0xc8b090); a.roof('shed', 0, 2.9, D / 2 + 1.2, W - 0.6, 0.6, 2.4, K.rib, BN, { under: true, ds: true });   // the porch deck a step high (walked)
+        a.box(-W / 2 + 0.9, 0.12, D / 2 + 2.0, 0.22, 2.78, 0.22, null, 0xf8f0e0, { n: 2, step: [W - 1.8, 0, 0] });
         a.done();
     })();
 
@@ -336,9 +339,9 @@ function build(ctx) {
         a.done();
     })();
     const apartment = (id, tint, roofTint, form) => {   // the repeating one: three storeys, balconies / bays to the front
-        const fr = frameOf(id); solid(id, fr, 9.6);
-        const a = arch(fr, id), W = fr.W, D = fr.D;
-        a.box(0, 0, 0, W + 0.1, 9.6, D + 0.1, form === 'gables' ? K.brick : K.plaster, tint, { top: false });
+        const fr = frameOf(id), row = solid(id, fr, 9.6, { walkin: true, leaf: 'leaf_shabby_wood', keyIn: K.plaster, floorIn: 'wood_planks', door: form === 'gables' ? undefined : 10 });   // THE BEDROOMS (11-14): walk-ins; the hip one's door between two stair bays
+        const a = arch(fr, id), W = fr.W, D = fr.D, dr = doorOf(row);
+        a.shell(W, 9.6, D, form === 'gables' ? K.brick : K.plaster, tint, dr);
         if (form === 'gables') {
             for (let i = 0; i < 3; i++) a.roof('gable', -W / 3 + i * W / 3, 9.6, 0, D, 2.8, W / 3, K.rib, roofTint, { ry: 90, keyEnd: K.brick, tintEnd: tint, over: 0.3 });
             a.box(0, 3.9, D / 2 + 0.65, W - 3, 0.15, 1.3, null, 0x34363a, { n: 2, step: [0, 3.2, 0], under: true });      // the balconies
@@ -348,7 +351,8 @@ function build(ctx) {
             a.box(-W / 3, 0, D / 2 + 0.7, 4.5, 9.9, 1.4, K.plaster, 0xd4e6ec, { n: 3, step: [W / 3, 0, 0] });               // the stair bays
             a.wins('f', 0, D / 2 + 0.7, W, 1.4, 0, { n: 3, ww: 1.2, wh: 2.2, key: K.doorP, tint: 0xd8b890 });
         }
-        a.floors('fb', 0, 0, W, D, 3, { n: 8 }); a.floors('lr', 0, 0, W, D, 3, { n: 3 });
+        a.floors('b', 0, 0, W, D, 3, { n: 8 }); a.floors('lr', 0, 0, W, D, 3, { n: 3 }); [4.2, 7.4].forEach(y => a.wins('f', 0, 0, W, D, y, { n: 8 }));
+        groundPanes(a, W, D, dr);
         a.done();
     };
     apartment('P00-01-B2', 0xe8a888, 0x786a66, 'gables');
@@ -383,12 +387,12 @@ function build(ctx) {
 
     /* ════════ P02-01 THE TENEMENT STAIR + walk-up flats ════════ */
     (() => {   // B1 the tenement: five dark-brick storeys, the zig-zag fire stair up its front, a water tower
-        const fr = frameOf('P02-01-B1'); solid('P02-01-B1', fr, 16);
-        const a = arch(fr, 'P02-01-B1'), W = fr.W, D = fr.D, BR = 0xc07860, ST = 0xf0e4c8, IR = 0x2a2c30, per = 3.1;
-        a.box(0, 0, 0, W + 0.1, 16, D + 0.1, K.brick, BR, { keyTop: K.conc });
+        const fr = frameOf('P02-01-B1'), row = solid('P02-01-B1', fr, 16, { walkin: true, leaf: 'leaf_shabby_wood', keyIn: K.plaster, floorIn: 'wood_planks', door: 3 });   // THE BEDROOMS (11-14): a walk-in, the door where the painted one was
+        const a = arch(fr, 'P02-01-B1'), W = fr.W, D = fr.D, BR = 0xc07860, ST = 0xf0e4c8, IR = 0x2a2c30, per = 3.1, dr = doorOf(row);
+        a.shell(W, 16, D, K.brick, BR, dr);
         a.box(0, 16, 0, W + 0.7, 0.6, D + 0.7, K.plaster, ST, { under: true }); a.box(0, 3.5, 0, W + 0.4, 0.35, D + 0.4, K.plaster, ST, { top: false });
-        a.floors('fb', 0, 0, W, D, 5, { n: 9, per, y0: 0.9 }); a.floors('lr', 0, 0, W, D, 5, { n: 4, per, y0: 0.9 });
-        a.panel('f', 0, 0, W, D, -W * 0.3, 0, 1.3, 2.3, K.doorW, 0xb0c8b0);
+        a.floors('b', 0, 0, W, D, 5, { n: 9, per, y0: 0.9 }); a.floors('lr', 0, 0, W, D, 5, { n: 4, per, y0: 0.9 }); [1, 2, 3, 4].forEach(k => a.wins('f', 0, 0, W, D, 0.9 + k * per, { n: 9 }));
+        groundPanes(a, W, D, dr);
         for (let k = 0; k < 4; k++) {   // a landing a floor, a stair between them, turn and turn about
             const y = 3.6 + k * per, sx = (k % 2 ? 1 : -1) * 4;
             a.box(0, y, D / 2 + 0.75, 16, 0.12, 1.5, K.metal, IR, { under: true }); a.box(0, y, D / 2 + 1.47, 16, 1.0, 0.06, K.metal, IR, { ds: true });
@@ -611,6 +615,328 @@ function build(ctx) {
             a.floors('f', 0, 0, W, D, tall ? 2 : 1, { pitch: 3.5, per: 3.0 }); a.panel('f', 0, 0, W, D, W / 2 - 1.2, 0, 1.1, 2.2, K.doorW, 0xffffff);
         }
         a.done(); made.backlots = (made.backlots || 0) + 1;
+    });
+
+    /* ════════ THE INSIDES (mondo 11-13 21:04 "let's go ahead and do the interiors", his OK 21:23 on the plan interiors_1/2.jpg) ════════
+       THE SQUARES (his 21:14 + 21:17): a room is read on the city's 3.5 m battle squares. A piece a unit cannot walk through fills WHOLE squares and
+       stands centred in them (`R.cell`, `R.block` = its ghost wall); every other square is a clear walkway, one square wide or more, and the door
+       opens onto one. Decor stands on a wall, in a corner or overhead, never in the middle of a walkway.
+       A room's plan: X from the left wall as you face the front from outside, Y from the BACK wall to the front (the door), in metres; (gx, gy) =
+       where the first whole square starts (the church and the garage stand a metre off the lines). A piece with no model in the game (the ring, the
+       bags, the weights, the lift, the tyres, the mat, the posts, the counters) is a part of the room's own `arch` row `dc:<id>-in`. */
+    const SQ = 3.5;
+    const inside = (id, gx, gy, fn) => {
+        const row = rowOf(id), fr = frame(row.x, row.z, row.rot || 0, row.w, row.d), W = row.w, D = row.d, a = arch(fr, id + '-in');
+        const R = { fr, W, D, a, H: Math.max(2.5, (row.h > 0 ? row.h : Math.max(1, row.storeys || 1) * 3.5) - 0.32) };   // the ceiling where the texbuilding draws it (its `h`, else its storeys)
+        R.lx = X => X - W / 2; R.lz = Y => Y - D / 2;
+        R.cx = (c, n) => gx + (c + (n || 1) / 2) * SQ; R.cy = (r, n) => gy + (r + (n || 1) / 2) * SQ;
+        R.face = dir => { const o = fr.at(0, 0), p = fr.at(dir === 'e' ? 1 : dir === 'w' ? -1 : 0, dir === 's' ? 1 : dir === 'n' ? -1 : 0), dx = p[0] - o[0], dz = p[1] - o[1]; return dx > 0.5 ? 90 : dx < -0.5 ? 270 : dz > 0.5 ? 180 : 0; };
+        /* THE SECOND PASS: a prop keeps 0.4 m off the outer walls, in front of the room's coat (R.liner); a catalogue `wall` piece hangs at its
+           `mount` (+ any `y`): give the height as `mount`, never as `y` (the tapestries, the cross, the shelf and the banner hung above the ceilings) */
+        R.put = (key, X, Y, dir, o) => { const m = 0.4; X = Math.min(W - m, Math.max(m, X)); Y = Math.min(D - m, Math.max(m, Y));
+            return propAt(fr, key, X - W / 2, Y - D / 2, R.face(dir || 's'), Object.assign({ floor: true }, o)); };   // `floor`: on the room's floor, never on a ghost wall's top (three-renderer.js THE FLOOR UNDER IT)   // `floor`: on the room's floor, never on a ghost wall's top (three-renderer.js THE FLOOR UNDER IT)
+        R.cell = (key, c, r, dir, o) => R.put(key, R.cx(c), R.cy(r), dir, o);
+        R.block = (c, r, nc, nr, w, d, h) => ghost(fr, R.lx(R.cx(c, nc)), R.lz(R.cy(r, nr)), w, d, h);
+        R.box = (X, y, Y, w, h, d, key, tint, o) => a.box(X - W / 2, y, Y - D / 2, w, h, d, key, tint, o);
+        R.cyl = (X, y, Y, r, h, key, tint, o) => a.cyl(X - W / 2, y, Y - D / 2, r, h, key, tint, Object.assign({ seg: 10 }, o));
+        /* THE SECOND PASS (mondo 11-13 22:33, "focus on aesthetic, vibe, atmosphere for the interiors"): the bare inside of a hollow texbuilding is
+           its keyIn sheet under a ceiling that faces down into the dark (the rooms read dim, the ceilings black). `R.liner` paints the room: a wall
+           coat 3 cm proud of the inside walls (they stand 0.30 m in) (the doorway cut where the texbuilding cuts it: data.js hqTexbDoor), a dado under it, and a lit
+           ceiling (its sheet glowing a little, the room's own light); `R.lamp` a lit ceiling fitting; `R.wq` a panel on a wall (side 'b' back,
+           'f' front, 'l' left = X 0, 'r' right = X W), X / Y the room's plan as above. Wall decor stands 0.4 m or more off a wall (in front of the coat). */
+        const door = (() => { const L = Math.max(2, W) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols; let col = Math.floor((cols - 1) / 2); if (row.door >= 1) col = Math.min(cols - 1, Math.round(row.door) - 1); return { lx: -L / 2 + (col + 0.5) * cw, cw }; })();
+        R.door = door; R.doorX = door.lx + W / 2;
+        R.liner = (wall, dado, ceil, o) => {
+            const e0 = 0.33, coat = (m, hh, y0, hole, e) => { if (!m) return;   // (the inside walls stand 0.30 m in: the face 0.06 + the wall 0.24)
+                a.quad(0, y0, -D / 2 + e, W - 2 * e, hh, 0, m.key, m.tint, { gain: m.gain, uv: m.uv });
+                a.quad(0, y0, D / 2 - e, W - 2 * e, hh, 180, m.key, m.tint, Object.assign({ gain: m.gain, uv: m.uv }, hole ? { hole: [-door.lx, door.cw + 0.04, hole] } : {}));
+                a.quad(-W / 2 + e, y0, 0, D - 2 * e, hh, 270, m.key, m.tint, { gain: m.gain, uv: m.uv });
+                a.quad(W / 2 - e, y0, 0, D - 2 * e, hh, 90, m.key, m.tint, { gain: m.gain, uv: m.uv }); };
+            const e = e0 + 0.015; coat(wall, R.H, 0, 2.24, e0); coat(dado, (o && o.dadoH) || 1.0, 0, 1.0, e);   // the dado 1.5 cm in front of the coat
+            if (dado) { const rail = { key: null, tint: (o && o.rail) || 0x4a3424 }, y = ((o && o.dadoH) || 1.0);                  // the dado rail
+                a.box(0, y, -D / 2 + e + 0.03, W - 2 * e, 0.06, 0.06, rail.key, rail.tint); a.box(-W / 2 + e + 0.03, y, 0, 0.06, 0.06, D - 2 * e, rail.key, rail.tint); a.box(W / 2 - e - 0.03, y, 0, 0.06, 0.06, D - 2 * e, rail.key, rail.tint);
+                [[-W / 2 + e, door.lx - door.cw / 2 - 0.02], [door.lx + door.cw / 2 + 0.02, W / 2 - e]].forEach(v => { if (v[1] - v[0] > 0.1) a.box((v[0] + v[1]) / 2, y, D / 2 - e - 0.03, v[1] - v[0], 0.06, 0.06, rail.key, rail.tint); }); }
+            if (ceil) a.box(0, R.H - 0.06, 0, W - 2 * e, 0.04, D - 2 * e, ceil.key, ceil.tint, { under: true, top: false, sides: false, roof: true, glow: ceil.glow == null ? 0.45 : ceil.glow, gain: ceil.gain });
+        };
+        R.lamp = (X, Y, w, d, tint, o) => { const y = (o && o.y) || R.H - 0.06; a.box(X - W / 2, y - 0.12, Y - D / 2, w + 0.12, 0.1, d + 0.12, null, (o && o.rim) || 0x3a3c40, { under: true });
+            return a.box(X - W / 2, y - 0.15, Y - D / 2, w, 0.04, d, null, tint || 0xfff0d0, { under: true, glow: 1 }); };
+        R.wq = (side, X, Y, y, w, h, key, tint, o) => { const p = side === 'b' ? [X, 0.37] : side === 'f' ? [X, D - 0.37] : side === 'l' ? [0.37, Y] : [W - 0.37, Y], ry = { b: 0, f: 180, l: 270, r: 90 }[side];
+            return a.quad(R.lx(p[0]), y, R.lz(p[1]), w, h, ry, key, tint, Object.assign({ uv: 'fit' }, o)); };
+        fn(R);
+        if (a.P.length) out.push({ k: 'arch', id: 'dc:' + id + '-in', x: fr.x, z: fr.z, y: 0, rot: fr.rot, parts: a.P });
+        made.rooms = (made.rooms || 0) + 1;
+    };
+    /* a shop counter: a body, a top a hand proud */
+    const counter = (R, X, Y, w, d, key, tint, topTint) => { R.box(X, 0, Y, w, 0.95, d, key, tint); R.box(X, 0.95, Y, w + 0.1, 0.06, d + 0.12, 'urban:TileMarble1a', topTint || 0xe8e4dc); };
+
+    /* THE CHURCH, 5 x 5 squares from (1, 1): the aisle up the middle column, a cross walk before the altar, two side aisles */
+    inside('P00-00-B1', 1, 1, R => {
+        const mid = R.cx(2);
+        R.box(R.cx(0, 5), 0, R.cy(0), 17.5, 0.05, 3.5, K.stone, 0xd8d0bc);                                   // the chancel: a stone floor, the same height
+        R.box(mid, 0, R.cy(1, 4) + 0.5, 1.5, 0.07, 14.5, K.plaster, 0x9c2c2c);                              // the carpet up the aisle
+        R.box(mid, 0, R.cy(1, 4) + 0.5, 1.7, 0.06, 14.7, K.plaster, 0xd8b868);
+        [1, 3].forEach(c => { for (let r = 2; r <= 4; r++) [-0.9, 0.9].forEach((dy, i) => R.put(i ? 'church_pew' : 'catholic_pew', R.cx(c), R.cy(r) + dy, 'n')); R.block(c, 2, 1, 3, 3.2, 10, 1.1); });   // the pews face the altar: two a square
+        R.cell('stone_altar', 2, 0, 's'); R.put('candle', mid - 0.7, R.cy(0), 's', { y: 1.0 }); R.put('candle', mid + 0.7, R.cy(0), 's', { y: 1.0 });
+        R.cell('church_podium', 0, 0, 's'); R.cell('decor_piano', 4, 0, 'w'); R.block(4, 0, 1, 1, 2.2, 1.8, 1.3);
+        R.put('wooden_cross', mid, 0.4, 's', { mount: 2.3 });
+        [12.6, 13.2, 13.8, 14.4, 15.0].forEach((X, i) => R.put('decor_organ_pipe_white', X, 0.35, 's', { h: 3 + (i % 3) * 0.5 }));   // the organ pipes on the back wall
+        R.put('angel_statue', 0.55, 19.3, 'e'); R.put('angel_statue', 17.95, 19.3, 'w');                     // in the door corners (the front strip)
+        [[0.12, 'e'], [18.38, 'w']].forEach(v => [6.25, 13.25].forEach(Y => R.put('holy_tapestry', v[0], Y, v[1], { mount: 1.5, h: 4.2 })));
+        [5, 14.5].forEach(Y => R.put('psx_ceiling_lamp_1_on', mid, Y, 's', { y: R.H - 0.2 }));
+        /* THE SECOND PASS: warm limewash over a dark oak dado, a timber ceiling on dark beams, the side windows lit from outside, candlelight */
+        R.liner({ key: K.stucco, tint: 0xf0e2c4, gain: 1.45 }, { key: K.wood, tint: 0x6a4630, gain: 1.35 }, { key: K.wood, tint: 0xc89c68, gain: 1.25, glow: 0.3 }, { dadoH: 1.2, rail: 0x3c2818 });
+        R.box(R.W / 2, R.H - 0.42, 3.5, R.W - 0.6, 0.36, 0.3, K.wood, 0x4a3020, { n: 5, step: [0, 0, 3.5] });                       // the ceiling beams, one on each square line
+        [2.2, 17.6].forEach(Y => { R.wq('l', 0, Y, 1.4, 1.1, 3.4, K.winT, 0xc9a8ff, { glow: 0.65 }); R.wq('r', 0, Y, 1.4, 1.1, 3.4, K.winT, 0xc9a8ff, { glow: 0.65 }); });   // the nave windows, lit
+        R.put('stained_glass', 0.45, 9.75, 'e', { mount: 1.9, h: 3.0 }); R.put('stained_glass', 18.05, 9.75, 'w', { mount: 1.9, h: 3.0 });   // between the hangings
+        R.put('candelabra', mid - 2.3, 1.75, 's'); R.put('candelabra', mid + 2.3, 1.75, 's');                                         // either side of the altar, off its squares' middles
+        R.put('votive_stand', 0.68, 4.0, 'e'); R.put('votive_stand', 0.68, 15.6, 'e');                                                // in the side strip, on the wall
+        R.lamp(mid, R.cy(0), 1.0, 1.0, 0xffe2b0); [R.cx(1), R.cx(3)].forEach(X => [7.0, 12.25].forEach(Y => R.lamp(X, Y, 0.7, 0.7, 0xffe2b0)));
+        R.box(mid, 0.05, R.cy(0), 3.2, 0.03, 2.2, K.plaster, 0x8c2424);                                                             // a red runner before the altar
+    });
+
+    /* THE BAKERY, 3 x 5 squares: the bakehouse (rows 0-1) behind a wall, the shop (rows 2-4); the way runs door > middle column > right column > the doorway */
+    inside('P01-00-B2', 0, 0, R => {
+        R.box(3.5, 0, 7, 7, R.H, 0.2, K.stucco, 0xf0e4d0); ghost(R.fr, R.lx(3.5), R.lz(7), 7, 0.3, R.H);     // the wall, its doorway the right column's square
+        counter(R, 5.2, R.cy(2), 3.4, 0.9, K.wood, 0xb88858); R.block(0, 2, 2, 1, 6.8, 1.1, 1.1);                                  // THE SECOND PASS: the counter's left half is the
+        R.put('pastry_case', R.cx(0) - 0.05, R.cy(2), 's', { span: 1.9 });                                                         // pastry case (University's Meshy model), cakes to the shop
+        R.put('cash_register', 5.9, R.cy(2), 's', { y: 1.01 });
+        R.put('psx_display_cabinet_mp_1', R.cx(0), R.cy(3) - 0.5, 'e'); R.put('psx_display_cabinet_mp_1', R.cx(0), R.cy(3) + 0.5, 'e'); R.block(0, 3, 1, 1, 1.0, 2.2, 2.1);   // the bread cabinets, side by side, their glass to the way (THE SECOND PASS: they stood one behind the other, the first one's glass at the second one's back)
+        [[0, 4], [2, 4]].forEach(v => { R.cell('tulip_table', v[0], v[1], 's'); R.put('tulip_chair', R.cx(v[0]) - 0.95, R.cy(v[1]), 'e'); R.put('tulip_chair', R.cx(v[0]) + 0.95, R.cy(v[1]), 'w'); });
+        [1.2, 2.3, 3.4, 4.5].forEach(X => R.put('wall_shelf', X, 7.24, 's', { mount: 1.7 }));
+        R.put('kitchen_range', R.cx(0, 2) - 0.85, R.cy(0), 's'); R.put('kitchen_range', R.cx(0, 2) + 0.85, R.cy(0), 's'); R.block(0, 0, 2, 1, 3.4, 1.2, 1.2);   // the two ovens
+        R.cell('steel_table', 0, 1, 's'); R.put('pot_rack', R.cx(0), R.cy(1), 's', { y: 2.3 });
+        R.put('sink', R.cx(2) - 0.6, R.cy(0), 's'); R.put('round_fridge', R.cx(2) + 0.6, R.cy(0), 's'); R.block(2, 0, 1, 1, 2.4, 1.2, 1.2);
+        R.put('metal_shelving', 10.2, 5.25, 'w'); R.put('psx_supply_crate_1', 6.4, 6.5, 's'); R.put('psx_supply_crate_1_1', 5.9, 6.55, 's');
+        [[5.25, 3.5], [5.25, 12.25]].forEach(v => R.put('psx_ceiling_lamp_1_on', v[0], v[1], 's', { y: R.H - 0.2 }));
+        /* THE SECOND PASS: butter-yellow walls over white subway tile, a bright tiled ceiling, flour sacks, the pots on the bench, a menu board, warm pendants */
+        R.liner({ key: K.plaster, tint: 0xf6dc9c, gain: 1.5 }, { key: 'urban:TileGeneric1a', tint: 0xfff8ec, gain: 1.45 }, { key: 'urban:FibreCeilingTile1a', tint: 0xfff2dc, gain: 1.4, glow: 0.5 }, { dadoH: 1.35, rail: 0x7c4a2c });
+        [[0.75, 6.35, 0], [1.45, 6.45, 1], [0.7, 5.6, 2]].forEach(v => R.put('meshy_burlap_sack', v[0], v[1], 's', { face: [10, 200, 95][v[2]], h: 0.7 }));   // flour, in the bakehouse corner
+        R.put('stock_pots', R.cx(0), R.cy(1), 's', { y: 0.78 });
+        R.put('bread_rack', 5.95, 7.45, 's', { h: 1.9 });                                                                           // behind the counter, on the bakehouse wall (Entertainment's model)
+        R.put('chalkboard', 10.0, 12.0, 'w', { mount: 1.3 });                                                                            // the menu, on the shop's wall
+        R.put('wall_clock', 3.5, 7.4, 's', { mount: 2.2 });
+        [R.cx(0), R.cx(2)].forEach(X => R.lamp(X, R.cy(4), 0.6, 0.6, 0xffd9a0)); R.lamp(R.cx(1), R.cy(2), 2.4, 0.4, 0xfff0d0);
+        R.box(R.cx(1), 0.05, R.cy(3, 2), 3.3, 0.02, 6.8, 'urban:TileGeneric3a', 0xe8d8c0);                                          // the shop floor, a warmer tile up the way
+    });
+
+    /* THE BOXING GYM, 5 x 5 squares: the ring on 2 x 2 squares, a bag a square down the left wall, the weights in the back right corner */
+    inside('P03-00-B1', 0, 0, R => {
+        const rx = R.cx(1, 2), ry = R.cy(1, 2), RD = 0xb02828, BL = 0x2c4c9c;
+        R.put('boxing_ring', rx, ry, 's');                                                                                  // THE SECOND PASS: the ring is a model now (Meshy, 2 x 2 squares)
+        R.block(1, 1, 2, 2, 6.7, 6.7, 2.4);
+        for (let r = 1; r <= 3; r++) { const X = R.cx(0), Y = R.cy(r);                                                      // the heavy bags, each on a bracket off the wall
+            R.box(X / 2 + 0.2, 3.25, Y, X - 0.4, 0.12, 0.12, K.metal, 0x40444c); R.box(0.42, 2.6, Y, 0.12, 0.8, 0.5, K.metal, 0x40444c); R.box(X, 2.1, Y, 0.03, 1.15, 0.03, null, 0x808890);
+            R.put('punching_bag', X, Y, ['e', 'n', 'e'][r - 1], { y: 0.95 }); R.block(0, r, 1, 1, 0.7, 0.7, 2.2); }              // THE SECOND PASS: the bag is a model, its chains up to the bracket
+        R.put('locker', 1.75 - 0.7, R.cy(0), 's'); R.put('locker', 1.75, R.cy(0), 's'); R.put('locker', 1.75 + 0.7, R.cy(0), 's'); R.put('locker', 5.25 - 0.7, R.cy(0), 's'); R.put('locker', 5.25, R.cy(0), 's'); R.put('locker', 5.25 + 0.7, R.cy(0), 's');
+        R.block(0, 0, 2, 1, 6.2, 0.8, 1.9);
+        R.put('dumbbell_rack', R.cx(4), R.cy(0), 's'); R.block(4, 0, 1, 1, 2.7, 0.9, 1.3);                                   // THE SECOND PASS: the rack and the bench press are models
+        R.put('weight_bench', R.cx(4), R.cy(1), 's'); R.block(4, 1, 1, 1, 2.2, 1.9, 1.2);
+        R.cell('steel_table', 4, 4, 'w'); [15.2, 15.75, 16.3].forEach(X => R.put('decor_trophy_cup', X, 16.95, 'n', { y: 1.5 })); R.box(15.75, 1.45, 16.97, 1.8, 0.05, 0.3, K.wood, 0x8c6844);   // the front desk, the trophy shelf
+        R.wq('r', 0, 8.75, 0.5, 6, 2.2, 'urban:GlassWindowSquare1a', 0xcfe0e8, { glow: 0.15 });                              // the mirror wall (on the coat: it stood inside the wall, facing out)
+        [5.1, 5.9, 8.1, 8.9].forEach(X => R.put('folding_chair', X, 10.9, 'n'));                                             // ringside, tight to the ring
+        R.put('meshy_water_cooler', 0.4, 17.1, 'e'); [14.6, 16.2].forEach((Y, i) => R.put('metro_poster_' + (i + 2), 0.1, Y, 'e', { y: 1.4 }));
+        [[12.25, 5], [12.25, 12.25], [5.25, 15.75]].forEach(v => R.put('psx_ceiling_lamp_1_on', v[0], v[1], 's', { y: R.H - 0.2 }));
+        /* THE SECOND PASS: bare brick over an oxblood band, a tin ceiling on steel beams, a light rig over the ring, the speed bags, the gloves on their hooks */
+        R.liner(null, { key: K.plaster, tint: 0x7a2420, gain: 1.25 }, { key: K.metal, tint: 0xa8acb0, gain: 1.3, glow: 0.3 }, { dadoH: 1.4, rail: 0x1c1c20 });
+        R.box(R.W / 2, R.H - 0.5, 5.25, R.W - 0.6, 0.44, 0.22, K.metal, 0x30343a, { n: 3, step: [0, 0, 3.5] });                     // the steel beams
+        { const y = 4.6; [-3.2, 3.2].forEach(s => { R.box(rx + s, y, ry, 0.12, 0.12, 6.5, null, 0x202226); R.box(rx, y, ry + s, 6.5, 0.12, 0.12, null, 0x202226); });   // the light rig over the ring, on its chains
+            [[-2.3, -2.3], [2.3, -2.3], [-2.3, 2.3], [2.3, 2.3]].forEach(v => { R.box(rx + v[0], y + 0.12, ry + v[1], 0.02, R.H - y - 0.2, 0.02, null, 0x808488); });
+            [-3.2, 3.2].forEach(s => { R.lamp(rx + s, ry, 0.3, 4.2, 0xfff6e8, { y: y - 0.02, rim: 0x202226 }); R.lamp(rx, ry + s, 4.2, 0.3, 0xfff6e8, { y: y - 0.02, rim: 0x202226 }); }); }
+        [7.6, 10.4].forEach(X => R.put('speed_bag', X, 0.68, 's', { y: 1.25 }));                                               // on the back wall between the lockers and the rack
+        R.put('boxing_gloves', 0.45, R.cy(4) - 0.6, 'e', { y: 1.45 }); R.put('boxing_gloves', 9.0, 0.4, 's', { y: 2.35 }); R.put('boxing_gloves', 17.05, 15.0, 'w', { y: 1.6 });
+        R.wq('b', 9.0, 0, 3.0, 6.0, 0.8, 'txt:BOXING|#f4ead8|#7a2420|7.5', 0xffffff, { glow: 0.25 });                                 // the trade's word, high on the back wall
+        R.box(R.cx(4), 0.05, R.cy(0, 2), 3.3, 0.03, 6.8, 'urban:RubberNonSlip1a', 0x40444a, { gain: 1.2 });                          // rubber under the weights
+        [[R.cx(0), 8.75], [R.cx(4) - 0.6, 12.25], [8.75, 15.75]].forEach(v => R.lamp(v[0], v[1], 2.0, 0.3, 0xf4f8ff));
+    });
+
+    /* THE PAWNSHOP, 5 x 3 squares: the barred counter across the middle row, the last square the way through */
+    inside('P02-03-B1', 0, 0, R => {
+        const cx = R.cx(0, 4), cy = R.cy(1);
+        counter(R, cx, cy, 13.6, 0.9, K.wood, 0x7c5838, 0x3c3c40); R.cyl(0.3, 1.0, cy - 0.3, 0.02, 1.5, null, 0x30343c, { n: 68, step: [0.2, 0, 0], seg: 5 }); R.box(cx, 2.5, cy - 0.3, 13.6, 0.06, 0.06, null, 0x30343c);
+        R.block(0, 1, 4, 1, 13.8, 1.1, 2.6); R.put('cash_register', 6.0, cy + 0.05, 's', { y: 1.02 });
+        R.cell('round_cabinet', 0, 0, 's');
+        [4.6, 6.6, 8.6, 10.6, 12.6].forEach((X, i) => R.put('psx_shelf_mp_' + [2, 3, 5, 6, 7][i], X, 0.3, 's'));           // the stock on the back wall
+        R.put('psx_display_cabinet_mp_2', R.cx(0), R.cy(2) - 0.68, 'e'); R.put('psx_display_cabinet_mp_2', R.cx(0), R.cy(2) + 0.68, 'e'); R.block(0, 2, 1, 1, 1.0, 2.8, 2.2);   // THE SECOND PASS: side by side, glass to the shop floor (they stood one behind the other)
+        [7.6, 8.4, 9.2].forEach(Y => R.put('instrument_guitar', 17.3, Y, 'w', { y: 1.2 }));
+        R.put('meshy_tube_tv', 16.9, 0.5, 's'); R.put('tube_tv', 16.9, 0.5, 's', { y: 0.56 }); R.put('retro_radio', 16.2, 0.4, 's');
+        R.put('psx_armchair_1', 16.7, 9.8, 'w'); R.put('psx_painting_1', 2.6, 10.3, 'n', { y: 1.6 }); R.put('clock', 4.4, 10.3, 'n', { y: 1.8 });
+        [[8.75, 1.75], [8.75, 8.75]].forEach(v => R.put('psx_ceiling_lamp_1_on', v[0], v[1], 's', { y: R.H - 0.2 }));
+        /* THE SECOND PASS: bottle-green walls over a dark wood dado, a pressed-tin ceiling, a jewellery case on the shop floor, the trade's words in neon */
+        R.liner({ key: K.plaster, tint: 0x46705a, gain: 1.25 }, { key: K.wood, tint: 0x5a3c28, gain: 1.3 }, { key: 'urban:TileGeneric3a', tint: 0xe0d0a8, gain: 1.3, glow: 0.35 }, { dadoH: 1.1, rail: 0xb08840 });
+        R.cell('jewelry_case', 1, 2, 's'); R.block(1, 2, 1, 1, 1.7, 0.9, 1.0);                                                       // the way through stays the door's row and the last column
+        R.wq('b', 4.2, 0, 3.1, 3.2, 0.7, 'txt:WE BUY GOLD|#ffd040||4.6', 0xffffff, { glow: 1, kind: 'over' });
+        R.wq('b', 13.3, 0, 3.1, 2.6, 0.75, 'txt:PAWN|#ff5068||3.5', 0xffffff, { glow: 1, kind: 'over' });
+        [4.6, 8.6, 12.6].forEach(X => R.lamp(X, 1.2, 1.2, 0.25, 0xfff0c8));                                                       // over the stock
+        [R.cx(1), R.cx(3)].forEach(X => R.lamp(X, R.cy(2), 0.6, 0.6, 0xffe2a8));
+    });
+
+    /* THE COMMUNITY KITCHEN, 8 x 3 squares: the hall (5 tables, a table a square), the serving line, the kitchen; the middle row is the walkway */
+    inside('P00-01-B1', 0, 0, R => {
+        [[0, 0], [2, 0], [4, 0], [0, 2], [4, 2]].forEach(v => { R.cell('psx_table_large_2', v[0], v[1], 's'); [-0.9, 0, 0.9].forEach(dx => { R.put('cafeteria_chair', R.cx(v[0]) + dx, R.cy(v[1]) - 0.85, 's'); R.put('cafeteria_chair', R.cx(v[0]) + dx, R.cy(v[1]) + 0.85, 'n'); }); R.block(v[0], v[1], 1, 1, 3.0, 2.4, 1.0); });
+        R.put('steam_table', R.cx(5), R.cy(0), 'w'); R.put('steam_table', R.cx(5), R.cy(1), 'w'); R.block(5, 0, 1, 2, 1.4, 6.6, 1.2);   // THE SECOND PASS: the serving line is two steam tables (models)
+        R.put('kitchen_range', R.cx(6, 2) - 0.85, R.cy(0), 's'); R.put('kitchen_range', R.cx(6, 2) + 0.85, R.cy(0), 's'); R.block(6, 0, 2, 1, 3.4, 1.2, 1.2); R.put('pot_rack', R.cx(6, 2), R.cy(0) + 0.5, 's', { y: 2.3 });
+        R.cell('sink_row', 7, 1, 'w');
+        R.put('round_fridge', R.cx(7) - 0.6, R.cy(2), 'n'); R.put('round_fridge', R.cx(7) + 0.6, R.cy(2), 'n'); R.block(7, 2, 1, 1, 2.4, 1.2, 1.2);
+        R.put('metal_shelving', 22.75, 10.2, 'n'); [22.2, 22.5, 22.8, 23.1].forEach((X, i) => R.put('psx_canned_food_mp_' + (1 + i % 4), X, 10.2, 'n', { y: 1.0 }));
+        R.put('mop_bucket', 27.5, 9.9, 'w'); R.put('chalkboard', 11.4, 10.38, 'n', { y: 0.95 }); R.put('meshy_water_cooler', 3.9, 10.1, 'n'); R.put('mall_bin', 13.6, 10.1, 'n');
+        [5.25, 12.25, 22.75].forEach(X => R.put('psx_ceiling_lamp_1_on', X, 5.25, 's', { y: R.H - 0.2 }));
+        /* THE SECOND PASS: warm mustard walls over pale tile, a bright tiled ceiling, the pots on the range, the day's word over the line */
+        R.liner({ key: K.plaster, tint: 0xf0d48c, gain: 1.5 }, { key: 'urban:TileGeneric1a', tint: 0xdcecf0, gain: 1.4 }, { key: 'urban:FibreCeilingTile1a', tint: 0xffffff, gain: 1.4, glow: 0.5 }, { dadoH: 1.3, rail: 0x7c4a2c });
+        R.put('stock_pots', R.cx(6, 2) - 0.85, R.cy(0) - 0.1, 's', { y: 0.92 }); R.put('stock_pots', R.cx(6, 2) + 0.85, R.cy(0) - 0.1, 's', { y: 0.92, face: 200 });
+        R.wq('b', R.cx(5), 0, 1.9, 3.2, 0.65, 'txt:HOT MEALS|#3c2a1a|#f4e8c8|4.9', 0xffffff, { glow: 0.3 });
+        [R.cx(0), R.cx(2), R.cx(4)].forEach(X => [R.cy(0), R.cy(2)].forEach(Y => { if (X === R.cx(2) && Y === R.cy(2)) return; R.lamp(X, Y, 1.6, 0.35, 0xfff2d8); }));
+        R.lamp(R.cx(6, 2), R.cy(1), 2.6, 0.3, 0xf4f8ff);
+    });
+
+    /* THE DOJO, 9 x 3 squares: the mat on 5 x 2 squares (walked), the shrine at the west end, the drum and the posts at the east end */
+    inside('P03-01-B1', 0, 0, R => {
+        const mx = R.cx(2, 5), my = R.cy(0, 2);
+        R.box(mx, 0, my, 17.5, 0.06, 7, K.stucco, 0xcdbf82); R.box(R.cx(2) - 1.75, 0, my, 0.05, 0.07, 7, null, 0x3c4a2c, { n: 11, step: [1.75, 0, 0] }); R.box(mx, 0, my - 3.5, 17.5, 0.07, 0.05, null, 0x3c4a2c, { n: 3, step: [0, 0, 3.5] });   // the mat, its seams on the squares
+        R.cell('stone_altar', 0, 1, 'e'); R.put('candle', R.cx(0) - 0.2, R.cy(1) - 0.5, 'e', { y: 1.0 }); R.put('candle', R.cx(0) - 0.2, R.cy(1) + 0.5, 'e', { y: 1.0 });
+        R.put('holy_tapestry', 0.12, R.cy(1), 'e', { mount: 0.55, h: 2.4 }); R.put('potted_plant', 0.45, 10.0, 'e'); R.put('potted_plant', 0.45, 0.5, 'e');
+        [9, 10.2, 11.4, 12.6].forEach(X => R.put('psx_sword_mp_1', X, 0.14, 's', { y: 1.6 })); R.box(10.8, 1.5, 0.42, 4.6, 0.08, 0.1, K.wood, 0x5c3c24);   // the sword rack
+        R.put('banner', 18.4, 0.14, 's', { mount: 0.5, h: 2.4 });
+        R.cell('instrument_drum', 8, 0, 'w', { h: 1.5 }); R.box(R.cx(8), 0, R.cy(0), 1.6, 0.5, 1.2, K.wood, 0x5c3c24); R.block(8, 0, 1, 1, 2.0, 2.0, 1.8);
+        [[7, 0], [8, 1]].forEach(v => { R.cell('wing_chun_dummy', v[0], v[1], 'w'); R.block(v[0], v[1], 1, 1, 1.0, 1.0, 1.8); });   // THE SECOND PASS: the striking posts are wooden dummies (models)
+        R.cell('psx_shelf_mp_4_1', 3, 2, 'n'); R.block(3, 2, 1, 1, 2.6, 0.8, 1.2); { const X = R.cx(5), Y = R.cy(2); R.box(X, 0.4, Y, 2.8, 0.07, 0.45, K.wood, 0x8c6844); [-1.2, 1.2].forEach(s => R.box(X + s, 0, Y, 0.08, 0.4, 0.4, K.wood, 0x5c3c24)); R.block(5, 2, 1, 1, 2.9, 0.6, 0.6); }   // a plain wooden bench
+        R.cell('coffee_table', 8, 2, 's'); R.put('teapot', R.cx(8), R.cy(2), 's', { y: 0.47, h: 0.25 }); R.block(8, 2, 1, 1, 1.2, 1.2, 0.6);
+        [10.5, 15.75, 21].forEach(X => R.put('meshy_hanging_lantern', X, 3.5, 's', { y: 2.5 }));
+        /* THE SECOND PASS: paper-white walls in a dark timber frame, a plank ceiling on beams, the taiko by the door, the practice weapons racked, warm paper lights */
+        R.liner({ key: K.plaster, tint: 0xf4ecd8, gain: 1.45 }, { key: K.wood, tint: 0x5c3c24, gain: 1.3 }, { key: K.wood, tint: 0xb89062, gain: 1.25, glow: 0.35 }, { dadoH: 0.9, rail: 0x2c1c10 });
+        for (let i = 1; i < 9; i++) { const X = i * 3.5; R.box(X, 0, 0.36, 0.2, R.H, 0.12, K.wood, 0x4a3020); if (Math.abs(X - R.doorX) > 1.2) R.box(X, 0, R.D - 0.36, 0.2, R.H, 0.12, K.wood, 0x4a3020); }   // the posts of the frame, on the square lines
+        R.box(R.W / 2, 2.3, 0.33, R.W - 0.6, 0.12, 0.08, K.wood, 0x4a3020); R.box(R.W / 2, R.H - 0.34, 5.25, R.W - 0.6, 0.28, 0.24, K.wood, 0x4a3020, { n: 1 });   // the head rail, the ridge beam
+        R.cell('taiko_drum', 6, 2, 'n'); R.block(6, 2, 1, 1, 1.4, 1.4, 1.3);                                                       // the taiko, by the door; (7, 2) is reached from the mat
+        R.put('dojo_weapon_rack', R.cx(1), R.D - 0.62, 'n'); R.put('dojo_weapon_rack', R.cx(7) + 0.7, R.D - 0.62, 'n');
+        [R.cx(2, 5) - 5.25, R.cx(2, 5) + 5.25].forEach(X => R.lamp(X, R.cy(1), 1.1, 1.1, 0xffe4b8));
+        [R.cx(2) + 1.75, R.cx(4) - 1.75, R.cx(4) + 1.75, R.cx(6) - 1.75].forEach((X, i) => R.put('paper_lantern', X, R.cy(1) + (i % 2 ? 1.2 : -1.2), 's', { y: 2.35, h: 0.6 }));   // paper lanterns over the mat's seams (Entertainment's model) R.lamp(R.cx(0), R.cy(1), 0.8, 0.8, 0xffd8a0); R.lamp(R.cx(8), R.cy(1), 0.8, 0.8, 0xffd8a0);
+    });
+
+    /* THE GARAGE, 8 x 6 squares from (0, 1): three cars, each a square wide and two long, the workbenches in the back strip, the office on 2 x 2 squares */
+    inside('P02-02-B1', 0, 1, R => {
+        const DK = 0x30343c, YL = 0xd8a020;
+        { const X = R.cx(1), Y = R.cy(0, 2);                                                                                // the two-post lift (THE SECOND PASS: a model), a car up on its arms
+            R.put('car_lift', X, Y, 's'); R.put('car_pack_2', X, Y, 's', { y: 1.0, floor: false }); R.block(1, 0, 1, 2, 3.2, 5.2, 0.98); }   // a car stands on what is under it: the block's top is the height the lift's arms hold it at
+        R.put('car_pack_3', R.cx(3), R.cy(0, 2), 's'); R.put('crashed_car', R.cx(5), R.cy(0, 2), 's');
+        for (let i = 0; i < 4; i++) { const X = 3.3 + i * 4.7; R.box(X, 0, 0.5, 4.4, 0.85, 0.8, K.metal, 0x687078); R.box(X, 0.85, 0.5, 4.5, 0.05, 0.9, K.wood, 0x8c6844); }   // the workbenches in the back strip
+        R.put('psx_car_battery_1', 2.2, 0.5, 's', { y: 0.92 }); R.put('psx_hand_saw_1', 6.6, 0.5, 's', { y: 0.92 }); R.put('psx_screwdriver_mp_1', 8.2, 0.5, 's', { y: 0.92 }); R.put('psx_car_battery_1', 12.4, 0.5, 's', { y: 0.92 }); R.put('psx_jerrycan_1', 16.8, 0.5, 's', { y: 0.92 });
+        ghost(R.fr, R.lx(10.35), R.lz(0.5), 19, 0.95, 1.0);
+        { const X = R.cx(7), Y = R.cy(0); [[-0.5, -0.5, 1.12, 20], [0.5, -0.5, 0.9, 140], [-0.5, 0.5, 0.68, 75], [0.5, 0.5, 1.12, 300]].forEach(v => R.put('tire_stack', X + v[0], Y + v[1], 's', { h: v[2], face: v[3] })); R.block(7, 0, 1, 1, 2.2, 2.2, 1.2); }   // the tyre stacks (THE SECOND PASS: models)
+        [[-0.5, -0.4, 1], [0.5, -0.4, 2], [0, 0.5, 3]].forEach(v => R.put('psx_metal_barrel_mp_' + v[2], R.cx(0) + v[0], R.cy(3) + v[1], 's')); R.block(0, 3, 1, 1, 2.0, 2.0, 1.1);
+        [[-0.6, -0.5, 'psx_wooden_crate_2'], [0.6, -0.5, 'psx_wooden_crate_3'], [0, 0.6, 'psx_wooden_crate_4']].forEach(v => R.put(v[2], R.cx(0) + v[0], R.cy(4) + v[1], 's')); R.block(0, 4, 1, 1, 2.4, 2.4, 1.0);
+        R.cell('metro_bench', 1, 5, 'n'); R.cell('vending_machine', 5, 5, 'n'); R.block(5, 5, 1, 1, 1.2, 1.0, 1.9);
+        R.put('metal_shelving', 0.3, 9.75, 'e'); R.put('psx_jerrycan_1', 0.3, 9.4, 'e', { y: 1.0 }); R.put('psx_jerrycan_1_1', 0.3, 10.1, 'e', { y: 1.0 }); R.put('breaker_panel', 27.85, 8, 'w', { y: 1.25 });
+        R.box(24.5, 0, 15, 7, 2.9, 0.2, K.plaster, 0xd8d0c0); ghost(R.fr, R.lx(24.5), R.lz(15), 7, 0.3, 2.9);              // the office: its north wall, its west wall by the door's row
+        R.box(21, 0, 20.25, 0.2, 2.9, 3.5, K.plaster, 0xd8d0c0); ghost(R.fr, R.lx(21), R.lz(20.25), 0.3, 3.5, 2.9);
+        R.a.quad(R.lx(24.5), 1.0, R.lz(14.88), 3, 1.3, 180, K.winS, 0xcfe0e8, { uv: 'fit' });
+        R.cell('exec_desk', 7, 4, 'w'); R.put('office_chair', R.cx(7) + 0.95, R.cy(4), 'w'); R.put('cash_register', R.cx(7), R.cy(4) - 0.7, 'w', { y: 0.78 }); R.put('filing_cabinet', 27.6, 21.5, 'w'); R.put('punch_clock', 21.2, 20.25, 'e', { y: 1.3 });
+        [[5.25, 11], [12.25, 4.5], [19.25, 11], [12.25, 18.75], [24.5, 18.5]].forEach(v => R.put('psx_ceiling_lamp_1_on', v[0], v[1], 's', { y: v[0] > 22 ? 2.7 : R.H - 0.2 }));
+        /* THE SECOND PASS: pale walls over a blue band, a lit tin ceiling, yellow bay lines, the tool chests, the engine crane by the wreck, strip lights on chains */
+        R.liner({ key: K.plaster, tint: 0xdcdcd0, gain: 1.35 }, { key: K.plaster, tint: 0x2c5a80, gain: 1.3 }, { key: K.metal, tint: 0xb8bcc0, gain: 1.3, glow: 0.35 }, { dadoH: 1.2, rail: 0xd8a020 });
+        [3.5, 7, 10.5, 14, 17.5, 21].forEach(X => R.box(X, 0, R.cy(0, 2), 0.12, 0.06, 6.6, null, YL));                               // the bay lines, on the square lines
+        R.box(R.cx(0, 7), 0, 8.0, 24.4, 0.06, 0.12, null, YL);
+        R.put('tool_chest', 20.4, 0.55, 's'); R.put('tool_chest', 21.25, 0.55, 's');                                                // in the back strip, past the benches
+        R.cell('engine_hoist', 7, 1, 'w'); R.block(7, 1, 1, 1, 1.6, 2.2, 2.0);                                                        // beside the wreck's bay; col 6 and the rows under stay the way to the office
+        R.put('metro_poster_4', 0.4, 5.0, 'e', { y: 1.6 }); R.put('wall_clock', 12.25, 0.4, 's', { mount: 3.2 });
+        [[R.cx(1), 4.75], [R.cx(3), 4.75], [R.cx(5), 4.75], [R.cx(2), 12.5], [R.cx(4), 12.5], [R.cx(6), 9.5]].forEach(v => { R.lamp(v[0], v[1], 0.3, 2.6, 0xf2f8ff, { y: 5.2, rim: 0x505458 }); R.box(v[0], 5.2, v[1] - 1.0, 0.02, R.H - 5.2, 0.02, null, 0x707478); R.box(v[0], 5.2, v[1] + 1.0, 0.02, R.H - 5.2, 0.02, null, 0x707478); });
+    });
+
+    /* ════════ THE BEDROOMS (11-14; mondo picked "District threads add them" 02:21 on the residents thread's card; brief: project files
+       disaster-city-residents/bedrooms-brief.md). The four Southside homes open as walk-ins, each with its bedrooms on the GROUND floor under a
+       ceiling of its own (`R.H` a storey, the house above stays shut). Southside has no other home that can open (the townhouses and the walk-up
+       flats are roof walks, the homes row is pack houses), so their five residents move in here: the Ki fighter + the Swordfighter to the row
+       house, the Cult leader to the tenement, the Gangster + the Homosapien to apartments A. One bed a sleeper (the residents' code takes any
+       /bed|cot/ prop inside the home at ground level). THE SQUARES: a bed / desk / sofa / tv stand centred on its square on a ghost; the
+       partitions on the square lines, a doorway a whole square; bedside tables, lamps, rugs, candles free decor. ════════ */
+    /* a partition from (x0, y0) to (x1, y1) on a square line, the doorways `gaps` ([from, to] along it) left open: a wall part + its ghost */
+    const part = (R, x0, y0, x1, y1, gaps, tint) => {
+        const alongX = Math.abs(y1 - y0) < 0.01, a0 = alongX ? x0 : y0, a1 = alongX ? x1 : y1, cuts = [[a0, a0]].concat((gaps || []).slice().sort((p, q) => p[0] - q[0]), [[a1, a1]]);
+        for (let i = 0; i < cuts.length - 1; i++) { const s0 = cuts[i][1], s1 = cuts[i + 1][0]; if (s1 - s0 < 0.05) continue;
+            const m = (s0 + s1) / 2, L = s1 - s0, X = alongX ? m : x0, Y = alongX ? y0 : m, w = alongX ? L : 0.14, d = alongX ? 0.14 : L;
+            R.box(X, 0, Y, w, R.H, d, K.plaster, tint, { gain: 1.4 }); R.box(X, 0, Y, w + (alongX ? 0 : 0.03), 0.12, d + (alongX ? 0.03 : 0), K.wood, 0x4a3424);   // the wall, its skirting
+            ghost(R.fr, R.lx(X), R.lz(Y), Math.max(w, 0.2), Math.max(d, 0.2), R.H); }
+    };
+    const bed = (R, key, c, r, dir) => { R.cell(key, c, r, dir); R.block(c, r, 1, 1, dir === 'e' || dir === 'w' ? 1.6 : 2.8, dir === 'e' || dir === 'w' ? 2.8 : 1.6, 0.9); };   // the long side along the wall
+    const bedside = (R, X, Y, dir, top) => { R.put('psx_bedside_table_1', X, Y, dir); if (top) R.put(top, X, Y, dir, { y: 0.64 }); };
+    const check = (R, id, col) => { const c = Math.floor(R.doorX / SQ); if (c !== col) throw new Error('southside bedrooms: ' + id + ' door in column ' + c + ', the plan wants ' + col); };
+
+    /* APARTMENTS A, 8 x 4 squares: three bedrooms at the back (the Priest; the Gangster; the Homosapien), the hall across row 2, the lobby by the door */
+    inside('P00-01-B2', 0, 0, R => {
+        R.H = 3.3; check(R, 'P00-01-B2', 3); const WL = 0xead8bc;
+        R.liner({ key: K.plaster, tint: WL, gain: 1.45 }, { key: K.wood, tint: 0x6a4a30, gain: 1.3 }, { key: 'urban:FibreCeilingTile1a', tint: 0xfff4e0, gain: 1.4, glow: 0.45 }, { dadoH: 0.9, rail: 0x4a3424 });
+        part(R, 0, 7, 28, 7, [[3.5, 7], [14, 17.5], [21, 24.5]], WL); part(R, 10.5, 0, 10.5, 7, [], WL); part(R, 17.5, 0, 17.5, 7, [], WL);
+        // the Priest: a plain bed, a cross over it, a candle and a book by it, an armchair to read in
+        bed(R, 'psx_bed_5_1', 0, 0, 'e'); bedside(R, 2.95, 0.75, 's', 'candle'); R.put('psx_book_mp_1', 2.85, 0.65, 's', { y: 0.66, face: 30 });
+        R.put('psx_cross_1', 1.75, 0.4, 's', { y: 1.75 }); R.cell('psx_armchair_1', 2, 0, 'w'); R.block(2, 0, 1, 1, 1.1, 1.1, 1.0); R.put('rug_round', 5.0, 4.9, 's');
+        R.lamp(5.25, 3.5, 0.6, 0.6, 0xffe2b0);
+        // the Gangster: the bed, the tube TV on its stand facing it, a poster
+        bed(R, 'psx_bed_5_3', 3, 0, 'e'); bedside(R, 13.55, 0.75, 's', 'psx_lamp_1_on'); R.cell('psx_tv_table_1', 4, 0, 'w'); R.block(4, 0, 1, 1, 0.7, 1.8, 0.9);
+        R.put('tube_tv', R.cx(4) - 0.05, R.cy(0), 'w', { y: 0.74 }); R.put('metro_poster_5', 17.0, 4.6, 'w', { y: 1.4 }); R.put('shag_rug', 14.0, 4.6, 's', { r: 1.0, color: 0x6c1c24 });
+        R.lamp(14.0, 3.5, 0.6, 0.6, 0xffd8a0);
+        // the Homosapien: the bed, a desk with its books, a chair
+        bed(R, 'psx_bed_1', 7, 0, 'w'); bedside(R, 25.1, 0.75, 's', 'table_lamp'); R.cell('school_desk', 5, 0, 's'); R.block(5, 0, 1, 1, 1.2, 0.9, 0.8);
+        R.put('psx_book_mp_4', R.cx(5) - 0.2, R.cy(0), 's', { y: 0.76 }); R.put('psx_book_mp_7', R.cx(5) + 0.25, R.cy(0) - 0.1, 's', { y: 0.76, face: 70 }); R.put('office_chair', R.cx(5), R.cy(0) + 0.95, 'n');
+        R.put('potted_plant', 27.4, 6.4, 's'); R.lamp(22.75, 3.5, 0.6, 0.6, 0xffe2b0);
+        // the hall + the lobby: the mailboxes by the door, a sofa, a plant, a notice board
+        R.put('mailbox_bank', 8.4, R.D - 0.4, 'n', { y: 0.9 }); R.cell('psx_sofa_1', 6, 3, 'n'); R.block(6, 3, 1, 1, 2.7, 1.1, 1.0); R.put('potted_plant', 0.6, 13.4, 's');
+        R.put('notice_board', 19.6, R.D - 0.4, 'n'); [5.25, 14, 22.75].forEach(X => R.lamp(X, 8.75, 1.6, 0.35, 0xfff0d0)); R.lamp(12.25, 12.25, 0.6, 0.6, 0xffe2b0);
+    });
+
+    /* APARTMENTS B, 7 x 4 squares: the Nun's bedroom at the back left, a lounge open to the hall, the lobby by the door */
+    inside('P00-02-B2', 0, 0, R => {
+        R.H = 3.3; check(R, 'P00-02-B2', 4); const WL = 0xd8e2e2;
+        R.liner({ key: K.plaster, tint: WL, gain: 1.45 }, { key: 'urban:TileGeneric1a', tint: 0xf4f0e6, gain: 1.4 }, { key: 'urban:FibreCeilingTile1a', tint: 0xffffff, gain: 1.4, glow: 0.45 }, { dadoH: 1.0, rail: 0x5a6a70 });
+        part(R, 0, 7, 10.5, 7, [[3.5, 7]], WL); part(R, 10.5, 0, 10.5, 7, [], WL);
+        // the Nun: a narrow bed, the cross over it, a candle, a plant on the sill
+        bed(R, 'psx_bed_1', 0, 0, 'e'); bedside(R, 2.95, 0.75, 's', 'candle'); R.put('psx_cross_1', 1.75, 0.4, 's', { y: 1.75 }); R.put('psx_book_mp_2', 2.85, 0.6, 's', { y: 0.66 });
+        R.put('potted_plant', 9.9, 0.6, 's'); R.put('rug_round', 6.0, 4.6, 's'); R.lamp(5.25, 3.5, 0.6, 0.6, 0xffe6c0);
+        // the lounge: a sofa, the TV across from it
+        R.cell('psx_sofa_1', 5, 0, 's'); R.block(5, 0, 1, 1, 2.7, 1.1, 1.0); R.cell('psx_tv_table_1', 5, 1, 'n'); R.block(5, 1, 1, 1, 1.8, 0.7, 0.9); R.put('tube_tv', R.cx(5), R.cy(1) + 0.05, 'n', { y: 0.74 });
+        R.put('rug_office', R.cx(5), 3.9, 's'); R.put('potted_plant', 24.0, 0.6, 's'); [14, 21].forEach(X => R.lamp(X, 3.5, 0.6, 0.6, 0xfff0d0));
+        // the hall + the lobby
+        R.put('mailbox_bank', 12.0, R.D - 0.4, 'n', { y: 0.9 }); R.put('potted_plant', 0.6, 13.4, 's'); R.put('notice_board', 20.5, R.D - 0.4, 'n');
+        [5.25, 15.75].forEach(X => R.lamp(X, 8.75, 1.6, 0.35, 0xfff0d0)); R.lamp(15.75, 12.25, 0.6, 0.6, 0xffe2b0);
+    });
+
+    /* THE TENEMENT, 8 x 4 squares: the Conspiracy theorist's room and the Cult leader's at the back, a store at the back right, the hall, the lobby */
+    inside('P02-01-B1', 0, 0, R => {
+        R.H = 3.1; check(R, 'P02-01-B1', 1); const WL = 0xc8b48c;
+        R.liner({ key: K.plaster, tint: WL, gain: 1.3 }, { key: K.wood, tint: 0x4a3424, gain: 1.25 }, { key: 'urban:TileGeneric3a', tint: 0xd8ccb0, gain: 1.25, glow: 0.3 }, { dadoH: 1.0, rail: 0x2c2018 });
+        part(R, 0, 7, 21, 7, [[3.5, 7], [14, 17.5]], WL); part(R, 10.5, 0, 10.5, 7, [], WL); part(R, 21, 0, 21, 7, [], WL);
+        // the Conspiracy theorist: the bed, the boards of clippings, the desk with its terminal, the papers stacked in the corner
+        bed(R, 'psx_bed_5_2', 0, 0, 'e'); bedside(R, 2.95, 0.75, 's', 'retro_radio'); R.cell('school_desk', 2, 0, 's'); R.block(2, 0, 1, 1, 1.2, 0.9, 0.8);
+        R.put('crt_terminal', R.cx(2), R.cy(0) - 0.1, 's', { y: 0.76 }); R.put('office_chair', R.cx(2), R.cy(0) + 0.95, 'n');
+        R.put('notice_board', 5.6, 0.4, 's'); R.put('notice_board', 10.1, 4.6, 'w'); R.put('newspaper_bundles', 9.9, 6.3, 's', { face: 20 }); R.put('newspaper_bundles', 0.7, 6.3, 's', { face: 110 });
+        R.lamp(5.25, 3.5, 0.5, 0.5, 0xfff8e0);
+        // the Cult leader: the bed, a ring of candles on the floor, candles round the room, low light
+        bed(R, 'psx_bed_5_4', 5, 0, 'w'); bedside(R, 17.95, 0.75, 's', 'candle'); R.put('candle_ring', 12.25, 2.6, 's');
+        [[11.0, 0.6], [13.6, 0.6], [11.0, 6.4], [20.4, 6.4]].forEach(v => R.put('candle', v[0], v[1], 's')); R.put('shag_rug', 12.25, 2.6, 's', { r: 1.3, color: 0x3c1018 });
+        R.lamp(14.0, 3.5, 0.5, 0.5, 0xff9a60);
+        // the store: shelving on the back wall, a barrel, the papers that did not fit upstairs
+        R.put('metal_shelving', 23.0, 0.45, 's'); R.put('metal_shelving', 26.0, 0.45, 's'); R.put('psx_metal_barrel_mp_1', 27.4, 6.4, 's'); R.put('newspaper_bundles', 22.0, 6.2, 's', { face: 60 }); R.lamp(24.5, 3.5, 0.5, 0.5, 0xf4f8ff);
+        // the hall + the lobby
+        R.put('mailbox_bank', 9.6, R.D - 0.4, 'n', { y: 0.9 }); R.put('notice_board', 16.0, R.D - 0.4, 'n'); [5.25, 14, 22.75].forEach(X => R.lamp(X, 8.75, 1.6, 0.3, 0xfff0d0));
+    });
+
+    /* THE ROW HOUSE, 4 x 5 squares: the hall up the door's column and across row 2; the Swordfighter's room back left, the Ki fighter's back
+       right, the Firefighter's front right, a sitting corner front left */
+    inside('P03-00-B2', 0, 0, R => {
+        R.H = 3.1; check(R, 'P03-00-B2', 1); const WL = 0xf0e2c4;
+        R.liner({ key: K.plaster, tint: WL, gain: 1.45 }, { key: K.wood, tint: 0x8a6440, gain: 1.3 }, { key: K.wood, tint: 0xc8a478, gain: 1.3, glow: 0.35 }, { dadoH: 0.9, rail: 0x5a3c24 });
+        part(R, 3.5, 0, 3.5, 7, [[3.5, 7]], WL); part(R, 0, 7, 3.5, 7, [], WL);                                                         // the Swordfighter's
+        part(R, 7, 0, 7, 7, [[3.5, 7]], WL); part(R, 7, 7, 14, 7, [], WL);                                                              // the Ki fighter's
+        part(R, 7, 10.5, 14, 10.5, [], WL); part(R, 7, 10.5, 7, 17.5, [[10.5, 14]], WL);                                                // the Firefighter's
+        // the Swordfighter: the bed, the blades racked on the wall
+        bed(R, 'psx_bed_5_3', 0, 0, 'e'); [4.6, 5.4, 6.2].forEach(Y => R.put('psx_sword_mp_1', 0.4, Y, 'e', { y: 1.5 })); R.box(0.42, 1.4, 5.4, 0.1, 0.08, 2.4, K.wood, 0x5c3c24);
+        R.lamp(1.75, 3.5, 0.5, 0.5, 0xffe2b0);
+        // the Ki fighter: the bed, a mat to sit on, a candle, a plant
+        bed(R, 'psx_bed_5_1', 3, 0, 'w'); bedside(R, 10.95, 0.75, 's', 'candle'); R.put('rug_round', 8.7, 4.9, 's'); R.put('candle', 9.6, 5.6, 's'); R.put('potted_plant', 13.4, 6.4, 's');
+        R.lamp(10.5, 3.5, 0.6, 0.6, 0xffe6c0);
+        // the Firefighter: the bed, the extinguisher on the wall, a lamp by the bed
+        bed(R, 'psx_bed_1', 3, 4, 'w'); bedside(R, 10.95, 16.75, 'n', 'psx_lamp_1_on'); R.put('fire_extinguisher', 13.6, 12.2, 'w'); R.put('metro_poster_2', 13.65, 15.0, 'w', { y: 1.4 });
+        R.lamp(10.5, 14.0, 0.6, 0.6, 0xffe2b0);
+        // the sitting corner, the hall
+        R.cell('psx_armchair_1', 0, 3, 'e'); R.block(0, 3, 1, 1, 1.1, 1.1, 1.0); R.put('retro_radio', 0.6, 16.9, 'n'); R.put('potted_plant', 0.6, 9.9, 's'); R.put('rug_round', 3.8, 8.8, 's');
+        R.lamp(R.cx(1), 5.25, 0.35, 1.6, 0xfff0d0); R.lamp(8.75, 8.75, 1.6, 0.35, 0xfff0d0); R.lamp(R.cx(1), 14.0, 0.35, 1.6, 0xfff0d0);
     });
 
     out.forEach(r => lateRows.push(r));

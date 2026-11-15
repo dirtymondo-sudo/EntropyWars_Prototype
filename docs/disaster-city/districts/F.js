@@ -39,6 +39,10 @@ function frontWithDoor(P, T, y0, h, key, tint, o) {
     P.push(box(T.lx - T.cw / 2 - 0.16, y0, T.D / 2 + 0.12, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx + T.cw / 2 + 0.16, y0, T.D / 2 + 0.12, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx, y0 + 2.22, T.D / 2 + 0.12, T.cw + 0.92, 0.3, 0.3, STONE, 0xd8d0c0));
 }
 
+/* THE SECOND LAYERS (the polish pass, mondo 11-13 20:15): F-detail.js adds each building's trims, signs, roof plant and second sheets */
+const inside = require('./F-inside.js');
+const detail = require('./F-detail.js')({ box, cyl, dome, roof, quad, STONE, ALU, GUN, CONC, CONC2, CORR2, U });
+
 module.exports = {
     id: 'F',
     /* THE WORKER CAFE'S PLOT (mondo 11-13 17:13 "ok thats fine"): the DINER pack building is 23.4 × 24.3 m at its real size, so it takes
@@ -62,7 +66,13 @@ module.exports = {
         const frame = (id, o) => {
             o = o || {}; const row = rowOf(id); if (!row) { console.warn('[financial] no row', id); return null; }
             const T = { id, row };
-            if (row.k === 'plateau') {
+            if (row.k === 'plateau' && o.inside) {   // THE INSIDES: a walked roof tier that gets an inside = a hollow two-storey building in its place (the same 7 m roof slab; I.js)
+                T.rot = { S: 0, W: 90, N: 180, E: 270 }[o.face || 'S']; const ew = T.rot === 90 || T.rot === 270, i = features.indexOf(row);
+                const nr = { k: 'texbuilding', id: row.id, x: row.x, z: row.z, w: ew ? row.d : row.w, d: ew ? row.w : row.d, rot: T.rot, storeys: 2, seed: row.bld && row.bld.seed != null ? row.bld.seed : i, skin: false, hollow: true };
+                if (o.door) nr.door = o.door; if (o.leaf) nr.leaf = o.leaf; if (o.leafDouble) nr.leafDouble = true;
+                features[i] = nr; T.row = nr; T.W = nr.w; T.D = nr.d; T.x = nr.x; T.z = nr.z; T.H = 7;
+                const L = T.W - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols, col = Math.min(cols - 1, Math.round(+nr.door || (cols + 1) / 2) - 1); T.lx = -L / 2 + (col + 0.5) * cw; T.cw = cw;
+            } else if (row.k === 'plateau') {
                 T.rot = { S: 0, W: 90, N: 180, E: 270 }[o.face || 'S']; const ew = T.rot === 90 || T.rot === 270;
                 T.W = ew ? row.d : row.w; T.D = ew ? row.w : row.d; T.x = row.x; T.z = row.z; T.H = row.h;
                 row.bld = Object.assign({}, row.bld, { skin: false });
@@ -79,31 +89,37 @@ module.exports = {
             return T;
         };
         const local = (T, lx, lz) => { const q = T.rot * Math.PI / 180, c = Math.cos(q), s = Math.sin(q); return [r3(T.x + lx * c - lz * s), r3(T.z + lx * s + lz * c)]; };
-        const emit = (T, parts) => { features.push({ k: 'arch', id: 'dc:' + T.id + ':arch', x: T.x, z: T.z, y: 0, rot: T.rot, parts: parts.filter(Boolean) }); made++; };   // y: 0 = from the ground (over a roof-route plateau the row would stand on its 7 m roof)
+        const furnish = inside({ box, cyl, dome, quad, STONE, ALU, GUN, WOOD, CONC, CORR2, U }, { local, props, features, lateRows });
+        const emit = (T, parts) => { detail(T, parts); features.push({ k: 'arch', id: 'dc:' + T.id + ':arch', x: T.x, z: T.z, y: 0, rot: T.rot, parts: parts.filter(Boolean) }); made++; furnish(T); };   // y: 0 = from the ground (over a roof-route plateau the row would stand on its 7 m roof)
         const prop = (T, key, lx, lz, face, o) => { const w = local(T, lx, lz); props.push(Object.assign({ key, x: w[0], z: w[1], face: ((face || 0) + 360 - T.rot + 180) % 360 }, o || {})); };
 
         /* ── the repeating kinds (mondo: "its also okay to make the more reptitive buildings look similar like apartments") ── */
         /* the bankers' terrace: brick houses under slate roofs, stone base, stoops, dormers, a stack each */
         const terrace = (id, n, tints) => {
-            const T = frame(id, { st: 3 }); if (!T) return; const P = [], hw = T.W / n, D = T.D;
+            /* THE BEDROOMS (mondo 11-14 02:21): the terrace is a walk-in home (one hall, a storey high inside); its first house's door is the city door */
+            const r0 = rowOf(id); if (!r0) return; const hw0 = r0.w / n, L0 = r0.w - 0.12, cw0 = L0 / Math.round(L0 / 1.75), dcol = Math.round((-r0.w / 2 + hw0 * 0.28 + L0 / 2) / cw0) + 1;
+            const T = frame(id, { st: 1, hollow: true, door: dcol, leaf: 'leaf_office' }); if (!T) return; T.kind = 'terrace'; T.n = n; const P = [], hw = T.W / n, D = T.D;
             for (let i = 0; i < n; i++) {
-                const x = -T.W / 2 + hw * (i + 0.5), H = 10.5 + (i % 2) * 0.6, dc = [0x8a3a30, 0x2f5a48, 0x30405a][i % 3];
-                P.push(box(x, 0, 0, hw + 0.04, H, D + 0.1, i % 2 ? BR3 : BR1, tints[i % tints.length], { top: false }));
-                P.push(box(x, 0, 0, hw + 0.06, 1.3, D + 0.3, STONE, 0xbdb6a8));
+                const x = -T.W / 2 + hw * (i + 0.5), H = 10.5 + (i % 2) * 0.6, dc = [0x8a3a30, 0x2f5a48, 0x30405a][i % 3], key = i % 2 ? BR3 : BR1, tint = tints[i % tints.length], own = !i;
+                const fc = 'b' + (i === 0 ? 'l' : '') + (i === n - 1 ? 'r' : '');   // (no party walls drawn through the walked hall)
+                P.push(box(x, 0, 0, hw + 0.04, H, D + 0.1, key, tint, { top: false, faces: fc }), quad(x, 0, D / 2 + 0.05, hw + 0.04, H, 0, key, tint, own ? { hole: [T.lx - x, T.cw, 2.2] } : {}));
+                P.push(box(x, 0, 0, hw + 0.06, 1.3, D + 0.3, STONE, 0xbdb6a8, { faces: fc, top: false }));
+                if (own) { const a = x - hw / 2 - 0.03, b = T.lx - T.cw / 2 - 0.02, c = T.lx + T.cw / 2 + 0.02, e = x + hw / 2 + 0.03; if (b - a > 0.05) P.push(quad((a + b) / 2, 0, D / 2 + 0.15, b - a, 1.3, 0, STONE, 0xbdb6a8)); P.push(quad((c + e) / 2, 0, D / 2 + 0.15, e - c, 1.3, 0, STONE, 0xbdb6a8)); }
+                else P.push(quad(x, 0, D / 2 + 0.15, hw + 0.06, 1.3, 0, STONE, 0xbdb6a8));
                 wins(P, 'fb', x, 3.6, 0, hw, 3.5, D + 0.1, WIN, 0.8); wins(P, 'fb', x, 7.0, 0, hw, 3.5, D + 0.1, WIN, 0.8);
                 P.push(box(x, H, 0, hw + 0.2, 0.45, D + 0.7, STONE, 0xd8d0c0));
                 P.push(roof('hip', x, H + 0.45, 0, hw - 0.2, 3.0, D - 0.2, GUN, SLATE));
                 P.push(box(x - hw * 0.2, H + 0.5, D / 2 - 1.4, 1.3, 1.5, 1.4, STONE, 0xd8d0c0), box(x + hw * 0.2, H + 0.5, D / 2 - 1.4, 1.3, 1.5, 1.4, STONE, 0xd8d0c0));
                 P.push(box(x + hw / 2 - 0.6, H, -D / 4, 0.9, 4.6, 0.9, BR3, 0xa07060));
-                P.push(box(x - hw * 0.22, 0, D / 2 + 0.75, 2.2, 0.35, 1.3, STONE, 0xbdb6a8));
-                fakeDoor(P, x - hw * 0.22, 0.35, D / 2 + 0.11, 0, DW, dc, 1.8, 2.6);
+                if (own) P.push(box(T.lx - T.cw / 2 - 0.16, 0, D / 2 + 0.2, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx + T.cw / 2 + 0.16, 0, D / 2 + 0.2, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx, 2.22, D / 2 + 0.2, T.cw + 0.92, 0.3, 0.3, STONE, 0xd8d0c0));
+                else { P.push(box(x - hw * 0.22, 0, D / 2 + 0.75, 2.2, 0.35, 1.3, STONE, 0xbdb6a8)); fakeDoor(P, x - hw * 0.22, 0.35, D / 2 + 0.11, 0, DW, dc, 1.8, 2.6); }
                 P.push(quad(x + hw * 0.2, 1.4, D / 2 + 0.11, Math.min(1.8, hw * 0.34), 2.0, 0, GR, WHITE, { uv: [1.8, 2.0] }));
             }
             emit(T, P);
         };
         /* the small shop: plaster or brick, a glass front under an awning, a stone fascia band, windows over, a parapet */
         const shop = (id, o) => {
-            const T = frame(id, { face: o.face, st: 2 }); if (!T) return; const P = [], W = T.W, D = T.D, H = T.H || 7;
+            const T = frame(id, { face: o.face, st: 2 }); if (!T) return; T.kind = 'shop'; T.o = o; const P = [], W = T.W, D = T.D, H = T.H || 7;
             P.push(box(0, 0, 0, W + 0.1, H - (T.H ? 0.02 : 0), D + 0.1, o.wall, o.tint, { top: !T.H }));
             P.push(quad(0.9, 0.5, D / 2 + 0.11, W - 4.2, 2.7, 0, GT, 0xdfeee8, { uv: [3.5, 2.7] }), box(0, 0, D / 2 + 0.1, W + 0.2, 0.5, 0.25, STONE, 0x8a8478));
             fakeDoor(P, -W / 2 + 1.6, 0, D / 2 + 0.11, 0, DS, WHITE, 2.0, 2.6);
@@ -115,7 +131,7 @@ module.exports = {
         };
         /* the workshop: tin on a brick dado, a roller door, factory windows, a sawtooth roof (flat where the roof is walked) */
         const workshop = (id, o) => {
-            const T = frame(id, { face: o.face, st: 2 }); if (!T) return; const P = [], W = T.W, D = T.D, flat = !!T.H, H = flat ? T.H - 0.02 : 5.6;
+            const T = frame(id, { face: o.face, st: 2 }); if (!T) return; T.kind = 'workshop'; const P = [], W = T.W, D = T.D, flat = !!T.H, H = flat ? T.H - 0.02 : 5.6;
             P.push(box(0, 0, 0, W + 0.16, 1.5, D + 0.16, BR1, 0xb09080), box(0, 1.5, 0, W + 0.1, H - 1.5, D + 0.1, CORR, o.tint, { top: !flat }));
             P.push(quad(1.2, 0, D / 2 + 0.12, 4.2, 3.6, 0, CORR2, 0x9aa0a8)); fakeDoor(P, -W / 2 + 1.5, 0, D / 2 + 0.12, 0, DP, WHITE, 1.7, 2.5);
             wins(P, 'f', 0, H - 2.0, 0, W, 1.75, D + 0.1, WINF, 1.0);
@@ -131,15 +147,15 @@ module.exports = {
             if (i % 3 === 1 && H > 6) { P.push(box(0, 3.5, 0, T.W + 0.16, H - 3.9, T.D + 0.16, i % 2 ? GS1 : GS2, 0xc0ccd8, { uv: [1.75, 3.5], top: false, faces: 'fb' })); wins(P, 'fb', 0, 0.4, 0, T.W, 3.1, T.D + 0.1, WIN, 1.0); }
             else for (let s = 0; s < H / 3.5 - 0.5; s++) wins(P, 'fb', 0, s * 3.5 + (s ? 0 : 0.4), 0, T.W, 3.1, T.D + 0.1, i % 2 ? WINF : WIN, 1.0);
             P.push(box(0, H - 0.3, 0, T.W + 0.5, 0.45, T.D + 0.5, STONE, 0xcfc8b8, { top: false, under: true }));
-            emit(T, P);
+            T.kind = 'backlot'; T.Hh = H; T.i = i; emit(T, P);
         };
 
         /* ═══ 1. THE LUXURY HOTEL — an art-deco stepped tower over a pool-terrace podium (its roof is on the roof route), a verdigris roof, a
                canopy on columns over the door ═══ */
         (() => {
-            const T = frame('P08-00-B1', { face: 'N' }); if (!T) return; const P = [], W = T.W, CREAM = 0xf2e2c4, ROSE = 0xe9cdb0, tx = 3, tz = -3, TW = 17.5, Y = T.H;
-            P.push(box(0, 0, 0, W + 0.1, Y - 0.02, T.D + 0.1, STONE, CREAM, { top: false, uv: 3.5 }));
-            P.push(quad(0, 0.6, T.D / 2 + 0.11, 22, 3.4, 0, GT, 0xf4e8c8, { uv: [3.5, 3.4] }), box(0, 0, T.D / 2 + 0.1, W, 0.6, 0.3, GUN, 0x606068));
+            const T = frame('P08-00-B1', { face: 'N', inside: true, door: 9, leaf: 'leaf_lobby_glass_double' }); if (!T) return; const P = [], W = T.W, CREAM = 0xf2e2c4, ROSE = 0xe9cdb0, tx = 3, tz = -3, TW = 17.5, Y = T.H;
+            P.push(box(0, 0, 0, W + 0.1, Y - 0.02, T.D + 0.1, STONE, CREAM, { top: false, uv: 3.5, faces: 'blr' })); frontWithDoor(P, T, 0, Y - 0.02, STONE, CREAM, { uv: [3.5, 3.5] });   // THE INSIDES (mondo 11-13 19:02): the hotel's lobby is walked
+            P.push(quad(-5.7, 0.6, T.D / 2 + 0.11, 10.6, 3.4, 0, GT, 0xf4e8c8, { uv: [3.5, 3.4] }), quad(6.6, 0.6, T.D / 2 + 0.11, 8.8, 3.4, 0, GT, 0xf4e8c8, { uv: [3.5, 3.4] }), box(-7.2, 0, T.D / 2 + 0.1, 13.6, 0.6, 0.3, GUN, 0x606068), box(8.1, 0, T.D / 2 + 0.1, 11.8, 0.6, 0.3, GUN, 0x606068));
             P.push(box(-10.8, 0, T.D / 2 + 0.2, 0.7, Y - 0.1, 0.5, STONE, 0xd9c8a4, { n: 7, step: [3.6, 0, 0] }));
             wins(P, 'lrb', 0, 3.4, 0, W + 0.1, 3.3, T.D + 0.1, WIN, 2);
             P.push(box(0, Y - 0.62, 0, W + 1.1, 0.6, T.D + 1.1, STONE, 0xd9c8a4, { top: false, under: true }));
@@ -155,11 +171,11 @@ module.exports = {
             /* the marquee: a deco canopy hung off the wall over the pavement (the footpath under it stays clear) */
             P.push(box(0, 4.3, T.D / 2 + 1.75, 11, 0.45, 3.5, 'gold', WHITE, { under: true }), box(0, 4.75, T.D / 2 + 1.5, 9.6, 0.5, 2.8, STONE, CREAM));
             P.push(box(-5.2, 4.75, T.D / 2 + 0.2, 0.5, 2.6, 0.4, STONE, 0xd9c8a4, { n: 2, step: [10.4, 0, 0] }));
-            P.push(quad(0, 0.05, T.D / 2 + 1.75, 3.2, 3.4, 0, null, 0xa01828, { flat: true }));
-            fakeDoor(P, 0, 0, T.D / 2 + 0.13, 0, DS, 0xf0d890, 3.0, 3.0);
+            P.push(quad(T.lx, 0.05, T.D / 2 + 1.75, 2.4, 3.4, 0, null, 0xa01828, { flat: true }));
             emit(T, P);
             /* the tower blocks the terrace: a collision box standing on the walked roof */
-            const w = local(T, tx, tz); lateRows.push({ k: 'texbuilding', id: 'dc:P08-00-B1-tower', x: w[0], z: w[1], w: TW, d: TW, rot: T.rot, y: Y, storeys: 7, skin: false, seed: 9801 });
+            /* (hung walls: they start over the roof, the lobby under the tower stays walked) */
+            for (const e of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const a = local(T, tx + e[0] * TW / 2, tz + e[1] * TW / 2), b = local(T, tx + e[2] * TW / 2, tz + e[3] * TW / 2); lateRows.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t: 0.6, h: Y + 24.5, lift: Y + 0.3, ghost: true, rail: false }); }
         })();
 
         /* ═══ 2. THE BANK ARCHIVE — a windowless record vault: board-marked concrete, slit windows, a drum corner, a heavy lid ═══ */
@@ -171,7 +187,7 @@ module.exports = {
             fakeDoor(P, 3.5, 0, D / 2 + 0.12, 0, DP, 0xb0b8c0, 2.0, 2.6);
             emit(T, P);
         })();
-        shop('P09-00-B2', { face: 'N', wall: BR1, tint: 0xc8a890, trim: 0x2f5a48 });
+        shop('P09-00-B2', { face: 'N', wall: BR1, tint: 0xc8a890, trim: 0x2f5a48, sign: 'BOOKS' });
         workshop('P09-00-B3', { face: 'E', tint: 0x6a80a0 });
 
         /* ═══ 3. THE GOBLIN BANK — the district's landmark: a marble temple, a great arch behind a six-column portico, a verdigris dome ═══ */
@@ -323,7 +339,7 @@ module.exports = {
         })();
 
         /* ═══ 10. THE TAILOR SHOPS — the pack's shop block at its real size (the shared rule), the atelier, the cloth store ═══ */
-        shop('P09-02-B2', { wall: U('PlasterWallPainted1d'), tint: 0xf0e4c8, trim: 0x7a2030 });
+        shop('P09-02-B2', { wall: U('PlasterWallPainted1d'), tint: 0xf0e4c8, trim: 0x7a2030, sign: 'TAILOR' });
         workshop('P09-02-B3', { tint: 0xb88a6a, teeth: 3 });
 
         /* ═══ 11. THE INTELLIGENCE OFFICE — no sign: black glass tiers that grow as they rise over a recessed dark stone foot, a radome
@@ -399,7 +415,7 @@ module.exports = {
             P.push(box(T.lx, 2.9, F + 1.2, 5, 0.3, 2.4, ALU, 0xf4f4f4, { under: true }));
             emit(T, P);
         })();
-        shop('P10-03-B2', { wall: BR1, tint: 0xc8b8a8, trim: 0x1e3a5a });
+        shop('P10-03-B2', { wall: BR1, tint: 0xc8b8a8, trim: 0x1e3a5a, sign: 'FLORIST' });
         workshop('P10-03-B3', { tint: 0x8a9a7a, teeth: 2 });
 
         /* ═══ 16. THE PRIVATE GARDEN — a walled garden behind an arched iron gate, and in it a white palm house: glass vault wings and a
@@ -418,7 +434,7 @@ module.exports = {
             /* the palm house */
             P.push(box(0, 0, 0, T.W + 0.6, 0.7, 8, STONE, 0xf8f8f4, { faces: 'blr' }), box(0, 0.7, 0, T.W + 0.1, 3.2, T.D + 0.1, GF, GLS, { uv: [1.75, 3.2], top: false, faces: 'blr', glow: 0.5, kind: 'wall' })); frontWithDoor(P, T, 0, 3.9, GF, GLS, { uv: [1.75, 3.9], glow: 0.5, kind: 'wall' });
             P.push(roof('barrel', 0, 3.9, 0, T.W + 0.1, 3.7, T.D + 0.1, GF, GLS, { keyEnd: GF, tintEnd: GLS, seg: 12 }));
-            P.push(box(0, 0, -2.4, 9, 0.7, 7.6, STONE, 0xf8f8f4), box(0, 0.7, -2.4, 8.4, 5.2, 7, GF, GLS, { uv: [1.75, 2.6], glow: 0.5, kind: 'wall' }));
+            P.push(box(0, 0, -4.85, 9, 0.7, 2.3, STONE, 0xf8f8f4), box(0, 0.7, -4.85, 8.4, 3.2, 2.1, GF, GLS, { uv: [1.75, 3.2], glow: 0.5, kind: 'wall', top: false }), box(0, 3.9, -2.4, 8.4, 2.0, 7, GF, GLS, { uv: [1.75, 2.0], glow: 0.5, kind: 'wall' }));   // THE INSIDES: the middle pavilion stands behind the hall and over its roof, never through the walked hall
             P.push(cyl(0, 5.9, 0, 4.3, 1.2, GF, GLS, { seg: 24, glow: 0.5, kind: 'wall', cap: false }), cyl(0, 7.1, 0, 4.5, 0.25, ALU, WHITE, { seg: 24 }), dome(0, 7.35, 0, 4.2, 4.2, GF, GLS, { seg: 24, rings: 8 }), cyl(0, 11.5, 0, 0.5, 0.9, ALU, WHITE, { seg: 8 }), dome(0, 12.4, 0, 0.4, 0.5, 'gold', WHITE));
             /* the parterre: clipped hedges, a gazebo */
             for (const p of [[-7, 9], [7, 9], [-7, 14], [7, 14]]) P.push(box(p[0], 0, p[1] + cz - 3, 6, 0.9, 0.8, 'leaves_3', 0xc8e8b8), box(p[0], 0, p[1] + cz - 1.4, 0.8, 0.9, 3, 'leaves_3', 0xc8e8b8));

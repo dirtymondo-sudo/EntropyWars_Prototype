@@ -1055,6 +1055,16 @@ battles and exploring alike". Proven in a VS CPU arena: frame mean luma 40 at 0.
   pass's 24 taps read that little picture (`tRaySrc`) instead of the full frame. Drawn only while the rays are on (the node
   renderer's rtt flips `autoUpdate`). Checked: Göbekli Tepe night sky, rays 1, the rays' own contribution (rays 1 minus
   rays 0) before = streaks across the whole starry sky, after = only off the braziers and the zone glow; WebGPU rays draw.
+- **THE SKY'S RAYS** (2026-11-14, mondo: "my unit rim light makes light rays but i think i just want the light rays to come
+  from above like the sun or the moon"): the slider's Light Rays now come only from the SKY. The ray source (`_RaySrcShader`,
+  `_ngRaySrc`) keeps a tap only where the scene drew nothing (depth still cleared = the dome: `uRaySky`, depth >= 0.999999);
+  pmndrs reads `composer.inputBuffer.depthTexture`, the node chain `P.depthTex`, the classic chain a half-size mask made right
+  after its RenderPass (`_skyMaskAfterScene`, its depth is gone by the frame pass). The 3D moon (`_skyMoon`) writes no depth
+  so it counts as sky. The rays aim at the body the dome draws (`ThreeRenderer.getSkyLightDir(ctx)`: sun by day, moon by
+  night, the world clock's pair in a clocked room, un-yawed), sun warm / moon cool; the battle used to aim at the key light.
+  The rim light, the slider and 0 = off are untouched; a finisher `rayBeat` keeps every light (`uRaySky` 0). No sky on screen =
+  no shafts. Old rays live: `window.EW_RAYS_ANY_LIGHT = true`. Checked on Shasta, day + night, rays 1: before = streaks off
+  the lit tiles, the units and the board; after = shafts only falling out of the sky (pmndrs + the node chain on WebGL 2).
 - **THE NO-STALL READ** (`_aeMeasure`): the 16 × 16 frame read that feeds the rays' bar and the building's auto exposure
   used `readRenderTargetPixels` every 220 ms, which makes the CPU wait for the GPU to finish the frame. WebGL 2 now uses
   `readRenderTargetPixelsAsync` (a pixel buffer + fence), as the node renderer already did. Sandbox (llvmpipe), Light Rays
@@ -1887,3 +1897,183 @@ three-renderer.js + data.js HQ_ENGINE_RULES (`chunkM: 42, chunkMinSpanM: 200, ch
   the same rows as the direct path. City finds in Node: over 10 min -> 6.9 s (what is left is the reach flood, now in the worker).
 - **Rule for big rooms.** Anything that walks a whole terrain room per point (finds, reach, nav) must run in the survey worker
   or be budgeted across frames. No worker (EW_HQ_NO_SURVEY, file://) = the finds still build on the page after the room's own entry.
+
+## THE PROP CHUNKS + THE MASK'S OWN BUNDLES + THE STILL CHUNKS + THE LOD LEVELS (2026-11-14, Disaster City perf)
+mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (submit 100.8), 3748 draws, "2996 site props
+(outside its bundle)", extra pass 1958 draws / 4.05M tris, props 3165 calls / 4.55M tris, check 13.2 ms.
+- **THE PROP CHUNKS (three-renderer.js, after `_hqChunkStats`).** In a chunked room (`_hqChunkBig`) every prop placement under
+  `H.propGroup` moves into a chunk group (`_hqPropChunkSweep`, every 1.5 s or on a child-count change): props inside a closed
+  hollow building (`H.terrain.texb` hollow, inset `roomInsetM`) go in that building's room group (`'b|<bld>'`, drawn within
+  `roomFarM` 40 m, glass is opaque so they only show through open doorways); the rest go in the 42 m plot chunks
+  (`ci,cj`, `|s` for small ones = `instSmallFarM`, else `propFarM` 260). The chunk walk culls them like the shell fences.
+  Placements holding a light stay put. Instance cells key the same way (`b|` cells). `_hqPropChunkHome` puts everything back
+  (hand-over, leave). Static batch: merged meshes are hosted IN their chunk (`_hqBatchHost`), chunk visibility is not a "change".
+  Render bundles: one bundle per chunk group (`_ewBunTargets`). Off: `window.EW_HQ_NO_PROP_CHUNKS` (then re-enter).
+  Rules: data.js HQ_ENGINE_RULES `propFarM`, `roomFarM`, `roomInsetM`.
+- **THE MASK'S OWN BUNDLES (three-post.js static mask + three-renderer.js `_ewBunSetup`).** The model pixel mask (layer 8,
+  half res) drew every static prop classic, one by one (the lens "extra" pass). It now renders with its own camera clone
+  (`_maskCamS`) and `_renderer._ew_maskBun`, so chunk groups record their own mask bundles. Off: `window.EW_MASK_NO_BUNDLES`.
+- **THE STILL CHUNKS.** An out chunk (off camera / past its far) also gets `matrixWorldAutoUpdate = false`, so three's per-frame
+  matrix walk skips it (~35K objects in the city). Its matrices are refreshed as it leaves and on any frame something was added
+  to the scene (`_ewAddCount`, a counter on Object3D.add). Collision snaps compose local matrices (`_mcSnap`), so unaffected.
+  Off: `window.EW_HQ_CHUNK_MW_ALWAYS`.
+- **THE LOD LEVELS shipped.** The LOD path (`_lodUrls`, `_hqLodTick`) had never run: no `.lodN.glb` was in ASSET_MANIFEST.json.
+  Baked (meshopt simplify, same mesh names/order) and uploaded lod1/lod2 for the heaviest city repeats: city bench, traffic
+  cone, police barricade, folding chair, hydrant, utility box, potted plant, palm, cup, cardboard boxes, sandbags, popcorn cart,
+  ambulance, candle, piano, football, missile, conveyor (30 files, new-folder paths). Off: `window.EW_NO_LOD`.
+- **Sandbox numbers (spawn camera, same view).** Mask static 852 draws / 3.14M tris -> 50-169 / ~0.2M; extra pass 854 / 3.18M
+  -> 171 / 233K; props outside bundle 2475 -> 54; prop plots 32/240 drawn, rooms 0/88 drawn. The cloud shell draws classic
+  (sandbox artefact), so compare counts, not FPS. Left: the bundle check cost (the shell walks ~10K children a frame), pixel
+  ratio 2 on his Mac (Settings Render Scale exists; default untouched), one WebGPU "Texture with '' label" submit error.
+## THE SEAT GRID (2026-11-14, Disaster City: card held 5+ min, then ~1 FPS)
+- **Cause.** `_hqSeatTabletops` (THE TABLETOP SEAT) cast one ray per tabletop prop against the WHOLE prop group + shell
+  (`intersectObject(root, true)`, ~35,000 meshes in the city, ~9-25 ms a ray) and `_hqSeatLater` re-runs it after every model
+  that lands. One city load in the cloud browser: 17,332 seat rays, 193 s of main thread. The interiors passes added the tabletops.
+  The lens "Pick (raycasts) ~105/s · ~950 ms/s · 25K plain" on his Mac was this.
+- **Fix (three-renderer.js `_hqSeatGrid`).** Once per pass every mesh the whole walk would test (same roots, same layer test) is
+  filed in 4 m cells by its world sphere (spheres over 24 m go in a short always-tested list); each tabletop ray tests its own
+  cell + that list. Checked in the city: 900 rays, 0 differing hits, 22,986 ms -> 640 ms (+87 ms to build the grid).
+  Off: `window.EW_HQ_SEAT_WHOLE = true`.
+- The loading card's own big draw count (16,700 calls behind the card) is the settle warm-up drawing everything once on purpose.
+- PR #1377 (prop chunks, mask bundles, still chunks, LOD rows) was rolled back in PR #1379 while this was found; it comes back
+  after a clean city load.
+- 11-14 10:10: mondo's F3 after #1381 loaded fine (5.5 FPS, picks 0/s); the #1377 pass is back (re-land of the rollback).
+
+## THE LAMP'S REACH (2026-11-14, Disaster City shadows)
+- After PR #1382 his Mac lens showed shadow 824 of 894 draws. The cloud browser (city, spawn): one drawn frame = the scene,
+  two mask passes, the sun's map and the nearest lamp's six sides (the hero lamp, `_hqHeroGate`: a `lava_lamp` prop's point
+  light, reach 3.5 m). Each side walked the WHOLE scene (~120,000 `_projectObject` visits a frame) and drew the unculled
+  pieces past its far plane.
+- **Fix (`_ewBunSetup`, three-renderer.js).** A render wrapper flags a shadow pass through a perspective camera (`_ew_reach`:
+  camera position + far). Inside it a chunk (`_ew_ckSph`) past the reach is skipped whole, and a room's shell (`_ew_bunName`
+  "... shell", >256 children) walks only children filed in 8 m cells the reach touches (`_ew_reachIdx`, built once, rebuilt
+  when the child count changes; pieces over 32 m always walked). Measured: lamp-side visits 120K -> 18K a frame, lamp draws
+  -24% (only pieces past the far plane), screenshots on/off differ less than two frames of the same setting.
+  Off: `window.EW_SHADOW_REACH_OFF = true`.
+- Sandbox share of the draw step before this: sun map ~40%, lamp sides ~17%, masks ~6%. The sun map is next.
+- 11-14 ~11:00: #1383 turned the city black (every frame threw `can't access property "test" of undefined` in three's
+  `_projectObject`): the new render wrapper was `var ro = r.render` inside `_ewBunSetup`, which already had `var ro =
+  r._renderObjects` for the opaque-list hook; one var slot, so the hook called render(list). Rolled back (#1384), renamed
+  `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
+  `_ewBunSetup` gets a name grep-checked against the whole function.
+
+## THE MASK'S SHORT WALK + THE QUIET SYNC (2026-11-15, from mondo's first Frame JS readout)
+
+His Mac after #1395: 20.2 fps (was 13.1), CPU 38 ms, frame 48.5 ms. Biggest rows: "mask: projection walk 8.2", "mask: setup + lights + sort
+6.3", matrix walk 4.6, scene bundle replays 4.2, bundle check 2.8.
+- THE MASK'S SHORT WALK (`_ewBunSetup`'s `_projectObject` wrapper, `maskFile`): three-post's model mask renders the scene twice (skinned
+  layer 7, static layer 8) as a side render, which draws bundle groups the classic way, so it walked the shell's 10,000 children twice. A
+  group with > 32 children (not a chunk, not a clipping group) keeps `_ew_mkIdx`: the children whose subtree holds a layer other than 0, a
+  light, a bundle group, a chunk, a clipping group or an LOD, with their layer union; a side render whose camera lacks layer 0 projects only
+  those meeting its layers. Re-filed on an add (once a second at most), a child-count change or every 10 s. Off `window.EW_MASK_FULL_WALK`.
+- THE QUIET SYNC (`_hqInstSync`, scene.onBeforeRender, so the frame's FIRST render pays it = the mask's "setup"): 12,000 instanced copies
+  walked to the scene for visibility + a matrix multiply each, every frame. A batch with no change for 30 syncs (`HQ_INST_REST`) syncs
+  every 4th frame; any change wakes it. Parent visibility once per parent a frame (`_hqInstShown`, stamp props `_ew_shS/_ew_shC/_ew_shV`).
+  Off `window.EW_HQ_INST_SYNC_EVERY`.
+
+## THE STILL CHECK + THE FRAME BREAKDOWN (2026-11-15, Disaster City, after THE OUTS ON A REPLAY FRAME)
+
+mondo's Mac (#1393): CPU 70 ms of which submit 40 with 99 draws, "check 8.85 ms/frame", and the lens could not say where the rest went.
+- THE STILL CHECK (`_ewBunTick`, `S.noM`): in a group THE STILL WALK owns (`g._ew_st`: the shell, fence + prop chunks) the pieces' matrices
+  are no longer hashed every frame (12 rounded numbers x 6,500 pieces): a piece's matrix changes only through that walk, which turns a mover
+  `_ew_bunOut` the same frame and back (a tree change = re-record) at rest. The group's own matrix is hashed. Off
+  `window.EW_BUN_HASH_MATRICES`. Lens bundles line: "check X ms/frame (N quiet skipped, M still-checked)".
+- THE FRAME BREAKDOWN (lens open only): `_lensIn/_lensOut` spans (exclusive time) + `_lensMark` checkpoints. `_hqFrame`'s ticks each get a
+  "tick: …" row, "matrix walk", "mirrors", "bundle check", "render: node + rig ticks"; inside the renders `_lensSpanHook` wraps three's
+  `_renderScene` (sets the pass: scene / shadow / mask / pane / mirror/extra / post), the top `_projectObject` ("projection walk"),
+  `_renderBundles`, `_renderObjects`, `_renderTransparents`, `_renderOutput`, backend `beginRender` / `finishRender` ("pass end + submit").
+  Printed as "Frame JS (ms/frame): …" (biggest first, + "rest of the frame" = CPU minus the spans). Never unwrapped (other hooks wrap over).
+- Cloud browser cannot time a frame (software GPU, ~0.2 fps): ask mondo for the F3 with the Frame JS lines and cut the biggest row next.
+
+## THE OUTS ON A REPLAY FRAME (2026-11-14, a bug shipped in #1391 / #1393, fixed the same day)
+
+three r186 `_projectObject` projects a BundleGroup's children ONLY when the bundle needs a new recording; on a replay frame it pushes the
+bundle and returns. So a piece that is out of the recording (`_ew_bunOut`: traffic cars, signals, movers, changers) was drawn on record
+frames only: with a still shell (0 re-records/s) the cars and signals were INVISIBLE. mondo's readout showed it: no `_ew_hqCar` /
+`_ew_hqSignal` draws in the scene pass. I had read "34 shell draws outside its bundle" in the cloud lens as proof; it was a record frame.
+- Fix: `_ewBunTick`'s walk collects the out pieces per group (`g._ew_bunOuts`); the `_projectObject` wrapper, when the group's recording
+  is current for this camera + context (`_ewBunCurrent`), projects them itself into the list the group was handed to (`_ewBunOutsDraw`).
+  A flag set / cleared by THE STILL WALK marks the group `_ew_bunDirty` so the quiet-group skip does not delay its walk.
+- Proof to use next time: wrap `onBeforeRender` of the out meshes and count per frame over replay frames (scratchpad outs.js).
+- Rule: before diverting anything out of a three code path, read whether three runs that path every frame.
+
+## THE CHANGERS OUT (2026-11-14, the regression after THE MOVERS OUT)
+
+mondo's Mac on #1391: 11.2 fps (was 14.9), "1.9 re-records/s (values 1.9)", shell 2,802 draws "outside its bundle", bundles holding 881
+meshes only. With the cars out the shell was a STILL recording for the first time, so any piece whose values change (a traffic signal's
+lens colour, a flickering glow) re-recorded all 4,400 pieces; ~2 a second never reaches the "5 in 2 s" that demotes a group, so it went on
+forever. Before #1391 the cars had demoted the shell and this never showed. Lesson: making a group static exposes every slow changer in it.
+- `_ewBunWalkTop` (walk rooms): each direct child's own value hash; a child that changed 3 times in 20 s goes `_ew_bunOut` for good
+  (`_ew_bunOutV`), unless a quarter of the group (or > 400) would go at once (the hour changing = left to demotion). Only once `_hq.ready`.
+- Traffic signals are `_ew_bunOut` from the build.
+- A slow churn demotes too: 8 value re-records in 20 s. A demoted group is retried as static after 30 s, doubling to 8 min.
+- Lens line "Re-recorded most: <group> (values, tree, rests) · changers moved out N". Cloud browser: 0 re-records/s after 4, 3 moved out,
+  draws 540 → 147.
+
+## THE MOVERS OUT + THE QUIET REPLAY + THE QUIET GROUPS (2026-11-14, Disaster City, after THE STILL WALK)
+
+mondo's Mac after THE STILL WALK: 14.9 fps (was 7.3), matrix walk 4.25 ms, but "Draw calls 95" with "submit 52.8 ms" and
+"check 7.60 ms/frame". The draw time was not draws.
+
+- What it was: three's `_renderBundle` replays a recording in one GPU call but still loops over EVERY render object in it, each pass
+  (picture, model mask, sun depth = 3.3 a frame), calling `_nodes.needsRefresh`; a material whose monitor says `hasNode` (the depth
+  pass's materials, the game's dressed ones) answers FULL every time = updateBefore + geometry + nodes + ALL bindings per object.
+  And the shell was not even a static recording: the 16 traffic cars are children of the shell group, their matrices move every
+  frame, so `_ewBunTick` re-recorded it 5 times then DEMOTED it (st.dyn: three checks every object's values every pass).
+- THE MOVERS OUT: `object._ew_bunOut === true` → the `_projectObject` wrapper hands it to the list the bundle group itself was handed
+  to (`this._ew_bunBase`): classic draw, culled, current matrices; `_ewBunWalk` hashes only "it is out". Set on traffic cars at build
+  (`_hqBuildTraffic`) and by THE STILL WALK on any direct child it finds moving (`_ew_bunOutA`, cleared when it rests 4 s).
+  Off: `window.EW_BUN_NO_OUT`. Cloud browser: shell "outside its bundle" 5,988 draws → 34 (the cars).
+- THE QUIET REPLAY (the `rb` wrapper in `_ewBunSetup`): for a STATIC group whose recording is current and has had one whole replay
+  by three since it was made (`bd._ewLoopV`): plain objects = only the first per monitor (one per shader; three hands that one the
+  shared camera/light buffers and answers NONE for the rest); `hasNode` objects = refreshed in full while their refresh writes a
+  non-shared buffer, rested after 20 frames with no write (every 20th frame, by place); a rested one that writes wakes all rested
+  ones of that recording the same frame. Skinned / morph / dynamic-instanced never rest. Measured: main pass asks 47 of 5,933 shell
+  objects. Moving the camera / the sun does not write object buffers (three computes model-view in the shader), checked.
+  Off: `window.EW_BUN_FULL_REFRESH`. Lens: "refreshed N of M a frame".
+- THE QUIET GROUPS (`_ewBunTick`): a recorded group unchanged for 40 checks is hashed every third frame; every group on a frame with
+  an `Object3D.add`, a freed resource, a missing pipeline or a lamp change. Off: `window.EW_BUN_CHECK_EVERY`.
+- Sandbox lesson: at 0.5 fps a group never reaches "5 changes in 2 s", so it re-records every frame instead of demoting; the shell
+  drew classic there for that reason (not the texture shrink). With the cars out the sandbox finally matches the Mac's shape.
+- three r186 facts worth keeping: `RenderObject.getMonitor()` is the node builder state's observer (shared per shader);
+  `createBindings()` reuses shared bind groups per builder state; `needsRefresh` returns SHARED once per render per monitor.
+
+## THE STILL WALK (2026-11-14, Disaster City, after THE UNSEEN LAMP)
+
+mondo: "Still really slow and laggy ... there have to be multiple huge performance saves that you are missing" (7.3 fps, CPU 129.5 ms of
+which submit 69.3: ~60 ms a frame was NOT the draw).
+
+- What it was: three's `scene.updateMatrixWorld()` (once a frame since THE ONE MATRIX WALK) composes + multiplies the matrix of EVERY
+  object, drawn or not, moved or not. The city has 59,082 objects; ~300 move (people, 16 cars, doors). Cloud Chrome: 21-45 ms a walk.
+- THE STILL CHUNKS (same day) did nothing for the walk: `matrixWorldAutoUpdate = false` on a group only skips that group's own
+  multiply, three recurses into the children regardless (36,145 objects under off-camera chunks were still walked). Lesson: read
+  three's method before trusting a flag.
+- The fix (`_hqStillArm / _hqStillUpdate / _hqStillSceneWalk`, three-renderer.js before `_hqChunkRules`): in a chunked room the shell
+  group and every chunk group (prop plots, rooms, fence plots) carry their own `updateMatrixWorld`, used ONLY inside `_hqFrame`'s one
+  walk (`_hqStWalk`); any other caller gets three's walk. Off-camera chunk: nothing. Drawn group: per direct child a 10-number compare
+  of position / quaternion / scale; changed = walked now and for 4 s after (HQ_STILL_HOLD_MS); a child that got an `add` under it
+  (the Object3D.add hook, `_hqStillAdded`) = walked that frame; the rest in slices, all of it every 500 ms (HQ_STILL_SWEEP_MS), a child
+  whose subtree checksum changed joins the movers (inner parts: wax, fans, sway pivots, bones). Group moved / chunk back on camera =
+  whole group twice (seeds the movers).
+- Known limit: an INNER part that starts moving with no add and no move of its placement starts up to 500 ms late the first time.
+  A mover that must not: `_hqStillWake(obj)` (also `ThreeRenderer.hq.dev.stillWake`).
+- `_hqBatchCheck` no longer force-walks the shell + prop groups every 500 ms in such a room (it was the whole city twice a second).
+- `_hqChunkTick`: an out chunk is re-walked only when something joined THAT chunk (was: any add anywhere, e.g. a gun flash).
+- Lens: new line `Matrix walk N ms/frame · still groups …`. Counts: `ThreeRenderer.hq.dev.still()`. Off: `window.EW_HQ_STILL_OFF`.
+
+## THE UNSEEN LAMP + THE SCANS ON CHANGE (2026-11-14, Disaster City, his 7.3 FPS readout)
+His Mac after THE LAMP'S REACH: CPU 129.5 ms (submit 69.3), shadow 776 of 1,056 draws / 3.22M tris, "0 re-records/s".
+A CDP CPU profile of the city in the cloud browser (harness `/profile` endpoint, `scratchpad prof_an.js`: self time folded
+onto the nearest game function) showed the 60 ms outside the draws was whole-scene walks (37,000 objects) on timers.
+- **THE UNSEEN LAMP (`_hqHeroGate`).** The 776 shadow draws were the hero lamp's six cube sides drawing the nearby instance
+  batches + merged batches classic (one batch spans a 42 m plot; the lamp reaches 3.5 m), every frame, with the lamp streets
+  away. A point lamp whose reach sphere (x1.15) is off the camera has its map held; it redraws the frame the sphere is back.
+  Off: `window.EW_HERO_SHADOW_UNSEEN = true`.
+- **The scans, now on change** (`_ewAddCount`: every Object3D.add counted; zero adds a frame standing still in the city):
+  the hero lamp's caster list (was a scene walk every 100 ms; now on an add, and every 2 s); a prop chunk's sphere
+  (`Box3.setFromObject` of the chunk every 4 s; now on an add / count change, and every 60 s); the LOD list (`_hqLodScan`
+  every 2 s; now on an add or a landed level `_lodLandN`, and every 30 s); CSS2DRenderer (three scene walks a frame; skipped
+  while the scene holds no label, `window.EW_CSS2D_ALWAYS`); THE MEMORY BUDGET over its cap with nothing free to drop
+  (`_mmLive` every 4 s; now waits 30 s); the pixel mask's timed scan 400 -> 1500 ms (adds still re-scan at once).
+- Left, in order: the shell is ONE group of 10,000 pieces (matrix walk, bundle check 7 ms, every pass) -> chunk it like the
+  props; the static batch's forced matrix walk every 500 ms; Firefox's cost per draw.

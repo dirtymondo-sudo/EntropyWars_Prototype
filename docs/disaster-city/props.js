@@ -198,6 +198,8 @@ function dress(ctx) {
     return n;
 }
 
+/* (a district adds its indoor furniture rows here: see `clash`) */
+const INDOOR = new WeakSet();
 /* THE PROP CHECK */
 function check(ctx) {
     const { props, cellAt, C, HALF, r3, REPO } = ctx, S = solids(ctx), G = Grid(14); S.forEach(o => G.add(o));
@@ -216,7 +218,8 @@ function check(ctx) {
     const clash = (r, x, z, strict) => {
         const q = r.q, walled = WALLED.test(q.key), pad = walled ? 0.02 : isVeh(q) ? 0.3 : 0.1;
         const P = foot(REPO, q, x, z, pad), bb = bbOf(foot(REPO, q, x, z, 0.25)); let P2 = null;
-        for (const o of G.near(bb)) { if (o.bb.x1 < bb.x0 || o.bb.x0 > bb.x1 || o.bb.z1 < bb.z0 || o.bb.z0 > bb.z1) continue;
+        const indoor = INDOOR.has(q);   // THE INSIDES: a district's furniture in a walk-in building's hall stands inside the building's box by design; it is checked against the inside's own built pieces (an arch row `…:in`) and the other props
+        for (const o of G.near(bb)) { if (o.bb.x1 < bb.x0 || o.bb.x0 > bb.x1 || o.bb.z1 < bb.z0 || o.bb.z0 > bb.z1) continue; if (indoor && (o.type === 'building' || (o.type === 'arch' && !/:in$/.test(o.id || '')))) continue;
             const wide = (o.type === 'fence' || o.type === 'hedge' || o.type === 'wall') && /bench|_bin$/.test(q.key);   // a bench / a bin keeps a hand's width more from a fence
             if (sat(wide ? (P2 || (P2 = foot(REPO, q, x, z, 0.22))) : P, o.poly) > 0.02) return o.type; }
         for (const o of placed.near(bb)) { if (o.r === r || o.bb.x1 < bb.x0 || o.bb.x0 > bb.x1 || o.bb.z1 < bb.z0 || o.bb.z0 > bb.z1) continue; if (sat(P, o.poly) > 0.02) return /^city_/.test(o.r.q.key) ? 'building' : 'prop'; }
@@ -267,4 +270,4 @@ function check(ctx) {
     for (let i = props.length - 1; i >= 0; i--) { if (drop.has(props[i])) props.splice(i, 1); else delete props[i]._turned; }
     return { tally, report };
 }
-module.exports = { kerbSign, dress, check, SIZE };
+module.exports = { kerbSign, dress, check, SIZE, INDOOR };

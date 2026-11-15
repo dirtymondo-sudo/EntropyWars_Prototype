@@ -956,6 +956,19 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   officer's clip. Off switch: `window.EW_NO_INTRO = true` (harnesses that enter story fresh need it). My picks: daylight;
   a passenger-side travelling shot instead of the windscreen (Sedaniel's glass is solid). NOT BUILT: the elevator descent
   + the lift doors on the foyer (needs his OK on frames first).
+- **THE DROP-OFF, HIS NOTES (2026-11-13)**: "I am already standing by the door before sedaniel drops me off" = the walker's
+  tick re-showed the body every frame; `_scenePlayerOut` is now read inside `_hqTickChars`, and `_introStart` hides the
+  officer while it waits. "He is also too small" = a unit's battle size; `place` takes `scale` (Sedaniel 1.45 = 1.4 m tall,
+  4.2 m long; held for the room's life). "shake my head no after he drives off" = `place` takes `clip` + `ms` (the officer
+  plays a rig clip once: `hqNo`, UAL2 Idle_No_Loop) in the close-up A8. `hq.sceneReady(who)` also wants the model's meshes.
+- **SCENE A, THE RIDE DOWN + THE FOYER (2026-11-13)**: his OK on storyboard_A_elevator.jpg + "just get rid of the front
+  door and make the lift the front door": the foyer's `street` door (south wall) is now `proc: 'elevator'`, label THE FRONT
+  LIFT, still sealed (id kept: the evacuate button lands at `foyer@street`). After the desert, map.js `_introStart` chains
+  `sceneIn('car', 'orientation_ride')` (the building's own car; act `shaft` = hq.sceneShaft(k), the shaft window's speed,
+  minus = the landings rise past = going down) and `sceneIn('foyer', 'orientation_arrive')` (act `door` with `id` =
+  hq.sceneDoor({ id, open }): a ROOM door held open, locked or not, its cross braces hidden while held; the recruit steps
+  out to (0, 0.9) and keeps the walk). No foyer (`_hqArrivalRoom()` not the foyer) = the ride, then the hall. A replay
+  plays all three and goes back to the room it was asked from.
 - **SCENE B, THE TV CART (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_tv` (12 beats, his lines word for word,
   the two long ones over two cards); it hangs on the `walk` stage (`scene`), so it plays the moment the recruit first
   stands in Room 64, and the stage's `then: { lesson: 'first_steps' }` starts Tape 1 when the scene ends (map.js
@@ -977,6 +990,17 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   (5) THE RECRUIT WALKS OUT: a WON quest fight stands the officer back up on 1 HP (battle.js `reviveYou` ->
   hqPartyAfterMatch), and while a quest marked `officerUp` (ORIENTATION) is unfinished hqPartyRecord keeps the officer up
   and in slot 1, so a save where the fight already dropped him heals on the next read (no second Catgirl in scene E).
+- **HIS 14 NOV NOTES ON B, D, F (2026-11-14)**: B: the VHS deck + tape are cut to real size (training props `span` 0.34 /
+  0.19); "Welcome..." and "Under my watch..." frame the TV and Locke centred; "I'm Agent Locke..." cuts to a straight-on
+  close-up of her face (`eye`). The TV no longer loses its picture: act `screen` = three-renderer.js `hq.sceneScreen({ x, y, z,
+  w, h, face } | { off })`, a static plane on the tube's glass (rolling band, repainted every 45 ms; the old scene point
+  light is gone); row `end` turns it off. D: Locke faces the Catgirl on the line before, turns to the recruit on "You stood
+  your ground"; Kit: "Deportation? No! Please. You can't send me back." / "Those monsters... destroyed everything."; Locke:
+  "The rules are the rules." E: the keys shot no longer bobs: map.js `eyeFit` fits a shot's `eye` height once, before the
+  beat plays, never again while it is on screen. F: no floating door text in any scene (`hq.sceneCull(true)` hides every
+  `hq_plate`); new opening: a low shot of the recruit's legs walking in by the egress door, two slow pans over the desk,
+  bed and sink, the recruit walks forward to camera, Locke comes in behind him on "Your office. Hope you like it." (him in
+  front, the door and locks behind), then he turns to her for the rest.
 - **Not built yet**: A the intro (Sedaniel = DOOR_CAST.sedaniel, the roster Honda Civic; the foyer's entrance lift).
 
 ## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)
