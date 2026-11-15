@@ -3606,7 +3606,6 @@ mondo 11-15 16:08: "go for it. can you also change the disaster city hollywood s
   throws if its spur moves). `DOOR_HQ.hubs.woods.room` = the new room; it wears the woods' day look. The old Clearing keeps its rooms and is
   reached by the trail south from the Clearing plot (and still by Room 420's hollow tree). The Stair top and the way back from Camelot are wired now.
 
-<<<<<<< HEAD
 ## DISASTER CITY, THE CITY MARKS ON THE STREET (2026-11-15, mondo "go for it" + "playtest city marks")
 The bolt shield (mark B) now sits on the city's own street furniture, and the city flag (mark C) flies in Civic. All placed with the game on screen.
 - three-renderer.js `_hqBuildCityMarks` (called after `_hqBuildBusStops`, only in rooms whose label holds DISASTER CITY): one shield plate per face listed in
@@ -3622,7 +3621,6 @@ The bolt shield (mark B) now sits on the city's own street furniture, and the ci
 - THE MANHOLE reads darker (IRON / DARK in `_hqCityManholeTex`). THE HILL SIGN: a letter stands on the highest land under its width and 2.5 m in front,
   so no foot sinks into the slope.
 - LESSON (headless): a prop's GLB can take minutes to arrive after a teleport; until then only its blob shadow is there. Wait and look again before judging a plate.
-=======
 ## CAMELOT KINGDOM ON PLOTS, THE CASTLE — the second area of the world plan, first delivery (2026-11-15)
 mondo 11-15: "start ... another thread for the next most important zone" (Camelot Kingdom: the Woods' trail ends there) · 16:39 "i would want the
 old rooms to be redesigned too. Like camelot castle should be designed with the same level of architecture as the most complex buildings in
@@ -3670,7 +3668,14 @@ woods in between them" · 16:53 "okay" on plan 2.
   - NEW UNITS here (his OK): scarecrow (Fence Line), skinwalker (the Shelf), ghoul + flesheater (Cave Mouth). Swamp monster + mothman moved to the Pool.
   - NOT DONE: no meat hooks or hung lanterns (ceiling pieces, nothing to hang them from outdoors); no new lights (the level's lamp cap) and the
     day look is unchanged, so the dark comes from the night clock only; faces of the cabin / bus / board are unchecked. NOT SEEN ON SCREEN.
->>>>>>> origin/main
+- **THE CABIN, WALK-IN (2026-11-15, mondo: "would rather you architect a wooden cabin like the building's in disaster city so i can actually walk
+  inside of it and it be useful to the game")**: the Meshy `woods_cabin` prop left the Gully (the model stays in the catalogue for the editor). In its
+  place bake-woods.js builds the city's way: a hollow `texbuilding` `woods:cabin` (skin off, `leaf_shabby_wood` swinging in the doorway, wood walls +
+  floorboards inside) + an arch row `woods:cabin:arch`: log walls with corner logs, sill and top plate, a mossy gable roof, boarded windows, a porch
+  (boards, four posts, lean-to roof) on the square row before the door, a stone chimney up the back with its hearth inside, a table built from parts.
+  3 x 2 squares (10.5 x 7 m) at the Gully's east pocket, front WEST to the path (rot 90). Inside: cot, sea chest, rocking chair, radio, rug, cauldron
+  in the hearth, skull + candle + tape on the table, saw, sack, bucket, bear trap, cobwebs. Checked offline: the doorway's gap in the front wall
+  (z 105.0-106.7 at x 31.65), ground walkable from the path to the inside. Nothing happens in it yet (no quest, find or fight is tied to it). NOT SEEN ON SCREEN.
 
 ## DISASTER CITY, FINANCIAL'S BOX LETTERS ARE DRAWN SIGNS NOW (2026-11-15, mondo "the blocky 3d letters should become normal lettering")
 - docs/disaster-city/districts/F-detail.js `letters()` no longer builds 5 x 7 box glyphs: each word is ONE `txt:` quad (letters only, `kind:'over'`), same spot,
