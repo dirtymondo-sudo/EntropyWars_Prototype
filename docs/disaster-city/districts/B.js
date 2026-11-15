@@ -1125,7 +1125,7 @@ function beach(ctx, push, ghost) {
     rect(gx(159), ZN - 0.5, gx(161), gx(104), 0, { edge: 0.4 });
     lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4, absY: true });
     /* the ramps down to the sand, off the boardwalk at each way out of the city */
-    const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 2.5)];
+    const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 3.5)];   // (the fourth one square south, 2026-11-15: THE CANAL's mouth runs through the sand on squares 133-134, districts/L.js)
     RAMPS.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
     /* the pier (the mall's axis: rows 5-6 of the row-10 plots), its head, the bait hut's bit of deck */
     const ZP = gx(10 * N + 6), XH0 = gx(157), XH1 = gx(163);
