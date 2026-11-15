@@ -1957,6 +1957,40 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE SHEET STACK (2026-11-15, looks that differ only by their sheet merge: one array texture per sheet size)
+
+mondo's F3 after THE ONE PAINT: 31.9 FPS, 32.5 ms at 4,247 meshes (the price line predicted 32.9 ms). What still split the
+shell's 3,223 draws: the sheet (125 of its pictures are the Urban pack's 128 x 128 tiles = 1,515 draws, 18 are 1024 x 1024 =
+485 draws, ~400 are sign canvases, one draw each) and a lit part's glow colour.
+
+three-renderer.js `_hqStk`, `_hqStackPrep` (called when a shell batch leaves 'watch'), `_hqStackTex / _hqStackOf`,
+`_hqStackFill`, `_hqStackWatch`, `_hqStackMat`, `_ewNodeStack` (the dress, `_ewNode.k === 'stack'`):
+- Same-size sheets with the same sampling (wrap, filters, anisotropy, colour space, flip) are the layers of ONE
+  `DataArrayTexture`. A layer is filled ON THE CARD from the sheet's own picture with the call three uploads that sheet with
+  (`copyExternalImageToTexture`, same flip and alpha), mips by three's own generator. Nothing is decoded twice, resized or
+  repainted. (A first try read the PNG bytes itself: wrong on Firefox / default Chromium decodes, which apply the files'
+  gAMA + cHRM chunks, up to 9/255 off. Dropped.)
+- In a big room's shell, the sheet, the colour and the glow leave the look key (`_hqBatchMatKey(m, vc, sk)`): each point
+  carries `ewSk` = glow rgb x intensity, layer x 2 + (glow reads the sheet), its colour, and its uv with the sheet's own
+  repeat / offset / turn applied. The merged mesh wears a copy of the look with no sheet (`_ew_stacked`).
+- Only plain opaque Phong / Lambert parts with one sheet (emissiveMap may be the same one), no hook, WebGPU backend only.
+  A lost device's stack is refilled (`_hqStackWatch`, once a frame from `_hqBatchTick`). Stacks live for the session
+  (128 px x 115 layers = 8 MB; a bucket over 96 MB is left out). A stack whose fill throws is dropped, its sheets stay.
+- Off: `window.EW_HQ_NO_STACK` before the room. Lens: "Static batch ... · sheet stacks N (M sheets)". Dev:
+  `ThreeRenderer.hq.dev.stack()`.
+
+Proof of the picture (standalone page, three r186 WebGPU on SwiftShader, session scratchpad st/t.html): four classic Phong
+quads (own sheet, repeat, offset, colour, two with a glow that reads the sheet) against ONE merged mesh on a 4-layer stack:
+7 of 262,144 bytes differ, by 1/255; the far view (mips) is identical.
+Cloud city (counts only, HEAD on f21eb50): shell 9,002 pieces -> 1,713 draws (was 3,223), 359 stacked meshes over 106 layers,
+replayed meshes at the start corner 4,190 -> 2,907, 0 frame errors, the WGSL reads the layer from the point.
+Not stacked there: the 1024 px sheets (the sandbox shrinks them; on a real machine they are one more stack, 75 MB).
+
+What is left in the shell after this: parts alone in their look and square (signs: one canvas each), see-through / cut-out
+parts, the parts the batch never takes (terrain flag 320, multi-material 171, tangent 36). NEXT by yield: the sign canvases
+on shared sheets (they clamp, so an atlas with a gutter), the instance cells and prop chunks (635 meshes in view), the sun
+shadow held between frames.
+
 ## THE ONE PAINT (2026-11-15, the price of a mesh on mondo's Mac + colour out of the look)
 
 mondo's two walk F3s after THE SHELL CELLS price a replayed mesh on his Mac (Firefox, WebGPU): 6,712 meshes = 44.7 ms,
