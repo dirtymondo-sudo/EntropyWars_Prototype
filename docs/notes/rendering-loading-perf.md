@@ -1975,6 +1975,14 @@ His readout: 20.3 FPS, CPU 39.2; matrix walk 6.5 · bundle check 6.1 · scene re
   bundle group the object lands under and the one it leaves (`_ew_bunDirty`), quiet comes after `BUN_QUIET` 8 checks, and a group
   quiet for `BUN_QUIET_LONG` 90 checks takes every fourth frame. Old rule: `window.EW_BUN_ADD_ALL`.
 - The sandbox draws one frame every 5 s, so its ms rows and "quiet skipped" are not his; verify by counts (movers, outs, errors).
+- WHERE EACH FIX RUNS (mondo 11-15 "make sure all of these fixes apply everywhere ... story mode, battles, all of it"):
+  every HQ / story / site room (any `_hqFrame` scene): quiet replay, copies rest, quiet groups + the add's own group, movers /
+  changers out, the mask's short walk, the lamp's reach + tight reach + held lamp, quiet instance sync, scans on change, the
+  Frame JS lens. Battles in a room (the field bundles, `_ewBunFieldTargets`): quiet replay, copies rest, mask short walk, and
+  since this PR THE QUIET GROUPS (`field` in `_ewBunTick`; VS CPU on Mount Shasta: 531 groups, 353 skipped a frame, check
+  0.6 ms; off `window.EW_BUN_FIELD_CHECK_EVERY`). Big rooms only (>= chunkMinSpanM 200 m, today the city), on purpose: the
+  chunks and THE STILL WALK / STILL CHECK / DOORS REST — a small room's whole matrix walk is under 1 ms (3,500 objects, 0.6 ms
+  measured 11-09) and a still walk starts a hand-animated nested piece up to 0.5 s late, so there is nothing to win there.
 
 ## THE LAMP'S TIGHT REACH + THE CHEAP SWEEP (2026-11-15, mondo's F3 at another spot of the city)
 
