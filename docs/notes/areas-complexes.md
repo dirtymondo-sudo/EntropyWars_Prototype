@@ -4150,12 +4150,11 @@ new areas".
   swum or sailed; the skiff and the swimmer are the game's own, HQ_SEA_RULES). Everything is `terrain.slope.cells`: sand rises 0.3 m a square from
   the waterline up to its plot's cap (level 0 = 0.6 m, 1 = 1.2 m, 2 = 2.0 m), the sea floor falls 0.7 m a square from the sand (two squares of
   wade, then a swim, 3.5 m deep in open water), dunes to 3.6 m. HARD squares keep four equal corners and so stand as a step: the piers 0.6, the
-  quay 0.9, the Breakwater 1.6, the Lighthouse Rock 3.4, the Dutchman's deck 2.6, the volcano's cone (4.2 m a square, to 16 m: never climbed).
+  quay 0.9, the Breakwater 1.6, the Lighthouse Rock 3.4, the Dutchman's decks 4.2 to 11.2 (her own), the volcano's cone (4.2 m a square, to 16 m: never climbed).
   A step over 0.62 m is the wall. Paint: planks, cobbles, `rocks_5`, `obsidian` (the cone), `lava` (the crater).
 - **THE BUILDINGS (5 walk-in, the Estate's helper: a hollow `texbuilding` + an `arch` look):** the three Beach Huts (blue, yellow, red; a surf
   hut, a sleeping hut, a float hut), the Lifeguard Hut (white, red roof, its door to the sea), the Quay Shed (tarred, tin roof, barn doors).
-  DRAWN (arch rows): THE FLYING DUTCHMAN (her deck is a hard block of squares; the hull, forecastle, poop, three masts, yards, furled sails and
-  bowsprit are drawn over it) and the tribe's three open shelters. Props: two lighthouses (the game's own, the beam turns), the old wreck, two
+  DRAWN (arch rows): the tribe's three open shelters. THE FLYING DUTCHMAN is the Dutchman map's own ship (see THE REAL DUTCHMAN below). Props: two lighthouses (the game's own, the beam turns), the old wreck, two
   skiffs (the skiff jetty; the island's Jetty), buoys (the Channel, the Maelstrom's ring), 51 palms.
 - **THE WAYS:** door `quay` on the west wall at the Boardwalk -> Disaster City's `harbour` door (the old Harbour's door id, kept; the city's
   door still names the retired Harbour and `DOOR_HQ.retired` lands the walker on the spawn, which is on the Boardwalk inside this door; the city
@@ -4175,10 +4174,11 @@ new areas".
   out the skiff jetty, from the island's Jetty onto the Cay and from the Volcano Island's landing to the village has no step over 0.14 m; the
   Dutchman's deck is not climbed from the pier; every prop key and unit exists; all four links and the bay door resolve.
 - **NOT DONE / SHORT OF DISASTER CITY:**
-  - NOT SEEN ON SCREEN: everything. Above all the Dutchman's drawn hull, how the hard steps (pier sides, quay wall, cone) are textured, whether
+  - NOT SEEN ON SCREEN: everything. Above all the moored Dutchman (the real ship drawn at her berth), how the hard steps (pier sides, quay wall, cone) are textured, whether
     the gangway way reads as a way aboard, the door on the open west edge, the frame rate of a 588 x 420 m sea room.
   - The west edge is open sea past the room, not the city's sea wall (no `terrain.edges`); the room wears the old sea shell.
   - The Dutchman is not redesigned (the world plan wants her rebuilt inside and out). The hold hatch to Atlantis is her old link, untouched.
+    Her bulwarks, deck stairs, crates and cannon are her deck room's rows and are not drawn at the berth (nobody stands on her here).
   - Art the game does not have (nothing was generated): the tribe's people and proper huts, a volcano model, a volleyball net, beach towels.
   - Not carried over from the old rooms, because the plan does not draw them: the Harbour's wharves, gantry, slipway and water steps; the old
     cay's Lookout and stair. The undersea coral and fish of the old dive route are only partly placed (the Reef, the Maelstrom).
@@ -4228,4 +4228,12 @@ hangar and the ward were still the old BSP rooms and the pyramid had no inside. 
   steps from the spawn) reaches every room, both upper floors, all three pyramid levels and every door pad; every door resolves both ways; at most
   10 light props a room. The ladder is compiled (10.5 > 14 m) but not walked by the check. NOT SEEN ON SCREEN: which way models face, the leaves'
   fit in their frames, the glass, how dark the pyramid is, the camera in the 7 m wide passages under 3.5 m roofs.
-
+- **THE REAL DUTCHMAN (same day, mondo: "we literally have a dutchman ship from the dutchman pvp map. why not just use that exact ship??"):** the
+  first delivery drew her from boxes; that was wrong, the game has her. Now `terrain.moored: [{ kind: 'galleon', room:
+  'site_prebuilt_revenge_deck', x, z }]` (a new terrain key) has three-renderer.js `_hqBuildMoored` run the Dutchman map's own `_hqBuildGalleon`
+  on that room's own compiled field (hull, wales, gun ports, stern gallery, beakhead, bowsprit, three masts, yards, tattered sails, rigging,
+  lanterns, helm, capstan) inside a group moved to her berth, her waterline on this room's sea; `hull.moored` skips the wake and the bow spray
+  (the deck room itself is unchanged). She is her real size: 119 x 49 m (34 x 14 squares) plus the beakhead, bow east, her stern at the Long
+  Pier's end, so she runs out of the Harbour into the Ocean's plots. bake-beach.js reads her deck heights from that room (it refuses to bake if
+  the room is no longer the 34 x 14 galleon) and writes them into the squares she stands on, so this room's ground is her decks. Boarding is
+  still the gangway link to her Main Deck room. Any room can berth a galleon room this way.

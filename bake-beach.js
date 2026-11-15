@@ -38,9 +38,19 @@ const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]
 const setRect = (x0, y0, x1, y1, ch) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) cell[y][x] = ch; };
 
 /* ── what the tool does to the plan's squares ──
-   THE FLYING DUTCHMAN: the plan's 7 x 7 block is her berth; she lies north-south against the pier head, three squares wide ('X' = her deck). */
-const SHIP = [39, 51, 42, 57];
+   THE FLYING DUTCHMAN (mondo 11-15: "we literally have a dutchman ship from the dutchman pvp map. why not just use that exact ship??"): she IS
+   that ship, at her own size. Her main deck room (`site_prebuilt_revenge_deck`, 34 x 14 squares) is read here: the squares she stands on ('X')
+   carry her deck's own heights (waist, quarterdeck, forecastle, poop) over this room's sea, and `terrain.moored` has the renderer draw her own
+   hull, masts, sails and rigging round them (three-renderer.js _hqBuildMoored: the Dutchman map's own galleon builder). Bow east, her stern at
+   the Long Pier's end. The plan's 7 x 6 block was only her berth's mark. */
+const SHIP_ROOM = 'site_prebuilt_revenge_deck', SHIP_W = 34, SHIP_D = 14, SHIP = [39, 49, 39 + SHIP_W, 49 + SHIP_D];
 setRect(39, 51, 46, 57, 'w'); setRect(SHIP[0], SHIP[1], SHIP[2], SHIP[3], 'X');
+const SHIP_AT = { x: gx((SHIP[0] + SHIP[2]) / 2), z: gz((SHIP[1] + SHIP[3]) / 2) };
+const SHIP_H = JSON.parse(vm.runInContext(`(() => { const r = DOOR_HQ.rooms.${SHIP_ROOM}, i = hqTerrainInfo('${SHIP_ROOM}'), o = [];
+    if (!r || !i || !(r.terrain.float && r.terrain.float.hull && r.terrain.float.hull.kind === 'galleon') || Math.round(r.shell.w / ${C}) !== ${SHIP_W} || Math.round(r.shell.d / ${C}) !== ${SHIP_D}) return 'null';
+    for (let y = 0; y < ${SHIP_D}; y++) for (let x = 0; x < ${SHIP_W}; x++) o.push(Math.round((hqTerrainHeight(i, (x + 0.5 - ${SHIP_W} / 2) * ${C}, (y + 0.5 - ${SHIP_D} / 2) * ${C}) - r.terrain.sea.y) * 100) / 100);
+    return JSON.stringify(o); })()`, D));
+if (!SHIP_H) throw new Error('the Dutchman\'s main deck room is not the 34 x 14 galleon this tool berths');
 setRect(29, 65, 31, 68, 'w');                               // THE SKIFF: the plan's block is the boat herself (a prop afloat at the jetty's end)
 /* every plan `B` that stands on sand / quay / rock is named here; the squares become its ground again and the building is built by a row below */
 const B_HUTS = [[2, 50], [5, 50], [8, 50]], B_GUARD = [15, 65], B_SHED = [26, 39], B_LIGHT = [65, 101], B_WRECK = [99, 89], B_TRIBE = [[113, 15], [115, 17], [112, 18]];
@@ -64,7 +74,7 @@ function distTo(match) {   // every square's distance (in squares, corner steps 
     return d;
 }
 const dWet = distTo(ch => WET.includes(ch)), dBeach = distTo(ch => BEACH.includes(ch)), dNotDune = distTo(ch => ch !== 'D'), dNotCone = distTo(ch => ch !== 'h' && ch !== 'l'), dLava = distTo(ch => ch === 'l');
-const SEA_BED = -3.5, PIER = 0.6, QUAY = 0.9, SHIP_DECK = 2.6, CAP = [0.6, 1.2, 2.0, 2.0, 2.0];
+const SEA_BED = -3.5, PIER = 0.6, QUAY = 0.9, CAP = [0.6, 1.2, 2.0, 2.0, 2.0];
 const hc = new Float32Array(W * H);
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x], k = y * W + x, p = Pxy(x, y); let h;
     if (ch === 'w') h = dBeach[k] > 900 ? SEA_BED : Math.max(SEA_BED, -(0.45 + 0.7 * (dBeach[k] - 1)));
@@ -74,7 +84,7 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x],
     else if (BEACH.includes(ch)) h = Math.min(CAP[p.level] || 0.6, 0.3 + 0.3 * (dWet[k] - 1));
     else if (ch === 'J') h = PIER;
     else if (ch === 'o') h = QUAY;
-    else if (ch === 'X') h = SHIP_DECK;
+    else if (ch === 'X') h = SHIP_H[(y - SHIP[1]) * SHIP_W + (x - SHIP[0])];                                      // her deck's own height over the sea
     else if (ch === 'r') h = p.d === 'T' ? 3.4 : p.d === 'H' ? 1.6 : 2.4 + 0.5 * Math.sin(x * 1.3 + y * 0.8);  // the Lighthouse Rock, the Breakwater, the headlands
     else if (ch === 'h') h = 2.5 + 4.2 * (dNotCone[k] - 1) + 0.6 * Math.sin(x * 1.7) * Math.cos(y * 1.1);        // the cone: too steep to climb
     else if (ch === 'l') h = 2.5 + 4.2 * 3.2;                                                                   // the crater's lava, under the rim
@@ -167,23 +177,6 @@ const SHED = building('shed', [B_SHED[0], B_SHED[1], B_SHED[0] + 3, B_SHED[1] + 
 put(SHED, 'lobster_traps', -3.6, -3.4, { face: 0 }); put(SHED, 'fishing_net_wall', 0, -5.0, { y: 1.4, face: 0 }); put(SHED, 'psx_wooden_crate_1', 3.6, -3.6); put(SHED, 'psx_wooden_crate_2', 3.8, -1.8); put(SHED, 'psx_metal_barrel_mp_1', -3.8, -0.6);
 put(SHED, 'ship_anchor', 3.4, 2.6, { face: 110 }); put(SHED, 'ship_lantern', -3.8, 3.4); put(SHED, 'meshy_rope', -1.6, -3.8); put(SHED, 'sea_chest', -3.6, 1.6, { face: 90 });
 
-/* THE FLYING DUTCHMAN at the pier head (the Harbour's landmark): her deck is the hard block `X` (2.6 m over the water, never climbed from the
-   pier or the sea), drawn as a galleon: a tarred hull, the forecastle (north) and the poop (south) a step up, bulwarks, three masts with their
-   yards and furled sails, the bowsprit. The way aboard is the gangway door at the pier's end (link `beach_dutchman`). Local frame: x across her,
-   +z toward her stern (south), y from the sea (the row stands at y 0). */
-look('dutchman', gx((SHIP[0] + SHIP[2]) / 2), gz((SHIP[1] + SHIP[3]) / 2), 0, a => {
-    const TARH = 0x2e2620, PLANK = 0x5a4632, RAIL = 0x3a2e24, SAIL = 0xb8b09a, Wd = (SHIP[2] - SHIP[0]) * C, Ld = (SHIP[3] - SHIP[1]) * C, hw = Wd / 2, hl = Ld / 2;
-    a.box(0, -1.2, 0, Wd + 0.3, SHIP_DECK + 1.2, Ld + 0.3, WD, TARH, { top: false, uv: [3.5, 1.75] });                     // the hull, down under the water
-    a.box(0, SHIP_DECK, -hl + 3.4, Wd + 0.3, 1.5, 6.8, WD, TARH, { uv: [3.5, 1.75] }); a.box(0, SHIP_DECK, hl - 3.9, Wd + 0.3, 2.4, 7.8, WD, TARH, { uv: [3.5, 1.75] });   // the forecastle, the poop
-    a.box(0, SHIP_DECK + 2.4, hl - 3.9, Wd - 0.4, 0.1, 7.4, FLR, PLANK); a.box(0, SHIP_DECK + 1.5, -hl + 3.4, Wd - 0.4, 0.1, 6.4, FLR, PLANK);
-    for (const s of [-1, 1]) { a.box(s * (hw + 0.05), SHIP_DECK, 0, 0.22, 1.1, Ld - 14.6, WD2, RAIL); a.box(s * (hw + 0.05), SHIP_DECK + 1.1, 0, 0.34, 0.12, Ld - 14.6, WD2, 0x8a6a3a); }   // the waist's bulwarks and their gilt rail
-    a.box(0, SHIP_DECK + 0.6, -hl - 3.2, 0.5, 0.5, 7.5, WD2, RAIL, { rx: -14 });                                           // the bowsprit
-    [[-hl + 4.6, 17], [0.6, 21], [hl - 5.2, 15]].forEach(([z, mh], i) => { a.cyl(0, SHIP_DECK, z, 0.36, mh, WD2, 0x4a3a2a, { roof: true });
-        [[0.42, 11.5], [0.7, 8.5]].forEach(([t, yw]) => { a.box(0, SHIP_DECK + mh * t, z, yw, 0.26, 0.26, WD2, 0x3a2e24, { roof: true }); a.box(0, SHIP_DECK + mh * t - 0.75, z, yw - 1.4, 0.7, 0.5, null, SAIL, { roof: true }); });
-        if (i === 1) a.box(0, SHIP_DECK + mh * 0.86, z, 2.0, 0.2, 2.0, WD2, RAIL, { roof: true }); });                       // the maintop
-    for (const s of [-1, 1]) a.box(s * 1.6, SHIP_DECK + 2.5, hl - 0.2, 0.5, 1.0, 0.3, GLS, 0xf0c868, { glow: 0.7 });       // the stern lanterns
-    a.box(-hw - 1.4, PIER, 0.9, 2.8, 0.16, 1.5, FLR, PLANK, { rz: 0 }); a.box(-hw - 0.1, PIER, 0.9, 0.3, SHIP_DECK - PIER, 1.5, WD2, RAIL);                                                              // the gangway's foot on the pier side
-});
 /* the tribe's three open shelters on the Volcano Island (their people come later: mondo "eventually will make models for"): four posts and a
    cone of thatch each, walked under */
 B_TRIBE.forEach((q, i) => look('shelter' + (i + 1), mx(q[0]), mz(q[1]), 0, a => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * 1.5, 0, sz * 1.5, 0.11, 2.3, WD2, 0x6a5038);
@@ -236,7 +229,7 @@ swimmer('ocean_dolphin', 34, OY + 34, { swim: { r: 6, v: 2.2, bob: 0.35 } }); sw
 native('pirate', 29, OY + 6, 180, sayOf(O_HARB, 'pirate')); native('homosapien', 34, OY + 18, 150, sayOf(O_HARB, 'homosapien'));
 
 /* ── THE OCEAN ── */
-[[60, 20, 'ocean_whale'], [70, 30, 'ocean_humpback'], [56, 60, 'ocean_dolphin'], [58, 62, 'ocean_dolphin'], [84, 50, 'ocean_manta'], [100, 40, 'ocean_turtle'], [120, 60, 'ocean_dolphin'], [76, 100, 'ocean_manta'],
+[[60, 20, 'ocean_whale'], [70, 30, 'ocean_humpback'], [56, 70, 'ocean_dolphin'], [58, 72, 'ocean_dolphin'], [84, 50, 'ocean_manta'], [100, 40, 'ocean_turtle'], [120, 60, 'ocean_dolphin'], [76, 100, 'ocean_manta'],
  [50, 100, 'ocean_turtle'], [140, 12, 'ocean_shark'], [30, 112, 'ocean_stingray'], [162, 60, 'ocean_humpback'], [90, 70, 'ocean_tuna'], [130, 28, 'ocean_dolphin']].forEach(q => swimmer(q[2], q[0], q[1], /whale|humpback/.test(q[2]) ? { y: -1.6, hover: 0.5 } : { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
 for (const q of [[52, 30], [80, 20], [70, 70], [110, 50], [60, 110], [150, 70]]) feat({ k: 'scatter', key: 'fish_school', n: 3, x: mx(q[0]), z: mz(q[1]), r: 40, seed: q[0], sea: true });
 P('palm_tree', 160, 20, { h: 4.2 }); dec('ocean_conch', 161, 21); dec('sea_chest', 159, 20); P('palm_tree', 40, 112, { h: 3.8 }); dec('ocean_starfish', 41, 112); dec('fallen_log', 39, 113);    // the two unnamed islets
@@ -269,7 +262,7 @@ writeSlope();
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
 /* ── THE PAINT: one sheet a square (0 = the room's own sand) ── */
 const PAL = ['wood_planks', 'cobblestone', 'rocks_5', 'obsidian', 'lava', 'urban:WoodFlooring1a'], paint = new Uint8Array(W * H);
-for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; paint[y * W + x] = (ch === 'j' || ch === 'J') ? 1 : ch === 'o' ? 2 : ch === 'r' ? 3 : ch === 'h' ? 4 : ch === 'l' ? 5 : ch === 'X' ? 6 : 0; }
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; paint[y * W + x] = (ch === 'j' || ch === 'J') ? 1 : ch === 'o' ? 2 : ch === 'r' ? 3 : ch === 'h' ? 4 : ch === 'l' ? 5 : ch === 'X' ? 1 : 0; }
 
 /* ── checks: every prop key and unit exists; the game's own compile gives the heights back; the walker reaches every dry plot of the mainland
    from the city door, and every island has a shore the skiff reaches ── */
@@ -283,7 +276,7 @@ if (!TREES.palm) throw new Error('no palm tree kind');
       const hardStep = !(isSoft(cell[y][x]) && isSoft(cell[Y][X])); if (hardStep ? Math.abs(cH(X, Y) - cH(x, y)) > 0.62 : Math.abs(cH(X, Y) - cH(x, y)) / C > 1.0) continue; seen[Y * W + X] = 1; st.push([X, Y]); } }
   const need = [[3, OY + 5, 'the Boardwalk'], [3, 51 + 2, 'the Beach Huts'], [17, 67, 'the Lifeguard Hut'], [28, OY + 6, 'the Quay'], [36, 53, 'the Long Pier'], [29, 62, 'the skiff jetty'], [6, OY + 44, 'the Dunes'], [4, 30, 'the North Headland sand']];
   need.forEach(q => { if (!seen[q[1] * W + q[0]]) throw new Error('not reached on foot from the city door: ' + q[2]); });
-  if (seen[52 * W + 40]) throw new Error('the Dutchman is climbed from the pier');
+  for (let y = SHIP[1]; y < SHIP[3]; y++) for (let x = SHIP[0]; x < SHIP[2]; x++) if (seen[y * W + x]) throw new Error('the Dutchman is climbed from the pier');
   let dry = 0, wade = 0, swim = 0; for (let k = 0; k < W * H; k++) { if (hc[k] >= 0) dry++; else if (hc[k] > -1.15) wade++; else swim++; }
   Object.assign(count, { drySquares: dry, wadedSquares: wade, swumSquares: swim, walkedFromTheDoor: seen.reduce((a, b) => a + b, 0) });
   if (process.env.BEACH_DUMP) console.log(cell.map((r, y) => r.map((ch, x) => seen[y * W + x] ? '.' : hc[y * W + x] < -1.15 ? ' ' : ch).join('')).join('\n')); }
@@ -305,6 +298,8 @@ L.push("                res: 1.75, floor: 'desert', cliff: 'rocks_5', path: 'woo
 L.push("                base: 0, noise: { amp: 0.06, scale: 9 }, crag: false,");
 L.push("                sea: { y: 0, key: 'water' },");
 L.push("                outer: { m: 60 },");
+L.push("                /* THE FLYING DUTCHMAN: the Dutchman map's own ship, drawn at her berth (three-renderer.js _hqBuildMoored) */");
+L.push("                moored: [" + J({ kind: 'galleon', room: SHIP_ROOM, x: SHIP_AT.x, z: SHIP_AT.z }) + "],");
 L.push("                /* THE HEIGHTS ARE THE MAP: sand, sea floor, the quay, the piers, rock, the ship's deck and the volcano are all this grid */");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + mx(0) + ", z0: " + mz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
