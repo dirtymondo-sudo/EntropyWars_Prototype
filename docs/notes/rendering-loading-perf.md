@@ -1957,6 +1957,26 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE SHELL'S RESTS (2026-11-15, OPEN: why the shell falls back to piece-by-piece; the lens only so far)
+
+mondo's F3 after THE DOOR CHUNKS (23:37 UTC): 25.9 FPS, frame 38.8 ms, CPU 29.1 ms at 2,930 meshes (price line: 26.6).
+"scene: projection walk 5.4 · sun shadow: projection walk 4.4", "Walk visits: scene 21K · sun shadow 20K" (were 1.8K),
+"downtown_streets shell (values 0, tree 42, rests 3, classic now)", no "shell rest" kind, "Shader builds 1.0/s", "terrain:
+Sprite 74" own draws, doors 66 meshes in 46 groups (the door chunks work: 223 -> 66).
+- Reading: the readout was taken while the SHELL group was released (`_ewBunTick`: 5 tree re-records within 2 s = "the tree
+  itself churns: classic for a while", `st.until = now + 5000`, counted as "rests"). For those 5 s three walks the shell's
+  ~10,000 children in the scene pass and the sun pass (~10 ms) and draws its loose pieces one by one. Every F3 of the day
+  shows rests (2 to 15 a session), so this is not new with the door chunks, but it is the "lag and frame drops" he feels,
+  and nothing proved yet what churns the tree. Suspects: the static batch installing / handing back pieces over several
+  frames (a re-scan every 4 s while files land: each slice hides pieces = a tree change a frame), movers going out and
+  coming back, pieces shown / hidden.
+- The lens now says it: "SLOW RIGHT NOW: <group> (N pieces) is drawn piece by piece for X s more ..." under the mesh kinds,
+  and "Re-recorded most" gives the tree changes by cause: "tree 42 [merge a, movers b, shown/hidden c, added/removed d,
+  other e]" (`st.why.tB/tO/tH/tN/tX`, set in `_ewBunTick` from `_ewBunWalkTop`'s counts of held / out / hidden children).
+- NEXT: read that bracket on his next F3. If "merge" leads: commit a build's installs in one frame (prepare the merged
+  geometry over frames, hide + add all at once = one tree change). If "movers": hold a mover out longer before it comes
+  back. Never replay a stale recording (a held piece would draw twice: wrong for see-through pieces).
+
 ## THE DOOR CHUNKS (2026-11-15, each door of a big room is its own chunk and recording)
 
 mondo's F3 after THE LOOSE PIECES (23:15 UTC): 43.2 FPS, frame 23.1 ms at 2,188 meshes (price line: 23.0, exact again),
