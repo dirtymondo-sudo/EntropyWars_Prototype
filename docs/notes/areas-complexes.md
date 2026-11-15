@@ -3951,6 +3951,12 @@ plan, and rearrange them to whatever makes sense."
   east of Mount Olympus over Financial + Entertainment: the sign on four plots, the ridge behind it, the city's mountain road landing under the sign (not at
   the Lodge Yard), a Lodge-road door west, a trail to Olympus' Goat Track, sea cliffs at the east end; the city's beach strip runs north along Entertainment
   to those cliffs, with a cliff stair up.
+- PLAN 2 (his answers the same day: buildings "fine for now"; "why is there a gap between the hills and mt Olympus ... we might need to move the Vatican
+  and mt Olympus around, it would make more sense to have mt Shasta right there"; "yes extend the beach up north, but there would be cliffs at the north
+  edge which is the hills"; residents "don't worry about it yet"). The picture is redrawn: Hills 13 x 3 = 39 plots over the city's whole width, no gap;
+  range order North Pole, Pass, Lodge, OLYMPUS, SHASTA, Hills (Shasta and Olympus swap columns; the Vatican's plan moves west under Olympus; the Shasta
+  trail's door still opens at the Woods' Snowline); Hills west end walks on to Shasta (no Lodge-road door); the Beach zone plan gains 24 plots north along
+  Entertainment with the cliffs as its north edge. To settle when built: the city's closed VATICAN GATE would face the Shasta trail. Waits his OK to build.
 - Open with him: the three walk-in buildings (plain labels), whether the Ski Lodge moves, what stands on the new beach, who lives there.
 - Building it touches bake-mountains.js, bake-disaster-city.js (move.js way P08-04 N, EDGES, B.js / E.js room + edges) and links.downtown_mountains.
 
