@@ -2500,11 +2500,12 @@
         /* ══ THE PLOT DUNGEONS (docs/PLOT_DUNGEONS_PLAN.md, 2026-11-14) — the test launcher + the walk's glue ═══════════════════
            data.js holds the dungeons (PD_DUNGEONS), their rooms and the board's rules; three-renderer.js moves the plots (hq.pd).
            Here: the way in (Settings > Developer > Open Plot Dungeons → the level list → _pdEnter; `?pd=<level>` boots straight
-           in), the controls' panel (the 3 × 3 board, the moves you can make from where you stand, PREVIEW → CONFIRM, UNDO, RESET),
-           the move itself (_pdGo: the rules, the tween, the board written back, the save), and the save (localStorage
+           in), the things you press (_pdAct: a lever, a button, a valve, a gate; there is NO panel and no list of moves: one lever
+           is one move, and the wide view shows it), the move itself (_pdGo: the rules, the tween, the board written back, the
+           save), and the save (localStorage
            PD_RULES.saveKey, never the story's). Single player, never online: nothing here is on `state` or relayed (RULE #2).
            Console: PD.state() · PD.reset(level) · PD.solve(level) · PD.go(level). */
-        let _pd = null;   // { id, undo: [states], sel: move | null }
+        let _pd = null;   // { id, undo: [states] }
         const _pdEsc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
         function _pdSaveAll() { try { return JSON.parse(localStorage.getItem(PD_RULES.saveKey) || 'null') || { levels: {} }; } catch (e) { return { levels: {} }; } }
         function _pdSave() {
@@ -2523,7 +2524,7 @@
             const V = (typeof pdLevel === 'function') ? pdLevel(id) : null;
             if (!V) { console.warn('[PD] no such level', id); return false; }
             pdSetState(id, _pdLoad(id)); pdSync(id);
-            _pd = { id, undo: [], sel: null };
+            _pd = { id, undo: [] };
             /* every plot's floor plan compiled here (a 42 m plot is quick), so the stage builds the whole board at once */
             Object.keys(V.L.plots).forEach(pid => { try { hqTerrainInfo(pdRoomId(id, pid)); } catch (e) { console.warn('[PD] the floor plan of ' + pid, e); } });
             const room = pdRoomId(id, V.L.entry), sp = (DOOR_HQ.rooms[room] || {}).pdSpawn || { x: 0, z: 0, face: 0 };
@@ -2577,9 +2578,19 @@
             window._hqClosePanel();
             try { if (!opts.quiet && typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.35 }); } catch (e) {}
             const ms = opts.ms || (turnOnly ? PD_RULES.turnMs : PD_RULES.slideMs);
-            let ok = false; try { ok = ThreeRenderer.hq.pd.move({ from, to, ms }, done); } catch (e) { console.warn('[PD] move', e); }
+            let ok = false; try { ok = ThreeRenderer.hq.pd.move({ from, to, ms, wide: opts.wide === false ? null : _pdWide(id, S, N) }, done); } catch (e) { console.warn('[PD] move', e); }
             if (!ok) done();
+            /* no prompt over the wide view: it comes back when the eye is down again */
+            _hqSetPrompt(null);
+            const back = () => { if (!_pd) return; let up = false; try { up = ThreeRenderer.hq.pd.busy() || ThreeRenderer.hq.pd.wide(); } catch (e) {} if (up) { setTimeout(back, 200); return; } try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {} };
+            setTimeout(back, 300);
             return true;
+        }
+        /* THE WIDE VIEW's frame: the box round every slot the level uses (the board, its gaps, the parts beside it), zone metres */
+        function _pdWide(id, S, N) {
+            const V = pdLevel(id), M = PD_RULES.plotM / 2; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+            Object.keys(S.slots).concat(Object.keys(N.slots), V.L.vacant || []).forEach(s => { const p = pdSlotXZ(s); x0 = Math.min(x0, p.x - M); x1 = Math.max(x1, p.x + M); z0 = Math.min(z0, p.z - M); z1 = Math.max(z1, p.z + M); });
+            return Object.assign({ cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, w: x1 - x0, d: z1 - z0 }, PD_RULES.wide);
         }
         function _pdDoMove(m) {
             if (!_pd) return false;
@@ -2610,10 +2621,14 @@
             let say = R.say;
             /* THE FIGHT, for now a stand-in: the enemies are listed, the fight is counted as won (the real field fight is the next step) */
             if (R.ok && A.fight && (A.enemies || []).length) say = 'STAND-IN FIGHT WON · ' + (C.label || 'ENEMIES');
+            /* THE LEVER: one move of one plot; the plot you stand on carries you */
+            const why = (R.ok && R.move) ? pdMoveBlocked(id, S, R.move, _pdAt()) : null;
+            if (why) { _hqToast(_pdEsc(why), 2600); try { playSfx('uiButtonCancel'); } catch (e) {} return false; }
             if (say) _hqToast(_pdEsc(say), 3200);
             if (!R.ok) { try { playSfx('uiButtonCancel'); } catch (e) {} return false; }
             try { playSfx('uiButtonClick'); } catch (e) {}
             const was = S.solved;
+            if (R.move) return _pdGo(R.S, R.move.t === 'turn' ? { by: { [R.move.plot]: R.move.by } } : {});
             return _pdGo(R.S, { undo: false, quiet: true, then: () => { if (!was && pdState(id).solved) _pdSolvedSay(); } });
         }
         function _pdSolvedSay() {
@@ -2629,93 +2644,14 @@
             const S = pdState(_pd.id); if (S.solved || Math.hypot(p.x - E.x, p.z - E.z) > E.r) return;
             S.solved = true; _pdSave(); _pdSolvedSay();
         };
-        /* ── the panel: the 3 × 3 model, the moves, PREVIEW → CONFIRM ── */
-        function _pdMoveLabel(id, m) {
-            const P = pdPlot(id, m.plot), role = (P && P.role) || m.plot.toUpperCase();
-            if (m.t === 'turn') return (Math.abs(m.by) > 1 ? 'TURN' : m.by > 0 ? 'TURN LEFT' : 'TURN RIGHT') + ' · ' + role;
-            return 'SLIDE ' + ({ n: 'NORTH', s: 'SOUTH', e: 'EAST', w: 'WEST' })[m.side] + ' · ' + role;
-        }
-        /* the board as an SVG: every slot a plate, its plot's ports as bars to the edge, a moving plot tinted, the officer a dot;
-           `N` (a previewed state) draws its ports in outline over the live board and the joins it would make */
-        function _pdBoardSvg(id, S, N, at) {
-            const V = pdLevel(id), slots = Object.keys(S.slots).concat(V.L.vacant || []).concat(N ? Object.keys(N.slots) : []);
-            let r0 = 9, r1 = -9, c0 = 9, c1 = -9;
-            slots.concat(['A1', 'C3']).forEach(s => { const p = pdSlotXZ(s); r0 = Math.min(r0, p.r); r1 = Math.max(r1, p.r); c0 = Math.min(c0, p.c); c1 = Math.max(c1, p.c); });
-            const U = 64, W = (c1 - c0 + 1) * U, H = (r1 - r0 + 1) * U, px = (s) => { const p = pdSlotXZ(s); return [(p.c - c0) * U, (p.r - r0) * U]; };
-            const dir = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
-            const plate = (St, slot, cls) => {
-                const pid = St.slots[slot], P = pdPlot(id, pid), o = px(slot), ports = pdPlotPorts(P), rot = St.rot[pid] || 0, cx = o[0] + U / 2, cy = o[1] + U / 2;
-                let h = `<rect class="pd-pl ${cls}${(P.turn || P.slide) ? ' mv' : ''}${P.use === 'mass' ? ' mass' : ''}" x="${o[0] + 3}" y="${o[1] + 3}" width="${U - 6}" height="${U - 6}"/>`;
-                ['ground', 'upper'].concat(Object.keys(P.net || {})).forEach(layer => (ports[layer] || '').split('').forEach(sd => {
-                    const b = dir[pdSideOnBoard(sd, rot)];
-                    h += `<line class="pd-port ${layer} ${cls}" x1="${cx}" y1="${cy}" x2="${cx + b[0] * (U / 2 - 3)}" y2="${cy + b[1] * (U / 2 - 3)}"/>`;
-                }));
-                if (cls !== 'pv') h += `<text class="pd-role" x="${cx}" y="${o[1] + U - 9}">${_pdEsc(String(P.role || pid).slice(0, 12))}</text>`;
-                return h;
-            };
-            let h = `<svg class="pd-board" viewBox="-2 -2 ${W + 4} ${H + 4}" width="${W}" height="${H}">`;
-            (V.L.vacant || []).forEach(s => { if (S.slots[s]) return; const o = px(s); h += `<rect class="pd-vac" x="${o[0] + 3}" y="${o[1] + 3}" width="${U - 6}" height="${U - 6}"/>`; });
-            Object.keys(S.slots).forEach(s => { h += plate(S, s, 'live'); });
-            if (N) {
-                Object.keys(N.slots).forEach(s => { const pid = N.slots[s]; if (pdSlotOf(S, pid) !== s || (S.rot[pid] || 0) !== (N.rot[pid] || 0)) h += plate(N, s, 'pv'); });
-                pdJoins(id, N).forEach(j => { const a = px(j.slotA), b = px(j.slotB); h += `<circle class="pd-join" cx="${(a[0] + b[0]) / 2 + U / 2}" cy="${(a[1] + b[1]) / 2 + U / 2}" r="5"/>`; });
-            }
-            Object.keys(V.L.tokens || {}).forEach(tk => { const sl = pdSlotOf(S, S.vars['tok_' + tk]); if (!sl) return; const o = px(sl); h += `<rect class="pd-tok" x="${o[0] + U / 2 - 6}" y="${o[1] + U / 2 - 6}" width="12" height="12"/>`; });
-            if (at) { const o = px(at.slot), pid = S.slots[at.slot], rot = S.rot[pid] || 0, c = [1, 0, -1, 0][rot], s2 = [0, 1, 0, -1][rot], M = PD_RULES.plotM;
-                const gx = at.x * c + at.z * s2, gz = -at.x * s2 + at.z * c;
-                h += `<circle class="pd-you" cx="${o[0] + U / 2 + gx / M * U}" cy="${o[1] + U / 2 + gz / M * U}" r="4"/>`; }
-            return h + '</svg>';
-        }
-        function _pdPanelHtml(t) {
-            if (!_pd) return '<div class="hq-panel-hd"><b>THE MODEL</b></div>';
-            const id = _pd.id, V = pdLevel(id), S = pdState(id), at = _pdAt(), C = (t && t.counter) || {};
-            const all = pdMoves(id, S).filter(m => !C.pdPlots || C.pdPlots.indexOf(m.plot) >= 0);
-            const sel = (_pd.sel != null && all[_pd.sel]) ? all[_pd.sel] : null, N = sel ? pdApplyMove(id, S, sel) : null;
-            const why = sel ? pdMoveBlocked(id, S, sel, at) : null;
-            let h = `<div class="hq-panel-hd"><b>${_pdEsc(V.L.title || V.T.label)}</b><span>${_pdEsc(C.label || 'THE MODEL')} · MOVES ${S.moves | 0}${S.solved ? ' · SOLVED' : ''}</span></div>`;
-            h += `<div class="pd-wrap"><div class="pd-boardbox">${_pdBoardSvg(id, S, N, at)}<p class="pd-key"><i class="k1"></i>MOVES <i class="k2"></i>YOU <i class="k3"></i>PREVIEW</p></div><div class="pd-moves">`;
-            if (C.pdKind === 'model') h += '<p class="pd-note">The board as it stands now.</p>';
-            else if (!all.length) h += '<p class="pd-note">Nothing moves from here.</p>';
-            all.forEach((m, i) => { h += `<button class="hq-btn pd-mv${_pd.sel === i ? ' on' : ''}" data-pd="sel:${i}">${_pdEsc(_pdMoveLabel(id, m))}</button>`; });
-            if (why) h += `<p class="pd-note bad">${_pdEsc(why)}</p>`;
-            h += `</div></div><div class="hq-panel-actions pd-actions">`;
-            if (C.pdKind !== 'model') h += `<button class="hq-btn pd-confirm" data-pd="confirm"${sel && !why ? '' : ' disabled'}>CONFIRM</button><button class="hq-btn" data-pd="undo"${_pd.undo.length ? '' : ' disabled'}>UNDO</button>`;
-            h += `<button class="hq-btn" data-pd="reset">RESET</button><button class="hq-btn pd-back" data-close="1">BACK</button></div>`;
-            return h;
-        }
         function _pdPanelAct(act) {
             if (act.indexOf('enter:') === 0) { window._pdEnter(act.slice(6)); return; }
             if (act.indexOf('wipe:') === 0) { window.PD.reset(act.slice(5)); window._pdRenderSelect(); return; }
-            if (!_pd) return;
-            const t = _hqPanelTarget, id = _pd.id, S = pdState(id), C = (t && t.counter) || {};
-            const all = pdMoves(id, S).filter(m => !C.pdPlots || C.pdPlots.indexOf(m.plot) >= 0);
-            if (act.indexOf('sel:') === 0) { const i = +act.slice(4); _pd.sel = (_pd.sel === i) ? null : i; try { playSfx('uiButtonHover'); } catch (e) {} _pdPanelRedraw(); return; }
-            if (act === 'confirm') { const m = all[_pd.sel]; _pd.sel = null; if (m) _pdDoMove(m); return; }
-            if (act === 'undo') { _pd.sel = null; _pdUndo(); return; }
-            if (act === 'reset') { _pd.sel = null; _pdReset(); return; }
         }
-        function _pdPanelRedraw() { const body = _hqEl('hqPanelBody'), t = _hqPanelTarget; if (body && t && t.counter && t.counter.proc === 'pd_control') body.innerHTML = _pdPanelHtml(t) + '<p class="hq-panel-foot">ESC · CLOSE</p>'; }
         function _pdStyle() {
             if (document.getElementById('pdStyle')) return;
             const st = document.createElement('style'); st.id = 'pdStyle';
             st.textContent = `
-.pd-wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin:8px 0}
-.pd-boardbox{background:#000;border:2px solid #fff;padding:8px}
-.pd-board{display:block;max-width:100%;height:auto}
-.pd-pl{fill:#16181c;stroke:#8a8f98;stroke-width:1.5}.pd-pl.mv{fill:#12303a;stroke:#5fd6ee}.pd-pl.mass{fill:#0a0a0c;stroke:#33363c}
-.pd-pl.pv{fill:none;stroke:#ffd84a;stroke-width:2;stroke-dasharray:5 4}
-.pd-vac{fill:#000;stroke:#444;stroke-width:1.5;stroke-dasharray:3 4}
-.pd-port{stroke:#e8e8e8;stroke-width:7;stroke-linecap:butt}.pd-port.upper{stroke:#ffb35a}.pd-port.trace{stroke:#7dff9a;stroke-width:3}.pd-port.pipe{stroke:#6ab7ff;stroke-width:4}.pd-port.track{stroke:#ff8ad0;stroke-width:3}
-.pd-port.pv{stroke:#ffd84a;stroke-width:3;stroke-dasharray:4 3}
-.pd-tok{fill:#c9a2ff;stroke:#fff;stroke-width:1.5}.pd-join{fill:#ffd84a}.pd-you{fill:#ff5a5a;stroke:#fff;stroke-width:1.5}
-.pd-role{fill:#b9bec7;font:8px monospace;text-anchor:middle}
-.pd-key{margin:6px 0 0;font-size:11px;color:#b9bec7}.pd-key i{display:inline-block;width:10px;height:10px;margin:0 4px 0 8px;vertical-align:middle}.pd-key .k1{background:#12303a;border:1px solid #5fd6ee}.pd-key .k2{background:#ff5a5a;border-radius:50%}.pd-key .k3{border:1px dashed #ffd84a}
-.pd-moves{display:flex;flex-direction:column;gap:6px;min-width:190px;flex:1}
-.pd-mv{text-align:left;white-space:normal}.pd-mv.on{outline:2px solid #ffd84a}
-.pd-note{margin:2px 0;font-size:12px;color:#b9bec7}.pd-note.bad{color:#ff8a8a}
-.pd-actions{flex-wrap:wrap}
-#hqPanelBody button.hq-btn.pd-confirm:not([disabled]){background:#1c6b2c!important;border:2px solid #7dff9a!important;color:#fff!important}
-#hqPanelBody .pd-actions button.hq-btn.pd-back[data-close]{background:#7a1c1c!important;border:2px solid #ff8a8a!important;color:#fff!important}
 .pd-sel-note{color:#b9bec7;font-size:13px;margin:6px 4px 14px}
 .pd-sel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
 .pd-sel-card{background:#000;border:2px solid #fff;padding:12px;display:flex;flex-direction:column;gap:6px}
@@ -2742,7 +2678,7 @@
         window._pdRenderSelect = function () {
             const body = document.getElementById('pdSelectBody'); if (!body) return;
             const sv = _pdSaveAll().levels || {}, V = pdLevels();
-            let h = '<p class="pd-sel-note">Test build. Each dungeon is one puzzle idea; walk to a console, a dial or the model and press E. Names, enemies and places are stand-ins.</p><div class="pd-sel-grid">';
+            let h = '<p class="pd-sel-note">Test build. Each dungeon is one puzzle idea. Levers and buttons stand in the rooms: one lever moves one piece, and its lamp has the colour of that piece. Names, enemies and places are stand-ins.</p><div class="pd-sel-grid">';
             Object.keys(PD_DUNGEONS).forEach(type => {
                 const T = PD_DUNGEONS[type]; if (T.hidden) return;
                 (T.levels || []).forEach((L, i) => {
@@ -4172,6 +4108,7 @@
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
+            try { if (t && _pd && ThreeRenderer.hq.pd.wide()) t = null; } catch (e) {}   // THE PLOT DUNGEONS: no prompt over the wide view
             /* THE ENCOUNTER (9.4 rev 17): the gun HOLSTERED and a native in reach + sight — the prompt names the click; drawn, the click is the door gun's */
             let hushed = false; try { hushed = !!(ThreeRenderer.hq.hushed && ThreeRenderer.hq.hushed()); } catch (e) {}   // THE HUSH (2026-10-01): no ATTACK prompt on arrival either
             if (!hushed && !_hqPanelTarget && (!t || t.kind === 'npc') && _hqEncounterEnabled() && _hqEncounterRoomOkNow()) {
@@ -8286,7 +8223,6 @@
             }
             /* THE PLOT DUNGEONS: a dial / a console / the model opens the board's panel */
             if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'pd_act') { _pdAct(t.counter); return; }
-            if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'pd_control') { _pdStyle(); if (_pd) _pd.sel = null; _hqOpenPanel(t); return; }
             /* THE MARKER (2026-09-20): the floating crystal opens ITS OWN panel — the party, the checklist, FIGHT — never the terminal */
             if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'battle_marker') { _hqOpenPanel(t); return; }
             if (t && t.kind === 'counter' && t.counter && t.counter.action && t.counter.action.overlay === 'training') {
@@ -8326,7 +8262,7 @@
             _hqPanelTarget = t;
             let html = '';
             if (t.kind === 'door') html = _hqDoorPanelHtml(t);
-            else if (t.kind === 'counter') html = (t.counter && t.counter.proc === 'pd_control') ? _pdPanelHtml(t) : _hqCounterPanelHtml(t);
+            else if (t.kind === 'counter') html = _hqCounterPanelHtml(t);
             else if (t.kind === 'notice') html = _hqNoticePanelHtml(t);
             else html = _hqNpcPanelHtml(t);
             body.innerHTML = html + '<p class="hq-panel-foot">ESC · CLOSE</p>';
