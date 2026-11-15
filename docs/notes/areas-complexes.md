@@ -3640,3 +3640,16 @@ woods in between them" · 16:53 "okay" on plan 2.
   castle is flat (the plan's levels come with the kingdom room); no town, forest, garden or North Pole yet; the ward's tape was not moved.
 - **NOT SEEN ON SCREEN** (RULE #1c). Checked offline: data.js parses, the room compiles (1 109 wall rows, 5 buildings, 6 arch rows), every
   link end resolves (hqLinkDoors), every catalogue key and race exists, a top-down drawing of the compiled rows matched the plan.
+- **THE HORROR PASS (2026-11-15, mondo: "What can we do to give more of a horror element to the woods", "okay", then "yes you can do the yellow
+  and pink too" on the plan picture world-areas-plan/woods/woods_horror_plan.png)**: one block at the end of bake-woods.js's dressing. Rule: it gets
+  worse the farther you walk from the Stair. Clearing = someone was just here (abandoned camp, flashlight, tape, camera, bear traps + trip wires in
+  the three Deep Woods plots, the missing-persons board on the Camelot trail); Redwood Trail = being watched (voodoo dolls hung at 1-2 m, effigies,
+  ward totems, crosses on the Shelf, skull piles + a cage at the Snowline); Ritual Ground = the cult (the OWL STATUE on its mound with the altar at
+  its feet, an effigy on a bier, a mask on every stage chair, cauldrons, candle rings as models, a dug-up coffin on the Mound); Dead Man's Cave =
+  where things get dumped (the Gully's new yard: a trailer home 5 x 2 squares, the school bus 3 x 1, the DERELICT CABIN 2 x 2; coffins sunk in the
+  channel, skull pile at the cave mouth, sarcophagus on the Tunnel Way). 107 props; `hdec` / `hput` skip a piece when a plot's clearing is full.
+  - NEW MODELS (3 Meshy, concept -> image-to-3d meshy-t2.5, base y 0, metallic 0, .opt.glb beside each, manifest rows, MODEL_LIST):
+    `woods_cabin`, `owl_statue`, `missing_board` (R2 `Assets/world/props/meshy/`; originals in project files world-areas-plan/woods/meshy/).
+  - NEW UNITS here (his OK): scarecrow (Fence Line), skinwalker (the Shelf), ghoul + flesheater (Cave Mouth). Swamp monster + mothman moved to the Pool.
+  - NOT DONE: no meat hooks or hung lanterns (ceiling pieces, nothing to hang them from outdoors); no new lights (the level's lamp cap) and the
+    day look is unchanged, so the dark comes from the night clock only; faces of the cabin / bus / board are unchecked. NOT SEEN ON SCREEN.
