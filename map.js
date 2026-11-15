@@ -21350,7 +21350,7 @@
                 const CT = (typeof CALM_TERRAIN !== 'undefined') ? CALM_TERRAIN : null;
                 if (CT && CT.sheets && !window.EW_NO_CALM_LOOK) {
                     const c = CT.sheets[terrainKey] ? terrainKey : (CT.of && CT.of[terrainKey]);
-                    if (c && CT.sheets[c]) return `url('${CT.base + CT.sheets[c][0]}')`;
+                    if (c && CT.sheets[c]) return `url('${(typeof calmSheetUrl === 'function') ? calmSheetUrl(c) : CT.base + CT.sheets[c][0]}')`;
                 }
             } catch (e) {}
             if (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) {

@@ -39263,7 +39263,7 @@ const DOOR_HQ = {
             parti: 'One bright boulevard between two dark back lanes; the roofs behind the marquees are the only way up.',   // AREA CONTENT D2 (2026-09-19, R6): the Strip stays ONE district (the plan's rule) and gains the back-lot rooftops
             typology: 'loop',
             terrain: {
-                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
+                floor: 'urban:RoadGeneric1a', cliff: 'urban:ConcreteSlab2a', path: 'urban:ConcreteSidewalk1a',   // THE URBAN DECAY ROADS (2026-11-15, mondo: "use the urban decay textures more across all of the PvP battle maps"): the pack's asphalt, sidewalk slabs and yard slabs, as in Disaster City (same values)
                 floorTint: '#8e8c94',   // 2026-11-02 (mondo: "really define the difference between the road and the sidewalks"): the asphalt a shade darker than the pale slabs
                 noise: { amp: 0.04, scale: 6 },
                 gen: { kind: 'city', seed: 33, walkW: 3.0, kerb: 0.12, wallH: 4.0, lotPitch: 9.5, lotW: [6.6, 9.0], lotD: [8, 11], lowP: 0.3, storeys: [1, 3], fronts: 'store', neon: true, fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.45, ruinP: 0.05,
@@ -49591,7 +49591,7 @@ const DOOR_HQ = {
                never enters (a real overpass over a walked street is a later layer mechanic). */
             terrain: {
                 /* THE URBAN PACK (2026-09-17): the asphalt is the floor sheet (the corridors), the pavement slabs the path sheet (the sidewalk band + the door paths), the yards' concrete the cliff sheet (the block interiors + the outer ground); the paint, the kerbs, the manholes and the signs are three-renderer.js _hqBuildRoadMarkings */
-                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
+                floor: 'urban:RoadGeneric1a', cliff: 'urban:ConcreteSlab2a', path: 'urban:ConcreteSidewalk1a',   // THE URBAN DECAY ROADS (2026-11-15, mondo: "use the urban decay textures more across all of the PvP battle maps"): the pack's asphalt, sidewalk slabs and yard slabs, as in Disaster City (same values)
                 floorTint: '#8a8a8e',   // 2026-11-02 (mondo: "really define the difference between the road and the sidewalks"): the asphalt a shade darker than the pale slabs
                 noise: { amp: 0.05, scale: 6 },
                 gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.16, fronts: 'window', fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.22, ruinP: 0.35,   /* 2026-09-21 (the user): Disaster City is the PRISM city — more of the map-builder buildings than the Grid or the Strip (texP 0.22), fewer flat roofs; THE INFILL fills every block */
@@ -50145,7 +50145,7 @@ const DOOR_HQ = {
                door hides at the end of a dogleg (R3); the undercity's gutter drops into
                the sewers. `gen.districts` carries the look per band. */
             terrain: {
-                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteUnderTiles1', path: 'urban:TileGeneric3b',   // THE URBAN PACK (2026-09-17): the wet asphalt, the dark slate sidewalks, the grime under the blocks
+                floor: 'urban:RoadGeneric1a', cliff: 'urban:ConcreteUnderTiles1', path: 'urban:TileGeneric3b',   // THE URBAN PACK (2026-09-17): the wet asphalt, the dark slate sidewalks, the grime under the blocks   · the asphalt = the Urban Decay pack's road (2026-11-15)
                 noise: { amp: 0.05, scale: 6 },
                 gen: { kind: 'city', seed: 21, walkW: 2.4, kerb: 0.12, wallH: 3.6, lotW: [5.8, 8.0], lotD: [8, 11], lowP: 0.12, storeys: [2, 4], fronts: 'window', neon: true, fenceKey: 'urban:MetalCorrugatedPainted2a', fenceH: 1.75, texP: 0.5, ruinP: 0.1,
                        /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
@@ -53071,7 +53071,7 @@ const DOOR_HQ = {
             kind: 'box', site: 'prebuilt_area51', part: 'flightline',
             shell: hqAirbaseShell({ w: 96, d: 72, plate: { x: 0, z: 34.8, y: 4.4 } }),   // 2× EVERYWHERE (2026-10-28): 64 → 72 m deep so its 11×11 fits on 3.5 m squares
             terrain: { levelM: 3.5,   // THE FULL LEDGES (2026-11-10): the tower deck, the gantry and the east apron 3.5 m, the cab 7 m, the mast 10.5 m
-                floor: 'dirt_4', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',                                 // the asphalt is the city's own sheet
+                floor: 'dirt_4', cliff: 'wasteland', path: 'urban:RoadGeneric1a',                                         // the asphalt is the city's own sheet (the Urban Decay pack's road, 2026-11-15)
                 noise: { amp: 0.12, scale: 7 },
                 gen: { kind: 'rooms', seed: 33, loops: 3, thicket: false, wallH: 1.6, rMin: 7, rMax: 12, open: [{ x: 0, z: -26, r: 7 }, { x: 0, z: -14, r: 7 }, { x: 0, z: -2, r: 7 }, { x: 0, z: 10.5, r: 30 }] },   // (the last disc: THE BATTLE MAP POLISH, the board's ground clear of the berms)   // Phase 5: the gate road runs clear of the berms              // the aprons joined by taxiways; the solid = the blast berms
                 features: [
@@ -53197,7 +53197,7 @@ const DOOR_HQ = {
             typology: 'corridor',
             terrain: {
                 res: 0.4375,   // THE GRID FIT (2026-10-26): sampled every quarter square, so a tier's edge on a square line never smears into the square beside it
-                floor: 'dirt_4', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',
+                floor: 'dirt_4', cliff: 'wasteland', path: 'urban:RoadGeneric1a',
                 noise: { amp: 0.03, scale: 7 },
                 features: [
                     { k: 'path', pts: [[0, -20], [0, 20]], w: 12 },                                                // THE ROAD through the gate
@@ -53334,7 +53334,7 @@ const DOOR_HQ = {
                    off it at the end wall: the tunnel doors stand ON the gantries at 2.6, up their stairs) and the jogged one down
                    the middle with THE BOOTH off it. Side room 1 (THE RAMP's foot) off the bays' west end, side room 2 a dead end
                    off their east end. Two loops (hall ⇄ west passage ⇄ bays ⇄ middle, and the same by the east). */
-                floor: 'urban:ConcreteStriped2b', cliff: 'urban:ConcreteStriped1c', path: 'urban:TileGeneric2a',
+                floor: 'urban:ConcreteStriped2b', cliff: 'urban:ConcreteStriped1c', path: 'urban:TileLinoleum1a',   // 2026-11-15: the broken tiles (TileGeneric2a, out of Disaster City by mondo's word) -> the pack's linoleum
                 noise: { amp: 0, scale: 10 }, crag: false,
                 /* THE BATTLE MAP POLISH (2026-11-10): THE CONCOURSE is the board. The maze of passages between THE HALL and THE BAYS is opened into one concourse (the
                    `space` row below) with four concrete blocks left standing (gen.solid): a four-square avenue down the middle and a lane round each block, the
@@ -61671,22 +61671,22 @@ const HQ_AREA_SPECS = {
             /* THE FAMILY PLOT (0.8) up its steps, the upper plot (2.0) along its west side up a second flight (a grind rail on its lip), its stair down
                north into the coach house's yard (the plot's middle stays level: the arena) */
             { k: 'plateau', x: -36.75, z: -12.25, r: 12.25, h: 0.8, edge: 0.3 },
-            { k: 'ramp', x0: -14, z0: -12.25, x1: -24.5, z1: -12.25, w: 3.5, h0: 0, h1: 0.8, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: -14, z0: -12.25, x1: -24.5, z1: -12.25, w: 3.5, h0: 0, h1: 0.8, stairs: true, edge: 0.3, built: true, key: 'urban:BrickMasonry1a', side: 'urban:BrickMasonry1a' },
             { k: 'plateau', x: -47.25, z: -19.25, w: 11.1, d: 11.1, h: 3.5, edge: 0.3 },
-            { k: 'ramp', x0: -38.5, z0: -15.75, x1: -42, z1: -15.75, w: 3.5, h0: 0.8, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'ramp', x0: -50.75, z0: -31.5, x1: -50.75, z1: -24.5, w: 3.5, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: -38.5, z0: -15.75, x1: -42, z1: -15.75, w: 3.5, h0: 0.8, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'urban:BrickMasonry1a', side: 'urban:BrickMasonry1a' },
+            { k: 'ramp', x0: -50.75, z0: -31.5, x1: -50.75, z1: -24.5, w: 3.5, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'urban:BrickMasonry1a', side: 'urban:BrickMasonry1a' },
             { k: 'rail', x0: -42.15, z0: -24.1, x1: -42.15, z1: -17.6, y: 3.5, model: 'pipe', block: false },
             /* THE CRYPT (2.6): the mausoleum block — the ivy up its west face, a 2.5 m gap east to the churchyard walk (two rails across it); the churchyard wall (the grind) with its gate onto the lawn */
             { k: 'plateau', x: 35, z: 0, w: 14, d: 14, h: 3.5, edge: 0.3 }, { k: 'climb', x: 28.55, z: -2.375, face: 90, look: 'vine' },
-            { k: 'wall', x0: 28, z0: -7, x1: 42, z1: -7, y: 3.5, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: 28, z0: 7, x1: 42, z1: 7, y: 3.5, t: 1, key: 'bricks_2', rail: false },   // its brick faces, flush with the roof
-            { k: 'wall', x0: 28, z0: -7, x1: 28, z1: -3.5, y: 3.5, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: 28, z0: 0, x1: 28, z1: 7, y: 3.5, t: 1, key: 'bricks_2', rail: false },   // (the ivy between)
-            { k: 'wall', x0: 42, z0: -7, x1: 42, z1: 7, y: 3.5, t: 1, key: 'bricks_2', rail: false },
-            { k: 'wall', x0: 17.5, z0: 17.5, x1: 28, z1: 17.5, h: 1.2, t: 1.2, key: 'bricks_2' }, { k: 'wall', x0: 35, z0: 17.5, x1: 49, z1: 17.5, h: 1.2, t: 1.2, key: 'bricks_2' },
+            { k: 'wall', x0: 28, z0: -7, x1: 42, z1: -7, y: 3.5, t: 1, key: 'urban:BrickMasonry1a', rail: false }, { k: 'wall', x0: 28, z0: 7, x1: 42, z1: 7, y: 3.5, t: 1, key: 'urban:BrickMasonry1a', rail: false },   // its brick faces, flush with the roof
+            { k: 'wall', x0: 28, z0: -7, x1: 28, z1: -3.5, y: 3.5, t: 1, key: 'urban:BrickMasonry1a', rail: false }, { k: 'wall', x0: 28, z0: 0, x1: 28, z1: 7, y: 3.5, t: 1, key: 'urban:BrickMasonry1a', rail: false },   // (the ivy between)
+            { k: 'wall', x0: 42, z0: -7, x1: 42, z1: 7, y: 3.5, t: 1, key: 'urban:BrickMasonry1a', rail: false },
+            { k: 'wall', x0: 17.5, z0: 17.5, x1: 28, z1: 17.5, h: 1.2, t: 1.2, key: 'urban:BrickMasonry1a' }, { k: 'wall', x0: 35, z0: 17.5, x1: 49, z1: 17.5, h: 1.2, t: 1.2, key: 'urban:BrickMasonry1a' },
             { k: 'rail', x0: 41.45, z0: -5.875, x1: 49.3, z1: -5.875, y: 3.5, model: 'pipe', block: false }, { k: 'rail', x0: 41.45, z0: 5.875, x1: 49.3, z1: 5.875, y: 3.5, model: 'pipe', block: false },
             /* THE CHURCHYARD WALK (2.6) along the east side: a stair up north onto the terrace, a stair down south onto the lawn (a handrail down its middle) */
             { k: 'plateau', x: 54.25, z: 1.75, w: 10.5, d: 31.5, h: 3.5, edge: 0.3 },   // (runs on into the hedge, so no ditch along it)
-            { k: 'ramp', x0: 54.25, z0: -24.5, x1: 54.25, z1: -14, w: 3.5, h0: 3.5, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'ramp', x0: 52.5, z0: 31.5, x1: 52.5, z1: 17.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: 54.25, z0: -24.5, x1: 54.25, z1: -14, w: 3.5, h0: 3.5, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'urban:BrickMasonry1a', side: 'urban:BrickMasonry1a' },
+            { k: 'ramp', x0: 52.5, z0: 31.5, x1: 52.5, z1: 17.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'urban:BrickMasonry1a', side: 'urban:BrickMasonry1a' },
             { k: 'rail', pts: [[52.5, 18.2, 2.45], [52.5, 30.35, 0.15]], model: 'pipe', block: false },
             { k: 'rail', x0: 49.15, z0: -13.7, x1: 49.15, z1: -7.1, y: 3.5, model: 'parapet' }, { k: 'rail', x0: 49.15, z0: 7.1, x1: 49.15, z1: 14, y: 3.5, model: 'parapet' },
             /* THE GAZEBO: the deck (0.6) up two steps round the roof (5.6, the tape — the door gun's), a balustrade round the deck (open to the gate and the steps) */
@@ -61696,16 +61696,16 @@ const HQ_AREA_SPECS = {
             { k: 'rail', arc: { x: 33.25, z: 29.75, r: 8.55, a0: 200, a1: 335 }, y: 0.6, model: 'balusters_b' }, { k: 'rail', arc: { x: 33.25, z: 29.75, r: 8.55, a0: 25, a1: 160 }, y: 0.6, model: 'balusters_b' },
             /* THE TERRACE (1.4) along the east side: a stair, the hand-holds up its west face, the balustrade on it (the grind); its upper deck (3.6) up a stair along the east */
             { k: 'plateau', x: 50.75, z: -38.5, w: 25.7, d: 29.2, h: 3.5, edge: 0.3 },   // (runs on into the hedge, so no ditch along it)
-            { k: 'ramp', x0: 24.5, z0: -36.75, x1: 38.5, z1: -36.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: 24.5, z0: -36.75, x1: 38.5, z1: -36.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'urban:BrickMasonry1a', side: 'urban:BrickMasonry1a' },
             { k: 'climb', x: 38.55, z: -29.375, face: 90, look: 'wall' },
-            { k: 'wall', x0: 42, z0: -31.5, x1: 49, z1: -31.5, h: 0.9, t: 0.8, key: 'bricks_2' },
+            { k: 'wall', x0: 42, z0: -31.5, x1: 49, z1: -31.5, h: 0.9, t: 0.8, key: 'urban:BrickMasonry1a' },
             { k: 'plateau', x: 50.75, z: -50.75, w: 24.5, d: 10.5, h: 7, edge: 0.3 },   // (runs on into the hedge)
-            { k: 'ramp', x0: 57.75, z0: -35, x1: 57.75, z1: -45.5, w: 3.5, h0: 3.5, h1: 7, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: 57.75, z0: -35, x1: 57.75, z1: -45.5, w: 3.5, h0: 3.5, h1: 7, stairs: true, edge: 0.3, built: true, key: 'urban:BrickMasonry1a', side: 'urban:BrickMasonry1a' },
             { k: 'rail', x0: 38.65, z0: -45.65, x1: 56, z1: -45.65, y: 7, model: 'balusters_b' }, { k: 'rail', x0: 38.65, z0: -45.65, x1: 38.65, z1: -48.9, y: 7, model: 'balusters_b' },
             /* THE COACH HOUSE roof (3.6) in its yard: the ladder on its east end, the rope down its south face, the west bridge onto its north end */
             { k: 'plateau', x: -45.5, z: -47.25, w: 21, d: 17.5, h: 7, edge: 0.3 }, { k: 'climb', x: -35.55, z: -43.75, face: 270, look: 'ladder' }, { k: 'climb', x: -43.75, z: -39.05, face: 0, look: 'rope' },
-            { k: 'wall', x0: -35, z0: -49, x1: -35, z1: -45.5, y: 7, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: -35, z0: -42, x1: -35, z1: -38.5, y: 7, t: 1, key: 'bricks_2', rail: false },   // its brick faces on the yard (the ladder and the rope between)
-            { k: 'wall', x0: -56, z0: -38.5, x1: -45.5, z1: -38.5, y: 7, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: -42, z0: -38.5, x1: -35, z1: -38.5, y: 7, t: 1, key: 'bricks_2', rail: false },
+            { k: 'wall', x0: -35, z0: -49, x1: -35, z1: -45.5, y: 7, t: 1, key: 'urban:BrickMasonry1a', rail: false }, { k: 'wall', x0: -35, z0: -42, x1: -35, z1: -38.5, y: 7, t: 1, key: 'urban:BrickMasonry1a', rail: false },   // its brick faces on the yard (the ladder and the rope between)
+            { k: 'wall', x0: -56, z0: -38.5, x1: -45.5, z1: -38.5, y: 7, t: 1, key: 'urban:BrickMasonry1a', rail: false }, { k: 'wall', x0: -42, z0: -38.5, x1: -35, z1: -38.5, y: 7, t: 1, key: 'urban:BrickMasonry1a', rail: false },
             /* THE POND with THE FOOTBRIDGE, a curved rail round its north side */
             { k: 'pool', x: -29.75, z: 22.75, r: 8.75, depth: 0.6, key: 'water', bank: 1.6 },
             { k: 'deck', x0: -42, z0: 22.75, x1: -17.5, z1: 22.75, w: 3.5, y: 0.4 },
@@ -75919,8 +75919,13 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         calm_hedge:     ['calm_hedge_1.png', 'leaves_3', 'Hedge leaves'],
         calm_cobble:    ['calm_cobble_1.png', 'cobblestone', 'Cobbles'],
         calm_darkstone: ['calm_darkstone_1.png', 'bricks_3', 'Dark stone blocks'],
-        calm_planks:    ['calm_planks_1.png', 'wood_planks', 'Deck planks'],
-        calm_shipwood:  ['calm_shipwood_1.png', 'wood', 'Ship wood'],
+        /* THE URBAN DECAY WOOD (2026-11-15, mondo: "can we replace the calm wood texture with the wood planks from the urban decay texture
+           pack, like we did in disaster city"): wood_planks / bridge and wood wear the pack's boards everywhere now (a full URL here = a
+           sheet outside `base`, read as pixels like every urban sheet: calmSheetUrl). The two calm sheets stay in the editor's picker. */
+        calm_planks:    ['https://cdn.entropywars.net/Assets/world/terrain/urban/WoodGeneric1a.png', 'wood_planks', 'Wood planks (Urban Decay)'],
+        calm_shipwood:  ['https://cdn.entropywars.net/Assets/world/terrain/urban/WoodGeneric2a.png', 'wood', 'Dark wood (Urban Decay)'],
+        calm_planks_old:   ['calm_planks_1.png', 'wood_planks', 'Deck planks (the old calm sheet)'],
+        calm_shipwood_old: ['calm_shipwood_1.png', 'wood', 'Ship wood (the old calm sheet)'],
         calm_obsidian:  ['calm_obsidian_2.png', 'obsidian', 'Obsidian (lava veins)'],   // 11-11: faint lava in the joints (calm_obsidian_1 = no veins)
         calm_obsidian_plain: ['calm_obsidian_1.png', 'obsidian', 'Obsidian, no veins'],
         calm_deckplate: ['calm_deckplate_1.png', 'aluminium', 'Deck plate (spaceship)'],   // mondo 11-11: "what about like a metal for the spaceship"
@@ -76051,12 +76056,14 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
               calm_plaster: 1, calm_leather: 1, calm_canopy: 1, calm_forestfloor: 1, calm_purplegrass: 1, calm_paving: 1, calm_ruins: 1, calm_void: 1 },
 };
 /* the terrain a texture key plays by: a calm sheet picked by name plays as the key it stands in for; every other key is itself */
+/* a calm sheet's URL: its file under `base`, or the file itself when it is a full URL (the Urban Decay wood) */
+function calmSheetUrl(k) { const C = (typeof CALM_TERRAIN !== 'undefined') ? CALM_TERRAIN : null, r = C && C.sheets ? C.sheets[k] : null; return r ? (/^https?:/.test(r[0]) ? r[0] : C.base + r[0]) : null; }
 function hqRuleKeyOf(k) { const S = (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN) ? CALM_TERRAIN.sheets : null; return (k && S && S[k]) ? S[k][1] : k; }
 /* every calm sheet is a texture key too (the editor's picker, the renderer's sheet reads, the 2D board) — never a terrain of its own */
 (function calmTerrainRegister() {
-    try { if (typeof TERRAIN_SPRITES === 'undefined' || !TERRAIN_SPRITES) return; Object.keys(CALM_TERRAIN.sheets).forEach(k => { if (!TERRAIN_SPRITES[k]) TERRAIN_SPRITES[k] = [CALM_TERRAIN.base + CALM_TERRAIN.sheets[k][0]]; }); } catch (e) {}
+    try { if (typeof TERRAIN_SPRITES === 'undefined' || !TERRAIN_SPRITES) return; Object.keys(CALM_TERRAIN.sheets).forEach(k => { if (!TERRAIN_SPRITES[k]) TERRAIN_SPRITES[k] = [calmSheetUrl(k)]; }); } catch (e) {}
 })();
-if (typeof window !== 'undefined') { window.CALM_TERRAIN = CALM_TERRAIN; window.hqRuleKeyOf = hqRuleKeyOf; }
+if (typeof window !== 'undefined') { window.CALM_TERRAIN = CALM_TERRAIN; window.hqRuleKeyOf = hqRuleKeyOf; window.calmSheetUrl = calmSheetUrl; }
 /* ══ THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... They should be able to be built with
    the tools in the map editor, and remember to design them with square tiles in mind. And make them look good ... Dont delete these
    voxel maps though") ══════════════════════════════════════════════════════════════════════════════════════════════════════════════

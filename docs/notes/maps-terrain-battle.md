@@ -2233,3 +2233,20 @@ Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
   one tuna, three fish and two jellies that crossed the squares were moved to its edges (moved, not removed).
 - three-renderer.js: a room drawn round a battle board lights the prop lamps NEAREST the board first (`_hq.lightAt`); the walk keeps row order.
 - Sizes 9 / 10 / 11 / 12 baked, tools fit.js true for all four. Not checked: WebGPU, his Mac, online guest, exploration swim over the agora.
+
+## THE URBAN DECAY ON THE PVP MAPS (2026-11-15)
+mondo: "can we replace the calm wood texture with the wood planks from the urban decay texture pack, like we did in disaster city. Try to
+use the urban decay textures more across all of the PvP battle maps, or at least the ones that fit". Textures only: no board, pick or prop moved.
+- **THE WOOD, everywhere**: data.js CALM_TERRAIN.sheets `calm_planks` (what `wood_planks` + `bridge` wear) = the pack's `WoodGeneric1a`,
+  `calm_shipwood` (what `wood` wears) = `WoodGeneric2a` (the dark boards, the old sheet's value). A sheet's file may be a full URL now
+  (`calmSheetUrl(key)` in data.js; three-renderer.js, editor.js, map.js read through it); an urban URL is read as pixels like every urban sheet.
+  The two old sheets stay in the editor's CALM picker as `calm_planks_old` / `calm_shipwood_old`. Maps it shows on: Flying Dutchman, North
+  Pole, Bermuda, Camelot, The Lodge, Haunted House (and every room / voxel board with wood).
+- **The roads** (Disaster City's picks, same values, tints kept): Downtown (old streets) + The Strip: road `RoadGeneric1a`, sidewalk
+  `ConcreteSidewalk1a`, yards `ConcreteSlab2a`; Cyberpunk City: road `RoadGeneric1a` (its dark slate walks stay); Area 51: the runway + gate road `RoadGeneric1a`.
+- **D.U.M.B. P3**: walkways `TileGeneric2a` (the broken tiles he ruled out of the city) -> `TileLinoleum1a`.
+- **Haunted House grounds**: the 26 `bricks_2` keys (terrace walls, brick faces, built steps) -> `urban:BrickMasonry1a` (a plain `a` sheet, stackable).
+- **LEFT ALONE on purpose**: the Vatican's aisle (`carpet_4` is his own pick, 2026-09-21); the Spaceship's deck plate (his ask); CERN (already the pack).
+- **Candidates not done** (want a look on screen first): the Stadium's stands (`concrete_floor` -> ConcretePrecast1c), The Lodge's hall floor
+  as parquet (WoodFlooring1c), Antarctica's cover blocks (metal), Area 51's berms.
+- NOT SEEN ON SCREEN (RULE #1c). Flat now / new sheet of the real textures: `/mnt/project-files/urban-decay-pvp/pvp_maps_now_vs_new.jpg`.
