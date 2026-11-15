@@ -157,7 +157,7 @@ const HUTS = B_HUTS.map((q, i) => building('hut' + (i + 1), [q[0], q[1], q[0] + 
     for (const s of [-1, 1]) a.box(s * (w / 2 + 0.06), 1.1, 0, 0.08, 1.1, 1.3, SHUT, 0xe8e4d8, { uv: 'fit', faces: s < 0 ? 'l' : 'r', top: false });
 }));
 put(HUTS[0], 'surfboard_rack', -2.2, -2.2, { face: 90 }); put(HUTS[0], 'surfboard_long', 2.6, -2.4, { face: 20 }); put(HUTS[0], 'beach_life_ring', 2.9, 0.6, { y: 1.5 }); put(HUTS[0], 'beach_cooler', 2.2, 2.0);
-put(HUTS[1], 'cot', -2.0, -1.6, { face: 0 }); put(HUTS[1], 'sea_chest', 2.4, -2.4, { face: 270 }); put(HUTS[1], 'retro_radio', 2.5, 0.4); put(HUTS[1], 'rug_round', 0, 0.2, { y: 0.15 }); put(HUTS[1], 'ship_lantern', -2.6, 2.2);
+put(HUTS[1], 'cot', -2.0, -1.6, { face: 0 }); put(HUTS[1], 'sea_chest', 2.4, -2.4, { face: 270 }); put(HUTS[1], 'retro_radio', 2.5, 0.4); put(HUTS[1], 'rug_round', 0, 0.2, { y: 0.15 }); put(HUTS[1], 'railway_lantern', -2.6, 2.2);
 put(HUTS[2], 'beach_air_mattress_blue', -2.0, -2.0, { face: 0 }); put(HUTS[2], 'beach_air_mattress_pink', -2.0, -0.4, { face: 0 }); put(HUTS[2], 'beach_swim_ring', 2.4, -2.4); put(HUTS[2], 'beach_ball', 2.2, 0.2); put(HUTS[2], 'folding_chair', 2.0, 2.2, { face: 200 });
 /* THE LIFEGUARD HUT (the Shore's landmark, walk-in): a white plank hut, a red roof, the red cross board, its front to the sea */
 const GUARD = building('lifeguard', [B_GUARD[0], B_GUARD[1], B_GUARD[0] + 2, B_GUARD[1] + 2, 'E'], 3.2, { leaf: 'leaf_white_wood' }, (a, w, d, door) => {
@@ -183,7 +183,7 @@ const SHED = building('shed', [B_SHED[0], B_SHED[1], B_SHED[0] + 3, B_SHED[1] + 
     a.sign('HARBOUR', door.lx, 2.9, d / 2 + 0.08, 3.4, 0.7, '#e8e0c8', '#2a2622', 'stencil');
 });
 put(SHED, 'lobster_traps', -3.6, -3.4, { face: 0 }); put(SHED, 'fishing_net_wall', 0, -5.0, { y: 1.4, face: 0 }); put(SHED, 'psx_wooden_crate_1', 3.6, -3.6); put(SHED, 'psx_wooden_crate_2', 3.8, -1.8); put(SHED, 'psx_metal_barrel_mp_1', -3.8, -0.6);
-put(SHED, 'ship_anchor', 3.4, 2.6, { face: 110 }); put(SHED, 'ship_lantern', -3.8, 3.4); put(SHED, 'meshy_rope', -1.6, -3.8); put(SHED, 'sea_chest', -3.6, 1.6, { face: 90 });
+put(SHED, 'ship_anchor', 3.4, 2.6, { face: 110 }); put(SHED, 'railway_lantern', -3.8, 3.4); put(SHED, 'meshy_rope', -1.6, -3.8); put(SHED, 'sea_chest', -3.6, 1.6, { face: 90 });
 
 /* the tribe's three open shelters on the Volcano Island (their people come later: mondo "eventually will make models for"): four posts and a
    cone of thatch each, walked under */
@@ -222,14 +222,14 @@ P('surfboard_rack', 11, OY + 15, { face: 0 }); dec('surfboard_short', 12, OY + 1
 P('pool_umbrella', 13, OY + 22); dec('pool_lounger', 14, OY + 22, { face: 90 }); P('pool_umbrella', 13, OY + 26); dec('pool_lounger', 14, OY + 26, { face: 90 }); dec('beach_ball', 12, OY + 24);
 P('lifeguard_chair', 18, OY + 27, { face: 90 }); dec('beach_life_ring', 17, OY + 31); dec('beach_swim_ring', 13, OY + 33); dec('beach_air_mattress_pink', 12, OY + 34);
 [[16, OY + 3], [18, OY + 7], [14, OY + 9], [20, OY + 10]].forEach((q, i) => dec(['ocean_starfish', 'ocean_crab', 'ocean_conch', 'ocean_sand_dollar'][i], q[0], q[1]));   // THE TIDE POOLS
-dec('ocean_rock_4', 15, OY + 6); dec('ocean_rock_7', 23, OY + 8); dec('ocean_starfish', 15, OY + 8); dec('ocean_crab', 17, OY + 10);
+dec('ocean_starfish', 15, OY + 8); dec('ocean_crab', 17, OY + 10);
 [[15, OY + 40], [17, OY + 41], [20, OY + 42], [22, OY + 41]].forEach((q, i) => dec(['ocean_sand_dollar_2', 'ocean_conch', 'ocean_seal_resting', 'ocean_crab'][i], q[0], q[1]));   // THE SANDBAR
 dec('fallen_log', 4, OY + 40); dec('ocean_conch', 2, 20); dec('fallen_log', 4, 24); dec('ocean_crab', 8, 32); dec('ocean_sand_dollar_3', 3, 96);
 native('mermaid', 19, OY + 9, 250, sayOf(O_SEA, 'mermaid')); native('starfish', 19, OY + 41, 270); native('siren', 16, OY + 18, 90);
 
 /* ── THE HARBOUR ── */
-P('psx_wooden_crate_3', 24, OY + 2); P('psx_wooden_crate_1', 25, OY + 2); P('psx_metal_barrel_mp_2', 31, OY + 3); P('ship_anchor', 30, OY + 5, { face: 110 }); dec('dockring', 32, OY + 6); dec('dockring', 24, OY + 6); P('ship_lantern', 30, OY + 6);
-dec('cardboard_boxes', 28, OY + 10); dec('sea_chest', 33, OY + 17); dec('folding_chair', 26, OY + 18, { face: 200 }); P('ship_lantern', 24, OY + 17); P('ship_lantern', 36, OY + 18); dec('dockring', 29, OY + 23); dec('dockring', 29, OY + 27);
+P('psx_wooden_crate_3', 24, OY + 2); P('psx_wooden_crate_1', 25, OY + 2); P('psx_metal_barrel_mp_2', 31, OY + 3); P('ship_anchor', 30, OY + 5, { face: 110 }); dec('dockring', 32, OY + 6); dec('dockring', 24, OY + 6); P('railway_lantern', 30, OY + 6);
+dec('cardboard_boxes', 28, OY + 10); dec('sea_chest', 33, OY + 17); dec('folding_chair', 26, OY + 18, { face: 200 }); P('railway_lantern', 24, OY + 17); P('railway_lantern', 36, OY + 18); dec('dockring', 29, OY + 23); dec('dockring', 29, OY + 27);
 props.push({ key: 'skiff', x: mx(31), z: mz(OY + 28), y: 0.32, face: 0 });                                                       // THE SKIFF, afloat at her jetty's end
 props.push({ key: 'lighthouse', x: mx(46), z: mz(OY + 10), face: 0 });                                                           // THE HARBOUR LIGHT on the breakwater's head (the old Harbour's)
 [[30, OY + 38], [24, OY + 38], [30, OY + 47], [24, OY + 47]].forEach(q => afloat('sea_buoy', q[0], q[1]));                        // THE CHANNEL: two pairs of red buoys
@@ -238,7 +238,7 @@ native('pirate', 29, OY + 6, 180, sayOf(O_HARB, 'pirate')); native('homosapien',
 
 /* ── THE OCEAN ── */
 [[60, 20, 'ocean_whale'], [70, 30, 'ocean_humpback'], [60, 80, 'ocean_dolphin'], [62, 82, 'ocean_dolphin'], [84, 50, 'ocean_manta'], [100, 40, 'ocean_turtle'], [120, 60, 'ocean_dolphin'], [76, 100, 'ocean_manta'],
- [50, 100, 'ocean_turtle'], [140, 12, 'ocean_shark'], [30, 112, 'ocean_stingray'], [162, 60, 'ocean_humpback'], [90, 70, 'ocean_tuna'], [130, 28, 'ocean_dolphin']].forEach(q => swimmer(q[2], q[0], q[1], /whale|humpback/.test(q[2]) ? { y: -1.6, hover: 0.5 } : { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
+ [50, 100, 'ocean_turtle'], [140, 12, 'ocean_shark'], [30, 112, 'ocean_stingray'], [162, 60, 'ocean_humpback'], [90, 70, 'ocean_tuna'], [130, 28, 'ocean_dolphin']].forEach(q => swimmer(q[2], q[0], q[1], /whale|humpback/.test(q[2]) ? { y: -2.6, hover: 0, swim: { r: 14, v: 1.2, bob: 0.3 } }   /* seen on screen: with a hover the whales flew over the sea */ : { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
 for (const q of [[52, 30], [80, 20], [70, 70], [110, 50], [60, 110], [150, 70]]) feat({ k: 'scatter', key: 'fish_school', n: 3, x: mx(q[0]), z: mz(q[1]), r: 40, seed: q[0], sea: true });
 P('palm_tree', 160, 20, { h: 4.2 }); dec('ocean_conch', 161, 21); dec('sea_chest', 159, 20); P('palm_tree', 40, 112, { h: 3.8 }); dec('ocean_starfish', 41, 112); dec('fallen_log', 39, 113);    // the two unnamed islets
 /* THE VOLCANO ISLAND: the landing, the village round its fire, palms along the shore, the cone's glow */
@@ -261,7 +261,7 @@ feat({ k: 'scatter', key: 'ocean_coral_2', n: 5, x: MAEL.x, z: MAEL.z, r: 17, se
 for (let y = 84; y < 108; y++) for (let x = 132; x < 156; x++) if (cell[y][x] === 't') palm(x, y);
 [[142, 86], [150, 86], [153, 92], [141, 95], [152, 104], [143, 106]].forEach(q => palm(q[0], q[1]));
 P('campfire', 148, 99); dec('folding_chair', 149, 100); dec('cardboard_box', 147, 101); dec('paper_sheet', 148, 101, { y: 0.01 }); P('signpost', 141, 92, { face: 270 }); dec('wet_floor_sign', 140, 90);
-dec('ocean_crab', 150, 96); dec('ocean_starfish', 143, 98); dec('ocean_conch', 152, 100); dec('ocean_sand_dollar', 145, 104); dec('dockring', 133, 90); P('ship_lantern', 132, 89);
+dec('ocean_crab', 150, 96); dec('ocean_starfish', 143, 98); dec('ocean_conch', 152, 100); dec('ocean_sand_dollar', 145, 104); dec('dockring', 133, 90); P('railway_lantern', 132, 89);
 props.push({ key: 'skiff', x: gx(131), z: gz(90), y: 0.32, face: 90 });                                                           // the island's own skiff, at the Jetty
 native('pirate', 144, 93, 220, sayOf(O_SEA, 'pirate')); native('jellyfish', 139, 104, 20); native('sharkman', 151, 102, 300); native('deep sea fish', 113, 91, 90);
 
@@ -273,25 +273,24 @@ const under = (key, sx, sy, y, o) => { spot(sx, sy, key, 'sea', true); props.pus
 P('play_sandbox', 12, OY + 18); dec('football', 9, OY + 19); dec('skateboard', 6, OY + 5); P('popcorn_cart', 5, OY + 6, { face: 180 }); P('brass_telescope', 7, OY + 4, { face: 90 });
 P('rowboat', 15, OY + 13, { face: 70 }); P('meshy_rowboat', 14, OY + 37, { face: 110 }); dec('surfboard_long', 15, OY + 25); dec('surfboard_fish', 12, OY + 29); dec('beach_cooler', 14, OY + 30);
 P('pool_umbrella', 10, OY + 33); dec('pool_lounger', 11, OY + 33, { face: 90 }); P('pool_umbrella', 6, 28); dec('pool_lounger', 7, 28, { face: 90 }); dec('beach_ball', 5, 27); dec('beach_swim_ring', 8, 30);
-[[1, OY + 44, 'psxg_rock_1'], [2, 21, 'psxg_rock_2'], [3, 94, 'psxg_rock_3'], [16, OY + 2, 'psxg_rock_4'], [23, OY + 9, 'ocean_rock_3'], [13, OY + 44, 'ocean_rock_5']].forEach(q => dec(q[2], q[0], q[1]));
+[[1, OY + 44, 'psxg_rock_1'], [2, 21, 'psxg_rock_2'], [3, 94, 'psxg_rock_3'], [16, OY + 2, 'psxg_rock_4']].forEach(q => dec(q[2], q[0], q[1]));
 swimmer('ocean_seal', 23, OY + 46, {}); swimmer('ocean_seal', 26, OY + 44, {}); swimmer('ocean_turtle', 22, OY + 16, { swim: { r: 3, v: 0.6, bob: 0.1 } });
-feat({ k: 'scatter', key: 'anemone', n: 10, x: mx(19), z: mz(OY + 6), r: 9, seed: 61, sea: true });   // (no weed in the shallows: seen on screen, its tops break the surface as black spikes)
+   // (no weed in the shallows: seen on screen, its tops break the surface as black spikes)
 /* the Harbour: freight on the quay (a container, a pallet, the forklift, a cable drum, sandbags: the quay floods), a gun on the quay's corner,
    the shed's outboard and wheel, lamps and rings down the pier's new length, a lobster on the boards, rocks at the mole's foot */
 props.push({ key: 'ind_container', x: mx(32), z: gz(OY + 4), face: 0 }); taken.add('32:' + (OY + 3)); taken.add('32:' + (OY + 4));
 P('wrapped_pallet', 30, OY + 3); P('forklift', 29, OY + 2, { face: 90 }); dec('cable_drum', 25, OY + 4); dec('meshy_sandbags', 24, OY + 5); dec('meshy_sandbags', 25, OY + 5); dec('meshy_sandbags', 24, OY + 3);
 P('ship_cannon', 26, OY + 2, { face: 90 }); put(SHED, 'outboard_motor', -3.6, 3.6, { face: 0 }); put(SHED, 'ship_wheel', 4.9, 0, { y: 1.7, face: 270 }); put(SHED, 'ships_bell', -4.9, -2.0, { y: 1.9, face: 90 });
-[42, 47, 55].forEach(x => P('ship_lantern', x, 53)); [40, 45, 50, 54].forEach(x => dec('dockring', x, 54)); dec('ocean_lobster', 44, 53, { anim: false }); dec('psx_wooden_crate_2', 49, 53); dec('sea_chest', 56, 54); dec('lobster_traps', 41, 53);
+[42, 47, 55].forEach(x => P('railway_lantern', x, 53)); [40, 45, 50, 54].forEach(x => dec('dockring', x, 54)); dec('ocean_lobster', 44, 53, { anim: false }); dec('psx_wooden_crate_2', 49, 53); dec('sea_chest', 56, 54); dec('lobster_traps', 41, 53);
 feat({ k: 'scatter', key: 'ocean_rock_8', n: 10, x: mx(42), z: mz(OY + 4), r: 22, seed: 63, sea: true });   // (no kelp: 4.5 m tall in 3.5 m of water)
-/* the Ocean: three more tiny palm islands (the game's own `palmisle` model, standing in the sea), black smokers off the volcano,
-   a second pod of dolphins, rays and tuna on the long crossings */
-[[78, 44], [128, 100 + 12], [150, 84 - 12 + 0]].forEach(q => { spot(q[0], q[1], 'palmisle', 'sea', true); props.push({ key: 'palmisle', x: mx(q[0]), z: mz(q[1]), y: -0.6, face: Math.round(rnd() * 360) }); });
+/* the Ocean: black smokers off the volcano, a second pod of dolphins, rays and tuna on the long crossings. (TRIED, NOT SHIPPED: the `palmisle`
+   tiny islands and the kraken `tentacle` models round the Maelstrom did not show in the probe at any `y`; they need a look at how a misc model
+   stands in deep water before they go in.) */
 [[124, 10], [126, 14], [122, 18], [127, 8]].forEach(q => under('sea_vent', q[0], q[1], -3.5));
 [[72, 16, 'ocean_dolphin'], [74, 18, 'ocean_dolphin'], [76, 15, 'ocean_dolphin'], [110, 30, 'ocean_stingray'], [88, 96, 'ocean_tuna'], [140, 24, 'ocean_manta'], [46, 96, 'ocean_seal'], [164, 96, 'ocean_turtle'], [20, 108, 'ocean_stingray']]
     .forEach(q => swimmer(q[2], q[0], q[1], { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
-/* the Bermuda Triangle: the kraken's arms out of the water round the Maelstrom (the game's two tentacle models), an eel and a squid down its
+/* the Bermuda Triangle: an eel and a squid down the Maelstrom's
    hole, an octopus under the wreck, clams and tube coral and reef fish on the Reef, a gun and a telescope and a boat on the island */
-[[141, 44, 'tentacle'], [158, 46, 'tentacle2'], [144, 52, 'tentacle2'], [156, 34, 'tentacle'], [140, 36, 'tentacle2']].forEach(q => { spot(q[0], q[1], q[2], 'sea', true); props.push({ key: q[2], x: mx(q[0]), z: mz(q[1]), y: -1.4, face: Math.round(rnd() * 360) }); });
 props.push({ key: 'ocean_eel', x: r2(MAEL.x + 3), z: r2(MAEL.z - 3), y: -5.8, hover: 0 }, { key: 'ocean_squid', x: r2(MAEL.x - 3), z: r2(MAEL.z + 3), y: -4.8, hover: 0 });
 under('ocean_octopus', 97, 91, -1.6); [[110, 86], [114, 92], [117, 94]].forEach(q => under('giant_clam', q[0], q[1], -0.8)); [[111, 89], [116, 91], [113, 94], [109, 87]].forEach(q => under('coral_tube', q[0], q[1], -0.8));
 [[112, 88, 'ocean_clownfish'], [115, 92, 'ocean_dory'], [110, 90, 'ocean_fish'], [117, 90, 'ocean_fish_2'], [113, 92, 'ocean_fish_3'], [114, 87, 'ocean_brown_fish']].forEach(q => under(q[2], q[0], q[1], -0.5));
