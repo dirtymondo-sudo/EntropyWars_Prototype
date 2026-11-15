@@ -1957,6 +1957,27 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE SHADOW SPLIT (2026-11-15, the lens only; from mondo's F3 after THE SHEET STACK)
+
+mondo's F3 after #1478 (20:39 UTC, walk, his eyes on the walls not yet answered in words): 22.8 FPS, frame 43.3 ms, CPU 38.7 ms
+(submit 30.1), bundles 444 groups / 3,624 meshes, shell 9,024 -> 1,961 draws, "sheet stacks 3 (125 sheets)". Two readings:
+- **The frame at that spot is our JS, not the card**: the price line (12.5 ms + 4.8 us x meshes) gives 29.9 ms for 3,624 meshes; he
+  measured 43.3 with 38.7 of it in the Frame JS rows. Top rows: "shadow: projection walk 8.3", matrix walk 4.8, scene bundle
+  replays 4.6, node + rig ticks 3.7, "shadow: classic draws 3.2" (167 calls, 829K tris), scene classic 2.5, bundle check 2.3.
+  The scene's own walk is 0.7 ms, so the shadow's 8.3 is not the plain walk. "Shadow casters 2: point 256x6, dir 1024": a hero
+  lamp was lit, and 829K shadow triangles is the same figure as the room F3 behind THE MOVING SIDES (834K). Lead, NOT proven: a
+  lamp's cube sides (they draw every bundle group the classic way) redrawn every frame. The cloud browser run to prove it was
+  refused by the session's safety layer, so the lens now says it.
+- **The 1024 px sheets did not stack on his Mac** (3 stacks = the 128 px tiles). Lead: his build loads KTX2 (ASTC) sheets and
+  `_hqStackTex` leaves compressed textures out. That is ~485 draws THE SHEET STACK counted on. Open.
+- The lens (three-renderer.js, lens open only): the Frame JS shadow rows are now "sun shadow: ..." and "lamp shadow: ..."
+  (`_lensSpanHook`, by the shadow camera); new lines "Shadow split (a frame): sun N renders, calls, tris · lamp N side renders,
+  calls, tris", "Walk visits (objects a frame): scene · sun shadow · lamp shadow · mask" (every `_projectObject` visit), and
+  "Hero lamp: <why> · frames held / drawn · in reach · moving · sides drawn / skipped" (`_heroStat`).
+- NEXT: read those lines on his next F3 at the same spot, cut the row they name (the lamp's sides, or the sun's walk), then the
+  1024 px sheets, then the sign canvases (128 px tall, width by the board's shape 32-2048: exact-size stacks group few; needs a
+  count of sizes first).
+
 ## THE SHEET STACK (2026-11-15, looks that differ only by their sheet merge: one array texture per sheet size)
 
 mondo's F3 after THE ONE PAINT: 31.9 FPS, 32.5 ms at 4,247 meshes (the price line predicted 32.9 ms). What still split the
