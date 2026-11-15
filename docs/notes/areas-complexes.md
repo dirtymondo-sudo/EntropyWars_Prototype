@@ -3882,6 +3882,15 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **THE AIR BY DISTRICT** (three-renderer.js `_hqBuildAtmos` / `_hqBuildAtmosOne`): `shell.atmos.zones = [{ x0, z0, x1, z1, kind, color?, n?, speed?, wind? }]` (metres),
   one Points per zone, particles born in the box and wandering round their own spots. Any room can use it. `H.atmos.obj` is then a group. Viewer-local, nothing relayed.
 - Checked headless: the room compiles, every scatter piece lands on open ground (none in the forest mass), the mass kinds differ by district. NOT seen in game (no browser run).
+- **SEEN IN THE PROBE, FIXED (same day)**: (1) the garden's "thorn vine" model is a toothed man-eater plant on a dirt mound, wrong beside the Meadow's campfire: it lives
+  in Dead Man's Cave only now. (2) the ocean pack's rocks (`ocean_rock_5/6`) draw as BLACK blocks in this room: the Redwood Trail's boulders are `cave_stone`.
+- **THE CASTLE IN THE MAP (mondo: "what is this big castle wall thing ... clipping into the bridges and I can walk through it")**: `HQ_WOODS_LANDMARKS`' Camelot horizon
+  model sits at dist 0.88 of the sky's radius, right for the old 60 m rooms, INSIDE the 252 m room. `hqWoodsShell({ noLandmarks: true })` drops the sky's landmarks (the bake passes it).
+  Lesson: a horizon landmark on a shell made for small rooms must be checked when the room grows.
+- **NO UNEXPLAINED DEAD ENDS (mondo: "get rid of any trails that lead to nowhere, no unexplained dead ends")**: a `secret` TRAIL door gets no waymark post, so its path just
+  stopped at the trees. The three secret ways show what they are: `lemuria` and `lodge` are `way: 'tunnel'` mouths, `lookingglass` is a `hollowtree`. Still `secret`.
+  Checked: no other path square on the map is a tip that ends at nothing (every edge trail is a door or a link).
+- **Probe tip**: in this room a third-person view (`dist`) puts the camera inside the forest mass's crowns on most plots: use `"fp": true` standing on open ground.
 - **ASKED FOR, NOT BUILT (mondo, same message): a pass that adds WATERFALLS and LIGHT SHAFTS to rooms** ("might need its own thread"). Today rooms have only `pool` /
   `stream` / `deck` water, and `_hqLightShaft` returns null (the `light_shaft` prop and `DOOR_HQ.lightShafts` rows draw nothing). The Falls plot and the canopy want them first.
 
