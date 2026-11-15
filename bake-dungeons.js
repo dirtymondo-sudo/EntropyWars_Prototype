@@ -8,8 +8,8 @@
 // game builds their rooms at load (pdInstall). This tool reads the REAL rows through load-data.js and
 //   1. checks the grammar: 12 strings of 12 known squares per plot, every board slot names a plot, the entry has a spawn,
 //      a plot that moves is never the entry, every mark kind is one the engine knows;
-//   2. searches the level's `goal` (a condition, data.js pdCheck) breadth first over the board's own rules: every legal
-//      move (pdMoves) and every press (the act / take / gate / fight marks, pdDoAct). It ignores where the officer stands,
+//   2. searches the level's `goal` (a condition, data.js pdCheck) breadth first over everything the officer can do: every
+//      lever pulled and every thing pressed (the lever / act / take / gate / fight marks, pdDoAct). It ignores where the officer stands,
 //      so it proves the board CAN be solved and how many steps the shortest way takes; the walk is proven in the browser.
 'use strict';
 const vm = require('vm');
@@ -18,7 +18,7 @@ const sb = loadGameData({ quiet: true });
 const run = (code) => vm.runInContext(code, sb);
 const only = process.argv[2] || null;
 
-const KNOWN_MARKS = { spawn: 1, dial: 1, console: 1, model: 1, prop: 1, act: 1, take: 1, gate: 1, exit: 1, fight: 1, trace: 1, lamp: 1, box: 1, rail: 1 };
+const KNOWN_MARKS = { spawn: 1, lever: 1, prop: 1, act: 1, take: 1, gate: 1, exit: 1, fight: 1, trace: 1, lamp: 1, box: 1, rail: 1 };
 const KNOWN_SQUARES = '#.o=/~ ';
 
 sb.__bd = { only, KNOWN_MARKS, KNOWN_SQUARES, out: [] };
@@ -32,6 +32,12 @@ run(`(function () {
             const P = pdPlot(id, pid), C = P.cells || [];
             if (C.length !== 12 || C.some(r => r.length !== 12)) errs.push(pid + ': cells are not 12 x 12');
             C.forEach((r, y) => r.split('').forEach((ch, x) => { if (B.KNOWN_SQUARES.indexOf(ch) < 0) errs.push(pid + ': unknown square "' + ch + '" at ' + x + ',' + y); }));
+            /* a plot's edge is crossed through its 7 m door only (the stage joins that span): a walked square on the edge beside
+               the door would be open ground with a wall you cannot see */
+            if (!P.edgeOk && C.length === 12) for (let i = 0; i < 12; i++) [[i, 0], [i, 11], [0, i], [11, i]].forEach(q => {
+                const ch = (C[q[1]] || '')[q[0]], port = (i === 5 || i === 6);
+                if (!port && '.o/~='.indexOf(ch) >= 0) errs.push(pid + ': square ' + q[0] + ',' + q[1] + ' is walked on the edge outside the door (squares 5-6)');
+            });
             (P.marks || []).forEach(m => { if (!B.KNOWN_MARKS[m.k]) errs.push(pid + ': unknown mark kind "' + m.k + '"'); });
             if (!DOOR_HQ.rooms[pdRoomId(id, pid)]) errs.push(pid + ': no room was built');
         });
@@ -40,6 +46,11 @@ run(`(function () {
             const E = pdPlot(id, L.entry);
             if (!(E.marks || []).some(m => m.k === 'spawn')) errs.push('the entry has no spawn mark');
             if (E.turn || E.slide) errs.push('the entry plot moves');
+        }
+        /* a plot that moves needs a lever somewhere */
+        {
+            const lev = {}; Object.keys(L.plots).forEach(pid => ((pdPlot(id, pid) || {}).marks || []).forEach(m => { if (m.k === 'lever') lev[m.plot || pid] = 1; }));
+            Object.keys(L.plots).forEach(pid => { const Q = pdPlot(id, pid); if ((Q.turn || Q.slide) && !lev[pid]) errs.push(pid + ' moves but no lever moves it'); });
         }
         /* the presses of the level: every counter the rooms carry that writes the state */
         const acts = [];
@@ -54,10 +65,9 @@ run(`(function () {
             if (pdCheck(id, cur.S, L.goal)) { found = cur; break; }
             if (cur.path.length >= 14) continue;
             const next = [];
-            pdMoves(id, cur.S).forEach(m => next.push({ S: pdApplyMove(id, cur.S, m), step: (m.t === 'turn' ? 'turn ' + m.plot + (Math.abs(m.by) > 1 ? ' half' : m.by > 0 ? ' left' : ' right') : 'slide ' + m.plot + ' ' + m.from + '>' + m.to) }));
             acts.forEach(a => {
                 const on = !a.A.show || pdCheck(id, cur.S, a.A.show); if (!on) return;
-                const R = pdDoAct(id, cur.S, a.A); if (R.ok) next.push({ S: R.S, step: (a.A.fight ? 'fight ' : 'press ') + (a.label || a.id) });
+                const R = pdDoAct(id, cur.S, a.A); if (R.ok) next.push({ S: R.S, step: R.move ? ('lever on ' + a.plot + ': ' + (R.move.t === 'turn' ? 'turn ' + R.move.plot + (R.move.by > 0 ? ' left' : ' right') : 'slide ' + R.move.plot + ' ' + R.move.from + '>' + R.move.to)) : (a.A.fight ? 'fight ' : 'press ') + (a.label || a.id) });
             });
             next.forEach(x => { const k = key(x.S); if (seen[k]) return; seen[k] = 1; q.push({ S: x.S, path: cur.path.concat(x.step) }); });
         }
