@@ -28449,7 +28449,7 @@ STORY_CUTSCENES.orientation_ride = {
     end: [{ do: 'drop', from: 0, to: 0, ms: 0 }],
     beats: [
         /* 10 · R1 · inside the cage, behind the recruit, looking up: the square of desert sky shrinks overhead */
-        { dur: 3.4, shot: { cam: [0.3, 1.2, 2.4, 0, 42, 60], to: { cam: [0.3, 1.2, 2.2, 0, 50, 60] } },
+        { dur: 3.4, shot: { cam: [0.3, 1.0, 2.9, 0, 70, 64], to: { cam: [0.3, 1.2, 2.6, 0, 34, 60] } },   // up at the sky going away, then down onto the recruit's back
           act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 0.6, face: 0 }, { at: 0, do: 'drop', from: 0, to: 15, ms: 3400, ease: 'in' }] },
         /* 11 · R2 · side on at the cage's edge: the rock streaks up, THE SEWERS go by */
         { dur: 2.8, shot: { cam: [2.9, 1.5, 0.9, 62, 4, 55], to: { cam: [2.9, 1.5, 0.7, 60, 4, 55] } },
@@ -28458,7 +28458,7 @@ STORY_CUTSCENES.orientation_ride = {
         { dur: 2.8, shot: { cam: [0.25, 1.6, -1.2, 180, -2, 40], to: { cam: [0.25, 1.6, -1.05, 180, -2, 38] }, eye: { who: 'player', dy: -0.04 } },
           act: [{ at: 0, do: 'drop', from: 40, to: 65, ms: 2800 }] },
         /* 13 · R4 · low and wide from the deck's corner, up past the recruit: THE CAVERN's crystals go by overhead */
-        { dur: 2.8, shot: { cam: [-2.6, 0.3, 2.8, 320, 22, 64], to: { cam: [-2.5, 0.3, 2.7, 322, 24, 64] } },
+        { dur: 2.8, shot: { cam: [-2.0, 0.35, 2.2, 320, 22, 64], to: { cam: [-1.9, 0.35, 2.1, 322, 24, 64] } },
           act: [{ at: 0, do: 'drop', from: 65, to: 90, ms: 2800 }] },
         /* 14 · R5 · over the shoulder at the open side: blue water light on the recruit, ATLANTIS */
         { dur: 2.8, shot: { cam: [-0.45, 1.75, 1.9, 8, 0, 48], to: { cam: [-0.42, 1.75, 1.75, 8, 0, 48] } },
@@ -36904,6 +36904,7 @@ const DOOR_HQ = {
             terrain: { res: 1, levelM: 3.5, floor: 'urban:MetalDiamondPlate1a', cliff: 'rock_wall_2', noise: { amp: 0, scale: 20 }, crag: false, outer: false, features: [] },
             drop: {
                 w: 7, top: 14, len: 160, rock: 'rock_wall_2', rockColor: 0x8a8278,
+                lamp: { color: 0xffe2b0, intensity: 0.9, dist: 9, y: 3.4, z: 0.8 },   // the cage's own work lamp (it rides with the cage, not the shaft)
                 /* a glimpse: its window's floor `at` m down the shaft, `h` tall; the slice `w` wide and `d` deep behind it; props and
                    lit pieces in the slice's own metres (x across, z from the slice's middle, minus = deeper; y up from its floor) */
                 slices: [

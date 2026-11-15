@@ -94735,6 +94735,7 @@ const ThreeRenderer = (function () {
         });
         band(cur, bot);
         G.add(root);
+        if (R.lamp) { var CL = new THREE.PointLight(R.lamp.color != null ? R.lamp.color : 0xffe2b0, R.lamp.intensity != null ? R.lamp.intensity : 0.9, (R.lamp.dist || 9) * U, 2); CL.position.set(0, (R.lamp.y || 3.4) * U, (R.lamp.z || 0) * U); G.add(CL); lights.push(CL); }   // the cage's lamp stands still with the cage
         _hq.drop = { root: root, d: 0, from: 0, to: 0, t0: 0, ms: 0, ease: 'lin', lights: lights };
         root.updateMatrixWorld(true);
     }
