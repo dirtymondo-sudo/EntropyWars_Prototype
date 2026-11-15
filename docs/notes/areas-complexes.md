@@ -3713,3 +3713,9 @@ districts ... the north pole to the north of the castle would be good as a rival
 - **Not done / open**: never seen on screen (no browser run: RULE #1c). The Keep's upper floors, the Undercroft and the Sky Castle are
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
+
+### The map's GO after an area is rebuilt (2026-11-15)
+mondo: "i literally just go to the map/directory and go to camelot kingdon and its still the old one." The map travels only to rooms a save
+has stood in; a rebuilt area's anchor (`DOOR_HQ.hubs[..].room`) is a new room no save knows, so GO fell back to the first old room.
+map.js `_hqMapAnchorCharted`: an area's anchor counts as stood in once any room of that area has been (not the facility hub). This
+covers every later rebuilt area too (the Woods on plots had the same fault).
