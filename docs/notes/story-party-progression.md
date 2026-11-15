@@ -1048,3 +1048,16 @@ His tool for the story cutscenes. Plan + mock-up approved 11-15 (project files `
   (copied): per scene, per shot: shot number, what it is, the shipped line, the new words / cut / added lines, the notes, and
   the shot's camera. **Bake**: `node bake-cutscenes.js <export.json> [--dry-run]` writes the changed lines into data.js word
   for word and prints the cuts, the added lines and the notes as the to-do list (those are done by hand).
+- **PLAY FROM THE EDITOR, ANYWHERE (2026-11-15, same day; mondo: "obviously if I need a cutscene editor i need to be able to play the
+  cutscenes from it")**: PLAY no longer asks for story mode or a finished stage. map.js `_sedPlay`: from the menu the building is
+  entered first (`_hqEnter({ from: 'play', room: arrival })`: no opening, no resume), then the journal's own replay runs. While it
+  runs `window._ewSceneEdPlay` is up: `_questEvent` files nothing, no live room scene starts, `_introDue` is false (a profile
+  mid-quest is left where it was). A fight's opening scene plays ALONE (battle.js `sceneOnly: 'scene'` -> `_questSceneOnlyBack`).
+  The opening is a chain (road, car, foyer): `EWScene.from(id, beat, chain)` skips the chain's other scenes before AND after the
+  picked one; `window._ewIntroChain` is up from `_introStart` to its `done`. The watch (`_sedRun`, dev `EWSceneEd.run()`) brings the
+  editor back over the pause menu when the scene is over and the room stands; a building paused under it ends the run too.
+- **THE POINTER (a bug of the first delivery)**: in the building a pointer lock that just goes away IS the walker's ESC (the pause
+  menu, three-renderer.js `_hqOnLockChange`). The notes bar freed the mouse with a plain `exitPointerLock` and paused the building
+  under the scene. Free it only through `ThreeRenderer.hq.sceneFreePointer()` (inside the stale window, pauses nothing).
+- Harness: scratch `menu.js` (project files `cutscene-editor/tools/`): main menu -> Developer -> editor -> PLAY each scene. A cold
+  cloud browser needs ~10 min per room load; one browser at a time.
