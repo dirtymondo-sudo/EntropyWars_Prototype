@@ -3096,3 +3096,24 @@ angel statue prop that appears stop to stop (no walk cycle, no golem body yet). 
 blocks, no rolling, no 1.75 m height steps. (4) Missing Channel has no drawn water, the pipe lights instead. (5) Rubble plots are
 plain paved blocks with a wreck. (6) The 3 x 3 model is the panel's drawing, the in-world table is a map table prop. (7) The plots
 have no decor pass and the closed looks are dim. (8) The world clock runs, so an open look can be at night.
+
+**Civic Center, THE INTERIORS (2026-11-13/15, mondo 21:04 "let's go ahead and do the interiors", his OK on the floor plans 21:21):**
+nine walk-ins furnished in place in the city room, all in `docs/disaster-city/districts/C.js` "THE INTERIORS": Fire Station (8 x 8
+squares: two engines, lockers, fire pole, watch desk, bunks, mess, kitchen), Civil Records (2 x 3), City Hall (8 x 7: info desk, clerk
+desks, the mayor's office behind partitions, columns, waiting benches), Council annex (4 x 3), Courthouse (4 x 2, rebuilt two squares
+deep), Police (3 x 5: desk, cells with drawn bars), Time Bureau (3 x 4), Military (recruiting office), Permit office. Plans:
+/mnt/project-files/disaster-city-civic/interiors_1_plan.jpg + interiors_2_plan.jpg.
+- THE GRID (mondo 21:14 + 21:17, all interiors): the square is the 3.5 m battle square (never 1.75). `spec.fit` + `fitB` moved the
+  off-grid shells (Records, Council annex, Police, Time Bureau) onto the squares. A barrier (`A.bar`, an unseen 1.1 m wall) fills whole
+  squares and its prop stands on the square's middle (`A.put`); a walkway is whole squares; dressing is `put` with `dx / dz` (off the
+  middle, on a wall, or on a barrier's own square). `A.wallI` = a partition on the grid lines (drawn + unseen wall).
+- THE LINING (`A.line`): a `skin: false` hollow texbuilding draws no inside, so each room wears four inward wall quads (the door wall in
+  three panels), a dado, a ceiling and a floor sheet, in its own arch row `arch:<id>-in`.
+- `floor: true` on every inside prop: without it a prop inside a shell stands on the roof slab (the renderer's cave top).
+- THE HOLLOW (`hollow()`): the massing is whole blocks, so where two blocks meet inside a shell (Fire Station: rear block / hall / crew
+  quarters / hose tower; City Hall: the corner pavilions) their faces and the polish pass's strips, pipes and wall units stood in the
+  room. Under the room's ceiling those inner faces are dropped (box part `faces`), over it each keeps a thin strip.
+- KNOWN: the city room's ten prop lights are taken (buoys, lighthouse, fountains), so the rooms have no lamps of their own: props inside
+  read dark, most at night. A fix belongs in three-renderer.js (a light budget per walk-in), not in the district file. In the cloud
+  browser the rooms were seen with walls, floors, partitions, cell bars, flags, chairs and cabinets; the engines, desks and beds are
+  instanced props and were not caught on a shot. Walking in through the swing doors was not tried (the probe teleports).

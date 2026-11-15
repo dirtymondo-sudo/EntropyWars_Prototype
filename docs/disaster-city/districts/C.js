@@ -19,7 +19,15 @@ const STONE = 'marble_light', ALU = 'aluminium', DARK = 0x20252c, VERD = 0x8fe0c
 const PLOTS = [];
 let cur = null, bld = null;
 const plot = (px, py, fn) => { cur = { px, py, b: [] }; PLOTS.push(cur); fn(); };
-const B = (i, spec, fn) => { bld = Object.assign({ i, parts: [], ghost: [], cells: [] }, spec || {}); cur.b.push(bld); fn(); };
+const B = (i, spec, fn) => { bld = Object.assign({ i, parts: [], ghost: [], cells: [] }, spec || {}); cur.b.push(bld); fn(); if (bld.fit) fitB(bld); };
+/* THE GRID FIT (the interiors, mondo 11-13 21:14 "respect the square battle grid"): a walk-in shell that stood off the 3.5 m squares is
+   moved onto them. spec.fit = [from x0, z0, x1, z1, to x0, z0, x1, z1]: every part, solid, ghost and door of the building is mapped with it. */
+function fitB(b) {
+    const f = b.fit, sx = (f[6] - f[4]) / (f[2] - f[0]), sz = (f[7] - f[5]) / (f[3] - f[1]), X = x => Math.round((f[4] + (x - f[0]) * sx) * 1000) / 1000, Z = z => Math.round((f[5] + (z - f[1]) * sz) * 1000) / 1000;
+    b.parts.forEach(p => { if (p.x0 != null) { p.x0 = X(p.x0); p.x1 = X(p.x1); p.z0 = Z(p.z0); p.z1 = Z(p.z1); } else { p.x = X(p.x); p.z = Z(p.z); } });
+    (b.solids || []).forEach(s => { s.r = [X(s.r[0]), Z(s.r[1]), X(s.r[2]), Z(s.r[3])]; if (s.door) s.door.at = (s.door.side === 'S' || s.door.side === 'N') ? X(s.door.at) : Z(s.door.at); });
+    b.ghost = (b.ghost || []).map(g => [X(g[0]), Z(g[1]), X(g[2]), Z(g[3]), g[4]]);
+}
 const push = p => { bld.parts.push(p); return p; };
 const box = (x0, z0, x1, z1, y0, y1, key, tint, o) => push({ t: 'box', x0, z0, x1, z1, y0, y1, key, tint, o: o || {} });
 const cyl = (x, z, r, y0, y1, key, tint, o) => push({ t: 'cyl', x, z, r, y0, y1, key, tint, o: o || {} });
@@ -48,7 +56,7 @@ plot(4, 0, () => { const RED = 0xe0604a;
         box(35, 18.5, 37.2, 25.5, 3.1, 3.4, STONE); cyl(36.9, 18.9, 0.12, 0, 3.1, ALU); cyl(36.9, 25.1, 0.12, 0, 3.1, ALU); flag(30.5, 37, 9, 0xc8523f); }); });
 
 plot(5, 0, () => {
-    B(0, { solids: [{ r: [25.7, 11.7, 33.8, 23.3], st: 1, door: { side: 'W', at: 17.5 } }] }, () => {                                               // CIVIL RECORDS: a blind vault over a glass foot
+    B(0, { fit: [25.7, 11.7, 33.8, 23.3, 24.5, 10.5, 31.5, 21], solids: [{ r: [25.7, 11.7, 33.8, 23.3], st: 1, door: { side: 'W', at: 18.2 } }] }, () => {                                               // CIVIL RECORDS: a blind vault over a glass foot
         box(25.7, 11.7, 33.8, 23.3, 0, 3.6, 'u_GlassWindowSquare2a', 0x8c9aa8, { top: 1 });
         [[24.7, 10.7], [34.3, 10.7], [24.7, 24.3], [34.3, 24.3]].forEach(c => cyl(c[0], c[1], 0.45, 0, 3.6, 'u_ConcreteStriped2c', 0xffffff, { seg: 10 }));
         box(24, 10, 35.5, 25, 3.6, 12.8, 'u_ConcreteStriped2c', 0xffffff, { under: 1 });
@@ -64,7 +72,7 @@ plot(5, 0, () => {
         box(9.6, 17.45, 15, 17.62, 0, 4, ALU, 0xd0d4d8); }); });
 
 plot(6, 0, () => { const M = 0xfff8ea;
-    B(0, { solids: [{ r: [7, 7, 35, 31.5], st: 4, door: { side: 'S', at: 21 } }], cells: [[3, 9], [4, 9], [5, 9], [6, 9], [7, 9], [8, 9], [2, 10], [9, 10]],
+    B(0, { solids: [{ r: [7, 7, 35, 31.5], st: 4, door: { side: 'S', at: 21.9 } }], cells: [[3, 9], [4, 9], [5, 9], [6, 9], [7, 9], [8, 9], [2, 10], [9, 10]],
         ghost: [0, 1, 2, 3, 4, 5].map(i => [12.5 + i * 3.2, 33.1, 13.5 + i * 3.2, 33.1, 4]) }, () => {                                              // CITY HALL
         box(7, 7, 35, 31.5, 0, 4, 'u_ConcreteStriped1a', 0xf0e8d8);                                                                                 // the rusticated ground storey
         box(7.5, 7.5, 34.5, 31, 4, 14, STONE, M, { win: WR }); box(6.6, 6.6, 35.4, 31.9, 14, 14.7, STONE); box(7.2, 7.2, 34.8, 31.3, 14.7, 15.6, STONE, M, { top: 1 });
@@ -77,7 +85,7 @@ plot(6, 0, () => { const M = 0xfff8ea;
         flag(10, 37, 10, 0x2a56b0); flag(32, 37, 10, 0xb03a2a); }); });
 
 plot(7, 0, () => {
-    B(0, { solids: [{ r: [10.5, 7.6, 24, 17.5], st: 2, door: { side: 'S', at: 17 } }, { r: [25.8, 8.4, 33.4, 16.1], st: 2 }] }, () => {              // COUNCIL ANNEX: a glass bar + the round chamber
+    B(0, { fit: [10.5, 7.6, 24, 17.5, 10.5, 7, 24.5, 17.5], solids: [{ r: [10.5, 7.6, 24, 17.5], st: 2, door: { side: 'S', at: 19.2 } }, { r: [25.8, 8.4, 33.4, 16.1], st: 2 }] }, () => {              // COUNCIL ANNEX: a glass bar + the round chamber
         box(10.5, 7.6, 24, 17.5, 0, 10.5, 'u_GlassWindowSquare2a', 0xb8f0e4, { top: 1 });
         [3.5, 7].forEach(y => box(10.2, 7.3, 24.3, 17.8, y - 0.12, y + 0.12, STONE)); box(9.2, 6.3, 25.2, 18.6, 10.5, 10.95, STONE, null, { under: 1 });
         cyl(29.6, 12.25, 5.5, 0, 9, 'u_PlasterWallPainted1a', 0xf0c498, { seg: 28 });
@@ -115,10 +123,10 @@ plot(6, 1, () => {
         box(25.35, 32.35, 27.15, 34.15, 0, 6.5, STONE, 0xf1ece0); face(26.25, 34.2, 0.7, 5.35, 'S'); face(26.25, 32.3, 0.7, 5.35, 'N'); roof('pyr', 25.05, 32.05, 27.45, 34.45, 6.5, 1.4, ALU, VERD); }); });
 
 plot(7, 1, () => { const CR = 0xfff4dc;
-    B(0, { solids: [{ r: [3.5, 3.5, 17.5, 8.6], st: 3, door: { side: 'S', at: 10.5 } }], ghost: [0, 1, 2, 3, 4, 5].map(i => [4.1 + i * 2.4, 9.4, 4.9 + i * 2.4, 9.4, 4]) }, () => {   // COURTHOUSE: a temple
-        box(3.5, 3.5, 17.5, 8.6, 0, 11.5, STONE, CR, { win: WR, winY0: 3.5 }); box(3.5, 8.6, 17.5, 10.3, 0, 0.1, STONE, 0xe4ddd0);
-        for (let i = 0; i < 6; i++) cyl(4.5 + i * 2.4, 9.4, 0.5, 0.1, 10, STONE, CR, { seg: 12 });
-        box(3.5, 8.6, 17.5, 10.1, 10, 11.5, STONE, CR, { under: 1 }); box(3.2, 3.2, 17.8, 10.4, 11.5, 12.7, STONE, CR); roof('gable', 3.0, 3.0, 18.0, 10.6, 12.7, 3.1, STONE, CR, { axis: 'z' }); });
+    B(0, { solids: [{ r: [3.5, 3.5, 17.5, 10.5], st: 3, door: { side: 'S', at: 11.4 } }], ghost: [0, 1, 2, 3, 4, 5].map(i => [4.1 + i * 2.4, 11.3, 4.9 + i * 2.4, 11.3, 4]), cells: [[1, 3], [2, 3], [3, 3], [4, 3]] }, () => {   // COURTHOUSE: a temple (the room two squares deep: the interiors)
+        box(3.5, 3.5, 17.5, 10.5, 0, 11.5, STONE, CR, { win: WR, winY0: 3.5 }); box(3.5, 10.5, 17.5, 12.2, 0, 0.1, STONE, 0xe4ddd0);
+        for (let i = 0; i < 6; i++) cyl(4.5 + i * 2.4, 11.3, 0.5, 0.1, 10, STONE, CR, { seg: 12 });
+        box(3.5, 10.5, 17.5, 12.0, 10, 11.5, STONE, CR, { under: 1 }); box(3.2, 3.2, 17.8, 12.3, 11.5, 12.7, STONE, CR); roof('gable', 3.0, 3.0, 18.0, 12.5, 12.7, 3.1, STONE, CR, { axis: 'z' }); });
     B(1, { solids: [{ r: [24.5, 3.5, 38.5, 10], st: 1 }] }, () => {                                                                                   // COURT CAFE: a roof terrace
         box(24.5, 3.5, 38.5, 10, 0, 3.8, 'bricks_3', 0xffb090); box(26, 9.95, 30.4, 10.06, 0.8, 3.0, 'u_GlassWindowResidential1a'); box(32.6, 9.95, 37, 10.06, 0.8, 3.0, 'u_GlassWindowResidential1a'); roof('shed', 24.5, 10, 38.5, 11.7, 2.8, 0.8, 'u_MetalCorrugatedPainted1a', 0xb0d0ff, { high: 'N' });
         box(24.3, 3.3, 38.7, 10.2, 3.8, 4.05, STONE); box(24.5, 9.95, 38.5, 10.05, 4.05, 5.0, 'u_MetalTruss4a', 0x8a8a8a, { alpha: 1 });
@@ -126,7 +134,7 @@ plot(7, 1, () => { const CR = 0xfff4dc;
 
 /* ───────── row 2 ───────── */
 plot(4, 2, () => { const PB = 0xb4c4f0;
-    B(0, { solids: [{ r: [3.5, 7, 14, 26], st: 3, door: { side: 'E', at: 16.5 } }, { r: [3.5, 26, 14, 31.5], st: 1 }], cells: [[4, 2], [4, 6]] }, () => {   // POLICE
+    B(0, { fit: [3.5, 7, 14, 26, 3.5, 7, 14, 24.5], solids: [{ r: [3.5, 7, 14, 26], st: 3, door: { side: 'E', at: 16 } }, { r: [3.5, 26, 14, 31.5], st: 1 }], cells: [[4, 2], [4, 6]] }, () => {   // POLICE
         box(3.5, 7, 14, 26, 0, 10.6, 'bricks_1', PB, { win: WR2 }); box(3.3, 6.8, 14.2, 26.2, 10.6, 11.0, STONE); box(3.6, 7.1, 13.9, 25.9, 11.0, 11.7, 'bricks_1', PB, { top: 1 });
         box(14, 13, 15.2, 15.4, 0, 12.4, STONE, 0xe8e4da); box(14, 17.6, 15.2, 20, 0, 12.4, STONE, 0xe8e4da); box(14, 15.4, 15.2, 17.6, 2.9, 12.4, STONE, 0xe8e4da, { under: 1 });   // the stepped stone entrance bay: two piers + the head
         box(14, 14.5, 15.2, 18.5, 12.4, 13.6, STONE, 0xe8e4da); box(14, 15.7, 15.2, 17.3, 13.6, 14.7, STONE, 0xe8e4da);
@@ -161,7 +169,7 @@ plot(6, 2, () => { const SG = 0xfff6e4, GL = 'u_GlassWindowSquare1b';
         door(21, 7, 'N'); door(35, 21, 'E'); }); });
 
 plot(7, 2, () => { const BZ = 0xf0c890;
-    B(0, { solids: [{ r: [24.5, 3.5, 35, 20], st: 4, door: { side: 'W', at: 12 } }, { r: [26.5, 20.75, 33, 27.25], st: 5 }] }, () => {               // TIME BUREAU: a bronze glass slab + the clock drum
+    B(0, { fit: [24.5, 3.5, 35, 20, 24.5, 3.5, 35, 17.5], solids: [{ r: [24.5, 3.5, 35, 20], st: 4, door: { side: 'W', at: 12 } }, { r: [26.5, 20.75, 33, 27.25], st: 5 }] }, () => {               // TIME BUREAU: a bronze glass slab + the clock drum
         box(24.5, 3.5, 35, 20, 0, 17.5, 'u_GlassWindowTall3a', BZ, { top: 1 }); [3.5, 7, 10.5, 14, 17.5].forEach(y => box(23.9, 2.9, 35.6, 20.3, y - 0.15, y + 0.15, STONE, null, { under: 1 }));
         cyl(29.75, 24, 4.6, 0, 24, STONE, 0xfffaf0, { seg: 28 }); cyl(29.75, 24, 5.4, 19, 19.5, STONE, null, { seg: 28 });
         face(25.1, 24, 2.0, 22, 'W'); box(24.9, 23.9, 24.97, 24.1, 22, 23.7, null, DARK); box(24.9, 24, 24.97, 25.3, 21.9, 22.1, null, DARK);
@@ -206,7 +214,7 @@ plot(6, 3, () => { const OL = 0xb4c080, CS = 'u_PlasterWallPainted1a';
     B(2, { st: 1 }, () => { vault(24.5, 0, 35, 17.5, 0, 5.6, 'u_MetalCorrugatedPainted4a', 0xe0e8c8, { axis: 'z' }); box(27.2, 17.45, 32.3, 17.62, 0, 3.9, ALU, 0x7a8a60); }); });   // THE ARMORY: a Quonset hut
 
 plot(7, 3, () => { const PC = 'u_ConcreteStriped1e', PT = 0xfff8e8;
-    B(0, { solids: [{ r: [7, 7, 35, 35], st: 1, door: { side: 'N', at: 21 } }] }, () => {                                                             // PERMIT OFFICES: a slab on pilotis over the public podium
+    B(0, { solids: [{ r: [7, 7, 35, 35], st: 1, door: { side: 'N', at: 22.5 } }] }, () => {                                                             // PERMIT OFFICES: a slab on pilotis over the public podium
         box(7, 7, 35, 35, 0, 4.5, PC, PT); box(8, 6.9, 19.3, 7, 0.6, 3.7, 'u_GlassWindowSquare1a', 0xd0ecf8); box(22.7, 6.9, 34, 7, 0.6, 3.7, 'u_GlassWindowSquare1a', 0xd0ecf8); box(35, 8, 35.1, 34, 0.6, 3.7, 'u_GlassWindowSquare1a', 0xd0ecf8); box(6.4, 6.4, 35.6, 35.6, 4.5, 4.9, STONE);
         for (let x = 10.5; x < 33; x += 4.2) { cyl(x, 12.5, 0.5, 4.9, 8.4, STONE, null, { seg: 10 }); cyl(x, 21.5, 0.5, 4.9, 8.4, STONE, null, { seg: 10 }); }
         box(9, 11, 33, 23, 8.4, 29.4, 'u_GlassWindowSquare4a', 0xc8f4f8, { under: 1, top: 1 }); box(8.3, 10.7, 9, 23.3, 8.4, 30.2, STONE); box(33, 10.7, 33.7, 23.3, 8.4, 30.2, STONE);
@@ -237,6 +245,8 @@ function toArch(p, D) {   // D = the walk-in doorway of this building, or null: 
                     out.push(clean(Object.assign({}, q, { s: 'quad', p: [r3((ns ? mid : fp) + off[0]), r3(y0), r3((ns ? fp : mid) + off[1])], ry: RY[D.side], size: [r3(a1 - a0 + 2 * grow), r3(hh)], hole: [r3(sgn * (D.at - mid)), holeH ? 2.6 : D.cw, Math.max(0.1, (holeH || 2.2) - y0)] })));
                 }
             }
+            if (o.nf) b.faces = (b.faces || 'fblr').replace(new RegExp('[' + o.nf.replace(/S/g, 'f').replace(/N/g, 'b').replace(/W/g, 'l').replace(/E/g, 'r') + ']', 'g'), '');
+            if (b.faces === '' && q.top === false && !q.under) return;
             out.push(clean(b));
         };
         const flatTop = o.top === 1 || (o.top !== 0 && h >= 2.5 && !o.alpha && /bricks|Plaster|Concrete|Corrugated|Glass/.test(p.key || ''));
@@ -254,6 +264,8 @@ function toArch(p, D) {   // D = the walk-in doorway of this building, or null: 
         const q = Object.assign({ s: 'roof', form: p.shape === 'pyr' ? 'pyramid' : p.shape, p: [r3(cx), r3(p.y0), r3(cz)], ry: ry || undefined, size: [r3(sw ? d : w), p.h, r3(sw ? w : d)], roof: true, ds: p.shape === 'barrel' || undefined }, base);
         if (o.over) q.over = o.over; if (p.shape === 'barrel') q.seg = 12; if (o.ds) q.ds = true;
         out.push(clean(q));
+    } else if (p.t === 'iq') {   // an inside wall panel (a quad facing into the room)
+        out.push(clean({ s: 'quad', p: [r3(p.x), r3(p.y), r3(p.z)], ry: p.ry || undefined, size: [r3(p.w), r3(p.h)], key: KEY(p.key), tint: p.tint == null ? undefined : p.tint, uv: p.key ? UV(p.key) : undefined, kind: 'wall' }));
     } else if (p.t === 'sign') {   // THE LETTERING: a canvas sign sheet, fitted
         out.push({ s: 'quad', p: [r3(p.x), r3(p.y), r3(p.z)], ry: RY[p.face] || undefined, size: [r3(p.w), r3(p.h)], key: 'txt:' + p.text + '|' + p.fg + '|' + p.bg + '|' + r3(p.w / p.h), uv: 'fit', kind: 'wall' });
     } else if (p.t === 'door') {   // a drawn double door, shut (a building with no inside)
@@ -377,6 +389,147 @@ function detail(Bd, D, walked, seed, name) {
     out.ghosts = ghosts; return out;
 }
 
+/* ══ THE INTERIORS (mondo 11-13 21:04 "let's go ahead and do the interiors"; his OK on the floor plans 21:21). The rules he set at 21:14 +
+   21:17: the grid is the 3.5 m battle square; a BARRIER takes whole squares and stands centred on them; a walkway is whole squares wide;
+   DRESSING stands off centre, flat on a wall or inside a barrier's own square. So every square of a room is a barrier square or a clear one.
+   One `inside(key, x0, z0, fn)` per walk-in (x0, z0 = the shell's north-west corner in plot metres, on the grid). In fn:
+     put(key, col, row, face, o)   a prop on the middle of a square (o.dx / o.dz = off the middle: dressing; o.h = a height)
+     bar(col, row, nc, nr)         the squares are a barrier: an unseen low wall fills them, whatever the props on them block
+     wallI(c0, r0, c1, r1)         a partition on the grid lines (drawn + unseen wall)    column(col, row, top)    flagI(col, row, dx, dz, tint)
+   Faces: 0 looks south (+z), 90 west, 180 north, 270 east (the city's front rule). ══ */
+/* THE HOLLOW: a walk-in's massing is drawn from the outside in whole blocks, so where two blocks meet inside the shell their faces (and the
+   plinth / ground-storey strips, pipes and wall units the polish pass hung on them) stood in the room. Under the room's ceiling those
+   inner faces go; over it each keeps a thin strip (the taller block's wall over the lower roof). */
+function hollow(list, S0) {
+    const r = S0.r, Hc = S0.st * C, cav = [r[0] + 1, r[1] + 1, r[2] - 1, r[3] - 1], G = [r[0] - 0.4, r[1] - 0.4, r[2] + 0.4, r[3] + 0.4], out = [];
+    list.forEach(p => {
+        if (p.t === 'cyl') { if (p.x > cav[0] && p.x < cav[2] && p.z > cav[1] && p.z < cav[3] && p.y0 < Hc - 0.3) { if (p.y1 <= Hc + 0.6) return; p = Object.assign({}, p, { y0: Hc }); } out.push(p); return; }
+        if (p.t !== 'box' || p.y0 >= Hc - 0.3) { out.push(p); return; }
+        const cuts = p.x0 < cav[2] && p.x1 > cav[0] && p.z0 < cav[3] && p.z1 > cav[1]; if (!cuts) { out.push(p); return; }
+        const within = p.x0 >= G[0] && p.x1 <= G[2] && p.z0 >= G[1] && p.z1 <= G[3], thin = Math.min(p.x1 - p.x0, p.z1 - p.z0) < 0.8;
+        if (thin) { if (!within) { out.push(p); return; } if (p.y1 <= Hc + 0.6) return; out.push(Object.assign({}, p, { y0: Hc })); return; }
+        let nf = '';
+        if (p.z0 > cav[1] && p.z0 < cav[3]) nf += 'N'; if (p.z1 > cav[1] && p.z1 < cav[3]) nf += 'S'; if (p.x0 > cav[0] && p.x0 < cav[2]) nf += 'W'; if (p.x1 > cav[0] && p.x1 < cav[2]) nf += 'E';
+        if (!nf) { out.push(p); return; }
+        out.push(Object.assign({}, p, { o: Object.assign({}, p.o, { nf }) }));
+        if (p.y1 > Hc + 0.3 && p.key) nf.split('').forEach(sd => { const t = 0.03, q = { t: 'box', y0: Hc, y1: p.y1, key: p.key, tint: p.tint, o: { top: 0 } };
+            if (sd === 'N') Object.assign(q, { x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z0 + t }); else if (sd === 'S') Object.assign(q, { x0: p.x0, x1: p.x1, z0: p.z1 - t, z1: p.z1 });
+            else if (sd === 'W') Object.assign(q, { x0: p.x0, x1: p.x0 + t, z0: p.z0, z1: p.z1 }); else Object.assign(q, { x0: p.x1 - t, x1: p.x1, z0: p.z0, z1: p.z1 });
+            q.o.nf = { N: 'SWE', S: 'NWE', W: 'NSE', E: 'NSW' }[sd]; out.push(q); });
+    });
+    return out;
+}
+const INSIDE = {};
+const inside = (key, x0, z0, fn) => { INSIDE[key] = { x0, z0, fn }; };
+const FS = 0, FW = 90, FN = 180, FE = 270;
+function runInside(I, room) {
+    const out = { props: [], parts: [], ghosts: [] }, x0 = I.x0, z0 = I.z0, keep = bld;
+    bld = { parts: out.parts };
+    const mid = (col, row, nc, nr) => [x0 + (col + (nc || 1) / 2) * C, z0 + (row + (nr || 1) / 2) * C];
+    const api = {
+        put: (key, col, row, face, o) => { o = o || {}; const m = mid(col, row, o.nc, o.nr), q = { key, x: r3(m[0] + (o.dx || 0)), z: r3(m[1] + (o.dz || 0)), face: face || 0, floor: true }; if (o.h) q.h = o.h; out.props.push(q); },
+        bar: (col, row, nc, nr) => { nc = nc || 1; nr = nr || 1; const m = mid(col, row, nc, nr), hw = nc * C / 2 - 0.45, t = nr * C - 0.9; out.ghosts.push([m[0] - hw, m[1], m[0] + hw, m[1], 1.1, t]); },
+        wallI: (c0, r0, c1, r1, h) => { const a = [x0 + c0 * C, z0 + r0 * C], b = [x0 + c1 * C, z0 + r1 * C], t = 0.1; h = h || 3.2;
+            box(Math.min(a[0], b[0]) - t, Math.min(a[1], b[1]) - t, Math.max(a[0], b[0]) + t, Math.max(a[1], b[1]) + t, 0, h, 'u_PlasterWallPainted1a', 0xd8d4c8, { top: 1 });
+            box(Math.min(a[0], b[0]) - t - 0.02, Math.min(a[1], b[1]) - t - 0.02, Math.max(a[0], b[0]) + t + 0.02, Math.max(a[1], b[1]) + t + 0.02, 0, 0.9, null, 0x6f7a72, { top: 0 });
+            out.ghosts.push([a[0], a[1], b[0], b[1], h, 0.3]); },
+        column: (col, row, top) => { const m = mid(col, row); cyl(m[0], m[1], 0.55, 0, top, STONE, 0xe6e0d2, { seg: 12 }); box(m[0] - 0.75, m[1] - 0.75, m[0] + 0.75, m[1] + 0.75, 0, 0.35, STONE, 0xe6e0d2); api.bar(col, row); },
+        flagI: (col, row, dx, dz, tint) => { const m = mid(col, row), x = m[0] + dx, z = m[1] + dz; cyl(x, z, 0.04, 0, 2.5, null, 0x8a7a4a, { seg: 6 }); cyl(x, z, 0.18, 0, 0.08, null, 0x4a4a4a, { seg: 8 }); box(x + 0.05, z - 0.02, x + 0.95, z + 0.02, 1.7, 2.4, null, tint || 0x2a56b0); },
+        mid, x0, z0,
+    };
+    /* THE LINING: the shell draws no inside (skin: false), so the room wears its own: four walls (the door's wall in three panels round
+       the doorway), a dado, a ceiling, a floor sheet. room = { r: [x0, z0, x1, z1], st, D } */
+    api.line = (wallKey, wallTint, floorKey, floorTint, dado) => { if (!room) return; const r = room.r, H = room.st * C - 0.12, g = 0.17, D = room.D;
+        const panel = (side, a0, a1, y0, y1, key, tint, off) => { if (a1 - a0 < 0.05 || y1 - y0 < 0.05) return; const ns = side === 'N' || side === 'S', pl = { N: r[1] + g + (off || 0), S: r[3] - g - (off || 0), W: r[0] + g + (off || 0), E: r[2] - g - (off || 0) }[side], m = (a0 + a1) / 2;
+            bld.parts.push({ t: 'iq', x: ns ? m : pl, z: ns ? pl : m, y: y0, w: a1 - a0, h: y1 - y0, ry: { N: 0, S: 180, W: 270, E: 90 }[side], key, tint }); };
+        ['N', 'S', 'W', 'E'].forEach(side => { const ns = side === 'N' || side === 'S', a0 = (ns ? r[0] : r[1]) + g, a1 = (ns ? r[2] : r[3]) - g;
+            const run = (b0, b1, y0) => { panel(side, b0, b1, y0, H, wallKey, wallTint); if (y0 < 1) panel(side, b0, b1, 0, 1.0, null, dado, 0.02); };
+            if (D && D.side === side) { const d0 = D.at - D.cw / 2 - 0.12, d1 = D.at + D.cw / 2 + 0.12; run(a0, d0, 0); run(d1, a1, 0); run(d0, d1, 2.35); } else run(a0, a1, 0); });
+        box(r[0] + g, r[1] + g, r[2] - g, r[3] - g, H, H + 0.05, 'u_FibreCeilingTile1a', 0xe8e8e0, { under: 1, top: 0 });
+        box(r[0] + g, r[1] + g, r[2] - g, r[3] - g, 0, 0.07, floorKey, floorTint, {}); };
+    I.fn(api); bld = keep; return out;
+}
+/* the sets: a few lockers / cabinets / chairs on one square */
+const row3 = (A, key, col, row, face, o) => [-0.62, 0, 0.62].forEach(d => A.put(key, col, row, face, Object.assign({}, o, (face === FS || face === FN) ? { dx: d + ((o && o.dx) || 0) } : { dz: d + ((o && o.dz) || 0) })));
+const deskSet = (A, col, row, face, chair) => { A.put('tanker_desk', col, row, face); const b = { [FS]: [0, -1.05], [FN]: [0, 1.05], [FE]: [-1.05, 0], [FW]: [1.05, 0] }[face]; A.put(chair || 'computer_chair_blue', col, row, face, { dx: b[0], dz: b[1] }); A.bar(col, row); };
+
+inside('4,0,0', 7, 7, A => {
+    A.line('u_PlasterWallPainted1a', 0xe6dcc8, 'u_ConcreteStriped1c', 0xb8b8b4, 0x8a2a22);                                                      // FIRE STATION, 8 x 8
+    [0, 1].forEach(r => { A.put('fire_truck', 0, r, FE, { nc: 3 }); A.bar(0, r, 3, 1); });
+    [4, 5, 6].forEach(c => { row3(A, 'locker', c, 0, FS); A.bar(c, 0); }); A.put('locker_bench', 5, 0, FS, { dz: 1.15, dx: -1.2 }); A.put('locker_bench', 5, 0, FS, { dz: 1.15, dx: 1.2 });
+    { const m = A.mid(4, 3); cyl(m[0], m[1], 0.09, 0, 7, ALU, 0xe8d8a0, { seg: 8 }); cyl(m[0], m[1], 0.7, 0, 0.12, null, 0x8a2a22, { seg: 14 }); A.bar(4, 3); }   // the fire pole on its pad
+    deskSet(A, 6, 3, FW, 'cafeteria_chair'); A.put('tube_map', 7, 3, FW, { dx: 1.68 });
+    [[0, 6], [1, 6], [0, 7], [1, 7]].forEach(c => { A.put('dorm_bed', c[0], c[1], FS); A.bar(c[0], c[1]); });
+    [[4, 6], [5, 7]].forEach(c => { A.put('round_table', c[0], c[1], 0, { h: 0.78 }); [[-1.2, -0.9], [1.2, 0.9], [-1.1, 1.0]].forEach(d => A.put('cafeteria_chair', c[0], c[1], FS, { dx: d[0], dz: d[1] })); A.bar(c[0], c[1]); });
+    A.put('steel_table', 7, 6, FW); A.put('mini_fridge', 7, 6, FW, { dx: 1.3, dz: -1.25 }); A.put('water_cooler', 7, 6, FW, { dx: 1.3, dz: 1.2 });
+    A.put('kitchen_range', 7, 7, FW); A.put('sink', 7, 7, FW, { dx: 1.3, dz: 1.2 }); A.bar(7, 6, 1, 2);
+    [3, 4].forEach(r => A.put('wall_shelf', 0, r, FE, { dx: -1.6 })); A.put('fire_extinguisher', 0, 2, FE, { dx: -1.6, dz: 1.2 }); A.put('fire_extinguisher', 3, 0, FS, { dz: -1.6, dx: 1.2 });
+    A.wallI(3, 5, 6, 5); A.wallI(7, 5, 8, 5); A.wallI(3, 5, 3, 7);
+});
+inside('5,0,0', 24.5, 10.5, A => {
+    A.line('u_PlasterWallStucco1a', 0xd8dccf, 'u_TileGeneric3a', 0xc8ccd0, 0x4a5a52);                                                // CIVIL RECORDS, 2 x 3
+    deskSet(A, 1, 1, FW, 'computer_chair_blue'); [0, 1].forEach(c => { row3(A, 'filing_cabinet', c, 0, FS); A.bar(c, 0); });
+    A.put('vault', 1, 2, FW, { h: 3.1 }); A.bar(1, 2); A.put('wall_shelf', 1, 1, FW, { dx: 1.68, dz: -1.0 }); A.put('punch_clock', 0, 2, FE, { dx: -1.66, dz: 0.9 });
+});
+inside('6,0,0', 7, 7, A => {
+    A.line('marble_light', 0xf0e8d8, 'u_TileMarble1a', 0xe8e4dc, 0x6a5a48);                                                      // CITY HALL, 8 x 7
+    A.put('reception_wedge', 3, 4, FS); A.put('reception_wedge', 4, 4, FS); A.bar(3, 4, 2, 1);
+    [2, 3, 4].forEach(r => deskSet(A, 0, r, FE)); [0, 1].forEach(c => { row3(A, 'filing_cabinet', c, 0, FS); A.bar(c, 0); });
+    A.put('exec_desk', 4, 0, FS); A.put('exec_chair', 4, 0, FS, { dz: -1.15 }); A.flagI(4, 0, -1.35, -1.3, 0x2a56b0); A.bar(4, 0);
+    A.put('curved_office_couch', 6, 1, FN); A.put('coffee_table', 6, 1, 0, { dx: -1.2, dz: 1.1 }); A.bar(6, 1); A.put('curved_sofa', 7, 0, FS); A.bar(7, 0);
+    A.column(2, 3, 13.9); A.column(5, 3, 13.9); A.flagI(2, 3, -1.3, 1.3, 0x2a56b0); A.flagI(5, 3, 1.3, 1.3, 0xb03a2a);
+    [3, 4].forEach(r => { A.put('metro_bench', 7, r, FW); A.bar(7, r); }); A.put('office_plant', 7, 3, 0, { dx: -1.2, dz: -1.3 }); A.put('water_cooler', 7, 4, FW, { dx: 1.35, dz: 1.3 });
+    A.wallI(2, 2, 3, 2, 3.4); A.wallI(4, 2, 6, 2, 3.4); A.wallI(2, 0, 2, 2, 3.4); A.wallI(6, 0, 6, 2, 3.4); A.put('world_clocks', 5, 2, FS, { dz: -1.58 });
+});
+inside('7,0,0', 10.5, 7, A => {
+    A.line('u_PlasterWallPainted1a', 0xdfe6ea, 'u_TileMarble1d', 0xd8d8d4, 0x3a4a5a);                                                   // COUNCIL ANNEX, 4 x 3
+    [0, 1, 2, 3].forEach(c => { A.put('tanker_desk', c, 0, FS); A.put('exec_chair', c, 0, FS, { dz: -1.1 }); A.bar(c, 0); });
+    A.put('lectern', 1, 1, FN); A.put('meshy_microphone', 1, 1, FN, { dx: 0.9, dz: -0.9 }); A.bar(1, 1);
+    [[0, 2], [1, 2], [3, 2]].forEach(c => { row3(A, 'folding_chair', c[0], c[1], FN); A.bar(c[0], c[1]); });
+    A.flagI(0, 0, -1.4, 1.2, 0x2a56b0); A.put('potted_plant', 3, 0, 0, { dx: 1.3, dz: 1.2 });
+});
+inside('7,1,0', 3.5, 3.5, A => {
+    A.line('marble_light', 0xf0e8d8, 'u_TileMarble2d', 0xe0dcd4, 0x5a4636);                                                  // COURTHOUSE, 4 x 2
+    A.put('exec_desk', 0, 0, FE); A.put('exec_chair', 0, 0, FE, { dx: -1.15 }); A.flagI(0, 0, -1.4, -1.4, 0x2a56b0); A.bar(0, 0);
+    A.put('lectern', 0, 1, FE); A.bar(0, 1);
+    [0, 1].forEach(r => { A.put('steel_table', 1, r, FW); A.put('folding_chair', 1, r, FW, { dx: 1.1 }); A.bar(1, r); A.put('church_pew', 3, r, FW); A.bar(3, r); });
+});
+inside('4,2,0', 3.5, 7, A => {
+    A.line('u_PlasterWallPainted1a', 0xc8d4e4, 'u_TileGeneric1a', 0xb0b4b8, 0x2a3a5a);                                                    // POLICE, 3 x 5
+    [0, 1, 2].forEach(c => { A.put('dorm_bed', c, 0, FE, { dz: -0.9 }); A.bar(c, 0); });
+    { const z = A.z0 + C, x = A.x0; for (let k = 0; k < 42; k++) cyl(x + 0.125 + k * 0.25, z, 0.03, 0, 2.6, null, 0x3a3f46, { seg: 5 }); box(x, z - 0.05, x + 10.5, z + 0.05, 2.6, 2.75, null, 0x3a3f46); box(x, z - 0.05, x + 10.5, z + 0.05, 0, 0.1, null, 0x3a3f46);
+      [1, 2].forEach(c => box(x + c * C - 0.06, A.z0, x + c * C + 0.06, z, 0, 2.75, 'u_ConcreteStriped1a', 0xa8a8a8, { top: 0 })); }   // the bars + the cell walls
+    A.put('reception_wedge', 1, 2, FE); A.bar(1, 2); deskSet(A, 0, 2, FE); deskSet(A, 0, 3, FE);
+    row3(A, 'locker', 0, 4, FN); A.put('water_cooler', 0, 4, FE, { dx: -1.4, dz: -1.3 }); A.bar(0, 4); A.put('library_shelf', 1, 4, FN); A.bar(1, 4); A.put('metro_bench', 2, 4, FN); A.bar(2, 4);
+    A.put('tube_map', 2, 1, FW, { dx: 1.68 });
+});
+inside('7,2,0', 24.5, 3.5, A => {
+    A.line('u_PlasterWallStucco1a', 0xe8dcc0, 'u_TileMarble3c', 0xd8d0c0, 0x6a4a2a);                                                 // TIME BUREAU, 3 x 4
+    [0, 1, 2].forEach(c => { A.put('server_rack', c, 0, FS, { dx: -0.55 }); A.put('server_rack', c, 0, FS, { dx: 0.55 }); A.bar(c, 0); });
+    A.put('exec_desk', 1, 1, FW); A.put('exec_chair', 1, 1, FW, { dx: 1.15 }); A.bar(1, 1);
+    A.put('gclock', 1, 2, FW, { h: 4.2 }); A.bar(1, 2); A.put('curved_office_couch', 0, 3, FE); A.put('potted_plant', 0, 3, 0, { dx: 1.2, dz: -1.3 }); A.bar(0, 3);
+    [1, 2].forEach(r => A.put('world_clocks', 2, r, FW, { dx: 1.66 })); A.put('punch_clock', 0, 1, FE, { dx: -1.66 }); [0, 1, 2].forEach(c => A.put('wall_clock', c, 3, FN, { dz: 1.66 }));
+});
+inside('6,3,0', 17.5, 28, A => {
+    A.line('u_PlasterWallPainted1a', 0xc4c8a8, 'u_ConcreteStriped1a', 0xa8a8a0, 0x4a5a3a);                                                  // MILITARY OFFICES, 4 x 4
+    A.put('conference_table', 1, 1, FE, { nc: 2 }); A.bar(1, 1, 2, 1);
+    A.put('library_shelf', 0, 1, FE); A.put('psx_ammo_box_1', 0, 1, 0, { dx: 1.1, dz: 1.2 }); A.bar(0, 1); row3(A, 'locker', 0, 2, FE); A.bar(0, 2);
+    deskSet(A, 3, 1, FW, 'cafeteria_chair'); row3(A, 'filing_cabinet', 3, 3, FW); A.bar(3, 3);
+    A.put('psx_supply_crate_1', 0, 3, 0); A.put('psx_wooden_crate_1', 0, 3, 0, { dx: 1.1, dz: -1.1 }); A.bar(0, 3);
+    [1, 2].forEach(c => { row3(A, 'folding_chair', c, 3, FN); A.bar(c, 3); });
+    A.put('lectern', 3, 2, FW); A.flagI(3, 2, 1.3, 1.3, 0x4a6a3a); A.bar(3, 2); A.put('tube_map', 1, 3, FN, { dz: 1.68, dx: 1.75 });
+});
+inside('7,3,0', 7, 7, A => {
+    A.line('u_PlasterWallPainted1a', 0xe4e0d0, 'u_TileGeneric2a', 0xc0c4c8, 0x5a6a7a);                                                      // PERMIT OFFICES, 8 x 8
+    [1, 2, 3, 4, 5].forEach(c => deskSet(A, c, 4, FN)); [5, 6, 7].forEach(r => { row3(A, 'filing_cabinet', 0, r, FE); A.bar(0, r); });
+    [2, 3, 4].forEach(c => deskSet(A, c, 6, FS)); A.put('library_shelf', 1, 7, FN); A.bar(1, 7);
+    A.put('exec_desk', 7, 7, FN); A.put('exec_chair', 7, 7, FN, { dz: 1.15 }); A.bar(7, 7);
+    A.column(2, 2, 3.45); A.column(5, 2, 3.45);
+    [[1, 1], [2, 1], [5, 1], [6, 1], [3, 2], [4, 2]].forEach(c => { row3(A, 'molded_chair', c[0], c[1], FS); A.bar(c[0], c[1]); });
+    [0, 7].forEach(c => { A.put('potted_plant', c, 0, 0, { h: 1.7 }); A.bar(c, 0); }); A.put('punch_clock', 5, 0, FS, { dz: -1.66 });
+    A.wallI(0, 5, 7, 5); A.wallI(6, 6, 8, 6); A.wallI(6, 6, 6, 7);
+});
+
 /* ══ apply(ctx): called by bake-disaster-city.js after its building loop. ctx = { PLAN, features, props, bInfo, gx, take, roofB, ROOF_H } ══ */
 function apply(ctx) {
     const { PLAN, features, gx, take, roofB } = ctx, n = { arch: 0, parts: 0, hollow: 0, solids: 0, ghosts: 0 };
@@ -404,10 +557,15 @@ function apply(ctx) {
                     if (si > 0) features.push(r); n.solids++;
                 });
             }
-            const parts = []; Bd.parts.forEach(p => toArch(p, D).forEach(q => parts.push(q)));
-            const det = detail(Bd, D, !!(pb && roofB.has(pb.id)), 17 + P.px * 31 + P.py * 7 + k * 13, NAMES[P.px + ',' + P.py + ',' + Bd.i]); det.forEach(p => toArch(p, null).forEach(q => parts.push(q)));
+            const IN = INSIDE[P.px + ',' + P.py + ',' + Bd.i], S0 = (Bd.solids || [])[0], hol = IN && S0 ? l => { const o2 = hollow(l, S0); if (process.env.CIVIC_DEBUG) console.log('hollow', P.px + ',' + P.py + ',' + Bd.i, l.length, '->', o2.length, 'nf', o2.filter(q => q.o && q.o.nf).map(q => q.o.nf + '@' + [q.x0, q.z0, q.x1, q.z1, q.y0, q.y1].join(',')).join(' ')); return o2; } : l => l;
+            const parts = []; hol(Bd.parts).forEach(p => toArch(p, D).forEach(q => parts.push(q)));
+            const det = detail(Bd, D, !!(pb && roofB.has(pb.id)), 17 + P.px * 31 + P.py * 7 + k * 13, NAMES[P.px + ',' + P.py + ',' + Bd.i]); hol(det).forEach(p => toArch(p, null).forEach(q => parts.push(q)));
             det.ghosts.forEach(g => { features.push({ k: 'wall', x0: r3(X0 + g[0]), z0: r3(Z0 + g[1]), x1: r3(X0 + g[2]), z1: r3(Z0 + g[3]), t: g[5], y: g[4], ghost: true, rail: false }); n.ghosts++; });
             features.push({ k: 'arch', id: 'arch:' + id.slice(3), x: X0, z: Z0, y: 0, parts }); n.arch++; n.parts += parts.length;
+            if (IN) { const io = runInside(IN, S0 ? { r: S0.r, st: S0.st, D } : null), ip = []; io.parts.forEach(p => toArch(p, null).forEach(q => ip.push(q)));
+                if (ip.length) { features.push({ k: 'arch', id: 'arch:' + id.slice(3) + '-in', x: X0, z: Z0, y: 0, parts: ip }); n.arch++; n.parts += ip.length; }
+                io.ghosts.forEach(g => { features.push({ k: 'wall', x0: r3(X0 + g[0]), z0: r3(Z0 + g[1]), x1: r3(X0 + g[2]), z1: r3(Z0 + g[3]), t: r3(g[5]), y: g[4], ghost: true, rail: false }); n.ghosts++; });
+                io.props.forEach(q => { q.x = r3(X0 + q.x); q.z = r3(Z0 + q.z); ctx.props.push(q); }); n.inside = (n.inside || 0) + io.props.length; }
             (Bd.ghost || []).forEach(g => { features.push({ k: 'wall', x0: r3(X0 + g[0]), z0: r3(Z0 + g[1]), x1: r3(X0 + g[2]), z1: r3(Z0 + g[3]), t: 0.3, y: g[4], ghost: true, rail: false }); n.ghosts++; });
             (Bd.cells || []).forEach(c => take(P.px * N + c[0], P.py * N + c[1]));
         });
