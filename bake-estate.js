@@ -358,7 +358,10 @@ L.push("        " + ROOM + ": {");
 L.push("            label: 'THE ESTATE',");
 L.push("            sub: 'FOUR DISTRICTS · 36 PLOTS',");
 L.push("            kind: 'box', site: 'prebuilt_skinwalker', part: 'estate',");
-L.push("            shell: hqRanchShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, wall: 'leaves_3', wallColor: 0xd8c878 }),");
+L.push("            shell: hqRanchShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, wall: 'leaves_3',\n" +
+    "                                    /* THE CLEAN SKY (mondo 11-15: \"the sky is glitching/flickering in the estate\"): the ranch shell's night scenery ('eyes': a spinning ringed body, a door frame, an orb)\n" +
+    "                                       drew as black outlines turning in the daytime sky. The Estate keeps the ranch's colours and fog and carries no bodies. */\n" +
+    "                                    sky: { night: 1, tint: 0x2a1638, tintAmt: 0.5, stars: 0.6, nebula: 0.5, fog: { color: 0x2c2040, amount: 0.86, top: 0.1, band: 0.6, density: 0.024 }, scenery: 'none', density: 0.5, landmarks: [] } }),");
 L.push("            parti: 'Four districts of nine plots, every plot a twelve by twelve board: tracks cut through corn you cannot see over, a lake, a ranch, and a house on its rise with the graveyard below it.',");
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + G + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.d, p.level])) + " },");

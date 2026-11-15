@@ -8777,7 +8777,7 @@ const ThreeRenderer = (function () {
        water, not a steep face and not inside a building. The tufts write no depth, so the cells are drawn far to near (renderOrder by
        distance) and each cell sorts its own tufts (_ggFace). Settings > Video > Grass (High / Low / Off) rules it as on the board.
        Kill switch: window.EW_NO_HQ_GRASS. No press map (nothing lays the tufts down here yet). */
-    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 16, low: { radiusM: 16, perSquare: 10 }, perTick: 2, tickMs: 100, steep: 0.55 };
+    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 16, low: { radiusM: 16, perSquare: 10 }, perTick: 2, tickMs: 100, steep: 0.55, height: 0.8 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
     try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
     var _hqGG = null;
     function _hqGrassDrop() {
@@ -8807,7 +8807,7 @@ const ThreeRenderer = (function () {
             var wx = xm * U, wz = zm * U, gy = hqTerrainHeight(info, xm, zm) * U;
             var clump = _ewValHash(xm / (3.5 * 0.55) + 11.3, zm / (3.5 * 0.55) + 4.7), patch = _ewValHash(xm / (3.5 * C.patchM) + 3.1, zm / (3.5 * C.patchM) + 8.9);
             var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
-            var h = ts * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
+            var h = ts * HQ_GRASS.height * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
             var hw = ts * S.width * 0.5 * (0.8 + 0.4 * r2);
             var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
             var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
@@ -8854,9 +8854,12 @@ const ThreeRenderer = (function () {
         for (var w = 0; w < want.length && w < HQ_GRASS.perTick; w++) { var made = null; try { made = _hqGrassCell(S, want[w][1], want[w][2]); } catch (e) { made = { mesh: null }; if (!S._warned) { S._warned = true; console.warn('[HQ] the grass field', e); } } S.cells.set(want[w][1] + ',' + want[w][2], made); if (made.mesh) live.push(made); }
         S.cells.forEach(function (c, key) { var q = key.split(','), d = Math.hypot((+q[0] + 0.5) * cm - px, (+q[1] + 0.5) * cm - pz); if (d > S.R + 2 * cm) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } S.cells.delete(key); } });
         /* far cells first: no tuft writes depth, so a near cell must be drawn over a far one */
-        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, ex = cam ? cam.position.x / S.U : px, ez = cam ? cam.position.z / S.U : pz;
+        /* (far = along the camera's own view direction, as each cell sorts its tufts: a distance from the camera's place put a cell behind
+           the eye in front of the one it looks at, and the cells' edges showed as dark lines of tuft feet) */
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, fx = 0, fz = 0;
+        if (cam) { cam.updateMatrixWorld(); var ce = cam.matrixWorld.elements, fl = Math.hypot(ce[8], ce[10]); if (fl > 1e-4) { fx = -ce[8] / fl; fz = -ce[10] / fl; } }
         live = live.filter(function (c) { return c.mesh && c.mesh.parent; });
-        live.forEach(function (c) { c._d = Math.hypot((c.cx + 0.5) * cm - ex, (c.cz + 0.5) * cm - ez); });
+        live.forEach(function (c) { c._d = (fx || fz) ? ((c.cx + 0.5) * cm * fx + (c.cz + 0.5) * cm * fz) : Math.hypot((c.cx + 0.5) * cm - px, (c.cz + 0.5) * cm - pz); });
         live.sort(function (a, b) { return b._d - a._d; });
         for (var o = 0; o < live.length; o++) live[o].mesh.renderOrder = GGRASS.order + o * 0.001;
         try { window._ewHqGrass = { cells: live.length, tufts: live.reduce(function (s, c) { return s + c.blades; }, 0), level: _ggLevel }; } catch (e) {}
