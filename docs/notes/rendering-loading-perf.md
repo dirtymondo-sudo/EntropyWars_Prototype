@@ -2367,3 +2367,19 @@ mondo: "crashed going into camelot from the woods clearing". The trail of the se
   bundle replayed a bind group whose point-shadow depth texture had been freed (`destroyTexture` is hooked -> `_ew_bunFree`, but the
   group only re-records on the next tick, so a free after the tick replays once). Seen once at 445 s. index.html's trail now keeps
   900 chars of a GPU / shader error and the whole `[MEM]` block (3200), so the next trail says the reason.
+
+## THE BUILD IN ONE GO (2026-11-15, the real cause of `nodeUniform1_sampler`)
+mondo's next trail (build woodsretire-01, the grad fix live) still had the error, and with 900 chars kept the line reads
+`nodeVar0 = textureSample( nodeUniform1, nodeUniform1_sampler, ( object.nodeUniform2 * vec3( uv, 1.0 ) ).xy )` on MeshPhong /
+MeshLambert: a material's own `map`, a plain read. THE NEAREST SHEET READ WITH DERIVATIVES above was a wrong reading of a line
+cut at 240 chars (its patch is harmless and stays).
+- CAUSE (read in three 0.186.1, not run): `MaterialNode` keeps ONE texture node for `material.map` for all materials
+  (`_propertyCache`), repointed by `ReferenceNode.updateValue()` at setup and on every drawn object. `NodeBuilder.buildAsync()`
+  (used by compileAsync / the async pipeline path) awaits `yieldToMain()` after each shader stage, then `buildCode()` lists the
+  bindings (`needsSampler = !isUnfilterable(node.value)`). A frame drawn in the gap repoints the node: text written for a smooth
+  sheet, bindings listed for a Nearest one (or the reverse) = "no definition in scope for identifier <name>_sampler".
+- FIX: `_ewGpuNearestGrad`'s builder hook also replaces the prototype's `buildAsync` with `build()` in one go (resolved promise).
+  Counter `gpuStatus().syncBuilds`. Off `window.EW_ASYNC_NODE_BUILD`. Cost: a shader's build no longer yields mid-way.
+- MEMORY, same trail (Camelot Keep 895 of 700 MB, 607 MB idle, "nothing idle long enough"): `_mmTick` over the budget at all waits
+  30 s idle (was 120); `_mmLeaveSweep` goes down to 50 % of the budget (was 85 %), the next room loads on top of what is kept.
+- NOT TOUCHED: `computeBoundingSphere(): Computed radius is NaN` entering site_prebuilt_camelot_kingdom (the Camelot plot build).

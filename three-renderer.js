@@ -38039,7 +38039,7 @@ const ThreeRenderer = (function () {
             list.push({ url: u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive });
         }
         _mmListRigs(H, live, list);
-        var go = _mmPick(list, Date.now(), 0, tot - cap * MM_FLOOR, 100000), before = _mmFreed;
+        var go = _mmPick(list, Date.now(), 0, tot - cap * 0.5, 100000), before = _mmFreed;   // down to half the budget: the next room loads on top of what is kept
         go.forEach(function (k) { if (k.slice(0, 2) === 'r|') _mmRigEvict(k.slice(2)); else _mmEvict(k); });
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: left the room over the budget, ' + go.length + ' file(s) nothing wears dropped (' + ((_mmFreed - before) / 1048576).toFixed(0) + ' MB)'); } catch (x) {} }
         return go.length;
@@ -38071,6 +38071,7 @@ const ThreeRenderer = (function () {
            the budget a file nothing wears goes after 15 s, 48 a sweep. */
         var far = tot > cap * 1.5;
         if (far) idle = Math.min(idle, 15000);
+        else if (tot > cap) idle = Math.min(idle, 30000);   // over at all (his Camelot trail: 895 of 700 MB, 607 MB idle and "nothing idle long enough"): half a minute, not two
         var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, far ? 48 : MM_MAX);
         if (!go.length) _mmAt = now + (far ? 6000 : 26000);   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
         try { _mmReport(H, R, miscList, live, go.length); } catch (x) {}
@@ -45437,6 +45438,20 @@ const ThreeRenderer = (function () {
             var nb = cnb.apply(this, arguments);
             try {
                 var P = Object.getPrototypeOf(nb);
+                /* THE BUILD IN ONE GO (2026-11-15, mondo's trail on build woodsretire-01: the same `nodeUniform1_sampler` error with the
+                   grad fix live, and with 900 chars of it kept the line is a PLAIN read, `nodeVar0 = textureSample( nodeUniform1,
+                   nodeUniform1_sampler, uvMatrix * uv )`: a material's own map). three keeps ONE texture node for `material.map`
+                   for every material (MaterialNode's _propertyCache) and points it at the material being built or drawn.
+                   buildAsync() yields to the page between its stages, so a frame drawn in the gap pointed that node at another
+                   material's map: the shader text was written for a smooth sheet (textureSample + sampler) and its bindings were
+                   then listed for a Nearest one (no sampler), or the reverse. That material did not draw. The async build now runs
+                   its stages in one go (three's own build()); the pipeline is still created async. Off: window.EW_ASYNC_NODE_BUILD. */
+                if (P && !Object.prototype.hasOwnProperty.call(P, '_ew_sb') && typeof P.buildAsync === 'function' && typeof P.build === 'function' && !(typeof window !== 'undefined' && window.EW_ASYNC_NODE_BUILD)) {
+                    P._ew_sb = true;
+                    P.buildAsync = function () {
+                        try { this.build(); _ewGpuInfo.syncBuilds = (_ewGpuInfo.syncBuilds | 0) + 1; return Promise.resolve(this); } catch (e) { return Promise.reject(e); }
+                    };
+                }
                 if (P && !Object.prototype.hasOwnProperty.call(P, '_ew_ng') && typeof P.isUnfilterable === 'function' && typeof P.generateTextureLod === 'function') {
                     P._ew_ng = true;
                     ['generateTextureGrad', 'generateTextureBias'].forEach(function (k) {
