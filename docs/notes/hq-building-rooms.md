@@ -356,6 +356,12 @@ leads into the car; the mezzanine when unknown, e.g. the story ride). The floor 
 STEP OUT button under the rows. Viewer-local (RULE #2). The door's frame covers the south wall's props (car_panel, camera,
 certificate) until the car's redesign (same thread) lays the wall out again.
 
+## THE BIG CAR — 2026-11-15 (mondo: "the elevator needs to be bigger ... the camera has no room to show the normal view")
+`rooms.car` shell 2.6 × 2.4 × 2.6 → 7 × 7 × 3 m (2 × 2 squares): the 3.6 m walk camera fits behind the walker. The `out`
+doors sit centred on the south wall; the floor panel (counter + `car_panel`) is beside them at x 1.9, clear of the door
+frame again; camera + certificate on the same wall; two ceiling lights. Every lobby's elevator door now lands at
+`car@out` (was `car@panel`): you arrive with the doors at your back. The look (textures, sign, window) = the redesign, pending his OK.
+
 ## THE EXPLORATION FLOORS (HQ plan Phase 8 stage 1) — shipped 2026-09-14, local delivery
 The elevator is a ROOM: `DOOR_HQ.rooms.car` has no doors — its FLOOR
 PANEL (counter `panel` → map.js `_hqFloorPanelHtml`, shared with the

@@ -1957,6 +1957,34 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE ONE PAINT (2026-11-15, the price of a mesh on mondo's Mac + colour out of the look)
+
+mondo's two walk F3s after THE SHELL CELLS price a replayed mesh on his Mac (Firefox, WebGPU): 6,712 meshes = 44.7 ms,
+5,601 = 39.4 ms, his 139-mesh lobby = 12.5 ms. So frame ~ 12.5 ms + 4.8 µs x meshes (the lens's "bundles ... meshes" count;
+each is replayed in the scene pass and, when it casts in the sun's box, again in the shadow pass). **60 FPS wants under ~900
+meshes in view.** Use this line to size any later cut.
+
+What the shell's 5,259 draws were (cloud census of the merged meshes, by which part of the look splits them): 4,075 pieces
+alone in their look and square; colour 650+ distinct values over ~300 textures (640 once every square is built). Texture
+transform, sampler and specular split nothing. `_ew_bunHs / _ew_bunHv / _ew_bunF` (the bundle recorder's notes on a material)
+were part of the look key and split a re-scan's batches: now left out of the key.
+
+THE ONE PAINT (three-renderer.js `_hqBatchVcOk`, `_hqBatchVcMat`, `_hqBatchMerge(cs, vc)`): in a big room's shell (`B.vc`,
+same rule as the shell cells) the colour is not part of a look. Pieces that differ only by colour merge; each point carries
+its piece's colour (times its own painted colour when the look reads one); the merged mesh wears a copy of the look with a
+white colour and `vertexColors` on (one copy per look per room, `B.vcMats`, freed in `_hqBatchDrop`). A lone piece keeps
+its own material and geometry (the stand-in). Off: `window.EW_HQ_NO_ONE_PAINT` before the room is entered.
+
+Cloud (SwiftShader, counts only, HEAD on e022511): shell 8,864 pieces -> 3,213 draws (was 5,259), 1,080 of them one-paint
+meshes holding 6,731 pieces, colours equal to 6e-8, replayed meshes at the start corner 5,594 -> 4,190, 0 frame errors.
+
+What still splits the shell (3,203 looks): the texture (636 pictures; with them unified 501 would be left), then emissive
+(lit windows, 2,524 without it). In view at the start corner: shell squares 2,612 meshes, instance cells 353, prop chunks 282.
+NEXT, in order of yield: one texture array per sheet size so looks differing only by picture merge (the big one); the sun
+map held between frames (shadow replays ~27% of replay time; a hero shadow at half rate shows, so needs a static/moving
+split); far squares as one fused mesh. Piece sizes (radius): 10% under 0.5 m, 25% under 1.2 m, half over 5 m, so a far
+limit for small pieces buys little.
+
 ## THE SHELL CELLS (2026-11-15, the city walk is the graphics card's: the count of pieces)
 
 mondo's tests after #1432: walk 20 FPS with CPU 20.8 ms (was 30); Render Scale at a quarter of the pixels = the SAME 21 FPS; his
@@ -2277,3 +2305,26 @@ Off: `window.EW_KEEP_PBR_MAPS = true`. NOT run in a browser (repo rule); whether
 memory his readout showed. The readers of a file material's normalMap are creator hair / wings (unit cache) and the gem / key
 picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
 sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.
+
+## THE WALK DROPS UNIT MODELS TOO (2026-11-15, the main hall crash, fourth pass)
+His [MEM] block after THE UNDRAWN MAPS: `1212 of 700 MB` in central_egress (was 2047): props 257 files 934 MB (worn 535, idle
+399), unit models 56 files 278 MB (worn 81). The menu already held 577 MB / 216 files before the building. The idle props go by
+the existing budget once 120 s idle (the block printed at the first tick, before that); the unit models were never dropped in
+the walk. `_mmTick` now lists `_unitGlbCache` too: not worn (geometry, material or colour sheet, `_mmWorn`), not named by a
+live rig / parked rig / roster / `H.chars`, idle `cacheIdleMs` -> `_mmRigEvict`. Never: the animation libraries, anything under
+`/characters/creator/`. Off: `window.EW_WALK_KEEP_UNITS`. The [MEM] line now says whether it is dropping. Not browser-run.
+STILL OVER after this: the 535 MB that IS drawn is 2048 x 2048 colour sheets on small props (camera_01 = 65 MB for three
+materials, each lava lamp part 21 MB). Getting under 700 needs smaller sheets on small props (a look decision, his) or a bigger
+budget. Spell props (Spear.fbx 22 MB, Christmas.dae 21 MB, halloween.fbx, top_fangs) are `_ewOneFile`, held by the weapon cache.
+
+## THE SMALL PROPS (2026-11-15, the main hall crash, fifth pass; mondo "sure")
+After THE UNDRAWN MAPS the hall still drew 535 MB of 2048 x 2048 colour sheets on small props. three-renderer.js
+`_hqSmallPropCap(url, root)` runs where a misc model lands (both landings): a DOOR_HQ.catalogue file whose largest placed
+size (max over its catalogue rows and every room prop row's `h` / `span` / `size`, turned into the model's longest side by
+its box) is up to 0.6 m gets its colour sheet drawn down to 512 px, up to 1.15 m to 1024 px (`_capModelTextures(root, cap,
+['map', 'emissiveMap', 'alphaMap'])`, new `only` argument). Bigger, a pack `node` piece, a row with a free `scale`, or no
+size: untouched. In the hall + foyer: 18 files to 512 (papers, mug, pen, stapler, folders, security camera, fan, nameplate,
+box, speakers, CRT, picture b, exit sign, hook rail), 11 to 1024 (pictures a/c, wet floor sign, folding / teal / office chair,
+mop bucket, boxes, coffee table, railing, plant, cabinet, long hook rail), desks and everything larger full (preview:
+scratch caps.js off the CDN files). R2 files untouched. Off: `window.EW_NO_SMALL_PROP_CAP`. `hq.mem().smallCapped`.
+Not browser-run. If he says a prop reads soft: raise its size class here, do not turn the cap off for all.
