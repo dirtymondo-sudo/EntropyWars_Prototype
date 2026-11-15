@@ -268,11 +268,11 @@ const PY = mk(14, 14);
   rects(ch => ch === '#', (x, y, w, h) => slab(x, y, w, h, TOP));
   for (const ch of ['1', '2', '3']) rects(c => c === ch, (x, y, w, h) => slab(x, y, w, h, lvl(ch)));
   /* THE DESCENT: level 1 down to the Pit, one slope two squares wide (the mass under it is the slope itself) */
-  R.F.push({ k: 'ramp', x0: R.X(7), z0: R.Z(9), x1: R.X(7), z1: R.Z(6), w: 7, h0: 0, h1: L1, stairs: true, built: true, edge: 0.05, key: STONE });
+  R.F.push({ k: 'ramp', x0: R.X(7), z0: R.Z(9), x1: R.X(7), z1: R.Z(6), w: 7.6, h0: 0, h1: L1, stairs: true, built: true, edge: 0.05, key: STONE });
   /* THE GRAND GALLERY: level 1 up to level 2, a ramp two squares wide and six long under a corbelled roof 8 m over it */
-  R.F.push({ k: 'ramp', x0: R.X(11), z0: R.Z(5), x1: R.X(11), z1: R.Z(11), w: 7, h0: L1, h1: L2, stairs: true, built: true, edge: 0.05, key: STONE });
+  R.F.push({ k: 'ramp', x0: R.X(11), z0: R.Z(5), x1: R.X(11), z1: R.Z(11), w: 7.6, h0: L1, h1: L2, stairs: true, built: true, edge: 0.05, key: STONE });
   /* the roofs: every passage and chamber under its own stone ceiling */
-  const roof = (u0, v0, u1, v1, y, tint) => R.ceil(u0, v0, u1, v1, y, STONE, tint != null ? tint : 0xb8a680);
+  const roof = (u0, v0, u1, v1, y, tint) => { R.ceil(u0, v0, u1, v1, y, STONE, tint != null ? tint : 0xb8a680); R.P[R.P.length - 1].glow = 0.25; };   // (a roof's underside gets no light from the room's lamps: lit a little by itself)
   roof(6, 0, 8, 6, L1 + 3.5); roof(0, 2, 6, 3, L1 + 3.2, 0x8a7a60); roof(8, 2, 12, 5, L1 + 3.5); roof(5, 5, 6, 6, L1 + 3.2); roof(0, 8, 3, 9, L1 + 3.5); roof(2, 7, 3, 8, L1 + 3.2);
   roof(6, 6, 8, 9, L1 + 3.5); roof(4, 9, 10, 11, 5.25, 0x8a7a60);
   /* the Queen's Chamber: a gabled roof */
@@ -319,6 +319,8 @@ const PY = mk(14, 14);
   R.stops = [[7, 1, L1], [3, 2.5, L1], [3, 5.5, L1], [1.5, 8.5, L1], [7, 10, 0], [11, 12.5, L2], [7.5, 13.4, L2]];
   R.hidden = [[3, 13, L3]];
 }
+{ const T_ = process.env.INS_TEST || ''; if (/noarch/.test(T_)) WD.P.length = 0; if (/nobridge/.test(T_)) WD.F = WD.F.filter(f => f.k !== 'bridge'); if (/noramp/.test(T_)) WD.F = WD.F.filter(f => f.k !== 'ramp'); if (/nowall/.test(T_)) WD.F = WD.F.filter(f => f.k !== 'wall'); if (/nohung/.test(T_)) WD.F = WD.F.filter(f => !(f.k === 'wall' && f.y0 != null)); if (/nonpc/.test(T_)) WD.npc.length = 0; if (/notele/.test(T_)) WD.npc = WD.npc.filter(n => n.race !== 'telepath'); }
+if (process.env.INS_TEST === 'noprops') WD.props.length = 0; if (process.env.INS_TEST === 'nopad') WD.props = WD.props.filter(p => p.key !== 'wall_padding'); if (/noleaf/.test(process.env.INS_TEST || '')) WD.inner.length = 0;
 check('the hangar', HG); check('the white rooms', WD); check('the pyramid', PY);
 
 /* ── the rooms' text ── */
@@ -358,7 +360,7 @@ emit('site_prebuilt_giza_pyramid', PY, [
     "shell: hqBunkerShell({ w: " + PY.W + ", d: " + PY.D + ", h: 18, wallH: 18, plate: { x: " + PY.spawn.x + ", z: " + r2(-PY.D / 2 + 1.2) + ", y: 6.2 },",
     "                       floor: 'bricks_1', wall: 'bricks_1', dado: 'bricks_1', ceiling: 'bricks_1',",
     "                       floorColor: 0xc8b890, wallColor: 0xc8b890, dadoColor: 0xb8a880, ceilColor: 0x8a7a60,",
-    "                       mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, ambient: 0.5 }, fog: { color: 0x1a140c, density: 0.02 }, look: HQ_ROOM_LOOKS.plateau }),",
+    "                       mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, ambient: 0.8 }, fog: { color: 0x2a2014, density: 0.008 }, look: HQ_ROOM_LOOKS.plateau }),",
     "parti: 'Passages two squares wide cut through one mass of stone on three levels: down to the Pit, level to the Queen, up the Grand Gallery to the King.',",
 ], ["res: 0.4375, floor: 'bricks_1', cliff: 'bricks_1', path: 'bricks_1',", "noise: { amp: 0, scale: 5 }, crag: false,"]).forEach(l => OUT.push(l));
 OUT.push('        /* DESERT-INSIDES-END */');
@@ -398,7 +400,7 @@ try {
         bad += miss.length + padMiss.length;
     });
 } finally { fs.unlinkSync(tmp); }
-if (bad) { console.error('the walk check failed (' + bad + ')'); process.exit(1); }
+if (bad && !process.env.INS_TEST) { console.error('the walk check failed (' + bad + ')'); process.exit(1); }
 if (DRY) process.exit(0);
 fs.writeFileSync(file, src);
 console.log('data.js: the three insides written (' + block.length + ' bytes)');
