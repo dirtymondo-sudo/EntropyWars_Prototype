@@ -379,17 +379,17 @@ exports.apply = (ctx) => {
       ]); }
     /* THE CHICAGO PASS (2026-11-15) · THE BEAN: the park's mirror-steel bean on a stone plaza (Gallery court's open yard, 4 × 4 squares). A
        long squashed drop in the mirror-steel sheet (the Metro pack's brushed metal, worn as glass: the shine, no reflections pass), four squares
-       by two; its two ends come down to the ground (the end squares are blockers, centred), its middle two squares arch 2.5 m over the plaza:
+       by two, 7 m tall; its two ends come down to the ground (the end squares are blockers, centred), its middle two squares arch 2.5 m over the plaza:
        you walk under it, under the dimple in its belly. A steel pipe rail on the plaza's north edge, a bike rack, benches looking at it. */
-    { const bx0 = -31.5, bz0 = 94.5, MIR = { key: U('MetroMetal'), tint: 0xe8eef6, kind: 'glass', glow: 0.18 };
+    { const bx0 = -31.5, bz0 = 94.5, MIR = { key: WHITE, tint: 0xe4eaf2, kind: 'glass', uv: 7 };
       B('bean', bx0, bz0, 0, [
-        { s: 'box', p: [0, 0, 0], size: [14, 0.06, 14], key: 'bricks_1', tint: 0xf4efe6, uv: 1.75, sides: false },
+        { s: 'box', p: [0, 0, 0], size: [14, 0.06, 14], key: PAVE, tint: 0xf4ece0, uv: 1.75, sides: false },
         { s: 'box', p: [0, 0, 6.85], size: [14, 0.16, 0.3], key: MARBLE, n: 2, step: [0, 0, -13.7] }, { s: 'box', p: [-6.85, 0, 0], size: [0.3, 0.16, 14], key: MARBLE, n: 2, step: [13.7, 0, 0] },
-        Object.assign({ s: 'dome', p: [0, 3.0, 0], r: 7.0, rz: 3.3, h: 2.3, seg: 36, rings: 8 }, MIR),
-        Object.assign({ s: 'dome', p: [0, 3.0, 0], r: 7.0, rz: 3.3, h: -0.5, seg: 36, rings: 4, ds: true }, MIR),
-        Object.assign({ s: 'dome', p: [-5.25, 1.55, 0], r: 1.75, rz: 3.15, h: 1.55, seg: 20, rings: 6, n: 2, step: [10.5, 0, 0] }, MIR),
-        Object.assign({ s: 'dome', p: [-5.25, 1.55, 0], r: 1.75, rz: 3.15, h: -1.55, seg: 20, rings: 6, ds: true, n: 2, step: [10.5, 0, 0] }, MIR),
-        Object.assign({ s: 'dome', p: [0, 2.48, 0], r: 2.2, rz: 1.3, h: 0.45, seg: 20, rings: 4, ds: true }, MIR),
+        Object.assign({ s: 'dome', p: [0, 4.0, 0], r: 7.0, rz: 3.3, h: 3.0, seg: 36, rings: 9 }, MIR),
+        Object.assign({ s: 'dome', p: [0, 4.0, 0], r: 7.0, rz: 3.3, h: -1.5, seg: 36, rings: 6, ds: true }, MIR),
+        Object.assign({ s: 'dome', p: [-5.0, 2.0, 0], r: 2.0, rz: 3.1, h: 2.0, seg: 20, rings: 6, n: 2, step: [10.0, 0, 0] }, MIR),
+        Object.assign({ s: 'dome', p: [-5.0, 2.0, 0], r: 2.0, rz: 3.1, h: -2.0, seg: 20, rings: 6, ds: true, n: 2, step: [10.0, 0, 0] }, MIR),
+        Object.assign({ s: 'dome', p: [0, 2.5, 0], r: 2.2, rz: 1.3, h: 0.45, seg: 20, rings: 4, ds: true }, MIR),
         { s: 'box', p: [0, 1.0, -6.6], size: [14, 0.06, 0.06], tint: STEEL, n: 2, step: [0, -0.45, 0] }, { s: 'box', p: [-7, 0, -6.6], size: [0.07, 1.06, 0.07], tint: STEEL, n: 9, step: [1.75, 0, 0] },
         { s: 'box', p: [4.6, 0, 5.3], size: [0.06, 0.8, 0.06], tint: STEEL, n: 5, step: [0.45, 0, 0] }, { s: 'box', p: [4.6, 0, 4.7], size: [0.06, 0.8, 0.06], tint: STEEL, n: 5, step: [0.45, 0, 0] },
         { s: 'box', p: [4.6, 0.8, 5.0], size: [0.06, 0.06, 0.66], tint: STEEL, n: 5, step: [0.45, 0, 0] },
@@ -423,11 +423,11 @@ exports.apply = (ctx) => {
     /* THE CHICAGO PASS (2026-11-15): the hall in red brick with limestone bands and pilasters; the striped big top on the roof terrace is now
        the arena house, a brick hall on the same footprint as the tier inside it (12.25 m square, 10.5 m: the roof walk keeps its way round it)
        under a copper-green barrel roof, a fan window in its front gable and a bulb marquee: LUCHA LIBRE */
-    { const f = tier('P06-08-B1'), RED = 0xe2473a, BRICK = { key: 'bricks_3', tint: 0xe08a6c, gain: 1.6, uv: 1.75 }, VERDC = 0xa8e0c8;
+    { const f = tier('P06-08-B1'), RED = 0xe2473a, BRICK = { key: T_RED, tint: 0xc98f7c, uv: 3.5 }, VERDC = 0xa8e0c8;
       const stripes = [
         Object.assign({ s: 'box', p: [0, 7.02, 0], size: [12.3, 3.5, 12.3], top: false }, BRICK),
         { s: 'box', p: [0, 10.3, 0], size: [12.7, 0.3, 12.7], key: WHITE, tint: LIMEST, top: false, under: true },
-        { s: 'roof', form: 'barrel', ry: 90, p: [0, 10.6, 0], size: [12.3, 3.4, 12.3], over: 0.35, key: M_GREEN, tint: VERDC, keyEnd: 'bricks_3', tintEnd: 0xff9c7c, uv: 3.5, seg: 14 },
+        { s: 'roof', form: 'barrel', ry: 90, p: [0, 10.6, 0], size: [12.3, 3.4, 12.3], over: 0.35, key: M_GREEN, tint: VERDC, keyEnd: T_RED, tintEnd: 0xc98f7c, uv: 3.5, seg: 14 },
         { s: 'quad', p: [0, 10.65, 6.6], size: [5.2, 2.2], key: G_FAC1, uv: [2.6, 2.2] },
         { s: 'box', p: [-5.6, 7.02, 6.2], size: [0.7, 3.5, 0.3], key: WHITE, tint: LIMEST, n: 2, step: [11.2, 0, 0] },
       ];

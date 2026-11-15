@@ -2286,13 +2286,13 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
     idle's first pose, no tick hook). data.js `lion_statue` = PSX_lion.glb cast in bronze 0x9a6f3a. Any model can be a statue this way.
   - STADIUM: both back walls limestone; a 20-column colonnade + entablature over each (y 10.2..17); the north stand's shed roof raised onto it
     (15.0, posts 17.2); pennants moved over the cornice / the roof's fascia; the scoreboard is 18 × 8 m (HOME 14 VIS 10, QTR 3 08:42).
-  - THE BEAN (arch:S:bean, Gallery court's open yard, centre -31.5, 94.5): a stone plaza (bricks_1) 4 × 4 squares; the bean in urban:MetroMetal
-    worn as `kind: 'glass'` (shine, no reflections), 4 × 2 squares: the two end squares are blockers (dc:S-bean-w/e), the middle two arch
+  - THE BEAN (arch:S:bean, Gallery court's open yard, centre -31.5, 94.5): a stone plaza (TileGeneric2a) 4 × 4 squares; the bean in the smooth white plaster sheet
+    tinted steel and worn as `kind: 'glass'` (shine, no reflections). NO `glow` ON A SHINY PART: a glow (emissive + the sheet as emissiveMap) drew the bean BLACK in the cloud check; without it the Phong reads as polished steel, 4 × 2 squares: the two end squares are blockers (dc:S-bean-w/e), the middle two arch
     2.5 m over the plaza (walk under it). Domes with a negative `h` are its underside (ds: true). Pipe rail, bike rack, two benches.
   - THE FOUNTAIN (arch:S:fountain, 52.5, 178.5, in levels.js "the sunk court"): marble basin + two bowls with water (urban:Liquid_Blue_02,
     glow), nine jets (glow, no light). Its collision is four GHOST WALLS round its 2 × 2 squares: a building row there (block()) kept the
     court from sinking under it (THE LEVELS warned "piece on a building").
-  - WRESTLING HALL: red brick (bricks_3 tinted, gain 1.6) with limestone bands and pilasters; the striped big top is now the ARENA HOUSE, a
+  - WRESTLING HALL: red brick (the gym's TileSubway3a brick, tinted) with limestone bands and pilasters; the striped big top is now the ARENA HOUSE, a
     brick box on the dc:S-drum tier's own 12.25 m footprint under a copper-green barrel roof, a fan window and a bulb marquee LUCHA LIBRE;
     the street marquee reads LUCHA LIBRE over WRESTLING TONIGHT. The gilt stays only on the marquee board and the tower caps.
   - THE ELEVATED LINE (arch:S:trestle-<plot>, the border squares z 84..87.5 of P04..P07-08): one row a plot, deck at 13.3 m absolute
