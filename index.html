@@ -165,9 +165,42 @@
             var KEY = 'ew_freeze_trail', prev = null;
             try { prev = localStorage.getItem(KEY); } catch (e) {}
             diag.prevTrail = prev;
+            /* THE CRASH TRAIL (2026-11-15, mondo: "Crashed inside the door main hall/lobby", Firefox WebGPU, a console with no
+               error in it). The trail was only readable through ?ewdiag=1 and only for ONE reload: the next load wrote over
+               it. Now a session says how it ended (`clean` is set on pagehide; a tab that crashed or hung never sets it;
+               `frozen` = the picture stopped for 5 s+ while the page still ran), where it was (the building's room, the
+               model memory, the renderer line), and the building's own [HQ] lines sit in its log. A session that did not
+               end cleanly is (a) printed at the top of the NEXT load's console as one [CRASH TRAIL] block, so a console
+               paste carries it, and (b) kept in `ew_freeze_trail_hist` (the last 3), listed by ?ewdiag=1. */
+            var HKEY = 'ew_freeze_trail_hist', hist = [];
+            try { hist = JSON.parse(localStorage.getItem(HKEY) || '[]') || []; } catch (e) { hist = []; }
+            diag.trailHist = hist;
+            diag.trailLines = function (P) {
+                var L = ['started ' + P.started + ', last alive ' + P.saved + ' (' + P.up + ' in), build ' + P.build,
+                    'ended: ' + (P.clean ? 'closed or reloaded normally' : 'NOT cleanly (crash, hang or killed tab)') + (P.frozen ? ' · the picture had stopped for ' + P.frozen + ' ms while the page still ran' : ''),
+                    'where: ' + (P.where || '?'),
+                    'state: ' + (P.game || '-') + ' · frames ' + P.frames + ' · last frame ' + P.lastFrameAgo + ' before the last save'], i;
+                var st = P.stalls || [], inp = P.inputs || [], lg = P.logs || [];
+                for (i = 0; i < Math.min(3, st.length); i++) L.push('stall ' + st[i].ms + ' ms at ' + st[i].at + ' | ' + st[i].last);
+                for (i = Math.max(0, inp.length - 12); i < inp.length; i++) L.push('input ' + inp[i]);
+                for (i = Math.max(0, lg.length - 16); i < lg.length; i++) L.push('log ' + lg[i]);
+                return L;
+            };
+            try {
+                var P0 = prev ? JSON.parse(prev) : null;
+                /* ALWAYS printed (mondo 11-15: his hall crash left the page alive, so the reload was a clean pagehide and the
+                   block never showed): the last session's trail is the first console line of every load; every session is kept
+                   (the last 4), so one extra reload no longer loses the crash */
+                if (P0) {
+                    hist.push(P0); while (hist.length > 4) hist.shift();
+                    try { localStorage.setItem(HKEY, JSON.stringify(hist)); } catch (e) {}
+                    var bad = !P0.clean || P0.frozen;
+                    console.warn('[CRASH TRAIL] the session before this one' + (bad ? ' did NOT end cleanly' : ' (the page was still alive when it was closed or reloaded)') + '. Paste this block to Claude:\n  ' + diag.trailLines(P0).join('\n  '));
+                }
+            } catch (e) {}
             try { if (localStorage.getItem('ew_no_freeze_trail') === '1') return; } catch (e) { return; }
             var T = { started: new Date().toISOString(), build: '', inputs: [], logs: [], stalls: [] };
-            var t0 = Date.now(), lastFrame = 0, frames = 0;
+            var t0 = Date.now(), lastFrame = 0, frames = 0, saves = 0;
             function stamp() { return ((Date.now() - t0) / 1000).toFixed(1) + 's'; }
             function push(arr, v, cap) { arr.push(v); if (arr.length > cap) arr.shift(); }
             function label(el) {
@@ -197,6 +230,33 @@
             window.addEventListener('keydown', function (e) {
                 try { if (!e.repeat) push(T.inputs, stamp() + ' key ' + e.key + ' | ' + game(), 40); } catch (x) {}
             }, true);
+            function where() {
+                try {
+                    var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, s = '';
+                    if (!TR) return 'the renderer is not up';
+                    if (TR.hq) {
+                        var rm = TR.hq.room ? TR.hq.room() : null;
+                        s += rm ? 'DOOR HQ room ' + rm : 'not in the building';
+                        var m = TR.hq.mem ? TR.hq.mem() : null;
+                        if (m && m.misc && m.rigs) s += ' · models ' + Math.round(m.misc.mb + m.rigs.mb) + '/' + m.budget + ' MB (' + (m.misc.n + m.rigs.n) + ' files)';
+                    }
+                    if (TR.gpuStatus) s += ' · ' + String(TR.gpuStatus()).slice(0, 200);
+                    return s;
+                } catch (e) { return 'unreadable (' + (e && e.message) + ')'; }
+            }
+            /* the building's own lines are NOT wrapped (a console.log wrapper made every line in the console point at this page
+               instead of its own file, mondo's paste 11-15): the room comes from where(), read on every third save, and a room
+               change is noted in the log here */
+            var lastRoom = null;
+            function roomNote() {
+                try {
+                    var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, rm = (TR && TR.hq && TR.hq.room) ? TR.hq.room() : null;
+                    if (rm !== lastRoom) { lastRoom = rm; push(T.logs, stamp() + ' room ' + (rm || 'left the building'), 30); }
+                } catch (x) {}
+            }
+            function save() { try { T.saved = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(T)); } catch (e) {} }
+            window.addEventListener('pagehide', function () { T.clean = true; save(); });
+            window.addEventListener('pageshow', function (e) { if (e && e.persisted) { T.clean = false; save(); } });
             ['warn', 'error'].forEach(function (k) {
                 var o = console[k];
                 console[k] = function () {
@@ -205,7 +265,7 @@
                         s = k + ' ' + s.slice(0, 240);
                         var L = T.logs[T.logs.length - 1];
                         if (L && L.slice(L.indexOf(' ') + 1) === s) return o.apply(console, arguments);   // (a repeat of the line before)
-                        push(T.logs, stamp() + ' ' + s, 20);
+                        push(T.logs, stamp() + ' ' + s, 30);
                     } catch (x) {}
                     return o.apply(console, arguments);
                 };
@@ -228,7 +288,11 @@
                 try {
                     T.build = window._EW_BUILD_TOKEN || '';
                     T.saved = new Date().toISOString(); T.up = stamp(); T.frames = frames; T.game = game();
-                    T.lastFrameAgo = lastFrame ? Math.round(performance.now() - lastFrame) + 'ms' : '?';
+                    var ago = lastFrame ? Math.round(performance.now() - lastFrame) : 0;
+                    T.lastFrameAgo = lastFrame ? ago + 'ms' : '?';
+                    if (!document.hidden && ago > 5000) T.frozen = Math.max(T.frozen || 0, ago);
+                    roomNote();
+                    if (!(saves++ % 3)) T.where = where();
                     localStorage.setItem(KEY, JSON.stringify(T));
                 } catch (e) {}
             }, 1000);
@@ -255,11 +319,16 @@
                 else {
                     lines.push('PREVIOUS SESSION (started ' + P.started + ', last saved ' + P.saved + ' after ' + P.up + ', build ' + P.build + '):');
                     lines.push('  state at the last save: ' + (P.game || '?') + '  frames ' + P.frames + '  last frame ' + P.lastFrameAgo + ' before it');
+                    lines.push('  ended: ' + (P.clean ? 'cleanly' : 'NOT cleanly') + (P.frozen ? ' · picture stopped ' + P.frozen + ' ms' : '') + '  where: ' + (P.where || '?'));
                     section('  LONGEST STALLS (ms, when, state, last input)', (P.stalls || []).map(function (s) { return s.ms + ' at ' + s.at + ' | ' + s.game + ' | ' + s.last; }));
                     section('  LAST INPUTS', P.inputs || []);
                     section('  LAST WARNINGS / ERRORS', P.logs || []);
                 }
             } catch (e) { lines.push('PREVIOUS SESSION: unreadable (' + e.message + ')'); }
+            try {
+                var HH = diag.trailHist || [];
+                for (var hi = HH.length - 1; hi >= 0; hi--) { lines.push(''); lines.push('EARLIER SESSION ' + (HH.length - hi) + ' of ' + HH.length + ' (newest first):'); lines = lines.concat(diag.trailLines(HH[hi]).map(function (x) { return '  ' + x; })); }
+            } catch (e) {}
             var report = lines.join('\n');
             var old = document.getElementById('ew-diag-overlay');
             if (old && old.parentNode) old.parentNode.removeChild(old);
@@ -538,8 +607,8 @@
         /* CLEAN FONTS (2026-11-05, mondo's Firefox console): Aida Serif Oblique re-saved with its kern pairs sorted (Firefox dropped the
            table), and Nosifer self-hosted with its glyph boxes + gasp fixed (was Google Fonts; same outlines, internal name EW Drip per
            its OFL licence). The ?v= token makes browsers fetch the fixed files. */
-        @font-face { font-family: 'Aida Serif Oblique'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/AidaSerifObliqueMedium.ttf?v=20261115-switch-01-cors') format('truetype'); font-weight: 500; font-display: swap; }
-        @font-face { font-family: 'Nosifer'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/EWDrip-Regular.woff2?v=20261115-switch-01-cors') format('woff2'); font-weight: 400; font-display: swap; }
+        @font-face { font-family: 'Aida Serif Oblique'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/AidaSerifObliqueMedium.ttf?v=20261115-wayround-01-cors') format('truetype'); font-weight: 500; font-display: swap; }
+        @font-face { font-family: 'Nosifer'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/EWDrip-Regular.woff2?v=20261115-wayround-01-cors') format('woff2'); font-weight: 400; font-display: swap; }
         @font-face { font-family: 'Aida Serifa Condensed'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/AidaSerifa-Condensed.ttf') format('truetype'); font-display: swap; }
         @font-face { font-family: 'Contra'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/CONTRA__.ttf') format('truetype'); font-display: swap; }
         @font-face { font-family: 'Contra Italic'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/CONTRAI_.ttf') format('truetype'); font-display: swap; }
@@ -571,12 +640,12 @@
         .credits-end { margin-top: 44px; font-size: 13px; letter-spacing: 3px; color: #6c6656; text-transform: uppercase; }
         @media (max-width: 560px) { .credits-row { grid-template-columns: 1fr; } .credits-role, .credits-by { text-align: center; } }
     </style>
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20261115-switch-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20261115-switch-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20261115-switch-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20261115-switch-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20261115-wayround-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20261115-wayround-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20261115-wayround-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20261115-wayround-01-cors">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20261115-switch-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20261115-wayround-01-cors">
     <!-- Three.js (RENDERER_PLAN R2, 2026-10-02): ONE copy of the current release for the board renderer AND the menu sky
          shader, loaded as ES modules through this import map (r148 dropped the classic examples/js add-ons, r160 the UMD
          build). The module shim below puts the namespace plus the add-ons the game uses on window.THREE exactly where
@@ -794,8 +863,8 @@
             .catch(function (e) { console.warn('[TEXT] troika-three-text did not load — the HQ plates stay CSS2D', e); });
     </script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script defer src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20261115-switch-01-cors"></script>
-    <link rel="preload" id="ew-asset-manifest" as="fetch" crossorigin="anonymous" href="https://cdn.entropywars.net/ASSET_MANIFEST.json?v=20261115-switch-01-cors">
+    <script defer src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20261115-wayround-01-cors"></script>
+    <link rel="preload" id="ew-asset-manifest" as="fetch" crossorigin="anonymous" href="https://cdn.entropywars.net/ASSET_MANIFEST.json?v=20261115-wayround-01-cors">
 
     <style>
         #menuBgCanvas {
@@ -1169,7 +1238,7 @@
                 <div class="door-ident-skip">CLICK TO SKIP</div>
             </div>
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/ui/brand/entropy_wars_static_logo.mp4?v=20261115-switch-01-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/ui/brand/entropy_wars_static_logo.mp4?v=20261115-wayround-01-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -1976,24 +2045,24 @@
 
     <!-- External dependencies -->
     <script defer src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script defer src="https://cdn.entropywars.net/sprites.js?v=20261115-switch-01-cors"></script>
-    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '?v=20261115-switch-01-cors'.slice(3);   /* the shared script token (RULE #1b bumps keep this line in step) */</script>
+    <script defer src="https://cdn.entropywars.net/sprites.js?v=20261115-wayround-01-cors"></script>
+    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '?v=20261115-wayround-01-cors'.slice(3);   /* the shared script token (RULE #1b bumps keep this line in step) */</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
     <script>
       // THE EDITOR (EDITOR_PLAN.md E0, 2026-09-29): editor.js loads only when the editor opens (map.js _goToEditor), never for play.
-      window.EW_EDITOR_URL = 'https://cdn.entropywars.net/editor.js?v=20261115-switch-01-cors';
+      window.EW_EDITOR_URL = 'https://cdn.entropywars.net/editor.js?v=20261115-wayround-01-cors';
       // THE WORLD FILE: the published world's id (deploy.js --world writes it). Empty = the game reads no world file.
       window._EW_WORLD_ID = '';
     </script>
-    <script defer src="https://cdn.entropywars.net/data.js?v=20261115-switch-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/data.js?v=20261115-wayround-01-cors"></script>
     <script type="module">
       // Fallback: if local data.js didn't load, try CDN (a module: it runs deferred, AFTER data.js above — RENDERER_PLAN R2)
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20261115-switch-01-cors';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20261115-wayround-01-cors';
         document.head.appendChild(_djs);
       }
     </script>
@@ -2165,23 +2234,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script defer src="https://cdn.entropywars.net/react.production.min.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/react-dom.production.min.js?v=20261115-switch-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/react.production.min.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/react-dom.production.min.js?v=20261115-wayround-01-cors"></script>
 
     <!-- Game modules -->
-    <script defer src="https://cdn.entropywars.net/state.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/audio.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/map.js?v=20261115-switch-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/state.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/audio.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/map.js?v=20261115-wayround-01-cors"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script defer src="https://cdn.entropywars.net/three-camera.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/battle.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-post.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-renderer.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-vfx.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-lightning.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-vfx-effects.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/ui.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/profile.js?v=20261115-switch-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-camera.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/battle.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-post.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-renderer.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-vfx.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-lightning.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-vfx-effects.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/ui.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/profile.js?v=20261115-wayround-01-cors"></script>
     <script type="module">
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     // (a module script: it runs deferred, after profile.js above — RENDERER_PLAN R2)
@@ -2212,14 +2281,14 @@
         }
     })();
     </script>
-    <script defer src="https://cdn.entropywars.net/party-builder.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/match-select.js?v=20261115-switch-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/online.js?v=20261115-switch-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/party-builder.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/match-select.js?v=20261115-wayround-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/online.js?v=20261115-wayround-01-cors"></script>
     <!-- AI v4 (2026-08-15): ONE unified brain — the ainew.js overlay was
          merged into ai.js and deleted. Do not re-add an ainew.js tag. -->
-    <script defer src="https://cdn.entropywars.net/ai.js?v=20261115-switch-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/ai.js?v=20261115-wayround-01-cors"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script defer src="https://cdn.entropywars.net/hud.js?v=20261115-switch-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/hud.js?v=20261115-wayround-01-cors"></script>
 
     <!-- ── Menu Background: Rising Motes (canvas 2D) ──
          Same mood as the battle loading screen: black, drifting embers rising.

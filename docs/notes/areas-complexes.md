@@ -2278,6 +2278,29 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
   a living room across the front three rows of squares (sofa, table), a wall with a swinging door, the bedroom across the back two (one
   `psx_bed_4_*` on a corner square, a wardrobe on the other corner, a bedside table, a rug), a 3.1 m ceiling. The residents' code finds the bed.
 
+- THE CHICAGO PASS (2026-11-15, the real-cities plan /mnt/project-files/disaster-city-real-cities/plan.html section d-s + mock_s.jpg; mondo
+  picked "Build it as drawn"): Sports + Culture is Chicago. Nothing deleted; every building keeps its name, use, doors and roof routes.
+  - MUSEUM: eight columns the full front (was six), the entablature + pediment 27.6 m wide, four wide limestone steps between two plinths;
+    a BRONZE LION on each plinth (prop `lion_statue`, the plinth square a blocker `dc:S-lion0/1`, prop y 1.12). The urns moved under the portico.
+  - THE STATUES (three-renderer.js, new): a catalogue or prop row's `statue: 0xRRGGBB` casts the model in that metal (`_hqStatuePick`: the
+    room's Lambert sheet under a Phong in the metal's colour, shared per sheet + colour) and an animal under it holds still (`still`: its
+    idle's first pose, no tick hook). data.js `lion_statue` = PSX_lion.glb cast in bronze 0x9a6f3a. Any model can be a statue this way.
+  - STADIUM: both back walls limestone; a 20-column colonnade + entablature over each (y 10.2..17); the north stand's shed roof raised onto it
+    (15.0, posts 17.2); pennants moved over the cornice / the roof's fascia; the scoreboard is 18 × 8 m (HOME 14 VIS 10, QTR 3 08:42).
+  - THE BEAN (arch:S:bean, Gallery court's open yard, centre -31.5, 94.5): a stone plaza (TileGeneric2a) 4 × 4 squares; the bean in the smooth white plaster sheet
+    tinted steel and worn as `kind: 'glass'` (shine, no reflections). NO `glow` ON A SHINY PART: a glow (emissive + the sheet as emissiveMap) drew the bean BLACK in the cloud check; without it the Phong reads as polished steel, 4 × 2 squares: the two end squares are blockers (dc:S-bean-w/e), the middle two arch
+    2.5 m over the plaza (walk under it). Domes with a negative `h` are its underside (ds: true). Pipe rail, bike rack, two benches.
+  - THE FOUNTAIN (arch:S:fountain, 52.5, 178.5, in levels.js "the sunk court"): marble basin + two bowls with water (urban:Liquid_Blue_02,
+    glow), nine jets (glow, no light). Its collision is four GHOST WALLS round its 2 × 2 squares: a building row there (block()) kept the
+    court from sinking under it (THE LEVELS warned "piece on a building").
+  - WRESTLING HALL: red brick (the gym's TileSubway3a brick, tinted) with limestone bands and pilasters; the striped big top is now the ARENA HOUSE, a
+    brick box on the dc:S-drum tier's own 12.25 m footprint under a copper-green barrel roof, a fan window and a bulb marquee LUCHA LIBRE;
+    the street marquee reads LUCHA LIBRE over WRESTLING TONIGHT. The gilt stays only on the marquee board and the tower caps.
+  - THE ELEVATED LINE (arch:S:trestle-<plot>, the border squares z 84..87.5 of P04..P07-08): one row a plot, deck at 13.3 m absolute
+    (yd = 13.3 - lvOf * 1.75), riveted steel (urban:MetroMetal, brown) bents every 7 m on square middles (slim blockers dc:S-trestle-*), two
+    lattice girders (TRUSS), the deck topped with urban:MetroRails, guard rails. Scenery; the train car (Meshy) waits on mondo's OK of a concept.
+  - Lamp banners: the district banner already hangs on every other lamp (the district looks); no extra lamp flags were added.
+
 ## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
 
 District C = plots x 4..7, y 0..3 of `site_prebuilt_downtown_streets`. Everything lives in ONE file:
@@ -2605,6 +2628,21 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   wardrobe), the front room with the door's column clear. The Politician sleeps in the HOTEL after all (P08-00-B1 is a walk-in since THE
   INSIDES): a walled room two squares by two in the lobby's front corner, `psx_bed_2`. The Halfdemon: the Penthouse stair lobby's end column
   behind a wall, `royal_bed`. The residents' code finds any /bed|cot/ prop inside the home's footprint.
+- **LONDON (mondo 11-15: each district after a real city; the real-cities plan `/mnt/project-files/disaster-city-real-cities/plan.html`, his
+  "Build it as drawn" 12:32 UTC: Financial = London).** F.js: the Goblin Bank in Portland cream, its side walls windowless (blind panels),
+  bronze vault leaves (gunmetal sheet, bronze tint: never the gold key tinted) with studs, a deep stone arch round them; the bank offices'
+  stone core became a GOTHIC CLOCK TOWER (`clockTower`: shaft, ribs, lancet panels, a clock stage with four lit drawn faces = two `fan`
+  half-discs each, the second with a negative `h`, hands as boxes, a louvred belfry, pinnacles, a slate spire, a gilt finial; no sound);
+  the executive court's slab became a CURVED GLASS TOWER (dark glass cylinders swelling then rounded to a point, a MetalTruss1a `over`
+  shell = the diamond grid; at most 6 m round: it stands 6 m from the city's east edge; the glass lobby and its walk are unchanged; the
+  helipad, boardroom box and lift core went with the slab); the club's door black with a brass number (`txt:12`); every shop green
+  (0x1e4a38) with a shallow bay window and gilt letters (F-detail `letters` with the gold key); the taxi court's shelter black iron with
+  cresting and brackets, its four cabs `car_pack_7` in `paint: 'black'`; a brass plate and a black lamp bracket at every walk-in door
+  (`brassAndLamp` in `frontWithDoor`); black area railings along the terraces. `districts/F-london.js` stands the street: five red PHONE
+  BOXES from parts (blockers: on the middle of a free yard square beside a path, never before a door, a ghost wall each), a red pillar
+  POST BOX and three iron bollards with each (decor), stone urns at three walk-in doors, three cafe umbrellas over tables on the worker
+  cafe's north terrace (its back row; the row in front and the way in stay open). WAITS: the red double-deck bus on Bus Line 1 needs a
+  Meshy concept OK from mondo.
 - **THE INSIDES, SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a list of
   models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere").**
   `districts/F-atmos.js` (required by F-inside.js; `atmos(T, g, I)` runs after `INS[id]`, its parts go into the same `dc:<id>:in` row).
@@ -2852,6 +2890,29 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - **The prop check** lists every inside prop as "building" under district_reported: expected (a district's own props are reported, never moved).
 - Headless proof: camera INSIDE a room = teleport to a spot in the room's frame turned by `rot`, `y` = the plot's level x 1.75, `fp: true`.
   Shots /mnt/project-files/disaster-city-hero-plaza/inside_*.jpg.
+### HERO PLAZA, NEW YORK (2026-11-15, mondo's real-cities ask "Hero could NYC"; "Build it as drawn" 12:32 on plan.html section H)
+- Brief: /mnt/project-files/disaster-city-real-cities/plan.html (d-h) + mock_h.jpg. Code: H.js block "NEW YORK" (before build): `NYC[bid]` = a third
+  parts list per building (after B + DET), `NYC_TINT[bid]` = colour swaps on that building's outside parts (tint/tintEnd/tintTop), `NYC_OPEN`
+  (pushed into OPEN), `NYC_PROPS` (street props). Nothing deleted: every building keeps its name, use, door and roof route.
+- News office: its three setback tiers + pyramid + mast became a WEDGE tower (`nycWedge`, five-point convex `poly`, prow to the plaza SE, dark
+  glass G_TALL with limestone spandrels per storey, copper cornice) with a copper globe on its roof; the 28 m base, its door, roof route and
+  interior are as before. A news ticker (txt, glow) round the base's S + E faces.
+- Plaza corner: billboard stack on the Training hall roof edge facing the plaza (HERO / COFFEE / NEWS / HERO · NEWS · COFFEE) + ticker
+  "CITY UNDER ATTACK · HEROES RESPOND" under its cornice; HERO board on the Workshop store gable; NEWS board + ticker on the Press court roof.
+  Lit with `glow` only (no lights). Plain `txt:` keys: the sign-fonts thread owns the font field.
+- Tan brick: Training hall, Apartment stair, Apartments A (+ two black iron fire escapes, `fireEscape`). Brownstone: Townhouse row (slate
+  roofs, high stoops, newels, area railings, a wooden water tower `waterTower`); a second water tower on the Apartment stair.
+- Superhero Tower + its new lobby unchanged; warm glow strips under each setback band and the ring, a red beacon dome on the spire.
+- Transit court: two street stair heads (subway0/1 at x 3.5 / 38.5, z 17.5): green rails round a dark well, green glowing globes, a tiled
+  TRANSIT sign.
+- Memorial walk: a two-tier star-shaped stone base (`star`, convex polys) under the statue; the angel became `hero_statue_landing` (Meshy
+  image-to-3d of concept S2, mondo's pick 12:43; catalogue entry in data.js, R2 Assets/world/props/meshy/hero_statue_landing.glb, y 1.0 on the base).
+- Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
+  centred on pavement squares, 3 newspaper_rack (decor, off centre), 3 orange/white steam chimneys in the road (arch, decor), a green
+  sidewalk shed over the north pavement (x -59.5..-45.5).
+- 11-15 07:46 mondo "use the 3rd example ... as well": `hero_statue_crossed` (Meshy concept S3, arms crossed) on a granite pedestal (`pedestal`, NYC_OPEN) on the
+  plaza's south-west square (-36.75, -19.25; a blocker, centred), y 1.4, facing the fountain. R2 Assets/world/props/meshy/hero_statue_crossed.glb.
+
 ### HERO PLAZA, THE SECOND INSIDES PASS (2026-11-13 night, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere for the interiors")
 - **Where**: H.js `IN2[building id]`, run after the room's first-pass `IN[id]` on the same kit; new kit helpers `put` (a prop with `floor: true`
   and an optional `y`: 0.76 a desk top, 0.86 a cafe table, 0.95 a back counter, 1.13 a bar top), `wall(key, side, u, y)` (b / f / l / r, 0.45 m

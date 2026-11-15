@@ -2243,3 +2243,37 @@ onto the nearest game function) showed the 60 ms outside the draws was whole-sce
   allow one drawn frame (harness `__ph.draw.mode='demand'; frames=2`), screenshot, draw 30 more, screenshot, diff. A test that
   lets undrawn ticks pass, or a 1 degree turn, shows nothing.
 - **Rule**: anything that skips an object's refresh in a replayed bundle must still refresh the shared buffers it reads.
+
+## THE CRASH TRAIL (2026-11-15, mondo: "Crashed inside the door main hall/lobby", Firefox M1 WebGPU, no error in the console)
+Not reproduced, cause NOT found. What was ruled out by reading: the `[terrain] bridge ... headroom` lines in his log are the
+survey worker warming every room's floor plan from the main menu (map.js `_hqSurveyWarmAround`, started by the arrival
+warm); Disaster City's plan compiles in 12 s and is 13 MB, so it is not a memory spike. The 681 Urban Decay sheets
+(PR #1426) are names for the editor's picker, loaded lazily. His log had no `[HQ] entered` line, so that console was
+either from before the hall landed or from the load after the crash.
+What shipped (index.html only, THE FREEZE TRAIL grown): a session records how it ended (`clean` on pagehide, `frozen`
+when the picture stops 5 s+ while timers run), where it was (`ThreeRenderer.hq.room()`, the model memory, `gpuStatus()`),
+and the `[HQ]` / `[MENU]` / lab sweep console.log lines. A session that did not end cleanly is printed at the top of the
+next load's console as one `[CRASH TRAIL]` block (so his usual console paste carries it) and kept in localStorage
+`ew_freeze_trail_hist` (last 3; ?ewdiag=1 lists them). Read the block first on any future crash / freeze report.
+
+## THE HOLDERS (2026-11-15, the main hall crash, second pass)
+His F3 in DOOR HQ: `MEM 1726/700 MB` in the Foyer, `2047/700 MB` in the Main Hall (Firefox M1 WebGPU): three times the budget
+and climbing through the door, the best lead for the crash. THE MEMORY BUDGET can only drop what nothing drawn wears, and in the
+walk it never drops unit models, so "over the budget with nothing free to drop" was silent. three-renderer.js `_mmReport`: once
+per room, when over the budget with nothing to drop, one `[MEM]` console.warn block: the props / unit-model split, how much is
+worn by something drawn, the built stage parts, the 14 biggest props and 10 biggest unit models (LIVE / idle).
+`ThreeRenderer.hq.memTop()` gives the lines on demand. Read-only; nothing is dropped differently yet. NEXT: read his block, then
+cut what holds the memory (candidates: unit models never dropped in the walk, too many stage parts built, the menu scene kept).
+
+## THE UNDRAWN MAPS (2026-11-15, the main hall crash, third pass: MEM 2047/700 MB)
+Measured off the CDN files (no browser): the Main Hall + the Foyer place 69 distinct prop keys; 45 are Meshy `_texture.glb`
+files that each ship three 2048 x 2048 sheets (colour, normal, metal + roughness) = 64 MB a file by the readout's count
+(the security camera: nine sheets, 193 MB). Sum about 2.86 GB counted, of which only the colour sheet (a third) is ever drawn:
+`_hqPropMatPick` draws a prop as a Lambert on `sm.map` alone. The loader still decoded all three and the cache held them.
+Fix: three-renderer.js `_hqPropDropPbr(sm)` runs once per file material right after its room material is made: normalMap,
+roughnessMap, metalnessMap, aoMap are set null, disposed, and their ImageBitmap closed (unless a kept sheet reads the same
+source); the file material becomes matte. `_mmStale` makes `_mmRead` count the cache again. `hq.mem().undrawn` = sheets let go.
+Off: `window.EW_KEEP_PBR_MAPS = true`. NOT run in a browser (repo rule); whether this was THE crash is not proven, it is the
+memory his readout showed. The readers of a file material's normalMap are creator hair / wings (unit cache) and the gem / key
+picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
+sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.
