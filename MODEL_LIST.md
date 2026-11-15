@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 913 |
+| Meshy AI | no | 918 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -2317,6 +2317,16 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | castle_tower | `Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb#Tower_Mid` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
 | castle_tower_top | `Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb#Tower_top_1` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
 | castle_wall | `Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb#Wall_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Desert, mondo's OK 2026-11-15 — Meshy AI (5)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| covered_wagon | `Assets/world/props/meshy/covered_wagon.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Desert, mondo's OK 2026-11-15 |
+| hitching_rail | `Assets/world/props/meshy/hitching_rail.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Desert, mondo's OK 2026-11-15 |
+| prickly_pear | `Assets/world/props/meshy/prickly_pear.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Desert, mondo's OK 2026-11-15 |
+| saguaro_cactus | `Assets/world/props/meshy/saguaro_cactus.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Desert, mondo's OK 2026-11-15 |
+| water_tower_west | `Assets/world/props/meshy/water_tower_west.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Desert, mondo's OK 2026-11-15 |
 
 ### DINER · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (5)
 
