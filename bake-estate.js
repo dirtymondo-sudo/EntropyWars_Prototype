@@ -365,6 +365,7 @@ L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + G + ", na
 L.push("            terrain: {");
 L.push("                res: 0.875, floor: 'grass_2', cliff: 'leaves_3', path: 'dirt_2',");
 L.push("                noise: { amp: 0.1, scale: 8 },");
+L.push("                grassField: true,   // THE GRASS FIELD IN A WALKED ROOM (three-renderer.js _hqGrassTick): the battle maps' grass on every grass sheet here");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: " + W + ", nz: " + W + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + W + ", nz: " + W + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 L.push("                /* THE CORN IS THE WALL: every square that is not a `space` is the standing corn, a bank over the walker's head (the old Corn Fields' own) */");

@@ -8477,7 +8477,7 @@ const ThreeRenderer = (function () {
            and takes the same light as the ground beside it; lit = a trim on that. A tuft's foot is rootK of it, its belly the
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
-                  grass: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
+                  grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
         lit: 1.0, rootK: 0.50, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 2.6,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
@@ -8768,6 +8768,98 @@ const ThreeRenderer = (function () {
                 }
         }
         G.press.needsUpdate = true;
+    }
+    /* ══ THE GRASS FIELD IN A WALKED ROOM (2026-11-15, mondo on the Estate: "I want the grass from the battle maps on this grass too") ══
+       The same tufts, shader, colours and wind as the board's field (above), grown on a walked room's own ground. A room asks for it with
+       `terrain.grassField: true` (data.js; today the Estate). A whole area is far too many tufts to hold at once, so the field is CELLS of
+       HQ_GRASS.cellM metres built round the walker (nearest first, a few a tick) and dropped behind him. A tuft stands only where the
+       ground is open (the room's mask), wears a grass sheet (the painted sheet there, else the room's floor: GGRASS.sheets), is not
+       water, not a steep face and not inside a building. The tufts write no depth, so the cells are drawn far to near (renderOrder by
+       distance) and each cell sorts its own tufts (_ggFace). Settings > Video > Grass (High / Low / Off) rules it as on the board.
+       Kill switch: window.EW_NO_HQ_GRASS. No press map (nothing lays the tufts down here yet). */
+    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 16, low: { radiusM: 16, perSquare: 10 }, perTick: 2, tickMs: 100, steep: 0.55 };
+    try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
+    var _hqGG = null;
+    function _hqGrassDrop() {
+        var S = _hqGG; _hqGG = null; if (!S) return;
+        S.cells.forEach(function (c) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } });
+        try { if (S.mat) S.mat.dispose(); if (S.press) S.press.dispose(); } catch (e) {}
+    }
+    function _hqGrassCell(S, cx, cz) {
+        var info = S.info, U = S.U, C = GGRASS, cm = HQ_GRASS.cellM, ts = 3.5 * U, n = Math.max(2, Math.round(S.N * cm / 3.5)), x0 = cx * cm, z0 = cz * cm;
+        var seed = (((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) & 0x7FFFFFFF | 1;
+        var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
+        var pos = [], col = [], gg = [], gs = [], roots = [], P = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).P, PT = info.paint, kw = S.windK;
+        for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) {
+            var xm = x0 + (i + rnd()) / n * cm, zm = z0 + (j + rnd()) / n * cm;
+            var r0 = rnd(), r1 = rnd(), r2 = rnd(), r4 = rnd(), r5 = rnd();
+            var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
+            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
+            var nk = nj * info.nx + ni;
+            if (info.mask && !info.mask[nk]) continue;
+            var sheet = (PT && PT.P[nk]) ? PT.pal[PT.P[nk] - 1] : info.floor, pal = S.pals[sheet];
+            if (pal === undefined) pal = S.pals[sheet] = _ggPalette(sheet) || null;
+            if (!pal) continue;
+            var inB = false; for (var b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = dx * B[4] + dz * B[5], lz0 = -dx * B[5] + dz * B[4]; if (Math.abs(lx0) < B[2] && Math.abs(lz0) < B[3]) { inB = true; break; } }
+            if (inB) continue;
+            if (hqTerrainFluidAt(info, xm, zm)) continue;
+            if (hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
+            var wx = xm * U, wz = zm * U, gy = hqTerrainHeight(info, xm, zm) * U;
+            var clump = _ewValHash(xm / (3.5 * 0.55) + 11.3, zm / (3.5 * 0.55) + 4.7), patch = _ewValHash(xm / (3.5 * C.patchM) + 3.1, zm / (3.5 * C.patchM) + 8.9);
+            var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
+            var h = ts * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
+            var hw = ts * S.width * 0.5 * (0.8 + 0.4 * r2);
+            var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
+            var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
+            for (var k = 0; k < 7; k++) {
+                var f = P[k][1], bf = f * f, cr, cg, cb;
+                pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
+                if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
+                else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                col.push(cr, cg, cb); gg.push(wx * kw, wz * kw, h * f, f); gs.push(P[k][0] * hw);
+            }
+            roots.push(wx, wz);
+        }
+        if (!roots.length) return { mesh: null };
+        var geo = new THREE.BufferGeometry(), pa = new Float32Array(pos), nor = new Float32Array(pa.length); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
+        geo.setAttribute('position', new THREE.BufferAttribute(pa, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(new Float32Array(gg), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(new Float32Array(gs), 1));
+        var nB = roots.length / 2, ia = new Uint32Array(nB * 15), T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T;
+        for (var t = 0; t < nB; t++) for (var e = 0; e < 15; e++) ia[t * 15 + e] = t * 7 + T[e];
+        geo.setIndex(new THREE.BufferAttribute(ia, 1));
+        var mesh = new THREE.Mesh(geo, S.mat);
+        mesh.frustumCulled = false; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
+        S.parent.add(mesh);
+        return { mesh: mesh, roots: new Float32Array(roots), blades: nB, ia: ia, sortDir: null, cx: cx, cz: cz };
+    }
+    function _hqGrassTick() {
+        var H = _hq, T = H && H.room && H.room.terrain, on = false;
+        try { on = !!(H && H.terrain && H.player && T && T.grassField && _ggOn() && !window.EW_NO_HQ_GRASS && typeof hqTerrainHeight === 'function'); } catch (e) { on = false; }
+        if (!on) { if (_hqGG) _hqGrassDrop(); return; }
+        var S = _hqGG;
+        if (!S || S.H !== H || S.level !== _ggLevel) {
+            _hqGrassDrop();
+            var LOW = (_ggLevel === 'low'), U = _hqUnits(), pr = _ggPressTex(1, 1), boxes = [];
+            ((T.features) || []).forEach(function (f) { if (f && f.k === 'texbuilding') { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.4, f.d / 2 + 0.4, Math.cos(a), Math.sin(a)]); } });
+            S = _hqGG = { H: H, level: _ggLevel, info: H.terrain, U: U, N: LOW ? HQ_GRASS.low.perSquare : HQ_GRASS.perSquare, R: LOW ? HQ_GRASS.low.radiusM : HQ_GRASS.radiusM,
+                width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / HQ_GRASS.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
+                cells: new Map(), pals: {}, boxes: boxes, press: pr.tex, at: 0, parent: (H.propGroup && H.propGroup.parent) || scene };
+            S.mat = _ggMat({ press: pr.tex, inv: [0, 0] });
+        }
+        var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c); live.push(c); } });
+        var now = performance.now(); if (now - S.at < HQ_GRASS.tickMs) return; S.at = now;
+        var cm = HQ_GRASS.cellM, px = H.player.x, pz = H.player.z, pcx = Math.floor(px / cm), pcz = Math.floor(pz / cm), rc = Math.ceil(S.R / cm), want = [];
+        for (var dz = -rc; dz <= rc; dz++) for (var dx = -rc; dx <= rc; dx++) { var cx = pcx + dx, cz = pcz + dz, d = Math.hypot((cx + 0.5) * cm - px, (cz + 0.5) * cm - pz); if (d > S.R) continue; if (!S.cells.has(cx + ',' + cz)) want.push([d, cx, cz]); }
+        want.sort(function (a, b) { return a[0] - b[0]; });
+        for (var w = 0; w < want.length && w < HQ_GRASS.perTick; w++) { var made = null; try { made = _hqGrassCell(S, want[w][1], want[w][2]); } catch (e) { made = { mesh: null }; if (!S._warned) { S._warned = true; console.warn('[HQ] the grass field', e); } } S.cells.set(want[w][1] + ',' + want[w][2], made); if (made.mesh) live.push(made); }
+        S.cells.forEach(function (c, key) { var q = key.split(','), d = Math.hypot((+q[0] + 0.5) * cm - px, (+q[1] + 0.5) * cm - pz); if (d > S.R + 2 * cm) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } S.cells.delete(key); } });
+        /* far cells first: no tuft writes depth, so a near cell must be drawn over a far one */
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, ex = cam ? cam.position.x / S.U : px, ez = cam ? cam.position.z / S.U : pz;
+        live = live.filter(function (c) { return c.mesh && c.mesh.parent; });
+        live.forEach(function (c) { c._d = Math.hypot((c.cx + 0.5) * cm - ex, (c.cz + 0.5) * cm - ez); });
+        live.sort(function (a, b) { return b._d - a._d; });
+        for (var o = 0; o < live.length; o++) live[o].mesh.renderOrder = GGRASS.order + o * 0.001;
+        try { window._ewHqGrass = { cells: live.length, tufts: live.reduce(function (s, c) { return s + c.blades; }, 0), level: _ggLevel }; } catch (e) {}
     }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;
@@ -89222,6 +89314,7 @@ const ThreeRenderer = (function () {
         try { _hqTickClipBeside(); } catch (e) { if (!_hq._cbWarned) { _hq._cbWarned = true; console.warn('[HQ] clip beside', e); } }   // THE CUT BESIDE
         _hqTickRounds(wdt);
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
+        try { _hqGrassTick(); } catch (e) { if (!H._ggWarned) { H._ggWarned = true; console.warn('[HQ] the grass field tick', e); } }   // THE GRASS FIELD IN A WALKED ROOM (2026-11-15)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
             var _sd = H._sceneDoor, _sn = performance.now();
             if (_sd.k !== _sd.to) { var _sq = Math.min(1, (_sn - _sd.t0) / _sd.ms); _sd.k = _sd.from + (_sd.to - _sd.from) * (1 - Math.pow(1 - _sq, 3)); if (_sq >= 1) _sd.k = _sd.to; H.dirty = true; }
@@ -95769,6 +95862,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        try { _hqGrassDrop(); } catch (e) {}   // THE GRASS FIELD IN A WALKED ROOM: its cells leave with the room
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
         try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: every fence back in the shell group, every group drawn
