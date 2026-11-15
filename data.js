@@ -40857,7 +40857,7 @@ const DOOR_HQ = {
             },
             doors: [
                 {id:'forest',wall:'s',x:-38.5,way:'hollowtree',label:'THE FAIRY FOREST',sub:'THE HOLLOW TREE · BACK · ROOM 420',action:{room:'site_prebuilt_fairy_forest',at:'woods'},desc:'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.'},
-                {id:'estate',wall:'s',x:-63,way:'trail',label:'THE ESTATE · THE CORN FIELDS',sub:'THE FENCE LINE · THE GATE',action:{room:'site_prebuilt_skinwalker_estate',at:'woods'},desc:'A fence, and a gate in it. The corn starts on the other side.'},
+                {id:'estate',wall:'s',x:-63,way:'trail',label:'THE ESTATE · THE CORN FIELDS',sub:'THE FENCE LINE · THE GATE',action:{room:'site_prebuilt_skinwalker_fields',at:'bay'},desc:'A fence, and a gate in it. The corn starts on the other side.'},
                 {id:'shasta',wall:'n',x:-122.5,way:'trail',label:'MOUNT SHASTA · THE TRAILHEAD',sub:'THE SNOWLINE · THE TRAIL UP',action:{room:'site_prebuilt_shasta_mountains',at:'woods'},desc:'The trail keeps climbing after the trees give up. There is snow on it from here.'},
                 {id:'lemuria',wall:'n',x:-70,way:'trail',secret:true,label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
                 {id:'lodge',wall:'e',z:-108.5,way:'trail',secret:true,label:'THE LODGE · THE HALLS',sub:'THE MEMBERS’ TUNNEL · UNDER THE LAWN',action:{room:'site_prebuilt_lodge_halls',at:'link_grove_lodge'},desc:'A tunnel under the lake shore that nobody admits to.'},

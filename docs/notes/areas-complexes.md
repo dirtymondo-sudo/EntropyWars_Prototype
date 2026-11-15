@@ -3966,7 +3966,9 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
   `front` door comes back out) and the Yard's hen house. Drawn only = THE GAZEBO, THE IRON GATE. THE TREEHOUSE = the old room's block (5.25 m,
   a ladder up its south face) boarded round with a hut on top. THE WINDMILL = `decor_windpump_tower` + `decor_windpump_wheel`.
 - **THE WATER:** the Lake is one pool (98 x 82 m, 1 m deep, a rock in its middle), the long dock, two Marsh pools.
-- **THE WAYS:** north wall door `woods` <-> the Woods' `estate` door (bake-woods.js, the Fence Line plot); Room 512's stable door = `bay` on the Yard's
+- **THE WAYS:** north wall door `woods` -> the Woods' `estate` door (the Fence Line plot). Coming back, the Woods' own door still names the old Corn
+  Fields; `DOOR_HQ.retired` sends it here and lands the walker on the spawn, which stands just inside this gate (the Woods are the owner side's
+  on docs/notes/claims.md, so bake-woods.js was not touched: a note for that side is on the board); Room 512's stable door = `bay` on the Yard's
   south wall (`siteRooms.entry.prebuilt_skinwalker`); Room 13's door = `bay13`, free-standing on the Iron Gate's round
   (`siteRooms.entry.prebuilt_haunted`); link `well_skinwalker` (the well at the Hub, down to the Cavern's mouth); link `ranch_lodge` (the saloon
   door by the Farmhouse porch); the wardrobe to Camelot and the hearth to the North Pole are inside the house, untouched. The tool checks the four
@@ -3982,7 +3984,7 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
 - **CHECKED OFFLINE ONLY** (no browser run, RULE #1c): data.js parses; the room compiles in ~7 s in node (`hqTerrainInfo`: no NaN, heights
   -1.8..9.0 m, 0 sealed, 0 rescue ramps); a walk on the real compiled heights from the spawn reaches every plot, every door and every unit (only the
   lake's rock and the treehouse top are not walked: the rock is not climbed, the treehouse is the ladder's); every prop key and unit exists; every
-  door and link resolves both ways. The Woods block's only change is its `estate` door's target.
+  door and link resolves both ways. The Woods' block and tool are unchanged.
 - **NOT DONE / SHORT OF DISASTER CITY:**
   - NOT SEEN ON SCREEN: which way pieces face, the house's proportions, the windmill's size, the Loch Ness Monster standing in 1 m of water.
   - No residents with routines: `HQ_CITY_RESIDENTS` is built for the city room only; the Estate's people stand on spots.
