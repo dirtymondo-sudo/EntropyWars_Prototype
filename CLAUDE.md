@@ -123,7 +123,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
 - `bake-disaster-city.js` (2026-11-13): writes the 144-plot Disaster City room (`site_prebuilt_downtown_streets`; the old streets = `…_oldstreets`) into data.js from
-  `docs/disaster-city/city-layout.json`. Notes: areas-complexes.md "DISASTER CITY, THE 144 PLOTS".
+  `docs/disaster-city/city-layout.json`. Notes: areas-complexes.md "DISASTER CITY, THE 144 PLOTS". THE DISTRICT MOVE (11-15): districts stand per `docs/disaster-city/move.js`;
+  a plot id is a NAME (its built place), not where it stands; district files still write in their home squares. Notes: same file, "THE DISTRICT MOVE".
 - `bake-cutscenes.js` (2026-11-15): `node bake-cutscenes.js <Entropy_Wars_Cutscene_Notes_….json> [--dry-run]` bakes mondo's CUTSCENE EDITOR export: changed
   lines into data.js STORY_CUTSCENES word for word; prints the cuts, added lines and notes to do by hand. Notes: story-party-progression.md "THE CUTSCENE EDITOR".
 - `bake-dungeons.js` (2026-11-14): checks the plot dungeons (data.js PD_DUNGEONS). Notes: areas-complexes.md "PLOT DUNGEONS, THE BUILD".

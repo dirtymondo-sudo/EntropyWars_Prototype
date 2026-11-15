@@ -3821,3 +3821,49 @@ mondo: "start a thread to start on the desert" · "put the circus in the desert 
   face, sign sizes, the big top's cone, prop scale (`h` on the wheel, carousel, dish), the Disaster City gate's exact spot.
 - **NOT DONE:** the redesigned insides (Hangar 18, the White Rooms, a Great Pyramid inside, more town insides); no Meshy pieces (cactus, covered wagon,
   water tower, hitching rail are not in the packs); the two Dig trenches have no ramp (a 1 m step); fights use the old plateau's table everywhere.
+
+## DISASTER CITY, THE DISTRICT MOVE (2026-11-15)
+
+mondo 11-15: "the districts along the coast should be industrial, bayside, and entertainment, so move financial somewhere else ... if you
+swap civic center and southside then it could be kinda connected to the civic center too. Also southside should actually be in the south"
+and "redoing the heights for disaster city will have to be its own thread". His OK on the drawn plan 18:25 ("Build it as drawn").
+Plan picture + the built map: /mnt/project-files/disaster-city-relayout/.
+
+- THE BLOCKS (4x4 plots each, moved whole, nothing turned, no building removed). Built: `R C F / U H E / I S B`. Now: `C F E / U H B / R S I`
+  (R Southside, C Civic, F Financial, U University, H Hero Plaza, E Entertainment, I Industrial, S Sports + Culture, B Bayside). University,
+  Hero Plaza and Sports + Culture did not move. Room id, every building, inside and name kept. PvP Downtown untouched (the old board).
+- A PLOT ID IS A NAME, NOT A PLACE. `P08-04` is still the Casino; it stands at city column 8, row 0 now. `docs/disaster-city/move.js` `to`
+  says where each district stands. In the tool a plot has `hx, hy` (where it was built), `wx, wy` (where it stands); `pid(x, y)` = the id of
+  the plot standing AT x, y. Old notes that say "plot Pxx-yy covers x -252 + 42 x" are true for the HOME place only.
+- THE HOME FRAME: while a district file's hook runs (`docs/disaster-city/districts/<LETTER>.js`), the tool shifts the whole city so that
+  district's block lies where it was built, and shifts it back after. So a district file keeps writing its old squares and plot ids and
+  needed no edit. `L.js` (the landmarks) runs in Bayside's frame (move.js `frame`). A NEW hook file with no `frame` entry runs in the city's
+  real squares (`Q.js`, the quay). District threads: change nothing, just rebake.
+- THE SEAMS (move.js `seams`): where two districts meet now, 12 of the 24 crossings already lined up; the others are openings cut into the
+  facing plot's unbuilt squares (walk / road / roadEnd / close). The tool throws when a seam would cut a building or a gap faces a closed side.
+  Closed, not opened: Sports clinic | Container court (a building faces it). One-square alleys: Townhouse court, Boxing gym.
+- THE DICE: the back-lot infill and the plot-line fences are rolled twice. First on the city as it was built, with the dice frozen in
+  `docs/disaster-city/move-seeds.json`, writing only the lines the move kept (so every old back lot and fence is the same one). Then on the
+  city as it stands, a second stream, only for the lines the move made (a fence, wall or hedge on the line, no new back lot on a side that
+  was the city's edge). If the bake warns that the infill count differs from the seeds file, a district changed the back lots: look, then
+  re-record.
+- THE HEIGHTS (`docs/disaster-city/levels.js`, the grid is by city place now): high north-west (City Hall 14) down to the sea in the east
+  and south-east. University, Hero Plaza, Sports + Culture, Bayside, Entertainment keep their own numbers; Civic = old + 2; Southside =
+  old - 7; Financial and Industrial are new (Industrial a flat port, 0 to 2, its east column 0). 108 flights, 36 ramps, nothing steep,
+  nothing closed.
+- THE SEA: Bayside's beach, pier, lighthouse and canal moved with it (rows 4 to 7). North of it deep water under Entertainment's east side.
+  South of it THE HARBOUR QUAY (`districts/Q.js`): concrete, three squares wide, down Industrial's whole east side, containers, three cranes,
+  deep water off it; it meets the boardwalk's grill deck. The bay also lies south of Industrial (`terrain.edges.s.cap` coast, 224 m + 30 m blend).
+- THE WAYS OUT (move.js `ways`), each CLOSED with a fence + ghost wall (+ barricades on a road) until its zone is built: THE VATICAN GATE
+  (Civic, Dispatch, west, row 1) · THE MOUNTAIN ROAD (Entertainment, Casino, north, column 8) · THE HIGHWAY (Southside, Street court, south,
+  column 3). The world plan wants the highway at column 0 or 1; Southside's only street leaves at column 3, so the Desert's road has to
+  bend to it or a new street is cut (open question, told to mondo). The two quay ways are open.
+- THE TRAFFIC: the old ring is gone (no building was moved to keep it). Lines now: the cross street + University avenue (bus 1, ends at the
+  police line), Entertainment's avenue + strip (bus 2), Civic street + Financial avenue (bus 3), Southside avenue + the south street (bus 4),
+  two trucks on the port street. 18 vehicles, 12 signal arms, 8 bus stops. No car enters Bayside's police streets.
+- THE RESIDENTS (data.js HQ_CITY_RESIDENTS, outside the markers): `districts` = where a block stands (the tool writes it and `beach`),
+  `homes` = where it was built, `hqCityPlotAt(hx, hy)` turns a `p:Pxx-yy` place into the square it stands on; `fronts` were shifted once.
+- The doors that travelled with their plots (JOIN rows, written by the tool): stadium, taxi garage, strip, storm drain, drowned manhole,
+  bay door, the tape.
+- Checked offline only (load-data.js: 44 residents place, terrain feet + sea at the quay / beach / districts, a flood over the squares
+  reaches all 144 plots). NOT seen in game.
