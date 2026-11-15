@@ -1636,7 +1636,7 @@
            as before. The quests, the party, the bag are the profile's own and were saved already. Never in the car (it is
            between floors), in the air, in the editor, or under a load card. Off: `?noresume` / window.EW_HQ_NO_RESUME (the
            record is still filed). Console: _hqSaveState(). ── */
-        const _HQ_SAVE_KEY = 'ew-hq-save-', _HQ_SAVE_MS = 4000, _HQ_SAVE_SKIP = { car: 1, intro_desert: 1 };   // (a scene room is never a place to wake up in)
+        const _HQ_SAVE_KEY = 'ew-hq-save-', _HQ_SAVE_MS = 4000, _HQ_SAVE_SKIP = { car: 1, intro_desert: 1, intro_shaft: 1 };   // (a scene room is never a place to wake up in)
         let _hqSaveArmed = false, _hqSaveLast = null;
         function _hqSaveSlot() { try { const PS = window.ProfileSystem; const i = PS && typeof PS.getActiveProfileIndex === 'function' ? PS.getActiveProfileIndex() : null; return (i === null || i === undefined) ? null : i; } catch (e) { return null; } }
         function _hqSaveRead() {
@@ -4725,9 +4725,9 @@
             const out = () => {
                 window._ewIntroLive = false;
                 const foyer = _hqArrivalRoom() === _HQ_FOYER;
-                sceneIn('car', 'orientation_ride', { x: -0.15, z: 0.2, face: 0 }, () => {
+                sceneIn('intro_shaft', 'orientation_ride', { x: 0, z: 0.6, face: 0 }, () => {   // THE SHAFT (2026-11-15): the open cage down past the zones
                     if (!foyer) { done(false); return; }
-                    sceneIn(_HQ_FOYER, 'orientation_arrive', { x: 0, z: 2.75, face: 0 }, (played) => done(played));
+                    sceneIn(_HQ_FOYER, 'orientation_arrive', { x: 0, z: 5.0, face: 0 }, (played) => done(played));
                 });
             };
             const here = () => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-sedaniel')); } catch (e) { return false; } };
@@ -4792,12 +4792,13 @@
             /* the scene's hands in the room: place / show / hide a body (three-renderer.js hq.scenePlace), the choice's world flags */
             const hand = (a) => { try {
                 if (!a || !TR || !TR.hq) return;
-                if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, scale: a.scale, clip: a.clip, ms: a.ms, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
+                if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, turn: a.turn, scale: a.scale, clip: a.clip, ms: a.ms, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
                 else if (a.who && a.do === 'walk' && TR.hq.sceneWalk) TR.hq.sceneWalk(a.who, { x: a.x, z: a.z, ms: a.ms, face: a.face });
                 else if (a.do === 'props' && TR.hq.sceneProps) TR.hq.sceneProps({ keys: a.keys, near: a.near, r: a.r, at: a.at, ms: a.ms, light: a.light });
                 else if (a.do === 'key' && TR.hq.sceneKey) TR.hq.sceneKey({ x: a.x, y: a.y, z: a.z, size: a.size });
-                else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ id: a.id, x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove });
+                else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ id: a.id, x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove, cab: a.cab });
                 else if (a.do === 'shaft' && TR.hq.sceneShaft) TR.hq.sceneShaft(a.k);
+                else if (a.do === 'drop' && TR.hq.sceneDrop) TR.hq.sceneDrop({ from: a.from, to: a.to, ms: a.ms, ease: a.ease });   // THE DROP: the ride down's shaft
                 else if (a.do === 'screen' && TR.hq.sceneScreen) TR.hq.sceneScreen({ x: a.x, y: a.y, z: a.z, w: a.w, h: a.h, face: a.face, off: a.off });
             } catch (e) { console.warn('[SCENE] ' + (a && a.do), e); } };
             const host = { unit: 1, point: () => null, act: hand,
@@ -4825,6 +4826,21 @@
                     sh.cam[1] = y; if (sh._y1 != null) sh.to.cam[1] = +(y + (sh._y1 - sh._y0)).toFixed(3);
                 });
             };
+            /* a shot's `sky: true` (mondo 2026-11-15: "where is the sun/moon? it just starts on an empty sky"): the camera's first
+               frame looks straight at the body the sky draws (the sun by day, the moon by night: ThreeRenderer.getSkyLightDir,
+               the Light Rays' own aim) and the move to `to.cam` keeps its heading the short way round */
+            const skyFit = () => {
+                (row.beats || []).forEach(b => {
+                    const sh = b && b.shot; if (!sh || !sh.sky || !Array.isArray(sh.cam) || !TR || typeof TR.getSkyLightDir !== 'function') return;
+                    if (sh._sky0 == null) sh._sky0 = [sh.cam[3], sh.cam[4]];
+                    const L = TR.getSkyLightDir('hq'); if (!L || !L.dir || !(L.dir.y > 0.02)) { sh.cam[3] = sh._sky0[0]; sh.cam[4] = sh._sky0[1]; return; }
+                    const d = L.dir, yaw = Math.atan2(-d.x, -d.z) * 180 / Math.PI, pitch = Math.atan2(d.y, Math.hypot(d.x, d.z)) * 180 / Math.PI;
+                    const y1 = (sh.to && Array.isArray(sh.to.cam)) ? sh.to.cam[3] : yaw;
+                    let yy = yaw; while (yy - y1 > 180) yy -= 360; while (yy - y1 < -180) yy += 360;
+                    sh.cam[3] = +yy.toFixed(1); sh.cam[4] = +Math.min(80, pitch).toFixed(1);
+                });
+            };
+            try { skyFit(); } catch (e) { console.warn('[SCENE] sky', e); }
             /* read again while the scene plays: a body whose rig lands a moment late is framed by its real head from its next shot on */
             let eyeT = 0;
             try {
@@ -5046,8 +5062,8 @@
            and puts the editor back. One `tick` owns the whole run (the phases: enter -> ready -> scene -> back). */
         const _SED_OPENING = {   // the opening's three scenes, each on its own (the same rooms and marks as _introStart)
             orientation_intro:  { room: _INTRO_ROOM, at: { x: -3.4, z: -41, face: 270 }, cast: 'sedaniel', live: true, hide: true },
-            orientation_ride:   { room: 'car',       at: { x: -0.15, z: 0.2, face: 0 } },
-            orientation_arrive: { room: _HQ_FOYER,   at: { x: 0, z: 2.75, face: 0 } },
+            orientation_ride:   { room: 'intro_shaft', at: { x: 0, z: 0.6, face: 0 } },
+            orientation_arrive: { room: _HQ_FOYER,   at: { x: 0, z: 5.0, face: 0 } },
         };
         let _sedRun = null;
         /* THE COVER (2026-11-15, mondo: "why does it let me move around and move my camera and stuff. its supposed to load the
@@ -5092,7 +5108,7 @@
             if (_sedRun) _sedRunEnd(false);   // a new PLAY always wins: whatever run was up is over
             if (window.EWScene && window.EWScene.on) { try { window.EWScene.stop(); } catch (e) {} }
             const TR = ThreeRenderer, O = _SED_OPENING[id] || null, inHq = state.gameState === GS.HQ;
-            const safe = (r) => (r && _hqRoomExists(r) && r !== _INTRO_ROOM && r !== 'car') ? r : _hqArrivalRoom();
+            const safe = (r) => (r && _hqRoomExists(r) && r !== _INTRO_ROOM && r !== 'car' && r !== 'intro_shaft') ? r : _hqArrivalRoom();
             const R = _sedRun = { id: id, phase: 'enter', t0: performance.now(), at: performance.now(), seen: false, lastOn: 0, timer: 0, live: !!(O && O.live), back: safe(inHq ? _hqCurRoom : null), entered: false, started: false };
             R.title = String((sc && sc.title) || id).toUpperCase(); R.load0 = 0;
             const cover = (line) => { if (mine()) _sedCover('PLAYING ' + R.title, line); };

@@ -60237,7 +60237,7 @@
                         const W = bw(), H = bh();
                         const path = a.path.map(c => ({ x: c[0], y: c[1], z: zAt(c[0], c[1]) })).filter(c => c.x >= 0 && c.y >= 0 && c.x < W && c.y < H && (typeof getWalkableSurfaces !== 'function' || getWalkableSurfaces(c.x, c.y).length));
                         if (!path.length) return;
-                        try { TA.walkPath(u, path); } catch (e) {}
+                        try { TA.walkPath(u, path, null, a.mps > 0 ? { mps: a.mps } : null); } catch (e) {}   // `mps` = a slow walk at that pace (mondo 11-15)
                         const last = path[path.length - 1]; u.x = last.x; u.y = last.y; u.z = last.z;
                     }
                 },

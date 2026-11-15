@@ -11809,7 +11809,7 @@ const ThreeRenderer = (function () {
         try { leaf = _introLeafFor((typeof activeGameMode !== 'undefined') ? activeGameMode : null); } catch (e) { leaf = null; }
         if (!leaf || !leaf.cat || !leaf.cat.file) {
             var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
-            leaf = (D && D.catalogue && D.catalogue.leaf_hollow_core) ? { key: 'leaf_hollow_core', cat: D.catalogue.leaf_hollow_core } : null;
+            leaf = (D && D.catalogue && D.catalogue.leaf_wooden) ? { key: 'leaf_wooden', cat: D.catalogue.leaf_wooden } : null;
         }
         return leaf;
     }
@@ -19971,6 +19971,10 @@ const ThreeRenderer = (function () {
             if (_inSaddle && !entry._ew_oneShot && !_deathTweens.has(uid) && (want === 'idle' || want === 'walk' || want === 'run' || want === 'runCharge' || want === 'jump')) want = entry._ew_mountStand ? 'idle' : 'hqSit';   // the lander's porch: stood, not sat
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
+            /* a cutscene walk at its own pace (startWalkTween opts.mps): the clip keeps up with the feet, and comes back after */
+            var _wtS = _walkTweens.get(uid), _wa = entry.actions && entry.actions.walk;
+            if (_wa && _wtS && _wtS.walkTs && want === 'walk') { _wa.timeScale = (_wa._ew_ts0 || 1) * _wtS.walkTs; entry._ew_paceWalk = true; }
+            else if (_wa && entry._ew_paceWalk && !_wtS) { _wa.timeScale = _wa._ew_ts0 || 1; entry._ew_paceWalk = false; }
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             if (entry._ew_digSave) _digUndo(entry);       // THE SHOVEL DIG: the same for the left arm's reach
             entry.mixer.update(dt);
@@ -29431,7 +29435,9 @@ const ThreeRenderer = (function () {
         return { x: unit.x * ts + ts / 2, y: sy - sink, z: unit.y * ts + ts / 2 };
     }
 
-    function startWalkTween(unit, path, onDone) {
+    /* opts.mps (a cutscene's walk, mondo 2026-11-15: "agent locke walks away way too fast"): the body walks at that many metres a
+       second (a square = 1.75 m / the body scale), its walk clip paced to it (the stride matches the ground it covers) */
+    function startWalkTween(unit, path, onDone, opts) {
         if (!path || !path.length) { if (onDone) onDone(); return; }
         var fullPath = [{ x: unit.x, y: unit.y, z: unit.z || 0 }].concat(path);
         var segs = fullPath.length - 1;
@@ -29443,6 +29449,8 @@ const ThreeRenderer = (function () {
         var perTile = Math.max(155, 215 - segs * 10);
         /* THE BIG SQUARES (2026-10-28): a square of 3.5 m is twice the ground — the body runs it at its own pace, never a skate */
         if (UNIT_SPRITE_SIZE_RATIO > 0 && UNIT_SPRITE_SIZE_RATIO < 1) perTile = perTile / UNIT_SPRITE_SIZE_RATIO;
+        var walkTs = 0;
+        if (opts && opts.mps > 0) { var mSq = 1.75 / Math.max(0.1, UNIT_SPRITE_SIZE_RATIO || 0.5); perTile = mSq / opts.mps * 1000; walkTs = Math.max(0.3, Math.min(1.7, opts.mps / 1.4)); }
         var totalMs = perTile * segs;
         var _isFlying = (typeof canFly === 'function' && typeof isUnitAirborne === 'function')
             ? (canFly(unit) && isUnitAirborne(unit)) : false;
@@ -29490,6 +29498,7 @@ const ThreeRenderer = (function () {
             totalMs: totalMs,
             isFlying: _isFlying,
             segArcs: segArcs,
+            walkTs: walkTs,
             onDone: onDone || null
         });
 
@@ -77055,10 +77064,10 @@ const ThreeRenderer = (function () {
            DOOR_TEXT.LOGO.mark) drawn in when it lands; the code-drawn
            circle / square / door device and its two text lines are gone
            (the rim already carries the name). Cached by key. */
-        door_seal: function (U) {
+        door_seal: function (U, p) {
             var g = new THREE.Group();
             if (typeof document === 'undefined') return g;
-            var key = 'hq_door_seal';
+            var key = 'hq_door_seal', SZ = (p && p.size > 0) ? p.size : 3.6;   // `size` m across (the bigger foyer's seal, 2026-11-15)
             var tex = _hzFacTexCache[key];
             if (!tex) {
                 var c = document.createElement('canvas'); c.width = c.height = 1024;
@@ -77099,8 +77108,38 @@ const ThreeRenderer = (function () {
                     im.src = markUrl;
                 }
             }
-            var m = new THREE.Mesh(new THREE.PlaneGeometry(3.6 * U, 3.6 * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.96, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(SZ * U, SZ * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.96, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
             m.rotation.x = -Math.PI / 2; m.position.y = 0.005 * U; g.add(m);
+            return g;
+        },
+        /* door_logo_wall (THE BIGGER FOYER, mondo's OK 2026-11-15 on plan_15nov_foyer.jpg: "need a big closeup pan on a big DOOR
+           logo or signage, like this is the god damn introduction to DOOR HQ"): a black lacquered sign band `w` x `h` m (9 x 3.0)
+           over the double doors, a brass rim, and HIS logo on it: the official full lockup for dark backgrounds
+           (DOOR_TEXT.LOGO.onDark: the arc, the cube, the door, D.O.O.R, the subtitle; his file, never redrawn, never recoloured),
+           `logoH` m tall, self-lit like a sign. Bottom at y 0, the face toward local +z. */
+        door_logo_wall: function (U, p) {
+            var g = new THREE.Group();
+            var W = (p && p.w) || 9, H = (p && p.h) || 3.0, LH = (p && p.logoH) || 2.8;
+            var lac = new THREE.MeshPhongMaterial({ color: 0x0b0e14, shininess: 70, specular: 0x2a2f38 });
+            var panel = _hqBox(W, H, 0.14, lac); panel.position.set(0, (H / 2) * U, 0.07 * U); g.add(panel);
+            var brass = new THREE.MeshPhongMaterial({ color: 0xc9a44a, shininess: 90, specular: 0xffe7a0 });
+            [[W + 0.12, 0.08, 0, H + 0.02], [W + 0.12, 0.08, 0, -0.02], [0.08, H + 0.12, -W / 2 - 0.02, H / 2], [0.08, H + 0.12, W / 2 + 0.02, H / 2]].forEach(function (b) {
+                var m = _hqBox(b[0], b[1], 0.06, brass); m.position.set(b[2] * U, (b[1] === 0.08 ? b[3] : b[3]) * U, 0.16 * U); g.add(m);
+            });
+            var url = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? (DOOR_TEXT.LOGO.onDark || null) : null;
+            if (url) {
+                /* the file is 1920 x 1080 with the lockup in px 464..1455 x 28..1041: the sheet is sized so the LOCKUP is LH tall */
+                var ph = LH * 1080 / 1013, pw = ph * 1920 / 1080;
+                var mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, fog: false });
+                mat.toneMapped = false;
+                var lg = new THREE.Mesh(new THREE.PlaneGeometry(pw * U, ph * U), mat);
+                lg.position.set(0, (H / 2 + (540 - 534.5) / 1080 * ph) * U, 0.15 * U); lg.renderOrder = 3; lg.name = 'hq_door_logo';
+                g.add(lg);
+                try {
+                    var tl = new THREE.TextureLoader(); if (tl.setCrossOrigin) tl.setCrossOrigin('anonymous');
+                    tl.load(url, function (t) { t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; try { t.anisotropy = Math.min(8, (renderer && renderer.capabilities.getMaxAnisotropy()) || 1); } catch (e) {} mat.map = t; mat.opacity = 1; mat.needsUpdate = true; if (_hq) _hq.dirty = true; });
+                } catch (e) { console.warn('[HQ] the logo wall', e); }
+            }
             return g;
         },
         /* doormat: coir, a dark border, WIPE YOUR CORNERS woven in — flat on the terrazzo inside the front door */
@@ -79465,6 +79504,24 @@ const ThreeRenderer = (function () {
                 eL.material = eL.material.clone(); eL.material.clippingPlanes = [pL];
                 eR.material = eR.material.clone(); eR.material.clippingPlanes = [pR];
                 motion = { mode: 'elevator', parts: [{ m: eL, x0: eL.position.x, dir: -1 }, { m: eR, x0: eR.position.x, dir: 1 }], travel: half * 0.96 * U, ow: ow, cage: [brace, brace2, seam], clips: [{ dir: -1, plane: pL }, { dir: 1, plane: pR }] };
+                /* THE CAB (2026-11-15, the bigger foyer's shot 16 "inside the front lift"): a brushed car behind the doors, only while a
+                   scene holds them open (the back plate steps aside), so the camera can stand in the lift and watch the doors part */
+                if (door.sealed) {
+                    var cab = new THREE.Group(), cw = ow + 0.5, cd = 2.6, chh = oh + 0.4, cz0 = (-pd / 2 + 0.04);
+                    var cabWall = _hqMat('aluminium', 0.9, 2.4, { color: 0x9ea4aa, shininess: 60, specular: 0x8a8e92 });
+                    var cabFloor = _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 10 });
+                    var cS1 = _hqBox(0.05, chh, cd, cabWall); cS1.position.set(-(cw / 2) * U, (chh / 2) * U, (cz0 - cd / 2) * U);
+                    var cS2 = _hqBox(0.05, chh, cd, cabWall); cS2.position.set((cw / 2) * U, (chh / 2) * U, (cz0 - cd / 2) * U);
+                    var cBk = _hqBox(cw + 0.05, chh, 0.05, cabWall); cBk.position.set(0, (chh / 2) * U, (cz0 - cd) * U);
+                    var cFl = _hqBox(cw + 0.05, 0.04, cd, cabFloor); cFl.position.set(0, 0.0, (cz0 - cd / 2) * U);
+                    var cCl = _hqBox(cw + 0.05, 0.04, cd, cabFloor); cCl.position.set(0, chh * U, (cz0 - cd / 2) * U);
+                    var cPn = new THREE.Mesh(new THREE.BoxGeometry((cw - 0.5) * U, 0.02 * U, (cd - 0.8) * U), _hqBasic(0xfff1d8)); cPn.position.set(0, (chh - 0.03) * U, (cz0 - cd / 2) * U);
+                    var cRl = _hqBox(0.04, 0.04, cd - 0.3, capM); cRl.position.set(-(cw / 2 - 0.06) * U, 0.95 * U, (cz0 - cd / 2) * U);
+                    var cRr = cRl.clone(); cRr.position.x = (cw / 2 - 0.06) * U;
+                    cab.add(cS1, cS2, cBk, cFl, cCl, cPn, cRl, cRr);
+                    cab.visible = false; cab._ew_noInstance = true; cab.traverse(function (o) { o._ew_noInstance = true; });
+                    grp.add(cab); motion.cab = cab; motion.backPlate = back;
+                }
                 renderer.localClippingEnabled = true;
             } else if (leafKey) {
                 var cat = leafCat;
@@ -79644,6 +79701,7 @@ const ThreeRenderer = (function () {
             _hq.counters.push({ counter: c, group: grp, level: level, plateEl: pm.el, plateGpu: pm.gpu, x: null, z: null, marker: marker });
         });
         if (room.pd) { try { _hqPdBuild(room); } catch (e) { console.warn('[PD] the plot\'s objects', e); } }   // THE PLOT DUNGEONS: the caps, the gates, the lit lines
+        if (room.drop) { try { _hqDropBuild(room); } catch (e) { console.warn('[DROP] the shaft', e); } }   // THE DROP: scene A's ride down
     }
     /* THE BATTLE MARKER (2026-09-12): the glowing beacon every playable
        site wears (on its entry part) — an amber floor ring, a soft column
@@ -80188,6 +80246,14 @@ const ThreeRenderer = (function () {
             var clc = Object.assign({}, def.libClips), clt = Object.assign({}, def.libTimeScales);
             [['climb', 'hqClimb'], ['rope', 'hqClimbRope'], ['hang', 'hqClimbIdle'], ['mantle', 'hqMantle']].forEach(function (pr) { var C = HQ_CLIMB_CLIPS[pr[0]]; if (!C || !C.clip) return; clc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.pinHips) clc[pr[1]].pinHips = true; if (C.ts) clt[pr[1]] = C.ts; });
             def = Object.assign({}, def, { libClips: clc, libTimeScales: clt });
+        }
+        /* THE SCENE CLIPS (mondo 2026-11-15: "where is the shaking head no animation, its one of the idles"): the cutscenes' own
+           clips on the officer (hq.scenePlace `clip`: hqNo = UAL2 Idle_No_Loop, the head shake), baked with the rig like the rest;
+           a creator-look body never had the cast poses, so the shake silently did nothing */
+        if (spec.kind === 'player' && def.libClips && typeof _CAST_POSES !== 'undefined' && !def.libClips.hqNo) {
+            var nlc = Object.assign({}, def.libClips), nlt = Object.assign({}, def.libTimeScales);
+            ['hqNo'].forEach(function (k) { var C = _CAST_POSES[k]; if (!C) return; nlc[k] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) nlt[k] = C.ts; });
+            def = Object.assign({}, def, { libClips: nlc, libTimeScales: nlt });
         }
         /* THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips (sprites.js HQ_GUN_CLIPS — the
            library's pistol aim + shot) beside the ride clip; the roster never wears them */
@@ -84032,23 +84098,38 @@ const ThreeRenderer = (function () {
         if (n) H.dirty = true;
         return n;
     }
+    var HQ_SCENE_WALK_MPS = 1.4;   // THE STRIDE: the library's walk clip at its own pace covers about 1.4 m a second
     function _hqTickSceneMoves() {
         if (!_hqSceneMoves.length) return;
         var H = _hq, now = performance.now(), U = _hqUnits(), keep = [];
         for (var i = 0; i < _hqSceneMoves.length; i++) {
             var m = _hqSceneMoves[i]; if (m.H !== H) continue;
             var k = Math.min(1, (now - m.t0) / m.ms), x = m.x0 + (m.x1 - m.x0) * k, z = m.z0 + (m.z1 - m.z0) * k;
+            /* THE SMOOTH TURN (mondo 2026-11-15: "she just turns instantly, should be a smooth animation"): a scene body turns
+               on the spot over m.ms (hq.scenePlace `turn`), the shorter way round */
+            if (m.turn && m.ch) {
+                var tq = 1 - Math.pow(1 - k, 2), tch = m.ch, tyw = m.y0 + _hqYawDelta(m.y0, m.y1) * tq;
+                tch.yaw = tch.targetYaw = tyw; if (tch.entry && tch.entry.model) tch.entry.model.rotation.y = tyw;
+                if (k >= 1 && tch === H.player && H.cam && m.camYaw != null) { H.cam.yaw = m.camYaw; H.cam.init = false; }
+                if (k < 1) keep.push(m);
+                continue;
+            }
             if (m.ch) {
                 var ch = m.ch, dx = m.x1 - m.x0, dz = m.z1 - m.z0;
                 ch.x = x; ch.z = z; ch.moving = k < 1; ch._sceneWalk = k < 1;
-                if (k < 1 && (dx || dz)) ch.yaw = ch.targetYaw = Math.atan2(dx, dz);
-                else if (k >= 1 && m.face != null) ch.yaw = ch.targetYaw = _hqHeadingYaw(m.face);
+                /* THE STRIDE (mondo 2026-11-15: "the walk animation speed doesnt match the speed they are actually moving"): the walk
+                   clip is paced to the body's own speed (_hqTickChars reads ch._sceneMps) */
+                ch._sceneMps = (k < 1) ? Math.hypot(dx, dz) / Math.max(0.05, m.ms / 1000) : 0;
+                /* the body turns INTO its walk and onto its last heading over a moment (never a snap) */
+                if (k < 1 && (dx || dz)) { var wy = Math.atan2(dx, dz); if (m.yS == null) m.yS = ch.yaw || 0; var tk = Math.min(1, (now - m.t0) / 380); ch.yaw = ch.targetYaw = m.yS + _hqYawDelta(m.yS, wy) * (1 - Math.pow(1 - tk, 2)); }
+                else if (k >= 1 && m.face != null) { var fy = _hqHeadingYaw(m.face); if (Math.abs(_hqYawDelta(ch.yaw || 0, fy)) > 0.05) keep.push({ H: H, ch: ch, turn: true, y0: ch.yaw || 0, y1: fy, t0: now, ms: 450, camYaw: _hqRad(m.face) }); else ch.yaw = ch.targetYaw = fy; }
                 if (ch.entry && ch.entry.group) { ch.entry.group.position.x = x * U; ch.entry.group.position.z = z * U; }
             } else if (m.g) { m.g.position.x = x; m.g.position.z = z; m.g.updateMatrixWorld(true); }
             if (k < 1) keep.push(m);
         }
         _hqSceneMoves = keep; if (H) H.dirty = true;
     }
+    function _hqYawDelta(a, b) { var d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; }
     /* ══ THE RESIDENTS (2026-11-14, mondo: "one of every unit in disaster city ... a more advanced version of the routines they walk
        in door hq ... a residential home they go to at night ... or out partying at night and sleep a different time") ══
        Disaster City's people (data.js HQ_CITY_RESIDENTS: one of each of the city's units, a home, a day of blocks) live a day on
@@ -87235,6 +87316,7 @@ const ThreeRenderer = (function () {
                 if (e.actions && e.actions.walk) {
                     var ts0 = e.actions.walk._ew_ts0 || 1;
                     e.actions.walk.timeScale = ts0 * (ch.running ? 1.6 : 0.92);
+                    if (ch._sceneWalk && ch._sceneMps > 0) e.actions.walk.timeScale = ts0 * Math.max(0.3, Math.min(1.7, ch._sceneMps / HQ_SCENE_WALK_MPS));   // THE STRIDE: a scene walk's feet keep up with its body
                 }
                 if (H.ride) _hqRidePose(ch, e, dt);   // SKATEBOARDING (9.8): the deck, the lean, the flips / rolls / spins, the tumble
                 if (e._ew_hqLandAt) {
@@ -87553,7 +87635,8 @@ const ThreeRenderer = (function () {
             var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state] && !d.angle) ? 1 : 0);   // THE SUSPICIOUS ANGLE: no swing until measured
             if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;
             if (d.sceneOpen) want = 1;   // a scene holds it open (hq.sceneDoor { id }), locked or not
-            if (mo.cage && (!!d.sceneOpen) !== !!d._cageOff) { d._cageOff = !!d.sceneOpen; mo.cage.forEach(function (c) { c.visible = !d._cageOff; }); }   // (the scene's lift opens clear: no cross braces in the way of the recruit stepping out)   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
+            if (mo.cage && (!!d.sceneOpen) !== !!d._cageOff) { d._cageOff = !!d.sceneOpen; mo.cage.forEach(function (c) { c.visible = !d._cageOff; }); _hq.dirty = true; }
+            if (mo.cab && (!!(d.sceneOpen || d.sceneCab)) !== !!mo.cab.visible) { mo.cab.visible = !!(d.sceneOpen || d.sceneCab); if (mo.backPlate) mo.backPlate.visible = !mo.cab.visible; _hq.dirty = true; }   // THE CAB: up for the whole lift shot   // (the scene's lift opens clear: no cross braces in the way of the recruit stepping out)   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
             _hqDoorMotionStep(d, want, dt);
         }
     }
@@ -89027,6 +89110,8 @@ const ThreeRenderer = (function () {
         if (_hq !== H) return;
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickSceneMoves();
+        _hqTickDrop();   // THE DROP: the ride down's shaft rides up past the cage
+        try { _hqTickClipBeside(); } catch (e) { if (!_hq._cbWarned) { _hq._cbWarned = true; console.warn('[HQ] clip beside', e); } }   // THE CUT BESIDE
         _hqTickRounds(wdt);
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
@@ -94687,6 +94772,131 @@ const ThreeRenderer = (function () {
        traces, the lamps, the cover blockers) built into the part's own group, so they turn and slide with their plot. Each row
        may wear `show` (a condition: drawn and solid only while it holds) and `lit` (its glow on only while it holds);
        _hqPdApply reads the live board (pdCheck) for every part on the stage and for the props / counters whose rows wear one. */
+    /* ══ THE DROP (scene A's ride down, mondo's OK 2026-11-15 on plan_15nov_ride.jpg: "its supposed to be an elevator shaft going
+       down underground and get glimpses of different places areas as it speeds down") ══ A scene room's `drop` row builds the
+       SHAFT round the open cage: four rock walls running `len` m down from `top` m, the north one broken by a window into each
+       GLIMPSE (a slice of a zone: its own floor and wall sheets, its props from the catalogue, its light) at depth `at`. The
+       cage, the recruit and the camera stand still; the whole rig rides UP past them (hq.sceneDrop: depth D in metres, eased
+       from / to over ms), so the places flash past the open side and the square of sky shrinks overhead. Built into the
+       door group (never merged, never instanced: it moves). */
+    function _hqDropBuild(room) {
+        var R = room && room.drop; if (!R || !_hq) return;
+        var U = _hqUnits(), D = _hqData(), G = _hq.doorGroup || _hq.shellGroup, root = new THREE.Group();
+        root._ew_pd = true; root._ew_noInstance = true; root.name = 'hq_drop';
+        var hw = (R.w || 7) / 2 + 0.05, top = (R.top != null) ? R.top : 14, len = R.len || 160, bot = top - len, TL = R.tile || 3.5;
+        var rockC = (R.rockColor != null) ? R.rockColor : 0x8a8278;
+        var plane = function (w, h, tex, color, opts) {
+            opts = opts || {};
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(w * U, h * U), opts.basic ? new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, fog: false }) : _hqMat(tex || null, Math.max(0.25, w / TL), Math.max(0.25, h / TL), { color: color, side: THREE.DoubleSide, shininess: opts.shine || 6 }));
+            if (opts.basic) m.material.toneMapped = false;
+            return m;
+        };
+        /* the three solid walls: east, west, south (inner faces), the full run */
+        [[hw, 0, -Math.PI / 2], [-hw, 0, Math.PI / 2], [0, hw, Math.PI]].forEach(function (w) {
+            var m = plane(hw * 2, len, R.rock || 'rock_wall_2', rockC);
+            m.position.set(w[0] * U, (top - len / 2) * U, w[1] * U); m.rotation.y = w[2]; root.add(m);
+        });
+        /* the north wall: rock bands between the windows (a window is `h` m tall, its floor at -at) */
+        var sl = (R.slices || []).slice().sort(function (a, b) { return a.at - b.at; }), cur = top;
+        var band = function (y1, y0) { if (!(y1 - y0 > 0.01)) return; var m = plane(hw * 2, y1 - y0, R.rock || 'rock_wall_2', rockC); m.position.set(0, ((y0 + y1) / 2) * U, -hw * U); root.add(m); };
+        var lights = [];
+        sl.forEach(function (g) {
+            var fy = -g.at, h = g.h || 4.5, dp = g.d || 6, gw = g.w || 12, z0 = -hw, z1 = -hw - dp, zc = (z0 + z1) / 2;
+            band(cur, fy + h); cur = fy;
+            var gg = new THREE.Group(); gg.position.y = fy * U; gg.name = 'hq_drop_' + (g.id || ''); root.add(gg);
+            var fl = plane(gw, dp, g.floor, g.floorColor != null ? g.floorColor : 0xffffff); fl.rotation.x = -Math.PI / 2; fl.position.set(0, 0.01 * U, zc * U); gg.add(fl);
+            var ce = plane(gw, dp, g.ceil || g.wall, g.wallColor != null ? g.wallColor : 0xffffff); ce.rotation.x = Math.PI / 2; ce.position.set(0, h * U, zc * U); gg.add(ce);
+            var bk = g.back ? plane(gw, h, null, g.back, { basic: true }) : plane(gw, h, g.wall, g.wallColor != null ? g.wallColor : 0xffffff); bk.position.set(0, (h / 2) * U, z1 * U); gg.add(bk);
+            [-1, 1].forEach(function (sd) { var m = plane(dp, h, g.wall, g.wallColor != null ? g.wallColor : 0xffffff); m.rotation.y = sd * Math.PI / 2; m.position.set(sd * gw / 2 * U, (h / 2) * U, zc * U); gg.add(m); });
+            /* the lit things a zone is known by: strips / lines / water (flat boxes, self-lit or shiny), [x, y, z, w, h, d] in the slice */
+            (g.lit || []).forEach(function (b) {
+                var mat = b.water ? new THREE.MeshPhongMaterial({ color: b.color, shininess: 90, specular: 0x88aaaa }) : new THREE.MeshBasicMaterial({ color: b.color, fog: false });
+                if (!b.water) mat.toneMapped = false;
+                var m = new THREE.Mesh(new THREE.BoxGeometry(b.box[3] * U, b.box[4] * U, b.box[5] * U), mat);
+                m.position.set(b.box[0] * U, b.box[1] * U, (zc + b.box[2]) * U); gg.add(m);
+            });
+            (g.props || []).forEach(function (r) {
+                var cat = D && D.catalogue ? D.catalogue[r.key] : null; if (!cat) return;
+                var pg = new THREE.Group();
+                pg.position.set((r.x || 0) * U, ((r.y != null) ? r.y : (cat.hover || 0)) * U, (zc + (r.z || 0)) * U);
+                pg.rotation.y = _hqHeadingYaw(r.face || 0);
+                try {
+                    if (cat.proc) { var pp = _hqProcProp(cat.proc, r); if (pp) pg.add(pp); }
+                    else {
+                        var fitSpan = (cat.span != null && cat.h == null) || (r.span != null);
+                        var target = ((fitSpan ? (r.span || cat.span) : (r.h || cat.h)) || 1) * U;
+                        pg.add(_miscModelInstance(_hqModelUrl(cat), true, target, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick, still: true, onDone: function () { if (_hq) _hq.dirty = true; } }));
+                    }
+                    if (cat.glow) { var gl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); gl.position.y = cat.glow.y * U; pg.add(gl); }
+                } catch (e) { console.warn('[DROP] ' + r.key, e); }
+                gg.add(pg);
+            });
+            /* its light, inside the slice: it washes the cage as the window goes by */
+            if (g.light) { var L = new THREE.PointLight(g.light.color, g.light.intensity != null ? g.light.intensity : 1.6, (g.light.dist || 12) * U, 2); L.position.set(0, (g.light.y != null ? g.light.y : h - 0.8) * U, (zc + 0.5) * U); gg.add(L); lights.push(L); }
+        });
+        band(cur, bot);
+        G.add(root);
+        if (R.lamp) { var CL = new THREE.PointLight(R.lamp.color != null ? R.lamp.color : 0xffe2b0, R.lamp.intensity != null ? R.lamp.intensity : 0.9, (R.lamp.dist || 9) * U, 2); CL.position.set(0, (R.lamp.y || 3.4) * U, (R.lamp.z || 0) * U); G.add(CL); lights.push(CL); }   // the cage's lamp stands still with the cage
+        _hq.drop = { root: root, d: 0, from: 0, to: 0, t0: 0, ms: 0, ease: 'lin', lights: lights };
+        root.updateMatrixWorld(true);
+    }
+    function _hqTickDrop() {
+        var H = _hq, R = H && H.drop; if (!R || !R.root) return;
+        var k = (R.ms > 0) ? Math.min(1, (performance.now() - R.t0) / R.ms) : 1, e = k;
+        if (R.ease === 'in') e = k * k; else if (R.ease === 'out') e = 1 - (1 - k) * (1 - k); else if (R.ease === 'inout') e = (k < 0.5) ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        var d = R.from + (R.to - R.from) * e;
+        if (d === R.d) return;
+        R.d = d; R.root.position.y = d * _hqUnits(); R.root.updateMatrixWorld(true); H.dirty = true;
+    }
+    /* THE CUT BESIDE (2026-11-15, the bigger foyer): the main hall's upper gallery runs past the tangent its ground floor keeps, so
+       a box room joined to it that stands taller than 4 m (the foyer's 7 m atrium) had the gallery's floor, rails, doors, lamps and
+       Agent Forrest standing in its air. While you are IN such a room (shell.clipBeside { wall, above }), everything of the rooms
+       beside it that lies on its side of that wall AND above `above` metres is cut away (a per-mesh material copy, two clip planes,
+       intersection); stepping out puts every original back. From inside the room the cut part is behind its own wall anyway. */
+    var _HQ_CLIP_WALL_N = { n: [0, 0, -1], s: [0, 0, 1], e: [1, 0, 0], w: [-1, 0, 0] };
+    function _hqTickClipBeside() {
+        var H = _hq; if (!H || !H.scene) return;
+        H._cbTick = ((H._cbTick || 0) + 1) % 20;
+        var st = H.stage, cur = (st && st.id) || (H.opts && H.opts.room), D = _hqData(), room = D && D.rooms && D.rooms[cur];
+        var cb = room && room.shell && room.shell.clipBeside, sh = room && room.shell;
+        var key = cb ? cur : null;
+        if (H._cbKey && H._cbKey !== key) {   // stepped out: every original back
+            H.scene.traverse(function (o) {
+                if (!o.material) return;
+                if (o._ew_cbOrig) { o.material = o._ew_cbOrig; o._ew_cbOrig = null; }
+                else if (o.material._ew_cb) { o.material.clippingPlanes = null; o.material.needsUpdate = true; }   // a batch built from a copy
+            });
+            H._cbKey = null; H.dirty = true;
+        }
+        if (!key || (H._cbKey === key && H._cbTick !== 0)) return;
+        var roots = [], own = null;
+        if (cur === (H.opts && H.opts.room)) own = H.partRoot; else if (st && st.parts[cur]) own = st.parts[cur].P.partRoot;
+        if (!own) return;
+        if (own !== H.partRoot && H.partRoot) roots.push(H.partRoot);
+        if (st) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P && E.P.partRoot && E.P.partRoot !== own) roots.push(E.P.partRoot); }
+        if (!roots.length) return;
+        var U = _hqUnits(), wn = _HQ_CLIP_WALL_N[cb.wall || 'n'] || _HQ_CLIP_WALL_N.n;
+        var half = (wn[2] !== 0) ? (sh.d || 0) / 2 : (sh.w || 0) / 2;
+        own.updateMatrixWorld(true);
+        var M = own.matrixWorld, NM = new THREE.Matrix3().getNormalMatrix(M);
+        if (!H._cbPlanes) H._cbPlanes = [new THREE.Plane(), new THREE.Plane()];
+        var pW = new THREE.Vector3(wn[0] * half * U, 0, wn[2] * half * U).applyMatrix4(M), nW = new THREE.Vector3(wn[0], 0, wn[2]).applyMatrix3(NM).normalize();
+        H._cbPlanes[0].setFromNormalAndCoplanarPoint(nW, pW);   // kept: beyond the wall
+        var pY = new THREE.Vector3(0, (cb.above || 4) * U, 0).applyMatrix4(M), nY = new THREE.Vector3(0, -1, 0).applyMatrix3(NM).normalize();
+        H._cbPlanes[1].setFromNormalAndCoplanarPoint(nY, pY);   // kept: below `above`
+        var planes = H._cbPlanes;
+        roots.forEach(function (R) {
+            R.traverse(function (o) {
+                if (!o.material || o._ew_cbOrig) return;
+                if (o.material._ew_cb) { if (!o.material.clippingPlanes) { o.material.clippingPlanes = planes; o.material.clipIntersection = true; o.material.needsUpdate = true; } return; }
+                var cp = function (m) { var c = m.clone(); c._ew_cb = true; c.clippingPlanes = planes; c.clipIntersection = true; return c; };
+                o._ew_cbOrig = o.material;
+                o.material = Array.isArray(o.material) ? o.material.map(cp) : cp(o.material);
+            });
+        });
+        if (renderer) renderer.localClippingEnabled = true;
+        H._cbKey = key; H.dirty = true;
+    }
     function _hqPdBuild(room) {
         if (!room || !room.pd || !room.pdDraw) return;
         var U = _hqUnits(), G = _hq.doorGroup, out = [];
@@ -95879,7 +96089,11 @@ const ThreeRenderer = (function () {
             o = o || {};
             var U = _hqUnits(), g = ch.entry.group;
             if (o.x != null && o.z != null) { _hqSceneMoves = _hqSceneMoves.filter(function (m) { return m.ch !== ch; }); ch._sceneWalk = false; ch.x = +o.x; ch.z = +o.z; g.position.x = ch.x * U; g.position.z = ch.z * U; if (ch === _hq.player) { ch.moving = false; ch.svx = 0; ch.svz = 0; } }
-            if (o.face != null) { ch.yaw = ch.targetYaw = _hqHeadingYaw(o.face); if (ch.entry.model) ch.entry.model.rotation.y = ch.yaw; if (ch === _hq.player && _hq.cam) { _hq.cam.yaw = _hqRad(o.face); _hq.cam.init = false; } }
+            if (o.face != null && o.turn > 0 && !(o.x != null && o.z != null)) {   // THE SMOOTH TURN: `turn` ms on the spot (mondo 2026-11-15)
+                _hqSceneMoves = _hqSceneMoves.filter(function (m) { return !(m.ch === ch && m.turn); });
+                _hqSceneMoves.push({ H: _hq, ch: ch, turn: true, y0: ch.yaw || 0, y1: _hqHeadingYaw(o.face), t0: performance.now(), ms: Math.max(1, +o.turn), camYaw: (ch === _hq.player) ? _hqRad(o.face) : null });
+            }
+            else if (o.face != null) { ch.yaw = ch.targetYaw = _hqHeadingYaw(o.face); if (ch.entry.model) ch.entry.model.rotation.y = ch.yaw; if (ch === _hq.player && _hq.cam) { _hq.cam.yaw = _hqRad(o.face); _hq.cam.init = false; } }
             if (o.show != null) { if (ch === _hq.player) { g.visible = !!o.show; _hq._scenePlayerOut = !o.show; } else _hqRoundsSetVisible(ch, !!o.show); }   // (the walker's own tick shows the body again: held out every frame, see the scene tick)
             /* `scale`: the body at k times its own size for the room's life (scene A: Sedaniel at a real car's size beside the
                officer; a unit's battle size is a toy's). `clip` + `ms`: the officer plays one of the rig's clips once (hqNo = the
@@ -95918,6 +96132,9 @@ const ThreeRenderer = (function () {
         },
         /* the car's shaft window streams at k times its speed (minus = the landings rise past: the car going down); 1 = back */
         sceneShaft: function (k) { if (!_hq) return false; _hq._shaftK = (+k || 0); return true; },
+        /* THE DROP: the shaft's depth eases from `from` (default: where it is) to `to` metres over `ms` (`ease` lin | in | out | inout) */
+        sceneDrop: function (o) { var R = _hq && _hq.drop; if (!R || !o) return false; _hqTickDrop(); R.from = (o.from != null) ? +o.from : R.d; R.to = (o.to != null) ? +o.to : R.from; R.t0 = performance.now(); R.ms = Math.max(0, +o.ms || 0); R.ease = o.ease || 'lin'; _hqTickDrop(); return true; },
+        sceneDropAt: function () { return (_hq && _hq.drop) ? _hq.drop.d : null; },
         /* THE CUTSCENE EDITOR (2026-11-15): its notes bar and note box need the mouse while a scene plays. A lock that simply goes
            away reads as the walker's ESC (the pause menu, _hqOnLockChange), which paused the building under the scene; a release
            inside the stale window is ours and pauses nothing. */
@@ -95966,15 +96183,15 @@ const ThreeRenderer = (function () {
         /* THE LONE DOOR (scene A, the opening; mondo 2026-11-13: "when the door opens there can be either darkness or light
            inside of it"): the main menu's own free-standing door (_introBuildDoor, the same frame and leaf) stood in the room
            for a scene. o = { x, z (m), face (deg), leaf (catalogue key) } builds it once; { open: 0..1, ms } swings it, the
-           doorway filling with white light as it opens; { remove: true } takes it out. */
+           doorway going black as it opens (mondo 11-15: darkness, not light); { remove: true } takes it out. */
         sceneDoor: function (o) {
             var H = _hq; if (!H || !H.scene || !o) return false;
             var U = _hqUnits(), ts = 116;
-            if (o.id) { var dd = null; (H.doors || []).forEach(function (x) { if (x && x.door && x.door.id === o.id) dd = x; }); if (!dd) return false; dd.sceneOpen = !!o.open; return true; }   // a ROOM door the scene opens (scene A's front lift); open: false gives it back
+            if (o.id) { var dd = null; (H.doors || []).forEach(function (x) { if (x && x.door && x.door.id === o.id) dd = x; }); if (!dd) return false; if (o.cab != null) dd.sceneCab = !!o.cab; if (o.open != null || o.cab == null) dd.sceneOpen = !!o.open; return true; }   // a ROOM door the scene opens (scene A's front lift); open: false gives it back
             if (o.remove) { var d0 = H._sceneDoor; if (d0) { d0.dead = true; if (d0.root.parent) d0.root.parent.remove(d0.root); try { _disposeR(d0.root); } catch (e) {} H._sceneDoor = null; H.dirty = true; } return true; }
             if (o.open != null) { var d1 = H._sceneDoor; if (!d1) return false; d1.from = d1.k; d1.to = Math.max(0, Math.min(1, +o.open)); d1.t0 = performance.now(); d1.ms = Math.max(1, o.ms || 900); return true; }
             if (H._sceneDoor) return true;
-            var D = _hqData(), key = (o.leaf && D && D.catalogue && D.catalogue[o.leaf]) ? o.leaf : 'leaf_hollow_core', cat = D && D.catalogue ? D.catalogue[key] : null;
+            var D = _hqData(), key = (o.leaf && D && D.catalogue && D.catalogue[o.leaf]) ? o.leaf : 'leaf_wooden', cat = D && D.catalogue ? D.catalogue[key] : null;
             if (!cat) return false;
             var rec = { root: new THREE.Group(), door: null, k: 0, from: 0, to: 0, t0: 0, ms: 1, glow: null, light: null, dead: false };
             rec.root.position.set((+o.x || 0) * U, 0, (+o.z || 0) * U);
@@ -95996,14 +96213,14 @@ const ThreeRenderer = (function () {
                     var bx = new THREE.Box3().setFromObject(dr.group), cw = bx.getCenter(new THREE.Vector3()), cl = rec.root.worldToLocal(cw.clone());
                     dr.group.position.x -= cl.x; dr.group.position.z -= cl.z;
                 } catch (e) {}
-                /* the light in the doorway: an unlit white sheet the size of the opening, just behind the leaf's plane, and a lamp */
+                /* the DARK in the doorway (mondo 2026-11-15: "i want this to be darkness instead of light"; it was a white sheet and a
+                   lamp): an unlit black sheet the size of the opening, just behind the leaf's plane, no lamp */
                 var mo = dr.motion || {}, gw = (mo.ow || 0.72 * ts) * 0.96, gh = (mo.oh || 1.35 * ts) * 0.98;
-                var gm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, fog: false, depthWrite: false });
+                var gm = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, side: THREE.DoubleSide, fog: false, depthWrite: false });
                 gm.toneMapped = false;
                 rec.glow = new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), gm);
                 rec.glow.position.set(0, gh / 2, 0.04 * U); rec.glow.visible = false; rec.glow.renderOrder = 2;
                 rec.root.add(rec.glow);
-                rec.light = new THREE.PointLight(0xfff4dc, 0, 9 * U, 2); rec.light.position.set(0, gh * 0.55, -0.5 * U); rec.root.add(rec.light);
                 H.dirty = true;
             };
             var url = null; try { url = cat.file ? _hqModelUrl(cat) : null; } catch (e) {}
@@ -96093,7 +96310,7 @@ const ThreeRenderer = (function () {
             hqScene: function () { return _hq ? _hq.scene : null; },
             stack: function () { return { off: _hqStackOff(), arrays: _hqStk.arrays.map(function (t) { return t.name + (t._ew_dead ? ' (dead)' : ''); }), sheets: _hqStk.sheets, skipped: _hqStk.skipped, fills: _hqStk.fills }; },   // THE SHEET STACK
             /* the walker's clip right now (a scene check: which clip is the officer in?) */
-            playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, keys: Object.keys(e.actions || {}).join(','), running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0 }; },
+            playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, keys: Object.keys(e.actions || {}).join(','), running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0, ry: e.model ? +e.model.rotation.y.toFixed(3) : null }; },
             hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
             /* THE CITY TRAFFIC (2026-11-13): the lights' colours and every vehicle (a probe reads them: which stand at a red, which bus waits) */
@@ -96220,7 +96437,7 @@ const ThreeRenderer = (function () {
        back out. */
     var _MENU_BIOMES = {
         desert: {
-            mapId: 'prebuilt_giza', leaf: 'leaf_hollow_core', roster: 'pyramids', density: 0.55, night: 0.62,
+            mapId: 'prebuilt_giza', leaf: 'leaf_wooden', roster: 'pyramids', density: 0.55, night: 0.62,
             floor: 'desert', floorColor: 0xd9bf8c, floorRepeat: 240,
             sky: { tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 } },
             hemi: [0xe8c58a, 0x4a3a2a, 0.42], sun: [0xffb070, 0.5, [0.7, 0.2, -0.4]], fog: [0xc9a46a, 0.00030],
@@ -96228,7 +96445,7 @@ const ThreeRenderer = (function () {
             sedanAt: [0.3, 18.0], sedanYaw: -2.80, cineDist: 6.4, cineSide: 0.9, cineLookOff: 0.75, dunes: true,
         },
         antarctica: {
-            mapId: 'prebuilt_antarctica', leaf: 'leaf_hollow_core', roster: 'islands', density: 0.5, night: 0.7,
+            mapId: 'prebuilt_antarctica', leaf: 'leaf_wooden', roster: 'islands', density: 0.5, night: 0.7,
             floor: 'marble_light', floorColor: 0xc4d6e6, floorRepeat: 200,
             sky: { tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 } },
             hemi: [0xcfe0f4, 0x3a4658, 0.42], sun: [0xbcd4f0, 0.3, [0.5, 0.3, -0.6]], fog: [0xb9cfe4, 0.00034],
@@ -97729,8 +97946,8 @@ window.ThreeSplitscreen = {
 
 window.ThreeAnim = {
 
-    walkPath: function(unit, path, onDone) {
-        if (ThreeRenderer.isActive()) ThreeRenderer.startWalkTween(unit, path, onDone);
+    walkPath: function(unit, path, onDone, opts) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.startWalkTween(unit, path, onDone, opts);
     },
 
     displace: function(unit, fromX, fromY, toX, toY, durationMs, opts) {

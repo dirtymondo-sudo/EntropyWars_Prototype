@@ -26341,7 +26341,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var leaf = null;
         try { if (typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.doorLeaf === 'function') leaf = ThreeRenderer.doorLeaf(); } catch (e) { leaf = null; }   // a top-level const, never window.ThreeRenderer
         var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
-        if ((!leaf || !leaf.cat || !leaf.cat.file) && D && D.catalogue && D.catalogue.leaf_hollow_core) leaf = { key: 'leaf_hollow_core', cat: D.catalogue.leaf_hollow_core };
+        if ((!leaf || !leaf.cat || !leaf.cat.file) && D && D.catalogue && D.catalogue.leaf_wooden) leaf = { key: 'leaf_wooden', cat: D.catalogue.leaf_wooden };
         if (!leaf || !leaf.cat || !leaf.cat.file || !D || !D.assets || !D.assets.models) return null;
         var key = 'door:' + leaf.key;
         if (!_WPN_MODELS[key]) {
