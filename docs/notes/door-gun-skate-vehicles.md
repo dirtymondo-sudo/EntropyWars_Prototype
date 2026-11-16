@@ -751,3 +751,15 @@ unused). `Shadow (3D)/car_shadow.png` is drawn as a blob plane under each car. `
 - "pushed 1, not 2": the push stops on the mouth by design (the slide's remaining tiles are spent going through); no change.
 - Other door / portal rows checked: Tunnel Network / Grave Passage (walk-only pairs, no `transit`), Door Dash, Drop In,
   Breaking and Entering, Air Mail, Trapdoor, Door Slam don't link through a pair; the warp rune skips flyers on purpose.
+
+## THE SKATE PARK (Disaster City, Bayside beach) — 2026-11-16
+mondo, on the map pass audit (the plot-built world had 5 skate pieces in all): "yeah add a skatepark". The new units thread's plan homes the
+Skater here (a beach skate park by the boardwalk). Written by `docs/disaster-city/districts/B.js` `skatePark()` (called at the end of
+`beach()`, Bayside's home frame squares cx 146-150 x cy 99-110; in the room today about x 259-277, z -73.5 to -31.5): a concrete pad at the
+boardwalk's level (0, absY) over the sand, the boardwalk's spear rail open along its whole side; a round sunk bowl (r 6, 1.2 deep, floor over
+the sea's -1.45) with a coping ring; a funbox (0.6 m, half-square banks) with a pipe rail along its top; a flat bar (0.4 m) down column cx 150;
+two `quarter_pipe` props facing each other (rows 107-110); a two-square bank down to the sand with a handrail; a SKATE PARK sign. Every rail
+is a terrain `rail` row with no model and `h` < 0.7 (the pipe rail: a grind, never a wall), on a square line or a square's middle, whole
+squares long: the Skater unit's grind reads these rows + `city_bench` props (new units thread). A rail row is straight between its two ends'
+ground, so a rail over a hump must be cut at the hump's corners. Moved for it: three umbrella sets, the lifeguard chair, the rowboat, the
+first beach ramp (row 8N+6), two Miami lifeguard towers (to rows 114 and 135), the volleyball net (one square south). Seen on screen (llvmpipe).
