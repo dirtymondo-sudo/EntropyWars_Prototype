@@ -4331,6 +4331,20 @@ natives and the marks are the same, and the feature and prop lists hold the same
 written before the Lodge and the Rental Hut (district K), because P runs first (its `texbuilding` row #228 -> #226, its `arch` row #285 -> #283, its 8
 props ahead of the Lodge's and the Rental Hut's 41). No row changed. The block's first comment line names the district files. No browser run (a no-change refactor).
 
+## THE NORTH POLE VILLAGE, THE DISTRICT THREAD — district N, pass by pass (2026-11-16, second side)
+
+File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`. Its header lists what stands, what is missing and the models it needs.
+- **THE FIRST LOOK** (playtest_city.js, 11 views): the sixteen cottages were one white town-house prop (`xmas_house`), wider than its 2 x 2 squares, so
+  neighbours cut into each other and nothing read as a North Pole; the Workshop's windows were olive (the glass sheet under a yellow tint); the Pole stood
+  on three black sea rocks; two squares by the north houses were cut off.
+- **PASS 1, EXTERIORS**: every run of the plan's `B` squares is a built, walked-in house (`COTTAGES`, one row a house: plot, squares, front, paint, opts
+  `front` = gable over the door, `chimney`, `porch`, `name`). Helpers in the file: `cottage` (the look), `pane` (a lit window: warm `marble_light` pane with
+  `glow`, white frame, shutters), `bulbs` (the lights along a front). Wall paint needs `gain` 1.7 on the brown board sheet or it reads black at night.
+  A board on a gable-front house hangs at z `d/2 + 0.86` (in front of the gable's overhang). Five plain boards: POST OFFICE, BAKERY, TOY SHOP, STABLE,
+  COAL (plain labels, waiting for mondo's word). The Workshop: white corner posts, candy posts at the door, its board, the same windows. The Pole: 6.4 m
+  of stripes, a gilt ball (`gold`), a stone ring. `tailor` opens the cut-off nook (0 squares unreached now). Seen on screen at HEAD 206518c.
+- To know: the cottages' insides are empty until pass 2. The gold diamond on the square is the site's PvP arena marker (the engine's), not the village's.
+
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
 mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
