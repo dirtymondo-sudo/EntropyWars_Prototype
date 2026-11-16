@@ -4584,6 +4584,42 @@ mondo 11-16: "every single zone needs to be like that. now. so we can work in pa
 - **KNOWN TO BE THIN (for whoever holds the tool row):** the walk check's own list still names the Shore's and the Harbour's places in the
   tool (a district adds its own with `reach`); `place` and `dress` are two passes only because the content was written in two deliveries.
 
+## THE BEACH, THE SHORE — the pilot district (2026-11-16, district S, `docs/areas/beach/districts/S.js`)
+
+mondo 11-16: "start one district thread in each to try to get it up to par with disaster city, so it will be easier to do the other districts
+once that first district is fleshed out and knows what shared assets it can use for the zone". Passes in order, a PR each.
+
+- **THE FIRST LOOK (10 views, HEAD 79456a5):** the huts' walls were mud (a colour over the brown board sheet), their white doors read as grey
+  steel, no window, no porch, no sign; the lifeguard hut was tan; the insides are a brown box under a black ceiling; the Boardwalk was planks
+  painted on the sand with the city door standing bare; the Tide Pools had no pools; the headlands, dunes and no-name plots are empty sand.
+- **PASS 1, EXTERIORS (seen on screen):** the huts (painted boards, porch, shuttered window, word board, number, a door leaf each), the
+  Lifeguard Hut (white, red band, LIFEGUARD roof board, railed veranda, the flag), the Boardwalk (kerb, bollards + rope, four lamps, THE GATE
+  at the city door), the volleyball court (a drawn net), the swim flags, the Tide Pools (five `dip` hollows the sea stands in + rocks).
+- **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
+
+## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
+
+- **PAINT (seen):** the room wears the sea shell's faded look, so everything reads a step greyer than in the city. A painted wall = the
+  painted corrugated sheet (`CORR`, reads as painted boards) with `gain` 2.9 and a SATURATED tint (aqua 0x4fd4f0, lemon 0xffdc50, coral
+  0xff8e70); white = `CORR`, 0xffffff, gain 3.2; a roof = `CORR` at gain 2.6. Never a colour over `WD` / `WD2` (the brown wood sheets): it is
+  mud at any gain. Trim, posts, rope, flags = plain paint (`key` null). Planks underfoot = `FLR` tinted 0xd8c4a0.
+- **SIGNS:** `a.sign(words, x, y, z, w, h, fg, bg, font)`; dark letters on a white board read, white on a pastel does not. Fonts: `pacifico`
+  (the beach trade, drawn in Title Case), `way` (plain capitals), `stencil` (the Harbour). A quad's `ry: 90` faces the row's -x, `ry: 270`
+  its +x (the gate's two faces). Plain trade words and the plan's own names only.
+- **DOOR LEAVES that read on a hut:** `leaf_wooden` (brown panels), `leaf_stable` (planks and iron), `leaf_beige_wood`. `leaf_white_wood`
+  reads as a grey steel door here.
+- **A WINDOW, A PORCH** (S.js `win`, `porch`): glass = `GLS` with `glow` 0.35 in a white frame, shutters = `SHUT` tinted; a porch = a plank
+  deck, two posts, a `shed` roof. Copy them; they are a few lines each.
+- **WATER ON THE SAND:** `feat({ k: 'dip', x, z, r, h })` on sand that stands 0.6 m up, with r 3.4-5.2 m and h 1.5-1.7 m, is a pool the room's
+  own sea stands in (waded). A smaller or shallower dip shows no water.
+- **ROCKS:** on dry sand the graveyard pack's `psxg_rock_1..4` (grey boulders, about 1 m). The ocean pack's `ocean_rock_*`, weed, kelp and
+  anemones are for deep water only (black pillars and spikes anywhere else).
+- **DRAWN, NO MODEL NEEDED:** a volleyball net (`urban:MetalTruss1a`, `kind: 'over'`, two posts), lamps (a pole + a cream cylinder with
+  `glow` 0.9), flags (two thin `ds` boxes), rope rails, rails and steps.
+- **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
+  prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
+  dunes to 3.6 m). The first run of a fresh container can crash once while the cache fills; the harness retries.
+
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
 The approved plan is `docs/plans/desert/insides_plan.png` (rectangles in `draw-insides.py`). Before this delivery NONE of it was in the game: the

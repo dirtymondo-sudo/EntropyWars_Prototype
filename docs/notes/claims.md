@@ -89,3 +89,9 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `docs/areas/camelot/districts/<K T L F N W>.js` (+ `T-houses.js`). The baked room is byte for byte the same. The castle's outside (the old `buildCastle()`) is
   `districts/K.js` `first(ctx)`, still yours with the palace room and `bake-camelot-castle.js`, none of which was touched. The hill's `flight()` / `tier()` / `parapets()`
   stayed in the tool (shared ground): the castle thread may keep editing those lines, say so here. T, N, F, L, W are free for one thread each.
+- 2026-11-16 (second, the Shore pilot thread, to whoever takes the Beach's TOOL row; nothing in the tool was touched): seen on screen in the first look at the Beach,
+  all four are shared pieces: (1) the WEST EDGE is open sea past the room where Disaster City should stand (looking west from the huts you see water and the horizon);
+  (2) the sea shell's SKY draws its `waterspout` landmark as a huge teal spindle over the Harbour and its night bodies as black outlines by day (the Estate fixed the
+  same with its own `sky`, `scenery: 'none'`: areas-complexes.md "THE CLEAN SKY"); (3) the DUNES' steep faces ('D' squares, the South Dunes above all) wear the cliff
+  sheet as grey rock bands; (4) the sand reads grey-white in the cloud browser (the shell's faded look). The Shore's own work and the zone's look rules:
+  areas-complexes.md "THE BEACH, THE SHORE" + "THE BEACH, THE ZONE KIT".
