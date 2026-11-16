@@ -73,11 +73,13 @@ const sayRow = (n, say) => { if (say) n.say = say; return n; };
 /* ── the pieces a district draws itself (arch rows: boxes, cylinders, quads, roofs, each wearing a sheet; the Estate's own helper) ── */
 function sheet() {
     const Pp = [];
-    /* (every drawn part carries a little light of its own: the room is a night with no sun, and an unlit part reads black) */
-    const add = (o, key, tint, x) => { if (key) o.key = key; if (tint != null) o.tint = tint; if (x) Object.assign(o, x); if (o.glow == null) o.glow = 0.3; Pp.push(o); return o; };
+    /* (every drawn part carries a little light of its own, and the two dark sheets, wood and crystal, a gain: the room is a night with no sun, and an unlit part reads black) */
+    const add = (o, key, tint, x) => { if (key) o.key = key; if (tint != null) o.tint = tint; if (x) Object.assign(o, x); if (o.glow == null && key) o.glow = 0.3; if (o.gain == null && (key === 'wood' || key === 'crystal')) o.gain = 2.2; Pp.push(o); return o; };   // (a part with no sheet wears a surface by its colour: three-renderer.js _hqArchSurface; it stays unlit)
     return { P: Pp,
         box: (x, y, z, w, h, d, key, tint, o) => add({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h), r2(d)] }, key, tint, o),
         cyl: (x, y, z, r, h, key, tint, o) => add({ s: 'cyl', p: [r2(x), r2(y), r2(z)], r, h }, key, tint, o),
+        cone: (x, y, z, r, rTop, h, key, tint, o) => add({ s: 'cyl', p: [r2(x), r2(y), r2(z)], r, r2: rTop, h }, key, tint, o),
+        dome: (x, y, z, r, h, key, tint, o) => add({ s: 'dome', p: [r2(x), r2(y), r2(z)], r, h, seg: 10, rings: 3 }, key, tint, o),
         quad: (x, y, z, w, h, ry, key, tint, o) => add({ s: 'quad', p: [r2(x), r2(y), r2(z)], size: [w, h], ry: ry || 0 }, key, tint, o),
         roof: (form, x, y, z, w, h, d, key, tint, o) => add({ s: 'roof', form, p: [x, y, z], size: [w, h, d] }, key, tint, o),
         sign(words, x, y, z, w, h, fg, bg, font, o) { Pp.push(Object.assign({ s: 'quad', p: [r2(x), r2(y), r2(z)], size: [w, h], key: 'txt:' + words + '|' + fg + '|' + bg + '|' + r2(w / h) + '||' + (font || 'serif'), uv: 'fit', kind: 'wall' }, o || {})); } };
@@ -120,6 +122,10 @@ Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
             POOLS.push({ k: 'pool', x: q[0], z: q[1], r, y: p.base, depth: key === 'lava' ? 0.9 : 0.5, key: key || 'water', bank: 1 }); },
         /* a drawn piece (an `arch` row) standing on a plot: fn(a) draws into a sheet whose frame is the point (lx, ly), y = 0 on the island's top */
         look: (name, id, lx, ly, rot, fn) => { const q = pt(id, lx, ly), a = sheet(); fn(a); ARCH.push({ k: 'arch', id: 'ast:' + name + ':look', x: q[0], z: q[1], rot: rot || 0, base: plot[id].base, parts: a.P }); },
+        /* a balustrade along an island's rim: a rail on every side of a ground or walk square that faces open sky (`skip(lx, ly)` leaves a square out) */
+        rimRail: (id, model, skip) => { const p = plot[id]; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const X = p.sx + lx, Y = p.sy + ly; if (!open(X, Y) || (skip && skip(lx, ly))) continue;
+            const R = (x0, z0, x1, z1) => feat({ k: 'rail', x0, z0, x1, z1, y: p.base, model: model || 'balusters_b' });
+            if (!open(X, Y - 1)) R(gx(X), gx(Y), gx(X + 1), gx(Y)); if (!open(X, Y + 1)) R(gx(X), gx(Y + 1), gx(X + 1), gx(Y + 1)); if (!open(X - 1, Y)) R(gx(X), gx(Y), gx(X), gx(Y + 1)); if (!open(X + 1, Y)) R(gx(X + 1), gx(Y), gx(X + 1), gx(Y + 1)); } },
         /* squares a drawn piece stands on (so nothing else is put there) */
         claim: (id, lx0, ly0, lx1, ly1) => { const p = plot[id]; for (let y = ly0; y <= ly1; y++) for (let x = lx0; x <= lx1; x++) { const X = p.sx + x, Y = p.sy + y; if (!open(X, Y)) errs.push('claim over the void on ' + id + ' ' + x + ',' + y); taken.add(X + ':' + Y); } },
     }; });
