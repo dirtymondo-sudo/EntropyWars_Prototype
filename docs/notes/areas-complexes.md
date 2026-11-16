@@ -4915,3 +4915,59 @@ mondo (the set-up thread's brief): one thread per district; passes in order EXTE
   under a tint reads dark in the shade: `gain` 1.3 to 1.7 on the part. A sign under a barrel roof's overhang is hidden by the roof's end:
   set it 0.3 m out. Hangar 18's saucer on the floor IS confirmed on screen now.
 
+
+## CAMELOT, THE VILLAGE — the pilot district thread (2026-11-16, second side; files `docs/areas/camelot/districts/T.js` + `T-houses.js`)
+mondo 11-16: "start one district thread in each to try to get it up to par with disaster city, so it will be easier to do the other districts
+once that first district is fleshed out and knows what shared assets it can use for the zone". The Village (district T) is Camelot's pilot.
+Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. What the next districts can reuse is in "CAMELOT, THE ZONE KIT" below.
+- **THE FIRST LOOK (probe, 12 views, on main 79456a5)**: what a finished city district has and the Village lacked:
+  1. walls that read (the plaster was mud, a shaded wall black; the jettied houses' and the Inn's side walls were one black timber sheet);
+  2. every door on a street (seven houses turned their door to the town wall); a path from each door step to the cobbles;
+  3. backs and sides (blank walls, bare glass);
+  4. insides: the three walk-ins have a black ceiling, no light, bare walls, garden benches as inn seats, the Chapel's carpet stands upright;
+     no house is walked into;
+  5. street furniture: no lamp, no sign, no fence, no cart; the Market's stalls are eight blue camping tents;
+  6. people: two gate knights, nobody else; no routine;
+  7. atmosphere: no smoke, no torchlight, no sound.
+- **PASS 1, THE EXTERIORS (this PR)**, `T-houses.js` + two lines of `T.js`:
+  - `gain` on plaster (1.6), dressed stone (1.35) and thatch (1.35); a roof with a plaster / stone gable end takes the gain and its own tint
+    is divided by it (`dimBy`), so the slate stays dark. The half-timber now reads from the far end of a street.
+  - the jettied townhouse's side walls and the Inn's four upper walls: posts, two plates and a mid rail in place of one timber sheet.
+  - `frontOf`: a house with no street within three squares looked 'S' whatever stood there. It now looks three squares wider (a street
+    round the corner), and failing that to the castle. Houses 32, 33, 38, 40, 41 turned from the town wall to the village.
+  - a flagged path (`cobblestone`, 1.5 m) from each door step to the street (`reach()` = the squares of grass in between).
+  - side windows get a frame and shutters (the jettied upper floor's were hidden inside the overhang: `xo`), every kind gets back windows.
+  - `CAM_HOUSES=1 node bake-camelot.js --dry-run` prints each house: kind, front, squares, squares to the street (to aim a probe).
+  - Seen on screen (probe, 4 + 10 views): North Street end to end, the Inn, a burgher front, a shop, the backs. Proof: North Street looking east.
+- **SEEN, NOT THE VILLAGE'S (notes on the board for their holders)**: each town-wall corner tower's roof floats on its posts well above the
+  tower's body, and the gate roofs the same (the tool's `townSide()` / hqCastleTower crown); a grey rounded mass hangs under the castle
+  hill's corner drums (K.js or the hill); a few snow-white trees stand inside the town wall on the north side (not `tree()` rows of T.js).
+- **A probe in this room**: `fp: true` views only (a `dist` view from above lands inside a roof or under the floor: black); for a look from
+  above pass `"y": 32` with `fp` and a negative pitch. The room is ready in about 45 s; ten views take about 2 minutes.
+
+## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
+Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
+- **THE SHEETS that suit the zone** (keys for `sheet()` parts): `castle_wall` (ctx.WALL: all stone, tint it STONE 0xc4c0b8 / STONE2 0xaeaaa6 /
+  STONE3 0xd2ccc0), `urban:PlasterWallStucco2a` (plaster: ALWAYS with `gain` 1.6), `wood` (dark timber, tint 0x4a3626; thatch = `wood` tinted
+  straw 0xc8ac64 + gain 1.35 on a `hip` roof), `wood_planks` (boards, doors, shutters), `urban:MetalRoofTiles1a` (slate / tile roofs by tint:
+  blue 0x5a6c96, red 0xa84a3c), `bricks_2` (chimneys, 0xb86a54), `urban:GlassWindowTall1a` (leaded glass; lit = tint 0xf0d890 + `glow` 0.55),
+  `cobblestone` (paths, yards).
+- **THE LIGHT RULE**: under the kingdom's sun a sheet under a tint reads a third darker than its tint, and a face in shade nearly black.
+  Plaster, pale stone and straw need `gain` (1.3 to 1.7). A whole wall of dark timber is a black slab: draw timber as posts and plates
+  0.2 to 0.3 m thick over plaster, never as a sheet.
+- **A ROOF PART'S GAIN IS THE WHOLE PART'S**: give `gain` to a roof with a `keyEnd` gable and divide the roof's own tint by it
+  (`T-houses.js` `dimBy(tint, gain)`), or the slate goes pale with the gable.
+- **THE FIVE HOUSE KINDS** (`T-houses.js` `houseLook(kind, a, w, d, i, path)`; mondo OK'd the looks): 1 jettied townhouse, 2 shop house,
+  3 thatched cottage, 4 burgher house, 5 yard house. Another district that wants a hut, a mill house or a lodge can require the file's
+  pieces only by a board note (it is T's file); the tool's own `sheet()` is everybody's.
+- **CLOTH** = `sheet().banner(x, y, z, w, h)` (the royal banner: mondo's pin, no plain red rectangles).
+- **PROPS THAT FIT** (catalogue keys, all on R2): `ancient_well`, `stocks`, `signpost`, `brazier`, `cauldron`, `covered_wagon`, `wooden_bucket`,
+  `meshy_burlap_sack`, `psx_wooden_crate_1..6`, `bread_rack`, `armour_stand`, `dojo_weapon_rack`, `sea_chest`, `stone_altar`, `church_pew`,
+  `catholic_pew`, `wall_torch`, `cave_torch`, `hearth_fire`, `campfire`, `candle`, `hw_candles`, `hw_straw`, `hw_fence`, `hw_pumpkin`,
+  `fountain`, `stone_urn`, `angel_statue`, `wooden_cross`, `cross`, `psxg_tombstone_1..3`, `fallen_log`; animals `cow`, `chicken`,
+  `decor_sheep`, `horse`, `horse_brown`, `horse_black`, `dog`, `cat`. NOT medieval, keep out: `camping_tent`, `park_bench`, `planter`,
+  `city_*`, `psx_lamp_*`.
+- **NEEDS A MODEL (zone-wide, nothing on R2)**: a market stall, an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart,
+  a water trough, a wooden fence run with a gate, a hitching rail, a tavern table with benches.
+- **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
+  south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
