@@ -10276,13 +10276,13 @@ const RACE_ABILITIES = {
            casts ride the `cleanseArea` tile kind with a flag each (`acquire`, `disrupt`, `layoffs`); rules: battle.js _ceoCast. */
         { id: 'nrAcquisition', name: 'Acquisition', tier: 1, families: ['disruption'], cost: 25, apCost: 1, cooldownRounds: 1, spellType: 'human',
           type: 'utility', kind: 'cleanseArea', range: 4, aoeRadius: 0, acquire: true,
-          desc: 'Buys out the competition. Every enemy summon, deployed object, trap, bomb, mirror, ward or rune on a square within 4 now works for your team. Cooldown: 1 round.' },
+          desc: 'Buys out the competition. Every enemy summon, deployed object, trap, bomb, mirror, ward or rune on a square within 4 that your team can see now works for your team (a hidden trap has to be found first). Cooldown: 1 round.' },
         { id: 'nrLayoffs', name: 'Layoffs', tier: 2, families: ['disruption'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'utility', kind: 'cleanseArea', range: 0, aoeRadius: 0, layoffs: true,
-          desc: 'Restructures. Scraps every summon and object you own on the board: +50 MP for each one and +1 ATK stage. Cooldown: 2 rounds.' },
+          desc: 'Restructures. Scraps every summon and object you own on the board: +50 MP for each one and +1 INT stage. Cooldown: 2 rounds.' },
         { id: 'nrDisrupt', name: 'Disrupt', tier: 3, families: ['disruption'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'utility', kind: 'cleanseArea', range: 4, aoeRadius: 1, disrupt: true,
-          desc: 'Moves fast and breaks their things. Every enemy zone or timed terrain over a 3×3 within 4 changes hands and works for your team. Cooldown: 2 rounds.' },
+          desc: 'Moves fast and breaks their things. Every enemy zone over a 3×3 within 4 changes hands and works for your team, and every square of terrain the enemy made there breaks back to the ground it was. Cooldown: 2 rounds.' },
     ],
     'magician': [
         /* THE HIDDEN TRICK (2026-11-16, the new races; mondo added the Magician): one trick set face down at a time, in a fixed
@@ -10306,10 +10306,13 @@ const RACE_ABILITIES = {
            takes him down and out of sight (walls and units do not stop a tunnel), Erupt brings him up under an enemy and throws it
            into the air, Cave-In digs a pit under a group. Rules: data.js STATUS_DEFS burrowed (+ invisible's onRemove) +
            battle.js _moleErupt (the `erupt` spell field). */
-        { id: 'nrBurrow', name: 'Burrow', tier: 1, families: ['burrowing'], cost: 25, apCost: 1, cooldownRounds: 1, spellType: 'anomaly',
+        /* THE MOLE MAN PASS (2026-11-16): Burrow cooldown 1 -> 2. At 1 he could dig every turn and never be on the board (Invisible
+           lasts until his next turn ends, so a recast each turn kept it up for good). At 2 the race has a rhythm the other side can
+           read and punish: a round under the ground, then Erupt brings him up, and he stands on the board through their next turn. */
+        { id: 'nrBurrow', name: 'Burrow', tier: 1, families: ['burrowing'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           element: 'earth', type: 'utility', kind: 'escape', range: 0, teleportDistance: 4,
           statusEffects: [{ id: 'burrowed', duration: 1 }, { id: 'invisible', duration: 1 }],
-          desc: 'Digs down and tunnels up to 4 squares, under walls and units, and stays under the ground: Invisible and untargetable until his next turn ends or he attacks. Cooldown: 1 round.' },
+          desc: 'Digs down and tunnels up to 4 squares, under walls and units, and stays under the ground: Invisible and untargetable until his next turn ends or he attacks. Cooldown: 2 rounds.' },
         { id: 'nrErupt', name: 'Erupt', tier: 2, families: ['burrowing'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 120, range: 4,
           ignoresLineOfSight: true, sneakBonus: true, erupt: true,
