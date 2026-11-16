@@ -1,0 +1,164 @@
+{
+ "area": "The Sewers",
+ "piece": "district R, the radioactive district",
+ "date": "2026-11-16",
+ "status": "PROPOSAL: waits mondo's OK; nothing is built",
+ "his": [
+  "one sewer district could be radioactive sludge if it connects to the power plant",
+  "start a thread to do the radioactive district that meets the power station"
+ ],
+ "frame": "a fifth row on the south side: the block becomes 6 x 5 plots (252 x 210 m); two plots dug for R, one carries the track on, three stay solid",
+ "levelMeters": 1.75,
+ "levels": {
+  "P04-04": 4,
+  "P05-04": 0,
+  "P03-04": 0
+ },
+ "plots": [
+  {
+   "id": "P00-04",
+   "solid": true,
+   "what": "not dug: solid ground"
+  },
+  {
+   "id": "P01-04",
+   "solid": true,
+   "what": "not dug: solid ground"
+  },
+  {
+   "id": "P02-04",
+   "solid": true,
+   "what": "not dug: solid ground"
+  },
+  {
+   "id": "P03-04",
+   "name": "The Loop Line",
+   "d": "T",
+   "level": 0,
+   "what": "nothing new: only the Platform's track runs on through it to the south wall (42 m more tunnel before the city's Platform)",
+   "cells": [
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx",
+    "xxxxxojoxxxx"
+   ],
+   "note": "not district R"
+  },
+  {
+   "id": "P04-04",
+   "name": "The Power Station Drain (label mine)",
+   "d": "R",
+   "level": 4,
+   "what": "the stair up from the Depot lands here; a valve gallery (pumps, gate valves, gauge boards, breaker panels, pipe runs, barrels, radiation signs, warning tape); the station's waste pipes pour glowing sludge into a channel with a walkway each side; the service stair and bulkhead door up to the Power station",
+   "cells": [
+    "xxxxxoooxxxx",
+    "xxxxxoooxxxx",
+    "xfffffffffxx",
+    "xfffffffffxx",
+    "xfffffffffxx",
+    "xxoooooooooo",
+    "xxosssssssss",
+    "xxosoooooooo",
+    "xxosoxxoooxx",
+    "xxosoxxoooxx",
+    "xxosoxxoooxx",
+    "xxoooxxoooxx"
+   ]
+  },
+  {
+   "id": "P05-04",
+   "name": "The Sludge Pit (label mine)",
+   "d": "R",
+   "level": 0,
+   "what": "LANDMARK: a 12 m brick hall; the channel pours 7 m out of the west wall into a deep tank of sludge (never waded); a walkway round the tank, brick piers, half-sunk barrels and tanks; a ladder up beside the fall; a dry doorway north into the Outfall",
+   "cells": [
+    "xxxxxoooxxxx",
+    "xxxxxoooxxxx",
+    "xffffffffffx",
+    "xfssssssssfx",
+    "xfssssssssfx",
+    "ofssssssssfx",
+    "ssssssssssfx",
+    "ofssssssssfx",
+    "xfssssssssfx",
+    "xfssssssssfx",
+    "xffffffffffx",
+    "xxxxxxxxxxxx"
+   ]
+  }
+ ],
+ "openings": [
+  {
+   "a": "P04-03",
+   "b": "P04-04",
+   "kind": "stair",
+   "label": "NEW: a stair, 7 m up",
+   "what": "a dry stair from the Depot's south wall up to the drain"
+  },
+  {
+   "a": "P04-04",
+   "b": "P05-04",
+   "kind": "fall",
+   "by": "ladder",
+   "label": "NEW: the sludge fall, 7 m + a ladder",
+   "what": "the channel pours 7 m into the Sludge Pit; a ladder beside it"
+  },
+  {
+   "a": "P05-03",
+   "b": "P05-04",
+   "kind": "walk",
+   "label": "NEW: a doorway",
+   "what": "a dry doorway, same level, from the Outfall's south walk"
+  }
+ ],
+ "digsInStandingPlots": [
+  {
+   "plot": "P04-03",
+   "x0": 5,
+   "y0": 10,
+   "x1": 7,
+   "y1": 11,
+   "why": "the Depot's south wall: the foot of the stair"
+  },
+  {
+   "plot": "P05-03",
+   "x0": 5,
+   "y0": 11,
+   "x1": 7,
+   "y1": 11,
+   "why": "the Outfall's south wall: the doorway"
+  }
+ ],
+ "wayUp": {
+  "link": "a new DOOR_HQ.links row (sewer end: the south wall of P04-04; city end: the Power station, plot P02-08, district I)",
+  "cityEndOptions": {
+   "A": "inside the turbine hall, by the boilers",
+   "B": "in the yard, by the east door"
+  }
+ },
+ "look": "the sludge is this district's only: a glowing green look row (three-renderer.js _LIQUID_STYLES) picked per stream, so the other four districts keep their brown water; green light off the channel and the tank",
+ "toolChanges": [
+  "layout.json: rows 5, twelve more rows of squares, six plot rows (three solid), three openings, districts.R",
+  "bake-sewers.js: a plot may be `solid` (no walk check, no vault); a `walk` opening between two plots of one level (today every opening changes level) or none at all; the way `power` (a spur to the south wall + its link row in WANT); a stream row may carry a `look`",
+  "data.js by hand: the room is 42 m longer to the south, so its middle moves 21 m: the z of six link rows (docks_sewer, stadium_sewers, tunnels_works, sewers_drain, workings_oubliette, cells_dungeon) and of well_garden changes by 21 (the tool prints each row); a new link row for the Power station",
+  "three-renderer.js: `_hqWaterLook` reads a stream's own `look` before the room's; one more style row (the sludge)"
+ ],
+ "questions": [
+  "The sludge: LOOK ONLY (glowing green, but you wade it like the rest of the sewer water), or the game's own POISON liquid (the toxic green of the poison bogs: it poisons whoever stands in it)? No new rule either way.",
+  "The door up: INSIDE the Power station (A: the turbine hall, by the boilers) or OUTSIDE in its yard (B: by the east door)? Either way the city's end is one DOOR_HQ.links row; no city file is edited.",
+  "Who lives there? I place nobody unless you name units the game has (in the list today: mad scientist, black goo, zombie, ghoul, swamp monster, flesheater ...).",
+  "Size: two plots, like the Holding Cells and the Old Workings. Enough, or bigger?"
+ ],
+ "legend": {
+  "s": "sludge",
+  "n": "newly dug walkway in a plot that stands today"
+ }
+}

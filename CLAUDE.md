@@ -10,6 +10,8 @@ Read `docs/notes/onboarding.md` (access you need, how to work beside the owner's
 another account) and `docs/notes/owner-rules.md` (mondo's standing rules: what he wants and never wants; they bind
 every account). The owner project's memory as of 11-15 is frozen in `docs/project-memory/` (`INDEX.md` first). New
 lasting facts go in the matching docs/notes file in the same PR, never only in one account's memory.
+**THE MODEL LIST FIRST (mondo 11-16):** before building or dressing any room, district or zone, search `MODEL_LIST.md` for your theme and look
+inside the pack files themselves; the prop catalogue is not the whole list (owner-rules.md section 1).
 **TWO ACCOUNTS, ONE BOARD:** before starting on an area or system, read `docs/notes/claims.md` (who has what). Never
 work an area the other side holds; take or free a row in your own PR; leave notes for the other side at its bottom.
 
