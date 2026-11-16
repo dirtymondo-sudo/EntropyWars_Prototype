@@ -2646,6 +2646,18 @@
                 }
             }
 
+            /* 🛹 Board Slam (`momentumSpend`): the banked Momentum lands as a second blow, then it is spent */
+            if (spell.momentumSpend && !unit.dead && (unit._momentum || 0) > 0) {
+                const _mom = unit._momentum || 0;
+                if (target && !target.dead && !target._dying) {
+                    applyDamageToUnit(target, spell.momentumSpend * _mom, `🛹 ${spell.name} momentum (${_mom}): `, {
+                        sourceUnit: unit, damageType: spell.damageType || 'physical', consumeMarked: false,
+                        spellType: spell.spellType || null, element: classifySpellElement(spell)
+                    });
+                }
+                clearStatus(unit, 'momentum');
+                delete unit._momentum;
+            }
             if (spell.dragIntoLiquid && target && !target.dead && !unit.dead
                 && !(typeof _isClashMode === 'function' && _isClashMode())) _deathRollDrag(unit, target, spell);   // 🐊 Death Roll
             if (spell.selfStun && !unit.dead) {
@@ -13895,6 +13907,13 @@
         window._settleBankOnDeath = _settleBankOnDeath;
         /* 🐊 THE SEWER GATOR (2026-11-16, the new races): the liquids it hides in, Submerge's surfacing and Death Roll's drag.
            Host-side like every spell; positions + statuses state-sync to the guest, the floating text relays. */
+        /* 🛹 THE SKATER (2026-11-16, the new races): a walk that ends in a straight line from where it began banks one Momentum
+           stack a square (STATUS_DEFS.momentum adds `gain`, up to 6). Host-side; the unit + status state-sync to the guest. */
+        function _skaterBankMove(unit, fx, fy, tx, ty, dist) {
+            if (!unit || unit.dead || unit._dying || unit.race !== 'skater') return;
+            if (!(dist > 0) || (fx !== tx && fy !== ty)) return;
+            applyStatusPayload(unit, { id: 'momentum', duration: 2, gain: dist }, '', unit);
+        }
         const _GATOR_LIQUIDS = new Set(['water', 'deep_water', 'sludge', 'swamp']);
         function _gatorOnLiquid(x, y) {
             try { return _GATOR_LIQUIDS.has(getTerrainAt(x, y)); } catch (e) { return false; }
@@ -45851,6 +45870,7 @@
             // shove (resolveTileArrival). A flyer that lands at the end of its
             // move takes it too; one still in the air only meets the gravity field.
             resolveTileArrival(unit, { via: 'move' });
+            _skaterBankMove(unit, _originX, _originY, x, y, dist);   // 🛹 a straight roll banks Momentum
 
             if (!_wasAirborne) {
                 /* 🦴 Bone-pile looting — ending a move on an enemy's remains rifles
