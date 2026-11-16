@@ -13636,3 +13636,22 @@ pipe organ case, a pietà, kneelers, a holy water stoup, votive candle racks, a 
 - FPS (the gate view, software GPU): 1.2 before, 1.5 after (the pass is drawn parts in one row: about 150,000 triangles more).
 - OPEN after pass 1: the inside is bare walls and a dark gilt ceiling (pass 2); the flanks' yards are empty cobbles (pass 3); no light of
   its own (pass 4).
+
+### PASS 2, THE INTERIORS (live; seen on screen, 9 views)
+- THE NAVE: an entablature on each row of columns, the clerestory wall over it, a gilt barrel vault with a white rib over each pair of
+  columns (a `roof` part `barrel`, `ds`, `ends: false`: the Sewers' tunnel trick), flat gilt coffers over the aisles, three crystal
+  chandeliers, a red runner up the middle aisle.
+- THE CROSSING: four square piers (drawn, each with its own ghost wall), the ring with its inscription, the inside of the drum with sixteen
+  LIT windows, the gilt inside of the dome. THE BALDACHIN: four banded bronze columns on marble pedestals, the canopy, the orb and cross,
+  over the altar on its step (the altar stands on the crossing's middle, the four columns on the four squares round it).
+- THE APSE: a gilt shell, the glory window, the chair on a two-step dais. THE TRANSEPTS: gilt vaults; the organ (nine `decor_organ_pipe_white`
+  over a drawn case, the `judges_bench` as its console, a harp and a cello) north; two sarcophagi, a plaque and two `weeping_angel` south.
+- THE AISLES: four side chapels a side (an altar, a painting over it, a candelabra), four confessionals at the transepts' mouths.
+  THE GALLERIES: a shelf and a balustrade 9.6 m up both aisles, no way to them ("the galleries are closed").
+- THE VAULTS' RULE (learnt here): an inside vault must top out no higher than the walls (the outside roof hides when you are in, so a vault
+  that rises past the wall shows sky at its ends). The nave's springs at 18.4 m and rises 4.3 m to the wall's 22.75 m.
+- A piece that did not work: the catalogue's `holy_carpet` is the tapestry model and stands upright; it was taken out.
+- FPS (software GPU): from the gate 1.5 -> 1.4; inside the nave, looking at the altar, 1.0 fps / 2.7 M triangles (the eighteen model columns,
+  the pews, the chandeliers; with 18 candelabra and 4 chandeliers it read 0.9 / 2.9 M, so they were cut to 6 and 3).
+- OPEN after pass 2: the chapels are thin (an altar and a picture); no kneelers, stoups, votive racks, pietà, pulpit canopy (NEEDS A MODEL);
+  the yards outside are empty; no air, no night look.

@@ -8,7 +8,7 @@
    Notes, passes, decisions: docs/notes/areas-complexes.md "THE AFTERLIFE, THE BASILICA". */
 'use strict';
 const FY = 1.75, WH = 22.75, MARB = 'urban:PlasterWallPainted1a', TRAV = 0xfff8ea, LEAD = 0xa9bcc8;
-exports.build = ctx => { const { gx, gz, cell, W, H, wall, look, door } = ctx;
+exports.build = ctx => { exports.build2(ctx); const { gx, gz, cell, W, H, wall, look, door } = ctx;
     const isB = (x, y) => x >= 0 && y >= 0 && x < W && y < H && cell[y][x] === 'B';
     /* THE WALLS: every side of a floor square that faces a square that is not the floor. The front (x = 45) keeps four doorways a square wide
        (two in the middle, one each side); the narthex opens to the nave through three arches. Merged along each line, bumped as ghosts, drawn
@@ -45,8 +45,6 @@ exports.build = ctx => { const { gx, gz, cell, W, H, wall, look, door } = ctx;
         a.roof('barrel', gx(34.5), FY + WH, gz(24), 73.5, 8, 50, MARB, LEAD, { uv: 7, glow: 0.25 });
         a.roof('barrel', gx(20), FY + WH, gz(24), 78, 8, 28.6, MARB, LEAD, { ry: 90, uv: 7, glow: 0.25 });
         /* the ceilings from inside: a gilt sheet under each */
-        a.quad(gx(33), FY + WH - 0.05, gz(24), 63, 49, 'gold', 0xe8d8a8, { flat: true, ds: true, roof: true, uv: 7, glow: 0.3 });
-        a.quad(gx(20), FY + WH - 0.05, gz(24), 28, 77, 'gold', 0xe8d8a8, { flat: true, ds: true, roof: true, uv: 7, glow: 0.3 });
         /* THE DOME over the crossing: the drum with its ring of columns and windows, the dome, the lantern, the ball and the cross */
         const dx = gx(20), dz = gz(24), dy = FY + WH;
         a.cyl(dx, dy, dz, 14.8, 4, MARB, TRAV, { seg: 32, roof: true, glow: 0.4 }); a.cyl(dx, dy + 4, dz, 13.2, 11, MARB, TRAV, { seg: 32, roof: true, glow: 0.4 });
@@ -84,16 +82,72 @@ exports.build = ctx => { const { gx, gz, cell, W, H, wall, look, door } = ctx;
         [[46.5, 15.5], [46.5, 32.5]].forEach(q => a.box(gx(q[0]), 0, gz(q[1]), 2.6, 3, 2.6, MARB, TRIM, { glow: 0.45 }));
     });
 };
+/* PASS 2, THE INSIDE (drawn; the walker's blockers are the dress stage's): the nave's two entablatures on their columns and its gilt barrel
+   vault, the aisles' flat coffers, the crossing's four piers and the inside of the dome, the transepts' vaults, the apse's shell and glory,
+   the baldachin over the altar, the galleries ("the galleries are closed"), the red runner. */
+exports.build2 = ctx => { const { gx, gz, mx, mz, look, wall, mark } = ctx, G = 'gold', GT = 0xf0dca0, P1 = 'urban:PlasterWallPainted1a', W1 = 0xfffaf0;
+    const CH = 16.4;   // the top of the nave's columns (15 m + base + capital) over the floor
+    look('basilica_in', 0, 0, 0, FY, a => {
+        /* the nave: an entablature along each row of columns, the clerestory wall over it, the barrel vault between them, the aisles' ceilings */
+        [20.5, 27.5].forEach((sy, i) => { const z = gz(sy), s = i ? 1 : -1;
+            a.box(gx(33), CH, z, 63, 1.5, 1.7, P1, W1, { glow: 0.5 }); a.box(gx(33), CH + 1.5, z + s * 0.2, 63, 0.5, 2.2, G, GT, { glow: 0.45 });
+            a.box(gx(33), CH + 2, z + s * 0.35, 63, WH - CH - 2, 0.6, P1, W1, { glow: 0.45, uv: [7, 7] });
+            a.quad(gx(33), CH + 1.9, gz(i ? 29.25 : 18.75), 63, 12.2, G, 0xd8c890, { flat: true, ds: true, roof: true, uv: 3.5, glow: 0.35 }); });
+        a.roof('barrel', gx(33), CH + 2, gz(24), 63, 4.3, 22.6, G, GT, { ds: true, ends: false, seg: 12, uv: 3.5, glow: 0.4 });
+        for (let x = 25; x <= 41; x += 2) a.roof('barrel', mx(x), CH + 1.9, gz(24), 0.9, 4.4, 22.7, P1, W1, { ds: true, ends: false, seg: 12, glow: 0.5 });   // the vault's ribs, one over each pair of columns
+        /* the transepts' vaults (north and south of the crossing) and the narthex's ceiling */
+        [[13, 20], [28, 35]].forEach(q => a.roof('barrel', gx(20), CH + 2, (gz(q[0]) + gz(q[1])) / 2, (q[1] - q[0]) * 3.5, 4.3, 27.4, G, GT, { ry: 90, ds: true, ends: false, seg: 12, uv: 3.5, glow: 0.4 }));
+        a.quad(gx(43.5), 12, gz(24), 10.2, 62.4, G, 0xd8c890, { flat: true, ds: true, roof: true, uv: 3.5, glow: 0.35 });
+        /* THE CROSSING: four piers, four arches' beams, the ring, the inside of the drum (its windows lit) and of the dome, the oculus' glow */
+        [[17, 20], [22, 20], [17, 27], [22, 27]].forEach(q => { a.box(mx(q[0]), 0, mz(q[1]), 3.4, CH + 1.5, 3.4, P1, W1, { glow: 0.5, uv: [3.5, 7] }); a.box(mx(q[0]), 0, mz(q[1]), 3.8, 1.2, 3.8, 'marble_2', 0xe8dcc8, { glow: 0.3 }); a.box(mx(q[0]), CH + 1.5, mz(q[1]), 3.9, 0.6, 3.9, G, GT, { glow: 0.45 }); });
+        const dx = gx(20), dz = gz(24);
+        a.cyl(dx, CH + 2.1, dz, 14.6, 1.6, G, GT, { ri: 12.6, seg: 32, glow: 0.45, roof: true });
+        a.cyl(dx, CH + 3.7, dz, 12.8, 11.3, P1, W1, { ri: 12.5, seg: 32, ds: true, cap: false, glow: 0.5, roof: true });
+        a.box(0, 0, 0, 0, 0, 0, 'urban:GlassWindowTall1a', 0xfff0c0, { size: [0.2, 6.5, 2.4], ring: { n: 16, r: 12.45, a0: 11.25 }, roof: true, p: [dx, FY + WH + 6 - FY, dz], glow: 0.95 });
+        a.dome(dx, CH + 15, dz, 12.6, 14.5, G, 0xe8d090, { seg: 32, rings: 12, ds: true, roof: true, glow: 0.45 });
+        a.sign('TV ES PETRVS ET SVPER HANC PETRAM', dx, CH + 2.5, dz + 12.55, 30, 1.1, '#2a2a6a', '#e8c860', 'marc', { ry: 180, roof: true });
+        /* THE APSE: its gilt shell inside, the glory window over the chair, the chair's dais */
+        a.dome(gx(16.4), WH - 0.4, dz, 16.6, 8.4, G, GT, { arc: 180, a0: 90, ds: true, seg: 20, roof: true, glow: 0.4 });
+        a.cyl(gx(13.4), 9.5, dz, 2.6, 0.2, G, 0xffe9a0, { seg: 24, glow: 1, rx: 90 }); a.box(gx(13.5), 6.2, dz, 0.3, 6.8, 4.6, 'urban:GlassWindowTall1a', 0xffd880, { glow: 1 });
+        a.box(gx(14.4), 0, dz, 4.4, 0.35, 9, 'marble_2', 0xe8dcc8, { glow: 0.3 }); a.box(gx(14.1), 0.35, dz, 3.4, 0.35, 7, 'marble_2', 0xf0e4d0, { glow: 0.3 });
+        /* THE BALDACHIN over the altar: four twisted bronze columns on marble pedestals, the canopy, the orb and cross */
+        [[19, 23], [20, 23], [19, 24], [20, 24]].forEach(q => { a.box(mx(q[0]), 0, mz(q[1]), 1.5, 1.6, 1.5, 'marble_2', 0xe8dcc8, { glow: 0.3 }); a.cyl(mx(q[0]), 1.6, mz(q[1]), 0.5, 8.6, G, 0x7a5a30, { seg: 10, glow: 0.35 });
+            for (let k = 0; k < 6; k++) a.cyl(mx(q[0]), 2.2 + k * 1.4, mz(q[1]), 0.6, 0.35, G, 0xc8a050, { seg: 10, glow: 0.5 }); a.box(mx(q[0]), 10.2, mz(q[1]), 1.5, 0.7, 1.5, G, 0xc8a050, { glow: 0.5 }); });
+        a.box(dx, 10.9, dz, 5.6, 0.8, 5.6, G, 0x7a5a30, { glow: 0.35 }); a.box(dx, 11.7, dz, 6, 0.3, 6, G, 0xc8a050, { glow: 0.5 }); a.roof('pyramid', dx, 12, dz, 4.6, 2.4, 4.6, G, 0x7a5a30, { roof: false, glow: 0.35 });
+        a.dome(dx, 14.4, dz, 0.5, 0.5, G, 0xe8c860, { glow: 0.6 }); a.box(dx, 14.9, dz, 0.16, 1.5, 0.16, G, 0xe8c860, { glow: 0.6 }); a.box(dx, 15.8, dz, 0.9, 0.16, 0.16, G, 0xe8c860, { glow: 0.6 });
+        a.box(dx, 0, dz, 9.4, 0.3, 9.4, 'marble_2', 0xe8dcc8, { glow: 0.3 });                                            // the altar's step
+        a.box(gx(20), 0, gz(13) + 1, 14.5, 2.3, 1.7, 'wood', 0x6a4428, { glow: 0.2 }); a.box(gx(20), 2.3, gz(13) + 0.8, 15, 0.3, 1.3, G, GT, { glow: 0.45 });   // the organ's case under its pipes (north transept)
+        /* THE GALLERIES: a shelf and its balustrade along each aisle's wall and round the transepts' ends, 9.6 m up, no way to them */
+        [[gx(33), gz(17) + 0.9, 63, 1.4], [gx(33), gz(31) - 0.9, 63, 1.4]].forEach(q => { a.box(q[0], 9.6, q[1], q[2], 0.4, q[3], P1, W1, { glow: 0.5 }); a.box(q[0], 10, q[1] + (q[1] < gz(24) ? 0.55 : -0.55), q[2], 1, 0.2, P1, W1, { glow: 0.5 }); a.box(q[0], 9.2, q[1], q[2], 0.4, q[3] - 0.5, G, GT, { glow: 0.4 }); });
+        /* the red runner up the middle aisle and the marble rounds on the floor */
+        a.quad(gx(33.5), 0.04, dz, 59.5, 3.4, 'carpet_4', 0xb02a2a, { flat: true, uv: 3.5 });
+    });
+    [[20, 24, 4.6, 0xb89a50], [33, 24, 0, 0], [43.5, 24, 3.2, 0x9a5a4a]].forEach(q => { if (q[2]) { mark({ k: 'ring', x: gx(q[0]), z: gz(q[1]), r: q[2], w: 0.5, color: q[3], a: 0.85 }); mark({ k: 'ring', x: gx(q[0]), z: gz(q[1]), r: q[2] + 1.6, w: 0.25, color: q[3], a: 0.7 }); } });
+    /* the piers and the baldachin's columns stop the walker */
+    [[17, 20], [22, 20], [17, 27], [22, 27]].forEach(q => { wall(gx(q[0]), mz(q[1]), gx(q[0] + 1), mz(q[1]), FY, 6, { t: 3.4 }); });
+    [[19, 23], [20, 23], [19, 24], [20, 24]].forEach(q => wall(mx(q[0]) - 0.6, mz(q[1]), mx(q[0]) + 0.6, mz(q[1]), FY, 4, { t: 1.2 }));
+};
 exports.dress = ctx => { const { P, at, gx, gz, mx, mz } = ctx;
     /* the nave's two rows of columns (blockers on whole squares), the pews either side of the middle aisle */
     for (let x = 25; x <= 41; x += 2) { P('greek_column', x, 20, { h: 15 }); P('greek_column', x, 27, { h: 15 }); }
     for (let x = 26; x <= 38; x += 2) { P('catholic_pew', x, 22, { face: 270 }); P('catholic_pew', x, 25, { face: 270 }); }
     /* the crossing: the altar under the dome on its dais, the four piers */
-    P('stone_altar', 20, 24, { face: 90 }); [[17, 20], [22, 20], [17, 27], [22, 27]].forEach(q => P('greek_column', q[0], q[1], { h: 20 }));
-    P('royal_throne', 14, 22, { face: 90 }); P('lectern', 23, 22, { face: 90 }); P('church_podium', 23, 26, { face: 90 });
-    [[17, 14], [22, 14], [17, 33], [22, 33]].forEach((q, i) => P('confessional_booth', q[0], q[1], { face: i < 2 ? 180 : 0 }));
+    [[17, 20], [22, 20], [17, 27], [22, 27], [19, 23], [20, 23], [19, 24], [20, 24]].forEach(q => ctx.take(q[0], q[1]));   // the piers, the baldachin's four columns (drawn, build2)
+    at('stone_altar', gx(20), gz(24), { y: FY + 0.3, face: 90 }); at('candelabra', gx(20) - 1.2, gz(24) - 2.9, { y: FY + 0.3 }); at('candelabra', gx(20) - 1.2, gz(24) + 2.9, { y: FY + 0.3 }); at('meshy_bible', gx(20), gz(24), { y: FY + 1.28, face: 90 });
+    P('royal_throne', 14, 23, { face: 90, h: 2.6 }); P('lectern', 23, 22, { face: 90 }); P('church_podium', 23, 25, { face: 90 });
+    /* PASS 2: the side chapels along the aisles (an altar, a painting over it, two candelabra), the organ in the north transept, tombs in the
+       south one, chandeliers down the nave, the narthex's stoups and ropes */
+    [27, 31, 35, 39].forEach((x, i) => { P('stone_altar', x, 17, { face: 180 }); at('painting_portrait', mx(x), gz(17) + 0.5, { y: FY + 3.4, face: 0, span: 2.6 }); if (i % 2 === 0) at('candelabra', mx(x) - 1.4, gz(17) + 1.2, {});
+        P('stone_altar', x, 30, { face: 0 }); at(i % 2 ? 'painting_landscape' : 'painting_portrait', mx(x), gz(31) - 0.5, { y: FY + 3.4, face: 180, span: 2.6 }); if (i % 2) at('candelabra', mx(x) + 1.4, gz(31) - 1.2, {}); });
+    for (let i = 0; i < 9; i++) at('decor_organ_pipe_white', gx(20) - 6 + i * 1.5, gz(13) + 0.7, { y: FY + 2.2, h: 4 + (4 - Math.abs(i - 4)) * 0.9 });
+    P('judges_bench', 20, 14, { face: 180 }); P('instrument_harp', 18, 15); P('instrument_cello', 21, 15);
+    P('sarcophagus', 19, 33, { face: 90 }); P('sarcophagus', 20, 33, { face: 90 }); at('tomb_plaque', gx(20), gz(35) - 0.45, { y: FY + 2.2, face: 0 }); P('weeping_angel', 18, 31, { face: 0 }); P('weeping_angel', 21, 31, { face: 0 });
+    [28, 34, 40].forEach(x => at('crystal_chandelier', gx(x), gz(24), { y: FY + 13.5, h: 3.2 }));
+    P('stone_urn', 43, 19, { h: 1.4 }); P('stone_urn', 43, 28, { h: 1.4 }); [[43, 22], [43, 25]].forEach(q => P('rope_stanchion', q[0], q[1]));
+
+    [[16, 16], [23, 16], [16, 31], [23, 31]].forEach((q, i) => P('confessional_booth', q[0], q[1], { face: i % 2 ? 270 : 90 }));
     P('angel_statue', 43, 16, { face: 270 }); P('angel_statue', 43, 31, { face: 270 });
-    [[24, 18], [24, 29], [41, 18], [41, 29], [18, 22], [18, 26]].forEach(q => P('brazier', q[0], q[1]));
+    [[24, 18], [24, 29], [41, 18], [41, 29]].forEach(q => P('candle_ring', q[0], q[1]));
     for (let x = 27; x <= 39; x += 4) { at('stained_glass', mx(x), gz(17) + 0.5, { y: 8, face: 180 }); at('stained_glass', mx(x), gz(31) - 0.5, { y: 8, face: 0 }); }
     [[19, 13.2, 180], [20, 34.8, 0]].forEach(q => at('holy_tapestry', mx(q[0]), gz(q[1]), { y: 5, face: q[2] }));
     /* PASS 1, the figures: thirteen on the attic (the catalogue's robed `hooded_statue`, the tall `god_statue` in the middle), two on the steps' pedestals */
@@ -102,7 +156,7 @@ exports.dress = ctx => { const { P, at, gx, gz, mx, mz } = ctx;
 };
 exports.people = ctx => { const { native, say } = ctx;
     native('priest', 30, 18, 180, say('vatican_basilica', 'priest', 0, 'female'), { gender: 'female' });
-    native('priest', 21, 22, 90, say('vatican_basilica', 'priest', 0, 'male'), { gender: 'male' });
-    native('seraphim', 19, 15, 180, say('vatican_basilica', 'seraphim'));
+    native('priest', 22, 23, 90, say('vatican_basilica', 'priest', 0, 'male'), { gender: 'male' });
+    native('seraphim', 19, 17, 180, say('vatican_basilica', 'seraphim'));
     native('priest', 43, 21, 90, null, { gender: 'male' });
 };
