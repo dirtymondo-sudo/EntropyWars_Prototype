@@ -50894,6 +50894,336 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['nrShhh']            = { impact: 'nbShhh_impact' };
     SPELL_MAP['nrSilentTreatment'] = { impact: 'nbSilentTreatment_impact' };
 
+    /* ════ MAGICIAN — top hat and tails, white gloves, a deck of cards, the box, the saw, the doves (2026-11-16) ════
+       Sleight of Hand · Pick a Card · Saw in Half, and the three tricks springing (battle.js _magicianFx → playSpellRiderFx
+       kinds magicDoves / magicVanishOut / magicVanishIn / magicBox / magicPoof, mapped as pseudo ids '_magic*'). Canvas
+       textures + R2 terrain sheets only. Spell colours: stage purple, red lining, white, gold; the RIM of every ring is the
+       Magician's SIDE seen from the viewer's seat (yours cyan-blue, theirs pink-orange, Riot guide). Sleight of Hand looks
+       the same whichever trick it set: the other side must never read the trick off the VFX. */
+    var _MG = { purple: 0x6a2a8a, lining: 0xc0102a, glove: 0xffffff, gold: 0xffd27a, smoke: 0xe8e2f0, steel: 0xdfe6ee };
+    function _mgOwner(p) {
+        if (p && p.owner != null) return p.owner;
+        try {
+            if (typeof state === 'undefined' || !state.units) return null;
+            var sx = p.fromX != null ? p.fromX : p.tx, sy = p.fromX != null ? p.fromY : p.ty;
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === sx && u.y === sy) return u.player; }
+        } catch (e) {}
+        return null;
+    }
+    /* the side ramp of a mark owned by `owner`: [bright, deep] */
+    function _mgSide(owner) {
+        if (owner == null || window.EW_NO_RIOT_VFX || window.EW_NO_RIOT_VFX_C) return [_MG.gold, 0xc89a3a];
+        var vp = 1; try { vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1; } catch (e) {}
+        return owner === vp ? [0x1deeff, 0x1d63ff] : [0xfd1674, 0xf9590f];
+    }
+    /* a playing card: 'back' (the stage deck: purple lattice, red rim) · 'ace' (A♠) */
+    function _mgCardTex(kind) {
+        return _pzTex('mg-card-' + kind, 96, 136, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.strokeStyle = '#2a2030'; g.lineWidth = 3; _nbRR(g, 2, 2, w - 4, h - 4, 10);
+            if (kind === 'back') {
+                g.fillStyle = '#6a2a8a'; g.fillRect(9, 9, w - 18, h - 18);
+                g.strokeStyle = 'rgba(255,214,122,0.85)'; g.lineWidth = 2;
+                for (var i = -h; i < w + h; i += 12) { g.beginPath(); g.moveTo(i, 9); g.lineTo(i + h, h - 9); g.moveTo(i + h, 9); g.lineTo(i, h - 9); g.stroke(); }
+                g.strokeStyle = '#c0102a'; g.lineWidth = 4; g.strokeRect(9, 9, w - 18, h - 18);
+                g.fillStyle = '#ffd27a'; g.beginPath(); g.ellipse(w / 2, h / 2, 13, 13, 0, 0, Math.PI * 2); g.fill();
+                g.fillStyle = '#1a1020'; g.fillRect(w / 2 - 7, h / 2 - 9, 14, 12); g.fillRect(w / 2 - 11, h / 2 + 2, 22, 3);
+            } else {
+                g.fillStyle = '#14101a'; g.font = 'bold 26px Georgia'; g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText('A', 16, 20); g.save(); g.translate(w - 16, h - 20); g.rotate(Math.PI); g.fillText('A', 0, 0); g.restore();
+                var cx = w / 2, cy = h / 2 + 2, r = 22;
+                g.beginPath(); g.moveTo(cx, cy - r * 1.25);
+                g.bezierCurveTo(cx + r * 1.6, cy - r * 0.1, cx + r * 0.9, cy + r * 1.0, cx, cy + r * 0.35);
+                g.bezierCurveTo(cx - r * 0.9, cy + r * 1.0, cx - r * 1.6, cy - r * 0.1, cx, cy - r * 1.25); g.fill();
+                g.beginPath(); g.moveTo(cx, cy + r * 0.2); g.lineTo(cx + 9, cy + r * 1.15); g.lineTo(cx - 9, cy + r * 1.15); g.closePath(); g.fill();
+            }
+        });
+    }
+    /* a white dove side-on, wings up (0) / wings down (1) */
+    function _mgDoveTex(f) {
+        return _pzTex('mg-dove-' + f, 128, 96, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.strokeStyle = 'rgba(110,110,130,0.9)'; g.lineWidth = 2.5; g.lineJoin = 'round';
+            g.beginPath(); g.ellipse(64, 54, 30, 14, -0.12, 0, Math.PI * 2); g.fill(); g.stroke();             // body
+            g.beginPath(); g.ellipse(98, 44, 11, 10, 0, 0, Math.PI * 2); g.fill(); g.stroke();                 // head
+            g.fillStyle = '#e8a040'; g.beginPath(); g.moveTo(108, 43); g.lineTo(118, 46); g.lineTo(108, 48); g.closePath(); g.fill();
+            g.fillStyle = '#1a1420'; g.beginPath(); g.arc(101, 42, 2, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#ffffff';
+            g.beginPath(); g.moveTo(34, 52); g.lineTo(8, 44); g.lineTo(12, 58); g.lineTo(6, 66); g.lineTo(36, 60); g.closePath(); g.fill(); g.stroke();   // tail
+            g.beginPath();
+            if (f === 0) { g.moveTo(52, 46); g.quadraticCurveTo(40, 14, 70, 4); g.quadraticCurveTo(66, 26, 80, 46); }
+            else { g.moveTo(52, 58); g.quadraticCurveTo(44, 86, 70, 94); g.quadraticCurveTo(68, 72, 80, 58); }
+            g.closePath(); g.fill(); g.stroke();
+        });
+    }
+    /* the saw: a steel disc with teeth and a hub */
+    function _mgSawTex() {
+        return _pzTex('mg-saw', 128, 128, function (g, w, h) {
+            var cx = 64, cy = 64, R = 60, r = 50;
+            g.fillStyle = '#c8d0da'; g.strokeStyle = '#4a5260'; g.lineWidth = 2; g.beginPath();
+            for (var i = 0; i < 24; i++) { var a = i / 24 * Math.PI * 2, b = (i + 0.6) / 24 * Math.PI * 2;
+                g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); g.lineTo(cx + Math.cos(b) * R, cy + Math.sin(b) * R); }
+            g.closePath(); g.fill(); g.stroke();
+            var gr = g.createRadialGradient(cx - 14, cy - 14, 4, cx, cy, r); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#cfd6de'); gr.addColorStop(1, '#8a929e');
+            g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r - 3, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = 'rgba(60,66,80,0.5)'; g.lineWidth = 1.5;
+            for (var k = 0; k < 6; k++) { var c = k / 6 * Math.PI * 2; g.beginPath(); g.arc(cx, cy, 30, c, c + 0.6); g.stroke(); }
+            g.fillStyle = '#4a5260'; g.beginPath(); g.arc(cx, cy, 9, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#ffd27a'; g.beginPath(); g.arc(cx, cy, 4, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* a top hat (leather sheet darkened, a red band) */
+    function _mgHat(ts, parent) {
+        var hat = new THREE.Group(); parent.add(hat);
+        var felt = _pzSolid(0x2a2230, _sigTerrainTex('leather.png', 1, 1)), band = _pzSolid(_MG.lining, _sigTerrainTex('leather.png', 1, 1));
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.13, ts * 0.13, ts * 0.26, 18), felt, hat, 0, ts * 0.15, 0);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.135, ts * 0.135, ts * 0.05, 18), band, hat, 0, ts * 0.05, 0);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.22, ts * 0.018, 22), felt, hat, 0, ts * 0.012, 0);
+        return { g: hat, mats: [felt, band] };
+    }
+    /* a puff of stage smoke + sparkles at a frame-local height */
+    function _mgPuff(F, y, n, tint) {
+        for (var i = 0; i < n; i++) _pzP(F, rn(-6, 6), y + rn(-4, 6), rn(-6, 6), { sprite: 'smoke-soft', tint: tint || _MG.smoke, ml: rn(520, 900),
+            size0: rn(14, 22), size1: rn(36, 52), vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(10, 50), drag: 1.4, opacity0: 0.75 });
+        for (var j = 0; j < n + 4; j++) _pzP(F, rn(-8, 8), y + rn(-6, 10), rn(-8, 8), { sprite: 'sparkle', tint: j % 3 ? 0xffffff : _MG.gold, ml: rn(400, 800),
+            size0: rn(4, 8), size1: 1, vx: rn(-70, 70), vy: rn(-70, 70), vz: rn(20, 110), drag: 1.2, opacity0: 0.95 });
+    }
+
+    /* SLEIGHT OF HAND: a fan of five cards opens in a white glove beside the Magician's shoulder, closes to one, the card
+       turns face down and is gone up his sleeve; a ring in his side colour. Same look for every trick. */
+    EFFECTS['nbSleightOfHand_aura'] = _pzDef('nbSleightOfHand', { aoeRadius: 0, layers: [
+        { count: 8, sprite: 'sparkle', ml: [500, 800], offsetXY: 14, z: [40, 80], tint: 0xffffff, vzRange: [10, 50], drag: 0.6, size0: [4, 7], size1: 1, opacity0: 0.85, delayMs: 980 },
+    ] });
+    _PZ_SIGS.nbSleightOfHand = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), side = _mgSide(_mgOwner(p));
+        var hand = new THREE.Group(); F.g.add(hand);
+        var fan = new THREE.Group(); hand.add(fan);
+        var back = _mgCardTex('back'), cards = [];
+        for (var i = 0; i < 5; i++) {
+            var piv = new THREE.Group(); fan.add(piv);
+            var c = _pzMesh(new THREE.PlaneGeometry(ts * 0.24, ts * 0.34), _pzSolid(0xffffff, back, { side: THREE.DoubleSide, depthWrite: false }), piv, 0, ts * 0.19, i * 0.002);
+            cards.push({ piv: piv, m: c, a: (i - 2) * 0.32 });
+        }
+        var glove = _pzSprN(0xffffff, ts * 0.3, _nbGloveTex('open'), hand); glove.scale.set(ts * 0.2, ts * 0.25, 1); glove.position.set(0, -ts * 0.02, -0.01);
+        var rang = false;
+        return _sigRunOwned(F.g, 1250, function (el) {
+            var into = _sigClamp01((el - 880) / 240);   // up the sleeve
+            /* beside him on the lens's right, a little toward the lens: the fan never covers his body */
+            var rx = -cd.z, rz = cd.x, k = 1 - 0.75 * into;
+            hand.position.set((rx * 0.5 + cd.x * 0.2) * ts * k, ts * (1.0 + 0.1 * into), (rz * 0.5 + cd.z * 0.2) * ts * k);
+            _pzFace(hand);
+            var open = _sigEaseOutBack(_sigClamp01(el / 300)) * (1 - _sigEaseInCubic(_sigClamp01((el - 480) / 220)));
+            var flip = _sigClamp01((el - 700) / 160), sx = Math.abs(Math.cos(flip * Math.PI));
+            for (var j = 0; j < cards.length; j++) {
+                var C = cards[j];
+                C.piv.rotation.z = -C.a * open;
+                var keep = j === 2;
+                C.m.material.opacity = (keep ? 1 - into : (el < 700 ? 1 : 0)) * Math.min(1, el / 80);
+                C.m.scale.set(keep ? Math.max(0.05, sx) * (1 - 0.6 * into) : 1, keep ? 1 - 0.6 * into : 1, 1);
+            }
+            glove.material.opacity = 0.95 * _pzEnv(el, 0, 80, 900, 1150);
+            if (!rang && el >= 980) { rang = true; _sigShockRing3D(tx, ty, { color: side[0], r1: ts * 0.9, ms: 420, height: ts * 0.04 }); }
+        });
+    };
+
+    /* PICK A CARD: a fan of face-down cards opens over the victim's head, one rises, turns over (the ace of spades) and comes
+       down onto its chest; the rest fold away. Ring in the Magician's side colour. */
+    EFFECTS['nbPickACard_impact'] = _pzDef('nbPickACard', { layers: [
+        { count: 6, sprite: 'sparkle', ml: [400, 700], offsetXY: 10, z: [50, 70], tint: 0xffffff, vzRange: [0, 30], drag: 0.6, size0: [4, 7], size1: 1, opacity0: 0.9, delayMs: 820 },
+    ] });
+    _PZ_SIGS.nbPickACard = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), side = _mgSide(_mgOwner(p));
+        var hold = new THREE.Group(); F.g.add(hold);
+        var back = _mgCardTex('back'), ace = _mgCardTex('ace'), cards = [];
+        for (var i = 0; i < 5; i++) {
+            var piv = new THREE.Group(); hold.add(piv);
+            var c = _pzMesh(new THREE.PlaneGeometry(ts * 0.32, ts * 0.45), _pzSolid(0xffffff, back, { side: THREE.DoubleSide, depthWrite: false }), piv, 0, ts * 0.24, i * 0.003);
+            cards.push({ piv: piv, m: c, a: (i - 2) * 0.3 });
+        }
+        var pick = cards[1];
+        var glow = _pzSprN(side[0], ts * 0.5, _sigGlowTex(), hold);
+        var slapped = false;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            /* the fan opens over the victim's head (never across its body); the chosen card comes down onto its chest */
+            var fly = _sigEaseInCubic(_sigClamp01((el - 820) / 160));
+            hold.position.set(cd.x * ts * (0.1 + 0.3 * fly), ts * (1.55 - 0.85 * fly), cd.z * ts * (0.1 + 0.3 * fly));
+            _pzFace(hold);
+            var open = _sigEaseOutBack(_sigClamp01(el / 280));
+            for (var j = 0; j < cards.length; j++) {
+                var C = cards[j];
+                C.piv.rotation.z = -C.a * open;
+                if (C === pick) continue;
+                C.m.material.opacity = Math.min(1, el / 80) * (1 - _sigClamp01((el - 560) / 220));
+                C.piv.position.y = -ts * 0.2 * _sigClamp01((el - 560) / 220);
+            }
+            var lift = _sigEaseOutCubic(_sigClamp01((el - 300) / 260)), flip = _sigClamp01((el - 580) / 200);
+            pick.piv.rotation.z = -pick.a * open * (1 - lift);
+            pick.m.position.set(0, ts * (0.24 + 0.24 * lift - 0.48 * fly), 0.01);
+            pick.m.scale.set(Math.max(0.05, Math.abs(Math.cos(flip * Math.PI))) * (1 - 0.45 * fly), 1 - 0.45 * fly, 1);
+            if (flip >= 0.5 && pick.m.material.map !== ace) { pick.m.material.map = ace; pick.m.material.needsUpdate = true; }
+            pick.m.material.opacity = Math.min(1, el / 80) * (1 - _sigClamp01((el - 1100) / 380));
+            glow.position.copy(pick.m.position); glow.scale.setScalar(ts * (0.45 + 0.2 * Math.sin(el * 0.02)));
+            glow.material.opacity = 0.5 * _pzEnv(el, 560, 700, 1000, 1400);
+            if (!slapped && el >= 980) { slapped = true; _sigShockRing3D(tx, ty, { color: side[0], r1: ts * 1.0, ms: 420, height: ts * 0.04 }); }
+        });
+    };
+
+    /* SAW IN HALF: the cabinet's gold frame snaps up round the victim (faint purple panels, the body stays in sight), the
+       saw comes through at the waist from the Magician's side, a white cut line opens across the box and its top slides a
+       little off and back. The blade passes the middle on the damage number. */
+    EFFECTS['nbSawInHalf_impact'] = _pzDef('nbSawInHalf', { shake: 'normal', layers: [
+        { count: 14, sprite: 'steel-spark', ml: [240, 480], offsetXY: 8, z: [32, 44], tint: 0xfff2d0, vxRange: 260, vyRange: 260, vzRange: [20, 160], gravity: 320, size0: [4, 8], size1: 1, delayMs: 60 },
+        { sprite: 'flash', ml: 120, size0: 46, size1: 12, tint: 0xffffff, opacity0: 0.7, z: 38, delayMs: 110 },
+    ] });
+    _PZ_SIGS.nbSawInHalf = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), side = _mgSide(_mgOwner(p));
+        var W = ts * 0.9, H = ts * 1.5, cutY = H * 0.5;
+        var box = new THREE.Group(); F.g.add(box);
+        var top = new THREE.Group(); box.add(top);
+        var gold = _pzSolid(0xffffff, _sigTerrainTex('gold.png', 1, 1)), panel = _pzSolid(_MG.purple, _sigTerrainTex('wood.png', 1, 1), { side: THREE.DoubleSide, depthWrite: false });
+        var rails = [];
+        function rail(parent, x, y, z, sx, sy, sz) { var r = _pzMesh(new THREE.BoxGeometry(sx, sy, sz), gold, parent, x, y, z); rails.push(r); return r; }
+        var e = ts * 0.035, hw = W / 2;
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
+            rail(box, q[0] * hw, cutY / 2, q[1] * hw, e, cutY, e);
+            rail(top, q[0] * hw, cutY + (H - cutY) / 2, q[1] * hw, e, H - cutY, e);
+        });
+        [0, cutY - e, cutY + e, H].forEach(function (y, k) {
+            var par = k < 2 ? box : top;
+            rail(par, 0, y, -hw, W, e, e); rail(par, 0, y, hw, W, e, e); rail(par, -hw, y, 0, e, e, W); rail(par, hw, y, 0, e, e, W);
+        });
+        var pane = _pzMesh(new THREE.BoxGeometry(W * 0.98, H * 0.98, W * 0.98), panel, box, 0, H / 2, 0);
+        var cut = _pzMesh(new THREE.PlaneGeometry(W * 1.2, ts * 0.04), _pzGlow(0xffffff), F.g, 0, cutY, 0);
+        var cutRim = _pzMesh(new THREE.PlaneGeometry(W * 1.35, ts * 0.1), _pzGlow(side[0]), F.g, 0, cutY, 0);
+        var saw = new THREE.Group(); saw.rotation.order = 'YXZ'; F.g.add(saw);
+        var blade = _pzMesh(new THREE.CircleGeometry(ts * 0.34, 32), _pzSolid(0xffffff, _mgSawTex(), { side: THREE.DoubleSide, depthWrite: false }), saw);
+        blade.rotation.x = -Math.PI / 2;
+        var yaw = Math.atan2(ln.ux, ln.uz), rang = false;
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 140));
+            box.scale.set(1, Math.max(0.02, up), 1);
+            var fade = 1 - _sigClamp01((el - 950) / 400);
+            gold.opacity = fade * Math.min(1, el / 60); panel.opacity = 0.14 * fade * Math.min(1, el / 60);
+            /* the blade: from 1.1 squares out on the Magician's side, through the middle at 120 ms, out the far side */
+            var s = Math.max(-1.1, Math.min(1.2, (el - 120) / 140));   // -1 = the Magician's side, +1 = the far side
+            saw.position.set(-ln.ux * ts * 1.1 * s, cutY, -ln.uz * ts * 1.1 * s);
+            saw.rotation.y = yaw; blade.rotation.z = -el * 0.04;
+            blade.material.opacity = Math.min(1, el / 50) * (1 - _sigClamp01((el - 300) / 120));
+            if (!rang && el >= 120) { rang = true; _sigShockRing3D(tx, ty, { color: side[0], r1: ts * 1.1, ms: 400, height: ts * 0.04 }); }
+            var co = _pzEnv(el, 110, 150, 520, 900);
+            cut.rotation.y = yaw + Math.PI / 2; cutRim.rotation.y = cut.rotation.y; cutRim.position.y = cutY;
+            cut.material.opacity = 0.95 * co; cutRim.material.opacity = 0.45 * co;
+            var sl = Math.sin(Math.PI * _sigClamp01((el - 260) / 560));
+            top.position.set(Math.cos(yaw) * ts * 0.16 * sl, 0, -Math.sin(yaw) * ts * 0.16 * sl);
+        });
+    };
+    SPELL_MAP['nrSleightOfHand'] = { aura: 'nbSleightOfHand_aura' };
+    SPELL_MAP['nrPickACard']     = { impact: 'nbPickACard_impact' };
+    SPELL_MAP['nrSawInHalf']     = { impact: 'nbSawInHalf_impact' };
+
+    /* THE TRICKS SPRINGING (battle.js _magicianFx; p.owner = the Magician's side) */
+    /* DOVES: the cast bursts into a flock — a white puff on the aimed square and nine doves flapping up and away */
+    EFFECTS['nbMagicDoves'] = _pzDef('nbMagicDoves');
+    _PZ_SIGS.nbMagicDoves = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = _mgSide(_mgOwner(p));
+        _mgPuff(F, 70, 7);
+        _pzFeathers(tx, ty, 0xffffff, 8, { y: 0.8, ms: 1200 });
+        _sigShockRing3D(tx, ty, { color: side[0], r1: ts * 1.2, ms: 480, height: ts * 0.04 });
+        var t0 = _mgDoveTex(0), t1 = _mgDoveTex(1), doves = [];
+        for (var i = 0; i < 9; i++) {
+            var a = i / 9 * Math.PI * 2 + rn(-0.3, 0.3);
+            var s = _pzSprN(0xffffff, ts * 0.32, t0, F.g); s.scale.set(ts * 0.34, ts * 0.26, 1);
+            doves.push({ s: s, dx: Math.cos(a), dz: Math.sin(a), up: rn(1.3, 2.2), far: rn(0.9, 1.6), ph: rn(0, 200), lag: i * 18 });
+        }
+        return _sigRunOwned(F.g, 1500, function (el) {
+            for (var j = 0; j < doves.length; j++) {
+                var D = doves[j], t = _sigClamp01((el - D.lag) / (1400 - D.lag)), e = _sigEaseOutCubic(t);
+                D.s.position.set(D.dx * ts * D.far * e, ts * (0.7 + D.up * t), D.dz * ts * D.far * e);
+                var flap = Math.floor((el + D.ph) / 70) % 2;
+                var map = flap ? t1 : t0; if (D.s.material.map !== map) { D.s.material.map = map; D.s.material.needsUpdate = true; }
+                D.s.material.opacity = el < D.lag ? 0 : 0.98 * (1 - _sigClamp01((t - 0.7) / 0.3));
+                var sc = 1 - 0.3 * t; D.s.scale.set(ts * 0.34 * sc * (D.dx < 0 ? -1 : 1), ts * 0.26 * sc, 1);
+            }
+        });
+    };
+    /* VANISHING ACT: where he stood, a puff and his top hat hanging in the air, spinning down — pop; where he steps out, a
+       column of sparkles and a smaller puff on the beat he reappears */
+    EFFECTS['nbMagicVanishOut'] = _pzDef('nbMagicVanishOut');
+    _PZ_SIGS.nbMagicVanishOut = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = _mgSide(_mgOwner(p));
+        _mgPuff(F, 50, 8, 0xd8ccec);
+        _sigShockRing3D(tx, ty, { color: side[0], r1: ts * 1.0, ms: 420, height: ts * 0.04 });
+        var H = _mgHat(ts, F.g), popped = false;
+        return _sigRunOwned(F.g, 1000, function (el) {
+            var t = _sigClamp01(el / 700);
+            H.g.position.set(0, ts * (1.55 - 1.0 * _sigEaseInCubic(t)), 0);
+            H.g.rotation.set(0.25 * Math.sin(el * 0.01), el * 0.012, 0.2 * Math.sin(el * 0.008));
+            var sc = el < 700 ? 1 : Math.max(0.01, 1 - (el - 700) / 120);
+            H.g.scale.setScalar(sc);
+            for (var k = 0; k < H.mats.length; k++) H.mats[k].opacity = el < 820 ? Math.min(1, el / 60) : 0;
+            if (!popped && el >= 720) { popped = true; _mgPuff(F, 30, 3); }
+        });
+    };
+    EFFECTS['nbMagicVanishIn'] = _pzDef('nbMagicVanishIn');
+    _PZ_SIGS.nbMagicVanishIn = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        _fxDelay(function () {
+            if (_suppressed() || !_pzSeen(tx, ty)) return;
+            var F = _nrvFrame(tx, ty), ts = F.ts, side = _mgSide(_mgOwner(p));
+            _mgPuff(F, 40, 4, 0xd8ccec);
+            _sigShockRing3D(tx, ty, { color: side[0], r1: ts * 0.9, ms: 420, height: ts * 0.04 });
+            var col = _pzMesh(new THREE.CylinderGeometry(ts * 0.32, ts * 0.38, ts * 1.8, 20, 1, true), _pzGlow(side[0]), F.g, 0, ts * 0.9, 0);
+            _sigRunOwned(F.g, 600, function (el) { col.material.opacity = 0.22 * _pzEnv(el, 0, 60, 200, 600); col.scale.set(1 - 0.4 * el / 600, 1, 1 - 0.4 * el / 600); });
+        }, 380);
+    };
+    /* SWITCHEROO: the blow lands on a stage crate (wood, gold edges) where the ally stood — it shakes and its sides fall
+       open on the Magician; a puff where the ally steps out */
+    EFFECTS['nbMagicBox'] = _pzDef('nbMagicBox', { shake: 'normal' });
+    _PZ_SIGS.nbMagicBox = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = _mgSide(_mgOwner(p)), W = ts * 0.86, hw = W / 2;
+        var wood = _pzSolid(0xb08ad0, _sigTerrainTex('wood.png', 1, 1), { side: THREE.DoubleSide }), gold = _pzSolid(0xffffff, _sigTerrainTex('gold.png', 1, 1));
+        var sides = [];
+        for (var i = 0; i < 4; i++) {
+            var hinge = new THREE.Group(); hinge.rotation.y = i * Math.PI / 2; F.g.add(hinge);
+            var leaf = new THREE.Group(); leaf.position.set(0, 0, hw); hinge.add(leaf);
+            _pzMesh(new THREE.PlaneGeometry(W, W), wood, leaf, 0, hw, 0);
+            _pzMesh(new THREE.BoxGeometry(W, ts * 0.04, ts * 0.04), gold, leaf, 0, W - ts * 0.02, 0);
+            _pzMesh(new THREE.BoxGeometry(ts * 0.04, W, ts * 0.04), gold, leaf, hw - ts * 0.02, hw, 0);
+            sides.push(leaf);
+        }
+        var lid = _pzMesh(new THREE.BoxGeometry(W, ts * 0.05, W), wood, F.g, 0, W, 0);
+        var hit = false;
+        return _sigRunOwned(F.g, 1250, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 120)), shake = el > 120 && el < 420 ? Math.sin(el * 0.09) * ts * 0.03 : 0;
+            var fall = _sigEaseInCubic(_sigClamp01((el - 460) / 300));
+            for (var j = 0; j < sides.length; j++) { sides[j].scale.set(1, Math.max(0.02, up), 1); sides[j].rotation.x = fall * Math.PI / 2; sides[j].position.x = shake; }
+            lid.scale.set(1, 1, 1); lid.position.set(shake, W * up + ts * 1.2 * fall, 0); lid.rotation.z = fall * 1.4;
+            var op = Math.min(1, el / 60) * (1 - _sigClamp01((el - 820) / 400));
+            wood.opacity = 0.92 * op; gold.opacity = op;
+            if (!hit && el >= 130) { hit = true; _sigShockRing3D(tx, ty, { color: side[0], r1: ts * 1.2, ms: 460, height: ts * 0.04 });
+                _pzP(F, 0, 60, 0, { sprite: 'flash', ml: 120, size0: 40, size1: 12, tint: 0xffffff, opacity0: 0.6 }); }
+            if (el > 460 && el < 520 && _canSpawn()) _mgPuff(F, 20, 2, 0xd8ccec);
+        });
+    };
+    EFFECTS['nbMagicPoof'] = _pzDef('nbMagicPoof');
+    _PZ_SIGS.nbMagicPoof = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = _mgSide(_mgOwner(p));
+        _mgPuff(F, 50, 6, 0xd8ccec);
+        _sigShockRing3D(tx, ty, { color: side[0], r1: ts * 0.9, ms: 420, height: ts * 0.04 });
+        var col = _pzMesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.36, ts * 1.6, 20, 1, true), _pzGlow(0xffffff), F.g, 0, ts * 0.8, 0);
+        return _sigRunOwned(F.g, 500, function (el) { col.material.opacity = 0.18 * _pzEnv(el, 0, 60, 160, 500); });
+    };
+    SPELL_MAP['_magicDoves']     = { impact: 'nbMagicDoves' };
+    SPELL_MAP['_magicVanishOut'] = { impact: 'nbMagicVanishOut' };
+    SPELL_MAP['_magicVanishIn']  = { impact: 'nbMagicVanishIn' };
+    SPELL_MAP['_magicBox']       = { impact: 'nbMagicBox' };
+    SPELL_MAP['_magicPoof']      = { impact: 'nbMagicPoof' };
+
     /* ════ SEWER GATOR (2026-11-16 polish, the new races) — black water, bone teeth, yellow eyes just above the surface ════
        Submerge, Drag Under (id nrDeathRoll) and Tail Sweep shipped on the water element's stock look (a buff glow, the plain
        water hit, the plain cross); each gets its own piece here, same hooks as the nb* batch above (EFFECTS `pzSig` →
