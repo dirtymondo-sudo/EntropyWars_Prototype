@@ -26982,9 +26982,10 @@ const ThreeRenderer = (function () {
         var roots = [], skipped = 0;
         group.children.forEach(function (c) {
             if (_occFieldBig(c)) { c.traverse(function (o) { if (o.isMesh) o._ew_occSkip = true; }); skipped++; return; }
-            roots.push({ o: c, c: new THREE.Vector3(), r: 0 });
+            roots.push({ o: c, c: new THREE.Vector3(), r: 0 }); c._ew_noBatch = true;   // THE FIELD MERGE: a piece the fade may ghost is never merged
         });
-        var F = { roots: roots, skipped: skipped, mPx: mPx, blockerPx: ((HR && HR.blockerM > 0) ? HR.blockerM : 2.5) * mPx,
+        group.children.forEach(function (c) { if (c._ew_occWall != null || c.name === 'hq_ceil' || c.name === 'hq_sky') c._ew_noBatch = true; });   // a wall side and the ceiling fade whole
+        var F = { group: group, roots: roots, skipped: skipped, mPx: mPx, blockerPx: ((HR && HR.blockerM > 0) ? HR.blockerM : 2.5) * mPx,
                   refreshMs: ((HR && HR.occRefreshS > 0) ? HR.occRefreshS : 2) * 1000, at: 0, rays: 0, tests: 0, ms: 0, n: 0 };
         roots.forEach(_occFieldMeasure); F.at = performance.now();
         _occField = F;
@@ -52455,6 +52456,7 @@ const ThreeRenderer = (function () {
         S.why = L.why || [];
         S.room = _hq ? ((_hq.opts && _hq.opts.room) || 'central_egress') + (_hq.stage && _hq.stage.id && _hq.stage.id !== _hq.opts.room ? ' (part ' + _hq.stage.id + ')' : '') : '';
         S.batch = (_hq && typeof _hqBatchStats === 'function') ? _hqBatchStats(_hq) : null;
+        if (!_hq && typeof _fieldInstH !== 'undefined' && _fieldInstH && _fieldInstH.batchP) { var fb = _fieldInstH.batchP; S.batch = { "the fight's room": { phase: fb.phase, batches: fb.stats.batches, pieces: fb.stats.pieces, verts: fb.stats.verts, broken: fb.stats.broken, scanned: fb.stats.scanned, loose: 0 } }; }   // THE FIELD MERGE
         try { var ks = _ktxStats(); S.ktx2 = { st: ks, loads: _asOptLoads, falls: _asOptFalls }; } catch (e) {}
         S.bvh = { on: !!_bvhLib(), rays: _bvhStat.rays * 1000 / Math.max(1, span), ms: _bvhStat.ms * 1000 / Math.max(1, span), slow: _bvhStat.slow, trees: _bvhStat.trees, tris: _bvhStat.tris, buildMs: _bvhStat.buildMs, fails: _bvhStat.fails, skinOut: _bvhStat.skinOut * 1000 / Math.max(1, span), skinIn: _bvhStat.skinIn * 1000 / Math.max(1, span) };
         _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0; _bvhStat.skinOut = 0; _bvhStat.skinIn = 0;   // per window; the trees are the session's
@@ -52524,7 +52526,7 @@ const ThreeRenderer = (function () {
             var bk = {}, bn = {}, sq = {}, top = [], MK = (typeof _ewBun !== 'undefined' && _ewBun.marked) || [];
             for (var mi = 0; mi < MK.length; mi++) {
                 var mg = MK[mi], mst = mg._ew_bun; if (!mst || mg._ew_ckOut || mg.visible === false) continue;
-                var nm = mg._ew_bunName || '', kd = mg._ew_sCell ? 'squares' : mg._ew_pChunk ? (mg._ew_pcBld ? 'rooms' : 'prop plots') : (nm === 'instance pass') ? 'instance cells' : / fences$/.test(nm) ? 'fences' : / shell$/.test(nm) ? 'shell rest' : / doors$/.test(nm) ? 'doors' : / props$/.test(nm) ? 'props rest' : 'other';
+                var nm = mg._ew_bunName || '', kd = mg._ew_sCell ? 'squares' : mg._ew_pChunk ? (mg._ew_pcBld ? 'rooms' : 'prop plots') : (nm === 'instance pass') ? 'instance cells' : mg._ew_fieldBatch ? 'fight: merged' : (nm === 'room instances') ? 'fight: instances' : (/^room /.test(nm) && mg._ew_noBatch) ? 'fight: may fade (own piece)' : /^room /.test(nm) ? 'fight: never fades, not merged' : / fences$/.test(nm) ? 'fences' : / shell$/.test(nm) ? 'shell rest' : / doors$/.test(nm) ? 'doors' : / props$/.test(nm) ? 'props rest' : 'other';
                 bk[kd] = (bk[kd] | 0) + (mst.n | 0); bn[kd] = (bn[kd] | 0) + 1; top.push([mst.n | 0, kd + ' ' + (mg._ew_chunk || (typeof mg._ew_pChunk === 'string' ? mg._ew_pChunk : '') || mg.name || '')]);
                 if (mg._ew_sCell) for (var ci2 = 0; ci2 < mg.children.length; ci2++) {
                     var cm2 = mg.children[ci2], mm = cm2.material; if (!cm2.isMesh || !mm || cm2.visible === false) continue;
@@ -52938,6 +52940,7 @@ const ThreeRenderer = (function () {
         _updateSandstormVortices();
         _updateWeatherAmbience();
         try { _fieldInstTick(_frameNow); } catch (e) {}   // THE PERF PASS: the room round the fight draws its repeated props as batches
+        try { _fieldBatchTick(_frameNow); } catch (e) {}   // THE FIELD MERGE: and merges the pieces that never fade
 
         if (_parentEl) {
             var w = _parentEl.clientWidth, h = _parentEl.clientHeight;
@@ -53015,11 +53018,19 @@ const ThreeRenderer = (function () {
                 _ssRenderFrame();
             } else {
                 _quietBefore(cam);   // THE QUIET COMPILE: a piece whose shader is still building sits this frame out — the frame draws
-                if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
-                    ThreePost.render(cam);
-                } else {
-                    renderer.render(scene, cam);
-                }
+                /* THE ONE MATRIX WALK, THE FIGHT'S (2026-11-15, mondo's F3 in a fight in Disaster City: "mask: setup + lights + sort
+                   8.0 · scene: setup + lights + sort 3.5"): each render of a battle frame (the model mask's, the picture) walked every
+                   matrix of the scene again, as the walk's frame did until 11-13. The walk runs once here and the frame's renders
+                   skip theirs (a camera still updates itself). Off: window.EW_BATTLE_MW_EVERY_RENDER = true. */
+                var mwB = !!(scene && scene.matrixWorldAutoUpdate === true && !(typeof window !== 'undefined' && window.EW_BATTLE_MW_EVERY_RENDER));
+                try {
+                    if (mwB) { var _mwSp = _lensIn('matrix walk'); try { _hqStillSceneWalk(scene); } finally { _lensOut(_mwSp); } scene.matrixWorldAutoUpdate = false; }
+                    if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
+                        ThreePost.render(cam);
+                    } else {
+                        renderer.render(scene, cam);
+                    }
+                } finally { if (mwB) scene.matrixWorldAutoUpdate = true; }
                 _quietAfter();
 
                 if (css2dRenderer) _css2dRender(scene, cam);
@@ -89970,7 +89981,36 @@ const ThreeRenderer = (function () {
     var _fieldInstH = null, FIELD_INST_SETTLE_MS = 1500;
     function _fieldInstDrop() {
         var H = _fieldInstH; _fieldInstH = null;
-        if (H) { try { _hqInstDrop(H); } catch (e) {} }
+        if (H) { try { _fieldBatchDrop(H); } catch (e) {} try { _hqInstDrop(H); } catch (e) {} }
+    }
+    /* THE FIELD MERGE (2026-11-15, mondo in a fight in Disaster City: 23 FPS, "bundles 2262 groups, 2608 meshes"; "does all of
+       the optimization we have done just randomly turn off from fights??"): yes, it did. The hand-over hands every merged
+       piece back and the fight hangs each kept piece in a holder of its own, so the fight drew the same streets piece by
+       piece. Now the fight merges too: the static batch runs on the fight's room (the record the fight's instance pass
+       keeps), with the walk's one paint and sheet stacks, over the pieces that can NEVER fade (the ground's neighbours,
+       roads, buildings, backdrops: what the fade's own list leaves out). A piece the fade may ghost (a prop near the
+       line of sight, a wall side, the ceiling) wears `_ew_noBatch` and stays its own. The merged meshes hang in one group
+       (one recording). A piece that changes is handed back by the batch's own watch, as in the walk. Dropped with the
+       fight's instance pass. Off: window.EW_FIELD_NO_BATCH = true. */
+    function _fieldBatchOff() { return _hqBatchOff() || (typeof window !== 'undefined' && !!window.EW_FIELD_NO_BATCH); }
+    function _fieldBatchDrop(H) {
+        if (!H) return;
+        try { _hqBatchDrop(H); } catch (e) {}
+        H.batch = null; H.batchP = null;
+        var g = H._fbHost; H._fbHost = null;
+        if (H.propGroup && H.propGroup._ew_fbHost === g) H.propGroup._ew_fbHost = null;
+        if (g) { if (g.parent) g.parent.remove(g); try { _disposeR(g); } catch (e) {} }
+    }
+    function _fieldBatchTick(now) {
+        var H = _fieldInstH; if (!H) return;
+        if (_fieldBatchOff() || !_occField || _occField.group !== H.propGroup || !_fieldGroundLive()) { if (H._fbHost || H.batchP) _fieldBatchDrop(H); return; }
+        if (now - H.bornAt < FIELD_INST_SETTLE_MS || (!H.inst && !H._instTried)) return;   // after the fight's instance pass took its copies
+        if (!H._fbHost) {
+            var g = new THREE.Group(); g.name = 'hq_field_batch'; g._ew_noBatch = true; g._ew_occNear = true; g._ew_fieldBatch = true;
+            H.propGroup.add(g); H._fbHost = g; H.propGroup._ew_fbHost = g;
+            H.batch = _hqBatchNew('shellGroup', now); H.batch.phase = 'off'; H.batch.lived = true;   // the fight has one group: the facility's
+        }
+        try { _hqBatchTick(H, now); } catch (e) { if (!H._fbWarned) { H._fbWarned = true; console.warn('[ThreeRenderer] the fight\'s merge failed — the room draws piece by piece', e); } _fieldBatchDrop(H); }
     }
     function _fieldInstTick(now) {
         var off = _hqInstOff() || (typeof window !== 'undefined' && window.EW_FIELD_NO_INSTANCE);
@@ -93887,7 +93927,7 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
+    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, sliceMs: 3, firstSliceMs: 28, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
     /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
        procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
        had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
@@ -93897,7 +93937,7 @@ const ThreeRenderer = (function () {
        at once, like a `visible` write. Off: window.EW_HQ_NO_PROP_BATCH (props only) / EW_HQ_NO_BATCH (all). */
     var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
     var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
-                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1, _ew_pd: 1 };
+                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1, _ew_pd: 1, _ew_noBatch: 1 };
     var _HQ_BATCH_MAPS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'envMap'];
     var _hqBatchIds = null, _hqBatchIdN = 0, _hqBatchM = null, _hqBatchM2 = null, _hqBatchN3 = null, _hqBatchV = null;
     function _hqBatchOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_BATCH; }
@@ -94217,7 +94257,7 @@ const ThreeRenderer = (function () {
     }
     /* before a shell build: every sheet its parts could stack stands in a stack. Always true (the fill is at once). */
     function _hqStackPrep(R, B, now) {
-        if (_hqStackOff() || B.grp === 'propGroup' || !_hq || R[B.grp] !== _hq.shellGroup || !_hqChunkBig(_hq)) return true;
+        if (_hqStackOff() || (!R.field && (B.grp === 'propGroup' || !_hq || R[B.grp] !== _hq.shellGroup || !_hqChunkBig(_hq)))) return true;   // (+ THE FIELD MERGE: the fight's room)
         try {
             var groups = {}, seen = new Set(), K = _hqStk.skipped, uses = new Map();
             for (var i = 0; i < B.cands.length; i++) {
@@ -94292,6 +94332,7 @@ const ThreeRenderer = (function () {
     }
     /* where a merged mesh hangs: the prop chunk its pieces stand in, else the batch's root */
     function _hqBatchHost(o, root) {
+        if (root._ew_fbHost) return root._ew_fbHost;   // THE FIELD MERGE: the fight's merged meshes hang in one group of their own (one recording)
         for (var q = o.parent; q && q !== root; q = q.parent) if (q._ew_pChunk) return q;
         return root;
     }
@@ -94316,7 +94357,7 @@ const ThreeRenderer = (function () {
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4(), groups = {}, keys = [], n = 0;
         var U = _hqUnits(), T = (HQ_BATCH.cellM || ((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
-        B.vc = !!(_hq && root === _hq.shellGroup && _hqChunkBig(_hq) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT
+        B.vc = !!(((_hq && root === _hq.shellGroup && _hqChunkBig(_hq)) || R.field) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT (+ THE FIELD MERGE: the fight's pieces merge as the walk's did)
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];
             if (c.loose) {   // THE LOOSE PIECES: always alone (its own key), so it takes the stand-in path
@@ -94399,7 +94440,14 @@ const ThreeRenderer = (function () {
         if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
         _hqStackWatch();   // THE SHEET STACK
         var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
-        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : !H.ready ? HQ_CARD_SLICE_MS : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
+        /* THE FIRST MERGE IS FAST (2026-11-15, mondo back from a fight in Disaster City: 12 FPS for 30 s, "Static batch ... build
+           6252->1265", 1,086 pieces "not yet merged"): the way back builds the room with no card over it, so its first merge ran
+           at the settled room's pace (two 1.5 s waits, then 3 ms a frame: ~1 s of work spread over 30 s of the room drawn piece
+           by piece at 12 FPS). Until a room's first merge of its shell and of its props has gone live, the merge takes
+           HQ_BATCH.firstSliceMs a frame and waits as it does behind the card. After that, the settled pace as before.
+           Off: window.EW_HQ_BATCH_FIRST_SLOW. */
+        var firstRun = !!(H.ready && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_FIRST_SLOW) && !(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')));
+        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : !H.ready ? HQ_CARD_SLICE_MS : firstRun ? (HQ_BATCH.firstSliceMs || 28) : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
             var R = recs[r];
             if (!R.batch) R.batch = _hqBatchNew('shellGroup', now);
@@ -94419,8 +94467,8 @@ const ThreeRenderer = (function () {
                 if (H.ready && B.lived && B.scanAn === _bAn && now - B.at < HQ_BATCH.rescanIdleMs && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_RESCAN_ALWAYS)) continue;
                 B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B);   // THE PERF PASS 2: the late pieces
             }
-            if (B.phase === 'wait') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
-            if (B.phase === 'watch') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
+            if (B.phase === 'wait') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
+            if (B.phase === 'watch') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
             if (_alNow() >= end) return;
             _hqSliceEnd = end;
             var res = null;
