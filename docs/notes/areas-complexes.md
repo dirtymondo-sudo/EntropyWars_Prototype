@@ -13009,4 +13009,11 @@ models", without waiting for his OK. Plan picture: `docs/plans/world-zones/leyli
   Avenue, Barrows, the long barrow (S) · the Mound, Four Enclosures, T-Pillars, Sentinel, Dig, First Doorway, Cistern (G) · the Four Tiers,
   Spiral, Unfinished Top, Crane, Kiln, Brick Stacks, Foundation Shaft, the brick houses (T) · the Causeway, Canal, Ball Court, Pyramid,
   the round tower, Xibalba (Z).
+- **PASS 2, THE BUILT PLACES (K.js `dress2`; a cave has no houses, so its "interiors" are the three places men made, and a camp).**
+  LEVEL −6: breaker panels, a camera, lockers, a utility box, pipe runs, two barricades and sandbags before the blast door, a control desk,
+  a rifle rack, crates and drums, two dead tubes. THE OUBLIETTE: an iron maiden, chains on three walls, a mattress, a body and bones in
+  the cells, the old room's drain and key, candles, three rats, a barrel, a cauldron, cobwebs. THE CRYSTAL ADIT: six dressed stone piers
+  down the adit's walls, a lit crystal on each (drawn, `cav:adit`), a wheelbarrow, an anvil, a lever frame, big crystals on the Ledge.
+  THE CAMP ON THE SHELF: a tent, a fire, firewood, bedrolls, a lantern by the spring. Seen on screen (Level −6, the cells, the adit).
+  Tool: a district may also export `dress2` .. `dress5` (one stage a pass, the same ctx).
 
