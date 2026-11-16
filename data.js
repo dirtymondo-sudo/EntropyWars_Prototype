@@ -73366,7 +73366,9 @@ const HQ_CITY_RESIDENTS = {
         /* HERO PLAZA */
         { race: 'antihero', home: 'P04-06-B1', homeName: 'Apartment stair', day: [[7, 15, 'S', 'home'], [15, 19, 'O', 'b:P04-05-B1'], [20, 6, 'P', 'd:H']] },
         { race: 'sidekick', home: 'P07-04-B2', homeName: 'Apartments A', day: [[23, 7, 'S', 'home'], [8, 18, 'W', 'b:P05-04-B1'], [18, 23, 'O', 'b:P06-04-B1']] },
-        { race: 'superhero', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[0, 6, 'S', 'home'], [7, 11, 'W', 'b:P06-05-B1'], [11, 19, 'P', 'p:P05-05'], [19, 24, 'W', 'b:P06-04-B1']] },
+        { race: 'superhero', gender: 'male', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[0, 6, 'S', 'home'], [7, 11, 'W', 'b:P06-05-B1'], [11, 19, 'P', 'p:P05-05'], [19, 24, 'W', 'b:P06-04-B1']] },
+        /* mondo 11-16: "male and female separate and unique": her own day out of the same Tower (a PROPOSAL: she patrols by night) */
+        { race: 'superhero', gender: 'female', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[8, 15, 'S', 'home'], [16, 20, 'W', 'b:P06-05-B1'], [20, 7, 'P', 'd:H']] },
         { race: 'eagleman', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[21, 4, 'S', 'home'], [5, 20, 'W', 'p:P05-05']] },
         { race: 'nephilim', home: 'P07-04-B2', homeName: 'Apartments A', day: [[23, 7, 'S', 'home'], [9, 17, 'W', 'b:P06-05-B1'], [17, 22, 'O', 'b:P04-05-B1']] },
         { race: 'police officer', home: 'P07-04-B2', homeName: 'Apartments A', day: [[8, 15, 'S', 'home'], [16, 24, 'W', 'b:P04-02-B1'], [0, 7, 'P', 'd:HE']] },
@@ -73421,6 +73423,49 @@ const HQ_SPAWN_RULES = {
                 F: { name: 'Financial', base: 25 }, S: { name: 'Sports + Culture', base: 25 },
                 C: { name: 'Civic Center', base: 35 }, U: { name: 'University', base: 35 }, R: { name: 'Southside', base: 35 },
             },
+            /* DELIVERY 2 · THE VARIANTS (mondo: "cop b, cop c, cop d ... some NPCs there will be many of, like cops or chefs"; "chefs anywhere
+               there is a restaurant"): MORE of a unit, over HQ_CITY_RESIDENTS.list's one each. One row = `n` more residents of `race`
+               that belong to district `d` (its cap and its strength), work at `work`, live in `homes` in turn. hqSpawnExpand() writes each
+               as a full resident row (letter b, c, d ... per race; its day = a shift from `shifts`: work 9 h, out in the district, 8 h asleep
+               at home), so the day code, the beds and the bodies read them like any resident. EVERY COUNT IS A PROPOSAL. */
+            shifts: [7, 15, 23, 11, 19, 3],
+            homeNames: { 'P00-01-B2': 'Southside apartments', 'P00-02-B2': 'Southside apartments', 'P02-01-B1': 'Tenement', 'P11-00-B2': 'Bankers’ terrace', 'P10-01-B2': 'Bankers’ terrace', 'P09-03-B2': 'Bankers’ terrace',
+                         'P03-04-B1': 'Faculty homes', 'P00-04-B1': 'Dorm', 'P07-04-B2': 'Apartments A', 'P10-07-B1': 'Crew house', 'P11-06-B2': 'Apartments', 'P06-09-B2': 'Sports residence', 'P07-08-B2': 'Sports residence',
+                         'P07-10-B2': 'Sports residence', 'P02-09-B2': 'Industrial house', 'P01-11-B2': 'Industrial house', 'P00-09-B2': 'Industrial house', 'P10-09-B2': 'Staff apartments' },
+            people: [
+                /* the police: the desk (Civic Center), Bayside's staging + security, a beat in Hero Plaza */
+                { race: 'police officer', d: 'C', n: 3, work: 'b:P04-02-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'police officer', d: 'B', n: 2, work: 'p:P08-11', homes: ['P10-09-B2'] },
+                { race: 'police officer', d: 'H', n: 1, work: 'd:H', patrol: true, homes: ['P07-04-B2'] },
+                /* a chef wherever the plan has a kitchen: Community kitchen, Worker cafe, Student cafe, Coffee arcade, Restaurant court, the Food hall */
+                { race: 'chef', d: 'R', n: 1, work: 'p:P00-01', homes: ['P00-02-B2'] },
+                { race: 'chef', d: 'F', n: 1, work: 'p:P09-03', homes: ['P09-03-B2'] },
+                { race: 'chef', d: 'U', n: 1, work: 'b:P00-06-B1', homes: ['P00-04-B1'] },
+                { race: 'chef', d: 'H', n: 1, work: 'b:P04-05-B1', homes: ['P07-04-B2'] },
+                { race: 'chef', d: 'E', n: 1, work: 'p:P08-05', homes: ['P11-06-B2'] },
+                { race: 'chef', d: 'B', n: 1, work: 'b:P09-09-B1', homes: ['P10-09-B2'] },
+                { race: 'firefighter', d: 'C', n: 2, work: 'b:P04-00-B1', homes: ['P00-01-B2', 'P07-04-B2'] },
+                /* ordinary people, one more in eight districts */
+                { race: 'homosapien', d: 'C', n: 1, work: 'd:C', homes: ['P07-04-B2'] }, { race: 'homosapien', d: 'F', n: 1, work: 'd:F', homes: ['P10-01-B2'] },
+                { race: 'homosapien', d: 'U', n: 1, work: 'd:U', homes: ['P00-04-B1'] }, { race: 'homosapien', d: 'H', n: 1, work: 'd:H', homes: ['P07-04-B2'] },
+                { race: 'homosapien', d: 'E', n: 1, work: 'd:E', homes: ['P11-06-B2'] }, { race: 'homosapien', d: 'S', n: 1, work: 'd:S', homes: ['P06-09-B2'] },
+                { race: 'homosapien', d: 'I', n: 1, work: 'd:I', homes: ['P02-09-B2'] }, { race: 'homosapien', d: 'B', n: 1, work: 'd:B', homes: ['P10-09-B2'] },
+                { race: 'gangster', d: 'R', n: 2, work: 'd:R', homes: ['P02-01-B1', 'P00-02-B2'] },
+                { race: 'zombie', d: 'U', n: 2, work: 'd:U', patrol: true, homes: ['P00-04-B1'] },
+                { race: 'hippie', d: 'B', n: 2, work: 'p:P08-09', homes: ['P10-09-B2'] },
+                /* one more of the uncommon ones, at the place the unit already works */
+                { race: 'conspiracy theorist', d: 'R', n: 1, work: 'd:R', homes: ['P02-01-B1'] },
+                { race: 'politician', d: 'C', n: 1, work: 'b:P06-00-B1', homes: ['P09-03-B2'] },
+                { race: 'goblin', d: 'F', n: 1, work: 'b:P10-00-B1', homes: ['P11-00-B2'] },
+                { race: 'professor', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P03-04-B1'] },
+                { race: 'clown', d: 'E', n: 1, work: 'b:P09-05-B1', homes: ['P10-07-B1'] },
+                { race: 'mime', d: 'E', n: 1, work: 'p:P08-05', homes: ['P10-07-B1'] },
+                { race: 'bunny girl', d: 'E', n: 1, work: 'b:P08-04-B1', homes: ['P11-06-B2'] },
+                { race: 'quarterback', d: 'S', n: 1, work: 'p:P05-09', homes: ['P06-09-B2'] },
+                { race: 'luchador', d: 'S', n: 1, work: 'b:P06-08-B1', homes: ['P07-08-B2'] },
+                { race: 'marksman', d: 'I', n: 1, work: 'b:P00-08-B1', homes: ['P00-09-B2'] },
+                { race: 'pirate', d: 'B', n: 1, work: 'beach', homes: ['P10-09-B2'] },
+            ],
             /* a race's tier in this room (a race not named = defaultTier); `race|gender` names one gender */
             races: {
                 'police officer': 'common', 'chef': 'common', 'homosapien': 'common', 'gangster': 'common', 'zombie': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
@@ -73451,7 +73496,7 @@ function hqSpawnLevel(roomId, npc) {
     const row0 = (npc.gender && R.races[npc.race + '|' + npc.gender]) || R.races[npc.race] || HQ_SPAWN_RULES.defaultTier;
     const row = (typeof row0 === 'string') ? { tier: row0 } : row0;
     const T = HQ_SPAWN_RULES.tiers[row.tier] || HQ_SPAWN_RULES.tiers[HQ_SPAWN_RULES.defaultTier];
-    const d = hqSpawnDistrict(roomId, npc.home);
+    const d = (npc.dist && R.districts && R.districts[npc.dist]) ? npc.dist : hqSpawnDistrict(roomId, npc.home);   // a variant belongs to the district its row names
     const clamp = (v) => Math.max(1, Math.min(LEVEL_CAP, Math.round(v)));
     if (Number.isFinite(+row.lvl)) return { lvl: clamp(+row.lvl), tier: row.tier, district: d };
     const base = (d && R.districts[d] && Number.isFinite(+R.districts[d].base)) ? +R.districts[d].base : HQ_LEVEL_RULES.start;
@@ -73459,6 +73504,29 @@ function hqSpawnLevel(roomId, npc) {
     const rnd = hqLevelRng((npc.id || npc.race) + '|spawnlvl')();
     return { lvl: clamp(base + add[0] + rnd * (add[1] - add[0])), tier: row.tier, district: d };
 }
+/* THE VARIANTS: write every `people` row of the room into HQ_CITY_RESIDENTS.list as full resident rows (once, at load). A row made
+   here carries `v` (its letter: the first of a race in the list is 'a' and has no letter) and `dist` (its district). Pure data in,
+   plain rows out: nothing else in the day code knows a variant from a resident. */
+function hqSpawnExpand() {
+    const C = (typeof HQ_CITY_RESIDENTS !== 'undefined') ? HQ_CITY_RESIDENTS : null, R = C && HQ_SPAWN_RULES.rooms[C.room];
+    if (!R || !Array.isArray(R.people) || C._expanded) return 0;
+    C._expanded = true;
+    const count = {}, H = (h) => ((h % 24) + 24) % 24, to = (h) => H(h) || 24;
+    C.list.forEach(r => { count[r.race] = (count[r.race] || 0) + (r.gender && count[r.race] ? 0 : 1); });   // a male + female pair is one 'a'
+    let made = 0, k = 0;
+    R.people.forEach(row => {
+        if (!row || !row.race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(row.race) < 0 && row.race !== 'homosapien')) return;
+        for (let i = 0; i < (row.n | 0); i++) {
+            const idx = count[row.race] = (count[row.race] || 0) + 1;
+            const h = R.shifts[k++ % R.shifts.length], home = row.homes[i % row.homes.length];
+            C.list.push({ race: row.race, v: String.fromCharCode(96 + Math.min(26, idx)), dist: row.d, home, homeName: (R.homeNames && R.homeNames[home]) || home,
+                          day: [[H(h + 16), to(h + 24), 'S', 'home'], [H(h), to(h + 9), row.patrol ? 'P' : 'W', row.work], [H(h + 10), to(h + 15), 'O', 'd:' + row.d]] });
+            made++;
+        }
+    });
+    return made;
+}
+hqSpawnExpand();
 let _hqCityGridCache = null;
 /* THE ROUTE MAP of a room: { nx, nz, x0, z0, res, walk (Uint8: 0 no, 1 ground, 2 road), comp (the walk's own component: 1), openE / openS (Uint8: the
    square to the east / south is walked to), cost, bid (Int16: the walk-in building a square is inside, -1), bld [{ id, inner, outer, ax, az, bx, bz, cells }],
@@ -73776,7 +73844,7 @@ function hqCityPlotAt(hx, hy) {
 }
 function hqResidentTimeline(G, r, dayKey) {
     const R = HQ_CITY_RESIDENTS, rate = (typeof hqClockRate === 'function') ? hqClockRate() : (1 / 60), speed = r.car ? R.carSpeed : R.walkSpeed;
-    const rng = (() => { let s = (typeof hqHash === 'function' ? hqHash(String(dayKey) + '|' + r.race + '|' + (r.gender || '') + '|res') : 7) >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; }; })();
+    const rng = (() => { let s = (typeof hqHash === 'function' ? hqHash(String(dayKey) + '|' + r.race + '|' + (r.gender || '') + (r.v ? '|' + r.v : '') + '|res') : 7) >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; }; })();
     const between = p => p[0] + (p[1] - p[0]) * rng();
     const sq = k => ({ x: G.x0 + (k % G.nx + 0.5) * G.res, z: G.z0 + (Math.floor(k / G.nx) + 0.5) * G.res });
     const hoursOf = m => (m / speed) * rate;

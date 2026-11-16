@@ -84627,12 +84627,12 @@ const ThreeRenderer = (function () {
         var day = (typeof hqToday === 'function') ? hqToday() : '';
         var list = [];
         HQ_CITY_RESIDENTS.list.forEach(function (r) {
-            var id = 'hq-res-' + (r.race + (r.gender ? '-' + r.gender : '')).replace(/\s+/g, '_');
+            var id = 'hq-res-' + (r.race + (r.gender ? '-' + r.gender : '') + (r.v ? '-' + r.v : '')).replace(/\s+/g, '_');   // THE VARIANTS (2026-11-16): cop b, cop c ... each its own id
             if (gone.indexOf(id) >= 0) return;   // beaten today: gone until tomorrow
             var hm = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'male'), hf = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'female');
-            var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
+            var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + (r.v ? '|' + r.v : '') + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
             /* THE SET LEVELS (2026-11-16, data.js HQ_SPAWN_RULES): the resident's own level, read once; the label shows it and the fight is at it */
-            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home }) : null; } catch (e) { sl = null; }
+            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home, dist: r.dist }) : null; } catch (e) { sl = null; }
             list.push({ r: r, id: id, gender: g, lvl: sl ? sl.lvl : 0, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
         });
         H.res = { G: G, day: day, list: list, next: 0, pts: [], lastPick: 0 };
@@ -84649,7 +84649,10 @@ const ThreeRenderer = (function () {
         var r = s.r, U = _hqUnits(), line = null, sub = (s.lvl > 0 ? 'LV ' + s.lvl + ' · ' : '') + 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
         if (at.spot && at.spot.say) { var sy = at.spot.say; line = Array.isArray(sy) ? (sy.length ? sy[((typeof hqHash === 'function' ? hqHash(H.res.day + '|' + r.race + '|say') : 0) % sy.length)] : null) : String(sy); }
         /* THE BEDS (2026-11-14): the rig carries the sleep pose (UAL2 LayToIdle held on its first frames: flat on the back) beside its own slots */
-        var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null; _hq3DOff(_s3);
+        var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null;
+            /* THE VARIANTS: a variant may wear the race's other look (mondo: "there is a white cop somewhere that you can use too"), seeded by its id */
+            if (r.v && typeof getRaceModelSkin === 'function') { var alt = getRaceModelSkin(r.race, s.gender, { seed: s.id }); if (alt) base = alt; }
+            _hq3DOff(_s3);
             if (base && base.libClips && !base.libClips.hqSleep) { var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales); lc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; lt.hqSleep = HQ_RES_SLEEP.ts; def = Object.assign({}, base, { libClips: lc, libTimeScales: lt }); } } catch (e) { def = null; }
         var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, def: def || undefined, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
         if (!ch) return null;
