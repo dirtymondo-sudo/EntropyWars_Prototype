@@ -368,6 +368,7 @@ const FINISHERS = {
     'overlord':       { id: 'fin_overlord', name: 'Cataclysm Decree', glyph: '☄', type: 'unholy', sig: 'byOrderOf', built: true, tagline: 'BY ORDER OF', desc: 'The decree is read, the sky agrees, and the victim is the demonstration.' },
     'chosen one':     { id: 'fin_chosen_one', name: 'Prophecy Fulfilled', glyph: '🌟', type: 'divine', sig: 'prophecyFulfilled', built: true, tagline: 'IT WAS WRITTEN', desc: 'The scroll was about this moment. The victim is the last line.' },
     'banker':         { id: 'fin_banker', name: 'Foreclosure', glyph: '💰', type: 'human', sig: 'motionCarries', built: true, tagline: 'PAYMENT IS DUE', desc: 'The note is called in. A gavel the size of a building comes down, and the victim is repossessed on a technicality.' },   // 2026-11-16 THE NEW RACES — borrows the politician\'s staging
+    'sewer gator':    { id: 'fin_sewer_gator', name: 'Down the Drain', glyph: '🐊', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'SEE YOU LATER', desc: 'The floor gives way to black water, the jaws come up under the victim, and it rolls them down into the dark.' },   // 2026-11-16 THE NEW RACES — borrows the Jaws staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
     'dinosaur':       { id: 'fin_dinosaur', name: 'Extinction Event', glyph: '🦖', type: 'anomaly', sig: 'extinctionEvent', built: true, tagline: 'THAT ONE IS PERSONAL', desc: 'The asteroid that ended the dinosaurs is brought back and aimed at one unit.' },
@@ -590,6 +591,7 @@ const RACE_ELEMENT_AFFINITY = {
     'starfish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'deep sea fish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'sharkman': { water: 'resist', lightning: 'weak' },   // 2026-09-30
+    'sewer gator': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
     'tree person': { fire: 'weak', water: 'resist', poison: 'absorb', nature: 'absorb' },   // 2026-09-30 // race editor 2026-10-17
@@ -2860,6 +2862,10 @@ const RACE_PROFILES = {
         label: 'Banker',
         types: ['human']
     },
+    'sewer gator': {   // 2026-11-16 THE NEW RACES (mondo picked it; his look: concept B, the skeletal croc with a chain)
+        label: 'Sewer Gator',
+        types: ['anomaly']
+    },
     'politician': {
         label: 'Politician',
         types: ['human']
@@ -3740,7 +3746,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3872,6 +3878,7 @@ const RACE_CLASS = {
     'overlord': 'bruiser',
     'chosen one': 'assassin',
     'banker': 'support',   // 2026-11-16
+    'sewer gator': 'assassin',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
     'dinosaur': 'bruiser',
@@ -3912,6 +3919,7 @@ const AVAILABLE_ITEM_TYPES = ['', 'healPotion', 'manaPotion', 'scanner'];
    standing on its preferred terrain pays 1 less to move through it and takes TERRAIN_PREFERENCE_BONUS for that terrain
    (state.js getTerrainPreferenceModifier). A race not listed has none. */
 const RACE_TERRAIN_PREFERENCE = {
+    'sewer gator': 'deep_water',   // 2026-11-16 THE NEW RACES — at home in deep water (never drowns: map.js unitIsDeepWaterAdapted)
     'siren': 'deep_water',
     'reptilian': 'water',
     'ghost': 'deep_water',
@@ -4284,6 +4292,7 @@ const RACE_BASE_STATS = {
     'overlord':           { hp: 910, mp:  75, atk:  71, def:  115, mdef:  32, int:  68, vision: 2, crt: 13, spd: 120 },   // STATS28 PASS 2026-10-29: HP 1593→1150, ATK 109→95, DEF 146→115 (65% over STATS27+28; survives 88% of games); LOOP PASS 1 2026-11-08: HP 1150→910, ATK 95→71, M.ATK 91→68 (60.4% in the 11-08 loop's baseline lab (106 games), 62.3% team-adjusted; POWER -85)
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
     'banker':             { hp: 1300, mp: 190, atk:  40, def:  120, mdef:  130, int:  180, vision: 3, crt: 15, spd: 85 },   // 2026-11-16 THE NEW RACES — first pass on the support median
+    'sewer gator':        { hp: 1250, mp: 120, atk: 168, def: 118, mdef:  58, int:  60, vision: 3, crt: 22, spd: 130 },   // 2026-11-16 THE NEW RACES — first pass between the reptilian and the sharkman
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
     'dinosaur':           { hp: 1130, mp:  60, atk:  131, def:  125, mdef:  35, int:   11, vision: 4, crt: 15, spd: 160 },   // STATS24 PASS 2026-10-29: HP 1715→1500 (top race 3 runs: 60/67/82%); STATS25 PASS 2026-10-29: SPD 192→160 = move 5→4 (65% after the HP cut; 669 Cube damage a game, the most); STATS29 PASS 2026-10-30: ATK 197→160, HP 1500→1310 (57% over STATS27-29 (184 games); 612 Cube damage a game on ATK 197); STATS30 PASS 2026-10-30: HP 1310→1140, ATK 160→128 + raceQuake excluded (60% in STATS30; POWER -75; 63% then 60% in STATS29-30 after the ATK/HP cut; 577 Cube damage a game, the most: ATK + HP and the shared earth Quake excluded (RACE_SPELL_EXCLUDES)); STATS34 PASS 2026-11-01: HP 1140→920, ATK 128→105, DEF 185→125 (59.8% in STATS34 (107 games), 60.5% team-adjusted; POWER -70); LOOP PASS 1 2026-11-08: HP 920→1130, ATK 105→131 (41.9% in the 11-08 loop's baseline lab (105 games), 40.1% team-adjusted; POWER +67)
@@ -4432,6 +4441,7 @@ const RACE_PHYSIQUE = {
     'overlord':            { h: 2.40, w: 190 },
     'chosen one':          { h: 1.80, w: 75 },
     'banker':              { h: 1.80, w: 85 },   // 2026-11-16
+    'sewer gator':         { h: 2.10, w: 180 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
     'dinosaur':            { h: 4.50, w: 4000 },
@@ -9169,7 +9179,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Such a pretty light, down where there is none. Deals MEDIUM magic damage to a Single Enemy within 4 tiles, draws it 3 tiles toward you and Charms it for a round.' },
         { id: 'sigAbyssJaws', name: 'Abyss Jaws', tier: 3, families: ['anglerlure'], cost: 75, apCost: 1, spellType: 'anomaly',
-          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 1, onKillHealPct: 0.25,
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 115, range: 1, onKillHealPct: 0.25,
           bonusVsStatus: { status: 'charm', mult: 1.5 },
           desc: 'The light was attached to something. Deals HEAVY physical damage to an adjacent enemy; a kill heals 25% of max HP. Charmed targets take it worse.' },
     ],
@@ -10171,6 +10181,23 @@ const RACE_ABILITIES = {
           type: 'damage', kind: 'damage', damageType: 'magic', dmg: 150, range: 4,
           bonusVsStatus: { status: 'shorted', mult: 1.5 },
           desc: 'Calls in the note. Deals MEDIUM magic damage to a Single Enemy within 4. Deals bonus damage to Shorted targets.' },
+    ],
+    'sewer gator': [
+        /* THE AMBUSH FROM THE WATER (2026-11-16, the new races; mondo picked the Sewer Gator): it hides in any liquid
+           (water, deep water, radioactive sludge, black ooze) and drags its prey in. Rules: data.js STATUS_DEFS submerged,
+           battle.js _gatorOnLiquid / _gatorSurfaceCheck / _deathRollDrag, the `requiresLiquid` + `dragIntoLiquid` spell fields. */
+        { id: 'nrSubmerge', name: 'Submerge', tier: 1, families: ['sewerpredator'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'water', type: 'buff', kind: 'buff', range: 0, requiresLiquid: true,
+          statusEffects: [{ id: 'submerged', duration: 2 }, { id: 'invisible', duration: 2 }],
+          desc: 'Sinks under the surface. Cast while standing in water, sludge or ooze: the gator is Invisible and cannot be targeted for 2 rounds, until it attacks or climbs out of the liquid. Cooldown: 2 rounds.' },
+        { id: 'nrDeathRoll', name: 'Death Roll', tier: 2, families: ['sewerpredator'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 1,
+          sneakBonus: true, dragIntoLiquid: true,
+          desc: 'Clamps its jaws and rolls. Deals MEDIUM physical damage to a Single Enemy beside the gator, more from under the surface, and drags it into the nearest liquid square beside either of them. In deep water the victim starts Drowning. Cooldown: 2 rounds.' },
+        { id: 'nrTailSweep', name: 'Tail Sweep', tier: 3, families: ['sewerpredator'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'cross', range: 0, aoeOriginSelf: true, crossRadius: 1,
+          damageType: 'physical', dmg: 120, pushDistance: 1,
+          desc: 'A sweep of the spiked tail. Deals MEDIUM physical damage to All Enemies beside the gator and knocks them 1 square away, into the water if it is there.' },
     ],
     'politician': [
         { id: 'raceExecutiveOrder', tier: 3, noDamage: true, aoeRadius: 1, cooldownRounds: 2, families: ['politics'], spellType: 'human', name: 'Executive Order',
@@ -13617,6 +13644,8 @@ const STATUS_DEFS = {
         stack: 'max',
         untargetable: true,
         rangeDelta: 1,
+        /* 🐊 the Sewer Gator's Submerged rides with it: blowing cover (an attack, a reveal) brings it up too (2026-11-16) */
+        onRemove(unit) { if (unit && unit.status && unit.status.submerged > 0 && typeof clearStatus === 'function') clearStatus(unit, 'submerged'); },
         iconSrc: createStatusIconDataUri('🌿', '#1a3a1a', '#d6ffd6', '#5ad45a')
     },
     /* (steadyAim status deleted 2026-08-07 with its only applier, the cut
@@ -13686,6 +13715,14 @@ const STATUS_DEFS = {
         iconSrc: createStatusIconDataUri('📉', '#2a1c1c', '#ffd6d6', '#e05a5a'),
         onApply(unit, src) { unit._shortSrcId = src ? src.id : null; },
         onRemove(unit) { delete unit._shortSrcId; }
+    },
+    /* 🐊 SUBMERGED (2026-11-16, the Sewer Gator's Submerge): it rides with Invisible. While it lasts the gator is under the
+       surface; ending any move off a liquid square surfaces it (battle.js _gatorSurfaceCheck from resolveTileArrival). */
+    submerged: {
+        icon: '🐊', glyph: '🐊', short: 'SUB', label: 'Submerged',
+        colorText: 'under the surface',
+        kind: 'buff', category: 'buff', stack: 'max',
+        iconSrc: createStatusIconDataUri('🐊', '#1c2a1c', '#d6ffd6', '#6a9a3a')
     },
     contract: {
         icon: '📜',
@@ -13884,6 +13921,7 @@ const STATUS_LIBRARY_DESCS = {
     indomitable: 'Refuses to die: the next killing blow leaves this unit at 1 HP.',
     debt:      'Owes the bank: when it ends (or is cleansed) the loan comes due. Pays back the loan with interest (never below 1 HP) and the lender heals that much. Going down first leaves the lender with the loss.',
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
+    submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
     minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts, and harder to hit: it dodges basic attacks 25% of the time. Spells still always land.',
@@ -19943,6 +19981,7 @@ const EW_RACE_BIOMES = {
     'droid': ['neon_city'], 'antihero': ['urban', 'neon_city'],
     'conspiracy theorist': ['clandestine', 'ranch'], 'overlord': ['infernal'], 'chosen one': ['ancient'],
     'banker': ['urban'],   // 2026-11-16 — Disaster City, Financial
+    'sewer gator': ['urban', 'underground_base'],   // 2026-11-16 — The Sewers (no unit of their own before it)
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
     'gnome': ['inner_earth', 'forest'], 'kaiju': ['urban', 'deep_sea'], 'kraken': ['deep_sea'],
@@ -20579,6 +20618,7 @@ const RACE_TREE = {
     'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
     'overlord':      ['raceHellfireCrown', 'raceInfernalConscription', 'raceBrutalSlam', 'raceCataclysmDecree'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'banker':        ['raceSurveillance', ['raceStealFromRich', 'raceBlackBudget'], ['raceSwipe', 'raceFluorideWater'], 'raceTruthBomb'],   // 2026-11-16
+    'sewer gator':   ['raceBite', ['raceApexRoar', 'raceSplash'], ['raceRot', 'raceFeralDive'], 'raceJurassicJaw'],   // 2026-11-16
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'dinosaur':      ['raceDinoTailWhip', 'raceApexCharge', ['groundSlam', 'raceApexRoar'], 'raceJurassicJaw'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -22474,6 +22514,16 @@ const SPELL_FAMILIES = {
         desc: 'Money as a weapon: a loan that comes back with interest, a bet against the enemy, and the note called in.',
         unique: 'banker',
         identity: { who: ['Banker', 'Financier', 'Lender'], adj: ['Pinstriped', 'Leveraged', 'Smug'], look: ['a pinstripe three-piece suit', 'a gold watch chain', 'slicked-back grey hair'], vibe: ['lends you the HP and wants it back', 'bets on who goes down next'] }
+    },
+    sewerpredator: {   // 2026-11-16 THE NEW RACES — the Sewer Gator's own
+        id: 'sewerpredator',
+        name: 'Sewer Predator',
+        glyph: '🐊',
+        color: '#4a5a2a',
+        kind: 'signature',
+        desc: 'The thing in the pipes: it sinks out of sight, drags you under and sweeps you into the water.',
+        unique: 'sewer gator',
+        identity: { who: ['Sewer Gator', 'Drain Lurker', 'Pipe Croc'], adj: ['Skeletal', 'Waterlogged', 'Chained'], look: ['black scales over bare ribs', 'a broken chain on one wrist', 'yellow eyes just above the water'], vibe: ['waits under the sludge', 'rolls you down into the dark'] }
     },
     politics: {
         id: 'politics',
@@ -24668,6 +24718,7 @@ const RACE_FAMILIES = {
     'police officer': ['policeprocedure', 'policetraining', 'weaponstraining', 'humangrit'],
     'time cop': ['policetraining', 'cowboyskills', 'marksmanship', 'cyberpunkweapons', 'advancedtechnology'],   // 2026-10-24 — one family set per look
     banker: ['highfinance', 'deepstate', 'thievery', 'conspiracyknowledge'],   // 2026-11-16
+    'sewer gator': ['sewerpredator', 'apexpredator', 'beastabilities', 'poison'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
     'starfish': ['echinoderm', 'water', 'deepsea', 'healingmagic'],
@@ -25273,6 +25324,7 @@ const CAMPAIGN_RACE_PRICES = {
   'overlord': 850,
   'chosen one': 700,
   'banker': 500,   // 2026-11-16
+  'sewer gator': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
   'gangster': 200,
@@ -27255,7 +27307,7 @@ const DOOR_TEXT = {
         'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
-        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown',   // banker 2026-11-16 (Disaster City, Financial)
+        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers',   // banker + sewer gator 2026-11-16
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',

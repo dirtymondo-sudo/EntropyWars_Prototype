@@ -15719,7 +15719,7 @@
         }
 
         function unitIsDeepWaterAdapted(unit) {
-            return !!unit && (unit?.terrainPreference === 'deep_water' || unitHasSnorkel(unit) || (typeof unitPassiveValue === 'function' && !!unitPassiveValue(unit, 'swim')) /* passiveBruteForce (was the Raider job; the jobs removal 2026-09-27) */ || unit?.race === 'siren' || unit?.race === 'reptilian' || unit?.race === 'ghost' || unit?.race === 'atlantean' || unit?.race === 'kraken' || unit?.race === 'loch ness monster');
+            return !!unit && (unit?.terrainPreference === 'deep_water' || unitHasSnorkel(unit) || (typeof unitPassiveValue === 'function' && !!unitPassiveValue(unit, 'swim')) /* passiveBruteForce (was the Raider job; the jobs removal 2026-09-27) */ || unit?.race === 'siren' || unit?.race === 'reptilian' || unit?.race === 'ghost' || unit?.race === 'atlantean' || unit?.race === 'kraken' || unit?.race === 'loch ness monster' || unit?.race === 'sewer gator');
         }
 
         /* 🌊 DROWNING NEEDS DEEP WATER (2026-10-23, mondo: "Make it to where drowning can only take place in deep
