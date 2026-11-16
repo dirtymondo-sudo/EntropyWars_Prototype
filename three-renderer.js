@@ -3327,10 +3327,10 @@ const ThreeRenderer = (function () {
                       caustDiff: 'vec3(0.46, 0.22, 0.66)', caustEmis: 'vec3(0.26, 0.12, 0.42)',
                       glintCol: 'vec3(0.90, 0.70, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
         /* ☢ the radioactive sludge (2026-11-16, the Sewers' district R): the bright green sheet with caustics that GLOW
-           (the emissive term is three times the poison's), a yellow-green glint */
+           (a stronger emissive term than the poison's, yellow pulled out of the sheet), a yellow-green glint */
         sludge:     { base: 'sludge', sheet: true, tint: 0xffffff,
-                      caustDiff: 'vec3(0.55, 0.95, 0.20)', caustEmis: 'vec3(0.50, 1.10, 0.14)',
-                      glintCol: 'vec3(0.90, 1.0, 0.45)',   hueShift: 'vec3(1.00, 1.18, 0.62)' },
+                      caustDiff: 'vec3(0.34, 0.74, 0.14)', caustEmis: 'vec3(0.16, 0.50, 0.05)',
+                      glintCol: 'vec3(0.80, 1.0, 0.40)',   hueShift: 'vec3(0.80, 1.12, 0.45)' },
         /* black goo (the dark slate sheet) / oil (the brown swirls): darkened toward black, a faint iridescent sheen */
         /* spell look fix FX-3 (2026-10-26): the black goo keeps a violet sheen (the poison pass's goo colour) so it reads wet */
         swamp:      { base: 'swamp', sheet: true, tint: 0xffffff,
@@ -36627,7 +36627,7 @@ const ThreeRenderer = (function () {
                      THE DULL LIQUIDS (11-12) add [.., highlight colour, highlight width (shininess), ripple depth, sky sheen]: each
                      liquid's highlight is a dim shade of itself (water's is 0xb4c4c8 / 140 / 0.05 / 1) */
                   liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a, 0x1c2a12, 30, 0.016, 0.3], poison_bog: [0x6a7a26, 0.92, 0x141c08, 0x20240f, 30, 0.016, 0.3],
-                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], sludge: [0x86e014, 0.94, 0x4a9a08, 0x9adf30, 26, 0.02, 0.2], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
+                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], sludge: [0x4fb80e, 0.94, 0x2c7a06, 0x5aa01c, 26, 0.02, 0.2], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
                              oil: [0x14120e, 0.96, 0, 0x22252c, 40, 0.012, 0.3], blood: [0x6a1014, 0.95, 0x1a0204, 0x2a1012, 30, 0.014, 0.25] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }

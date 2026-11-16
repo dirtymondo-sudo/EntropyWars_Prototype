@@ -5,12 +5,12 @@
    (docs/plans/world-zones/sewers_r_plot_plan.png): "make it a new liquid that does corrosion (I think that's poison and burned combined?
    that's close to radiation). kaiju can live there, black goo, whatever else fits".
    BRIEF: where the city's Power station drains. The glowing green SLUDGE is here only (the plan's `s` squares = the liquid `sludge`,
-   data.js TERRAIN_RULES.sludge: ending a turn in it gives Corroded; nobody walks into it). The Drain stands 7 m over the Depot (a stair);
+   data.js TERRAIN_RULES.sludge: ending a turn in it gives Corroded; nobody walks into it). The Drain stands 7 m over the track (a stair up from the Loop Line's tunnel, P03-04);
    its channel pours 7 m into the Sludge Pit's tank (a ladder beside the fall); the Pit opens north on the Outfall. The bulkhead door in
    the Drain's south passage goes up to the Power station's yard (link `sewers_power`).
    A plot's squares are local (lx, ly 0..11 from its north-west corner). ctx: see W.js.
    STANDS TODAY: the valve gallery (pumps, a gate valve, a boiler, breaker panels, radiation signs), barrels and warning tape along the
-   channel, four brick piers standing in the tank, hanging bulbs, five bystanders (kaiju, black goo x 2, mad scientist, swamp monster;
+   channel, hanging bulbs, five bystanders (kaiju, black goo x 2, mad scientist, swamp monster;
    they have no lines: nobody wrote any).
    NOT YET: the station's waste pipes as pipes in the south wall (the channel just starts there); a rail along the channel; drips, mist,
    a hum; anything on the Pit's east walk. */
@@ -19,16 +19,12 @@ const DRAIN = 'P04-04', PIT = 'P05-04';
 module.exports = {
     /* the Pit's tank is deep */
     deep: [PIT],
-    build(ctx) {
-        /* four brick piers standing in the sludge, tank floor to vault, clear of the fall's line */
-        [[3, 4], [8, 4], [3, 8], [8, 8]].forEach(q => ctx.pier(PIT, q[0], q[1]));
-    },
     dress(ctx) {
         const wallProp = (key, id, lx, ly, side, o) => {   // a piece on the wall of a square's `side` (n / s / e / w), facing into the room
             const s = ctx.sq(id, lx, ly), off = 1.75 - 0.06, d = { n: [0, -off, 180], s: [0, off, 0], e: [off, 0, 270], w: [-off, 0, 90] }[side];
             ctx.props.push(Object.assign({ key, x: ctx.r2(ctx.gcx(s[0]) + d[0]), z: ctx.r2(ctx.gcz(s[1]) + d[1]), face: d[2] }, o || {})); };
         const bulb = (id, lx, ly) => { const s = ctx.sq(id, lx, ly); ctx.props.push({ key: 'bare_bulb', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), ceil: true }); };
-        /* THE VALVE GALLERY (the Drain's room, squares 1..9 x 2..4): the walk from the stair's head (5..7) down to the channel stays clear */
+        /* THE VALVE GALLERY (the Drain's room, squares 1..9 x 2..4): its middle squares (5..7) stay clear down to the channel */
         ctx.P('centrifugal_pump', DRAIN, 1, 2, { face: 180 }); ctx.P('centrifugal_pump', DRAIN, 3, 2, { face: 180 }); ctx.P('gate_valve', DRAIN, 1, 4); ctx.P('boiler', DRAIN, 9, 2);
         ctx.P('psx_metal_barrel_mp_2', DRAIN, 9, 4); ctx.dec('psx_metal_barrel_mp_1', DRAIN, 2, 4); ctx.dec('psx_supply_crate_1', DRAIN, 8, 3);
         [2, 3, 4].forEach(lx => wallProp('breaker_panel', DRAIN, lx, 2, 'n')); wallProp('radiation_sign', DRAIN, 8, 2, 'n'); wallProp('radiation_sign', DRAIN, 9, 3, 'e');
