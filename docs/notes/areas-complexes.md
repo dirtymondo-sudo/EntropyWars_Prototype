@@ -4907,6 +4907,27 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   - **RAILS:** `balusters_b` (steel balusters: a wharf, a light's head), `parapet` (a low stone wall), `pipe` (a low pipe rail, never a
     wall). A rail on a `bridge` takes `block: false` (a wall hung over open ground trips the solver: the old Harbour's note).
   - **THE SHED'S RED:** `CORR`, 0xd04a3a, gain 2.9, white corner posts and barge boards, `CORR` 0xc4ccd4 at gain 2.6 for a tin roof.
+- **FROM THE MODEL LIST (11-16, the Harbour thread on mondo's THE MODEL LIST FIRST; the catalogue is not the whole list):**
+  - **THE HOUSES ON THE WATER** (Elbolilloduro, CC0): the pack's one scene holds 87 pieces, the game had only its rowboat. Cut out now
+    (bake-pack-pieces.py, the last JOBS block; `pip install bpy`; the archive is R2 bucket `dirtymondo`,
+    `project-files/asset-packs/elbolilloduro/houses-on-the-water/`): `stilt_hut` (3.6 x 5.4), `stilt_house` (6.4 x 8.1), `stilt_house_wide`
+    (9.5 x 8.9): a house on a deck on its own piles, solid, no inside; its foot is the piles' bottom, so on the 3.5 m sea bed `y: 0.6`
+    stands the deck 0.7 m over the water. `fishing_boat` (6.7 m; adrift with `{ y: -0.5, hover: 0.55 }`), `mooring_piles`, `generator`,
+    `hammock` (slung on four posts, 5 x 2.4 m: THE SHORE'S "needs a model: hammocks" is answered; the Shore thread places it).
+    STILL IN THE SCENE, not cut: two more house groups (a 16 x 15 m double house, a 13 x 15 m one), a stove, fridges, a desk, a
+    mattress, cooking pots, dishes, bottles, a drum, a spotlight, doors.
+  - **THE BEACH PROPS PACK HAS 21 MODELS, THE GAME HAS 6** (Elegant Crow; archive `project-files/asset-packs/other/elegantcrow_beach-props-pack/`,
+    OBJ): NOT in the game yet: `parasol`, `bench_01-03`, `chair_01-04`, `big_table`, `small_table`, `picnic_basket`, `toy_bucket`,
+    `toy_rake`, `toy_shovel`, `toy_wagon`, `float_04`. A beach wants every one of them (FOR THE SHORE THREAD: convert like the six, a
+    row each, `node list-models.js`; the Harbour thread did not, they are the Shore's things).
+  - **ALREADY IN THE CATALOGUE AND EASY TO MISS:** `babel_crane` (mondo's scaffold crane, 7.5 m: a harbour crane), `flood_mast` (a 7 m
+    floodlight mast, a real night light), `ocean_seal_resting` / `ocean_seal` / `ocean_penguin` (on rock or a slip), `ship_wreck`
+    (mondo's ghost ship, 16 m: the only ship model besides the Dutchman), `ind_silo` + `ind_skip` + `ind_factory_*` (the industrial
+    pack), `chain_hoist`, `engine_hoist`, `trap_chain_draped`, `tire_stack`, `platform_scale`, `hand_truck`, `pallet_jack`,
+    `gas_cylinder_rack`, `psx_supply_crate_*`, `psx_jerrycan_1`, `psx_fish_skeleton_mp_1`, `brass_telescope`, `signpost`, `flamingo`,
+    `ship_lantern` (the survival pack's lantern). The animals list (MODEL_LIST.md 7c) has a `crow`, no gull.
+  - **OTHER ARCHIVES LOOKED INTO, nothing for the sea:** Survival PSX (44 pieces: backpack, axe, sleeping bags, torch, cans: camp
+    things), the Industrial pack (9 pieces, all in the game), Exploration objects (ghost-hunting gadgets), jamzuz free PSX assets.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
   dunes to 3.6 m). The first run of a fresh container can crash once while the cache fills; the harness retries.
@@ -4940,8 +4961,14 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
     The cloud's number swings more between runs than the pass moved it: about 80 draw calls added in that view, no new light.
   - **CHECKED IN NODE** (`hqTerrainHeight` on the compiled room): the stair 0.9 -> 3.9, the wharf 3.9, the steel stair 0.6 -> 3.9, the
     slip 0.9 -> the sea bed, both water steps, the slope 0.9 -> 1.6 onto the Breakwater and its crest flat to the light.
-- **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter), a harbour crane, gulls, coils of heavy
-  rope, fish boxes, an iron mooring ring / cleat.
+- **THE MODEL LIST FINDS (11-16, right after pass 1; mondo: "make them stop what they are doing and look at the model list right now to
+  see what else they could add"; seen on screen):** pass 1 had searched the prop catalogue only. What that missed: the HOUSES ON THE
+  WATER pack scene (87 pieces, one in the game), mondo's own scaffold crane (pass 1 listed "a harbour crane" as missing: wrong), the
+  resting seal. ADDED: seven catalogue rows cut from the scene (the zone kit lists them); a house on piles with a fishing boat in the
+  Roads, a hut on piles and its rowboat in the Mouth, a fishermen's house on piles off the skiff jetty, a boat hauled up the slipway,
+  a rowboat at the water steps, mooring piles in the basin, the shed's generator, the crane on the wharf, three seals.
+- **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
+  the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
 - **NOT DONE:** the shed's inside (pass 2); freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the
   night look (pass 4); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
