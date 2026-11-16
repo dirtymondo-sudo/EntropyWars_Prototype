@@ -6720,6 +6720,57 @@ too short ... you didn't even get the shape right". So:
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
 
+## THE DESERT, THE CIRCUS — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/C.js`)
+
+mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions, be its own judge. Only C.js changes, then a rebake.
+
+**PASS 1, EXTERIORS.** Before: a striped box, about 40 pieces on nine plots of bare sand (2.8 FPS at the proof view on the cloud's software
+renderer; 1.4 after, with the whole midway in view).
+- **THE BIG TOP IS ROUND.** The hall you walk in is still the 7 x 7 square building; its look is a 35 m round tent drawn with `cyl` parts:
+  sixteen gores (`arc` 22.5 each, two tints), a cone (`r` to `r2`), a second cone, poles on the seams (`ring`), king poles and pennants
+  (`roof: true`), a cloth tunnel from the round wall to the door. The gap between cloth and hall is shut by a ring of sixteen GHOST walls
+  (`k: 'wall', ghost: true`) plus two along the tunnel. Any round building over a square walk-in can be made this way.
+- **CLOTH = THE STUCCO SHEET + `gain`.** The `canvas` key is a creator fabric, not a wall sheet: it drew flat. `urban:PlasterWallStucco2a`
+  with a tint drew grey-brown; `gain: 1.7` on the part makes it read as painted cloth (C.js `lift`). Flags and prizes want `glow` 0.3 to 0.5.
+- **THE STALL** (`stall(id, sx, sy, n, side, name, tint)`): n squares wide, one deep, solid (one ghost block), a counter, two prize shelves,
+  an awning, its name in `rye`. `marquee()` = a walk-in cloth hall. `cage()` = a barred wagon body (bars are one box with `n` + `step`).
+- **BUNTING** = one cord + three boxes with `n` / `step` along the line (three tints); the whole district's bunting is ONE `arch` row whose
+  origin is the block's corner, so its parts are written in metres from the corner. Poles must stay off the streets' squares.
+- **FACES SEEN:** `ferris_wheel` `face: 90` shows its disc to the south. `ferris_wheel` and `carousel` are code-built at 6.5 m and 3.6 m: a
+  row's `h` does nothing (the first build's `h: 22` never drew).
+- **THE WAY IN** is the east side (the highway's Exit 2 road meets the track at home squares 47, 31..32): the gate stands there.
+- **THE PROBE, THE CIRCUS:** room x = -252 + 3.5 x home square, z = -210 + 3.5 x home square. Views: over x -80 z -80 y 45 face 315 pitch
+  -0.45 · midway x -189 z -128 face 0 · gate x -70 z -98 face 270 · big top door x -185 z -147 face 90.
+
+**FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
+`carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
+`play_slide / play_swing / play_sandbox`, `teacups`. Stalls + games: `popcorn_cart`, `hot_dog_stand`, `money_wheel`, `claw_machine`,
+`arcade_cabinet`, `pinball_machine`, `air_hockey_table`, `slot_machine`, `jukebox`, `cash_register`, `psx_glass_bottle_1/2`,
+`psx_tin_can_mp_1_rusty`, `beach_ball`, `beach_swim_ring`, `ball_cart`, `psx_lollipop_mp_1*`, `xmas_gift*`, `xmas_baubles`,
+`decor_trophy_cup`. Light + cloth: `paper_lantern`, `followspot`, `studio_light`, `flood_mast`, `globe_lamp`, `mirror_ball`,
+`crystal_chandelier`, `pa_speaker`, `banner`, `xmas_garland*`. Fences + signs: `rope_stanchion`, `hw_fence`, `hitching_rail`,
+`item_police_barricade`, `signpost`, `missing_board`, `turnstile`. Animals: `lion`, `elephant`, `giraffe`, `horse*`, `dog`, `rabbit`,
+`flamingo`, `ocean_seal`, `hw_straw*`, `wooden_bucket`, `meshy_burlap_sack`, `psx_meat_1`, `bird_cage`. Wagons + stores: `covered_wagon`,
+`trailer_home_1..6`, `car_truck`, `psx_wooden_crate_*`, `psx_metal_barrel_mp_*`, `sea_chest`, `footlocker`, `gas_cylinder_rack`,
+`air_compressor`, `cable_drum`. Acts: `ship_cannon`, `instrument_*`, `drum_kit`, `taiko_drum`, `decor_piano`, `dumbbell_rack`,
+`weight_bench`, `item_bullwhip_rigged`, `spell_throwing_knife`, `library_ladder`, `maintenance_stairs`, `decor_armour_plinth`,
+`costume_rack`, `makeup_vanity`, `privacy_screen`, `psx_wardrobe_mp_1`, `directors_chair`. Seats: `riser_1..3`, `cinema_seat_row`,
+`church_pew`, `folding_chair`, `royal_throne`. Sideshow: `specimen_shelf`, `museum_vitrine`, `psx_display_cabinet_mp_*`,
+`anatomy_skeleton`, `trap_iron_maiden`, `dream_eye`, `meshy_tesla_coil`, `giant_hourglass`, `mugshot_wall`, `psx_cobweb_*`. Fortune:
+`crystalBall`, `tarot`, `tarotDeck`, `candelabra`, `candleRing`, `holy_carpet`, `item_censer`, `skull`, `cat`, `crow`. Sheets:
+`checkerboard`, `diamond`, `damask*`, `carpet*`, `tigerfur`, `wood_planks`, `aluminium` (the nearest thing to a mirror), `gold`.
+**NOT THERE (section 13 has no unwired circus file):** balloons, plush prizes, a string of lights (`festoon` is a code stand-in), a
+funhouse mirror, a bleacher stand, a unicycle, juggling pins, a ring of fire, a trapeze, a cage wagon, a cotton candy cart, circus
+posters, a striped cloth sheet, a big ferris wheel, a big top. `bigtop` and `festoon` in the catalogue are code stand-ins: not used.
+
+**DECISIONS MADE FOR MONDO (overrule any in one line)**
+1. The Big Top is round and 35 m across; its door still faces west, onto the Midway.
+2. The Hall of Mirrors is a walk-in funhouse (it was shut); it moved one square north and its front turned south, to the gate's forecourt.
+   The Mandela Room's door did not move: it is the side door on the hall's west wall.
+3. The main gate is on the EAST side, where the Exit 2 road arrives; the ticket booth by the HQ tunnel door stays the west end.
+4. Stall names are plain trade names: RING TOSS, BOTTLE TOSS, CANDY, CAN TOSS, LUCKY WHEEL, PENNY ARCADE, SIDESHOW.
+5. The lion left its rail pen for a cage wagon; the pen holds two horses.
+
 ## THE SEWERS, DISTRICT W — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/W.js`, 15 plots)
 
 mondo 11-16 (before a nap): every district prototyped, no questions, five passes at most (docs/plans/DISTRICT_THREAD_BRIEF.md).
