@@ -30,7 +30,9 @@
    arms, sea stacks and turning wreckage; Flight 19's hull plates at No Fixed Position; THE SHACK (walk-in) on the Island Beach; the
    Jetty's piles and cargo; more on the Wreck Islet, the Reef and the Sandbar.
    PASS 2 (seen): the Shack's inside (it stands at 143-144 x 94-96 now, off the fight's sand); the Keeper's Store on the Lighthouse Rock (walk-in).
-   STILL MISSING: nothing seen at night; the probe's camera does not go under water; 15 no-name plots are open water; the Triangle's
+   PASS 3 (seen): the corner buoys and the long side's spars, sea life in the open plots, the camp's tent, flamingos, birds, the Shack's porch.
+   PASS 4 (seen, day and night): seven standing torches and a brazier; `airZones` (a squall and spray at the Maelstrom, mist, sparks, fireflies).
+   STILL MISSING: the probe's camera does not go under water; 15 no-name plots are open water; the Triangle's
    edge is not marked on the sea; no residents with routines; mondo's open question: a Deep-to-Area-51 way.
    THE SQUARES: the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107); the Lagoon's water is sx 136-140, rows 98-106.
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
@@ -42,6 +44,7 @@
      place(ctx)   props, palms, people, scatters: ctx.P (a blocker on a square's middle), ctx.dec (decor, off the middle, shares a square),
                   ctx.afloat, ctx.swimmer, ctx.under (sea things), ctx.palm, ctx.native(race, sx, sy, face, say), ctx.feat(row), ctx.props.push(row).
      dress(ctx)   the same tools, run after every district's place (the second pass: THE DRESSING).
+     airZones(ctx) [{ x0, y0, x1, y1 (squares), kind, color?, n?, speed?, wind? }]: this district's air particles (the tool's THE AIR BY DISTRICT).
      reach        [[sx, sy, 'name'], ...]: squares the walker must reach on foot from the city door (the tool's walk check).
    ctx also carries: C N W H OY, gx gz mx mz r2, rnd (YOUR OWN dice, one stream per district and stage: a new throw at the END of a hook moves
    nothing; a new throw in the middle re-throws only your own later ones), cell plot Pxy flat taken spot, the sheets U WD WD2 SHG FLR GLS COR
@@ -75,6 +78,7 @@ build(ctx) {
     const works = (id, ox, oz, fn) => { const a = ctx.sheet(), X0 = r2(ox), Z0 = r2(oz);
         const T = { a, box: (x, y, z, w, h, d, key, tint, o) => a.box(x - X0, y, z - Z0, w, h, d, key, tint, o), cyl: (x, y, z, r, h, key, tint, o) => a.cyl(x - X0, y, z - Z0, r, h, key, tint, o),
             roof: (form, x, y, z, w, h, d, key, tint, o) => a.roof(form, r2(x - X0), r2(y), r2(z - Z0), w, h, d, key, tint, o),
+            sign: (words, x, y, z, w, h, fg, bg, font, o) => a.sign(words, x - X0, y, z - Z0, w, h, fg, bg, font, o),
             part: o => { o.p = [r2(o.p[0] - X0), r2(o.p[1]), r2(o.p[2] - Z0)]; a.P.push(o); return o; } };
         fn(T); feat({ k: 'arch', id: 'bch:t_' + id + ':look', x: X0, z: Z0, y: 0, rot: 0, parts: a.P }); };
     const take = (x0, y0, x1, y1) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) taken.add(x + ':' + y); };
@@ -120,6 +124,18 @@ build(ctx) {
         T.box(gx(135) + 0.3, 1.45, gz(89) + 0.2, 21.0, 0.05, 0.05, null, ROPE);
     });
 
+    /* ── PASS 3 (2026-11-16): THE CORNER BUOYS (DOOR_MASTER, Room 345: "the corner buoys"; the brief: the Triangle's edge was not marked on
+       the sea). DRAWN, no light (the room carries its lit props already): a big red buoy two squares inside each corner, the room's number
+       on its board, and eight striped spars along the long side from the Lighthouse Rock's corner to the Maelstrom's. ── */
+    { const CRN = [[63, 107], [155, 107], [155, 40]], RED = 0xd8342c;
+      works('corners', gx(108), gz(72), T => {
+        CRN.forEach(q => { const x = gx(q[0]), z = gz(q[1]);
+            T.cyl(x, -0.5, z, 1.25, 1.1, RIB, RED, { seg: 12, uv: 1 }); T.cyl(x, 0.6, z, 1.0, 2.4, RIB, RED, { seg: 12, r2: 0.3, uv: 1 }); T.cyl(x, 1.5, z, 0.74, 0.45, null, WHITE, { seg: 12, r2: 0.6 });
+            T.cyl(x, 3.0, z, 0.2, 0.3, null, 0xffe27a, { seg: 8, glow: 0.9 });
+            T.box(x, 3.4, z, 1.5, 0.75, 0.08, null, WHITE); T.sign('345', x, 3.45, z + 0.05, 1.3, 0.65, '#1c1c20', '#ffffff', 'stencil'); T.sign('345', x, 3.45, z - 0.05, 1.3, 0.65, '#1c1c20', '#ffffff', 'stencil', { ry: 180 }); });
+        for (let k = 1; k <= 8; k++) { const t = k / 9, x = gx(63 + (155 - 63) * t), z = gz(107 + (40 - 107) * t);
+            T.cyl(x, -0.6, z, 0.16, 1.6, null, RED, { seg: 8 }); T.cyl(x, 1.0, z, 0.16, 0.7, null, WHITE, { seg: 8 }); T.cyl(x, 1.7, z, 0.16, 0.7, null, RED, { seg: 8 }); T.cyl(x, 2.4, z, 0.3, 0.3, null, RED, { seg: 8, r2: 0.02 }); }
+      }); }
     /* ── PASS 2, THE INSIDES (2026-11-16). `inside` and `In` are the Shore's (S.js, copied unchanged but for the names; the zone kit: a coat
        3.5 cm in front of each inner wall, a white dado, a LIT ceiling 5 cm under the building's own, daylit windows; a prop inside takes
        `floor: true` and a `y` of 1 or more is typed over the building's own ground G). ── */
@@ -215,6 +231,19 @@ place(ctx) {
     [[141, 88], [147, 85], [154, 93], [137, 107], [146, 107], [133, 97]].forEach(q => palm(q[0], q[1]));
 },
 
+/* THE AIR (pass 4; bake-beach.js THE AIR BY DISTRICT, squares): a squall and spray over the Maelstrom, a low mist on No Fixed Position and
+   round the wreck, sparks off the camp's fire, fireflies in the palms. Listed small first: where two overlap the first one stands. */
+airZones(ctx) {
+    return [
+        { x0: 145, y0: 95, x1: 153, y1: 103, kind: 'embers', n: 40 },
+        { x0: 143, y0: 35, x1: 157, y1: 49, kind: 'motes', color: 0xeaf6ff, n: 140, speed: 0.6 },
+        { x0: 141, y0: 33, x1: 159, y1: 51, kind: 'rain', n: 240 },
+        { x0: 118, y0: 58, x1: 132, y1: 72, kind: 'motes', color: 0xcfe4ee, n: 90, speed: 0.25 },
+        { x0: 95, y0: 85, x1: 104, y1: 93, kind: 'motes', color: 0xcfe4ee, n: 40, speed: 0.25 },
+        { x0: 140, y0: 84, x1: 156, y1: 95, kind: 'fireflies', n: 40 },
+    ];
+},
+
 dress(ctx) {
     const { C, N, W, H, OY, gx, gz, mx, mz, r2, rnd, cell, setRect, plot, Pxy, flat, taken, spot, feat, props, building, put, look, P, dec, afloat, swimmer, under, palm, native, sayOf, O_SEA, O_HARB, U, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT, CORR, PAINT, MAEL, POOL, BAY, GANG, SP, SHIP, PIER_END, LIGHT } = ctx;   // eslint-disable-line no-unused-vars
     /* the Bermuda Triangle: an eel and a squid down the Maelstrom's
@@ -224,5 +253,26 @@ dress(ctx) {
     [[112, 88, 'ocean_clownfish'], [115, 92, 'ocean_dory'], [110, 90, 'ocean_fish'], [117, 90, 'ocean_fish_2'], [113, 92, 'ocean_fish_3'], [114, 87, 'ocean_brown_fish']].forEach(q => under(q[2], q[0], q[1], -0.5));
     P('ship_cannon', 150, 105, { face: 180 }); P('rowboat', 152, 98, { face: 60 }); dec('ocean_seal_resting', 142, 100); dec('psxg_rock_2', 153, 94);
     P('pool_umbrella', 145, 98); dec('pool_lounger', 146, 98, { face: 90 });
+    /* ── PASS 3, THE DRESSING (2026-11-16), added at the END so no earlier throw moves ── */
+    /* the open water inside the Triangle (15 plots had nothing): a pod of dolphins, mantas, turtles, rays, tuna, schools of fish */
+    [[100, 83, 'ocean_dolphin'], [102, 85, 'ocean_dolphin'], [104, 82, 'ocean_dolphin'], [112, 78, 'ocean_manta'], [140, 70, 'ocean_turtle'], [90, 98, 'ocean_stingray'], [84, 100, 'ocean_turtle'], [142, 56, 'ocean_manta'], [150, 62, 'ocean_tuna'],
+     [152, 64, 'ocean_tuna'], [136, 78, 'ocean_stingray'], [78, 104, 'ocean_dolphin']].forEach(q => swimmer(q[2], q[0], q[1]));
+    [[130, 80, 30, 4], [95, 100, 14, 2], [146, 52, 14, 2]].forEach(q => feat({ k: 'scatter', key: 'fish_school', n: q[3], x: mx(q[0]), z: mz(q[1]), r: q[2], seed: q[0] + 345, sea: true }));
+    props.push({ key: 'ocean_anglerfish', x: r2(MAEL.x + 2), z: r2(MAEL.z + 2), y: -7.2, hover: 0 }, { key: 'ocean_anglerfish', x: r2(MAEL.x - 2.5), z: r2(MAEL.z - 1), y: -6.4, hover: 0 });   // lights down the hole
+    props.push({ key: 'ship_wreck', x: r2(MAEL.x - 6), z: r2(MAEL.z + 30), y: -1.2, span: 9, face: 200 });                                 // a second hull caught on the stacks
+    /* birds: one turns over the light, one over the lookout; crows on the wreck (the game has no gull) */
+    props.push({ key: 'eagle', x: gx(66.5), z: gz(102.5) }, { key: 'eagle', x: gx(150), z: gz(89) }); dec('crow', 100, 90); dec('crow', 98, 88);
+    props.push({ key: 'iron_garden_bench', x: mx(64), z: mz(102), face: 90 });                                                              // the keeper's bench, looking at the light
+    dec('sword', 99, 88); dec('greek_amphora', 100, 90);
+    /* the island: the camp's tent, bottles and spears; flamingos at the Lagoon; the Shack's porch; a dead tree and a stump; three more palms */
+    P('camping_tent', 150, 97, { face: 200 }); dec('psx_glass_bottle_2', 147, 98); dec('psx_glass_bottle_2', 149, 100); dec('spear', 151, 98); dec('spear', 151, 98);
+    dec('flamingo', 142, 101); dec('flamingo', 142, 104); dec('flamingo', 133, 98); dec('ocean_crab', 141, 99); dec('ocean_conch', 143, 102);
+    P('hollow_dead_tree', 153, 95); dec('stump', 145, 90); [[144, 86], [153, 86], [154, 90]].forEach(q => palm(q[0], q[1]));
+    /* ── PASS 4, THE ATMOSPHERE (2026-11-16): real light where people stand after dark (the zone kit: drawn glow lights nothing): standing
+       torches at the Jetty's landward end, the lookout stair's foot, the Wreck Islet, the Sandbar and on the Lighthouse Rock (the top of
+       the steps, the store's door), a brazier on the south beach. The fight's sand (square 148,104) stays open. ── */
+    P('cave_torch', 141, 91); P('cave_torch', 151, 93); P('brazier', 144, 105); P('cave_torch', 98, 89); P('cave_torch', 123, 73);
+    props.push({ key: 'cave_torch', x: mx(68), z: mz(103) }, { key: 'cave_torch', x: mx(66), z: mz(100) });
+    if (ctx.T_SHK) { const S = ctx.T_SHK; [['bird_cage', 3.9, 4.4, 0], ['lobster_traps', -4.0, 4.3, 90], ['psx_wooden_crate_5', -2.7, 4.5, 20], ['psx_metal_barrel_mp_0', 4.6, 5.9, 0]].forEach(q => put(S, q[0], q[1], q[2], { face: q[3], y: 0.16 })); }
 },
 };
