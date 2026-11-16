@@ -28,6 +28,7 @@
    with a lit disc under each (the light it throws), one under the islet's mushroom; seen by day and at night (`hqClockSet(23)`).
    PASS 5, POLISH (2026-11-16): a walk of twelve views by day and night; two standing stones (`menhir`) flank the Woods trail east of the
    crossing. FIVE PRs ARE IN (four district passes + the tool's hooks): THIS THREAD HAS STOPPED and waits mondo's look.
+   THE GIANT FLOWERS (mondo 11-16): 18 tall (3.6 m) and giant (6 m) heal flowers in five colours on whole squares in every glade, 13 small ones.
    THE PEOPLE (mondo 11-16): fairy, unicorn, gnome and mushroom girl are on the kingdom's AREA UNITS table; here stand the ring's fairy, a
    unicorn at the spring, a mushroom girl in the mushroom glade, a gnome on the north knoll. STILL OPEN: sound; no walk-in here (none is named).
    NEEDS A MODEL (nothing on R2; not in the game as stand-ins): reeds / cattails (the ocean pack's weed draws black here), a willow, a
@@ -163,6 +164,17 @@ at('rabbit', E + 8.9, gx(23) + 0.8, { face: 200 }); at('rabbit', E + 3.8, gx(53)
 /* PASS 5: two standing stones (mondo's Meshy menhir) flank the Woods trail east of the crossing, glowing caps at their feet */
 put('menhir', 90, 46, { face: 20 }); put('menhir', 90, 49, { face: 200 });
 [[0.9, gx(46) + 0.5], [2.7, gx(46) + 2.9], [0.8, gx(50) - 0.3], [2.8, gx(49) + 0.5]].forEach((q, i) => at('woods_glowcap', E + q[0], q[1], { face: i * 77, noLight: true }));
+/* THE GIANT FLOWERS (mondo 2026-11-16: "what if we add giant flowers to the mix ... try making variations of the flower with tinting or recoloring
+   it"): the heal flower's model tall (3.6 m, `fae_flower*`) and giant (6 m, `fae_bloom*`), in white, pink, violet, blue and gold (data.js catalogue
+   `petal`). They block, so each stands on a whole free square; small coloured ones are decor by metres. */
+[['fae_bloom_pink', 92, 26], ['fae_flower_blue', 90, 27], ['fae_flower_gold', 91, 34], ['fae_flower_violet', 92, 33],
+ ['fae_bloom', 92, 39], ['fae_flower_pink', 91, 39], ['fae_flower_violet', 91, 46],
+ ['fae_flower_gold', 90, 51], ['fae_bloom_violet', 93, 54], ['fae_flower_blue', 90, 57], ['fae_flower_pink', 91, 53],
+ ['fae_flower', 91, 60], ['fae_flower_pink', 91, 64], ['fae_flower_blue', 91, 65],
+ ['fae_flower_violet', 90, 24], ['fae_flower_gold', 91, 20], ['fae_flower_blue', 90, 74], ['fae_bloom_pink', 91, 70]].forEach((q, i) => put(q[0], q[1], q[2], { face: (i * 67) % 360 }));
+[['pink', 3.4, gx(27) + 2.6], ['blue', 1.6, gx(33) + 1.0], ['violet', 2.2, gx(39) + 0.6], ['pink', 13.4, gx(45) + 2.8], ['violet', 2.6, gx(52) + 1.4], ['blue', 9.2, gx(56) + 2.6], ['pink', 6.6, gx(58) + 1.2],
+ ['violet', 8.8, gx(60) + 1.2], ['blue', 2.0, gx(64) + 2.4], ['pink', 4.6, gx(70) + 0.8], ['violet', 3.2, gx(74) + 2.2], ['blue', 4.4, gx(21) + 0.4], ['pink', 2.0, gx(23) + 2.8]]
+    .forEach((q, i) => at('fae_flower_small_' + q[0], E + q[1], q[2], { face: i * 53 }));
 /* THE RESIDENTS (mondo 2026-11-16: "add fairy, unicorn, gnome, and mushroom girl to Camelot": the kingdom's AREA UNITS table lists the four now,
    so they stand as themselves). A room stands ONE body of a race unless a row names its `gender` (the garden, L.js, has a fairy and a gnome first): the
    ring's fairy and the north knoll's gnome name theirs. The unicorn stands at the spring, the mushroom girl in the mushroom glade. No lines: none are written for them. */

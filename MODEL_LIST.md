@@ -2275,6 +2275,25 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | instrument_violin_lying | `Assets/world/packs/instruments/orchestral/Violin.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
 | instrument_whistle | `Assets/world/packs/instruments/orchestral/Whistle.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
 
+### Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) — Meshy AI (14)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| fae_bloom | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_bloom_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_bloom_violet | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_blue | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_gold | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_small_blue | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_small_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_small_violet | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_violet | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| woods_gasplant | `Assets/world/props/meshy/ew_plant_gasplant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| woods_healflower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| woods_thornvine | `Assets/world/props/meshy/ew_plant_thornvine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+
 ### Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) — Asset pack (13)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2553,14 +2572,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | spell_one_angel_wing | `Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_bat_wing | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_dragon_wing | `Assets/characters/gear/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
-
-### Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) — Meshy AI (3)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| woods_gasplant | `Assets/world/props/meshy/ew_plant_gasplant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
-| woods_healflower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
-| woods_thornvine | `Assets/world/props/meshy/ew_plant_thornvine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 
 ### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 

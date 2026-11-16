@@ -6696,6 +6696,14 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   PICTURE: the ring's fairy and the gnome (three probe views missed them). PROBE TIP: a person within 6 m straight ahead of the camera is
   cleared out of the way (`HQ_CROWD_RULES.clear`): photograph people from 8 m or more, or off to one side.
   The ring's harp IS a harp (seen close: strings); edge-on from the path it reads as a bar. Decision 6 above is superseded by this.
+- **THE GIANT FLOWERS (mondo 11-16: "what if we add giant flowers to the mix ... try making variations of the flower with tinting or recoloring it")**:
+  R2 holds ONE flower model, the heal flower (`ew_plant_healflower.glb`). New catalogue rows on that file: `fae_flower` (3.6 m) + `_pink`,
+  `_violet`, `_blue`, `_gold`; `fae_bloom` (6 m) + `_pink`, `_violet`; `fae_flower_small_pink / _violet / _blue` (0.8 m). THE PETAL COLOURS
+  (three-renderer.js `_hqPetalMat`): a catalogue row's `petal: 0xRRGGBB` recolours the pale, bright texels of the model's sheet (the white
+  petals) on a canvas when the model lands and leaves the stem, leaves, gold trim, heart and dirt as painted; one sheet a colour, cached;
+  the file is never touched; any pale-petalled model can use it. In the forest: 18 tall and giant flowers on whole squares in every glade,
+  13 small coloured ones. SEEN (two probes): white, pink, violet and blue read; gold not caught in a picture. FRAME RATE at the pond: 1.55
+  (before the flowers 1.2 to 1.4: no cost seen), draw calls 462 -> 551. The model is about 8,000 triangles: keep counts in the tens.
 - **WOULD DO NEXT**: a willow and reeds at the pond when a model exists; sound (no hook); the ring's
   harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
   forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.
@@ -6889,6 +6897,8 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   `footbridge`, `decor_stone_arch`, `item_hagstone`, `item_magic_wand`, `item_wizard_staff`, `item_potion_flask`; trees `tree_21..30` (the
   nature pack's birches) and `tree_53` (the painted birch); races that live in a wood: fairy, unicorn, gnome, mushroom girl
   (npc-system.md first). NOT on R2 in any pack: reeds, lily pads, a willow, bushes, small flowers, deer, fox, owl (alive), swan, dragonfly.
+- **GIANT FLOWERS + PETAL COLOURS (11-16)**: catalogue `fae_flower*` (3.6 m), `fae_bloom*` (6 m), `fae_flower_small_*`: the heal flower in white, pink,
+  violet, blue, gold. A row's `petal: 0xRRGGBB` recolours a model's pale petals at load (three-renderer.js THE PETAL COLOURS); L's garden can use it.
 - **THE ORDER THAT WORKED (for the next four district threads)**: (1) one probe of the district as it stands, `fp` views only, and
   LOOK before planning: the Village's two worst faults (the stone lid, the black slabs) were in no note; (2) exteriors with `gain`;
   (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
