@@ -6533,6 +6533,13 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   - THE CREEK: the camp's dog, a cooler, cans, a barrel.
   - SEEN AND TAKEN OUT: the ocean pack's fish in the Falls' pool (reef fish, hovering 1.5 m over the water), with the seaweed, turtle and crab.
   - FRAME RATE (same two views): the Meadow 1.4 -> 1.0, the Falls 1.2 (first look) -> 1.6. The Meadow's loss is the 30 new pieces round the fire; to win back in the polish pass.
+- **PASS 4 OF 5, THE ATMOSPHERE (seen by day and at night, 12 + 6 views):** `airZones` in metres (a zone is `{ x0, z0, x1, z1, kind, color?, n?, speed? }`, one Points each):
+  MIST at the Falls = white `spores` (they rise; `speed: 1.6`) in a 5 m strip at the fall's foot + pale `dust` over the pool; `fireflies` over the Meadow (45) and along the
+  creek's glades (60); the Snowline's snow 150 -> 260. Seven `railway_lantern` on the trail's edges, `noLight`. NIGHT (`_hqClockHour` 22.5): the district reads, the fireflies and
+  the two torches carry it. TRIED AND TAKEN OUT: candle flames from glowing boxes (they stood beside the pack's candles as pale blocks). NOT POSSIBLE FROM A DISTRICT FILE:
+  light shafts (an arch part has no translucent material; the `light_shaft` prop is drawn by code and draws nothing), sound, a real mist sheet at the fall.
+  FRAME RATE: the Meadow fell to 0.6 with the first cut of this pass; the Meadow's tiny clutter (plates, cans, matchbox, pillow: one draw each) and half its insects were
+  taken out again: Meadow 1.0, Falls 1.2 (first look: 1.6 / 1.2). LESSON: every small prop is a draw; a ring of ten things nobody sees costs more than one landmark.
 - **FITS THIS DISTRICT (the whole-list read, 11-16; a helper read MODEL_LIST.md §6, 7, 8, 10, 12b, 13 and the live catalogue end to end).** Placed now: see above.
   NOT YET PLACED, FIT: `hw_fence` (more), `psxg_railing`, `psxg_wall_corner`, `xmas_snowman_2/3`, `spear`, `psx_stairs_5_wood`, `ship_lantern` (needs a bough over it),
   `psx_canned_food_mp_4`, `psx_shotgun_ammo_1`, `psx_ammo_box_1`, `urban:ClothTattered*` (prayer rags, a lean-to tarp), `urban:WoodGeneric1b` / `wood_planks` (a lookout deck),
