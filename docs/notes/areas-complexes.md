@@ -5132,6 +5132,10 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   seats itself under the roof: stand table things on the ground.
   A `sign` quad faces south with no `ry`, north with 180, west with 90, east with 270. Mist over water = an `airZones()` `dust` zone, pale,
   slow, a few hundred; it shows at night, hardly by day.
+  THE WISH-LIST MODELS (seen at the Lake): `reeds`, `lake_rock` (scales to 7 m by `span`), `iron_lamp_post` (no glow: add a drawn amber
+  box 0.3 x 0.4 x 0.3 at 2.78 m), `wood_stove`, `picnic_table`, `heron`, `duck`, `swan`, `mooring_bollard`, `oars`, `fishing_rod` (a 2 m
+  stand), `willow_tree` (`noBlock`, its foot is the crown), `string_lights`, `trail_sign`, `leafy_bush`, `wild_flowers`, `moss_clump`,
+  `bbq_grill`, `firewood_stack`, `rope_coils`, `fish_boxes` all draw right at their listed sizes.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -6486,6 +6490,25 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
   green edges at the Boathouse's door from inside (the tool's door row, as in H). Fish cannot be seen under the opaque water. No sound
   bed. No residents with routines, no lines, no encounter table (mondo's). The draw calls doubled (see THE COST): the next step is to find
   which props batch and which do not, and merge or thin the ones that do not.
+
+### THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; seen in the cloud browser, day and night)
+- **STAND-INS OUT, MODELS IN:** the ocean seaweed -> `reeds` (about 27 clumps, 1.6 to 2.1 m, `noBlock`); the near-black ocean rocks ->
+  eight `lake_rock` (a row's `span` 7.5 m down to 2 m: the 1.5 m boulder scales up cleanly); the eight drawn lamp posts -> `iron_lamp_post`
+  (`noBlock`, on the decks' edges); the drawn pot-belly stove -> `wood_stove`; the two drawn picnic tables -> `picnic_table`; the flamingo ->
+  two `heron` (one in the Marsh's north pool, one on the Reeds' mud).
+- **NEW:** five `duck` among the lily pads and two `swan` north of the dock (a floating bird in the 1 m lake = `y: 0.97`, a lift off the bed),
+  six `mooring_bollard`, `oars` by the shingle boat and in the Boathouse, three `fishing_rod` (dock head, jetty, Boathouse; it is a rod on a
+  2 m stand: `span: 1.6`, `noBlock`), `firewood_stack` by the stove, `fish_boxes` and `rope_coils` on the dock, two `willow_tree` at the
+  water (`noBlock`: its catalogue foot is the crown, 3.85 m), `leafy_bush`, `wild_flowers`, `moss_clump`, a `bbq_grill` and two
+  `string_lights` at the shelter, a `trail_sign` at the north gap (was a blank signpost), `backpack`, `sleeping_bag`, `kettle` at the camp,
+  `dragonfly`, one `deer` under the north trees.
+- **THE LAMPS AT NIGHT:** `iron_lamp_post` has no glow of its own (dark at night as placed). A drawn amber box 0.3 x 0.4 x 0.3 at 2.78 m
+  over the foot, in the fittings row, fills the lantern and lights it; a smaller one (0.2) stayed hidden inside the glass.
+- **THE COST, back to back in one sitting (the whole district from 60 m, second reading):** main before this pass 1,138 draw calls and
+  1.2 frames a second; with the model pass 1,151 and 1.6. No loss to measure (the cloud's rate wanders between 1.0 and 1.8 run to run; the
+  calls in this view rose from 996 to 1,138 through other districts' passes). The props batch: 40 fewer reeds changed no draw call.
+- **NEEDS A MODEL: nothing left.** Not used: `lantern_post`, `dock_boat` (a pier section with its own boat: the decks are the room's).
+- Board row: "5 passes live + the model pass, STOPPED, waits mondo's look".
 
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
