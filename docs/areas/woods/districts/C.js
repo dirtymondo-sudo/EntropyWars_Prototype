@@ -3,16 +3,18 @@
    Repo tooling only: nothing here ships; the room is baked into data.js (site_prebuilt_fairy_forest_plots, WOODS36-BEGIN / END).
 
    THE LOOK: the friendly woods, "someone was just here". Birch mass, heal flowers, butterflies, bees, rabbits; fireflies in the air.
-   THE PLOTS AND WHAT STANDS THERE TODAY
-     P00-03 The Trail West (L2)     lesson sign, torch, the MISSING board, a candle. The trail west = the link woods_camelot (the tool's).
-     P01-03 The Old Tree (L2)       LANDMARK: three big full trees (9.5 / 8 / 7.5 m), a cobweb, a candle; native: tree person.
-     P02-03 The Crossroads (L2)     signpost, torch, a paper sheet, rabbit, crows.
-     P00-04 Deep woods, west (L1)   wolf, three bear traps, a trip wire; native: werewolf.
-     P01-04 The Campfire (L1)       campfire, boxes, log, torch, a tent, flashlight, VHS tape, camera flash, sack; native: hippie.
-     P02-04 The Stair (L2)          the marble flight up to DOOR HQ (13.61 m, a ramp row), torch, lantern.
-     P00-05 Deep woods, south (L1)  anthill, ant, moths, a bear trap, a skull, a broken trip wire.
-     P01-05 The Fence Line (L0)     a ranch rail along the south side with the gate's gap at the estate door, three hung sacks; native: scarecrow.
-     P02-05 Deep woods, east (L1)   rabbit, crows, a trip wire, a dead snag with a crow on it. The forest door (back to Room 420) is south.
+   THE PLOTS AND WHAT STANDS THERE TODAY (after the five passes of 2026-11-16)
+     P00-03 The Trail West (L2)     THE RANGER STATION (walk-in, furnished), its side yard (mower, tyres, barrel, cat); lesson sign, torch, the MISSING board.
+                                    The trail west = the link woods_camelot (the tool's).
+     P01-03 The Old Tree (L2)       LANDMARK: the 19 m tree and its two companions, stones at the roots, bees, a bench that looks at it, a ward totem; native: tree person.
+     P02-03 The Crossroads (L2)     signpost, torch, THE TRAIL SHELTER (a log lean-to), a bench, a bin, a cairn, trail lamps, rabbit, crows.
+     P00-04 Deep woods, west (L1)   THE HUNTER'S STAND, shells under it, a hollow dead tree, bones and meat, bear traps, a trip wire; wolf; native: werewolf.
+     P01-04 The Campfire (L1)       the camp: fire, log seats, two tents, instruments, cooler, cups, chairs, radio, a string of bulbs, torch; native: hippie.
+     P02-04 The Stair (L2)          the marble flight up to DOOR HQ (13.61 m, a ramp row: SHARED), two lamp posts and two urns on a dirt court at its foot, a bench, flowers.
+     P00-05 Deep woods, south (L1)  a rusted wreck, its key, a phone, a body, tyres, a hollow tree; anthill, moths, a bear trap, a skull.
+     P01-05 The Fence Line (L0)     the ranch rail and THE GATE (posts, beam, hung board, two open leaves, two lanterns), a well, straw, a pumpkin patch, hens, a dog,
+                                    three hung sacks; native: scarecrow (+ a second, a prop).
+     P02-05 Deep woods, east (L1)   THE OLD PLAYGROUND (swing, slide, sandbox, a bench, toys left behind), a dead snag with a crow. The forest door (Room 420) is south.
    BUILT 2026-11-16 BY THE CLEARING THREAD (mondo's order: prototype every district, at most five passes; notes: areas-complexes.md "THE CLEARING")
      PASS 1, THE EXTERIORS (build): THE RANGER STATION on the Trail West (a walk-in: texbuilding woods:ranger + an arch row), THE TRAIL SHELTER at the Crossroads,
      THE HUNTER'S STAND in Deep woods west, THE GATE on the Fence Line, THE OLD PLAYGROUND in Deep woods east, the lamp posts and urns at the Stair's foot,
@@ -20,12 +22,14 @@
      middle moved and the Stair stands where it stood.
      PASS 2, THE INTERIORS: the ranger station's one room (office west, bunk + wood stove east; parts in its arch row, props through P()); the shelter's deck.
      PASS 3, THE DRESSING (dressing(), called from build): the camp's ring, the Old Tree's bench and bees, the Crossroads' bench and cairn, the station's side
-     yard, the Fence Line's straw / pumpkin patch / well / hens, the stand's litter, a wreck in Deep woods south, the playground's leftovers, ten scatters.
+     yard, the Fence Line's straw / pumpkin patch / well / hens, the stand's litter, a wreck in Deep woods south, the playground's leftovers, three soft scatters.
+     PASS 4, THE ATMOSPHERE (atmosphere() + airZones): lamps as lit boxes (no light), a lit office window, the camp's string of bulbs; pollen, sparks, spores.
+     PASS 5, THE POLISH: glass lanterns, small toadstools, this header.
    KNOWN MISSING / WAITING FOR MONDO
      - The life pass and the horror pass are live but wait for his look (the board).
      - THE STAIR IS SHARED: the room's spawn, its plate and the link woods_stair's free door (data.js, x -17.5, z 55.5, y 12.06) stand on the
        flight as it is. Do not move or resize the flight without a note on the board.
-     - The three Deep woods plots are new forest plots with little of their own (a wolf, an anthill, rabbits).
+     - STOPPED after five passes (mondo's order): nothing more is built here until he has seen it. His list to overrule: areas-complexes.md "THE CLEARING".
      - The trees are closed ("Good, keep them"): do not change tree kinds unasked.
 
    THE HOOKS (bake-woods.js "THE DISTRICT FILES" calls them; each one is optional):
@@ -79,7 +83,7 @@ function dressing(ctx) {
       for (let i = 0; i < 7; i++) { const a = i * 0.9 + 0.3, d = 2.0 + (i % 3) * 0.35; P('psxg_rock_' + (1 + i % 4), tx + Math.cos(a) * d, tz + Math.sin(a) * d, { face: i * 67 }); }
       P('bee_frames', tx + 0.9, tz - 0.5, { y: 3.2 }); P('bee_frames', tx + 1.1, tz + 0.2, { y: 2.7 }); P('bee_frames', tx + 0.6, tz - 0.9, { y: 3.6 }); P('chrysalis', tx - 0.75, tz + 0.5, { y: 2.2 }); P('caterpillar_bug', tx - 1.5, tz - 1.2);
       const q = hput('P01-03', 'iron_garden_bench', 0, 3, { face: 180 }); if (q) { P('psx_book_mp_3', gc(q[0]) - 0.3, gc(q[1]), { y: 0.5, face: 30 }); P('hw_candles', gc(q[0]) + 1.2, gc(q[1]) + 0.3); }
-      hdec('P01-03', 'item_ward_totem', -3, 0); hdec('P01-03', 'fae_toadstool', 2, -2, { noLight: true }); hdec('P01-03', 'fae_toadstool', -2, -2, { noLight: true, h: 1.1 }); hdec('P01-03', 'instrument_violin_lying', 1, 3, { y: 0.02 });
+      hdec('P01-03', 'item_ward_totem', -3, 0); hdec('P01-03', 'fae_toadstool', 2, -2, { noLight: true, h: 0.55 }); hdec('P01-03', 'fae_toadstool', -2, -2, { noLight: true, h: 0.4 });   // small (pass 5: at 1.75 m they read as the Ritual Ground's) hdec('P01-03', 'instrument_violin_lying', 1, 3, { y: 0.02 });
       hdec('P01-03', 'hw_web', -1, -1, { y: 1.5 }); hdec('P01-03', 'psxg_dead_bush_1', 3, 2); hdec('P01-03', 'wooden_bucket', -2, 2); }
     /* ── THE CROSSROADS (P02-03): a bench and a bin by the signpost, a cairn, what walkers leave ── */
     hput('P02-03', 'iron_garden_bench', -2, -1, { face: 90 }); hput('P02-03', 'metal_trash_can', 1, -2); hdec('P02-03', 'psxg_rock_1', 2, 2); hdec('P02-03', 'psxg_rock_3', 2, 2, { y: 0.6 }); hdec('P02-03', 'psxg_rock_4', -3, 3);
@@ -109,9 +113,40 @@ function dressing(ctx) {
     /* ── THE STAIR (P02-04): flowers and ferns round the court, a bench to wait on ── */
     hput('P02-04', 'iron_garden_bench', -3, 2, { face: 90 }); hdec('P02-04', 'woods_healflower', -2, 3, { h: 0.9 }); hdec('P02-04', 'woods_healflower', 2, 3, { h: 0.8 }); hdec('P02-04', 'fern', -3, 0); hdec('P02-04', 'fern', 3, 0); hdec('P02-04', 'psxg_rock_3', 3, 2);
     /* ── THE SCATTERS (every disc inside the district): stones along the trails, dead bush and toadstools in the deep woods, heal flowers round the Stair ── */
-    sow('psxg_rock_1', 10, [10, 39], 14, { r0: 0.5 }); sow('psxg_rock_3', 12, [24, 41], 12, { r0: 0.5 }); sow('psxg_rock_2', 9, [18, 58], 14, { r0: 0.5 }); sow('psxg_rock_4', 9, [27, 62], 12, { r0: 0.5 });
-    sow('psxg_dead_bush_1', 14, [6, 58], 16, { r0: 0.5 }); sow('psxg_dead_bush_2', 8, [7, 66], 10, { r0: 0.5 }); sow('mushroom2', 16, [8, 60], 18, { h: 0.4, r0: 0.3 });
-    sow('woods_healflower', 16, [31, 55], 12, { h: 0.75, r0: 0.3 }); sow('fern', 26, [18, 50], 30); sow('stump', 8, [20, 60], 28);
+    /* (11-16, pass 4: the four stone scatters, the two dead-bush scatters and the stumps are gone: a scatter lands on a path as readily as beside it, and a knee-high
+       stone stood in the middle of the Trail West. Stones and bushes are placed by hand on the glades above; only small soft things are scattered.) */
+    sow('mushroom2', 16, [8, 60], 18, { h: 0.4, r0: 0.3 }); sow('woods_healflower', 16, [31, 55], 12, { h: 0.75, r0: 0.3 }); sow('fern', 26, [18, 50], 30);
+}
+/* PASS 4, THE ATMOSPHERE (2026-11-16): lit pieces only (a `glow` box draws lit and lights nothing: the room's ten real lights are the torches and the fires).
+   A lamp = a warm lit box under a dark cap. Trail lamps at the joins, the station's porch lamp and one lit office window, lanterns on the gate's posts and
+   under the shelter's roof, a string of bulbs over the camp. The air is in airZones above. Seen by day and at night (probe: window._hqClockHour). */
+function atmosphere(ctx) {
+    const { N, gx, gc, r2, features, doors, plot, centre } = ctx;
+    const WARM = 0xffc46a, CAP = 0x35393c;
+    const lantern = (x, y, z) => [box(x, y, z, 0.22, 0.32, 0.22, GLASS, WARM, { uv: 'fit', glow: 1 }),   /* a glass sheet (pass 5: a lit box with no sheet drew as lined paper) */ box(x, y + 0.32, z, 0.3, 0.05, 0.3, TIN, CAP), box(x, y - 0.04, z, 0.3, 0.04, 0.3, TIN, CAP)];
+    const lampPost = (x, z, sd) => [box(x, 0, z, 0.2, 2.9, 0.2, WD2, DARK), box(x + sd * 0.35, 2.7, z, 0.7, 0.1, 0.1, WD2, DARK), box(x + sd * 0.6, 2.25, z, 0.03, 0.45, 0.03, TIN, 0x55595c), ...lantern(x + sd * 0.6, 1.93, z)];
+    /* the ranger station (rot 180: +x = west, +z = north, out of the front): the porch lamp by the door, the office window lit from inside */
+    { const cx = r2(gx(8) + 5.25), cz = r2(gx(42) + 3.5), d = 7;
+      features.push({ k: 'arch', id: 'woods:ranger:lights', x: cx, z: cz, rot: 180, parts: [
+          box(0.55, 2.3, d / 2 + 0.2, 0.06, 0.06, 0.3, TIN, CAP), ...lantern(0.55, 1.95, d / 2 + 0.34),
+          box(2.75, 1.0, d / 2 + 0.115, 1.5, 1.35, 0.03, GLASS, 0xffc98a, { uv: 'fit', faces: 'f', top: false, glow: 0.7 }) ] }); }
+    /* the trail shelter (rot 0, open to the north): a lantern hung from the front beam */
+    features.push({ k: 'arch', id: 'woods:shelter:lights', x: gx(26), z: gc(42), rot: 0, parts: [box(1.6, 2.5, -1.4, 0.03, 0.45, 0.03, TIN, 0x55595c), ...lantern(1.6, 2.18, -1.4)] });
+    /* the gate: a lantern on the inside of each post */
+    { const gap = doors.find(d => d.id === 'estate').x, p = plot['P01-05'], z = gx(p.y * N + N - 1);
+      features.push({ k: 'arch', id: 'woods:gate:lights', x: gap, z, rot: 0, parts: [-1, 1].flatMap(sd => [box(sd * 3.5, 2.6, -0.4, 0.06, 0.06, 0.5, TIN, CAP), ...lantern(sd * 3.5, 2.2, -0.6)]) }); }
+    /* trail lamps: the Crossroads' join, the Old Tree's turn, the trail down to the camp, the playground's corner (one row, the room's own frame) */
+    { const at = (cx, cy, ox, oz, sd) => lampPost(gx(cx) + ox, gx(cy) + oz, sd);   // a square's north-west corner + an offset: on a path's edge, never on its middle
+      const parts = [...at(27, 42, 0.5, 0.5, 1), ...at(20, 42, -0.4, 0.5, -1), ...at(17, 46, 0.4, 1.0, -1), ...at(30, 46, 0.4, 1.0, -1), ...at(13, 55, 3.1, -0.5, -1), ...at(28, 63, 0.4, 0.6, 1)];   // each on a forest square's edge beside the path
+      const o = [gx(0), gx(36)]; parts.forEach(q => { q.p = [r2(q.p[0] - o[0]), q.p[1], r2(q.p[2] - o[1])]; });
+      /* the ground differs from lamp to lamp, so each lamp is its own row at its own foot */
+      const groups = {}; parts.forEach(q => { const k = Math.round((q.p[0] + o[0]) / 3.5) + ':' + Math.round((q.p[2] + o[1]) / 3.5); (groups[k] = groups[k] || []).push(q); });
+      Object.keys(groups).forEach((k, i) => { const g = groups[k], bx = g[0].p[0] + o[0], bz = g[0].p[2] + o[1];
+          features.push({ k: 'arch', id: 'woods:lamp:' + i, x: r2(bx), z: r2(bz), rot: 0, parts: g.map(q => Object.assign({}, q, { p: [r2(q.p[0] + o[0] - bx), q.p[1], r2(q.p[2] + o[1] - bz)] })) }); }); }
+    /* the camp's string of bulbs: two posts and a wire on the line between two square rows south of the fire, seven bulbs */
+    { const c = centre('P01-04'), fx = gc(c[0]), z = r2(gc(c[1]) + 5.25), COL = [0xffc46a, 0xff8f6a, 0xfff0b0, 0x9fe08a, 0xffc46a, 0x8ac8ff, 0xff8f6a];
+      features.push({ k: 'arch', id: 'woods:camp:lights', x: fx, z, rot: 0, parts: [box(-5.2, 0, 0, 0.14, 2.9, 0.14, WD2, DARK), box(5.2, 0, 0, 0.14, 2.9, 0.14, WD2, DARK), box(0, 2.72, 0, 10.4, 0.025, 0.025, TIN, CAP),
+          ...COL.map((col, i) => box(-4.2 + i * 1.4, 2.56 - (i === 3 ? 0.05 : 0), 0, 0.1, 0.14, 0.1, null, col, { glow: 0.8 }))] }); }
 }
 module.exports = {
     id: 'C', name: 'The Clearing',
@@ -122,11 +157,16 @@ module.exports = {
     wood: ['tree', 7.5, 0.03],
     /* THE TREE ZONES (terrain.gen.zones, the thicket by district) and THE AIR BY DISTRICT (shell.atmos.zones): boxes in plots, zoneOf(x0, y0, x1, y1) */
     treeZones: ctx => [Object.assign(ctx.zoneOf(0, 3, 3, 6), { kinds: ['tree_53', 'tree_54', 'tree_53', 'tree_52', 'tree_54'], treeH: [5.5, 8.5] })],          // birch
-    airZones: ctx => [Object.assign(ctx.zoneOf(0, 3, 3, 6), { kind: 'fireflies', n: 260 })],
+    /* PASS 4 (2026-11-16): the air by plot. Fireflies everywhere (as before); warm pollen in the sun over the trail row and the Stair; sparks over the camp's
+       fire (the engine finds the fire and the torch itself); pale spores drifting in the two far Deep woods plots. */
+    airZones: ctx => [Object.assign(ctx.zoneOf(0, 3, 3, 6), { kind: 'fireflies', n: 260 }),
+        Object.assign(ctx.zoneOf(0, 3, 3, 4), { kind: 'dust', color: 0xffe7a8, n: 150 }), Object.assign(ctx.zoneOf(2, 4, 3, 5), { kind: 'dust', color: 0xffe7a8, n: 60 }),
+        Object.assign(ctx.zoneOf(1, 4, 2, 5), { kind: 'embers', n: 46 }),
+        Object.assign(ctx.zoneOf(0, 4, 1, 6), { kind: 'spores', color: 0xa9c7a2, speed: 0.6, n: 120 })],
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
-        tree('P01-03', 'tree_4', 19, 0, 0, 1.6); tree('P01-03', 'tree_4', 11.5, 1, 1, 0.95); tree('P01-03', 'tree_4', 10.5, -1, 1, 0.9);              // THE OLD TREE (the district's landmark; 19 m since 11-16, was 9.5: it did not stand out of 8.5 m birches)
+        tree('P01-03', 'tree_4', 19, 0, 0, 1.0); tree('P01-03', 'tree_4', 11.5, 1, 1, 0.95); tree('P01-03', 'tree_4', 10.5, -1, 1, 0.9);              // THE OLD TREE (the district's landmark; 19 m since 11-16, was 9.5: it did not stand out of 8.5 m birches)
         put('P02-03', 'signpost', 0, 0, { face: 30 }); put('P02-03', 'cave_torch', 3, -2); dec('P02-03', 'paper_sheet', -2, 2, { y: 0.01 }); dec('P02-03', 'rabbit', -3, -2); dec('P02-03', 'crow', 3, 3);
         put('P01-04', 'campfire', 0, 0); dec('P01-04', 'cardboard_boxes', 2, 1); dec('P01-04', 'fallen_log', -2, 1); put('P01-04', 'cave_torch', 0, -3);
         { const q = centre('P02-04');   // THE STAIR: the building's own marble flight, standing alone in the trees and climbing past the treeline (the old clearing's row)
@@ -228,7 +268,7 @@ module.exports = {
           P('psx_carpet_mp_1', -0.3, 0.2, { y: 0.17 }); P('brochure_rack', 1.0, 3.12, { y: 1.1 }); P('psx_clock_1', 2.75, -3.17, { y: 2.45, face: 180 }); P('psx_painting_1', -w / 2 + 0.36, -2.4, { y: 1.9, face: 270 });
           P('psx_ceiling_lamp_1_on', 2.3, 0, { y: 2.42, noLight: true }); P('psx_ceiling_lamp_1_on', -2.6, 0, { y: 2.42, noLight: true });
           P('psx_canned_food_mp_1', 0.3, -3.15, { y: 1.96 }); P('psx_canned_food_mp_2', 0.6, -3.15, { y: 1.96 }); P('retro_radio', 0.95, -3.15, { y: 1.96, face: 180 }); P('psx_glass_bottle_1', 4.6, -3.15, { y: 1.96 });
-          P('psx_supply_crate_1', -0.4, -2.95, { y: F }); P('psx_cobweb_1', 4.9, 3.1, { y: 2.3 }); P('psx_jerrycan_1', 4.3, -3.0, { y: F }); P('hw_candles', 0.6, 2.9, { y: 1.09 }); }
+          P('psx_supply_crate_1', -0.4, -2.95, { y: F }); P('psx_jerrycan_1', 4.3, -3.0, { y: F }); P('hw_candles', 0.6, 2.9, { y: 1.09 }); }
         /* ── THE TRAIL SHELTER (P02-03 The Crossroads): a three-sided log lean-to in a pocket of the trees on the trail's south side, open to the trail. Its back and
            its two ends stand on the pocket's own forest edges, so the walls you see are the walls you meet. ── */
         { const cx = gx(26), cz = gc(42), at = frame(cx, cz, 0);
@@ -268,9 +308,10 @@ module.exports = {
         /* ── THE COURT AT THE FOOT OF THE STAIR (P02-04): two lamp posts and two stone urns where the marble meets the dirt. The flight itself is not touched. ── */
         { const fx = gx(31), fz = gx(57);   // the foot's middle
           const post = sd => [box(sd * 2.6, 0, 1.2, 0.2, 2.9, 0.2, WD2, DARK), box(sd * 2.6 - sd * 0.35, 2.7, 1.2, 0.7, 0.1, 0.1, WD2, DARK), box(sd * 2.25, 2.25, 1.2, 0.03, 0.45, 0.03, TIN, 0x55595c),
-              box(sd * 2.25, 1.93, 1.2, 0.22, 0.32, 0.22, null, 0xffc46a, { glow: 1 }), box(sd * 2.25, 2.25, 1.2, 0.3, 0.05, 0.3, TIN, 0x35393c), box(sd * 2.25, 1.9, 1.2, 0.3, 0.04, 0.3, TIN, 0x35393c)];
+              box(sd * 2.25, 1.93, 1.2, 0.22, 0.32, 0.22, GLASS, 0xffc46a, { uv: 'fit', glow: 1 }), box(sd * 2.25, 2.25, 1.2, 0.3, 0.05, 0.3, TIN, 0x35393c), box(sd * 2.25, 1.9, 1.2, 0.3, 0.04, 0.3, TIN, 0x35393c)];
           features.push({ k: 'arch', id: 'woods:stairfoot', x: fx, z: fz, rot: 0, parts: [...post(-1), ...post(1)] });
           props.push({ key: 'stone_urn', x: r2(fx - 2.5), z: r2(fz + 3.2) }, { key: 'stone_urn', x: r2(fx + 2.5), z: r2(fz + 3.2) }); }
         dressing(ctx);
+        atmosphere(ctx);
     },
 };

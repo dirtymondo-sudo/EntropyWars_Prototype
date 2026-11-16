@@ -41654,8 +41654,12 @@ const ThreeRenderer = (function () {
                 n.castShadow = true; n.receiveShadow = true;
             });
             model.scale.setScalar(s);
-            model.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
-            model.rotation.y = K.rng() * Math.PI * 2;
+            /* THE OFF-CENTRE MODEL (2026-11-16, the Snowy Pass: a snow pine stood inside the Warming Hut, 30 m from its own trunk): the model is centred on its box and
+               then turned, and a turn is about the model's own origin, so a piece whose mesh does not sit on its origin (every Christmas pack tree, cut out of one scene)
+               swung away from the spot by up to twice that offset. The centring offset is turned with it now; a model on its origin is where it always was. */
+            var _try = K.rng() * Math.PI * 2, _tcx = (bb.min.x + bb.max.x) * 0.5 * s, _tcz = (bb.min.z + bb.max.z) * 0.5 * s, _tco = Math.cos(_try), _tsi = Math.sin(_try);
+            model.position.set(-(_tcx * _tco + _tcz * _tsi), -bb.min.y * s, _tcx * _tsi - _tcz * _tco);
+            model.rotation.y = _try;
             _nrInjectWorld(K, model);   // a world-rim tree (K._wdFog) joins the haze + the dissolve
             g.add(model); _objectsLanded = true;
         };
@@ -84662,6 +84666,10 @@ const ThreeRenderer = (function () {
             var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home, dist: r.dist }) : null; } catch (e) { sl = null; }
             list.push({ r: r, id: id, gender: g, lvl: sl ? sl.lvl : 0, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
         });
+        /* THE PARKED ROOM: a resumed room's residents keep the day they had already laid out (each one's timeline is a walk over
+           the city's map: laid again for all of them it is seconds of the tick after every fight) */
+        var oldR = H.res;
+        if (H._resumed && oldR && oldR.day === day && oldR.list) { var byId = {}; oldR.list.forEach(function (o) { byId[o.id] = o; }); list.forEach(function (n) { var o = byId[n.id]; if (o && o.tl) { n.tl = o.tl; n.day = o.day; n.lag = o.lag || 0; } }); }
         H.res = { G: G, day: day, list: list, next: 0, pts: [], lastPick: 0 };
         return true;
     }
@@ -96411,7 +96419,10 @@ const ThreeRenderer = (function () {
             });
             var gone = new Set(); (H.chars || []).forEach(function (ch) { if (ch.entry && ch.entry.group) gone.add(ch.entry.group); });
             H.blockers = (H.blockers || []).filter(function (b) { return !b.npc && !gone.has(b.obj); });
-            H.chars = []; H.player = null; H.rounds = null; H.roundsExits = null; H.roundsStops = null; H.nav = null;
+            H.chars = []; H.player = null; H.rounds = null; H.roundsExits = null; H.roundsStops = null;
+            /* (H.nav STAYS: the walk map is the room's, not the people's. Clearing it made the residents' tick build the whole
+               city's map again after every fight, HQ_NAV_BUDGET_MS a frame: mondo's F3 11-16 04:07, "tick: doors + residents +
+               scene 15.6" ms, 26 FPS where the walk ran 38-43) */
             if (H.res && H.res.list) H.res.list.forEach(function (s0) { s0.ch = null; s0.loading = false; s0.want = false; });
         } catch (e) { console.warn('[HQ] the parked room\'s people could not be cleared', e); }
         var _p3d = _hq3DOn();
