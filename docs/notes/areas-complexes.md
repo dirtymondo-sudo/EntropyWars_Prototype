@@ -7774,7 +7774,19 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   wall (two racks, a ladder rack, barrels, crates, a drum), the forklift with two pallets and the pallet jack west, cones, oil.
   FOUND: `ebd_metro_turnstile` draws as a blank grey block (use `metro_gate`); the Depot's hall is SEVEN squares deep (z -10.5..14):
   pass 1's south dado and crane rail stood 3.5 m short of the wall and are moved.
-- **FPS (the probe's software renderer, the Depot view):** 3.5 before, 4.3 after pass 1 (no real cost: about 60 meshes, no new lights).
+- **PASS 4, THE ATMOSPHERE (seen, 8 views).** The room has ten real lights and the zone's air (fog, particles) is the tool's row, so
+  the district lights itself with `glow` and with the catalogue's moving props: (1) LIGHT THAT FALLS: under each lit station tube a lit
+  patch of the platform's own terrazzo (two steps), under each lit tunnel lamp a lit patch of the wall's brick and of the walk, under
+  the Depot's three lit lamps a round pool, along the lit car a strip each side, ahead of its headlights two steps on the ballast,
+  green on the ballast under each gantry head: all parts wearing the FLOOR'S OWN SHEET with a low `glow` (0.1 to 0.36), so the floor
+  reads lit, not painted. (2) FOUR `flicker_tube` props (the station's second lamp, both loops, the Depot by the crew room). (3) The
+  camp's barrel fire: `hearth_fire` in a `psx_metal_barrel_mp_2`, `noLight`. (4) STEAM: `chimney_smoke` in five places (the station's
+  track twice, a leaking main at the Crossing, the compressor, the east loop). (5) An `exit_sign` over each hut's door. No night look:
+  the place is underground (no clock). NOT POSSIBLE FROM A DISTRICT FILE: fog, drips, dust motes, sound (the tool's row / no hook);
+  light shafts draw nothing since 10-04 (`_hqLightShaft` returns null), so the garden well has no daylight beam.
+- **FPS (the probe's software renderer, the Depot view, 5 s):** 3.5 before pass 1 (the room held 315 props), 4.3 after pass 1, 3.0
+  after pass 4 (the room holds 679 props: every Sewers thread's). Run-to-run noise is about 1; T's own cost: about 75 meshes of parts,
+  about 250 props, four bulbs out of the room's ten, no texture the room did not already load except the tile and metal sheets.
 - **DECISIONS MADE FOR MONDO (overrule any in a line):** (1) the five cave torches of the first build are gone from the line: a subway is
   lit by its own lamps, and the room has ten real lights for 30 plots; T takes four (the lit car, the cabin, the crew room, the station office), everything else is `glow`.
   (2) The platform reaches the track (it stood a walk's width back). (3) The exit is shuttered, in the east end, not a stair. (4) Every
