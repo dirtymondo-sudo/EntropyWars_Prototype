@@ -4864,6 +4864,12 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
 - **THE SHORE'S HELPERS, TO COPY (they live in S.js `build`; none is in the tool, so nothing shared changed):** `wall` (a painted shell),
   `win`, `porch`, `inside`, `In`, `bulbs`, `torch`. If a second district copies one unchanged, that is the moment to move it into
   bake-beach.js `sheet()` (a board note first, its own small PR).
+- **FROM THE LAKE (district L):** a new plan letter `s` paints gravel (`dirt_4`); `o` cobbles read as crazy paving. A prop row's `h` / `span`
+  resizes any model and its blocker (big rocks from `ocean_rock_3`). Put MANY small drawn things in ONE `arch` row (piles, lamp posts): a row
+  costs three to five draw calls. An `arch` over water needs `y: 0` (else it stands on the bed). A deck over lawn needs boards (`j`) painted
+  under it or the grass field grows through. A native in a pool walks the bed. `dockring` is a spaceship part, not a mooring ring. The
+  playground pack (`play_swing`, `play_slide`, `play_sandbox`) and `brass_telescope` stand well outdoors. A `P()` on a deck over the lake needs
+  its square taken out of `taken` first (the water stage marks the lake's squares).
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5514,6 +5520,44 @@ that first district is fleshed out and knows what shared assets it can use for t
 - The people stand on spots with no lines but the ghost's and the ghoul's (lines are mondo's to give).
 - `hw_web` never seen standing; `psx_wooden_crate_3` drew as a blank box in the probe (the `_4` and `_6` crates are fine); `lion_statue` is a
   tawny lion, not stone (not placed).
+
+## THE ESTATE, DISTRICT L — THE LAKE (2026-11-16, the second district thread; file `docs/areas/estate/districts/L.js`)
+
+mondo 11-16: "now that I think most of these districts have had at least a couple passes on them, can you start threads for another district in
+the zone". Passes as the pilot's, a PR each: exteriors, interiors, dressing, atmosphere, polish.
+
+### THE FIRST LOOK (probe, 12 views + 3)
+- The Lake was a flat pool in a lawn: the rock a mound in the corn's leaf sheet, the dock bare planks, the Boathouse a dark brown box with no
+  window, nothing on any shore, the Marsh two puddles in grass.
+- **THE LOCH NESS MONSTER IS THERE AND IS SEEN.** It never showed in a picture before because it WANDERS: a native in a pool walks the bed
+  (y -1.35 here) and at 2.6 m tall its neck and back stand out of 1 m of water. Find it with `ThreeRenderer.hq.dev.chars()` in a view's `eval`
+  (it prints every character's x, z, y), then point the next view at that spot.
+- `dockring` beside the Boathouse was the Meshy SPACESHIP docking ring, 4.5 m across (placed by its name as a mooring ring). Removed.
+
+### PASS 1, THE EXTERIORS (seen in the cloud browser)
+- **THE BOATHOUSE:** boards lifted to weathered grey (`gain: 1.7` on the wood sheet), a stone footing open at the door, corner boards, a tin gable
+  roof with its ends east and west, the two boat doors on their rail on the lake side at the head of the slip (drawn shut; the walk-in door is
+  the south one), a loft hatch under a hoist beam, seven sashed windows (two lit), a stove pipe, two lanterns, `BOATHOUSE` (font `fell`).
+- **THE DOCK:** a head across its end (a second `deck` row, two squares by four), the slip carried 10 m out over the water, a jetty on the east
+  bank, a boardwalk over the Marsh's south pool. Every deck stands on drawn piles with pale caps; six iron lamp posts on the decks' edges.
+  ALL the piles and lamp posts are ONE `arch` row (`est:lakefittings:look`, `y: 0`): eleven separate rows cost 34 draw calls more.
+- **THE ROCK:** the plateau is gone; eight ocean pack rocks stand on the bed (`ocean_rock_3` at `h: 6.4` down to 1.6 m). A prop row's `h`
+  scales the model and its blocker. They draw near black (the pack's own colour; a prop row takes no tint).
+- **THE PICNIC SHELTER** (South Shore): a drawn pavilion over three by three squares, posts on the corner squares' middles with ghost walls, two
+  plank tables, `PICNIC AREA` read from the lake. Beside it the playground pack's `play_swing`, `play_slide`, `play_sandbox`.
+- **THE GROUND (`plan()`):** gravel shingle on the North Shore, mud at the Reeds' bank and round the Marsh's pools, boards under the shelter, at the
+  Boathouse's door and under every deck. The squares are picked from the lake's own ellipse (`E(x, y)` in L.js), not from the plan's `w` squares:
+  the plan draws the water as a rectangle, the pool is an ellipse, so the plan's corner `w` squares are lawn.
+- **ONE SHARED CHANGE (noted on the board):** bake-estate.js paint rule, plan letter `s` = `dirt_4`, which draws the calm GRAVEL picture. The
+  cobble sheet (`o`) reads as crazy paving, not shingle.
+- **THE MODEL LIST FIRST (mondo 11-16), what the search gave the Lake:** nothing on R2 for reed, cattail, lily, duck, swan, heron, canoe, pier
+  (the NEEDS A MODEL list in L.js). Found and placed: the Cursedlake playground (swing, slide, sandbox), `brass_telescope` (the dock's head).
+  Found for pass 3: the ocean pack's fish, turtle, eel and seaweed (they swim: `swim`), `meshy_campfire_ring`, both camping tents,
+  `beach_cooler`, `beach_life_ring`, `metal_trash_can`, `garbage_bag`, `fishing_net_wall`, `outboard_motor`, `ship_anchor`, `ships_bell`,
+  `meshy_rope`, `footbridge`, `flamingo`, crow, rabbit, ladybug, bees, four butterflies. Camelot's Fairy Forest draws lily pads as notched discs.
+- **THE COST:** the proof view (the whole district from 60 m up): 456 draw calls before, 557 after; the cloud's software renderer drew both at
+  0.20 frames a second (it cannot tell them apart). L's real lights went from four to two.
+- Not done: the Boathouse's inside (pass 2), reeds, lily pads, shore dressing, fish (pass 3), mist and night (pass 4).
 
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
