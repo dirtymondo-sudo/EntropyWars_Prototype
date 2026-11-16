@@ -8845,7 +8845,7 @@ const ThreeRenderer = (function () {
         if (!S || S.H !== H || S.level !== _ggLevel) {
             _hqGrassDrop();
             var LOW = (_ggLevel === 'low'), U = _hqUnits(), pr = _ggPressTex(1, 1), boxes = [];
-            ((T.features) || []).forEach(function (f) { if (f && f.k === 'texbuilding') { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.4, f.d / 2 + 0.4, Math.cos(a), Math.sin(a)]); } });
+            ((T.features) || []).forEach(function (f) { if (f && (f.k === 'texbuilding' || (f.k === 'plateau' && f.bld && f.w > 0 && f.d > 0))) { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.4, f.d / 2 + 0.4, Math.cos(a), Math.sin(a)]); } });
             S = _hqGG = { H: H, level: _ggLevel, info: H.terrain, U: U, N: LOW ? HQ_GRASS.low.perSquare : HQ_GRASS.perSquare, R: LOW ? HQ_GRASS.low.radiusM : HQ_GRASS.radiusM,
                 width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / HQ_GRASS.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
                 cells: new Map(), pals: {}, boxes: boxes, press: pr.tex, at: 0, parent: (H.propGroup && H.propGroup.parent) || scene };
