@@ -6111,6 +6111,15 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
     district; eight low green marker lights round the formation (`circleGlow`, the zone's grave-light green) and a lit disc on the ground under the
     saucer (`saucerGlow`). All drawn glow: C still spends only two real lights.
   - No sound bed (a walked room has none per district, as H found).
+- **PASS 5, POLISH (seen in the cloud browser, an audit of every plot: 11 + 3 views) — THE THREAD STOPS HERE, the district waits mondo's look:**
+  - The drawn furrows stood 0.2 m proud with a crisp edge and read as timber baulks: now 0.1 m and wider (soil ridges).
+  - FPS, measured properly: the first view of a run reads low (0.2 to 1.8: the room is still compiling). Warm, the proof view (x -57.75, z -68, face 180)
+    gives 2.0 fps twice running on llvmpipe, against 1.8 at the thread's first look. Measure on a second or third view, never the first.
+  - STILL OPEN (what the next look should take): the corn bank is a hedge until a stalk model exists; the tool's own `dead_snag` scatter can land on a
+    track (seen once in The Tall Corn: the tool's row, not touched); lamp glass is a plain lit box (the zone's known limit); the people have no lines;
+    no residents with routines; the grass field takes a second to grow round a walker who has just arrived, so a cut field's standing strips are bare for a moment.
+  - WHAT THE NEXT THREAD CAN REUSE (also in THE ZONE KIT): `strips()` + `rows()` (a cut field), `board()` (a painted board read from both sides),
+    the grouped `lampParts()` (many posts, one row), `at()` (free decor that reports every piece in the corn at once), the verge scatter.
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
   THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle. (6) a saucer set down in a hidden pocket of The Tall Corn (one prop row to remove). (7) horror touches on the verges (flesh, traps, a corpse by the saucer).
@@ -6310,6 +6319,12 @@ Read this before dressing C, L or R. It grows with each of H's passes.
   draws near black under any tint; weathered timber = `WD` + tan + `gain: 1.9`; painted boards want `gain` 1.7 to 2.2. A part turned with
   `ry: 90` puts its local +z at the row's -x. Pieces first placed here: `ind_silo` (a grain bin), `water_tower_west`, `ride_on_mower`, `tire_stack`.
 - **A WALK-IN'S LIT CEILING (district R, pass 2):** the walk-in's own black ceiling hangs about 0.3 m under the wall's top; put the lit part 0.4 m under the top. By the corn's bank a `hug` row sits up to 0.6 m under the drawn ground: nothing flat there.
+- **FROM DISTRICT C (the Corn Fields thread, 11-16), free to copy out of C.js:** a CUT FIELD = `plan()` `strips()` (alternate squares `p` and `g`: the grass field on the
+  lawn squares is the standing crop) + `dress()` `rows()` (three low `dirt_3` ridges a soil square, one `look` a field); `board(id, fx, fy, rot, words, w)` (a painted
+  board on two posts, read from both sides); `lampParts()` + `LAMPS` (every lamp post on level ground in ONE `look`: 24 separate posts cost frames); `at()` (free decor
+  that lists every piece standing in the corn in one error). Blown up, the pack's `hw_crop*` are soil lumps; `hw_part_2` is a flayed standing figure, not an arm;
+  `astronaut` is a white standing figure. Meshy pieces by the dozen (sacks, stumps, `woods_thornvine`) cost triangles: scatter pack pieces. An FPS reading from a
+  run's first view is the room still compiling: measure on the second or third.
 - **STILL MISSING ZONE-WIDE:** corn stalks (Meshy, waits), a lamp post model, night never seen on screen, no residents with routines, lines for
   most of the people.
 
@@ -7028,7 +7043,7 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   shelter's logs lifted (`gain: 1.5`): it drew near black under its roof. No other walk-in stands in the district. FOUND: a base-course box needs `top: false`, or its
   top draws as a stone floor 0.85 m up inside the building and hides every table; `paper_sheet` stands on its edge on a table top.
 - **PASS 3, THE DRESSING (seen, 12 views; the lists read again first, the shortlist above):** `dressing(ctx)` in C.js, called from `build`; catalogue pieces
-  only, about 150 props + 10 scatter rows. THE CAMPFIRE: three log seats round the fire, a guitar, a drum, a tambourine, a cooler, cups, bottles, two folding
+  only, about 150 props + scatter rows (three soft ones since pass 4). THE CAMPFIRE: three log seats round the fire, a guitar, a drum, a tambourine, a cooler, cups, bottles, two folding
   chairs, a radio and a tape, a second tent, a mattress, a skateboard. THE OLD TREE: stones at its roots, bees and a chrysalis on the trunk, a bench that looks at
   it with a book and candles, two toadstools, a ward totem, a web. THE CROSSROADS: a bench, a bin, a cairn. THE STATION'S SIDE YARD: a ride-on mower, tyres, a
   rain barrel, a jerrycan, a shovel, a crate, a cat. THE FENCE LINE: a well, straw bales, a pumpkin patch on `hw_farmland`, a second scarecrow, a hitching rail,
@@ -7037,6 +7052,14 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   THE STAIR: a bench, heal flowers, ferns. SCATTERS (discs inside the district): `psxg_rock_1..4` along the trails, `psxg_dead_bush_1/2` and `mushroom2` in the deep
   woods, heal flowers round the Stair, ferns, stumps. FOUND: `femur` stands upright and is 1.5 m tall; `mushroom` is 3.5 m (not used); `car_truck` is a vehicle row
   (not placed: no road here). Five pieces were skipped on full plots (the tool's count `horrorSkipped`).
+- **PASS 4, THE ATMOSPHERE (seen by day and at night, 12 views):** `atmosphere(ctx)` + `airZones`. LIT PIECES (a `glow` box, no light: the room's ten real lights
+  are the torches and the fires): six trail lamps on forest squares' edges beside the paths (the Crossroads' join, the Old Tree's turn, the two trails south, the
+  camp's corner, the playground's corner), the station's porch lamp and ONE lit office window (a warm pane over the dark one), a lantern under the shelter's roof,
+  one on each gate post, a string of seven bulbs over the camp. THE AIR BY PLOT: fireflies everywhere (as before), warm pollen (`dust`, `0xffe7a8`) over the trail
+  row and the Stair, sparks (`embers`, the engine finds the fire and the torch) over the camp, pale `spores` in Deep woods west and south. Night in a probe: a view's
+  `eval` of `window._hqClockHour = function () { return 22.5 }`. FIXED HERE: pass 3's stone, dead-bush and stump scatters are gone (a scatter lands ON a path: a
+  knee-high stone stood in the Trail West). NOT POSSIBLE FROM A DISTRICT FILE: sound, light shafts, a darker sky or mist in the deep woods (the shell and the engine).
+  A lit box with no `key` draws pale with a faint lined sheet (it reads as a paper lantern); `glow` lifts every tint toward white.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.

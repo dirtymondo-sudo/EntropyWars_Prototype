@@ -11,11 +11,13 @@
      P00-02  The Rows, west         level 1  corn rows, crows
      P01-02  The Hub                level 1  four tracks meet; the well
      P02-02  The Rows, east         level 1  corn rows
+   STATE: FIVE PASSES LIVE (exteriors, the Field Shed, dressing, atmosphere, polish), STOPPED, waits mondo's look.
    WHAT STANDS HERE (the district thread, 2026-11-16; passes logged in docs/notes/areas-complexes.md "THE ESTATE, DISTRICT C"):
      every plot has its own thing. THE CUT ROWS (strips of tilled soil with drawn furrows + strips of standing young crop = lawn squares
      under the grass field) in The Tall Corn, both Rows and under the Scarecrow; THE CIRCLES with a formation left standing in the flattened
      ground, four stones, a cow; a watchers' camp on the west circle; THE HUB with a fingerpost, a wagon, rails, a bench; the silo yard;
      the power line and a lay-by on the Farm Track; the Woods gate's verge; drawn lamp posts and painted boards (plain words) all over.
+     THE FIELD SHED (walk-in, `houses()`), THE GATE ARCH, the verges' scatter, the hidden pocket with the saucer, the air zones (`airZones()`), night glow.
    MISSING / WAITING (the NEEDS A MODEL list is in the notes):
      - THE CORN: no corn-stalk model exists on R2 (every list read; the pack's crops blown up are soil mounds, the seaweed is black). The
        `leaves_3` bank is the tool's and still reads as a hedge. A stalk model, once made, is placed here.
@@ -97,7 +99,7 @@ module.exports = {
         const CROPS = ['hw_crop', 'hw_crop_2', 'hw_crop_3'], PUMP = ['hw_pumpkin', 'hw_pumpkin_2', 'hw_pumpkin_3', 'hw_pumpkin_4'];
         /* THE CUT ROWS: the pack's tilled beds laid in rows over a field, two beds a square, young crops down each bed (the grass field is not on dirt, so they show) */
         const rows = (x0, y0, x1, y1, ns, skip) => look('rows' + x0 + '_' + y0, gx(x0), gx(y0), 0, a => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (ctx.cell[y][x] !== 'p' || (skip && skip(x, y))) continue;
-            for (const o of [0.2, 0.5, 0.8]) { const lx = ((ns ? x + o : x + 0.5) - x0) * 3.5, lz = ((ns ? y + 0.5 : y + o) - y0) * 3.5; a.box(lx, -0.1, lz, ns ? 0.62 : 3.5, 0.3 + rnd() * 0.06, ns ? 3.5 : 0.62, 'dirt_3', 0xd8c0a0, { gain: 1.4 }); } } });
+            for (const o of [0.2, 0.5, 0.8]) { const lx = ((ns ? x + o : x + 0.5) - x0) * 3.5, lz = ((ns ? y + 0.5 : y + o) - y0) * 3.5; a.box(lx, -0.12, lz, ns ? 0.86 : 3.56, 0.21 + rnd() * 0.05, ns ? 3.56 : 0.86, 'dirt_3', 0xd8c0a0, { gain: 1.4 }); } } });   // low and wide: at 0.2 m over the ground with a crisp edge they read as timber baulks
         /* THE LAMP POSTS (the zone kit's, H's shape): every post on the district's level ground is ONE drawn piece (one row, a few draw calls for all of
            them); a post near the district's east or south edge, where the ground grades to the next district, is its own piece so it stands on its ground */
         const LAMPS = [], lampParts = (a, ox, oz, rot) => { const t = rot * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t), X = lz => r2(ox - lz * sn), Z = lz => r2(oz + lz * c), o = { ry: -rot };
