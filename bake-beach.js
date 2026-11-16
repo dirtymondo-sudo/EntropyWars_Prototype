@@ -82,7 +82,7 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (cell[y][x] === 'B'
       if (wet) comp.forEach(q => { cell[q[1]][q[0]] = 'J'; }); } }
 
 /* ── THE HEIGHTS ── */
-const SOFT = 'dDtjwua', WET = 'wuaJX', BEACH = 'dDtj';
+const SOFT = 'dDtjwuabc', WET = 'wuaJX', BEACH = 'dDtjbc';   // b, c (2026-11-16, the Ocean's thread; a board note): dark volcanic grit / scorched ground, sand in every other way (only the paint differs)
 const isSoft = ch => SOFT.includes(ch);
 function distTo(match) {   // every square's distance (in squares, corner steps count) to the nearest square that matches
     const d = new Int16Array(W * H).fill(999), q = [];
@@ -155,16 +155,16 @@ const put = (B, key, lx, lz, o) => { const p = B.at(lx, lz), r = Object.assign({
 function look(id, x, z, rot, fn) { const a = sheet(); fn(a); ARCH.push({ k: 'arch', id: 'bch:' + id + ':look', x: r2(x), z: r2(z), rot: rot || 0, parts: a.P }); }
 
 /* ── placing things: a blocker on a square's middle (P), decor off it (dec), people (native); never two on one square ── */
-const DRY_LAND = 'dDtjoJXr';
+const DRY_LAND = 'dDtjoJXrbc';
 function spot(sx, sy, what, where, shared) { if (!inb(sx, sy)) { errs.push(what + ' is off the map'); return; } const ch = cell[sy][sx];
-    if (where === 'land' && !'dDtjoJ'.includes(ch)) errs.push(what + ' is not on dry ground at ' + sx + ',' + sy + ' (' + ch + ')');
+    if (where === 'land' && !'dDtjoJbc'.includes(ch)) errs.push(what + ' is not on dry ground at ' + sx + ',' + sy + ' (' + ch + ')');
     if (where === 'sea' && !'wua'.includes(ch)) errs.push(what + ' is not in the water at ' + sx + ',' + sy + ' (' + ch + ')');
     if (!shared) { if (taken.has(sx + ':' + sy)) errs.push(what + ': square ' + sx + ',' + sy + ' is taken'); taken.add(sx + ':' + sy); } }
 const P = (key, sx, sy, o) => { spot(sx, sy, key, 'land'); props.push(Object.assign({ key, x: mx(sx), z: mz(sy) }, o || {})); };
 const dec = (key, sx, sy, o) => { spot(sx, sy, key, 'land', true); props.push(Object.assign({ key, x: r2(mx(sx) + (rnd() - 0.5) * 1.6), z: r2(mz(sy) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360) }, o || {})); };
 const afloat = (key, sx, sy, o) => { spot(sx, sy, key, 'sea', true); props.push(Object.assign({ key, x: mx(sx), z: mz(sy), y: 0.32 }, o || {})); };          // rides the surface (a `float` prop)
 const swimmer = (key, sx, sy, o) => { spot(sx, sy, key, 'sea', true); props.push(Object.assign({ key, x: mx(sx), z: mz(sy), y: -0.7, hover: 0.4 }, o || {})); };   // its back through the surface (the ocean pack's way)
-const palm = (sx, sy, h) => { spot(sx, sy, 'palm', 'land'); if (!'dDt'.includes(cell[sy][sx])) errs.push('a palm off the sand at ' + sx + ',' + sy); feat({ k: 'tree', x: r2(mx(sx) + (rnd() - 0.5)), z: r2(mz(sy) + (rnd() - 0.5)), kind: 'palm', h: h || r2(3.6 + rnd() * 1.4), r: 0.6 }); count.palms = (count.palms || 0) + 1; };
+const palm = (sx, sy, h) => { spot(sx, sy, 'palm', 'land'); if (!'dDtbc'.includes(cell[sy][sx])) errs.push('a palm off the sand at ' + sx + ',' + sy); feat({ k: 'tree', x: r2(mx(sx) + (rnd() - 0.5)), z: r2(mz(sy) + (rnd() - 0.5)), kind: 'palm', h: h || r2(3.6 + rnd() * 1.4), r: 0.6 }); count.palms = (count.palms || 0) + 1; };
 const native = (race, sx, sy, face, say) => { spot(sx, sy, race, null); const n = { x: mx(sx), z: mz(sy), face: face || 0, race }; if (say) n.say = say; npc.push(n); };
 
 /* ── THE WAYS ── */
@@ -211,8 +211,8 @@ runStage('dress');   // THE DRESSING, district by district
 writeSlope();
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
 /* ── THE PAINT: one sheet a square (0 = the room's own sand) ── */
-const PAL = ['wood_planks', 'cobblestone', 'rocks_5', 'obsidian', 'lava', 'urban:WoodFlooring1a'], paint = new Uint8Array(W * H);
-for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; paint[y * W + x] = (ch === 'j' || ch === 'J') ? 1 : ch === 'o' ? 2 : ch === 'r' ? 3 : ch === 'h' ? 4 : ch === 'l' ? 5 : ch === 'X' ? 1 : 0; }
+const PAL = ['wood_planks', 'cobblestone', 'rocks_5', 'obsidian', 'lava', 'urban:WoodFlooring1a', 'dirt_2', 'scorched'], paint = new Uint8Array(W * H);
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; paint[y * W + x] = (ch === 'j' || ch === 'J') ? 1 : ch === 'o' ? 2 : ch === 'r' ? 3 : ch === 'h' ? 4 : ch === 'l' ? 5 : ch === 'X' ? 1 : ch === 'b' ? 7 : ch === 'c' ? 8 : 0; }
 
 /* ── checks: every prop key and unit exists; the game's own compile gives the heights back; the walker reaches every dry plot of the mainland
    from the city door, and every island has a shore the skiff reaches ── */

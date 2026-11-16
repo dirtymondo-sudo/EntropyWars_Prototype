@@ -28,9 +28,8 @@
    with a lit disc under each (the light it throws), one under the islet's mushroom; seen by day and at night (`hqClockSet(23)`).
    PASS 5, POLISH (2026-11-16): a walk of twelve views by day and night; two standing stones (`menhir`) flank the Woods trail east of the
    crossing. FIVE PRs ARE IN (four district passes + the tool's hooks): THIS THREAD HAS STOPPED and waits mondo's look.
-   MISSING / WAITING: WAITS MONDO: who lives here (the kingdom's AREA UNITS table has no fairy, unicorn, gnome or mushroom girl; a person off
-   the table stands as a random race on it, so the ring's own "fairy" is not a fairy on screen either). STILL TO DO (passes 4, 5): its own
-   light, air and particles, the night look, polish. No walk-in here: none is named.
+   THE PEOPLE (mondo 11-16): fairy, unicorn, gnome and mushroom girl are on the kingdom's AREA UNITS table; here stand the ring's fairy, a
+   unicorn at the spring, a mushroom girl in the mushroom glade, a gnome on the north knoll. STILL OPEN: sound; no walk-in here (none is named).
    NEEDS A MODEL (nothing on R2; not in the game as stand-ins): reeds / cattails (the ocean pack's weed draws black here), a willow, a
    dragonfly, a firefly (particles may do), a swan or duck, a small waterside flower, bushes, natural small rocks (the graveyard pack's are
    cut blocks). The lily pads are drawn in code.
@@ -50,7 +49,7 @@
    the board first: docs/notes/claims.md). After any edit: `node bake-camelot.js`, `node --check data.js`, commit the file AND data.js. */
 'use strict';
 function build(ctx) {
-const { r2, gx, gc, feat, note, props, npc, taken, put, dec, many, tree, arch, flushArch } = ctx;
+const { r2, gx, gc, feat, note, props, npc, taken, put, dec, many, tree, native, arch, flushArch } = ctx;
 /* THE DRAWN PIECES (pass 1): rock is the cliff sheet under a pale tint, moss the dark grass; every row is written at the room's level 0
    (`y: 0`), its parts in metres from the row's own middle. Few looks on purpose: every sheet + tint + glow is one mesh a row. */
 const ROCK = 'rocks_5', STONE = 0xffffff, RG = 1.7, MOSS = 'grass_dark_fantasy', MOSSC = 0xc8e8a0, CRYSTAL = 0x5fd8ff;
@@ -89,7 +88,7 @@ dec('butterfly', 87, 27, { floor: true, y: 1.2 }); dec('blue_morpho', 93, 26, { 
   at('meshy_frog', PX - 2.0, PZ - 4.8, { y: -0.27, face: 120 }); }
 /* ── THE RING (P07-03): purple grass inside the toadstools, a moonstone at the heart, a small glowing cap between every two toadstools ── */
 { const x = gx(92), z = gx(43); many(12, i => { const q = i * Math.PI / 6; props.push({ key: 'fae_toadstool', x: r2(x + Math.cos(q) * 5.6), z: r2(z + Math.sin(q) * 5.6), face: i * 30 }); });   // THE RING
-  for (let y = 40; y < 46; y++) for (let x2 = 89; x2 < 95; x2++) taken.add(x2 + ':' + y); props.push({ key: 'instrument_harp', x: r2(x + 0.6), z: r2(z - 0.5), face: 200 }); npc.push({ x: r2(x + 1.75), z: r2(z + 1.75), face: 220, race: 'fairy' });
+  for (let y = 40; y < 46; y++) for (let x2 = 89; x2 < 95; x2++) taken.add(x2 + ':' + y); props.push({ key: 'instrument_harp', x: r2(x + 0.6), z: r2(z - 0.5), face: 200 }); npc.push({ x: r2(x + 1.75), z: r2(z + 1.75), face: 220, race: 'fairy', gender: 'female' });   // `gender`: the room stands one body a race, and the garden's fairy (L.js) is written first; a named gender is a body of its own
   const S = row('ring', x, z);
   S.flat(0, 0, 0, 6.7, 0.03, 'purple_grass', 0xffffff, { gain: 1.2, glow: 0.12 });
   many(12, i => { const q = i * Math.PI / 6; S.flat(Math.cos(q) * 5.6, 0.035, Math.sin(q) * 5.6, 0.95, 0.012, 'purple_grass', 0xf0c8ff, { glow: 0.42, seg: 12 }); });   // PASS 4: the light each toadstool throws on the ground (a lit disc: the room has no real light to spare)
@@ -164,8 +163,11 @@ at('rabbit', E + 8.9, gx(23) + 0.8, { face: 200 }); at('rabbit', E + 3.8, gx(53)
 /* PASS 5: two standing stones (mondo's Meshy menhir) flank the Woods trail east of the crossing, glowing caps at their feet */
 put('menhir', 90, 46, { face: 20 }); put('menhir', 90, 49, { face: 200 });
 [[0.9, gx(46) + 0.5], [2.7, gx(46) + 2.9], [0.8, gx(50) - 0.3], [2.8, gx(49) + 0.5]].forEach((q, i) => at('woods_glowcap', E + q[0], q[1], { face: i * 77, noLight: true }));
-/* NO NEW RESIDENTS: the kingdom's AREA UNITS table (mondo's, data.js HQ_AREA_ENCOUNTERS) has no fairy, unicorn, gnome or mushroom girl, and a
-   placed person off that table stands as a random race ON it (a unicorn here came up as an Undead). Who lives in this forest is his to say. */
+/* THE RESIDENTS (mondo 2026-11-16: "add fairy, unicorn, gnome, and mushroom girl to Camelot": the kingdom's AREA UNITS table lists the four now,
+   so they stand as themselves). A room stands ONE body of a race unless a row names its `gender` (the garden, L.js, has a fairy and a gnome first): the
+   ring's fairy and the north knoll's gnome name theirs. The unicorn stands at the spring, the mushroom girl in the mushroom glade. No lines: none are written for them. */
+native('unicorn', 90, 59, 135); native('mushroom girl', 92, 56, 250);
+native('gnome', 92, 21, 230); npc[npc.length - 1].gender = 'male';   // the garden has the room's first gnome: the same way
 flushArch();
 }
 /* PASS 4, THE AIR (2026-11-16; the Woods' way, per glade): violet motes through the whole forest, and each glade its own: fireflies over the
