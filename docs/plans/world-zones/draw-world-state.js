@@ -94,7 +94,7 @@ const box=(t,sub,col)=>{o.push(`<rect x="${LX}" y="${y}" width="${LEG-40}" heigh
 txt(LX,y,'3.  NOT ON THE MAP',15,C.ink,700);y+=12;
 box('DOOR HQ  (the hub, handmade)',['Its doors are the gold marks on the map.','Open at the start: the stair to the Woods,','the taxi to Disaster City.'],C.hq);
 box('② HEAVEN  (old rooms, plan 16)',['Over the Vatican. Up the Grand Stair from','Mount Olympus, or from Camelot’s sky castle.'],C.old);
-box('OUTER SPACE  (old rooms)',['Spaceship, Moon, Mars, Saturn, Singularity.','Ways in today: Antarctica (the ship),','HQ observatorium. Plan: one solar system.'],C.old);
+box('OUTER SPACE  (on plots 11-16)',['Moon 5x4, Mars 5x4, Saturn 4x4, the','Singularity 4x4: a room each. The Spaceship','handmade. Ways in: the ship, HQ observatorium.'],C.built);
 box('THE ASTRAL REALM  (old rooms, plan 36)',['Ways in: HQ dream lab, Camelot’s mirror,','the D.U.M.B. dream lab, the Haunted attic.'],C.old);
 y+=6;txt(LX,y,'WHAT THE COLOURS MEAN',15,C.ink,700);y+=14;
 const key=(col,dash,t)=>{o.push(`<rect x="${LX}" y="${y}" width="26" height="16" fill="${col}" fill-opacity=".55" stroke="${col}" stroke-width="2" ${dash?'stroke-dasharray="6 4"':''}/>`);txt(LX+36,y+13,t,12);y+=24};
