@@ -7191,6 +7191,46 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
 - **TRAP FOUND:** an `arch` row written at `x: 0, z: 0` with its parts 100 m away was NOT DRAWN (no error). One row a plot, at the plot's
   middle, its parts measured from there (as the tool's vault rows are): drawn.
 
+**PASS 2, THE INTERIORS (seen, 17 views; walked offline).** Every room furnished from the model list (about 135 props):
+- **THE CELLS:** cot, steel toilet, a basin on the side wall, an old mattress in each; then one story a cell: 1 nobody (chains, a web),
+  2 the gangster (tray, cup, smokes, cash), 3 somebody they forgot (bones on the mattress), 4 the wet one (a bucket, the scrawl, a puddle),
+  5 the politician (his ballot box and papers), 6 stripped (chains, a can).
+- **THE CORRIDOR:** the city seal on the brick between cells 1 and 2, the one phone, extinguishers, cameras, floor drains, a wheelchair,
+  the laundry cart, a waiting bench by the gate, the old room's key ring on the floor; **THE CELL DOOR** (the plan's name) is now bars and a
+  swinging cell door across the east passage, before the stair down to the Precinct Drain.
+- **THE GUARDROOM:** a take-a-number post and rope posts before the counter; on it a phone, papers, a clipboard; behind it the desk
+  (terminal, lamp, files, the baton), cabinets, the key rack, the clocks, the wall of faces, the notice board, the breakers, the wall of
+  screens (`monitor_stack`), the coffee table, the water cooler. **THE LOCKERS:** riot gear, the long guns, three lockers, a footlocker.
+  **THE CATWALK:** the watcher's chair, his lamp (`followspot`), his cup.
+- **THE PROPERTY ROOM:** shelving on the south wall, deposit boxes, the safe, boxes, a hand truck, the pin board, and what was taken off
+  people (a guitar, a sword, a skateboard, boxing gloves, a revolver, cash, an umbrella stand); the old room's key + list on the floor.
+- **THE DRUNK TANK:** two benches on the back wall, one cot, the pan, the drain, bottles, cups, a puddle; the mop bucket and the wet-floor
+  sign outside. **THE FAN ROOM:** compressor, gate valve, gauge board, breakers, tool chest, pipes; two cowls at the stack's foot.
+- **THE STACK** is drawn as a true brick drum now (a `cyl` part over the walked drum: the field samples every 0.875 m, so a round
+  `plateau` 3.5 m across is a rough cone).
+- **LEARNED:** a `wall` catalogue piece placed by `ctx.P` stands in the MIDDLE of its square, edge-on to nothing: stand wall furniture
+  against its wall (`k.put`, 1.3 to 1.45 m off the middle) and take the square. `femur` stands on its end. `leaf_security` is a barred
+  gate, `leaf_cell` a solid rusted door with a slot. The bystanders WALK (the politician was at the counter in one picture).
+- Numbers at the proof view (the corridor from the west door, llvmpipe): before 1,468 calls / 2.51 M triangles; pass 1 1,489 / 2.54 M;
+  pass 2 1,503 / 2.20 M, 1.4 FPS (the first two FPS readings were taken while the room still streamed and are not comparable).
+
+**FITS THIS DISTRICT (the whole catalogue + MODEL_LIST sections 6, 7, 10, 12b, 13 read 11-16; all have rows):** CELLS `cot` `steel_toilet`
+`psx_toilet_mp_1` `sink` `psx_old_mattress_mp_1` `psx_pillow_mp_1/2` `psx_bed_1_frame` `wall_chains` `trap_chain_draped/_straight`
+`meal_tray(_empty)` `toilet_paper` `wooden_bucket` `graffiti_wall` `psx_padlock_1..4` `stocks` `wall_padding` · BARS + DOORS `leaf_cell`
+`leaf_security` `leaf_portcullis` `psx_bars_metal_1/2` `psx_window_metal_bars_*` `cell_bars` · THE GUARDS `steel_table` `tanker_desk`
+`crt_terminal` `desk_lamp` `banker_lamp` `rotary_phone` `office_chair` `folding_chair` `filing_cabinet` `key_rack` `mugshot_wall`
+`evidence_board` `missing_board` `notice_board` `monitor_stack` `psx_monitoring_screen_mp_1` `security_camera` `wall_clock` `punch_clock`
+`breaker_panel` `riot_gear_rack` `rifle_rack` `locker` `office_locker` `footlocker` `locker_bench` `psx_police_baton_mp_1`
+`item_police_barricade` `item_walkie_talkie` `metal_detector` `number_dispenser` `now_serving_sign` `rope_stanchion` `form_counter`
+`city_seal` `lady_justice` `motto_plaque` `public_phone` `water_cooler` `coffee_maker` `followspot`
+· PROPERTY `metal_shelving` `lost_shelf` `deposit_box_wall` `floor_safe` `cardboard_box(es)` `psx_cardboard_box_*` `hand_truck`
+`luggage_cart` `manila_folders` `psx_cash_*` `psx_id_mp_1` `psx_keycard_*` `psx_key_mp_*` `revolver` `pistol` `shotgun` `psx_knife_mp_1`
+· THE TANK `metro_bench` `floor_drain` `drain_grate` `mop_bucket` `mop` `wet_floor_sign` `psx_glass_bottle_1/2` `solo_cup` · THE STACK
+`ind_vent` `meshy_vent` `psx_vent_*` `vent_grille` `air_compressor` `gate_valve` `gauge_board` `utility_box` `tool_chest` `psx_pipe_1*`.
+**NEEDS A MODEL (exists nowhere):** handcuffs, a bunk bed with a chain, a cage lamp, a prison food hatch trolley, a fingerprint / mugshot
+height board on a stand, a rat, a booking desk (the counter is a tiled wall row), a ceiling fan housing for the stack, a drunk-tank bench
+in steel (the blue metro seats stand in), a turnkey's key ring big enough to read on the floor.
+
 **DECISIONS MADE FOR MONDO (overrule any in one line):**
 1. The cells are real brick rooms (a whole square of brick between two), not bar cages in a hall.
 2. Four small rooms were DUG out of the solid south wall (Property Room, stair well + lockers, the stack's fan room): the two plots were
@@ -7200,6 +7240,9 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
 4. The stack is not climbed on foot (as in the old room, where it carried the door gun's tape).
 5. Words on the walls: the cells' numbers 1-6, BOOKING, PROPERTY, PLANT, TANK. Plain, no invented names.
 6. The four people keep their old lines; the gangster and the politician stand IN cells (2 and 5), as the old room had them.
+7. The other four cells tell small stories with props only (bones, a bucket, chains): no new characters, names or lines.
+8. "The cell door" of the plan is built as bars + a swinging cell door before the stair to the Precinct Drain.
+9. What the Property Room holds is a joke on "one ring of keys, whose? everyone's": things taken off people (a sword, a guitar, a skateboard).
 ## THE SEWERS, DISTRICT R — The Radioactive Drain, where the Power station drains (2026-11-16, second side)
 
 mondo 11-16: "one sewer district could be radioactive sludge if it connects to the power plant"; on the plan picture
