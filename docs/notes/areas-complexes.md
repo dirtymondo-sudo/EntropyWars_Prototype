@@ -7741,6 +7741,16 @@ a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil la
 2. The King's Chamber keeps the door to the Turning Tomb (his earlier yes); it is walked and stays as built.
 3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
 4. The Sphinx stays parts-built until a model exists.
+- **FROM DISTRICT T (the Running Tunnels, 11-16):** (1) LIGHT THAT FALLS, with no light: under a lit lamp lay a thin part wearing the
+  FLOOR'S OWN sheet with `glow` 0.1 to 0.35 (two steps, the inner brighter), and the same on the wall behind it; the floor reads lit.
+  (2) A HUT IN A RECESS: T.js `hut(ctx, plot, name, x0, x1, zFront, zBack, xDoor, xWin0, xWin1, glassTint, board, { y0, east, key,
+  glowIn })` = front wall with a doorway and a lit window, slab, floor, lining, ghost walls, and it returns the door's row for ONE
+  `doorsOnly` texbuilding (keep that row at x 0, z 0: its `inner` doors are in the row's frame). (3) Give every `arch` row `y` (not
+  only `base`): without it the row stands on the ground AT ITS MIDDLE, wrong on a step or a platform's edge. (4) The Metro pack's
+  `MetroWallTile`, `MetroWhiteTile`, `MetroRails` are not power-of-two JPGs: repeated on a part they draw black; `MetroFloor`,
+  `MetroTactile`, `MetroConcrete` are fine; tiles = `urban:TileSubwayGen1/2`, `TileSubway1c`. (5) `ebd_metro_turnstile` draws as a
+  blank block. (6) Moving things a district file can place: `flicker_tube`, `chimney_smoke` (steam), `hearth_fire` (`noLight`) in a
+  barrel, `exit_sign`, the `bat_*` procs. (7) Light shafts draw nothing (`_hqLightShaft` returns null since 10-04).
 
 ## CAMELOT, THE LOOKING-GLASS GARDEN — the district thread (2026-11-16, second side; file `docs/areas/camelot/districts/L.js`)
 
@@ -7897,6 +7907,17 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   track twice, a leaking main at the Crossing, the compressor, the east loop). (5) An `exit_sign` over each hut's door. No night look:
   the place is underground (no clock). NOT POSSIBLE FROM A DISTRICT FILE: fog, drips, dust motes, sound (the tool's row / no hook);
   light shafts draw nothing since 10-04 (`_hqLightShaft` returns null), so the garden well has no daylight beam.
+- **PASS 5, THE POLISH (an eye-level walk of twelve stops + eight last views).** The green under the gantry toned down; the gangster
+  stands by the lit car (the dug crew room had moved him inside it); the south tunnel (P03-04) got a cabinet, a drum, a lantern, a
+  flicker tube; T's REAL LIGHTS cut from four to two (the zone kit's rule: the lit car and the cabin; the crew room and the station
+  office are lit the drawn way: `hut(..., { glowIn: 0.3 })` = glowing plaster, floor and a lit panel under the slab).
+- **WHERE IT STANDS: five passes merged and live, STOPPED.** OPEN FOR MONDO: (a) nothing was WALKED by a player (doors, the step, the
+  ghost walls: probe pictures only); (b) the bystanders are the old room's four (no more: the NPC system is its own thread); (c) the
+  dead train front on the east loop is the Meshy white nose (`subway_front`): a third Metro car would match better, his call; (d) the
+  platform's north half is low under the vault's haunch (1.6 m at the wall): furniture only, by design of the tool's vault; (e) the
+  tool's rusted mains run through the huts (they follow every north / west wall); (f) the light pools are hard-edged shapes (PS1
+  look); (g) no sound, drips, dust or fog of T's own. **WHAT I WOULD DO NEXT:** walk it as a player; a real rail + buffer + signal
+  model set; a soft round decal for light pools; the moving train (his word first).
 - **FPS (the probe's software renderer, the Depot view, 5 s):** 3.5 before pass 1 (the room held 315 props), 4.3 after pass 1, 3.0
   after pass 4 (the room holds 679 props: every Sewers thread's). Run-to-run noise is about 1; T's own cost: about 75 meshes of parts,
   about 250 props, four bulbs out of the room's ten, no texture the room did not already load except the tile and metal sheets.
