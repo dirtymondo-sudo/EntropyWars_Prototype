@@ -280,10 +280,10 @@ exports.apply = ctx => {
     B.put('item_binoculars', T.sq(2, 0)[0] - 0.9, T.sq(2, 0)[1] + 0.25, { y: T.up(0.91) }); B.put('psx_walkie_talkie_1', T.sq(2, 2)[0] + 0.3, T.sq(2, 2)[1], { y: T.up(0.95) }); B.put('psx_bandage_mp_1', T.sq(3, 2)[0] - 1.1, T.sq(3, 2)[1] + 0.9, { y: 0.02 }); B.put('footlocker', T.sq(3, 3)[0] + 0.4, T.sq(3, 3)[1] + 0.9, { face: 270 }); });
 };
 
-/* THE AIR (pass 4; the tool's hook `airZones`, added with this pass: the board has the note). The room's own air is thin snow (220 flakes over all 56 plots);
-   over the runs it snows in earnest, over the yard and the buildings a little less. */
+/* THE AIR (pass 4; the tool's hook `airZones`, district S's, 11-16). A room with zones draws only its zones, so the room's own thin snow (HQ_ATMOS_SITES
+   `prebuilt_shasta`: 220 flakes over all 56 plots) is handed back as a zone over the whole room; over the runs it snows in earnest, over the yard a little less. */
 exports.airZones = ctx => { const a = ctx.S('P07-00', 0, 0), b = ctx.S('P09-03', 11, 11), y = ctx.S('P08-03', 0, 0);
-    return [{ sx0: a[0], sy0: a[1], sx1: b[0] + 1, sy1: y[1], kind: 'snow', n: 520, wind: 0.6 }, { sx0: a[0], sy0: y[1], sx1: b[0] + 1, sy1: b[1] + 1, kind: 'snow', n: 160, wind: 0.3 }]; };
+    return [{ x0: a[0], y0: a[1], x1: b[0] + 1, y1: y[1], kind: 'snow', n: 520, wind: 0.6 }, { x0: a[0], y0: y[1], x1: b[0] + 1, y1: b[1] + 1, kind: 'snow', n: 160, wind: 0.3 }, { x0: 0, y0: 0, x1: ctx.W, y1: ctx.H, kind: 'snow', n: 220 }]; };
 
 exports.build = ctx => {
     const R = ctx, { put, dec, tree, native, building, look, flat, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
