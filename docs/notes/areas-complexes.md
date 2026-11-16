@@ -5946,7 +5946,21 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   for one pass (pass 3) and are out; the corners wear drawn mossy boulders. A lit disc that overhangs its ground reads by day as a
   hard purple decagon on the grass: keep a light pool inside ground of its own colour.
 - **FRAME RATE, PASS 4** (the same pond view): 1.39 frames a second (pass 3: 1.17 to 1.29; before the thread: 1.54), draw calls 477.
-- **NEXT**: polish (pass 5 of 5).
+- **PASS 5, POLISH (a walk, 12 views by day and night)**: the bridge approach, the crossing, every glade from a second side. Added: two
+  standing stones (`menhir`) flanking the Woods trail east of the crossing, glowing caps at their feet. Nothing floats, clips or draws
+  black in the twelve views. **STOPPED after this: five PRs (four district passes + the tool's hooks); waits mondo's look.**
+- **FRAME RATE, END** (the pond view, cloud software GPU): 1.54 before the thread, 1.20 to 1.39 after (run to run noise about 0.2); draw
+  calls 278 -> 462, geometries 2,023 -> 2,191. Well under his 3 FPS a pass on any real GPU; his F3 at the pond is the number that counts.
+- **DECISIONS MADE FOR MONDO (overrule any in one line)**: (1) no walk-in in the Fairy Forest: none is named, pass 2 went to landmarks.
+  (2) No waterfall at the spring (his rule: a fall is 7 m and leads somewhere); it is a still pool against a rock. (3) The forest floor is
+  the dark grass, not the kingdom's lawn. (4) The fairy ring's inside is purple grass with a pale lit "moonstone" (no name on screen).
+  (5) Crystals are drawn spikes of the ice sheet + his Meshy shards; the catalogue's `crystal_cluster` is left out (floating gems here).
+  (6) No new residents: the kingdom's AREA UNITS table decides who stands here and has no fairy folk; adding fairy, unicorn, gnome and
+  mushroom girl to that table (or a table per district) is his call. (7) The knolls keep their plain names; the north one carries a great
+  oak, the south one the crystals. (8) Two standing stones mark the Woods trail. (9) The air: violet motes + fireflies, spores, blue motes.
+- **WOULD DO NEXT**: the people (once the table is his); a willow and reeds at the pond when a model exists; sound (no hook); the ring's
+  harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
+  forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.
 - **(THE VILLAGE'S) THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
   keyword search of the prop catalogue and from what the first build already used. Read against MODEL_LIST.md (the Meshy list, the
   Halloween pack, the orchestral pack, the crow + rabbit upload, section 7a), it had MISSED, all in the game already:
