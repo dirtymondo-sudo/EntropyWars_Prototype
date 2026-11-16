@@ -56,7 +56,8 @@ module.exports = {
         setRect(24, 18, 28, 21, 'p');                              //   a turning place south of the track
         setRect(26, 9, 33, 12, 'p'); strips(26, 9, 28, 12, true); strips(30, 9, 33, 12, true);                               // THE SCARECROW: the rows it watches
         setRect(23, 2, 27, 4, 'g');                                // THE WOODS GATE: the verge east of the gate
-        setRect(9, 4, 13, 6, 'g');                                 // THE TALL CORN: a verge on the track's north side
+        setRect(9, 4, 13, 6, 'g');
+        setRect(2, 2, 6, 5, 'g'); setRect(6, 4, 9, 5, 'g');           //   and a hidden pocket north-west of it, reached by one square's width through the corn                                 // THE TALL CORN: a verge on the track's north side
     },
     /* THE FIELD SHED (pass 2, the district's one inside): a boarded tool shed north of the silos, walk-in, its door east on the yard's apron */
     houses(ctx) { const { building, put, WD, WD2, COR, FLR, GLS } = ctx;
@@ -67,7 +68,7 @@ module.exports = {
             a.box(0, 3.3, d / 2 + 0.08, w + 0.3, 0.2, 0.18, WD2, DARK); a.box(0, 0, d / 2 + 0.05, w + 0.1, 0.4, 0.1, 'castle_wall'); a.box(0, 0, -d / 2 - 0.05, w + 0.1, 0.4, 0.1, 'castle_wall');
             a.roof('gable', 0, 3.5, 0, d + 0.9, 2.3, w + 0.9, COR, ROOF, { ry: 90, keyEnd: WD, tintEnd: BOARD });
             a.frame(door, d, WD2, DARK);
-            for (const sx of [-1, 1]) for (const z of [-2.6, 2.6]) { a.box(sx * (w / 2 + 0.06), 1.3, z, 0.08, 1.0, 1.2, GLS, 0x2a3040, { glow: 0.05 }); a.box(sx * (w / 2 + 0.1), 1.18, z, 0.14, 0.12, 1.5, WD2, DARK); a.box(sx * (w / 2 + 0.1), 2.3, z, 0.14, 0.12, 1.5, WD2, DARK); }
+            for (const sx of [-1, 1]) for (const z of [-2.6, 2.6]) { a.box(sx * (w / 2 + 0.06), 1.3, z, 0.08, 1.0, 1.2, GLS, (sx < 0 && z > 0) ? 0xf0c868 : 0x2a3040, { glow: (sx < 0 && z > 0) ? 0.6 : 0.05 }); a.box(sx * (w / 2 + 0.1), 1.18, z, 0.14, 0.12, 1.5, WD2, DARK); a.box(sx * (w / 2 + 0.1), 2.3, z, 0.14, 0.12, 1.5, WD2, DARK); }
             a.box(door.lx + 1.5, 2.1, d / 2 + 0.2, 0.2, 0.32, 0.2, null, AMBER, LAMP); a.box(door.lx + 1.5, 2.42, d / 2 + 0.2, 0.28, 0.06, 0.28, null, IRON); a.box(door.lx + 1.5, 2.3, d / 2 + 0.1, 0.05, 0.3, 0.2, null, IRON);   // the lantern by the door
             a.sign('TOOLS', door.lx, 2.62, d / 2 + 0.13, 1.3, 0.34, '#e0d0a8', '#4a3a2c', 'fell');
             a.box(0, 0, 0, w - 0.3, 0.12, d - 0.3, FLR, 0xb8a890);                                             // a level plank floor over the lawn's roll
@@ -84,6 +85,10 @@ module.exports = {
         IN('railway_lantern', -2.9, -2.6, { y: 2.82 }); IN('field_radio', -2.9, -1.2, { y: 2.82, face: 90 }); IN('wooden_bucket', -2.9, -0.2, { y: 2.82 }); IN('hw_pumpkin_3', 2.75, 1.9, { y: 3.32 }); IN('skull', 2.75, 0.6, { y: 3.92, face: 270 });
         IN('psx_cobweb_1', -3.1, -4.9, { y: 4.65 }); IN('psx_cobweb_2', 3.1, 4.9, { y: 4.65 }); put(SHED, 'ship_lantern', 0, 0, { y: 5.0, noLight: true }); IN('hw_candles', -2.9, -3.4, { y: 2.82 }); IN('rabbit', 0.6, -2.2);
     },
+    /* PASS 4, THE AIR (bake-estate.js THE AIR BY DISTRICT): chaff over the cut fields, pale motes over the circles and the hidden pocket; the tracks keep the zone's fireflies */
+    airZones() { const CHAFF = { kind: 'dust', color: 0xd8c890, speed: 0.5, wind: 0.6 }, MOTE = { kind: 'motes', color: 0x9fffc8, speed: 0.3 };
+        return [Object.assign({ sx0: 13, sy0: 13, sx1: 24, sy1: 24, n: 90 }, MOTE), Object.assign({ sx0: 2, sy0: 13, sx1: 9, sy1: 20, n: 40 }, MOTE), Object.assign({ sx0: 1, sy0: 1, sx1: 7, sy1: 6, n: 50 }, MOTE),
+            Object.assign({ sx0: 0, sy0: 22, sx1: 13, sy1: 31, n: 70 }, CHAFF), Object.assign({ sx0: 0, sy0: 7, sx1: 7, sy1: 13, n: 40 }, CHAFF), Object.assign({ sx0: 25, sy0: 4, sx1: 34, sy1: 13, n: 60 }, CHAFF), Object.assign({ sx0: 23, sy0: 28, sx1: 36, sy1: 36, n: 60 }, CHAFF)]; },
     dress(ctx) { const { gx, gc, r2, feat, props, P, dec, native, sayOf, O_FIELDS, look, rail, rnd, taken } = ctx;
         /* helpers: `at` = a piece anywhere on a square (fractions of a square), decor, never a blocker; `blk` = the walker's block under a drawn piece */
         const bad = [], at = (key, fx, fy, o) => ctx.cell[Math.floor(fy)][Math.floor(fx)] === 'c' ? bad.push(key + ' ' + fx + ',' + fy) : props.push(Object.assign({ key, x: gx(fx), z: gx(fy), face: Math.round(rnd() * 360), noBlock: true }, o || {}));
@@ -170,7 +175,7 @@ module.exports = {
         P('hw_scarecrow', 3, 26, { face: 90 }); for (let i = 0; i < 9; i++) at('crow', 1.4 + rnd() * 5, 23.3 + rnd() * 6.4);
         P('hw_straw', 6, 26); at('hw_straw', 6.3, 27.3); at('hw_straw_2', 6.6, 26.6); at('hw_straw', 5.7, 27.6); at('hw_shovel', 5.4, 25.5); at('wooden_bucket', 6.4, 25.4); at('meshy_burlap_sack', 6.5, 28.4);
         rail(7, 23, 7, 26); rail(7, 28, 7, 30);
-        P('hw_tree_4', 10, 24); P('city_bench', 9, 26, { face: 270 }); at('stump', 11.3, 25.4); at('psxg_dead_bush_1', 11.5, 26.5); at('hw_pumpkin', 10.4, 26.3); at('rabbit', 10.6, 25.5); at('anthill', 11.4, 24.4);
+        P('hw_tree_4', 10, 24); P('city_bench', 9, 26, { face: 270 }); at('psxg_dead_bush_1', 11.5, 26.5); at('hw_pumpkin', 10.4, 26.3); at('rabbit', 10.6, 25.5); at('anthill', 10.4, 24.4);
         lampPost(8, 22, 'E'); lampPost(8, 29, 'E'); lampPost(10, 32, 'N'); lampPost(5, 33, 'S');
         at('psx_wooden_crate_4', 4.5, 31.5); at('meshy_burlap_sack', 5.3, 31.4); at('fallen_log', 13.5, 33.6, { face: 10 }); at('psxg_rock_3', 16.4, 33.5); at('hw_pumpkin_4', 12.4, 32.3);
 
@@ -183,6 +188,29 @@ module.exports = {
         P('hw_straw', 29, 29); at('hw_straw_2', 28.5, 29.6); at('hw_pumpkin_2', 29.6, 29.4); lampPost(30, 26, 'W'); lampPost(31, 33, 'E'); lampPost(25, 27, 'N');
         at('psxg_rock_1', 26.5, 28.6); at('psxg_dead_bush_2', 23.5, 27.4); at('rabbit', 28.4, 33.5);
 
+        /* ── PASS 3, THE DRESSING ── */
+        /* THE VERGES: every track square that touches the corn may carry one small thing at the corn's foot (never on the square's middle: the track stays clear) */
+        { const SMALL = ['psxg_rock_2', 'psxg_rock_3', 'psxg_rock_4', 'psxg_dead_bush_1', 'psxg_dead_bush_2', 'psxg_dead_bush_1', 'hw_pumpkin', 'hw_pumpkin_3', 'hw_straw_2', 'hw_pumpkin_4', 'psx_wooden_crate_6', 'psxg_dead_bush_2', 'psxg_rock_3', 'hw_straw'],   // pack pieces only: a Meshy piece by the dozen costs frames
+              RARE = ['hw_part', 'anthill', 'crow', 'rabbit', 'trap_bear_open', 'hw_shovel', 'psx_jerrycan_1', 'hw_part_6', 'psxg_jack_o_lantern_1'];
+          const corn = (x, y) => x < 0 || y < 0 || x > 35 || y > 35 || ctx.cell[y][x] === 'c';
+          for (let y = 3; y < 36; y++) for (let x = 1; x < 36; x++) { if (ctx.cell[y][x] !== 'p' || (x >= 13 && x <= 16 && y >= 27 && y <= 31) || (y < 5 && x >= 17 && x <= 22)) continue;
+              const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(q => corn(x + q[0], y + q[1])); if (!sides.length) continue; const r = rnd(); if (r > 0.3) continue;
+              const q = pick(sides), along = (rnd() - 0.5) * 0.7; at(r < 0.05 ? pick(RARE) : pick(SMALL), x + 0.5 + q[0] * 0.36 + (q[0] ? 0 : along), y + 0.5 + q[1] * 0.36 + (q[1] ? 0 : along)); } }
+        /* THE HIDDEN POCKET (The Tall Corn): what flattened the circles, set down in the corn */
+        look('saucerGlow', gc(3), gc(3), 0, a => { a.cyl(0, 0.02, 0, 2.2, 0.03, null, 0x9fffc8, { glow: 0.5 }); a.cyl(0, 0.03, 0, 1.2, 0.03, null, 0xd8fff0, { glow: 0.7 }); });   // PASS 4: the ground under it is lit
+        look('circleGlow', gx(18.5), gx(18.5), 0, a => { for (const [dx, dz] of [[-3.5, -3.5], [3.5, -3.5], [-3.5, 3.5], [3.5, 3.5], [0, -5.2], [0, 5.2], [-5.2, 0], [5.2, 0]]) { a.cyl(dx * 3.5, 0, dz * 3.5, 0.16, 0.5, 'castle_wall'); a.box(dx * 3.5, 0.5, dz * 3.5, 0.2, 0.26, 0.2, null, 0x58f0a0, { glow: 0.7 }); } });   // eight low marker lights round the formation (the zone's grave-light green)
+        P('saucer_lg', 3, 3, { face: 30 }); at('floor_stain', 3.6, 4.2, { y: 0.01 }); at('floor_stain', 2.6, 2.8, { y: 0.01 }); at('hw_body', 5.2, 4.4, { face: 70 }); at('crow', 5.4, 4.2); at('railway_lantern', 4.9, 4.6); at('hw_candles', 2.4, 4.5);
+        at('psxg_rock_1', 5.5, 2.5); at('psxg_dead_bush_1', 2.3, 2.3); at('trap_bear_open', 7.5, 4.5); at('hw_part_3', 6.4, 4.6); at('skull', 8.3, 4.3); board('bd_pocket', 8.9, 4.95, 90, 'GO BACK', 1.6);
+        /* more of everything where the first pass left a plot thin */
+        P('crashed_car', 11, 4, { face: 70 }); at('tire_stack', 11.6, 5.5); at('psx_jerrycan_1', 10.4, 5.6);                           // The Tall Corn's verge: a car run off the track
+        P('hollow_dead_tree', 11, 24); at('skull', 9.5, 24.5); at('hw_candles', 9.6, 25.6);               // The Rows, west: the rest by the track
+        for (let i = 0; i < 7; i++) at(pick(['hw_straw', 'hw_straw_2']), 1.3 + rnd() * 5.3, 23.3 + Math.floor(rnd() * 3) * 2 + rnd() * 0.5);
+        for (let i = 0; i < 5; i++) at(pick(['hw_straw', 'hw_straw_2']), 1.3 + rnd() * 4.4, 8.2 + Math.floor(rnd() * 2) * 2 + rnd() * 0.5);
+        for (let i = 0; i < 5; i++) at(pick(PUMP), 32.2 + rnd() * 2.6, 31.2 + rnd() * 3.6); at('psx_wooden_crate_4', 34.5, 31.4); at('hw_shovel', 32.5, 32.5); at('wooden_bucket', 34.4, 33.4);
+        at('trap_trip_wire', 30.9, 24.5); at('skull', 30.3, 25.6);
+        at('psx_supply_crate_1', 3.4, 14.4); at('wooden_bucket', 7.4, 14.6); at('meshy_rope', 6.4, 18.6); at('hw_part_4', 3.6, 18.3); at('skull', 8.2, 15.4);   // the watchers' camp
+        at('luna_moth', 13.4, 17.4, { y: 1.75 + 2.2 }); at('hawk_moth', 15.6, 28.4, { y: 1.75 + 2.1 }); at('butterfly', 10.4, 25.2); at('bumblebee', 28.4, 7.4); at('ladybug', 32.4, 10.4); at('grasshopper_jump', 4.4, 26.5); at('bee', 2.5, 9.5);
+        at('rabbit', 21.4, 20.4); at('rabbit', 15.5, 16.4); at('crow', 18.6, 15.3); at('crow', 22.3, 19.5); at('crow', 14.4, 19.4); at('hw_part_5', 20.6, 21.5); at('hw_pumpkin_2', 16.4, 14.6); at('hw_straw_2', 21.6, 16.3);
         look('lampsC', gx(19.5), gx(28.5), 0, a => LAMPS.forEach(q => lampParts(a, q[0] - gx(19.5), q[1] - gx(28.5), q[2])));
         if (bad.length) throw new Error('C: in the corn: ' + bad.join(' · '));
         /* ── the people (the plan's five) ── */
