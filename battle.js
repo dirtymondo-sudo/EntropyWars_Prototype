@@ -14106,6 +14106,36 @@
         }
         /* _runPostEffects for a `dragIntoLiquid` spell (Death Roll): the victim goes into the nearest free liquid square beside
            the gator or beside itself (deep water first), then gets Drowning (applyStatusPayload bounces it outside deep water). */
+        /* 🛟 THE LIFEGUARD (2026-11-16, the new races): a teammate On Duty within 4 of an ally that just took a killing blow spends
+           her watch: the ally holds on at 1 HP and is hauled to the free square beside her nearest it (it stays put if none is free
+           or it is beside her already). One save per On Duty. Host-side (applyDamageToUnit); the HP, the square and the status
+           state-sync to the guest. */
+        function _lifeguardSave(target) {
+            if (!target || target.dead || !(target.hp <= 0) || !Array.isArray(state.units)) return false;
+            const guard = state.units.find(g => g && g.id !== target.id && !g.dead && !g._dying && g.hp > 0 && g.player === target.player
+                && g.status && g.status.onDuty > 0 && Math.abs(g.x - target.x) + Math.abs(g.y - target.y) <= 4);
+            if (!guard) return false;
+            clearStatus(guard, 'onDuty');
+            target.hp = 1;
+            addLog(`🛟 ${_ctName(guard)} is on duty — ${_ctName(target)} is pulled out at 1 HP!`, undefined, undefined, { actor: guard });
+            showFloatingTextForUnit(target, '🛟 RESCUED!', 'heal', { durationMs: 1400 });
+            if (Math.abs(guard.x - target.x) + Math.abs(guard.y - target.y) > 1
+                && !(typeof getUnitDisplaceWeightClass === 'function' && getUnitDisplaceWeightClass(target, null) === 'colossal')) {
+                const sq = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: guard.x + dx, y: guard.y + dy }))
+                    .filter(q => isInside(q.x, q.y) && canOccupy(q.x, q.y))
+                    .sort((a, b) => (Math.abs(a.x - target.x) + Math.abs(a.y - target.y)) - (Math.abs(b.x - target.x) + Math.abs(b.y - target.y)));
+                if (sq[0]) {
+                    const fx = target.x, fy = target.y;
+                    target.x = sq[0].x; target.y = sq[0].y;
+                    if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(sq[0].x, sq[0].y, target.z);
+                    animateDisplacement(target, fx, fy, sq[0].x, sq[0].y, 320);
+                    addLog(`🛟 ${_ctName(guard)} hauls ${_ctName(target)} to ${coordLabel(sq[0].x, sq[0].y)}.`);
+                }
+            }
+            flashUnit(target.id, 'heal');
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+            return true;
+        }
         /* 🐍 THE FEATHERED SERPENT (2026-11-16, Quetzalcoatl): the first unit longer than one square. While he wears serpentForm he
            is the head; the body is two state._deployedObjects rows (serpentOf = his id, serpentIdx 0 nearest him, blocksMovement,
            spellId 'nrFeatheredSerpent' so three-renderer.js draws the serpent over them). A walk drags the body along the squares
@@ -41948,6 +41978,7 @@
                 flashUnit(target.id, 'heal');
                 if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             }
+            if (target.hp <= 0) _lifeguardSave(target);   // 🛟 a Lifeguard On Duty pulls an ally out of a killing blow
 
             if (opts.statusEffects || opts.status) {
                 let _stFx = opts.statusEffects || opts.status;

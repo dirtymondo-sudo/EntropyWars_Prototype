@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1177 |
+| Meshy AI | no | 1181 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -64,6 +64,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | chef — creator look also baked | `Assets/characters/races/chef/male/Meshy_AI_chef_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chess piece | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Black_Pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | clown | `Assets/characters/races/clown/Meshy_AI_evil_clown_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| clown (female) | `Assets/characters/races/clown/female/Meshy_AI_clown_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the women; mondo 2026-11-16) |
 | conspiracy theorist — creator look also baked | `Assets/characters/races/conspiracytheorist/Meshy_AI_radio_host_realisti_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | cosmic wraith | `Assets/characters/races/cosmicwraith/male/Meshy_AI_cosmic_wraith_realis_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | cowboy — creator look also baked | `Assets/characters/races/homosapien/male/gunslinger/Meshy_AI_gunslinger_cowboy_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -118,6 +119,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | knight (female) | `Assets/characters/races/homosapien/female/knight/Meshy_AI_hot_attractive_female_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | kraken | `Assets/characters/races/kraken/male/Meshy_AI_kraken_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | krampus | `Assets/characters/races/krampus/Meshy_AI_krampus_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| lifeguard (female) | `Assets/characters/races/lifeguard/female/Meshy_AI_lifeguard_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | loch ness monster | `Assets/characters/races/lochnessmonster/male/Meshy_AI_loch_ness_monster_re_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | luchador | `Assets/characters/races/luchador/Meshy_AI_luchador_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | machine elves | `Assets/characters/races/machineelves/male/Meshy_AI_DMT_clockwork_elf_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -150,10 +152,12 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | police officer · prebuilt_cyberpunk · female (skin) | `Assets/characters/races/police/Meshy_AI_a_cyberpunk_police_officer_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | police officer · prebuilt_cyberpunk · male (skin) | `Assets/characters/races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | politician — creator look also baked | `Assets/characters/races/politician/Meshy_AI_politician_realisti_biped_Animation_Running_withSkin.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| politician (female) — creator look also baked | `Assets/characters/races/politician/female/Meshy_AI_politician_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the women; mondo 2026-11-16) |
 | popstar (female) | `Assets/characters/races/popstar/Meshy_AI_a_blonde_popstar_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | priest — creator look also baked | `Assets/characters/races/priest/Meshy_AI_priest_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | priest (female) — creator look also baked | `Assets/characters/races/homosapien/female/whitemage/Meshy_AI_sexy_nun_girl_realis_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | professor — creator look also baked | `Assets/characters/races/professor/Meshy_AI_male_college_professor_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| professor (female) — creator look also baked | `Assets/characters/races/professor/female/Meshy_AI_professor_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the women; mondo 2026-11-16) |
 | quarterback | `Assets/characters/races/quarterback/Meshy_AI_football_quarterback_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | quetzalcoatl | `Assets/characters/races/aztec/Meshy_AI_aztec_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | rabbit | `Assets/characters/races/rabbit/Meshy_AI_rabbit_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
