@@ -14,18 +14,20 @@
      P03-09  islet (no name) (level 0): a small islet to land on
      + 85 plots with no name, open ocean (every plot of this district not listed above; `ctx.plot` / `ctx.Pxy` tell you whose a square is)
 
-   WHAT STANDS HERE TODAY (passes 1 + 2, 2026-11-16, all SEEN on screen): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
+   WHAT STANDS HERE TODAY (passes 1 to 3, 2026-11-16, all SEEN on screen): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
    are the tool's and the game's); the ocean pack's animals on rings and six fish schools.
    THE VOLCANO ISLAND: dark volcanic ground (plan letters `b` = `dirt_2`, `c` = `scorched` at the cone's foot), the cone (the height map's,
    obsidian, 16 m, never climbed, lava in the crater) with TWO LAVA FLOWS down it (`fall` rows, east and south), black smokers off it; the
    Landing (THE GATE, three boats, torches); THE VILLAGE = THE BIG HUT (walk-in, 109-110 x 16-18, door east to the fire; one square off the cone: SEEN, beside it the cone's slope came up through the floor) and THE NORTH HUT
    (walk-in, 114-115 x 12-13, door south), both FURNISHED (pass 2: a lit thatch ceiling, a hearth, sleeping platforms, mats, stores; the big hut's high seat), the plan's three open shelters (the cook's 113,15 / the drum's 115,17 / the
    sleepers' 112,18) round the fire, a drying rack; THE SHRINE at the cone's east foot (an idol, an altar, standing stones, two fire baskets);
-   boulders and dead trees on the scorched ring, 19 palms, ferns.
+   boulders and dead trees on the scorched ring, 19 palms, ferns. Pass 3: THE GARDEN (soil ridges, gourds, a scarecrow, a fence), chickens,
+   stepping stones, the watch fire on the north-east point, a tide line on the north beach, dry scrub, two birds over the crater.
    THE SEA'S PLACES: THE WHALE (P06-02: a humpback and a whale showing their backs, dolphins), THE WATERSPOUT (P11-01: drawn, 63 m, its own
    cloud), THE ROCKS (P04-01: eight drawn sea stacks, seals), THE KRAKEN (P07-03: six arms, a taken boat, sharks), THE PALM ROCKS (P02-00,
    P12-09: `palmisle`), FLOTSAM (P06-07), THE SEA LANE (six unlit buoys from the Harbour's Mouth to the Landing), the two islets (a
-   castaway's camp with a pirate; seals, flamingos, crabs).
+   castaway's camp with a pirate; seals, flamingos, crabs, a starfish). Pass 3: THE SHARKS (P07-09), THE TURTLES (off the south-west
+   islet), THE SEAL ROCK (P13-00, drawn).
 
    MISSING / NOT DONE:
    - THE TRIBE HAS NO PEOPLE (mondo: models come later); no model for a hut, a canoe, a totem pole, a mask, whale bones, gulls, black sand
@@ -33,7 +35,7 @@
    - Nothing under the water shows (the sea is opaque from above). No fight set up.
    - LEARNT: a whale's model hangs about 3 m over its origin (humpback y -4.6, whale y -3.3 = the back shows); a thing in deep water is
      typed `y: -0.5` + `hover` (this file's `seaAt`); a drawn thing in water is an `arch` row with `y: 0` (`works`); the ocean pack's rocks
-     grown big are flat black slabs; `dinosaur_skeleton` is a museum mount; a long `fall` hangs in the air (use short ones); a Meshy prop
+     grown big are flat black slabs; `dinosaur_skeleton` is a museum mount; a long `fall` hangs in the air (short ones typed from the BUILT heights, hqTerrainHeight in node: LAVA_H); a Meshy prop
      is about 10,000 triangles (place few).
    - FRAME RATE: the cloud's software GPU gives 0.2 fps at the Landing and 1.4-2.0 mid-sea before AND after pass 1 (too low to compare);
      triangles drawn at the Landing 1.62 M -> 2.5 M, mid-sea 1.61 M -> 2.2 M.
@@ -179,8 +181,12 @@ place(ctx) {
     /* LAVA DOWN THE CONE (data.js THE WATERFALLS, the liquid = lava): two flows over the crater's lip, east to the shrine's side and south to
        the Landing's. SEEN: one long fall is a ballistic arc that hangs in the air off the cone; a flow = four short falls, one a square, each
        from the cone's own height on one square line to the next (the cone falls 4.2 m a square), so it runs down the rock as cascades */
-    for (let k = 0; k < 8; k++) { const y0 = r2(15.7 - (k ? 1.6 : 0) - k * 1.72), y1 = r2(14.1 - (k + 1) * 1.72), o = { w: r2(3.0 - k * 0.14), y0, y1, key: 'lava', out: 1.75, foam: false };   // (SEEN: whole-square falls still arched 2 m off the rock from the side; half-square ones typed at the cone's own height still hung 1 m off it, so they are typed 1 m into the rock)
-        feat(Object.assign({ k: 'fall', x: r2(gx(108) + 0.2 + k * 1.75), z: mz(10), face: 90 }, o)); feat(Object.assign({ k: 'fall', x: mx(105), z: r2(gz(12) + 0.2 + k * 1.75), face: 180 }, o)); }
+    /* (SEEN: whole-square falls arched 2 m off the rock; falls typed from the plan's 4.2 m a square still hung off it, because the cone AS BUILT
+       falls only 0.7 m a metre from the square line west / north of the crater's last lava square. LAVA_H = the built heights every 1.75 m along
+       both flows, read with hqTerrainHeight in node; each fall runs from one to the next, a hand over the rock) */
+    const LAVA_H = [15.3, 14.0, 12.8, 11.6, 10.4, 9.3, 8.3, 6.4, 4.6, 3.6];
+    for (let k = 0; k < 9; k++) { const o = { w: r2(3.0 - k * 0.12), y0: r2(LAVA_H[k] + 0.3), y1: r2(LAVA_H[k + 1] + 0.12), key: 'lava', out: 1.75, foam: false };
+        feat(Object.assign({ k: 'fall', x: r2(gx(107) + k * 1.75), z: mz(10), face: 90 }, o)); feat(Object.assign({ k: 'fall', x: mx(105), z: r2(gz(11) + k * 1.75), face: 180 }, o)); }
 
     /* ── PASS 1, THE SEA: things to sail to (every one on the Ocean's own squares; the sea between them stays open) ── */
     /* THE WHALE (plot P06-02, the plan's "scenery: the whale"): a humpback and a whale showing their backs, a pod of dolphins round them */
@@ -228,5 +234,32 @@ dress(ctx) {
     [[124, 10], [126, 14], [122, 18], [127, 8]].forEach(q => under('sea_vent', q[0], q[1], -3.5));
     [[72, 16, 'ocean_dolphin'], [74, 18, 'ocean_dolphin'], [76, 15, 'ocean_dolphin'], [110, 30, 'ocean_stingray'], [88, 96, 'ocean_tuna'], [140, 24, 'ocean_manta'], [46, 96, 'ocean_seal'], [164, 96, 'ocean_turtle'], [20, 108, 'ocean_stingray']]
         .forEach(q => swimmer(q[2], q[0], q[1], { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
+
+    /* ── PASS 3, THE DRESSING (2026-11-16): the small things that say somebody lives here, in pack models (a few hundred triangles each;
+       a Meshy prop is 10,000) and drawn pieces. ── */
+    /* THE GARDEN west of the big hut: ridges of turned soil, gourds, a scarecrow, a timber fence on two sides */
+    look('garden', gx(105.5), gz(19), 0, a => { for (let i = 0; i < 9; i++) a.box(-4.4 + i * 1.1, 0, 0, 0.5, 0.16, 6.0, 'dirt_4', 0xc8b49a, { uv: [1.75, 1.75] }); });   // nine ridges of turned soil (SEEN: `hw_crop` draws as pale paper tiles here)
+    dec('hw_pumpkin', 104, 18); dec('hw_pumpkin_2', 105, 19); dec('hw_pumpkin_3', 106, 18); dec('hw_pumpkin', 105, 18); P('hw_scarecrow', 104, 17, { face: 160 }); dec('wooden_bucket', 106, 19);
+    feat({ k: 'rail', x0: gx(104), z0: gz(18), x1: gx(107), z1: gz(18), model: 'ranch' }); feat({ k: 'rail', x0: gx(104), z0: gz(18), x1: gx(104), z1: gz(20), model: 'ranch' });
+    /* chickens in the village, stepping stones from the gate to the fire and on to the shrine */
+    dec('chicken', 113, 17); dec('chicken', 112, 19); dec('chicken', 116, 15); dec('chicken', 111, 15);
+    [[111.5, 19.2, 2.6, 5], [113, 16.2, 2.4, 4], [113.6, 13.4, 2.2, 4]].forEach((q, i) => feat({ k: 'scatter', key: i % 2 ? 'psxg_stepping_stone_2' : 'psxg_stepping_stone_1', n: q[3], x: mx(q[0]), z: mz(q[1]), r: q[2], seed: 60 + i }));
+    /* the watch fire on the north-east point, the tide line on the north beach, dry scrub on the scorched ring */
+    props.push({ key: 'campfire', x: mx(116), z: mz(7), glow: 0.7 }); taken.add('116:7'); dec('fallen_log', 115, 7); dec('psxg_rock_2', 116, 8); dec('spear', 115, 8);
+    dec('ocean_conch', 105, 3); dec('ocean_starfish', 107, 3); dec('ocean_sand_dollar', 110, 3); dec('ocean_crab', 109, 3); dec('ocean_seal_resting', 111, 3); dec('psx_fish_skeleton_mp_1', 106, 3); dec('ocean_crab', 117, 13);
+    [[98, 9], [98, 13], [102, 16], [106, 16], [112, 8], [113, 5], [110, 15]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1]));
+    /* birds: two over the crater, one over the Rocks (the game's `eagle`: there is no gull) */
+    props.push({ key: 'eagle', x: mx(105), z: mz(10), hover: 7, swim: { r: 17, v: 5, bob: 1 } }, { key: 'eagle', x: mx(106), z: mz(9), hover: 12, swim: { r: 24, v: 4, bob: 1.5 } }, { key: 'eagle', x: mx(54), z: mz(18), hover: 24, swim: { r: 14, v: 5, bob: 1 } });
+    /* THE SEA, three more places: THE SHARKS (P07-09: a feeding ground, fins round the fish), THE TURTLES (off the south-west islet),
+       THE SEAL ROCK (P13-00: a low shelf of rock, drawn, seals on it) */
+    [[90, 113], [93, 111], [88, 110]].forEach(q => feat({ k: 'scatter', key: 'fish_school', n: 3, x: mx(q[0]), z: mz(q[1]), r: 9, seed: q[0], sea: true }));
+    [[89, 112, 6], [92, 113, 8], [91, 110, 5]].forEach(q => swimmer('ocean_shark', q[0], q[1], { swim: { r: q[2], v: 1.8, bob: 0.2 } })); swimmer('ocean_hammerhead', 94, 112, { y: -0.7, hover: 0.4, swim: { r: 7, v: 1.4, bob: 0.2 } });
+    seaAt(ctx, 'rowboat', 91, 112, -0.25, { face: 200 }); seaAt(ctx, 'beach_life_ring', 92, 111, 0.0);
+    [[46, 110], [48, 113], [45, 115], [50, 111], [47, 117]].forEach(q => swimmer('ocean_turtle', q[0], q[1], { swim: { r: 3 + (q[0] % 3), v: 0.7, bob: 0.2 } }));
+    works(ctx, 'sealrock', mx(162), mz(6), a => { a.cyl(0, -3.6, 0, 7.5, 4.1, 'rocks_5', 0xdcdce4, { r2: 6.2, seg: 7, uv: [3.5, 3.5] }); a.cyl(1.5, 0.5, -0.8, 4.0, 0.9, 'rocks_5', 0xcfcfd8, { r2: 2.6, seg: 7, a0: 20, uv: [3.5, 3.5] }); a.cyl(-4, -3.6, 5, 2.6, 4.6, 'rocks_5', 0xe4e4ea, { r2: 1.4, seg: 6, a0: 10, uv: [3.5, 3.5] }); });
+    [[161, 6, 0.55, 40], [163, 7, 0.55, 200], [162, 5, 1.45, 120], [160, 5, 0.55, 300]].forEach(q => seaAt(ctx, 'ocean_seal_resting', q[0], q[1], q[2], { face: q[3], swim: false }));
+    seaAt(ctx, 'ocean_rock_7', 162, 6, -1.6, { h: 1.2 }); swimmer('ocean_seal', 165, 8, { swim: { r: 4, v: 1.3, bob: 0.2 } }); swimmer('ocean_seal', 159, 3, { swim: { r: 5, v: 1.1, bob: 0.2 } });
+    /* one of the sea's own people on the south-west islet (the Beach's list; no line) */
+    native('starfish', 41, 111, 135);
 },
 };
