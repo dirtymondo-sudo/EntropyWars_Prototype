@@ -12464,6 +12464,16 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
 - **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
   fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
 
+### THE ASTRAL REALM, DISTRICT S, THE SEA OF POSSIBILITY (the pilot; `docs/areas/astral/districts/S.js`)
+- **Pass 1, exteriors + landmarks (live 11-16)**. Seen on screen (pictures `docs/areas/astral/proof/S_pass1_*.jpg`).
+  - The Thought-Forms (P03-01): an open temple with no roof. Ten `greek_column` on the squares round a 2 x 2 pool, the south side open, a marble lintel all
+    round, a pediment north and south, crystal finials, the orb over the water, the fish over that.
+  - The Closet (P04-00): a wardrobe 7.9 m wide over the walk south, both doors open, a rail of eight coats, hat shelves, no back. You walk through it onto the
+    floating steps down into the Nightmare.
+  - The Spire (P02-05): seven crystal drums, 26 m, a scaffold up the first three, the last drum hanging beside the top.
+  - The Mirror (P03-00): the gilt frame of Camelot's garden (the same piece as `docs/areas/camelot/districts/L.js`) round the door, a marble step.
+  - The Frame (P02-00): two crystal piers and a lintel. A marble balustrade (`rail` rows, `balusters_b`) round the Edge and the High Thought.
+  - Frame rate (same view as the first build, 20 s counts): 1.35 before, 1.60 / 1.65 after (two counts; a balustrade round a third island cost 0.3 and came off).
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
