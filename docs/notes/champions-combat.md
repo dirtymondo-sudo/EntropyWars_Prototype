@@ -5516,6 +5516,19 @@ where he dug in, and the target is thrown up (forced applyFallDamage from 2 leve
 - Probe 11-16: Burrow C3 → D5 under the ground (hidden from P2), Erupt from hiding 454 (ambush + super effective on a mech) + a 3-level
   throw 151 (now 2 levels), he surfaced at E6 beside the foe; Cave-In hit and Rooted; 0 page errors.
 
+- **THE MOLE MAN PASS (2026-11-16, thread cmsg_01XWpxyTn3nnw98znVzKdFjs6WTwrp75qF2F9EKtA11gsH):** (1) Burrow cooldown 1 -> 2: at 1 he
+  could dig every turn and never stand on the board (Invisible lasts until his next turn ends). At 2 the race has a readable rhythm: a
+  round under, Erupt brings him up, he stands through the other side's next turn. (2) battle.js `spellMovesCaster` counts `erupt`: Erupt
+  carries him to the victim's side, so Rooted / Charmed / Roped / Frozen refuse it like every move spell. (3) His surfacing rides the
+  escape looks' `dive` path (820 ms, under the board) instead of a 260 ms glide over it, + `VFX3D.fire('teleport', 'nrErupt')` for its dirt.
+  (4) LOOKS (three-vfx-effects.js, THE EARTH PASS, "THE MOLE MAN" block; kill-switch EW_DISABLE_EARTH_PASS): Burrow = `_ESC_LOOKS.nrBurrow`
+  (soil spray + a torn hole where he went down; his own side sees the soil heave along the tunnel, hideLanding hides it from the foe);
+  Erupt = `_EA_CHARGE.nrErupt` (a tremor under the victim through the windup) + `_EA_SIG.nrErupt` (crater, soil fountain, stones thrown
+  up round the body, the ones toward the lens fly low) + `_ESC_LOOKS.nrErupt` (his dig-down hole + the dirt where he comes up, seen by both);
+  Cave-In = `_EA_SIG.nrCaveIn` (rim stones slide into the pit, rubble drops in, dust rolls out; in `_EA_OWN`, so no spikes).
+  Probe 11-16 (real TDM, 0 page errors): Burrow B3 -> D4 hidden, cooldown 2; Erupt from hiding 436 + throw 151 on a Knight, surfaced E3;
+  Cave-In hit 3 and Rooted 2 (one resisted); Rooted greys Burrow and Erupt.
+
 ### 7. QUETZALCOATL (Technoticlan, tank, family `featheredserpent`; mondo's Aztec king model)
 The style: the first unit longer than one square. **Feathered Serpent** (T1, self, cd 2) puts on STATUS_DEFS `serpentForm` (3 rounds):
 he is the head, and the body is two `state._deployedObjects` rows (`serpentOf` = his id, `serpentIdx` 0 nearest him, `blocksMovement`,
