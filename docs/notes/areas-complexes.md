@@ -4956,6 +4956,27 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   - **RAILS:** `balusters_b` (steel balusters: a wharf, a light's head), `parapet` (a low stone wall), `pipe` (a low pipe rail, never a
     wall). A rail on a `bridge` takes `block: false` (a wall hung over open ground trips the solver: the old Harbour's note).
   - **THE SHED'S RED:** `CORR`, 0xd04a3a, gain 2.9, white corner posts and barge boards, `CORR` 0xc4ccd4 at gain 2.6 for a tin roof.
+- **FROM THE MODEL LIST (11-16, the Harbour thread on mondo's THE MODEL LIST FIRST; the catalogue is not the whole list):**
+  - **THE HOUSES ON THE WATER** (Elbolilloduro, CC0): the pack's one scene holds 87 pieces, the game had only its rowboat. Cut out now
+    (bake-pack-pieces.py, the last JOBS block; `pip install bpy`; the archive is R2 bucket `dirtymondo`,
+    `project-files/asset-packs/elbolilloduro/houses-on-the-water/`): `stilt_hut` (3.6 x 5.4), `stilt_house` (6.4 x 8.1), `stilt_house_wide`
+    (9.5 x 8.9): a house on a deck on its own piles, solid, no inside; its foot is the piles' bottom, so on the 3.5 m sea bed `y: 0.6`
+    stands the deck 0.7 m over the water. `fishing_boat` (6.7 m; adrift with `{ y: -0.5, hover: 0.55 }`), `mooring_piles`, `generator`,
+    `hammock` (slung on four posts, 5 x 2.4 m: THE SHORE'S "needs a model: hammocks" is answered; the Shore thread places it).
+    STILL IN THE SCENE, not cut: two more house groups (a 16 x 15 m double house, a 13 x 15 m one), a stove, fridges, a desk, a
+    mattress, cooking pots, dishes, bottles, a drum, a spotlight, doors.
+  - **THE BEACH PROPS PACK HAS 21 MODELS, THE GAME HAS 6** (Elegant Crow; archive `project-files/asset-packs/other/elegantcrow_beach-props-pack/`,
+    OBJ): NOT in the game yet: `parasol`, `bench_01-03`, `chair_01-04`, `big_table`, `small_table`, `picnic_basket`, `toy_bucket`,
+    `toy_rake`, `toy_shovel`, `toy_wagon`, `float_04`. A beach wants every one of them (FOR THE SHORE THREAD: convert like the six, a
+    row each, `node list-models.js`; the Harbour thread did not, they are the Shore's things).
+  - **ALREADY IN THE CATALOGUE AND EASY TO MISS:** `babel_crane` (mondo's scaffold crane, 7.5 m: a harbour crane), `flood_mast` (a 7 m
+    floodlight mast, a real night light), `ocean_seal_resting` / `ocean_seal` / `ocean_penguin` (on rock or a slip), `ship_wreck`
+    (mondo's ghost ship, 16 m: the only ship model besides the Dutchman), `ind_silo` + `ind_skip` + `ind_factory_*` (the industrial
+    pack), `chain_hoist`, `engine_hoist`, `trap_chain_draped`, `tire_stack`, `platform_scale`, `hand_truck`, `pallet_jack`,
+    `gas_cylinder_rack`, `psx_supply_crate_*`, `psx_jerrycan_1`, `psx_fish_skeleton_mp_1`, `brass_telescope`, `signpost`, `flamingo`,
+    `ship_lantern` (the survival pack's lantern). The animals list (MODEL_LIST.md 7c) has a `crow`, no gull.
+  - **OTHER ARCHIVES LOOKED INTO, nothing for the sea:** Survival PSX (44 pieces: backpack, axe, sleeping bags, torch, cans: camp
+    things), the Industrial pack (9 pieces, all in the game), Exploration objects (ghost-hunting gadgets), jamzuz free PSX assets.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
   dunes to 3.6 m). The first run of a fresh container can crash once while the cache fills; the harness retries.
@@ -4989,8 +5010,14 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
     The cloud's number swings more between runs than the pass moved it: about 80 draw calls added in that view, no new light.
   - **CHECKED IN NODE** (`hqTerrainHeight` on the compiled room): the stair 0.9 -> 3.9, the wharf 3.9, the steel stair 0.6 -> 3.9, the
     slip 0.9 -> the sea bed, both water steps, the slope 0.9 -> 1.6 onto the Breakwater and its crest flat to the light.
-- **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter), a harbour crane, gulls, coils of heavy
-  rope, fish boxes, an iron mooring ring / cleat.
+- **THE MODEL LIST FINDS (11-16, right after pass 1; mondo: "make them stop what they are doing and look at the model list right now to
+  see what else they could add"; seen on screen):** pass 1 had searched the prop catalogue only. What that missed: the HOUSES ON THE
+  WATER pack scene (87 pieces, one in the game), mondo's own scaffold crane (pass 1 listed "a harbour crane" as missing: wrong), the
+  resting seal. ADDED: seven catalogue rows cut from the scene (the zone kit lists them); a house on piles with a fishing boat in the
+  Roads, a hut on piles and its rowboat in the Mouth, a fishermen's house on piles off the skiff jetty, a boat hauled up the slipway,
+  a rowboat at the water steps, mooring piles in the basin, the shed's generator, the crane on the wharf, three seals.
+- **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
+  the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
 - **NOT DONE:** the shed's inside (pass 2); freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the
   night look (pass 4); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
@@ -5409,6 +5436,26 @@ district lacks, in the order to do it:
   concrete: the tool's rows carry `off` (ONE rectangle a row; a second paved area needs the scatter split, ask on the board). (5) A
   `roof()` lays a dark sheet under itself at its foot: a lit ceiling must hang below that, not at the building's own height. (6) A kit
   `glass` wall is opaque: use `pane`. (7) A sign with `ds: true` reads mirrored from behind.
+
+**AREA 51, THE MODEL LIST PASS (2026-11-16, mondo: "look at the model list right now to see what else they could add"; owner-rules "THE MODEL LIST FIRST")**
+- **How it was searched:** every key of MODEL_LIST.md sections 6 to 8 printed by pack (one line a pack), read whole; section 13 (files on R2
+  no table names) for the world folders. Nothing on R2 that fits a base lacks a catalogue row. The pack SOURCE files (project files
+  `asset-packs/`) are not mounted on the second account, so the packs could not be opened: the Molten Maps SciFi pack has only 2 cut
+  pieces (`iso_tank`, `meshy_molten_cryo_tube`) and very likely holds more a base wants; the owner side can open it.
+- **Missed before, in the game all along (now placed in Area 51):** FLIGHT LINE `aircraft_tug`, `maintenance_stairs` (boarding stairs),
+  `air_compressor`, `welding_cart`, `tire_stack`, `meshy_ejection_seat`, `psx_jerrycan_1`, `utility_box`, `power_pole`, `ind_silo` (the real
+  fuel tank), `car_ambulance`. THE SECRET STUFF `lunar_lander`, `astronaut`, `studio_light`, `directors_chair`, `studio_camera` (the moon
+  landing set on the Dry Lake), `satellite`, `hullplate`, `mars_rover`, `time_machine`, `meshy_molten_cryo_tube`, `iso_tank` (a cryo
+  CASKET: it stood in as a fuel tank in three places). LAB / MEDICAL `fume_hood`, `lab_glassware`, `microscope`, `iv_stand`,
+  `anatomy_skeleton`, `hospital_bed`, `therapy_chaise`, `steel_toilet`, `meshy_syringe`, `psx_pills_*`, `laundry_cart`, `metal_detector`.
+  OFFICE / SECURITY `evidence_board`, `mugshot_wall`, `reel_to_reel`, `photocopier`, `microfiche_reader`, `number_dispenser`,
+  `riot_gear_rack`, `scba_rack`, `retro_control_panel`, `gauge_board`, `psx_keycard_*`, `psx_walkie_talkie_1`, `psx_dosimeter_1`,
+  `psx_potted_cactus_mp_1`. SHOP `metal_lathe`, `drill_press`, `chain_hoist`. LIFE `dog` (the gate), `crow`.
+- **Fit the zone, not placed yet (for the next thread):** `ufo`, `alien`, `spaceship`, `space_shuttle`, `nacelle`, `meshy_tesla_coil`,
+  `robot_arm`, `conveyor`, `car_lift`, `high_bay_lamp`, `ind_skip`, `ind_panel`, `ind_factory_*`, `crashed_car`, `eagle`, `psx_pc_mp_1` +
+  monitor / keyboard, `psx_flashlight_1`, `psx_ceiling_fan_mp_1`, `psx_window_metal_bars_*`, `psx_toilet_mp_1`, `trailer_home_1..6`.
+- **Still no model anywhere in the list:** a windsock, a jeep / humvee, a helicopter, a turning radar, a flag on a pole (the board
+  monument `flag` is not a room prop), a boom gate arm, a missile stand.
 
 **AREA 51 AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and Area 51 lacks:
 1. THE SECOND LAYERS outside (F-detail): DONE in part 11-16 (downpipes, AC boxes, louvres, roof kerbs, belt courses, slit windows, a fire
@@ -5839,10 +5886,22 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
 - **NOBODY ELSE MOVED**: the old `dec` calls run in the old order and every new piece is placed by metres, so the dice of N and W are untouched.
 - **FRAME RATE** (cloud software GPU, the pond from the path, the same view before and after): 1.54 -> 1.40 frames a second, geometries
   2,023 -> 1,985 (run to run noise is about 0.2); draw calls 278 -> 309. His F3 at the pond is the number that counts.
-- **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower.
-- **NEXT**: dressing (stepping paths, plants, edges, the forest floor: the paint is the tool's), then its own light, air and particles (the
-  shell is the tool's: `shell.atmos.zones`, a board note first), then polish.
-- **THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
+- **PASS 3, THE DRESSING (seen, 9 views, twice; the model list searched first on his 11-16 order)**: the forest floor is `grass_dark_fantasy`
+  (the tool's new `ground` export); stepping stones (`psxg_stepping_stone_1/2`) into the ring, through the mushroom glade and to the spring;
+  six painted birches (`tree_53`) and seven Halloween pack stones on whole squares; Meshy crystal shards at the spring and the crystal
+  knoll; `woods_glowcap` in twos and threes down the path's east side every 7 m (their glow reads by day on the dark floor); ferns, a log,
+  a stump, an anthill with ants, ladybugs, grasshoppers, caterpillars, a chrysalis, bees, moths, butterflies, rabbits, a frog.
+  FOUND IN THE PROBE AND TAKEN OUT: `ocean_seaweed*` as water plants draws BLACK in this room (like the ocean rocks in the Woods);
+  `psxg_rock_*` are cut stone blocks, not rocks; stepping stones on a knoll's slope stand out of it like shelves.
+- **THE PEOPLE WAIT MONDO**: four residents (unicorn, mushroom girl, gnome, a second fairy) were placed and taken out again: the kingdom's AREA
+  UNITS table (his, `HQ_AREA_ENCOUNTERS`) lists none of them, and a placed person off the table stands as a random race ON it: the unicorn
+  came up as an Undead, the gnome as a ghost. The ring's old "fairy" row is swapped the same way. One of a race a room, too (the crowd cap).
+- **FRAME RATE, PASS 3** (the same pond view): 1.40 -> 1.17 to 1.29 frames a second on the cloud's software GPU; draw calls 309 -> 459,
+  geometries 1,985 -> 2,223 (about 150 new props, most of them small).
+- **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower, bushes,
+  natural small rocks.
+- **NEXT**: its own light, air and particles (`airZones`), the night look, then polish.
+- **(THE VILLAGE'S) THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
   keyword search of the prop catalogue and from what the first build already used. Read against MODEL_LIST.md (the Meshy list, the
   Halloween pack, the orchestral pack, the crow + rabbit upload, section 7a), it had MISSED, all in the game already:
   `meshy_hanging_lantern` (it had put "a street lantern" on the needs-a-model list), `candelabra`, `confessional_booth`, `holy_tapestry`

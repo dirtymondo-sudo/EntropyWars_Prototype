@@ -139,6 +139,19 @@ JOBS += [
     ('play_swing', 'playground', ['SwingBase', 'Swing', 'Swing.001'], 0, {'name': 'cl_playground_swing.glb'}),
     ('play_sandbox', 'playground', ['Sandbox'], 0, {'name': 'cl_playground_sandbox.glb'}),
 ]
+# THE HARBOUR'S FINDS (2026-11-16, mondo: "look at the model list ... to see what else they could add"): the Houses on the water scene holds 87
+# pieces and only the rowboat was ever cut out. The stilt houses whole (deck, piles, walls, roof: a REGION each), the second boat, the six
+# mooring piles, the generator, the hammock on its posts. DOOR_HQ.catalogue stilt_* / fishing_boat / mooring_piles / generator / hammock.
+HOW_ALL = r'.'
+JOBS += [
+    ('stilt_hut', 'housesonwater', [{'near': 'Walls_05', 'pad': 0.6, 'keep': HOW_ALL}], 0),
+    ('stilt_house', 'housesonwater', [{'near': 'Walls_01', 'pad': 0.9, 'keep': HOW_ALL}], 0),
+    ('stilt_house_wide', 'housesonwater', [{'near': 'Walls_02', 'pad': 1.6, 'keep': HOW_ALL}], 0),
+    ('fishing_boat', 'housesonwater', ['Boat'], 0),
+    ('mooring_piles', 'housesonwater', ['Trunk', 'Trunk_01', 'Trunk_02', 'Trunk_03', 'Trunk_04', 'Trunk_05'], 0),
+    ('generator', 'housesonwater', ['Generator'], 0),
+    ('hammock', 'housesonwater', ['Hamaca', 'Columns_05', 'Columns_06', 'Columns_07', 'Columns_08'], 0),
+]
 jobs = []
 for J in JOBS:
     k, p, nodes, rz = J[:4]
