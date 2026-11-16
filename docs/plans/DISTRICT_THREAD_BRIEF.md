@@ -80,3 +80,28 @@ Buildings unique, recognisable, walk-in with working swinging doors, real geomet
 dark glass. Generated shapes always textured; no placeholder geometry, no procedural stairs, no grass blades. Trees
 only on grass, dirt, sand or in planters. Cliffs `rocks_5`; lawns `grass_2`; forest floor `grass_dark_fantasy` /
 `dirt_2`. Bloom and fog OFF by default; real lights. Never the old flat gold. Fewer people, none blocking a path.
+
+## THE MODEL PASS — the wish-list models are in the game (mondo 2026-11-16, after the five passes)
+
+mondo had the districts' NEEDS A MODEL lists made: 246 models, on R2 under `Assets/world/props/meshy/wishlist/`, each with
+a catalogue row in data.js (`DOOR_HQ.catalogue`, group "Meshy props · wish list · <group>"; the key is the plain name,
+e.g. `deer`, `iron_lamp_post`, `sphinx`). The full list with every key and its real size: `docs/plans/WISHLIST_MODELS_ADDED.md`.
+His words: "these are models that were added, go ahead and tell all of those district threads that needed models to use
+these ones". This is his new word, so it comes on top of the five passes: every district thread makes ONE more pass,
+THE MODEL PASS, then stops again.
+
+What the model pass is:
+- Read `docs/plans/WISHLIST_MODELS_ADDED.md` end to end, not only your own asks: other districts' models may fit yours.
+- Place every model you asked for where your NEEDS A MODEL list said it was missing.
+- Replace what stood in for a missing model: code-drawn shapes (lamps built from boxes, drawn stalls, drawn tents), a
+  wrong prop used as a stand-in (the brazier for the tripod bowl, the harp for the lyre, modern tents in an old camp),
+  and anything a thread called a placeholder. Take the stand-in out when the real model is in.
+- Sizes in the list are real-world and the game uses them as given; a model's facing is as it was made: look before you
+  line one up against a wall or a road. Barriers centred on whole squares, decor off centre, nothing blocking a path.
+- Not made: papyrus, whale bones, gold pile, wheat patch. ALREADY IN THE GAME, use these keys (the list's last table):
+  hitching rail = `hitching_rail`; hammock = `hammock` (the Elbolilloduro pack's); bat = `bat_black`, `bat_brown`,
+  `bat_grey`; natural small rocks = `psxg_rock_1` to `psxg_rock_4` (also `ocean_rock_*`). Still not models: the ground / wall sheets, people, moving effects.
+- Animals are props that stand still: use them sparingly, as scenery, never on a path.
+- One PR, seen on screen (probe-fast.js, look at your own pictures, fix), FPS before and after, the upload and the token
+  bump. Then cross the placed items off your NEEDS A MODEL list (file header + your areas-complexes.md section), set
+  your board row to "... + the model pass, STOPPED, waits mondo's look", and send him the pictures.

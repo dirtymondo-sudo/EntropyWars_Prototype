@@ -19,6 +19,9 @@
      at the Steam Vents; the Fork's great cairn + windbreak; the Trailhead's gate; the spring head
    - The camps, the natives (bigfoot, shaman, ki fighter, yeti, nordic), DOOR HQ's bay door on Bunny Flat (ctx.anchor('bayShasta')), the Lemuria door (ctx.anchor('lemuria'))
 
+   - THE MODEL PASS (11-16): the wish-list models are placed (flags, stone lanterns, gong, packs, picnic tables, stove, trophies, masts, mine cart, deer / bear / goats,
+     ice blocks, icicles, lantern posts, the timber lookout tower); no NEEDS A MODEL item is open
+
    KNOWN MISSING OR WRONG
    - The Upper Shelf (P14-07) has no door down to the Woods (the plan drew two joins; only the Trailhead's is cut). That door would be the tool's and the Woods holder's
    - No encounter table of its own (the room's table is joined from the district files that export one)
@@ -90,8 +93,7 @@ const hut = (a, w, d, dr, q, ctx) => { const { WD, WD2, SHG, FLR } = ctx, h = q.
     for (const s of [-1, 1]) for (let z = -d / 2 + 1.75; z < d / 2; z += 3.5) W2(z, s * (w / 2 + 0.08), 1.5, true);
     if (!q.chimney) for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) W2(x, -d / 2 - 0.08, 1.5, false);
     else for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) if (Math.abs(x - q.chimney) > 2.2) W2(x, -d / 2 - 0.08, 1.5, false);
-    if (q.chimney != null && q.chimney !== false) { const cx = q.chimney; a.box(cx, 0, -d / 2 - 0.4, 1.5, h + q.rh + 0.8, 1.0, 'rocks_5', STONE, { roof: true }); a.box(cx, h + q.rh + 0.8, -d / 2 - 0.4, 1.7, 0.2, 1.2, 'rocks_5', 0x6c6c74, { roof: true }); hearth(a, cx, d, h - 0.36, WD2);
-        const sx = cx > 0 ? 1 : -1; a.box(sx * (w / 2 + 0.42), 0, -d / 2 + 1.6, 0.6, 1.0, 2.2, WD2, 0x8a6444, { gain: 1.5 }); a.box(sx * (w / 2 + 0.42), 1.0, -d / 2 + 1.6, 0.7, 0.07, 2.3, q.snow ? 'ice' : WD2, q.snow ? 0xf4f8ff : 0x4a3626); }   // the wood stack under the eaves, beside the chimney
+    if (q.chimney != null && q.chimney !== false) { const cx = q.chimney; a.box(cx, 0, -d / 2 - 0.4, 1.5, h + q.rh + 0.8, 1.0, 'rocks_5', STONE, { roof: true }); a.box(cx, h + q.rh + 0.8, -d / 2 - 0.4, 1.7, 0.2, 1.2, 'rocks_5', 0x6c6c74, { roof: true }); hearth(a, cx, d, h - 0.36, WD2); }   // (the wood stack is the `firewood_stack` model now: build, the model pass)
     if (q.porch) { a.box(0, 0, d / 2 + 1.3, w, 0.16, 2.5, FLR, 0x8c7a62); const n = Math.max(2, Math.round(w / 3.5));
         for (let i = 0; i <= n; i++) { const x = -w / 2 + 0.25 + i * (w - 0.5) / n; if (Math.abs(x - dr.lx) < 0.9) continue; a.box(x, 0, d / 2 + 2.4, 0.24, 2.7, 0.24, WD2, TR); }
         a.roof('shed', 0, 2.7, d / 2 + 1.35, w + 0.6, 0.7, 2.9, rk, rt, rq); }
@@ -160,24 +162,24 @@ exports.build = ctx => {
   /* ══ PASS 1 (11-16): THE LANDMARKS OUTSIDE. Looks are textured shapes; a look that should stop a walker takes its square with block(). ══ */
   /* THE SUMMIT: the crater's rim (standing stones round the vent), the summit cairn with its register box */
   for (const [lx, ly, key, h] of [[6, 5, 'menhir', 2.4], [8, 5, 'sarsen', 3.0], [9, 7, 'menhir', 2.0], [8, 9, 'sarsen', 2.6], [5, 8, 'menhir', 2.8], [4, 6, 'cave_stone', 1.3]]) put('P14-00', key, lx, ly, { h, face: (lx * 67 + ly * 31) % 360 });
-  { const p = block(R, 'P14-00', 7, 4); look('summit:cairn', p[0], p[1], a => { cairn(a, 1.5, true); a.box(0.9, 0, 0.3, 0.5, 0.4, 0.36, 'gunmetal', 0x5a6068); a.box(0.9, 0.4, 0.3, 0.54, 0.05, 0.4, 'gunmetal', 0x3a3e44); }); }
+  put('P14-00', 'cairn', 7, 4, { h: 1.9 }); { const q = S('P14-00', 7, 4); look('summit:register', mx(q[0]), mz(q[1]), a => { a.box(1.1, 0, 0.3, 0.5, 0.4, 0.36, 'gunmetal', 0x5a6068); a.box(1.1, 0.4, 0.3, 0.54, 0.05, 0.4, 'gunmetal', 0x3a3e44); }); }   // (the model pass: the `cairn` model; the register box stays)
   /* THE GLACIER: seracs along its north and east edges, a crevasse-blue pool of melt */
-  for (const [lx, ly, L] of [[6, 2, [[0, 0, 1.1, 4.2], [-1.2, 0.6, 0.8, 2.8]]], [9, 3, [[0, 0, 1.3, 5.0, 0.4], [1.0, -0.8, 0.7, 3.0]]], [10, 6, [[0, 0, 1.0, 3.6], [-0.4, 1.1, 0.8, 2.4]]], [4, 4, [[0, 0, 0.9, 3.0], [0.9, 0.7, 0.6, 2.0]]], [8, 8, [[0, 0, 1.0, 3.2, 0.5]]]]) { const p = block(R, 'P15-00', lx, ly); look('glacier:' + lx + ':' + ly, p[0], p[1], a => seracs(a, L)); }
+  for (const [lx, ly, hh, f] of [[6, 2, 3.6, 20], [9, 3, 4.4, 130], [10, 6, 3.0, 250], [4, 4, 2.6, 70], [8, 8, 2.8, 300]]) put('P15-00', 'ice_block', lx, ly, { h: hh, face: f });   // (the model pass: `ice_block` in place of the drawn seracs)
   /* SHASTINA: the small cone's own cairn; THE RED BANKS: red pumice walls (the banks) along the west of the shelf */
-  { const p = block(R, 'P13-00', 4, 4); look('shastina:cairn', p[0], p[1], a => cairn(a, 1.2, true)); }
+  put('P13-00', 'cairn', 4, 4, { h: 1.5 });
   for (const [lx, ly, w, h] of [[3, 4, 3.2, 2.6], [3, 6, 3.0, 3.4], [4, 7, 2.6, 2.2]]) { const p = block(R, 'P13-01', lx, ly); look('redbanks:' + lx + ':' + ly, p[0], p[1], a => { a.dome(0, 0, 0, w / 2, h, 'rocks_5', 0xb0563c, { rz: 1.5, seg: 7, rings: 3 }); a.dome(0.9, 0, 0.8, w / 3, h * 0.5, 'rocks_5', 0x9c4a34, { seg: 6, rings: 3 }); }); }
   /* THE STEAM VENTS: the adit's timber set round the Lemuria door (the door is the tool's; the frame is ours), a spoil heap */
   { const q = S('P15-01', 8, 6), x = mx(q[0]), z = mz(q[1]); look('adit:frame', x, z, a => { for (const s of [-1, 1]) a.box(0.5, 0, s * 1.45, 0.4, 3.3, 0.4, WD2, 0x4a3626); a.box(0.5, 3.1, 0, 0.5, 0.4, 3.7, WD2, 0x4a3626); a.box(0.9, 3.5, 0, 1.2, 0.3, 4.4, 'rocks_5', 0x6c6c74);
       for (const s of [-1, 1]) a.box(1.3, 0, s * 2.1, 1.6, 2.4 + s * 0.3, 1.0, 'rocks_5', 0x74747c); a.sign('LEMURIA ADIT', 0.2, 3.56, 0, 0.05, 0.5, CREAM, BROWN, FONT); }); }
-  { const p = block(R, 'P15-01', 7, 8); look('adit:spoil', p[0], p[1], a => { a.dome(0, 0, 0, 1.5, 1.1, 'rocks_5', 0x5a5a62, { seg: 7, rings: 3 }); a.dome(1.0, 0, -0.6, 0.8, 0.6, 'rocks_5', 0x6a6a72, { seg: 6, rings: 3 }); }); }
+  put('P15-01', 'ore_heap', 7, 8, { face: 40 });   // (the model pass: the `ore_heap` model in place of the drawn spoil)
   /* THE FORK: the hub of the three trails: the great cairn, a stone windbreak with a bench in it */
-  { const p = block(R, 'P14-02', 7, 4); look('fork:cairn', p[0], p[1], a => cairn(a, 2.0, true)); }
+  put('P14-02', 'cairn', 7, 4, { h: 2.4 });
   { const q = S('P14-02', 9, 2), x = mx(q[0]), z = mz(q[1]); for (const d of [[9, 1], [10, 2]]) block(R, 'P14-02', d[0], d[1]);
     look('fork:windbreak', x, z, a => { a.cyl(0, 0, 0, 4.2, 1.3, 'rocks_5', 0x8c8c94, { ri: 3.5, arc: 200, a0: 190, seg: 20 }); a.cyl(0, 1.3, 0, 4.25, 0.14, 'ice', 0xf4f8ff, { ri: 3.45, arc: 200, a0: 190, seg: 20 }); }); put('P14-02', 'park_bench', 9, 2, { face: 200 }); }
   /* THE TRAILHEAD: the trail's gate (two posts in the trees, a beam, the park's board) and the notice board */
   { const q = S('P13-07', 6, 9), x = ctx.r2(mx(q[0]) + 1.75), z = mz(q[1]); look('trailhead:gate', x, z, a => { for (const s of [-1, 1]) { a.cyl(s * 4.4, 0, 0, 0.3, 4.6, WD2, 0x5a4030, { seg: 8 }); a.cyl(s * 4.4, 0, 0, 0.55, 0.7, 'rocks_5', 0x8c8c94, { seg: 8 }); }
       a.box(0, 3.9, 0, 9.6, 0.36, 0.36, WD2, 0x5a4030); a.sign('MOUNT SHASTA', 0, 3.0, 0.06, 5.2, 0.85, CREAM, BROWN, FONT); a.sign('MOUNT SHASTA', 0, 3.0, -0.06, 5.2, 0.85, CREAM, BROWN, FONT, { ry: 180 }); a.box(0, 2.94, 0, 5.4, 0.97, 0.08, WD2, TR); }); }
-  put('P13-07', 'missing_board', 7, 6, { face: 270 }); put('P13-07', 'psx_toilet_cabin_mp_1', 9, 5, { face: 270 });
+  put('P13-07', 'trail_sign', 7, 6, { face: 270 }); put('P13-07', 'outhouse', 9, 5, { face: 270 });   // (the model pass: the trail map board and the privy)
   /* THE SPRING: the spring head (a stone basin the water comes out of) above the pool */
   { const p = block(R, 'P14-04', 6, 3); look('spring:head', p[0], p[1], a => { a.cyl(0, 0, 0, 1.2, 0.7, 'rocks_5', 0xa8a8b0, { seg: 10, ri: 0.85 }); a.cyl(0, 0, 0, 0.86, 0.55, 'ice_1', 0x9fd8f0, { seg: 10, glow: 0.9 }); a.box(0, 0, -1.1, 1.6, 1.7, 0.6, 'rocks_5', 0x8c8c94); a.box(0, 1.0, -0.75, 0.3, 0.2, 0.3, 'rocks_5', 0x6c6c74); }); }
   /* ══ PASS 2 (11-16): THE INSIDES. A building's frame: x along its front, +z out of the door; `face` 180 looks out of the front, 0 at the back wall, 90 to +x, 270 to -x.
@@ -192,7 +194,7 @@ exports.build = ctx => {
       h.put('psx_wooden_crate_1', -4.4, 2.9, { face: 12 }); h.put('psx_flashlight_1', -4.4, 2.9, { y: 0.37 }); }
     /* BIGFOOT'S CABIN: a big bed, a big table, the larder */
     { const h = B.bigfoot; fire(h, -3.2); h.put('couples_bed', 3.5, -1.75, { face: 180, h: 1.0 }); h.put('psx_dinner_table_1', 0, -1.75, { face: 90 }); h.put('psx_meat_1', 0.2, -1.6, { y: 0.87 }); h.put('psx_fish_skeleton_mp_1', -0.3, -2.0, { y: 0.87, face: 40 }); h.put('psx_canned_food_mp_1', 0.1, -2.2, { y: 0.87 });
-      h.put('stump', -1.1, -1.4); h.put('stump', 1.1, -2.0); h.put('psx_armchair_1', -1.9, -0.5, { face: 240 }); h.put('rug_round', -3.2, -1.0, { y: 0.02 }); h.put('stock_pots', -4.4, -1.2, { face: 90 });
+      h.put('stump', -1.1, -1.4); h.put('stump', 1.1, -2.0); h.put('psx_armchair_1', -1.9, -0.5, { face: 240 }); h.put('fur_rug', -2.6, 0.6, { y: 0.02, face: 30 }); h.put('stock_pots', -4.4, -1.2, { face: 90 });
       h.put('sea_chest', 4.4, 2.7, { face: 270 }); h.put('psx_shelf_mp_2', -4.6, 2.5, { face: 90 }); h.put('beach_cooler', 2.4, 2.9, { face: 0 }); h.put('meshy_burlap_sack', 3.3, 2.9); h.put('fishing_net_wall', 4.9, -0.2, WALL(h, 1.2, 270));
       h.put('psx_photo_frame_mp_1', -1.0, -3.14, WALL(h, 1.7, 180)); h.put('wooden_bucket', -2.2, 2.9); }
     /* THE SHAMAN'S LODGE: the brazier, the bed roll, the table of the craft */
@@ -240,7 +242,7 @@ exports.build = ctx => {
     D('P13-01', [['psxg_rock_1', 5, 4], ['psxg_rock_2', 5, 6], ['psxg_rock_1', 4, 5], ['psxg_dead_bush_2', 6, 3], ['psxg_dead_bush_1', 5, 7], ['psxg_rock_3', 7, 6], ['psxg_rock_4', 6, 5], ['ocean_rock_7', 7, 4]]);
     /* HELEN LAKE: the frozen lake's camp: a boat frozen in, the ice-fishing hole, a snowman */
     P('P14-01', [['rowboat', 6, 7, F(30)], ['fallen_log', 6, 4, F(100)], ['xmas_snowman', 9, 6, F(220)]]);
-    { const q = S('P14-01', 5, 7); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 0.7, rz: 0.7, y: -0.1, depth: 0.5, key: 'water', bank: 0.2 }); R.taken.add(q[0] + ':' + q[1]); }
+    dec('P14-01', 'ice_fishing_hole', 5, 7); dec('P14-01', 'fishing_rod', 5, 8, { h: 1.6, face: 200 });   // (the model pass: the hole's own model)
     D('P14-01', [['beach_cooler', 4, 3], ['psx_supply_crate_1', 3, 3], ['psx_fish_skeleton_mp_1', 4, 7], ['wooden_bucket', 6, 6], ['meshy_rope', 2, 5], ['stock_pots', 5, 4], ['psx_canned_food_mp_1', 6, 3], ['psxg_rock_2', 9, 4], ['hw_shovel', 7, 5], ['psx_wooden_crate_1', 9, 3]]);
     /* THE STEAM VENTS: fumaroles on the lava, crystals and torches at the adit, a rope round the hot pool */
     P('P15-01', [['sea_vent', 4, 4], ['sea_vent', 6, 4, { h: 1.8, noLight: true }], ['sea_vent', 3, 7, { h: 2.0, noLight: true }], ['crystal_cluster', 7, 5], ['cave_torch', 8, 5], ['cave_torch', 8, 7, { noLight: true }]]);
@@ -258,8 +260,8 @@ exports.build = ctx => {
     P('P13-03', [['stump', 1, 6], ['hollow_dead_tree', 1, 8], ['hitching_rail', 5, 10], ['stump', 5, 7]]);
     D('P13-03', [['rabbit', 3, 8], ['rabbit', 6, 9], ['rabbit', 2, 9], ['rabbit', 7, 5], ['rabbit', 4, 10], ['beach_cooler', 3, 5], ['stock_pots', 5, 6], ['trap_bear_shut', 7, 9], ['woods_healflower', 3, 9], ['woods_healflower', 6, 8], ['fern', 0, 7], ['fern', 3, 10], ['psx_wooden_crate_1', 7, 7], ['meshy_burlap_sack', 7, 8], ['woods_healflower', 1, 5], ['fern', 8, 7]]);
     /* PANTHER MEADOWS: the flower meadow, the panther lying in it, a totem at the lodge, the dojo's post outside */
-    P('P14-03', [['item_ward_totem', 4, 2, { h: 2.4, face: 180 }], ['wing_chun_dummy', 7, 8, F(20)], ['stump', 3, 7], ['stump', 7, 5], ['menhir', 10, 4, { h: 2.2 }], ['fallen_log', 2, 9, F(60)]]);
-    D('P14-03', [['lion', 9, 3, { face: 200 }], ['woods_healflower', 3, 4], ['woods_healflower', 4, 9], ['woods_healflower', 8, 5], ['woods_healflower', 9, 6], ['woods_healflower', 2, 6], ['woods_healflower', 6, 3], ['woods_healflower', 10, 7], ['monarch', 4, 5], ['blue_morpho', 8, 4], ['swallowtail', 3, 8], ['monarch', 9, 7],
+    P('P14-03', [['carved_totem_pole', 4, 2, { h: 3.6, face: 180 }], ['wing_chun_dummy', 7, 8, F(20)], ['stump', 3, 7], ['stump', 7, 5], ['menhir', 10, 4, { h: 2.2 }], ['fallen_log', 2, 9, F(60)]]);
+    D('P14-03', [['mountain_lion', 9, 3, { face: 200 }], ['woods_healflower', 3, 4], ['woods_healflower', 4, 9], ['woods_healflower', 8, 5], ['woods_healflower', 9, 6], ['woods_healflower', 2, 6], ['woods_healflower', 6, 3], ['woods_healflower', 10, 7], ['monarch', 4, 5], ['blue_morpho', 8, 4], ['swallowtail', 3, 8], ['monarch', 9, 7],
       ['fern', 1, 5], ['fern', 10, 9], ['mushroom2', 11, 5, { h: 1.0 }], ['psx_pillow_mp_1', 4, 6], ['psx_pillow_mp_1', 6, 7], ['item_censer', 5, 7], ['hw_candles', 3, 3], ['fern', 5, 2], ['meshy_crystal_shard', 6, 5]]);
     native('P14-03', 'hippie', 7, 4, 200);
     /* THE OLD LAVA: black blocks, burnt trees, the first ferns coming back */
@@ -276,8 +278,8 @@ exports.build = ctx => {
     P('P13-05', [['hitching_rail', 4, 4, F(90)], ['fallen_log', 7, 3, F(80)], ['park_bench', 5, 3, F(180)], ['stump', 8, 4]]);
     D('P13-05', [['fern', 4, 5], ['fern', 8, 3], ['woods_healflower', 6, 2], ['woods_healflower', 7, 5], ['psxg_rock_1', 5, 5], ['rabbit', 7, 4], ['fern', 5, 2], ['psxg_rock_2', 8, 5], ['monarch', 6, 3]]);
     /* THE LOOKOUT: the rail along the drop, a telescope, the station's dish and water drum */
-    P('P14-05', [['hw_fence', 1, 6, F(90)], ['hw_fence', 1, 7, F(90)], ['hw_fence', 1, 8, F(90)], ['telescope', 2, 6, F(270)], ['dish', 6, 9, F(200)], ['stump', 3, 5]]);
-    D('P14-05', [['psx_metal_barrel_mp_1', 5, 9], ['eagle', 3, 6], ['fern', 2, 5], ['fern', 6, 6], ['psxg_rock_1', 5, 5], ['woods_healflower', 4, 8], ['psx_wooden_crate_1', 5, 9], ['crow', 2, 8], ['fern', 4, 5]]);
+    P('P14-05', [['hw_fence', 1, 6, F(90)], ['hw_fence', 1, 7, F(90)], ['hw_fence', 1, 8, F(90)], ['telescope', 2, 6, F(270)], ['dish', 6, 9, F(200)], ['stump', 3, 5], ['timber_lookout', 6, 6, F(0)]]);
+    D('P14-05', [['psx_metal_barrel_mp_1', 5, 9], ['eagle', 3, 6], ['fern', 2, 5], ['psxg_rock_1', 5, 5], ['woods_healflower', 4, 8], ['psx_wooden_crate_1', 5, 9], ['crow', 2, 8], ['fern', 4, 5]]);
     /* THE SWITCHBACK, lower */
     P('P13-06', [['hitching_rail', 9, 3, F(90)], ['stump', 5, 3], ['fallen_log', 8, 6, F(20)], ['hollow_tree', 6, 2]]);
     D('P13-06', [['fern', 7, 2], ['fern', 5, 4], ['fern', 9, 4], ['rabbit', 7, 4], ['woods_healflower', 6, 5], ['psxg_rock_2', 8, 3], ['mushroom2', 8, 2, { h: 0.9 }], ['woods_glowcap', 7, 6], ['psxg_rock_1', 6, 6]]);
@@ -287,7 +289,7 @@ exports.build = ctx => {
     native('P14-06', 'gnome', 6, 6, 100);
     /* THE TRAILHEAD: the hitching rail and the pack horse, the fire's seats, the bin, the line's last pole */
     P('P13-07', [['hitching_rail', 5, 7], ['horse_brown', 6, 7, F(0)], ['fallen_log', 8, 3, F(90)], ['stump', 6, 3], ['power_pole', 10, 4]]);
-    D('P13-07', [['metal_trash_can', 8, 4], ['psx_wooden_crate_4', 5, 4], ['meshy_burlap_sack', 5, 4], ['fern', 9, 6], ['fern', 6, 8], ['woods_healflower', 8, 7], ['wooden_bucket', 6, 6], ['psx_metal_barrel_mp_1', 4, 7 - 1], ['rabbit', 8, 6]]);
+    D('P13-07', [['metal_trash_can', 8, 4], ['psx_wooden_crate_4', 5, 4], ['meshy_burlap_sack', 5, 4], ['fern', 6, 8], ['woods_healflower', 8, 7], ['wooden_bucket', 6, 6], ['psx_metal_barrel_mp_1', 4, 7 - 1], ['rabbit', 8, 6]]);
     /* THE UPPER SHELF: a pilgrims' camp off the trail */
     P('P14-07', [['meshy_camping_tent', 6, 5, F(120)], ['campfire', 8, 5], ['fallen_log', 7, 6, F(100)], ['stump', 9, 4]]);
     D('P14-07', [['instrument_guitar', 7, 5, { h: 0.9 }], ['hw_candles', 8, 6], ['fern', 5, 6], ['fern', 9, 6], ['beach_cooler', 6, 4], ['rabbit', 6, 7], ['woods_healflower', 8, 7], ['psx_pillow_mp_1', 8, 4], ['stock_pots', 9, 5], ['woods_healflower', 6, 3]]);
@@ -302,12 +304,10 @@ exports.build = ctx => {
   { const r2 = ctx.r2, steam = (id, lx, ly, up, rise) => { const q = S(id, lx, ly); props.push({ key: 'chimney_smoke', x: mx(q[0]), z: mz(q[1]), y: r2(gnd(R, id, lx, ly) + up), rise: rise || 6 }); };
     steam('P14-00', 7, 6, 2.3, 9); steam('P15-01', 4, 4, 2.3); steam('P15-01', 6, 4, 1.8); steam('P15-01', 3, 7, 2.0); steam('P15-01', 5, 6, 0.4, 4); steam('P15-01', 6, 6, 0.4, 3);
     /* the lantern post: a timber post, an arm, a caged lantern (the district's own; the village's is candy-striped) */
-    { const L = [['P13-07', 5, 8, -1.3, 0], ['P13-07', 4, 4, 1.2, -1.3], ['P13-07', 8, 2, 1.3, 1.2], ['P13-06', 6, 6, 1.3, 1.3], ['P13-06', 5, 3, -1.3, 1.2], ['P13-05', 5, 6, -1.3, 1.2], ['P13-05', 8, 2, 1.3, -1.2], ['P13-04', 5, 8, 1.3, 1.2], ['P13-04', 6, 4, 1.3, -1.3],
+    /* (the model pass) the `lantern_post` model in place of the drawn posts: it blocks, so each stands on the middle of a whole square that is not a trail square */
+    for (const [id, lx, ly, ox] of [['P13-07', 5, 8, -1.3, 0], ['P13-07', 4, 4, 1.2, -1.3], ['P13-07', 8, 2, 1.3, 1.2], ['P13-06', 6, 6, 1.3, 1.3], ['P13-06', 5, 3, -1.3, 1.2], ['P13-05', 5, 6, -1.3, 1.2], ['P13-05', 8, 2, 1.3, -1.2], ['P13-04', 5, 8, 1.3, 1.2], ['P13-04', 6, 4, 1.3, -1.3],
         ['P13-03', 3, 3, -1.3, -1.2], ['P13-03', 8, 8, 1.2, -1.3], ['P14-03', 3, 3, -1.3, 1.2], ['P14-03', 7, 9, -1.3, 1.3], ['P14-03', 10, 8, 1.3, -1.3], ['P14-04', 3, 3, -1.3, -1.3], ['P14-04', 7, 5, 1.3, 1.2], ['P14-05', 5, 5, 1.3, -1.3], ['P14-05', 5, 9, 1.3, -1.3],
-        ['P14-06', 5, 5, -1.3, -1.3], ['P14-07', 5, 4, -1.3, 1.3], ['P14-02', 4, 6, -1.3, 1.2], ['P14-02', 8, 4, 1.3, 1.3], ['P14-01', 2, 5, 1.3, 1.3], ['P15-01', 3, 8, -1.3, 1.3], ['P13-02', 5, 6, -1.3, 1.3], ['P14-00', 6, 9, 1.3, 1.3]], o0 = S(L[0][0], L[0][1], L[0][2]), X0 = r2(mx(o0[0]) + L[0][3]), Z0 = r2(mz(o0[1]) + L[0][4]), G0 = gnd(R, L[0][0], L[0][1], L[0][2]);   // ONE look for all the posts (26 looks cost draw calls: the frame rate)
-      look('lamps', X0, Z0, a => { for (const [id, lx, ly, ox, oz] of L) { const q = S(id, lx, ly), x = r2(mx(q[0]) + ox - X0), z = r2(mz(q[1]) + oz - Z0), y = r2(gnd(R, id, lx, ly) - G0), sx = ox > 0 ? -1 : 1;
-          a.cyl(x, y - 0.3, z, 0.22, 0.65, 'rocks_5', 0x9c9ca4, { seg: 7, gain: 1.5 }); a.cyl(x, y + 0.35, z, 0.09, 2.75, WD2, 0x5a4030, { seg: 7, gain: 1.5 });
-          a.box(x + sx * 0.28, y + 2.9, z, 0.7, 0.08, 0.08, WD2, 0x5a4030, { gain: 1.5 }); a.box(x + sx * 0.55, y + 2.52, z, 0.03, 0.4, 0.03, WD2, 0x2a2a2a); a.box(x + sx * 0.55, y + 2.2, z, 0.24, 0.34, 0.24, 'marble_light', 0xffb050, { glow: 1.4 }); a.box(x + sx * 0.55, y + 2.54, z, 0.3, 0.05, 0.3, WD2, 0x2a2a2a); a.box(x + sx * 0.55, y + 2.16, z, 0.3, 0.04, 0.3, WD2, 0x2a2a2a); } }); }
+        ['P14-06', 5, 5, -1.3, -1.3], ['P14-07', 5, 4, -1.3, 1.3], ['P14-02', 4, 6, -1.3, 1.2], ['P14-02', 8, 4, 1.3, 1.3], ['P14-01', 2, 5, 1.3, 1.3], ['P15-01', 3, 8, -1.3, 1.3], ['P13-02', 5, 6, -1.3, 1.3], ['P14-00', 6, 9, 1.3, 1.3]]) { const q = S(id, lx, ly), ch = R.cell[q[1]][q[0]]; if (ch === 'p' || ch === 'o' || ch === 'B' || R.taken.has(q[0] + ':' + q[1]) || !R.open(q[0], q[1])) continue; put(id, 'lantern_post', lx, ly, { face: ox > 0 ? 90 : 270 }); }
     /* the dojo's eaves, the shrine's fire, the lodge's porch light */
     { const h = BUILT.dojo; for (const x of [-4.7, 4.7]) h.put('paper_lantern', x, h.fd / 2 + 0.75, { y: UP(h, 2.45), mount: 0, floor: false }); }
     put('P14-04', 'brazier', 4, 2); dec('P14-03', 'hw_candles', 4, 3); dec('P14-03', 'hw_candles', 2, 3); dec('P14-04', 'hw_candles', 7, 4);
@@ -329,6 +329,48 @@ exports.build = ctx => {
     h = B.shrine; h.put('psx_painting_1', -3.1, -0.6, WALL(h, 1.7, 90)); h.put('greek_amphora', 2.6, h.fd / 2 + 0.8, { floor: false }); h.put('hw_candles', -2.7, h.fd / 2 + 0.7, { floor: false });
     h = B.lookout; h.put('psx_painting_1', -4.9, 1.9, WALL(h, 1.7, 90)); h.put('notice_board', -2.6, 3.14, WALL(h, 1.3, 0)); h.put('psx_wooden_crate_4', 4.3, h.fd / 2 + 0.9, { floor: false });
     h = B.climbers; h.put('psx_painting_1', 4.9, 1.4, WALL(h, 1.7, 270)); h.put('wall_shelf', -4.9, 0, WALL(h, 1.7, 90)); h.put('psx_canned_food_mp_1', -4.7, 0, { y: UP(h, 1.76), mount: 0 }); h.put('hw_shovel', -3.6, h.fd / 2 + 0.7, { floor: false, face: 90 }); h.put('psx_metal_barrel_mp_1', 4.4, h.fd / 2 + 0.9, { floor: false }); }
+  /* ══ THE MODEL PASS (11-16, mondo: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md). The district's NEEDS A MODEL list,
+     placed; the drawn stand-ins are out (cairns, seracs, lantern posts, the spoil heap, the wood stacks, the ice hole) and the wrong props too (the lion for the panther,
+     the missing-persons board for the trail board, the plastic privy, the scaled hand totem). Blockers on square middles, never on a trail square. ══ */
+  { const P = (id, list) => list.forEach(q => put(id, q[0], q[1], q[2], q[3])), D = (id, list) => list.forEach(q => dec(id, q[0], q[1], q[2], q[3])), F = f => ({ face: f }), B = BUILT;
+    /* the peaks: the weather mast, flags on the Summit, goats on the rock, snow heaps, the climbers' kit */
+    P('P14-00', [['weather_mast', 10, 7, F(30)], ['snow_heap', 9, 9], ['raven_perch', 5, 7, F(120)]]); D('P14-00', [['prayer_flags', 8, 6, { face: 20 }], ['backpack', 9, 6], ['ice_axe', 6, 7], ['snowshoes', 9, 6]]);
+    P('P13-00', [['snow_heap', 3, 6], ['mountain_goat', 6, 4, F(200)]]); D('P13-00', [['backpack', 5, 5], ['ice_axe', 4, 5], ['snowshoes', 6, 5]]);
+    P('P15-00', [['snow_heap', 6, 8], ['snow_heap', 10, 4]]); D('P15-00', [['ice_axe', 6, 6], ['backpack', 5, 5], ['snow_sled', 8, 7, { face: 60 }], ['icicles', 9, 4, { face: 0 }]]);
+    P('P13-01', [['mountain_goat', 5, 3, F(120)], ['burnt_tree', 6, 7, { h: 4.5 }]]); P('P15-02', [['mountain_goat', 4, 5, F(260)], ['snow_heap', 3, 3]]); D('P15-02', [['milestone', 6, 6]]);
+    P('P13-02', [['burnt_tree', 9, 7, { h: 5 }], ['snow_heap', 7, 7], ['stretcher', 9, 5, F(40)]]); D('P13-02', [['ice_axe', 6, 6], ['backpack', 6, 6]]);
+    P('P14-02', [['trail_sign', 4, 2, F(180)], ['snow_heap', 9, 7], ['snow_heap', 4, 7]]); D('P14-02', [['backpack', 9, 3], ['sleeping_bag', 8, 2, { face: 100 }], ['prayer_flags', 6, 3, { face: 90 }], ['kettle', 8, 2]]);
+    /* HELEN LAKE: the camp's kit, the rescue sled at the hut, icicles on its eaves */
+    P('P14-01', [['snow_heap', 3, 8], ['rescue_sled', 3, 5, F(80)], ['axe_chopping_block', 4, 5]]); D('P14-01', [['sleeping_bag', 3, 3, { face: 140 }], ['backpack', 7, 3], ['backpack', 4, 4], ['oars', 7, 7, { face: 30 }], ['kettle', 5, 2], ['snowshoes', 8, 5], ['ice_axe', 2, 4], ['river_fish', 6, 8]]);
+    { const h = B.climbers; for (const x of [-3.6, -1.2, 2.4, 4.2]) h.put('icicles', x, h.fd / 2 + 0.86, { y: UP(h, 2.2), mount: 0, floor: false, face: 180 }); h.put('firewood_stack', h.fw / 2 + 0.55, -1.6, { face: 90, floor: false });
+      h.put('sleeping_bag', -3.5, -1.75, { y: 0.42, face: 90 }); h.put('sleeping_bag', -3.5, 1.75, { y: 0.42, face: 90 }); h.put('backpack', 2.2, 2.7); h.put('ice_axe', 4.4, -0.4, { face: 30 }); h.put('antler_trophy', -2.9, -3.14, WALL(h, 1.6, 180)); h.put('kettle', 2.2, -2.6); h.put('snowshoes', -4.5, 0.6); }
+    /* THE STEAM VENTS: the mine cart at the adit, the miner's tools */
+    P('P15-01', [['mine_cart', 6, 5, F(90)]]); D('P15-01', [['pickaxe', 7, 7], ['wheelbarrow', 6, 8, { face: 200 }], ['wooden_barrel', 7, 4], ['rail_section', 7, 6, { face: 90 }]]);
+    P('P15-03', [['burnt_tree', 5, 6, { h: 5.5 }], ['burnt_tree', 7, 5, { h: 4.2, face: 90 }]]);
+    /* PANTHER MEADOWS: prayer flags, the gong and the stone lanterns of the dojo, flowers and moss */
+    P('P14-03', [['gong', 9, 8, F(0)], ['stone_lantern', 6, 9], ['stone_lantern', 5, 3], ['picnic_table', 9, 5, F(20)]]);
+    D('P14-03', [['prayer_flags', 5, 4, { face: 0 }], ['prayer_flags', 7, 7, { face: 60 }], ['prayer_flags', 3, 5, { face: 120 }], ['wild_flowers', 4, 4], ['wild_flowers', 5, 9], ['wild_flowers', 8, 6], ['wild_flowers', 2, 7], ['wild_flowers', 10, 6], ['wild_flowers', 7, 3], ['moss_clump', 1, 6], ['moss_clump', 9, 9], ['sleeping_bag', 8, 3, { face: 70 }], ['backpack', 8, 4], ['kettle', 6, 6]]);
+    { let h = B.dojo; h.put('gong', 3.5, 1.75, { face: 270 }); h = B.shaman; h.put('antler_trophy', 0, -3.14, WALL(h, 1.7, 180)); h.put('fur_rug', 0, 0.9, { y: 0.02 }); h.put('kettle', 0.8, -1.5); h.put('firewood_stack', -h.fw / 2 - 0.55, 0.6, { face: 90, floor: false }); }
+    /* THE SPRING: stone lanterns at the shrine, reeds and a heron at the water, the bell in its frame */
+    P('P14-04', [['stone_lantern', 6, 2], ['lake_rock', 3, 7, F(40)]]); D('P14-04', [['reeds', 4, 6], ['reeds', 8, 6], ['reeds', 4, 7], ['heron', 4, 8, { face: 60 }], ['stepping_stones', 6, 4, { face: 0 }], ['moss_clump', 3, 5], ['moss_clump', 8, 5], ['wild_flowers', 2, 5], ['wild_flowers', 5, 2], ['lit_candle', 6, 4], ['prayer_flags', 5, 3, { face: 40 }]]);
+    /* BUNNY FLAT: the picnic table, the chopping block and wood at Bigfoot's, the campers' packs, a deer at the wood's edge */
+    P('P13-03', [['picnic_table', 3, 7, F(10)], ['axe_chopping_block', 6, 10], ['deer', 0, 6, F(100)]]); D('P13-03', [['backpack', 3, 6], ['sleeping_bag', 5, 8, { face: 80 }], ['backpack', 7, 6], ['kettle', 4, 5], ['wild_flowers', 2, 10], ['wild_flowers', 6, 5], ['moss_clump', 0, 8], ['owl_perched', 7, 8]]);
+    { const h = B.bigfoot; h.put('firewood_stack', -h.fw / 2 - 0.55, -1.2, { face: 90, floor: false }); h.put('antler_trophy', 2.2, -3.14, WALL(h, 2.2, 180)); h.put('antler_trophy', 4.9, -1.0, WALL(h, 2.2, 270)); h.put('kettle', -2.4, -2.4); h.put('backpack', 4.3, 1.4); }
+    /* THE LAST TREES and the trail down: a deer, a fox, an owl, milestones, the bear well off the trail */
+    P('P13-04', [['burnt_tree', 8, 8, { h: 4.6 }]]); D('P13-04', [['owl_perched', 7, 7], ['moss_clump', 6, 6], ['wild_flowers', 7, 8], ['milestone', 5, 7]]);
+    P('P13-05', [['deer', 6, 4, F(240)]]); D('P13-05', [['fox', 8, 5, { face: 300 }], ['moss_clump', 4, 3], ['wild_flowers', 6, 5], ['milestone', 7, 6]]);
+    P('P13-06', [['bear', 8, 5, F(250)]]); D('P13-06', [['moss_clump', 5, 5], ['wild_flowers', 7, 3], ['milestone', 6, 4], ['hedgehog', 9, 5]]);
+    P('P14-06', [['lake_rock', 8, 9, { h: 1.4 }]]); D('P14-06', [['moss_clump', 7, 5], ['moss_clump', 9, 8], ['backpack', 7, 7], ['hawk', 9, 8]]);
+    /* THE LOOKOUT: the timber tower (in the dressing), the picnic table, the mast, the stove inside */
+    P('P14-05', [['picnic_table', 5, 7, F(90)], ['weather_mast', 7, 8, F(0)], ['fire_danger_sign', 3, 8, F(90)]]); D('P14-05', [['hawk', 1, 5], ['wild_flowers', 2, 9], ['moss_clump', 6, 5], ['backpack', 5, 6]]);
+    { const h = B.lookout; h.put('wood_stove', 4.5, -0.3, { face: 270 }); h.put('firewood_stack', 4.4, 0.9, { face: 90 }); h.put('kettle', 4.5, -0.3, { y: 0.8 }); h.put('sleeping_bag', -3.5, 1.75, { y: 0.42, face: 0 }); h.put('antler_trophy', 4.9, 2.2, WALL(h, 1.7, 270)); }
+    /* THE TRAILHEAD: the picnic table, the fire danger board, the campers' van, the wood and the block at the Ranger Station */
+    P('P13-07', [['picnic_table', 8, 5, F(0)], ['fire_danger_sign', 9, 3, F(200)], ['camper_van', 9, 6, F(90)], ['axe_chopping_block', 4, 6]]); { const q = S('P13-07', 10, 6); R.taken.add(q[0] + ':' + q[1]); }
+    D('P13-07', [['mailbox', 5, 6], ['saddle', 7, 7], ['backpack', 8, 6], ['wooden_barrel', 5, 3], ['wild_flowers', 7, 3], ['moss_clump', 6, 8]]);
+    { const h = B.ranger; h.put('firewood_stack', h.fw / 2 + 0.55, -1.4, { face: 90, floor: false }); h.put('antler_trophy', -3.4, -3.14, WALL(h, 2.25, 180)); h.put('kettle', 2.6, -2.4); h.put('backpack', -4.4, -0.4); }
+    /* THE UPPER SHELF: the pilgrims' camp */
+    D('P14-07', [['prayer_flags', 8, 4, { face: 30 }], ['sleeping_bag', 6, 6, { face: 20 }], ['backpack', 5, 5], ['kettle', 8, 6], ['wild_flowers', 8, 7], ['moss_clump', 6, 7]]); P('P14-07', [['deer', 9, 6, F(300)]]);
+  }
 };
 
 /* THE AIR (pass 4; the tool's hook `airZones`, bake-mountains.js THE AIR BY DISTRICT): thin snow on the three peaks' plots, white motes of steam at the vents, ash over
