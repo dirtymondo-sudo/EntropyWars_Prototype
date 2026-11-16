@@ -5069,6 +5069,11 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     `dinosaur_skeleton` is a museum mount on a plinth with a rod, not bones on a beach.
   - **THATCH + WATTLE:** a roof in `urban:WoodGeneric2a` tinted 0xd2b060 at gain 1.7 reads as thatch; a wall in `WoodGeneric1a` with a LIGHT tint
     (0xcdb88a, gain 1.5) reads as woven brown boards (the kit's "never a colour over WD" holds for paint colours, not for wood left wood).
+  - **A HUT'S INSIDE, WHAT THE OCEAN ADDS:** a probe view's `y` is the walker's FEET (inside a hut on level 1 sand: 1.36), not the eye.
+    The lit deck must hang UNDER the building's own ceiling or it draws black: row `h` 3.4 front E -> deck at 2.80; `h` 2.9 front S ->
+    2.25 (the kit's 2.68 / 2.5 are for `h` 3.0 / 3.2). Keep a walk-in ONE square off any cone or rock square (the slope blends in through
+    the floor). `psx_carpet_mp_1` is a Persian rug; `campfire` with `h: 0.5` is a hearth's fire; a ring of stones = one `cyl` part with
+    `ring: { n, r }`. Drawn furniture that reads: a plank platform + a straw pallet (a bed), a banded block with a tall back (a seat).
   - **TRIANGLES:** a Meshy prop is about 10,000 triangles whatever its size (a skull, a fern, a flamingo); thirty of them is 0.3 M. Count before dressing.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
@@ -5168,6 +5173,12 @@ sea has things to sail to.
     (P04-01: eight drawn sea stacks, seals); THE KRAKEN (P07-03: six arms round a taken boat, a shark, a hammerhead); THE PALM ROCKS
     (P02-00, P12-09); FLOTSAM (P06-07: crates, drums, a bottle, a ring, a boat adrift); THE SEA LANE (six unlit buoys from the Harbour's
     Mouth to the Landing); the north-east islet a castaway's camp (a pirate, no line), the south-west one a haul-out (seals, flamingos).
+  - **PASS 2, INTERIORS (seen on screen):** both huts lined and furnished (O.js `inside`, `bigRoom`, `northRoom`): a pale woven coat on the
+    walls, a LIT thatch ceiling with pole rafters, a lashing rail; THE BIG HUT: a stone hearth with a fire, the high seat against the back
+    wall (drawn: an ochre block and tall back banded in bone white, a skull over it, two spears), three sleeping platforms with straw
+    pallets and pillows, two hung mats, the stores (clay pots, an amphora, straw bales), a pole rack with dried meat and fish, drums, two
+    woven floor mats; THE NORTH HUT: a hearth, two platforms, a mat, a pot, an urn, straw, a bucket, a spear. The big hut moved ONE SQUARE
+    south (109-110 x 16-18): beside the cone its slope came up through the floor. Triangles at the Landing after the pass: 2.64 M (pass 1: 2.5 M).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -5194,7 +5205,7 @@ sea has things to sail to.
   gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
   for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
   a ship or raft out at sea; a moving waterspout (this one stands still).
-- **NOT DONE:** the huts' insides (pass 2); more dressing (pass 3); night and the island's real lights (pass 4); polish (pass 5). Nothing
+- **NOT DONE:** more dressing (pass 3); night and the island's real lights (pass 4); polish (pass 5). Nothing
   under the water shows (the sea is opaque from above). No fight set up.
 - **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is a far cull for the whole sea
   room, the tool row's or the engine's, not fewer props on one island).
