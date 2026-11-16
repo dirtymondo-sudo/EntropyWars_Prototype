@@ -7,7 +7,7 @@
      P03-00 The Mound (L5)             a grass hill (r 9, h 2.6) with a wooden cross, three crosses, an open coffin and its lid, a giant cap. PASS 1: THE BARROW, a stone doorway in the south face + kerb stones.
      P04-00 The Lake, west shore (L4)  two lanterns, two giant caps, frogs. The lake is the tool's water. PASS 1: THE JETTY (cut: 4 bridge squares), posts, a lamp post, a rowboat.
      P05-00 The Lake, east shore (L4)  a candle line, two giant caps, frogs. The lodge door (the Lodge's halls) is east.
-     P03-01 The Tents (L4)             three tents, a chest, a radio, three masks, a crystal; native: fortune teller.
+     P03-01 The Tents (L4)             three tents, a chest, a radio, three masks, a crystal; native: fortune teller. PASS 2: THE CAMP HOUSE on its east edge (room squares 45..48 x 16..17), a walk-in hall, furnished.
      P04-01 The Stage (L4)             PASS 1: a timber BAND SHELL over the old block (deck, back wall + red cloth, wings, posts, gable roof, footlights, rails); steps, lectern, two speakers, six folding chairs with a mask on each, a crystal.
      P05-01 The Owl (L4)               LANDMARK: the owl statue (Meshy owl_statue) on its mound with steps, the stone altar, two braziers, an effigy on a bier, a candle line, a crystal. PASS 1: the mound in stone, stair cheeks, ten columns in a horseshoe.
      P03-02 The Fire (L3)              campfire, two folding chairs, torch, meat, a hand saw, a cauldron, a crystal; native: cult leader.
@@ -48,6 +48,7 @@ module.exports = {
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
+        for (let y = 16; y <= 17; y++) for (let x = 45; x <= 48; x++) taken.add(x + ':' + y);   // the Camp House's eight squares (build, pass 2): no old piece lands in it
         { const q = centre('P04-02'), R = 2; put('P04-02', 'ritual_circle', 0, 0, { y: 0.01 });   // THE STONES: six round the circle
           [[-R, -1], [-R, 1], [R, -1], [R, 1], [0, -R], [0, R]].forEach(d => put('P04-02', 'menhir', d[0], d[1])); dec('P04-02', 'candle_ring', 1, 0); put('P04-02', 'cave_torch', -3, 3); }
         put('P03-02', 'campfire', 0, 0); dec('P03-02', 'folding_chair', 1, 1); dec('P03-02', 'folding_chair', -1, 1); put('P03-02', 'cave_torch', 2, -2);
@@ -93,7 +94,8 @@ module.exports = {
     /* THE GROUND (the zone kit; mondo's forest-floor rule): the dark forest sheet, no lawn */
     ground: 'grass_dark_fantasy',
     /* THE CUT (pass 1): the jetty's squares on the Lake's west shore: one dirt square on the bank, four bridge squares out over the water (the tool lays the plank deck) */
-    cut(ctx) { const { cell } = ctx; cell[6][52] = 'p'; for (let x = 53; x <= 56; x++) cell[6][x] = 'b'; },
+    cut(ctx) { const { cell } = ctx; cell[6][52] = 'p'; for (let x = 53; x <= 56; x++) cell[6][x] = 'b';
+        for (let y = 16; y <= 17; y++) for (let x = 47; x <= 48; x++) cell[y][x] = 'g'; },   // pass 2: the Camp House's east half (its west half stands on the Tents' glade); columns 47 / 48 are a plot's rim, so no plot's clearing middle moves
     /* ── THE DISTRICT THREAD'S PASSES (2026-11-16, mondo's order: every district prototyped, at most five passes; docs/plans/DISTRICT_THREAD_BRIEF.md). New work only:
        its own dice, nothing that stands is thrown again. Row ids woods:G:<name>. ── */
     build(ctx) {
@@ -155,5 +157,65 @@ module.exports = {
           [[-1, -3, 0], [-1, 3, 180]].forEach(d => { const a = [q[0] + d[0], q[1] + d[1]], b = [a[0] + 1, a[1]]; if (!free(a[0], a[1]) || !free(b[0], b[1])) return; take(a[0], a[1]); take(b[0], b[1]);
               props.push({ key: 'trilithon', x: gx(b[0]), z: gc(a[1]), face: d[2] }); });
           [[-4, -1], [4, -1], [-4, 2], [4, 2], [-3, -3], [3, -3], [-3, 4], [3, 4]].forEach((d, i) => hput('P04-02', 'sarsen', d[0], d[1], { h: 3.8 + (i % 3) * 0.5, face: i * 47 })); }
+        /* ═══ PASS 2 · THE INTERIORS ═══ */
+        /* THE CAMP HOUSE (between the Tents and the Stage, room squares 45..48 x 16..17, its front south on the path): the members' hall, a walk-in building made the
+           city's way (the Woods' cabin in districts/M.js is the pattern) = one hollow texbuilding (the walls you bump into, the doorway, the swinging leaf) + one arch
+           row for the look. 4 squares along the front x 2 deep. Row frame = room frame (rot 0): +x east, +z out of the front. Inside: a hearth and two armchairs at
+           the west end, the feast table down the east half with a throne at its head, a bar, the robes, the masks. Every lit piece is noLight / drawn glow. */
+        { const cx = gx(47), cz = gx(17), w = 14, d = 7, H = 3.5, E = 0.05, GL = 'urban:GlassWindowTall1a';
+          features.push({ k: 'texbuilding', id: 'woods:G:camphouse', x: cx, z: cz, w, d, rot: 0, storeys: 1, seed: 1, skin: false, hollow: true, leaf: 'leaf_shabby_wood', keyIn: WD2, floorIn: FL });
+          const L = w - 0.12, cols = Math.round(L / 1.75), cw = L / cols, lx = r2(-L / 2 + (Math.floor((cols - 1) / 2) + 0.5) * cw);   // data.js hqTexbDoor: the doorway's middle along the front
+          const win = (x) => [box(x, 0.85, d / 2 + 0.06, 1.7, 1.9, 0.08, GL, 0x39424a, { uv: 'fit', faces: 'f', top: false }), box(x, 0.72, d / 2 + 0.12, 2.0, 0.14, 0.14, WD2, DARK), box(x, 2.75, d / 2 + 0.12, 2.0, 0.14, 0.14, WD2, DARK),
+              box(x - 0.93, 0.85, d / 2 + 0.12, 0.14, 1.9, 0.14, WD2, DARK), box(x + 0.93, 0.85, d / 2 + 0.12, 0.14, 1.9, 0.14, WD2, DARK), box(x, 0.85, d / 2 + 0.11, 0.08, 1.9, 0.08, WD2, DARK)];
+          const parts = [
+              box(0, 0, 0, w + 2 * E, H, d + 2 * E, WD, LOG, { faces: 'blr', top: false, uv: [3.5, 1.75], gain: 1.5 }),
+              { s: 'quad', p: [0, 0, r2(d / 2 + E)], size: [r2(w + 2 * E), H], key: WD, tint: LOG, uv: [3.5, 1.75], gain: 1.5, hole: [lx, r2(cw), 2.2] },
+              { s: 'roof', form: 'gable', p: [0, H, 0], size: [w + 1.4, 3.6, d + 1.2], key: SH, tint: MOSS, keyEnd: WD, tintEnd: LOG, over: 0.5, roof: true },
+              ...[[-w / 2, d / 2], [w / 2, d / 2], [-w / 2, -d / 2], [w / 2, -d / 2]].map(q => box(q[0], 0, q[1], 0.44, H, 0.44, WD2, DARK)),
+              box(0, 0, d / 2 + 0.08, w + 0.3, 0.3, 0.2, WD2, DARK), box(0, H - 0.28, d / 2 + 0.08, w + 0.3, 0.28, 0.2, WD2, DARK),
+              box(lx - cw / 2 - 0.1, 0, d / 2 + 0.1, 0.2, 2.35, 0.2, WD2, DARK), box(lx + cw / 2 + 0.1, 0, d / 2 + 0.1, 0.2, 2.35, 0.2, WD2, DARK), box(lx, 2.2, d / 2 + 0.1, cw + 0.4, 0.2, 0.2, WD2, DARK),
+              ...win(-4.6), ...win(2.7), ...win(5.3),                                                                                       // three tall dark windows on the front
+              { s: 'roof', form: 'shed', p: [lx, 2.5, r2(d / 2 + 0.7)], size: [3.0, 0.6, 1.4], key: SH, tint: MOSS, roof: true },           // the hood over the door, on two brackets (no posts: the path is whole)
+              box(lx - 1.3, 1.9, d / 2 + 0.35, 0.12, 0.6, 0.7, WD2, DARK), box(lx + 1.3, 1.9, d / 2 + 0.35, 0.12, 0.6, 0.7, WD2, DARK),
+              box(lx - 1.5, 1.55, d / 2 + 0.2, 0.22, 0.3, 0.22, null, 0xffc070, { glow: 1 }), box(lx + 1.5, 1.55, d / 2 + 0.2, 0.22, 0.3, 0.22, null, 0xffc070, { glow: 1 }),   // two door lamps
+              box(-w / 2 - 0.6, 0, 0, 1.2, 8.2, 2.0, ROCK, STONE, { roof: true, uv: [1.75, 1.75], gain: 1.4 }),                             // the stone chimney up the west end
+              /* the inside */
+              box(0, 0, 0, w - 0.1, 0.16, d - 0.1, FL, 0xc9b9a0, { uv: [1.75, 1.75] }),                                                    // a real board slab
+              box(0, H - 0.62, 0, w - 0.5, 0.05, d - 0.5, WD, 0xe8dcc0, { uv: [3.5, 1.75], glow: 0.7, under: true, roof: true }),           // the lit plank ceiling under the building's own
+              /* a lit board lining on the four walls (the hollow building's own inside draws near black): back, east, west beside the hearth, the front left and right of the door */
+              box(0, 1.16, -d / 2 + 0.34, w - 0.6, H - 1.78, 0.04, WD, 0xd9c9aa, { faces: 'f', top: false, uv: [3.5, 1.75], glow: 0.4 }), box(w / 2 - 0.34, 1.16, 0, 0.04, H - 1.78, d - 0.6, WD, 0xd9c9aa, { faces: 'l', top: false, uv: [3.5, 1.75], glow: 0.4 }),
+              box(-w / 2 + 0.34, 0.16, -2.35, 0.04, H - 0.78, 1.9, WD, 0xd9c9aa, { faces: 'r', top: false, uv: [3.5, 1.75], glow: 0.4 }), box(-w / 2 + 0.34, 0.16, 2.35, 0.04, H - 0.78, 1.9, WD, 0xd9c9aa, { faces: 'r', top: false, uv: [3.5, 1.75], glow: 0.4 }),
+              box((-w / 2 + lx - cw / 2) / 2, 0.16, d / 2 - 0.34, lx - cw / 2 + w / 2 - 0.6, H - 0.78, 0.04, WD, 0xd9c9aa, { faces: 'b', top: false, uv: [3.5, 1.75], glow: 0.4 }), box((w / 2 + lx + cw / 2) / 2, 0.16, d / 2 - 0.34, w / 2 - lx - cw / 2 - 0.6, H - 0.78, 0.04, WD, 0xd9c9aa, { faces: 'b', top: false, uv: [3.5, 1.75], glow: 0.4 }),
+              ...[-4.6, 2.7, 5.3].map(x => box(x, 0.95, d / 2 - 0.37, 1.6, 1.7, 0.04, GL, 0x56646e, { uv: 'fit', faces: 'b', top: false, glow: 0.35 })),   // the three windows seen from inside
+              box(-5.25, H - 0.88, 0, 0.26, 0.28, d - 0.5, WD2, DARK, { n: 4, step: [3.5, 0, 0], roof: true }), box(0, H - 0.92, 0, w - 0.5, 0.2, 0.22, WD2, DARK, { roof: true }),
+              box(0, 0.16, -d / 2 + 0.3, w - 0.6, 1.0, 0.05, WD2, 0xa89478, { uv: [1.75, 1.0] }), box(w / 2 - 0.3, 0.16, 0, 0.05, 1.0, d - 0.6, WD2, 0xa89478, { uv: [1.75, 1.0] }),   // a boarded dado
+              box(-w / 2 + 0.75, 0.16, 0, 1.0, 1.6, 2.6, ROCK, STONE, { uv: [1.75, 1.75], gain: 1.4 }), box(-w / 2 + 0.8, 1.76, 0, 1.2, 0.16, 3.0, WD2, DARK),   // the hearth and its mantel
+              box(-w / 2 + 1.0, 0.16, 0, 0.56, 0.9, 1.3, null, BLACK), box(-w / 2 + 1.2, 0.2, 0, 0.3, 0.24, 0.8, null, 0xff7a20, { glow: 1 }),
+              box(-w / 2 + 0.75, 1.92, 0, 0.9, H - 2.54, 1.8, ROCK, STONE2, { uv: [1.75, 1.75], gain: 1.4 }),                               // the breast up to the ceiling
+              box(-w / 2 + 0.32, 2.05, 0, 0.05, 0.9, 1.2, CLOTH, RED),                                                                      // a red cloth over the mantel
+              box(4.6, 0.16, 2.55, 4.2, 1.02, 0.6, WD, 0xb89a78, { uv: [1.75, 1.0] }), box(4.6, 1.18, 2.5, 4.4, 0.06, 0.8, WD2, DARK),      // the bar and its top
+              box(4.6, 1.5, d / 2 - 0.52, 4.0, 0.05, 0.3, WD2, DARK), box(4.6, 2.0, d / 2 - 0.52, 4.0, 0.05, 0.3, WD2, DARK),                 // two shelves behind it
+              box(lx, 0.165, d / 2 - 1.0, 1.5, 0.02, 0.9, CLOTH, 0x7a4a3a, { sides: false }),
+          ];
+          features.push({ k: 'arch', id: 'woods:G:camphouse:arch', x: cx, z: cz, parts });
+          const F = 0.16, Y0 = r2(ground(cx, cz)), inP = (key, rx, rz, o) => { const p = Object.assign({ key, x: r2(cx + rx), z: r2(cz + rz), floor: true }, o || {}); if (p.y >= 1) p.y = r2(p.y + Y0); props.push(p); };   // a prop's y of 1 m or more is a height from the ROOM's floor, not a lift (three-renderer.js THE TIER HEIGHT): on this 7 m ground the table's food lay on the boards.   // floor: true = the room's ground (without it a prop beside a wall stands on the wall's TOP: seen, the mantel's skull and the shelf bottles were on the roof)
+          inP('psx_armchair_1', -4.4, -1.3, { face: 250, y: F }); inP('psx_armchair_2', -4.4, 1.3, { face: 290, y: F }); inP('psx_carpet_mp_1', -4.2, 0, { y: F + 0.01, face: 90 });
+          inP('skull', -6.15, -0.9, { y: 1.93, face: 90 }); inP('hw_candles', -6.15, 0.9, { y: 1.93, noLight: true }); inP('bird_cage', -6.2, 2.7, { y: F }); inP('wooden_bucket', -5.7, -2.2, { y: F });
+          inP('psx_carpet_mp_1', 1.1, -0.5, { y: F + 0.01 }); inP('psx_carpet_mp_1', 4.2, -0.5, { y: F + 0.01 });   // (holy_carpet is a standing tapestry 6 m tall: seen filling the room, taken out)
+          [0.9, 2.6, 4.3].forEach(x => inP('psx_table_large_2', x, -0.5, { y: F }));                                                        // the feast table, three lengths
+          [0.6, 1.9, 3.2, 4.5].forEach((x, i) => { inP('psx_chair_mp_' + (1 + i % 3), x, -1.55, { y: F, face: 180 }); inP('psx_chair_mp_' + (1 + (i + 1) % 3), x, 0.55, { y: F, face: 0 }); });   // the pack's chairs are low stools (at h 0.95 they read as side tables: seen)
+          inP('royal_throne', 6.0, -0.5, { y: F, face: 270 });
+          const TT = F + 0.96; inP('xmas_turkey', 2.6, -0.5, { y: TT }); inP('xmas_roast', 1.2, -0.45, { y: TT }); inP('xmas_punch', 3.9, -0.55, { y: TT }); inP('xmas_champagne', 0.6, -0.7, { y: TT }); inP('xmas_champagne', 4.6, -0.3, { y: TT });
+          [[0.9, -0.85], [1.9, -0.15], [3.2, -0.85], [4.3, -0.15]].forEach(q => inP('psx_plate_mp_1', q[0], q[1], { y: TT })); [[1.6, -0.8], [3.5, -0.2], [2.2, -0.2]].forEach(q => inP('item_drinking_cup', q[0], q[1], { y: TT }));
+          inP('hw_candles', 2.0, -0.5, { y: TT, noLight: true }); inP('hw_candles_2', 3.4, -0.5, { y: TT, noLight: true });
+          inP('candelabra', -0.4, -0.5, { y: F, noLight: true }); inP('candelabra', 6.3, 1.0, { y: F, noLight: true });
+          inP('costume_rack', -2.2, -2.85, { y: F, face: 0 }); inP('psx_display_cabinet_mp_1', 0.4, -3.0, { y: F, face: 0 }); inP('psx_shelf_mp_3', 2.6, -3.05, { y: F, face: 0 }); inP('taiko_drum', 5.6, -2.6, { y: F });
+          [-3.9, -3.4, -2.9].forEach(x => inP('psx_incognito_mask_mp_1', x + 6.4, -3.1, { y: 2.2, face: 0 }));                              // masks hung on the back wall over the cabinet
+          inP('psx_painting_1', -3.6, -3.1, { y: 1.9, face: 0 }); inP('psx_painting_1', 6.6, -1.9, { y: 1.9, face: 270 });
+          inP('psx_glass_bottle_1', 3.2, 2.5, { y: F + 1.09 }); inP('psx_glass_bottle_2', 3.6, 2.6, { y: F + 1.09 }); inP('crystalBall', 5.4, 2.5, { y: F + 1.09 }); inP('tarotDeck', 5.0, 2.45, { y: F + 1.09 }); inP('item_drinking_cup', 4.3, 2.4, { y: F + 1.09 });
+          [3.2, 3.7, 4.4, 5.6].forEach((x, i) => inP(i % 2 ? 'psx_glass_bottle_2' : 'psx_glass_bottle_1', x, d / 2 - 0.52, { y: 1.56 })); [3.5, 4.9, 5.9].forEach(x => inP('xmas_champagne', x, d / 2 - 0.52, { y: 2.06 }));
+          inP('psx_wooden_crate_2', 6.3, 2.2, { y: F }); inP('psx_metal_barrel_mp_1', -2.6, 2.8, { y: F }); inP('psx_metal_barrel_mp_2', -3.4, 2.8, { y: F });
+          inP('psx_ceiling_lamp_1_on', -3.5, 0, { y: 2.42, noLight: true }); inP('psx_ceiling_lamp_1_on', 2.6, -0.5, { y: 2.42, noLight: true });
+          inP('psx_cobweb_1', 6.5, -3.0, { y: 2.4 }); inP('railway_lantern', lx - 2.2, d / 2 + 0.5, { noLight: true }); }
     },
 };
