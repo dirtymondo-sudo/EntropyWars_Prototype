@@ -5949,8 +5949,31 @@ district lacks, in the order to do it:
 - **Fit the zone, not placed yet (for the next thread):** `ufo`, `alien`, `spaceship`, `space_shuttle`, `nacelle`, `meshy_tesla_coil`,
   `robot_arm`, `conveyor`, `car_lift`, `high_bay_lamp`, `ind_skip`, `ind_panel`, `ind_factory_*`, `crashed_car`, `eagle`, `psx_pc_mp_1` +
   monitor / keyboard, `psx_flashlight_1`, `psx_ceiling_fan_mp_1`, `psx_window_metal_bars_*`, `psx_toilet_mp_1`, `trailer_home_1..6`.
-- **Still no model anywhere in the list:** a windsock, a jeep / humvee, a helicopter, a turning radar, a flag on a pole (the board
-  monument `flag` is not a room prop), a boom gate arm, a missile stand.
+- ~~**Still no model anywhere in the list:** a windsock, a jeep / humvee, a helicopter, a turning radar, a flag on a pole, a boom gate arm, a
+  missile stand.~~ All seven were made and stand in the base: THE MODEL PASS below.
+
+**AREA 51, THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; one PR, then stopped again)**
+- **The seven asked for, all placed and seen on screen:** `boom_gate` x 2 at the gate (one a lane, open; `span: 3.4` = one lane, `noBlock`: the
+  row's footprint would shut the road). The barrier boxes and arms drawn from boxes are out of the gate's `arch` row. `helicopter` on the Apron
+  between the four sandbag walls, on a painted pad (a yellow ring, a white H: `line()`). `military_jeep` x 4: the two civilian `car_suv`s (gate,
+  car park) are jeeps now, one by the pad, one on the range. `missile_cart` x 2 in place of the two `missile`s that lay on the ground (Apron,
+  range). `radar_antenna` on two squares by two on the Dish plot. `flag_pole` at the gate and before the mess. `windsock` x 2 by Runway 33.
+- **From the rest of the 246:** `lattice_pylon` (15 m) in one square closed by four `chain_fence` panels on its edges, `antenna_dish` x 2,
+  `weather_mast`, `valve_wheel` x 2 in the fuel dump, `radiation_drum` (the crater, the rings, Hangar 18's fuel store and lab), `hazmat_suit` x 2
+  (Hangar 18: fuel store, lockers), `strobe_lamp` (the hangar's big door at `h: 0.6`, the guard post, over two doors inside), `cage_lamp` (by
+  every hut's door, the engine shop's), `burnt_tree` (the crater's rim), `camper_van` in place of the watchers' box truck + `coin_telescope` +
+  `backpack`, `picnic_table` + `bbq_grill` between the barracks, `pool_table` + `dartboard` in Barracks B, `food_trolley` in the mess,
+  `tumbleweed` x 7 (three against the fence), `yucca` x 3, `agave` x 3, `cattle_skull`, one `vulture` and one `coyote` outside the fence.
+- **What the wish-list models taught (true for every district):** a model's front is its own +z and a prop's `face` is the compass way that
+  front looks (0 north, 90 east, 180 south). The vehicles (`military_jeep`, `helicopter`, `missile_cart`, `camper_van`) are long in x with the
+  nose at -x: the nose looks `face` + 90. `boom_gate`: the cabinet is at -x, the arm rises to +x (the model stands OPEN). `flag_pole`: the flag
+  flies to +x. `strobe_lamp`, `cage_lamp`, `dartboard`, `hazmat_suit`: the back is -z, so `face` = the way out of the wall; none is a `wall`
+  catalogue piece, so nothing snaps them: place them a few cm proud by hand. A lamp on an OUTSIDE wall needs `floor: true` (the hangar's two
+  beacons sat on its roof without it). In a kit room (`rooms()`), write wall-hung wish-list pieces AFTER `tidy()`: it treats them as
+  free-standing and steps them 0.4 m out of the wall. Each model is 1,300 to 5,200 triangles: the pass cost no frame (below).
+- **FPS** at the proof view (the Apron, x -189, z 178, face 0, llvmpipe, the second reading of a run): 0.80 before, 0.80 after.
+- **Not used, on purpose:** `chain_fence` for the base's long fence (the fence is the tool's wall rows), animals inside the wire, `avenger_wreck`
+  (the Beach's Flight 19), `canvas_tent` (an 1800s tent: the watchers keep their nylon one).
 
 **AREA 51 AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and Area 51 lacks:
 1. THE SECOND LAYERS outside (F-detail): DONE in part 11-16 (downpipes, AC boxes, louvres, roof kerbs, belt courses, slit windows, a fire
@@ -5961,8 +5984,8 @@ district lacks, in the order to do it:
 3. THE SQUARES inside: blockers are on whole squares in the huts and both rooms (the kit's `R.B` checks it); the huts' chairs and
    footlockers are placed by the metre as decor. THE CLIPPING CHECK: DONE 11-16 (the city's `interior-polish.js` runs over the huts from
    A.js `pieces`; `tidy()` checks the two rooms).
-4. THE MESHY PIECES: the city made its missing models. Here they are a list: boom arm, windsock, jeep, helicopter, turning radar, flag,
-   missile stand (the owner side has the Meshy key).
+4. THE MESHY PIECES: DONE 11-16 (THE MODEL PASS): boom gates, windsocks, jeeps, the helicopter, the radar antenna, flags, missile carts
+   all stand, with about twenty more kinds from the wish list.
 5. RESIDENTS with homes and a day (`HQ_CITY_RESIDENTS`): none. Twelve standing people; the barracks' bunks are nobody's.
 6. ITS OWN FIGHTS: the whole Desert shares one table (`HQ_AREA_ENCOUNTERS`, outside the markers).
 7. WALKED UPPER FLOORS and roofs: the tower's deck and the two rooms' upper floors only; the tower's ops block and shaft are solid.
@@ -6532,6 +6555,9 @@ mondo (the set-up thread's brief): one thread per district; passes in order EXTE
   - **THE TELEPATH CRASH: CLOSED.** The ward loaded twice with the telepath in (20 pictures, no crash). It was the old SwiftShader probe.
   - Props to keep out of ordinary rooms: `steel_table` (blood stain under it), `round_table` (Camelot's round table, four metres).
   - NOT DONE: the huts have no lamp inside (dim); the mess hall is sparse for its size; the tower's ops block is solid, not walk-in.
+- **THE MODEL PASS (11-16, after the five passes; mondo's wish-list models):** every model on the district's NEEDS A MODEL list stands and the
+  stand-ins are out (the drawn boom arms, the missiles on the ground, the civilian SUVs, the watchers' box truck). The list, the facings and
+  the FPS: "AREA 51, THE MODEL PASS" under THE DESERT, THE ZONE KIT. NEEDS A MODEL is empty. STOPPED again; waits mondo's look.
 
 
 ## CAMELOT, THE VILLAGE — the pilot district thread (2026-11-16, second side; files `docs/areas/camelot/districts/T.js` + `T-houses.js`)

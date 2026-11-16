@@ -23,7 +23,7 @@
    - THE FENCE (P00-08 .. P03-08): the chain-link is the TOOL's (traced from the layout's `f` squares); this file adds its steel: a post a
      square, the top rail, three wires, a WARNING plate every four squares (rows des:a51:fence_n / fence_e). The engine now draws a wall row
      in a chain-link sheet see-through (three-renderer.js "THE CHAIN-LINK"); before, the fence was a solid checkered wall.
-   - THE GATE (P00-08): the guard post (walk-in, des:guardpost), two piers, two boom arms standing open, the stop bar, the four-line warning
+   - THE GATE (P00-08): the guard post (walk-in, des:guardpost), two piers, two boom gates standing open (the `boom_gate` model), the stop bar, the four-line warning
      board north of it (des:a51:gate), a watchtower (des:wt_gate). The way in is the Highway's unsigned Exit 4, the base road (the tool's).
    - THE CANTONMENT (P01-08 south edge .. P02-08, squares y 56..62): BARRACKS A + B (Quonset huts, walk-in, des:barracks_a/b), the MESS HALL
      (walk-in, des:mess), the FUEL DUMP (three tank containers in a concrete bund), a watchtower at the north-east corner.
@@ -71,8 +71,19 @@
      silos in the fuel dump, cryo tubes + caskets in the lab, the lathe, the time machine in the stores, hospital and office pieces). `iso_tank`
      is a cryo casket: it no longer stands in as a fuel tank. The list of what fits and is not placed: areas-complexes.md "THE ZONE KIT".
    NEVER USE: `steel_table` outside a lab (it carries a blood stain), `round_table` (Camelot's, four metres of oak).
-   NEEDS A MODEL (none in the catalogue; nothing stands in for them): a boom gate arm (drawn from boxes today), a windsock, a jeep / humvee,
-     a helicopter, a radar antenna that turns, a flag on a pole, a missile cart / launch stand (the two missiles lie on the ground). Checked against MODEL_LIST.md 11-16: none of these is in it.
+   THE MODEL PASS (11-16, mondo: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md; seen in the browser):
+     all seven asked-for models stand. `boom_gate` x 2 at the gate, one a lane, open (the arms and barrier boxes drawn from boxes are gone);
+     `helicopter` on a painted pad on the Apron between the sandbag walls; `military_jeep` x 4 (the gate and the car park, in place of the
+     two civilian SUVs; by the pad; on the range); `missile_cart` x 2 (the Apron, the range: the two missiles no longer lie on the ground);
+     `radar_antenna` on the Dish plot; `flag_pole` x 2 (the gate, the cantonment); `windsock` x 2 by Runway 33.
+     From the rest of the list: `lattice_pylon` in a square of `chain_fence`, `antenna_dish` x 2, `weather_mast`, `valve_wheel` x 2 (the fuel
+     dump), `radiation_drum` (the crater, the rings, Hangar 18's fuel store and lab), `hazmat_suit` x 2 + `strobe_lamp` + `cage_lamp` (Hangar 18;
+     beacons at the big door and on the guard post, a cage lamp by every hut's door), `burnt_tree` (the crater's rim), `camper_van` (the
+     watchers' camp, in place of the box truck) + `coin_telescope` + `backpack`, `picnic_table` + `bbq_grill` (between the barracks),
+     `pool_table` + `dartboard` (Barracks B), `food_trolley` (the mess), `tumbleweed`, `yucca`, `agave`, `cattle_skull`, a `vulture` and a
+     `coyote` outside the fence. A wish-list model's front is its +z and `face` is the compass way it looks; a vehicle's nose is its -x.
+     A lamp on an outside wall needs `floor: true` (without it the hangar's beacons sat on its roof).
+   NEEDS A MODEL: nothing is open. (The radar antenna does not turn: a moving effect, not a model.)
 
    THE HOOKS (bake-desert.js "THE DISTRICT FILES" has the whole list of what ctx holds; each hook is optional):
      buildings(ctx)  the walk-in / shut buildings: building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts) -> a handle (at, face, cx, cz)
@@ -211,7 +222,7 @@ exports.furnish = ctx => { bind(ctx);
     /* BARRACKS B: six cots, the day end by the door (a table, the radio, the weights) */
     for (const z of [-8.75, -5.25, -1.75]) for (const sx of [-1, 1]) { put(BARR_B, 'cot', sx * 3.5, z, { face: sx < 0 ? 90 : 270 }); put(BARR_B, 'footlocker', sx * 1.9, z + 0.9, { face: sx < 0 ? 90 : 270 }); }
     put(BARR_B, 'psx_table_large_2', 3.5, 5.25, { face: 90 }); put(BARR_B, 'field_radio', 3.6, 5.0, { y: 0.78, face: 270 }); put(BARR_B, 'folding_chair', 2.3, 5.6, { face: 90 }); put(BARR_B, 'folding_chair', 3.2, 3.9, { face: 180 });
-    put(BARR_B, 'weight_bench', -3.5, 5.25, { face: 0 }); put(BARR_B, 'mini_fridge', -3.5, 8.75, { face: 90 }); put(BARR_B, 'office_locker', 3.5, 8.75, { face: 270 }); put(BARR_B, 'cardboard_boxes', -4.3, 2.4, { face: 30 });
+    put(BARR_B, 'weight_bench', -3.5, 5.25, { face: 0 }); put(BARR_B, 'mini_fridge', -3.5, 8.75, { face: 90 }); put(BARR_B, 'office_locker', 3.5, 8.75, { face: 270 }); put(BARR_B, 'cardboard_boxes', -4.5, 3.9, { face: 30 });
     put(BARR_B, 'chalkboard', 0, -10.2, { face: 0 });
     /* THE MESS HALL: the serving line across the back, four tables, the machines by the door */
     put(MESS, 'serving_line', 0, -7, { face: 0 }); put(MESS, 'round_fridge', 8.75, -7, { face: 270 }); put(MESS, 'mini_fridge', -8.75, -7, { face: 90 });
@@ -232,13 +243,18 @@ exports.furnish = ctx => { bind(ctx);
     put(POST, 'riot_gear_rack', -3.5, 1.75, { face: 90 }); put(POST, 'psx_walkie_talkie_1', -0.5, -1.5, { y: 0.78 }); put(POST, 'psx_keycard_1', 0.8, -1.4, { y: 0.78 }); put(POST, 'psx_potted_cactus_mp_1', 0.9, -1.8, { y: 0.78 });
     put(RADAR, 'retro_control_panel', -3.5, 3.5, { face: 90 }); put(RADAR, 'reel_to_reel', 4.3, -1.6, { face: 270 }); put(BARR_B, 'psx_old_mattress_mp_1', 4.2, 2.6, { face: 80 }); put(MESS, 'psx_potted_cactus_mp_1', -5.2, -1.6, { y: 0.88 });
     put(RADAR, 'folding_chair', 2.4, 3.2, { face: 90 }); put(RADAR, 'cable_drum', 1.2, -4.2, { face: 20 }); 
+    /* THE MODEL PASS (11-16): a cage lamp beside every hut's door, a red beacon on the guard post and at the hangar's big door; the pool table and
+       the dartboard in Barracks B's day end, the food trolley in the mess */
+    for (const B of [POST, BARR_A, BARR_B, RADAR]) put(B, 'cage_lamp', 1.35, B.fd / 2 + 0.07, { y: 1.95, face: 180, floor: true });   // (`floor: true`: beside a wall a prop stands on the wall's TOP; seen 11-16, the beacons sat on the hangar's roof)
+    put(POST, 'strobe_lamp', -1.5, POST.fd / 2 + 0.14, { y: 2.2, face: 180, floor: true }); for (const s of [-1, 1]) put(HANGAR, 'strobe_lamp', s * 13.7, HANGAR.fd / 2 + 0.3, { y: 4.6, face: 180, h: 0.6, floor: true });
+    put(BARR_B, 'pool_table', -3.3, 1.9, { face: 90 }); put(BARR_B, 'dartboard', -2.2, BARR_B.fd / 2 - 0.5, { y: 1.5, face: 0, floor: true }); put(MESS, 'food_trolley', 2.2, -4.4, { face: 20 });
 };
 
 exports.ground = ctx => { bind(ctx);
     /* RUNWAY 33's paint: the dashes and the threshold bars */
     for (let x = 13; x < 40; x += 3) line(gx(x), gx(78), gx(x + 1.5), gx(78), 0.5, 0xf0f0f0);   // (from the numbers on)
     for (let i = 0; i < 6; i++) line(gx(2.6), gx(76.4 + i * 0.6), gx(4.2), gx(76.4 + i * 0.6), 0.9, 0xf0f0f0);
-    P('radiation_sign', 3, 53, { face: 0, y: 1.2 }); P('flood_mast', 3, 55, {}); P('flood_mast', 8, 55, {}); dec('traffic_barrel', 3, 50); dec('traffic_barrel', 0, 52); P('car_cop', 8, 52, { face: 180 }); P('car_suv', 10, 52, { face: 180 });
+    P('radiation_sign', 3, 53, { face: 0, y: 1.2 }); P('flood_mast', 3, 55, {}); P('flood_mast', 8, 55, {}); dec('traffic_barrel', 3, 50); dec('traffic_barrel', 0, 52); P('car_cop', 8, 52, { face: 180 }); P('military_jeep', 10, 52, { face: 90 });
     P('security_camera', 7, 54, { y: 2.4, face: 0 }); P('security_camera', 30, 54, { y: 2.4, face: 0 }); P('flood_mast', 24, 55, {}); P('flood_mast', 44, 55, {}); P('roads_g_sign_005', 3, 48, { face: 180 });
     Pm('dish', gc(9), gc(63), { h: 9 }); P('flood_mast', 7, 67, {});
     /* THE APRON: the old flight line's trucks, the bus, the sandbags, the fire truck */
@@ -277,8 +293,7 @@ exports.ground = ctx => { bind(ctx);
     /* THE GATE: two boom arms standing open over the base road's two lanes, the gate piers, the stop bar, the board everyone photographs */
     { const a = sheet();
       for (const x of [-3.5 - 0.4, 3.5 + 0.4]) { a.box(x, 0, 0, 0.7, 3.0, 0.7, CONC, TAN); a.box(x, 3.0, 0, 0.9, 0.2, 0.9, CONC, TAN2); a.box(x, 3.2, 0, 0.3, 0.3, 0.3, null, 0xff3020, { glow: 1 }); }
-      for (const q of [[-3.5 + 0.2, -1, 1.2], [3.5 - 0.2, 1, -1.2]]) { a.box(q[0], 0, q[2], 0.4, 1.1, 0.4, null, 0xd8b020);                                     // the two barrier boxes, their arms up
-          for (let i = 0; i < 5; i++) a.box(q[0] - q[1] * (0.25 + i * 0.26), 1.0 + i * 0.62, q[2], 0.34, 0.7, 0.1, null, i % 2 ? 0xf0f0f0 : 0xc82a20); }
+      /* (THE MODEL PASS 11-16: the two barrier boxes and arms drawn from boxes stood here; the `boom_gate` model stands in their place, see the block at the end of ground()) */
       a.box(0, 0, -9, 0.14, 3.4, 0.14, null, STEEL, { n: 2, step: [3.6, 0, 0] });
       a.sign('WARNING · RESTRICTED AREA', 1.8, 2.5, -9, 4.4, 0.6, '#ffffff', '#a82a20', 'stencil', { ry: 180 });
       a.sign('NO TRESPASSING BEYOND THIS POINT', 1.8, 1.95, -9, 4.4, 0.45, '#a82a20', '#f0f0e8', 'stencil', { ry: 180 });
@@ -318,20 +333,20 @@ exports.ground = ctx => { bind(ctx);
     { const a = sheet(); a.P.push({ s: 'quad', flat: true, p: [0, 0.04, 0], size: [9, 6], ry: 90, key: 'txt:33|#f0f0f0||1.5||stencil', uv: 'fit', kind: 'over' });
       feat({ k: 'arch', id: 'des:a51:rwy33', x: gx(8), z: gx(78), parts: a.P }); }
     /* ── DRESSING (11-16): the base looks used. Blockers (P) on whole squares, decor (dec / Pm) off them; nothing on the base road or the runway's middle ── */
-    /* THE RIDGE: where people sit and watch the base from outside the fence (a tent, a truck, two chairs, a telescope on the base) */
-    P('camping_tent', 24, 50, { face: 180 }); Pm('car_truck', gx(27.5), gc(50), { face: 200 }); dec('folding_chair', 24, 52); dec('folding_chair', 25, 52); Pm('telescope', gc(26) - 0.6, gc(52) + 1.0, { face: 180 });
+    /* THE RIDGE: where people sit and watch the base from outside the fence (a tent, the camper van, two chairs, a telescope on the base) */
+    P('camping_tent', 24, 50, { face: 180 }); Pm('camper_van', gx(27.5), gc(50), { face: 20 }); dec('folding_chair', 24, 52); dec('folding_chair', 25, 52); Pm('telescope', gc(26) - 0.6, gc(52) + 1.0, { face: 180 });
     dec('film_camera', 23, 52); dec('cardboard_boxes', 23, 50); dec('retro_radio', 25, 51); dec('item_binoculars', 25, 52, { y: 0.02 });
     /* THE GATE */
     P('meshy_sandbags', 0, 55, { h: 1.6 }); P('item_police_barricade', 4, 58, {}); dec('traffic_cone', 0, 53); dec('traffic_cone', 3, 52); dec('traffic_barrel', 3, 55); dec('psx_ammo_box_1', 7, 56);
     /* THE CANTONMENT: between the huts, behind the mess, the car park by the fuel dump */
     P('city_bench', 18, 61, { face: 180 }); dec('trash_bin', 17, 61); dec('psx_metal_barrel_mp_1', 17, 57); dec('cardboard_boxes', 18, 58); dec('footlocker', 18, 56); dec('hand_truck', 23, 60);
     P('dumpster', 26, 55, { face: 0 }); P('wrapped_pallet', 30, 55, {}); dec('psx_metal_barrel_mp_2', 28, 55); dec('psx_wooden_crate_2', 29, 55); P('park_bench', 32, 60, { face: 270 }); P('vending_machine', 24, 60, { face: 180 });
-    P('car_suv', 33, 56, { face: 90 }); P('car_cop', 33, 58, { face: 90 });
+    P('military_jeep', 33, 56, { face: 180 }); P('car_cop', 33, 58, { face: 90 });
     dec('psx_metal_barrel_mp_1', 38, 60); dec('psx_metal_barrel_mp_3', 39, 60); P('gas_cylinder_rack', 41, 60, { face: 0 }); dec('traffic_cone', 42, 60); P('hose_rack', 35, 57, { face: 90 });
     /* THE DISH */
     dec('cable_drum', 8, 66); dec('psx_metal_barrel_mp_0', 3, 65); Pm('ind_container', gx(10), gc(67), { face: 90 }); dec('cable_drum', 11, 62);
-    /* THE APRON: freight for the hangar, the engine on its stand, a missile on the line */
-    P('wrapped_pallet', 26, 70, {}); P('forklift', 28, 71, { face: 40 }); dec('hand_truck', 27, 72); P('psx_supply_crate_1_3', 30, 70, {}); dec('pallet_jack', 25, 71); P('jet_engine_stand', 22, 70, { face: 90 }); P('missile', 16, 72, { face: 90 });
+    /* THE APRON: freight for the hangar, the engine on its stand, a missile on its cart on the line */
+    P('wrapped_pallet', 26, 70, {}); P('forklift', 28, 71, { face: 40 }); dec('hand_truck', 27, 72); P('psx_supply_crate_1_3', 30, 70, {}); dec('pallet_jack', 25, 71); P('jet_engine_stand', 22, 70, { face: 90 }); P('missile_cart', 16, 72, { face: 0 });
     dec('traffic_cone', 18, 76); dec('traffic_cone', 22, 76); dec('traffic_cone', 18, 80); dec('traffic_cone', 22, 80); dec('psx_ammo_box_mp_1', 17, 71); dec('psx_metal_barrel_mp_2', 31, 71);
     P('rocket_engine', 12, 82, {}); P('psx_supply_crate_1', 23, 83, {}); P('psx_wooden_crate_2', 23, 82, {}); P('forklift', 24, 81, { face: 200 }); dec('psx_metal_barrel_mp_1', 12, 86); dec('pallet_jack', 23, 85);
     /* THE CRATER: lamps and a camera on the thing in the hole, more tape, the pod they pulled out of it */
@@ -342,8 +357,8 @@ exports.ground = ctx => { bind(ctx);
       const cx = gx(6), cz = gx(90); ring(cx, cz, 9.5, 0.7); ring(cx, cz, 6.2, 0.4); ring(cx, cz, 2.4, 1.0);
       for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + 0.5; ring(cx + Math.cos(a) * 4.3, cz + Math.sin(a) * 4.3, 0.7, 0.6); } }
     dec('traffic_cone', 2, 88); dec('traffic_cone', 9, 87); dec('traffic_cone', 10, 93); dec('traffic_cone', 2, 93); dec('film_camera', 1, 90); dec('warning_tape', 6, 86, { y: 0.01 }); P('radiation_sign', 11, 90, { y: 1.2, face: 90 });
-    /* THE DRY LAKE, east: the range (a missile lying on the lake bed, sandbags, ammunition) */
-    P('missile', 40, 90, {}); P('meshy_sandbags', 38, 92, { h: 1.6 }); P('meshy_sandbags', 42, 92, { h: 1.6 }); dec('psx_ammo_box_1', 39, 93); dec('psx_ammo_box_mp_2', 41, 93); dec('psx_supply_crate_1_2', 43, 90); dec('traffic_barrel', 37, 86);
+    /* THE DRY LAKE, east: the range (a missile on its cart, sandbags, ammunition) */
+    P('missile_cart', 40, 90, { face: 90 }); P('meshy_sandbags', 38, 92, { h: 1.6 }); P('meshy_sandbags', 42, 92, { h: 1.6 }); dec('psx_ammo_box_1', 39, 93); dec('psx_ammo_box_mp_2', 41, 93); dec('psx_supply_crate_1_2', 43, 90); dec('traffic_barrel', 37, 86);
     /* THE YARD of the White Rooms */
     P('metro_bench', 26, 91, { face: 90 }); dec('wheelchair', 31, 90); dec('trash_bin', 30, 87); dec('wet_floor_sign', 27, 88);
     /* ── ATMOSPHERE (11-16): what the base looks like when the light goes. Lit parts only (no lamp of their own: the masts are the real lights) ── */
@@ -365,6 +380,32 @@ exports.ground = ctx => { bind(ctx);
     Pm('lunar_lander', gx(6), gx(90), {}); Pm('astronaut', gx(6) + 3.2, gx(90) + 2.2, { face: 250 }); Pm('studio_light', gx(6) - 5.5, gx(90) + 4.5, { face: 60 }); Pm('studio_light', gx(6) + 5.5, gx(90) + 5, { face: 300 }); Pm('directors_chair', gx(6) - 2, gx(90) + 7.5, { face: 0 }); Pm('studio_camera', gx(6) + 1, gx(90) + 7.8, { face: 0 });
     /* THE DRY LAKE, east + the crater: what came down with it */
     P('satellite', 41, 87, { face: 40 }); P('hullplate', 37, 84, { face: 20 }); dec('mars_rover', 44, 86);
+    /* ── THE MODEL PASS (11-16, mondo: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md). A wish-list model's
+       front is its own +z and `face` is the compass way that front looks (0 north, 90 east); the vehicles' and the missile's nose is the model's -x,
+       so a nose looks `face` + 90. Seen on screen. ── */
+    /* THE GATE: the two booms, one a lane, standing open (the model is 5 m; 3.4 m is one lane). Their arms hang over the lanes: nothing to walk into */
+    Pm('boom_gate', gx(2) - 1.55, gc(54) + 1.2, { face: 180, span: 3.4, noBlock: true }); Pm('boom_gate', gx(2) + 1.55, gc(54) - 1.2, { face: 0, span: 3.4, noBlock: true });
+    P('flag_pole', 6, 50, { face: 180 }); P('flag_pole', 24, 62, { face: 180 });                                             // the gate's flag, the cantonment's
+    /* THE APRON: the helicopter on its pad between the four sandbag walls (a yellow ring, a white H), a jeep beside it */
+    { const hx = gx(21.5), hz = gx(66.5); for (let i = 0; i < 20; i++) { const a0 = i / 20 * Math.PI * 2, a1 = (i + 1) / 20 * Math.PI * 2; line(hx + Math.cos(a0) * 5.6, hz + Math.sin(a0) * 5.6, hx + Math.cos(a1) * 5.6, hz + Math.sin(a1) * 5.6, 0.3, 0xe8c020); }
+      line(hx - 1.2, hz - 1.7, hx - 1.2, hz + 1.7, 0.4, 0xf0f0f0); line(hx + 1.2, hz - 1.7, hx + 1.2, hz + 1.7, 0.4, 0xf0f0f0); line(hx - 1.2, hz, hx + 1.2, hz, 0.4, 0xf0f0f0);
+      Pm('helicopter', hx, hz, { face: 0 }); }
+    P('military_jeep', 26, 65, { face: 90 }); P('military_jeep', 40, 94, { face: 0 });                                      // by the pad; on the range
+    /* THE DISH: the search radar on two squares by two, the radio mast in its chain-link square, two small dishes; the weather mast and the windsocks by Runway 33 */
+    Pm('radar_antenna', gx(5), gx(60), { face: 0 }); P('lattice_pylon', 10, 59, {});
+    Pm('chain_fence', gc(10), gx(59), {}); Pm('chain_fence', gc(10), gx(60), {}); Pm('chain_fence', gx(10), gc(59), { face: 90 }); Pm('chain_fence', gx(11), gc(59), { face: 90 });
+    P('antenna_dish', 3, 62, { face: 135 }); P('antenna_dish', 12, 61, { face: 200 }); P('weather_mast', 4, 73, {}); P('windsock', 10, 81, {}); P('windsock', 36, 74, { face: 180 });
+    /* THE FUEL DUMP's valves; the drums at the crater and by the rings; what the fire left at the crater's rim */
+    Pm('valve_wheel', gx(40), gx(58.9), { face: 180 }); Pm('valve_wheel', gx(37.1), gx(57.5), { face: 90 });
+    Pm('radiation_drum', gx(36) + 0.3, gx(81) - 0.4, { face: 200 }); Pm('radiation_drum', gx(36) + 1.05, gx(81) - 0.2, { face: 80 }); Pm('radiation_drum', gx(36) + 0.6, gx(81) + 0.45, { face: 310 }); dec('radiation_drum', 11, 91); dec('radiation_drum', 11, 89);
+    P('burnt_tree', 41, 81, { face: 40 });
+    /* THE CANTONMENT: a table and a grill between the two barracks */
+    Pm('picnic_table', gx(18), gc(59), { face: 90 }); Pm('bbq_grill', gc(17) - 0.3, gc(60) + 0.7, { face: 150 });
+    /* THE RIDGE: the watchers' coin viewer and a pack; what the desert leaves against a fence (tumbleweeds, yucca, agave, a skull); a vulture and a coyote, off every path */
+    Pm('coin_telescope', gc(27) + 0.4, gc(52) + 0.9, { face: 90 }); dec('backpack', 23, 51);
+    [12, 27.6, 38.3].forEach(x => Pm('tumbleweed', gx(x), gc(54) - 1.05, { face: Math.round(x * 37) % 360 })); dec('tumbleweed', 8, 50); dec('tumbleweed', 30, 51); dec('tumbleweed', 41, 50); dec('tumbleweed', 39, 87);
+    P('yucca', 7, 49, {}); P('yucca', 34, 50, {}); P('yucca', 44, 52, {}); dec('agave', 12, 52); dec('agave', 37, 49); dec('agave', 9, 53); dec('cattle_skull', 29, 52);
+    dec('vulture', 32, 52, { face: 180 }); dec('coyote', 40, 52, { face: 250 });
     native('men in black', 15, 85, 0); native('mad scientist', 37, 79, 90);
     native('men in black', 3, 57, 0, sayOf(O_GATE, 'men in black')); native('marksman', 7, 52, 270, sayOf(O_GATE, 'marksman')); native('men in black', 21, 73, 270, sayOf(O_LINE, 'men in black'));
     native('spy', 30, 62, 180); native('bligblog', 38, 82, 0); native('grey', 41, 74, 200);
@@ -516,6 +557,11 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.dec('evidence_board', 11.6, 13.7, 180); R.dec('reel_to_reel', 9.35, 11.6, 90); R.dec('photocopier', 12.5, 11.5, 270); R.dec('psx_potted_cactus_mp_1', 10.8, 11.3, 0, { y: 0.78 }); hung(R, 'mugshot_wall', 8.95, 11.5, 270, 0.4);
       R.dec('riot_gear_rack', 2.5, 10.3, 0); R.dec('scba_rack', 1.5, 13.6, 180); R.dec('psx_keycard_1_authorization_level_3', 10.3, 11.6, 40, { y: 0.78 }); R.dec('psx_dosimeter_1', 17.3, 10.6, 0, { y: 0.78 });
       tidy(R, 'the hangar');
+      /* THE MODEL PASS (11-16): drums in the fuel store and the lab, a suit on its hook in the fuel store and the lockers, a red beacon over the fuel store's and the lab's door, a cage lamp
+         by the engine shop's. After tidy(): these hang ON a wall (tidy would step them out of it); `floor: true` = the room's floor, not the wall's top */
+      R.dec('radiation_drum', 1.5, 7.5, 40, { floor: true }); R.dec('radiation_drum', 2.3, 7.6, 200, { floor: true }); R.dec('radiation_drum', 17.4, 11.7, 90, { floor: true });
+      R.dec('hazmat_suit', 3.86, 7.5, 270, { floor: true }); R.dec('hazmat_suit', 3.86, 10.9, 270, { floor: true });   // (the second hangs in the lockers: in the lab a cryo tube hid it, seen 11-16)
+      R.dec('strobe_lamp', 4.09, 8.5, 90, { y: 2.85, floor: true }); R.dec('strobe_lamp', 15.5, 9.91, 0, { y: 2.85, floor: true }); R.dec('cage_lamp', 4.07, 1.7, 90, { y: 2.1, floor: true });
       R.doors.push(
           { id: 'white', wall: 'e', z: R.Z(12.5), leaf: 'leaf_hospital', label: 'THE WHITE ROOMS', sub: 'THE WING · PSYCHIATRIC · QUIET PLEASE', action: { room: 'site_prebuilt_area51_ward', at: 'hangar' },
             desc: 'A hospital door in a hangar wall, with a porthole painted over from the other side. The sign says PSYCHIATRIC. Under it, in pencil, FOR THE ONES WHO SAW IT.' },
