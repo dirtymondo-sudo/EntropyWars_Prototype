@@ -57,6 +57,9 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
 - **Squares:** one tile per square; battle squares are 3.5 m ("2x everywhere"; 1.75 m is the old tile and the texture
   tile). Heights step one square per block. Textures are sized in metres.
 - **Gold:** never the old flat gold texture; use the better gold.
+- **Smoke is never modelled in 3D** (11-16: "don't 3d model smoke, it looks terrible"). **Torches are variants of the torches already in
+  the game** (`cave_torch`, `wall_torch`, the taller `tiki_torch`), never drawn stand-ins. **A model never stands cut off by water or
+  ground**: tentacles are the symbiote's black spell tendrils (the catalogue's `goo_tendril`, as in the Sewers' sludge and the Beach's sea), never the Meshy kraken arm models (`tentacle`, `tentacle2`: "messed up").
 - **Trees** stand only on grass, dirt, sand or in planters, never on concrete.
 - **Prop placement (all interiors too):** barriers and blockers snap centred on whole 3.5 m squares, and multi-square
   pieces fill whole squares. Walkways are whole cells wide, nothing half across two cells. Cosmetic decor sits OFF

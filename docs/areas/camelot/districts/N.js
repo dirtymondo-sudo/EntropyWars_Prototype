@@ -6,7 +6,7 @@
    y 0..12). The snow runs on south to the moat's north bank (the zone is y 0..17), over the top of the village's north plots: that
    strip is dressed here too (the campfire and the yeti at 30..31, 12..13 stand on it).
 
-   WHAT STANDS HERE TODAY (passes 1 to 4 of 5, 2026-11-16; the drawn rows are `cam:n:<name>`):
+   WHAT STANDS HERE TODAY (five passes, 2026-11-16; the drawn rows are `cam:n:<name>`):
    THE RIDGE: snow-capped crags along the north edge and round both ends (three ranks: on the pines' own squares, in the kingdom's treeline
    past the room's edge, the peaks behind); THE PASS = the cleft the sleigh road leaves through (two rock walls 24 m long round the trail).
    THE SLEIGH STOP (the road's clearing): the sleigh and a horse west of the road, THE WAYSIDE HUT (walked into, squares 50..52 x 4..6, its
@@ -35,8 +35,11 @@
    THE ATMOSPHERE (pass 4): `airZones` (snow over the whole district, pale ice dust at the pond and the stones), smoke off both chimneys and
    two camp fires, a pool of warm light on the snow under every lantern and window (drawn, `glow`: it shows in the dark).
 
-   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO: polish (pass 5).
-   Notes + the FITS THIS DISTRICT list: areas-complexes.md "CAMELOT, THE SNOWY PINES".
+   THE POLISH (pass 5): the Pass's cleft has its own rock faces 3.2 m apart and snow on its floor, and the trail plants no saplings there
+   (the link end's `passage: { trees: false }`, data.js `DOOR_HQ.links` `northpole_camelot`); a dressed fir with gifts by the hut.
+
+   FIVE PASSES ARE LIVE: this thread has STOPPED and waits mondo's look (the brief: no sixth pass).
+   Notes + the FITS THIS DISTRICT list + the decisions made for him: areas-complexes.md "CAMELOT, THE SNOWY PINES".
    NEVER more `dec()` calls than the two below (the kingdom's one stream of dice: The Forest's scatter would move): use `at()` and `rn()`.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
@@ -94,6 +97,9 @@ note('THE SNOWY PINES + THE FOREST');
      apart for 24 m (they swallow the trail's own rows of summer saplings), crags on their heads, the cleft's end shut by rock, the far peak over it */
   for (const s of [-1, 1]) { [0.9, 7.3, 13.7, 20.1].forEach((dep, i) => { const h = rr(8.5, 11.5); S.shaft(s * 5.6, -1, N0 - dep, 4.1, 3.75, h + 1, 7, Math.round(rn() * 50), false); S.crag(s * 6.4, N0 - dep, 3.7, rr(6, 9), 1, h - 0.6); });
       S.crag(s * 13.5, N0 - 7, 7.5, 19, 1, -1); S.crag(s * 14, N0 - 19, 8, 22, 1, -1); }
+  S.P.push({ s: 'box', p: [0, 0, r2(N0 - 12.2)], size: [3.6, 0.07, 26], sides: false, key: SNOW, tint: 0xf4f6fa, gain: SG });   // snow on the cleft's floor (past the room's edge the ground is the kingdom's lawn and its cobbled path)
+  for (const s of [-1, 1]) { S.P.push({ s: 'box', p: [s * 2.7, -0.5, r2(N0 - 12.4)], size: [2.2, 7.5, 25], key: ROCK, tint: 0xffffff, gain: RG, top: false });   // the cleft's own faces, 3.2 m apart
+      [3, 9.5, 16, 21.5].forEach(dep => S.drift(s * 1.5, 0, N0 - dep - (s > 0 ? 2 : 0), 0.9, 0.5, 1.6, 90)); }
   S.shaft(0, -1, N0 - 29.5, 6.6, 6.0, 15, 8, 20, false); S.crag(0.4, N0 - 30, 6, 9, 1, 13.4); S.crag(0, N0 - 52, 20, 42, 2, -1); }   // the pass closes behind the way out; the far peak over it
 
 /* ── THE HUTS (walked into): log walls on a stone foot, a snow roof, a stone chimney, lit windows. Each stands on four whole squares. ── */
@@ -263,6 +269,9 @@ const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w =
   stack(gx(51) - 1.2, gx(6) + 0.25, 4, 2.2, false);
   /* (no torches by the doors: a `wall_torch` within 2 m of a hut stood on its roof, with or without `floor`; the road's lantern posts light the stop) */
   at('eagle', gx(52), gx(2.5), { y: 15, face: 250 });
+  /* PASS 5: a dressed fir by the hut's porch with gifts under it, rocks at the feet of the Pass's gate crags */
+  put('xmas_tree', 49, 6, { face: 30 }); at('xmas_gift_3', gc(49) + 0.8, gc(6) + 0.6, { face: 40 }); at('xmas_gift_2', gc(49) - 0.7, gc(6) + 0.8, { face: 200 });
+  at('psxg_rock_1', gx(46.2), gx(1.4), { face: 30 }); at('psxg_rock_2', gx(49.9), gx(1.9), { face: 120 }); at('psxg_rock_3', gx(46.5), gx(2.3), { face: 200 }); at('psxg_rock_4', gx(49.6), gx(0.9), { face: 300 });
   /* THE FROZEN POND: a fishing hole cut in the ice, a stool, the catch, dead bushes on the bank, crows; the ice queen */
   { const x = gx(89.5) - 1.3, z = gx(6.6) + 0.7; P.push({ s: 'cyl', p: [r2(x), 0, r2(z)], r: 0.44, h: 0.085, seg: 10, key: 'deep_water', tint: 0x162a40 }, { s: 'cyl', p: [r2(x), 0, r2(z)], r: 0.66, ri: 0.44, h: 0.15, seg: 10, key: SNOW, tint: 0xffffff, gain: SG });
     at('psx_chair_mp_1', x + 1.0, z + 0.3, { face: 250, y: 0.07 }); at('psx_fish_skeleton_mp_1', x - 0.3, z + 0.9, { face: 30, y: 0.08 }); at('wooden_bucket', x + 0.5, z + 1.0, { y: 0.07 });
