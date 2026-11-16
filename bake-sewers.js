@@ -254,6 +254,7 @@ L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + GX 
 L.push("            terrain: {");
 L.push("                res: 0.875, floor: 'urban:ConcreteStriped2c', cliff: 'bricks_2', path: 'urban:RubberNonSlip3a',");
 L.push("                noise: { amp: 0, scale: 5 }, crag: false,");
+L.push("                waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' },   // murky green-brown sewer water: LOOK ONLY, it is still water (three-renderer.js _hqWaterLook; mondo 11-16)");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 L.push("                /* every square that is not a `space` is the wall, brick to the roof */");
 L.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', rim: 0, forceGrow: -0.3 },");

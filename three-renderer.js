@@ -3337,7 +3337,17 @@ const ThreeRenderer = (function () {
         /* 🩸 the Blood Pool: the deep red sheet, dark red caustics, a wet red glint */
         blood:      { base: 'blood', sheet: true, tint: 0xe0e0e0,
                       caustDiff: 'vec3(0.62, 0.08, 0.10)', caustEmis: 'vec3(0.34, 0.03, 0.05)',
-                      glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' }
+                      glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' },
+        /* THE ROOM'S OWN WATER LOOK (2026-11-16, mondo on the Sewers: "you can make the water murky green or brown without it being
+           poison, its still water and should behave like water"): LOOKS, not liquids. No terrain has these keys; a room's
+           `terrain.waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' }` draws its water in them (_hqWaterLook) while the
+           liquid stays `water` / `deep_water` for the walk, the swim and the fights. They ride the water sheet under a tint. */
+        sewer_water: { base: 'water', tint: 0x5f5a22,
+                      caustDiff: 'vec3(0.30, 0.32, 0.12)', caustEmis: 'vec3(0.07, 0.08, 0.03)',
+                      glintCol: 'vec3(0.62, 0.66, 0.40)',  hueShift: 'vec3(1.02, 1.0, 0.86)' },
+        sewer_deep:  { base: 'water', tint: 0x3a3814,
+                      caustDiff: 'vec3(0.18, 0.20, 0.08)', caustEmis: 'vec3(0.04, 0.05, 0.02)',
+                      glintCol: 'vec3(0.50, 0.54, 0.32)',  hueShift: 'vec3(1.0, 1.0, 0.86)' },
     };
 
     /* Water surfaces sit slightly below the top of their block so every
@@ -3368,7 +3378,9 @@ const ThreeRenderer = (function () {
         purple_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         swamp:      { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
         oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
-        blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 }
+        blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 },
+        sewer_water: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
+        sewer_deep:  { l1dx: 0.07, l1dy: 0.07, l2dx: -0.05, l2dy: 0.05 }
     };
 
     var objectMeshes = new Map();
@@ -71815,6 +71827,11 @@ const ThreeRenderer = (function () {
        `y0` / `y1` left out are read from the water on each side of the lip (hqTerrainFluidAt), else from the ground. Nothing here changes
        the ground, the water or the walk: the room lays a stream / pool on each level and a sheer step between them. Lava, poison and the
        other liquids fall the same way in their own sheet (`key`). Off: window.EW_NO_HQ_FALLS. */
+    /* the look a room draws a liquid in (its `terrain.waterLook` map: a _LIQUID_STYLES key), else the liquid's own */
+    function _hqWaterLook(info, key) {
+        var m = info && info.room && info.room.terrain && info.room.terrain.waterLook, k = m && m[key];
+        return (k && _LIQUID_STYLES[k]) ? k : key;
+    }
     var _hqFallTex = null;
     function _hqFallStreakTex() {
         if (_hqFallTex) return _hqFallTex;
@@ -71862,7 +71879,7 @@ const ThreeRenderer = (function () {
             var y1 = (dn && isFinite(dn.y) && dn.y < y0 - 0.3) ? dn.y : isFinite(f.y1) ? +f.y1 : hqTerrainHeight(info, f.x + dx * 1.75, f.z + dz * 1.75);
             var h = y0 - y1; if (!(h > 0.4)) return;
             var key = f.key || (up && up.key) || 'water'; if (key === 'deep_water') key = 'water';
-            var mat = _liqBlendMat(key); if (!mat) return;
+            var mat = _liqBlendMat(_hqWaterLook(info, key)); if (!mat) return;
             var out = isFinite(f.out) ? +f.out : Math.min(1.5, 0.35 + 0.28 * Math.sqrt(h)), back = 0.9;
             /* the profile: level over the lip (from `back` behind it), then thrown out and down (a body's fall: out by the root of the drop) */
             var prof = [[-back, y0 + 0.02], [0.05, y0 + 0.02]];
@@ -71999,8 +72016,8 @@ const ThreeRenderer = (function () {
                 if (!geo || !mat) return;
                 var m = new THREE.Mesh(geo, mat); m.renderOrder = order; m.name = name; m._ew_hqWater = true; m.receiveShadow = true; G.add(m); made++;
             };
-            lay(build(false), _liqBlendMat(B.key), LIQ_BLEND_ORDER, 'hq:water:' + B.key);
-            if (B.deep.length) lay(build(true), _liqBlendMat('deep_water', true), LIQ_BLEND_ORDER + 1, 'hq:water:deep_water');
+            lay(build(false), _liqBlendMat(_hqWaterLook(info, B.key)), LIQ_BLEND_ORDER, 'hq:water:' + B.key);   // (THE ROOM'S OWN WATER LOOK)
+            if (B.deep.length) lay(build(true), _liqBlendMat(_hqWaterLook(info, 'deep_water'), true), LIQ_BLEND_ORDER + 1, 'hq:water:deep_water');
         });
         return made;
     }
@@ -72384,7 +72401,7 @@ const ThreeRenderer = (function () {
                 wg.setIndex(B.p.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.i, 1) : new THREE.Uint16BufferAttribute(B.i, 1));
                 var wm = new THREE.Mesh(wg, fluidMatFor(key)); wm.renderOrder = 2; wm.name = 'hq:water:' + key; wm._ew_hqWater = true; G.add(wm);
             });
-            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick)
+            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); ['water', 'deep_water'].forEach(function (k) { var lk = _hqWaterLook(info, k); if (lk !== k) fluidMatFor(lk); }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick; a room's own look ticks too)
         } catch (e) { console.warn('[HQ] the water failed', e); }
         try { if (_hqFallsBuild(info, G, U, TM)) { (info.falls || []).forEach(function (f) { var k = f.key || 'water'; fluidMatFor(k === 'deep_water' ? 'water' : k); }); } } catch (e) { console.warn('[HQ] the waterfalls failed', e); }   // THE WATERFALLS
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
