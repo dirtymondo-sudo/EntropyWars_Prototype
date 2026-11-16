@@ -68,7 +68,7 @@ exports.apply = ctx => {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.4, 5.25, 0.4, 'marble_light', TRIM);
       a.sign('WORKSHOP', dr.lx, 3.3, d / 2 + 0.16, 6.2, 1.1, '#f6efd8', '#1f4a2a', 'fell'); bulbs(a, -w / 2 + 0.4, w / 2 - 0.4, 5.05, d / 2 + 0.16);
       a.box(w / 2 - 1.6, 5.25, -d / 2 + 1.2, 1.3, 5.2, 1.3, 'bricks_2', 0xb86a54, { roof: true });                       // the chimney over the hearth
-      hearth(a, w / 2 - 1.6, d, 5.25 - 0.36, 1.4, WD2); lit(a, w, 5.25, d, dr, WD, 0xd8b088, 0.9, ctx);   // the hearth inside (its fire: build), the lit inside
+      winter(a, w, 5.25, d, dr, false, WD2, 1); hearth(a, w / 2 - 1.6, d, 5.25 - 0.36, 1.4, WD2); lit(a, w, 5.25, d, dr, WD, 0xd8b088, 0.9, ctx);   // the hearth inside (its fire: build), the lit inside
       /* THE LOFT (the yeti's line: "The loft is where the wrapping is kept. I am not allowed up the ladder."): a deck over the back left corner, a ladder, a rail */
       a.box(-5.1, 2.9, -6.85, 6.7, 0.18, 6.7, FLR, 0x8c7a62, { uv: [1.75, 1.75], glow: 0.7 }); for (const x of [-1.75, -5.25]) a.box(x, 0, -3.5, 0.24, 2.9, 0.24, WD2, 0x5a4030);   // (the posts on the squares' corners)
       a.box(-5.1, 3.9, -3.46, 6.7, 0.1, 0.1, WD2, 0x5a4030); for (let x = -8.3; x <= -1.75; x += 1.09) a.box(x, 3.08, -3.46, 0.08, 0.82, 0.08, WD2, 0x5a4030);
@@ -93,6 +93,7 @@ const pane = (a, x, y, z, w, h, ew, shut, ctx, inn) => {   // a lit window: a wa
     const B = (px, py, pz, bw, bh, bd, key, tint, q) => ew ? a.box(pz, py, px, bd, bh, bw, key, tint, q) : a.box(px, py, pz, bw, bh, bd, key, tint, q), o = (z < 0 ? -1 : 1) * (inn ? -1 : 1);
     B(x, y, z, w, h, 0.06, 'marble_light', inn ? 0x24344c : PANE, { glow: inn ? 0.5 : 1.0 }); B(x, y, z + o * 0.03, 0.07, h, 0.08, 'marble_light', TRIM); B(x, y + h / 2 - 0.035, z + o * 0.03, w, 0.07, 0.08, 'marble_light', TRIM);
     B(x, y - 0.1, z + o * 0.05, w + 0.3, 0.1, 0.16, 'marble_light', TRIM); B(x, y + h, z + o * 0.05, w + 0.3, 0.1, 0.16, 'marble_light', TRIM);
+    if (!inn) { B(x, y, z + o * 0.1, w + 0.34, 0.07, 0.14, 'ice', 0xf4f8ff); B(x, y + h + 0.1, z + o * 0.06, w + 0.34, 0.05, 0.18, 'ice', 0xf4f8ff); }   // snow on the sill and the head
     if (shut != null) for (const s of [-1, 1]) B(x + s * (w / 2 + 0.2), y, z + o * 0.02, 0.34, h, 0.06, ctx.WD, shut); };
 const bulbs = (a, x0, x1, y, z) => { const n = Math.max(2, Math.round((x1 - x0) / 0.7)); for (let i = 0; i <= n; i++) a.box(x0 + (x1 - x0) * i / n, y - (i % 2 ? 0.1 : 0), z, 0.13, 0.13, 0.13, 'marble_light', BULBS[i % 4], { glow: 1.6 }); };
 const lamp = (a, x, top, z) => { a.box(x, top - 0.5, z, 0.03, 0.5, 0.03, 'marble_light', 0x2a2a2a); a.cyl(x, top - 0.52, z, 0.2, 0.05, 'marble_light', 0x2a2a2a, { seg: 8 }); a.cyl(x, top - 0.74, z, 0.11, 0.22, 'marble_light', 0xffb050, { seg: 10, glow: 1.2 }); a.cyl(x, top - 0.78, z, 0.13, 0.04, 'marble_light', 0x2a2a2a, { seg: 10 }); };
@@ -108,6 +109,17 @@ const lit = (a, w, h, d, dr, key, tint, g, ctx) => { const top = h - 0.36, i = 0
     a.box(0, 0, -(d / 2 - i), w - 2 * i, top, t, key, tint, q); for (const s of [-1, 1]) a.box(s * (w / 2 - i), 0, 0, t, top, d - 2 * i, key, tint, q);
     a.box((-e + x0) / 2, 0, d / 2 - i, x0 + e, top, t, key, tint, q); a.box((x1 + e) / 2, 0, d / 2 - i, e - x1, top, t, key, tint, q); a.box(dr.lx, 2.2, d / 2 - i, dr.cw, top - 2.2, t, key, tint, q);
     a.box(0, top - 0.1, 0, w - 2 * i, 0.02, d - 2 * i, ctx.WD2, 0x8a6a48, { sides: false, top: false, under: true, glow: g * 0.75, gain: 1.6 }); };
+/* THE SECOND LAYER outside (pass 7, 11-16; the city's F-detail.js for a snow village): a white belt board under the roof, snow drifted against the three
+   walls without the door and beside the step, icicles along the eaves (`front`: the gable is over the door, so the eaves are the two sides), a wood stack */
+const SNOWC = 0xf4f8ff, ICE = 0xdcecff;
+const winter = (a, w, h, d, dr, front, WD2, wood) => {
+    a.box(0, h - 0.18, 0, w + 0.14, 0.18, d + 0.14, 'marble_light', TRIM, { top: false });
+    a.box(0, 0, -(d / 2 + 0.4), w + 1.3, 0.32, 0.6, 'ice', SNOWC); for (const s of [-1, 1]) a.box(s * (w / 2 + 0.4), 0, 0, 0.6, 0.32, d + 0.3, 'ice', SNOWC);
+    { const x0 = dr.lx - dr.cw / 2 - 0.55, x1 = dr.lx + dr.cw / 2 + 0.55, e = w / 2 + 0.2; if (x0 + e > 0.4) a.box((x0 - e) / 2, 0, d / 2 + 0.3, x0 + e, 0.24, 0.5, 'ice', SNOWC); if (e - x1 > 0.4) a.box((x1 + e) / 2, 0, d / 2 + 0.3, e - x1, 0.24, 0.5, 'ice', SNOWC); }
+    const L = i => 0.18 + 0.34 * (((i * 7919) % 13) / 13), ic = (x, z, i) => a.box(x, h - L(i) + 0.02, z, 0.05, L(i), 0.05, 'ice', ICE, { roof: true, glow: 0.7 });
+    if (front) { for (const s of [-1, 1]) for (let i = 0, z = -d / 2 - 0.5; z <= d / 2 + 0.5; z += 0.45, i++) if (i % 5 !== 3) ic(s * (w / 2 + 0.74), z, i + (s > 0 ? 3 : 0)); }
+    else for (const s of [-1, 1]) for (let i = 0, x = -w / 2 - 0.5; x <= w / 2 + 0.5; x += 0.45, i++) if (i % 5 !== 3) ic(x, s * (d / 2 + 0.74), i + (s > 0 ? 3 : 0));
+    if (wood) { const x = Math.sign(wood) * (w / 2 + 0.36); a.box(x, 0, -d / 2 + 1.5, 0.5, 0.95, 2.0, WD2, 0x8a6444, { gain: 1.4 }); a.box(x, 0.95, -d / 2 + 1.5, 0.62, 0.1, 2.1, 'ice', SNOWC); } };
 const cottage = (a, w, d, dr, q, ctx) => { const { WD, WD2, FLR } = ctx, h = q.h;
     a.shell(w, h, d, WD, q.tint, dr, [3.5, 1.75]); a.P.slice(-2).forEach(p => { p.gain = 1.7; });   // (gain: the boards' paint read as near black at night under the brown sheet)
     a.box(0, 0, 0, w + 0.4, 0.8, d + 0.4, 'rocks_5', 0xa8a8b0, { faces: 'blr', top: false });
@@ -131,6 +143,7 @@ const cottage = (a, w, d, dr, q, ctx) => { const { WD, WD2, FLR } = ctx, h = q.h
         if (q.chimney) hearth(a, cx, d, h - 0.36, 1, WD2); }   // (`flue`: a chimney outside with no hearth inside: the Bakery's oven stands under it)
     lamp(a, 0, h - 0.32, 0.3);                                                                                                        // the lamp inside, hung from the ceiling
     if (q.coal) { a.dome(-1.75, 0.1, -1.75, 1.3, 0.95, 'obsidian', 0x3a3a40); }   // the heap
+    winter(a, w, h, d, dr, !!q.front, WD2, q.chimney || 0);
     if (q.porch) { a.box(0, 0, d / 2 + 1.2, w, 0.16, 2.3, FLR, 0x8c7a62); for (const s of [-1, 1]) for (let i = 0; i < 5; i++) a.box(s * (w / 2 - 0.2), i * 0.52, d / 2 + 2.15, 0.2, 0.52, 0.2, 'marble_light', i % 2 ? TRIM : 0xc83030);   // candy posts
         a.roof('shed', 0, 2.6, d / 2 + 1.25, w + 0.4, 0.6, 2.6, 'ice', 0xf4f8ff); }
     if (q.name) a.sign(q.name, 0, q.front ? h - 0.1 : 2.5, d / 2 + (q.porch ? 2.5 : q.front ? 0.86 : 0.16), Math.min(w - 1.2, q.name.length * 0.55 + 1.0), 0.72, '#f6efd8', q.board || '#7a1f1f', 'fell', (q.front || q.porch) ? { roof: true } : null); };
