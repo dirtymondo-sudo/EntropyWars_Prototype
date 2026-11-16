@@ -5641,6 +5641,14 @@ district lacks, in the order to do it:
 5. RESIDENTS with homes and a day, and the district's own fights. Here: four standing people.
 6. WALKED UPPER FLOORS and roofs. Here: none.
 
+**GIZA's FINDINGS FOR THE ZONE KIT (2026-11-16, the Giza thread; details under "THE DESERT, GIZA")**
+- Helpers in G.js to copy: `pyramid()` (a true pyramid from stacked course boxes), `mouth()` (upright stones for a door in a leaning face),
+  `ring()` (four thin ghost walls round a drawn mass; a THICK ghost wall has round ends and blocks past its corners).
+- `bricks_1` on an arch part needs `gain` 2.7 to read as pale stone; `rocks_5` wants 1.7. A face steeper than 45 degrees is never walked.
+- Pieces that read well in a desert: `greek_amphora`, `ocean_seaweed` (reeds), `flamingo`, `rowboat`, `ancient_well`, `fortune_teller_tent`,
+  `meshy_giant_foot`, `dinosaur_skeleton`, `map_table`, `film_camera`, `footbridge`, `hw_stone_*`, `tomb_plaque`. Wrong: `stone_urn` (a fern
+  planter), `lion_statue` (a live lion), `trap_sarcophagus` (pale blue), `babel_crane` (a modern steel crane), `psx_pillar_1` (near black).
+
 **AREA 51's FINDINGS FOR THE ZONE KIT (2026-11-16, the Area 51 thread; the pilot's lines above are unchanged)**
 - **Helpers in A.js worth lifting into the tool (copy them meanwhile):** `lined(a, w, d, h, door, tint, dado)` = a walk-in's painted coat
   (0.36 m in from the building's edge: the city's 0.27 lies inside this tool's walls), a dado, a LIT ceiling deck; `gear(a, w, d, h)` =
@@ -6751,6 +6759,13 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
     new rows re-threw T's nine rock scatters. Each district's build now starts its count on the day's number (`BUILD_SOW`). PROOF OF NOBODY MOVED: every row
     outside the district is the same before and after except the ground's paint map and one floor rectangle that was re-split (the same squares).
   - PROBE TIP: an fp view's `y` is the walker's FEET (the ground there: 3.5 on row 3, 1.75 / 0 lower down); 1.7 m more and the eye is in the ceiling.
+- **PASS 2, THE INTERIORS (seen, 10 + 6 views):** the ranger station's one room. In its arch row: a boarded dado, the six windows drawn from inside as pale lit
+  panes in frames (a hollow building's inside walls have no holes), a wood stove under the pipe on a stone pad with a lit fire door, firewood, a plank counter by the
+  door, two wall shelves, a door mat. Props: the office on the west half (`psx_table_large_2` desk + chair, `field_radio`, `radio_console`, `item_walkie_talkie`,
+  `item_binoculars`, `map_table` with a flashlight and a flare gun, `evidence_board`, `psx_shelf_mp_5`, a coffee corner, `brochure_rack` on the counter), the bunk on
+  the east half (`psx_bed_1`, `footlocker`, `psx_wardrobe_mp_1`, `rifle_rack`, `psx_armchair_1` by the stove), a carpet, two ceiling lamps (`noLight`). The trail
+  shelter's logs lifted (`gain: 1.5`): it drew near black under its roof. No other walk-in stands in the district. FOUND: a base-course box needs `top: false`, or its
+  top draws as a stone floor 0.85 m up inside the building and hides every table; `paper_sheet` stands on its edge on a table top.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.
@@ -7340,6 +7355,13 @@ the pyramids (130) and on the causeway (80), embers on the Tomb Door path (50), 
 lit core (`glow: 1`, tint 0xffb040) on each jamb of every mouth and on the hall's posts; the gold capstone has `glow` 0.45. Seen at 19.2 and
 21.5 (`window._hqClockHour`): the pale stone holds at night, the capstone and the cores read, fireflies show over the pool. A `noLight`
 brazier's flame is small at night (its sprite only). FPS at the proof view: 2.0 (433 calls, 1.15 M triangles): no cost against pass 3 beyond noise.
+
+**PASS 5, THE POLISH. FIVE PASSES LIVE: GIZA IS STOPPED UNTIL MONDO HAS LOOKED.** The Robbers' Tunnel's link door (not moved) stands in a
+rock mouth: two piers, a cap and a dome of `rocks_5` (tint 0xe8d0a8, `gain` 1.7), pit props and a beam, a lit core. Two painted boards on posts
+(`ctx.sheet().sign`, the `cinzel` face, written on both faces): THE DIG, THE OASIS. FPS at the proof view at the end: 2.3 (llvmpipe; 443 calls,
+1.12 M triangles) against 2.3 before pass 1 (327 calls, 946 k).
+**WHAT A NEXT THREAD WOULD DO (after his look):** a real Sphinx model; carving on the inside's walls once a hieroglyph sheet exists; the canyon
+to Western Town (cut by the move: the tool's); the scatter and the pine mountains on Giza's edges (the tool's); residents and Giza's own fights.
 
 **FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
 `meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
