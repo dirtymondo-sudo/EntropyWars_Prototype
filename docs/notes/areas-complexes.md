@@ -8479,7 +8479,21 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   stands by the lit car (the dug crew room had moved him inside it); the south tunnel (P03-04) got a cabinet, a drum, a lantern, a
   flicker tube; T's REAL LIGHTS cut from four to two (the zone kit's rule: the lit car and the cabin; the crew room and the station
   office are lit the drawn way: `hut(..., { glowIn: 0.3 })` = glowing plaster, floor and a lit panel under the slab).
-- **WHERE IT STANDS: five passes merged and live, STOPPED.** OPEN FOR MONDO: (a) nothing was WALKED by a player (doors, the step, the
+- **THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end
+  to end; seen, 9 views).** IN, and the stand-in OUT: `rail_section` on every track square (207; the drawn sleepers are out, the pebble
+  ballast and the third rail stay; face 0 = along x, 90 = along z; the model's rails lie on the tool's walked rails); `buffer_stop` x 5
+  (the Depot's four road ends, the Crossing's dead line; the drawn buffers out; face 0 closes a north-south track, 90 / 270 an
+  east-west one); `tunnel_signal` x 4 (the drawn posts out); `signal_gantry` at the Crossing, across the main line a step west of the
+  crossing square, legs on the two walks (the drawn legs, beams, deck, heads and ladder out; the check plate stays); `cage_lamp` on
+  every tunnel lamp (the drawn housings out; the lit lens and what it lights stay). NEW: `hand_car` on the shut stub, `rat` x 12,
+  `spider` x 4, `strobe_lamp` x 5 (dead ends, road ends, over the WAY OUT), `third_rail_shoe` x 3 (the bench, the floor), at the camp a
+  `sleeping_bag`, a `backpack`, a `kettle`; a `kettle` and a `ceiling_fan` in the crew room; a `key_ring` in the station office.
+  NOT USED: `manhole_ladder` (the station has no way up, by its own line), `steel_bench`, `chain_bunk`, `booking_desk` (the cells').
+  NOTE: the gantry model's lamps are red; the bystander says "Signals green" (the four small tunnel signals show all three colours).
+  FPS, the Depot view: 3.0 before, 2.0 after (noise about 1; the room went from 956 to 1,267 props, T's share about 310 small ones).
+- **NEEDS A MODEL, WHAT IS LEFT:** a graffiti sheet (a sheet, not a model), a third Metro car for the east loop, a soft round decal for
+  light pools. Crossed off: rail section, buffer stop, tunnel signal, signal gantry, hand car, rats, emergency lamp, third-rail shoe.
+- **WHERE IT STANDS: five passes + the model pass merged and live, STOPPED.** OPEN FOR MONDO: (a) nothing was WALKED by a player (doors, the step, the
   ghost walls: probe pictures only); (b) the bystanders are the old room's four (no more: the NPC system is its own thread); (c) the
   dead train front on the east loop is the Meshy white nose (`subway_front`): a third Metro car would match better, his call; (d) the
   platform's north half is low under the vault's haunch (1.6 m at the wall): furniture only, by design of the tool's vault; (e) the
