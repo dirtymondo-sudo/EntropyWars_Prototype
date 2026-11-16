@@ -1957,6 +1957,50 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE SHELL KEEPS ITS RECORDING (2026-11-15, the shell's rests answered)
+
+mondo's three F3s of one session (23:48-23:50 UTC), after the lens could say why:
+1. A FIGHT in the city: 23.4 FPS, frame 42.8 ms, CPU 31.4. "bundles 2262 groups, 2608 meshes", "mask: setup + lights + sort
+   8.0", "scene: setup + lights + sort 3.5", "mask: projection walk 3.3" (15K visits), "rest of the frame 9.2", picks 234/s
+   (42.9 ms/s), shader builds 3.8/s. NOT WORKED ON YET: the fight needs its own pass (2,262 recorded groups for 2,608 meshes;
+   what the mask's first render pays; the 9.2 ms outside every span).
+2. The walk right after the fight: 12.4 FPS for ~30 s. "Static batch ... build 6252->1265", "1086 terrain: alone in its look
+   / not yet merged", shell released, 2,126 draw calls. This is the known "the way back rebuilds the whole city" (the
+   hand-back disposes and re-merges everything). NOT WORKED ON YET: a hand-back that parks what the fight left.
+3. Thirty seconds later, steady: 37.8 FPS, 26.3 ms at 2,799 meshes (price line: 25.9).
+- The shell's tree changes by cause, steady: "tree 17 [merge 0, movers 10, shown/hidden 5, other 2], rests 2". So the rests
+  come from MOVERS (a still-walk piece starts or stops: `_ew_bunOutA` on / off = a tree change each way; "21 moving" of
+  12,874) and pieces shown / hidden, not from the merge. (The lens counted a merge-held piece as "hidden" because the
+  bundle tick runs inside the draw, where a held piece reads hidden; fixed here: held pieces count as "merge".)
+- Fix (`_ewBunTick`): a walk room's still group with over 1,000 children (the big room's shell) is released only at 24 tree
+  re-records in 2 s (about every third frame), not 5. Below that it re-records each time: one walk of its children per
+  change in place of that walk in every pass of every frame for 5 s. Other groups keep 5. Off: `window.EW_BUN_REST_AT_5`.
+  Not run in a browser (a threshold; `node --check`).
+- NEXT for the drops: THE SHELL'S SHORT WALK (three still visits the shell's ~10,000 hidden children on every record frame
+  and in the lamp / mask passes: hand it only the children the merge does not hold, e.g. by lending `children` for the
+  call, list re-made on a batch install / break); the rooms chunks that flip ("rooms b|dc:P03-06-B1 tree 36 [other 36],
+  rests 7": same count hidden and shown = an LOD or a prop pair swapping at a threshold); then 1 and 2 above.
+
+## THE SHELL'S RESTS (2026-11-15, OPEN: why the shell falls back to piece-by-piece; the lens only so far)
+
+mondo's F3 after THE DOOR CHUNKS (23:37 UTC): 25.9 FPS, frame 38.8 ms, CPU 29.1 ms at 2,930 meshes (price line: 26.6).
+"scene: projection walk 5.4 · sun shadow: projection walk 4.4", "Walk visits: scene 21K · sun shadow 20K" (were 1.8K),
+"downtown_streets shell (values 0, tree 42, rests 3, classic now)", no "shell rest" kind, "Shader builds 1.0/s", "terrain:
+Sprite 74" own draws, doors 66 meshes in 46 groups (the door chunks work: 223 -> 66).
+- Reading: the readout was taken while the SHELL group was released (`_ewBunTick`: 5 tree re-records within 2 s = "the tree
+  itself churns: classic for a while", `st.until = now + 5000`, counted as "rests"). For those 5 s three walks the shell's
+  ~10,000 children in the scene pass and the sun pass (~10 ms) and draws its loose pieces one by one. Every F3 of the day
+  shows rests (2 to 15 a session), so this is not new with the door chunks, but it is the "lag and frame drops" he feels,
+  and nothing proved yet what churns the tree. Suspects: the static batch installing / handing back pieces over several
+  frames (a re-scan every 4 s while files land: each slice hides pieces = a tree change a frame), movers going out and
+  coming back, pieces shown / hidden.
+- The lens now says it: "SLOW RIGHT NOW: <group> (N pieces) is drawn piece by piece for X s more ..." under the mesh kinds,
+  and "Re-recorded most" gives the tree changes by cause: "tree 42 [merge a, movers b, shown/hidden c, added/removed d,
+  other e]" (`st.why.tB/tO/tH/tN/tX`, set in `_ewBunTick` from `_ewBunWalkTop`'s counts of held / out / hidden children).
+- NEXT: read that bracket on his next F3. If "merge" leads: commit a build's installs in one frame (prepare the merged
+  geometry over frames, hide + add all at once = one tree change). If "movers": hold a mover out longer before it comes
+  back. Never replay a stale recording (a held piece would draw twice: wrong for see-through pieces).
+
 ## THE DOOR CHUNKS (2026-11-15, each door of a big room is its own chunk and recording)
 
 mondo's F3 after THE LOOSE PIECES (23:15 UTC): 43.2 FPS, frame 23.1 ms at 2,188 meshes (price line: 23.0, exact again),

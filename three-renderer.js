@@ -7703,15 +7703,15 @@ const ThreeRenderer = (function () {
        them now. data.js HQ_TREE_KINDS carries the same names (it wins for every key it lists). */
     var _FOLIAGE_RT_BASE = _R2_FOLIAGE + 'retrotreepack/GLB/';
     var _FOLIAGE_MODEL_FOR_KEY = {
-        tree:   'rt:tree_rt_2_1',
-        tree_2: 'rt:tree_rt_3',
-        tree_3: 'rt:tree_rt_4',
-        tree_4: 'rt:tree_rt_2',
+        tree:   'rt:tree_rt_2_1_full',
+        tree_2: 'rt:tree_rt_3_full',
+        tree_3: 'rt:tree_rt_4_full',
+        tree_4: 'rt:tree_rt_2_full',
         tree_5: 'rt:dead_tree_rt_2',
         tree_6: 'rt:dead_tree_rt_1',
-        pine:   'rt:tree_rt_1',
+        pine:   'rt:tree_rt_1_full',
         pine_2: 'rt:small_tree_rt_1',
-        tree_pine: 'rt:tree_rt_1',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
+        tree_pine: 'rt:tree_rt_1_full',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
         tree_sapling: 'rt:small_tree_rt_1'
     };
     /* THE ISLAND (2026-10-20): a name `kit:<file>` is a GLB in the D.O.O.R. kit folder (DOOR_HQ.assets.models — the palm) */
@@ -7792,8 +7792,13 @@ const ThreeRenderer = (function () {
         var tex = (sm && sm.map) || null;
         if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var leaf = _foliageGlbLeaf(sm);
-        var m = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
+        /* THE PAINTED TREES (2026-11-15, bake-trees.py): a leaf material named `ewleaf_*` and ONE-SIDED in its file carries both
+           windings with the same out-of-the-puff normals, so it is drawn one-sided (two-sided would flip the normal on a back
+           face and shade the two faces of a sheet apart) and its own picture lifts the shade (an underside is shade green, never black) */
+        var painted = leaf && sm.side === THREE.FrontSide && /^ewleaf_/.test(sm.name || '');
+        var m = new THREE.MeshLambertMaterial({ map: tex, side: painted ? THREE.FrontSide : THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
         if (tint != null) m.color.setHex(tint);
+        if (painted) { m.emissive.copy(m.color).multiplyScalar(0.2); m.emissiveMap = tex; }
         return m;
     }
     function _normalizeFoliageModel(root) {
@@ -8477,7 +8482,7 @@ const ThreeRenderer = (function () {
            and takes the same light as the ground beside it; lit = a trim on that. A tuft's foot is rootK of it, its belly the
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
-                  grass: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
+                  grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
         lit: 1.0, rootK: 0.50, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 2.6,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
@@ -8768,6 +8773,110 @@ const ThreeRenderer = (function () {
                 }
         }
         G.press.needsUpdate = true;
+    }
+    /* ══ THE GRASS FIELD IN A WALKED ROOM (2026-11-15, mondo on the Estate: "I want the grass from the battle maps on this grass too") ══
+       The same tufts, shader, colours and wind as the board's field (above), grown on a walked room's own ground. A room asks for it with
+       `terrain.grassField: true` (data.js; today the Estate). A whole area is far too many tufts to hold at once, so the field is CELLS of
+       HQ_GRASS.cellM metres built round the walker (nearest first, a few a tick) and dropped behind him. A tuft stands only where the
+       ground is open (the room's mask), wears a grass sheet (the painted sheet there, else the room's floor: GGRASS.sheets), is not
+       water, not a steep face and not inside a building. The tufts write no depth, so the cells are drawn far to near (renderOrder by
+       distance) and each cell sorts its own tufts (_ggFace). Settings > Video > Grass (High / Low / Off) rules it as on the board.
+       Kill switch: window.EW_NO_HQ_GRASS. No press map (nothing lays the tufts down here yet). */
+    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 16, low: { radiusM: 16, perSquare: 10 }, perTick: 2, tickMs: 100, steep: 0.55, height: 0.8 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
+    var _hqGG = null;
+    function _hqGrassDrop() {
+        var S = _hqGG; _hqGG = null; if (!S) return;
+        S.cells.forEach(function (c) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } });
+        try { if (S.mat) S.mat.dispose(); if (S.press) S.press.dispose(); } catch (e) {}
+    }
+    function _hqGrassCell(S, cx, cz) {
+        var info = S.info, U = S.U, C = GGRASS, cm = HQ_GRASS.cellM, ts = 3.5 * U, n = Math.max(2, Math.round(S.N * cm / 3.5)), x0 = cx * cm, z0 = cz * cm;
+        var seed = (((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) & 0x7FFFFFFF | 1;
+        var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
+        var pos = [], col = [], gg = [], gs = [], roots = [], P = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).P, PT = info.paint, kw = S.windK;
+        for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) {
+            var xm = x0 + (i + rnd()) / n * cm, zm = z0 + (j + rnd()) / n * cm;
+            var r0 = rnd(), r1 = rnd(), r2 = rnd(), r4 = rnd(), r5 = rnd();
+            var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
+            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
+            var nk = nj * info.nx + ni;
+            if (info.mask && !info.mask[nk]) continue;
+            var sheet = (PT && PT.P[nk]) ? PT.pal[PT.P[nk] - 1] : info.floor, pal = S.pals[sheet];
+            if (pal === undefined) pal = S.pals[sheet] = _ggPalette(sheet) || null;
+            if (!pal) continue;
+            var inB = false; for (var b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = dx * B[4] + dz * B[5], lz0 = -dx * B[5] + dz * B[4]; if (Math.abs(lx0) < B[2] && Math.abs(lz0) < B[3]) { inB = true; break; } }
+            if (inB) continue;
+            if (hqTerrainFluidAt(info, xm, zm)) continue;
+            if (hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
+            var wx = xm * U, wz = zm * U, gy = hqTerrainHeight(info, xm, zm) * U;
+            var clump = _ewValHash(xm / (3.5 * 0.55) + 11.3, zm / (3.5 * 0.55) + 4.7), patch = _ewValHash(xm / (3.5 * C.patchM) + 3.1, zm / (3.5 * C.patchM) + 8.9);
+            var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
+            var h = ts * HQ_GRASS.height * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
+            var hw = ts * S.width * 0.5 * (0.8 + 0.4 * r2);
+            var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
+            var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
+            for (var k = 0; k < 7; k++) {
+                var f = P[k][1], bf = f * f, cr, cg, cb;
+                pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
+                if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
+                else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                col.push(cr, cg, cb); gg.push(wx * kw, wz * kw, h * f, f); gs.push(P[k][0] * hw);
+            }
+            roots.push(wx, wz);
+        }
+        if (!roots.length) return { mesh: null };
+        var geo = new THREE.BufferGeometry(), pa = new Float32Array(pos), nor = new Float32Array(pa.length); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
+        geo.setAttribute('position', new THREE.BufferAttribute(pa, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(new Float32Array(gg), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(new Float32Array(gs), 1));
+        var nB = roots.length / 2, ia = new Uint32Array(nB * 15), T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T;
+        for (var t = 0; t < nB; t++) for (var e = 0; e < 15; e++) ia[t * 15 + e] = t * 7 + T[e];
+        geo.setIndex(new THREE.BufferAttribute(ia, 1));
+        var mesh = new THREE.Mesh(geo, S.mat);
+        mesh.frustumCulled = false; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
+        S.parent.add(mesh);
+        return { mesh: mesh, roots: new Float32Array(roots), blades: nB, ia: ia, sortDir: null, cx: cx, cz: cz };
+    }
+    function _hqGrassTick() {
+        var H = _hq, T = H && H.room && H.room.terrain, on = false;
+        try { on = !!(H && H.terrain && H.player && T && T.grassField && _ggOn() && !window.EW_NO_HQ_GRASS && typeof hqTerrainHeight === 'function'); } catch (e) { on = false; }
+        if (!on) { if (_hqGG) _hqGrassDrop(); return; }
+        var S = _hqGG;
+        if (!S || S.H !== H || S.level !== _ggLevel) {
+            _hqGrassDrop();
+            var LOW = (_ggLevel === 'low'), U = _hqUnits(), pr = _ggPressTex(1, 1), boxes = [];
+            ((T.features) || []).forEach(function (f) { if (f && f.k === 'texbuilding') { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.4, f.d / 2 + 0.4, Math.cos(a), Math.sin(a)]); } });
+            S = _hqGG = { H: H, level: _ggLevel, info: H.terrain, U: U, N: LOW ? HQ_GRASS.low.perSquare : HQ_GRASS.perSquare, R: LOW ? HQ_GRASS.low.radiusM : HQ_GRASS.radiusM,
+                width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / HQ_GRASS.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
+                cells: new Map(), pals: {}, boxes: boxes, press: pr.tex, at: 0, parent: (H.propGroup && H.propGroup.parent) || scene };
+            S.mat = _ggMat({ press: pr.tex, inv: [0, 0] });
+            /* THE DEPTH (seen in the browser: dark lines of tuft feet along every cell's edge): the board's field writes no depth and sorts ALL its tufts far to
+               near in one mesh; here each cell sorts only its own, so two cells side by side overlapped wrongly at their shared edge whatever order the
+               cells were drawn in. A walked room's tufts write depth, so the order does not matter (and the walker's shins stand IN the grass). */
+            S.mat.depthWrite = true;
+        }
+        var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c); live.push(c); } });
+        var now = performance.now(); if (now - S.at < HQ_GRASS.tickMs) return; S.at = now;
+        var cm = HQ_GRASS.cellM, px = H.player.x, pz = H.player.z, pcx = Math.floor(px / cm), pcz = Math.floor(pz / cm), rc = Math.ceil(S.R / cm), want = [];
+        for (var dz = -rc; dz <= rc; dz++) for (var dx = -rc; dx <= rc; dx++) { var cx = pcx + dx, cz = pcz + dz, d = Math.hypot((cx + 0.5) * cm - px, (cz + 0.5) * cm - pz); if (d > S.R) continue; if (!S.cells.has(cx + ',' + cz)) want.push([d, cx, cz]); }
+        want.sort(function (a, b) { return a[0] - b[0]; });
+        for (var w = 0; w < want.length && w < HQ_GRASS.perTick; w++) { var made = null; try { made = _hqGrassCell(S, want[w][1], want[w][2]); } catch (e) { made = { mesh: null }; if (!S._warned) { S._warned = true; console.warn('[HQ] the grass field', e); } } S.cells.set(want[w][1] + ',' + want[w][2], made); if (made.mesh) live.push(made); }
+        S.cells.forEach(function (c, key) { var q = key.split(','), d = Math.hypot((+q[0] + 0.5) * cm - px, (+q[1] + 0.5) * cm - pz); if (d > S.R + 2 * cm) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } S.cells.delete(key); } });
+        /* far cells first: no tuft writes depth, so a near cell must be drawn over a far one */
+        /* (far = along the camera's own view direction, as each cell sorts its tufts: a distance from the camera's place put a cell behind
+           the eye in front of the one it looks at, and the cells' edges showed as dark lines of tuft feet) */
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, fx = 0, fz = 0;
+        live = live.filter(function (c) { return c.mesh && c.mesh.parent; });
+        if (cam && live.length) {   // the view direction in the cells' OWN frame (the room's group may be turned or mirrored against the world)
+            if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
+            live[0].mesh.updateWorldMatrix(true, false); _ggM.copy(live[0].mesh.matrixWorld).invert();
+            var ce = cam.matrixWorld.elements; _ggV.set(-ce[8], -ce[9], -ce[10]).transformDirection(_ggM);
+            var fl = Math.hypot(_ggV.x, _ggV.z); if (fl > 1e-4) { fx = _ggV.x / fl; fz = _ggV.z / fl; }
+        }
+        live.forEach(function (c) { c._d = (fx || fz) ? ((c.cx + 0.5) * cm * fx + (c.cz + 0.5) * cm * fz) : Math.hypot((c.cx + 0.5) * cm - px, (c.cz + 0.5) * cm - pz); });
+        live.sort(function (a, b) { return b._d - a._d; });
+        for (var o = 0; o < live.length; o++) live[o].mesh.renderOrder = GGRASS.order + o * 0.001;
+        try { window._ewHqGrass = { cells: live.length, tufts: live.reduce(function (s, c) { return s + c.blades; }, 0), level: _ggLevel }; } catch (e) {}
     }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;
@@ -47618,9 +47727,9 @@ const ThreeRenderer = (function () {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
-            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
+            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); if (c._ew_bRec) S.cB = (S.cB | 0) + 1; else S.cH = (S.cH | 0) + 1; continue; }   // (a piece the merge holds reads hidden while a frame draws)
             if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
-            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }
+            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
             var v0 = S.hv; S.hv = 0;
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
@@ -47723,6 +47832,7 @@ const ThreeRenderer = (function () {
             g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
             var v0 = g.version, recs0 = _ewBun.recs;
             objs += S.n; st.n = S.n;
+            var cB0 = S.cB | 0, cH0 = S.cH | 0, cO0 = S.outs ? S.outs.length : 0, cN0 = g.children.length;
             var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
             g._ew_bunMiss = false;
             if (!g.isBundleGroup) {
@@ -47731,13 +47841,23 @@ const ThreeRenderer = (function () {
                 _ewBun.recs++;
             } else if (st.hs !== S.hs || (stat && st.hv !== S.hv)) {
                 st.why[st.hs !== S.hs ? 'tree' : 'values']++; W[st.hs !== S.hs ? 'tree' : 'values']++;
+                if (st.hs !== S.hs) {   // THE TREE'S WHY (lens): what changed the list of pieces — the merge taking or handing back pieces, a mover going out or coming back, a piece shown or hidden, a piece added or removed
+                    var tO = S.outs ? S.outs.length : 0, tw = ((S.cB | 0) !== (st.cB | 0)) ? 'tB' : (tO !== (st.cO | 0)) ? 'tO' : ((S.cH | 0) !== (st.cH | 0)) ? 'tH' : (g.children.length !== (st.cN | 0)) ? 'tN' : 'tX';
+                    st.why[tw] = (st.why[tw] | 0) + 1;
+                }
                 st.times.push(now);
                 while (st.times.length && now - st.times[0] > 2000) st.times.shift();
                 /* a slow churn (2 a second never makes 5 in 2 s): 8 value re-records within 20 s demote the group too */
                 if (stat && st.hs === S.hs) { (st.vt || (st.vt = [])).push(now); while (st.vt.length && now - st.vt[0] > 20000) st.vt.shift(); if (st.vt.length >= 8) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; st.vt = []; } }
                 if (st.times.length >= 5) {
                     if (stat && st.hs === S.hs) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; }   // only values keep moving: three checks them
-                    else { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                    /* THE SHELL KEEPS ITS RECORDING (2026-11-15, mondo's F3s in Disaster City: "SLOW RIGHT NOW: shell (10655 pieces) is
+                       drawn piece by piece", 2 to 15 times a session, 5 s each): a big still group (a big room's shell: ~10,000
+                       children, nearly all hidden behind their merged squares) costs three a walk of every child in every pass
+                       while it is released, ~10 ms a frame for 5 s, because 5 pieces started or stopped moving within 2 s. A
+                       re-record costs that walk ONCE. So such a group rests only when its list changes on about every third
+                       frame (24 times in 2 s); below that it is recorded again each time. The old 5: window.EW_BUN_REST_AT_5. */
+                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.G !== G || g._ew_bunFree) {   // the lamps / a freed resource it holds: re-records, and none of it counts as the group churning
@@ -47748,6 +47868,7 @@ const ThreeRenderer = (function () {
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
             g._ew_bunFree = false;
+            st.cB = cB0; st.cH = cH0; st.cO = cO0; st.cN = cN0;
             st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
@@ -52516,6 +52637,8 @@ const ThreeRenderer = (function () {
                     sq[why] = (sq[why] | 0) + 1;
                 }
             }
+            var LT = (_ewBun.last || []), nowL = performance.now();   // a big group drawn piece by piece right now: say so, the frame is not the usual one
+            for (var li = 0; li < LT.length; li++) { var lg = LT[li], ls = lg._ew_bun; if (ls && ls.until > nowL && lg.children.length > 200) L.push('SLOW RIGHT NOW: ' + String(lg._ew_bunName || lg.name).replace(/^site_prebuilt_/, '') + ' (' + lg.children.length + ' pieces) is drawn piece by piece for ' + ((ls.until - nowL) / 1000).toFixed(1) + ' s more: its list of pieces changed 5 times in 2 s. This readout is not the steady frame.'); }
             var bks = Object.keys(bk).sort(function (a, b) { return bk[b] - bk[a]; });
             if (bks.length) L.push('Replayed meshes by kind: ' + bks.map(function (k) { return k + ' ' + bk[k] + ' (' + bn[k] + ' groups)'; }).join(' · '));
             var sqs = Object.keys(sq).sort(function (a, b) { return sq[b] - sq[a]; });
@@ -52525,7 +52648,7 @@ const ThreeRenderer = (function () {
         } catch (eBK) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -69241,7 +69364,7 @@ const ThreeRenderer = (function () {
         var byName = {}, names = [];
         spots.forEach(function (sp) {
             var nm = _FOLIAGE_MODEL_FOR_KEY[sp.kind];
-            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3';
+            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3_full';
             if (!byName[nm]) { byName[nm] = []; names.push(nm); }
             byName[nm].push(sp);
         });
@@ -88160,6 +88283,11 @@ const ThreeRenderer = (function () {
             if (o._ew_hqSea) o.receiveShadow = false;   // (2026-10-20) the sea's sheet runs far past the shadow map: its edge drew a pale box round the Dutchman
         });
         [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh) _flagMeshShadows(o); }); });
+        /* A HOUSE UNDER THE SKY (2026-11-15, Camelot Castle's stacked floors): `shell.sunShadow: false` = nothing of the room's own build casts.
+           A building of floors over floors in an OPEN room (its roof walk needs the sky) stood in the shadow of its own slabs: every room
+           under one was black but for the hemisphere, and its furniture read as black blocks. The key keeps its map (the materials are
+           compiled for one: switching the light's own shadow off blanked the room), props and people still cast. */
+        if (room && room.shell && room.shell.sunShadow === false) H.shellGroup.traverse(function (o) { if (o.isMesh) o.castShadow = false; });
     }
     /* the walk's scene tells ONE waiting reader when its world matrices are this frame's (THE STILL TORCH reads its
        casters where they stand now, not where the last frame left them): three's own walk, untouched, then the reader */
@@ -89222,6 +89350,7 @@ const ThreeRenderer = (function () {
         try { _hqTickClipBeside(); } catch (e) { if (!_hq._cbWarned) { _hq._cbWarned = true; console.warn('[HQ] clip beside', e); } }   // THE CUT BESIDE
         _hqTickRounds(wdt);
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
+        try { _hqGrassTick(); } catch (e) { if (!H._ggWarned) { H._ggWarned = true; console.warn('[HQ] the grass field tick', e); } }   // THE GRASS FIELD IN A WALKED ROOM (2026-11-15)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
             var _sd = H._sceneDoor, _sn = performance.now();
             if (_sd.k !== _sd.to) { var _sq = Math.min(1, (_sn - _sd.t0) / _sd.ms); _sd.k = _sd.from + (_sd.to - _sd.from) * (1 - Math.pow(1 - _sq, 3)); if (_sq >= 1) _sd.k = _sd.to; H.dirty = true; }
@@ -95769,6 +95898,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        try { _hqGrassDrop(); } catch (e) {}   // THE GRASS FIELD IN A WALKED ROOM: its cells leave with the room
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
         try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: every fence back in the shell group, every group drawn
