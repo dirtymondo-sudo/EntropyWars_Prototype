@@ -75,7 +75,7 @@ const g=[ux,uy];
 [[-6,1,6,6,'The Woods'],[-14,0,8,8,'Camelot'],[-6,7,6,6,'The Estate'],[0,0,12,12,'Disaster City'],[0,12,12,12,'The Desert'],[12,1,14,10,'The Beach'],[12,17,9,5,'Leylines'],[-12,-5,12,2,'The Mountains (south edge)']].forEach(z=>zone(...g,z[0],z[1],z[2],z[3],z[4],'old',[],{faint:1}));
 zone(...g,2,9,8,2,'THE SEWERS','old',['old rooms · plan 16'],{pick:'① NEXT',small:1});
 zone(...g,-4,-3,4,4,'HELL','old',['under the Vatican','plan 16'],{small:1,pick:'②'});
-zone(...g,-6,2,6,6,'THE CAVERN','old',['The Cavern · Hollow Earth','Agartha','old rooms · plan 36']);
+zone(...g,-6,2,6,6,'THE CAVERN','built',['The Cavern · Hollow Earth','Agartha','36 plots · one room (11-16)']);
 zone(...g,0,18,6,6,'THE D.U.M.B.','old',['Research · Sub-Level 7','Command · Level P3 · CERN','old rooms · plan 36'],{pick:'③'});
 zone(...g,15,4.5,9,3,'THE DEEP','old',['Atlantis · The Trench · plan 27']);
 way(...g,-2,1,-2,2,'way','the fissure',8,2);
