@@ -5443,3 +5443,19 @@ The style: he lends and bets, and every deal settles later.
   thievery, conspiracyknowledge (none unique to another race). Finisher Foreclosure (sig motionCarries). POINT_OF_ENTRY Downtown.
 - Online: statuses + HP/MP state-sync; the floating text goes through the relayed `showFloatingTextAtTile`.
 - Model `Assets/characters/races/banker/male/Meshy_AI_banker_Running.glb` + `banker.png` (R2 only).
+
+### 2. THE SEWER GATOR (The Sewers, assassin, family `sewerpredator`)
+mondo's look: concept B (the skeletal croc with a chain); the vest version was rejected ("more horror and monster esque").
+The style: an ambush from the water. "Liquid" = water, deep water, radioactive sludge, black ooze (battle.js `_GATOR_LIQUIDS`).
+- **Submerge** (T1, self, cd 2, `requiresLiquid`): only castable standing in a liquid (getSpellBlockReason greys it "🐊 Stand in water
+  or sludge", doSpell refuses). Gives **Submerged** + **Invisible** for 2 rounds. Ending any move (walked or pushed) off a liquid
+  surfaces it (`_gatorSurfaceCheck` from resolveTileArrival); losing Invisible (attack, reveal) ends Submerged too (invisible.onRemove).
+- **Death Roll** (T2, physical 115, range 1, cd 2, `sneakBonus` + `dragIntoLiquid`): ×1.5 from under the surface; then
+  `_deathRollDrag` (from _runPostEffects) puts the victim on the nearest free liquid square beside the gator or beside the victim
+  (deep water first) and gives Drowning (applyStatusPayload bounces it outside deep water). Colossal / anchored units hold.
+- **Tail Sweep** (T3, cross radius 1 from self, physical 120, push 1): knocks everyone beside it a square away, into water if it is there.
+- Terrain preference deep_water and `unitIsDeepWaterAdapted` (never drowns). Water resist, lightning weak. Tree: Bite → Apex Roar /
+  Splash → Rot / Feral Dive → Jurassic Jaw. Finisher Down the Drain (sig nessieSurfaces). POINT_OF_ENTRY The Sewers.
+- Probe 11-16: Submerge refused on grass, hid it in deep water (concealed from P2); Death Roll broke cover, dragged the foe into deep
+  water, Drowning; Tail Sweep pushed 1; walking out surfaced it; 0 page errors.
+- Model `Assets/characters/races/sewer_gator/male/Meshy_AI_sewer_gator_Running.glb` + `sewer_gator.png` (R2 only).

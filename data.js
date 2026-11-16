@@ -368,6 +368,7 @@ const FINISHERS = {
     'overlord':       { id: 'fin_overlord', name: 'Cataclysm Decree', glyph: '☄', type: 'unholy', sig: 'byOrderOf', built: true, tagline: 'BY ORDER OF', desc: 'The decree is read, the sky agrees, and the victim is the demonstration.' },
     'chosen one':     { id: 'fin_chosen_one', name: 'Prophecy Fulfilled', glyph: '🌟', type: 'divine', sig: 'prophecyFulfilled', built: true, tagline: 'IT WAS WRITTEN', desc: 'The scroll was about this moment. The victim is the last line.' },
     'banker':         { id: 'fin_banker', name: 'Foreclosure', glyph: '💰', type: 'human', sig: 'motionCarries', built: true, tagline: 'PAYMENT IS DUE', desc: 'The note is called in. A gavel the size of a building comes down, and the victim is repossessed on a technicality.' },   // 2026-11-16 THE NEW RACES — borrows the politician\'s staging
+    'sewer gator':    { id: 'fin_sewer_gator', name: 'Down the Drain', glyph: '🐊', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'SEE YOU LATER', desc: 'The floor gives way to black water, the jaws come up under the victim, and it rolls them down into the dark.' },   // 2026-11-16 THE NEW RACES — borrows the Jaws staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
     'dinosaur':       { id: 'fin_dinosaur', name: 'Extinction Event', glyph: '🦖', type: 'anomaly', sig: 'extinctionEvent', built: true, tagline: 'THAT ONE IS PERSONAL', desc: 'The asteroid that ended the dinosaurs is brought back and aimed at one unit.' },
@@ -590,6 +591,7 @@ const RACE_ELEMENT_AFFINITY = {
     'starfish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'deep sea fish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'sharkman': { water: 'resist', lightning: 'weak' },   // 2026-09-30
+    'sewer gator': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
     'tree person': { fire: 'weak', water: 'resist', poison: 'absorb', nature: 'absorb' },   // 2026-09-30 // race editor 2026-10-17
@@ -2860,6 +2862,10 @@ const RACE_PROFILES = {
         label: 'Banker',
         types: ['human']
     },
+    'sewer gator': {   // 2026-11-16 THE NEW RACES (mondo picked it; his look: concept B, the skeletal croc with a chain)
+        label: 'Sewer Gator',
+        types: ['anomaly']
+    },
     'politician': {
         label: 'Politician',
         types: ['human']
@@ -3740,7 +3746,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3872,6 +3878,7 @@ const RACE_CLASS = {
     'overlord': 'bruiser',
     'chosen one': 'assassin',
     'banker': 'support',   // 2026-11-16
+    'sewer gator': 'assassin',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
     'dinosaur': 'bruiser',
@@ -3912,6 +3919,7 @@ const AVAILABLE_ITEM_TYPES = ['', 'healPotion', 'manaPotion', 'scanner'];
    standing on its preferred terrain pays 1 less to move through it and takes TERRAIN_PREFERENCE_BONUS for that terrain
    (state.js getTerrainPreferenceModifier). A race not listed has none. */
 const RACE_TERRAIN_PREFERENCE = {
+    'sewer gator': 'deep_water',   // 2026-11-16 THE NEW RACES — at home in deep water (never drowns: map.js unitIsDeepWaterAdapted)
     'siren': 'deep_water',
     'reptilian': 'water',
     'ghost': 'deep_water',
@@ -4284,6 +4292,7 @@ const RACE_BASE_STATS = {
     'overlord':           { hp: 910, mp:  75, atk:  71, def:  115, mdef:  32, int:  68, vision: 2, crt: 13, spd: 120 },   // STATS28 PASS 2026-10-29: HP 1593→1150, ATK 109→95, DEF 146→115 (65% over STATS27+28; survives 88% of games); LOOP PASS 1 2026-11-08: HP 1150→910, ATK 95→71, M.ATK 91→68 (60.4% in the 11-08 loop's baseline lab (106 games), 62.3% team-adjusted; POWER -85)
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
     'banker':             { hp: 1300, mp: 190, atk:  40, def:  120, mdef:  130, int:  180, vision: 3, crt: 15, spd: 85 },   // 2026-11-16 THE NEW RACES — first pass on the support median
+    'sewer gator':        { hp: 1250, mp: 120, atk: 168, def: 118, mdef:  58, int:  60, vision: 3, crt: 22, spd: 130 },   // 2026-11-16 THE NEW RACES — first pass between the reptilian and the sharkman
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
     'dinosaur':           { hp: 1130, mp:  60, atk:  131, def:  125, mdef:  35, int:   11, vision: 4, crt: 15, spd: 160 },   // STATS24 PASS 2026-10-29: HP 1715→1500 (top race 3 runs: 60/67/82%); STATS25 PASS 2026-10-29: SPD 192→160 = move 5→4 (65% after the HP cut; 669 Cube damage a game, the most); STATS29 PASS 2026-10-30: ATK 197→160, HP 1500→1310 (57% over STATS27-29 (184 games); 612 Cube damage a game on ATK 197); STATS30 PASS 2026-10-30: HP 1310→1140, ATK 160→128 + raceQuake excluded (60% in STATS30; POWER -75; 63% then 60% in STATS29-30 after the ATK/HP cut; 577 Cube damage a game, the most: ATK + HP and the shared earth Quake excluded (RACE_SPELL_EXCLUDES)); STATS34 PASS 2026-11-01: HP 1140→920, ATK 128→105, DEF 185→125 (59.8% in STATS34 (107 games), 60.5% team-adjusted; POWER -70); LOOP PASS 1 2026-11-08: HP 920→1130, ATK 105→131 (41.9% in the 11-08 loop's baseline lab (105 games), 40.1% team-adjusted; POWER +67)
@@ -4432,6 +4441,7 @@ const RACE_PHYSIQUE = {
     'overlord':            { h: 2.40, w: 190 },
     'chosen one':          { h: 1.80, w: 75 },
     'banker':              { h: 1.80, w: 85 },   // 2026-11-16
+    'sewer gator':         { h: 2.10, w: 180 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
     'dinosaur':            { h: 4.50, w: 4000 },
@@ -9169,7 +9179,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Such a pretty light, down where there is none. Deals MEDIUM magic damage to a Single Enemy within 4 tiles, draws it 3 tiles toward you and Charms it for a round.' },
         { id: 'sigAbyssJaws', name: 'Abyss Jaws', tier: 3, families: ['anglerlure'], cost: 75, apCost: 1, spellType: 'anomaly',
-          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 1, onKillHealPct: 0.25,
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 115, range: 1, onKillHealPct: 0.25,
           bonusVsStatus: { status: 'charm', mult: 1.5 },
           desc: 'The light was attached to something. Deals HEAVY physical damage to an adjacent enemy; a kill heals 25% of max HP. Charmed targets take it worse.' },
     ],
@@ -10171,6 +10181,23 @@ const RACE_ABILITIES = {
           type: 'damage', kind: 'damage', damageType: 'magic', dmg: 150, range: 4,
           bonusVsStatus: { status: 'shorted', mult: 1.5 },
           desc: 'Calls in the note. Deals MEDIUM magic damage to a Single Enemy within 4. Deals bonus damage to Shorted targets.' },
+    ],
+    'sewer gator': [
+        /* THE AMBUSH FROM THE WATER (2026-11-16, the new races; mondo picked the Sewer Gator): it hides in any liquid
+           (water, deep water, radioactive sludge, black ooze) and drags its prey in. Rules: data.js STATUS_DEFS submerged,
+           battle.js _gatorOnLiquid / _gatorSurfaceCheck / _deathRollDrag, the `requiresLiquid` + `dragIntoLiquid` spell fields. */
+        { id: 'nrSubmerge', name: 'Submerge', tier: 1, families: ['sewerpredator'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'water', type: 'buff', kind: 'buff', range: 0, requiresLiquid: true,
+          statusEffects: [{ id: 'submerged', duration: 2 }, { id: 'invisible', duration: 2 }],
+          desc: 'Sinks under the surface. Cast while standing in water, sludge or ooze: the gator is Invisible and cannot be targeted for 2 rounds, until it attacks or climbs out of the liquid. Cooldown: 2 rounds.' },
+        { id: 'nrDeathRoll', name: 'Death Roll', tier: 2, families: ['sewerpredator'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 1,
+          sneakBonus: true, dragIntoLiquid: true,
+          desc: 'Clamps its jaws and rolls. Deals MEDIUM physical damage to a Single Enemy beside the gator, more from under the surface, and drags it into the nearest liquid square beside either of them. In deep water the victim starts Drowning. Cooldown: 2 rounds.' },
+        { id: 'nrTailSweep', name: 'Tail Sweep', tier: 3, families: ['sewerpredator'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'cross', range: 0, aoeOriginSelf: true, crossRadius: 1,
+          damageType: 'physical', dmg: 120, pushDistance: 1,
+          desc: 'A sweep of the spiked tail. Deals MEDIUM physical damage to All Enemies beside the gator and knocks them 1 square away, into the water if it is there.' },
     ],
     'politician': [
         { id: 'raceExecutiveOrder', tier: 3, noDamage: true, aoeRadius: 1, cooldownRounds: 2, families: ['politics'], spellType: 'human', name: 'Executive Order',
@@ -13617,6 +13644,8 @@ const STATUS_DEFS = {
         stack: 'max',
         untargetable: true,
         rangeDelta: 1,
+        /* 🐊 the Sewer Gator's Submerged rides with it: blowing cover (an attack, a reveal) brings it up too (2026-11-16) */
+        onRemove(unit) { if (unit && unit.status && unit.status.submerged > 0 && typeof clearStatus === 'function') clearStatus(unit, 'submerged'); },
         iconSrc: createStatusIconDataUri('🌿', '#1a3a1a', '#d6ffd6', '#5ad45a')
     },
     /* (steadyAim status deleted 2026-08-07 with its only applier, the cut
@@ -13686,6 +13715,14 @@ const STATUS_DEFS = {
         iconSrc: createStatusIconDataUri('📉', '#2a1c1c', '#ffd6d6', '#e05a5a'),
         onApply(unit, src) { unit._shortSrcId = src ? src.id : null; },
         onRemove(unit) { delete unit._shortSrcId; }
+    },
+    /* 🐊 SUBMERGED (2026-11-16, the Sewer Gator's Submerge): it rides with Invisible. While it lasts the gator is under the
+       surface; ending any move off a liquid square surfaces it (battle.js _gatorSurfaceCheck from resolveTileArrival). */
+    submerged: {
+        icon: '🐊', glyph: '🐊', short: 'SUB', label: 'Submerged',
+        colorText: 'under the surface',
+        kind: 'buff', category: 'buff', stack: 'max',
+        iconSrc: createStatusIconDataUri('🐊', '#1c2a1c', '#d6ffd6', '#6a9a3a')
     },
     contract: {
         icon: '📜',
@@ -13884,6 +13921,7 @@ const STATUS_LIBRARY_DESCS = {
     indomitable: 'Refuses to die: the next killing blow leaves this unit at 1 HP.',
     debt:      'Owes the bank: when it ends (or is cleansed) the loan comes due. Pays back the loan with interest (never below 1 HP) and the lender heals that much. Going down first leaves the lender with the loss.',
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
+    submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
     minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts, and harder to hit: it dodges basic attacks 25% of the time. Spells still always land.',
@@ -19943,6 +19981,7 @@ const EW_RACE_BIOMES = {
     'droid': ['neon_city'], 'antihero': ['urban', 'neon_city'],
     'conspiracy theorist': ['clandestine', 'ranch'], 'overlord': ['infernal'], 'chosen one': ['ancient'],
     'banker': ['urban'],   // 2026-11-16 — Disaster City, Financial
+    'sewer gator': ['urban', 'underground_base'],   // 2026-11-16 — The Sewers (no unit of their own before it)
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
     'gnome': ['inner_earth', 'forest'], 'kaiju': ['urban', 'deep_sea'], 'kraken': ['deep_sea'],
@@ -20579,6 +20618,7 @@ const RACE_TREE = {
     'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
     'overlord':      ['raceHellfireCrown', 'raceInfernalConscription', 'raceBrutalSlam', 'raceCataclysmDecree'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'banker':        ['raceSurveillance', ['raceStealFromRich', 'raceBlackBudget'], ['raceSwipe', 'raceFluorideWater'], 'raceTruthBomb'],   // 2026-11-16
+    'sewer gator':   ['raceBite', ['raceApexRoar', 'raceSplash'], ['raceRot', 'raceFeralDive'], 'raceJurassicJaw'],   // 2026-11-16
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'dinosaur':      ['raceDinoTailWhip', 'raceApexCharge', ['groundSlam', 'raceApexRoar'], 'raceJurassicJaw'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -22474,6 +22514,16 @@ const SPELL_FAMILIES = {
         desc: 'Money as a weapon: a loan that comes back with interest, a bet against the enemy, and the note called in.',
         unique: 'banker',
         identity: { who: ['Banker', 'Financier', 'Lender'], adj: ['Pinstriped', 'Leveraged', 'Smug'], look: ['a pinstripe three-piece suit', 'a gold watch chain', 'slicked-back grey hair'], vibe: ['lends you the HP and wants it back', 'bets on who goes down next'] }
+    },
+    sewerpredator: {   // 2026-11-16 THE NEW RACES — the Sewer Gator's own
+        id: 'sewerpredator',
+        name: 'Sewer Predator',
+        glyph: '🐊',
+        color: '#4a5a2a',
+        kind: 'signature',
+        desc: 'The thing in the pipes: it sinks out of sight, drags you under and sweeps you into the water.',
+        unique: 'sewer gator',
+        identity: { who: ['Sewer Gator', 'Drain Lurker', 'Pipe Croc'], adj: ['Skeletal', 'Waterlogged', 'Chained'], look: ['black scales over bare ribs', 'a broken chain on one wrist', 'yellow eyes just above the water'], vibe: ['waits under the sludge', 'rolls you down into the dark'] }
     },
     politics: {
         id: 'politics',
@@ -24668,6 +24718,7 @@ const RACE_FAMILIES = {
     'police officer': ['policeprocedure', 'policetraining', 'weaponstraining', 'humangrit'],
     'time cop': ['policetraining', 'cowboyskills', 'marksmanship', 'cyberpunkweapons', 'advancedtechnology'],   // 2026-10-24 — one family set per look
     banker: ['highfinance', 'deepstate', 'thievery', 'conspiracyknowledge'],   // 2026-11-16
+    'sewer gator': ['sewerpredator', 'apexpredator', 'beastabilities', 'poison'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
     'starfish': ['echinoderm', 'water', 'deepsea', 'healingmagic'],
@@ -25273,6 +25324,7 @@ const CAMPAIGN_RACE_PRICES = {
   'overlord': 850,
   'chosen one': 700,
   'banker': 500,   // 2026-11-16
+  'sewer gator': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
   'gangster': 200,
@@ -27255,7 +27307,7 @@ const DOOR_TEXT = {
         'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
-        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown',   // banker 2026-11-16 (Disaster City, Financial)
+        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers',   // banker + sewer gator 2026-11-16
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',
@@ -68428,6 +68480,9 @@ function hqMapModel(profile, curRoom, opts) {
    fallback ring for a place the table does not name (a new hub / site still
    appears; hq-map.test.js insists nothing lands within minD of another).
    Viewer-local, nothing on `state`, nothing relayed (RULE #2). */
+/* ZONEMAP-BEGIN (written by `node bake-map.js`; do not edit by hand: THE MAP REMAKE, docs/plans/map-remake/MAP_REMAKE_PLAN.md) */
+const HQ_ZONE_MAP = {"v":1,"sq":3.5,"plot":42,"kinds":["nothing","grass","dark grass","dirt","sand","snow","rock","paved","wood","ash","lava rock","cloud","red rock","crystal","gold","metal"],"zones":{"city":{"rooms":[{"room":"site_prebuilt_downtown_streets","layer":"surface","zx":0,"zy":0,"wx":0,"wy":-3,"cols":13,"rows":15,"ox":-252,"oz":-378,"plots":[["P00-00","Church","R",0,11],["P01-00","Townhouse court","R",1,11],["P02-00","Laundry terraces","R",2,11],["P03-00","Boxing gym","R",3,11],["P00-01","Community kitchen","R",0,12],["P01-01","Corner shops","R",1,12],["P02-01","Tenement stair","R",2,12],["P03-01","Dojo","R",3,12],["P00-02","Bus stop court","R",0,13],["P01-02","Backyard market","R",1,13],["P02-02","Repair shops","R",2,13],["P03-02","Community gate","R",3,13],["P00-03","Canal walk","R",0,14],["P01-03","Southside homes","R",1,14],["P02-03","Pawnshop court","R",2,14],["P03-03","Street court","R",3,14],["P04-00","Fire Station","C",0,3],["P05-00","Civil Records","C",1,3],["P06-00","City Hall","C",2,3],["P07-00","Council annex","C",3,3],["P04-01","Dispatch","C",0,4],["P05-01","Service court","C",1,4],["P06-01","Civic plaza","C",2,4],["P07-01","Courthouse","C",3,4],["P04-02","Police desk","C",0,5],["P05-02","Holding annex","C",1,5],["P06-02","Records garden","C",2,5],["P07-02","Time Bureau","C",3,5],["P04-03","Transit square","C",0,6],["P05-03","Public library","C",1,6],["P06-03","Military offices","C",2,6],["P07-03","Permit offices","C",3,6],["P08-00","Luxury hotel","F",4,3],["P09-00","Bank archive","F",5,3],["P10-00","Goblin Bank","F",6,3],["P11-00","Executive court","F",7,3],["P08-01","Members club","F",4,4],["P09-01","Caterer yard","F",5,4],["P10-01","Bank offices","F",6,4],["P11-01","Vault annex","F",7,4],["P08-02","Taxi court","F",4,5],["P09-02","Tailor shops","F",5,5],["P10-02","Intelligence office","F",6,5],["P11-02","Service garage","F",7,5],["P08-03","Finance arcade","F",4,6],["P09-03","Worker cafe","F",5,6],["P10-03","Penthouse stair","F",6,6],["P11-03","Private garden","F",7,6],["P00-04","Dorm court","U",0,7],["P01-04","Bookshops","U",1,7],["P02-04","Observatory","U",2,7],["P03-04","Faculty homes","U",3,7],["P00-05","Campus green","U",0,8],["P01-05","Lecture hall","U",1,8],["P02-05","Research lab","U",2,8],["P03-05","Psychology lab","U",3,8],["P00-06","Student cafe","U",0,9],["P01-06","Library yard","U",1,9],["P02-06","Lab service court","U",2,9],["P03-06","Research annex","U",3,9],["P00-07","Campus gate","U",0,10],["P01-07","Clinic","U",1,10],["P02-07","Science museum","U",2,10],["P03-07","Loading lane","U",3,10],["P04-04","News office","H",4,7],["P05-04","Hero workshop","H",5,7],["P06-04","Superhero Tower","H",6,7],["P07-04","Press court","H",7,7],["P04-05","Coffee arcade","H",4,8],["P05-05","Hero plaza","H",5,8],["P06-05","Training hall","H",6,8],["P07-05","Tower service","H",7,8],["P04-06","Apartment stair","H",4,9],["P05-06","Memorial walk","H",5,9],["P06-06","Transit court","H",6,9],["P07-06","Office court","H",7,9],["P04-07","West junction","H",4,10],["P05-07","Market steps","H",5,10],["P06-07","East junction","H",6,10],["P07-07","Delivery yard","H",7,10],["P08-04","Casino","E",8,3],["P09-04","Costume shops","E",9,3],["P10-04","Concert hall","E",10,3],["P11-04","Recording studio","E",11,3],["P08-05","Restaurant court","E",8,4],["P09-05","Comedy theater","E",9,4],["P10-05","Backstage yard","E",10,4],["P11-05","Film studio","E",11,4],["P08-06","Night market","E",8,5],["P09-06","Cabaret","E",9,5],["P10-06","Stage workshop","E",10,5],["P11-06","Arcade","E",11,5],["P08-07","Taxi rank","E",8,6],["P09-07","Kitchen lane","E",9,6],["P10-07","Crew stair","E",10,6],["P11-07","Cinema","E",11,6],["P00-08","Freight gate","I",8,11],["P01-08","Warehouse","I",9,11],["P02-08","Power station","I",10,11],["P03-08","Machine shop","I",11,11],["P00-09","Container court","I",8,12],["P01-09","Loading office","I",9,12],["P02-09","Transformer yard","I",10,12],["P03-09","Aerospace lab","I",11,12],["P00-10","Port office","I",8,13],["P01-10","Cargo sheds","I",9,13],["P02-10","Maintenance lane","I",10,13],["P03-10","Hangar apron","I",11,13],["P00-11","Dock edge","I",8,14],["P01-11","Water works","I",9,14],["P02-11","Pump court","I",10,14],["P03-11","Rail service","I",11,14],["P04-08","Museum","S",4,11],["P05-08","Gallery court","S",5,11],["P06-08","Wrestling hall","S",6,11],["P07-08","Clubhouse","S",7,11],["P04-09","Park west","S",4,12],["P05-09","Park east","S",5,12],["P06-09","Arena service","S",6,12],["P07-09","Sports clinic","S",7,12],["P04-10","Practice court","S",4,13],["P05-10","Locker rooms","S",5,13],["P06-10","Training gym","S",6,13],["P07-10","Event square","S",7,13],["P04-11","Park gate","S",4,14],["P05-11","Vendor stalls","S",5,14],["P06-11","Equipment court","S",6,14],["P07-11","South gate","S",7,14],["P08-08","Waterfront hotel","B",8,7],["P09-08","West shops","B",9,7],["P10-08","Cinema","B",10,7],["P11-08","Marina lookout","B",11,7],["P08-09","Street market","B",8,8],["P09-09","Food hall","B",9,8],["P10-09","Security office","B",10,8],["P11-09","Service court","B",11,8],["P08-10","Arrival court","B",8,9],["P09-10","Cordon plaza","B",9,9],["P10-10","Mall concourse","B",10,9],["P11-10","East shops","B",11,9],["P08-11","Police staging","B",8,10],["P09-11","Loading / parking","B",9,10],["P10-11","Medical staging","B",10,10],["P11-11","Boardwalk exit","B",11,10],["H00-00","The Saddle","N",0,0],["H01-00","The Fire Road","N",1,0],["H02-00","The Burn","N",2,0],["H03-00","The Boulders","N",3,0],["H04-00","The Lookout Rock","N",4,0],["H05-00","The Radio Mast","N",5,0],["H06-00","The Ridge Trail","N",6,0],["H07-00","Behind the Letters, west","N",7,0],["H08-00","The Peak","N",8,0],["H09-00","Behind the Letters, east","N",9,0],["H10-00","The Water Tank","N",10,0],["H11-00","The Headland","N",11,0],["H12-00","The Sea Cliff","N",12,0],["H00-01","The Shasta Road","N",0,1],["H01-01","The Reservoir","N",1,1],["H02-01","The Dam","N",2,1],["H03-01","The Oak Canyon","N",3,1],["H04-01","The Old Quarry","N",4,1],["H05-01","The Horse Trail","N",5,1],["H06-01","The Sign, D I S","N",6,1],["H07-01","The Sign, A S T","N",7,1],["H08-01","The Sign, E R C","N",8,1],["H09-01","The Sign, I T Y","N",9,1],["H10-01","The Observatory","N",10,1],["H11-01","The Coast Overlook","N",11,1],["H12-01","The Cliffs","N",12,1],["H00-02","The Dry Wash","N",0,2],["H01-02","The Chaparral","N",1,2],["H02-02","The Gully","N",2,2],["H03-02","The Fire Break","N",3,2],["H04-02","The Hill House","N",4,2],["H05-02","The Hairpin","N",5,2],["H06-02","The Hikers' Lot","N",6,2],["H07-02","The Canyon Road","N",7,2],["H08-02","The Brush","N",8,2],["H09-02","The Stilt House","N",9,2],["H10-02","The Observatory Drive","N",10,2],["H11-02","The Cliff Stair","N",11,2],["H12-02","The Cove","N",12,2]],"nx":208,"nz":216,"h0":-1.46,"hs":0.26,"v":"6ab8fcec02"}],"districts":{"C":["Civic Center","#e0b040"],"F":["Financial","#5fb0e0"],"E":["Entertainment","#e06a8a"],"U":["University","#7fd07a"],"H":["Hero Plaza","#c08ae0"],"B":["Bayside","#e08a40"],"R":["Southside","#50d0c0"],"S":["Sports + Culture","#d0d060"],"I":["Industrial","#a0a0ff"],"N":["The Hollywood Hills","#ff9a9a"]}},"mountains":{"rooms":[{"room":"site_prebuilt_shasta_mountains","layer":"surface","zx":5,"zy":0,"wx":-12,"wy":-11,"cols":12,"rows":8,"ox":-252,"oz":-168,"nx":144,"nz":96,"h0":-0.08,"hs":0.25,"v":"bd89fbb675"},{"room":"site_prebuilt_northpole_plots","layer":"surface","zx":0,"zy":0,"wx":-16,"wy":-11,"cols":4,"rows":4,"ox":-84,"oz":-84,"nx":48,"nz":48,"h0":-0.07,"hs":0.25,"v":"330e8017b8"}],"districts":{"The Snowy Pass":["The Snowy Pass","#e0b040"],"The Ski Lodge + slopes":["The Ski Lodge + slopes","#5fb0e0"],"Mount Olympus":["Mount Olympus","#e06a8a"],"Mount Shasta":["Mount Shasta","#7fd07a"],"The North Pole village":["The North Pole village","#c08ae0"]}},"woods":{"rooms":[{"room":"site_prebuilt_fairy_forest_plots","layer":"surface","zx":0,"zy":0,"wx":-6,"wy":1,"cols":6,"rows":6,"ox":-126,"oz":-126,"nx":72,"nz":72,"h0":-3.5,"hs":0.25,"v":"7a43069137"}],"districts":{"T":["The Redwood Trail","#e0b040"],"G":["The Ritual Ground","#5fb0e0"],"C":["The Clearing","#e06a8a"],"M":["Dead Man's Cave","#7fd07a"]}},"kingdom":{"rooms":[{"room":"site_prebuilt_camelot_kingdom","layer":"surface","zx":0,"zy":0,"wx":-14,"wy":0,"cols":8,"rows":8,"ox":-168,"oz":-168,"nx":96,"nz":96,"h0":-0.8,"hs":0.25,"v":"1e9ec3fc76"}],"districts":{"K":["The Castle","#e0b040"],"T":["The Village","#5fb0e0"],"N":["The Snowy Pines","#e06a8a"],"F":["The Fairy Forest","#7fd07a"],"L":["The Looking-Glass Garden","#c08ae0"],"W":["The Forest","#e08a40"]}},"ranch":{"rooms":[{"room":"site_prebuilt_skinwalker_estate","layer":"surface","zx":0,"zy":0,"wx":-6,"wy":7,"cols":6,"rows":6,"ox":-126,"oz":-126,"nx":72,"nz":72,"h0":-0.8,"hs":0.25,"v":"411dfd1819"}],"districts":{"C":["The Corn Fields","#e0b040"],"R":["The Ranch","#5fb0e0"],"H":["The Haunted House + Graveyard","#e06a8a"],"L":["The Lake","#7fd07a"]}},"desert":{"rooms":[{"room":"site_prebuilt_area51_desert","layer":"surface","zx":0,"zy":0,"wx":0,"wy":12,"cols":12,"rows":12,"ox":-252,"oz":-252,"nx":144,"nz":144,"h0":-2.39,"hs":0.25,"v":"929f9a4ed0"}],"districts":{"R":["The Highway","#e0b040"],"C":["The Circus","#5fb0e0"],"W":["Western Town","#e06a8a"],"A":["Area 51","#7fd07a"],"G":["Giza","#c08ae0"]}},"beach":{"rooms":[{"room":"site_prebuilt_bermuda_beach","layer":"surface","zx":0,"zy":0,"wx":12,"wy":1,"cols":14,"rows":10,"ox":-294,"oz":-210,"nx":168,"nz":120,"h0":-0.05,"hs":0.25,"v":"c9b2155236"}],"districts":{"S":["The Shore","#e0b040"],"H":["The Harbour","#5fb0e0"],"O":["The Ocean","#e06a8a"],"T":["The Bermuda Triangle","#7fd07a"]}},"ley":{"rooms":[{"room":"site_prebuilt_gobekli_ancient","layer":"surface","zx":0,"zy":0,"wx":12,"wy":17,"cols":9,"rows":9,"ox":-189,"oz":-147,"nx":108,"nz":84,"h0":-1.8,"hs":0.25,"v":"18245e5c33"}],"districts":{"G":["Göbekli Tepe","#e0b040"],"B":["Bug Colony","#5fb0e0"],"S":["Stonehenge","#e06a8a"],"Y":["The Ley Line","#7fd07a"],"T":["Babel","#c08ae0"],"Z":["Technoticlan","#e08a40"]}},"antarctica":{"rooms":[{"room":"site_prebuilt_antarctica_plots","layer":"surface","zx":0,"zy":0,"wx":3,"wy":26,"cols":6,"rows":6,"ox":-126,"oz":-126,"nx":72,"nz":72,"h0":0,"hs":0.25,"v":"56d6729e55"}],"districts":{"H":["The Hull in the Ice","#e0b040"],"W":["The Ice Wall","#5fb0e0"],"C":["The Crevasse","#e06a8a"],"S":["The Station","#7fd07a"],"O":["The Polar Openings","#c08ae0"],"F":["The Shelf Ice","#e08a40"]}},"divine":{"rooms":[{"room":"site_prebuilt_heaven_plots","layer":"off","zx":0,"zy":0,"note":"ABOVE THE VATICAN","cols":4,"rows":5,"ox":-84,"oz":-105,"nx":48,"nz":60,"h0":3.5,"hs":0.25,"v":"0250da57b5"},{"room":"site_prebuilt_vatican_plots","layer":"surface","zx":6,"zy":0,"wx":-6,"wy":-3,"cols":6,"rows":4,"ox":-126,"oz":-84,"nx":72,"nz":48,"h0":-0.18,"hs":0.25,"v":"e2f077edf2"},{"room":"site_prebuilt_vatican_under","layer":"under","zx":6,"zy":6,"wx":-2,"wy":-2,"note":"UNDER THE VATICAN","cols":3,"rows":2,"ox":-63,"oz":-42,"nx":36,"nz":24,"h0":-0.5,"hs":0.25,"v":"c6f5248970"},{"room":"site_prebuilt_hell_plots","layer":"under","zx":14,"zy":0,"wx":-7,"wy":-3,"note":"UNDER THE VATICAN","cols":4,"rows":4,"ox":-84,"oz":-84,"nx":48,"nz":48,"h0":0,"hs":0.25,"v":"e0a230a16b"}],"districts":{"B":["The Basilica","#e0b040"],"S":["The Square","#5fb0e0"],"P":["The Palace","#e06a8a"],"C":["The Cloister","#7fd07a"],"G":["The Gardens","#c08ae0"],"K":["The Catacombs","#e08a40"],"R":["The Rim","#50d0c0"],"D":["The Descent","#d0d060"],"L":["The Bowl","#a0a0ff"],"W":["The Walkways","#ff9a9a"],"T":["The Stairway","#9ae0ff"],"A":["The Gate","#e0c0a0"],"F":["The Cloud Fields","#b0e050"],"Y":["The City","#ff80d0"]}},"underworld":{"rooms":[{"room":"site_prebuilt_downtown_underworld","layer":"under","zx":0,"zy":0,"wx":3,"wy":6,"note":"UNDER DISASTER CITY","cols":6,"rows":5,"ox":-126,"oz":-105,"nx":72,"nz":60,"h0":-0.8,"hs":0.25,"v":"3a12db163b"}],"districts":{"W":["The Sewers","#e0b040"],"T":["The Running Tunnels","#5fb0e0"],"H":["The Holding Cells","#e06a8a"],"O":["The Old Workings","#7fd07a"],"R":["The Radioactive Drain","#c08ae0"]}},"cavern":{"rooms":[{"room":"site_prebuilt_hollow_earth_cavern","layer":"under","zx":0,"zy":0,"wx":-6,"wy":2,"cols":6,"rows":6,"ox":-126,"oz":-126,"nx":72,"nz":72,"h0":-0.8,"hs":0.25,"v":"406ee6c8cf"}],"districts":{"K":["The Cavern","#e0b040"],"H":["Hollow Earth","#5fb0e0"],"A":["Agartha","#e06a8a"]}},"dumb":{"rooms":[{"room":"site_prebuilt_dumb_base","layer":"under","zx":0,"zy":0,"wx":0,"wy":18,"note":"UNDER AREA 51","cols":7,"rows":7,"ox":-147,"oz":-147,"nx":84,"nz":84,"h0":-1.75,"hs":0.25,"v":"541c317c87"}],"districts":{"K":["CERN, The Ring","#e0b040"],"P":["Level P3","#5fb0e0"],"S":["Sub-Level 7","#e06a8a"],"R":["Research","#7fd07a"],"C":["Command","#c08ae0"]}},"deep":{"rooms":[{"room":"site_prebuilt_atlantis_deep","layer":"under","zx":0,"zy":0,"wx":15,"wy":4,"note":"UNDER THE SEA","cols":8,"rows":5,"ox":-168,"oz":-105,"nx":96,"nz":60,"h0":-0.18,"hs":0.25,"v":"a3db37d2a7"}],"districts":{"C":["Atlantis, the Citadel","#e0b040"],"R":["Atlantis, the Rings","#5fb0e0"],"S":["The Sea Floor","#e06a8a"],"T":["The Trench","#7fd07a"]}},"space":{"rooms":[{"room":"site_prebuilt_moon_plots","layer":"off","zx":0,"zy":0,"cols":5,"rows":4,"ox":-105,"oz":-84,"nx":60,"nz":48,"h0":-4.85,"hs":0.25,"v":"f71312fe9c"},{"room":"site_prebuilt_mars_plots","layer":"off","zx":7,"zy":0,"cols":5,"rows":4,"ox":-105,"oz":-84,"nx":60,"nz":48,"h0":-5.35,"hs":0.25,"v":"a53e404b0c"},{"room":"site_prebuilt_saturn_plots","layer":"off","zx":14,"zy":0,"cols":4,"rows":4,"ox":-84,"oz":-84,"nx":48,"nz":48,"h0":-3.89,"hs":0.25,"v":"d2341cfcc1"},{"room":"site_prebuilt_singularity_plots","layer":"off","zx":20,"zy":0,"cols":4,"rows":4,"ox":-84,"oz":-84,"nx":48,"nz":48,"h0":-6.37,"hs":0.25,"v":"cddeb0b0b4"}],"districts":{"M":["The Mare","#e0b040"],"C":["The Crater","#5fb0e0"],"F":["The Far Side","#e06a8a"],"Y":["Cydonia","#7fd07a"],"V":["The Canyon","#c08ae0"],"R":["The Rover Bay","#e08a40"],"H":["The Hexagon","#50d0c0"],"G":["The Ring Shard","#d0d060"],"D":["The Drop","#a0a0ff"],"A":["The Accretion Rim","#ff9a9a"]}},"astral":{"rooms":[{"room":"site_prebuilt_lookingglass_realm","layer":"off","zx":0,"zy":0,"cols":6,"rows":6,"ox":-126,"oz":-126,"nx":72,"nz":72,"h0":1.29,"hs":0.25,"v":"a320f41cc0"}],"districts":{"S":["The Sea of Possibility","#e0b040"],"L":["The Library of Unthought Things","#5fb0e0"],"N":["The Nightmare","#e06a8a"]}}}};
+/* ZONEMAP-END */
 const HQ_WORLD_L = {
     hubR: 0.44, siteR: 0.27, minD: 0.8, autoR: 5.8, autoStep: 0.6,
     block: { w: 1.7, h: 2.3 },
