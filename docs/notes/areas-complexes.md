@@ -5739,8 +5739,8 @@ Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/are
 - **THE PROBE, WESTERN TOWN:** faces are compass degrees (0 looks north, 90 east). Room x = -84 + 3.5 x home square, z = -210 + 3.5 x home
   square. Main Street's middle is z -126; a good street view is x 112, z -121, face 62, y 1.6. A cold run took 200 s, a warm one 60 s.
   Swinging door leaves DO draw here (saloon, church, jail).
-- **NEEDS A MODEL:** the list in W.js's header (anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows,
-  prospector's tent, telegraph pole).
+- **NEEDS A MODEL:** ~~anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, prospector's tent, telegraph
+  pole~~ all placed 11-16 ("THE MODEL PASS" below).
 
 ## THE DESERT, WESTERN TOWN — THE INTERIORS PASS (2026-11-16, second side, the Western Town district thread)
 
@@ -5775,7 +5775,7 @@ Pass 3 of 5. Only `docs/areas/desert/districts/W.js` (`dress()`, called from `gr
 - The south half: logs, pot and a horse line at the Wagon Camp; five cows and a broken fence on Open range (its squares x 80..89, y 41..47
   are ROCK in the layout: a cow placed there stood on the mesa); the box canyon is a hideout (fire, cot, money sacks, dynamite, a horse).
 - A crop patch and scarecrow by the windmill (Halloween pack), pickets at the church (hw_fence).
-- Still modern: the camp's two `camping_tent`s. On the NEEDS A MODEL list.
+- ~~Still modern: the camp's two `camping_tent`s.~~ `canvas_tent` since THE MODEL PASS (11-16).
 
 ## THE DESERT, WESTERN TOWN — THE ATMOSPHERE PASS + THE AIR HOOK (2026-11-16, second side, the Western Town district thread)
 
@@ -5803,6 +5803,39 @@ Pass 5 of 5; the row on the board is free again. Where the district stands: the 
 - **A STAGE UNDER 0.62 m IS CLIMBED** (the saloon's is 0.5 m: you can step up to the piano). A counter (1.02 m) is not.
 - **LEFT FOR MONDO / A LATER THREAD:** real upper floors (saloon gallery, hotel, hay loft), an inside for the mine, the NEEDS A MODEL
   list, brightness of the insides on his own machine, whether the five added trades stay.
+
+## THE DESERT, WESTERN TOWN — THE MODEL PASS (2026-11-16, second side, a short Western Town thread)
+
+mondo 11-16: "these are models that were added, go ahead and tell all of those district threads that needed models to use these ones". One PR,
+only `docs/areas/desert/districts/W.js` + a rebake. The list: `docs/plans/WISHLIST_MODELS_ADDED.md`. NEEDS A MODEL is empty for this district now.
+- **ASKED FOR AND PLACED (all crossed off):** `forge` + `anvil` (+ `bellows`, `grindstone`) at the smith's · `water_trough` x 6 (by the rails, the
+  corral, the camp) · `hay_bale` (the livery's loft, floor and porch, the corral) · `mine_cart` on the track (+ `buffer_stop`, `ore_heap`,
+  `head_wheel`, `wheelbarrow`) · `pickaxe` x 2 · `wanted_poster` x 7 (sheriff's front and inside, saloon, telegraph, store) · `tumbleweed` x 8 ·
+  `gallows` on the open lot by the undertaker · `canvas_tent` x 3 (the camp's two, a prospector's at the mine) · `telegraph_pole` x 3 with four
+  drawn wires (`des:w:wire`), south out of town past the corral · `telegraph_key` x 2 (the operator's desk, the counter).
+- **STAND-INS TAKEN OUT:** the drawn brick forge and hood, the bare stump where the anvil belongs, the drawn yellow hay blocks in the loft, the
+  drawn telegraph pole, the drawn buffer, the three drawn privies (`outhouse` now), the two nylon `camping_tent`s, the two `wolf`s (`coyote`
+  now), human `skull`s where cattle died (`cattle_skull`: the trail gate's beam, the range), the yard stumps (`axe_chopping_block` +
+  `firewood_stack`), the `library_ladder` in the livery (`wooden_ladder`), the church's `ships_bell` on the floor (`bell_frame` in the yard),
+  and every steel drum (`psx_metal_barrel_mp_1/2` -> `wooden_barrel`, about 20).
+- **ALSO FROM THE LIST:** `hearse_carriage` behind the undertaker, `lantern_post` x 3 (a lit core drawn in each), `hand_cart`, `hay_rack`,
+  `saddle` x 3, `pitchfork`, `clothes_line` behind the hotel, `plough` by the crop patch, `kettle` at the camp fire, `wood_stove` +
+  `woven_baskets` in the store, `antler_trophy` (saloon, hotel lobby), `handcuffs` on the sheriff's desk; animals as scenery, off every path:
+  `vulture` x 2, `hawk` on the old fence's post, `rattlesnake` x 2, `scorpion`, `lizard` x 2, `rooster`; plants: `agave` x 3, `yucca` x 3.
+- **FACINGS FOUND (prop `face`, compass degrees; look before you trust a new one):** `outhouse` door looks the way of its face. `canvas_tent`
+  door looks face + 90 (face 0 = door east). `gallows` stairs look north at face 0. `buffer_stop` buffers look south at face 0. `forge`
+  mouth looks out of a building at `face: 180` in the building's frame. `wanted_poster` shows its print the way of its face. `telegraph_pole`
+  arms run east-west at face 0 (so the line runs north-south); top arm insulators at y 6.62, x +-0.55 and +-1.35. `lantern_post` hangs its
+  lantern 0.48 m EAST of the post at face 0, glass at y 1.4. `mine_cart` is long along x: `face: 90` on a north-south track.
+- **A PROP ON A WALL'S LINE STANDS ON THE WALL'S TOP outside too:** a poster 8 cm off a front wall drew on the porch roof. `floor: true` fixes
+  it (the sheriff's notice board had the same fault since pass 3; it is on the jail's side wall now, facing the trail).
+- **WISH-LIST MODELS ARE LIGHT:** 1,300 to 2,600 triangles each (not the 10,000 of the older Meshy props); 0.4 to 0.9 MB a file.
+- **FPS** (the probe's software GPU, same three views, before -> after, warm readings): Main Street 2.0 -> 2.0 (1,271 -> 1,297 draw calls,
+  1.90 M -> 2.07 M triangles), the mine 2.6 -> 2.0 to 2.8 (288 -> 307, 0.45 M -> 0.58 M), the camp 2.2 -> 2.2 (802 -> 817, 1.48 M -> 1.55 M).
+  The first reading of a run is low (1.4 to 1.6: still compiling): read the second.
+- **NOT DONE / FOR MONDO:** the hay in the loft is seen only as tops over the loft rail (no stair up). Hitching rails, people, sheets and moving
+  effects are not on the list. DECISIONS MADE FOR MONDO: the gallows stands on the open lot between the undertaker and the horse pond; the
+  telegraph line leaves town south; the church's bell hangs in a frame in its yard; every barrel is oak.
 
 ## THE DESERT, THE ZONE KIT — what the next Desert district threads can use (2026-11-16, written by the pilot, Western Town; Area 51 adds its findings under it)
 
@@ -5867,8 +5900,9 @@ fence line, cattle, a camp), never scatter alone. The room's rock squares (`m` i
 breath; GitHub can answer "has merge conflicts" for a few seconds after a push, so check `git merge-base --is-ancestor origin/main HEAD`
 and try once more. The baked block conflicts every time: take main's side of data.js and index.html, then rebake and re-bump.
 
-**STILL MISSING ZONE-WIDE** Models: anvil + forge, water trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, a canvas
-tent, a telegraph pole. No upper floor inside any Desert building. No per-district sound. Fights use one table for the whole room
+**STILL MISSING ZONE-WIDE** Models: none of the first list (11-16: all made and placed, "WESTERN TOWN — THE MODEL PASS"; the keys are plain
+names: `forge`, `anvil`, `water_trough`, `hay_bale`, `mine_cart`, `pickaxe`, `wanted_poster`, `tumbleweed`, `gallows`, `canvas_tent`,
+`telegraph_pole`). No upper floor inside any Desert building. No per-district sound. Fights use one table for the whole room
 (`HQ_AREA_ENCOUNTERS`). No residents (the city's `HQ_CITY_RESIDENTS` has no Desert rows). No interior polish pass in the bake (the city's
 `interior-polish.js` moves clipping props; the Desert has none).
 
