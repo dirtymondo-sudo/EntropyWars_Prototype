@@ -5343,6 +5343,14 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
     oil store): white boards, a red tin roof, a blue door frame and window; inside oil barrels, jerrycans, a crate with a field radio,
     a life ring, rope, a lantern. The parapet is open where its walls stand.
   - Reef: the round rocks went (a round rock given `h` 1.8 is a black slab 8 m wide); three small pillars instead.
+- **PASS 3, THE DRESSING (seen on screen, probe views `p3_*`):** THE CORNER BUOYS (DOOR_MASTER, Room 345: "the corner buoys"): a drawn red
+  buoy two squares inside each corner of the Triangle with the room's number 345 on its board, and eight striped spars along the long side
+  (one `arch` row, no light). The open plots: a pod of dolphins, mantas, turtles, rays, tuna, three schools of fish; two lit anglerfish
+  down the Maelstrom's hole and a second, smaller hull caught on its stacks. Birds: an `eagle` turning over the light and one over the
+  lookout, two crows on the wreck (no gull model). The camp: a tent, bottles, spears; three flamingos at the Lagoon; a bird cage, traps, a
+  crate and a barrel on the Shack's porch; the keeper's bench; a sword and an amphora on the Wreck Islet; a dead tree, a stump, three palms.
+  FRAME RATE (the same island view): 8.2 fps, 492 draw calls, 1.03 M triangles (the Ocean's and the Harbour's passes landed in the room
+  between the runs, so this is the room's number, not this pass's).
 - **LEARNED (for the zone kit):**
   - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
     water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
@@ -6230,12 +6238,33 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
   0.6 m over the height a hugging row is given, so a flat piece there lies under the track. It wants a model or a level site (NEEDS A MODEL).
 - Not done: wall pictures and clocks (a prop's facing on a wall is not known per model), stairs to the loft (no stair model fits; no procedural stairs).
 
+### PASS 3, THE DRESSING (seen in the cloud browser)
+- **THE SHEEP PEN** (Pasture, squares 37..40 x 43..46): the ranch rail with a gap, seven `decor_sheep` (the spell's sheep; first placed here).
+- **THE YARD:** a woodpile (`fallen_log` x 3) with a chopping `stump`, shovel and saw, a `hitching_rail` with a horse at it, three `power_pole`s
+  down to the farmhouse, bins, sacks, tyres, more hens.
+- **THE FARMHOUSE'S GROUNDS:** the outhouse (`psx_toilet_cabin_mp_1`), four trees north of the house, a second scarecrow, pots, plants, a bench and
+  the cat on the porch, pumpkins, rabbits.
+- **THE TRAILERS' CAMP** by the gate: folding chairs, a cooler, bins, tyres, a mattress, the dog at the gate.
+- **THE COW SHED:** bales and a cow inside. Crows on the Hay Field's bales. Butterflies, bees, a ladybug, rabbits in the Pasture.
+- **EIGHT IRON LAMP POSTS** in the fittings row (the zone's lantern: amber, `glow: 0.7`; drawn, they glow only).
+- **PEOPLE:** five now (was two): a second cowboy at the barn, a conspiracy theorist at the trailers' camp, a grey among the cows. No lines.
+- **THE COST, AND A TRAP (zone-wide):** after pass 2 the proof view read 2,731 draw calls and 7.2 M triangles (491 before pass 1). The cause was
+  ONE prop: the Farmhouse's `hearth_fire`. The room's FIRST lit row whose key matches `torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava`
+  becomes the room's HERO light and casts a cube shadow map: six more passes of everything round it (three-renderer.js `_hqHeroShadow`). A walk-in's
+  rows (the `houses` stage) come before every district's dressing, so a hearth inside a building takes it. The hearth carries `noLight` now and the
+  two walk-ins are lit by a `bare_bulb` each (a real light that casts no cube shadow). With that: 883 draw calls, 2.9 M triangles in the proof view
+  (726 with none of R's inside props and no pass 3). `psx_ceiling_lamp_*_on` is a model only: its catalogue row has NO light.
+- **OUT FOR WEIGHT:** mondo's old Meshy props are 5 to 9 MB a file with no LOD (`meshy_burlap_sack`, `ancient_well`, `dish`, `rug_round`,
+  `crashed_car`, `meshy_rope`, `wooden_bucket`, `mop_bucket`, `candle`, `coffee_mug`): the well, the dish, the dead car, the rope and the mug are
+  not placed; sacks and buckets are few. `node -e` over R2_MODEL_FILES.json gives each file's size before you place a prop many times.
+
 ### DECISIONS MADE FOR MONDO (overrule any in one line)
 1. The Barn has a gambrel roof and is barn red with white trim; the Farmhouse is white with a green roof (as it was).
 2. The gate's board says `RANCH` (a plain word, no made-up name).
 3. The gate stands on the track's real opening (squares 36 x 63..64), not where the rail's old gap was.
 4. A grain silo and a water tower were added (models already in the game, nobody had placed them in this zone).
 5. The trough, the stock tanks and the gate are DRAWN from textured parts (no model exists; the plan names them). The cattle grid is NOT built.
+8. Three more people stand on the Ranch: a second cowboy, a conspiracy theorist at the trailers, a grey in the cow field (units that exist; no lines, no names).
 7. The Barn's hayloft is seen from below, not climbed. The Farmhouse is one floor: kitchen, dining, living room, bedroom.
 6. No way to the Desert was added (ways out are shared and his call).
 
@@ -6327,6 +6356,7 @@ Read this before dressing C, L or R. It grows with each of H's passes.
   draws near black under any tint; weathered timber = `WD` + tan + `gain: 1.9`; painted boards want `gain` 1.7 to 2.2. A part turned with
   `ry: 90` puts its local +z at the row's -x. Pieces first placed here: `ind_silo` (a grain bin), `water_tower_west`, `ride_on_mower`, `tire_stack`.
 - **A WALK-IN'S LIT CEILING (district R, pass 2):** the walk-in's own black ceiling hangs about 0.3 m under the wall's top; put the lit part 0.4 m under the top. By the corn's bank a `hug` row sits up to 0.6 m under the drawn ground: nothing flat there.
+- **THE HERO LIGHT TRAP (district R, pass 3):** the room's first lit torch / brazier / campfire / hearth / candelabra row casts the room's one cube shadow (six more passes of all it sees). Rows of the `houses` stage come first: give a hearth or a torch INSIDE a walk-in `noLight` and light the room with `bare_bulb` (y = the height over level 0). `psx_ceiling_lamp_*_on` has no light.
 - **FROM DISTRICT C (the Corn Fields thread, 11-16), free to copy out of C.js:** a CUT FIELD = `plan()` `strips()` (alternate squares `p` and `g`: the grass field on the
   lawn squares is the standing crop) + `dress()` `rows()` (three low `dirt_3` ridges a soil square, one `look` a field); `board(id, fx, fy, rot, words, w)` (a painted
   board on two posts, read from both sides); `lampParts()` + `LAMPS` (every lamp post on level ground in ONE `look`: 24 separate posts cost frames); `at()` (free decor
