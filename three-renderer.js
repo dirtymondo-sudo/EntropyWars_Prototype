@@ -71630,7 +71630,30 @@ const ThreeRenderer = (function () {
         for (var k = 0; k < n; k++) { var v = P ? P[k] : 0; if (v > 0 && v <= 8) { var q = v - 1, arr = q < 3 ? A : q < 6 ? B : C; arr[k * 3 + (q % 3)] = 1; } }
         geo.setAttribute('aPaintA', new THREE.BufferAttribute(A, 3)); geo.setAttribute('aPaintB', new THREE.BufferAttribute(B, 3)); geo.setAttribute('aPaintC', new THREE.BufferAttribute(C, 3));
     }
-    function _hqTerrainTiles(geo, idx, nx, nz, res) {
+    /* THE GROUND ZONES (2026-11-16, mondo: "make Hollywood hills a part of disaster city"): a room may say `terrain.zones: [{ x0, z0, x1, z1,
+       floor, cliff, path, pal: [sheet ... <= 8], floorTint, cliffTint, pathTint, floorColor }]` = inside that box the field wears ITS OWN three
+       sheets and its own eight painted sheets, not the room's (the city's north rows are hillside: dry grass, rock cliffs, dirt trails, where the
+       room's own are asphalt, board-marked concrete and paving). The shader reads at most 8 painted sheets, so the room's palette may now hold
+       16 (data.js HQ_GROUND_RULES.paintMax) and each piece of ground reads 8 of them: the room's first 8, or its zone's `pal`. The field's tiles
+       are cut on the zone's line (a quad belongs to the zone its middle lies in) and a zone's tiles carry the zone's material: the same
+       material maker, so both renderers. A field of one tile has no zones. Kill switch window.EW_HQ_NO_GROUND_ZONES. */
+    function _hqGroundZones(room, info, S) {
+        var Z = room && room.terrain && room.terrain.zones;
+        if (!Array.isArray(Z) || !Z.length || !info.paint || !info.paint.pal || (typeof window !== 'undefined' && window.EW_HQ_NO_GROUND_ZONES)) return null;
+        var out = [];
+        Z.forEach(function (z) {
+            if (!z || !(z.x1 > z.x0) || !(z.z1 > z.z0)) return;
+            var zi = Object.create(info), zp = (z.pal || []).slice(0, 8).map(String);
+            zi.floor = z.floor || info.floor; zi.cliff = z.cliff || info.cliff; zi.path = z.path || info.path;
+            zi.paint = { pal: zp, P: info.paint.P };
+            zi.room = Object.assign({}, info.room || room, { terrain: Object.assign({}, room.terrain, { floorTint: z.floorTint || null, cliffTint: z.cliffTint || null, pathTint: z.pathTint || null, cliffZoom: z.cliffZoom }) });
+            var slot = new Uint8Array(info.paint.pal.length + 1);
+            for (var v = 1; v <= info.paint.pal.length; v++) slot[v] = zp.indexOf(String(info.paint.pal[v - 1])) + 1;
+            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, slot: slot, mat: _hqTerrainMat(zi, Object.assign({}, S, { floorColor: (z.floorColor != null) ? z.floorColor : null })) });
+        });
+        return out.length ? out : null;
+    }
+    function _hqTerrainTiles(geo, idx, nx, nz, res, zones, info) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_TILES) return null;
         var tileM = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES.tileM > 0) ? HQ_ENGINE_RULES.tileM : 32;
         var nT = Math.max(4, Math.round(tileM / res)), tx = Math.ceil((nx - 1) / nT), tz = Math.ceil((nz - 1) / nT);
@@ -71640,11 +71663,13 @@ const ThreeRenderer = (function () {
         var byTile = {};
         for (var q = 0; q < idx.length; q += 6) {   // a quad's six indices: a, c, b, b, c, d (a = its low corner)
             var a = idx[q], ai = a % nx, aj = (a - ai) / nx, key = Math.floor(aj / nT) * tx + Math.floor(ai / nT);
+            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
             (byTile[key] || (byTile[key] = [])).push(q);
         }
         var out = [];
         Object.keys(byTile).forEach(function (key) {
-            var k = +key, ti = k % tx, tj = (k - ti) / tx, i0 = ti * nT, j0 = tj * nT, i1 = Math.min(nx - 1, i0 + nT), j1 = Math.min(nz - 1, j0 + nT);
+            var k = +key, zn = Math.floor(k / (tx * tz)), zslot = zn ? zones[zn - 1].slot : null, PP = zslot ? info.paint.P : null; k -= zn * tx * tz;
+            var ti = k % tx, tj = (k - ti) / tx, i0 = ti * nT, j0 = tj * nT, i1 = Math.min(nx - 1, i0 + nT), j1 = Math.min(nz - 1, j0 + nT);
             var bw = i1 - i0 + 1, bh = j1 - j0 + 1, n = bw * bh;
             var pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), bl = new Float32Array(n * 2), ao = new Float32Array(n);
             var pa = PA ? [new Float32Array(n * 3), new Float32Array(n * 3), new Float32Array(n * 3)] : null;
@@ -71654,7 +71679,8 @@ const ThreeRenderer = (function () {
                 pos[dst * 3] = P[src * 3]; pos[dst * 3 + 1] = P[src * 3 + 1]; pos[dst * 3 + 2] = P[src * 3 + 2];
                 nor[dst * 3] = N[src * 3]; nor[dst * 3 + 1] = N[src * 3 + 1]; nor[dst * 3 + 2] = N[src * 3 + 2];
                 uv[dst * 2] = UV[src * 2]; uv[dst * 2 + 1] = UV[src * 2 + 1]; bl[dst * 2] = B[src * 2]; bl[dst * 2 + 1] = B[src * 2 + 1]; ao[dst] = O[src];
-                if (pa) for (var pq = 0; pq < 3; pq++) { pa[pq][dst * 3] = PA[pq][src * 3]; pa[pq][dst * 3 + 1] = PA[pq][src * 3 + 1]; pa[pq][dst * 3 + 2] = PA[pq][src * 3 + 2]; }
+                if (pa && zslot) { var zv = zslot[PP[src]] | 0; if (zv > 0) pa[(zv - 1) / 3 | 0][dst * 3 + (zv - 1) % 3] = 1; }   // THE GROUND ZONES: the node's sheet in the zone's own eight
+                else if (pa) for (var pq = 0; pq < 3; pq++) { pa[pq][dst * 3] = PA[pq][src * 3]; pa[pq][dst * 3 + 1] = PA[pq][src * 3 + 1]; pa[pq][dst * 3 + 2] = PA[pq][src * 3 + 2]; }
                 var py = P[src * 3 + 1]; if (py < y0) y0 = py; if (py > y1) y1 = py;
             }
             var li = [], qs = byTile[key];
@@ -71666,7 +71692,7 @@ const ThreeRenderer = (function () {
             if (pa) { tg.setAttribute('aPaintA', new THREE.BufferAttribute(pa[0], 3)); tg.setAttribute('aPaintB', new THREE.BufferAttribute(pa[1], 3)); tg.setAttribute('aPaintC', new THREE.BufferAttribute(pa[2], 3)); }
             tg.setIndex(li);
             tg.computeBoundingBox(); tg.computeBoundingSphere();
-            tg._ew_hqTile = [ti, tj];
+            tg._ew_hqTile = [ti, tj]; tg._ew_zone = zn;
             out.push(tg);
         });
         return out.length > 1 ? out : null;
@@ -72143,9 +72169,10 @@ const ThreeRenderer = (function () {
         /* THE TILES (OPEN_WORLD_PLAN §5.5, Phase 1): the field is cut into HQ_ENGINE_RULES.tileM squares — one mesh each, the
            same material, the normals of the WHOLE field (no seam in the light) — so the frustum drops the squares behind the
            camera: "only a chunk of the map is being rendered". A field of one tile stays one mesh. */
-        var tiles = _hqTerrainTiles(geo, idx, nx, nz, res);
+        var gZones = _hqGroundZones(room, info, S);   // THE GROUND ZONES: a box of the field in its own sheets (the city's hills)
+        var tiles = _hqTerrainTiles(geo, idx, nx, nz, res, gZones, info);
         (tiles || [geo]).forEach(function (tg) {
-            var fm = new THREE.Mesh(tg, fieldMat);
+            var fm = new THREE.Mesh(tg, (gZones && tg._ew_zone) ? gZones[tg._ew_zone - 1].mat : fieldMat);
             fm.position.y = 0.3; fm.receiveShadow = true; fm.renderOrder = 1; fm._ew_hqPart = 'floor'; fm._ew_hqTerrain = true;
             G.add(fm); if (!field) field = fm;
         });
@@ -73705,7 +73732,8 @@ const ThreeRenderer = (function () {
             if (W.mountain > 0) {
                 var rg = 1 - Math.abs(2 * _hqEdgeFbm(x / 190 + 3.1, z / 190 + 1.7) - 1), rg2 = 1 - Math.abs(2 * _hqEdgeFbm(x / 70 + 9, z / 70 + 4) - 1);
                 var yM = e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift;
-                if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
+                if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);
+                else if (!LAND && z < R.z0 && sd('n').back != null) yM = e2 + lift + (+sd('n').back) * (yM - e2 - lift);   // THE HOLLYWOOD HILLS ARE PART OF THE CITY (2026-11-16): a north side may say `back` by itself = how much of the made-up range stands past it (the city: 0.35, a low dry ridge behind the real Hills' crest)   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
                 if (LAND && z < R.z0) {   // THE REAL LAND PAST THE EDGE: the other room's ground from the line out to its own back edge, the range on behind it
                     var lx = x - LAND.x0, inX = sm(Math.min(lx, LAND.w - lx) / 30 + 0.02), yL;
                     if (lx > -1 && lx < LAND.w + 1 && inX > 0) {

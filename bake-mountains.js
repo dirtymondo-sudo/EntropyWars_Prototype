@@ -8,7 +8,8 @@
    TWO rooms into data.js between MOUNTAINS-BEGIN / MOUNTAINS-END:
      site_prebuilt_shasta_mountains   THE MOUNTAINS: plan columns 4-15 (12 x 8 plots, 504 x 336 m; 56 plots are built, the rest is the range's rock)
      site_prebuilt_northpole_plots    THE NORTH POLE: plan columns 0-3 (4 x 4 plots, 168 m), behind the Pass Gate
-     site_prebuilt_shasta_hills       THE HOLLYWOOD HILLS (2026-11-15, plan 2, layout rooms[1]): 13 x 3 plots above Disaster City: the sign, the ridge, the sea cliffs
+     (the Hollywood Hills, plan 2's third room, left this tool on 2026-11-16: mondo "make Hollywood hills a part of disaster city". They are district N of the
+      city's own room now: docs/disaster-city/districts/N.js + hills-layout.json, written by bake-disaster-city.js. The old room is in DOOR_HQ.retired.)
    PLAN 2 also SWAPPED Mount Shasta and Mount Olympus (range order: Pole, Pass, Lodge, OLYMPUS, SHASTA, Hills): Olympus is plan columns 10-12, Shasta 13-15, its trail 13-14.
    and the ends of the links / bay doors that lead into them. `node bake-mountains.js` writes; `--dry-run` prints the counts.
    Never hand-edit between the markers: edit a district file, this tool or the layout and rerun. Notes: docs/notes/areas-complexes.md "THE MOUNTAINS ON PLOTS".
@@ -31,7 +32,7 @@ const OLDR = id => JSON.parse(vm.runInContext('JSON.stringify((r => r ? { n: r.n
 const O_POLE = OLDR('site_prebuilt_northpole_village'), O_SHASTA = OLDR('site_prebuilt_shasta_slopes'), O_OLYMPUS = OLDR('site_prebuilt_olympus_summit');
 const sayOf = (R, race) => (R.n.find(n => n.race === race) || {}).say;
 const OLD = { pole: O_POLE, shasta: O_SHASTA, olympus: O_OLYMPUS };   // the old rooms' natives and lines: ctx.say('pole', 'gnome')
-const MTN = 'site_prebuilt_shasta_mountains', POLE = 'site_prebuilt_northpole_plots', HILLS = 'site_prebuilt_shasta_hills';
+const MTN = 'site_prebuilt_shasta_mountains', POLE = 'site_prebuilt_northpole_plots', CITY = 'site_prebuilt_downtown_streets';   // (the Hollywood Hills are part of Disaster City's room since 2026-11-16: its doors `shasta` and `ridge`, docs/disaster-city/districts/N.js)
 const MASS = { r: 1, k: 1, a: 1, t: 1, z: 1 };   // z = the sea (the Hills' east end): sunk to the room's `seaBed`, under terrain.sea
 const smooth = t => { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
 const hash = (x, y, s) => { let n = (x * 374761393 + y * 668265263 + s * 1274126177) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
@@ -43,7 +44,7 @@ const ROT = { S: 0, W: 90, N: 180, E: 270 };
 const DOORWORDS = (label, sub, desc) => ({ label, sub, desc });
 /* ── THE DISTRICT FILES (2026-11-16, the one hook for the six district threads; the city's way: bake-disaster-city.js "THE DISTRICT FILES") ──
    docs/areas/mountains/districts/<LETTER>.js, one per district of layout.json `districts`: N (the North Pole village, its own room), P (the Snowy
-   Pass), K (the Ski Lodge + slopes), O (Mount Olympus), S (Mount Shasta) (the Mountains room), H (the Hollywood Hills, its own room). No
+   Pass), K (the Ski Lodge + slopes), O (Mount Olympus), S (Mount Shasta) (the Mountains room). (H, the Hollywood Hills, is Disaster City's district N since 2026-11-16.) No
    district's content is in this tool. THE TOOL KEEPS everything shared: the plan and its cuts (makeRoom's opts), the heights, the paint, the tree
    zones, the sky and edges, every way out (doors on the room's walls, the links' ends, DOOR HQ's bay doors), the spawn, the checks.
    A file may export any of:
@@ -319,32 +320,17 @@ const M = makeRoom({ id: MTN, tag: 'mtn', files: ['P', 'K', 'S', 'O'], streams: 
   { const p = R.byId['P12-00']; for (let ly = 0; ly <= 7; ly++) for (const lx of [7, 8]) cell[p.ly * N + ly][p.lx * N + lx] = 'm'; }   // THE GRAND STAIR goes on up through the cloud to the room's north wall
   const WAY = { heaven: R.spur('P12-00', 'n', 'm'), vatican: R.spur('P11-03', 's', 'm') };
   /* THE HOLLYWOOD HILLS (plan 2): Shasta's east side walks on into the Hills (the city's mountain road lands there now, not at the Lodge Yard) */
-  door('hills', 'P15-02', 'e', Object.assign({ way: 'road', action: { room: HILLS, at: 'shasta' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SHASTA ROAD · EAST TO THE SIGN', 'The snow stops at a cattle grid. Past it the road is dry, the brush is brown, and a row of very large letters stands with its back to you.')));
-  door('saddle', 'P15-00', 'e', Object.assign({ way: 'trail', action: { room: HILLS, at: 'ridge' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SADDLE · THE RIDGE BEHIND THE LETTERS', 'The ridge trail leaves the ice and follows the crest east. On a clear day you can see the whole city from it, and the back of its name.')));
+  door('hills', 'P15-02', 'e', Object.assign({ way: 'road', action: { room: CITY, at: 'shasta' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SHASTA ROAD · EAST TO THE SIGN', 'The snow stops at a cattle grid. Past it the road is dry, the brush is brown, and a row of very large letters stands with its back to you.')));
+  door('saddle', 'P15-00', 'e', Object.assign({ way: 'trail', action: { room: CITY, at: 'ridge' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SADDLE · THE RIDGE BEHIND THE LETTERS', 'The ridge trail leaves the ice and follows the crest east. On a clear day you can see the whole city from it, and the back of its name.')));
 
   runDistricts(R, 'apply'); runDistricts(R, 'build');   // THE DISTRICT FILES: everything that stands on the plots
   R.out = WAY;
 }
 
 
-/* ════════════════════════════════════════════════ THE HOLLYWOOD HILLS (plan room 2, 13 x 3 plots) ════════════════════════════════════════════════
-   mondo 11-15: "The disaster city version of the Hollywood sign needs to be part of the mountains, not just a weenie on the edge of the map ...
-   include the fake weenie mountains as part of this actual mountain plan"; his OK on plan 2 ("build it"). The dry east end of the range, straight
-   above Disaster City: the ridge (row 0), the letters DISASTER CITY on their slope (row 1), the canyon foot over the city (row 2), and sea cliffs
-   at the east end over the north end of the city's beach. Base level 2: the Cove's sand is at 0 m, the sea at -0.6. */
-const HL = makeRoom({ id: HILLS, tag: 'hills', files: ['H'], streams: { H: 39 }, room: 1, px0: 0, py0: 0, pw: 13, ph: 3, base: 2, seed: 39, rockCap: 16, seaBed: -4.2, seaShore: -1.4, deadLevel: () => 10, trail: () => 'p',
-    carves: [7, 8, 9, 10, 11].flatMap(lx => [['H07-02', lx, 8, 'Y'], ['H07-02', lx, 9, 'Y']])
-        .concat([10, 11].flatMap(ly => [['H08-02', 5, ly, 'Y'], ['H08-02', 6, ly, 'Y']]))   // the road's last squares down to the city (the door stands over the city's own mountain road: Hills x 84 = city x 105)
-        .concat([1, 2, 3].flatMap(ly => [['H10-00', 4, ly, 'f'], ['H10-00', 7, ly, 'f']]), [2, 3].flatMap(ly => [['H05-00', 5, ly, 'f'], ['H05-00', 6, ly, 'f']])) });   // (the tank's and the mast's pads are concrete, not rooms)   // the canyon road runs on east through the spur (the drawing stopped it at the rock)
-{ const R = HL, { put, dec, tree, building, look, S, door, mx, mz, gx, gz, props, feat } = R;
-  /* ── THE WAYS ── */
-  door('shasta', 'H00-01', 'w', Object.assign({ way: 'road', action: { room: MTN, at: 'hills' } }, DOORWORDS('MOUNT SHASTA', 'THE SHASTA ROAD · WEST INTO THE SNOW', 'The road climbs west out of the brush. Somewhere past the cattle grid it stops being dry.')));
-  door('ridge', 'H00-00', 'w', Object.assign({ way: 'trail', action: { room: MTN, at: 'saddle' } }, DOORWORDS('MOUNT SHASTA', 'THE SADDLE · THE GLACIER SIDE', 'The crest trail runs west onto the ice. The volcano is closer than it has any right to be.')));
-  R.out = { road: gx(S('H08-02', 6, 0)[0]), cove: R.spur('H12-02', 's', 'D') };
-  runDistricts(R, 'apply'); runDistricts(R, 'build');   // THE DISTRICT FILES: everything that stands on the plots
-}
+/* (The Hollywood Hills stood here as a third room until 2026-11-16: Disaster City's district N now, docs/disaster-city/districts/N.js.) */
 
-/* ══ the three rooms ══ */
+/* ══ the two rooms ══ */
 const SNOWPINES = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3', 'xmas_pine'];
 const SKY_DAY = "{ night: 0, world: { kind: 'plain' }, tint: 0x9fc4e8, tintAmt: 0.3, stars: 0.5, nebula: 0.6, day: 1, clouds: 0.35, fog: { color: 0xbfd8ea, amount: 0.45, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'none' }";
 const mSpawn = M.S('P09-03', 5, 6), pSpawn = NP.S('P02-01', 5, 8);
@@ -370,21 +356,8 @@ const pBlock = finish(NP, { label: 'THE NORTH POLE', sub: 'THE VILLAGE · THE WO
     trees: { snow: { kinds: SNOWPINES, treeH: [5.5, 8] } }, treeDefault: 'snow', maxTrees: 1400, treeKey: () => 'snow',
     edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'mountain' }, s: { kind: 'mountain' } },
     lines: O_POLE.l, spawn: pSpawn, face: 0 });
-const hSpawn = HL.S('H07-02', 5, 9);
-const hBlock = finish(HL, { label: 'THE HOLLYWOOD HILLS', sub: 'THE SIGN · THE RIDGE · THE OBSERVATORY · THE SEA CLIFFS', site: 'prebuilt_shasta', part: 'hills',
-    shell: "hqAncientShell({ w: " + (2 * HL.HW) + ", d: " + (2 * HL.HD) + ", h: 20, wallH: 20, floor: 'grass_rocky', apron: 'grass_rocky', skirt: 'rocks_5', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + HL.mx(hSpawn[0]) + ", z: " + HL.mz(hSpawn[1]) + ", y: 5.0 },\n" +
-           "                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d8, ambient: 0.62 },\n" +
-           "                                    sky: { night: 0, world: { kind: 'plain' }, tint: 0xa8c4e4, tintAmt: 0.3, stars: 0.5, nebula: 0.6, day: 1, clouds: 0.12, fog: { color: 0xd8c8b0, amount: 0.4, top: 0.05, band: 0.5, density: 0.005 }, scenery: 'none' },\n                                    look: HQ_ROOM_LOOKS.mountain })",
-    parti: 'The dry end of the range on thirty-nine plots above the city: a ridge trail, twelve letters standing on their slope with a walk under them and a walk behind, a canyon road up from the streets, and cliffs where the hills fall into the bay.',
-    floor: 'grass_rocky', cliff: 'rocks_5', pal: ['rocks_5', 'dirt_2', 'urban:ConcreteRoofBitumen1a', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'],
-    paintOf: ch => ch === 'r' ? 1 : ch === 'p' ? 2 : ch === 'Y' ? 3 : (ch === 'f' || ch === 'B') ? 4 : ch === 'm' ? 5 : (ch === 'D' || ch === 'z' || ch === 'w') ? 6 : ch === 'h' ? 7 : ch === 't' ? 8 : 0,
-    trees: { oak: { kinds: ['tree_2', 'tree_4', 'tree_2', 'tree'], treeH: [4.5, 7.5] } }, treeDefault: 'oak', maxTrees: 500, treeKey: () => 'oak',
-    sea: process.env.HILLS_NO_SEA ? null : { y: -0.6, key: 'water' },
-    edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'coast' }, s: { kind: 'desert', cap: { kind: 'coast', at: 'e', off: 42, len: 30 } } },
-    noWalk: ['H12-00', 'H12-01'],   // the sea cliffs: rock and water, nobody stands there
-    lines: [], spawn: hSpawn, face: 180 });
 const block = ["        /* MOUNTAINS-BEGIN — THE MOUNTAINS ON PLOTS (2026-11-15): written by `node bake-mountains.js` from docs/areas/mountains/layout.json. Never hand-edit between the markers; edit a district file (docs/areas/mountains/districts/), the tool or the layout and rerun. */"]
-    .concat(mBlock, pBlock, hBlock, ["        /* MOUNTAINS-END */"]).join('\n') + '\n';
+    .concat(mBlock, pBlock, ["        /* MOUNTAINS-END */"]).join('\n') + '\n';
 /* the ends this tool owns: the links that lead into the two rooms, and the three bay doors of DOOR HQ */
 const LINKS = {
     northpole_camelot: ['a', "{ site: 'prebuilt_northpole', part: 'plots', wall: 's', x: " + NP.out.SLEIGH + ", sub: 'THE SLEIGH ROAD · TO CAMELOT' }"],
@@ -393,8 +366,6 @@ const LINKS = {
     heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: 'mountains', wall: 'n', x: " + M.out.heaven + ", sub: 'THE GRAND STAIR · UP INTO HEAVEN' }"],
     lodge_olympus: ['b', "{ site: 'prebuilt_shasta', part: 'mountains', wall: 'free', x: " + M.anchors.painting.x + ", z: " + M.anchors.painting.z + ", face: " + M.anchors.painting.face + " }"],
     vatican_olympus: ['b', "{ site: 'prebuilt_shasta', part: 'mountains', wall: 's', x: " + M.out.vatican + ", sub: 'THE PILGRIM STAIR · DOWN TO THE VATICAN' }"],
-    downtown_mountains: ['b', "{ site: 'prebuilt_shasta', part: 'hills', wall: 's', x: " + HL.out.road + ", sub: 'THE CANYON ROAD · DOWN TO DISASTER CITY' }"],   // (plan 2: the city's mountain road lands under the sign now)
-    downtown_cove: ['b', "{ site: 'prebuilt_shasta', part: 'hills', wall: 's', x: " + HL.out.cove + ", sub: 'THE COVE · SOUTH ALONG THE BEACH' }"],
 };
 const ENTRY = {
     prebuilt_shasta: "{ room: '" + MTN + "', door: { id: 'bay', wall: 'free', x: " + M.anchors.bayShasta.x + ", z: " + M.anchors.bayShasta.z + ", face: " + M.anchors.bayShasta.face + " } }",
@@ -402,7 +373,7 @@ const ENTRY = {
     prebuilt_northpole: "{ room: '" + POLE + "', door: { id: 'bay', wall: 's', x: " + NP.out.BAY + " } }",
 };
 [[NP, ['hearth']], [M, ['painting', 'bayOlympus', 'lemuria', 'bayShasta']]].forEach(([R, need]) => need.forEach(k => { const a = R.anchors[k]; if (!a || !isFinite(a.x) || !isFinite(a.z)) throw new Error(R.o.id + ': no anchor `' + k + '` (a district file sets it: THE DISTRICT FILES)'); }));
-console.log('ways ' + JSON.stringify({ pole: NP.out, mountains: M.out, hills: HL.out, woodsDoor: M.doors.find(d => d.id === 'woods').x }));
+console.log('ways ' + JSON.stringify({ pole: NP.out, mountains: M.out, woodsDoor: M.doors.find(d => d.id === 'woods').x }));
 if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const END = '        /* MOUNTAINS-END */\n', b0 = src.indexOf('        /* MOUNTAINS-BEGIN'), b1 = src.indexOf(END);
@@ -414,4 +385,4 @@ Object.keys(LINKS).forEach(id => { const [side, lit] = LINKS[id], i = src.indexO
 Object.keys(ENTRY).forEach(site => { const m = new RegExp('\\n( +)' + site + ': +\\{ room: [^\\n]*').exec(src); if (!m) throw new Error('no siteRooms.entry row for ' + site);
     src = src.slice(0, m.index) + '\n' + m[1] + site + ': ' + ENTRY[site] + ',   // THE MOUNTAINS ON PLOTS: written by bake-mountains.js' + src.slice(m.index + m[0].length); });
 fs.writeFileSync(file, src);
-console.log('data.js: ' + MTN + ' + ' + POLE + ' + ' + HILLS + ' written (' + block.length + ' bytes)');
+console.log('data.js: ' + MTN + ' + ' + POLE + ' written (' + block.length + ' bytes)');

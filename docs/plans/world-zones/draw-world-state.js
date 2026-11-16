@@ -35,7 +35,7 @@ txt(px(21),py(-6),'THE OCEAN',16,'#bcd4f2',700,'middle'); txt(px(-14),py(21),'de
 const f=[px,py];
 zone(...f,-16,-10,4,4,'NORTH POLE','built',['village · 16'],{small:1});
 zone(...f,-12,-11,12,8,'THE MOUNTAINS','built',['Snowy Pass · Ski Lodge + slopes','Mount Shasta · Mount Olympus','96 plots']);
-zone(...f,0,-3,13,3,'THE HOLLYWOOD HILLS','built',['part of the Mountains · 39']);
+zone(...f,0,-3,13,3,'THE HOLLYWOOD HILLS','built',['Disaster City’s north district · 39 plots','ONE room with the city: you walk or drive up, no door']);   // (2026-11-16: part of the city's room, was a room of the Mountains)
 zone(...f,-4,-3,4,4,'THE VATICAN','old',['old rooms · plan 16','Heaven over it','Hell under it'],{small:1,pick:'②'});
 zone(...f,-14,0,8,8,'CAMELOT KINGDOM','built',['The Castle · The Village','The Snowy Pines · The Fairy Forest','Looking-Glass Garden · The Forest','64 plots  (sky castle: old room)']);
 zone(...f,-6,1,6,6,'THE WOODS','built',['Redwood Trail · Ritual Ground','The Clearing · Dead Man’s Cave','36 plots']);
@@ -44,13 +44,14 @@ zone(...f,-6,7,6,6,'THE ESTATE','built',['Corn Fields · The Ranch','Haunted Hou
 zone(...f,0,0,12,12,'','built',[],{nogrid:1});
 const D=[['Civic Center','Financial','Entertainment'],['University','Hero Plaza','Bayside'],['Sports + Culture','Southside','Industrial']];
 D.forEach((r,j)=>r.forEach((n,i)=>{o.push(`<rect x="${px(i*4)}" y="${py(j*4)}" width="${4*S}" height="${4*S}" fill="none" stroke="#000" stroke-opacity=".45"/>`);txt(px(i*4+2),py(j*4+2.2),n,11,'#e6e6e6',400,'middle')}));
-txt(px(8.6),py(1.2),'DISASTER CITY · 144 plots',15,C.ink,700,'middle');
+txt(px(8.6),py(1.2),'DISASTER CITY · 144 plots + the Hills',15,C.ink,700,'middle');
+o.push(`<rect x="${px(0)}" y="${py(-3)}" width="${13*S}" height="${3*S}" fill="none" stroke="${C.ink}" stroke-width="3"/>`);o.push(`<path d="M${px(0)} ${py(0)} V${py(12)} H${px(12)} V${py(0)}" fill="none" stroke="${C.ink}" stroke-width="3"/>`);   // one outline round the city + its Hills: one room
 zone(...f,0,12,12,12,'THE DESERT','built',['The Highway · The Circus','Western Town · Area 51 · Giza','144 plots']);
 zone(...f,12,1,14,10,'THE BEACH','built',['The Shore · The Harbour','The Ocean · The Bermuda Triangle','140 plots (a sea room)']);
 zone(...f,12,17,9,5,'LEYLINES','old',['Göbekli Tepe · Stonehenge · Babel','Technoticlan · Bug Colony (new)','old rooms · plan 45']);
 zone(...f,4,27,4,3,'ANTARCTICA','old',['old room · plan 12'],{small:1});
 // ways
-way(...f,6,0,6,-0.01,'way','mountain road',8,-12); way(...f,12.4,0,12.4,-0.01,'way','the cove',8,12);
+txt(px(8.75),py(-0.15),'▲ mountain road',10.5,C.way,600,'middle'); txt(px(12.5),py(-0.15),'▲ cove',10.5,C.way,600,'middle');   // (2026-11-16: ground you walk, not doors)
 way(...f,-0.01,-2.2,0,-2.2,'way','');
 way(...f,-12,-8,-12.01,-8,'way','the Pass Gate',8,-8);
 way(...f,-5,-3,-5,1,'way','snowline trail',-92,4);

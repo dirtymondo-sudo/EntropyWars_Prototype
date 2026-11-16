@@ -31,10 +31,10 @@ as the inside of a plot-built place.
 | Zone | Room(s) today | State | Ways in (from) | Holder |
 |---|---|---|---|---|
 | DOOR HQ | 148 rooms, hub `central_egress` | handmade, stays handmade | | owner |
-| Disaster City | `site_prebuilt_downtown_streets` (144 plots) + INSIDE lobby, showroom, platform, mall, closet, stadium bowl | PLOTS | HQ garage taxi; Beach quay; Desert highway Exit 1; Hills mountain road + cove; Woods storm drain; Sewers (pump court, dock) | owner (Civic Center + frame rate: second) |
+| Disaster City | `site_prebuilt_downtown_streets` (144 plots + THE HOLLYWOOD HILLS, 39 plots on its north side, one room since 11-16: you walk or drive up the mountain road or from the boardwalk's north end, no door) + INSIDE lobby, showroom, platform, mall, closet, stadium bowl | PLOTS | HQ garage taxi; Beach quay; Desert highway Exit 1; the Mountains (doors `shasta` + `ridge` on the Hills' west side); Woods storm drain; Sewers (pump court, dock) | owner (Civic Center + frame rate: second) |
 | The Woods | `site_prebuilt_fairy_forest_plots` (36) | PLOTS | HQ stair (`woodstair`); HQ tunnel; city drain; Sewers drain; Camelot (trail + dead tree); Mountains snowline; Estate gate | owner |
 | Camelot Kingdom | `site_prebuilt_camelot_kingdom` (64) + `site_prebuilt_camelot_palace`; OLD `site_prebuilt_camelot_sky` | PLOTS (sky castle OLD, waits mondo) | Woods (two ways); North Pole sleigh road; Haunted House upstairs (hidden); bay | owner |
-| The Mountains | `site_prebuilt_shasta_mountains` (12 x 8), `site_prebuilt_northpole_plots` (16), `site_prebuilt_shasta_hills` (13 x 3) | PLOTS | Woods snowline; city (road + cove) into the Hills; Camelot into the North Pole; Vatican cortile + Heaven cloud fields onto Olympus; Agartha (Lemuria stair); the Lodge | second |
+| The Mountains | `site_prebuilt_shasta_mountains` (12 x 8), `site_prebuilt_northpole_plots` (16). (The Hollywood Hills left this zone on 11-16: they are Disaster City's north district; the old room `site_prebuilt_shasta_hills` is retired) | PLOTS | Woods snowline; Disaster City's Hills (doors `hills` + `saddle`, east side of Shasta); Camelot into the North Pole; Vatican cortile + Heaven cloud fields onto Olympus; Agartha (Lemuria stair); the Lodge | second |
 | The Estate | `site_prebuilt_skinwalker_estate` (36) + INSIDE the Haunted House's five floors | PLOTS | Woods gate; the Cavern (two wells); the Lodge; hidden: Camelot, North Pole, Astral attic | second |
 | The Desert | `site_prebuilt_area51_desert` (144) + INSIDE Hangar 18, the White Rooms, inside the Great Pyramid | PLOTS | city highway; HQ tunnel (the Circus) + HQ `mandela` mirrors; Leylines robbers' tunnel; D.U.M.B. up through Hangar 18 | second |
 | The Beach | `site_prebuilt_bermuda_beach` (14 x 10, a sea room) + INSIDE the Flying Dutchman's four decks | PLOTS | city quay; HQ pool; the Dutchman; Atlantis whirlpool | second |
@@ -92,12 +92,12 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 
 | Zone | Districts (letter in its layout json) | District files |
 |---|---|---|
-| Disaster City | S Southside, C Civic Center, F Financial, U University, H Hero Plaza, E Entertainment, I Industrial, R Sports + Culture, B Bayside (+ L, Q shared files) | YES, `docs/disaster-city/districts/` |
+| Disaster City | S Southside, C Civic Center, F Financial, U University, H Hero Plaza, E Entertainment, I Industrial, R Sports + Culture, B Bayside, N The Hollywood Hills (file `N.js`, on the rows north of the plots; 11-16) (+ L, Q shared files) | YES, `docs/disaster-city/districts/` |
 | The Woods | T The Redwood Trail, G The Ritual Ground, C The Clearing, M Dead Man's Cave | yes since 11-16: `docs/areas/woods/districts/C.js T.js G.js M.js` (areas-complexes.md "THE WOODS, THE DISTRICT FILES") |
 | Camelot Kingdom | K The Castle, T The Village, N The Snowy Pines, F The Fairy Forest, L The Looking-Glass Garden, W The Forest | not yet |
 | The Desert | R The Highway, C The Circus, W Western Town, A Area 51, G Giza | not yet |
 | The Estate | C The Corn Fields, R The Ranch, H The Haunted House + Graveyard, L The Lake | not yet |
-| The Mountains | N The North Pole village, P The Snowy Pass, K The Ski Lodge + slopes, S Mount Shasta, O Mount Olympus, H The Hollywood Hills | not yet |
+| The Mountains | N The North Pole village, P The Snowy Pass, K The Ski Lodge + slopes, S Mount Shasta, O Mount Olympus (H The Hollywood Hills moved to Disaster City as its district N, 11-16) | not yet |
 | The Beach | S The Shore, H The Harbour, O The Ocean, T The Bermuda Triangle | not yet |
 | The Sewers (PLAN) | W The Sewers, O The Old Workings, T The Running Tunnels | none: not built |
 | The D.U.M.B. (PLAN) | R Research, S Sub-Level 7, C Command, P Level P3 (CERN = the ring) | none |
@@ -124,7 +124,7 @@ decide the rest.
 
 | Side | Layout 3 says | DATA |
 |---|---|---|
-| North | The Mountains run east to west; the Hollywood Hills over the city; the North Pole far north-west | built: city road + cove into the Hills, Hills up to the range, Woods snowline, Camelot's sleigh road |
+| North | The Mountains run east to west; the Hollywood Hills over the city; the North Pole far north-west | built: the Hills are the city's own north district (no door: the mountain road and the cove are ground), the Hills' west doors up to the range, Woods snowline, Camelot's sleigh road |
 | North-west | The Vatican at the foot of the mountains, a gate into Civic Center, Hell under it, Heaven over it, Olympus above | the Pilgrim Stair and the Grand Stair exist (to the OLD Vatican and Heaven rooms). The Civic gate is a closed gate with no door behind it |
 | West | The Woods on the city's forest edge, Camelot beyond | built; the only city > Woods way is the hidden storm drain |
 | South-west | The Estate under the Woods, the Ranch meeting the Desert | Woods gate built. No way between the Estate and the Desert |
