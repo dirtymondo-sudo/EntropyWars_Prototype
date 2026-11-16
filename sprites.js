@@ -140,6 +140,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/tech_ceo/', 'Assets/characters/races/tech_ceo/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/magician/', 'Assets/characters/races/magician/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/mole_man/', 'Assets/characters/races/mole_man/'],   // 2026-11-16 THE NEW RACES
+  ['Assets/Sprites/Races/lifeguard/', 'Assets/characters/races/lifeguard/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/fallenangel/', 'Assets/characters/races/fallenangel/'],
   ['Assets/Sprites/Races/firefighter/', 'Assets/characters/races/firefighter/'],
   ['Assets/Sprites/Races/flesheater/', 'Assets/characters/races/flesheater/'],
@@ -454,9 +455,9 @@ const RACE_SPRITE_GENDERS = {
   'starfish': 'male',   // 2026-09-30
   'ringmaster': 'male',   // 2026-09-30
   'bee queen': 'female',   // 2026-09-30
-  'professor': 'male',   // 2026-09-30
+  'professor': 'both',   // 2026-09-30; the woman 2026-11-16 (THE NEW RACES, mondo: female politician / professor / clown)
   'deep sea fish': 'male',   // 2026-09-30
-  'clown': 'male',   // 2026-09-30
+  'clown': 'both',   // 2026-09-30; the woman 2026-11-16
   'bunny girl': 'female',   // 2026-09-30
   'sharkman': 'male',   // 2026-09-30
   'crystal guardian': 'male',   // 2026-09-30
@@ -524,7 +525,7 @@ const RACE_SPRITE_GENDERS = {
   'conspiracy theorist': 'male',
   'overlord': 'male',
   'chosen one': 'female',
-  'politician': 'male',
+  'politician': 'both',   // the woman 2026-11-16
   'banker': 'male',   // 2026-11-16
   'sewer gator': 'male',   // 2026-11-16
   'skater': 'female',   // 2026-11-16
@@ -532,6 +533,7 @@ const RACE_SPRITE_GENDERS = {
   'magician': 'male',   // 2026-11-16
   'mole man': 'male',   // 2026-11-16
   'quetzalcoatl': 'male',   // 2026-11-16
+  'lifeguard': 'female',   // 2026-11-16
   'atlantean': 'both',
   'dinosaur': 'male',
   'dragon': 'male',
@@ -627,7 +629,7 @@ const _HERO_RACE_SPRITES = {
   'conspiracy theorist': `${_S}/Races/maincharacters/harlanvox.png`,
   'overlord': `${_S}/Races/maincharacters/kael.png`,
   'chosen one': `${_S}/Races/maincharacters/morrigan.png`,
-  'politician': `${_S}/Races/maincharacters/president.png`,
+  /* 'politician' moved to _CHARACTER_SPRITES_GENDERED 2026-11-16 (the woman joined; this table ignores gender) */
 };
 
 // 2026-10-04 — mondo's own 2D sprites (single-frame, 128px tall) in Assets/characters/sprites/.
@@ -697,6 +699,7 @@ const _CHARACTER_SPRITES = {
   'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
   'mole man': `${_S}/Races/mole_man/male/mole_man.png`,   // 2026-11-16 — cut from its own model
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
+  'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f.png`,   // 2026-11-16 — cut from her own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
   // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
@@ -707,6 +710,10 @@ const _CHARACTER_SPRITES = {
   'unicorn': `${_S}/Races/unicorn/unicorn.png`,   // 2026-10-27
 };
 const _CHARACTER_SPRITES_GENDERED = {
+  /* THE WOMEN (2026-11-16, the new races; mondo: female politician / professor / clown, "hot/attractive"): cut from their Meshy models */
+  'politician': { male: `${_S}/Races/maincharacters/president.png`, female: `${_S}/Races/politician/female/politician_f.png` },
+  'professor': { male: `${_CS}/professor.png`, female: `${_S}/Races/professor/female/professor_f.png` },
+  'clown': { male: `${_CS}/clown.png`, female: `${_S}/Races/clown/female/clown_f.png` },
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
   // 2026-10-25 — the female sniper and the Spy wear his new sprites; the males keep their job sheets.
   'marksman': { male: `${_S}/Races/Homosapien/Male/sniper/homosapien_male_sniper.png`, female: `${_S}/Races/Homosapien/Female/sniper/sniper_female.png` },
@@ -2428,6 +2435,13 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'magic',
     }),
   },
+  'lifeguard': {   // red swimsuit, rescue cross (THE NEW RACES 2026-11-16)
+    female: _mkUAL('lifeguard', 'lifeguard_f', {
+      model: `${_S}/Races/lifeguard/female/Meshy_AI_lifeguard_f_Running.glb`,
+      heightRatio: 0.97,
+      basicAttackKind: 'punch',
+    }),
+  },
   'quetzalcoatl': {   // mondo's Aztec king (his rigged Meshy model, never wired as a race before)
     male: _mkUAL('aztec', 'aztec', {
       model: `${_S}/Races/aztec/Meshy_AI_aztec_Running.glb`,
@@ -2499,6 +2513,10 @@ const RACE_MODELS_3D = {
     male: _mkUAL('clown', 'evil_clown', {
       model: `${_S}/Races/clown/Meshy_AI_evil_clown_Running.glb`,
       heightRatio: 1.03, basicAttackKind: 'punch',
+    }),
+    female: _mkUAL('clown', 'clown_f', {   // THE WOMEN 2026-11-16 (Meshy, made + rigged by Claude)
+      model: `${_S}/Races/clown/female/Meshy_AI_clown_f_Running.glb`,
+      heightRatio: 0.97, basicAttackKind: 'punch',
     }),
   },
   'bunny girl': {
@@ -2601,6 +2619,10 @@ const RACE_MODELS_3D = {
     male: _mkUAL('professor', 'male_college_professor', {
       model: `${_S}/Races/professor/Meshy_AI_male_college_professor_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
+    female: _mkUAL('professor', 'professor_f', {   // THE WOMEN 2026-11-16 (Meshy, made + rigged by Claude)
+      model: `${_S}/Races/professor/female/Meshy_AI_professor_f_Running.glb`,
+      heightRatio: 0.97, basicAttackKind: 'magic',
     }),
   },
   'deep sea fish': {
@@ -3003,6 +3025,10 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/politician/Meshy_AI_politician_realisti_biped_Animation_Running_withSkin.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'magic',
+    }),
+    female: _mkUAL('politician', 'politician_f', {   // THE WOMEN 2026-11-16 (Meshy, made + rigged by Claude)
+      model: `${_S}/Races/politician/female/Meshy_AI_politician_f_Running.glb`,
+      heightRatio: 0.97, basicAttackKind: 'magic',
     }),
   },
   // Conspiracy Theorist (Harbinger, support) — Harlan Vox, late-night radio
@@ -6617,6 +6643,7 @@ const RACE_SPRITES = {
   'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
   'mole man': `${_S}/Races/mole_man/male/mole_man.png`,   // 2026-11-16 — cut from its own model
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
+  'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f.png`,   // 2026-11-16 — cut from her own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite

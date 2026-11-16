@@ -5535,3 +5535,16 @@ pass through himself either. unitResistsDisplace says no to push and pull while 
 - Online: the body rows and `coiled` ride the snapshot like any deployed object / status; the guest draws the serpent from them.
 - Probe 11-16: raised behind him (C3, B3), the walk C3 → D5 brought the body to D4, D3 (both blocked for others), push refused,
   Coil hit 124 and wrapped E5 / E6 round the foe at F5 (its walk refused), Morning Star base 203 by day vs 145 by night; 0 page errors.
+
+### 8. THE LIFEGUARD (The Bermuda Triangle / Bayside, support, family `lifesaving`; female only) + THE WOMEN
+The style: she saves a life. **On Duty** (T2, self, cd 2) puts on STATUS_DEFS `onDuty` (2 rounds); battle.js `_lifeguardSave` runs in
+applyDamageToUnit right after the Martyr's Talisman: the first teammate within 4 of her that takes a killing blow holds on at 1 HP and
+is hauled to the free square beside her nearest it (colossal units stay put); the save spends her duty. **Rescue Tube** (T1, `pull`,
+allyOnly, range 5, pullDistance 4, cleanse 1, cd 1). **CPR** (T3, heal range 1, 45% max HP, cleanse 2).
+- Elements water resist / lightning weak. Terrain water. Biomes tropical + urban. POINT_OF_ENTRY The Bermuda Triangle. Tree: Riptide →
+  Tidal Surge / Tidal Blessing → Underdog Spirit / Call of the Deep → Flood. Finisher Red Flag (the wave staging).
+- Probe 11-16: On Duty then a 99999 hit on an ally 3 away: it held at 1 HP and was hauled B4 → D4; the duty was spent; Rescue Tube
+  pulled an ally 3 and cleansed; CPR healed 603 and lifted Burn; 0 page errors.
+- THE WOMEN (mondo 11-16 "the women look good"): politician, professor and clown are `both` genders now (sprites.js RACE_SPRITE_GENDERS);
+  their female Meshy models + sprites are on R2 `Assets/characters/races/<race>/female/` (RACE_MODELS_3D `female:`,
+  _CHARACTER_SPRITES_GENDERED; the politician's sprite moved there from _HERO_RACE_SPRITES, which ignores gender). Same spells as the men.

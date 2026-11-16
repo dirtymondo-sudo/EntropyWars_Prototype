@@ -179,6 +179,7 @@ const SOURCES = [
     { re: /(^|\/)MAL\d_Sniper\.glb$/, how: 'MESHY_C', src: "Meshy animations from the male sniper, consolidated by Claude (a stray copy at the bucket root)" },
     { re: /Assets\/misc\/wings\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (single wing, mirrored in code)' },
     { re: /races\/(banker|sewer_gator|skater|mole_man|tech_ceo|magician|lifeguard)\/\w+\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/)' },
+    { re: /races\/(politician|professor|clown)\/female\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the women; mondo 2026-11-16)' },
     { re: /races\/aztec\/feathered_serpent\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API for Quetzalcoatl\'s serpent body (THE NEW RACES, mondo 2026-11-16)' },
     { re: /_Character_output\.glb|_withSkin\.glb|Meshy_AI_\w+_Running\.glb/, how: 'MESHY', src: 'Meshy AI rigged character (mondo)' },
     { re: /Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (mondo)' },
