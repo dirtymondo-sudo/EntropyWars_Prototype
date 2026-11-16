@@ -5764,6 +5764,17 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
 - **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower.
 - **NEXT**: dressing (stepping paths, plants, edges, the forest floor: the paint is the tool's), then its own light, air and particles (the
   shell is the tool's: `shell.atmos.zones`, a board note first), then polish.
+- **THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
+  keyword search of the prop catalogue and from what the first build already used. Read against MODEL_LIST.md (the Meshy list, the
+  Halloween pack, the orchestral pack, the crow + rabbit upload, section 7a), it had MISSED, all in the game already:
+  `meshy_hanging_lantern` (it had put "a street lantern" on the needs-a-model list), `candelabra`, `confessional_booth`, `holy_tapestry`
+  (the wall-hung row of the carpet's file), `meshy_bible`, `meshy_tongs`, `spell_shield`, `sword`, the orchestral pack's `instrument_*`,
+  `psx_plate_mp_1`, `painting_portrait`, `hw_coffin`, `hw_shovel`, `psxg_iron_gate_1`, `hw_scarecrow`, `hw_pumpkin*`, `rabbit`, `crow`,
+  the door leaf `leaf_stable`. PLACED (seen on screen, one probe, 8 views): 14 street lanterns on drawn posts along the four streets
+  (a lit core for the night); the Inn's minstrels' corner, plates, a candelabra; the Chapel's confessional, two candelabra, two
+  tapestries, the Bible on the pulpit; the Smithy's tongs, shields, a sword, a stable door leaf; the graveyard's coffin, shovel, iron
+  gate, crows; rabbits and a crow on the green; a scarecrow and pumpkins in the kitchen gardens; a dog and a cat; in every burgher
+  house a candelabra and a portrait over the mantel. Not seen in a picture: the Inn's instruments (the view missed the corner).
 
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
@@ -5787,6 +5798,15 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   then `ctx.arch.push({ k: 'arch', id: 'cam:<district>:street', x: 0, z: 0, rot: 0, y: 0, parts: S.P }); flushArch();`. A drawn piece is
   not in the tool's free-ground check: keep it off squares a `put` uses. A drawn piece has no weight: add a ghost wall where it must block.
 - **SIGNS**: a word is a quad with `key: 'txt:WORD|#ink||aspect'`, `uv: 'fit'`, `kind: 'over'` (`T.js` `sign()`).
+- **READ MODEL_LIST.md, NOT ONLY THE CATALOGUE'S KEYS** (mondo's rule). What the Village found there that fits the whole zone:
+  `meshy_hanging_lantern` (hang it at `y` 2.35 from a drawn post: `T.js` THE STREET LANTERNS), `candelabra`, `confessional_booth`,
+  `lectern`, `holy_tapestry` (`h: 3, mount: 2.3`), `stained_glass`, `meshy_bible`, `meshy_tongs`, `spell_shield`, `sword`, `cannon`,
+  `royal_throne`, `royal_bed`, `cot`, `painting_portrait` / `_landscape` (`y` 2.2 on a wall), `instrument_harp` / `_drum` /
+  `_violin_lying` / `_whistle` / `_tambourine`, `meshy_trumpet`, `psx_plate_mp_1`, `psx_healing_potion_mp_1`, `skull_pile`, `menhir`,
+  `meshy_stump`, `rabbit`, `crow`, `wolf`, `hw_scarecrow`, `hw_pumpkin*`, `hw_crop*`, `hw_farmland`, `hw_wall*`, `hw_coffin*`,
+  `hw_shovel`, `psxg_iron_gate_1/2`, `hw_gate_leaf`, door leaves `leaf_stable` / `leaf_barn` / `leaf_portcullis`. The castle pack's
+  one GLB (`Castles_and_Forts.glb`) has only five catalogue rows (wall, gate, tower, tower top, cone): its other pieces (ruined walls
+  among them) have no row yet.
 - **PROPS THAT FIT** (catalogue keys, all on R2): `ancient_well`, `stocks`, `signpost`, `brazier`, `cauldron`, `covered_wagon`, `wooden_bucket`,
   `meshy_burlap_sack`, `psx_wooden_crate_1..6`, `bread_rack`, `armour_stand`, `dojo_weapon_rack`, `sea_chest`, `stone_altar`, `church_pew`,
   `catholic_pew`, `wall_torch`, `cave_torch`, `hearth_fire`, `campfire`, `candle`, `hw_candles`, `hw_straw`, `hw_fence`, `hw_pumpkin`,
@@ -5815,7 +5835,7 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   `ThreeRenderer.hq.dev.renderer().info.memory.geometries` (the room stood at about 1,800 before the houses' insides, 2,020 after).
 - **BLOCKERS ON SQUARES**: mondo's rule holds in every hall: what blocks stands on a whole 3.5 m square's middle with a ghost wall
   (`ctx.feat({ k: 'wall', ghost: true, rail: false, ... })`), decor stands off the middles, the door's column stays open.
-- **NEEDS A MODEL (zone-wide, nothing on R2)**: an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart (the market stall is drawn now: `T.js` `stall()`),
+- **NEEDS A MODEL (zone-wide, nothing on R2)**: an anvil, a hand cart, a hay cart (the market stall is drawn now: `T.js` `stall()`; the street lantern is `meshy_hanging_lantern`),
   a water trough, a wooden fence run with a gate, a hitching rail, a floor carpet / runner (the `holy_carpet` model stands upright), a
   grindstone, a bellows. (A tavern table with benches is drawn in code now: `hall().trestle`.)
 - **ROCKS, CRYSTALS, GROUND PATCHES (from the Fairy Forest, `F.js` `row()`)**: a rock = the cliff sheet `rocks_5` with tint 0xffffff and `gain` 1.7 (a
