@@ -49,10 +49,10 @@ const vnoise = (x, y, s) => { const ix = Math.floor(x), iy = Math.floor(y), tx =
 const MTN = 'site_prebuilt_shasta_mountains';
 
 /* the room past the plots (bake-disaster-city.js THE ROOM PAST THE PLOTS): 36 rows of squares north of the city, and the sheets their ground wears */
-exports.room = { north: H, zone: { floor: 'grass_rocky', cliff: 'rocks_5', path: 'dirt_2', pal: ['rocks_5', 'dirt_2', 'urban:RoadGeneric1a', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'] } };
+exports.room = { north: H, zone: { floor: 'grass_rocky', cliff: 'rocks_5', path: 'dirt_2', pal: ['rocks_5', 'dirt_2', 'urban:ConcreteRoofBitumen1a', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'] } };
 /* (the roads: the old room painted them in the roof bitumen sheet; seen on screen beside the city's own road that was a pale band across the mountain road at the
    city's line, so the Hills' roads wear the city's asphalt sheet now: one road from the Casino court to the canyon) */
-const PAINT = { r: 'rocks_5', p: 'dirt_2', Y: 'urban:RoadGeneric1a', f: 'urban:ConcreteSlab2a', B: 'urban:ConcreteSlab2a', m: 'marble_light', D: 'desert', z: 'desert', w: 'desert', h: 'obsidian', t: 'grass_2' };
+const PAINT = { r: 'rocks_5', p: 'dirt_2',  f: 'urban:ConcreteSlab2a', B: 'urban:ConcreteSlab2a', m: 'marble_light', D: 'desert', z: 'desert', w: 'desert', h: 'obsidian', t: 'grass_2' };
 
 /* ══ the district's own board: its squares, and the helpers the old room's tool handed its district file (bake-mountains.js makeRoom, the same arithmetic) ══ */
 let R = null;
@@ -204,7 +204,26 @@ content.build = ctx => {
   put('H12-02', 'rowboat', 1, 9, { face: 70 }); put('H12-02', 'pool_umbrella', 2, 8); tree('H12-02', 'palm', 8, 0, 8); dec('H12-02', 'ocean_rock', 3, 10);
 };
 
-exports.apply = ctx => { R = board(ctx); content.apply(R); };
+/* ONE ROAD, ONE STREET SYSTEM (2026-11-16, mondo: "continue making it better and blend together more, natural part of the city"):
+   - the Hills' road squares are cut OUT of the Hills' ground zone (`zone.out`, boxes in metres): they are drawn by the city's own ground material, so the
+     asphalt is the very sheet, tint and light of the street it runs on from (a painted asphalt sheet in the zone read paler: a seam on the city's line);
+   - the roads are STREETS of the city's plan (`exports.streets`, bake-disaster-city.js lays them into gen.streets): the lane lines, kerbs and covers the
+     city paints on its streets run on up the canyon; the mountain road's own line is carried from the Casino court to the canyon road;
+   - the city's lamp posts stand along them (ctx.lamps), in the Hills' own light (the tool's LOOKS.N). */
+const zx = c => r2(X0 + c * C), zz = r => r2(Z0 + r * C);
+exports.streets = [
+    { pts: [[zx(102), -231], [zx(102), zz(33)]], w: 14 },          // THE MOUNTAIN ROAD: on from the city's avenue (its line ended at the last plot's middle) to the canyon road
+    { pts: [[zx(67), zz(33)], [zx(108), zz(33)]], w: 7 },          // the canyon road, east-west along the foot
+    { pts: [[zx(90), zz(12)], [zx(90), zz(33)]], w: 7 },           // the Canyon Road, up to the letters' slope
+    { pts: [[zx(0), zz(18)], [zx(73), zz(18)]], w: 7 },            // the Shasta Road, west to the Mountains
+    { pts: [[zx(46), zz(30)], [zx(68), zz(30)]], w: 7 }, { pts: [[zx(68), zz(30)], [zx(68), zz(33)]], w: 7 },   // the Hairpin
+];
+exports.apply = ctx => { R = board(ctx); content.apply(R);
+    /* the road squares, as greedy boxes, leave the zone */
+    { const used = new Set(), out = [], isY = (x, y) => x >= 0 && y >= 0 && x < W && y < H && R.cell[y][x] === 'Y' && !used.has(x + ':' + y);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!isY(x, y)) continue; let w = 1; while (isY(x + w, y)) w++; let h = 1; rows: while (y + h < H) { for (let i = 0; i < w; i++) if (!isY(x + i, y + h)) break rows; h++; }
+          for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used.add((x + i) + ':' + (y + j)); out.push([zx(x), zz(y), zx(x + w), zz(y + h)]); }
+      exports.room.zone.out = out; console.warn('[the Hills] road boxes ' + out.length); } };
 
 exports.build = ctx => {
     content.build(R);
@@ -216,6 +235,12 @@ exports.build = ctx => {
       for (let sy = 0; sy < H; sy++) for (let sx = 0; sx < W; sx++) if (cell[sy][sx] === 't') { ctx.features.push({ k: 'tree', x: r2(mx(sx) + (rnd() - 0.5) * 1.2), z: r2(mz(sy) + (rnd() - 0.5) * 1.2), kind: KINDS[Math.floor(rnd() * 4)], h: r2(4.5 + rnd() * 3), r: 0.8, keep: true }); n++; }
       console.warn('[the Hills] oaks ' + n); }
     R.ARCH.forEach(a => ctx.lateRows.push(a));
+    /* THE LAMPS: the city's post, every 28 m, on alternate sides, on a square that is not road, rock, water or taken */
+    { let n = 0; exports.streets.forEach((st, si) => { const a = st.pts[0], b = st.pts[1], len = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / len, uz = (b[1] - a[1]) / len, off = st.w / 2 + 0.85;
+          for (let d = 14, k = si; d < len - 6; d += 28, k++) { const sd = k % 2 ? 1 : -1, nx = -uz * sd, nz = ux * sd, x = r2(a[0] + ux * d + nx * off), z = r2(a[1] + uz * d + nz * off); if (z > -252.5) continue;
+              const sx = Math.floor((x - X0) / C), sy = Math.floor((z - Z0) / C), ch = R.inR(sx, sy) ? R.cell[sy][sx] : 'r'; if ('rzwYBt'.indexOf(ch) >= 0 || R.taken.has(sx + ':' + sy)) continue;
+              if (ctx.lamps.some(l => Math.hypot(l.x - x, l.z - z) < 3)) continue; ctx.lamps.push({ x, z, nx: Math.round(nx), nz: Math.round(nz), d: 'N' }); n++; } });
+      console.warn('[the Hills] lamps ' + n); }
     /* THE WAYS OUT to the Mountains (the old room's west wall doors, same ids; the Mountains' `hills` and `saddle` doors lead here: bake-mountains.js) */
     ctx.doors.push(Object.assign({ id: 'shasta', wall: 'free', x: r2(gx(0) + 1.75), z: R.out.shasta, face: 270, leaf: null, way: 'road', action: { room: MTN, at: 'hills' } }, DOORWORDS('MOUNT SHASTA', 'THE SHASTA ROAD · WEST INTO THE SNOW', 'The road climbs west out of the brush. Somewhere past the cattle grid it stops being dry.')));
     ctx.doors.push(Object.assign({ id: 'ridge', wall: 'free', x: r2(gx(0) + 1.75), z: R.out.ridge, face: 270, leaf: null, way: 'trail', action: { room: MTN, at: 'saddle' } }, DOORWORDS('MOUNT SHASTA', 'THE SADDLE · THE GLACIER SIDE', 'The crest trail runs west onto the ice. The volcano is closer than it has any right to be.')));

@@ -163,3 +163,6 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `_hqTerrainTiles` cuts the field's tiles on a zone's line; a zone's tiles carry a second ground material) and `_hqEdgeLandFn` (`edges.n.back` without `land`); data.js
   `HQ_GROUND_RULES.paintMax` 16. The city's field is 741 x 869 nodes now (was 741 x 581): the strips under the land past the edge (west, south) are no longer meshed (THE DEAD STRIP). Numbers
   before / after: rendering-loading-perf.md "THE HILLS IN THE CITY'S ROOM".
+- 2026-11-16 (second, the Hills thread, to the Disaster City holder; mondo: "continue making it better and blend together more, natural part of the city"): three more lines
+  in `bake-disaster-city.js`, nothing of yours moved: a district's `exports.streets` are laid into `gen.streets` last (the Hills' six road runs: lane lines + kerbs up the
+  canyon; the mountain road's line now runs on past the Casino court's middle to the line), a lamp that carries its own `d` keeps it, and `LOOKS.N` (the Hills' lamp light).

@@ -71675,7 +71675,7 @@ const ThreeRenderer = (function () {
             zi.room = Object.assign({}, info.room || room, { terrain: Object.assign({}, room.terrain, { floorTint: z.floorTint || null, cliffTint: z.cliffTint || null, pathTint: z.pathTint || null, cliffZoom: z.cliffZoom }) });
             var slot = new Uint8Array(info.paint.pal.length + 1);
             for (var v = 1; v <= info.paint.pal.length; v++) slot[v] = zp.indexOf(String(info.paint.pal[v - 1])) + 1;
-            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
+            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, out: Array.isArray(z.out) ? z.out : null, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
         });
         return out.length ? out : null;
     }
@@ -71689,7 +71689,8 @@ const ThreeRenderer = (function () {
         var byTile = {};
         for (var q = 0; q < idx.length; q += 6) {   // a quad's six indices: a, c, b, b, c, d (a = its low corner)
             var a = idx[q], ai = a % nx, aj = (a - ai) / nx, key = Math.floor(aj / nT) * tx + Math.floor(ai / nT);
-            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
+            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { var zo = zones[zq].out, inO = false; if (zo) for (var oi = 0; oi < zo.length; oi++) if (qx >= zo[oi][0] && qx < zo[oi][2] && qz >= zo[oi][1] && qz < zo[oi][3]) { inO = true; break; }   /* `out`: boxes of the zone that stay the room's own ground (a road that runs on from the room: the room's floor sheet, tint and light, no seam on the line) */
+                if (!inO) key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
             (byTile[key] || (byTile[key] = [])).push(q);
         }
         var out = [];
