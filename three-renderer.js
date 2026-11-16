@@ -47219,6 +47219,7 @@ const ThreeRenderer = (function () {
        in, as for any vertexColors look), the glow is the point's glow, times that texel where the part's glow read its sheet */
     function _ewNodeStack(nm, m, D) {
         var T = _ewNodeU.T, sk = T.attribute('ewSk', 'vec4');
+        if (D.bare) { nm.emissiveNode = sk.rgb; return; }   // THE BARE STACK: no sheet is read — the look's own colour (x the points'), the points' glow
         var k = sk.w.add(0.5).floor(), layer = k.mul(0.5).floor(), um = k.sub(layer.mul(2));
         var tx = T.texture(D.tex, T.uv()).depth(layer.toInt());
         nm.colorNode = tx;
@@ -52659,7 +52660,7 @@ const ThreeRenderer = (function () {
                 bk[kd] = (bk[kd] | 0) + (mst.n | 0); bn[kd] = (bn[kd] | 0) + 1; top.push([mst.n | 0, kd + ' ' + (mg._ew_chunk || (typeof mg._ew_pChunk === 'string' ? mg._ew_pChunk : '') || mg.name || '')]);
                 if (mg._ew_sCell) for (var ci2 = 0; ci2 < mg.children.length; ci2++) {
                     var cm2 = mg.children[ci2], mm = cm2.material; if (!cm2.isMesh || !mm || cm2.visible === false) continue;
-                    var why = !cm2._ew_hqBatch ? 'not a batch' : mm._ew_stacked ? 'stacked' : !cm2._ew_bSingle ? (mm._ew_onePaint ? 'one paint' : 'merged') :
+                    var why = !cm2._ew_hqBatch ? 'not a batch' : mm._ew_stacked ? ((mm._ewNode && mm._ewNode.bare) ? 'stacked (no sheet)' : 'stacked') : !cm2._ew_bSingle ? (mm._ew_onePaint ? 'one paint' : (mm._ewNode && mm._ewNode.k === 'terrain') ? 'ground, merged' : 'merged') :
                         ('alone: ' + (Array.isArray(mm) ? 'many looks' : mm._ewNode ? 'node ' + mm._ewNode.k : (mm.transparent || mm.alphaTest > 0) ? 'see-through / cut-out' : !mm.map ? ((mm.emissiveIntensity > 0 && mm.emissive && (mm.emissive.r + mm.emissive.g + mm.emissive.b) > 0.2) ? 'no sheet, lit' : 'no sheet') : mm.map.isCanvasTexture ? 'sign canvas' : mm.map.isCompressedTexture ? 'compressed sheet' : 'sheet ' + (mm.map.image ? mm.map.image.width + 'px' : '?')));
                     sq[why] = (sq[why] | 0) + 1;
                 }
@@ -94426,15 +94427,22 @@ const ThreeRenderer = (function () {
         return out.join(',');
     }
     /* may this piece be merged? (its own rules; its ancestors' flags and visibility are walked by the caller) */
-    function _hqBatchPieceOk(o) {
+    /* THE GROUND MERGES (2026-11-16, mondo's F3s: "alone: node terrain ~200" in view): the city's ground is 320 tiles on ONE look,
+       and the flag that keeps the ground out of the merge left each a stand-in of its own. In a big room's shell the tiles of a
+       square merge like any pieces of one look. The ground's look reads the WORLD place and the world normal of each point
+       (_ewNodeTerrain / its GLSL twin) and the tile's own painted weights, all of which the merge carries, so the picture is the
+       same. Never the one paint or a stack (a node-dressed look is not copied). The pieces stay for the rays and the feet; a
+       tile that changes (a dig) is handed back by the watch. Off: window.EW_HQ_NO_GROUND_MERGE before the room. */
+    function _hqGroundMergeOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_GROUND_MERGE; }
+    function _hqBatchPieceOk(o, ter) {
         if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.morphTargetInfluences || o.children.length || o.frustumCulled === false) return false;
         if (o._ew_bRec || o._ew_bAnc) return false;
         var m = o.material; if (!m || Array.isArray(m) || m.isShaderMaterial || m.isRawShaderMaterial || !m.visible || m.wireframe) return false;
         if (o.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
-        if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && m.onBeforeCompile !== _hqAoHook) return false;   // a patched shader may read the object's own space
+        if (!ter && m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && m.onBeforeCompile !== _hqAoHook) return false;   // a patched shader may read the object's own space (THE GROUND MERGES: the ground's reads the world's)
         if (m.transparent && !(m.opacity >= 1 && m.alphaTest > 0 && m.depthWrite !== false) && !(m.blending === THREE.AdditiveBlending && m.depthWrite === false)) return false;   // a see-through piece is sorted by its own centre: only a cut-out (or an additive glow, order-free) merges
         for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) { var t = m[_HQ_BATCH_MAPS[i]]; if (t && (!t.image || !(t.version > 0) || t.isVideoTexture || t.isCubeTexture || t.isRenderTargetTexture)) return false; }   // its sheets landed
-        for (var k in o) if (_HQ_BATCH_FLAG_OFF[k]) return false;
+        for (var k in o) if (_HQ_BATCH_FLAG_OFF[k] && !(ter && k === '_ew_hqTerrain')) return false;
         for (var q = o.parent; q; q = q.parent) if (q._ew_pd) return false;   // THE PLOT DUNGEONS: a piece the board shows and hides is never merged
         return true;
     }
@@ -94482,9 +94490,10 @@ const ThreeRenderer = (function () {
         })(root, true);
         for (var j = 0; j < list.length; j++) {
             var o = list[j];
-            if (_hqBatchPieceOk(o) && !(B.grp === 'propGroup' && (o._ew_noInstance || o._ew_instHidden || _hqInstKey(o)))) {   // a prop the instance pass can take is its
+            var ter = loose && !!o._ew_hqTerrain && !_hqGroundMergeOff();   // THE GROUND MERGES
+            if (_hqBatchPieceOk(o, ter) && !(B.grp === 'propGroup' && (o._ew_noInstance || o._ew_instHidden || _hqInstKey(o)))) {   // a prop the instance pass can take is its
                 var sig = _hqBatchGeoSig(o.geometry);
-                if (sig) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchMatSnap(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: sig, parent: o.parent });
+                if (sig) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchMatSnap(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: sig, parent: o.parent, ter: ter });
                 else if (loose && _hqBatchLooseOk(o)) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchSnapOf(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: 'loose', parent: o.parent, loose: true });
             }
             else if (loose && _hqBatchLooseOk(o)) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchSnapOf(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: 'loose', parent: o.parent, loose: true });   // THE LOOSE PIECES: a direct piece of the shell the merge refuses
@@ -94526,12 +94535,12 @@ const ThreeRenderer = (function () {
             if (sk) {
                 var se = _hqStackOf(c.m), em = c.m.emissive, ei = c.m.emissiveIntensity, sw = se.layer * 2 + (c.m.emissiveMap ? 1 : 0), sb = vo * 4;
                 for (var si = 0; si < n; si++) { skArr[sb + si * 4] = em.r * ei; skArr[sb + si * 4 + 1] = em.g * ei; skArr[sb + si * 4 + 2] = em.b * ei; skArr[sb + si * 4 + 3] = sw; }
-                c.m.map.updateMatrix(); skT = c.m.map.matrix.elements;
+                if (c.m.map) { c.m.map.updateMatrix(); skT = c.m.map.matrix.elements; }   // (THE BARE STACK: no sheet, the points keep their own uv)
             }
             names.forEach(function (nm) {
                 if (vc && nm === 'color') return;
                 var a = g.attributes[nm], src = a.array, dst = arrs[nm], sz = a.itemSize, base = vo * sz;
-                if (sk && nm === 'uv') {   // the sheet's own repeat / offset / turn, written into the points (the stack has none)
+                if (sk && skT && nm === 'uv') {   // the sheet's own repeat / offset / turn, written into the points (the stack has none)
                     for (var ui = 0; ui < n; ui++) { var uu = a.getX(ui), uv = a.getY(ui); dst[base + ui * 2] = skT[0] * uu + skT[3] * uv + skT[6]; dst[base + ui * 2 + 1] = skT[1] * uu + skT[4] * uv + skT[7]; }
                 }
                 else if (nm === 'position') { for (var i = 0; i < n; i++) { v.fromBufferAttribute(a, i).applyMatrix4(M); dst[base + i * 3] = v.x; dst[base + i * 3 + 1] = v.y; dst[base + i * 3 + 2] = v.z; } }
@@ -94580,8 +94589,8 @@ const ThreeRenderer = (function () {
         /* THE SHELL CELLS, a piece alone in its look and square: no merge — a stand-in mesh on the piece's OWN geometry (nothing
            copied), placed where the piece stands, hung in the square's group so it is culled with the square. Only when the
            square's group exists and the piece's place splits cleanly into position / turn / scale. */
-        var ske = (!single && B.vc) ? _hqStackOf(c0.m) : null;   // THE SHEET STACK
-        var vcm = ske ? _hqStackMat(B, c0.m, ske) : (!single && B.vc && _hqBatchVcOk(c0.m)) ? _hqBatchVcMat(B, c0.m) : null;   // THE ONE PAINT
+        var ske = (!single && B.vc && !c0.ter) ? _hqStackOf(c0.m) : null;   // THE SHEET STACK
+        var vcm = ske ? _hqStackMat(B, c0.m, ske) : (!single && B.vc && !c0.ter && _hqBatchVcOk(c0.m)) ? _hqBatchVcMat(B, c0.m) : null;   // THE ONE PAINT
         var geo = single ? c0.g : _hqBatchMerge(cs, !!vcm, ske);
         var mesh = new THREE.Mesh(geo, vcm || c0.m);
         if (single) {
@@ -94619,7 +94628,7 @@ const ThreeRenderer = (function () {
        merged mesh wears a copy of the look with a white colour that reads the points' (`vertexColors`). colour x sheet is the
        same product, so the picture is the same. One copy per look for the whole room (B.vcMats), freed with the batch.
        Off: window.EW_HQ_NO_ONE_PAINT (before the room is entered). */
-    function _hqBatchVcOk(m) { return !!(m && m.color && m.color.isColor && (m.isMeshPhongMaterial || m.isMeshLambertMaterial || m.isMeshStandardMaterial || m.isMeshBasicMaterial) && !m.gradientMap); }
+    function _hqBatchVcOk(m) { return !!(m && m.color && m.color.isColor && (m.isMeshPhongMaterial || m.isMeshLambertMaterial || m.isMeshStandardMaterial || m.isMeshBasicMaterial) && !m.gradientMap && !m._ewNode); }   // (a node-dressed look — the ground, a fluid — is never copied for the paint: the copy would lose its dress)
     function _hqBatchVcMat(B, m) {
         var k = _hqBatchMatKey(m, true), L = B.vcMats || (B.vcMats = {}), c = L[k];
         if (c) return c;
@@ -94658,9 +94667,23 @@ const ThreeRenderer = (function () {
     }
     function _hqStackKey(t) { return [t.image.width, t.image.height, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, t.colorSpace, t.flipY, t.premultiplyAlpha, t.generateMipmaps].join(','); }
     /* the layer a look wears: { arr, layer, key, ver } or null */
+    /* THE BARE STACK (2026-11-16, mondo's F3s in Disaster City: "alone: no sheet, lit ~250" of ~1,300 square meshes in view): a
+       part with NO sheet (a lamp's glass, a lit window, a neon tube, a trim) kept a look of its own for every glow colour and
+       strength. Its glow rides in the points now, as a stacked part's does (`ewSk`), its colour in the points as the one paint's,
+       and the merged mesh wears the part's look with no glow of its own: a stack with no layers. No texture is read, so the
+       shading is the part's own (colour x light + glow). WebGPU only, plain opaque Phong / Lambert with no map of any kind.
+       Off: window.EW_HQ_NO_BARE_STACK before the room. */
+    var _hqStkBare = { arr: { id: 'bare', _ew_dead: false, _ew_bare: true }, layer: 0, key: 'bare', ver: 0, bare: true };
+    function _hqStackBareOk(m) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_BARE_STACK) return false;
+        if (!m || !(m.isMeshPhongMaterial || m.isMeshLambertMaterial) || !_hqBatchVcOk(m) || m.transparent || m.alphaTest > 0 || m._ewNode || m.ewCol === 'on' || !m.emissive) return false;
+        if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || (m.clippingPlanes && m.clippingPlanes.length)) return false;
+        for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) if (m[_HQ_BATCH_MAPS[i]]) return false;
+        return true;
+    }
     function _hqStackOf(m) {
         if (_hqStackOff()) return null;
-        var t = _hqStackTex(m); if (!t) return null;
+        var t = _hqStackTex(m); if (!t) return _hqStackBareOk(m) ? _hqStkBare : null;
         var e = _hqStk.byImg.get(t.image); if (!e || e.arr._ew_dead) return null;
         return (e.key === _hqStackKey(t) && e.ver === t.version) ? e : null;   // sampled as the stack is, and the picture the layer was filled from
     }
@@ -94747,7 +94770,7 @@ const ThreeRenderer = (function () {
         c = m.clone(); c.map = null; c.emissiveMap = null; c.color.setRGB(1, 1, 1); c.vertexColors = true; c.emissive.setRGB(0, 0, 0); c.emissiveIntensity = 1; c.name = (m.name || '') + ' (sheet stack)';
         for (var p in m) if (p.indexOf('_ew_') === 0 && p.indexOf('_ew_bun') !== 0 && Object.prototype.hasOwnProperty.call(m, p)) c[p] = m[p];
         c._ew_onePaint = true; c._ew_stacked = true;
-        _ewNodeTag(c, { k: 'stack', tex: e.arr });
+        _ewNodeTag(c, e.bare ? { k: 'stack', bare: true } : { k: 'stack', tex: e.arr });
         return (L[k] = c);
     }
     /* THE SHELL CELLS (2026-11-15, mondo in Disaster City: 20 FPS with our code at 21 ms and a quarter of the pixels changing
@@ -94810,10 +94833,10 @@ const ThreeRenderer = (function () {
                 if (!lbs || !isFinite(lbs.radius) || lbs.radius * lsc > lcell * 0.75) { /* a piece wider than a square would hold its whole square on camera: it stays where it is */ }
                 else if (_hqBatchStill(c, root, inv, tmp) && _hqBatchLooseOk(c.o)) { var lkey = 'loose#' + c.o.id; if (!groups[lkey]) { groups[lkey] = []; keys.push(lkey); } groups[lkey].push(c); }
             }
-            else if (_hqBatchStill(c, root, inv, tmp) && _hqBatchPieceOk(c.o)) {
+            else if (_hqBatchStill(c, root, inv, tmp) && _hqBatchPieceOk(c.o, c.ter)) {
                 if (!c.g.boundingSphere) c.g.computeBoundingSphere();
                 sph.copy(c.g.boundingSphere.center).applyMatrix4(c.M);
-                var mkey = mk[c.m.uuid] || (mk[c.m.uuid] = _hqBatchMatKey(c.m, B.vc && _hqBatchVcOk(c.m), B.vc ? _hqStackOf(c.m) : null));
+                var mkey = c.ter ? (mk['T' + c.m.uuid] || (mk['T' + c.m.uuid] = 'ground|' + _hqBatchMatKey(c.m, false, null))) : (mk[c.m.uuid] || (mk[c.m.uuid] = _hqBatchMatKey(c.m, B.vc && _hqBatchVcOk(c.m), B.vc ? _hqStackOf(c.m) : null)));   // THE GROUND MERGES: the ground's own look, never the paint or a stack
                 var key = mkey + '#' + c.sig + '#' + c.o.castShadow + c.o.receiveShadow + '#' + c.o.renderOrder + '#' + c.o.layers.mask + '#' + Math.floor(sph.x / T) + ':' + Math.floor(sph.z / T) + '#' + _hqBatchHost(c.o, root).id;   // THE PROP CHUNKS: one chunk per batch
                 if (!groups[key]) { groups[key] = []; keys.push(key); }
                 groups[key].push(c);
