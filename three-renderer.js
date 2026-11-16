@@ -7741,9 +7741,13 @@ const ThreeRenderer = (function () {
     function _foliageIsXmas(name) { return typeof name === 'string' && name.slice(0, 5) === 'xmas:'; }
     /* THE FAIRY FOREST (2026-10-24): a name `misc:<file>` is a GLB in the misc folder (the giant Meshy mushroom planted as a tree) */
     function _foliageIsMisc(name) { return typeof name === 'string' && name.slice(0, 5) === 'misc:'; }
-    function _foliageIsGlb(name) { return typeof name === 'string' && (name.slice(0, 3) === 'rt:' || _foliageIsKit(name) || _foliageIsXmas(name) || _foliageIsMisc(name)); }
+    /* THE GIANT FLOWERS (2026-11-16, mondo: giant flowers in the Fairy Forest's forest mass, "yes do that"): a name `asset:<path under Assets/>` is any
+       GLB in the bucket planted as a tree; `#rrggbb` after it recolours its pale petals as it lands (_hqPetalMat, THE PETAL COLOURS) */
+    function _foliageIsAsset(name) { return typeof name === 'string' && name.slice(0, 6) === 'asset:'; }
+    function _foliageIsGlb(name) { return typeof name === 'string' && (name.slice(0, 3) === 'rt:' || _foliageIsKit(name) || _foliageIsXmas(name) || _foliageIsMisc(name) || _foliageIsAsset(name)); }
     function _foliageUrl(name) {
         if (_foliageIsXmas(name)) return _xmasUrl(name.slice(5));
+        if (_foliageIsAsset(name)) return 'https://cdn.entropywars.net/Assets/' + name.slice(6).split('#')[0].split('/').map(encodeURIComponent).join('/');
         if (_foliageIsMisc(name)) return (_R2_MISC || 'https://cdn.entropywars.net/Assets/misc/') + encodeURIComponent(name.slice(5));
         if (_foliageIsKit(name)) { var KB = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.assets && DOOR_HQ.assets.models) || 'https://cdn.entropywars.net/Assets/world/hq/models/'; return KB + encodeURIComponent(name.slice(4)); }
         return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj';
@@ -7863,6 +7867,10 @@ const ThreeRenderer = (function () {
                     reqUrl,
                     function(root) {
                         if (glb) root = _foliageBakeGlb(root.scene || (root.scenes && root.scenes[0]));
+                        if (glb && _foliageIsAsset(name) && name.indexOf('#') > 0) {   // THE GIANT FLOWERS: this kind's petal colour (the baked root is this name's own; the file's scene keeps its materials)
+                            var petal = parseInt(name.split('#')[1], 16);
+                            if (isFinite(petal)) root.traverse(function (n) { if (n.isMesh && n.material && !Array.isArray(n.material)) { try { n.material = _hqPetalMat(n.material, petal); } catch (e) {} } });
+                        }
                         _normalizeFoliageModel(root);
                         entry.obj = root; entry.loading = false;
                         _objectsLanded = true;   /* re-render so the model swaps in */
@@ -72610,7 +72618,8 @@ const ThreeRenderer = (function () {
             try { tg = _nrTree(TK, kind, { h: h }); } catch (e) { tg = null; }
             if (!tg) return null;
             var spin = rng() * Math.PI * 2;   // drawn either way, so the seeded turns of the trees after it never shift
-            tg.position.set(px * U, py + 0.3, pz * U); tg.rotation.y = (face != null && isFinite(face)) ? -face * Math.PI / 180 : spin; tg._ew_hqTree = true;
+            var sinkK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] && HQ_TREE_KINDS[kind].sink) || 0;   // THE GIANT FLOWERS: a kind whose model stands on its own mound of earth is planted that deep (a share of its height)
+            tg.position.set(px * U, py + 0.3 - sinkK * TK.ts * h, pz * U); tg.rotation.y = (face != null && isFinite(face)) ? -face * Math.PI / 180 : spin; tg._ew_hqTree = true;
             if (tg.parent !== G) G.add(tg);
             return tg;
         };
