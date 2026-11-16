@@ -17,6 +17,32 @@ const D = require('./load-data.js').loadGameData(), vm = require('vm');
 const OLD = JSON.parse(vm.runInContext('JSON.stringify({ n: DOOR_HQ.rooms.site_prebuilt_camelot_ward.npcSpots, l: DOOR_HQ.rooms.site_prebuilt_camelot_ward.lines })', D));
 const say = race => (OLD.n.find(n => n.race === race) || {}).say || [];
 const WALL = 'castle_wall';
+/* THE ROYAL BANNER (2026-11-16, mondo on the first screenshots: "wtf is this random red rectangle and yellow square. if its a flag or a
+   banner it needs way more detail and thought behind it"). One banner, the same everywhere in Camelot: an iron rod with gilt finials on two
+   brackets, a crimson cloth with a gold border, cut to a swallowtail at the foot; on it Arthur's arms: the gold crown over the sword in
+   the stone (the blade point down in a grey stone). → parts in a frame where the cloth hangs in the x plane and faces +z * nz.
+   (cx, y0, cz) = the middle of its foot, w x h its size. */
+function royalBanner(cx, y0, cz, w, h, nz) {
+    const P = [], r = v => Math.round(v * 1000) / 1000, CR = 0xa01e2c, CR2 = 0x7c1420, GO = 0xd8b050, IRON = 0x2a2c30, ST = 0x8a8c90, BL = 0xd4d8e0;
+    const L = (dx, dy, bw, bh, tint, layer, x) => P.push(Object.assign({ s: 'box', p: [r(cx + dx), r(y0 + dy), r(cz + nz * 0.02 * layer)], size: [r(bw), r(bh), 0.03], tint, ds: true }, x || {}));
+    const tail = h * 0.16, top = h, body = h - tail;
+    /* the rod, its finials, the two brackets back to the wall */
+    P.push({ s: 'box', p: [cx, r(y0 + top), cz], size: [r(w + 0.5), 0.09, 0.09], tint: IRON }); for (const s of [-1, 1]) { P.push({ s: 'box', p: [r(cx + s * (w / 2 + 0.3)), r(y0 + top - 0.04), cz], size: [0.17, 0.17, 0.17], tint: GO }); P.push({ s: 'box', p: [r(cx + s * w * 0.3), r(y0 + top + 0.02), r(cz - nz * 0.14)], size: [0.06, 0.06, 0.3], tint: IRON }); }
+    /* the cloth: the field, the darker inner panel, the gold border; the swallowtail = two tails stepping to a point each */
+    L(0, tail, w, body, CR, 0); L(0, tail + body * 0.06, w * 0.8, body * 0.88, CR2, 1);
+    for (const s of [-1, 1]) L(s * (w / 2 - w * 0.035), tail, w * 0.07, body, GO, 2);
+    L(0, top - h * 0.035, w, h * 0.035, GO, 2); L(0, tail, w, h * 0.022, GO, 2);
+    for (const s of [-1, 1]) for (let k = 0; k < 4; k++) { const tw = w * 0.5 * (1 - k * 0.24); L(s * (w / 2 - tw / 2), tail - (k + 1) * tail / 4, tw, tail / 4 + 0.002, CR, 0); L(s * (w / 2 - w * 0.035), tail - (k + 1) * tail / 4, w * 0.07, tail / 4 + 0.002, GO, 2); }
+    /* the crown: a band with three jewels, five points (the middle one tallest), a pearl on each */
+    const cy = tail + body * 0.66, cw = w * 0.46;
+    L(0, cy, cw, body * 0.045, GO, 3); for (const k of [-1, 0, 1]) L(k * cw * 0.3, cy + body * 0.012, cw * 0.09, body * 0.022, k ? 0x2c4a9a : CR, 4);
+    for (const k of [-2, -1, 0, 1, 2]) { const ph = body * (k === 0 ? 0.09 : Math.abs(k) === 1 ? 0.06 : 0.075), px = k * cw * 0.22; L(px, cy + body * 0.045, cw * 0.12, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph * 0.5, cw * 0.07, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph, cw * 0.09, cw * 0.09, 0xf4ecd8, 4); }
+    /* the sword in the stone: pommel, grip, guard, the blade into a stepped grey stone */
+    const sy = tail + body * 0.2, bl = body * 0.3;
+    L(0, sy, w * 0.42, body * 0.07, ST, 3); L(0, sy + body * 0.07, w * 0.28, body * 0.04, ST, 3); L(-w * 0.08, sy + body * 0.02, w * 0.1, body * 0.02, 0x6e7074, 4);
+    L(0, sy + body * 0.09, w * 0.055, bl, BL, 4); L(0, sy + body * 0.09 + bl, w * 0.24, body * 0.022, GO, 4); L(0, sy + body * 0.112 + bl, w * 0.04, body * 0.06, 0x4a3626, 4); L(0, sy + body * 0.172 + bl, w * 0.075, w * 0.075, GO, 4);
+    return P;
+}
 /* THE CASTLE, REDESIGN 2 (2026-11-15, mondo on the built plan 3: "this whole section i outlined needs to be the castle, like an epic fantasy
    dragon quest or final fantasy or medieval castle. Disney world cinderella's palace. Hogwarts ... the way it is now is stupid because it like
    a walled off region inside a walled off region. the castle should be in the center of the map and relatively symmetrical. higher elevation
@@ -73,12 +99,14 @@ function sheet() {
         crown(w, d, y, key, tint) { for (const s of [-1, 1]) { const nx = Math.floor(w / 2), nz = Math.floor(d / 2);
             add({ s: 'box', p: [-w / 2 + 0.55, y, s * (d / 2 - 0.25)], size: [1.1, 1.0, 0.5], n: nx, step: [w / nx, 0, 0] }, key, tint);
             add({ s: 'box', p: [s * (w / 2 - 0.25), y, -d / 2 + 0.55], size: [0.5, 1.0, 1.1], n: nz, step: [0, 0, d / nz] }, key, tint); } },
+        banner(x, y, z, w, h) { royalBanner(x, y, z, w, h, 1).forEach(p => P.push(p)); },
         /* a round tower: the shaft from y0, lit slits round it, a corbelled gallery under the eaves, the blue cone, a gilt finial, the flag */
         tower(x, z, r, y0, h, ch, tint) { const top = y0 + h;
             add({ s: 'cyl', p: [x, y0, z], r, h, seg: 16 }, WALL, tint);
             add({ s: 'cyl', p: [x, top - 1.8, z], r: r + 0.5, h: 1.8, seg: 16 }, WALL, STONE3);
             add({ s: 'cyl', p: [x, top - 2.3, z], r: r + 0.25, h: 0.5, seg: 16 }, WALL, STONE2);
             for (let y = y0 + 6; y < top - 5; y += 7) add({ s: 'box', p: [x, y, z], size: [0.6, 2.4, 0.12], ring: { n: 4, r: r + 0.03, a0: 45 }, glow: 0.6 }, G_TALL, 0xf0d890);
+            add({ s: 'cyl', p: [x, top - 0.3, z], r: r + 1.0, h: 0.3, seg: 16, roof: true }, WOODD, 0x4a3626);   // the eave's underside: the cone sits ON the tower (mondo: "roofs don't connect")
             add({ s: 'cyl', p: [x, top, z], r: r + 1.0, h: ch, seg: 16, r2: 0, roof: true }, SLATE, BLUE);
             add({ s: 'cyl', p: [x, top + ch - 0.5, z], r: 0.3, h: 1.3, seg: 8, r2: 0, roof: true }, null, GOLD);
             add({ s: 'cyl', p: [x, top + ch, z], r: 0.09, h: 4.2, seg: 6, roof: true }, null, 0x403830);
@@ -120,7 +148,7 @@ const KEEP = kq('keep', Q.keep, 'S', 14, { hollow: false, leaf: undefined, leafD
         for (const s of [-1, 1]) for (const z of (y > 20 ? [-17.5, -10.5, -3.5, 3.5, 10.5, 17.5] : [-17.5, 17.5])) light(s * (w / 2 + 0.08), y, z, h, true); }
     for (const x of [-21.5, -15, 15, 21.5]) a.box(x, 0, d / 2 + 0.35, 1.3, KH - 1.2, 0.7, WALL, STONE3);                    // the front's buttresses
     for (const x of [-21, -15, -9, -3, 3, 9, 15, 21]) a.box(x, 0, -d / 2 - 0.35, 1.2, KH - 1.2, 0.7, WALL, STONE3);
-    for (const s of [-1, 1]) { a.box(s * 15, 8.5, d / 2 + 0.74, 1.5, 6.5, 0.08, null, BANNER); a.box(s * 15, 12.4, d / 2 + 0.79, 0.7, 0.7, 0.05, null, GOLD); }
+    for (const s of [-1, 1]) a.banner(s * 15, 7.5, d / 2 + 0.95, 2.4, 7.5);
     /* the portal: two turrets, the gatehouse block over the way in, the great doors (the doorway itself is the wicket in them), the great window */
     for (const s of [-1, 1]) a.tower(s * 8, d / 2 + 1.5, 2.2, 0, 22, 8, STONE3);
     for (const s of [-1, 1]) a.box(s * 5.0, 0, d / 2 + 1.3, 1.6, 6.2, 2.6, WALL, STONE3);
@@ -134,7 +162,7 @@ const KEEP = kq('keep', Q.keep, 'S', 14, { hollow: false, leaf: undefined, leafD
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.tower(sx * w / 2, sz * d / 2, 3.4, 0, 34, 12, PALE);
     /* THE GREAT SPIRE: a round tower out of the roof's middle, four bartizans on it, the tallest cone in the kingdom */
     a.tower(0, 0, 5.5, KH + 2, 22, 20, PALE);
-    a.cyl(0, KH + 14, 0, 1.3, 10, WALL, PALE, { seg: 10, ring: { n: 4, r: 5.7, a0: 45 }, roof: true }); a.cyl(0, KH + 24, 0, 1.75, 5.5, SLATE, BLUE, { seg: 10, r2: 0, roof: true, ring: { n: 4, r: 5.7, a0: 45 } });
+    a.cyl(0, KH + 14, 0, 1.3, 10, WALL, PALE, { seg: 10, ring: { n: 4, r: 5.7, a0: 45 }, roof: true }); a.cyl(0, KH + 23.75, 0, 1.75, 0.25, WOODD, 0x4a3626, { seg: 10, ring: { n: 4, r: 5.7, a0: 45 }, roof: true }); a.cyl(0, KH + 24, 0, 1.75, 5.5, SLATE, BLUE, { seg: 10, r2: 0, roof: true, ring: { n: 4, r: 5.7, a0: 45 } });
     a.box(0, KH + 12, 0, 1.4, 3.4, 0.12, G_TALL, 0xf4dc98, { glow: 0.8, ring: { n: 4, r: 5.53, a0: 0 }, roof: true });
 });
 /* A WING — two tall storeys of hall under a steep blue roof, a tower on each outer corner (the rear one the taller, so all eight show from
@@ -149,7 +177,7 @@ const wing = (id, q, out, o) => kq(id, q, 'S', 7, o, (a, w, d, door) => {
         for (const z of [-7, 0, 7]) a.box(out * (w / 2 + 0.08), y, z, 0.12, h, 1.4, G_TALL, WARM, { glow: 0.5 }); }
     for (const x of [-12.2, -7.3, 7.3, 12.2]) a.box(x, 0, d / 2 + 0.3, 1.0, 13.2, 0.6, WALL, STONE2);
     a.box(door.lx, 2.3, d / 2 + 0.5, 4.6, 0.5, 1.2, WALL, STONE3, { under: true }); for (const s of [-1, 1]) a.box(door.lx + s * 2.0, 0, d / 2 + 0.6, 0.6, 2.3, 0.6, WALL, STONE3);
-    for (const s of [-1, 1]) a.box(door.lx + s * 3.6, 3.2, d / 2 + 0.1, 1.2, 4.2, 0.08, null, BANNER);
+    for (const s of [-1, 1]) a.banner(door.lx + s * 3.6, 3.0, d / 2 + 0.28, 1.5, 4.6);
     a.box(-out * (w / 2 - 3), 14.3, -d / 2 + 3, 2.2, 10.5, 2.2, WALL, STONE2, { roof: true }); a.box(-out * (w / 2 - 3), 24.8, -d / 2 + 3, 2.7, 0.5, 2.7, WALL, STONE3, { roof: true });
     a.tower(out * w / 2, d / 2, 4.2, 0, 24, 11, STONE); a.tower(out * w / 2, -d / 2, 3.6, 0, 30, 10, STONE);
 });
@@ -172,7 +200,6 @@ const lodge = (id, q, side, o, extra) => kq(id, q, side, 5.25, o, (a, w, d, door
 const STABLES = lodge('stables', Q.stables, 'E', { leaf: 'leaf_stable', leafDouble: false, keyIn: WOODK, floorIn: 'dirt_2' }, (a, w, d, door) => {
     a.box(door.lx, 5.6, d / 2 + 0.1, 1.6, 1.8, 0.1, WOODK, TIMBER); a.box(door.lx, 7.6, d / 2 + 0.7, 0.2, 0.2, 1.4, WOODD, TIMBER); });
 const ARMOURY = lodge('armoury', Q.armoury, 'W', { leafDouble: false }, (a, w, d, door) => {
-    [[-2.6, 0x2c4a9a], [2.6, BANNER]].forEach(([x, c]) => { a.box(door.lx + x, 2.9, d / 2 + 0.1, 1.0, 1.2, 0.1, null, c); a.box(door.lx + x, 3.3, d / 2 + 0.16, 0.34, 0.34, 0.05, null, GOLD); });
     a.box(door.lx, 5.7, d / 2 + 0.1, 0.16, 1.9, 0.06, null, 0xb8bcc4); a.box(door.lx, 6.2, d / 2 + 0.1, 0.9, 0.14, 0.06, null, 0xb8bcc4); });
 
 /* ── THE HILL'S OWN LOOK (a row with its foot on the village's ground): the drums on its four corners and beside the Grand Stair, the
@@ -183,7 +210,7 @@ const ARMOURY = lodge('armoury', Q.armoury, 'W', { leafDouble: false }, (a, w, d
   [[Q.hill[0], Q.hill[1]], [Q.hill[2], Q.hill[1]], [Q.hill[0], Q.hill[3]], [Q.hill[2], Q.hill[3]]].forEach((c, i) => drum('hill_drum_' + i, g(c[0]), g(c[1]), 4.2, T1 + 0.1, 5.6));
   const sx0 = g(Q.grandStair[0]), sx1 = g(Q.grandStair[2]), sz = g(Q.hill[3]);
   [sx0 - 3.4, sx1 + 3.4].forEach((x, i) => { drum('stair_drum_' + i, x, sz, 3.2, T1 + 0.1, 4.2); const p = L(x, sz);
-      a.cyl(p[0], T1 + 0.1, p[1], 0.1, 6, null, 0x403830, { seg: 6 }); a.box(p[0], T1 + 1.4, p[1] + 0.2, 1.3, 4.2, 0.06, null, BANNER, { ds: true }); });
+      a.cyl(p[0], T1 + 0.1, p[1], 0.1, 6.4, null, 0x403830, { seg: 6 }); a.banner(p[0], T1 + 1.6, p[1] + 0.22, 1.5, 4.6); });
   const NG = Q.grandStair[3] - Q.grandStair[1], NU = Q.upperStair[3] - Q.upperStair[1];
   for (const x of [sx0 - 0.1, sx1 + 0.1]) { const p = L(x, sz); for (let i = 0; i < NG; i++) a.box(p[0], 0, p[1] + 1.75 + i * 3.5, 0.9, r2(T1 * (NG - i - 0.5) / NG + 1.0), 3.5, WALL, STONE2); }   // the Grand Stair's cheek walls, stepping down with it
   { const ux0 = g(Q.upperStair[0]), ux1 = g(Q.upperStair[2]), uz = g(Q.upper[3]);
@@ -191,8 +218,8 @@ const ARMOURY = lodge('armoury', Q.armoury, 'W', { leafDouble: false }, (a, w, d
         const q = L(x, uz + NU * 3.5 + 0.4); a.box(q[0], T1, q[1], 1.2, 2.6, 1.2, WALL, STONE3); a.cyl(q[0], T1 + 2.6, q[1], 0.5, 0.5, null, GOLD, { seg: 8, r2: 0.2 }); } }
   /* THE LISTS: a tilt rail either side of the middle line (red and white, the lances' side), on sand */
   for (const s of [-1, 1]) { const p = L(MX + s * 24.5, g(55)); 
-      a.box(p[0] - 9.6, T1 + 0.35, p[1], 1.75, 0.5, 0.05, null, BANNER, { n: 6, step: [3.5, 0, 0], ds: true });
-      feat({ k: 'rail', x0: r2(MX + s * 24.5 - 10.5), z0: g(55), x1: r2(MX + s * 24.5 + 10.5), z1: g(55), y: T1 });
+      feat({ k: 'wall', x0: r2(MX + s * 24.5 - 10.5), z0: g(55), x1: r2(MX + s * 24.5 + 10.5), z1: g(55), h: 1.15, t: 0.22, key: 'wood' });   // THE TILT: a plank barrier (the engine's own rail is a modern handrail)
+      a.box(p[0] - 10.5, T1, p[1], 0.3, 1.5, 0.3, WOODD, TIMBER, { n: 7, step: [3.5, 0, 0] });
       marks.push({ k: 'rect', x: r2(MX + s * 24.5), z: g(55), w: 24.5, d: 7, color: 0xc8b088, a: 0.85 }); }
   arch.push({ k: 'arch', id: 'cam:hill', x: cx, z: cz, y: 0, rot: 0, parts: a.P }); }
 arch.forEach(feat);
@@ -447,7 +474,10 @@ function houseLook(kind, a, w, d, i) {
         for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(s * (w / 2 - 0.2), 0.8, t * (d / 2 - 0.2), 0.3, hh - 0.8, 0.3, WOODD, TIMBER); a.box(0, hh - 0.26, 0, w, 0.26, d, WOODD, TIMBER, { top: false, under: true });
         gable(hh, 3.2, 1.0, SLATE, 0x5a6c96, { keyEnd: STUCCO, tintEnd: tint });
         door(dx, f); a.box(cx, 1.0, f, cw, 1.5, 0.1, null, 0x241c18); a.box(cx, 0.9, f + 0.3, cw + 0.3, 0.12, 0.7, WOODK, 0x9a6a3c); a.box(cx, 0.8, f + 0.05, cw + 0.2, 0.1, 0.1, WOODD, TIMBER);
-        for (let k = 0; k < 3; k++) a.box(cx - cw / 2 + (k + 0.5) * cw / 3, 1.02, f + 0.32, 0.5, 0.26, 0.4, null, [0xd8a040, 0xb04a3a, 0x6a9a4a][(i + k) % 3]);
+        for (let k = 0; k < 3; k++) { const bx = cx - cw / 2 + (k + 0.5) * cw / 3, kind = (i + k) % 3;   // a wicker basket of apples, one of cabbages, a board of loaves
+            if (kind === 2) { a.box(bx, 1.02, f + 0.32, 0.7, 0.04, 0.42, WOODK, 0x9a6a3c); for (const q of [-0.2, 0.02, 0.24]) a.box(bx + q, 1.06, f + 0.32, 0.18, 0.12, 0.3, null, 0xc89a58); }
+            else { a.cyl(bx, 1.02, f + 0.32, 0.26, 0.2, WOODK, 0xb89460, { seg: 10 }); a.cyl(bx, 1.2, f + 0.32, 0.28, 0.03, WOODK, 0x8a6a40, { seg: 10 });
+                for (const q of [[-0.1, -0.06], [0.1, -0.05], [0, 0.1], [-0.02, -0.01]]) a.P.push({ s: 'dome', p: [bx + q[0], q === 3 ? 1.26 : 1.2, f + 0.32 + q[1]], r: kind ? 0.1 : 0.08, seg: 8, tint: kind ? 0x6a9a4a : 0xb83a34 }); } }
         a.roof('shed', cx, 2.6, f + 0.75, cw + 0.6, 0.55, 1.5, null, (i % 2) ? 0xb03a3a : 0x3a5a9a, { ry: 180 }); for (const s of [-1, 1]) a.box(cx + s * (cw / 2 + 0.2), 0, f + 1.4, 0.12, 2.65, 0.12, WOODD, TIMBER);
         a.box(dx, 3.0, f + 0.6, 0.1, 0.1, 1.2, null, 0x2a2c30); a.box(dx, 2.2, f + 1.0, 0.08, 0.75, 0.9, WOODK, 0x8a5a34, { ds: true }); a.box(dx, 2.42, f + 1.0, 0.1, 0.3, 0.4, null, [0xd8b050, 0xc84a5a, 0x4a8a3a][i % 3], { ds: true });
         sideWin(1.5, 1.1); chimney(w / 2 - 1.3, -d / 4, hh, hh + 4.0, WALL, STONE2); barrel(-w / 2 + 0.5, d / 2 + 0.35); barrel(-w / 2 + 1.25, d / 2 + 0.3);
@@ -489,7 +519,7 @@ count.houseKinds = KCOUNT;
 K.arch.slice(nArch).forEach(feat);
 /* the insides */
 for (const z of [-5.5, -2.5, 0.5, 3.5]) for (const x of [-4.2, 4.2]) K.put(CHAPEL, 'church_pew', x, z, { face: 0 });
-K.put(CHAPEL, 'stone_altar', 0, -8, {}); K.put(CHAPEL, 'holy_carpet', 0, -1, { face: 0 }); K.put(CHAPEL, 'candle_ring', -2.6, -8.6, {}); K.put(CHAPEL, 'candle_ring', 2.6, -8.6, {}); K.put(CHAPEL, 'brazier', -6.5, 8, {}); K.put(CHAPEL, 'brazier', 6.5, 8, {});
+K.put(CHAPEL, 'stone_altar', 0, -8, {}); K.put(CHAPEL, 'holy_carpet', 0, -1, { face: 0 }); K.put(CHAPEL, 'brazier', -6.5, 8, {}); K.put(CHAPEL, 'brazier', 6.5, 8, {});
 K.put(SMITHY, 'brazier', -4.5, -4.5, {}); K.put(SMITHY, 'cauldron', -1.5, -5, {}); K.put(SMITHY, 'armour_stand', 4.5, -4.5, { face: 0 }); K.put(SMITHY, 'armour_stand', 4.5, -1, { face: 270 }); K.put(SMITHY, 'dojo_weapon_rack', 5.4, 3, { face: 270 });
 K.put(SMITHY, 'sea_chest', -5, 3.5, { face: 90 }); K.put(SMITHY, 'psx_table_large_3', 0, 1.5, {}); K.put(SMITHY, 'psx_wooden_crate_2', -5, 0, {});
 for (const x of [-5, 0, 5]) { K.put(INN, 'psx_table_large_2', x, 1.5, {}); K.put(INN, 'church_pew', x, 3.1, { face: 180 }); K.put(INN, 'church_pew', x, -0.1, { face: 0 }); }

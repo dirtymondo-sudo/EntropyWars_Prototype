@@ -85,6 +85,33 @@ const check = (name, R) => { R.props.forEach(p => { if (!CAT[p.key]) throw new E
     if (bad.length) throw new Error(name + ': a blocker stands in a doorway square: ' + bad.join(' · ')); };
 
 
+/* THE ROYAL BANNER (2026-11-16, mondo on the first screenshots: "wtf is this random red rectangle and yellow square. if its a flag or a
+   banner it needs way more detail and thought behind it"). One banner, the same everywhere in Camelot: an iron rod with gilt finials on two
+   brackets, a crimson cloth with a gold border, cut to a swallowtail at the foot; on it Arthur's arms: the gold crown over the sword in
+   the stone (the blade point down in a grey stone). → parts in a frame where the cloth hangs in the x plane and faces +z * nz.
+   (cx, y0, cz) = the middle of its foot, w x h its size. */
+function royalBanner(cx, y0, cz, w, h, nz) {
+    const P = [], r = v => Math.round(v * 1000) / 1000, CR = 0xa01e2c, CR2 = 0x7c1420, GO = 0xd8b050, IRON = 0x2a2c30, ST = 0x8a8c90, BL = 0xd4d8e0;
+    const L = (dx, dy, bw, bh, tint, layer, x) => P.push(Object.assign({ s: 'box', p: [r(cx + dx), r(y0 + dy), r(cz + nz * 0.02 * layer)], size: [r(bw), r(bh), 0.03], tint, ds: true }, x || {}));
+    const tail = h * 0.16, top = h, body = h - tail;
+    /* the rod, its finials, the two brackets back to the wall */
+    P.push({ s: 'box', p: [cx, r(y0 + top), cz], size: [r(w + 0.5), 0.09, 0.09], tint: IRON }); for (const s of [-1, 1]) { P.push({ s: 'box', p: [r(cx + s * (w / 2 + 0.3)), r(y0 + top - 0.04), cz], size: [0.17, 0.17, 0.17], tint: GO }); P.push({ s: 'box', p: [r(cx + s * w * 0.3), r(y0 + top + 0.02), r(cz - nz * 0.14)], size: [0.06, 0.06, 0.3], tint: IRON }); }
+    /* the cloth: the field, the darker inner panel, the gold border; the swallowtail = two tails stepping to a point each */
+    L(0, tail, w, body, CR, 0); L(0, tail + body * 0.06, w * 0.8, body * 0.88, CR2, 1);
+    for (const s of [-1, 1]) L(s * (w / 2 - w * 0.035), tail, w * 0.07, body, GO, 2);
+    L(0, top - h * 0.035, w, h * 0.035, GO, 2); L(0, tail, w, h * 0.022, GO, 2);
+    for (const s of [-1, 1]) for (let k = 0; k < 4; k++) { const tw = w * 0.5 * (1 - k * 0.24); L(s * (w / 2 - tw / 2), tail - (k + 1) * tail / 4, tw, tail / 4 + 0.002, CR, 0); L(s * (w / 2 - w * 0.035), tail - (k + 1) * tail / 4, w * 0.07, tail / 4 + 0.002, GO, 2); }
+    /* the crown: a band with three jewels, five points (the middle one tallest), a pearl on each */
+    const cy = tail + body * 0.66, cw = w * 0.46;
+    L(0, cy, cw, body * 0.045, GO, 3); for (const k of [-1, 0, 1]) L(k * cw * 0.3, cy + body * 0.012, cw * 0.09, body * 0.022, k ? 0x2c4a9a : CR, 4);
+    for (const k of [-2, -1, 0, 1, 2]) { const ph = body * (k === 0 ? 0.09 : Math.abs(k) === 1 ? 0.06 : 0.075), px = k * cw * 0.22; L(px, cy + body * 0.045, cw * 0.12, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph * 0.5, cw * 0.07, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph, cw * 0.09, cw * 0.09, 0xf4ecd8, 4); }
+    /* the sword in the stone: pommel, grip, guard, the blade into a stepped grey stone */
+    const sy = tail + body * 0.2, bl = body * 0.3;
+    L(0, sy, w * 0.42, body * 0.07, ST, 3); L(0, sy + body * 0.07, w * 0.28, body * 0.04, ST, 3); L(-w * 0.08, sy + body * 0.02, w * 0.1, body * 0.02, 0x6e7074, 4);
+    L(0, sy + body * 0.09, w * 0.055, bl, BL, 4); L(0, sy + body * 0.09 + bl, w * 0.24, body * 0.022, GO, 4); L(0, sy + body * 0.112 + bl, w * 0.04, body * 0.06, 0x4a3626, 4); L(0, sy + body * 0.172 + bl, w * 0.075, w * 0.075, GO, 4);
+    return P;
+}
+
 /* ════ THE CASTLE (30 x 12) ════ */
 const NU = 30, NV = 12, LU = 0, L0 = 7, L1 = 14, L2 = 21, L3 = 28, LB = 35, SH = 6.7, E = 0.14;   // SH: a storey's wall under the next slab; E: half a metre in squares (the slabs' overlap)
 const R = mk(NU, NV), X = R.X, Z = R.Z;
@@ -108,6 +135,14 @@ function column(u, v, L, h, r, tint) { R.P.push({ s: 'cyl', p: [X(u), L, Z(v)], 
     R.F.push({ k: 'wall', x0: r2(X(u) - 0.3), z0: Z(v), x1: r2(X(u) + 0.3), z1: Z(v), t: 0.7, ghost: true, rail: false, h, y: r2(L + h), y0: L > 0 ? L : undefined }); R.lvl = L; R.block[R.sq(u, v)] = R.block[R.sq(u, v)] || 'column'; }
 /* a lit window on the inside face of an outer wall: axis / at as a wall's, m = its middle, `inw` = which way is indoors (+1 / -1) */
 function win(axis, at, m, L, inw, h, y) { const o = 0.17 * inw, hh = h || 3.0, yy = L + (y || 1.6); R.P.push(axis === 'u' ? { s: 'box', p: [X(m), yy, r2(Z(at) + o)], size: [1.3, hh, 0.05], key: GLS, tint: 0xcfe0f4, glow: 0.55 } : { s: 'box', p: [r2(X(at) + o), yy, Z(m)], size: [0.05, hh, 1.3], key: GLS, tint: 0xcfe0f4, glow: 0.55 }); }
+/* a guard on an upper floor's edge (mondo on the Battlements: "modern metal guard rails for a fantasy castle??"): `stone` = a low wall
+   under a coping, `wood` = a timber balustrade (turned balusters under a moulded rail). Either weighs a low hung wall. */
+function guard(axis, at, a, b, y, kind) { const m = (a + b) / 2, L = (b - a) * C, px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m), sz = (w, h, t) => axis === 'u' ? [r2(w), h, t] : [t, h, r2(w)];
+    if (kind === 'wood') { R.P.push({ s: 'box', p: [px, r2(y + 0.98), pz], size: sz(L, 0.14, 0.2), key: WOOD, tint: 0x6a4a30 }, { s: 'box', p: [px, r2(y + 0.08), pz], size: sz(L, 0.1, 0.16), key: WOOD, tint: 0x6a4a30 });
+        const n = Math.max(2, Math.round(L / 0.4)); R.P.push({ s: 'cyl', p: axis === 'u' ? [r2(X(a) + L / n / 2), r2(y + 0.18), pz] : [px, r2(y + 0.18), r2(Z(a) + L / n / 2)], r: 0.055, h: 0.8, seg: 6, key: WOOD, tint: 0x8a6240, n, step: axis === 'u' ? [r2(L / n), 0, 0] : [0, 0, r2(L / n)] });
+        for (let s = a; s <= b + 0.001; s += 1) R.P.push({ s: 'box', p: axis === 'u' ? [X(s), y, pz] : [px, y, Z(s)], size: [0.22, 1.2, 0.22], key: WOOD, tint: 0x5a3c26 }, { s: 'box', p: axis === 'u' ? [X(s), r2(y + 1.2), pz] : [px, r2(y + 1.2), Z(s)], size: [0.3, 0.1, 0.3], key: WOOD, tint: 0x5a3c26 }); }
+    else { R.P.push({ s: 'box', p: [px, y, pz], size: sz(L, 0.95, 0.34), key: WALL, tint: STONE2 }, { s: 'box', p: [px, r2(y + 0.95), pz], size: sz(L + 0.1, 0.14, 0.46), key: WALL, tint: PALE }); }
+    R.F.push(Object.assign({ k: 'wall' }, axis === 'u' ? { x0: r2(X(a) + 0.15), z0: pz, x1: r2(X(b) - 0.15), z1: pz } : { x0: px, z0: r2(Z(a) + 0.15), x1: px, z1: r2(Z(b) - 0.15) }, { t: T, ghost: true, rail: false, y: r2(y + 1.1), y0: y })); }
 const B = (key, u, v, face, L, x) => (R.lvl = L, 0) || R.B(key, u, v, face, Object.assign(L > 0 ? { y: L } : {}, x || {}));
 const dec = (key, u, v, face, L, x) => { const o = Object.assign({}, x || {}); if (L > 0) o.y = r2(L + (o.y || 0)); else if (!o.y) delete o.y; return R.dec(key, u, v, face, o); };
 const who = (race, u, v, face, L, lines) => { const n = { x: X(u), z: Z(v), face: face || 0, race }; if (L > 0) n.y = L; if (lines) n.say = lines; R.npc.push(n); };
@@ -166,7 +201,7 @@ const V1 = [8, 9, 12, 12.12, 12.85, 13, 16, 16.12, 16.85, 17, 20, 20.16, 22], OP
 for (const L of [L0, L1, L2, L3]) for (let i = 0; i < V1.length - 1; i++) if (!(V1[i] >= OPEN1[L][0] && V1[i + 1] <= OPEN1[L][1])) W('u', 1, V1[i], V1[i + 1], L, {});
 for (const L of [L0, L1, L2]) { W('u', 2, 8, 22, L, { gaps: [[13, 17]] }); W('v', 17, 1, 2, L, {}); }
 W('u', 2, 8, 22, L3, { gaps: [[13, 17], [20, 22]] }); W('v', 17, 1, 2, L3, {});
-R.guard('u', 1, 17, 20, LB); R.guard('u', 2, 17, 20, LB); R.guard('v', 20, 1, 2, LB);                                   // the well the last flight comes up through
+guard('u', 1, 17, 20, LB, 'stone'); guard('u', 2, 17, 20, LB, 'stone'); guard('v', 20, 1, 2, LB, 'stone');                                   // the well the last flight comes up through
 
 /* ── THE UNDERCROFT (0 m) ── */
 { const L = LU, cell = 'leaf_cell';
@@ -181,14 +216,14 @@ R.guard('u', 1, 17, 20, LB); R.guard('u', 2, 17, 20, LB); R.guard('v', 20, 1, 2,
   for (let u = 14; u < 16; u++) for (let v = 6; v < 8; v++) R.block[R.sq(u, v)] = 'the orb';
   R.F.push({ k: 'wall', x0: r2(X(15) - 1), z0: Z(7), x1: r2(X(15) + 1), z1: Z(7), t: 2, ghost: true, rail: false, h: 2, y: 2 });
   B('cauldron', 12, 5, 0, L); B('library_shelf_full', 11, 9, 90, L); B('library_shelf', 18, 9, 270, L); B('psx_table_large_3', 17, 5, 0, L); B('lectern', 13, 8, 180, L); B('giant_hourglass', 18, 6, 0, L); B('star_projector', 12, 8, 0, L);
-  dec('crystalBall', 17.5, 5.5, 0, L, { y: 0.8 }); dec('item_potion_flask', 17.2, 5.4, 0, L, { y: 0.8 }); dec('psx_open_book_mp_1', 17.7, 5.7, 40, L, { y: 0.8 }); dec('candle_ring', 15, 9.4, 0, L); dec('psx_cobweb_4', 11.4, 4.4, 0, L, { y: 4 }); dec('crystal_cluster', 16.5, 9.3, 0, L);
+  dec('crystalBall', 17.5, 5.5, 0, L, { y: 0.8 }); dec('item_potion_flask', 17.2, 5.4, 0, L, { y: 0.8 }); dec('psx_open_book_mp_1', 17.7, 5.7, 40, L, { y: 0.8 }); dec('psx_cobweb_4', 11.4, 4.4, 0, L, { y: 4 }); dec('crystal_cluster', 16.5, 9.3, 0, L);
   who('wizard', 13.5, 6.5, 100, L, say(1, 'wizard'));
   /* the Gaoler's Room, the Cells, the antechamber, the Crypt of Kings, the Ossuary */
   B('psx_table_large_2', 10, 2, 0, L); B('dojo_weapon_rack', 12, 2, 270, L); dec('psx_chair_mp_1', 10.5, 3.3, 180, L); dec('wall_chains', 9.5, 2.25, 0, L, { y: 1.6 }); dec('cave_torch', 12.6, 2.4, 0, L);
   B('psx_bed_1', 8, 4, 90, L); B('psx_bed_1', 8, 6, 90, L); dec('skull_pile', 8.4, 8.4, 0, L); dec('wall_chains', 8.25, 8.5, 90, L, { y: 1.5 }); dec('wooden_bucket', 8.6, 5.6, 0, L); dec('cave_torch', 10.5, 9.6, 0, L);
   who('skeleton', 8.6, 9.4, 90, L, say(1, 'skeleton'));
   dec('cave_torch', 13.4, 2.4, 0, L); dec('psx_cobweb_5', 16.6, 2.4, 0, L, { y: 3.5 }); B('stone_urn', 14, 2, 0, L); B('stone_urn', 16, 2, 0, L);
-  B('sarcophagus', 18, 2, 90, L); B('sarcophagus', 20, 2, 90, L); B('trap_sarcophagus', 18, 3, 0, L); dec('candle_ring', 19.5, 3.5, 0, L); dec('arms_trophy', 19.5, 2.25, 0, L, { y: 2.2 });
+  B('sarcophagus', 18, 2, 90, L); B('sarcophagus', 20, 2, 90, L); B('trap_sarcophagus', 18, 3, 0, L); dec('arms_trophy', 19.5, 2.25, 0, L, { y: 2.2 });
   B('skull_pile', 21, 4, 0, L); B('skull_pile', 21, 6, 0, L); B('psxg_coffin', 21, 8, 90, L); B('trap_coffin_open', 19, 9, 0, L); dec('skull', 20.4, 5.5, 60, L); dec('skull', 19.6, 8.4, 200, L); dec('psx_cobweb_4', 21.6, 9.6, 0, L, { y: 3 }); dec('cave_torch', 19.4, 4.4, 0, L);
   who('ghost', 20.5, 7.5, 270, L, say(1, 'ghost'));
   /* the Sally Port passage (west), the Well Chamber (east) */
@@ -211,7 +246,9 @@ R.guard('u', 1, 17, 20, LB); R.guard('u', 2, 17, 20, LB); R.guard('v', 20, 1, 2,
   WW('v', 8, 2, 10, L, { doors: [[8.5, LEAF]], tint: PALE });
   /* THE THRONE HALL */
   for (const v of [5, 6.5, 8, 9.5, 11]) both(m => column(m(10.3), v, L, L2 - L - 0.3, 0.5));
-  R.P.push({ s: 'box', p: [X(15), L, Z(4.9)], size: [10.5, 0.24, 5.2], key: 'marble', tint: 0xe6dcc0 }, { s: 'box', p: [X(15), L + 0.01, Z(8.6)], size: [2.6, 0.03, 20.4], tint: RED }, { s: 'box', p: [X(15), L + 4.0, Z(4.2)], size: [5.6, 7.5, 0.08], tint: RED }, { s: 'box', p: [X(15), L + 8.6, Z(4.24)], size: [1.6, 1.6, 0.06], tint: GOLD });
+  R.P.push({ s: 'box', p: [X(15), L, Z(4.9)], size: [10.5, 0.24, 5.2], key: 'marble', tint: 0xe6dcc0 }, { s: 'box', p: [X(15), L + 0.01, Z(8.6)], size: [2.6, 0.03, 20.4], tint: RED }, { s: 'box', p: [X(15), L + 0.24, Z(4.3)], size: [7, 0.2, 0.5], key: WALL, tint: STONE2 });
+  royalBanner(X(15), L + 3.4, r2(Z(4) + 0.42), 4.6, 9.4, 1).forEach(p => R.P.push(p));                                        // THE CLOTH OF ESTATE behind the throne
+  for (const s of [-1, 1]) royalBanner(r2(X(15) + s * 12.25), L + 5, r2(Z(4) + 0.42), 2.2, 6.4, 1).forEach(p => R.P.push(p));
   dec('royal_throne', 15, 4.8, 180, L, { y: 0.24 }); R.lvl = L; R.block[R.sq(14, 4)] = R.block[R.sq(15, 4)] = 'the dais'; dec('lion_statue', 13.4, 5.2, 180, L); dec('lion_statue', 16.6, 5.2, 180, L);
   B('round_table', 14.5, 7.5, 0, L, { nu: 1, nv: 1 }); R.props[R.props.length - 1].x = X(15); R.block[R.sq(15, 7)] = 'round_table';
   both((m, f, ms) => { B('brazier', ms(12), 4, 0, L); B('armour_stand', ms(8), 5, f(90), L); B('armour_stand', ms(8), 7, f(90), L); B('armour_stand', ms(8), 11, f(90), L);
@@ -226,8 +263,17 @@ R.guard('u', 1, 17, 20, LB); R.guard('u', 2, 17, 20, LB); R.guard('v', 20, 1, 2,
   /* THE KITCHEN WING (west) and THE BARRACKS WING (east): the same walls, mirrored */
   WW('v', 5, 2, 10, L, { doors: [[3, LEAF], [5.5, LEAF], [8, LEAF]], gaps: [[9, 10]] }); WW('u', 4, 5, 8, L, {}); WW('u', 7, 5, 8, L, {}); WW('u', 9, 0, 1, L, {}); WW('u', 9, 1, 4, L, {});   // (two pieces: the first hangs over the cellar stair's foot, the second stands beside the flight)
   /* the Great Kitchen: two hearths in the north wall, the long tables */
-  for (const u of [1.5, 3.5]) R.P.push({ s: 'box', p: [X(u), L, Z(2.45)], size: [2.6, 3.2, 0.9], key: 'bricks_2', tint: 0x8a5a48 }, { s: 'box', p: [X(u), L + 0.3, Z(2.72)], size: [1.7, 1.5, 0.5], tint: 0x1a1210 }, { s: 'box', p: [X(u), L + 0.35, Z(2.8)], size: [1.2, 0.5, 0.3], tint: 0xff8a30, glow: 1 }, { s: 'box', p: [X(u), L + 3.2, Z(2.4)], size: [1.6, 3.5, 0.8], key: 'bricks_2', tint: 0x7a4e40 });
-  B('cauldron', 1, 3, 0, L); B('cauldron', 3, 3, 0, L); B('psx_table_large_3', 2, 5, 0, L); B('psx_table_large_3', 2, 7, 0, L); B('deck_oven', 0, 5, 90, L); B('stock_pots', 0, 7, 90, L); B('bread_rack', 4, 4, 270, L); dec('meshy_burlap_sack', 0.5, 8.5, 0, L); dec('wooden_bucket', 3.5, 8.4, 0, L); dec('psx_glass_bottle_2', 2.4, 5.4, 0, L, { y: 0.8 });
+  /* THE HEARTHS (mondo: "chimneys look like shit, need fire just like tiles on fire in battles"): two chimney breasts on the north wall, each a
+     stone surround with a deep mouth under a timber mantel, a hood tapering to the ceiling, an iron crane, and the battle's own fire in it */
+  for (const u of [1.5, 3.5]) { const x = X(u), z0 = r2(Z(2) + 0.15), q = (dx, y, dz, w, h, d, key, tint, o) => R.P.push(Object.assign({ s: 'box', p: [r2(x + dx), r2(L + y), r2(z0 + dz)], size: [w, h, d] }, key ? { key } : {}, tint != null ? { tint } : {}, o || {}));
+      for (const s of [-1, 1]) q(s * 1.25, 0, 0.6, 0.6, 2.0, 1.2, WALL, STONE2);                                         // the jambs
+      q(0, 0, 0.08, 1.9, 2.0, 0.16, null, 0x18120e); q(0, 0, 0.6, 3.1, 0.14, 1.5, WALL, 0x8a8680);                       // the sooty back, the hearth stone
+      q(0, 1.75, 0.6, 1.9, 0.25, 1.2, WALL, STONE2, { under: true }); for (const s of [-1, 1]) q(s * 0.8, 1.5, 0.6, 0.3, 0.25, 1.2, WALL, STONE2, { under: true });   // the arch's haunches
+      q(0, 2.0, 0.7, 3.4, 0.22, 1.5, WOOD, TIMBER, { under: true });                                                      // the mantel beam
+      q(0, 2.22, 0.55, 3.0, 1.3, 1.1, WALL, STONE, { under: true }); q(0, 3.52, 0.45, 2.4, 1.4, 0.9, WALL, STONE); q(0, 4.92, 0.35, 1.8, SH - 4.92, 0.7, WALL, STONE);   // the hood, stepping in
+      q(-0.7, 1.35, 0.5, 0.05, 0.05, 0.9, null, 0x2a2c30); q(-0.7, 0.75, 0.9, 0.04, 0.6, 0.04, null, 0x2a2c30);          // the crane and its chain
+      R.props.push({ key: 'hearth_fire', x, z: r2(z0 + 0.62), y: L, w: 1.4, h: 1.6 }); }
+  B('cauldron', 0, 3, 0, L); B('psx_table_large_3', 2, 5, 0, L); B('psx_table_large_3', 2, 7, 0, L); B('deck_oven', 0, 5, 90, L); B('stock_pots', 0, 7, 90, L); B('bread_rack', 4, 4, 270, L); dec('meshy_burlap_sack', 0.5, 8.5, 0, L); dec('wooden_bucket', 3.5, 8.4, 0, L); dec('psx_glass_bottle_2', 2.4, 5.4, 0, L, { y: 0.8 });
   B('psx_metal_barrel_mp_0', 7, 2, 0, L); B('psx_metal_barrel_mp_2', 7, 3, 0, L); dec('psx_glass_bottle_1', 5.5, 2.5, 0, L); B('bread_rack', 7, 4, 270, L); B('psx_wooden_crate_2', 7, 6, 0, L); dec('meshy_burlap_sack', 5.6, 6.4, 30, L); B('psx_table_large_2', 7, 7, 90, L); dec('stock_pots', 7.4, 9.5, 270, L);
   win('v', 0, 4, L, 1); win('v', 0, 7, L, 1); win('v', 30, 4, L, -1); win('v', 30, 7, L, -1);
   /* the Barracks, the Arms Store, the Captain's Room, the Guard Room */
@@ -241,13 +287,13 @@ R.guard('u', 1, 17, 20, LB); R.guard('u', 2, 17, 20, LB); R.guard('v', 20, 1, 2,
 /* ── FLOOR 1 (14 m): the gallery round the hall, the King's Office, the Treasury, the Chapel Royal, the Knights' Hall ── */
 { const L = L1;
   W('u', 4, 8, 22, L, { gaps: [[13, 17]], doors: [[10.5, LEAF], [19.5, LEAF]], tint: PALE }); WW('v', 13, 2, 4, L, { doors: [[3, LEAF]] }); WW('v', 8, 2, 10, L, { doors: [[5, LEAF, 1]], tint: PALE });
-  R.guard('u', 6, 10, 20, L, TIMBER); R.guard('u', 10, 10, 20, L, TIMBER); R.guard('v', 10, 6, 10, L, TIMBER); R.guard('v', 20, 6, 10, L, TIMBER);
+  guard('u', 6, 10, 20, L, 'wood'); guard('u', 10, 10, 20, L, 'wood'); guard('v', 10, 6, 10, L, 'wood'); guard('v', 20, 6, 10, L, 'wood');
   dec('instrument_harp', 14.2, 5.2, 180, L); dec('instrument_drum', 15.8, 5.3, 180, L); dec('psx_chair_mp_1', 13.4, 5.4, 180, L); both((m, f) => { dec('banner', m(8.2), 8, f(90), L, { y: 3 }); dec('armour_stand', m(9), 11.4, 0, L); });
   B('exec_desk', 10, 2, 180, L); B('library_shelf_full', 8, 2, 90, L); dec('exec_chair', 10.5, 3.2, 0, L); dec('globe_lamp', 12.4, 2.5, 0, L); dec('painting_landscape', 10.5, 2.25, 0, L, { y: 2.4 });
   B('sea_chest', 18, 2, 0, L); B('sea_chest', 20, 2, 0, L); B('trophy_case', 21, 3, 270, L); dec('psx_gold_bar_pcs_1', 19.5, 2.5, 0, L); dec('psx_gold_bar_pcs_1', 19.7, 3.2, 40, L); dec('stone_urn', 17.5, 3.5, 0, L);
   /* THE CHAPEL ROYAL (west): the altar at the west end under coloured glass, the pews, the columns */
   for (const v of [3.5, 8.5]) for (const u of [2, 4, 6]) column(u, v, L, SH, 0.3);
-  B('stone_altar', 0, 5, 90, L, { nv: 2 }); dec('candle_ring', 1.4, 4.5, 0, L); dec('candle_ring', 1.4, 7.5, 0, L); dec('holy_carpet', 3.5, 6, 90, L); dec('lectern', 2.3, 6, 270, L); dec('holy_tapestry', 0.25, 3.5, 90, L, { y: 3 }); dec('holy_tapestry', 0.25, 8.5, 90, L, { y: 3 });
+  B('stone_altar', 0, 5, 90, L, { nv: 2 }); dec('holy_carpet', 3.5, 6, 90, L); dec('lectern', 2.3, 6, 270, L); dec('holy_tapestry', 0.25, 3.5, 90, L, { y: 3 }); dec('holy_tapestry', 0.25, 8.5, 90, L, { y: 3 });
   for (const u of [3, 4, 5, 6]) { dec('church_pew', u + 0.5, 4.8, 270, L); dec('church_pew', u + 0.5, 7.2, 270, L); }
   for (const v of [5, 6, 7]) R.P.push({ s: 'box', p: [r2(X(0) + 0.17), L + 1.4, Z(v)], size: [0.05, 4.2, 1.2], key: GLS, tint: [0xd86a8a, 0x6a8ad8, 0xd8b86a][v - 5], glow: 0.7 });
   /* THE KNIGHTS' HALL (east): the long table, the trophies, the tourney shields */
@@ -291,15 +337,15 @@ R.guard('u', 1, 17, 20, LB); R.guard('u', 2, 17, 20, LB); R.guard('v', 20, 1, 2,
 { const L = LB;
   /* the two blue roofs between the walk and the Spire (drawn; nobody walks them) and the rails that keep you off them */
   R.P.push({ s: 'roof', form: 'hip', p: [X(11.5), L, Z(6)], size: [28, 5.5, 10.5], ry: 90, key: SLATE, tint: BLUE }, { s: 'roof', form: 'hip', p: [X(18.5), L, Z(6)], size: [28, 5.5, 10.5], ry: 90, key: SLATE, tint: BLUE }, { s: 'roof', form: 'hip', p: [X(15), L, Z(9)], size: [14, 3, 7], key: SLATE, tint: BLUE });
-  for (const q of [['v', 10, 2, 10], ['v', 20, 2, 10], ['u', 10, 10, 20], ['u', 2, 10, 14], ['u', 2, 16, 20], ['v', 14, 2, 4], ['v', 16, 2, 4]]) R.guard(q[0], q[1], q[2], q[3], L, 0x6a6660);
+  for (const q of [['v', 10, 2, 10], ['v', 20, 2, 10], ['u', 10, 10, 20], ['u', 2, 10, 14], ['u', 2, 16, 20], ['v', 14, 2, 4], ['v', 16, 2, 4]]) guard(q[0], q[1], q[2], q[3], L, 'stone');
   /* THE SPIRE ROOM in the Spire's foot (the Spire stands on it): the orrery, eight lights, the door to the sky (shut: the sky castle waits) */
   W('u', 4, 13, 17, L, { h: 5, doors: [[15, LEAF]], tint: PALE }); W('u', 8, 13, 17, L, { h: 5, tint: PALE }); W('v', 13, 4, 8, L, { h: 5, tint: PALE }); W('v', 17, 4, 8, L, { h: 5, tint: PALE });
   R.ceil(13, 4, 17, 8, L + 5, WOOD, 0x5a3c26);
-  R.P.push({ s: 'cyl', p: [X(15), L + 5, Z(6)], r: 5.5, h: 17, seg: 18, key: WALL, tint: PALE }, { s: 'cyl', p: [X(15), L + 20.2, Z(6)], r: 6.0, h: 1.8, seg: 18, key: WALL, tint: STONE }, { s: 'cyl', p: [X(15), L + 22, Z(6)], r: 6.5, h: 20, r2: 0, seg: 18, key: SLATE, tint: BLUE }, { s: 'cyl', p: [X(15), L + 42, Z(6)], r: 0.09, h: 4.2, seg: 6, tint: 0x403830 }, { s: 'box', p: [X(15) + 1.25, L + 44.6, Z(6)], size: [2.5, 1.4, 0.06], tint: RED, ds: true });
+  R.P.push({ s: 'cyl', p: [X(15), L + 5, Z(6)], r: 5.5, h: 17, seg: 18, key: WALL, tint: PALE }, { s: 'cyl', p: [X(15), L + 20.2, Z(6)], r: 6.0, h: 1.8, seg: 18, key: WALL, tint: STONE }, { s: 'cyl', p: [X(15), L + 21.75, Z(6)], r: 6.5, h: 0.25, seg: 18, key: WOOD, tint: 0x4a3626 }, { s: 'cyl', p: [X(15), L + 22, Z(6)], r: 6.5, h: 20, r2: 0, seg: 18, key: SLATE, tint: BLUE }, { s: 'cyl', p: [X(15), L + 42, Z(6)], r: 0.09, h: 4.2, seg: 6, tint: 0x403830 }, { s: 'box', p: [X(15) + 1.25, L + 44.6, Z(6)], size: [2.5, 1.4, 0.06], tint: RED, ds: true });
   B('astronomical_clock', 15, 6, 0, L); dec('brass_telescope', 13.6, 7.4, 225, L); dec('star_chart', 13.25, 6, 90, L, { y: 2.2 }); dec('giant_hourglass', 16.4, 7.4, 0, L); dec('wall_torch', 16.75, 5, 270, L, { y: 2.2 });
   R.P.push({ s: 'box', p: [X(15), L, r2(Z(8) - 0.2)], size: [1.9, 3.2, 0.12], key: PLK, tint: 0x3a4a7a }, { s: 'box', p: [X(15), L + 3.2, r2(Z(8) - 0.2)], size: [2.3, 0.25, 0.2], key: WALL, tint: GOLD }, { s: 'box', p: [X(15), L + 1.4, r2(Z(8) - 0.28)], size: [0.5, 0.5, 0.04], tint: GOLD, glow: 0.6 });
   /* the four corner towers' heads (drawn from the walk up: the shaft, the gallery, the cone, the flag); each weighs a short wall */
-  for (const q of [[8, 0], [22, 0], [8, 12], [22, 12]]) { const x = X(q[0]), z = Z(q[1]); R.P.push({ s: 'cyl', p: [x, L, z], r: 3.4, h: 6, seg: 16, key: WALL, tint: PALE }, { s: 'cyl', p: [x, L + 4.4, z], r: 3.9, h: 1.6, seg: 16, key: WALL, tint: STONE }, { s: 'cyl', p: [x, L + 6, z], r: 4.4, h: 12, r2: 0, seg: 16, key: SLATE, tint: BLUE }, { s: 'cyl', p: [x, L + 18, z], r: 0.09, h: 4, seg: 6, tint: 0x403830 }, { s: 'box', p: [x + 1.25, L + 20.4, z], size: [2.5, 1.4, 0.06], tint: RED, ds: true });
+  for (const q of [[8, 0], [22, 0], [8, 12], [22, 12]]) { const x = X(q[0]), z = Z(q[1]); R.P.push({ s: 'cyl', p: [x, L, z], r: 3.4, h: 6, seg: 16, key: WALL, tint: PALE }, { s: 'cyl', p: [x, L + 4.4, z], r: 3.9, h: 1.6, seg: 16, key: WALL, tint: STONE }, { s: 'cyl', p: [x, L + 5.75, z], r: 4.4, h: 0.25, seg: 16, key: WOOD, tint: 0x4a3626 }, { s: 'cyl', p: [x, L + 6, z], r: 4.4, h: 12, r2: 0, seg: 16, key: SLATE, tint: BLUE }, { s: 'cyl', p: [x, L + 18, z], r: 0.09, h: 4, seg: 6, tint: 0x403830 }, { s: 'box', p: [x + 1.25, L + 20.4, z], size: [2.5, 1.4, 0.06], tint: RED, ds: true });
       R.F.push({ k: 'wall', x0: r2(x - 2.4), z0: z, x1: r2(x + 2.4), z1: z, t: 4.8, ghost: true, rail: false, h: 6, y: L + 6, y0: L }); }
   both((m, f) => { dec('brazier', m(9), 11, 0, L); dec('banner', m(8.3), 6, f(90), L, { y: 1.4 }); }); dec('brass_telescope', 15, 11.3, 180, L); dec('armour_stand', 12, 0.5, 180, L);
   who('knight', 9, 6, 270, L); who('swordfighter', 15, 11, 180, L);
