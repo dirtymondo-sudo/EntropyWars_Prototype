@@ -5927,7 +5927,17 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   geometries 1,985 -> 2,223 (about 150 new props, most of them small).
 - **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower, bushes,
   natural small rocks.
-- **NEXT**: its own light, air and particles (`airZones`), the night look, then polish.
+- **PASS 4, THE ATMOSPHERE (seen by day and at night, 10 + 4 views)**: the tool's `airZones`, seven boxes: violet motes through the whole forest
+  (320), fireflies over the north knoll (36), the pond (sea green, 60) and the ring (gold, 70), pale spores in the mushroom glade (70),
+  blue motes at the spring (60) and the crystal knoll (44). LIGHT WITHOUT LIGHTS (the room's ten real lights are the castle's): the ring's
+  purple ground runs under the toadstools and glows a little, a brighter lit disc lies under each toadstool and under the islet's
+  mushroom (the light it throws); the moonstone, the crystals and the lily flowers are lit parts. At night the pools read bright blue,
+  the ring violet, the fireflies carry the glades. NIGHT IN A PROBE: `hqClockSet(23)` + `settle` 5000.
+  FOUND AND FIXED: `hw_stone*` (the Halloween pack's "stones") are GRAVESTONES, a headstone and a Celtic cross: seven stood in the forest
+  for one pass (pass 3) and are out; the corners wear drawn mossy boulders. A lit disc that overhangs its ground reads by day as a
+  hard purple decagon on the grass: keep a light pool inside ground of its own colour.
+- **FRAME RATE, PASS 4** (the same pond view): 1.39 frames a second (pass 3: 1.17 to 1.29; before the thread: 1.54), draw calls 477.
+- **NEXT**: polish (pass 5 of 5).
 - **(THE VILLAGE'S) THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
   keyword search of the prop catalogue and from what the first build already used. Read against MODEL_LIST.md (the Meshy list, the
   Halloween pack, the orchestral pack, the crow + rabbit upload, section 7a), it had MISSED, all in the game already:
