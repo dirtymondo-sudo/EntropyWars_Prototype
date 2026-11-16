@@ -36,34 +36,117 @@
    the paint rule, the sky and shell, the ways out (the Woods gate, the house's front door, `bay`, `bay13`, the well, the Lodge door).
    Rules for district threads: docs/notes/areas-complexes.md "THE ESTATE, THE DISTRICT FILES". Rebake: `node bake-estate.js`. */
 'use strict';
+/* the zone's look rules (areas-complexes.md "THE ESTATE, THE ZONE KIT"): trim, iron, oil-lamp amber, lit and dark glass */
+const TRIM = 0x26222a, IRON = 0x1c1c20, AMBER = 0xff9a30, LAMP = { glow: 0.7 }, LITW = 0xf0c868, DARKW = 0x2a3040, PILE = 0x5a5044, GREY = 0x9a968c;
+/* THE LAKE'S OUTLINE in squares (the pool is an ellipse: middle 54 · 17.5, 14 x 11.7 squares): under 1 = water */
+const E = (x, y) => Math.pow((x + 0.5 - 54) / 14.6, 2) + Math.pow((y + 0.5 - 17.5) / 12.3, 2);
+const MARSH = [[63.5, 27, 2.6, 2.15], [68.5, 32.5, 2.15, 2.15]];   // the Marsh's two pools: middle, half sizes (squares)
+const M = (x, y) => Math.min.apply(null, MARSH.map(q => Math.hypot((x + 0.5 - q[0]) / q[2], (y + 0.5 - q[1]) / q[3])));
 module.exports = {
-    houses(ctx) { const { building, put, U, WD, WD2, COR, SHUT } = ctx;
-        /* THE BOATHOUSE (walk-in): grey weathered boards, a tin roof, the slip down to the water */
+    /* THE GROUND (pass 1): shingle on the North Shore, mud where the Reeds and the Marsh are, boards under the shelter and at the Boathouse's door.
+       Only squares the plan already walks; the grass field keeps off all of them. */
+    plan(ctx) { const { cell, setRect } = ctx, free = (x, y) => 'gw'.includes(cell[y][x]);
+        for (let y = 0; y < 13; y++) for (let x = 40; x < 66; x++) { const e = E(x, y); if (e < 0.86 || !free(x, y)) continue;
+            if (x >= 47 && x <= 62) { if (e < 1.52 - 0.13 * ((x * 7 + y * 3) % 3)) cell[y][x] = 's'; }            // THE NORTH SHORE: shingle (`s` = the gravel sheet), a ragged upper edge
+            else if (x < 47 && e < 1.4 - 0.1 * ((x * 5 + y) % 3)) cell[y][x] = 'p'; }                              // THE REEDS: mud at the water's edge
+        for (let y = 23; y < 36; y++) for (let x = 59; x < 72; x++) { const m = M(x, y); if (m >= 0.8 && m < 1.75 - 0.15 * ((x * 3 + y * 5) % 3) && E(x, y) >= 1 && free(x, y)) cell[y][x] = 'p'; }   // THE MARSH: mud round both pools
+        setRect(45, 31, 48, 34, 'j'); setRect(68, 9, 70, 10, 'j');                                                  // boards: the picnic shelter's floor, the landing at the Boathouse's door
+    },
+    houses(ctx) { const { building, put, U, WD, WD2, COR, GLS } = ctx;
+        /* THE BOATHOUSE (walk-in; THE EXTERIOR PASS 2026-11-16): weathered grey boards on a stone footing, corner boards, a tin gable roof with its ends to the
+           water, the two big boat doors on the lake side at the head of the slip (drawn shut: you go in by the south door), a loft hatch over them, sashed
+           windows, a stove pipe, a lantern at each door, BOATHOUSE over the south door. */
         const BOAT = building('boathouse', [67, 5, 71, 9, 'S'], 3.5, { leaf: 'leaf_shabby_wood', floorIn: U('WoodFlooring1a') }, (a, w, d, door) => {
-            const GREY = 0x8a8478, TRIM = 0x4a463e;
-            a.shell(w, 3.5, d, WD, GREY, door, [3.5, 1.75]);
+            const f = d / 2, h2 = w / 2, BOARD = { gain: 1.7 }, DOORC = 0x6a6258, SZ = 1.75;   // SZ: the slip meets the west wall 1.75 m south of its middle
+            /* a window on a face ('f' front, 'b' back: u along x · 'l' / 'r' the sides: u along z) */
+            const win = (face, u, y, lit, ww, hh) => { ww = ww || 1.1; hh = hh || 1.25; const fb = face === 'f' || face === 'b', sg = (face === 'f' || face === 'r') ? 1 : -1, base = fb ? f : h2;
+                const B = (du, y0, dn, su, sh, sn, key, tint, x) => fb ? a.box(u + du, y0, sg * (base + dn), su, sh, sn, key, tint, x) : a.box(sg * (base + dn), y0, u + du, sn, sh, su, key, tint, x);
+                B(0, y, 0.09, ww, hh, 0.08, GLS, lit ? LITW : DARKW, { glow: lit ? 0.6 : 0.05 });
+                B(0, y - 0.1, 0.14, ww + 0.4, 0.1, 0.26, WD2, TRIM); B(0, y + hh, 0.12, ww + 0.3, 0.14, 0.2, WD2, TRIM);
+                B(-ww / 2 - 0.05, y, 0.11, 0.1, hh, 0.1, WD2, TRIM); B(ww / 2 + 0.05, y, 0.11, 0.1, hh, 0.1, WD2, TRIM);
+                B(0, y, 0.14, 0.05, hh, 0.04, WD2, TRIM); B(0, y + hh * 0.5, 0.14, ww, 0.05, 0.04, WD2, TRIM); };
+            a.shell(w, 3.5, d, WD, GREY, door, [3.5, 1.75], BOARD);
             a.box(0, 0, 0, w - 0.1, 0.16, d - 0.1, U('WoodFlooring1a'), 0x8a7c68, { uv: [1.75, 1.75] });
-            for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.3, 3.5, 0.3, WD2, TRIM);
-            a.roof('gable', 0, 3.5, 0, d + 0.8, 2.4, w + 0.8, COR, 0x6a7078, { ry: 90, keyEnd: WD, tintEnd: GREY });
-            a.frame(door, d, WD2, TRIM); a.box(-w / 2 - 0.06, 1.1, 0, 0.08, 1.3, 2.4, SHUT, 0xa8a498, { uv: 'fit', faces: 'l', top: false });
+            a.box(0, 0, 0, w + 0.36, 0.5, d + 0.36, 'castle_wall', 0x8a8880, { top: false, faces: 'blr' });                                         // the stone footing (open at the south door)
+            { const l = door.lx - door.cw / 2 - 0.12, r = door.lx + door.cw / 2 + 0.12; a.box((-h2 - 0.18 + l) / 2, 0, f + 0.09, l + h2 + 0.18, 0.5, 0.18, 'castle_wall', 0x8a8880); a.box((h2 + 0.18 + r) / 2, 0, f + 0.09, h2 + 0.18 - r, 0.5, 0.18, 'castle_wall', 0x8a8880); }
+            for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * h2, 0.5, sz * f, 0.3, 3.0, 0.3, WD2, TRIM);                              // corner boards
+            a.box(0, 3.38, 0, w + 0.3, 0.2, d + 0.3, WD2, TRIM, { top: false });                                                                    // the eaves board
+            a.roof('gable', 0, 3.5, 0, w + 1.0, 2.8, d + 1.2, COR, 0x7c848c, { keyEnd: WD, tintEnd: GREY, gain: 1.5 });                             // tin, the gable ends east and west
+            a.box(0, 6.26, 0, w + 1.1, 0.12, 0.34, null, IRON, { roof: true });                                                                     // the ridge cap
+            for (const s of [-1, 1]) { a.box(s * (h2 + 0.5), 3.42, 0, 0.14, 0.16, d + 1.2, WD2, TRIM, { roof: true }); }                            // the barge boards' feet
+            a.cyl(3.6, 4.6, -3.0, 0.14, 2.3, null, IRON, { roof: true }); a.cyl(3.6, 6.9, -3.0, 0.24, 0.1, null, IRON, { roof: true });             // the stove pipe and its cap
+            /* the lake side (west): the boat doors on their rail at the head of the slip, the loft hatch, a lantern */
+            for (const s of [-1, 1]) { a.box(-h2 - 0.09, 0.08, SZ + s * 0.88, 0.1, 3.0, 1.72, WD, DOORC, { gain: 1.5, uv: [1.75, 1.75] });
+                a.box(-h2 - 0.16, 0.2, SZ + s * 0.88, 0.05, 0.16, 1.6, WD2, TRIM); a.box(-h2 - 0.16, 1.5, SZ + s * 0.88, 0.05, 0.16, 1.6, WD2, TRIM); a.box(-h2 - 0.16, 2.8, SZ + s * 0.88, 0.05, 0.16, 1.6, WD2, TRIM);
+                a.box(-h2 - 0.16, 0.08, SZ + s * 1.84, 0.12, 3.25, 0.2, WD2, TRIM); a.box(-h2 - 0.18, 1.35, SZ + s * 0.2, 0.05, 0.3, 0.08, null, IRON); }
+            a.box(-h2 - 0.2, 3.12, SZ, 0.08, 0.1, 4.6, null, IRON); a.box(-h2 - 0.16, 3.22, SZ, 0.12, 0.2, 4.0, WD2, TRIM);                           // the door rail, the head
+            a.box(-h2 - 0.08, 4.0, 0, 0.08, 1.0, 1.2, WD, DOORC, { gain: 1.5, roof: true }); a.box(-h2 - 0.14, 3.92, 0, 0.1, 0.1, 1.5, WD2, TRIM, { roof: true }); a.box(-h2 - 0.14, 5.0, 0, 0.1, 0.1, 1.5, WD2, TRIM, { roof: true });   // the loft hatch
+            a.box(-h2 - 0.5, 5.5, 0, 1.0, 0.12, 0.12, WD2, TRIM, { roof: true });                                                                   // the hoist beam over it
+            a.box(-h2 - 0.3, 2.5, SZ - 2.5, 0.22, 0.34, 0.22, null, AMBER, LAMP); a.box(-h2 - 0.3, 2.84, SZ - 2.5, 0.3, 0.06, 0.3, null, IRON); a.box(-h2 - 0.15, 2.95, SZ - 2.5, 0.34, 0.05, 0.05, null, IRON);
+            /* the south front: the door's frame, the sign, a lantern, two windows; the back and the east side */
+            a.frame(door, d, WD2, TRIM);
+            a.box(door.lx, 2.62, f + 0.1, 3.3, 0.62, 0.06, WD, 0x3a3a36); a.sign('BOATHOUSE', door.lx, 2.68, f + 0.14, 3.1, 0.5, '#e8e0c8', '#3a3a36', 'fell');
+            a.box(door.lx + 1.5, 1.9, f + 0.24, 0.2, 0.3, 0.2, null, AMBER, LAMP); a.box(door.lx + 1.5, 2.2, f + 0.24, 0.28, 0.06, 0.28, null, IRON); a.box(door.lx + 1.5, 2.3, f + 0.12, 0.05, 0.05, 0.3, null, IRON);
+            win('f', -4.9, 1.25, false); win('f', 3.4, 1.25, true); win('b', -3.5, 1.25, false); win('b', 3.5, 1.25, false); win('r', -3.5, 1.25, false); win('r', 2.6, 1.25, true); win('l', -4.2, 1.25, false);
         });
-        put(BOAT, 'rowboat', -2.6, -2.4, { face: 90 }); put(BOAT, 'sea_chest', 4.6, -5.0, { face: 0 }); put(BOAT, 'ship_lantern', 5.2, 4.6); put(BOAT, 'wooden_bucket', 3.8, 1.2); put(BOAT, 'psx_wooden_crate_3', 5.0, -1.6);
+        put(BOAT, 'rowboat', -2.6, -2.4, { face: 90 }); put(BOAT, 'sea_chest', 4.6, -5.0, { face: 0 }); put(BOAT, 'ship_lantern', 5.2, 4.6); put(BOAT, 'wooden_bucket', 3.8, 1.2); put(BOAT, 'psx_wooden_crate_4', 5.0, -1.6);
     },
-    water(ctx) { const { W, gx, gc, feat, taken } = ctx;
+    /* THE PICNIC SHELTER (drawn, the South Shore's landmark): an open timber pavilion over three by three squares, four posts on the corner squares'
+       middles, a shingle roof, two plank tables with their benches; the middle aisle stays open north to south. */
+    pieces(ctx) { const { look, feat, gc, r2, taken, WD, WD2, SHG, FLR } = ctx, X = gc(46), Z = gc(32);
+        const blk = (x0, z0, x1, z1, t, h) => feat({ k: 'wall', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), t: t || 0.3, h: h || 1.1, ghost: true, rail: false });
+        look('picnic', X, Z, 0, a => { const POST = 0x7a6a54, ROOF = 0x2c2830;
+            for (const sx of [-1, 1]) for (const sz of [-1, 1]) { a.box(sx * 3.5, 0, sz * 3.5, 0.28, 2.7, 0.28, WD2, POST, { gain: 1.4 }); a.box(sx * 3.5, 0, sz * 3.5, 0.5, 0.3, 0.5, 'castle_wall', 0x8a8880);
+                a.box(sx * 3.5, 2.3, sz * 3.5, 1.3, 0.14, 0.14, WD2, POST, { gain: 1.4 }); a.box(sx * 3.5, 2.3, sz * 3.5, 0.14, 0.14, 1.3, WD2, POST, { gain: 1.4 }); }
+            for (const s of [-1, 1]) { a.box(0, 2.7, s * 3.5, 8.6, 0.24, 0.24, WD2, POST, { gain: 1.4 }); a.box(s * 3.5, 2.7, 0, 0.24, 0.24, 8.6, WD2, POST, { gain: 1.4 }); }
+            a.box(0, 2.7, 0, 8.6, 0.2, 0.2, WD2, POST, { gain: 1.4 });
+            a.roof('gable', 0, 2.94, 0, 9.4, 1.7, 9.8, SHG, ROOF, { keyEnd: WD, tintEnd: 0x6a5a48 });
+            a.box(0, 2.3, 4.75, 0.2, 0.3, 0.2, null, AMBER, LAMP); a.box(0, 2.6, 4.75, 0.28, 0.06, 0.28, null, IRON);                                // a lantern under the south eave
+            a.box(0, 3.3, -4.78, 3.5, 0.56, 0.06, WD, 0x3a3a36); a.sign('PICNIC AREA', 0, 3.35, -4.82, 3.3, 0.46, '#e8e0c8', '#3a3a36', 'fell', { ry: 180 });   // read from the lake
+            for (const s of [-1, 1]) { const x = s * 3.5;                                                                                           // a table on each side square's middle
+                a.box(x, 0.72, 0, 0.9, 0.07, 2.0, FLR, 0xa89878, { gain: 1.3 }); for (const e of [-1, 1]) { a.box(x, 0.4, e * 0.78, 1.5, 0.06, 0.06, WD2, POST); a.box(x - 0.5, 0, e * 0.78, 0.08, 0.72, 0.08, WD2, POST); a.box(x + 0.5, 0, e * 0.78, 0.08, 0.72, 0.08, WD2, POST); }
+                for (const e of [-1, 1]) a.box(x + e * 0.75, 0.42, 0, 0.28, 0.06, 2.0, FLR, 0xa89878, { gain: 1.3 }); } });
+        for (const sx of [-1, 1]) { for (const sz of [-1, 1]) { blk(X + sx * 3.5 - 0.2, Z + sz * 3.5, X + sx * 3.5 + 0.2, Z + sz * 3.5, 0.4, 2.6); taken.add((46 + sx) + ':' + (32 + sz)); }
+            blk(X + sx * 3.5, Z - 1.0, X + sx * 3.5, Z + 1.0, 1.8, 0.8); taken.add((46 + sx) + ':32'); }
+    },
+    water(ctx) { const { W, gx, gc, r2, feat, props, taken, sheet, WD2 } = ctx;
         feat({ k: 'pool', x: gx(54), z: gx(17.5), r: 49, rz: 41, y: -0.3, depth: 1.0, key: 'water', bank: 2.4 });
-        feat({ k: 'plateau', x: gc(54), z: gc(18), r: 5.25, h: 1.4, edge: 0.5 });
-        feat({ k: 'deck', x0: gx(36), z0: gx(18), x1: gx(49), z1: gx(18), w: 7, y: 0.3 });
-        feat({ k: 'deck', x0: gx(67), z0: gc(7), x1: gx(60), z1: gc(7), w: 3.5, y: 0.3 });
+        feat({ k: 'deck', x0: gx(36), z0: gx(18), x1: gx(49), z1: gx(18), w: 7, y: 0.3 });                                                          // THE DOCK
+        feat({ k: 'deck', x0: gx(49), z0: gx(16), x1: gx(49), z1: gx(20), w: 7, y: 0.3 });                                                          // its head, across the end
+        feat({ k: 'deck', x0: gx(67), z0: gc(7), x1: gx(58), z1: gc(7), w: 3.5, y: 0.3 });                                                          // the Boathouse's slip, out over the water
+        feat({ k: 'deck', x0: gx(71), z0: gc(17), x1: gx(65), z1: gc(17), w: 3.5, y: 0.3 });                                                        // the east bank's jetty
         feat({ k: 'pool', x: gx(63.5), z: gx(27), r: 9, rz: 7.5, y: -0.25, depth: 0.6, key: 'water', bank: 1.6 }); feat({ k: 'pool', x: gx(68.5), z: gx(32.5), r: 7.5, y: -0.25, depth: 0.6, key: 'water', bank: 1.4 });
-        const inLake = (x, y) => Math.pow((x + 0.5 - 54) / 14.6, 2) + Math.pow((y + 0.5 - 17.5) / 12.3, 2) < 1 || Math.hypot(x + 0.5 - 63.5, y + 0.5 - 27) < 3 || Math.hypot(x + 0.5 - 68.5, y + 0.5 - 32.5) < 2.6;
-        for (let y = 0; y < 36; y++) for (let x = 36; x < W; x++) if (inLake(x, y)) taken.add(x + ':' + y);
+        feat({ k: 'deck', x0: gx(60), z0: gc(31), x1: gx(72), z1: gc(31), w: 3.5, y: 0.25 });                                                       // the Marsh's boardwalk, over the south pool
+        for (let y = 0; y < 36; y++) for (let x = 36; x < W; x++) if (E(x, y) < 1 || M(x, y) < 1.2) taken.add(x + ':' + y);
+        for (let y = 16; y < 20; y++) for (const x of [48, 49]) taken.delete(x + ':' + y);                                                          // the dock's head is walked: things stand on it
+        /* THE FITTINGS (drawn, ONE arch row for the whole district's piles and lamp posts = a handful of draw calls; the row stands at level 0, so a
+           pile over the water starts on the bed): two rows of piles along every deck with a pale cap each, an iron lamp post on a deck's edge */
+        const OX = gx(36), OZ = gx(18), a = sheet();
+        const piles = (x0, z0, x1, z1, w, from, step, top) => { const L = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / L, uz = (z1 - z0) / L, n = Math.floor((L - from) / step) + 1;
+            for (const s of [-1, 1]) { const ox = x0 - OX + from * ux - s * uz * (w / 2 + 0.1), oz = z0 - OZ + from * uz + s * ux * (w / 2 + 0.1), rep = { n, step: [r2(ux * step), 0, r2(uz * step)] };
+                a.cyl(ox, -1.5, oz, 0.17, 1.5 + top, WD2, PILE, rep); a.cyl(ox, top, oz, 0.2, 0.06, null, 0xb8b0a0, rep); } };
+        piles(gx(36), gx(18), gx(49), gx(18), 7, 3.5, 7, 1.1); piles(gx(49), gx(16), gx(49), gx(20), 7, 0, 7, 1.1);
+        piles(gx(67), gc(7), gx(58), gc(7), 3.5, 3.5, 7, 0.9); piles(gx(71), gc(17), gx(65), gc(17), 3.5, 3.5, 7, 0.9); piles(gx(60), gc(31), gx(72), gc(31), 3.5, 1.75, 7, 0.75);
+        /* a lamp post: (x, z) = its foot, (ux, uz) = the way its arm reaches over the deck, y = the deck's top */
+        const lamp = (x, z, ux, uz, y) => { const X = x - OX, Z = z - OZ, lx = X + ux * 0.6, lz = Z + uz * 0.6;
+            a.box(X, y, Z, 0.3, 0.4, 0.3, null, IRON); a.cyl(X, y + 0.4, Z, 0.06, 2.6, null, IRON); a.box(X + ux * 0.3, y + 2.95, Z + uz * 0.3, ux ? 0.75 : 0.07, 0.07, uz ? 0.75 : 0.07, null, IRON);
+            a.box(lx, y + 2.47, lz, 0.24, 0.36, 0.24, null, AMBER, LAMP); a.box(lx, y + 2.83, lz, 0.32, 0.07, 0.32, null, IRON); a.box(lx, y + 2.4, lz, 0.3, 0.07, 0.3, null, IRON); };
+        lamp(gx(40), gx(17) + 0.25, 0, 1, 0.3); lamp(gx(44), gx(17) + 0.25, 0, 1, 0.3); lamp(gx(48), gx(16) + 0.25, 0, 1, 0.3); lamp(gx(50) - 0.25, gx(20) - 0.25, 0, -1, 0.3);   // the dock and its head
+        lamp(gx(59), gc(7) - 1.5, 0, 1, 0.3); lamp(gx(66), gc(17) - 1.5, 0, 1, 0.3);                                                                 // the slip's end, the jetty's end
+        feat({ k: 'arch', id: 'est:lakefittings:look', x: OX, z: OZ, rot: 0, y: 0, parts: a.P });
+        /* THE ROCK in the lake's middle: big rocks of the ocean pack standing on the bed (was a mound in the corn's leaf sheet) */
+        const RX = gc(54), RZ = gc(18), rock = (key, dx, dz, h, face) => props.push({ key, x: r2(RX + dx), z: r2(RZ + dz), h, face });
+        rock('ocean_rock_3', 0, 0, 6.4, 20); rock('ocean_rock_4', -3.4, 1.3, 4.4, 140); rock('ocean_rock_3', 2.9, -2.4, 3.8, 250); rock('ocean_rock_2', 2.2, 3.0, 3.0, 80); rock('ocean_rock', -2.4, -3.1, 2.6, 300);
+        rock('ocean_rock_7', -5.6, -1.2, 1.9, 10); rock('ocean_rock_8', 5.4, 1.0, 1.7, 200); rock('ocean_rock_7', 0.6, 5.6, 1.6, 120);
     },
-    dress(ctx) { const { gc, npc, P, dec, tree } = ctx;
+    dress(ctx) { const { gx, gc, r2, npc, props, P, dec, tree } = ctx;
         P('rowboat', 50, 3, { face: 80 }); dec('fallen_log', 46, 2); dec('fallen_log', 58, 3); dec('meshy_frog', 38, 3); dec('meshy_frog', 39, 8); dec('luna_moth', 37, 5); dec('fallen_log', 37, 10);
-        P('cave_torch', 36, 16); P('cave_torch', 36, 19); P('meshy_rowboat', 66, 10, { face: 300 }); dec('dockring', 66, 9); dec('wooden_bucket', 69, 10);
+        P('cave_torch', 36, 16, { noLight: true }); P('cave_torch', 36, 19, { noLight: true }); P('meshy_rowboat', 66, 10, { face: 300 }); dec('wooden_bucket', 69, 10);   // (the room's ten real lights: L keeps the campfire and the Boathouse's lantern)
         P('park_bench', 40, 31, { face: 0 }); P('park_bench', 44, 32, { face: 0 }); P('campfire', 42, 33); dec('folding_chair', 41, 34); dec('folding_chair', 43, 34); dec('butterfly', 46, 31);
         dec('meshy_frog', 61, 30); dec('meshy_frog', 66, 29); dec('meshy_frog', 70, 35); dec('meshy_frog', 64, 33); P('dead_snag', 62, 33); P('dead_snag', 70, 28); dec('hawk_moth', 67, 26);
         tree(38, 1, 'tree', 7.5); tree(70, 2, 'tree_2', 8); tree(37, 33, 'tree', 7); tree(47, 34, 'tree_2', 7.5); tree(58, 33, 'tree', 8); tree(70, 14, 'tree_2', 7); tree(70, 21, 'tree', 7.5);
         npc.push({ x: gc(54), z: gc(23), face: 0, race: 'loch ness monster' });                                                    // in the water, south of the rock (mondo's OK 11-15)
+        /* on the dock's head: a bench looking down the lake, a boat tied up beside it */
+        P('park_bench', 48, 16, { face: 180 }); props.push({ key: 'rowboat', x: r2(gx(50) + 1.4), z: gc(18), y: 0.95, face: 5 });
     },
 };
