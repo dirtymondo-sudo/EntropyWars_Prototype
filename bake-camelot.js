@@ -20,6 +20,32 @@ const D = require('./load-data.js').loadGameData(), vm = require('vm');
 const OLD = JSON.parse(vm.runInContext('JSON.stringify({ n: DOOR_HQ.rooms.site_prebuilt_camelot_ward.npcSpots, l: DOOR_HQ.rooms.site_prebuilt_camelot_ward.lines })', D));
 const say = race => (OLD.n.find(n => n.race === race) || {}).say || [];
 const WALL = 'castle_wall';
+/* THE ROYAL BANNER (2026-11-16, mondo on the first screenshots: "wtf is this random red rectangle and yellow square. if its a flag or a
+   banner it needs way more detail and thought behind it"). One banner, the same everywhere in Camelot: an iron rod with gilt finials on two
+   brackets, a crimson cloth with a gold border, cut to a swallowtail at the foot; on it Arthur's arms: the gold crown over the sword in
+   the stone (the blade point down in a grey stone). → parts in a frame where the cloth hangs in the x plane and faces +z * nz.
+   (cx, y0, cz) = the middle of its foot, w x h its size. */
+function royalBanner(cx, y0, cz, w, h, nz) {
+    const P = [], r = v => Math.round(v * 1000) / 1000, CR = 0xa01e2c, CR2 = 0x7c1420, GO = 0xd8b050, IRON = 0x2a2c30, ST = 0x8a8c90, BL = 0xd4d8e0;
+    const L = (dx, dy, bw, bh, tint, layer, x) => P.push(Object.assign({ s: 'box', p: [r(cx + dx), r(y0 + dy), r(cz + nz * 0.02 * layer)], size: [r(bw), r(bh), 0.03], tint, ds: true }, x || {}));
+    const tail = h * 0.16, top = h, body = h - tail;
+    /* the rod, its finials, the two brackets back to the wall */
+    P.push({ s: 'box', p: [cx, r(y0 + top), cz], size: [r(w + 0.5), 0.09, 0.09], tint: IRON }); for (const s of [-1, 1]) { P.push({ s: 'box', p: [r(cx + s * (w / 2 + 0.3)), r(y0 + top - 0.04), cz], size: [0.17, 0.17, 0.17], tint: GO }); P.push({ s: 'box', p: [r(cx + s * w * 0.3), r(y0 + top + 0.02), r(cz - nz * 0.14)], size: [0.06, 0.06, 0.3], tint: IRON }); }
+    /* the cloth: the field, the darker inner panel, the gold border; the swallowtail = two tails stepping to a point each */
+    L(0, tail, w, body, CR, 0); L(0, tail + body * 0.06, w * 0.8, body * 0.88, CR2, 1);
+    for (const s of [-1, 1]) L(s * (w / 2 - w * 0.035), tail, w * 0.07, body, GO, 2);
+    L(0, top - h * 0.035, w, h * 0.035, GO, 2); L(0, tail, w, h * 0.022, GO, 2);
+    for (const s of [-1, 1]) for (let k = 0; k < 4; k++) { const tw = w * 0.5 * (1 - k * 0.24); L(s * (w / 2 - tw / 2), tail - (k + 1) * tail / 4, tw, tail / 4 + 0.002, CR, 0); L(s * (w / 2 - w * 0.035), tail - (k + 1) * tail / 4, w * 0.07, tail / 4 + 0.002, GO, 2); }
+    /* the crown: a band with three jewels, five points (the middle one tallest), a pearl on each */
+    const cy = tail + body * 0.66, cw = w * 0.46;
+    L(0, cy, cw, body * 0.045, GO, 3); for (const k of [-1, 0, 1]) L(k * cw * 0.3, cy + body * 0.012, cw * 0.09, body * 0.022, k ? 0x2c4a9a : CR, 4);
+    for (const k of [-2, -1, 0, 1, 2]) { const ph = body * (k === 0 ? 0.09 : Math.abs(k) === 1 ? 0.06 : 0.075), px = k * cw * 0.22; L(px, cy + body * 0.045, cw * 0.12, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph * 0.5, cw * 0.07, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph, cw * 0.09, cw * 0.09, 0xf4ecd8, 4); }
+    /* the sword in the stone: pommel, grip, guard, the blade into a stepped grey stone */
+    const sy = tail + body * 0.2, bl = body * 0.3;
+    L(0, sy, w * 0.42, body * 0.07, ST, 3); L(0, sy + body * 0.07, w * 0.28, body * 0.04, ST, 3); L(-w * 0.08, sy + body * 0.02, w * 0.1, body * 0.02, 0x6e7074, 4);
+    L(0, sy + body * 0.09, w * 0.055, bl, BL, 4); L(0, sy + body * 0.09 + bl, w * 0.24, body * 0.022, GO, 4); L(0, sy + body * 0.112 + bl, w * 0.04, body * 0.06, 0x4a3626, 4); L(0, sy + body * 0.172 + bl, w * 0.075, w * 0.075, GO, 4);
+    return P;
+}
 /* ══ CAMELOT KINGDOM, PLAN 3 (2026-11-15, mondo: "the village is supposed to be inside the castle walls too. so castle in the middle. village.
    walls surrounding all that. moat surrounding all that. then woods surrounding all that", and "okay that looks better" on plan 3).
    8 x 8 plots of 12 x 12 squares (336 m). From the middle out: THE CASTLE (the build above, no moat of its own), THE VILLAGE all the way
@@ -34,7 +60,8 @@ const N = 12, G = 8, W = N * G, PL = N * C, HALF = W * C / 2, CX0 = 24, CY0 = 30
 const gx = c => r2(-HALF + c * C), gc = c => r2(-HALF + (c + 0.5) * C);
 
 /* ── THE KIT (shared: every district file builds with it through the hook's ctx; change it only with a note on the board, docs/notes/claims.md) ──
-   The rows of the room (F, features), its props, doors, natives, ground marks, and the drawn looks waiting to be written (arch). */
+   The rows of the room (F, features), its props, doors, natives, ground marks, and the drawn looks waiting to be written (arch).
+   royalBanner() above is the kit's too (sheet().banner): one banner for the whole kingdom. */
 const g = gx, X = s => g(s + CX0), Z = s => g(s + CY0);   // g: a square's west / north edge (the same as gx); X / Z: the old castle squares (building() below still places with them)
 const F = [], props = [], doors = [], npc = [], arch = [], marks = [];
 const feat = o => F.push(J(o) + ','), raw = s => F.push(s + ','), note = s => F.push('/* ' + s + ' */');
@@ -59,7 +86,7 @@ const tier = (q, h) => { const m = mid(q); feat({ k: 'plateau', x: m[0], z: m[1]
 tier(Q.hill, T1); tier(Q.upper, T2);
 /* a flight runs north or south along the middle line; its head goes 0.4 m into the step it climbs so no seam is left at the top */
 const flight = (q, up, h0, h1) => { const x = r2((g(q[0]) + g(q[2])) / 2), zf = up === 'N' ? g(q[3]) : g(q[1]), zh = up === 'N' ? g(q[1]) - 0.4 : g(q[3]) + 0.4;
-    feat({ k: 'ramp', x0: x, z0: zf, x1: x, z1: r2(zh), w: (q[2] - q[0]) * C, h0, h1, stairs: true, model: 'stone', edge: 0.2 }); };
+    feat({ k: 'ramp', x0: x, z0: zf, x1: x, z1: r2(zh), w: (q[2] - q[0]) * C, h0, h1, stairs: true, model: 'stone', edge: 0.2, key: 'cobblestone', side: 'castle_wall', runner: { color: 0xa01e2c } }); };   // (its own sheets: a keyless flight wears the path under the shell's GREEN floor colour; the royal runner up the middle)
 flight(Q.grandStair, 'N', 0, T1); flight(Q.upperStair, 'N', T1, T2); flight(Q.backStair, 'S', 0, T2);
 const rail = (x0, z0, x1, z1, y) => feat({ k: 'rail', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), y, model: 'parapet' });
 /* a step's four edges, `gapN` / `gapS` = the squares a stair leaves open on its north / south edge */
@@ -93,12 +120,14 @@ function sheet() {
         crown(w, d, y, key, tint) { for (const s of [-1, 1]) { const nx = Math.floor(w / 2), nz = Math.floor(d / 2);
             add({ s: 'box', p: [-w / 2 + 0.55, y, s * (d / 2 - 0.25)], size: [1.1, 1.0, 0.5], n: nx, step: [w / nx, 0, 0] }, key, tint);
             add({ s: 'box', p: [s * (w / 2 - 0.25), y, -d / 2 + 0.55], size: [0.5, 1.0, 1.1], n: nz, step: [0, 0, d / nz] }, key, tint); } },
+        banner(x, y, z, w, h) { royalBanner(x, y, z, w, h, 1).forEach(p => P.push(p)); },
         /* a round tower: the shaft from y0, lit slits round it, a corbelled gallery under the eaves, the blue cone, a gilt finial, the flag */
         tower(x, z, r, y0, h, ch, tint) { const top = y0 + h;
             add({ s: 'cyl', p: [x, y0, z], r, h, seg: 16 }, WALL, tint);
             add({ s: 'cyl', p: [x, top - 1.8, z], r: r + 0.5, h: 1.8, seg: 16 }, WALL, STONE3);
             add({ s: 'cyl', p: [x, top - 2.3, z], r: r + 0.25, h: 0.5, seg: 16 }, WALL, STONE2);
             for (let y = y0 + 6; y < top - 5; y += 7) add({ s: 'box', p: [x, y, z], size: [0.6, 2.4, 0.12], ring: { n: 4, r: r + 0.03, a0: 45 }, glow: 0.6 }, G_TALL, 0xf0d890);
+            add({ s: 'cyl', p: [x, top - 0.3, z], r: r + 1.0, h: 0.3, seg: 16, roof: true }, WOODD, 0x4a3626);   // the eave's underside: the cone sits ON the tower (mondo: "roofs don't connect")
             add({ s: 'cyl', p: [x, top, z], r: r + 1.0, h: ch, seg: 16, r2: 0, roof: true }, SLATE, BLUE);
             add({ s: 'cyl', p: [x, top + ch - 0.5, z], r: 0.3, h: 1.3, seg: 8, r2: 0, roof: true }, null, GOLD);
             add({ s: 'cyl', p: [x, top + ch, z], r: 0.09, h: 4.2, seg: 6, roof: true }, null, 0x403830);

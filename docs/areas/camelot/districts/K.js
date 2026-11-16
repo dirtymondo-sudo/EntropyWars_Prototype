@@ -8,7 +8,7 @@
    WHAT STANDS HERE TODAY (redesign 2, mondo's OK on docs/plans/camelot/camelot_castle_redesign_2.png): the Keep (solid here, 28 m, the
    portal between two turrets, the great window, four corner towers, the Great Spire), the West Wing and the East Wing (solid, a tower on
    each outer corner), the Stables and the Armoury in the lower court (both walked into, furnished), the hill's drums and the stairs'
-   cheek walls and gate piers, the Lists (two tilt rails on sand), the courts' dressing (the sword in the stone, braziers, lions,
+   cheek walls and gate piers, the Lists (two plank tilt barriers on sand), the royal banners (the kit's sheet().banner, one design everywhere), the courts' dressing (the sword in the stone, braziers, lions,
    fountains, tents, the orchard rows), four doors (portal, kitchen, guard, postern: all into the palace room), four natives.
 
    NOT HERE: the castle's INSIDE is its own room, `site_prebuilt_camelot_palace`, written by bake-camelot-castle.js. Both belong to the
@@ -22,7 +22,7 @@
    plot Pxx-yy = squares xx*12.. , yy*12.. . gx(k) = a square's west / north edge in metres, gc(k) = its middle. feat(row) writes a terrain row,
    note(text) a heading. put(key, x, y, o, on) stands a catalogue prop on a square's middle; dec(...) the same, scattered and turned by the
    dice; tree(kind, h, x, y, r); native(race, x, y, face, say). They take FREE ground only (grass, snow, marble; `on` names another plan
-   letter) and never one square twice: the tool stops and names the square. sheet() = a parts list (box, cyl, roof, shell, crown, tower);
+   letter) and never one square twice: the tool stops and names the square. sheet() = a parts list (box, cyl, roof, shell, crown, tower, banner);
    building(id, [x0, y0, x1, y1], side, h, o, parts) = a texbuilding + its drawn look, returns its frame; inside(B, key, lx, lz, o) = furniture
    in that frame; flushArch() writes the looks made so far.
    Here `put` is inside(): furniture in a building's frame. Layout squares of every piece: ctx.Q (layout.json `castle`); west and east are
@@ -55,7 +55,7 @@ const KEEP = kq('keep', Q.keep, 'S', 14, { hollow: false, leaf: undefined, leafD
         for (const s of [-1, 1]) for (const z of (y > 20 ? [-17.5, -10.5, -3.5, 3.5, 10.5, 17.5] : [-17.5, 17.5])) light(s * (w / 2 + 0.08), y, z, h, true); }
     for (const x of [-21.5, -15, 15, 21.5]) a.box(x, 0, d / 2 + 0.35, 1.3, KH - 1.2, 0.7, WALL, STONE3);                    // the front's buttresses
     for (const x of [-21, -15, -9, -3, 3, 9, 15, 21]) a.box(x, 0, -d / 2 - 0.35, 1.2, KH - 1.2, 0.7, WALL, STONE3);
-    for (const s of [-1, 1]) { a.box(s * 15, 8.5, d / 2 + 0.74, 1.5, 6.5, 0.08, null, BANNER); a.box(s * 15, 12.4, d / 2 + 0.79, 0.7, 0.7, 0.05, null, GOLD); }
+    for (const s of [-1, 1]) a.banner(s * 15, 7.5, d / 2 + 0.95, 2.4, 7.5);
     /* the portal: two turrets, the gatehouse block over the way in, the great doors (the doorway itself is the wicket in them), the great window */
     for (const s of [-1, 1]) a.tower(s * 8, d / 2 + 1.5, 2.2, 0, 22, 8, STONE3);
     for (const s of [-1, 1]) a.box(s * 5.0, 0, d / 2 + 1.3, 1.6, 6.2, 2.6, WALL, STONE3);
@@ -69,7 +69,7 @@ const KEEP = kq('keep', Q.keep, 'S', 14, { hollow: false, leaf: undefined, leafD
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.tower(sx * w / 2, sz * d / 2, 3.4, 0, 34, 12, PALE);
     /* THE GREAT SPIRE: a round tower out of the roof's middle, four bartizans on it, the tallest cone in the kingdom */
     a.tower(0, 0, 5.5, KH + 2, 22, 20, PALE);
-    a.cyl(0, KH + 14, 0, 1.3, 10, WALL, PALE, { seg: 10, ring: { n: 4, r: 5.7, a0: 45 }, roof: true }); a.cyl(0, KH + 24, 0, 1.75, 5.5, SLATE, BLUE, { seg: 10, r2: 0, roof: true, ring: { n: 4, r: 5.7, a0: 45 } });
+    a.cyl(0, KH + 14, 0, 1.3, 10, WALL, PALE, { seg: 10, ring: { n: 4, r: 5.7, a0: 45 }, roof: true }); a.cyl(0, KH + 23.75, 0, 1.75, 0.25, WOODD, 0x4a3626, { seg: 10, ring: { n: 4, r: 5.7, a0: 45 }, roof: true }); a.cyl(0, KH + 24, 0, 1.75, 5.5, SLATE, BLUE, { seg: 10, r2: 0, roof: true, ring: { n: 4, r: 5.7, a0: 45 } });
     a.box(0, KH + 12, 0, 1.4, 3.4, 0.12, G_TALL, 0xf4dc98, { glow: 0.8, ring: { n: 4, r: 5.53, a0: 0 }, roof: true });
 });
 /* A WING — two tall storeys of hall under a steep blue roof, a tower on each outer corner (the rear one the taller, so all eight show from
@@ -84,7 +84,7 @@ const wing = (id, q, out, o) => kq(id, q, 'S', 7, o, (a, w, d, door) => {
         for (const z of [-7, 0, 7]) a.box(out * (w / 2 + 0.08), y, z, 0.12, h, 1.4, G_TALL, WARM, { glow: 0.5 }); }
     for (const x of [-12.2, -7.3, 7.3, 12.2]) a.box(x, 0, d / 2 + 0.3, 1.0, 13.2, 0.6, WALL, STONE2);
     a.box(door.lx, 2.3, d / 2 + 0.5, 4.6, 0.5, 1.2, WALL, STONE3, { under: true }); for (const s of [-1, 1]) a.box(door.lx + s * 2.0, 0, d / 2 + 0.6, 0.6, 2.3, 0.6, WALL, STONE3);
-    for (const s of [-1, 1]) a.box(door.lx + s * 3.6, 3.2, d / 2 + 0.1, 1.2, 4.2, 0.08, null, BANNER);
+    for (const s of [-1, 1]) a.banner(door.lx + s * 3.6, 3.0, d / 2 + 0.28, 1.5, 4.6);
     a.box(-out * (w / 2 - 3), 14.3, -d / 2 + 3, 2.2, 10.5, 2.2, WALL, STONE2, { roof: true }); a.box(-out * (w / 2 - 3), 24.8, -d / 2 + 3, 2.7, 0.5, 2.7, WALL, STONE3, { roof: true });
     a.tower(out * w / 2, d / 2, 4.2, 0, 24, 11, STONE); a.tower(out * w / 2, -d / 2, 3.6, 0, 30, 10, STONE);
 });
@@ -107,7 +107,6 @@ const lodge = (id, q, side, o, extra) => kq(id, q, side, 5.25, o, (a, w, d, door
 const STABLES = lodge('stables', Q.stables, 'E', { leaf: 'leaf_stable', leafDouble: false, keyIn: WOODK, floorIn: 'dirt_2' }, (a, w, d, door) => {
     a.box(door.lx, 5.6, d / 2 + 0.1, 1.6, 1.8, 0.1, WOODK, TIMBER); a.box(door.lx, 7.6, d / 2 + 0.7, 0.2, 0.2, 1.4, WOODD, TIMBER); });
 const ARMOURY = lodge('armoury', Q.armoury, 'W', { leafDouble: false }, (a, w, d, door) => {
-    [[-2.6, 0x2c4a9a], [2.6, BANNER]].forEach(([x, c]) => { a.box(door.lx + x, 2.9, d / 2 + 0.1, 1.0, 1.2, 0.1, null, c); a.box(door.lx + x, 3.3, d / 2 + 0.16, 0.34, 0.34, 0.05, null, GOLD); });
     a.box(door.lx, 5.7, d / 2 + 0.1, 0.16, 1.9, 0.06, null, 0xb8bcc4); a.box(door.lx, 6.2, d / 2 + 0.1, 0.9, 0.14, 0.06, null, 0xb8bcc4); });
 
 /* ── THE HILL'S OWN LOOK (a row with its foot on the village's ground): the drums on its four corners and beside the Grand Stair, the
@@ -118,16 +117,16 @@ const ARMOURY = lodge('armoury', Q.armoury, 'W', { leafDouble: false }, (a, w, d
   [[Q.hill[0], Q.hill[1]], [Q.hill[2], Q.hill[1]], [Q.hill[0], Q.hill[3]], [Q.hill[2], Q.hill[3]]].forEach((c, i) => drum('hill_drum_' + i, g(c[0]), g(c[1]), 4.2, T1 + 0.1, 5.6));
   const sx0 = g(Q.grandStair[0]), sx1 = g(Q.grandStair[2]), sz = g(Q.hill[3]);
   [sx0 - 3.4, sx1 + 3.4].forEach((x, i) => { drum('stair_drum_' + i, x, sz, 3.2, T1 + 0.1, 4.2); const p = L(x, sz);
-      a.cyl(p[0], T1 + 0.1, p[1], 0.1, 6, null, 0x403830, { seg: 6 }); a.box(p[0], T1 + 1.4, p[1] + 0.2, 1.3, 4.2, 0.06, null, BANNER, { ds: true }); });
+      a.cyl(p[0], T1 + 0.1, p[1], 0.1, 6.4, null, 0x403830, { seg: 6 }); a.banner(p[0], T1 + 1.6, p[1] + 0.22, 1.5, 4.6); });
   const NG = Q.grandStair[3] - Q.grandStair[1], NU = Q.upperStair[3] - Q.upperStair[1];
   for (const x of [sx0 - 0.1, sx1 + 0.1]) { const p = L(x, sz); for (let i = 0; i < NG; i++) a.box(p[0], 0, p[1] + 1.75 + i * 3.5, 0.9, r2(T1 * (NG - i - 0.5) / NG + 1.0), 3.5, WALL, STONE2); }   // the Grand Stair's cheek walls, stepping down with it
   { const ux0 = g(Q.upperStair[0]), ux1 = g(Q.upperStair[2]), uz = g(Q.upper[3]);
     for (const x of [ux0 - 0.1, ux1 + 0.1]) { const p = L(x, uz); for (let i = 0; i < NU; i++) a.box(p[0], T1, p[1] + 1.75 + i * 3.5, 0.8, r2((T2 - T1) * (NU - i - 0.5) / NU + 1.0), 3.5, WALL, STONE2);
-        const q = L(x, uz + NU * 3.5 + 0.4); a.box(q[0], T1, q[1], 1.2, 2.6, 1.2, WALL, STONE3); a.cyl(q[0], T1 + 2.6, q[1], 0.5, 0.5, null, GOLD, { seg: 8, r2: 0.2 }); } }
+        const q = L(x, uz + NU * 3.5 + 0.4); a.box(q[0], T1, q[1], 1.2, 2.6, 1.2, WALL, STONE3); a.roof('pyramid', q[0], T1 + 2.6, q[1], 1.4, 0.8, 1.4, WALL, STONE2); } }
   /* THE LISTS: a tilt rail either side of the middle line (red and white, the lances' side), on sand */
   for (const s of [-1, 1]) { const p = L(MX + s * 24.5, g(55)); 
-      a.box(p[0] - 9.6, T1 + 0.35, p[1], 1.75, 0.5, 0.05, null, BANNER, { n: 6, step: [3.5, 0, 0], ds: true });
-      feat({ k: 'rail', x0: r2(MX + s * 24.5 - 10.5), z0: g(55), x1: r2(MX + s * 24.5 + 10.5), z1: g(55), y: T1 });
+      feat({ k: 'wall', x0: r2(MX + s * 24.5 - 10.5), z0: g(55), x1: r2(MX + s * 24.5 + 10.5), z1: g(55), h: 1.15, t: 0.22, key: 'wood' });   // THE TILT: a plank barrier (the engine's own rail is a modern handrail)
+      a.box(p[0] - 10.5, T1, p[1], 0.3, 1.5, 0.3, WOODD, TIMBER, { n: 7, step: [3.5, 0, 0] });
       marks.push({ k: 'rect', x: r2(MX + s * 24.5), z: g(55), w: 24.5, d: 7, color: 0xc8b088, a: 0.85 }); }
   arch.push({ k: 'arch', id: 'cam:hill', x: cx, z: cz, y: 0, rot: 0, parts: a.P }); }
 flushArch();

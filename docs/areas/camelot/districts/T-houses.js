@@ -59,7 +59,10 @@ function houseLook(kind, a, w, d, i) {
         for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(s * (w / 2 - 0.2), 0.8, t * (d / 2 - 0.2), 0.3, hh - 0.8, 0.3, WOODD, TIMBER); a.box(0, hh - 0.26, 0, w, 0.26, d, WOODD, TIMBER, { top: false, under: true });
         gable(hh, 3.2, 1.0, SLATE, 0x5a6c96, { keyEnd: STUCCO, tintEnd: tint });
         door(dx, f); a.box(cx, 1.0, f, cw, 1.5, 0.1, null, 0x241c18); a.box(cx, 0.9, f + 0.3, cw + 0.3, 0.12, 0.7, WOODK, 0x9a6a3c); a.box(cx, 0.8, f + 0.05, cw + 0.2, 0.1, 0.1, WOODD, TIMBER);
-        for (let k = 0; k < 3; k++) a.box(cx - cw / 2 + (k + 0.5) * cw / 3, 1.02, f + 0.32, 0.5, 0.26, 0.4, null, [0xd8a040, 0xb04a3a, 0x6a9a4a][(i + k) % 3]);
+        for (let k = 0; k < 3; k++) { const bx = cx - cw / 2 + (k + 0.5) * cw / 3, kind = (i + k) % 3;   // a wicker basket of apples, one of cabbages, a board of loaves
+            if (kind === 2) { a.box(bx, 1.02, f + 0.32, 0.7, 0.04, 0.42, WOODK, 0x9a6a3c); for (const q of [-0.2, 0.02, 0.24]) a.box(bx + q, 1.06, f + 0.32, 0.18, 0.12, 0.3, null, 0xc89a58); }
+            else { a.cyl(bx, 1.02, f + 0.32, 0.26, 0.2, WOODK, 0xb89460, { seg: 10 }); a.cyl(bx, 1.2, f + 0.32, 0.28, 0.03, WOODK, 0x8a6a40, { seg: 10 });
+                for (const q of [[-0.1, -0.06], [0.1, -0.05], [0, 0.1], [-0.02, -0.01]]) a.P.push({ s: 'dome', p: [bx + q[0], q === 3 ? 1.26 : 1.2, f + 0.32 + q[1]], r: kind ? 0.1 : 0.08, seg: 8, tint: kind ? 0x6a9a4a : 0xb83a34 }); } }
         a.roof('shed', cx, 2.6, f + 0.75, cw + 0.6, 0.55, 1.5, null, (i % 2) ? 0xb03a3a : 0x3a5a9a, { ry: 180 }); for (const s of [-1, 1]) a.box(cx + s * (cw / 2 + 0.2), 0, f + 1.4, 0.12, 2.65, 0.12, WOODD, TIMBER);
         a.box(dx, 3.0, f + 0.6, 0.1, 0.1, 1.2, null, 0x2a2c30); a.box(dx, 2.2, f + 1.0, 0.08, 0.75, 0.9, WOODK, 0x8a5a34, { ds: true }); a.box(dx, 2.42, f + 1.0, 0.1, 0.3, 0.4, null, [0xd8b050, 0xc84a5a, 0x4a8a3a][i % 3], { ds: true });
         sideWin(1.5, 1.1); chimney(w / 2 - 1.3, -d / 4, hh, hh + 4.0, WALL, STONE2); barrel(-w / 2 + 0.5, d / 2 + 0.35); barrel(-w / 2 + 1.25, d / 2 + 0.3);
