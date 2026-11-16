@@ -4548,6 +4548,13 @@ sheep, rocks, an eagle. Cloud Line + the Grand Stair's foot: eight clouds on the
 `RACE_PROFILES.biomes`: valkraye (thrones), giant (Stadium), nephilim (Sacred Way), unicorn (Olive Grove), occulus (Goat Track), watcher (Cloud Line); none on a way.
 `white_cloud` takes `span` (5 to 8 m) and a small `y`. A prop on a plinth on a sloping row floats or sinks: keep plinths on the plot's level rows.
 
+**PASS 4, ATMOSPHERE (seen on screen by day and at 22:30: a view's `eval` sets `window._hqClockHour = () => 22.5`):** the zone's rule of light, warm against the blue
+night, with parts that glow (drawn unlit, so no light is added and the frame rate keeps): O.js `flame` (a gold bowl with a fire: on the Stadium's four posts and its seats'
+ends, on the Colonnade's corners, the gate, the stage's ends, five along the theatre's back wall, the Temple's four roof corners, two on the statue's base) and `lamp` (a
+small oil lamp on a chain: under the Temple's ring beam, in the cella, under the Colonnade's rafters, in the gate). A flame part takes NO sheet (`key` null, a plain colour):
+on a sheet it read as dull gold. The real lights stay the eleven braziers and the two fountains. `light_shaft` showed nothing outdoors: not used.
+No falling light, cloud drift or sound: the walked rooms have no hook for them (the zone kit's point 4).
+
 **FOR THE NEXT THREAD (learned here):**
 - A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
   never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
@@ -7784,7 +7791,19 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   wall (two racks, a ladder rack, barrels, crates, a drum), the forklift with two pallets and the pallet jack west, cones, oil.
   FOUND: `ebd_metro_turnstile` draws as a blank grey block (use `metro_gate`); the Depot's hall is SEVEN squares deep (z -10.5..14):
   pass 1's south dado and crane rail stood 3.5 m short of the wall and are moved.
-- **FPS (the probe's software renderer, the Depot view):** 3.5 before, 4.3 after pass 1 (no real cost: about 60 meshes, no new lights).
+- **PASS 4, THE ATMOSPHERE (seen, 8 views).** The room has ten real lights and the zone's air (fog, particles) is the tool's row, so
+  the district lights itself with `glow` and with the catalogue's moving props: (1) LIGHT THAT FALLS: under each lit station tube a lit
+  patch of the platform's own terrazzo (two steps), under each lit tunnel lamp a lit patch of the wall's brick and of the walk, under
+  the Depot's three lit lamps a round pool, along the lit car a strip each side, ahead of its headlights two steps on the ballast,
+  green on the ballast under each gantry head: all parts wearing the FLOOR'S OWN SHEET with a low `glow` (0.1 to 0.36), so the floor
+  reads lit, not painted. (2) FOUR `flicker_tube` props (the station's second lamp, both loops, the Depot by the crew room). (3) The
+  camp's barrel fire: `hearth_fire` in a `psx_metal_barrel_mp_2`, `noLight`. (4) STEAM: `chimney_smoke` in five places (the station's
+  track twice, a leaking main at the Crossing, the compressor, the east loop). (5) An `exit_sign` over each hut's door. No night look:
+  the place is underground (no clock). NOT POSSIBLE FROM A DISTRICT FILE: fog, drips, dust motes, sound (the tool's row / no hook);
+  light shafts draw nothing since 10-04 (`_hqLightShaft` returns null), so the garden well has no daylight beam.
+- **FPS (the probe's software renderer, the Depot view, 5 s):** 3.5 before pass 1 (the room held 315 props), 4.3 after pass 1, 3.0
+  after pass 4 (the room holds 679 props: every Sewers thread's). Run-to-run noise is about 1; T's own cost: about 75 meshes of parts,
+  about 250 props, four bulbs out of the room's ten, no texture the room did not already load except the tile and metal sheets.
 - **DECISIONS MADE FOR MONDO (overrule any in a line):** (1) the five cave torches of the first build are gone from the line: a subway is
   lit by its own lamps, and the room has ten real lights for 30 plots; T takes four (the lit car, the cabin, the crew room, the station office), everything else is `glow`.
   (2) The platform reaches the track (it stood a walk's width back). (3) The exit is shuttered, in the east end, not a stair. (4) Every
