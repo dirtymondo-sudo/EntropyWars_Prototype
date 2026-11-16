@@ -108,6 +108,8 @@ const run = async () => {
   lap('return button ' + btn);
   await shot('4_debrief');
   const tBack = Date.now();
+  /* --profile: a CPU profile of the first seconds back in the room (what the resumed walk's ticks cost) */
+  let cdp = null; if (flag('profile', false)) { try { cdp = await context.newCDPSession(page); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 400 }); await cdp.send('Profiler.start'); } catch (e) { cdp = null; } }
   await ev(`document.getElementById('encReturnBtn').click(), 1`);
   t1 = Date.now(); let back = null;
   while (Date.now() - t1 < 240000) { back = await stat(); if (back && back.hqScene && back.gate && back.gate.ready && back.phase !== 'battle') break; await sleep(1000); }
@@ -118,6 +120,15 @@ const run = async () => {
   console.log('BACK2', JSON.stringify(await stat()), JSON.stringify(await ev(`(function(){ var sc = ThreeRenderer.hq.dev.hqScene(), n = 0, b = 0, cells = 0, sk = 0; sc.traverse(function (o) { if (o.isMesh) n++; if (o.isSkinnedMesh) sk++; if (o._ew_hqBatch) b++; if (o._ew_sCell) cells++; }); return { meshes: n, batchMeshes: b, squares: cells, skinned: sk, chars: (function () { try { return ThreeRenderer.hq.dev.chars().length; } catch (e) { return -1; } })() }; })()`)));
   console.log('CAM-AFTER', JSON.stringify(await camd()));
   console.log('DIAG-AFTER', JSON.stringify(await diag()));
+  if (cdp) { try {
+    await sleep(Number(flag('profile', 1)) > 1 ? Number(flag('profile', 1)) : 15000);
+    const { profile } = await cdp.send('Profiler.stop'); const byId = new Map(), parent = new Map(); profile.nodes.forEach(n => { byId.set(n.id, n); (n.children || []).forEach(c => parent.set(c, n.id)); });
+    const nameOf = n => (n.callFrame.functionName || '(anon)') + ' ' + (n.callFrame.url || '').split('/').pop().split('?')[0] + ':' + n.callFrame.lineNumber;
+    const self = new Map(), inc = new Map(), dt = profile.timeDeltas || []; let tot = 0;
+    profile.samples.forEach((id, i) => { const d = dt[i] || 0; tot += d; const n0 = byId.get(id); self.set(nameOf(n0), (self.get(nameOf(n0)) || 0) + d); const seen = new Set(); for (let q = id; q != null; q = parent.get(q)) { const n = byId.get(q); if (!n.callFrame.url) continue; const k = nameOf(n); if (seen.has(k)) continue; seen.add(k); inc.set(k, (inc.get(k) || 0) + d); } });
+    const fmt = (m, n) => [...m.entries()].filter(([k]) => !/three\.(core|webgpu|module|min)\.js| :-1$/.test(k)).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => (v / 1000).toFixed(0) + ' ms  ' + k);
+    console.log('PROFILE total ' + (tot / 1000).toFixed(0) + ' ms\nSELF\n' + fmt(self, 25).join('\n') + '\nINCLUSIVE\n' + fmt(inc, 45).join('\n'));
+  } catch (e) { console.log('profile failed', String(e.message).slice(0, 200)); } }
   await shot('6_back_later');
   await ev(`ThreeRenderer.hq.dev.teleport({ x: 113.75, z: 22.75, face: 270, fp: false, dist: 4, pitch: -0.2 }), 1`); await fast.settle(page, 0, 6); await shot('7_back_teleported');
   console.log('HQLOGS', JSON.stringify(logs.filter(l => /\[HQ\]|HQ→battle|parked|resumed/i.test(l)).slice(-40)));
