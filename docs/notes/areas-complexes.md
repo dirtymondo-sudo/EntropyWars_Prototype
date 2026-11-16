@@ -7324,9 +7324,18 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
     THE LIT TRAIN (road 1): saloon strip, two headlights, two bulbs inside (real lights). The crew room: a recess dug north-west.
   - Both huts have a swinging barred door (`leaf_security`, a `doorsOnly` carrier row, `sewT:doors`) and ghost walls on their fronts.
   - A signal post where the line leaves each Loop Line plot.
+- **PASS 2, THE INTERIORS (seen, 8 views):** three walk-in huts, each with a swinging barred door, a lit window and ONE real bulb.
+  THE SIGNAL CABIN (the Crossing): the lever frame and a control panel under the window, a lit track diagram on the back wall (the two
+  lines, the loop, a green lamp a signal; `sewT:P02-03:diagram`), a desk with a terminal and a radio, cabinets, a breaker panel, gauges,
+  a clock; the AI bystander stands at the frame. THE CREW ROOM (the Depot): four lockers, a steel table with mugs and an ashtray, three
+  chairs, a cot, a sofa, a fridge + microwave + coffee maker + water cooler, a notice board, the punch clock. THE STATION OFFICE (new: a
+  tiled hut on the platform's north-west corner under the vault's haunch, board TICKETS): the desk at the ticket window, the lost
+  property shelf, a floor safe, cabinets, the key rack. THE LIT CAR: one bulb in the saloon and a skeleton standing in the aisle (the
+  car itself is a blocker: nobody boards it). `hut(ctx, plot, name, ...)` in T.js builds any such hut (front wall, window, slab, floor,
+  ghost walls, the door's row); `put(plot, key, x, z, face, { y })` places a prop at a plot's own metres with `floor: true`.
 - **FPS (the probe's software renderer, the Depot view):** 3.5 before, 4.3 after pass 1 (no real cost: about 60 meshes, no new lights).
 - **DECISIONS MADE FOR MONDO (overrule any in a line):** (1) the five cave torches of the first build are gone from the line: a subway is
-  lit by its own lamps, and the room has ten real lights for 30 plots; T now takes two (the lit train's bulbs), everything else is `glow`.
+  lit by its own lamps, and the room has ten real lights for 30 plots; T takes four (the lit car, the cabin, the crew room, the station office), everything else is `glow`.
   (2) The platform reaches the track (it stood a walk's width back). (3) The exit is shuttered, in the east end, not a stair. (4) Every
   signal is green (the bystander's line). (5) Two recesses were dug for the huts (the Crossing's north-east, the Depot's north-west): the
   only plan squares changed, both inside T's plots, no way out touched. (6) The cabin's board reads THE CROSSING, the hut's CREW ROOM,
