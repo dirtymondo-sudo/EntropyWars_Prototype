@@ -4505,6 +4505,54 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
 7. A district look in the tool (lamp colour, banner) shared by the zone, as the city's LOOKS.
 8. Encounter table, PvP arena pick, the Ice Queen: mondo's.
 
+## MOUNT OLYMPUS, THE DISTRICT THREAD — district O, pass by pass (2026-11-16, second side)
+
+mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped without asking, at most five passes. File `docs/areas/mountains/districts/O.js`, 12 plots
+of `site_prebuilt_shasta_mountains`. The first look (13 views) found: flat grey marble, thrones and a brazier, a six-column temple with a dark bare inside, small stained columns,
+nothing at the Amphitheatre, the Stadium or the Terraces.
+
+**FITS THIS DISTRICT (the lists read first: MODEL_LIST.md sections 6, 7, 10, 12b, 13, the live catalogue, the tree kinds):**
+- Stone and statues: `greek_column` (takes `h`: 4.6 at the Stadium, 6 at the Colonnade), `angel_statue`, `lion_statue`, `marble_bust`, `stone_urn`, `greek_amphora`, `lady_justice`,
+  `hero_statue_landing` / `hero_statue_crossed`, `owl_statue` (10 m, the Woods' piece), `obelisk`, `menhir`, `decor_stone_arch`, `stone_altar`, `fountain`, `royal_throne`, `lectern`.
+- Fire and light: `brazier` (a real light), `wall_torch`, `cave_torch`, `candelabra`, `votive_stand`, `hw_candles`, `crystal_chandelier`, `light_shaft`, `floating_orb`.
+- Gods' things: `instrument_harp`, `instrument_drum`, `instrument_whistle`, `taiko_drum`, `meshy_trumpet`, `giant_hourglass`, `brass_orrery`, `astronomical_clock`, `telescope`,
+  `decor_trophy_cup`, `arms_trophy`, `spear`, `spell_shield`, `sword`, `armour_stand`, `banner`, `holy_carpet`, `item_drinking_cup`, `item_censer`, `item_heart_scales`,
+  `crystalBall`, `cauldron`, `chess_set_game`, the feast (`xmas_turkey`, `xmas_roast`, `xmas_carvery`, `xmas_punch`, `xmas_champagne`, `bread_rack`), `psx_glass_bottle_*`.
+- Living: `eagle` (hovers), `decor_sheep`, `horse`, `lion`, `butterfly`, `monarch`, `bee`, `rabbit`; `white_cloud`.
+- Garden: `planter`, `psx_planter_pot_mp_1_full`, `potted_plant`, `iron_garden_bench`, `park_bench`, `ancient_well`, `wooden_bucket`, `psx_wooden_crate_*`, tree kinds `tree_2` .. `tree_56`.
+- Sheets: `marble_light` (with `gain` 1.7), `gold` (the better gold, `gain` 1.6), `rocks_5`, `leaves`, `urban:WoodGeneric2a` (tiles under a terracotta tint).
+- Section 13 (files on R2 with no row) holds nothing Greek: no olive tree, no vine, no laurel, no chariot, no discus. See NEEDS A MODEL.
+
+**PASS 1, EXTERIORS (seen on screen, probe-fast.js, nine views):**
+- THE TEMPLE is a peripteral temple now: the cella (the walk-in, 6 x 4 squares) inside a ring of 24 built columns, 8 x 6, each on the middle of a whole square with a ghost
+  wall (a blocker), under one entablature with a gold frieze, a tiled roof, gold relief in both pediments, gold acroteria, a gold door frame.
+- THE TWELVE THRONES: a round marble dais with two gold rings, the hearth on a kerb in the middle, the thrones at 2.5 m (gods' seats).
+- THE STADIUM: three tiers of stone seats on both long sides (blockers), the start and finish in gold, the prize cup on a plinth between two braziers at the west end.
+- THE COLONNADE: the columns at 6 m under two beams with a gold band and rafters across (a pergola over the walk).
+- THE AMPHITHEATRE: a round floor with a gold rim, four curved tiers and a back wall south of it, a stage with five columns and a beam north of it. Its squares stand level
+  (a terrace: `R.flats` with side N) and the nub behind the seats went back to rock (`tailor`).
+- THE SACRED WAY: a gate (two columns, a beam, a small tiled pediment) at its west end; an angel, a bust and an urn on plinths. THE TERRACES: six vine rows on posts over low walls.
+
+**FOR THE NEXT THREAD (learned here):**
+- A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
+  never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
+  and cut long beams into one piece a square.
+- A plot is level only two squares either side of its middle row; the rest grades to its neighbours. Something that must stand level takes `R.flats.push([sx0, sy0, sx1, sy1, 'N'])`
+  (the side names the edge whose height it keeps).
+- A built shape that should block: one ghost wall on the square's middle (O.js `block`), and the square goes in `R.taken`.
+- Marble under the room's light is grey without `gain`: 1.7 on `marble_light`, 1.6 on `gold`. `dev.teleport` with `fp: true` and a raised `y` is the only far view (the third-person camera stays close).
+- A curved wall or tier = `cyl` with `arc`, `a0`, `ri` (angle 0 = east, 90 = south).
+
+**DECISIONS MADE FOR MONDO (overrule any in one line):**
+1. The Temple became a full ring of columns (was six in front): the peak's landmark should read from the Stadium and the Colonnade.
+2. The Amphitheatre's seats are south of its floor and face north to the stage; the plot's through way (the Sacred Way's line) stays clear north of the stage.
+3. The seats and tiers block (ghost walls): nobody climbs them. The Stadium's track stays open end to end.
+4. No encounter table: the room is shared with three other districts, so a table here would put Olympus units on the ski slopes. The gods stand as natives.
+5. No names added: the plots keep the plan's names; no sign boards.
+
+**NEEDS A MODEL:** an olive tree; a grape vine on a trellis (the vine rows are a leaf sheet on posts); a laurel wreath; a chariot; a discus and a javelin rack; a tripod bowl
+(the brazier stands in); a Greek couch; a lyre (the harp stands in); a statue of a god (the angel, the bust and Lady Justice stand in); a goat for the Goat Track.
+
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
 mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
