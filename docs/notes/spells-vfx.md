@@ -3836,3 +3836,16 @@ block), the `pzSig` hook, helpers `_bk*`. Visuals only.
 - Proof: shots in /mnt/project-files/banker-pass/ (a close camera with performance.now frozen at set delays, + a real VS CPU
   cast of each spell). Probe scripts in the same folder.
 
+## THE TECH CEO (2026-11-16, the new races' polish thread cmsg_01XWpxyTn3nnw98znVzKdFjsFPgcTzJantoqmq4McVhjZG)
+Acquisition, Disrupt and Layoffs had no look, only a floating word. three-vfx-effects.js "THE TECH CEO" (`_PZ_SIGS.ceoAcquire / ceoDisrupt /
+ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura' a cast with `sx/sy` (the CEO) and `tiles`.
+- SIDE COLOURS from the viewer's own seat (Riot guide): his side cyan-blue, the other side pink-orange (`_ceoSides`: the CEO's side = the
+  body at sx, sy, so the guest works it out from the relayed params). What the enemy loses reads pink to them.
+- Acquisition: a paper contract (canvas card, ACQUIRED + a gold seal) flies end over end from him to the square; the old side's square
+  ring breathes, snaps shut on the landing, his side's ring opens with a short column + floor flash.
+- Disrupt: every square of the 3×3 glitches between the two colours on a stepped clock (55 ms), a white scan bar sweeps it, small cubes
+  spit up, then it settles in his colour with a rim on each square.
+- Layoffs: each scrapped asset pops a ring and becomes a cardboard box (canvas texture) that flies to his chest (under the floating
+  words), blue MP motes rise off him, then his side's ring.
+- Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
+

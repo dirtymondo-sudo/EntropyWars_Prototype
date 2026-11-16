@@ -5498,6 +5498,20 @@ mirrors, _visionWards, warpRunes; owner fields `ownerPlayer|owner|player` (numbe
 - Probe 11-16: the enemy's Tesla Coil acquired (owner 2 → 1), an empty square refused, the enemy Smoke Screen disrupted (2 → 1),
   Layoffs scrapped the coil for +50 MP; 0 page errors. Model `…/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb` + `tech_ceo.png`.
   Known: the turtleneck shows the Meshy texture-seam specks (as banker / politician / lifeguard).
+- THE CEO POLISH (2026-11-16, mondo: "work on their spell pools and spell vfx ... unique fun strategic playstyles, but still balanced";
+  thread cmsg_01XWpxyTn3nnw98znVzKdFjsFPgcTzJantoqmq4McVhjZG). The loop: lay a Tesla Coil (his T1 tree) or buy the enemy's things,
+  then Layoffs them for MP + a stage. Fixes, all inside his own kit:
+  - **Layoffs gives +1 INT stage** (was ATK): every damage spell in his pool (Blue Screen, Classified Weapon, Singularity) is magic and
+    his ATK is 50, so the ATK stage did nothing.
+  - **He only buys what his side can see** (battle.js `_ceoSeesTile`): Acquisition on a fogged square, or on an enemy trap nobody on his
+    team has found (`_revealedTo[player]`), reads "nothing the enemy owns stands on that square". Before, the free refusal was a probe
+    for hidden traps and fogged squares, and the CPU's `_ceoPlan` read rows it could not see. A bought trap stays known to the side
+    that set it (`_revealedTo[old owner]`). Quetzalcoatl's body rows (`serpentOf`) are not for sale.
+  - **Disrupt breaks enemy terrain**: a timed-terrain patch's owner changed nothing in play, so the enemy's patches in the 3×3 now go
+    back to the ground they were at once (`expiresRound = 0` + `_tickTimedTerrain`). Zones still change hands (their rims flip).
+  - VFX: spells-vfx.md "THE TECH CEO".
+  - Probe (VS CPU, 8×8 arena, viewer P1): hidden trap refused, found trap bought (owner 2 → 1, still seen by P2), fogged square refused,
+    coil bought, enemy zone taken (rim pink → cyan) + its swamp square back to grass, Layoffs ×3 +INT 1 / ATK 0; 0 page errors.
 
 ### 5. THE MAGICIAN (Disaster City, Entertainment, specialist, family `stagemagic`)
 The style: a hidden trick. **Sleight of Hand** (T1, self) sets STATUS_DEFS `trickSet` (3 rounds); the trick is `unit._trick`, in turn
@@ -5528,6 +5542,19 @@ where he dug in, and the target is thrown up (forced applyFallDamage from 2 leve
 - Probe 11-16: Burrow C3 → D5 under the ground (hidden from P2), Erupt from hiding 454 (ambush + super effective on a mech) + a 3-level
   throw 151 (now 2 levels), he surfaced at E6 beside the foe; Cave-In hit and Rooted; 0 page errors.
 
+- **THE MOLE MAN PASS (2026-11-16, thread cmsg_01XWpxyTn3nnw98znVzKdFjs6WTwrp75qF2F9EKtA11gsH):** (1) Burrow cooldown 1 -> 2: at 1 he
+  could dig every turn and never stand on the board (Invisible lasts until his next turn ends). At 2 the race has a readable rhythm: a
+  round under, Erupt brings him up, he stands through the other side's next turn. (2) battle.js `spellMovesCaster` counts `erupt`: Erupt
+  carries him to the victim's side, so Rooted / Charmed / Roped / Frozen refuse it like every move spell. (3) His surfacing rides the
+  escape looks' `dive` path (820 ms, under the board) instead of a 260 ms glide over it, + `VFX3D.fire('teleport', 'nrErupt')` for its dirt.
+  (4) LOOKS (three-vfx-effects.js, THE EARTH PASS, "THE MOLE MAN" block; kill-switch EW_DISABLE_EARTH_PASS): Burrow = `_ESC_LOOKS.nrBurrow`
+  (soil spray + a torn hole where he went down; his own side sees the soil heave along the tunnel, hideLanding hides it from the foe);
+  Erupt = `_EA_CHARGE.nrErupt` (a tremor under the victim through the windup) + `_EA_SIG.nrErupt` (crater, soil fountain, stones thrown
+  up round the body, the ones toward the lens fly low) + `_ESC_LOOKS.nrErupt` (his dig-down hole + the dirt where he comes up, seen by both);
+  Cave-In = `_EA_SIG.nrCaveIn` (rim stones slide into the pit, rubble drops in, dust rolls out; in `_EA_OWN`, so no spikes).
+  Probe 11-16 (real TDM, 0 page errors): Burrow B3 -> D4 hidden, cooldown 2; Erupt from hiding 436 + throw 151 on a Knight, surfaced E3;
+  Cave-In hit 3 and Rooted 2 (one resisted); Rooted greys Burrow and Erupt.
+
 ### 7. QUETZALCOATL (Technoticlan, tank, family `featheredserpent`; mondo's Aztec king model)
 The style: the first unit longer than one square. **Feathered Serpent** (T1, self, cd 2) puts on STATUS_DEFS `serpentForm` (3 rounds):
 he is the head, and the body is two `state._deployedObjects` rows (`serpentOf` = his id, `serpentIdx` 0 nearest him, `blocksMovement`,
@@ -5547,6 +5574,26 @@ pass through himself either. unitResistsDisplace says no to push and pull while 
 - Online: the body rows and `coiled` ride the snapshot like any deployed object / status; the guest draws the serpent from them.
 - Probe 11-16: raised behind him (C3, B3), the walk C3 → D5 brought the body to D4, D3 (both blocked for others), push refused,
   Coil hit 124 and wrapped E5 / E6 round the foe at F5 (its walk refused), Morning Star base 203 by day vs 145 by night; 0 page errors.
+
+- **THE QUETZALCOATL PASS (2026-11-16, mondo: "work on their spell pools and spell vfx ... unique fun strategic playstyles, but still balanced")**:
+  - THE BODY IS HIM. The probe found one basic attack (or any area / beam over it) DESTROYED a body square like a decoy, leaving a broken
+    serpent with push immunity and no wall. Now (battle.js, the serpent block): `_serpentKingAt(x, y)` names the king whose body is there;
+    a swing (doAttack) or a single-target spell (`_resolveOffensiveTarget`) aimed at a body square lands on HIM; an area catches him once
+    through his body (`_applyAoeDamage`, `_aoeSerpentHit`; not at all extra when his own square is in it); a beam crossing it hits him
+    (`_beamCellVictims`, callers keep each victim once); `_ownPieceSpared` never lets anything break a body row. The trade: a 3-square
+    wall that also makes him a 3-square target.
+  - COIL LETS GO when no body square touches the victim any more (`_serpentReleaseLoose` after `_serpentFollow` / `_serpentKeepUp`):
+    the coil damages and roots, and then he chooses: stay and squeeze, or walk and free it. It held forever after the body left before.
+  - Feathered Serpent cooldown 2 → 3: it was up every round for 25 MP (3-round status, 2-round cooldown); now it sinks for a round
+    between casts, the window to push or pull him.
+  - Stats: the first pass read POWER 745, #1 of 143 races (the tank median is 1200 HP / 83 M DEF / 46 M ATK). Now hp 1350, mp 120,
+    def 160, mdef 85, int 100 (atk 115, spd 90 kept) = 609, mid-tank (crystal guardian 612, robot 611); the walls + push immunity are
+    power the number can't see. Morning Star 145 → 125 (the T3 median; 175 by day).
+  - VFX (three-vfx-effects.js "THE FEATHERED SERPENT", `_qz*` on `_GO_SIG`, the relayed burst beat): the rise (jade ring + a spiral of
+    quetzal feathers), Obsidian Blade (a black-glass sweep with a violet edge, shards), Coil (a jade-and-gold coil winds up the victim and
+    squeezes), Morning Star (its own white-gold bolt `_go_bolt_nrMorningStar`; Venus flares over the target, the spear of light in the
+    ground on the hit). three-renderer.js: each body square is ringed in its side's colours from the viewer's seat (THE RIOT PASS rims:
+    yours cyan-blue, theirs pink-orange; `_buildSerpentBody3D` wraps `_buildSerpentBodyModel3D`).
 
 ### 8. THE LIFEGUARD (The Bermuda Triangle / Bayside, support, family `lifesaving`; female only) + THE WOMEN
 The style: she saves a life. **On Duty** (T2, self, cd 2) puts on STATUS_DEFS `onDuty` (2 rounds); battle.js `_lifeguardSave` runs in
