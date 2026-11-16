@@ -5314,6 +5314,16 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   - **GONE:** the Jetty's `dockring` (a spaceship docking ring, the Harbour's finding).
   - **FRAME RATE** (the island from the south-west, the cloud's software GPU): before 16.3 fps, 302 draw calls, 428 k triangles; after, two
     runs: 14.2 and 8.1 fps at 431-436 calls, 730 k triangles. The cloud's fps swings between runs; the draw calls are the number to hold.
+- **PASS 2, THE INSIDES (seen on screen, probe views `p2_*`):**
+  - **THE SHACK MOVED** to squares 143-144 x 94-96 (2 x 3, its door east to the palm grove, where the Jetty's path meets the island): data.js
+    `HQ_AREA_MARKERS` stands Room 345's fight on square 148,104, and its rings lay inside the first shack. ITS INSIDE: teal board walls over
+    a white dado, a lit board ceiling, two tie beams, a back window to the Lagoon, two shelves; a bed, a footlocker, a table and chair
+    with a lantern and a bottle, a sea chest, a barrel, money sacks, a model ship on a crate, two amphorae, a net and an arms trophy on
+    the walls, a ship's wheel, a bell by the door, a hanging lantern, rope, a spyglass and gold on the shelves.
+  - **THE KEEPER'S STORE** on the Lighthouse Rock (walk-in, 2 x 1 squares at 67-68 x 100, its door south to the light; it replaces the drawn
+    oil store): white boards, a red tin roof, a blue door frame and window; inside oil barrels, jerrycans, a crate with a field radio,
+    a life ring, rope, a lantern. The parapet is open where its walls stand.
+  - Reef: the round rocks went (a round rock given `h` 1.8 is a black slab 8 m wide); three small pillars instead.
 - **LEARNED (for the zone kit):**
   - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
     water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
@@ -5324,6 +5334,13 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   - `nacelle` is an airliner's engine 11 m long and `fighter_jet` an F-22: neither is wreckage of 1945. `hullplate` reads as torn wreck.
   - `kelp` is 4.5 m: in the shallows it stands out of the water like reeds; give it `h` and deep water.
   - Stair model `forest` = a timber flight with ranch rails; `external` = stone water steps. Rail `ranch` on a plateau wants `y`.
+  - A WALK-IN NEEDS A LEVEL PAD: `flat()` only levels the ring round a building where the sand is 3 squares from the water. Nearer the
+    shore the floor's corners sag with the beach and sand lies over the floorboards (seen). A building's plot is read at its MIDDLE: one
+    that straddles two plots takes the level of the plot its middle is in.
+  - A walk-in with its front E has its ceiling at 2.45 (row `h` 3.0); with its front S on rock (`h` 2.8) at 2.4.
+  - THE PROBE: a view's `y` is the walker's FEET; inside a walk-in type the floor (ground + 0.15), or the camera stands on the roof.
+  - `map_table` is a steel briefing table (science fiction); the wooden one is `psx_table_large_2` (top 0.96) with `psx_chair_mp_3`.
+  - data.js `HQ_AREA_MARKERS` (the tool's) puts Room 345's fight rings on square 148,104 of the Island Beach: keep that sand open.
   - A drawn spiral: parts take `ry` (degrees); a chain of thin boxes (0.03 m high, `sides: false`, `glow` 0.35) on `y` 0.04 shows on the sea.
 - **FITS THIS DISTRICT (the shortlist, from MODEL_LIST.md sections 6-13 + the live catalogue; [used] = placed by this file):**
   wreck + pirate: `ship_wreck` `sea_chest` `skull_pile` `ship_cannon` `rowboat` `meshy_rowboat` `ship_anchor` `wheel` `lobster_traps`
@@ -5338,7 +5355,7 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   Not wired, would fit a ruin: `mcsteeg_castles/Castles_and_Forts.glb` nodes `Wall_2x4_ruined`, `Tower_mid_hollow_ruined`.
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is a rock platform with a timber stair on a real dune, not a
   timber tower (no tower model; the old one was a plateau too). (2) Flight 19 is five torn hull plates, not planes (no 1945 aircraft
-  model; the F-22 was not used). (3) One walk-in on the island, a wrecker's shack, plain name "the Shack". (4) The Maelstrom's foam is
+  model; the F-22 was not used). (3) Two walk-ins: a wrecker's shack on the island ("the Shack", at the Jetty's path, off the fight's sand) and the keeper's store on the Lighthouse Rock; the lighthouse itself is the game's own prop and is not entered. (4) The Maelstrom's foam is
   drawn and still; the turning is the link's own funnel and the wreckage. (5) The Lighthouse Rock got steps so the tape can be reached on
   foot from a boat. (6) The `dockring` at the Jetty was taken out (wrong model).
 - **NEEDS A MODEL:** a Flight 19 Avenger wreck; a timber lookout tower; a raft; a mast and torn sail; a pirate flag; a parrot and gulls;
@@ -7460,6 +7477,24 @@ renderer; 1.4 after, with the whole midway in view).
 - **THE PROBE, THE CIRCUS:** room x = -252 + 3.5 x home square, z = -210 + 3.5 x home square. Views: over x -80 z -80 y 45 face 315 pitch
   -0.45 · midway x -189 z -128 face 0 · gate x -70 z -98 face 270 · big top door x -185 z -147 face 90.
 
+**PASS 2, INTERIORS.** Four walk-ins, all in C.js (`tentInside`, `mazeWalls`, the Big Top's own block).
+- **THE BIG TOP:** the building row is `h: 14, storeys: 1` so its own ceiling (at h - 0.32) is over the cloth cone. A round wall and a cone
+  SEEN FROM WITHIN are `cyl` parts with `ri` (the inner shell faces in). The ring (curb `cyl` + `ri`, sawdust = `desert` tinted yellow), two
+  banks of seats (four `cyl` arcs of 130 degrees, rising 0.45 m a row), the band's stand, king poles with platforms, a high wire, two
+  trapezes, eight strings of bulbs (one box with `n` + a sloping `step`). Ghosts: the round wall (15 chords), each bank's front and ends,
+  the stand (0.5 m: climbed).
+- **THE HALL OF MIRRORS:** 4 x 5 squares; `MAZE_OPEN` lists the open ways between squares (a spanning tree: every square is reached, one
+  way through); every other square line is a mirror wall (gilt frame, a pane each side, a ghost wall). A mirror = the tall window sheet
+  with `uv: 'fit', kind: 'wall', win: 'keep'` and `glow` 0.7 (the `aluminium` sheet read as a grey wall). Frames wear the `gold` key.
+- **A REAL MIRROR EXISTS** (three-renderer.js `_hqBuildReflectors`: the first `barber_mirror` prop of a room reflects the scene). Not used:
+  it redraws the whole Desert for one pane. An idea for mondo, not built.
+- **THE FLOOR INSIDE** a hollow building is not the `floorIn` sheet you asked for (sand showed): draw a deck (`box`, `sides: false`, lit).
+- **BULBS:** a part with NO key, a light tint and `glow: 1` (a keyed box read as a tan cube), 0.1 m.
+- **THE PROBE INSIDE:** a view's `y` is the FEET (the eye is about 1.5 m over it): `y: 0.1` inside, or the camera stands in the ceiling and
+  the room reads black from the lining's top up. Spots (face): Big Top x -158.5 z -149.6 (90) · mirrors x -96.2 z -106.6 (0) · arcade
+  x -180.6 z -161.9 (70) · sideshow x -158 z -91.5 (110).
+- **FACES INSIDE** (`put`, the building's frame): 180 looks out of the front (a machine on the back wall), 90 / 270 = the two side walls.
+
 **FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
 `carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
 `play_slide / play_swing / play_sandbox`, `teacups`. Stalls + games: `popcorn_cart`, `hot_dog_stand`, `money_wheel`, `claw_machine`,
@@ -7488,6 +7523,10 @@ posters, a striped cloth sheet, a big ferris wheel, a big top. `bigtop` and `fes
 3. The main gate is on the EAST side, where the Exit 2 road arrives; the ticket booth by the HQ tunnel door stays the west end.
 4. Stall names are plain trade names: RING TOSS, BOTTLE TOSS, CANDY, CAN TOSS, LUCKY WHEEL, PENNY ARCADE, SIDESHOW.
 5. The lion left its rail pen for a cage wagon; the pen holds two horses.
+6. Inside the Hall of Mirrors is a real mirror maze (one way through, a dead end, the eye at the end). The door's old words say "there are
+   no mirrors": the words were left alone; the Mandela door is still the way to that room.
+7. The first build's four riser props in the Big Top were replaced by curved banks of seats; the old drum is on the band's stand.
+8. The Sideshow shows things from the model list only (skeleton, iron maiden, the eye, jars, a tesla coil); no named acts were invented.
 
 ## THE SEWERS, DISTRICT W — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/W.js`, 15 plots)
 
