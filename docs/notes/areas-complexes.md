@@ -3793,6 +3793,22 @@ about the sky castle for now, and no it would not be in the same room", "do all 
   Merlin's Study, skeleton in a cell, ghost in the Ossuary, knight + swordfighter on the Battlements.
 - **Checked offline**: data.js parses; the tool's walk (the walker's own rule from the portal) reaches 52 of 52 stops on all six levels and
   all five door pads; no NaN. `PALACE_FORCE=1` writes a failing build for debugging only.
+- **THE LIGHT (engine, three-renderer.js `_hqShadowFlags`)**: `shell.sunShadow: false` = nothing of the room's own build casts a shadow. The
+  castle is an OPEN room (its roof walk needs the sky), so every floor stood in the shadow of the slabs over it and read black. Switching the
+  key light's own shadow off instead blanked the whole room ("WebGL: too many errors": the materials are compiled for a shadow map): never do that.
+- **SEEN ON SCREEN (browser probe, playtest_city.js, 11-15)**: the Throne Hall with its gallery, the Great Stair, the Undercroft with the Orb,
+  the Kitchen, the Library, the royal floor, the Battlements with the Spire and the sky; the palace's front from the Market. Proof pictures:
+  `docs/plans/camelot/proof/`. Rough edges seen: the wooden furniture models (round table's chairs, library shelves, psx tables) are very dark;
+  the stair flights wear the pack's greenish planks; rooms are plain (bare walls, few lit windows). Not looked at: the Chapel, the Knights'
+  Hall, the cellar stairs, every door leaf swinging, a fight on an upper floor.
+- **A PROBE NEEDS A FRESH CHECKOUT**: three runs in a row gave no page ("page never ready") because main had moved eight PRs and the local
+  server served its STALE screen. Merge main before each run.
+
+### THE HOUSES, FIVE KINDS (2026-11-15, mondo: "yeah they are fine")
+bake-camelot.js `houseKind()` / `houseLook()`: 1 jettied townhouse (11), 2 shop house (2), 3 thatched cottage (12), 4 burgher house (9),
+5 yard house (9), picked by plot size and place (the Market's edge, against the town wall, the rest). Each has a door in a frame on a stone
+step, shutters and a flower box at each window, lit windows, a chimney. All still solid, same plots, same streets. Seen on screen: one shop
+house on the south street (awning, counter, sign, barrels). The other four kinds were not looked at.
 
 ## CAMELOT CASTLE, REDESIGN 2 — one palace on a hill (2026-11-15)
 mondo on the built plan 3: "this whole section i outlined needs to be the castle, like an epic fantasy dragon quest or final fantasy or medieval
