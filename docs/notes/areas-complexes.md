@@ -4730,6 +4730,17 @@ list holds for the next passes, the models it needs. mondo 11-16: a second distr
   - WHAT I WOULD DO NEXT (for mondo to pick): 1 the lift moves and carries the player (a mechanic). 2 A real night-skiing light: the engine's ten-light cap
     shared by distance. 3 Staff and guests once the NPC system lands. 4 The Meshy list: skis, snowboards, a snow gun, a groomer, netting, an elk head, a
     pool table. 5 The Big Jump's line turned so it ends in the yard, not on the Lodge's back wall (the tool's heights and paint).
+- **THE MODEL PASS** (mondo 11-16, on top of the five: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to
+  end; seen on screen, 19 views). Every model K asked for is placed and its stand-in is out: K.js header, THE MODEL PASS, has both lists.
+  - Checked before placing: each wish-list `.opt.glb` used here is 1,600 to 4,200 triangles (not the 100,000 of the older Meshy props), and about 80 of them add 170,000
+    triangles to the room. FPS back to back on the same main, before -> after (the probe's software GPU): the Lodge Yard at night 1.85 and 1.93 -> 1.62 and
+    1.88; from the Top Station at night 1.92 -> 1.76; the Lodge Yard by day 1.92 -> 1.71. A tenth of a frame to two tenths: about the spread of two
+    readings of one view, but all four lean the same way.
+  - `lantern_post` and `string_lights` are NOT lit as made (no `glow`, no `light` on their rows): a lantern post wants a small built flame in its lantern
+    (K.js `lampFlames`, one `hug` row; the lantern hangs 0.23 m to the west of the square's middle at face 180, 1.5 to 1.85 m up). A `glow` on those two
+    catalogue rows would light them everywhere (the rows are shared: not changed from here).
+  - `safety_netting` has no body: give each length a ghost wall. `piste_groomer` is two squares long: K.js `wide()` stands it on the line between two.
+  - Facing: a wish-list model at `face: 180` stands as it was made (its +x to the east).
 - To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
   x 21.4, z -59.3 (the probe, 11-16).
 
