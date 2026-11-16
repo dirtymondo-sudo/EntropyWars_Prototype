@@ -3804,6 +3804,25 @@ about the sky castle for now, and no it would not be in the same room", "do all 
 - **A PROBE NEEDS A FRESH CHECKOUT**: three runs in a row gave no page ("page never ready") because main had moved eight PRs and the local
   server served its STALE screen. Merge main before each run.
 
+### MONDO'S EIGHT PINS ON THE FIRST SCREENSHOTS (2026-11-16) — all in both bake tools
+- "random red rectangle and yellow square ... a flag or a banner needs way more detail and thought": `royalBanner()` (same text in both tools):
+  iron rod, gilt finials, crimson cloth with a gold border and a swallowtail foot, Arthur's arms (gold crown over the sword in the stone).
+  Every drawn cloth in Camelot is this one. The Armoury's flat shields and the tilt's cloth strips are gone.
+- "modern metal guard rails for a fantasy castle": the castle tool's own `guard()` (`stone` = low wall under a coping on the roofs, `wood` = a
+  timber balustrade round the hall's gallery). Never the kit's `R.guard` (steel) in Camelot. The tilt is a plank `wall` row, not the engine's `rail`.
+- "don't use this ring of candles": no `candle_ring` anywhere in Camelot.
+- "chimneys look like shit, need fire just like tiles on fire in battles": the kitchen's hearths are stone chimney breasts (jambs, arch, timber
+  mantel, stepped hood, crane) with the new prop `hearth_fire` (data.js catalogue + three-renderer.js `_hqProcBuilders.hearth_fire`, a row's
+  `w` / `h` in metres): three logs, an ember bed, three of the board torch's flames. NOT the burning tile's ray-marched volume yet:
+  `ThreeVFXEffects.buildFlameVolume` is exported for it, but it drew nothing in a room in three tries. Open.
+- "dafuq are these random boxes": the shop counter's goods are baskets of apples / cabbages and a board of loaves.
+- "roofs don't connect": every cone has an eave disc under it (it sat on a narrower gallery with open air between).
+- "no idea what's happening in this screenshot": my camera stood inside the Sword in the Stone. Retaken from the lower court.
+- Also: a stair flight with no `key` wears the path sheet under the shell's GREEN floor colour: every Camelot flight carries
+  `key: 'cobblestone', side: 'castle_wall'`.
+- PROBES: `probe-fast.js` (CLAUDE.md RULE #1c) took 76 s where the old flow took 5 to 10 min and crashed. Leftover probe processes from a
+  timed-out run kill the next run: `pkill -9 -f chrome; pkill -9 -f playtest_city` first.
+
 ### THE HOUSES, FIVE KINDS (2026-11-15, mondo: "yeah they are fine")
 bake-camelot.js `houseKind()` / `houseLook()`: 1 jettied townhouse (11), 2 shop house (2), 3 thatched cottage (12), 4 burgher house (9),
 5 yard house (9), picked by plot size and place (the Market's edge, against the town wall, the rest). Each has a door in a frame on a stone
@@ -4581,3 +4600,36 @@ city not get its own exit too?" (it does: Exit 1).
   lanes. Nothing on the city side (a sign for the Desert at the city's way out would be the Disaster City holder's). The canyon from the town
   to the Dig is cut in two by the move (each end opens on sand).
 
+## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
+The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
+The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
+`DC_DUMP=<file> node bake-disaster-city.js --dry-run` writes it), the ground height field and the lines the traffic drives.
+**THE RULE (every district thread): nothing solid under 4.3 m stands on a road square, and nothing is laid over a square another thing
+already has. A piece authored before THE DISTRICT MOVE / THE ROADS JOIN AGAIN must be re-read against the roads those two cut.**
+What it found and what was done (all in the district files / the tool, then a rebake):
+- **Harbour master's office (B.js 22)**: the coast road was cut through its squares after it was placed; its east half stood in the road's
+  west lane (the port trucks drove through its desk). Two squares west (squares 1..2), the pavement left clear.
+- **Car wash (R.js P03-03)**: 13 m long about square line 3, its south 3.5 m across the pavement and in the south street's lane. Now 9.4 m
+  long inside its own yard, its mouth on the pavement.
+- **Dojo gate (R.js P03-01-B1)**: two posts + lintel 5.4 m in front of the door = 1.9 m out in the avenue. Now 2.6 m (on the pavement).
+- **Planetarium globe (U.js B.museum)**: 8.4 m across on a 3.5 m pavement, its plinth 1.9 m and its belly 2.9 m out in the cross street's
+  lane. Now 4.8 m across, 1.0 m out from the front.
+- **Cinema (E.js P11-07-B1)**: the fourth marquee column stood in the junction's road square; moved to z 4.9 (the last of the pavement).
+- **Boxing gym piers (R.js P03-00-B1)**: 0.5 m in from the corners (the east one stood past the wall line, in the gym lane).
+- **Pump jacks (I.js PUMP COURT)**: 0.9 m west; each wellhead stood 0.7 m inside the Local shop's wall.
+- **The elevated line (S.js THE CHICAGO PASS)** was laid over six back-lot buildings (dc:in88..in92, dc:inM9): the deck ran through the
+  upper floors of five and the bents' legs stood inside them. S.js takes out every back-lot building under the line (open ground under the
+  trestle); the Bus depot's north edge stays (the line passes over its roof).
+- **Parked cars in the driving lane**: the tool's `clearLanes` only cleared ±3.2 m about a route's line; the cars drive 3.5 m off it. It
+  now also clears the 3.2..4.6 m band on road squares (a parked vehicle to the kerb lane, 5.25 m off; anything else to the pavement), and
+  the Bayside cop-car rows are written at squares 4.5 / 7.5 (the kerb lane), not 4.7..4.9 / 7.1..7.3.
+- **THE NARROW LANES**: the Permit lane and the gym lane (THE ROADS JOIN AGAIN) are two squares wide (7 m) and the cars kept 3.5 m off the
+  line, so they drove with their middle on the kerb, half in the Boxing gym's wall and the Permit offices' rooms. A route names its narrow
+  stretches in `narrow` (rows [x0, z0, x1, z1], the tool's NARROW); three-renderer.js `_hqLaneAt` eases a car in to 1.75 m off the line there.
+LEFT AS THEY ARE (looked at, not changed; each needs mondo's word or a design pass):
+- Cinema marquee: the corner of "the marquee round the corner" hangs over the ring's junction at 3.1 m (cars pass under; a bus roof is 3.5 m).
+- Campus gate (U.js B.gate): its archway is 7 m north of the cross street's middle, so the south turret stands 1.5 m into the road's dead end.
+- Casino (E.js P08-04-B1): the door canopy's two posts stand 0.9 m past the kerb. Members club (F-detail.js): its awning pole stands 2 m out.
+- The Bayside cordon (cop cars, ambulances, a fire truck parked in the kerb lanes, barricades): the plan's "response streets", meant.
+CLEAN: no tree, wall, fence, stair or planned building on a road square; no decor piece floating or sunk; the cars with `y` stand on the
+parking deck / in garages.

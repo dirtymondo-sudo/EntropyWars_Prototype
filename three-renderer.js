@@ -74552,6 +74552,21 @@ const ThreeRenderer = (function () {
         var r = Math.min(HQ_TRAFFIC_TURN_R, Lin * 0.45, Lout * 0.45);
         return { V: B, din: din, dout: dout, r: r, sharp: Math.min(1, (1 - dot) / 2 * 2) };
     }
+    /* THE NARROW LANES (THE ROAD AUDIT, 2026-11-16): a route may name the stretches of it that run down a two-square (7 m) street in
+       `narrow` (rows [x0, z0, x1, z1], bake-disaster-city.js). Within 2 m of one the car keeps 1.75 m off the line, not `lane` (3.5 m, which
+       put its middle on the kerb and half of it in the wall beside); the offset eases back out over the next 10 m. */
+    function _hqLaneAt(car, x, z) {
+        var N = car.narrow, ln = car.lane || 0; if (!N || !N.length || !ln) return ln;
+        var best = 1e9;
+        for (var i = 0; i < N.length; i++) {
+            var q = N[i], bx = q[2] - q[0], bz = q[3] - q[1], l2 = bx * bx + bz * bz;
+            var t = l2 > 0 ? Math.max(0, Math.min(1, ((x - q[0]) * bx + (z - q[1]) * bz) / l2)) : 0, dd = Math.hypot(x - q[0] - bx * t, z - q[1] - bz * t);
+            if (dd < best) best = dd;
+        }
+        var k = Math.max(0, Math.min(1, (best - 2) / 10)); k = k * k * (3 - 2 * k);
+        var nl = Math.min(Math.abs(ln), 1.75) * (ln < 0 ? -1 : 1);
+        return nl + (ln - nl) * k;
+    }
     function _hqRoutePose(car, s) {
         var pts = car.pts, cum = car.cum, i = 0, L = cum[cum.length - 1], nSeg = pts.length - 1;
         while (i + 2 < cum.length && cum[i + 1] <= s) i++;
@@ -74582,11 +74597,13 @@ const ThreeRenderer = (function () {
             var z = a0 * (V[1] - pick.din[1] * r) + a1 * V[1] + a2 * (V[1] + pick.dout[1] * r);
             var tx = (1 - t) * pick.din[0] + t * pick.dout[0], tz = (1 - t) * pick.din[1] + t * pick.dout[1], tl = Math.hypot(tx, tz) || 1;
             tx /= tl; tz /= tl;
-            return { x: x + (-tz) * car.lane, z: z + tx * car.lane, dx: tx, dz: tz, turn: pick.sharp };
+            var lnc = _hqLaneAt(car, x, z);
+            return { x: x + (-tz) * lnc, z: z + tx * lnc, dx: tx, dz: tz, turn: pick.sharp };
         }
         var a = pts[i], b = pts[i + 1], segL = Math.max(1e-6, cum[i + 1] - cum[i]), tt = Math.max(0, Math.min(1, (s - cum[i]) / segL));
         var dx = (b[0] - a[0]) / segL, dz = (b[1] - a[1]) / segL;
-        return { x: a[0] + (b[0] - a[0]) * tt + (-dz) * car.lane, z: a[1] + (b[1] - a[1]) * tt + dx * car.lane, dx: dx, dz: dz, turn: 0 };
+        var sx0 = a[0] + (b[0] - a[0]) * tt, sz0 = a[1] + (b[1] - a[1]) * tt, lns = _hqLaneAt(car, sx0, sz0);
+        return { x: sx0 + (-dz) * lns, z: sz0 + dx * lns, dx: dx, dz: dz, turn: 0 };
     }
     /* ── THE CITY TRAFFIC (2026-11-13, mondo: "traffic lights and intersections planned out for actual traffic and car routes. Bus sections
        placed in each district with a bus route") ──
@@ -74738,7 +74755,7 @@ const ThreeRenderer = (function () {
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
                     if (kind === 'citybus') { try { _hqCityBusMarks(g, U); } catch (e) {} }   // THE CITY MARKS: Bus Line 1 wears the city's shield
                     g._ew_hqCar = kind; g._ew_bunOut = true; G.add(g);   // THE MOVERS OUT: a car drives; the shell's recording stays still
-                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
+                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, narrow: rt.narrow || null, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
             });
         } finally { _hzKitTs = prevTs; }
@@ -77443,6 +77460,29 @@ const ThreeRenderer = (function () {
        of the floor, lit from inside — the catalogue's `light` carries each
        one's point light, the builders the flame / the pulse */
     Object.assign(_hqProcBuilders, {
+        /* THE HEARTH FIRE (2026-11-16, mondo in Camelot's kitchen: "chimneys look like shit, need fire just like tiles on fire in battles"):
+           a fire to stand in a hearth or a pit: three logs and the battle's burning-tile flame (ThreeVFXEffects.buildFlameVolume, the same
+           ray-marched volume) scaled to the row's `w` x `h` metres (1.3 x 1.5 when none). The catalogue's `light` + `glow` carry its light. */
+        hearth_fire: function (U, p) {
+            var g = new THREE.Group(), w = (p && +p.w > 0) ? +p.w : 1.3, h = (p && +p.h > 0) ? +p.h : 1.5;
+            var logM = _hqMat(null, 1, 1, { color: 0x2a1c14 }), emb = _hqMat(null, 1, 1, { color: 0xff7a20, emissive: 0xff5a10 });
+            for (var i = 0; i < 3; i++) { var lg = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.1 * U, w * 0.8 * U, 7), logM); lg.rotation.z = Math.PI / 2; lg.rotation.y = (i - 1) * 0.5; lg.position.set(0, (0.1 + (i === 1 ? 0.14 : 0)) * U, (i - 1) * 0.16 * U); g.add(lg); }
+            var bed = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.36 * U, w * 0.4 * U, 0.05 * U, 10), emb); bed.position.y = 0.03 * U; g.add(bed);
+            /* the flame: the board torch's own (three of them across the logs, the middle one the tallest), flickering as it does everywhere.
+               NOT YET the burning tile's ray-marched volume mondo asked for: ThreeVFXEffects.buildFlameVolume is exported for it, but placed
+               here it drew nothing in three tries (uVig set, its clock run from its own draw call); to do, with the battle's scene set-up. */
+            try {
+                [[0, 1.0], [-0.32, 0.72], [0.3, 0.8]].forEach(function (q, i) {
+                    var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
+                    parts.model.children.forEach(function (c) { if (c !== parts.flame) c.visible = false; });
+                    var k = h / (0.44 * HQ_TILE_M) * q[1]; parts.model.scale.set(k * (w / 1.3), k, k * (w / 1.3));   // (the torch's flame is 0.44 of a square tall)
+                    parts.model.position.set(q[0] * w * U, 0.16 * U - (parts.flameY || 0) * k, (i - 1) * 0.08 * U); g.add(parts.model);
+                    var entry = { root: parts.model, flame: parts.flame, mat: parts.flameMat, light: null, seed: ((_hqProcSeed++) * 27 + i * 31) % 100 };
+                    if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
+                });
+            } catch (err) { console.warn('[HQ] the hearth fire failed', err); }
+            return g;
+        },
         /* the stake torch is the board's floor torch at the board's own size (THE SAME TORCH EVERYWHERE, 2026-09-15) */
         cave_torch: function (U) {
             var g = new THREE.Group();
