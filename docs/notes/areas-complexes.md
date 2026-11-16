@@ -4858,6 +4858,16 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   anemones are for deep water only (black pillars and spikes anywhere else).
 - **DRAWN, NO MODEL NEEDED:** a volleyball net (`urban:MetalTruss1a`, `kind: 'over'`, two posts), lamps (a pole + a cream cylinder with
   `glow` 0.9), flags (two thin `ds` boxes), rope rails, rails and steps.
+- **THE MODEL LIST PASS (11-16, mondo: "every thread working on a district needs to know it needs to look at the model list"):** the pilot
+  had dressed the Shore from a catalogue keyword search and MISSED these, all in MODEL_LIST.md already. For any Beach district: `city_taco_stand`
+  (Elbolilloduro, a whole stand 5.8 m wide; with `city_burgerpiz`, `city_diner`, `city_pizzeria` the other whole buildings); the Christmas pack
+  (`xmas_snowman` 1-3, `xmas_punch` 1-3 / `xmas_cocoa` / `xmas_champagne` = cups and drinks, 49 pieces: read section "Christmas pack");
+  Bayside's Meshy set (`sunglasses_spinner`, `wetsuit_rail`, `ships_bell`, `ship_wheel`, `outboard_motor`, `lobster_traps`,
+  `fishing_net_wall`, `wrapped_pallet`, `forklift`); `solo_cup`, `item_drinking_cup`, `garbage_bag`, `public_phone`, `tire_stack`,
+  `steam_table`; the animals pack as props (`dog`, `cat`, `crow`, `rabbit`, `chicken`, `butterfly`: no gull, a crow is the bird there is);
+  section 7a spell props (`ship_cannon`, `skull`, `sack`, `rope`) and mondo's Meshy 296 (`ship_wreck`, `shark`, `tentacle`, `sea_chest`,
+  `palmisle`). Seen on screen in the city: the taco stand, a snowman by the snow cone stand, the spinner, the cat, a crow.
+  Not looked inside any pack FILE for pieces with no row yet (the Ocean pack's 48 FBX and the Beach Props pack are the two to open).
 - **PEOPLE:** `native(race, sx, sy, face)` with no `say` is fine (never write a line for one). Races that belong: the Beach's own list
   (`HQ_AREA_ENCOUNTERS.site_prebuilt_bermuda_beach`: mermaid, starfish, pirate, jellyfish, sharkman, deep sea fish ...), siren, and from the
   city beside it homosapien, chef, hippie. A native's square must be free and off the ways through. The probe never draws them.
