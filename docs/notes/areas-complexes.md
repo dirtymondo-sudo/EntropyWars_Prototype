@@ -4854,7 +4854,7 @@ same (the whole file, so the Desert's room and the three insides).
   hook ("THE DISTRICT FILES" in the tool; the city's pattern). The tool keeps the Highway (R), everything read from the layout's squares (ground
   paint, rock, the base's chain-link fence), the cacti, the scatter, the edges, the sky, the cars, the room's text.
 - **THE HOOKS** a file may export: `buildings(ctx)`, `furnish(ctx)` (inside its buildings), `ground(ctx)`, `pieces(ctx)` (late), `doors(ctx)`,
-  `dice` (its own dice) and `rooms(kit)` (below). The tool calls each stage in the order the first build wrote the rows (`STAGES`), which is why
+  `dice` (its own dice), `airZones(ctx)` (11-16: the air over its plots, see "THE AIR HOOK") and `rooms(kit)` (below). The tool calls each stage in the order the first build wrote the rows (`STAGES`), which is why
   nothing moved in data.js.
 - **THE FRAME:** a district file writes the FIRST BUILD's squares (0..96; `gx / gc`). The tool moves every row to where the block stands:
   room square = home square + C (0, 12) · W (48, 12) · A (0, 48) · G (48, 48). A row moves with the FILE that made it (before: by where it
@@ -4942,6 +4942,20 @@ Pass 3 of 5. Only `docs/areas/desert/districts/W.js` (`dress()`, called from `gr
   are ROCK in the layout: a cow placed there stood on the mesa); the box canyon is a hideout (fire, cot, money sacks, dynamite, a horse).
 - A crop patch and scarecrow by the windmill (Halloween pack), pickets at the church (hw_fence).
 - Still modern: the camp's two `camping_tent`s. On the NEEDS A MODEL list.
+
+## THE DESERT, WESTERN TOWN — THE ATMOSPHERE PASS + THE AIR HOOK (2026-11-16, second side, the Western Town district thread)
+
+Pass 4 of 5. `docs/areas/desert/districts/W.js` and ONE change to the shared tool (dated note on the board).
+- **THE AIR HOOK (bake-desert.js, for all four districts):** a district file may export `airZones(ctx)` = [{ sx0, sy0, sx1, sy1 (its HOME
+  squares), kind, color, n, speed, wind }]. The tool moves the boxes with the block and writes `shell.atmos.zones` (the Woods' way,
+  three-renderer.js `_hqBuildAtmos`). With no zone from any file the shell line is byte for byte what it was. With one, the room's old air
+  (HQ_ATMOS_SITES.prebuilt_area51: dust, 140) is kept as a last zone over the whole room, because a room with zones draws only its zones.
+- **WESTERN TOWN'S AIR:** dust on Main Street (260, wind 1.6), thinner dust over the camp and the range (110).
+- **LIGHT WITHOUT LAMPS:** a room has ten prop lights (`HQ_PROP_LIGHT_MAX`) for all its districts, given in row order. So this district takes
+  none: every lantern is `noLight` with a lit core drawn beside it (`des:w:lamps`, one `arch` row, `glow: 1`); the saloon's and hotel's
+  windows are lit (`western()` `lit`); the church's candle ring and the hideout's fire are `noLight`. Only the Wagon Camp's fire lights.
+- **THE CLOCK IN A PROBE:** a view's `"eval": "window._hqClockHour=function(){return 21.5}"` + `"settle": 2500` shoots it at night (19.2 = dusk).
+- **NO SOUND:** walk rooms have no per-district sound bed (ambience is a battle map's `env.ambience`); nothing was added.
 
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
@@ -5041,6 +5055,18 @@ mondo (the set-up thread's brief): one thread per district; passes in order EXTE
   wider. An `arch` row with no `y` stands on the ground under its origin, which on a plateau is the plateau's top: give it `y: 0`. A sheet
   under a tint reads dark in the shade: `gain` 1.3 to 1.7 on the part. A sign under a barrel roof's overhang is hidden by the roof's end:
   set it 0.3 m out. Hangar 18's saucer on the floor IS confirmed on screen now.
+- **PASS 2, INTERIORS (seen in the browser: 12 + 8 views of the ward, 4 of the hangar, 9 + 7 inside the huts):**
+  - The guard post, both barracks, the mess hall and the radar hut are furnished (`furnish`). The room's ground rolls 8 cm (`noise`) and came
+    up through every walk-in's drawn floor in patches (the first build's guard post too): each walk-in now stands on a 10 cm `plateau` its
+    own size + 0.6 m, which is a level floor. Any district's walk-in on this room's sand needs the same.
+  - THE WHITE ROOMS were grey. A sheet under the building tint reads grey whatever its tint says: the plaster walls take `gain` 2.1, the
+    ceiling tiles 1.9, and the room's own four walls get a drawn white lining (kit walls with `walk: false`, open at the two doors).
+  - GLASS YOU SEE THROUGH: the kit's `glass` wall is a shiny opaque box, so the observation floor looked at a white wall and the control room
+    at a black one. `pane()` in A.js rooms() has the kit lay the walked rows, frames and leaves with `draw: false`, then turns those rows
+    into real glass `wall` rows (`ghost: false, glass: true`), which drawWall draws see-through. The kit itself is unchanged.
+  - **THE TELEPATH CRASH: CLOSED.** The ward loaded twice with the telepath in (20 pictures, no crash). It was the old SwiftShader probe.
+  - Props to keep out of ordinary rooms: `steel_table` (blood stain under it), `round_table` (Camelot's round table, four metres).
+  - NOT DONE: the huts have no lamp inside (dim); the mess hall is sparse for its size; the tower's ops block is solid, not walk-in.
 
 
 ## CAMELOT, THE VILLAGE — the pilot district thread (2026-11-16, second side; files `docs/areas/camelot/districts/T.js` + `T-houses.js`)

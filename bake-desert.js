@@ -284,6 +284,12 @@ paintOver.forEach(q => { paint[q[1] * NW + q[0]] = q[2]; });   // a district fil
 count.props = props.length; count.features = F.length; count.doors = doors.length; count.natives = npc.length; count.marks = marks.length;
 
 /* ── the room ── */
+/* THE AIR BY DISTRICT (2026-11-16, the Western Town thread; the Woods' way, three-renderer.js _hqBuildAtmos `shell.atmos.zones`): a district file
+   may export `airZones(ctx)` = [{ sx0, sy0, sx1, sy1 (its HOME squares), kind, color, n, speed, wind }]. With no zone from any file the shell
+   line is what it was (the site's own dust). With one, the room's old air is kept as a last zone over the whole room (the site row's values). */
+const AIR = [].concat(...DISTRICTS.filter(m => typeof m.airZones === 'function').map(m => m.airZones(ctxOf(m)).map(z => { const o = OFF[m._file], q = Object.assign({}, z, { x0: nx(z.sx0 + o[0]), z0: nx(z.sy0 + o[1]), x1: nx(z.sx1 + o[0]), z1: nx(z.sy1 + o[1]) });
+    delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; })));
+const ATMOS = AIR.length ? " atmos: " + J({ kind: 'dust', color: 0xd8d0c0, n: 140, zones: AIR.concat([{ x0: -NHALF, z0: -NHALF, x1: NHALF, z1: NHALF, kind: 'dust', color: 0xd8d0c0, n: 140 }]) }) + "," : "";
 const SP = { x: nx(42), z: nx(1) }, LINES = O_GATE.l.concat(O_LINE.l, O_GIZA.l, O_CARN.l), M = [];
 M.push("        /* DESERT64-BEGIN — THE DESERT ON PLOTS (2026-11-15): written by `node bake-desert.js` from docs/areas/desert/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 M.push("        " + ROOM + ": {");
@@ -291,7 +297,7 @@ M.push("            label: 'THE DESERT',");
 M.push("            sub: 'THE HIGHWAY · FOUR EXITS · 144 PLOTS',");
 M.push("            kind: 'box', site: 'prebuilt_area51', part: 'desert',");
 M.push("            shell: hqAncientShell({ w: " + (2 * NHALF) + ", d: " + (2 * NHALF) + ", h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + SP.x + ", z: " + SP.z + ", y: 5.0 },");
-M.push("                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },");
+M.push("                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 }," + ATMOS);
 M.push("                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.012 }, scenery: 'none' },");
 M.push("                                    look: HQ_ROOM_LOOKS.plateau }),");
 M.push("            parti: 'A highway down the middle of a hundred and forty-four plots of open sand, and off its exits a circus, a western town, a fenced base and three pyramids, each a long way from the next.',");
