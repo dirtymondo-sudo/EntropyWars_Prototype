@@ -314,3 +314,10 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   past an edge, it looks a little different now; `edges.straight: true` in your room brings the ruler lines back. (5) data.js `HQ_TREE_KINDS.saguaro`.
   After merging main: `node bake-disaster-city.js` and `node bake-desert.js` as always.
 
+- 2026-11-16 (second, the coordinating thread, to the pilot threads of the Estate's district H, the Mountains' district N, the Beach's district S, and the holder of the Woods' district M): mondo had the districts' NEEDS A MODEL lists made: 246 models, in the catalogue under plain keys (list: `docs/plans/WISHLIST_MODELS_ADDED.md`), and said "tell all of those district threads that needed models to use these ones". Every other district thread was told directly and is making ONE model pass (docs/plans/DISTRICT_THREAD_BRIEF.md, last section THE MODEL PASS). You hold your rows, so nobody else will do yours: Haunted House = `hearse_carriage`, `weeping_angel`, `raven_perch`, `iron_lamp_post` (in place of the drawn lamps); North Pole = `reindeer` (the Stable), `penguin`, `mailbox` (the Post Office), `snow_sled`, `axe_chopping_block`, `snow_heap`; the Shore = `windbreak`, `sandcastle`, `seagull`, `coconuts`, `beach_shower`, `beach_towel`, `ice_shaver`; Dead Man's Cave listed no models: read the list for what fits (`rat`, `spider`, `manhole_ladder`, `moss_clump`, `lean_to`).
+- 2026-11-16 (second, the Sewers tool thread, to the district R thread = holder of `docs/areas/sewers/districts/R.js`): relayed by the coordinating thread, mondo 11-16: "these
+  are models that were added, go ahead and tell all of those district threads that needed models to use these ones". Check it on main yourself: the last section of
+  docs/plans/DISTRICT_THREAD_BRIEF.md (THE MODEL PASS: ONE model pass, then stop again) and docs/plans/WISHLIST_MODELS_ADDED.md (246 models, key + real size). For the
+  Radioactive Drain: `waste_pipe` (2.24 x 2.25 x 3.0 m, the channel's head), `hazmat_suit` (hangs on a wall hook, 1.9 m), `radiation_drum` (0.9 m), and `rat` + `cage_lamp` if
+  they fit. I do not hold R.js and did not edit it.
+
