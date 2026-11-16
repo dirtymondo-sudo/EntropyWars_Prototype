@@ -6400,3 +6400,36 @@ too short ... you didn't even get the shape right". So:
   before / after counts): before 2.3 (327 calls, 946 k triangles), after 2.0 to 2.3 (301 calls, 739 k triangles).
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
+
+**PASS 2, THE INTERIORS (inside the Great Pyramid, `rooms(kit)` in G.js).**
+- **THE TURNING TOMB DOOR IS WALKED:** in a probe `window._pdDoor({ pd: 'tomb1', back: { room, at: 'turning' } })` loads the Turning Tomb and
+  `window._pdLeave()` comes back to the King's Chamber at the door, its prompt showing. No code changed.
+- **THE KING'S CHAMBER WAS OPEN ON ITS NORTH SIDE** (a 5 m drop onto the Pit's roof): it has its wall. Its long walls are lined in red granite
+  (`bricks_1`, tint 0xe0aa8a, `glow` 0.18) under two bands of the better gold; a granite bench hides the floor mesh's dark edge at the wall
+  (a slab's last 0.44 m is a slope: cover it). Two small obelisks flank the door; sacks, gold bars, a censer, an amphora.
+- **TORCHES:** fourteen `cave_torch` with `noLight` (their own glow sprite still draws; the room's ten lights were spent by the first build).
+- **WRONG PIECES FOUND ON SCREEN:** `stone_urn` is a garden urn with a fern (now `greek_amphora`); `lion_statue` draws as a live tawny lion,
+  not stone; `trap_sarcophagus` is a pale blue untextured coffin (use `sarcophagus`). The shell's floor / wall colours barely move the grey of
+  the `bricks_1` floor sheet.
+- FPS in the King's Chamber: 2.0 (llvmpipe; 225 calls, 768 k triangles; the outside's proof view is unchanged).
+
+**FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
+`meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
+`ocean_rock..11`, `psx_brick_1`, `hw_bricks`; pots `greek_amphora`, `cauldron`, `item_censer`, `wooden_bucket`; fire `brazier`, `cave_torch`,
+`wall_torch`, `campfire`, `candleRing`, `railway_lantern`; the dead `sarcophagus`, `trap_sarcophagus_box` + `_lid`, `trap_coffin_wood`,
+`decor_effigy_bier` + `_figure`, `skull`, `skull_pile`, `femur`, `ulna`, `anatomy_skeleton`, `dinosaur_skeleton`; treasure `sea_chest`,
+`money_sacks`, `psx_gold_bar_pcs_1`, `item_heart_scales`, `item_maat_feather`, `jewelry_case`; traps (decor only) `trap_spike_pit`,
+`trap_pressure_plate`, `wall_chains`; webs `psx_cobweb_1/2/4/5`; animals `cat`, `crow`, `eagle`, `bat_black/brown/grey`, `horse*`; plants the
+tree kind `palm`, `palm_tree`, `psxg_dead_bush_1/2`, `ocean_seaweed*` (reeds); the dig `babel_crane` (a timber scaffold crane), `footbridge`
+(planks), `psx_stairs_5_wood`, `hw_shovel`, `psx_wooden_crate_1..6`, `meshy_rope`, `meshy_burlap_sack`, `map_table`, `folding_chair`, `cot`,
+`film_camera`, `brass_telescope`, `field_radio`, `museum_vitrine`, `rope_stanchion`, `signpost`, `hw_fence`, `covered_wagon`,
+`fortune_teller_tent` (the only old-cloth tent), `psx_carpet_mp_1`, `rug_round`; the oasis `ancient_well`, `rowboat`, `flamingo`, `meshy_frog`.
+**EXISTS NOWHERE (NEEDS A MODEL):** a sphinx, a pharaoh / jackal / cat statue, a casing block, canopic jars, a hieroglyph or carved-relief
+sheet, a papyrus column, a fallen column, a camel, a vulture, a cobra, a scorpion, reeds / papyrus, a wheelbarrow, a pickaxe, a sieve table,
+a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil lamp, a market stall, baskets, a gold pile, an idol.
+
+**DECISIONS MADE FOR MONDO (overrule any in one line):**
+1. The pyramids are true pyramids and are NOT climbed (a real face is too steep for the walker). A zigzag stair up one face is possible.
+2. The King's Chamber keeps the door to the Turning Tomb (his earlier yes); it is walked and stays as built.
+3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
+4. The Sphinx stays parts-built until a model exists.
