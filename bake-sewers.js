@@ -40,7 +40,7 @@ const Pxy = (x, y) => plot['P0' + x + '-0' + y];
 const plotAt = (sx, sy) => Pxy(Math.max(0, Math.min(GX - 1, Math.floor(sx / N))), Math.max(0, Math.min(GY - 1, Math.floor(sy / N))));
 const distAt = (sx, sy) => plotAt(sx, sy).d, baseAt = (sx, sy) => plotAt(sx, sy).base;
 const open = (x, y) => x >= 0 && y >= 0 && x < W && y < Hh && cell[y][x] !== 'x';
-const F = [], props = [], doors = [], npc = [], counters = [], count = {}, taken = new Set(), errs = [], strays = [];
+const F = [], props = [], doors = [], npc = [], counters = [], count = {}, taken = new Set(), errs = [], strays = [], DECALS = [];
 const feat = o => { F.push(o); return o; };
 const setRect = (x0, y0, x1, y1, ch) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) cell[y][x] = ch; };
 
@@ -92,6 +92,8 @@ Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
         /* every open square of a plot that is `chars` (default: walkway and room floor), in reading order */
         squares: (id, chars) => { const p = plot[id], out = []; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if ((chars || 'of').includes(cell[p.sy + ly][p.sx + lx])) out.push([lx, ly]); return out; },
         ceil: id => ceilOf(plot[id]),
+        /* a floor decal: kind 'grime' | 'puddle' | 'oil' | 'blood' | 'scorch' (three-renderer.js _hqDecalTex) */
+        grime: (kind, id, lx, ly, r) => { const s = sq(id, lx, ly); DECALS.push({ kind, x: gcx(s[0]), z: gcz(s[1]), y: plot[id].base, r: r || 1.4, rot: Math.round(rnd() * 360) }); },
         /* a brick pier on a square, floor to roof (a blocker: the walker goes round it) */
         pier: (id, lx, ly) => { const p = plot[id], s = sq(id, lx, ly); spot(s[0], s[1], 'pier'); feat({ k: 'plateau', x: gcx(s[0]), z: gcz(s[1]), w: 1.75, d: 1.75, h: r2(p.base + ceilOf(p) + 0.2), edge: 0.1 }); },
         free: (id, lx, ly) => { const s = sq(id, lx, ly); return open(s[0], s[1]) && !taken.has(s[0] + ':' + s[1]); },
@@ -194,7 +196,7 @@ const RAILS = [];
    (`arch` rows, drawn only: three-renderer.js _hqArchGeometry roof form 'barrel', open-ended, seen from inside). A plot's open squares
    are cut into rectangles; each vault runs along its rectangle's long side and spans the short one. Over them one flat slab a plot closes
    what the vaults leave between them. ── */
-const VAULT = [];
+const VAULT = [], DAMP = [0x7c766a, 0x6a6a58, 0x5c6450, 0x74695a, 0x66604f], grnd = mkRnd(4242), RUST = 'urban:MetalCorrugatedPainted2a';
 PLAN.plots.forEach(p => { const used = new Uint8Array(N * N), parts = [], top = ceilOf(p), ox = gx(p.sx) + N * C / 2, oz = gz(p.sy) + N * C / 2, op = (lx, ly) => lx >= 0 && ly >= 0 && lx < N && ly < N && open(p.sx + lx, p.sy + ly);
     parts.push({ s: 'box', p: [0, r2(top + 0.05), 0], size: [N * C, 0.2, N * C], sides: false, top: false, under: true, key: 'bricks_2', tint: 0x4a463f });
     for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { if (!op(lx, ly) || used[ly * N + lx]) continue;
@@ -202,8 +204,33 @@ PLAN.plots.forEach(p => { const used = new Uint8Array(N * N), parts = [], top = 
         let h = 1; rows: while (ly + h < N) { for (let i = 0; i < w; i++) if (!op(lx + i, ly + h) || used[(ly + h) * N + lx + i]) break rows; h++; }
         for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(ly + j) * N + lx + i] = 1;
         const alongX = w >= h, span = (alongX ? h : w) * C + 0.7, len = (alongX ? w : h) * C + 0.1, rise = r2(Math.min(3.5, span / 3));
-        parts.push({ s: 'roof', form: 'barrel', p: [r2(gx(p.sx + lx) + w * C / 2 - ox), r2(top - rise), r2(gz(p.sy + ly) + h * C / 2 - oz)], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: 'bricks_2', tint: 0x7c766a, ds: true, ends: false, seg: 8 }); }
+        parts.push({ s: 'roof', form: 'barrel', p: [r2(gx(p.sx + lx) + w * C / 2 - ox), r2(top - rise), r2(gz(p.sy + ly) + h * C / 2 - oz)], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: 'bricks_2', tint: DAMP[Math.floor(grnd() * DAMP.length)], ds: true, ends: false, seg: 8 });
+        /* THE GRIME ON THE WALLS (the grime pass, mondo 11-16): along every side of the rectangle that is wall, a dark slime line at the
+           wall's foot; along the north / west wall of a run of three squares or more, a rusted main on brackets with a thin line under it,
+           and a downpipe at its end (parts with no sheet wear a surface by their colour: three-renderer.js _hqArchSurface) */
+        const side = (horiz, at, a0, n, out, pipes) => { let run = 0; for (let i = 0; i <= n; i++) { const wallHere = i < n && !open(p.sx + (horiz ? a0 + i : at + out), p.sy + (horiz ? at + out : a0 + i));   /* (the room's squares, not the plot's: a plot line is no wall) */
+            if (wallHere) { run++; continue; } if (!run) continue;
+            const s0 = a0 + i - run, L = run * C, mid = (horiz ? gx(p.sx + s0) - ox : gz(p.sy + s0) - oz) + L / 2, edge = (horiz ? gz(p.sy + at + (out > 0 ? 1 : 0)) - oz : gx(p.sx + at + (out > 0 ? 1 : 0)) - ox), inw = -out;
+            const at3 = (off, y) => horiz ? [r2(mid), y, r2(edge + inw * off)] : [r2(edge + inw * off), y, r2(mid)], sz = (t, hh) => horiz ? [r2(L), hh, t] : [t, hh, r2(L)];
+            parts.push({ s: 'box', p: at3(0.05, 0), size: sz(0.08, r2(0.45 + grnd() * 0.5)), key: 'bricks_2', tint: 0x1c2416, top: false });
+            if (pipes && run >= 3) { const y = r2(2.3 + grnd() * 0.5);
+                parts.push({ s: 'box', p: at3(0.3, y), size: sz(0.3, 0.3), key: RUST, tint: 0x6a3f24, under: true }, { s: 'box', p: at3(0.24, r2(y - 0.42)), size: sz(0.12, 0.12), key: RUST, tint: 0x2e3a2e, under: true });
+                for (let b = 0.9; b < L; b += 3.5) { const q = horiz ? [r2(mid - L / 2 + b), r2(y - 0.1), r2(edge + inw * 0.2)] : [r2(edge + inw * 0.2), r2(y - 0.1), r2(mid - L / 2 + b)]; parts.push({ s: 'box', p: q, size: horiz ? [0.1, 0.5, 0.4] : [0.4, 0.5, 0.1], key: RUST, tint: 0x222222 }); }
+                const e = horiz ? [r2(mid + L / 2 - 0.4), 0, r2(edge + inw * 0.3)] : [r2(edge + inw * 0.3), 0, r2(mid + L / 2 - 0.4)]; parts.push({ s: 'cyl', p: e, r: 0.15, h: y, key: RUST, tint: 0x5a3622, seg: 8 }); count.pipes = (count.pipes || 0) + 1; }
+            run = 0; } };
+        side(true, ly, lx, w, -1, true); side(true, ly + h - 1, lx, w, 1, false); side(false, lx, ly, h, -1, true); side(false, lx + w - 1, ly, h, 1, false); }
     VAULT.push({ k: 'arch', id: 'sew:' + p.id + ':roof', x: r2(ox), z: r2(oz), rot: 0, base: p.base, parts }); count.vaults = (count.vaults || 0) + parts.length - 1; });
+
+/* ── THE GRIME ON THE FLOOR (the grime pass): floor decals (data.js DOOR_HQ.decals: the room's own row, written by this tool; the game
+   draws 80 a room at most, the props' own stains included, so 60 here): grime on the walks, puddles beside the water, oil on the track.
+   A district adds its own with ctx.grime(kind, plot, lx, ly, r). ── */
+{ const want = [];
+  PLAN.plots.forEach(p => { const dry = [], wet = []; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const x = p.sx + lx, y = p.sy + ly; if (!'of'.includes(cell[y][x])) continue;
+          let byW = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (open(x + dx, y + dy) && cell[y + dy][x + dx] === 'w') byW = true; (byW ? wet : dry).push([x, y]); }
+      const pick = l => l.length ? l[Math.floor(grnd() * l.length)] : null, a = pick(dry.length ? dry : wet), b = pick(wet.length ? wet : dry);
+      if (a) want.push({ kind: p.d === 'T' ? 'oil' : 'grime', x: r2(gcx(a[0]) + (grnd() - 0.5) * 1.4), z: r2(gcz(a[1]) + (grnd() - 0.5) * 1.4), y: p.base, r: r2(1.2 + grnd() * 1.1), rot: Math.round(grnd() * 360) });
+      if (b) want.push({ kind: p.d === 'H' ? 'grime' : 'puddle', x: r2(gcx(b[0]) + (grnd() - 0.5)), z: r2(gcz(b[1]) + (grnd() - 0.5)), y: p.base, r: r2(1.1 + grnd() * 0.9), rot: Math.round(grnd() * 360) }); });
+  want.forEach(d => { if (DECALS.length < 60) DECALS.push(d); }); }
 
 /* ── THE OPEN GROUND: every square that is not wall, as `space` rows (greedy rectangles) ── */
 const spaces = [];
@@ -288,4 +315,8 @@ if (DRY) process.exit(0);
 const END = '        /* SEWERS24-END */\n', b0 = src.indexOf('        /* SEWERS24-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const anchor = '        site_prebuilt_downtown_sewers: {'; const a = src.indexOf(anchor); if (a < 0) throw new Error('anchor not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
+/* the room's floor decals: one row in DOOR_HQ.decals */
+{ const row = "    " + ROOM + ": " + J(DECALS) + ",   // SEWERS24-DECALS: written by bake-sewers.js\n", i0 = src.indexOf("    " + ROOM + ": ["), anchor = "    site_prebuilt_downtown_sewers: [ { kind: 'puddle'";
+  if (i0 >= 0 && src.slice(i0, src.indexOf('\n', i0)).indexOf('SEWERS24-DECALS') >= 0) src = src.slice(0, i0) + row + src.slice(src.indexOf('\n', i0) + 1);
+  else { const a = src.indexOf(anchor); if (a < 0) throw new Error('DOOR_HQ.decals anchor not found'); src = src.slice(0, a) + row + src.slice(a); } }
 fs.writeFileSync(file, src);
