@@ -2646,6 +2646,8 @@
                 }
             }
 
+            if (spell.dragIntoLiquid && target && !target.dead && !unit.dead
+                && !(typeof _isClashMode === 'function' && _isClashMode())) _deathRollDrag(unit, target, spell);   // 🐊 Death Roll
             if (spell.selfStun && !unit.dead) {
                 applyStatusEffects(unit, [{ id: 'stun', duration: spell.selfStun }],
                     `${spell.name} recoil: `, unit);
@@ -5174,6 +5176,7 @@
             }
             if (state.phase !== 'battle') return 0;
             const via = opts.via || 'displaced';
+            _gatorSurfaceCheck(unit);   // 🐊 a Submerged unit off the liquid comes up
             const depth = _chainDepth;
             if (depth >= CHAIN_RULES.maxDepth) {
                 addLog(`⛓ The chain reaction runs out at ${coordLabel(unit.x, unit.y)} (×${depth}).`);
@@ -13890,6 +13893,65 @@
             if (unitHasStatus(unit, 'debt')) clearStatus(unit, 'debt');
         }
         window._settleBankOnDeath = _settleBankOnDeath;
+        /* 🐊 THE SEWER GATOR (2026-11-16, the new races): the liquids it hides in, Submerge's surfacing and Death Roll's drag.
+           Host-side like every spell; positions + statuses state-sync to the guest, the floating text relays. */
+        const _GATOR_LIQUIDS = new Set(['water', 'deep_water', 'sludge', 'swamp']);
+        function _gatorOnLiquid(x, y) {
+            try { return _GATOR_LIQUIDS.has(getTerrainAt(x, y)); } catch (e) { return false; }
+        }
+        /* resolveTileArrival: a Submerged unit that ends any move (walked or pushed) off a liquid square comes up */
+        function _gatorSurfaceCheck(unit) {
+            if (!unit || unit.dead || !unitHasStatus(unit, 'submerged')) return;
+            if (_gatorOnLiquid(unit.x, unit.y)) return;
+            clearStatus(unit, 'submerged');
+            if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
+            addLog(`🐊 ${_ctName(unit)} climbs out of the water and surfaces!`);
+            showFloatingTextForUnit(unit, '🐊 SURFACED', 'debuff', { durationMs: 1000 });
+        }
+        /* _runPostEffects for a `dragIntoLiquid` spell (Death Roll): the victim goes into the nearest free liquid square beside
+           the gator or beside itself (deep water first), then gets Drowning (applyStatusPayload bounces it outside deep water). */
+        function _deathRollDrag(unit, target, spell) {
+            if (!unit || !target || target.dead || target._dying) return;
+            const label = `${spell.name}: `;
+            if (!_gatorOnLiquid(target.x, target.y)) {
+                if (getUnitDisplaceWeightClass(target, spell) === 'colossal') {
+                    addLog(`${_ctName(target)} is far too heavy to drag under!`);
+                    showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
+                    return;
+                }
+                const anchor = unitResistsDisplace(target, 'pull');
+                if (anchor) {
+                    addLog(`${anchor.icon || '⚓'} ${_ctName(target)}'s ${anchor.name} holds — the roll cannot drag them!`);
+                    showFloatingTextForUnit(target, `${anchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 1000 });
+                    return;
+                }
+                const seen = new Set(), cands = [];
+                for (const o of [unit, target]) {
+                    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                        const nx = o.x + dx, ny = o.y + dy, k = nx + ',' + ny;
+                        if (seen.has(k)) continue; seen.add(k);
+                        if (!isInside(nx, ny) || !_gatorOnLiquid(nx, ny) || !canOccupy(nx, ny)) continue;
+                        if (state.units.some(u => !u.dead && u.x === nx && u.y === ny)) continue;
+                        cands.push({ x: nx, y: ny, deep: getTerrainAt(nx, ny) === 'deep_water' ? 1 : 0,
+                            d: Math.abs(nx - target.x) + Math.abs(ny - target.y) });
+                    }
+                }
+                cands.sort((a, b) => (b.deep - a.deep) || (a.d - b.d));
+                const dest = cands[0];
+                if (!dest) {
+                    addLog(`${_ctSp(spell.name)}: no water close enough to drag ${_ctName(target)} into.`);
+                    return;
+                }
+                const fx = target.x, fy = target.y;
+                target.x = dest.x; target.y = dest.y;
+                if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(dest.x, dest.y, target.z);
+                animateDisplacement(target, fx, fy, dest.x, dest.y, 320);
+                addLog(`🐊 ${_ctName(unit)} drags ${_ctName(target)} into the water at ${coordLabel(dest.x, dest.y)}!`, undefined, undefined, { actor: unit });
+                showFloatingTextForUnit(target, '🐊 DRAGGED UNDER', 'debuff', { durationMs: 1100 });
+                resolveTileArrival(target, { via: 'displaced' });
+            }
+            if (!target.dead && !target._dying) applyStatusPayload(target, { id: 'drowning', duration: 2 }, label, unit);
+        }
         function endStatusesTiedToUnit(unit) {
             if (!unit) return 0;
             let n = 0;
@@ -48065,6 +48127,7 @@
                     if (typeof getGravityFieldAt === 'function'
                         && getGravityFieldAt(unit.x, unit.y) === 'super') return '🕳 Pinned by gravity';
                 }
+                if (spell.requiresLiquid && !_gatorOnLiquid(unit.x, unit.y)) return '🐊 Stand in water or sludge';   // Submerge
                 // MP is deliberately checked LAST: canAfford() treats a bare
                 // 'No MP' as passable (its callers gate MP themselves), so no
                 // other block may hide behind it.
@@ -80685,6 +80748,11 @@
             if (!spell) {
                 addLog('No spell selected.');
                 state._teleportingUnitId = null;
+                playErrorSfx();
+                return 0;
+            }
+            if (spell.requiresLiquid && !_gatorOnLiquid(unit.x, unit.y)) {   // 🐊 Submerge needs a liquid underfoot
+                addLog(`${_ctSp(spell.name)}: ${_ctName(unit)} must stand in water, sludge or ooze.`, _clickSeat());
                 playErrorSfx();
                 return 0;
             }

@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1170 |
+| Meshy AI | no | 1171 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -163,6 +163,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | scarecrow | `Assets/characters/races/scarecrow/male/Meshy_AI_scarecrow_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | seraphim | `Assets/characters/races/seraphim/Meshy_AI_a_circular_ring_of_ey_1026083741_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | seraphim (female) | `Assets/characters/races/seraphim/Meshy_AI_a_circular_ring_of_ey_1026083741_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sewer gator | `Assets/characters/races/sewer_gator/male/Meshy_AI_sewer_gator_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | shadow entity | `Assets/characters/races/shadowentity/male/Meshy_AI_shadowperson_Walking.glb` | Meshy AI | Meshy AI (mondo) |
 | shaman (female) | `Assets/characters/races/homosapien/female/harvester/Meshy_AI_beautiful_attractive__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | sharkman | `Assets/characters/races/sharkman/Meshy_AI_shark_man_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
