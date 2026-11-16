@@ -39,14 +39,14 @@ as the inside of a plot-built place.
 | The Desert | `site_prebuilt_area51_desert` (144) + INSIDE Hangar 18, the White Rooms, inside the Great Pyramid | PLOTS | city highway; HQ tunnel (the Circus) + HQ `mandela` mirrors; Leylines robbers' tunnel; D.U.M.B. up through Hangar 18 | second |
 | The Beach | `site_prebuilt_bermuda_beach` (14 x 10, a sea room) + INSIDE the Flying Dutchman's four decks | PLOTS | city quay; HQ pool; the Dutchman; Atlantis whirlpool | second |
 | The Sewers | `site_prebuilt_downtown_underworld` (a maze of 6 x 5 plots since 11-16: 24 + district R, the radioactive drain under the Power station; its own place) | PLOTS (first build 11-16, `bake-sewers.js`) | city pump court, dock, platform; stadium; Woods drain; HQ dungeon cells, garden well, tunnel; the Cavern oubliette (the Strip's and Cyberpunk's gutters dropped) | second (tool), districts free |
-| The Cavern | six cave rooms + the Inner Sun; Agartha's Crystal City is its own site | OLD + PLAN (36) | Sewers old workings; HQ dungeon; Estate wells; Hell fissure; D.U.M.B. Level -6; Agartha adit; Antarctica | free |
+| The Cavern | `site_prebuilt_hollow_earth_cavern` (36 plots, one room since 11-16: the Cavern, Hollow Earth, Agartha; the Crystal City is a district now) | PLOTS (first build 11-16, `bake-cavern.js`) | Sewers old workings (the Oubliette); HQ dungeon (hidden); Estate wells (the Crossroads, the Mouth); Hell fissure; D.U.M.B. Level −6; Mount Shasta (the Lemuria Stair) + the Woods' trail; Technoticlan (the East Gate); Antarctica (two ways); Bay 3 (two doors) | second (tool), K the pilot STOPPED, H + A free |
 | The D.U.M.B. | six rooms + CERN's ring | OLD + PLAN (36) | Hangar 18; HQ garage motor pool; the Cavern; Astral library (dream lab) | free |
 | Heaven + Hell + Vatican | Vatican x5, Hell x2, Heaven x2 | OLD + PLAN (3 rooms of 16) | HQ `continuity` painting; the Cavern fissure; Olympus (two ways); Camelot's sky castle | free |
 | Leylines | ley tunnels, Stonehenge, Göbekli Tepe, Babel; Technoticlan is its own site | OLD + PLAN (45) | Giza robbers' tunnel; Technoticlan; bays | free |
 | The Deep (with Atlantis) | `site_prebuilt_atlantis_deep` (8 x 5, a drowned room) + INSIDE the Temple of the Deep (`site_prebuilt_atlantis_pocket`) | PLOTS (11-16; the old Abyss + Temple retired, kept as PvP board sources) | Beach whirlpool -> the Upwelling; the Dutchman's hold -> the wreck's hatch; HQ Room H-20 -> the Temple's inside | second |
 | Outer Space | `site_prebuilt_moon_plots` (5 x 4), `site_prebuilt_mars_plots` (5 x 4), `site_prebuilt_saturn_plots` (4 x 4), `site_prebuilt_singularity_plots` (4 x 4): four rooms, one a world, 72 plots (11-16, `bake-space.js`, plot plan 3) + the Spaceship x4 (handmade, stays). Hub `space` | PLOTS (first build 11-16; the Spaceship handmade) | the ship's collar (Moon, Mars, Saturn; and Antarctica); Moon <> Mars (the bore); Saturn <> the Singularity (the frame); HQ `observatorium` to the Singularity; four bays | second (tool), district M piloted, nine districts free |
-| Antarctica | the Station | OLD + PLAN (12) | the Inner Sun; Agartha; the Spaceship; bay | free |
-| The Astral Realm | waiting room, sea, nightmare, library | OLD + PLAN (36) | HQ `dreamlab`; Camelot mirror; D.U.M.B. dream lab; the Haunted House attic | free |
+| Antarctica | `site_prebuilt_antarctica_plots` (6 x 6 = 36, a sea on its south side; 11-16, `bake-antarctica.js`, plot plan 2). Hub `antarctica` | PLOTS (first build 11-16; the Station is the pilot, 3 passes) | the Cavern twice (the Polar Opening to the Inner Sun, the Admiral's Tunnel to Agartha: both hidden); the Spaceship's airlock (the Collar, behind the Ice Wall); HQ bay door 90S (on the Station Yard) | second (tool STOPPED; S stopped at 3 passes; H W C O F free) |
+| The Astral Realm | `site_prebuilt_lookingglass_realm` (36 islands over the void, one room since 11-16) + INSIDE the Waiting Room | PLOTS (first build 11-16, `bake-astral.js`; the old sea, nightmare and library are retired) | HQ `dreamlab` (into the Waiting Room, which has a frame to each district); Camelot's Looking-Glass Garden mirror (two-way, onto the Sea's Mirror island); D.U.M.B. dream lab (the Library's Ward Screen); the Haunted House attic (the Nightmare's Attic Screen) | second (tool STOPPED, waits mondo's look), S piloted, L + N free |
 
 Loose sites that the world plan folds into a zone but that still stand as their own OLD rooms:
 
@@ -59,7 +59,7 @@ Loose sites that the world plan folds into a zone but that still stand as their 
 | Cyberpunk City (streets, noodle bar) | later: a reskin of the whole city, not a place | still live; reached by the HQ tunnel and the Sewers |
 | `site_prebuilt_agartha_crystalcity`, `site_prebuilt_technoticlan_templecity` | districts of the Cavern / Leylines | live, no hub claims them (the map files them alone) |
 
-(11-16: Outer Space has a hub now, `space`, anchored on the Spaceship's airlock. Antarctica still has none.)
+(11-16: Outer Space has a hub now, `space`, anchored on the Spaceship's airlock. Antarctica has one too, `antarctica`, anchored on its one room.)
 
 DATA: mondo's zone list in owner-rules.md has 16 names. The game's map (`DOOR_HQ.hubs`) has 15 hubs and they do not match
 one to one: The Mountains and The Astral Realm are hubs but not on the list; Fairy Forest and Atlantis are on the list but
@@ -74,8 +74,10 @@ and has a way back.** The problems are all loose ends from the rebuilds.
 |---|---|---|---|
 | 1 | Three doors still name a retired room. The game sends you to the new room, but with no arrival spot, so you land at its default spawn, not at the matching door. | HQ `ritual` > the old Ritual Ground (link `woods_ritual`); the old Looking-Glass Garden > the old Ritual Ground (`deadtree_lookingglass`); the sky castle's `keep` + `chimney` > the old Keep | point each at a door of `…fairy_forest_plots` / `…camelot_palace` (Woods + Camelot bake tools, owner) |
 | 2 | The Looking-Glass Garden exists twice: as a Camelot district and as the old room. Camelot's `oldgarden` door goes into the old room and nothing there leads back to Camelot. The HQ barbershop mirror and the Astral waiting room still open on the old room. | `site_prebuilt_lookingglass_garden` | retire it to Camelot (rule: rebuilt areas replace their old rooms); re-point the barbershop mirror and the waiting room's `garden` door at Camelot's district (owner) |
-| 3 | Camelot's mirror into the Astral Realm is one-way: the waiting room's way back opens on the old garden, not Camelot. | `…camelot_kingdom.mirror` | solved by no. 2 |
+| 3 | CLOSED 11-16 (the Astral Realm zone thread): Camelot's mirror opens on the Sea of Possibility's Mirror island and that island's mirror leads back; the Waiting Room's `garden` frame opens on Camelot's mirror too. | `…camelot_kingdom.mirror` <> `…lookingglass_realm.mirror` | done |
 | 4 | Two Woods trails are one-way. Each arrives at a door that belongs to another link, so walking back puts you somewhere else. | Woods `lemuria` > Agartha (walk back = the Mountains); Woods `lodge` > the Lodge (walk back = Bohemian Grove) | give each its own return door, or drop the trail: the Mountains now own the Lemuria stair (mondo's call) |
+| 3 | Camelot's mirror into the Astral Realm is one-way: the waiting room's way back opens on the old garden, not Camelot. | `…camelot_kingdom.mirror` | solved by no. 2 |
+| 4 | Two Woods trails are one-way. Each arrives at a door that belongs to another link, so walking back puts you somewhere else. | Woods `lemuria` > Agartha (walk back = the Mountains); Woods `lodge` > the Lodge (walk back = Bohemian Grove) | give each its own return door, or drop the trail: the Mountains now own the Lemuria stair (mondo's call) | UPDATE 11-16: the Cavern's room has the return door now (`woods`, at the Lemuria Stair, back to the Woods' `lemuria`); the Woods' own door still has to name it (`at: 'woods'`, owner side, note on the board). |
 | 5 | Retired rooms still carry doors (old Keep 4, old Clearing 5, old Flight Line 4 and others, 25 in all). Nobody can enter them, so it is clutter, not a bug. | 10 retired rooms | empty their door lists when their zone is next rebaked |
 | 6 | `DOOR_HQ.retired` names two rooms that are already deleted (`…camelot_hall`, `…camelot_castle`). Harmless. | data.js | none needed |
 | 7 | Three rooms have no door at all: the old Downtown (`…downtown_oldstreets`), the Bermuda island, the Fairy Forest glade. All three are PvP board sources, kept on purpose. | | none; listed so nobody "fixes" them |
@@ -103,13 +105,13 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 | The Beach | S The Shore, H The Harbour, O The Ocean, T The Bermuda Triangle | not yet |
 | The Sewers (PLAN) | W The Sewers, O The Old Workings, T The Running Tunnels | none: not built |
 | The D.U.M.B. (PLAN) | R Research, S Sub-Level 7, C Command, P Level P3 (CERN = the ring) | none |
-| The Cavern (PLAN) | K The Cavern, H Hollow Earth, A Agartha | none |
+| The Cavern | K The Cavern, H Hollow Earth, A Agartha | yes since 11-16: `docs/areas/cavern/districts/K.js H.js A.js` (areas-complexes.md "THE CAVERN ON PLOTS") |
 | The Deep | C Atlantis, the Citadel (pilot: 3 passes), R Atlantis, the Rings, S The Sea Floor, T The Trench | not yet |
 | Leylines (PLAN) | G Göbekli Tepe, B Bug Colony, S Stonehenge, Y The Ley Lines (the road), T Babel, Z Technoticlan | none |
 | Heaven + Hell + Vatican (PLAN) | L Hell, V The Vatican, H Heaven, O Mount Olympus (now in the Mountains, so drop it here) | none |
 | Outer Space | the Moon: M The Mare, C The Crater, F The Far Side · Mars: Y Cydonia, V The Canyon, R The Rover Bay · Saturn: H The Hexagon, G The Ring Shard · the Singularity: D The Drop, A The Accretion Rim | yes since 11-16: `docs/areas/space/districts/<letter>.js` (ten files, the letters unique across the four rooms) |
-| Antarctica (PLAN) | A Antarctica Station | none |
-| The Astral Realm (PLAN) | L The Library of Unthought Things, S The Sea of Possibility, N The Nightmare | none |
+| Antarctica | H The Hull in the Ice, W The Ice Wall, C The Crevasse, S The Station (pilot: 3 passes), O The Polar Openings, F The Shelf Ice | yes since 11-16: `docs/areas/antarctica/districts/<H W C S O F>.js` |
+| The Astral Realm | S The Sea of Possibility (16), L The Library of Unthought Things (10), N The Nightmare (10) | yes since 11-16: `docs/areas/astral/districts/S.js L.js N.js` (areas-complexes.md "THE ASTRAL REALM ON PLOTS") |
 
 **Rule for every zone not yet on plots:** its FIRST PR lays down the plots, the districts and one empty file per
 district (`docs/areas/<zone>/districts/<letter>.js`) with the bake tool reading them, and puts one row per district on
@@ -238,7 +240,7 @@ Realm, Antarctica, Outer Space last.
 - The eight zones still on old rooms get a thread each and are REDESIGNED on plots and districts, not ported
   (`docs/plans/ZONE_THREAD_BRIEF.md` holds his words and the method).
 - The White Rooms go to The D.U.M.B. The Deep is an underwater room. NO way between The Deep and Area 51.
-- A door from Camelot's Looking-Glass Garden to the Astral Realm's Sea of Possibility.
+- A door from Camelot's Looking-Glass Garden to the Astral Realm's Sea of Possibility. BUILT 11-16 (the mirror, two-way).
 - Where the Spaceship leaves from and how the player reaches it: undecided, "let's just get the world built".
 - Antarctica as the late-game reveal is only a possibility: build it like any zone.
 - Exits may move with a redesign ("it's not that big of a deal"). New models come after, from the threads' lists
