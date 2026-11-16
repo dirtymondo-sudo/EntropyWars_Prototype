@@ -5289,6 +5289,18 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   crest, the old Harbour's `cave_stone` is a 2 m standing stone and a blocker on a walk two squares wide, so they are ten
   `psxg_rock_*` set by hand on the crest's sea side; two people moved to the wharf's rail and one off the Long Pier's walk.
   Frame rate, the quay view: 0.3 fps, 751 draw calls, 1.46 M triangles (first look: 0.8 fps, 895 calls, 2.30 M; the cloud's swing).
+- **THE MODEL PASS (11-16, mondo: "these are models that were added ... tell all of those district threads that needed models to use
+  these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to end; seen by day and at 22:30):** ASKED FOR AND PLACED: `trawler` (at
+  the Roads' mooring buoys), `tugboat` (alongside the Long Pier), `seagull` x 14 (kerbs, pier edges, the Breakwater, the wharf, the
+  shed's ridge), `rope_coils` x 4, `fish_boxes` x 3, `mooring_bollard` x 17. STAND-INS TAKEN OUT: the seventeen drawn bollards and the
+  seventeen drawn lamps (now `iron_lamp_post`; the model has no glow or light, so one drawn flame as wide as its glass stays in each
+  lantern). FROM THE OTHER DISTRICTS' ASKS: `cage_lamp`, `drying_fish`, `oars`, `fishing_rod`, `woven_baskets`, `wooden_barrel` x 2,
+  `coin_telescope`, `heron`, `wooden_ladder`, `wheelbarrow`. NOT USED: `rat` (21,754 triangles for a 12 cm animal: for whoever
+  optimises the list), `lantern_post` (the lantern hangs off-centre), `string_lights` (it stands on its own posts).
+  LEARNED: a ship afloat = `{ y: <depth of her keel>, hover: 0 }` (the trawler rides right at -1.6 with a hover; the tug's keel is
+  deep and with a `hover` she rode high whatever `y` said: `y: -2.2, hover: 0`). WEIGHT: the Harbour's 208 props are 0.66 M triangles
+  (0.40 M before this pass). Frame rate, the quay view: 0.3 fps before and after; 1,701 draw calls and 4.0 M triangles in view now,
+  most of it the other Beach districts that landed since (the room went from 508 to 911 props).
 - **STOPPED AFTER FIVE PASSES (DISTRICT_THREAD_BRIEF.md; the order reached this thread after its fifth pass was merged).** SIX PRs in
   all: the five passes and THE MODEL LIST FINDS, which landed between pass 1 and pass 2 on mondo's own "look at the model list right
   now". No sixth pass. The brief's end-to-end read of every list was NOT done as it asks: this thread searched MODEL_LIST.md by word,
@@ -5302,7 +5314,7 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   4. THE EIGHT `dockring` PROPS ARE OUT (a space-station ring, the wrong model); drawn bollards stand there.
   5. HOUSES ON PILES are new scenery: one in the Roads, one in the Mouth, one off the skiff jetty (the pack's own stilt houses,
      solid, nobody goes in). The plan names only buoys and waiting ships there.
-  6. NO SHIP IN THE ROADS: the ghost wreck is the Triangle's landmark and was not used a second time.
+  6. THE ROADS' SHIP IS THE TRAWLER and the tug lies at the Long Pier (the model pass); the ghost wreck stays the Triangle's.
   7. THE CRANE on the wharf is mondo's Babel scaffold crane (`babel_crane`).
   8. THE GANGWAY is a drawn brow up to the Dutchman's rail at the tool's link place; the ship herself was not touched.
   9. THE BREAKWATER'S BOULDERS are ten rocks set by hand on its sea side (the earlier scatter of ten put them on the walk).
@@ -5314,8 +5326,7 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
 - **ALL FIVE PASSES ARE LIVE.** Still short of Disaster City's best: one walk-in only (the plan draws one building); the brow lands
   on the Dutchman's rail; no ship in the Roads, no gulls, no sound; the people stand still; nobody has walked it in a real game
   (the wharf, the gantry and the Breakwater are checked on the compiled heights and in pictures, not with the walker).
-- **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
-  the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
+- **NEEDS A MODEL:** nothing open (the trawler, the tug, the gulls, the rope, the fish boxes and the bollard are in: THE MODEL PASS).
 - **NOT DONE (outside a district's reach):** The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
