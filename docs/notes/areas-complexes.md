@@ -4363,6 +4363,46 @@ new areas".
     cay's Lookout and stair. The undersea coral and fish of the old dive route are only partly placed (the Reef, the Maelstrom).
   - No residents with routines, no fights set up in the room, no Deep-to-Area-51 way (still mondo's open question).
 
+## THE BEACH, THE DISTRICT FILES — one thread per district (2026-11-16)
+
+mondo 11-16: "every single zone needs to be like that. now. so we can work in parallel". The Beach is written the way Disaster City is
+(bake-disaster-city.js "THE DISTRICT FILES"): the districts' content left `bake-beach.js` for one file per district, loaded through one hook.
+
+- **THE FILES** `docs/areas/beach/districts/`: `S.js` The Shore (14 plots), `H.js` The Harbour (8), `O.js` The Ocean (93), `T.js` The Bermuda
+  Triangle (25). Each starts with its brief: its plots, what stands there today, what is missing or never seen on screen, the hooks.
+- **THE HOOKS** (all optional, every stage runs S, H, O, T): `tailor(ctx)` before the heights (the plan's squares: a plan building `B` you
+  build goes back to its ground; only the basics are on `ctx` yet: `cell`, `setRect`, `plot`, `Pxy`, `LIGHT`, the grid sizes), `build(ctx)`
+  (walk-ins with `ctx.building`, drawn things with `ctx.look`), `place(ctx)` and `dress(ctx)` (props, palms, people, scatters: `P`, `dec`,
+  `afloat`, `swimmer`, `under`, `palm`, `native`, `feat`, `props`), `reach` (squares the walk check must reach from the city door).
+- **THE DICE:** each (district, stage) throws from its own start (`DICE` in the tool = the one stream's state at that point before the split).
+  A district's new throws never move another district's things; inside your own hook, add at the END to move nothing of your own.
+- **WHAT STAYS IN THE TOOL (shared, nobody edits it without a note at the bottom of claims.md):** `bake-beach.js` and `layout.json`; the
+  height map and every height rule (sand, sea floor, pier, quay, rock, cone); the sea, the paint, the shell / sky, the west edge; the Flying
+  Dutchman's berth, the pier's length and the gangway (`SHIP`, `PIER_END`, `GANG`, `terrain.moored`); the `quay` door to the city and the
+  spawn; the links' places (`MAEL`, `POOL`, `BAY`, the tape at `LIGHT`) and the check of their five data.js rows; the helpers on `ctx`; the
+  walk check; the room's own rows (label, lines, plots). Need a new helper, a new square letter, a new height rule or a moved door: write a
+  note on the board, then make that one change in its own small PR (or ask the thread that holds the tool row).
+- **THE RULES FOR A DISTRICT THREAD:**
+  1. One thread = one district file. Take that district's row on `docs/notes/claims.md` in your own PR; free it (with one line on its state)
+     when you stop. Never edit another district's file, the tool or the layout.
+  2. Your scope: your district's exteriors, interiors, dressing, atmosphere and polish, on your own plots. A thing that crosses into another
+     district's plots (the Long Pier runs into the Ocean's) stays with the file that has it today.
+  3. Never hand-edit data.js between `BEACH140-BEGIN / BEACH140-END`. Edit your file, run `node bake-beach.js` (`--dry-run` = counts only;
+     `BEACH_OUT=<file>` writes the block to a file to diff; `BEACH_DUMP=1` the walked map; `BEACH_DICE=1` the dice starts).
+  4. **When another district landed first** (always assume one did): `git fetch origin main && git merge origin/main` right before you rebake
+     and again right before you merge your PR. A conflict inside the baked block is NEVER resolved by reading it and NEVER by keeping one side
+     wholesale: take either side of the block to get past the merge, keep BOTH sides of everything else, then run `node bake-beach.js`. The
+     tool rewrites the whole block from the four files, so the rebake IS the merge. Bump the `?v=` token again if main bumped it (RULE #1b).
+  5. data.js is an R2 file: every rebake that changes it = token bump + `node sync-zip.js --upload` in the same PR (RULE #1 / #1b).
+  6. A browser run is allowed for what you can only judge by looking (RULE #1c, through `probe-fast.js`). This room is big: read the probe
+     lessons in "THE BEACH ON PLOTS" (keep only the props near your views with `--pre=`, never `EW_NO_MODEL_QUEUE` on the whole room).
+  7. Keep PRs small and land them fast; what you learn goes in this file under your district's own heading, and in your file's header when it
+     changes the brief (a thing seen on screen comes off the "never seen" list).
+- **PROOF OF NO CHANGE (this split):** `BEACH_OUT` before and after the split is the same file byte for byte (277 645 bytes, sha256
+  8a5c015d…), and it equals the block in data.js; data.js did not change, so nothing was uploaded and the token was not bumped. No browser run.
+- **KNOWN TO BE THIN (for whoever holds the tool row):** the walk check's own list still names the Shore's and the Harbour's places in the
+  tool (a district adds its own with `reach`); `place` and `dress` are two passes only because the content was written in two deliveries.
+
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
 The approved plan is `docs/plans/desert/insides_plan.png` (rectangles in `draw-insides.py`). Before this delivery NONE of it was in the game: the
