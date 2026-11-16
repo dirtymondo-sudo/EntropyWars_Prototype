@@ -6,6 +6,7 @@
    and its tints, shutters and flowers are picked by i, so the list's order is part of the look.
    MISSING / WAITING: mondo's OK ("yeah they are fine") covers the five looks; the insides are the pilot's first build, not yet seen by him.
    No upstairs in the two-storey kinds (no stair: the upper floor is drawn from outside only).
+   THE MODEL PASS (2026-11-16): every barrel, by a house's wall and inside, is the wish list's `wooden_barrel` (was a drawn cylinder). Notes: T.js's header.
    The Village pilot thread (2026-11-16) ran its passes here and freed the row. PASS 1, THE EXTERIORS, is in: gains, timber frames, fronts, door paths, back and
    side windows; seen on screen (notes: areas-complexes.md "CAMELOT, THE VILLAGE" + "CAMELOT, THE ZONE KIT").
    Hooks and rules: T.js's header. kb(id, [x0, y0, x1, y1, front], h, o, parts) = ctx.building with the front in the squares' fifth place. */
@@ -74,7 +75,7 @@ function houseLook(kind, a, w, d, i, path, door, CH) {
         a.box(dx, 0, zf + 0.5, cw + 0.5, 0.06, 0.9, WALL, STONE2);
         if (path > 0.3) a.box(dx, 0, d / 2 + 0.85 + path / 2, 1.5, 0.05, path, 'cobblestone', 0xc8c4bc, { sides: false }); };
     const chimney = (x, z, y0, top, key, t) => { CH.push([x, z, top + 0.55]); a.box(x, y0, z, 0.9, top - y0, 0.9, key, t, { roof: true }); a.box(x, top, z, 1.1, 0.2, 1.1, key, t, { roof: true }); a.box(x, top + 0.2, z, 0.5, 0.35, 0.5, null, 0x3a3230, { roof: true }); };
-    const barrel = (x, z) => { a.cyl(x, 0, z, 0.36, 0.9, WOODK, 0x8a5a34, { seg: 10 }); a.cyl(x, 0.2, z, 0.38, 0.06, null, 0x3a3230, { seg: 10 }); a.cyl(x, 0.64, z, 0.38, 0.06, null, 0x3a3230, { seg: 10 }); };
+    const barrel = (x, z) => { (CH.barrels = CH.barrels || []).push([x, z + 0.08]); };   // THE MODEL PASS: the barrel by a house's wall is the wish list's `wooden_barrel` (was a drawn cylinder); the caller stands it once the house has its frame
     const f = d / 2 - 0.1;
     if (kind === 1) {   // JETTIED TOWNHOUSE
         const g = 3.3, u = 3.5, ov = 0.45, zf = d / 2 + ov - 0.1;
@@ -143,6 +144,7 @@ HOUSES.forEach((h, i) => {
     const side = frontOf(h), kind = houseKind(h, i), hh = (kind === 1 || kind === 4) ? 7 : 3.6;
     const CH = [], B = kb('house_' + i, [h.x0, h.y0, h.x1, h.y1, side], hh, { leafDouble: false, keyIn: IN[kind][0], floorIn: IN[kind][1] }, (a, w, d, door) => houseLook(kind, a, w, d, i, Math.max(0, reach(h, side) * ctx.C - 0.75), door, CH));
     if (i % 6 === 0 && CH.length) ctx.inside(B, 'chimney_smoke', CH[0][0], CH[0][1], { y: CH[0][2] });   // PASS 4: one chimney in six smokes (a burning hearth's; three sprites each, so few)
+    (CH.barrels || []).forEach((q, k) => ctx.inside(B, 'wooden_barrel', q[0], q[1], { h: 0.9, face: (i * 50 + k * 70) % 360, floor: true }));
     LIST.push({ B, kind, i }); count.houses = (count.houses || 0) + 1; KCOUNT[kind] = (KCOUNT[kind] || 0) + 1;
     if (process.env.CAM_HOUSES) console.log('house_' + i, 'kind ' + kind, 'front ' + side, 'squares ' + [h.x0, h.y0, h.x1, h.y1].join(' '), 'street ' + reach(h, side));   // CAM_HOUSES=1 node bake-camelot.js --dry-run: the list (which house is which kind, for a probe's views)
 });
@@ -219,10 +221,10 @@ function insides(ctx, hall, list) {
                 H.put('rug_round', H.sq(di, Math.min(nz - 1, 1))[0], H.sq(di, Math.min(nz - 1, 1))[1] + 0.3, 0);
                 H.put('candelabra', hx + 1.7, hz + 0.5, 0); H.put('painting_portrait', hx, hz + 0.72, 180, { y: 2.2 }); }   // THE MODEL LIST PASS: a candelabra by the hearth, a portrait over the mantel
             if (kind === 5) { if ((q = next())) { a.box(q[0], 0.85, q[1], 2.6, 0.1, 0.9, WOODK, FT, FW); for (const s of [-1, 1]) a.box(q[0] + s * 1.1, 0, q[1], 0.14, 0.85, 0.8, WOODK, FT, FW); a.box(q[0] + 0.5, 0.95, q[1], 0.5, 0.26, 0.36, WOODK, FT, FW); H.block(q[0] - 1.3, q[1], q[0] + 1.3, q[1], 1.0, 0.95); }
-                if ((q = next())) { H.barrel(q[0] - 0.5, q[1] - 0.3); H.barrel(q[0] + 0.5, q[1] + 0.2, 0.36, 0.9); H.put('hw_straw', q[0], q[1] + 1.1, 70); } }
+                if ((q = next())) { H.put('wooden_barrel', q[0] - 0.5, q[1] - 0.3, 0); H.put('wooden_barrel', q[0] + 0.5, q[1] + 0.2, 50); H.put('hw_straw', q[0], q[1] + 1.1, 70); } }
         }
         /* by the walls, off the squares' middles: a barrel and a sack in the front corner far from the door, a shelf of pots, two candle sconces */
-        const cs = di >= nx / 2 ? -1 : 1; H.barrel(cs * (W2 - 0.85), D2 - 0.85, 0.36, 0.9); H.put('meshy_burlap_sack', cs * (W2 - 1.7), D2 - 0.75, 20);
+        const cs = di >= nx / 2 ? -1 : 1; H.put('wooden_barrel', cs * (W2 - 0.85), D2 - 0.85, (i * 40) % 360, { h: 0.9 });   /* THE MODEL PASS: the wish list's oak barrel (was a drawn cylinder) */ H.put('meshy_burlap_sack', cs * (W2 - 1.7), D2 - 0.75, 20);
         a.box(-cs * (W2 - 0.5), 1.5, 0, 0.3, 0.05, Math.min(2.4, d - 2), WOODK, FT, FW); a.cyl(-cs * (W2 - 0.5), 1.55, -0.6, 0.1, 0.2, null, 0xa8683a, { seg: 8, n: 3, step: [0, 0, 0.55] });
         for (const s of [-1, 1]) { a.box(s * (W2 - 0.42), 1.7, D2 - 1.2, 0.14, 0.05, 0.14, null, 0x2a2c30); a.box(s * (W2 - 0.42), 1.75, D2 - 1.2, 0.06, 0.16, 0.06, null, LAMP, { glow: 1 }); }
         toRoom(B, a.P);

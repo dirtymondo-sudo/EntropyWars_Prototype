@@ -18,12 +18,21 @@
    graveyard by the Chapel (seven crosses); the green behind the castle hill (a cow, chickens, sheep); a horse and sacks by the Inn; the
    gate braziers and two knights at the Drawbridge gate; signposts at the gates; ten street trees; a bench and a planter on North Street.
 
-   MISSING / WAITING: no house is walked into (mondo OK'd the five kinds as looks; insides are not asked yet). No anvil, market stall or
-   lamp post model exists on R2 (tents, crates and sacks stand in). The streets have no lamps and no people but the two gate knights.
+   MISSING / WAITING (the first build's list; all but the people is done since): no house walked into, no anvil, market stall or lamp post
+   model, no street lamps, no people but the two gate knights.
    The Village pilot thread (2026-11-16) ran five passes on both files and freed the row; where it stands and what is open:
    docs/notes/areas-complexes.md "CAMELOT, THE VILLAGE" (the kit for the other districts: "CAMELOT, THE ZONE KIT"). Passes: 1 exteriors (in), 2 interiors (in: THE INSIDES below + T-houses.js), 3 dressing (in: THE VILLAGE'S GROUND), 4 atmosphere (in: chimney smoke, the night look), 5 polish.
    PEOPLE WAIT MONDO: only the two gate knights stand here; who lives in the village is his call (docs/notes/npc-system.md).
-   NEEDS A MODEL (nothing on R2, checked against MODEL_LIST.md): an anvil, a hand cart, a fence run with a gate, a floor carpet.
+   THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md): every item of the
+   needs-a-model list is IN, and what stood in for it is out: `anvil` (the Smithy's drawn block), `forge` + `bellows` + `grindstone` + `ore_heap`
+   (the drawn brick hearth, hood and coal bin), `water_trough` (two drawn troughs), `wooden_barrel` (every drawn barrel: halls, houses in and out),
+   `trestle_table` (the Inn's drawn tables; `span` 2.45, the model is giant as made), `floor_runner` (the Chapel's drawn runner; `span` 4.1, four
+   lengths), `market_stall` (four of the eight stalls; the other four stay drawn for their goods), `lantern_post` (the drawn post and arm with the
+   hanging lantern), `fence_with_gate` (the green is a pen), `hand_cart`, `hay_cart`, `hay_rack`, `hay_bale`, `hitching_rail` (the old key), `kennel`,
+   `firewood_stack`, `axe_chopping_block`, `outhouse`, `plough`, `milestone`, `beehive`, `wheelbarrow`, `sunflowers`, `pitchfork`, `woven_baskets`,
+   `weeping_angel`, `raven_perch`, `antler_trophy`, `fur_rug`, `pig`, `goat`, `rooster`. Tried and left out: `beer_taps` (chrome taps and pint
+   glasses: modern), `wild_flowers` (a dark clump under this light), `dartboard` (did not show on the wall). NEEDS A MODEL now: nothing.
+   Still drawn (no model in the list): the plank benches on North Street, the houses' beds, tables and stools, the garden beds' cabbages, the Inn's bar.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
    plot Pxx-yy = squares xx*12.. , yy*12.. . gx(k) = a square's west / north edge in metres, gc(k) = its middle. feat(row) writes a terrain row,
@@ -133,21 +142,21 @@ const hall = (B, id, o) => {
         /* a wagon-wheel light hung on a chain: the wheel is drawn, the candles are the catalogue's ring (its light is real) */
         wheel: (x, z, y) => { a.cyl(x, y, z, 1.0, 0.08, WOODD, 0x7a5a3c, { seg: 14, glow: 0.3, gain: 1.4 }); a.box(x, y + 0.08, z, 0.05, o.top - y - 0.08, 0.05, null, 0x2a2c30);
             inside(B, 'candle_ring', r3(x), r3(z), { face: 0, y: r3(y + 0.1) }); },
-        tankards: (x, z, n, step) => a.cyl(x, 0.81, z, 0.05, 0.14, null, PEWTER, { seg: 8, n, step: [step, 0, 0] }),
+        tankards: (x, z, n, step, y) => a.cyl(x, y || 0.81, z, 0.05, 0.14, null, PEWTER, { seg: 8, n, step: [step, 0, 0] }),
     };
     return H;
 };
 
 /* THE INN: the bar across the back (the kegs and the bottle shelves behind it), the hearth on the right wall under the chimney, two long
    trestle tables, two wagon-wheel lights. Six squares by five; the door's column (i = 2) and the row before the bar are the walkways. */
-{ const H = hall(INN, 'inn', { top: 4.4 }), a = H.a, W2 = H.W2, D2 = H.D2;
+{ const H = hall(INN, 'inn', { top: 4.4 }), a = H.a, W2 = H.W2, D2 = H.D2, TT = 0.86;
     H.coat(STUCCO, 0xe6dcc4, 4.4, { gain: 1.5, glow: 0.12 }); H.coat(WOODK, 0x8a6a48, 1.2, { glow: 0.16, gain: 1.4 }, 0.336); H.ceiling(WOODK, 0xb89468, 0.65, 0x5a4230, [-5.25, 1.75]);
     for (const x of [-8.75, -5.25, 5.25, 8.75]) H.light('f', x, 1.4, 1.0, 1.2, 0xf0d890, 0.9, WOODD, TIMBER);
     /* the bar on squares (1..3, 1) */
     a.box(-1.75, 0, -3.5, 10.5, 1.05, 0.8, WOODK, 0x8a5e3a, { gain: 1.4, glow: 0.12 }); a.box(-1.75, 1.05, -3.5, 10.7, 0.08, 1.0, WOODK, 0xb88c58, { gain: 1.5, glow: 0.15 }); a.box(-1.75, 0.18, -3.05, 10.5, 0.06, 0.08, null, 0x8a6a30); H.block(-7, -3.5, 3.5, -3.5, 0.9, 1.1);
     H.tankards(-5.6, -3.4, 5, 0.22); H.tankards(0.8, -3.6, 4, 0.2); a.cyl(-0.6, 1.13, -3.5, 0.3, 0.55, WOODK, 0x8a5a34, { seg: 10 }); a.box(2.6, 1.13, -3.5, 0.7, 0.04, 0.42, WOODK, 0x9a6a3c); for (const q of [-0.2, 0.02, 0.24]) a.box(2.6 + q, 1.17, -3.5, 0.18, 0.12, 0.3, null, 0xc89a58);
     /* behind it: four kegs on the floor, three shelves of bottles on the back wall */
-    for (const x of [-6.6, -5.6, 1.6, 2.6]) H.barrel(x, -7.85, 0.45, 1.1);
+    for (const x of [-6.6, -5.6, 1.6, 2.6]) H.put('wooden_barrel', x, -7.85, 0);   // THE MODEL PASS: the kegs are the wish list's oak barrel (were drawn cylinders)
     for (const y of [1.5, 2.1, 2.7]) { a.box(-1.75, y, -D2 + 0.55, 6.4, 0.05, 0.36, WOODK, 0x7a5632); a.cyl(-4.6, y + 0.05, -D2 + 0.55, 0.05, 0.28, null, [0x3a6a3a, 0x7a4a24, 0xb08a30][Math.round(y * 10) % 3], { seg: 6, n: 20, step: [0.3, 0, 0], glow: 0.08 }); }
     a.box(-4.95, 1.2, -D2 + 0.55, 0.08, 1.9, 0.36, WOODD, 0x5a4230, { n: 2, step: [6.4, 0, 0] });
     /* the kitchen corner (the back right squares) */
@@ -157,16 +166,21 @@ const hall = (B, id, o) => {
     a.box(W2 - 0.85, 2.0, -3.5, 1.2, 0.5, 3.1, WALL, STONE3); a.box(W2 - 0.75, 2.5, -3.5, 0.85, 1.9, 2.4, WALL, STONE); a.box(W2 - 0.4, 0, -3.5, 0.12, 2.0, 2.0, null, 0x1c1614); a.box(W2 - 0.85, 0, -3.5, 1.3, 0.1, 3.0, WALL, STONE2);
     H.put('hearth_fire', W2 - 0.95, -3.5, 270, { y: 0.1 }); H.block(W2 - 0.85, -5.0, W2 - 0.85, -2.0, 1.1, 2.0); H.put('dog', 6.3, -1.5, 300); H.put('meshy_burlap_sack', 9.2, -0.9, 0); H.put('psx_wooden_crate_2', 9.3, 0.4, 0);
     /* the tables on squares (0..1, 3) and (4..5, 3) */
-    for (const s of [-1, 1]) { H.trestle(s * 7, 3.5, 5.6); H.tankards(s * 7 - 1.6, 3.3, 3, 0.9); H.on('candle', s * 7, 3.5, 0.82, 0); a.cyl(s * 7 + 1.2, 0.81, 3.7, 0.16, 0.02, null, PEWTER, { seg: 10 }); a.box(s * 7 + 1.2, 0.83, 3.7, 0.2, 0.08, 0.14, null, 0xc89a58); H.wheel(s * 5.25, 1.75, 3.2); }
+    /* THE MODEL PASS: the tables are the wish list's `trestle_table` (a table with its two benches), one a square, two a side; the drawn table
+       (`hall().trestle`) is out of the Inn. As made the model's top is 1.22 m up and its seats 0.75 (measured in the file): `span` 2.45 brings
+       them to 0.86 and 0.52. TT = the table top. */
+    for (const s of [-1, 1]) { for (const x of [5.25, 8.75]) H.put('trestle_table', s * x, 3.5, 0, { span: 2.45 }); H.tankards(s * 7 - 1.6, 3.3, 3, 0.9, TT); H.on('candle', s * 7, 3.5, TT, 0); a.cyl(s * 7 + 1.2, TT, 3.7, 0.16, 0.02, null, PEWTER, { seg: 10 }); a.box(s * 7 + 1.2, TT + 0.02, 3.7, 0.2, 0.08, 0.14, null, 0xc89a58); H.wheel(s * 5.25, 1.75, 3.2); }
     /* THE MODEL LIST PASS (2026-11-16, mondo's rule "the model list first"): pieces the game already had and the first passes missed.
        The minstrels' corner by the door (the orchestral pack's harp, drum, a fiddle left on the table, a whistle), plates, a candelabra. */
-    H.put('instrument_harp', -9.2, 6.7, 120); H.put('instrument_drum', -8.1, 7.7, 0); H.on('instrument_violin_lying', -8.3, 3.45, 0.82, 30); H.on('instrument_whistle', -5.6, 3.6, 0.82, 80);
-    for (const q of [[-6.4, 3.3], [-7.6, 3.75], [6.0, 3.3], [8.2, 3.7]]) H.on('psx_plate_mp_1', q[0], q[1], 0.82, 0); H.put('candelabra', 4.5, -3.5, 0);
-    H.torch('l', -3.5, 2.2); H.torch('r', 3.5, 2.2); H.torch('f', 5.25 + 1.75, 2.9); H.barrel(-9.5, 7.9); H.barrel(-8.6, 8.0, 0.36, 0.9); H.put('meshy_burlap_sack', 9.3, 7.8, 40);
+    H.put('instrument_harp', -9.2, 6.7, 120); H.put('instrument_drum', -8.1, 7.7, 0); H.on('instrument_violin_lying', -8.3, 3.45, TT, 30); H.on('instrument_whistle', -5.6, 3.6, TT, 80);
+    for (const q of [[-6.4, 3.3], [-7.6, 3.75], [6.0, 3.3], [8.2, 3.7]]) H.on('psx_plate_mp_1', q[0], q[1], TT, 0); H.put('candelabra', 4.5, -3.5, 0);
+    H.torch('l', -3.5, 2.2); H.torch('r', 3.5, 2.2); H.torch('f', 5.25 + 1.75, 2.9); H.put('wooden_barrel', -9.6, 7.9, 0); H.put('wooden_barrel', -8.7, 8.1, 40); H.put('meshy_burlap_sack', 9.3, 7.8, 40);
+    /* THE MODEL PASS: antlers on the chimney breast, a bear skin before the fire */
+    H.on('antler_trophy', W2 - 1.32, -3.5, 2.75, 270); H.put('fur_rug', 7.4, -3.4, 90, { y: 0.04 });
 }
 /* THE CHAPEL: the nave (twelve pews either side of the aisle), the chancel on a marble step (the altar, the gilt cross, the east window, two
    angels), the pulpit, the lancets seen from inside. Five squares by six; the aisle is the door's column (i = 2). */
-{ const H = hall(CHAPEL, 'chapel', { top: 6.45 }), a = H.a, W2 = H.W2, D2 = H.D2, d = H.d, ROSE = 0xd8a8e0, CRIM = 0x8a1a26;
+{ const H = hall(CHAPEL, 'chapel', { top: 6.45 }), a = H.a, W2 = H.W2, D2 = H.D2, d = H.d, ROSE = 0xd8a8e0;
     H.coat(WALL, STONE3, 6.45, { gain: 1.45, glow: 0.1 }); H.ceiling(WOODK, 0xa88458, 0.6, 0x4a3626, [-7, 0, 7]);
     a.box(0, 3.3, -D2 + 0.4, 2 * W2 - 0.7, 0.18, 0.16, WALL, STONE2); for (const s of [-1, 1]) a.box(s * (W2 - 0.4), 5.7, 0, 0.16, 0.18, d - 0.7, WALL, STONE2);
     for (let k = 0; k < 3; k++) for (const wl of ['l', 'r']) H.light(wl, -D2 + 4.1 + k * (d - 4.4) / 3, 2.2, 1.1, 3.4, ROSE, 1.0, WALL, STONE2);
@@ -179,7 +193,7 @@ const hall = (B, id, o) => {
     /* THE MODEL LIST PASS: the confessional in the front corner, a candelabra either side of the altar, a tapestry either side of the door */
     H.put('confessional_booth', 7, 8.75, 270); for (const s of [-1, 1]) { H.put('candelabra', s * 1.9, -7.2, 0); H.put('holy_tapestry', s * 5.6, D2 - 0.45, 0, { h: 3, mount: 2.3 }); }
     /* the aisle's runner: crimson, a gold edge */
-    a.box(0, 0.036, 1.5, 1.7, 0.012, 16.4, STUCCO, CRIM, { sides: false, gain: 1.6, glow: 0.12 }); for (const s of [-1, 1]) a.box(s * 0.92, 0.036, 1.5, 0.14, 0.018, 16.4, GILT, 0xffffff, { sides: false, gain: 1.3 });
+    for (let k = 0; k < 4; k++) H.put('floor_runner', 0, -4.65 + k * 4.1, 90, { span: 4.1, y: 0.04 });   // THE MODEL PASS: the wish list's woven runner, four lengths end to end (was a drawn crimson strip)
     for (const j of [2, 3, 4]) for (const i of [0, 1, 3, 4]) { const q = H.sq(i, j); H.put('catholic_pew', q[0], q[1], 0); }
     for (const z of [-3.6, 1.9]) { H.torch('l', z, 2.4); H.torch('r', z, 2.4); }
     H.put('stone_urn', 3.3, 9.0, 0); H.put('hw_candles', -3.2, 9.4, 0); H.put('hw_candles', -1.2, -7.4, 0); H.put('hw_candles', 1.2, -7.4, 0);
@@ -190,24 +204,24 @@ const hall = (B, id, o) => {
 { const H = hall(SMITHY, 'smithy', { top: 4.7 }), a = H.a, W2 = H.W2, D2 = H.D2;
     H.coat(WOODK, 0xb08a5c, 4.7, { gain: 1.5, glow: 0.2 }); H.ceiling(WOODK, 0x9a7650, 0.55, 0x4a3626, [0]);
     /* the forge on square (0, 0) */
-    a.box(-7, 0, -7, 2.9, 0.95, 2.9, 'bricks_2', 0xb86a54, { gain: 1.3, glow: 0.1 }); a.box(-7, 0.95, -7, 2.1, 0.08, 2.1, WALL, 0x2a2422); a.box(-7, 1.03, -7, 1.3, 0.04, 1.3, null, 0xff7a20, { glow: 1 });
-    a.box(-7.2, 2.7, -7.5, 2.9, 2.0, 1.9, 'bricks_2', 0xb86a54, { under: true, gain: 1.3, glow: 0.1 }); a.box(-7.2, 2.45, -7.5, 3.1, 0.25, 2.1, WALL, STONE2, { under: true, gain: 1.3 }); a.box(-7.2, 0, -8.15, 2.9, 2.45, 0.6, 'bricks_2', 0xb86a54, { gain: 1.3, glow: 0.1 }); H.on('hearth_fire', -7, -7, 1.05, 0);   // the hood stands on its back wall H.block(-8.45, -7, -5.55, -7, 2.9, 0.95);
-    /* the quench trough and the water butt beside it (decor, by the wall) */
-    a.box(-3.6, 0, -7.95, 1.7, 0.7, 0.7, WOODK, 0x6a4a30); a.box(-3.6, 0.62, -7.95, 1.5, 0.06, 0.5, null, 0x3a5a7a, { glow: 0.12, sides: false }); H.barrel(-1.9, -8.0);
-    /* the anvil's block on square (1, 1): an oak stump, iron-bound */
-    a.cyl(-3.5, 0, -3.5, 0.42, 0.6, WOODD, 0x7a5a3c, { seg: 10 }); a.cyl(-3.5, 0.4, -3.5, 0.44, 0.07, null, 0x3a3230, { seg: 10 }); H.block(-3.5, -3.9, -3.5, -3.1, 0.8, 0.6);
+    H.put('forge', -7, -7, 0);   // THE MODEL PASS: the wish list's coal forge (was a drawn brick hearth and hood)
+    H.put('bellows', -4.9, -7.3, 180); H.on('hearth_fire', -6.5, -7, 0.9, 0, { noLight: true });
+    /* the quench trough and the water butt beside it (the wish list's `water_trough` and `wooden_barrel`; by the wall) */
+    H.put('water_trough', -2.6, -8.0, 0); H.put('wooden_barrel', -0.9, -8.0, 0);
+    /* THE MODEL PASS: the anvil on its stump on square (1, 1), the grindstone on square (3, 1) */
+    H.put('anvil', -3.5, -3.5, 0); H.put('grindstone', 3.5, -3.5, 0);
     /* the bench along the right wall on squares (4, 1..2) */
     a.box(7.7, 0.85, -1.75, 1.1, 0.1, 6.4, WOODK, 0x8a6238); for (const z of [-4.6, -1.75, 1.1]) a.box(7.7, 0, z, 0.9, 0.85, 0.14, WOODD, 0x5a4230); a.box(7.7, 0.3, -1.75, 0.9, 0.06, 6.0, WOODK, 0x6a4a30); H.block(7.7, -4.95, 7.7, 1.45, 1.1, 0.95);
-    H.on('meshy_tongs', -5.95, -6.3, 1.0, 40); H.on('spell_shield', 7.75, 0.6, 0.96, 250); H.put('spell_shield', 5.6, -7.9, 180); H.put('sword', 6.0, -7.6, 200);   // THE MODEL LIST PASS: the smith's tongs on the forge, shields and a sword by the stands
+    H.on('meshy_tongs', 7.7, -2.9, 0.96, 40); H.on('spell_shield', 7.75, 0.6, 0.96, 250); H.put('spell_shield', 5.6, -7.9, 180); H.put('sword', 6.0, -7.6, 200);   // THE MODEL LIST PASS: the smith's tongs on the forge, shields and a sword by the stands
     H.on('psx_sword_mp_1', 7.7, -3.6, 0.96, 20); H.on('psx_sword_mp_1', 7.6, -0.4, 0.96, 160); a.box(7.9, 0.95, -2.2, 0.5, 0.3, 0.4, WOODK, 0x6a4a30);
     for (const y of [1.7, 2.3]) a.box(W2 - 0.5, y, -1.75, 0.3, 0.05, 5.2, WOODK, 0x7a5632);
     a.box(W2 - 0.5, 1.75, -3.4, 0.2, 0.34, 0.2, null, 0x3a3230, { n: 4, step: [0, 0, 0.9] }); a.box(W2 - 0.5, 2.35, -3.0, 0.16, 0.2, 0.5, null, 0x6a6c70, { n: 3, step: [0, 0, 1.2] });
     H.put('armour_stand', 3.5, -7, 180); H.put('armour_stand', 7, -7, 180); H.put('dojo_weapon_rack', 7.75, 5.25, 270); H.put('sea_chest', -7, 3.5, 90);
-    H.put('psx_wooden_crate_2', -7.7, 7.6, 0); H.put('psx_wooden_crate_1', -6.4, 7.9, 30); H.put('meshy_burlap_sack', -7.9, 0.4, 0); H.put('meshy_burlap_sack', -7.3, -0.5, 60); H.put('wooden_bucket', -4.9, -7.7, 0);
+    H.put('psx_wooden_crate_2', -7.7, 7.6, 0); H.put('psx_wooden_crate_1', -6.4, 7.9, 30); H.put('meshy_burlap_sack', -7.9, 0.4, 0); H.put('meshy_burlap_sack', -7.3, -0.5, 60); H.put('wooden_bucket', -5.4, -5.6, 0);
     /* the tool wall (back wall, right of the forge): two rails, hammers and tongs hung on them; the coal heap; a horse in for shoeing */
     for (const y of [1.6, 2.2]) a.box(1.75, y, -D2 + 0.42, 6.0, 0.08, 0.08, WOODD, 0x5a4230, { gain: 1.4 });
     for (let k = 0; k < 6; k++) { const x = -0.9 + k * 1.05; a.box(x, 1.2 + (k % 2) * 0.6, -D2 + 0.48, 0.05, 0.46, 0.05, WOODK, 0x8a6238); a.box(x, 1.56 + (k % 2) * 0.6, -D2 + 0.48, k % 3 ? 0.26 : 0.16, 0.1, 0.1, null, 0x4a4c50); }
-    a.box(-7.75, 0, -3.0, 1.3, 0.75, 2.2, WOODK, 0x6a4a30, { gain: 1.3, top: false }); a.box(-7.75, 0.62, -3.0, 1.15, 0.06, 2.05, WALL, 0x1e1c1c, { sides: false });   // the coal bin by the forge (a plain dome read as grey plastic)
+    H.put('ore_heap', -7, -3.5, 0);   // THE MODEL PASS: the coal and ore heap by the forge (was a drawn coal bin)
     H.put('horse_black', 3.5, 3.5, 100); H.put('hw_straw', 0.6, 6.9, 20); H.put('hw_straw', 6.9, 7.6, 80); H.put('wooden_bucket', 2.2, 4.6, 0);
     H.torch('r', 3.4, 2.2); H.torch('l', 4.5, 2.2); H.torch('l', -3.4, 2.2); H.torch('f', 5.25, 2.6);
 }
@@ -239,8 +253,10 @@ const stall = (kx, ky, kind) => { const x = gc(kx), z = gc(ky), col = STRIPE[kin
     else if (kind % 3 === 1) { S.box(x, 0.93, z + 0.6, 2.4, 0.04, 0.5, WOODK, 0x9a6a3c, SW); for (let k = 0; k < 7; k++) S.box(x - 1.0 + k * 0.33, 0.97, z + 0.6, 0.2, 0.13, 0.34, STUCCO, 0xc89a58, { gain: 1.5 }); for (let k = 0; k < 4; k++) S.cyl(x - 0.9 + k * 0.6, 1.31, z - 0.85, 0.11, 0.24, STUCCO, 0xa8683a, { seg: 8, gain: 1.4 }); }   // loaves, jars on the shelf
     else { for (let k = 0; k < 4; k++) S.box(x - 0.95 + k * 0.62, 0.93, z + 0.6, 0.5, 0.16 + (k % 2) * 0.1, 0.6, STUCCO, [0x7a3a2a, 0x3a5a7a, 0xc8a850, 0x4a6a3a][(kx + k) % 4], { gain: 1.6 }); for (let k = 0; k < 3; k++) S.cyl(x - 0.7 + k * 0.7, 1.31, z - 0.85, 0.13, 0.3, STUCCO, 0x8a8c90, { seg: 8, gain: 1.4 }); }   // bolts of cloth, pewter jugs
     blockW(x - 1.4, z + 0.1, x + 1.4, z + 0.1, 2.0, 0.9); };
-[32, 34, 36, 38, 58, 60, 62, 64].forEach((x, k) => stall(x, 60, k)); put('ancient_well', 40, 60, {}, MK); put('stocks', 56, 60, { face: 0 }, MK);
+/* THE MODEL PASS: every second stall is the wish list's `market_stall` (a cloth awning on poles, pots and rugs: the traders from far off); the drawn ones keep the bread, the greens and the cloth */
+[32, 36, 60, 64].forEach((x, k) => stall(x, 60, [0, 1, 6, 3][k])); [34, 38, 58, 62].forEach(x => put('market_stall', x, 60, { face: 0 }, MK)); put('ancient_well', 40, 60, {}, MK); put('stocks', 56, 60, { face: 0 }, MK);
 put('bread_rack', 33, 59, { face: 180 }, MK); put('bread_rack', 63, 59, { face: 180 }, MK); put('psx_wooden_crate_2', 37, 59, {}, MK); put('psx_wooden_crate_2', 59, 59, {}, MK); dec('meshy_burlap_sack', 35, 59, {}, MK); dec('meshy_burlap_sack', 61, 59, {}, MK);
+put('hand_cart', 65, 59, { face: 20 }, MK); put('wooden_barrel', 31, 59, {}, MK); put('wooden_barrel', 52, 59, {}, MK); dec('woven_baskets', 39, 59, {}, MK); dec('woven_baskets', 57, 59, {}, MK);   // THE MODEL PASS
 [[31, 58], [43, 58], [52, 58], [64, 58]].forEach(q => put('cave_torch', q[0], q[1], {}, MK));   // a standing torch at each corner of the two market squares
 /* a flagged lane: a strip of the paths' cobbles from (x0, y0) to (x1, y1) in squares' edges */
 const lane = (x0, y0, x1, y1, wd) => { const ax = ctx.gx(x0), az = ctx.gx(y0), bx = ctx.gx(x1), bz = ctx.gx(y1), ns = Math.abs(bz - az) > Math.abs(bx - ax);
@@ -251,17 +267,23 @@ lane(36, 64, 36, 69.5, 1.75); lane(32, 69.5, 36.9, 69.5, 1.75); lane(60, 64, 60,
 [[24, 66], [24, 68], [24, 70], [30, 66], [31, 68], [30, 70], [31, 71]].forEach(q => dec('cross', q[0], q[1]));
 [[22, 67, 'psxg_tombstone_1'], [23, 69, 'psxg_tombstone_2'], [22, 71, 'psxg_tombstone_3'], [31, 66, 'psxg_tombstone_2'], [31, 70, 'psxg_tombstone_1'], [23, 71, 'hw_grave']].forEach(q => put(q[2], q[0], q[1], { face: 0 }));
 put('hw_coffin', 22, 65, { face: 90 }); put('hw_shovel', 23, 66, { face: 40 }); put('psxg_iron_gate_1', 24, 64, { face: 0 }); dec('crow', 23, 67); dec('crow', 31, 67);   // THE MODEL LIST PASS: a coffin waiting, the sexton's shovel, the gate, crows
-put('armour_stand', 65, 66, { face: 270 }); put('brazier', 65, 68);
+put('armour_stand', 65, 66, { face: 270 }); put('brazier', 65, 68); put('firewood_stack', 65, 67, { face: 90 }); put('plough', 72, 66, { face: 20 }); put('wooden_barrel', 72, 65);   // THE MODEL PASS: the Smithy's wood, a plough in for mending
+put('weeping_angel', 30, 68, { face: 90 }); dec('raven_perch', 23, 70);
 /* the green behind the castle hill: the animals, hay, a water trough */
 put('cow', 63, 31, { face: 60 }); dec('chicken', 62, 30); dec('chicken', 64, 30); dec('chicken', 65, 31); dec('decor_sheep', 61, 31); dec('decor_sheep', 66, 30);
 put('hw_straw', 62, 31, { face: 20 }); put('hw_straw', 64, 31, { face: 100 }); dec('rabbit', 61, 30); dec('rabbit', 63, 30); dec('crow', 65, 30);
-{ const x = gc(65) + 0.9, z = gc(30) - 0.9; S.box(x, 0, z, 1.9, 0.55, 0.7, WOODK, SWT, SW); S.box(x, 0.48, z, 1.7, 0.05, 0.5, STUCCO, 0x3a5a7a, { sides: false, glow: 0.12 }); }
+/* THE MODEL PASS: the green is a pen now: the wish list's fence (each length has a gate) between the two houses, the trough, a hay rack, a pig, a goat, a rooster; a hay cart on the verge */
+props.push({ key: 'water_trough', x: r2(gc(65) + 0.9), z: r2(gc(30) - 0.6), face: 0 }, { key: 'pitchfork', x: r2(gc(62) + 1.1), z: r2(gc(31) + 0.5), face: 30 });
+for (let x = 61; x <= 68; x++) put('fence_with_gate', x, 29, { face: 0 }); put('fence_with_gate', 60, 31, { face: 90 });
+put('pig', 66, 31, { face: 250 }); put('goat', 68, 31, { face: 300 }); dec('rooster', 67, 31); put('hay_rack', 68, 30, { face: 90 }); put('hay_cart', 63, 28, { face: 0 }); dec('hay_bale', 65, 28);
 /* the Inn's yard: the horse, a covered wagon, sacks */
 put('horse_brown', 45, 66, { face: 90 }); dec('meshy_burlap_sack', 45, 68); put('covered_wagon', 45, 69, { face: 0 });
+put('hitching_rail', 45, 65, { face: 0 }); put('water_trough', 46, 66, { face: 90 }); put('hay_rack', 46, 68, { face: 90 }); put('kennel', 44, 65, { face: 0 }); put('firewood_stack', 46, 70, { face: 0 }); put('axe_chopping_block', 45, 71); put('outhouse', 52, 71, { face: 0 });   // THE MODEL PASS: the rail the horse is tied to, its trough and rack, the dog's kennel, the Inn's firewood, the privy behind it
 /* the gates: braziers and the two knights at the Drawbridge gate, a standing torch either side of the other three inside the wall, signposts */
 put('brazier', 41, 70); put('brazier', 44, 70); put('signpost', 46, 24); put('signpost', 75, 46); put('signpost', 20, 46); put('signpost', 44, 61, {}, MK);
 [[46, 23], [49, 23], [21, 46], [21, 49], [74, 46], [74, 49]].forEach(q => put('cave_torch', q[0], q[1]));
 native('knight', 41, 71, 90); native('knight', 44, 71, 270);
+put('milestone', 49, 24); put('milestone', 75, 49); put('milestone', 20, 49); put('firewood_stack', 20, 32, { face: 0 }); put('axe_chopping_block', 19, 32); put('firewood_stack', 76, 32, { face: 0 });   // THE MODEL PASS: a milestone inside each gate, the cottagers' wood
 [[45, 30], [50, 30], [37, 31], [59, 31], [29, 30], [67, 30], [27, 46], [69, 46], [27, 61], [69, 61]].forEach((q, i) => tree(i % 2 ? 'tree_4' : 'tree_2', r2(5 + (i % 3) * 0.5), q[0], q[1], 0.6));
 /* a plank bench on North Street, under the trees */
 [[46, 29], [51, 29]].forEach(q => { const x = gc(q[0]), z = gc(q[1]) + 0.9; S.box(x, 0.42, z, 1.9, 0.07, 0.4, WOODK, SWT, SW); for (const s of [-1, 1]) S.box(x + s * 0.8, 0, z, 0.1, 0.42, 0.36, WOODK, SWT, SW); });
@@ -271,8 +293,9 @@ ctx.HOUSES.forEach(h => { if (h.y0 !== 23 || (h.x1 - h.x0) < 3) return; const x 
 /* THE MODEL LIST PASS: THE STREET LANTERNS. `meshy_hanging_lantern` was in the game all along (the first passes listed a street lantern
    as "needs a model"): each hangs from a drawn post and arm on a grass square beside its street; a lit core (`glow`) for the night. */
 [[30, 25], [40, 25], [56, 25], [66, 25], [31, 64], [40, 64], [54, 64], [66, 64], [24, 34], [24, 40], [24, 55], [71, 34], [71, 40], [71, 55]].forEach(q => { const x = gc(q[0]), z = gc(q[1]);
-    put('meshy_hanging_lantern', q[0], q[1], { y: 2.35 }); S.box(x + 0.5, 0, z, 0.14, 3.0, 0.14, WOODK, SWT, SW); S.box(x + 0.22, 2.9, z, 0.7, 0.1, 0.1, WOODK, SWT, SW); S.box(x, 2.5, z, 0.12, 0.2, 0.12, null, 0xffd890, { glow: 1 }); });
+    const f = q[1] < 48 ? 1 : -1; put('lantern_post', q[0], q[1], { face: f > 0 ? 0 : 180 }); S.cyl(gc(q[0]) + f * 0.234, 1.39, gc(q[1]), 0.1, 0.16, null, 0xffd890, { seg: 8, glow: 1 }); });   // the lit glass: the model has no light of its own, so a lit sleeve stands round its glass (1.39 to 1.55 m up, 0.234 m off the row's middle, 0.095 m in radius: measured in the file)   // THE MODEL PASS: the wish list's `lantern_post` (was the hanging lantern on a drawn post and arm)
 /* the kitchen gardens' scarecrow and pumpkins; a dog and a cat in the streets */
+put('beehive', 35, 22); put('beehive', 40, 22); dec('wheelbarrow', 45, 22); put('sunflowers', 55, 22); put('sunflowers', 65, 22);   // THE MODEL PASS
 put('hw_scarecrow', 28, 22, { face: 180 }); dec('hw_pumpkin', 37, 22); dec('hw_pumpkin_2', 52, 22); dec('hw_pumpkin_3', 62, 22); dec('dog', 45, 64); dec('cat', 55, 25);
 /* a torch either side of the three halls' doors (outside, on the front wall) */
 [CHAPEL, INN, SMITHY].forEach(B => { for (const s of [-1, 1]) inside(B, 'wall_torch', r3(B.door.lx + s * (B.door.cw / 2 + 0.9)), r3(B.fd / 2 + 0.28), { face: 180, y: 2.1, floor: true }); });
