@@ -12692,6 +12692,14 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
     on each stepping island (a piano, a rocking chair, a school desk, a star projector). The Carousel: the ticket booth, the popcorn cart, the high striker.
     The Impossible Stair: three doors standing alone, an hourglass. The Still Water: a bust looking at itself. Owl, bird cages, the astronomical clock, an orrery.
   - Frame rate (same view): 1.35 (66 more props; the two counts of pass 1 were 1.60 and 1.65, the first build 1.35: the count wanders by about 0.3).
+- **Pass 3, atmosphere + people (live 11-16)**. Seen on screen (`proof/S_pass3_*.jpg`).
+  - A `globe_lamp` where every island's walks meet (it glows; no real light, for the frame rate), twelve `mushroom_lamp` along the walks, eight more clouds
+    hung in the gaps.
+  - The air by island (`airZones`): cyan fireflies over the temple and the Still Water, pink spores over the coral garden, a slow white dust over the Far
+    Shore; the realm's violet motes everywhere else.
+  - Seven more people, all units whose own biome is the astral (no lines yet: no invented words): a rabbit and a chess piece at the Mirror, a mushroom girl
+    at the Hollow Tree, a cosmic wraith at the Edge, a fairy at the Still Water, a telepath at the Impossible Stair, a watcher at the Closet. 17 in the Sea.
+  - Frame rate (same view, two counts): 1.40 and 1.25.
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
