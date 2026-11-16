@@ -50715,6 +50715,255 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['nrShhh']            = { impact: 'nbShhh_impact' };
     SPELL_MAP['nrSilentTreatment'] = { impact: 'nbSilentTreatment_impact' };
 
+    /* ════ SEWER GATOR (2026-11-16 polish, the new races) — black water, bone teeth, yellow eyes just above the surface ════
+       Submerge, Drag Under (id nrDeathRoll) and Tail Sweep shipped on the water element's stock look (a buff glow, the plain
+       water hit, the plain cross); each gets its own piece here, same hooks as the nb* batch above (EFFECTS `pzSig` →
+       _PZ_SIGS, every intent through fire(), which online.js relays, so the guest draws the same piece; RULE #2). The
+       splash takes the colour of the liquid under it (water / radioactive sludge / black ooze). Submerge's closing ring is
+       the one team-coloured mark (THE RIOT PASS phase C seat colours: the viewer's own side cyan-blue, the other side
+       pink-orange), so an enemy reads "THEIR gator just went under HERE" at a glance. Nothing full-screen; everything sits
+       round the body and fades, so the caster, the target, the hit and the number read. Visuals only. */
+    var _GT = { hide: 0x2a3a22, belly: 0x5a6a3a, bone: 0xe8dcc0, eye: 0xffd23a, gum: 0x5a1414, chain: 0x8a8a90,
+        rimAlly: 0x1deeff, rimEnemy: 0xfd1674 };
+    /* the liquid under a square: { c: body, foam: crest } */
+    function _gtLiquid(tx, ty) {
+        var t = null;
+        try { if (!_VS.on && typeof getTerrainAt === 'function') t = getTerrainAt(Math.round(tx), Math.round(ty)); } catch (e) {}
+        if (t === 'sludge') return { c: 0x8ae82a, foam: 0xe8ffb0, key: 'sludge' };
+        if (t === 'swamp' || t === 'oil') return { c: 0x2a2633, foam: 0x8a8494, key: 'ooze' };
+        if (t === 'deep_water') return { c: 0x1a6a9a, foam: 0xd8fbff, key: 'deep' };
+        return { c: 0x2ab8c8, foam: 0xd8fbff, key: 'water' };
+    }
+    /* the viewer-seat colour of whoever stands on the square (own side cyan-blue, the other side pink-orange) */
+    function _gtSeatColor(tx, ty) {
+        try {
+            if (_VS.on || typeof state === 'undefined' || !state.units) return _GT.rimAlly;
+            var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1, u = null;
+            for (var i = 0; i < state.units.length; i++) { var c = state.units[i]; if (c && !c.dead && c.x === Math.round(tx) && c.y === Math.round(ty)) { u = c; break; } }
+            return (!u || u.player === vp) ? _GT.rimAlly : _GT.rimEnemy;
+        } catch (e) { return _GT.rimAlly; }
+    }
+    /* a crown of thrown liquid round a square: n drops out and up, then down */
+    function _gtSplash(F, L, n, o) {
+        o = o || {};
+        for (var i = 0; i < n; i++) {
+            var a = (i / n) * Math.PI * 2 + rn(-0.2, 0.2), sp = rn(o.v0 || 90, o.v1 || 170);
+            if (!_canSpawn()) return;
+            _spawn({ x: F.c.x + Math.cos(a) * F.ts * (o.r || 0.3), y: F.c.y + Math.sin(a) * F.ts * (o.r || 0.3), z: F.bz + (o.z || 6), mode: 'billboard', sprite: 'water-splash',
+                tint: i % 3 ? L.c : L.foam, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(o.vz0 || 140, o.vz1 || 260), gravity: 520, drag: 0.6,
+                ml: rn(420, 700), size0: rn(o.s0 || 10, o.s1 || 16), size1: 4, opacity0: 0.95, opacity1: 0 });
+        }
+    }
+    /* bubbles coming up off the square for ms */
+    function _gtBubbles(F, L, at, ms, every) {
+        _fxDelay(function () {
+            if (_suppressed()) return;
+            var t0 = 0, G = new THREE.Group();
+            _sigRunOwned(G, ms, function (el) {
+                if (el - t0 < (every || 70) || !_canSpawn()) return; t0 = el;
+                _spawn({ x: F.c.x + rn(-0.3, 0.3) * F.ts, y: F.c.y + rn(-0.3, 0.3) * F.ts, z: F.bz + 4, mode: 'billboard', sprite: 'bubble', tint: L.foam,
+                    vz: rn(30, 70), drag: 0.4, ml: rn(380, 620), size0: rn(4, 8), size1: rn(8, 12), opacity0: 0.85, opacity1: 0 });
+            });
+        }, at);
+    }
+
+    /* ── SUBMERGE: the splash crown, the black water closes round it in a turning ring (the seat colour on its rim),
+       two yellow eyes ride the surface a moment and slide under, bubbles after. The 'impact' intent is the SURFACING
+       (battle.js _gatorSurfaceFx): the water bursts open and the gator comes up in a spray. ── */
+    EFFECTS['gtSubmerge_aura'] = _pzDef('gtSubmerge', { aoeRadius: 0 });
+    EFFECTS['gtSurface_impact'] = _pzDef('gtSubmerge', { pzOwn: true });
+    _PZ_SIGS.gtSubmerge = function (p, id, intent) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, L = _gtLiquid(tx, ty), rim = _gtSeatColor(tx, ty);
+        if (intent === 'impact') {   // ── the surfacing
+            _gtSplash(F, L, 16, { r: 0.18, v0: 70, v1: 150, vz0: 220, vz1: 380, s0: 12, s1: 20 });
+            _sigShockRing3D(tx, ty, { color: L.foam, r0: ts * 0.15, r1: ts * 1.1, ms: 420, opacity: 0.7 });
+            var col = _pzMesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.32, 1, 14, 1, true), _pzGlow(L.foam), F.g, 0, 0, 0);
+            return _sigRunOwned(F.g, 700, function (el) {
+                var t = _sigEaseOutCubic(_sigClamp01(el / 260)), h = ts * (0.2 + 1.3 * t);
+                col.scale.set(1 + 0.6 * t, h, 1 + 0.6 * t); col.position.y = h / 2;
+                col.material.opacity = 0.55 * _pzEnv(el, 0, 60, 220, 700);
+            });
+        }
+        // ── the sink
+        _gtSplash(F, L, 22, { r: 0.34, v0: 70, v1: 140, vz0: 200, vz1: 340, s0: 14, s1: 24 });
+        _sigShockRing3D(tx, ty, { color: L.foam, r0: ts * 0.2, r1: ts * 0.9, ms: 380, opacity: 0.75 });
+        var water = _pzMesh(new THREE.RingGeometry(ts * 0.08, ts * 0.62, 40), _pzGlow(L.c, _sigTerrainTex(L.key === 'deep' ? 'deep_water.png' : 'water.png', 1, 1)), F.g, 0, ts * 0.06, 0);
+        water.rotation.x = -Math.PI / 2;
+        var edge = _pzMesh(new THREE.RingGeometry(ts * 0.6, ts * 0.68, 48), _pzGlow(rim), F.g, 0, ts * 0.065, 0);
+        edge.rotation.x = -Math.PI / 2;
+        var swirl = [];
+        for (var k = 0; k < 3; k++) {
+            var arc = _pzMesh(new THREE.RingGeometry(ts * (0.22 + k * 0.13), ts * (0.26 + k * 0.13), 24, 1, 0, Math.PI * 0.9), _pzGlow(L.foam), F.g, 0, ts * 0.07, 0);
+            arc.rotation.x = -Math.PI / 2; swirl.push(arc);
+        }
+        var eyes = [], cd = _nbCamDir(F);
+        for (var s = -1; s <= 1; s += 2) {
+            var e = _pzSprN(_GT.eye, ts * 0.085, _sigGlowTex(), F.g), gl = _pzSpr(_GT.eye, ts * 0.2, F.g);
+            eyes.push({ s: e, g: gl, side: s });
+        }
+        _gtBubbles(F, L, 700, 900, 80);
+        return _sigRunOwned(F.g, 1600, function (el) {
+            var close = _sigEaseInCubic(_sigClamp01((el - 120) / 900));
+            var vis = _pzEnv(el, 0, 120, 1050, 1500);
+            water.scale.setScalar(1 - 0.75 * close); water.rotation.z = el * 0.006;
+            water.material.opacity = 0.55 * vis;
+            edge.scale.setScalar(1 - 0.7 * close); edge.material.opacity = 0.9 * vis;
+            for (var j = 0; j < swirl.length; j++) {
+                swirl[j].rotation.z = el * (0.008 + j * 0.003); swirl[j].scale.setScalar(1 - 0.7 * close);
+                swirl[j].material.opacity = 0.6 * vis;
+            }
+            /* the eyes: up on the surface by the lens side of the square, then they slide under */
+            var under = _sigEaseInCubic(_sigClamp01((el - 900) / 380));
+            for (var q = 0; q < eyes.length; q++) {
+                var E = eyes[q];
+                E.s.position.set(cd.x * ts * 0.12 - cd.z * E.side * ts * 0.1, ts * (0.16 - 0.2 * under), cd.z * ts * 0.12 + cd.x * E.side * ts * 0.1);
+                E.g.position.copy(E.s.position);
+                E.s.material.opacity = _pzEnv(el, 300, 420, 900, 1280);
+                E.g.material.opacity = 0.45 * E.s.material.opacity;
+            }
+        });
+    };
+    SPELL_MAP['nrSubmerge'] = { aura: 'gtSubmerge_aura', impact: 'gtSurface_impact' };
+
+    /* ── DRAG UNDER (nrDeathRoll): the gator's own jaws (black hide, bone teeth) clamp; the roll throws blood AND water
+       round the body in a full turn. The drag itself is the board's displacement + its own deep-water splash. ── */
+    EFFECTS['gtDragUnder_impact'] = _pzDef('gtDragUnder', { layers: [
+        { count: 8, sprite: 'blood-fleck', ml: [380, 640], offsetXY: 10, z: [30, 56], vxRange: 150, vyRange: 150, vzRange: [20, 120], gravity: 320, drag: 0.9, size0: [4, 7], size1: 2, delayMs: 300 },
+    ] });
+    /* a croc snout: upper + lower jaw from a hinge at the group's origin out along +z, bone teeth on both rims, the
+       yellow eyes on the upper jaw's root. Returns { g, up, lo, mats } */
+    function _gtSnout(ts) {
+        var hide = _pzSolid(0x4a6a32, _sigTerrainTex('leather.png', 1, 1)), bone = _pzSolid(_GT.bone, _sigTerrainTex('enamel.png', 1, 1)),
+            maw = _pzSolid(_GT.gum, null), eye = _pzSolid(_GT.eye, null);
+        var g = new THREE.Group(), up = new THREE.Group(), lo = new THREE.Group(), LEN = ts * 0.78, W = ts * 0.26;
+        g.add(up); g.add(lo);
+        /* each jaw a tapered slab (a 4-sided frustum laid along z) with the dark maw inside */
+        function jaw(parent, sign) {
+            var slab = _pzMesh(new THREE.CylinderGeometry(W * 0.32, W * 0.62, LEN, 4, 1), hide, parent, 0, sign * ts * 0.035, LEN / 2);
+            slab.rotation.x = Math.PI / 2; slab.rotation.y = Math.PI / 4; slab.scale.set(1, 1, 0.32);
+            var inner = _pzMesh(new THREE.PlaneGeometry(W * 0.6, LEN * 0.9), maw, parent, 0, sign * ts * 0.005, LEN * 0.5);
+            inner.rotation.x = -Math.PI / 2;
+            for (var i = 0; i < 6; i++) {
+                var z = LEN * (0.18 + i * 0.13), half = W * (0.42 - i * 0.035);
+                for (var sd = -1; sd <= 1; sd += 2) {
+                    var t = _pzMesh(new THREE.ConeGeometry(ts * 0.022, ts * 0.075, 4), bone, parent, sd * half, -sign * ts * 0.02, z);
+                    t.rotation.x = sign > 0 ? Math.PI : 0;
+                }
+            }
+        }
+        jaw(up, 1); jaw(lo, -1);
+        for (var e = -1; e <= 1; e += 2) _pzMesh(new THREE.SphereGeometry(ts * 0.045, 8, 6), eye, up, e * W * 0.32, ts * 0.075, LEN * 0.12);
+        return { g: g, up: up, lo: lo, mats: [hide, bone, maw, eye] };
+    }
+    _PZ_SIGS.gtDragUnder = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var from = _pzFrom(tx, ty, p);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty);
+        var L = _gtLiquid(from.x, from.y);
+        if (L.key === 'water' && !_VS.on) { var L2 = _gtLiquid(tx, ty); if (L2.key !== 'water') L = L2; }
+        /* the hinge on the gator's side of the victim, the snout reaching through the body; the roll turns it round its own length */
+        var yawG = new THREE.Group(); yawG.rotation.y = Math.atan2(-ln.ux, -ln.uz);
+        yawG.position.set(ln.ux * ts * 0.5, ts * 0.5, ln.uz * ts * 0.5); F.g.add(yawG);
+        var roll = new THREE.Group(); yawG.add(roll);
+        var S = _gtSnout(ts); roll.add(S.g);
+        var ring = _pzMesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.03, 6, 36), _pzGlow(L.foam), F.g, 0, ts * 0.5, 0);
+        ring.rotation.order = 'YXZ'; ring.rotation.y = Math.atan2(ln.ux, ln.uz);
+        if (typeof _fx3BloodSpin === 'function') _fx3BloodSpin(tx, ty, 300, 900, 1);
+        _fxDelay(function () { if (!_suppressed() && _pzSeen(tx, ty)) _gtSplash(F, L, 10, { r: 0.35, v0: 110, v1: 190, vz0: 90, vz1: 180, z: ts * 0.3 }); }, 420);
+        var snapped = false;
+        return _sigRunOwned(F.g, 1350, function (el) {
+            /* open (0-200), snap (200-260), the roll (300-1100), let go + sink (1100-1350) */
+            var open = el < 200 ? _sigEaseOutCubic(el / 200) : 1 - _sigEaseInCubic(_sigClamp01((el - 200) / 60));
+            S.up.rotation.x = -0.75 * open; S.lo.rotation.x = 0.35 * open;
+            if (!snapped && el >= 260) {
+                snapped = true;
+                try { _sigShake('normal'); } catch (e) {}
+                _sigShockRing3D(tx, ty, { color: 0x9ad03a, r1: ts * 1.0, ms: 340, opacity: 0.6 });
+                _sigSparks(tx, ty, 'blood-fleck', 12, { vxy: 150, vz0: 40, vz1: 180, gravity: 380 });
+            }
+            var rt = _sigClamp01((el - 300) / 800);
+            roll.rotation.z = (rt < 0.5 ? 2 * rt * rt : 1 - Math.pow(-2 * rt + 2, 2) / 2) * Math.PI * 2;
+            var sink = _sigEaseInCubic(_sigClamp01((el - 1100) / 250));
+            yawG.position.y = ts * (0.5 - 0.45 * sink);
+            var op = Math.min(1, el / 60) * (1 - sink);
+            for (var m = 0; m < S.mats.length; m++) S.mats[m].opacity = op;
+            ring.rotation.x = Math.PI / 2 + rt * Math.PI * 2;
+            ring.material.opacity = 0.6 * _pzEnv(el, 300, 380, 1000, 1250);
+        });
+    };
+    SPELL_MAP['nrDeathRoll'] = { impact: 'gtDragUnder_impact' };
+
+    /* ── TAIL SWEEP: the spiked tail comes round the gator once, low over the floor, a sheet of spray off its tip;
+       each square beside it takes the lash as the tail passes; then the churned square under the gator ripples
+       (the puddle the sweep leaves, data.js nrTailSweep paintTerrain). ── */
+    EFFECTS['gtTailSweep_tile'] = { layers: [
+        { sprite: 'flash', ml: 110, size0: 40, size1: 12, tint: 0xd8fbff, opacity0: 0.6, z: 30, delayMs: 0 },
+        { count: 3, sprite: 'water-splash', ml: [260, 400], offsetXY: 10, z: [10, 30], tint: 0x2ab8c8, vxRange: 120, vyRange: 120, vzRange: [80, 160], gravity: 520, size0: [6, 9], size1: 2 },
+        { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [380, 600], offsetXY: 12, z: [2, 8], size0: [12, 18], size1: [26, 36], opacity0: 0.3 },
+    ] };
+    EFFECTS['gtTailSweep_aoe'] = _pzDef('gtTailSweep', { aoeRadius: 1, shape: 'cross', layers: [] });
+    function _gtTail(ts, hideMat, boneMat) {
+        /* five tapering segments from the hip out, a bone spike on each; built along +x from the pivot */
+        var g = new THREE.Group(), x = ts * 0.25, r = ts * 0.17;
+        for (var i = 0; i < 5; i++) {
+            var len = ts * (0.34 - i * 0.03), r1 = r * (1 - i * 0.17), r2 = r * (1 - (i + 1) * 0.17);
+            var seg = _pzMesh(new THREE.CylinderGeometry(Math.max(r2, ts * 0.015), Math.max(r1, ts * 0.02), len, 7), hideMat, g, x + len / 2, 0, 0);
+            seg.rotation.z = Math.PI / 2;
+            _pzMesh(new THREE.ConeGeometry(ts * 0.045 * (1 - i * 0.12), ts * 0.16 * (1 - i * 0.1), 5), boneMat, g, x + len / 2, r1 * 0.95, 0);
+            x += len * 0.92;
+        }
+        g.userData.reach = x;
+        return g;
+    }
+    _PZ_SIGS.gtTailSweep = function (p) {
+        var cx = p.cx != null ? p.cx : p.tx, cy = p.cy != null ? p.cy : p.ty; if (cx == null) return;
+        var F = _nrvFrame(cx, cy), ts = F.ts, L = _gtLiquid(cx, cy);
+        var hideMat = _pzSolid(_GT.belly, _sigTerrainTex('leather.png', 1, 1)), boneMat = _pzSolid(_GT.bone, _sigTerrainTex('enamel.png', 1, 1));
+        var piv = new THREE.Group(); piv.position.y = ts * 0.28; F.g.add(piv);
+        var tail = _gtTail(ts, hideMat, boneMat); piv.add(tail);
+        var reach = tail.userData.reach;
+        var trail = _pzMesh(new THREE.RingGeometry(reach * 0.82, reach * 1.0, 40, 1, 0, 0.01), _pzGlow(0x9fd8ff), F.g, 0, ts * 0.12, 0);
+        trail.rotation.x = Math.PI / 2;   // +90°: the ring's angle φ lies at world (cos φ, sin φ) on x/z, the tail's own frame
+        var a0 = rn(0, Math.PI * 2), SWEEP = 380, hitDone = {}, t0 = 0, tip = new THREE.Vector3();
+        var arms = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+        return _sigRunOwned(F.g, SWEEP + 900, function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / SWEEP)), a = a0 + t * Math.PI * 2;
+            piv.rotation.y = -a;
+            var vis = el < SWEEP ? Math.min(1, el / 50) : 1 - _sigClamp01((el - SWEEP) / 220);
+            hideMat.opacity = boneMat.opacity = vis;
+            piv.position.y = ts * (0.28 - 0.1 * Math.sin(t * Math.PI));
+            /* the swept arc behind the tip: a thin spray sheet that grows with the turn and fades */
+            /* the last quarter turn only (a wake behind the tip, never a disc over the bodies) */
+            var _wk = Math.min(t * Math.PI * 2, Math.PI * 0.5);
+            trail.geometry.dispose(); trail.geometry = new THREE.RingGeometry(reach * 0.82, reach * 1.0, 24, 1, a0 + t * Math.PI * 2 - _wk, Math.max(0.01, _wk));
+            trail.material.opacity = 0.3 * (el < SWEEP ? 1 : 1 - _sigClamp01((el - SWEEP) / 200));
+            /* spray off the tip */
+            if (el < SWEEP && el - t0 > 30 && _canSpawn()) {
+                t0 = el; tip.set(Math.cos(a) * reach, 0, -Math.sin(a) * reach);
+                _spawn({ x: F.c.x + tip.x, y: F.c.y - tip.z, z: F.bz + ts * 0.25, mode: 'billboard', sprite: 'water-splash', tint: L.c,
+                    vx: -Math.sin(a) * 160, vy: Math.cos(a) * 160, vz: rn(60, 160), gravity: 520, drag: 0.8, ml: rn(260, 420), size0: rn(6, 9), size1: 2, opacity0: 0.85, opacity1: 0 });
+            }
+            /* each arm takes the lash as the tail passes over it */
+            for (var k = 0; k < arms.length; k++) {
+                if (hitDone[k]) continue;
+                var aa = Math.atan2(arms[k][1], arms[k][0]), d = ((aa - a0) % (Math.PI * 2) + Math.PI * 4) % (Math.PI * 2);
+                if (t * Math.PI * 2 >= d) {
+                    hitDone[k] = true;
+                    var hx = cx + arms[k][0], hy = cy + arms[k][1];
+                    if (_pzSeen(hx, hy)) { _spawnEffect(EFFECTS['gtTailSweep_tile'], { tx: hx, ty: hy }); }
+                }
+            }
+            /* the churned square ripples once the tail is round */
+            if (el >= SWEEP && !hitDone.pool) {
+                hitDone.pool = true;
+                _sigShockRing3D(cx, cy, { color: 0x9fd8ff, r0: ts * 0.1, r1: ts * 0.55, ms: 520, opacity: 0.7 });
+                _gtSplash(F, { c: 0x2ab8c8, foam: 0xd8fbff }, 8, { r: 0.2, v0: 40, v1: 90, vz0: 100, vz1: 180, s0: 8, s1: 12 });
+            }
+        });
+    };
+    SPELL_MAP['nrTailSweep'] = { aoe: 'gtTailSweep_aoe' };
+
     /* ════ MUMMY — linen, sand, Egyptian gold and lapis ════ */
     EFFECTS['nbLinenBind_bolt'] = _pzDef('nbLinenBind', { pzOwn: true });
     EFFECTS['nbLinenBind_land'] = { layers: [

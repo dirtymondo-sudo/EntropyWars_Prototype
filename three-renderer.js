@@ -14918,6 +14918,7 @@ const ThreeRenderer = (function () {
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
             if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
+            if (u.status && u.status.submerged > 0) h = _hashInt(h, 31);   // 🐊 going under / surfacing re-seats the body (_submergedSink)
         }
         h = _hashVal(h, state.selectedUnitId || '');
         h = _hashStr(h, state.nametagMode || 'name');
@@ -15601,7 +15602,13 @@ const ThreeRenderer = (function () {
                     ? state.boardTerrain[unit.y][unit.x] : '';
 
         var tKey = (terrain || '').replace(/_\d+$/, '');
-        return SUBMERSION_DEPTH[tKey] || 0;
+        return _submergedSink(unit, SUBMERSION_DEPTH[tKey] || 0);
+    }
+    /* 🐊 SUBMERGED (2026-11-16, the Sewer Gator's Submerge): under the surface only its back and eyes show. Only its own side
+       ever draws it (the other side's renderer hides a concealed body), as the usual cloak ghost, now sunk to the eyes. */
+    var SUBMERGED_SINK = 0.32;   // under the tile's own wade depth (deep water 0.45 → 0.77)
+    function _submergedSink(unit, base) {
+        return (unit && unit.status && unit.status.submerged > 0) ? base + SUBMERGED_SINK : base;
     }
 
     function _getSubmersionForTile(tx, ty) {
@@ -15618,6 +15625,8 @@ const ThreeRenderer = (function () {
     function _updateSubmersionClip(ue, tx, ty, surfY, ts) {
         if (!ue || !ue.group) return;
         var depth = _getSubmersionForTile(tx, ty);
+        var _su = (ue.group._ew_unitId != null && _unitById) ? _unitById.get(ue.group._ew_unitId) : null;   // 🐊 a Submerged gator stays under
+        if (_su && _su.x === tx && _su.y === ty) depth = _submergedSink(_su, depth);
         var sink = depth * ts * UNIT_SPRITE_SIZE_RATIO;
         ue.group._ew_subSink = sink;
     }
