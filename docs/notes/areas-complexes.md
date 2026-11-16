@@ -9567,11 +9567,25 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
     no residents with routines; the grass field takes a second to grow round a walker who has just arrived, so a cut field's standing strips are bare for a moment.
   - WHAT THE NEXT THREAD CAN REUSE (also in THE ZONE KIT): `strips()` + `rows()` (a cut field), `board()` (a painted board read from both sides),
     the grouped `lampParts()` (many posts, one row), `at()` (free decor that reports every piece in the corn at once), the verge scatter.
+- **THE MODEL PASS (mondo 11-16, the wish-list models; seen in the cloud browser, day + night, 8 + 4 + 8 + 9 views) — THE THREAD STOPS AGAIN:**
+  - THE CORN READS AS CORN: `corn_row` (seven stalks, 3.5 m, 3,400 triangles, one mesh) at the foot of the bank on every open square's side that touches
+    the corn, 0.33 m inside the open square, `noBlock` (the tool's bank behind still blocks and still shows over the top and in the gaps). All 389
+    segments: 1.3 M triangles more at the proof view. Every other segment: the hedge shows in a checker. Shipped: TWO SEGMENTS IN THREE (about 260 rows,
+    `(x + y) % 3`). The rows are drawn instanced: 14 draw calls for all of them.
+  - `lantern_post` (wooden post, hanging oil lantern) stands where each drawn lamp post stood; the drawn posts are gone. One small drawn flame sits
+    inside every lantern (0.22 m along the arm, 1.36 m up; one `look` for all) so the district is still lit at night. Two posts that stood on a corn
+    square's edge moved one square onto the track.
+  - PLACED: `tractor`, `plough` x 2, `hay_cart`, `water_trough` (the Hub), `wheelbarrow` x 3, `pitchfork` x 4, `barbed_wire_fence` (behind the lay-by, behind
+    the saucer), `braced_gate` x 2 (a leaf standing open at two fields' gaps), `outhouse`, `firewood_stack`, `wooden_ladder`, `wooden_barrel` x 2,
+    `mailbox`, `cattle_skull` x 3, `beehive` x 2.
+  - FPS (proof view, llvmpipe, warm readings; the whole room grew in every district's model pass): the room without C's corn rows 1.2 to 1.4 fps
+    (1,570 calls, 3.67 M triangles); with a row on every other segment 1.2 (1,584 calls, 4.96 M); with all 389 rows a cold run read 1.0 and 0.6.
+  - `corn_row` is under optimize-assets.js's size limit for far-distance levels (`--lod` wrote none), so thinning was the only saving here.
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
   THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle. (6) a saucer set down in a hidden pocket of The Tall Corn (one prop row to remove). (7) horror touches on the verges (flesh, traps, a corpse by the saucer).
-- **NEEDS A MODEL:** a corn stalk (and a row of them as one instanced piece), a flattened-corn ground sheet, a tractor, a plough, a water trough, a
-  wheelbarrow, a pitchfork, a lamp post (the zone's drawn one stands in), a barbed-wire fence.
+- **NEEDS A MODEL (after THE MODEL PASS):** a flattened-corn ground sheet (a sheet, not a model). PLACED and crossed off: the corn stalk (`corn_row`), tractor,
+  plough, water trough, wheelbarrow, pitchfork, lamp post (`lantern_post`), barbed-wire fence.
 ### PASS 3, THE DRESSING (seen in the cloud browser)
 - **THE PATH ROUND THE LAKE (`plan()`):** one square of dirt from the three gaps in the corn, up the west shore, along the north side above the
   shingle to the Boathouse, down the east bank past the jetty to the boardwalk's far end, back along the south shore past the picnic ground.
