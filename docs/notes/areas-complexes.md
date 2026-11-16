@@ -5401,7 +5401,7 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   - **THE MAELSTROM:** the link's own funnel (9 m, the tool's place, not moved) now sits in three arms of foam drawn on the water (chains of
     short white strokes, 6 to 38 m out), a broken ring of eleven sea stacks (the ocean pack's pillar rock grown to 6-11 m, round rocks kept
     3 m), and six pieces of wreckage that turn round the hole on the surface (a prop row's `swim` ring: crates, barrels, a rowboat).
-  - **NO FIXED POSITION** (the plan: "open water; the Flight 19 tape"): five torn hull plates standing out of the sea, one for each aircraft.
+  - **NO FIXED POSITION** (the plan: "open water; the Flight 19 tape"): torn hull plates standing out of the sea (five at first, three since pass 5).
   - **THE ISLAND:** THE SHACK (walk-in, 3 x 2 squares at 147-149 x 103-104 on the Island Beach, its door north to the camp fire: teal
     boards, a rusty tin roof, a straw porch, a dark window; its inside is pass 2); the Jetty's piles, mooring posts, rope and cargo; the
     camp (two torches, a log, a cauldron, a footlocker, sacks); wreckage on the Island Beach (a ship's wheel, a crate, a fish skeleton,
@@ -5441,6 +5441,16 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
     Lighthouse Rock's steps and the store's door; a `brazier` on the south beach. With the camp's fire, its two torches and the
     lookout's brazier the island reads after dark. The fight's sand stays open.
   - FRAME RATE (the island view): 8.3 fps, 518 draw calls (492 before the pass), 1.07 M triangles, 560 points.
+- **PASS 5, THE POLISH (seen, probe views `f_*`) — THE LAST: FIVE PASSES LIVE, STOPPED, WAITS MONDO'S LOOK:**
+  - The Maelstrom's foam: four thin pale arms (the first three fat white ones read as road markings from the water). The `kelp` went (it
+    stood on the surface like tufts of grass at any `h`).
+  - **THE FRAME RATE, MEASURED BACK TO BACK** (the island from the south-west; the district as it was on 11-15 against the district now,
+    the rest of the room the same): 305 draw calls / 419 k triangles before; after pass 4 it was 508 calls / 1,064 k. Won back in this
+    pass: 486 calls / 730 k triangles. What it was (elimination runs): the three new coral scatters + the fish schools = 208 k (27 corals
+    and 8 schools; now 6 and 3), duplicate Meshy props at about 10 k triangles each = 171 k (two of five hull plates, the second anchor, a
+    femur and a skull, four ferns, a flamingo, the second eagle, a rowboat, a brazier, lobster traps, a hanging lantern, rope, a spyglass),
+    spare sea animals. Stairs + rails are 32 k, palms + sea stacks 27 k, the two insides nothing from outside. The cloud's fps is no
+    measure (the bare district read 2.0-3.6 fps and the full one 6.6-7.2 in the same hour): compare draw calls and triangles.
 - **LEARNED (for the zone kit):**
   - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
     water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
@@ -5458,6 +5468,11 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   - THE PROBE: a view's `y` is the walker's FEET; inside a walk-in type the floor (ground + 0.15), or the camera stands on the roof.
   - `map_table` is a steel briefing table (science fiction); the wooden one is `psx_table_large_2` (top 0.96) with `psx_chair_mp_3`.
   - data.js `HQ_AREA_MARKERS` (the tool's) puts Room 345's fight rings on square 148,104 of the Island Beach: keep that sand open.
+  - WHAT A MODEL COSTS: a Meshy prop is about 10,000 triangles whatever its size (a `skull` 22 cm across = 10,434; `femur` 9,440;
+    `fern` 7,684; `hullplate` 10,805); the PSX pack's crates, barrels, tables and the graveyard pack's rocks and bushes are a few hundred.
+    Small dressing = the packs. An ocean-pack coral scatter or a `fish_school` is about 6,000 triangles a piece.
+  - THE PROBE'S COST CHECK: put `console.log("[HQ] PROBE perf " + JSON.stringify(ThreeRenderer.perf()))` in a view's `eval` (after a
+    4 s timeout) and read `calls` + `triangles`; to find a heavy group, bake once without it and look at the difference.
   - A drawn spiral: parts take `ry` (degrees); a chain of thin boxes (0.03 m high, `sides: false`, `glow` 0.35) on `y` 0.04 shows on the sea.
 - **FITS THIS DISTRICT (the shortlist, from MODEL_LIST.md sections 6-13 + the live catalogue; [used] = placed by this file):**
   wreck + pirate: `ship_wreck` `sea_chest` `skull_pile` `ship_cannon` `rowboat` `meshy_rowboat` `ship_anchor` `wheel` `lobster_traps`
@@ -5471,7 +5486,7 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   `obelisk` `menhir` `stone_altar` `decor_stone_arch` `crystal_cluster` `floating_orb` `ufo` `light_shaft` `white_cloud`.
   Not wired, would fit a ruin: `mcsteeg_castles/Castles_and_Forts.glb` nodes `Wall_2x4_ruined`, `Tower_mid_hollow_ruined`.
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is a rock platform with a timber stair on a real dune, not a
-  timber tower (no tower model; the old one was a plateau too). (2) Flight 19 is five torn hull plates, not planes (no 1945 aircraft
+  timber tower (no tower model; the old one was a plateau too). (2) Flight 19 is three torn hull plates (five at first; two went for the frame rate), not planes (no 1945 aircraft
   model; the F-22 was not used). (3) Two walk-ins: a wrecker's shack on the island ("the Shack", at the Jetty's path, off the fight's sand) and the keeper's store on the Lighthouse Rock; the lighthouse itself is the game's own prop and is not entered. (4) The Maelstrom's foam is
   drawn and still; the turning is the link's own funnel and the wreckage. (5) The Lighthouse Rock got steps so the tape can be reached on
   foot from a boat. (6) The `dockring` at the Jetty was taken out (wrong model).
@@ -6722,6 +6737,14 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   course read as a flight of steps (now straight, between stakes); the residents do not stand where their rows put them (the yeti's glade held
   a blue woman, the pond a dark insect figure: the engine's resident system places or dresses them, not the district file).
   COUNTS at the north bridge looking up the road: 748 draw calls, 2,269 geometries (the whole kingdom in view).
+- **PASS 4, THE ATMOSPHERE (seen by day and at 22:00, five probe runs)**: `airZones` = snow over the whole district (`n` 2200; 900 was a few
+  specks), pale `motes` at the pond and the old stones; `chimney_smoke` on both chimneys and two camp fires; LIGHT POOLS: a flat `calm_snow`
+  disc under every lantern and hut window, tint 0xfff3dc + `glow` 0.93 (a glowing part is drawn unlit, so it is near the day's snow by day and
+  a warm pool in the dark; a stronger cream tint showed as a sandy patch by day). The night is the kingdom's own (the shell); what carries it
+  here is the panes, the fires, the ice (`glow` 0.4) and the pools.
+  THE SNOW PINE IS A CLUMP, MEASURED: one planted pine (`xmas:Trees_0*`) stands trunks up to 16 m from its foot. One planted 15.7 m from the
+  Wayside Hut stood a trunk INSIDE it, through the bed (seen only on the night walk). `noTrees` now clears 19 m round each hut. Any district
+  that builds in a snow-pine zone (the Mountains too) needs the same.
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
@@ -7694,8 +7717,13 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   (three lines; a model on its origin does not move; the random numbers are drawn in the same order). What changes for the other snowy places (the North Pole village,
   Camelot's Snowy Pines, the Mountains' tree line): the snow pines now stand IN their tree zones, where the walker has always bumped them; the lone pines that stood on
   trails, roofs and squares (the zone kit's point 4, "stand on trail squares") are gone. Look at your district again after this.
+- **PASS 4, ATMOSPHERE** (seen by day and at night, 17 views; night = a view's `eval` of `hqClockSet(22)` + `settle` 4000): `exports.airZones` (district S's hook) = three snow
+  zones (the Ridge `n` 300 `wind` 0.9 `speed` 1.2; the pass and the Tarn 380; the tree line 110); seven more catalogue fires with a real light (`cave_torch`, `brazier`,
+  `campfire`), 14 lights in the district in all; `chimney_smoke` on the three flues (`floor: false`, `y` = the flue's top from the ROOM's floor: the plot's ground + the wall +
+  the roof). At night the lit panes, the lanterns, the flags (`glow` 0.25), the ice (`glow` 0.35) and the Mast's red lights carry the picture. Not this file's: the south edge
+  forest and the west edge's green trees stay day-bright at night.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
@@ -8027,6 +8055,16 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   newspaper bundle, a paper sheet, a round drain, a mug, a camera, the skull pile 38 thousand). The repeated Meshy litter was swapped for
   the PSX pack's low-poly pieces (cans, bricks, bottles, nails), the skull pile for Halloween-pack parts, two cameras and two mugs out:
   now 1,843 calls / 2.79 M. The frame rate the software probe prints is noise (10 and 21 on the same view), so only these counts are true.
+- **PASS 5, POLISH (an eye-level walk, 12 stops, then 8 final views):** FOUND AND FIXED: the pilasters' stone bands, the pump plinths
+  and the screen's posts drew as shiny white plate (a bare part whose tint is dark and grey is read as METAL by `_hqArchSurface`:
+  a concrete piece down here needs a sheet, `urban:ConcreteStriped2c` under `0x8a8680`); the lit brick by a lamp was still a tan slab
+  up close (60 % paler now). Nothing floats or stands in a walk at the 20 stops seen.
+- **WHERE IT STANDS: FIVE PASSES LIVE, THE THREAD HAS STOPPED** (the brief's limit) and waits mondo's look. Final count at the proof
+  view: 1,951 calls / 3.17 M triangles with every district's newest dressing in the room (the other four districts grew from 408 to
+  about 700 props during these passes; W alone is about 395 props + its 15 kit rows).
+  WHAT I WOULD DO NEXT: (1) drips + spores once the tool has `airZones`; (2) LODs or low-poly stand-ins for the Meshy machines, the
+  one real cost left; (3) a real light share in the tool so the culverts can have a few cast lights; (4) the PSX pack's round tunnel
+  pieces (`psx_tunnel_mp_1_*`) as side pipes to look into, never tried on screen; (5) the bystanders are still the first build's four.
 - **FPS at the proof view** (after pass 2: 3.2, 1,302 calls, 2.05 M triangles; the room also grew a fifth row, district R, in between) (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
   1.44 M triangles); after pass 1 2.1 to 2.7 (1,142 calls, 1.58 M). The kit is about ten materials a plot; a plot's row is culled whole.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
