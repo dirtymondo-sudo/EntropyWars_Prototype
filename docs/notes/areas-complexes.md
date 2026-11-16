@@ -3950,7 +3950,13 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
   model sits at dist 0.88 of the sky's radius, right for the old 60 m rooms, INSIDE the 252 m room. `hqWoodsShell({ noLandmarks: true })` drops the sky's landmarks (the bake passes it).
   Lesson: a horizon landmark on a shell made for small rooms must be checked when the room grows.
 - **NO UNEXPLAINED DEAD ENDS (mondo: "get rid of any trails that lead to nowhere, no unexplained dead ends")**: a `secret` TRAIL door gets no waymark post, so its path just
-  stopped at the trees. The three secret ways show what they are: `lemuria` and `lodge` are `way: 'tunnel'` mouths, `lookingglass` is a `hollowtree`. Still `secret`.
+  stopped at the trees. The secret ways are each a `hollowtree` now (`lemuria`, `lodge`, `lookingglass`, the `woods_sewer` link end). Still `secret`.
+- **NO TUNNEL ENDS IN THIS ROOM (2026-11-16, seen in the probe)**: a `way: 'tunnel'` end with a `passage` builds a stone housing on the wall. In this open room it stood in
+  the trees as a big grey stone block you walk through, hard by the Outfall's bridge: THIS was mondo's "castle wall" (the horizon landmark above was also inside the map and is
+  gone too). The two drain links (`streets_drain`, `sewers_drain`) are plain `trail` ends, the secret ones hollow trees (bake-woods.js LINK_ENDS writer + the door rows).
+  A first try that made the secret trails `tunnel` mouths shipped for about an hour (PR 1532) and added two more blocks; reverted here.
+- **STILL OPEN**: tall black slabs stand on the horizon (the `scenery: 'dark'` sky roster's bodies, unlit black in daylight; one shows NE of the Outfall). Not touched.
+- **Probe tip 2**: with every model loaded this room times out the cloud browser's screenshot; `--flags=EW_PERF_LOW` gets pictures (about 1 minute a view).
   Checked: no other path square on the map is a tip that ends at nothing (every edge trail is a door or a link).
 - **Probe tip**: in this room a third-person view (`dist`) puts the camera inside the forest mass's crowns on most plots: use `"fp": true` standing on open ground.
 - **ASKED FOR, NOT BUILT (mondo, same message): a pass that adds WATERFALLS and LIGHT SHAFTS to rooms** ("might need its own thread"). Today rooms have only `pool` /
