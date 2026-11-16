@@ -11,11 +11,13 @@
      P00-02  The Rows, west         level 1  corn rows, crows
      P01-02  The Hub                level 1  four tracks meet; the well
      P02-02  The Rows, east         level 1  corn rows
+   STATE: FIVE PASSES LIVE (exteriors, the Field Shed, dressing, atmosphere, polish), STOPPED, waits mondo's look.
    WHAT STANDS HERE (the district thread, 2026-11-16; passes logged in docs/notes/areas-complexes.md "THE ESTATE, DISTRICT C"):
      every plot has its own thing. THE CUT ROWS (strips of tilled soil with drawn furrows + strips of standing young crop = lawn squares
      under the grass field) in The Tall Corn, both Rows and under the Scarecrow; THE CIRCLES with a formation left standing in the flattened
      ground, four stones, a cow; a watchers' camp on the west circle; THE HUB with a fingerpost, a wagon, rails, a bench; the silo yard;
      the power line and a lay-by on the Farm Track; the Woods gate's verge; drawn lamp posts and painted boards (plain words) all over.
+     THE FIELD SHED (walk-in, `houses()`), THE GATE ARCH, the verges' scatter, the hidden pocket with the saucer, the air zones (`airZones()`), night glow.
    MISSING / WAITING (the NEEDS A MODEL list is in the notes):
      - THE CORN: no corn-stalk model exists on R2 (every list read; the pack's crops blown up are soil mounds, the seaweed is black). The
        `leaves_3` bank is the tool's and still reads as a hedge. A stalk model, once made, is placed here.
@@ -68,7 +70,7 @@ module.exports = {
             a.box(0, 3.3, d / 2 + 0.08, w + 0.3, 0.2, 0.18, WD2, DARK); a.box(0, 0, d / 2 + 0.05, w + 0.1, 0.4, 0.1, 'castle_wall'); a.box(0, 0, -d / 2 - 0.05, w + 0.1, 0.4, 0.1, 'castle_wall');
             a.roof('gable', 0, 3.5, 0, d + 0.9, 2.3, w + 0.9, COR, ROOF, { ry: 90, keyEnd: WD, tintEnd: BOARD });
             a.frame(door, d, WD2, DARK);
-            for (const sx of [-1, 1]) for (const z of [-2.6, 2.6]) { a.box(sx * (w / 2 + 0.06), 1.3, z, 0.08, 1.0, 1.2, GLS, 0x2a3040, { glow: 0.05 }); a.box(sx * (w / 2 + 0.1), 1.18, z, 0.14, 0.12, 1.5, WD2, DARK); a.box(sx * (w / 2 + 0.1), 2.3, z, 0.14, 0.12, 1.5, WD2, DARK); }
+            for (const sx of [-1, 1]) for (const z of [-2.6, 2.6]) { a.box(sx * (w / 2 + 0.06), 1.3, z, 0.08, 1.0, 1.2, GLS, (sx < 0 && z > 0) ? 0xf0c868 : 0x2a3040, { glow: (sx < 0 && z > 0) ? 0.6 : 0.05 }); a.box(sx * (w / 2 + 0.1), 1.18, z, 0.14, 0.12, 1.5, WD2, DARK); a.box(sx * (w / 2 + 0.1), 2.3, z, 0.14, 0.12, 1.5, WD2, DARK); }
             a.box(door.lx + 1.5, 2.1, d / 2 + 0.2, 0.2, 0.32, 0.2, null, AMBER, LAMP); a.box(door.lx + 1.5, 2.42, d / 2 + 0.2, 0.28, 0.06, 0.28, null, IRON); a.box(door.lx + 1.5, 2.3, d / 2 + 0.1, 0.05, 0.3, 0.2, null, IRON);   // the lantern by the door
             a.sign('TOOLS', door.lx, 2.62, d / 2 + 0.13, 1.3, 0.34, '#e0d0a8', '#4a3a2c', 'fell');
             a.box(0, 0, 0, w - 0.3, 0.12, d - 0.3, FLR, 0xb8a890);                                             // a level plank floor over the lawn's roll
@@ -85,6 +87,10 @@ module.exports = {
         IN('railway_lantern', -2.9, -2.6, { y: 2.82 }); IN('field_radio', -2.9, -1.2, { y: 2.82, face: 90 }); IN('wooden_bucket', -2.9, -0.2, { y: 2.82 }); IN('hw_pumpkin_3', 2.75, 1.9, { y: 3.32 }); IN('skull', 2.75, 0.6, { y: 3.92, face: 270 });
         IN('psx_cobweb_1', -3.1, -4.9, { y: 4.65 }); IN('psx_cobweb_2', 3.1, 4.9, { y: 4.65 }); put(SHED, 'ship_lantern', 0, 0, { y: 5.0, noLight: true }); IN('hw_candles', -2.9, -3.4, { y: 2.82 }); IN('rabbit', 0.6, -2.2);
     },
+    /* PASS 4, THE AIR (bake-estate.js THE AIR BY DISTRICT): chaff over the cut fields, pale motes over the circles and the hidden pocket; the tracks keep the zone's fireflies */
+    airZones() { const CHAFF = { kind: 'dust', color: 0xd8c890, speed: 0.5, wind: 0.6 }, MOTE = { kind: 'motes', color: 0x9fffc8, speed: 0.3 };
+        return [Object.assign({ sx0: 13, sy0: 13, sx1: 24, sy1: 24, n: 90 }, MOTE), Object.assign({ sx0: 2, sy0: 13, sx1: 9, sy1: 20, n: 40 }, MOTE), Object.assign({ sx0: 1, sy0: 1, sx1: 7, sy1: 6, n: 50 }, MOTE),
+            Object.assign({ sx0: 0, sy0: 22, sx1: 13, sy1: 31, n: 70 }, CHAFF), Object.assign({ sx0: 0, sy0: 7, sx1: 7, sy1: 13, n: 40 }, CHAFF), Object.assign({ sx0: 25, sy0: 4, sx1: 34, sy1: 13, n: 60 }, CHAFF), Object.assign({ sx0: 23, sy0: 28, sx1: 36, sy1: 36, n: 60 }, CHAFF)]; },
     dress(ctx) { const { gx, gc, r2, feat, props, P, dec, native, sayOf, O_FIELDS, look, rail, rnd, taken } = ctx;
         /* helpers: `at` = a piece anywhere on a square (fractions of a square), decor, never a blocker; `blk` = the walker's block under a drawn piece */
         const bad = [], at = (key, fx, fy, o) => ctx.cell[Math.floor(fy)][Math.floor(fx)] === 'c' ? bad.push(key + ' ' + fx + ',' + fy) : props.push(Object.assign({ key, x: gx(fx), z: gx(fy), face: Math.round(rnd() * 360), noBlock: true }, o || {}));
@@ -93,7 +99,7 @@ module.exports = {
         const CROPS = ['hw_crop', 'hw_crop_2', 'hw_crop_3'], PUMP = ['hw_pumpkin', 'hw_pumpkin_2', 'hw_pumpkin_3', 'hw_pumpkin_4'];
         /* THE CUT ROWS: the pack's tilled beds laid in rows over a field, two beds a square, young crops down each bed (the grass field is not on dirt, so they show) */
         const rows = (x0, y0, x1, y1, ns, skip) => look('rows' + x0 + '_' + y0, gx(x0), gx(y0), 0, a => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (ctx.cell[y][x] !== 'p' || (skip && skip(x, y))) continue;
-            for (const o of [0.2, 0.5, 0.8]) { const lx = ((ns ? x + o : x + 0.5) - x0) * 3.5, lz = ((ns ? y + 0.5 : y + o) - y0) * 3.5; a.box(lx, -0.1, lz, ns ? 0.62 : 3.5, 0.3 + rnd() * 0.06, ns ? 3.5 : 0.62, 'dirt_3', 0xd8c0a0, { gain: 1.4 }); } } });
+            for (const o of [0.2, 0.5, 0.8]) { const lx = ((ns ? x + o : x + 0.5) - x0) * 3.5, lz = ((ns ? y + 0.5 : y + o) - y0) * 3.5; a.box(lx, -0.12, lz, ns ? 0.86 : 3.56, 0.21 + rnd() * 0.05, ns ? 3.56 : 0.86, 'dirt_3', 0xd8c0a0, { gain: 1.4 }); } } });   // low and wide: at 0.2 m over the ground with a crisp edge they read as timber baulks
         /* THE LAMP POSTS (the zone kit's, H's shape): every post on the district's level ground is ONE drawn piece (one row, a few draw calls for all of
            them); a post near the district's east or south edge, where the ground grades to the next district, is its own piece so it stands on its ground */
         const LAMPS = [], lampParts = (a, ox, oz, rot) => { const t = rot * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t), X = lz => r2(ox - lz * sn), Z = lz => r2(oz + lz * c), o = { ry: -rot };
@@ -193,6 +199,8 @@ module.exports = {
               const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(q => corn(x + q[0], y + q[1])); if (!sides.length) continue; const r = rnd(); if (r > 0.3) continue;
               const q = pick(sides), along = (rnd() - 0.5) * 0.7; at(r < 0.05 ? pick(RARE) : pick(SMALL), x + 0.5 + q[0] * 0.36 + (q[0] ? 0 : along), y + 0.5 + q[1] * 0.36 + (q[1] ? 0 : along)); } }
         /* THE HIDDEN POCKET (The Tall Corn): what flattened the circles, set down in the corn */
+        look('saucerGlow', gc(3), gc(3), 0, a => { a.cyl(0, 0.02, 0, 2.2, 0.03, null, 0x9fffc8, { glow: 0.5 }); a.cyl(0, 0.03, 0, 1.2, 0.03, null, 0xd8fff0, { glow: 0.7 }); });   // PASS 4: the ground under it is lit
+        look('circleGlow', gx(18.5), gx(18.5), 0, a => { for (const [dx, dz] of [[-3.5, -3.5], [3.5, -3.5], [-3.5, 3.5], [3.5, 3.5], [0, -5.2], [0, 5.2], [-5.2, 0], [5.2, 0]]) { a.cyl(dx * 3.5, 0, dz * 3.5, 0.16, 0.5, 'castle_wall'); a.box(dx * 3.5, 0.5, dz * 3.5, 0.2, 0.26, 0.2, null, 0x58f0a0, { glow: 0.7 }); } });   // eight low marker lights round the formation (the zone's grave-light green)
         P('saucer_lg', 3, 3, { face: 30 }); at('floor_stain', 3.6, 4.2, { y: 0.01 }); at('floor_stain', 2.6, 2.8, { y: 0.01 }); at('hw_body', 5.2, 4.4, { face: 70 }); at('crow', 5.4, 4.2); at('railway_lantern', 4.9, 4.6); at('hw_candles', 2.4, 4.5);
         at('psxg_rock_1', 5.5, 2.5); at('psxg_dead_bush_1', 2.3, 2.3); at('trap_bear_open', 7.5, 4.5); at('hw_part_3', 6.4, 4.6); at('skull', 8.3, 4.3); board('bd_pocket', 8.9, 4.95, 90, 'GO BACK', 1.6);
         /* more of everything where the first pass left a plot thin */
