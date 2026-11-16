@@ -76,7 +76,7 @@ const g=[ux,uy];
 zone(...g,2,9,8,2,'THE SEWERS','old',['old rooms · plan 16'],{pick:'① NEXT',small:1});
 zone(...g,-4,-3,4,4,'HELL','built',['under the Vatican','16 plots (11-16)'],{small:1});
 zone(...g,-6,2,6,6,'THE CAVERN','built',['The Cavern · Hollow Earth','Agartha','36 plots · one room (11-16)']);
-zone(...g,0,18,6,6,'THE D.U.M.B.','old',['Research · Sub-Level 7','Command · Level P3 · CERN','old rooms · plan 36'],{pick:'③'});
+zone(...g,0,18,7,7,'THE D.U.M.B.','built',['CERN, the Ring · Level P3 · Sub-Level 7','Research (+ the White Rooms) · Command','49 plots · one room (11-16)']);
 zone(...g,15,4.5,9,3,'THE DEEP','old',['Atlantis · The Trench · plan 27']);
 way(...g,-2,1,-2,2,'way','the fissure',8,2);
 way(...g,0,7,2,9.5,'way','old workings',10,-14);

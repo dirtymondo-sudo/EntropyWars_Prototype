@@ -7654,6 +7654,88 @@ hub 1.25, Corridor Five 2.13, the east spoke 2.0, the Platform 2.0.
   shaft (the plateau's foot read as a dark block). (4) `retro_control_panel` draws as a pale rounded box at a distance.
 - FPS after the pass: hub 1.13, Corridor Five 1.88, the east spoke 2.0 (about a tenth in the hub: the galleries + 60 props in one view).
 
+### PASS 3, THE LIGHT + THE AIR + POLISH (seen in the cloud browser, 12 views) — THREE PASSES LIVE, STOPPED, waits mondo's look
+- `S.js air()` (called at the end of `dress`). REAL LIGHTS: five `bare_bulb` (a 7 m pool each) of the base's ten: two in the hub, one over the
+  pit, one before the blast door, one at the stair's foot. The White Rooms hold two; three are left for K, P, R and C together.
+- DRAWN: eight dome lamps on 3.4 m rods in the hub, domes in the chambers and three on 15 m rods down the stair's hall; `services()` = a duct and
+  two pipes (yellow, red) on hangers under every corridor's roof and along the hub's north and south walls; the chambers' four status lamps over
+  the board (01 + 02 green, 03 + 04 red); a lit frame round each chamber window; three rungs of amber light up the Vent's shaft; chevrons at
+  the stair's foot. STEAM: two `chimney_smoke` off the Vent. FLOORS: 20 decals (`ctx.grime`: blood + scorch under the Drop's X, oil by the
+  robot arm, puddles in DECON, scorch on the blast door's sill).
+- **TAKEN OUT for the frame rate:** four `flicker_tube` and DECON's steam (with them Corridor Five and the east spoke ran a quarter slower).
+- **MEASURING:** the first views after a room loads read 0.25 FPS for half a minute once the light count changes (every material compiles
+  again on the software renderer): put two throw-away views first, then measure.
+- FPS at the end (warmed): hub 1.38, Corridor Five 1.38, the east spoke 1.75. Before the pilot: 1.25 / 2.13 / 2.0. The hub did not lose; the
+  corridor and the spoke lost about 0.4 to 0.7 (the five real lights light every surface in reach: the first thing to cut on a weak machine).
+- **WHY IT STOPS AT THREE:** the district is furnished, lit and reads as one place; a fourth pass would be mondo's revisions, not mine.
+
+### DECISIONS MADE FOR MONDO (the whole zone; overrule any in one line)
+1. ONE ROOM of 7 x 7 plots, not six rooms: you walk from the tram to the hub to every department with no door card.
+2. CERN is the base's own ring (the outer 22 plots), not a far place behind a door: `links.dumb_cern` went. Room 999 still opens on it.
+3. The entry level (Level P3 + the Ring) is 14 m ABOVE Sub-Level 7; Research and Command are 3.5 m above the hub.
+4. The White Rooms came down whole, unchanged, as Research's north block; their four doors still lead up to Area 51 / Hangar 18, and the
+   Desert's doors read THE D.U.M.B. · THE WHITE ROOMS.
+5. The Vent is a 14 m ladder from the Ring (by the Control Room) down to Level -6.
+6. The Pit is EMPTY (his line: "it is a very good pit"); a flesheater stands in it.
+7. Plain labels of mine: The Comms Room, The Ring 1 to 14, Service Room 1 to 4, and in Corridor Five DECON, ARMOURY, STORES, ELECTRICAL,
+   LOCKERS, JANITOR. The Vault Gantry's south door says LOBBY (the old plate's own joke).
+8. Seven new bystanders have NO lines (professor x 2, flesheater, android x 2, mad scientist, men in black).
+9. The old rooms' tapes and finds were not re-homed (no tape / find guards). The old literals stay in data.js (PvP boards, the people's lines).
+10. The pilot stopped at three passes.
+
+### NEEDS A MODEL (found nowhere on R2 or in the catalogue; exact, for the model makers)
+| What | Where it goes | Size |
+|---|---|---|
+| A particle detector: a barrel of magnets and cables round the beam pipe | the Detector Hall (K, P06-03), on the ring's lane | about 10 m across, 9 m high (the hall is 10.5 m) |
+| A beam-pipe magnet (a blue dipole on a stand) | along the Ring's pipe, one every plot (K) | 3.5 m long, 1.2 m high |
+| A situation board: a curved wall of screens with a world map | the Big Board (C, P05-01), the north wall | 14 m wide, 5 m high |
+| A round war-room table with a pit ring of seats | the Round Table (C, P05-02) | 6 m across |
+| A clone vat: a glass cylinder with a figure in fluid, lit from under | the Vat Hall (R, P01-04), six | 1.4 m across, 3 m high |
+| A dream screen you can walk into (a tall standing frame of static) | the Ward (R, P01-02), the Astral way | 2.4 m wide, 3 m high |
+| An incinerator door, light (the catalogue's `door_furnace` is 117 k triangles) | Disposal (R, P02-04) | 2.5 m wide, 2.5 m high |
+| A base tram (an open people-mover car, olive or black) | the Platform's track (P, P03-05) | 10 m long, 2.6 m wide |
+| A boom gate + a guard booth | the Booth (P, P04-05) | gate arm 7 m; booth 2 x 2 x 2.6 m |
+| A military jeep / humvee and a black government sedan | the Bays (P, P02-05) | car size |
+| A freight lift car with a scissor gate | the Freight Lift (P, P05-05) | 3.5 x 3.5 x 3.5 m |
+| A blast door, round, with a wheel | Level -6 (S, P03-01), the Cavern's way; the Blast Door (K, P03-06) | 3 m across |
+| A standing ladder / a caged shaft ladder | the Vent (S / K), the Catwalk's east tower | 3.5 m sections |
+| A rotating alarm beacon (red) | the Tower's cap, every portal (S) | 0.3 m |
+| A gurney / a body bag | the Service Corridor, Disposal (R) | 2 m |
+| A wine rack + a safe-room hatch | the Cellar (C, P04-04) | rack 2 x 2.2 m |
+
+### WHAT I WOULD DO NEXT
+1. One thread a district for K, P, R (the labs), C, with this kit; K is the biggest and the barest. 2. The three real lights left need a plan
+before any district takes them. 3. A walk-through by a player (stairs, the ladder, every door) since only the bake's walk check has run.
+4. Sound: the base has none.
+
+## THE D.U.M.B., THE ZONE KIT — for the K, P, R and C district threads (written 2026-11-16 by the pilot, Sub-Level 7)
+
+- **Read first:** "THE D.U.M.B. ON PLOTS" above (the plan, the levels, the look, the room kit, the ways out) and the pilot's passes. Copy from
+  `docs/areas/dumb/districts/S.js`: `portal()` (a hazard frame round an opening), `floorWords()`, `line()`, `wallLamp()`, and from its `air()`:
+  `services()` (duct + pipes under a roof), `dome()` (a hanging lamp), `frame()` (a window's lit edge). Plain functions on a kit room.
+- **A room:** `const R = ctx.room(plotId, lx, ly, NU, NV, tag)`, write in ITS squares, end with `R.done()`. Open a second room on the same
+  squares in a later stage if you need to (the pilot does: `hub`, `hub2`, `hub3`). Heights are over the plot's floor; the kit adds the level.
+- **Walls with a window:** `R.wall(..., { gaps: [[a, b]] })` + a 1 m sill wall + a head wall (`y0: 3.2, walk: false`) + `R.pane(axis, at, a, b,
+  { y0: 1.0, h: 2.2 })`. Doors: `doors: [[middle, leaf, double]]`; leaves that suit: `leaf_security` (barred), `leaf_vault`, `leaf_bulkhead`,
+  `leaf_hospital`, `leaf_office`, `leaf_wired_double`, `leaf_glass`, `leaf_hotel`, `leaf_cell`.
+- **Heights inside a plot:** a `plateau` (keep it 15 cm INSIDE its drawn skin), a pit = `plateau` with `sink: true, h: -1.75` and its stair
+  INSIDE it (`R.stair(u_low, v, u_rim, v, 1, -1.75, 0)`), a deck = `R.deck` + `R.guard` + `R.stair`, a ladder = `ctx.feat({ k: 'climb', x, z,
+  face, look: 'ladder' })` on the low side of the face. A native or a prop on a deck or in a pit carries `y` (the room's level 0 + its height).
+- **Furniture backs onto walls:** `R.dec(key, u + 0.22, v + 0.5, 90)` + `R.keep(u, v)` for a west wall (east 0.78 / 270, north v + 0.22 / 0,
+  south v + 0.78 / 180). A wall piece: `R.hung(key, u, v, face, y)` or `ctx.hang(key, plot, lx, ly, side, y)`. Never stand `radiation_sign`,
+  `monitor_stack`, `gauge_board` free on a square.
+- **Signs:** `R.sign(words, u, v, y, w, h, ry, ink, ground, 'stencil', glow)`; `ry` 0 looks south, 180 north, -90 EAST, 90 west. `R.label` = a
+  door plate. Only names the plan has, plain labels otherwise.
+- **Light:** ten real lights for the base; S holds five, the White Rooms two. Ask on the board before taking one of the last three. Everything
+  else glows: `{ glow: 1 }` parts, the tool's strip lights (`look.light`, `every`), `R.lamp`, `dome()`. A catalogue prop marked with a light
+  (`evac_button`, `eeg_rack`, `floating_orb`, `studio_light`) carries `noLight: true` unless it is one of yours.
+- **The frame rate:** measure warmed (two throw-away views first). `flicker_tube` and `chimney_smoke` in a corridor cost a quarter; five real
+  lights cost about 0.5 FPS of 2 in the rooms they reach. HEAVY props: see the FITS list's last lines.
+- **Floors:** eight sheets a room, all taken (the tool's table + the Bunker's marble): `ctx.paint` picks one of them. Decals: `ctx.grime(kind,
+  plot, lx, ly, r)`, kinds `grime puddle oil blood scorch`; the game draws 60 of the tool's row: S uses 20.
+- **Never:** another district's squares (the tool prints strays), the ways out (the tool's `WAY`), the layout json by hand (edit
+  `docs/plans/world-zones/draw-dumb.js` under the tool row, with a board note).
+
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
 
 mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
