@@ -29,9 +29,12 @@
      - PASS 3 OF 5, MORE LANDMARK WORK (11-16, `build`): the Shelf's burial ground + low wall, the Snowline's kills + snow drifts, scarecrows / webs / a trap under
        the old trees, the Meadow's drum circle, pack candles for the candle ring, the camp's dog. The shortlist of everything that fits and the DECISIONS MADE FOR
        MONDO list: areas-complexes.md "THE REDWOOD TRAIL". Two passes left: atmosphere, polish. Then STOP (the district brief: five passes).
+     - PASS 4 OF 5, THE ATMOSPHERE (11-16, `airZones` + `build`): mist at the Falls (white rising + hanging particles), fireflies over the Meadow and the creek's
+       glades, heavier snow, seven pack lanterns on the trail's edges (`noLight`). Seen by day and at 22:30. Light shafts are NOT possible from a district file
+       (arch parts cannot be translucent; `light_shaft` is drawn by code and draws nothing). One pass left: polish. Then STOP.
      - NEEDS A MODEL (nothing stands in for these): a snow ground sheet; a fallen giant redwood trunk (the pack's `fallen_log` is 2 m);
        stepping stones a person can see (the graveyard pack's are a hand wide); a bat (the game's bats are drawn by code); a river fish; green bushes, moss, reeds;
-       icicles; deer / bear / owl; a lookout, a lean-to, a rope bridge; a trail sign with words; a bark sheet and a snow sheet.
+       icicles; deer / bear / owl; a lookout, a lean-to, a rope bridge; a trail sign with words; a bark sheet and a snow sheet; a lit candle (flame).
      - The two Creek plots hold almost nothing of their own.
      - Seen in the probe, do not bring back: the thorn vine model (a toothed man-eater on a mound) is wrong for this wood, and the ocean
        pack's rocks draw as black blocks in this room (the boulders are cave_stone).
@@ -75,7 +78,11 @@ module.exports = {
     /* THE TREE ZONES (terrain.gen.zones, the thicket by district) and THE AIR BY DISTRICT (shell.atmos.zones): boxes in plots, zoneOf(x0, y0, x1, y1) */
     treeZones: ctx => [Object.assign(ctx.zoneOf(0, 0, 3, 1), { kinds: ['tree_56', 'tree_55', 'tree_56', 'tree_5'], treeH: [6, 9] }),                            // the three mountain plots, first (the first box a tree stands in wins)
         Object.assign(ctx.zoneOf(0, 0, 3, 3), { kinds: ['tree_52', 'tree_52', 'tree_55', 'tree_52', 'tree_53'], treeH: [8.5, 13] })],                 // giants
-    airZones: ctx => [Object.assign(ctx.zoneOf(0, 0, 1, 1), { kind: 'snow', n: 150 }), Object.assign(ctx.zoneOf(0, 0, 3, 3), { kind: 'spores', color: 0xc8f090, n: 300 })],   // snow on the Snowline plot, first
+    /* PASS 4 OF 5, THE ATMOSPHERE (2026-11-16): mist rising off the Falls' foot and drifting over its pool (white `spores` rise, white `dust` hangs), fireflies over the
+       Meadow and along the creek's glades, heavier snow on the Snowline; the district's pale green spores stay. Metres; one Points a zone, nothing lit. */
+    airZones: ctx => [{ x0: -19.5, z0: -120, x1: -5, z1: -115, kind: 'spores', color: 0xffffff, n: 150, speed: 1.6 }, { x0: -21, z0: -120, x1: -3.5, z1: -106, kind: 'dust', color: 0xeaf4ff, n: 90 },
+        Object.assign(ctx.zoneOf(1, 1, 2, 2), { kind: 'fireflies', n: 45 }), { x0: -33, z0: -72, x1: -7, z1: -18, kind: 'fireflies', n: 60 },
+        Object.assign(ctx.zoneOf(0, 0, 1, 1), { kind: 'snow', n: 260 }), Object.assign(ctx.zoneOf(0, 0, 3, 3), { kind: 'spores', color: 0xc8f090, n: 300 })],   // snow on the Snowline plot before the district's spores
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
@@ -199,13 +206,15 @@ module.exports = {
           at('P00-01', 'trap_bear_base', 6.2, 5.6); at('P00-01', 'trap_bear_jaw', 6.2, 5.6); at('P00-01', 'trap_chain_straight', 6.9, 5.9); at('P00-02', 'hw_part_4', -1.2, 2.2);
           /* THE MEADOW: the drum circle round the fire (straw seats, a rug, the pack's other instruments, plates and cans), butterflies and bees over the grass */
           [[5.2, 0, 90], [-2.6, 4.6, 200], [-2.6, -4.6, 330], [3.6, 4.2, 140]].forEach(q => at('P01-01', 'hw_straw', q[0], q[1], { face: q[2] }, true));
-          [['psx_carpet_mp_1', 0.4, 6.4], ['instrument_guitar', 5.9, 1.1], ['instrument_maracas', -1.9, 3.6], ['instrument_seed_pod', 2.1, -3.3], ['instrument_whistle', -3.4, -2.7], ['instrument_tambourine_up', 3.9, 3.2], ['instrument_violin_lying', 0.9, 7.1],
-            ['psx_pillow_mp_1', -0.6, 6.0], ['psx_old_mattress_mp_1', -7.4, 6.6], ['psx_plate_mp_1', 1.6, 2.2], ['psx_spoon_mp_1', 1.9, 2.4], ['psx_open_book_mp_1', 1.2, 6.8], ['psx_canned_food_mp_1', -1.4, -2.1], ['psx_canned_food_mp_3', -1.7, -2.4],
-            ['psx_tin_can_mp_1_rusty', 6.4, -2.2], ['psx_ashtray_1', 0.2, 5.6], ['psx_matchbox_1', 1.2, -1.6], ['psx_supply_crate_1', -6.4, -4.4], ['psx_wooden_crate_6', 7.6, 6.2]].forEach(q => at('P01-01', q[0], q[1], q[2]));
-          ['butterfly', 'monarch', 'blue_morpho', 'swallowtail', 'bee', 'bumblebee', 'butterfly', 'monarch'].forEach((k2, i) => fly('P01-01', k2, 0.8 + (i % 3) * 0.4)); life('P01-01', 'ladybug'); life('P01-01', 'grasshopper_brown'); life('P00-01', 'ant_leaf'); life('P00-02', 'caterpillar_bug');
+          [['psx_carpet_mp_1', 0.4, 6.4], ['instrument_guitar', 5.9, 1.1], ['instrument_maracas', -1.9, 3.6], ['instrument_seed_pod', 2.1, -3.3], ['instrument_tambourine_up', 3.9, 3.2], ['instrument_violin_lying', 0.9, 7.1],
+            ['psx_old_mattress_mp_1', -7.4, 6.6], ['psx_open_book_mp_1', 1.2, 6.8], ['psx_tin_can_mp_1_rusty', 6.4, -2.2], ['psx_supply_crate_1', -6.4, -4.4], ['psx_wooden_crate_6', 7.6, 6.2]].forEach(q => at('P01-01', q[0], q[1], q[2]));
+          ['butterfly', 'monarch', 'blue_morpho', 'bee'].forEach((k2, i) => fly('P01-01', k2, 0.8 + (i % 3) * 0.4)); life('P01-01', 'ladybug'); life('P01-01', 'grasshopper_brown'); life('P00-01', 'ant_leaf'); life('P00-02', 'caterpillar_bug');
           /* THE TRAIL: the candle ring is the Halloween pack's candles now (the old piece was drawn by code), more candles round it, picket panels at the join */
           for (let i = 0; i < 7; i++) { const a = i / 7 * 6.2832; at('P01-02', i % 2 ? 'hw_candle' : 'hw_candle_2', Math.cos(a) * 1.5, Math.sin(a) * 1.5); }
           at('P01-02', 'hw_fence', 5.4, 2.0, { face: 90 }, true); at('P01-02', 'hw_fence', -5.4, 2.0, { face: 90 }, true); at('P01-02', 'psx_cross_mp_2', 0.4, 0.5); at('P01-02', 'hw_part_7', -0.7, -0.4);
+          /* PASS 4 OF 5, THE LIT PIECES (drawn glow, no light: the room's ten real lights are the torches and fires): the pack's lantern on the trail's edge at each join (every one `noLight`) */
+          { /* SEEN IN THE PROBE, TAKEN OUT: flames built from glowing boxes stood beside the pack's candles and read as pale blocks; a lit candle needs a model */
+            [['P01-02', 4.4, -3.2], ['P02-02', -3.6, 3.0], ['P00-02', 3.2, -4.4], ['P01-01', 9.4, -2.6], ['P01-00', -4.4, 8.2], ['P00-00', 7.4, -7.2], ['P00-01', -5.6, 7.4]].forEach(q => at(q[0], 'railway_lantern', q[1], q[2], { noLight: true })); }
           /* THE CREEK: the camp's dog, cooler, cans */
           at('P02-01', 'dog', 2.4, 1.6); at('P02-01', 'beach_cooler', -1.4, 2.6); at('P02-01', 'psx_canned_food_mp_2', -0.6, 2.2); at('P02-01', 'psx_canned_food_mp_5_rusty', 0.8, -2.4); at('P02-01', 'psx_metal_barrel_mp_1', -4.4, -3.2); at('P02-01', 'psx_lighter_mp_1', 0.3, 1.1);
           at('P02-02', 'psx_supply_crate_1_empty', 2.6, 1.2); at('P02-02', 'psx_tin_can_mp_1_rusty', -1.2, 2.2); at('P02-02', 'psx_bandage_mp_1', 1.4, -0.6); }
