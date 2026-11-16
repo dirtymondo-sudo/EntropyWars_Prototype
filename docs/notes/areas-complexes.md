@@ -6451,6 +6451,58 @@ a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil la
 3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
 4. The Sphinx stays parts-built until a model exists.
 
+## THE SEWERS, DISTRICT O · THE OLD WORKINGS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/O.js`)
+
+Two plots on level 0: P01-01 The Old Workings (a 9 x 9 square hall, 21 m to its roof because the trap's rope ladder comes down into it) and
+P00-01 The Chimney (a 7 x 6 hall, 12.25 m). Built on mondo's order of 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md), nothing asked.
+
+**PASS 1, THE EXTERIORS** (the three things the first build lacked, + the old room's pieces that had not been carried over):
+- **THE SUMP** (deep, never waded; the old room's own): 3 x 2 squares in the north chamber's east end. The tool's `deep` list is a whole plot,
+  and the Flood must stay waded, so the Sump is the district's OWN `stream` row (`key: 'deep_water'`, depth 1.8) on squares left `o`, marked
+  taken; a `ranch` rail shuts its open side.
+- **THE PUMP LEDGE** (1.4 m, the old height): a `plateau` over the Sump's south side, a `wood` stair flight, `ranch` rails, a board deck and
+  posts (arch parts), the pump's iron (suction pipe into the Sump, a rising main up the east wall).
+- **THE CHIMNEY** (the landmark): a 3.9 m brick stump (`plateau r 1.75`; the old room's own height; at this size it draws as a kiln-shaped
+  cone) with a ladder (`climb`) on its south face, under a hollow brick lining hung from the vault (`cyl` + `ri`), iron rungs, the old hoist
+  rope, and DAYLIGHT: a `glow: 1` disc as the sky + three sleeves of lit brick fading down + a pale ring on the floor. TRAP: the tool's barrel
+  vault crosses the shaft up to a metre under the plot's `ceil`; the sky disc sits at `ceil - 1.35` or the vault hides it.
+- **THE OLD PORTCULLIS** (link `workings_oubliette`, not moved): a raised iron grate in a brick frame on two chains under a winding beam,
+  drawn in front of the link's own door.
+- **THE TIMBER:** `set()` = two posts at the walls, a cap beam, wedges; `lag()` = a board roof over a drift's sets (`roof: true`, so HIDE
+  ROOFS hides it). The plot's roof is one height (21 m / 12.25 m), so a drift is a tall slot: the board roof at 3.7 m is what makes it a
+  drift. On the drift between the plots, the neck under the trap, the Adit's stem. Parts with no sheet and a brown tint wear the wood
+  surface, a dark grey the metal one (three-renderer.js `_hqArchSurface`): no flat colours.
+- **CARRIED OVER from `site_prebuilt_downtown_workings`:** the Sump, the Pump Ledge (1.4), the sleeper wall (the grind, on the Flood's north
+  bank), the pipe rail (its south bank), the boards laid as the path, the `cave_stone` and `cinder_block` scatters, the 3.9 m Chimney.
+  NOT carried: the tape and the find (CLAUDE.md: no tape / find guards), the old room's side chambers 1 to 3 (the plan has no squares for them).
+- **THE LIGHTS:** a room gets ten real prop lights (`HQ_PROP_LIGHT_MAX`), ceiling lamps first, then row order; districts are baked in
+  letter order (H, O, T, W), so after the cells' four bulbs this district's first torches are lit. Everything else is a glow sprite.
+- **SEEN** through probe-fast.js (11 views). Before: 692 calls, 1.22 M triangles at the Flood view.
+
+**FITS THIS DISTRICT** (MODEL_LIST.md read end to end, all sections, + pack-claims.md; every key checked against the live catalogue).
+Not used anywhere in the Sewers before this district's passes unless marked *:
+MINE GEAR `hw_shovel` `spell_dynamite` `meshy_burlap_sack` `money_sacks` `meshy_rope`* `wooden_bucket`* `ancient_well` `cable_drum`
+`tool_chest` `hand_truck` `platform_scale` `psx_hand_saw_1` `xmas_hammer` `psx_nails_1_rusty` `meshy_tongs` `locker` (cut from the Mine
+pack) `engine_hoist` `chain_hoist`* · ORE + LOOT `meshy_crystal_shard(s)` `crystal_cluster` `psx_gold_bar_pcs_1` `sea_chest` `psx_coin_mp_1`
+· BARRELS + CRATES `psx_metal_barrel_mp_0..3`* `psx_wooden_crate_1..6`* `psx_supply_crate_1(_empty)` `meshy_sandbags` · TIMBER + WAYS
+`psx_beam_1/2/4/5` `footbridge` `library_ladder` `ladder_wall_rack` `fallen_log` `meshy_fallen_log` `stump` · PIPES `psx_pipe_1(_short /
+_corner / _cross)` `psx_pipes_holder_1` `gate_valve`* `wheel` · LIGHT `cave_torch`* `brazier`* `campfire` `ship_lantern` `railway_lantern`
+`candle` `hw_candle(s)(_2)` `candelabra` `woods_glowcap` · IRON `psx_bars_metal_1/2` `hw_fence_iron(_2/_3)` `hw_gate_leaf` `psxg_iron_gate_1/2`
+`bird_cage` `psx_padlock_1/2` `wall_chains` `trap_chain_draped` `trap_chain_straight` `stocks` `meat_hook` `trap_bear_open` · MASONRY + RUBBLE
+`brick_arch` `catacomb_wall` `psx_brick_1` `hw_bricks(_2)` `cinder_block` `psxg_rock_1..4` `hw_stone..5` `ocean_rock*` `cave_stone` `menhir`
+`psxg_stepping_stone_1/2` · DEAD `skull`* `skull_pile`* `femur` `ulna` `anatomy_skeleton`* `hw_body(_2)` `hw_body_rising(_2)` `hw_part*`
+`hw_coffin(_2)` `trap_coffin_open` `sarcophagus` `dinosaur_skeleton` · LIFE `bat_black / _brown / _grey` `meshy_frog` `ocean_eel` `ocean_fish`
+`ocean_anglerfish` `ocean_crab` `tentacle` `hawk_moth` `luna_moth` `crow` · GROWTH `mushroom2`* `fae_toadstool` `woods_glowcap` `fern`
+`ocean_seaweed(_2/_3)` `kelp` `woods_thornvine` `meshy_dead_snag` `psx_cobweb_1/2/4/5`* `hw_web(_2/_3)` · BOATS `rowboat` `meshy_rowboat`
+`ship_anchor` `fishing_net_wall` · SIGNS `signpost`* `missing_board` `radiation_sign`.
+**NEEDS A MODEL** (not in the game, not on R2; the Mine pack's `Rails` piece was never cut out): pickaxe, mine cart + its rails, ore / coal
+heap, wheelbarrow, anvil, a pulley / head wheel, a cast-iron beam pump, rats, spiders.
+
+**DECISIONS MADE FOR MONDO** (overrule any in one line):
+1. The Chimney is a daylight shaft over a 3.9 m brick stump you can climb, not the old bare 3.9 m column.
+2. The Sump sits at the Pump Ledge's foot in the north chamber (the plan names both, places neither).
+3. The Pump Ledge is entered by its own stair from the floor; the trap's rope ladder still lands on the floor of the neck (in the old room it landed on the ledge).
+4. The old tape on the Chimney and the find are not re-homed.
 ## THE RITUAL GROUND — the Woods' district G, the district thread (2026-11-16, second side; file `docs/areas/woods/districts/G.js`)
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped, at most five passes, no questions. Branch `claude/woods-g-ritual-ground`.
 The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, the stage, the owl). All new work is in `build(ctx)` (+ `cut`, `ground`); row ids `woods:G:<name>`.
