@@ -5038,6 +5038,68 @@ A set-up change only: how the zone is written, not what is built.
    Two prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack). No Meshy until mondo says so; the corn waits for it.
 7. A lasting fact goes in this file under your district's own heading in the same PR, and one line on the board.
 
+## THE ESTATE, DISTRICT H — THE HAUNTED HOUSE + GRAVEYARD, THE PILOT (2026-11-16)
+
+mondo 11-16: "start one district thread in each to try to get it up to par with disaster city, so it will be easier to do the other districts once
+that first district is fleshed out and knows what shared assets it can use for the zone". District H is the Estate's pilot
+(`docs/areas/estate/districts/H.js`). Passes, a PR each: exteriors, interiors, dressing, atmosphere, polish.
+
+### THE FIRST LOOK (probe, 14 views)
+- **THE SHEET OVER THE DISTRICT:** every view from the house's rise was white-grey and every view from below had a dark lid. A ray cast straight
+  down in the page named it: `hw_web`, the Halloween pack's cobweb, placed once on the porch. Its catalogue row sized it by `h: 1.07`, but the card
+  lies flat in the file (no height to fit), so the fit blew it up to a sheet some 250 m wide, 2 m over the lawn. The row reads `span: 1.07` now
+  and the web is not placed (not seen standing yet). LESSON: a flat card is sized by `span`, never by `h`.
+- The treehouse's block was a leaf-sheet cube with sloped sides (a plain `plateau` wears the room's cliff sheet = the corn's, and the 0.875 m
+  field slopes its flanks), its boards hidden inside it. The gazebo's eight posts stood 4.6 m east of its floor (a `ring` part adds its radius
+  to the part's own `p`). The house's door stood in the door row's plain surround, which wears the shell's wall sheet (leaves).
+
+### PASS 1, THE EXTERIORS (seen in the cloud browser)
+- **THE HAUNTED HOUSE:** a local `win(face, u, y, o)` writes one window as eleven parts (glass, sill, head, jambs, bars, two shutters, boards when
+  boarded up) on any of the four faces; 39 windows, three lit. A brick base, corner boards, a belt course, a bracketed cornice, two dormers,
+  an iron cresting, the tower's louvres and weathervane, porch rails with ghost walls under them, a back door on its stoop.
+  **The door's vestibule:** panelled cheeks, a front quad with the doorway cut out (`hole: [0, 1.24, 2.32]` fits the door row's leaf), a hood
+  over the head. It stands 0.97 m out of the wall and covers the door row's surround and its green lamp; the door row itself is the tool's, untouched.
+- **THE CRYPT:** plinth, a frieze carried out over a four-column portico, the roof's own gable as the pediment, a cross, buttresses, grave lights.
+- **THE GAZEBO:** posts where they belong, white paint (bare parts: the renderer gives a pale bare part painted plaster), rails on six of the
+  eight bays (open to the path and to the west) with ghost walls, a lamp under the roof.
+- **THE IRON GATE:** pier bases, lamps on the caps, a taller overthrow; ghost walls under the piers.
+- **THE TREEHOUSE:** the block is a building tier with its skin off (`{ k: 'plateau', ..., bld: { skin: false } }`): square sides, nothing of the
+  leaf sheet. Boards, corner posts, two belts of beams, a railed deck, the hut's lit back window and lantern.
+- **THE GRAVEYARDS:** a low stone wall (`psxg_wall`, a panel a square) along row 65 of both, open under a drawn LYCH GATE (the Family Plot at
+  square 17, the Graveyard at 28); an obelisk on a stepped plinth at the Graveyard's middle (28, 68) with a ghost wall.
+- **Boards under the porch's side bays and the treehouse deck** (`plan()` sets those squares to `j`, the plank sheet), and three-renderer.js
+  `_hqGrassTick` keeps the grass field off a building tier (`plateau` + `bld`) as it does off a `texbuilding`: tufts grew on the deck.
+- Not done in this pass: the district at night, the Drive and the Lawn (dressing), the Crypt's inside (interiors).
+
+## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
+
+Read this before dressing C, L or R. It grows with each of H's passes.
+
+- **PROP KITS anyone may place:** `hw_*` (Halloween pack, 37 rows) and `psxg_*` (PSX graveyard pack, 24 rows); sizes and what blocks are in
+  data.js `HQ_CATALOGUE_HALLOWEEN` / `HQ_CATALOGUE_GRAVEYARD`. Good outside the graveyard too: `hw_fence` (picket, 1.65 m), `hw_fence_iron`
+  (3.6 m between piers), `hw_wall` (brick, 3.6 m), `psxg_wall` (low stone, 3.7 m = a panel a square), `psxg_railing` (4.7 m), `hw_straw`,
+  `hw_scarecrow`, `hw_farmland` + crops, `hw_tree*` (bare trees 4 to 7 m), `psxg_dead_tree_*`, `psxg_dead_bush_*`, `psxg_rock_*`, pumpkins,
+  `psxg_stepping_stone_*`. **Do not place `hw_web`** until someone has seen it stand (see THE FIRST LOOK above).
+- **SHEETS that read right here** (ctx names): `WD` boards and bark, `WD2` trim, `SHG` shingles, `FLR` planks, `BRK` brick, `COR` tin, `GLS`
+  dark glass, `'castle_wall'` dressed stone, `'marble'` pale stone. A part with no key and a pale colour draws as painted plaster (white paint);
+  a dark grey one as plate steel (iron). Tints multiply the sheet: `WD2` under a white tint is still brown, so white woodwork = no key.
+- **THE LOOK RULES settled in H** (keep them zone-wide so the four districts read as one estate): woodwork trim `0x26222a`; iron `0x1c1c20`;
+  lamps are small drawn lanterns, oil-lamp amber `0xff9a30` with `glow: 0.7` (a glow of 1 goes white); grave lights (crypt, lych gates) green
+  `0x58f0a0`; lit windows `0xf0c868` at `glow: 0.6`, dark ones `0x2a3040` at 0.05; roofs dark `0x2c2830` on `SHG`.
+- **HELPERS a district may copy from H.js** (they are plain functions in the file, not yet in the tool): `win()` (a full window on any face of
+  a box building), `blk()` (a ghost wall = the walker's block under a drawn piece: `{ k: 'wall', ..., ghost: true, rail: false }`), the
+  vestibule (how to dress a tool door without touching its row), the lych gate, the lamp boxes.
+- **A BLOCK YOU CLIMB OR STAND ON** = `{ k: 'plateau', id, x, z, w, d, h, edge: 0.3, bld: { skin: false } }` + an `arch` look. Without `bld` it
+  wears the corn's leaf sheet and slopes.
+- **A `ring` PART** is placed at `p` + the ring's radius: keep `p` at the ring's centre. `ring: { n, r, a0, arc }`, angle 0 = +x, each copy's
+  +z turned outward.
+- **THE GRASS FIELD** grows on every square whose sheet is grass. Under a deck, a porch or a floor set the squares to `j` in `plan()` (planks).
+- **DRAWN PIECES HAVE NO COLLISION:** an `arch` / `look` is seen only. Give it `blk()` walls or stand it on squares nobody walks.
+- **PROBING:** a view needs its own `y` (the compiled ground: `hqTerrainHeight(hqTerrainInfo(room), x, z)`); first person (`fp: true`) with a
+  small upward pitch shows a building best; one run of 13 views takes about 3 minutes.
+- **STILL MISSING ZONE-WIDE:** corn stalks (Meshy, waits), a lamp post model, night never seen on screen, no residents with routines, lines for
+  most of the people.
+
 ## THE DESERT, AREA 51 — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/A.js`)
 
 mondo (the set-up thread's brief): one thread per district; passes in order EXTERIORS, INTERIORS, DRESSING, ATMOSPHERE, POLISH, a PR each.
@@ -5128,3 +5190,9 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a water trough, a wooden fence run with a gate, a hitching rail, a tavern table with benches.
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
+- **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
+  sandbags and barricade; the cantonment's bench, bins, dumpster, pallets, car park; the apron's freight, forklifts, engine stand, a
+  missile; the crater's lamps, camera, tape, pod; landing rings scorched into the Dry Lake west (16-sided rings of flat `line` paint); the
+  range on the Dry Lake east; the wing's yard. Two more men (hangar door, crater), no lines. A sign with `ds: true` reads mirrored from
+  behind: give a board a back, or two signs back to back. `missile` lies flat (it has no stand): on the "needs a model" list.
+
