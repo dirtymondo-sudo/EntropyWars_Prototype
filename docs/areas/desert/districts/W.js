@@ -47,11 +47,16 @@
      HOTEL: a 3.4 m ceiling, the lobby, a corridor, six rooms (bed, wardrobe, table, rug). CHURCH: chancel step, altar, cross, pews.
      BLACKSMITH: brick forge + hood. BARBER, ASSAY OFFICE, TELEGRAPH, UNDERTAKER: counter, shelves, their trade's pieces.
 
+   THE DRESSING (after THE DRESSING PASS, 2026-11-16; seen in the browser): `dress()` below. Porch chairs, benches, barrels, sacks, straw,
+   a hanging lantern by every door (a glow, no lamp), chickens, crows, a wagon at the store; three privies and woodpiles in the back yards;
+   the church's pickets; a crop patch + scarecrow by the windmill; the mine's yard; THE TRAIL IN's timber gate and rail; logs, pot and a
+   horse line at the WAGON CAMP; five cows and an old fence on OPEN RANGE; the hideout at the end of THE CANYON (fire, cot, loot, dynamite).
+
    KNOWN MISSING OR WRONG:
    - No upstairs anywhere: the saloon's gallery and the stables' loft are drawn and not reached; the hotel's upper floor is its front only.
      THE MINE has no inside. The hotel's six rooms were not seen on screen (the probe stood in a partition).
    - The insides read dark in the cloud browser even with lit linings (mondo's Firefox renders brighter): judge on his machine.
-   - Thin: the south half (The Trail In, Open range, The Canyon's floor) is nearly empty; no lamps, no troughs; the box canyon holds nothing.
+   - No real lamp yet (the lanterns only glow): the atmosphere pass. The camp's two tents are modern camping tents (NEEDS A MODEL).
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS, not this file's).
    - Door leaves DO draw in the probe here (saloon, church, jail seen 11-16); the open finding in "THE LOOK PASS" is not true of this town.
 
@@ -316,8 +321,58 @@ exports.ground = ctx => { bind(ctx);
     pen(84, 28, 88, 34, [0, 86]); P('horse_black', 85, 30, { face: 90 }); P('cow', 86, 32, { face: 300 }); P('cow', 87, 30, { face: 40 }); dec('wooden_bucket', 85, 33);                           // THE CORRAL
     P('campfire', 66, 44, {}); Pm('camping_tent', gc(64), gc(45), { face: 120 }); Pm('camping_tent', gc(68), gc(46), { face: 220 }); dec('sea_chest', 67, 46); dec('instrument_guitar_lying', 65, 43);
     dec('skull', 76, 43); dec('skull', 80, 39); dec('psx_fish_skeleton_mp_1', 78, 45, { y: 0.02 }); P('dead_snag', 74, 40, {}); P('dead_snag', 79, 42, {});
+    dress();
     native('sheriff', 52, 25, 0); native('cowboy', 64, 22, 180, sayOf(O_LINE, 'cowboy')); native('cowboy', 60, 24, 90); native('skeleton', 54, 2, 180);
 };
+
+/* THE DRESSING PASS (2026-11-16): the place looks used. Porches, back yards, the trail's gate, the camp, the range, the canyon's hideout.
+   Only pieces the catalogue has; what it lacks is on the NEEDS A MODEL list in the header. Whole-square blockers go through P (a square's
+   middle), loose things through dec / Pm (off the middle). Lanterns wear `noLight` (a glow, no lamp): the atmosphere pass lights the town. */
+function dress() {
+    const sack = 'meshy_burlap_sack', crate = 'psx_wooden_crate_2', keg = 'psx_metal_barrel_mp_1', lamp = (x, z, y) => Pm('meshy_hanging_lantern', x, z, { y: y || 2.45, noLight: true });
+    /* a privy: plank box, lean-to roof, a board door with its moon; drawn + one ghost block (a back yard's own small building) */
+    const privy = (sx, sy, id) => { const a = sheet(), T = 0x9a7a5a; a.box(0, 0, 0, 1.3, 2.2, 1.3, WD, T, { uv: [1.75, 1.75] }); a.roof('shed', 0, 2.2, 0, 1.6, 0.4, 1.6, SHG, 0x6a5a4a); a.box(0, 0.05, 0.66, 0.7, 1.9, 0.04, WD2, 0x6a4e38);
+        a.cyl(0, 1.5, 0.69, 0.12, 0.02, WD2, 0x1a1410, { seg: 8 }); feat({ k: 'arch', id: 'des:w:privy:' + id, x: gc(sx), z: gc(sy), rot: 0, parts: a.P });
+        feat({ k: 'wall', x0: gc(sx) - 0.65, z0: gc(sy), x1: gc(sx) + 0.65, z1: gc(sy), h: 2.2, t: 1.3, key: WD2, ghost: true, rail: false }); };
+    /* MAIN STREET, the north porches (row 21; the door squares stay clear) */
+    Pm('hw_straw', gc(49) + 0.2, gc(21), { face: 90 }); Pm('hw_straw_2', gc(49) + 0.3, gc(21) - 1.0, { face: 0 }); dec('wooden_bucket', 53, 21); dec('chicken', 55, 23); dec('chicken', 50, 22); dec('chicken', 54, 20);
+    dec(keg, 58, 21); dec('psx_metal_barrel_mp_2', 56, 21); Pm('rocking_chair', gc(61), gc(21) - 0.4, { face: 180 }); Pm('rocking_chair', gc(64) + 0.6, gc(21) - 0.4, { face: 200 }); dec('psx_glass_bottle_1', 64, 21); dec('psx_glass_bottle_2', 61, 21);
+    Pm('iron_garden_bench', gc(66), gc(21) - 0.9, { face: 180 }); dec('psx_potted_cactus_mp_1', 68, 21, { h: 0.6 }); dec(crate, 79, 21); dec(sack, 77, 21); Pm('iron_garden_bench', gc(82) + 0.9, gc(21) - 0.9, { face: 180 });
+    Pm('rocking_chair', gc(85), gc(21) - 0.4, { face: 180 }); Pm('luggage_cart', gc(88) + 0.8, gc(21) - 0.2, { face: 20 }); dec('potted_plant', 89, 21);
+    [51.5, 57.5, 63, 67.5, 74.5, 78.5, 82, 87].forEach(x => lamp(gx(x) + 1.1, gx(22) - 0.35));
+    /* the south porches (row 26) */
+    Pm('notice_board', gc(52) + 0.6, gx(27) - 0.12, { y: 1.5, face: 0 }); dec(sack, 73, 26); dec(sack, 76, 26); Pm(crate, gc(77) + 0.6, gc(26), { face: 12 }); Pm('psx_wooden_crate_6', gc(77) + 0.6, gc(26), { y: 1.08, face: 40 }); dec('hw_pumpkin', 74, 26); dec('hw_pumpkin_2', 76, 26);
+    dec(keg, 72, 26); Pm('psxg_coffin', gc(55) - 0.9, gx(27) - 0.5, { face: 90 }); [51.5, 56.5, 75].forEach(x => lamp(gx(x) + 1.1, gx(26) + 0.35));
+    /* the street itself: a wagon drawn up at the store, the trail in between the jail and the undertaker */
+    Pm('covered_wagon', gc(81), gc(25) - 0.6, { face: 0 }); Pm('horse_black', gc(60), gc(22) + 1.7, { face: 0 }); dec('wooden_bucket', 65, 25);
+    for (let y = 27; y < 32; y++) for (const x of [53, 54]) setPaint(x, y, 'dirt_2');
+    /* the back yards */
+    privy(66, 14, 's'); privy(91, 16, 'h'); privy(79, 33, 'g'); P('fallen_log', 62, 15, { face: 0 }); P('stump', 64, 15, {}); dec('psx_hand_saw_1', 63, 14); P('fallen_log', 75, 32, { face: 90 }); dec('stump', 76, 33);
+    dec(keg, 60, 19); dec(crate, 60, 17); dec(crate, 84, 19); dec(keg, 90, 20); dec('psxg_dead_bush_1', 58, 15); dec('psxg_dead_bush_2', 71, 15); dec('psxg_dead_bush_1', 82, 15); dec('psxg_dead_bush_2', 60, 31); dec('psxg_dead_bush_1', 70, 33);
+    dec('crow', 53, 6, { y: 3.56 }); dec('crow', 57, 3); dec('crow', 66, 24, { y: 1.15 }); dec('crow', 84, 28, { y: 1.25 });
+    /* THE CHURCH YARD + THE WINDMILL'S PATCH */
+    for (const x of [62, 63, 68, 69]) Pm('hw_fence', gc(x), gx(6) - 0.2, { face: 0 }); dec('psxg_dead_bush_2', 62, 3); P('psxg_dead_tree_2', 69, 2, {}); Pm('iron_garden_bench', gc(63), gc(5), { face: 180 });
+    for (const q of [[80, 6], [81, 6], [82, 6], [80, 7], [81, 7], [82, 7]]) Pm((q[0] + q[1]) % 2 ? 'hw_crop' : 'hw_crop_2', gc(q[0]), gc(q[1] + 2), { face: 0 }); P('hw_scarecrow', 83, 9, { face: 200 }); dec('hw_shovel', 79, 9); dec('hw_pumpkin_3', 82, 10); dec('chicken', 79, 6);
+    /* THE MINE'S YARD */
+    dec('spell_dynamite', 92, 7, { h: 0.5 }); dec('psxg_rock_1', 89, 9); dec('psxg_rock_2', 91, 9); dec('psxg_rock_3', 90, 10); dec('psxg_rock_2', 88, 10); dec(sack, 93, 8); dec(keg, 87, 5); lamp(gx(90) + 1.2, gx(5) + 3.0, 2.3);
+    /* THE CORRAL */
+    Pm('hw_straw', gc(89), gc(29), { face: 0 }); Pm('hw_straw_2', gc(89), gc(30) + 0.2, { face: 90 }); dec('wooden_bucket', 87, 27); dec(keg, 83, 28); dec('chicken', 89, 32);
+    /* THE TRAIL IN (P08-04): a timber gate over the trail where it reaches town, a ranch rail either side, a bleached skull on the beam */
+    { const a = sheet(), T = 0x7a5a40; for (const s of [-1, 1]) { a.box(s * 4.0, 0, 0, 0.36, 5.2, 0.36, WD2, T); a.box(s * 3.3, 4.2, 0, 1.4, 0.2, 0.2, WD2, T); } a.box(0, 4.8, 0, 9.2, 0.34, 0.34, WD2, T);
+        feat({ k: 'arch', id: 'des:w:gate', x: gx(54), z: gc(35), rot: 0, parts: a.P }); Pm('skull', gx(54), gc(35), { y: 5.14, face: 180, h: 0.6 });
+        feat({ k: 'rail', x0: gc(49), z0: gc(35), x1: gx(54) - 4.0, z1: gc(35), model: 'ranch' }); feat({ k: 'rail', x0: gx(54) + 4.0, z0: gc(35), x1: gc(59), z1: gc(35), model: 'ranch' }); }
+    P('signpost', 51, 40, { face: 90 }); dec('psxg_rock_1', 50, 38); dec('psxg_dead_bush_1', 57, 39); dec('skull', 56, 43); dec('psxg_rock_3', 49, 44); P('dead_snag', 58, 45, {}); dec('psxg_dead_bush_2', 51, 46); dec(crate, 55, 37);
+    /* THE WAGON CAMP (P09-04): logs to sit on round the fire, the pot, the horse line */
+    P('fallen_log', 66, 42, { face: 0 }); P('fallen_log', 68, 44, { face: 90 }); dec('stock_pots', 67, 43); dec(keg, 63, 42); dec(crate, 70, 46); dec(sack, 62, 44); dec('wooden_bucket', 65, 46); lamp(gc(64), gc(43), 0.02);
+    P('hitching_rail', 62, 46, { face: 0 }); Pm('horse', gc(62), gc(46) + 1.7, { face: 0 }); Pm('horse_brown', gc(62) + 1.5, gc(46) - 1.7, { face: 180 }); dec('psxg_dead_bush_1', 61, 38); dec('psxg_rock_2', 70, 40);
+    /* OPEN RANGE (P10-04): cattle on poor grazing, a stretch of old fence */
+    [[75, 38, 200], [78, 41, 60], [81, 38, 310], [76, 45, 140], [73, 43, 20]].forEach(q => P('cow', q[0], q[1], { face: q[2] }));
+    feat({ k: 'rail', x0: gc(73), z0: gc(36), x1: gc(77), z1: gc(36), model: 'ranch' }); feat({ k: 'rail', x0: gc(79), z0: gc(36), x1: gc(82), z1: gc(36), model: 'ranch' });
+    [[73, 39], [77, 43], [78, 46], [83, 39], [74, 46], [79, 37]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1])); dec('psxg_rock_1', 76, 40); dec('psxg_rock_4', 79, 42); dec('psxg_rock_2', 74, 43);
+    /* THE CANYON (P11-04): the box canyon is somebody's hideout */
+    P('skull_pile', 89, 36, {}); P('campfire', 90, 43, {}); Pm('cot', gc(91) + 0.5, gc(44) + 0.6, { face: 90 }); Pm('money_sacks', gc(91) + 0.6, gc(42), {}); Pm(crate, gc(90) - 0.6, gc(44) + 1.0, { face: 15 }); Pm('spell_dynamite', gc(90) - 0.6, gc(44) + 1.0, { y: 1.08, h: 0.5 });
+    Pm(keg, gc(91) + 0.8, gc(40), {}); Pm('shotgun', gc(91) + 0.9, gc(43), { y: 0.5 }); Pm('horse_black', gc(91) + 0.3, gc(39), { face: 0 }); lamp(gc(90) - 1.2, gc(42), 0.02); dec('psx_glass_bottle_1', 90, 44); dec('skull', 90, 39);
+}
 
 /* THE MESHY PIECES (mondo 11-15 19:01 "okay go ahead": the packs have no cactus, covered wagon, water tower or hitching rail) */
 exports.pieces = ctx => { bind(ctx);
