@@ -2655,3 +2655,23 @@ mondo on the Hollywood Hills pictures: "the sides/cliffs texture looks too repea
 - `_hqBuildEdgeLand` matFor: the far land's sheets drift in tone; rock and sea cliff are also mixed with themselves read 3.7 x larger (WebGL only:
   an onBeforeCompile on the Lambert material; the node renderer keeps the plain sheet).
 - Every terrain room gets it (not only the Hills). Cost: up to three more plain reads on a cliff pixel. Kill switch `window.EW_NO_NATURAL_ROCK`.
+
+## THE SLOW PROBES: probe-fast.js + THE SEAT'S SHARE (2026-11-16, mondo: "the screenshots and probes run slow as fuck")
+Measured in the cloud container on the Disaster City (729 files, 5,296 props, every file already in the probe's disk cache):
+- The software GPU (SwiftShader) drew the room at 0.3-0.5 FPS (7,000-9,000 draw calls, 1-2 M triangles). Mesa llvmpipe: 0.8-2 FPS.
+- `page.screenshot` took 20-45 s EACH: ~10 round trips to a page whose main thread sits inside a 2-3 s frame. With the game loop
+  held for the capture: 0.2-2 s.
+- The load never finished in 6 minutes. CPU profile of the page while loading: 74 % drawing the room UNDER the load card (the files
+  land between frames: 4 of 719 after 70 s), 20 % `getImageData` (ui.js `_alphaScanSprite`, a GPU-backed 2D canvas read back through
+  the busy software GPU; `--disable-accelerated-2d-canvas` ends it). With the drawing off, HALF of what was left was
+  `_hqSeatTabletops`: `_hqSeatLater` ran the pass 120 ms after the first model that asked, so with files landing all the time it ran
+  back to back for the whole load.
+- Harnesses with no route of their own loaded the LIVE R2 scripts and played on the red CODE MISMATCH page.
+The fixes: `probe-fast.js` (repo tooling; all 30 harnesses launch through it: llvmpipe on its own Xvfb, the held screenshot,
+`roomReady` = the gate + a quiet network with the drawing off until ready, the checkout's scripts for cdn.entropywars.net) and, in
+the game, THE SEAT'S SHARE: three-renderer.js `_hqSeatLater` waits 12x the last pass's own cost (120 ms .. 5 s; `_hqSeatCost`, reset
+per room), so the pass stays under a tenth of the main thread on any machine and the last model still gets its pass. Players get
+that part too (a big room's load is shorter on a slow CPU). After: the city's files in ~95 s, ready in ~170 s, three pictures by
+~200 s. What is left is the room's real work on a CPU-only machine (GLB parse, texture upload, `_hqWarmRun`, the still-matrix walk).
+Not done, ideas only: the game could skip drawing under an opaque load card for players too (needs the shader warm-up kept).
+

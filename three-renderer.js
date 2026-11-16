@@ -80148,9 +80148,19 @@ const ThreeRenderer = (function () {
             return L ? L.concat(big) : big;
         };
     }
+    /* THE SEAT'S SHARE (2026-11-16, the probes' slow loads): the pass ran 120 ms after the first model that asked, so while a
+       big room's files land (the Disaster City: 730 files, each pass 150-400 ms) it ran back to back and took HALF the main
+       thread for the whole load. The wait is now 12x the last pass's own cost (120 ms at least, 5 s at most): the pass keeps
+       under a tenth of the thread, a small room seats as fast as before, and the last model to land still gets its pass. */
+    var _hqSeatCost = 0;
     function _hqSeatLater() {
         if (_hqSeatTimer) return;
-        _hqSeatTimer = setTimeout(function () { _hqSeatTimer = 0; try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); } }, 120);
+        _hqSeatTimer = setTimeout(function () {
+            _hqSeatTimer = 0;
+            var t0 = performance.now();
+            try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }
+            _hqSeatCost = performance.now() - t0;
+        }, Math.max(120, Math.min(5000, _hqSeatCost * 12)));
     }
     /* THE REAL COLLISION (2026-10-06): which placed prop gets a mesh collider — every floor prop that blocks today (its footprint is
        replaced by its real shape) and every other standing model big enough to walk on or bump into (a footbridge, a stair, a
@@ -80364,6 +80374,7 @@ const ThreeRenderer = (function () {
             litRows = new Set(cands.slice(0, Math.max(0, left)).map(function (c) { return c.p; }));
         })();
         for (var ri = 0; ri < rows.length; ri++) { placeOne(rows[ri]); if ((ri & 3) === 3 && _hqSliceDue()) yield; }
+        _hqSeatCost = 0;   // a new room: its first pass after a model lands waits the short 120 ms again
         try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }   // the procedural furniture is in; the GLBs re-run it as they land
         })();
         if (sliced) return it;

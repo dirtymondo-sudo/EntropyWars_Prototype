@@ -10794,6 +10794,19 @@ puts the camera UNDER the land: you photograph the sea sheet or the shell floor 
 first, headless: `hqTerrainCompile(DOOR_HQ.rooms[id], id).hFn(x, z)` (load-data.js sandbox), and pass `"y": <that + 0.05>`. `face` 0 looks north, 90 east.
 
 ## THE CITY PROBE — playtest_city.js: the HQ with THE REAL SHEETS (2026-09-17, THE URBAN PACK)
+**THE FAST PROBE (2026-11-16, read this first; it replaces tip 2 and RULE 3 below).** Every harness now launches through
+`probe-fast.js` (`require('./probe-fast.js').launch(chromium, {...})`); a probe you write yourself must do the same. What it does:
+(1) runs Chromium on Mesa llvmpipe under its own Xvfb, 2-4x the frame rate of SwiftShader (`EW_PROBE_GL=swiftshader` = the old
+one; `--use-gl=swiftshader` is refused by this Chromium, do not pass GL flags yourself); (2) `page.screenshot` HOLDS the game loop
+for the capture: 0.2-2 s a picture, was 20-45 s in a big room; (3) `fast.roomReady(page)` waits for the room's load gate + a quiet
+network and, until then, switches the drawing off (the game draws the whole room under the load card; on a software GPU the files
+starved: 4 of 719 after 70 s); (4) cdn.entropywars.net's game scripts are answered from the checkout in every harness (no red CODE
+MISMATCH page). In playtest_city.js: NO `--wait=150000` and no `EW_NO_MODEL_QUEUE` any more; `--wait` is only the longest it waits
+(default 240 s), `--sleep=<ms>` adds a fixed pause, `"settle"` on a view is optional (default = 3 drawn frames). The log prints
+`TIME <s>` per step and `[PROBE] room ready in N s`; `ROOM NOT READY` = the pictures may be half loaded. Measured, Disaster City
+(729 files, 5,296 props), three views: ~200 s in all (before: not loaded after 6 min, then 35-45 s a picture); a small room ~55 s.
+Still true: never run two probes at once. `EW_PROBE_DRAW_LOAD=1` draws during the load (to watch the card), `EW_PROBE_NO_HOLD=1`
+takes pictures the old way.
 **Tips learned on the Estate (2026-11-15):** (1) a view on sloped or raised ground needs its own `"y"` (metres over the room's
 level 0): without it the camera stands at y 0, under the ground, and the picture is sky colour below the horizon. (2) Props stream
 in through the model queue and the cloud's software renderer is slow: with the default wait a big outdoor room shows its buildings
