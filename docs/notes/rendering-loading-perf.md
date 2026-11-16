@@ -1957,6 +1957,36 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE HAND-OVER'S THREE FREEZES (2026-11-16: the last picture, the field survey, the way back merges first)
+
+mondo after #1547: the fight 23.4 -> 34.0 FPS (2,608 -> 1,158 meshes, "the fight's room live 450->24"), but "going into
+and coming out of a fight is still really bad, frame rate drops to zero. Please fix the handover". His F3 a moment after
+coming back: **1.5 FPS, 56,355 draw calls, 30,624 meshes, no Static batch line, no instance pass, no squares.**
+Still open in the fight's own frame: "bundle check 7.3" (2,300 recorded groups), "mask: projection walk 4.4" (15K visits),
+"rest of the frame 7.9", picks 309/s = 193 ms/s (840 plain meshes raycast), may-fade props 519 meshes in 1,378 groups.
+What froze, and the fix (three-renderer.js):
+1. GOING IN, the last picture (cloud profile of a strike: `_hqLeave -> _hqDissolveStart -> _hqRenderOnce` the longest step):
+   the dissolve draws the room once more for its picture, AFTER `_hqChunkHome` + `_hqBatchDropAll`, so that draw was the whole
+   city piece by piece (one ~600 ms frame on his Mac). `_hqLeave` now takes the picture first (same camera, the room still
+   merged), then hands the pieces back.
+2. GOING IN, the field survey: `hqFieldFrame -> hqFieldLattice -> hqFieldTerrainInfo` reads the room's whole lattice at the
+   first strike of a session (cloud: 3.8 s; kept on the room after). `_hqGateTick` makes it behind the card for a terrain
+   room, just before READY. Off: `window.EW_HQ_NO_FIELD_WARM`. (Costs that time once under the first loading card.)
+3. COMING BACK: the way back draws the room from its first frame with no card, but the instance pass, prop chunks, LOD and
+   the merge waited for `H.landed` (every file in). On an entry with `onFirstFrame` (the way back only) they now run from
+   the first tick (`_hqPassOk`), and in a big room nothing is drawn and the debrief's picture is not faded until the first
+   merge is live (`_hqBackHold`, at most HQ_BACK_HOLD_MS 5 s; the merge takes `HQ_BATCH.holdSliceMs` 220 ms a tick while
+   nothing is drawn). This CHANGES his 10-25 "NO HELD FRAME": the debrief's picture stays ~2 s longer, in place of 10+ s at
+   1-12 FPS; told him. Off: `window.EW_HQ_BACK_NO_HOLD` (draw from the first frame), `window.EW_HQ_BACK_OLD` (all as before).
+Cloud (WebGPU on SwiftShader, a strike at the city's spawn, CPU profile; HEAD on 36cd5fd + this change): `_hqLeave` 34.5 s ->
+0.32 s, the dissolve's draw 34.4 s -> 0.23 s, the field survey (3.8 s) gone from the strike (`room._fieldTerrainBy` made
+under the card), the fight starts ("kept 2116 · culled 14443"), 0 page errors. THE WAY BACK WAS NOT PROVEN: the fight was
+ended from the probe (`u.hp = 0; checkWin()`, then `#encReturnBtn`.click()) and the cloud browser was killed for memory while
+the city was built again (the container's limit; it says nothing about the change). His Mac is the first real run of 3.
+Other rows of the strike's profile, not touched: `_hqSeatTabletops` 1 s, the fight's first frames (2,300 new recordings).
+STILL THE REAL FIX: THE PARKED CITY (see below, item 1): the fight should take the walk's groups whole (merged, chunked)
+under one holder and give them back, so neither direction builds or merges anything.
+
 ## THE FIELD MERGE + THE FIRST MERGE IS FAST + THE FIGHT'S ONE MATRIX WALK (2026-11-16, fights in the city)
 
 mondo: "going into a fight and the return from a fight are both terrible. I don't understand bc it's the same room. does all

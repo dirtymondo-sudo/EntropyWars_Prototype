@@ -1,5 +1,15 @@
 # Plot layouts for the remaining zones, and the whole-world map
 
+## The Sewers, plan 2 (2026-11-16, waits mondo's OK)
+
+`sewers_plot_plan_2.png` + `sewers-layout-2.json`, drawn by `node docs/plans/world-zones/draw-sewers.js` (it reads the built city's files for the outline). It replaces `sewers_plot_plan.png` (plan 1, 8 x 2), which was drawn before the city's districts moved.
+
+- The Sewers use the city's own 12 x 12 plot grid: sewer plot `Pcc-rr` lies under the city plot standing at column cc, row rr. 31 plots are dug.
+- Districts: W The Sewers (23), T The Running Tunnels (4), H The Holding Cells (2), O The Old Workings (2). One file each from the first build PR (`docs/areas/sewers/districts/W.js T.js H.js O.js`, `layout.json`, `bake-sewers.js`).
+- Doors up: the Pump court (column 10, row 11) and the Dock edge's drowned manhole (column 8, row 11) straight under their city doors; the track to the Platform under the Transit square (column 0, row 3); the stadium under the pitch's east half; the cells under Civic Center's Police desk and Holding annex.
+- All 11 ways out are the 11 in the game today; no way and no name was added.
+- Open for mondo: own zone or the city's lower level; who re-points the owner-side doors; keep the Strip and Cyberpunk gutters; 31 plots or a shorter plan that does not line up.
+
 ## Layout 3 (after your note, 11-15 18:17 UTC)
 
 - **New zone: The Mountains** (`mountains_plot_plan.png`, `mountains-layout.json`). One range across the north, 16 x 4 plots plus a 2 x 4 Shasta trail, 72 plots. Five districts west to east: the North Pole village, the Snowy Pass, the Ski Lodge and slopes, Mount Shasta, Mount Olympus.

@@ -3647,6 +3647,58 @@ The bolt shield (mark B) now sits on the city's own street furniture, and the ci
 - THE MANHOLE reads darker (IRON / DARK in `_hqCityManholeTex`). THE HILL SIGN: a letter stands on the highest land under its width and 2.5 m in front,
   so no foot sinks into the slope.
 - LESSON (headless): a prop's GLB can take minutes to arrive after a teleport; until then only its blob shadow is there. Wait and look again before judging a plate.
+## CAMELOT, THE DISTRICT FILES — one thread a district (2026-11-16)
+
+mondo 11-16: "every single zone needs to be like that. now. so we can work in parallel" (like Disaster City's district files). A set-up
+change: how the zone is WRITTEN, not what is built. The baked room `site_prebuilt_camelot_kingdom` is byte for byte the same before and
+after (data.js sha256 `fc5334b0…` both times; `node bake-camelot.js` on fresh main, then again after the split, `cmp` clean; done twice, the
+second time on top of the castle thread's banner / stair / tilt changes that merged meanwhile).
+
+- **The files** (`docs/areas/camelot/districts/`, loaded by `bake-camelot.js` through ONE hook, "THE DISTRICT FILES" in the tool):
+  | File | District | Plots | Holds |
+  |---|---|---|---|
+  | `K.js` | The Castle | 8 | the castle's OUTSIDE on the kingdom's plots: Keep, wings, towers, Stables, Armoury, the hill's drums and cheek walls, the Lists, the courts, the four doors into the palace room (was `buildCastle()`) |
+  | `T.js` | The Village | 28 | Chapel, Smithy, Inn + their insides, the market, graveyard, green, gates' dressing |
+  | `T-houses.js` | The Village | (same) | the 43 houses: `frontOf()`, `houseKind()`, `houseLook()` (the five kinds). Called by T.js, not by the tool |
+  | `L.js` | The Looking-Glass Garden | 6 | the drawn hedges, chessboard, courts, caterpillar, tea party |
+  | `F.js` | The Fairy Forest | 6 | pond, ring, spring, knolls |
+  | `N.js` | The Snowy Pines | 8 | sleigh, snowmen, campfires, the yeti |
+  | `W.js` | The Forest | 8 | the glades' knolls, logs, ferns |
+  Each file's header is its thread's brief: its plots, what stands there, what is missing or waits mondo, the hooks.
+- **Why the Village has two files**: the houses are most of the village's code and a job of their own (43 looks today, insides later), and
+  the street dressing never touches them. T.js calls T-houses.js at the one place the houses are written, so two threads can hold one each.
+- **The hook**: a file exports `first(ctx)` (right after the hill, before the moat and the wall: K uses it, so the castle's rows still lead
+  the room) and / or `build(ctx)` (after every shared piece stands). The tool runs them in a FIXED order, K T (the road in from the bay)
+  L F N W, not by file name: the order rows are written is the order they are baked, and every scattered piece (`dec`) draws from one
+  stream of dice, so a district that adds a `dec` moves the scatter of every district after it (a few decimetres, harmless, but it shows
+  in the diff of the baked block). ctx is listed in the tool's hook comment.
+- **What stayed in the tool (shared, nobody's district)**: the plan's reading (`layout.json` cells, plots, the houses' and walk-ins' squares),
+  the kit (`sheet()`, `royalBanner()`, `building()`, `inside()`, `solid()`, `flushArch()`), THE HILL (`tier` / `flight` / `parapets`: the two stone steps and
+  the three stairs), the moat and the bridges, the town wall with its towers and gates, the ways out (`oldgarden`, `deadtree`, the bay and
+  its two braziers and signpost, THE MIRROR's door on L's plot P00-04, the links' ends), the open ground, the paint, the tree zones, the
+  checks, the shell and sky, the room's text.
+
+### The rules for a district thread
+1. **One thread = one district file.** Take its row on the board (docs/notes/claims.md) in your first PR; free it in your last.
+2. **Never edit** `bake-camelot.js`, `layout.json`, another district's file or the baked block by hand. A change to the tool or a shared
+   piece (a kit helper, the hill, the wall, the moat, a road, a way out, the paint, the sky) needs the tool's row taken on the board first,
+   with a dated note saying what changes; keep such a PR small and separate from district work. The plan's squares (where a building or a
+   hedge stands, what is open ground) are `layout.json`: the tool's.
+3. **The castle's inside** (`site_prebuilt_camelot_palace`, `bake-camelot-castle.js`) and `districts/K.js` are the castle thread's.
+4. **Scope of a district thread**: exteriors, interiors, dressing, atmosphere, polish, on its own plots, with its own row ids (`cam:` + a
+   name no other district uses). Visual work gets a browser run (RULE #1c): `node playtest_city.js site_prebuilt_camelot_kingdom '[views]'`.
+5. **Rebake and merge**: `node bake-camelot.js` (1 s), `node --check data.js`, commit your file AND data.js, bump the `?v=` token (data.js is
+   an R2 file), PR, merge, `node sync-zip.js --upload`.
+6. **When another district landed first** (the baked block conflicts in data.js): `git fetch origin main && git merge origin/main`, resolve
+   every file EXCEPT the block by hand keeping both sides, then throw the conflicted block away and rerun `node bake-camelot.js` (it
+   rewrites everything between `CAMELOT-KINGDOM-BEGIN / END` from the merged files). Never keep one side of the baked block wholesale,
+   never hand-merge inside it. Merge main again right before you merge your PR, and rebake if anything under `docs/areas/camelot/` or the
+   tool came in.
+7. The tool's checks are everybody's: a piece on a square that is not free ground, a prop not in the catalogue, a plot not walked to from
+   the bay, stops the bake. Fix your file; do not loosen the check.
+- **Where older notes point now**: "bake-camelot.js `buildCastle()`" = `districts/K.js` + the tool's THE HILL; "bake-camelot.js `houseKind()` /
+  `houseLook()`" = `districts/T-houses.js`; `sheet().roof` and the other kit pieces are still in the tool.
+
 ## CAMELOT KINGDOM ON PLOTS, THE CASTLE — the second area of the world plan, first delivery (2026-11-15)
 mondo 11-15: "start ... another thread for the next most important zone" (Camelot Kingdom: the Woods' trail ends there) · 16:39 "i would want the
 old rooms to be redesigned too. Like camelot castle should be designed with the same level of architecture as the most complex buildings in
@@ -4279,6 +4331,20 @@ natives and the marks are the same, and the feature and prop lists hold the same
 written before the Lodge and the Rental Hut (district K), because P runs first (its `texbuilding` row #228 -> #226, its `arch` row #285 -> #283, its 8
 props ahead of the Lodge's and the Rental Hut's 41). No row changed. The block's first comment line names the district files. No browser run (a no-change refactor).
 
+## THE NORTH POLE VILLAGE, THE DISTRICT THREAD — district N, pass by pass (2026-11-16, second side)
+
+File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`. Its header lists what stands, what is missing and the models it needs.
+- **THE FIRST LOOK** (playtest_city.js, 11 views): the sixteen cottages were one white town-house prop (`xmas_house`), wider than its 2 x 2 squares, so
+  neighbours cut into each other and nothing read as a North Pole; the Workshop's windows were olive (the glass sheet under a yellow tint); the Pole stood
+  on three black sea rocks; two squares by the north houses were cut off.
+- **PASS 1, EXTERIORS**: every run of the plan's `B` squares is a built, walked-in house (`COTTAGES`, one row a house: plot, squares, front, paint, opts
+  `front` = gable over the door, `chimney`, `porch`, `name`). Helpers in the file: `cottage` (the look), `pane` (a lit window: warm `marble_light` pane with
+  `glow`, white frame, shutters), `bulbs` (the lights along a front). Wall paint needs `gain` 1.7 on the brown board sheet or it reads black at night.
+  A board on a gable-front house hangs at z `d/2 + 0.86` (in front of the gable's overhang). Five plain boards: POST OFFICE, BAKERY, TOY SHOP, STABLE,
+  COAL (plain labels, waiting for mondo's word). The Workshop: white corner posts, candy posts at the door, its board, the same windows. The Pole: 6.4 m
+  of stripes, a gilt ball (`gold`), a stone ring. `tailor` opens the cut-off nook (0 squares unreached now). Seen on screen at HEAD 206518c.
+- To know: the cottages' insides are empty until pass 2. The gold diamond on the square is the site's PvP arena marker (the engine's), not the village's.
+
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
 mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
@@ -4729,6 +4795,26 @@ same (the whole file, so the Desert's room and the three insides).
    missing) in the same PR; lasting facts go in this file under your own heading.
 6. A piece that needs a model that does not exist: MODEL_LIST rule (list-models.js) + the catalogue row; the old literals the tool reads lines
    from (`carnival`, `site_prebuilt_area51_gate`, `site_prebuilt_area51_flightline`, `site_prebuilt_giza_plateau`) must stay in data.js.
+
+## THE DESERT, WESTERN TOWN — THE EXTERIORS PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/areas/desert/districts/W.js` changed, then a rebake.
+- **WHAT WAS WRONG (first probe):** the seven fronts were 24 to 28 m wide, dark barns with 20 m of sand between them; the mine was a concrete
+  culvert with a pipe and a hotel luggage cart; the canyon's cut end looked straight out at Giza; a gable roof stood out past each false front
+  and hid its name.
+- **THE TOWN NOW:** twelve fronts at 7 to 17.5 m, shoulder to shoulder in two rows, a plank boardwalk each side (`ctx.setPaint`, rows 21 and
+  26 in the home frame). The seven named buildings keep their plots; five small trades fill the rows: BLACKSMITH, BARBER, ASSAY OFFICE,
+  TELEGRAPH, UNDERTAKER (generic frontier trades; told to mondo). `western()` took two changes: `key` (the wall sheet; the church is stucco,
+  the plank sheet cannot be tinted white) and a roof behind a false front is lower than the front and stops at its back.
+- **THE MINE** is an `arch` row (`des:w:mine`): three timber sets, lagging, a dark back, a MINE board, rails and sleepers 15 m south to a
+  buffer. **BOOT HILL** has a ranch rail, a named timber gate (`des:w:boothill`), headstones and grave mounds from the PSX graveyard pack.
+- **THE CANYON** ends in a rock wall (a `plateau` 4 x 3 squares, 8.75 m) on Western Town's own squares: a box canyon.
+- **THE HORSE POND:** the layout's two `w` squares south of the well were never drawn; a `pool` stands there now.
+- **THE PROBE, WESTERN TOWN:** faces are compass degrees (0 looks north, 90 east). Room x = -84 + 3.5 x home square, z = -210 + 3.5 x home
+  square. Main Street's middle is z -126; a good street view is x 112, z -121, face 62, y 1.6. A cold run took 200 s, a warm one 60 s.
+  Swinging door leaves DO draw here (saloon, church, jail).
+- **NEEDS A MODEL:** the list in W.js's header (anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows,
+  prospector's tent, telegraph pole).
 
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
