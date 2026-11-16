@@ -259,6 +259,13 @@ function finish(R, e) {
     L.push("            label: '" + e.label + "',");
     L.push("            sub: '" + e.sub + "',");
     L.push("            kind: 'box', site: '" + e.site + "', part: '" + e.part + "',");
+    /* THE ROOM'S OWN PEOPLE (2026-11-16, district N; mondo: "Is there not already units tagged with North Pole or ice? ... figure it out whatever fits"):
+       a district file may export `encounters = { list: [{ race, w }], walkers, levels, group, spots }` (data.js THE ENCOUNTER TABLE: who walks the room,
+       weighted; mondo's AREA UNITS window still wins over it). A room's table = its files' lists joined (a race twice keeps its larger weight), the
+       ranges of the first file that has them. No file exports one = no row, the game's own people, as before. */
+    { const encs = (o.files || []).map(Lt => DISTRICTS[Lt] && DISTRICTS[Lt].encounters).filter(Boolean);
+      if (encs.length) { const list = []; encs.forEach(E => (E.list || []).forEach(x => { if (RACES.indexOf(x.race) < 0) throw new Error(o.id + ': encounters: not a unit: ' + x.race); const y = list.find(z => z.race === x.race); if (y) y.w = Math.max(y.w, x.w); else list.push({ race: x.race, w: x.w }); }));
+          L.push("            encounters: " + J(Object.assign({}, encs[0], { list })) + ","); } }
     L.push("            shell: " + e.shell + ",");
     L.push("            parti: '" + e.parti + "',");
     L.push("            typology: 'grid',");

@@ -73125,7 +73125,7 @@ const ThreeRenderer = (function () {
                         L0.push(put(gb, [-W2, by, bz], [0, fit ? bi / bs : arcL / mv])); R0.push(put(gb, [W2, by, bz], [fit ? 1 : 2 * W2 / mu, fit ? bi / bs : arcL / mv]));
                     }
                     for (var bj = 0; bj < bs; bj++) gb.idx.push(L0[bj], R0[bj], R0[bj + 1], L0[bj], R0[bj + 1], L0[bj + 1]);
-                    [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault
+                    if (P.ends !== false) [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault (`ends: false` = an open vault: a tunnel's, seen from inside with `ds`)
                         var ge = grp(kE, tE), c0 = put(ge, [sd * bw, 0, 0], [0.5 * 2 * D2 / mu, 0]), ring2 = [];
                         for (var ei = 0; ei <= bs; ei++) { var ea = Math.PI * ei / bs, ez = D2 * Math.cos(ea), ey = rh * Math.sin(ea); ring2.push(put(ge, [sd * bw, ey, ez], [(D2 - ez) / mu, ey / mv])); }
                         for (var ej = 0; ej < bs; ej++) { if (sd > 0) ge.idx.push(c0, ring2[ej + 1], ring2[ej]); else ge.idx.push(c0, ring2[ej], ring2[ej + 1]); }
@@ -73182,7 +73182,8 @@ const ThreeRenderer = (function () {
         stencil:   { f: '"Saira Stencil One"', w: 400, ls: 0.03 },    // Industrial: painted on the sheds
         dot:       { f: '"DotGothic16"', w: 400, ls: 0.06 },          // the scoreboard
         marc:      { f: '"Marcellus SC"', w: 400, ls: 0.06 },         // the museum and the galleries
-        rye:       { f: '"Rye"', w: 400, ls: 0.02 }                   // fight posters
+        rye:       { f: '"Rye"', w: 400, ls: 0.02 },                  // fight posters
+        xmas:      { f: '"Mountains of Christmas"', w: 700, ls: 0.03 }   // the North Pole village: the Workshop (2026-11-16)
     };
     /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
        branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
@@ -77646,10 +77647,10 @@ const ThreeRenderer = (function () {
            chimney (a mesh each): smoke a few chimneys, not every one. `rise` on the row = how far it climbs, metres (5 when none). */
         chimney_smoke: function (U, p) {
             var g = new THREE.Group(), rise = (p && +p.rise > 0) ? +p.rise : 5, puffs = [], sd = (_hqProcSeed++) % 17;
-            for (var i = 0; i < 3; i++) { var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hzGlowTexture(), color: 0x8e8a86, transparent: true, opacity: 0, depthWrite: false })); sp.userData.t = i / 3; puffs.push(sp); g.add(sp); }
+            for (var i = 0; i < 3; i++) { var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hzGlowTexture(), color: 0x9a9896, transparent: true, opacity: 0, depthWrite: false })); sp.userData.t = i / 3; puffs.push(sp); g.add(sp); }
             if (_hq) _hq.tickers.push(function (dt) {
                 for (var k = 0; k < puffs.length; k++) { var q = puffs[k]; q.userData.t += dt * 0.09; if (q.userData.t > 1) q.userData.t -= 1; var t = q.userData.t;
-                    q.position.set((Math.sin(t * 5 + k + sd) * 0.3 + t * 1.2) * U, t * rise * U, Math.cos(t * 4 + k + sd) * 0.3 * U); q.scale.setScalar((1.1 + t * 3.4) * U); q.material.opacity = 0.62 * Math.min(1, t * 6) * (1 - t); }
+                    q.position.set((Math.sin(t * 5 + k + sd) * 0.3 + t * 1.2) * U, t * rise * U, Math.cos(t * 4 + k + sd) * 0.3 * U); q.scale.setScalar((3.2 + t * 8) * U); q.material.opacity = 0.9 * Math.min(1, t * 6) * (1 - t); }   // (the glow sheet falls off fast: what reads of a puff is about a third of its scale)
             });
             return g;
         },
@@ -83867,8 +83868,8 @@ const ThreeRenderer = (function () {
         var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
-        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
-        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
+        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, lvl: c.lvl || 0, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
        + gaze in METRES in the room frame, and the ground under the eye's column
@@ -84630,7 +84631,9 @@ const ThreeRenderer = (function () {
             if (gone.indexOf(id) >= 0) return;   // beaten today: gone until tomorrow
             var hm = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'male'), hf = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'female');
             var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
-            list.push({ r: r, id: id, gender: g, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
+            /* THE SET LEVELS (2026-11-16, data.js HQ_SPAWN_RULES): the resident's own level, read once; the label shows it and the fight is at it */
+            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home }) : null; } catch (e) { sl = null; }
+            list.push({ r: r, id: id, gender: g, lvl: sl ? sl.lvl : 0, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
         });
         H.res = { G: G, day: day, list: list, next: 0, pts: [], lastPick: 0 };
         return true;
@@ -84643,14 +84646,14 @@ const ThreeRenderer = (function () {
         for (var i = H.blockers.length - 1; i >= 0; i--) if (H.blockers[i].obj === ch.entry.group) H.blockers.splice(i, 1);
     }
     function _hqResSpawn(H, s, at) {
-        var r = s.r, U = _hqUnits(), line = null, sub = 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
+        var r = s.r, U = _hqUnits(), line = null, sub = (s.lvl > 0 ? 'LV ' + s.lvl + ' · ' : '') + 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
         if (at.spot && at.spot.say) { var sy = at.spot.say; line = Array.isArray(sy) ? (sy.length ? sy[((typeof hqHash === 'function' ? hqHash(H.res.day + '|' + r.race + '|say') : 0) % sy.length)] : null) : String(sy); }
         /* THE BEDS (2026-11-14): the rig carries the sleep pose (UAL2 LayToIdle held on its first frames: flat on the back) beside its own slots */
         var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null; _hq3DOff(_s3);
             if (base && base.libClips && !base.libClips.hqSleep) { var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales); lc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; lt.hqSleep = HQ_RES_SLEEP.ts; def = Object.assign({}, base, { libClips: lc, libTimeScales: lt }); } } catch (e) { def = null; }
         var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, def: def || undefined, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
         if (!ch) return null;
-        ch.resident = s; s.ch = ch;
+        ch.resident = s; s.ch = ch; if (s.lvl > 0) ch.lvl = s.lvl;
         var y = _hqNavQuery(at.x, at.z, null); if (y !== null && y !== undefined && isFinite(y)) { ch.y = ch.visY = y; }
         ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
         for (var i = H.blockers.length - 1; i >= 0; i--) if (H.blockers[i].obj === ch.entry.group) { ch._resBlk = H.blockers[i]; break; }
@@ -89903,13 +89906,15 @@ const ThreeRenderer = (function () {
        second. The picture he sees: the debrief stays about two seconds longer, then the city at its normal frame rate, in
        place of ten and more seconds at 1 to 12 FPS. Off: window.EW_HQ_BACK_NO_HOLD (the draw from the first frame),
        window.EW_HQ_BACK_OLD (the passes wait for the landing again). */
-    var HQ_BACK_HOLD_MS = 5000;
+    var HQ_BACK_HOLD_MS = 6000;
     function _hqPassOk(H) { return !!(H.ready || H.landed || (H.opts && H.opts.onFirstFrame && !(typeof window !== 'undefined' && window.EW_HQ_BACK_OLD))); }
     function _hqFirstMergeDone(H) { return _hqBatchOff() || !!(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')); }
     function _hqBackHold(H, now) {
-        if (!H.opts || !H.opts.onFirstFrame || H.firstFramed || H.ready) return false;
+        if (!H.opts || !H.opts.onFirstFrame || H.firstFramed) return false;   // (the way back is READY at once, its gate does not wait for the merge: mondo's F3 11-16 02:57, the room drawn at 3.8 FPS with "build 3495->756")
         if (typeof window !== 'undefined' && (window.EW_HQ_BACK_NO_HOLD || window.EW_HQ_BACK_OLD)) return false;
-        if (!_hqChunkBig(H) || now - H.t0 > HQ_BACK_HOLD_MS) return false;
+        if (!_hqChunkBig(H)) return false;
+        if (H._holdT0 == null) H._holdT0 = now;   // counted from the first tick: the builders' own seconds are not the hold's
+        if (now - H._holdT0 > HQ_BACK_HOLD_MS) return false;
         return !_hqFirstMergeDone(H);
     }
     function _hqInstTick(H, now) {
@@ -94840,7 +94845,7 @@ const ThreeRenderer = (function () {
            HQ_BATCH.firstSliceMs a frame and waits as it does behind the card. After that, the settled pace as before.
            Off: window.EW_HQ_BATCH_FIRST_SLOW. */
         var firstRun = !!(H.ready && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_FIRST_SLOW) && !(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')));
-        var held = !H.field && !H.ready && _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: no frame is drawn, the merge has the tick
+        var held = !H.field && _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: no frame is drawn, the merge has the tick
         var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : held ? (HQ_BATCH.holdSliceMs || 220) : !H.ready ? HQ_CARD_SLICE_MS : firstRun ? (HQ_BATCH.firstSliceMs || 28) : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
             var R = recs[r];

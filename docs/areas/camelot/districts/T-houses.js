@@ -6,7 +6,7 @@
    and its tints, shutters and flowers are picked by i, so the list's order is part of the look.
    MISSING / WAITING: mondo's OK ("yeah they are fine") covers the five looks; the insides are the pilot's first build, not yet seen by him.
    No upstairs in the two-storey kinds (no stair: the upper floor is drawn from outside only).
-   HELD BY the Village pilot thread since 2026-11-16 (with T.js). PASS 1, THE EXTERIORS, is in: gains, timber frames, fronts, door paths, back and
+   The Village pilot thread (2026-11-16) ran its passes here and freed the row. PASS 1, THE EXTERIORS, is in: gains, timber frames, fronts, door paths, back and
    side windows; seen on screen (notes: areas-complexes.md "CAMELOT, THE VILLAGE" + "CAMELOT, THE ZONE KIT").
    Hooks and rules: T.js's header. kb(id, [x0, y0, x1, y1, front], h, o, parts) = ctx.building with the front in the squares' fifth place. */
 'use strict';
@@ -93,7 +93,7 @@ function houseLook(kind, a, w, d, i, path, door, CH) {
     } else if (kind === 2) {   // SHOP HOUSE: the counter stands right of the doorway
         const hh = 3.6, cw2 = Math.max(1.6, Math.min(5.2, w / 2 - (dx + cw / 2 + 0.5) - 0.6)), cx = dx + cw / 2 + 0.5 + cw2 / 2;
         walls(0, w - 0.3, hh, d - 0.3, STUCCO, tint, PG); footS(0, w, 0.8, d);
-        for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(s * (w / 2 - 0.2), 0.8, t * (d / 2 - 0.2), 0.3, hh - 0.8, 0.3, WOODD, TIMBER); a.box(0, hh - 0.26, 0, w, 0.26, d, WOODD, TIMBER, { top: false, under: true });
+        for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(s * (w / 2 - 0.08), 0.8, t * (d / 2 - 0.08), 0.3, hh - 0.8, 0.3, WOODD, TIMBER);   // the corner posts stand proud of the walls (set in, their inner edge showed inside the hall as a dark line) a.box(0, hh - 0.26, 0, w, 0.26, d, WOODD, TIMBER, { top: false, under: true });
         gable(hh, 3.2, 1.0, SLATE, 0x5a6c96, { keyEnd: STUCCO, tintEnd: tint });
         door0(f); a.box(cx, 1.0, f, cw2, 1.5, 0.1, null, 0x241c18); a.box(cx, 0.9, f + 0.3, cw2 + 0.3, 0.12, 0.7, WOODK, 0x9a6a3c); a.box(cx, 0.8, f + 0.05, cw2 + 0.2, 0.1, 0.1, WOODD, TIMBER);
         for (let k = 0; k < 3; k++) { const bx = cx - cw2 / 2 + (k + 0.5) * cw2 / 3, kd = (i + k) % 3;   // a wicker basket of apples, one of cabbages, a board of loaves
@@ -124,7 +124,7 @@ function houseLook(kind, a, w, d, i, path, door, CH) {
     } else {   // YARD HOUSE: the house on the left (the doorway is in it), the lean-to shed on the right, one hall inside
         const hh = 3.6, hw = Math.max(3.4, w * 0.6), sd = 1, hx = -(w - hw) / 2, lx = hw / 2, lw = w - hw;
         walls(hx, hw - 0.3, hh, d - 0.3, STUCCO, tint, PG, 'bl'); footS(hx, hw, 0.8, d, 1); a.box(hx + hw / 2 - 0.15, 2.5, 0, 0.1, hh - 2.5, d - 0.3, STUCCO, tint, { faces: 'r', top: false, gain: PG });
-        for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(hx + s * (hw / 2 - 0.2), 0.8, t * (d / 2 - 0.2), 0.3, hh - 0.8, 0.3, WOODD, TIMBER); a.box(hx, 2.0, d / 2 - 0.14, hw, 0.2, 0.2, WOODD, TIMBER, { n: 1 }); a.box(hx, hh - 0.26, 0, hw, 0.26, d, WOODD, TIMBER, { top: false, under: true });
+        for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(hx + s * (hw / 2 - 0.08), 0.8, t * (d / 2 - 0.08), 0.3, hh - 0.8, 0.3, WOODD, TIMBER); a.box(hx, 2.75, d / 2 - 0.14, hw, 0.2, 0.2, WOODD, TIMBER, { n: 1 });   // the front rail, over the window and the door head (at 2.0 m it ran across both) a.box(hx, hh - 0.26, 0, hw, 0.26, d, WOODD, TIMBER, { top: false, under: true });
         a.roof('gable', hx, hh, 0, d + 0.9, 3.0, hw + 0.9, RKEY[0], dimBy(0xa84a3c, PG), { ry: 90, keyEnd: STUCCO, tintEnd: tint, gain: PG });
         a.box(lx, 0, 0, lw - 0.2, 2.5, d - 0.4, WOODK, 0x8a6a48, { top: false, faces: 'fbr', gain: 1.3 }); a.roof('shed', lx, 2.5, 0, d - 0.1, 1.0, lw + 0.4, WOODD, 0x6a4a34, { ry: 90 });
         a.box(lx, 0.2, d / 2 - 0.18, Math.max(1.2, lw - 1.2), 1.9, 0.1, null, 0x2a201a);
