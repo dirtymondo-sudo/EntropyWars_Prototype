@@ -4539,6 +4539,15 @@ across the two middle squares of the back row, a night-blue panel in a gold fram
 in the back corners, four busts on plinths along the side walls, the harp, a lectern, a votive stand, the great hourglass, amphorae and an urn by the door. The door is a
 swinging double leaf (`leaf_wooden`; it was `leaf_frame_only`, an open hole). `holy_carpet` is a HANGING carpet (it stands upright on a floor): not used.
 
+**PASS 3, DRESSING (seen on screen, nine views):** every plot got the model list's pieces. Thrones: an owl statue at 1.4 m, a spear and a shield, a harp, amphorae, an orrery,
+the hourglass, an eagle over the hearth, clouds on the dais's rim. The Temple's court: two lions by the steps, braziers on plinths, urns. Stadium: prize amphorae, an arms
+trophy, spears, shields, a drum and a trumpet. Colonnade: four busts and an orrery on plinths, iron benches, potted plants, butterflies. Amphitheatre: braziers at the
+stage's ends, a tambourine, a trumpet, a pipe. Terraces: a well, amphorae, crates, a bench, bees and butterflies on the vines (the vine sheet lightened). Olive Grove: four
+sheep, a rabbit, oil jars, a bench. Pilgrim Stair: a shrine (altar, votive stand, candles, a censer, a bench). Goat Track: a spyglass at the cliff, a standing stone, three
+sheep, rocks, an eagle. Cloud Line + the Grand Stair's foot: eight clouds on the walk (nothing that blocks). SIX MORE UNITS stand as natives, all `divine` / `ancient` in
+`RACE_PROFILES.biomes`: valkraye (thrones), giant (Stadium), nephilim (Sacred Way), unicorn (Olive Grove), occulus (Goat Track), watcher (Cloud Line); none on a way.
+`white_cloud` takes `span` (5 to 8 m) and a small `y`. A prop on a plinth on a sloping row floats or sinks: keep plinths on the plot's level rows.
+
 **FOR THE NEXT THREAD (learned here):**
 - A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
   never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
@@ -4557,6 +4566,8 @@ swinging double leaf (`leaf_wooden`; it was `leaf_frame_only`, an open hole). `h
 5. No names added: the plots keep the plan's names; no sign boards.
 6. The Temple's statue is Lady Justice at 4.3 m (the one goddess-like statue in the game); a statue of a named god is on the NEEDS A MODEL list.
 7. The Temple has a wooden double door that swings (your rule for walk-ins); it was an open frame.
+8. Six more units stand in the district (valkraye, giant, nephilim, unicorn, occulus, watcher): your word 11-16 was more NPCs; all are `divine` / `ancient` units. None has a line (no invented words).
+9. The spyglass at the Goat Track is the game's modern telescope (the world is a parody of the real one).
 
 **NEEDS A MODEL:** an olive tree; a grape vine on a trellis (the vine rows are a leaf sheet on posts); a laurel wreath; a chariot; a discus and a javelin rack; a tripod bowl
 (the brazier stands in); a Greek couch; a lyre (the harp stands in); a statue of a god (the angel, the bust and Lady Justice stand in); a goat for the Goat Track.
@@ -7633,6 +7644,18 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   property shelf, a floor safe, cabinets, the key rack. THE LIT CAR: one bulb in the saloon and a skeleton standing in the aisle (the
   car itself is a blocker: nobody boards it). `hut(ctx, plot, name, ...)` in T.js builds any such hut (front wall, window, slab, floor,
   ghost walls, the door's row); `put(plot, key, x, z, face, { y })` places a prop at a plot's own metres with `floor: true`.
+- **PASS 3, THE DRESSING (seen, 10 views; about 170 props placed by hand from the shortlist):** THE GHOST STATION: two Metro ticket
+  machines, two Metro gates before the WAY OUT, a public phone, a newspaper rack, the missing-persons board, four Metro posters (1, 3,
+  6, 8: the ones the city does not use), the Metro map, a camera, a camp at the platform's east end (mattress, carpet, radio, cans,
+  bottles), a body, a hand truck, bricks and a cone on the track, three bats under the vault. THE LOOP LINE WEST: the stub north shut
+  with a barricade, a cable drum, crates, two trackside cabinets, bones and a web in the bend. THE CROSSING: cabinets at the gantry's
+  feet, a drum, cones, the fall of bricks at the dead line's end, the bucket and rope under the Junction's well (the two street
+  signals of the first model pass are gone: the gantry is the signal). THE LOOP LINE EAST: a dead train front (`subway_front`) on the
+  passing loop, a luggage cart, a trunk, a cabinet, a skull pile. THE DEPOT: the workshop east of the buffer stops (lathe, drill press,
+  bench with tools, tool chest, pegboard, engine hoist, welding cart, cylinder rack, compressor, hose rack), stores along the south
+  wall (two racks, a ladder rack, barrels, crates, a drum), the forklift with two pallets and the pallet jack west, cones, oil.
+  FOUND: `ebd_metro_turnstile` draws as a blank grey block (use `metro_gate`); the Depot's hall is SEVEN squares deep (z -10.5..14):
+  pass 1's south dado and crane rail stood 3.5 m short of the wall and are moved.
 - **FPS (the probe's software renderer, the Depot view):** 3.5 before, 4.3 after pass 1 (no real cost: about 60 meshes, no new lights).
 - **DECISIONS MADE FOR MONDO (overrule any in a line):** (1) the five cave torches of the first build are gone from the line: a subway is
   lit by its own lamps, and the room has ten real lights for 30 plots; T takes four (the lit car, the cabin, the crew room, the station office), everything else is `glow`.
