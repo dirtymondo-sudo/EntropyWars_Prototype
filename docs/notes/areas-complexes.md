@@ -7791,11 +7791,24 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
   building's own floor and the lining (a cobble slab to the lining); the inside front wall was mirrored (a part's `p` is NOT mirrored, only
   a `hole`'s x is); `leaf_glass` is a plain grey slab (now `leaf_birch_glass`); the drawn rafters stuck out as spikes (out); the old
   garden's four `white_cloud` read as floating grey rock piles at 10 to 12 m under this sun (left out: decision 7).
+- **PASS 3, THE DRESSING + THE NATIVES (seen, 14 views)**: eight FLOWER BEDS (soil in a low clipped edge, three rows of flowers) along
+  the lawns' and the nooks' hedge feet, never in a walk; stepping stones to the Glasshouse; 16 butterflies, bees and moths at the
+  roses, a ladybird, a caterpillar and a chrysalis on the small mushrooms, six crows on the piers; the painters' cards by their pots
+  (`tarot`, `tarot2`, `tarotDeck`); THE COURT: candelabra at the canopy, three urns, a sword and a shield by the guard; THE MIRROR: a
+  marble bust on a plinth either side of the frame (ghost walls), a hand mirror and a frog on the fountain's rim, keys, a photo frame, a
+  flask; THE TEA PARTY: presents at the tent's foot (`xmas_gift*`), a violin, a tambourine and a guitar on the grass, eight cups down
+  the table, a deck of cards, champagne, a book; THE HEDGES, SOUTH: fifteen glowing caps (`woods_glowcap`) at the kerbs, a frog.
+  THE NATIVES whose home this is, with no lines (none are written): two Chess Pieces by the board, a Rabbit on the lawn, a Dreameater
+  and a Mushroom Girl in the mirror's court. Nine natives in the garden now.
+  WRONG ON THE LOOK, FIXED: the Glasshouse's eaves stood at 3.9 m and the building's own flat lid (at its `h`, 5.25 m) cut through the
+  glass roof as two pale slabs: the eaves now stand at 5.3 m (A DRAWN ROOF MUST START AT OR ABOVE THE BUILDING'S `h`); a pale blue
+  flower read as a grey pebble (violet now).
 - **NOBODY ELSE MOVED**: the eleven old `dec` calls run in the old order on the old squares; every new piece is placed by metres (`at()`)
   or by `put` (no dice), so the scatter of F, N and W is untouched.
 - **FRAME RATE** (cloud software GPU, llvmpipe; the lawn looking south at the board): before 1.00 frames a second, 2,022 geometries, 1,039
   draw calls. After pass 1: 2,222 geometries, 1,200 calls (its 0.20 was read as the FIRST view of a run, while the room still compiled:
   never measure on the first view). After pass 2: 1.20 frames a second, 2,412 geometries, 1,421 calls: no loss (run to run noise is 0.2).
+  After pass 3: 1.00, 2,590 geometries, 1,780 calls (the new props: each is its own draw call until the room batches them).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read in sections + the live catalogue's 1,853 keys + section 13's unwired files searched for
   rose / flower / hedge / topiary / card / heart / chess / tea / cake / clock / mirror / flamingo / croquet / garden / fountain / statue):
   the game `chess_set_game`, `chess_board`, tree kinds `chess_*` (12); time `gclock`, `giant_hourglass`, `astronomical_clock`,
@@ -7831,9 +7844,11 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
   6. The teapots and the cup stack are the catalogue's own giant sizes (a teapot 1 m across): left giant on purpose.
   7. The old garden's four clouds are left out (as models they read as floating grey rocks here). Its risers, railings, pool umbrella,
      altar, candle rings, cardboard boxes and lesson sign are code-built stand-ins or HQ furniture: also left out; say which you miss.
+  9. Five natives were added with NO lines (two Chess Pieces, a Rabbit, a Dreameater, a Mushroom Girl): who lives here and what they
+     say is yours. The Dragon that stands in the north walk is one of the zone's roaming residents, not this file's.
   8. A walk-in was added though none was named: THE GLASSHOUSE (a hedge garden's own building, dark glass as you like it). It took three
      squares of the south lawn strip.
-- **NEXT**: pass 3 dressing + the natives, pass 4 air / light / night, pass 5 polish.
+- **NEXT**: pass 4 air / light / night, pass 5 polish.
 ## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
 
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
