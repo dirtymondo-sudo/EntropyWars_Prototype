@@ -2908,7 +2908,7 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - Memorial walk: a two-tier star-shaped stone base (`star`, convex polys) under the statue; the angel became `hero_statue_landing` (Meshy
   image-to-3d of concept S2, mondo's pick 12:43; catalogue entry in data.js, R2 Assets/world/props/meshy/hero_statue_landing.glb, y 1.0 on the base).
 - Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
-  centred on pavement squares, 3 newspaper_rack (decor, off centre), 3 orange/white steam chimneys in the road (arch, decor), a green
+  centred on pavement squares, 3 newspaper_rack (decor, off centre), the 3 orange/white steam chimneys in the road are OUT (mondo 11-15: "why are there chimneys in the middle of the road ... take it out"; never stand street furniture in a lane), a green
   sidewalk shed over the north pavement (x -59.5..-45.5).
 - 11-15 07:46 mondo "use the 3rd example ... as well": `hero_statue_crossed` (Meshy concept S3, arms crossed) on a granite pedestal (`pedestal`, NYC_OPEN) on the
   plaza's south-west square (-36.75, -19.25; a blocker, centred), y 1.4, facing the fountain. R2 Assets/world/props/meshy/hero_statue_crossed.glb.
