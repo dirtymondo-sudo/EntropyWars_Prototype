@@ -5291,6 +5291,26 @@ district lacks, in the order to do it:
   `roof()` lays a dark sheet under itself at its foot: a lit ceiling must hang below that, not at the building's own height. (6) A kit
   `glass` wall is opaque: use `pane`. (7) A sign with `ds: true` reads mirrored from behind.
 
+**AREA 51, THE MODEL LIST PASS (2026-11-16, mondo: "look at the model list right now to see what else they could add"; owner-rules "THE MODEL LIST FIRST")**
+- **How it was searched:** every key of MODEL_LIST.md sections 6 to 8 printed by pack (one line a pack), read whole; section 13 (files on R2
+  no table names) for the world folders. Nothing on R2 that fits a base lacks a catalogue row. The pack SOURCE files (project files
+  `asset-packs/`) are not mounted on the second account, so the packs could not be opened: the Molten Maps SciFi pack has only 2 cut
+  pieces (`iso_tank`, `meshy_molten_cryo_tube`) and very likely holds more a base wants; the owner side can open it.
+- **Missed before, in the game all along (now placed in Area 51):** FLIGHT LINE `aircraft_tug`, `maintenance_stairs` (boarding stairs),
+  `air_compressor`, `welding_cart`, `tire_stack`, `meshy_ejection_seat`, `psx_jerrycan_1`, `utility_box`, `power_pole`, `ind_silo` (the real
+  fuel tank), `car_ambulance`. THE SECRET STUFF `lunar_lander`, `astronaut`, `studio_light`, `directors_chair`, `studio_camera` (the moon
+  landing set on the Dry Lake), `satellite`, `hullplate`, `mars_rover`, `time_machine`, `meshy_molten_cryo_tube`, `iso_tank` (a cryo
+  CASKET: it stood in as a fuel tank in three places). LAB / MEDICAL `fume_hood`, `lab_glassware`, `microscope`, `iv_stand`,
+  `anatomy_skeleton`, `hospital_bed`, `therapy_chaise`, `steel_toilet`, `meshy_syringe`, `psx_pills_*`, `laundry_cart`, `metal_detector`.
+  OFFICE / SECURITY `evidence_board`, `mugshot_wall`, `reel_to_reel`, `photocopier`, `microfiche_reader`, `number_dispenser`,
+  `riot_gear_rack`, `scba_rack`, `retro_control_panel`, `gauge_board`, `psx_keycard_*`, `psx_walkie_talkie_1`, `psx_dosimeter_1`,
+  `psx_potted_cactus_mp_1`. SHOP `metal_lathe`, `drill_press`, `chain_hoist`. LIFE `dog` (the gate), `crow`.
+- **Fit the zone, not placed yet (for the next thread):** `ufo`, `alien`, `spaceship`, `space_shuttle`, `nacelle`, `meshy_tesla_coil`,
+  `robot_arm`, `conveyor`, `car_lift`, `high_bay_lamp`, `ind_skip`, `ind_panel`, `ind_factory_*`, `crashed_car`, `eagle`, `psx_pc_mp_1` +
+  monitor / keyboard, `psx_flashlight_1`, `psx_ceiling_fan_mp_1`, `psx_window_metal_bars_*`, `psx_toilet_mp_1`, `trailer_home_1..6`.
+- **Still no model anywhere in the list:** a windsock, a jeep / humvee, a helicopter, a turning radar, a flag on a pole (the board
+  monument `flag` is not a room prop), a boom gate arm, a missile stand.
+
 **AREA 51 AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and Area 51 lacks:
 1. THE SECOND LAYERS outside (F-detail): DONE in part 11-16 (downpipes, AC boxes, louvres, roof kerbs, belt courses, slit windows, a fire
    exit). Still one layer: the hangar's long sides and back, the wing, the watchtowers; no roof walk, no decals (the pack's Sign* plates).
