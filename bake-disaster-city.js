@@ -37,7 +37,7 @@ PLAN.roofEdges.forEach(e => { const dl = DELTA[plotOf[e.pa].d]; e.from = [e.from
 /* THE DISTRICT FILES (2026-11-13, the one hook for the nine district threads): docs/disaster-city/districts/<LETTER>.js (R C F U H E I S B),
    one per district, so no district's code lands in this tool. A file may export any of: tailor(PLAN, plotOf) = here, before the plan is read;
    apply(ctx) = after the buildings + their door steps exist, before the street furniture (take() cells there to keep them clear);
-   build(ctx) = after every row exists. ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
+   build(ctx) = after every row exists; last(ctx) = after the exterior polish, the very end (THE LAST STAGE below: drawn rows only). ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
    roofB, ROOF_H, C, N, HALF }. A district edits its own rows by id ('dc:' + building id) and pushes its own rows (arch rows to lateRows). */
 const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => { const m = require(path.join(dir, f)); m._dcFile = f[0]; return m; }); })();
 const PROPS = require(path.join(REPO, 'docs/disaster-city/props.js'));   // THE PROP PASS: the kerb's road signs, the set dressing, the prop check
@@ -1105,6 +1105,7 @@ lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0)
   if (UD) { count.urbanDecay = UD({ features, props, dOf });
     const left = []; features.forEach(f => { ['key', 'keyIn', 'floorIn'].forEach(k => { if (UD.banned.indexOf(f[k]) >= 0) left.push(f[k]); }); (f.parts || []).forEach(p => ['key', 'keyTop', 'keyEnd', 'keyBase'].forEach(k => { if (UD.banned.indexOf(p[k]) >= 0) left.push(p[k]); })); });
     if (left.length) throw new Error('THE URBAN DECAY PASS: ' + left.length + ' ruled-out sheet(s) left: ' + JSON.stringify(left.slice(0, 6))); } }
+const featLine = lines.length, featN = features.filter(f => f.k !== 'gone').length;
 features.forEach(f => { if (f.k !== 'gone') lines.push("                    " + J(f) + ","); });
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
@@ -1174,6 +1175,14 @@ if (!process.env.DC_NO_EXT) {
         block = lines.join('\n') + '\n';
     }
 }
+/* THE LAST STAGE (2026-11-16, Hero Plaza's planted beds): a district file's `last(ctx)` runs here, after the exterior polish, when every prop
+   stands where the game will draw it (a row glued to a prop, a hedge in a planter, is written at the prop's real place). The rows are written
+   again; the polish and the passes before it are NOT run again, so a `last` hook adds only drawn rows they do not read and moves nothing. */
+if (DISTRICTS.some(m => typeof m.last === 'function')) { dcRun('last');
+    const pNow = lines.slice(propsLine).findIndex(l => l === "            ],");
+    lines.splice(propsLine, pNow, ...props.map(f => "                " + J(f) + ","));
+    lines.splice(featLine, featN, ...features.filter(f => f.k !== 'gone').map(f => "                    " + J(f) + ","));
+    block = lines.join('\n') + '\n'; }
 console.log(JSON.stringify(Object.assign({ features: features.length, props: props.length, streets: streets.length, bytes: block.length }, count)));
 if (process.env.DC_DUMP) fs.writeFileSync(process.env.DC_DUMP, JSON.stringify({ C, HALF, PAL, NXP, paint: Array.from(paint), features, props, bInfo, streets, cells: Array.from({ length: 144 }, (_, cy) => Array.from({ length: 144 }, (_, cx) => cellAt(cx, cy)).join('')), plots: PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, d: p.d, name: p.name })), districts: Object.keys(D).map(k => ({ id: k, label: D[k].label })) }));
 if (DRY) process.exit(0);
