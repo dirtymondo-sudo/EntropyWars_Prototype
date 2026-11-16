@@ -5393,3 +5393,12 @@ type, element weakness, status combo, crit) now vents a press's worth (PRESS_REF
 into the team's gauge. Before, only a crit on top of another source did (WEAK_CRIT). battle.js applyPressTurn
 (`opts.hits`, `_pressBestSources`); the result carries `hits`, `extraSources`, `entropyGained` for THE AP TALLY
 (spells-vfx.md). The AP side is unchanged. Tutorial recap line (the_press) updated.
+
+## RADIOACTIVE SLUDGE — a liquid that corrodes (2026-11-16)
+
+mondo 11-16 (the Sewers' radioactive district): "make it a new liquid that does corrosion (I think that's poison and burned combined? that's close to
+radiation)". Terrain `sludge` (data.js TERRAIN_RULES): ending a turn in it gives CORRODED for 2 rounds (the poison bog's rule with Corroded in place
+of Poison; no race is immune by terrain, the status's own immunities apply; flyers are spared). Poison family: it runs like the bogs and counts as a
+poison-element tile. Not in battle.js `_BOG_TERRAIN` (fire on it does nothing more: it already corrodes). Paintable in the map editor's Liquids tab.
+Where it is and how it looks: areas-complexes.md "THE SEWERS, DISTRICT R".
+
