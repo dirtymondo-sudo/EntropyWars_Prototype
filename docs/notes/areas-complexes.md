@@ -6258,6 +6258,17 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
   `crashed_car`, `meshy_rope`, `wooden_bucket`, `mop_bucket`, `candle`, `coffee_mug`): the well, the dish, the dead car, the rope and the mug are
   not placed; sacks and buckets are few. `node -e` over R2_MODEL_FILES.json gives each file's size before you place a prop many times.
 
+### PASS 4, THE ATMOSPHERE (seen in the cloud browser, day and night) + WHERE THE THREAD STOPPED
+- **THE AIR** (`airZones()` in R.js): pale chaff over the Hay Field (`dust` 0xe0cc8a, 100), the Yard's and the barn's dust (0xc8b494, 110), pollen
+  over the Pasture and the Paddock (`motes` 0xfff2b8, 80); the Cow Field, the Farmhouse and the gate keep the zone's fireflies.
+- **NIGHT** (the probe's clock at 22:00): the Farmhouse's three lit windows, its attic window and porch lamp, the eight lamp posts, the barn's
+  torches and the campfire carry the district; the chimney smokes; the sky is the tool's. Real lights: a bare bulb in each walk-in, one torch
+  before the barn. No sound bed (a walked room has none per district).
+- **THE COST:** the proof view: 491 draw calls before pass 1, 901 after pass 4 (2.9 M triangles; other districts' landings are in that number too).
+- **STOPPED AFTER FOUR PASSES (the bar judged met; the fifth is left for after mondo's look).** What a polish pass would do: a model for the
+  cattle grid, the lamps' glass and the trough; wall pictures and a clock in the Farmhouse; stairs to the hayloft; curtains; the Yard's bare
+  middle (a tractor wants a model); lines for the five people; residents with routines; the Desert road (his call).
+
 ### DECISIONS MADE FOR MONDO (overrule any in one line)
 1. The Barn has a gambrel roof and is barn red with white trim; the Farmhouse is white with a green roof (as it was).
 2. The gate's board says `RANCH` (a plain word, no made-up name).
