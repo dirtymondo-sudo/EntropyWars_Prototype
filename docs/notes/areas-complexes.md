@@ -5746,6 +5746,15 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **A DISTRICT'S OWN GROUND AND AIR (the tool, 2026-11-16)**: a district file may export `ground: '<sheet>'` (painted under its own plots' `g`
+  and `t` squares) and `airZones(ctx)` = `[{ x0, y0, x1, y1 (kingdom squares), kind, color, n, speed, wind }]` (kinds: dust, motes, spores,
+  fireflies, snow, ash, rain). The kingdom's embers stay over the whole room. Unused, the bake is unchanged.
+- **THE MODEL LIST, WHAT FITS A WOOD (searched 11-16 on his order "look at the model list")**: `psxg_stepping_stone_1/2` (paths), `psxg_rock_1..4` +
+  `hw_stone*` (pack rocks, to 1.26 m), `ocean_seaweed*` (water plants), `ladybug`, `ant`, `anthill`, `chrysalis`, `caterpillar_bug`, `bee`,
+  `bumblebee`, `grasshopper*`, `hawk_moth`, `crow`, `eagle`, `wolf`, `meshy_crystal_shard(s)`, `mushroom_lamp`, `meshy_hanging_lantern`,
+  `footbridge`, `decor_stone_arch`, `item_hagstone`, `item_magic_wand`, `item_wizard_staff`, `item_potion_flask`; trees `tree_21..30` (the
+  nature pack's birches) and `tree_53` (the painted birch); races that live in a wood: fairy, unicorn, gnome, mushroom girl
+  (npc-system.md first). NOT on R2 in any pack: reeds, lily pads, a willow, bushes, small flowers, deer, fox, owl (alive), swan, dragonfly.
 - **THE ORDER THAT WORKED (for the next four district threads)**: (1) one probe of the district as it stands, `fp` views only, and
   LOOK before planning: the Village's two worst faults (the stone lid, the black slabs) were in no note; (2) exteriors with `gain`;
   (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
