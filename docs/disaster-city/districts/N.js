@@ -238,6 +238,55 @@ function hillsBuildings(ctx) {
     { const a = O('H03-02'), b = O('H04-02'), c = O('H05-02'), z = a.z(7) + 0.25; rail(a.x(10.2), z, b.x(5) - 0.2, z, 'guard'); rail(b.x(11.2), z, c.x(6.8), z, 'guard'); }
 }
 
+/* ══ PASS 2: THE INSIDES of the three new houses + THE YARDS of all six. Every walk-in is lit and furnished on the fight's squares (a blocker on a square's middle, the door's square and the way in from
+   it kept clear, decor off centre). A building's own inside takes no light, so `lit` draws the walls and the ceiling again a hand inside with `glow`
+   (the Mountains' North Pole kit: areas-complexes.md "PASS 2, INTERIORS"). Every inside prop is `floor: true` (near a wall it would stand on the wall's top). ══ */
+const litIn = (a, w, h, d, dr, key, tint, g, ceil) => { const top = h - 0.36, i = 0.3, t = 0.04, q = { glow: g, gain: 1.7 }, x0 = dr.lx - dr.cw / 2, x1 = dr.lx + dr.cw / 2, e = w / 2 - i;
+    a.box(0, 0, -(d / 2 - i), w - 2 * i, top, t, key, tint, q); for (const s of [-1, 1]) a.box(s * (w / 2 - i), 0, 0, t, top, d - 2 * i, key, tint, q);
+    a.box((-e + x0) / 2, 0, d / 2 - i, x0 + e, top, t, key, tint, q); a.box((x1 + e) / 2, 0, d / 2 - i, e - x1, top, t, key, tint, q); a.box(dr.lx, 2.2, d / 2 - i, dr.cw, top - 2.2, t, key, tint, q);
+    a.box(0, top - 0.1, 0, w - 2 * i, 0.02, d - 2 * i, ceil ? ceil[0] : BEAM, ceil ? ceil[1] : 0x8a6a48, { sides: false, top: false, under: true, glow: g * (ceil ? ceil[2] || 0.75 : 0.75), gain: 1.6 }); };
+/* a window seen from inside: the night (or the day) in a dark pane with a pale frame, on the wall `side` ('b' back, 'l', 'r', 'f' front) at `u` along it */
+const paneIn = (a, w, d, side, u, y, pw, ph) => { const i = 0.34, ew = side === 'l' || side === 'r', x = side === 'l' ? -(w / 2 - i) : side === 'r' ? w / 2 - i : u, z = side === 'b' ? -(d / 2 - i) : side === 'f' ? d / 2 - i : u;
+    a.box(x, y, z, ew ? 0.05 : pw, ph, ew ? pw : 0.05, M, 0x24344c, { glow: 0.55 }); a.box(x, y - 0.08, z, ew ? 0.09 : pw + 0.2, 0.08, ew ? pw + 0.2 : 0.09, M, WHITE, { glow: 0.9 }); a.box(x, y + ph, z, ew ? 0.09 : pw + 0.2, 0.08, ew ? pw + 0.2 : 0.09, M, WHITE, { glow: 0.9 }); };
+const hearth = (a, cx, zc0, top, k, ry) => { const Bk = 'bricks_2', T = 0xb86a54, g = { glow: 0.8 }, P = [];   // against the west wall: built in a frame of its own, then turned
+    const b = (x, y, z, w, h, d, key, tint, q) => a.box(zc0 ? x : x, y, z, w, h, d, key, tint, q);
+    for (const s of [-1, 1]) b(cx, 0, zc0 + s * 0.75 * k, 0.9 * k, 1.1 * k, 0.4 * k, Bk, T, g); b(cx, 1.1 * k, zc0, 0.9 * k, 0.4 * k, 1.9 * k, Bk, T, g);
+    b(cx - 0.4 * k, 0, zc0, 0.06, 1.1 * k, 1.1 * k, Bk, 0x241a16, g); b(cx + 0.04, 1.5 * k, zc0, 0.9 * k + 0.16, 0.14, 2.2 * k, BEAM, 0x6a4a34, { glow: 0.8, gain: 1.4 }); b(cx - 0.25 * k, 1.5 * k + 0.14, zc0, 0.4, top - 1.5 * k - 0.14, 1.3 * k, Bk, T, g); };
+function hillsInsides(ctx) {
+    const R = ctx, { look, r2 } = ctx, B = R.B, F = { floor: true };
+    const inside = (b, id, h, key, tint, g, ceil, more) => { look(id + ':in', b.cx, b.cz, a => { litIn(a, b.fw, h, b.fd, b.door, key, tint, g, ceil); if (more) more(a, b.fw, b.fd); }); R.ARCH[R.ARCH.length - 1].rot = b.rot; };   // (look() rows stand at rot 0: the row takes its building's turn, the Villa faces west)
+    const P = (b, k, x, z, face, q) => b.put(k, x, z, Object.assign({ face: face || 0 }, F, q || {}));
+    /* THE ROUND HOUSE: the lounge under the saucer */
+    { const b = B.round; inside(b, 'roundhouse', 3.4, U('PlasterWallPainted1a'), 0xf0e6d0, 0.85, [M, 0xf4e8d0, 0.9], (a, w, d) => { for (const u of [-3, 0.6, 3.4]) paneIn(a, w, d, 'b', u, 0.9, 2.2, 1.9); for (const u of [-3, 0.4, 3.2]) { paneIn(a, w, d, 'l', u, 0.9, 2.2, 1.9); paneIn(a, w, d, 'r', u, 0.9, 2.2, 1.9); } });
+      P(b, 'tulip_table', 0, 0); P(b, 'rug_round', 0, 0, 0, { y: 0.02, span: 3 }); P(b, 'tulip_chair', -1.1, 0.4, 100); P(b, 'tulip_chair', 1.1, -0.3, 280); P(b, 'curved_couch', -3.5, -3.5, 45); P(b, 'egg_chair', -3.5, 0, 90); P(b, 'lava_lamp_floor', -4.3, 2.2);
+      P(b, 'jukebox', 3.5, 0, 270); P(b, 'mini_fridge', 3.5, -3.5, 0); P(b, 'bar_stool', 2.4, -2.5); P(b, 'bar_stool', 3.9, -2.2); P(b, 'pinball_machine', 3.5, 3.5, 270); P(b, 'space_divider', 0, -4.2, 0); P(b, 'disc_cluster', 0, 0); P(b, 'sputnik_lamp', -2.6, -2.6); P(b, 'mushroom_lamp', 4.3, -4.3, 0, { y: 0.85 }); }
+    /* THE VILLA: tile and dark wood */
+    { const b = B.villa; inside(b, 'villa', 4.2, STUCCO, 0xf6ecd6, 0.85, [BEAM, 0x8a6a48, 0.8], (a, w, d) => { for (const u of [-4.8, 3.0, 5.4]) paneIn(a, w, d, 'f', u, 1.0, 1.1, 1.6); for (const u of [-4.4, 0, 4.4]) paneIn(a, w, d, 'b', u, 1.0, 1.1, 1.6); for (const u of [-2.6, 2.2]) { paneIn(a, w, d, 'l', u, 1.0, 1.1, 1.6); paneIn(a, w, d, 'r', u, 1.0, 1.1, 1.6); } });
+      P(b, 'chesterfield_sofa', -5.25, -3.5, 0); P(b, 'wingback_chair', -5.25, 0, 90); P(b, 'coffee_table', -3.6, -1.9); P(b, 'psx_carpet_mp_1', -4.2, -1.6, 0, { y: 0.02 }); P(b, 'psx_dinner_table_1', 1.75, 0); for (const [x, z, f] of [[0.5, 0, 90], [3.0, 0, 270], [1.75, -1.3, 0], [1.75, 1.3, 180]]) P(b, 'psx_chair_mp_1', x, z, f);
+      P(b, 'royal_bed', 5.25, -3.5, 0); P(b, 'privacy_screen', 3.5, -3.6, 90); P(b, 'makeup_vanity', 5.25, 3.5, 180); P(b, 'kitchen_range', -1.75, -4.4, 0); P(b, 'round_fridge', -0.3, -4.4, 0); P(b, 'marble_bust', -6.2, 3.9, 135); P(b, 'stone_urn', 1.0, 4.2); P(b, 'potted_plant', 6.2, 0.6);
+      P(b, 'crystal_chandelier', 1.75, 0, 0, { y: 2.45 }); P(b, 'painting_landscape', 1.75, -4.9, 0, { y: 1.9 }); P(b, 'painting_portrait', -6.6, -1.75, 90, { y: 1.9 }); }
+    /* THE A-FRAME: one room, a bed, a chair by the stove pipe */
+    { const b = B.aframe; inside(b, 'aframe', 3.0, WCL, 0xd0a070, 0.8, null, (a, w, d) => { for (const u of [-3.6, 2.6]) paneIn(a, w, d, 'f', u, 0.5, 2.0, 2.0); });
+      P(b, 'psx_bed_1', 3.5, -3.5, 0); P(b, 'footlocker', 3.5, -1.3, 0); P(b, 'psx_armchair_2', -3.5, -3.5, 45); P(b, 'rocking_chair', -3.5, 0, 90); P(b, 'psx_coffee_table_1', -1.9, -2.0); P(b, 'psx_tv_table_1', 3.5, 3.5, 270); P(b, 'tube_tv', 3.5, 3.5, 270, { y: 0.74 });
+      P(b, 'psx_shelf_mp_2', 0, -4.6, 0); P(b, 'instrument_guitar', -4.4, 2.2, 60); P(b, 'psx_carpet_mp_1', 0, -0.6, 0, { y: 0.02 }); P(b, 'table_lamp', -1.9, -2.0, 0, { y: 0.66 }); P(b, 'psx_lamp_1_on', -4.3, -1.8); P(b, 'retro_radio', 0, -4.6, 0, { y: 1.4 }); }
+
+    /* ── THE YARDS (pass 2): what stands round the houses and on the terraces ── */
+    const { put, dec, tree, S, mx, mz, props, feat } = ctx, { rail, O } = hillsKit(ctx);
+    /* the Villa's south garden: a fountain between two palms, urns, a stone rail on the garden's edge; urns at the loggia */
+    put('H10-02', 'fountain', 9, 6); tree('H10-02', 'palm', 8, 7, 7); tree('H10-02', 'palm', 8, 11, 7); dec('H10-02', 'stone_urn', 8, 6); dec('H10-02', 'stone_urn', 10, 6); put('H10-02', 'lion_statue', 7, 6, { face: 270 });
+    { const o = O('H10-02'); rail(o.x(7), o.z(8) - 0.2, o.x(12) - 0.2, o.z(8) - 0.2, 'stone'); const b = B.villa; b.put('stone_urn', -6.4, b.fd / 2 + 3.1); b.put('stone_urn', 6.4, b.fd / 2 + 3.1); b.put('potted_plant', 2.2, b.fd / 2 + 1.0); }
+    tree('H10-02', 'palm', 8, 2, 3); tree('H10-02', 'palm', 7, 3, 6); dec('H10-02', 'prickly_pear', 1, 1); dec('H10-02', 'prickly_pear', 0, 5);
+    /* the Round House: the sports car on the grass, cactus, flamingos, the dish */
+    put('H05-02', 'car_cyber', 8, 4, { face: 90 }); put('H05-02', 'mailbox_bank', 1, 4, { face: 180 }); dec('H05-02', 'flamingo', 0, 3); dec('H05-02', 'flamingo', 1, 2); put('H05-02', 'dish', 0, 0, { face: 150 }); put('H05-02', 'saguaro_cactus', 8, 0); dec('H05-02', 'prickly_pear', 7, 1); dec('H05-02', 'prickly_pear', 0, 1);
+    /* the A-Frame: pines, a fire ring with stump seats, the car on the track's edge */
+    tree('H01-02', 'pine', 7.5, 0, 1); tree('H01-02', 'pine', 6.5, 6, 0); tree('H01-02', 'pine', 8, 7, 1); tree('H01-02', 'pine', 6, 0, 3); put('H01-02', 'campfire', 6, 3); dec('H01-02', 'stump', 7, 3); dec('H01-02', 'stump', 6, 4); dec('H01-02', 'fallen_log', 5, 2); put('H01-02', 'car_pack_4', 9, 4, { face: 90 }); dec('H01-02', 'wooden_bucket', 5, 4);
+    /* the Hill House's pool terrace: loungers, a cooler, a ball, a float on the water, plants */
+    put('H04-02', 'pool_lounger', 7, 8, { face: 90 }); put('H04-02', 'pool_lounger', 10, 7, { face: 200 }); dec('H04-02', 'beach_ball', 10, 9); dec('H04-02', 'beach_cooler', 7, 9); dec('H04-02', 'potted_plant', 7, 7);
+    { const o = O('H04-02'); props.push({ key: 'beach_air_mattress_pink', x: r2(o.x(9) + 0.5), z: r2(o.z(8.5) - 0.4), y: -0.08, face: 30 }); }
+    /* the Observatory's terrace: two more telescopes at the south rail, benches, urns at the corners */
+    put('H10-01', 'telescope', 4, 9, { face: 180 }); put('H10-01', 'telescope', 7, 9, { face: 180 }); put('H10-01', 'city_bench', 2, 5, { face: 90 }); put('H10-01', 'city_bench', 9, 5, { face: 270 }); dec('H10-01', 'stone_urn', 2, 2); dec('H10-01', 'stone_urn', 9, 2); dec('H10-01', 'stone_urn', 2, 7); dec('H10-01', 'stone_urn', 9, 7);
+}
+
 const content = {};
 content.apply = ctx => {
     const R = ctx, { put, dec, tree, native, building, look, flat, cabin, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
@@ -455,6 +504,7 @@ content.build = ctx => {
   put('H07-02', 'signpost', 4, 10, { face: 180 }); tree('H09-02', 'palm', 9, 1, 4); tree('H09-02', 'palm', 9, 10, 4); put('H09-02', 'pool_umbrella', 10, 7); put('H09-02', 'pool_lounger', 10, 8, { face: 180 });
   put('H10-02', 'signpost', 4, 7, { face: 0 }); put('H11-02', 'signpost', 7, 7, { face: 90 });
   put('H12-02', 'rowboat', 1, 9, { face: 70 }); put('H12-02', 'pool_umbrella', 2, 8); tree('H12-02', 'palm', 8, 0, 8); dec('H12-02', 'ocean_rock', 3, 10);
+  hillsInsides(ctx);
 };
 
 /* ONE ROAD, ONE STREET SYSTEM (2026-11-16, mondo: "continue making it better and blend together more, natural part of the city"):
