@@ -22,14 +22,14 @@
      P05-04 The Outfall (L0)         a fish skeleton, two barrels, a dead snag, a frog. The link sewers_drain (the city sewers) is east.
      P03-05 The Gully (L0)           the yard (tailor below): the trailer home, the school bus, THE CABIN (a walk-in building: one hollow texbuilding
                                      woods:cabin + one arch row, furnished), a garbage bag, a bear trap, a sack.
-     P04-05 The Pool (L0)            NO POOL since 11-16 (grass); natives: swamp monster, mothman; a dead snag. The plot's name waits mondo.
+     P04-05 The Hollow (L0)          no pool since 11-16 (grass); natives: swamp monster, mothman; a dead snag.
      P05-05 The Tunnel Way (L0)      a sarcophagus box, a skull, a dead snag. The link woods_sewer (the HQ tunnel, secret) is east.
    KNOWN MISSING / WAITING FOR MONDO
      - The life pass and the horror pass are live but wait for his look (the board).
      - THE CABIN HAS NO GAME ROLE: mondo, "Nothing yet". Do not tie a rest spot, a shop, a story beat or an NPC to it until he says what it is for.
      - THE CAVE IS THE SEWER MOUTH (mondo 11-16); its inside is the tunnel to the Sewers: that zone's plot (the Sewers thread, a board note asks for it).
      - The Tunnel Way's trail ends at a black mouth now (mondo: "it should just be blackness"); the link itself is still `secret` in the tool.
-     - The plan's brick channel is dropped: his brief makes it a dry rock bed. Plot names "The Cave Mouth", "The Channel", "The Pool" no longer fit: his to rename.
+     - The plan's brick channel is dropped: his brief makes it a dry rock bed. Plots renamed plainly 11-16 (his rule): The Rocks, The Dry Creek upper / lower, The Sewer Mouth, The Hollow.
      - The thorn vine model lives in this district only (it is wrong for the other woods).
      - The trees are closed ("Good, keep them"): do not change tree kinds unasked.
 
