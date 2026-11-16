@@ -19,7 +19,7 @@
      P02-11  The Yard                       home squares x 24..36 · y 84..96
      P03-11  The Dry Lake, east             home squares x 36..48 · y 84..96
 
-   WHAT STANDS HERE TODAY (after the EXTERIORS pass, 2026-11-16; seen in the browser):
+   WHAT STANDS HERE TODAY (after the EXTERIORS + INTERIORS passes, 2026-11-16; seen in the browser):
    - THE FENCE (P00-08 .. P03-08): the chain-link is the TOOL's (traced from the layout's `f` squares); this file adds its steel: a post a
      square, the top rail, three wires, a WARNING plate every four squares (rows des:a51:fence_n / fence_e). The engine now draws a wall row
      in a chain-link sheet see-through (three-renderer.js "THE CHAIN-LINK"); before, the fence was a solid checkered wall.
@@ -38,19 +38,29 @@
    - HANGAR 18 (P01-11): a SHUT shell (des:hangar), door `hangar` -> the room site_prebuilt_area51_hangar. THE YARD (P02-11): the White
      Rooms wing, SHUT (des:wing), door `ward` + the hidden `stormdrain` -> site_prebuilt_area51_ward.
    - THE INSIDES are this file's too (rooms(kit) below): HANGAR 18 (22 x 14 squares) and THE WHITE ROOMS (16 x 12, two floors).
-   - People: men in black (gate, apron), marksmen (gate, the tower's deck), a spy, a bligblog and a grey by the crater.
+   - DRESSING (11-16, seen): the watchers' camp outside the fence on the Ridge (tent, truck, chairs, telescope, film camera); sandbags, cones
+     and a barricade at the gate; bench, bins, dumpster, pallets and the car park in the cantonment; freight, forklifts, an engine on its
+     stand and a missile on the apron; lamps, a camera, tape and the pod at the crater; the landing rings scorched into the Dry Lake west
+     (flat paint); the range on the Dry Lake east; a bench and a wheelchair in the wing's yard.
+   - People: men in black (gate, apron, the hangar's door), marksmen (gate, the tower's deck), a spy, a bligblog and a grey by the crater,
+     a mad scientist at the crater (the last two men have no lines: none were written).
 
    KNOWN MISSING OR WRONG:
-   - The four new walk-ins (both barracks, the mess, the radar hut) are EMPTY inside: the INTERIORS pass furnishes them.
-   - THE RIDGE (P01-08, the rock north of the fence) and both Dry Lake plots are nearly empty (the DRESSING pass).
-   - The White Rooms crash the headless browser while the telepath stands in them: not yet looked into (the INTERIORS pass).
+   - INSIDE THE WALK-INS (furnish): the guard post (desk, rifle rack, locker), BARRACKS A (eight bunks, footlockers, lockers, the rifle rack),
+     BARRACKS B (six cots, the day end), the MESS HALL (serving line, four tables, the machines), the RADAR hut (console, racks, plot table).
+     Each stands on a 10 cm level plateau (the room's ground rolls and came up through the drawn floors). They are dim: no lamp inside yet.
+   - THE WHITE ROOMS are white now (a drawn lining on the room's four walls, `gain` on every plaster wall and ceiling tile). The nurses'
+     station, the observation floor's two long walls and Hangar 18's control room are real see-through glass (`pane`, in rooms()).
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS; outside the markers, not this file's).
    - A plateau in this room draws as a mound (the ground is sampled every 1.75 m): anything raised needs a drawn skin 1.2 m wider than it,
      and an `arch` row over raised ground needs `y: 0` or it stands on the plateau's top (the tower floated 7 m up without it).
    FOUND AND CLOSED (11-16): "no door leaf drew in the probe" was the OLD probe: it took its picture before the leaf models were asked for.
      Through probe-fast.js every leaf draws (Hangar 18: 13 door groups, 13 with a mesh; seen on screen). Nothing to fix in the door code.
+   FOUND AND CLOSED (11-16): "the White Rooms crash the headless browser with the telepath in" was the old SwiftShader probe too. Through
+     probe-fast.js (llvmpipe) the room loaded twice with him in, 20 pictures, no crash, and he draws. Nothing was changed for it.
+   NEVER USE: `steel_table` outside a lab (it carries a blood stain), `round_table` (Camelot's, four metres of oak).
    NEEDS A MODEL (none in the catalogue; nothing stands in for them): a boom gate arm (drawn from boxes today), a windsock, a jeep / humvee,
-     a helicopter, a radar antenna that turns, a flag on a pole.
+     a helicopter, a radar antenna that turns, a flag on a pole, a missile cart / launch stand (the two missiles lie on the ground).
 
    THE HOOKS (bake-desert.js "THE DISTRICT FILES" has the whole list of what ctx holds; each hook is optional):
      buildings(ctx)  the walk-in / shut buildings: building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts) -> a handle (at, face, cx, cz)
@@ -131,10 +141,35 @@ exports.buildings = ctx => { bind(ctx);
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * 1.6, 7.25, sz * 1.6, 0.14, 1.3, 0.14, null, STEEL);
         a.roof('pyramid', 0, 8.55, 0, 4.4, 0.9, 4.4, COR, TAN2, { gain: 1.3 });
         a.box(0, 0, 1.52, 0.55, 6, 0.06, RIB, STEEL); a.box(1.25, 7.3, 1.25, 0.5, 0.5, 0.5, null, 0xfff2c0, { glow: 1 }); }));
+    /* A FLAT FLOOR under every walk-in (INTERIORS 11-16: the room's ground rolls 8 cm and came up through the drawn floors in patches, the guard
+       post's too). A 10 cm plateau the building's own size + 0.6 m is a level floor; the building stands on it. */
+    [POST, BARR_A, BARR_B, MESS, RADAR].forEach(B => { const ew = B.rot === 90 || B.rot === 270; feat({ k: 'plateau', x: B.cx, z: B.cz, w: (ew ? B.fd : B.fw) + 0.6, d: (ew ? B.fw : B.fd) + 0.6, h: 0.1, edge: 0.3 }); });
 };
 
 exports.furnish = ctx => { bind(ctx);
-    put(POST, 'steel_table', 0, -1.6, { face: 0 }); put(POST, 'crt_terminal', 0, -1.6, { y: 0.76, face: 0 }); put(POST, 'folding_chair', 0, -0.6, { face: 0 });
+    put(POST, 'tanker_desk', 0, -1.6, { face: 0 }); put(POST, 'crt_terminal', 0, -1.6, { y: 0.76, face: 0 }); put(POST, 'folding_chair', 0, -0.6, { face: 0 });
+    put(POST, 'rifle_rack', 3.5, -1.6, { face: 0 }); put(POST, 'office_locker', -3.5, -1.6, { face: 0 }); put(POST, 'clipboard', 0.5, -1.5, { y: 0.78, face: 20 }); put(POST, 'wall_clock', 0, -1.9, { y: 2.3, face: 0 });
+    /* ── INTERIORS (11-16). A building's frame: x along its front, +z out of the front; blockers on whole squares, the middle aisle kept clear ── */
+    /* BARRACKS A: eight bunks, heads to the wall, a footlocker at each foot; lockers and the rifle rack by the door */
+    for (const z of [-8.75, -5.25, -1.75, 1.75]) for (const sx of [-1, 1]) { put(BARR_A, 'dorm_bed', sx * 3.5, z, { face: sx < 0 ? 90 : 270 }); put(BARR_A, 'footlocker', sx * 1.9, z + 0.9, { face: sx < 0 ? 90 : 270 }); }
+    put(BARR_A, 'office_locker', -3.5, 5.25, { face: 90 }); put(BARR_A, 'office_locker', 3.5, 5.25, { face: 270 }); put(BARR_A, 'rifle_rack', 3.5, 8.75, { face: 270 }); put(BARR_A, 'locker_bench', -3.5, 8.75, { face: 90 });
+    put(BARR_A, 'wall_clock', 0, -10.3, { y: 2.4, face: 0 }); put(BARR_A, 'psx_bedside_table_1', -4.4, -7, {}); put(BARR_A, 'retro_radio', -4.4, -7, { y: 0.6, face: 90 }); put(BARR_A, 'rug_round', 0.3, -3.5, { y: 0.02 });
+    /* BARRACKS B: six cots, the day end by the door (a table, the radio, the weights) */
+    for (const z of [-8.75, -5.25, -1.75]) for (const sx of [-1, 1]) { put(BARR_B, 'cot', sx * 3.5, z, { face: sx < 0 ? 90 : 270 }); put(BARR_B, 'footlocker', sx * 1.9, z + 0.9, { face: sx < 0 ? 90 : 270 }); }
+    put(BARR_B, 'psx_table_large_2', 3.5, 5.25, { face: 90 }); put(BARR_B, 'field_radio', 3.6, 5.0, { y: 0.78, face: 270 }); put(BARR_B, 'folding_chair', 2.3, 5.6, { face: 90 }); put(BARR_B, 'folding_chair', 3.2, 3.9, { face: 180 });
+    put(BARR_B, 'weight_bench', -3.5, 5.25, { face: 0 }); put(BARR_B, 'mini_fridge', -3.5, 8.75, { face: 90 }); put(BARR_B, 'office_locker', 3.5, 8.75, { face: 270 }); put(BARR_B, 'cardboard_boxes', -4.3, 2.4, { face: 30 });
+    put(BARR_B, 'chalkboard', 0, -10.2, { face: 0 });
+    /* THE MESS HALL: the serving line across the back, four tables, the machines by the door */
+    put(MESS, 'serving_line', 0, -7, { face: 0 }); put(MESS, 'round_fridge', 8.75, -7, { face: 270 }); put(MESS, 'mini_fridge', -8.75, -7, { face: 90 });
+    for (const q of [[-5.25, -1.75], [-5.25, 3.5], [5.25, -1.75], [5.25, 3.5]]) { put(MESS, 'psx_dinner_table_1', q[0], q[1], { face: 90 });   // (never `steel_table`: it comes with a blood stain under it)
+        for (const c of [[-1.0, -0.5, 90], [-1.0, 0.5, 90], [1.0, -0.5, 270], [1.0, 0.5, 270]]) put(MESS, 'cafeteria_chair', q[0] + c[0], q[1] + c[1], { face: c[2] });
+        put(MESS, q[1] < 0 ? 'meal_tray' : 'meal_tray_empty', q[0] + 0.1, q[1] - 0.3, { y: 0.78, face: 15 }); }
+    put(MESS, 'vending_machine', 8.75, 7, { face: 270 }); put(MESS, 'psx_vending_machine_1', -8.75, 7, { face: 90 }); put(MESS, 'trash_bin', -7.4, 5.4, {}); put(MESS, 'wall_clock', 0, -8.5, { y: 3.0, face: 0 });
+    put(MESS, 'now_serving_sign', 3, -8.4, { y: 2.6, face: 0 }); put(MESS, 'wet_floor_sign', 1.4, 4.6, { face: 40 });
+    /* THE RADAR HUT: the console and the racks along the back, the plot table, the scope */
+    put(RADAR, 'radio_console', -3.5, -3.5, { face: 0 }); put(RADAR, 'server_rack', 0, -3.5, { face: 0 }); put(RADAR, 'server_rack', 3.5, -3.5, { face: 0 }); put(RADAR, 'map_table', 3.5, 0, { face: 90 });
+    put(RADAR, 'monitor_stack', -3.5, 0, { face: 90 }); put(RADAR, 'computer_chair_grey', -2.4, -2.3, { face: 0 }); put(RADAR, 'tanker_desk', 3.5, 3.5, { face: 90 }); put(RADAR, 'crt_terminal', 3.5, 3.5, { y: 0.76, face: 270 });
+    put(RADAR, 'folding_chair', 2.4, 3.2, { face: 90 }); put(RADAR, 'cable_drum', -4.2, 4.0, { face: 20 }); put(RADAR, 'wall_clock', 0, -5.0, { y: 2.4, face: 0 });
 };
 
 exports.ground = ctx => { bind(ctx);
@@ -182,10 +217,11 @@ exports.ground = ctx => { bind(ctx);
       for (const q of [[-3.5 + 0.2, -1, 1.2], [3.5 - 0.2, 1, -1.2]]) { a.box(q[0], 0, q[2], 0.4, 1.1, 0.4, null, 0xd8b020);                                     // the two barrier boxes, their arms up
           for (let i = 0; i < 5; i++) a.box(q[0] - q[1] * (0.25 + i * 0.26), 1.0 + i * 0.62, q[2], 0.34, 0.7, 0.1, null, i % 2 ? 0xf0f0f0 : 0xc82a20); }
       a.box(0, 0, -9, 0.14, 3.4, 0.14, null, STEEL, { n: 2, step: [3.6, 0, 0] });
-      a.sign('WARNING · RESTRICTED AREA', 1.8, 2.5, -9, 4.4, 0.6, '#ffffff', '#a82a20', 'stencil', { ry: 180, ds: true });
-      a.sign('NO TRESPASSING BEYOND THIS POINT', 1.8, 1.95, -9, 4.4, 0.45, '#a82a20', '#f0f0e8', 'stencil', { ry: 180, ds: true });
-      a.sign('PHOTOGRAPHY OF THIS AREA IS PROHIBITED', 1.8, 1.5, -9, 4.4, 0.4, '#23262b', '#f0f0e8', 'stencil', { ry: 180, ds: true });
-      a.sign('USE OF DEADLY FORCE AUTHORIZED', 1.8, 1.05, -9, 4.4, 0.4, '#23262b', '#f0f0e8', 'stencil', { ry: 180, ds: true });
+      a.sign('WARNING · RESTRICTED AREA', 1.8, 2.5, -9, 4.4, 0.6, '#ffffff', '#a82a20', 'stencil', { ry: 180 });
+      a.sign('NO TRESPASSING BEYOND THIS POINT', 1.8, 1.95, -9, 4.4, 0.45, '#a82a20', '#f0f0e8', 'stencil', { ry: 180 });
+      a.sign('PHOTOGRAPHY OF THIS AREA IS PROHIBITED', 1.8, 1.5, -9, 4.4, 0.4, '#23262b', '#f0f0e8', 'stencil', { ry: 180 });
+      a.sign('USE OF DEADLY FORCE AUTHORIZED', 1.8, 1.05, -9, 4.4, 0.4, '#23262b', '#f0f0e8', 'stencil', { ry: 180 });
+      a.box(1.8, 0.82, -8.96, 4.5, 2.32, 0.05, null, STEEL);                                                                                                     // the board's back (from inside the base the words read mirrored through it)
       feat({ k: 'arch', id: 'des:a51:gate', x: gx(2), z: gc(54), parts: a.P }); }
     line(gx(1), gc(54) - 2.6, gx(3), gc(54) - 2.6, 0.5, 0xf0f0f0);
     /* THE FENCE's steel: a post every square, the top rail, three strands of wire leaning out, a warning plate every four squares (the chain-link itself is the tool's) */
@@ -208,7 +244,7 @@ exports.ground = ctx => { bind(ctx);
     /* THE FUEL DUMP: three tank containers in a concrete bund, its mouth at the south-east corner */
     [[gc(36), gc(56), gc(43), gc(56)], [gc(36), gc(56), gc(36), gc(59)], [gc(36), gc(59), gx(42), gc(59)], [gc(43), gc(56), gc(43), gx(60)]].forEach(q => feat({ k: 'wall', x0: q[0], z0: q[1], x1: q[2], z1: q[3], h: 1.1, t: 0.6, key: CONC, tint: '#c8bca0' }));
     [38, 40, 42].forEach(x => Pm('iso_tank', gx(x), gx(58), {}));
-    { const a = sheet(); a.box(0, 0, 0, 0.12, 2.6, 0.12, null, STEEL, { n: 2, step: [3.2, 0, 0] }); a.sign('FUEL · NO SMOKING · NO OPEN FLAME', 1.6, 1.7, 0, 3.2, 0.8, '#23262b', '#d8b020', 'stencil', { ds: true });
+    { const a = sheet(); a.box(0, 0, 0, 0.12, 2.6, 0.12, null, STEEL, { n: 2, step: [3.2, 0, 0] }); a.sign('FUEL · NO SMOKING · NO OPEN FLAME', 1.6, 1.7, 0.03, 3.2, 0.8, '#23262b', '#d8b020', 'stencil'); a.sign('FUEL · NO SMOKING · NO OPEN FLAME', 1.6, 1.7, -0.03, 3.2, 0.8, '#23262b', '#d8b020', 'stencil', { ry: 180 });
       feat({ k: 'arch', id: 'des:a51:fuel', x: gx(37.5), z: gc(60) + 1.2, parts: a.P }); }
     /* RUNWAY 33's concrete: the taxiway from the apron (the strip of sand between them was unpaved), the hangar's own apron as wide as its door,
        the edge lines, the yellow taxi line, the numbers */
@@ -218,6 +254,36 @@ exports.ground = ctx => { bind(ctx);
     line(gx(18), gx(86), gx(18), gx(78), 0.25, 0xe8c020); line(gx(18), gx(78), gx(24), gx(78), 0.25, 0xe8c020); line(gx(24), gx(78), gx(24), gx(70), 0.25, 0xe8c020);
     { const a = sheet(); a.P.push({ s: 'quad', flat: true, p: [0, 0.04, 0], size: [9, 6], ry: 90, key: 'txt:33|#f0f0f0||1.5||stencil', uv: 'fit', kind: 'over' });
       feat({ k: 'arch', id: 'des:a51:rwy33', x: gx(8), z: gx(78), parts: a.P }); }
+    /* ── DRESSING (11-16): the base looks used. Blockers (P) on whole squares, decor (dec / Pm) off them; nothing on the base road or the runway's middle ── */
+    /* THE RIDGE: where people sit and watch the base from outside the fence (a tent, a truck, two chairs, a telescope on the base) */
+    P('camping_tent', 24, 50, { face: 180 }); Pm('car_truck', gx(27.5), gc(50), { face: 200 }); dec('folding_chair', 24, 52); dec('folding_chair', 25, 52); Pm('telescope', gc(26) - 0.6, gc(52) + 1.0, { face: 180 });
+    dec('film_camera', 23, 52); dec('cardboard_boxes', 23, 50); dec('retro_radio', 25, 51); dec('item_binoculars', 25, 52, { y: 0.02 });
+    /* THE GATE */
+    P('meshy_sandbags', 0, 55, { h: 1.6 }); P('item_police_barricade', 4, 58, {}); dec('traffic_cone', 0, 53); dec('traffic_cone', 3, 52); dec('traffic_barrel', 3, 55); dec('psx_ammo_box_1', 7, 56);
+    /* THE CANTONMENT: between the huts, behind the mess, the car park by the fuel dump */
+    P('city_bench', 18, 61, { face: 180 }); dec('trash_bin', 17, 61); dec('psx_metal_barrel_mp_1', 17, 57); dec('cardboard_boxes', 18, 58); dec('footlocker', 18, 56); dec('hand_truck', 23, 60);
+    P('dumpster', 26, 55, { face: 0 }); P('wrapped_pallet', 30, 55, {}); dec('psx_metal_barrel_mp_2', 28, 55); dec('psx_wooden_crate_2', 29, 55); P('park_bench', 32, 60, { face: 270 }); P('vending_machine', 24, 60, { face: 180 });
+    P('car_suv', 33, 56, { face: 90 }); P('car_cop', 33, 58, { face: 90 });
+    dec('psx_metal_barrel_mp_1', 38, 60); dec('psx_metal_barrel_mp_3', 39, 60); P('gas_cylinder_rack', 41, 60, { face: 0 }); dec('traffic_cone', 42, 60); P('hose_rack', 35, 57, { face: 90 });
+    /* THE DISH */
+    dec('cable_drum', 8, 66); dec('psx_metal_barrel_mp_0', 3, 65); Pm('ind_container', gx(10), gc(67), { face: 90 }); dec('cable_drum', 11, 62);
+    /* THE APRON: freight for the hangar, the engine on its stand, a missile on the line */
+    P('wrapped_pallet', 26, 70, {}); P('forklift', 28, 71, { face: 40 }); dec('hand_truck', 27, 72); P('psx_supply_crate_1_3', 30, 70, {}); dec('pallet_jack', 25, 71); P('jet_engine_stand', 22, 70, { face: 90 }); P('missile', 16, 72, { face: 90 });
+    dec('traffic_cone', 18, 76); dec('traffic_cone', 22, 76); dec('traffic_cone', 18, 80); dec('traffic_cone', 22, 80); dec('psx_ammo_box_mp_1', 17, 71); dec('psx_metal_barrel_mp_2', 31, 71);
+    P('rocket_engine', 12, 82, {}); P('psx_supply_crate_1', 23, 83, {}); P('psx_wooden_crate_2', 23, 82, {}); P('forklift', 24, 81, { face: 200 }); dec('psx_metal_barrel_mp_1', 12, 86); dec('pallet_jack', 23, 85);
+    /* THE CRATER: lamps and a camera on the thing in the hole, more tape, the pod they pulled out of it */
+    P('followspot', 36, 76, { face: 120 }); P('followspot', 44, 80, { face: 290 }); dec('warning_tape', 44, 78, { y: 0.01 }); dec('warning_tape', 40, 83, { y: 0.01 }); dec('warning_tape', 37, 81, { y: 0.01 });
+    dec('traffic_cone', 37, 82); dec('traffic_cone', 43, 83); dec('film_camera', 37, 77); P('radiation_sign', 36, 79, { y: 1.2, face: 270 }); P('escapepod', 43, 75, { face: 30 }); dec('psx_supply_crate_1_empty', 42, 84);
+    /* THE DRY LAKE, west: the rings where it comes down (scorched into the lake bed), cones round them */
+    { const ring = (cx, cz, r, w) => { for (let i = 0; i < 16; i++) { const a0 = i / 16 * Math.PI * 2, a1 = (i + 1) / 16 * Math.PI * 2; line(cx + Math.cos(a0) * r, cz + Math.sin(a0) * r, cx + Math.cos(a1) * r, cz + Math.sin(a1) * r, w, 0x3a2c22); } };
+      const cx = gx(6), cz = gx(90); ring(cx, cz, 9.5, 0.7); ring(cx, cz, 6.2, 0.4); ring(cx, cz, 2.4, 1.0);
+      for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + 0.5; ring(cx + Math.cos(a) * 4.3, cz + Math.sin(a) * 4.3, 0.7, 0.6); } }
+    dec('traffic_cone', 2, 88); dec('traffic_cone', 9, 87); dec('traffic_cone', 10, 93); dec('traffic_cone', 2, 93); dec('film_camera', 1, 90); dec('warning_tape', 6, 86, { y: 0.01 }); P('radiation_sign', 11, 90, { y: 1.2, face: 90 });
+    /* THE DRY LAKE, east: the range (a missile lying on the lake bed, sandbags, ammunition) */
+    P('missile', 40, 90, {}); P('meshy_sandbags', 38, 92, { h: 1.6 }); P('meshy_sandbags', 42, 92, { h: 1.6 }); dec('psx_ammo_box_1', 39, 93); dec('psx_ammo_box_mp_2', 41, 93); dec('psx_supply_crate_1_2', 43, 90); dec('traffic_barrel', 37, 86);
+    /* THE YARD of the White Rooms */
+    P('metro_bench', 26, 91, { face: 90 }); dec('wheelchair', 31, 90); dec('trash_bin', 30, 87); dec('wet_floor_sign', 27, 88);
+    native('men in black', 15, 85, 0); native('mad scientist', 37, 79, 90);
     native('men in black', 3, 57, 0, sayOf(O_GATE, 'men in black')); native('marksman', 7, 52, 270, sayOf(O_GATE, 'marksman')); native('men in black', 21, 73, 270, sayOf(O_LINE, 'men in black'));
     native('spy', 30, 62, 180); native('bligblog', 38, 82, 0); native('grey', 41, 74, 200);
 };
@@ -233,6 +299,10 @@ exports.doors = ctx => { bind(ctx);
 
 /* ════ THE INSIDES (bake-desert-insides.js calls rooms(kit); notes: areas-complexes.md "THE DESERT'S INSIDES") ════ */
 exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STEEL, RIB, PLAS, TILE, FIB, CONC, STONE, CAT } = kit;
+    /* A PANE YOU SEE THROUGH (INTERIORS 11-16): the kit draws a `glass` wall as a shiny box nobody sees through (the control room looked at a
+       black wall, the observation floor at a white one). `pane` has the kit lay the wall's walked rows, frames and leaves and draw nothing, then
+       turns those rows into real glass wall rows (three-renderer.js drawWall: a see-through pane). */
+    const pane = (R, axis, at, a, b, o) => { const n = R.F.length; R.wall(axis, at, a, b, Object.assign({}, o, { draw: false })); for (let i = n; i < R.F.length; i++) { R.F[i].ghost = false; R.F[i].glass = true; R.F[i].t = 0.08; } };
     /* ════ HANGAR 18 (22 x 14) ════ */
     const HG = mk(22, 14);
     { const R = HG, G = 0x9aa2aa, DARK = 0x5a6268, WH = 0xe4e6e8, sh = { key: STEEL, tint: G }, wh = { key: PLAS, tint: WH };
@@ -261,9 +331,10 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.guard('v', 10, 1, 8, 3.5); R.guard('v', 12, 1, 8, 3.5); R.guard('u', 1, 10, 12, 3.5);
       R.guard('u', 8, 12, 14, 3.5); R.guard('v', 10, 8, 9, 3.5); R.guard('u', 10, 7, 14, 3.5);                             // (the south rail runs on beside the stair: nobody steps off it onto a wall's top)
       const gl = { glass: true, key: GLS, tint: 0x24323a, y0: 3.5, h: 2.8, frame: 0x2a2c30 };
-      R.wall('u', 8, 14, 18, gl); R.wall('u', 10, 14, 18, gl); R.wall('v', 18, 8, 10, gl); R.wall('v', 14, 8, 10, Object.assign({ doors: [[9.5, 'leaf_glass']] }, gl));
+      pane(R, 'u', 8, 14, 18, gl); pane(R, 'u', 10, 14, 18, gl); pane(R, 'v', 18, 8, 10, gl); pane(R, 'v', 14, 8, 10, Object.assign({ doors: [[9.5, 'leaf_glass']] }, gl));
+      for (const q of [[16, 8, 14, 0.12], [16, 10, 14, 0.12]]) { R.box(q[0], q[1], 3.5, q[2], 0.5, q[3], null, 0x2a2c30); R.box(q[0], q[1], 6.18, q[2], 0.12, q[3], null, 0x2a2c30); }   // the panes' sill and head on the two long sides
       R.ceil(14, 8, 18, 10, 6.3, CONC, 0x8a9096);
-      R.dec('monitor_stack', 17.2, 8.5, 270, { y: 3.5 }); R.dec('steel_table', 16, 8.45, 0, { y: 3.5 }); R.dec('crt_terminal', 16, 8.45, 0, { y: 4.26 }); R.dec('computer_chair_grey', 16, 9.1, 0, { y: 3.5 });
+      R.dec('monitor_stack', 17.2, 8.5, 270, { y: 3.5 }); R.dec('tanker_desk', 16, 8.45, 0, { y: 3.5 }); R.dec('crt_terminal', 16, 8.45, 0, { y: 4.26 }); R.dec('computer_chair_grey', 16, 9.1, 0, { y: 3.5 });
       R.dec('psx_monitoring_screen_mp_1', 15, 8.4, 0, { y: 4.3 }); R.dec('clipboard_flat', 16.4, 8.5, 20, { y: 4.26 });
       /* the crane hook over the floor (the tape's), the lamps under the trusses, the trusses */
       R.box(15.5, 4, 8.0, 0.1, 6, 0.1, null, 0x2a2c30); R.box(15.5, 4, 7.4, 0.5, 0.6, 0.3, null, 0xd8b020);
@@ -333,7 +404,7 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.wall('v', 12, 0, 3, Object.assign({ doors: [[1.5, 'leaf_office']] }, wh)); R.wall('u', 3, 12, 16, wh);
       R.wall('v', 12, 3, 6, Object.assign({ doors: [[4.5, 'leaf_hospital']] }, wh)); R.wall('u', 6, 12, 16, wh);
       /* THE NURSES' STATION: glass on all four sides, it sees every hall */
-      R.wall('u', 4, 6, 10, Object.assign({ doors: [[8.5, 'leaf_glass']] }, gl)); R.wall('u', 7, 6, 10, Object.assign({ doors: [[8.5, 'leaf_glass']] }, gl)); R.wall('v', 6, 4, 7, gl); R.wall('v', 10, 4, 7, gl);
+      pane(R, 'u', 4, 6, 10, Object.assign({ doors: [[8.5, 'leaf_glass']] }, gl)); pane(R, 'u', 7, 6, 10, Object.assign({ doors: [[8.5, 'leaf_glass']] }, gl)); pane(R, 'v', 6, 4, 7, gl); pane(R, 'v', 10, 4, 7, gl);
       /* SHOWERS, SERVICE, DOCTOR, THE DAYROOM */
       R.wall('v', 12, 6, 9, Object.assign({ doors: [[6.5, 'leaf_bathroom']] }, wh)); R.wall('v', 14, 6, 9, Object.assign({ doors: [[7.5, 'leaf_security']] }, wh)); R.wall('u', 9, 12, 16, wh);
       R.wall('v', 12, 9, 12, Object.assign({ doors: [[10.5, 'leaf_office']] }, wh));
@@ -344,7 +415,7 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.deck(5, 0, 6, 8, 3.5, TILE); R.deck(5.8, 7, 12, 8, 3.5, TILE);
       R.stair(10.5, 4, 10.5, 7, 1, 0, 3.5, 'precast');                                                                       // up from hall D, beside the station
       const up = { y0: 3.5, h: 3.5 };
-      R.wall('v', 5, 0, 8, Object.assign({}, gl, up)); R.wall('u', 8, 5, 12, Object.assign({}, gl, up));                       // the glass over the cell row, over the dayroom
+      pane(R, 'v', 5, 0, 8, Object.assign({}, gl, up)); pane(R, 'u', 8, 5, 12, Object.assign({}, gl, up));                       // the glass over the cell row, over the dayroom
       R.wall('v', 6, 0, 7, Object.assign({}, wh, up)); R.wall('u', 7, 6, 10, Object.assign({}, wh, up)); R.wall('v', 12, 7, 8, Object.assign({}, wh, up));
       R.guard('u', 7, 11, 12, 3.5, 0xd0d2d6); R.guard('v', 10, 4, 7, 3.5, 0xd0d2d6); R.guard('v', 11, 4, 7, 3.5, 0xd0d2d6);
       R.dec('molded_chair', 5.3, 2.5, 90, { y: 3.5 }); R.dec('molded_chair', 5.3, 5.5, 90, { y: 3.5 }); R.dec('clipboard_flat', 5.3, 4, 10, { y: 3.5 }); R.dec('molded_chair', 8.5, 7.7, 180, { y: 3.5 }); R.dec('security_camera', 5.9, 7.9, 225, { y: 6.2 });
@@ -368,7 +439,7 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       /* DOCTOR: the office, the vent */
       R.B('exec_desk', 14, 10, 180); R.dec('exec_chair', 14.5, 9.6, 180); R.B('chesterfield_sofa', 12, 11, 90); R.B('library_shelf', 15, 11, 270); R.dec('banker_lamp', 14.3, 10.5, 0, { y: 0.78 }); R.dec('vent_grille', 14.5, 11.85, 180, { y: 2.2 }); R.dec('globe_lamp', 13.5, 9.4);
       /* THE DAYROOM: the TV, the tables, the plant nobody waters */
-      R.B('psx_tv_table_1', 11, 11, 270); R.dec('tube_tv', 11.5, 11.5, 270, { y: 0.55 }); R.B('curved_couch', 9, 11, 90); R.B('round_table', 6, 9, 0); R.B('round_table', 8, 9, 0);
+      R.B('psx_tv_table_1', 11, 11, 270); R.dec('tube_tv', 11.5, 11.5, 270, { y: 0.55 }); R.B('curved_couch', 9, 11, 90); R.B('tulip_table', 6, 9, 0); R.B('tulip_table', 8, 9, 0);                                                              // (never `round_table`: that is Camelot's, four metres of oak)
       for (const q of [[6.5, 8.9, 0], [6.5, 10.1, 180], [5.9, 9.5, 90], [8.5, 10.1, 180], [9.1, 9.5, 270], [7.9, 9.5, 90]]) R.dec('molded_chair', q[0], q[1], q[2]);
       R.B('potted_plant', 5, 11, 0); R.dec('rug_round', 10, 10.4); R.B('air_hockey_table', 6, 11, 90);
       for (const q of [[1, 2], [1, 6], [2.5, 10], [8, 1.5], [11, 1.5], [14, 1.5], [14, 4.5], [8, 5.5], [14, 7.5], [14, 10.5]]) R.lamp(q[0], q[1], 3.45);
@@ -387,6 +458,11 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
             desc: 'A grate in the service room that is not screwed down, and a culvert under it that goes under the fence. The base floods once a year and this is where the water went.', draft: true },
           { id: 'vent', wall: 's', x: R.X(14.5), secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE VENT · THE DUCT BACK INTO THE HANGAR', action: { room: 'site_prebuilt_area51_hangar', at: 'vent' },
             desc: 'A grille in the doctor’s wall, warm, and behind it the duct that brings the hangar in.', draft: true });
+      /* THE WHITE (INTERIORS 11-16, seen: the wing was grey). The room's own four walls get a drawn white lining (not walked, open at the two
+         doors); every plaster wall and every ceiling tile is lifted to white: a sheet under the building tint reads grey whatever its tint says. */
+      R.wall('u', 0, 0, 16, Object.assign({ walk: false, h: 7, gaps: [[10, 12]] }, wh)); R.wall('u', 12, 0, 16, Object.assign({ walk: false, h: 7 }, wh));
+      R.wall('v', 0, 0, 12, Object.assign({ walk: false, h: 7 }, wh)); R.wall('v', 16, 0, 12, Object.assign({ walk: false, h: 7, gaps: [[10, 11]] }, wh));
+      R.P.forEach(p => { if (p.key === PLAS && p.tint === WH) p.gain = 2.1; else if (p.key === FIB) p.gain = 1.9; });
       R.must.push('15,10', '10,0', '11,0', '15,7', '14,11');
       R.spawn = { x: R.X(11), z: R.Z(1.5), face: 180 };
       R.lines = ['“The deck is for observation.” “Of what?” “Of whoever is on the deck.”', '“Everything is white.” “Why?” “So nothing shows.” “Something shows.” “Yes.”'];
