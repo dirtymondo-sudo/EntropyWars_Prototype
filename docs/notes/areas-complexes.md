@@ -4395,6 +4395,7 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   3. **Within about 0.6 m of a building's outer face a prop stands on the wall's 2.15 m walker box** (the mail boxes hung at 6.7 m, the toy shop's cabinets
      went through the ceiling). Furniture: keep its middle 0.65 m in. A piece hung on the wall: N.js `WALL(h)` (`mount: 0` + the y that lands it at h; h
      from 1.55 m up), or give it something to hang on that stands out from the wall (the Post Office's sorting wall).
+     LATER THE SAME DAY: the city's fix is better and N.js uses it now: every inside prop is `floor: true` (`onFloor`), so a wall piece hangs at any height.
   Hearths are open brick (`hearth()`), the fire is the catalogue's `campfire` (it carries a real light) at `span` 0.8. Seen on screen at HEAD below.
 - **PASS 3, DRESSING**: N.js build, "THE DRESSING": 31 lamp posts (`lampPost(plot, lx, ly, turn)`: a candy-striped post with a lit lantern, a `look` on
   a square's middle, the square marked taken), bulbs strung from the square's lamps to the tree, the well, shop freight, woodpiles, sleighs, the yeti's
@@ -4404,6 +4405,60 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   stand at the Pole, the lake, the Sleigh Road and the two south ways out. Walked at eye height in the probe (twelve views): one signpost stood inside a
   zone pine's skirt and moved. NOT REACHABLE FROM A DISTRICT FILE, asked of mondo: falling snow, a sound bed and an aurora (the walked rooms have no hook
   for them: an engine job), the lake's ice paint, the green `xmas_pine` in the tree zones (the tool's). The header of N.js lists them and the models it needs.
+
+## THE MOUNTAINS, THE ZONE KIT — what the pilot district learned, for the five district threads that follow (2026-11-16, district N thread)
+
+mondo 11-16: "start one district thread in each to try to get it up to par with disaster city, so it will be easier to do the other districts once
+that first district is fleshed out and knows what shared assets it can use for the zone". The North Pole village (N.js) is the Mountains' pilot.
+Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy from N.js; a helper all six want belongs in bake-mountains.js (board note first).
+
+**1. LOOK FIRST. What the first look found (expect the same in P, K, O, S, H: none was seen before):**
+- A pack BUILDING used as a prop (`xmas_house`, 16 copies) was wider than its squares, cut its neighbours and read as a suburb. Buildings are built
+  (`ctx.building` + an `arch` look), never a house prop.
+- Windows = the glass sheet under a warm tint read OLIVE. A lit window is a `marble_light` box, tint 0xffc070, `glow` 1.0, with a white frame (N.js `pane`).
+- Wall paint on the board sheet (`WD`) reads near BLACK at night: add `gain` 1.7 to the shell's two parts (`a.P.slice(-2)`) and to the gable (`tintEnd`).
+- A board on a gable-front house must hang at z `d/2 + 0.86` or the gable's overhang hides it. Fonts: `fell` for the village; pick ONE per district.
+- Black `ocean_rock` on snow looks wrong. Grey rock = `hw_stone*`, `psxg_rock_*`, `cave_stone`, or a `rocks_5` part.
+- A plot's `B` run the walker cannot reach is counted in `unreachedSquares`: open it with `tailor`, do not leave it.
+- The probe: `dev.teleport` needs `y` = the ground (the village: 1.75, the lake + roads 0). A view from `fp: true` INSIDE a roof or wall shows nonsense.
+
+**2. INSIDES (true for every walked-in `texbuilding` in a plot room):**
+- The building's own inside takes NO light: at night a furnished room is black. N.js `lit(a, w, h, d, dr, key, tint, glow, ctx)` lines the walls, floor
+  and ceiling with thin boxes 0.30 m in, `glow` 0.85 + `gain` 1.7 (a part with `glow` is drawn UNLIT at tint x glow: 0.25 is DARKER than none). The city
+  does the same with quads (`kind: 'wall'`, each turned to its wall: F-atmos.js `coat`); a quad not turned to its wall does not show.
+- Every inside prop gets `floor: true` (N.js `onFloor(B)` wraps `B.put`): without it a prop within a body's reach of a wall stands on the wall's TOP.
+- A prop's `y`: under 1 = a lift; from 1 up = a height from the ROOM's floor, so add the plot's ground (N.js `UP(h)`). A hung piece: `mount: 0` + `UP(h)`.
+- Fire: catalogue `hearth_fire` (`w` / `h` in metres, a real light) in an OPEN brick hearth (N.js `hearth`). Outdoors: `campfire`, `brazier` (real lights).
+- Not done in N yet, the city's rule: a thing that BLOCKS stands on the middle of a whole 3.5 m square with a ghost wall (F-inside.js `grid` / `solid`).
+
+**3. THE KIT (all in the catalogue or the sheets today):**
+- Walls: `WD` boards (painted with `gain`), log brown 0x7a5a40 (`ctx.cabin`, districts K and P), stone foot `rocks_5` 0xa8a8b0, snow roof `ice` 0xf4f8ff, chimney
+  `bricks_2` 0xb86a54, trim `marble_light` 0xf6f6f2 (the wood sheets cannot be painted white), gilt = `gold`, coal / dark rock = `obsidian`.
+- The village palette: red 0xb84438, green 0x3f6b4a, cream 0xd8c8a8, blue 0x5a7890, ginger 0x9a6238, plum 0x7a4a6a. Warm light 0xffb050 to 0xffc070 against
+  the blue night is the zone's one rule of light; coloured bulbs (N.js `bulbs`) are the village's own.
+- Lamp post: N.js `lampPost` (candy stripes: the VILLAGE's; another district should keep the lantern and change the post). No lamp model exists.
+- Winter props: `xmas_*` (trees, snowmen, gifts, wreaths, garlands, stockings, food), `sleigh`, `signpost`, `park_bench`, `ancient_well`, `fallen_log`,
+  `stump`, `hw_straw`, `hw_fence`, `psx_wooden_crate_*`, `meshy_burlap_sack`, `cardboard_boxes`, `rabbit`, `crow`, `dog`, `brazier`, `campfire`.
+- Inside: the PSX pack (`psx_bed_1`, `psx_dinner_table_1`, `psx_chair_mp_3`, `psx_sofa_1`, `psx_wardrobe_mp_1`, `psx_shelf_mp_*`, `psx_display_cabinet_mp_*`),
+  `rocking_chair`, `rug_round`, `table_lamp`, `form_counter`, `cash_register`, `deck_oven`, `bread_rack`, `mailbox_bank`, `platform_scale`, `tool_pegboard`,
+  `tool_chest`, `ships_bell`, `notice_board`, `wall_clock`. Dark pack furniture reads black: put it against a lit wall.
+- Do NOT use: `xmas_house` (above), `xmas_tree_plain` as a snow tree far from houses (it is a green fir with no snow), `ocean_rock`.
+
+**4. STILL MISSING ZONE-WIDE (not a district file's to fix; asked of mondo 11-16):**
+- No falling snow, no sound bed, no aurora: the walked rooms have no hook for them (engine).
+- The tree zones (the tool): `xmas_pine` is a bright green summer tree; the snow pines' skirts are 4 m wide, blurred up close, and stand on trail squares.
+- Ice (`ice_1`) beside snow (`ice`) reads the same at night (the tool's paint).
+- No models: reindeer, sled, skis on a rack, a mail box, an axe + block, a street lamp, icicles. No snow-laden roof edge piece.
+
+**5. THE VILLAGE AGAINST A FINISHED CITY DISTRICT (Financial: F.js + F-inside / F-detail / F-atmos), the pilot's remaining work plan:**
+1. A plan and a mock-up mondo OK'd before building (every city district had one; the village was built from the brief's pass list).
+2. The second exterior layers (F-detail): sills, belt courses, downpipes, roof pieces, a second sheet on parts of each wall, drifted snow at wall feet.
+3. Insides on the fight's squares: blockers on whole squares' middles with ghost walls, walkways whole squares wide.
+4. The second inside pass (F-atmos): dado / skirting / crown on the coat, pendants and sconces as real pieces, the Meshy list made.
+5. Residents with homes, beds and a day (the city's `HQ_CITY_RESIDENTS`): the village has three natives standing still. mondo's table decides who.
+6. A measured-size prop check and the two polish passes living in the bake (the city's props.js, interior-polish.js, exterior-polish.js).
+7. A district look in the tool (lamp colour, banner) shared by the zone, as the city's LOOKS.
+8. Encounter table, PvP arena pick, the Ice Queen: mondo's.
 
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
