@@ -5037,10 +5037,20 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   a plank loft drawn on the tie beams is a black slab from below (out); a wall prop on the FRONT wall wants `face: 0` (180 shows its
   back); `brass_telescope` is a floor tripod 2 m tall, not a desk piece; `railway_lantern` lights nothing at night.
   Frame rate, the quay view: 0.3 fps this run against 0.8 to 1.8 before, with FEWER draw calls (659): the cloud's number is noise.
+- **PASS 3, DRESSING (seen on screen; MODEL_LIST.md searched first):** 66 props, 8 people, 1 drawn row. Freight on the wharf's back
+  row under the crane; a skip, a gas rack, crates, pots, tyres, sacks, a pallet jack on the quay; nets drying on the shed's west wall
+  and a life ring on its east; ship's stores down the Long Pier's north row; pots on the skiff jetty; a bench at the light. Drawn: a
+  finger post where the pier's arm meets the quay (LONG PIER, BREAKWATER, WHARF, SLIPWAY: the plan's own names), the slip's KEEP
+  CLEAR board, WHARF on the brick. CARRIED OVER from the old Harbour room: the crab and the starfish at the slip's head, the second
+  dolphin, the shark past the buoys, the fish schools. PEOPLE (mondo: "There need to be more NPCs"): homosapiens on the wharf, the
+  Breakwater's head, the Long Pier, the skiff jetty; pirates at the slip and the gangway; a sharkman on the quay. No line written.
+  NOT SEEN: the people (the probe draws no cast). LEARNED: `psx_supply_crate_*` is a small crate of bottles, not freight; a prop on
+  the wharf or the Breakwater is pushed by hand (the tool's `P` only knows the plan's squares). WEIGHT: every prop the Harbour
+  places, 122 of them, is 0.40 M triangles in all (counted from the files); the quay view's own count swung 1.0 / 2.1 / 3.3 M
+  between runs with the same content, so the cloud's frame rate (0.3 to 1.8 fps) says nothing about a pass.
 - **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
   the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
-- **NOT DONE:** freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the night look (pass 4: the quay
-  is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+- **NOT DONE:** harbour lights and the night look (pass 4: the quay is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
   the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
@@ -6274,6 +6284,32 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   - WHAT IS LEFT: pass 4, atmosphere, needs pieces no district can write: light shafts (`_hqLightShaft` draws nothing), mist at a fall's foot (the waterfall
     row's holder), a snow sheet. From this file it can only change the air zones. Pass 5, polish, after mondo's look.
 
+- **PASS 3 OF 5, MORE LANDMARK WORK (the interiors pass's slot; seen, 13 + 8 views).** Order of 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): no questions, five passes at most.
+  - THE SHELF is a hill burial ground: three tombstones with dirt graves, a low grave, Halloween stones, candles, a low stone wall on its south lip.
+  - THE SNOWLINE: the yeti's kills (a body rising from the snow, a body, parts, a butcher knife, a chain, a walkie-talkie, a jerrycan) and about twenty snow drifts
+    (low `dome` parts in the ice sheet). Snow parts carry `gain: 1.7`: an arch part's sheet is multiplied by the building tint and the ice sheet drew grey.
+  - THE OLD TREES: two scarecrows between the trunks, upright cobwebs, hung chrysalises, a bear trap (the pack's two model rows, not the code-drawn key).
+  - THE MEADOW: the drum circle (four straw seats, a rug, six more pack instruments, plates, cans, a mattress, crates), butterflies and bees.
+  - THE TRAIL: the candle ring was a code-drawn piece (`candle_ring`): it is the Halloween pack's `hw_candles` with seven candles round it now; two picket panels.
+  - THE CREEK: the camp's dog, a cooler, cans, a barrel.
+  - SEEN AND TAKEN OUT: the ocean pack's fish in the Falls' pool (reef fish, hovering 1.5 m over the water), with the seaweed, turtle and crab.
+  - FRAME RATE (same two views): the Meadow 1.4 -> 1.0, the Falls 1.2 (first look) -> 1.6. The Meadow's loss is the 30 new pieces round the fire; to win back in the polish pass.
+- **FITS THIS DISTRICT (the whole-list read, 11-16; a helper read MODEL_LIST.md §6, 7, 8, 10, 12b, 13 and the live catalogue end to end).** Placed now: see above.
+  NOT YET PLACED, FIT: `hw_fence` (more), `psxg_railing`, `psxg_wall_corner`, `xmas_snowman_2/3`, `spear`, `psx_stairs_5_wood`, `ship_lantern` (needs a bough over it),
+  `psx_canned_food_mp_4`, `psx_shotgun_ammo_1`, `psx_ammo_box_1`, `urban:ClothTattered*` (prayer rags, a lean-to tarp), `urban:WoodGeneric1b` / `wood_planks` (a lookout deck),
+  `urban:GroundPebbles*` (the creek bed). MESHY, HELD BACK (packs first): `trilithon`, `menhir`, `sarsen`, `decor_stone_arch`, `brazier`, `cauldron`, `taiko_drum`, `femur`, `ulna`,
+  `item_binoculars`, `shotgun`, `field_radio`, `hitching_rail`, `ancient_well`, `paper_lantern`, `footbridge`. AVOID: every `proc` row (`crystal_cluster`, `light_shaft`, `bat_*`,
+  `trap_bear_open`, `stone_altar`, `skiff` …; `cave_torch` and `park_bench` are code under a model and already stand here), the ocean pack in this room (rocks draw black,
+  fish hover), `mushroom` (3.5 m), the Meshy twins of pack pieces. ON R2, NOT WIRED: nothing in §13 fits; the Halloween pack's witch is an FBX with no GLB; the Castle pack's
+  `*_ruined` nodes could be a ruin; the Survival, Vegetation and Mine packs are cut for 3, 2 and 1 pieces only (the rest needs a Blender cut: not done, no new art).
+  NO MODEL IN THE GAME: icicles, a snow drift, green bushes, flowers, moss, vines, reeds, lily pads, deer, bear, owl, a river fish, a rope bridge, a lookout, a lean-to,
+  a fishing rod, a backpack, a sleeping bag, a trail sign with words; no bark, moss, mud or snow sheet.
+- **DECISIONS MADE FOR MONDO (district T; overrule any in one line):** (1) the waterfall comes off a cliff on the map's edge into the pool that feeds the creek, not from a
+  walkable upper way; (2) the whole district wears `grass_dark_fantasy`, the Meadow too; (3) the giant redwood is 26 m, its companions 17 m (heights only, no tree kind
+  changed); (4) the Shelf's crosses became a burial ground with tombstones; (5) the Snowline is the yeti's larder (bodies, parts) with ONE snowman; (6) the Shelf's north half
+  is bare rock ground; (7) the code-drawn candle ring was replaced by pack candles; (8) no fish in the pool rather than reef fish; (9) Meshy pieces that fit were held back
+  while a pack piece could do the job.
+
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
   A boulder or crag = a tapered `cyl` (`r2` under half of `r`, `seg` 5 to 7) so nothing reads as a box; a solid block = a `plateau` (`edge: 0.08`) under a rock box skin 6 cm proud.
@@ -6409,6 +6445,36 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
 - **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); the vaults meet at each rectangle's end with a step, not a groin; no drips, no graffiti, no wall stains above the slime line; the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
   Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
   (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
+
+## THE SEWERS, DISTRICT R — The Radioactive Drain, where the Power station drains (2026-11-16, second side)
+
+mondo 11-16: "one sewer district could be radioactive sludge if it connects to the power plant"; on the plan picture
+(`docs/plans/world-zones/sewers_r_plot_plan.png`): "make it a new liquid that does corrosion (I think that's poison and burned combined? that's
+close to radiation). kaiju can live there, black goo, whatever else fits". He did not answer the door (inside / yard) or the size: built as the
+yard door and two plots; both are one row to change.
+- **THE FIFTH ROW:** the room is 6 x 5 plots now (252 x 210 m). P00-04..P02-04 are `solid` (not dug), P03-04 carries the Platform's track on to
+  the south wall (42 m more track), **P04-04 The Power Station Drain** (level 4, 7 m up) and **P05-04 The Sludge Pit** (level 0) are district R,
+  `docs/areas/sewers/districts/R.js`. Both names are plain labels (the game had none).
+- **THE WAY THROUGH (a new loop in the maze):** the Loop Line's tunnel (P03-04) > a side stair 7 m up east > the Drain (valve gallery, the
+  channel with a walk each side) > the channel pours 7 m out of the Pit's west wall into its tank, a ladder beside the fall > the Pit's walk
+  round the tank > a doorway north into the Outfall (one level: no opening row, the two plots share open squares). THE PLAN SAID a stair from
+  the Depot: its foot would have stood behind the parked train, so it climbs from the track tunnel and the Depot is untouched.
+- **THE WAY UP:** link `sewers_power` (`DOOR_HQ.links`): the bulkhead door at the end of the Drain's south passage <> a bulkhead door on the
+  Power station's east wall, in its yard (city plot P02-08, x 203.3, z 113.75). No city file edited. No `why` / `note` text (nobody wrote one).
+- **THE LIQUID `sludge` (new):** data.js `TERRAIN_RULES.sludge` "Radioactive Sludge": move cost 2, heals halved, ending a turn in it gives the
+  game's own CORRODED (2 rounds, the bog's number; flyers spared). Poison family for flow and the poison element (map.js `liquidFamilyOf`),
+  so its run-off behaves like the bog's. In a walked room nobody enters it (any liquid but water). Look: sprites.js `TERRAIN_SPRITES.sludge`
+  (the pack's `Liquid_Green_03`, no new art) + three-renderer.js `_LIQUID_STYLES.sludge` (glowing caustics), `_FLUID_DRIFT_3D`, the calm
+  liquids row; also in ai.js (a turn in it is costed as Corroded), ui.js (the move warning), state.js (icon), battle.js (tint), the map
+  editor's Liquids tab + id lists (`MF_TID`, `ME_TERRAIN_IDS`: appended), editor.js. The plan's square `s` = sludge: bake-sewers.js lays it
+  like water with `key: 'sludge'`; a fall fed by it pours sludge. Any room can use it: a `stream` / `pool` with `key: 'sludge'`.
+- **WHO IS THERE (5, no lines):** kaiju, black goo x 2 (his), mad scientist, swamp monster (mine, "whatever else fits").
+- **SEEN ON SCREEN** (probe, three runs): the channel, the fall and the tank glow green in the dark room; the stair, the bulkhead door, the
+  yard door in the city. No error. **NOT WALKED** by a player (the stair, the ladder, both doors: offline graph + pictures only); no fight was
+  played on the sludge (the rule is the bog's code path with another status).
+- **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
+  the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and
+  taken out (the sheet tore into spikes round them); no sound.
 
 ## THE WATERFALLS — a terrain row for any room (2026-11-16)
 
