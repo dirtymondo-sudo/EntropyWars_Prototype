@@ -61582,7 +61582,7 @@ const DOOR_HQ = {
                 {key:'lobster_traps',x:-194.25,z:-8.75,face:90}, {key:'wooden_bucket',x:-191.65,z:5.65}, {key:'ocean_crab',x:-186.75,z:8.35,face:120}, {key:'meshy_rope',x:-191.55,z:13.05},
                 {key:'city_bench',x:-131.25,z:-42.85,face:180}, {key:'railway_lantern',x:-135.65,z:-42.85}, {key:'ocean_crab',x:-141.35,z:-67.65,face:20}, {key:'flood_mast',x:-176.75,z:-68.25},
                 {key:'flood_mast',x:-138.25,z:-22.75}, {key:'brazier',x:-173.25,z:-82.25}, {key:'brazier',x:-127.75,z:-43.75}, {key:'brazier',x:-187.25,z:5.25},
-                {key:'trawler',x:-148.75,z:47.25,y:-1.6,hover:0.55,face:0}, {key:'tugboat',x:-134.75,z:-29.5,y:-1.9,hover:0,face:0}, {key:'cage_lamp',x:-198.61,z:-62.89,face:0,floor:true,y:3.3}, {key:'wooden_ladder',x:-194.55,z:-73.7,face:0,floor:true,y:0},
+                {key:'trawler',x:-148.75,z:47.25,y:-1.6,hover:0.55,face:0}, {key:'tugboat',x:-134.75,z:-29.5,y:-2.2,hover:0,face:0}, {key:'cage_lamp',x:-198.61,z:-62.89,face:0,floor:true,y:3.3}, {key:'wooden_ladder',x:-194.55,z:-73.7,face:0,floor:true,y:0},
                 {key:'fish_boxes',x:-183.75,z:-64.75}, {key:'fish_boxes',x:-169.75,z:-64.75,face:90}, {key:'fish_boxes',x:-134.75,z:-22.75,face:20}, {key:'wooden_barrel',x:-169.75,z:-61.25},
                 {key:'wooden_barrel',x:-103.25,z:-22.75}, {key:'drying_fish',x:-194.25,z:-15.75,face:90}, {key:'rope_coils',x:-186.25,z:-60.35,face:30}, {key:'rope_coils',x:-148.15,z:-18.25,face:110},
                 {key:'rope_coils',x:-125.25,z:-23.65}, {key:'rope_coils',x:-180.25,z:-82.25,face:60}, {key:'woven_baskets',x:-198.85,z:-60.25,face:40}, {key:'woven_baskets',x:-189.85,z:-4.95},
