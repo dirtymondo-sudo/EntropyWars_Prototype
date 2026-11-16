@@ -11377,6 +11377,27 @@ renderer; 1.4 after, with the whole midway in view).
   poster boards), a night look, air, dressing on every plot, people (15). Lacks = the missing models above, residents with a day, its
   own fights, sound, reflecting mirrors, a walk-in fortune tent, upper levels (the high wire's platforms are drawn, not walked).
 
+**THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; one more pass on top of the five, then STOPPED again).**
+The whole of docs/plans/WISHLIST_MODELS_ADDED.md was read. Placed, and the stand-in taken out:
+- `ferris_wheel_big` (18 m, `face: 0` shows its disc to the south) for the 6.5 m code wheel · `cage_wagon` for the drawn cage (the lion
+  cannot be set inside the model: it has a rail pen beside it) · `plush_prizes` at the back of every game stall and in the arcade for the
+  painted boxes · eight `bleacher_stand` in two banks for the drawn curved banks (`face` = `atan2(-cos t, sin t)` turns each to the ring)
+  · `trapeze_rig` over the ring for the drawn trapezes · `funhouse_mirror` against a shut side of every maze square + two outside ·
+  `circus_posters` hung at `y: 1.0` between two drawn posts (`posters()`) for the Woods' hoarding · `clothes_line` for the drawn wash line
+  · `iron_lamp_post` for the indoor globe lamps (the drawn lit core moved to 2.9 m) · `outhouse` for the plastic toilet cabins ·
+  `balloons`, `cotton_candy_cart`, `ring_of_fire`, `unicycle`, `juggling_pins`.
+- From the other districts' asks: camel, peacock, parrot, hay_rack, hay_bale, water_trough, saddle, wheelbarrow, pitchfork, canvas_tent,
+  camper_van, picnic_table, patio_umbrella, drinking_fountain, market_stall, hand_cart, cheval_mirror, gong, top_hat, dartboard, hookah,
+  lit_candle, wooden_barrel, wooden_ladder, tumbleweed.
+- **`string_lights` LEARNED THE HARD WAY:** it is 4 m between two stout posts, 2.4 m high, and it does not glow. Along a stall's front it
+  fenced the counter off; across a 14 m street its posts stood in the walk. It stands along free street edges only (six). The drawn bulbs
+  under the bunting went with it, so the bunting is unlit at night now (the eaves', awnings' and name boards' bulbs stayed).
+- **STILL DRAWN (no model exists):** the Big Top, the game stalls and marquees, the gate, bunting, flag poles, the maze's glass walls,
+  the high wire. `market_stall` is one small eastern stall with no name board: one stands by the children's corner; it does not replace
+  a named game stall.
+- **SEEN:** probe-fast.js, three runs. Draw calls at the midway view 570 (580 before the pass); FPS readings 1.6 and 0.6 against 1.6
+  before, the same noisy software renderer.
+
 **FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
 `carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
 `play_slide / play_swing / play_sandbox`, `teacups`. Stalls + games: `popcorn_cart`, `hot_dog_stand`, `money_wheel`, `claw_machine`,
@@ -11413,6 +11434,10 @@ posters, a striped cloth sheet, a big ferris wheel, a big top. `bigtop` and `fes
 10. Eight more people, all existing units, no lines: mime, chef, luchador, bunny girl, a second clown, cyclops, wizard (and a chef at the
     hot dog stand). Boards read THE GREATEST SHOW, TWICE DAILY, MENAGERIE, FORTUNES TOLD, THE MERMAID, THIS WAY TO THE BIG TOP.
 11. A boxing booth (the ring model + a luchador) stands by the wheel; a LEMONADE stall by the gate.
+12. (the model pass) The lion stands in a small rail pen beside the cage wagon model, not inside it.
+13. (the model pass) The trapeze rig stands in the middle of the ring; the drawn high wire and its two platforms stayed.
+14. (the model pass) The game stalls, the Big Top and the gate stay drawn: the list has no model for them.
+15. (the model pass) The light strings stand at six free street edges only; the bunting has no bulbs at night any more.
 
 ## THE SEWERS, DISTRICT W — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/W.js`, 15 plots)
 
@@ -12637,7 +12662,7 @@ zone only (the wall round the whole world is an idea he has not approved).
   Opening, to the Inner Sun). Only Antarctica's own ends moved; the far rooms' doors follow their link. hqWorldGraph: all four resolve
   both ways. The tool refuses to bake when one of the five hand-written rows drifts (it prints them).
 - **RETIRED:** `site_prebuilt_antarctica_station` -> the new room (`DOOR_HQ.retired`). It has no literal (the room is made from its site
-  row `HQ_SITE_PARTS`-style at data.js "prebuilt_antarctica: { plazaR: 11 ..."), stays in the data as the PvP board's source
+  row in data.js, the one that starts `prebuilt_antarctica: { plazaR: 11`), stays in the data as the PvP board's source
   (`HQ_ARENA_RULES.picks`), and has no door any more. NEW hub `antarctica` (the zone had none): the map groups it, the healing zone
   stands 2.2 m ahead of the spawn.
 - **WHO IS THERE (10):** the old Station's Yeti and two Men in Black with their own lines (the Yeti at the wall's west foot, "The 1947
@@ -12767,6 +12792,29 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
   board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
 
 
+## ANTARCTICA, DISTRICT S — THE STATION, the pilot (2026-11-16, second side; file `docs/areas/antarctica/districts/S.js`, 8 plots)
+
+The zone's pilot (ZONE_THREAD_BRIEF step 7). Proof view for the frame rate: the Station Yard looking north, x -17.5 z 78.75 y 7, face 0.
+
+### THE FIRST LOOK (the first build, three probe runs)
+Seven barrel-roofed huts on bare timber pads, a mast, a drill rig, three silos, a line of flags; the wall and the range stand over all of it
+from the yard. Thin: every hut the same shape, two of them the same red, nothing between the pads, every inside empty. 1.0 to 1.3 FPS.
+
+### PASS 1, THE EXTERIORS (seen in the cloud browser, 8 views; live)
+- **Every hut its own** (S.js `hut(ctx, id, squares, tint, name, x)`): BUNK HUT (orange, a cold porch, two stove pipes) · MESS HUT (red, porch, the
+  galley's stack, two roof vents) · RADIO (green, an aerial with two cross arms) · GARAGE (yellow, wide and low, two painted roller doors, an apron
+  lamp) · CORE STORE (blue, porch, two core tubes stood by the door) · POWER (steel, two exhaust stacks, louvres, a hazard plate) · BALLOON SHED
+  (orange, the tall one, a gas-bottle rack on its wall). All: a timber sill, lit panes on three walls, snow on the roof's crown, a drift
+  against the back and west walls, a stencil name board.
+- **The landmarks:** the RADIO MAST (30 m, red and white bands, two red lamps, three stay anchors): seen from the shelf, the yard and the
+  crevasse · the RADOME beside the radio hut (a `dome` part on a steel drum) · the DRILL RIG (an 11 m derrick, the string, the winch, a core
+  on its rack).
+- **Between the pads:** the fuel line on trestles from the tanks to the power hut, hand lines (rope on posts) along the cross track, the
+  yard's board (THE STATION · 90 S: the old room's own words), the flag line.
+- FOUND AND FIXED: `a.roof` adds an under-sheet, so the snow crown stood out of the roof as a grey plate (pushed raw now); the orange sheet
+  read brown (a lighter tint, `gain` 2.0); the power hut's louvres lay across its door; a weather mast stood in front of the balloon shed's door.
+- FPS at the proof view: 1.1 (466 calls, 746 k triangles; first build 1.0 to 1.3 at 408 calls): no cost the software renderer can show.
+- NOT DONE in this pass: the insides (pass 2), the pads' dressing (pass 3), the night (pass 4).
 ## OUTER SPACE, THE ZONE KIT — for the nine district threads that follow (started 2026-11-16 by the pilot, the Moon's district M)
 
 - **Read first:** "OUTER SPACE ON PLOTS" above, your file's header (STANDS TODAY / NOT YET), `docs/areas/space/districts/M.js` (the pilot).
