@@ -63,7 +63,8 @@ const rock = (x, y, z, r, h, top, seg, tint) => cyl(x, y, z, r, h, ROCK, tint ||
 const RAVINE = [[56, 71, 54, 55]], DEEP = -3.5;
 module.exports = {
     id: 'M', name: 'Dead Man\'s Cave',
-    bare: [115.5, 63, 127, 70],   // the concrete apron before the sewer mouth: no scatter piece lands there (bake-woods.js BARE GROUND; this file's own sow rows carry it as `off`)
+    ground: 'grass_dark_fantasy',   // THE GROUND BY DISTRICT (bake-woods.js): the dark forest floor, not the room's lawn (mondo's rule: forest floor = grass_dark_fantasy / dirt_2)
+    bare: [70, 63, 127, 70],   // the ravine's bed and its concrete apron: no scatter piece lands there (bake-woods.js BARE GROUND; this file's own sow rows carry it as `off`)
     /* the forest mass: the feature trees planted deep in this district's tree squares [kind, height m, chance a deep square] (plots of level 6 up get pines, the tool's rule) */
     wood: ['tree_6', 7, 0.05],   // bare trees (was `dead_tree`, no such kind: nothing was planted)
     /* THE TREE ZONES (terrain.gen.zones, the thicket by district) and THE AIR BY DISTRICT (shell.atmos.zones): boxes in plots, zoneOf(x0, y0, x1, y1) */
@@ -186,7 +187,7 @@ module.exports = {
     /* THE LIFE PASS (mondo 11-15): this district's own wood, its plants and its small animals */
     life(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
-        const OFF = { off: [115.5, 63, 127, 70] };   // nothing grows on the apron
+        const OFF = { off: [70, 63, 127, 70] };   // nothing grows in the ravine's bed or on the apron
         sow('woods_thornvine', 26, [54, 54], 58, Object.assign({ h: 1.3, r0: 0.5 }, OFF)); sow('woods_gasplant', 14, [54, 54], 58, Object.assign({ h: 1.1, r0: 0.4 }, OFF)); sow('mushroom2', 12, [54, 54], 58, Object.assign({ h: 0.38, r0: 0.25 }, OFF)); sow('stump', 12, [54, 54], 58, OFF);
         [['P03-03', 2, 2], ['P04-03', -2, 2], ['P05-03', 2, -2], ['P04-04', -2, -2], ['P05-04', 2, 2], ['P04-05', 3, 2], ['P05-05', -2, 2]].forEach(d => { const q = hput(d[0], 'dead_snag', d[1], d[2], { face: Math.round(rnd() * 360) });
             if (q && rnd() < 0.6) props.push({ key: 'crow', x: gc(q[0]), z: gc(q[1]), y: 4.5, face: Math.round(rnd() * 360) }); });
@@ -238,6 +239,29 @@ module.exports = {
         mouth('sewermouth', 66.5, DEEP, 5.4, 2.1, 6.2, 9.5, BRICK, T_BRICK);      // THE CAVE: the big sewer mouth at the end of the dry bed (link sewers_drain)
         mouth('stormdrain', 14, null, 4.6, 2.2, 5.6, 9, CONC, T_CONC);            // the Storm Drain: up to the street (link streets_drain)
         mouth('tunnelway', 115.5, null, 4.4, 2.0, 5.2, 8.5, BRICK, T_BRICK2);     // the Tunnel Way (link woods_sewer)
+        /* ── THE DRESSING PASS (2026-11-16): "where things get dumped", and where the kids from the school hang out. Blockers on a square's middle (hput), small
+              things off it (hdec); the bed's pieces stand at its edges, the middle and the ramp stay clear; nothing on the concrete apron; every glow noLight. ── */
+        { const { hput, hdec } = ctx, B = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z), face: Math.round(rnd() * 360) }, o || {}));
+          /* the Rocks: the fire ring under the crag */
+          hput('P03-04', 'campfire', 0, 1, { noLight: true }); hdec('P03-04', 'fallen_log', -1, 2); hdec('P03-04', 'fallen_log', 1, 2); hdec('P03-04', 'psx_glass_bottle_1', 1, 1); hdec('P03-04', 'psx_glass_bottle_2', -1, 1);
+          hdec('P03-04', 'psx_tin_can_mp_1_rusty', 0, 2); hdec('P03-04', 'skateboard', 2, 2); hdec('P03-04', 'garbage_bag', -2, 3);
+          /* the Gully's yard */
+          hput('P03-05', 'crashed_car', -2, 2); hput('P03-05', 'dumpster', 3, 3); hdec('P03-05', 'tire_stack', 1, 3); hdec('P03-05', 'tire_stack', -3, 3); hdec('P03-05', 'ebd_house_washer', 2, 4); hdec('P03-05', 'mini_fridge', 0, 4);
+          hdec('P03-05', 'psx_old_mattress_mp_1', -1, 4); hdec('P03-05', 'psx_metal_barrel_mp_2', 4, 2); hdec('P03-05', 'psx_jerrycan_1', -4, 4); hdec('P03-05', 'metal_trash_can', 4, 4); hdec('P03-05', 'psx_car_battery_1', -2, 4);
+          /* the Culvert, the Storm Drain, the Tunnel Way, the Hollow, the Sewer Mouth's bank */
+          hdec('P03-03', 'psxg_rock_1', -1, 0); hdec('P03-03', 'psxg_rock_3', 0, 1); hdec('P03-03', 'fallen_log', 1, -1); hdec('P03-03', 'psx_tin_can_mp_1_rusty', 0, 0);
+          hdec('P05-03', 'traffic_barrel', 0, 1); hdec('P05-03', 'traffic_barrel', 1, 0); hdec('P05-03', 'metal_trash_can', -1, 1); hdec('P05-03', 'psxg_dead_bush_1', 1, 1);
+          hdec('P05-05', 'psx_metal_barrel_mp_3', -1, 0); hdec('P05-05', 'psx_wooden_crate_3', 1, -1); hdec('P05-05', 'garbage_bags', 0, 1); hdec('P05-05', 'psxg_dead_bush_2', -2, 1); hdec('P05-05', 'psxg_dead_bush_1', 2, 0);
+          hdec('P04-05', 'meshy_rowboat', 0, 0); hdec('P04-05', 'psxg_dead_bush_1', -2, 0); hdec('P04-05', 'psxg_dead_bush_2', 2, 1); hdec('P04-05', 'psxg_dead_bush_1', 1, -2); hdec('P04-05', 'psxg_rock_1', -1, 2); hdec('P04-05', 'psxg_rock_2', 2, -1); hdec('P04-05', 'fallen_log', -2, -2);
+          hput('P05-04', 'dumpster', -2, -1); hdec('P05-04', 'tire_stack', 1, -1); hdec('P05-04', 'garbage_bags', -1, 0); hdec('P05-04', 'psx_glass_bottle_1', 0, 1); hdec('P05-04', 'fallen_log', 2, 0);
+          hdec('P04-04', 'psxg_dead_bush_2', -1, 1); hdec('P04-04', 'psx_tin_can_mp_1_rusty', 0, 0); hdec('P04-03', 'psxg_rock_2', 0, 0); hdec('P04-03', 'psxg_dead_bush_1', 1, 0);
+          /* the upper bed: a car that never made it out, tyres, a mattress */
+          props.push({ key: 'crashed_car_2', x: gc(52), z: gc(46), face: 200 }); B('tire_stack', 61.4, 40.6); B('psx_old_mattress_mp_1', 57.2, 41.3); B('psx_glass_bottle_2', 59.3, 43.2); B('psxg_rock_2', 51.2, 29.4); B('psxg_rock_3', 60.8, 47.6);
+          /* the ravine's bed: a sofa and a television against the south wall, barrels and a crate on the north, tags on both walls */
+          B('garbage_bags', 85.2, 68.9); B('psx_sofa_1', 89.5, 68.9, { face: 0 }); B('psx_tv_mp_1', 91.9, 69.0, { face: 300 }); B('psx_glass_bottle_1', 88.1, 68.2); B('psx_glass_bottle_2', 90.6, 67.9); B('psx_tin_can_mp_1_rusty', 89.9, 68.1);
+          B('psx_metal_barrel_mp_2', 95.6, 64.1); B('psx_metal_barrel_mp_3', 96.7, 64.3); B('psx_wooden_crate_3', 93.4, 64.2); B('tire_stack', 102.3, 68.9); B('psx_old_mattress_mp_1', 106.4, 64.4, { face: 80 }); B('skateboard', 109.2, 68.6);
+          B('psxg_rock_2', 99.4, 64.0); B('psxg_rock_4', 111.6, 68.9); B('traffic_barrel', 114.6, 64.0);
+          props.push({ key: 'graffiti_wall', x: 100.5, z: 63.3, face: 180 }, { key: 'graffiti_wall', x: 108, z: 69.7, face: 0 }, { key: 'graffiti_wall', x: 45.5, z: 28.1, face: 180 }); }
         /* ── THE CULVERT: where the creek's water goes under the trail for good, and the dry pipe it once came out of ── */
         { const head = (id, x, z, sd) => features.push({ k: 'arch', id: 'woods:M:' + id, x, z, hug: true, parts: [
               box(0, -1.4, 0, 7, 2.3, 0.6, BRICK, T_BRICK, { uv: [1.75, 1.75] }), box(0, 0.9, 0, 7.4, 0.16, 0.85, CONC, T_CONC), box(-3.8, -1.4, 0, 1, 2.7, 1, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }), box(3.8, -1.4, 0, 1, 2.7, 1, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }),
