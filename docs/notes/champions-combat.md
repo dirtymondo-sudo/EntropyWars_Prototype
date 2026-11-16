@@ -5543,6 +5543,17 @@ else reads "Trick Set". One trick at a time (a recast reads "would do nothing").
 - Online: `_trick` rides the unit in the snapshot (host-only reads it); the guest's screen never names it.
 - Probe 11-16: Doves ate a Migraine (ally lost 0), Vanishing Act moved him C4 → B1 when the foe stepped beside him, Switcheroo
   swapped him with the ally (lost 0), Pick a Card 75 → 115 MP, Saw in Half left Broken; 0 page errors.
+- THE POLISH (11-16, mondo's "work on their spell pools and spell VFX, playtest any new mechanics"; rules unchanged, the kit and
+  stats kept: POWER 792 vs the median 815, a first pass with no lab yet):
+  - **Doves** is judged after doSpell's range / sight / cooldown / AP / MP checks (it sat before them: a cast that was out of range
+    or still cooling down sprang the trick and burned the caster's MP). Hostile = `spellAimSide(spell) === 'harm'` (what the aim
+    preview paints red), so shoves, zone debuffs and status-only CC rows count too. The fizzled cast is spent like a real one:
+    MP, cooldown, this turn's spell slot (`_markSpellUsedThisTurn`), the AP (a turn-ender ends the turn), menu back to root.
+  - **Switcheroo** only takes a BLOW from the enemy acting now (`state._blitzActiveUnitId === src.id`): a burn / poison / zone tick
+    at the turn's start or the round's end no longer spends the box. A blow on the box is a whiff for the press (no AP back, the Protect rule).
+  - Vanishing Act and Switcheroo bodies move with the `blink` escape look (gone for the middle of the tween, 560 ms), not a slide.
+  - Each trick springing has its own look (spells-vfx.md "THE MAGICIAN"), relayed through VFX3D.fire (`owner` added to the
+    relay's param list in online.js).
 
 ### 6. THE MOLE MAN (Hollow Earth, bruiser, family `burrowing`)
 The style: he travels under the board. **Burrow** (T1, escape kind, cd 1): tunnels up to 4 squares (escapeLandingTiles never checks a path,

@@ -13947,12 +13947,23 @@
             delete m._trick;
             showFloatingTextForUnit(m, `🎩 ${label}!`, 'buff', { durationMs: 1200 });
         }
+        /* the trick's own look (three-vfx-effects.js "MAGICIAN", pseudo ids '_magic*'): through VFX3D.fire, which online.js
+           relays to the guest (vfx3d, gated on the guest's fog by the square; `owner` rides along) (RULE #2). kind: magicDoves
+           (the square the cast was aimed at) · magicVanishOut / magicVanishIn (where he was / where he steps out) · magicBox
+           (the box the blow lands on) · magicPoof (the ally's side of the swap). The rim takes the Magician's side colour. */
+        function _magicianFx(kind, m, x, y) {
+            if (x == null || y == null || _skipVisuals() || state.phase !== 'battle') return;
+            const VFX = window.VFX3D;
+            if (VFX && VFX.hasMapping && VFX.hasMapping('_' + kind, 'impact')) VFX.fire('impact', '_' + kind, { tx: x, ty: y, owner: m ? m.player : null });
+        }
         function _magicianDoves(caster, spell, x, y) {
             if (!caster || !spell) return false;
             const t = unitAt(x, y);
             if (!t || t.dead || !isEnemyUnit(caster, t)) return false;
-            const hostile = (typeof spellHasDamage === 'function' && spellHasDamage(spell)) || spell.kind === 'debuff' || spell.type === 'debuff'
-                || spell.kind === 'pull' || spell.kind === 'possess' || spell.kind === 'steal';
+            /* hostile = what the aim preview paints red (data.js spellAimSide: damage, a debuff, a hostile zone, a pull, a
+               shove, a possession, a steal); the old kind list missed shoves, zone debuffs and every status-only CC row */
+            const hostile = typeof spellAimSide === 'function' ? spellAimSide(spell) === 'harm'
+                : ((typeof spellHasDamage === 'function' && spellHasDamage(spell)) || spell.kind === 'debuff' || spell.type === 'debuff');
             if (!hostile) return false;
             const m = _magicianWith('doves', t.player, null);
             if (!m) return false;
@@ -13961,13 +13972,12 @@
             if (spell.cooldownRounds) { caster._spellCooldowns = caster._spellCooldowns || {}; caster._spellCooldowns[spell.id] = (state.round || 0) + spell.cooldownRounds; }
             addLog(`🕊 ${_ctName(caster)} casts ${_ctSp(spell.name)} at ${_ctName(t)} — and it bursts into a flock of doves! ${_ctName(m)}'s trick.`);
             if (typeof showFloatingTextAtTile === 'function') showFloatingTextAtTile(x, y, '🕊 DOVES', 'buff', { durationMs: 1200 });
-            spendAP(caster, spell.apCost || 1);
+            _magicianFx('magicDoves', m, x, y);
             markDirty('hud', 'selectedUnit');
-            return true;
+            return true;   // doSpell spends the slot + AP
         }
         function _magicianVanish(mover) {
             if (!mover || mover.dead) return;
-            const foe = mover.player === 1 ? 2 : 1;
             for (const m of (state.units || [])) {
                 if (!m || m.dead || m._dying || m._trick !== 'vanish' || !unitHasStatus(m, 'trickSet') || !isEnemyUnit(mover, m)) continue;
                 if (Math.max(Math.abs(m.x - mover.x), Math.abs(m.y - mover.y)) > 1) continue;
@@ -13982,24 +13992,30 @@
                 if (!best) continue;
                 const fx = m.x, fy = m.y;
                 _magicianSpring(m, 'VANISHING ACT');
+                _magicianFx('magicVanishOut', m, fx, fy);
                 m.x = best.x; m.y = best.y;
                 if (typeof nearestWalkableZ === 'function') m.z = nearestWalkableZ(best.x, best.y, m.z);
-                animateDisplacement(m, fx, fy, best.x, best.y, 260);
+                animateDisplacement(m, fx, fy, best.x, best.y, actionMs(560), { escStyle: 'blink' });
+                _magicianFx('magicVanishIn', m, best.x, best.y);
                 addLog(`🎩 ${_ctName(mover)} reaches for ${_ctName(m)} — gone! It reappears at ${coordLabel(best.x, best.y)}.`);
                 resolveTileArrival(m, { via: 'displaced' });
-                void foe;
             }
         }
         function _magicianSwitcheroo(target, src) {
             if (!target || !src || !isEnemyUnit(src, target)) return false;
+            /* a BLOW: the enemy acting now (a burn / poison / zone tick at the turn's start or the round's end is not one —
+               it used to spend the box on a damage-over-time tick) */
+            if (state._blitzActiveUnitId != null && state._blitzActiveUnitId !== src.id) return false;
             const m = _magicianWith('switch', target.player, target.id);
             if (!m) return false;
             _magicianSpring(m, 'SWITCHEROO');
             const tx = target.x, ty = target.y, tz = target.z, mx = m.x, my = m.y, mz = m.z;
             target.x = mx; target.y = my; target.z = mz;
             m.x = tx; m.y = ty; m.z = tz;
-            animateDisplacement(target, tx, ty, mx, my, 260);
-            animateDisplacement(m, mx, my, tx, ty, 260);
+            animateDisplacement(target, tx, ty, mx, my, actionMs(560), { escStyle: 'blink' });
+            animateDisplacement(m, mx, my, tx, ty, actionMs(560), { escStyle: 'blink' });
+            _magicianFx('magicBox', m, tx, ty);
+            _magicianFx('magicPoof', m, mx, my);
             addLog(`📦 Switcheroo! ${_ctName(src)}'s blow lands on an empty box — ${_ctName(target)} and ${_ctName(m)} have traded places.`);
             showFloatingTextForUnit(target, '📦 SWITCHEROO', 'protect-block', { durationMs: 1100 });
             if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
@@ -41408,7 +41424,11 @@
             if (!target || target.dead || target._dying) return false;
 
             // ── 🎩 Switcheroo: a Magician's box takes the next enemy hit on an ally ──
-            if (damage > 0 && opts.sourceUnit && !opts._chivalryRedirected && _magicianSwitcheroo(target, opts.sourceUnit)) return false;
+            if (damage > 0 && opts.sourceUnit && !opts._chivalryRedirected && _magicianSwitcheroo(target, opts.sourceUnit)) {
+                /* a blow on an empty box is a whiff: no press refund (the Protect rule) */
+                if (_pressDamageCollector && !opts.noPress && opts.sourceUnit.id === _pressDamageCollector.casterId) _pressDamageCollector.hits.push({ evaded: true });
+                return false;
+            }
             // ── Chivalry: a pledged knight dashes in and intercepts the next attack on their ward ──
             if (target._guardedBy && !opts._chivalryRedirected && damage > 0) {
                 const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
@@ -81256,7 +81276,6 @@
                 playErrorSfx();
                 return 0;
             }
-            if (canUnitAct(unit) && (unit.mp || 0) >= getSpellMpCostFor(unit, spell) && _magicianDoves(unit, spell, x, y)) return actionMs(600);   // 🎩 Doves
 
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('spell', unit, spell.id) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'spell', x, y, spellId: spell.id, spellName: spell.name });
@@ -81655,6 +81674,20 @@
                     playErrorSfx();
                     return 0;
                 }
+            }
+
+            /* 🎩 DOVES (the Magician's trick): judged HERE, after range / sight / cooldown / AP / MP have passed, so only a cast
+               that would really have gone off is eaten (it was before them: an out-of-range or cooling-down cast could spring
+               it). The fizzled cast is spent like a real one: MP, cooldown, this turn's slot, the AP (a turn-ender ends the turn). */
+            if (_magicianDoves(unit, spell, x, y)) {
+                _markSpellUsedThisTurn(unit, spell);
+                if (spellEndsTurn(spell)) spendAllAP(unit); else spendAP(unit, getSpellApCost(spell));
+                state._actionExecuting = false;
+                state.actionMode = null; state.actionMenuView = 'root'; state.selectedTool = null; state.pendingTarget = null;
+                state._teleportingUnitId = null;
+                setTimeout(() => { endUnitIfDone(unit); markDirty('board', 'selectedUnit', 'hud'); renderIfDirty(); }, actionMs(1400));
+                markDirty('board', 'selectedUnit', 'hud');
+                return actionMs(1500);
             }
 
             /* 🚪 A lane door's FIRST click (the tile): remembered, nothing spent — the painter now draws its 8 lanes and the
