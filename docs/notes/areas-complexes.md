@@ -6364,6 +6364,54 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   gate, crows; rabbits and a crow on the green; a scarecrow and pumpkins in the kitchen gardens; a dog and a cat; in every burgher
   house a candelabra and a portrait over the mantel. Not seen in a picture: the Inn's instruments (the view missed the corner).
 
+## CAMELOT, THE SNOWY PINES — the district N thread (2026-11-16, second side; file `docs/areas/camelot/districts/N.js`)
+
+mondo 11-16 (before a nap): every district prototyped to "at least 75% of the detail disaster city has", no questions, at most five passes
+(docs/plans/DISTRICT_THREAD_BRIEF.md). Eight plots north of the moat (squares x 0..96, y 0..17): a pine mass with five clearings, the track
+east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to the North Pole.
+
+- **AS IT STOOD (first probe, 11 views)**: ten pieces on eight plots; the snow read as pale paving tiles (the `ice` sheet); past the room's north
+  edge the kingdom's SUMMER treeline and green lawn stood behind the snow pines on three sides; pines stood in the clearings and on the road.
+- **PASS 1, THE EXTERIORS (seen, five probe runs)**: THE RIDGE (one drawn row `cam:n:ridge`, two looks: rock = `rocks_5` white + gain 1.7,
+  snow = `calm_snow` + gain 1.35): about 150 crags in three ranks along the north edge and round both ends, on the pines' own squares, in the
+  shell's treeline belt (2 to 14 m past the edge: the crags swallow it) and the snow peaks behind. THE PASS: the way out is a `trail` passage
+  (the walker follows it 10 m past the edge), so the cleft is two rock walls 3 m apart for 24 m, shut at its far end, the far peak over it.
+  THE WAYSIDE HUT and THE WOODCUTTER'S CABIN (`hut()`: a walked-into `building`, log courses, stone foot, snow roof over boards, porch, stone
+  chimney, lit panes). THE FROZEN POND (a flat `calm_ice` dome 7 cm high, lit a little; walked on). THE YETI'S CAVE (a horseshoe `cyl` with
+  `ri` + `arc`, a dark liner inside it, a rock dome roof, a ghost wall on its four squares). THE OLD STONES (`sarsen` x 4, `menhir` x 2,
+  `trilithon`, a low `hill`). New to the district from the model list: `horse_brown`, `horse_black`, `hitching_rail`, `sarsen`, `menhir`,
+  `trilithon`, `skull_pile`, `skull`, `femur`, `ulna`.
+- **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
+  plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
+  leaves bare). Unused by the others; their rows did not move.
+- **WHAT WENT WRONG, AND THE FIX**: (a) A SNOW PINE IS A CLUMP (`xmas:Trees_0*`: several trunks metres apart): one planted three squares away
+  stood a trunk in the hut's doorway and one in the pond; `noTrees` zones four squares wide fixed it. A hollow building and a ghost wall are
+  SOLID to the tree grower, which rings them with trunks. (b) A prop beside a ghost wall stands on the wall's TOP (the bones lay on the den's
+  roof): `floor: true`. (c) The inside face of a hollow `cyl` is as bright as the day: line a den with a second, dark `cyl` 5 cm inside it.
+  (d) An `under` box bigger than the round wall it roofs shows as a black shelf. (e) The first plug of the pass stood on the trail.
+- **FRAME RATE**: the cloud's software GPU gave 0.35, 0.26 and 0.67 frames a second on the SAME view in three runs, so it measures nothing.
+  The counts that hold: the sleigh stop's view 312 -> 374 draw calls, 1,925 -> 1,974 geometries. mondo's F3 at the sleigh stop is the number.
+- **DECISIONS MADE FOR MONDO (overrule any in one line)**: the mountains are drawn crags, not a model (none exists: MODEL_LIST section 11
+  "Wanted: a real far mountain range model"); the place names are plain (The Ridge, The Pass, The Wayside Hut, The Woodcutter's Camp, The
+  Frozen Pond, The Yeti's Cave, The Old Stones); the yeti keeps its lines and now has a den; the old stones are a plain ring (no puzzle, no
+  rule); the pond is frozen and walked on (no water, no fall); the snow sheet replaced the ice sheet on the ground; no people were added
+  (who lives here waits the NPC system, npc-system.md).
+- **NEEDS A MODEL (nothing on R2)**: an axe + chopping block, a log stack, a sled, reindeer, a deer, a fox, an owl (alive), icicles, a fur /
+  pelt, a wooden barrel, a hay rack for the horses. Engine: the trail's own saplings are the room's summer kinds (`_hqPlantPassageTrees`
+  reads `shell.forest.kinds`): a per-door kind would let the Pass's be snow pines.
+- **FITS THIS DISTRICT (MODEL_LIST.md read end to end 11-16; catalogue keys)**: rocks `psxg_rock_1..4`, `psxg_stepping_stone_1/2`, `hw_stone*`;
+  wood `fallen_log`, `meshy_fallen_log`, `stump`, `meshy_stump`, `hitching_rail`, `covered_wagon`, `psx_wooden_crate_4/5`, `hw_fence`,
+  `hw_straw`, `footbridge`, `signpost`; fire `campfire`, `meshy_campfire_ring`, `hearth_fire`, `chimney_smoke`, `cave_torch`, `wall_torch`,
+  `meshy_hanging_lantern`, `candle`, `hw_candles`; hut `cot`, `psx_bed_5_4`, `psx_table_large_2*`, `psx_chair_mp_3..5`, `psx_shelf_mp_*`,
+  `rocking_chair`, `sea_chest`, `cauldron`, `wooden_bucket`, `meshy_burlap_sack`, `meshy_rope`, `meshy_tongs`, `psx_hand_saw_1`, `hw_shovel`,
+  `dojo_weapon_rack`, `spear`, `psx_carpet_mp_1`, `meat_hook`, `pot_rack`, `psx_plate_mp_1`, `item_drinking_cup`; winter `xmas_snowman*`,
+  `sleigh`, `xmas_wreath*`, `xmas_garland_3`, `xmas_stocking*`, `xmas_gift*`, `xmas_cocoa`, `xmas_tree_plain`; animals `wolf`, `rabbit`,
+  `crow`, `horse*`, `eagle`, `dog`, `bat_*`; trees `psxg_dead_tree_1/2`, `psxg_dead_bush_1/2`, `meshy_dead_snag`, `dead_snag`; bones `skull`,
+  `skull_pile`, `femur`, `ulna`, `psx_fish_skeleton_mp_1`, `trap_bear_base` + `trap_bear_jaw`; stones `menhir`, `sarsen`, `trilithon`,
+  `decor_stone_arch`, `stone_altar`, `item_ward_totem`. Sheets: `calm_snow`, `calm_ice`, `rocks_5`, `wood`, `wood_planks`, `fur`, `leather`,
+  `marble_light` (lit panes). Unwired R2 files: none worth a row (the hits are other formats of wired files). Keep out: `ocean_rock` (black
+  on snow), `xmas_house`, `xmas_road*`, `psx_metal_barrel_*`, `camping_tent`, `crystal_cluster`.
+
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
 - **THE SHEETS that suit the zone** (keys for `sheet()` parts): `castle_wall` (ctx.WALL: all stone, tint it STONE 0xc4c0b8 / STONE2 0xaeaaa6 /
@@ -6459,6 +6507,12 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
   on the live build. A PR a pass; merge main and rebake before every PR and again right before merging (main moved under the pilot
   in four of its seven merges; an index.html conflict = take main's copy, bump the token again).
+- **SNOW, ROCK, MOUNTAINS, DENS (from the Snowy Pines, `N.js`, 2026-11-16)**: snow on a drawn piece = `calm_snow`, tint white, `gain` 1.35 (roofs, drifts,
+  caps); ice = `calm_ice` tint 0x86c8f2 `glow` 0.4. A mountain = `row().crag()` scaled up (three stacked tapered `cyl`, the top one or two in snow); a
+  rank of them 9 m apart with r 9 is a wall nothing shows through. A log hut = `N.js` `hut()` (copy it; W can use it for a woodcutter's hut with a
+  board note). A den = a `cyl` with `ri` + `arc` (the horseshoe), a dark `cyl` liner 5 cm inside, a dome over it, a ghost wall. The tool's `noTrees`
+  export keeps the tree mass off a clearing: a hollow building or a ghost wall is SOLID to the grower and gets ringed with trunks, and a snow pine
+  (`xmas:Trees_0*`) is a clump of trunks metres wide. A `trail` way out is walked 10 m past the room's edge: build round it, never across it.
 - **WHAT FITS WHICH DISTRICT** (the pilot's guess, not a brief): N The Snowy Pines: `campfire`, `chimney_smoke` on any hut, `gain` on
   snow-side wood, standing torches along the sleigh road. W The Forest: `lane()`-style drawn tracks, `fallen_log`, `covered_wagon` on
   the road from the bay, a woodcutter's hut from kind 3 (ask on the board: it is T's file). F The Fairy Forest: no torches (its light
@@ -7630,6 +7684,68 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
   `psx_cobweb_*`, `psxg_dead_bush_*`. NOT USED ON PURPOSE: the code-built stand-ins of MODEL_LIST §8 (`crystal_cluster`, `ritual_circle`, `floor_stain` already stand
   from the old passes); the tree kinds (closed). ON R2, NOT WIRED, would fit: the creator's `mhw_donitz_monk_robe*` (robes for a costume rack or a robed figure: a
   character piece, not a prop row). NO MODEL EXISTS: an owl (the bird), a goat, a deer, a dock / pier piece, a pentagram, a hooded robed statue, a bell on a frame.
+
+## THE HOLLYWOOD HILLS, THE FIVE PASSES — the district thread under mondo's 11-16 order (2026-11-16, second side)
+
+mondo 11-16: every district prototyped to "at least 75% of the detail disasterr city has", no questions, at most five passes
+(docs/plans/DISTRICT_THREAD_BRIEF.md). File: `docs/disaster-city/districts/N.js` (+ `hills-layout.json`). Bake: `node bake-disaster-city.js`.
+BEFORE (HEAD 4a05856): 66 props and 19 drawn rows on 39 plots; three plain box buildings; bare grass from the terrace to the city's line.
+
+### FITS THIS DISTRICT (the whole model list read 11-16: MODEL_LIST.md sections 6, 7, 8, 10, 12b, 13, pack-claims.md, prop-sizes.json, the live catalogue)
+(U) = no city district places it. Every key is in `DOOR_HQ.catalogue` unless it says tree kind / sheet.
+- **Mansion / pool / garden**: `pool_lounger`, `fountain`, `iron_garden_bench`, `stone_urn`, `greek_amphora`, `flamingo`, `ride_on_mower`, `dish`, `security_camera`,
+  `mailbox_bank`, `beach_ball`, `beach_air_mattress_blue` / `_pink`, `beach_swim_ring`, `beach_cooler`, `potted_plant`, `chess_set_game` (U), `lion_statue`,
+  `angel_statue`, `greek_column` (U), `hw_gate_leaf` / `hw_gate_leaf_2` (U), `hw_fence_iron` / `_2` / `_3` (U), `psxg_iron_gate_1` / `_2` (U), `psxg_wall` + `_corner` + `_pillar` (U).
+- **Cars**: `car_cadillac`, `car_suv`, `car_taxi`, `car_truck`, `car_pack_1`..`8`, `car_cyber` (U, the only sports car), `crashed_car`, `crashed_car_2`, `fire_truck`,
+  `transit_bus` (U, a tour bus), `trailer_home_1`..`6` (U, film trailers).
+- **Road**: `roads_g_sign_000`..`014` (the city's kerbs use 004 / 005 / 006 / 008 / 012), `traffic_cone`, `traffic_barrel`, `item_police_barricade`, `culvert_mouth` (U),
+  `signpost`; a guard rail is the terrain row `{ k: 'rail', model: 'guard' }` (also `parapet`, `balusters_b`, `glass`, `wood`, `ranch`, `pipe`, `stone`).
+- **Utility**: `power_pole`, `utility_box`, `flood_mast`, `decor_windpump_tower` (U), `water_tower_west`, `ind_silo`, `ind_container`, `ind_skip_full`, `air_compressor`,
+  `centrifugal_pump`, `gate_valve`, `cable_drum`, `psx_metal_barrel_mp_0`..`3`, `babel_crane`, `forklift`, `psx_wooden_crate_1`..`6`, `hw_bricks` (U), `hw_shovel` (U).
+- **Film / tourist**: `film_camera`, `studio_camera`, `studio_light`, `followspot` (U), `directors_chair`, `costume_rack`, `makeup_vanity`, `rope_stanchion`,
+  `brochure_rack`, `sunglasses_spinner`, `hot_dog_stand`, `telescope`, `brass_telescope`, `item_binoculars` (U), `item_old_camera_flash` (U).
+- **Hiking**: `missing_board` (U, a roofed notice board: the trail board), `city_bench`, `park_bench`, `trash_bin`, `campfire` (U), `camping_tent` (U), `hitching_rail` (U),
+  `hw_straw` / `hw_straw_2` (U, hay), `wooden_bucket` (U), `fallen_log`, `stump`, `psx_dinner_table_1` (a picnic table stand-in).
+- **Rocks**: `ocean_rock`..`ocean_rock_11`, `psxg_rock_1`..`4` (U), `hw_stone`, `hw_stone_1`..`5` (U), `cave_stone`, `menhir` (U), `sarsen` (U), `asteroid_a` / `_b` (U).
+- **Plants**: `saguaro_cactus` (U), `prickly_pear` (U), `psxg_dead_bush_1` / `_2` (U, the only dry brush), `psxg_dead_tree_1` / `_2` (U), `hw_tree`, `hw_tree_2`..`5` (U, bare:
+  the burn), `dead_snag`, `hollow_dead_tree` (U), `fern`, `woods_thornvine` (U). Tree kinds: oak `tree_3`, `tree_52`; `palm`; dead `tree_5`, `tree_6`, `tree_13`..`20`, `tree_41`, `tree_42`; pine `pine`, `tree_43`..`47`.
+- **Animals** (catalogue keys): `crow`, `rabbit`, `eagle`, `wolf` (the coyote stand-in), `horse`, `horse_brown`, `horse_black`, `butterfly`, `monarch`, `grasshopper`, `bat_*`;
+  the Cove: `ocean_crab`, `ocean_seal_resting`, `ocean_starfish`, `ocean_conch`, `ocean_sand_dollar`, `ocean_seaweed`.
+- **Cove**: `rowboat`, `skiff` (U), `sea_buoy`, `surfboard_long`, `surfboard_rack`, `lobster_traps`, `ship_anchor`, `beach_life_ring`, `sea_chest` (U).
+- **Observatory inside**: `star_projector` (U), `brass_orrery`, `astronomical_clock`, `meteorite_plinth`, hanging `solar` / `earth` / `moon` / `jupiter` / `saturn` (U),
+  `lunar_lander` (U), `mars_rover` (U), `astronaut` (U), `satellite`, `observation_window` (U), `museum_vitrine`, `rope_stanchion`, `cinema_seat_row`, `gallery_ottoman`, `map_table`, `globe_lamp`, `lectern`, `marble_bust`.
+- **House insides, modern**: `curved_couch`, `chesterfield_sofa`, `egg_chair`, `tulip_chair`, `tulip_table`, `sputnik_lamp` (U), `disc_cluster` (U), `saucer_pendant` (U),
+  `mushroom_lamp` (U), `lava_lamp_floor` (U), `space_divider` (U), `coffee_table`, `decor_piano`, `rug_round`, `royal_bed`, `couples_bed`, `psx_wardrobe_mp_1`, `espresso_machine`, `round_fridge`, `kitchen_range`, `psx_tv_mp_1`.
+  **Rustic**: `rocking_chair` (U), `psx_armchair_1` / `_2`, `psx_dinner_table_1`, `psx_chair_mp_1`, `psx_bed_1`, `psx_shelf_mp_2` (U), `psx_carpet_mp_1`, `tube_tv`, `retro_radio`, `instrument_guitar`, `table_lamp`, `psx_lamp_1_on`.
+- **Sheets**: stucco `urban:PlasterWallStucco1a`; roof `urban:MetalRoofTiles1a` (tinted clay: there is no clay tile sheet), `urban:MetalCorrugated1a`; copper `calm_copper`;
+  boards `urban:WoodCladding1a`, deck `urban:WoodFlooring1a`, beams `urban:WoodBeams1a` (WoodGeneric is bark: not for boards); concrete `urban:ConcreteWoodFormed1a`;
+  terraces `calm_flagstone`; pool `calm_tiles_small`; burnt ground `scorched`, `obsidian`; chain fence `urban:MetalFenceChainlink1`.
+- **Stand-ins to avoid** (code shapes): `pool_umbrella` (the old file places two: no model exists), `curved_sofa` (swapped for `curved_couch`), `infinity_pool`, `star_dome`, `hearth_fire`, `planter`, `parking_bay`.
+
+### NEEDS A MODEL (found nowhere on R2)
+Deer, coyote, mountain lion, rattlesnake, lizard, hawk, seagull · agave, yucca, a green chaparral bush, tumbleweed, cypress, a burnt tree · BBQ grill, a patio umbrella
+(only the code stand-in), pool ladder, diving board, hot tub, tennis net, a kerb mailbox, a convertible · a coin viewer telescope, a picnic table, a drinking fountain, a
+trail map board, a horse trough · a lattice mast / pylon, an antenna dish for the mast, a chain fence panel · clapperboard, camera dolly · a fire danger sign · a clay roof
+tile sheet, graffiti.
+
+### PASS 1, EXTERIORS + LANDMARKS (live; seen on screen, playtest_city.js through probe-fast.js, 16 views)
+- **The kit** (N.js, above `content`): `hillsKit(ctx)` = `glass` (a dark pane), `block` (a ghost wall under a drawn piece), `rail` (a `rail` row by model), `paint` (plot squares
+  to a sheet letter), `take`, `O(plot)` (a plot's own square lines in metres). `hillsBuildings(ctx)` builds everything below and keeps the built frames in `R.B`.
+  `shell()` takes a last argument of extra part fields (`{ gain }`). WHITE NEEDS `gain` 2.0: `marble_light` and the stucco sheet read mid grey under the city's light
+  without it (seen). Copper = the ribbed metal sheet tinted 0x63a892 (`calm_copper` reads brown). The zone palette's third sheet is `calm_flagstone` now (letter `s`; the
+  bitumen it replaced painted no square since the roads left the zone).
+- **THE THREE OLD BUILDINGS ARE THE OTHER HILLS THREAD'S** (the same hour, on mondo's direct word "do exteriors and interiors of the buildings": section "THE HOLLYWOOD
+  HILLS, THE THREE BUILDINGS"). This thread's own versions of their looks were dropped in the merge; kept, round them: THE OBSERVATORY'S TERRACE (its marble squares are
+  one level terrace, `flat`, with a balustrade `balusters_b`, open where the plan's paths and the drive come in; THE MONUMENT, a six-sided shaft with a bronze sphere in a
+  ring, on the terrace's axis) and THE HILL HOUSE'S POOL TERRACE across the road (flagstone, a round pool with a white coping, a glass rail over the city).
+- **THREE NEW HOUSES** (walk-in, each its own look): THE ROUND HOUSE (H05-02: a drum of concrete and dark glass, a saucer roof with a glass eye; a curved wall is a `cyl`
+  with `ri` + `arc` 320 / `a0` 110, the gap is the door's porch), THE VILLA (H10-02: cream stucco, a clay hip roof, a square tower, a loggia to the drive, shutters),
+  THE A-FRAME (H01-02: dark boards, a steep roof whose gable end is glass = `keyEnd`, a deck, a flue).
+- **Landmarks**: THE FIRE LOOKOUT over the Burn (H02-00: four legs, a glazed cab, a hip roof; drawn, not climbed), the mast's TRANSMITTER HUT + antenna arms (H05-00), the
+  reservoir's INTAKE TOWER with a walk from the dam + a second rail on the crest (H02-01), the Peak's survey pillar (H08-00), the Hikers' Lot's shelter (H06-02), the Horse
+  Trail's shed + a `ranch` rail corral round the horses (H05-01), the Quarry's cut benches (H04-01), parapets on the Coast Overlook and the Headland, a guard rail on the
+  canyon road's drop side (open at the paths and at the pool terrace).
+- **Frame rate** (cloud software GPU, frames a second over 20 s): from the terrace looking over the city 0.4; from the Casino court looking up 0.8 before and 0.8 after.
 
 - **THE CANYON RUN (traffic, 11-16, mondo: "definitely add traffic")**: `bake-disaster-city.js` TRAFFIC: the run that turned round at the mountain road's gate now drives on
   up the mountain road, west along the canyon road and up the Canyon Road to the foot of the letters, and back down to the highway's gate. Three cars (one a taxi). The two
