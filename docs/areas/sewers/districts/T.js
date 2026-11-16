@@ -4,7 +4,7 @@
    under the culverts; reached by the Maintenance Hatch stair (the Depot) and the rope down the well at the Junction (the Crossing).
    The tool lays the two steel rails along every run of `j` squares. ctx: see W.js.
    STANDS TODAY (first build): the Ghost Station's platform 1 m up with its bench, board and maps; two parked trains in the Depot; torches;
-   the old room's four bystanders. NOT YET: the Signal Gantry at the Crossing, the lit train's light, the garden well's rope as a model,
+   the old room's four bystanders. THE MODEL LIST PASS: the signal frame + signals at the Crossing, depot gear, Metro columns, the well's bucket and rope, railway lanterns. NOT YET: the lit train's light, the garden well's rope as a model,
    station tiles on the tunnel walls. */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
@@ -24,6 +24,17 @@ module.exports = {
         ['metro_bench', 'departures_board', 'tube_map', 'metro_vending', 'metro_bin'].forEach((k, i) => { const q = st[1 + i * 1]; if (q && ctx.free('P00-03', q[0], q[1])) ctx.P(k, 'P00-03', q[0], q[1], { face: 180 }); });
         /* THE DEPOT: a train on each siding */
         [[5, 4], [5, 8]].forEach(q => { const s = ctx.sq('P04-03', q[0], q[1]); ctx.props.push({ key: 'track_bed', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), face: 90 }, { key: 'metro_car', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), face: 90 }); });
+        /* a blocker on the k-th free square of a list, decor on the k-th square (THE MODEL LIST PASS helpers) */
+        const putP = (key, id, list, k, o) => { for (let i = Math.max(0, Math.min(list.length - 1, k)); i < list.length; i++) { const q = list[i]; if (ctx.free(id, q[0], q[1])) { ctx.P(key, id, q[0], q[1], o); return true; } } return false; };
+        const putD = (key, id, list, k) => { const q = nth(list, k); if (q) ctx.dec(key, id, q[0], q[1]); };
+        /* THE MODEL LIST PASS (mondo 11-16): MODEL_LIST.md searched for metro, rail, signal, depot. THE CROSSING: the signal lever frame and
+           two signals (the Signal Gantry's own). THE DEPOT: a cable drum, a pallet jack, a welding cart, a wrapped pallet. THE GHOST
+           STATION: two of the Metro pack's columns. THE LOOP LINE: the bucket and the rope under the garden well. Railway lanterns on the walks. */
+        putP('signal_lever_frame', 'P02-03', ctx.corners('P02-03'), 1); putP('street_signal', 'P02-03', ctx.corners('P02-03'), 3); putP('street_signal', 'P02-03', ctx.corners('P02-03'), 6);
+        { const d = ctx.inner('P04-03'); putP('cable_drum', 'P04-03', d, 4); putP('pallet_jack', 'P04-03', d, 9); putP('welding_cart', 'P04-03', d, 14); putP('wrapped_pallet', 'P04-03', d, 19); }
+        { const st = ctx.squares('P00-03', 'f').filter(q => q[1] === 3); putP('metro_column', 'P00-03', st, 1); putP('metro_column', 'P00-03', st, 6); }
+        { const w = ctx.squares('P01-03', 'o').filter(q => Math.abs(q[0] - 5) <= 1 && Math.abs(q[1] - 9) <= 1); putD('wooden_bucket', 'P01-03', w, 0); putD('meshy_rope', 'P01-03', w, 1); }
+        ctx.plots.forEach((p, i) => { const dry = ctx.squares(p.id, 'o'); for (let k = 7 + i; k < dry.length; k += 13) ctx.dec('railway_lantern', p.id, dry[k][0], dry[k][1]); });
         ctx.plots.forEach((p, i) => { const cs = ctx.corners(p.id), q = nth(cs, i % 3); if (q && ctx.free(p.id, q[0], q[1])) ctx.P('cave_torch', p.id, q[0], q[1]);
             for (let k = 1; k < cs.length; k += 4) { const q2 = cs[k]; if (ctx.free(p.id, q2[0], q2[1])) ctx.dec(['garbage_bag', 'psx_wooden_crate_1', 'psx_cobweb_1', 'metal_trash_can'][k % 4], p.id, q2[0], q2[1]); }   // the grime pass
             const dry = ctx.squares(p.id, 'o'); for (let k = 4; k < dry.length; k += 11) ctx.dec(k % 2 ? 'paper_sheet' : 'floor_stain', p.id, dry[k][0], dry[k][1]);
