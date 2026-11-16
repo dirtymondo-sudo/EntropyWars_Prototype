@@ -7434,6 +7434,21 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
     house adds the ground's height to such a `y`. (4) The hollow building's own inside walls draw near black and are 0.3 m thick: a lit board lining (`glow: 0.4`)
     stands 0.34 m inside each wall; anything hung goes 0.4 m in. (5) `psx_chair_mp_*` are low stools; scaled up they read as side tables.
   - NOBODY MOVED: 756 rows outside the district, 0 differ.
+- **PASS 3, THE DRESSING (seen, 10 views; about 150 catalogue pieces, none new to the catalogue):** helpers in `build`: `sq` (a blocker on a free square's middle), `sm` (a
+  small thing at a spot in metres, only on open ground that is no path), `up` (a height for a piece that sits on something).
+  - THE MOUND: six gravestones (`psxg_tombstone_*`, `hw_grave*`) each with a `psxg_dirt_grave`, a `hw_body_rising`, a shovel, a coffin and a skull pile at the barrow's
+    door, candles, crows (one on the lintel). THE LAKE, WEST: a bench, a signpost, lobster traps, buckets, a rope and a fish skeleton on the jetty. THE LAKE, EAST:
+    two pews turned to the water, urns, a votive stand; out on the water a second `rowboat` with the `decor_effigy_figure` lying in it among candles. 26 rocks and
+    dead bushes round the shore (grass only). THE TENTS: the `fortune_teller_tent` with a carpet, a crystal ball and cards, a `covered_wagon` on two squares, crates,
+    barrels, pots, straw, a cat. THE STAGE: a drum kit, two PA speakers, music stands, a harp and a drum on the deck; two followspots, four pews, rope posts at the
+    steps. THE OWL: the altar laid (an open book, candles, a skull, a censer), two taiko drums, urns, votive stands, a candle ring before the steps, candles at the
+    columns' feet. THE FIRE: three log seats, the old Grove's `carnival_tent` on four squares, a drum, a cooler, cups, bottles, pots, a crate, straw. THE STONES: a
+    candle at each menhir's foot, four `item_ward_totem`, the `stocks`, a body and parts on the circle, a knife, crows on two menhirs, a wolf. THE DEAD TREE: the snag
+    is 12 m now (the plot's landmark was lost at 4.6 m), two scarecrows, two gravestones, bird cages, a body, webs, dead bushes, crows.
+  - Scatter (three `sow` rows, non-blockers only, since a scatter piece may land on a path): dead bushes and small mushrooms over the district.
+  - LEFT OUT ON PURPOSE: `bat_*` (drawn by code), pumpkins and jack-o'-lanterns (a holiday, not this place), scattered rocks and logs as `sow` rows (blockers on paths).
+  - NOBODY MOVED: 854 rows outside the district, 0 differ. FRAME RATE (same Stage view): 1.0 -> 0.8 on the cloud's software GPU (836 props in the room now, 523 before
+    this thread). To watch on the weak PC; the first thing to thin is the shore ring (26) and the three scatter rows (46).
 - **FITS THIS DISTRICT (the model list read end to end, 11-16; catalogue keys)**: STONE `menhir`, `sarsen`, `trilithon`, `obelisk`, `greek_column`, `t_pillar`, `decor_stone_arch`,
   `stone_urn`, `ancient_well`, `hw_stone*`, `psxg_rock_*`, `psxg_wall*`. RITUAL `stone_altar`, `brazier`, `cave_torch`, `candleRing`, `candleLine`, `candle`, `hw_candle*`,
   `candelabra`, `votive_stand`, `cauldron`, `crystalBall`, `tarotDeck`, `item_censer`, `item_ward_totem`, `item_drinking_cup`, `taiko_drum`, `ships_bell`, `royal_throne`,
