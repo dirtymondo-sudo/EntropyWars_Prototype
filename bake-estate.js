@@ -102,7 +102,7 @@ const rail = (x0, y0, x1, y1) => feat({ k: 'rail', x0: gx(x0), z0: gx(y0), x1: g
 
 /* ── THE DISTRICT FILES (2026-11-16, the one hook for the four district threads; the city's way: bake-disaster-city.js THE DISTRICT FILES):
    docs/areas/estate/districts/<LETTER>.js, one per district, so no district's code lands in this tool. A file may export any of the stages
-   below; each is called with that district's own ctx (the helpers above + its own dice). A stage runs for every district that has it, in the
+   below (and `airZones(ctx)`, THE AIR BY DISTRICT further down); each is called with that district's own ctx (the helpers above + its own dice). A stage runs for every district that has it, in the
    order written in STAGES (THE ORDER AS IT FELL: the order the pieces were written in before the split, kept so the split changed no byte of
    the room; it only decides the order of the rows in data.js), then for any other district file by letter.
    THE DICE: each district throws its own stream (ctx.rnd, ctx.dec), started where the one shared stream stood when that district's dressing
@@ -198,6 +198,13 @@ const SP = [Math.round((WOODS_X + HALF) / C), 3];
   Object.assign(count, { openSquares: op, unreachedSquares: un, steepSteps: steep }); }
 Object.assign(count, { spaces: spaces.length, features: F.length + ARCH.length, props: props.length, doors: doors.length, natives: npc.length });
 
+/* THE AIR BY DISTRICT (2026-11-16, the pilot district H; the Woods' and the Desert's way, three-renderer.js _hqBuildAtmos `shell.atmos.zones`): a district
+   file may export `airZones(ctx)` = [{ sx0, sy0, sx1, sy1 (its own squares, the end exclusive), kind, color, n, speed, wind }]. With no zone from any
+   file the shell line is what it was (the site's own air: data.js HQ_ATMOS_SITES.prebuilt_skinwalker, fireflies 160). With one, that air is kept as a
+   last zone over the whole room, because a room with zones draws only its zones. */
+const AIR = [].concat(...Object.keys(DISTRICTS).filter(k => typeof DISTRICTS[k].airZones === 'function').map(k => (DISTRICTS[k].airZones(CTX[k]) || []).map(z => { const q = Object.assign({}, z, { x0: gx(z.sx0), z0: gx(z.sy0), x1: gx(z.sx1), z1: gx(z.sy1) });
+    delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; })));
+const ATMOS = AIR.length ? " atmos: " + J({ kind: 'fireflies', n: 160, zones: AIR.concat([{ x0: -HALF, z0: -HALF, x1: HALF, z1: HALF, kind: 'fireflies', n: 160 }]) }) + "," : "";
 /* ── the room ── */
 const SPM = { x: gx(SP[0]), z: gc(SP[1]) }, LINES = O_FIELDS.l.concat(O_GROUNDS.l), L = [];
 L.push("        /* ESTATE36-BEGIN — THE ESTATE ON PLOTS (2026-11-15): written by `node bake-estate.js` from docs/areas/estate/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
@@ -205,7 +212,7 @@ L.push("        " + ROOM + ": {");
 L.push("            label: 'THE ESTATE',");
 L.push("            sub: 'FOUR DISTRICTS · 36 PLOTS',");
 L.push("            kind: 'box', site: 'prebuilt_skinwalker', part: 'estate',");
-L.push("            shell: hqRanchShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, wall: 'leaves_3',\n" +
+L.push("            shell: hqRanchShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, wall: 'leaves_3'," + ATMOS + "\n" +
     "                                    /* THE CLEAN SKY (mondo 11-15: \"the sky is glitching/flickering in the estate\"): the ranch shell's night scenery ('eyes': a spinning ringed body, a door frame, an orb)\n" +
     "                                       drew as black outlines turning in the daytime sky. The Estate keeps the ranch's colours and fog and carries no bodies. */\n" +
     "                                    sky: { night: 1, tint: 0x2a1638, tintAmt: 0.5, stars: 0.6, nebula: 0.5, fog: { color: 0x2c2040, amount: 0.86, top: 0.1, band: 0.6, density: 0.024 }, scenery: 'none', density: 0.5, landmarks: [] } }),");

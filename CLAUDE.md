@@ -26,6 +26,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/door-docs.md` | Map of the DOOR design docs (DOOR_MASTER, HQ build plan, Phase 9 brief). | Before ANY DOOR / story / hub / HQ work. |
 | `docs/notes/hq-building-rooms.md` | HQ rooms, floors, wings, gallery, seams, directory map, floor plans. | HQ room / floor / link work. |
 | `docs/notes/world-layout.md` | THE WHOLE WORLD (11-16): every zone, how it is reached, built / old / planned, the door check, how the zones sit, which zone is next. | Before picking or starting a zone; before moving a door between zones. |
+| `docs/notes/npc-system.md` | THE NPC SPAWN SYSTEM (11-16): how NPCs work today vs mondo's order (fixed levels per race, variants, rarity tiers, district caps + refill, zodiac, boss sheet); the proposal + build order. | Before ANY NPC / resident / enemy-level / capture-refill work, in any zone. |
 | `docs/notes/areas-complexes.md` | Explorable areas, complexes, terrain rooms, Area Content Plan D1-D5, population. | Area / complex / site work. |
 | `docs/notes/seamless-field-encounter.md` | Encounter, Phase 9 field stages, Seamless Field deliveries 1-10. | Fights in the explored room. |
 | `docs/notes/story-party-progression.md` | Tutorial, party, bag, levels/XP, intake, debrief, capture. | Story-mode progression. |

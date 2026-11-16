@@ -11,18 +11,20 @@
      P00-05  The Crypt              level 2  the crypt
      P01-05  The Family Plot        level 2  the family graves
      P02-05  The Graveyard          level 2  rows of stones, open graves
-   WHAT STANDS HERE TODAY (after THE EXTERIOR PASS, 2026-11-16): THE HAUNTED HOUSE (solid out here: dark clapboard on a brick base, corner boards, a
+   WHAT STANDS HERE TODAY (after passes 1 to 4, 2026-11-16): THE HAUNTED HOUSE (solid out here: dark clapboard on a brick base, corner boards, a
      belt course, a bracketed cornice, a hipped roof with two dormers and an iron cresting, a tower with a louvred top and a weathervane, two
      gabled bays, a railed porch, the door's vestibule with two oil lamps, every window with sill, head, bars and shutters, some boarded up,
      three lit; a back door on its stoop), THE CRYPT (walk-in: plinth, four-column portico under the pediment, a cross on the ridge, buttresses,
-     two grave lights; sarcophagus, demon statue, candles inside), THE GAZEBO (white paint, railed on six sides, a lamp), THE IRON GATE (piers
+     two grave lights, REQUIESCAT IN PACE on the frieze; inside: a stone floor, the sarcophagus on a dais, burial niches down both walls, the
+     demon in a lit recess, an iron ring of candles, candelabra, coffins, cobwebs, bats), THE GAZEBO (white paint, railed on six sides, a lamp), THE IRON GATE (piers
      with lamps, an iron overthrow, two iron leaves), THE TREEHOUSE (a 5.25 m timber tower you climb by its ladder, a railed deck, a hut with a
-     lantern), two LYCH GATES and a low stone wall along each graveyard's north side, the Graveyard's obelisk, the Lawn's fountain and benches,
+     lantern, a telescope, a chair), thirteen drawn LAMP POSTS along the walks, a KEEP OUT board on the gate, bats round the tower and crows
+     on the ridge, the Lawn's swing, two LYCH GATES and a low stone wall along each graveyard's north side, the Graveyard's obelisk, the Lawn's fountain and benches,
      the iron fence at the foot of the house's lawn, the Family Plot and the Graveyard (Halloween pack + PSX graveyard pack: headstones, mounds,
      open coffins, dead trees, jack-o'-lanterns), two rim houses past the corn, and nine people: ghost, ghoul, vampire, werewolf, eagleman,
      undead, jack o lantern, zombie, necromancer.
-   THE PASSES (mondo 11-16, one pilot district a zone, up to Disaster City's standard): 1 EXTERIORS done · 2 INTERIORS · 3 DRESSING ·
-     4 ATMOSPHERE · 5 POLISH. Notes: areas-complexes.md "THE ESTATE, DISTRICT H" + "THE ESTATE, THE ZONE KIT".
+   THE PASSES (mondo 11-16, one pilot district a zone, up to Disaster City's standard): 1 EXTERIORS · 2 INTERIORS · 3 DRESSING ·
+     4 ATMOSPHERE done · 5 POLISH open (the list is in the notes). Notes: areas-complexes.md "THE ESTATE, DISTRICT H" + "THE ESTATE, THE ZONE KIT".
    MISSING / WAITING:
      - the house is not walked into from here: its five floors (Hall, Upstairs, Nursery, Attic, Cellar) are the OLD rooms
        (`site_prebuilt_haunted_*`), not redesigned. Those rooms are not in this file; the front door `house` is the tool's.
@@ -33,10 +35,10 @@
        district. The row reads `span` now; nobody has seen it stand since, so place one and look before using it.
      - NEEDS A MODEL (nothing stands in for these): a hearse or carriage for the Drive, a stone angel that weeps (the Family Plot has the
        one `angel_statue`), a raven on a perch, a wrought-iron lamp post (the lamps here are drawn parts).
-     - not seen on screen: the district at night.
      - the pines on the corn bank round the grounds are the tool's (they stand on the shared wall).
      - no residents with routines, no encounter table (mondo's baked tables).
    THE HOOKS (bake-estate.js "THE DISTRICT FILES"; a file exports any of these, each is called with this district's own ctx):
+     airZones()   the air over this district's squares (the tool's THE AIR BY DISTRICT).
      plan(ctx)    first of all: change the plan's squares (ctx.setRect(x0, y0, x1, y1, ch); 'c' = corn, anything else is walked).
      houses(ctx)  the main buildings (ctx.building: a hollow texbuilding + its drawn look; ctx.put: a prop in a building's own frame).
      sheds(ctx)   the out-buildings (same helpers).
@@ -55,7 +57,11 @@
 const IRON = 0x1c1c20, AMBER = 0xff9a30, GHOSTLY = 0x58f0a0, LAMP = { glow: 0.7 };
 module.exports = {
     plan(ctx) { const { setRect } = ctx;
-        setRect(8, 65, 10, 66, 'p');                               // THE CRYPT: the path reaches its door (the plan's path met its corner)
+        setRect(8, 65, 10, 66, 'p'); setRect(8, 66, 9, 67, 'p');                               // THE CRYPT: the path reaches its door (the plan's path met its corner)
+        /* THE GRAVEYARDS' GRASS (mondo 11-16 "that's fine"): the plan paints both yards as path; the rows the stones stand on are lawn now, the aisles,
+           the wall's row under each lych gate and the fresh mounds' rows stay dirt. Only squares the plan already walks are touched. */
+        { const lawn = (x0, x1, y, skip) => { for (let x = x0; x <= x1; x++) if (x !== skip && ctx.cell[y][x] === 'p') ctx.cell[y][x] = 'g'; };
+          lawn(13, 21, 65, 17); lawn(14, 20, 67, 17); lawn(16, 18, 69); lawn(15, 19, 62, 17); lawn(24, 32, 65, 28); lawn(24, 33, 67, 28); lawn(24, 32, 69, 28); lawn(25, 31, 71, 28); lawn(27, 31, 62, 29); }
         setRect(5, 41, 7, 43, 'j'); setRect(16, 56, 17, 57, 'j'); setRect(19, 56, 20, 57, 'j');   // boards, not lawn, on the treehouse's deck and under the porch's two side bays (the grass field grows on every grass square)
     },
     houses(ctx) { const { building, feat, r2, SOLID, WD, WD2, SHG, FLR, GLS, BRK } = ctx;
@@ -138,9 +144,32 @@ module.exports = {
                 a.box(s * (w / 2 + 0.03), 1.5, -d / 2 + 1.6 + (d - 3.2) / 4, 0.06, 1.5, 0.6, null, 0x141418, { n: 2, step: [0, 0, (d - 3.2) / 2] });
                 a.box(door.lx + s * (door.cw / 2 + 0.75), 1.8, d / 2 + 0.22, 0.24, 0.4, 0.24, null, GHOSTLY, LAMP); a.box(door.lx + s * (door.cw / 2 + 0.75), 2.2, d / 2 + 0.22, 0.32, 0.08, 0.32, null, IRON); a.box(door.lx + s * (door.cw / 2 + 0.75), 1.72, d / 2 + 0.22, 0.32, 0.08, 0.32, null, IRON); }
             a.frame(door, d, 'castle_wall', DARK);
+            a.sign('REQUIESCAT IN PACE', 0, 4.28, d / 2 + 1.73, 6.6, 0.34, '#2e2c28', '#77736d', 'cinzel');                                             // carved on the frieze
+            /* THE INSIDE (the interior pass, 2026-11-16). The room's own squares: three across (x -3.5, 0, 3.5), four deep (z -5.25 .. 5.25, the door at +z).
+               A stone floor over the lawn, a dais under the sarcophagus, burial niches in two tiers down both side walls between pilasters, a lit recess
+               behind the demon, an iron ring of candles, grave lights on the pilasters, a dimly lit vault overhead (a walk-in's own ceiling draws black). */
+            const iw = w / 2 - 0.34, id = d / 2 - 0.34, NICHE = 0x0c0c10, SLAB = 0xa8a49c;
+            a.box(0, 0, 0, 2 * iw, 0.1, 2 * id, 'marble', SLAB); a.box(0, 0.1, 0, 3.4, 0.02, 2 * id - 0.2, 'castle_wall', 0x6a6660);                  // the floor and its worn middle strip
+            a.box(0, 0.1, -1.75, 2.7, 0.2, 3.3, 'castle_wall', 0x8a867e);                                                                              // the dais
+            a.box(0, 3.7, 0, 2 * iw, 0.06, 2 * id, 'castle_wall', 0x6e7a74, { glow: 0.3 });                   // the vault, lit
+            a.box(0, 3.5, -id + 0.1, 2 * iw, 0.3, 0.2, 'castle_wall', DARK); a.box(0, 3.5, id - 0.1, 2 * iw, 0.3, 0.2, 'castle_wall', DARK);
+            for (const s of [-1, 1]) { a.box(s * (iw - 0.1), 3.5, 0, 0.2, 0.3, 2 * id, 'castle_wall', DARK);
+                a.box(s * (iw - 0.12), 0.1, -7 + 0.34 + 0.2, 0.24, 3.4, 0.4, 'castle_wall', DARK); a.box(s * (iw - 0.12), 0.1, -3.5, 0.24, 3.4, 0.4, 'castle_wall', DARK, { n: 3, step: [0, 0, 3.5] });   // pilasters on the square lines
+                for (const z of [-5.25, -1.75, 1.75]) for (const y of [0.55, 1.75]) { a.box(s * (iw - 0.02), y, z, 0.05, 0.8, 2.5, null, NICHE); a.box(s * (iw - 0.08), y - 0.1, z, 0.2, 0.1, 2.7, 'marble', SLAB); a.box(s * (iw - 0.08), y + 0.8, z, 0.2, 0.1, 2.7, 'marble', SLAB);
+                    if ((z + y * 4 + s) % 3 > 0.5) a.box(s * (iw - 0.06), y + 0.05, z + (s > 0 ? 0.3 : -0.4), 0.05, 0.7, 1.5, 'marble', 0xc0bcb4); }                                    // some niches are sealed with a slab
+                a.box(s * (iw - 0.3), 2.3, -3.5, 0.18, 0.3, 0.18, null, GHOSTLY, { glow: 0.7, n: 2, step: [0, 0, 3.5] }); a.box(s * (iw - 0.3), 2.22, -3.5, 0.26, 0.07, 0.26, null, IRON, { n: 2, step: [0, 0, 3.5] }); }
+            a.box(0, 0.3, -id + 0.06, 3.0, 3.1, 0.05, 'castle_wall', 0x2a6a50, { glow: 0.25 }); for (const s of [-1, 1]) a.box(s * 1.6, 0.1, -id + 0.12, 0.3, 3.4, 0.24, 'castle_wall', DARK); a.box(0, 3.4, -id + 0.12, 3.5, 0.3, 0.24, 'castle_wall', DARK);   // the lit recess behind the demon
+            a.cyl(0, 2.75, 1.75, 0.95, 0.07, null, IRON, { ri: 0.82 }); a.cyl(0, 2.82, 1.75, 0.025, 0.96, null, IRON);                                  // the iron ring of candles over the middle
+            a.box(0, 2.82, 1.75, 0.07, 0.16, 0.07, null, 0xe8e0c8, { ring: { n: 8, r: 0.88 } }); a.box(0, 2.98, 1.75, 0.05, 0.08, 0.05, null, AMBER, { glow: 0.9, ring: { n: 8, r: 0.88 } });
         });
-        put(CRYPT, 'sarcophagus', 0, -3.0, { face: 90 }); put(CRYPT, 'demon_statue', 0, -6.0, { face: 180 }); put(CRYPT, 'candle', -2.2, -3.0); put(CRYPT, 'candle', 2.2, -3.0);
-        put(CRYPT, 'skull_pile', -3.9, -5.8); put(CRYPT, 'psx_cobweb_1', 4.2, -6.2, { y: 2.8 }); put(CRYPT, 'stone_urn', 3.9, 5.4);
+        /* what stands inside: a blocker on a square's middle, decor off it, wall pieces on a wall (every row stands on the floor: `floor: true`) */
+        const IN = (key, lx, lz, o) => put(CRYPT, key, lx, lz, Object.assign({ floor: true }, o || {}));
+        IN('sarcophagus', 0, -1.75, { face: 90, y: 0.3 }); IN('demon_statue', 0, -5.25, { face: 180 }); IN('psxg_coffin', -3.5, 1.75, { face: 0 }); IN('trap_coffin_wood', 3.5, -5.25, { face: 30 });
+        IN('candelabra', -1.75, -4.6, { face: 180 }); IN('candelabra', 1.75, -4.6, { face: 180 }); IN('candle', -1.5, -2.9, { y: 0.3 }); IN('candle', 1.5, -0.5, { y: 0.3 }); IN('candleRing', 0, 4.2);
+        IN('skull_pile', -3.9, -6.0); IN('skull', 2.6, 2.9, { face: 40 }); IN('skull', -2.4, -0.4, { face: 250, y: 0.3 }); IN('stone_urn', 3.9, 5.7); IN('stone_urn', -3.9, 5.7); IN('hw_candles', 3.9, 2.6);
+        /* a row's `y` of 1 m or more is a HEIGHT over the room's level 0, not a lift: the Crypt's floor is at 3.5 m (level 2) */
+        const G = 3.5; IN('psx_cobweb_1', 4.4, -6.2, { y: G + 2.9 }); IN('psx_cobweb_2', -4.4, 6.2, { y: G + 2.9, face: 180 }); IN('psx_cobweb_4', 4.4, 6.2, { y: G + 2.9, face: 90 }); IN('trap_chain_draped', -4.5, -3.5, { y: G + 2.2, face: 90 });
+        IN('bat_black', 1.2, -3.0, { y: G + 3.2 }); IN('bat_grey', -2.0, 3.4, { y: G + 3.3, face: 120 });
     },
     pieces(ctx) { const { gx, gc, r2, feat, props, taken, look, flat, WD, WD2, SHG, FLR, BRK, GLS } = ctx;
         const blk = (x0, z0, x1, z1, t, h) => feat({ k: 'wall', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), t: t || 0.3, h: h || 1.1, ghost: true, rail: false });
@@ -159,6 +188,7 @@ module.exports = {
         look('irongate', gx(19), gx(38), 0, a => { for (const s of [-1, 1]) { a.box(s * 3.0, 0, 0, 0.9, 3.4, 0.9, BRK, 0x6a5650); a.box(s * 3.0, 0, 0, 1.1, 0.4, 1.1, BRK, 0x564640); a.box(s * 3.0, 3.4, 0, 1.1, 0.25, 1.1, 'marble', 0xb0aca4);
                 a.box(s * 3.0, 3.65, 0, 0.26, 0.42, 0.26, null, AMBER, LAMP); a.box(s * 3.0, 4.07, 0, 0.36, 0.08, 0.36, null, IRON); a.cyl(s * 3.0, 4.15, 0, 0.03, 0.3, null, IRON); }
             a.box(0, 3.5, 0, 5.2, 0.12, 0.12, null, IRON); a.box(0, 3.95, 0, 4.0, 0.1, 0.1, null, IRON); a.box(-2.0, 3.5, 0, 0.08, 0.45, 0.08, null, IRON, { n: 9, step: [0.5, 0, 0] });
+            a.box(-3.0, 1.45, -0.48, 0.9, 0.56, 0.05, WD, 0x6a5a48); a.sign('KEEP OUT', -3.0, 1.52, -0.52, 0.8, 0.42, '#e0d0a8', '#4a3a2c', 'fell', { ry: 180 });   // a board on the west pier, read from the corn track
             a.box(0, 4.05, 0, 2.2, 0.1, 0.1, null, IRON); a.box(0, 4.15, 0, 0.08, 0.6, 0.08, null, IRON); a.box(-0.75, 4.05, 0, 0.06, 0.3, 0.06, null, IRON, { n: 4, step: [0.5, 0, 0] }); });
         for (const s of [-1, 1]) blk(gx(19) + s * 3.45, gx(38), gx(19) + s * 2.55, gx(38), 0.9, 3.4);
         props.push({ key: 'hw_gate_leaf', x: r2(gx(19) - 2.75), z: r2(gx(38) + 2.1), face: 90 }, { key: 'hw_gate_leaf_2', x: r2(gx(19) + 2.75), z: r2(gx(38) + 2.1), face: 90 });   // the two iron leaves (the Halloween pack's), standing open along the track
@@ -190,6 +220,9 @@ module.exports = {
         blk(gc(28) - 1.25, gc(68), gc(28) + 1.25, gc(68), 2.5, 2.0); taken.add('28:68');
         flat(5, 41, 7, 43); flat(5, 53, 8, 56);   // the ground levelled under the treehouse and the gazebo
     },
+    /* THE AIR over this district (bake-estate.js THE AIR BY DISTRICT): grave-light motes over the Crypt and both graveyards, a slow grey dust round the
+       house, its lawn and the gazebo; the corn track, the gate, the treehouse and the Drive keep the zone's fireflies */
+    airZones() { return [{ sx0: 0, sy0: 60, sx1: 36, sy1: 72, kind: 'motes', color: 0x9fffc8, n: 110, speed: 0.3 }, { sx0: 0, sy0: 47, sx1: 36, sy1: 60, kind: 'dust', color: 0xb8b0c8, n: 130, speed: 0.4 }]; },
     dress(ctx) { const { gx, gc, r2, feat, props, P, dec, tree, native, sayOf, O_GROUNDS } = ctx;
         tree(4, 41, 'tree_4', 12, 1.2); tree(8, 42, 'pine', 6.5); tree(5, 44, 'pine', 6); dec('fallen_log', 7, 43); P('cave_torch', 5, 40);
         P('cave_torch', 15, 41); P('cave_torch', 19, 43); P('stone_urn', 13, 58); P('stone_urn', 22, 58); P('cave_torch', 15, 57); P('cave_torch', 20, 57); P('planter', 14, 57); P('planter', 21, 57);
@@ -217,6 +250,46 @@ module.exports = {
         dec('psxg_jack_o_lantern_1', 16, 56, { face: 180 }); dec('psxg_jack_o_lantern_2', 19, 56, { face: 180 }); dec('psxg_dead_bush_1', 14, 58); dec('psxg_dead_bush_2', 21, 58); dec('hw_pumpkin_2', 15, 58);
         native('ghost', 28, 52, 30, sayOf(O_GROUNDS, 'ghost')); native('ghoul', 14, 66, 160, sayOf(O_GROUNDS, 'ghoul')); native('vampire', 13, 57, 180); native('werewolf', 7, 44, 90); native('eagleman', 3, 55, 90);
         native('undead', 26, 68, 200); native('jack o lantern', 30, 68, 180); native('zombie', 32, 70, 300); native('necromancer', 2, 63, 90);
+        /* ── THE DRESSING PASS (2026-11-16). Heights: a row's `y` under 1 m is a lift over the ground, 1 m and over is a height over the room's level 0,
+           so a thing in the air carries its plot's ground (G2 = 3.5 m, the house's rise G4 = 7 m). ── */
+        { const { look, WD2 } = ctx, G2 = 3.5, G4 = 7, HX = gx(18), HZ = gx(53), air = (key, x, z, y, face) => props.push({ key, x: r2(x), z: r2(z), y: r2(y), face: face || 0 });
+          /* THE LAMP POSTS (drawn, at a walk's edge against the corn, the lantern out over the walk): the district's iron post and oil lamp */
+          const lampPost = (sx, sy, side) => { const at = { W: [gx(sx) + 0.3, gc(sy), 270], E: [gx(sx + 1) - 0.3, gc(sy), 90], N: [gc(sx), gx(sy) + 0.3, 0], S: [gc(sx), gx(sy + 1) - 0.3, 180] }[side];
+              look('lamp' + sx + '_' + sy, at[0], at[1], at[2], a => { a.box(0, 0, 0, 0.34, 0.5, 0.34, null, IRON); a.cyl(0, 0.5, 0, 0.06, 2.7, null, IRON); a.box(0, 3.1, 0.3, 0.07, 0.07, 0.75, null, IRON);
+                  a.box(0, 2.62, 0.6, 0.24, 0.36, 0.24, null, AMBER, LAMP); a.box(0, 2.98, 0.6, 0.32, 0.07, 0.32, null, IRON); a.box(0, 2.55, 0.6, 0.3, 0.07, 0.3, null, IRON); a.cyl(0, 3.05, 0.6, 0.02, 0.1, null, IRON); }); };
+          lampPost(30, 42, 'W'); lampPost(31, 44, 'E'); lampPost(30, 46, 'W'); lampPost(22, 40, 'N'); lampPost(27, 40, 'N'); lampPost(33, 40, 'N');             // the Drive
+          lampPost(10, 63, 'N'); lampPost(22, 63, 'N'); lampPost(26, 63, 'N'); lampPost(34, 63, 'N'); lampPost(9, 53, 'N'); lampPost(31, 58, 'E'); lampPost(30, 60, 'W');   // the cross path, the gazebo's path, the Lawn's walk
+          /* the house's grounds: the porch's chair and crate, the back yard, bats round the tower, crows on the ridge */
+          P('rocking_chair', 16, 56, { face: 170, y: 0.16 }); P('psx_wooden_crate_4', 19, 56, { y: 0.16, face: 20 }); dec('broom', 19, 56, { y: 0.16 });
+          P('cauldron', 16, 48); dec('broom', 16, 48); P('psx_wooden_crate_4', 20, 49, { face: 15 }); dec('psx_wooden_crate_6', 20, 49); P('hw_tree_5', 18, 48, { face: 80 });
+          P('wooden_cross', 22, 48, { h: 1.3, face: 180 }); props.push({ key: 'psxg_dirt_grave', x: gc(22), z: r2(gc(48) + 1.4), y: 0.02, face: 0 }); dec('hw_pumpkin_4', 21, 48);
+          P('psxg_dead_tree_2', 23, 52, { face: 150 }); dec('psxg_dead_bush_1', 12, 52); dec('psxg_dead_bush_2', 22, 54); dec('psxg_rock_2', 12, 55); dec('psxg_dead_bush_2', 13, 50);
+          [[-4.2, 8.5, 14.5, 30], [3.9, 9.6, 16.2, 200], [1.2, 12.5, 18.4, 110], [-6.5, 4.0, 12.2, 300], [7.4, 6.2, 13.1, 250], [-1.8, 13.4, 11.4, 70]].forEach((q, i) => air(['bat_black', 'bat_grey', 'bat_brown'][i % 3], HX + q[0], HZ + q[1], G4 + q[2], q[3]));
+          air('crow', HX - 2.4, HZ, G4 + 10.42, 200); air('crow', HX + 1.1, HZ, G4 + 10.42, 160); air('crow', HX + 3.0, HZ, G4 + 10.42, 185); air('crow', HX - 9.6, HZ + 9.65, G4 + 10.82, 180);
+          /* THE LAWN: the swing, urns, stepping stones from the walk to the fountain, dead bushes */
+          P('play_swing', 33, 53, { face: 90 }); P('stone_urn', 32, 50); P('stone_urn', 27, 53); dec('psxg_stepping_stone_1', 29, 54); dec('psxg_stepping_stone_2', 29, 53); dec('psxg_stepping_stone_1', 30, 53);
+          dec('psxg_dead_bush_1', 31, 53); dec('psxg_dead_bush_2', 27, 51); dec('psxg_dead_bush_1', 33, 50); dec('crow', 31, 51); dec('hw_pumpkin_3', 28, 51); P('psxg_dead_tree_1', 35, 52, { face: 220 });
+          /* THE IRON GATE's round and THE DRIVE */
+          P('iron_garden_bench', 15, 43, { face: 90 }); P('stone_urn', 19, 42); dec('hw_pumpkin', 16, 42); dec('psxg_jack_o_lantern_2', 18, 41, { face: 200 }); dec('crow', 16, 44); dec('psxg_dead_bush_1', 18, 44);
+          /* THE GAZEBO's lawn and THE TREEHOUSE */
+          props.push({ key: 'iron_garden_bench', x: r2(gx(6.5) - 2.6), z: gx(54.5), face: 90, y: 0.17 }, { key: 'hw_candles', x: r2(gx(6.5) + 0.4), z: r2(gx(54.5) - 0.3), y: 0.17 });
+          P('stone_urn', 4, 56); dec('psxg_dead_bush_2', 2, 56); dec('psxg_stepping_stone_2', 4, 58); dec('psxg_stepping_stone_1', 3, 58); dec('hw_pumpkin_2', 6, 57); dec('crow', 5, 56);
+          props.push({ key: 'telescope', x: r2(gx(6) + 2.3), z: r2(gx(42) + 2.1), face: 135 }, { key: 'psx_wooden_crate_4', x: r2(gx(6) - 1.4), z: r2(gx(42) - 1.0), face: 10 }, { key: 'rocking_chair', x: r2(gx(6) + 1.2), z: r2(gx(42) - 0.7), face: 190 });
+          dec('psxg_dead_bush_1', 8, 41); dec('mushroom2', 4, 43); dec('psxg_rock_3', 7, 44); dec('hw_pumpkin_4', 8, 43);
+          /* THE FAMILY PLOT and THE GRAVEYARD: slabs between the stones, more graves on the far rows, stone crosses, stepping stones down each aisle, crows on the wall, bats */
+          P('hw_grave_slab', 16, 68, { face: 180 }); P('hw_grave_slab', 18, 68, { face: 180 }); P('stone_urn', 16, 69); P('cross', 15, 66, { face: 180 }); P('cross', 19, 66, { face: 180 });
+          dec('psxg_stepping_stone_1', 17, 66); dec('psxg_stepping_stone_2', 17, 67); dec('hw_candles', 17, 69); dec('skull', 20, 67); dec('candle', 15, 62); dec('candle', 19, 62);
+          P('cross', 27, 70, { face: 180 }); P('hw_grave_low', 29, 70, { face: 180 }); P('psxg_tombstone_2', 31, 70, { face: 180 }); P('hw_grave_slab', 26, 69, { face: 180 }); P('hw_grave_slab', 30, 69, { face: 180 });
+          P('hw_tree_4', 24, 71 - 2, { face: 140 }); P('cross', 32, 68, { face: 180 }); P('psxg_tombstone_1', 26, 66, { face: 180 }); P('psxg_tombstone_3', 30, 66, { face: 180 });
+          dec('psxg_stepping_stone_1', 28, 66); dec('psxg_stepping_stone_2', 28, 67); dec('psxg_stepping_stone_1', 28, 69); dec('skull', 27, 71); dec('candle', 29, 71); dec('hw_candles_2', 31, 66); dec('hw_pumpkin_4', 25, 68);
+          air('crow', gc(20) + 0.5, gc(65), G2 + 1.03, 190); air('crow', gc(25) - 0.4, gc(65), G2 + 1.03, 160); air('crow', gc(31), gc(65), G2 + 1.03, 210); air('crow', gc(28), gc(65), G2 + 4.34, 180);
+          air('bat_black', gc(28) + 1.5, gc(68) - 2, G2 + 5.2, 40); air('bat_grey', gc(30), gc(69), G2 + 4.1, 260); air('bat_brown', gc(17) + 1, gc(67), G2 + 4.4, 130);
+        }
+        /* ── THE ATMOSPHERE PASS (2026-11-16). THE LIGHTS: a room has ten real prop lights for all four districts, given in row order (three-renderer.js
+           HQ_PROP_LIGHT_MAX), so this district keeps three (the two torches at the house's walk, one in the Graveyard) and every other torch, the brazier
+           and the fountain glow without a light (`noLight`); the lamps, lanterns and windows are drawn glow. ── */
+        { const KEEP = { [gc(15) + ':' + gc(57)]: 1, [gc(20) + ':' + gc(57)]: 1, [gc(24) + ':' + gc(67)]: 1 }, LIT = { cave_torch: 1, brazier: 1, fountain: 1, candle_ring: 1, campfire: 1 };
+          props.forEach(q => { if (LIT[q.key] && q.x < 0 && q.z >= 0 && !KEEP[q.x + ':' + q.z]) q.noLight = true; }); }
         props.push({ key: 'abandoned_house', x: -168, z: 60, face: 0 }, { key: 'abandoned_house', x: -60, z: 168, face: 90 });       // the houses past the corn (the old Grounds' rim houses), outside the room
     },
 };
