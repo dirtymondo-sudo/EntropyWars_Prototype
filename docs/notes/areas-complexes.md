@@ -4548,6 +4548,13 @@ sheep, rocks, an eagle. Cloud Line + the Grand Stair's foot: eight clouds on the
 `RACE_PROFILES.biomes`: valkraye (thrones), giant (Stadium), nephilim (Sacred Way), unicorn (Olive Grove), occulus (Goat Track), watcher (Cloud Line); none on a way.
 `white_cloud` takes `span` (5 to 8 m) and a small `y`. A prop on a plinth on a sloping row floats or sinks: keep plinths on the plot's level rows.
 
+**PASS 4, ATMOSPHERE (seen on screen by day and at 22:30: a view's `eval` sets `window._hqClockHour = () => 22.5`):** the zone's rule of light, warm against the blue
+night, with parts that glow (drawn unlit, so no light is added and the frame rate keeps): O.js `flame` (a gold bowl with a fire: on the Stadium's four posts and its seats'
+ends, on the Colonnade's corners, the gate, the stage's ends, five along the theatre's back wall, the Temple's four roof corners, two on the statue's base) and `lamp` (a
+small oil lamp on a chain: under the Temple's ring beam, in the cella, under the Colonnade's rafters, in the gate). A flame part takes NO sheet (`key` null, a plain colour):
+on a sheet it read as dull gold. The real lights stay the eleven braziers and the two fountains. `light_shaft` showed nothing outdoors: not used.
+No falling light, cloud drift or sound: the walked rooms have no hook for them (the zone kit's point 4).
+
 **FOR THE NEXT THREAD (learned here):**
 - A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
   never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
