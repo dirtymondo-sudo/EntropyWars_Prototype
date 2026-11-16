@@ -31552,9 +31552,9 @@ const DOOR_HQ = {
         /* stadium_downtown — GONE 2026-11-16 (THE OLD SITES RETIRED): the stadium stands in the city room (Sports + Culture) */
         /* strip_cyberpunk — GONE 2026-11-16 (THE OLD SITES RETIRED): the Strip is retired; Cyberpunk City stays reached by the HQ tunnel and Downtown's platform */
         /* AREA CONTENT D3 (2026-09-19): THE PITCH DRAIN — a DRAUGHT behind the east stand into the sewers' east return (the bowl's earned exit; the road out is never one) */
-        { id: 'stadium_sewers', route: 'sewers', leaf: 'leaf_cell', secret: true,   // a draught still names a catalogued leaf (hqLinkLive's wear rule) — the door wears none
+        { id: 'stadium_sewers', route: 'sewers', way: 'gutter',   // THE OLD SITES RETIRED (2026-11-16): a gutter in the stadium road, like the docks' manhole (was a draught out of the old bowl's east stand)
           a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -99.75, z: 106.75, face: 0, sub: 'THE STADIUM DRAIN · DOWN INTO THE SEWERS' },   // THE OLD SITES RETIRED (2026-11-16): the stadium is Sports + Culture's: the drain is on the stadium road's dead end (bake-disaster-city.js writes the place)   // 2026-09-26: at the end of THE CULVERT (the service tunnel under the east stand)
-          b: { site: 'prebuilt_downtown', part: 'underworld', wall: 'e', z: -40.25, sub: 'THE STADIUM DRAIN · UP TO THE PITCH' },
+          b: { site: 'prebuilt_downtown', part: 'underworld', wall: 'e', z: -40.25, leaf: 'leaf_cell', sub: 'THE STADIUM DRAIN · UP TO THE STADIUM ROAD', verb: 'CLIMB UP' },
           why: 'the pitch drains into the east return; the groundsman\'s culvert was never on the plan, and the plate on the back of the east stand says so', note: 'a draught behind the east stand', draft: true },
         /* THE WONDERLAND (the Looking-Glass has no free wall for a landing
            yet — its room is nine metres across and a door would land on the
@@ -31828,7 +31828,7 @@ const DOOR_HQ = {
             prebuilt_babel: { room: 'site_prebuilt_gobekli_ancient', door: { id: 'bay11', wall: 's', x: -42 } },   // LEYLINES ON PLOTS (2026-11-16): Room 11's barn door at the end of the Workers' Town's street
             /* THE AREAS (2026-09-18 — the user: "replace all board maps with areas, except for Room 64"): every remaining board is bypassed —
                the twenty generated areas (HQ_AREA_SPECS → hqBuildAreas) and the woods' clearing (its hollow tree IS the bay door) */
-            prebuilt_stadium:             { room: 'site_prebuilt_downtown_streets',           door: { id: 'bay_stadium', wall: 'free', x: -54.25, z: 218.75, face: 0 } },   // THE OLD SITES RETIRED (2026-11-16): at the city stadium's park gate (bake-disaster-city.js writes the place)
+            prebuilt_stadium:             { room: 'site_prebuilt_downtown_streets',           door: { id: 'bay_stadium', wall: 'free', x: -54.25, z: 243.25, face: 0 } },   // THE OLD SITES RETIRED (2026-11-16): at the city stadium's park gate (bake-disaster-city.js writes the place)
             prebuilt_technoticlan: { room: 'site_prebuilt_gobekli_ancient', door: { id: 'bay2012', wall: 's', x: 94.5 } },   // LEYLINES ON PLOTS (2026-11-16): Room 2012's Portcullis at the south causeway's end
             prebuilt_agartha: { room: 'site_prebuilt_hollow_earth_cavern', door: { id: 'bay_agartha', wall: 's', x: 64.75 } },   // THE CAVERN ON PLOTS (2026-11-16): the Inner Gate; bake-cavern.js checks this row
             prebuilt_antarctica: { room: 'site_prebuilt_antarctica_plots', door: { id: 'bay', wall: 'free', x: -10.5, z: 57.75, face: 0 } },   // ANTARCTICA ON PLOTS (2026-11-16): written by bake-antarctica.js (door 90S stands in the snow on the Station Yard)
@@ -44587,7 +44587,6 @@ const DOOR_HQ = {
                     {k:'tree',x:-222.25,z:-12.25,kind:'tree',h:6.8},
                     {k:'tree',x:-78.75,z:246.75,kind:'tree_3',h:3.8},
                     {k:'tree',x:-68.25,z:246.75,kind:'tree',h:3.6},
-                    {k:'tree',x:-57.75,z:246.75,kind:'tree_3',h:3.8},
                     {k:'tree',x:-47.25,z:246.75,kind:'tree_2',h:3.6},
                     {k:'tree',x:-246.75,z:218.75,kind:'tree_3',h:3.6},
                     {k:'tree',x:-243.25,z:243.25,kind:'tree_3',h:3.8},
@@ -49189,6 +49188,7 @@ const DOOR_HQ = {
                 {key:'fire_hydrant',x:223.65,z:218.75,face:90},
                 {key:'roads_g_sign_006',x:238.35,z:218.75,face:270,h:2.4},
                 {key:'fire_hydrant',x:-75.25,z:223.65,face:180},
+                {key:'metro_bin',x:-54.25,z:223.51,face:180},
                 {key:'fire_hydrant',x:-33.25,z:223.65,face:180},
                 {key:'metro_bin',x:-12.25,z:223.51,face:180},
                 {key:'fire_hydrant',x:8.75,z:223.65,face:180},
@@ -49199,7 +49199,6 @@ const DOOR_HQ = {
                 {key:'metro_bin',x:-112.49,z:239.75,face:90},
                 {key:'metro_bin',x:-97.51,z:239.75,face:270},
                 {key:'roads_g_sign_005',x:-75.25,z:238.35,face:0,h:2.4},
-                {key:'metro_bin',x:-54.25,z:238.49,face:0},
                 {key:'roads_g_sign_008',x:-33.25,z:238.35,face:0,h:2.4},
                 {key:'metro_bin',x:-12.25,z:238.49,face:0},
                 {key:'roads_g_sign_008',x:8.75,z:238.35,face:0,h:2.4},
