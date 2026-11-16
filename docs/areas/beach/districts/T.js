@@ -32,6 +32,8 @@
    PASS 2 (seen): the Shack's inside (it stands at 143-144 x 94-96 now, off the fight's sand); the Keeper's Store on the Lighthouse Rock (walk-in).
    PASS 3 (seen): the corner buoys and the long side's spars, sea life in the open plots, the camp's tent, flamingos, birds, the Shack's porch.
    PASS 4 (seen, day and night): seven standing torches and a brazier; `airZones` (a squall and spray at the Maelstrom, mist, sparks, fireflies).
+   PASS 5 (seen): the Maelstrom's foam arms thinner; the kelp out; the frame rate won back (heavy duplicates, 27 corals and 8 fish schools cut down).
+   FIVE PASSES DONE, STOPPED (mondo's 11-16 order): nothing more here until he has looked.
    STILL MISSING: the probe's camera does not go under water; 15 no-name plots are open water; the Triangle's
    edge is not marked on the sea; no residents with routines; mondo's open question: a Deep-to-Area-51 way.
    THE SQUARES: the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107); the Lagoon's water is sx 136-140, rows 98-106.
@@ -110,9 +112,9 @@ build(ctx) {
 
     /* THE MAELSTROM: the link's own funnel is 9 m wide. Round it: arms of foam turning in on the hole, drawn on the water */
     works('maelstrom', MAEL.x, MAEL.z, T => {
-        for (let arm = 0; arm < 3; arm++) { let px = null, pz = null;                                                      // three arms, each a chain of short strokes end to end
-            for (let k = 0; k <= 44; k++) { const t = k / 44, r = 6 + 27 * t * t + 5 * t, an = arm * Math.PI * 2 / 3 + t * 7.2, x = MAEL.x + r * Math.cos(an), z = MAEL.z + r * Math.sin(an);
-                if (px != null && k % 5 !== 4) T.part({ s: 'box', p: [(x + px) / 2, 0.04, (z + pz) / 2], size: [r2(Math.hypot(x - px, z - pz) + 0.1), 0.03, r2(0.22 + 0.5 * t)], ry: r2(Math.atan2(-(z - pz), x - px) * 180 / Math.PI), tint: FOAM, glow: 0.35, sides: false });
+        for (let arm = 0; arm < 4; arm++) { let px = null, pz = null;                                                      // four thin arms, each a chain of short strokes end to end (pass 5: the first, fat white ones read as road markings from the water)
+            for (let k = 0; k <= 64; k++) { const t = k / 64, r = 6 + 27 * t * t + 5 * t, an = arm * Math.PI / 2 + t * 7.6, x = MAEL.x + r * Math.cos(an), z = MAEL.z + r * Math.sin(an);
+                if (px != null && k % 9 !== 8) T.part({ s: 'box', p: [(x + px) / 2, 0.04, (z + pz) / 2], size: [r2(Math.hypot(x - px, z - pz) + 0.12), 0.03, r2(0.14 + 0.3 * t)], ry: r2(Math.atan2(-(z - pz), x - px) * 180 / Math.PI), tint: 0xd4ecf4, glow: 0.22, sides: false });
                 px = x; pz = z; } }
     });
 
@@ -165,10 +167,10 @@ build(ctx) {
     });
     /* THE SHACK'S INSIDE: 3 x 2 squares, middles at (-3.5 | 0 | 3.5, -1.75 | 1.75) in its own frame; the door's square (front, middle) stays clear */
     { const G = 2.0, I = (key, lx, lz, face, y, o) => In(SHK, G, key, lx, lz, face, y, o);
-      I('dorm_bed', 3.9, -2.2, 90); I('footlocker', 2.3, -2.5, 0); I('psx_glass_bottle_2', 3.0, -1.2, 40); I('greek_amphora', 4.5, 2.5, 0); I('greek_amphora', 3.9, 2.7, 120);
+      I('dorm_bed', 3.9, -2.2, 90); I('footlocker', 2.3, -2.5, 0); I('psx_glass_bottle_2', 3.0, -1.2, 40); I('greek_amphora', 4.5, 2.5, 0);
       I('psx_table_large_2', -1.2, -2.2, 0); I('psx_chair_mp_3', -1.2, -1.1, 180); I('railway_lantern', -1.5, -2.3, 0, 0.96); I('psx_glass_bottle_2', -0.8, -2.2, 0, 0.96); I('psx_wooden_crate_1', -4.4, 0.9, 10); I('ship_model', -4.4, 0.9, 90, 0.36); I('psx_metal_barrel_mp_1', -4.4, 2.3, 0); I('money_sacks', -3.3, 2.6, 200); I('sea_chest', 1.6, 2.5, 180);
-      I('fishing_net_wall', 2.2, -3.05, 0, 1.2); I('arms_trophy', -2.6, -3.05, 0, 1.75); I('ship_wheel', 4.8, 0.2, 270, 1.5); I('ships_bell', 0.9, 3.05, 180, 1.7); I('meshy_hanging_lantern', 0, 0, 0, 2.0);
-      I('meshy_rope', -4.75, -1.8, 90, 1.56); I('item_spyglass', -4.75, -0.9, 90, 1.56); I('psx_gold_bar_pcs_1', -4.75, -1.3, 90, 2.06); }
+      I('fishing_net_wall', 2.2, -3.05, 0, 1.2); I('arms_trophy', -2.6, -3.05, 0, 1.75); I('ship_wheel', 4.8, 0.2, 270, 1.5); I('ships_bell', 0.9, 3.05, 180, 1.7);
+      I('psx_glass_bottle_2', -4.75, -1.8, 90, 1.56); I('psx_gold_bar_pcs_1', -4.75, -0.9, 90, 1.56); I('psx_gold_bar_pcs_1', -4.75, -1.3, 90, 2.06); }
     /* THE KEEPER'S STORE on the Lighthouse Rock (walk-in, 2 x 1 squares, its door south to the light): white boards, a red tin roof */
     const STO = building('t_store', [67, 100, 69, 101, 'S'], 2.8, { leaf: 'leaf_beige_wood' }, (a, w, d, door) => {
         a.shell(w, 2.5, d, CORR, WHITE, door, [2.4, 2.4], 3.2); a.frame(door, d, null, 0x3a60a8);
@@ -178,7 +180,7 @@ build(ctx) {
     });
     { const G = 3.4, I = (key, lx, lz, face, y, o) => In(STO, G, key, lx, lz, face, y, o);
       I('psx_metal_barrel_mp_1', 2.7, -0.9, 0); I('psx_metal_barrel_mp_2', 2.0, -1.0, 30); I('psx_jerrycan_1', 2.8, 0.2, 80); I('psx_jerrycan_1', 2.3, 0.5, 200); I('psx_wooden_crate_1', -2.6, -0.9, 0); I('field_radio', -2.6, -0.9, 0, 0.36);
-      I('beach_life_ring', 0.4, -1.3, 0, 1.5); I('meshy_rope', -2.9, 0.6, 90); I('railway_lantern', -1.6, -1.0, 0); }
+      I('beach_life_ring', 0.4, -1.3, 0, 1.5); I('railway_lantern', -1.6, -1.0, 0); }
 },
 
 place(ctx) {
@@ -203,31 +205,32 @@ place(ctx) {
     /* THE MAELSTROM: a broken ring of black sea stacks round the hole (the ocean pack's rocks, grown), wreckage turning on the water */
     for (let k = 0; k < 14; k++) { if (k === 3 || k === 4 || k === 10) continue; const a = k / 14 * Math.PI * 2 + 0.2, r = 33 + (k % 3) * 4, tall = k % 3 !== 1;   // (seen: the pack's round rocks grown to 10 m are black blocks; the pillar is the stack, the round ones stay low)
         props.push({ key: tall ? 'ocean_rock_3' : 'ocean_rock_9', x: r2(MAEL.x + r * Math.cos(a)), z: r2(MAEL.z + r * Math.sin(a)), h: tall ? r2(6 + (k * 5 % 6)) : 3.2, face: k * 47 % 360 }); }
-    [['psx_wooden_crate_4', 9, 0.9], ['psx_metal_barrel_mp_0', 12, 0.75], ['psx_wooden_crate_5', 15, 0.6], ['psx_metal_barrel_mp_3', 19, 0.5], ['meshy_rowboat', 23, 0.42], ['psx_wooden_crate_6', 27, 0.36]]
+    [['psx_wooden_crate_4', 9, 0.9], ['psx_metal_barrel_mp_0', 12, 0.75], ['psx_wooden_crate_5', 15, 0.6], ['psx_metal_barrel_mp_3', 19, 0.5], ['psx_wooden_crate_4', 23, 0.42], ['psx_wooden_crate_6', 27, 0.36]]
         .forEach((q, i) => props.push({ key: q[0], x: MAEL.x, z: MAEL.z, y: -0.5, hover: 0.5, face: i * 60, swim: { r: q[1], v: q[2] * q[1] / 4, bob: 0.12 } }));
     /* NO FIXED POSITION (the plan: "open water; the Flight 19 tape"): aircraft wreckage on the sea bed, a torn hull plate through the surface.
        The game has no Avenger (NEEDS A MODEL); these are its own torn hull plates, never the F-22 */
-    sea('hullplate', 125, 65, { face: 20, y: -3.3, hover: 0 }); sea('hullplate', 122, 68, { face: 200, h: 3.2, y: -3.4, hover: 0 }); sea('hullplate', 128, 63, { face: 110, h: 2.6, y: -3.4, hover: 0 }); sea('hullplate', 127, 69, { face: 300, h: 3.8, y: -3.4, hover: 0 });
-    sea('hullplate', 121, 62, { face: 60, h: 2.8, y: -3.4, hover: 0 });   // five pieces for five aircraft (seen: the `nacelle` is an airliner's engine and floated: taken out)
+    sea('hullplate', 125, 65, { face: 20, y: -3.3, hover: 0 }); sea('hullplate', 122, 68, { face: 200, h: 3.2, y: -3.4, hover: 0 }); sea('hullplate', 127, 69, { face: 300, h: 3.8, y: -3.4, hover: 0 });
+    /* (pass 5, the frame rate: three plates, not five; a plate is 10,800 triangles. Seen: the `nacelle` is an airliner's engine and floated: taken out) */
     /* THE LIGHTHOUSE ROCK: stacks in the water round it, the keeper's stores on top, an anchor */
     [[61, 100, 4.6], [62, 105, 2.2], [71, 99, 5.2], [70, 106, 2.0], [66, 97, 3.6]].forEach((q, i) => sea(['ocean_rock_3', 'ocean_rock_9'][i % 2], q[0], q[1], { h: q[2] }));
-    props.push({ key: 'psx_wooden_crate_4', x: r2(gx(64) + 1.2), z: r2(gz(101) + 1.0), face: 12 }, { key: 'psx_metal_barrel_mp_3', x: r2(gx(64) + 2.4), z: r2(gz(101) + 0.8) }, { key: 'ship_anchor', x: mx(67), z: mz(104), face: 140 }, { key: 'lobster_traps', x: r2(gx(65) + 0.8), z: r2(gz(104) + 1.4), face: 80 });
+    props.push({ key: 'psx_wooden_crate_4', x: r2(gx(64) + 1.2), z: r2(gz(101) + 1.0), face: 12 }, { key: 'psx_metal_barrel_mp_3', x: r2(gx(64) + 2.4), z: r2(gz(101) + 0.8) }, { key: 'ship_anchor', x: mx(67), z: mz(104), face: 140 }, { key: 'psx_wooden_crate_5', x: r2(gx(65) + 0.8), z: r2(gz(104) + 1.4), face: 80 });
     /* THE WRECK ISLET: what came off her */
-    dec('ship_anchor', 100, 89); dec('psx_wooden_crate_5', 98, 89); dec('psx_metal_barrel_mp_0', 101, 89); dec('femur', 99, 90); dec('skull', 100, 88); dec('psxg_rock_3', 98, 88);
+    dec('psx_wooden_crate_5', 98, 89); dec('psx_metal_barrel_mp_0', 101, 89); dec('psxg_rock_3', 98, 88); dec('psxg_rock_1', 100, 89);   // (pass 5: the second anchor, the femur and the skull went: 10,000 triangles each for things a hand wide)
     sea('ocean_rock_9', 96, 87, { h: 1.6 }); sea('ocean_rock_3', 102, 91, { h: 3.0 }); sea('psx_wooden_crate_6', 97, 90);
     /* THE REEF: three more corals, kelp and anemones in the deeper water round it, rocks through the surface */
-    for (const k of ['ocean_coral_4', 'ocean_coral_5', 'ocean_coral_7']) feat({ k: 'scatter', key: k, n: 9, x: mx(113), z: mz(90), r: 15, seed: k.length * 11 + k.charCodeAt(12), sea: true });
-    [[106, 84], [121, 86], [122, 95], [107, 95], [115, 98]].forEach(q => sea('kelp', q[0], q[1], { h: 2.6, y: -3.4, hover: 0 }));   // (seen: 4.5 m kelp in the shallows stood out of the water like reeds) [[112, 86], [116, 89], [111, 91]].forEach(q => sea('anemone', q[0], q[1]));
+    for (const k of ['ocean_coral_4', 'ocean_coral_5', 'ocean_coral_7']) feat({ k: 'scatter', key: k, n: 2,   /* (pass 5, the frame rate: 2 of each, not 9; 27 corals + 8 fish schools were 208,000 triangles in the island view, measured) */ x: mx(113), z: mz(90), r: 15, seed: k.length * 11 + k.charCodeAt(12), sea: true });
+    /* (pass 5: the `kelp` went: at any `h` and depth it stood on the surface like tufts of grass, seen twice) */
+    [[112, 86], [116, 89], [111, 91]].forEach(q => sea('anemone', q[0], q[1]));
     sea('ocean_rock_3', 111, 87, { h: 2.2 }); sea('ocean_rock_3', 117, 92, { h: 1.7 }); sea('ocean_rock_3', 114, 90, { h: 1.3 });   // (seen: a round rock given `h` 1.8 is a black slab 8 m wide)
     /* THE SANDBAR: driftwood and a beached boat */
     dec('fallen_log', 120, 72); dec('meshy_rowboat', 128, 72); dec('psxg_rock_1', 124, 73); dec('ocean_starfish', 125, 72); dec('ocean_crab', 127, 73); dec('dead_snag', 118, 73);
     /* THE ISLAND: the lookout's glass and signal fire, the Jetty's cargo, the camp, wreckage on the Island Beach, scrub on the dune */
     props.push({ key: 'brass_telescope', x: r2(gx(151) - 1.2), z: r2(gz(88) + 1.2), face: 45 }, { key: 'brazier', x: r2(gx(149) + 1.0), z: r2(gz(90) - 1.0) });
     dec('psx_wooden_crate_4', 134, 89); dec('psx_metal_barrel_mp_0', 136, 89); dec('lobster_traps', 138, 90); dec('meshy_burlap_sack', 139, 89);
-    P('cave_torch', 146, 97); P('cave_torch', 150, 101); dec('fallen_log', 149, 98); dec('cauldron', 147, 99); dec('footlocker', 150, 99); dec('meshy_burlap_sack', 147, 100);
+    P('cave_torch', 146, 97); P('cave_torch', 150, 101); dec('fallen_log', 149, 98); dec('cauldron', 147, 99); dec('footlocker', 150, 99);
     P('wheel', 151, 100, { face: 250 }); dec('psx_wooden_crate_6', 152, 102); dec('psx_fish_skeleton_mp_1', 151, 104); dec('fallen_log', 150, 106); dec('psx_metal_barrel_mp_3', 149, 106); dec('dead_snag', 151, 96);
     [[148, 87], [152, 90], [147, 91], [153, 88], [149, 92], [151, 86]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1]));
-    [[146, 93], [147, 94], [148, 93], [145, 95]].forEach(q => dec('fern', q[0], q[1]));
+    [[146, 93], [147, 94], [148, 93], [145, 95]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_2' : 'psxg_dead_bush_1', q[0], q[1]));   // (pass 5: scrub, not the 7,700 triangle fern)
     [[141, 88], [147, 85], [154, 93], [137, 107], [146, 107], [133, 97]].forEach(q => palm(q[0], q[1]));
 },
 
@@ -255,24 +258,23 @@ dress(ctx) {
     P('pool_umbrella', 145, 98); dec('pool_lounger', 146, 98, { face: 90 });
     /* ── PASS 3, THE DRESSING (2026-11-16), added at the END so no earlier throw moves ── */
     /* the open water inside the Triangle (15 plots had nothing): a pod of dolphins, mantas, turtles, rays, tuna, schools of fish */
-    [[100, 83, 'ocean_dolphin'], [102, 85, 'ocean_dolphin'], [104, 82, 'ocean_dolphin'], [112, 78, 'ocean_manta'], [140, 70, 'ocean_turtle'], [90, 98, 'ocean_stingray'], [84, 100, 'ocean_turtle'], [142, 56, 'ocean_manta'], [150, 62, 'ocean_tuna'],
-     [152, 64, 'ocean_tuna'], [136, 78, 'ocean_stingray'], [78, 104, 'ocean_dolphin']].forEach(q => swimmer(q[2], q[0], q[1]));
-    [[130, 80, 30, 4], [95, 100, 14, 2], [146, 52, 14, 2]].forEach(q => feat({ k: 'scatter', key: 'fish_school', n: q[3], x: mx(q[0]), z: mz(q[1]), r: q[2], seed: q[0] + 345, sea: true }));
+    [[100, 83, 'ocean_dolphin'], [102, 85, 'ocean_dolphin'], [104, 82, 'ocean_dolphin'], [112, 78, 'ocean_manta'], [140, 70, 'ocean_turtle'], [90, 98, 'ocean_stingray'], [150, 62, 'ocean_tuna']].forEach(q => swimmer(q[2], q[0], q[1]));
+    [[130, 80, 30, 2], [95, 100, 14, 1]].forEach(q => feat({ k: 'scatter', key: 'fish_school', n: q[3], x: mx(q[0]), z: mz(q[1]), r: q[2], seed: q[0] + 345, sea: true }));
     props.push({ key: 'ocean_anglerfish', x: r2(MAEL.x + 2), z: r2(MAEL.z + 2), y: -7.2, hover: 0 }, { key: 'ocean_anglerfish', x: r2(MAEL.x - 2.5), z: r2(MAEL.z - 1), y: -6.4, hover: 0 });   // lights down the hole
     props.push({ key: 'ship_wreck', x: r2(MAEL.x - 6), z: r2(MAEL.z + 30), y: -1.2, span: 9, face: 200 });                                 // a second hull caught on the stacks
     /* birds: one turns over the light, one over the lookout; crows on the wreck (the game has no gull) */
-    props.push({ key: 'eagle', x: gx(66.5), z: gz(102.5) }, { key: 'eagle', x: gx(150), z: gz(89) }); dec('crow', 100, 90); dec('crow', 98, 88);
+    props.push({ key: 'eagle', x: gx(66.5), z: gz(102.5) }); dec('crow', 100, 90); dec('crow', 98, 88);
     props.push({ key: 'iron_garden_bench', x: mx(64), z: mz(102), face: 90 });                                                              // the keeper's bench, looking at the light
     dec('sword', 99, 88); dec('greek_amphora', 100, 90);
     /* the island: the camp's tent, bottles and spears; flamingos at the Lagoon; the Shack's porch; a dead tree and a stump; three more palms */
     P('camping_tent', 150, 97, { face: 200 }); dec('psx_glass_bottle_2', 147, 98); dec('psx_glass_bottle_2', 149, 100); dec('spear', 151, 98); dec('spear', 151, 98);
-    dec('flamingo', 142, 101); dec('flamingo', 142, 104); dec('flamingo', 133, 98); dec('ocean_crab', 141, 99); dec('ocean_conch', 143, 102);
-    P('hollow_dead_tree', 153, 95); dec('stump', 145, 90); [[144, 86], [153, 86], [154, 90]].forEach(q => palm(q[0], q[1]));
+    dec('flamingo', 142, 101); dec('ocean_crab', 141, 99); dec('ocean_conch', 143, 102);
+    P('hollow_dead_tree', 153, 95); dec('stump', 145, 90); 
     /* ── PASS 4, THE ATMOSPHERE (2026-11-16): real light where people stand after dark (the zone kit: drawn glow lights nothing): standing
        torches at the Jetty's landward end, the lookout stair's foot, the Wreck Islet, the Sandbar and on the Lighthouse Rock (the top of
        the steps, the store's door), a brazier on the south beach. The fight's sand (square 148,104) stays open. ── */
-    P('cave_torch', 141, 91); P('cave_torch', 151, 93); P('brazier', 144, 105); P('cave_torch', 98, 89); P('cave_torch', 123, 73);
+    P('cave_torch', 141, 91); P('cave_torch', 151, 93); P('cave_torch', 144, 105); P('cave_torch', 98, 89); P('cave_torch', 123, 73);
     props.push({ key: 'cave_torch', x: mx(68), z: mz(103) }, { key: 'cave_torch', x: mx(66), z: mz(100) });
-    if (ctx.T_SHK) { const S = ctx.T_SHK; [['bird_cage', 3.9, 4.4, 0], ['lobster_traps', -4.0, 4.3, 90], ['psx_wooden_crate_5', -2.7, 4.5, 20], ['psx_metal_barrel_mp_0', 4.6, 5.9, 0]].forEach(q => put(S, q[0], q[1], q[2], { face: q[3], y: 0.16 })); }
+    if (ctx.T_SHK) { const S = ctx.T_SHK; [['bird_cage', 3.9, 4.4, 0], ['psx_wooden_crate_4', -4.0, 4.4, 90], ['psx_wooden_crate_5', -2.7, 4.5, 20], ['psx_metal_barrel_mp_0', 4.6, 5.9, 0]].forEach(q => put(S, q[0], q[1], q[2], { face: q[3], y: 0.16 })); }
 },
 };
