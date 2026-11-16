@@ -44,7 +44,7 @@ as the inside of a plot-built place.
 | Heaven + Hell + Vatican | Vatican x5, Hell x2, Heaven x2 | OLD + PLAN (3 rooms of 16) | HQ `continuity` painting; the Cavern fissure; Olympus (two ways); Camelot's sky castle | free |
 | Leylines | ley tunnels, Stonehenge, Göbekli Tepe, Babel; Technoticlan is its own site | OLD + PLAN (45) | Giza robbers' tunnel; Technoticlan; bays | free |
 | The Deep (with Atlantis) | the Abyss, the Temple of the Deep | OLD + PLAN (27) | Beach whirlpool; the Dutchman's hold | free |
-| Outer Space | the Spaceship x4, Moon, Mars, Saturn, the Singularity | OLD + PLAN (one 12 x 12 solar system) | Antarctica (the ship's collar); HQ `observatorium` to the Singularity; bays | free |
+| Outer Space | `site_prebuilt_moon_plots` (5 x 4), `site_prebuilt_mars_plots` (5 x 4), `site_prebuilt_saturn_plots` (4 x 4), `site_prebuilt_singularity_plots` (4 x 4): four rooms, one a world, 72 plots (11-16, `bake-space.js`, plot plan 3) + the Spaceship x4 (handmade, stays). Hub `space` | PLOTS (first build 11-16; the Spaceship handmade) | the ship's collar (Moon, Mars, Saturn; and Antarctica); Moon <> Mars (the bore); Saturn <> the Singularity (the frame); HQ `observatorium` to the Singularity; four bays | second (tool), district M piloted, nine districts free |
 | Antarctica | the Station | OLD + PLAN (12) | the Inner Sun; Agartha; the Spaceship; bay | free |
 | The Astral Realm | waiting room, sea, nightmare, library | OLD + PLAN (36) | HQ `dreamlab`; Camelot mirror; D.U.M.B. dream lab; the Haunted House attic | free |
 
@@ -58,6 +58,8 @@ Loose sites that the world plan folds into a zone but that still stand as their 
 | the Strip (streets, chapel, casino) | insides of Entertainment's Casino + Wedding chapel; the boulevard a PvP board | still live and still joined to the city (`link_downtown_strip`, `link_streets_strip`) |
 | Cyberpunk City (streets, noodle bar) | later: a reskin of the whole city, not a place | still live; reached by the HQ tunnel and the Sewers |
 | `site_prebuilt_agartha_crystalcity`, `site_prebuilt_technoticlan_templecity` | districts of the Cavern / Leylines | live, no hub claims them (the map files them alone) |
+
+(11-16: Outer Space has a hub now, `space`, anchored on the Spaceship's airlock. Antarctica still has none.)
 
 DATA: mondo's zone list in owner-rules.md has 16 names. The game's map (`DOOR_HQ.hubs`) has 15 hubs and they do not match
 one to one: The Mountains and The Astral Realm are hubs but not on the list; Fairy Forest and Atlantis are on the list but
@@ -105,7 +107,7 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 | The Deep (PLAN) | A Atlantis, T The Trench | none |
 | Leylines (PLAN) | G Göbekli Tepe, B Bug Colony, S Stonehenge, Y The Ley Lines (the road), T Babel, Z Technoticlan | none |
 | Heaven + Hell + Vatican (PLAN) | L Hell, V The Vatican, H Heaven, O Mount Olympus (now in the Mountains, so drop it here) | none |
-| Outer Space (PLAN) | X open space, M The Moon, R Mars, T Saturn, S The Singularity | none |
+| Outer Space | the Moon: M The Mare, C The Crater, F The Far Side · Mars: Y Cydonia, V The Canyon, R The Rover Bay · Saturn: H The Hexagon, G The Ring Shard · the Singularity: D The Drop, A The Accretion Rim | yes since 11-16: `docs/areas/space/districts/<letter>.js` (ten files, the letters unique across the four rooms) |
 | Antarctica (PLAN) | A Antarctica Station | none |
 | The Astral Realm (PLAN) | L The Library of Unthought Things, S The Sea of Possibility, N The Nightmare | none |
 
@@ -243,3 +245,4 @@ Realm, Antarctica, Outer Space last.
   (`docs/plans/MODEL_WISHLIST.md` is the first collected list).
 - Earlier the same day: the Hollywood Hills became Disaster City's district N; The Sewers were built (five districts);
   every district of every built zone got up to five passes (`docs/plans/DISTRICT_THREAD_BRIEF.md`).
+- **Outer Space built (11-16, the zone thread):** four rooms, one a world, on plots (plan 3); the Spaceship untouched. Door check: every bay, collar course and link lands at its own door in the new rooms; `hqWorldGraph()` has no edge into the four retired space rooms. Where the ship leaves from is still open; flying it is listed, not built (areas-complexes.md "OUTER SPACE ON PLOTS").

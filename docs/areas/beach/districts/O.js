@@ -14,7 +14,7 @@
      P03-09  islet (no name) (level 0): a small islet to land on
      + 85 plots with no name, open ocean (every plot of this district not listed above; `ctx.plot` / `ctx.Pxy` tell you whose a square is)
 
-   WHAT STANDS HERE TODAY (FIVE PASSES, 2026-11-16, all SEEN on screen, by day and at 22:30; the thread STOPPED here and waits mondo's look): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
+   WHAT STANDS HERE TODAY (FIVE PASSES + mondo's revisions + THE MODEL PASS, 2026-11-16, all SEEN on screen, by day and at 22:30; the thread STOPPED here and waits mondo's look): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
    are the tool's and the game's); the ocean pack's animals on rings and six fish schools.
    THE VOLCANO ISLAND: dark volcanic ground (plan letters `b` = `dirt_2`, `c` = `scorched` at the cone's foot), the cone (the height map's,
    obsidian, 16 m, never climbed, lava in the crater) with TWO LAVA FLOWS down it (`fall` rows, east and south), black smokers off it; the
@@ -30,8 +30,11 @@
    islet), THE SEAL ROCK (P13-00, drawn).
 
    MISSING / NOT DONE:
-   - THE TRIBE HAS NO PEOPLE (mondo: models come later); no model for a hut, a canoe, a totem pole, a mask, whale bones, gulls, black sand
-     (the sheet is `dirt_2`), smoke for the crater. Pass 4: firelight in the huts' windows, lava pools at the flows' feet. MONDO'S REVISION 1 (11-16): no modelled smoke (the ash plume
+   - THE TRIBE HAS NO PEOPLE (mondo: models come later). THE MODEL PASS (11-16) placed what was asked and made: `thatched_hut` x 2,
+     `carved_totem_pole` x 2, `dugout_canoe` x 3, `drying_fish` x 2, `seagull`, `woven_baskets`, `coconuts`, `banana_plant`,
+     `tropical_bush`, `raft` x 2, `trawler`, `hammock` x 2 (+ `burnt_tree`, `golden_idol`, `fur_rug`, `torn_sail_mast`, `parrot`, `dodo`,
+     `heron`, `oars`, `fishing_rod`, `firewood_stack`, `lean_to`, `pirate_flag`). STILL NO MODEL: whale bones (not made), a black sand
+     sheet (`dirt_2` stands), a mask; smoke is never modelled (his rule).
      is out), the torches are `tiki_torch` (the game's floor torch, longer; ten of them), the kraken's arms are `goo_tendril` (revision 2: never the Meshy `tentacle` models).
      The island gets none of the room's ten real lights (they go in row order to the Shore and the Harbour).
    - Nothing under the water shows (the sea is opaque from above). No fight set up.
@@ -148,10 +151,11 @@ build(ctx) {
     In(BIG, 'psx_planter_pot_mp_1_empty', 4.3, -2.6, 0); In(BIG, 'psx_planter_pot_mp_1_empty', 3.6, -2.75, 40); In(BIG, 'greek_amphora', 4.45, -1.8, 200); In(BIG, 'hw_straw', 4.2, 2.6, 90); In(BIG, 'hw_straw_2', 3.1, 2.75, 0);
     In(BIG, 'psx_meat_1', BIG.fw / 2 - 0.58, -0.6, 90, 1.55); In(BIG, 'psx_meat_1_1', BIG.fw / 2 - 0.58, 0.9, 90, 1.55); In(BIG, 'psx_fish_skeleton_mp_1', BIG.fw / 2 - 0.58, 0.2, 90, 1.6);
     In(BIG, 'instrument_drum', -2.4, 2.6, 0); In(BIG, 'instrument_drum', -3.2, 2.3, 30); In(BIG, 'instrument_maracas', -2.7, 1.9, 60);
+    In(BIG, 'fur_rug', 0.4, -1.5, 0, 0.02); In(BIG, 'woven_baskets', 3.4, -1.7, 30); In(NH, 'woven_baskets', 2.4, 1.2, 0);   // THE MODEL PASS
     In(NH, 'campfire', 1.2, 0.3, 0, 0, { glow: 0.6, h: 0.4 }); In(NH, 'psx_pillow_mp_2', -NH.fw / 2 + 0.95, -2.2, 90, 0.4); In(NH, 'psx_pillow_mp_1', 1.1, -NH.fd / 2 + 0.95, 0, 0.4);
     In(NH, 'psx_planter_pot_mp_1_empty', 2.6, -2.5, 0); In(NH, 'stone_urn', 2.7, -1.6, 0); In(NH, 'hw_straw', -2.5, 2.4, 0); In(NH, 'wooden_bucket', 2.5, 2.3, 0); In(NH, 'spear', -3.0, 1.2, 0);
-    /* the plan's three open shelters: four posts, a plank floor, a cone of thatch; each has a use (the dressing below): the cook's, the drum's, the sleepers' */
-    B_TRIBE.forEach((q, i) => look('shelter' + (i + 1), mx(q[0]), mz(q[1]), 0, a => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * 1.5, 0, sz * 1.5, 0.12, 2.35, WD2, POLE, { seg: 8, uv: 1 });
+    /* the plan's three open shelters: four posts, a plank floor, a cone of thatch; each has a use (the dressing below): the cook's and the drum's (THE MODEL PASS: the third, the sleepers', is a `thatched_hut` now, place) */
+    B_TRIBE.slice(0, 2).forEach((q, i) => look('shelter' + (i + 1), mx(q[0]), mz(q[1]), 0, a => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * 1.5, 0, sz * 1.5, 0.12, 2.35, WD2, POLE, { seg: 8, uv: 1 });
         for (const s of [-1, 1]) { a.box(0, 2.2, s * 1.5, 3.3, 0.12, 0.12, WD2, POLE); a.box(s * 1.5, 2.2, 0, 0.12, 0.12, 3.3, WD2, POLE); }
         a.cyl(0, 2.3, 0, 2.8, 2.0, SHG, THATCH, { r2: 0, seg: 10, roof: true, gain: 1.7, uv: [1.2, 1.2] }); a.cyl(0, 2.3, 0, 2.8, 0.02, WD2, 0x4a3626, { seg: 10, roof: true }); a.box(0, 0, 0, 2.7, 0.1, 2.7, FLR, 0xb09870); }));
     /* THE GATE at the Landing (the way up from the boats): two tall posts, a lintel, bone-white bands; bone-white bands */
@@ -161,8 +165,6 @@ build(ctx) {
        PLUME, seven drawn puffs over the crater: "don't 3d model smoke, it looks terrible".) */
     look('lavafoot_e', r2(gx(112) + 0.9), mz(10), 0, a => { a.cyl(0, -0.62, 0, 2.6, 0.6, 'lava', 0xffffff, { r2: 2.2, seg: 9, glow: 0.8 }); a.cyl(1.9, -0.66, 1.2, 1.3, 0.6, 'lava', 0xffffff, { r2: 1.0, seg: 7, glow: 0.8 }); });
     look('lavafoot_s', mx(105), r2(gz(16) + 0.9), 0, a => { a.cyl(0, -0.62, 0, 2.4, 0.6, 'lava', 0xffffff, { r2: 2.0, seg: 9, glow: 0.8 }); a.cyl(-1.5, -0.66, 1.4, 1.2, 0.6, 'lava', 0xffffff, { r2: 0.9, seg: 7, glow: 0.8 }); });
-    /* a drying rack by the cook's shelter and a boat rest on the Landing: poles lashed in the village's own wood */
-    look('rack', mx(116), gz(16) + 0.4, 0, a => { for (const s of [-1, 1]) { a.cyl(s * 1.3, 0, 0, 0.07, 1.9, WD2, POLE, { seg: 6 }); } a.box(0, 1.8, 0, 3.0, 0.08, 0.08, WD2, POLE); a.box(0, 1.2, 0, 3.0, 0.06, 0.06, WD2, POLE); });
 },
 
 place(ctx) {
@@ -174,26 +176,26 @@ place(ctx) {
     P('palm_tree', 160, 20, { h: 4.2 }); dec('ocean_conch', 161, 21); dec('sea_chest', 159, 20); P('palm_tree', 40, 112, { h: 3.8 }); dec('ocean_starfish', 41, 112); dec('fallen_log', 39, 113);    // the two unnamed islets
     /* THE VOLCANO ISLAND: the landing, the village round its fire, palms along the shore, the cone's glow */
     props.push({ key: 'campfire', x: mx(114), z: mz(17), glow: 0.8 }); taken.add('114:17');
-    dec('taiko_drum', 115, 17); dec('spear', 115, 16); dec('spear', 112, 19); dec('skull_pile', 115, 18); dec('item_ward_totem', 112, 14); dec('wooden_bucket', 114, 19); dec('fallen_log', 113, 19);
+    dec('taiko_drum', 115, 17); dec('spear', 115, 16); dec('spear', 111, 20); dec('skull_pile', 115, 18); dec('wooden_bucket', 114, 19); dec('fallen_log', 112, 20);
     P('tiki_torch', 110, 20); P('cave_torch', 117, 14); P('tiki_torch', 106, 20);   /* (11-16, mondo: the tall torches are `tiki_torch`, the game's floor torch made longer) */
-    [[112, 16], [116, 16], [111, 19], [115, 18], [113, 14], [117, 9], [117, 11]].forEach(q => P('tiki_torch', q[0], q[1])); dec('meshy_rowboat', 108, 21, { face: 80 });
+    [[112, 16], [116, 16], [111, 19], [115, 18], [113, 14], [117, 9], [117, 11]].forEach(q => P('tiki_torch', q[0], q[1])); dec('dugout_canoe', 108, 21, { face: 80 });
     [[99, 9], [99, 13], [101, 17], [104, 20], [111, 21], [113, 20], [117, 10], [114, 5], [108, 3]].forEach(q => palm(q[0], q[1]));
     feat({ k: 'scatter', key: 'cave_stone', n: 14, x: mx(106), z: mz(10), r: 30, seed: 41 });
 
     /* ── PASS 1 (2026-11-16), THE ISLAND ── */
     /* the village: the cook's shelter (113,15), the drum's (115,17), the sleepers' (112,18) */
-    dec('cauldron', 113, 15); dec('stock_pots', 113, 16); dec('psx_meat_1', 116, 16, { y: r2(G1 + 1.25), floor: true }); dec('psx_fish_skeleton_mp_1', 116, 16, { y: r2(G1 + 1.3), floor: true }); dec('greek_amphora', 114, 15); dec('stone_urn', 112, 16);
-    dec('instrument_drum', 115, 17); dec('instrument_maracas', 116, 17); dec('psx_old_mattress_mp_1', 112, 18, { y: 0.12 }); dec('psx_pillow_mp_2', 112, 18, { y: 0.3 }); dec('spear', 111, 19);
+    dec('cauldron', 113, 15); dec('stock_pots', 113, 16); dec('greek_amphora', 114, 15); dec('stone_urn', 112, 16);
+    dec('instrument_drum', 115, 17); dec('instrument_maracas', 116, 17); dec('spear', 111, 19);
     /* THE SHRINE at the cone's foot (east): an idol with its back to the fire mountain, an altar before it, standing stones, two fire baskets */
     P('demon_statue', 113, 10, { face: 90 }); P('stone_altar', 115, 10, { face: 90 }); P('sarsen', 113, 8); P('menhir', 115, 8, { face: 40 }); P('menhir', 116, 9); P('sarsen', 116, 11, { face: 70 }); P('menhir', 112, 11, { face: 20 }); P('brazier', 114, 9); P('brazier', 114, 11);
-    dec('skull_pile', 115, 11); dec('greek_amphora', 115, 9); dec('psx_gold_bar_pcs_1', 115, 10, { y: 0.97 });
+    dec('skull_pile', 115, 11); dec('greek_amphora', 115, 9); dec('golden_idol', 115, 10, { y: 0.97 });
     /* rock thrown from the cone (the graveyard pack's boulders, grown; SEEN: the ocean pack's rocks grown are flat black slabs with no sheet), dead trees on the scorched ring */
-    [[100, 14, 4.2], [112, 12, 3.4], [100, 6, 5.0], [112, 5, 3.8], [103, 16, 2.8], [107, 16, 3.6], [98, 11, 3.0], [113, 6, 2.6]].forEach((q, i) => P('psxg_rock_' + (1 + i % 4), q[0], q[1], { h: r2(q[2] * 0.7), face: (i * 67) % 360 }));
-    [[102, 4, 'dead_snag'], [101, 15, 'psxg_dead_tree_1'], [108, 16, 'dead_snag'], [112, 7, 'psxg_dead_tree_2'], [98, 8, 'psxg_dead_tree_1'], [105, 17, 'hollow_dead_tree']].forEach(q => P(q[2], q[0], q[1], { face: (q[0] * 37) % 360 }));
+    [[100, 14, 4.2], [112, 12, 3.4], [100, 6, 5.0], [112, 5, 3.8], [103, 16, 2.8], [107, 16, 3.6], [98, 11, 3.0]].forEach((q, i) => P('psxg_rock_' + (1 + i % 4), q[0], q[1], { h: r2(q[2] * 0.7), face: (i * 67) % 360 }));
+    [[102, 4, 'burnt_tree'], [101, 15, 'burnt_tree'], [112, 7, 'psxg_dead_tree_2'], [98, 8, 'burnt_tree'], [105, 17, 'psxg_dead_tree_1']].forEach(q => P(q[2], q[0], q[1], { face: (q[0] * 37) % 360 }));
     /* the far shore (west and north): more palms, ferns under them, boats on the Landing (SEEN and taken out: `dinosaur_skeleton` is a museum mount on a plinth, not a whale's bones) */
     [[98, 15], [100, 18], [103, 19], [106, 21], [114, 19], [117, 12], [115, 6], [111, 3], [104, 3], [101, 5]].forEach(q => palm(q[0], q[1]));
     [[100, 16], [105, 20], [116, 8], [109, 4], [99, 14]].forEach(q => dec('fern', q[0], q[1]));   // (few: a fern is 7,700 triangles)
-    dec('rowboat', 105, 21, { face: 15 }); dec('rowboat', 111, 20, { face: 340 }); dec('ocean_crab', 104, 21); dec('ocean_crab', 110, 21); dec('ocean_conch', 107, 21); dec('ocean_starfish', 103, 20);
+    dec('dugout_canoe', 105, 21, { face: 15 }); dec('dugout_canoe', 111, 20, { face: 340 }); dec('ocean_crab', 104, 21); dec('ocean_crab', 110, 21); dec('ocean_conch', 107, 21); dec('ocean_starfish', 103, 20);
     /* LAVA DOWN THE CONE (data.js THE WATERFALLS, the liquid = lava): two flows over the crater's lip, east to the shrine's side and south to
        the Landing's. SEEN: one long fall is a ballistic arc that hangs in the air off the cone; a flow = four short falls, one a square, each
        from the cone's own height on one square line to the next (the cone falls 4.2 m a square), so it runs down the rock as cascades */
@@ -238,11 +240,11 @@ place(ctx) {
     /* FLOTSAM (plot P06-07): what a lost cargo leaves: crates, drums, a bottle, a ring, a boat adrift */
     [[77, 89, 'psx_wooden_crate_5'], [79, 91, 'psx_supply_crate_1_4'], [80, 88, 'psx_metal_barrel_mp_2'], [76, 92, 'psx_supply_crate_1_2_empty'], [81, 90, 'psx_glass_bottle_2'], [78, 87, 'beach_life_ring'], [75, 90, 'psx_metal_barrel_mp_0']]
         .forEach((q, i) => seaAt(ctx, q[2], q[0], q[1], /bottle|ring/.test(q[2]) ? 0.0 : -0.2, { face: (i * 71) % 360 }));
-    seaAt(ctx, 'meshy_rowboat', 78, 90, -0.2, { face: 250 });
+    seaAt(ctx, 'raft', 78, 90, -0.15, { face: 250 }); seaAt(ctx, 'torn_sail_mast', 80, 89, -3.2, { face: 20, noBlock: true });   // THE MODEL PASS: a raft adrift and the lost ship's mast standing out of the water (was a rowboat)
     /* THE SEA LANE: unlit buoys from the Harbour's Mouth out to the Landing (the way a skiff finds the island) */
     [[50, 44], [62, 38], [74, 40], [86, 32], [96, 27], [104, 24]].forEach(q => afloat('sea_buoy', q[0], q[1], { noLight: true }));
     /* the two islets: a castaway's camp (north-east), a haul-out of seals, crabs and flamingos (south-west) */
-    palm(158, 20); palm(162, 19); dec('meshy_campfire_ring', 160, 21); dec('fallen_log', 161, 20); dec('psx_glass_bottle_1', 159, 21); dec('ship_anchor', 162, 21); dec('rowboat', 158, 21, { face: 120 }); dec('ocean_crab', 160, 19); dec('ocean_crab', 162, 20);
+    palm(158, 20); palm(162, 19); dec('meshy_campfire_ring', 160, 21); dec('fallen_log', 161, 20); dec('psx_glass_bottle_1', 159, 21); dec('ship_anchor', 162, 21); dec('raft', 158, 21, { face: 120 }); dec('ocean_crab', 160, 19); dec('ocean_crab', 162, 20);
     native('pirate', 160, 19, 180);
     look('camp_ne', mx(160), mz(20), 0, a => { a.cyl(0, 0, 3.5, 0.34, 0.1, null, 0xff6a1a, { seg: 8, glow: 0.9 }); });   // pass 4: embers in the castaway's fire ring
     P('tiki_torch', 157, 20);
@@ -263,24 +265,43 @@ dress(ctx) {
     dec('hw_pumpkin', 104, 18); dec('hw_pumpkin_2', 105, 19); dec('hw_pumpkin_3', 106, 18); dec('hw_pumpkin', 105, 18); P('hw_scarecrow', 104, 17, { face: 160 }); dec('wooden_bucket', 106, 19);
     feat({ k: 'rail', x0: gx(104), z0: gz(18), x1: gx(107), z1: gz(18), model: 'ranch' }); feat({ k: 'rail', x0: gx(104), z0: gz(18), x1: gx(104), z1: gz(20), model: 'ranch' });
     /* chickens in the village, stepping stones from the gate to the fire and on to the shrine */
-    dec('chicken', 113, 17); dec('chicken', 112, 19); dec('chicken', 116, 15); dec('chicken', 111, 15);
+    dec('chicken', 113, 17); dec('chicken', 112, 17); dec('chicken', 116, 15); dec('chicken', 111, 15);
     [[111.5, 19.2, 2.6, 5], [113, 16.2, 2.4, 4], [113.6, 13.4, 2.2, 4]].forEach((q, i) => feat({ k: 'scatter', key: i % 2 ? 'psxg_stepping_stone_2' : 'psxg_stepping_stone_1', n: q[3], x: mx(q[0]), z: mz(q[1]), r: q[2], seed: 60 + i }));
     /* the watch fire on the north-east point, the tide line on the north beach, dry scrub on the scorched ring */
     props.push({ key: 'campfire', x: mx(116), z: mz(7), glow: 0.7 }); taken.add('116:7'); dec('fallen_log', 115, 7); dec('psxg_rock_2', 116, 8); dec('spear', 115, 8);
     dec('ocean_conch', 105, 3); dec('ocean_starfish', 107, 3); dec('ocean_sand_dollar', 110, 3); dec('ocean_crab', 109, 3); dec('ocean_seal_resting', 111, 3); dec('psx_fish_skeleton_mp_1', 106, 3); dec('ocean_crab', 117, 13);
-    [[98, 9], [98, 13], [102, 16], [106, 16], [112, 8], [113, 5], [110, 15]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1]));
+    [[98, 9], [98, 13], [102, 16], [112, 8], [113, 5], [110, 15]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1]));
     /* birds: two over the crater, one over the Rocks (the game's `eagle`: there is no gull) */
     props.push({ key: 'eagle', x: mx(105), z: mz(10), hover: 7, swim: { r: 17, v: 5, bob: 1 } }, { key: 'eagle', x: mx(106), z: mz(9), hover: 12, swim: { r: 24, v: 4, bob: 1.5 } }, { key: 'eagle', x: mx(54), z: mz(18), hover: 24, swim: { r: 14, v: 5, bob: 1 } });
     /* THE SEA, three more places: THE SHARKS (P07-09: a feeding ground, fins round the fish), THE TURTLES (off the south-west islet),
        THE SEAL ROCK (P13-00: a low shelf of rock, drawn, seals on it) */
     [[90, 113], [93, 111], [88, 110]].forEach(q => feat({ k: 'scatter', key: 'fish_school', n: 3, x: mx(q[0]), z: mz(q[1]), r: 9, seed: q[0], sea: true }));
     [[89, 112, 6], [92, 113, 8], [91, 110, 5]].forEach(q => swimmer('ocean_shark', q[0], q[1], { swim: { r: q[2], v: 1.8, bob: 0.2 } })); swimmer('ocean_hammerhead', 94, 112, { y: -0.7, hover: 0.4, swim: { r: 7, v: 1.4, bob: 0.2 } });
-    seaAt(ctx, 'rowboat', 91, 112, -0.25, { face: 200 }); seaAt(ctx, 'beach_life_ring', 92, 111, 0.0);
+    seaAt(ctx, 'trawler', 91, 114, -0.9, { face: 20 }); seaAt(ctx, 'beach_life_ring', 92, 111, 0.0);   // THE MODEL PASS: a fishing trawler works the ground (was a rowboat adrift)
     [[46, 110], [48, 113], [45, 115], [50, 111], [47, 117]].forEach(q => swimmer('ocean_turtle', q[0], q[1], { swim: { r: 3 + (q[0] % 3), v: 0.7, bob: 0.2 } }));
     works(ctx, 'sealrock', mx(162), mz(6), a => { a.cyl(0, -3.6, 0, 7.5, 4.1, 'rocks_5', 0xdcdce4, { r2: 6.2, seg: 7, uv: [3.5, 3.5] }); a.cyl(1.5, 0.5, -0.8, 4.0, 0.9, 'rocks_5', 0xcfcfd8, { r2: 2.6, seg: 7, a0: 20, uv: [3.5, 3.5] }); a.cyl(-4, -3.6, 5, 2.6, 4.6, 'rocks_5', 0xe4e4ea, { r2: 1.4, seg: 6, a0: 10, uv: [3.5, 3.5] }); });
     [[161, 6, 0.55, 40], [163, 7, 0.55, 200], [162, 5, 1.45, 120], [160, 5, 0.55, 300]].forEach(q => seaAt(ctx, 'ocean_seal_resting', q[0], q[1], q[2], { face: q[3], swim: false }));
     seaAt(ctx, 'ocean_rock_7', 162, 6, -1.6, { h: 1.2 }); swimmer('ocean_seal', 165, 8, { swim: { r: 4, v: 1.3, bob: 0.2 } }); swimmer('ocean_seal', 159, 3, { swim: { r: 5, v: 1.1, bob: 0.2 } });
     /* one of the sea's own people on the south-west islet (the Beach's list; no line) */
     native('starfish', 41, 111, 135);
+
+    /* ── THE MODEL PASS (2026-11-16, mondo: "these are models that were added, go ahead and tell all of those district threads that needed
+       models to use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md). What this district asked for and got, and what stood in for it:
+       huts (`thatched_hut`: the sleepers' drawn shelter and a new one by the watch fire; the two WALK-IN huts stay, a model is not walked
+       into), `carved_totem_pole` (the hand-sized ward totem), `dugout_canoe` (the Landing's three rowboats), `drying_fish` (the drawn pole
+       rack and its hung meat), `seagull`, `woven_baskets`, `coconuts`, `banana_plant`, `tropical_bush`, `raft`, `trawler`, `hammock`. From
+       the rest of the list: `burnt_tree`, `golden_idol`, `fur_rug`, `torn_sail_mast`, `parrot`, `dodo`, `heron`, `oars`, `fishing_rod`,
+       `firewood_stack`, `lean_to`, `pirate_flag`. ── */
+    const hutAt = (cx, cy, face) => { props.push({ key: 'thatched_hut', x: gx(cx), z: gz(cy), face }); for (const dx of [-1, 0]) for (const dy of [-1, 0]) { spot(cx + dx, cy + dy, 'thatched_hut', 'land'); } };
+    hutAt(113, 19, 0); hutAt(114, 7, 0);   // the sleepers' hut by the fire; the watcher's hut by the watch fire (SEEN: west of the big hut it stood against the south flow's lava pool)
+    P('carved_totem_pole', 112, 14, { face: 135 }); P('carved_totem_pole', 109, 20, { face: 180 });
+    P('drying_fish', 116, 15, { face: 90 }); P('drying_fish', 102, 20, { face: 30 }); dec('oars', 107, 21); P('fishing_rod', 103, 21, { face: 200 }); P('firewood_stack', 112, 15, { face: 90 });
+    dec('woven_baskets', 114, 16); dec('woven_baskets', 105, 19); dec('woven_baskets', 116, 17);
+    [[99, 13], [104, 20], [117, 10], [112, 21], [114, 5]].forEach(q => dec('coconuts', q[0], q[1])); dec('coconuts', 158, 20);
+    [[116, 13], [102, 17], [107, 19], [110, 4], [99, 15]].forEach(q => P('banana_plant', q[0], q[1], { face: (q[0] * 53) % 360 }));
+    [[99, 11], [100, 17], [103, 18], [109, 3], [117, 15], [108, 19]].forEach(q => P('tropical_bush', q[0], q[1], { face: (q[1] * 71) % 360 }));
+    dec('parrot', 115, 15); dec('parrot', 110, 19); dec('dodo', 100, 16); dec('heron', 42, 113);
+    [[106, 21], [109, 21], [108, 3], [161, 21], [159, 19], [39, 112]].forEach(q => dec('seagull', q[0], q[1])); seaAt(ctx, 'seagull', 163, 6, 0.55);
+    P('hammock', 99, 16, { face: 90 }); P('hammock', 161, 20, { face: 20 }); P('lean_to', 162, 20, { face: 250 }); P('pirate_flag', 160, 18);
 },
 };
