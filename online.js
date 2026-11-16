@@ -3188,7 +3188,9 @@
                             guest lights the same ground on the same clock */
                          'glowKey', 'glowHostile', 'glowStagger', 'mark',
                          /* the pulled body's id (a P-Z pull's own line follows it) */
-                         'uid'].forEach(function(k) {
+                         'uid',
+                         /* 🎩 a Magician's trick: his side, for the rim colour (battle.js _magicianFx) */
+                         'owner'].forEach(function(k) {
                             if (params[k] !== undefined) safeParams[k] = params[k];
                         });
                         if (params.hitTiles) {

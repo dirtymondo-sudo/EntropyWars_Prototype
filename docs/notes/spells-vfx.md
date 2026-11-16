@@ -3813,3 +3813,20 @@ Rules: champions-combat.md "THE ASTRAL BODY".
 - THE RULE THAT CAME WITH IT (his pick on the card, "extras pay Entropy"): champions-combat.md "EVERY EXTRA SOURCE".
 - Seen on screen (real casts, Grave Chill): super effective, super effective + combo, combo on a resisted type, resisted
   only. Built but NOT seen on screen: basic attack crit, counter, the guest's view, Action Cam off, multi-target spells.
+
+## THE MAGICIAN (2026-11-16, the new races; mondo: "work on their spell pools and spell vfx")
+Code: three-vfx-effects.js block "MAGICIAN" right after the Mime rows (same `pzSig` / `_pzDef` hook, helpers `_mg*`). Canvas
+textures (the stage deck's back, the ace of spades, a dove in two wing frames, the saw blade) + R2 terrain sheets (leather hat,
+wood crate, the better gold via `gold.png`). No screen flash. Every ring's colour = the Magician's SIDE from the viewer's seat
+(`_mgSide`: yours `#1deeff`, theirs `#fd1674`; gold with EW_NO_RIOT_VFX(_C)); the spell keeps stage purple / red / white / gold.
+- **Sleight of Hand** (aura on him): a white glove fans five face-down cards beside his shoulder, closes to one, turns it face down and
+  it goes up his sleeve; ring at 980 ms. The SAME look for every trick (the other side must not read the trick off the VFX).
+- **Pick a Card** (impact): a fan of face-down cards opens over the victim's head, one rises, turns over to the A♠ and comes down onto its chest.
+- **Saw in Half** (impact, the number): the cabinet's gold frame snaps up round the victim (panels 14 % so the body stays in
+  sight), the blade crosses at the waist from his side and passes the middle at 120 ms, a white cut line opens, the top slides.
+- The tricks springing (battle.js `_magicianFx` → `VFX3D.fire('impact', '_magic*', {tx, ty, owner})`, relayed as vfx3d and fog
+  gated on the guest by the square): `_magicDoves` (puff + nine flapping doves + feathers on the aimed square), `_magicVanishOut`
+  (puff + his top hat hanging in the air, spinning down, pop) / `_magicVanishIn` (sparkle column on the beat he reappears,
+  380 ms), `_magicBox` (a wood crate with gold edges takes the blow, shakes, its sides fall open on him) / `_magicPoof` (the
+  ally's side of the swap).
+
