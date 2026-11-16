@@ -5037,6 +5037,18 @@ mondo (the set-up thread's brief): one thread per district; passes in order EXTE
   wider. An `arch` row with no `y` stands on the ground under its origin, which on a plateau is the plateau's top: give it `y: 0`. A sheet
   under a tint reads dark in the shade: `gain` 1.3 to 1.7 on the part. A sign under a barrel roof's overhang is hidden by the roof's end:
   set it 0.3 m out. Hangar 18's saucer on the floor IS confirmed on screen now.
+- **PASS 2, INTERIORS (seen in the browser: 12 + 8 views of the ward, 4 of the hangar, 9 + 7 inside the huts):**
+  - The guard post, both barracks, the mess hall and the radar hut are furnished (`furnish`). The room's ground rolls 8 cm (`noise`) and came
+    up through every walk-in's drawn floor in patches (the first build's guard post too): each walk-in now stands on a 10 cm `plateau` its
+    own size + 0.6 m, which is a level floor. Any district's walk-in on this room's sand needs the same.
+  - THE WHITE ROOMS were grey. A sheet under the building tint reads grey whatever its tint says: the plaster walls take `gain` 2.1, the
+    ceiling tiles 1.9, and the room's own four walls get a drawn white lining (kit walls with `walk: false`, open at the two doors).
+  - GLASS YOU SEE THROUGH: the kit's `glass` wall is a shiny opaque box, so the observation floor looked at a white wall and the control room
+    at a black one. `pane()` in A.js rooms() has the kit lay the walked rows, frames and leaves with `draw: false`, then turns those rows
+    into real glass `wall` rows (`ghost: false, glass: true`), which drawWall draws see-through. The kit itself is unchanged.
+  - **THE TELEPATH CRASH: CLOSED.** The ward loaded twice with the telepath in (20 pictures, no crash). It was the old SwiftShader probe.
+  - Props to keep out of ordinary rooms: `steel_table` (blood stain under it), `round_table` (Camelot's round table, four metres).
+  - NOT DONE: the huts have no lamp inside (dim); the mess hall is sparse for its size; the tower's ops block is solid, not walk-in.
 
 
 ## CAMELOT, THE VILLAGE — the pilot district thread (2026-11-16, second side; files `docs/areas/camelot/districts/T.js` + `T-houses.js`)
