@@ -53,7 +53,7 @@ exports.build = ctx => { exports.build2(ctx); const { gx, gz, cell, W, H, wall, 
         a.cyl(dx, dy + 15, dz, 14.8, 1.4, MARB, TRIM, { seg: 32, roof: true, glow: 0.45 });
         a.dome(dx, dy + 16.4, dz, 13.8, 16, MARB, LEAD, { seg: 32, rings: 12, roof: true, glow: 0.3 });
         a.box(0, 0, 0, 0, 0, 0, MARB, 0xc4d2da, { size: [0.5, 0.5, 0.5], ring: { n: 16, r: 13.9, a0: 0 }, roof: true, p: [dx, dy + 16.4, dz], glow: 0.3 });
-        a.cyl(dx, dy + 31.6, dz, 3, 1, MARB, TRIM, { seg: 12, roof: true, glow: 0.45 }); a.cyl(dx, dy + 32.6, dz, 2.4, 5, MARB, TRAV, { seg: 12, roof: true, glow: 0.4 });
+        a.cyl(dx, dy + 31.6, dz, 3, 1, MARB, TRIM, { seg: 12, roof: true, glow: 0.45 }); a.cyl(dx, dy + 32.6, dz, 2.4, 5, MARB, 0xffe2a0, { seg: 12, roof: true, glow: 0.95 });
         a.cyl(0, 0, 0, 0.3, 4.6, MARB, TRIM, { ring: { n: 8, r: 2.7, a0: 0 }, seg: 6, roof: true, p: [dx, dy + 32.8, dz], glow: 0.5 });
         a.dome(dx, dy + 37.6, dz, 3, 3.4, MARB, LEAD, { seg: 12, roof: true, glow: 0.3 });
         a.dome(dx, dy + 40.8, dz, 0.8, 0.8, 'gold', null, { seg: 10, roof: true, glow: 0.4 }); a.cyl(dx, dy + 40.2, dz, 0.8, 0.7, 'gold', null, { seg: 10, roof: true, glow: 0.4 });
@@ -68,7 +68,7 @@ exports.build = ctx => { exports.build2(ctx); const { gx, gz, cell, W, H, wall, 
         [[19, 20], [23, 25], [28, 29]].forEach(q => { const z = (gz(q[0]) + gz(q[1])) / 2, w = (q[1] - q[0]) * 3.5;
             a.box(fx, FY + 4.4, z, 0.8, 15.2, w, MARB, TRAV, STONE);                                                    // the wall over each doorway
             a.box(fx + 0.5, FY + 4.4, z, 0.5, 0.7, w + 1.4, MARB, TRIM, { glow: 0.5 }); a.box(fx + 0.5, FY, z - w / 2 - 0.45, 0.5, 4.4, 0.5, MARB, TRIM, { glow: 0.5 }); a.box(fx + 0.5, FY, z + w / 2 + 0.45, 0.5, 4.4, 0.5, MARB, TRIM, { glow: 0.5 });
-            a.box(fx + 0.45, FY + 7.4, z, 0.14, 5.4, Math.min(w, 3.5) - 0.9, DARKG, 0x2c2e33, { glow: 0.12 }); a.box(fx + 0.6, FY + 6.9, z, 1.5, 0.45, Math.min(w, 3.5) + 0.6, MARB, TRIM, { glow: 0.5 }); });   // a window + its balcony over each door
+            a.box(fx + 0.45, FY + 7.4, z, 0.14, 5.4, Math.min(w, 3.5) - 0.9, DARKG, w > 4 ? 0xffd890 : 0x2c2e33, { glow: w > 4 ? 0.9 : 0.12 }); a.box(fx + 0.6, FY + 6.9, z, 1.5, 0.45, Math.min(w, 3.5) + 0.6, MARB, TRIM, { glow: 0.5 }); });   // a window + its balcony over each door
         [15.5, 17.9, 21.4, 22.5, 25.5, 26.6, 30.1, 32.5].forEach(sy => { a.box(fx + 1.5, FY, gz(sy), 2.9, 1.3, 2.9, MARB, TRIM, { glow: 0.45 }); a.cyl(fx + 1.5, FY + 1.3, gz(sy), 1.15, 15.6, MARB, 0xffffff, { r2: 1, seg: 14, glow: 0.5 }); a.box(fx + 1.5, FY + 16.9, gz(sy), 2.9, 1.1, 2.9, MARB, TRIM, { glow: 0.5 }); });
         a.box(fx + 1.2, FY + 18, ZC, 3.6, 2.6, FW, MARB, TRIM, { glow: 0.45 });                                           // the entablature
         a.sign('IN HONOREM PRINCIPIS APOSTOLORVM', fx + 3.02, FY + 18.6, ZC, 40, 1.4, '#6a5a44', '#f4ecdc', 'marc', { ry: 90 });
@@ -175,6 +175,13 @@ exports.dress3 = ctx => { const { P, at, dec, gx, gz, mx, mz, look } = ctx;
     ctx.take(14, 12); at('ships_bell', mx(14), mz(12), { y: 1.9, h: 1.3 });
     /* the steps: lamp posts at their foot, planters at the doors */
     [[47, 15], [47, 32]].forEach(q => P('iron_lamp_post', q[0], q[1]));
+};
+/* PASS 4, THE AIR: thick gold dust hanging in the nave, the crossing and the transepts (it shows in the light from the dome and the doors),
+   incense rising at the altar and the chair. */
+exports.air = ctx => { const { airZone } = ctx;
+    airZone({ sx0: 24, sy0: 17, sx1: 45, sy1: 31, kind: 'dust', color: 0xffe4a8, n: 220, speed: 0.22 });
+    airZone({ sx0: 13, sy0: 13, sx1: 24, sy1: 35, kind: 'dust', color: 0xfff0c8, n: 200, speed: 0.18 });
+    airZone({ sx0: 18, sy0: 22, sx1: 22, sy1: 26, kind: 'embers', color: 0xffd9a0, n: 40, speed: 0.3 });
 };
 exports.people = ctx => { const { native, say } = ctx;
     native('priest', 30, 18, 180, say('vatican_basilica', 'priest', 0, 'female'), { gender: 'female' });

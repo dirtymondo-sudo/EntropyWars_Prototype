@@ -54,25 +54,25 @@ function sheet() {
 
 /* ── THE ROOMS' OWN SETTINGS: which letters are walked, the paint, the shell ── */
 const SET = {
-    vatican: { site: 'prebuilt_vatican', part: 'plots', mark: 'VATICAN', sub: 'THE BASILICA · THE SQUARE · THE PALACE · THE CLOISTER · THE GARDENS', solid: 'XhT', wet: 'w', hole: 'q',
+    vatican: { site: 'prebuilt_vatican', part: 'plots', mark: 'VATICAN', air: { kind: 'dust', color: 0xffe8c0 }, sub: 'THE BASILICA · THE SQUARE · THE PALACE · THE CLOISTER · THE GARDENS', solid: 'XhT', wet: 'w', hole: 'q',
         pal: ['cobblestone', 'marble_light', 'marble', 'grass_2', 'dirt_2', 'leaves_3', 'bricks_3', 'gold', 'marble_2', 'dungeon'],
         paint: { c: 1, m: 2, k: 3, o: 9, w: 3, B: 3, s: 2, g: 4, d: 5, h: 6, T: 7, t: 2, X: 7, q: 10 },
         terrain: "res: 0.875, floor: 'cobblestone', cliff: 'bricks_3', path: 'marble_light', base: 0, noise: { amp: 0.02, scale: 9 }, crag: false,",   // (0.875: a wall's or a hedge's face leans a quarter of a square, not a half)
         shell: R => "hqVaticanShell({ w: " + R.WM + ", d: " + R.DM + ", fogD: 0.006, plate: " + J(R.plate) + R.atmos() + " })",
         parti: 'The holy city as the real one stands: the Basilica in the west under its dome, the oval Square east of it inside two arcs of columns, the gate in the east wall, the palace north, the cloister south, the gardens behind the apse.' },
-    catacombs: { site: 'prebuilt_vatican', part: 'under', mark: 'CATACOMBS', sub: 'THE CRYPT · THE DESCENT · THE LOCULI · THE CISTERN · THE FONT · THE WARM WALL', solid: 'X', wet: 'w', hole: '', plan: true,
+    catacombs: { site: 'prebuilt_vatican', part: 'under', mark: 'CATACOMBS', air: { kind: 'dust', color: 0xffe8c0 }, sub: 'THE CRYPT · THE DESCENT · THE LOCULI · THE CISTERN · THE FONT · THE WARM WALL', solid: 'X', wet: 'w', hole: '', plan: true,
         pal: ['dungeon', 'bricks_3', 'cobblestone'], paint: { f: 1, s: 3, X: 2, w: 1 },
         /* THE CATACOMBS are the Sewers' kind of room: every square that is not a `space` is brick to the roof (upright walls), the floors' levels are plateaus */
         terrain: "res: 0.875, floor: 'dungeon', cliff: 'bricks_3', path: 'cobblestone', noise: { amp: 0.02, scale: 8 }, crag: false, gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_3', rim: 0, forceGrow: -0.3 },",
         shell: R => "{ w: " + R.WM + ", d: " + R.DM + ", h: 7, wallH: 7, dadoH: 1, floor: 'dungeon', wall: 'bricks_3', dado: 'bricks_2', trim: 'marble', ceiling: 'bricks_3', floorColor: 0x8a8078, wallColor: 0x8a7a68, dadoColor: 0x6a5e52, ceilColor: 0x4a4038, pipes: false, strips: false, lights: [], mood: { light: 0xffc890, ambient: 0.5 }, plate: " + J(R.plate) + ", fog: { color: 0x0c0a08, density: 0.02 }, look: HQ_ROOM_LOOKS.catacombs" + R.atmos() + " }",
         parti: 'The dungeon under the Basilica: the crypt under the altar, two flights down to galleries of graves, a font, the foot of the cistern, and a hall whose far wall is warm.' },
-    hell: { site: 'prebuilt_hell', part: 'plots', mark: 'HELL', sub: 'THE RIM · THE DESCENT · THE BOWL · THE WALKWAYS', solid: 'R', wet: '', hole: '', lava: 'L',
+    hell: { site: 'prebuilt_hell', part: 'plots', mark: 'HELL', air: { kind: 'ash', color: 0x8a6a5a }, sub: 'THE RIM · THE DESCENT · THE BOWL · THE WALKWAYS', solid: 'R', wet: '', hole: '', lava: 'L',
         pal: ['scorched', 'rocks_3', 'obsidian', 'rocks_5', 'rubble_3', 'lava'], paint: { r: 1, p: 2, o: 3, R: 4, a: 5, s: 2, L: 6 },
         terrain: "res: 1.75, floor: 'scorched', cliff: 'rocks_5', path: 'rocks_3', base: 0, noise: { amp: 0.12, scale: 5 }, crag: false,",
         shell: R => "{ w: " + R.WM + ", d: " + R.DM + ", h: 10, wallH: 10, dadoH: 1.05, open: true, edge: 'low', floor: 'scorched', wall: 'obsidian', dado: 'rocks_3', trim: 'obsidian', ceiling: 'obsidian', apron: 'scorched', skirt: 'obsidian', apronColor: 0x5a2a1c, floorColor: 0xc07050, wallColor: 0x5a3828, dadoColor: 0x4a3028, pipes: false, strips: false, lights: [], mood: { light: 0xff9058, ambient: 0.95 }, " +
             "sky: { night: 1, tint: 0x4a0e06, tintAmt: 0.75, stars: 0, nebula: 0.25, fog: { color: 0x1c0604, amount: 0.7, top: 0.08, band: 0.6, density: 0.012 }, scenery: 'none', density: 0.5, landmarks: [] }, plate: " + J(R.plate) + ", look: HQ_ROOM_LOOKS.hell" + R.atmos() + " }",
         parti: 'One pit: a rim, a terrace, the bowl and a lake of lava with the Plinth on its island; the east side has fallen into a sea of lava, crossed on platforms and walkways.' },
-    heaven: { site: 'prebuilt_heaven', part: 'plots', mark: 'HEAVEN', sub: 'THE STAIRWAY · THE GATE · THE CLOUD FIELDS · THE CITY', solid: 'K', wet: 'w', hole: '', sky: '.', float: true, floatFrom: 31,   // (the Stairway's clouds float, sy 31 on; the Gate's landing, the fields and the city are one solid mass of cloud: a floating plateau costs about 40 draw calls)
+    heaven: { site: 'prebuilt_heaven', part: 'plots', mark: 'HEAVEN', air: { kind: 'motes', color: 0xfff4d8, speed: 0.35 }, sub: 'THE STAIRWAY · THE GATE · THE CLOUD FIELDS · THE CITY', solid: 'K', wet: 'w', hole: '', sky: '.', float: true, floatFrom: 31,   // (the Stairway's clouds float, sy 31 on; the Gate's landing, the fields and the city are one solid mass of cloud: a floating plateau costs about 40 draw calls)
         top: { c: 'cloud_2', m: 'marble_light', B: 'marble_light', w: 'marble_light', K: 'cloud_thick', s: 'marble_light' },
         terrain: "res: 1.75, floor: 'cloud_2', cliff: 'cloud_2', path: 'marble_light', base: 0, noise: { amp: 0, scale: 13 }, crag: false, void: { lip: 1, fall: -10, glow: 0xfff2d0, glowY: -30 },",
         shell: R => "hqDivineShell({ w: " + R.WM + ", d: " + R.DM + ", plate: " + J(R.plate) + R.atmos() + " })",
@@ -141,7 +141,11 @@ function makeRoom(PLAN) {
     };
     R.put = (B, key, lx, lz, o) => { const p = B.at(lx, lz), r = Object.assign({ key, x: p[0], z: p[1] }, S.float ? { y: B.y } : {}, o || {}); if (r.face != null) r.face = B.face(r.face); props.push(r); };
     R.airZone = z => air.push(Object.assign({}, z, { x0: gx(z.sx0), z0: gz(z.sy0), x1: gx(z.sx1), z1: gz(z.sy1), sx0: undefined, sy0: undefined, sx1: undefined, sy1: undefined }));
-    R.atmos = () => air.length ? ", atmos: " + J({ kind: air[0].kind, n: air[0].n, zones: air.map(z => { const q = {}; Object.keys(z).forEach(k => { if (z[k] !== undefined) q[k] = z[k]; }); return q; }) }) : "";
+    /* THE AIR BY DISTRICT (the Estate's way, three-renderer.js _hqBuildAtmos `shell.atmos.zones`): a district's `air(ctx)` stage calls ctx.airZone({ sx0, sy0,
+       sx1, sy1 (its own squares, the end exclusive), kind, color, n, speed, wind }). A room with zones draws ONLY its zones, so the site's own air (data.js
+       HQ_ATMOS_SITES: the Vatican's gold dust, Hell's ash, Heaven's motes) is kept as a last zone over the whole room. With no zone the shell line is unchanged. */
+    R.atmos = () => { if (!air.length) return ""; const base = Object.assign({}, S.air, { x0: -HW, z0: -HD, x1: HW, z1: HD });
+        return ", atmos: " + J(Object.assign({}, S.air, { zones: air.map(z => { const q = {}; Object.keys(z).forEach(k => { if (z[k] !== undefined) q[k] = z[k]; }); return q; }).concat([base]) })); };
     R._ = { spot, errs, strays, LATE, setD: d => { curD = d; } };
     return R;
 }
