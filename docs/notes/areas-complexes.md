@@ -7902,12 +7902,22 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
   WRONG ON THE LOOK, FIXED: the Glasshouse's eaves stood at 3.9 m and the building's own flat lid (at its `h`, 5.25 m) cut through the
   glass roof as two pale slabs: the eaves now stand at 5.3 m (A DRAWN ROOF MUST START AT OR ABOVE THE BUILDING'S `h`); a pale blue
   flower read as a grey pebble (violet now).
+- **PASS 4, THE AIR + THE NIGHT (seen, 4 views by day, 10 at night with `hqClockSet(22)`)**: the file exports `airZones` (the tool's hook):
+  rose petals on the wind over the whole garden (`motes`, pink, 280), fireflies in the mirror's court, at the tea party, along the south
+  walks and in the painters' nook, spores over the caterpillar's mushrooms. The teapots steam (`chimney_smoke`, `rise` 1.4). A lit wick
+  under each paper lantern, a warm ground under the tent, the Glasshouse's glass lit a little more (`glow` 0.34: it reads at night).
+  AT NIGHT the garden stays readable under the room's moon: the lantern cores, the roses, the glowing caps, the gilt frame and the
+  lit glass carry it; no real light was spent (ten in the whole room, the castle's).
+  TRIED AND TAKEN OUT: a lit disc on the marble under each lantern ("the light it throws", as the Fairy Forest does on purple grass):
+  on white marble by day it is a tan stain.
 - **NOBODY ELSE MOVED**: the eleven old `dec` calls run in the old order on the old squares; every new piece is placed by metres (`at()`)
   or by `put` (no dice), so the scatter of F, N and W is untouched.
 - **FRAME RATE** (cloud software GPU, llvmpipe; the lawn looking south at the board): before 1.00 frames a second, 2,022 geometries, 1,039
   draw calls. After pass 1: 2,222 geometries, 1,200 calls (its 0.20 was read as the FIRST view of a run, while the room still compiled:
   never measure on the first view). After pass 2: 1.20 frames a second, 2,412 geometries, 1,421 calls: no loss (run to run noise is 0.2).
   After pass 3: 1.00, 2,590 geometries, 1,780 calls (the new props: each is its own draw call until the room batches them).
+  After pass 4: 2,703 geometries, 1,800 calls; the frame reading in this run was 0.20 (ONE frame in the 5 s window: a hitch, or the
+  particles on a software GPU). Measured again, longer, in pass 5.
 - **FITS THIS DISTRICT** (MODEL_LIST.md read in sections + the live catalogue's 1,853 keys + section 13's unwired files searched for
   rose / flower / hedge / topiary / card / heart / chess / tea / cake / clock / mirror / flamingo / croquet / garden / fountain / statue):
   the game `chess_set_game`, `chess_board`, tree kinds `chess_*` (12); time `gclock`, `giant_hourglass`, `astronomical_clock`,
@@ -7947,7 +7957,7 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
      say is yours. The Dragon that stands in the north walk is one of the zone's roaming residents, not this file's.
   8. A walk-in was added though none was named: THE GLASSHOUSE (a hedge garden's own building, dark glass as you like it). It took three
      squares of the south lawn strip.
-- **NEXT**: pass 4 air / light / night, pass 5 polish.
+- **NEXT**: pass 5 polish (the frame rate first).
 ## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
 
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
