@@ -83824,8 +83824,8 @@ const ThreeRenderer = (function () {
         var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
-        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
-        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
+        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, lvl: c.lvl || 0, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
        + gaze in METRES in the room frame, and the ground under the eye's column
@@ -84587,7 +84587,9 @@ const ThreeRenderer = (function () {
             if (gone.indexOf(id) >= 0) return;   // beaten today: gone until tomorrow
             var hm = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'male'), hf = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'female');
             var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
-            list.push({ r: r, id: id, gender: g, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
+            /* THE SET LEVELS (2026-11-16, data.js HQ_SPAWN_RULES): the resident's own level, read once; the label shows it and the fight is at it */
+            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home }) : null; } catch (e) { sl = null; }
+            list.push({ r: r, id: id, gender: g, lvl: sl ? sl.lvl : 0, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
         });
         H.res = { G: G, day: day, list: list, next: 0, pts: [], lastPick: 0 };
         return true;
@@ -84600,14 +84602,14 @@ const ThreeRenderer = (function () {
         for (var i = H.blockers.length - 1; i >= 0; i--) if (H.blockers[i].obj === ch.entry.group) H.blockers.splice(i, 1);
     }
     function _hqResSpawn(H, s, at) {
-        var r = s.r, U = _hqUnits(), line = null, sub = 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
+        var r = s.r, U = _hqUnits(), line = null, sub = (s.lvl > 0 ? 'LV ' + s.lvl + ' · ' : '') + 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
         if (at.spot && at.spot.say) { var sy = at.spot.say; line = Array.isArray(sy) ? (sy.length ? sy[((typeof hqHash === 'function' ? hqHash(H.res.day + '|' + r.race + '|say') : 0) % sy.length)] : null) : String(sy); }
         /* THE BEDS (2026-11-14): the rig carries the sleep pose (UAL2 LayToIdle held on its first frames: flat on the back) beside its own slots */
         var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null; _hq3DOff(_s3);
             if (base && base.libClips && !base.libClips.hqSleep) { var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales); lc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; lt.hqSleep = HQ_RES_SLEEP.ts; def = Object.assign({}, base, { libClips: lc, libTimeScales: lt }); } } catch (e) { def = null; }
         var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, def: def || undefined, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
         if (!ch) return null;
-        ch.resident = s; s.ch = ch;
+        ch.resident = s; s.ch = ch; if (s.lvl > 0) ch.lvl = s.lvl;
         var y = _hqNavQuery(at.x, at.z, null); if (y !== null && y !== undefined && isFinite(y)) { ch.y = ch.visY = y; }
         ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
         for (var i = H.blockers.length - 1; i >= 0; i--) if (H.blockers[i].obj === ch.entry.group) { ch._resBlk = H.blockers[i]; break; }
