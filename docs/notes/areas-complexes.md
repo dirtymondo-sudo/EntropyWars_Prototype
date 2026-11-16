@@ -6761,10 +6761,21 @@ forest glade, the dead tree's hole.
   run noise; no drop); geometries 2,121, draw calls 4,824.
   Seen and NOT mine: a blue winged figure sat on the hut's log stack where the rabbit stood a run before (the spawn system's
   variants change who stands on a native's spot).
+- **PASS 5, POLISH (seen: a walk of 14 views, two at night)**. A lantern half way up each side path; a lit pane under every lantern
+  (the model's own glass does not glow); the stepping stones at 0.6 of their size (they drew as slabs); a paler ring under every
+  patch of trodden earth (the discs had a hard edge); the hut's yard cleared off the lean-to (the log and the stumps moved a square);
+  in the hut a striped rug down the door's column (drawn) and a shelf of jars. Frame rate at the bay 0.60 (as before the first
+  pass); geometries 1,938 -> 2,150, draw calls 3,787 -> 4,924 over the five passes.
+- **STOPPED AFTER FIVE PASSES (the order's limit)**. WHAT I WOULD DO NEXT, for whoever mondo sends: a second walk-in (a gamekeeper's
+  lodge or a ruined chapel wants plan squares in the east glade: the tool's row); a real great dead tree round the hole's door (the
+  door itself is the tool's); a deer, an owl and a fox once models exist; sound (none can be set by a district).
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
   the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
   (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
-  (the zone's own name); (5) the sword in the stone was NOT put here (the castle has it).
+  (the zone's own name); (5) the sword in the stone was NOT put here (the castle has it); (6) the walk-in is a Woodcutter's Hut with the plain word
+  WOODCUTTER over its door, standing on the west glade's north squares with its door on the track; (7) the people are robinhood, a
+  knight, a wizard, a tree person and a rabbit, all silent; (8) the moat's reeds are the Ocean pack's seaweed; (9) the two boats lie
+  on the bank, not afloat; (10) one small tool change (`groundAlso`), noted on the board.
 - **NEEDS A MODEL** (nothing on R2): an axe + chopping block, a hand cart, a wooden barrel, a medieval tent or pavilion, reeds, a deer,
   a fox, an owl, a leafy bush, forest flowers, a milestone.
 
@@ -7191,6 +7202,46 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
 - **TRAP FOUND:** an `arch` row written at `x: 0, z: 0` with its parts 100 m away was NOT DRAWN (no error). One row a plot, at the plot's
   middle, its parts measured from there (as the tool's vault rows are): drawn.
 
+**PASS 2, THE INTERIORS (seen, 17 views; walked offline).** Every room furnished from the model list (about 135 props):
+- **THE CELLS:** cot, steel toilet, a basin on the side wall, an old mattress in each; then one story a cell: 1 nobody (chains, a web),
+  2 the gangster (tray, cup, smokes, cash), 3 somebody they forgot (bones on the mattress), 4 the wet one (a bucket, the scrawl, a puddle),
+  5 the politician (his ballot box and papers), 6 stripped (chains, a can).
+- **THE CORRIDOR:** the city seal on the brick between cells 1 and 2, the one phone, extinguishers, cameras, floor drains, a wheelchair,
+  the laundry cart, a waiting bench by the gate, the old room's key ring on the floor; **THE CELL DOOR** (the plan's name) is now bars and a
+  swinging cell door across the east passage, before the stair down to the Precinct Drain.
+- **THE GUARDROOM:** a take-a-number post and rope posts before the counter; on it a phone, papers, a clipboard; behind it the desk
+  (terminal, lamp, files, the baton), cabinets, the key rack, the clocks, the wall of faces, the notice board, the breakers, the wall of
+  screens (`monitor_stack`), the coffee table, the water cooler. **THE LOCKERS:** riot gear, the long guns, three lockers, a footlocker.
+  **THE CATWALK:** the watcher's chair, his lamp (`followspot`), his cup.
+- **THE PROPERTY ROOM:** shelving on the south wall, deposit boxes, the safe, boxes, a hand truck, the pin board, and what was taken off
+  people (a guitar, a sword, a skateboard, boxing gloves, a revolver, cash, an umbrella stand); the old room's key + list on the floor.
+- **THE DRUNK TANK:** two benches on the back wall, one cot, the pan, the drain, bottles, cups, a puddle; the mop bucket and the wet-floor
+  sign outside. **THE FAN ROOM:** compressor, gate valve, gauge board, breakers, tool chest, pipes; two cowls at the stack's foot.
+- **THE STACK** is drawn as a true brick drum now (a `cyl` part over the walked drum: the field samples every 0.875 m, so a round
+  `plateau` 3.5 m across is a rough cone).
+- **LEARNED:** a `wall` catalogue piece placed by `ctx.P` stands in the MIDDLE of its square, edge-on to nothing: stand wall furniture
+  against its wall (`k.put`, 1.3 to 1.45 m off the middle) and take the square. `femur` stands on its end. `leaf_security` is a barred
+  gate, `leaf_cell` a solid rusted door with a slot. The bystanders WALK (the politician was at the counter in one picture).
+- Numbers at the proof view (the corridor from the west door, llvmpipe): before 1,468 calls / 2.51 M triangles; pass 1 1,489 / 2.54 M;
+  pass 2 1,503 / 2.20 M, 1.4 FPS (the first two FPS readings were taken while the room still streamed and are not comparable).
+
+**FITS THIS DISTRICT (the whole catalogue + MODEL_LIST sections 6, 7, 10, 12b, 13 read 11-16; all have rows):** CELLS `cot` `steel_toilet`
+`psx_toilet_mp_1` `sink` `psx_old_mattress_mp_1` `psx_pillow_mp_1/2` `psx_bed_1_frame` `wall_chains` `trap_chain_draped/_straight`
+`meal_tray(_empty)` `toilet_paper` `wooden_bucket` `graffiti_wall` `psx_padlock_1..4` `stocks` `wall_padding` · BARS + DOORS `leaf_cell`
+`leaf_security` `leaf_portcullis` `psx_bars_metal_1/2` `psx_window_metal_bars_*` `cell_bars` · THE GUARDS `steel_table` `tanker_desk`
+`crt_terminal` `desk_lamp` `banker_lamp` `rotary_phone` `office_chair` `folding_chair` `filing_cabinet` `key_rack` `mugshot_wall`
+`evidence_board` `missing_board` `notice_board` `monitor_stack` `psx_monitoring_screen_mp_1` `security_camera` `wall_clock` `punch_clock`
+`breaker_panel` `riot_gear_rack` `rifle_rack` `locker` `office_locker` `footlocker` `locker_bench` `psx_police_baton_mp_1`
+`item_police_barricade` `item_walkie_talkie` `metal_detector` `number_dispenser` `now_serving_sign` `rope_stanchion` `form_counter`
+`city_seal` `lady_justice` `motto_plaque` `public_phone` `water_cooler` `coffee_maker` `followspot`
+· PROPERTY `metal_shelving` `lost_shelf` `deposit_box_wall` `floor_safe` `cardboard_box(es)` `psx_cardboard_box_*` `hand_truck`
+`luggage_cart` `manila_folders` `psx_cash_*` `psx_id_mp_1` `psx_keycard_*` `psx_key_mp_*` `revolver` `pistol` `shotgun` `psx_knife_mp_1`
+· THE TANK `metro_bench` `floor_drain` `drain_grate` `mop_bucket` `mop` `wet_floor_sign` `psx_glass_bottle_1/2` `solo_cup` · THE STACK
+`ind_vent` `meshy_vent` `psx_vent_*` `vent_grille` `air_compressor` `gate_valve` `gauge_board` `utility_box` `tool_chest` `psx_pipe_1*`.
+**NEEDS A MODEL (exists nowhere):** handcuffs, a bunk bed with a chain, a cage lamp, a prison food hatch trolley, a fingerprint / mugshot
+height board on a stand, a rat, a booking desk (the counter is a tiled wall row), a ceiling fan housing for the stack, a drunk-tank bench
+in steel (the blue metro seats stand in), a turnkey's key ring big enough to read on the floor.
+
 **DECISIONS MADE FOR MONDO (overrule any in one line):**
 1. The cells are real brick rooms (a whole square of brick between two), not bar cages in a hall.
 2. Four small rooms were DUG out of the solid south wall (Property Room, stair well + lockers, the stack's fan room): the two plots were
@@ -7200,6 +7251,9 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
 4. The stack is not climbed on foot (as in the old room, where it carried the door gun's tape).
 5. Words on the walls: the cells' numbers 1-6, BOOKING, PROPERTY, PLANT, TANK. Plain, no invented names.
 6. The four people keep their old lines; the gangster and the politician stand IN cells (2 and 5), as the old room had them.
+7. The other four cells tell small stories with props only (bones, a bucket, chains): no new characters, names or lines.
+8. "The cell door" of the plan is built as bars + a swinging cell door before the stair to the Precinct Drain.
+9. What the Property Room holds is a joke on "one ring of keys, whose? everyone's": things taken off people (a sword, a guitar, a skateboard).
 ## THE SEWERS, DISTRICT R — The Radioactive Drain, where the Power station drains (2026-11-16, second side)
 
 mondo 11-16: "one sewer district could be radioactive sludge if it connects to the power plant"; on the plan picture
@@ -7737,11 +7791,24 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
   building's own floor and the lining (a cobble slab to the lining); the inside front wall was mirrored (a part's `p` is NOT mirrored, only
   a `hole`'s x is); `leaf_glass` is a plain grey slab (now `leaf_birch_glass`); the drawn rafters stuck out as spikes (out); the old
   garden's four `white_cloud` read as floating grey rock piles at 10 to 12 m under this sun (left out: decision 7).
+- **PASS 3, THE DRESSING + THE NATIVES (seen, 14 views)**: eight FLOWER BEDS (soil in a low clipped edge, three rows of flowers) along
+  the lawns' and the nooks' hedge feet, never in a walk; stepping stones to the Glasshouse; 16 butterflies, bees and moths at the
+  roses, a ladybird, a caterpillar and a chrysalis on the small mushrooms, six crows on the piers; the painters' cards by their pots
+  (`tarot`, `tarot2`, `tarotDeck`); THE COURT: candelabra at the canopy, three urns, a sword and a shield by the guard; THE MIRROR: a
+  marble bust on a plinth either side of the frame (ghost walls), a hand mirror and a frog on the fountain's rim, keys, a photo frame, a
+  flask; THE TEA PARTY: presents at the tent's foot (`xmas_gift*`), a violin, a tambourine and a guitar on the grass, eight cups down
+  the table, a deck of cards, champagne, a book; THE HEDGES, SOUTH: fifteen glowing caps (`woods_glowcap`) at the kerbs, a frog.
+  THE NATIVES whose home this is, with no lines (none are written): two Chess Pieces by the board, a Rabbit on the lawn, a Dreameater
+  and a Mushroom Girl in the mirror's court. Nine natives in the garden now.
+  WRONG ON THE LOOK, FIXED: the Glasshouse's eaves stood at 3.9 m and the building's own flat lid (at its `h`, 5.25 m) cut through the
+  glass roof as two pale slabs: the eaves now stand at 5.3 m (A DRAWN ROOF MUST START AT OR ABOVE THE BUILDING'S `h`); a pale blue
+  flower read as a grey pebble (violet now).
 - **NOBODY ELSE MOVED**: the eleven old `dec` calls run in the old order on the old squares; every new piece is placed by metres (`at()`)
   or by `put` (no dice), so the scatter of F, N and W is untouched.
 - **FRAME RATE** (cloud software GPU, llvmpipe; the lawn looking south at the board): before 1.00 frames a second, 2,022 geometries, 1,039
   draw calls. After pass 1: 2,222 geometries, 1,200 calls (its 0.20 was read as the FIRST view of a run, while the room still compiled:
   never measure on the first view). After pass 2: 1.20 frames a second, 2,412 geometries, 1,421 calls: no loss (run to run noise is 0.2).
+  After pass 3: 1.00, 2,590 geometries, 1,780 calls (the new props: each is its own draw call until the room batches them).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read in sections + the live catalogue's 1,853 keys + section 13's unwired files searched for
   rose / flower / hedge / topiary / card / heart / chess / tea / cake / clock / mirror / flamingo / croquet / garden / fountain / statue):
   the game `chess_set_game`, `chess_board`, tree kinds `chess_*` (12); time `gclock`, `giant_hourglass`, `astronomical_clock`,
@@ -7777,9 +7844,11 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
   6. The teapots and the cup stack are the catalogue's own giant sizes (a teapot 1 m across): left giant on purpose.
   7. The old garden's four clouds are left out (as models they read as floating grey rocks here). Its risers, railings, pool umbrella,
      altar, candle rings, cardboard boxes and lesson sign are code-built stand-ins or HQ furniture: also left out; say which you miss.
+  9. Five natives were added with NO lines (two Chess Pieces, a Rabbit, a Dreameater, a Mushroom Girl): who lives here and what they
+     say is yours. The Dragon that stands in the north walk is one of the zone's roaming residents, not this file's.
   8. A walk-in was added though none was named: THE GLASSHOUSE (a hedge garden's own building, dark glass as you like it). It took three
      squares of the south lawn strip.
-- **NEXT**: pass 3 dressing + the natives, pass 4 air / light / night, pass 5 polish.
+- **NEXT**: pass 4 air / light / night, pass 5 polish.
 ## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
 
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
