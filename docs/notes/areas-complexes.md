@@ -6391,6 +6391,23 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
   cattle grid, the lamps' glass and the trough; wall pictures and a clock in the Farmhouse; stairs to the hayloft; curtains; the Yard's bare
   middle (a tractor wants a model); lines for the five people; residents with routines; the Desert road (his call).
 
+### THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; seen in the cloud browser)
+- **STAND-INS OUT, MODELS IN:** the three drawn plank troughs -> `water_trough`; the drawn gate leaves -> `braced_gate` (the Ranch Gate's two, swung
+  back along the rail) and `fence_with_gate` (the Paddock's gate: the panel is 3.5 m = one square); the eight drawn lamp posts -> `iron_lamp_post`
+  (`noBlock`, `noLight`); the toilet cabin -> `outhouse`; the library's rolling ladder -> `wooden_ladder`; the log pile and stump ->
+  `firewood_stack` + `axe_chopping_block`; the barn's steel drums -> `wooden_barrel`. The fittings row keeps only what has no model: the round
+  stock tanks, the hand pump, the Ranch Gate's posts, beam and board.
+- **EVERY PIECE THE LIST ASKED FOR IS PLACED:** `tractor` (the Yard's middle), `plough` + `hay_cart` + `pitchfork` (Hay Field), `wheelbarrow` (Yard,
+  garden, barn), `saddle` x 2 before the horses' stalls, a PIG PEN (Yard, squares 49..50 x 66..67: the ranch rail, a `fence_with_gate` panel,
+  three `pig`s), `goat` x 2 (Pasture), `rooster` (hen run), `duck` x 3 at the Windmill's tank, `beehive` x 3 + a `tyre_swing` under the trees north
+  of the house, `kennel`, `mailbox` at the gate, `clothes_line`, a row of `sunflowers` by the kitchen garden, `cattle_skull` over the barn doors.
+- **ALSO FITTED (read from the whole list):** `anvil`, `grindstone`, `owl_perched` (barn), `wood_stove`, `oil_lamp`, `antler_trophy`,
+  `firewood_stack` (farmhouse), `rose_bed`, `leafy_bush`, `bird_bath`, `wild_flowers`, `hay_rack` x 2, `hawk`, and at the trailers' camp
+  `antenna_dish`, `picnic_table`, `bbq_grill`.
+- **THE COST:** the proof view: 901 draw calls before, 969 after (3.16 M triangles).
+- **STILL NEEDS A MODEL:** a cattle grid, a round stock tank, a hand pump, wheat (not made).
+- A wish-list model's facing is as it was made: the kennel's mouth and the skull were placed by eye from one picture each.
+
 ### DECISIONS MADE FOR MONDO (overrule any in one line)
 1. The Barn has a gambrel roof and is barn red with white trim; the Farmhouse is white with a green roof (as it was).
 2. The gate's board says `RANCH` (a plain word, no made-up name).
@@ -7286,10 +7303,21 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   "before"); no pass cost a frame that this renderer can show. The room's block grew 204 KB -> 283 KB (about 330 arch parts and 330 props of this district).
 - **WHAT I WOULD DO NEXT (not started: a sixth pass is his call):** a picnic table and a van at the camp once models exist; a porch sign for the station once he
   names it; light shafts and sound by plot (engine); the plots' own names in layout.json (the tool's row); a look at the weak PC's frame rate.
+- **THE MODEL PASS (mondo's new word 11-16, on top of the five; seen, 12 views; the whole list of 246 read) — the thread STOPPED again.** `models(ctx)` in C.js.
+  ASKED AND PLACED: `camper_van` + `picnic_table` (the camp), `tyre_swing` (the playground), `outhouse` (the Crossroads), `firewood_stack` (the station's porch and
+  by its stove), `backpack` (camp, shelter, porch, the wreck), `braced_gate` x 2 (the gate's leaves), `deer` (one, under the Old Tree). A hammock was not placed.
+  STAND-INS TAKEN OUT: the drawn stove (now `wood_stove`, the pipe kept), the two drawn firewood boxes, the gate's two drawn leaves (two arch rows), the eight
+  drawn lamp posts (now `lantern_post`), the camp's wire and bulbs (now two `string_lights`), the rock-pile cairn (now `cairn`), a stump + saw (`axe_chopping_block`),
+  the shelter's mattress (`sleeping_bag`). ALSO FROM THE LIST: `trail_sign` (Crossroads, the Stair), `fire_danger_sign` + `mailbox` + `antler_trophy` (the station),
+  `clothes_line`, `bbq_grill`, `kettle` (camp), `milestone`, `moss_clump`, `wild_flowers`, `hedgehog`, `beehive`, `kennel`, `water_trough`, `wheelbarrow`,
+  `pitchfork`, `hay_bale`, `rooster`, `raven_perch`, `fox`, `owl_perched`. KEPT AS BUILT (architecture, not stand-ins): the station, the shelter, the hunter's stand,
+  the gate's posts and beam, the roof mast, the hung lanterns on the porch / shelter / gate. FOUND: `lantern_post` and `string_lights` carry no glow, so the trail
+  is darker at night than after pass 4; `psx_ceiling_lamp_1_on` at `y: 2.42` drew above the station's roof (both removed); `leafy_bush` is a clipped ball (not
+  used). FRAME RATE (same view): 1.2 before, 1.2 after. NEEDS A MODEL now: nothing; wanted: a lit lantern post (a glow on the model's row).
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.
-- **NEEDS A MODEL:** a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a hammock, a backpack, a camper van; a gate leaf with a diagonal brace.
+- **NEEDS A MODEL:** ~~a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a backpack, a camper van, a braced gate leaf~~ (all placed in the model pass); ~~a hammock~~ (in the game as `hammock`, not placed).
 
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
@@ -8270,6 +8298,18 @@ rock mouth: two piers, a cap and a dome of `rocks_5` (tint 0xe8d0a8, `gain` 1.7)
 **WHAT A NEXT THREAD WOULD DO (after his look):** a real Sphinx model; carving on the inside's walls once a hieroglyph sheet exists; the canyon
 to Western Town (cut by the move: the tool's); the scatter and the pine mountains on Giza's edges (the tool's); residents and Giza's own fights.
 
+**THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; one pass on top of the five, then STOPPED again).**
+- **IN, AND THE STAND-IN OUT:** `sphinx` (`Pm('sphinx', x, z, { face: 90 })` points its head east; 20 m long, it blocks by itself) for the
+  parts-built Sphinx; `canvas_tent` for the nylon tents; `camel` for the horses; `reeds` for `ocean_seaweed`; `casing_block` for most rubble
+  stones; `jackal_statue` for the small obelisks in the King's Chamber.
+- **NEW:** ten `papyrus_column` along the causeway (outside the kerb), `pharaoh_statue` before the Sphinx and on the Tomb Door path,
+  `jackal_statue` at the north mouth and the Tomb Door, `cat_statue`, `golden_idol`, `canopic_jars`, `tripod_bowl` in the hall, the Dig's
+  `sieve_table` / `wheelbarrow` / `pickaxe` / `wooden_ladder` / `wooden_barrel` / `hand_cart`, two `market_stall` + `woven_baskets` + a `hookah`
+  at the oasis camp, `fallen_column`, `vulture`, `cobra`, `scorpion`, `cattle_skull` in the Sand Sea, `oil_lamp` in the pyramid's passages.
+- **THE COST:** triangles at the proof view went from 1.12 M to 1.90 M (the models are dense); the cloud's frame rate did not drop (3.3 FPS,
+  434 calls), but on a weak machine the columns and statues are the first thing to thin out or to give LODs.
+- **STILL MISSING:** a hieroglyph / carved-relief wall sheet (a texture), papyrus plants and a gold pile (not made).
+
 **FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
 `meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
 `ocean_rock..11`, `psx_brick_1`, `hw_bricks`; pots `greek_amphora`, `cauldron`, `item_censer`, `wooden_bucket`; fire `brazier`, `cave_torch`,
@@ -8289,7 +8329,7 @@ a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil la
 1. The pyramids are true pyramids and are NOT climbed (a real face is too steep for the walker). A zigzag stair up one face is possible.
 2. The King's Chamber keeps the door to the Turning Tomb (his earlier yes); it is walked and stays as built.
 3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
-4. The Sphinx stays parts-built until a model exists.
+4. The Sphinx is the `sphinx` model now (the model pass); the stele I had built between its paws went with the parts-built one.
 - **FROM DISTRICT T (the Running Tunnels, 11-16):** (1) LIGHT THAT FALLS, with no light: under a lit lamp lay a thin part wearing the
   FLOOR'S OWN sheet with `glow` 0.1 to 0.35 (two steps, the inner brighter), and the same on the wall behind it; the floor reads lit.
   (2) A HUT IN A RECESS: T.js `hut(ctx, plot, name, x0, x1, zFront, zBack, xDoor, xWin0, xWin1, glassTint, board, { y0, east, key,
@@ -8496,7 +8536,21 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   stands by the lit car (the dug crew room had moved him inside it); the south tunnel (P03-04) got a cabinet, a drum, a lantern, a
   flicker tube; T's REAL LIGHTS cut from four to two (the zone kit's rule: the lit car and the cabin; the crew room and the station
   office are lit the drawn way: `hut(..., { glowIn: 0.3 })` = glowing plaster, floor and a lit panel under the slab).
-- **WHERE IT STANDS: five passes merged and live, STOPPED.** OPEN FOR MONDO: (a) nothing was WALKED by a player (doors, the step, the
+- **THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end
+  to end; seen, 9 views).** IN, and the stand-in OUT: `rail_section` on every track square (207; the drawn sleepers are out, the pebble
+  ballast and the third rail stay; face 0 = along x, 90 = along z; the model's rails lie on the tool's walked rails); `buffer_stop` x 5
+  (the Depot's four road ends, the Crossing's dead line; the drawn buffers out; face 0 closes a north-south track, 90 / 270 an
+  east-west one); `tunnel_signal` x 4 (the drawn posts out); `signal_gantry` at the Crossing, across the main line a step west of the
+  crossing square, legs on the two walks (the drawn legs, beams, deck, heads and ladder out; the check plate stays); `cage_lamp` on
+  every tunnel lamp (the drawn housings out; the lit lens and what it lights stay). NEW: `hand_car` on the shut stub, `rat` x 12,
+  `spider` x 4, `strobe_lamp` x 5 (dead ends, road ends, over the WAY OUT), `third_rail_shoe` x 3 (the bench, the floor), at the camp a
+  `sleeping_bag`, a `backpack`, a `kettle`; a `kettle` and a `ceiling_fan` in the crew room; a `key_ring` in the station office.
+  NOT USED: `manhole_ladder` (the station has no way up, by its own line), `steel_bench`, `chain_bunk`, `booking_desk` (the cells').
+  NOTE: the gantry model's lamps are red; the bystander says "Signals green" (the four small tunnel signals show all three colours).
+  FPS, the Depot view: 3.0 before, 2.0 after (noise about 1; the room went from 956 to 1,267 props, T's share about 310 small ones).
+- **NEEDS A MODEL, WHAT IS LEFT:** a graffiti sheet (a sheet, not a model), a third Metro car for the east loop, a soft round decal for
+  light pools. Crossed off: rail section, buffer stop, tunnel signal, signal gantry, hand car, rats, emergency lamp, third-rail shoe.
+- **WHERE IT STANDS: five passes + the model pass merged and live, STOPPED.** OPEN FOR MONDO: (a) nothing was WALKED by a player (doors, the step, the
   ghost walls: probe pictures only); (b) the bystanders are the old room's four (no more: the NPC system is its own thread); (c) the
   dead train front on the east loop is the Meshy white nose (`subway_front`): a third Metro car would match better, his call; (d) the
   platform's north half is low under the vault's haunch (1.6 m at the wall): furniture only, by design of the tool's vault; (e) the
@@ -8920,3 +8974,58 @@ hard right angles and straight lines ... that would be a good spot to turn into 
 - **NOT DONE** (the plan file's section 3): a skyline north of the Desert; the floating things in the zones' skies; the Mountains', North Pole's, Woods', Camelot's and
   Estate's sides (the Woods, Camelot and the Estate have NO land past their lines yet); the Shore's main waterline; the Hills' cliff north of the headland.
 
+
+## THE DEEP ON PLOTS — the zone redesigned, first build (2026-11-16, second side, the Deep zone thread)
+
+mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full redesign, no OK needed;
+for this zone: "yes underwater room", "No deep to Area 51". Plan: `docs/plans/world-zones/the-deep_plot_plan_2.png` (sent to him; built
+without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as history.
+
+- **THE ROOMS.** `site_prebuilt_atlantis_deep` (site `prebuilt_atlantis`, part `deep`): 8 x 5 plots of 12 x 12 squares, 336 x 210 m, a
+  DROWNED room (`terrain.sea.under`, `hqAbyssShell`: the walker swims from the first frame, nothing new: the old Abyss's own way).
+  `site_prebuilt_atlantis_pocket` (part `pocket`): the Temple of the Deep's dry inside, 18 x 18 squares, behind the vault door on the Agora.
+  Both written by `node bake-deep.js [--dry-run]` between `DEEP40-BEGIN / DEEP40-END` (+ the Temple's light shafts between
+  `DEEP40-SHAFTS-*`). `DEEP_DUMP=1` prints the square map.
+- **THE PLAN** is made by `python3 docs/plans/world-zones/make-deep.py`: it writes the plan json + picture and copies the json to
+  `docs/areas/deep/layout.json` (`cells` = a char a square, `levels` = a base-36 level a square, 1 level = 1.75 m, the open floor is 8,
+  `ways` = the squares of the Upwelling, the wreck's hatch, the vault door, the drowned stair, the spawn). Change the plan THERE, rerun
+  it, rerun the bake.
+- **THE IDEA: A RING CITY.** Atlantis is Plato's: an island (the Agora, level 11, with the Temple of the Deep on a podium at its north
+  end, level 12), an inner canal (7), an inner ring (10), an outer canal (7), an outer ring (9), a wall (13, 7 m of marble) with four
+  gates. Four straight roads (the Drowned Road) run from the gates over causeways to the Agora, so the dome is seen from every gate. West
+  of the city the sea floor under the Triangle; east the Trench, down to level 2 and 0 in two drops.
+- **FOUR DISTRICTS, ONE FILE EACH** (`docs/areas/deep/districts/`): `C.js` Atlantis, the Citadel (the middle nine plots; the PILOT; it
+  also exports `inside(ctx)` = the Temple's dry room) · `R.js` Atlantis, the Rings (12) · `S.js` The Sea Floor (9: the west column + the
+  four corners of the city's square) · `T.js` The Trench (10). Stages a file may export: `plan` (change squares / levels of its own
+  plots: `ctx.setSq / setRect(x0, y0, x1, y1, ch, level)`), `build` (terrain rows `ctx.feat`, drawn pieces `ctx.look(id, x, z, rot, a => ...)`,
+  `ctx.scatter(key, n, sx, sy, radiusInSquares, seed)`), `dress` (`ctx.P` a blocker on a square's middle, `ctx.dec` decor off it,
+  `ctx.swim(key, sx, sy, metresOffTheFloor)`), `people` (`ctx.native(race, sx, sy, face, say)`), `airZones`. Squares are the ROOM's
+  (sx 0..95, sy 0..59; `ctx.gx / gz` a line in metres, `ctx.cx / cz` a middle; `ctx.sq(plotId, lx, ly)`). A piece on another district's
+  square is printed as a stray, not refused.
+- **THE HEIGHTS ARE THE MAP** (the Beach's way; no `gen`, no `space` rows): sand `s`, kelp floor `k`, trench silt `d` and vent rock `v`
+  are one soft surface; paving `m` ramps between its own levels; city ground `t`, canal bed `c`, the wall `w`, podiums `B` and the
+  Station's deck `f` are flat with a step at their edge; rock `x` and reef `r` are crags. Nothing is a wall to the roof: a swimmer goes
+  over anything, never through it. The surface is at 47.25 m (26 m over the Agora, as the old Abyss had over its floor).
+- **THE DRAWN PIECES** are `arch` rows from a marble sheet (`ctx.sheet()`: box, cyl, dome, roof, quad, and `column(x, y, z, h, r, tint)` /
+  `stump(...)` = a Greek column from three parts). Houses that must stop a swimmer are `wall` rows (R.js `house`).
+- **EVERY OLD PLACE IS KEPT** (old name -> plot): THE SEA FLOOR P00-02 · THE DROWNED ROAD the four roads + P03-03 · THE WRECK / THE
+  DUTCHMAN BELOW P00-01 · THE TRENCH P06-02 · THE UPWELLING P00-03 · THE TEMPLE STEPS + the dome P03-01 · THE SUNKEN AGORA + its four
+  pylons P03-02 · THE PALACE (its dome, its nine metre front) P02-01 · THE STATION + the bathyscaphe P01-00 · THE SPIRE (the tape) P05-00 ·
+  THE REEF WALL P00-04 · the kelp forest P00-00 · the drowned circle P05-04 · the fallen lintel P04-01 · the smokers P07-01 · the
+  sarcophagus P04-04 · the Temple room's DAIS, ORACLE + pool, throne, braziers, windows, tapestry, choir tape: the new inside. Every old
+  resident with lines stands again with the same lines. Plots with no old name carry plain labels of mine (the plan json says which).
+- **THE EXITS MOVED.** Links `bermuda_abyss` (b end: the Upwelling, x -145.25 z 43.75) and `revenge_atlantis` (b end: the hatch by the
+  wreck, x -138.25 z -40.25) now name part `deep`; their far ends (the Beach's Maelstrom, the Dutchman's Hold) did not move and needed no
+  edit. Room H-20's bay door (`siteRooms.entry.prebuilt_atlantis`) lands in the new inside, east wall. `hubs.deep`, `HQ_HEAL_ZONE.rooms.deep`
+  (on the Agora), the sky's `still` list, `HQ_AREA_MARKERS` (the fight marker in the Temple), the two tapes, the find spots (the tape on
+  top of the Spire; on the Oracle) and the AREA UNITS lists carry rows for the new rooms. The tool refuses to bake when a row it depends
+  on has drifted. No way to Area 51.
+- **RETIRED:** `DOOR_HQ.retired` sends `site_prebuilt_atlantis_abyss` -> the Deep and `site_prebuilt_atlantis_temple` -> the new inside.
+  Both old rooms STAY in data.js: the Atlantis fight boards are cut from them (`HQ_ARENA_RULES.picks`). `site_prebuilt_bermuda_island`
+  was not touched.
+- **SEEN ON SCREEN** (probe, llvmpipe, six views, no errors, 119 files in 59 s): the Agora with the temple, the city from the South Gate
+  (the dome at the road's end), the Palace, the Wreck with the kelp, the Station and the humpback behind it, the Trench.
+- **KNOWN THIN (first build):** the marble of the drawn pieces reads dark; the hatch's frame stands a few metres off the wreck's hull;
+  the Station's deck is a mound, not a deck on legs; R, S and T have one layer of content each (their files' headers).
+- **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
+  fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
