@@ -12149,6 +12149,66 @@ hard right angles and straight lines ... that would be a good spot to turn into 
   Estate's sides (the Woods, Camelot and the Estate have NO land past their lines yet); the Shore's main waterline; the Hills' cliff north of the headland.
 
 
+## OUTER SPACE ON PLOTS — four worlds, a room each, first build (2026-11-16, second side, the Outer Space zone thread)
+
+mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old rooms are "completely redesigned/reimagined with plots and
+districts"; on the ship: "I don't know where the ship should leave from or how the player access it yet, but let's just get the world built,
+we can figure that part out later". No OK was waited for (his standing order). Plot plan 3: `docs/plans/world-zones/outer-space_plot_plan_3.png`
+(drawn by `docs/plans/world-zones/draw-space.js`; plan 2, one 12 x 12 solar system you fly through, stays beside it as history).
+
+- **FOUR ROOMS, NOT ONE (decision):** plan 2's 108 plots of open space only work with flying the ship and floating, both NEW MECHANICS
+  (listed, not built). So each world is its own room on plots of 12 x 12 squares, keeps its own sky (`sky.world`: the Moon's and Mars'
+  curved planet ground, Saturn's bands, the void) and its own site, and is reached exactly as before. 72 plots, ten districts:
+  | World | Room | Plots | Districts (file) |
+  |---|---|---|---|
+  | The Moon | `site_prebuilt_moon_plots` | 5 x 4 (210 x 168 m) | M The Mare (7) · C The Crater (9) · F The Far Side (4) |
+  | Mars | `site_prebuilt_mars_plots` | 5 x 4 | Y Cydonia (10) · V The Canyon (5) · R The Rover Bay (5) |
+  | Saturn | `site_prebuilt_saturn_plots` | 4 x 4 (168 m) | H The Hexagon (12) · G The Ring Shard (4) |
+  | The Singularity | `site_prebuilt_singularity_plots` | 4 x 4 | D The Drop (4) · A The Accretion Rim (12) |
+  THE SPACESHIP's four rooms are untouched (handmade, the world plan's word); `DOOR_HQ.ship`, the collar and the nav console work as before.
+- **THE TOOL:** `node bake-space.js [--dry-run]` writes the four rooms between `SPACE72-BEGIN / SPACE72-END` in data.js from
+  `docs/areas/space/layout.json` + `docs/areas/space/districts/<LETTER>.js`. `SPACE_DUMP=moon|mars|saturn|singularity` prints a world's
+  walked map. THE LAYOUT IS WRITTEN BY A SCRIPT: `node docs/plans/world-zones/draw-space.js` designs every world square by square (forms
+  as code: `flat`, `ramp`, `soft`, `bowl`, `lip`), writes the layout json and redraws the plan picture; change a landform there, rerun
+  it, then the bake. Never hand-edit the json or the block.
+- **THE HEIGHTS ARE THE MAP (the Beach's way):** `terrain.slope.cells`, four corners a square. A step over 0.62 m between two squares is a
+  cliff; a ramp rises 0.3 at most; soft ground (crater bowls, dunes, the Singularity's shelves) shares corners. Rock (`x`) is
+  `terrain.gen { kind: 'plan', look: 'rock' }` in the world's cliff sheet (moon_3 / mars_2 / storm / obsidian): the rim round each room,
+  the Moon's limb ridge and central peak, Saturn's six storm walls (everything outside the hexagon), the dark outside the Singularity's bowl.
+  The tool walks every world from its spawn with those rules and refuses to bake when a plot, a way or a unit is not reached.
+- **THE FORMS:** MOON: the big crater (70 m, 5 m deep, a lip, a rock peak), the Terrace (3.5 m, a ramp at each end, the collar on it), the
+  Antenna Platform (5.25 m, its own ramp), the Dish's platform, the Lander's pad, the Overlook mound, nine small craters, the Dig pit, the
+  limb ridge with two passes to the Far Side. MARS: the Face (a mesa 60 x 70 m shaped like a face: two sockets, the nose's ridge, the
+  mouth = a trench with the bore in it; up by the east cheek), the Pyramid (seven tiers of 1.75 m, a `ramp` row with treads up its south
+  face: layout `stairs`), a low table rock, the two mesas either side of the canyon with the Arch between them (a `bridge` row at 7 m:
+  layout `bridges`), the Canyon (5.25 m deep, four squares wide, three ramps down), three dead-straight canals, the Rover Bay's apron,
+  dunes. SATURN: a regular hexagon (apothem 20 squares), the Rim Walk 3.5 m up round it with four ramps, the Eye (a bowl 4 m deep), the
+  Ring Shard (ice blocks 7 m, never climbed). SINGULARITY: the rim, then three shelves joined by ramp rings down to the floor 6.3 m
+  below, the hole's floor in the void sheet, the Drop (the one straight track from the east rim), the Screen's ledge.
+- **THE WAYS (all in the game before; every one moved to a matching spot; all free-standing doors, a door on a tier carries `y`):**
+  bay doors = `siteRooms.entry.prebuilt_moon / _mars / _saturn / _singularity` (the Standing Door on the Mare, the Airlock south of the
+  Rover Bay, the Airlock on Saturn's south rim, the Standing Frame on the south rim). The ship's collar: links `moon_derelict` (on the
+  Terrace), `mars_derelict` (the Rover Bay's north side), `derelict_saturn` (the Docking Shelf); only the world end of each row was
+  re-pointed, the docked end and the ship are as they were, and `hqShipDestinations()` lists the three new rooms + Antarctica.
+  `cydonia_mare` (both ends mine: the Far Side's Bore <> the Face's mouth, still a draught), `saturn_singularity` (both ends mine: the
+  frame on the west rim walk <> the frame on the north rim), `observatorium_singularity` (the Singularity end only: the Screen's ledge;
+  DOOR HQ's end untouched). The tool checks all sixteen rows (bays, link ends, `HQ_AREA_MARKERS`) and refuses to bake when one drifts.
+- **RETIRED (`DOOR_HQ.retired`):** `site_prebuilt_moon_mare`, `…_mars_cydonia`, `…_saturn_hexagon`, `…_singularity_horizon` -> their
+  plot rooms. The four old rooms stay in the data (generated from `HQ_AREA_SPECS`; PvP board sources in HQ_ARENA_RULES.picks, and the tool
+  reads each world's shell, people and lines from them). No door leads to them (checked: `hqWorldGraph()` has no edge into a retired
+  space room). NEW HUB `space` ("OUTER SPACE", anchor = the Spaceship's airlock, sites = the ship + the four worlds). `HQ_WORLD_CLOCK`:
+  the Moon, Saturn and the Singularity `still` (no day), Mars wears Cydonia's `dayLook`.
+- **WHO IS THERE (26):** every one of the old rooms' sixteen bystanders with their own line (placed where the line points: the grey of
+  the pyramid at its foot, the grey of the Face on its brow, the Martian of the mouth by the mouth, the watcher of the frame at the
+  frame ...), plus each world's own (`DOOR_TEXT.POINT_OF_ENTRY`): Barbarella, Mantid, Voidweaver on the Moon; Martian, Droid on Mars;
+  Grey, Black Goo on Saturn; Cosmic Wraith, Watcher at the Singularity. No line was written for the new ones.
+- **SEEN ON SCREEN** (probe through probe-fast.js): see the first-build pictures in the PR; the notes below say what read and what did not.
+- **NEW MECHANICS, LISTED, NOT BUILT:** flying the Spaceship by hand between worlds; floating outside it; open space, the Sun, Earth,
+  the asteroid belt and Low Orbit as places; the Drop as a way out of the Singularity; low gravity on the walk (the battle zone exists).
+- **NOT DONE / KNOWN SHORT (first build):** only district M is piloted; the other nine hold the forms, the old rooms' people and a few
+  props each (each file's header lists what it lacks). The Catwalk (Terrace > Antenna Platform) is not built. The old rooms' four tapes
+  and finds were not re-homed (no tape / find guards). No encounter tables, no residents with routines. Nothing was walked by a player
+  (offline walk + compile + pictures).
 ## THE ASTRAL REALM ON PLOTS (2026-11-16, the zone thread; first build)
 
 mondo 11-16: the eight zones still on old rooms go on plots "completely redesigned/reimagined", built without waiting for his OK
@@ -12265,3 +12325,78 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
   the Station's deck is a mound, not a deck on legs; R, S and T have one layer of content each (their files' headers).
 - **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
   fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
+
+## THE CAVERN ON PLOTS — the underworld of rock redesigned, first build (2026-11-16, second side, the Cavern zone thread)
+
+mondo 11-16: "most of them I want completely redesigned/reimagined with plots and districts etc. like we did for disaster city or Camelot ...
+Then move the exits, it's not that big of a deal. Then we will make new models." Built without waiting for his OK (the zone brief); the plan
+picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `draw-cavern.js` from the layout).
+
+- **THE ROOM** `site_prebuilt_hollow_earth_cavern` (site `prebuilt_hollow_earth`, part `cavern`, plate "THE CAVERN"): ONE room, 6 x 6 plots of
+  12 x 12 squares (252 x 252 m), written by `node bake-cavern.js [--dry-run]` between `CAVERN36-BEGIN / CAVERN36-END` in data.js from
+  `docs/areas/cavern/layout.json` (`CAVERN_DUMP=1` prints the walked map). The first layout was written by
+  `docs/plans/world-zones/make-cavern.js` (chambers, ports, water, paths by fixed dice); from now on a district changes its own squares in its
+  file's `plan()` (`ctx.setRect`), not by rerunning that script (it would redraw every district).
+- **THE REDESIGN, in one line each.** The old zone was eight separate rooms: six small cave boxes off one crossroads, a flat night country
+  with no sun in it, a flat marble floor under a star sky. Now: **K THE CAVERN** (13 plots) is a LOOP over three tiers (levels 4 / 8 / 12,
+  7 m apart): the Crossroads > the Terrace and its fall > up to the Shelf > up to the High Tier > Level −6 > down to the Spur > the rope
+  bridge over the lava chasm > the Hot Shelf's lava lake > the Fissure > down the Long Ramp > the River Chamber > the Crossroads; the
+  Crystal Adit and the Oubliette hang off the Shelf's east stair. **THE MOUTH** is a ledge 7 m over **H HOLLOW EARTH** (11 plots): you stand in
+  the dark and look out over a lit country with the Inner Sun hanging in the middle; a long stair goes down. **A AGARTHA** (12 plots) is
+  terraces (4 / 2 / 0) stepping down round the Spire to a lake and a plaza.
+- **EVERY OLD NAME HAS A PLOT** (layout `from`): the Crossroads + the Hall + the Needle, the Terrace (pool, fall), the West Shelf (now "The
+  Shelf"), the High Tier, the Spur + the Rope Bridge, the Hot Shelf, the Long Ramp, the River Chamber (ford, plank), the Fissure, Level −6,
+  the Crystal Adit + the Crystal Ledge, the Mouth + the Lip + the Crust Ledge, the Oubliette; the Country, the Sun + the Terrace, the Crystal
+  Forest, the Mushroom Shelf + the Overhang, the Old Trees, the Giant's Steps + Seat, the Hot Spring, the Sunken Garden, the Lake + the Jetty;
+  the Gallery, the Upper Terrace + the Balcony, the Adit Terrace, the Lower Terrace, the Spire, the Lake, the Plaza, the Pier. Labels that
+  are mine (plain, the game had none): The Nesting Ground, The East Gate, The Admiral's Tunnel, The Lemuria Stair, The Inner Gate, The Polar
+  Opening. THE GROTTO (a dead end of the old Cavern) has no plot of its own yet: the pilot gives it a corner.
+- **THE DISTRICT FILES** `docs/areas/cavern/districts/K.js H.js A.js`. Stages as in the Sewers (`plan`, `build`, `dress`, `people`, `deep`),
+  plus `suns(ctx)` and `airZones(ctx)`. The ctx is the Sewers' own (bake-sewers.js): `P / dec / native(key, plot, lx, ly)`, `squares / corners
+  / inner / walled / free`, `plot[id].base`, `feat`, `props`, `counters`, `O` (the eight old rooms' people, lines, door plates, counters).
+- **THE WALL** = `terrain.gen { kind: 'plan', look: 'walls', wallKey: 'cave_wall' }`: every square that is not a `space` is rock up to the
+  crust (the shell is 48.25 m high). A square of `x` inside an open district is therefore a 48 m PILLAR, never a boulder (the first build's
+  outcrops along Hollow Earth's terrace lines drew as black towers: taken out).
+- **THE ROOF** (layout `roofed: ['K']`): a K plot wears one BLOCK of rock from its roof line (5.25 m over its floor, or the drop + 5.25 m
+  where a stair or fall comes down into it) up to the crust, so from the open country the cave reads solid over the Mouth; plus up to 16
+  stalactites (tapered `cyl` parts hung point down). One `arch` row a plot, `cav:<plot>:roof`. H and A have no roof: the crust is the shell's
+  ceiling in the haze. `terrain.stalactites: false` (the game's own would hang from the crust).
+- **THE LIGHT, AND THE NEW SHELL ROW `suns`.** "Underground, light is the look, each district its own." The room's ambient is low (0.24) and
+  three BIG LIGHTS do the rest: `shell.suns = [{ x, y, z, color, intensity, dist, decay }]`, four at most a room, read by three-renderer.js
+  `_hqBoxRoomLamps` (plain point lights, not counted in the ten prop lights). H.js: the Inner Sun (30 m up, warm, 170 m reach). A.js: the
+  Spire (pale cyan, 110 m). K.js: the Hot Shelf's lava lake (red, 46 m). The Sun itself is two glowing `dome` halves on a rock spire.
+  Any closed room may use `suns`.
+- **THE LEVELS / THE OPENINGS** as in the Sewers (a `plateau` a plot; layout `openings`: `stair`, `fall` + `by`): 16 stairs (K and H timber
+  flights two squares wide, Agartha built marble flights with glass rails) and 3 falls (the Shelf's spring into the Terrace's pool, the old
+  trees' brook into the Hot Spring, the canal into the Lake). Lava (`l`) is a `stream` with `key: 'lava'`; a `b` run is a deck over what
+  lies beside it (lava under the rope bridge, deep water under a jetty). The walk check never crosses lava.
+- **THE PAINT** (8 sheets, the cap; value 0 = the room's cave floor, v = pal[v - 1]): obsidian (hot side), concrete_floor (Level −6),
+  dungeon_2 (the Oubliette), crystal (the Adit, Agartha's paving), grass_dark_fantasy, dirt_2 (paths), marble_light, desert (sand).
+- **THE WAYS OUT (all were in the game; every one moved to the matching wall).** Links, my end re-pointed in `DOOR_HQ.links`, the far end
+  untouched: `cave_hell` (the Fissure, north), `cave_dumb` (Level −6, north), `workings_oubliette` (the Oubliette, east: the Sewers' end is on
+  their west wall), `shasta_lemuria` (the Lemuria Stair, east), `technoticlan_agartha` (the East Gate, east), `antarctica_polar` (the
+  Admiral's Tunnel, south), `hollow_byrd` (the Polar Opening, south), `well_cellar` (free: the Crossroads), `well_skinwalker` (free: the
+  Mouth). Bays (`DOOR_HQ.siteRooms`): `prebuilt_hollow_earth` > door `bay` (the Polar Opening), `prebuilt_agartha` > door `bay_agartha`
+  (the Inner Gate). Room doors: `dungeon` (DOOR HQ's cell, the Oubliette's north wall, hidden) and `woods` (NEW: the return door of the
+  Woods' one-way `lemuria` trail, world-layout.md A2 no. 4). The tool refuses to bake when a link or bay row drifts.
+  GONE: the four links that joined two old rooms of this zone (`cave_agartha`, `cave_hollow`, `cave_flue`, `cave_crawl`).
+- **RETIRED (`DOOR_HQ.retired`):** the eight old rooms > the new room. Their literals stay (the tool reads the people's lines, the door
+  plates and the counters from them; the Inner Sun and the Crystal City are the rooms the two PvP boards are cut from). Hub `cavern` and
+  world zone `under` name the one room; the clock's `still` list has it (no day or night inside the earth).
+- **WHO IS THERE (18):** the old rooms' bystanders with their own lines, plus the zone's own units with no lines (dinosaur x 2, antperson,
+  goblin, crystal guardian x 2, the Loch Ness Monster by the Pier, a ghoul, a reptilian). The old Inner Sun's `elf` is not a unit today
+  (not in AVAILABLE_RACES): not placed. The two BATTLE markers stand on the Country (`battle`) and the Plaza (`battle_agartha`); the
+  Healing Zone in the Crossroads.
+- **SEEN ON SCREEN** (probe, llvmpipe): the Crossroads and the Needle, the Terrace's fall and stair, the Hot Shelf's lava lake, the view from
+  the Lip over the country to the Sun, the Country, Agartha from the Inner Gate to the Spire. No error; 108 files, ready in 45 s.
+  **FRAME RATE, the first build: 1.5 FPS at the Crossroads, 1.4 on the Country, 1.4 in Agartha** (llvmpipe at 1280 x 800, frames counted
+  over 8 s; the baseline for the pilot's passes).
+- **DECISIONS MADE FOR MONDO (overrule any in one line):** (1) one room for all three districts, not three, so the Sun is seen from the cave;
+  (2) Agartha is a district of the Cavern (its own site until now), both PvP boards kept; (3) the Flue and the Crawl (two hidden short cuts
+  between old rooms) are not rebuilt: their rooms are one walk now; (4) the exits' walls: Hell and the D.U.M.B. north, the Sewers, Shasta
+  and Technoticlan east, Antarctica south; (5) the two Estate wells drop into the Crossroads and the Mouth; (6) a new return door to the
+  Woods at the Lemuria Stair; (7) the six plain labels above.
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, falls, doors: the offline graph + the plan's walk check + pictures);
+  the rock is square blocks 3.5 m wide (no cave-rock model exists: NEEDS A MODEL); H and A are a first build only (their rows on the
+  board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
+
