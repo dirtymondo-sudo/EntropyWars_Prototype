@@ -4953,6 +4953,19 @@ Pass 4 of 5. `docs/areas/desert/districts/W.js` and ONE change to the shared too
 - **THE CLOCK IN A PROBE:** a view's `"eval": "window._hqClockHour=function(){return 21.5}"` + `"settle": 2500` shoots it at night (19.2 = dusk).
 - **NO SOUND:** walk rooms have no per-district sound bed (ambience is a battle map's `env.ambience`); nothing was added.
 
+## THE DESERT, WESTERN TOWN — THE POLISH PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 5 of 5; the row on the board is free again. Where the district stands: the header of `docs/areas/desert/districts/W.js`.
+- **THE WALK CHECK:** a flood from Main Street on the walker's own rule (`hqTerrainInfo`, `hqTerrainFeet`, step 0.4375 m, and
+  `hqTerrainWallAt(info, x, z, 0.3)`: a wall whose top is over `rules.climb` (0.62 m) stops it; without that test a point flood steps
+  straight through a 0.12 m wall). Every floor, the six hotel rooms, the stalls, the chancel, Boot Hill, the mine mouth, the camp and the
+  canyon's end are reached; the two cells and the bank's vault side are shut, as meant.
+- **TWO GHOST WALLS ON ONE LINE:** `hqTerrainWallAt` returns the FIRST wall in reach, not the tallest. The jail's bars had a 0.12 m ghost
+  (the bars' foot rail) under the 2.6 m one: the walker met the low one and walked into the cells. One ghost a line; draw the rest.
+- **A STAGE UNDER 0.62 m IS CLIMBED** (the saloon's is 0.5 m: you can step up to the piano). A counter (1.02 m) is not.
+- **LEFT FOR MONDO / A LATER THREAD:** real upper floors (saloon gallery, hotel, hay loft), an inside for the mine, the NEEDS A MODEL
+  list, brightness of the insides on his own machine, whether the five added trades stay.
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
