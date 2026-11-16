@@ -6069,6 +6069,13 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
   - FRAME COST, MEASURED (proof view, llvmpipe): with all of C's dressing 1,450 draw calls / 3.30 M triangles, with C's dressing switched off 1,094 / 2.76 M,
     1.4 fps both ways. So the district costs about 350 calls and 0.5 M triangles there and no frame that this probe can measure; the fall from 1.8 to 1.4
     since the first look is the whole room growing (four districts at once).
+- **PASS 4, ATMOSPHERE (seen in the cloud browser, day + night, 7 views):**
+  - THE AIR (`airZones()`): pale green motes over both circles and the hidden pocket, straw-coloured dust (chaff) over the four cut fields; the tracks,
+    the Hub and the gate keep the zone's fireflies.
+  - NIGHT (the probe's clock at 22:00): the lamp posts, the shed's lantern and one lit shed window, the Hub's torch and the circle's torch carry the
+    district; eight low green marker lights round the formation (`circleGlow`, the zone's grave-light green) and a lit disc on the ground under the
+    saucer (`saucerGlow`). All drawn glow: C still spends only two real lights.
+  - No sound bed (a walked room has none per district, as H found).
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
   THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle. (6) a saucer set down in a hidden pocket of The Tall Corn (one prop row to remove). (7) horror touches on the verges (flesh, traps, a corpse by the saucer).
