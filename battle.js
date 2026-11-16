@@ -2295,6 +2295,8 @@
             let target = (z !== undefined && z !== null)
                 ? (unitAt(x, y, z) || unitAt(x, y))
                 : unitAt(x, y);
+            /* 🐍 a spell aimed at the serpent's body lands on its king (THE BODY IS HIM) */
+            if (!target) { const _sk = _serpentKingAt(x, y); if (_sk && _sk.player !== unit.player) target = _sk; }
 
             // Sky telescope: earth unit targeting above-section enemy
             if (!target && unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth') {
@@ -7470,6 +7472,7 @@
            (Hologram, Cloning Machine, Stuffed Double, beacons ...) the way they pass over their own units. The one
            exception is the existing single-target rule: an own object that explodes when hit (a bomb) can still be set off. */
         function _ownPieceSpared(obj, byUnit) {
+            if (obj && obj.serpentOf != null) return true;   // 🐍 the serpent's body is the king, never a breakable object (_serpentKingAt)
             if (!obj || !byUnit || obj.ownerPlayer !== byUnit.player) return false;
             return !((obj.detonateOnAttack || obj.detonateOnFire) && obj.blastRadius > 0);
         }
@@ -7796,14 +7799,23 @@
             const _canPullIn = !!(spell.pullToCenter && opts.pullCenter
                 && !(typeof _isClashMode === 'function' && _isClashMode()));
             const _aoeLead = _castLeadOnce(unit, spell);
+            const _aoeSerpentHit = new Set();   // 🐍 kings already caught through a body square
             if (opts.leadNamed) _aoeLead();   // the caller wrote the cast's lead line itself (aoePull's summary, first)
             for (const tile of tiles) {
                 /* Shared tile: a flyer hovering over a grounded enemy — the
                    blast hits EVERY enemy standing in the column, not just the
                    first one found (the second body used to whiff). */
-                const _tileTargets = opts.findTarget
+                let _tileTargets = opts.findTarget
                     ? [opts.findTarget(tile)].filter(Boolean)
                     : enemies.filter(e => e.x === tile.x && e.y === tile.y);
+                /* 🐍 a serpent body square in the blast catches its king, once a blast (and not at all when his own square is in it) */
+                if (!_tileTargets.length) {
+                    const _sk = _serpentKingAt(tile.x, tile.y);
+                    if (_sk && enemies.includes(_sk) && !_aoeSerpentHit.has(_sk.id) && !tiles.some(t => t && t.x === _sk.x && t.y === _sk.y)) {
+                        _aoeSerpentHit.add(_sk.id);
+                        _tileTargets = [_sk];
+                    }
+                }
                 /* THE SPELL AUDIT (2026-09-30): a `noDamage` area (Dragonfear, Hypnotic Pulse, Executive Order,
                    Curse of Misfortune) lands its statuses and stat stages on every enemy in it and deals nothing —
                    no hit roll, no turret/door/object chip. */
@@ -8306,6 +8318,10 @@
         }
         // The enemies of `unit` the beam strikes on cell (x, y).
         function _beamCellVictims(unit, spell, x, y, lineZ) {
+            {   // 🐍 a beam across the serpent's body hits its king (callers keep each victim once)
+                const _sk = _serpentKingAt(x, y);
+                if (_sk && _sk.player !== unit.player) return [_sk];
+            }
             if (lineZ == null && !spell.beamZigzag) {
                 const u = unitAt(x, y);   // the flat lane (no aim)
                 return (u && !u.dead && u.player !== unit.player) ? [u] : [];
@@ -13905,6 +13921,8 @@
                     seller.mp = Math.min(seller.maxMp || mpBefore, mpBefore + 75);
                     const healed = applyHealingToUnit(seller, Math.round((seller.maxHp || 0) * 0.2), seller);
                     addLog(`📉 ${_ctName(seller)}'s short pays out: +${seller.mp - mpBefore} MP, +${healed || 0} HP.`);
+                    /* THE BANKER PASS VFX (2026-11-16): the payout's coins (ThreeVFXEffects.fire, relayed by online.js) */
+                    try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('payout', 'nrShortSell', { fromX: unit.x, fromY: unit.y, tx: seller.x, ty: seller.y }); } catch (e) {}
                     showFloatingTextForUnit(seller, '📉 PAYOUT', 'buff', { durationMs: 1100 });
                     markDirty('hud', 'selectedUnit');
                 }
@@ -14009,11 +14027,20 @@
             for (const k of ['ownerUnitId', 'ownerId', 'casterUnitId']) if (o[k] != null) o[k] = unit.id;
             if (o.caster != null && typeof o.caster !== 'object') o.caster = unit.id;
         }
+        /* THE CEO POLISH (2026-11-16): he can only buy what his side can see. A fogged square or an enemy trap nobody on his
+           team has found reads as empty, so the free refusal is never a probe and the CPU never reads hidden rows. */
+        function _ceoSeesTile(unit, x, y) {
+            if (!state.fogOfWar || typeof computeVisibleTilesCached !== 'function' || typeof posKey !== 'function') return true;
+            try { return computeVisibleTilesCached(unit.player).has(posKey(x, y)); } catch (e) { return true; }
+        }
         function _ceoTargets(unit, spell, x, y) {
             const out = [];
             if (spell.acquire) {
+                if (!_ceoSeesTile(unit, x, y)) return out;
                 for (const L of _CEO_LISTS) for (const o of (state[L] || [])) {
                     if (!o || o.x !== x || o.y !== y || o._detonated || o.dead) continue;
+                    if (o.serpentOf != null) continue;   // a body, not an asset (Quetzalcoatl's serpent)
+                    if (L === 'traps' && !(o._revealedTo && o._revealedTo[unit.player])) continue;   // a hidden trap is not for sale
                     const op = _ceoOwnerPlayer(o);
                     if (op != null && op !== unit.player) out.push({ L, o });
                 }
@@ -14049,18 +14076,46 @@
             _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
             unit.mp -= cost;
             const names = hits.map(h => _ceoNoun(h.L, h.o));
+            /* THE CEO VFX (2026-11-16): one signature a cast (three-vfx-effects.js "THE TECH CEO"); fire() is relayed, so the
+               guest draws it too and colours it from its own seat (his side cyan-blue, the other side pink-orange) */
+            const _ceoFx = (params) => {
+                try {
+                    const V = window.ThreeVFXEffects;
+                    if (V && state.phase === 'battle' && !_skipVisuals() && V.hasMapping(spell.id, 'aura')) V.fire('aura', spell.id, params);
+                } catch (e) {}
+            };
             if (spell.layoffs) {
                 const gone = new Set(hits.map(h => h.o));
+                _ceoFx({ tx: unit.x, ty: unit.y, sx: unit.x, sy: unit.y, tiles: hits.map(h => ({ x: h.o.x, y: h.o.y })) });
                 for (const L of _CEO_LISTS) if (Array.isArray(state[L])) state[L] = state[L].filter(o => !gone.has(o));
                 const mp0 = unit.mp || 0;
                 unit.mp = Math.min(unit.maxMp || (mp0 + 50 * hits.length), mp0 + 50 * hits.length);
                 addLog(`💼 ${_ctName(unit)} lays off ${hits.length} ${hits.length === 1 ? names[0] : 'assets'}: +${unit.mp - mp0} MP.`);
-                applyStatStageBoost(unit, { atk: 1 }, `${spell.name}: `, unit);
+                /* INT, not ATK (2026-11-16): every damage spell in his pool is magic; an ATK stage did nothing for him */
+                applyStatStageBoost(unit, { int: 1 }, `${spell.name}: `, unit);
                 showFloatingTextForUnit(unit, `💼 LAYOFFS ×${hits.length}`, 'buff', { durationMs: 1100 });
             } else {
-                for (const h of hits) _ceoTakeOver(h.o, unit);
-                const what = names.length === 1 ? `the enemy's ${names[0]}` : `${names.length} enemy assets`;
-                addLog(`💼 ${_ctName(unit)} ${spell.disrupt ? 'disrupts' : 'acquires'} ${what} at ${coordLabel(x, y)} — ${names.length === 1 ? 'it works' : 'they work'} for Player ${unit.player} now.`);
+                const area = spell.disrupt ? getSquareArea(x, y, spell.aoeRadius != null ? spell.aoeRadius : 1) : [{ x, y }];
+                _ceoFx({ tx: x, ty: y, sx: unit.x, sy: unit.y, aoeRadius: spell.disrupt ? (spell.aoeRadius != null ? spell.aoeRadius : 1) : 0, tiles: area });
+                /* Disrupt BREAKS enemy terrain (2026-11-16): a patch's owner field changes nothing in play, so the enemy's lava,
+                   ice, ooze or wall in the 3×3 goes back to the ground it was, now. Zones still change hands. */
+                const broken = hits.filter(h => h.L === '_timedTerrain');
+                if (broken.length) {
+                    for (const h of broken) h.o.expiresRound = 0;
+                    if (typeof _tickTimedTerrain === 'function') _tickTimedTerrain();
+                }
+                const owned = hits.filter(h => h.L !== '_timedTerrain');
+                for (const h of owned) {
+                    const was = _ceoOwnerPlayer(h.o);
+                    _ceoTakeOver(h.o, unit);
+                    /* the side that set a trap still knows where it is (it is just not theirs any more) */
+                    if (h.L === 'traps' && was != null) { if (!h.o._revealedTo) h.o._revealedTo = {}; h.o._revealedTo[was] = true; }
+                }
+                const oNames = owned.map(h => _ceoNoun(h.L, h.o));
+                const parts = [];
+                if (oNames.length) parts.push(`${spell.disrupt ? 'disrupts' : 'acquires'} ${oNames.length === 1 ? `the enemy's ${oNames[0]}` : `${oNames.length} enemy assets`} — ${oNames.length === 1 ? 'it works' : 'they work'} for Player ${unit.player} now`);
+                if (broken.length) parts.push(`breaks ${broken.length} enemy terrain square${broken.length === 1 ? '' : 's'}`);
+                addLog(`💼 ${_ctName(unit)} ${parts.join(' and ')} (${coordLabel(x, y)}).`);
                 if (typeof showFloatingTextAtTile === 'function') showFloatingTextAtTile(x, y, spell.disrupt ? '💼 DISRUPTED' : '💼 ACQUIRED', 'buff', { durationMs: 1200 });
             }
             try { if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid(); } catch (e) {}
@@ -14161,6 +14216,26 @@
             if (!unit) return [];
             return (state._deployedObjects || []).filter(o => o && o.serpentOf === unit.id && o.hp > 0).sort((a, b) => a.serpentIdx - b.serpentIdx);
         }
+        /* THE BODY IS HIM (2026-11-16, the Quetzalcoatl pass): a square of the serpent's body belongs to the king. A swing or a
+           single-target spell aimed at it lands on him (doAttack / _resolveOffensiveTarget), an area or a beam that covers it
+           catches him once (_applyAoeDamage / _beamCellVictims), and nothing breaks it (_ownPieceSpared: the body is never
+           "destroyed" like a decoy; it goes when serpentForm ends or he dies). One body square was a one-hit kill before. */
+        function _serpentKingAt(x, y) {
+            const o = (state._deployedObjects || []).find(d => d && d.serpentOf != null && d.hp > 0 && d.x === x && d.y === y);
+            if (!o) return null;
+            const k = unitFromId(o.serpentOf);
+            return (k && !k.dead && !k._dying && unitHasStatus(k, 'serpentForm')) ? k : null;
+        }
+        /* Coiled holds only while a body square still touches the victim: a walk that drags the body away lets it go */
+        function _serpentReleaseLoose(unit) {
+            const segs = _serpentSegs(unit);
+            for (const v of (state.units || [])) {
+                if (!v || v.dead || v._coilSrcId !== unit.id || !unitHasStatus(v, 'coiled')) continue;
+                if (segs.some(o => Math.max(Math.abs(o.x - v.x), Math.abs(o.y - v.y)) === 1)) continue;
+                clearStatus(v, 'coiled');
+                addLog(`🐍 The coils slide off ${_ctName(v)}.`, undefined, undefined, { actor: v });
+            }
+        }
         function _serpentLay(unit, squares) {
             state._deployedObjects = (state._deployedObjects || []).filter(o => !(o && o.serpentOf === unit.id));
             squares.slice(0, 2).forEach((q, i) => state._deployedObjects.push({
@@ -14229,6 +14304,7 @@
                 out.push(...more.slice(0, 2 - out.length));
             }
             _serpentLay(unit, out);
+            _serpentReleaseLoose(unit);
         }
         /* any other arrival (a blink, an escape, a swap): a body left far behind is laid fresh beside him */
         function _serpentKeepUp(unit, via) {
@@ -14238,6 +14314,7 @@
             if (segs.some(o => (state.units || []).some(v => v && v._coilSrcId === unit.id && !v.dead && Math.abs(v.x - o.x) + Math.abs(v.y - o.y) === 1))) return;   // still wrapped round a Coiled victim
             _serpentLay(unit, []);
             _serpentLay(unit, _serpentChainFrom(unit, null));
+            _serpentReleaseLoose(unit);
         }
         /* Coil (`serpentCoil`, _runPostEffects): the body moves onto the free squares beside the victim, nearest the king first */
         function _serpentCoil(unit, target) {
@@ -14257,7 +14334,7 @@
             addLog(`🐍 The serpent coils round ${_ctName(target)}!`, undefined, undefined, { actor: unit });
             showFloatingTextForUnit(target, '🐍 COILED', 'debuff', { durationMs: 1100 });
         }
-        if (typeof window !== 'undefined') Object.assign(window, { _serpentRaise, _serpentDrop, _serpentSegs });
+        if (typeof window !== 'undefined') Object.assign(window, { _serpentRaise, _serpentDrop, _serpentSegs, _serpentKingAt });
         /* ⛏ _runPostEffects for an `erupt` spell (the Mole Man's Erupt, 2026-11-16): he comes up out of the ground on the free
            square beside the target nearest to where he dug in (he stays put when already beside it or no square is free), and
            the target is thrown up into the air: forced fall damage from 2 levels up (state.js applyFallDamage). Colossal units
@@ -14280,7 +14357,13 @@
                     const fx = unit.x, fy = unit.y;
                     unit.x = dest.x; unit.y = dest.y;
                     if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(dest.x, dest.y, unit.z);
-                    animateDisplacement(unit, fx, fy, dest.x, dest.y, 260);
+                    /* THE MOLE MAN PASS (2026-11-16): he goes back under at his tile and climbs out beside the victim (the escape
+                       looks' 'dive' path, the burrow's own dirt) instead of gliding over the board in a quarter second. The
+                       displace relay carries the style to the guest. */
+                    animateDisplacement(unit, fx, fy, dest.x, dest.y, 820, { escStyle: 'dive' });
+                    if (!(typeof _skipVisuals === 'function' && _skipVisuals()) && window.VFX3D && typeof window.VFX3D.fire === 'function') {
+                        try { window.VFX3D.fire('teleport', spell.id, { fromX: fx, fromY: fy, toX: dest.x, toY: dest.y }); } catch (e) {}   // the dirt where he goes down + comes up
+                    }
                     addLog(`⛏ ${_ctName(unit)} bursts out of the ground at ${coordLabel(dest.x, dest.y)}!`, undefined, undefined, { actor: unit });
                     showFloatingTextForUnit(unit, '⛏ ERUPT', 'streak', { durationMs: 1000 });
                     resolveTileArrival(unit, { via: 'displaced' });
@@ -47348,7 +47431,7 @@
                 case 'buff':          return 'Select an ally to empower with ' + nm + '.';
                 case 'cleanse':       return 'Select an ally to cleanse with ' + nm + '.';
                 case 'cleanseArea':   return spell.acquire ? nm + ': select a square with an enemy summon, object or trap on it to take it over.'
-                    : spell.disrupt ? nm + ': select a tile — enemy zones over the 3×3 change hands.'
+                    : spell.disrupt ? nm + ': select a tile — enemy zones over the 3×3 change hands, enemy terrain there breaks.'
                     : spell.layoffs ? nm + ': select your own square to scrap everything you own on the board.'
                     : nm + ': select a tile — allies in the 3×3 lose their debuffs, enemies lose their buffs.';
                 case 'steal':         return nm + ': select an enemy to rob.';
@@ -48193,6 +48276,7 @@
                 || k === 'tackle' || k === 'doorBreach') return true;
             if (k === 'teleport') return !spell.teleportAnyUnit;
             if (spell.chargeToTarget || spell.swapOnHit) return true;
+            if (spell.erupt) return true;   // ⛏ Erupt tunnels the Mole Man to the victim's side (the Mole Man pass, 2026-11-16)
             if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) return true;
             return false;
         }
@@ -48806,6 +48890,8 @@
             /* an ally haul / ally swap (Rescue Line, Miracle) never takes the caster itself: the cast refuses it (forecast + doSpell),
                so the list never offers it (forced-movement playtest 2026-11-07 D1: "PIRATE 0T MOVE→CAST" on the Pirate's own row) */
             if ((spell.kind === 'pull' || spell.kind === 'swap') && spell.allyOnly && u.id === unit.id) return false;
+            /* 💰 `noSelf` (THE BANKER PASS 2026-11-16: Line of Credit): the cast only takes another unit, never the caster */
+            if (spell.noSelf && u.id === unit.id) return false;
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
@@ -76496,6 +76582,8 @@
             // binds the blade while the challenge can actually be answered.
             /* THE SPELL AUDIT Batch D: Provoked by a DECOY (Stuffed Double) — the blade is bound to the straw while it
                can be hit from here; the decoy's own tile is always a legal swing. */
+            /* 🐍 a swing at the serpent's body lands on its king (THE BODY IS HIM) */
+            if (!target || target.id === unit.id) { const _sk = _serpentKingAt(x, y); if (_sk && _sk.player !== unit.player) target = _sk; }
             const _atkDecoy = getTauntDecoy(unit);
             if (_atkDecoy && target && isEnemyUnit(unit, target) && !(x === _atkDecoy.x && y === _atkDecoy.y)) {
                 const _tdD = Math.abs(unit.x - _atkDecoy.x) + Math.abs(unit.y - _atkDecoy.y);
@@ -81540,6 +81628,17 @@
                 const _imT = unitAt(x, y, z) || unitAt(x, y);
                 if (_imT && !_imT.dead && spellBouncesOffImmune(spell, _imT) && !spellTargetUsableOn(unit, spell, _imT)) {
                     addLog(`${_ctName(_imT)} is immune — ${_ctSp(spell.name)} would do nothing.`);
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
+            /* 💰 `noSelf` (THE BANKER PASS 2026-11-16): a direct call aimed at the caster's own square is refused before any
+               MP, AP or cooldown is spent (the lists already leave the caster out, spellTargetUsableOn) */
+            if (spell.noSelf) {
+                const _nsT = unitAt(x, y, z) || unitAt(x, y);
+                if (_nsT && _nsT.id === unit.id) {
+                    addLog(`${_ctSp(spell.name)} needs another ally.`, _clickSeat());
                     state._teleportingUnitId = null;
                     playErrorSfx();
                     return 0;
