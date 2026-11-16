@@ -5051,6 +5051,25 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     `ship_lantern` (the survival pack's lantern). The animals list (MODEL_LIST.md 7c) has a `crow`, no gull.
   - **OTHER ARCHIVES LOOKED INTO, nothing for the sea:** Survival PSX (44 pieces: backpack, axe, sleeping bags, torch, cans: camp
     things), the Industrial pack (9 pieces, all in the game), Exploration objects (ghost-hunting gadgets), jamzuz free PSX assets.
+- **FROM THE OCEAN (11-16, district O's first pass; all seen):**
+  - **A THING IN DEEP WATER** (O.js `seaAt`): a prop typed `y: -0.5` + `hover: 0.5 + up` has its foot `up` metres over the sea, whatever the
+    bed under it (this is why `palmisle` and the kraken `tentacle` "did not show at any y" before: a small `y` is a lift over the sea BED).
+    `palmisle` at -0.6, a tentacle at -1.4 (`h` 5.2, `noBlock`), a crate or drum at -0.2, a boat at -0.25. `noLight: true` on a `sea_buoy`
+    keeps it off the room's light count.
+  - **WHALES:** the ocean pack's whale models hang about 3 m over their own origin. `ocean_humpback` at `y: -4.6, hover: 0` and
+    `ocean_whale` at `y: -3.3, hover: 0` show their backs; at -1.5 the whole animal flies over the sea; at -2.6 (the first delivery) it reads the same.
+  - **A DRAWN THING IN WATER** (O.js `works`, the Harbour's): an `arch` row with `y: 0`. THE WATERSPOUT = thirty 2 m `cyl` rings (`cap: false,
+    ds: true`, the terrain key `water`, `glow` 0.22) on a slow bend, a spray skirt, a cloud of plain-paint domes. A face that looks DOWN draws
+    black: give a cloud's belly `glow`. The terrain key `storm` draws black. SEA STACKS = tapering seven-sided `cyl` tiers (`seg: 7`, `r2`) in
+    `rocks_5` with a LIGHT tint (0xe4e4ea; a dark tint is black); a small `ocean_rock_7` inside each foot is its blocker.
+  - **LAVA DOWN A SLOPE:** `{ k: 'fall', key: 'lava', foam: false }` rows, one every HALF square, `out` 1.75, each typed 1 m into the rock
+    (one long fall is a ballistic arc that hangs in the air). Head-on it is one glowing flow.
+  - **DARK GROUND:** plan letters `b` (`dirt_2`) and `c` (`scorched`, cracked with embers): sand in every rule, only the paint differs.
+  - **WRONG MODELS:** the ocean pack's rocks grown past 3 m are flat black slabs with no sheet (on land use `psxg_rock_1..4` with `h`);
+    `dinosaur_skeleton` is a museum mount on a plinth with a rod, not bones on a beach.
+  - **THATCH + WATTLE:** a roof in `urban:WoodGeneric2a` tinted 0xd2b060 at gain 1.7 reads as thatch; a wall in `WoodGeneric1a` with a LIGHT tint
+    (0xcdb88a, gain 1.5) reads as woven brown boards (the kit's "never a colour over WD" holds for paint colours, not for wood left wood).
+  - **TRIANGLES:** a Meshy prop is about 10,000 triangles whatever its size (a skull, a fern, a flamingo); thirty of them is 0.3 M. Count before dressing.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
   dunes to 3.6 m). The first run of a fresh container can crash once while the cache fills; the harness retries.
@@ -5123,6 +5142,62 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
   the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
+
+## THE BEACH, THE OCEAN — district O (2026-11-16, `docs/areas/beach/districts/O.js`, the Ocean thread)
+
+mondo 11-15: "like an ocean from a final fantasy overworld map, big enough to sail and explore"; "add a remote island with a volcano and
+unconnected tribe (eventually will make models for)". His order of 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every district,
+ask nothing, at most five passes. The bar here is NOT 93 full plots: open sea stays open; the island and the islets are real places and the
+sea has things to sail to.
+
+- **THE FIRST LOOK (8 views, HEAD 4a05856):** the island was pale sand under a plain cone, the village three bare roofs, a drum and a skull
+  pile; the whales were under the opaque sea; no waterspout, nothing on the whale plot; the islets a palm and a chest; 85 plots of nothing.
+- **FRAME RATE, MEASURED FIRST:** the cloud's software GPU draws this room at 0.2 fps from the Landing and 1.4-2.0 fps mid-sea, before and
+  after the pass, so the cloud cannot compare. What it CAN count: triangles drawn (shadow pass included) 1.62 M at the Landing and 1.61 M
+  mid-sea BEFORE any change (the room draws nearly everything from anywhere: it has no far cull). After pass 1: 2.5 M and 2.2 M. The cost
+  is the Meshy props (about 10,000 triangles each); ferns, skulls and flamingos were cut back for it. A real machine has to say what that
+  is in frames (see WAITS FOR MONDO).
+- **PASS 1, EXTERIORS (seen on screen):**
+  - **THE VOLCANO ISLAND:** dark ground (two new plan letters, a board note: `b` `dirt_2`, `c` `scorched` at the cone's foot); TWO LAVA
+    FLOWS down the cone (east to the shrine, south to the Landing); THE GATE at the Landing; THE BIG HUT and THE NORTH HUT (walk-in, wattle
+    walls, thatch, a swinging leaf each, bare inside until pass 2); the plan's three shelters rebuilt with a use each (the cook's, the
+    drum's, the sleepers'); a drying rack; THE SHRINE at the cone's east foot (`demon_statue` as the idol, `stone_altar`, five standing
+    stones, two `brazier`); boulders (`psxg_rock`, grown) and dead trees on the scorched ring; ten more palms, ferns, three boats, crabs.
+  - **THE SEA'S PLACES** (each on its own plot, open water between): THE WHALE (P06-02, the plan's scenery plot: a humpback and a whale
+    with their backs out, four dolphins); THE WATERSPOUT (P11-01, the plan's: drawn, 63 m, its own cloud, fish under it); THE ROCKS
+    (P04-01: eight drawn sea stacks, seals); THE KRAKEN (P07-03: six arms round a taken boat, a shark, a hammerhead); THE PALM ROCKS
+    (P02-00, P12-09); FLOTSAM (P06-07: crates, drums, a bottle, a ring, a boat adrift); THE SEA LANE (six unlit buoys from the Harbour's
+    Mouth to the Landing); the north-east islet a castaway's camp (a pirate, no line), the south-west one a haul-out (seals, flamingos).
+  - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
+    sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
+    `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
+    `tentacle` `tentacle2` `palmisle` `ship_wreck` `hullplate` `sea_buoy` `skiff` `rowboat` `meshy_rowboat` `ship_anchor` `sea_chest`
+    `beach_life_ring` `psx_wooden_crate_5` `psx_supply_crate_1_4` `psx_supply_crate_1_2_empty` `psx_metal_barrel_mp_0/2` `psx_glass_bottle_1/2`
+    `flamingo` `eagle`; island: `palm_tree` (+ tree kind `palm`) `fern` `dead_snag` `hollow_dead_tree` `psxg_dead_tree_1/2` `psxg_rock_1..4`
+    `sea_vent` `cave_stone` `fallen_log`; village: `campfire` `cave_torch` `brazier` `cauldron` `stock_pots` `greek_amphora` `stone_urn`
+    `taiko_drum` `instrument_drum` `instrument_maracas` `spear` `skull_pile` `skull` `item_ward_totem` `psx_carpet_mp_1` `psx_meat_1`
+    `psx_fish_skeleton_mp_1` `wooden_bucket` `cot` `rug_round` `psx_old_mattress_mp_1` `hw_straw` `psx_planter_pot_mp_1_empty`
+    `meshy_burlap_sack` `spell_shield` `dojo_weapon_rack`; shrine: `demon_statue` `stone_altar` `menhir` `sarsen` `trilithon`
+    `psx_gold_bar_pcs_1`. Section 13's 3,231 unwired files hold NOTHING for this place (clips, creator wear, .opt / .lod copies); the only
+    tribe-shaped files are creator clothes (`ewb_loincloth`, `ewb_leafdress`, `ewb_cape_leaf`, `mhw_elvs_basic_brave_feathers1`,
+    `mhw_culturalibre_skull_helmet`, `ewm_blowpipe`): they dress a tribe's PEOPLE when mondo makes them, they are not props.
+- **DECISIONS MADE FOR MONDO (overrule any in one line):**
+  1. The island's "black sand" is the dark gravel sheet `dirt_2` (no black sand sheet exists), scorched at the cone's foot, to the waterline.
+  2. The tribe stays WITHOUT PEOPLE (his word: their models come later). No race stands in for them.
+  3. Two walk-in huts were added to the plan's three shelters (a village needs houses; walk-ins are his rule for buildings).
+  4. The idol at the shrine is the game's `demon_statue`. It names nothing and nobody.
+  5. The waterspout is DRAWN on its plot (the shell's `waterspout` sky landmark was switched off by the tool row; this one is sailed round). It does not move.
+  6. The sea's places wear plain names for what is there: THE ROCKS, THE KRAKEN, THE PALM ROCKS, FLOTSAM, THE SEA LANE.
+  7. One castaway stands on the north-east islet: a pirate (the Beach's own list), no line.
+  8. Lava runs down the cone in two flows; it is scenery (the cone is never climbed, the flows end on scorched ground nobody needs to cross).
+- **NEEDS A MODEL (nothing stood in):** the tribe's people; a thatched hut and a totem pole / carved mask (the huts are drawn walls, the
+  gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
+  for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
+  a ship or raft out at sea; a moving waterspout (this one stands still).
+- **NOT DONE:** the huts' insides (pass 2); more dressing (pass 3); night and the island's real lights (pass 4); polish (pass 5). Nothing
+  under the water shows (the sea is opaque from above). No fight set up.
+- **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is a far cull for the whole sea
+  room, the tool row's or the engine's, not fewer props on one island).
 
 ## THE BEACH, THE TRIANGLE — district T (2026-11-16, `docs/areas/beach/districts/T.js`, the Triangle thread)
 
@@ -6600,6 +6675,13 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   light shafts (an arch part has no translucent material; the `light_shaft` prop is drawn by code and draws nothing), sound, a real mist sheet at the fall.
   FRAME RATE: the Meadow fell to 0.6 with the first cut of this pass; the Meadow's tiny clutter (plates, cans, matchbox, pillow: one draw each) and half its insects were
   taken out again: Meadow 1.0, Falls 1.2 (first look: 1.6 / 1.2). LESSON: every small prop is a draw; a ring of ten things nobody sees costs more than one landmark.
+- **PASS 5 OF 5, THE POLISH (an eye-level walk, 17 stops) — THE DISTRICT IS STOPPED, waits mondo's look.** Fixed: two Halloween limbs (`hw_part`, `hw_part_2`) stand
+  upright by themselves and read as a joke in the snow: out. Checked and left: the burial ground, the adit, the camp, the rest by the bridge, the drum circle, the old trees.
+  KNOWN SHORT (not fixed, five passes spent): the stepping stones are too small to see; the scarecrows stand in deep shade and are easy to miss; the Shelf's low wall is
+  four short pieces, not a run; the trail's edges between plots (the forest mass) carry only the room-wide scatter; no light shafts, no sound, no lit candles.
+  WHAT A NEXT THREAD WOULD DO: (1) a walkable top for the Falls (a path up the wall's west shoulder) if mondo wants the fall to lead somewhere; (2) cut the Survival,
+  Vegetation and Mine packs for bushes, a lean-to and the adit's timbering (a Blender job: new art, his OK); (3) a snow sheet and a bark sheet; (4) light shafts in the
+  engine (the Woods tool row + the renderer); (5) merge the district's small props into fewer draws if the weak PC shows the cost.
 - **FITS THIS DISTRICT (the whole-list read, 11-16; a helper read MODEL_LIST.md §6, 7, 8, 10, 12b, 13 and the live catalogue end to end).** Placed now: see above.
   NOT YET PLACED, FIT: `hw_fence` (more), `psxg_railing`, `psxg_wall_corner`, `xmas_snowman_2/3`, `spear`, `psx_stairs_5_wood`, `ship_lantern` (needs a bough over it),
   `psx_canned_food_mp_4`, `psx_shotgun_ammo_1`, `psx_ammo_box_1`, `urban:ClothTattered*` (prayer rags, a lean-to tarp), `urban:WoodGeneric1b` / `wood_planks` (a lookout deck),
