@@ -19,6 +19,8 @@
      the Old Tree at 19 m, the dark forest floor. The yards are DIRT squares opened in cut (YARDS below): a path square is not a free square, so no plot's
      middle moved and the Stair stands where it stood.
      PASS 2, THE INTERIORS: the ranger station's one room (office west, bunk + wood stove east; parts in its arch row, props through P()); the shelter's deck.
+     PASS 3, THE DRESSING (dressing(), called from build): the camp's ring, the Old Tree's bench and bees, the Crossroads' bench and cairn, the station's side
+     yard, the Fence Line's straw / pumpkin patch / well / hens, the stand's litter, a wreck in Deep woods south, the playground's leftovers, ten scatters.
    KNOWN MISSING / WAITING FOR MONDO
      - The life pass and the horror pass are live but wait for his look (the board).
      - THE STAIR IS SHARED: the room's spawn, its plate and the link woods_stair's free door (data.js, x -17.5, z 55.5, y 12.06) stand on the
@@ -57,6 +59,60 @@ const YARDS = [[8, 11, 41, 43],    // the ranger station's lot, south of the Tra
     [8, 8, 53, 53],                // the hunter's stand, Deep woods west
     [30, 33, 63, 66],              // the old playground, Deep woods east
     [29, 32, 58, 59]];             // the court at the foot of the Stair
+/* PASS 3, THE DRESSING (2026-11-16): catalogue pieces only, called at the end of build (its own dice). "Someone was just here": the camp is mid-evening, the
+   station's yard is mid-chore, the playground was left in a hurry; it gets worse the farther west and south you walk from the Stair (the horror pass's rule).
+   hput / hdec stand a piece on the plot's next free square (a blocker on its middle, a small thing off it); the camp's ring and the yards are placed by hand. */
+function dressing(ctx) {
+    const { N, gx, gc, r2, props, features, taken, centre, hput, hdec, life, fly, sow, rnd } = ctx;
+    const P = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z) }, o || {}));
+    /* ── THE CAMPFIRE (P01-04): the ring round the fire (the four squares beside it are kept for it), a second tent, the evening's leftovers ── */
+    { const c = centre('P01-04'), fx = gc(c[0]), fz = gc(c[1]); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(q => taken.add((c[0] + q[0]) + ':' + (c[1] + q[1])));
+      P('fallen_log', fx - 2.5, fz + 0.2, { face: 0 }); P('fallen_log', fx + 0.3, fz + 2.6, { face: 90 }); P('fallen_log', fx + 2.6, fz - 0.4, { face: 10 });
+      P('instrument_guitar_lying', fx - 2.2, fz - 1.5, { face: 250 }); P('instrument_drum', fx - 1.3, fz + 2.0, { face: 30 }); P('instrument_tambourine', fx - 0.6, fz + 2.2, { y: 0.02 });
+      P('beach_cooler', fx + 2.4, fz + 1.6, { face: 200 }); P('solo_cup', fx + 1.9, fz + 1.2); P('solo_cup', fx + 2.9, fz + 1.0, { face: 80 }); P('solo_cup', fx + 1.5, fz - 1.3); P('psx_glass_bottle_1', fx + 2.1, fz - 1.6); P('psx_glass_bottle_2', fx - 1.6, fz - 0.9);
+      P('folding_chair', fx + 0.4, fz - 2.3, { face: 0 }); P('folding_chair', fx - 1.0, fz - 2.1, { face: 20 }); P('retro_radio', fx + 1.1, fz - 2.5, { face: 200 }); P('psx_cassette_tape_mp_1', fx + 1.4, fz - 2.2, { y: 0.02 });
+      P('psx_canned_food_mp_3', fx - 0.9, fz - 1.1); P('coffee_mug', fx + 0.9, fz + 1.2); P('psx_matchbox_1', fx + 0.6, fz - 1.0, { y: 0.02 }); P('psx_lighter_mp_1', fx - 1.9, fz + 1.2, { y: 0.02 });
+      hput('P01-04', 'meshy_camping_tent', 3, -2, { face: 220 }); hdec('P01-04', 'psx_old_mattress_mp_1', -3, 0, { y: 0.02 }); hdec('P01-04', 'skateboard', 2, 3); hdec('P01-04', 'meshy_rope', -3, 2); hdec('P01-04', 'garbage_bag', 3, 2);
+      hdec('P01-04', 'psx_wooden_crate_3', -1, -3); hdec('P01-04', 'item_binoculars', 0, 3, { y: 0.02 }); hdec('P01-04', 'ship_lantern', -2, -1, { y: 0.5, noLight: true }); hdec('P01-04', 'psx_cigs_packet_1', 3, -1, { y: 0.02 }); }
+    /* ── THE OLD TREE (P01-03): a bench that looks at it, stones at its roots, the bees' tree, things left on the bench ── */
+    { const c = centre('P01-03'), tx = gc(c[0]), tz = gc(c[1]);
+      for (let i = 0; i < 7; i++) { const a = i * 0.9 + 0.3, d = 2.0 + (i % 3) * 0.35; P('psxg_rock_' + (1 + i % 4), tx + Math.cos(a) * d, tz + Math.sin(a) * d, { face: i * 67 }); }
+      P('bee_frames', tx + 0.9, tz - 0.5, { y: 3.2 }); P('bee_frames', tx + 1.1, tz + 0.2, { y: 2.7 }); P('bee_frames', tx + 0.6, tz - 0.9, { y: 3.6 }); P('chrysalis', tx - 0.75, tz + 0.5, { y: 2.2 }); P('caterpillar_bug', tx - 1.5, tz - 1.2);
+      const q = hput('P01-03', 'iron_garden_bench', 0, 3, { face: 180 }); if (q) { P('psx_book_mp_3', gc(q[0]) - 0.3, gc(q[1]), { y: 0.5, face: 30 }); P('hw_candles', gc(q[0]) + 1.2, gc(q[1]) + 0.3); }
+      hdec('P01-03', 'item_ward_totem', -3, 0); hdec('P01-03', 'fae_toadstool', 2, -2, { noLight: true }); hdec('P01-03', 'fae_toadstool', -2, -2, { noLight: true, h: 1.1 }); hdec('P01-03', 'instrument_violin_lying', 1, 3, { y: 0.02 });
+      hdec('P01-03', 'hw_web', -1, -1, { y: 1.5 }); hdec('P01-03', 'psxg_dead_bush_1', 3, 2); hdec('P01-03', 'wooden_bucket', -2, 2); }
+    /* ── THE CROSSROADS (P02-03): a bench and a bin by the signpost, a cairn, what walkers leave ── */
+    hput('P02-03', 'iron_garden_bench', -2, -1, { face: 90 }); hput('P02-03', 'metal_trash_can', 1, -2); hdec('P02-03', 'psxg_rock_1', 2, 2); hdec('P02-03', 'psxg_rock_3', 2, 2, { y: 0.6 }); hdec('P02-03', 'psxg_rock_4', -3, 3);
+    hdec('P02-03', 'psx_glass_bottle_2', -1, -3); hdec('P02-03', 'psx_canned_food_mp_5_rusty', 3, 0); hdec('P02-03', 'hw_pumpkin', 4, -2); hdec('P02-03', 'psxg_dead_bush_2', -3, -3); hdec('P02-03', 'item_dowsing_rod', 0, 3, { y: 0.02 });
+    /* ── THE TRAIL WEST (P00-03): the station's side yard, mid-chore ── */
+    { const yx = gc(11), y0 = gx(41);   // the side yard's column (east of the station), from the porch's line south
+      P('ride_on_mower', yx + 0.3, y0 + 8.3, { face: 200 }); P('tire_stack', yx + 0.9, y0 + 5.6); P('psx_metal_barrel_mp_1', yx - 1.2, y0 + 3.7); P('psx_jerrycan_1', yx + 0.9, y0 + 9.7, { face: 40 }); P('hw_shovel', yx - 1.1, y0 + 6.2, { face: 70 });
+      P('psx_wooden_crate_4', yx + 1.0, y0 + 1.0); P('garbage_bag', yx + 0.2, y0 + 2.6); P('cat', yx - 0.6, y0 + 0.9, { face: 300 }); }
+    /* ── THE FENCE LINE (P01-05): the Estate's edge: straw, a pumpkin patch, a well, hens, the scarecrow's twin ── */
+    { const c = centre('P01-05');
+      hput('P01-05', 'ancient_well', -2, -2); hput('P01-05', 'hw_scarecrow_2', 3, 1, { face: 200 }); hput('P01-05', 'hw_straw', 2, 3, { face: 20 }); hput('P01-05', 'hw_straw_2', 3, 3, { face: 80 }); hput('P01-05', 'hw_straw', -3, 3, { face: 100 }); hput('P01-05', 'hitching_rail', -3, 1, { face: 90 });
+      const q = hdec('P01-05', 'hw_farmland', 1, -2, { face: 0 }); if (q) { const x = gc(q[0]), z = gc(q[1]); [[-1, -0.9], [0, -1.0], [1, -0.8], [-0.9, 0.2], [0.2, 0.1], [1.1, 0.3], [-0.4, 1.0], [0.8, 1.1]].forEach((d, i) => P(['hw_pumpkin', 'hw_pumpkin_2', 'hw_pumpkin_3', 'hw_crop', 'hw_crop_2'][i % 5], x + d[0], z + d[1], { face: i * 50 })); }
+      hdec('P01-05', 'chicken', 0, 1); hdec('P01-05', 'chicken', 1, 1); hdec('P01-05', 'chicken', -1, 0); hdec('P01-05', 'wooden_bucket', -2, -1); hdec('P01-05', 'hw_shovel', -3, -1); hdec('P01-05', 'psx_wooden_crate_5', 2, -1); hdec('P01-05', 'dog', 0, 2); void c; }
+    /* ── DEEP WOODS, WEST (P00-04): under the stand, and what the wolf left ── */
+    { const sx = gc(8), sz = gc(53);
+      P('psx_glass_bottle_2', sx - 0.5, sz + 0.6); P('psx_shotgun_ammo_1', sx + 0.4, sz - 0.3, { y: 0.02 }); P('psx_shotgun_ammo_2', sx + 0.1, sz + 0.2, { y: 0.02 }); P('psx_cig_1', sx - 0.3, sz - 0.7, { y: 0.02 }); P('psx_ammo_box_mp_1', sx + 0.6, sz + 0.7);
+      hput('P00-04', 'hollow_dead_tree', -2, 2, { face: 40 }); hdec('P00-04', 'psx_meat_1', 1, -1, { y: 0.02 }); hdec('P00-04', 'femur', 0, 1); hdec('P00-04', 'ulna', 1, 1); hdec('P00-04', 'hw_part_3', -1, 2); hdec('P00-04', 'hw_part_5', 2, 2);
+      hdec('P00-04', 'psxg_dead_bush_1', -2, -1); hdec('P00-04', 'psxg_rock_2', 2, -2); hdec('P00-04', 'hw_web_2', -1, 0, { y: 1.3 }); hdec('P00-04', 'psx_smartphone_mp_1_broken', 0, -2, { y: 0.02 }); }
+    /* ── DEEP WOODS, SOUTH (P00-05): a wreck nobody drove here, and whoever was in it ── */
+    hput('P00-05', 'crashed_car_2', 0, 0, { face: 130 }); hput('P00-05', 'tire_stack', 2, 1); hput('P00-05', 'hollow_tree', -2, -1); hdec('P00-05', 'car_key', 1, -1, { y: 0.02 }); hdec('P00-05', 'psx_cell_phone_1', -1, 1, { y: 0.02 });
+    hdec('P00-05', 'hw_body_2', 2, -1); hdec('P00-05', 'psx_cigs_packet_1', 0, 2, { y: 0.02 }); hdec('P00-05', 'psxg_dead_bush_2', 3, 2); hdec('P00-05', 'psxg_rock_4', -2, 2); hdec('P00-05', 'hw_web', 1, 2, { y: 1.2 }); hdec('P00-05', 'psx_jerrycan_1', -1, -1);
+    /* ── DEEP WOODS, EAST (P02-05): the old playground's leftovers (its dirt lot: squares 30..33 x 63..66) ── */
+    { const X = gc(31), Z = gc(64);
+      P('iron_garden_bench', gc(30), gc(63) - 0.6, { face: 0 }); P('beach_ball', X + 3.6, Z + 4.4); P('football', X - 1.2, Z + 1.3); P('skateboard', X + 5.6, Z - 1.6, { face: 70 }); P('psx_lollipop_mp_1', X + 2.3, Z + 3.4, { y: 0.02 });
+      P('psx_handheld_game_console_1', gc(30) + 0.4, gc(63) - 0.5, { y: 0.5 }); P('metal_trash_can', gc(33) + 0.6, gc(63) - 0.5); P('psxg_dead_bush_1', gc(33) + 0.9, gc(66) + 0.6); P('hw_web', gc(32) + 0.2, gc(64), { y: 1.6, face: 20 });
+      P('xmas_gift_2', X + 0.9, Z + 5.2, { face: 40 }); P('crow', gc(32), gc(64), { y: 2.55, face: 200 }); }
+    /* ── THE STAIR (P02-04): flowers and ferns round the court, a bench to wait on ── */
+    hput('P02-04', 'iron_garden_bench', -3, 2, { face: 90 }); hdec('P02-04', 'woods_healflower', -2, 3, { h: 0.9 }); hdec('P02-04', 'woods_healflower', 2, 3, { h: 0.8 }); hdec('P02-04', 'fern', -3, 0); hdec('P02-04', 'fern', 3, 0); hdec('P02-04', 'psxg_rock_3', 3, 2);
+    /* ── THE SCATTERS (every disc inside the district): stones along the trails, dead bush and toadstools in the deep woods, heal flowers round the Stair ── */
+    sow('psxg_rock_1', 10, [10, 39], 14, { r0: 0.5 }); sow('psxg_rock_3', 12, [24, 41], 12, { r0: 0.5 }); sow('psxg_rock_2', 9, [18, 58], 14, { r0: 0.5 }); sow('psxg_rock_4', 9, [27, 62], 12, { r0: 0.5 });
+    sow('psxg_dead_bush_1', 14, [6, 58], 16, { r0: 0.5 }); sow('psxg_dead_bush_2', 8, [7, 66], 10, { r0: 0.5 }); sow('mushroom2', 16, [8, 60], 18, { h: 0.4, r0: 0.3 });
+    sow('woods_healflower', 16, [31, 55], 12, { h: 0.75, r0: 0.3 }); sow('fern', 26, [18, 50], 30); sow('stump', 8, [20, 60], 28);
+}
 module.exports = {
     id: 'C', name: 'The Clearing',
     ground: 'grass_dark_fantasy',   // THE GROUND BY DISTRICT: the forest floor (mondo's rule: forest floor = grass_dark_fantasy / dirt_2), not the room's bright lawn
@@ -215,5 +271,6 @@ module.exports = {
               box(sd * 2.25, 1.93, 1.2, 0.22, 0.32, 0.22, null, 0xffc46a, { glow: 1 }), box(sd * 2.25, 2.25, 1.2, 0.3, 0.05, 0.3, TIN, 0x35393c), box(sd * 2.25, 1.9, 1.2, 0.3, 0.04, 0.3, TIN, 0x35393c)];
           features.push({ k: 'arch', id: 'woods:stairfoot', x: fx, z: fz, rot: 0, parts: [...post(-1), ...post(1)] });
           props.push({ key: 'stone_urn', x: r2(fx - 2.5), z: r2(fz + 3.2) }, { key: 'stone_urn', x: r2(fx + 2.5), z: r2(fz + 3.2) }); }
+        dressing(ctx);
     },
 };
