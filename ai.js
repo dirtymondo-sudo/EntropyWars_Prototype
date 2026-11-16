@@ -1180,6 +1180,13 @@
             } catch (e) {}
             return dot * (dur || 2) * _offScale(unit, tg) * 0.8;
         }
+        if (id === 'radioactive') {   /* ☢ 11-16: one stack (dotPerStack a round, drains 1 a round off the sludge) + it glows (no hiding) */
+            let per = 20;
+            try { const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (G().STATUS_DEFS || {}); per = (defs.radioactive && defs.radioactive.dotPerStack) || 20; } catch (e) {}
+            const cur = Math.max(0, Number((tg && tg.status && tg.status.radioactive) || 0));
+            if (cur >= 3) return 10;
+            return per * (cur + 1) * _offScale(unit, tg) * 0.8 + 10;
+        }
         if (id === 'marked') return 45;
         if (id === 'discord') return 70;
         if (id === 'glare') return 35;
