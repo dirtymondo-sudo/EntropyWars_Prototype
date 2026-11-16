@@ -5548,3 +5548,12 @@ allyOnly, range 5, pullDistance 4, cleanse 1, cd 1). **CPR** (T3, heal range 1, 
 - THE WOMEN (mondo 11-16 "the women look good"): politician, professor and clown are `both` genders now (sprites.js RACE_SPRITE_GENDERS);
   their female Meshy models + sprites are on R2 `Assets/characters/races/<race>/female/` (RACE_MODELS_3D `female:`,
   _CHARACTER_SPRITES_GENDERED; the politician's sprite moved there from _HERO_RACE_SPRITES, which ignores gender). Same spells as the men.
+
+### 9. THE MEN (2026-11-16; mondo: "vampire, zombie, knight, shaman, necromancer, cyborg, ki fighter, mummy, gargoyle, atlantean,
+fallen angel, swordfighter, and mime. let's also do merman and incubus")
+Fifteen races that only had a woman now have a man too, same spells: Meshy models made + rigged by Claude, on R2
+`Assets/characters/races/<folder>/male/Meshy_AI_<key>_Running.glb` + `<key>.png` (merman under mermaid/, incubus under succubus/).
+sprites.js: RACE_MODELS_3D `male:` rows, `_NEW_MALE_SPRITES` (read first by getR2RaceSpriteUrl for a male), RACE_SPRITE_GENDERS `both`
+for cyborg / mummy / swordfighter / mime / mermaid / succubus (the rest were `both` already but had no male model, so the 3D-only
+roster offered only the woman). data.js RACE_PROFILES labelMale: Merman, Incubus. No male Meshy knight existed before (the female
+knight + King Arthur only). Probe 11-16: all 15 drawn as 3D models with their own sprites + labels, 0 page errors.

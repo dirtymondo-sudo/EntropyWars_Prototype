@@ -2713,6 +2713,7 @@ const RACE_PROFILES = {
     },
     succubus: {
         label: 'Succubus',
+        labelMale: 'Incubus',   // 2026-11-16 THE NEW RACES — the man
         types: ['unholy']
     },
     skeleton: {
@@ -2821,6 +2822,7 @@ const RACE_PROFILES = {
     },
     mermaid: {
         label: 'Mermaid',
+        labelMale: 'Merman',   // 2026-11-16 THE NEW RACES — the man
         types: ['anomaly']
     },
     nephilim: {
