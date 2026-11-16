@@ -290,3 +290,6 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   three-line fix in three-renderer.js `_nrTree` (THE OFF-CENTRE MODEL; notes: areas-complexes.md "THE MOUNTAINS, THE SNOWY PASS"). The Christmas pack's tree models (`xmas_snow_pine*`,
   `xmas_pine*`) were drawn 20 to 50 m away from where their trunks are planted and collide (a pine stood inside my Warming Hut). They stand on their own spots now. Nothing in any
   room's data changed, no tool changed. If a snow pine you liked "moved", it was never where it was drawn; if one now stands where you do not want it, it is a `t` square or a `tree` row of yours.
+- 2026-11-16 (owner, on mondo's order with a picture, to the Shore's holder and the Mountains tool row): THE WIDE BOARDWALK. `docs/disaster-city/districts/B.js` beach() paints the city's own
+  squares between the coast road and the old boardwalk as planks (cx 139-143, Entertainment + Bayside; the mole too). Paint only; nothing in W.js, S.js or any tool was touched, and the
+  two-square boardwalk, the sand and the Shore's rows are as they were. Notes: areas-complexes.md "DISASTER CITY, THE WIDE BOARDWALK".

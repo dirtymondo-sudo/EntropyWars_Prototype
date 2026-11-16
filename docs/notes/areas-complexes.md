@@ -8704,3 +8704,19 @@ tile sheet, graffiti.
 - `P` / `D` / `T` (a blocker on a square's middle, decor, a tree) leave a piece OUT when its square is not free and list it in the bake's log (`LEFT OUT`), where the old
   `put` / `dec` stop the bake.
 - Frame rate (cloud software GPU, frames a second over 20 s, measured last in the run): terrace 0.7 then 0.6 after the brush was thickened; Casino court 1.4 then 1.3.
+
+## DISASTER CITY, THE WIDE BOARDWALK — planks from the coast road to the beach (2026-11-16, mondo's order with a picture)
+mondo (a night picture of the coast road from the air, the ground east of it circled in red, the mole and its arm to the lighthouse too): "this whole ground
+right here that is between the road and the beach, can we make it wooden planks so its like a boardwalk, only along one side of that street, closest to the
+beach. but keep the ground under industrial as is, concrete."
+- WHAT: paint only. `docs/disaster-city/districts/B.js` beach(), block THE WIDE BOARDWALK: every open square (yard `.`, pavement `P`, edge band `#`) between
+  the coast road and the old two-square boardwalk is `wood_planks`. In the city's squares as it stands today: cx 140-143 beside the carriageway (cx 136-139),
+  rows 41-95 (the road's corner in Entertainment down to Bayside's last row); north of the corner, rows 0-39, the line is cx 139 (the east side of
+  Entertainment's lane), so the ground round its beach-front buildings is planks. THE MOLE (rows 48-49, its arm and round head) is planks too, was
+  `urban:ConcreteStriped2a`. 274 squares changed; no feature, prop, height or square letter changed (checked: the tool's dump before and after).
+- NOT TOUCHED: anything west of the road; a building's floor and door square (`I` / `D`); Industrial (rows 96+: its yard `urban:ConcreteUnderTiles1`, its
+  pavement, Q.js' apron). The line between planks and concrete is Bayside's last row.
+- The tool paints a tree's soil bed after the district files, so the palms on the strip keep their sand squares.
+- To take the mole back to concrete: the `paintCell` line in beach()'s ground loop (`(mole && cx >= 146) || deck`). To move the west line: the `cx` start in the block.
+- Seen on screen (probe, by day, HEAD of the PR): the strip, the mole, Entertainment's front, the Industrial line. In the pictures the planks are the same
+  sheet as the old boardwalk; the sheet is a dark grey-brown, it reads as wood by day and nearly as dark as the concrete at night.
