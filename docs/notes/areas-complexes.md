@@ -6509,6 +6509,9 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **FROM THE FOREST (district W, pass 3)**: REEDS FOR ANY WATER = `ocean_seaweed` / `_2` / `_3` with `h` 2.3 to 3 in a `stream` 2 m deep (the
+  feet stand on the bed; the tops sway over the water). `native()` takes grass squares only. A flat ground patch needs `gain` 1.45 on
+  `dirt_2` or it is a black disc.
 - **FROM THE FOREST (district W, pass 2)**: a small walk-in on open ground needs no plan letters: `ctx.building('w_hut', [x0, y0, x1, y1], 'N', 3.5, …)`
   on grass squares, then `sq()` every square it covers. `sheet().shell()` takes no `gain`: set it on the two parts it pushed
   (`a.P.slice(-2)`). In a 3.5 m house the lit ceiling hangs at 2.95 (at 3.18 it lies in the building's own black ceiling). `cot` is a
@@ -6604,6 +6607,16 @@ forest glade, the dead tree's hole.
   black (the shell now takes `gain` 1.5, the thatch 1.9); the lit ceiling sat ON the building's black one (it hangs at 2.95 in a 3.5 m
   house now); the two rowboats are pulled up on the bank (a prop's `y` under 1 m is a lift from the ground UNDER it: over the moat
   that is the bed, so a boat set "at the water's level" sank; 1 m or more is a height from the room's level, and it flew).
+- **PASS 3, DRESSING + LIFE (seen: 12 views)**. PEOPLE, all silent (no line is invented): `robinhood` at the camp, a `knight` at the
+  bay, a `wizard` in the stone ring, a `tree person` and a `rabbit` in the woodcutter's glade (the probe showed the wizard and the
+  rabbit; the others were not in their views: the spawn system decides who stands). ANIMALS: hens and the dog in the hut's yard, a
+  wolf at the ring's edge, crows on the stones and the milestone, rabbits on the verge, frogs at the boats, bees, butterflies, a
+  ladybug, an anthill. GROUND: trodden earth (flat `dirt_2` discs) at the hut's door, the fire, the ring, the well, the wagon;
+  `leaves_3` under the four great oaks; stepping stones into the camp and the ring. PLANTS: 16 flowers (`woods_healflower`, a few
+  `woods_thornvine`) under the oaks and at the glades' edges; REEDS along the moat's south bank = the Ocean pack's `ocean_seaweed*`
+  at `h` 2.3 to 3.0 standing on the bed, so 0.3 to 1 m shows over the water (it reads as reeds and it sways). Also: signposts at the
+  track's two far crossings, straw and pumpkins at the hut, a drum and a fiddle at the camp, candles on the altar stone, a staff.
+  Frame rate at the bay 0.60 (unchanged); geometries 2,068, draw calls 4,675 (the natives and animals).
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
   the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
   (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
