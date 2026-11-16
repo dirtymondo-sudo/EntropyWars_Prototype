@@ -30,8 +30,9 @@ exports.build = function (c) {
         [[-7.4, -Hf], [7.4, -Hf], [-7.4, Hf], [7.4, Hf], [0, -Hf], [0, Hf]].forEach((q, i) => a.dome(q[0], T + (i > 3 ? 3.25 : 0.85), q[1], 0.32, 0.32, CRY, 0xe0d0ff, { glow: 0.7 }));   // crystal finials
         /* the two piers of the open south side, where the columns are left out */
         a.box(-1.75, 0, Hf, 0.5, 0.5, 0.5, MRB, 0xffffff); a.box(1.75, 0, Hf, 0.5, 0.5, 0.5, MRB, 0xffffff); });
-    /* THE STILL WATER (P03-04) */
+    /* THE STILL WATER (P03-04): the pool in the island's south-west, a marble kerb on its two open sides (pass 4), a seat of marble */
     c.pool('P03-04', 3, 8.5, 5.2, 'water');
+    c.look('stillkerb', 'P03-04', 3, 8.5, 0, a => { a.box(0, 0, -5.6, 9.6, 0.35, 0.5, MRB, 0xffffff); a.box(5.6, 0, -0.6, 0.5, 0.35, 10.4, MRB, 0xffffff); a.dome(5.6, 0.35, -5.6, 0.45, 0.45, CRY, 0xe0d0ff, { glow: 0.8 }); a.dome(-4.6, 0.35, -5.6, 0.3, 0.3, CRY, 0xe0d0ff, { glow: 0.8 }); a.dome(5.6, 0.35, 4.4, 0.3, 0.3, CRY, 0xe0d0ff, { glow: 0.8 }); });
     /* THE CLOSET (P04-00; pass 1): a wardrobe seven metres wide standing over the walk south, both doors open, no back to it. You walk
        through between the coats and the floating steps behind it go down into the Nightmare. The frame: the middle of its floor. */
     c.look('closet', 'P04-00', 6, 9.5, 0, a => { const Wd = 3.95, Ht = 5.0, Dp = 1.5;
@@ -133,6 +134,11 @@ exports.dress = function (c) {
     c.plots.forEach((p, i) => { if (p.id === 'P02-02') return; c.put('globe_lamp', p.id, i % 2 ? 4.4 : 7.6, i % 3 ? 4.4 : 7.6); });
     [['P02-00', 4.4, 9], ['P03-00', 7.6, 9], ['P02-01', 4.4, 2], ['P03-01', 4.4, 9], ['P02-03', 7.6, 2], ['P03-03', 4.4, 9.4], ['P02-04', 7.6, 9.6], ['P03-04', 7.6, 2], ['P01-05', 4.4, 2], ['P00-05', 9, 4.4], ['P04-00', 4.4, 4.4], ['P05-00', 7.6, 7.6]].forEach(q => c.dec('mushroom_lamp', q[0], q[1], q[2]));
     [['P02-00', 0.2, 6, 5], ['P03-01', 0.4, 0.4, 7], ['P02-03', 11.7, 6, 4], ['P03-03', 0.3, 11.6, 6], ['P02-05', 11.6, 0.4, 5], ['P03-05', 0.3, 6, 3], ['P00-05', 6, 0.3, 4], ['P05-00', 6, 11.7, 5]].forEach(q => c.at('white_cloud', q[0], q[1], q[2], { y: c.base(q[0]) - q[3] }));
+    /* ── PASS 4 (dressing the rims + the last landmarks): crystals and flowers on every island's edge, so no island ends in a bare line;
+       a marble kerb round the two pools; the temple's thought-forms ── */
+    const RIM = ['crystal_cluster', 'fae_flower_small_violet', 'meshy_crystal_shards', 'fae_flower_small_blue', 'crystal_cluster', 'fae_flower_small_pink', 'meshy_crystal_shard'];
+    c.plots.forEach((p, pi) => { const rim = c.rim(p.id); let n = 0; rim.forEach((q, i) => { if ((i + pi) % 5 || n >= 5) return; const k = RIM[(i + pi * 3) % RIM.length]; c.dec(k, p.id, q[0], q[1]); n++; }); });
+    c.put('thoughtform', 'P03-01', 6.4, 2); c.put('thoughtform', 'P03-01', 6.4, 4); c.put('marble_bust', 'P03-01', 2, 4.4, { face: 90 }); c.put('angel_statue', 'P03-01', 3.4, 2.4, { face: 135 });
     /* clouds under the Sea's islands, hung in the sky between them */
     [['P02-01', 0.3, 11.5, 4], ['P03-03', 11.6, 0.4, 5], ['P02-04', 11.5, 11.5, 3], ['P01-05', 0.3, 0.3, 4], ['P04-00', 0.2, 11.4, 6], ['P03-00', 11.7, 11.6, 3]].forEach(q => c.at('white_cloud', q[0], q[1], q[2], { y: c.base(q[0]) - q[3] }));
 };
