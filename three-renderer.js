@@ -84786,7 +84786,7 @@ const ThreeRenderer = (function () {
         var roomId = opts.room || 'central_egress', prof = opts.profile, av = opts.avatar || {};
         var crowd = opts._crowd || null;   // THE CROWD CAP (2026-10-01): the room's one budget, shared with _hqSpawnPopulation
         var R = _hqRoundsRules(), now = performance.now();
-        _hqNavStart();   // the lattice (built over the next frames) — started first so the stops' floor reads leave the people out of the furniture
+        if (!(_hq._resumed && _hq.nav)) _hqNavStart();   // (THE PARKED ROOM: a resumed room keeps the lattice it has — the people are placed again, the room's walk map is not built again)   // the lattice (built over the next frames) — started first so the stops' floor reads leave the people out of the furniture
         var gone = [];
         try { var cl = (prof && typeof hqEncounterCleared === 'function') ? hqEncounterCleared(prof, roomId) : null; if (cl && cl.ids) gone = cl.ids; } catch (e) { gone = []; }
         var resRoom = false; try { resRoom = _hqResStart(room, opts); } catch (e) { console.warn('[HQ] the residents skipped', e); }   // THE RESIDENTS (2026-11-14): the city's own people

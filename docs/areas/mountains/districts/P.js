@@ -40,8 +40,13 @@
    pines); seven more real fires where people stop (torches at the Pass Gate and the Shelter, braziers at the Gate's yard, the Lookout, the Sleigh Bend and the Hut,
    a campfire at the Way Shelter; with the hearths, the camps and the High Pass's two: 14 lights in the district); smoke from the three flues
 
-   KNOWN MISSING OR WRONG (the last pass: 5 polish)
+   THE POLISH (pass 5, seen): tie beams under the hut's ceiling, rafters and a lighter underside in the two log shelters, the sleigh's two runner lines in the snow,
+   the ROPE BRIDGE board, lamp posts on three sheets (not five). FIVE PASSES ARE DONE: this file is STOPPED until mondo has looked (his 11-16 order).
+   Proof pictures: docs/areas/mountains/proof/P_pass5_*.jpg
+
+   KNOWN MISSING OR WRONG (for after his look)
    - The 22 lamp posts and snow poles are a `look` each (draw calls): one look for all, as district S did, if the frame rate asks for it
+   - No upstairs anywhere; the Rope Bridge is solid ground dressed as a bridge; the yetis have no lines; no encounter table (his)
    - NOT THIS FILE'S (the tool's / the engine's): green summer trees stand past the Pass Gate (the room's west edge land); the room's edge wall north of the Ridge;
      the snow's paint shows its tile grid; the rock sheet is very large on the crags; a north drop off the Ridge is not possible (the edge land climbs from the wall)
 
@@ -117,6 +122,7 @@ const logHouse = (a, w, d, dr, q, ctx) => { const { WD, WD2, FLR } = ctx, h = q.
     for (const s of [-1, 1]) for (let z = -d / 2 + 2.6; z < d / 2 - 1; z += 3.5) pane(a, z, 1.15, s * (w / 2 + 0.14), 1.3, 1.25, true);
     a.box(0, h + q.rh * 0.42, d / 2 + 0.94, 0.7, 0.7, 0.06, 'marble_light', PANE, { glow: 1.0, roof: true });
     lit(a, w, h, d, dr, WD, 0xd8b088, 0.85, ctx); for (const x of (q.lamps || [0])) lamp(a, x, h - 0.32, 0.3);
+    for (let x = -w / 2 + 3.5; x < w / 2 - 1; x += 3.5) a.box(x, h - 0.72, 0, 0.24, 0.26, d - 0.7, WD2, 0x6a4a34, { glow: 0.7, gain: 1.4 });   // (pass 5) the tie beams under the ceiling
     for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) { if (Math.abs(x - dr.lx) < 1.7) continue; nightPane(a, x, 1.15, d / 2 - 0.36, 1.3, 1.25, false); } for (const s of [-1, 1]) for (let z = -d / 2 + 2.6; z < d / 2 - 1; z += 3.5) nightPane(a, z, 1.15, s * (w / 2 - 0.36), 1.3, 1.25, true);
     if (q.chimney) { hearth(a, q.chimney, d, h - 0.36, 1.15, WD2); a.box(q.chimney, 0, -d / 2 - 0.4, 1.7, h + q.rh + 0.9, 1.0, 'rocks_5', STONE, ROCK(0, { roof: true })); a.box(q.chimney, h + q.rh + 0.9, -d / 2 - 0.4, 1.9, 0.22, 1.2, 'ice', SNOW, { roof: true }); }
     if (q.porch) { a.box(0, 0, d / 2 + 1.75, w, 0.16, 3.4, FLR, 0x8c7a62, { uv: [1.75, 1.75] }); const n = Math.max(2, Math.round(w / 3.5));
@@ -141,7 +147,8 @@ const leanTo = (a, w, d, ctx) => { const { WD, WD2 } = ctx, g = { gain: 1.7 }, P
     for (let y = 0.3; y < 2.2; y += 0.5) { a.box(0, y, -d / 2 + 0.3, w - 0.5, 0.24, 0.06, WD2, 0x6a4c36, g); }
     const n = Math.max(2, Math.round(w / 3.5)); for (let i = 0; i <= n; i++) a.cyl(-w / 2 + 0.2 + i * (w - 0.4) / n, 0, d / 2 - 0.2, 0.15, 3.1, WD2, P, { seg: 8, gain: 1.6 });
     a.box(0, 3.0, d / 2 - 0.2, w + 0.2, 0.22, 0.22, WD2, P, { gain: 1.6 }); for (const s of [-1, 1]) a.box(s * (w / 2 - 0.14), 2.3, 0, 0.2, 0.16, d, WD2, P, { gain: 1.6 });
-    a.roof('shed', 0, 2.45, 0, w + 0.9, 0.9, d + 1.0, 'ice', SNOW, { ry: 180 });
+    a.roof('shed', 0, 2.45, 0, w + 0.9, 0.9, d + 1.0, 'ice', SNOW, { ry: 180 }); a.P[a.P.length - 2].tint = 0x8a6a4a; a.P[a.P.length - 2].gain = 1.9;   // (pass 5: the roof's under sheet read black from the open front)
+    for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) a.box(x, 2.3, 0, 0.16, 0.16, d - 0.3, WD2, P, { gain: 1.6 });
     a.box(0, 0.42, -d / 2 + 0.62, w - 1.4, 0.08, 0.5, WD2, 0x8a6a4a, g); for (let x = -w / 2 + 1.0; x <= w / 2 - 0.99; x += (w - 2) / 2) a.box(x, 0, -d / 2 + 0.62, 0.1, 0.42, 0.44, WD2, P, { gain: 1.6 });
     a.box(0, 0, -d / 2 - 0.4, w + 1.2, 0.4, 0.8, 'ice', SNOW); };
 /* a stack of split logs under a cap of snow (along x) */
@@ -297,7 +304,7 @@ exports.build = ctx => { ctx0.WD2 = ctx.WD2;
   const ghost = (id, lx, ly, t) => { const q = S(id, lx, ly); feat({ k: 'wall', x0: r2(mx(q[0]) - (t || 1.2) / 2), z0: mz(q[1]), x1: r2(mx(q[0]) + (t || 1.2) / 2), z1: mz(q[1]), t: t || 1.2, h: 2, ghost: true, rail: false }); };
   /* a lamp post: a log post on a stone foot, a lit lantern on its arm (the village's is candy-striped; the pass's is a bare log) */
   const lampPost = (id, lx, ly, turn) => { const q = mark(id, lx, ly), sx = turn ? -1 : 1; look('lamp:' + id + ':' + lx + ':' + ly, mx(q[0]), mz(q[1]), a => { a.cyl(0, 0, 0, 0.3, 0.3, 'rocks_5', 0x9a9aa0, ROCK(0, { seg: 8 })); a.cyl(0, 0.3, 0, 0.1, 2.9, WD2, POST, { seg: 8, gain: 1.6 });
-        a.box(sx * 0.3, 2.95, 0, 0.7, 0.08, 0.08, WD2, POST, LG); lantern(a, sx * 0.55, 2.5, 0); a.box(sx * 0.55, 2.84, 0, 0.03, 0.12, 0.03, GM, GT); a.cyl(0, 3.2, 0, 0.14, 0.08, 'ice', SNOW, { seg: 8 }); }); };
+        a.box(sx * 0.3, 2.95, 0, 0.7, 0.08, 0.08, WD2, POST, LG); a.box(sx * 0.55, 2.5, 0, 0.2, 0.28, 0.2, 'marble_light', 0xffb050, { glow: 1.3 }); a.box(sx * 0.55, 2.78, 0, 0.28, 0.17, 0.28, WD2, POST, LG); }); };   // (pass 5: three sheets a post, not five: the draw calls)
   /* a snow pole: the trail's marker, banded, a red top that shows at night */
   const snowPoles = (id, list) => { list.forEach(([lx, ly, dx, dz]) => { const q = S(id, lx, ly); look('pole:' + id + ':' + lx + ':' + ly, r2(mx(q[0]) + dx), r2(mz(q[1]) + dz), a => { for (let i = 0; i < 5; i++) a.cyl(0, i * 0.5, 0, 0.045, 0.5, null, i % 2 ? 0x1c1c1c : 0xf08a20, { seg: 6 }); a.cyl(0, 2.5, 0, 0.06, 0.16, null, 0xff3020, { seg: 6, glow: 1.4 }); }); }); };
   /* THE RIDGE */
@@ -321,12 +328,14 @@ exports.build = ctx => { ctx0.WD2 = ctx.WD2;
   snowPoles('P06-01', [[4, 6, 1.5, 1.6], [2, 7, 0, -1.6], [6, 7, 1.6, 0]]);
   /* THE SLEIGH BEND: the sleigh shed in the west nook, the team's horse, hay, a second sleigh out on the snow */
   { const q = S('P04-02', 2, 7); look('sleighshed', mx(q[0]), mz(q[1]), a => { leanTo(a, 10.5, 3.5, ctx); board(a, 'SLEIGHS', 0, 3.3, 1.72, 2.6, 0.55, '#f4ecd8', '#3a2a20', 'fell'); lantern(a, 4.6, 2.3, 1.2); }); R.ARCH[R.ARCH.length - 1].rot = 270; }
+  { const q = S('P04-02', 4, 7); look('sleightracks', mx(q[0]), mz(q[1]), a => { for (const z of [-0.55, 0.55]) { a.box(1.2, 0.015, z, 9.0, 0.02, 0.14, 'ice', 0xb4c4dc, { sides: false }); a.box(5.4, 0.015, z - 3.5, 0.14, 0.02, 7.0, 'ice', 0xb4c4dc, { sides: false }); } }); }   // (pass 5) the runners' two lines from the shed to the trail
   put('P04-02', 'sleigh', 2, 7, { face: 90 }); put('P04-02', 'hw_straw', 2, 6, { face: 0 }); dec('P04-02', 'hw_straw_2', 2, 8); put('P04-02', 'sleigh', 5, 6, { face: 30 }); put('P04-02', 'xmas_snowman', 6, 8);
   put('P04-02', 'hitching_rail', 3, 9, { face: 0 }); put('P04-02', 'horse_black', 4, 9, { face: 90 }); dec('P04-02', 'xmas_gift', 5, 7); dec('P04-02', 'money_sacks', 4, 6); lampPost('P04-02', 4, 5, 0); native('P04-02', 'yeti', 5, 8, 300);
   /* THE FROZEN TARN: the fishers' camp on the east shore, a boat frozen in, the catch by the holes */
   put('P05-02', 'camping_tent', 9, 4, { face: 200 }); put('P05-02', 'campfire', 9, 5); dec('P05-02', 'sea_chest', 8, 5); put('P05-02', 'rowboat', 9, 8, { face: 60 }); dec('P05-02', 'lobster_traps', 8, 8);
   dec('P05-02', 'wooden_bucket', 8, 4); dec('P05-02', 'psx_chair_mp_1', 7, 5); dec('P05-02', 'psx_fish_skeleton_mp_1', 4, 7, { y: 0.06 }); dec('P05-02', 'psx_chair_mp_1', 5, 8); dec('P05-02', 'beach_cooler', 4, 8);
   /* THE ROPE BRIDGE */
+  { const q = S('P06-02', 7, 4); look('bridgeboard', r2(mx(q[0]) + 1.2), r2(mz(q[1]) + 1.2), a => { a.box(0, 0, 0, 0.14, 2.3, 0.14, WD2, POST, LG); board(a, 'ROPE BRIDGE', 0, 1.6, 0.08, 2.4, 0.5, '#f4ecd8', '#3a2a20', 'fell', { ry: 180 }); board(a, 'ROPE BRIDGE', 0, 1.6, -0.08, 2.4, 0.5, '#f4ecd8', '#3a2a20', 'fell'); }); }
   lampPost('P06-02', 4, 4, 0); dec('P06-02', 'psx_wooden_crate_1', 7, 3); dec('P06-02', 'psx_supply_crate_1', 5, 4);
   /* THE TREE LINE, WEST: the woodcutter's camp, and the wolves that watch it */
   { const q = mark('P04-03', 2, 7); look('woodcamp', mx(q[0]), mz(q[1]), a => { woodpile(a, 0, 0, 3.0); woodpile(a, 0, 3.5, 3.0);

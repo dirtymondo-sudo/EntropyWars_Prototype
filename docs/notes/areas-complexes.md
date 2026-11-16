@@ -4700,9 +4700,24 @@ list holds for the next passes, the models it needs. mondo 11-16: a second distr
     in the room's prop order: P's, then K's Lodge fire and campfire, ...). So K adds no light: 14 lamp posts (`lampPost`: a timber post, a lit lantern), four
     floodlights on each lift tower, four `flood_mast`s by the runs (their glow shows; their light is past the ten), strings of bulbs (`bulbs`) under every
     eave and along the Lodge's porch, `glow` on every board, a lit dot on every marker pole, smoke from the Top Station's stove pipe.
-  - FPS (settled, the Lodge Yard at night): 1.66 before -> see the PR (the same view). No new light, about 400 small glowing boxes in merged rows.
+  - FPS: measured back to back in pass 5 (below). No new light, about 400 small glowing boxes in merged rows.
   - DECISIONS MADE FOR MONDO, added: (11) night skiing is glow, not light: real light on the runs needs the room's light cap raised or shared by distance
     (the engine's; listed, not done). (12) Warm white bulbs only (the coloured strings are the North Pole village's).
+- **PASS 5, POLISH** (5 of 5, the last: THE THREAD HAS STOPPED and waits mondo's look). A walk at eye height (11 views) found: THE HALF-PIPE ran off its
+  board (text cut off: the boards are 4.2 m now, the words 3.0 at most); the Lodge's back board stood half behind the wheel house's column (moved west);
+  a lit pane showed the marble sheet's veins by day (panes wear the plain `ice` sheet); the Rental's hatch had no bar.
+  - FPS, the fair reading: the SAME main, K.js as it was after pass 3 against K.js now, one run after the other, four settled readings each (the probe's
+    software GPU): the Lodge Yard at night 1.44 and 1.76 -> 1.54 and 1.90; from the Top Station at night 1.44 -> 1.48; the Lodge Yard by day 1.78 -> 1.83.
+    Passes 4 and 5 cost nothing that can be measured. The same view read twice in one run differs by 0.3 (1,400 to 2,100 draw calls: the room's own
+    culling), so a single reading proves little. Over the whole thread: the Lodge Yard by day 1.41 before pass 1, 1.83 now; inside the Lodge 2.0 -> 1.45
+    (the one place that got slower: a second skin of walls and 150 props where there was a dark empty hall).
+  - AGAINST A FINISHED CITY DISTRICT (the 75 % bar): has built unique walk-ins with lit furnished insides on the squares, a second layer outside, signs in
+    one face, lamps, a night look, dressing on all twelve plots, air. Still short: nobody works or stands here (the room's 14 bodies are spoken for by
+    24 natives of four districts: waits THE NPC SPAWN SYSTEM), no upstairs or second room in the Lodge, no sound, the lift does not move, the day windows
+    are lit cream panes not dark glass, and the models on the NEEDS A MODEL list.
+  - WHAT I WOULD DO NEXT (for mondo to pick): 1 the lift moves and carries the player (a mechanic). 2 A real night-skiing light: the engine's ten-light cap
+    shared by distance. 3 Staff and guests once the NPC system lands. 4 The Meshy list: skis, snowboards, a snow gun, a groomer, netting, an elk head, a
+    pool table. 5 The Big Jump's line turned so it ends in the yard, not on the Lodge's back wall (the tool's heights and paint).
 - To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
   x 21.4, z -59.3 (the probe, 11-16).
 
@@ -7717,8 +7732,15 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   `campfire`), 14 lights in the district in all; `chimney_smoke` on the three flues (`floor: false`, `y` = the flue's top from the ROOM's floor: the plot's ground + the wall +
   the roof). At night the lit panes, the lanterns, the flags (`glow` 0.25), the ice (`glow` 0.35) and the Mast's red lights carry the picture. Not this file's: the south edge
   forest and the west edge's green trees stay day-bright at night.
+- **PASS 5, POLISH** (seen, 15 views by day and at night; proof `docs/areas/mountains/proof/P_pass5_*.jpg`): tie beams under the hut's ceiling, rafters in the log shelters,
+  the sleigh's runner lines (two flat `ice` boxes a shade darker than the snow: the only "track" there is, no decal exists), the ROPE BRIDGE board, lamp posts on three
+  sheets. **THE DISTRICT IS STOPPED after its five passes** (mondo's order): nothing more until he has looked.
+  WHAT I WOULD DO NEXT: (1) his word on the nine decisions below; (2) the Meshy list (a wood stove, skis + snowshoes on a rack, a snow sled, an ice axe, a backpack,
+  reindeer for the sleigh team, a cairn and a prayer-flag string as real models); (3) one look for all lamp posts and poles; (4) lines for the yetis and a keeper at the
+  Gate House once the NPC system says who lives here; (5) with the tool's row: grey the rock sheet's scale on the crags, take the tile grid out of the snow paint,
+  winter trees on the west edge land past the Pass Gate.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
@@ -8714,3 +8736,16 @@ tile sheet, graffiti.
 - `P` / `D` / `T` (a blocker on a square's middle, decor, a tree) leave a piece OUT when its square is not free and list it in the bake's log (`LEFT OUT`), where the old
   `put` / `dec` stop the bake.
 - Frame rate (cloud software GPU, frames a second over 20 s, measured last in the run): terrace 0.7 then 0.6 after the brush was thickened; Casino court 1.4 then 1.3.
+
+### PASS 4, THE NIGHT (live; seen on screen at hour 22.5 and by day, 14 views)
+(Belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES".) `hillsLights(ctx)` in N.js + two lines in the sign's own block + three lamps in `exports.build`.
+- THE LETTERS SHINE: each letter's plane carries `glow` 0.92 (drawn unlit, so it reads from the Casino court at night as it does by day), two floods at each letter's foot.
+- Warm windows on the three new houses (a pane a hand proud of the dark glass, `glow` 0.95; a `ring` of them round the Round House's drum), lamps at their doors.
+- Eight lamp standards on the Observatory's terrace (ONE drawn row on the level terrace), the pool's ring of light and two rail lamps, a lantern on the fire lookout,
+  the transmitter hut, the intake tower, the lot's shelter, the horse shed; a red point on the Peak's pillar.
+- REAL LIGHTS kept few: three more of the city's lamp posts (`ctx.lamps`, `d: 'N'`): the terrace's west way in, the Hikers' Lot, the Villa's drive (18 in the district).
+  Everything else is `glow` on drawn parts: no cost. The props that carry their own light: two flood masts, the fountain, the A-Frame's fire, the house lamps inside.
+- A PROBE AT NIGHT: a view's eval `window._hqClockHour = function () { return 22.5; }` (then `"settle": 6000`); back to day the same way with 13.
+- NOT DONE: air (dust, embers over the Burn, fireflies). The city's room has no `shell.atmos`; a zone's particles are born at the room's floor, and the Hills stand 26 to
+  45 m over it. It needs the tool's row (a zone with its own ground height): listed for mondo, not built.
+- Frame rate (same measure): terrace 0.7, Casino court 1.1 (1.3 to 1.4 before this pass; the run was still loading 87 files when it was measured).
