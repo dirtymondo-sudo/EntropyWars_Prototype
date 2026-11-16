@@ -156,12 +156,47 @@ exports.build = ctx => {
   /* ── THE TERRACES (P12-02): vine rows on posts between low stone walls, a fountain ── */
   plotLook('P12-02', 'terraces', 4, 7, false, a => {
       const vine = (lx, ly) => { const x = X(lx), z = Z(ly); for (const s of [-1, 1]) a.box(x + s * 1.5, 0, z, 0.14, 1.9, 0.14, WD2, 0x6a4a30, { gain: 1.4 }); a.box(x, 1.84, z, 3.5, 0.1, 0.12, WD2, 0x6a4a30, { gain: 1.4 });
-          a.box(x, 0.5, z, 3.3, 1.5, 0.55, 'leaves', 0x5a8a3a, { gain: 1.2 }); a.box(x, 0, z, 3.5, 0.5, 1.1, 'rocks_5', 0xb8b4a8); };
+          a.box(x, 0.5, z, 3.3, 1.5, 0.55, 'leaves', 0x7fae4a, { gain: 2.0 }); a.box(x, 0, z, 3.5, 0.5, 1.1, 'rocks_5', 0xb8b4a8); };
       for (const ly of [6, 8]) for (const lx of [1, 2, 3, 5, 6, 7]) vine(lx, ly); });
   for (const ly of [6, 8]) for (const lx of [1, 2, 3, 5, 6, 7]) block('P12-02', lx, ly, 3.4, 1.6);
   put('P12-02', 'fountain', 4, 5); dec('P12-02', 'greek_amphora', 2, 5); dec('P12-02', 'stone_urn', 6, 5); native('P12-02', 'orb of light', 3, 7, 200);
   /* ── THE OLIVE GROVE, THE PILGRIM STAIR, THE GOAT TRACK ── */
   for (const d of [[3, 4], [6, 5], [4, 6], [7, 7], [3, 8], [5, 8], [7, 5]]) tree('P10-03', 'tree_2', 4.2, d[0], d[1], 0.6); dec('P10-03', 'stone_urn', 5, 5);
   put('P11-03', 'lion_statue', 3, 6, { face: 180 }); put('P11-03', 'lion_statue', 6, 6, { face: 180 }); put('P11-03', 'brazier', 2, 8); dec('P12-03', 'cave_stone', 6, 5);
+  /* ══ PASS 3, THE DRESSING (the model list's pieces: owl, busts, amphorae, arms, instruments, sheep, eagle, butterflies, clouds; more of the gods' own units) ══ */
+  /* the thrones: each god's things beside a seat, clouds drifting over the dais's rim */
+  put('P10-00', 'owl_statue', 4, 6, { h: 1.4, face: 20 }); dec('P10-00', 'spear', 7, 5, { y: 0.02 }); dec('P10-00', 'spell_shield', 8, 5); dec('P10-00', 'instrument_harp', 3, 5); dec('P10-00', 'greek_amphora', 4, 3); dec('P10-00', 'greek_amphora', 6, 5);
+  dec('P10-00', 'brass_orrery', 6, 3); dec('P10-00', 'item_drinking_cup', 5, 5); dec('P10-00', 'giant_hourglass', 4, 1); dec('P10-00', 'eagle', 5, 6);
+  for (const [lx, ly, sp] of [[10, 3, 6], [3, 4, 5], [9, 7, 7], [5, 0, 5]]) dec('P10-00', 'white_cloud', lx, ly, { span: sp, y: 0.4 });
+  native('P10-00', 'valkraye', 9, 4, 270);
+  /* the Temple's court: lions by the steps, braziers on plinths, urns */
+  plotLook('P11-00', 'court', 5, 9, false, a => { for (const lx of [3, 8]) plinth(a, X(lx), Z(9), 1.3, 0.8); });
+  put('P11-00', 'brazier', 3, 9, { y: 0.8 }); put('P11-00', 'brazier', 8, 9, { y: 0.8 }); put('P11-00', 'lion_statue', 4, 8, { face: 180 }); put('P11-00', 'lion_statue', 7, 8, { face: 180 });
+  dec('P11-00', 'stone_urn', 2, 10); dec('P11-00', 'stone_urn', 9, 10); dec('P11-00', 'greek_amphora', 1, 9); dec('P11-00', 'white_cloud', 1, 5, { span: 6, y: 0.5 });
+  /* the Stadium: prize amphorae, arms, a shield and spears by the seats */
+  dec('P10-01', 'greek_amphora', 2, 4); dec('P10-01', 'greek_amphora', 2, 6); dec('P10-01', 'arms_trophy', 7, 1, { y: 0.9 }); dec('P10-01', 'spear', 1, 1); dec('P10-01', 'spear', 11, 8); dec('P10-01', 'spell_shield', 11, 1); dec('P10-01', 'spell_shield', 5, 8);
+  dec('P10-01', 'instrument_drum', 1, 8); dec('P10-01', 'meshy_trumpet', 2, 8, { y: 0.3 }); native('P10-01', 'giant', 10, 4, 270);
+  /* the Colonnade: busts on plinths, benches, pots, an orrery */
+  plotLook('P11-01', 'busts', 6, 6, true, a => { for (const [lx, ly] of [[4, 4], [8, 4], [4, 8], [8, 8]]) plinth(a, X(lx), Z(ly), 1.2, 0.95); plinth(a, X(5), Z(8), 1.0, 0.8); });
+  for (const [lx, ly, f] of [[4, 4, 90], [8, 4, 270], [4, 8, 90], [8, 8, 270]]) put('P11-01', 'marble_bust', lx, ly, { y: 0.95, face: f }); put('P11-01', 'brass_orrery', 5, 8, { y: 0.8 });
+  dec('P11-01', 'iron_garden_bench', 5, 4); dec('P11-01', 'iron_garden_bench', 7, 8); dec('P11-01', 'potted_plant', 5, 3); dec('P11-01', 'potted_plant', 8, 7); dec('P11-01', 'potted_plant', 4, 7); dec('P11-01', 'stone_urn', 7, 3);
+  dec('P11-01', 'butterfly', 5, 7, { y: 0.9 }); dec('P11-01', 'monarch', 7, 4);
+  /* the Sacred Way */
+  dec('P10-02', 'greek_amphora', 4, 6); dec('P10-02', 'stone_urn', 2, 5); dec('P10-02', 'white_cloud', 6, 5, { span: 5, y: 0.6 }); native('P10-02', 'nephilim', 10, 4, 270);
+  /* the Amphitheatre: fire at the stage's ends, the players' things on the floor */
+  put('P11-02', 'brazier', 2, 6); put('P11-02', 'brazier', 7, 6); dec('P11-02', 'instrument_tambourine_up', 5, 7, { y: 0.1 }); dec('P11-02', 'meshy_trumpet', 3, 8, { y: 0.1 }); dec('P11-02', 'instrument_whistle', 6, 8); dec('P11-02', 'greek_amphora', 1, 7); dec('P11-02', 'greek_amphora', 0, 8);
+  /* the Terraces: the harvest (amphorae, crates, a well), butterflies and bees on the vines */
+  put('P12-02', 'ancient_well', 4, 9); for (const [lx, ly] of [[2, 7], [6, 7], [5, 9]]) dec('P12-02', 'greek_amphora', lx, ly); dec('P12-02', 'psx_wooden_crate_2', 3, 9); dec('P12-02', 'psx_wooden_crate_1', 7, 7); dec('P12-02', 'iron_garden_bench', 3, 5);
+  for (const [k, lx, ly] of [['butterfly', 2, 7], ['monarch', 5, 7], ['bee', 6, 9], ['bee', 4, 7], ['butterfly', 4, 4]]) dec('P12-02', k, lx, ly, { y: 0.9 }); dec('P12-02', 'psx_planter_pot_mp_1_full', 5, 5, { h: 0.6 }); dec('P12-02', 'psx_planter_pot_mp_1_full', 3, 4, { h: 0.6 });
+  /* the Olive Grove: a flock, oil jars, a bench, a unicorn (a `forest` + `divine` unit) */
+  for (const [lx, ly] of [[5, 4], [6, 6], [4, 7], [7, 6]]) dec('P10-03', 'decor_sheep', lx, ly); dec('P10-03', 'rabbit', 5, 7); dec('P10-03', 'greek_amphora', 4, 5); dec('P10-03', 'greek_amphora', 6, 8); dec('P10-03', 'psx_wooden_crate_3', 6, 4); dec('P10-03', 'iron_garden_bench', 5, 6);
+  dec('P10-03', 'butterfly', 4, 4, { y: 0.8 }); dec('P10-03', 'bee', 6, 7, { y: 0.8 }); native('P10-03', 'unicorn', 4, 8, 40);
+  /* the Pilgrim Stair: a shrine for those who come up from the Vatican (an altar, candles, a censer, a bench) */
+  put('P11-03', 'stone_altar', 2, 7, { face: 90 }); put('P11-03', 'votive_stand', 6, 8, { face: 270 }); for (const [lx, ly] of [[2, 6], [5, 8], [1, 7], [6, 7]]) dec('P11-03', 'hw_candles', lx, ly); dec('P11-03', 'item_censer', 3, 7); dec('P11-03', 'iron_garden_bench', 5, 5); dec('P11-03', 'stone_urn', 4, 5);
+  /* the Goat Track: a spyglass over the cliff, a boundary stone, a small flock, an eagle on the wind */
+  put('P12-03', 'brass_telescope', 8, 5, { face: 90 }); put('P12-03', 'menhir', 6, 2); for (const [lx, ly] of [[7, 3], [6, 4], [8, 4]]) dec('P12-03', 'decor_sheep', lx, ly); dec('P12-03', 'psxg_rock_2', 7, 6, { h: 0.9 }); dec('P12-03', 'psxg_rock_3', 5, 3, { h: 0.7 }); dec('P12-03', 'eagle', 7, 4); native('P12-03', 'occulus', 6, 5, 200);
+  /* the Cloud Line and the Grand Stair's foot: cloud on the walk (nothing that blocks: the ways are the tool's) */
+  for (const [id, lx, ly, sp] of [['P12-01', 7, 2, 6], ['P12-01', 7, 8, 7], ['P12-01', 3, 5, 6], ['P12-01', 5, 6, 5], ['P12-01', 7, 5, 8], ['P12-00', 7, 9, 6], ['P12-00', 8, 5, 7], ['P12-00', 2, 6, 5]]) dec(id, 'white_cloud', lx, ly, { span: sp, y: 0.5 });
+  native('P12-01', 'watcher', 1, 5, 90);
   { const q = S('P11-02', 8, 4); R.anchor('bayOlympus', { x: mx(q[0]), z: mz(q[1]), face: 270 }); R.taken.add(q[0] + ':' + q[1]); }   // the Diplomatic bay's door stands at the Amphitheatre
 };
