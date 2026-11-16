@@ -1,13 +1,49 @@
 # THE NPC SPAWN SYSTEM — Disaster City first, then the blueprint for every zone
 
 Started 2026-11-16 on mondo's order (thread "Disaster City NPCs: the spawn system", second side, claims row of that name).
-**State: STEP 1 only. This file is the compare-and-contrast he asked for. Nothing is built. Every number in section D is a
-PROPOSAL; he sets the numbers. The build starts after his OK and his answers to section F.**
+**State (11-16): his answers are in (next section). DELIVERY 1 · THE SET LEVELS is live. Deliveries 2-8 are not built.
+Every number is still a PROPOSAL he has not set: they are rows in data.js `HQ_SPAWN_RULES`.**
 
 His brief, in short: no level scaling with the player; many of the same unit (cop b, cop c ...) with schedules; more NPCs;
 rarity from common to one of a kind (Superhero male + female, Sidekick, Antihero); a set level or level range per race, rarer
 = higher (cops 5 to 10, the Superhero about 50); a cap per zone or district that refills after captures; random zodiac signs;
 later an easy sheet for boss and scripted battles; the result is the blueprint for the other zones.
+
+## HIS ANSWERS (2026-11-16) — these are decisions now
+
+1. **The cap is per district.** An NPC counts against its HOME district wherever its day takes it (my reading of his "not sure how
+   that will work when npc have routines that go through multiple districts"; `capBy: 'district'`).
+2. **The refill is about 3 in-game days** (`refillDays: 3` on every tier).
+3. **One of a kind, captured = gone for good, at least in that zone.**
+4. **Cop variants may differ in look:** "there is a white cop somewhere that you can use too" (find the model in delivery 2).
+5. **A captured race you already own goes to a holding tank / waiting room in DOOR HQ**, "like the Pokemon box where they are
+   stored". So a second cop CAN be captured; the ONE OF EACH team rule stays (a team still fields one of a unit).
+6. **Districts differ in strength, with a sharp rise.** The story needs only the Mall and Bayside first; the other districts are
+   meant to kill an early player so he follows the route. No level cap chosen yet.
+7. **XP stays as it is**: a level 5 that kills a level 50 gets all of it.
+8. **Chefs stand wherever there is a restaurant** or a building that needs one, all over the city.
+9. **Superhero male and Superhero female are two separate one-of-a-kind residents.**
+10. **NEW: spontaneous events**, to prototype: "a gangster mugging you or doing a drive by or something".
+
+## DELIVERY 1 · THE SET LEVELS (2026-11-16, live)
+
+- data.js **`HQ_SPAWN_RULES`** (after `HQ_CITY_RESIDENTS`): `tiers` (common / uncommon / rare / veryRare / unique: `n`, `add`,
+  `refillDays`), `rooms[room].districts[letter].base` (THE STRENGTH OF THE DISTRICT), `rooms[room].races[race]` (a tier name, or
+  `{ tier: 'unique', lvl }`; `race|gender` names one gender).
+- `hqSpawnDistrict(room, home)` = the home district letter of a home plot. `hqSpawnLevel(room, { id, race, gender, home })` =
+  `{ lvl, tier, district }`: the district's base + the tier's `add` range, seeded by the NPC's id (the same NPC is always the same
+  level); a unique is its fixed `lvl`. null for a room with no table: the old party-level rule still runs there.
+- three-renderer.js `_hqResStart` reads the level once per resident; `_hqResSpawn` puts it on the body (`ch.lvl`) and in its line
+  ("LV 42 · LIVES AT SOUTHSIDE APARTMENTS"); `_hqEncounterTargetOf` hands `lvl` to the launch (the group's members too).
+- data.js `hqEncounterLaunch`: a target with `lvl` fights at it, no clamp to the party. Checked headless: the Superhero is 50
+  against a party of 5 and of 40; an NPC without a level still follows the party (every other zone, the crystal, quest fights).
+- The numbers shipped (PROPOSALS): Bayside base 5 · Entertainment, Industrial, Hero Plaza 15 · Financial, Sports 25 · Civic,
+  University, Southside 35. Tier adds: common +0..5, uncommon +3..7, rare +7..12, very rare +12..16. Uniques: Sidekick 45,
+  Antihero 48, Superhero 50, King Kong 50. Result today: Chef 5, Hippie 7, Pirate 9 in Bayside; Police Officer 20 (his home is Hero Plaza);
+  Southside’s Cult Leader 49.
+- Seen in the browser (build 5da6d16 + this change): the aim on the Ki Fighter in the Dojo returns "Ki Fighter", sub "LV 42 ·
+  LIVES AT SOUTHSIDE APARTMENTS", lvl 42. NOT photographed: the prompt box itself (the probe's fresh profile did not draw it).
+- Not changed: XP, capture, the one-each list, the 8-body limit, online (story only, nothing on `state`).
 
 ## The short table
 
@@ -174,28 +210,21 @@ the same district and a shifted day (a cop on the day shift, one on the night sh
 
 ## E. THE BUILD ORDER (each delivery stands alone, one PR each)
 
-1. **Fixed levels, scaling off.** The tier ladder + a level per city resident; the fight reads it. The level shows on the
-   NPC's label. Needs: his level numbers (D) and F6. Proof: a picture of a level on a nameplate + a fight at that level.
-2. **Variants + counts.** The rules object replaces the one-each list; cops b, c, d walk their own days. Needs: the
-   counts per district, F4. Proof: pictures of the street, FPS before and after at 8 / 12 / 16 drawn.
-3. **The cap + the refill.** Captured or beaten = out of the district's count; back after the tier's time. Needs: F1, F2,
-   F3, F5.
-4. **Zodiac.** A sign per spawned NPC, shown, kept through the fight and the capture. Needs: nothing.
-5. **The scripted / boss battle sheet.** One row = who, level, sign, stats, spells, place. Needs: his first boss, when
-   he has one. The first quest's fight moves onto the sheet unchanged.
-6. **The blueprint.** A short "add a zone" recipe in this file; the first other zone's table when he names it.
+1. **The set levels, scaling off.** DONE 11-16 (above).
+2. **Variants + counts + more people.** The rules object replaces the one-each list: cops b, c, d with their own homes and shifts
+   (the white cop as one look), chefs at every restaurant, Superhero male + female as two residents. FPS before and after at
+   8 / 12 / 16 drawn bodies.
+3. **The cap + the refill.** Captured or beaten = out of the home district's count; back after 3 game days; a captured unique
+   never comes back in this zone.
+4. **The holding tank.** A captured race you already own is stored in DOOR HQ (the box). Needs from him: which room it is.
+5. **Zodiac.** A sign per spawned NPC, shown, kept through the fight and the capture.
+6. **The scripted / boss battle sheet.** One row = who, level, sign, stats, spells, place. The first quest's fight moves onto it unchanged.
+7. **Spontaneous events, a prototype.** A gangster mugs you; a drive-by. Needs from him: what a mugging takes or starts (a fight?).
+8. **The blueprint.** The "add a zone" recipe here; the first other zone's table when he names it.
 
-## F. QUESTIONS ONLY HE CAN ANSWER
+## F. STILL OPEN (his to answer)
 
-1. The cap: per district (proposed) or one for the whole zone?
-2. The refill: on the world clock or in real days? How fast for a common unit: 1 day as proposed?
-3. One of a kind (Superhero, Sidekick, Antihero): after you capture one, is it gone for good, or back after a long time?
-   And when you only BEAT one (no capture): back the next day as now?
-4. Variants: do cop b, cop c differ only in home and schedule (same name "Police Officer", same look), or also in look?
-   Your rule says units are named after their race.
-5. Capturing a second cop: today a race you own cannot be captured and a team cannot field two of one unit. Keep that
-   (the extra cops are fights only), or allow owning several of one unit?
-6. The level ceiling for the city: the game's cap is 100. Is 50 the top here, with higher levels saved for later zones?
-7. A level-50 kill pays a level-5 party a lot of XP under today's rule. Keep, or cap the XP from a much higher enemy?
-8. Chefs in Hero Plaza: yes (at the Coffee arcade), or only in Bayside and Entertainment where they work today?
-9. The Superhero female: a second resident of the Superhero Tower with her own day?
+1. The level numbers per district and tier (the shipped ones are my proposal). The city's top level.
+2. A unique you only BEAT (no capture): back after the 3 days like the others? (Assumed yes.)
+3. The holding tank: which DOOR HQ room, and is it a room you walk into or a menu at a counter?
+4. A mugging / a drive-by: does it start a fight, take money, or both? How often?

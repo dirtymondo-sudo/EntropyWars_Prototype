@@ -56,6 +56,9 @@ OPEN.forEach(o => { if (o.kind === 'fall') return;
     for (let k = 0; k < 3; k++) for (const side of [o.hi, o.lo]) { const t = side === o.lo ? o.line + (o.dx + o.dy > 0 ? k : -1 - k) : o.line + (o.dx + o.dy > 0 ? -1 - k : k);
         for (let m = -1; m <= 1; m++) { const sx = o.ns ? o.mid + m : t, sy = o.ns ? t : o.mid + m; if (open(sx, sy) && 'wj'.includes(cell[sy][sx])) cell[sy][sx] = 'o'; } } });
 
+/* THE ROOF (build 4, mondo 11-16: "still just looks like a boring rectangular room"): a plot's roof stands CEIL over its floor; a plot
+   that a fall, a stair or a climb comes down into is as tall as that drop + CEIL, so the upper mouth opens under one roof line. */
+const ceilOf = p => r2(Math.max.apply(null, [CEIL].concat(OPEN.filter(o => o.lo === p).map(o => o.rise + CEIL))));
 /* a way out through the room's wall: the squares from (sx, sy) straight to the wall are opened, three wide; returns the place along the wall (m) */
 function spur(sx, sy, wall) {
     const step = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }[wall]; let x = sx, y = sy;
@@ -88,6 +91,9 @@ Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
         native: (race, id, lx, ly, face, say) => { const s = sq(id, lx, ly); native(race, s[0], s[1], face, say); },
         /* every open square of a plot that is `chars` (default: walkway and room floor), in reading order */
         squares: (id, chars) => { const p = plot[id], out = []; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if ((chars || 'of').includes(cell[p.sy + ly][p.sx + lx])) out.push([lx, ly]); return out; },
+        ceil: id => ceilOf(plot[id]),
+        /* a brick pier on a square, floor to roof (a blocker: the walker goes round it) */
+        pier: (id, lx, ly) => { const p = plot[id], s = sq(id, lx, ly); spot(s[0], s[1], 'pier'); feat({ k: 'plateau', x: gcx(s[0]), z: gcz(s[1]), w: 1.75, d: 1.75, h: r2(p.base + ceilOf(p) + 0.2), edge: 0.1 }); },
         free: (id, lx, ly) => { const s = sq(id, lx, ly); return open(s[0], s[1]) && !taken.has(s[0] + ':' + s[1]); },
         /* dry squares with wall on two sides or more (a bend's corner, a dead end's tip): where a light or a barrel stands without closing a walk */
         corners: id => { const p = plot[id], out = []; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const x = p.sx + lx, y = p.sy + ly; if (!'of'.includes(cell[y][x]) || taken.has(x + ':' + y)) continue;
@@ -184,6 +190,21 @@ const RAILS = [];
       if (!horiz) { let lone = true; for (let i = 0; i < n; i++) if (!(isJ(x - 1, y + i) || isJ(x + 1, y + i))) lone = false; if (lone && n < 3) continue; }
       for (const off of [-0.72, 0.72]) RAILS.push(horiz ? { k: 'wall', x0: gx(x), z0: r2(gcz(y) + off), x1: gx(x + n), z1: r2(gcz(y) + off), h: 0.14, t: 0.12, key: 'metal' } : { k: 'wall', x0: r2(gcx(x) + off), z0: gz(y), x1: r2(gcx(x) + off), z1: gz(y + n), h: 0.14, t: 0.12, key: 'metal' }); } }
 
+/* ── THE VAULTS (build 4): every stretch of open floor wears a brick barrel vault, sprung from its walls, its crown at the plot's roof
+   (`arch` rows, drawn only: three-renderer.js _hqArchGeometry roof form 'barrel', open-ended, seen from inside). A plot's open squares
+   are cut into rectangles; each vault runs along its rectangle's long side and spans the short one. Over them one flat slab a plot closes
+   what the vaults leave between them. ── */
+const VAULT = [];
+PLAN.plots.forEach(p => { const used = new Uint8Array(N * N), parts = [], top = ceilOf(p), ox = gx(p.sx) + N * C / 2, oz = gz(p.sy) + N * C / 2, op = (lx, ly) => lx >= 0 && ly >= 0 && lx < N && ly < N && open(p.sx + lx, p.sy + ly);
+    parts.push({ s: 'box', p: [0, r2(top + 0.05), 0], size: [N * C, 0.2, N * C], sides: false, top: false, under: true, key: 'bricks_2', tint: 0x4a463f });
+    for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { if (!op(lx, ly) || used[ly * N + lx]) continue;
+        let w = 1; while (op(lx + w, ly) && !used[ly * N + lx + w]) w++;
+        let h = 1; rows: while (ly + h < N) { for (let i = 0; i < w; i++) if (!op(lx + i, ly + h) || used[(ly + h) * N + lx + i]) break rows; h++; }
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(ly + j) * N + lx + i] = 1;
+        const alongX = w >= h, span = (alongX ? h : w) * C + 0.7, len = (alongX ? w : h) * C + 0.1, rise = r2(Math.min(3.5, span / 3));
+        parts.push({ s: 'roof', form: 'barrel', p: [r2(gx(p.sx + lx) + w * C / 2 - ox), r2(top - rise), r2(gz(p.sy + ly) + h * C / 2 - oz)], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: 'bricks_2', tint: 0x7c766a, ds: true, ends: false, seg: 8 }); }
+    VAULT.push({ k: 'arch', id: 'sew:' + p.id + ':roof', x: r2(ox), z: r2(oz), rot: 0, base: p.base, parts }); count.vaults = (count.vaults || 0) + parts.length - 1; });
+
 /* ── THE OPEN GROUND: every square that is not wall, as `space` rows (greedy rectangles) ── */
 const spaces = [];
 { const used = new Uint8Array(W * Hh);
@@ -202,7 +223,7 @@ for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]
 const CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AVAILABLE_RACES', D);
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); });
 npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); });
-const SP = [plot['P02-02'].sx + 4, plot['P02-02'].sy + 4];
+const SP = [plot['P02-02'].sx + 3, plot['P02-02'].sy + 6];
 { const seen = new Uint8Array(W * Hh), st = [SP]; if (!open(SP[0], SP[1])) throw new Error('the spawn is not open'); seen[SP[1] * W + SP[0]] = 1;
   const cross = (x, y, X, Y) => { const a = plotAt(x, y), b = plotAt(X, Y); if (a === b || a.level === b.level) return true;
       return OPEN.some(o => ((o.hi === a && o.lo === b) || (o.hi === b && o.lo === a)) && Math.abs((o.ns ? x : y) - o.mid) <= 1); };
@@ -213,7 +234,7 @@ const SP = [plot['P02-02'].sx + 4, plot['P02-02'].sy + 4];
   let op = 0, un = 0; for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (open(x, y)) { op++; if (!seen[y * W + x]) un++; }
   props.forEach(p => { const sx = Math.floor((p.x + HX) / C), sy = Math.floor((p.z + HZ) / C); if (!open(sx, sy)) throw new Error(p.key + ' stands in the wall at ' + sx + ',' + sy); });
   Object.assign(count, { openSquares: op, unreachedSquares: un }); }
-const features = spaces.concat(LVL, WATER, GO, RAILS, F);
+const features = spaces.concat(LVL, WATER, GO, RAILS, F, VAULT);
 Object.assign(count, { plots: PLAN.plots.length, spaces: spaces.length, falls: GO.filter(g => g.k === 'fall').length, stairs: GO.filter(g => g.k === 'ramp').length, climbs: GO.filter(g => g.k === 'climb').length,
     features: features.length, props: props.length, doors: doors.length, natives: npc.length });
 
@@ -226,7 +247,7 @@ L.push("            label: 'DISASTER CITY · THE SEWERS',");
 L.push("            sub: 'THE CULVERTS · THE RUNNING TUNNELS · THE HOLDING CELLS · THE OLD WORKINGS · EVERY GUTTER DRAINS HERE',");
 L.push("            kind: 'box', site: 'prebuilt_downtown', part: '" + PART + "',");
 L.push("            shell: hqSewerShell({ w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: " + SH + ", wallH: " + SH + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(plot['P02-02'].base + 3.2) + " },");
-L.push("                                  mood: { lamp: 0xbfe8b0, glow: 0x9fd0a0, strip: 0xd8f0c8, light: 0xcfe8c0, ambient: 0.22 }, fog: { color: 0x070b08, density: 0.034 } }),   // darker than the old rooms (mondo 11-16: \"dark and grimy and scary\")");
+L.push("                                  mood: { lamp: 0xbfe8b0, glow: 0x9fd0a0, strip: 0xd8f0c8, light: 0xcfe8c0, ambient: 0.13 }, fog: { color: 0x050806, density: 0.042 }, wallColor: 0x4e4a44, floorColor: 0x6c6e6a }),   // darker than the old rooms (mondo 11-16: \"dark and grimy and scary\")");
 L.push("            parti: 'A maze under the city: brick culverts that bend, fork and stop, the upper culverts pouring into the lower rooms over three falls; the subway line under them, the old mine under that.',");
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + GX + ", nz: " + GY + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.d, p.level])) + " },");

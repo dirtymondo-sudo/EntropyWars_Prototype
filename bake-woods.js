@@ -67,6 +67,7 @@ let seed = 36; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; r
    lands in this tool and one thread per district can work at the same time. THIS is the one hook. A file may export any of:
      tailor(ctx)                          before the levels: its own changes to the plan's squares (ctx.cell)
      cut(ctx)                             after the glades: LATER changes to its squares (THE CUT below; new square edits go here)
+     ground                               a terrain sheet for its grass and forest floor (THE GROUND BY DISTRICT); bare = [x0, z0, x1, z1] no scatter lands on
      water(row, ctx)                      each water row of the tool (stream / pool): return it, a changed one, or null (THE WATER BY DISTRICT)
      dress(ctx), horror(ctx), life(ctx)   the three passes as they were built (the dressing, THE HORROR PASS, THE LIFE PASS)
      build(ctx)                           after the three passes: new work
@@ -171,7 +172,10 @@ for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) {
 }
 /* the paint: snow on the Snowline, bare rock on the Shelf and the cave's crag (0 = the room's own sheet) */
 const PAL = ['ice', 'rocks_5', 'dirt_2']   /* no snow sheet exists in the game: the Snowline wears the ice sheet */, paint = new Uint8Array(W * W);
-for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { const ch = cell[cy][cx]; paint[cy * W + cx] = ch === 's' ? 1 : ch === 'r' ? 2 : (ch === 'p' || ch === 'b') ? 3 : 0; }
+/* THE GROUND BY DISTRICT (2026-11-16, mondo: "why can't districts have different grounds"): a district file's `ground: '<terrain sheet>'` paints its grass AND its
+   forest squares in that sheet (0 stays the room's own sheet for a district that names none) */
+const GROUND = {}; ORDER.forEach(id => { const k = DISTRICTS[id].ground; if (k) { let i = PAL.indexOf(k); if (i < 0) { PAL.push(k); i = PAL.length - 1; } GROUND[id] = i + 1; } });
+for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { const ch = cell[cy][cx]; paint[cy * W + cx] = ch === 's' ? 1 : ch === 'r' ? 2 : (ch === 'p' || ch === 'b') ? 3 : (ch === 'g' || ch === 't') ? (GROUND[P(Math.floor(cx / N), Math.floor(cy / N)).district] || 0) : 0; }
 
 /* ── THE WATER: the creek from the Falls to the Outfall, one short `stream` row a square so the water steps down the hill with the ground
    (a stream row is one flat sheet); the lake, the falls' pool, the Pool. A plank deck wherever a path crosses. ── */
