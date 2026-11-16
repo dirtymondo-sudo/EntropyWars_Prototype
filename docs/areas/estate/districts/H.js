@@ -237,7 +237,7 @@ module.exports = {
         { const SMALL = ['hw_stone', 'psxg_tombstone_1', 'hw_stone_2', 'hw_stone_3', 'psxg_tombstone_2', 'hw_stone_1', 'psxg_tombstone_3', 'hw_stone_4', 'hw_stone_5'], BIG = ['hw_grave', 'hw_grave_low', 'hw_grave', 'hw_stone_3'];   // (`cross` is a 3 m timber cross: too big for a grave)
           const rnd = ctx.rnd, pick = L => L[Math.floor(rnd() * L.length)], lean = f => Math.round(f + (rnd() - 0.5) * 22);
           const grave = (sx, sy, face, big) => { P(big ? pick(BIG) : pick(SMALL), sx, sy, { face: lean(face) });
-              for (const dx of [-1.17, 1.17]) { if (rnd() < 0.12) continue; const wood = rnd() < 0.1; props.push(Object.assign({ key: wood ? 'wooden_cross' : pick(SMALL), x: r2(gc(sx) + dx + (rnd() - 0.5) * 0.2), z: r2(gc(sy) + (rnd() - 0.5) * 0.5), face: lean(face), noBlock: true }, wood ? { h: 1.2 + rnd() * 0.4 } : {})); } };
+              for (const dx of [-1.17, 1.17]) { if (rnd() < 0.12) continue; const wood = rnd() < 0.1; props.push({ key: wood ? 'hw_stone_4' : pick(SMALL), x: r2(gc(sx) + dx + (rnd() - 0.5) * 0.2), z: r2(gc(sy) + (rnd() - 0.5) * 0.5), face: lean(face), noBlock: true }); } };
           const rowOf = (x0, x1, y, face, big, skip) => { for (let x = x0; x <= x1; x++) if (!(skip || []).includes(x)) grave(x, y, face, big); };
           /* THE FAMILY PLOT: the aisle is column 17; the big graves on rows 67 and 68, the angel at its head */
           rowOf(14, 20, 67, 180, true, [17]); rowOf(15, 19, 68, 0, true, [17]); rowOf(15, 19, 62, 180, false, [16, 17, 18]);
