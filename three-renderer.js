@@ -71637,6 +71637,20 @@ const ThreeRenderer = (function () {
        16 (data.js HQ_GROUND_RULES.paintMax) and each piece of ground reads 8 of them: the room's first 8, or its zone's `pal`. The field's tiles
        are cut on the zone's line (a quad belongs to the zone its middle lies in) and a zone's tiles carry the zone's material: the same
        material maker, so both renderers. A field of one tile has no zones. Kill switch window.EW_HQ_NO_GROUND_ZONES. */
+    /* THE DEAD STRIP (2026-11-16, the Hills in the city's room: the frame rate): a room grown past its plots on one side grows the same on the other
+       (the shell is centred), and `terrain.edges.<side>.inset` starts the land past the edge on the room's OLD line, over that strip. The field
+       under it was still built and drawn (the city: a 70 m strip down the west side, now a 126 m strip along the south too, a third of the
+       field). Quads more than 2 m past an inset line are left out of the field's mesh; the heights, the walker and the land past the edge read
+       the same ground as before. Kill switch window.EW_HQ_DRAW_DEAD_STRIP. */
+    function _hqDeadStrip(room, info) {
+        if (info._ew_dead !== undefined) return info._ew_dead;
+        var E = room && room.terrain && room.terrain.edges, d = null;
+        if (E && _hqEdgeLandOn(room) && !(typeof window !== 'undefined' && window.EW_HQ_DRAW_DEAD_STRIP)) {
+            var ins = function (k) { var v = +((E[k] || {}).inset) || 0; return v > 4 ? v - 2 : 0; }, w = ins('w'), e = ins('e'), n = ins('n'), s2 = ins('s');
+            if (w || e || n || s2) d = { x0: w ? -info.halfW + w : -Infinity, x1: e ? info.halfW - e : Infinity, z0: n ? -info.halfD + n : -Infinity, z1: s2 ? info.halfD - s2 : Infinity };
+        }
+        info._ew_dead = d; return d;
+    }
     function _hqGroundZones(room, info, S) {
         var Z = room && room.terrain && room.terrain.zones;
         if (!Array.isArray(Z) || !Z.length || !info.paint || !info.paint.pal || (typeof window !== 'undefined' && window.EW_HQ_NO_GROUND_ZONES)) return null;
@@ -72262,6 +72276,7 @@ const ThreeRenderer = (function () {
             });
             if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
             if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
+            var dS = _hqDeadStrip(room, info); if (dS && (mx < dS.x0 || mx > dS.x1 || mz < dS.z0 || mz > dS.z1)) continue;   // THE DEAD STRIP: ground under the land past the edge is never drawn
             var uf = (floats.length || (info.void && !info.void.holesOnly)) ? underFloat(mx, mz) : 0;
             if (!underEscalator && !uf && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
             else if ((uf === 1 || uf === 3) && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) { fillQ.push(a, b, c, d); fillK.push(uf); }   // THE FLAT FILL

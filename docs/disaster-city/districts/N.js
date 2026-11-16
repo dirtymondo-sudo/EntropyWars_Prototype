@@ -249,9 +249,14 @@ exports.north = q => {
     }
     flats.forEach(([x0, y0, x1, y1, side]) => { const fx = side === 'E' ? x1 : side === 'W' ? x0 : (x0 + x1) / 2, fy = side === 'S' ? y1 : side === 'N' ? y0 : (y0 + y1) / 2, ref = base(fx, fy);
         for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) Hc[cy * (W + 1) + cx] = ref; });
-    /* THE COVE'S FOOT: over the boardwalk's end the old ground still came down from the Cliff Stair's level (5 m at the line). The last three rows east of
-       square 143 rise no faster than 2 m a square from the city's line, so the boardwalk walks onto the sand and up, never into a bank */
-    for (let cy = H - 3; cy <= H; cy++) for (let cx = 143; cx <= W; cx++) { const k = cy * (W + 1) + cx; Hc[k] = Math.min(Hc[k], 2.0 * (H - cy)); }
+    /* THE COVE'S FOOT: over the boardwalk's end the old ground still came down from the Cliff Stair's level (5 m at the line). East of square 143 the first
+       square north of the line lies at the boardwalk's own level and the next three rise no faster than 2 m a square, so the boardwalk walks onto the sand
+       and up (walked with the game's own feet rule: a rise that began on the line itself stopped the walker where the city's boardwalk cut ends) */
+    for (let cy = H - 4; cy <= H; cy++) for (let cx = 140; cx <= W; cx++) { const k = cy * (W + 1) + cx; Hc[k] = Math.min(Hc[k], 2.0 * Math.max(0, H - 1 - cy) + 2.0 * Math.max(0, 144 - cx)); }   // (eased in over four squares on the west, so the trail from the Cliff Stair comes down onto it)
+    /* THE MOUNTAIN ROAD'S FOOT: the road's four squares north of the line climb from the city's height to the canyon road's in one even grade (on the
+       last square alone it was a bank steep enough to wear the rock sheet: a pale band across the road, seen on screen) */
+    { const r0 = R.road[0], r1 = R.road[R.road.length - 1] + 1, e0 = q.edge(r0)[0];
+      for (let cx = r0; cx <= r1; cx++) { const top = Hc[(H - 4) * (W + 1) + cx]; for (let cy = H - 3; cy < H; cy++) Hc[cy * (W + 1) + cx] = e0 + (top - e0) * (H - cy) / 4; } }
     /* THE JOIN: what the city's line stands at under each Hills square */
     const south = cx => cx < 144 ? q.edge(cx) : cx < 146 ? [0, 0] : cx < 152 ? [SHELF, SHELF] : [DEEP, DEEP];
     const flag = new Set(R.hollow.map(c => c[0] + ':' + c[1]));
