@@ -135,7 +135,7 @@ module.exports = {
           R.who('mad scientist', 5.5, 7.6, 340, ctx.sayOf(O.clonevats, 'mad scientist')); R.done(); }
         /* ── CLONE RESEARCH · DISPOSAL (P02-04): the furnace at the end, the chute, the batch, the other one ── */
         { const R = ctx.room('P02-04', 1, 1, 10, 9, 'disposal');
-          R.B('door_furnace', 9, 4, 270); R.B('garbage_chute', 9, 2, 270); R.B('radiation_sign', 9, 6, 270); R.dec('warning_tape', 8.2, 4.5, 0); R.dec('evac_button', 9.85, 7.5, 270, { y: 1.3 }); R.B('cardboard_boxes', 1, 8, 0); R.dec('floor_stain', 7.5, 4.6, 0);
+          R.B('door_furnace', 9, 4, 270); R.B('garbage_chute', 9, 2, 270); R.hung('radiation_sign', 9.94, 6.5, 270, 1.7); R.dec('warning_tape', 8.2, 4.5, 0); R.dec('evac_button', 9.85, 7.5, 270, { y: 1.3 }); R.B('cardboard_boxes', 1, 8, 0); R.dec('floor_stain', 7.5, 4.6, 0);
           R.sign('BATCH 12', 5, 0.08, 3.0, 2.6, 0.6, 0, '#bcd4ff', '#18202c', 'stencil', 0.4); [3, 4, 5, 6].forEach(u => R.B('cot', u, 1, 0));
           R.who('android', 7.5, 6.5, 270, ctx.sayOf(O.clonevats, 'android')); R.done();
           const cl = O.clonevats.n.find(n => n.clone); if (cl) ctx.npc.push({ x: R.X(3.5), z: R.Z(4.5), face: 90, clone: true, say: cl.say }); }

@@ -7635,6 +7635,25 @@ hub 1.25, Corridor Five 2.13, the east spoke 2.0, the Platform 2.0.
   south, 180 north, -90 EAST, 90 west: a sign on a west wall is `-90`. (3) Ceilings in a dark sheet read black: `ceilGain` 2.0 on concrete.
 - FPS after the pass: hub 1.25, Corridor Five 2.0, the east spoke 2.0 (no cost).
 
+### PASS 2, THE INSIDES + THE DRESSING (seen in the cloud browser, 22 views in two runs)
+- `S.js dress()`: about 150 props from the FITS list, packs first. THE HUB: a duty desk (`tanker_desk`, `psx_pc_monitor_mp_1`, `key_rack`,
+  `punch_clock`), lockers + `riot_gear_rack` + `scba_rack` under the west gallery, a pallet, `gas_cylinder_rack`, `cable_drum` under the east,
+  a waiting corner (`vending_machine`, three `molded_chair`, `notice_board`), `retro_control_panel` + `monitor_stack` + `gauge_board` on the south
+  wall, a `film_camera` and a `studio_camera` on the galleries. 01: three `psx_old_mattress_mp_1` under the edge, a `wing_chun_dummy` up on the
+  tier, a camera, a light, a `platform_scale`, a desk with a `psx_dosimeter_1`, a `hw_body`. 03: `scba_rack`, `hose_rack`, a light; the pit
+  stays EMPTY ("it is a very good pit"). 02: mattresses under the plank, `robot_arm`, `punching_bag`, `maintenance_stairs`, `tool_chest`.
+  04: one `molded_chair` in the taped square, a `reel_to_reel`, three chairs up on the deck. CORRIDOR FIVE: DECON (two `shower_stall`,
+  `scba_rack`, `turnout_gear_rack`), ARMOURY (`rifle_rack`, `riot_gear_rack`, `footlocker`, ammo), STORES, ELECTRICAL, LOCKERS, JANITOR (plain
+  labels, mine). LEVEL -6: a guard post of `meshy_sandbags` facing the blast door, a `field_radio` on a `footlocker`, barrels, a cable drum.
+  THE STAIR: a guard room and a store behind the two side doors, barricades at the flight's foot.
+- **People:** the five old bystanders keep their lines; seven more stand without lines (two professors, a flesheater in the pit, two androids,
+  a mad scientist, a man in black): units of the zone's own point-of-entry list, no names.
+- **FOUND:** (1) `radiation_sign` (a wall proc) placed free on a square's middle is a 2 m yellow slab from behind: hang it (`R.hung`, the new
+  `ctx.hang(key, plot, lx, ly, side, y)`); K, P and R were fixed too. (2) A rack placed with `R.B` stands 1.75 m off its wall: furniture that
+  backs onto a wall is `R.dec(key, u + 0.22, v + 0.5, 90)` + `R.keep(u, v)`. (3) The Tower's first 3.6 m are a drawn plinth a pace proud of the
+  shaft (the plateau's foot read as a dark block). (4) `retro_control_panel` draws as a pale rounded box at a distance.
+- FPS after the pass: hub 1.13, Corridor Five 1.88, the east spoke 2.0 (about a tenth in the hub: the galleries + 60 props in one view).
+
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
 
 mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
@@ -13715,3 +13734,17 @@ Read "LEYLINES ON PLOTS" first, then your district file's header (its STANDS TOD
   ring on the court's banks), a skull rack (7 x 3 m, the plaza), a serpent head (2, 2 m, the stair's foot), a jaguar and an eagle statue
   (2.5 m), a dugout canoe (5 m), a chinampa bed with maize (7 x 3.5 m), a hologram glyph panel + a neon glyph sign (3 m, the techno half).
 
+### PASS 3, THE DRESSING (live; seen on screen, 10 views in two runs)
+- INSIDE: each of the eight chapels has a rug, two candles on its altar and its painting hung right (a wall piece's `face` is the way it
+  LOOKS: 180 on a north wall); a censer in two, a plaque on each aisle; two pews in each transept; ropes at the altar's step; a bible on the
+  lectern; two candelabra by the chair; two banners at the crossing.
+- OUTSIDE: lamp posts, benches and planters down both flanks (the north one is the lane between the Basilica and the Archive), a robed
+  figure at each of the four corners, urns round the apse, lamp posts at the steps' ends, and THE BELL on a timber frame by the north
+  transept ("the campanile is a stump." "Then what is ringing?").
+- TAKEN OUT: the eight `stained_glass` props (9,600 triangles each, and two of them hung in the air outside the wall).
+- WHAT THE PROPS COST (triangles, read from the files): `greek_column` 12,900 · pews, `lectern`, `sarcophagus`, `royal_throne`,
+  `confessional_booth`, `angel_statue`, `brazier`, `skull_pile`, `stained_glass` 8,400 to 9,700 each · `tomb_plaque` 7,500 · `candelabra`
+  6,100 · `crystal_chandelier` 5,100 · `hooded_statue` 3,200 · `iron_lamp_post` 3,100 · `painting_portrait` 1,200 · `instrument_harp` 960 ·
+  `lion_statue` 450 · `psx_carpet_mp_1` 18. Count before you place twenty of anything.
+- FPS (the gate view, software GPU; two readings back to back differ by a third, so read these loosely): 1.4 -> 1.2 (2.0 M -> 2.4 M
+  triangles in the frame).

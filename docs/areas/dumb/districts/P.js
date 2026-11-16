@@ -38,7 +38,7 @@ module.exports = {
         ctx.P('car_suv', 'P02-05', 2, 8, { face: 0 }); ctx.keep('P02-05', 2, 9); ctx.P('car_cop', 'P02-05', 5, 8, { face: 0 }); ctx.keep('P02-05', 5, 9); ctx.P('car_suv', 'P02-05', 8, 8, { face: 180 }); ctx.keep('P02-05', 8, 9);
         ctx.P('traffic_cone', 'P02-05', 3, 7); ctx.P('traffic_cone', 'P02-05', 6, 7); ctx.P('traffic_barrel', 'P02-05', 10, 10); ctx.P('cardboard_boxes', 'P02-05', 1, 10); ctx.dec('floor_stain', 'P02-05', 4, 9);
         ctx.P('quarter_pipe', 'P01-05', 8, 8, { face: 90 }); ctx.P('traffic_barrel', 'P01-05', 3, 6); ctx.dec('paper_sheet', 'P01-05', 5, 7);
-        ctx.P('radiation_sign', 'P00-05', 2, 5, { face: 90 }); ctx.dec('evac_button', 'P03-05', 4, 2, { mount: 1.3, face: 0 }); ctx.dec('fire_extinguisher', 'P03-05', 9, 5); ctx.dec('security_camera', 'P03-05', 2, 2, { mount: 4.2, face: 135 });
+        ctx.hang('radiation_sign', 'P00-05', 2, 5, 's'); ctx.dec('evac_button', 'P03-05', 4, 2, { mount: 1.3, face: 0 }); ctx.dec('fire_extinguisher', 'P03-05', 9, 5); ctx.dec('security_camera', 'P03-05', 2, 2, { mount: 4.2, face: 135 });
         ctx.P('cardboard_boxes', 'P05-05', 3, 8); ctx.P('traffic_barrel', 'P05-05', 9, 8); ctx.P('traffic_cone', 'P04-05', 4, 9);
     },
     people(ctx) {

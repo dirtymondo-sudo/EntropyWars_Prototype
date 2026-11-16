@@ -137,8 +137,8 @@ exports.dress = ctx => { const { P, at, gx, gz, mx, mz } = ctx;
     P('royal_throne', 14, 23, { face: 90, h: 2.6 }); P('lectern', 23, 22, { face: 90 }); P('church_podium', 23, 25, { face: 90 });
     /* PASS 2: the side chapels along the aisles (an altar, a painting over it, two candelabra), the organ in the north transept, tombs in the
        south one, chandeliers down the nave, the narthex's stoups and ropes */
-    [27, 31, 35, 39].forEach((x, i) => { P('stone_altar', x, 17, { face: 180 }); at('painting_portrait', mx(x), gz(17) + 0.5, { y: FY + 3.4, face: 0, span: 2.6 }); if (i % 2 === 0) at('candelabra', mx(x) - 1.4, gz(17) + 1.2, {});
-        P('stone_altar', x, 30, { face: 0 }); at(i % 2 ? 'painting_landscape' : 'painting_portrait', mx(x), gz(31) - 0.5, { y: FY + 3.4, face: 180, span: 2.6 }); if (i % 2) at('candelabra', mx(x) + 1.4, gz(31) - 1.2, {}); });
+    [27, 31, 35, 39].forEach((x, i) => { P('stone_altar', x, 17, { face: 180 }); at('painting_portrait', mx(x), gz(17) + 0.62, { y: FY + 3.4, face: 180, span: 2.6 }); if (i % 2 === 0) at('candelabra', mx(x) - 1.4, gz(17) + 1.2, {});
+        P('stone_altar', x, 30, { face: 0 }); at(i % 2 ? 'painting_landscape' : 'painting_portrait', mx(x), gz(31) - 0.62, { y: FY + 3.4, face: 0, span: 2.6 }); if (i % 2) at('candelabra', mx(x) + 1.4, gz(31) - 1.2, {}); });
     for (let i = 0; i < 9; i++) at('decor_organ_pipe_white', gx(20) - 6 + i * 1.5, gz(13) + 0.7, { y: FY + 2.2, h: 4 + (4 - Math.abs(i - 4)) * 0.9 });
     P('judges_bench', 20, 14, { face: 180 }); P('instrument_harp', 18, 15); P('instrument_cello', 21, 15);
     P('sarcophagus', 19, 33, { face: 90 }); P('sarcophagus', 20, 33, { face: 90 }); at('tomb_plaque', gx(20), gz(35) - 0.45, { y: FY + 2.2, face: 0 }); P('weeping_angel', 18, 31, { face: 0 }); P('weeping_angel', 21, 31, { face: 0 });
@@ -148,11 +148,33 @@ exports.dress = ctx => { const { P, at, gx, gz, mx, mz } = ctx;
     [[16, 16], [23, 16], [16, 31], [23, 31]].forEach((q, i) => P('confessional_booth', q[0], q[1], { face: i % 2 ? 270 : 90 }));
     P('angel_statue', 43, 16, { face: 270 }); P('angel_statue', 43, 31, { face: 270 });
     [[24, 18], [24, 29], [41, 18], [41, 29]].forEach(q => P('candle_ring', q[0], q[1]));
-    for (let x = 27; x <= 39; x += 4) { at('stained_glass', mx(x), gz(17) + 0.5, { y: 8, face: 180 }); at('stained_glass', mx(x), gz(31) - 0.5, { y: 8, face: 0 }); }
     [[19, 13.2, 180], [20, 34.8, 0]].forEach(q => at('holy_tapestry', mx(q[0]), gz(q[1]), { y: 5, face: q[2] }));
+    exports.dress3(ctx);
     /* PASS 1, the figures: thirteen on the attic (the catalogue's robed `hooded_statue`, the tall `god_statue` in the middle), two on the steps' pedestals */
     for (let i = 0; i < 13; i++) at(i === 6 ? 'god_statue' : 'hooded_statue', gx(45) + 0.6, gz(24) - 32.2 + 1.6 + i * (64.4 - 3.2) / 12, { y: 1.75 + 27.4, h: i === 6 ? 4.2 : 3.2, face: 90 });
     at('god_statue', gx(46.5), gz(15.5), { y: 3, h: 5, face: 90 }); at('god_statue', gx(46.5), gz(32.5), { y: 3, h: 5, face: 90 }); ctx.take(46, 15); ctx.take(46, 32);
+};
+/* PASS 3, THE DRESSING. Inside: a rug, candles and a censer at each chapel, plaques between the chapels, pews in the transepts facing the
+   altar, ropes round the altar's step, stoups at the doors, the pulpit. Outside: lamp posts and benches down both flanks, planters, the
+   figures at the buttresses, the bell that "is ringing" on its frame by the north transept, urns round the apse. */
+exports.dress3 = ctx => { const { P, at, dec, gx, gz, mx, mz, look } = ctx;
+    [27, 31, 35, 39].forEach((x, i) => { [[17, 1, 180], [30, -1, 0]].forEach(q => { const z = gz(q[0] + (q[1] > 0 ? 1 : 0)) + q[1] * 1.6;
+        at('psx_carpet_mp_1', mx(x), z + q[1] * 1.2, { y: FY + 0.02, face: 90 }); at('hw_candles', mx(x) - 0.7, mz(q[0]), { y: FY + 0.96 }); at('hw_candles_2', mx(x) + 0.7, mz(q[0]), { y: FY + 0.96 });
+        if (i === (q[1] > 0 ? 1 : 2)) at('item_censer', mx(x), mz(q[0]) + q[1] * 0.2, { y: FY + 0.96 }); });
+        if (i === 1) { at('tomb_plaque', gx(x + 2.5), gz(17) + 0.42, { y: FY + 1.4, face: 0 }); at('tomb_plaque', gx(x + 2.5), gz(31) - 0.42, { y: FY + 1.4, face: 180 }); } });
+    [18, 21].forEach(x => { P('church_pew', x, 18, { face: 180 }); P('church_pew', x, 29, { face: 0 }); });
+    [[18, 22], [18, 25], [22, 22], [22, 25]].forEach(q => dec('rope_stanchion', q[0], q[1]));
+    at('meshy_bible', mx(23), mz(22), { y: FY + 1.18, face: 90 }); at('candelabra', gx(14.6), gz(22.2), { y: FY + 0.7 }); at('candelabra', gx(14.6), gz(25.8), { y: FY + 0.7 });
+    at('banner', gx(24) + 0.5, mz(21), { y: FY + 9, face: 90, h: 5 }); at('banner', gx(24) + 0.5, mz(26), { y: FY + 9, face: 90, h: 5 });
+    /* outside, the north flank (sy 12-16) and the south flank (sy 31-35) */
+    [26, 30, 34, 38].forEach((x, i) => { P('iron_lamp_post', x, 14); P('iron_lamp_post', x, 33); if (i % 2) { P('iron_garden_bench', x + 2, 15, { face: 0 }); P('iron_garden_bench', x + 2, 32, { face: 180 }); } else { P('potted_plant', x + 2, 15, { h: 1.7 }); P('potted_plant', x + 2, 32, { h: 1.7 }); } });
+    [[25, 16], [41, 14], [25, 31], [41, 33]].forEach((q, i) => P('hooded_statue', q[0], q[1], { h: 3, face: i < 2 ? 0 : 180 }));
+    [[12, 18], [12, 29], [13, 14], [13, 33]].forEach(q => P('stone_urn', q[0], q[1], { h: 1.5 }));
+    /* the bell on its timber frame (the campanile is a stump: "then what is ringing?") */
+    look('bellframe', mx(14), mz(12), 0, 0, a => { a.box(-1.2, 0, 0, 0.3, 3.2, 0.3, 'wood', 0x5a3c24); a.box(1.2, 0, 0, 0.3, 3.2, 0.3, 'wood', 0x5a3c24); a.box(0, 3.2, 0, 3, 0.3, 0.4, 'wood', 0x5a3c24); a.box(-1.2, 0, 0, 0.5, 0.2, 1.6, 'wood', 0x5a3c24); a.box(1.2, 0, 0, 0.5, 0.2, 1.6, 'wood', 0x5a3c24); });
+    ctx.take(14, 12); at('ships_bell', mx(14), mz(12), { y: 1.9, h: 1.3 });
+    /* the steps: lamp posts at their foot, planters at the doors */
+    [[47, 15], [47, 32]].forEach(q => P('iron_lamp_post', q[0], q[1]));
 };
 exports.people = ctx => { const { native, say } = ctx;
     native('priest', 30, 18, 180, say('vatican_basilica', 'priest', 0, 'female'), { gender: 'female' });
