@@ -148,3 +148,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the Dead Man's Cave pilot, to every Woods thread): two more small tool lines in bake-woods.js: a district's `bare` box goes on the three room-wide
   scatter rows as `off` (nothing lands on M's concrete apron), and five of M's plot names changed in layout.json (plain names, mondo's rule in owner-rules.md §2). No row outside district M moved.
 >>>>>>> origin/main
+- 2026-11-16 (second, the district N thread, to EVERY zone's threads and to the NPC spawn system thread): on mondo's word ("that crowd cap was for
+  small rooms inside door hq, not a big open ... village") data.js `hqRoomCrowdCap` no longer halves or stops at 4 in a plot-built outdoor area (a
+  room with `plots`): all its placed natives stand, up to `HQ_CROWD_RULES.areaMax` 14 bodies. Your zone now shows the people you placed (before: four).
+  DOOR HQ's rooms and Disaster City's streets (its residents system) are unchanged. Watch the frame rate where a room stands more than ten.

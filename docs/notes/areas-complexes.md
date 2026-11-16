@@ -4414,9 +4414,11 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   - PEOPLE: the roster's `polar` biome (RACE_PROFILES) = yeti, santa clause, ice queen, krampus; + the gnome (the old room's native). NEW TOOL HOOK
     (bake-mountains.js, board note): a district file may export `encounters = { list: [{ race, w }], walkers, spots }`; the tool writes it as the room's
     own table (data.js THE ENCOUNTER TABLE; his AREA UNITS window still wins). N: yeti 7, krampus 2, gnome 2, santa clause 1, ice queen 1, walkers 3 to 5,
-    `spots: false` (the standing natives keep their place and line). One more stands: the Ice Queen on the lake (no line; a native without a line walks).
-    THE CROWD CAP (data.js `HQ_CROWD_RULES.max` 4) shows FOUR bodies a room: a fifth native (Krampus was tried) never appears, and with four natives
-    standing no table walker gets a body. A district that wants walkers must stand fewer natives. `dev.chars()` in a probe lists who has a body.
+    `spots: false` (the standing natives keep their place and line). Two more stand: the Ice Queen on the lake, Krampus by the Coal store (no lines; a native without a line walks).
+    THE CROWD CAP WAS WRONG OUTDOORS (mondo 11-16: "that crowd cap was for small rooms inside door hq, not a big open ... village"): it halved a
+    room's people and stopped at 4, so every plot-built area showed four bodies (the Mountains 4 of 11 natives, Camelot 4 of 12, the Estate 4 of 17).
+    data.js `hqRoomCrowdCap`: a room with `plots` (a plot-built outdoor area) is not halved; all its placed people stand, up to
+    `HQ_CROWD_RULES.areaMax` 14 bodies. DOOR HQ's rooms and the city streets are unchanged. `dev.chars()` in a probe lists who has a body.
     Chimneys smoke: the catalogue's `chimney_smoke` (the Camelot pilot's piece), `y` = the chimney's top from the room's floor.
     No levels set: docs/notes/npc-system.md owns levels, rarity tiers and refill.
   - SIGNS: N.js `board()` (words + white frame + snow on top). One face a trade from the city's `HQ_SIGN_FONTS`; one new id, `xmas` = Mountains of

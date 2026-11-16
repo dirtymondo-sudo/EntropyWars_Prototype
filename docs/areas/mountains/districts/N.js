@@ -32,8 +32,8 @@
    - THE ATMOSPHERE (pass 4): a real flame (`hearth_fire`) in every hearth, braziers at the Pole, the lake, the Sleigh Road and the two south ways out
 
    - THE PEOPLE (pass 8, mondo "figure it out whatever fits"): `exports.encounters` = the roster's four `polar` units + the gnome (yeti common; Krampus,
-     gnome uncommon; Santa Clause, the Ice Queen one of a kind), 3 to 5 walking. Standing: Santa Clause, the gnome, the yeti (old lines) and the Ice Queen on
-     the lake (no line). Four is the room's crowd cap, so Krampus is in the table only; chimneys smoke (`chimney_smoke`)
+     gnome uncommon; Santa Clause, the Ice Queen one of a kind), 3 to 5 walking. Standing: Santa Clause, the gnome, the yeti (old lines), the Ice Queen on
+     the lake and Krampus by the Coal store (no lines). Chimneys smoke (`chimney_smoke`)
    - THE SIGNS (pass 8): `board()` = the words in a face per trade (WORKSHOP `xmas`, POST OFFICE `marc`, Bakery `pacifico`, TOY SHOP `bangers`, STABLE `rye`,
      COAL `stencil`), a white frame, snow on the top edge
    - THE OUTSIDE LAYERS (passes 7 + 8; `winter`, `dado`): belt board, drifts, icicles, sill snow, wood stacks, gutters + downpipes, a ridge board, shingled
@@ -333,9 +333,8 @@ exports.build = ctx => {
     lampPost('P03-03', 9, 7, 1); lampPost('P03-03', 5, 6, 0); put('P03-03', 'signpost', 8, 8, { face: 180 }); put('P03-03', 'xmas_snowman_3', 6, 9); put('P03-03', 'fallen_log', 8, 6);
     /* ── THE ATMOSPHERE (pass 4): warm light in the cold. Braziers (real lights) where people would stand at night ── */
     put('P01-00', 'brazier', 6, 6); put('P01-00', 'brazier', 8, 6); put('P01-02', 'brazier', 8, 5); put('P02-02', 'brazier', 7, 5); put('P01-03', 'brazier', 6, 4); put('P03-03', 'brazier', 7, 8);
-    /* ── THE ONE WHO WAS MISSING (pass 8): the Ice Queen out on her lake (no line: nobody wrote her one; she walks the ice). Krampus is NOT stood here:
-       THE CROWD CAP (data.js HQ_CROWD_RULES, mondo's "way less people") shows four bodies a room, so a fifth native never appeared (seen in the probe:
-       Santa Clause, the gnome, the yeti, the Ice Queen). He is in the room's table (`encounters`) ── */
-    native('P00-02', 'ice queen', 7, 4, 90);
+    /* ── THE TWO WHO WERE MISSING (pass 8): the Ice Queen out on her lake, Krampus at the Coal store's door. No lines: nobody wrote them any (a native
+       without a line walks). All five stand since THE CROWD CAP no longer halves a plot-built outdoor area (data.js HQ_CROWD_RULES.areaMax, mondo 11-16) ── */
+    native('P03-00', 'krampus', 6, 6, 200);     native('P00-02', 'ice queen', 7, 4, 90);
   }
 };
