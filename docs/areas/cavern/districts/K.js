@@ -77,6 +77,41 @@ module.exports = {
         ctx.dec('candleRing', 'P00-00', 7, 6); ctx.dec('candleRing', 'P02-02', 6, 5);
         put('mine_cart', 'P05-01', 5, 9); ctx.dec('pickaxe', 'P05-01', 6, 2);
     },
+    /* ── PASS 2, THE BUILT PLACES (a cave has no houses: its insides are the three places men made, and the camp of the ones who dig) ── */
+    dress2(ctx) {
+        const r2 = ctx.r2, put = (key, id, lx, ly, o) => { if (ctx.free(id, lx, ly)) ctx.P(key, id, lx, ly, o); };
+        const wallProp = (key, id, lx, ly, side, o) => { const s = ctx.sq(id, lx, ly), off = 1.75 - 0.2, d = { n: [0, -off, 180], s: [0, off, 0], e: [off, 0, 270], w: [-off, 0, 90] }[side];
+            ctx.props.push(Object.assign({ key, x: r2(ctx.gcx(s[0]) + d[0]), z: r2(ctx.gcz(s[1]) + d[1]), face: d[2], noBlock: true }, o || {})); };
+        const hang = (key, id, lx, ly, h, o) => { const s = ctx.sq(id, lx, ly); ctx.props.push(Object.assign({ key, x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), y: r2(ctx.plot[id].base + h), noLight: true, noBlock: true }, o || {})); };
+        /* LEVEL −6: the guard post of a base that denies it (the middle and the way to the door stay clear) */
+        const L6 = 'P03-00', b6 = ctx.plot[L6].base;
+        [2, 3, 4].forEach(lx => wallProp('breaker_panel', L6, lx, 2, 'n')); wallProp('security_camera', L6, 8, 2, 'n', { y: r2(b6 + 3.2) }); wallProp('vent_grille', L6, 9, 2, 'n', { y: r2(b6 + 2.6) });
+        wallProp('locker', L6, 9, 3, 'e'); wallProp('locker', L6, 9, 4, 'e'); wallProp('utility_box', L6, 2, 4, 'w'); wallProp('exit_sign', L6, 7, 2, 'n', { y: r2(b6 + 3.0) }); wallProp('radiation_sign', L6, 2, 8, 'w');
+        [3, 4, 8, 9].forEach(lx => wallProp('pipe_run', L6, lx, 9, 's', { y: r2(b6 + 2.8) }));
+        put('item_police_barricade', L6, 4, 3, { face: 0 }); put('item_police_barricade', L6, 8, 3, { face: 0 }); put('meshy_sandbags', L6, 3, 4); put('meshy_sandbags', L6, 9, 4 + 2);
+        put('retro_control_panel', L6, 8, 8, { face: 0 }); put('footlocker', L6, 2, 3); put('psx_supply_crate_1', L6, 2, 9); put('psx_supply_crate_1', L6, 3, 9); put('psx_metal_barrel_mp_2', L6, 9, 9); put('psx_metal_barrel_mp_1', L6, 9, 8);
+        put('rifle_rack', L6, 6, 9, { face: 0 }); ctx.dec('psx_ammo_box_1', L6, 5, 9, { noBlock: true }); ctx.dec('psx_walkie_talkie_1', L6, 7, 8, { noBlock: true }); ctx.dec('traffic_cone', L6, 4, 5, { noBlock: true });
+        hang('flicker_tube', L6, 6, 4, 4.4, { ceil: true }); hang('flicker_tube', L6, 6, 8, 4.4, { ceil: true });
+        /* THE OUBLIETTE: what a gaol nobody visits keeps */
+        const OU = 'P05-00';
+        put('trap_iron_maiden', OU, 9, 2, { face: 270 }); wallProp('wall_chains', OU, 9, 4, 'e'); wallProp('wall_chains', OU, 9, 8, 'e'); wallProp('wall_chains', OU, 5, 2, 'n'); wallProp('trap_chain_draped', OU, 8, 9, 's');
+        put('psx_old_mattress_mp_1', OU, 2, 9, { noBlock: true }); ctx.dec('hw_body', OU, 3, 3, { noBlock: true }); ctx.dec('skull', OU, 2, 5, { noBlock: true }); ctx.dec('hw_part_3', OU, 3, 7, { noBlock: true });
+        put('floor_drain', OU, 6, 6, { noBlock: true }); ctx.dec('key', OU, 7, 8, { noBlock: true }); ctx.dec('hw_candles', OU, 5, 4, { noBlock: true }); ctx.dec('hw_candles', OU, 8, 6, { noBlock: true });
+        ['rat', 'rat', 'rat'].forEach((k, i) => ctx.dec(k, OU, [4, 7, 9][i], [8, 3, 7][i], { noBlock: true })); put('wooden_barrel', OU, 9, 9); put('cauldron', OU, 8, 2);
+        [[2, 2], [9, 3]].forEach(q => ctx.dec('psx_cobweb_1', OU, q[0], q[1], { noBlock: true })); ctx.dec('psx_cobweb_2', OU, 2, 8, { noBlock: true });
+        /* THE CRYSTAL ADIT: "a worked adit, squared and swept, with a light at the far end that is not a torch": dressed stone piers
+           down both walls, a crystal alight on each; the miners' gear */
+        { const A = 'P05-01', p = ctx.plot[A], ox = ctx.gx(p.sx) + 21, oz = ctx.gz(p.sy) + 21, parts = [];
+          [1, 3, 9].forEach(ly => [[4, -1], [7, 1]].forEach(([lx, side]) => { const x = r2(ctx.gcx(p.sx + lx) + side * 1.45 - ox), z = r2(ctx.gcz(p.sy + ly) - oz);
+              parts.push({ s: 'box', p: [x, 0, z], size: [0.6, 2.4, 0.9], key: 'dungeon_3', tint: 0xd0ccc0 }, { s: 'box', p: [x, 2.4, z], size: [0.8, 0.18, 1.1], key: 'dungeon_3', tint: 0xb8b4a8 },
+                         { s: 'cyl', p: [x, 2.58, z], r: 0.28, r2: 0.04, h: 0.95, seg: 5, key: 'crystal', tint: 0xffe2b0, glow: 1.3 }, { s: 'cyl', p: [r2(x + 0.14), 2.58, r2(z + 0.22)], r: 0.14, r2: 0.03, h: 0.55, seg: 5, key: 'crystal', tint: 0xffd090, glow: 1.3 }); }));
+          ctx.feat({ k: 'arch', id: 'cav:adit', x: r2(ox), z: r2(oz), rot: 0, base: p.base, parts });
+          put('wheelbarrow', A, 5, 3); ctx.dec('pickaxe', A, 6, 9, { noBlock: true }); put('psx_wooden_crate_1', A, 4, 10); put('anvil', A, 7, 2); wallProp('signal_lever_frame', A, 2, 5, 'n'); ctx.dec('paper_sheet', A, 9, 6, { noBlock: true });
+          [[10, 6, 2.6], [10, 9, 1.9], [8, 9, 1.2]].forEach(q => put('meshy_crystal_shards', A, q[0], q[1], { h: q[2] })); }
+        /* THE CAMP ON THE SHELF: the ones who dig sleep by the spring */
+        { const S = 'P04-01'; put('canvas_tent', S, 4, 3, { face: 135 }); put('campfire', S, 6, 4); put('firewood_stack', S, 3, 5); put('wooden_barrel', S, 5, 2); ctx.dec('sleeping_bag', S, 7, 3, { noBlock: true }); ctx.dec('backpack', S, 5, 4, { noBlock: true });
+          ctx.dec('ship_lantern', S, 6, 3, { noBlock: true, noLight: true }); ctx.dec('pickaxe', S, 4, 5, { noBlock: true }); put('psx_wooden_crate_2', S, 3, 3); }
+    },
     people(ctx) {
         const O = ctx.O;
         ctx.native('ghoul', CROSS, 8, 7, 300, ctx.sayOf(O.gallery, 'ghoul')); ctx.native('gnome', CROSS, 3, 7, 160, ctx.sayOf(O.gallery, 'gnome'));
