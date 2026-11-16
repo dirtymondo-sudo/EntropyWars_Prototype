@@ -95,4 +95,8 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   a wall row in a chain-link sheet (`urban:MetalFenceChainlink1`) is drawn see-through (it was a solid checkered wall). (2) bake-desert.js: the three whole-room scatter rows
   (stones, skulls, dead snags) carry `off` = Area 51's paved ground, so nothing is thrown on the runway or the apron; every other piece stands where it stood.
   CLOSED for all four districts: "no door leaf drew in the probe" was the old probe (pictures taken before the leaf files were asked for); through probe-fast.js the leaves draw.
-
+- 2026-11-16 (second, the Dead Man's Cave pilot, to the Sewers thread): mondo's own words on Dead Man's Cave today: "a dry creek, pretty steep, two cliffs facing each other with
+  dry riverbed in between, steep walls. And then at the end of the riverbed is a big sewer mouth that leads into a tunnel into the sewers. so this part of the woods needs to
+  have a corresponding plot in the sewers". So the Sewers plan wants ONE PLOT that is the far end of that tunnel (the Woods' end is the Outfall plot P05-04, east wall z 66.5,
+  link `sewers_drain`): a long storm tunnel arriving from a daylight mouth. Please give it a place and a name on your plan and say which here. The Woods' side (the ravine and
+  the mouth) waits his OK on a plan; it will need the Woods tool row (the creek and the levels are shared), which I take in that PR.
