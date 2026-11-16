@@ -6391,6 +6391,23 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
   cattle grid, the lamps' glass and the trough; wall pictures and a clock in the Farmhouse; stairs to the hayloft; curtains; the Yard's bare
   middle (a tractor wants a model); lines for the five people; residents with routines; the Desert road (his call).
 
+### THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; seen in the cloud browser)
+- **STAND-INS OUT, MODELS IN:** the three drawn plank troughs -> `water_trough`; the drawn gate leaves -> `braced_gate` (the Ranch Gate's two, swung
+  back along the rail) and `fence_with_gate` (the Paddock's gate: the panel is 3.5 m = one square); the eight drawn lamp posts -> `iron_lamp_post`
+  (`noBlock`, `noLight`); the toilet cabin -> `outhouse`; the library's rolling ladder -> `wooden_ladder`; the log pile and stump ->
+  `firewood_stack` + `axe_chopping_block`; the barn's steel drums -> `wooden_barrel`. The fittings row keeps only what has no model: the round
+  stock tanks, the hand pump, the Ranch Gate's posts, beam and board.
+- **EVERY PIECE THE LIST ASKED FOR IS PLACED:** `tractor` (the Yard's middle), `plough` + `hay_cart` + `pitchfork` (Hay Field), `wheelbarrow` (Yard,
+  garden, barn), `saddle` x 2 before the horses' stalls, a PIG PEN (Yard, squares 49..50 x 66..67: the ranch rail, a `fence_with_gate` panel,
+  three `pig`s), `goat` x 2 (Pasture), `rooster` (hen run), `duck` x 3 at the Windmill's tank, `beehive` x 3 + a `tyre_swing` under the trees north
+  of the house, `kennel`, `mailbox` at the gate, `clothes_line`, a row of `sunflowers` by the kitchen garden, `cattle_skull` over the barn doors.
+- **ALSO FITTED (read from the whole list):** `anvil`, `grindstone`, `owl_perched` (barn), `wood_stove`, `oil_lamp`, `antler_trophy`,
+  `firewood_stack` (farmhouse), `rose_bed`, `leafy_bush`, `bird_bath`, `wild_flowers`, `hay_rack` x 2, `hawk`, and at the trailers' camp
+  `antenna_dish`, `picnic_table`, `bbq_grill`.
+- **THE COST:** the proof view: 901 draw calls before, 969 after (3.16 M triangles).
+- **STILL NEEDS A MODEL:** a cattle grid, a round stock tank, a hand pump, wheat (not made).
+- A wish-list model's facing is as it was made: the kennel's mouth and the skull were placed by eye from one picture each.
+
 ### DECISIONS MADE FOR MONDO (overrule any in one line)
 1. The Barn has a gambrel roof and is barn red with white trim; the Farmhouse is white with a green roof (as it was).
 2. The gate's board says `RANCH` (a plain word, no made-up name).
