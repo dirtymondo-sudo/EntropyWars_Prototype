@@ -13674,3 +13674,18 @@ pipe organ case, a pietà, kneelers, a holy water stoup, votive candle racks, a 
   the pews, the chandeliers; with 18 candelabra and 4 chandeliers it read 0.9 / 2.9 M, so they were cut to 6 and 3).
 - OPEN after pass 2: the chapels are thin (an altar and a picture); no kneelers, stoups, votive racks, pietà, pulpit canopy (NEEDS A MODEL);
   the yards outside are empty; no air, no night look.
+
+### PASS 3, THE DRESSING (live; seen on screen, 10 views in two runs)
+- INSIDE: each of the eight chapels has a rug, two candles on its altar and its painting hung right (a wall piece's `face` is the way it
+  LOOKS: 180 on a north wall); a censer in two, a plaque on each aisle; two pews in each transept; ropes at the altar's step; a bible on the
+  lectern; two candelabra by the chair; two banners at the crossing.
+- OUTSIDE: lamp posts, benches and planters down both flanks (the north one is the lane between the Basilica and the Archive), a robed
+  figure at each of the four corners, urns round the apse, lamp posts at the steps' ends, and THE BELL on a timber frame by the north
+  transept ("the campanile is a stump." "Then what is ringing?").
+- TAKEN OUT: the eight `stained_glass` props (9,600 triangles each, and two of them hung in the air outside the wall).
+- WHAT THE PROPS COST (triangles, read from the files): `greek_column` 12,900 · pews, `lectern`, `sarcophagus`, `royal_throne`,
+  `confessional_booth`, `angel_statue`, `brazier`, `skull_pile`, `stained_glass` 8,400 to 9,700 each · `tomb_plaque` 7,500 · `candelabra`
+  6,100 · `crystal_chandelier` 5,100 · `hooded_statue` 3,200 · `iron_lamp_post` 3,100 · `painting_portrait` 1,200 · `instrument_harp` 960 ·
+  `lion_statue` 450 · `psx_carpet_mp_1` 18. Count before you place twenty of anything.
+- FPS (the gate view, software GPU; two readings back to back differ by a third, so read these loosely): 1.4 -> 1.2 (2.0 M -> 2.4 M
+  triangles in the frame).
