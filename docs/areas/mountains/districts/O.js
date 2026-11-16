@@ -39,10 +39,27 @@
 const MARB = 'marble_light', W1 = 0xf6f2e6, W2 = 0xe2dccc, GOLD = 'gold', GT = 0xffe2a0, TERRA = 0xb86a4a, GQ = { gain: 1.7 }, GG = { gain: 1.6 };
 const A = (o, x) => Object.assign({}, o, x || {});
 /* a column built in the look: a square base, a tapered shaft, a spreading capital under a gold abacus (y0 = its foot, h = its whole height) */
-const col = (a, x, z, h, r, y0) => { y0 = y0 || 0; a.box(x, y0, z, r * 2.7, 0.22, r * 2.7, MARB, W2, GQ); a.cyl(x, y0 + 0.22, z, r, h - 0.72, MARB, W1, A(GQ, { seg: 12, r2: r * 0.84 }));
-    a.cyl(x, y0 + h - 0.5, z, r * 0.84, 0.26, MARB, W1, A(GQ, { seg: 12, r2: r * 1.3 })); a.box(x, y0 + h - 0.24, z, r * 2.8, 0.24, r * 2.8, GOLD, GT, GG); };
+const col = (a, x, z, h, r, y0, inn) => { y0 = y0 || 0; const q = inn ? IN : GQ, g = inn ? ING : GG; a.box(x, y0, z, r * 2.7, 0.22, r * 2.7, MARB, W2, q); a.cyl(x, y0 + 0.22, z, r, h - 0.72, MARB, W1, A(q, { seg: 12, r2: r * 0.84 }));
+    a.cyl(x, y0 + h - 0.5, z, r * 0.84, 0.26, MARB, W1, A(q, { seg: 12, r2: r * 1.3 })); a.box(x, y0 + h - 0.24, z, r * 2.8, 0.24, r * 2.8, GOLD, GT, g); };
 /* a plinth for a statue or a bowl (the prop on it takes `y` = its top, under 1 m: a lift) */
-const plinth = (a, x, z, w, h) => { a.box(x, 0, z, w + 0.24, 0.14, w + 0.24, MARB, W2, GQ); a.box(x, 0.14, z, w, h - 0.26, w, MARB, W1, GQ); a.box(x, h - 0.12, z, w + 0.2, 0.12, w + 0.2, GOLD, GT, GG); };
+const plinth = (a, x, z, w, h, inn) => { const q = inn ? IN : GQ, g = inn ? ING : GG; a.box(x, 0, z, w + 0.24, 0.14, w + 0.24, MARB, W2, q); a.box(x, 0.14, z, w, h - 0.26, w, MARB, W1, q); a.box(x, h - 0.12, z, w + 0.2, 0.12, w + 0.2, GOLD, GT, g); };
+/* THE INSIDE (the zone kit: a walk-in's own walls take no light, so the room is lined a hand inside them with parts that glow). IN = lit marble, ING = lit gold */
+const IN = { glow: 0.9, gain: 1.15 }, ING = { glow: 0.95, gain: 1.5 };
+const cella = (a, w, h, d, dr) => { const top = h - 0.36, i = 0.3, t = 0.04, e = w / 2 - i, x0 = dr.lx - dr.cw / 2, x1 = dr.lx + dr.cw / 2;
+    const wall = (y, hh, key, tint, q, o) => { const I = i + (o || 0);   // a band round the four walls, the doorway left open below 2.2 m
+        a.box(0, y, -(d / 2 - I), w - 2 * I, hh, t, key, tint, q); for (const s of [-1, 1]) a.box(s * (w / 2 - I), y, 0, t, hh, d - 2 * I, key, tint, q);
+        if (y >= 2.2) a.box(0, y, d / 2 - I, w - 2 * I, hh, t, key, tint, q); else { a.box((-e + x0) / 2, y, d / 2 - I, x0 + e, hh, t, key, tint, q); a.box((x1 + e) / 2, y, d / 2 - I, e - x1, hh, t, key, tint, q); } };
+    wall(0, 1.1, MARB, 0xcfc8b6, IN, 0.02); wall(1.1, 0.14, GOLD, GT, ING, 0.04); wall(1.24, 0.96, MARB, W1, IN); wall(2.2, 2.4, MARB, W1, IN); wall(4.6, 0.3, GOLD, GT, ING, 0.03); wall(4.9, top - 4.9, MARB, W1, IN);
+    a.box(0, 0.03, 0, w - 2 * i, 0.02, d - 2 * i, MARB, 0xdcd6c6, A(IN, { sides: false }));                                                              // the floor, lit
+    for (const s of [-1, 1]) { a.box(0, 0.05, s * (d / 2 - 1.3), w - 2.6, 0.012, 0.28, GOLD, GT, A(ING, { sides: false })); a.box(s * (w / 2 - 1.3), 0.05, 0, 0.28, 0.012, d - 2.6, GOLD, GT, A(ING, { sides: false })); }   // …a gold line round it
+    a.box(0, top - 0.1, 0, w - 2 * i, 0.02, d - 2 * i, MARB, 0xc8c0aa, { sides: false, top: false, under: true, glow: 0.75 });                           // the ceiling
+    for (const z of [-3.5, 0, 3.5]) a.box(0, top - 0.34, z, w - 2 * i, 0.24, 0.3, GOLD, GT, A(ING, { under: true, top: false })); for (const x of [-7, -3.5, 0, 3.5, 7]) a.box(x, top - 0.3, 0, 0.3, 0.2, d - 2 * i, GOLD, GT, A(ING, { under: true, top: false }));   // …its coffers
+    for (const sx of [-1, 1]) for (const z of [-1.75, 1.75]) col(a, sx * 5.25, z, top - 0.34, 0.5, 0, true);                                           // four columns carry it
+    /* the statue's base across the two middle squares of the back row, a step for the altar before it, a gold disc on the wall behind */
+    a.box(0, 0, -5.7, 6.8, 0.95, 2.4, MARB, 0xd6cfbd, IN); a.box(0, 0.95, -5.7, 7.0, 0.1, 2.6, GOLD, GT, ING); a.box(0, 0, -4.0, 4.4, 0.4, 1.0, MARB, 0xcfc8b6, IN);
+    a.box(0, 1.5, -(d / 2 - i) + 0.05, 3.6, 3.6, 0.06, GOLD, GT, ING); a.box(0, 1.8, -(d / 2 - i) + 0.09, 3.0, 3.0, 0.04, MARB, 0x2c3c66, { glow: 0.9 });
+    for (const s of [-1, 1]) { a.box(s * 2.4, 0, -(d / 2 - i) + 0.2, 0.5, 5.4, 0.3, MARB, W1, IN); a.box(s * 2.4, 5.4, -(d / 2 - i) + 0.2, 0.7, 0.2, 0.4, GOLD, GT, ING); }
+    for (const s of [-1, 1]) for (const z of [-1.75, 1.75]) plinth(a, s * 8.75, z, 1.2, 0.95, true); };
 
 /* the squares: the nub behind the theatre's seats goes back to rock (the seats are cut into it) */
 exports.tailor = t => { for (const lx of [3, 4, 5]) t.set('P11-02', lx, 11, 'r'); };
@@ -51,7 +68,7 @@ exports.apply = ctx => {
     const R = ctx, { put, dec, tree, native, building, look, flat, say, S, mx, mz, gx, gz, props, feat, N, C, r2, U } = ctx;
   /* THE TEMPLE on the peak (walked into): the cella is the building (6 x 4 squares); round it a ring of columns, 8 x 6, each on the middle of a whole
      square (rows 2..7, columns 2..9 of the plot) under one entablature and one tiled roof, its pediment over the door */
-  const TEMPLE = building('temple', 'P11-00', [3, 3, 9, 7, 'S'], 7, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: 'marble_light', floorIn: 'marble_light' }, (a, w, d, dr) => {
+  const TEMPLE = building('temple', 'P11-00', [3, 3, 9, 7, 'S'], 7, { leaf: 'leaf_wooden', leafDouble: true, keyIn: 'marble_light', floorIn: 'marble_light' }, (a, w, d, dr) => {
       a.shell(w, 7, d, MARB, W1, dr); a.P.slice(-2).forEach(p => { p.gain = 1.7; });
       const PW = 28, PD = 21;                                                                                                        // the ring's plan
       for (const s of [-1, 1]) { a.box(0, 0, s * (d / 2 + 1.9), PW + 0.8, 0.3, 3.8, MARB, W2, GQ); a.box(s * (w / 2 + 1.9), 0, 0, 3.8, 0.3, d, MARB, W2, GQ); }   // the stylobate, a step proud, round the cella
@@ -63,12 +80,18 @@ exports.apply = ctx => {
       a.roof('gable', 0, 8.06, 0, PD + 2.0, 3.7, PW + 2.0, U('WoodGeneric2a'), TERRA, { ry: 90, keyEnd: MARB, tintEnd: W1 });
       for (const s of [-1, 1]) { a.box(0, 8.6, s * (PD / 2 + 1.04), 3.0, 1.3, 0.14, GOLD, GT, A(GG, { roof: true })); for (const t of [-1, 1]) a.box(t * 4.2, 8.45, s * (PD / 2 + 1.04), 1.5, 0.8, 0.12, GOLD, GT, A(GG, { roof: true }));   // the pediment's gold relief
           a.box(0, 11.76, s * (PD / 2 + 1.0), 0.6, 1.1, 0.3, GOLD, GT, { glow: 0.9, roof: true }); for (const t of [-1, 1]) a.box(t * (PW / 2 + 0.8), 8.06, s * (PD / 2 + 0.8), 0.5, 0.9, 0.5, GOLD, GT, { glow: 0.9, roof: true }); }   // the acroteria
-      for (const s of [-1, 1]) a.box(dr.lx + s * (dr.cw / 2 + 0.22), 0, d / 2 + 0.09, 0.3, 2.5, 0.16, GOLD, GT, GG); a.box(dr.lx, 2.3, d / 2 + 0.09, dr.cw + 0.9, 0.3, 0.2, GOLD, GT, GG); });   // the door's gold frame
+      for (const s of [-1, 1]) a.box(dr.lx + s * (dr.cw / 2 + 0.22), 0, d / 2 + 0.09, 0.3, 2.5, 0.16, GOLD, GT, GG); a.box(dr.lx, 2.3, d / 2 + 0.09, dr.cw + 0.9, 0.3, 0.2, GOLD, GT, GG);
+      cella(a, w, 7, d, dr); });   // the door's gold frame
   flat('P11-00', 2, 2, 10, 8);
   { const sq = []; for (let lx = 2; lx <= 9; lx++) sq.push([lx, 2], [lx, 7]); for (let ly = 3; ly <= 6; ly++) sq.push([2, ly], [9, ly]);   // a column blocks its square's middle
     sq.forEach(([lx, ly]) => { const q = S('P11-00', lx, ly); R.taken.add(q[0] + ':' + q[1]); feat({ k: 'wall', x0: r2(mx(q[0]) - 0.55), z0: mz(q[1]), x1: r2(mx(q[0]) + 0.55), z1: mz(q[1]), t: 1.1, h: 3, ghost: true, rail: false }); }); }
-  TEMPLE.put('stone_altar', 0, -3.6); TEMPLE.put('brazier', -4, -3.6); TEMPLE.put('brazier', 4, -3.6); TEMPLE.put('angel_statue', -8, -4.5, { face: 150 }); TEMPLE.put('angel_statue', 8, -4.5, { face: 210 });
-  TEMPLE.put('instrument_harp', -7.5, 3.5, { face: 120 }); TEMPLE.put('greek_amphora', 7.6, 4.2); TEMPLE.put('greek_amphora', 8.6, 3.0, { face: 80 }); TEMPLE.put('lectern', 0, 0.5, { face: 180 });
+  /* THE CELLA (pass 2). Every prop of a walk-in is `floor: true`; a blocker stands on a square's middle (the squares' middles here: x -8.75 .. 8.75, z -5.25 .. 5.25) */
+  { const T = (key, lx, lz, q) => TEMPLE.put(key, lx, lz, Object.assign({ floor: true }, q || {}));
+    const ghost = (lx, lz, wd) => { const a0 = TEMPLE.at(lx - wd / 2, lz), a1 = TEMPLE.at(lx + wd / 2, lz); feat({ k: 'wall', x0: a0[0], z0: a0[1], x1: a1[0], z1: a1[1], t: Math.min(wd, 3.2), h: 2, ghost: true, rail: false }); };
+    T('lady_justice', 0, -5.7, { y: 0.98, h: 4.3, face: 180 }); ghost(0, -5.25, 6.8); T('stone_altar', 0, -4.0, { y: 0.4, face: 180 });                // the statue on its base, the altar on the step
+    for (const s of [-1, 1]) { T('brazier', s * 1.75, -1.75); T('angel_statue', s * 8.75, -5.25, { face: s < 0 ? 150 : 210 }); for (const z of [-1.75, 1.75]) { ghost(s * 5.25, z, 1.1); T('marble_bust', s * 8.75, z, { y: 0.95, face: s < 0 ? 90 : 270 }); } }
+    T('instrument_harp', -8.75, 5.25, { face: 120 }); T('lectern', 5.25, 5.25, { face: 180 }); T('votive_stand', -5.25, 5.25, { face: 180 }); T('giant_hourglass', 8.75, 5.25);
+    T('greek_amphora', 7.4, 6.0); T('greek_amphora', 9.7, 4.0, { face: 80 }); T('stone_urn', -7.4, 6.1); T('candelabra', -3.9, -4.3); T('candelabra', 3.9, -4.3); }
   R.anchor('painting', { x: TEMPLE.at(-6, -TEMPLE.fd / 2 + 0.25)[0], z: TEMPLE.at(-6, -TEMPLE.fd / 2 + 0.25)[1], face: TEMPLE.face(180) });   // the link `lodge_olympus` (a painting on the cella's back wall)
   native('P11-00', 'seraphim', 7, 9, 180, say('olympus', 'seraphim'));
 };
