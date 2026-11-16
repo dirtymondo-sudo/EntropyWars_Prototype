@@ -261,8 +261,8 @@ feat({ k: 'arch', id: 'cam:town_roofs', x: 0, z: 0, rot: 0, parts: townArch.P })
 
 /* ── THE WAYS on the room's wall and the room's own doors ── */
 const BAYX = gx(43), WAYS = { trail: gx(48), sleigh: gx(48) };
-doors.push({ id: 'oldgarden', wall: 'w', z: gx(48), way: 'trail', label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE OLD GARDEN · AS IT WAS',
-    action: { room: 'site_prebuilt_lookingglass_garden', at: 'bay' }, desc: 'A gap in the west hedge. The garden on the far side is the one that was here before this one was measured.' });
+/* the `oldgarden` gap in the west hedge is GONE (2026-11-16, mondo: "can we remove all of the old sites from the game, if we already rebuilt them with plots"):
+   the old Looking-Glass Garden room is retired into district L (data.js DOOR_HQ.retired); the barbershop mirror lands in L now (MIRROR_BARBER below) */
 doors.push({ id: 'deadtree', wall: 's', x: gx(8), way: 'trail', secret: true, label: 'THE WOODS', sub: 'THE DEAD TREE · BACK TO THE WOODS',
     action: { room: 'site_prebuilt_fairy_forest_plots', at: 'lookingglass' }, desc: 'The hedge stops at a dead tree with a hole in it the size of a door. Through it the ground is the right colour again.' });
 
@@ -310,6 +310,7 @@ const many = (n, f) => { for (let i = 0; i < n; i++) f(i); };
 
 /* ── THE DISTRICTS BUILD (the village first, then the road home, then the woods west, east, north, south: the baked order) ── */
 Object.assign(ctx, { cell, plot, open, WALKIN, HOUSES, taken, sq, put, dec, tree, native, many, rnd, sayOf, old: { ward: OLD, garden: OG, pole: ONP } });
+sq(7, 51);   // THE BARBERSHOP MIRROR's square (2026-11-16, link `mirror_lookingglass` end b: DOOR HQ's barbershop mirror opens here, two squares north of the Astral mirror; was the old garden room)
 sq(7, 53);   // THE MIRROR's square (its door is a way out of the zone: written below, after the districts), kept clear of the garden's dressing
 run('build', ['K', 'T']);
 /* the road in from DOOR HQ: the portcullis stands at the room's south wall, in the forest; the drawbridge is ahead */
@@ -377,7 +378,7 @@ M.push("        /* CAMELOT-KINGDOM-END */");
 const kingdomBlock = M.join('\n') + '\n';
 console.log('kingdom ' + JSON.stringify(count));
 /* the ends data.js carries by hand (DOOR_HQ.links, siteRooms.entry): printed so a moved path is seen */
-const ENDS = { bay: { wall: 's', x: BAYX }, woods_camelot: { wall: 'e', z: WAYS.trail }, northpole_camelot: { wall: 'n', x: WAYS.sleigh }, haunted_camelot: ends.haunted_camelot, well_camelot: ends.well_camelot };
+const ENDS = { mirror_lookingglass: { wall: 'free', x: gc(7), z: gc(51), face: 180 }, bay: { wall: 's', x: BAYX }, woods_camelot: { wall: 'e', z: WAYS.trail }, northpole_camelot: { wall: 'n', x: WAYS.sleigh }, haunted_camelot: ends.haunted_camelot, well_camelot: ends.well_camelot };
 console.log('ends ' + JSON.stringify(ENDS));
 if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');

@@ -10685,3 +10685,28 @@ Read "LEYLINES ON PLOTS" first, then your district file's header (its STANDS TOD
 3. The attic's figures are the catalogue's robed `hooded_statue` (twelve) and `god_statue` (the middle one, and the two on the steps).
 4. Two Latin inscriptions are St Peter's own (the front's frieze, the dome's ring): real ones, not written by me.
 5. The organ, the baldachin, the piers, the vaults and the galleries are drawn in code from the game's sheets (no model exists).
+
+## THE OLD SITES RETIRED (2026-11-16, owner side)
+mondo 11-16: "there's a spot in the sewers that leads to the old stadium. we already replaced the stadium and its in disaster city already. can we remove all of
+the old sites from the game, if we already rebuilt them with plots and stuff". Every old room that a plot room now holds is in data.js `DOOR_HQ.retired`
+(map.js sends Continue, the map's GO and any old link to the new room). After this PR no door in any live room names a retired room (checked offline: a walk of
+every door from the Main Hall, `load-data.js`; the one bad door left is HQ `records#tapes`, an `at` id that never existed, not an old site).
+
+| Old room | Now | Its ways |
+|---|---|---|
+| `site_prebuilt_stadium_bowl` | Disaster City, Sports + Culture (the stadium) | DOOR HQ's bay door = `bay_stadium` on the pavement by the stadium's park gate; the Sewers' stadium drain (`stadium_sewers` end a, a gutter now, no longer a draught) on the stadium road's dead end (the old `stadium_downtown` square); `stadium_downtown` gone |
+| `site_prebuilt_strip_streets` (+ chapel, casino: DELETED) | Disaster City, Entertainment (the casino + the wedding chapel) | bay = `bay_strip` beside the casino; `downtown_strip`, `streets_strip`, `strip_cyberpunk` gone (Cyberpunk City keeps the HQ tunnel + the platform) |
+| `site_prebuilt_lodge_halls` | Disaster City, Financial (the Members club) | bay = `bay_lodge`; its three hidden ways come out in the club's garden: `ranch_lodge` (the Estate), `lodge_olympus` (Olympus' painting), `grove_lodge` (the Woods) |
+| `site_prebuilt_bohemian_grove_grove` | The Woods, district G | bay = `bay_grove`, a trail on the north wall over the lake (P04-00); `grove_lodge` end a on P05-00's east wall (was the Woods' one-way `lodge` door) |
+| `site_prebuilt_lookingglass_garden` | Camelot Kingdom, district L | DOOR HQ's Looking-Glass bay door lands in the Astral Realm's Waiting Room (west wall); the barbershop mirror (`mirror_lookingglass` b) at Camelot square (7, 51), two squares north of the Astral mirror; Camelot's `oldgarden` gap gone; `deadtree_lookingglass` gone (the Woods' `lookingglass` trail + Camelot's `deadtree` gap are that way) |
+| `site_prebuilt_fairy_forest_glade` | Camelot Kingdom, district F | had no ways; PvP board only |
+| `site_prebuilt_downtown_oldstreets` | the 144 plots | had no ways in; PvP board only |
+
+Also repointed (doors that named retired rooms and landed at a default spot): `woods_ritual` end a (Room 333's circle) = the Woods' P05-01 east wall, at the Owl; the
+Woods' `lemuria` trail = the Cavern's `woods` door; HQ dungeon `oubliette` = the Cavern's `dungeon` door; the city's `sewer` = the Sewers' `pump`; the sky castle's
+`keep` + `chimney` = Camelot Castle (`site_prebuilt_camelot_palace`, its default spot: the palace has no door for them, so those two are one-way).
+DELETED from data.js (nothing reads them): the Strip's chapel + casino, the old Woods' Clearing, Redwood Trail, Dead Man's Cave, Ritual Ground, Camelot's keep + dungeon.
+KEPT in the data, door-less and never entered: every board room a PvP fight is cut from (HQ_ARENA_RULES: the stadium, the Strip, the Lodge, the Grove, the old garden,
+the glade, old Downtown...) and every old room a zone bake still reads for lines / anchors (bake-cavern, -afterlife, -sewers, -dumb, -astral, -deep, -beach, -desert,
+-leylines). NOT old sites (no plot room holds them), left alone: Cyberpunk City (a future reskin of the whole city), Camelot's sky castle, the city's insides (tower
+lobby, mall, showroom, platform, supply closet), the Bermuda Island board, the Spaceship, the Dutchman, the Haunted House floors, DOOR HQ, the puzzle dungeons.

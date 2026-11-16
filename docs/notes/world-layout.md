@@ -50,6 +50,8 @@ as the inside of a plot-built place.
 | Antarctica | `site_prebuilt_antarctica_plots` (6 x 6 = 36, a sea on its south side; 11-16, `bake-antarctica.js`, plot plan 2). Hub `antarctica` | PLOTS (first build 11-16; the Station is the pilot, 3 passes) | the Cavern twice (the Polar Opening to the Inner Sun, the Admiral's Tunnel to Agartha: both hidden); the Spaceship's airlock (the Collar, behind the Ice Wall); HQ bay door 90S (on the Station Yard) | second (tool STOPPED; S stopped at 3 passes; H W C O F free) |
 | The Astral Realm | `site_prebuilt_lookingglass_realm` (36 islands over the void, one room since 11-16) + INSIDE the Waiting Room | PLOTS (first build 11-16, `bake-astral.js`; the old sea, nightmare and library are retired) | HQ `dreamlab` (into the Waiting Room, which has a frame to each district); Camelot's Looking-Glass Garden mirror (two-way, onto the Sea's Mirror island); D.U.M.B. dream lab (the Library's Ward Screen); the Haunted House attic (the Nightmare's Attic Screen) | second (tool STOPPED, waits mondo's look), S piloted, L + N free |
 
+UPDATE 2026-11-16 (the old-sites PR, areas-complexes.md "THE OLD SITES RETIRED"): the garden, the Grove, the Lodge, the Strip and the stadium below are RETIRED now (their ways land in the plot rooms); only Cyberpunk City is still its own place. The table is the state before.
+
 Loose sites that the world plan folds into a zone but that still stand as their own OLD rooms:
 
 | Room | The plan says | Today |
