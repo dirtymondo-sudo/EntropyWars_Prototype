@@ -8739,3 +8739,29 @@ tile sheet, graffiti.
 - NOT DONE: air (dust, embers over the Burn, fireflies). The city's room has no `shell.atmos`; a zone's particles are born at the room's floor, and the Hills stand 26 to
   45 m over it. It needs the tool's row (a zone with its own ground height): listed for mondo, not built.
 - Frame rate (same measure): terrace 0.7, Casino court 1.1 (1.3 to 1.4 before this pass; the run was still loading 87 files when it was measured).
+
+### PASS 5, POLISH + THE FRAME RATE + WHERE IT STOPS (live; the district thread STOPS here, mondo's limit of five)
+(Belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES".)
+- Fixes from the pictures: the sports car off the rock mound's foot, the two pieces the bake left out placed, a second car on the Coast Overlook, the brush on the foot
+  row and the letters' plots thinned (it bought nothing on the frame rate: kept thinner anyway), the file's header rewritten (the five hooks, what is missing).
+- **THE SWITCH**: `HILLS_BARE=1 node bake-disaster-city.js` bakes the city WITHOUT this thread's four hooks (to measure them; never ship that bake).
+- **FRAME RATE, measured three ways** (cloud software GPU, frames a second over 20 s, each view twice after a 60 s warm-up; the run still loads files, so one view
+  swings by 0.3 to 0.5 between its two readings): the 11-15 city (HEAD 4a05856) terrace 0.5 / 0.5, Casino court 1.4 / 1.6 · today's city WITHOUT the hooks terrace
+  0.6 / 0.7, court 1.1 / 1.6 · today's city WITH them terrace 0.8 / 0.6 (one reading 0.2), court 1.1 / 1.2 / 1.3. Read: nothing lost from the terrace; from the court
+  at most 0.2 of 1.4, inside this machine's swing. HIS F3 on the mountain road and on the terrace is the number that counts; if it dropped, the first thing to cut is
+  `MIX` (the brush chances) and the 76 pass-3 trees.
+- **DECISIONS MADE FOR MONDO** (each can be overruled in one line):
+  1. Three NEW houses on the foot row, so the hillside reads as the Hills from the street: the Round House (H05-02 The Hairpin), the Villa (H10-02 The Observatory
+     Drive), the A-Frame (H01-02 The Chaparral). Plain names for what stands there; plot names unchanged.
+  2. The other Hills thread's Observatory, Hill House and Stilt House are kept whole; this thread's versions of them were dropped.
+  3. The Observatory's marble squares are ONE level terrace with a balustrade and a monument (a shaft with a bronze sphere; no words on it).
+  4. The Hill House's pool terrace is ACROSS the road, on the city's side (the house's squares leave no room north of the road for a pool with a view).
+  5. The letters carry `glow`: the sign shines at night. The real one is not lit; say so and it is one number.
+  6. A fire lookout over the Burn, a film shoot in the Brush, a tour bus at the Hikers' Lot, a fire truck on the Fire Break, a camp in the Gully: read from the plot names.
+  7. `wolf` stands in for a coyote (two, in the Gully). No deer, hawk or snake exists.
+  8. Nobody lives in the Hills still: residents, their levels and their capture are the NPC spawn system's (npc-system.md), not a district file's.
+  9. The zone palette's bitumen sheet became `calm_flagstone` (no square painted bitumen since the roads left the zone).
+  10. No change to `bake-disaster-city.js` or any other district's file.
+- **WHAT NEXT** (not started; a sixth pass waits for mondo): people on the terrace and at the lookouts (the NPC system); air = dust, embers over the Burn, fireflies
+  (the tool's row: a zone with a ground height); the fire lookout and the intake tower as climbed places; hedges and gates round the houses (the tool's `hedge` line is
+  not offered to a district past the plots); a patio umbrella model for `pool_umbrella`; the models on the NEEDS A MODEL list; sound.
