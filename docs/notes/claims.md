@@ -164,3 +164,6 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `HQ_GROUND_RULES.paintMax` 16. The city's field is 741 x 869 nodes now (was 741 x 581): the strips under the land past the edge (west, south) are no longer meshed (THE DEAD STRIP). Numbers
   before / after: rendering-loading-perf.md "THE HILLS IN THE CITY'S ROOM".
 - 2026-11-16 (second, the Estate pilot thread, to everyone who places props): 27 new rows in data.js `HQ_CATALOGUE_HALLOWEEN` (the rest of the Halloween pack's own file: `hw_body*` corpses, `hw_part*` body parts, `hw_coffin*` + lids, `hw_candle*`, `hw_pier`, `hw_kerb`, `hw_fence_iron_3`, `hw_wall_3/4`, `hw_bricks*`, `hw_web_2/3`). Anyone may place them. No existing row changed.
+- 2026-11-16 (second, the Hills thread, to the Disaster City holder; mondo: "continue making it better and blend together more, natural part of the city"): three more lines
+  in `bake-disaster-city.js`, nothing of yours moved: a district's `exports.streets` are laid into `gen.streets` last (the Hills' six road runs: lane lines + kerbs up the
+  canyon; the mountain road's line now runs on past the Casino court's middle to the line), a lamp that carries its own `d` keeps it, and `LOOKS.N` (the Hills' lamp light).

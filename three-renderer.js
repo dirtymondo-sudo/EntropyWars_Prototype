@@ -3342,12 +3342,12 @@ const ThreeRenderer = (function () {
            poison, its still water and should behave like water"): LOOKS, not liquids. No terrain has these keys; a room's
            `terrain.waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' }` draws its water in them (_hqWaterLook) while the
            liquid stays `water` / `deep_water` for the walk, the swim and the fights. They ride the water sheet under a tint. */
-        sewer_water: { base: 'water', tint: 0x5f5a22,
-                      caustDiff: 'vec3(0.30, 0.32, 0.12)', caustEmis: 'vec3(0.07, 0.08, 0.03)',
-                      glintCol: 'vec3(0.62, 0.66, 0.40)',  hueShift: 'vec3(1.02, 1.0, 0.86)' },
-        sewer_deep:  { base: 'water', tint: 0x3a3814,
-                      caustDiff: 'vec3(0.18, 0.20, 0.08)', caustEmis: 'vec3(0.04, 0.05, 0.02)',
-                      glintCol: 'vec3(0.50, 0.54, 0.32)',  hueShift: 'vec3(1.0, 1.0, 0.86)' },
+        sewer_water: { base: 'water', tint: 0xf0661a,   // (the water sheet is blue-green: a strong orange tint is what turns it brown)
+                      caustDiff: 'vec3(0.24, 0.18, 0.09)', caustEmis: 'vec3(0.035, 0.026, 0.012)',
+                      glintCol: 'vec3(0.58, 0.52, 0.40)',  hueShift: 'vec3(1.06, 0.97, 0.82)' },
+        sewer_deep:  { base: 'water', tint: 0xa8440f,
+                      caustDiff: 'vec3(0.14, 0.10, 0.05)', caustEmis: 'vec3(0.02, 0.015, 0.008)',
+                      glintCol: 'vec3(0.44, 0.40, 0.30)',  hueShift: 'vec3(1.05, 0.97, 0.82)' },
     };
 
     /* Water surfaces sit slightly below the top of their block so every
@@ -71675,7 +71675,7 @@ const ThreeRenderer = (function () {
             zi.room = Object.assign({}, info.room || room, { terrain: Object.assign({}, room.terrain, { floorTint: z.floorTint || null, cliffTint: z.cliffTint || null, pathTint: z.pathTint || null, cliffZoom: z.cliffZoom }) });
             var slot = new Uint8Array(info.paint.pal.length + 1);
             for (var v = 1; v <= info.paint.pal.length; v++) slot[v] = zp.indexOf(String(info.paint.pal[v - 1])) + 1;
-            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
+            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, out: Array.isArray(z.out) ? z.out : null, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
         });
         return out.length ? out : null;
     }
@@ -71689,7 +71689,8 @@ const ThreeRenderer = (function () {
         var byTile = {};
         for (var q = 0; q < idx.length; q += 6) {   // a quad's six indices: a, c, b, b, c, d (a = its low corner)
             var a = idx[q], ai = a % nx, aj = (a - ai) / nx, key = Math.floor(aj / nT) * tx + Math.floor(ai / nT);
-            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
+            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { var zo = zones[zq].out, inO = false; if (zo) for (var oi = 0; oi < zo.length; oi++) if (qx >= zo[oi][0] && qx < zo[oi][2] && qz >= zo[oi][1] && qz < zo[oi][3]) { inO = true; break; }   /* `out`: boxes of the zone that stay the room's own ground (a road that runs on from the room: the room's floor sheet, tint and light, no seam on the line) */
+                if (!inO) key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
             (byTile[key] || (byTile[key] = [])).push(q);
         }
         var out = [];
