@@ -37,7 +37,6 @@ const mkRnd = s => { let v = s >>> 0; return () => { v = (v * 1664525 + 10139042
 const sm = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
 const HILLS = [{ x: A.mound.x, y: A.mound.y, r: A.mound.foot, flat: A.mound.flat, h: A.mound.h }, { x: A.anthill.x, y: A.anthill.y, r: A.anthill.r, flat: 1.2, h: A.anthill.h },
     { x: A.sentinel.x + 0.5, y: A.sentinel.y + 0.5, r: 4, flat: 1, h: 1.75 }].concat(A.barrows.map(b => ({ x: b[0] + 0.5, y: b[1] + 0.5, r: 3, flat: 0.8, h: 2.2 })));
-const LONG = A.longbarrow;   // the long barrow: a ridge, highest along its middle
 function heightAt(x, y) {   // (x, y) in squares, a corner
     let h = 0;
     const flatZone = y >= 38 && y <= 46 ? 0 : y > 46 ? 0 : Math.min(1, (38 - y) / 5);                    // the roll dies out toward the line
@@ -45,7 +44,7 @@ function heightAt(x, y) {   // (x, y) in squares, a corner
     h += flatZone * green * (0.55 * Math.sin(x * 0.21 + 1.3) * Math.cos(y * 0.17) + 0.35 * Math.sin(x * 0.09 - y * 0.13));
     if (y < 38) { const hg = A.henge, d = Math.hypot(x - hg.x, y - hg.y); h *= sm((d - hg.stones - 1) / 5) * 0.6 + 0.0; }   // level inside the bank
     HILLS.forEach(q => { const d = Math.hypot(x - q.x, y - q.y); if (d < q.r) h = Math.max(h, 0) + q.h * sm((q.r - d) / (q.r - q.flat)); });
-    { const mx = Math.max(LONG[0] - x, x - LONG[2], 0), my = Math.abs(y - (LONG[1] + LONG[3]) / 2), d = Math.hypot(mx, my); if (d < 2.6) h += 2.6 * sm((2.6 - d) / 2.2); }
+    /* (the long barrow is a walk-in building since Stonehenge's pass 2: its mound is drawn over it, the ground under it is level) */
     return Math.max(-0.2, h);
 }
 const Hc = new Float32Array((W + 1) * (H + 1));
@@ -184,6 +183,7 @@ ORDER.forEach(k => { CTX[k].stamp = fn => STAMPS.push([k, fn]); });
 run('paint');
 for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) { const sx = x >> 1, sy = y >> 1, ch = cell[sy][sx]; let v = PAINT[ch] == null ? 0 : PAINT[ch];
     if (STAMPS.length) { const xm = -HX + (x + 0.5) * C / 2, zm = -HZ + (y + 0.5) * C / 2, d = distAt(sx, sy); for (const q of STAMPS) { if (q[0] !== d) continue; const key = q[1](xm, zm); if (key != null) { v = key === 'grass' ? 0 : PAL.indexOf(key) + 1; if (key !== 'grass' && !v) throw new Error(q[0] + '.js stamp: not a ground sheet: ' + key); } } }
+    if (ch === 'm' && distAt(sx, sy) === 'S') v = 0;   // Stonehenge's barrows are turf
     if (ch === 'm' && distAt(sx, sy) === 'G') v = 2;   // the tell: the same pale earth as the ground round it (its paths show on it)
     paint[y * FW + x] = v; }
 ARCH.forEach(feat);

@@ -49,7 +49,7 @@ o.push(`<rect x="${px(0)}" y="${py(-3)}" width="${13*S}" height="${3*S}" fill="n
 zone(...f,0,12,12,12,'THE DESERT','built',['The Highway · The Circus','Western Town · Area 51 · Giza','144 plots']);
 zone(...f,12,1,14,10,'THE BEACH','built',['The Shore · The Harbour','The Ocean · The Bermuda Triangle','140 plots (a sea room)']);
 zone(...f,12,17,9,5,'LEYLINES','old',['Göbekli Tepe · Stonehenge · Babel','Technoticlan · Bug Colony (new)','old rooms · plan 45']);
-zone(...f,4,27,4,3,'ANTARCTICA','old',['old room · plan 12'],{small:1});
+zone(...f,3,25.4,6,6,'ANTARCTICA','built',['Shelf Ice · Station · Polar Openings','Crevasse · Ice Wall · Hull in the Ice','36 plots']);   // ANTARCTICA ON PLOTS (2026-11-16, bake-antarctica.js)
 // ways
 txt(px(8.75),py(-0.15),'▲ mountain road',10.5,C.way,600,'middle'); txt(px(12.5),py(-0.15),'▲ cove',10.5,C.way,600,'middle');   // (2026-11-16: ground you walk, not doors)
 way(...f,-0.01,-2.2,0,-2.2,'way','');
@@ -75,7 +75,7 @@ const g=[ux,uy];
 [[-6,1,6,6,'The Woods'],[-14,0,8,8,'Camelot'],[-6,7,6,6,'The Estate'],[0,0,12,12,'Disaster City'],[0,12,12,12,'The Desert'],[12,1,14,10,'The Beach'],[12,17,9,5,'Leylines'],[-12,-5,12,2,'The Mountains (south edge)']].forEach(z=>zone(...g,z[0],z[1],z[2],z[3],z[4],'old',[],{faint:1}));
 zone(...g,2,9,8,2,'THE SEWERS','old',['old rooms · plan 16'],{pick:'① NEXT',small:1});
 zone(...g,-4,-3,4,4,'HELL','old',['under the Vatican','plan 16'],{small:1,pick:'②'});
-zone(...g,-6,2,6,6,'THE CAVERN','old',['The Cavern · Hollow Earth','Agartha','old rooms · plan 36']);
+zone(...g,-6,2,6,6,'THE CAVERN','built',['The Cavern · Hollow Earth','Agartha','36 plots · one room (11-16)']);
 zone(...g,0,18,6,6,'THE D.U.M.B.','old',['Research · Sub-Level 7','Command · Level P3 · CERN','old rooms · plan 36'],{pick:'③'});
 zone(...g,15,4.5,9,3,'THE DEEP','old',['Atlantis · The Trench · plan 27']);
 way(...g,-2,1,-2,2,'way','the fissure',8,2);
@@ -95,7 +95,7 @@ txt(LX,y,'3.  NOT ON THE MAP',15,C.ink,700);y+=12;
 box('DOOR HQ  (the hub, handmade)',['Its doors are the gold marks on the map.','Open at the start: the stair to the Woods,','the taxi to Disaster City.'],C.hq);
 box('② HEAVEN  (old rooms, plan 16)',['Over the Vatican. Up the Grand Stair from','Mount Olympus, or from Camelot’s sky castle.'],C.old);
 box('OUTER SPACE  (on plots 11-16)',['Moon 5x4, Mars 5x4, Saturn 4x4, the','Singularity 4x4: a room each. The Spaceship','handmade. Ways in: the ship, HQ observatorium.'],C.built);
-box('THE ASTRAL REALM  (old rooms, plan 36)',['Ways in: HQ dream lab, Camelot’s mirror,','the D.U.M.B. dream lab, the Haunted attic.'],C.old);
+box('THE ASTRAL REALM  (on plots 11-16, 36)',['36 islands over the void, one room. Ways in:','HQ dream lab (the Waiting Room), Camelot’s','mirror (two-way), D.U.M.B., the Haunted attic.'],C.built);
 y+=6;txt(LX,y,'WHAT THE COLOURS MEAN',15,C.ink,700);y+=14;
 const key=(col,dash,t)=>{o.push(`<rect x="${LX}" y="${y}" width="26" height="16" fill="${col}" fill-opacity=".55" stroke="${col}" stroke-width="2" ${dash?'stroke-dasharray="6 4"':''}/>`);txt(LX+36,y+13,t,12);y+=24};
 key(C.built,0,'built on plots (real size)');key(C.old,1,'still old rooms; plot plan drawn, not built');
@@ -106,6 +106,6 @@ o.push(`<rect x="${LX}" y="${y}" width="26" height="16" fill="none" stroke="${C.
 txt(LX,y,'THE ORDER I PROPOSE',15,C.ink,700);y+=20;
 ['① The Sewers: 16 plots, seven doors into','    built places, the gate to everything below.','② Heaven + Hell + Vatican: the Mountains’','    stairs and the Civic gate all end at it.','③ The D.U.M.B.: under Area 51, behind the','    HQ garage.','Then: the Cavern, The Deep, Leylines,','the Astral Realm, Antarctica, Outer Space.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
 y+=20;txt(LX,y,'LOOSE ENDS FOUND',15,C.ink,700);y+=20;
-['· Looking-Glass Garden stands twice (old','   room + Camelot district); Camelot’s mirror','   to the Astral Realm has no way back.','· Four doors still name retired rooms: you','   land at the default spot.','· Woods trails to Agartha + the Lodge are','   one-way.','· The Strip, the Lodge, Bohemian Grove are','   still loose old rooms.','· Sewers + Cavern plan pictures predate the','   city’s district move.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
+['· Looking-Glass Garden stands twice (old','   room + Camelot district).','· Four doors still name retired rooms: you','   land at the default spot.','· Woods trails to Agartha + the Lodge are','   one-way.','· The Strip, the Lodge, Bohemian Grove are','   still loose old rooms.','· Sewers + Cavern plan pictures predate the','   city’s district move.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
 fs.writeFileSync('map.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="${Wd}" height="${Ht}" viewBox="0 0 ${Wd} ${Ht}" font-family="DejaVu Sans, Arial, sans-serif">${o.join('')}</svg>`);
 console.log(Wd,Ht);
