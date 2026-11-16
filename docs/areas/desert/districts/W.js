@@ -47,11 +47,21 @@
      HOTEL: a 3.4 m ceiling, the lobby, a corridor, six rooms (bed, wardrobe, table, rug). CHURCH: chancel step, altar, cross, pews.
      BLACKSMITH: brick forge + hood. BARBER, ASSAY OFFICE, TELEGRAPH, UNDERTAKER: counter, shelves, their trade's pieces.
 
+   THE DRESSING (after THE DRESSING PASS, 2026-11-16; seen in the browser): `dress()` below. Porch chairs, benches, barrels, sacks, straw,
+   a hanging lantern by every door (a glow, no lamp), chickens, crows, a wagon at the store; three privies and woodpiles in the back yards;
+   the church's pickets; a crop patch + scarecrow by the windmill; the mine's yard; THE TRAIL IN's timber gate and rail; logs, pot and a
+   horse line at the WAGON CAMP; five cows and an old fence on OPEN RANGE; the hideout at the end of THE CANYON (fire, cot, loot, dynamite).
+
+   THE ATMOSPHERE (after THE ATMOSPHERE PASS, 2026-11-16; seen by day, dusk and night): `airZones` = dust blowing down Main Street and
+   thinner dust over the camp and the range (the tool's new hook). Every hanging lantern has a lit core (`des:w:lamps`, one drawn row); the
+   saloon's and the hotel's windows are lit (`western()` `lit`). No lamp of the room's ten is taken by this district bar the camp's fire.
+   No sound: the walk rooms have no per-district sound, and no SFX may be generated.
+
    KNOWN MISSING OR WRONG:
    - No upstairs anywhere: the saloon's gallery and the stables' loft are drawn and not reached; the hotel's upper floor is its front only.
      THE MINE has no inside. The hotel's six rooms were not seen on screen (the probe stood in a partition).
    - The insides read dark in the cloud browser even with lit linings (mondo's Firefox renders brighter): judge on his machine.
-   - Thin: the south half (The Trail In, Open range, The Canyon's floor) is nearly empty; no lamps, no troughs; the box canyon holds nothing.
+   - The lanterns glow and light nothing (the room has ten lamps for all four districts). The camp's two tents are modern (NEEDS A MODEL).
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS, not this file's).
    - Door leaves DO draw in the probe here (saloon, church, jail seen 11-16); the open finding in "THE LOOK PASS" is not true of this town.
 
@@ -63,6 +73,7 @@
      pieces(ctx)     late pieces, after every district's ground
      doors(ctx)      the doors to other rooms (doors.push)
      dice            this file's own dice (ctx.rnd / ctx.dec): another district's change never re-throws them
+     airZones(ctx)   the air over its plots: [{ sx0, sy0, sx1, sy1 (home squares), kind, color, n, speed, wind }] (shell.atmos.zones)
      rooms(kit)      the rooms behind this district's doors, for bake-desert-insides.js (its kit: mk, the sheets)
    THE FRAME: this file is written in the FIRST BUILD's squares (sx 0..96 west to east, sy 0..96 north to south; gx = a square's west / north
    line in metres, gc = its middle). The tool moves every row this file makes to where the block stands in the 144-square room:
@@ -74,6 +85,8 @@ const bind = ctx => ({ C, gx, gc, r2, feat, props, doors, npc, count, line, setR
 let STABLES, SMITH, SALOON, BARBER, BANK, ASSAY, WIRE, HOTEL, JAIL, COFFINS, STORE, CHURCH;
 const PLANKS = 'urban:WoodFlooring1a';
 exports.dice = 3308375642;
+/* THE AIR (the atmosphere pass, 2026-11-16): dust blowing down Main Street, thinner dust over the camp and the range. Home squares. */
+exports.airZones = () => [{ sx0: 48, sy0: 19, sx1: 96, sy1: 29, kind: 'dust', color: 0xe8c890, n: 260, speed: 0.9, wind: 1.6 }, { sx0: 48, sy0: 36, sx1: 84, sy1: 48, kind: 'dust', color: 0xe0c898, n: 110, wind: 1.2 }];
 
 /* A WESTERN FRONT: plank walls, corner posts, a false front taller than the roof with the name painted on it, a boardwalk porch on the
    square row before the door (posts + a lean-to roof, or a balcony), sash windows. Every one differs: height, colour, front, roof, porch. */
@@ -90,8 +103,8 @@ function western(a, w, d, door, o) {
     /* the doorway's frame, the windows either side of it (and a row upstairs on a two-storey front) */
     a.box(door.lx - door.cw / 2 - 0.1, 0, d / 2 + 0.1, 0.2, 2.4, 0.2, WD2, trim); a.box(door.lx + door.cw / 2 + 0.1, 0, d / 2 + 0.1, 0.2, 2.4, 0.2, WD2, trim); a.box(door.lx, 2.25, d / 2 + 0.1, door.cw + 0.5, 0.2, 0.2, WD2, trim);
     for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) { if (Math.abs(x - door.lx) < 1.7) continue;
-        a.box(x, 1.0, d / 2 + 0.06, 1.3, 1.4, 0.08, GLS, 0xe0cc98, { glow: 0.35 }); a.box(x, 0.86, d / 2 + 0.12, 1.7, 0.14, 0.16, WD2, trim); a.box(x, 2.4, d / 2 + 0.12, 1.7, 0.14, 0.16, WD2, trim); }
-    if (h >= 7) for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) { a.box(x, 4.5, d / 2 + 0.06, 1.2, 1.5, 0.08, GLS, 0xc8d4e0); a.box(x, 4.36, d / 2 + 0.12, 1.6, 0.14, 0.16, WD2, trim); }
+        a.box(x, 1.0, d / 2 + 0.06, 1.3, 1.4, 0.08, GLS, o.lit ? 0xffd890 : 0xe0cc98, { glow: o.lit || 0.35 }); a.box(x, 0.86, d / 2 + 0.12, 1.7, 0.14, 0.16, WD2, trim); a.box(x, 2.4, d / 2 + 0.12, 1.7, 0.14, 0.16, WD2, trim); }
+    if (h >= 7) for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) { a.box(x, 4.5, d / 2 + 0.06, 1.2, 1.5, 0.08, GLS, o.lit ? 0xffd890 : 0xc8d4e0, o.lit ? { glow: o.lit * 0.8 } : null); a.box(x, 4.36, d / 2 + 0.12, 1.6, 0.14, 0.16, WD2, trim); }
     for (const s of [-1, 1]) for (let z = -d / 2 + 2.6; z < d / 2 - 1; z += 5.25) a.box(s * (w / 2 + 0.06), 1.0, z, 0.08, 1.4, 1.2, GLS, 0xc8d4e0);
     /* the porch */
     if (o.porch !== 'none') { a.box(0, 0, d / 2 + 1.75, w, 0.16, 3.4, FLR, 0x8c7a62);
@@ -163,7 +176,7 @@ exports.buildings = ctx => { bind(ctx);
         I.solid(0, -I.il + 0.9, 2.4, 1.6, 0.95, 'bricks_1', 0xa87a64); a.box(0, 0.95, -I.il + 0.9, 1.7, 0.08, 1.0, 'bricks_1', 0xff7a30, { glow: 1 });
         a.roof('pyramid', 0, 2.1, -I.il + 0.9, 2.6, 0.9, 1.8, RIB, 0x4a4440); a.box(0, 3.0, -I.il + 0.6, 0.6, 0.9, 0.6, 'bricks_1', 0x8a6454, { glow: I.g });
         I.counter(I.iw - 0.6, 0.6, 4.4, true, 0x6a5038); a.box(-2.2, 0, -1.2, 0.7, 0.62, 0.7, WD2, 0x5a4230, { glow: I.g }); });
-    SALOON = building('saloon', [61, 16, 65, 21, 'S'], 7, { leaf: 'leaf_saloon', leafDouble: true }, (a, w, d, door) => { western(a, w, d, door, { h: 7, tint: 0xd8785a, trim: 0x5a3424, roofTint: RF, front: 2.4, step: 0.9, porch: 'balcony', name: 'SALOON', ink: '#f0d890', board: '#3a1c14' });
+    SALOON = building('saloon', [61, 16, 65, 21, 'S'], 7, { leaf: 'leaf_saloon', leafDouble: true }, (a, w, d, door) => { western(a, w, d, door, { h: 7, tint: 0xd8785a, trim: 0x5a3424, roofTint: RF, front: 2.4, step: 0.9, porch: 'balcony', lit: 0.85, name: 'SALOON', ink: '#f0d890', board: '#3a1c14' });
         const I = inside(a, 'saloon', w, d, 7, door, { key: PLAS, tint: 0xa84a40, dado: 0x5a3626, ceilTint: 0x6a4a36, glow: 0.34 });
         /* the long bar on the west wall, the back bar and its mirror behind it; the stage in the far corner; the gallery over the back */
         I.counter(-I.iw + 2.0, -3.2, 8.4, true, 0x7a4a30); a.box(-I.iw + 2.55, 0.18, -3.2, 0.06, 0.06, 8.2, RIB, 0xd8b060, { glow: 0.5 });
@@ -189,7 +202,7 @@ exports.buildings = ctx => { bind(ctx);
         /* the counter with its wicket, the pigeonholes on the back wall */
         I.counter(0, 0.2, 2 * I.iw - 1.9, false, 0x5a4a3e); a.cyl(-1.2, 1.09, 0.2, 0.022, 1.0, RIB, 0xd8b060, { seg: 6, glow: 0.5, n: 13, step: [0.2, 0, 0] }); a.box(0, 2.09, 0.2, 2.7, 0.08, 0.1, RIB, 0xd8b060, { glow: 0.5 });
         I.shelves(0, -I.il + 0.05, 2 * I.iw - 0.4, false, 2.7, [0xf0e8d0, 0xe0d0a8, 0xf0e8d0, 0xd8c8a0]); });
-    HOTEL = building('hotel', [85, 15, 89, 21, 'S'], 8.75, { leafDouble: true }, (a, w, d, door) => { western(a, w, d, door, { h: 8.75, tint: 0xe0c090, trim: 0x6a4630, roofTint: 0xa86a58, front: 1.4, porch: 'balcony', name: 'HOTEL', board: '#f0e8d0' });
+    HOTEL = building('hotel', [85, 15, 89, 21, 'S'], 8.75, { leafDouble: true }, (a, w, d, door) => { western(a, w, d, door, { h: 8.75, tint: 0xe0c090, trim: 0x6a4630, roofTint: 0xa86a58, front: 1.4, porch: 'balcony', lit: 0.7, name: 'HOTEL', board: '#f0e8d0' });
         const I = inside(a, 'hotel', w, d, 8.75, door, { key: PLAS, tint: 0xd8c8a0, dado: 0x6a4630, ceil: 3.4, ceilTint: 0xb89a78, glow: 0.38 });
         /* the lobby across the front; behind it a corridor down the middle and three rooms a side, each with its doorway on the corridor */
         const zL = 4.6, T = 0.14, H = 3.4, K = 0xd8c8a0;
@@ -253,7 +266,7 @@ exports.furnish = ctx => { bind(ctx);
     /* THE CHURCH (9.8 x 16.8) */
     for (const z of [-2.6, -0.4, 1.8, 4.0, 6.2]) for (const x of [-2.5, 2.5]) inn(CHURCH, 'church_pew', x, z, { face: 0 });
     inn(CHURCH, 'stone_altar', 0, -7.0, { y: 0.3 }); inn(CHURCH, 'wooden_cross', 0, -8.02, { y: 2.2, face: 0, h: 2.4 }); inn(CHURCH, 'lectern', 2.8, -5.6, { y: 0.3, face: 180 }); inn(CHURCH, 'meshy_bible', 0, -7.0, { y: 1.26 });
-    inn(CHURCH, 'candle_ring', -3.2, -7.0, { y: 0.3 }); inn(CHURCH, 'hw_candles', -0.7, -7.0, { y: 1.26 }); inn(CHURCH, 'hw_candles_2', 0.7, -7.0, { y: 1.26 }); inn(CHURCH, 'decor_piano', -3.4, -4.6, { face: 90 }); inn(CHURCH, 'ships_bell', 3.9, 7.4, {});
+    inn(CHURCH, 'candle_ring', -3.2, -7.0, { y: 0.3, noLight: true }); inn(CHURCH, 'hw_candles', -0.7, -7.0, { y: 1.26 }); inn(CHURCH, 'hw_candles_2', 0.7, -7.0, { y: 1.26 }); inn(CHURCH, 'decor_piano', -3.4, -4.6, { face: 90 }); inn(CHURCH, 'ships_bell', 3.9, 7.4, {});
     /* THE GENERAL STORE (13.3 x 13.3) */
     inn(STORE, 'cash_register', -3.0, -4.1, { y: 1.1, face: 180 }); inn(STORE, 'platform_scale', 4.6, -3.9, {}); for (let i = 0; i < 4; i++) inn(STORE, 'psx_canned_food_mp_' + (1 + i), -1.2 + i * 0.3, -4.1, { y: 1.1 });
     inn(STORE, 'psx_metal_barrel_mp_1', 5.2, 1.2, {}); inn(STORE, 'psx_metal_barrel_mp_2', 5.4, 2.6, {}); inn(STORE, 'meshy_burlap_sack', 4.2, 2.0, {}); inn(STORE, 'meshy_burlap_sack', 5.0, 4.0, { face: 40 }); inn(STORE, 'meshy_burlap_sack', 3.8, 3.6, { face: 110 });
@@ -316,8 +329,60 @@ exports.ground = ctx => { bind(ctx);
     pen(84, 28, 88, 34, [0, 86]); P('horse_black', 85, 30, { face: 90 }); P('cow', 86, 32, { face: 300 }); P('cow', 87, 30, { face: 40 }); dec('wooden_bucket', 85, 33);                           // THE CORRAL
     P('campfire', 66, 44, {}); Pm('camping_tent', gc(64), gc(45), { face: 120 }); Pm('camping_tent', gc(68), gc(46), { face: 220 }); dec('sea_chest', 67, 46); dec('instrument_guitar_lying', 65, 43);
     dec('skull', 76, 43); dec('skull', 80, 39); dec('psx_fish_skeleton_mp_1', 78, 45, { y: 0.02 }); P('dead_snag', 74, 40, {}); P('dead_snag', 79, 42, {});
+    dress();
     native('sheriff', 52, 25, 0); native('cowboy', 64, 22, 180, sayOf(O_LINE, 'cowboy')); native('cowboy', 60, 24, 90); native('skeleton', 54, 2, 180);
 };
+
+/* THE DRESSING PASS (2026-11-16): the place looks used. Porches, back yards, the trail's gate, the camp, the range, the canyon's hideout.
+   Only pieces the catalogue has; what it lacks is on the NEEDS A MODEL list in the header. Whole-square blockers go through P (a square's
+   middle), loose things through dec / Pm (off the middle). Lanterns wear `noLight` (a glow, no lamp): the atmosphere pass lights the town. */
+function dress() {
+    const sack = 'meshy_burlap_sack', crate = 'psx_wooden_crate_2', keg = 'psx_metal_barrel_mp_1', LIT = sheet(), OX = gc(72), OZ = gc(24), lamp = (x, z, y) => { Pm('meshy_hanging_lantern', x, z, { y: y || 2.45, noLight: true }); LIT.box(x - OX, (y || 2.45) + 0.1, z - OZ, 0.15, 0.2, 0.15, GLS, 0xffc060, { glow: 1, uv: 'fit' }); };
+    /* a privy: plank box, lean-to roof, a board door with its moon; drawn + one ghost block (a back yard's own small building) */
+    const privy = (sx, sy, id) => { const a = sheet(), T = 0x9a7a5a; a.box(0, 0, 0, 1.3, 2.2, 1.3, WD, T, { uv: [1.75, 1.75] }); a.roof('shed', 0, 2.2, 0, 1.6, 0.4, 1.6, SHG, 0x6a5a4a); a.box(0, 0.05, 0.66, 0.7, 1.9, 0.04, WD2, 0x6a4e38);
+        a.cyl(0, 1.5, 0.69, 0.12, 0.02, WD2, 0x1a1410, { seg: 8 }); feat({ k: 'arch', id: 'des:w:privy:' + id, x: gc(sx), z: gc(sy), rot: 0, parts: a.P });
+        feat({ k: 'wall', x0: gc(sx) - 0.65, z0: gc(sy), x1: gc(sx) + 0.65, z1: gc(sy), h: 2.2, t: 1.3, key: WD2, ghost: true, rail: false }); };
+    /* MAIN STREET, the north porches (row 21; the door squares stay clear) */
+    Pm('hw_straw', gc(49) + 0.2, gc(21), { face: 90 }); Pm('hw_straw_2', gc(49) + 0.3, gc(21) - 1.0, { face: 0 }); dec('wooden_bucket', 53, 21); dec('chicken', 55, 23); dec('chicken', 50, 22); dec('chicken', 54, 20);
+    dec(keg, 58, 21); dec('psx_metal_barrel_mp_2', 56, 21); Pm('rocking_chair', gc(61), gc(21) - 0.4, { face: 180 }); Pm('rocking_chair', gc(64) + 0.6, gc(21) - 0.4, { face: 200 }); dec('psx_glass_bottle_1', 64, 21); dec('psx_glass_bottle_2', 61, 21);
+    Pm('iron_garden_bench', gc(66), gc(21) - 0.9, { face: 180 }); dec('psx_potted_cactus_mp_1', 68, 21, { h: 0.6 }); dec(crate, 79, 21); dec(sack, 77, 21); Pm('iron_garden_bench', gc(82) + 0.9, gc(21) - 0.9, { face: 180 });
+    Pm('rocking_chair', gc(85), gc(21) - 0.4, { face: 180 }); Pm('luggage_cart', gc(88) + 0.8, gc(21) - 0.2, { face: 20 }); dec('potted_plant', 89, 21);
+    [51.5, 57.5, 63, 67.5, 74.5, 78.5, 82, 87].forEach(x => lamp(gx(x) + 1.1, gx(22) - 0.35));
+    /* the south porches (row 26) */
+    Pm('notice_board', gc(52) + 0.6, gx(27) - 0.12, { y: 1.5, face: 0 }); dec(sack, 73, 26); dec(sack, 76, 26); Pm(crate, gc(77) + 0.6, gc(26), { face: 12 }); Pm('psx_wooden_crate_6', gc(77) + 0.6, gc(26), { y: 1.08, face: 40 }); dec('hw_pumpkin', 74, 26); dec('hw_pumpkin_2', 76, 26);
+    dec(keg, 72, 26); Pm('psxg_coffin', gc(55) - 0.9, gx(27) - 0.5, { face: 90 }); [51.5, 56.5, 75].forEach(x => lamp(gx(x) + 1.1, gx(26) + 0.35));
+    /* the street itself: a wagon drawn up at the store, the trail in between the jail and the undertaker */
+    Pm('covered_wagon', gc(81), gc(25) - 0.6, { face: 0 }); Pm('horse_black', gc(60), gc(22) + 1.7, { face: 0 }); dec('wooden_bucket', 65, 25);
+    for (let y = 27; y < 32; y++) for (const x of [53, 54]) setPaint(x, y, 'dirt_2');
+    /* the back yards */
+    privy(66, 14, 's'); privy(91, 16, 'h'); privy(79, 33, 'g'); P('fallen_log', 62, 15, { face: 0 }); P('stump', 64, 15, {}); dec('psx_hand_saw_1', 63, 14); P('fallen_log', 75, 32, { face: 90 }); dec('stump', 76, 33);
+    dec(keg, 60, 19); dec(crate, 60, 17); dec(crate, 84, 19); dec(keg, 90, 20); dec('psxg_dead_bush_1', 58, 15); dec('psxg_dead_bush_2', 71, 15); dec('psxg_dead_bush_1', 82, 15); dec('psxg_dead_bush_2', 60, 31); dec('psxg_dead_bush_1', 70, 33);
+    dec('crow', 53, 6, { y: 3.56 }); dec('crow', 57, 3); dec('crow', 66, 24, { y: 1.15 }); dec('crow', 84, 28, { y: 1.25 });
+    /* THE CHURCH YARD + THE WINDMILL'S PATCH */
+    for (const x of [62, 63, 68, 69]) Pm('hw_fence', gc(x), gx(6) - 0.2, { face: 0 }); dec('psxg_dead_bush_2', 62, 3); P('psxg_dead_tree_2', 69, 2, {}); Pm('iron_garden_bench', gc(63), gc(5), { face: 180 });
+    for (const q of [[80, 6], [81, 6], [82, 6], [80, 7], [81, 7], [82, 7]]) Pm((q[0] + q[1]) % 2 ? 'hw_crop' : 'hw_crop_2', gc(q[0]), gc(q[1] + 2), { face: 0 }); P('hw_scarecrow', 83, 9, { face: 200 }); dec('hw_shovel', 79, 9); dec('hw_pumpkin_3', 82, 10); dec('chicken', 79, 6);
+    /* THE MINE'S YARD */
+    dec('spell_dynamite', 92, 7, { h: 0.5 }); dec('psxg_rock_1', 89, 9); dec('psxg_rock_2', 91, 9); dec('psxg_rock_3', 90, 10); dec('psxg_rock_2', 88, 10); dec(sack, 93, 8); dec(keg, 87, 5); lamp(gx(90) + 1.2, gx(5) + 3.0, 2.3);
+    /* THE CORRAL */
+    Pm('hw_straw', gc(89), gc(29), { face: 0 }); Pm('hw_straw_2', gc(89), gc(30) + 0.2, { face: 90 }); dec('wooden_bucket', 87, 27); dec(keg, 83, 28); dec('chicken', 89, 32);
+    /* THE TRAIL IN (P08-04): a timber gate over the trail where it reaches town, a ranch rail either side, a bleached skull on the beam */
+    { const a = sheet(), T = 0x7a5a40; for (const s of [-1, 1]) { a.box(s * 4.0, 0, 0, 0.36, 5.2, 0.36, WD2, T); a.box(s * 3.3, 4.2, 0, 1.4, 0.2, 0.2, WD2, T); } a.box(0, 4.8, 0, 9.2, 0.34, 0.34, WD2, T);
+        feat({ k: 'arch', id: 'des:w:gate', x: gx(54), z: gc(35), rot: 0, parts: a.P }); Pm('skull', gx(54), gc(35), { y: 5.14, face: 180, h: 0.6 });
+        feat({ k: 'rail', x0: gc(49), z0: gc(35), x1: gx(54) - 4.0, z1: gc(35), model: 'ranch' }); feat({ k: 'rail', x0: gx(54) + 4.0, z0: gc(35), x1: gc(59), z1: gc(35), model: 'ranch' }); }
+    P('signpost', 51, 40, { face: 90 }); dec('psxg_rock_1', 50, 38); dec('psxg_dead_bush_1', 57, 39); dec('skull', 56, 43); dec('psxg_rock_3', 49, 44); P('dead_snag', 58, 45, {}); dec('psxg_dead_bush_2', 51, 46); dec(crate, 55, 37);
+    /* THE WAGON CAMP (P09-04): logs to sit on round the fire, the pot, the horse line */
+    P('fallen_log', 66, 42, { face: 0 }); P('fallen_log', 68, 44, { face: 90 }); dec('stock_pots', 67, 43); dec(keg, 63, 42); dec(crate, 70, 46); dec(sack, 62, 44); dec('wooden_bucket', 65, 46); lamp(gc(64), gc(43), 0.02);
+    P('hitching_rail', 62, 46, { face: 0 }); Pm('horse', gc(62), gc(46) + 1.7, { face: 0 }); Pm('horse_brown', gc(62) + 1.5, gc(46) - 1.7, { face: 180 }); dec('psxg_dead_bush_1', 61, 38); dec('psxg_rock_2', 70, 40);
+    /* OPEN RANGE (P10-04): cattle on poor grazing, a stretch of old fence */
+    [[75, 38, 200], [78, 41, 60], [81, 38, 310], [76, 45, 140], [73, 43, 20]].forEach(q => P('cow', q[0], q[1], { face: q[2] }));
+    feat({ k: 'rail', x0: gc(73), z0: gc(36), x1: gc(77), z1: gc(36), model: 'ranch' }); feat({ k: 'rail', x0: gc(79), z0: gc(36), x1: gc(82), z1: gc(36), model: 'ranch' });
+    [[73, 39], [77, 43], [78, 46], [83, 39], [74, 46], [79, 37]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1])); dec('psxg_rock_1', 76, 40); dec('psxg_rock_4', 79, 42); dec('psxg_rock_2', 74, 43);
+    /* THE CANYON (P11-04): the box canyon is somebody's hideout */
+    P('skull_pile', 89, 36, {}); P('campfire', 90, 43, { noLight: true }); Pm('cot', gc(91) + 0.5, gc(44) + 0.6, { face: 90 }); Pm('money_sacks', gc(91) + 0.6, gc(42), {}); Pm(crate, gc(90) - 0.6, gc(44) + 1.0, { face: 15 }); Pm('spell_dynamite', gc(90) - 0.6, gc(44) + 1.0, { y: 1.08, h: 0.5 });
+    Pm(keg, gc(91) + 0.8, gc(40), {}); Pm('shotgun', gc(91) + 0.9, gc(43), { y: 0.5 }); Pm('horse_black', gc(91) + 0.3, gc(39), { face: 0 }); lamp(gc(90) - 1.2, gc(42), 0.02); dec('psx_glass_bottle_1', 90, 44); dec('skull', 90, 39);
+    /* the lanterns' flames: one drawn row of lit cores (a glow costs none of the room's ten lamps) */
+    feat({ k: 'arch', id: 'des:w:lamps', x: OX, z: OZ, rot: 0, parts: LIT.P });
+}
 
 /* THE MESHY PIECES (mondo 11-15 19:01 "okay go ahead": the packs have no cactus, covered wagon, water tower or hitching rail) */
 exports.pieces = ctx => { bind(ctx);
