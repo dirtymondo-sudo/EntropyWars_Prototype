@@ -4396,6 +4396,10 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
      went through the ceiling). Furniture: keep its middle 0.65 m in. A piece hung on the wall: N.js `WALL(h)` (`mount: 0` + the y that lands it at h; h
      from 1.55 m up), or give it something to hang on that stands out from the wall (the Post Office's sorting wall).
   Hearths are open brick (`hearth()`), the fire is the catalogue's `campfire` (it carries a real light) at `span` 0.8. Seen on screen at HEAD below.
+- **PASS 3, DRESSING**: N.js build, "THE DRESSING": 31 lamp posts (`lampPost(plot, lx, ly, turn)`: a candy-striped post with a lit lantern, a `look` on
+  a square's middle, the square marked taken), bulbs strung from the square's lamps to the tree, the well, shop freight, woodpiles, sleighs, the yeti's
+  camp, the lake's bench, hares / crows / a dog. THE SIXTEENTH HOUSE: the plan's last `B` run (P03-00 8,8) was the "4 unreached squares": it is built
+  now (`north3`), reached over the two squares `tailor` opens. Trails (`o`) and the squares in front of doors are kept clear.
 
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
