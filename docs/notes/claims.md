@@ -17,7 +17,11 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | The Estate (plot build, prompt 5 of docs/plans/HANDOFF_PROMPTS.md) | second | 2026-11-15 | built + look pass merged (seen in the browser); corn waits for the Meshy key. Two pack prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack) |
 | Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 + the castle as ONE stacked room (`site_prebuilt_camelot_palace`) + five house kinds BUILT, seen on screen in part; the sky castle waits mondo |
 | The Desert | second | 2026-11-16 | the highway is built on mondo's OK (12 x 12 plots, four exits, overpass, signs, cars; areas-complexes.md "THE DESERT, THE HIGHWAY"); seen in the browser, waits his look. Open: no door leaf draws in the probe ("THE LOOK PASS") |
-| The Woods | owner | 2026-11-15 | the life pass (four district looks, per-district particles) is live, waits mondo's look; the cabin has no game role yet |
+| The Woods, the tool + shared pieces (bake-woods.js, layout.json: terrain, levels, trails, water, doors + link ends, sky, helpers; NOT the district files) | free | 2026-11-16 | split into district files on mondo's order (areas-complexes.md "THE WOODS, THE DISTRICT FILES"); the baked room did not change. Nobody edits the tool without a note below. Open: no way to Room 333, no cave inside, the Tunnel Way's dead end, waterfalls + light shafts |
+| The Woods, district T, The Redwood Trail (`docs/areas/woods/districts/T.js`, 9 plots) | free | 2026-11-16 | dressing + horror + life passes live, wait mondo's look; the Falls has no waterfall; the two Creek plots are thin |
+| The Woods, district G, The Ritual Ground (`districts/G.js`, 9 plots) | free | 2026-11-16 | dressing + horror + life passes live (owl, stage, stones, fae ring), wait mondo's look; no way to Room 333 (a shared piece) |
+| The Woods, district C, The Clearing (`districts/C.js`, 9 plots) | free | 2026-11-16 | dressing + horror + life passes live, wait mondo's look; the Stair is shared (spawn + HQ link); the three Deep woods plots are thin |
+| The Woods, district M, Dead Man's Cave (`districts/M.js`, 9 plots) | free | 2026-11-16 | dressing + horror + life passes live, wait mondo's look; the cabin has no game role yet ("Nothing yet"); the Channel plots' brick channel is not built |
 | The Mountains (+ the Hollywood Hills room, the city's north beach strip in B.js beach() and EDGES.n.cap) | second | 2026-11-15 | plan 2 built: Hills room, Shasta/Olympus swap, north beach; not seen on screen, waits mondo's look |
 | The Beach (`site_prebuilt_bermuda_beach`, bake-beach.js; plan 4: the Shore, the Harbour, the Ocean, the Bermuda Triangle) | second | 2026-11-15 | first delivery merged; not seen on screen, waits mondo's look |
 | Disaster City (all districts, heights, residents, traffic) | owner | 2026-11-13 | several districts wait mondo's answers |
@@ -46,3 +50,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, to the Disaster City frame rate holder): one engine line changed outside any row, on mondo's "fix the slow probes": three-renderer.js
   `_hqSeatLater` now waits 12x the last seat pass's cost (THE SEAT'S SHARE, rendering-loading-perf.md). All harnesses launch through `probe-fast.js`;
   playtest_city.js needs no `--wait=150000` / `EW_NO_MODEL_QUEUE` (PLAYTEST_NOTES "THE FAST PROBE").
+- 2026-11-16 (second, to the owner side, which held The Woods): mondo ordered the Woods split himself on 11-16 ("every single zone needs to be like that. now. so we can
+  work in parallel"), so this side did it though the row said `owner`. Only the writing changed: bake-woods.js now loads `docs/areas/woods/districts/C|T|G|M.js`
+  through one hook; the baked room is byte for byte the same. The five rows above are `free`: take one district (or the tool row) before working on it. If a
+  thread of yours has unmerged edits to bake-woods.js' district content, move them into the matching district file (the passes are `dress` / `horror` / `life`).

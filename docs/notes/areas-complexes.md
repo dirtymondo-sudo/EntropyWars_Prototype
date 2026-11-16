@@ -3968,6 +3968,50 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **ASKED FOR, NOT BUILT (mondo, same message): a pass that adds WATERFALLS and LIGHT SHAFTS to rooms** ("might need its own thread"). Today rooms have only `pool` /
   `stream` / `deck` water, and `_hqLightShaft` returns null (the `light_shaft` prop and `DOOR_HQ.lightShafts` rows draw nothing). The Falls plot and the canopy want them first.
 
+## THE WOODS, THE DISTRICT FILES (2026-11-16, mondo: "every single zone needs to be like that. now. so we can work in parallel")
+The Woods is written the way Disaster City is: the tool holds what is shared, each district's content is its own file, and one thread per
+district can work at the same time. A set-up change only: the baked room did not change (see THE PROOF).
+- **The files**: `docs/areas/woods/districts/C.js` (The Clearing, plots x 0..2 · y 3..5), `T.js` (The Redwood Trail, x 0..2 · y 0..2), `G.js` (The Ritual
+  Ground, x 3..5 · y 0..2), `M.js` (Dead Man's Cave, x 3..5 · y 3..5). Each starts with its brief: its nine plots, what stands there today, what is
+  missing or waits for mondo, the hooks. Read your file's header before anything else.
+- **The one hook** (bake-woods.js "THE DISTRICT FILES", right after the seeded roll): a file exports any of `tailor(ctx)` (its own changes to the plan's
+  squares, before the levels), `dress(ctx)` / `horror(ctx)` / `life(ctx)` (the three passes as they were built), `build(ctx)` (new work, after the three),
+  `wood` (the feature trees in its forest mass), `treeZones(ctx)` / `airZones(ctx)` (its boxes of `terrain.gen.zones` and `shell.atmos.zones`). The passes
+  run C, T, G, M; the zone boxes are written T, G, C, M (the mountain row and the Snowline's snow come first: the first box wins).
+- **What stays in the tool (shared)**: the plan (layout.json), THE TRAILS AND THE PATHS, the ways out (every door row, the `LINK_ENDS`, the Camelot
+  spur check), the glades, the levels, the open ground and its paint, the creek + the three pools + the decks, the helpers (put / dec / tree / native /
+  hput / hdec / life / fly / sow), the room-wide fern / stump / log scatter, the `FULL` tree map, the checks, the room's text and shell. The trees
+  themselves (bake-trees.py, `rt:*_full`, tree kinds) are the trees row on the board. The air's engine (three-renderer.js `_hqBuildAtmos`) is engine code.
+- **THE DICE AS THEY FELL**: the room is thrown with one stream of dice. Each district's pass, and the forest's feature trees, now starts on the dice
+  it had on the day of the split (the tool's `DICE` table), so a district that adds or drops a roll never moves another district's pieces. `tailor` and
+  `build` start on the district's own number. Two things still reach across: (1) a `sow` row's seed is the count of feature rows before it, so a feature
+  row added inside an OLD pass re-throws every later scatter in the room: put new feature rows in `build`; (2) a `tailor` that changes squares moves
+  the forest's feature trees and the open-ground rows after it (the same dice, other squares). Both show up in the bake's diff, neither breaks anything.
+- **The guard**: a helper asked for another district's plot throws (`not yours: districts/T.js asked for P03-02 …`). Rows pushed by hand (`features.push`,
+  `props.push`) are not checked: keep them on your own nine plots.
+
+**THE RULES FOR A DISTRICT THREAD**
+1. One thread = one district file. Take your district's row on the board (docs/notes/claims.md) in your first PR; free it in your last.
+2. The scope of a district thread: exteriors, interiors, dressing, atmosphere, polish, on its own nine plots. Edit only your `districts/<LETTER>.js`
+   (+ your notes here, + a catalogue row in data.js for a new prop, + MODEL_LIST.md when a model is added).
+3. Nobody edits bake-woods.js, layout.json or a shared piece (a door, a link end, a trail, the water, the levels, the sky, the helpers) without a dated
+   note on the board first, signed with the side. Need a new helper or a hook? Ask there; the holder of the "tool + shared pieces" row adds it.
+   Never edit another district's file. The trees (kinds, crowns) are closed by mondo ("Good, keep them") and belong to the trees row.
+4. Never hand-edit data.js between `WOODS36-BEGIN` / `WOODS36-END`. Bake: `node bake-woods.js` (`--dry-run` = the counts only; `WOODS_DUMP=1` prints
+   the square map). The tool checks every prop key against the catalogue, every native against the unit list, and that all 36 plots are reached on foot.
+5. **When another district landed first**: `git fetch origin main && git merge origin/main`. A conflict inside the baked block is NEVER solved by keeping
+   one side: take either side of the block to get past the conflict, run `node bake-woods.js`, and commit what the tool wrote (it holds both districts,
+   because both district files merged cleanly). A conflict in your own district file: keep both sides by hand. Merge main and rebake again right before
+   you merge the PR.
+6. data.js is an R2 file: a PR that changes the baked room bumps the `?v=` token in index.html and runs `node sync-zip.js --upload` (RULE #1, #1b).
+   A visual change gets a browser run through probe-fast.js (RULE #1c); in this room use `"fp": true` on open ground and `--flags=EW_PERF_LOW`.
+7. What mondo has said that binds every district: no doors in the Woods (ways are trails); no unexplained dead ends; no procedural stand-ins shown to
+   him; no apple tree (a Meshy tree); every new glow carries `noLight`; the cabin has no game role yet; small things only on a path's edge, nothing on a path.
+
+**THE PROOF OF NO CHANGE (11-16)**: on main at b055c5b the old tool was run (`node bake-woods.js`: data.js unchanged, sha256 9afc5d47), the tool was split,
+and the split tool was run: data.js is byte for byte the same file (sha256 9afc5d47, 118,860 bytes of room, the same counts: 361 props, 377 feature rows,
+6 doors, 17 natives). No difference to list, so no browser run, no token bump and nothing to upload.
+
 ## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
 
 mondo: "start a thread to start on the desert" · "put the circus in the desert (move it from where it is now) ... i meant district not plot" ·
