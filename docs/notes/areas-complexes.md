@@ -7152,6 +7152,7 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
 - **A timber stage / band shell on a plateau** (`woods:G:stage` in districts/G.js): deck slab + skirt boxes (leave the steps' width open in the front skirt), a back wall, corner posts, a `roof` `form: 'gable'`; `rail` rows keep the walker on it. No post in the middle of the front: it stands on the steps.
 - **Standing stones that block**: catalogue `sarsen` / `menhir` / `greek_column` with their own `h` (a prop row's `h` scales the model), one a square; `trilithon` on two whole squares (x on the line between them).
 - **A walk-in on ground that is not at 0 m (district G's Camp House, 7 m up)**: give every inside prop `floor: true`; a `y` of 1 m or more must be the ROOM height (ground + lift), a `y` under 1 m is a lift; line the inside walls with a lit board box 0.34 m in (`glow: 0.4`); `holy_carpet` stands upright (a tapestry), `psx_chair_mp_*` are stools.
+- **Lit trails without lights (district G)**: lantern posts as arch parts in the trees' edge beside a path (post + arm + a `glow: 1` box), one arch row a plot; pick the tree squares that touch a path by a hash so the count stays low. **Air by plot**: `airZones` may return several boxes in metres (first listed first); never `embers` (room-wide), use orange `motes`. **A glow on a statue**: measure the model file (parse the GLB's POSITION accessor) before guessing where a face is.
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 - **A yard for a new piece without moving the old ones** (district C): open its squares as `p` in `cut`, not `g` (the plot's middle is the mean of its grass squares).
 - **Level ground for a building**: the ground is flat 7 m either side of a plot's middle and between two neighbours of one level; row 3 of district C is one flat band.
@@ -8193,6 +8194,18 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
   - LEFT OUT ON PURPOSE: `bat_*` (drawn by code), pumpkins and jack-o'-lanterns (a holiday, not this place), scattered rocks and logs as `sow` rows (blockers on paths).
   - NOBODY MOVED: 854 rows outside the district, 0 differ. FRAME RATE (same Stage view): 1.0 -> 0.8 on the cloud's software GPU (836 props in the room now, 523 before
     this thread). To watch on the weak PC; the first thing to thin is the shore ring (26) and the three scatter rows (46).
+- **PASS 4, THE ATMOSPHERE (seen by day and at night, four probe rounds; drawn glow only, no real light added):**
+  - THE LANTERN POSTS: 37 posts in the trees' edge beside the paths (about one every four squares of wood edge, never on a path square), each a post, an arm and a
+    lamp (`glow: 1`). One arch row a plot (`woods:G:lanterns:<px>-<py>`), `y: 0` with each part at the ground's own height. At night the trails read as lit lanes.
+  - THE STAGE: 13 bulbs on a wire under the front beam, three `paper_lantern` in the shell. THE OWL: its eyes burn (arch row `woods:G:owl:eyes`, two glow boxes;
+    measured on the model file: at 10 m tall the eyes are 8.5 m up, 0.6 m off the middle, the face's front 1.8 m before the owl's middle; two wrong guesses were seen
+    first). THE LAKE: eleven `candle` afloat round the effigy's boat and off the jetty's head (`y: -0.28`).
+  - THE AIR BY PLOT (`airZones`, boxes in metres): fireflies over the Lake, warm sparks over the Fire and before the Owl (`motes` in orange, faster), pale spores on
+    the Mound, ash under the Dead Tree, the district's violet motes last. NO `embers` zone: that kind rises from every fire prop in the ROOM, other districts' too.
+  - NIGHT: a view's `eval` of `window._hqClockHour = function () { return 22.5 }` (+ `settle` 3000) turns the views after it to night.
+  - NOT POSSIBLE FROM A DISTRICT FILE: real lights (ten a room, held by the old torches and fires), light shafts (`_hqLightShaft` draws nothing), mist on the water,
+    sound. The glow boxes read cream, not amber (a glow of 1 washes the tint out).
+  - NOBODY MOVED: 891 rows outside the district, 0 differ. FRAME RATE (same Stage view): 0.8 -> 0.8.
 - **FITS THIS DISTRICT (the model list read end to end, 11-16; catalogue keys)**: STONE `menhir`, `sarsen`, `trilithon`, `obelisk`, `greek_column`, `t_pillar`, `decor_stone_arch`,
   `stone_urn`, `ancient_well`, `hw_stone*`, `psxg_rock_*`, `psxg_wall*`. RITUAL `stone_altar`, `brazier`, `cave_torch`, `candleRing`, `candleLine`, `candle`, `hw_candle*`,
   `candelabra`, `votive_stand`, `cauldron`, `crystalBall`, `tarotDeck`, `item_censer`, `item_ward_totem`, `item_drinking_cup`, `taiko_drum`, `ships_bell`, `royal_throne`,
