@@ -10,11 +10,12 @@
    the Drain's south passage goes up to the Power station's yard (link `sewers_power`).
    A plot's squares are local (lx, ly 0..11 from its north-west corner). ctx: see W.js.
    STANDS TODAY (2 passes): the valve gallery (pumps, a gate valve, a boiler, breaker panels, radiation signs; pass 2: the control wall, the
-   lab bench, compressor, generator, gas rack, the waste pipes over the channel's head, pipe runs, glowing caps by the sludge, three
+   lab bench, compressor, generator, gas rack, pipe runs, glowing caps by the sludge, three
    tentacles in the tank, bodies, parts and bones on the Pit's walk, chains), barrels and warning tape along the
    channel, hanging bulbs, five bystanders (kaiju, black goo x 2, mad scientist, swamp monster;
    they have no lines: nobody wrote any).
-   NOT YET: a rail along the channel; drips, mist,
+   NOT YET: the station's waste pipes where the channel starts (the pack's pipe pieces stand upright and thin: tried, taken out); a rail
+   along the channel; drips, mist,
    a hum; anything on the Pit's east walk. */
 'use strict';
 const DRAIN = 'P04-04', PIT = 'P05-04';
@@ -53,9 +54,6 @@ module.exports = {
         ctx.P('steel_table', DRAIN, 5, 4, { face: 90 }); at('lab_glassware', DRAIN, 5, 4, -0.3, 0.2, { y: ctx.r2(base + 0.92) }); at('microscope', DRAIN, 5, 4, 0.35, -0.2, { y: ctx.r2(base + 0.92) });
         ctx.P('gas_cylinder_rack', DRAIN, 7, 4, { face: 180 }); ctx.P('air_compressor', DRAIN, 3, 4, { face: 180 }); ctx.P('generator', DRAIN, 8, 4);
         wallProp('locker', DRAIN, 1, 3, 'w'); ctx.dec('footlocker', DRAIN, 2, 3); wallProp('vent_grille', DRAIN, 5, 2, 'n'); wallProp('wall_chains', DRAIN, 9, 4, 'e');
-        /* the station's waste pipes: out of the south wall over the channel's head, valve holders each side */
-        at('psx_pipe_1_short', DRAIN, 3, 11, 0, 1.1, { face: 0, y: ctx.r2(base + 0.9) }); at('psx_pipe_1_short', DRAIN, 3, 10, 0, 1.0, { face: 0, y: ctx.r2(base + 0.2) });
-        wallProp('psx_pipe_valve_holder_large_1', DRAIN, 2, 11, 's', { y: ctx.r2(base + 1.3) }); wallProp('psx_pipe_valve_holder_large_1', DRAIN, 4, 11, 's', { y: ctx.r2(base + 1.3) });
         /* pipe runs along the walls of the walks */
         [4, 6, 8, 10].forEach(lx => wallProp('pipe_run', DRAIN, lx, 7, 's', { y: ctx.r2(base + 2.4) })); [8, 10].forEach(ly => wallProp('pipe_run', DRAIN, 2, ly, 'w', { y: ctx.r2(base + 2.4) }));
         wallProp('security_camera', DRAIN, 9, 10, 'e'); wallProp('vent_grille', DRAIN, 10, 5, 'n');
