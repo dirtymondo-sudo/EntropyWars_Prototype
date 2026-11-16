@@ -134,6 +134,7 @@ const BAY = { prebuilt_hollow_earth: Object.assign({ id: 'bay' }, wayAt('P02-05'
 
 run('build');     // rooms, terraces, landmarks: what a district raises or lays on its plots
 run('dress');     // props
+['dress2', 'dress3', 'dress4', 'dress5'].forEach(run);   // a pilot's later passes may keep their own stage each (the same ctx)
 run('people');    // the bystanders
 
 if (strays.length) console.log('pieces a district stood on another district\'s squares (ask that district\'s thread):\n  ' + strays.join('\n  '));
