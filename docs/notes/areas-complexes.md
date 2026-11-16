@@ -5491,3 +5491,8 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
 - **USED:** the Sewers' six (bake-sewers.js, layout `openings` kind `fall`). **WANTED NEXT:** the Woods' Falls plot (`docs/areas/woods/
   districts/T.js`, its creek already steps per grade: one `fall` row per step), the Mountains' streams, the Beach's island.
 - **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen only at 1.75 m.
+- **PASS 5, POLISH (an eye-level walk, 18 stops):** every door, the fire escape, the deck, the pens, the crater's edge, the yard. One fix: the
+  radar hut's green scope window overlapped its door frame. **WHERE IT STANDS:** all five passes merged and live. Open for mondo: the
+  tower's ops block is solid (a walk-in would need the deck rebuilt as a building); the mess hall is sparse; no sound or particles (no
+  hook); six models on the file's "needs a model" list (boom arm, windsock, jeep, helicopter, turning radar, flag, missile stand).
+

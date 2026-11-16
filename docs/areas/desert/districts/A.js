@@ -19,7 +19,7 @@
      P02-11  The Yard                       home squares x 24..36 · y 84..96
      P03-11  The Dry Lake, east             home squares x 36..48 · y 84..96
 
-   WHAT STANDS HERE TODAY (after the EXTERIORS + INTERIORS passes, 2026-11-16; seen in the browser):
+   WHAT STANDS HERE TODAY (after all five passes, 2026-11-16: EXTERIORS, INTERIORS, DRESSING, ATMOSPHERE, POLISH; seen in the browser):
    - THE FENCE (P00-08 .. P03-08): the chain-link is the TOOL's (traced from the layout's `f` squares); this file adds its steel: a post a
      square, the top rail, three wires, a WARNING plate every four squares (rows des:a51:fence_n / fence_e). The engine now draws a wall row
      in a chain-link sheet see-through (three-renderer.js "THE CHAIN-LINK"); before, the fence was a solid checkered wall.
@@ -136,7 +136,7 @@ exports.buildings = ctx => { bind(ctx);
     RADAR = building('radar', [4, 64, 7, 67, 'S'], 3.5, { leaf: 'leaf_security', keyIn: CONC, floorIn: U('ConcreteSlab2a') }, (a, w, d, door) => {
         a.shell(w, 3.5, d, CONC, TAN, door); a.box(0, 3.5, 0, w + 0.8, 0.25, d + 0.8, CONC, TAN2, { under: true });
         a.sign('RADAR · STATION 4', 0, 2.6, d / 2 + 0.12, 5.0, 0.5, '#f0f0e8', '#23262b', 'stencil');
-        a.box(0, 3.04, -1.75, 0.22, 0.07, 1.5, null, TUBE, { glow: 1, n: 2, step: [0, 0, 3.5] }); a.box(-2.2, 1.5, d / 2 + 0.07, 1.2, 0.8, 0.06, GLS, 0x7fe8b0, { glow: 0.8 });   // the scope's green in the window
+        a.box(0, 3.04, -1.75, 0.22, 0.07, 1.5, null, TUBE, { glow: 1, n: 2, step: [0, 0, 3.5] }); a.box(3.0, 1.5, d / 2 + 0.07, 1.2, 0.8, 0.06, GLS, 0x7fe8b0, { glow: 0.8 });   // the scope's green in the window
         a.box(-3, 3.75, -2.5, 0.16, 6.5, 0.16, null, STEEL, { roof: true }); a.box(-3, 8.2, -2.5, 2.4, 0.08, 0.08, null, STEEL, { roof: true }); a.box(-3, 9.2, -2.5, 1.6, 0.08, 0.08, null, STEEL, { roof: true });   // the whip mast, two cross arms
         a.box(-3, 10.25, -2.5, 0.25, 0.25, 0.25, null, 0xff3020, { glow: 1, roof: true });
         a.box(3, 3.75, 2.4, 1.6, 1.0, 1.2, COR, 0x8a9096, { roof: true }); });
