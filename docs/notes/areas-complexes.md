@@ -5186,3 +5186,65 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a water trough, a wooden fence run with a gate, a hitching rail, a tavern table with benches.
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
+
+## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
+
+mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
+which we will use elsewhere in other zones too. So changes in elevation for these rooms too". Before that, on plan 2: "more labyrinth like ...
+it doesn't have to be as big as the whole city ... a dungeon. the archetypical representation of a sewer. dark and grimy and scary. there should
+be wells or ropes. the subway station can be connected to / a part of the sewers ... an underground hub zone kinda like door hq, so it doesn't
+have to physically map onto disaster city"; own zone or the city's lower level: "kinda both"; "forget the strip and the old cyberpunk".
+
+- **THE ROOM** `site_prebuilt_downtown_underworld` (site `prebuilt_downtown`, part `underworld`, plate "DISASTER CITY · THE SEWERS"): 6 x 4 plots
+  of 12 x 12 squares (252 x 168 m), written by `node bake-sewers.js [--dry-run]` between `SEWERS24-BEGIN / SEWERS24-END` in data.js from
+  `docs/areas/sewers/layout.json` (the plan's square map: `x` wall, `o` walkway, `w` water, `f` room, `j` track, `b` plank). `SEWERS_DUMP=1`
+  prints the walked map. Never hand-edit between the markers.
+- **THE DISTRICT FILES from the first build:** `docs/areas/sewers/districts/W.js` The Sewers (15 plots), `T.js` The Running Tunnels (5),
+  `H.js` The Holding Cells (2), `O.js` The Old Workings (2). Stages a file may export: `plan` (change the squares), `build` (terrain rows),
+  `dress` (props), `people`; `deep: [plot ids]` = tanks nobody wades. A plot's squares are local (0..11): `ctx.P / dec / native(key, plotId, lx, ly)`,
+  `ctx.squares / corners / inner / walled(plotId)` list squares, `ctx.plot[id].base` = its floor in metres. Each file's header is its brief
+  and its STANDS TODAY / NOT YET list. The tool keeps the shared pieces: levels, openings, water, rails, ways out, shell, checks.
+- **THE WALL** = `terrain.gen { kind: 'plan', look: 'walls', wallKey: 'bricks_2' }`: every square that is not a `space` (94 greedy rects) is
+  brick to the roof. The old sewer shell (`hqSewerShell`), darker (ambient 0.22, fog 0.034).
+- **THE LEVELS** (layout `level`, 1 = 1.75 m, a whole-plot `plateau`; a plateau runs 1 m into a neighbour as high or higher, or two plateaus
+  that only touch leave a notch): 0 the old mine · 1 the track + the Outfall · 2 / 3 / 4 the culverts' three rows, stepping up to the north ·
+  5 the cells. Layout `openings` say how two levels meet: `fall` = the stream drops over the lip + a stair beside it (six), `stair` = dry
+  (the cell door, the Maintenance Hatch), `climb` = a ladder / rope on the face (the trap under the Drunk Tank 8.75 m, the Adit 3.5 m, the
+  well at the Junction down to the Crossing: the one opening that was not in the game before, shown to mondo on the plan).
+- **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
+  one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
+- **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
+- **THE WAYS OUT (nine, all in the game before):** door `pump` (north wall, the Pumping Station; the city's `sewer` door names the old room and
+  `at: 'pump'`: map.js now keeps a door id the replacing room still has, so it lands at this door with no change on the owner side) + eight
+  links whose sewer end was re-pointed in `DOOR_HQ.links` (the other end, and so the far room's door, is the link's own: nothing in the
+  city, the Woods or DOOR HQ had to change): `docks_sewer` (e), `stadium_sewers` (e), `tunnels_platform` (s), `well_garden` (free, the Loop
+  Line), `tunnels_works` (w), `sewers_drain` (w), `workings_oubliette` (w), `cells_dungeon` (w). The tool refuses to bake when a link row drifts.
+  DROPPED on his word: `strip_sewer`, `undercity_sewer`.
+- **RETIRED (`DOOR_HQ.retired`):** the four old rooms (`…downtown_sewers / _tunnels / _cells / _workings`) -> the new room. Their literals stay
+  (the tool reads the people's lines, the door plates and the Healing Zone from them; PvP board sources). Hub `underworld` and world zone
+  `underworld` name the one room.
+- **WHO IS THERE (14):** the old rooms' bystanders with their own lines, placed by the district files.
+- **SEEN ON SCREEN** (probe, HEAD of this PR): the Junction, two falls with their stairs, the Outfall, the Depot, the cells' corridor. The room
+  loads with no error (74 files, ~35 s in the probe).
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); over the low
+  plots the roof is 14 m up, so it reads as a black void, not a vault (a per-plot ceiling needs its own piece); still too bright and too clean
+  for "dark and grimy" (no pipes, grime decals, drips); the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
+  Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
+  (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
+
+## THE WATERFALLS — a terrain row for any room (2026-11-16)
+
+mondo 11-16: "can we also work on a way to make waterfalls, which we will use elsewhere in other zones too".
+- **THE ROW:** `{ k: 'fall', x, z, face, w, y0?, y1?, key?, out?, foam? }` in a room's `terrain.features`. (x, z) = the lip's middle; `face` =
+  the way the water falls (degrees, 0 = north, clockwise); `w` = the lip's width (m); `y0` / `y1` = the water's level above / below (left
+  out: read from the stream or pool on each side, else the ground); `key` = the liquid (default: the one above; lava, poison … fall in their
+  own sheet); `out` = how far it lands from the lip (default by height); `foam: false` = none.
+- **IT DRAWS ONLY.** It changes no height, no water and no walk. A room lays a `stream` / `pool` on each level and a sheer step between them
+  (a `plateau` edge, a cliff), then one `fall` row on the lip. A stair or a climb beside it is the room's.
+- **WHAT IT IS** (three-renderer.js `_hqFallsBuild` / `_hqFallsTick`, called from `_hqBuildTerrain` after the square water): the liquid's
+  own animated sheet (`_liqBlendMat`, the material of the water above and below) from 0.9 m behind the lip out and down a thrown curve, its
+  UVs running down; white streaks a hand in front (one shared canvas texture, scrolling); a foam patch on the lower water, breathing.
+  data.js `hqTerrainCompile` collects the rows as `info.falls`. The editor's ADD list has "Waterfall". Off: `window.EW_NO_HQ_FALLS`.
+- **USED:** the Sewers' six (bake-sewers.js, layout `openings` kind `fall`). **WANTED NEXT:** the Woods' Falls plot (`docs/areas/woods/
+  districts/T.js`, its creek already steps per grade: one `fall` row per step), the Mountains' streams, the Beach's island.
+- **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen only at 1.75 m.
