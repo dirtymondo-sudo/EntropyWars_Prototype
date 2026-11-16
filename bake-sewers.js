@@ -19,7 +19,13 @@
      fall   an upper culvert's mouth pours a whole drop into a lower ROOM's water (a `fall` row, three-renderer.js THE WATERFALLS);
             the way up beside it is the opening's `by`: 'stair' (a flight along the room's wall) or 'ladder'
      stair  a dry stair (the cell door, the Maintenance Hatch)
-     climb  a ladder or a rope on the face (the trap, the Adit, the well at the Junction) */
+     climb  a ladder or a rope on the face (the trap, the Adit, the well at the Junction)
+
+   DISTRICT R, THE RADIOACTIVE DRAIN (2026-11-16, mondo: "one sewer district could be radioactive sludge if it connects to the power plant ...
+   make it a new liquid that does corrosion"): a fifth row (layout `rows` 5). What it needed here, nothing else: a plot may be `solid`
+   (not dug: no roof, not in the walk check); the square `s` = the liquid `sludge` (laid like water, its own rows, `key: 'sludge'`; a fall
+   fed by it pours sludge); the way `sewers_power` (the bulkhead door up to the Power station's yard, a link). Two plots of one level
+   need no opening row: they share open squares on their line (the Sludge Pit and the Outfall). */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const REPO = __dirname, DRY = process.argv.includes('--dry-run');
@@ -40,7 +46,7 @@ const Pxy = (x, y) => plot['P0' + x + '-0' + y];
 const plotAt = (sx, sy) => Pxy(Math.max(0, Math.min(GX - 1, Math.floor(sx / N))), Math.max(0, Math.min(GY - 1, Math.floor(sy / N))));
 const distAt = (sx, sy) => plotAt(sx, sy).d, baseAt = (sx, sy) => plotAt(sx, sy).base;
 const open = (x, y) => x >= 0 && y >= 0 && x < W && y < Hh && cell[y][x] !== 'x';
-const F = [], props = [], doors = [], npc = [], counters = [], count = {}, taken = new Set(), errs = [], strays = [];
+const F = [], props = [], doors = [], npc = [], counters = [], count = {}, taken = new Set(), errs = [], strays = [], DECALS = [];
 const feat = o => { F.push(o); return o; };
 const setRect = (x0, y0, x1, y1, ch) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) cell[y][x] = ch; };
 
@@ -54,7 +60,7 @@ const OPEN = PLAN.openings.map(o => { const a = plot[o.a], b = plot[o.b]; if (!a
     return Object.assign({}, o, { ns, hi, lo, line, mid, dx, dy, rise: r2(hi.base - lo.base) }); });
 OPEN.forEach(o => { if (o.kind === 'fall') return;
     for (let k = 0; k < 3; k++) for (const side of [o.hi, o.lo]) { const t = side === o.lo ? o.line + (o.dx + o.dy > 0 ? k : -1 - k) : o.line + (o.dx + o.dy > 0 ? -1 - k : k);
-        for (let m = -1; m <= 1; m++) { const sx = o.ns ? o.mid + m : t, sy = o.ns ? t : o.mid + m; if (open(sx, sy) && 'wj'.includes(cell[sy][sx])) cell[sy][sx] = 'o'; } } });
+        for (let m = -1; m <= 1; m++) { const sx = o.ns ? o.mid + m : t, sy = o.ns ? t : o.mid + m; if (open(sx, sy) && 'wsj'.includes(cell[sy][sx])) cell[sy][sx] = 'o'; } } });
 
 /* THE ROOF (build 4, mondo 11-16: "still just looks like a boring rectangular room"): a plot's roof stands CEIL over its floor; a plot
    that a fall, a stair or a climb comes down into is as tall as that drop + CEIL, so the upper mouth opens under one roof line. */
@@ -74,7 +80,7 @@ function spot(sx, sy, what, shared) { if (sx < 0 || sy < 0 || sx >= W || sy >= H
     if (!shared) { if (taken.has(sx + ':' + sy)) errs.push(what + ': square ' + sx + ',' + sy + ' is taken'); taken.add(sx + ':' + sy); } }
 const P = (key, sx, sy, o) => { spot(sx, sy, key); props.push(Object.assign({ key, x: gcx(sx), z: gcz(sy) }, o || {})); };
 const decWith = rnd => (key, sx, sy, o) => { spot(sx, sy, key, true); props.push(Object.assign({ key, x: r2(gcx(sx) + (rnd() - 0.5) * 1.6), z: r2(gcz(sy) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360) }, o || {})); };
-const native = (race, sx, sy, face, say) => { spot(sx, sy, race); if ('wj'.includes(cell[sy][sx])) errs.push(race + ' stands in the water or on the track at ' + sx + ',' + sy); const n = { x: gcx(sx), z: gcz(sy), face: face || 0, race }; if (say) n.say = say; npc.push(n); };
+const native = (race, sx, sy, face, say) => { spot(sx, sy, race); if ('wsj'.includes(cell[sy][sx])) errs.push(race + ' stands in the water or on the track at ' + sx + ',' + sy); const n = { x: gcx(sx), z: gcz(sy), face: face || 0, race }; if (say) n.say = say; npc.push(n); };
 const sayOf = (R, race, i) => (R.n.filter(n => n.race === race)[i || 0] || {}).say;
 
 /* ── THE DISTRICT FILES: docs/areas/sewers/districts/<LETTER>.js. A file may export any of the stages below; each is called with that
@@ -92,6 +98,8 @@ Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
         /* every open square of a plot that is `chars` (default: walkway and room floor), in reading order */
         squares: (id, chars) => { const p = plot[id], out = []; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if ((chars || 'of').includes(cell[p.sy + ly][p.sx + lx])) out.push([lx, ly]); return out; },
         ceil: id => ceilOf(plot[id]),
+        /* a floor decal: kind 'grime' | 'puddle' | 'oil' | 'blood' | 'scorch' (three-renderer.js _hqDecalTex) */
+        grime: (kind, id, lx, ly, r) => { const s = sq(id, lx, ly); DECALS.push({ kind, x: gcx(s[0]), z: gcz(s[1]), y: plot[id].base, r: r || 1.4, rot: Math.round(rnd() * 360) }); },
         /* a brick pier on a square, floor to roof (a blocker: the walker goes round it) */
         pier: (id, lx, ly) => { const p = plot[id], s = sq(id, lx, ly); spot(s[0], s[1], 'pier'); feat({ k: 'plateau', x: gcx(s[0]), z: gcz(s[1]), w: 1.75, d: 1.75, h: r2(p.base + ceilOf(p) + 0.2), edge: 0.1 }); },
         free: (id, lx, ly) => { const s = sq(id, lx, ly); return open(s[0], s[1]) && !taken.has(s[0] + ':' + s[1]); },
@@ -100,7 +108,7 @@ Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
             let n = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!open(x + dx, y + dy)) n++; if (n >= 2) out.push([lx, ly]); } return out; },
         /* dry squares with no wall beside them and no water or track beside them: the middle of a room */
         inner: id => { const p = plot[id], out = []; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const x = p.sx + lx, y = p.sy + ly; if (!'of'.includes(cell[y][x]) || taken.has(x + ':' + y)) continue;
-            let ok = true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!open(x + dx, y + dy) || 'wjb'.includes(cell[y + dy][x + dx])) ok = false; if (ok) out.push([lx, ly]); } return out; },
+            let ok = true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!open(x + dx, y + dy) || 'wsjb'.includes(cell[y + dy][x + dx])) ok = false; if (ok) out.push([lx, ly]); } return out; },
         /* room squares along a wall (one wall beside them), not on a plot line */
         walled: id => { const p = plot[id], out = []; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const x = p.sx + lx, y = p.sy + ly; if (cell[y][x] !== 'f' || taken.has(x + ':' + y)) continue;
             let n = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!open(x + dx, y + dy)) n++; if (n === 1) out.push([lx, ly]); } return out; } }; });
@@ -120,6 +128,7 @@ const WAY = {
     workings_oubliette: { wall: 'w', at: spur(plot['P00-01'].sx + 3, plot['P00-01'].sy + 5, 'w') },
     cells_dungeon: { wall: 'w', at: spur(plot['P00-00'].sx + 2, plot['P00-00'].sy + 5, 'w') },
     well_garden: { wall: 'free', x: gcx(plot['P01-03'].sx + 5), z: gcz(plot['P01-03'].sy + 9), face: 0 },
+    sewers_power: { wall: 's', at: spur(plot['P04-04'].sx + 8, plot['P04-04'].sy + 9, 's') },   // district R: the bulkhead door up to the Power station's yard
 };
 { const s = [plot['P01-03'].sx + 5, plot['P01-03'].sy + 9]; if (!open(s[0], s[1])) throw new Error('the garden well\'s square is not open'); taken.add(s[0] + ':' + s[1]); }
 { const o = O.sewers.d.find(d => d.id === 'pump') || {};
@@ -153,13 +162,16 @@ OPEN.forEach((o, i) => {
     else GO.push({ k: 'ramp', x0: foot.x, z0: foot.z, x1: head.x, z1: head.z, w: C, h0: o.lo.base, h1: o.hi.base, stairs: true, model: STAIR[o.lo.d] || 'concrete', edge: 0.15 });
     if (o.kind === 'fall') { const p = pt(along(o.mid), lineM);
         /* THE WATERFALL (three-renderer.js THE WATERFALLS): the lip's middle, the way the water falls (degrees, 0 = north, clockwise), the lip's width, the two water levels */
-        GO.push({ k: 'fall', x: p.x, z: p.z, face: o.ns ? (sgn > 0 ? 180 : 0) : (sgn > 0 ? 90 : 270), w: C, y0: r2(o.hi.base - 0.3), y1: r2(o.lo.base - 0.3) }); }
+        const fall = { k: 'fall', x: p.x, z: p.z, face: o.ns ? (sgn > 0 ? 180 : 0) : (sgn > 0 ? 90 : 270), w: C, y0: r2(o.hi.base - 0.3), y1: r2(o.lo.base - 0.3) };
+        { const u = o.line + (sgn > 0 ? -1 : 0), ch = o.ns ? cell[u][o.mid] : cell[o.mid][u]; if (ch === 's') fall.key = 'sludge'; }   // district R: a fall fed by sludge pours sludge
+        GO.push(fall); }
 });
 
 /* ── THE WATER: every run of `w` squares is a stream at its plot's level, a square wide; a block of water (a tank) is one wide stream.
    The sheet lies 0.3 m under the walkway, 0.6 m deep (waded); a tank named in a district's `deep` list is deep water. ── */
 const WATER = [];
-{ const used = new Uint8Array(W * Hh), isW = (x, y) => x >= 0 && y >= 0 && x < W && y < Hh && cell[y][x] === 'w', P0 = (x, y) => plotAt(x, y);
+for (const LQ of ['w', 's']) {   // w = water, s = the radioactive sludge (district R): the same rows in the liquid `sludge`
+  const used = new Uint8Array(W * Hh), isW = (x, y) => x >= 0 && y >= 0 && x < W && y < Hh && cell[y][x] === LQ, P0 = (x, y) => plotAt(x, y);
   const deep = new Set(); Object.keys(DISTRICTS).forEach(k => (DISTRICTS[k].deep || []).forEach(id => deep.add(id)));
   /* blocks first: any 2 x 2 of water grows to its greatest rectangle inside one plot */
   for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!isW(x, y) || used[y * W + x] || !(isW(x + 1, y) && isW(x, y + 1) && isW(x + 1, y + 1))) continue;
@@ -168,13 +180,13 @@ const WATER = [];
       if (w < 2 || h < 2) continue;
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(y + j) * W + x + i] = 1;
       const dp = deep.has(p.id), row = { k: 'stream', pts: h >= w ? [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]] : [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]], w: (h >= w ? w : h) * C, y: r2(p.base - 0.3), depth: dp ? 1.8 : 0.6 };
-      if (dp) row.key = 'deep_water'; WATER.push(row); count.tanks = (count.tanks || 0) + 1; }
+      if (LQ === 's') row.key = 'sludge'; else if (dp) row.key = 'deep_water'; WATER.push(row); count.tanks = (count.tanks || 0) + 1; }
   /* then the runs, west-east and north-south, cut at every plot line */
   const runOf = (x, y, dx, dy) => { const p = P0(x, y); let n = 0; while (isW(x + n * dx, y + n * dy) && !used[(y + n * dy) * W + x + n * dx] && P0(x + n * dx, y + n * dy) === p) n++; return n; };
   for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!isW(x, y) || used[y * W + x]) continue;
       const nh = runOf(x, y, 1, 0), nv = runOf(x, y, 0, 1), p = P0(x, y), horiz = nh >= nv, n = horiz ? nh : nv;
       for (let i = 0; i < n; i++) used[(y + (horiz ? 0 : i)) * W + x + (horiz ? i : 0)] = 1;
-      WATER.push({ k: 'stream', pts: horiz ? [[gx(x), gcz(y)], [gx(x + n), gcz(y)]] : [[gcx(x), gz(y)], [gcx(x), gz(y + n)]], w: C, y: r2(p.base - 0.3), depth: 0.6 }); count.streams = (count.streams || 0) + 1; } }
+      WATER.push(Object.assign({ k: 'stream', pts: horiz ? [[gx(x), gcz(y)], [gx(x + n), gcz(y)]] : [[gcx(x), gz(y)], [gcx(x), gz(y + n)]], w: C, y: r2(p.base - 0.3), depth: 0.6 }, LQ === 's' ? { key: 'sludge' } : {})); count.streams = (count.streams || 0) + 1; } }
 /* the planks: a `b` run is a deck over the water */
 { const used = new Uint8Array(W * Hh);
   for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (cell[y][x] !== 'b' || used[y * W + x]) continue; let n = 0, m = 0; while (y + n < Hh && cell[y + n][x] === 'b') n++; while (x + m < W && cell[y][x + m] === 'b') m++;
@@ -194,16 +206,41 @@ const RAILS = [];
    (`arch` rows, drawn only: three-renderer.js _hqArchGeometry roof form 'barrel', open-ended, seen from inside). A plot's open squares
    are cut into rectangles; each vault runs along its rectangle's long side and spans the short one. Over them one flat slab a plot closes
    what the vaults leave between them. ── */
-const VAULT = [];
-PLAN.plots.forEach(p => { const used = new Uint8Array(N * N), parts = [], top = ceilOf(p), ox = gx(p.sx) + N * C / 2, oz = gz(p.sy) + N * C / 2, op = (lx, ly) => lx >= 0 && ly >= 0 && lx < N && ly < N && open(p.sx + lx, p.sy + ly);
+const VAULT = [], DAMP = [0x7c766a, 0x6a6a58, 0x5c6450, 0x74695a, 0x66604f], grnd = mkRnd(4242), RUST = 'urban:MetalCorrugatedPainted2a';
+PLAN.plots.forEach(p => { if (p.solid) return; const used = new Uint8Array(N * N), parts = [], top = ceilOf(p), ox = gx(p.sx) + N * C / 2, oz = gz(p.sy) + N * C / 2, op = (lx, ly) => lx >= 0 && ly >= 0 && lx < N && ly < N && open(p.sx + lx, p.sy + ly);
     parts.push({ s: 'box', p: [0, r2(top + 0.05), 0], size: [N * C, 0.2, N * C], sides: false, top: false, under: true, key: 'bricks_2', tint: 0x4a463f });
     for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { if (!op(lx, ly) || used[ly * N + lx]) continue;
         let w = 1; while (op(lx + w, ly) && !used[ly * N + lx + w]) w++;
         let h = 1; rows: while (ly + h < N) { for (let i = 0; i < w; i++) if (!op(lx + i, ly + h) || used[(ly + h) * N + lx + i]) break rows; h++; }
         for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(ly + j) * N + lx + i] = 1;
         const alongX = w >= h, span = (alongX ? h : w) * C + 0.7, len = (alongX ? w : h) * C + 0.1, rise = r2(Math.min(3.5, span / 3));
-        parts.push({ s: 'roof', form: 'barrel', p: [r2(gx(p.sx + lx) + w * C / 2 - ox), r2(top - rise), r2(gz(p.sy + ly) + h * C / 2 - oz)], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: 'bricks_2', tint: 0x7c766a, ds: true, ends: false, seg: 8 }); }
+        parts.push({ s: 'roof', form: 'barrel', p: [r2(gx(p.sx + lx) + w * C / 2 - ox), r2(top - rise), r2(gz(p.sy + ly) + h * C / 2 - oz)], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: 'bricks_2', tint: DAMP[Math.floor(grnd() * DAMP.length)], ds: true, ends: false, seg: 8 });
+        /* THE GRIME ON THE WALLS (the grime pass, mondo 11-16): along every side of the rectangle that is wall, a dark slime line at the
+           wall's foot; along the north / west wall of a run of three squares or more, a rusted main on brackets with a thin line under it,
+           and a downpipe at its end (parts with no sheet wear a surface by their colour: three-renderer.js _hqArchSurface) */
+        const side = (horiz, at, a0, n, out, pipes) => { let run = 0; for (let i = 0; i <= n; i++) { const wallHere = i < n && !open(p.sx + (horiz ? a0 + i : at + out), p.sy + (horiz ? at + out : a0 + i));   /* (the room's squares, not the plot's: a plot line is no wall) */
+            if (wallHere) { run++; continue; } if (!run) continue;
+            const s0 = a0 + i - run, L = run * C, mid = (horiz ? gx(p.sx + s0) - ox : gz(p.sy + s0) - oz) + L / 2, edge = (horiz ? gz(p.sy + at + (out > 0 ? 1 : 0)) - oz : gx(p.sx + at + (out > 0 ? 1 : 0)) - ox), inw = -out;
+            const at3 = (off, y) => horiz ? [r2(mid), y, r2(edge + inw * off)] : [r2(edge + inw * off), y, r2(mid)], sz = (t, hh) => horiz ? [r2(L), hh, t] : [t, hh, r2(L)];
+            parts.push({ s: 'box', p: at3(0.05, 0), size: sz(0.08, r2(0.45 + grnd() * 0.5)), key: 'bricks_2', tint: 0x1c2416, top: false });
+            if (pipes && run >= 3) { const y = r2(2.3 + grnd() * 0.5);
+                parts.push({ s: 'box', p: at3(0.3, y), size: sz(0.3, 0.3), key: RUST, tint: 0x6a3f24, under: true }, { s: 'box', p: at3(0.24, r2(y - 0.42)), size: sz(0.12, 0.12), key: RUST, tint: 0x2e3a2e, under: true });
+                for (let b = 0.9; b < L; b += 3.5) { const q = horiz ? [r2(mid - L / 2 + b), r2(y - 0.1), r2(edge + inw * 0.2)] : [r2(edge + inw * 0.2), r2(y - 0.1), r2(mid - L / 2 + b)]; parts.push({ s: 'box', p: q, size: horiz ? [0.1, 0.5, 0.4] : [0.4, 0.5, 0.1], key: RUST, tint: 0x222222 }); }
+                const e = horiz ? [r2(mid + L / 2 - 0.4), 0, r2(edge + inw * 0.3)] : [r2(edge + inw * 0.3), 0, r2(mid + L / 2 - 0.4)]; parts.push({ s: 'cyl', p: e, r: 0.15, h: y, key: RUST, tint: 0x5a3622, seg: 8 }); count.pipes = (count.pipes || 0) + 1; }
+            run = 0; } };
+        side(true, ly, lx, w, -1, true); side(true, ly + h - 1, lx, w, 1, false); side(false, lx, ly, h, -1, true); side(false, lx + w - 1, ly, h, 1, false); }
     VAULT.push({ k: 'arch', id: 'sew:' + p.id + ':roof', x: r2(ox), z: r2(oz), rot: 0, base: p.base, parts }); count.vaults = (count.vaults || 0) + parts.length - 1; });
+
+/* ── THE GRIME ON THE FLOOR (the grime pass): floor decals (data.js DOOR_HQ.decals: the room's own row, written by this tool; the game
+   draws 80 a room at most, the props' own stains included, so 60 here): grime on the walks, puddles beside the water, oil on the track.
+   A district adds its own with ctx.grime(kind, plot, lx, ly, r). ── */
+{ const want = [];
+  PLAN.plots.forEach(p => { const dry = [], wet = []; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const x = p.sx + lx, y = p.sy + ly; if (!'of'.includes(cell[y][x])) continue;
+          let byW = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (open(x + dx, y + dy) && cell[y + dy][x + dx] === 'w') byW = true; (byW ? wet : dry).push([x, y]); }
+      const pick = l => l.length ? l[Math.floor(grnd() * l.length)] : null, a = pick(dry.length ? dry : wet), b = pick(wet.length ? wet : dry);
+      if (a) want.push({ kind: p.d === 'T' ? 'oil' : 'grime', x: r2(gcx(a[0]) + (grnd() - 0.5) * 1.4), z: r2(gcz(a[1]) + (grnd() - 0.5) * 1.4), y: p.base, r: r2(1.2 + grnd() * 1.1), rot: Math.round(grnd() * 360) });
+      if (b) want.push({ kind: p.d === 'H' ? 'grime' : 'puddle', x: r2(gcx(b[0]) + (grnd() - 0.5)), z: r2(gcz(b[1]) + (grnd() - 0.5)), y: p.base, r: r2(1.1 + grnd() * 0.9), rot: Math.round(grnd() * 360) }); });
+  want.forEach(d => { if (DECALS.length < 60) DECALS.push(d); }); }
 
 /* ── THE OPEN GROUND: every square that is not wall, as `space` rows (greedy rectangles) ── */
 const spaces = [];
@@ -228,7 +265,7 @@ const SP = [plot['P02-02'].sx + 3, plot['P02-02'].sy + 6];
   const cross = (x, y, X, Y) => { const a = plotAt(x, y), b = plotAt(X, Y); if (a === b || a.level === b.level) return true;
       return OPEN.some(o => ((o.hi === a && o.lo === b) || (o.hi === b && o.lo === a)) && Math.abs((o.ns ? x : y) - o.mid) <= 1); };
   while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || seen[Y * W + X] || !cross(x, y, X, Y)) continue; seen[Y * W + X] = 1; st.push([X, Y]); } }
-  const cold = PLAN.plots.filter(p => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(p.sy + ly) * W + p.sx + lx]) return false; return true; }).map(p => p.id);
+  const cold = PLAN.plots.filter(p => { if (p.solid) return false; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(p.sy + ly) * W + p.sx + lx]) return false; return true; }).map(p => p.id);
   if (process.env.SEWERS_DUMP) console.log(cell.map((r, y) => r.map((ch, x) => open(x, y) && !seen[y * W + x] ? '!' : ch === 'x' ? ' ' : ch).join('')).join('\n'));
   if (cold.length) throw new Error('plots not reached on foot: ' + cold.join(' '));
   let op = 0, un = 0; for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (open(x, y)) { op++; if (!seen[y * W + x]) un++; }
@@ -288,4 +325,8 @@ if (DRY) process.exit(0);
 const END = '        /* SEWERS24-END */\n', b0 = src.indexOf('        /* SEWERS24-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const anchor = '        site_prebuilt_downtown_sewers: {'; const a = src.indexOf(anchor); if (a < 0) throw new Error('anchor not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
+/* the room's floor decals: one row in DOOR_HQ.decals */
+{ const row = "    " + ROOM + ": " + J(DECALS) + ",   // SEWERS24-DECALS: written by bake-sewers.js\n", i0 = src.indexOf("    " + ROOM + ": ["), anchor = "    site_prebuilt_downtown_sewers: [ { kind: 'puddle'";
+  if (i0 >= 0 && src.slice(i0, src.indexOf('\n', i0)).indexOf('SEWERS24-DECALS') >= 0) src = src.slice(0, i0) + row + src.slice(src.indexOf('\n', i0) + 1);
+  else { const a = src.indexOf(anchor); if (a < 0) throw new Error('DOOR_HQ.decals anchor not found'); src = src.slice(0, a) + row + src.slice(a); } }
 fs.writeFileSync(file, src);

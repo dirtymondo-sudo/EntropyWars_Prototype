@@ -160,6 +160,12 @@ const solid = (id, p, side, storeys) => feat({ k: 'texbuilding', id: 'cam:' + id
                   solid(id, [x, z], side, storeys), inside(B, key, lx, lz, o), flushArch(), say(race), old.ward
    ctx, in build: cell, plot, open(x, y), WALKIN, HOUSES, taken, sq(x, y, on), put / dec(key, x, y, o, on), tree(kind, h, x, y, r),
                   native(race, x, y, face, say), many(n, f), rnd(), sayOf(room, race), old.garden, old.pole
+   A file may also export (2026-11-16, the Fairy Forest thread; both are the Woods' ways, bake-woods.js):
+     ground: '<sheet>'   the sheet under its own plots' grass and its trees' feet (plan letters g and t), in place of the kingdom's lawn.
+     groundAlso(x, y)    with `ground`: true for a grass / tree square OUTSIDE its own plots that wears its ground too (W: the forest north of its plots).
+     airZones(ctx)       its air: [{ x0, y0, x1, y1 (kingdom squares), kind, color?, n?, speed?, wind? }] (three-renderer.js _hqBuildAtmos
+                         `shell.atmos.zones`: dust, motes, spores, fireflies, snow, ash, rain). With one zone from any file the shell
+                         carries them all, then the kingdom's own embers over the whole room, as before.
    A district writes its own rows with its own ids ('cam:' + ...), on its own plots. The checks at the end are everybody's: a piece on a
    square that is not free ground, a prop not in the catalogue, a plot not walked to, stops the tool. ── */
 const ORDER = ['K', 'T', 'L', 'F', 'N', 'W'];
@@ -283,6 +289,11 @@ const PAL = ['ice', 'ice_1', 'dirt_2', 'cobblestone', 'marble', 'igloo', 'leaves
 for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x];
     paint[y * W + x] = ch === 'Q' ? castlePaint(x, y) : (ch === 's' || ch === 'T') ? 1 : ch === 'p' ? 3 : (ch === 'c' || ch === 'b') ? 4 : (ch === 'm' || ch === 'x' || ch === 'X') ? 5 : ch === 'i' ? 6 : ch === 'h' ? 7 : 0; }
 
+/* a district's own ground (its file's `ground`): under its plots' grass and its trees */
+{ const at = {}; PLAN.plots.forEach(p => { at[p.x + ':' + p.y] = p.district; });
+  DISTRICTS.forEach(m => { if (!m.ground) return; let i = PAL.indexOf(m.ground); if (i < 0) { PAL.push(m.ground); i = PAL.length - 1; }
+      for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; if ((ch === 'g' || ch === 't') && (at[Math.floor(x / N) + ':' + Math.floor(y / N)] === m._cmFile || (typeof m.groundAlso === 'function' && m.groundAlso(x, y)))) paint[y * W + x] = i + 1; } }); }   // groundAlso(x, y) (2026-11-16, the Forest thread): squares outside its own plots that wear its ground too (the forest runs north of plot row 7 to the moat's bank)
+
 /* ── THE DRESSING HELPERS: by square. A blocker stands on its square's middle; decor stands off it. A piece may only stand on free ground
    (grass, snow, marble; `on` names another), never twice on one square: the tool stops if a square is wrong ── */
 const taken = new Set();
@@ -319,13 +330,16 @@ Object.assign(count, { features: F.length, props: props.length, doors: doors.len
 const SNOW = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'], FAE = ['fae_cap', 'tree_3', 'fae_cap_2', 'tree', 'tree_2'];
 const zone = (x0, y0, x1, y1, o) => Object.assign({ x0: gx(x0), z0: gx(y0), x1: gx(x1), z1: gx(y1) }, o);
 const ZONES = [zone(0, 0, W, 17, { kinds: SNOW, treeH: [5.5, 8] }), zone(0, 17, 14, 79, { none: true }), zone(82, 17, W, 79, { kinds: FAE })];
+/* THE AIR BY DISTRICT (the district files' `airZones`); none = the shell as it was (the site's embers) */
+const AIR = [].concat(...DISTRICTS.filter(m => typeof m.airZones === 'function').map(m => m.airZones(ctx).map(z => { const q = Object.assign({}, z, { x0: gx(z.x0), z0: gx(z.y0), x1: gx(z.x1), z1: gx(z.y1) }); delete q.y0; delete q.y1; return q; })));
+const ATMOS = AIR.length ? ", atmos: " + J({ kind: 'embers', n: 160, tier: 'open', zones: AIR.concat([{ x0: -HALF, z0: -HALF, x1: HALF, z1: HALF, kind: 'embers', n: 160 }]) }) : "";
 const LINES = OLD.l.concat(OG.l), M = [];
 M.push("        /* CAMELOT-KINGDOM-BEGIN — CAMELOT KINGDOM ON PLOTS, PLAN 3 (2026-11-15): written by `node bake-camelot.js` from docs/areas/camelot/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 M.push("        site_prebuilt_camelot_kingdom: {");
 M.push("            label: 'CAMELOT KINGDOM',");
 M.push("            sub: 'THE CASTLE · THE VILLAGE · THE TOWN WALL · THE MOAT · THE WOODS',");
 M.push("            kind: 'box', site: 'prebuilt_camelot', part: 'kingdom',");
-M.push("            shell: hqCastleShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + BAYX + ", z: " + gc(93) + ", y: 4.4 } }),");
+M.push("            shell: hqCastleShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + BAYX + ", z: " + gc(93) + ", y: 4.4 }" + ATMOS + " }),");
 M.push("            parti: 'A castle in the middle of its village, one wall round them both, a moat round the wall and the woods round the moat: snowy pines to the north, a forest that glows to the east, a hedge garden to the west, and the road home to the south.',");
 M.push("            typology: 'grid',");
 M.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + G + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.district, p.level])) + " },");

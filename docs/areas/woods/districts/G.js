@@ -3,15 +3,15 @@
    Repo tooling only: nothing here ships; the room is baked into data.js (site_prebuilt_fairy_forest_plots, WOODS36-BEGIN / END).
 
    THE LOOK: the fairy forest gone wrong, "the cult". Dark spruce with bare trees, glowing toadstools, giant caps, crystals, moths; violet motes.
-   THE PLOTS AND WHAT STANDS THERE TODAY
-     P03-00 The Mound (L5)             a grass hill (r 9, h 2.6) with a wooden cross, three crosses, an open coffin and its lid, a giant cap.
-     P04-00 The Lake, west shore (L4)  two lanterns, two giant caps, frogs. The lake is the tool's water.
+   THE PLOTS AND WHAT STANDS THERE TODAY (the district thread's passes are in build(); notes: areas-complexes.md "THE RITUAL GROUND")
+     P03-00 The Mound (L5)             a grass hill (r 9, h 2.6) with a wooden cross, three crosses, an open coffin and its lid, a giant cap. PASS 1: THE BARROW, a stone doorway in the south face + kerb stones.
+     P04-00 The Lake, west shore (L4)  two lanterns, two giant caps, frogs. The lake is the tool's water. PASS 1: THE JETTY (cut: 4 bridge squares), posts, a lamp post, a rowboat.
      P05-00 The Lake, east shore (L4)  a candle line, two giant caps, frogs. The lodge door (the Lodge's halls) is east.
      P03-01 The Tents (L4)             three tents, a chest, a radio, three masks, a crystal; native: fortune teller.
-     P04-01 The Stage (L4)             a timber stage one level up (14 x 7 m) with steps, lectern, two speakers, six folding chairs with a mask on each, a crystal.
-     P05-01 The Owl (L4)               LANDMARK: the owl statue (Meshy owl_statue) on its mound with steps, the stone altar, two braziers, an effigy on a bier, a candle line, a crystal.
+     P04-01 The Stage (L4)             PASS 1: a timber BAND SHELL over the old block (deck, back wall + red cloth, wings, posts, gable roof, footlights, rails); steps, lectern, two speakers, six folding chairs with a mask on each, a crystal.
+     P05-01 The Owl (L4)               LANDMARK: the owl statue (Meshy owl_statue) on its mound with steps, the stone altar, two braziers, an effigy on a bier, a candle line, a crystal. PASS 1: the mound in stone, stair cheeks, ten columns in a horseshoe.
      P03-02 The Fire (L3)              campfire, two folding chairs, torch, meat, a hand saw, a cauldron, a crystal; native: cult leader.
-     P04-02 The Stones (L3)            the ritual circle, six menhirs, candle rings, a cauldron, skulls, a torch, the 14-cap fae ring 10.5 m out; native: goatman.
+     P04-02 The Stones (L3)            the ritual circle, six menhirs, candle rings, a cauldron, skulls, a torch, the 14-cap fae ring 10.5 m out; native: goatman. PASS 1: two trilithons, eight sarsens.
      P05-02 The Dead Tree (L3)         the dead snag, a stain, a cobweb, two dolls, a crystal. The lookingglass door (Camelot Kingdom's garden) is east.
    KNOWN MISSING / WAITING FOR MONDO
      - The life pass and the horror pass are live but wait for his look (the board).
@@ -89,5 +89,71 @@ module.exports = {
         DIST('G').forEach((id, i) => { life(id, 'woods_glowcap'); life(id, 'woods_glowcap', { h: 0.5 }); life(id, 'woods_glowcap', { h: 0.9 }); fly(id, i % 2 ? 'luna_moth' : 'hawk_moth', 1.4); });
         ['P04-00', 'P04-00', 'P05-00', 'P05-00', 'P05-00', 'P04-00'].forEach(id => life(id, 'meshy_frog'));
         sow('mushroom2', 14, [54, 18], 58, { h: 0.4, r0: 0.25 }); sow('fern', 20, [54, 18], 58);
+    },
+    /* THE GROUND (the zone kit; mondo's forest-floor rule): the dark forest sheet, no lawn */
+    ground: 'grass_dark_fantasy',
+    /* THE CUT (pass 1): the jetty's squares on the Lake's west shore: one dirt square on the bank, four bridge squares out over the water (the tool lays the plank deck) */
+    cut(ctx) { const { cell } = ctx; cell[6][52] = 'p'; for (let x = 53; x <= 56; x++) cell[6][x] = 'b'; },
+    /* ── THE DISTRICT THREAD'S PASSES (2026-11-16, mondo's order: every district prototyped, at most five passes; docs/plans/DISTRICT_THREAD_BRIEF.md). New work only:
+       its own dice, nothing that stands is thrown again. Row ids woods:G:<name>. ── */
+    build(ctx) {
+        const { cell, N, gx, gc, r2, rnd, features, props, taken, centre, hput, hdec, DIST, ground } = ctx;
+        const WD = 'urban:WoodGeneric1b', WD2 = 'urban:WoodGeneric1a', SH = 'urban:WoodGeneric2a', FL = 'urban:WoodFlooring1d', ROCK = 'rocks_5', CLOTH = 'urban:CarpetPlain1c';
+        const LOG = 0xcdbb9f, DARK = 0x7d6c58, MOSS = 0x9fb089, STONE = 0xd6d2c4, STONE2 = 0xbcb9aa, RED = 0x7a1f24, BLACK = 0x050505;
+        const box = (x, y, z, sw, sh, sd, key, tint, o) => Object.assign({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(sw), r2(sh), r2(sd)], key, tint }, o || {});
+        const cyl = (x, y, z, r, h, key, tint, o) => Object.assign({ s: 'cyl', p: [r2(x), r2(y), r2(z)], r: r2(r), h: r2(h), key, tint }, o || {});
+        const rock = (x, y, z, r, h, r2_, seg, tint) => cyl(x, y, z, r, h, ROCK, tint, { r2: r2(r2_), seg, uv: [3.5, 3.5], gain: 1.5 });
+        const free = (cx, cy) => /[gsr]/.test(cell[cy][cx]) && !taken.has(cx + ':' + cy), take = (cx, cy) => taken.add(cx + ':' + cy);
+        /* ═══ PASS 1 · THE EXTERIORS ═══ */
+        /* THE STAGE (P04-01): the old grass block becomes a timber band shell: a boarded deck and skirt, a plank back wall with a red cloth, side wings, six posts
+           under a mossy gable roof, footlights. The front is the south (the seats, the steps). Rails on the back and the sides keep the walker on the deck. */
+        { const q = centre('P04-01'), ox = gx(q[0]), oz = gx(q[1] - 1), y0 = r2(ground(ox, oz)), T = 1.75, H = 5.4;
+          const parts = [
+              box(0, T, 0, 14.16, 0.08, 7.16, FL, 0xc9b9a0, { uv: [1.75, 1.75] }),                                                         // the deck's boards
+              box(0, 0, 0, 14.2, T + 0.04, 7.2, WD, LOG, { faces: 'blr', top: false, uv: [3.5, 1.75], gain: 1.3 }),                        // the skirt: back and sides
+              box(-4.4, 0, 3.56, 5.3, T + 0.04, 0.08, WD, LOG, { faces: 'f', top: false, uv: [3.5, 1.75], gain: 1.3 }), box(4.4, 0, 3.56, 5.3, T + 0.04, 0.08, WD, LOG, { faces: 'f', top: false, uv: [3.5, 1.75], gain: 1.3 }),   // the front skirt, left and right of the steps
+              box(0, T, -3.38, 14.0, H, 0.22, WD, LOG, { uv: [3.5, 1.75], gain: 1.3 }),                                                    // the back wall
+              box(0, T + 0.5, -3.22, 8.6, 4.3, 0.06, CLOTH, RED, { faces: 'f', top: false }),                                              // the red cloth
+              box(0, T + 4.8, -3.2, 9.2, 0.16, 0.12, WD2, DARK),                                                                            // its pole
+              box(-6.9, T, -1.7, 0.2, H, 3.4, WD, LOG, { uv: [3.5, 1.75], gain: 1.3 }), box(6.9, T, -1.7, 0.2, H, 3.4, WD, LOG, { uv: [3.5, 1.75], gain: 1.3 }),   // the wings
+              ...[-6.85, 6.85].flatMap(x => [box(x, 0, 3.3, 0.34, T + H, 0.34, WD2, DARK), box(x, T, -3.2, 0.34, H, 0.34, WD2, DARK)]),   // the four corner posts (the front ones stand on the ground; none in the middle: the steps and the cloth stay clear)
+              box(0, T + H - 0.3, 3.3, 14.2, 0.3, 0.3, WD2, DARK), box(-6.85, T + H - 0.3, 0, 0.3, 0.3, 6.8, WD2, DARK), box(6.85, T + H - 0.3, 0, 0.3, 0.3, 6.8, WD2, DARK), box(0, T + H - 0.3, 0, 0.3, 0.3, 6.8, WD2, DARK),   // the beams
+              { s: 'roof', form: 'gable', p: [0, T + H, 0], size: [15.2, 2.4, 8.0], key: SH, tint: MOSS, keyEnd: WD, tintEnd: LOG, over: 0.5, roof: true },
+              ...[-5.2, -2.6, 2.6, 5.2].map(x => box(x, T + 0.08, 3.25, 0.34, 0.16, 0.26, null, 0xffd9a0, { glow: 1 })),                    // the footlights
+          ];
+          features.push({ k: 'arch', id: 'woods:G:stage', x: ox, z: oz, y: y0, parts });
+          features.push({ k: 'rail', x0: r2(ox - 6.6), z0: r2(oz - 3.0), x1: r2(ox + 6.6), z1: r2(oz - 3.0), model: 'ranch' }, { k: 'rail', x0: r2(ox - 6.6), z0: r2(oz - 3.0), x1: r2(ox - 6.6), z1: r2(oz + 3.0), model: 'ranch' }, { k: 'rail', x0: r2(ox + 6.6), z0: r2(oz - 3.0), x1: r2(ox + 6.6), z1: r2(oz + 3.0), model: 'ranch' }); }
+        /* THE OWL (P05-01): the mound is dressed stone, stone cheeks flank the steps, ten columns stand in a horseshoe behind the owl (blockers, each on its own square) */
+        { const q = centre('P05-01'), ox = gx(q[0]), oz = gx(q[1]), y0 = r2(ground(ox, oz)), T = 1.75;
+          const parts = [
+              box(0, 0, 0, 7.14, T + 0.05, 7.14, ROCK, STONE, { faces: 'blr', uv: [3.5, 3.5] }),
+              box(-2.66, 0, 3.58, 1.84, T + 0.05, 0.08, ROCK, STONE, { faces: 'f', top: false, uv: [3.5, 3.5] }), box(2.66, 0, 3.58, 1.84, T + 0.05, 0.08, ROCK, STONE, { faces: 'f', top: false, uv: [3.5, 3.5] }),
+              ...[-1, 1].flatMap(sd => [box(sd * 2.2, 0, 5.25, 0.8, 1.5, 3.5, ROCK, STONE2, { uv: [1.75, 1.75] }), box(sd * 2.2, 0, 8.75, 0.8, 0.75, 3.5, ROCK, STONE2, { uv: [1.75, 1.75] }),
+                  cyl(sd * 2.2, 1.5, 4.2, 0.5, 0.5, ROCK, STONE, { r2: 0.32, seg: 6, uv: [1.75, 1.75] })]),                                 // the stair cheeks and their end stones
+              ...[-1, 1].flatMap(sd => [0, 1, 2].map(k => rock(sd * (4.3 + rnd() * 0.5), -0.3, -2.6 + k * 2.6 + rnd(), 0.9 + rnd() * 0.5, 0.9 + rnd() * 0.7, 0.4, 5 + k % 2, k % 2 ? STONE : STONE2))),   // boulders at the mound's foot
+          ];
+          features.push({ k: 'arch', id: 'woods:G:owl', x: ox, z: oz, y: y0, parts });
+          [[66, 16], [67, 16], [65, 17], [68, 17], [64, 18], [69, 18], [64, 19], [69, 19], [65, 20], [68, 20]].forEach(c => { if (!free(c[0], c[1])) return; take(c[0], c[1]); props.push({ key: 'greek_column', x: gc(c[0]), z: gc(c[1]), h: 4.6 }); }); }
+        /* THE JETTY (P04-00, the Lake's west shore; the squares are cut above): mooring posts down both sides of the tool's plank deck, a lamp post at its head, a rowboat */
+        { const x0 = gx(53) - 1.75, x1 = gx(57) + 1.75, oz = gc(6), ox = r2((x0 + x1) / 2), y0 = r2(ground(gx(52), oz)), L = x1 - x0, parts = [];
+          for (let k = 0; k <= 5; k++) for (const sd of [-1, 1]) parts.push(box(-L / 2 + 0.3 + k * (L - 0.6) / 5, -1.6, sd * 1.9, 0.26, 2.5 + (k % 2) * 0.25, 0.26, WD2, DARK));
+          parts.push(box(0, 0.86, -1.9, L - 0.6, 0.1, 0.12, WD2, DARK), box(L / 2 - 0.3, -1.6, 0, 0.3, 4.6, 0.3, WD2, DARK), box(L / 2 - 0.3, 2.7, 0.35, 0.12, 0.12, 0.7, WD2, DARK),
+              box(L / 2 - 0.3, 2.34, 0.62, 0.26, 0.34, 0.26, null, 0xffc070, { glow: 1 }));                                                 // one rail, the lamp post, its arm and its lamp (drawn glow, no light)
+          features.push({ k: 'arch', id: 'woods:G:jetty', x: ox, z: oz, y: y0, parts });
+          props.push({ key: 'rowboat', x: r2(gx(55)), z: r2(oz + 3.6), y: -0.25, face: 80 }); }
+        /* THE BARROW (P03-00, the Mound): a stone doorway in the hill's south face (two uprights, a lintel, blackness), boulders heaped on its shoulders, kerb stones round the foot */
+        { const q = centre('P03-00'), ox = gc(q[0]), oz = gc(q[1]), y0 = r2(ground(ox, oz)), parts = [];
+          parts.push(box(0, 0, 5.6, 2.3, 2.3, 2.4, null, BLACK, { top: false }), box(0, 2.3, 5.6, 2.3, 0.05, 2.4, null, BLACK),
+              rock(-1.5, -0.3, 6.9, 0.7, 2.9, 0.5, 5, STONE), rock(1.5, -0.3, 6.9, 0.7, 2.9, 0.5, 5, STONE2), box(0, 2.45, 6.9, 4.6, 0.7, 1.3, ROCK, STONE, { uv: [3.5, 3.5] }),
+              rock(-2.9, -0.3, 6.0, 1.5, 2.6, 0.7, 6, STONE2), rock(2.9, -0.3, 6.0, 1.5, 2.6, 0.7, 6, STONE), rock(-1.2, 2.2, 5.0, 1.6, 1.3, 0.6, 6, STONE2), rock(1.3, 2.2, 4.8, 1.7, 1.2, 0.6, 5, STONE), rock(0, 0.9, 3.4, 2.6, 2.2, 1.2, 7, STONE2));
+          for (let k = 0; k < 16; k++) { const a = k / 16 * 6.2832 + 0.2, x = Math.cos(a) * 9.4, z = Math.sin(a) * 9.4, cx = Math.floor((ox + x + 126) / 3.5), cy = Math.floor((oz + z + 126) / 3.5);
+              if (Math.abs(x) < 3.6 && z > 0) continue; if (!/[gsr]/.test(cell[cy][cx])) continue;
+              parts.push(rock(x, r2(ground(ox + x, oz + z) - y0 - 0.3), z, 0.7 + rnd() * 0.4, 0.8 + rnd() * 0.6, 0.35, 5 + k % 2, k % 2 ? STONE : STONE2)); }
+          features.push({ k: 'arch', id: 'woods:G:barrow', x: ox, z: oz, y: y0, parts }); }
+        /* THE STONES (P04-02): two trilithons (north and south of the circle, each on two whole squares) and an outer ring of tall sarsens */
+        { const q = centre('P04-02');
+          [[-1, -3, 0], [-1, 3, 180]].forEach(d => { const a = [q[0] + d[0], q[1] + d[1]], b = [a[0] + 1, a[1]]; if (!free(a[0], a[1]) || !free(b[0], b[1])) return; take(a[0], a[1]); take(b[0], b[1]);
+              props.push({ key: 'trilithon', x: gx(b[0]), z: gc(a[1]), face: d[2] }); });
+          [[-4, -1], [4, -1], [-4, 2], [4, 2], [-3, -3], [3, -3], [-3, 4], [3, 4]].forEach((d, i) => hput('P04-02', 'sarsen', d[0], d[1], { h: 3.8 + (i % 3) * 0.5, face: i * 47 })); }
     },
 };

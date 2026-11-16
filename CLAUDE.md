@@ -10,6 +10,8 @@ Read `docs/notes/onboarding.md` (access you need, how to work beside the owner's
 another account) and `docs/notes/owner-rules.md` (mondo's standing rules: what he wants and never wants; they bind
 every account). The owner project's memory as of 11-15 is frozen in `docs/project-memory/` (`INDEX.md` first). New
 lasting facts go in the matching docs/notes file in the same PR, never only in one account's memory.
+**THE MODEL LIST FIRST (mondo 11-16):** before building or dressing any room, district or zone, search `MODEL_LIST.md` for your theme and look
+inside the pack files themselves; the prop catalogue is not the whole list (owner-rules.md section 1).
 **TWO ACCOUNTS, ONE BOARD:** before starting on an area or system, read `docs/notes/claims.md` (who has what). Never
 work an area the other side holds; take or free a row in your own PR; leave notes for the other side at its bottom.
 
@@ -149,7 +151,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-desert-insides.js` (2026-11-15): writes Hangar 18, the White Rooms and the inside of the Great Pyramid on whole squares (plan `docs/plans/desert/insides_plan.png`). Notes: areas-complexes.md "THE DESERT'S INSIDES".
 - `bake-mountains.js` (2026-11-15): writes The Mountains + the North Pole village on plots (`site_prebuilt_shasta_mountains`, `site_prebuilt_northpole_plots`, from `docs/areas/mountains/layout.json`). The Hollywood Hills left it 11-16 (Disaster City's district N). Notes: areas-complexes.md "THE MOUNTAINS ON PLOTS" + "THE HOLLYWOOD HILLS + THE SWAP"; what stands on the plots = one file a district, `docs/areas/mountains/districts/<N P K O S>.js`, rules "THE MOUNTAINS, THE DISTRICT FILES" (11-16).
 - `bake-estate.js` (2026-11-15): writes The Estate on plots (`site_prebuilt_skinwalker_estate`, from `docs/areas/estate/layout.json`; the corn is the wall). Districts = `docs/areas/estate/districts/{C,L,H,R}.js`, one thread a file (11-16). Notes: areas-complexes.md "THE ESTATE ON PLOTS" + "THE ESTATE, THE DISTRICT FILES".
-- `bake-sewers.js` (2026-11-16): writes The Sewers on plots (`site_prebuilt_downtown_underworld`, a 6 x 4 maze, from `docs/areas/sewers/layout.json`); districts = `docs/areas/sewers/districts/W|T|H|O.js`, one thread a file. Notes: areas-complexes.md "THE SEWERS ON PLOTS"; waterfalls (`k: 'fall'` rows, any room): same file, "THE WATERFALLS".
+- `bake-sewers.js` (2026-11-16): writes The Sewers on plots (`site_prebuilt_downtown_underworld`, a 6 x 4 maze, from `docs/areas/sewers/layout.json`); districts = `docs/areas/sewers/districts/W|T|H|O|R.js`, one thread a file (R = the radioactive district + the liquid `sludge`, 11-16: 6 x 5 now; notes "THE SEWERS, DISTRICT R"). Notes: areas-complexes.md "THE SEWERS ON PLOTS"; waterfalls (`k: 'fall'` rows, any room): same file, "THE WATERFALLS".
 - `bake-beach.js` (2026-11-15): writes The Beach on plots (`site_prebuilt_bermuda_beach`, a sea room, from `docs/areas/beach/layout.json`; the heights are the map). District content = `docs/areas/beach/districts/S|H|O|T.js` (11-16), one thread a file. Notes: areas-complexes.md "THE BEACH ON PLOTS" + "THE BEACH, THE DISTRICT FILES".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
