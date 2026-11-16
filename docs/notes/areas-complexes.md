@@ -8655,6 +8655,20 @@ sea has things to sail to.
     is seven `goo_tendril` (the Sewers' Sludge Pit's prop: the symbiote's black spell tendrils, 2.6 to 5.6 m, their feet typed half a
     metre under the surface) round the taken boat. The Meshy `tentacle` / `tentacle2` models are never used for a standing arm again.
     STILL DRAWN THE SAME WAY AS THE PLUME, HIS CALL: the waterspout's cloud (grey domes over the funnel).
+  - **THE MODEL PASS (11-16, mondo: "these are models that were added ... use these ones"; seen on screen):** the wish-list models
+    (docs/plans/WISHLIST_MODELS_ADDED.md, read end to end) in place of what stood in. ASKED AND PLACED: `thatched_hut` x 2 (the
+    sleepers' drawn shelter is one now; a watcher's hut by the watch fire. The two WALK-IN huts stay: a model is not walked into),
+    `carved_totem_pole` x 2 (by the gate; in the village, where the hand-sized `item_ward_totem` stood), `dugout_canoe` x 3 (the
+    Landing's three rowboats), `drying_fish` x 2 (the drawn pole rack and its hung meat are out), seven `seagull`, `woven_baskets`
+    (village, garden, both huts), `coconuts` under the palms, four `banana_plant`, six `tropical_bush`, `raft` x 2 (the castaway's,
+    in place of his rowboat; adrift in the Flotsam), a `trawler` working the Sharks' ground (was a rowboat adrift), `hammock` x 2
+    (the pack's own key). FROM THE REST OF THE LIST: three `burnt_tree` (for dead snags on the scorched ring), `golden_idol` on the
+    altar (was a gold bar), `fur_rug` before the high seat, `torn_sail_mast` standing out of the Flotsam, two `parrot`, a `dodo`, a
+    `heron`, `oars`, `fishing_rod`, `firewood_stack`, the castaway's `lean_to` and `pirate_flag`. NOT TOUCHED: his revisions (no
+    modelled smoke, `tiki_torch`, `goo_tendril`). SEEN AND MOVED: a hut west of the big hut stood against the south flow's lava pool.
+    FRAME RATE: the cloud 0.2 fps at the Landing and 1.0-1.6 mid-sea before and after; triangles drawn 3.14 M -> 4.10 M at the
+    Landing, 2.89 M -> 3.20 M mid-sea (the new models are 2,000-5,000 triangles each; the Landing's jump is more than their sum,
+    so something near it draws them several times over: for the engine row to look at, with the far cull).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -8677,10 +8691,8 @@ sea has things to sail to.
   6. The sea's places wear plain names for what is there: THE ROCKS, THE KRAKEN, THE PALM ROCKS, FLOTSAM, THE SEA LANE.
   7. One castaway stands on the north-east islet: a pirate (the Beach's own list), no line.
   8. Lava runs down the cone in two flows; it is scenery (the cone is never climbed, the flows end on scorched ground nobody needs to cross).
-- **NEEDS A MODEL (nothing stood in):** the tribe's people; a thatched hut and a totem pole / carved mask (the huts are drawn walls, the
-  gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
-  for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
-  a ship or raft out at sea; a moving waterspout (this one stands still).
+- **NEEDS A MODEL (after the model pass; everything else on the first list is placed):** the tribe's people; a whale's bones (not
+  made); a black sand sheet; a carved mask; a moving waterspout (this one stands still). Smoke is never modelled (mondo 11-16).
 - **NOT DONE (for after his look):** Nothing
   under the water shows (the sea is opaque from above). No fight set up.
 - **WHAT I WOULD DO NEXT (not started):** a far cull / LOD for the whole sea room and its ten lights handed to the props nearest the
@@ -11060,8 +11072,17 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   reindeer for the sleigh team, a cairn and a prayer-flag string as real models); (3) one look for all lamp posts and poles; (4) lines for the yetis and a keeper at the
   Gate House once the NPC system says who lives here; (5) with the tool's row: grey the rock sheet's scale on the crags, take the tile grid out of the snow paint,
   winter trees on the west edge land past the Pass Gate.
+- **THE MODEL PASS** (mondo 11-16, on top of the five passes: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to end;
+  seen, two probe runs, 26 views; proof `docs/areas/mountains/proof/P_models_*.jpg`). What was replaced, added and what stays a shape: the file's header. Learned:
+  - A prop row takes `noBlock: true` (the `rope_bridge` model blocks by its catalogue row: on a walked square it must not) and its own `h` / `span` (the great cairn is
+    `cairn` at `h` 3.6; `icicles` at `span` 1.4 so they end over head height). A hung piece: `floor: false` + `y` = the plot's ground + the eave's height - the piece's own height.
+  - `timber_gate` and `icicles` run along x at `face` 0; `prayer_flags` too. `rope_bridge` runs along x: `face: 90` for a north-south crossing. `lantern_post` has no light.
+  - The Rope Bridge's crossing went from two squares wide to one (`tailor`: one `j` column became the slot), because the model is one 1.7 m walkway.
+  - CROSSED OFF the needs-a-model list: prayer flags, cairn, rope bridge, timber gate (as leaves), lantern post, weather mast, reindeer, goat, bear, snowshoes, snow sled,
+    ice axe, pickaxe, wood stove, kettle, firewood pile, axe + block, backpack, sleeping bag, stretcher, snow heap, icicles, ice-fishing hole and rod, pelt rug.
+    STILL NO MODEL: skis as a loose pair (the `ski_rack` has them), a wide gate frame, a big log shelter, a lit lantern post.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles; after the model pass 243 calls / 331 k triangles (the models are heavier than the boxes they replace, the calls are level; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
