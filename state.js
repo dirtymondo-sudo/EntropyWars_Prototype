@@ -3829,7 +3829,7 @@
            ground for THIS body (getTerrainMoveCost: forest, mountain, lava, bog ... after boots, wings, adaptations), and
            the race's terrain affinity stats (getTerrainPreferenceModifier). [{ key, label, kind: 'up'|'dn', title }] */
         const _GROUND_CHIP_GLYPH = { grass: '🌿', water: '💧', deep_water: '🌊', mountain: '⛰', mountain_2: '⛰', desert: '🏜', tree: '🌲',
-            forest: '🌲', forest_2: '🌲', dark_woods: '🌲', ice: '🧊', lava: '🌋', poison: '☠', poison_bog: '☠', purple_bog: '☠', wasteland: '☢',
+            forest: '🌲', forest_2: '🌲', dark_woods: '🌲', ice: '🧊', lava: '🌋', poison: '☠', poison_bog: '☠', purple_bog: '☠', sludge: '☢', wasteland: '☢',
             swamp: '🟢', scorched: '🔥', oil: '🛢', storm: '⛈', rocks_1: '🪨', rocks_2: '🪨', rocks_3: '🪨', rocks_4: '🪨', rocks_5: '🪨',
             rock_wall_1: '🪨', rock_wall_2: '🪨', cave_wall: '🪨', cliff: '🪨' };
         const _GROUND_CHIP_STATS = [['atk', 'ATK'], ['armor', 'DEF'], ['int', 'M ATK'], ['vision', 'VISION'], ['move', 'MOV']];

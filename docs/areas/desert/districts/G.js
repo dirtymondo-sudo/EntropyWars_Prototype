@@ -37,7 +37,10 @@
    - THE SPHINX: a real sculpted one (the parts-built one reads as blocks up close). A camel. Fallen casing blocks. A temple's columns (papyrus capitals).
 
    KNOWN MISSING OR WRONG:
-   - THE DIG's two trenches have no ramp (a 1 m step down): pass 3. THE CANYON MOUTH (P11-08) opens on sand: the canyon to Western Town was cut by the move.
+   - PASS 3 (dressing, 11-16): the Dig has an earth ramp into each trench, rope posts, planks, a finds table, a wagon; the causeway has a stone
+     kerb and a small pillared hall; the oasis has eleven palms, a well, reeds, a boat, flamingos, the cloth tent; braziers line the path to the
+     Tomb Door; rubble lies at the pyramids' feet; the Sand Sea half covers a giant foot, a boat, bones; seven more natives.
+   - The Robbers' Tunnel's link door stands as a bare slab on open sand (a rock mouth round it: pass 5). THE CANYON MOUTH (P11-08) opens on sand: the canyon to Western Town was cut by the move.
    - The pyramids are not climbed any more (the first build's walked tiers and stairs went with the true shape). No temple, no causeway paving beyond
      the layout's stone squares.
    - The room's scatter (the tool's: stones, snags) can land beside a pyramid's foot; the east and south edges show pine mountains (the tool's edges).
@@ -141,6 +144,53 @@ exports.ground = ctx => { bind(ctx);
     /* THE SAND SEA, the Robbers' Tunnel, the Tomb Door */
     P('sarcophagus', 54, 89, { face: 20, y: -0.3 }); dec('skull_pile', 62, 90); dec('skull', 50, 91); P('cave_stone', 66, 88, {}); P('cave_stone', 58, 92, {});
     dec('skull_pile', 92, 66); dec('paper_sheet', 91, 68, { y: 0.01 }); P('brazier', 71, 77, {}); P('brazier', 71, 80, {}); P('signpost', 70, 82, { face: 270 });
+    /* ════ PASS 3, THE DRESSING (2026-11-16): every plot gets a reason to be there. New lights are all `noLight` (the room has ten). ════ */
+    const NL = { noLight: true };
+    /* THE DIG: an earth ramp into each trench (they were a 1 m step down), rope posts round them, planks across, the finds table */
+    feat({ k: 'ramp', x0: gx(75), z0: gc(50), x1: gx(73), z1: gc(50), w: 3.5, h0: -1, h1: 0, edge: 0.3, key: 'dirt_2' });
+    feat({ k: 'ramp', x0: gx(80), z0: gc(56), x1: gx(82), z1: gc(56), w: 3.5, h0: -1, h1: 0, edge: 0.3, key: 'dirt_2' });
+    for (let i = 74; i <= 79; i += 1.25) { Pm('rope_stanchion', gx(i), gx(50) - 0.5, {}); Pm('rope_stanchion', gx(i), gx(51) + 0.5, {}); Pm('rope_stanchion', gx(i + 2), gx(56) - 0.5, {}); Pm('rope_stanchion', gx(i + 2), gx(57) + 0.5, {}); }
+    Pm('footbridge', gx(77), gc(50), { face: 90, y: 0.05 }); Pm('footbridge', gx(78), gc(56), { face: 90, y: 0.05 });
+    P('map_table', 79, 53, { face: 30 }); dec('folding_chair', 78, 54); dec('folding_chair', 80, 54); P('film_camera', 75, 54, { face: 60 });
+    dec('greek_amphora', 79, 52); dec('greek_amphora', 76, 53); dec('psx_wooden_crate_1', 77, 54); dec('psx_wooden_crate_3', 82, 57); dec('psx_wooden_crate_6', 74, 57); dec('hw_shovel', 76, 51); dec('hw_shovel', 79, 57);
+    dec('wooden_bucket', 77, 51); dec('wooden_bucket', 81, 55); dec('meshy_rope', 80, 51); dec('meshy_burlap_sack', 83, 53); dec('meshy_burlap_sack', 83, 54); dec('railway_lantern', 78, 55, NL); dec('skull', 77, 50, { y: -1 }); dec('femur', 79, 56, { y: -1 });
+    dec('greek_amphora', 75, 50, { y: -1 }); P('covered_wagon', 74, 59, { face: 90 }); P('horse_brown', 77, 59, { face: 270 }); dec('cot', 83, 51); dec('field_radio', 82, 54);
+    /* THE CANYON MOUTH + THE ROBBERS' TUNNEL: rock fall at the canyon's foot, the robbers' leavings by the tunnel */
+    [[88, 56, 'hw_stone_2'], [92, 57, 'hw_stone_4'], [89, 58, 'psxg_rock_3'], [93, 55, 'hw_stone'], [86, 57, 'psxg_rock_1'], [91, 59, 'hw_stone_5'], [87, 59, 'psxg_dead_bush_1'], [94, 58, 'psxg_dead_bush_2'], [85, 55, 'psxg_dead_bush_2']].forEach(q => dec(q[2], q[0], q[1]));
+    dec('crow', 88, 57, { y: 0.9 }); dec('crow', 92, 58); P('signpost', 89, 59, { face: 0 });
+    dec('psx_wooden_crate_2', 93, 67); dec('psx_wooden_crate_3', 93, 68); dec('meshy_rope', 92, 69); dec('hw_shovel', 90, 68); dec('money_sacks', 94, 67); dec('meshy_burlap_sack', 94, 70); dec('railway_lantern', 92, 67, NL); dec('wooden_bucket', 90, 70);
+    dec('psx_gold_bar_pcs_1', 93, 70); dec('greek_amphora', 89, 66); dec('hw_stone_3', 88, 64); dec('psxg_rock_2', 86, 62); dec('psxg_dead_bush_1', 87, 68);
+    /* THE CAUSEWAY: a low stone kerb either side of the paving, and a small pillared hall beside it in sight of the Sphinx (granite posts and
+       lintels, the valley temple's way of building: six posts on whole squares, beams over them, a paved floor) */
+    { const K = []; for (const x of [gx(53) - 0.3, gx(55) + 0.3]) for (const q of [[48, 53], [55, 76]]) K.push({ s: 'box', p: [r2(x), 0, gx((q[0] + q[1]) / 2)], size: [0.55, 0.38, r2((q[1] - q[0]) * C)], key: 'bricks_1', tint: LIME2, gain: GAIN, uv: [1.75, 1.75] });
+      feat({ k: 'arch', id: 'des:giza:kerb', x: 0, z: 0, y: 0, parts: K }); }
+    { const T = [], B = (x, y, z, w, h, d, tint) => T.push({ s: 'box', p: [r2(x), y, r2(z)], size: [w, h, d], key: 'bricks_1', tint, gain: GAIN, uv: [1.75, 1.75] });
+      for (const i of [56, 58]) for (const j of [49, 51]) { B(gc(i), 0, gc(j), 1.5, 4.4, 1.5, 0xb87a5c); ring(gc(i) - 0.8, gc(j) - 0.8, gc(i) + 0.8, gc(j) + 0.8, 4); setRect(i, j, i + 1, j + 1, 'B'); }
+      for (const j of [49, 51]) B(gx(57.5), 4.4, gc(j), 10.2, 0.9, 1.7, 0xb87a5c); for (const i of [56, 58]) B(gc(i), 5.3, gx(50.5), 1.7, 0.6, 10.2, LIME);
+      B(gx(57.5), 5.9, gx(50.5), 10.6, 0.35, 10.6, LIME2); B(gx(57.5), -0.02, gx(50.5), 11.2, 0.14, 11.2, LIME2);
+      feat({ k: 'arch', id: 'des:giza:hall', x: 0, z: 0, y: 0, parts: T });
+      for (let j = 49; j <= 51; j++) for (let i = 56; i <= 58; i++) ctx.setPaint(i, j, 'bricks_1');
+      P('stone_altar', 57, 50, { face: 90 }); dec('item_censer', 57, 50, { y: 0.96 }); dec('greek_amphora', 57, 49); dec('greek_amphora', 57, 51); dec('cat', 58, 50); }
+    /* THE SPHINX's forecourt and THE OBELISKS */
+    dec('cat', 73, 51); dec('tomb_plaque', 73, 50); dec('hw_stone_2', 61, 49); dec('hw_stone_4', 68, 54, {}); dec('psxg_rock_4', 64, 48);
+    dec('tomb_plaque', 51, 64); dec('tomb_plaque', 56, 67); dec('hw_stone', 49, 66); dec('hw_stone_3', 58, 64); dec('greek_amphora', 53, 63); dec('greek_amphora', 54, 68); P('stone_altar', 53, 66, { face: 0 }); dec('crow', 50, 62, { y: 7 });
+    /* THE OASIS: more palms, the well, reeds at the bank, a boat pulled up, birds, a carpet camp and the old cloth tent */
+    [[48, 78, 4.9], [59, 75, 4.5], [52, 83, 5.1], [57, 73, 4.3], [49, 74, 4.7]].forEach(q => feat({ k: 'tree', x: gc(q[0]), z: gc(q[1]), kind: 'palm', h: q[2], r: 1.3 }));
+    P('ancient_well', 58, 77, {}); Pm('rowboat', gx(51), gx(82.3), { face: 30 }); for (const q of [[50.2, 77.2], [51.4, 80.6], [56.6, 80.4], [56.9, 76.6], [52.4, 75.3], [55.3, 82]]) Pm('ocean_seaweed', gx(q[0]), gx(q[1]), { face: Math.round(rnd() * 360) });
+    Pm('flamingo', gx(52.2), gx(76.4), { face: 120 }); Pm('flamingo', gx(55.6), gx(81), { face: 300 }); Pm('flamingo', gx(51.2), gx(79.6), { face: 60 }); Pm('meshy_frog', gx(56.4), gx(77.4), {});
+    P('fortune_teller_tent', 58, 82, { face: 315 }); Pm('psx_carpet_mp_1', gx(56.5), gx(84.3), { face: 20, y: 0.02 }); Pm('rug_round', gx(59), gx(80.2), { y: 0.02 }); dec('greek_amphora', 59, 83); dec('wooden_bucket', 57, 78); dec('cauldron', 56, 83); Pm('meshy_campfire_ring', gx(57.2), gx(83.2), NL);
+    P('horse_black', 49, 82, { face: 80 }); P('hitching_rail', 49, 83, { face: 0 });
+    /* THE TOMB DOOR: the path to it between braziers and plaques */
+    for (const i of [62, 65, 68]) { P('brazier', i, 76, NL); P('brazier', i, 79, NL); } dec('tomb_plaque', 63, 76); dec('tomb_plaque', 67, 79); dec('cat', 66, 78); dec('greek_amphora', 70, 76); dec('hw_stone_2', 64, 81); dec('skull', 66, 82);
+    /* rubble at the pyramids' feet (blocks that came down the faces) */
+    [[72, 75, 'hw_stone_5'], [71.6, 86, 'hw_stone_4'], [72, 90, 'ocean_rock_3'], [78, 72, 'hw_stone_2'], [92, 72, 'hw_stone_5'], [95.4, 80, 'hw_stone_3'], [95.4, 88, 'hw_stone_4'], [71.5, 68, 'hw_stone_2'], [71.5, 62, 'hw_stone_5'], [80, 59, 'hw_stone_3'], [84.4, 63, 'hw_stone'], [84.4, 69, 'hw_stone_4'],
+     [61.5, 63, 'hw_stone_2'], [69, 63, 'hw_stone_3'], [64, 68, 'hw_stone'], [60.5, 70, 'hw_stone_5'], [66.6, 71.6, 'psxg_rock_2']].forEach(q => Pm(q[2], gx(q[0]), gx(q[1]), { face: Math.round(rnd() * 360) }));
+    /* THE SAND SEA: what the dunes half cover */
+    P('meshy_giant_foot', 60, 90, { face: 40 }); Pm('rowboat', gx(52), gx(93), { face: 70, y: -0.25 }); P('dinosaur_skeleton', 66, 92, { face: 200, y: -0.35 }); P('obelisk', 56, 87, { h: 3.2, face: 30 }); Pm('sea_chest', gx(63.4), gx(87.5), { face: 140, y: -0.3 });
+    P('trap_coffin_wood', 50, 87, { face: 120, y: -0.15 }); dec('skull', 53, 90); dec('femur', 55, 90); dec('ulna', 61, 93); dec('skull_pile', 69, 94); dec('greek_amphora', 58, 89, { y: -0.3 }); dec('hw_stone_4', 64, 94); dec('psxg_dead_bush_1', 49, 94); dec('psxg_dead_bush_2', 67, 86); dec('psxg_dead_bush_1', 57, 95);
+    dec('crow', 60, 91, { y: 2.3 }); dec('anatomy_skeleton', 62, 88, { y: -0.6 });
+    /* more of the people who already live here (no new race, no new lines) */
+    native('skeleton', 64, 90, 300); native('mummy', 67, 73, 180); native('anubis', 74, 50, 90); native('skeleton', 91, 63, 200); native('mummy', 52, 68, 0); native('anubis', 60, 78, 270); native('djinn', 54, 73, 180);
     native('anubis', 76, 54, 200, sayOf(O_GIZA, 'anubis')); native('annunaki', 86, 70, 270, sayOf(O_GIZA, 'annunaki')); native('skeleton', 79, 55, 300, sayOf(O_GIZA, 'skeleton'));
     native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist')); native('mummy', 69, 80, 270); native('djinn', 55, 84, 0);
 };
