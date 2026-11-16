@@ -5324,6 +5324,14 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
     oil store): white boards, a red tin roof, a blue door frame and window; inside oil barrels, jerrycans, a crate with a field radio,
     a life ring, rope, a lantern. The parapet is open where its walls stand.
   - Reef: the round rocks went (a round rock given `h` 1.8 is a black slab 8 m wide); three small pillars instead.
+- **PASS 3, THE DRESSING (seen on screen, probe views `p3_*`):** THE CORNER BUOYS (DOOR_MASTER, Room 345: "the corner buoys"): a drawn red
+  buoy two squares inside each corner of the Triangle with the room's number 345 on its board, and eight striped spars along the long side
+  (one `arch` row, no light). The open plots: a pod of dolphins, mantas, turtles, rays, tuna, three schools of fish; two lit anglerfish
+  down the Maelstrom's hole and a second, smaller hull caught on its stacks. Birds: an `eagle` turning over the light and one over the
+  lookout, two crows on the wreck (no gull model). The camp: a tent, bottles, spears; three flamingos at the Lagoon; a bird cage, traps, a
+  crate and a barrel on the Shack's porch; the keeper's bench; a sword and an amphora on the Wreck Islet; a dead tree, a stump, three palms.
+  FRAME RATE (the same island view): 8.2 fps, 492 draw calls, 1.03 M triangles (the Ocean's and the Harbour's passes landed in the room
+  between the runs, so this is the room's number, not this pass's).
 - **LEARNED (for the zone kit):**
   - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
     water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
