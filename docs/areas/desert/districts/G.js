@@ -40,6 +40,8 @@
    - PASS 3 (dressing, 11-16): the Dig has an earth ramp into each trench, rope posts, planks, a finds table, a wagon; the causeway has a stone
      kerb and a small pillared hall; the oasis has eleven palms, a well, reeds, a boat, flamingos, the cloth tent; braziers line the path to the
      Tomb Door; rubble lies at the pyramids' feet; the Sand Sea half covers a giant foot, a boat, bones; seven more natives.
+   - PASS 4 (atmosphere, 11-16): `airZones()` (dust on the Sand Sea, round the pyramids and on the causeway; embers on the Tomb Door path; fireflies
+     over the oasis), a lit torch core on every door jamb and hall post, the capstone glows; seen at dusk and at night.
    - The Robbers' Tunnel's link door stands as a bare slab on open sand (a rock mouth round it: pass 5). THE CANYON MOUTH (P11-08) opens on sand: the canyon to Western Town was cut by the move.
    - The pyramids are not climbed any more (the first build's walked tiers and stairs went with the true shape). No temple, no causeway paving beyond
      the layout's stone squares.
@@ -92,12 +94,14 @@ exports.ground = ctx => { bind(ctx);
         B(0, 0, r2(deep / 2 - 0.1), w, h, deep, undefined, { key: undefined, uv: undefined, gain: 1, tint: 0x0a0806 });                             // the dark
         B(-(w / 2 + 0.45), 0, r2(deep / 2 - 0.3), 0.9, h, deep, GRAN); B(w / 2 + 0.45, 0, r2(deep / 2 - 0.3), 0.9, h, deep, GRAN);                 // the jambs
         B(0, h, r2(deep / 2 - 0.3), w + 1.8, 0.55, deep, LIME);                                                                                     // the lintel
+        /* PASS 4: a torch on each jamb (a bracket + a lit core; no lamp: the room's ten lights are spent) */
+        for (const sd of [-1, 1]) { B(sd * (w / 2 + 0.45), 1.75, -0.2, 0.12, 0.5, 0.12, DARK, { key: undefined, uv: undefined, gain: 1 }); B(sd * (w / 2 + 0.45), 2.25, -0.2, 0.2, 0.32, 0.2, 0xffb040, { key: undefined, uv: undefined, gain: 1, glow: 1 }); }
         if (chevron) { const G = (sw, sh, dp, tint) => parts.push({ s: 'roof', form: 'gable', ry: n ? 90 : 0, p: n ? [lx, h + 0.55, r2(lz + dp)] : [r2(lx + dp), h + 0.55, lz], size: [1.4, sh, sw], key: 'bricks_1', tint, gain: GAIN, uv: [1.75, 1.75] });
             G(w + 1.8, 1.7, 0.42, LIME2); G(w - 0.2, 1.05, 0.3, GRAN); } }
     /* THE GREAT PYRAMID on four plots: 77 m at the foot (22 squares), 49 m to the tip of its gold capstone. Its three doors and Room 444's
        bay door stand in stone mouths at its foot. */
     { const cx = gx(84), cz = gx(84), G = pyramid('great', cx, cz, 77, { top: 44.2 });
-      G.parts.push({ s: 'roof', form: 'pyramid', p: [0, G.y, 0], size: [G.w, r2(G.w / 2 * SLOPE), G.w], key: 'gold', uv: 3.5, roof: true });                // the capstone, in the better gold
+      G.parts.push({ s: 'roof', form: 'pyramid', p: [0, G.y, 0], size: [G.w, r2(G.w / 2 * SLOPE), G.w], key: 'gold', uv: 3.5, roof: true, glow: 0.45 });                // the capstone, in the better gold
       mouth(G.parts, gc(87) - cx, -38.5, 'n', 2.6, 2.6, true);                                                                                    // the door `pyramid`
       mouth(G.parts, -38.5, gx(79) - cz, 'w', 3.4, 3.0, true);                                                                                    // Room 444's bay door (the Tomb Door)
       mouth(G.parts, -38.5, gc(81) - cz, 'w', 1.5, 2.3, false);                                                                                   // the door `tombside`, the turning stone
@@ -168,6 +172,7 @@ exports.ground = ctx => { bind(ctx);
       for (const i of [56, 58]) for (const j of [49, 51]) { B(gc(i), 0, gc(j), 1.5, 4.4, 1.5, 0xb87a5c); ring(gc(i) - 0.8, gc(j) - 0.8, gc(i) + 0.8, gc(j) + 0.8, 4); setRect(i, j, i + 1, j + 1, 'B'); }
       for (const j of [49, 51]) B(gx(57.5), 4.4, gc(j), 10.2, 0.9, 1.7, 0xb87a5c); for (const i of [56, 58]) B(gc(i), 5.3, gx(50.5), 1.7, 0.6, 10.2, LIME);
       B(gx(57.5), 5.9, gx(50.5), 10.6, 0.35, 10.6, LIME2); B(gx(57.5), -0.02, gx(50.5), 11.2, 0.14, 11.2, LIME2);
+      for (const i of [56, 58]) for (const j of [49, 51]) { T.push({ s: 'box', p: [gc(i), 3.2, r2(gc(j) + (j === 49 ? 0.82 : -0.82))], size: [0.14, 0.45, 0.14], tint: DARK }, { s: 'box', p: [gc(i), 3.65, r2(gc(j) + (j === 49 ? 0.82 : -0.82))], size: [0.2, 0.3, 0.2], tint: 0xffb040, glow: 1 }); }   // PASS 4: a torch on each post
       feat({ k: 'arch', id: 'des:giza:hall', x: 0, z: 0, y: 0, parts: T });
       for (let j = 49; j <= 51; j++) for (let i = 56; i <= 58; i++) ctx.setPaint(i, j, 'bricks_1');
       P('stone_altar', 57, 50, { face: 90 }); dec('item_censer', 57, 50, { y: 0.96 }); dec('greek_amphora', 57, 49); dec('greek_amphora', 57, 51); dec('cat', 58, 50); }
@@ -197,6 +202,16 @@ exports.ground = ctx => { bind(ctx);
 
 /* THE DESERT'S INSIDES (2026-11-15): the three ways into the Great Pyramid's inside. The entrance in the north face beside the North Stair, the
    slab beside the Tomb Door in the west face (Room 444's own door stays where it is), the Robbers' Cut (hidden) further north. */
+/* PASS 4, THE AIR (the tool's air hook; home squares): wind-blown dust over the Sand Sea and round the pyramids, a little on the causeway,
+   embers along the braziers to the Tomb Door, fireflies over the oasis */
+exports.airZones = () => [
+    { sx0: 48, sy0: 84, sx1: 72, sy1: 96, kind: 'dust', color: 0xf0d8a0, n: 220, speed: 1.0, wind: 1.9 },
+    { sx0: 72, sy0: 60, sx1: 96, sy1: 96, kind: 'dust', color: 0xe8d0a0, n: 130, speed: 0.8, wind: 1.3 },
+    { sx0: 48, sy0: 48, sx1: 72, sy1: 60, kind: 'dust', color: 0xe8d0a0, n: 80, wind: 1.1 },
+    { sx0: 60, sy0: 74, sx1: 72, sy1: 82, kind: 'embers', color: 0xffa040, n: 50 },
+    { sx0: 48, sy0: 72, sx1: 60, sy1: 84, kind: 'fireflies', color: 0xd8ff90, n: 45 },
+];
+
 exports.doors = ctx => { bind(ctx);
     const fx = r2(gx(73) - 0.45), nz = r2(gx(73) - 0.45);
     doors.push({ id: 'pyramid', wall: 'free', x: gc(87), z: nz, face: 0, leaf: 'leaf_frame_only', label: 'THE GREAT PYRAMID', sub: 'THE NORTH FACE · THE WAY IN', action: { room: 'site_prebuilt_giza_pyramid', at: 'north' },
