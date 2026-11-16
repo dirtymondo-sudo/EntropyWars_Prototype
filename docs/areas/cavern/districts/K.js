@@ -11,9 +11,12 @@
    STANDS TODAY: see the STANDS / NOT YET list at the end of this header; the pilot's passes are logged in the notes.
    STANDS (first build): torches at the bends, the old rooms' pieces re-homed (the Needle's menhir, the stocks and cot, the crystals of the
    Adit, the bulbs of Level −6, the candle rings), the Healing Zone, six bystanders with their old lines.
-   NOT YET: everything a pass makes (see the notes). */
+   FOUR PASSES LIVE (11-16), STOPPED, waits mondo's look: 1 the rock kit + the landmarks, 2 the built places, 3 the dressing + more
+   people, 4 the lights, the air, steam and mist. What a fifth would do: the notes, "THE CAVERN, DISTRICT K". */
 'use strict';
 const CROSS = 'P02-01';
+/* PASS 4, THE TEN REAL LIGHTS: one lit torch in each of these plots, two in the Crossroads; every other torch only glows */
+const LIT = ['P02-01', 'P03-01', 'P02-02', 'P00-01', 'P05-01', 'P05-00', 'P04-00', 'P04-01', 'P01-01'];
 module.exports = {
     suns(ctx) { const s = ctx.sq('P01-00', 6, 4), b = ctx.plot['P01-00'].base; return [{ x: ctx.gcx(s[0]), y: ctx.r2(b + 2.2), z: ctx.gcz(s[1]), color: 0xff5a20, intensity: 1.5, dist: 46, decay: 1.4 }]; },
     plan(ctx) {
@@ -69,7 +72,7 @@ module.exports = {
     dress(ctx) {
         const put = (key, id, lx, ly, o) => { if (ctx.free(id, lx, ly)) ctx.P(key, id, lx, ly, o); };
         /* a torch in two corners of every plot: the first two bends the plan gives */
-        ctx.plots.forEach(p => { const c = ctx.corners(p.id); [c[0], c[c.length - 1]].forEach(q => { if (q) put('cave_torch', p.id, q[0], q[1], { noLight: !['P02-01', 'P03-01', 'P02-02', 'P00-01', 'P05-01'].includes(p.id) }); }); });
+        ctx.plots.forEach(p => { const c = ctx.corners(p.id); [c[0], c[c.length - 1]].forEach((q, i) => { if (q) put('cave_torch', p.id, q[0], q[1], { noLight: !(LIT.includes(p.id) && (i === 0 || p.id === CROSS)) }); }); });
         put('stocks', 'P05-00', 6, 4); put('cot', 'P05-00', 2, 3); put('psx_old_mattress_mp_1', 'P05-00', 3, 5); put('cot', 'P05-00', 2, 7); put('skull_pile', 'P05-00', 3, 9); ctx.dec('candleRing', 'P05-00', 6, 7); ctx.dec('skull_pile', 'P05-00', 3, 8);
         [[5, 3], [6, 8], [9, 6], [8, 9]].forEach(q => put('meshy_crystal_shards', 'P05-01', q[0], q[1], { h: 1.6 })); put('crystal_cluster', 'P05-01', 9, 7);
         const bulb = (id, lx, ly) => { const q = ctx.sq(id, lx, ly); ctx.props.push({ key: 'bare_bulb', x: ctx.gcx(q[0]), z: ctx.gcz(q[1]), ceil: true, y: ctx.r2(ctx.plot[id].base + 4.6), noLight: true }); };
@@ -139,6 +142,20 @@ module.exports = {
         ctx.plots.forEach(p => { if (p.id === 'P03-00') return; const sq = ctx.squares(p.id); for (let i = 0; i < 3 && sq.length; i++) { const q = sq[Math.floor(ctx.rnd() * sq.length)]; hang(['bat_black', 'bat_brown', 'bat_grey'][i], p.id, q[0], q[1], 0.5 + ctx.rnd() * 1.6); } });
         /* cobwebs and loose stone in the corners nobody walks */
         ctx.plots.forEach(p => { if (p.id === 'P03-00') return; ctx.corners(p.id).slice(1, 5).forEach((q, i) => dec(i % 2 ? 'psx_cobweb_1' : (['P00-00', 'P01-00', 'P02-00'].includes(p.id) ? 'hw_stone_2' : 'cave_stone'), p.id, q[0], q[1])); });
+    },
+    /* ── PASS 4, THE ATMOSPHERE: the air of each part of the cave, steam where water meets heat, mist under the fall ── */
+    airZones(ctx) { return [
+        { sx0: 0, sy0: 0, sx1: 36, sy1: 12, kind: 'motes', color: 0xff7a30, n: 190, speed: 0.5 },      // sparks over the hot side
+        { sx0: 60, sy0: 12, sx1: 72, sy1: 24, kind: 'motes', color: 0xffe2b0, n: 80, speed: 0.16 },    // the warm light of the Adit
+        { sx0: 0, sy0: 12, sx1: 60, sy1: 24, kind: 'dust', color: 0xb8a890, n: 220, speed: 0.14 },     // the lower tier
+        { sx0: 36, sy0: 0, sx1: 72, sy1: 12, kind: 'dust', color: 0x9aa0a8, n: 110, speed: 0.1 },      // the High Tier, Level −6, the Oubliette
+        { sx0: 24, sy0: 24, sx1: 36, sy1: 36, kind: 'dust', color: 0xe8d8a8, n: 70, speed: 0.2 } ]; }, // the Mouth, in the country's light
+    dress4(ctx) {
+        const r2 = ctx.r2, steam = (id, lx, ly, rise, o) => { const s = ctx.sq(id, lx, ly); ctx.props.push(Object.assign({ key: 'chimney_smoke', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), y: r2(ctx.plot[id].base + 0.2), rise, noBlock: true }, o || {})); };
+        steam('P01-00', 3, 7, 4); steam('P01-00', 9, 3, 3.5); steam('P00-00', 6, 4, 4); steam('P02-00', 6, 8, 3); steam('P00-00', 3, 5, 3);   // the vents and the crack
+        steam('P03-01', 10, 6, 2.6); steam('P03-01', 9, 7, 2.2);                                                                          // mist under the fall
+        /* crystals alight in the dark: the Adit's ledge, the Terrace's pool, the Grotto (they glow; no real light) */
+        [['P05-01', 9, 6], ['P05-01', 8, 7], ['P03-01', 7, 9], ['P00-01', 2, 2], ['P04-00', 9, 8]].forEach(q => { if (ctx.free(q[0], q[1], q[2])) ctx.P('crystal_cluster', q[0], q[1], q[2], { noLight: true }); });
     },
     people(ctx) {
         const O = ctx.O;

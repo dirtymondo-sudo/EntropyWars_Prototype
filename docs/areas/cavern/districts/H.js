@@ -21,7 +21,7 @@ module.exports = {
         for (let ly = 4; ly <= 7; ly++) for (let lx = 4; lx <= 7; lx++) { const q = ctx.sq(SUN, lx, ly); ctx.taken.add(q[0] + ':' + q[1]); }
         ctx.feat({ k: 'arch', id: 'cav:sun', x, z, rot: 0, base: 1.75, parts: [
             { s: 'cyl', p: [0, 0, 0], r: 2.6, r2: 0.7, h: 21, seg: 10, key: 'rocks_5', tint: 0xbcb9aa },
-            { s: 'dome', p: [0, 28.2, 0], r: 6.5, h: 6.5, seg: 24, rings: 8, tint: 0xffe9a8, glow: 1.5, ds: true }, { s: 'dome', p: [0, 28.2, 0], r: 6.5, h: -6.5, seg: 24, rings: 8, tint: 0xffdf90, glow: 1.5, ds: true }, ] });
+            { s: 'dome', p: [0, 28.2, 0], r: 6.5, h: 6.5, seg: 24, rings: 8, tint: 0xffd98a, glow: 0.8, ds: true }, { s: 'dome', p: [0, 28.2, 0], r: 6.5, h: -6.5, seg: 24, rings: 8, tint: 0xffcf78, glow: 0.8, ds: true }, ] });
         /* the BATTLE marker of the old Inner Sun, on the Country */
         const bt = (ctx.O.innersun.c || []).find(c => c.id === 'battle'), b = ctx.sq('P02-03', 8, 8);
         if (bt) { ctx.taken.add(b[0] + ':' + b[1]); ctx.counters.push(Object.assign({}, bt, { x: ctx.gcx(b[0]), z: ctx.gcz(b[1]), plateY: 2.35 })); }
