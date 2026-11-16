@@ -22,7 +22,7 @@ exports.dress = ctx => {
     [[49, 37], [58, 37], [49, 46], [58, 46]].forEach(q => P('obelisk', q[0], q[1], { h: 7 }));
     [[f.gobekli[1] + 1, 39], [f.anthill[1] + 1, 37], [f.henge[1] + 1, 39], [f.babel[1] + 1, 44], [f.causeway[1] + 1, 44]].forEach(q => P('signpost', q[0], q[1], { face: 90 }));
     /* THE WEST MOUTH + THE EAST MOUTH */
-    P('sarsen', 0, 40, { h: 4.2 }); P('sarsen', 0, 43, { h: 4.2 }); P('campfire', 4, 45); P('sea_chest', 6, 46, { face: 20 }); dec('paper_sheet', 5, 46, { y: 0.01 }); dec('skull', 2, 38);
+    P('sarsen', 0, 40, { h: 4.2 }); P('sarsen', 0, 43, { h: 4.2 }); P('campfire', 4, 45); P('sea_chest', 6, 46, { face: 20 }); dec('paper_sheet', 5, 46, { y: 0.01 }); dec('cattle_skull', 2, 38);
     Pm('trilithon', cx(106), gz(42), { face: 90, h: 6.2 }); taken.add('106:41'); taken.add('106:42'); P('brazier', 104, 39); P('brazier', 104, 44);
 };
 exports.people = ctx => { const { native, sayOf, OLD } = ctx;
