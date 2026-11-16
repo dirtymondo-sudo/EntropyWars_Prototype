@@ -139,6 +139,9 @@ So the surface ring (Mountains, Woods, Camelot, Estate, Desert, Beach, city) is 
 old rooms is below, above or beyond that ring**: the underground (Sewers, Cavern, D.U.M.B., Hell), the sky (Vatican,
 Heaven), the sea floor (The Deep), the far east (Leylines), and the three off-map places.
 
+**What each zone SHOWS past its line** (the land, the sky landmarks) against this table: `docs/plans/world-edges/edges-plan.md` (2026-11-16, the edges
+thread). The Desert's sides and the city's Cove are fixed; the Mountains, the North Pole, the Woods, Camelot and the Estate are listed there, not built.
+
 ### B2. What is inconsistent or missing, with a fix each
 
 1. **The underground plans are out of date.** The Sewers and Cavern plan pictures were drawn before the city's district
@@ -225,3 +228,18 @@ Realm, Antarctica, Outer Space last.
 6. Still open from layout 3: the Ice Wall round the world's rim; The Deep to Area 51; where the Spaceship leaves from
    (Hangar 18, Antarctica, or both).
 7. A way between the Estate's Ranch and the Desert, or only a border?
+
+---
+
+## D. mondo's answers of 2026-11-16 (after the survey) and what was started
+
+- The eight zones still on old rooms get a thread each and are REDESIGNED on plots and districts, not ported
+  (`docs/plans/ZONE_THREAD_BRIEF.md` holds his words and the method).
+- The White Rooms go to The D.U.M.B. The Deep is an underwater room. NO way between The Deep and Area 51.
+- A door from Camelot's Looking-Glass Garden to the Astral Realm's Sea of Possibility.
+- Where the Spaceship leaves from and how the player reaches it: undecided, "let's just get the world built".
+- Antarctica as the late-game reveal is only a possibility: build it like any zone.
+- Exits may move with a redesign ("it's not that big of a deal"). New models come after, from the threads' lists
+  (`docs/plans/MODEL_WISHLIST.md` is the first collected list).
+- Earlier the same day: the Hollywood Hills became Disaster City's district N; The Sewers were built (five districts);
+  every district of every built zone got up to five passes (`docs/plans/DISTRICT_THREAD_BRIEF.md`).

@@ -1957,6 +1957,36 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE BARE STACK + THE GROUND MERGES (2026-11-16, the walk's mesh count: the squares)
+
+Where the walk stood (mondo's F3s 11-16 04:36-04:38, Firefox / M1 / WebGPU): 40-43 FPS at 1,900-2,100 replayed meshes;
+squares ~1,220-1,330 of them: alone see-through / cut-out ~280, alone no sheet lit ~247, alone node terrain ~200-240, stacked
+~180, one paint ~120, alone many looks ~85. (The fight: 66-71 FPS.) mondo: "do 2 first" (the mesh count before the joined rooms).
+- THE BARE STACK (`_hqStackBareOk`, `_hqStkBare`, `_hqStackOf`'s fallback; `_ewNodeStack` with `D.bare`): a plain opaque Phong
+  / Lambert part with NO map of any kind joins a stack with no layers: its colour rides in the points (the one paint's way),
+  its glow x strength in `ewSk` (the sheet stack's way), and the merged mesh wears the look with no glow of its own; the dress
+  sets `emissiveNode = ewSk.rgb` and reads no texture. So parts that differed only by colour or glow (lamp glass, lit
+  windows, neon, trims) are one look per square. WebGPU only (`_hqStackOff`). Also serves the fight's merge. Off:
+  `window.EW_HQ_NO_BARE_STACK` before the room. Lens: "stacked (no sheet) N".
+- THE GROUND MERGES (`_hqBatchPieceOk(o, ter)`, `c.ter`): in a big room's shell a ground tile (`_ew_hqTerrain`, one look for
+  all 320) is a normal merge candidate: the tiles of a 96 m square become one mesh on the ground's OWN look (key
+  'ground|...', never the paint or a stack: `_hqBatchVcOk` now refuses any `_ewNode` look, whose copy would lose its dress).
+  The ground's look reads each point's WORLD place and world normal and the tile's painted weights, which the merge carries.
+  Off: `window.EW_HQ_NO_GROUND_MERGE` before the room. Lens: "ground, merged N".
+- PROOF, the ground (WebGL on llvmpipe, `playtest_city.js`, the street at the spawn, merge on vs `--flags=EW_HQ_NO_GROUND_MERGE`,
+  two sessions): 320 tiles -> 63 merged meshes, 0 singles, 0 errors; the road region differs in 9 of 46,000 pixels (over
+  8/255), the pavement where no shadow or car crosses the same; the rest of the picture's difference is a passing van, the
+  sun's shadows and the walker's pose. (A view over the bay is useless for this: the water moves.)
+- PROOF, WebGPU (cloud, SwiftShader, counts only; HEAD on ca62f59 + this change; the merge still building when read:
+  "build 3572->485", it was 8,376->1,569 at that stage on 11-15): in view "ground, merged 38 · stacked (no sheet) 29 ·
+  alone: no sheet 3" (no "alone: no sheet, lit" line left), 0 frame errors, no pipeline or shader error in the log. The
+  bare stack's PICTURE is not proven in the cloud (WebGPU renders black there): it is the part's own Phong / Lambert
+  shading with the colour and the glow read from the points, both ways already proven (THE ONE PAINT, THE SHEET STACK).
+  mondo's eyes on lit windows / lamps / neon are the check; `EW_HQ_NO_BARE_STACK` isolates it.
+- WHAT IS LEFT in the squares after this: see-through / cut-out ~280 (signs with a clear ground: one canvas each; panes),
+  many looks ~85-150 (several looks on one mesh: split by look, then merge), stacked ~180, one paint. Then instance cells
+  (~250-360), shell rest (294), prop plots (~90).
+
 ## THE PARKED ROOM (2026-11-16, a fight no longer ends the walk: nothing is rebuilt either way)
 
 mondo: "why does a fight rebuild everything? its supposed to be a seamless transition ... make it seamless. stop the pointless
@@ -2010,6 +2040,14 @@ What it is now (three-renderer.js, big rooms = `_hqChunkBig`, the room READY, no
   timeline again). Probe after the fix (city, parked path, `playtest_handover.js` now prints skinned + chars): 70 skinned
   meshes / 10 chars before the fight, 70 / 10 after: no body is left behind or doubled; 4,397 -> 4,384 merged meshes, 0 errors.
   A probe run whose room is not READY at the strike takes the OLD path on purpose (`_hqParkOk` wants `H.ready`).
+- mondo 11-16 04:36-04:38, five F3s through one fight: walk 40.4 FPS -> THE FIGHT 66.3 and 71.3 FPS (it was 23.4 on 11-15;
+  1,350 meshes, "the fight's room live 603->36") -> just back 25.2 FPS, "tick: doors + residents + scene 16.8" again -> a
+  little later 43.5 FPS, that row 1.5. So keeping `H.nav` in `_hqResume` (#1739) was NOT the whole fix: the rounds' start-up
+  (called by `_hqSpawnPopulation`, the line after `_hqResStart`) calls `_hqNavStart()` unconditionally and made a new, empty
+  lattice. It now keeps the one a resumed room has. Cloud profile of the first 20 s back (`playtest_handover.js --profile`):
+  `_hqResume` 0.27 s where the old path's `_hqEnter` is 20 s (`_hqBuildTerrain` 17.8 s of it); the cloud cannot show the nav
+  row gone (its city never finishes the lattice before the fight), so his next F3 just after a fight is the proof.
+  Probe: give a big room `--wait=480000`, else it strikes before READY and takes the old path.
 PROOF (cloud browser, WebGL on llvmpipe through probe-fast.js, the new repo tool `node playtest_handover.js`; HEAD on 84580c2 +
 this change): Disaster City, a strike 3.5 m from the spawn, the fight drawn (the street, palms, cars from copies: 2,513),
 the enemy's hp set to 0 + `checkWin()`, BACK TO THE ROOM pressed. Before the fight: 43,095 meshes, 4,099 merged meshes, 49

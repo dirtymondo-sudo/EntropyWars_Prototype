@@ -9,7 +9,9 @@
    (drawn bulkhead lamps with lit brick, pilasters, stains, drain outlets, one `arch` row a plot), the Cistern's rail + depth staff, the Gallery's rail, four culvert
    mouths high in the Junction's walls, two street grates in the Outfall's roof, four real bulbs. PASS 2 (THE ROOMS' INSIDES): the Pump Room (second pump, compressor, plinths, risers, the engineer's desk, lockers), the Pumping Station's crew corner, the Gallery's watch post + store,
    the Junction's rest stop + stores + benches, the Cistern's boat, life rings, net, the Outfall's screen and what it caught. PASS 3 (THE DRESSING): name plates + warnings by the lamps, a scene in a bend of each culvert plot (a sleeper's corner, flood works, bones,
-   a job half done, storm rubbish, mushrooms + frogs, a stash, a fall of brick, the bats' roost), bats in the halls, an eel, crabs, a cat, graffiti, chains. NOT YET: drips, air. */
+   a job half done, storm rubbish, mushrooms + frogs, a stash, a fall of brick, the bats' roost), bats in the halls, an eel, crabs, a cat, graffiti, chains. PASS 4 (THE ATMOSPHERE): flickering tubes, swaying lanterns, mist at the falls, steam, red call points, eyes under the dead lamps,
+   daylight under the Outfall's grates. PASS 5 (POLISH): the pilasters' bands, the plinths and the screen's posts wear the concrete sheet (a dark bare tint drew as shiny plate), the lit brick is paler. FIVE PASSES DONE: the thread stops here until mondo has looked.
+   NOT YET: drips and a district's own air (they need `airZones` in the tool: asked on the board), water sound (the game has none). */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
 
@@ -37,13 +39,15 @@ function wallKit(ctx, id) {
         /* THE BULKHEAD LAMP */
         lamp(f, color, dead, y0) { const y = y0 || 2.45, sheet = f.c === 'f' ? 'urban:ConcreteStriped2c' : 'bricks_2';
             K.box(f, 0, y - 0.06, 0.05, 0.36, 0.5, 0.1, { tint: IRON }); K.box(f, 0, y + 0.44, 0.04, 0.06, Math.max(0.2, 3.0 - y - 0.44), 0.06, { tint: IRON });
-            if (dead) { K.box(f, 0, y, 0.13, 0.24, 0.38, 0.12, { tint: IRON }); return; }
+            if (dead) { K.box(f, 0, y, 0.13, 0.24, 0.38, 0.12, { tint: IRON });
+                /* PASS 4: under a dead lamp something looks back (two lit points at the wall's foot; the game has no rat model yet) */
+                [-0.07, 0.07].forEach(u => K.box(f, 0.9 + u, 0.16, 0.12, 0.045, 0.045, 0.04, { tint: 0xff6a30, glow: 1 })); return; }
             K.box(f, 0, y, 0.13, 0.3, 0.44, 0.14, { tint: color, glow: 1 }); K.box(f, 0, y + 0.2, 0.21, 0.34, 0.04, 0.03, { tint: IRON }); K.box(f, 0, y - 0.02, 0.21, 0.04, 0.48, 0.03, { tint: IRON });
-            const pale = (c => { const m = v => Math.round(v + (255 - v) * 0.45); return (m(c >> 16 & 255) << 16) | (m(c >> 8 & 255) << 8) | m(c & 255); })(color);   /* the lit brick is paler than the lens */
+            const pale = (c => { const m = v => Math.round(v + (255 - v) * 0.6); return (m(c >> 16 & 255) << 16) | (m(c >> 8 & 255) << 8) | m(c & 255); })(color);   /* the lit brick is paler than the lens */
             [[1.1, 1.3, 0.22, y - 0.45], [2.1, 2.3, 0.14, y - 1.1], [3.3, 3.2, 0.08, 0.35], [4.8, 3.9, 0.04, 0.12]].forEach((w, k) => K.box(f, 0, w[3], 0.075 - k * 0.012, w[0], w[1], 0.02, { key: 'bricks_2', tint: pale, glow: w[2], top: false, uv: 3.5 }));
             const ns = f.d === 'n' || f.d === 's'; [[1.6, 1.1, 0.14, 0.75], [3.0, 2.2, 0.08, 1.2]].forEach((w, k) => parts.push({ s: 'quad', flat: true, p: K.at(f, 0, 0.035 - k * 0.01, w[3]), size: ns ? [w[0], w[1]] : [w[1], w[0]], key: sheet, tint: pale, glow: w[2] })); },
         /* a brick pilaster, floor to the vault's spring, a stone band on it */
-        pilaster(f) { K.box(f, 0, 0, 0.16, 0.95, 3.1, 0.34, { key: 'bricks_2', tint: 0x8a8274, gain: 1.15, top: false, uv: 3.5 }); K.box(f, 0, 3.1, 0.2, 1.15, 0.22, 0.44, { tint: 0x4a4843 }); K.box(f, 0, 0, 0.2, 1.1, 0.3, 0.42, { tint: 0x4a4843 }); },
+        pilaster(f) { K.box(f, 0, 0, 0.16, 0.95, 3.1, 0.34, { key: 'bricks_2', tint: 0x8a8274, gain: 1.15, top: false, uv: 3.5 }); K.box(f, 0, 3.1, 0.2, 1.15, 0.22, 0.44, { key: 'urban:ConcreteStriped2c', tint: 0x8a8680 }); K.box(f, 0, 0, 0.2, 1.1, 0.3, 0.42, { key: 'urban:ConcreteStriped2c', tint: 0x8a8680 }); },
         /* a stain down the wall */
         streak(f, rnd) { const w = 0.3 + rnd() * 0.7, h = 1.1 + rnd() * 1.6; K.box(f, r2((rnd() - 0.5) * 1.8), r2(0.4 + rnd() * 0.5), 0.04, r2(w), r2(h), 0.025, { key: 'bricks_2', tint: 0x1e2414, top: false }); },
         /* a small drain outlet: a rusted collar, the black in it, the run under it */
@@ -79,7 +83,7 @@ module.exports = {
             /* a torch on two bends of every plot: the only light in the culverts */
             [0, Math.floor(cs.length / 2)].forEach(k => { const q = cs[k]; if (q && ctx.free(p.id, q[0], q[1])) ctx.P('cave_torch', p.id, q[0], q[1]); });
             const dry = ctx.squares(p.id, 'o');
-            for (let k = 3 + (i % 4); k < dry.length; k += 9) { const q = dry[k]; ctx.dec(['floor_stain', 'paper_sheet', 'floor_drain', 'floor_stain'][(k + i) % 4], p.id, q[0], q[1]); }
+            for (let k = 3 + (i % 4); k < dry.length; k += 9) { const q = dry[k]; ctx.dec(['floor_stain', 'psx_tin_can_mp_1_rusty_1', 'floor_drain', 'floor_stain', 'floor_stain', 'psx_nails_1_rusty', 'floor_stain', 'floor_stain'][(k + i) % 8], p.id, q[0], q[1]); }
             const tip = nth(ctx.corners(p.id), 1 + (i % 3)); if (tip && ctx.free(p.id, tip[0], tip[1]) && i % 2 === 0) ctx.P(i % 4 ? 'traffic_barrel' : 'cardboard_boxes', p.id, tip[0], tip[1]);
         });
         /* THE GRIME PASS (mondo 11-16): rubbish washed into the bends and dead ends, cobwebs in the corners, a valve by the pumps */
@@ -100,7 +104,7 @@ module.exports = {
         putP('chain_hoist', 'P03-00', ctx.walled('P03-00'), 5); putP('pd_lever', 'P03-00', ctx.walled('P03-00'), 7);
         putP('dumpster', 'P02-02', ctx.walled('P02-02'), 6); putP('tire_stack', 'P02-02', ctx.walled('P02-02'), 9); putD('traffic_cone', 'P02-02', ctx.inner('P02-02'), 5); putD('traffic_cone', 'P02-02', ctx.inner('P02-02'), 9); putD('mop_bucket', 'P02-02', ctx.walled('P02-02'), 12);
         { const w = ctx.walled('P05-03'); putD('hw_body', 'P05-03', w, 7); putD('hw_part_3', 'P05-03', w, 9); putD('hw_part', 'P05-03', w, 12); putD('psx_fish_skeleton_mp_1', 'P05-03', w, 3); }
-        const LITTER = ['psx_glass_bottle_1', 'psx_tin_can_mp_1_rusty', 'newspaper_bundles', 'psx_syringe_mp_1', 'psx_jerrycan_1', 'psx_tin_can_mp_1_rusty', 'meshy_round_street_drain', 'psx_glass_bottle_1'];
+        const LITTER = ['psx_glass_bottle_1', 'psx_tin_can_mp_1_rusty', 'psx_brick_1_1', 'psx_syringe_mp_1', 'psx_jerrycan_1', 'psx_tin_can_mp_1_rusty', 'psx_canned_food_mp_5_rusty', 'psx_glass_bottle_2'];   /* low-poly pack pieces only: the Meshy litter (newspaper bundles, round drains, paper) cost 6 to 10 thousand triangles a piece (pass 4's count) */
         ctx.plots.forEach((p, i) => { const dry = ctx.squares(p.id, 'o'); for (let k = 5 + (i % 5); k < dry.length; k += 8) ctx.dec(LITTER[(k + i) % LITTER.length], p.id, dry[k][0], dry[k][1]);
             const cs = ctx.corners(p.id), m = nth(cs, cs.length - 1 - (i % 2)); if (m && i % 3 === 0) ctx.dec('mushroom2', p.id, m[0], m[1]); });
         /* the rooms */
@@ -153,7 +157,7 @@ module.exports = {
                     K.box(f, 0, 0.3, 0.04, 1.3, yy - 0.2, 0.025, { key: 'bricks_2', tint: 0x1e2414, top: false }); });
             }
             if (p.id === 'P05-03') {   // THE OUTFALL SHAFT: two street grates far up in the roof, daylight in their bars
-                [[-3.5, -6], [4, 5]].forEach(q => { const y = ctx.r2(K.H - 0.25);
+                [[-8.75, -6], [12.25, 5]].forEach(q => { const y = ctx.r2(K.H - 0.25); K.parts.push({ s: 'quad', flat: true, p: [q[0], 0.03, q[1]], size: [2.4, 1.7], key: 'urban:ConcreteStriped2c', tint: 0xcfe0f0, glow: 0.2 }, { s: 'quad', flat: true, p: [q[0], 0.022, q[1]], size: [3.4, 2.6], key: 'urban:ConcreteStriped2c', tint: 0xcfe0f0, glow: 0.08 });
                     K.parts.push({ s: 'box', p: [q[0], y - 0.02, q[1]], size: [2.2, 0.08, 1.5], tint: 0xcfe0f0, glow: 1, under: true });
                     for (let b = -0.9; b <= 0.91; b += 0.3) K.parts.push({ s: 'box', p: [q[0] + b, y - 0.06, q[1]], size: [0.09, 0.07, 1.6], tint: 0x0c0c0e, under: true });
                     K.parts.push({ s: 'box', p: [q[0], y - 0.1, q[1]], size: [2.6, 0.1, 1.9], tint: IRON, under: true, top: false }); });
@@ -161,7 +165,7 @@ module.exports = {
             /* ── PASS 2, THE ROOMS' INSIDES: drawn pieces of each room (plinths, risers, the Outfall's screen) ── */
             if (p.id === 'P04-00') {   // THE PUMP ROOM: a cast plinth under each machine, a riser from each up into the vault, a checker-plate walk to the desk
                 const L = (lx, ly) => [ctx.r2(ctx.gcx(p.sx + lx) - (ctx.gx(p.sx) + 21)), ctx.r2(ctx.gcz(p.sy + ly) - (ctx.gz(p.sy) + 21))];
-                [[5, 3], [7, 3], [8, 4]].forEach(q => { const c = L(q[0], q[1]); K.parts.push({ s: 'box', p: [c[0], 0, c[1]], size: [2.9, 0.09, 1.9], tint: 0x44443f });
+                [[5, 3], [7, 3], [8, 4]].forEach(q => { const c = L(q[0], q[1]); K.parts.push({ s: 'box', p: [c[0], 0, c[1]], size: [2.9, 0.09, 1.9], key: 'urban:ConcreteStriped2c', tint: 0x8a8680 });
                     K.parts.push({ s: 'cyl', p: [c[0] + 0.9, 0.09, c[1] - 0.75], r: 0.16, h: ctx.r2(K.H - 0.6), key: RUSTK, tint: 0x6a3f24, seg: 8, cap: false }); K.parts.push({ s: 'cyl', p: [c[0] + 0.9, 1.5, c[1] - 0.75], r: 0.23, h: 0.12, tint: IRON, seg: 8 }); });
                 for (let lx = 3; lx <= 9; lx++) { const c = L(lx, 5); K.parts.push({ s: 'quad', flat: true, p: [c[0], 0.025, c[1] + 1.55], size: [3.5, 0.3], tint: 0xc8a018, key: 'urban:ConcreteStriped1e' }); }
             }
@@ -169,7 +173,7 @@ module.exports = {
                 const ox = ctx.gx(p.sx) + 21, oz = ctx.gz(p.sy) + 21, x0 = ctx.gx(p.sx + 4) - ox, x1 = ctx.gx(p.sx + 9) - ox, z = ctx.r2(ctx.gz(p.sy + 9) - oz);
                 for (let x = x0 + 0.2; x < x1; x += 0.42) K.parts.push({ s: 'box', p: [ctx.r2(x), -0.9, z], size: [0.07, 2.5, 0.07], tint: IRON });
                 [-0.1, 0.8, 1.5].forEach(y => K.parts.push({ s: 'box', p: [ctx.r2((x0 + x1) / 2), y, z], size: [ctx.r2(x1 - x0), 0.1, 0.12], tint: IRON }));
-                [x0, x1].forEach(x => K.parts.push({ s: 'box', p: [ctx.r2(x), -0.9, z], size: [0.3, 2.8, 0.3], tint: 0x3a3a38 }));
+                [x0, x1].forEach(x => K.parts.push({ s: 'box', p: [ctx.r2(x), -0.9, z], size: [0.3, 2.8, 0.3], key: 'urban:ConcreteStriped2c', tint: 0x8a8680 }));
             }
             if (p.id === 'P05-00') {   // THE INSPECTION GALLERY: a steel deck plate on the gallery, a lit window strip of gauges over the desk
                 const ox = ctx.gx(p.sx) + 21, oz = ctx.gz(p.sy) + 21; K.parts.push({ s: 'quad', flat: true, p: [ctx.r2(ctx.gx(p.sx + 9.5) - ox), 1.63, ctx.r2(ctx.gz(p.sy + 4) - oz)], size: [10.2, 13.6], key: 'urban:MetalSubwayGrill2a', tint: 0x8a8e90 }); }
@@ -181,18 +185,18 @@ module.exports = {
         const on = (key, id, lx, ly, dx, dz, o) => { const s = ctx.sq(id, lx, ly); ctx.props.push(Object.assign({ key, x: ctx.r2(ctx.gcx(s[0]) + dx), z: ctx.r2(ctx.gcz(s[1]) + dz), face: Math.round(ctx.rnd() * 360) }, o || {})); };
         /* THE PUMP ROOM: a second pump and a compressor on their plinths, the engineer's corner (desk, chair, lamp, phone, the logbook), lockers, a tool chest */
         fp('centrifugal_pump', 'P04-00', 7, 3, { face: 90 }); fp('air_compressor', 'P04-00', 8, 4); fp('tool_chest', 'P04-00', 4, 5); fp('gas_cylinder_rack', 'P04-00', 3, 4);
-        if (fp('tanker_desk', 'P04-00', 9, 3, { face: 270, x: ctx.r2(ctx.gcx(ctx.sq('P04-00', 9, 3)[0]) + 1.2) })) { on('psx_chair_mp_1', 'P04-00', 9, 3, 0.1, 0.1, { face: 90 }); on('desk_lamp', 'P04-00', 9, 3, 1.25, -0.5, { y: 0.78 }); on('rotary_phone', 'P04-00', 9, 3, 1.2, 0.45, { y: 0.78 }); on('clipboard_flat', 'P04-00', 9, 3, 1.0, 0, { y: 0.78 }); on('coffee_mug', 'P04-00', 9, 3, 1.35, 0.15, { y: 0.78 }); }
+        if (fp('tanker_desk', 'P04-00', 9, 3, { face: 270, x: ctx.r2(ctx.gcx(ctx.sq('P04-00', 9, 3)[0]) + 1.2) })) { on('psx_chair_mp_1', 'P04-00', 9, 3, 0.1, 0.1, { face: 90 }); on('desk_lamp', 'P04-00', 9, 3, 1.25, -0.5, { y: 0.78 }); on('rotary_phone', 'P04-00', 9, 3, 1.2, 0.45, { y: 0.78 }); on('clipboard_flat', 'P04-00', 9, 3, 1.0, 0, { y: 0.78 }); on('psx_canned_food_mp_2', 'P04-00', 9, 3, 1.35, 0.15, { y: 0.78 }); }
         wp('locker', 'P04-00', 3, 2, 'w', { u: -0.9 }); wp('locker', 'P04-00', 3, 2, 'w', { u: 0 }); wp('locker', 'P04-00', 3, 2, 'w', { u: 0.9 }); wp('breaker_panel', 'P04-00', 8, 2, 'n'); wp('punch_clock', 'P04-00', 9, 2, 'n', { u: -0.6 }); wp('notice_board', 'P04-00', 9, 2, 'e'); wp('fire_extinguisher', 'P04-00', 9, 4, 'e', { u: 1.2 }); wp('exit_sign', 'P04-00', 3, 4, 'w');
         /* THE PUMPING STATION (the way up to the street; its door and the three squares in front of it stay clear): the crew's lockers and bench, a hook rail, an exit sign beside the door */
         wp('locker', 'P03-00', 4, 1, 'w', { u: -0.5 }); wp('locker', 'P03-00', 4, 1, 'w', { u: 0.5 }); wp('hook_rail_long', 'P03-00', 8, 1, 'n'); wp('exit_sign', 'P03-00', 8, 1, 'n', { u: -1.4 }); fp('locker_bench', 'P03-00', 8, 1, { face: 0 }); on('psx_flashlight_1', 'P03-00', 8, 1, 0.4, 0.3, { y: 0.5 }); wp('fire_extinguisher', 'P03-00', 4, 3, 'w'); wp('notice_board', 'P03-00', 4, 2, 'w');
         /* THE INSPECTION GALLERY: the watchman's post on the deck (desk, monitors, a filing cabinet, a cot, the coffee), the store under it */
-        if (fp('tanker_desk', 'P05-00', 10, 3, { face: 270, x: ctx.r2(ctx.gcx(ctx.sq('P05-00', 10, 3)[0]) + 1.2) })) { on('psx_chair_mp_1', 'P05-00', 10, 3, 0.1, 0, { face: 90 }); on('psx_monitoring_screen_mp_1', 'P05-00', 10, 3, 1.3, -0.4, { y: 0.78, face: 270 }); on('psx_pc_keyboard_mp_1', 'P05-00', 10, 3, 1.0, -0.4, { y: 0.78, face: 270 }); on('coffee_mug', 'P05-00', 10, 3, 1.1, 0.5, { y: 0.78 }); on('psx_walkie_talkie_1', 'P05-00', 10, 3, 1.3, 0.3, { y: 0.78 }); }
+        if (fp('tanker_desk', 'P05-00', 10, 3, { face: 270, x: ctx.r2(ctx.gcx(ctx.sq('P05-00', 10, 3)[0]) + 1.2) })) { on('psx_chair_mp_1', 'P05-00', 10, 3, 0.1, 0, { face: 90 }); on('psx_monitoring_screen_mp_1', 'P05-00', 10, 3, 1.3, -0.4, { y: 0.78, face: 270 }); on('psx_pc_keyboard_mp_1', 'P05-00', 10, 3, 1.0, -0.4, { y: 0.78, face: 270 }); on('psx_canned_food_mp_3', 'P05-00', 10, 3, 1.1, 0.5, { y: 0.78 }); on('psx_walkie_talkie_1', 'P05-00', 10, 3, 1.3, 0.3, { y: 0.78 }); }
         fp('filing_cabinet', 'P05-00', 10, 2, { face: 270 }); fp('cot', 'P05-00', 10, 5, { face: 0 }); wp('gauge_board', 'P05-00', 9, 2, 'n'); wp('security_camera', 'P05-00', 8, 2, 'n'); on('coffee_maker', 'P05-00', 10, 4, 1.2, 0.9, {}); on('psx_canned_food_mp_1', 'P05-00', 10, 5, -0.8, 1.2, {}); on('newspaper_bundles', 'P05-00', 9, 2, -0.9, -1.0, {});
         fp('metal_shelving', 'P05-00', 10, 8, { face: 270 }); on('psx_supply_crate_1', 'P05-00', 9, 8, 0.6, 0.9, {}); on('psx_wooden_crate_1', 'P05-00', 8, 8, -0.7, 0.9, {}); on('psx_metal_barrel_mp_2', 'P05-00', 8, 7, -1.1, 0.2, {});
         /* THE JUNCTION: the rest stop by the Healing Zone (two cots, a drip stand, dressings), stores stacked in the north-east corner, valves at the pool, two benches */
-        fp('cot', 'P02-02', 3, 8, { face: 0 }); fp('cot', 'P02-02', 3, 7, { face: 0 }); fp('iv_stand', 'P02-02', 5, 8); on('psx_bandage_mp_1', 'P02-02', 3, 9, 0.9, -0.8, {}); on('psx_pills_bottle_1', 'P02-02', 3, 9, 1.2, -0.3, {}); on('psx_healing_potion_mp_1', 'P02-02', 3, 9, 0.6, -1.1, {}); on('hw_candles', 'P02-02', 3, 9, -1.0, 1.0, { noLight: true });
+        fp('cot', 'P02-02', 3, 8, { face: 0 }); on('psx_old_mattress_mp_1', 'P02-02', 3, 7, 0, 0.2, { noBlock: true }); fp('iv_stand', 'P02-02', 5, 8); on('psx_bandage_mp_1', 'P02-02', 3, 9, 0.9, -0.8, {}); on('psx_pills_bottle_1', 'P02-02', 3, 9, 1.2, -0.3, {}); on('psx_healing_potion_mp_1', 'P02-02', 3, 9, 0.6, -1.1, {}); on('hw_candles', 'P02-02', 3, 9, -1.0, 1.0, { noLight: true });
         fp('psx_supply_crate_1', 'P02-02', 9, 1); fp('psx_wooden_crate_1', 'P02-02', 9, 2); on('psx_metal_barrel_mp_2', 'P02-02', 8, 1, 0.9, -1.0, {}); on('meshy_burlap_sack', 'P02-02', 8, 1, 0.2, -0.9, {}); on('hand_truck', 'P02-02', 8, 2, 0.8, 0.6, {});
-        fp('gate_valve', 'P02-02', 4, 5); fp('gate_valve', 'P02-02', 8, 5); fp('metro_bench', 'P02-02', 3, 2, { face: 90 }); fp('metro_bench', 'P02-02', 9, 7, { face: 270 }); wp('notice_board', 'P02-02', 9, 3, 'e'); wp('breaker_panel', 'P02-02', 3, 3, 'w');
+        fp('gate_valve', 'P02-02', 4, 5); fp('gate_valve', 'P02-02', 8, 5); fp('metro_bench', 'P02-02', 3, 2, { face: 90 }); fp('metro_bench', 'P02-02', 9, 7, { face: 270 }); wp('notice_board', 'P02-02', 9, 3, 'e'); wp('psx_electrical_outlet_1', 'P02-02', 3, 3, 'w', { y: 1.2 });
         /* THE CISTERN: life rings on the rail, a boat on the tank, the sluice gear at the inflow, a net on the south wall */
         { const b = ctx.plot['P04-01'].base, s = ctx.sq('P04-01', 4, 4); ctx.props.push({ key: 'rowboat', x: ctx.r2(ctx.gcx(s[0]) + 0.6), z: ctx.gcz(s[1]), y: ctx.r2(b - 0.5), face: 100, noBlock: true });
           [[4, 3, 0.2, -1.7], [8, 9, -0.4, 0.05]].forEach(q => { const t = ctx.sq('P04-01', q[0], q[1]); ctx.props.push({ key: 'beach_life_ring', x: ctx.r2(ctx.gcx(t[0]) + q[2]), z: ctx.r2(ctx.gcz(t[1]) + q[3] - (q[1] === 9 ? 1.75 : 0) + (q[1] === 9 ? 3.5 : 0)), y: ctx.r2(b + 0.62) }); }); }
@@ -207,10 +211,10 @@ module.exports = {
         const scene = (id, k, items) => { const cs = ctx.corners(id), q = nth(cs, Math.min(cs.length - 1, k)); if (!q) return null; items.forEach(it => on(it[0], id, q[0], q[1], it[1], it[2], Object.assign({}, NB, it[3] || {}))); return q; };
         scene('P02-00', 3, [['psx_old_mattress_mp_1', 0.2, 0.3], ['psx_pillow_mp_1', -0.5, 0.6, { y: 0.2 }], ['psx_canned_food_mp_5_rusty', 0.9, -0.6], ['psx_glass_bottle_2', 1.0, 0.2], ['meshy_burlap_sack', -0.9, -0.7], ['psx_lighter_mp_1', 0.6, 0.9], ['psx_cigs_packet_1', 0.3, 1.0], ['candle', -1.0, 0.9, { noLight: true }]]);                       // somebody sleeps here
         scene('P02-01', 4, [['meshy_sandbags', 0.5, 0.3], ['meshy_sandbags', -0.6, -0.2, { face: 80 }], ['meshy_sandbags', 0.1, -1.0, { face: 10 }], ['traffic_cone', 1.2, -0.9], ['wet_floor_sign', -1.1, 0.9], ['broom', 1.2, 0.9]]);                                                                                             // the flood works
-        scene('P03-01', 2, [['skull_pile', 0.2, 0.2], ['femur', 0.9, -0.5], ['ulna', -0.8, 0.7], ['skull', 1.0, 0.8], ['hw_part_5', -0.9, -0.8], ['psx_cobweb_4', -1.2, -1.2], ['hw_candle', 0.2, 1.2, { noLight: true }]]);                                                                                                        // bones
+        scene('P03-01', 2, [['hw_body_2', 0.2, 0.2], ['hw_part_4', 0.9, -0.5], ['hw_part_6', -0.8, 0.7], ['skull', 1.0, 0.8], ['hw_part_5', -0.9, -0.8], ['hw_part_7', 0.3, -1.1], ['psx_cobweb_4', -1.2, -1.2], ['hw_candle', 0.2, 1.2, { noLight: true }]]);                                                                                                        // bones
         scene('P05-01', 3, [['welding_cart', 0.3, 0.2], ['gas_cylinder_rack', -0.9, -0.6], ['psx_hand_saw_1', 1.0, 0.9], ['psx_screwdriver_mp_1', 0.8, -0.9], ['cinder_block', -0.3, 1.1], ['psx_pipe_1_short', 1.2, -0.2]]);                                                                                                        // a job left half done
         scene('P00-02', 4, [['psx_toilet_mp_1_1', 0.2, 0.1], ['tire_stack', -0.9, -0.6], ['tube_tv', 0.9, -0.8], ['microwave', -0.6, 0.9], ['psx_tv_mp_1', 1.0, 0.7], ['garbage_bags', -0.1, -1.1]]);                                                                                                                                // what the storm brought in
-        scene('P01-02', 5, [['mushroom2', 0.2, 0.2], ['mushroom', -0.7, 0.6], ['mushroom2', 0.9, -0.6, { scale: 0.7 }], ['meshy_frog', -0.3, -0.9, { scale: 2.2 }], ['meshy_frog', 1.1, 0.8, { scale: 2 }], ['fern', -1.0, -0.4, { scale: 0.6 }], ['psx_cobweb_5', 1.2, 1.2]]);                                                // it grows where the wall weeps
+        scene('P01-02', 5, [['mushroom2', 0.2, 0.2], ['mushroom', -0.7, 0.6], ['mushroom2', 0.9, -0.6, { scale: 0.7 }], ['meshy_frog', -0.3, -0.9, { scale: 2.2 }], ['fern', -1.0, -0.4, { scale: 0.6 }], ['psx_cobweb_5', 1.2, 1.2]]);                                                // it grows where the wall weeps
         scene('P03-02', 3, [['psx_supply_crate_1_2', 0.3, 0.2], ['psx_supply_crate_1_empty', -0.9, -0.3], ['psx_ammo_box_mp_1', 0.4, 1.1], ['psx_jerrycan_1_1', 1.1, -0.7], ['psx_cash_1', -0.6, 0.9], ['psx_padlock_1', 0.9, 0.6], ['psx_walkie_talkie_2', -0.2, -1.0]]);                                                    // somebody's stash
         scene('P04-02', 2, [['psxg_rock_1', 0.2, 0.2], ['psxg_rock_3', -0.9, 0.5], ['psx_brick_1', 0.9, -0.7], ['psx_brick_1_2', 0.5, 0.9], ['psx_brick_1_1', -0.4, -0.9], ['cinder_block', 1.1, 0.4], ['psx_brick_1_3', -1.0, -0.3]]);                                                                                          // a fall of brick
         { const q = scene('P05-02', 3, [['psx_cobweb_1', -1.2, -1.2], ['psx_cobweb_2', 1.2, 1.1], ['psx_fish_skeleton_mp_1', 0.4, 0.3], ['lobster_traps', -0.5, 0.2], ['beach_cooler', 0.9, -0.7]]);                                                                                                                              // under the quay: the bats' roost
@@ -223,7 +227,20 @@ module.exports = {
         [['P02-01', 3, 6, 'w'], ['P03-01', 2, 3, 'w'], ['P01-02', 2, 2, 'n'], ['P03-02', 10, 5, 'e'], ['P04-02', 8, 1, 'e'], ['P00-02', 1, 1, 'n'], ['P05-01', 1, 2, 'n'], ['P02-00', 2, 2, 'n']].forEach(a => { const v = DIRS[a[3]], x = ctx.plot[a[0]].sx + a[1] + v[0], y = ctx.plot[a[0]].sy + a[2] + v[1];
             if (ctx.open(ctx.plot[a[0]].sx + a[1], ctx.plot[a[0]].sy + a[2]) && !ctx.open(x, y)) wp('graffiti_wall', a[0], a[1], a[2], a[3], { y: 0.5 }); });
         ctx.plots.forEach((p, i) => { const w = ctx.corners(p.id); const q = nth(w, 1 + (i % 4)); if (!q) return; const d = 'nswe'.split('').find(d => !ctx.open(p.sx + q[0] + DIRS[d][0], p.sy + q[1] + DIRS[d][1])); if (!d) return;
-            wp(['trap_chain_draped', 'vent_grille', 'wall_chains', 'utility_box', 'security_camera'][i % 5], p.id, q[0], q[1], d, i % 5 === 3 ? { y: 1.1 } : {}); });
+            wp(['trap_chain_draped', 'vent_grille', 'wall_chains', 'utility_box', 'psx_vent_2'][i % 5], p.id, q[0], q[1], d, i % 5 === 3 ? { y: 1.1 } : {}); });
+        /* ── PASS 4, THE ATMOSPHERE (no tool change: the room's air and fog are the shell's). Light that moves and air that moves:
+           flickering tubes in the three staffed rooms, a swaying lantern at a bend of every culvert plot (its glow, no cast light), mist at
+           the foot of the three falls, steam off the boiler and three leaking mains, red call points at the drops, candles at two scenes. ── */
+        const hang = (key, id, lx, ly, h, o) => { const s = ctx.sq(id, lx, ly); ctx.props.push(Object.assign({ key, x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), ceil: true, y: ctx.r2(ctx.plot[id].base + h), noLight: true }, o || {})); };
+        hang('flicker_tube', 'P04-00', 5, 4, 3.5); hang('flicker_tube', 'P04-00', 8, 3, 3.5, { face: 90 }); hang('flicker_tube', 'P03-00', 6, 2, 3.4); hang('flicker_tube', 'P05-00', 9, 4, 4.9); hang('flicker_tube', 'P05-00', 9, 7, 3.2, { face: 90 });
+        ['P02-00', 'P02-01', 'P03-01', 'P05-01', 'P00-02', 'P01-02', 'P03-02', 'P04-02', 'P05-02'].forEach((id, i) => { const cs = ctx.squares(id, 'o'), q = nth(cs, Math.floor(cs.length * (0.3 + 0.07 * (i % 5)))); if (q) hang('ship_lantern', id, q[0], q[1], 2.9); const r = nth(cs, Math.floor(cs.length * 0.8)); if (r && i % 2 === 0) hang('ship_lantern', id, r[0], r[1], 2.9); });
+        const steam = (id, lx, ly, rise, dx, dz, h) => { const s = ctx.sq(id, lx, ly); ctx.props.push({ key: 'chimney_smoke', x: ctx.r2(ctx.gcx(s[0]) + (dx || 0)), z: ctx.r2(ctx.gcz(s[1]) + (dz || 0)), y: h ? ctx.r2(ctx.plot[id].base + h) : 0.1, rise }); };
+        steam('P02-02', 6, 1, 3.5); steam('P04-01', 10, 6, 3.5); steam('P05-03', 6, 1, 4);                                     // the falls' mist
+        { const pr = ctx.sq('P04-00', 5, 3); steam('P04-00', 6, 4, 3, 0, 0, 1.6); steam('P03-01', 3, 1, 2.5, 0, -1.4, 2.4); steam('P01-02', 4, 3, 2.5, 0, -1.4, 2.4); steam('P03-02', 4, 3, 2.5, 0, -1.4, 2.4); }
+        wp('evac_button', 'P04-02', 5, 9, 'w', { noLight: true }); wp('evac_button', 'P02-01', 5, 10, 'w', { noLight: true }); wp('evac_button', 'P05-02', 5, 10, 'w', { noLight: true });
+        { const a = ctx.corners('P03-01'), q = nth(a, 2); if (q) on('candle_ring', 'P03-01', q[0], q[1], -0.6, -0.4, { noBlock: true, noLight: true }); const b = ctx.corners('P02-00'), r = nth(b, 3); if (r) on('railway_lantern', 'P02-00', r[0], r[1], -0.2, -0.9, { noBlock: true }); }
+        /* six puddles under the weeping walls (the room draws 80 floor decals; the tool keeps to 60, so only a few here) */
+        [['P02-01', 3, 4], ['P03-01', 6, 2], ['P01-02', 5, 3], ['P03-02', 2, 4], ['P04-02', 6, 3], ['P05-01', 3, 3]].forEach(a => { if (ctx.open(ctx.plot[a[0]].sx + a[1], ctx.plot[a[0]].sy + a[2])) ctx.grime('puddle', a[0], a[1], a[2], 1.2); });
         /* FOUR REAL LIGHTS (of the room's ten; decision on the board): a bulb on its flex over the Junction, the Pump Room, the Cistern's Plank and the Outfall */
         [['P02-02', 4, 6], ['P04-00', 6, 5], ['P04-01', 6, 2], ['P05-03', 6, 5]].forEach(q => { const s = ctx.sq(q[0], q[1], q[2]); ctx.props.push({ key: 'bare_bulb', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), ceil: true, y: ctx.r2(ctx.plot[q[0]].base + 3.7) }); });   /* a ceiling prop's y is its height over the room's level 0 */
     },
