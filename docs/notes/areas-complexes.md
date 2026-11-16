@@ -5048,9 +5048,17 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   the wharf or the Breakwater is pushed by hand (the tool's `P` only knows the plan's squares). WEIGHT: every prop the Harbour
   places, 122 of them, is 0.40 M triangles in all (counted from the files); the quay view's own count swung 1.0 / 2.1 / 3.3 M
   between runs with the same content, so the cloud's frame rate (0.3 to 1.8 fps) says nothing about a pass.
+- **PASS 4, ATMOSPHERE (seen by day and at 22:30; before it the quay, the wharf and the piers were black after dark):** DRAWN GLOW:
+  seventeen harbour lamps on iron posts (H.js `lamp`: a pole, an arm, a cream shade with `glow` 0.95) down the Long Pier's north
+  edge, on the pier's arm, the skiff jetty, the quay's corners and the wharf's rail; warm bulbs under the shed's eave, a lamp over
+  its door, the hoist's work lamp; a lit lamp on each of the Mouth's beacons (red, green). REAL LIGHT, five props: two `flood_mast`
+  (the quay's apron, the Long Pier before the gangway: a 26 m light the world clock switches on at dusk, its lamp bank glows) and
+  three `brazier` (the wharf, the light's head, the skiff jetty). The Breakwater's light already turned its beam. NOT GIVEN: sound
+  and particles (no hook a district reaches: the kit), gulls (no model). The sea stays day-blue at night: the shell's, not a
+  district's (for the tool row). Frame rate, the quay view by day: 0.3 fps, 746 draw calls, 1.22 M triangles.
 - **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
   the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
-- **NOT DONE:** harbour lights and the night look (pass 4: the quay is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+- **NOT DONE:** polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
   the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
