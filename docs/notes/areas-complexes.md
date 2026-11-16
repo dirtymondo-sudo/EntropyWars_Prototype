@@ -8655,6 +8655,20 @@ sea has things to sail to.
     is seven `goo_tendril` (the Sewers' Sludge Pit's prop: the symbiote's black spell tendrils, 2.6 to 5.6 m, their feet typed half a
     metre under the surface) round the taken boat. The Meshy `tentacle` / `tentacle2` models are never used for a standing arm again.
     STILL DRAWN THE SAME WAY AS THE PLUME, HIS CALL: the waterspout's cloud (grey domes over the funnel).
+  - **THE MODEL PASS (11-16, mondo: "these are models that were added ... use these ones"; seen on screen):** the wish-list models
+    (docs/plans/WISHLIST_MODELS_ADDED.md, read end to end) in place of what stood in. ASKED AND PLACED: `thatched_hut` x 2 (the
+    sleepers' drawn shelter is one now; a watcher's hut by the watch fire. The two WALK-IN huts stay: a model is not walked into),
+    `carved_totem_pole` x 2 (by the gate; in the village, where the hand-sized `item_ward_totem` stood), `dugout_canoe` x 3 (the
+    Landing's three rowboats), `drying_fish` x 2 (the drawn pole rack and its hung meat are out), seven `seagull`, `woven_baskets`
+    (village, garden, both huts), `coconuts` under the palms, four `banana_plant`, six `tropical_bush`, `raft` x 2 (the castaway's,
+    in place of his rowboat; adrift in the Flotsam), a `trawler` working the Sharks' ground (was a rowboat adrift), `hammock` x 2
+    (the pack's own key). FROM THE REST OF THE LIST: three `burnt_tree` (for dead snags on the scorched ring), `golden_idol` on the
+    altar (was a gold bar), `fur_rug` before the high seat, `torn_sail_mast` standing out of the Flotsam, two `parrot`, a `dodo`, a
+    `heron`, `oars`, `fishing_rod`, `firewood_stack`, the castaway's `lean_to` and `pirate_flag`. NOT TOUCHED: his revisions (no
+    modelled smoke, `tiki_torch`, `goo_tendril`). SEEN AND MOVED: a hut west of the big hut stood against the south flow's lava pool.
+    FRAME RATE: the cloud 0.2 fps at the Landing and 1.0-1.6 mid-sea before and after; triangles drawn 3.14 M -> 4.10 M at the
+    Landing, 2.89 M -> 3.20 M mid-sea (the new models are 2,000-5,000 triangles each; the Landing's jump is more than their sum,
+    so something near it draws them several times over: for the engine row to look at, with the far cull).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -8677,10 +8691,8 @@ sea has things to sail to.
   6. The sea's places wear plain names for what is there: THE ROCKS, THE KRAKEN, THE PALM ROCKS, FLOTSAM, THE SEA LANE.
   7. One castaway stands on the north-east islet: a pirate (the Beach's own list), no line.
   8. Lava runs down the cone in two flows; it is scenery (the cone is never climbed, the flows end on scorched ground nobody needs to cross).
-- **NEEDS A MODEL (nothing stood in):** the tribe's people; a thatched hut and a totem pole / carved mask (the huts are drawn walls, the
-  gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
-  for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
-  a ship or raft out at sea; a moving waterspout (this one stands still).
+- **NEEDS A MODEL (after the model pass; everything else on the first list is placed):** the tribe's people; a whale's bones (not
+  made); a black sand sheet; a carved mask; a moving waterspout (this one stands still). Smoke is never modelled (mondo 11-16).
 - **NOT DONE (for after his look):** Nothing
   under the water shows (the sea is opaque from above). No fight set up.
 - **WHAT I WOULD DO NEXT (not started):** a far cull / LOD for the whole sea room and its ten lights handed to the props nearest the
