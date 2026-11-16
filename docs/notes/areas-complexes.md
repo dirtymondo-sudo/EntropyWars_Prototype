@@ -7313,6 +7313,17 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   WHAT A NEXT THREAD WOULD DO: (1) a walkable top for the Falls (a path up the wall's west shoulder) if mondo wants the fall to lead somewhere; (2) cut the Survival,
   Vegetation and Mine packs for bushes, a lean-to and the adit's timbering (a Blender job: new art, his OK); (3) a snow sheet and a bark sheet; (4) light shafts in the
   engine (the Woods tool row + the renderer); (5) merge the district's small props into fewer draws if the weak PC shows the cost.
+- **THE MODEL PASS (2026-11-16, on top of the five; mondo: "these are models that were added ... use these ones"; seen, 18 + 9 + 9 + 6 + 10 views) — STOPPED again.**
+  PLACED from docs/plans/WISHLIST_MODELS_ADDED.md: `fallen_redwood` along the giant's glade; `stepping_stones` across the lower Creek (they need `y: 0.45`: at the ground's
+  height the creek's sheet covers them); `reeds` at the Falls' pool and in the creek; `river_fish` by the camp's bucket; `moss_clump`, `owl_perched`, `bear`, `deer` under the
+  old trees; `wild_flowers`, `leafy_bush`, `prayer_flags`, `carved_totem_pole`, `lean_to`, `firewood_stack`, `sleeping_bag` at the Meadow; `timber_lookout`, `trail_sign`,
+  `backpack` on the Shelf; `snow_heap`, `ice_block`, `icicles`, `reindeer`, `snowshoes`, `ice_axe`, `snow_sled` on the Snowline; `lit_candle` for the candle ring and the graves.
+  STAND-INS TAKEN OUT: the graveyard pack's hand-wide stepping stones, the unlit pack candles of the ring and two on the graves, twelve of the 22 code-built snow drifts.
+  NOT PLACED: `rope_bridge` (no 7 m gap in this district), `fishing_rod`, `lake_rock`, one owl, one deer and two trail boards (the Creek plots' and the Old Trees south's glades
+  are full: a blocker needs a free whole square). `at(…, 'find')` in T.js = a blocker takes the plot's nearest free open square.
+  **THE WISH-LIST MODELS ARE HEAVY** (3 to 4 MB a file, about 0.4 to 1 MB optimised): the first cut scattered 40 moss clumps, 22 flower patches and 10 reeds and the Falls
+  view fell from 1.2 to 0.2 frames (cloud software GPU). Now 8 / 8 / 4: the Falls 1.0, the Meadow 1.0 (first look 1.2 / 1.6). Never `sow` a wish-list model by the dozen.
+  STILL NEEDED (not models): a snow ground sheet, a bark sheet, light shafts, sound.
 - **FITS THIS DISTRICT (the whole-list read, 11-16; a helper read MODEL_LIST.md §6, 7, 8, 10, 12b, 13 and the live catalogue end to end).** Placed now: see above.
   NOT YET PLACED, FIT: `hw_fence` (more), `psxg_railing`, `psxg_wall_corner`, `xmas_snowman_2/3`, `spear`, `psx_stairs_5_wood`, `ship_lantern` (needs a bough over it),
   `psx_canned_food_mp_4`, `psx_shotgun_ammo_1`, `psx_ammo_box_1`, `urban:ClothTattered*` (prayer rags, a lean-to tarp), `urban:WoodGeneric1b` / `wood_planks` (a lookout deck),
@@ -7448,6 +7459,8 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
 - **Standing stones that block**: catalogue `sarsen` / `menhir` / `greek_column` with their own `h` (a prop row's `h` scales the model), one a square; `trilithon` on two whole squares (x on the line between them).
 - **A walk-in on ground that is not at 0 m (district G's Camp House, 7 m up)**: give every inside prop `floor: true`; a `y` of 1 m or more must be the ROOM height (ground + lift), a `y` under 1 m is a lift; line the inside walls with a lit board box 0.34 m in (`glow: 0.4`); `holy_carpet` stands upright (a tapestry), `psx_chair_mp_*` are stools.
 - **Lit trails without lights (district G)**: lantern posts as arch parts in the trees' edge beside a path (post + arm + a `glow: 1` box), one arch row a plot; pick the tree squares that touch a path by a hash so the count stays low. **Air by plot**: `airZones` may return several boxes in metres (first listed first); never `embers` (room-wide), use orange `motes`. **A glow on a statue**: measure the model file (parse the GLB's POSITION accessor) before guessing where a face is.
+- **The wish-list models (docs/plans/WISHLIST_MODELS_ADDED.md) in the Woods**: they are heavy (3 to 4 MB each): place by hand, a handful a plot, never a `sow` of dozens
+  (district T lost 80 % of its frames to 60 scattered moss, flower and reed clumps). `stepping_stones` in a creek need `y: 0.45`. A blocker needs a free whole square.
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 - **A yard for a new piece without moving the old ones** (district C): open its squares as `p` in `cut`, not `g` (the plot's middle is the mean of its grass squares).
 - **Level ground for a building**: the ground is flat 7 m either side of a plot's middle and between two neighbours of one level; row 3 of district C is one flat band.
@@ -7467,6 +7480,108 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   2500) turns the room to night for the views after it. **NOT POSSIBLE FROM A DISTRICT FILE (reported to mondo):** sound cues: there is no row or hook for them in a room's terrain.
   (Particles: the pilot added `airZones` the same day; Area 51 now blows dust over both Dry Lake plots and the runway.) real lights are capped at ten a room
   (three-renderer.js HQ_PROP_LIGHT_MAX) and the flood masts already hold them, so the huts' strip lights glow but light nothing.
+
+## THE D.U.M.B. ON PLOTS — the base in a ring, first build (2026-11-16, second side, the D.U.M.B. zone thread)
+
+mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms are "completely redesigned/reimagined with plots and
+districts", without waiting for his OK; "white rooms can go the DUMB"; "then move the exits, it's not that big of a deal".
+
+- **THE PLAN** = plot plan 2: `docs/plans/world-zones/dumb_plot_plan_2.png`, drawn by `node docs/plans/world-zones/draw-dumb.js`, which also
+  writes `dumb-layout-2.json` and the tool's own `docs/areas/dumb/layout.json` (edit the plan THERE, never the json). Plan 1 (6 x 6) stays as history.
+- **THE ROOM** `site_prebuilt_dumb_base` (site `prebuilt_dumb`, part `base`, plate "THE D.U.M.B."): 7 x 7 plots of 12 x 12 squares (294 x 294 m), all
+  underground, written by `node bake-dumb.js [--dry-run]` between `DUMB49-BEGIN / DUMB49-END` in data.js. Squares: `x` rock, `o` corridor, `f` room,
+  `r` the ring's tunnel, `j` the tram track, `w` pool water. `DUMB_DUMP=1` prints the walked map.
+- **FIVE DISTRICTS, one file each** (`docs/areas/dumb/districts/`): `K.js` CERN, The Ring (22 plots: the collider tunnel as an octagon round the whole
+  base; the Control Room + the Vent north, the Detector Hall east, the Blast Door south, the Beam Dump west, a service room a corner) · `P.js` Level P3
+  (7: the tunnel every base is on, straight across the south from ring to ring: the West Gantry, the Ramp, the Bays, the Platform, the Booth, the
+  Freight Lift, the East Gantry) · `S.js` Sub-Level 7 (6, THE PILOT: the Stair, the Hub with the Tower, Chambers 01 + 03, Chambers 02 + 04, Corridor
+  Five, Level -6) · `R.js` Research (7: the White Rooms on two plots, the Ward, the Range, the Service Corridor, the Vat Hall, Disposal) · `C.js`
+  Command (7: the Vault Gantry, the Round Table, the Big Board, the Projection Booth, the Comms Room, the Great Room, the Pool). Stages a file may
+  export: `plan`, `build`, `dress`, `people`; `look` / `looks` (below). Each file's header is its brief and its STANDS TODAY / NOT YET list.
+- **THE LEVELS** (layout `level`, 1 = 1.75 m, a whole-plot `plateau`): 8 = the Ring + Level P3 (14 m, the entry level) · 2 = Research + Command
+  (3.5 m) · 0 = Sub-Level 7. Layout `h` = a plot's roof over its floor; a plot a stair or ladder comes down into is as tall as the plot above (the
+  Stair's hall is 21 m, Level -6's shaft 19 m). Layout `openings`: `stair` (a flight on the low side, 2 in 3, `wide` squares: the stair down from
+  the Platform 14 m and 3 squares wide, the stairs up to Research, the Vault Gantry, the Range and the Comms Room 3.5 m) and `climb` (the Vent: a
+  14 m ladder between the Control Room's plot and Level -6).
+- **THE LOOK is the tool's, a district only names it** (`look`, one plot's in `looks`): `wall / tint / gain` = a sheet LINING on every rock face of the
+  plot's open squares, floor to roof (the room has one traced wall sheet; the lining is how five districts look different); `band` = a painted band
+  at 1.05 m in the district's colour (P red, S hazard yellow, R teal, the Clone rooms blue, C green, the Bunker gold, K blue); `ceil / ceilTint /
+  ceilGain` = the roof slab (seen from under only: the camera looks down through it); `light / every` = drawn strip lights under the roof (they glow;
+  the room's ambient 0.55 does the lighting). Where a plot's roof stands over an open neighbour's the tool hangs a CURTAIN wall from the lower roof
+  up. SEEN 11-16: a sheet under a tint reads near black down here: every lining carries `gain` 1.8 to 2.2. `PlasterWallPainted1c` is PINK.
+- **THE ROOM KIT** (`ctx.room(plotId, lx, ly, NU, NV, tag)`, bake-dumb.js `mkRoom`): the Desert's insides kit on a plot's own floor: `R.wall / pane /
+  ceil / deck / guard / stair / B / dec / hung / bulb / lamp / sign / label / box / cyl / who / keep`, then `R.done()`. All squares and heights are
+  the room's own; the kit adds the plot's floor. Drawn parts from every kit and from the tool land in ONE `arch` row a plot (`dumb:<plot>:in`),
+  every swinging leaf in one `texbuilding` row (`dumb:doors`). `ctx.part(p)` = a raw drawn part in metres, its y over the ROOM's level 0.
+- **THE FLOOR PAINT:** the game reads EIGHT sheets a room; the tool's table by district + square kind uses seven, the Bunker's marble is the eighth.
+  `ctx.paint(plot, lx0, ly0, lx1, ly1, sheet)` must pick one of the eight (the tool throws on a ninth).
+- **THE WHITE ROOMS MOVED IN** (`site_prebuilt_area51_ward`, Area 51's inside until today): the Desert's builder (A.js, 11-16) copied into `R.js`
+  `whiteRooms()` square for square (16 x 12 squares, two floors, 160 props, four people, their lines) as one block on plots P01-01 + P02-01; six of
+  its eight real bulbs became drawn lamps (the base has ten real lights in all). Its four doors keep their ids (`yard`, `stormdrain`, `hangar`,
+  `vent`) and still lead to the Desert; the Desert's four doors (`ward` + `stormdrain` in the Desert room, `white` + `vent` in Hangar 18) now name
+  `site_prebuilt_dumb_base` (the smallest edit in `docs/areas/desert/districts/A.js`; the Desert still WRITES the old ward literal, retired, so
+  nothing of its tool had to change). New: a hospital door in the Dayroom's south wall, down a corridor to the Ward (Dream Research).
+- **THE WAYS OUT (ten, all in the game before; the tool refuses to bake when a row drifts, and walks to every landing):** two bay doors by
+  `DOOR_HQ.siteRooms.entry`: `bay` (Room 555, the Freight Lift's landing on Level P3) and `bay_cern` (Room 999, the collider blast door on the
+  Ring's south side: the same room now); four links re-pointed in `DOOR_HQ.links` (the far end is the link's own): `area51_dumb` (the room's west
+  wall, the tunnel's west end: Hangar 18's floor lift), `garage_motorpool` (free, secret: the Ramp), `cave_dumb` (free: Level -6), `dumb_astral`
+  (free, the dream screen: the Ward); the White Rooms' four doors. GONE: `links.dumb_cern` (the motor pool <> the Ring): both ends are one room,
+  the tunnel's east end walks onto the ring at the East Gantry.
+- **RETIRED (`DOOR_HQ.retired`):** the six old D.U.M.B. parts, `site_prebuilt_cern_ring` and `site_prebuilt_area51_ward` -> the new room. Their
+  literals stay (the tool reads the people's lines, the door plates, the Healing Zone and the two battle markers from them; PvP board sources).
+  Hub `dumb` claims the one room by id; world zone `dumb` (HQ_WORLD.zones, the old door-joined stage of six parts) names the one room, no joins.
+- **WHO IS THERE (27):** every bystander of the eight old rooms with their own lines, placed by the district files; the Healing Zone in Corridor
+  Five; the base's battle marker on the Platform, CERN's in the Detector Hall.
+- **SEEN ON SCREEN** (probe, 18 views in three runs, no page error): the Platform with the tram, the Bays, the long stair, the Hub with the Tower,
+  the spoke to Research, the White Rooms' cell row, the ring with its beam pipe, the Detector Hall, the War Room with DEFCON, the Great Room.
+- **NOT DONE / KNOWN SHORT (the first build is structure, not dressing):** nothing was WALKED by a player (the bake's walk check reaches all 49
+  plots and all ten landings on the walker's own rule; the Vent's ladder is not in that check); the Tower's top is black from above; the Pit is a
+  railed floor, not a pit; no raised platform by the tram; the ring's 14 plain plots are bare tunnel; every district but the pilot holds only the
+  old rooms' props; the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
+
+### FITS THE D.U.M.B. (the lists read 11-16 before anything was placed: MODEL_LIST.md sections 6, 7, 8, 10, 12b, 13, pack-claims.md, prop-sizes.json, the Desert's + the Sewers' kits)
+Keys that exist in the catalogue today (`*` = stands in two rooms or fewer). The old rooms used only: server_rack, monitor_stack, crt_terminal,
+steel_table, iso_tank, eeg_rack, cot, dream_screen, door_furnace, garbage_chute, door_xray, conference_table, world_clocks, subway_cart, track_bed,
+car_suv, car_cop, false_window, pool_lounger, observation_window, meshy_tesla_coil, floating_orb.
+- **K, the Ring:** `psx_pipe_1*` `_short*` `_corner*` `_cross*` + `psx_pipes_holder_1*` `psx_pipe_valve_holder_large_1/2*` (the beamline on stands),
+  `psx_tunnel_mp_1_straight / _elbow / _tee*`, `psx_catwalk_1*`, `dockring*` (h 4.5: reads as a detector ring), `nacelle*` (11 m: a detector
+  barrel / the beam dump's body), `steam_turbine`, `robot_arm`, `chain_hoist`, `retro_control_panel`, `mixing_console*` (a control desk),
+  `radio_console`, `reel_to_reel`, `gauge_board`, `psx_pc_mp_1*` + `psx_pc_monitor_mp_1*` + keyboards, `psx_monitoring_screen_mp_1*`, `scoreboard*`
+  (11 m: a status wall), `departures_board`, `fume_hood`, `psx_magnet_mp_1*`, `psx_dosimeter_*`, `psx_keypad_1/2*`, `high_bay_lamp`, `gate_valve`,
+  `centrifugal_pump`, `gas_cylinder_rack`, `cable_drum`, `ind_panel`, `utility_box`, `breaker_panel`, `psx_vent_2/3*`.
+- **P, Level P3:** `car_cadillac`, `car_pack_1..8*`, `car_truck`, `military_tank`, `forklift`, `aircraft_tug`, `mine_cart*` (a trolley on the
+  rails), `subway_front*`, `metro_car` / `metro_car_open*` (16 m), `platform_edge*`, `tube_map`, `departures_board`, `metro_bench` (heavy),
+  `metro_bin`, `metro_column`, `metro_gate`, `ebd_metro_turnstile`, `signal_lever_frame*`, `railway_lantern`, `concrete_pillar` (a hazard band + a
+  bay number), `parking_bay*`, `car_lift*`, `engine_hoist`, `tire_stack`, `tool_chest`, `psx_jerrycan_1`, `roller_shutter`, `ind_container`,
+  `wrapped_pallet`, `psx_supply_crate_1`, `psx_metal_barrel_mp_0..3`, `metal_detector`, `item_police_barricade`, `meshy_sandbags`, `street_signal*`,
+  `roads_g_sign_000..014`, `key_rack`, `punch_clock`, `field_radio`, `rifle_rack`, `riot_gear_rack`, `psx_elevator_1/2*` + `psx_elevator_doorway_*`
+  + `psx_elevator_buttons_1*` (the freight lift), `flood_mast`, `exit_sign`, `hose_rack`, `vending_machine`.
+- **S, Sub-Level 7:** `observation_window`, `shaft_window*`, `pod_window*`, `porthole`, `psx_bars_metal_1/2*`, leaves `leaf_bulkhead` `leaf_vault`
+  `leaf_security` `leaf_cell`, `psx_catwalk_1*`, `maintenance_stairs`, `library_ladder` (the only standing ladder), `psx_beam_*`, `psx_pillar_2/3*`,
+  `concrete_pillar`, `warning_tape`, `radiation_sign`, `evac_button`, `item_police_barricade`, `meshy_sandbags`, `cinder_block`, `scba_rack`,
+  `riot_gear_rack`, `turnout_gear_rack`, `hose_rack`, `robot_arm`, `thoughtform`, `goo_tendril`, `crystal_cluster`, `meshy_black_blob*`, `alien*`,
+  `decor_tripod_machine*` (8 m), `escapepod`, `saucer_rig*`, `ufo*`, `time_machine`, `meshy_ejection_seat`, `mars_rover`, `astronaut`, `missile`,
+  `rocket_engine`, `trap_spike_pit*`, `trap_pressure_plate`, `wing_chun_dummy`, `punching_bag`, `hw_body`, `anatomy_skeleton`, `autopsy_table`,
+  `retro_control_panel`, `gauge_board`, `studio_light`, `film_camera`, `studio_camera`, `platform_scale`. The Tower: nothing fits; it is built.
+- **R, Research:** `hospital_bed`, `dorm_bed`, `pod_bed*`, `meshy_molten_cryo_tube` (the vat), `dream_eye`, `thoughtform`, `star_projector`,
+  `egg_chair`, `therapy_chaise`, `privacy_screen`, `iv_stand`, `conveyor`, `chain_hoist`, `boiler`, `hearth_fire`, `centrifugal_pump`,
+  `fume_hood`, `lab_glassware`, `microscope`, `specimen_shelf`, `museum_vitrine`, `autopsy_table`, `ebd_dinerscene_steel_table*` (the clean table:
+  `steel_table` carries a blood stain), `anatomy_skeleton`, `hw_body*`, `hw_part*`, `meat_hook`, `item_scalpel*`, `psx_syringe_mp_1`,
+  `ocean_moon_jelly` / `chrysalis` / `meshy_black_blob*` (what is in a vat), `rat*`, `bird_cage`, `treadmill*`, `exercise_bike*`.
+- **C, Command:** `map_table`, `desk_wedge_a/b*` (wedges that build a ring table), `round_desk`, `astronomical_clock*`, `psx_clock_1/2`,
+  `meshy_analog_phone*`, `field_radio`, `radio_console`, `scoreboard*` + `departures_board` + `evidence_board` + `city_scale_model*` (a big
+  board), `film_projector`, `decor_av_cart*`, `cinema_seat_row`, `lectern`, `exec_desk`, `stock_ticker*`, `globe_lamp`, `lap_pool*` /
+  `infinity_pool*`, `palm_tree`, `vault` (a bank vault front, 5 m), `floor_safe`, `deposit_box_wall*`, `cash_cart*`, `money_sacks`,
+  `psx_gold_bar_pcs_1`, `wooden_barrel*`, `xmas_champagne`, `psx_glass_bottle_1/2`, `mobius_bar`, `bar_stool`, `jukebox`, `chesterfield_sofa*`,
+  `wingback_chair`, `shag_rug`, `fur_rug*`, `decor_piano*`, `crystal_chandelier`, `painting_*`, `marble_bust`, `lady_justice*`, `jewelry_case*`,
+  `trophy_case`, `sun_viewport*`, `royal_bed`, `makeup_vanity*`, `pinball_machine`, `arcade_cabinet`, `roulette_table*`, `rowing_machine*`,
+  `kitchen_range`, `psx_canned_food_mp_1..4`, `psx_ammo_box_1`, `footlocker`, `vhs_player*`.
+- **HEAVY (once or never):** `door_furnace` 117 k triangles, `mini_fridge` / `coffee_table` / `potted_plant` / `coffee_mug` 100 k each (Meshy
+  2 MB files), `security_camera` 27 k, `metro_bench` 17 k, `crt_terminal` 8.9 k, `forklift` 8 k, `cot` 6.3 k, `traffic_cone` 6.4 k. CHEAP: every
+  `psx_*` and `hw_*`, the GGBot cars, the procs (`warning_tape`, `parking_bay`, `platform_edge`, `radiation_sign`, `keypad`).
+- **ON R2 WITH NO CATALOGUE ROW that fits:** the two BLACK Meshy cars (`Assets/world/props/meshy/Meshy_AI_a_black_cadillac_…_texture.glb`,
+  `…_a_black_SUV_…`: a fallback only today), `UFO_Low_Poly.fbx`. In downloaded packs but not cut: the Molten SciFi pack (`Air_Con`, bunk beds,
+  `Hydroponics_Lamp`), the Mine pack's `Rails`, a `Ladder` (House / Playground packs).
 
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
 
@@ -8299,6 +8414,23 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   WHAT I WOULD DO NEXT: (1) drips + spores once the tool has `airZones`; (2) LODs or low-poly stand-ins for the Meshy machines, the
   one real cost left; (3) a real light share in the tool so the culverts can have a few cast lights; (4) the PSX pack's round tunnel
   pieces (`psx_tunnel_mp_1_*`) as side pipes to look into, never tried on screen; (5) the bystanders are still the first build's four.
+- **THE MODEL PASS (mondo 11-16: the wish-list models are in; one more pass on top of the five; seen, seven probe runs):**
+  `docs/plans/WISHLIST_MODELS_ADDED.md` read whole. ASKED FOR AND PLACED: `cage_lamp` on all 86 lamps (the iron plate, lens and cage
+  drawn from boxes are gone; the conduit, a small lit bulb inside the cage, the lit brick and floor stay drawn), `rat` (one under each
+  of the 17 dead lamps in place of the drawn eyes, eight more at the rubbish and the Outfall's screen), `valve_wheel` (eight: Cistern,
+  Outfall, Pump Room, four mains), `manhole_ladder` (three, hung from the vault: under the quay, the Junction's corner, the Precinct
+  Drain's head). FROM THE OTHER LISTS: `strobe_lamp` (in place of the three call buttons), `waste_pipe` (two in the halls, one dumped in
+  the Storm Drain's channel), two `hazmat_suit`, eight `moss_clump`, two `spider`, `sleeping_bag` + `backpack` + `kettle` at the
+  sleeper's corner, `wooden_ladder`, `oars` + `rope_coils` + `mooring_bollard` by the Cistern's boat, `lit_candle`, `wheelbarrow` +
+  `pickaxe` at the fall of brick. Each of these models is about 2 to 3 thousand triangles.
+  TWO TRAPS FOUND: (1) a small raised prop (`y` of 0.25 or more, no `foot`) is a TABLETOP prop: the game seats it on whatever lies
+  under it, so every lamp over a lit floor patch dropped out of sight. A wall lamp is a `ceil: true` row (hung, its TOP at `y`):
+  `cage_lamp` at `y: base + 2.65` sits on a bulb drawn at 2.45. (2) `manhole_ladder` is a closed concrete shaft with its rungs
+  inside: standing on the floor it reads as a drum; hang it from the vault (`y: base + 2.2`, `noBlock`).
+  COUNT at the proof view: before 2,022 calls / 3.05 M triangles, after 2,091 / 3.80 M (other districts' model passes landed in the
+  room during the same hour; W's own share is about 150 props x 2 to 3 thousand).
+  NEEDS A MODEL, crossed off: the cage lamp, the manhole ladder + shaft, the valve wheel, rats. STILL OPEN: low-poly stand-ins for the
+  first Meshy machines. NOT USED though they fit: `ceiling_fan` (its hang was not looked at), `radiation_drum` (district R's).
 - **FPS at the proof view** (after pass 2: 3.2, 1,302 calls, 2.05 M triangles; the room also grew a fifth row, district R, in between) (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
   1.44 M triangles); after pass 1 2.1 to 2.7 (1,142 calls, 1.58 M). The kit is about ten materials a plot; a plot's row is culled whole.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
@@ -8311,7 +8443,7 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   5. Eyes under the dead lamps (two lit points): a stand-in for rats, which the game does not have. One line removes them.
   6. The plates' warnings are plain words of mine (DANGER · DEEP WATER, MIND THE DROP, NO SWIMMING, WAY OUT ...); the names are the plan's.
   7. The Meshy litter of the first build (newspaper bundles, paper, round drains) was swapped for low-poly pack pieces to win triangles back.
-- **NEEDS A MODEL:** a bulkhead / cage lamp (drawn from boxes today), a manhole ladder + shaft, a valve wheel on a stand, rats, low-poly
+- **NEEDS A MODEL (11-16, after the model pass: the cage lamp, the manhole ladder, the valve wheel and the rats are IN; what is left is the last item):** a bulkhead / cage lamp (drawn from boxes today), a manhole ladder + shaft, a valve wheel on a stand, rats, low-poly
   versions (LOD) of the Meshy props used as litter.
 - **NEXT:** pass 2 the rooms' insides (Pump Room, Pumping Station, Gallery, Junction, Cistern, Outfall), 3 dressing (graffiti, pipes
   from the PSX pack, animals, signs), 4 atmosphere, 5 polish.
@@ -8354,6 +8486,12 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
 - **MOVING AIR WITHOUT THE TOOL:** `chimney_smoke` with `rise: <m>` (mist at a fall's foot, steam at `y: base + h`), `flicker_tube`
   and `ship_lantern` as ceiling props at `y: base + h` with `noLight: true` (they keep their glow), `evac_button` for a red point.
   Drips and a district's own particles need `airZones` in bake-sewers.js (asked on the board).
+- **A WALL LAMP MODEL** (`cage_lamp`, `strobe_lamp`): a row with `ceil: true` and `y: base + top`; without `ceil` the game treats a
+  small raised prop as a tabletop prop and seats it on what is under it. `K.lamp()` in W.js places the `cage_lamp` itself now.
+- **THE WISH-LIST MODELS THAT FIT A SEWER:** `cage_lamp`, `strobe_lamp`, `rat`, `spider`, `valve_wheel`, `manhole_ladder` (hang it),
+  `waste_pipe`, `hazmat_suit`, `moss_clump`, `radiation_drum`, `ceiling_fan`; for T `rail_section`, `buffer_stop`, `hand_car`,
+  `signal_gantry`, `tunnel_signal`, `third_rail_shoe`; for H `booking_desk`, `chain_bunk`, `steel_bench`, `food_trolley`,
+  `height_board`, `handcuffs`, `key_ring`; for O `mine_cart`, `head_wheel`, `ore_heap`, `pickaxe`, `beam_pump`.
 - **THE ROOM'S OWN WALL** (a square past the map's edge) is where the ways out stand: never dress it.
 - **THE PLAN HAS NO ONE-SQUARE DEAD ENDS** (walks are a square each side of a stream): `ctx.corners()` is the list of bends.
 - **FROM DISTRICT O (11-16):** (1) FRAME COUNTS: the room's shadow map redraws every second frame, so one frame's `calls / triangles` is
@@ -10209,6 +10347,9 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **FROM THE FOREST (district W, the model pass)**: `lantern_post` wants a drawn lit cap (its glass is dark at night); `reeds` in a 2 m
+  `stream` = `y` 0.9 + `h` 1.8 to 2.4; `medieval_pavilion` fills one square; `firewood_stack` (2 x 0.65 m) is the log stack; `leafy_bush`
+  is a topiary ball, `moss_clump` and `wild_flowers` are the wild ones. Keep wish-list models out of big scatters (triangles).
 - **FROM THE FOREST (district W, pass 3)**: REEDS FOR ANY WATER = `ocean_seaweed` / `_2` / `_3` with `h` 2.3 to 3 in a `stream` 2 m deep (the
   feet stand on the bed; the tops sway over the water). `native()` takes grass squares only. A flat ground patch needs `gain` 1.45 on
   `dirt_2` or it is a black disc.
@@ -10336,6 +10477,23 @@ forest glade, the dead tree's hole.
 - **STOPPED AFTER FIVE PASSES (the order's limit)**. WHAT I WOULD DO NEXT, for whoever mondo sends: a second walk-in (a gamekeeper's
   lodge or a ruined chapel wants plan squares in the east glade: the tool's row); a real great dead tree round the hole's door (the
   door itself is the tool's); a deer, an owl and a fox once models exist; sound (none can be set by a district).
+- **THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; seen: 17 views, then 10, then 10)**.
+  Every model the district asked for is in, and what stood in for one is out. REPLACED: the 17 lantern posts drawn from boxes ->
+  `lantern_post` (2.2 m; they block, so each stands just off its way under the first trees); the two drawn ridge tents ->
+  `medieval_pavilion`; the Ocean pack's weed in the moat -> `reeds` (lifted 0.9 off the bed: feet under water, heads over it); the
+  drawn CAMELOT stone -> `milestone` x 2; the drawn log stacks (the glade, the lean-to, the hut) -> `firewood_stack` x 5; the drawn
+  rug -> `floor_runner`; the plain stump -> `axe_chopping_block`; the game's healing flower as "a flower" -> `wild_flowers`.
+  ADDED: `hand_cart`, `wheelbarrow`, `kennel` at the hut; `kettle`, `antler_trophy`, `woven_baskets`, `lit_candle` in it;
+  `wooden_barrel` at the wagon and the camp, `water_trough` at the hitching rail, `hay_rack` for the camp's horse; `deer` x 2, a `fox`,
+  an `owl_perched` on the firewood, a `raven_perch` at the hole, a `hedgehog`, a `heron`, two `duck`, two `dragonfly`, all off the
+  ways; `willow_tree` x 2 over the bank's track, `leafy_bush` x 5 at forest edges, `moss_clump` and `wild_flowers` in the undergrowth,
+  `cairn` x 2, a `beehive`, a `fishing_rod`, `oars`, `drying_fish` on the bank.
+  LEARNED: (1) `lantern_post`'s glass does not glow and which side its lantern hangs on did not follow the row's `face` in three
+  probes: a lit cap on the post's head (a drawn 3 cm box, `glow` 1) is what finds it at night. (2) `leafy_bush` is a trimmed garden
+  ball: five at forest edges, not in the scatter. (3) A wish-list model is 1,300 to 8,200 triangles with its own texture: the first
+  cut scattered 78 of them through the undergrowth; now one square in eight carries one and the fern stays the filler.
+  FRAME RATE at the bay: 0.60 before, 0.60 after (a reading taken right after the load says 0.40 while the new files settle; the
+  second reading of the same view in the same run is 0.60). Geometries 2,150 -> 2,274.
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
   the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
   (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
@@ -10343,8 +10501,9 @@ forest glade, the dead tree's hole.
   WOODCUTTER over its door, standing on the west glade's north squares with its door on the track; (7) the people are robinhood, a
   knight, a wizard, a tree person and a rabbit, all silent; (8) the moat's reeds are the Ocean pack's seaweed; (9) the two boats lie
   on the bank, not afloat; (10) one small tool change (`groundAlso`), noted on the board.
-- **NEEDS A MODEL** (nothing on R2): an axe + chopping block, a hand cart, a wooden barrel, a medieval tent or pavilion, reeds, a deer,
-  a fox, an owl, a leafy bush, forest flowers, a milestone.
+- **NEEDS A MODEL**: ~~an axe + chopping block, a hand cart, a wooden barrel, a medieval tent or pavilion, reeds, a deer, a fox, an
+  owl, a leafy bush, forest flowers, a milestone~~ all made and placed in the model pass. Nothing is left on the list. (Still drawn,
+  no model: a plain wooden bed, a mooring post.)
 
 ## THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY — one room, no door (2026-11-16, second side)
 
@@ -12524,6 +12683,23 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
   - The Mirror (P03-00): the gilt frame of Camelot's garden (the same piece as `docs/areas/camelot/districts/L.js`) round the door, a marble step.
   - The Frame (P02-00): two crystal piers and a lintel. A marble balustrade (`rail` rows, `balusters_b`) round the Edge and the High Thought.
   - Frame rate (same view as the first build, 20 s counts): 1.35 before, 1.60 / 1.65 after (two counts; a balustrade round a third island cost 0.3 and came off).
+- **Pass 2, the inside + an idea for every plain island (live 11-16)**. Seen on screen (`proof/S_pass2_*.jpg`).
+  - The Waiting Room (the Sea's one inside, handmade, data.js): three frames in its north wall now (the Library's at x -12.5, the Sea's at 0, the Nightmare's
+    at 13), a roped queue to the Sea's, the number dispenser by the lectern, a counter nobody is behind, eight more chairs along the south wall, a departures
+    board, world clocks, a lava lamp by each new frame.
+  - The Far Shore: a `lighthouse` at the end of its walk (seen across the Sea), a rowboat on the grass, a buoy on nothing. The Near Shore: a boat, a chest, a
+    bollard. The Islands: coral, clams and anemones growing in the air, three schools of fish (kelp came off: black rags in this light). The Open Sea: one thing
+    on each stepping island (a piano, a rocking chair, a school desk, a star projector). The Carousel: the ticket booth, the popcorn cart, the high striker.
+    The Impossible Stair: three doors standing alone, an hourglass. The Still Water: a bust looking at itself. Owl, bird cages, the astronomical clock, an orrery.
+  - Frame rate (same view): 1.35 (66 more props; the two counts of pass 1 were 1.60 and 1.65, the first build 1.35: the count wanders by about 0.3).
+- **Pass 3, atmosphere + people (live 11-16)**. Seen on screen (`proof/S_pass3_*.jpg`).
+  - A `globe_lamp` where every island's walks meet (it glows; no real light, for the frame rate), twelve `mushroom_lamp` along the walks, eight more clouds
+    hung in the gaps.
+  - The air by island (`airZones`): cyan fireflies over the temple and the Still Water, pink spores over the coral garden, a slow white dust over the Far
+    Shore; the realm's violet motes everywhere else.
+  - Seven more people, all units whose own biome is the astral (no lines yet: no invented words): a rabbit and a chess piece at the Mirror, a mushroom girl
+    at the Hollow Tree, a cosmic wraith at the Edge, a fairy at the Still Water, a telepath at the Impossible Stair, a watcher at the Closet. 17 in the Sea.
+  - Frame rate (same view, two counts): 1.40 and 1.25.
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
@@ -12787,6 +12963,59 @@ the bays and the retired rows in. The helper now stops when the bake fails.
   busts and urns along the walls, amphorae, gold bars, and by the bay's bulkhead the air rack and wetsuit rail (you land there dry).
   The old room's own pieces all stand: dais + stair, the Oracle in its pool (the tape), throne, six braziers, columns, four windows with
   their shafts, the tapestry, the chest, the skulls, the paper, the pool's fish, both residents with their lines, the fight marker.
+- **PASS 3, THE DRESSING + THE AIR (seen on screen, three views + the inside, no errors):** urns, amphorae and busts at the stoas, a
+  well, shells on the temple's steps, weed at the walls' feet; in the canal 36 glowing anemones, 26 kelp strands, clams; on the inner
+  ring Justice before the Treasury with its spilled gold, two heroes by the shrines, urns at every small temple, ten fallen column drums;
+  five more schools, a shark over the dome, jellies up the temple's flanks; seven more people (27 in the room; none on a road); the air:
+  pale motes over the island and ring, a glow of plankton before the temple (`airZones`).
+- **FPS** (llvmpipe, the Agora view, read on a warm second view): first build 1.67 (442 calls, 1.46 M triangles) -> after pass 3 1.67
+  (622 calls, 1.84 M triangles). No loss this probe can measure. The triangles are mostly the ocean pack's animals and the kelp.
+- **STOPPED AT THREE PASSES** (the thread's room ran out, not the order's five). NOT DONE, for whoever takes the last two after mondo's
+  look: the night / dark look seen with the game's own post on (the probe runs with post off); sound; name boards on the buildings; the
+  island's and the rings' edges are saw-toothed (a circle on squares) and wear the rock sheet where a marble quay belongs; the Palace's
+  hall has no roof (the old dome prop stands open inside it); the small temples are solid (only the Temple of the Deep is walked into);
+  whether a `swim()` animal's height is honoured for every model was not checked one by one (a manta meant for 13 m up looked low).
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) Atlantis is a RING CITY, not the old strip. (2) 8 x 5 plots, four
+  districts: the Citadel, the Rings, the Sea Floor, the Trench. (3) The Temple of the Deep stands ON the Agora, a round hall under a dome
+  behind a porch; the old "Palace" keeps its dome on the inner ring. (4) Its dry inside is a NEW room on whole squares; the old Temple
+  room is retired but kept for the fight boards. (5) Room H-20's door still lands inside the Temple. (6) The Upwelling is at the west
+  end, the wreck beside it, the Trench east. (7) You arrive on the Agora, facing the temple; the heal ring is beside you. (8) Plots with
+  no old name have plain labels (the Market, the Baths, the Theatre, the Graves, the Workshops, the Harbour, the Gardens, the Shelf, the
+  Bones, the Lights ...). (9) The causeways are solid banks over the canals, not arched bridges. (10) The surface is 26 m over the Agora.
+  (11) The Bones wear the dinosaur skeleton until a whale's exists. (12) The temple's line about "two doors north" (Hollow Earth,
+  Agartha) is kept word for word though those doors were pruned on 09-18.
+- **NEEDS A MODEL** (exact): 1 a WHALE SKELETON, ribs and skull, 14 m long, lying, for the Bones (P06-04). 2 a BROKEN GREEK COLUMN lying
+  on its side, 4 m, and a column DRUM 1 m, for every ring. 3 a MARKET STALL in stone with an awning frame, 3 x 2 m (the Market P04-00).
+  4 a MOSAIC floor sheet (sea creatures, tileable 3.5 m) for the Agora, the Baths and the Temple's inside. 5 a CORAL sheet (tileable) for
+  the Reef Wall and the Gardens. 6 TUBE WORMS, a clump 1.5 m tall, lit red tips, for the Vents. 7 an ATLANTEAN COLOSSUS: a 12 m statue of
+  a king with a trident for the South Gate and the Statues plot. 8 a TRIREME wreck, 20 m, for the Harbour. 9 a stone ARCHED BRIDGE span,
+  14 m long, 14 m wide, for the eight causeways. 10 a diver's brass HELMET and a station AIRLOCK door for the Station. 11 a GIANT SQUID /
+  kraken body, 15 m, for the Bottom (only its tendrils stand today).
+
+## THE DEEP, THE ZONE KIT — for the R, S and T district threads (2026-11-16, written by the pilot, district C)
+
+- **Read first:** "THE DEEP ON PLOTS" above (stages, ctx helpers, the square letters), your file's header, `/docs/plans/world-zones/the-deep_plot_plan_2.png`.
+- **You swim.** Nobody walks: no stairs are needed, any height is reached, a wall only stops you below its top. So: heights are scenery
+  (make them big), and anything "walk-in" needs `ctx.solid(x, z, w, d, h)` walls or `wall` rows, or the swimmer goes through it.
+- **Marble pieces:** `ctx.look(id, x, z, rot, a => { ... })` with `a.column(x, y, z, h, r, tint)`, `a.stump`, `a.box`, `a.cyl` (`ri` hollow,
+  `arc` + `a0` a curve: the Theatre's tiers, the exedra), `a.dome`, `a.roof('gable' | 'shed', ...)` (`ry: 90` turns the ridge front to
+  back: a pediment over a porch). C.js has `naos(id, deg, w, d, h, tint)` (a small temple) and `tholos(id, deg, r, tint)` (a round one):
+  copy them. Tints that read under water: 0xdfeeee pale, 0x9fd8d0 teal, 0x4fa898 sea green (domes), 0x6f8f98 dark. Marble is lifted by
+  the tool (`glow 0.3`); a part with no key and `glow: 1` is a lamp that costs no light.
+- **Light:** 26 props in the room carry a real light (crystals, smokers, the bathyscaphe, the old dome). The first build did not test
+  more; add glow parts, anemones, clams and the lit jellies before another real light.
+- **Statues from animals:** a prop row with `statue: 0xdfe8e8` casts any model in marble and holds it still (the Agora's dolphins).
+- **Life:** `ctx.swim(key, sx, sy, metresOffTheFloor)`; every `ocean_*` fish and jelly swims its own circle. `fish_school` via `ctx.dec`.
+  Scatter with `ctx.scatter(key, n, sx, sy, radiusInSquares, seed, { r0: innerMetres })` (a ring when r0 is set: a canal's bed).
+- **FROM THE MODEL LIST, FITS AND NOT PLACED YET:** `castle_wall` / `castle_gate` / `castle_tower` (the city wall's walk and towers),
+  `babel_house_small` / `_stair` / `_yard` / `_row` (ancient houses), `italian_building`, `vatican_dome`, `ancient_walkway` (a 6 m stone
+  span), `psx_arc_*` + `psx_pillar_*`, `hw_wall*`, `catacomb_wall`, `trilithon`, `demon_statue`, `jewelry_case`, `museum_vitrine`,
+  `retro_control_panel`, `observation_window`, `psx_tunnel_mp_1_*` (the Station's tubes), `ind_container`, `fishing_boat`, `femur`,
+  `ulna`, `skull`, `asteroid_a / _b` (4 m rocks), `ocean_rock_5..11`, `hw_stone_*`, `psxg_rock_*`, `floating_orb`, `sea_buoy`.
+  NOT wired, on R2: `meshy_decor/greek_column.glb` + `obelisk.glb` (the newer ones mondo approved 11-03), `ewm_trident.glb`,
+  `ewm_royalcrown.glb`. Never: `tentacle`, `tentacle2` (owner-rules: the kraken's arms are `goo_tendril`), modelled smoke.
+- **Textures:** `marble_light`, `marble`, `calm_marble`, `calm_marblemint`, `urban:TileMarble1a..3d` (the nearest to mosaic), `gold`
+  (the better gilt), `rocks_5` (cliffs), `rocks_1`, `calm_darkrock`, `obsidian`, `desert` + the shell's `sand: 'beach'`.
 ## LEYLINES ON PLOTS — the ancient zone, first build (2026-11-16, second side, the Leylines zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots, "completely redesigned/reimagined with
@@ -12833,6 +13062,22 @@ models", without waiting for his OK. Plan picture: `docs/plans/world-zones/leyli
   Avenue, Barrows, the long barrow (S) · the Mound, Four Enclosures, T-Pillars, Sentinel, Dig, First Doorway, Cistern (G) · the Four Tiers,
   Spiral, Unfinished Top, Crane, Kiln, Brick Stacks, Foundation Shaft, the brick houses (T) · the Causeway, Canal, Ball Court, Pyramid,
   the round tower, Xibalba (Z).
+- **PASS 2, THE BUILT PLACES (K.js `dress2`; a cave has no houses, so its "interiors" are the three places men made, and a camp).**
+  LEVEL −6: breaker panels, a camera, lockers, a utility box, pipe runs, two barricades and sandbags before the blast door, a control desk,
+  a rifle rack, crates and drums, two dead tubes. THE OUBLIETTE: an iron maiden, chains on three walls, a mattress, a body and bones in
+  the cells, the old room's drain and key, candles, three rats, a barrel, a cauldron, cobwebs. THE CRYSTAL ADIT: six dressed stone piers
+  down the adit's walls, a lit crystal on each (drawn, `cav:adit`), a wheelbarrow, an anvil, a lever frame, big crystals on the Ledge.
+  THE CAMP ON THE SHELF: a tent, a fire, firewood, bedrolls, a lantern by the spring. Seen on screen (Level −6, the cells, the adit).
+  Tool: a district may also export `dress2` .. `dress5` (one stage a pass, the same ctx).
+- **PASS 3, THE DRESSING (K.js `dress3`, about 145 props, every key from the FITS list in "THE CAVERN, THE ZONE KIT").** The Crossroads:
+  four lantern posts, a trail sign at each way out, a chest, packs, papers, standing stones. The Terrace: reeds, a frog, pool rocks,
+  glowing caps. The River Chamber: a rowboat at the ford, mooring piles and a bollard at the plank; the Grotto: mushrooms. The Long
+  Ramp: a hauling stage (crates, a cable drum, a hand truck). The hot side: black smokers (`sea_vent`) by the lava, asteroid boulders,
+  a stone arch before Hell's door, skulls, bollards at both ends of the rope bridge. The High Tier: a ring of old stones and a
+  trilithon, the surveyor's telescope. The Mouth: the last camp (tent, fire, bedrolls), a signpost and a lantern at the stair's head, a
+  brass telescope on the Lip. Three bats under every roof, cobwebs and loose stone in the corners. NINE MORE PEOPLE (mondo 11-16: more
+  NPCs): gnomes at the camp, goblins at the river and the ramp, a reptilian, a ghoul, an antperson at the bridge, a man in black
+  in Level −6 (27 in the room now). Frame rate at the Crossroads after the pass: 1.5 FPS (unchanged).
 
 
 ### PASS 2, THE INTERIORS (seen in the cloud browser, two runs, 16 views; live)
@@ -12851,3 +13096,24 @@ models", without waiting for his OK. Plan picture: `docs/plans/world-zones/leyli
 - FPS at the proof view: 1.1 (508 calls, 778 k triangles): no change.
 - STILL OPEN inside: dark pack furniture reads black against the lit walls (server rack, table, chairs); the ceiling lamps are hidden by the
   ceiling sheet; nothing hangs on a wall but the two boards; no beds made up, no food on the tables.
+## LEYLINES, STONEHENGE — the pilot district (2026-11-16, second side; file `docs/areas/leylines/districts/S.js`, 9 plots)
+
+The zone's pilot (ZONE_THREAD_BRIEF step 7): at most five passes, each a merged PR, each seen on screen. Proof view = the South Gate looking
+north at the circle (`henge_s`: x 133, z -30, face 0). FPS there on the probe's software GPU, the room settled: first build 0.90 (3.24 M triangles).
+
+- **PASS 1, EXTERIORS** (seen: from the air, the fallen quarter, the Avenue from the Heel Stone, inside the circle; FPS 0.70, 3.41 M triangles:
+  within the probe's own spread, eight props added). The south-west quarter's fallen sarsens are grey boulders on their squares with five
+  lintels lying where they dropped (drawn boxes); THE 56 AUBREY HOLES are chalk spots inside the bank (a paint stamp; Room 56's own number);
+  THE AVENUE runs between two low banks (`ridge` rows) and THE SLAUGHTER STONE lies in its mouth; two portal sarsens at the South Gate; five
+  round barrows (two more on the Plain, `exports.hills`), each in its ring ditch.
+  Tried and thrown out: `ocean_rock_3 / _4` as fallen sarsens (they draw near black on land).
+
+- **PASS 2, INTERIORS (district M; seen on screen from the floor):** THE HABITAT's inside. A lit white ceiling at 2.82 m (the walk-in's own
+  ceiling hangs lower than a 3.5 m wall's top less 0.3: a lit ceiling at 3.12 did not show), the inner walls in painted tin (`keyIn`),
+  three ribs, a warning stripe inside the airlock; THE BUNK ROOM behind a white wall with a red line and the plate BUNKS: six bunks
+  ("rated for six"), two of them lived in (a crate each, the radio); THE GALLEY: a table, four chairs, a mug, the fridge, crates, a
+  barrel; THE LAB behind a wall with a blue line and the plate LAB: two consoles, a desk with the terminal, two cryo tubes, the
+  isolation tank, a meteorite on its plinth. One real light (a bare bulb in the galley), three drawn lamps. The skirt is a ring now (the
+  full plate stood 0.3 m over the floor). The old room's `sea_chest` rows are OUT of this district: the model is a pirate chest full of gold.
+  PROBE TIP: a view's `y` is the FLOOR the camera stands on (the eye is added): `"y": 0` inside a building on level ground; `y: 1.7`
+  put the camera over the ceiling.

@@ -106,6 +106,33 @@ exports.dress = function (c) {
     c.put('hollow_dead_tree', 'P00-05', 3, 3); c.put('hollow_dead_tree', 'P00-05', 2, 8); c.put('hollow_dead_tree', 'P00-05', 8, 8); c.put('door_stack', 'P00-05', 7, 3, { face: 80 }); c.put('dream_eye', 'P00-05', 3, 7); c.put('thoughtform', 'P00-05', 6, 9);
     /* The Hollow Tree */
     c.put('hollow_tree', 'P01-05', 7.5, 8); c.put('fae_bloom', 'P01-05', 4, 8); c.put('fae_bloom_pink', 'P01-05', 8, 3); c.put('crystal_cluster', 'P01-05', 3, 3);
+    /* ── PASS 2 (the Sea has no insides but the Waiting Room, dressed in data.js: this pass gives every plain island its own idea) ── */
+    /* The Far Shore: a lighthouse on the last island west, seen from every island of the Sea; a boat pulled up on the grass */
+    c.put('lighthouse', 'P00-05', 3, 5.5); c.put('rowboat', 'P00-05', 8, 5, { face: 70 }); c.put('mooring_bollard', 'P00-05', 9, 7); c.put('ship_anchor', 'P00-05', 7, 9); c.at('sea_buoy', 'P00-05', 11.6, 3, { y: c.base('P00-05') - 1.2 });
+    /* The Near Shore: a shore with no water: a skiff, a chest, a buoy bobbing on nothing */
+    c.put('rowboat', 'P02-01', 3, 9, { face: 20 }); c.put('sea_chest', 'P02-01', 2, 3.6); c.put('mooring_bollard', 'P02-01', 9, 8); c.at('sea_buoy', 'P02-01', 0.3, 2, { y: c.base('P02-01') - 1.2 });
+    /* The Islands: the sea's own garden, growing in the air; the fish go by overhead */
+    [['coral_brain', 2, 3], ['coral_tube', 4, 2], ['coral_brain', 9, 3], ['giant_clam', 8, 2], ['coral_tube', 2, 8], ['giant_clam', 4, 9], ['coral_brain', 9, 9], ['coral_tube', 8, 7.6]].forEach(q => c.put(q[0], 'P02-03', q[1], q[2]));
+    [[3, 4], [8, 4], [3, 7.6], [9, 8], [4, 3], [7.6, 9]].forEach(q => { c.dec('coral_fan', 'P02-03', q[0], q[1]); c.dec(['fae_flower_small_violet', 'fae_flower_small_blue', 'fae_flower_small_pink'][(q[0] + q[1]) % 3 | 0], 'P02-03', q[0], q[1]);   /* (kelp read as black rags in this light: the small fae flowers stand for the weed) */ c.dec('anemone', 'P02-03', q[0], q[1]); });
+    c.at('fish_school', 'P02-03', 2.5, 2.5, { y: 2.6 }); c.at('fish_school', 'P02-03', 9, 8.5, { y: 6 }); c.at('fish_school', 'P02-02', 6, 6, { y: 5 }); c.at('fish_school', 'P03-04', 3, 8.5, { y: 3.4 });
+    /* The Open Sea: on each stepping island one thing somebody thought of once */
+    c.put('decor_piano', 'P02-02', 9, 9, { face: 200 }); c.put('rocking_chair', 'P02-02', 1.4, 1.4, { face: 135 }); c.put('school_desk', 'P02-02', 2, 8.4, { face: 90 }); c.put('star_projector', 'P02-02', 9.6, 2.6);
+    /* The Carousel: what is left of the fair */
+    c.put('ticket_booth', 'P05-00', 4, 4.4, { face: 135 }); c.put('popcorn_cart', 'P05-00', 8, 4.4, { face: 200 }); c.put('high_striker', 'P05-00', 4.4, 8.6);
+    /* The Impossible Stair: doors standing on their own, waiting to be doors */
+    c.put('psx_door_1_loose', 'P02-04', 8, 4, { face: 20 }); c.put('psx_door_2_loose', 'P02-04', 9, 8, { face: 250 }); c.put('psx_door_4_loose', 'P02-04', 3, 9, { face: 110 }); c.put('giant_hourglass', 'P02-04', 4, 7.6);
+    /* The Still Water: seats round the pool, a bust looking at itself */
+    c.put('marble_bust', 'P03-04', 4.4, 4.4, { face: 200 }); c.put('park_bench', 'P03-04', 1.6, 6.5, { face: 90 }); c.put('fae_bloom', 'P03-04', 8, 8); c.put('fae_bloom_pink', 'P03-04', 9, 7);
+    /* The Hollow Tree, the Edge, the High Thought, the Fortune Tent, the Mirror, the Frame */
+    c.put('owl_perched', 'P01-05', 8.4, 7); c.put('bird_cage', 'P01-05', 3, 7.6); c.put('fae_bloom_violet', 'P01-05', 2, 4);
+    c.put('astronomical_clock', 'P03-05', 4, 6.6, { face: 0 }); c.put('star_projector', 'P03-02', 7, 4);
+    c.put('brass_orrery', 'P03-03', 8, 7, { y: 0.02 }); c.put('bird_cage', 'P03-03', 9, 4); c.put('fae_bloom_pink', 'P03-03', 3, 4);
+    c.put('psx_door_2_loose', 'P03-00', 9, 4, { face: 300 }); c.put('giant_hourglass', 'P03-00', 3, 7.6, { face: 40 }); c.put('fae_bloom', 'P02-00', 3, 8); c.put('fae_bloom_violet', 'P02-00', 9, 3);
+    /* ── PASS 3 (atmosphere + polish): a lamp where every island's walks meet (a globe that glows; no real light, the frame rate), clouds
+       and orbs hung in the gaps, small lights along the long walks ── */
+    c.plots.forEach((p, i) => { if (p.id === 'P02-02') return; c.put('globe_lamp', p.id, i % 2 ? 4.4 : 7.6, i % 3 ? 4.4 : 7.6); });
+    [['P02-00', 4.4, 9], ['P03-00', 7.6, 9], ['P02-01', 4.4, 2], ['P03-01', 4.4, 9], ['P02-03', 7.6, 2], ['P03-03', 4.4, 9.4], ['P02-04', 7.6, 9.6], ['P03-04', 7.6, 2], ['P01-05', 4.4, 2], ['P00-05', 9, 4.4], ['P04-00', 4.4, 4.4], ['P05-00', 7.6, 7.6]].forEach(q => c.dec('mushroom_lamp', q[0], q[1], q[2]));
+    [['P02-00', 0.2, 6, 5], ['P03-01', 0.4, 0.4, 7], ['P02-03', 11.7, 6, 4], ['P03-03', 0.3, 11.6, 6], ['P02-05', 11.6, 0.4, 5], ['P03-05', 0.3, 6, 3], ['P00-05', 6, 0.3, 4], ['P05-00', 6, 11.7, 5]].forEach(q => c.at('white_cloud', q[0], q[1], q[2], { y: c.base(q[0]) - q[3] }));
     /* clouds under the Sea's islands, hung in the sky between them */
     [['P02-01', 0.3, 11.5, 4], ['P03-03', 11.6, 0.4, 5], ['P02-04', 11.5, 11.5, 3], ['P01-05', 0.3, 0.3, 4], ['P04-00', 0.2, 11.4, 6], ['P03-00', 11.7, 11.6, 3]].forEach(q => c.at('white_cloud', q[0], q[1], q[2], { y: c.base(q[0]) - q[3] }));
 };
@@ -120,6 +147,16 @@ exports.people = function (c) {
     /* the visitors of the first plan (no lines yet: no invented words) */
     c.native('glitch', 'P02-03', 8, 7, 200); c.native('machine elves', 'P02-01', 8, 4, 220); c.native('occulus', 'P03-05', 5, 7, 0);
     c.native('orb of light', 'P03-01', 4, 8, 60); c.native('voidweaver', 'P03-04', 8, 4, 250);
+    /* pass 3, more people (mondo 11-16: "There need to be more NPCs"): units whose own biome is the astral (data.js race biomes), no lines yet */
+    c.native('rabbit', 'P03-00', 4, 4.4, 160); c.native('chess piece', 'P03-00', 8, 7.6, 200); c.native('mushroom girl', 'P01-05', 4, 4.4, 90); c.native('cosmic wraith', 'P03-05', 7.6, 7, 0);
+    c.native('fairy', 'P03-04', 7.6, 7.6, 300); c.native('telepath', 'P02-04', 7.6, 7.6, 300); c.native('watcher', 'P04-00', 7.6, 4.4, 200);
 };
 
-exports.airZones = function (c) { return []; };
+/* THE AIR (pass 3): the realm's violet motes everywhere (the tool's last zone); over the temple and the Still Water fireflies in cyan, over the
+   coral garden pink spores, over the Far Shore a slow white dust like sea mist */
+exports.airZones = function (c) { return [
+    { sx0: 36, sy0: 12, sx1: 48, sy1: 24, kind: 'fireflies', color: 0x9fe8ff, n: 60 },
+    { sx0: 36, sy0: 48, sx1: 48, sy1: 60, kind: 'fireflies', color: 0x9fe8ff, n: 40 },
+    { sx0: 24, sy0: 36, sx1: 36, sy1: 48, kind: 'spores', color: 0xff9ee0, n: 60 },
+    { sx0: 0, sy0: 60, sx1: 24, sy1: 72, kind: 'dust', color: 0xffffff, n: 50, speed: 0.25 },
+]; };
