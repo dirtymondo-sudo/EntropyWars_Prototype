@@ -30172,6 +30172,12 @@ const ThreeRenderer = (function () {
         var o = { h: _escSmooth(u), dy: 0, hide: false, gone: false, air: false };
         if (style === 'fly') { o.dy = ts * 1.9 * 4 * u * (1 - u); o.air = u > 0.04 && u < 0.97; }
         else if (style === 'swing') { o.dy = ts * 1.3 * Math.sin(Math.PI * u); o.air = u > 0.04 && u < 0.97; }
+        else if (style === 'kickflip') {
+            /* 🛹 the Skater's ollie: a quick crouch, a low pop (her deck flips under her: THE SKATER'S LOOKS), a clean landing */
+            o.h = _escSmooth((u - 0.08) / 0.86);
+            o.dy = u < 0.08 ? -ts * 0.06 * Math.sin(Math.PI * u / 0.08) : ts * 1.05 * Math.sin(Math.PI * Math.min(1, (u - 0.08) / 0.86));
+            o.air = u > 0.1 && u < 0.94;
+        }
         else if (style === 'eject') {
             /* punched straight up, drifts over, comes down slower than it went */
             o.h = _escSmooth((u - 0.18) / 0.72);

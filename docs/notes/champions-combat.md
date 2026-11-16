@@ -5472,6 +5472,23 @@ so it carries into her next turn and fades a turn after she stops rolling (onRem
   Grind is the rail in a fight. Tree: Sprint → Nimble Dodge / Stage Dive → Vault / Spotlight → Rampage. Finisher 900.
 - Probe 11-16: straight walk +2, Grind +3, Kickflip capped at 6, Board Slam 569 (318 of it momentum) and spent, a bent walk banks
   nothing; 0 page errors. Model `Assets/characters/races/skater/female/Meshy_AI_skater_Running.glb` + `skater.png` (R2 only).
+- **THE POLISH (11-16, thread "Polish Skater spells and VFX")**. Measured first (12×12 audit board, the Skater casting on a homo sapien /
+  pirate): Board Slam 318 bare, +355 at 6 stacks (673); the other T3 finishers ~370 bare, ~660 on their combo status. With MOV 4 a straight
+  roll-in banked 4 every turn, so Slam hit ~1.5× a T3 every turn, and the forecast and the CPU both priced it as 110 (the stacks unseen).
+  - `momentumSpend` 35 → 30 (6 stacks: 639 on a homo sapien; forecast 630-665).
+  - THE ROLL IS STRAIGHT: `_skaterBankMove` reads the walk's trail; a path that bent round something and came back into line banks 0.
+  - THE BAIL: Stun, Sleep, Root, Frozen, Charm, Coiled or Roped (`_skaterBailOn`, from applyStatusPayload) throws all her Momentum away
+    ("🛹 Caster bails: stunned, 5 Momentum lost." + a BAIL! float). The other side's answer to a big stack; never her own Climbing.
+  - THE READ: the forecast adds the momentum blow (forecastSpellPlan, tag `momentum`); the status chip reads `MOM 4` (hud.js
+    _hrlgStatusChips), so both seats see the threat before it lands.
+  - THE CPU: ai.js prices Board Slam with her stacks (_estDamageRaw) and, in jointMoveActionSearch, with the stacks a straight
+    walk to that square would bank (THE ROLL-IN). Probe: 0 stacks Kickflip 450 > Slam 402; 6 stacks Slam 796 first; (4,4)→(6,4) beside a
+    foe 358 → 478.
+  - THE LOOKS (three-vfx-effects.js "THE SKATER'S LOOKS", kill-switch EW_NO_SKATER_VFX): her own deck is the Meshy skateboard
+    (`skateDeck`, warmed by the drip when a Skater is on the board). Kickflip = escape style `kickflip` (three-renderer.js _escStyleAt: a
+    crouch, a low hop) with the deck turning one full flip under her; Grind = the deck on a slant, sparks off the trucks, speed lines round
+    her; Board Slam = the deck over and down on the target (`hitMs` 220, the damage lands on the slam), then one ring a spent stack. Speed
+    lines and rings in the viewer's side colours (own cyan-blue, other side pink-orange).
 
 ### 4. THE TECH CEO (Disaster City, Financial, specialist, family `disruption`; a parody of the type, no real person)
 The style: ownership of the board's objects. The three casts ride the `cleanseArea` tile kind (its targeting, glow and prompts)
