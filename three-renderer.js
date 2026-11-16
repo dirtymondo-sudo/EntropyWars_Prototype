@@ -94031,6 +94031,13 @@ const ThreeRenderer = (function () {
         lightsAt.forEach(function (Lt) {
             var fl1 = new THREE.PointLight(plC, (lightsAt.length > 1 ? 0.5 : 0.55) * lmK, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
         });
+        /* THE BIG LIGHTS (2026-11-16, THE CAVERN ON PLOTS: "underground, light is the look"): shell.suns = [{ x, y, z, color, intensity,
+           dist, decay }], four at most: a light that reaches a whole district (the Inner Sun over Hollow Earth, Agartha's Spire, a lava
+           lake), so one closed room holds places of different light under a low ambient. Not the ten prop lights: these are the room's. */
+        (S.suns || []).slice(0, 4).forEach(function (sn) {
+            var bl = new THREE.PointLight(sn.color != null ? sn.color : 0xffe2a8, (sn.intensity != null ? +sn.intensity : 1.5) * lmK, (+sn.dist || 80) * U, (sn.decay != null) ? +sn.decay : 1);
+            bl.position.set((+sn.x || 0) * U, (+sn.y || 0) * U, (+sn.z || 0) * U); sc.add(bl);
+        });
         (room.props || []).forEach(function (pp) {
             if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
             var wl = new THREE.PointLight(0xffd9a0, 0.5 * lmK, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
