@@ -5486,3 +5486,19 @@ mirrors, _visionWards, warpRunes; owner fields `ownerPlayer|owner|player` (numbe
 - Probe 11-16: the enemy's Tesla Coil acquired (owner 2 → 1), an empty square refused, the enemy Smoke Screen disrupted (2 → 1),
   Layoffs scrapped the coil for +50 MP; 0 page errors. Model `…/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb` + `tech_ceo.png`.
   Known: the turtleneck shows the Meshy texture-seam specks (as banker / politician / lifeguard).
+
+### 5. THE MAGICIAN (Disaster City, Entertainment, specialist, family `stagemagic`)
+The style: a hidden trick. **Sleight of Hand** (T1, self) sets STATUS_DEFS `trickSet` (3 rounds); the trick is `unit._trick`, in turn
+(`_trickNext`: Doves → Vanishing Act → Switcheroo → …); the line naming it goes to his own seat only (addLog `seats`), everyone
+else reads "Trick Set". One trick at a time (a recast reads "would do nothing"). Each springs once (battle.js):
+- **Doves** (`_magicianDoves`, early in doSpell): the next enemy damage / debuff / pull / possess / steal aimed at a square with one
+  of his team fizzles; the caster still pays MP, AP and the cooldown.
+- **Vanishing Act** (`_magicianVanish`, finishMoveAt): the next enemy that ends a walk beside him (8 squares) finds him gone: he
+  lands on the free square up to 4 away farthest from it.
+- **Switcheroo** (`_magicianSwitcheroo`, top of applyDamageToUnit): the next enemy hit on an ally does no damage; the ally and the
+  Magician trade squares.
+- **Pick a Card** (T2, range 4, cd 2): `pickedCard` (mpCostDelta +40) for 2 rounds. **Saw in Half** (T3, magic 160, range 1): Broken 2.
+- Tree: Borrowed Claw → Shed Skin / Charm → Skin Swap / Spotlight → Mimicry. Finisher The Prestige. POINT_OF_ENTRY The Strip.
+- Online: `_trick` rides the unit in the snapshot (host-only reads it); the guest's screen never names it.
+- Probe 11-16: Doves ate a Migraine (ally lost 0), Vanishing Act moved him C4 → B1 when the foe stepped beside him, Switcheroo
+  swapped him with the ally (lost 0), Pick a Card 75 → 115 MP, Saw in Half left Broken; 0 page errors.

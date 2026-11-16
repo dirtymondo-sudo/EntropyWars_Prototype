@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1173 |
+| Meshy AI | no | 1174 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -123,6 +123,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | machine elves | `Assets/characters/races/machineelves/male/Meshy_AI_DMT_clockwork_elf_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mad scientist — creator look also baked | `Assets/characters/races/homosapien/male/engineer/Meshy_AI_mad_scientist_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mad scientist (female) — creator look also baked | `Assets/characters/races/homosapien/female/engineer/Meshy_AI_female_hot_asian_scie_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| magician | `Assets/characters/races/magician/male/Meshy_AI_magician_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | mantid | `Assets/characters/races/mantid/male/Meshy_AI_mantid_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | marksman | `Assets/characters/animations/Meshy_AI_sniper_biped_Animation_Idle_5_withSkin.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | marksman (female) | `Assets/characters/races/homosapien/female/sniper/Meshy_AI_sniper_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
