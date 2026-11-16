@@ -12651,6 +12651,22 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
   the rock is square blocks 3.5 m wide (no cave-rock model exists: NEEDS A MODEL); H and A are a first build only (their rows on the
   board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
 
+## THE CAVERN, DISTRICT K — the pilot (2026-11-16, the Cavern zone thread; file `docs/areas/cavern/districts/K.js`, 13 plots)
+
+A SLIP TO KNOW ABOUT: the first build's PR (#1807) reached main WITHOUT the room in data.js (my merge helper took main's data.js on a conflict
+and its rebake failed unseen); the docs and the tool were live, the old rooms still served. Pass 1's PR put the room, the links, the hub,
+the bays and the retired rows in. The helper now stops when the bake fails.
+
+- **PASS 1, THE ROCK AND THE LANDMARKS (the "exteriors" of a cave).** THE ROCK KIT: the plan's walls are square blocks 3.5 m wide, so every
+  K plot's wall feet wear boulders (squashed `dome` parts half in the wall), stalagmites (tapered `cyl`, point up) and now and then a
+  buttress (a tapered rib floor to roof), one `arch` row a plot (`cav:<plot>:rock`), on `rocks_5` under four pale tints (a dark tint on
+  `cave_wall` drew BLACK spikes: the first try); the hot side's are `obsidian` untinted (its sheet has glowing veins). THE NEEDLE: a
+  dripstone column floor to roof in the Hall (two tapered `cyl` meeting, a flow-stone foot), a ghost wall for its body. THE ROPE
+  BRIDGE's two rails; THE LIP's rail with the long stair's head left open. LEVEL −6: a concrete lining on every wall of the chamber with a
+  hazard band at its foot, a concrete portal round the blast door (the link's own bulkhead leaf) and LEVEL −6 stencilled over it. THE
+  OUBLIETTE: four cells along the west wall, stone walls between them, each floor a step down (`dip`). THE GROTTO: a pocket with a
+  pool off the River Chamber's north-west corner (`plan()`). Seen on screen: the Needle, Level −6, the cells, the hot side.
+
 - **PASS 2, THE INSIDE (the Temple of the Deep's dry room; seen on screen, three views, no errors):** the hall reads as a rotunda: a ring
   of twelve 9.4 m columns under a ring beam with a gilt line (`gold` = the better gilt sheet), a false dome (a two-sided `dome` part) with a
   lit eye, pilasters and a gilt band round the four walls, surrounds on the three doors (the vault door's with a small pediment; the
