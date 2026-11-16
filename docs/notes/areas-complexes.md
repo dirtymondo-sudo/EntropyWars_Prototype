@@ -10625,6 +10625,7 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
 - **Standing stones that block**: catalogue `sarsen` / `menhir` / `greek_column` with their own `h` (a prop row's `h` scales the model), one a square; `trilithon` on two whole squares (x on the line between them).
 - **A walk-in on ground that is not at 0 m (district G's Camp House, 7 m up)**: give every inside prop `floor: true`; a `y` of 1 m or more must be the ROOM height (ground + lift), a `y` under 1 m is a lift; line the inside walls with a lit board box 0.34 m in (`glow: 0.4`); `holy_carpet` stands upright (a tapestry), `psx_chair_mp_*` are stools.
 - **Lit trails without lights (district G)**: lantern posts as arch parts in the trees' edge beside a path (post + arm + a `glow: 1` box), one arch row a plot; pick the tree squares that touch a path by a hash so the count stays low. **Air by plot**: `airZones` may return several boxes in metres (first listed first); never `embers` (room-wide), use orange `motes`. **A glow on a statue**: measure the model file (parse the GLB's POSITION accessor) before guessing where a face is.
+- **The wish-list models in the Woods (district G's model pass)**: `lantern_post` (no glow of its own: add a drawn flame 0.25 m north of the pole at `face: 0`, 1.4 m up), `string_lights` (has its own posts: stand it, do not hang it), `trestle_table` (use `span: 2.3`, at 3.5 its top is 1.22 m up), `canvas_tent`, `dock_boat` (give it the water's height, `ground - 0.8`, + `floor: true`), `fallen_redwood` (12 x 4.8 m: eight squares; open them on plot-rim rows / columns so no clearing middle moves), `hooded_statue`, `owl_perched`, `raven_perch`, `reeds`, `lake_rock`.
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 - **A yard for a new piece without moving the old ones** (district C): open its squares as `p` in `cut`, not `g` (the plot's middle is the mean of its grass squares).
 - **Level ground for a building**: the ground is flat 7 m either side of a plot's middle and between two neighbours of one level; row 3 of district C is one flat band.
@@ -12036,6 +12037,25 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
     BEFORE THIS THREAD (the district file as it stood, baked and probed again) 1.2 / 1.0; AFTER FIVE PASSES 1.4 / 1.0. No loss that this probe can measure;
     the room went from 523 to 1,010 props (the other districts' passes are in that number too), so the weak PC is still worth a look.
   - NOBODY MOVED: 1,033 rows outside the district, 0 differ.
+- **THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... tell all of those district threads that needed models to use these ones"; one pass on top of
+  the five; `docs/plans/WISHLIST_MODELS_ADDED.md` read end to end; seen, three probe rounds, 28 views):**
+  - ALL TEN ASKED FOR ARE PLACED: `owl_perched` (the barrow's lintel, the Stage's beam end, a gravestone at the Dead Tree, the Camp House's door hood), `goat` (two by
+    the Stones, the goatman's), `deer` (two at the Lake's east shore), `hooded_statue` (five at the Owl, two at the Stage's front corners), `dock_boat` (the east shore),
+    `bell_frame` (behind the Owl), `trestle_table` (the hall's feast table), `string_lights` (the Stage's front edge), `antler_trophy` (over the hall's mantel),
+    `fallen_redwood` (beside the trail between the Owl and the Dead Tree, on eight squares opened in `cut`; rows 23 / 24 are plot rims, so no clearing middle moved).
+  - STAND-INS TAKEN OUT: the 37 box-built lantern posts -> 27 `lantern_post`; the Stage's 13 glow-box bulbs and four footlight boxes -> three `string_lights`; the
+    jetty's box lamp post -> a `lantern_post`; the hall's two box door lamps -> `cage_lamp`; three pack tables + eight stools -> two `trestle_table`; the three blue
+    dome `camping_tent` -> `canvas_tent`; the hall's metal barrels -> `wooden_barrel`; the mantel's red cloth -> the trophy; the hearth's carpet -> `fur_rug`.
+  - ALSO FROM THE LIST: `weeping_angel`, `raven_perch` (three), `gong`, `mooring_bollard`, `rope_coils`, `oars`, `fishing_rod`, `reeds` + `lake_rock` round the shore,
+    `swan`, two `duck`, `heron`, `fox`, `moss_clump`, `axe_chopping_block`, `firewood_stack`, `kettle`.
+  - SEEN AND FIXED: (1) `string_lights` has its own two posts: hung from the beam they floated; they stand on the deck's front edge now. (2) `trestle_table` at its
+    listed 3.5 m has its top 1.22 m up: two at `span: 2.3` (top 0.8 m). (3) `beer_taps` read as a giant white teapot on the bar: left out. (4) `antler_trophy` stood
+    inside the chimney breast: moved 0.6 m out. (5) `lantern_post` has no glow row: a small drawn flame sits in each lantern (the model's lantern hangs 0.25 m north of
+    the pole at `face: 0`, 1.4 m up, measured on the file and seen), so the trails still read lit at night.
+  - NOT USED ON PURPOSE: `willow_tree` at the Lake (the trees row is closed), the circus pieces (the striped tent is the old Grove's, nothing is added to it).
+  - NOBODY MOVED: 1,031 rows outside the district, 0 differ. FRAME RATE (same Stage view, two counts): 1.4 / 1.0 before this pass, 1.2 / 0.8 after (within the
+    probe's own scatter of about 0.2; the room holds 1,069 props).
+  - NEEDS A MODEL, WHAT IS LEFT after this pass: nothing from the model list. Still engine pieces: light shafts, mist on water, sound by district, more than ten real lights.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
   1. The Stage is a timber band shell with a red cloth (not a bare platform). 2. The Owl stands in a horseshoe of ten columns on a stone mound, and its eyes glow.
   3. The Lake has one jetty on the west shore; the effigy lies in a boat on the water among candles (the bier at the Owl stays). 4. The Mound is a barrow with a
@@ -12043,7 +12063,7 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
   and the Stage; it has no game role. 6. The old Grove's striped big tent stands at the Fire; the fortune teller has her own tent at the Tents. 7. The Dead Tree is
   12 m. 8. Lantern posts line every trail in the district. 9. The ground is the dark forest sheet. 10. No pumpkins, no bats, no new natives (the NPC system is
   another thread's), no names beyond what stands there ("The Camp House", "The Jetty", "The Barrow").
-- **NEEDS A MODEL:** an owl (the bird, for branches); a goat and a deer; a hooded robed figure / statue (the creator's `mhw_donitz_monk_robe*` on R2 are character
+- **NEEDS A MODEL (as written after pass 5; ALL MADE AND PLACED in the model pass, see above):** an owl (the bird, for branches); a goat and a deer; a hooded robed figure / statue (the creator's `mhw_donitz_monk_robe*` on R2 are character
   pieces, not props); a dock / pier piece and a moored-boat set; a bell on a frame; a long trestle table with benches; real hanging lanterns on a string; antlers or
   a trophy for the hall's wall; a big fallen trunk. Engine pieces no district can write: light shafts, mist on water, sound by district, more than ten real lights.
 - **WHAT I WOULD DO NEXT (after his look):** the way to Room 333 at the Stones (the tool's row); carry the old Grove's four talkers and their lines in and retire
