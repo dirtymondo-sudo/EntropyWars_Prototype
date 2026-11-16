@@ -4730,6 +4730,17 @@ list holds for the next passes, the models it needs. mondo 11-16: a second distr
   - WHAT I WOULD DO NEXT (for mondo to pick): 1 the lift moves and carries the player (a mechanic). 2 A real night-skiing light: the engine's ten-light cap
     shared by distance. 3 Staff and guests once the NPC system lands. 4 The Meshy list: skis, snowboards, a snow gun, a groomer, netting, an elk head, a
     pool table. 5 The Big Jump's line turned so it ends in the yard, not on the Lodge's back wall (the tool's heights and paint).
+- **THE MODEL PASS** (mondo 11-16, on top of the five: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to
+  end; seen on screen, 19 views). Every model K asked for is placed and its stand-in is out: K.js header, THE MODEL PASS, has both lists.
+  - Checked before placing: each wish-list `.opt.glb` used here is 1,600 to 4,200 triangles (not the 100,000 of the older Meshy props), and about 80 of them add 170,000
+    triangles to the room. FPS back to back on the same main, before -> after (the probe's software GPU): the Lodge Yard at night 1.85 and 1.93 -> 1.62 and
+    1.88; from the Top Station at night 1.92 -> 1.76; the Lodge Yard by day 1.92 -> 1.71. A tenth of a frame to two tenths: about the spread of two
+    readings of one view, but all four lean the same way.
+  - `lantern_post` and `string_lights` are NOT lit as made (no `glow`, no `light` on their rows): a lantern post wants a small built flame in its lantern
+    (K.js `lampFlames`, one `hug` row; the lantern hangs 0.23 m to the west of the square's middle at face 180, 1.5 to 1.85 m up). A `glow` on those two
+    catalogue rows would light them everywhere (the rows are shared: not changed from here).
+  - `safety_netting` has no body: give each length a ghost wall. `piste_groomer` is two squares long: K.js `wide()` stands it on the line between two.
+  - Facing: a wish-list model at `face: 180` stands as it was made (its +x to the east).
 - To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
   x 21.4, z -59.3 (the probe, 11-16).
 
@@ -10829,6 +10840,22 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
   where a one-square vault meets a pier (the tool's); a real booking desk, bunks and a cage lamp (NEEDS A MODEL); the old room's tape and
   finds were not re-homed (no tape / find guards); the walker was not driven through the doors by hand (offline flood + pictures only).
 
+**THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; seen, 14 + 7 + 3 views; walked offline). STOPPED AGAIN.**
+`docs/plans/WISHLIST_MODELS_ADDED.md` read end to end. All ten of this district's asks are placed, each where its stand-in stood:
+- `chain_bunk` in each of the six cells (the cots are out of the cells; the tank keeps the old room's one cot) · `cage_lamp` is the
+  fitting of all 26 drawn lamps (the boxes are gone; a lit lamp keeps one glowing plate behind its cage, the wash and the pool stay: they
+  are light, not a model; `noLight`, so H still has four real lights) · two `booking_desk` on row 6 in place of the tiled wall row (the
+  counter's phone went to the guard's desk, the cat to the coffee table) · `steel_bench` x 3 for the blue metro seats (tank x 2, the
+  waiting bench) · `key_ring` x 2 for the `key` (corridor floor, the Property Room) · `food_trolley` in the corridor · `height_board` by
+  the wall of faces · `handcuffs` x 3 · `rat` x 5 (scenery, off the walks) · `ceiling_fan` x 2 (the desk, the tank) for the PSX fan.
+- From other districts' lists: `valve_wheel` (fan room), `strobe_lamp` over DRAIN, `wanted_poster` x 3, `dartboard` (lockers),
+  `drinking_fountain` (corridor), `spider` (cell 6's web), `top_hat` + `backpack` (the Property Room).
+- **FACINGS FOUND:** `steel_bench`'s front is its -x (face 90 looks north, 0 west, 270 south); `chain_bunk` and `booking_desk` at
+  face 180 stand right on a north wall / look north over the counter. `cage_lamp` is a small pale disc and does not glow by itself.
+- Numbers at the proof view on one copy of main: before 1,925 calls / 2.56 M triangles / 1.35 FPS; after 1,892 / 2.41 M / 1.27 (the FPS
+  swings more than that between runs; the pass is lighter: 26 cage lamps are 53,000 triangles, three metro benches were 52,000).
+- **NEEDS A MODEL now:** nothing of the first list is left. Still open: see pass 5's OPEN list (people, sound, dust and drips).
+
 **FITS THIS DISTRICT (the whole catalogue + MODEL_LIST sections 6, 7, 10, 12b, 13 read 11-16; all have rows):** CELLS `cot` `steel_toilet`
 `psx_toilet_mp_1` `sink` `psx_old_mattress_mp_1` `psx_pillow_mp_1/2` `psx_bed_1_frame` `wall_chains` `trap_chain_draped/_straight`
 `meal_tray(_empty)` `toilet_paper` `wooden_bucket` `graffiti_wall` `psx_padlock_1..4` `stocks` `wall_padding` · BARS + DOORS `leaf_cell`
@@ -10842,9 +10869,8 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
 `luggage_cart` `manila_folders` `psx_cash_*` `psx_id_mp_1` `psx_keycard_*` `psx_key_mp_*` `revolver` `pistol` `shotgun` `psx_knife_mp_1`
 · THE TANK `metro_bench` `floor_drain` `drain_grate` `mop_bucket` `mop` `wet_floor_sign` `psx_glass_bottle_1/2` `solo_cup` · THE STACK
 `ind_vent` `meshy_vent` `psx_vent_*` `vent_grille` `air_compressor` `gate_valve` `gauge_board` `utility_box` `tool_chest` `psx_pipe_1*`.
-**NEEDS A MODEL (exists nowhere):** handcuffs, a bunk bed with a chain, a cage lamp, a prison food hatch trolley, a fingerprint / mugshot
-height board on a stand, a rat, a booking desk (the counter is a tiled wall row), a ceiling fan housing for the stack, a drunk-tank bench
-in steel (the blue metro seats stand in), a turnkey's key ring big enough to read on the floor.
+**NEEDS A MODEL: ALL MADE AND PLACED (the model pass, 11-16):** ~~handcuffs, a bunk bed with a chain, a cage lamp, a food trolley, a
+mugshot height board, a rat, a booking desk, a ceiling fan, a steel drunk-tank bench, a turnkey's key ring~~.
 
 **DECISIONS MADE FOR MONDO (overrule any in one line):**
 1. The cells are real brick rooms (a whole square of brick between two), not bar cages in a hall.
