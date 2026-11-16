@@ -5194,9 +5194,12 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     `hw_pumpkin*`, `hw_scarecrow`, a `rail` row `model: 'ranch'` and `chicken` all read. `psxg_stepping_stone_1/2` as a `scatter` is a path.
   - **THE ROOM'S TEN LIGHTS (zone-wide, the engine's):** fifty props in this room carry a `light`; ten get one, in row order S, H, O, T. A
     district far down the list lights its night with drawn glow only. Wanted from the tool / engine row: the lights nearest the walker.
-  - **SMOKE, A CLOUD, DRAWN:** puffs = a `dome` (plain paint, `glow` 0.3) over a `cyl` belly that closes to a point (`r` 0.05 -> `r2` = the
+  - **MONDO 11-16, THREE RULES FROM HIS FIRST LOOK AT THE OCEAN:** NEVER model smoke in 3D (drawn puffs "look terrible"; the game's own
+    smoke is the soft sprites of `sea_vent`). A torch is a VARIANT OF THE GAME'S TORCHES (`cave_torch`, `wall_torch`, the new taller
+    `tiki_torch`), never a drawn pole with a glowing cone. A big model must never stand cut off by the water: tentacles = `kraken_arms`.
+  - **(WITHDRAWN for smoke by the rule above; kept for a cloud only) A CLOUD, DRAWN:** puffs = a `dome` (plain paint, `glow` 0.3) over a `cyl` belly that closes to a point (`r` 0.05 -> `r2` = the
     dome's, `cap: false, ds: true, glow` 0.4): seen from under, an open belly is a ring round a hole. Seven puffs growing 3 -> 13 m read as a plume.
-  - **FIRELIGHT IN A WINDOW:** a plain quad, tint 0xffa040, `glow` 0.75, behind drawn bars. A torch's flame: tint 0xff5a00, `glow` 0.7 (0.9 washes to cream).
+  - **FIRELIGHT IN A WINDOW:** a plain quad, tint 0xffa040, `glow` 0.75, behind drawn bars.
   - **TRIANGLES:** a Meshy prop is about 10,000 triangles whatever its size (a skull, a fern, a flamingo); thirty of them is 0.3 M. Count before dressing.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
@@ -5352,6 +5355,16 @@ sea has things to sail to.
   - **FRAME RATE, FINAL:** the cloud still says 0.2 fps at the Landing and 1.2 mid-sea (it said 0.2 and 1.6 before pass 1: no difference
     it can measure). Triangles drawn, shadow pass included: the Landing 1.62 M -> 2.72 M, mid-sea 1.61 M -> 2.40 M (the Harbour's and
     the Triangle's work of the same hours is in those numbers; the room has no far cull, so every district's props are drawn from everywhere).
+  - **MONDO'S REVISION 1 (11-16, after his first look; seen on screen by day and at 22:30):** his words: "don't 3d model smoke, it looks
+    terrible. the tiki torches need to be variants of the torches already in the game, just longer. Those kraken arms need to be gone,
+    they are clipped off. look at how the kraken or the symbiote does their tentacles in their spell vfx animations and do tentacles
+    like that." DONE: (1) THE ASH PLUME is out (nothing stands in for it). (2) every drawn bamboo torch is out; NEW catalogue prop
+    `tiki_torch` = the floor torch `cave_torch` itself (stand, bowl, its own flame and flicker) half as tall again; ten stand on the
+    island and one on the castaway's islet. (3) the six big `tentacle` props are out; NEW catalogue prop `kraken_arms` (three-renderer.js)
+    = the kraken's Constrict effect (`_fx1Tentacles`) as a standing thing: the same two arm models in the spell's unlit look, five in a
+    ring, each fitted by its BOTTOM so it rises whole out of the surface, up one after another, tips curling in over the boat, a hold,
+    down again, on a 15 s loop, foam where each breaks the water. A `float` prop: it stands on any sea room's surface.
+    STILL DRAWN THE SAME WAY AS THE PLUME, HIS CALL: the waterspout's cloud (grey domes over the funnel).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
