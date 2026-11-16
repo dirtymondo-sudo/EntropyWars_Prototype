@@ -5,6 +5,10 @@
    STANDS TODAY: the first build (torches, a brazier, bones, a signpost, the old room's two bystanders) + PASS 1, THE EXTERIORS (the district thread,
    11-16): the Sump (deep, its own stream row), the Pump Ledge (1.4 m) + stair + the pump's iron, four piers in the Flood, the sleeper wall, timber sets
    and board roofs on the drift / the neck / the Adit, the Chimney (a 3.9 m brick stump with a ladder under a lining with daylight), the raised portcullis.
+   PASS 2, THE LANDMARKS' PIECES: the engine bay (a built firebox with a real fire, stores, lockers, a bench), the pump + valve on the Ledge, the anglerfish in
+   the Sump, two boats, burial niches + a sarcophagus + a coffin in the Chimney's hall, the crystal seam, a body under the shaft, the Adit's ladders, lanterns.
+   PASS 3, THE DRESSING: about ninety small pieces by hand (fuel, shovels, dynamite, bones, a floater, frogs, tins, webs, bats), the camp under the Chimney, candles in
+   the niches, chains on the portcullis, a missing-persons board, six floor stains; four more residents (flesheater, swamp monster, zombie, ghost).
    Notes, the FITS THIS DISTRICT shortlist, NEEDS A MODEL and DECISIONS MADE FOR MONDO: docs/notes/areas-complexes.md "THE SEWERS, DISTRICT O". */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
@@ -25,9 +29,9 @@ module.exports = {
                 { s: 'box', p: q(m, h), size: sz(r2(L), 0.36, 0.4), tint: WOOD2, under: true },
                 { s: 'box', p: q(a0 + 0.07, r2(h - 0.5)), size: [0.5, 0.14, 0.5], tint: WOOD2, under: true }, { s: 'box', p: q(a1 - 0.07, r2(h - 0.5)), size: [0.5, 0.14, 0.5], tint: WOOD2, under: true }); };
         /* the LAGGING: a board roof over a drift's sets (hidden with HIDE ROOFS, like a building's) */
-        const lag = (id, x0, x1, z0, z1, y) => PARTS[id].push({ s: 'box', p: at(id, (x0 + x1) / 2, y, (z0 + z1) / 2), size: [r2((x1 - x0) * 3.5), 0.1, r2((z1 - z0) * 3.5)], tint: 0x3c2c1c, under: true, roof: true });
+        const lag = (id, x0, x1, z0, z1, y) => PARTS[id].push({ s: 'box', p: at(id, (x0 + x1) / 2, y, (z0 + z1) / 2), size: [r2((x1 - x0) * 3.5), 0.1, r2((z1 - z0) * 3.5)], tint: WOOD2, under: true, roof: true });
         /* boards laid on the floor as the path (the old room's own) */
-        const board = (id, lx, ly, len, ry) => PARTS[id].push({ s: 'box', p: at(id, lx, 0.02, ly), size: [len, 0.05, 0.9], ry: ry || 0, tint: 0x6a4c30 });
+        const board = (id, lx, ly, len, ry) => PARTS[id].push({ s: 'box', p: at(id, lx, 0.02, ly), size: [len, 0.05, 0.9], ry: ry || 0, tint: WOOD });
 
         /* ── THE OLD WORKINGS (P01-01) ── */
         /* THE SUMP: deep, never waded (the old room's own), in the north chamber's east end, behind bars */
@@ -40,7 +44,7 @@ module.exports = {
         feat(ctx, { k: 'rail', x0: r2(X(A, 8) + 0.15), z0: r2(Z(A, 5) - 0.15), x1: r2(X(A, 11) - 0.1), z1: r2(Z(A, 5) - 0.15), y: 1.4, model: 'ranch' });
         feat(ctx, { k: 'rail', x0: r2(X(A, 8) + 0.15), z0: r2(Z(A, 4) + 0.15), x1: r2(X(A, 11) - 0.1), z1: r2(Z(A, 4) + 0.15), y: 1.4, model: 'ranch' });
         take(A, 7, 4);
-        PARTS[A].push({ s: 'box', p: at(A, 9.5, 1.4, 4.5), size: [10.4, 0.07, 3.4], tint: 0x6a4c30 },                                   // its deck
+        PARTS[A].push({ s: 'box', p: at(A, 9.5, 1.4, 4.5), size: [10.4, 0.07, 3.4], tint: WOOD },                                   // its deck
             { s: 'box', p: at(A, 8.1, 0, 4.98), size: [0.28, 1.4, 0.28], tint: WOOD, n: 4, step: [3.3, 0, 0] },                         // the posts along its face
             { s: 'box', p: at(A, 9.5, 1.05, 5.0), size: [10.4, 0.3, 0.12], tint: WOOD2 },
             /* the pump's iron: the suction pipe down into the Sump, the rising main up the east wall to the dark */
@@ -51,15 +55,20 @@ module.exports = {
             { s: 'box', p: at(A, 10.2, 1.95, 4.5), size: [1.9, 0.3, 0.3], key: RUST, tint: 0x6a3f24, under: true });
         /* THE FLOOD's four brick piers, standing in the water, floor to vault */
         [[3, 6], [9, 6], [3, 9], [9, 9]].forEach(q => ctx.pier(A, q[0], q[1]));
-        /* THE SLEEPER WALL (the old room's grind) on the Flood's north bank; the old pipe rail on its south bank */
+        /* THE SLEEPER WALL (the old room's grind) on the Flood's north bank (the old pipe rail drew white here: left out) */
         feat(ctx, { k: 'wall', x0: X(A, 4.4), z0: Z(A, 6), x1: X(A, 8.6), z1: Z(A, 6), h: 0.6, t: 0.5, key: 'bricks_2' });
-        feat(ctx, { k: 'rail', x0: X(A, 4.2), z0: r2(Z(A, 10) + 0.2), x1: X(A, 8.8), z1: r2(Z(A, 10) + 0.2), model: 'pipe', block: false });
         /* the neck under the trap: two sets, boarded over (open at the rope ladder) */
         set(A, 'x', 0.95, 5, 8, 3.3); set(A, 'x', 1.9, 5, 8, 3.3); lag(A, 5, 8, 0.8, 2.05, 3.7);
         /* THE DRIFT to the Chimney: a set a square, boarded over */
         [0.5, 1.6].forEach(l => set(A, 'z', l, 5, 8, 3.3)); lag(A, 0, 2.1, 5, 8, 3.7);
         [9.4, 10.5, 11.5].forEach(l => set(B, 'z', l, 5, 8, 3.3)); lag(B, 9.2, 12, 5, 8, 3.7);
         board(A, 4.6, 5.5, 5.2, 3); board(A, 6.3, 5.45, 4.6, -2); board(A, 1.2, 6.5, 6.0, 2); board(B, 10.6, 6.5, 6.4, -2); board(B, 8.4, 6.2, 4.4, 9);
+        /* THE FIREBOX (the engine bay's furnace, built: brick cheeks, an iron lintel, a flue up into the dark; the fire is a `hearth_fire` in dress) */
+        { const f = (y, dx, dz) => at(A, 2 + dx / 3.5, y, 3.5 + dz / 3.5), BR = { key: 'bricks_2', tint: 0x7a5a48 };
+          PARTS[A].push(Object.assign({ s: 'box', p: f(0, 0.75, -1.1), size: [1.5, 1.7, 0.55] }, BR), Object.assign({ s: 'box', p: f(0, 0.75, 1.1), size: [1.5, 1.7, 0.55] }, BR),
+              Object.assign({ s: 'box', p: f(1.7, 0.75, 0), size: [1.5, 0.9, 2.75], under: true }, BR), Object.assign({ s: 'box', p: f(0, 0.12, 0), size: [0.24, 1.7, 1.65] }, BR),
+              Object.assign({ s: 'box', p: f(2.6, 0.5, 0), size: [0.9, 9, 0.9] }, BR), { s: 'box', p: f(1.58, 1.52, 0), size: [0.08, 0.14, 1.7], tint: IRON },
+              Object.assign({ s: 'box', p: f(0, 0.9, 0), size: [1.7, 0.12, 1.65] }, BR)); }
         feat(ctx, { k: 'scatter', key: 'cinder_block', n: 4, x: X(A, 3.5), z: Z(A, 3.2), r: 3, seed: 4 });
 
         /* ── THE CHIMNEY (P00-01) ── */
@@ -69,8 +78,8 @@ module.exports = {
         feat(ctx, { k: 'plateau', x: cx, z: cz, r: 1.75, h: 3.9, edge: 0.15 }); take(B, 5, 4);
         feat(ctx, { k: 'climb', x: cx, z: r2(cz + 1.75 + 0.3), face: 0, look: 'ladder' });
         const c = (y, o) => Object.assign({ s: 'cyl', p: at(B, 5.5, y, 4.5), seg: 20 }, o);
-        PARTS[B].push(c(6.9, { r: 2.75, ri: 2.3, h: r2(top - 6.9 + 0.1), key: 'bricks_2', tint: 0x6e665a, cap: false }),                 // the lining
-            c(6.86, { r: 2.75, ri: 2.3, h: 0.05, key: 'bricks_2', tint: 0x4c463e, ds: true }),                                           // its lip, seen from below
+        PARTS[B].push(c(6.9, { r: 2.75, ri: 2.3, h: r2(top - 6.9 + 0.1), key: 'bricks_2', tint: 0x554e45, cap: false }),                 // the lining
+            c(6.86, { r: 2.75, ri: 2.3, h: 0.05, key: 'bricks_2', tint: 0x554e45, ds: true }),                                           // its lip, seen from below
             c(6.5, { r: 2.95, ri: 2.3, h: 0.4, key: 'bricks_2', tint: 0x554e45, ds: true }),                                             // the corbel course
             c(r2(top - 1.35), { r: 2.29, h: 0.03, tint: 0xcfe2ff, glow: 1, ds: true }),                                                  // the sky: under the vault's own brick, which crosses the shaft a metre down
             c(r2(top - 3.3), { r: 2.28, h: 1.95, key: 'bricks_2', tint: 0xaab6c6, glow: 0.5, ds: true, cap: false }),                    // daylight on the lining, fading down
@@ -80,11 +89,11 @@ module.exports = {
             c(0.03, { r: 3.6, ri: 1.8, h: 0.01, key: 'bricks_2', tint: 0xa8b4bc, glow: 0.07, kind: 'over' }),                            // the pale ring the shaft throws on the floor
             c(4.9, { r: 0.03, h: r2(top - 1.35 - 4.9), tint: 0x7a6238, seg: 6 }),                                                                // the old hoist rope, still hanging
             { s: 'box', p: at(B, 5.5, 7.1, 4.5 - 2.22 / 3.5), size: [0.5, 0.05, 0.08], tint: IRON, n: Math.floor((top - 8.6) / 0.42), step: [0, 0.42, 0] });   // iron rungs up the lining
-        feat(ctx, { k: 'scatter', key: 'cave_stone', n: 5, x: X(B, 7.6), z: Z(B, 3.8), r: 2.6, seed: 3 });
+        feat(ctx, { k: 'scatter', key: 'cave_stone', n: 5, x: X(B, 3.2), z: Z(B, 8.2), r: 2.2, seed: 3 });
         /* THE OLD PORTCULLIS (the way into the Cavern's Oubliette): raised in its stone frame, on its chains under the winding beam */
         { const g = (y, dz) => at(B, 0.3, y, 5.5 + dz / 3.5);
           PARTS[B].push({ s: 'box', p: g(0, -2.15), size: [0.8, 6.2, 0.8], key: 'bricks_2', tint: 0x5a544a }, { s: 'box', p: g(0, 2.15), size: [0.8, 6.2, 0.8], key: 'bricks_2', tint: 0x5a544a },
-              { s: 'box', p: g(6.2, 0), size: [0.9, 0.8, 5.1], key: 'bricks_2', tint: 0x4e4840, under: true },
+              { s: 'box', p: g(6.2, 0), size: [0.9, 0.8, 5.1], key: 'bricks_2', tint: 0x5a544a, under: true },
               { s: 'box', p: g(2.75, -1.6), size: [0.07, 2.6, 0.07], tint: IRON, n: 9, step: [0, 0, 0.4] },
               { s: 'box', p: g(3.15, 0), size: [0.06, 0.08, 3.5], tint: IRON, n: 3, step: [0, 0.95, 0] },
               { s: 'box', p: g(5.35, -1.2), size: [0.05, 0.85, 0.05], tint: IRON, n: 2, step: [0, 0, 2.4] },
@@ -95,23 +104,94 @@ module.exports = {
         [A, B].forEach(id => ctx.feat({ k: 'arch', id: 'sew:O:' + id + ':mine', x: X(id, 6), z: Z(id, 6), rot: 0, base: ctx.plot[id].base, parts: PARTS[id] }));
     },
     dress(ctx) {
-        ['P01-01', 'P00-01'].forEach((id, i) => {
-            const cs = ctx.corners(id); [0, cs.length - 1].forEach(k => { const q = cs[k]; if (q && ctx.free(id, q[0], q[1])) ctx.P('cave_torch', id, q[0], q[1]); });
-            const mid = ctx.inner(id), q = nth(mid, 3 + i * 4); if (q) ctx.P(i ? 'skull_pile' : 'brazier', id, q[0], q[1]);
-            for (let k = 1; k < cs.length - 1; k += 3) { const q2 = cs[k]; if (ctx.free(id, q2[0], q2[1])) ctx.dec(['skull_pile', 'psx_cobweb_2', 'psx_wooden_crate_3', 'psx_cobweb_1'][k % 4], id, q2[0], q2[1]); }   // the grime pass
-            const dry = ctx.squares(id, 'o'); for (let k = 6; k < dry.length; k += 12) ctx.dec('floor_stain', id, dry[k][0], dry[k][1]);
-        });
-        /* a blocker on the k-th free square of a list, decor on the k-th square (THE MODEL LIST PASS helpers) */
-        const putP = (key, id, list, k, o) => { for (let i = Math.max(0, Math.min(list.length - 1, k)); i < list.length; i++) { const q = list[i]; if (ctx.free(id, q[0], q[1])) { ctx.P(key, id, q[0], q[1], o); return true; } } return false; };
-        const putD = (key, id, list, k) => { const q = nth(list, k); if (q) ctx.dec(key, id, q[0], q[1]); };
-        /* THE MODEL LIST PASS (mondo 11-16): MODEL_LIST.md searched for mine, bone, skull, well, bucket. A skeleton against the wall, skulls
-           and parts in the flood's edge, a bucket, pale mushrooms. */
-        putP('anatomy_skeleton', 'P01-01', ctx.corners('P01-01'), 2); [3, 7, 12].forEach(k => putD('skull', 'P01-01', ctx.inner('P01-01'), k)); putD('hw_part_3', 'P01-01', ctx.inner('P01-01'), 15); putD('hw_part', 'P00-01', ctx.inner('P00-01'), 6);
-        putD('wooden_bucket', 'P00-01', ctx.inner('P00-01'), 9); [1, 4].forEach(k => putD('mushroom2', 'P00-01', ctx.corners('P00-01'), k)); putD('mushroom2', 'P01-01', ctx.corners('P01-01'), 5);
-        const s = nth(ctx.inner('P00-01'), 0); if (s) ctx.P('signpost', 'P00-01', s[0], s[1]);
+        const A = 'P01-01', B = 'P00-01', r2 = ctx.r2;
+        const X = (id, lx) => ctx.gx(ctx.plot[id].sx + lx), Z = (id, ly) => ctx.gz(ctx.plot[id].sy + ly);
+        /* P = a blocker on a square's middle; put = decor at an exact place (fractions of a square), facing `face` (degrees, 0 = north) */
+        const P = (key, id, lx, ly, o) => ctx.P(key, id, lx, ly, o);
+        const put = (key, id, fx, fy, face, o) => ctx.props.push(Object.assign({ key, x: X(id, fx), z: Z(id, fy), face: face || 0 }, o || {}));
+        const dark = { noLight: true };   // a fire that keeps its glow but takes none of the room's ten real lights
+
+        /* ── PASS 2, THE LANDMARKS' OWN PIECES. The REAL lights first (the room has ten; after the cells' and the culverts' ceiling bulbs this
+           district's first two rows are lit: the hearth fire, the portcullis' torch; then, if any are left, the Flood's torch and the crystal seam). ── */
+        /* THE ENGINE BAY (the north chamber's west end): the furnace that drove the pump, its stores */
+        put('hearth_fire', A, 2.42, 3.5, 90); ctx.taken.add(ctx.sq(A, 2, 3).join(':'));   // in the brick firebox (build): the `door_furnace` model is 117 k triangles, the firebox is 60
+        P('cave_torch', B, 1, 4); P('cave_torch', B, 1, 6, dark);
+        P('cave_torch', A, 10, 10);
+        P('crystal_cluster', B, 8, 8);
+        P('cable_drum', A, 4, 2); P('psx_wooden_crate_2', A, 2, 2); P('platform_scale', A, 2, 4);
+        put('locker', A, 3.3, 2.14, 180); put('locker', A, 3.62, 2.14, 180);
+        put('hand_truck', A, 4.4, 3.7, 200); put('meshy_burlap_sack', A, 2.9, 3.75, 40); put('meshy_burlap_sack', A, 3.1, 4.2, 110);
+        P('psx_table_large_3', A, 4, 4, { face: 90 }); put('psx_hand_saw_1', A, 4.45, 4.4, 30, { y: 0.93 });
+        /* THE PUMP LEDGE: the pump over the Sump, its valve, a lantern */
+        put('centrifugal_pump', A, 9.5, 4.5, 0); put('gate_valve', A, 8.55, 4.35, 90); put('railway_lantern', A, 10.6, 4.8, 0); put('meshy_rope', A, 10.4, 4.25, 30);
+        /* THE SUMP: what lives in the deep (a light a long way down) */
+        put('ocean_anglerfish', A, 9.5, 3, 0, { y: -1.3 });
+        /* THE FLOOD: a sunk boat, a beached one, an anchor (the pack's weed and eel are 100 k triangles apiece: not placed) */
+        put('meshy_rowboat', A, 6.2, 7.7, 65, { y: 0.45 }); P('rowboat', A, 4, 10, { face: 80 });
+        /* THE CHIMNEY's hall: the burial niches the miners broke into (north wall), a coffin dragged out, the crystal seam (south-east) */
+        [2.5, 3.5, 7.5, 8.5].forEach(fx => put('catacomb_wall', B, fx, 3.07, 180));
+        P('sarcophagus', B, 2, 4, { face: 90 }); P('hw_coffin', B, 8, 4, { face: 20 }); put('hw_coffin_lid', B, 7.3, 4.6, 70);
+        put('candelabra', B, 4.15, 3.3, 0); put('candelabra', B, 6.85, 3.3, 0);
+        put('meshy_crystal_shards', B, 7.4, 8.5, 20); put('meshy_crystal_shard', B, 8.6, 7.4, 200); put('meshy_crystal_shard', B, 7.2, 7.7, 90); put('meshy_crystal_shards', B, 8.75, 8.7, 140);
+        /* what came down the shaft */
+        put('hw_body_2', B, 6.45, 5.2, 130); put('hw_bricks', B, 4.6, 5.3, 10); put('hw_bricks_2', B, 6.3, 3.8, 80); put('psx_brick_1', B, 4.5, 3.9, 40);
+        put('crow', B, 5.75, 4.3, 200, { y: 3.95 });
+        /* by the portcullis: a cage, the stocks */
+        put('bird_cage', B, 2.5, 6.6, 0); P('stocks', B, 2, 7, { face: 90 });
+        /* THE ADIT's foot: spare ladders, sandbags, crates */
+        put('library_ladder', B, 4.12, 9.6, 90); put('ladder_wall_rack', B, 7.88, 10.4, 270); P('meshy_sandbags', B, 7, 9); P('psx_wooden_crate_2', B, 4, 11); put('psx_wooden_crate_6', B, 4.4, 10.3, 25); put('railway_lantern', B, 5.2, 11.6, 0);
+        P('signpost', B, 7, 8);
+        /* THE DRIFT: shoring logs, drums, a lantern under the boards */
+        P('fallen_log', A, 0, 7, { face: 90 }); P('psx_metal_barrel_mp_2', B, 10, 5); put('psx_metal_barrel_mp_1', B, 10.75, 5.2, 0); put('psx_wooden_crate_3', B, 9.4, 7.6, 15);
+        put('ship_lantern', B, 10.5, 6.5, 0, { y: 3.55 }); put('ship_lantern', A, 1, 6.5, 0, { y: 3.55 }); put('ship_lantern', B, 6, 9.9, 0, { y: 3.65 }); put('ship_lantern', A, 6.5, 1.4, 0, { y: 3.55 });
+        /* the neck under the trap: where the rope ladder lands */
+        P('psx_wooden_crate_2', A, 5, 0); put('meshy_rope', A, 7.4, 0.5, 0); put('skull', A, 7.3, 1.6, 40);
+        /* the first build's own pieces, kept: the brazier, the skull heap, the skeleton, bones, a bucket, mushrooms */
+        P('brazier', A, 6, 3); P('skull_pile', B, 3, 6); P('anatomy_skeleton', A, 2, 10);
+        [[8.6, 5.6]].forEach((q, i) => put('skull', A, q[0], q[1], i * 100)); put('hw_part_3', A, 10.4, 8.3, 30); put('hw_part', B, 3.6, 7.5, 0);
+        put('mushroom2', B, 2.3, 8.6, 0); put('mushroom2', B, 8.6, 5.4, 0); put('mushroom2', A, 10.6, 5.4, 0);
+        ['psx_cobweb_2', 'psx_cobweb_1'].forEach((k, i) => { put(k, A, 2.2 + i * 8.5, 10.7, 0); put(k, B, 2.2 + i * 6.5, 8.75, 0); });
+
+        /* ── PASS 3, THE DRESSING: the small things, by hand. `lit` = decor that blocks nobody (the zone kit: a prop with a foot blocks
+           unless its row says noBlock). Cheap pack pieces first (the Meshy ones are 5 to 10 k triangles apiece). ── */
+        const lit = (key, id, fx, fy, face, o) => put(key, id, fx, fy, face, Object.assign({ noBlock: true }, o || {}));
+        /* the engine bay: fuel, nails, shovels, dynamite by the bench, coal bricks at the firebox */
+        lit('psx_jerrycan_1', A, 2.25, 4.35, 20); lit('psx_jerrycan_1', A, 2.5, 4.55, 75); lit('psx_supply_crate_1', A, 4.75, 2.9, 10); lit('psx_nails_1_rusty', A, 4.6, 4.55, 0, { y: 0.93 });
+        lit('hw_shovel', A, 3.3, 3.05, 40); lit('hw_shovel', A, 2.75, 2.75, 120); [[3.9, 4.75, 0], [4.02, 4.82, 60], [3.82, 4.86, 130]].forEach(q => lit('spell_dynamite', A, q[0], q[1], q[2]));
+        lit('hw_bricks', A, 2.9, 3.2, 0); lit('psx_brick_1', A, 3.2, 3.85, 50); lit('psx_brick_1_1', A, 2.7, 2.6, 15); lit('psx_wooden_crate_1', A, 2.75, 2.3, 30);
+        lit('psx_metal_barrel_mp_0', A, 7.62, 0.4, 0); lit('psx_wooden_crate_1', A, 5.3, 1.2, 60);
+        /* the Pump Ledge */
+        lit('psx_pipe_valve_holder_large_2', A, 10.5, 4.75, 0); lit('psx_jerrycan_1', A, 8.3, 4.2, 140);
+        /* the Flood's banks: a floater, bones, a fish's bones, frogs, cans, bottles */
+        put('hw_body', A, 8.3, 9.2, 200, { y: 0.52 }); lit('femur', A, 6.4, 5.6, 30); lit('ulna', A, 7.1, 5.72, 100); lit('hw_part_5', A, 2.6, 8.4, 0); lit('psx_fish_skeleton_mp_1', A, 6.6, 10.4, 20);
+        lit('meshy_frog', A, 5.2, 10.15, 10); lit('meshy_frog', A, 2.75, 7.3, 80); lit('psx_tin_can_mp_1_rusty', A, 9.3, 10.6, 0); lit('psx_glass_bottle_1', A, 10.6, 7.4, 0); lit('psx_glass_bottle_1', A, 7.9, 10.7, 90);
+        lit('psx_cardboard_box_1', A, 10.65, 9.3, 20); lit('psx_brick_1', A, 10.3, 6.3, 0); lit('hw_bricks_2', A, 2.4, 6.4, 30); lit('psx_wooden_crate_1', A, 8.9, 10.62, 12);
+        /* the drift */
+        lit('psx_wooden_crate_4', A, 1.5, 5.25, 8); lit('hw_shovel', A, 0.5, 5.3, 80); lit('psx_supply_crate_1', B, 11.3, 7.7, 30); lit('psx_brick_1_1', B, 9.7, 5.4, 70); lit('psx_tin_can_mp_1_rusty', B, 11.6, 5.3, 0);
+        P('missing_board', B, 9, 5, { face: 180 });
+        /* THE CAMP under the Chimney (who sleeps down here): a fire ring, mattresses, a chair, a pot, tins, bottles, a book */
+        P('campfire', B, 5, 7, dark); lit('psx_old_mattress_mp_1', B, 3.9, 7.5, 80); lit('psx_old_mattress_mp_1', B, 6.9, 7.3, 100); lit('psx_chair_mp_1', B, 5.9, 6.4, 200);
+        P('cauldron', B, 6, 8); lit('psx_tin_can_mp_1_rusty', B, 4.7, 6.5, 0); lit('psx_canned_food_mp_5_rusty', B, 4.4, 7.2, 0); lit('psx_glass_bottle_1', B, 6.6, 6.8, 30); lit('psx_glass_bottle_1', B, 3.7, 6.8, 120);
+        lit('psx_open_book_mp_1', B, 4.2, 7.9, 40); lit('psx_wooden_crate_1', B, 6.75, 7.9, 20); lit('psx_cardboard_box_1', B, 3.4, 8.3, 0);
+        /* the niches: candles, bones, straw, a rusted sword */
+        [[2.6, 3.45], [3.5, 3.4], [7.5, 3.4], [8.4, 3.45]].forEach((q, i) => lit(i % 2 ? 'hw_candles' : 'hw_candles_2', B, q[0], q[1], i * 50));
+        lit('femur', B, 3.1, 3.6, 70); lit('ulna', B, 7.9, 3.7, 10); lit('skull', B, 2.75, 4.8, 100); lit('psx_sword_mp_1', B, 3.2, 4.3, 140); lit('hw_bricks', B, 8.3, 4.9, 0);
+        /* the portcullis: chains on its frame, a lock on the floor */
+        put('wall_chains', B, 0.56, 4.95, 90); put('wall_chains', B, 0.56, 6.05, 90); lit('psx_padlock_2', B, 1.4, 5.3, 0); lit('femur', B, 1.6, 6.2, 60);
+        /* the Adit's foot */
+        lit('psx_metal_barrel_mp_3', B, 7.6, 11.5, 0); lit('psx_wooden_crate_5', B, 4.5, 9.3, 5); lit('hw_shovel', B, 6.9, 10.6, 20); lit('psx_brick_1', B, 5.6, 11.2, 0); lit('meshy_rope', B, 6.6, 11.55, 0);
+        /* webs on the timber, bats under the boards and round the shaft's lip */
+        [[A, 5.2, 0.95], [A, 0.5, 5.2], [B, 10.5, 7.8], [B, 4.2, 9.1], [B, 7.8, 10.9]].forEach((q, i) => lit(['hw_web', 'hw_web_2', 'hw_web_3'][i % 3], q[0], q[1], q[2], i * 90, { y: 2.3 }));
+        [[B, 4.9, 4.1, 6.3], [B, 6.1, 4.9, 6.35], [B, 5.6, 3.95, 6.3], [A, 1.2, 6.9, 3.5], [A, 6.2, 1.7, 3.5], [B, 5.5, 9.6, 3.6], [A, 9.2, 6.4, 7.5], [A, 3.4, 9.3, 8.2]].forEach((q, i) => lit(['bat_black', 'bat_brown', 'bat_grey'][i % 3], q[0], q[1], q[2], i * 47, { y: q[3] }));
+        /* floor stains (the room draws 80; this district adds six) */
+        ctx.grime('scorch', A, 3, 3, 1.5); ctx.grime('scorch', B, 5, 7, 1.6); ctx.grime('blood', B, 2, 7, 1.2); ctx.grime('blood', B, 6, 5, 1.3); ctx.grime('puddle', A, 6, 10, 1.6); ctx.grime('puddle', B, 5, 10, 1.4);
     },
     people(ctx) {
-        const O = ctx.O.workings, stand = (race, id, k) => { const q = nth(ctx.inner(id), k); if (q) ctx.native(race, id, q[0], q[1], 90, ctx.sayOf(O, race)); };
-        stand('ghoul', 'P01-01', 9); stand('skeleton', 'P00-01', 12);
+        const O = ctx.O.workings;
+        /* the old room's two, with their own lines: by the Sump ("do not wade the sump"), under the Chimney ("there is daylight down the chimney") */
+        ctx.native('ghoul', 'P01-01', 7, 2, 90, ctx.sayOf(O, 'ghoul')); ctx.native('skeleton', 'P00-01', 4, 6, 20, ctx.sayOf(O, 'skeleton'));
+        /* PASS 3 (mondo 11-16: more NPCs, none blocking a path): four more who fit, in the halls, never on a walk a square wide. No lines: none are invented.
+           The plan's homes table names the Flesheater and the Swamp Monster for the Sewers. */
+        ctx.native('flesheater', 'P01-01', 3, 3, 270); ctx.native('swamp monster', 'P01-01', 1, 7, 90); ctx.native('zombie', 'P00-01', 7, 6, 250); ctx.native('ghost', 'P00-01', 3, 3, 180);
     },
 };

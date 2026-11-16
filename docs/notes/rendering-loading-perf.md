@@ -1999,6 +1999,17 @@ What it is now (three-renderer.js, big rooms = `_hqChunkBig`, the room READY, no
   `_hqStageLeave` is skipped on a park) but NOT proven: no probe can start a fight there (`_hqEncounterRoomOkNow` refuses the
   HQ's own rooms; the Training Room's strike never fired). `window.EW_HQ_PARK_STAGE = true` tries it. NEXT: prove it on a
   plot dungeon fight or the first quest's Training Room fight, then drop the exception.
+- mondo 11-16 04:07, first word on his Mac (WebGPU): "the transition into battle and out of battle is a lot smoother", but
+  "overall its less fps": his F3 after a fight read 26.2 FPS with "tick: doors + residents + scene 15.6" ms (it is 1.3).
+  Cause: `_hqResume` cleared `H.nav` with the people (copied from the stage's re-peopling), so `_hqTickResidents` ->
+  `_hqNavBuild(HQ_NAV_BUDGET_MS)` built the city's whole walk map again after every fight, a budget of ms every frame until
+  done. The walk map is the room's: it stays now. RULE for a resume: reset what holds a PERSON (chars, rounds, residents'
+  bodies), never what is the ROOM's (nav, colliders, terrain, finds).
+  His quick way to test a return: stand on a hidden square and ESCAPE (one unit in the party makes it easy).
+  Same PR: `_hqResStart` on a resumed room keeps each resident's laid-out day (`tl`) when the day is the same (it laid every
+  timeline again). Probe after the fix (city, parked path, `playtest_handover.js` now prints skinned + chars): 70 skinned
+  meshes / 10 chars before the fight, 70 / 10 after: no body is left behind or doubled; 4,397 -> 4,384 merged meshes, 0 errors.
+  A probe run whose room is not READY at the strike takes the OLD path on purpose (`_hqParkOk` wants `H.ready`).
 PROOF (cloud browser, WebGL on llvmpipe through probe-fast.js, the new repo tool `node playtest_handover.js`; HEAD on 84580c2 +
 this change): Disaster City, a strike 3.5 m from the spawn, the fight drawn (the street, palms, cars from copies: 2,513),
 the enemy's hp set to 0 + `checkWin()`, BACK TO THE ROOM pressed. Before the fight: 43,095 meshes, 4,099 merged meshes, 49
