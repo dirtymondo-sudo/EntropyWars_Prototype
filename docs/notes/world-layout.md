@@ -43,7 +43,7 @@ as the inside of a plot-built place.
 | The D.U.M.B. | six rooms + CERN's ring | OLD + PLAN (36) | Hangar 18; HQ garage motor pool; the Cavern; Astral library (dream lab) | free |
 | Heaven + Hell + Vatican | Vatican x5, Hell x2, Heaven x2 | OLD + PLAN (3 rooms of 16) | HQ `continuity` painting; the Cavern fissure; Olympus (two ways); Camelot's sky castle | free |
 | Leylines | ley tunnels, Stonehenge, Göbekli Tepe, Babel; Technoticlan is its own site | OLD + PLAN (45) | Giza robbers' tunnel; Technoticlan; bays | free |
-| The Deep (with Atlantis) | the Abyss, the Temple of the Deep | OLD + PLAN (27) | Beach whirlpool; the Dutchman's hold | free |
+| The Deep (with Atlantis) | `site_prebuilt_atlantis_deep` (8 x 5, a drowned room) + INSIDE the Temple of the Deep (`site_prebuilt_atlantis_pocket`) | PLOTS (11-16; the old Abyss + Temple retired, kept as PvP board sources) | Beach whirlpool -> the Upwelling; the Dutchman's hold -> the wreck's hatch; HQ Room H-20 -> the Temple's inside | second |
 | Outer Space | `site_prebuilt_moon_plots` (5 x 4), `site_prebuilt_mars_plots` (5 x 4), `site_prebuilt_saturn_plots` (4 x 4), `site_prebuilt_singularity_plots` (4 x 4): four rooms, one a world, 72 plots (11-16, `bake-space.js`, plot plan 3) + the Spaceship x4 (handmade, stays). Hub `space` | PLOTS (first build 11-16; the Spaceship handmade) | the ship's collar (Moon, Mars, Saturn; and Antarctica); Moon <> Mars (the bore); Saturn <> the Singularity (the frame); HQ `observatorium` to the Singularity; four bays | second (tool), district M piloted, nine districts free |
 | Antarctica | the Station | OLD + PLAN (12) | the Inner Sun; Agartha; the Spaceship; bay | free |
 | The Astral Realm | waiting room, sea, nightmare, library | OLD + PLAN (36) | HQ `dreamlab`; Camelot mirror; D.U.M.B. dream lab; the Haunted House attic | free |
@@ -104,7 +104,7 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 | The Sewers (PLAN) | W The Sewers, O The Old Workings, T The Running Tunnels | none: not built |
 | The D.U.M.B. (PLAN) | R Research, S Sub-Level 7, C Command, P Level P3 (CERN = the ring) | none |
 | The Cavern (PLAN) | K The Cavern, H Hollow Earth, A Agartha | none |
-| The Deep (PLAN) | A Atlantis, T The Trench | none |
+| The Deep | C Atlantis, the Citadel (pilot: 3 passes), R Atlantis, the Rings, S The Sea Floor, T The Trench | not yet |
 | Leylines (PLAN) | G Göbekli Tepe, B Bug Colony, S Stonehenge, Y The Ley Lines (the road), T Babel, Z Technoticlan | none |
 | Heaven + Hell + Vatican (PLAN) | L Hell, V The Vatican, H Heaven, O Mount Olympus (now in the Mountains, so drop it here) | none |
 | Outer Space | the Moon: M The Mare, C The Crater, F The Far Side · Mars: Y Cydonia, V The Canyon, R The Rover Bay · Saturn: H The Hexagon, G The Ring Shard · the Singularity: D The Drop, A The Accretion Rim | yes since 11-16: `docs/areas/space/districts/<letter>.js` (ten files, the letters unique across the four rooms) |
@@ -191,7 +191,7 @@ thread). The Desert's sides and the city's Cove are fixed; the Mountains, the No
 | The Sewers | 16 | 7 (city x3, Woods, HQ x3) + the Strip, Cyberpunk, stadium | owner (the city) | its plan picture must be redrawn for the moved districts |
 | Heaven + Hell + Vatican | 48 in 3 rooms | 5 (Olympus x2, Camelot's sky castle, HQ painting, the Civic gate) | second (Mountains, Civic) | the sky castle waits mondo; two neighbours to coordinate |
 | The D.U.M.B. | 36 | 2 (Hangar 18, HQ garage) | second (Desert) | the White Rooms question (the plan moved them down; the Desert kept them up) |
-| The Deep | 27 | 2 (the whirlpool, the Dutchman) | second (Beach) | the Beach still waits mondo's first look; "The Deep to Area 51" unanswered |
+| The Deep | 40 | 3 (the whirlpool, the Dutchman, Room H-20) | second (Beach) | BUILT 11-16 (areas-complexes.md "THE DEEP ON PLOTS"); no way to Area 51 (mondo); `world_state_map.png` not redrawn for it yet |
 | The Cavern | 36 | 3 (HQ dungeon, Estate wells) | second (Estate) | wants the Sewers first (its main way in); plan exits out of date |
 | Leylines | 45 | 1 (Giza tunnel) | second (Desert) | the Bug Colony is new: needs models |
 | The Astral Realm | 36 | 3 (HQ, Camelot mirror, attic) | owner / second | A2 no. 2 first |
