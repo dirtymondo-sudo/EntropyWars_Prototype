@@ -592,6 +592,8 @@
             raw = opts.rawBase != null ? opts.rawBase : _baseSpellDmg(sp);
             if (raw <= 0) return 0;
             if (opts.rawBase == null) raw += _spellPowerOf(g, unit, sp);
+            // 🛹 Board Slam (`momentumSpend`): the Skater's banked Momentum lands as a second blow (battle.js _runPostEffects)
+            if (opts.rawBase == null && sp.momentumSpend && unit._momentum > 0) raw += sp.momentumSpend * Math.min(6, unit._momentum);
             damageType = sp.damageType === 'magic' ? 'magic' : 'physical';
             ignoreArmor = !!sp.ignoreArmor;
         } else {
@@ -7509,7 +7511,16 @@
                     const reach = _reach(g, t.x, t.y, t.z, e, _isLongRange(ds.sp));
                     if (reach > ds.er) continue;
                     if (!ds.sp.ignoresLineOfSight && blocked(t.x, t.y, e)) continue;
-                    const hit = scoreOffensiveHit(g, unit, e, ds.sp, v, { fromX: t.x, fromY: t.y, fromH: th, splash: false });
+                    /* 🛹 THE ROLL-IN (2026-11-16, the Skater polish): a walk in a straight line to this square banks a Momentum
+                       stack a square, so Board Slam from here is priced with the stacks she would arrive with */
+                    let _mom0 = null;
+                    if (ds.sp.momentumSpend && unit.race === 'skater' && (t.x === unit.x || t.y === unit.y)) {
+                        _mom0 = unit._momentum || 0;
+                        unit._momentum = Math.min(6, _mom0 + Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y));
+                    }
+                    let hit;
+                    try { hit = scoreOffensiveHit(g, unit, e, ds.sp, v, { fromX: t.x, fromY: t.y, fromH: th, splash: false }); }
+                    finally { if (_mom0 !== null) { if (_mom0 > 0) unit._momentum = _mom0; else delete unit._momentum; } }
                     const val = hit.val - ds.mp * tuneW(g, 'mpValuePerPoint');
                     if (val > bestShot) bestShot = val;
                 }

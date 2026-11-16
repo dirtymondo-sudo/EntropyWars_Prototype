@@ -10941,6 +10941,8 @@
             if (!payload.quiet) addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
             /* 🧗 stunned / frozen / put to sleep on the wall: the grip goes */
             if (target._climb && meta.blockAction && payload.id !== 'climbing') knockOffClimber(target, `— ${meta.colorText || meta.label.toLowerCase()}`);
+            /* 🛹 THE BAIL: a hold that stops the Skater rolling throws away her Momentum (_skaterBail) */
+            if (target._momentum > 0 && _skaterBailOn(payload.id)) _skaterBail(target, meta);
             /* 👁 THE RUDE AWAKENING (astral build 2): a status that stops a unit acting (Stun, Sleeping, Frozen...) or one on
                STATUS_DEFS.projecting.snapOn (Silence) breaks the projection. The spirit snaps home to its body, Spirit Walk's too. */
             if (payload.id !== 'projecting' && unitIsSpirit(target) && target._astralBodyId
@@ -14157,10 +14159,24 @@
         window._ceoPlan = _ceoPlan;
         /* 🛹 THE SKATER (2026-11-16, the new races): a walk that ends in a straight line from where it began banks one Momentum
            stack a square (STATUS_DEFS.momentum adds `gain`, up to 6). Host-side; the unit + status state-sync to the guest. */
-        function _skaterBankMove(unit, fx, fy, tx, ty, dist) {
+        function _skaterBankMove(unit, fx, fy, tx, ty, dist, trail) {
             if (!unit || unit.dead || unit._dying || unit.race !== 'skater') return;
             if (!(dist > 0) || (fx !== tx && fy !== ty)) return;
+            /* THE ROLL IS STRAIGHT (2026-11-16, the Skater polish): a path that bent round something and came back into line
+               is no roll. Every square walked (the trail) must sit on the line itself. */
+            if (Array.isArray(trail) && trail.some(t => t && ((fx === tx && t.x !== fx) || (fy === ty && t.y !== fy)))) return;
             applyStatusPayload(unit, { id: 'momentum', duration: 2, gain: dist }, '', unit);
+        }
+        /* 🛹 THE BAIL (2026-11-16, the Skater polish): a hold that stops her rolling (_skaterBailOn: Stun, Sleep, Root, Frozen,
+           Charm, Coiled, Roped; never her own Climbing) knocks her off the board and the banked Momentum is gone. The other side's answer to a big stack. */
+        function _skaterBailOn(id) { return id === 'stun' || id === 'sleep' || id === 'root' || id === 'frozen' || id === 'charm' || id === 'coiled' || id === 'tethered'; }
+        function _skaterBail(unit, meta) {
+            if (!unit || !(unit._momentum > 0)) return;
+            const n = unit._momentum;
+            clearStatus(unit, 'momentum');
+            delete unit._momentum;
+            addLog(`🛹 ${_ctName(unit)} bails: ${meta && (meta.colorText || meta.label) ? (meta.colorText || meta.label).toLowerCase() + ', ' : ''}${n} Momentum lost.`);
+            if (!_skipVisuals() && typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '🛹 BAIL!', 'debuff', { durationMs: 1000 });
         }
         const _GATOR_LIQUIDS = new Set(['water', 'deep_water', 'sludge', 'swamp']);
         function _gatorOnLiquid(x, y) {
@@ -43439,6 +43455,11 @@
                     const _echoN = spell.echoLastDealt ? calcSpellHitRiders({ base: 0, echo: target._lastHitDealt || 0, echoCap: 500 }).echoDmg : 0;
                     if (_echoN > 0) hit(target, _echoN, _echoN, _echoN, { damageType: dt, ignoreArmor: true, preScaled: true, exactDamage: true,
                         consumeMarked: false, allowMarkBonus: false, noRangeMult: true }, { tag: 'echo' });
+                    /* 🛹 Board Slam: the banked Momentum lands as its second blow (_runPostEffects), so the preview shows it too */
+                    if (spell.momentumSpend && (unit._momentum || 0) > 0) {
+                        const _mb = spell.momentumSpend * Math.min(6, unit._momentum);
+                        hit(target, _mb, _mb, _mb, baseOpts(spell.damageType || 'physical', { consumeMarked: false, allowMarkBonus: false }), { tag: 'momentum' });
+                    }
                     /* THE SPELL AUDIT FIX (2026-10-26): the execute rider (No Mercy, Ammit Devours, Termination Protocol) in the
                        preview — judged on the HP before the hit, or on the HP the hit leaves for an `executeAfterHit` row */
                     const _eh = plan.byId[target.id];
@@ -46403,7 +46424,7 @@
             // shove (resolveTileArrival). A flyer that lands at the end of its
             // move takes it too; one still in the air only meets the gravity field.
             resolveTileArrival(unit, { via: 'move' });
-            _skaterBankMove(unit, _originX, _originY, x, y, dist);   // 🛹 a straight roll banks Momentum
+            _skaterBankMove(unit, _originX, _originY, x, y, dist, opts.trail);   // 🛹 a straight roll banks Momentum
             _serpentFollow(unit, _originX, _originY, opts.trail);   // 🐍 the serpent's body follows the path
             _magicianVanish(unit);   // 🎩 Vanishing Act: an enemy ended beside a Magician with it set
 

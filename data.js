@@ -10276,8 +10276,8 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'momentum', duration: 2, gain: 3 }],
           desc: 'Finds a rail and rides it. +2 MOV this turn and banks 3 Momentum. Cooldown: 2 rounds.' },
         { id: 'nrBoardSlam', name: 'Board Slam', tier: 3, families: ['skateboarding'], cost: 75, apCost: 1, spellType: 'human',
-          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 110, range: 1, momentumSpend: 35,
-          desc: 'Brings the deck down hard. Deals MEDIUM physical damage to a Single Enemy beside her, plus 35 more for every Momentum stack, then spends them all.' },
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 110, range: 1, momentumSpend: 30,   // 35 → 30 (11-16 polish: a 4-square roll-in every turn hit ~1.5× a T3)
+          desc: 'Brings the deck down hard. Deals MEDIUM physical damage to a Single Enemy beside her, plus 30 more for every Momentum stack, then spends them all.' },
     ],
     'tech ceo': [
         /* THE TAKEOVER (2026-11-16, the new races; mondo added the Tech CEO): the one race that owns the board's objects. The three
@@ -14196,7 +14196,7 @@ const STATUS_LIBRARY_DESCS = {
     debt:      'Owes the bank: when it ends (or is cleansed) the loan comes due. Pays back the loan with interest (never below 1 HP) and the lender heals that much. Going down first leaves the lender with the loss.',
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
     submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
-    momentum:  'Rolling: every square moved in a straight line banks a stack (up to 6). Board Slam spends them for damage. Fades a turn after the Skater stops.',
+    momentum:  'Rolling: every square walked in a straight line banks a stack (up to 6). Board Slam spends them for damage. Fades a turn after the Skater stops. Stunned, Rooted, Frozen or put to sleep, she bails and loses them all.',
     trickSet:  'A trick waits face down (Doves, Vanishing Act or Switcheroo, in turn). It springs once, on its cue.',
     pickedCard: 'Holding the Magician\'s card: every spell it casts costs 40 more MP.',
     burrowed:  'Under the ground: hidden with Invisible until it attacks or its turn ends.',

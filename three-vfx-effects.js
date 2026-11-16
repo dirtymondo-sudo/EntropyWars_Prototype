@@ -11786,6 +11786,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (state.units.some(function (u) { return u && u.race === 'valkraye'; })) _wpnDripQueue.unshift('wing:angel');
                 if (state.units.some(function (u) { return u && u.race === 'quarterback'; })) _wpnDripQueue.unshift('race:homosapien');
                 if (state.units.some(function (u) { return u && u.race === 'super sentai'; })) _wpnDripQueue.unshift('race:mech');
+                if (state.units.some(function (u) { return u && u.race === 'skater'; })) _wpnDripQueue.unshift('skateDeck');   // 🛹 her deck (THE SKATER'S LOOKS)
             }
         } catch (e) {}
         var step = Math.max(500, ms || 4000);
@@ -64805,6 +64806,140 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     aoe = function (centerTx, centerTy, spellType, spellId) { return _rvRun(_rvCtxFor(spellId) || _rvCtx, _rvAoe0, this, arguments); };
     var _rvBolt0 = fireBoltDirect;
     fireBoltDirect = function (presetKey, params) { return _rvRun(_rvCtx || _RV_BASIC, _rvBolt0, this, arguments); };
+    /* ══ THE SKATER'S LOOKS (2026-11-16, the new races: Kickflip, Grind, Board Slam) ════════════════════════════════════
+       Her own deck rides every cast: the Meshy skateboard the walk-mode rider stands on (`skateDeck`, R2 Assets/world/props/
+       meshy/, warmed by the drip when a Skater is on the board; no deck while the file streams, the rest still plays). Speed
+       is drawn in the VIEWER's side colours (the Riot pass: own side cyan-blue, the other side pink-orange); sparks and dust
+       keep their own colours. Small, quick, low on the body: the caster, the target, the hit and the number stay clear.
+         · Kickflip (escape style 'kickflip', three-renderer.js _escStyleAt): the pop off the tile, the deck turns one full
+           flip under her feet through the hop, she lands on it in a ring of dust.
+         · Grind: the deck slides under her on a slant, sparks pour off the trucks, speed lines run round her.
+         · Board Slam (`hitMs`: the damage lands on the slam): the deck comes over from her side and down tail-first on the
+           target; the Momentum she spends rings out round the hit, one ring a stack (read off the caster at the cast).
+       Looks only, fired from the casts' own VFX intents (relayed like every spell's), so the guest sees the same.
+       Kill-switch: window.EW_NO_SKATER_VFX. */
+    _WPN_MODELS.skateDeck = { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_a_skateboard_0915212313_texture.glb', axis: 'z', matte: true };
+    if (typeof window !== 'undefined') window._sk8DeckState = function () { var e = _wpnCache.skateDeck; return e ? { loading: !!e.loading, failed: !!e.failed, ready: !!e.root, queued: !!e.queued } : null; };   // probe handle
+    function _sk8Off() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_SKATER_VFX); }
+    function _sk8Cols(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    /* the deck, `len` long, wheels down, nose on +Z; null while the file streams */
+    function _sk8Deck(len) {
+        if (!_wpnReady('skateDeck')) return null;
+        var inst = _wpnInstance('skateDeck', len);
+        if (!inst) return null;
+        inst.group.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; });
+        var piv = new THREE.Group(); piv.add(inst.group); piv.userData.deck = inst;
+        return piv;
+    }
+    /* a speed line: a thin glow strip lying along `yaw`, `L` long */
+    function _sk8Line(col, L, w) {
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(w, L), _finBasic(col, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() }));
+        m.rotation.x = -Math.PI / 2; m.renderOrder = 158;
+        var g = new THREE.Group(); g.add(m); g.userData.mat = m.material;
+        return g;
+    }
+    function _sk8Sparks(x, y, z, n, dirX, dirY) {
+        if (!_canSpawn()) return;
+        for (var i = 0; i < n; i++) {
+            _spawn({ x: x + rn(-4, 4), y: y + rn(-4, 4), z: z + rn(0, 4), mode: 'billboard', sprite: 'steel-spark', tint: i % 3 ? 0xffc65a : 0xffffff,
+                vx: -dirX * rn(90, 220) + rn(-50, 50), vy: -dirY * rn(90, 220) + rn(-50, 50), vz: rn(40, 160), gravity: 420, drag: 0.6,
+                ml: rn(220, 420), size0: rn(4, 7), size1: 1, opacity0: 1, opacity1: 0 });
+        }
+    }
+    /* KICKFLIP: the pop, the flip under her feet, the landing */
+    _ESC_LOOKS.nrKickflip = { style: 'kickflip', ms: 620, draw: function (fx, fy, tx, ty, land) {
+        if (_sk8Off()) return;
+        var u = _fx5UnitAt(tx, ty) || _fx5UnitAt(fx, fy), C = _sk8Cols(u), ts = _capTs();
+        _capPuff(fx, fy, 'dust-puff', 6, { r: 0.3, h: 0.04, out: 120, vz0: 5, vz1: 30, s0: 12, s1: 20, sEnd: 34, op: 0.45 });
+        _capRing(fx, fy, C.a, 0.7, 320, 3);
+        var wa = _worldPos(fx, fy), wb = _worldPos(tx, ty), yaw = Math.atan2(wb.x - wa.x, wb.z - wa.z);
+        /* the deck under her feet: it follows the body, turns one full flip about its long axis through the air, levels for the landing */
+        var deck = _sk8Deck(ts * 0.65);
+        if (deck && u && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBodyWorld) {
+            var g = new THREE.Group(), id = u.id, last = null; g.add(deck); g.rotation.y = yaw; deck.userData.deck.setFade(0);
+            var lines = [];
+            for (var i = 0; i < 3; i++) { var sl = _sk8Line(i === 1 ? C.b : C.a, ts * 0.5, ts * 0.025); sl.position.set((i - 1) * ts * 0.07, ts * 0.05, -ts * 0.38); g.add(sl); lines.push(sl); }
+            _sigRunOwned(g, 900, function (el) {
+                var p = ThreeRenderer.unitBodyWorld(id);
+                if (p && el < 640) { g.position.copy(p); last = p; }
+                var k = _sigClamp01((el - 60) / 470);
+                deck.rotation.z = Math.PI * 2 * _capSmooth(k);   /* the flip: once round its length */
+                deck.position.y = ts * 0.03;
+                deck.userData.deck.setFade(Math.min(1, el / 60) * (1 - _sigClamp01((el - 720) / 180)));
+                var lf = (el < 540 ? Math.min(1, el / 80) : 1 - _sigClamp01((el - 540) / 160)) * 0.7;
+                for (var j = 0; j < lines.length; j++) lines[j].userData.mat.opacity = lf * (0.7 + 0.3 * Math.sin(el * 0.03 + j));
+            });
+        }
+        if (land) _capAt(560, function () {
+            _capPuff(tx, ty, 'dust-puff', 8, { r: 0.35, h: 0.04, out: 150, vz0: 5, vz1: 30, s0: 14, s1: 22, sEnd: 40, op: 0.5 });
+            _capRing(tx, ty, C.a, 0.85, 380, 3);
+            var c = tilePx(tx, ty); _sk8Sparks(c.x, c.y, unitSurfaceZ(tx, ty) + 4, 6, Math.sin(yaw), Math.cos(yaw));
+        });
+    } };
+    EFFECTS['nrKickflip_tele'] = { arrivalDelayMs: 0, layers: [] };   /* the mapping battle.js asks for (hasMapping 'teleport'); _fireTeleport draws the look above */
+    SPELL_MAP['nrKickflip'] = { teleport: 'nrKickflip_tele' };
+    /* GRIND: the deck under her on a slant, sparks off the trucks, speed lines round her */
+    EFFECTS['nrGrind_center'] = { layers: [
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [320, 520], offsetXY: 10, z: [2, 8], vxRange: 70, vyRange: 70, vzRange: [10, 40], drag: 0.9, size0: [10, 16], size1: [24, 34], opacity0: 0.4 },
+    ] };
+    EFFECTS['nrGrind_aura'] = { aoeRadius: 0, impactCenterEffect: 'nrGrind_center' };
+    SPELL_MAP['nrGrind'] = { aura: 'nrGrind_aura' };
+    _spell3DGeometry['nrGrind'] = function (tx, ty) {
+        if (_sk8Off()) return;
+        var u = _fx5UnitAt(tx, ty), C = _sk8Cols(u), F = _nrvFrame(tx, ty), ts = F.ts;
+        var yaw = 0;   /* the way she faces (the renderer's own rule: GAME.getUnitFacing → board dx, dy → world yaw) */
+        try { var f = (u && typeof GAME !== 'undefined' && GAME.getUnitFacing) ? GAME.getUnitFacing(u) : (u && u.facing); if (f && (f.dx || f.dy)) yaw = Math.atan2(f.dx, f.dy); } catch (e) {}
+        var deck = _sk8Deck(ts * 0.65), dg = new THREE.Group(); dg.rotation.y = yaw; F.g.add(dg);
+        if (deck) { deck.rotation.x = -0.22; deck.position.y = ts * 0.04; deck.userData.deck.setFade(0); dg.add(deck); }
+        var lines = [];
+        for (var i = 0; i < 6; i++) {
+            var a = i * Math.PI / 3 + rn(-0.2, 0.2), r = ts * rn(0.32, 0.42), sl = _sk8Line(i % 2 ? C.b : C.a, ts * 0.42, ts * 0.022);
+            var hold = new THREE.Group(); hold.rotation.y = a; sl.position.set(r, ts * rn(0.1, 0.55), 0); hold.add(sl); F.g.add(hold);
+            lines.push({ h: hold, s: sl, a: a, sp: rn(0.007, 0.011) });
+        }
+        _capRing(tx, ty, C.a, 0.75, 420, 3);
+        var c = F.c, z0 = unitSurfaceZ(tx, ty) + 5, sx = -Math.sin(yaw), sy = -Math.cos(yaw);
+        _sigRunOwned(F.g, 1100, function (el) {
+            var fin = Math.min(1, el / 90) * (1 - _sigClamp01((el - 860) / 240));
+            if (deck) { deck.userData.deck.setFade(fin); deck.position.z = -ts * 0.05 * Math.sin(el * 0.012); }
+            for (var j = 0; j < lines.length; j++) { var L = lines[j]; L.h.rotation.y = L.a + el * L.sp; L.s.userData.mat.opacity = 0.6 * fin; }
+            if (el < 820 && (el | 0) % 3 === 0) _sk8Sparks(c.x + sx * ts * 0.14, c.y + sy * ts * 0.14, z0, 2, -sx, -sy);
+        });
+    };
+    /* BOARD SLAM: the deck over and down on the target, then one ring a spent stack */
+    EFFECTS['nrBoardSlam_impact'] = { shake: 'normal', layers: [
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [320, 560], offsetXY: 12, z: [2, 10],
+          vxRange: 110, vyRange: 110, vzRange: [20, 60], gravity: 80, drag: 0.9, size0: [12, 20], size1: [30, 46], opacity0: 0.5 },
+    ] };
+    SPELL_MAP['nrBoardSlam'] = { impact: 'nrBoardSlam_impact' };
+    _spell3DGeometry['nrBoardSlam'] = function (tx, ty, r, x) {
+        if (_sk8Off()) return;
+        x = x || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var cu = _fx5UnitAt(from.x, from.y), C = _sk8Cols(cu), stacks = Math.max(0, Math.min(6, (cu && cu._momentum) || 0));
+        var yaw = Math.atan2(-ln.dx, -ln.dz), deck = _sk8Deck(ts * 0.72), hold = new THREE.Group();
+        hold.rotation.y = yaw; F.g.add(hold);
+        var arm = new THREE.Group(); hold.add(arm);   /* swings from over her shoulder (behind, high) down onto the target */
+        if (deck) { deck.position.set(0, ts * 0.62, 0); deck.rotation.x = Math.PI / 2; deck.userData.deck.setFade(0); arm.add(deck); }
+        arm.position.set(0, ts * 0.05, -ts * 0.55);
+        var HIT = 220, hit = false, rings = [];
+        _sigRunOwned(F.g, 1200, function (el) {
+            var k = _sigClamp01(el / HIT);
+            arm.rotation.x = -1.9 + 1.9 * _sigEaseInCubic(k);           /* up and over, faster as it falls */
+            arm.position.z = -ts * 0.55 + ts * 0.5 * _capSmooth(k);
+            if (deck) deck.userData.deck.setFade(Math.min(1, el / 50) * (1 - _sigClamp01((el - 820) / 240)));
+            if (el >= HIT && deck) arm.rotation.x = Math.sin(_sigClamp01((el - HIT) / 260) * Math.PI) * -0.25;   /* the bounce off the head */
+            if (el >= HIT && !hit) {
+                hit = true;
+                _capRing(tx, ty, C.a, 0.9, 360, 3);
+                _capShards(tx, ty, 'wood', { n: 5, lite: true, height: 0.5 });
+                var c = F.c; _sk8Sparks(c.x, c.y, unitSurfaceZ(tx, ty) + ts * 0.5, 8, ln.ux, ln.uz);
+                for (var s = 0; s < stacks; s++) (function (s) { _capAt(90 + s * 70, function () { _capRing(tx, ty, s % 2 ? C.b : C.a, 0.55 + s * 0.12, 420, 6 + s * 4); }); })(s);
+            }
+        });
+    };
+    _spell3DGeometry['nrBoardSlam'].hitMs = 220;
+
     /* the floor under a vfx px spot (three-vfx.js keeps an atmosphere particle above it when it steps back) */
     var _rvFloorMemo = new Map(), _rvFloorAt0 = 0;
     function _rvFloorAt(px, py) {

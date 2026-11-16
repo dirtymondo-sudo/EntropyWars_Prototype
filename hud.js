@@ -4014,9 +4014,11 @@ function _hrlgStatusChips(unit) {
     const sDef = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[sk] : null;
     if (!sDef) continue;
     const turns = (typeof getStatusValue === 'function') ? getStatusValue(unit, sk) : 0;
+    /* 🛹 Momentum wears its stack count (MOM 4): the other side reads how big the Board Slam is before it lands */
+    const _stk = (sk === 'momentum' && unit._momentum > 0) ? unit._momentum : 0;
     chips.push({
-      key: 'st-' + sk, label: sDef.short || sk, bg: _HRLG_SB_COLORS[sk] || '#555',
-      title: (sDef.label || sk) + (turns > 0 ? ' — ' + turns + ' turn' + (turns > 1 ? 's' : '') + ' left' : ''),
+      key: 'st-' + sk, label: (sDef.short || sk) + (_stk ? ' ' + _stk : ''), bg: _HRLG_SB_COLORS[sk] || '#555',
+      title: (sDef.label || sk) + (_stk ? ' ×' + _stk : '') + (turns > 0 ? ' — ' + turns + ' turn' + (turns > 1 ? 's' : '') + ' left' : ''),
     });
   }
   /* 🛡 THE CHIVALRY BADGE (battle.js getChivalryGuardian): the pledged ward wears CHV until the oath is spent */
