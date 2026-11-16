@@ -2921,14 +2921,20 @@ squares, rows and props; R = carriageway, P = walk, . = yard, D = door) and then
   Now tight to the kerb (z 63 -+ 5.86) and facing with the traffic (the city drives on the right: north side west, face 270; south side east, face 90).
 - **THE STREET STAIRS** (`subway0/1`): stood across square lines (x 3.5 / 38.5); the east one half on the square before the Transit court's east door, in
   its walk; the well was black paint anyone walked over; the lamps were a cylinder under a half ball, near white (the upside-down bowls again).
-  Rebuilt: each fills two whole yard squares beside the walk (x 1.75 / 40.25, z 10.5..17.5, mouth south), an iron and glass kiosk with a barrel roof
-  over the stair, green GLOBES (two tapers + a half ball, glow 0.7 so they stay green), a shut folding gate with CLOSED on it (there is no room
-  below), and the two squares block (`walls` + `wallStoreys: 1`: a three-storey block would have stood in the roof bridge RF91 above the east one).
-  The edge planter on the east one's square steps one square east (`clear: [hx, hz, dx, dz]`).
+  Rebuilt: each fills two whole yard squares beside the walk, its mouth on the walk: the west one at (1.75, 14), mouth south; the east one at
+  (40.25, 28), south of the court's east walk, `rot: 180`, mouth north (an OPEN piece takes `rot` now). An iron and glass kiosk with a barrel
+  roof over the stair, green GLOBES (two tapers + a half ball, glow 0.45 so they stay green), a shut folding gate with CLOSED on it (there is
+  no room below), and the two squares block (`walls` + `wallStoreys: 1`). A bench on the east one's square steps two squares south along its
+  fence (`clear: [hx, hz, dx, dz]`). NEVER UNDER A ROOF BRIDGE: the game stands the bridge's piers on the ground under it; the east kiosk first
+  stood under RF91 (z 10.5..14) and a pier came up through its roof (seen on screen).
 - **THE SIDEWALK SHED**: OUT. It stood alone on the north pavement in front of an open lot and the stair `dc:stair:P04-06S`, against no building.
   No building of the district fronts the street's pavement, so there is no honest place for it there (ask mondo before it comes back on a wall).
 - **THE CARTS**: the two `hot_dog_stand` stood in the middle of the pavement, which is ONE square wide (each shut it; the west one stood 9 m from the
-  market's own hot dog stand). Now on yard squares behind the pavement (8.75, 50.75) and (40.25, 75.25).
+  market's own hot dog stand). Now on yard squares behind the pavement (8.75, 50.75) and (40.25, 75.25), long side along the street (face 90 / 270).
+- **APARTMENTS A HAD NO UPPER WALLS** (the worst find; not from the New York pass): in `apartments()` the box of storeys 2 to 5 had slid into the
+  trailing `//` comment of the line above it on 11-14 (the residents' bedrooms pass), so for two days the block was a ground floor, two glass
+  bay columns and a roof in the air, and the New York pass hung its fire escapes on nothing. The statement is back on its own line. RULE: never
+  end a line with a `//` comment when code follows in the same edit; the other district files were scanned for the same slip (none).
 - **THE NEWS BOXES**: stood mid-pavement with their fronts to the road. Now at the kerb's edge, fronts to the walkers; the tool's prop check
   (`prop-check.txt`) caught one on a kerb lamp (lamps: north kerb x = -77 + 21k, south kerb x = -66.5 + 21k), moved clear.
 - **THE FIRE ESCAPES** (Apartments A) and **THE STOOPS** (Townhouse row): the rails were solid plates (a black band across every floor; black blocks

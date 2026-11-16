@@ -89,7 +89,9 @@ B['P07-04-B1'] = { row: { storeys: 1 }, parts(door) { const a = sheet();
 
 /* 7 · APARTMENTS A — the repeatable block: stone foot, terracotta floors, two bay stacks, a cornice, a water tank */
 function apartments(sx, sz, st, tint, baySide, door) { const a = sheet(), h = st * 3.5;
-    if (door) a.shell(sx, 3.5, sz, STUCCO, 0xe6dfd0, door); else a.box(0, 0, 0, sx + 0.1, 3.5, sz + 0.1, STUCCO, 0xe6dfd0, { top: false });   // a walk-in's ground floor has the real doorway (11-14, the residents' bedrooms) a.box(0, 3.5, 0, sx + 0.1, h - 3.5, sz + 0.1, G_RES, tint, { top: false, glow: 0.12 });
+    if (door) a.shell(sx, 3.5, sz, STUCCO, 0xe6dfd0, door); else a.box(0, 0, 0, sx + 0.1, 3.5, sz + 0.1, STUCCO, 0xe6dfd0, { top: false });   // a walk-in's ground floor has the real doorway (11-14, the residents' bedrooms)
+    /* (11-16: this line had slid into the comment above on 11-14, so Apartments A stood for two days as a ground floor, two bay columns and a roof in the air) */
+    a.box(0, 3.5, 0, sx + 0.1, h - 3.5, sz + 0.1, G_RES, tint, { top: false, glow: 0.12 });
     a.box(0, h, 0, sx + 1.1, 0.6, sz + 1.1, ALU, 0xf2ecde, { under: true }); a.box(0, h + 0.6, 0, sx, 0.7, sz, BRICK, 0xb86a58, { keyTop: CONC, tintTop: 0x8a8a86 });
     const n = { W: [-1, 0], E: [1, 0], N: [0, -1], S: [0, 1] }[baySide];
     for (const o of [-0.28, 0.28]) { if (n[0]) a.box(n[0] * (sx / 2 + 0.6), 3.5, o * sz, 1.2, h - 5.25, 3.2, G_RES, 0xf0e6d6, { glow: 0.12 }); else a.box(o * sx, 3.5, n[1] * (sz / 2 + 0.6), 3.2, h - 5.25, 1.2, G_RES, 0xf0e6d6, { glow: 0.12 }); }
@@ -1018,7 +1020,7 @@ const NYC_PROPS = [
        They stood in the middle of the kerb squares, 0.45 m inside the lane the city's cars drive (a car drove through each cab's side), nose against the traffic. */
     { key: 'car_taxi', x: -59.5, z: 57.14, face: 270 }, { key: 'car_taxi', x: -3.5, z: 68.86, face: 90 }, { key: 'car_taxi', x: 38.5, z: 57.14, face: 270 }, { key: 'car_taxi', x: 63, z: 68.86, face: 90 },
     /* THE CARTS (11-16): on yard squares behind the pavement. They stood in the middle of the pavement, which is ONE square wide: each shut it. */
-    { key: 'hot_dog_stand', x: 8.75, z: 50.75, face: 180 }, { key: 'hot_dog_stand', x: 40.25, z: 75.25, face: 0 },
+    { key: 'hot_dog_stand', x: 8.75, z: 50.75, face: 90 }, { key: 'hot_dog_stand', x: 40.25, z: 75.25, face: 270 },   // (face 90 / 270 = the cart's long side along the street; at 0 / 180 it stood end-on to it)
     /* the news boxes (11-16): at the kerb's edge, their fronts to the people walking (they stood mid-pavement, fronts to the road) */
     { key: 'newspaper_rack', x: -11.6, z: 55.45, face: 0 }, { key: 'newspaper_rack', x: 24.9, z: 70.55, face: 180 }, { key: 'newspaper_rack', x: -36.4, z: 70.55, face: 180 },
 ];
