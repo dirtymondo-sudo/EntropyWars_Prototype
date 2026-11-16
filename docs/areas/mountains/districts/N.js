@@ -28,13 +28,18 @@
    - THE FROZEN LAKE: walked and skated on, a pipe grind rail round its north shore
    - Night sky, snow pines in the plan's tree squares (the tool's tree zones)
 
+   - THE ATMOSPHERE (pass 4): a real flame (`hearth_fire`) in every hearth, braziers at the Pole, the lake, the Sleigh Road and the two south ways out
+
    KNOWN MISSING OR WRONG
    - No Ice Queen is placed. No encounter table. Nobody stands inside a house (Santa's old line: "The workshop is empty because everyone is on the list.")
-   - The lake's ice reads like the snow at night (the tool's paint: `ice_1` beside `ice`)
+   - The five boards (POST OFFICE, BAKERY, TOY SHOP, STABLE, COAL) are plain labels: waiting for mondo's word
    - The world plan's Ice Wall is still open with mondo: do not build it without his word
+   - NOT A DISTRICT FILE'S TO FIX (the tool's or the engine's; asked of mondo 11-16): no falling snow, no sound bed and no aurora (the walked rooms have
+     no hook for any of the three); the lake's ice reads like the snow at night (the tool's paint: `ice_1` beside `ice`); one tree-zone kind (`xmas_pine`)
+     is a bright green summer tree; the zone pines' skirts are 4 m wide and blurred up close and one covers half the Sleigh Road's trail
 
    NEEDS A MODEL (nothing in the catalogue fits; no stand-in is placed)
-   - a reindeer (the Stable has none), a street lamp / lantern post for the lanes, a mail box, a sled
+   - a reindeer (the Stable has a sleigh and straw, no animal), a mail box for outside the Post Office, a sled, an axe and a chopping block for the wood
 
    THE TOOL'S, NOT YOURS (shared pieces that stand in this district)
    - The Pass Gate door `pass` (P03-01, east wall), the sleigh road's way out to Camelot (P03-03, south wall; link `northpole_camelot`), DOOR HQ's bay door (P01-03, south wall)
@@ -71,7 +76,7 @@ exports.apply = ctx => {
   SHOP.put('psx_table_large_3', -2, -2, { face: 90 }); SHOP.put('psx_table_large_3', -2, -7, { face: 90 }); SHOP.put('xmas_hammer', -2, -2, { y: 0.82 }); SHOP.put('xmas_hammer_2', -1.2, -7, { y: 0.82 });
   SHOP.put('xmas_cocoa', -2.6, -6.6, { y: 0.82 }); SHOP.put('xmas_gingerbread', -2.4, -2.6, { y: 0.82 }); SHOP.put('xmas_gift', -6.8, -8.6); SHOP.put('xmas_gift_2', -5.6, -8.9, { face: 30 }); SHOP.put('xmas_gift_3', -7, -6.6);
   SHOP.put('xmas_gift_4', 6.6, 6.8, { face: 60 }); SHOP.put('cardboard_boxes', -6.6, 6.4); SHOP.put('cardboard_box', -5.2, 7.4, { face: 40 }); SHOP.put('sea_chest', 6.4, 2.2, { face: 270 }); SHOP.put('xmas_tree', 5.6, 8.0, { h: 3.2, floor: true });
-  SHOP.put('xmas_stocking', 6.5, -8.86, { y: 1.5, face: 180 }); SHOP.put('xmas_stocking_2', 7.8, -8.86, { y: 1.5, face: 180 }); SHOP.put('campfire', SHOP.fw / 2 - 1.6, -SHOP.fd / 2 + 0.78, { span: 1.1 }); SHOP.put('xmas_garland', 0, -10.12, { mount: 0, y: 5.3, face: 180 }); SHOP.put('xmas_wreath', 1.5, -10.12, { mount: 0, y: 4.5, face: 180 });   // (hung on the wall: see WALL() in build)
+  SHOP.put('xmas_stocking', 6.5, -8.86, { y: 1.5, face: 180 }); SHOP.put('xmas_stocking_2', 7.8, -8.86, { y: 1.5, face: 180 }); SHOP.put('hearth_fire', SHOP.fw / 2 - 1.6, -SHOP.fd / 2 + 0.8, { w: 1.2, h: 1.05 }); SHOP.put('xmas_garland', 0, -10.12, { mount: 0, y: 5.3, face: 180 }); SHOP.put('xmas_wreath', 1.5, -10.12, { mount: 0, y: 4.5, face: 180 });   // (hung on the wall: see WALL() in build)
   R.anchor('hearth', { x: SHOP.at(SHOP.fw / 2 - 1.6, -SHOP.fd / 2 + 1.25)[0], z: SHOP.at(SHOP.fw / 2 - 1.6, -SHOP.fd / 2 + 1.25)[1], face: SHOP.face(180) });   // the fireplace: the link `northpole_haunted`
   /* THE COTTAGES (the exteriors pass, 11-16): the first look showed sixteen copies of one white town house prop, too wide for their squares. Each run of
      the plan's `B` squares is now a built house of its own you can walk into: [id, plot, lx, ly, front, wall tint, opts]. */
@@ -91,7 +96,7 @@ const pane = (a, x, y, z, w, h, ew, shut, ctx, inn) => {   // a lit window: a wa
 const bulbs = (a, x0, x1, y, z) => { const n = Math.max(2, Math.round((x1 - x0) / 0.7)); for (let i = 0; i <= n; i++) a.box(x0 + (x1 - x0) * i / n, y - (i % 2 ? 0.1 : 0), z, 0.13, 0.13, 0.13, 'marble_light', BULBS[i % 4], { glow: 1.6 }); };
 const lamp = (a, x, top, z) => { a.box(x, top - 0.5, z, 0.03, 0.5, 0.03, 'marble_light', 0x2a2a2a); a.cyl(x, top - 0.52, z, 0.2, 0.05, 'marble_light', 0x2a2a2a, { seg: 8 }); a.cyl(x, top - 0.74, z, 0.11, 0.22, 'marble_light', 0xffb050, { seg: 10, glow: 1.2 }); a.cyl(x, top - 0.78, z, 0.13, 0.04, 'marble_light', 0x2a2a2a, { seg: 10 }); };
 /* a hearth against the back wall (cx along it, k = its size): two piers, a head, a dark back, a shelf, the breast up to the ceiling. Its mouth is OPEN:
-   the fire is the catalogue's `campfire` (a real light), put in by build at z -d/2 + 0.78 (nearer the wall it would stand on the wall: see WALL()) */
+   the fire is the catalogue's `hearth_fire` (the battle's flame on three logs, a real light), put in by build at z -d/2 + 0.78 (nearer the wall it would stand on the wall: see WALL()) */
 const hearth = (a, cx, d, top, k, WD2) => { const z0 = -d / 2 + 0.3, zc = z0 + 0.45 * k, B = 'bricks_2', T = 0xb86a54, g = { glow: 0.8 };
     for (const s of [-1, 1]) a.box(cx + s * 0.75 * k, 0, zc, 0.4 * k, 1.1 * k, 0.9 * k, B, T, g); a.box(cx, 1.1 * k, zc, 1.9 * k, 0.4 * k, 0.9 * k, B, T, g);
     a.box(cx, 0, z0 + 0.04, 1.1 * k, 1.1 * k, 0.06, B, 0x241a16, g); a.box(cx, 0.16, zc, 1.1 * k, 0.04, 0.9 * k, B, 0x4a3a34, g);
@@ -164,7 +169,7 @@ exports.build = ctx => {
     const G = 1.9, UP = h => h < 1 ? h : r2(G + h), WALL = h => ({ mount: 0, y: h >= 2.03 ? r2(G + h) : r2(h - 2.03) });
     const hearthSide = h => (h.q.chimney || 0);
     const xmas = (h, x, z) => { h.put('xmas_tree', x, z, { h: 1.9, floor: true }); h.put('xmas_gift', x - 0.7, z - 0.2, { face: 20 }); h.put('xmas_gift_3', x - 0.3, z - 0.7, { face: 70 }); };
-    const mantel = h => { const c = hearthSide(h); if (!c) return; h.put('campfire', c, -2.72, { span: 0.8 }); h.put('xmas_stocking', c - 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_stocking_2', c + 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_garland', c, -2.18, { y: 1.66, face: 180 }); };
+    const mantel = h => { const c = hearthSide(h); if (!c) return; h.put('hearth_fire', c, -2.72, { w: 0.85, h: 0.75 }); h.put('xmas_stocking', c - 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_stocking_2', c + 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_garland', c, -2.18, { y: 1.66, face: 180 }); };
     /* a home with a bed: the bed away from the hearth, a wardrobe, a rocking chair at the fire */
     const bedHome = (h, tree) => { const c = hearthSide(h), s = c > 0 ? -1 : 1;
         h.put('psx_bed_1', s * 2.0, -2.0, { face: 180 }); h.put('psx_bedside_table_1', s * 0.75, -2.85, { face: 180 }); h.put('table_lamp', s * 0.75, -2.85, { y: 0.64 });
@@ -261,11 +266,13 @@ exports.build = ctx => {
     put('P00-02', 'xmas_snowman_2', 5, 4); dec('P00-02', 'stump', 3, 3); dec('P00-02', 'stump', 4, 3); lampPost('P01-02', 9, 4, 1); put('P01-02', 'park_bench', 9, 6, { face: 270 }); dec('P01-02', 'xmas_gift_3', 8, 6);
     put('P00-03', 'xmas_snowman', 3, 4); dec('P00-03', 'stump', 6, 6); lampPost('P00-03', 8, 5, 1); dec('P00-03', 'rabbit', 5, 7);
     /* THE SLEIGH ROAD (P02-02, P03-02): freight for the sleighs, a camp at the turn */
-    lampPost('P02-02', 3, 5, 0); lampPost('P02-02', 7, 6, 1); put('P02-02', 'psx_wooden_crate_2', 4, 4); dec('P02-02', 'cardboard_boxes', 6, 4); put('P02-02', 'signpost', 4, 7, { face: 180 }); dec('P02-02', 'meshy_burlap_sack', 3, 6); dec('P02-02', 'xmas_gift_2', 6, 6);
+    lampPost('P02-02', 3, 5, 0); lampPost('P02-02', 7, 6, 1); put('P02-02', 'psx_wooden_crate_2', 4, 4); dec('P02-02', 'cardboard_boxes', 6, 4); put('P02-02', 'signpost', 5, 8, { face: 180 });   // (4,7 stood inside the skirt of a tree-zone pine) dec('P02-02', 'meshy_burlap_sack', 3, 6); dec('P02-02', 'xmas_gift_2', 6, 6);
     lampPost('P03-02', 8, 6, 1); dec('P03-02', 'fallen_log', 7, 7); dec('P03-02', 'stump', 4, 7); put('P03-02', 'sleigh', 7, 8, { face: 200 }); dec('P03-02', 'xmas_gift', 6, 8);
     /* THE SNOWLINE (P01-03, P02-03, P03-03): the last lamps before the ways out */
     lampPost('P01-03', 4, 6, 0); lampPost('P01-03', 8, 4, 1); dec('P01-03', 'xmas_gift_3', 5, 4); put('P01-03', 'signpost', 7, 6, { face: 180 });
     lampPost('P02-03', 2, 7, 0); put('P02-03', 'xmas_snowman', 6, 6); dec('P02-03', 'stump', 3, 8); dec('P02-03', 'rabbit', 5, 6);
     lampPost('P03-03', 9, 7, 1); lampPost('P03-03', 5, 6, 0); put('P03-03', 'signpost', 8, 8, { face: 180 }); put('P03-03', 'xmas_snowman_3', 6, 9); dec('P03-03', 'fallen_log', 8, 6);
+    /* ── THE ATMOSPHERE (pass 4): warm light in the cold. Braziers (real lights) where people would stand at night ── */
+    put('P01-00', 'brazier', 6, 6); put('P01-00', 'brazier', 8, 6); put('P01-02', 'brazier', 8, 5); put('P02-02', 'brazier', 7, 5); put('P01-03', 'brazier', 6, 4); put('P03-03', 'brazier', 7, 8);
   }
 };
