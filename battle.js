@@ -14009,11 +14009,20 @@
             for (const k of ['ownerUnitId', 'ownerId', 'casterUnitId']) if (o[k] != null) o[k] = unit.id;
             if (o.caster != null && typeof o.caster !== 'object') o.caster = unit.id;
         }
+        /* THE CEO POLISH (2026-11-16): he can only buy what his side can see. A fogged square or an enemy trap nobody on his
+           team has found reads as empty, so the free refusal is never a probe and the CPU never reads hidden rows. */
+        function _ceoSeesTile(unit, x, y) {
+            if (!state.fogOfWar || typeof computeVisibleTilesCached !== 'function' || typeof posKey !== 'function') return true;
+            try { return computeVisibleTilesCached(unit.player).has(posKey(x, y)); } catch (e) { return true; }
+        }
         function _ceoTargets(unit, spell, x, y) {
             const out = [];
             if (spell.acquire) {
+                if (!_ceoSeesTile(unit, x, y)) return out;
                 for (const L of _CEO_LISTS) for (const o of (state[L] || [])) {
                     if (!o || o.x !== x || o.y !== y || o._detonated || o.dead) continue;
+                    if (o.serpentOf != null) continue;   // a body, not an asset (Quetzalcoatl's serpent)
+                    if (L === 'traps' && !(o._revealedTo && o._revealedTo[unit.player])) continue;   // a hidden trap is not for sale
                     const op = _ceoOwnerPlayer(o);
                     if (op != null && op !== unit.player) out.push({ L, o });
                 }
@@ -14049,18 +14058,46 @@
             _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
             unit.mp -= cost;
             const names = hits.map(h => _ceoNoun(h.L, h.o));
+            /* THE CEO VFX (2026-11-16): one signature a cast (three-vfx-effects.js "THE TECH CEO"); fire() is relayed, so the
+               guest draws it too and colours it from its own seat (his side cyan-blue, the other side pink-orange) */
+            const _ceoFx = (params) => {
+                try {
+                    const V = window.ThreeVFXEffects;
+                    if (V && state.phase === 'battle' && !_skipVisuals() && V.hasMapping(spell.id, 'aura')) V.fire('aura', spell.id, params);
+                } catch (e) {}
+            };
             if (spell.layoffs) {
                 const gone = new Set(hits.map(h => h.o));
+                _ceoFx({ tx: unit.x, ty: unit.y, sx: unit.x, sy: unit.y, tiles: hits.map(h => ({ x: h.o.x, y: h.o.y })) });
                 for (const L of _CEO_LISTS) if (Array.isArray(state[L])) state[L] = state[L].filter(o => !gone.has(o));
                 const mp0 = unit.mp || 0;
                 unit.mp = Math.min(unit.maxMp || (mp0 + 50 * hits.length), mp0 + 50 * hits.length);
                 addLog(`💼 ${_ctName(unit)} lays off ${hits.length} ${hits.length === 1 ? names[0] : 'assets'}: +${unit.mp - mp0} MP.`);
-                applyStatStageBoost(unit, { atk: 1 }, `${spell.name}: `, unit);
+                /* INT, not ATK (2026-11-16): every damage spell in his pool is magic; an ATK stage did nothing for him */
+                applyStatStageBoost(unit, { int: 1 }, `${spell.name}: `, unit);
                 showFloatingTextForUnit(unit, `💼 LAYOFFS ×${hits.length}`, 'buff', { durationMs: 1100 });
             } else {
-                for (const h of hits) _ceoTakeOver(h.o, unit);
-                const what = names.length === 1 ? `the enemy's ${names[0]}` : `${names.length} enemy assets`;
-                addLog(`💼 ${_ctName(unit)} ${spell.disrupt ? 'disrupts' : 'acquires'} ${what} at ${coordLabel(x, y)} — ${names.length === 1 ? 'it works' : 'they work'} for Player ${unit.player} now.`);
+                const area = spell.disrupt ? getSquareArea(x, y, spell.aoeRadius != null ? spell.aoeRadius : 1) : [{ x, y }];
+                _ceoFx({ tx: x, ty: y, sx: unit.x, sy: unit.y, aoeRadius: spell.disrupt ? (spell.aoeRadius != null ? spell.aoeRadius : 1) : 0, tiles: area });
+                /* Disrupt BREAKS enemy terrain (2026-11-16): a patch's owner field changes nothing in play, so the enemy's lava,
+                   ice, ooze or wall in the 3×3 goes back to the ground it was, now. Zones still change hands. */
+                const broken = hits.filter(h => h.L === '_timedTerrain');
+                if (broken.length) {
+                    for (const h of broken) h.o.expiresRound = 0;
+                    if (typeof _tickTimedTerrain === 'function') _tickTimedTerrain();
+                }
+                const owned = hits.filter(h => h.L !== '_timedTerrain');
+                for (const h of owned) {
+                    const was = _ceoOwnerPlayer(h.o);
+                    _ceoTakeOver(h.o, unit);
+                    /* the side that set a trap still knows where it is (it is just not theirs any more) */
+                    if (h.L === 'traps' && was != null) { if (!h.o._revealedTo) h.o._revealedTo = {}; h.o._revealedTo[was] = true; }
+                }
+                const oNames = owned.map(h => _ceoNoun(h.L, h.o));
+                const parts = [];
+                if (oNames.length) parts.push(`${spell.disrupt ? 'disrupts' : 'acquires'} ${oNames.length === 1 ? `the enemy's ${oNames[0]}` : `${oNames.length} enemy assets`} — ${oNames.length === 1 ? 'it works' : 'they work'} for Player ${unit.player} now`);
+                if (broken.length) parts.push(`breaks ${broken.length} enemy terrain square${broken.length === 1 ? '' : 's'}`);
+                addLog(`💼 ${_ctName(unit)} ${parts.join(' and ')} (${coordLabel(x, y)}).`);
                 if (typeof showFloatingTextAtTile === 'function') showFloatingTextAtTile(x, y, spell.disrupt ? '💼 DISRUPTED' : '💼 ACQUIRED', 'buff', { durationMs: 1200 });
             }
             try { if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid(); } catch (e) {}
@@ -47329,7 +47366,7 @@
                 case 'buff':          return 'Select an ally to empower with ' + nm + '.';
                 case 'cleanse':       return 'Select an ally to cleanse with ' + nm + '.';
                 case 'cleanseArea':   return spell.acquire ? nm + ': select a square with an enemy summon, object or trap on it to take it over.'
-                    : spell.disrupt ? nm + ': select a tile — enemy zones over the 3×3 change hands.'
+                    : spell.disrupt ? nm + ': select a tile — enemy zones over the 3×3 change hands, enemy terrain there breaks.'
                     : spell.layoffs ? nm + ': select your own square to scrap everything you own on the board.'
                     : nm + ': select a tile — allies in the 3×3 lose their debuffs, enemies lose their buffs.';
                 case 'steal':         return nm + ': select an enemy to rob.';

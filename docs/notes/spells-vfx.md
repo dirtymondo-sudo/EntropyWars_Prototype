@@ -3813,3 +3813,17 @@ Rules: champions-combat.md "THE ASTRAL BODY".
 - THE RULE THAT CAME WITH IT (his pick on the card, "extras pay Entropy"): champions-combat.md "EVERY EXTRA SOURCE".
 - Seen on screen (real casts, Grave Chill): super effective, super effective + combo, combo on a resisted type, resisted
   only. Built but NOT seen on screen: basic attack crit, counter, the guest's view, Action Cam off, multi-target spells.
+
+## THE TECH CEO (2026-11-16, the new races' polish thread cmsg_01XWpxyTn3nnw98znVzKdFjsFPgcTzJantoqmq4McVhjZG)
+Acquisition, Disrupt and Layoffs had no look, only a floating word. three-vfx-effects.js "THE TECH CEO" (`_PZ_SIGS.ceoAcquire / ceoDisrupt /
+ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura' a cast with `sx/sy` (the CEO) and `tiles`.
+- SIDE COLOURS from the viewer's own seat (Riot guide): his side cyan-blue, the other side pink-orange (`_ceoSides`: the CEO's side = the
+  body at sx, sy, so the guest works it out from the relayed params). What the enemy loses reads pink to them.
+- Acquisition: a paper contract (canvas card, ACQUIRED + a gold seal) flies end over end from him to the square; the old side's square
+  ring breathes, snaps shut on the landing, his side's ring opens with a short column + floor flash.
+- Disrupt: every square of the 3×3 glitches between the two colours on a stepped clock (55 ms), a white scan bar sweeps it, small cubes
+  spit up, then it settles in his colour with a rim on each square.
+- Layoffs: each scrapped asset pops a ring and becomes a cardboard box (canvas texture) that flies to his chest (under the floating
+  words), blue MP motes rise off him, then his side's ring.
+- Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
+
