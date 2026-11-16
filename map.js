@@ -17206,6 +17206,8 @@
                 }
             } else if (result.type === 'status') {
                 // wave C: terrain that coats whoever ends a turn on it (goo)
+                /* ☢🐊 the Sewer Gator is at home in the radioactive sludge (battle.js _gatorAtHomeInSludge) */
+                if (result.id === 'radioactive' && typeof window._gatorAtHomeInSludge === 'function' && window._gatorAtHomeInSludge(unit)) return;
                 if (typeof applyStatusPayload === 'function' && result.id) {
                     const _ok = applyStatusPayload(unit, { id: result.id, duration: result.duration || 2 }, `${rule.label}: `);
                     if (_ok && result.text) addLog(`${result.text}.`);

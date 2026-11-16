@@ -3830,3 +3830,38 @@ wood crate, the better gold via `gold.png`). No screen flash. Every ring's colou
   380 ms), `_magicBox` (a wood crate with gold edges takes the blow, shakes, its sides fall open on him) / `_magicPoof` (the
   ally's side of the swap).
 
+## THE BANKER SIGNATURES (2026-11-16, thread "Polish Banker spells and VFX")
+mondo: "Work on their spell pools and spell vfx". three-vfx-effects.js block "THE BANKER SIGNATURES" (after the bligblog/spy
+block), the `pzSig` hook, helpers `_bk*`. Visuals only.
+- Line of Credit `aura` (the ally, as the loan lands): a gold IOU seal on the floor (reads upright from the lens), stacks of
+  dollar bills flutter down round the ally, green-gold sparks.
+- Short Sell `impact` (fires on the release, debuff path): a solid red stock chart draws itself over the foe's head (above the
+  nameplate) with a "▼ SHORT" tag, crashes, and an orange arrow drops into the body as Shorted lands (~600 ms). Solid, not
+  additive: additive red washed pale over grass.
+- Foreclose `bolt` (pzOwn, timed on flyMs): a gavel (wood + gilt sheets, no gavel model exists: MODEL_LIST §10 G11) rises up
+  and out to the SIDE of the victim across the lens (behind it, a high camera lost the raise), swings down on the hit, rests
+  40 ms, gone by +380 ms so the number reads; a red FORECLOSED stamp on the floor; bills fly out; a Shorted victim also spills
+  gold coins + a second red ring (the combo reads).
+- The settling, fired by the engine through ThreeVFXEffects.fire (relayed to the guest): `collect` (data.js debt onRemove: coins
+  hop borrower → banker, green-gold glow), `badLoan` (the borrower went down: bills fall round the banker and burn to ash),
+  `payout` (battle.js _settleBankOnDeath: a coin fountain + green arrow at the short-seller). Each draws only the ends the
+  viewer sees (_pzSeen).
+- Models: `bank_cash` = PSX Mega Pack `cash_1.glb` (three-renderer _MISC_GLB, warmed in _SPELL_MISC_KEYS; colour lifted ×1.6,
+  the dollar sheet is dark under the grade). The pack's coin_mp_1 is a dark bronze cut of the money sheet (read black): coins
+  are discs in the gilt sheet (`_bkCoin`).
+- Proof: shots in /mnt/project-files/banker-pass/ (a close camera with performance.now frozen at set delays, + a real VS CPU
+  cast of each spell). Probe scripts in the same folder.
+
+## THE TECH CEO (2026-11-16, the new races' polish thread cmsg_01XWpxyTn3nnw98znVzKdFjsFPgcTzJantoqmq4McVhjZG)
+Acquisition, Disrupt and Layoffs had no look, only a floating word. three-vfx-effects.js "THE TECH CEO" (`_PZ_SIGS.ceoAcquire / ceoDisrupt /
+ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura' a cast with `sx/sy` (the CEO) and `tiles`.
+- SIDE COLOURS from the viewer's own seat (Riot guide): his side cyan-blue, the other side pink-orange (`_ceoSides`: the CEO's side = the
+  body at sx, sy, so the guest works it out from the relayed params). What the enemy loses reads pink to them.
+- Acquisition: a paper contract (canvas card, ACQUIRED + a gold seal) flies end over end from him to the square; the old side's square
+  ring breathes, snaps shut on the landing, his side's ring opens with a short column + floor flash.
+- Disrupt: every square of the 3×3 glitches between the two colours on a stepped clock (55 ms), a white scan bar sweeps it, small cubes
+  spit up, then it settles in his colour with a rim on each square.
+- Layoffs: each scrapped asset pops a ring and becomes a cardboard box (canvas texture) that flies to his chest (under the floating
+  words), blue MP motes rise off him, then his side's ring.
+- Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
+

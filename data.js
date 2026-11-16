@@ -4334,13 +4334,13 @@ const RACE_BASE_STATS = {
     'conspiracy theorist':{ hp: 1230, mp: 195, atk:  20, def:  75, mdef:  157, int:  164, vision: 3, crt: 26, spd: 60 },   // STATS26 PASS 2026-10-29: HP 1117→1330, M.ATK 138→195 (37% in STATS26; POWER -188 → about -74 of the median); STATS33 PASS 2026-10-31: HP 1330→1230, M.ATK 195→164 (58.4% in STATS33 (89 games), 56.6% team-adjusted, 55.6% over 211 games (STATS32 + 33, no change between); POWER -42)
     'overlord':           { hp: 910, mp:  75, atk:  71, def:  115, mdef:  32, int:  68, vision: 2, crt: 13, spd: 120 },   // STATS28 PASS 2026-10-29: HP 1593→1150, ATK 109→95, DEF 146→115 (65% over STATS27+28; survives 88% of games); LOOP PASS 1 2026-11-08: HP 1150→910, ATK 95→71, M.ATK 91→68 (60.4% in the 11-08 loop's baseline lab (106 games), 62.3% team-adjusted; POWER -85)
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
-    'banker':             { hp: 1300, mp: 190, atk:  40, def:  120, mdef:  130, int:  180, vision: 3, crt: 15, spd: 85 },   // 2026-11-16 THE NEW RACES — first pass on the support median
-    'sewer gator':        { hp: 1250, mp: 120, atk: 168, def: 118, mdef:  58, int:  60, vision: 3, crt: 22, spd: 130 },   // 2026-11-16 THE NEW RACES — first pass between the reptilian and the sharkman
+    'banker':             { hp: 1100, mp: 190, atk:  40, def:  80, mdef:  150, int:  180, vision: 3, crt: 15, spd: 85 },   // 2026-11-16 THE NEW RACES — first pass on the support median; THE BANKER PASS 2026-11-16: HP 1300→1100, DEF 120→80, M.DEF 130→150 (the first pass sat 230 HP + 50 DEF over the 26 supports' median, and every loan that comes due heals him 36% of an ally's max HP on top: the bulk is in the loans now)
+    'sewer gator':        { hp: 1100, mp: 120, atk: 168, def: 118, mdef:  58, int:  60, vision: 3, crt: 22, spd: 125 },   // 2026-11-16 THE NEW RACES — first pass between the reptilian and the sharkman; polish 11-16: HP 1250→1100, SPD 130→125 (POWER 892 → ~852, the target 815 +5 %: it can also not be targeted for 2 rounds)
     'skater':             { hp: 1000, mp: 120, atk: 165, def:  85, mdef:  60, int:  55, vision: 3, crt: 24, spd: 150 },   // 2026-11-16 THE NEW RACES — first pass on the catgirl
     'tech ceo':           { hp: 1050, mp: 200, atk:  50, def:  95, mdef: 140, int: 175, vision: 3, crt: 18, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the men in black
     'magician':           { hp: 1100, mp: 190, atk:  70, def:  95, mdef: 125, int: 170, vision: 3, crt: 22, spd: 115 },   // 2026-11-16 THE NEW RACES — first pass on the specialist median
     'mole man':           { hp: 1450, mp: 110, atk: 150, def: 150, mdef:  85, int:  45, vision: 3, crt: 15, spd: 105 },   // 2026-11-16 THE NEW RACES — first pass on the bruiser median
-    'quetzalcoatl':       { hp: 1650, mp: 170, atk: 115, def: 140, mdef: 140, int: 140, vision: 3, crt: 12, spd:  90 },   // 2026-11-16 THE NEW RACES — first pass on the tank median
+    'quetzalcoatl':       { hp: 1350, mp: 120, atk: 115, def: 160, mdef:  85, int: 100, vision: 3, crt: 12, spd:  90 },   // 2026-11-16 THE NEW RACES; the Quetzalcoatl pass (same day): the first pass read POWER 745, #1 of 143 races (tank median 1200 HP, 83 M DEF, 46 M ATK) → 609, mid-tank, because the body walls and the push / pull immunity are worth power the number can't see
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -10224,10 +10224,13 @@ const RACE_ABILITIES = {
         /* THE LOANS (2026-11-16, the new races; mondo picked the Banker): the one race that lends. A loan comes back with interest
            two rounds later (status `debt`), a short pays off when the bet goes down (status `shorted`). Rules: data.js STATUS_DEFS
            debt / shorted + battle.js _settleBankOnDeath. */
+        /* THE BANKER PASS (2026-11-16, mondo: "unique fun strategic playstyles, but still balanced"): `noSelf` (the bank never
+           lends to itself: a self-loan paid itself back, a free 30% heal every turn), range 4 → 3 (the T1 heals' reach), and a
+           loan taken while one is open ADDS to it (STATUS_DEFS debt onApply): rolling a loan used to wipe the old debt. */
         { id: 'nrLineOfCredit', name: 'Line of Credit', tier: 1, families: ['highfinance'], cost: 25, apCost: 1, spellType: 'human',
-          type: 'heal', kind: 'heal', range: 4, healPct: 0.3,
+          type: 'heal', kind: 'heal', range: 3, healPct: 0.3, noSelf: true,
           statusEffects: [{ id: 'debt', duration: 2, debtPct: 0.36 }],
-          desc: 'Lends an ally 30% of their max HP now. In 2 rounds the loan comes due: they pay back 36% of their max HP (never below 1 HP) and you heal that much. If they go down first, you take the loss.' },
+          desc: 'Lends another ally 30% of their max HP now. In 2 rounds the loan comes due: they pay back 36% of their max HP (never below 1 HP) and you heal that much. A second loan before then adds to the debt. If they go down first, you take the loss.' },
         { id: 'nrShortSell', name: 'Short Sell', tier: 2, families: ['highfinance'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'debuff', kind: 'debuff', range: 5,
           statusEffects: [{ id: 'shorted', duration: 2 }],
@@ -10245,14 +10248,19 @@ const RACE_ABILITIES = {
           element: 'water', type: 'buff', kind: 'buff', range: 0, requiresLiquid: true,
           statusEffects: [{ id: 'submerged', duration: 2 }, { id: 'invisible', duration: 2 }],
           desc: 'Sinks under the surface. Cast while standing in water, sludge or ooze: the gator is Invisible and cannot be targeted for 2 rounds, until it attacks or climbs out of the liquid. Cooldown: 2 rounds.' },
-        { id: 'nrDeathRoll', name: 'Death Roll', tier: 2, families: ['sewerpredator'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+        /* 🐊 DRAG UNDER (11-16 polish): was "Death Roll", but the gator's own pool (apexpredator) already holds the croc's
+           raceDeathRoll, so its spell list showed two "Death Roll"s; renamed in mondo's words ("bite + drag under"). Same id. */
+        { id: 'nrDeathRoll', name: 'Drag Under', tier: 2, families: ['sewerpredator'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 1,
           sneakBonus: true, dragIntoLiquid: true,
-          desc: 'Clamps its jaws and rolls. Deals MEDIUM physical damage to a Single Enemy beside the gator, more from under the surface, and drags it into the nearest liquid square beside either of them. In deep water the victim starts Drowning. Cooldown: 2 rounds.' },
+          desc: 'Clamps its jaws, rolls and pulls. Deals MEDIUM physical damage to a Single Enemy beside the gator (x1.5 from under the surface) and drags it into the nearest liquid square beside either of them. In deep water the victim starts Drowning. Cooldown: 2 rounds.' },
         { id: 'nrTailSweep', name: 'Tail Sweep', tier: 3, families: ['sewerpredator'], cost: 75, apCost: 1, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'cross', range: 0, aoeOriginSelf: true, crossRadius: 1,
           damageType: 'physical', dmg: 120, pushDistance: 1,
-          desc: 'A sweep of the spiked tail. Deals MEDIUM physical damage to All Enemies beside the gator and knocks them 1 square away, into the water if it is there.' },
+          /* 🐊 THE CHURN (11-16 polish): the sweep floods the gator's own square for 2 rounds, so the kit works on a dry board
+             too: sweep, then Submerge in the puddle (battle.js cross branch paints it after the pushes) */
+          paintTerrain: { terrain: 'water', radius: 0, rounds: 2 },
+          desc: 'A sweep of the spiked tail. Deals MEDIUM physical damage to All Enemies beside the gator and knocks them 1 square away, into the water if it is there. The churn turns the gator\'s own square to water for 2 rounds.' },
     ],
     'skater': [
         /* THE MOMENTUM (2026-11-16, the new races; mondo picked the Skater): every square she rolls in a straight line banks a
@@ -10276,13 +10284,13 @@ const RACE_ABILITIES = {
            casts ride the `cleanseArea` tile kind with a flag each (`acquire`, `disrupt`, `layoffs`); rules: battle.js _ceoCast. */
         { id: 'nrAcquisition', name: 'Acquisition', tier: 1, families: ['disruption'], cost: 25, apCost: 1, cooldownRounds: 1, spellType: 'human',
           type: 'utility', kind: 'cleanseArea', range: 4, aoeRadius: 0, acquire: true,
-          desc: 'Buys out the competition. Every enemy summon, deployed object, trap, bomb, mirror, ward or rune on a square within 4 now works for your team. Cooldown: 1 round.' },
+          desc: 'Buys out the competition. Every enemy summon, deployed object, trap, bomb, mirror, ward or rune on a square within 4 that your team can see now works for your team (a hidden trap has to be found first). Cooldown: 1 round.' },
         { id: 'nrLayoffs', name: 'Layoffs', tier: 2, families: ['disruption'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'utility', kind: 'cleanseArea', range: 0, aoeRadius: 0, layoffs: true,
-          desc: 'Restructures. Scraps every summon and object you own on the board: +50 MP for each one and +1 ATK stage. Cooldown: 2 rounds.' },
+          desc: 'Restructures. Scraps every summon and object you own on the board: +50 MP for each one and +1 INT stage. Cooldown: 2 rounds.' },
         { id: 'nrDisrupt', name: 'Disrupt', tier: 3, families: ['disruption'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'utility', kind: 'cleanseArea', range: 4, aoeRadius: 1, disrupt: true,
-          desc: 'Moves fast and breaks their things. Every enemy zone or timed terrain over a 3×3 within 4 changes hands and works for your team. Cooldown: 2 rounds.' },
+          desc: 'Moves fast and breaks their things. Every enemy zone over a 3×3 within 4 changes hands and works for your team, and every square of terrain the enemy made there breaks back to the ground it was. Cooldown: 2 rounds.' },
     ],
     'magician': [
         /* THE HIDDEN TRICK (2026-11-16, the new races; mondo added the Magician): one trick set face down at a time, in a fixed
@@ -10306,10 +10314,13 @@ const RACE_ABILITIES = {
            takes him down and out of sight (walls and units do not stop a tunnel), Erupt brings him up under an enemy and throws it
            into the air, Cave-In digs a pit under a group. Rules: data.js STATUS_DEFS burrowed (+ invisible's onRemove) +
            battle.js _moleErupt (the `erupt` spell field). */
-        { id: 'nrBurrow', name: 'Burrow', tier: 1, families: ['burrowing'], cost: 25, apCost: 1, cooldownRounds: 1, spellType: 'anomaly',
+        /* THE MOLE MAN PASS (2026-11-16): Burrow cooldown 1 -> 2. At 1 he could dig every turn and never be on the board (Invisible
+           lasts until his next turn ends, so a recast each turn kept it up for good). At 2 the race has a rhythm the other side can
+           read and punish: a round under the ground, then Erupt brings him up, and he stands on the board through their next turn. */
+        { id: 'nrBurrow', name: 'Burrow', tier: 1, families: ['burrowing'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           element: 'earth', type: 'utility', kind: 'escape', range: 0, teleportDistance: 4,
           statusEffects: [{ id: 'burrowed', duration: 1 }, { id: 'invisible', duration: 1 }],
-          desc: 'Digs down and tunnels up to 4 squares, under walls and units, and stays under the ground: Invisible and untargetable until his next turn ends or he attacks. Cooldown: 1 round.' },
+          desc: 'Digs down and tunnels up to 4 squares, under walls and units, and stays under the ground: Invisible and untargetable until his next turn ends or he attacks. Cooldown: 2 rounds.' },
         { id: 'nrErupt', name: 'Erupt', tier: 2, families: ['burrowing'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 120, range: 4,
           ignoresLineOfSight: true, sneakBonus: true, erupt: true,
@@ -10327,10 +10338,10 @@ const RACE_ABILITIES = {
            the path he walked, they block every other unit, and nothing pushes or pulls him while it is out. Coil closes the body
            round an enemy. Rules: data.js STATUS_DEFS serpentForm / coiled + battle.js _serpent* (the body = two
            state._deployedObjects rows with serpentOf = his id; three-renderer.js draws the serpent over them). */
-        { id: 'nrFeatheredSerpent', name: 'Feathered Serpent', tier: 1, families: ['featheredserpent'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+        { id: 'nrFeatheredSerpent', name: 'Feathered Serpent', tier: 1, families: ['featheredserpent'], cost: 25, apCost: 1, cooldownRounds: 3, spellType: 'divine',
           element: 'wind', type: 'buff', kind: 'buff', range: 0,
           statusEffects: [{ id: 'serpentForm', duration: 3 }],
-          desc: 'The serpent rises. For 3 rounds he is the head of a 3-square feathered serpent: the body follows the path he walks, blocks every other unit, and nothing can push or pull him. Cooldown: 2 rounds.' },
+          desc: 'The serpent rises. For 3 rounds he is the head of a 3-square feathered serpent: the body follows the path he walks and blocks every other unit, nothing can push or pull him, and a blow to the body lands on him (an area catches him once). Cooldown: 3 rounds, so the serpent sinks for a round before it can rise again.' },
         { id: 'nrObsidianBlade', name: 'Obsidian Blade', tier: 1, families: ['featheredserpent'], cost: 25, apCost: 1, spellType: 'divine',
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 1,
           statusEffects: [{ id: 'bleed', duration: 2 }],
@@ -10338,9 +10349,9 @@ const RACE_ABILITIES = {
         { id: 'nrCoil', name: 'Coil', tier: 2, families: ['featheredserpent'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 2, requiresSerpent: true, serpentCoil: true,
           statusEffects: [{ id: 'coiled', duration: 2 }],
-          desc: 'The serpent closes round a Single Enemy within 2. Deals MEDIUM physical damage; the body wraps the squares beside it and it is Coiled for 2 rounds: it cannot move and is squeezed for 45 at every round end. Needs the Feathered Serpent out. Cooldown: 2 rounds.' },
+          desc: 'The serpent closes round a Single Enemy within 2. Deals MEDIUM physical damage; the body wraps the squares beside it and it is Coiled for 2 rounds: it cannot move and is squeezed for 45 at every round end, until the body lets go (he walks it away). Needs the Feathered Serpent out. Cooldown: 2 rounds.' },
         { id: 'nrMorningStar', name: 'Morning Star', tier: 3, families: ['featheredserpent'], cost: 75, apCost: 1, spellType: 'divine',
-          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 145, range: 5, dayMult: 1.4,
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 5, dayMult: 1.4,
           desc: 'Venus rises as a spear of light. Deals MEDIUM magic damage to a Single Enemy within 5, 40% more in the daytime (the day and night clock).' },
     ],
     'lifeguard': [
@@ -13841,7 +13852,10 @@ const STATUS_DEFS = {
         iconSrc: createStatusIconDataUri('💰', '#1c2a1c', '#d8f5d0', '#4caf50'),
         onApply(unit, src, info) {
             const pct = (info && info.payload && Number(info.payload.debtPct)) || 0.36;
-            unit._debtAmt = Math.max(1, Math.round((unit.maxHp || 0) * pct));
+            const add = Math.max(1, Math.round((unit.maxHp || 0) * pct));
+            /* THE BANKER PASS (2026-11-16): a loan on top of an open one adds to the debt (a refresh used to overwrite it, so
+               rolling the loan every turn was a free heal that never came due); the clock restarts from the new loan */
+            unit._debtAmt = ((info && info.refreshed && unit._debtAmt > 0) ? unit._debtAmt : 0) + add;
             unit._debtSrcId = src ? src.id : null;
         },
         onRemove(unit) {
@@ -13851,8 +13865,12 @@ const STATUS_DEFS = {
             if (!(amt > 0)) return;
             const say = (typeof addLog === 'function') ? addLog : function () {};
             const nm = (u) => (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u && u.race) || 'unit');
+            const _fx = (intent, a, b) => {   // THE BANKER PASS VFX: rides ThreeVFXEffects.fire, which online.js relays to the guest
+                try { if (a && b && typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fire) ThreeVFXEffects.fire(intent, 'nrLineOfCredit', { fromX: a.x, fromY: a.y, tx: b.x, ty: b.y }); } catch (e) {}
+            };
             if (unit.dead || unit._dying || !(unit.hp > 0)) {
                 if (lender && !lender.dead && !lender._dying && lender.id !== unit.id && typeof applyDamageToUnit === 'function') {
+                    _fx('badLoan', unit, lender);
                     applyDamageToUnit(lender, Math.round(amt * 0.8), `Bad loan: ${nm(lender)} takes the loss: `, { ignoreArmor: true, damageType: 'dot', consumeMarked: false });
                 }
                 return;
@@ -13864,6 +13882,7 @@ const STATUS_DEFS = {
                 say(`💰 ${nm(unit)}'s loan comes due: −${pay} HP.`);
             }
             if (lender && !lender.dead && !lender._dying && pay > 0 && typeof applyHealingToUnit === 'function') {
+                _fx('collect', unit, lender);
                 const got = applyHealingToUnit(lender, pay, lender);
                 if (got > 0) say(`💰 ${nm(lender)} collects with interest: +${got} HP.`);
             }
@@ -14171,7 +14190,7 @@ const STATUS_LIBRARY_DESCS = {
     trickSet:  'A trick waits face down (Doves, Vanishing Act or Switcheroo, in turn). It springs once, on its cue.',
     pickedCard: 'Holding the Magician\'s card: every spell it casts costs 40 more MP.',
     burrowed:  'Under the ground: hidden with Invisible until it attacks or its turn ends.',
-    serpentForm: 'The head of a 3-square feathered serpent: the body follows its path and blocks every other unit; it cannot be pushed or pulled.',
+    serpentForm: 'The head of a 3-square feathered serpent: the body follows its path and blocks every other unit; it cannot be pushed or pulled; a hit on the body hits the head.',
     coiled:    'In the serpent\'s coils: cannot move and is squeezed for 45 at every round end.',
     onDuty:    'On watch: the first ally within 4 that takes a killing blow holds on at 1 HP and is hauled beside her. Spent on the first save.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
