@@ -63429,6 +63429,126 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return z;
     }
 
+    /* ════ 🐍 THE FEATHERED SERPENT — Quetzalcoatl's four looks (2026-11-16, the Quetzalcoatl pass; mondo: "work on their spell pools
+       and spell vfx"). Jade, quetzal green and gold; obsidian black for the blade; the morning star white-gold. All procedural on the
+       G-O kit (_goM / _goA / _goAdd / _goShow, MeshBasic, both renderers), no new art, no sound, no full-screen layer, and every look
+       leaves the body it lands on readable (thin coils, see-through feathers). Drawn on the relayed staging 'burst' beat (_GO_SIG), so
+       the online guest sees each one (RULE #2); a caster the viewer can't see is never aimed from (_goCasterFor).
+       FEATHERED SERPENT: a ring of jade opens on his square and a spiral of quetzal feathers climbs round him into a short green
+       light. OBSIDIAN BLADE: the macuahuitl's black glass sweeps across the target, its edge flashing, and shards fly off the hit.
+       COIL: a jade-and-gold coil winds up the victim from the floor and squeezes once (the board's serpent then lies round it).
+       MORNING STAR: Venus flares over the target and its spear of white-gold light is already in the ground when the number pops
+       (the bolt brings it from his hand). ════ */
+    var _QZC = { jade: 0x2ad08a, quetzal: 0x1fa86a, turq: 0x35d6c8, gold: 0xffd23a, goldD: 0xc8961e, obs: 0x17121e, obsEdge: 0xb9a6ff, venus: 0xfff4c8 };
+    function _qzRise3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var ring = _goRing(F.g, _QZC.jade, ts * 0.30, ts * 0.38, 2, 0.75, 48), ring2 = _goRing(F.g, _QZC.gold, ts * 0.40, ts * 0.43, 2.5, 0.6, 48);
+        var pillar = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.26, ts * 0.34, ts * 1.6, 24, 1, true), _goA(_QZC.quetzal, 0)), 0.22);
+        pillar.position.y = ts * 0.8;
+        var cols = [_QZC.jade, _QZC.gold, _QZC.turq, _QZC.quetzal], fe = [], N = 18;
+        for (var i = 0; i < N; i++) {
+            var f = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.1, ts * 0.34), _goM(cols[i % 4], 0)), 0.95);
+            f.userData.a0 = i / N * Math.PI * 4; f.userData.d = i * 40; fe.push(f);
+        }
+        var all = _goAll(F.g), total = 1500, sp = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 450);
+            var open = _sigEaseOutCubic(_sigClamp01(el / 380));
+            ring.scale.setScalar(0.4 + 0.9 * open); ring2.scale.setScalar(0.5 + 0.85 * open);
+            _goShow([ring, ring2], k); _goShow([pillar], k * (1 - _sigClamp01((el - 700) / 500)));
+            for (var i = 0; i < fe.length; i++) {
+                var f = fe[i], t = _sigClamp01((el - f.userData.d) / 900), a = f.userData.a0 + t * Math.PI * 2.2, r = ts * (0.42 - 0.16 * t);
+                f.position.set(Math.cos(a) * r, ts * (0.1 + 1.45 * t), Math.sin(a) * r);
+                f.rotation.set(0.5, -a, 0.35);
+                f.material.opacity = (f.userData.op) * k * (t > 0 ? Math.min(1, t * 6) * (1 - _sigClamp01((t - 0.75) / 0.25)) : 0);
+            }
+            if (el - sp > 70 && el < 900) { sp = el; _goSpray(F, 2, { sprite: 'sparkle', tint: _QZC.gold, ly: ts * 0.3, r: 18, v: 40, vz0: 60, vz1: 160, g: -20, s0: 4, s0b: 7, ml0: 400, ml1: 700 }); }
+        });
+    }
+    function _qzObsidian3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        /* the sweep: a dark glass band on an arc across the body with a pale-violet edge; built once, the pivot swings it
+           (no geometry is swapped mid-life: both renderers keep the first draw) */
+        var piv = new THREE.Group(); piv.position.y = ts * 0.55; F.g.add(piv);
+        var tilt = new THREE.Group(); tilt.rotation.x = 0.35; piv.add(tilt);
+        var arc = _goAdd(tilt, new THREE.Mesh(new THREE.RingGeometry(ts * 0.42, ts * 0.66, 32, 1, 0, 2.1), _goM(_QZC.obs, 0)), 0.85);
+        var edge = _goAdd(tilt, new THREE.Mesh(new THREE.RingGeometry(ts * 0.66, ts * 0.78, 32, 1, 0, 2.1), _goA(_QZC.obsEdge, 0)), 1);
+        arc.rotation.x = edge.rotation.x = -Math.PI / 2;
+        var yaw0 = Math.atan2(ln.ux, ln.uz), all = [arc, edge], total = 700, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var sw = _sigEaseOutCubic(_sigClamp01(el / 240));
+            piv.rotation.y = yaw0 + 1.9 - 3.0 * sw;
+            _goShow(all, _goEnv(el, 40, total, 420));
+            if (!hit && el >= 140) {
+                hit = true; _shake('normal');
+                _goSpray(F, 10, { sprite: 'ice-shard', tint: 0x3a2e52, ly: ts * 0.6, r: 10, v: 190, vz0: 60, vz1: 200, g: 520, s0: 5, s0b: 9, ml0: 350, ml1: 650 });
+                _goSpray(F, 8, { sprite: 'blood-fleck', ly: ts * 0.6, r: 10, v: 150, vz0: 60, vz1: 220, g: 520, s0: 4, s0b: 7, ml0: 300, ml1: 600 });
+            }
+        });
+    }
+    function _qzCoil3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, pts = [], gpts = [], turns = 2.6, n = 90;
+        for (var i = 0; i <= n; i++) {
+            var t = i / n, a = t * turns * Math.PI * 2, rr = ts * (0.52 - 0.08 * t);
+            pts.push(new THREE.Vector3(Math.cos(a) * rr, ts * (0.06 + 1.15 * t), Math.sin(a) * rr));
+            gpts.push(new THREE.Vector3(Math.cos(a + 0.18) * (rr + ts * 0.06), ts * (0.08 + 1.15 * t), Math.sin(a + 0.18) * (rr + ts * 0.06)));
+        }
+        var body = _goAdd(F.g, new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 180, ts * 0.075, 8, false), _goM(_QZC.jade, 0)), 0.85);
+        var band = _goAdd(F.g, new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(gpts), 180, ts * 0.028, 6, false), _goA(_QZC.gold, 0)), 0.95);
+        var total = 1500, sq = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 420));
+            /* it winds up the body from the floor (scale in y, turning), then squeezes once */
+            var squeeze = el < 480 ? 1 + 0.25 * (1 - grow) : 1 - 0.2 * Math.sin(Math.PI * _sigClamp01((el - 480) / 260));
+            var sy = Math.max(0.02, grow);
+            body.scale.set(squeeze, sy, squeeze); band.scale.set(squeeze, sy, squeeze);
+            F.g.rotation.y = -el * 0.0012 - (1 - grow) * 2.5;
+            _goShow([body, band], _goEnv(el, 60, total, 420));
+            if (!sq && el >= 560) { sq = true; _shake('normal'); _goSpray(F, 10, { sprite: 'leaf', tint: _QZC.jade, ly: ts * 0.6, r: 16, v: 120, vz0: 40, vz1: 140, g: 160, s0: 5, s0b: 8, ml0: 400, ml1: 800 }); }
+        });
+    }
+    function _qzMorningStar3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, H = ts * 2.2;
+        var star = new THREE.Group(); star.position.y = H; F.g.add(star);
+        var core = _goGlow(star, _QZC.venus, ts * 0.9, 0, 0, 0, 1);
+        var rays = [];
+        for (var i = 0; i < 4; i++) {   /* the four-point star: two long rays, two short */
+            var len = ts * (i < 2 ? 1.5 : 0.8), ray = _goAdd(star, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.06, len), _goA(_QZC.venus, 0)), 0.95);
+            ray.rotation.z = i * Math.PI / 4 * (i < 2 ? 2 : 1) + (i >= 2 ? Math.PI / 4 : 0); rays.push(ray);
+        }
+        var spear = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.11, H, 12, 1, true), _goA(_QZC.gold, 0)), 0.85);
+        spear.position.y = H / 2;
+        var sheen = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.04, H, 8, 1, true), _goA(0xffffff, 0)), 1);
+        sheen.position.y = H / 2;
+        var ring = _goRing(F.g, _QZC.gold, ts * 0.12, ts * 0.2, 2, 0.85, 40), ring2 = _goRing(F.g, _QZC.venus, ts * 0.04, ts * 0.08, 2.5, 0.9, 32);
+        var total = 1200;
+        _goSpray(F, 14, { sprite: 'divine-sparkle', tint: _QZC.gold, ly: ts * 0.2, r: 8, v: 170, vz0: 40, vz1: 200, g: 120, s0: 5, s0b: 9, ml0: 400, ml1: 800 });
+        _shake('normal');
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 30, total, 600), tw = 1 + 0.15 * Math.sin(el * 0.03);
+            star.scale.setScalar(tw * (0.6 + 0.4 * _sigEaseOutCubic(_sigClamp01(el / 160))));
+            star.rotation.z = el * 0.0006;
+            core.material.opacity = 0.9 * k; _goShow(rays, k);
+            _goShow([spear, sheen], k * (1 - _sigClamp01((el - 250) / 450)));
+            var o = _sigEaseOutCubic(_sigClamp01(el / 520));
+            ring.scale.setScalar(1 + 3.2 * o); ring2.scale.setScalar(1 + 2 * o);
+            _goShow([ring, ring2], 1 - _sigClamp01(el / 700));
+        });
+    }
+    /* the morning star's bolt: a white-gold mote with a gold trail from his hand (data only, like every SPELL_MAP row) */
+    EFFECTS['_go_bolt_nrMorningStar'] = _goBoltDef('holy-light', 'divine-sparkle', 'holy-light', { core: 0.13, trail: 0.05, rate: 8 });
+    SPELL_MAP['nrMorningStar'] = Object.assign({}, SPELL_MAP['nrMorningStar'], { bolt: '_go_bolt_nrMorningStar' });
+    Object.assign(_GO_SIG, {
+        nrFeatheredSerpent: function (tx, ty) { return _qzRise3D(tx, ty); },
+        nrObsidianBlade: _qzObsidian3D,
+        nrCoil: function (tx, ty) { return _qzCoil3D(tx, ty); },
+        nrMorningStar: function (tx, ty) { return _qzMorningStar3D(tx, ty); },
+    });
+
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
         _rvFloorAt: _rvFloorAt,

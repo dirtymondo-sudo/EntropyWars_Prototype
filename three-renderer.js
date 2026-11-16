@@ -11862,7 +11862,18 @@ const ThreeRenderer = (function () {
        row-0 square: across both body squares, its head toward him (toward row 0 from row 1), ~2.3 squares long. Row 1 draws an
        empty group so the plain wall marker never shows. null while the file streams. */
     var _NP_SERPENT_URL = 'https://cdn.entropywars.net/Assets/characters/races/aztec/feathered_serpent.glb';
-    function _buildSerpentBody3D(x, y) {
+    /* THE RIOT PASS on the body (the Quetzalcoatl pass, 2026-11-16): each body square is ringed in its side's colours from the
+       viewer's seat (yours cyan-blue, the other side's pink-orange), so a wall of serpent reads as friend or foe at a glance */
+    function _buildSerpentBody3D(x, y, ownerPlayer) {
+        var g = _buildSerpentBodyModel3D(x, y);
+        var ramp = g ? _rvTeamRim(ownerPlayer) : null;
+        if (!ramp) return g;
+        var outer = new THREE.Group(), rim = _rvTrapRim(x, y, ramp);
+        rim._ew_groundDecal = true;
+        outer.add(g); outer.add(rim);
+        return outer;
+    }
+    function _buildSerpentBodyModel3D(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var segs = (state._deployedObjects || []).filter(function (o) { return o && o.spellId === 'nrFeatheredSerpent' && o.hp > 0; });
         var me = null;

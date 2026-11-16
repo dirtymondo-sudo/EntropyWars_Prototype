@@ -5536,6 +5536,26 @@ pass through himself either. unitResistsDisplace says no to push and pull while 
 - Probe 11-16: raised behind him (C3, B3), the walk C3 → D5 brought the body to D4, D3 (both blocked for others), push refused,
   Coil hit 124 and wrapped E5 / E6 round the foe at F5 (its walk refused), Morning Star base 203 by day vs 145 by night; 0 page errors.
 
+- **THE QUETZALCOATL PASS (2026-11-16, mondo: "work on their spell pools and spell vfx ... unique fun strategic playstyles, but still balanced")**:
+  - THE BODY IS HIM. The probe found one basic attack (or any area / beam over it) DESTROYED a body square like a decoy, leaving a broken
+    serpent with push immunity and no wall. Now (battle.js, the serpent block): `_serpentKingAt(x, y)` names the king whose body is there;
+    a swing (doAttack) or a single-target spell (`_resolveOffensiveTarget`) aimed at a body square lands on HIM; an area catches him once
+    through his body (`_applyAoeDamage`, `_aoeSerpentHit`; not at all extra when his own square is in it); a beam crossing it hits him
+    (`_beamCellVictims`, callers keep each victim once); `_ownPieceSpared` never lets anything break a body row. The trade: a 3-square
+    wall that also makes him a 3-square target.
+  - COIL LETS GO when no body square touches the victim any more (`_serpentReleaseLoose` after `_serpentFollow` / `_serpentKeepUp`):
+    the coil damages and roots, and then he chooses: stay and squeeze, or walk and free it. It held forever after the body left before.
+  - Feathered Serpent cooldown 2 → 3: it was up every round for 25 MP (3-round status, 2-round cooldown); now it sinks for a round
+    between casts, the window to push or pull him.
+  - Stats: the first pass read POWER 745, #1 of 143 races (the tank median is 1200 HP / 83 M DEF / 46 M ATK). Now hp 1350, mp 120,
+    def 160, mdef 85, int 100 (atk 115, spd 90 kept) = 609, mid-tank (crystal guardian 612, robot 611); the walls + push immunity are
+    power the number can't see. Morning Star 145 → 125 (the T3 median; 175 by day).
+  - VFX (three-vfx-effects.js "THE FEATHERED SERPENT", `_qz*` on `_GO_SIG`, the relayed burst beat): the rise (jade ring + a spiral of
+    quetzal feathers), Obsidian Blade (a black-glass sweep with a violet edge, shards), Coil (a jade-and-gold coil winds up the victim and
+    squeezes), Morning Star (its own white-gold bolt `_go_bolt_nrMorningStar`; Venus flares over the target, the spear of light in the
+    ground on the hit). three-renderer.js: each body square is ringed in its side's colours from the viewer's seat (THE RIOT PASS rims:
+    yours cyan-blue, theirs pink-orange; `_buildSerpentBody3D` wraps `_buildSerpentBodyModel3D`).
+
 ### 8. THE LIFEGUARD (The Bermuda Triangle / Bayside, support, family `lifesaving`; female only) + THE WOMEN
 The style: she saves a life. **On Duty** (T2, self, cd 2) puts on STATUS_DEFS `onDuty` (2 rounds); battle.js `_lifeguardSave` runs in
 applyDamageToUnit right after the Martyr's Talisman: the first teammate within 4 of her that takes a killing blow holds on at 1 HP and
