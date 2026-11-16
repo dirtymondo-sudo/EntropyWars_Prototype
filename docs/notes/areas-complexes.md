@@ -5163,6 +5163,25 @@ Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. 
   hill's corner drums (K.js or the hill); a few snow-white trees stand inside the town wall on the north side (not `tree()` rows of T.js).
 - **A probe in this room**: `fp: true` views only (a `dist` view from above lands inside a roof or under the floor: black); for a look from
   above pass `"y": 32` with `fp` and a negative pitch. The room is ready in about 45 s; ten views take about 2 minutes.
+- **PASS 2, THE INSIDES OF THE THREE WALK-INS** (`T.js` "THE INSIDES"; seen on screen, 4 probe runs):
+  - **THE STONE LID (the first build's fault)**: the Chapel's and the Smithy's stone foot was ONE box with a top over the whole plan: a
+    stone floor 1.0 / 1.2 m above the real one, across the doorway too. The furniture stood buried to the waist and anything laid on the
+    floor was hidden (it read as "the room is empty"). `foot()` now draws four strips round the walls, broken at the doorway.
+  - `hall(B, id, { top })` = one arch row `cam:<id>:in` + helpers in the building's frame: `sq(i, j)` (a 3.5 m square's middle), `put`
+    (a prop with `floor: true`), `on` (a prop set on something: `y`), `torch(wall, along, y)`, `block` (a ghost wall), `coat` (a lining on
+    the four walls, cut at the doorway), `ceiling` (a LIT timber deck + beams: the hollow building's own ceiling draws black), `light`
+    (a lit window seen from inside), `trestle` (table + two benches), `barrel`, `wheel` (a wagon-wheel light: drawn wheel + the
+    catalogue's `candle_ring`, whose light is real), `tankards`.
+  - THE INN: the bar on squares (1..3, 1) with kegs and bottle shelves behind, the hearth on the right wall under the outside chimney
+    (`hearth_fire`), two trestle tables, two wheel lights, a dog by the fire, the kitchen corner; four ground-floor windows (outside too).
+  - THE CHAPEL: twelve `catholic_pew` (the old `church_pew` is a slatted garden bench), the chancel on a marble step, `stone_altar` with a
+    gilt cross and candles, two angels, two standing torches, the pulpit, a crimson runner with a gilt edge, the lancets and a new east
+    window lit from inside. `holy_carpet` is OUT: its model stands upright (a wall hanging), it is not a floor carpet.
+  - THE SMITHY: a brick forge under its hood in the back left corner (under the outside chimney), the quench trough, the tool wall,
+    the bench with swords, the coal bin, armour and weapon racks, a horse in for shoeing; an iron-bound oak block WAITS FOR ITS ANVIL
+    (needs a model).
+  - Real lights added: 11 wall torches, 2 hearth fires, 2 candle rings, 2 standing torches. Not measured: the frame rate with them.
+  - NOT DONE: nobody stands in the three halls (people = the dressing pass); the Inn has no upstairs; no door leaf was looked at.
 
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
@@ -5186,8 +5205,20 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   `fountain`, `stone_urn`, `angel_statue`, `wooden_cross`, `cross`, `psxg_tombstone_1..3`, `fallen_log`; animals `cow`, `chicken`,
   `decor_sheep`, `horse`, `horse_brown`, `horse_black`, `dog`, `cat`. NOT medieval, keep out: `camping_tent`, `park_bench`, `planter`,
   `city_*`, `psx_lamp_*`.
+- **INSIDES (from the Village's three halls; `T.js` `hall()` is the pattern to copy)**: a hollow `building()` draws its floor at +0.03 m,
+  its inside walls 0.30 m in and a BLACK ceiling at h - 0.32. So: (1) hang a lit deck under it (`glow` 0.55 to 0.65 on `wood_planks`) and
+  give beams `glow` 0.3; (2) line the walls 0.33 m in with `gain` + a little `glow` (0.1 to 0.2), a second layer 6 mm further in;
+  (3) every prop inside takes `floor: true`, or one near a wall stands on the wall's top; a prop ON something takes `y` (1 m or more = a
+  height from the floor); (4) NEVER a box with a top over the whole plan in a walked-into building's look (the stone lid); (5) a thing
+  laid on the floor starts at y 0.036 and is at least 12 mm thick; (6) dark wood needs `gain` 1.4 indoors or it is a black shape.
+  The camera's eye is about 1.1 m up: judge heights in a probe picture by that.
+- **LIGHTS THAT ARE REAL** (catalogue props with a light): `wall_torch` (give `y` 2.2), `cave_torch` (a standing torch, 1.9 m, blocks),
+  `hearth_fire`, `brazier`, `candle_ring`, `campfire`. Indoors nothing else lights a hall but `glow`.
+- **BLOCKERS ON SQUARES**: mondo's rule holds in every hall: what blocks stands on a whole 3.5 m square's middle with a ghost wall
+  (`ctx.feat({ k: 'wall', ghost: true, rail: false, ... })`), decor stands off the middles, the door's column stays open.
 - **NEEDS A MODEL (zone-wide, nothing on R2)**: a market stall, an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart,
-  a water trough, a wooden fence run with a gate, a hitching rail, a tavern table with benches.
+  a water trough, a wooden fence run with a gate, a hitching rail, a floor carpet / runner (the `holy_carpet` model stands upright), a
+  grindstone, a bellows. (A tavern table with benches is drawn in code now: `hall().trestle`.)
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
 
