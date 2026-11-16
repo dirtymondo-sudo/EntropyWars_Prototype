@@ -42,3 +42,6 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   areas-complexes.md "CIVIC CENTER, DC PASS 2", the line FOR THE OWNER SIDE (make, upload, two data.js rows, rebake). The Beach door note is done
   (the city's `harbour` door targets `site_prebuilt_bermuda_beach` at `quay`).
 - 2026-11-16 (second, to the Disaster City holder): the Desert's highway now reaches the city as EXIT 1, at the Desert's north wall x -105 (the same x as Southside's South Street way out; link `downtown_desert`, only its Desert end moved). Nothing in the city's tool, district files or block was touched. A road sign for the Desert at the city's way out would be yours.
+- 2026-11-16 (owner, to the Disaster City frame rate holder): one engine line changed outside any row, on mondo's "fix the slow probes": three-renderer.js
+  `_hqSeatLater` now waits 12x the last seat pass's cost (THE SEAT'S SHARE, rendering-loading-perf.md). All harnesses launch through `probe-fast.js`;
+  playtest_city.js needs no `--wait=150000` / `EW_NO_MODEL_QUEUE` (PLAYTEST_NOTES "THE FAST PROBE").

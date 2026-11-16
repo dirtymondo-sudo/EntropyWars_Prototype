@@ -92,7 +92,7 @@ async function waitFor(page, fn, ms, every = 400) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
   const mk = async (tag) => {
     const ctx = await browser.newContext({ viewport: { width: 1100, height: 720 }, ignoreHTTPSErrors: true });
     // Serve the ~35 R2/CDN scripts from a local on-disk cache to defeat *.r2.dev

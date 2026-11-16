@@ -9,7 +9,7 @@ if (!fs.existsSync(SHOTS)) fs.mkdirSync(SHOTS, { recursive: true });
 async function snap(page, name) { try { await page.screenshot({ path: `${SHOTS}/${name}.png`, timeout: 9000, animations: 'disabled' }); console.log('shot:', name); } catch (e) { console.log('shot fail', name, e.message.split('\n')[0]); } }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true, executablePath: process.env.PW_CHROMIUM || undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, executablePath: process.env.PW_CHROMIUM || undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, ignoreHTTPSErrors: true });
   try { await require('./asset_cache').installAssetCache(ctx); } catch (e) { console.log('asset cache unavailable:', e.message); }
   const page = await ctx.newPage();
