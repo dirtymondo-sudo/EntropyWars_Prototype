@@ -4997,6 +4997,8 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   discs in `leaves_3`, all in one `arch` row at `y: 0`, the disc at the pool's `y` + 0.015; the pool's water is opaque from above (fish under
   it are never seen); `flamingo` is a good pink flamingo; `sea_buoy` carries a light (`noLight`). A row with a `y` inside a drawn shelter
   seats itself under the roof: stand table things on the ground.
+  A `sign` quad faces south with no `ry`, north with 180, west with 90, east with 270. Mist over water = an `airZones()` `dust` zone, pale,
+  slow, a few hundred; it shows at night, hardly by day.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5965,6 +5967,18 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
 5. The trough, the stock tanks, the gate and the cattle grid are DRAWN from textured parts (no model exists; the plan names them).
 6. No way to the Desert was added (ways out are shared and his call).
 
+### PASS 4, THE ATMOSPHERE (seen in the cloud browser, day and night)
+- **THE AIR (`airZones()`, the pilot's hook):** a slow pale mist over the water (`dust`, `0xd4e4ec`, 260, speed 0.15: squares 40..68 x 6..30),
+  marsh lights over the Marsh (`motes`, `0xc8ff90`, 90), fireflies thick at the Reeds (70). The rest keeps the room's fireflies. By day the
+  mist is faint (small motes against pale water); it is a night thing.
+- **THE NIGHT (probe clock 22:00):** the six lamp posts, the Boathouse's two lit windows and three lanterns, the shelter's lantern, the buoys
+  and the picnic campfire carry the district; the water stays readable, the lily pads go dark on it, the monster's neck still shows.
+  L's real lights are two (the campfire, the lantern inside the Boathouse); every lamp is drawn glow and lights nothing round it.
+- `NO SWIMMING` at the dock's foot now faces the walker (a `sign` quad with `ry: 90` faces west, 270 east, 180 north, none south; set it 4 cm
+  off its board on the side it faces or the board hides it).
+- **THE COST:** three particle zones (three draw calls). The proof view: 582 draw calls, 2.2 frames a second by day, 1.8 at night.
+- Not done: no real light on the dock (the room's ten are shared), no sound bed (a walked room has none), the lamps' glass is a plain lit box.
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
@@ -6318,6 +6332,13 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
 
+- **A HEDGE GARDEN'S KIT (from the Looking-Glass Garden, `L.js`, 2026-11-16)**: the leaf sheet `leaves_3` is dark: a hedge needs `gain` 1.75 or it is a
+  black slab (tint 0x8fc46c; clipped pieces 0xa8dc84 + gain 1.95). `topi(x, y0, z, kind, s)` = a ball on a stem / cone / three tiers / pawn;
+  `roseArch(kx, ky, ns, col)` = an arch over a two-square walk (a `roof` part, form `barrel`, `ends: false`, `ds: true`, `ry: 90` to span x:
+  the only way to draw a vertical arc); `pier(x, z)`; `lamp(kx, ky, dx, dz)` = the hanging lantern on an iron post; `roseTree()`. A small
+  flower = a `dome` 8 cm across on the `marble` sheet with `glow` 0.3 to 0.5 (unlit it reads grey). The sheet `gold` draws as brown wood:
+  gilt = no sheet, tint 0xd8b050. `garden_ring` is a paved ring of low hedge 7 m across. `stone_urn` is an urn with a fern. A canvas roof
+  seen from under needs `glow` about 0.28. Everything near a hedge or under a drawn roof takes `floor: true` (or it stands on top of it).
 ## CAMELOT, THE FOREST — the district W thread (2026-11-16, second side; file `docs/areas/camelot/districts/W.js`)
 
 mondo 11-16 (the district order): every district prototyped, own judge, five passes at most. Eight plots along the south wall (squares
@@ -6763,6 +6784,20 @@ yard door and two plots; both are one row to change.
 - **SEEN ON SCREEN** (probe, three runs): the channel, the fall and the tank glow green in the dark room; the stair, the bulkhead door, the
   yard door in the city. No error. **NOT WALKED** by a player (the stair, the ladder, both doors: offline graph + pictures only); no fight was
   played on the sludge (the rule is the bog's code path with another status).
+- **PASS 2, THE MODEL LIST (mondo 11-16: "look at the model list ... to see what else they could add"; `docs/plans/DISTRICT_THREAD_BRIEF.md`):**
+  pass 1 used 14 catalogue keys the rest of the Sewers already wore. FITS THIS DISTRICT, found in MODEL_LIST.md and placed (none stood in
+  the Sewers before): the control wall `monitor_stack` `server_rack` `retro_control_panel`; the lab bench `steel_table` `lab_glassware`
+  `microscope`; machines `air_compressor` `generator` `gas_cylinder_rack`; `locker` `footlocker` `vent_grille` `security_camera` `pipe_run`
+  `wall_chains`; in the tank three kraken `tentacle` / `tentacle2`; on the Pit's walk the Halloween pack's `hw_body` `hw_body_2` `hw_part_1/3/5`,
+  `skull`, `skull_pile`, `psx_fish_skeleton_mp_1`; by the sludge the Woods' `woods_glowcap` (15). FITS, NOT PLACED YET: `psx_catwalk_1`
+  (a catwalk over the tank), `psx_pipe_1` family + `psx_pipe_valve_holder_large_*` (tried at the channel's head: the short pipe stands
+  upright and thin, taken out; wants a row with a lying pose), `ind_vent`, `ind_silo` (9 m: fits the Pit's 12 m hall), `chain_hoist`,
+  `cable_drum`, `railing_1m` / `psxg_railing` (the channel's rail), `scba_rack`, `turnout_gear_rack`, `autopsy_table`, `eeg_rack`,
+  `fae_mushroom` (3.5 m, a blocker: no dead square for it yet), `railway_lantern`, `steam_turbine`.
+- **DECISIONS MADE FOR MONDO:** the door up stands in the Power station's YARD (not in the turbine hall); two plots; the stair climbs from
+  the track tunnel; the sludge = Corroded for 2 rounds, no race immune by terrain; who lives there besides kaiju and black goo: mad
+  scientist, swamp monster; something with tentacles lives in the tank (props only, no unit, no rule).
+- **NEEDS A MODEL:** a lying waste pipe mouth (1 m bore) for the channel's head; a hazmat suit on a hook; a yellow drum with the trefoil.
 - **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
   the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and
   taken out (the sheet tore into spikes round them); no sound.
@@ -7041,6 +7076,73 @@ a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil la
 3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
 4. The Sphinx stays parts-built until a model exists.
 
+## CAMELOT, THE LOOKING-GLASS GARDEN — the district thread (2026-11-16, second side; file `docs/areas/camelot/districts/L.js`)
+
+mondo 11-16 (before a nap): every district prototyped to a respectable standard, at most five passes, no questions (docs/plans/DISTRICT_THREAD_BRIEF.md).
+Six plots west of the moat (squares x 0..12, y 12..84): a hedge garden on two marble walks, the West Gate's bridge on its middle.
+The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this file only draws them, so everything new stands on a hedge
+(its top, its face, its end) or on the free marble and grass. No plan square was changed.
+
+- **AS IT STOOD (first probe, 11 views)**: the hedges near black (the leaf sheet with no `gain`), flat tops, bare marble everywhere; the
+  chessboard and its pieces good; the tea party = four office chairs at a small table IN the walk; the mirror's door a bare stone box.
+- **PASS 1, THE EXTERIORS (seen, 14 views)**: THE HEDGES on a stone kerb, lifted (`gain` 1.75, a paler top); 55 TOPIARY pieces on the
+  hedge tops beside the walks (ball on a stem, cone, three tiers, a pawn); ROSES in every hedge face that looks at a walk (white up north
+  where they are being painted, red at the court, white at the mirror, pink at the tea party); 13 ROSE ARCHES over the walks; a stone
+  PIER with a ball either side of every gateway (28); 22 LANTERNS (`meshy_hanging_lantern` on an iron post standing in a hedge face).
+  THE HEDGES, NORTH: the roses are being painted: a white rose tree half red, the ladder, the pots, the spill.
+  THE LAWN: croquet (six drawn hoops, the peg, four balls, two more flamingos, the old garden's high chair as the umpire's), five spare
+  chess pieces beside the board, the old garden's small board on a table with two chairs, the telescope.
+  THE COURT: the throne under a crimson-and-white striped canopy on gilt posts, a crimson carpet with a gold edge, two suits of armour.
+  THE MIRROR: a gilt looking-glass frame (two columns, an arch of beads) stands 2 m before the door; a grandfather clock, the giant
+  hourglass, three doors that lead nowhere (`psx_door_*_loose`), the caterpillar's smoke (`chimney_smoke`), more mushrooms.
+  THE TEA PARTY: MOVED three squares east out of the walk onto the grass nook: six tables end to end under a pink-and-white striped
+  tent, a cloth, twelve chairs no two alike (+ the old four), three teapots, the cups, the cake, biscuits, a candelabra, paper lanterns;
+  the cat on the hedge; a wingback chair and a music box in the west nook.
+  THE HEDGES, SOUTH: giant mushrooms growing out of the hedge tops, a bird cage, urns.
+- **WRONG ON THE FIRST LOOK, FIXED IN THE SAME PASS**: a rose as a 13 cm dome read as a grey shelf fungus (now 8.5 cm, sunk half into the
+  leaf, lit: `glow` 0.5 white / 0.3 red); the sheet `gold` draws as brown wood (the frame and the canopy posts now wear the kit's plain
+  gilt tint 0xd8b050, no sheet); `garden_ring` is a PAVED HEDGE RING 7 m across, not a croquet hoop (the four I added are out, the hoops
+  are drawn); the tent's underside was near black (the canvas has `glow` 0.28).
+- **NOBODY ELSE MOVED**: the eleven old `dec` calls run in the old order on the old squares; every new piece is placed by metres (`at()`)
+  or by `put` (no dice), so the scatter of F, N and W is untouched.
+- **FRAME RATE** (cloud software GPU, llvmpipe; the lawn looking south at the board): before 1.00 frames a second, 2,022 geometries, 1,039
+  draw calls. After pass 1: 2,222 geometries, 1,200 calls; the reading of 0.20 was taken as the FIRST view of the run while the room was
+  still compiling, so it is not a fair number: measured again in pass 2.
+- **FITS THIS DISTRICT** (MODEL_LIST.md read in sections + the live catalogue's 1,853 keys + section 13's unwired files searched for
+  rose / flower / hedge / topiary / card / heart / chess / tea / cake / clock / mirror / flamingo / croquet / garden / fountain / statue):
+  the game `chess_set_game`, `chess_board`, tree kinds `chess_*` (12); time `gclock`, `giant_hourglass`, `astronomical_clock`,
+  `pocket_watch`, `pocket_watch_hung`, `clock`, `meshy_clock`, `psx_clock_1/2`, `wall_clock`; the tea `teapot`, `teacups`, `wedding_cake`,
+  `xmas_cookies`, `xmas_gingerbread`, `xmas_flan`, `xmas_punch*`, `xmas_cocoa*`, `coffee_mug`, `item_drinking_cup`, `item_milk_and_cookies`,
+  `psx_plate_mp_1`, `candelabra`, `pastry_case`, `psx_table_large_2/3` + `psx_dinner_table_1` (and their colour variants), chairs
+  `psx_chair_mp_1..5` (+ variants), `psx_armchair_1/2`, `wingback_chair`, `rocking_chair`, `tulip_chair`, `egg_chair`, `chesterfield_sofa`;
+  the mirror `psx_door_1..4_loose`, `psx_door_mp_1/6_loose`, `leaf_frame_only`, `item_hand_mirror`, `barber_mirror` (a wall prop),
+  `psx_photo_frame_mp_1/2`, `psx_painting_1`, `painting_portrait`; drink me `item_potion_flask`, `psx_healing_potion_mp_1/2`,
+  `psx_glass_bottle_1/2`, `house_key`, `key`, `psx_key_mp_*`; cards `tarot`, `tarot2`, `tarotDeck`; the garden `fountain`, `angel_statue`,
+  `stone_urn` (an urn with a fern), `marble_bust`, `bird_cage`, `iron_garden_bench`, `park_bench`, `garden_ring` (a paved hedge ring),
+  `garden_tree`, `planter`, `potted_plant`, `psx_planter_pot_mp_1_full`, `wedding_arch`, `greek_column`, `decor_stone_arch`,
+  `psxg_stepping_stone_1/2`, `psxg_iron_gate_1/2`, `hw_fence_iron*`, `psxg_railing`, `lifeguard_chair`, `brass_telescope`, `music_box`,
+  `decor_music_box_dancer`, `paper_lantern`, `festoon`, `crystal_chandelier`, `meshy_hanging_lantern`; mushrooms `mushroom`, `mushroom2`,
+  `fae_mushroom`, `fae_toadstool`, `mushroom_lamp`, `woods_glowcap`; animals `flamingo`, `rabbit`, `cat`, `caterpillar`, `caterpillar_bug`,
+  `chrysalis`, `butterfly`, `monarch`, `blue_morpho`, `swallowtail`, `luna_moth`, `ladybug`, `bee`, `bumblebee`, `meshy_frog`, `crow`;
+  the dreameater's `dream_eye`, `thoughtform`, `impossible_stair`, `floating_orb`, `white_cloud`; races whose home this is (npc-system.md):
+  chess piece, rabbit, dreameater, + the old garden's gnome, ice queen, fairy, catgirl. Section 13 (the unwired R2 files) holds nothing
+  for a garden: no rose, flower, hedge, topiary, card or hat file exists in the bucket.
+- **NEEDS A MODEL** (nothing on R2; drawn in code or left out): a rose bush / flower bed, a playing-card soldier, a top hat, a croquet
+  mallet and a hedgehog, a hookah, a small garden gate, a sundial, a bird bath, a standing mirror (cheval glass), a peacock, a dodo.
+- **DECISIONS MADE FOR MONDO (overrule any in one line)**:
+  1. The old room `site_prebuilt_lookingglass_garden` is NOT retired and the `oldgarden` gap, the mirror and the barbershop mirror are
+     not moved: they are the tool's rows and shared ways out. Your rule (rebuilt areas replace their old rooms) says the old garden
+     should go once this one is right: say the word and it is one `DOOR_HQ.retired` row + the barbershop link's far end.
+  2. The tea party moved out of the walk (it stood on walkway square 7:68) into the east grass nook, and grew from four chairs to a long
+     table under a tent. The old table and chairs are at its head.
+  3. The office chairs (`teal_chair`) and the tulip table stay as the old garden had them (DOOR's furniture in Wonderland); the new
+     chairs are mismatched wooden and stuffed ones.
+  4. The hedges were not opened into a maze: that is a plan change (`layout.json`, the tool's). A maze in The Hedges north / south is
+     the first thing I would ask for.
+  5. The gilt frame stands before the mirror's door, it does not replace the stone doorway (the door is the tool's).
+  6. The teapots and the cup stack are the catalogue's own giant sizes (a teapot 1 m across): left giant on purpose.
+- **NEXT**: pass 2 (no insides are named here: more landmark work, a walk-in only if one fits), pass 3 dressing + the natives,
+  pass 4 air / light / night, pass 5 polish.
 ## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
 
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
