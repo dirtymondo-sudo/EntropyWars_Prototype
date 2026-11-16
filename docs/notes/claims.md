@@ -296,3 +296,6 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   (2) data.js `DOOR_HQ.links` `northpole_camelot`, end b (Camelot's side only): that option. Your end a is untouched. Also for every thread that builds
   in a snow-pine zone: one `xmas:Trees_0*` tree stands trunks up to 16 m from its foot (one stood inside a hut): areas-complexes.md "CAMELOT, THE SNOWY PINES", pass 4.
   Seen, not mine, not touched: the north bridge of Camelot's moat has modern steel rails (the tool's `bridge` rows).
+- 2026-11-16 (owner, on mondo's order with a picture, to the Shore's holder and the Mountains tool row): THE WIDE BOARDWALK. `docs/disaster-city/districts/B.js` beach() paints the city's own
+  squares between the coast road and the old boardwalk as planks (cx 139-143, Entertainment + Bayside; the mole too). Paint only; nothing in W.js, S.js or any tool was touched, and the
+  two-square boardwalk, the sand and the Shore's rows are as they were. Notes: areas-complexes.md "DISASTER CITY, THE WIDE BOARDWALK".
