@@ -50,7 +50,7 @@ function houseKind(h, i) { const cx = (h.x0 + h.x1) / 2, cy = (h.y0 + h.y1) / 2,
    the texbuilding's own door place `door.lx`). What that changed in the looks: a wall is `walls()` (three faces + a front with the doorway
    cut), a stone foot is `footS()` (strips round the walls, never a box with a top over the plan: the stone lid), the drawn door panel is
    gone (the frame, the step and the path stand at the real doorway), the ground windows moved clear of it (`wx`). */
-function houseLook(kind, a, w, d, i, path, door) {
+function houseLook(kind, a, w, d, i, path, door, CH) {
     const tint = HTINT[i % 4], sh = SHUT[i % 4], fl = BLOOM[(i * 3) % 4], dx = door.lx, cw = door.cw, wx = Math.min(w / 2 - 1.0, dx + 2.5);
     const along = d > w;                                                                             // the ridge runs along the longer side
     const gable = (y, rh, over, key, t, o) => { if (o && o.keyEnd) { const gn = o.keyEnd === STUCCO ? PG : SG; o = Object.assign({ gain: gn }, o); t = dimBy(t, gn); } return along ? a.roof('gable', 0, y, 0, d + over, rh, w + over, key, t, Object.assign({ ry: 90 }, o)) : a.roof('gable', 0, y, 0, w + over, rh, d + over, key, t, o); };
@@ -73,7 +73,7 @@ function houseLook(kind, a, w, d, i, path, door) {
     const door0 = zf => { for (const s of [-1, 1]) a.box(dx + s * (cw / 2 + 0.1), 0, zf + 0.02, 0.2, 2.4, 0.2, WOODD, TIMBER); a.box(dx, 2.2, zf + 0.02, cw + 0.6, 0.2, 0.24, WOODD, TIMBER);
         a.box(dx, 0, zf + 0.5, cw + 0.5, 0.06, 0.9, WALL, STONE2);
         if (path > 0.3) a.box(dx, 0, d / 2 + 0.85 + path / 2, 1.5, 0.05, path, 'cobblestone', 0xc8c4bc, { sides: false }); };
-    const chimney = (x, z, y0, top, key, t) => { a.box(x, y0, z, 0.9, top - y0, 0.9, key, t, { roof: true }); a.box(x, top, z, 1.1, 0.2, 1.1, key, t, { roof: true }); a.box(x, top + 0.2, z, 0.5, 0.35, 0.5, null, 0x3a3230, { roof: true }); };
+    const chimney = (x, z, y0, top, key, t) => { CH.push([x, z, top + 0.55]); a.box(x, y0, z, 0.9, top - y0, 0.9, key, t, { roof: true }); a.box(x, top, z, 1.1, 0.2, 1.1, key, t, { roof: true }); a.box(x, top + 0.2, z, 0.5, 0.35, 0.5, null, 0x3a3230, { roof: true }); };
     const barrel = (x, z) => { a.cyl(x, 0, z, 0.36, 0.9, WOODK, 0x8a5a34, { seg: 10 }); a.cyl(x, 0.2, z, 0.38, 0.06, null, 0x3a3230, { seg: 10 }); a.cyl(x, 0.64, z, 0.38, 0.06, null, 0x3a3230, { seg: 10 }); };
     const f = d / 2 - 0.1;
     if (kind === 1) {   // JETTIED TOWNHOUSE
@@ -141,7 +141,8 @@ const KCOUNT = {}, LIST = [];
 const IN = { 1: [STUCCO, 'wood_planks'], 2: [STUCCO, 'wood_planks'], 3: [STUCCO, 'dirt_2'], 4: [WALL, 'wood_planks'], 5: [WOODK, 'dirt_2'] };
 HOUSES.forEach((h, i) => {
     const side = frontOf(h), kind = houseKind(h, i), hh = (kind === 1 || kind === 4) ? 7 : 3.6;
-    const B = kb('house_' + i, [h.x0, h.y0, h.x1, h.y1, side], hh, { leafDouble: false, keyIn: IN[kind][0], floorIn: IN[kind][1] }, (a, w, d, door) => houseLook(kind, a, w, d, i, Math.max(0, reach(h, side) * ctx.C - 0.75), door));
+    const CH = [], B = kb('house_' + i, [h.x0, h.y0, h.x1, h.y1, side], hh, { leafDouble: false, keyIn: IN[kind][0], floorIn: IN[kind][1] }, (a, w, d, door) => houseLook(kind, a, w, d, i, Math.max(0, reach(h, side) * ctx.C - 0.75), door, CH));
+    if (i % 6 === 0 && CH.length) ctx.inside(B, 'chimney_smoke', CH[0][0], CH[0][1], { y: CH[0][2] });   // PASS 4: one chimney in six smokes (a burning hearth's; three sprites each, so few)
     LIST.push({ B, kind, i }); count.houses = (count.houses || 0) + 1; KCOUNT[kind] = (KCOUNT[kind] || 0) + 1;
     if (process.env.CAM_HOUSES) console.log('house_' + i, 'kind ' + kind, 'front ' + side, 'squares ' + [h.x0, h.y0, h.x1, h.y1].join(' '), 'street ' + reach(h, side));   // CAM_HOUSES=1 node bake-camelot.js --dry-run: the list (which house is which kind, for a probe's views)
 });
