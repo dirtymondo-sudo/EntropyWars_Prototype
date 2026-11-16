@@ -79,7 +79,7 @@ const CV = () => PLAS;                                                          
 const hex = n => '#' + ('000000' + n.toString(16)).slice(-6);
 const ROTS = { S: 0, W: 90, N: 180, E: 270 };
 /* the stucco sheet is grey: every cloth part is lifted (`gain`), and the small bright things glow a little */
-const lift = a => { a.P.forEach(q => { if (q.key === PLAS && q.gain == null) q.gain = 1.7; if (q.key === 'carpet' && q.glow == null) { q.gain = 1.8; q.glow = 0.3; } }); return a; };
+const lift = a => { a.P.forEach(q => { if (q.key === PLAS && q.gain == null) q.gain = q.tint === CREAM ? 2.05 : 1.7; if (q.key === 'carpet' && q.glow == null) { q.gain = 1.8; q.glow = 0.3; } }); return a; };
 const arch = (id, x, z, rot, a) => feat(lift(a) && { k: 'arch', id: 'des:c:' + id, x: r2(x), z: r2(z), rot, parts: a.P });
 const ghost = (x0, z0, x1, z1, h, t) => feat({ k: 'wall', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), h, t: r2(t), key: WD2, ghost: true, rail: false });
 /* a row's frame -> the room (the tool's own turn: building().at) */
@@ -158,7 +158,7 @@ function stall(id, sx, sy, n, side, name, tint, o) {
     a.box(-w / 2 + 0.3, hB - 0.5, d / 2 + 0.5, 0.08, 0.08, 0.08, null, 0xffe8a8, { glow: 1, n: Math.floor((w - 0.6) / 0.45) + 1, step: [0.45, 0, 0] });               // bulbs along the awning's edge
     for (const y of [1.25, 1.95]) a.box(0, y, -d / 2 + 0.3, w - 0.5, 0.05, 0.42, WD2, 0xd8c098);                                           // two prize shelves
     const PR = o.prizes || [0xe04848, 0x48a0e0, 0xf0c840, 0x58c070, 0xe070b8], m = Math.floor((w - 0.9) / 0.55);
-    PR.forEach((t, k) => { const c = Math.floor((m - k + PR.length - 1) / PR.length); if (c > 0) for (const y of [1.3, 2.0]) a.box(-w / 2 + 0.6 + k * 0.55 + (y > 1.5 ? 0.2 : 0), y, -d / 2 + 0.3, 0.3, y > 1.5 ? 0.3 : 0.4, 0.28, 'carpet', t, { n: c, step: [0.55 * PR.length, 0, 0], uv: [0.6, 0.6] }); });
+    PR.forEach((t, k) => { const c = Math.floor((m - k + PR.length - 1) / PR.length); if (c > 0) for (const y of [1.3, 2.0]) a.box(-w / 2 + 0.6 + k * 0.55 + (y > 1.5 ? 0.2 : 0), y, -d / 2 + 0.3, 0.3, y > 1.5 ? 0.3 : 0.4, 0.28, PLAS, t, { n: c, step: [0.55 * PR.length, 0, 0], uv: [0.6, 0.6], gain: 2.2, glow: 0.3 }); });
     a.box(0, hB + 0.05, 0, 0.5, 0.06, 0.5, WD2, 0xfff0c0, { glow: 0.9 });                                                                   // a lit bulb board under the awning
     a.P.forEach(q => { if (q.glow == null && (q.key === PLAS || q.key === WD || q.key === WD2 || q.key === PLANK)) q.glow = 0.16; });                  // seen at night
     arch('stall:' + id, x, z, rot, a);
@@ -318,7 +318,7 @@ exports.buildings = ctx => { bind(ctx);
         /* the ghosts: the round wall (the open gore left out), each bank's front and two ends, the stand (0.5 m: it is climbed) */
         const Wp = (r, deg) => { const t = deg * Math.PI / 180; return at(Math.cos(t) * r, Math.sin(t) * r); };
         for (let i = 0; i < N; i++) { if (i === 3) continue; const p = Wp(R0 - 0.1, (i + 0.5) * A), q = Wp(R0 - 0.1, (i + 1.5) * A); ghost(p[0], p[1], q[0], q[1], 5, 0.5); }
-        for (const c of [115, 295]) { for (let k = 0; k < 4; k++) { const p = Wp(8.15, c + k * 32.5), q = Wp(8.15, c + (k + 1) * 32.5); ghost(p[0], p[1], q[0], q[1], 2.8, 0.5); }
+        for (const c of [115, 295]) { for (let k = 0; k < 4; k++) { const p = Wp(8.15, c + k * 32.5), q = Wp(8.15, c + (k + 1) * 32.5); ghost(p[0], p[1], q[0], q[1], 2.8, 0.5); const p2 = Wp(15.35, c + k * 32.5), q2 = Wp(15.35, c + (k + 1) * 32.5); ghost(p2[0], p2[1], q2[0], q2[1], 3.7, 0.4); }   // front and back (pass 5: the walk check came in from behind)
             for (const e of [c, c + 130]) { const p = Wp(8.0, e), q = Wp(15.3, e); ghost(p[0], p[1], q[0], q[1], 2.8, 0.3); } }
         { const p = at(-4.2, -14.3), q = at(4.2, -14.3); ghost(p[0], p[1], q[0], q[1], 0.5, 3.2); } }
 
@@ -352,7 +352,7 @@ exports.buildings = ctx => { bind(ctx);
         const I = tentInside(a, 'arcade', w, d, 3.6, door, BLUE);
         I.solid(I.X(0), I.Z(3), 2.7, 0.8, 1.02, WD, 0xb08a60, { keyTop: WD2, tintTop: 0xe8d0a0 }); a.box(I.X(0), 0.02, I.Z(3) - 0.42, 2.7, 0.98, 0.03, PLAS, BLUE, { glow: I.g });    // the change counter (square 0, 3)
         for (const y of [1.3, 1.95, 2.6]) a.box(-I.iw + 0.24, y, I.Z(3), 0.4, 0.05, 2.6, WD2, 0xd8c098, { glow: I.g });
-        [0xe04848, 0x48a0e0, 0xf0c840, 0x58c070].forEach((t, k) => { for (const y of [1.35, 2.0, 2.65]) a.box(-I.iw + 0.24, y, I.Z(3) - 1.1 + k * 0.5 + (y > 1.9 && y < 2.3 ? 0.2 : 0), 0.28, 0.34, 0.28, 'carpet', t, { n: 2, step: [0, 0, 1.0], uv: [0.6, 0.6] }); });
+        [0xe04848, 0x48a0e0, 0xf0c840, 0x58c070].forEach((t, k) => { for (const y of [1.35, 2.0, 2.65]) a.box(-I.iw + 0.24, y, I.Z(3) - 1.1 + k * 0.5 + (y > 1.9 && y < 2.3 ? 0.2 : 0), 0.28, 0.34, 0.28, PLAS, t, { n: 2, step: [0, 0, 1.0], uv: [0.6, 0.6], gain: 2.2, glow: 0.3 }); });
         a.sign('PRIZES', -I.iw + 0.06, 3.0, I.Z(3), 2.2, 0.3, '#fff2b0', '#16305a', 'rye', { ry: 90 });
         lift(a); });
     SIDESHOW = building('sideshow', [26, 33, 31, 36, 'N'], 3.6, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: PLAS, floorIn: PLANK }, (a, w, d, door) => { marquee(a, w, d, door, { name: 'SIDESHOW', tint: PURP, h: 3.6, ink: '#fff2b0', board: '#3a2450', signW: 6 });
