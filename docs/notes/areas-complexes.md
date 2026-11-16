@@ -4416,6 +4416,26 @@ hangar and the ward were still the old BSP rooms and the pyramid had no inside. 
     kills it. What works: `--pre=` a filter that keeps only the props near the views (and drops the scatters and trees), then the flag.
     Not seen this way: the flamingos up close, the island's and the Reef's pieces, anything under the water (the sea is opaque from above).
 
+## THE ESTATE, THE GRASS + THE CLEAN SKY (2026-11-15)
+
+mondo: "the sky is glitching/flickering in the estate. keep improving the visuals. I want the grass from the battle maps on this grass too".
+
+- **THE GRASS FIELD IN A WALKED ROOM** (three-renderer.js `_hqGrassTick` / `_hqGrassCell` / `_hqGrassDrop`, tunables `HQ_GRASS` = `window.EW_HQ_GRASS`):
+  the board's grass field (THE GRASS FIELD, 11-12: the same tufts, material, colours, wind) on a walked room's ground. A room asks with
+  `terrain.grassField: true` (today the Estate only; any terrain room may). The field is cells of 7 m built round the walker (28 m radius on High,
+  16 m on Low, two cells a tick, nearest first) and dropped behind him; ~40 000 tufts stand at once on High. A tuft stands where the room's mask is
+  open, the ground wears a grass sheet (the painted sheet there, else the floor; `GGRASS.sheets`, which gained `grass_dark_fantasy`), there is no
+  water, the face is not steep and no `texbuilding` stands. Unlike the board's field the walked room's tufts WRITE DEPTH: each cell sorts only
+  its own tufts, so without depth two cells side by side overlapped wrongly at their shared edge (seen: dark lines of tuft feet along every cell's
+  edge, whatever order the cells were drawn in). With depth the order does not matter and the walker's shins stand in the grass.
+  Tufts are 0.8 of the board's height. Settings > Video > Grass (High / Low / Off) rules it; kill switch `window.EW_NO_HQ_GRASS`;
+  `window._ewHqGrass` reads the live count. Not done: nothing lays the tufts down (no press map: the walker wades through), props stand in grass,
+  the WebGPU twin was not run. The lawn's ground sheet is tinted by the shell, the tufts by the sheet's own colour: they are a little brighter.
+- Seen in the cloud browser (`[EW BUILD]` base 73c958d): one even field at the farmhouse and the barn, no seams; the sky with no bodies.
+- **THE CLEAN SKY:** what flickered was the ranch shell's night scenery (`scenery: 'eyes'`: a ringed body, a door frame and an orb, turning) drawn
+  as black outlines in the daytime sky since the room rides the clock. The Estate's shell now carries its own `sky` (the ranch's colours and fog,
+  `scenery: 'none'`, no landmarks, fewer stars). The ranch shell itself is unchanged (the old Corn Fields board still uses it).
+
 ## THE DESERT'S INSIDES, THE LOOK PASS + THE TURNING TOMB DOOR (2026-11-15, second side)
 
 mondo: "yes, continue, and you can playtest to screenshot" (yes = the King's Chamber holds the door to the Turning Tomb).
