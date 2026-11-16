@@ -5141,6 +5141,11 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     2.25 (the kit's 2.68 / 2.5 are for `h` 3.0 / 3.2). Keep a walk-in ONE square off any cone or rock square (the slope blends in through
     the floor). `psx_carpet_mp_1` is a Persian rug; `campfire` with `h: 0.5` is a hearth's fire; a ring of stones = one `cyl` part with
     `ring: { n, r }`. Drawn furniture that reads: a plank platform + a straw pallet (a bed), a banded block with a tall back (a seat).
+  - **A FLOW DOWN A BUILT SLOPE:** never trust the plan's slope: read the built ground in node (`hqTerrainInfo(room)`, `hqTerrainHeight(i, x, z)`
+    through load-data.js) every 1.75 m along the flow and type each `fall` from one height to the next (+0.3 / +0.12). The cone AS BUILT
+    falls 0.7 m a metre, not the plan's 1.2.
+  - **A GARDEN:** `hw_crop` / `hw_crop_2` draw as pale paper tiles; ridges of soil = boxes in the terrain key `dirt_4` (0.5 x 0.16 m, 1.1 m apart);
+    `hw_pumpkin*`, `hw_scarecrow`, a `rail` row `model: 'ranch'` and `chicken` all read. `psxg_stepping_stone_1/2` as a `scatter` is a path.
   - **TRIANGLES:** a Meshy prop is about 10,000 triangles whatever its size (a skull, a fern, a flamingo); thirty of them is 0.3 M. Count before dressing.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
@@ -5277,6 +5282,13 @@ sea has things to sail to.
     pallets and pillows, two hung mats, the stores (clay pots, an amphora, straw bales), a pole rack with dried meat and fish, drums, two
     woven floor mats; THE NORTH HUT: a hearth, two platforms, a mat, a pot, an urn, straw, a bucket, a spear. The big hut moved ONE SQUARE
     south (109-110 x 16-18): beside the cone its slope came up through the floor. Triangles at the Landing after the pass: 2.64 M (pass 1: 2.5 M).
+  - **PASS 3, DRESSING (seen on screen, by day and at 22:30):** in pack models (a few hundred triangles each) and drawn pieces. The island:
+    THE GARDEN west of the big hut (nine drawn ridges of turned soil, gourds, a scarecrow, a timber fence on two sides), four chickens,
+    stepping stones from the gate to the fire and on to the shrine, THE WATCH FIRE on the north-east point, a tide line on the north
+    beach (shells, a seal, fish bones), dry scrub on the scorched ring, two birds over the crater. THE LAVA FITS THE CONE NOW: nine short
+    falls a flow, typed from the built heights. The sea: THE SHARKS (P07-09: three fins and a hammerhead round fish schools, a boat adrift),
+    THE TURTLES (five, off the south-west islet), THE SEAL ROCK (P13-00: a drawn shelf, four seals on it, two in the water), a bird over
+    the Rocks, a starfish (the Beach's own list, no line) on the south-west islet. NOT placed again: a wreck and jellyfish (the Triangle has both).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -5303,7 +5315,7 @@ sea has things to sail to.
   gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
   for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
   a ship or raft out at sea; a moving waterspout (this one stands still).
-- **NOT DONE:** more dressing (pass 3); night and the island's real lights (pass 4); polish (pass 5). Nothing
+- **NOT DONE:** night and the island's real lights (pass 4); polish (pass 5). Nothing
   under the water shows (the sea is opaque from above). No fight set up.
 - **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is a far cull for the whole sea
   room, the tool row's or the engine's, not fewer props on one island).
