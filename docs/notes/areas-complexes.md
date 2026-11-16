@@ -12672,6 +12672,56 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
   the rock is square blocks 3.5 m wide (no cave-rock model exists: NEEDS A MODEL); H and A are a first build only (their rows on the
   board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
 
+
+## OUTER SPACE, THE ZONE KIT — for the nine district threads that follow (started 2026-11-16 by the pilot, the Moon's district M)
+
+- **Read first:** "OUTER SPACE ON PLOTS" above, your file's header (STANDS TODAY / NOT YET), `docs/areas/space/districts/M.js` (the pilot).
+- **ctx (bake-space.js), squares are your WORLD's (sx, sy); `ctx.sq(plotId, lx, ly)` gives them from a plot's own 0..11:**
+  `P(key, sx, sy, o)` a blocker on a square's middle (one a square) · `dec(key, sx, sy, o)` decor off the middle (may share) · `on(key, sx, sy, o)`
+  exactly on the middle, sharing (a terminal on a table: give `y`) · `native(race, sx, sy, face, say)` · `sayOf(race, i)` an old room's own line ·
+  `building(id, [x0, y0, x1, y1, side], h, opts, parts)` a walk-in `texbuilding` + its look (the Estate's helper; the ground under it is
+  levelled; `ctx.BUILT[id]` + `put(B, key, lx, lz, o)` furnish it in its own frame) · `look(id, sx, sy, rot, fn)` a drawn piece (an `arch` row;
+  sx / sy may be fractions) · `line(x0, y0, x1, y1, w, color)` a line on the ground in square units (tyre tracks, footprints, cables) ·
+  `grime(kind, sx, sy, r)` a floor decal (`scorch` under a lander) · `flatten(x0, y0, x1, y1, h, ch)` level squares · `hAt(sx, sy)` ·
+  `squares(plotId, chars)` · `free(sx, sy)` · `feat(row)` any terrain row · `airZones(ctx)` (export) the air by district.
+  Sheets: `HULL` (ribbed metal), `PLATE` (diamond plate), `PANEL` (painted tin: with `gain: 2.2` and a white tint it is a white hull),
+  `GRILL`, `TRUSS`, `GLS` (dark glass, glows), `STRIPE` (warning stripe).
+- **A LANDFORM IS NOT YOURS TO PLACE IN YOUR FILE:** craters, mesas, ramps, rock are in `docs/plans/world-zones/draw-space.js` (the tool
+  row). Need one moved or added: take the tool row for that change, note it on the board, free it.
+- **REAL-SIZE ROWS (catalogue, group 'Outer Space'):** the Meshy space props were sized for the old 132 m rooms (the lander 3.2 m). Same
+  files at the size the real thing has: `lunar_lander_full` (7 m), `dish_big` (8.5 m), `saucer_big` (15 m span), `tripod_big` (22 m, the
+  Martian's tripod). Placed so far: the first two (district M). A blocker bigger than a square: add its other squares to `ctx.taken`.
+- **WHAT READS, WHAT DOES NOT (seen on screen):** a dark sheet painted by the square (obsidian on a crater floor) draws black squares with
+  stepped edges: keep the ground sheets close in tone and let the HEIGHTS and the lights show a form. White needs `gain` (the urban metal
+  sheets are dark). `GLS` with a blue tint + `glow: 0.45` on a `roof` part of form `shed` = a solar panel. Lines 0.3 m wide in 0x44464c
+  read as tyre tracks from the air and from the ground. The rock (`gen` look rock, edge 2, jitter 0.4, topNoise 1.1) reads as a ridge.
+- **THE FITS LIST (MODEL_LIST.md §6, §7, §12b, §13 and the live catalogue searched for: space, moon, lunar, mars, astro, alien, ufo, saucer,
+  rocket, satellite, dish, antenna, crater, asteroid, meteor, rover, lander, flag, sci-fi, pod, capsule, solar, telescope, pyramid, obelisk,
+  monolith, planet, shuttle, cryo, crystal, camera, film, studio, tank, console, server, generator, container, crate, barrel):**
+  HEROES `lunar_lander(_full)` `mars_rover` `dish(_big)` `saucer_lg` / `saucer_big` `space_shuttle` (9 m) `satellite` `space_station` (14 m
+  span) `escapepod` `spaceship` `ufo` `decor_tripod_machine` / `tripod_big` `rocket_engine` `astronaut` (a dead one) `hullplate` `nacelle`
+  `dockring` (the ship's wreck pieces) `obelisk` (7 m) · ROCK `asteroid_a` `asteroid_b` (4 m, good boulders) `cave_stone` `crystal_cluster`
+  `meshy_crystal_shard(s)` `meteorite_plinth` · BASE `ind_container` `generator` `cable_drum` `iso_tank` `meshy_molten_cryo_tube` `pod_bed`
+  `pod_window` `server_rack` `radio_console` `retro_console` `crt_terminal` `security_camera` `flood_mast` `psx_supply_crate_*`
+  `psx_metal_barrel_mp_*` `camping_tent` `cot` `steel_table` `mini_fridge` `retro_radio` · FILM (the Sound Stage) `film_camera`
+  `studio_camera` `studio_light` `directors_chair` `film_projector` `mixing_console` · STARS `telescope` `brass_telescope` `star_projector`
+  `star_chart` `star_dome` `floating_orb` · SKY MODELS (§7, horizon builders, not props): `moon` `earth` `alien` (a planet) `star` `solar`.
+  ONLY TWO pieces of the Molten Maps sci-fi pack are on R2 (the cryo tube, the sleeper casket). NOT ON R2 AT ALL: see NEEDS A MODEL in
+  the pilot's section.
+
+## OUTER SPACE, DISTRICT M — THE MOON'S MARE, the pilot (2026-11-16; file `docs/areas/space/districts/M.js`, 7 plots)
+
+- **FRAME RATE (the probe's software renderer, the Lander view x 28 z 68 face 25, 6 s, second read):** first build 2.3 · after pass 1: 2.2.
+- **PASS 1, EXTERIORS (seen on screen, day = the Moon's one sky):** THE LANDER at its real size (`lunar_lander_full`, 7 m) on its pad with
+  a blast mark, THE FLAG (a drawn pole, rod and cloth: bleached white, as the real ones are), the TV camera on its tripod
+  (`studio_camera`), footprints from the Standing Door to the ladder, round the flag and to the camera; THE TRACKS as two tyre lines from
+  the pad east and north to the rover, the crashed probe (`satellite`) in its own small crater; THE HABITAT as a white pressure module
+  (painted tin lifted to white, barrel roof, red stripe, an airlock porch with a lamp, portholes that glow, the plate THE HABITAT, a mast
+  with a red beacon, a vent, two tanks on a plate) with a solar field (three rows), a power hut's worth of gear (generator, cable drum,
+  container, crates, barrels); THE DISH at its real size (`dish_big`, 8.5 m) on its platform with two consoles at the ramp's foot and a
+  cable up the ramp; the Lander's yard (a console, a cable, crates); seven boulders (`asteroid_a/b`) and eight stones on the open dust.
+  Tool, same PR: `ctx.line`, `ctx.grime` (+ the rooms' rows in `DOOR_HQ.decals`, marker `SPACE72-DECALS`), the Moon's tracks in the darker
+  sheet, four real-size catalogue rows.
 ## THE CAVERN, DISTRICT K — the pilot (2026-11-16, the Cavern zone thread; file `docs/areas/cavern/districts/K.js`, 13 plots)
 
 A SLIP TO KNOW ABOUT: the first build's PR (#1807) reached main WITHOUT the room in data.js (my merge helper took main's data.js on a conflict
