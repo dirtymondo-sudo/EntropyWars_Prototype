@@ -4967,12 +4967,21 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   resting seal. ADDED: seven catalogue rows cut from the scene (the zone kit lists them); a house on piles with a fishing boat in the
   Roads, a hut on piles and its rowboat in the Mouth, a fishermen's house on piles off the skiff jetty, a boat hauled up the slipway,
   a rowboat at the water steps, mooring piles in the basin, the shed's generator, the crane on the wharf, three seals.
+- **PASS 2, INTERIORS (seen on screen by day and at 22:30):** the Quay Shed, the district's only walk-in (the plan draws no other
+  building; the stilt houses are solid pack models). The kit's `inside` copied for a working shed (cream boards over a red dado, a lit
+  board ceiling at 3.83 under the building's own 3.88, three tie beams, seven daylit windows) and 33 props on its 3 x 3 squares: pots,
+  a steel bench under the pegboard, crates, nets, the outboard, the fish scale, the hand truck, the harbour desk with the ship's
+  model, a telescope, a star chart, the anchor, the wheel, a life ring, the bell. The nine props that stood there are kept. LEARNED:
+  a plank loft drawn on the tie beams is a black slab from below (out); a wall prop on the FRONT wall wants `face: 0` (180 shows its
+  back); `brass_telescope` is a floor tripod 2 m tall, not a desk piece; `railway_lantern` lights nothing at night.
+  Frame rate, the quay view: 0.3 fps this run against 0.8 to 1.8 before, with FEWER draw calls (659): the cloud's number is noise.
 - **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
   the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
-- **NOT DONE:** the shed's inside (pass 2); freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the
-  night look (pass 4); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+- **NOT DONE:** freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the night look (pass 4: the quay
+  is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
-- **WAITS FOR MONDO:** nothing blocks the next pass.
+- **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
+  the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
 
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
