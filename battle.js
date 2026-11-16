@@ -13921,6 +13921,8 @@
                     seller.mp = Math.min(seller.maxMp || mpBefore, mpBefore + 75);
                     const healed = applyHealingToUnit(seller, Math.round((seller.maxHp || 0) * 0.2), seller);
                     addLog(`📉 ${_ctName(seller)}'s short pays out: +${seller.mp - mpBefore} MP, +${healed || 0} HP.`);
+                    /* THE BANKER PASS VFX (2026-11-16): the payout's coins (ThreeVFXEffects.fire, relayed by online.js) */
+                    try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('payout', 'nrShortSell', { fromX: unit.x, fromY: unit.y, tx: seller.x, ty: seller.y }); } catch (e) {}
                     showFloatingTextForUnit(seller, '📉 PAYOUT', 'buff', { durationMs: 1100 });
                     markDirty('hud', 'selectedUnit');
                 }
@@ -48869,6 +48871,8 @@
             /* an ally haul / ally swap (Rescue Line, Miracle) never takes the caster itself: the cast refuses it (forecast + doSpell),
                so the list never offers it (forced-movement playtest 2026-11-07 D1: "PIRATE 0T MOVE→CAST" on the Pirate's own row) */
             if ((spell.kind === 'pull' || spell.kind === 'swap') && spell.allyOnly && u.id === unit.id) return false;
+            /* 💰 `noSelf` (THE BANKER PASS 2026-11-16: Line of Credit): the cast only takes another unit, never the caster */
+            if (spell.noSelf && u.id === unit.id) return false;
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
@@ -81605,6 +81609,17 @@
                 const _imT = unitAt(x, y, z) || unitAt(x, y);
                 if (_imT && !_imT.dead && spellBouncesOffImmune(spell, _imT) && !spellTargetUsableOn(unit, spell, _imT)) {
                     addLog(`${_ctName(_imT)} is immune — ${_ctSp(spell.name)} would do nothing.`);
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
+            /* 💰 `noSelf` (THE BANKER PASS 2026-11-16): a direct call aimed at the caster's own square is refused before any
+               MP, AP or cooldown is spent (the lists already leave the caster out, spellTargetUsableOn) */
+            if (spell.noSelf) {
+                const _nsT = unitAt(x, y, z) || unitAt(x, y);
+                if (_nsT && _nsT.id === unit.id) {
+                    addLog(`${_ctSp(spell.name)} needs another ally.`, _clickSeat());
                     state._teleportingUnitId = null;
                     playErrorSfx();
                     return 0;

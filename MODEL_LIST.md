@@ -3255,6 +3255,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | ancient_well | `Assets/world/props/meshy/Meshy_AI_an_ancient_well_0922010024_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | angel_statue | `Assets/world/props/meshy/Meshy_AI_angel_statue_0917035332_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | astronaut | `Assets/world/props/meshy/Meshy_AI_dead_astronaut_0912231349_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| bank_cash | `Assets/world/packs/pizzadoggy_psx_mega_pack/items_and_weapons/cash_1.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | brazier | `Assets/world/props/meshy/Meshy_AI_brazier_0917035429_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | brick_arch | `Assets/world/props/meshy/Meshy_AI_a_brick_arch_section_0916235939_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | bus_shelter | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |

@@ -11832,7 +11832,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _WPN_TEX_CAP = { jet: 1024, ufo: 1024, sleigh: 1024, cannon: 1024, asteroid: 1024, asteroid2: 1024, sword: 1024,
                          giantFoot: 1024, ejectionSeat: 1024, shield: 1024, sack: 1024,   /* THE NEW PROPS: the big ones */
                          fangs: 1024 };   /* THE FANGS: a bite's jaws fill the action camera */
-    var _SPELL_MISC_KEYS = ['moon', 'cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'mushroom', 'mushroom2',
+    var _SPELL_MISC_KEYS = ['bank_cash',   /* THE BANKER SIGNATURES (2026-11-16): the PSX Mega Pack's bundle of bills */
+                            'moon', 'cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'mushroom', 'mushroom2',
                             'pine', 'demon_statue', 'pearly_gate', 'white_cloud', 'tentacle', 'tentacle2',
                             'italian_building', 'italian_building_2',   /* Skyscraper Toss (spell look audit 2026-10-26) */
                             'tree_5', 'tree_6', 'fallen_log',   /* Treeline Scream's dead trees, Trunk Throw's log (FX-3) */
@@ -51453,6 +51454,324 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['spyGarroteWatch']   = { impact: 'spyGarroteWatch_impact' };
 
     /* ═════════ END THE BLIGBLOG + THE SPY SIGNATURES ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE BANKER SIGNATURES (2026-11-16, mondo: "Work on their spell pools and spell vfx ... unique fun strategic playstyles")
+       — High Finance's three casts and the three moments a deal settles, each with its own look, on the 2026-10-25 batch's
+       hook (an EFFECTS def names a `pzSig` that fire() runs from _PZ_SIGS). The money is the PSX Mega Pack's own (Pizza Doggy):
+       `bank_cash` = the banded stack of dollar bills (cash_1, R2 Assets/world/packs/pizzadoggy_psx_mega_pack/items_and_weapons/),
+       warmed with the spells (_SPELL_MISC_KEYS); the coins are discs in the gilt sheet (the pack's coin_mp_1 is a dark
+       bronze cut of its money sheet and read black) and the gavel is shapes in the wood + gilt sheets (no gavel model in the
+       game: MODEL_LIST §10 G11). A bill whose model has not landed is left out, never stood in for.
+       - Line of Credit (`aura`, on the ally as the loan lands): bills flutter down round them onto a gold IOU seal on the floor.
+       - Short Sell (`impact`, on the release): a red stock chart draws itself over the foe's head and crashes; the arrow
+         drops into the body as the Shorted status lands (travel ≈ 480 ms).
+       - Foreclose (`bolt`, pzOwn, timed on flyMs): a gavel rises behind the victim (the side away from the lens, so it never
+         stands in front of the body or the number), comes down on the hit, a red FORECLOSED stamp on the floor and the
+         bills fly out of the body; a Shorted victim spills gold coins too (the combo reads).
+       - THE SETTLING (fired by the engine, data.js STATUS_DEFS debt + battle.js _settleBankOnDeath): `collect` (a loan comes
+         due: coins hop from the borrower to the banker), `badLoan` (the borrower went down: the banker's bills burn), `payout`
+         (a Shorted foe went down: a fountain of coins at the short-seller).
+       Every piece rides fire(), which online.js relays, so the guest sees the same (RULE #2); the settling pieces draw only
+       the ends the viewer can see (_pzSeen). Visuals only. Kill switch: none of its own (Settings > Video spell VFX off). */
+    var _BK = { cash: 0x5fd88a, cashDeep: 0x1f7a42, gold: 0xffd27a, goldHot: 0xfff0b8, red: 0xff3a2a, redDeep: 0x8a1010, orange: 0xff8a3a, ash: 0x3a3430 };
+    /* a pack model sized by its LONGEST side (the misc clone sizes by height, and a bill is 6 mm tall), every material
+       fadable; null until the model has landed (no stand-in) */
+    function _bkModel(key, len) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, g = null;
+        try { g = (TR && TR.getMiscModelClone) ? TR.getMiscModelClone(key, 1, 'center') : null; } catch (e) { g = null; }
+        if (!g) return null;
+        g.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(g), sz = new THREE.Vector3(); bb.getSize(sz);
+        var mx = Math.max(sz.x, sz.y, sz.z) || 1, mats = [];
+        var inner = new THREE.Group(); inner.add(g); g.scale.multiplyScalar(len / mx);
+        g.traverse(function (n) { if (n.isMesh) { n.material.transparent = true; n.material.opacity = 0; n.material.color.setScalar(1.6); n.renderOrder = 160; n.frustumCulled = false; mats.push(n.material); } });   /* the pack's dollar sheet is dark under the battle grade: lifted */
+        inner.userData.mats = mats;
+        return inner;
+    }
+    /* a gold coin: a disc in the gilt sheet (the pack's own coin is a dark bronze cut of its money sheet: it read black) */
+    function _bkCoin(d) {
+        var m = _finBasic(0xffe6a0, { map: _finTex('gold') }); m.opacity = 0;
+        var g = new THREE.Group(); _pzMesh(new THREE.CylinderGeometry(d / 2, d / 2, d * 0.16, 18), m, g);
+        g.userData.mats = [m]; return g;
+    }
+    function _bkFade(obj, a) { var m = obj && obj.userData.mats; if (!m) return; for (var i = 0; i < m.length; i++) m[i].opacity = a; }
+    function _bkTint(obj, hex, k) {   /* lerp a model's colour toward hex by k (the burning bills) */
+        var m = obj && obj.userData.mats; if (!m) return; var c = new THREE.Color(hex);
+        for (var i = 0; i < m.length; i++) { if (!m[i].userData.c0) m[i].userData.c0 = m[i].color.clone(); m[i].color.copy(m[i].userData.c0).lerp(c, k); }
+    }
+    /* the gold IOU seal: a ring with IOU in the middle, drawn once */
+    function _bkSealTex() {
+        return _pzTex('bk-seal', 256, 256, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 12; g.beginPath(); g.arc(128, 128, 112, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 4; g.beginPath(); g.arc(128, 128, 92, 0, Math.PI * 2); g.stroke();
+            for (var i = 0; i < 24; i++) { var a = i / 24 * Math.PI * 2; g.beginPath(); g.moveTo(128 + Math.cos(a) * 96, 128 + Math.sin(a) * 96); g.lineTo(128 + Math.cos(a) * 106, 128 + Math.sin(a) * 106); g.stroke(); }
+            g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 84px Georgia, "Times New Roman", serif';
+            g.fillText('IOU', 128, 134);
+        });
+    }
+    /* the red ink stamp on the floor */
+    function _bkStampTex() {
+        return _pzTex('bk-stamp', 512, 192, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 14; g.strokeRect(14, 14, w - 28, h - 28); g.lineWidth = 5; g.strokeRect(34, 34, w - 68, h - 68);
+            g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 76px Impact, "Arial Black", sans-serif';
+            g.fillText('FORECLOSED', w / 2, h / 2 + 4);
+            /* the worn ink: knock out specks */
+            g.globalCompositeOperation = 'destination-out';
+            for (var i = 0; i < 260; i++) { g.beginPath(); g.arc(Math.random() * w, Math.random() * h, Math.random() * 3 + 0.5, 0, Math.PI * 2); g.fill(); }
+            g.globalCompositeOperation = 'source-over';
+        });
+    }
+    /* a flat floor piece (a seal, a stamp) in frame F: a plane lying on the ground, additive or plain */
+    function _bkFloor(F, tex, w, h, color, additive) {
+        var m = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(color), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+        if (additive) m.blending = THREE.AdditiveBlending;
+        var p = _pzMesh(new THREE.PlaneGeometry(w, h), m, F.g, 0, F.ts * 0.04, 0); p.rotation.x = -Math.PI / 2; p.renderOrder = 157;
+        return p;
+    }
+    /* coins hop from tile a to tile b one after another; onLand(i) per coin. Draws only when the viewer sees an end. */
+    function _bkCoinHop(a, b, n, o) {
+        o = o || {};
+        if (!_pzSeen(a.x, a.y) && !_pzSeen(b.x, b.y)) return;
+        var ts0 = _cfg().tileSize || 128;
+        for (var i = 0; i < n; i++) (function (i) {
+            _fxDelay(function () {
+                if (_suppressed()) return;
+                var c = _bkCoin(ts0 * 0.1); if (!c) return;
+                _bkFade(c, 1);
+                _pzFly(a.x, a.y, b.x, b.y, c, { ms: o.ms || 460, arc: 0.55, h0: ts0 * 0.7, h1: ts0 * 0.75, hideOnLand: true, face: false,
+                    trail: { sprite: 'spark', tint: _BK.gold, every: 40, size: 6 },
+                    spin: function (el, obj) { obj.rotation.x = el * 0.02; obj.rotation.z = el * 0.013; } });
+            }, i * (o.gap || 70));
+        })(i);
+    }
+
+    /* ════ LINE OF CREDIT — the loan lands: bills flutter down round the ally onto a gold IOU seal ════ */
+    EFFECTS['nrLineOfCredit_aura'] = _pzDef('bkLoan', { pzOwn: true });
+    _PZ_SIGS.bkLoan = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var seal = _bkFloor(F, _bkSealTex(), ts * 1.05, ts * 1.05, _BK.gold, true), cd0 = _nbCamDir(F), sealYaw = Math.atan2(cd0.x, cd0.z);   /* IOU reads upright from the lens */
+        var glow = _bkFloor(F, _sigGlowTex(), ts * 1.5, ts * 1.5, _BK.cash, true);
+        var bills = [];
+        for (var i = 0; i < 7; i++) {
+            var b = _bkModel('bank_cash', ts * 0.17); if (!b) break;
+            var a = i / 7 * Math.PI * 2 + rn(-0.3, 0.3), r = ts * rn(0.32, 0.5);
+            var W = new THREE.Group(); W.add(b); F.g.add(W);
+            bills.push({ g: W, b: b, x: Math.cos(a) * r, z: Math.sin(a) * r, y0: ts * rn(1.9, 2.4), at: i * 70 + rn(0, 40), ph: rn(0, 6.28), sp: rn(0.006, 0.01) });
+        }
+        _sigShockRing3D(tx, ty, { color: _BK.gold, r0: ts * 0.15, r1: ts * 0.75, ms: 360 });
+        var lastS = 0;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var pop = _sigEaseOutBack(_sigClamp01(el / 260));
+            seal.scale.setScalar(Math.max(0.05, pop)); seal.rotation.z = sealYaw + Math.sin(el * 0.004) * 0.08;
+            seal.material.opacity = 0.95 * _pzEnv(el, 0, 120, 1100, 1650);
+            glow.material.opacity = 0.35 * _pzEnv(el, 0, 160, 900, 1500);
+            for (var j = 0; j < bills.length; j++) {
+                var B = bills[j], k = _sigClamp01((el - B.at) / 900);
+                if (el < B.at) { _bkFade(B.b, 0); continue; }
+                var fall = 1 - Math.pow(1 - k, 1.6);
+                B.g.position.set(B.x + Math.sin(el * 0.004 + B.ph) * ts * 0.08 * (1 - k), B.y0 * (1 - fall) + ts * 0.05, B.z + Math.cos(el * 0.005 + B.ph) * ts * 0.06 * (1 - k));
+                B.b.rotation.set(Math.sin(el * B.sp + B.ph) * 0.9 * (1 - k), el * 0.002 + B.ph, Math.cos(el * B.sp * 1.3 + B.ph) * 0.7 * (1 - k));
+                _bkFade(B.b, _pzEnv(el, B.at, B.at + 80, 1250, 1650));
+            }
+            if (el < 1000 && el - lastS > 90) {
+                lastS = el; var sa = rn(0, 6.28), sr = ts * rn(0.1, 0.42);
+                _pzP(F, Math.cos(sa) * sr, ts * rn(0.1, 0.5), Math.sin(sa) * sr, { sprite: 'spark', tint: rn(0, 1) > 0.5 ? _BK.gold : _BK.cash, ml: rn(500, 800), size0: rn(5, 8), size1: 1, vz: rn(60, 120), opacity0: 0.95 });
+            }
+        });
+    };
+
+    /* the loan comes due: the coins hop home from the borrower to the banker, who lights up green-gold */
+    EFFECTS['nrLineOfCredit_collect'] = _pzDef('bkCollect', { pzOwn: true });
+    _PZ_SIGS.bkCollect = function (p) {
+        var tx = p.tx, ty = p.ty, fx = p.fromX, fy = p.fromY; if (tx == null || fx == null) return;
+        _bkCoinHop({ x: fx, y: fy }, { x: tx, y: ty }, 8, { ms: 460, gap: 75 });
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, land = 460 + 7 * 75;
+        var glow = _bkFloor(F, _sigGlowTex(), ts * 1.4, ts * 1.4, _BK.gold, true), rung = false, lastS = 0;
+        return _sigRunOwned(F.g, land + 900, function (el) {
+            glow.material.opacity = 0.5 * _pzEnv(el, 420, 560, land + 200, land + 800);
+            if (!rung && el >= land) { rung = true; _sigShockRing3D(tx, ty, { color: _BK.cash, r0: ts * 0.2, r1: ts * 0.85, ms: 380 }); }
+            if (el > 420 && el < land + 500 && el - lastS > 70) {
+                lastS = el; var sa = rn(0, 6.28), sr = ts * rn(0.1, 0.4);
+                _pzP(F, Math.cos(sa) * sr, ts * rn(0.1, 0.6), Math.sin(sa) * sr, { sprite: 'spark', tint: (el | 0) % 2 ? _BK.gold : _BK.cash, ml: rn(450, 700), size0: rn(5, 8), size1: 1, vz: rn(50, 110), opacity0: 0.95 });
+            }
+        });
+    };
+
+    /* the borrower went down first: the banker's bills fall round him and burn to ash */
+    EFFECTS['nrLineOfCredit_badLoan'] = _pzDef('bkBadLoan', { pzOwn: true });
+    _PZ_SIGS.bkBadLoan = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, bills = [];
+        for (var i = 0; i < 6; i++) {
+            var b = _bkModel('bank_cash', ts * 0.17); if (!b) break;
+            var a = i / 6 * Math.PI * 2 + rn(-0.3, 0.3), r = ts * rn(0.3, 0.45);
+            F.g.add(b); bills.push({ b: b, x: Math.cos(a) * r, z: Math.sin(a) * r, y0: ts * rn(1.3, 1.7), ph: rn(0, 6.28), at: i * 60 });
+        }
+        var ring = _bkFloor(F, _sigGlowTex(), ts * 1.3, ts * 1.3, _BK.red, true), lastE = 0;
+        _sigShockRing3D(tx, ty, { color: _BK.red, r0: ts * 0.2, r1: ts * 0.8, ms: 340 });
+        return _sigRunOwned(F.g, 1600, function (el) {
+            ring.material.opacity = 0.5 * _pzEnv(el, 0, 100, 700, 1300);
+            for (var j = 0; j < bills.length; j++) {
+                var B = bills[j], k = _sigClamp01((el - B.at) / 1000), burn = _sigClamp01((el - B.at - 250) / 600);
+                B.b.position.set(B.x, B.y0 * (1 - k) + ts * 0.05, B.z);
+                B.b.rotation.set(Math.sin(el * 0.008 + B.ph) * 0.8, el * 0.003 + B.ph, Math.cos(el * 0.01 + B.ph) * 0.6);
+                B.b.scale.setScalar(Math.max(0.05, 1 - burn * 0.85));
+                _bkTint(B.b, burn < 0.6 ? _BK.orange : _BK.ash, burn < 0.6 ? burn / 0.6 : 1);
+                _bkFade(B.b, el < B.at ? 0 : _pzEnv(el, B.at, B.at + 60, 900, 1400));
+            }
+            if (el > 200 && el < 1200 && el - lastE > 50) {
+                lastE = el; var sa = rn(0, 6.28), sr = ts * rn(0.2, 0.45);
+                _pzP(F, Math.cos(sa) * sr, ts * rn(0.2, 1.2), Math.sin(sa) * sr, { sprite: 'ember', tint: rn(0, 1) > 0.5 ? _BK.orange : _BK.red, ml: rn(400, 700), size0: rn(4, 7), size1: 1, vz: rn(40, 100), opacity0: 0.95 });
+            }
+        });
+    };
+
+    /* ════ SHORT SELL — the chart over the foe's head draws itself red and crashes; the arrow drops into the body ════ */
+    EFFECTS['nrShortSell_impact'] = _pzDef('bkShort', { pzOwn: true });
+    _PZ_SIGS.bkShort = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var board = new THREE.Group(); board.position.set(0, ts * 1.38, 0); board.scale.setScalar(0.8); F.g.add(board);
+        /* the chart: up a little, then the crash (local x right, y up, in the lens's plane) */
+        var P = [[-0.62, 0.12], [-0.42, 0.24], [-0.26, 0.14], [-0.1, 0.3], [0.06, 0.02], [0.2, 0.1], [0.36, -0.22], [0.5, -0.12], [0.62, -0.42]];
+        for (var q = 0; q < P.length; q++) { P[q][0] *= ts; P[q][1] *= ts; }
+        var segM = _pzSolid(_BK.red, null, { depthWrite: false }), segs = [];   /* solid, not additive: an additive red washes pale over grass and sky */
+        for (var i = 0; i < P.length - 1; i++) segs.push(_pzMesh(new THREE.CylinderGeometry(ts * 0.028, ts * 0.028, 1, 6), segM, board));
+        var gridM = _pzGlow(0xffffff), grid = [];
+        for (var gl = 0; gl < 3; gl++) { var gm = _pzMesh(new THREE.CylinderGeometry(ts * 0.006, ts * 0.006, 1, 4), gridM, board); _pzSpan(gm, { x: -ts * 0.66, y: (-0.4 + gl * 0.32) * ts, z: 0 }, { x: ts * 0.66, y: (-0.4 + gl * 0.32) * ts, z: 0 }); grid.push(gm); }
+        var headM = _pzSolid(_BK.red, null, { depthWrite: false }), head = _pzMesh(new THREE.ConeGeometry(ts * 0.09, ts * 0.2, 12), headM, board);
+        var tag = _finTextSprite('▼ SHORT', { ink: '#ffffff', bg: '#c81a1a', font: 'Impact, "Arial Black", sans-serif', fontPx: 110, spriteW: ts * 0.5, opacity: 0 });
+        tag.position.set(-ts * 0.5, -ts * 0.2, 0); board.add(tag);   /* under the chart's high left end, beside the head: a close lens keeps it */
+        /* the arrow that drops into the body (frame space) */
+        var dropM = _pzGlow(_BK.orange), drop = _pzMesh(new THREE.ConeGeometry(ts * 0.13, ts * 0.32, 14), dropM, F.g); drop.rotation.x = Math.PI;
+        var ring = _bkFloor(F, _sigGlowTex(), ts * 1.3, ts * 1.3, _BK.red, true), crashed = false;
+        var DRAW = 520, CRASH = 600;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            _pzFace(board);
+            var vis = _pzEnv(el, 0, 90, 1100, 1500), k = _sigClamp01(el / DRAW) * (P.length - 1);
+            segM.opacity = 0.95 * vis; gridM.opacity = 0.18 * vis;
+            for (var s = 0; s < segs.length; s++) {
+                var f = _sigClamp01(k - s);
+                if (f <= 0) { segs[s].visible = false; continue; }
+                var a = P[s], b = P[s + 1];
+                _pzSpan(segs[s], { x: a[0], y: a[1], z: 0 }, { x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, z: 0 });
+            }
+            var si = Math.min(segs.length - 1, Math.floor(k)), sf = _sigClamp01(k - si), A = P[si], Bp = P[si + 1];
+            var hx = A[0] + (Bp[0] - A[0]) * sf, hy = A[1] + (Bp[1] - A[1]) * sf;
+            head.position.set(hx, hy, 0); head.rotation.z = Math.atan2(Bp[1] - A[1], Bp[0] - A[0]) - Math.PI / 2;
+            headM.opacity = el < CRASH ? 0.95 * vis : 0;
+            tag.material.opacity = _pzEnv(el, 120, 220, 1100, 1450);
+            tag.scale.set(ts * 0.5 * Math.max(0.05, _sigEaseOutBack(_sigClamp01((el - 120) / 220))), ts * 0.5 * 0.5 * Math.max(0.05, _sigEaseOutBack(_sigClamp01((el - 120) / 220))), 1);
+            /* the crash: the arrow drops from the chart's low end into the foe's chest */
+            var dk = _sigClamp01((el - CRASH + 140) / 140);
+            drop.position.set(0, ts * (1.6 - 0.8 * dk * dk), 0);
+            dropM.opacity = el > CRASH - 140 ? 0.95 * _pzEnv(el, CRASH - 140, CRASH - 100, CRASH + 60, CRASH + 260) : 0;
+            if (!crashed && el >= CRASH) { crashed = true; _shake('light'); _sigShockRing3D(tx, ty, { color: _BK.red, r0: ts * 0.2, r1: ts * 0.9, ms: 340 }); }
+            ring.material.opacity = 0.45 * _pzEnv(el, CRASH, CRASH + 80, CRASH + 500, CRASH + 1000);
+        });
+    };
+
+    /* a Shorted foe went down: a fountain of coins at the short-seller and a green arrow up */
+    EFFECTS['nrShortSell_payout'] = _pzDef('bkPayout', { pzOwn: true });
+    _PZ_SIGS.bkPayout = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        if (p.fromX != null) _bkCoinHop({ x: p.fromX, y: p.fromY }, { x: tx, y: ty }, 4, { ms: 520, gap: 90 });
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, coins = [];
+        for (var i = 0; i < 14; i++) {
+            var c = _bkCoin(ts * 0.1); if (!c) break;
+            F.g.add(c); var a = rn(0, 6.28), sp = ts * rn(0.25, 0.6);
+            coins.push({ c: c, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: ts * rn(2.6, 3.6), at: 300 + i * 35, ph: rn(0, 6) });
+        }
+        var arM = _pzGlow(_BK.cash), arrow = _pzMesh(new THREE.ConeGeometry(ts * 0.14, ts * 0.34, 14), arM, F.g);
+        var glow = _bkFloor(F, _sigGlowTex(), ts * 1.5, ts * 1.5, _BK.gold, true), rung = false;
+        return _sigRunOwned(F.g, 2000, function (el) {
+            if (!rung && el >= 300) { rung = true; _sigShockRing3D(tx, ty, { color: _BK.gold, r0: ts * 0.2, r1: ts * 1.0, ms: 420 }); }
+            glow.material.opacity = 0.55 * _pzEnv(el, 260, 380, 1200, 1800);
+            var ak = _sigClamp01((el - 300) / 900);
+            arrow.position.set(-ts * 0.42, ts * (0.6 + 1.3 * _sigEaseOutCubic(ak)), 0);
+            arM.opacity = 0.9 * _pzEnv(el, 300, 380, 1000, 1300);
+            for (var j = 0; j < coins.length; j++) {
+                var C = coins[j], t = Math.max(0, (el - C.at) / 1000);
+                var y = C.vy * t - ts * 6.5 * t * t; if (y < 0) y = 0;
+                C.c.position.set(C.vx * t * 1.4, ts * 0.1 + y, C.vz * t * 1.4);
+                C.c.rotation.set(el * 0.015 + C.ph, 0, el * 0.011);
+                _bkFade(C.c, el < C.at ? 0 : _pzEnv(el, C.at, C.at + 40, 1500, 1950));
+            }
+        });
+    };
+
+    /* ════ FORECLOSE — the gavel comes down: a red stamp on the floor, the bills fly out of the body ════ */
+    EFFECTS['nrForeclose_bolt'] = _pzDef('bkForeclose', { pzOwn: true });
+    _PZ_SIGS.bkForeclose = function (p) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 480;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = fx != null ? { x: fx, y: fy } : _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), bh = _nbBehind(F, ln);
+        /* a Shorted victim (read now, before the hit clears anything): the coins spill too */
+        var shorted = false;
+        try { var vid = _sigUnitIdAt(tx, ty); if (vid != null) for (var u = 0; u < state.units.length; u++) { var su = state.units[u]; if (su && su.id === vid && su.status && su.status.shorted > 0) { shorted = true; break; } } } catch (e) {}
+        /* THE GAVEL: wood head + gilt bands + wood handle. The pivot (the hand) stands to the SIDE of the body across the lens (a
+           touch behind it), so the swing runs in the picture's plane on any camera: raised up and out to the side, down onto the
+           head. (Behind the body, the raised gavel left the top of a high camera's frame and only the hit showed.) */
+        var woodM = _finBasic(0xd8b890, { map: _finTex('wood') }), giltM = _finBasic(0xffffff, { map: _finTex('gold') });   /* basic + the sheets: WebGPU draws the same */
+        woodM.opacity = giltM.opacity = 0;
+        var cd = _nbCamDir(F), side = { x: -cd.z, z: cd.x };
+        if (side.x * ln.ux + side.z * ln.uz < 0) { side.x = -side.x; side.z = -side.z; }   /* the caster's side: the gavel is his hand */
+        var pivot = new THREE.Group(); F.g.add(pivot);
+        pivot.position.set(side.x * ts * 1.15 + bh.x * ts * 0.15, ts * 1.3, side.z * ts * 1.15 + bh.z * ts * 0.15);
+        pivot.rotation.y = Math.atan2(-side.x, -side.z);   /* the arm reaches toward the victim (local +z) */
+        var arm = new THREE.Group(); pivot.add(arm);
+        var handle = _pzMesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.052, ts * 1.15, 10), woodM, arm, 0, 0, ts * 0.575); handle.rotation.x = Math.PI / 2;
+        var headG = new THREE.Group(); headG.position.set(0, 0, ts * 1.15); arm.add(headG);
+        /* the head's axis runs across the handle in the swing's plane: at the strike its face comes down flat (the lens sees
+           the gavel's side, the head a banded block over the handle) */
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.13, ts * 0.13, ts * 0.4, 18), woodM, headG);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.14, ts * 0.14, ts * 0.04, 18), giltM, headG, 0, ts * 0.13, 0);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.14, ts * 0.14, ts * 0.04, 18), giltM, headG, 0, -ts * 0.13, 0);
+        var stamp = _bkFloor(F, _bkStampTex(), ts * 1.3, ts * 0.49, _BK.red, false);
+        stamp.rotation.z = Math.atan2(cd.x, cd.z) + rn(-0.2, 0.2);   /* reads upright from the lens */
+        var bills = [], coins = [];
+        for (var i = 0; i < 6; i++) { var b = _bkModel('bank_cash', ts * 0.17); if (!b) break; F.g.add(b); var a = rn(0, 6.28); bills.push({ o: b, vx: Math.cos(a) * ts * rn(0.6, 1.0), vz: Math.sin(a) * ts * rn(0.6, 1.0), vy: ts * rn(1.6, 2.4), ph: rn(0, 6) }); }
+        if (shorted) for (var k2 = 0; k2 < 10; k2++) { var c = _bkCoin(ts * 0.09); if (!c) break; F.g.add(c); var a2 = rn(0, 6.28); coins.push({ o: c, vx: Math.cos(a2) * ts * rn(0.4, 0.9), vz: Math.sin(a2) * ts * rn(0.4, 0.9), vy: ts * rn(2.0, 3.0), ph: rn(0, 6) }); }
+        var hit = false;
+        /* the swing: raised (-1.0 rad, up and out) by ms*0.6, the strike in the last 40% of the flight, rests 40 ms on the
+           head (its face at ~1.1 squares, the top of a body), lifts away by ms+280, gone by ms+380 (the number reads clear) */
+        return _sigRunOwned(F.g, ms + 1900, function (el) {
+            var vis = _pzEnv(el, 0, 140, ms + 180, ms + 380);
+            woodM.opacity = giltM.opacity = vis;
+            var wind = _sigEaseOutCubic(_sigClamp01(el / (ms * 0.6))), strike = _sigClamp01((el - ms * 0.6) / (ms * 0.4)), lift = _sigClamp01((el - ms - 40) / 240);
+            /* angle: 0 = level (the head on the body's top), -1.0 raised */
+            arm.rotation.x = -1.0 * wind * (1 - strike * strike) + 0.12 * strike * strike * (1 - lift) - 0.9 * lift;
+            if (!hit && el >= ms) {
+                hit = true;
+                _shake('normal');
+                _sigShockRing3D(tx, ty, { color: _BK.gold, r0: ts * 0.2, r1: ts * 1.1, ms: 380 });
+                if (shorted) _sigShockRing3D(tx, ty, { color: _BK.red, r0: ts * 0.3, r1: ts * 1.4, ms: 520 });
+                for (var s = 0; s < 10; s++) { var sa = rn(0, 6.28); _pzP(F, Math.cos(sa) * ts * 0.2, ts * 1.2, Math.sin(sa) * ts * 0.2, { sprite: 'spark', tint: s % 2 ? _BK.gold : 0xffffff, ml: rn(260, 420), size0: rn(6, 9), size1: 1, vx: Math.cos(sa) * 220, vy: Math.sin(sa) * 220, vz: rn(20, 120), gravity: 260, opacity0: 1 }); }
+            }
+            var se = el - ms;
+            stamp.material.opacity = se < 0 ? 0 : 0.9 * _pzEnv(se, 0, 40, 1300, 1800);
+            stamp.scale.setScalar(se < 0 ? 0.05 : 1 + 0.35 * (1 - _sigEaseOutCubic(_sigClamp01(se / 140))));
+            var fly = function (L, t0, life) {
+                for (var j = 0; j < L.length; j++) {
+                    var Q = L[j], t = Math.max(0, (se - t0) / 1000);
+                    var y = ts * 0.8 + Q.vy * t - ts * 5.5 * t * t; if (y < ts * 0.04) y = ts * 0.04;
+                    Q.o.position.set(Q.vx * t, y, Q.vz * t);
+                    Q.o.rotation.set(se * 0.012 + Q.ph, se * 0.004, se * 0.009);
+                    _bkFade(Q.o, se < t0 ? 0 : _pzEnv(se, t0, t0 + 30, life - 400, life));
+                }
+            };
+            fly(bills, 0, 1700); fly(coins, 60, 1800);
+        });
+    };
+    SPELL_MAP['nrLineOfCredit'] = { aura: 'nrLineOfCredit_aura', collect: 'nrLineOfCredit_collect', badLoan: 'nrLineOfCredit_badLoan' };
+    SPELL_MAP['nrShortSell']    = { impact: 'nrShortSell_impact', payout: 'nrShortSell_payout' };
+    SPELL_MAP['nrForeclose']    = { bolt: 'nrForeclose_bolt' };
+
+    /* ═════════ END THE BANKER SIGNATURES ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
        THE WIND PASS (2026-10-25, mondo: "the nature spells look great now,
