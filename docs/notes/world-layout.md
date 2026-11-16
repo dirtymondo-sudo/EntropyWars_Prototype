@@ -42,7 +42,7 @@ as the inside of a plot-built place.
 | The Cavern | `site_prebuilt_hollow_earth_cavern` (36 plots, one room since 11-16: the Cavern, Hollow Earth, Agartha; the Crystal City is a district now) | PLOTS (first build 11-16, `bake-cavern.js`) | Sewers old workings (the Oubliette); HQ dungeon (hidden); Estate wells (the Crossroads, the Mouth); Hell fissure; D.U.M.B. Level −6; Mount Shasta (the Lemuria Stair) + the Woods' trail; Technoticlan (the East Gate); Antarctica (two ways); Bay 3 (two doors) | second (tool), K the pilot STOPPED, H + A free |
 | The D.U.M.B. | six rooms + CERN's ring | OLD + PLAN (36) | Hangar 18; HQ garage motor pool; the Cavern; Astral library (dream lab) | free |
 | Heaven + Hell + Vatican | Vatican x5, Hell x2, Heaven x2 | OLD + PLAN (3 rooms of 16) | HQ `continuity` painting; the Cavern fissure; Olympus (two ways); Camelot's sky castle | free |
-| Leylines | ley tunnels, Stonehenge, Göbekli Tepe, Babel; Technoticlan is its own site | OLD + PLAN (45) | Giza robbers' tunnel; Technoticlan; bays | free |
+| Leylines | `site_prebuilt_gobekli_ancient` (63: Göbekli Tepe, Bug Colony, Stonehenge, The Ley Line, Babel, Technoticlan) | PLOTS (11-16) | the Desert's Giza robbers' tunnel (west wall); Agartha under the Ball Court; DOOR HQ Rooms 9600, 56, 11, 2012 | second |
 | The Deep (with Atlantis) | `site_prebuilt_atlantis_deep` (8 x 5, a drowned room) + INSIDE the Temple of the Deep (`site_prebuilt_atlantis_pocket`) | PLOTS (11-16; the old Abyss + Temple retired, kept as PvP board sources) | Beach whirlpool -> the Upwelling; the Dutchman's hold -> the wreck's hatch; HQ Room H-20 -> the Temple's inside | second |
 | Outer Space | `site_prebuilt_moon_plots` (5 x 4), `site_prebuilt_mars_plots` (5 x 4), `site_prebuilt_saturn_plots` (4 x 4), `site_prebuilt_singularity_plots` (4 x 4): four rooms, one a world, 72 plots (11-16, `bake-space.js`, plot plan 3) + the Spaceship x4 (handmade, stays). Hub `space` | PLOTS (first build 11-16; the Spaceship handmade) | the ship's collar (Moon, Mars, Saturn; and Antarctica); Moon <> Mars (the bore); Saturn <> the Singularity (the frame); HQ `observatorium` to the Singularity; four bays | second (tool), district M piloted, nine districts free |
 | Antarctica | `site_prebuilt_antarctica_plots` (6 x 6 = 36, a sea on its south side; 11-16, `bake-antarctica.js`, plot plan 2). Hub `antarctica` | PLOTS (first build 11-16; the Station is the pilot, 3 passes) | the Cavern twice (the Polar Opening to the Inner Sun, the Admiral's Tunnel to Agartha: both hidden); the Spaceship's airlock (the Collar, behind the Ice Wall); HQ bay door 90S (on the Station Yard) | second (tool STOPPED; S stopped at 3 passes; H W C O F free) |
@@ -57,7 +57,7 @@ Loose sites that the world plan folds into a zone but that still stand as their 
 | `site_prebuilt_lodge_halls` | the inside of Financial's Members club | still live; a junction of four hidden ways (Woods, Estate, Olympus, the Grove) |
 | the Strip (streets, chapel, casino) | insides of Entertainment's Casino + Wedding chapel; the boulevard a PvP board | still live and still joined to the city (`link_downtown_strip`, `link_streets_strip`) |
 | Cyberpunk City (streets, noodle bar) | later: a reskin of the whole city, not a place | still live; reached by the HQ tunnel and the Sewers |
-| `site_prebuilt_agartha_crystalcity`, `site_prebuilt_technoticlan_templecity` | districts of the Cavern / Leylines | live, no hub claims them (the map files them alone) |
+| `site_prebuilt_agartha_crystalcity` | a district of the Cavern | live, no hub claims it (the map files it alone). `site_prebuilt_technoticlan_templecity` is retired into Leylines (11-16) |
 
 (11-16: Outer Space has a hub now, `space`, anchored on the Spaceship's airlock. Antarctica has one too, `antarctica`, anchored on its one room.)
 
@@ -107,7 +107,7 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 | The D.U.M.B. (PLAN) | R Research, S Sub-Level 7, C Command, P Level P3 (CERN = the ring) | none |
 | The Cavern | K The Cavern, H Hollow Earth, A Agartha | yes since 11-16: `docs/areas/cavern/districts/K.js H.js A.js` (areas-complexes.md "THE CAVERN ON PLOTS") |
 | The Deep | C Atlantis, the Citadel (pilot: 3 passes), R Atlantis, the Rings, S The Sea Floor, T The Trench | not yet |
-| Leylines (PLAN) | G Göbekli Tepe, B Bug Colony, S Stonehenge, Y The Ley Lines (the road), T Babel, Z Technoticlan | none |
+| Leylines | G Göbekli Tepe, B Bug Colony, S Stonehenge (the pilot, 5 passes), Y The Ley Line, T Babel, Z Technoticlan | S done; the other five: first build only, rows free |
 | Heaven + Hell + Vatican (PLAN) | L Hell, V The Vatican, H Heaven, O Mount Olympus (now in the Mountains, so drop it here) | none |
 | Outer Space | the Moon: M The Mare, C The Crater, F The Far Side · Mars: Y Cydonia, V The Canyon, R The Rover Bay · Saturn: H The Hexagon, G The Ring Shard · the Singularity: D The Drop, A The Accretion Rim | yes since 11-16: `docs/areas/space/districts/<letter>.js` (ten files, the letters unique across the four rooms) |
 | Antarctica | H The Hull in the Ice, W The Ice Wall, C The Crevasse, S The Station (pilot: 3 passes), O The Polar Openings, F The Shelf Ice | yes since 11-16: `docs/areas/antarctica/districts/<H W C S O F>.js` |
@@ -133,7 +133,7 @@ decide the rest.
 | West | The Woods on the city's forest edge, Camelot beyond | built; the only city > Woods way is the hidden storm drain |
 | South-west | The Estate under the Woods, the Ranch meeting the Desert | Woods gate built. No way between the Estate and the Desert |
 | South | The Desert down the highway; the D.U.M.B. under Area 51 | built: Exit 1 to the city, Hangar 18 down to the (OLD) D.U.M.B. |
-| South-east | Leylines east of Giza | the robbers' tunnel exists, to the OLD ley tunnels |
+| South-east | Leylines east of Giza | built 11-16: the robbers' tunnel lands on the new room's west wall, where the Ley Line starts |
 | East | The Beach off Bayside, The Deep under the sea | built: the quay, the whirlpool down to the OLD Abyss |
 | Under | Sewers under the city's south side, then the Cavern, which opens on the D.U.M.B., Hell, Leylines | all there as OLD rooms |
 | Far south | Antarctica | reached only from underground and the ship |
@@ -153,7 +153,7 @@ thread). The Desert's sides and the city's Cove are fixed; the Mountains, the No
    come up where the built city has them (the gutter, Church strip and Canal walk in Southside's south-west; the Pump
    court and drowned manhole in Industrial's south-east; the metro stair), then the Cavern's.
 2. **Two finished surface zones point into old rooms on their far side.** The Mountains reach the old Vatican and old
-   Heaven; the Beach reaches the old Abyss; the Desert reaches the old D.U.M.B. and old ley tunnels. Not broken, but each
+   Heaven; the Beach reaches the old Abyss; the Desert reaches the old D.U.M.B. (Leylines is built since 11-16: its tunnel lands in the new room). Not broken, but each
    is the seam where a plot-built place drops you into a room at the old scale. Fix: only by building those zones.
 3. **The Looking-Glass Garden stands twice** (A2 no. 2). Fix: retire the old room into Camelot.
 4. **The Lodge and Bohemian Grove are not folded in.** The plan puts them inside Financial and the Woods; in the data
@@ -195,7 +195,7 @@ thread). The Desert's sides and the city's Cove are fixed; the Mountains, the No
 | The D.U.M.B. | 36 | 2 (Hangar 18, HQ garage) | second (Desert) | the White Rooms question (the plan moved them down; the Desert kept them up) |
 | The Deep | 40 | 3 (the whirlpool, the Dutchman, Room H-20) | second (Beach) | BUILT 11-16 (areas-complexes.md "THE DEEP ON PLOTS"); no way to Area 51 (mondo); `world_state_map.png` not redrawn for it yet |
 | The Cavern | 36 | 3 (HQ dungeon, Estate wells) | second (Estate) | wants the Sewers first (its main way in); plan exits out of date |
-| Leylines | 45 | 1 (Giza tunnel) | second (Desert) | the Bug Colony is new: needs models |
+| Leylines | 63 | BUILT 11-16 | second | five districts wait their threads; the Bug Colony needs models |
 | The Astral Realm | 36 | 3 (HQ, Camelot mirror, attic) | owner / second | A2 no. 2 first |
 | Outer Space | 144 | 0 walked (HQ observatorium only) | | where the ship leaves from; flying is a new system |
 | Antarctica | 12 | 0 | | story: the foyer reveal comes late |

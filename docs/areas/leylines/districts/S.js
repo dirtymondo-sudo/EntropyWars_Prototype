@@ -20,7 +20,9 @@
    PASS 4, ATMOSPHERE: the air by place (pale motes inside the bank, fireflies over the barrows and the camp, a little dust on the Plain);
    torches up the Avenue and at the trilithons' feet, two more fires at the Heel Stone, so the stones are lit after
    dark; a shaft of light on the altar. Seen by day and at 22:30.
-   NOT YET: see the pass list at the end of this file's section in the notes. */
+   PASS 5, POLISH: two hippies and a second shaman at the Solstice Camp (silent: no lines exist for them); the Long Barrow's front has a
+   forecourt of kerb stones; chalk on the causeway through the South Gate; a seat log and stones round the camp fire.
+   STOPPED after five passes: waits mondo's look. What is still short is listed in the notes ("LEYLINES, STONEHENGE", NOT DONE). */
 'use strict';
 /* two more round barrows on the Plain (squares; the tool adds them to the heights). The first three are the layout's own (A.barrows). */
 const MORE = [[80, 28], [86, 33]];
@@ -39,6 +41,7 @@ exports.paint = ctx => { const { A, C, gx, gz } = ctx, h = A.henge, X = gx(h.x),
     ctx.stamp((x, z) => { const d = Math.hypot(x - X, z - Z), a = (Math.atan2(z - Z, x - X) * 180 / Math.PI + 360) % 360;
         if (seg(x, z, X + 15, Z - 15, gx(107), gz(1)) < 3.6 && d > 21) return 'marble_light';                       // THE AVENUE
         if (x > gx(A.longbarrow[0]) && x < gx(A.longbarrow[2]) + 3.5 && z > gz(A.longbarrow[1]) && z < gz(A.longbarrow[3])) return 'dirt_2';   // the Long Barrow's earth floor + its doorstep
+        if (Math.abs(x - X) < 3.4 && z > Z + R - 4 && z < Z + R + 9) return 'marble_light';   // the chalk causeway through the South Gate
         if (Math.abs(d - R) < 2.4 && !(a > 303 && a < 327) && !(a > 80 && a < 100)) return 'marble_light';       // the bank's chalk crest
         if (Math.abs(d - (R - 6.2)) < 1.0 && Math.abs(((a + 3.2) % (360 / 56)) - 3.2) < 1.35) return 'marble_light';   // THE 56 AUBREY HOLES
         return null; }); };
@@ -90,7 +93,7 @@ exports.dress = ctx => {
     const { A, C, P, Pm, dec, tree, gx, gz, cx, cz, taken, rnd } = ctx, h = A.henge, X = gx(h.x), Z = gz(h.y), sq = (dx, dy) => [h.x + dx - 0.5, h.y + dy - 0.5];
     /* THE SARSEN CIRCLE */
     RING.forEach(q => { const s = sq(q[0], q[1]), face = Math.round(90 - Math.atan2(-q[1], q[0]) * 180 / Math.PI);
-        if (FALLEN(q)) { P(rnd() < 0.5 ? 'hw_stone_2' : 'hw_stone_4', s[0], s[1], { h: 1.4, face: Math.round(rnd() * 360) }); dec('cave_stone', s[0], s[1]); }
+        if (FALLEN(q)) { P(rnd() < 0.5 ? 'psxg_rock_2' : 'psxg_rock_4', s[0], s[1], { h: 1.4, face: Math.round(rnd() * 360) }); /* (the `hw_stone*` keys are gravestones) */ dec('cave_stone', s[0], s[1]); }
         else P('sarsen', s[0], s[1], { face, h: 4.4 }); });
     /* THE TRILITHONS: a horseshoe open to the south, the great one at the back (each fills two squares) */
     [[-8.75, -7, 90], [8.75, -7, 90], [-8.75, 7, 90], [8.75, 7, 90]].forEach(q => { Pm('trilithon', X + q[0], Z + q[1], { face: q[2] }); [-1.75, 1.75].forEach(o => taken.add(Math.floor(h.x + q[0] / C) + ':' + Math.floor(h.y + (q[1] + o) / C))); });
@@ -153,11 +156,15 @@ function atmosphere(ctx) {
     [[97, 10], [101, 10], [101, 6], [105, 6]].forEach(q => P('tiki_torch', q[0], q[1]));   // either side of the Avenue's chalk
     [[-5.25, -8.75], [5.25, -8.75], [-5.25, 8.75], [5.25, 8.75]].forEach(q => Pm('cave_torch', X + q[0], Z + q[1]));
     P('brazier', 102, 9); P('brazier', 104, 9);
+    /* PASS 5: the Long Barrow's forecourt, the camp's seats */
+    [[84, 1], [85, 2], [85, 5], [84, 6]].forEach((q, i) => P('menhir', q[0], q[1], { h: i % 2 ? 1.0 : 1.3, face: i * 80 })); /* (`tomb_plaque` is a pirate's skull board, `hw_stone*` are gravestones: neither is a barrow's) */
+    ctx.dec('psxg_rock_1', A.camp.x + 1, A.camp.y - 1, { h: 0.5 }); ctx.dec('psxg_rock_3', A.camp.x - 1, A.camp.y, { h: 0.5 }); ctx.dec('stump', A.camp.x + 1, A.camp.y);
     Pm('light_shaft', X, Z - 5.25, { face: 200 });
 }
 exports.airZones = ctx => { const h = ctx.A.henge; return [
     { sx0: h.x - 12, sy0: h.y - 12, sx1: h.x + 12, sy1: h.y + 12, kind: 'motes', color: 0xfff4d0, n: 110, speed: 0.25 },
     { sx0: 72, sy0: 10, sx1: 80, sy1: 36, kind: 'fireflies', n: 60 }, { sx0: 96, sy0: 26, sx1: 108, sy1: 36, kind: 'fireflies', n: 50 },
     { sx0: 72, sy0: 0, sx1: 108, sy1: 36, kind: 'dust', color: 0xe8f0d8, n: 60, speed: 0.3 } ]; };
-exports.people = ctx => { const { native, sayOf, OLD } = ctx;
+exports.people = ctx => { const { native, sayOf, OLD, A } = ctx;
+    native('hippie', A.camp.x - 1, A.camp.y + 1, 30); native('hippie', A.camp.x + 2, A.camp.y - 2, 200); native('shaman', A.camp.x + 5, A.camp.y + 1, 270);
     native('shaman', 92, 22, 200, sayOf(OLD.henge, 'shaman')); native('conspiracy theorist', 77, 19, 90, sayOf(OLD.henge, 'conspiracy theorist')); native('knight', 103, 27, 300, sayOf(OLD.henge, 'knight')); };
