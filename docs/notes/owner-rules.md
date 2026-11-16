@@ -22,6 +22,11 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
   non-visual changes, and a full match playtest only when he asks (CLAUDE.md RULE #1c).
 - **Never rebake or repaint his textures.** Never use AI-made logos: the official DOOR logo is his files in
   `Assets/ui/brand/door_logo/`.
+- **THE MODEL LIST FIRST (mondo 11-16, after a graveyard was built without the game's own corpses, body parts and coffins: "every thread working
+  on a district needs to know it needs to look at the model list").** Before you build or dress ANY room, district or zone: open `MODEL_LIST.md`
+  and search it for your theme (every word a player would use for the place), read the sections of every pack that fits, and list the pieces of
+  the pack FILES themselves (a pack file often holds more pieces than the prop catalogue has rows: section 7e, `node list-models.js --r2`). A
+  piece with no catalogue row gets one (then `node list-models.js`). "The catalogue had nothing" is never a reason: the catalogue is not the list.
 - **Art sources.** Reuse what is on R2 first (MODEL_LIST.md, `node list-models.js --r2`, packs first). Never generate or
   download art, except Meshy pieces he approved. No SFX generation. Character bodies are MPFB2 only. CC0 / CC-BY is fine.
   Buildings are walk-in architecture, not single Meshy props.
@@ -36,7 +41,8 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
 - **World vision (11-15).** The world is a parody of the real world; each area is the ULTIMATE form of its idea. DOOR HQ
   is the subconscious. Every area is plot-built (12x12 plots, districts) like Disaster City; only DOOR HQ stays handmade.
   Cyberpunk City is a future reskin of the WHOLE Disaster City, not a district. The Desert = Western Town + Giza + Area 51.
-- **Disaster City** (`site_prebuilt_downtown_streets`, 144 plots): the ocean stays by Bayside + the Beach; the other map
+- **Disaster City** (`site_prebuilt_downtown_streets`, 144 plots + the Hollywood Hills on its north side, one room: "the whole point is to be able
+  to look over the city", 11-16): the ocean stays by Bayside + the Beach; the other map
   edges may change. PvP Downtown keeps the old board. Notes: `areas-complexes.md`.
 - **Place names are plain and cheap (11-16).** mondo: "just call them woods 1 2 and 3 for all I care ... we are just trying to build the areas right now ... simple
   names instead of ... deep ai slop psuedointellectual names ... that im just gonna have to rename later". Name a plot for what stands there ("The Rocks", "The Dry

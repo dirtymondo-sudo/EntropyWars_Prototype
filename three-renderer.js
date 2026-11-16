@@ -3337,7 +3337,17 @@ const ThreeRenderer = (function () {
         /* 🩸 the Blood Pool: the deep red sheet, dark red caustics, a wet red glint */
         blood:      { base: 'blood', sheet: true, tint: 0xe0e0e0,
                       caustDiff: 'vec3(0.62, 0.08, 0.10)', caustEmis: 'vec3(0.34, 0.03, 0.05)',
-                      glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' }
+                      glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' },
+        /* THE ROOM'S OWN WATER LOOK (2026-11-16, mondo on the Sewers: "you can make the water murky green or brown without it being
+           poison, its still water and should behave like water"): LOOKS, not liquids. No terrain has these keys; a room's
+           `terrain.waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' }` draws its water in them (_hqWaterLook) while the
+           liquid stays `water` / `deep_water` for the walk, the swim and the fights. They ride the water sheet under a tint. */
+        sewer_water: { base: 'water', tint: 0xb44612,   // (the water sheet is blue-green: a strong orange tint is what turns it brown; kept dark so it is mud, not mustard)
+                      caustDiff: 'vec3(0.15, 0.11, 0.06)', caustEmis: 'vec3(0.018, 0.013, 0.006)',
+                      glintCol: 'vec3(0.46, 0.41, 0.32)',  hueShift: 'vec3(1.05, 0.97, 0.84)' },
+        sewer_deep:  { base: 'water', tint: 0x7c300c,
+                      caustDiff: 'vec3(0.14, 0.10, 0.05)', caustEmis: 'vec3(0.02, 0.015, 0.008)',
+                      glintCol: 'vec3(0.44, 0.40, 0.30)',  hueShift: 'vec3(1.05, 0.97, 0.82)' },
     };
 
     /* Water surfaces sit slightly below the top of their block so every
@@ -3368,7 +3378,9 @@ const ThreeRenderer = (function () {
         purple_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         swamp:      { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
         oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
-        blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 }
+        blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 },
+        sewer_water: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
+        sewer_deep:  { l1dx: 0.07, l1dy: 0.07, l2dx: -0.05, l2dy: 0.05 }
     };
 
     var objectMeshes = new Map();
@@ -71633,7 +71645,44 @@ const ThreeRenderer = (function () {
         for (var k = 0; k < n; k++) { var v = P ? P[k] : 0; if (v > 0 && v <= 8) { var q = v - 1, arr = q < 3 ? A : q < 6 ? B : C; arr[k * 3 + (q % 3)] = 1; } }
         geo.setAttribute('aPaintA', new THREE.BufferAttribute(A, 3)); geo.setAttribute('aPaintB', new THREE.BufferAttribute(B, 3)); geo.setAttribute('aPaintC', new THREE.BufferAttribute(C, 3));
     }
-    function _hqTerrainTiles(geo, idx, nx, nz, res) {
+    /* THE GROUND ZONES (2026-11-16, mondo: "make Hollywood hills a part of disaster city"): a room may say `terrain.zones: [{ x0, z0, x1, z1,
+       floor, cliff, path, pal: [sheet ... <= 8], floorTint, cliffTint, pathTint, floorColor }]` = inside that box the field wears ITS OWN three
+       sheets and its own eight painted sheets, not the room's (the city's north rows are hillside: dry grass, rock cliffs, dirt trails, where the
+       room's own are asphalt, board-marked concrete and paving). The shader reads at most 8 painted sheets, so the room's palette may now hold
+       16 (data.js HQ_GROUND_RULES.paintMax) and each piece of ground reads 8 of them: the room's first 8, or its zone's `pal`. The field's tiles
+       are cut on the zone's line (a quad belongs to the zone its middle lies in) and a zone's tiles carry the zone's material: the same
+       material maker, so both renderers. A field of one tile has no zones. Kill switch window.EW_HQ_NO_GROUND_ZONES. */
+    /* THE DEAD STRIP (2026-11-16, the Hills in the city's room: the frame rate): a room grown past its plots on one side grows the same on the other
+       (the shell is centred), and `terrain.edges.<side>.inset` starts the land past the edge on the room's OLD line, over that strip. The field
+       under it was still built and drawn (the city: a 70 m strip down the west side, now a 126 m strip along the south too, a third of the
+       field). Quads more than 2 m past an inset line are left out of the field's mesh; the heights, the walker and the land past the edge read
+       the same ground as before. Kill switch window.EW_HQ_DRAW_DEAD_STRIP. */
+    function _hqDeadStrip(room, info) {
+        if (info._ew_dead !== undefined) return info._ew_dead;
+        var E = room && room.terrain && room.terrain.edges, d = null;
+        if (E && _hqEdgeLandOn(room) && !(typeof window !== 'undefined' && window.EW_HQ_DRAW_DEAD_STRIP)) {
+            var ins = function (k) { var v = +((E[k] || {}).inset) || 0; return v > 4 ? v - 2 : 0; }, w = ins('w'), e = ins('e'), n = ins('n'), s2 = ins('s');
+            if (w || e || n || s2) d = { x0: w ? -info.halfW + w : -Infinity, x1: e ? info.halfW - e : Infinity, z0: n ? -info.halfD + n : -Infinity, z1: s2 ? info.halfD - s2 : Infinity };
+        }
+        info._ew_dead = d; return d;
+    }
+    function _hqGroundZones(room, info, S) {
+        var Z = room && room.terrain && room.terrain.zones;
+        if (!Array.isArray(Z) || !Z.length || !info.paint || !info.paint.pal || (typeof window !== 'undefined' && window.EW_HQ_NO_GROUND_ZONES)) return null;
+        var out = [];
+        Z.forEach(function (z) {
+            if (!z || !(z.x1 > z.x0) || !(z.z1 > z.z0)) return;
+            var zi = Object.create(info), zp = (z.pal || []).slice(0, 8).map(String);
+            zi.floor = z.floor || info.floor; zi.cliff = z.cliff || info.cliff; zi.path = z.path || info.path;
+            zi.paint = { pal: zp, P: info.paint.P };
+            zi.room = Object.assign({}, info.room || room, { terrain: Object.assign({}, room.terrain, { floorTint: z.floorTint || null, cliffTint: z.cliffTint || null, pathTint: z.pathTint || null, cliffZoom: z.cliffZoom }) });
+            var slot = new Uint8Array(info.paint.pal.length + 1);
+            for (var v = 1; v <= info.paint.pal.length; v++) slot[v] = zp.indexOf(String(info.paint.pal[v - 1])) + 1;
+            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, out: Array.isArray(z.out) ? z.out : null, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
+        });
+        return out.length ? out : null;
+    }
+    function _hqTerrainTiles(geo, idx, nx, nz, res, zones, info) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_TILES) return null;
         var tileM = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES.tileM > 0) ? HQ_ENGINE_RULES.tileM : 32;
         var nT = Math.max(4, Math.round(tileM / res)), tx = Math.ceil((nx - 1) / nT), tz = Math.ceil((nz - 1) / nT);
@@ -71643,11 +71692,14 @@ const ThreeRenderer = (function () {
         var byTile = {};
         for (var q = 0; q < idx.length; q += 6) {   // a quad's six indices: a, c, b, b, c, d (a = its low corner)
             var a = idx[q], ai = a % nx, aj = (a - ai) / nx, key = Math.floor(aj / nT) * tx + Math.floor(ai / nT);
+            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { var zo = zones[zq].out, inO = false; if (zo) for (var oi = 0; oi < zo.length; oi++) if (qx >= zo[oi][0] && qx < zo[oi][2] && qz >= zo[oi][1] && qz < zo[oi][3]) { inO = true; break; }   /* `out`: boxes of the zone that stay the room's own ground (a road that runs on from the room: the room's floor sheet, tint and light, no seam on the line) */
+                if (!inO) key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
             (byTile[key] || (byTile[key] = [])).push(q);
         }
         var out = [];
         Object.keys(byTile).forEach(function (key) {
-            var k = +key, ti = k % tx, tj = (k - ti) / tx, i0 = ti * nT, j0 = tj * nT, i1 = Math.min(nx - 1, i0 + nT), j1 = Math.min(nz - 1, j0 + nT);
+            var k = +key, zn = Math.floor(k / (tx * tz)), zslot = zn ? zones[zn - 1].slot : null, PP = zslot ? info.paint.P : null; k -= zn * tx * tz;
+            var ti = k % tx, tj = (k - ti) / tx, i0 = ti * nT, j0 = tj * nT, i1 = Math.min(nx - 1, i0 + nT), j1 = Math.min(nz - 1, j0 + nT);
             var bw = i1 - i0 + 1, bh = j1 - j0 + 1, n = bw * bh;
             var pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), bl = new Float32Array(n * 2), ao = new Float32Array(n);
             var pa = PA ? [new Float32Array(n * 3), new Float32Array(n * 3), new Float32Array(n * 3)] : null;
@@ -71657,7 +71709,8 @@ const ThreeRenderer = (function () {
                 pos[dst * 3] = P[src * 3]; pos[dst * 3 + 1] = P[src * 3 + 1]; pos[dst * 3 + 2] = P[src * 3 + 2];
                 nor[dst * 3] = N[src * 3]; nor[dst * 3 + 1] = N[src * 3 + 1]; nor[dst * 3 + 2] = N[src * 3 + 2];
                 uv[dst * 2] = UV[src * 2]; uv[dst * 2 + 1] = UV[src * 2 + 1]; bl[dst * 2] = B[src * 2]; bl[dst * 2 + 1] = B[src * 2 + 1]; ao[dst] = O[src];
-                if (pa) for (var pq = 0; pq < 3; pq++) { pa[pq][dst * 3] = PA[pq][src * 3]; pa[pq][dst * 3 + 1] = PA[pq][src * 3 + 1]; pa[pq][dst * 3 + 2] = PA[pq][src * 3 + 2]; }
+                if (pa && zslot) { var zv = zslot[PP[src]] | 0; if (zv > 0) pa[(zv - 1) / 3 | 0][dst * 3 + (zv - 1) % 3] = 1; }   // THE GROUND ZONES: the node's sheet in the zone's own eight
+                else if (pa) for (var pq = 0; pq < 3; pq++) { pa[pq][dst * 3] = PA[pq][src * 3]; pa[pq][dst * 3 + 1] = PA[pq][src * 3 + 1]; pa[pq][dst * 3 + 2] = PA[pq][src * 3 + 2]; }
                 var py = P[src * 3 + 1]; if (py < y0) y0 = py; if (py > y1) y1 = py;
             }
             var li = [], qs = byTile[key];
@@ -71669,7 +71722,7 @@ const ThreeRenderer = (function () {
             if (pa) { tg.setAttribute('aPaintA', new THREE.BufferAttribute(pa[0], 3)); tg.setAttribute('aPaintB', new THREE.BufferAttribute(pa[1], 3)); tg.setAttribute('aPaintC', new THREE.BufferAttribute(pa[2], 3)); }
             tg.setIndex(li);
             tg.computeBoundingBox(); tg.computeBoundingSphere();
-            tg._ew_hqTile = [ti, tj];
+            tg._ew_hqTile = [ti, tj]; tg._ew_zone = zn;
             out.push(tg);
         });
         return out.length > 1 ? out : null;
@@ -71777,6 +71830,11 @@ const ThreeRenderer = (function () {
        `y0` / `y1` left out are read from the water on each side of the lip (hqTerrainFluidAt), else from the ground. Nothing here changes
        the ground, the water or the walk: the room lays a stream / pool on each level and a sheer step between them. Lava, poison and the
        other liquids fall the same way in their own sheet (`key`). Off: window.EW_NO_HQ_FALLS. */
+    /* the look a room draws a liquid in (its `terrain.waterLook` map: a _LIQUID_STYLES key), else the liquid's own */
+    function _hqWaterLook(info, key) {
+        var m = info && info.room && info.room.terrain && info.room.terrain.waterLook, k = m && m[key];
+        return (k && _LIQUID_STYLES[k]) ? k : key;
+    }
     var _hqFallTex = null;
     function _hqFallStreakTex() {
         if (_hqFallTex) return _hqFallTex;
@@ -71824,7 +71882,7 @@ const ThreeRenderer = (function () {
             var y1 = (dn && isFinite(dn.y) && dn.y < y0 - 0.3) ? dn.y : isFinite(f.y1) ? +f.y1 : hqTerrainHeight(info, f.x + dx * 1.75, f.z + dz * 1.75);
             var h = y0 - y1; if (!(h > 0.4)) return;
             var key = f.key || (up && up.key) || 'water'; if (key === 'deep_water') key = 'water';
-            var mat = _liqBlendMat(key); if (!mat) return;
+            var mat = _liqBlendMat(_hqWaterLook(info, key)); if (!mat) return;
             var out = isFinite(f.out) ? +f.out : Math.min(1.5, 0.35 + 0.28 * Math.sqrt(h)), back = 0.9;
             /* the profile: level over the lip (from `back` behind it), then thrown out and down (a body's fall: out by the root of the drop) */
             var prof = [[-back, y0 + 0.02], [0.05, y0 + 0.02]];
@@ -71961,8 +72019,8 @@ const ThreeRenderer = (function () {
                 if (!geo || !mat) return;
                 var m = new THREE.Mesh(geo, mat); m.renderOrder = order; m.name = name; m._ew_hqWater = true; m.receiveShadow = true; G.add(m); made++;
             };
-            lay(build(false), _liqBlendMat(B.key), LIQ_BLEND_ORDER, 'hq:water:' + B.key);
-            if (B.deep.length) lay(build(true), _liqBlendMat('deep_water', true), LIQ_BLEND_ORDER + 1, 'hq:water:deep_water');
+            lay(build(false), _liqBlendMat(_hqWaterLook(info, B.key)), LIQ_BLEND_ORDER, 'hq:water:' + B.key);   // (THE ROOM'S OWN WATER LOOK)
+            if (B.deep.length) lay(build(true), _liqBlendMat(_hqWaterLook(info, 'deep_water'), true), LIQ_BLEND_ORDER + 1, 'hq:water:deep_water');
         });
         return made;
     }
@@ -72239,6 +72297,7 @@ const ThreeRenderer = (function () {
             });
             if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
             if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
+            var dS = _hqDeadStrip(room, info); if (dS && (mx < dS.x0 || mx > dS.x1 || mz < dS.z0 || mz > dS.z1)) continue;   // THE DEAD STRIP: ground under the land past the edge is never drawn
             var uf = (floats.length || (info.void && !info.void.holesOnly)) ? underFloat(mx, mz) : 0;
             if (!underEscalator && !uf && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
             else if ((uf === 1 || uf === 3) && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) { fillQ.push(a, b, c, d); fillK.push(uf); }   // THE FLAT FILL
@@ -72256,9 +72315,10 @@ const ThreeRenderer = (function () {
         /* THE TILES (OPEN_WORLD_PLAN §5.5, Phase 1): the field is cut into HQ_ENGINE_RULES.tileM squares — one mesh each, the
            same material, the normals of the WHOLE field (no seam in the light) — so the frustum drops the squares behind the
            camera: "only a chunk of the map is being rendered". A field of one tile stays one mesh. */
-        var tiles = _hqTerrainTiles(geo, idx, nx, nz, res);
+        var gZones = _hqGroundZones(room, info, S);   // THE GROUND ZONES: a box of the field in its own sheets (the city's hills)
+        var tiles = _hqTerrainTiles(geo, idx, nx, nz, res, gZones, info);
         (tiles || [geo]).forEach(function (tg) {
-            var fm = new THREE.Mesh(tg, fieldMat);
+            var fm = new THREE.Mesh(tg, (gZones && tg._ew_zone) ? gZones[tg._ew_zone - 1].mat : fieldMat);
             fm.position.y = 0.3; fm.receiveShadow = true; fm.renderOrder = 1; fm._ew_hqPart = 'floor'; fm._ew_hqTerrain = true;
             G.add(fm); if (!field) field = fm;
         });
@@ -72344,7 +72404,7 @@ const ThreeRenderer = (function () {
                 wg.setIndex(B.p.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.i, 1) : new THREE.Uint16BufferAttribute(B.i, 1));
                 var wm = new THREE.Mesh(wg, fluidMatFor(key)); wm.renderOrder = 2; wm.name = 'hq:water:' + key; wm._ew_hqWater = true; G.add(wm);
             });
-            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick)
+            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); ['water', 'deep_water'].forEach(function (k) { var lk = _hqWaterLook(info, k); if (lk !== k) fluidMatFor(lk); }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick; a room's own look ticks too)
         } catch (e) { console.warn('[HQ] the water failed', e); }
         try { if (_hqFallsBuild(info, G, U, TM)) { (info.falls || []).forEach(function (f) { var k = f.key || 'water'; fluidMatFor(k === 'deep_water' ? 'water' : k); }); } } catch (e) { console.warn('[HQ] the waterfalls failed', e); }   // THE WATERFALLS
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
@@ -73820,7 +73880,8 @@ const ThreeRenderer = (function () {
             if (W.mountain > 0) {
                 var rg = 1 - Math.abs(2 * _hqEdgeFbm(x / 190 + 3.1, z / 190 + 1.7) - 1), rg2 = 1 - Math.abs(2 * _hqEdgeFbm(x / 70 + 9, z / 70 + 4) - 1);
                 var yM = e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift;
-                if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
+                if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);
+                else if (!LAND && z < R.z0 && sd('n').back != null) yM = e2 + lift + (+sd('n').back) * (yM - e2 - lift);   // THE HOLLYWOOD HILLS ARE PART OF THE CITY (2026-11-16): a north side may say `back` by itself = how much of the made-up range stands past it (the city: 0.35, a low dry ridge behind the real Hills' crest)   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
                 if (LAND && z < R.z0) {   // THE REAL LAND PAST THE EDGE: the other room's ground from the line out to its own back edge, the range on behind it
                     var lx = x - LAND.x0, inX = sm(Math.min(lx, LAND.w - lx) / 30 + 0.02), yL;
                     if (lx > -1 && lx < LAND.w + 1 && inX > 0) {
@@ -84587,12 +84648,12 @@ const ThreeRenderer = (function () {
         var day = (typeof hqToday === 'function') ? hqToday() : '';
         var list = [];
         HQ_CITY_RESIDENTS.list.forEach(function (r) {
-            var id = 'hq-res-' + (r.race + (r.gender ? '-' + r.gender : '')).replace(/\s+/g, '_');
+            var id = 'hq-res-' + (r.race + (r.gender ? '-' + r.gender : '') + (r.v ? '-' + r.v : '')).replace(/\s+/g, '_');   // THE VARIANTS (2026-11-16): cop b, cop c ... each its own id
             if (gone.indexOf(id) >= 0) return;   // beaten today: gone until tomorrow
             var hm = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'male'), hf = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'female');
-            var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
+            var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + (r.v ? '|' + r.v : '') + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
             /* THE SET LEVELS (2026-11-16, data.js HQ_SPAWN_RULES): the resident's own level, read once; the label shows it and the fight is at it */
-            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home }) : null; } catch (e) { sl = null; }
+            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home, dist: r.dist }) : null; } catch (e) { sl = null; }
             list.push({ r: r, id: id, gender: g, lvl: sl ? sl.lvl : 0, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
         });
         H.res = { G: G, day: day, list: list, next: 0, pts: [], lastPick: 0 };
@@ -84609,7 +84670,10 @@ const ThreeRenderer = (function () {
         var r = s.r, U = _hqUnits(), line = null, sub = (s.lvl > 0 ? 'LV ' + s.lvl + ' · ' : '') + 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
         if (at.spot && at.spot.say) { var sy = at.spot.say; line = Array.isArray(sy) ? (sy.length ? sy[((typeof hqHash === 'function' ? hqHash(H.res.day + '|' + r.race + '|say') : 0) % sy.length)] : null) : String(sy); }
         /* THE BEDS (2026-11-14): the rig carries the sleep pose (UAL2 LayToIdle held on its first frames: flat on the back) beside its own slots */
-        var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null; _hq3DOff(_s3);
+        var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null;
+            /* THE VARIANTS: a variant may wear the race's other look (mondo: "there is a white cop somewhere that you can use too"), seeded by its id */
+            if (r.v && typeof getRaceModelSkin === 'function') { var alt = getRaceModelSkin(r.race, s.gender, { seed: s.id }); if (alt) base = alt; }
+            _hq3DOff(_s3);
             if (base && base.libClips && !base.libClips.hqSleep) { var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales); lc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; lt.hqSleep = HQ_RES_SLEEP.ts; def = Object.assign({}, base, { libClips: lc, libTimeScales: lt }); } } catch (e) { def = null; }
         var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, def: def || undefined, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
         if (!ch) return null;

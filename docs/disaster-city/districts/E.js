@@ -938,4 +938,6 @@ module.exports = { build: function (api) {
    falls into the bay), three letters leaning or slipped. (bake-disaster-city.js merges a district's `edges` into the room's; three-renderer.js
    _hqBuildEdgeLand THE HILL SIGN builds it.) */
 /* (2026-11-15, THE REAL LAND PAST THE EDGE: the north land is the Hills room's own ground now, so the letters stand where the room's own twelve stand: its letters' row is 66.5 m past the line, centred on x 84, 13.6 m tall) */
-edges: { sign: { side: 'n', at: 84, d: 66.5, text: 'DISASTER CITY', px: 1.94, lean: { 2: 0.1, 6: -0.08, 11: 0.12 }, drop: { 4: 2, 11: 1.4 } } } };
+/* (2026-11-16, THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY: the real twelve letters stand IN this room now, on the Hills' own slope (districts/N.js), so this
+   file's far copy of the sign (`edges.sign`: at 84, d 66.5, px 1.94) is taken out: one sign, not two.) */
+edges: {} };

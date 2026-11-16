@@ -32,8 +32,8 @@
    - THE ATMOSPHERE (pass 4): a real flame (`hearth_fire`) in every hearth, braziers at the Pole, the lake, the Sleigh Road and the two south ways out
 
    - THE PEOPLE (pass 8, mondo "figure it out whatever fits"): `exports.encounters` = the roster's four `polar` units + the gnome (yeti common; Krampus,
-     gnome uncommon; Santa Clause, the Ice Queen one of a kind), 3 to 5 walking. Standing: Santa Clause, the gnome, the yeti (old lines) and the Ice Queen on
-     the lake (no line). Four is the room's crowd cap, so Krampus is in the table only; chimneys smoke (`chimney_smoke`)
+     gnome uncommon; Santa Clause, the Ice Queen one of a kind), 3 to 5 walking. Standing: Santa Clause, the gnome, the yeti (old lines), the Ice Queen on
+     the lake and Krampus by the Coal store (no lines). Chimneys smoke (`chimney_smoke`)
    - THE SIGNS (pass 8): `board()` = the words in a face per trade (WORKSHOP `xmas`, POST OFFICE `marc`, Bakery `pacifico`, TOY SHOP `bangers`, STABLE `rye`,
      COAL `stencil`), a white frame, snow on the top edge
    - THE OUTSIDE LAYERS (passes 7 + 8; `winter`, `dado`): belt board, drifts, icicles, sill snow, wood stacks, gutters + downpipes, a ridge board, shingled
@@ -48,7 +48,8 @@
      is a bright green summer tree; the zone pines' skirts are 4 m wide and blurred up close and one covers half the Sleigh Road's trail
 
    NEEDS A MODEL (nothing in the catalogue fits; no stand-in is placed)
-   - a reindeer (the Stable has a sleigh and straw, no animal), a mail box for outside the Post Office, a sled, an axe and a chopping block for the wood
+   - a reindeer (the Stable has a horse in its yard), a standing penguin (the pack's is a swimmer), a mail box for outside the Post Office, a sled, an axe
+     and a chopping block, a snow heap for the ground (the pack's snow pieces are roof sheets)
 
    THE TOOL'S, NOT YOURS (shared pieces that stand in this district)
    - The Pass Gate door `pass` (P03-01, east wall), the sleigh road's way out to Camelot (P03-03, south wall; link `northpole_camelot`), DOOR HQ's bay door (P01-03, south wall)
@@ -229,7 +230,7 @@ exports.build = ctx => {
     /* a home with a table: the table on the back square away from the hearth, its chairs in the same square; a sofa on FR only where BR is not shut in by it */
     const tableHome = (h, tree) => { const c = hearthSide(h), s = c > 0 ? -1 : 1, back = s > 0 ? 'BR' : 'BL';
         at(h, back, 'psx_dinner_table_1'); h.put('psx_chair_mp_3', s * M, -0.72, { face: 0 }); h.put('psx_chair_mp_3', s * M, -2.78, { face: 180 });
-        h.put('xmas_cocoa', s * M - 0.25, -1.65, { y: T }); h.put('xmas_cookies', s * M + 0.3, -1.9, { y: T }); h.put('xmas_cocoa_2', s * M + 0.2, -1.35, { y: T });
+        h.put('xmas_turkey', s * M, -1.75, { y: T }); h.put('xmas_punch', s * M - 0.45, -2.05, { y: T }); h.put('psx_glass_bottle_1', s * M + 0.5, -1.45, { y: T }); h.put('xmas_cocoa', s * M - 0.3, -1.3, { y: T }); h.put('xmas_cookies', s * M + 0.35, -2.1, { y: T });
         if (s > 0) at(h, 'FR', 'psx_sofa_1', { face: 270 }); else h.put('psx_armchair_1', 2.6, 2.55, { face: 315 });
         h.put('rug_round', -s * 0.7, 0.3); mantel(h); if (tree) xmas(h, s > 0 ? -2.6 : 2.6, s > 0 ? 0.3 : -0.2);
         h.put('psx_painting_1', -s * 3.12, 1.9, Object.assign({ face: s > 0 ? 90 : 270 }, WALL(1.7))); };
@@ -242,11 +243,11 @@ exports.build = ctx => {
       h.put('xmas_gift_2', -2.7, -2.6); h.put('xmas_gift', 2.6, -2.6, { face: 40 }); h.put('xmas_gift_4', 1.9, -2.75); }
     /* THE BAKERY: the oven under the chimney on BL, the bread on BR, the till on a side table by the right wall; the two front squares are the shop */
     { const h = B('bakery'); smoke(h, h.q.flue, -3.85, h.q.h + h.q.rh + 0.95); at(h, 'BL', 'deck_oven', { face: 180 }); at(h, 'BR', 'bread_rack', { face: 180 }); h.put('psx_bedside_table_1', 2.75, 0.5, { face: 270 }); h.put('cash_register', 2.75, 0.5, { y: 0.64, face: 270 });
-      h.put('psx_tv_table_1', 2.7, 2.6, { face: 270 }); h.put('xmas_cookies', 2.7, 2.6, { y: 0.74 }); h.put('xmas_gingerbread', 2.55, 2.9, { y: 0.74 }); h.put('xmas_bake', 2.8, 2.3, { y: 0.74 });
+      h.put('psx_tv_table_1', 2.7, 2.6, { face: 270 }); h.put('xmas_carvery', 2.75, 2.2, { y: 0.74 }); h.put('xmas_cookies', 2.7, 2.6, { y: 0.74 }); h.put('xmas_gingerbread', 2.55, 2.9, { y: 0.74 }); 
       h.put('meshy_burlap_sack', -2.8, 0.5); h.put('meshy_burlap_sack', -2.75, -0.3, { face: 120 }); h.put('xmas_wreath', 1.75, -3.12, Object.assign({ face: 180 }, WALL(2.1))); h.put('wall_clock', -3.14, 2.4, Object.assign({ face: 90 }, WALL(2.1))); }
     /* THE TOY SHOP: a cabinet on each back square, the toys round the front squares' edges, the till on a side table */
     { const h = B('toys'); at(h, 'BL', 'psx_display_cabinet_mp_1', { face: 180 }); at(h, 'BR', 'psx_display_cabinet_mp_2', { face: 180 });
-      h.put('decor_carousel_horse', 2.6, 2.6, { h: 0.95, face: 225 }); h.put('beach_ball', -2.8, 0.4); h.put('football', 0.1, -0.5); h.put('psx_bedside_table_1', 2.75, 0.5, { face: 270 }); h.put('cash_register', 2.75, 0.5, { y: 0.64, face: 270 });
+      h.put('decor_carousel_horse', 2.6, 2.6, { h: 0.95, face: 225 }); h.put('xmas_santa_2', -2.75, 0.5, { h: 1.0, face: 90 }); h.put('beach_ball', -0.6, -0.4); h.put('psx_lollipop_mp_1', 2.6, 0.35, { y: 0.64 }); h.put('psx_lollipop_mp_1_2', 2.9, 0.6, { y: 0.64 }); h.put('xmas_baubles', 0.9, -2.9); h.put('football', 0.1, -0.5); h.put('psx_bedside_table_1', 2.75, 0.5, { face: 270 }); h.put('cash_register', 2.75, 0.5, { y: 0.64, face: 270 });
       h.put('xmas_gift', -2.7, 2.7); h.put('xmas_gift_2', -2.75, 1.9, { face: 30 }); h.put('xmas_gift_3', -2.7, 2.7, { y: 0.49 }); h.put('xmas_gift_4', 0.2, -2.9, { face: 60 }); h.put('xmas_garland_2', 0, -3.12, Object.assign({ face: 180 }, WALL(2.3))); }
     /* THE STABLE: the sleigh on BR, the straw on BL (no reindeer in the catalogue: NEEDS A MODEL) */
     { const h = B('stable'); at(h, 'BR', 'sleigh', { face: 180 }); h.put('hw_straw', -M, -M - 0.36); h.put('hw_straw', -M, -M + 0.36); h.put('hw_straw', -M, -M, { y: 0.86 });
@@ -258,7 +259,7 @@ exports.build = ctx => {
     /* THE WORKSHOP (5 x 6 squares, their middles at x -7 .. 7, z -8.75 .. 8.75): the aisle from the door down column 0, three benches a side on columns
        -3.5 and 3.5, the side aisles along the walls for the tools and the freight, the hearth's square and the door's square free */
     { const h = B('workshop'); smoke(h, h.fw / 2 - 1.6, -h.fd / 2 + 1.2, 10.5); for (const x of [-3.5, 3.5]) for (const z of [-1.75, 1.75, 5.25]) h.put('psx_table_large_3', x, z, { face: 90 });
-      h.put('xmas_hammer', -3.5, -1.5, { y: 0.82 }); h.put('xmas_gingerbread', -3.8, -2.2, { y: 0.91 }); h.put('beach_ball', -3.5, 1.5, { y: 0.91 }); h.put('xmas_gift_3', -3.7, 2.2, { y: 0.91 }); h.put('xmas_hammer_2', -3.4, 5.6, { y: 0.82 }); h.put('xmas_cocoa', -3.8, 4.9, { y: 0.91 });
+      h.put('psx_hand_saw_1', -3.6, -1.1, { y: 0.91 }); h.put('psx_screwdriver_mp_1', -3.3, 1.2, { y: 0.91 }); h.put('psx_nails_1', -3.7, 1.9, { y: 0.91 }); h.put('psx_screwdriver_mp_2', 3.6, 5.2, { y: 0.91 }); h.put('psx_hand_saw_1', 3.3, -1.3, { y: 0.91, face: 70 }); h.put('xmas_baubles', 3.7, 1.3, { y: 0.91 }); h.put('xmas_hat', -3.3, 4.7, { y: 0.91 }); h.put('xmas_hammer', -3.5, -1.5, { y: 0.82 }); h.put('xmas_gingerbread', -3.8, -2.2, { y: 0.91 }); h.put('beach_ball', -3.5, 1.5, { y: 0.91 }); h.put('xmas_gift_3', -3.7, 2.2, { y: 0.91 }); h.put('xmas_hammer_2', -3.4, 5.6, { y: 0.82 }); h.put('xmas_cocoa', -3.8, 4.9, { y: 0.91 });
       h.put('football', 3.4, -2.1, { y: 0.91 }); h.put('xmas_gift_4', 3.6, -1.4, { y: 0.91 }); h.put('decor_carousel_horse', 3.5, 1.75, { y: 0.91, h: 0.7, face: 250 }); h.put('railway_lantern', 3.3, 4.9, { y: 0.91 }); h.put('xmas_gift_2', 3.6, 5.6, { y: 0.91, face: 30 });
       h.put('tool_chest', -7, 5.25, { face: 90 }); h.put('psx_wooden_crate_2', 7, 5.25); h.put('psx_wooden_crate_3', 7, 1.75, { face: 20 }); h.put('xmas_tree', 7, 8.75, { h: 3.2, floor: true }); h.put('xmas_gift_4', 5.9, 9.3, { face: 60 });
       h.put('tool_pegboard', -8.38, 0.5, Object.assign({ face: 90 }, WALL(1.2))); h.put('tool_pegboard', -8.38, 3.0, Object.assign({ face: 90 }, WALL(1.2))); h.put('ships_bell', 4.6, -10.1, Object.assign({ face: 180 }, WALL(3.0)));
@@ -333,9 +334,18 @@ exports.build = ctx => {
     lampPost('P03-03', 9, 7, 1); lampPost('P03-03', 5, 6, 0); put('P03-03', 'signpost', 8, 8, { face: 180 }); put('P03-03', 'xmas_snowman_3', 6, 9); put('P03-03', 'fallen_log', 8, 6);
     /* ── THE ATMOSPHERE (pass 4): warm light in the cold. Braziers (real lights) where people would stand at night ── */
     put('P01-00', 'brazier', 6, 6); put('P01-00', 'brazier', 8, 6); put('P01-02', 'brazier', 8, 5); put('P02-02', 'brazier', 7, 5); put('P01-03', 'brazier', 6, 4); put('P03-03', 'brazier', 7, 8);
-    /* ── THE ONE WHO WAS MISSING (pass 8): the Ice Queen out on her lake (no line: nobody wrote her one; she walks the ice). Krampus is NOT stood here:
-       THE CROWD CAP (data.js HQ_CROWD_RULES, mondo's "way less people") shows four bodies a room, so a fifth native never appeared (seen in the probe:
-       Santa Clause, the gnome, the yeti, the Ice Queen). He is in the room's table (`encounters`) ── */
-    native('P00-02', 'ice queen', 7, 4, 90);
+    /* ── THE TWO WHO WERE MISSING (pass 8): the Ice Queen out on her lake, Krampus at the Coal store's door. No lines: nobody wrote them any (a native
+       without a line walks). All five stand since THE CROWD CAP no longer halves a plot-built outdoor area (data.js HQ_CROWD_RULES.areaMax, mondo 11-16) ── */
+    native('P03-00', 'krampus', 6, 6, 200);     native('P00-02', 'ice queen', 7, 4, 90);
+    /* ── THE MODEL LIST FIRST (pass 9, mondo 11-16: "look at the model list right now to see what else they could add"). What the list had that this
+       file had not used: the Ocean pack's seals (the ice), the wolf (the drifts), the horse (the Stable had no animal), the Playground
+       pack's slide and swing, the Christmas file's star (no catalogue row until now), the pack's feast food, the PSX pack's tools ── */
+    put('P03-01', 'horse_brown', 5, 3, { face: 200 });                                                                                     // the Stable's yard
+    dec('P00-02', 'ocean_seal_resting', 6, 5); dec('P00-03', 'ocean_seal_resting', 4, 6); dec('P01-02', 'ocean_seal_resting', 4, 4);      // hauled out on the ice
+    /* (the Ocean pack's penguin is a swimmer: stood on the ice it lies flat, a black smear, seen 11-16. Not placed) */
+    dec('P00-00', 'wolf', 5, 6); dec('P00-01', 'wolf', 6, 4); dec('P02-03', 'wolf', 4, 7); dec('P03-02', 'wolf', 6, 8);
+    put('P01-01', 'play_slide', 6, 7); put('P01-01', 'play_swing', 4, 7, { face: 90 });                                                    // the west lane's playground
+    { const q = S('P01-00', 7, 6); props.push({ key: 'xmas_star', x: mx(q[0]), z: mz(q[1]), y: r2(1.75 + 7.95), h: 1.0, floor: true }); }   // the star on the Pole
+    /* (the Christmas file's `Snow.*` pieces are the snow sheets of its house's roof: on the ground they are flat tilted slabs, seen 11-16. Not placed, no row) */
   }
 };

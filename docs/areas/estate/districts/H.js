@@ -20,8 +20,9 @@
      with lamps, an iron overthrow, two iron leaves), THE TREEHOUSE (a 5.25 m timber tower you climb by its ladder, a railed deck, a hut with a
      lantern, a telescope, a chair), thirteen drawn LAMP POSTS along the walks, a KEEP OUT board on the gate, bats round the tower and crows
      on the ridge, the Lawn's swing, two LYCH GATES and a low stone wall along each graveyard's north side, the Graveyard's obelisk, the Lawn's fountain and benches,
-     the iron fence at the foot of the house's lawn, the Family Plot and the Graveyard (Halloween pack + PSX graveyard pack: headstones, mounds,
-     open coffins, dead trees, jack-o'-lanterns), two rim houses past the corn, and nine people: ghost, ghoul, vampire, werewolf, eagleman,
+     the iron fence at the foot of the house's lawn, the Family Plot and the Graveyard (crowded rows of the two packs' stones behind a tall iron
+     fence, chest tombs, tomb houses, open graves with coffins and corpses, bodies sitting up out of the ground, arms out of graves, flesh and
+     skulls on the aisles, the pack's big bare trees, ground fog), two rim houses past the corn, and nine people: ghost, ghoul, vampire, werewolf, eagleman,
      undead, jack o lantern, zombie, necromancer.
    THE PASSES (mondo 11-16, one pilot district a zone, up to Disaster City's standard): 1 EXTERIORS · 2 INTERIORS · 3 DRESSING ·
      4 ATMOSPHERE done · 5 POLISH open (the list is in the notes). Notes: areas-complexes.md "THE ESTATE, DISTRICT H" + "THE ESTATE, THE ZONE KIT".
@@ -61,7 +62,7 @@ module.exports = {
         /* THE GRAVEYARDS' GRASS (mondo 11-16 "that's fine"): the plan paints both yards as path; both yards are lawn now
            (THE GRAVEYARD REDONE, mondo 11-16 "this doesn't really look like a graveyard, do better"), dirt only on the middle aisle and the Graveyard's cross aisle. Only squares the plan already walks are touched. */
         { const yard = (x0, y0, x1, y1, keep) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (ctx.cell[y][x] === 'p' && !keep(x, y)) ctx.cell[y][x] = 'g'; };
-          yard(13, 65, 21, 69, (x, y) => x === 17 && y <= 68); yard(24, 65, 33, 71, (x, y) => (x === 28 && y <= 70) || y === 68); }
+          yard(13, 65, 21, 69, (x, y) => x === 17 && y <= 68); yard(24, 65, 33, 71, (x, y) => (x === 28 && y <= 70) || y === 68 || y === 70); }   // row 70 is the fresh row: open graves on bare earth
         setRect(5, 41, 7, 43, 'j'); setRect(16, 56, 17, 57, 'j'); setRect(19, 56, 20, 57, 'j');   // boards, not lawn, on the treehouse's deck and under the porch's two side bays (the grass field grows on every grass square)
     },
     houses(ctx) { const { building, feat, r2, SOLID, WD, WD2, SHG, FLR, GLS, BRK } = ctx;
@@ -222,7 +223,7 @@ module.exports = {
     },
     /* THE AIR over this district (bake-estate.js THE AIR BY DISTRICT): grave-light motes over the Crypt and both graveyards, a slow grey dust round the
        house, its lawn and the gazebo; the corn track, the gate, the treehouse and the Drive keep the zone's fireflies */
-    airZones() { return [{ sx0: 0, sy0: 60, sx1: 36, sy1: 72, kind: 'motes', color: 0x9fffc8, n: 110, speed: 0.3 }, { sx0: 0, sy0: 47, sx1: 36, sy1: 60, kind: 'dust', color: 0xb8b0c8, n: 130, speed: 0.4 }]; },
+    airZones() { return [{ sx0: 23, sy0: 61, sx1: 36, sy1: 72, kind: 'dust', color: 0xc4ccd4, n: 320, speed: 0.18 }, { sx0: 0, sy0: 60, sx1: 23, sy1: 72, kind: 'motes', color: 0x9fffc8, n: 110, speed: 0.3 }, { sx0: 0, sy0: 47, sx1: 36, sy1: 60, kind: 'dust', color: 0xb8b0c8, n: 130, speed: 0.4 }]; },
     dress(ctx) { const { gx, gc, r2, feat, props, P, dec, tree, native, sayOf, O_GROUNDS } = ctx;
         tree(4, 41, 'tree_4', 12, 1.2); tree(8, 42, 'pine', 6.5); tree(5, 44, 'pine', 6); dec('fallen_log', 7, 43); P('cave_torch', 5, 40);
         P('cave_torch', 15, 41); P('cave_torch', 19, 43); P('stone_urn', 13, 58); P('stone_urn', 22, 58); P('cave_torch', 15, 57); P('cave_torch', 20, 57); P('planter', 14, 57); P('planter', 21, 57);
@@ -237,33 +238,57 @@ module.exports = {
         { const SMALL = ['hw_stone', 'psxg_tombstone_1', 'hw_stone_2', 'hw_stone_3', 'psxg_tombstone_2', 'hw_stone_1', 'psxg_tombstone_3', 'hw_stone_4', 'hw_stone_5'], BIG = ['hw_grave', 'hw_grave_low', 'hw_grave', 'hw_stone_3'];   // (`cross` is a 3 m timber cross: too big for a grave)
           const rnd = ctx.rnd, pick = L => L[Math.floor(rnd() * L.length)], lean = f => Math.round(f + (rnd() - 0.5) * 22);
           const grave = (sx, sy, face, big) => { P(big ? pick(BIG) : pick(SMALL), sx, sy, { face: lean(face) });
-              for (const dx of [-1.17, 1.17]) { if (rnd() < 0.12) continue; const wood = rnd() < 0.1; props.push(Object.assign({ key: wood ? 'wooden_cross' : pick(SMALL), x: r2(gc(sx) + dx + (rnd() - 0.5) * 0.2), z: r2(gc(sy) + (rnd() - 0.5) * 0.5), face: lean(face), noBlock: true }, wood ? { h: 1.2 + rnd() * 0.4 } : {})); } };
+              for (const dx of [-1.17, 1.17]) { if (rnd() < 0.12) continue; const wood = rnd() < 0.1; props.push({ key: wood ? 'hw_stone_4' : pick(SMALL), x: r2(gc(sx) + dx + (rnd() - 0.5) * 0.2), z: r2(gc(sy) + (rnd() - 0.5) * 0.5), face: lean(face), noBlock: true }); } };
           const rowOf = (x0, x1, y, face, big, skip) => { for (let x = x0; x <= x1; x++) if (!(skip || []).includes(x)) grave(x, y, face, big); };
+          /* THE HORROR (11-16, mondo: "where are the flesh and body parts like from the zombie spell ... this graveyard fucking sucks"): the Halloween pack's own
+             corpses, body parts and coffins (new catalogue rows `hw_body*`, `hw_part*`, `hw_coffin*`), the spells' bones and skulls.
+             arm() = an arm clawing up out of a grave; parts() = flesh strewn round a spot; bones() = skulls and scraps. */
+          const PARTS = ['hw_part', 'hw_part_1', 'hw_part_3', 'hw_part_4', 'hw_part_6', 'hw_part_7', 'hw_part_8', 'hw_part_9'], BONES = ['skull', 'hw_part_6', 'skull', 'hw_part_8', 'skull'];   // (the spells' femur and ulna stand on end, a metre tall: not for the ground)
+          const loose = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z), face: Math.round(rnd() * 360), noBlock: true }, o || {}));
+          const arm = (x, z, y) => loose('hw_part_2', x, z, y ? { y } : {});
+          const parts = (x, z, n) => { for (let i = 0; i < n; i++) loose(pick(PARTS), x + (rnd() - 0.5) * 2.6, z + (rnd() - 0.5) * 2.6); };
+          const bones = (x, z, n) => { for (let i = 0; i < n; i++) loose(pick(BONES), x + (rnd() - 0.5) * 2.4, z + (rnd() - 0.5) * 2.4, { y: 0.03 }); };
+          /* an open grave: the coffin dragged half out of its hole, its lid thrown aside, the earth heaped beside it; `who` = what is in it */
+          const openGrave = (sx, sy, face, who, alt) => { P(alt ? 'hw_coffin_2' : 'hw_coffin', sx, sy, { face, y: -0.1 });
+              loose(alt ? 'hw_coffin_lid_2' : 'hw_coffin_lid', gc(sx) + 1.35, gc(sy) + 0.5, { face: face + 24, y: 0.02 }); props.push({ key: 'psxg_dirt_grave', x: r2(gc(sx) - 1.3), z: r2(gc(sy) - 0.3), y: 0.02, face: face + 90, noBlock: true });
+              if (who) props.push({ key: who, x: gc(sx), z: gc(sy), y: 0.1, face, noBlock: true }); };
           /* THE FAMILY PLOT: the aisle is column 17; the big graves on rows 67 and 68, the angel at its head */
-          rowOf(14, 20, 67, 180, true, [17]); rowOf(15, 19, 68, 0, true, [17]); rowOf(15, 19, 62, 180, false, [16, 17, 18]);
-          P('angel_statue', 17, 69, { face: 0 }); P('stone_urn', 16, 69); P('stone_urn', 18, 69); P('hollow_dead_tree', 13, 66, { face: 40 }); P('psxg_dead_tree_1', 21, 66, { face: 60 });
+          rowOf(14, 20, 67, 180, true, [17, 19]); rowOf(15, 19, 68, 0, true, [17, 15]);
+          P('sarcophagus', 19, 67, { face: 90 }); arm(gc(19) - 0.3, gc(67) + 0.1, 0.5);
+          P('hw_body_rising', 15, 68, { face: 20 }); props.push({ key: 'psxg_dirt_grave', x: gc(15), z: r2(gc(68) - 0.2), y: 0.02, face: 0 }); arm(gc(14) + 0.6, gc(67) + 1.2); arm(gc(20) - 0.4, gc(67) + 1.1); arm(gc(18) + 0.5, gc(68) - 1.2); rowOf(15, 19, 62, 180, false, [16, 17, 18]);
+          P('angel_statue', 17, 69, { face: 0 }); P('stone_urn', 16, 69); P('stone_urn', 18, 69); P('hw_tree_2', 13, 66, { face: 40 }); P('hw_tree', 21, 66, { face: 60 }); parts(gc(16), gc(66), 3); bones(gc(18), gc(66) + 0.6, 4);
           dec('candle', 17, 68); dec('hw_candles', 17, 68); dec('crow', 16, 61); dec('psxg_stepping_stone_1', 17, 66); dec('psxg_stepping_stone_2', 17, 67); dec('psxg_dead_bush_2', 15, 66); dec('psxg_dead_bush_1', 20, 66); dec('psxg_jack_o_lantern_1', 18, 66, { face: 160 }); dec('skull', 19, 66);
           /* THE GRAVEYARD: the aisle is column 28, the cross aisle row 68, the obelisk where they meet; four rows of stones, two tomb houses, an open grave */
-          rowOf(25, 32, 66, 180, false, [28]); rowOf(24, 33, 67, 0, false, [28]); rowOf(24, 32, 69, 180, false, [28]); rowOf(25, 31, 71, 0, false, [28]); rowOf(27, 31, 62, 180, false, [28, 30]);
+          rowOf(25, 32, 66, 180, false, [28, 30]); rowOf(24, 33, 67, 0, false, [28, 24, 33]); rowOf(24, 32, 69, 180, false, [28, 26, 32]); rowOf(25, 31, 71, 0, false, [28, 25]);
+          P('hw_tree_2', 24, 67, { face: 30 }); P('hw_tree', 33, 67, { face: 210 }); P('hw_tree_3', 32, 69, { face: 120 }); P('hw_tree_5', 25, 71, { face: 300 });
+          P('sarcophagus', 30, 66, { face: 90 }); arm(gc(30) + 0.3, gc(66), 0.5);
+          P('sarcophagus', 26, 69, { face: 90 });
+          for (const q of [[25, 66], [27, 67], [31, 67], [29, 69], [24, 69], [30, 71], [27, 71], [32, 66], [26, 67]]) arm(gc(q[0]) + (rnd() - 0.5), gc(q[1]) + (q[1] === 67 || q[1] === 71 ? -1.0 : 1.0)); rowOf(27, 31, 62, 180, false, [28, 30]);
           for (const q of [[24, 66, 90], [33, 66, 270]]) { ctx.look('tomb' + q[0], gc(q[0]), gc(q[1]), q[2], a => { const ST = 0x9a968e, DK = 0x6e6a64;
                 a.box(0, 0, 0, 3.1, 0.3, 3.1, 'castle_wall', DK); a.box(0, 0.3, 0, 2.7, 2.3, 2.7, 'castle_wall', ST, { top: false, uv: [3.5, 1.75] }); a.box(0, 2.6, 0, 3.0, 0.22, 3.0, 'castle_wall', DK, { roof: true });
                 a.roof('gable', 0, 2.82, 0, 3.1, 0.9, 3.1, 'castle_wall', DK, { keyEnd: 'castle_wall', tintEnd: ST, ry: 90 });
                 a.box(0, 0.3, 1.36, 1.0, 1.8, 0.06, null, 0x15161a); a.box(0, 2.1, 1.38, 1.3, 0.16, 0.1, 'marble', 0xb8b4ac); for (const e of [-1, 1]) a.box(e * 0.6, 0.3, 1.38, 0.14, 1.8, 0.1, 'marble', 0xb8b4ac);
                 a.box(0, 3.72, 1.5, 0.1, 0.6, 0.1, 'marble', 0xc0bcb4, { roof: true }); a.box(0, 4.02, 1.5, 0.36, 0.1, 0.1, 'marble', 0xc0bcb4, { roof: true }); });
               feat({ k: 'wall', x0: r2(gc(q[0]) - 1.35), z0: gc(q[1]), x1: r2(gc(q[0]) + 1.35), z1: gc(q[1]), t: 2.7, h: 2.6, ghost: true, rail: false }); ctx.taken.add(q[0] + ':' + q[1]); }
-          P('psxg_dead_tree_2', 24, 70, { face: 200 }); P('hw_tree_4', 32, 70, { face: 140 }); P('cave_torch', 24, 68); P('cave_torch', 33, 68);
-          P('trap_coffin_open', 26, 70, { y: -0.3, face: 100 }); dec('trap_coffin_lid', 27, 70); dec('hw_shovel', 27, 70, { y: 0.02 }); props.push({ key: 'psxg_dirt_grave', x: r2(gc(26) + 0.2), z: r2(gc(70) + 1.2), y: 0.02, face: 80 });
-          P('stocks', 30, 70, { face: 180 }); P('skull_pile', 28, 62); dec('crow', 27, 68); dec('crow', 31, 70); dec('skull', 29, 70); dec('hw_pumpkin', 29, 68); dec('psxg_jack_o_lantern_2', 26, 68, { face: 200 }); dec('hw_candles_2', 28, 67); dec('candle', 28, 69);
+          /* the fresh row (70, bare earth): open graves, what was in them, what is climbing out */
+          P('hw_tree_4', 24, 70, { face: 200 }); P('psxg_dead_tree_2', 32, 70, { face: 140 }); P('cave_torch', 24, 68); P('cave_torch', 33, 68);
+          openGrave(25, 70, 80, 'hw_body'); openGrave(29, 70, 100, null, true); openGrave(31, 70, 265, 'hw_body_2');
+          P('hw_body_rising', 27, 70, { face: 10 }); props.push({ key: 'psxg_dirt_grave', x: gc(27), z: r2(gc(70) - 0.3), y: 0.02, face: 0, noBlock: true }); dec('hw_shovel', 26, 70, { y: 0.02 }); dec('hw_shovel', 30, 70, { y: 0.02 });
+          P('hw_body_rising_2', 32, 68, { face: 250 }); loose('hw_body_2', gc(28) + 0.9, gc(69) + 0.4, { y: 0.02 });
+          parts(gc(27), gc(70), 5); parts(gc(30), gc(70), 6); parts(gc(28), gc(68) + 0.4, 4); parts(gc(25), gc(68), 3); parts(gc(31), gc(68), 4); bones(gc(26), gc(70), 4); bones(gc(32), gc(68), 4); bones(gc(28), gc(66), 3); bones(gc(29), gc(68), 3);
+          loose('psx_meat_1', gc(30) + 0.6, gc(70) + 1.1, { y: 0.02 }); loose('psx_meat_1_1', gc(27) - 0.8, gc(68) + 0.7, { y: 0.02 });
+          P('stocks', 30, 62, { face: 180 }); P('skull_pile', 28, 62); P('skull_pile', 25, 68); dec('crow', 27, 68); dec('crow', 31, 70); dec('crow', 26, 70); dec('hw_pumpkin', 29, 68); dec('psxg_jack_o_lantern_2', 26, 68, { face: 200 }); dec('psxg_jack_o_lantern_1', 30, 68, { face: 160 });
+          dec('hw_candle', 28, 67); dec('hw_candle_2', 28, 69); dec('hw_candles_2', 28, 67); dec('candle', 28, 69); dec('hw_candle', 27, 68); dec('hw_candle_2', 29, 68);
           dec('psxg_stepping_stone_1', 28, 66); dec('psxg_stepping_stone_2', 28, 67); dec('psxg_stepping_stone_1', 28, 70); dec('psxg_dead_bush_1', 25, 68); dec('psxg_dead_bush_2', 32, 68); dec('psxg_rock_2', 30, 68);
           /* the PSX graveyard pack: stone pillars and small iron leaves where each walk enters, dead trees and bushes, rocks, carved jack-o'-lanterns */
           for (const q of [[17, 61], [30, 62]]) { const X = gx(q[0] + 1), Z = gx(q[1]); props.push({ key: 'psxg_wall_pillar', x: r2(X - 3.1), z: Z }, { key: 'psxg_wall_pillar', x: r2(X + 3.1), z: Z }, { key: 'psxg_iron_gate_1', x: r2(X - 2.9), z: r2(Z + 0.7), face: 90 }, { key: 'psxg_iron_gate_2', x: r2(X + 2.9), z: r2(Z + 0.7), face: 270 }); }
           /* the low stone wall along each graveyard's north side (the PSX graveyard pack's, a panel a square), open under its lych gate */
-          for (const x of [13, 14, 15, 16, 18, 19, 20, 21]) P('psxg_wall', x, 65, { face: 0 });
-          for (const x of [24, 25, 26, 27, 29, 30, 31, 32]) P('psxg_wall', x, 65, { face: 0 }); }
+          for (const x of [13, 14, 15, 16, 18, 19, 20, 21]) P(x % 2 ? 'hw_fence_iron' : 'hw_fence_iron_3', x, 65, { face: 0 });
+          for (const x of [24, 25, 26, 27, 29, 30, 31, 32]) P(x % 2 ? 'hw_fence_iron' : 'hw_fence_iron_3', x, 65, { face: 0 }); }
         for (const x of [12, 13, 14, 15, 16, 19, 20, 21, 22, 23]) props.push({ key: 'hw_fence_iron', x: gc(x), z: r2(gx(60) - 0.25), face: 0 });   // the iron fence along the foot of the house's lawn, the walk's gap in its middle
         dec('psxg_jack_o_lantern_1', 16, 56, { face: 180 }); dec('psxg_jack_o_lantern_2', 19, 56, { face: 180 }); dec('psxg_dead_bush_1', 14, 58); dec('psxg_dead_bush_2', 21, 58); dec('hw_pumpkin_2', 15, 58);
         native('ghost', 28, 52, 30, sayOf(O_GROUNDS, 'ghost')); native('ghoul', 14, 66, 160, sayOf(O_GROUNDS, 'ghoul')); native('vampire', 13, 57, 180); native('werewolf', 7, 44, 90); native('eagleman', 3, 55, 90);
-        native('undead', 26, 68, 200); native('jack o lantern', 31, 68, 180); native('zombie', 29, 70, 300); native('necromancer', 2, 63, 90);
+        native('undead', 26, 68, 200); native('jack o lantern', 31, 68, 180); native('zombie', 30, 70, 300); native('necromancer', 2, 63, 90);
         /* ── THE DRESSING PASS (2026-11-16). Heights: a row's `y` under 1 m is a lift over the ground, 1 m and over is a height over the room's level 0,
            so a thing in the air carries its plot's ground (G2 = 3.5 m, the house's rise G4 = 7 m). ── */
         { const { look, WD2 } = ctx, G2 = 3.5, G4 = 7, HX = gx(18), HZ = gx(53), air = (key, x, z, y, face) => props.push({ key, x: r2(x), z: r2(z), y: r2(y), face: face || 0 });

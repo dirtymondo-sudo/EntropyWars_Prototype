@@ -216,7 +216,8 @@ function insides(ctx, hall, list) {
             if (kind === 1) { if ((q = next())) H.put('sea_chest', q[0], q[1], 180); if ((q = next())) H.put('psx_shelf_mp_2', q[0], q[1], 180); }
             if (kind === 3) { if ((q = next())) { H.put('hw_straw', q[0], q[1], 30); H.put('wooden_bucket', q[0] + 1.0, q[1] + 0.8, 0); } }
             if (kind === 4) { if ((q = next())) H.put('library_shelf_full', q[0], q[1], 180); if ((q = next())) { H.put('psx_dinner_table_1', q[0], q[1], 0); H.put('psx_chair_mp_1', q[0] - 1.1, q[1] + 0.2, 90); H.put('psx_chair_mp_1', q[0] + 1.1, q[1] - 0.2, 270); }
-                H.put('rug_round', H.sq(di, Math.min(nz - 1, 1))[0], H.sq(di, Math.min(nz - 1, 1))[1] + 0.3, 0); }
+                H.put('rug_round', H.sq(di, Math.min(nz - 1, 1))[0], H.sq(di, Math.min(nz - 1, 1))[1] + 0.3, 0);
+                H.put('candelabra', hx + 1.7, hz + 0.5, 0); H.put('painting_portrait', hx, hz + 0.72, 180, { y: 2.2 }); }   // THE MODEL LIST PASS: a candelabra by the hearth, a portrait over the mantel
             if (kind === 5) { if ((q = next())) { a.box(q[0], 0.85, q[1], 2.6, 0.1, 0.9, WOODK, FT, FW); for (const s of [-1, 1]) a.box(q[0] + s * 1.1, 0, q[1], 0.14, 0.85, 0.8, WOODK, FT, FW); a.box(q[0] + 0.5, 0.95, q[1], 0.5, 0.26, 0.36, WOODK, FT, FW); H.block(q[0] - 1.3, q[1], q[0] + 1.3, q[1], 1.0, 0.95); }
                 if ((q = next())) { H.barrel(q[0] - 0.5, q[1] - 0.3); H.barrel(q[0] + 0.5, q[1] + 0.2, 0.36, 0.9); H.put('hw_straw', q[0], q[1] + 1.1, 70); } }
         }

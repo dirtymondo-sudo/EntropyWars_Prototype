@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 997 |
+| Asset pack | yes | 1034 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -1675,6 +1675,78 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | roads_g_sign_013 | `Assets/world/packs/elbolilloduro/roads/sign_013.glb` | Asset pack | Roads · Elbolilloduro · CC0 (every piece of the pack cut into its own GLB in Blender by bake-roads.py; data.js HQ_CATALOGUE_ROADS, editor group Roads) |
 | roads_g_sign_014 | `Assets/world/packs/elbolilloduro/roads/sign_014.glb` | Asset pack | Roads · Elbolilloduro · CC0 (every piece of the pack cut into its own GLB in Blender by bake-roads.py; data.js HQ_CATALOGUE_ROADS, editor group Roads) |
 
+### Halloween pack · Elbolilloduro · CC0 — Asset pack (67)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| halloween_character_ghost | `Assets/world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_body | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_body_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_body_rising | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body001` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_body_rising_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_01001` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_bricks | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Bricks` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_bricks_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Bricks_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_candle | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Candle` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_candle_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Candle_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_candles | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Candle_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_candles_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Candle_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_coffin | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Coffin` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_coffin_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Coffin_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_coffin_lid | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Coffin_Top` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_coffin_lid_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Coffin_Top_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_crop | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_crop_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_crop_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_farmland | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_fence | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_fence_iron | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_fence_iron_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_fence_iron_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_gate_leaf | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_gate_leaf_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_05` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_grave | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_06` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_grave_low | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_08` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_grave_slab | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_07` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_kerb | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Concrete` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_1 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_5 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_05` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_6 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_06` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_7 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_07` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_8 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_08` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_part_9 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Body_part_09` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pier | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Concrete_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pumpkin | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pumpkin_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pumpkin_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pumpkin_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_scarecrow | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Scarecrow` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_scarecrow_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Scarecrow_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_shovel | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Shovel` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_1 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_5 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_05` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_straw | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Straw` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_straw_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Straw_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree_5 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_wall | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Wall` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_wall_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Wall_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_wall_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Wall_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_wall_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Wall_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_web | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Spiderweb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_web_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Spiderweb_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_web_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Spiderweb_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+
 ### Ocean pack (mondo's upload, 48 FBX) — Asset pack (author not recorded yet) (60)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1740,7 +1812,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ocean_turtle | `Assets/world/packs/ocean/Turtle.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
 | ocean_whale | `Assets/world/packs/ocean/Whale.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
 
-### Christmas pack · Elbolilloduro — Asset pack (49)
+### Christmas pack · Elbolilloduro — Asset pack (50)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
@@ -1786,6 +1858,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | xmas_snowman | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_snowman_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman_01` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_snowman_3 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman_02` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_star | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_star` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_stocking | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_stocking` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_stocking_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_stocking_01` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_tree | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_tree` | Asset pack | Christmas pack · Elbolilloduro |
@@ -1793,49 +1866,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | xmas_turkey | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_food` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_wreath | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_wreath_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath_01` | Asset pack | Christmas pack · Elbolilloduro |
-
-### Halloween pack · Elbolilloduro · CC0 — Asset pack (38)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| halloween_character_ghost | `Assets/world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_candles | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Candle_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_candles_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Candle_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_crop | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_crop_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_crop_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_farmland | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_fence | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_fence_iron | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_fence_iron_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_gate_leaf | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_gate_leaf_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_05` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_grave | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_06` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_grave_low | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_08` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_grave_slab | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_07` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_pumpkin | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_pumpkin_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_pumpkin_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_pumpkin_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_scarecrow | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Scarecrow` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_scarecrow_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Scarecrow_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_shovel | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Shovel` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_stone | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_stone_1 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_stone_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_stone_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_stone_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_stone_5 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_05` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_straw | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Straw` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_straw_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Straw_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_tree | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_tree_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_tree_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_tree_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_tree_5 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_wall | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Wall` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_wall_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Wall_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-| hw_web | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Spiderweb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
 
 ### Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) — Meshy AI (27)
 
@@ -2322,6 +2352,19 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ind_skip_full | `Assets/world/packs/domi236_industrial/ind_skip_full.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 | ind_vent | `Assets/world/packs/domi236_industrial/ind_vent.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 
+### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (8)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| fishing_boat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_fishing_boat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| generator | `Assets/world/packs/elbolilloduro/ebd_housesonwater_generator.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| hammock | `Assets/world/packs/elbolilloduro/ebd_housesonwater_hammock.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| mooring_piles | `Assets/world/packs/elbolilloduro/ebd_housesonwater_mooring_piles.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| rowboat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_house | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_house.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_house_wide | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_house_wide.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_hut | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_hut.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) — Meshy AI (8)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2658,12 +2701,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | pd_lever | `Assets/world/props/meshy/pd_lever.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; the plot dungeons, mondo 2026-11-15: "Make a new lever"; originals in project files dungeons/meshy/) |
-
-### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| rowboat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Spear (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 

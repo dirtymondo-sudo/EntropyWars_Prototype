@@ -57,6 +57,9 @@
      (`lined()`: a painted coat, an olive dado, a lit ceiling deck) and wears gear outside (`gear()`: downpipes, an AC box, a louvre).
    - THE WHITE ROOMS are white now (a drawn lining on the room's four walls, `gain` on every plaster wall and ceiling tile). The nurses'
      station, the observation floor's two long walls and Hangar 18's control room are real see-through glass (`pane`, in rooms()).
+   - THE WALL DETAIL + THE CLIPPING CHECK (11-16): skirting, dado rail, crown, pendants and wall pieces in the huts (rows `des:<id>:in`);
+     a plate over every door, a number on every cell, wall pieces and floor lines in both rooms. `pieces` runs the city's interior polish
+     over the huts; `tidy()` checks the two rooms (39 props stood on wall tops; none in a wall). A part's `ry: 90` looks WEST.
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS; outside the markers, not this file's).
    - A plateau in this room draws as a mound (the ground is sampled every 1.75 m): anything raised needs a drawn skin 1.2 m wider than it,
      and an `arch` row over raised ground needs `y: 0` or it stands on the plateau's top (the tower floated 7 m up without it).
@@ -64,9 +67,12 @@
      Through probe-fast.js every leaf draws (Hangar 18: 13 door groups, 13 with a mesh; seen on screen). Nothing to fix in the door code.
    FOUND AND CLOSED (11-16): "the White Rooms crash the headless browser with the telepath in" was the old SwiftShader probe too. Through
      probe-fast.js (llvmpipe) the room loaded twice with him in, 20 pictures, no crash, and he draws. Nothing was changed for it.
+   THE MODEL LIST PASS (11-16): ~60 pieces the game already had are placed (the jet's tug and stairs, the moon landing set on the Dry Lake west,
+     silos in the fuel dump, cryo tubes + caskets in the lab, the lathe, the time machine in the stores, hospital and office pieces). `iso_tank`
+     is a cryo casket: it no longer stands in as a fuel tank. The list of what fits and is not placed: areas-complexes.md "THE ZONE KIT".
    NEVER USE: `steel_table` outside a lab (it carries a blood stain), `round_table` (Camelot's, four metres of oak).
    NEEDS A MODEL (none in the catalogue; nothing stands in for them): a boom gate arm (drawn from boxes today), a windsock, a jeep / humvee,
-     a helicopter, a radar antenna that turns, a flag on a pole, a missile cart / launch stand (the two missiles lie on the ground).
+     a helicopter, a radar antenna that turns, a flag on a pole, a missile cart / launch stand (the two missiles lie on the ground). Checked against MODEL_LIST.md 11-16: none of these is in it.
 
    THE HOOKS (bake-desert.js "THE DISTRICT FILES" has the whole list of what ctx holds; each hook is optional):
      buildings(ctx)  the walk-in / shut buildings: building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts) -> a handle (at, face, cx, cz)
@@ -84,20 +90,28 @@
 'use strict';
 let C, gx, gc, r2, feat, props, doors, npc, count, line, setRect, pen, building, sheet, setPaint, put, SOLID, P, Pm, dec, native, rnd, sayOf, O_GIZA, O_GATE, O_LINE, O_CARN, U, WD, WD2, SHG, FLR, GLS, RIB, COR, CONC, PLAS;
 const bind = ctx => ({ C, gx, gc, r2, feat, props, doors, npc, count, line, setRect, pen, building, sheet, setPaint, put, SOLID, P, Pm, dec, native, rnd, sayOf, O_GIZA, O_GATE, O_LINE, O_CARN, U, WD, WD2, SHG, FLR, GLS, RIB, COR, CONC, PLAS } = ctx);
-let POST, HANGAR, WING, BARR_A, BARR_B, MESS, RADAR;
+let POST, HANGAR, WING, BARR_A, BARR_B, MESS, RADAR, WALKIN = [];
 /* the base's own colours: desert tan walls, olive trim, dark steel. `gain` lifts a sheet the building tint would leave near black (seen 11-16) */
 const LIT = 0xffe2a8, TUBE = 0xf4f8ff, RED = 0xff3020;   // a lit window's warm, a strip light's white, a beacon's red
 /* THE SECOND LAYERS (11-16, the city's bar: F-atmos.js `coat` + its lit ceiling deck; F-detail.js roof gear and pipes).
    lined(): a walk-in's inside. The hollow building's own walls and ceiling draw near black and the room's ten real lights stay outside, so the
    hall gets a painted coat 3 cm in front of each wall (open at the doorway), a dado, and a LIT ceiling deck (a sheet with `glow`). */
 const PAINT = 'urban:PlasterWallPainted1a', FIBRE = 'urban:FibreCeilingTile1a', GRILLE = 'urban:MetalSubwayGrill1a';
-function lined(a, w, d, h, door, tint, dado) {
-    const e = 0.36, H = h - 0.32, W2 = w / 2, D2 = d / 2, hole = [r2f(-door.lx), r2f(door.cw + 0.12), 2.25];
-    const coat = (hh, tn, ee, gain) => { const o = { kind: 'wall', gain, glow: 0.18 }, q = (x, z, len, ry, x2) => a.P.push(Object.assign({ s: 'quad', p: [r2f(x), 0, r2f(z)], size: [r2f(len), hh], ry, key: PAINT, tint: tn }, o, x2 || {}));
-        q(0, -D2 + ee, w - 2 * ee, 0); q(0, D2 - ee, w - 2 * ee, 180, { hole: [hole[0], hole[1], Math.min(2.25, hh)] }); q(-W2 + ee, 0, d - 2 * ee, 270); q(W2 - ee, 0, d - 2 * ee, 90); };
-    coat(H, tint, e, 1.9); coat(1.0, dado, e + 0.012, 1.5);
+const INS = {};   // a walk-in's inside parts, by id: written as its own row `des:<id>:in` (the city's interior polish reads that name)
+function lined(id, w, d, h, door, tint, dado) {
+    const a = INS[id] = { P: [], h }, e = 0.36, H = h - 0.32, W2 = w / 2, D2 = d / 2, hole = [r2f(-door.lx), r2f(door.cw + 0.12), 2.25];
+    const band = (y, hh, tn, ee, gain, glow, cut) => { const o = { kind: 'wall', gain, glow }, q = (x, z, len, ry, x2) => a.P.push(Object.assign({ s: 'quad', p: [r2f(x), y, r2f(z)], size: [r2f(len), hh], ry, key: PAINT, tint: tn }, o, x2 || {}));
+        q(0, -D2 + ee, w - 2 * ee, 0); q(-W2 + ee, 0, d - 2 * ee, 270); q(W2 - ee, 0, d - 2 * ee, 90);
+        if (cut === 'split') { const l0 = -W2 + ee, l1 = -door.lx - hole[1] / 2, r0 = -door.lx + hole[1] / 2, r1 = W2 - ee; q((l0 + l1) / 2, D2 - ee, l1 - l0, 180); q((r0 + r1) / 2, D2 - ee, r1 - r0, 180); }   // (ry 180: the quad's own x runs the other way)
+        else q(0, D2 - ee, w - 2 * ee, 180, cut ? { hole: [hole[0], hole[1], Math.min(2.25, hh)] } : null); };
+    band(0, H, tint, e, 1.9, 0.18, true); band(0, 1.0, dado, e + 0.012, 1.5, 0.18, true);
+    /* THE WALL DETAIL (11-16, mondo "do 4"): a dark skirting, a rail on the dado, a crown under the ceiling (the city's F-atmos bands) */
+    band(0, 0.14, 0x2e3230, e + 0.024, 1.2, 0, 'split'); band(1.0, 0.07, 0x3a4238, e + 0.024, 1.3, 0, 'split'); band(r2f(H - 0.16), 0.1, 0xf0ead8, e + 0.024, 1.9, 0.2, false);
     a.P.push({ s: 'box', p: [0, r2f(H - 0.05), 0], size: [r2f(w - 2 * e), 0.04, r2f(d - 2 * e)], key: FIBRE, tint: 0xf4f0e4, under: true, top: false, sides: false, glow: 0.55, gain: 1.6, uv: 3.5 });
+    return a;
 }
+/* a pendant lamp (drawn: a rod, a dark shade, a lit disc) hung from a lined hall's ceiling */
+const pendant = (a, x, z, H) => a.P.push({ s: 'box', p: [x, r2f(H - 0.75), z], size: [0.04, 0.7, 0.04], tint: 0x2a2c30 }, { s: 'cyl', p: [x, r2f(H - 0.97), z], r: 0.42, r2: 0.16, h: 0.22, seg: 10, tint: 0x2a2c30 }, { s: 'cyl', p: [x, r2f(H - 1.03), z], r: 0.3, h: 0.06, seg: 10, tint: 0xfff4d8, glow: 1 });
 const r2f = v => Math.round(v * 100) / 100;
 /* gear(): what stands on and hangs off a building after its massing: a downpipe at each front corner, an AC box and a louvre on a side wall */
 function gear(a, w, d, h, o) { o = o || {};
@@ -112,9 +126,9 @@ exports.buildings = ctx => { bind(ctx);
         a.shell(w, 3.2, d, CONC, 0xb8b8b0, door); a.box(0, 3.2, 0, w + 1.4, 0.25, d + 1.4, COR, 0x8a8a86, { under: true });
         for (const x of [-3.2, 3.2]) a.box(x, 1.1, d / 2 + 0.06, 1.6, 1.2, 0.06, GLS, LIT, { glow: 0.75 }); a.box(0, 2.85, 0, 1.5, 0.07, 0.22, null, TUBE, { glow: 1 });
         a.sign('RESTRICTED AREA', 0, 2.55, d / 2 + 0.1, 6.0, 0.5, '#ffffff', '#a82a20', 'stencil');
-        for (const s of [-1, 1]) a.sign('AREA 51 · MAIN GATE', s * (w / 2 + 0.12), 2.5, 0, 5.2, 0.5, '#ffffff', '#23262b', 'stencil', { ry: s * 90 });                 // read from the road on both sides of the post
+        for (const s of [-1, 1]) a.sign('AREA 51 · MAIN GATE', s * (w / 2 + 0.12), 2.5, 0, 5.2, 0.5, '#ffffff', '#23262b', 'stencil', { ry: -s * 90 });                // read from the road on both sides of the post (ry 90 looks to -x)
         a.box(0, 0, 0, w + 0.5, 0.35, d + 0.5, null, 0xd8b020, { top: false });
-        lined(a, w, d, 3.5, door, 0xdcd8c8, 0x66744e); gear(a, w, d, 3.2, { ac: false }); a.box(2.5, 3.45, -1.2, 0.08, 2.6, 0.08, null, 0x3e4446, { roof: true }); });                                                                              // the yellow kerb round its foot
+        pendant(lined('guardpost', w, d, 3.5, door, 0xdcd8c8, 0x66744e), 0, -1.2, 3.18); gear(a, w, d, 3.2, { ac: false }); a.box(2.5, 3.45, -1.2, 0.08, 2.6, 0.08, null, 0x3e4446, { roof: true }); });                                                                              // the yellow kerb round its foot
     HANGAR = building('hangar', [13, 86, 23, 94, 'N'], 14, SOLID, (a, w, d) => {
         a.box(0, 0, 0, w, 10.5, d, RIB, 0xb4bab8, { top: false, uv: [3.5, 3.5], gain: 1.7 }); a.roof('barrel', 0, 10.5, 0, w + 0.6, 5.6, d + 0.6, COR, 0x9aa2a2, { keyEnd: RIB, tintEnd: 0xb4bab8, gain: 1.6 });
         a.box(0, 0, d / 2 + 0.06, 24.5, 9.2, 0.1, COR, 0x7a8488, { uv: [3.5, 3.5], gain: 1.5 });                                                                       // THE BIG DOOR, shut: six leaves on a rail
@@ -130,7 +144,7 @@ exports.buildings = ctx => { bind(ctx);
         for (const s of [-1, 1]) a.box(s * 12.9, 0, d / 2 + 0.16, 0.5, 9.2, 0.2, null, 0xd8b020);
         for (const s of [-1, 1]) { a.box(s * (w / 2 + 0.08), 6.5, 0, 0.06, 1.6, d - 6, GRILLE, 0x5a6064); a.box(s * (w / 2 + 0.35), 0, d / 2 - 1, 0.14, 10.5, 0.14, null, 0x3e4446); }   // THE SECOND LAYERS: a louvre band down each side, a downpipe
         a.box(0, 16.0, 0, 1.2, 0.5, d - 2, COR, 0x7c8484, { roof: true });                                                                                         // the ridge vent
-        a.box(w / 2 + 0.07, 0, -6, 0.06, 2.2, 1.1, RIB, 0x8a2a20); a.sign('FIRE EXIT', w / 2 + 0.1, 2.3, -6, 1.2, 0.25, '#ffffff', '#2a8a4a', 'stencil', { ry: 90 }); });   // a fire exit drawn on the east side                                                               // and its two yellow jambs
+        a.box(w / 2 + 0.07, 0, -6, 0.06, 2.2, 1.1, RIB, 0x8a2a20); a.sign('FIRE EXIT', w / 2 + 0.1, 2.3, -6, 1.2, 0.25, '#ffffff', '#2a8a4a', 'stencil', { ry: 270 }); });   // a fire exit drawn on the east side                                                               // and its two yellow jambs
     WING = building('wing', [27, 89, 31, 93, 'N'], 5.25, SOLID, (a, w, d) => {
         a.box(0, 0, 0, w, 5.25, d, CONC, 0xe8e8e4, { top: false }); a.box(0, 5.25, 0, w + 0.6, 0.3, d + 0.6, CONC, 0xc8c8c4, { under: true });
         for (const x of [-5, 5]) a.box(x, 2.4, d / 2 + 0.06, 1.4, 0.7, 0.06, GLS, 0xf0f4f8, { glow: 0.7 });
@@ -144,7 +158,7 @@ exports.buildings = ctx => { bind(ctx);
         a.box(door.lx, 0, d / 2 + 0.9, 3.4, 0.16, 1.8, CONC, 0xb0aca0);                                                                                                // the step
         a.sign(words, 0, 2.75, d / 2 + 0.34, 4.6, 0.5, '#f0f0e8', '#3a4630', 'stencil');                                                                           // (in front of the roof's round end, which overhangs the wall)
         for (const z of [-d / 4, d / 4]) a.cyl(0, 5.6, z, 0.3, 0.7, COR, STEEL, { roof: true });
-        lined(a, w, d, 2.68, door, 0xe4dcc4, 0x66744e); a.box(0, 3.5, d / 2 + 0.3, 1.2, 0.8, 0.05, GRILLE, 0x5a6064);                                               // the louvre in the round end over the door
+        lined(id, w, d, 2.68, door, 0xe4dcc4, 0x66744e); a.box(0, 3.5, d / 2 + 0.3, 1.2, 0.8, 0.05, GRILLE, 0x5a6064);                                               // the louvre in the round end over the door
         a.box(w / 2 + 0.45, 0, -d / 2 + 2, 0.8, 1.3, 1.4, COR, 0x8a9096); });                                                                                  // the oil tank by the back corner
     BARR_A = quonset('barracks_a', [14, 56, 17, 62, 'S'], 'BARRACKS A');
     BARR_B = quonset('barracks_b', [19, 56, 22, 62, 'S'], 'BARRACKS B');
@@ -157,7 +171,7 @@ exports.buildings = ctx => { bind(ctx);
         a.sign('MESS HALL', 0, 3.2, d / 2 + 0.12, 6.4, 0.7, '#f0f0e8', '#3a4630', 'stencil');
         a.box(0, 2.9, d / 2 + 1.0, 5.6, 0.14, 2.0, COR, OLIVE, { under: true }); for (const x of [-2.6, 2.6]) a.box(x, 0, d / 2 + 1.9, 0.14, 2.9, 0.14, null, STEEL);     // the porch roof on two posts
         a.cyl(-6, 4.5, -4, 0.35, 1.6, COR, STEEL, { roof: true }); a.box(5, 4.5, -3, 2.2, 0.9, 1.6, COR, 0x8a9096, { roof: true });
-        lined(a, w, d, 4.2, door, 0xe8e2cc, 0x66744e); gear(a, w, d, 4.2); a.box(0, 4.5, 0, w + 0.9, 0.35, 0.3, CONC, TAN2, { roof: true, n: 2, step: [0, 0, 5] });        // + two roof kerbs
+        { const I = lined('mess', w, d, 4.2, door, 0xe8e2cc, 0x66744e); for (const q of [[-5.25, -1.75], [-5.25, 3.5], [5.25, -1.75], [5.25, 3.5], [0, -6]]) pendant(I, q[0], q[1], 3.88); } gear(a, w, d, 4.2); a.box(0, 4.5, 0, w + 0.9, 0.35, 0.3, CONC, TAN2, { roof: true, n: 2, step: [0, 0, 5] });        // + two roof kerbs
         a.box(-3, 4.5, 3, 1.2, 0.6, 1.2, GRILLE, 0x6a7074, { roof: true }); a.box(-w / 2 - 0.5, 0, -d / 2 + 1.5, 0.9, 1.5, 0.9, COR, 0x7c8484); });                           // the kitchen's extract, the grease bin out back
     /* THE DISH's own station: the radar hut (walk-in) and the white radome beside the road in */
     RADAR = building('radar', [4, 64, 7, 67, 'S'], 3.5, { leaf: 'leaf_security', keyIn: CONC, floorIn: U('ConcreteSlab2a') }, (a, w, d, door) => {
@@ -167,7 +181,7 @@ exports.buildings = ctx => { bind(ctx);
         a.box(-3, 3.75, -2.5, 0.16, 6.5, 0.16, null, STEEL, { roof: true }); a.box(-3, 8.2, -2.5, 2.4, 0.08, 0.08, null, STEEL, { roof: true }); a.box(-3, 9.2, -2.5, 1.6, 0.08, 0.08, null, STEEL, { roof: true });   // the whip mast, two cross arms
         a.box(-3, 10.25, -2.5, 0.25, 0.25, 0.25, null, 0xff3020, { glow: 1, roof: true });
         a.box(3, 3.75, 2.4, 1.6, 1.0, 1.2, COR, 0x8a9096, { roof: true });
-        lined(a, w, d, 3.5, door, 0xcfd6d0, 0x3e4a52); gear(a, w, d, 3.5); a.box(-w / 2 - 0.08, 0.3, 0, 0.1, 0.1, d - 1, null, 0x3e4446, { n: 3, step: [0, 0.9, 0] }); });       // three cable runs down the west wall
+        pendant(lined('radar', w, d, 3.5, door, 0xcfd6d0, 0x3e4a52), 3.0, 0, 3.18); gear(a, w, d, 3.5); a.box(-w / 2 - 0.08, 0.3, 0, 0.1, 0.1, d - 1, null, 0x3e4446, { n: 3, step: [0, 0.9, 0] }); });       // three cable runs down the west wall
     building('radome', [8, 71, 11, 74, 'S'], 8, SOLID, (a, w, d) => {
         a.cyl(0, 0, 0, 4.9, 2.2, CONC, TAN, { seg: 20 }); a.dome(0, 2.2, 0, 4.9, 5.4, null, 0xf2f2ee); a.box(0, 7.6, 0, 0.25, 0.3, 0.25, null, RED, { glow: 1 }); a.box(0, 0, 4.95, 1.3, 2.0, 0.1, RIB, STEEL);
         a.sign('NO ENTRY', 0, 1.3, 5.02, 1.0, 0.3, '#ffffff', '#a82a20', 'stencil'); });
@@ -182,16 +196,18 @@ exports.buildings = ctx => { bind(ctx);
     /* A FLAT FLOOR under every walk-in (INTERIORS 11-16: the room's ground rolls 8 cm and came up through the drawn floors in patches, the guard
        post's too). A 10 cm plateau the building's own size + 0.6 m is a level floor; the building stands on it. */
     [POST, BARR_A, BARR_B, MESS, RADAR].forEach(B => { const ew = B.rot === 90 || B.rot === 270; feat({ k: 'plateau', x: B.cx, z: B.cz, w: (ew ? B.fd : B.fw) + 0.6, d: (ew ? B.fw : B.fd) + 0.6, h: 0.1, edge: 0.3 }); });
+    WALKIN = [[POST, 'guardpost'], [BARR_A, 'barracks_a'], [BARR_B, 'barracks_b'], [MESS, 'mess'], [RADAR, 'radar']];
+    WALKIN.forEach(q => { q[2] = feat({ k: 'arch', id: 'des:' + q[1] + ':in', x: q[0].cx, z: q[0].cz, rot: q[0].rot, parts: INS[q[1]].P }); });   // each hall's inside, its own row
 };
 
 exports.furnish = ctx => { bind(ctx);
     put(POST, 'tanker_desk', 0, -1.6, { face: 0 }); put(POST, 'crt_terminal', 0, -1.6, { y: 0.76, face: 0 }); put(POST, 'folding_chair', 0, -0.6, { face: 0 });
-    put(POST, 'rifle_rack', 3.5, -1.6, { face: 0 }); put(POST, 'office_locker', -3.5, -1.6, { face: 0 }); put(POST, 'clipboard', 0.5, -1.5, { y: 0.78, face: 20 }); put(POST, 'wall_clock', 0, -1.9, { y: 2.3, face: 0 });
+    put(POST, 'rifle_rack', 3.5, -1.6, { face: 0 }); put(POST, 'office_locker', -3.5, -1.6, { face: 0 }); put(POST, 'clipboard', 0.5, -1.5, { y: 0.78, face: 20 });
     /* ── INTERIORS (11-16). A building's frame: x along its front, +z out of the front; blockers on whole squares, the middle aisle kept clear ── */
     /* BARRACKS A: eight bunks, heads to the wall, a footlocker at each foot; lockers and the rifle rack by the door */
     for (const z of [-8.75, -5.25, -1.75, 1.75]) for (const sx of [-1, 1]) { put(BARR_A, 'dorm_bed', sx * 3.5, z, { face: sx < 0 ? 90 : 270 }); put(BARR_A, 'footlocker', sx * 1.9, z + 0.9, { face: sx < 0 ? 90 : 270 }); }
     put(BARR_A, 'office_locker', -3.5, 5.25, { face: 90 }); put(BARR_A, 'office_locker', 3.5, 5.25, { face: 270 }); put(BARR_A, 'rifle_rack', 3.5, 8.75, { face: 270 }); put(BARR_A, 'locker_bench', -3.5, 8.75, { face: 90 });
-    put(BARR_A, 'wall_clock', 0, -10.3, { y: 2.4, face: 0 }); put(BARR_A, 'psx_bedside_table_1', -4.4, -7, {}); put(BARR_A, 'retro_radio', -4.4, -7, { y: 0.6, face: 90 }); put(BARR_A, 'rug_round', 0.3, -3.5, { y: 0.02 });
+    put(BARR_A, 'psx_bedside_table_1', -4.4, -7, {}); put(BARR_A, 'retro_radio', -4.4, -7, { y: 0.6, face: 90 }); put(BARR_A, 'rug_round', 0.3, -3.5, { y: 0.02 });
     /* BARRACKS B: six cots, the day end by the door (a table, the radio, the weights) */
     for (const z of [-8.75, -5.25, -1.75]) for (const sx of [-1, 1]) { put(BARR_B, 'cot', sx * 3.5, z, { face: sx < 0 ? 90 : 270 }); put(BARR_B, 'footlocker', sx * 1.9, z + 0.9, { face: sx < 0 ? 90 : 270 }); }
     put(BARR_B, 'psx_table_large_2', 3.5, 5.25, { face: 90 }); put(BARR_B, 'field_radio', 3.6, 5.0, { y: 0.78, face: 270 }); put(BARR_B, 'folding_chair', 2.3, 5.6, { face: 90 }); put(BARR_B, 'folding_chair', 3.2, 3.9, { face: 180 });
@@ -202,12 +218,20 @@ exports.furnish = ctx => { bind(ctx);
     for (const q of [[-5.25, -1.75], [-5.25, 3.5], [5.25, -1.75], [5.25, 3.5]]) { put(MESS, 'psx_dinner_table_1', q[0], q[1], { face: 90 });   // (never `steel_table`: it comes with a blood stain under it)
         for (const c of [[-1.0, -0.5, 90], [-1.0, 0.5, 90], [1.0, -0.5, 270], [1.0, 0.5, 270]]) put(MESS, 'cafeteria_chair', q[0] + c[0], q[1] + c[1], { face: c[2] });
         put(MESS, q[1] < 0 ? 'meal_tray' : 'meal_tray_empty', q[0] + 0.1, q[1] - 0.3, { y: 0.78, face: 15 }); }
-    put(MESS, 'vending_machine', 8.75, 7, { face: 270 }); put(MESS, 'psx_vending_machine_1', -8.75, 7, { face: 90 }); put(MESS, 'trash_bin', -7.4, 5.4, {}); put(MESS, 'wall_clock', 0, -8.5, { y: 3.0, face: 0 });
+    put(MESS, 'vending_machine', 8.75, 7, { face: 270 }); put(MESS, 'psx_vending_machine_1', -8.75, 7, { face: 90 }); put(MESS, 'trash_bin', -7.4, 5.4, {}); 
     put(MESS, 'now_serving_sign', 3, -8.4, { y: 2.6, face: 0 }); put(MESS, 'wet_floor_sign', 1.4, 4.6, { face: 40 });
     /* THE RADAR HUT: the console and the racks along the back, the plot table, the scope */
     put(RADAR, 'radio_console', -3.5, -3.5, { face: 0 }); put(RADAR, 'server_rack', 0, -3.5, { face: 0 }); put(RADAR, 'server_rack', 3.5, -3.5, { face: 0 }); put(RADAR, 'map_table', 3.5, 0, { face: 90 });
     put(RADAR, 'monitor_stack', -3.5, 0, { face: 90 }); put(RADAR, 'computer_chair_grey', -2.4, -2.3, { face: 0 }); put(RADAR, 'tanker_desk', 3.5, 3.5, { face: 90 }); put(RADAR, 'crt_terminal', 3.5, 3.5, { y: 0.76, face: 270 });
-    put(RADAR, 'folding_chair', 2.4, 3.2, { face: 90 }); put(RADAR, 'cable_drum', -4.2, 4.0, { face: 20 }); put(RADAR, 'wall_clock', 0, -5.0, { y: 2.4, face: 0 });
+    /* THE WALL DETAIL (11-16): what hangs on the walls. A wall piece's `y` is its mount height; it stands 0.5 m in from the building's edge */
+    { const hang = (B, key, wall, along, y) => { const W2 = B.fw / 2 - 0.5, D2 = B.fd / 2 - 0.5, q = wall === 'b' ? [along, -D2, 180] : wall === 'f' ? [along, D2, 0] : wall === 'l' ? [-W2, along, 270] : [W2, along, 90]; put(B, key, q[0], q[1], { y, face: q[2], floor: true }); };
+      hang(POST, 'notice_board', 'l', 0.6, 1.5); hang(POST, 'keypad', 'f', 2.6, 1.3); hang(POST, 'fire_extinguisher', 'r', 1.4, 1.0);
+      for (const B of [BARR_A, BARR_B]) { hang(B, 'notice_board', 'f', 3.0, 1.5); hang(B, 'fire_extinguisher', 'f', -3.4, 1.0); hang(B, 'exit_sign', 'f', -0.87, 2.4); hang(B, 'hook_rail_long', 'l', 7.2, 1.6); hang(B, 'wall_clock', 'b', 0, 2.0); }
+      hang(MESS, 'notice_board', 'l', 4, 1.5); hang(MESS, 'world_clocks', 'b', -6, 2.6); hang(MESS, 'exit_sign', 'f', -0.87, 2.5); hang(MESS, 'fire_extinguisher', 'r', 5, 1.0); hang(MESS, 'breaker_panel', 'r', -6.5, 1.5); hang(MESS, 'picture_round_a', 'l', -3, 1.9); hang(MESS, 'hook_rail_long', 'f', 5.6, 1.6);
+      hang(RADAR, 'star_chart', 'l', -2, 1.7); hang(RADAR, 'breaker_panel', 'r', -2.6, 1.5); hang(RADAR, 'world_clocks', 'b', -1.75, 2.5); hang(RADAR, 'fire_extinguisher', 'f', 2.6, 1.0); hang(RADAR, 'keypad', 'f', -2.4, 1.3); }
+    put(POST, 'riot_gear_rack', -3.5, 1.75, { face: 90 }); put(POST, 'psx_walkie_talkie_1', -0.5, -1.5, { y: 0.78 }); put(POST, 'psx_keycard_1', 0.8, -1.4, { y: 0.78 }); put(POST, 'psx_potted_cactus_mp_1', 0.9, -1.8, { y: 0.78 });
+    put(RADAR, 'retro_control_panel', -3.5, 3.5, { face: 90 }); put(RADAR, 'reel_to_reel', 4.3, -1.6, { face: 270 }); put(BARR_B, 'psx_old_mattress_mp_1', 4.2, 2.6, { face: 80 }); put(MESS, 'psx_potted_cactus_mp_1', -5.2, -1.6, { y: 0.88 });
+    put(RADAR, 'folding_chair', 2.4, 3.2, { face: 90 }); put(RADAR, 'cable_drum', 1.2, -4.2, { face: 20 }); 
 };
 
 exports.ground = ctx => { bind(ctx);
@@ -220,7 +244,7 @@ exports.ground = ctx => { bind(ctx);
     /* THE APRON: the old flight line's trucks, the bus, the sandbags, the fire truck */
     Pm('car_truck', gc(15), gc(64), { face: 90 }); Pm('car_truck', gc(15), gc(67), { face: 90 }); Pm('car_truck', gc(15), gc(70), { face: 90 }); Pm('school_bus', gc(20), gc(72), { face: 0 }); Pm('fire_truck', gc(33), gc(72), { face: 90 });
     [[19, 64], [19, 68], [23, 64], [23, 68]].forEach(q => Pm('meshy_sandbags', gc(q[0]), gc(q[1]), { h: 1.6 })); P('bus_shelter', 22, 74, { face: 180 }); P('flood_mast', 13, 63, {}); P('flood_mast', 34, 63, {}); P('flood_mast', 13, 74, {}); P('flood_mast', 34, 74, {});
-    dec('traffic_cone', 25, 70); dec('traffic_cone', 27, 71); dec('cinder_block', 17, 73); P('iso_tank', 32, 65, {});
+    dec('traffic_cone', 25, 70); dec('traffic_cone', 27, 71); dec('cinder_block', 17, 73); P('air_compressor', 32, 65, {});
     /* THE TOWER: the old flight line's own tower rows (the base, the drum, the fire escape, the ladder, the rails, the mast), moved here whole */
     { const dx = gx(29.5) + 11.375, dz = gx(66) + 16.625, sh = f => { const o = JSON.parse(JSON.stringify(f));
           ['x', 'x0', 'x1'].forEach(k => { if (typeof o[k] === 'number') o[k] = r2(o[k] + dx); }); ['z', 'z0', 'z1'].forEach(k => { if (typeof o[k] === 'number') o[k] = r2(o[k] + dz); });
@@ -275,14 +299,14 @@ exports.ground = ctx => { bind(ctx);
       const b = sheet();
       b.box(0, 0, 0, 0.14, 3.0, 0.14, null, STEEL, { n: 42, step: [0, 0, 3.5] }); b.box(0, 2.58, 71.75, 0.07, 0.07, 143.5, null, STEEL);
       for (let i = 1; i <= 3; i++) b.box(i * 0.11, 2.62 + i * 0.13, 71.75, 0.03, 0.03, 143.5, null, 0x8a9096);
-      b.sign('WARNING', 0.16, 1.55, 5.25, 1.5, 0.34, '#ffffff', '#a82a20', 'stencil', { ry: 90, n: 10, step: [0, 0, 14] });
-      b.sign('RESTRICTED AREA', 0.16, 1.2, 5.25, 1.5, 0.3, '#23262b', '#f0f0e8', 'stencil', { ry: 90, n: 10, step: [0, 0, 14] });
+      b.sign('WARNING', 0.16, 1.55, 5.25, 1.5, 0.34, '#ffffff', '#a82a20', 'stencil', { ry: 270, n: 10, step: [0, 0, 14] });
+      b.sign('RESTRICTED AREA', 0.16, 1.2, 5.25, 1.5, 0.3, '#23262b', '#f0f0e8', 'stencil', { ry: 270, n: 10, step: [0, 0, 14] });
       feat({ k: 'arch', id: 'des:a51:fence_e', x: gc(45), z: gc(54), parts: b.P }); }
     /* THE PENS' back wall (the tanks nose out south onto the apron) */
     feat({ k: 'wall', x0: gc(36), z0: gc(63), x1: gc(44), z1: gc(63), h: 2.4, t: 0.8, key: CONC, tint: '#c8bca0' });
     /* THE FUEL DUMP: three tank containers in a concrete bund, its mouth at the south-east corner */
     [[gc(36), gc(56), gc(43), gc(56)], [gc(36), gc(56), gc(36), gc(59)], [gc(36), gc(59), gx(42), gc(59)], [gc(43), gc(56), gc(43), gx(60)]].forEach(q => feat({ k: 'wall', x0: q[0], z0: q[1], x1: q[2], z1: q[3], h: 1.1, t: 0.6, key: CONC, tint: '#c8bca0' }));
-    [38, 40, 42].forEach(x => Pm('iso_tank', gx(x), gx(58), {}));
+    [38.5, 41.5].forEach(x => Pm('ind_silo', gx(x), gx(58), {}));   // (THE MODEL LIST 11-16: `iso_tank` is a cryo casket, not a fuel tank; the pack's silo is)
     { const a = sheet(); a.box(0, 0, 0, 0.12, 2.6, 0.12, null, STEEL, { n: 2, step: [3.2, 0, 0] }); a.sign('FUEL · NO SMOKING · NO OPEN FLAME', 1.6, 1.7, 0.03, 3.2, 0.8, '#23262b', '#d8b020', 'stencil'); a.sign('FUEL · NO SMOKING · NO OPEN FLAME', 1.6, 1.7, -0.03, 3.2, 0.8, '#23262b', '#d8b020', 'stencil', { ry: 180 });
       feat({ k: 'arch', id: 'des:a51:fuel', x: gx(37.5), z: gc(60) + 1.2, parts: a.P }); }
     /* RUNWAY 33's concrete: the taxiway from the apron (the strip of sand between them was unpaved), the hangar's own apron as wide as its door,
@@ -331,9 +355,30 @@ exports.ground = ctx => { bind(ctx);
       feat({ k: 'arch', id: 'des:a51:lights', x: gx(2), z: gx(76), parts: a.P }); }
     /* the thing in the crater is still on: a pale green disc under it, on the dip's floor */
     feat({ k: 'arch', id: 'des:a51:craterglow', x: gx(40.5), z: gx(78.5), parts: [{ s: 'cyl', p: [0, 0.05, 0], r: 3.4, h: 0.04, seg: 24, tint: 0x3fae84, glow: 0.7 }] });
+    /* ── THE MODEL LIST (11-16, mondo: "look at the model list right now to see what else they could add"): pieces the game already had ── */
+    /* the flight line's own kit: the tug on the jet's nose, the boarding stairs at its side, a compressor, a welding cart, tyres, the seat that left it */
+    Pm('aircraft_tug', gx(23.6), gx(78), { face: 270 }); Pm('maintenance_stairs', gx(20), gx(76.6), { face: 180 }); dec('welding_cart', 21, 71); dec('tire_stack', 31, 73); dec('tire_stack', 30, 73); dec('meshy_ejection_seat', 24, 76);
+    dec('psx_jerrycan_1', 16, 65); dec('psx_jerrycan_1_1', 16, 68); dec('psx_jerrycan_1', 38, 61); dec('utility_box', 23, 62); dec('utility_box', 32, 61); P('power_pole', 12, 55, {}); P('power_pole', 32, 55, {});
+    dec('dog', 4, 56, { face: 0 }); dec('crow', 26, 53); dec('crow', 22, 51);
+    Pm('car_ambulance', gx(28), gc(87), { face: 90 });                                                                       // in the wing's yard
+    /* THE DRY LAKE, west: what the rings are for. The lander on its mark, the astronaut, the film lights and the chair (the camera was here already) */
+    Pm('lunar_lander', gx(6), gx(90), {}); Pm('astronaut', gx(6) + 3.2, gx(90) + 2.2, { face: 250 }); Pm('studio_light', gx(6) - 5.5, gx(90) + 4.5, { face: 60 }); Pm('studio_light', gx(6) + 5.5, gx(90) + 5, { face: 300 }); Pm('directors_chair', gx(6) - 2, gx(90) + 7.5, { face: 0 }); Pm('studio_camera', gx(6) + 1, gx(90) + 7.8, { face: 0 });
+    /* THE DRY LAKE, east + the crater: what came down with it */
+    P('satellite', 41, 87, { face: 40 }); P('hullplate', 37, 84, { face: 20 }); dec('mars_rover', 44, 86);
     native('men in black', 15, 85, 0); native('mad scientist', 37, 79, 90);
     native('men in black', 3, 57, 0, sayOf(O_GATE, 'men in black')); native('marksman', 7, 52, 270, sayOf(O_GATE, 'marksman')); native('men in black', 21, 73, 270, sayOf(O_LINE, 'men in black'));
     native('spy', 30, 62, 180); native('bligblog', 38, 82, 0); native('grey', 41, 74, 200);
+};
+
+/* THE CLIPPING CHECK (11-16, mondo "do 6"): the city's own interior polish (docs/disaster-city/interior-polish.js, used as it is, not changed)
+   run over this district's five walk-ins before the tool moves the block: every prop of a hall gets `floor: true` (beside a wall a prop
+   stands on the wall's TOP), rugs come up onto the floor, faces on one plane step apart, a piece in a wall or through the ceiling comes in. */
+exports.pieces = ctx => { bind(ctx);
+    const path = require('path'), REPO = path.join(__dirname, '../../../..'), polish = require(path.join(REPO, 'docs/disaster-city/interior-polish.js'));
+    const rows = WALKIN.map(q => ({ k: 'texbuilding', hollow: true, id: 'des:' + q[1], x: q[0].cx, z: q[0].cz, w: q[0].fw, d: q[0].fd, rot: q[0].rot, h: INS[q[1]].h + 0.0 })).concat(WALKIN.map(q => q[2]));
+    const inB = (B, p) => { const t = B.rot * Math.PI / 180, c = Math.cos(t), s = Math.sin(t), dx = p.x - B.cx, dz = p.z - B.cz; return Math.abs(dx * c + dz * s) <= B.fw / 2 && Math.abs(-dx * s + dz * c) <= B.fd / 2; };
+    const mine = props.filter(p => WALKIN.some(q => inB(q[0], p)));
+    const t = polish({ features: rows, props: mine, at: () => 0, REPO }); count.a51polish = Object.keys(t).filter(k => t[k]).map(k => k + ' ' + t[k]).join(', ');
 };
 
 /* THE AIR (11-16, the tool's `airZones` hook, home squares): dust blowing over the two Dry Lake plots and, thinner, down Runway 33 */
@@ -355,6 +400,25 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
        black wall, the observation floor at a white one). `pane` has the kit lay the wall's walked rows, frames and leaves and draw nothing, then
        turns those rows into real glass wall rows (three-renderer.js drawWall: a see-through pane). */
     const pane = (R, axis, at, a, b, o) => { const n = R.F.length; R.wall(axis, at, a, b, Object.assign({}, o, { draw: false })); for (let i = n; i < R.F.length; i++) { R.F[i].ghost = false; R.F[i].glass = true; R.F[i].t = 0.08; } };
+    /* THE WALL DETAIL + THE CLIPPING CHECK for the two rooms (11-16, mondo "do 4 and 6").
+       label(): a room's name on a plate over its door, on the hall side. ry: 0 looks south, 180 north, 90 WEST, -90 east (seen 11-16: the plates on the north-south walls faced into them).
+       hung(): a catalogue wall piece on a wall (its `y` is its mount height). face: 0 on a north wall, 180 on a south, 90 on a west, 270 on an east.
+       tidy(): every free-standing prop that stands in a kit wall (its measured size, docs/disaster-city/prop-sizes.json) steps out of it; a
+       wall piece inside a wall's face comes out to 2 cm proud of it. The bake prints what it moved. */
+    const SIZES = (() => { try { return require('../../../disaster-city/prop-sizes.json'); } catch (e) { return {}; } })();
+    const label = (R, words, u, v, ry, w) => R.sign(words, u, v, 2.42, w || Math.max(0.9, words.length * 0.13), 0.24, ry, '#f0f0f0', '#23262b');
+    const hung = (R, key, u, v, face, y) => R.dec(key, u, v, face, { y });
+    const tidy = (R, name) => { let moved = 0, flush = 0, tops = 0; const walls = R.F.filter(f => f.k === 'wall');
+        R.props.forEach(p => { if (p.ceil) return; const wallPiece = p.mount != null, sz = SIZES[p.key], r = wallPiece ? 0.17 : (sz ? Math.min(sz[0], sz[2]) / 2 : 0.25) + 0.17 /* a kit wall is 0.3 m thick: 0.15 to its face */, lvl = wallPiece ? p.mount : (p.y || 0);
+            for (let n = 0; n < 3; n++) for (const w of walls) { const y0 = w.y0 || 0, y1 = w.y != null ? w.y : 9; if (lvl < y0 - 0.05 || lvl >= y1) continue;
+                const ax = w.x1 - w.x0, az = w.z1 - w.z0, L2 = ax * ax + az * az, t = L2 ? Math.max(0, Math.min(1, ((p.x - w.x0) * ax + (p.z - w.z0) * az) / L2)) : 0, qx = w.x0 + ax * t, qz = w.z0 + az * t, d = Math.hypot(p.x - qx, p.z - qz);
+                if (d >= r - 0.001) continue; let nx = p.x - qx, nz = p.z - qz; if (d < 1e-6) { nx = -az; nz = ax; } const l = Math.hypot(nx, nz) || 1;
+                p.x = r2(qx + nx / l * r); p.z = r2(qz + nz / l * r); if (wallPiece) flush++; else moved++; } });
+        /* THE ROOF STANDERS (the city's finding, true here too: seen 11-16, a fire extinguisher hung 4.5 m up): a prop within reach of a kit wall
+           stands on that wall's TOP. Every ground-floor prop near one gets `floor: true` (the room's own floor). */
+        R.props.forEach(p => { if (p.ceil || p.floor) return; const lvl = p.mount != null ? 0 : (p.y || 0); if (lvl > 3) return;
+            if (walls.some(w => { if ((w.y0 || 0) > 0.05) return false; const ax = w.x1 - w.x0, az = w.z1 - w.z0, L2 = ax * ax + az * az, t = L2 ? Math.max(0, Math.min(1, ((p.x - w.x0) * ax + (p.z - w.z0) * az) / L2)) : 0; return Math.hypot(p.x - (w.x0 + ax * t), p.z - (w.z0 + az * t)) < 0.75; })) { p.floor = true; tops++; } });
+        console.log('A.js tidy ' + name + ': ' + moved + ' prop(s) stepped out of a wall, ' + flush + ' wall piece(s) set proud, ' + tops + ' kept off a wall top'); };
     /* ════ HANGAR 18 (22 x 14) ════ */
     const HG = mk(22, 14);
     { const R = HG, G = 0x9aa2aa, DARK = 0x5a6268, WH = 0xe4e6e8, sh = { key: STEEL, tint: G }, wh = { key: PLAS, tint: WH };
@@ -404,7 +468,7 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       /* PARTS CAGE */
       R.B('psx_shelf_mp_2', 0, 4, 90); R.B('psx_shelf_mp_3', 0, 6, 90); R.B('wrapped_pallet', 2, 5, 0); R.dec('psx_supply_crate_1', 1.5, 6.5, 20); R.dec('cardboard_boxes', 3.3, 4.5, 60);
       /* FUEL STORE (the vent behind the tanks) */
-      R.B('iso_tank', 0, 7, 90); R.B('iso_tank', 0, 9, 90); R.B('gas_cylinder_rack', 2, 9, 0); R.dec('psx_metal_barrel_mp_2', 1.5, 7.4, 0); R.dec('psx_metal_barrel_mp_3', 2.4, 7.5, 0); R.dec('radiation_sign', 3.6, 9.5, 270, { y: 1.3 });
+      R.B('gas_cylinder_rack', 0, 7, 90); R.B('gas_cylinder_rack', 0, 9, 90); R.B('gas_cylinder_rack', 2, 9, 0); R.dec('psx_jerrycan_1', 1.4, 8.5, 20); R.dec('psx_jerrycan_1_1', 1.7, 8.8, 70);   // (the two `iso_tank`s were cryo caskets: they stand in the lab now) R.dec('psx_metal_barrel_mp_2', 1.5, 7.4, 0); R.dec('psx_metal_barrel_mp_3', 2.4, 7.5, 0); R.dec('radiation_sign', 3.6, 9.5, 270, { y: 1.3 });
       /* CRASH TENDER: the fire truck on two squares' width, nose out */
       R.props.push({ key: 'fire_truck', x: R.X(20), z: R.Z(2), face: 270 }); for (let u = 19; u < 22; u++) for (let v = 1; v < 3; v++) R.block[u + ',' + v] = 'fire_truck';
       R.B('hose_rack', 21, 0, 180); R.B('turnout_gear_rack', 19, 3, 0); R.dec('traffic_cone', 18.5, 0.5); R.dec('traffic_cone', 18.5, 3.5);
@@ -433,6 +497,25 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.who('mad scientist', 8.5, 8.4, 20, ['“It is under a tarp.” “Why?” “The tarp is the classified part.”', '“It flew once.” “When?” “Tuesday. Do not write down which.”']);
       R.who('general', 14.5, 2.5, 250, ['“Hangar eighteen.” “There are seventeen hangars.” “Then this one is easy to find.”']);
       R.who('grey', 15.5, 12.5, 270, ['“…” “Is it yours?” “…” “Do you want it back?” “…” “That is a no, then.”']);
+      /* THE WALL DETAIL (11-16): the plates over the doors, what hangs on the walls, the lanes painted on the floor */
+      label(R, 'ENGINE SHOP', 4.05, 2.5, -90); label(R, 'PARTS', 4.05, 5.5, -90); label(R, 'FUEL STORE', 4.05, 8.5, -90); label(R, 'FLOOR LIFT', 17.95, 8.5, 90); label(R, 'STORES', 17.95, 5.5, 90); R.sign('CRASH TENDER', 17.95, 2, 3.0, 2.4, 0.3, 90, '#f0f0f0', '#a82a20');
+      label(R, 'BRIEFING', 6.5, 9.95, 180); label(R, 'OFFICE', 12.5, 9.95, 180); label(R, 'LAB · AUTHORIZED ONLY', 15.5, 9.95, 180); label(R, 'MEDICAL', 20.5, 9.95, 180); label(R, 'LOCKERS', 4.05, 12.5, -90);
+      hung(R, 'fire_extinguisher', 4.05, 3.3, 90, 1.0); hung(R, 'fire_extinguisher', 17.95, 6.3, 270, 1.0); hung(R, 'fire_extinguisher', 9.6, 9.95, 180, 1.0); hung(R, 'breaker_panel', 0.05, 0.6, 90, 1.5); hung(R, 'breaker_panel', 17.95, 9.5, 270, 1.5);
+      hung(R, 'exit_sign', 11, 0.05, 0, 3.0); hung(R, 'keypad', 14.6, 9.95, 180, 1.3); hung(R, 'keypad', 17.95, 7.9, 270, 1.3);
+      hung(R, 'hook_rail_long', 2, 10.05, 0, 1.6); hung(R, 'wall_clock', 2, 13.95, 180, 2.3); hung(R, 'notice_board', 6.5, 13.95, 180, 1.5); hung(R, 'world_clocks', 6.5, 10.05, 0, 2.5); hung(R, 'wall_clock', 11, 10.05, 0, 2.4);
+      hung(R, 'notice_board', 11, 13.95, 180, 1.5); hung(R, 'wall_shelf', 15.5, 13.95, 180, 1.5); hung(R, 'star_chart', 17.95, 11, 270, 1.7); hung(R, 'wall_clock', 20, 10.05, 0, 2.4); hung(R, 'fire_extinguisher', 21.95, 11, 270, 1.0);
+      hung(R, 'metal_shelving', 0.05, 5, 90, 0); hung(R, 'wall_shelf', 2, 0.05, 0, 1.5);
+      for (const q of [[4.5, 1.5, 4.5, 10], [17.5, 1.5, 17.5, 10], [4.5, 1.5, 17.5, 1.5]]) R.box((q[0] + q[2]) / 2, (q[1] + q[3]) / 2, 0.012, Math.max(0.12, (q[2] - q[0]) * 3.5), 0.01, Math.max(0.12, (q[3] - q[1]) * 3.5), null, 0xd8b020);   // the yellow walkway lines down both sides and across the door end
+      R.dec('psx_supply_crate_1_2', 7.5, 13.4, 20); R.dec('papers_b', 11.4, 12.4, 40, { y: 0.01 }); R.dec('cardboard_boxes', 9.5, 10.6, 10); R.dec('office_plant', 4.6, 13.5); R.dec('trash_bin', 12.5, 13.4); R.dec('cardboard_boxes', 21.4, 13.4, 30);
+      /* THE MODEL LIST (11-16): the lab's cryo tubes and the two caskets, a fume hood, glassware, a microscope; the shop's lathe, press and hoist;
+         the tug and the boarding stairs on the floor; the thing in the stores; the office's evidence board and tape deck; the racks in the lockers */
+      R.B('meshy_molten_cryo_tube', 13, 13, 90); R.B('meshy_molten_cryo_tube', 17, 11, 270); R.B('meshy_molten_cryo_tube', 13, 11, 90); R.B('iso_tank', 16, 13, 0); R.B('iso_tank', 14, 13, 0);
+      R.dec('fume_hood', 14.5, 10.25, 0); R.dec('lab_glassware', 17.4, 10.3, 270, { y: 0.78 }); R.dec('microscope', 17.5, 10.75, 270, { y: 0.78 }); R.dec('iv_stand', 14.3, 11.4); R.dec('anatomy_skeleton', 16.4, 10.3, 0);
+      R.B('metal_lathe', 1, 0, 0, { nu: 2 }); R.dec('drill_press', 3.5, 0.4, 0); R.dec('chain_hoist', 0.5, 2.2, 90); R.dec('welding_cart', 3.4, 3.5, 200); R.dec('tire_stack', 0.4, 0.5); hung(R, 'gauge_board', 2.6, 0.05, 0, 1.4);
+      R.B('aircraft_tug', 8, 1, 90); R.B('maintenance_stairs', 9, 5, 90); R.dec('air_compressor', 5.5, 8.5, 30); R.B('time_machine', 20, 6, 270); R.dec('meshy_ejection_seat', 16.5, 3.4, 200); R.dec('scba_rack', 18.4, 0.4, 0);
+      R.dec('evidence_board', 11.6, 13.7, 180); R.dec('reel_to_reel', 9.35, 11.6, 90); R.dec('photocopier', 12.5, 11.5, 270); R.dec('psx_potted_cactus_mp_1', 10.8, 11.3, 0, { y: 0.78 }); hung(R, 'mugshot_wall', 8.95, 11.5, 270, 0.4);
+      R.dec('riot_gear_rack', 2.5, 10.3, 0); R.dec('scba_rack', 1.5, 13.6, 180); R.dec('psx_keycard_1_authorization_level_3', 10.3, 11.6, 40, { y: 0.78 }); R.dec('psx_dosimeter_1', 17.3, 10.6, 0, { y: 0.78 });
+      tidy(R, 'the hangar');
       R.doors.push(
           { id: 'white', wall: 'e', z: R.Z(12.5), leaf: 'leaf_hospital', label: 'THE WHITE ROOMS', sub: 'THE WING · PSYCHIATRIC · QUIET PLEASE', action: { room: 'site_prebuilt_area51_ward', at: 'hangar' },
             desc: 'A hospital door in a hangar wall, with a porthole painted over from the other side. The sign says PSYCHIATRIC. Under it, in pencil, FOR THE ONES WHO SAW IT.' },
@@ -497,7 +580,7 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       /* SHOWERS, SERVICE (the storm drain's grate) */
       R.B('shower_stall', 12, 8, 90); R.B('shower_stall', 13, 8, 180); R.dec('floor_drain', 13, 7.3); R.B('sink_row', 13, 6, 0); R.B('ind_vent', 15, 6, 270); R.dec('drain_grate', 15.3, 7.5); R.B('psx_metal_barrel_mp_1', 14, 8, 0); R.dec('pallet_jack', 14.7, 6.5, 200);
       /* DOCTOR: the office, the vent */
-      R.B('exec_desk', 14, 10, 180); R.dec('exec_chair', 14.5, 9.6, 180); R.B('chesterfield_sofa', 12, 11, 90); R.B('library_shelf', 15, 11, 270); R.dec('banker_lamp', 14.3, 10.5, 0, { y: 0.78 }); R.dec('vent_grille', 14.5, 11.85, 180, { y: 2.2 }); R.dec('globe_lamp', 13.5, 9.4);
+      R.B('exec_desk', 14, 10, 180); R.dec('exec_chair', 14.5, 9.6, 180); R.B('therapy_chaise', 12, 11, 0);   /* (THE MODEL LIST: the game has the couch a psychiatrist has; a chesterfield stood here) */ R.dec('library_shelf_full', 15.8, 11.3, 270);                // (it stood a square out from the wall, its back to the room) R.dec('banker_lamp', 14.3, 10.5, 0, { y: 0.78 }); R.dec('vent_grille', 14.5, 11.85, 180, { y: 2.2 }); R.dec('globe_lamp', 13.5, 9.4);
       /* THE DAYROOM: the TV, the tables, the plant nobody waters */
       R.B('psx_tv_table_1', 11, 11, 270); R.dec('tube_tv', 11.5, 11.5, 270, { y: 0.55 }); R.B('curved_couch', 9, 11, 90); R.B('tulip_table', 6, 9, 0); R.B('tulip_table', 8, 9, 0);                                                              // (never `round_table`: that is Camelot's, four metres of oak)
       for (const q of [[6.5, 8.9, 0], [6.5, 10.1, 180], [5.9, 9.5, 90], [8.5, 10.1, 180], [9.1, 9.5, 270], [7.9, 9.5, 90]]) R.dec('molded_chair', q[0], q[1], q[2]);
@@ -509,6 +592,22 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.who('grey', 1.5, 2.5, 90, ['“…” “Room 5150.” “…” “That is the other building.” “…” “It is every building.”']);
       R.who('telepath', 3.5, 10.5, 90, ['“They saw it.” “Saw what?” “What you are about to. Sit down.”', '“The white is a choice.” “Whose?” “Not theirs.”']);
       R.who('men in black', 9.5, 6.5, 200, ['“Visiting hours.” “When are they?” “Over.”', '“Quiet please.” “I did not say anything.” “They heard you think it. Everyone in here does.”']);
+      /* THE WALL DETAIL (11-16): a number on every cell, a plate over every room's door, what hangs on the walls, the two way-finding lines */
+      for (let v = 0; v < 8; v++) R.sign('CELL ' + (v + 1), 2.05, v + 0.5, 2.72, 0.8, 0.2, -90, '#23262b', '#f0f0ec');
+      label(R, 'QUIET ROOM', 3.5, 7.95, 180); label(R, 'INTAKE', 5.95, 1.5, 90); label(R, 'RECORDS', 11.95, 1.5, 90); label(R, 'TREATMENT', 11.95, 4.5, 90); label(R, 'SHOWERS', 11.95, 6.5, 90); label(R, 'DOCTOR', 11.95, 10.5, 90);
+      label(R, 'DAYROOM', 8.5, 7.95, 180); label(R, 'SERVICE', 13.95, 7.5, 90);
+      hung(R, 'exit_sign', 3.5, 0.05, 0, 2.6); hung(R, 'fire_extinguisher', 4.95, 3, 270, 1.0); hung(R, 'fire_extinguisher', 11.95, 2.6, 270, 1.0); hung(R, 'keypad', 4.95, 6.0, 270, 1.3); hung(R, 'wall_clock', 3.5, 7.95, 180, 2.9);
+      hung(R, 'notice_board', 8, 2.95, 180, 1.5); hung(R, 'wall_shelf', 13.5, 2.95, 180, 1.5); hung(R, 'breaker_panel', 15.95, 3.5, 270, 1.5); hung(R, 'wall_plaques', 14.5, 9.05, 0, 1.7); hung(R, 'picture_round_a', 12.05, 9.6, 90, 1.7);
+      hung(R, 'notice_board', 8.5, 11.95, 180, 1.5); hung(R, 'wall_clock', 6.5, 8.05, 0, 2.6); hung(R, 'picture_round_b', 5.05, 10, 90, 1.7); hung(R, 'picture_round_c', 9.5, 8.05, 0, 1.7); hung(R, 'hand_dryer', 12.05, 7.4, 90, 1.2); hung(R, 'hook_rail', 13, 8.95, 180, 1.6);
+      R.dec('water_cooler', 11.6, 8.5, 270); R.dec('card_catalogue', 15.75, 1.2, 270); for (let i = 0; i < 6; i++) R.dec('filing_cabinet', 12.45 + i * 0.5, 0.3, 0); R.dec('cardboard_boxes', 12.5, 2.5, 30); R.dec('office_plant', 6.4, 2.6); R.dec('trash_bin', 5.5, 8.5);
+      R.box(11.3, 4, 0.012, 0.12, 0.01, 27.3, null, 0x3a7cff); R.box(8.5, 7.5, 0.012, 22.4, 0.01, 0.12, null, 0x3a7cff); R.box(3.5, 4, 0.012, 0.12, 0.01, 27.3, null, 0xc82a20);   // blue down the lane and the cross hall, red down the cell row
+      /* THE MODEL LIST (11-16): a steel toilet in every cell, the frame everyone walks through at the yard gate, the drip and the skeleton in
+         Treatment, the tape deck and the copier in Records, pills on the station's desk, the laundry cart in Service */
+      for (let v = 0; v < 8; v++) R.dec('steel_toilet', 0.3, v + 0.78, 90);
+      R.dec('metal_detector', 11, 1.3, 0); R.dec('number_dispenser', 9.6, 0.4, 0); R.dec('iv_stand', 13.4, 4.4); R.dec('anatomy_skeleton', 12.5, 3.4, 90); R.dec('meshy_syringe', 15.4, 5.3, 30, { y: 0.78 }); R.dec('psx_pills_bottle_1', 15.6, 5.6, 0, { y: 0.78 });
+      R.dec('reel_to_reel', 12.4, 1.7, 90); R.dec('photocopier', 14.4, 2.5, 180); R.dec('microfiche_reader', 13.4, 2.6, 180, { y: 0.0 }); R.dec('psx_pills_bottle_2', 7.6, 5.3, 0, { y: 0.78 }); R.dec('psx_pills_packet_1', 7.3, 5.2, 50, { y: 0.78 }); R.dec('iv_stand', 9.4, 4.5);
+      R.B('laundry_cart', 15, 8, 0); R.dec('hospital_bed', 13.3, 5.4, 90); R.dec('psx_old_mattress_mp_1', 4.4, 0.5, 80);
+      tidy(R, 'the white rooms');
       R.doors.push(
           { id: 'hangar', wall: 'e', z: R.Z(10.5), leaf: 'leaf_hospital', label: 'HANGAR 18', sub: 'BACK TO THE HANGAR', action: { room: 'site_prebuilt_area51_hangar', at: 'white' },
             desc: 'The hospital door from the quiet side. The porthole is painted over on this side too, in a different white.' },

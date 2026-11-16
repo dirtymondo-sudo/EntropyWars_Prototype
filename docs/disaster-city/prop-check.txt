@@ -1,5 +1,5 @@
 THE PROP CHECK, written by node bake-disaster-city.js. A district file's own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.
-{"checked":4771,"clear":1968,"moved":382,"left_out":18,"district_reported":2315,"by":{"car_cop in lamp":4,"car_cop in step":1,"car_cop in prop":3,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":12,"item_police_barricade in arch":1,"planter in arch":9,"dumpster in step":6,"item_police_barricade in step":4,"item_police_barricade in landing":1,"item_police_barricade in wall":1,"planter in prop":3,"planter in doorway":2,"bus_shelter in step":1,"vending_machine in doorway":2,"vending_machine in arch":36,"ind_vent in arch":11,"public_phone in arch":15,"ind_vent in doorway":1,"utility_box in arch":11,"ind_panel in arch":10,"utility_box in step":2,"city_bench in arch":4,"park_bench in arch":1,"city_bin in arch":10,"city_bench in stairs":1,"traffic_cone in step":22,"traffic_cone in building":12,"traffic_cone in arch":14,"park_bench in hedge":1,"psx_wooden_crate_1 in prop":1,"city_bench in step":2,"park_bench in fence":1,"traffic_cone in prop":2,"psx_wooden_crate_1 in arch":1,"psx_wooden_crate_1 in step":1,"city_bench in landing":1,"city_bench in building":1,"ticket_booth in step":1,"psx_planter_pot_mp_1_full in arch":81,"psx_potted_cactus_mp_1 in arch":9,"psx_planter_pot_mp_1_full in doorway":6,"psx_potted_cactus_mp_1 in doorway":2,"psx_planter_pot_mp_1_full in prop":2,"city_bin in doorway":1,"metro_bin in pole":1,"fire_hydrant in stairs":1,"fire_hydrant in prop":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"metro_bin in prop":1,"psx_wooden_crate_3 in arch":9,"psx_metal_barrel_mp_3 in step":1,"psx_metal_barrel_mp_1 in step":1,"psx_metal_barrel_mp_0 in step":1,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in building":10,"cardboard_boxes in arch":5,"psx_wooden_crate_3 in step":2,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_0 in prop":1,"meshy_sandbags in landing":1,"meshy_sandbags in step":1,"metal_trash_can in building":1,"garbage_bag in stairs":1,"metal_trash_can in step":2,"garbage_bag in step":1,"garbage_bag in prop":1,"garbage_bags in prop":2,"garbage_bags in building":4,"garbage_bag in building":2,"garbage_bags in arch":1,"metal_trash_can in arch":1,"popcorn_cart in prop":2,"popcorn_cart in stairs":1,"lobster_traps in prop":4,"traffic_barrel in prop":2,"cardboard_boxes in pole":1,"newspaper_rack in arch":1,"globe_lamp in arch":1,"popcorn_cart in arch":1,"play_swing in arch":1},"snugged":145}
+{"checked":4993,"clear":2020,"moved":379,"left_out":17,"district_reported":2379,"by":{"car_cop in lamp":4,"car_cop in step":1,"car_cop in prop":3,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":12,"item_police_barricade in arch":1,"planter in arch":9,"dumpster in step":6,"item_police_barricade in step":4,"item_police_barricade in landing":1,"item_police_barricade in wall":1,"planter in prop":3,"planter in doorway":2,"bus_shelter in step":1,"vending_machine in doorway":2,"vending_machine in arch":36,"ind_vent in arch":11,"public_phone in arch":15,"ind_vent in doorway":1,"utility_box in arch":11,"ind_panel in arch":10,"utility_box in step":2,"city_bench in arch":4,"park_bench in arch":1,"city_bin in arch":10,"city_bench in stairs":1,"traffic_cone in step":22,"traffic_cone in building":12,"traffic_cone in arch":14,"park_bench in hedge":1,"psx_wooden_crate_1 in prop":1,"city_bench in step":2,"park_bench in fence":1,"traffic_cone in prop":2,"psx_wooden_crate_1 in arch":1,"psx_wooden_crate_1 in step":1,"city_bench in landing":1,"city_bench in building":1,"ticket_booth in step":1,"psx_potted_cactus_mp_1 in arch":15,"psx_planter_pot_mp_1_full in arch":72,"psx_planter_pot_mp_1_full in doorway":7,"psx_potted_cactus_mp_1 in doorway":1,"psx_planter_pot_mp_1_full in prop":2,"city_bin in doorway":1,"metro_bin in pole":1,"fire_hydrant in stairs":1,"fire_hydrant in prop":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"metro_bin in prop":1,"psx_wooden_crate_3 in arch":9,"psx_metal_barrel_mp_3 in step":1,"psx_metal_barrel_mp_1 in step":1,"psx_metal_barrel_mp_0 in step":1,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in building":10,"cardboard_boxes in arch":5,"psx_wooden_crate_3 in step":2,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_0 in prop":1,"meshy_sandbags in tree":1,"meshy_sandbags in prop":1,"garbage_bags in stairs":1,"garbage_bags in step":1,"garbage_bags in prop":1,"garbage_bag in prop":2,"metal_trash_can in step":1,"metal_trash_can in building":1,"garbage_bag in building":4,"garbage_bags in building":2,"garbage_bag in arch":1,"metal_trash_can in fence":1,"popcorn_cart in prop":2,"popcorn_cart in stairs":1,"lobster_traps in prop":4,"traffic_barrel in prop":2,"cardboard_boxes in pole":1,"newspaper_rack in arch":1,"globe_lamp in arch":1,"popcorn_cart in arch":1,"play_swing in arch":1},"snugged":145}
 signpost  253.75  -243.25  tree
 psx_sofa_1  85.75  -54.25  building
 psx_sofa_3  85.75  -57.75  building
@@ -377,6 +377,23 @@ form_counter  -118.48  -103.25  building
 form_counter  -91.52  -106.75  building
 photocopier  -113.75  -96.25  building
 banker_lamp  -93.45  -92.65  building
+brass_telescope  189  -320  building
+brass_orrery  182.5  -322  building
+telescope  195.5  -322  building
+globe_lamp  180.5  -314  building
+lectern  192  -315  building
+iron_garden_bench  185  -313.3  building
+psx_sofa_3  -56  -282.2  building
+psx_tv_table_1  -56  -278.4  building
+tube_tv  -56  -278.4  building
+psx_bed_1  -47.9  -281.6  building
+retro_radio  -46.3  -278.2  building
+curved_sofa  142  -279.25  building
+coffee_table  142  -276.95  building
+decor_piano  153  -280.25  building
+couples_bed  153.5  -270.25  building
+rug_round  142  -276.95  building
+retro_radio  138  -268.75  building
 dinosaur_skeleton  -63  103.25  building
 psx_planter_pot_mp_1_full  -68.95  114.45  building
 psx_planter_pot_mp_1_full  -57.05  114.45  building
@@ -529,6 +546,53 @@ psx_sofa_1  43.75  197.75  building
 psx_dinner_table_1  43.75  201.25  building
 potted_plant  42.7  193.375  building
 psx_tv_table_1  58.625  197.75  building
+surfboard_rack  267.75  -159.25  building
+steel_table  271.25  -159.25  building
+retro_radio  271  -159.3  building
+psx_glass_bottle_1  271.7  -159.1  building
+wooden_bucket  272.1  -158.2  building
+surfboard_long  272.45  -157  building
+surfboard_short  269.6  -160.45  building
+surfboard_fish  268.9  -160.45  building
+beach_cooler  271.9  -155.1  building
+folding_chair  270.8  -155.2  building
+doormat  268.64  -154.75  building
+form_counter  281.75  -155.75  building
+steel_table  281.75  -159.25  building
+psx_glass_bottle_1  281.2  -159.4  building
+psx_glass_bottle_2  281.6  -159.1  building
+psx_glass_bottle_1  282  -159.4  building
+psx_glass_bottle_2  282.3  -159.1  building
+mini_fridge  278.25  -159.25  building
+round_fridge  279.5  -160.2  building
+beach_cooler  282.75  -157.4  building
+beach_cooler  282.75  -158.1  building
+wooden_bucket  280.6  -160.1  building
+price_tag  277.4  -155  building
+bar_stool  280.2  -156.5  building
+doormat  279.14  -154.75  building
+form_counter  292.25  -155.75  building
+ball_cart  288.75  -159.25  building
+psx_shelf_mp_2  292.25  -159.25  building
+beach_swim_ring  293.1  -157.4  building
+beach_swim_ring  293.1  -157.4  building
+beach_swim_ring  293.1  -157.4  building
+beach_air_mattress_blue  290.3  -160.1  building
+beach_air_mattress_pink  290.3  -160.1  building
+beach_ball  287.8  -157.3  building
+beach_ball  290.9  -158.7  building
+price_tag  287.9  -155  building
+doormat  289.64  -154.75  building
+cot  313.25  -103.25  building
+tanker_desk  313.25  -106.75  building
+field_radio  313.15  -106.5  building
+item_binoculars  313.4  -107.2  building
+folding_chair  314.4  -106.75  building
+tool_chest  312.25  -104.9  building
+meshy_rope  317.6  -107.6  building
+surfboard_long  317.4  -102.05  building
+water_cooler  314.9  -102.25  building
+doormat  317.75  -104.14  building
 slot_machine  85.05  -221.2  building
 slot_machine  85.05  -222.25  building
 slot_machine  85.05  -223.3  building
@@ -2330,6 +2394,5 @@ psx_metal_barrel_mp_3  -204.3  196.55  building  left out
 psx_metal_barrel_mp_1  -205.15  196.55  building  left out
 psx_metal_barrel_mp_0  -204.8  197.25  building  left out
 psx_wooden_crate_3  245.75  -169.75  building  left out
-meshy_sandbags  124.25  50.9  landing  left out
-garbage_bags  201.1  -87.4  building  left out
+garbage_bag  201.1  -87.4  building  left out
 cardboard_boxes  -97.15  184.2  arch  left out
