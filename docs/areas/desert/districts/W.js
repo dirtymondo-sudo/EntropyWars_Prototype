@@ -66,6 +66,12 @@
    - THE SECOND PASS INSIDE: lit board floor (western()'s deck, `floorKey`), skirting, dado rail, crown, pilasters on the square lines,
      a pendant lamp over every second square, sconces. All glow, no lamp.
 
+   THE MODEL LIST PASS (2026-11-16, mondo's order to every district thread; seen in the browser): pieces MODEL_LIST.md had that the first
+   passes missed, placed in `dress()` and `furnish()`: the Halloween pack's coffins, lids, a body and headstones (Boot Hill, the undertaker),
+   dog, cat, wolves, eagles, rabbits, sheep, bats at the mine, bones, cobwebs, a cauldron, tongs, rope, guns and shells, cash and coins on
+   the card tables, a confessional and stained glass in the church. The list and the leads not yet followed (the MINE pack's own file):
+   areas-complexes.md "THE DESERT, THE ZONE KIT".
+
    KNOWN MISSING OR WRONG:
    - WALKED (11-16, after THE SQUARES, a flood on the walker's own rule from Main Street): every building's floor, the four hotel rooms,
      the stalls, the stage, the chancel, Boot Hill, the mine mouth, the camp, the canyon's end are reached; the three cells, the bank's
@@ -348,12 +354,26 @@ exports.furnish = ctx => { bind(ctx);
     /* THE FIVE TRADES */
     at(BARBER, 'barber_chair', 0, 1, { face: 0 }); at(BARBER, 'barber_chair', 1, 1, { face: 0 }); inn(BARBER, 'barber_mirror', sx(BARBER, 0), -4.83, { face: 0 }); inn(BARBER, 'barber_mirror', sx(BARBER, 1), -4.83, { face: 0 });
     inn(BARBER, 'barber_pole', -4.6, 3.9, { y: 1.4 }); inn(BARBER, 'iron_garden_bench', 4.2, sz(BARBER, 2) - 0.6, { face: 270 }); inn(BARBER, 'psx_glass_bottle_1', -2.6, -4.4, { y: 1.1 }); inn(BARBER, 'psx_glass_bottle_2', 0.6, -4.4, { y: 1.1 }); inn(BARBER, 'wooden_bucket', 4.2, sz(BARBER, 1) + 1.0, {});
-    at(COFFINS, 'psxg_coffin', 0, 0, { y: 0.7, face: 0 }); at(COFFINS, 'psxg_coffin', 1, 0, { y: 0.7, face: 0 }); at(COFFINS, 'trap_coffin_open', 2, 0, { face: 180 }); inn(COFFINS, 'trap_coffin_lid', -4.3, sz(COFFINS, 1) + 0.9, { face: 90 });
+    at(COFFINS, 'trap_coffin_open', 2, 0, { face: 180 }); inn(COFFINS, 'trap_coffin_lid', -4.3, sz(COFFINS, 1) + 0.9, { face: 90 });
     inn(COFFINS, 'hw_shovel', -4.4, sz(COFFINS, 2) + 0.8, {}); inn(COFFINS, 'hw_candles', sx(COFFINS, 2), sz(COFFINS, 1), { y: 1.1, noLight: true }); inn(COFFINS, 'wooden_cross', sx(COFFINS, 0) + 1.75, -4.83, { y: 2.6, face: 0, h: 1.6 });
     inn(ASSAY, 'platform_scale', 4.0, sz(ASSAY, 0) + 0.9, {}); inn(ASSAY, 'floor_safe', -4.2, sz(ASSAY, 0) + 0.9, { face: 90 }); inn(ASSAY, 'psx_gold_bar_pcs_1', -2.6, sz(ASSAY, 1), { y: 1.1 }); inn(ASSAY, 'psxg_rock_3', -1.2, sz(ASSAY, 1), { y: 1.1, h: 0.3 }); inn(ASSAY, 'psxg_rock_4', -0.4, sz(ASSAY, 1), { y: 1.1 });
     inn(ASSAY, 'psx_wooden_crate_2', 4.1, 4.1, {}); inn(ASSAY, 'money_sacks', -4.2, 4.0, {}); inn(ASSAY, 'psx_chair_mp_3', -1.75, sz(ASSAY, 1) - 1.0, { face: 180 });
     at(WIRE, 'exec_desk', 1, 0, { face: 180 }); inn(WIRE, 'psx_chair_mp_3', sx(WIRE, 1), sz(WIRE, 0) - 1.0, { face: 180 }); inn(WIRE, 'wall_clock', -2.0, -4.83, { y: 3.1, face: 0 }); inn(WIRE, 'iron_garden_bench', 2.5, sz(WIRE, 2) + 0.6, { face: 270 }); inn(WIRE, 'notice_board', -3.07, sz(WIRE, 2), { y: 1.5, face: 90 });
     at(SMITH, 'stump', 0, 1, {}); inn(SMITH, 'psx_metal_barrel_mp_1', -4.1, sz(SMITH, 0) - 0.6, {}); inn(SMITH, 'wooden_bucket', -2.4, sz(SMITH, 0) + 0.9, {}); inn(SMITH, 'psx_wooden_crate_2', -4.1, 4.1, {}); inn(SMITH, 'hw_shovel', -4.5, sz(SMITH, 1) + 1.1, {});
+    /* THE MODEL LIST PASS, inside: the pack's own coffins and a body at the undertaker's, tongs and a quench tub at the forge, guns and
+       shells at the sheriff's, cash and coins on the card tables, a confessional and the stained glass in the church, cobwebs, meat on the
+       store's counter, pictures and pillows in the hotel */
+    at(COFFINS, 'hw_coffin', 0, 0, { y: 0.7, face: 0 }); at(COFFINS, 'hw_body', 0, 0, { y: 0.78, face: 0 }); at(COFFINS, 'hw_coffin_2', 1, 0, { y: 0.7, face: 0 }); inn(COFFINS, 'hw_coffin_lid', 4.3, sz(COFFINS, 2) + 0.4, { face: 80 });
+    inn(COFFINS, 'psx_cobweb_1', -4.5, -4.5, { y: 3.6 }); inn(COFFINS, 'hw_candle', sx(COFFINS, 2) - 0.8, sz(COFFINS, 1), { y: 1.1, noLight: true }); inn(COFFINS, 'hw_part', 4.2, sz(COFFINS, 1) - 1.2, {});
+    inn(SMITH, 'meshy_tongs', sx(SMITH, 2), sz(SMITH, 1) - 0.6, { y: 1.1 }); inn(SMITH, 'cauldron', sx(SMITH, 0) + 0.2, sz(SMITH, 0) + 0.2, {}); inn(SMITH, 'psx_cobweb_2', 4.5, -4.5, { y: 3.2 }); inn(SMITH, 'meshy_rope', -4.6, sz(SMITH, 2), { y: 1.4 });
+    inn(JAIL, 'revolver', sx(JAIL, 2), sz(JAIL, 1) - 0.4, { y: 0.8 }); inn(JAIL, 'psx_shotgun_ammo_1', sx(JAIL, 2) - 0.3, sz(JAIL, 1) + 0.5, { y: 0.8 }); inn(JAIL, 'psx_ammo_box_1', sx(JAIL, 2) + 0.3, sz(JAIL, 1) + 0.6, { y: 0.8 });
+    for (let i = 0; i < 3; i++) inn(JAIL, 'psx_padlock_1', sx(JAIL, i) + 0.5, sz(JAIL, 0) + 1.82, { y: 1.15 }); inn(JAIL, 'psx_cobweb_1', -4.5, -4.5, { y: 3.0 });
+    for (const q of [[2, 2], [2, 4], [1, 3]]) { inn(SALOON, 'psx_cash_' + (1 + q[0]), sx(SALOON, q[0]) + 0.2, sz(SALOON, q[1]) - 0.15, { y: 0.87 }); inn(SALOON, 'psx_coin_mp_1', sx(SALOON, q[0]) - 0.2, sz(SALOON, q[1]) + 0.1, { y: 0.87 }); inn(SALOON, 'psx_ashtray_1', sx(SALOON, q[0]) - 0.1, sz(SALOON, q[1]) - 0.25, { y: 0.87 }); }
+    inn(SALOON, 'revolver', sx(SALOON, 3) + 0.2, sz(SALOON, 4) + 0.1, { y: 0.87 }); inn(SALOON, 'shotgun', sx(SALOON, 0) - 0.9, sz(SALOON, 1), { y: 0.6, face: 90 }); inn(SALOON, 'psx_plate_mp_1', sx(SALOON, 0), sz(SALOON, 2) + 0.9, { y: 1.1 }); inn(SALOON, 'cat', 5.9, sz(SALOON, 0) + 0.9, { y: 0.5 });
+    at(CHURCH, 'confessional_booth', 0, 4, { face: 90 }); inn(CHURCH, 'stained_glass', 0, -8.0, { y: 3.4, face: 0, h: 1.9 }); inn(CHURCH, 'psx_open_book_mp_1', sx(CHURCH, 2), sz(CHURCH, 0), { y: 1.47 });
+    inn(STORE, 'psx_meat_1', 1.4, sz(STORE, 1), { y: 1.1 }); inn(STORE, 'psx_butcher_knife_mp_1', 1.9, sz(STORE, 1), { y: 1.1 }); inn(STORE, 'psx_ammo_box_1', -4.6, sz(STORE, 1), { y: 1.1 }); inn(STORE, 'meshy_rope', 6.3, sz(STORE, 2), { y: 1.5 }); inn(STORE, 'cauldron', -5.8, 6.0, {});
+    for (const j of [0, 2]) { inn(HOTEL, 'psx_photo_frame_mp_1', -6.0, sz(HOTEL, j) + 1.4, { y: 0.64 }); inn(HOTEL, 'psx_painting_1', -6.33, sz(HOTEL, j + 1), { y: 1.7, face: 90 }); }
+    inn(STABLES, 'meshy_rope', sx(STABLES, 1) + 1.75, sz(STABLES, 1) - 0.2, { y: 1.5 }); inn(STABLES, 'psx_cobweb_1', -7.9, -7.9, { y: 4.6 }); inn(STABLES, 'psx_cobweb_2', 7.9, 7.9, { y: 4.6 }); inn(STABLES, 'cat', 7.4, 6.4, { y: 1.08 });
     inn(SMITH, 'psx_hand_saw_1', sx(SMITH, 2), sz(SMITH, 0), { y: 1.1 }); inn(SMITH, 'tool_chest', 4.1, 4.1, { face: 270 }); inn(SMITH, 'ladder_wall_rack', -4.83, sz(SMITH, 1), { y: 2.0, face: 90 });
 };
 
@@ -433,7 +453,7 @@ function dress() {
         feat({ k: 'rail', x0: gc(49), z0: gc(35), x1: gx(54) - 4.0, z1: gc(35), model: 'ranch' }); feat({ k: 'rail', x0: gx(54) + 4.0, z0: gc(35), x1: gc(59), z1: gc(35), model: 'ranch' }); }
     P('signpost', 51, 40, { face: 90 }); dec('psxg_rock_1', 50, 38); dec('psxg_dead_bush_1', 57, 39); dec('skull', 56, 43); dec('psxg_rock_3', 49, 44); P('dead_snag', 58, 45, {}); dec('psxg_dead_bush_2', 51, 46); dec(crate, 55, 37);
     /* THE WAGON CAMP (P09-04): logs to sit on round the fire, the pot, the horse line */
-    P('fallen_log', 66, 42, { face: 0 }); P('fallen_log', 68, 44, { face: 90 }); dec('stock_pots', 67, 43); dec(keg, 63, 42); dec(crate, 70, 46); dec(sack, 62, 44); dec('wooden_bucket', 65, 46); lamp(gc(64), gc(43), 0.02);
+    P('fallen_log', 66, 42, { face: 0 }); P('fallen_log', 68, 44, { face: 90 }); dec(keg, 63, 42); dec(crate, 70, 46); dec(sack, 62, 44); dec('wooden_bucket', 65, 46); lamp(gc(64), gc(43), 0.02);
     P('hitching_rail', 62, 46, { face: 0 }); Pm('horse', gc(62), gc(46) + 1.7, { face: 0 }); Pm('horse_brown', gc(62) + 1.5, gc(46) - 1.7, { face: 180 }); dec('psxg_dead_bush_1', 61, 38); dec('psxg_rock_2', 70, 40);
     /* OPEN RANGE (P10-04): cattle on poor grazing, a stretch of old fence */
     [[75, 38, 200], [78, 41, 60], [81, 38, 310], [76, 45, 140], [73, 43, 20]].forEach(q => P('cow', q[0], q[1], { face: q[2] }));
@@ -442,6 +462,16 @@ function dress() {
     /* THE CANYON (P11-04): the box canyon is somebody's hideout */
     P('skull_pile', 89, 36, {}); P('campfire', 90, 43, { noLight: true }); Pm('cot', gc(91) + 0.5, gc(44) + 0.6, { face: 90 }); Pm('money_sacks', gc(91) + 0.6, gc(42), {}); Pm(crate, gc(90) - 0.6, gc(44) + 1.0, { face: 15 }); Pm('spell_dynamite', gc(90) - 0.6, gc(44) + 1.0, { y: 1.08, h: 0.5 });
     Pm(keg, gc(91) + 0.8, gc(40), {}); Pm('shotgun', gc(91) + 0.9, gc(43), { y: 0.5 }); Pm('horse_black', gc(91) + 0.3, gc(39), { face: 0 }); lamp(gc(90) - 1.2, gc(42), 0.02); dec('psx_glass_bottle_1', 90, 44); dec('skull', 90, 39);
+    /* THE MODEL LIST PASS (2026-11-16, mondo: "look at the model list right now to see what else they could add"): pieces MODEL_LIST.md has
+       that the first passes missed. Halloween pack: coffins, lids, a body, headstones, a hand out of a grave. Animals: dog, cat, wolf
+       (the range's coyotes), eagle, rabbit, sheep, bats at the mine. Bones (femur, ulna), cobwebs, a cauldron on the camp's fire. */
+    P('hw_stone_3', 52, 2, { face: 180 }); P('hw_stone', 56, 2, { face: 180 }); P('hw_stone_1', 50, 5, { face: 180 }); P('hw_body_rising', 54, 4, { face: 160 }); Pm('hw_coffin', gc(57) - 0.4, gc(4), { face: 70 }); Pm('hw_coffin_lid', gc(57) + 0.9, gc(4) + 0.6, { face: 40 });
+    dec('femur', 53, 4); dec('ulna', 51, 4); Pm('hw_coffin_2', gc(57) + 0.2, gx(27) - 0.9, { face: 90 }); Pm('hw_coffin_lid_2', gc(58) + 0.3, gx(27) - 0.5, { face: 100 });
+    dec('dog', 61, 22); dec('cat', 74, 26, { y: 0.2 }); dec('dog', 67, 45); dec('rabbit', 59, 41); dec('rabbit', 72, 44);
+    P('wolf', 83, 37, { face: 250 }); P('wolf', 84, 39, { face: 290 }); Pm('eagle', gc(88), gc(44), { y: 9.5 }); Pm('eagle', gc(53), gc(2), { y: 6 });
+    P('decor_sheep', 74, 41, { face: 100 }); P('decor_sheep', 76, 42, { face: 40 }); dec('femur', 77, 39); dec('ulna', 80, 40); dec('skull', 78, 38); dec('femur', 90, 38); dec('ulna', 91, 41);
+    Pm('bat_black', gx(90) - 0.6, gx(5) + 1.2, { y: 2.3 }); Pm('bat_brown', gx(90) + 0.5, gx(5) + 0.6, { y: 2.4 }); Pm('bat_grey', gx(90) + 0.1, gx(5) + 2.0, { y: 2.5 }); Pm('psx_cobweb_1', gx(90) - 1.3, gx(5) + 2.7, { y: 1.9, face: 0 }); Pm('psx_cobweb_2', gx(90) + 1.3, gx(5) + 2.7, { y: 1.9, face: 0 });
+    P('cauldron', 67, 43, {}); Pm('meshy_rope', gc(84) + 0.2, gc(31), { y: 1.1 }); Pm('meshy_rope', gc(86) + 1.6, gc(28), { y: 1.1 });
     /* the lanterns' flames: one drawn row of lit cores (a glow costs none of the room's ten lamps) */
     feat({ k: 'arch', id: 'des:w:lamps', x: OX, z: OZ, rot: 0, parts: LIT.P });
 }

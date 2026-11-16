@@ -177,7 +177,7 @@ const spaces = [];
 /* ── THE PAINT: one sheet a square (0 = the room's own lawn) ── */
 const PAL = ['dirt_2', 'cobblestone', 'urban:WoodFlooring1a', 'marble', 'dirt_4', 'grass_rocky', 'grass_dark_fantasy', 'rocks_5'], paint = new Uint8Array(W * W);
 for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x], d = distAt(x, y);
-    paint[y * W + x] = ch === 'p' ? 1 : ch === 'o' ? 2 : ch === 'j' ? ((d === 'R' && y !== 56) ? 0 : 3) : ch === 'm' ? 4 : ch === 'D' ? (d === 'C' ? 5 : 6) : ch === 'r' ? 8 : (ch === 'B' && d === 'R') ? 1 : (d === 'H' && ch !== 'c') ? 7 : 0; }
+    paint[y * W + x] = ch === 'p' ? 1 : ch === 'o' ? 2 : ch === 'j' ? ((d === 'R' && y !== 56) ? 0 : 3) : ch === 'm' ? 4 : ch === 'D' ? (d === 'C' ? 5 : 6) : ch === 'r' ? 8 : ch === 's' ? 5 : (ch === 'B' && d === 'R') ? 1 : (d === 'H' && ch !== 'c') ? 7 : 0; }
 feat({ k: 'scatter', key: 'stump', n: 8, seed: 6 }); feat({ k: 'scatter', key: 'fallen_log', n: 6, seed: 7, r0: 1.9 }); feat({ k: 'scatter', key: 'dead_snag', n: 5, seed: 8 });
 
 /* ── checks: every prop key and unit exists; nothing in the room stands in the corn; every plot is walked to from the Woods gate with no step
