@@ -7495,6 +7495,21 @@ renderer; 1.4 after, with the whole midway in view).
   x -180.6 z -161.9 (70) · sideshow x -158 z -91.5 (110).
 - **FACES INSIDE** (`put`, the building's frame): 180 looks out of the front (a machine on the back wall), 90 / 270 = the two side walls.
 
+**PASS 3, DRESSING.** `dress()` in C.js (called from `ground`), about 230 more props, eight more people, six poster boards.
+- **THE BIG TOP IS ALL DRAWN NOW (no hollow building).** A hollow `texbuilding`'s own inside walls and ceiling are TWO-SIDED
+  (three-renderer.js `_hqTexInside`, kinds `inner` / `ceil`): with the row at `h: 14` they stood out of the cloth cone as a grey box seen
+  from the highway. A hollow box must fit UNDER whatever is drawn round it. So the tent is one `arch` row (cloth outside, cloth inside with
+  `ri`, cones flagged `roof: true`), its wall is a ring of ghost walls, its way in is the open west gore (a tent has a flap, not a leaf),
+  and `BIGTOP = { at, face, ... }` is made by hand for `furnish`. Inside it is 34 m clear: six rows of seats a bank.
+- **ON A STALL'S COUNTER:** `stall()` returns `{ at }`; a prop there wears `{ y: 1.03, floor: true }` (the stall is one ghost block: without
+  `floor` the prop stands on the block's top).
+- **WRONG FOR THE GROUND:** `holy_carpet` is a 6 m WALL hanging (it stood on edge); a floor rug is `psx_carpet_mp_1` / `rug_round`.
+  `ferris_wheel` is 6.5 m. The layout's loose rock squares (`o`) put grey standing stones on the grounds: the tool's, left alone.
+- **THE TRACKS STAY CLEAR:** home squares x 17..18 and 41..42 (north-south), y 5..6, 17..18 and 31..32 (east-west). Every blocker was
+  checked against them by hand; the first build's own crate and tambourine stood on one.
+- **FRAME RATE:** 2.8 FPS before any work, 2.4 after three passes (llvmpipe, the midway view; 587 draw calls, 1.1 M triangles in view,
+  of which the whole Desert's instanced props are 1.0 M and every `arch` row of the room together 62 k).
+
 **FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
 `carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
 `play_slide / play_swing / play_sandbox`, `teacups`. Stalls + games: `popcorn_cart`, `hot_dog_stand`, `money_wheel`, `claw_machine`,
@@ -7527,6 +7542,10 @@ posters, a striped cloth sheet, a big ferris wheel, a big top. `bigtop` and `fes
    no mirrors": the words were left alone; the Mandela door is still the way to that room.
 7. The first build's four riser props in the Big Top were replaced by curved banks of seats; the old drum is on the band's stand.
 8. The Sideshow shows things from the model list only (skeleton, iron maiden, the eye, jars, a tesla coil); no named acts were invented.
+9. The Big Top has no door leaf: the west gore of the cloth is open (a tent's flap). It is 34 m clear inside.
+10. Eight more people, all existing units, no lines: mime, chef, luchador, bunny girl, a second clown, cyclops, wizard (and a chef at the
+    hot dog stand). Boards read THE GREATEST SHOW, TWICE DAILY, MENAGERIE, FORTUNES TOLD, THE MERMAID, THIS WAY TO THE BIG TOP.
+11. A boxing booth (the ring model + a luchador) stands by the wheel; a LEMONADE stall by the gate.
 
 ## THE SEWERS, DISTRICT W — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/W.js`, 15 plots)
 
