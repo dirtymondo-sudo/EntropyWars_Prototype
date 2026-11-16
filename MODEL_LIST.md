@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 1027 |
+| Asset pack | yes | 1034 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -2352,6 +2352,19 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ind_skip_full | `Assets/world/packs/domi236_industrial/ind_skip_full.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 | ind_vent | `Assets/world/packs/domi236_industrial/ind_vent.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 
+### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (8)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| fishing_boat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_fishing_boat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| generator | `Assets/world/packs/elbolilloduro/ebd_housesonwater_generator.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| hammock | `Assets/world/packs/elbolilloduro/ebd_housesonwater_hammock.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| mooring_piles | `Assets/world/packs/elbolilloduro/ebd_housesonwater_mooring_piles.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| rowboat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_house | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_house.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_house_wide | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_house_wide.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_hut | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_hut.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) — Meshy AI (8)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2688,12 +2701,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | pd_lever | `Assets/world/props/meshy/pd_lever.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; the plot dungeons, mondo 2026-11-15: "Make a new lever"; originals in project files dungeons/meshy/) |
-
-### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| rowboat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Spear (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 
@@ -3857,7 +3864,7 @@ stand-ins (`keypad` carries the sticky-note code, `monitor_stack` its live feeds
 `lost_shelf`, `shag_rug`, `planter`, `false_window` are built to their rooms; a single pack model would drop those parts). Any of
 these can still go: mondo names it and how it should look.
 
-## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (3231 of 5337, bucket `ewmusicsfx`, listed 2026-11-16)
+## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (3223 of 5264, bucket `ewmusicsfx`, listed 2026-11-14)
 
 THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"). Every model file in the bucket that the
 game tables above do not name, grouped by folder and why it is there. `node list-models.js --r2` re-lists the bucket into
@@ -3948,7 +3955,7 @@ before asking for a new one (THE PACK-FIRST RULE).
 | `Assets/world/packs/stairs` | on R2, the game does not load it | Asset pack · Stairs & Railings · ATD-London · CC-BY 4.0 (credit required) | 2: stairs.glb, stairs_railings.glb | 32.0 |
 | `Assets/world/packs/traps` | on R2, the game does not load it | Asset pack (author not recorded yet) · Traps pack (mondo's upload) | 4: Chain_Draped-colonly.glb, Coffin_Wood-colonly.glb, Coffin_Wood_Lid-convcolonly.glb, Iron_Maiden-colonly.glb | 0.0 |
 | `Assets/world/props/meshy` | on R2, the game does not load it | Meshy AI · Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Disaster City interiors, Southside pass 2 (mondo 11-13 22:33: "make meshy versions of them"); claims list project files meshy/interior-claims.md | 28: Meshy_AI_a_city_bench_0922010124_texture.lod1.glb, Meshy_AI_a_city_bench_0922010124_texture.lod2.glb, Meshy_AI_an_ambulance_0915195334_texture.lod1.glb, Meshy_AI_an_ambulance_0915195334_texture.lod2.glb, Meshy_AI_fire_hydrant_0917064858_texture.lod1.glb, Meshy_AI_fire_hydrant_0917064858_texture.lod2.glb, Meshy_AI_sandbags_1027232011_texture.lod1.glb, Meshy_AI_sandbags_1027232011_texture.lod2.glb, Meshy_AI_traffic_cone_0917064925_texture.lod1.glb, Meshy_AI_traffic_cone_0917064925_texture.lod2.glb, boxing_gloves.opt.glb, boxing_ring.opt.glb, candelabra.opt.glb, car_lift.opt.glb, dojo_weapon_rack.opt.glb, dumbbell_rack.opt.glb, engine_hoist.opt.glb, jewelry_case.opt.glb, punching_bag.opt.glb, speed_bag.opt.glb, steam_table.opt.glb, stock_pots.opt.glb, taiko_drum.opt.glb, tire_stack.opt.glb, tool_chest.opt.glb, votive_stand.opt.glb, weight_bench.opt.glb, wing_chun_dummy.opt.glb | 12.0 |
-| `Assets/world/props/meshy` | on R2, the game does not load it | **UNSORTED** | 16: covered_wagon.opt.glb, hand_truck.opt.glb, hitching_rail.opt.glb, mailbox_bank.opt.glb, missing_board.opt.glb, newspaper_bundles.opt.glb, owl_statue.opt.glb, pallet_jack.opt.glb, photocopier.opt.glb, prickly_pear.opt.glb, saguaro_cactus.opt.glb, studio_camera.opt.glb, treadmill.opt.glb, water_tower_west.opt.glb, welding_cart.opt.glb, woods_cabin.opt.glb | 9.4 |
+| `Assets/world/props/meshy` | on R2, the game does not load it | **UNSORTED** | 8: hand_truck.opt.glb, mailbox_bank.opt.glb, newspaper_bundles.opt.glb, pallet_jack.opt.glb, photocopier.opt.glb, studio_camera.opt.glb, treadmill.opt.glb, welding_cart.opt.glb | 3.3 |
 | `Assets/world/props/meshy_decor` | on R2, the game does not load it | Meshy AI · Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) | 4: conveyor.lod1.glb, piano.lod1.glb, popcorn_cart.lod1.glb, server_rack.glb | 1.0 |
 | `Assets/world/props/meshy/Pyramid` | another format of a model listed above (source file, the game loads the listed one) | Asset pack (author not recorded yet) · Authored OBJ / GLB (mondo's upload, author not recorded) | 2: Pyramid.blend, Pyramid.gltf | 1.0 |
 | `Assets/world/props/meshy/road` | on R2, the game does not load it | Asset pack (author not recorded yet) · Road piece (mondo's upload, author not recorded; .3ds / .blend / .dae / .fbx / .obj of one model) | 5: road.3ds, road.blend, road.dae, road.fbx, road.obj | 0.5 |
