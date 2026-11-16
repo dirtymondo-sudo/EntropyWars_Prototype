@@ -10361,13 +10361,23 @@ const RACE_ABILITIES = {
         { id: 'nrRescueTube', name: 'Rescue Tube', tier: 1, families: ['lifesaving'], cost: 25, apCost: 1, cooldownRounds: 1, spellType: 'human',
           element: 'water', type: 'utility', kind: 'pull', range: 5, allyOnly: true, pullDistance: 4, cleanse: 1,
           desc: 'Throws the red tube. Hauls a Single Ally within 5 up to 4 squares toward her and cleanses 1 debuff. No damage, no fall. Cooldown: 1 round.' },
-        { id: 'nrOnDuty', name: 'On Duty', tier: 2, families: ['lifesaving'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+        /* THE LIFEGUARD POLISH (2026-11-16, mondo: "unique fun strategic playstyles, but still balanced"): cooldown 2 → 3, so
+           the watch has a round off the enemy can play around (it was up every round: duration 2 + cooldown 2). */
+        { id: 'nrOnDuty', name: 'On Duty', tier: 2, families: ['lifesaving'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
           type: 'buff', kind: 'buff', range: 0,
           statusEffects: [{ id: 'onDuty', duration: 2 }],
-          desc: 'Climbs the tower and watches. For 2 rounds, the first ally within 4 of her that takes a killing blow holds on at 1 HP and is hauled to the square beside her. Cooldown: 2 rounds.' },
+          desc: 'Climbs the tower and watches. For 2 rounds, the first ally within 4 of her that takes a killing blow holds on at 1 HP and is hauled to the square beside her. Cooldown: 3 rounds.' },
         { id: 'nrCPR', name: 'CPR', tier: 3, families: ['lifesaving'], cost: 75, apCost: 1, spellType: 'human',
           type: 'heal', kind: 'heal', range: 1, healPct: 0.45, cleanse: 2,
           desc: 'Thirty compressions, two breaths. Heals a Single Ally beside her for 45% of their max HP and cleanses 2 debuffs.' },
+        /* THREE WHISTLES (2026-11-16, the Lifeguard's capstone): three blasts = the beach's call for help. Every ally within 4 under
+           half HP is hauled to a free square beside her (nearest first, the lowest HP first), cleansed of 1 debuff and healed 15%
+           of max HP. Refused when no ally qualifies. It gathers a broken team round her, so it also bunches them for an area
+           spell: the trade. Clash keeps formation (no haul, the heal + cleanse still land). battle.js _lifeguardMassRescue. */
+        { id: 'nrThreeWhistles', name: 'Three Whistles', tier: 4, families: ['lifesaving'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 0, noDamage: true,
+          massRescue: { radius: 4, hpPct: 0.5, healPct: 0.15, cleanse: 1 },
+          desc: 'Three blasts on the whistle. Every ally within 4 of her under half HP is hauled to a free square beside her, cleansed of 1 debuff and healed 15% of their max HP. Cooldown: 4 rounds.' },
     ],
     'politician': [
         { id: 'raceExecutiveOrder', tier: 3, noDamage: true, aoeRadius: 1, cooldownRounds: 2, families: ['politics'], spellType: 'human', name: 'Executive Order',
@@ -20901,7 +20911,7 @@ const RACE_TREE = {
     'magician':      ['raceBorrowedClaw', ['raceShedSkin', 'raceCharm'], ['raceSkinSwap', 'racePopSpotlight'], 'raceMimicry'],   // 2026-11-16
     'mole man':      ['raceTremorStomp', ['sharedFissure', 'raceCryptidVanish'], ['groundSlam', 'raceBrutalSlam'], 'raceQuake'],   // 2026-11-16
     'quetzalcoatl':  ['raceWingGust', ['raceCrosswind', 'raceDivineLight'], ['raceTailwind', 'raceDivineSmite'], 'raceSupernova'],   // 2026-11-16
-    'lifeguard':     ['raceRiptide', ['sharedTidalSurge', 'raceTidalBlessing'], ['raceUnderdogSpirit', 'raceCallOfTheDeep'], 'raceFlood'],   // 2026-11-16
+    'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'dinosaur':      ['raceDinoTailWhip', 'raceApexCharge', ['groundSlam', 'raceApexRoar'], 'raceJurassicJaw'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -22834,7 +22844,7 @@ const SPELL_FAMILIES = {
         glyph: '🛟',
         color: '#c83a3a',
         kind: 'signature',
-        desc: 'Nobody drowns on her watch: a tube that hauls an ally out of trouble, a save from a killing blow, and CPR.',
+        desc: 'Nobody drowns on her watch: a tube that hauls an ally out of trouble, a save from a killing blow, CPR, and three whistles that pull the whole team in.',
         unique: 'lifeguard',
         identity: { who: ['Lifeguard', 'Rescuer', 'Beach Patrol'], adj: ['Sun-kissed', 'Watchful', 'Fearless'], look: ['a red swimsuit with a white cross', 'a red rescue tube', 'long sun-bleached hair'], vibe: ['pulls you out of the fire', 'will not let you go down'] }
     },
