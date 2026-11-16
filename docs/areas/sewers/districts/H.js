@@ -15,7 +15,7 @@
      THE CATWALK: a steel gangway 2.2 m up over column c 7, from the stair in the well to the cells' fronts ("whoever watches the cells").
    The vaults are the tool's: with the cells' brick the plots cut into north-south bays, a wide one over each pair of columns, a narrow one
    over c 4, 7, 16, 19; the three piers stand under narrow bays. Thin walls here run floor to roof slab (5.3 m), so they meet any vault.
-   PASSES: 1 the structure, 2 the interiors (every room furnished). The notes hold what each placed and the lists.
+   PASSES: 1 the structure, 2 the interiors (every room furnished), 3 the dressing (`walls()`: dado, floor lines, words, conduit). The notes hold what each placed and the lists.
    ctx: see W.js. Thin walls, bars, doors, the deck and the signs are this file's own kit (`mk`): walls on square LINES, as the Desert's insides. */
 'use strict';
 const C = 3.5, T = 0.3, DW = 1.75, DH = 2.2, HB = 3.0, TOP = 5.32, CAT = 2.2;
@@ -79,6 +79,42 @@ function mk(ctx) {
     return k;
 }
 
+
+/* PASS 3, THE WALLS AND THE FLOOR (drawn parts only; called from build() before the rows are written).
+   zone(c, r): which room a square belongs to: 'c' cell, 'p' the Property Room, 'f' the fan room, 't' the trap's passage, 'h' the halls. */
+const zone = (c, r) => (r <= 3) ? 'c' : (r >= 9 && c <= 5) ? 'p' : (r >= 9 && c >= 14 && c <= 15) ? 'f' : (r >= 9 && c >= 17 && c <= 19) ? 't' : 'h';
+const DIR = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }, TILEC = 0xa9b8a6, CAPC = 0x2f4a3c, YEL = 0xc9a227;
+function walls(ctx, k) {
+    const X = k.X, Z = k.Z, x0 = ctx.plot['P00-00'].sx, y0 = ctx.plot['P00-00'].sy, open = (c, r) => c >= 0 && r >= 0 && c < 24 && r < 12 && ctx.cell[y0 + r][x0 + c] !== 'x';
+    /* a part on the brick face of square (c, r) on side d: u = along the wall from the square's middle, out = its middle's distance from the wall line */
+    const onFace = (c, r, d, u, y, out, w, h, t, key, tint, o) => { const v = DIR[d], cx = X(c + 0.5), cz = Z(r + 0.5);
+        return v[0] ? k.box(cx + v[0] * (C / 2 - out), y, cz + u, t, h, w, key, tint, o) : k.box(cx + u, y, cz + v[1] * (C / 2 - out), w, h, t, key, tint, o); };
+    k.onFace = onFace;
+    /* THE TILED DADO: the precinct's own skin on the sewer's brick, in the halls only (the cells, the stores and the trap stay bare brick) */
+    let n = 0;
+    for (let r = 2; r <= 10; r++) for (let c = 0; c < 24; c++) { if (!open(c, r) || zone(c, r) !== 'h') continue;
+        for (const d of 'nswe') { const v = DIR[d]; if (open(c + v[0], r + v[1])) continue; if (c + v[0] < 0 || c + v[0] > 23) continue;
+            onFace(c, r, d, 0, 0, 0.115, C, 1.25, 0.05, TILE, TILEC, { uv: 1.75, top: false }); onFace(c, r, d, 0, 1.25, 0.125, C, 0.09, 0.08, null, CAPC); n++; } }
+    /* THE FLOOR: the corridor's rubber runner (the old room's), the yellow line a pace before the cells' bars, hazard chevrons at the stair's foot */
+    const flat = (x, z, w, d, key, tint, y, o) => k.parts.push(Object.assign({ s: 'quad', flat: true, p: [ctx.r2(x), y || 0.03, ctx.r2(z)], size: [ctx.r2(w), ctx.r2(d)], tint }, key ? { key } : {}, o || {}));
+    flat((X(2.1) + X(11.9)) / 2, Z(5.05), X(11.9) - X(2.1), 1.7, 'urban:RubberNonSlip3a', 0x8a8e88); flat((X(12.1) + X(21.9)) / 2, Z(5.05), X(21.9) - X(12.1), 1.7, 'urban:RubberNonSlip3a', 0x8a8e88);
+    [[2, 10], [14, 22]].forEach(q => flat((X(q[0]) + X(q[1])) / 2, Z(4) + 0.95, X(q[1]) - X(q[0]) - 0.3, 0.12, null, YEL, 0.035));
+    flat(X(18.5), Z(7) - 0.95, 5 * C - 0.4, 0.12, null, YEL, 0.035);                                        // before the tank
+    flat(X(7.5), Z(10.5), 1.9, 2.6, 'urban:SignHazard1a', 0xb8b0a0, 0.035, { uv: 1.75 });                       // the stair's landing
+    /* THE WORDS */
+    k.sign('DRAIN', X(22) - T / 2 - 0.02, 2.5, Z(6.5), 1.3, 0.38, 90, '#1c1c1c', '#c9c2a0');                 // over the cell door, read from the corridor
+    k.sign('CELLS 4 5 6', X(12) - T / 2 - 0.02, 3.3, Z(6.5), 2.1, 0.36, 90, '#d8d2b8'); k.sign('CELLS 1 2 3', X(12) + T / 2 + 0.02, 3.3, Z(6.5), 2.1, 0.36, 270, '#d8d2b8');
+    k.sign('STAND BEHIND THE LINE', X(6), 3.35, Z(4) + T / 2 + 0.02, 3.2, 0.3, 0, '#c9a227'); k.sign('STAND BEHIND THE LINE', X(18), 3.35, Z(4) + T / 2 + 0.02, 3.2, 0.3, 0, '#c9a227');
+    k.sign('STAFF ONLY', X(7.75) + 0.04, 0.5, Z(9.75), 1.3, 0.3, 270, '#1c1c1c', '#c9a227');                      // on the stair's flank, read from the lockers
+    k.sign('NO VISITORS PAST THIS GATE', X(12) - T / 2 - 0.02, 3.02, Z(6.5), 2.6, 0.22, 90, '#c9a227');
+    /* THE CONDUIT: a steel conduit over the cells' bars, a drop to each door's lamp box, a junction box a cell */
+    [[2, 10], [14, 22]].forEach(q => k.box((X(q[0]) + X(q[1])) / 2, 3.72, Z(4) + T / 2 + 0.05, X(q[1]) - X(q[0]), 0.06, 0.06, null, 0x3c4046));
+    CELLS.forEach(c => { k.box(X(c + 0.4), 3.6, Z(4) + T / 2 + 0.07, 0.3, 0.3, 0.12, null, 0x3c4046); k.box(X(c + 1.5), 3.05, Z(4) + T / 2 + 0.05, 0.05, 0.7, 0.05, null, 0x3c4046); });
+    /* THE STACK'S DUCTWORK: a square duct from the drum over the fan room's door, hangers */
+    { const sx = X(14.5), sz = Z(8.5); k.box(sx, 2.75, sz + 1.2, 0.8, 0.6, 1.5, STEEL, 0x70685c, { under: true }); [0.75, 1.6].forEach(d => k.box(sx, 3.35, sz + d, 0.05, TOP - 3.35, 0.05, null, IRON)); }
+    return n;
+}
+
 module.exports = {
     /* THE SQUARES: brick between the cells; four rooms dug out of the south wall (two squares deep; row 11 stays solid over the mine) */
     plan(ctx) {
@@ -108,7 +144,8 @@ module.exports = {
         k.wall('u', 9, 17, 20, { key: BRICK, tint: SPAN, gaps: [[18, 19]] });
         k.sign('TANK', X(18.5), 3.35, Z(7) - T / 2 - 0.02, 1.5, 0.5, 180, '#d8d2b8');
         /* THE VENT STACK: a brick drum on one whole square, 3.6 m high (the old room's own: a perch for the door gun); its duct goes on up */
-        { const sx = X(14.5), sz = Z(8.5); ctx.feat({ k: 'plateau', x: sx, z: sz, r: 1.55, h: ctx.r2(B + 3.6), edge: 0.1 }); k.keep(14, 8);
+        { const sx = X(14.5), sz = Z(8.5); ctx.feat({ k: 'plateau', x: sx, z: sz, r: 0.8, h: ctx.r2(B + 3.6), edge: 0.1 }); k.keep(14, 8);
+          [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]].forEach(q => ctx.feat({ k: 'wall', x0: ctx.r2(sx + q[0] * 1.5), z0: ctx.r2(sz + q[1] * 1.5), x1: ctx.r2(sx + q[2] * 1.5), z1: ctx.r2(sz + q[3] * 1.5), t: 0.3, ghost: true, rail: false, h: 3.6, y: ctx.r2(B + 3.6) }));
           k.parts.push({ s: 'cyl', p: [sx, 0, sz], r: 1.74, h: 3.62, key: BRICK, tint: 0x8a8274, gain: 1.15, seg: 24, uv: 3.5 });   // (the field's own drum is a rough cone at 0.875 m a sample: this is its face)
           k.parts.push({ s: 'cyl', p: [sx, 0, sz], r: 1.78, h: 0.35, key: BRICK, tint: 0x4c4a44, seg: 20 }, { s: 'cyl', p: [sx, 1.7, sz], r: 1.78, h: 0.12, tint: IRON, seg: 20 }, { s: 'cyl', p: [sx, 3.5, sz], r: 1.8, h: 0.14, tint: IRON, seg: 20 },
               { s: 'cyl', p: [sx, 3.6, sz], r: 0.85, h: ctx.r2(TOP - 3.6), key: STEEL, tint: 0x70685c, seg: 14 }, { s: 'cyl', p: [sx, 4.3, sz], r: 0.9, h: 0.1, tint: IRON, seg: 14 });
@@ -129,6 +166,7 @@ module.exports = {
         k.sign('BOOKING', X(3), 2.9, Z(6.5), 1.9, 0.4, 180, '#1c1c1c', '#c9c2a0'); k.box(X(3), 2.86, Z(6.5) + 0.03, 2.0, 0.48, 0.04, null, IRON);
         [-0.9, 0.9].forEach(dx => k.box(X(3) + dx, 3.34, Z(6.5) + 0.03, 0.03, TOP - 3.4, 0.03, null, IRON));
         ctx.pier('P00-00', 4, 6); ctx.pier('P01-00', 4, 6); ctx.pier('P01-00', 7, 6);
+        walls(ctx, k);
         /* the kit's rows: the drawn parts, the doors' leaves */
         /* (a row is drawn with the plot chunk it stands in: one row a plot, its parts measured from the plot's middle) */
         ['P00-00', 'P01-00'].forEach((id, i) => { const ox = X(6 + 12 * i), oz = Z(6), mine = k.parts.filter(p => (p.p[0] < X(12)) === (i === 0));
@@ -171,7 +209,7 @@ module.exports = {
 
         /* ── THE GUARDROOM: the booking counter's side, the desk, the screens, the wall of faces ── */
         k.at('number_dispenser', 2, 5, 1.2, 1.2, { face: 0 }); [[2, -0.6], [3, 0.2], [3, 1.0]].forEach(q => k.at('rope_stanchion', q[0], 5, q[1], 0.2));
-        k.at('clipboard_flat', 3, 6, -0.5, 0, { y: 0.96, face: 30 }); k.at('stapler', 2, 6, 0.6, 0.1, { y: 0.96 }); k.at('rotary_phone', 5, 6, 0.3, 0.1, { y: 0.96, face: 180 }); k.at('papers_a', 6, 6, -0.4, 0, { y: 0.96 }); k.at('coffee_mug', 5, 6, 1.1, -0.1, { y: 0.96 });
+        k.at('clipboard_flat', 3, 6, -0.5, 0, { y: 0.01, face: 30 }); k.at('stapler', 2, 6, 0.6, 0.1, { y: 0.01 }); k.at('rotary_phone', 5, 6, 0.3, 0.1, { y: 0.01, face: 180 }); k.at('papers_a', 6, 6, -0.4, 0, { y: 0.01 }); k.at('coffee_mug', 5, 6, 1.1, -0.1, { y: 0.01 });
         P('steel_table', 5, 7, { face: 180 }); k.at('crt_terminal', 5, 7, -0.2, 0, { y: 0.76, face: 180 }); k.at('desk_lamp', 5, 7, 0.55, 0.15, { y: 0.76, face: 200 }); k.at('manila_folders', 5, 7, -0.6, -0.2, { y: 0.76 });
         P('office_chair', 5, 8, { face: 0 }); k.at('psx_police_baton_mp_1', 5, 7, 0.1, -0.3, { y: 0.78, face: 60 });
         k.put('filing_cabinet', 2, 7, -1.45, 0.6, { face: W }); k.put('filing_cabinet', 2, 7, -1.45, 0.1, { face: W }); k.put('filing_cabinet', 2, 8, -1.45, -0.6, { face: W });
@@ -200,13 +238,28 @@ module.exports = {
         k.at('floor_drain', 19, 7, 0.6, 0.9); k.at('psx_glass_bottle_1', 19, 8, 0.9, -0.2, { face: 80 }); k.at('psx_glass_bottle_2', 20, 7, -0.3, 0.6); k.at('psx_glass_bottle_1', 21, 8, -1.0, -0.6, { face: 200 });
         k.at('solo_cup', 20, 7, 0.9, 1.1); k.at('solo_cup', 19, 7, -1.1, 0.3); k.at('psx_tin_can_mp_1_rusty', 17, 7, 0.8, 0.7); k.dec('floor_stain', 20, 7); k.dec('psx_old_mattress_mp_1', 19, 8);
         ctx.grime('puddle', 'P01-00', 8, 8, 1.6); ctx.grime('grime', 'P01-00', 6, 7, 1.8);
-        k.at('wet_floor_sign', 20, 6, 0.4, 0.6, { face: 30 }); k.put('mop_bucket', 21, 6, 0.9, 0.5, { face: 200 });
+        k.at('wet_floor_sign', 20, 6, 0.4, 0.6, { face: 30 }); k.put('mop_bucket', 20, 6, -0.9, 0.9, { face: 200 });
 
         /* ── THE VENT STACK'S FAN ROOM: the compressor, the valve, the gauges, the breakers ── */
         P('air_compressor', 14, 9, { face: 90 }); P('gate_valve', 14, 10, { face: 90 });
         k.at('gauge_board', 15, 10, -0.2, 1.55, { face: S, y: k.up(1.2) }); k.at('breaker_panel', 15, 9, 1.6, 0.6, { face: E }); k.at('utility_box', 15, 10, 1.3, 0.9, { face: 270 });
         k.at('tool_chest', 15, 10, 1.25, -0.5, { face: 270 }); k.at('psx_jerrycan_1', 14, 10, 1.2, 1.2); k.at('broom', 15, 9, 1.5, -0.9); k.at('psx_pipe_1', 14, 9, -1.5, -1.3); k.at('psx_pipe_1', 14, 10, -1.5, 1.4);
         k.at('ind_vent', 14, 7, -1.2, 1.2, { face: 90 }); k.at('ind_vent', 15, 8, -1.0, 1.3, { face: 180 });        // the stack's own cowls at its foot
+
+        /* ── PASS 3, THE DRESSING: what hangs, leans and lies about ── */
+        k.at('wall_padding', 21, 7, 1.62, 0.9, { face: E }); k.at('wall_padding', 21, 8, 1.62, 0.3, { face: E });          // the tank's east wall is padded
+        k.at('cat', 6, 6, 0.4, 0.05, { y: 0.01, face: 200 });                                                               // on the counter
+        ctx.props.push({ key: 'psx_ceiling_fan_mp_1_1_light_off', x: k.X(6), z: k.Z(7.6), ceil: true });                    // over the desk, under the bay's crown
+        k.at('newspaper_bundles', 9, 7, -1.1, 1.3, { face: 40 }); k.at('garbage_bags', 16, 7, 0.9, 1.2, { face: 70 }); k.at('garbage_bag', 13, 6, 0.9, 1.3); k.at('metal_trash_can', 13, 5, 1.3, -1.1);
+        k.at('hose_rack', 10, 5, 0.6, -1.6, { face: N, y: k.up(1.3) }); k.at('psx_light_switch_1', 3, 8, 1.1, 1.55, { face: S, y: k.up(1.3) }); k.at('psx_electrical_outlet_1', 6, 8, -1.3, 1.6, { face: S, y: k.up(0.4) });
+        k.at('psx_cobweb_5', 2, 4, -1.4, -1.4, { y: k.up(2.9) }); k.at('psx_cobweb_1', 21, 4, 1.4, -1.4, { y: k.up(2.9) }); k.at('psx_cobweb_2', 9, 10, 1.4, 1.4, { y: k.up(2.6) }); k.at('psx_cobweb_4', 2, 10, -1.4, 1.4, { y: k.up(2.5) });
+        k.at('psx_padlock_2', 5, 9, 1.0, 0.1, { y: 0.72, face: 270 });                                                      // on the safe
+        /* the trap's passage: a rope, a bucket, cones and tape before the hole, bats under its vault */
+        k.at('traffic_cone', 17, 10, 0.3, 1.2); k.at('traffic_cone', 19, 10, -0.3, 1.2); k.at('warning_tape', 18, 10, 0, 1.5, { face: 0 }); k.at('meshy_rope', 19, 9, 1.0, 0.6, { face: 40 }); k.at('wooden_bucket', 17, 9, -1.1, 0.8);
+        k.at('bat_grey', 18, 10, 0.5, -0.6, { y: k.up(3.0) }); k.at('bat_black', 17, 10, 0.2, 0.9, { y: k.up(2.8) }); k.at('bat_brown', 19, 11, -0.4, 0, { y: k.up(3.1) });
+        /* past the cell door: what was left by the stair */
+        k.at('traffic_cone', 22, 5, 0.9, -1.1); k.at('psx_metal_barrel_mp_1', 23, 5, 0.6, -1.0); k.at('cinder_block', 22, 7, 1.0, 1.3, { face: 30 });
+        ctx.grime('oil', 'P01-00', 2, 9, 1.3); ctx.grime('blood', 'P01-00', 8, 3, 1.0);
         if (lost.length) console.log('H: a blocker found its square taken: ' + lost.join(' '));
     },
     people(ctx) {

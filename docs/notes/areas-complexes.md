@@ -7214,6 +7214,22 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
 - Numbers at the proof view (the corridor from the west door, llvmpipe): before 1,468 calls / 2.51 M triangles; pass 1 1,489 / 2.54 M;
   pass 2 1,503 / 2.20 M, 1.4 FPS (the first two FPS readings were taken while the room still streamed and are not comparable).
 
+**PASS 3, THE DRESSING (seen, 16 + 4 views; walked offline).** `walls(ctx, k)` in H.js, drawn parts only, + about 40 props:
+- **THE TILED DADO:** the precinct's own skin on the sewer's brick: pale green subway tile 1.25 m up every brick face of the HALLS (corridor,
+  Guardroom, lockers, the tank, the stack's corner), a dark cap on it; cells, stores and the trap's passage stay bare brick. It covers the
+  tool's slime line there (a gaol is mopped). `zone(c, r)` names each square's room; `k.onFace(c, r, side, ...)` puts a part on a brick face.
+- **THE FLOOR:** a rubber runner down the corridor (the old room's; `RubberNonSlip3a`: `2a` is red and reads as a red carpet), a yellow line
+  a pace before the cells' bars and before the tank, hazard plates on the stair's landing (flat `quad` parts 3 cm up: no flicker seen).
+- **THE WORDS:** DRAIN over the cell door, CELLS 1 2 3 / CELLS 4 5 6 and NO VISITORS PAST THIS GATE on the sally gate, STAND BEHIND THE LINE
+  over each row of cells, STAFF ONLY on the stair.
+- **STEEL:** a conduit over the cells' bars with a junction box and a drop a cell; a square duct from the stack over the fan room's door.
+- **PROPS:** padding on the tank's east wall, a cat on the counter, a ceiling fan over the desk, newspapers, rubbish, a hose rack, a switch,
+  an outlet, webs in four corners, a padlock on the safe; the trap's passage (cones, tape, a rope, a bucket, three bats under its vault);
+  a cone, a barrel and a block past the cell door.
+- **LEARNED:** a real (drawn) `wall` row is GROUND for a prop: things on the counter take `y: 0.01`, not the counter's height (the cat
+  stood 0.96 m over it). A round `plateau` under a drawn drum: make it 0.8 m and fence the square with four thin ghost walls, or its skirt
+  pokes out of the drum as spikes. A sign under 3 m on a barred wall hides behind the bars' head rail from most angles: put it on the brick over them.
+
 **FITS THIS DISTRICT (the whole catalogue + MODEL_LIST sections 6, 7, 10, 12b, 13 read 11-16; all have rows):** CELLS `cot` `steel_toilet`
 `psx_toilet_mp_1` `sink` `psx_old_mattress_mp_1` `psx_pillow_mp_1/2` `psx_bed_1_frame` `wall_chains` `trap_chain_draped/_straight`
 `meal_tray(_empty)` `toilet_paper` `wooden_bucket` `graffiti_wall` `psx_padlock_1..4` `stocks` `wall_padding` · BARS + DOORS `leaf_cell`
