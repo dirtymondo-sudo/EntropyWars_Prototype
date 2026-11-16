@@ -14,8 +14,8 @@
    goo tendrils in the tank, bodies, parts and bones on the Pit's walk, chains), barrels and warning tape along the
    channel, hanging bulbs, five bystanders (kaiju, black goo x 2, mad scientist, swamp monster;
    they have no lines: nobody wrote any).
-   NOT YET: the station's waste pipes where the channel starts (the pack's pipe pieces stand upright and thin: tried, taken out); a rail
-   along the channel; drips, mist,
+   THE MODEL PASS (stage `pieces`): the waste pipe in the channel's head, hazmat suits on hooks, radiation drums, a valve wheel, cage lamps, rats.
+   NOT YET: a rail along the channel; drips, mist,
    a hum; anything on the Pit's east walk. */
 'use strict';
 const DRAIN = 'P04-04', PIT = 'P05-04';
@@ -29,7 +29,7 @@ module.exports = {
         const bulb = (id, lx, ly) => { const s = ctx.sq(id, lx, ly); ctx.props.push({ key: 'bare_bulb', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), ceil: true }); };
         /* THE VALVE GALLERY (the Drain's room, squares 1..9 x 2..4): its middle squares (5..7) stay clear down to the channel */
         ctx.P('centrifugal_pump', DRAIN, 1, 2, { face: 180 }); ctx.P('centrifugal_pump', DRAIN, 3, 2, { face: 180 }); ctx.P('gate_valve', DRAIN, 1, 4); ctx.P('boiler', DRAIN, 9, 2);
-        ctx.P('psx_metal_barrel_mp_2', DRAIN, 9, 4); ctx.dec('psx_metal_barrel_mp_1', DRAIN, 2, 4); ctx.dec('psx_supply_crate_1', DRAIN, 8, 3);
+        ctx.dec('psx_supply_crate_1', DRAIN, 8, 3);
         [2, 3, 4].forEach(lx => wallProp('breaker_panel', DRAIN, lx, 2, 'n')); wallProp('radiation_sign', DRAIN, 8, 2, 'n'); wallProp('radiation_sign', DRAIN, 9, 3, 'e');
         bulb(DRAIN, 3, 3); bulb(DRAIN, 7, 3);
         /* THE CHANNEL: barrels where the sludge comes in, tape and signs along its walks */
@@ -38,7 +38,7 @@ module.exports = {
         wallProp('radiation_sign', DRAIN, 6, 5, 'n'); wallProp('radiation_sign', DRAIN, 2, 8, 'w'); ctx.dec('wet_floor_sign', DRAIN, 9, 5);
         bulb(DRAIN, 4, 7); bulb(DRAIN, 9, 7);
         /* the passage to the bulkhead door (squares 7..9 x 8..11): signs each side, a barrel, a bulb */
-        wallProp('radiation_sign', DRAIN, 7, 9, 'w'); wallProp('breaker_panel', DRAIN, 9, 9, 'e'); ctx.dec('traffic_barrel', DRAIN, 9, 8); bulb(DRAIN, 8, 9);
+        wallProp('breaker_panel', DRAIN, 9, 9, 'e'); bulb(DRAIN, 8, 9);
         /* THE SLUDGE PIT: barrels and crates on the walk round the tank, signs on the walls, bulbs over the corners */
         ctx.P('psx_metal_barrel_mp_2', PIT, 10, 2); ctx.P('psx_metal_barrel_mp_3', PIT, 1, 10); ctx.dec('psx_metal_barrel_mp_1', PIT, 10, 9); ctx.dec('traffic_barrel', PIT, 4, 10);
         ctx.dec('psx_supply_crate_1_empty', PIT, 8, 10); ctx.dec('warning_tape', PIT, 3, 2); ctx.dec('warning_tape', PIT, 7, 10); ctx.dec('wet_floor_sign', PIT, 6, 2);
@@ -66,6 +66,26 @@ module.exports = {
         ctx.dec('skull', PIT, 2, 10); ctx.dec('skull', PIT, 10, 3); ctx.dec('psx_fish_skeleton_mp_1', PIT, 6, 10); ctx.dec('psx_fish_skeleton_mp_1', PIT, 1, 4); ctx.dec('skull_pile', PIT, 7, 1);
         wallProp('wall_chains', PIT, 1, 4, 'w'); wallProp('wall_chains', PIT, 10, 8, 'e'); wallProp('wall_chains', PIT, 7, 10, 's'); wallProp('vent_grille', PIT, 5, 2, 'n');
         [[1, 2], [10, 10]].forEach(q => ctx.dec('psx_cobweb_1', PIT, q[0], q[1])); [[1, 2], [9, 3]].forEach(q => ctx.dec('psx_cobweb_2', DRAIN, q[0], q[1])); [[2, 2], [10, 5]].forEach(q => ctx.dec('floor_stain', PIT, q[0], q[1]));
+        module.exports.pieces(ctx);   // the model pass (below): the tool has no stage of that name, so `dress` calls it
+    },
+    /* THE MODEL PASS (mondo 11-16, docs/plans/WISHLIST_MODELS_ADDED.md: the wish-list models are in the catalogue). The three this file
+       asked for + three more that fit. A drum is a blocker: none stands on a one-square walk (the Pit's ring, the channel's walks). */
+    pieces(ctx) {
+        const base = ctx.plot[DRAIN].base, onWall = (key, id, lx, ly, side, gap, o) => { const q = ctx.sq(id, lx, ly), off = 1.75 - gap, d = { n: [0, -off, 180], s: [0, off, 0], e: [off, 0, 270], w: [-off, 0, 90] }[side];
+            ctx.props.push(Object.assign({ key, x: ctx.r2(ctx.gcx(q[0]) + d[0]), z: ctx.r2(ctx.gcz(q[1]) + d[1]), face: d[2] }, o || {})); };
+        /* the station's WASTE PIPE: lying in the channel's head, the sludge runs out of it */
+        ctx.P('waste_pipe', DRAIN, 3, 10, { face: 0, y: ctx.r2(base - 0.9) });
+        /* HAZMAT SUITS on their hooks: by the bulkhead door, in the gallery, at the Pit's doorway */
+        onWall('hazmat_suit', DRAIN, 7, 9, 'w', 0.2); onWall('hazmat_suit', DRAIN, 7, 10, 'w', 0.2); onWall('hazmat_suit', DRAIN, 1, 3, 'w', 0.2, { z: ctx.r2(ctx.gcz(ctx.sq(DRAIN, 1, 3)[1]) + 1.1) }); onWall('hazmat_suit', PIT, 5, 1, 'w', 0.2);
+        /* RADIATION DRUMS (the rusty barrels that stood in for them are out): the gallery, the door passage, the Pit's doorway */
+        ctx.P('radiation_drum', DRAIN, 9, 4); ctx.P('radiation_drum', DRAIN, 2, 4); ctx.P('radiation_drum', DRAIN, 9, 11); ctx.P('radiation_drum', DRAIN, 7, 11); ctx.P('radiation_drum', PIT, 5, 0);
+        ctx.dec('radiation_drum', DRAIN, 9, 3); ctx.dec('radiation_drum', DRAIN, 9, 8);
+        /* a VALVE WHEEL between the pumps; CAGE LAMPS on the walls; three RATS, off the walks */
+        ctx.P('valve_wheel', DRAIN, 2, 2, { face: 180 });
+        [[DRAIN, 7, 11, 's'], [DRAIN, 9, 11, 's'], [DRAIN, 4, 5, 'n'], [DRAIN, 8, 5, 'n'], [DRAIN, 11, 7, 's'], [DRAIN, 2, 6, 'w'], [DRAIN, 2, 10, 'w']].forEach(q => onWall('cage_lamp', q[0], q[1], q[2], q[3], 0.06, { y: ctx.r2(base + 2.3) }));
+        [[1, 6, 'w'], [10, 4, 'e'], [10, 9, 'e'], [4, 2, 'n'], [8, 2, 'n'], [4, 10, 's'], [8, 10, 's']].forEach(q => onWall('cage_lamp', PIT, q[0], q[1], q[2], 0.06, { y: ctx.r2(ctx.plot[PIT].base + 2.3) }));
+        const rat = (id, lx, ly, dx, dz, face) => { const q = ctx.sq(id, lx, ly); ctx.props.push({ key: 'rat', x: ctx.r2(ctx.gcx(q[0]) + dx), z: ctx.r2(ctx.gcz(q[1]) + dz), face }); };
+        rat(DRAIN, 8, 3, 1.1, -1.2, 200); rat(PIT, 10, 10, 1.2, 1.2, 310); rat(PIT, 7, 0, 1.2, -0.8, 140);
     },
     people(ctx) {
         /* mondo 11-16: "kaiju can live there, black goo, whatever else fits". No lines: none were written. */
