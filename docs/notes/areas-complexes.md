@@ -4555,6 +4555,14 @@ small oil lamp on a chain: under the Temple's ring beam, in the cella, under the
 on a sheet it read as dull gold. The real lights stay the eleven braziers and the two fountains. `light_shaft` showed nothing outdoors: not used.
 No falling light, cloud drift or sound: the walked rooms have no hook for them (the zone kit's point 4).
 
+**PASS 5, POLISH (the last; a survey of every plot by day and at night):** plinths are one small look a square now (a plinth inside a plot-wide `hug` look sank into the
+ground and stood a metre off its statue: seen on the Sacred Way and in the Colonnade); the fires are plain orange and yellow tongues (they read as pale cones); the cloud that
+lay across the Sacred Way is gone; the Colonnade's busts stand on the plot's level rows. **FIVE PASSES, STOPPED: waits mondo's look.**
+FPS at the proof view (the Temple's front, llvmpipe, a software GPU, so only the trend counts): 1.6 after pass 1, 1.4 after passes 3, 4 and 5 (a 15 s count). The district
+added no real light after pass 3. A true number needs his Mac or the friend's PC.
+WHAT A NEXT PASS WOULD DO (not started): an olive tree and a vine model in place of `tree_2` and the leaf sheet; steps cut into the Amphitheatre's tiers so the seats can be
+walked; the Stadium's north seats on level ground; a district look in the tool (the marble paint is grey beside the lit marble of the buildings); cloud that drifts.
+
 **FOR THE NEXT THREAD (learned here):**
 - A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
   never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
