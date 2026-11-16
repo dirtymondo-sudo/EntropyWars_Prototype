@@ -2295,6 +2295,8 @@
             let target = (z !== undefined && z !== null)
                 ? (unitAt(x, y, z) || unitAt(x, y))
                 : unitAt(x, y);
+            /* 🐍 a spell aimed at the serpent's body lands on its king (THE BODY IS HIM) */
+            if (!target) { const _sk = _serpentKingAt(x, y); if (_sk && _sk.player !== unit.player) target = _sk; }
 
             // Sky telescope: earth unit targeting above-section enemy
             if (!target && unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth') {
@@ -7470,6 +7472,7 @@
            (Hologram, Cloning Machine, Stuffed Double, beacons ...) the way they pass over their own units. The one
            exception is the existing single-target rule: an own object that explodes when hit (a bomb) can still be set off. */
         function _ownPieceSpared(obj, byUnit) {
+            if (obj && obj.serpentOf != null) return true;   // 🐍 the serpent's body is the king, never a breakable object (_serpentKingAt)
             if (!obj || !byUnit || obj.ownerPlayer !== byUnit.player) return false;
             return !((obj.detonateOnAttack || obj.detonateOnFire) && obj.blastRadius > 0);
         }
@@ -7796,14 +7799,23 @@
             const _canPullIn = !!(spell.pullToCenter && opts.pullCenter
                 && !(typeof _isClashMode === 'function' && _isClashMode()));
             const _aoeLead = _castLeadOnce(unit, spell);
+            const _aoeSerpentHit = new Set();   // 🐍 kings already caught through a body square
             if (opts.leadNamed) _aoeLead();   // the caller wrote the cast's lead line itself (aoePull's summary, first)
             for (const tile of tiles) {
                 /* Shared tile: a flyer hovering over a grounded enemy — the
                    blast hits EVERY enemy standing in the column, not just the
                    first one found (the second body used to whiff). */
-                const _tileTargets = opts.findTarget
+                let _tileTargets = opts.findTarget
                     ? [opts.findTarget(tile)].filter(Boolean)
                     : enemies.filter(e => e.x === tile.x && e.y === tile.y);
+                /* 🐍 a serpent body square in the blast catches its king, once a blast (and not at all when his own square is in it) */
+                if (!_tileTargets.length) {
+                    const _sk = _serpentKingAt(tile.x, tile.y);
+                    if (_sk && enemies.includes(_sk) && !_aoeSerpentHit.has(_sk.id) && !tiles.some(t => t && t.x === _sk.x && t.y === _sk.y)) {
+                        _aoeSerpentHit.add(_sk.id);
+                        _tileTargets = [_sk];
+                    }
+                }
                 /* THE SPELL AUDIT (2026-09-30): a `noDamage` area (Dragonfear, Hypnotic Pulse, Executive Order,
                    Curse of Misfortune) lands its statuses and stat stages on every enemy in it and deals nothing —
                    no hit roll, no turret/door/object chip. */
@@ -8306,6 +8318,10 @@
         }
         // The enemies of `unit` the beam strikes on cell (x, y).
         function _beamCellVictims(unit, spell, x, y, lineZ) {
+            {   // 🐍 a beam across the serpent's body hits its king (callers keep each victim once)
+                const _sk = _serpentKingAt(x, y);
+                if (_sk && _sk.player !== unit.player) return [_sk];
+            }
             if (lineZ == null && !spell.beamZigzag) {
                 const u = unitAt(x, y);   // the flat lane (no aim)
                 return (u && !u.dead && u.player !== unit.player) ? [u] : [];
@@ -14183,6 +14199,26 @@
             if (!unit) return [];
             return (state._deployedObjects || []).filter(o => o && o.serpentOf === unit.id && o.hp > 0).sort((a, b) => a.serpentIdx - b.serpentIdx);
         }
+        /* THE BODY IS HIM (2026-11-16, the Quetzalcoatl pass): a square of the serpent's body belongs to the king. A swing or a
+           single-target spell aimed at it lands on him (doAttack / _resolveOffensiveTarget), an area or a beam that covers it
+           catches him once (_applyAoeDamage / _beamCellVictims), and nothing breaks it (_ownPieceSpared: the body is never
+           "destroyed" like a decoy; it goes when serpentForm ends or he dies). One body square was a one-hit kill before. */
+        function _serpentKingAt(x, y) {
+            const o = (state._deployedObjects || []).find(d => d && d.serpentOf != null && d.hp > 0 && d.x === x && d.y === y);
+            if (!o) return null;
+            const k = unitFromId(o.serpentOf);
+            return (k && !k.dead && !k._dying && unitHasStatus(k, 'serpentForm')) ? k : null;
+        }
+        /* Coiled holds only while a body square still touches the victim: a walk that drags the body away lets it go */
+        function _serpentReleaseLoose(unit) {
+            const segs = _serpentSegs(unit);
+            for (const v of (state.units || [])) {
+                if (!v || v.dead || v._coilSrcId !== unit.id || !unitHasStatus(v, 'coiled')) continue;
+                if (segs.some(o => Math.max(Math.abs(o.x - v.x), Math.abs(o.y - v.y)) === 1)) continue;
+                clearStatus(v, 'coiled');
+                addLog(`🐍 The coils slide off ${_ctName(v)}.`, undefined, undefined, { actor: v });
+            }
+        }
         function _serpentLay(unit, squares) {
             state._deployedObjects = (state._deployedObjects || []).filter(o => !(o && o.serpentOf === unit.id));
             squares.slice(0, 2).forEach((q, i) => state._deployedObjects.push({
@@ -14251,6 +14287,7 @@
                 out.push(...more.slice(0, 2 - out.length));
             }
             _serpentLay(unit, out);
+            _serpentReleaseLoose(unit);
         }
         /* any other arrival (a blink, an escape, a swap): a body left far behind is laid fresh beside him */
         function _serpentKeepUp(unit, via) {
@@ -14260,6 +14297,7 @@
             if (segs.some(o => (state.units || []).some(v => v && v._coilSrcId === unit.id && !v.dead && Math.abs(v.x - o.x) + Math.abs(v.y - o.y) === 1))) return;   // still wrapped round a Coiled victim
             _serpentLay(unit, []);
             _serpentLay(unit, _serpentChainFrom(unit, null));
+            _serpentReleaseLoose(unit);
         }
         /* Coil (`serpentCoil`, _runPostEffects): the body moves onto the free squares beside the victim, nearest the king first */
         function _serpentCoil(unit, target) {
@@ -14279,7 +14317,7 @@
             addLog(`🐍 The serpent coils round ${_ctName(target)}!`, undefined, undefined, { actor: unit });
             showFloatingTextForUnit(target, '🐍 COILED', 'debuff', { durationMs: 1100 });
         }
-        if (typeof window !== 'undefined') Object.assign(window, { _serpentRaise, _serpentDrop, _serpentSegs });
+        if (typeof window !== 'undefined') Object.assign(window, { _serpentRaise, _serpentDrop, _serpentSegs, _serpentKingAt });
         /* ⛏ _runPostEffects for an `erupt` spell (the Mole Man's Erupt, 2026-11-16): he comes up out of the ground on the free
            square beside the target nearest to where he dug in (he stays put when already beside it or no square is free), and
            the target is thrown up into the air: forced fall damage from 2 levels up (state.js applyFallDamage). Colossal units
@@ -76521,6 +76559,8 @@
             // binds the blade while the challenge can actually be answered.
             /* THE SPELL AUDIT Batch D: Provoked by a DECOY (Stuffed Double) — the blade is bound to the straw while it
                can be hit from here; the decoy's own tile is always a legal swing. */
+            /* 🐍 a swing at the serpent's body lands on its king (THE BODY IS HIM) */
+            if (!target || target.id === unit.id) { const _sk = _serpentKingAt(x, y); if (_sk && _sk.player !== unit.player) target = _sk; }
             const _atkDecoy = getTauntDecoy(unit);
             if (_atkDecoy && target && isEnemyUnit(unit, target) && !(x === _atkDecoy.x && y === _atkDecoy.y)) {
                 const _tdD = Math.abs(unit.x - _atkDecoy.x) + Math.abs(unit.y - _atkDecoy.y);

@@ -4340,7 +4340,7 @@ const RACE_BASE_STATS = {
     'tech ceo':           { hp: 1050, mp: 200, atk:  50, def:  95, mdef: 140, int: 175, vision: 3, crt: 18, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the men in black
     'magician':           { hp: 1100, mp: 190, atk:  70, def:  95, mdef: 125, int: 170, vision: 3, crt: 22, spd: 115 },   // 2026-11-16 THE NEW RACES — first pass on the specialist median
     'mole man':           { hp: 1450, mp: 110, atk: 150, def: 150, mdef:  85, int:  45, vision: 3, crt: 15, spd: 105 },   // 2026-11-16 THE NEW RACES — first pass on the bruiser median
-    'quetzalcoatl':       { hp: 1650, mp: 170, atk: 115, def: 140, mdef: 140, int: 140, vision: 3, crt: 12, spd:  90 },   // 2026-11-16 THE NEW RACES — first pass on the tank median
+    'quetzalcoatl':       { hp: 1350, mp: 120, atk: 115, def: 160, mdef:  85, int: 100, vision: 3, crt: 12, spd:  90 },   // 2026-11-16 THE NEW RACES; the Quetzalcoatl pass (same day): the first pass read POWER 745, #1 of 143 races (tank median 1200 HP, 83 M DEF, 46 M ATK) → 609, mid-tank, because the body walls and the push / pull immunity are worth power the number can't see
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -10330,10 +10330,10 @@ const RACE_ABILITIES = {
            the path he walked, they block every other unit, and nothing pushes or pulls him while it is out. Coil closes the body
            round an enemy. Rules: data.js STATUS_DEFS serpentForm / coiled + battle.js _serpent* (the body = two
            state._deployedObjects rows with serpentOf = his id; three-renderer.js draws the serpent over them). */
-        { id: 'nrFeatheredSerpent', name: 'Feathered Serpent', tier: 1, families: ['featheredserpent'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+        { id: 'nrFeatheredSerpent', name: 'Feathered Serpent', tier: 1, families: ['featheredserpent'], cost: 25, apCost: 1, cooldownRounds: 3, spellType: 'divine',
           element: 'wind', type: 'buff', kind: 'buff', range: 0,
           statusEffects: [{ id: 'serpentForm', duration: 3 }],
-          desc: 'The serpent rises. For 3 rounds he is the head of a 3-square feathered serpent: the body follows the path he walks, blocks every other unit, and nothing can push or pull him. Cooldown: 2 rounds.' },
+          desc: 'The serpent rises. For 3 rounds he is the head of a 3-square feathered serpent: the body follows the path he walks and blocks every other unit, nothing can push or pull him, and a blow to the body lands on him (an area catches him once). Cooldown: 3 rounds, so the serpent sinks for a round before it can rise again.' },
         { id: 'nrObsidianBlade', name: 'Obsidian Blade', tier: 1, families: ['featheredserpent'], cost: 25, apCost: 1, spellType: 'divine',
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 1,
           statusEffects: [{ id: 'bleed', duration: 2 }],
@@ -10341,9 +10341,9 @@ const RACE_ABILITIES = {
         { id: 'nrCoil', name: 'Coil', tier: 2, families: ['featheredserpent'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 2, requiresSerpent: true, serpentCoil: true,
           statusEffects: [{ id: 'coiled', duration: 2 }],
-          desc: 'The serpent closes round a Single Enemy within 2. Deals MEDIUM physical damage; the body wraps the squares beside it and it is Coiled for 2 rounds: it cannot move and is squeezed for 45 at every round end. Needs the Feathered Serpent out. Cooldown: 2 rounds.' },
+          desc: 'The serpent closes round a Single Enemy within 2. Deals MEDIUM physical damage; the body wraps the squares beside it and it is Coiled for 2 rounds: it cannot move and is squeezed for 45 at every round end, until the body lets go (he walks it away). Needs the Feathered Serpent out. Cooldown: 2 rounds.' },
         { id: 'nrMorningStar', name: 'Morning Star', tier: 3, families: ['featheredserpent'], cost: 75, apCost: 1, spellType: 'divine',
-          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 145, range: 5, dayMult: 1.4,
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 5, dayMult: 1.4,
           desc: 'Venus rises as a spear of light. Deals MEDIUM magic damage to a Single Enemy within 5, 40% more in the daytime (the day and night clock).' },
     ],
     'lifeguard': [
@@ -14174,7 +14174,7 @@ const STATUS_LIBRARY_DESCS = {
     trickSet:  'A trick waits face down (Doves, Vanishing Act or Switcheroo, in turn). It springs once, on its cue.',
     pickedCard: 'Holding the Magician\'s card: every spell it casts costs 40 more MP.',
     burrowed:  'Under the ground: hidden with Invisible until it attacks or its turn ends.',
-    serpentForm: 'The head of a 3-square feathered serpent: the body follows its path and blocks every other unit; it cannot be pushed or pulled.',
+    serpentForm: 'The head of a 3-square feathered serpent: the body follows its path and blocks every other unit; it cannot be pushed or pulled; a hit on the body hits the head.',
     coiled:    'In the serpent\'s coils: cannot move and is squeezed for 45 at every round end.',
     onDuty:    'On watch: the first ally within 4 that takes a killing blow holds on at 1 HP and is hauled beside her. Spent on the first save.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
