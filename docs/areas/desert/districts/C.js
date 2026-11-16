@@ -32,6 +32,11 @@
    its ghost block), `cage`, `bunting`, `flagpole`, `stripesX / stripesZ`, `lift` (cloth is the stucco sheet + `gain`: the `canvas` key is a
    clothes fabric and drew flat). `arch(id, x, z, rot, sheet)` writes a stand-alone row `des:c:<id>`.
 
+   INSIDE (pass 2): the Big Top = a round cloth wall + a striped cone seen from within, the ring (curb, sawdust, bulbs), two banks of
+   seats, the band's stand, king poles with platforms, a high wire, two trapezes, strings of bulbs. The Hall of Mirrors = a mirror maze on
+   the square lines (`MAZE_OPEN` = the open ways; every other line is a mirror + a ghost wall). The Penny Arcade and the Sideshow =
+   `tentInside()` + machines / exhibits on square middles. A camera or a ceiling: the building's own ceiling is at h - 0.32.
+
    KNOWN MISSING OR WRONG:
    - `ferris_wheel` and `carousel` are code-sized (6.5 m and 3.6 m): a row's `h` does nothing on them. A big wheel NEEDS A MODEL.
    - NEEDS A MODEL (nothing in MODEL_LIST.md): balloons, plush prizes, a real string of lights, a funhouse mirror, a bleacher stand, a
@@ -96,6 +101,34 @@ function marquee(a, w, d, door, o) {
     lift(a);
 }
 
+/* THE INSIDE OF A CLOTH HALL: a lit cloth lining with strips, a cloth ceiling, a ridge pole with a row of bulbs. Everything inside is lit a
+   little (`glow`): a room has no lamp of its own. `FIT[id]` = the drawn fittings that stop the walker ([x, z, w, d, h] in the building's
+   frame; furnish() writes them as ghost blocks). Squares: X(i) from the left, Z(j) from the BACK wall. */
+const FIT = {};
+function tentInside(a, id, w, d, h, door, t) {
+    const iw = w / 2 - 0.34, il = d / 2 - 0.34, g = 0.55, top = h - 0.42, x = { glow: g, uv: [3.5, 3.5] }, G = FIT[id] = [];
+    a.box(0, 0, 0, 2 * iw, 0.05, 2 * il, PLANK, 0xe0c8a0, { sides: false, glow: 0.45, uv: [1.75, 1.75] });                                   // the board floor you see (the room's own floor is not drawn inside)
+    a.box(0, 0, -il, 2 * iw, top, 0.03, PLAS, CREAM, x); for (const s of [-1, 1]) a.box(s * iw, 0, 0, 0.03, top, 2 * il, PLAS, CREAM, x);
+    const l1 = door.lx - door.cw / 2 - 0.14, r0 = door.lx + door.cw / 2 + 0.14;
+    a.box((-iw + l1) / 2, 0, il, l1 + iw, top, 0.03, PLAS, CREAM, x); a.box((iw + r0) / 2, 0, il, iw - r0, top, 0.03, PLAS, CREAM, x); a.box(door.lx, 2.34, il, r0 - l1, top - 2.34, 0.03, PLAS, CREAM, x);
+    a.box(-iw + 0.44, 0, -il + 0.03, 0.875, top, 0.02, PLAS, t, { glow: g, n: Math.floor(2 * iw / 1.75) + 1, step: [1.75, 0, 0] });
+    for (const s of [-1, 1]) a.box(s * (iw - 0.03), 0, -il + 0.44, 0.02, top, 0.875, PLAS, t, { glow: g, n: Math.floor(2 * il / 1.75) + 1, step: [0, 0, 1.75] });
+    a.box(0, top, 0, 2 * iw, 0.02, 2 * il, PLAS, CREAM, { sides: false, top: false, under: true, glow: 0.62 });
+    a.box(0, top - 0.14, 0, 2 * iw, 0.12, 0.12, WD2, 0x6a4e38, { glow: g });
+    a.box(-iw + 0.7, top - 0.3, 0, 0.1, 0.1, 0.1, null, 0xfff0c0, { glow: 1, n: Math.floor((2 * iw - 1.4) / 0.8) + 1, step: [0.8, 0, 0] });
+    for (const s of [-1, 1]) a.box(-iw + 0.7, top - 0.2, s * il * 0.55, 0.1, 0.1, 0.1, null, 0xffe0a0, { glow: 1, n: Math.floor((2 * iw - 1.4) / 1.6) + 1, step: [1.6, 0, 0] });
+    const solid = (sx, sz, sw, sd, sh, key, tint, o) => { a.box(sx, 0, sz, sw, sh, sd, key || WD, tint == null ? 0xb08a60 : tint, Object.assign({ glow: g, uv: [1.75, 1.75] }, o || {})); G.push([sx, sz, sw, sd, sh]); };
+    return { solid, g, top, iw, il, X: i => -w / 2 + (i + 0.5) * 3.5, Z: j => -d / 2 + (j + 0.5) * 3.5 };
+}
+const fitGhosts = (B, id) => (FIT[id] || []).forEach(q => { const along = q[2] >= q[3], p = along ? B.at(q[0] - q[2] / 2, q[1]) : B.at(q[0], q[1] - q[3] / 2), e = along ? B.at(q[0] + q[2] / 2, q[1]) : B.at(q[0], q[1] + q[3] / 2); ghost(p[0], p[1], e[0], e[1], r2(q[4]), along ? q[3] : q[2]); });
+
+/* THE MIRROR MAZE (4 x 5 squares, i from the left, j from the back wall): the open ways between squares; every other line is a mirror */
+const MAZE_OPEN = ['1,4-0,4', '0,4-0,3', '0,3-0,2', '0,2-1,2', '1,2-1,3', '1,3-2,3', '2,3-2,4', '2,4-3,4', '3,4-3,3', '3,3-3,2', '3,2-3,1', '3,1-2,1', '2,1-2,2', '2,1-1,1', '1,1-0,1', '0,1-0,0', '0,0-1,0', '1,0-2,0', '2,0-3,0'];
+const mazeWalls = (w, d) => { const open = new Set(), K = (a, b) => a < b ? a + '-' + b : b + '-' + a; MAZE_OPEN.forEach(e => { const q = e.split('-'); open.add(K(q[0], q[1])); });
+    const LX = i => -w / 2 + i * 3.5, LZ = j => -d / 2 + j * 3.5, out = [];
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 5; j++) { if (i < 3 && !open.has(K(i + ',' + j, (i + 1) + ',' + j))) out.push([LX(i + 1), LZ(j), LX(i + 1), LZ(j + 1)]); if (j < 4 && !open.has(K(i + ',' + j, i + ',' + (j + 1)))) out.push([LX(i), LZ(j + 1), LX(i + 1), LZ(j + 1)]); }
+    return out; };
+
 /* A STALL: a game or food booth on whole squares (n squares wide, one deep), solid: a counter, a back wall of prizes, an awning, its name.
    `side` = the way its front looks. */
 function stall(id, sx, sy, n, side, name, tint, o) {
@@ -133,13 +166,13 @@ function cage(id, x, z, rot, w, name, tint) {
 exports.buildings = ctx => { bind(ctx);
     /* THE BIG TOP: the square hall you walk in (7 x 7 squares) under a ROUND striped tent 35 m across: sixteen gores, a two-step cone, king
        poles, a cloth tunnel to the door. A ghost ring on the cloth keeps the walker out of the gap between the round wall and the hall. */
-    BIGTOP = building('bigtop', [26, 14, 33, 21, 'W'], 7, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: PLAS, floorIn: 'dirt_2' }, (a, w, d, door) => {
+    BIGTOP = building('bigtop', [26, 14, 33, 21, 'W'], 14, { storeys: 1, leaf: 'leaf_frame_only', leafDouble: true, keyIn: PLAS, floorIn: 'dirt_2' }, (a, w, d, door) => {
         const R0 = 17.5, N = 16, hW = 6;
         gores(a, 0, R0, R0, hW, N, RED, CREAM, null, [3]); gores(a, 3.3, R0, R0, hW - 3.3, N, RED, CREAM, { a0: 3.5 * 360 / N }, [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
         gores(a, hW, R0 + 0.9, 6.2, 7.6, N, RED, CREAM, { roof: true }); gores(a, 13.4, 6.6, 0.25, 4.4, N, CREAM, RED, { roof: true });
         a.cyl(0, hW - 0.55, 0, R0 + 0.95, 0.6, CV(), GOLD, { cap: false, seg: 48, roof: true }); a.cyl(0, 13.25, 0, 6.65, 0.4, CV(), GOLD, { cap: false, seg: 32, roof: true });
         a.cyl(0, 0, 0, 0.1, hW + 0.5, WD2, 0xd8d0c0, { seg: 6, ring: { n: N, r: R0 + 0.12, a0: 11.25 } });                                    // the side poles on the seams
-        for (const s of [-1, 1]) { a.cyl(s * 4.2, 14.2, 0, 0.14, 6.6, 'aluminium', 0xd8d8d8, { roof: true, seg: 8 }); a.box(s * 4.2 + 0.85, 19.9, 0, 1.7, 0.85, 0.04, CV(), s > 0 ? GOLD : BLUE, { roof: true, glow: 0.3 }); }
+        for (const s of [-1, 1]) { a.cyl(s * 6.9, 13.0, 0, 0.14, 7.8, 'aluminium', 0xd8d8d8, { roof: true, seg: 8 }); a.box(s * 6.9 + 0.85, 19.9, 0, 1.7, 0.85, 0.04, CV(), s > 0 ? GOLD : BLUE, { roof: true, glow: 0.3 }); }
         a.cyl(0, 17.6, 0, 0.12, 4.6, 'aluminium', 0xd8d8d8, { roof: true, seg: 8 }); a.box(1.1, 21.0, 0, 2.2, 1.1, 0.04, CV(), RED, { roof: true, glow: 0.3 });
         /* the way in: a cloth tunnel from the round wall to the hall's door, a painted front over it */
         const tx = door.lx, tw = 2.2, z0 = d / 2 + 0.05, z1 = 17.9;
@@ -150,13 +183,39 @@ exports.buildings = ctx => { bind(ctx);
         for (const s of [-1, 1]) a.cyl(tx + s * (tw + 0.5), 6.4, z1 + 0.3, 0.5, 1.2, CV(), GOLD, { r2: 0.02, seg: 10 });
         a.box(tx, 3.4, z1 + 0.3, 2 * tw + 1.0, 2.5, 0.3, WD, RED, { uv: [1.75, 1.75] }); a.box(tx, 5.9, z1 + 0.3, 2 * tw + 1.5, 0.22, 0.44, WD2, GOLD);
         a.sign('BIG TOP', tx, 4.0, z1 + 0.47, 2 * tw + 0.4, 1.5, '#f8e6a8', '#7a1c18', 'rye');
-        a.box(tx - tw - 0.05, 3.42, z1 + 0.47, 0.16, 0.16, 0.06, WD2, 0xfff0c0, { glow: 1, n: 16, step: [0.31, 0, 0] });                          // a row of bulbs under the board
+        a.box(tx - tw - 0.05, 3.42, z1 + 0.47, 0.1, 0.1, 0.06, null, 0xfff0c0, { glow: 1, n: 16, step: [0.31, 0, 0] });                          // a row of bulbs under the board
+        /* ── INSIDE (pass 2): a round cloth wall and a cloth cone seen from within, the ring, two banks of seats, the band's stand, the rigging ── */
+        const g = 0.6, RI = 12.1, A = 360 / N;
+        a.cyl(0, 0, 0, RI, 0.03, 'dirt_2', 0xe8cfa0, { seg: 32, glow: 0.4, uv: [3.5, 3.5] }); a.cyl(0, 13.2, 0, 1.4, 0.1, PLAS, GOLD, { seg: 16, glow: 0.6, under: true });
+        for (let i = 0; i < N; i++) { const dr = i === 3; a.cyl(0, dr ? 2.5 : 0, 0, RI + 0.04, dr ? 4.5 : 7, PLAS, i % 2 ? RED : CREAM, { ri: RI, arc: A, a0: (i + 0.5) * A, cap: false, seg: 32, glow: g, uv: [3.5, 3.5] });
+            a.cyl(0, 6.95, 0, RI + 0.34, 6.3, PLAS, i % 2 ? RED : CREAM, { r2: 1.3, ri: RI + 0.3, arc: A, a0: (i + 0.5) * A, cap: false, seg: 32, glow: 0.55, uv: [3.5, 3.5] }); }
+        a.cyl(0, 6.8, 0, RI + 0.02, 0.4, PLAS, GOLD, { ri: RI - 0.03, cap: false, seg: 48, glow: 0.6 });
+        a.cyl(0, 0, 0, 5.85, 0.06, 'desert', 0xf2dc98, { seg: 32, glow: 0.4, uv: [3.5, 3.5] });                                                 // the sawdust
+        a.cyl(0, 0, 0, 6.2, 0.4, PLAS, RED, { ri: 5.85, seg: 32, glow: g, tintTop: GOLD });                                                      // the ring's curb
+        a.box(0, 0.4, 0, 0.1, 0.1, 0.1, null, 0xfff0c0, { glow: 1, ring: { n: 40, r: 6.03 } });
+        for (const a0 of [115, 295]) for (let k = 0; k < 4; k++) a.cyl(0, 0, 0, 8.65 + k * 1.05, 0.45 * (k + 1), WD, k % 2 ? 0xb89068 : 0xa87c58, { ri: 7.6 + k * 1.05, arc: 130, a0, seg: 32, glow: g, keyTop: PLANK, tintTop: 0xdcc8a0, uv: [1.75, 1.75] });
+        for (const a0 of [115, 295]) a.cyl(0, 0, 0, 7.63, 0.45, PLAS, BLUE, { ri: 7.58, arc: 130, a0, seg: 32, glow: g, cap: false });
+        a.box(0, 0, -10.1, 6.6, 0.5, 2.7, WD, 0xa84038, { keyTop: PLANK, tintTop: 0xdcc8a0, glow: g, uv: [1.75, 1.75] }); a.box(0, 0.5, -11.5, 6.6, 4.6, 0.06, PLAS, PURP, { glow: g });  // the band's stand and its cloth
+        a.box(0, 5.1, -11.46, 6.9, 0.3, 0.1, WD2, GOLD, { glow: 0.6 }); a.box(-3.0, 4.9, -11.4, 0.1, 0.1, 0.08, null, 0xfff0c0, { glow: 1, n: 16, step: [0.4, 0, 0] });
+        for (const s of [-1, 1]) { a.cyl(s * 6.9, 0, 0, 0.16, 13.2, WD2, 0xe0d8c8, { seg: 8, glow: 0.35 }); a.box(s * 6.9, 8, 0, 1.5, 0.1, 1.5, PLANK, 0xdcc8a0, { glow: g, under: true });
+            a.box(s * 7.25, 0.3, 0.55, 0.42, 0.04, 0.04, WD2, 0xe8e0d0, { glow: g, n: 25, step: [0, 0.31, 0] }); for (const q of [-1, 1]) a.box(s * 7.25 + q * 0.21, 0, 0.55, 0.04, 8, 0.04, WD2, 0xe8e0d0, { glow: g });
+            a.box(s * 6.9, 9.6, 0, 0.1, 0.1, 0.1, null, 0xfff0c0, { glow: 1 }); }
+        a.box(0, 8.12, 0, 13.8, 0.035, 0.035, WD2, 0xf0e8d8, { glow: 0.7 });                                                                    // the high wire
+        for (const z of [-3.2, 3.2]) { for (const q of [-0.6, 0.6]) a.cyl(q, 7.6, z, 0.02, 4.2, WD2, 0xe8e0d0, { seg: 4, glow: 0.5 }); a.box(0, 7.6, z, 1.3, 0.05, 0.05, WD2, GOLD, { glow: 0.6 }); }   // two trapezes
+        for (let k = 0; k < 8; k++) { const t = (k * 45 + 22.5) * Math.PI / 180, n = 18, x0 = Math.cos(t) * 1.4, z0 = Math.sin(t) * 1.4, x1 = Math.cos(t) * 11.6, z1b = Math.sin(t) * 11.6;
+            a.box(x0, 12.2, z0, 0.1, 0.1, 0.1, null, k % 2 ? 0xfff0c0 : 0xffd890, { glow: 1, n, step: [r2((x1 - x0) / n), r2(-4.9 / n), r2((z1b - z0) / n)] }); }
         lift(a);
     });
     { const R0 = 17.5, N = 16, V = i => { const t = (i + 0.5) * 2 * Math.PI / N; return BIGTOP.at(Math.cos(t) * R0, Math.sin(t) * R0); };
       for (let i = 0; i < N; i++) { if (i === 3) continue; const p = V(i), q = V(i + 1); ghost(p[0], p[1], q[0], q[1], 5, 0.4); }
       const tx = BIGTOP.door.lx, at = BIGTOP.at; for (const s of [-1, 1]) { const p = at(tx + s * 2.3, 12.3), q = at(tx + s * 2.3, 18.1); ghost(p[0], p[1], q[0], q[1], 3.3, 0.3); }
-      const p = at(tx + 2.3, 17.1), q = at(3.5, 17.1); ghost(p[0], p[1], q[0], q[1], 5, 0.4); const p2 = at(tx - 2.3, 17.1), q2 = at(-3.5, 17.1); ghost(p2[0], p2[1], q2[0], q2[1], 5, 0.4); }
+      const p = at(tx + 2.3, 17.1), q = at(3.5, 17.1); ghost(p[0], p[1], q[0], q[1], 5, 0.4); const p2 = at(tx - 2.3, 17.1), q2 = at(-3.5, 17.1); ghost(p2[0], p2[1], q2[0], q2[1], 5, 0.4);
+      /* inside: the round cloth wall, the two banks of seats (front + both ends), the band's stand (0.5 m: it is climbed) */
+      const W = (r, deg) => { const t = deg * Math.PI / 180; return at(Math.cos(t) * r, Math.sin(t) * r); };
+      for (let i = 0; i < N; i++) { if (i === 3) continue; const a0 = W(12.25, (i + 0.5) * 22.5), a1 = W(12.25, (i + 1.5) * 22.5); ghost(a0[0], a0[1], a1[0], a1[1], 5, 0.3); }
+      for (const c of [115, 295]) { for (let k = 0; k < 4; k++) { const a0 = W(7.75, c + k * 32.5), a1 = W(7.75, c + (k + 1) * 32.5); ghost(a0[0], a0[1], a1[0], a1[1], 1.9, 0.5); }
+        for (const e of [c, c + 130]) { const a0 = W(7.6, e), a1 = W(11.9, e); ghost(a0[0], a0[1], a1[0], a1[1], 1.9, 0.3); } }
+      { const a0 = at(-3.3, -10.1), a1 = at(3.3, -10.1); ghost(a0[0], a0[1], a1[0], a1[1], 0.5, 2.7); } }
 
     /* THE HALL OF MIRRORS: a walk-in funhouse now (4 x 5 squares, its front on the forecourt by the gate). The Mandela Room's door stands where
        it stood, on the hall's west wall. */
@@ -168,19 +227,68 @@ exports.buildings = ctx => { bind(ctx);
         { const X = -(w / 2 + 0.1), Z = d / 2 + 0.1; gores(a, 0, 0.95, 0.95, 9.0, 8, PURP, CREAM, { seg: 16 }, null, X, Z); a.cyl(X, 9.0, Z, 1.3, 2.6, CV(), GOLD, { r2: 0.02, seg: 12 }); flagpole(a, X, Z, 13.2, TEAL); }
         for (const x of [-4.6, 4.2]) { a.box(x, 0.7, d / 2 + 0.1, 2.3, 3.4, 0.08, WD2, GOLD); a.box(x, 0.85, d / 2 + 0.15, 2.0, 3.1, 0.05, 'aluminium', 0xdfeaf2, { glow: 0.45 }); }                 // two tall mirrors on the front
         a.box(door.lx, 2.35, d / 2 + 0.12, door.cw + 1.4, 0.9, 0.2, WD, RED, { uv: [1.75, 1.75] }); a.sign('THIS WAY IN', door.lx, 2.5, d / 2 + 0.24, door.cw + 1.0, 0.6, '#f8e6a8', '#7a1c18', 'rye');
-        a.box(door.lx - door.cw / 2 - 0.6, 3.3, d / 2 + 0.26, 0.14, 0.14, 0.06, WD2, 0xfff0c0, { glow: 1, n: 12, step: [0.3, 0, 0] });
-        stripesZ(a, -d / 2, d / 2, 0, 7, w / 2 + 0.09, 0x8a6ab0); stripesZ(a, -d / 2, d / 2, 0, 7, -w / 2 - 0.09, 0x8a6ab0); lift(a); });
+        a.box(door.lx - door.cw / 2 - 0.6, 3.3, d / 2 + 0.26, 0.1, 0.1, 0.06, null, 0xfff0c0, { glow: 1, n: 12, step: [0.3, 0, 0] });
+        stripesZ(a, -d / 2, d / 2, 0, 7, w / 2 + 0.09, 0x8a6ab0); stripesZ(a, -d / 2, d / 2, 0, 7, -w / 2 - 0.09, 0x8a6ab0);
+        /* ── INSIDE (pass 2): a mirror maze on the square lines, mirrors on every wall, a low lit ceiling ── */
+        const iw = w / 2 - 0.36, il = d / 2 - 0.36, MT = [0xe2f0fa, 0xf6e2f0, 0xe2f8ea, 0xf8f2dc], LX = i => -w / 2 + i * 3.5, LZ = j => -d / 2 + j * 3.5, mir = (x, z, alongX, k) => {
+            a.box(x, 0.12, z, alongX ? 3.0 : 0.05, 3.2, alongX ? 0.05 : 3.0, GLS, MT[k % 4], { glow: 0.7, uv: 'fit', kind: 'wall', win: 'keep' }); a.box(x, 0, z, alongX ? 3.3 : 0.03, 3.5, alongX ? 0.03 : 3.3, 'gold', 0xffffff, { glow: 0.5, uv: [1.75, 1.75] }); };
+        a.box(0, 0, 0, 2 * iw, 0.05, 2 * il, 'checkerboard', 0xffffff, { sides: false, glow: 0.5, uv: [3.5, 3.5] });
+        for (let i = 0; i < 4; i++) { mir(LX(i) + 1.75, -il, true, i); if (i !== 1) mir(LX(i) + 1.75, il, true, i + 1); }
+        for (let j = 0; j < 5; j++) for (const sd of [-1, 1]) mir(sd * iw, LZ(j) + 1.75, false, j + (sd > 0 ? 2 : 0));
+        mazeWalls(w, d).forEach((q, k) => { const ax = q[1] === q[3], x = (q[0] + q[2]) / 2, z = (q[1] + q[3]) / 2;
+            a.box(x, 0, z, ax ? 3.5 : 0.16, 3.5, ax ? 0.16 : 3.5, 'gold', 0xffffff, { glow: 0.5, uv: [1.75, 1.75] }); for (const sd of [-1, 1]) a.box(x + (ax ? 0 : sd * 0.09), 0.14, z + (ax ? sd * 0.09 : 0), ax ? 3.1 : 0.02, 3.2, ax ? 0.02 : 3.1, GLS, MT[(k + (sd > 0 ? 1 : 0)) % 4], { glow: 0.7, uv: 'fit', kind: 'wall', win: 'keep' }); });
+        a.box(0, 3.9, 0, 2 * iw, 0.02, 2 * il, 'diamond', 0x9a78c8, { sides: false, top: false, under: true, glow: 0.5, uv: [3.5, 3.5] });
+        for (let j = 0; j < 5; j++) a.box(LX(0) + 1.75, 3.78, LZ(j) + 1.75, 0.1, 0.1, 0.1, null, 0xfff0c0, { glow: 1, n: 4, step: [3.5, 0, 0] });
+        for (const sd of [-1, 1]) a.box(sd * iw, 3.5, 0, 0.04, 0.4, 2 * il, PLAS, PURP, { glow: 0.5 }); for (const sd of [-1, 1]) a.box(0, 3.5, sd * il, 2 * iw, 0.4, 0.04, PLAS, PURP, { glow: 0.5 });
+        lift(a); });
 
     /* THE PENNY ARCADE (the Midway) and THE SIDESHOW (by the Lady Who Knows): two cloth halls you walk in */
-    ARCADE = building('arcade', [20, 12, 24, 16, 'W'], 3.6, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: PLAS, floorIn: PLANK }, (a, w, d, door) => marquee(a, w, d, door, { name: 'PENNY ARCADE', tint: BLUE, h: 3.6, ink: '#fff2b0', board: '#16305a' }));
-    SIDESHOW = building('sideshow', [26, 33, 31, 36, 'N'], 3.6, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: PLAS, floorIn: PLANK }, (a, w, d, door) => marquee(a, w, d, door, { name: 'SIDESHOW', tint: PURP, h: 3.6, ink: '#fff2b0', board: '#3a2450', signW: 6 }));
+    ARCADE = building('arcade', [20, 12, 24, 16, 'W'], 3.6, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: PLAS, floorIn: PLANK }, (a, w, d, door) => { marquee(a, w, d, door, { name: 'PENNY ARCADE', tint: BLUE, h: 3.6, ink: '#fff2b0', board: '#16305a' });
+        const I = tentInside(a, 'arcade', w, d, 3.6, door, BLUE);
+        I.solid(I.X(0), I.Z(3), 2.7, 0.8, 1.02, WD, 0xb08a60, { keyTop: WD2, tintTop: 0xe8d0a0 }); a.box(I.X(0), 0.02, I.Z(3) - 0.42, 2.7, 0.98, 0.03, PLAS, BLUE, { glow: I.g });    // the change counter (square 0, 3)
+        for (const y of [1.3, 1.95, 2.6]) a.box(-I.iw + 0.24, y, I.Z(3), 0.4, 0.05, 2.6, WD2, 0xd8c098, { glow: I.g });
+        [0xe04848, 0x48a0e0, 0xf0c840, 0x58c070].forEach((t, k) => { for (const y of [1.35, 2.0, 2.65]) a.box(-I.iw + 0.24, y, I.Z(3) - 1.1 + k * 0.5 + (y > 1.9 && y < 2.3 ? 0.2 : 0), 0.28, 0.34, 0.28, 'carpet', t, { n: 2, step: [0, 0, 1.0], uv: [0.6, 0.6] }); });
+        a.sign('PRIZES', -I.iw + 0.06, 3.0, I.Z(3), 2.2, 0.3, '#fff2b0', '#16305a', 'rye', { ry: 90 });
+        lift(a); });
+    SIDESHOW = building('sideshow', [26, 33, 31, 36, 'N'], 3.6, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: PLAS, floorIn: PLANK }, (a, w, d, door) => { marquee(a, w, d, door, { name: 'SIDESHOW', tint: PURP, h: 3.6, ink: '#fff2b0', board: '#3a2450', signW: 6 });
+        const I = tentInside(a, 'sideshow', w, d, 3.6, door, PURP);
+        for (let i = 0; i < 5; i++) { a.box(I.X(i), 0, I.Z(0) - 0.3, 2.7, 0.3, 2.2, WD, 0xa84038, { glow: I.g, keyTop: PLANK, tintTop: 0xdcc8a0, uv: [1.75, 1.75] }); a.box(I.X(i), 0.3, I.Z(0) + 0.78, 2.7, 0.04, 0.05, WD2, GOLD, { glow: 0.6 });
+            a.box(I.X(i), 0.34, -I.il + 0.06, 2.5, 2.7, 0.03, 'damask', [0x8a4a6a, 0x5a4a8a, 0x8a3a3a, 0x4a6a8a, 0x6a5a3a][i], { glow: I.g, uv: [1.75, 1.75] }); }
+        a.sign('ODDITIES', 0, 3.02, -I.il + 0.1, 5.2, 0.28, '#fff2b0', '#3a2450', 'rye');
+        lift(a); });
 };
 
 exports.furnish = ctx => { bind(ctx);
-    /* the big top's ring */
-    put(BIGTOP, 'riser_1', 0, -9.5, { face: 0 }); put(BIGTOP, 'riser_2', 0, -10.2, { face: 0 }); put(BIGTOP, 'riser_1', -9.5, 0, { face: 90 }); put(BIGTOP, 'riser_1', 9.5, 0, { face: 270 });
-    put(BIGTOP, 'instrument_drum', 6, -7.5, { face: 200 }); put(BIGTOP, 'mirror_ball', 0, 0, { y: 4.6 }); put(BIGTOP, 'rug_round', 0, 0, { y: 0.02 });
-    put(ARCADE, 'slot_machine', 4.2, -5.2, { face: 180, floor: true });
+    /* a prop inside wears `floor: true` (without it a prop by a wall or a ghost block stands on top of it); `y` under 1 m lifts */
+    const inn = (B, key, lx, lz, o) => put(B, key, lx, lz, Object.assign({ floor: true }, o || {}));
+    const sqx = (B, i) => -B.fw / 2 + (i + 0.5) * 3.5, sqz = (B, j) => -B.fd / 2 + (j + 0.5) * 3.5, at = (B, key, i, j, o) => inn(B, key, sqx(B, i), sqz(B, j), o);
+    fitGhosts(ARCADE, 'arcade'); fitGhosts(SIDESHOW, 'sideshow');
+    mazeWalls(MIRRORS.fw, MIRRORS.fd).forEach(q => { const p = MIRRORS.at(q[0], q[1]), e = MIRRORS.at(q[2], q[3]); ghost(p[0], p[1], e[0], e[1], 3.5, 0.2); });
+
+    /* THE BIG TOP: the ring's tubs and ball, the cannon, the band on its stand, two follow spots by the way in, ropes at the door */
+    inn(BIGTOP, 'rug_round', 0, 0, { y: 0.05 }); put(BIGTOP, 'mirror_ball', 0, 0, { y: 9.4 });
+    inn(BIGTOP, 'decor_armour_plinth', 2.6, 1.6, {}); inn(BIGTOP, 'decor_armour_plinth', -2.6, 1.6, {}); inn(BIGTOP, 'decor_armour_plinth', 0, -3.1, {}); inn(BIGTOP, 'beach_ball', 2.6, 1.6, { y: 0.68 });
+    inn(BIGTOP, 'ship_cannon', -4.4, -7.0, { face: 150 }); inn(BIGTOP, 'psx_metal_barrel_mp_1', -5.9, -6.2, {}); inn(BIGTOP, 'hw_straw', 5.2, -7.2, { face: 30 }); inn(BIGTOP, 'hw_straw_2', 6.0, -6.1, { face: 100 });
+    inn(BIGTOP, 'drum_kit', 0.2, -10.3, { y: 0.5, face: 180 }); inn(BIGTOP, 'instrument_drum', 2.4, -9.6, { y: 0.5, face: 200 }); inn(BIGTOP, 'decor_piano', -2.3, -10.5, { y: 0.5, face: 180 });
+    inn(BIGTOP, 'music_stand', 1.5, -9.3, { y: 0.5, face: 180 }); inn(BIGTOP, 'meshy_trumpet', 2.6, -10.6, { y: 0.55 }); inn(BIGTOP, 'pa_speaker', -3.9, -9.2, { face: 180, noLight: true }); inn(BIGTOP, 'pa_speaker', 3.9, -9.2, { face: 180, noLight: true });
+    inn(BIGTOP, 'followspot', 3.4, 10.4, { face: 20, noLight: true }); inn(BIGTOP, 'followspot', -5.2, 10.2, { face: 340, noLight: true });
+    for (const z of [9.0, 7.2]) for (const x of [-2.5, 0.8]) inn(BIGTOP, 'rope_stanchion', x, z, {});
+    inn(BIGTOP, 'library_ladder', 6.9, -1.6, { face: 90 }); inn(BIGTOP, 'ball_cart', -6.9, 2.0, {});
+
+    /* THE PENNY ARCADE (4 x 4): a machine on the middle of each wall square; the door square (1, 3), the middle and the aisle stay clear */
+    at(ARCADE, 'arcade_cabinet', 0, 0, { face: 180, noLight: true }); at(ARCADE, 'pinball_machine', 1, 0, { face: 180, noLight: true }); at(ARCADE, 'arcade_cabinet', 2, 0, { face: 180, noLight: true }); at(ARCADE, 'claw_machine', 3, 0, { face: 180, noLight: true });
+    at(ARCADE, 'pinball_machine', 0, 1, { face: 90, noLight: true }); at(ARCADE, 'jukebox', 0, 2, { face: 90, noLight: true }); at(ARCADE, 'slot_machine', 3, 1, { face: 270, noLight: true }); at(ARCADE, 'money_wheel', 3, 2, { face: 270, noLight: true });
+    at(ARCADE, 'air_hockey_table', 2, 1, {}); at(ARCADE, 'claw_machine', 3, 3, { face: 270, noLight: true });
+    inn(ARCADE, 'cash_register', sqx(ARCADE, 0) + 0.5, sqz(ARCADE, 3), { y: 1.03, face: 0 }); inn(ARCADE, 'bar_stool', sqx(ARCADE, 0) - 0.3, sqz(ARCADE, 3) + 0.9, {}); inn(ARCADE, 'trash_bin', sqx(ARCADE, 2) - 1.2, sqz(ARCADE, 3) + 1.1, {});
+
+    /* THE SIDESHOW (5 x 3): five things on a red step along the back row, one to a square; two more on the end squares; ropes before them */
+    at(SIDESHOW, 'specimen_shelf', 0, 0, { y: 0.3, face: 180 }); at(SIDESHOW, 'anatomy_skeleton', 1, 0, { y: 0.3, face: 180 }); at(SIDESHOW, 'trap_iron_maiden', 2, 0, { y: 0.3, face: 180 }); at(SIDESHOW, 'dream_eye', 3, 0, { y: 0.3, face: 180, noLight: true }); at(SIDESHOW, 'museum_vitrine', 4, 0, { y: 0.3, face: 180 });
+    inn(SIDESHOW, 'skull', sqx(SIDESHOW, 4), sqz(SIDESHOW, 0), { y: 1.3 }); at(SIDESHOW, 'meshy_tesla_coil', 0, 1, { noLight: true }); at(SIDESHOW, 'giant_hourglass', 4, 1, {}); at(SIDESHOW, 'bird_cage', 4, 2, {}); inn(SIDESHOW, 'crow', sqx(SIDESHOW, 4), sqz(SIDESHOW, 2), { y: 0.9 });
+    for (let i = 0; i < 5; i++) inn(SIDESHOW, 'rope_stanchion', sqx(SIDESHOW, i) - 1.3, sqz(SIDESHOW, 0) + 1.55, {}); inn(SIDESHOW, 'rope_stanchion', sqx(SIDESHOW, 4) + 1.3, sqz(SIDESHOW, 0) + 1.55, {});
+    inn(SIDESHOW, 'mugshot_wall', sqx(SIDESHOW, 0) - 1.3, sqz(SIDESHOW, 2) + 0.4, { face: 90 }); inn(SIDESHOW, 'candelabra', sqx(SIDESHOW, 1) - 1.2, sqz(SIDESHOW, 2) + 1.1, { noLight: true });
+
+    /* THE HALL OF MIRRORS: the last square of the maze */
+    at(MIRRORS, 'dream_eye', 3, 0, { noLight: true }); put(MIRRORS, 'mirror_ball', sqx(MIRRORS, 3), sqz(MIRRORS, 0), { y: 3.1 }); inn(MIRRORS, 'lava_lamp_floor', sqx(MIRRORS, 2) + 1.1, sqz(MIRRORS, 2) - 1.1, { noLight: true });
 };
 
 exports.ground = ctx => { bind(ctx);
@@ -225,7 +333,7 @@ exports.ground = ctx => { bind(ctx);
         a.box(s * X, 1.2, 1.42, 1.0, 1.1, 0.06, GLS, 0x20262c, { uv: 'fit' }); a.sign('TICKETS', s * X, 2.4, 1.44, 1.9, 0.5, '#fbeeb8', '#4a1614', 'rye'); }
       a.box(0, 5.0, 0, 2 * X - 2.6, 1.9, 0.36, WD, RED, { uv: [1.75, 1.75] }); a.box(0, 6.9, 0, 2 * X - 2.2, 0.2, 0.5, WD2, GOLD); a.box(0, 4.8, 0, 2 * X - 2.2, 0.2, 0.5, WD2, GOLD);
       a.sign('CIRCUS', 0, 5.15, 0.2, 2 * X - 3.4, 1.6, '#f8e6a8', '#7a1c18', 'rye'); a.sign('CIRCUS', 0, 5.15, -0.2, 2 * X - 3.4, 1.6, '#f8e6a8', '#7a1c18', 'rye', { ry: 180 });
-      for (const z of [0.2, -0.2]) a.box(-X + 1.6, 7.1, z, 0.16, 0.16, 0.08, WD2, 0xfff0c0, { glow: 1, n: 23, step: [0.33, 0, 0] });
+      for (const z of [0.2, -0.2]) a.box(-X + 1.6, 7.1, z, 0.1, 0.1, 0.08, null, 0xfff0c0, { glow: 1, n: 23, step: [0.33, 0, 0] });
       arch('gate', gx(47.5), gx(32), 270, a);
       for (const sy of [30, 33]) ghost(gx(47.5), gc(sy) - 1.4, gx(47.5), gc(sy) + 1.4, 7, 2.8); }
 
