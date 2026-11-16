@@ -27,8 +27,14 @@
      - THE GROUND: gravel shingle on the North Shore (plan char `s`, the tool's one new paint letter), mud at the Reeds and round the Marsh's pools.
      - the Marsh's two pools, rowboats, logs, frogs, moths, dead snags, seven trees, and the Loch Ness Monster (mondo's OK 11-15): it WALKS THE BED,
        its neck and back out of the water, wandering south of the rock (seen on screen 11-16).
+     - THE DRESSING (pass 3, seen): a dirt path round the whole lake from the three gaps in the corn; the ocean pack's seaweed as the water plants
+       in the shallows (the Reeds, the south shore, the Marsh's pools); about ninety drawn lily pads on the Lake, south and the Marsh's pools; stones
+       and driftwood on the shingle, a second boat, two iron benches; ferns, frogs, a rabbit at the Reeds; rope, a crate, traps on the dock, a
+       NO SWIMMING board at its foot; a camp on the east bank (tent, fire ring, chairs, cooler); a chair, bucket and cooler on the jetty; dead trees,
+       dead bushes, ferns and a flamingo in the Marsh; a bin, a cooler, crows on the shelter, rabbits, butterflies at the picnic ground; twelve more
+       trees; three blank signposts; two marker buoys off the rock.
    MISSING / WAITING:
-     - pass 3 dressing (reeds, lily pads, shore line, fish, the Marsh), pass 4 atmosphere (mist, night), pass 5.
+     - pass 4 atmosphere (mist, night), pass 5 polish.
      - no residents with routines, no encounter table (mondo's baked tables).
    NEEDS A MODEL (nothing on R2 or in any pack file, MODEL_LIST.md searched 11-16: reed, cattail, bulrush, lily, duck, swan, heron, pier, canoe):
      - reeds / cattails (pass 3 will try the ocean pack's seaweed in the shallows and say how it reads), a duck or a heron, a mooring bollard with rope,
