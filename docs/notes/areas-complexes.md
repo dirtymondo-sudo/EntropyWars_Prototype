@@ -7661,6 +7661,22 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
 - **FRAME RATE on today's room** (the other four Sewers threads made the whole room heavier: the same view fell from 2.50 to 1.55 with this
   district's FIRST build baked in): with passes 1 to 3: 1.60. The district's own cost is inside the noise.
 
+**PASS 4, THE ATMOSPHERE** (drawn, because the district has two real lights and the air is the tool's shell):
+- **DRAWN LIGHT:** `wash()` = three sheets of the wall's own brick, paler, with `glow` 0.11 / 0.07 / 0.035, behind a fire that has no real
+  light (the Flood's torch, the candelabra at the niches; the crystal seam's in a cold tint); the firebox's back glows hot. FOUND ON
+  SCREEN: at glow 0.24 a wash reads as a panel of different brick; pools of lit floor under the fires read as round brick rugs from the
+  stump's top (removed); where a REAL light stands (the portcullis) a wash is not needed.
+- **WALLS:** eighteen dark stain runs, rust under the rising main, lime weeping from the niches; two stencilled plates
+  (`THE SUMP · DEEP WATER` on its rail, `THE ADIT` on the stem's first cap beam; the plan's own names).
+- **LIFE IN THE LIGHT:** six `woods_glowcap` (the stump's foot, the Flood's far corner), ferns on the stump, moths in the shaft.
+- **CHECKED OFFLINE** with the game's own `hqTerrainCompile` / `hqTerrainFeet`: the Ledge 1.4 m, the stair's middle 0.61 m, the stump's top
+  3.9 m, the Sump has no footing (never entered), the Flood is waded.
+- **TRAPS:** a stain or wash written at a point with no wall behind it hangs in the air as a dark box (one stood in front of the
+  portcullis: check every wall point against the plan's squares); `femur` and `ulna` stand upright a metre tall (removed);
+  `psx_padlock_2` is fine, it was the box above.
+- **NOT DONE:** particles (dust in the shaft's light, embers at the firebox) and sound need an air / sound hook in `bake-sewers.js`
+  (the tool's row is held: a note is on the board). Frame rate with pass 4: 1.50 (1.55 to 1.60 before: inside the noise).
+
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
   `psx_old_mattress_mp_1`*, `footlocker`*, `psx_supply_crate_1..`*, `psx_metal_barrel_mp_0..3`*, `psx_jerrycan_1`*, `meshy_sandbags`*, `money_sacks`*, `cable_drum`*, `hw_shovel`*,
@@ -8318,6 +8334,22 @@ P00-01 The Chimney (a 7 x 6 hall, 12.25 m). Built on mondo's order of 11-16 (doc
   niches. None stands on a walk a square wide. No new lines (none are invented).
 - **FRAME RATE on today's room** (the other four Sewers threads made the whole room heavier: the same view fell from 2.50 to 1.55 with this
   district's FIRST build baked in): with passes 1 to 3: 1.60. The district's own cost is inside the noise.
+
+**PASS 4, THE ATMOSPHERE** (drawn, because the district has two real lights and the air is the tool's shell):
+- **DRAWN LIGHT:** `wash()` = three sheets of the wall's own brick, paler, with `glow` 0.11 / 0.07 / 0.035, behind a fire that has no real
+  light (the Flood's torch, the candelabra at the niches; the crystal seam's in a cold tint); the firebox's back glows hot. FOUND ON
+  SCREEN: at glow 0.24 a wash reads as a panel of different brick; pools of lit floor under the fires read as round brick rugs from the
+  stump's top (removed); where a REAL light stands (the portcullis) a wash is not needed.
+- **WALLS:** eighteen dark stain runs, rust under the rising main, lime weeping from the niches; two stencilled plates
+  (`THE SUMP · DEEP WATER` on its rail, `THE ADIT` on the stem's first cap beam; the plan's own names).
+- **LIFE IN THE LIGHT:** six `woods_glowcap` (the stump's foot, the Flood's far corner), ferns on the stump, moths in the shaft.
+- **CHECKED OFFLINE** with the game's own `hqTerrainCompile` / `hqTerrainFeet`: the Ledge 1.4 m, the stair's middle 0.61 m, the stump's top
+  3.9 m, the Sump has no footing (never entered), the Flood is waded.
+- **TRAPS:** a stain or wash written at a point with no wall behind it hangs in the air as a dark box (one stood in front of the
+  portcullis: check every wall point against the plan's squares); `femur` and `ulna` stand upright a metre tall (removed);
+  `psx_padlock_2` is fine, it was the box above.
+- **NOT DONE:** particles (dust in the shaft's light, embers at the firebox) and sound need an air / sound hook in `bake-sewers.js`
+  (the tool's row is held: a note is on the board). Frame rate with pass 4: 1.50 (1.55 to 1.60 before: inside the noise).
 
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, all sections, + pack-claims.md; every key checked against the live catalogue).
 Not used anywhere in the Sewers before this district's passes unless marked *:
