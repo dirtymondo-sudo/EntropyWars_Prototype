@@ -83,10 +83,15 @@ const ORDER = ['C', 'T', 'G', 'M'], ZONE_ORDER = ['T', 'G', 'C', 'M'];   // the 
 const DISTRICTS = {}; ORDER.forEach(id => { DISTRICTS[id] = require(path.join(REPO, 'docs/areas/woods/districts', id + '.js')); if (PLAN.districts[id] == null) throw new Error('no district ' + id + ' in the layout'); });
 const DICE = { 'dress:C': 36, 'dress:T': 1377330049, 'dress:G': 566877657, 'dress:M': 372329789, trees: 1659391338, 'horror:C': 1521009274, 'horror:T': 183829286, 'horror:G': 2272949896, 'horror:M': 1522822202, 'life:C': 778520746, 'life:T': 1241599519, 'life:G': 899598347, 'life:M': 1950804137 };
 const OWN = { C: 3601, T: 3602, G: 3603, M: 3604 };
+const BUILD_SOW = { C: 377, T: 377, G: 430, M: 430 };   // the count each district's build started on, 2026-11-16 (THE BUILD SEEDS HOLD, in stage())
 let CUR = null;
 const ctx = { PLAN, plot, P, cell, open, features, props, doors, npc, count, C, N, G, W, PL, HALF, LEVEL, gx, gc, r2 };
 function stage(name) { ORDER.forEach((id, i) => { const m = DISTRICTS[id], k = name + ':' + id;
     if (process.env.WOODS_DICE) console.log('dice ' + k + ' ' + seed); else seed = DICE[k] != null ? DICE[k] : OWN[id] + (name === 'build' ? 100 : 0);
+    /* THE BUILD SEEDS HOLD (2026-11-16, the Clearing thread; board note of the day): a `sow` row's seed counts the feature rows before it, and the builds run C, T, G, M,
+       so every feature row one district's build added re-threw the build scatters of the districts after it. Each district's build now starts its count on the
+       number it had that day (BUILD_SOW; WOODS_SOW=1 prints them as they fall), so a build row moves nobody else's scatter. */
+    if (name === 'build') { if (process.env.WOODS_SOW) console.log('sow build:' + id + ' ' + (features.length + SOW_SHIFT)); else if (BUILD_SOW[id] != null) SOW_SHIFT = BUILD_SOW[id] - features.length; }
     if (typeof m[name] !== 'function') return; CUR = id; try { m[name](ctx); } finally { CUR = null; } }); }
 
 /* ── THE WAYS OUT: a door on the room's wall, and the path carried to it (whole squares, two wide) ── */

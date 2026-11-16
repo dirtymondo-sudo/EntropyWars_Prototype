@@ -6447,6 +6447,45 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   is bare rock ground; (7) the code-drawn candle ring was replaced by pack candles; (8) no fish in the pool rather than reef fish; (9) Meshy pieces that fit were held back
   while a pack piece could do the job.
 
+## THE CLEARING — the Woods' district C, the third district thread (2026-11-16)
+mondo 11-16 (his order before a nap, docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped, no questions, at most five passes.
+File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR a pass, each seen in the probe.
+- **THE FIRST LOOK (12 views, before any change):** a bright lawn under birches; the Old Tree (9.5 m) did not stand out of 8.5 m birches; the Trail West, the
+  Crossroads and the three Deep woods plots held a sign or an animal each; the Fence Line's gate was a gap in the rail; the Stair stood on bare grass.
+- **FITS THIS DISTRICT (the lists read: the whole live catalogue, 1,853 keys, + MODEL_LIST.md §6, §7, §12b, §13's folders, pack-claims.md):** camp: `camping_tent`,
+  `meshy_camping_tent`, `campfire`, `fallen_log`, `beach_cooler`, `solo_cup`, `folding_chair`, `instrument_guitar_lying`, `instrument_tambourine`, `instrument_drum`,
+  `retro_radio`, `psx_cassette_tape_mp_*`, `psx_glass_bottle_*`, `psx_canned_food_mp_*`, `coffee_mug`, `cauldron`, `psx_matchbox_*`, `psx_lighter_mp_1`, `meshy_rope`,
+  `item_binoculars`, `psx_old_mattress_mp_1`, `shag_rug`, `skateboard`; trailhead + station: `signpost`, `missing_board`, `metal_trash_can`, `rocking_chair`,
+  `railway_lantern`, `ship_lantern`, `meshy_hanging_lantern`, `iron_garden_bench`, `field_radio`, `radio_console`, `map_table`, `brochure_rack`, `item_walkie_talkie`,
+  `psx_walkie_talkie_*`, `item_flare_gun`, `footlocker`, `cot`, `psx_bed_*`, `psx_shelf_mp_*`, `psx_chair_mp_*`, `psx_table_large_*`, `coffee_maker`, `fire_extinguisher`,
+  `psx_flashlight_*`, `evidence_board`, `key_rack`, `turnout_gear_rack`, `power_pole`; the fence + the Estate's edge: `hw_straw*`, `hw_pumpkin*`, `hw_scarecrow*`,
+  `hw_crop*`, `hw_farmland`, `hw_shovel`, `wooden_bucket`, `ancient_well`, `hitching_rail`, `chicken`; the old playground: `play_swing`, `play_slide`, `play_sandbox`
+  (free on the city's pack list), `beach_ball`, `football`, `psx_lollipop_mp_*`, `skateboard`; the deep woods: `hollow_dead_tree`, `hollow_tree`, `crashed_car_2`,
+  `tire_stack`, `hw_body*`, `hw_part_*`, `femur`, `ulna`, `psx_meat_1`, `psxg_rock_*`, `psxg_dead_bush_*`, `hw_web*`, `trap_*`, `bee_frames`, `chrysalis`, `caterpillar_bug`,
+  `mushroom`, `fae_toadstool`, `owl_statue` (G's), `bat_*`; the Stair's foot: `stone_urn`, `rope_stanchion`, `doormat`. LEFT OUT: `abandoned_house` (36 x 23 m, bigger
+  than any glade here), `park_bench` / `notice_board` / `lesson_sign` (code-built stand-ins, MODEL_LIST §8), the six trailers (M's look).
+- **PASS 1, THE EXTERIORS (seen, 11 + 8 views):** all in `build` (new rows, the district's own dice) on yards opened in `cut`.
+  - THE YARDS: forest squares opened as DIRT (`p`), not grass. A path square is walked and painted but is not a "free square", so a plot's clearing middle, and with
+    it THE STAIR, the spawn and every old piece, stays where it was. (Opening grass in `cut` moves the middle and every `put` / `dec` of the plot.)
+  - THE RANGER STATION (P00-03, squares 8..10 x 42..43, porch on row 41, front to the trail): a walk-in, the cabin's recipe (hollow `texbuilding` `woods:ranger` + one
+    arch row): sage boards on a stone base course, a green tin gable, six dark panes in pale frames, a railed porch under a tin lean-to, a stove pipe, a radio mast.
+    It stands on the row-3 flat band (rows 40..43 are level at 3.5 m from the west wall to column 31).
+  - THE TRAIL SHELTER (P02-03, squares 25..26 x 42): a three-sided log lean-to in a pocket of the trees, open to the trail; its walls are the pocket's own forest edges.
+  - THE HUNTER'S STAND (P00-04, square 8 x 53): a box blind on four legs with a ladder (dressing, not a climb; walked under).
+  - THE GATE (P01-05): two 4.5 m posts and a beam over the Estate trail, a blank hung board, both plank leaves open (three arch rows; a leaf = its own row with `rot`).
+  - THE OLD PLAYGROUND (P02-05, squares 30..33 x 63..66): `play_swing`, `play_slide`, `play_sandbox` on a worn dirt lot.
+  - THE COURT AT THE STAIR'S FOOT (squares 29..32 x 58..59): two lamp posts (lit boxes, no light) and two `stone_urn`. The flight, the spawn and the link are untouched.
+  - THE OLD TREE: 19 m (was 9.5), companions 11.5 and 10.5: heights in the old `dress` row, no row added, no kind changed.
+  - THE GROUND: `ground: 'grass_dark_fantasy'`, like T and M. Only G still wears the lawn.
+  - THE TOOL (board note 11-16): bake-woods.js THE BUILD SEEDS HOLD. A `sow` row's seed counts the feature rows before it and the builds run C, T, G, M, so C's eight
+    new rows re-threw T's nine rock scatters. Each district's build now starts its count on the day's number (`BUILD_SOW`). PROOF OF NOBODY MOVED: every row
+    outside the district is the same before and after except the ground's paint map and one floor rectangle that was re-split (the same squares).
+  - PROBE TIP: an fp view's `y` is the walker's FEET (the ground there: 3.5 on row 3, 1.75 / 0 lower down); 1.7 m more and the eye is in the ceiling.
+- **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
+  the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
+  Playground); dirt yards under the new pieces.
+- **NEEDS A MODEL:** a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a hammock, a backpack, a camper van; a gate leaf with a diagonal brace.
+
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
   A boulder or crag = a tapered `cyl` (`r2` under half of `r`, `seg` 5 to 7) so nothing reads as a box; a solid block = a `plateau` (`edge: 0.08`) under a rock box skin 6 cm proud.
@@ -6482,6 +6521,12 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
 - **A timber stage / band shell on a plateau** (`woods:G:stage` in districts/G.js): deck slab + skirt boxes (leave the steps' width open in the front skirt), a back wall, corner posts, a `roof` `form: 'gable'`; `rail` rows keep the walker on it. No post in the middle of the front: it stands on the steps.
 - **Standing stones that block**: catalogue `sarsen` / `menhir` / `greek_column` with their own `h` (a prop row's `h` scales the model), one a square; `trilithon` on two whole squares (x on the line between them).
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
+- **A yard for a new piece without moving the old ones** (district C): open its squares as `p` in `cut`, not `g` (the plot's middle is the mean of its grass squares).
+- **Level ground for a building**: the ground is flat 7 m either side of a plot's middle and between two neighbours of one level; row 3 of district C is one flat band.
+- **A lean-to roof**: `form: 'shed'` is low at +z and draws a full-height board on its high side: keep `size[1]` under a metre, or it reads as a wall.
+- **A swung gate or door leaf**: its own arch row with `rot` (parts cannot turn). **A lamp post**: a lit box (`glow: 1`, no key) under a dark cap, no light.
+- **Sheets that read well on a timber building**: `urban:WoodGeneric1b` tinted sage `0xa9c29a` + `gain: 1.5`, trim `0xe2dccb`, `urban:MetalCorrugatedPainted1a` tinted
+  `0x7f9a78` for a tin roof, `urban:GlassWindowResidential1a` tinted `0x6c747c` with `uv: 'fit'` for a dark pane.
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
   sandbags and barricade; the cantonment's bench, bins, dumpster, pallets, car park; the apron's freight, forklifts, engine stand, a
