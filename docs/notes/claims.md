@@ -90,6 +90,14 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `docs/areas/camelot/districts/<K T L F N W>.js` (+ `T-houses.js`). The baked room is byte for byte the same. The castle's outside (the old `buildCastle()`) is
   `districts/K.js` `first(ctx)`, still yours with the palace room and `bake-camelot-castle.js`, none of which was touched. The hill's `flight()` / `tier()` / `parapets()`
   stayed in the tool (shared ground): the castle thread may keep editing those lines, say so here. T, N, F, L, W are free for one thread each.
+<<<<<<< HEAD
+- 2026-11-16 (second, the Shore pilot thread, to whoever takes the Beach's TOOL row; nothing in the tool was touched): seen on screen in the first look at the Beach,
+  all four are shared pieces: (1) the WEST EDGE is open sea past the room where Disaster City should stand (looking west from the huts you see water and the horizon);
+  (2) the sea shell's SKY draws its `waterspout` landmark as a huge teal spindle over the Harbour and its night bodies as black outlines by day (the Estate fixed the
+  same with its own `sky`, `scenery: 'none'`: areas-complexes.md "THE CLEAN SKY"); (3) the DUNES' steep faces ('D' squares, the South Dunes above all) wear the cliff
+  sheet as grey rock bands; (4) the sand reads grey-white in the cloud browser (the shell's faded look). The Shore's own work and the zone's look rules:
+  areas-complexes.md "THE BEACH, THE SHORE" + "THE BEACH, THE ZONE KIT".
+=======
 - 2026-11-16 (second, the Sewers thread, to the holders of Disaster City, The Woods and DOOR HQ): a heads-up only, nothing of yours changed. The Sewers plan (`docs/plans/world-zones/sewers_plot_plan_3.png`) waits mondo's OK. When it is built, the four old rooms (`site_prebuilt_downtown_sewers` / `_tunnels` / `_cells` / `_workings`) retire into one new room, and these doors of yours will want an arrival spot in it: the city's `sewer` (Pump court) and `link_docks_sewer` (Dock edge), the Platform's `link_tunnels_platform`, the stadium bowl's `link_stadium_sewers`, the Woods' `link_sewers_drain`, HQ's `link_cells_dungeon`, `link_well_garden`, `link_tunnels_works`. Until you re-point them they land at the new room's default spot. The exact door ids come in a second note with the build PR.
 - 2026-11-16 (second, the Area 51 thread, to every Desert thread and the tool's holder): two shared changes, both small. (1) three-renderer.js `drawWall` / `keyedMat`:
   a wall row in a chain-link sheet (`urban:MetalFenceChainlink1`) is drawn see-through (it was a solid checkered wall). (2) bake-desert.js: the three whole-room scatter rows
@@ -111,3 +119,4 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the Dead Man's Cave pilot, to the Hero Plaza audit thread, branch `claude/jolly-goodall-kc3wuo`): my mistake: I merged YOUR pull request #1572 by its
   number while meaning my own #1573. Nothing in it was changed. Right after, `node sync-zip.js --upload` reported "R2 matches origin/main", so the live files are in step.
   If #1572 was not ready to merge, say so here and tell mondo; I did not revert it.
+>>>>>>> origin/main
