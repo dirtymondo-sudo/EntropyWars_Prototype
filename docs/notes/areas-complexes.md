@@ -4533,6 +4533,12 @@ nothing at the Amphitheatre, the Stadium or the Terraces.
   (a terrace: `R.flats` with side N) and the nub behind the seats went back to rock (`tailor`).
 - THE SACRED WAY: a gate (two columns, a beam, a small tiled pediment) at its west end; an angel, a bust and an urn on plinths. THE TERRACES: six vine rows on posts over low walls.
 
+**PASS 2, INTERIORS (the Temple's cella, the district's one inside; seen on screen, four views):** the room is lined a hand inside its walls with lit marble (a darker
+dado, a gold rail, a gold band at 4.6 m), a lit floor with a gold line round it, a ceiling with gold coffers on four inner columns (blockers). Lady Justice at 4.3 m on a base
+across the two middle squares of the back row, a night-blue panel in a gold frame behind her, the altar on a step before her, two braziers (the room's real lights), two angels
+in the back corners, four busts on plinths along the side walls, the harp, a lectern, a votive stand, the great hourglass, amphorae and an urn by the door. The door is a
+swinging double leaf (`leaf_wooden`; it was `leaf_frame_only`, an open hole). `holy_carpet` is a HANGING carpet (it stands upright on a floor): not used.
+
 **FOR THE NEXT THREAD (learned here):**
 - A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
   never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
@@ -4549,6 +4555,8 @@ nothing at the Amphitheatre, the Stadium or the Terraces.
 3. The seats and tiers block (ghost walls): nobody climbs them. The Stadium's track stays open end to end.
 4. No encounter table: the room is shared with three other districts, so a table here would put Olympus units on the ski slopes. The gods stand as natives.
 5. No names added: the plots keep the plan's names; no sign boards.
+6. The Temple's statue is Lady Justice at 4.3 m (the one goddess-like statue in the game); a statue of a named god is on the NEEDS A MODEL list.
+7. The Temple has a wooden double door that swings (your rule for walk-ins); it was an open frame.
 
 **NEEDS A MODEL:** an olive tree; a grape vine on a trellis (the vine rows are a leaf sheet on posts); a laurel wreath; a chariot; a discus and a javelin rack; a tripod bowl
 (the brazier stands in); a Greek couch; a lyre (the harp stands in); a statue of a god (the angel, the bust and Lady Justice stand in); a goat for the Goat Track.
