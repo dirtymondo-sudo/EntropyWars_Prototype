@@ -364,6 +364,7 @@ else { const anchor = '        site_prebuilt_dumb_motorpool: {'; const a = src.i
 
 /* ── THE WALK CHECK: compile the room from the text about to be written and walk it from the spawn on the walker's own rule (hqTerrainFeet).
    Every plot must be reached, and every way out's landing. ── */
+if (process.env.DUMB_NOWALK) { if (!DRY) { fs.writeFileSync(file, src); console.log('data.js: the D.U.M.B. written, NOT walked (DUMB_NOWALK: a merge in a hurry; bake once more without it)'); } process.exit(0); }
 const tmp = path.join(require('os').tmpdir(), 'ew-dumb-' + process.pid + '.js'); fs.writeFileSync(tmp, src);
 let bad = 0;
 try {
