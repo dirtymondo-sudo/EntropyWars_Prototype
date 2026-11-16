@@ -48339,6 +48339,7 @@
             if (spell.drainPct || spell.mpRestore || spell.revivePct || spell.stealSpell) return false;
             if (spell.leaveTerrain || spell.terrainType || spell.weatherType || spell.zodiacReading) return false;
             if (spell.teleportDistance || spell.pushDistance || spell.pullDistance) return false;
+            if (spell.statusEffects.some(f => f && f.gain)) return false;   // 🛹 a stacking status (Momentum's `gain`) always adds
             return true;
         }
         window.spellIsPureStatus = spellIsPureStatus;

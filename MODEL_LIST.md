@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1171 |
+| Meshy AI | no | 1172 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -169,6 +169,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | sharkman | `Assets/characters/races/sharkman/Meshy_AI_shark_man_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | sheriff | `Assets/characters/races/sheriff/Meshy_AI_western_sherrif_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | sidekick | `Assets/characters/races/sidekick/Meshy_AI_superhero_sidekick_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| skater (female) | `Assets/characters/races/skater/female/Meshy_AI_skater_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | skeleton | `Assets/characters/races/skeleton/male/Meshy_AI_skeleton_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | spy (female) | `Assets/characters/races/spy/Meshy_AI_spy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | starfish | `Assets/characters/races/starfish/Meshy_AI_sentient_starfish_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
