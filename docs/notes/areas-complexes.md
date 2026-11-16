@@ -5157,6 +5157,20 @@ tent, a telegraph pole. No upper floor inside any Desert building. No per-distri
 (`HQ_AREA_ENCOUNTERS`). No residents (the city's `HQ_CITY_RESIDENTS` has no Desert rows). No interior polish pass in the bake (the city's
 `interior-polish.js` moves clipping props; the Desert has none).
 
+**DONE 11-16 (mondo: "do 1 2 and 3"): items 1 to 3 below are built in W.js; 4 to 6 are open.** What the three taught:
+- THE SQUARES: `inside()` returns `X(i)` / `Z(j)` (a square's middle; j counts from the BACK wall) and `LX(i)` / `LZ(j)` (a square line).
+  Blockers on middles, walls on lines, a counter down the middle of a row of squares, a doorway 1.75 m on a square's edge. A building's
+  door square is column `floor((2n - 1) / 2 / 2)` from the left (the tool's `texbDoor`: the middle 1.75 m column, left of centre on an
+  even front): keep that square and the one behind it clear.
+- THE FLOOR YOU SEE in a `western()` building is its own board deck, not the room's floor. It was 0.16 m proud and unlit (props sank into
+  it and the room read black). It is 0.05 m and lit now (`floorKey`, `floorTint`). A deck drawn under it is never seen.
+- `detail(a, w, d, door, o)` (called by `western()`): the second layer. `o.hang` (a trade board over the boardwalk), `o.side` (words on
+  both side walls), `o.chimney: ±1` (a brick stack on that side) or `o.pipe` (a stovepipe at that fraction of the width; `false` = none),
+  `o.back` (the back door's x), `o.shutter`. A board across the street's line is written twice, back to back: a quad draws one face.
+- `inside()` second pass: skirting, dado rail, crown, pilasters on the square lines, `pendant(x, z, drop)`, `sconce(side, z, y)`;
+  `lamps: false` to place them by hand, `lampOdd` to shift the pattern off a door square.
+- The Desert's baked block is 411 KB now (was 153 KB): parts are cheap to draw but not free to ship. Goods on shelves are the bulk.
+
 **WESTERN TOWN AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and this
 district lacks, in the order to do it:
 1. THE SQUARES inside: the city sets every blocker on the middle of a whole 3.5 m square and keeps walkways whole squares wide. W.js's
