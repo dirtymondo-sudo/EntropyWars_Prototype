@@ -9,7 +9,7 @@
      P07-02 The Run-Out (11)                 P08-02 The Chairlift (11)               P09-02 The Bunny Slope (11)
      P07-03 The Rental Hut (8)               P08-03 The Ski Lodge (8)                P09-03 The Lodge Yard (8)
 
-   FIVE PASSES LIVE, THE THREAD HAS STOPPED (mondo's five-pass order, 11-16): the next change here is his.
+   FIVE PASSES + THE MODEL PASS LIVE, THE THREAD HAS STOPPED (mondo's orders of 11-16): the next change here is his.
    WHAT STANDS HERE TODAY (passes 1 to 5: exteriors, insides, dressing, atmosphere, polish; 11-16; seen on screen by day and at night)
    - Walked into: THE SKI LODGE (P08-03), THE RENTAL HUT (P07-03), THE TOP STATION (P08-00). Their look is this file's `chalet` (log walls with crossed
      log ends, stone foot, snow roof with deep eaves, lit windows, drifts, icicles): the Lodge adds a glazed gable, a porch with a rail, a gabled way in on
@@ -57,9 +57,20 @@
    - looked at and not used: the Christmas pack's six `Snow*` nodes and its `Christmas_star` / `Ribbon` have no row (the snow caps of the pack's own house and
      trees, not loose drifts); `woods_cabin` / `xmas_house` are single house props (buildings are built); `decor_ferris_gondola` stood in for chairs and is gone
 
-   NEEDS A MODEL (no file in MODEL_LIST.md or on R2; nothing stands in for them)
-   - skis and poles (a rack of them), a snowboard, ski boots, a snow gun, a piste groomer, a snowmobile, a rescue sled, orange safety netting, an elk head for the Lodge wall,
-     a pool table, a dartboard, beer taps and glasses, a wood stove, a firewood stack, a lamp post, lit string lights, a trail-map board (the full read of the lists, 11-16)
+   THE MODEL PASS (mondo 11-16: the wish-list models, docs/plans/WISHLIST_MODELS_ADDED.md; seen on screen)
+   - asked for and placed: `ski_rack` (Lodge porch, Rental front, boot room, Rental inside), `snowboard` (the Rental's stock), `ski_boots`, `snow_gun` x 4 (beside the
+     runs, on the tree lines), `piste_groomer` (behind the Rental Hut), `snowmobile` x 2, `rescue_sled` + `stretcher` (Top Station), `safety_netting` (the catch
+     fences), `antler_trophy` (over the Lodge's fire), `pool_table`, `dartboard`, `beer_taps`, `wood_stove` (Top Station), `firewood_stack` x 3, `lantern_post` x 14,
+     `string_lights` x 6 (the yard side of the Lodge), `trail_sign` x 2
+   - from the rest of the list: `fur_rug`, `picnic_table` x 2, `hot_tub`, `wooden_barrel`, `axe_chopping_block`, `flag_pole`, `weather_mast`, `cairn`, `coin_telescope`,
+     `snow_heap` x 7, `snow_sled`, `snowshoes`, `ice_axe`, `backpack`, `kettle`, `deer`, `fox`, `owl_perched` (animals: three, at the tree lines, off every run)
+   - OUT, because the real model is in: the 14 lamp posts built from boxes, the Halloween fence (`hw_fence`) that stood in for netting, the surfboards and
+     surfboard racks that stood in for snowboards and ski racks, `arms_trophy` over the fire, `rug_round` by the fire, the wood stacks and the stove built
+     from boxes and cylinders, `telescope` at the lookout. `air_hockey_table` moved one square for the pool table.
+   - KEPT though a model exists: the icicles under the eaves and the bulbs under the eaves (built: the `icicles` / `string_lights` models are 2 m and 4 m
+     pieces on their own posts or hangers and do not follow an eave); `string_lights` and `lantern_post` are not lit at night as made: each lantern post has
+     a small built flame in its lantern (one `hug` row), the strings stay dark
+   NEEDS A MODEL, still: nothing of this district's own list. Not models: staff and guests (the NPC system), a lift that moves (a mechanic).
 
    THE TOOL'S, NOT YOURS (shared pieces that stand in this district)
    - The slope itself (zflat: no shelves on columns 7-9 of the plan), the paint of the runs, the spawn
@@ -225,16 +236,16 @@ exports.apply = ctx => {
     /* the great hearth: stone piers, a stone head, the breast up to the ceiling, a raised hearthstone, a timber mantel; the fire is the catalogue's flame */
     { const cx = 8.75, zc = zb + 0.6; for (const s of [-1, 1]) a.box(cx + s * 1.45, 0.16, zc, 0.8, 1.9, 1.2, 'rocks_5', STONE, G); a.box(cx, 2.06, zc, 3.7, 0.55, 1.2, 'rocks_5', STONE, G); a.box(cx, 2.61, zb + 0.4, 2.6, top - 2.5, 0.8, 'rocks_5', STONE, G);
       a.box(cx, 0.16, zb + 0.06, 2.1, 1.9, 0.08, 'rocks_5', 0x2a2422, G); a.box(cx, 0.16, zc + 0.3, 4.2, 0.2, 2.0, 'rocks_5', 0x8a8a92, G); a.box(cx, 2.61, zc + 0.08, 4.0, 0.16, 1.4, WD2, 0x5a4030, GW);
-      B.put('hearth_fire', cx, zb + 0.85, { w: 1.7, h: 1.4 }); T.solid(cx - 1.9, zc, cx + 1.9, zc, 1.3, 2); T.hang('arms_trophy', cx, zb + 0.86, 3.25, 180);
-      a.box(cx - 3.0, 0.16, zb + 0.4, 1.3, 0.9, 0.6, WD2, 0x8a6444, GW); a.box(cx - 3.0, 1.06, zb + 0.4, 1.0, 0.3, 0.55, WD2, 0x7a583c, GW); }                                                            // the wood stacked beside it
-    T.on('chesterfield_sofa', 6, 2, { face: 0 }); T.on('psx_coffee_table_1', 6, 1); B.put('rug_round', 8.75, -4.6, { y: 0.17, span: 3.4 }); B.put('xmas_cocoa', 8.6, -5.2, { y: T.up(0.48) }); B.put('xmas_cocoa_2', 9.0, -5.4, { y: T.up(0.48) });
+      B.put('hearth_fire', cx, zb + 0.85, { w: 1.7, h: 1.4 }); T.solid(cx - 1.9, zc, cx + 1.9, zc, 1.3, 2); T.hang('antler_trophy', cx, zb + 0.95, 2.95, 180);
+      B.put('firewood_stack', cx - 3.1, zb + 0.5, { face: 180 }); }                                                            // the wood stacked beside it
+    T.on('chesterfield_sofa', 6, 2, { face: 0 }); T.on('psx_coffee_table_1', 6, 1); B.put('fur_rug', 8.75, -4.4, { y: 0.17, span: 3.0 }); B.put('xmas_cocoa', 8.6, -5.2, { y: T.up(0.48) }); B.put('xmas_cocoa_2', 9.0, -5.4, { y: T.up(0.48) });
     B.put('wingback_chair', 6.3, -5.0, { face: 60 }); B.put('wingback_chair', 11.4, -5.0, { face: 300 }); B.put('psx_armchair_1', 11.9, -1.2, { face: 290 }); B.put('table_lamp', 12.9, -3.2, { y: 0.02 });
     /* the bar: a counter on the middles of squares (0..2, 1), the back bar on the wall behind it, stools, three lamps over it */
     { const z = T.sq(0, 1)[1], x = -8.75, len = 10.1; counter(a, x, z, len, WD2, { rail: true }); T.solid(x - len / 2, z, x + len / 2, z, 1.0, 1.15);
       a.box(x, 0.16, zb + 0.3, 9.6, 0.95, 0.56, WD2, 0x6a4a34, GW); a.box(x, 1.11, zb + 0.3, 9.7, 0.06, 0.6, WD2, 0x3a2a20, GW); a.box(x, 1.17, zb + 0.07, 9.6, 2.1, 0.06, 'marble_light', 0xffc890, { glow: 0.9 });
       for (const y of [1.75, 2.35, 2.95]) a.box(x, y, zb + 0.2, 9.6, 0.05, 0.32, WD2, 0x3a2a20, GW); for (const s of [-1, 0, 1]) a.box(x + s * 4.8, 1.17, zb + 0.2, 0.1, 2.2, 0.36, WD2, 0x3a2a20, GW); a.box(x, 3.3, zb + 0.22, 9.9, 0.2, 0.44, WD2, 0x3a2a20, GW);
       const BOT = ['psx_glass_bottle_1', 'psx_glass_bottle_2', 'xmas_champagne']; for (let i = 0; i < 14; i++) B.put(BOT[i % 3], r2(x - 4.3 + i * 0.66), zb + 0.22, { y: T.up([1.8, 2.4, 1.8, 3.0][i % 4]), face: (i * 67) % 360 });
-      for (const sx of [-12.4, -10.6, -8.8, -7.0, -5.2]) B.put('bar_stool', sx, z + 1.0, { face: 0 }); for (const sx of [-11.5, -8.0, -6.0]) B.put('xmas_cocoa', sx, z + 0.1, { y: T.up(1.19) }); B.put('xmas_punch', -10.0, z - 0.1, { y: T.up(1.19) }); B.put('cash_register', -4.5, z - 0.1, { y: T.up(1.19), face: 180 });
+      for (const sx of [-12.4, -10.6, -8.8, -7.0, -5.2]) B.put('bar_stool', sx, z + 1.0, { face: 0 }); for (const sx of [-11.5, -8.0, -6.0]) B.put('xmas_cocoa', sx, z + 0.1, { y: T.up(1.19) }); B.put('xmas_punch', -10.0, z - 0.1, { y: T.up(1.19) }); B.put('cash_register', -4.5, z - 0.1, { y: T.up(1.19), face: 180 }); B.put('beer_taps', -9.4, z, { y: T.up(1.19), face: 180 });
       for (const sx of [-12, -8.75, -5.5]) pendant(a, sx, top, z, 1.5); B.put('stock_pots', -13.0, zb + 0.5, { y: T.up(1.18) }); }
     /* four tables, each on a square's middle, four chairs round it off the middles */
     for (const [i, j, what] of [[1, 3, 'xmas_cookies'], [4, 3, 'xmas_punch_2'], [4, 1, 'xmas_bake'], [2, 4, 'xmas_carvery']]) { const c = T.sq(i, j); B.put('psx_dinner_table_1', c[0], c[1]); B.put(what, c[0], c[1], { y: T.up(0.88) });
@@ -244,7 +255,7 @@ exports.apply = ctx => {
       for (const z of [4.3, 5.5, 6.7, 7.9]) B.put('locker', -w / 2 + 0.75, z, { face: 90 }); T.on('locker_bench', 1, 5, { face: 0 }); B.put('scarf_rack', -8.2, 9.3, { face: 0 }); B.put('rug_office', -11.0, 5.4, { y: 0.17 });
       a.sign('BOOT ROOM', -w / 2 + 3.6, 1.62, zs - 0.1, 2.6, 0.5, '#f4ecd8', '#2f4a3a', FONT, { glow: 0.8 }); a.sign('BOOT ROOM', -w / 2 + 3.6, 1.62, zs + 0.1, 2.6, 0.5, '#f4ecd8', '#2f4a3a', FONT, { glow: 0.8, ry: 180 }); }
     /* the games corner (front right): the first delivery's machines + the pinball table, the trophies on the right wall */
-    T.on('arcade_cabinet', 7, 5, { face: 270 }); T.on('pinball_machine', 7, 4, { face: 270 }); T.on('jukebox', 6, 5, { face: 0 }); T.on('air_hockey_table', 5, 4); B.put('trophy_case', w / 2 - 0.36, T.sq(7, 2)[1], { face: 270 });
+    T.on('arcade_cabinet', 7, 5, { face: 270 }); T.on('pinball_machine', 7, 4, { face: 270 }); T.on('jukebox', 6, 5, { face: 0 }); T.on('pool_table', 5, 4); T.on('air_hockey_table', 5, 5); T.hang('dartboard', w / 2 - 0.42, T.sq(7, 3)[1], 1.5, 270); B.put('trophy_case', w / 2 - 0.36, T.sq(7, 2)[1], { face: 270 });
     T.on('xmas_tree', 4, 0, { h: 3.4 }); B.put('xmas_gift', 0.6, -9.4, { face: 200 }); B.put('xmas_gift_2', 2.9, -9.2, { face: 40 }); B.put('xmas_gift_3', 1.2, -7.6, { face: 110 });
     T.hang('notice_board', -5.6, d / 2 - 0.36, 1.2, 0); T.hang('wall_clock', 2.6, d / 2 - 0.36, 2.7, 0); B.put('brochure_rack', 1.9, 9.5, { face: 0 }); T.hang('xmas_wreath', -w / 2 + 0.36, T.sq(0, 2)[1], 2.6, 90); T.hang('xmas_garland', 3.5, zb + 0.06, 3.9, 180);
     for (const c of [[-3.5, 3.5], [5.25, 3.5], [8.75, -3.0]]) wheelLamp(a, c[0], top, c[1], 1.1);
@@ -252,7 +263,7 @@ exports.apply = ctx => {
        `coffee_table`, `mini_fridge`, `hook_rail_long`, `potted_plant`): seven of them took the room from 1.3 to 2.1 million triangles */
     T.hang('painting_landscape', w / 2 - 0.36, T.sq(7, 0)[1] + 0.6, 1.9, 270); T.hang('painting_seascape', -1.75, zb + 0.06, 1.9, 180); T.hang('painting_landscape', w / 2 - 0.36, T.sq(7, 3)[1] + 1.75, 1.9, 270);
     B.put('espresso_machine', -7.2, zb + 0.3, { y: T.up(1.19), face: 180 }); B.put('coffee_maker', -9.6, zb + 0.3, { y: T.up(1.19), face: 180 });
-    B.put('footlocker', -9.4, 4.4, { face: 0 }); B.put('claw_machine', T.sq(6, 5)[0] - 1.6, T.sq(6, 5)[1] + 0.3, { face: 0 }); B.put('chess_set_game', T.sq(4, 1)[0] + 0.1, T.sq(4, 1)[1] - 0.25, { y: T.up(0.88) });
+    B.put('footlocker', -6.2, 8.9, { face: 0 }); T.on('ski_rack', 1, 4, { face: 90 }); for (const c of [[-10.3, 8.4], [-9.6, 8.7], [-7.7, 9.3]]) B.put('ski_boots', c[0], c[1], { face: 200 + c[0] * 30 }); T.hang('snowshoes', -w / 2 + 0.4, 6.1, 2.4, 90); B.put('claw_machine', 10.5, 9.3, { face: 0 }); B.put('chess_set_game', T.sq(4, 1)[0] + 0.1, T.sq(4, 1)[1] - 0.25, { y: T.up(0.88) });
     B.put('psx_carpet_mp_1', T.sq(3, 3)[0], T.sq(3, 3)[1] + 1.0, { y: 0.17, face: 90 }); });   // (no lantern with a light of its own: two of them halved the probe's frame rate in this room)
 
   /* THE RENTAL HUT, 4 x 3 squares, the door on square (1, 2). The counter stands on the middles of squares (1..3, 1): staff behind it, the boards on the
@@ -260,21 +271,20 @@ exports.apply = ctx => {
   const RENT = walkIn('rental', 'P07-03', [4, 4, 8, 7, 'S'], 3.5, {}, rental, (a, B, T) => { const { w, d } = T, zb = -d / 2 + 0.3, top = 3.5 - 0.46, GW = { glow: 0.75, gain: 1.5 }, z = T.sq(0, 1)[1], x = 1.75, len = 10.0;
     counter(a, x, z, len, WD2); T.solid(x - len / 2, z, x + len / 2, z, 1.0, 1.15); B.put('cash_register', 3.6, z, { y: T.up(1.19), face: 180 }); B.put('brochure_rack', -2.6, z + 0.9, { face: 0 });
     for (const y of [1.0, 2.2]) a.box(1.75, y, zb + 0.14, 9.6, 0.1, 0.12, WD2, 0x3a2a20, GW);                                                    // the board wall: two rails, the boards stood against them
-    ['surfboard_short', 'surfboard_long', 'surfboard_fish', 'surfboard_short', 'surfboard_long', 'surfboard_fish'].forEach((k, i) => B.put(k, -2.6 + i * 1.05, zb + 0.42, { face: 180 }));   // the stock: the game's own boards
-    for (const sx of [-1.4, 0.9, 3.2, 5.5]) B.put('skateboard', sx, zb + 1.1, { face: 90 }); T.on('surfboard_rack', 3, 0, { face: 180 });
+    for (let i = 0; i < 9; i++) B.put('snowboard', r2(-2.9 + i * 0.85), zb + 0.36, { face: 180 });   // the stock (the model pass: snowboards for the surfboards that stood in)
+    for (const sx of [-1.4, 0.9, 3.2, 5.5]) B.put('skateboard', sx, zb + 1.1, { face: 90 }); T.on('ski_rack', 3, 0, { face: 180 });
     T.on('tool_chest', 0, 0, { face: 180 }); T.hang('tool_pegboard', -5.25, zb + 0.06, 1.5, 180); for (const lz of [-1.0, 0.2]) B.put('locker', -w / 2 + 0.75, lz, { face: 90 }); T.on('locker_bench', 0, 2, { face: 90 }); T.hang('key_rack', 5.6, zb + 0.06, 1.6, 180);
     T.hang('wall_clock', -3.0, d / 2 - 0.36, 2.3, 0); B.put('scarf_rack', 5.9, 4.2, { face: 270 }); B.put('rug_office', -1.0, 3.3, { y: 0.17 });
     for (const sx of [-1.75, 1.75, 5.25]) pendant(a, sx, top, z, 0.7); pendant(a, -5.25, top, 2.0, 0.7);
-    for (const [sx, k] of [[4.6, 'surfboard_short'], [6.2, 'surfboard_short']]) B.put(k, sx, 4.4, { face: 0 }); B.put('sunglasses_spinner', -2.9, 3.9); B.put('footlocker', -5.6, -3.2, { face: 90 }); });
+    for (const sx of [4.4, 5.0, 5.6]) B.put('ski_boots', sx, z + 0.05, { y: T.up(1.19), face: 180 }); B.put('snowboard', 6.3, 4.6, { face: 0 }); B.put('sunglasses_spinner', -2.9, 3.9); B.put('footlocker', -5.6, -3.2, { face: 90 }); });
 
   /* THE TOP STATION, 4 x 4 squares, the door on square (1, 3): the lift man's room. His desk and radio at the back right, a stove at the back left, a bed for
      the hurt at the right wall, benches for the cold on the left. */
   const TOP = walkIn('topstation', 'P08-00', [4, 3, 8, 7, 'S'], 3.5, { leaf: 'leaf_frame_only' }, topStation, (a, B, T) => { const { w, d } = T, zb = -d / 2 + 0.3, top = 3.5 - 0.46, G = { glow: 0.8 }, GW = { glow: 0.75, gain: 1.5 };
     T.on('radio_console', 3, 0, { face: 180 }); { const c = T.sq(2, 0); counter(a, c[0], c[1], 2.6, WD2, { h: 0.82, depth: 1.1 }); T.solid(c[0] - 1.3, c[1], c[0] + 1.3, c[1], 1.1, 0.9); B.put('field_radio', c[0] - 0.5, c[1], { y: T.up(0.91), face: 180 }); B.put('xmas_cocoa_2', c[0] + 0.7, c[1] + 0.2, { y: T.up(0.91) }); B.put('table_lamp', c[0] + 0.9, c[1] - 0.25, { y: T.up(0.91) }); B.put('psx_chair_mp_3', c[0], c[1] + 1.2, { face: 0 }); }
-    { const c = T.sq(0, 0); a.box(c[0], 0.16, c[1], 1.5, 0.08, 1.5, 'rocks_5', 0x8a8a92, G); a.cyl(c[0], 0.24, c[1], 0.5, 1.0, 'gunmetal', 0x2c2c30, { seg: 12, glow: 0.5 }); a.cyl(c[0], 1.24, c[1], 0.56, 0.08, 'gunmetal', 0x1c1c20, { seg: 12, glow: 0.5 }); a.cyl(c[0], 1.32, c[1] - 0.2, 0.12, top - 1.3, 'gunmetal', 0x2c2c30, { seg: 8, glow: 0.5 });   // the stove and its pipe
-      a.cyl(c[0], 3.5, c[1] - 0.2, 0.12, 1.85, 'gunmetal', 0x2c2c30, { seg: 8, roof: true }); B.put('chimney_smoke', c[0], c[1] - 0.2, { y: r2(T.g + 5.4), floor: false });   // (pass 4) the pipe comes out of the roof and smokes
-      a.box(c[0], 0.5, c[1] + 0.5, 0.5, 0.4, 0.04, 'marble_light', 0xff8030, { glow: 1.4 }); T.solid(c[0] - 0.5, c[1], c[0] + 0.5, c[1], 1.1, 1.3); a.box(c[0] + 1.3, 0.16, zb + 0.35, 0.9, 0.7, 0.5, WD2, 0x8a6444, GW); }
-    T.on('hospital_bed', 3, 2, { face: 0 }); T.hang('fire_extinguisher', w / 2 - 0.36, T.sq(3, 1)[1], 0.95, 270); T.on('locker_bench', 0, 1, { face: 90 }); T.on('locker_bench', 0, 2, { face: 90 });
+    { const c = T.sq(0, 0); a.box(c[0], 0.16, c[1], 1.5, 0.08, 1.5, 'rocks_5', 0x8a8a92, G); T.on('wood_stove', 0, 0, { face: 180 }); B.put('kettle', c[0] + 0.9, c[1] + 0.3, { y: 0.26 });   // (the model pass: the cast iron stove for the one drawn from cylinders)
+      a.cyl(c[0], 3.5, c[1] - 0.2, 0.12, 1.85, 'gunmetal', 0x2c2c30, { seg: 8, roof: true }); B.put('chimney_smoke', c[0], c[1] - 0.2, { y: r2(T.g + 5.4), floor: false }); B.put('firewood_stack', c[0] + 2.0, zb + 0.5, { face: 180 }); }
+    T.on('hospital_bed', 3, 2, { face: 0 }); T.hang('fire_extinguisher', w / 2 - 0.36, T.sq(3, 1)[1], 0.95, 270); B.put('stretcher', w / 2 - 1.0, T.sq(3, 1)[1] - 0.4, { face: 90 }); T.hang('ice_axe', -1.9, zb + 0.08, 1.9, 180); B.put('backpack', -4.2, 1.1, { face: 120 }); T.on('locker_bench', 0, 1, { face: 90 }); T.on('locker_bench', 0, 2, { face: 90 });
     T.hang('notice_board', 0, zb + 0.06, 1.2, 180); T.hang('wall_clock', 3.4, zb + 0.06, 2.4, 180); B.put('railway_lantern', 5.9, 5.9); B.put('rug_office', 0.5, 0.5, { y: 0.17 }); T.on('map_table', 2, 2);
     pendant(a, -1.75, top, -1.75, 0.6); pendant(a, 1.75, top, 1.75, 0.6); pendant(a, 3.5, top, -4.6, 0.6);
     T.hang('breaker_panel', -w / 2 + 0.36, T.sq(0, 3)[1], 1.25, 90); T.hang('punch_clock', w / 2 - 0.36, T.sq(3, 3)[1], 1.3, 270); T.hang('gauge_board', T.sq(2, 0)[0], zb + 0.06, 1.6, 180); B.put('rotary_phone', T.sq(2, 0)[0] + 0.2, T.sq(2, 0)[1] - 0.3, { y: T.up(0.91) });
@@ -321,7 +331,7 @@ exports.build = ctx => {
     R.taken.add(top[0] + 1 + ':' + top[1]); R.taken.add(bot[0] + 1 + ':' + (bot[1] + 1)); }
   put('P09-02', 'xmas_snowman_2', 1, 6); dec('P09-02', 'traffic_cone', 1, 3); dec('P09-02', 'traffic_cone', 10, 3); dec('P09-02', 'traffic_cone', 10, 8);
   put('P09-03', 'signpost', 4, 4, { face: 180 }); put('P09-03', 'park_bench', 2, 3, { face: 180 }); put('P09-03', 'park_bench', 8, 3, { face: 180 }); put('P09-03', 'xmas_tree_plain', 9, 7, { h: 4.4, floor: true }); put('P09-03', 'sleigh', 2, 8, { face: 90 });
-  put('P07-03', 'surfboard_rack', 4, 7, { face: 180 }); put('P08-03', 'ticket_booth', 8, 1, { face: 180 }); dec('P08-03', 'rope_stanchion', 9, 1); dec('P08-03', 'rope_stanchion', 9, 0);   // (THE MODEL LIST FIRST, 11-16: the board rack and the lift's ticket booth are the game's own pieces)
+  put('P07-03', 'ski_rack', 4, 7, { face: 180 }); put('P08-03', 'ticket_booth', 8, 1, { face: 180 }); dec('P08-03', 'rope_stanchion', 9, 1); dec('P08-03', 'rope_stanchion', 9, 0);   // (THE MODEL LIST FIRST, 11-16: the board rack and the lift's ticket booth are the game's own pieces)
   put('P07-03', 'xmas_snowman', 2, 9); put('P08-03', 'campfire', 5, 10); put('P08-03', 'park_bench', 3, 10, { face: 0 }); put('P08-03', 'park_bench', 7, 10, { face: 0 }); put('P07-02', 'signpost', 9, 9, { face: 90 });
 
   /* ══ THE DRESSING (pass 3, 11-16): the runs made to read as runs. Tree lines between the three columns, a named board at the top of each run, marker poles
@@ -339,9 +349,9 @@ exports.build = ctx => {
   const slow = (id, plot, lx, ly) => { const q = S(plot, lx, ly); block(q[0], q[1], 0.5); look(id, mx(q[0]), mz(q[1]), a => { a.box(0, 0, 0, 0.14, 2.3, 0.14, WD2, DARK, { gain: 1.5 }); a.box(0, 1.35, 0, 1.5, 0.8, 0.08, 'marble_light', 0x2a2a2a);
       for (const f of [1, -1]) a.sign('SLOW', 0, 1.4, f * 0.05, 1.4, 0.7, '#111111', '#f0c020', FONT, f > 0 ? { glow: 0.85 } : { ry: 180, glow: 0.85 }); a.box(0, 2.15, 0, 1.6, 0.07, 0.18, 'ice', SNOW); }); };
   slow('slowBlack', 'P07-02', 3, 9); slow('slowBlack2', 'P07-02', 8, 9); slow('slowJump', 'P08-02', 3, 10); slow('slowJump2', 'P08-02', 8, 10); slow('slowBunny', 'P09-02', 1, 10);
-  /* the catch fences: the pack's wooden fence, two lengths to a square, across the foot of the Black Run (above the Rental Hut) and of the Big Jump's line (above the Lodge) */
+  /* the catch fences: orange safety netting, a length to a square, across the foot of the Black Run (above the Rental Hut) and of the Big Jump's line (above the Lodge) */
   const fence = (plot, lx0, lx1, ly) => { for (let lx = lx0; lx <= lx1; lx++) { const q = S(plot, lx, ly); if (!R.open(q[0], q[1]) || R.taken.has(q[0] + ':' + q[1])) throw new Error('K: fence on a taken square ' + plot + ' ' + lx + ',' + ly); R.taken.add(q[0] + ':' + q[1]);
-      for (const dx of [-0.86, 0.86]) props.push({ key: 'hw_fence', x: r2(mx(q[0]) + dx), z: mz(q[1]), face: 0 }); } };
+      props.push({ key: 'safety_netting', x: mx(q[0]), z: mz(q[1]), face: 0 }); feat({ k: 'wall', x0: gx(q[0]), z0: mz(q[1]), x1: gx(q[0] + 1), z1: mz(q[1]), t: 0.3, h: 1.6, ghost: true, rail: false }); } };   // (the model pass: orange netting for the Halloween fence that stood in; a ghost wall, the net has no body of its own)
   fence('P07-03', 3, 8, 2); fence('P08-03', 1, 3, 1);
   /* THE MARKER POLES: an orange pole with a plate in the run's colour every three squares down both edges of each groomed lane. One `hug` row a run: every pole stands on the snow under it. No collision (a pole is a finger thick). */
   const poles = (id, plot0, lxA, lxB, r0, r1, tint) => { const p = R.byId[plot0], x0 = gx(p.lx * N + lxA), x1 = gx(p.lx * N + lxB), z0 = gz(p.ly * N + r0);
@@ -354,16 +364,29 @@ exports.build = ctx => {
     for (const [a, rows] of [['P08-01', [1, 3, 5, 8, 10]], ['P08-02', [3, 5, 7, 9]]]) { line(a, 11, rows); line(a.replace('P08', 'P09'), 0, rows.map(r => r + 1).filter(r => r < 11)); } }
   /* the yard and the corners: the lift's machinery by the bottom wheel, freight behind the Lodge, the Top Station's lookout, bins, animals at the tree lines */
   put('P08-03', 'generator', 3, 0, { face: 90 }); dec('P08-03', 'cable_drum', 2, 0); put('P08-03', 'pa_speaker', 9, 0, { face: 180 }); dec('P08-03', 'psx_metal_barrel_mp_1', 10, 1); dec('P08-03', 'psx_metal_barrel_mp_2', 10, 1);
-  put('P08-03', 'wrapped_pallet', 11, 3); dec('P08-03', 'psx_wooden_crate_2', 11, 4); dec('P08-03', 'psx_wooden_crate_5', 11, 4); dec('P08-03', 'hand_truck', 11, 5); put('P08-03', 'surfboard_rack', 1, 9, { face: 90 }); dec('P08-03', 'metal_trash_can', 10, 9); dec('P07-03', 'metal_trash_can', 8, 8);
-  put('P08-00', 'telescope', 10, 8, { face: 180 }); put('P08-00', 'park_bench', 9, 8, { face: 180 }); put('P08-00', 'pa_speaker', 3, 8, { face: 180 }); put('P08-00', 'xmas_snowman_3', 2, 9); dec('P08-00', 'psx_wooden_crate_3', 9, 4); dec('P08-00', 'psx_metal_barrel_mp_0', 9, 5);
+  put('P08-03', 'wrapped_pallet', 11, 3); dec('P08-03', 'psx_wooden_crate_2', 11, 4); dec('P08-03', 'psx_wooden_crate_5', 11, 4); dec('P08-03', 'hand_truck', 11, 5); put('P08-03', 'ski_rack', 1, 9, { face: 90 }); dec('P08-03', 'metal_trash_can', 10, 9); dec('P07-03', 'metal_trash_can', 8, 8);
+  put('P08-00', 'coin_telescope', 10, 8, { face: 180 }); put('P08-00', 'park_bench', 9, 8, { face: 180 }); put('P08-00', 'pa_speaker', 3, 8, { face: 180 }); put('P08-00', 'xmas_snowman_3', 2, 9); dec('P08-00', 'psx_wooden_crate_3', 9, 4); dec('P08-00', 'psx_metal_barrel_mp_0', 9, 5);
   dec('P07-01', 'wolf', 1, 6); dec('P07-00', 'crow', 10, 2); dec('P09-02', 'rabbit', 10, 6); dec('P09-02', 'rabbit', 11, 5); dec('P09-03', 'dog', 6, 5); dec('P09-03', 'crow', 10, 2); put('P09-02', 'xmas_snowman', 10, 10); put('P07-02', 'fallen_log', 1, 4, { face: 90 }); put('P07-01', 'stump', 10, 6);
   put('P09-03', 'city_bench', 5, 9, { face: 0 }); dec('P09-03', 'psx_wooden_crate_1', 1, 9); dec('P09-03', 'traffic_barrel', 0, 6); dec('P09-03', 'traffic_barrel', 11, 6);
 
   /* ══ THE ATMOSPHERE (pass 4, 11-16): the night. The room's ten prop lights are long taken (39 props in it carry one; the first ten get theirs, the Lodge's
      fire and the yard's campfire among them), and a light costs the frame rate, so the night is made of things that GLOW: lamp posts, floodlights on the
      lift's towers and on masts by the runs (the catalogue's `flood_mast`: its glow shows, its light is past the room's ten), strings of bulbs, lit boards. ══ */
-  const lampPost = (id, plot, lx, ly) => { const q = S(plot, lx, ly); block(q[0], q[1], 0.3); look(id, mx(q[0]), mz(q[1]), a => { a.box(0, 0, 0, 0.5, 0.35, 0.5, 'rocks_5', STONE); a.box(0, 0.35, 0, 0.18, 3.0, 0.18, WD2, DARK, { gain: 1.5 }); a.box(0.35, 3.1, 0, 0.9, 0.12, 0.12, WD2, DARK, { gain: 1.5 });
-      a.box(0.62, 2.62, 0, 0.3, 0.42, 0.3, 'marble_light', 0xffb050, { glow: 1.5 }); a.box(0.62, 3.04, 0, 0.4, 0.07, 0.4, 'gunmetal', 0x30343a); a.box(0.62, 2.58, 0, 0.36, 0.05, 0.36, 'gunmetal', 0x30343a); a.box(0, 3.35, 0, 0.26, 0.07, 0.26, 'ice', SNOW); }); };
-  [['P09-03', 1, 5], ['P09-03', 10, 5], ['P09-03', 3, 10], ['P09-03', 8, 10], ['P08-03', 0, 10], ['P08-03', 11, 10], ['P07-03', 2, 8], ['P07-03', 9, 8], ['P08-03', 0, 1], ['P08-03', 11, 0], ['P08-00', 3, 9], ['P08-00', 8, 9], ['P09-02', 3, 11], ['P09-02', 8, 11]].forEach((q, i) => lampPost('lamp' + i, q[0], q[1], q[2]));
+  /* the lamp posts are the wish-list's `lantern_post` (the model pass; they were built from boxes). The model's lantern is not lit, so one `hug` row puts a
+     small flame in each (the lantern hangs 0.23 m west of the square's middle at face 180, 1.5 to 1.85 m up: read from the file, then set by eye). */
+  { const LP = [['P09-03', 1, 5], ['P09-03', 10, 5], ['P09-03', 3, 10], ['P09-03', 8, 10], ['P08-03', 0, 10], ['P08-03', 11, 10], ['P07-03', 2, 8], ['P07-03', 9, 8], ['P08-03', 0, 1], ['P08-03', 11, 0], ['P08-00', 3, 9], ['P08-00', 8, 9], ['P09-02', 3, 11], ['P09-02', 8, 11]];
+    LP.forEach(q => put(q[0], 'lantern_post', q[1], q[2], { face: 180 })); const o = S(LP[0][0], LP[0][1], LP[0][2]);
+    look('lampFlames', mx(o[0]), mz(o[1]), a => LP.forEach(q => { const c = S(q[0], q[1], q[2]); a.box(mx(c[0]) - mx(o[0]) - 0.23, 1.56, mz(c[1]) - mz(o[1]), 0.15, 0.2, 0.15, 'marble_light', 0xffb050, { glow: 1.6 }); })); R.ARCH[R.ARCH.length - 1].hug = true; }
   [['P07-01', 9, 3], ['P08-01', 9, 9], ['P09-01', 10, 4], ['P09-02', 1, 4]].forEach(q => put(q[0], 'flood_mast', q[1], q[2]));   // (four, not six: each one's halo is a big blended sprite)
+
+  /* ══ THE MODEL PASS (mondo 11-16: the wish-list models are in the catalogue; docs/plans/WISHLIST_MODELS_ADDED.md). Every piece of this file's NEEDS A MODEL
+     list that was made is placed, and what stood in for one is out (see the header). Nothing stands on a run's line. ══ */
+  const wide = (plot, key, lx, ly, o) => { const q = S(plot, lx, ly); for (const d of [0, 1]) { if (!R.open(q[0] + d, q[1]) || R.taken.has((q[0] + d) + ':' + q[1])) throw new Error('K: ' + key + ' on a taken square'); R.taken.add((q[0] + d) + ':' + q[1]); } props.push(Object.assign({ key, x: gx(q[0] + 1), z: mz(q[1]) }, o || {})); };   // a thing two squares long, on the line between them
+  wide('P07-03', 'piste_groomer', 9, 1, { face: 0 }); put('P07-03', 'snowmobile', 10, 9, { face: 90 }); put('P08-00', 'snowmobile', 10, 9, { face: 90 }); put('P08-00', 'rescue_sled', 2, 8, { face: 90 });
+  put('P07-01', 'snow_gun', 10, 4, { face: 270 }); put('P08-02', 'snow_gun', 10, 6, { face: 270 }); put('P09-01', 'snow_gun', 10, 8, { face: 270 }); put('P07-02', 'snow_gun', 1, 8, { face: 90 });
+  put('P09-03', 'trail_sign', 6, 7, { face: 180 }); put('P08-00', 'trail_sign', 8, 8, { face: 180 }); put('P09-03', 'flag_pole', 6, 2); put('P08-00', 'weather_mast', 2, 4); put('P08-00', 'cairn', 11, 8);
+  put('P09-03', 'picnic_table', 7, 9); put('P09-03', 'picnic_table', 4, 8); put('P08-03', 'firewood_stack', 10, 6, { face: 90 }); put('P08-03', 'axe_chopping_block', 10, 7); put('P08-03', 'hot_tub', 0, 5); dec('P08-03', 'wooden_barrel', 0, 6);
+  for (const q of [['P09-03', 0, 3], ['P09-03', 11, 9], ['P08-03', 11, 8], ['P07-03', 1, 6], ['P07-03', 10, 5], ['P08-00', 1, 5], ['P08-00', 10, 5]]) put(q[0], 'snow_heap', q[1], q[2], { face: (q[1] * 67 + q[2] * 31) % 360 });
+  put('P07-02', 'deer', 10, 6, { face: 140 }); dec('P09-02', 'fox', 11, 2); put('P07-00', 'owl_perched', 1, 5, { face: 120 }); dec('P09-02', 'snow_sled', 2, 8);
+  { const q = S('P08-03', 0, 11); for (let i = 0; i < 6; i++) props.push({ key: 'string_lights', x: r2(gx(q[0]) + 3 + i * 4.2), z: mz(q[1]), face: 0 }); }   // strings of lit bulbs along the yard side of the Lodge
 };

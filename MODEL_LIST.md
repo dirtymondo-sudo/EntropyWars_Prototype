@@ -1263,7 +1263,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | psx_wooden_crate_6 | `Assets/world/packs/pizzadoggy_psx_mega_pack/large_props/wooden_crate_6.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | vent_grille | `Assets/world/packs/pizzadoggy_psx_mega_pack/electronics_and_misc/vent_1.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 
-### Meshy AI (mondo) — Meshy AI (296)
+### Meshy AI (mondo) — Meshy AI (299)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
@@ -1316,6 +1316,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | desk_wedge_a | `Assets/world/hq/models/Meshy_AI_wedge_of_a_round_office_desk_0903105601_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | desk_wedge_b | `Assets/world/hq/models/Meshy_AI_wedge_of_a_round_office_desk_0903105612_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | dish | `Assets/world/props/meshy/Meshy_AI_a_satellite_dish_0912231301_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dish_big | `Assets/world/props/meshy/Meshy_AI_a_satellite_dish_0912231301_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | dockring | `Assets/world/props/meshy/Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | door_gun | `Assets/world/props/meshy/Meshy_AI__0916054803_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | drain_grate | `Assets/world/props/meshy/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1387,6 +1388,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | lectern | `Assets/world/props/meshy/Meshy_AI_church_podium_0917035658_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | library_shelf_full | `Assets/world/props/meshy/Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | lunar_lander | `Assets/world/hq/models/Meshy_AI_lunar_lander_realis_0910054105_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| lunar_lander_full | `Assets/world/hq/models/Meshy_AI_lunar_lander_realis_0910054105_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mall_bin | `Assets/world/props/meshy/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | manila_folder | `Assets/world/hq/models/Meshy_AI_tapered_manila_folder_0910054403_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | manila_folders | `Assets/world/hq/models/Meshy_AI_office_manila_folders_0910054352_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1504,6 +1506,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | sarsen | `Assets/world/props/meshy/Meshy_AI_a_standing_stone_0912231506_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | satellite | `Assets/world/props/meshy/Meshy_AI_satellite_realistic_1027103629_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | saturn | `Assets/world/props/meshy/Meshy_AI_saturn_realistic_0727200914_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| saucer_big | `Assets/world/props/meshy/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | saucer_lg | `Assets/world/props/meshy/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | school_bus | `Assets/world/props/meshy/Meshy_AI_a_school_bus_0915195620_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sea_chest | `Assets/world/props/meshy/Meshy_AI_pirate_treasure_chest_0912231220_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -2150,6 +2153,36 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | wedding_arch | `Assets/world/props/meshy/wedding_arch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
 | wedding_cake | `Assets/world/props/meshy/wedding_cake.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
 
+### Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) — Meshy AI (25)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| decor_armour_plinth | `Assets/world/props/meshy_decor/armour_plinth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_armour_stand_post | `Assets/world/props/meshy_decor/armour_stand_post.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_av_cart | `Assets/world/props/meshy_decor/av_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_carousel_horse | `Assets/world/props/meshy_decor/carousel_horse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_effigy_bier | `Assets/world/props/meshy_decor/effigy_bier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_effigy_figure | `Assets/world/props/meshy_decor/effigy_figure.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_ferris_gondola | `Assets/world/props/meshy_decor/ferris_gondola.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_ferris_wheel_wheel | `Assets/world/props/meshy_decor/ferris_wheel_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_high_striker_hammer | `Assets/world/props/meshy_decor/high_striker_hammer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_lava_lamp_base | `Assets/world/props/meshy_decor/lava_lamp_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_lava_lamp_cap | `Assets/world/props/meshy_decor/lava_lamp_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_lava_lamp_floor_base | `Assets/world/props/meshy_decor/lava_lamp_floor_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_lava_lamp_floor_cap | `Assets/world/props/meshy_decor/lava_lamp_floor_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_music_box_dancer | `Assets/world/props/meshy_decor/music_box_dancer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_organ_pipe_white | `Assets/world/props/meshy_decor/organ_pipe_white.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_piano | `Assets/world/props/meshy_decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_sheep | `Assets/world/props/meshy_decor/sheep.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_stone_arch | `Assets/world/props/meshy_decor/stone_arch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_tripod_machine | `Assets/world/props/meshy_decor/tripod_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_trophy_cup | `Assets/world/props/meshy_decor/trophy_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_umbrella_closed | `Assets/world/props/meshy_decor/umbrella_closed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_wall_torch_bracket | `Assets/world/props/meshy_decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_windpump_tower | `Assets/world/props/meshy_decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_windpump_wheel | `Assets/world/props/meshy_decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tripod_big | `Assets/world/props/meshy_decor/tripod_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+
 ### Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) — Meshy AI (25)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2208,35 +2241,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | steel_toilet | `Assets/world/props/meshy/steel_toilet.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Civic interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-civic/interiors2/meshy/) |
 | turnout_gear_rack | `Assets/world/props/meshy/turnout_gear_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Civic interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-civic/interiors2/meshy/) |
 | witness_stand | `Assets/world/props/meshy/witness_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Civic interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-civic/interiors2/meshy/) |
-
-### Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) — Meshy AI (24)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| decor_armour_plinth | `Assets/world/props/meshy_decor/armour_plinth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_armour_stand_post | `Assets/world/props/meshy_decor/armour_stand_post.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_av_cart | `Assets/world/props/meshy_decor/av_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_carousel_horse | `Assets/world/props/meshy_decor/carousel_horse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_effigy_bier | `Assets/world/props/meshy_decor/effigy_bier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_effigy_figure | `Assets/world/props/meshy_decor/effigy_figure.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_ferris_gondola | `Assets/world/props/meshy_decor/ferris_gondola.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_ferris_wheel_wheel | `Assets/world/props/meshy_decor/ferris_wheel_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_high_striker_hammer | `Assets/world/props/meshy_decor/high_striker_hammer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_lava_lamp_base | `Assets/world/props/meshy_decor/lava_lamp_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_lava_lamp_cap | `Assets/world/props/meshy_decor/lava_lamp_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_lava_lamp_floor_base | `Assets/world/props/meshy_decor/lava_lamp_floor_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_lava_lamp_floor_cap | `Assets/world/props/meshy_decor/lava_lamp_floor_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_music_box_dancer | `Assets/world/props/meshy_decor/music_box_dancer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_organ_pipe_white | `Assets/world/props/meshy_decor/organ_pipe_white.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_piano | `Assets/world/props/meshy_decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_sheep | `Assets/world/props/meshy_decor/sheep.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_stone_arch | `Assets/world/props/meshy_decor/stone_arch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_tripod_machine | `Assets/world/props/meshy_decor/tripod_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_trophy_cup | `Assets/world/props/meshy_decor/trophy_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_umbrella_closed | `Assets/world/props/meshy_decor/umbrella_closed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_wall_torch_bracket | `Assets/world/props/meshy_decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_windpump_tower | `Assets/world/props/meshy_decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| decor_windpump_wheel | `Assets/world/props/meshy_decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 
 ### PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) — Asset pack (24)
 
