@@ -11,7 +11,7 @@
      P03-05  The Ranch Gate         level 1  gate, cattle grid
      P04-05  The Yard               level 1  chicken coop, trough
      P05-05  The Cow Field          level 1  cows, a fence out to the desert road
-   WHAT STANDS HERE TODAY (passes 1 to 3 of 5: the exteriors, the insides, the dressing, 2026-11-16; notes: docs/notes/areas-complexes.md "THE ESTATE, DISTRICT R"):
+   WHAT STANDS HERE TODAY (4 passes live: exteriors, insides, dressing, atmosphere; STOPPED 2026-11-16, waits mondo's look; notes: docs/notes/areas-complexes.md "THE ESTATE, DISTRICT R"):
      THE BARN (walk-in: a gambrel tin roof, barn red boards on a stone footing, white trim, sliding doors, the hayloft door under its hoist beam, a cupola
      and weathervane, a lean-to on posts down the east wall with the mower under it), the grain silo beside it (`ind_silo`), THE FARMHOUSE (walk-in: white
      boards, green shingles, a gable over the door, sashed windows with shutters, a railed porch, a smoking chimney), the Yard's hen house and its picket hen
@@ -27,7 +27,7 @@
      - the cowboy has no line (his old line named the three gates, which are gone); the goatman has none (lines are mondo's).
      - the Cow Field's "fence out to the desert road" leads nowhere: no door to the Desert exists (a way out = the tool's, mondo's call; not added).
      - Room 512's stable door `bay` (the Yard's south wall) and the Lodge's saloon door by the farmhouse porch are the tool's.
-     - no residents with routines, no encounter table (mondo's baked tables), night not seen on screen yet (pass 4).
+     - no residents with routines, no encounter table (mondo's baked tables), night seen (pass 4).
      - NEEDS A MODEL (nothing on R2): a tractor, a plough, a wheelbarrow, a pitchfork, a saddle on a rack, a pig, a goat, a rooster, a duck, a beehive, a
        dog kennel, a mailbox on a post, a clothes line, sunflowers / wheat (the bus-stop pack's `Wheat` is not on the game bucket), a cattle skull.
    THE HOOKS (bake-estate.js "THE DISTRICT FILES"; a file exports any of these, each is called with this district's own ctx):
@@ -55,6 +55,10 @@ module.exports = {
     plan(ctx) { const { setRect } = ctx;
         setRect(36, 63, 38, 65, 'p'); setRect(58, 51, 60, 55, 'p'); setRect(67, 70, 70, 72, 'p'); setRect(55, 58, 66, 59, 'p'); setRect(65, 57, 66, 58, 'p');
     },
+    /* THE AIR over the Ranch (bake-estate.js THE AIR BY DISTRICT; pass 4): chaff over the Hay Field, the Yard's and the barn's dust, pollen over the Pasture and
+       the Paddock; the Cow Field, the Farmhouse and the gate keep the zone's fireflies */
+    airZones() { return [{ sx0: 60, sy0: 36, sx1: 72, sy1: 48, kind: 'dust', color: 0xe0cc8a, n: 100, speed: 0.28 }, { sx0: 48, sy0: 48, sx1: 60, sy1: 72, kind: 'dust', color: 0xc8b494, n: 110, speed: 0.2 },
+        { sx0: 36, sy0: 36, sx1: 48, sy1: 60, kind: 'motes', color: 0xfff2b8, n: 80, speed: 0.3 }]; },
     houses(ctx) { const { building, put, feat, r2, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT } = ctx;
         const TB = 0xa08a6a;                                                                                                   // the insides' timber
         const inb = (B, key, lx, lz, o) => put(B, key, lx, lz, Object.assign({ floor: true }, o || {}));                         // a prop on a walk-in's own floor
