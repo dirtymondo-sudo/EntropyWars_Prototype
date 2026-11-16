@@ -4618,7 +4618,7 @@ const ThreeRenderer = (function () {
         else {
         if (obj.geometry && !obj.geometry._ew_shared) obj.geometry.dispose();
         }
-        if (obj.material && !obj._ew_parkClone) {
+        if (obj.material && (!obj._ew_parkClone || obj._ew_parkOwnMat)) {
             if (Array.isArray(obj.material)) {
                 for (var i = 0; i < obj.material.length; i++) {
                     if (!obj.material[i]._ew_shared) obj.material[i].dispose();
@@ -91500,6 +91500,7 @@ const ThreeRenderer = (function () {
             var ms = Array.isArray(o.material) ? o.material : [o.material];
             var cl = ms.map(function (m) { var q = m.clone(); q.transparent = true; return q; });
             o.material = Array.isArray(o.material) ? cl : cl[0];
+            if (o._ew_parkClone) o._ew_parkOwnMat = true;   // THE PARKED ROOM: the fading ceiling's looks are the copy's own
             Array.prototype.push.apply(st.ceil.mats, cl); st.ceil.parts.push(o);
         });
     }
@@ -96277,7 +96278,7 @@ const ThreeRenderer = (function () {
     var _HQ_PARK_SKIP = /^_ew_(b[A-Z]\w*|bv|bun\w*|ck\w*|st|chunk|pChunk|pcBld|sCell|dChunk|noDChunk|inst\w*|noInstance|lod\w*|reach\w*|mk\w*|rch\w*|sh[SCV]|hero\w*|rigMask|fbHost|noBatch|still\w*|parkClone)$/;
     function _hqParkOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_PARK; }
     function _hqParkOk(H, opts) {
-        try { return !!(opts && opts.handover && !_hqParkOff() && H && H.scene && H.ready && !H.stage && !H.ghost && _hqHandoverRules().handover && _hqChunkBig(H)); } catch (e) { return false; }
+        try { return !!(opts && opts.handover && !_hqParkOff() && H && H.scene && H.ready && !H.ghost && _hqHandoverRules().handover && (!H.stage || (typeof window !== 'undefined' && !!window.EW_HQ_PARK_STAGE))); } catch (e) { return false; }   // EVERY room of any size (mondo 11-16: "why not small rooms too? the fix needs to be game wide"). A room with joined neighbours (the stage: the HQ wings, the plot dungeons) keeps the old hand-over until its copies (written: _hqParkPieces reads the parts through their roots) are proven in a fight: window.EW_HQ_PARK_STAGE = true tries them
     }
     /* a copy of a room piece for the fight: the three.js clone (same geometry, same materials), the piece's own flags, none of
        the walk's bookkeeping (the merge's hide, the chunk, the instance pass, the LOD level) */
@@ -96296,6 +96297,7 @@ const ThreeRenderer = (function () {
         if (o._ew_instHidden) c.visible = true;                                                  // the instance pass draws this prop in the walk: the copy is the prop itself
         if (o.isLight && o._ew_rigMask != null) c.layers.mask = o._ew_rigMask;                     // the light rig holds a lamp's layers at 0: the copy has its own
         if (c.isMesh && c.geometry && c.geometry._ew_lodBase) c.geometry = c.geometry._ew_lodBase; // never a far level
+        if (o._ew_reflectOld) { c.material = o._ew_reflectOld; c._ew_reflectOld = null; }             // a mirror's target wears its own look in the fight (no mirrored render runs there)
         c.frustumCulled = o.frustumCulled; c.matrixAutoUpdate = o.matrixAutoUpdate; c.matrixWorldAutoUpdate = true;
         var ch = o.children;
         for (var i = 0; i < ch.length; i++) { var cc = _hqParkClone(ch[i]); if (cc) c.add(cc); }
@@ -96304,7 +96306,14 @@ const ThreeRenderer = (function () {
     /* the room's pieces where the walk keeps them: the shell's children + the fence plots' and edge pieces' children (the
        chunks hold them), the doors, the placements (in their prop chunks or still under the prop group) */
     function _hqParkPieces(H) {
-        var out = { shell: [], door: [], prop: [] }, i, k;
+        var out = { shell: [], door: [], prop: [], mats: null }, i, k;
+        /* THE STAGE: the drawn neighbours join the fight's room as the hand-over's flatten laid them: each piece through its part's root */
+        var st = H.stage;
+        if (st && st.parts) for (var sid in st.parts) {
+            var E = st.parts[sid]; if (!E || !E.attached || !E.P || !E.P.partRoot) continue;
+            var SM = E.P.partRoot.matrix, add = function (g, list) { if (!g) return; for (var q = 0; q < g.children.length; q++) { var pc = g.children[q]; if (pc._ew_pChunk) { for (var q2 = 0; q2 < pc.children.length; q2++) { list.push(pc.children[q2]); (out.mats || (out.mats = new Map())).set(pc.children[q2], SM); } } else { list.push(pc); (out.mats || (out.mats = new Map())).set(pc, SM); } } };
+            add(E.P.shellGroup, out.shell); add(E.P.doorGroup, out.door); add(E.P.propGroup, out.prop);
+        }
         if (H.shellGroup) for (i = 0; i < H.shellGroup.children.length; i++) out.shell.push(H.shellGroup.children[i]);
         if (H.chunks && H.chunks.cells) for (k in H.chunks.cells) { var g = H.chunks.cells[k]; if (g._ew_sCell) continue; for (i = 0; i < g.children.length; i++) out.shell.push(g.children[i]); }
         if (H.doorGroup) for (i = 0; i < H.doorGroup.children.length; i++) out.door.push(H.doorGroup.children[i]);
@@ -96331,6 +96340,7 @@ const ThreeRenderer = (function () {
         try { _hqInstDrop(H); } catch (e) {}
         try { _hqCullReset(H); } catch (e) {}
         try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {}
+        try { _hqStageLeave(H); } catch (e) {}
         try { H.chars.forEach(function (ch) { try { var rig = _unitModelRigs.get(ch.id); if (rig) { _unitModelRigs.delete(ch.id); _disposeModelRig(rig); } _modelAnimState.delete(ch.id); } catch (e) {} }); } catch (e) {}
         try { for (var i = H.scene.children.length - 1; i >= 0; i--) { var c = H.scene.children[i]; H.scene.remove(c); _disposeR(c); } } catch (e) {}
         try { _mmLeaveSweep(); } catch (e) {}
@@ -96349,7 +96359,7 @@ const ThreeRenderer = (function () {
                 var o = list[i];
                 if (o._ew_hqBatch || o._ew_hqInst) continue;
                 if (farOf(o)) { far++; continue; }   // past the fight's radius: it stays in the parked room, never copied
-                var c = _hqParkClone(o); if (c) { into.add(c); n++; } else P.failed = (P.failed | 0) + 1;
+                var c = _hqParkClone(o); if (c) { var sm = PS.mats ? PS.mats.get(o) : null; if (sm) c.applyMatrix4(sm); into.add(c); n++; } else P.failed = (P.failed | 0) + 1;
             }
         };
         fill(PS.shell, hand.shellGroup); fill(PS.door, hand.doorGroup); fill(PS.prop, hand.propGroup);
@@ -96368,6 +96378,17 @@ const ThreeRenderer = (function () {
         H.ready = false; H.landed = false; H.landedAt = 0; H.settle = null; H._gateSig = null; H._gateAt = null; H._resumed = true;   // (the room is warm: the gate waits for the people's files only, never for a settle)
         H.gate = _alGateOpen('room:' + (opts.room || 'central_egress')); H.playerAttached = false;
         H.arrive = (opts.arrive && isFinite(+opts.arrive.x) && isFinite(+opts.arrive.z)) ? { eye: opts.arrive, ms: (isFinite(+opts.arrive.ms) && +opts.arrive.ms > 0) ? +opts.arrive.ms : HQ_RETURN_EASE_MS, t0: 0 } : null;
+        /* the door gun and the pair, as this entry's opts file them (the fight may have filled the bag: the capture choices, the strike gate); the doors standing in the room stay */
+        try {
+            if (H.portal) { H.portal.issued = !!(opts.portal && opts.portal.issued); H.portal.slot = (opts.portal && opts.portal.slot === 'b') ? 'b' : 'a'; H.portal.hold = null; H.portal.cross = null; H.portal.aim = null; }
+            if (H.gun) {
+                var gd = (opts.gun && opts.gun.door && opts.gun.door !== 'threshold' && typeof window !== 'undefined' && window.DOOR_GUN_DOORS && window.DOOR_GUN_DOORS[opts.gun.door]) ? opts.gun.door : 'threshold';
+                H.gun.door = gd; H.gun.wheel = null; H.gun.mDown = false; H.gun.aim = null;
+                H.gun.wedges = (opts.gun && Array.isArray(opts.gun.wedges)) ? opts.gun.wedges : null;
+                H.gun.cap = { choices: (opts.gun && opts.gun.capture && Array.isArray(opts.gun.capture.choices)) ? opts.gun.capture.choices : [], sel: 0 };
+                H.gun.strike = (opts.gun && opts.gun.strike) || null; H.gun.armAt = performance.now() + (((opts.gun && opts.gun.strike) || {}).armMs || 3000); H.gun.strikeAt = 0;
+            }
+        } catch (eG) {}
         /* what the fight changed on looks the room shares with it: back as the walk had them */
         try { (P.mats || []).forEach(function (r) { var m = r[0]; if (m.fog !== r[1]) { m.fog = r[1]; m.needsUpdate = true; } if (r[2] === undefined) delete m._ew_hzNear; else m._ew_hzNear = r[2]; }); P.mats = []; P.matSeen = null; } catch (e) {}
         /* the room's air: _hqLeave cleared the height fog and the room-box AO for the fight */
@@ -96461,7 +96482,7 @@ const ThreeRenderer = (function () {
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE ONE BRIGHTNESS: same value; the building's auto-exposure eases off
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
-        try { _hqStageLeave(H); } catch (e) {}   // THE STAGE: the neighbours' gates, the detached parts
+        if (!park) { try { _hqStageLeave(H); } catch (e) {} }   // THE STAGE: the neighbours' gates, the detached parts (THE PARKED ROOM keeps its stage standing)
         var handed = park ? _hqParkStash(H, parkSt) : _hqHandoverStash(H, opts);   // THE HAND-OVER: the room's groups leave the scene before the disposal below (THE PARKED ROOM: nothing leaves, nothing is disposed)
         /* characters: evict their rig-cache records (ids are ours) — into a fight, the bodies are PARKED for it (THE BODIES CARRY OVER) */
         var carryRigs = !!(opts && opts.handover);
