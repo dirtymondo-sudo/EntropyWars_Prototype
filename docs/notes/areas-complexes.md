@@ -4636,6 +4636,10 @@ once that first district is fleshed out and knows what shared assets it can use 
 - **PASS 1, EXTERIORS (seen on screen):** the huts (painted boards, porch, shuttered window, word board, number, a door leaf each), the
   Lifeguard Hut (white, red band, LIFEGUARD roof board, railed veranda, the flag), the Boardwalk (kerb, bollards + rope, four lamps, THE GATE
   at the city door), the volleyball court (a drawn net), the swim flags, the Tide Pools (five `dip` hollows the sea stands in + rocks).
+- **PASS 2, INTERIORS (seen on screen):** the four huts lined and furnished (S.js `inside` + `In`): a coat in the hut's colour over a white
+  board dado, a lit board ceiling, tie beams, daylit windows; SURF (rack, steel bench, pegboard, boards, net), BEACH HUT (bed, lamp, chest,
+  rocking chair, rug, seascape), FLOATS (counter + till, ball cart, shelf, rings, air beds, paper lanterns), LIFEGUARD (cot, desk with radio
+  and glasses, tool chest, board, rings). What went wrong on the way is in the kit below (the coat's depth, prop heights on raised sand).
 - **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
@@ -4651,6 +4655,17 @@ once that first district is fleshed out and knows what shared assets it can use 
   reads as a grey steel door here.
 - **A WINDOW, A PORCH** (S.js `win`, `porch`): glass = `GLS` with `glow` 0.35 in a white frame, shutters = `SHUT` tinted; a porch = a plank
   deck, two posts, a `shed` roof. Copy them; they are a few lines each.
+- **A HUT'S INSIDE** (S.js `inside(a, w, d, h, tint, door, windows)`, copy it): the hollow building's inner wall face stands 0.30 m in, so
+  the coat stands at 0.335 (the city's 0.27 is behind the wall here); the ceiling is at 2.68 m whatever the row's `h`, so the lit deck is at
+  2.63; the deck wears `CORR` (a tint over the dark plank sheet stays dark). Never draw one box across a hut above head height (the
+  lifeguard's red band was the inside's black ceiling): four strips.
+- **A PROP'S HEIGHT ON RAISED SAND (the big one):** every Beach plot stands 0.6-2.0 m over the room's level 0. A prop's `y` under 1 is a
+  lift over the ground under it; a `y` of 1 or more is a height over LEVEL 0 (three-renderer.js THE TIER HEIGHT), so "1.5 m up the wall" is
+  typed `G + 1.5` with G = the plot's sand (`CAP[level]`: 0.6 / 1.2 / 2.0). And within about 0.4 m of a walk-in's wall the ground under a
+  prop is the WALL's top (boards, pegboard and rings stood on the roof): give it `floor: true`. S.js `In(B, key, lx, lz, face, y)` does
+  both. A thing on a table: use `steel_table` / `tanker_desk` (tops 0.76) so its `y` stays under 1.
+- **WALL PROPS:** a catalogue prop with `wall: true` (clock, clipboard, shelf, hook rail, extinguisher) did not show in a hut; use the plain
+  ones (pegboard, net, painting, life ring, notice board not checked). `bare_bulb` stands on the floor here: light a hut with the deck's glow.
 - **WATER ON THE SAND:** `feat({ k: 'dip', x, z, r, h })` on sand that stands 0.6 m up, with r 3.4-5.2 m and h 1.5-1.7 m, is a pool the room's
   own sea stands in (waded). A smaller or shallower dip shows no water.
 - **ROCKS:** on dry sand the graveyard pack's `psxg_rock_1..4` (grey boulders, about 1 m). The ocean pack's `ocean_rock_*`, weed, kelp and
