@@ -2907,11 +2907,52 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
   TRANSIT sign.
 - Memorial walk: a two-tier star-shaped stone base (`star`, convex polys) under the statue; the angel became `hero_statue_landing` (Meshy
   image-to-3d of concept S2, mondo's pick 12:43; catalogue entry in data.js, R2 Assets/world/props/meshy/hero_statue_landing.glb, y 1.0 on the base).
-- Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
+- (11-16: the street props, the street stairs and the shed changed: THE NEW YORK AUDIT below.) Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
   centred on pavement squares, 3 newspaper_rack (decor, off centre), the 3 orange/white steam chimneys in the road are OUT (mondo 11-15: "why are there chimneys in the middle of the road ... take it out"; never stand street furniture in a lane), a green
   sidewalk shed over the north pavement (x -59.5..-45.5).
 - 11-15 07:46 mondo "use the 3rd example ... as well": `hero_statue_crossed` (Meshy concept S3, arms crossed) on a granite pedestal (`pedestal`, NYC_OPEN) on the
   plaza's south-west square (-36.75, -19.25; a blocker, centred), y 1.4, facing the fountain. R2 Assets/world/props/meshy/hero_statue_crossed.glb.
+
+### HERO PLAZA, THE NEW YORK AUDIT (2026-11-16, mondo: "chimneys placed in the god damn middle of the fucking street ... make sure nothing else retarded got put in with that pass")
+Every row the New York pass (PR #1434) added was checked against the tool's squares (`DC_DUMP=<file> node bake-disaster-city.js --dry-run` writes the
+squares, rows and props; R = carriageway, P = walk, . = yard, D = door) and then looked at in the browser. The chimneys were already out. Found and fixed, all in `districts/H.js`:
+- **THE CABS**: the four parked `car_taxi` stood in the middle of the kerb squares (5.25 m from the street's middle). The city's cars drive 3.5 m from
+  the middle and a cab is 2.28 m wide: every passing car drove through a cab's side (seen on screen), and the cabs faced AGAINST their side's traffic.
+  Now tight to the kerb (z 63 -+ 5.86) and facing with the traffic (the city drives on the right: north side west, face 270; south side east, face 90).
+- **THE STREET STAIRS** (`subway0/1`): stood across square lines (x 3.5 / 38.5); the east one half on the square before the Transit court's east door, in
+  its walk; the well was black paint anyone walked over; the lamps were a cylinder under a half ball, near white (the upside-down bowls again).
+  Rebuilt: each fills two whole yard squares beside the walk, its mouth on the walk: the west one at (1.75, 14), mouth south; the east one at
+  (40.25, 28), south of the court's east walk, `rot: 180`, mouth north (an OPEN piece takes `rot` now). An iron and glass kiosk with a barrel
+  roof over the stair, green GLOBES (two tapers + a half ball, glow 0.45 so they stay green), a shut folding gate with CLOSED on it (there is
+  no room below), and the two squares block (`walls` + `wallStoreys: 1`). A bench on the east one's square steps two squares south along its
+  fence (`clear: [hx, hz, dx, dz]`). NEVER UNDER A ROOF BRIDGE: the game stands the bridge's piers on the ground under it; the east kiosk first
+  stood under RF91 (z 10.5..14) and a pier came up through its roof (seen on screen).
+- **THE SIDEWALK SHED**: OUT. It stood alone on the north pavement in front of an open lot and the stair `dc:stair:P04-06S`, against no building.
+  No building of the district fronts the street's pavement, so there is no honest place for it there (ask mondo before it comes back on a wall).
+- **THE CARTS**: the two `hot_dog_stand` stood in the middle of the pavement, which is ONE square wide (each shut it; the west one stood 9 m from the
+  market's own hot dog stand). Now on yard squares behind the pavement (8.75, 50.75) and (40.25, 75.25), long side along the street (face 90 / 270).
+- **APARTMENTS A HAD NO UPPER WALLS** (the worst find; not from the New York pass): in `apartments()` the box of storeys 2 to 5 had slid into the
+  trailing `//` comment of the line above it on 11-14 (the residents' bedrooms pass), so for two days the block was a ground floor, two glass
+  bay columns and a roof in the air, and the New York pass hung its fire escapes on nothing. The statement is back on its own line. RULE: never
+  end a line with a `//` comment when code follows in the same edit; the other district files were scanned for the same slip (none).
+- **THE NEWS BOXES**: stood mid-pavement with their fronts to the road. Now at the kerb's edge, fronts to the walkers; the tool's prop check
+  (`prop-check.txt`) caught one on a kerb lamp (lamps: north kerb x = -77 + 21k, south kerb x = -66.5 + 21k), moved clear.
+- **THE FIRE ESCAPES** (Apartments A) and **THE STOOPS** (Townhouse row): the rails were solid plates (a black band across every floor; black blocks
+  beside every stoop). Now bars: rails on pickets (one part with `n` + `step` per run). The brownstone drew near black on its north face: lighter
+  tints + `glow: 0.3` in its NYC_TINT map (`nycTint` reads a `glow` key now).
+- **THE STAR BASE** under the Memorial statue: its lower tier was a concrete sheet that drew near black; both tiers are pale stone now.
+- LEFT AS BUILT (checked, sound): the wedge tower + globe, the billboards and tickers (on roofs and walls, none over a walk), the water towers, the
+  tower's glow strips, the second statue's pedestal (one whole square of the two-square walk band, mondo asked for it there), the gates (pillars on the pavement).
+- **THE PLANTED BEDS** (not from that pass; the look): the tool's `planter` is a bare box of soil and Hero Plaza has 67: the plaza was ringed by dark
+  empty boxes. Each gets a clipped, rounded box hedge (`arch:H:beds<plot>`, one row per plot, a 'barrel' roof part in `leaves_3`).
+  TWO RULES learned: (1) a low arch BOX is a solid to the exterior polish: a box hedge pushed its own planter a square away; a `roof` part is not
+  read. (2) the polish moves planters AFTER `build(ctx)`, so the beds run in a NEW hook, `last(ctx)` (bake-disaster-city.js THE LAST STAGE: after
+  the polish, rows written again, drawn rows only, moves nothing).
+- **NEVER SPLICE A PROP OUT in a district file**: the tool dresses other districts by a prop's place in the list (pots / cacti, the rubbish bags).
+  One planter less in Hero Plaza swapped 60 pots and turned 100 rubbish rows in other districts. Move the prop; check with a dump diff that
+  "outside the district" is 0 rows changed (this pass: 0).
+- Probe views that show the district: PLAYTEST_NOTES "THE CITY PROBE" + y = the plot's level x 1.75 + 1.75 for a first-person eye
+  (street z 63: y 11 to 12.5; plaza: y 16; Transit court / Memorial: y 14). A third-person view with a long `dist` ends inside a wall; use `fp`.
 
 ### HERO PLAZA, THE SECOND INSIDES PASS (2026-11-13 night, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere for the interiors")
 - **Where**: H.js `IN2[building id]`, run after the room's first-pass `IN[id]` on the same kit; new kit helpers `put` (a prop with `floor: true`
@@ -4832,6 +4873,48 @@ same (the whole file, so the Desert's room and the three insides).
 6. A piece that needs a model that does not exist: MODEL_LIST rule (list-models.js) + the catalogue row; the old literals the tool reads lines
    from (`carnival`, `site_prebuilt_area51_gate`, `site_prebuilt_area51_flightline`, `site_prebuilt_giza_plateau`) must stay in data.js.
 
+## THE DESERT, WESTERN TOWN — THE EXTERIORS PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/areas/desert/districts/W.js` changed, then a rebake.
+- **WHAT WAS WRONG (first probe):** the seven fronts were 24 to 28 m wide, dark barns with 20 m of sand between them; the mine was a concrete
+  culvert with a pipe and a hotel luggage cart; the canyon's cut end looked straight out at Giza; a gable roof stood out past each false front
+  and hid its name.
+- **THE TOWN NOW:** twelve fronts at 7 to 17.5 m, shoulder to shoulder in two rows, a plank boardwalk each side (`ctx.setPaint`, rows 21 and
+  26 in the home frame). The seven named buildings keep their plots; five small trades fill the rows: BLACKSMITH, BARBER, ASSAY OFFICE,
+  TELEGRAPH, UNDERTAKER (generic frontier trades; told to mondo). `western()` took two changes: `key` (the wall sheet; the church is stucco,
+  the plank sheet cannot be tinted white) and a roof behind a false front is lower than the front and stops at its back.
+- **THE MINE** is an `arch` row (`des:w:mine`): three timber sets, lagging, a dark back, a MINE board, rails and sleepers 15 m south to a
+  buffer. **BOOT HILL** has a ranch rail, a named timber gate (`des:w:boothill`), headstones and grave mounds from the PSX graveyard pack.
+- **THE CANYON** ends in a rock wall (a `plateau` 4 x 3 squares, 8.75 m) on Western Town's own squares: a box canyon.
+- **THE HORSE POND:** the layout's two `w` squares south of the well were never drawn; a `pool` stands there now.
+- **THE PROBE, WESTERN TOWN:** faces are compass degrees (0 looks north, 90 east). Room x = -84 + 3.5 x home square, z = -210 + 3.5 x home
+  square. Main Street's middle is z -126; a good street view is x 112, z -121, face 62, y 1.6. A cold run took 200 s, a warm one 60 s.
+  Swinging door leaves DO draw here (saloon, church, jail).
+- **NEEDS A MODEL:** the list in W.js's header (anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows,
+  prospector's tent, telegraph pole).
+
+## THE DESERT, WESTERN TOWN — THE INTERIORS PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 2 of 5. Only `docs/areas/desert/districts/W.js`, then a rebake (the Desert's block grew from 153 to 262 KB: the fittings are parts).
+- **WHAT WAS WRONG (probe of the twelve insides):** bare dark boxes with a black ceiling and no window from within; `form_counter` is a white
+  office form stand (it was every shop's counter); `round_table` is Camelot's 5.2 m Round Table (the saloon had two); `cell_bars` and
+  `psx_shelf_mp_2` drew as black slabs; `mobius_bar` is a modern red bar.
+- **`inside(a, id, w, d, h, door, o)` in W.js** (called in each building's parts callback, after `western()`): a dado + a wall band 0.34 m in
+  from the row's edge (the room's own wall is at 0.30 m), a ceiling at `o.ceil` or h - 0.36 with beams, and a lit pane behind every window
+  `western()` draws. Everything it draws is lit a little (`glow`, x 1.7, capped 0.78) because the room has no lamp of its own. It returns
+  `solid` (a drawn box + a ghost block), `counter`, `shelves` (planks with goods: boxes and bottles in a list of tints).
+- **THE GHOST BLOCKS:** the parts callback has no handle, so `solid` only records [x, z, w, d, h] in `INS[id]`; `furnish()` writes them as
+  `{ k: 'wall', ghost: true, rail: false }` rows through the handle's `at()`. A prop inside wears `floor: true` (W.js `inn`), or it stands on
+  top of the nearest wall or ghost block (the city's interior polish found the same).
+- **PROPS THAT ARE RIGHT FOR A FRONTIER ROOM:** `psx_dinner_table_1` + `psx_chair_mp_3`, `psx_bed_4_1..4`, `psx_wardrobe_mp_1`,
+  `psx_bedside_table_1`, `blackjack_table`, `roulette_table`, `crystal_chandelier` (give it `y`), `rifle_rack`, `mugshot_wall`, `key_rack`,
+  `platform_scale`, `hw_straw`, `lectern`, `wooden_cross`, `meshy_hanging_lantern` (`noLight: true`).
+- **NOT DONE:** no upstairs (saloon gallery and hay loft are drawn only; a real upper floor needs the stacked-room rules of "CAMELOT CASTLE,
+  ONE STACKED BUILDING"); the mine has no inside; the hotel's six rooms were not seen on screen.
+- **PROBE SPOTS (inside the door, y 1.6):** north row z -138.2 face 0 at x 96.25 stables, 117.25 smith, 136.5 saloon, 152.25 barber, 176.75
+  bank, 190.75 assay, 203 telegraph, 220.5 hotel; south row z -113.8 face 180 at x 96.25 jail, 113.75 undertaker, 178.5 store; church
+  x 145.25 z -194.2 face 0.
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
@@ -4908,3 +4991,82 @@ A set-up change only: how the zone is written, not what is built.
 6. **Visual work gets a browser run** (RULE #1c / #1d: the fresh check, probe-fast.js, the proof picture with the `[EW BUILD]` HEAD).
    Two prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack). No Meshy until mondo says so; the corn waits for it.
 7. A lasting fact goes in this file under your district's own heading in the same PR, and one line on the board.
+
+## THE DESERT, AREA 51 — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/A.js`)
+
+mondo (the set-up thread's brief): one thread per district; passes in order EXTERIORS, INTERIORS, DRESSING, ATMOSPHERE, POLISH, a PR each.
+
+- **PASS 1, EXTERIORS (seen in the browser, playtest_city.js through probe-fast.js, 14 + 14 + 10 views):** as it stood the base was a brown
+  field: the tower drew as a rock mound, the fence as a solid checkered wall 150 m long, the hangar near black, dead trees on the runway,
+  nothing walk-in but the guard post. Now: a real control tower (the old deck + fire escape inside a drawn FLIGHT OPERATIONS block, a round
+  shaft 14 m tall, a dark glass cab), two Quonset barracks + the mess hall + the radar hut (all walk-in, empty inside until pass 2), a white
+  radome, three watchtowers, the gate (piers, boom arms open, the warning board), the fence's steel (posts, rail, wire, WARNING plates), a
+  fuel dump in a bund, concrete blast pens, Runway 33's numbers + edge lines + a taxiway to the apron, the hangar lifted to grey with a
+  yellow door frame.
+- **TWO SHARED CHANGES (noted on the board):** (1) three-renderer.js "THE CHAIN-LINK": a `wall` row whose `key` is a chain-link sheet is
+  drawn blended, two-sided, no shadow (the sheet's holes are clear in the file; walls ignored them). Any room's chain-link wall gains it.
+  (2) bake-desert.js: the three whole-room scatter rows carry `off` = Area 51's paved ground (a piece thrown there is dropped, the rest stay
+  where they stood). mondo's rule: trees never stand on concrete.
+- **THE DOOR LEAVES: CLOSED.** "No door leaf draws in the probe" (THE LOOK PASS above) was the old probe taking its picture before the leaf
+  files were asked for. Through probe-fast.js all 13 of Hangar 18's leaves draw. The door code is fine.
+- **LESSONS:** a `plateau` here draws as a mound with slopes about 0.9 m past its edge (the ground is sampled every 1.75 m): skin it 1.2 m
+  wider. An `arch` row with no `y` stands on the ground under its origin, which on a plateau is the plateau's top: give it `y: 0`. A sheet
+  under a tint reads dark in the shade: `gain` 1.3 to 1.7 on the part. A sign under a barrel roof's overhang is hidden by the roof's end:
+  set it 0.3 m out. Hangar 18's saucer on the floor IS confirmed on screen now.
+
+
+## CAMELOT, THE VILLAGE — the pilot district thread (2026-11-16, second side; files `docs/areas/camelot/districts/T.js` + `T-houses.js`)
+mondo 11-16: "start one district thread in each to try to get it up to par with disaster city, so it will be easier to do the other districts
+once that first district is fleshed out and knows what shared assets it can use for the zone". The Village (district T) is Camelot's pilot.
+Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. What the next districts can reuse is in "CAMELOT, THE ZONE KIT" below.
+- **THE FIRST LOOK (probe, 12 views, on main 79456a5)**: what a finished city district has and the Village lacked:
+  1. walls that read (the plaster was mud, a shaded wall black; the jettied houses' and the Inn's side walls were one black timber sheet);
+  2. every door on a street (seven houses turned their door to the town wall); a path from each door step to the cobbles;
+  3. backs and sides (blank walls, bare glass);
+  4. insides: the three walk-ins have a black ceiling, no light, bare walls, garden benches as inn seats, the Chapel's carpet stands upright;
+     no house is walked into;
+  5. street furniture: no lamp, no sign, no fence, no cart; the Market's stalls are eight blue camping tents;
+  6. people: two gate knights, nobody else; no routine;
+  7. atmosphere: no smoke, no torchlight, no sound.
+- **PASS 1, THE EXTERIORS (this PR)**, `T-houses.js` + two lines of `T.js`:
+  - `gain` on plaster (1.6), dressed stone (1.35) and thatch (1.35); a roof with a plaster / stone gable end takes the gain and its own tint
+    is divided by it (`dimBy`), so the slate stays dark. The half-timber now reads from the far end of a street.
+  - the jettied townhouse's side walls and the Inn's four upper walls: posts, two plates and a mid rail in place of one timber sheet.
+  - `frontOf`: a house with no street within three squares looked 'S' whatever stood there. It now looks three squares wider (a street
+    round the corner), and failing that to the castle. Houses 32, 33, 38, 40, 41 turned from the town wall to the village.
+  - a flagged path (`cobblestone`, 1.5 m) from each door step to the street (`reach()` = the squares of grass in between).
+  - side windows get a frame and shutters (the jettied upper floor's were hidden inside the overhang: `xo`), every kind gets back windows.
+  - `CAM_HOUSES=1 node bake-camelot.js --dry-run` prints each house: kind, front, squares, squares to the street (to aim a probe).
+  - Seen on screen (probe, 4 + 10 views): North Street end to end, the Inn, a burgher front, a shop, the backs. Proof: North Street looking east.
+- **SEEN, NOT THE VILLAGE'S (notes on the board for their holders)**: each town-wall corner tower's roof floats on its posts well above the
+  tower's body, and the gate roofs the same (the tool's `townSide()` / hqCastleTower crown); a grey rounded mass hangs under the castle
+  hill's corner drums (K.js or the hill); a few snow-white trees stand inside the town wall on the north side (not `tree()` rows of T.js).
+- **A probe in this room**: `fp: true` views only (a `dist` view from above lands inside a roof or under the floor: black); for a look from
+  above pass `"y": 32` with `fp` and a negative pitch. The room is ready in about 45 s; ten views take about 2 minutes.
+
+## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
+Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
+- **THE SHEETS that suit the zone** (keys for `sheet()` parts): `castle_wall` (ctx.WALL: all stone, tint it STONE 0xc4c0b8 / STONE2 0xaeaaa6 /
+  STONE3 0xd2ccc0), `urban:PlasterWallStucco2a` (plaster: ALWAYS with `gain` 1.6), `wood` (dark timber, tint 0x4a3626; thatch = `wood` tinted
+  straw 0xc8ac64 + gain 1.35 on a `hip` roof), `wood_planks` (boards, doors, shutters), `urban:MetalRoofTiles1a` (slate / tile roofs by tint:
+  blue 0x5a6c96, red 0xa84a3c), `bricks_2` (chimneys, 0xb86a54), `urban:GlassWindowTall1a` (leaded glass; lit = tint 0xf0d890 + `glow` 0.55),
+  `cobblestone` (paths, yards).
+- **THE LIGHT RULE**: under the kingdom's sun a sheet under a tint reads a third darker than its tint, and a face in shade nearly black.
+  Plaster, pale stone and straw need `gain` (1.3 to 1.7). A whole wall of dark timber is a black slab: draw timber as posts and plates
+  0.2 to 0.3 m thick over plaster, never as a sheet.
+- **A ROOF PART'S GAIN IS THE WHOLE PART'S**: give `gain` to a roof with a `keyEnd` gable and divide the roof's own tint by it
+  (`T-houses.js` `dimBy(tint, gain)`), or the slate goes pale with the gable.
+- **THE FIVE HOUSE KINDS** (`T-houses.js` `houseLook(kind, a, w, d, i, path)`; mondo OK'd the looks): 1 jettied townhouse, 2 shop house,
+  3 thatched cottage, 4 burgher house, 5 yard house. Another district that wants a hut, a mill house or a lodge can require the file's
+  pieces only by a board note (it is T's file); the tool's own `sheet()` is everybody's.
+- **CLOTH** = `sheet().banner(x, y, z, w, h)` (the royal banner: mondo's pin, no plain red rectangles).
+- **PROPS THAT FIT** (catalogue keys, all on R2): `ancient_well`, `stocks`, `signpost`, `brazier`, `cauldron`, `covered_wagon`, `wooden_bucket`,
+  `meshy_burlap_sack`, `psx_wooden_crate_1..6`, `bread_rack`, `armour_stand`, `dojo_weapon_rack`, `sea_chest`, `stone_altar`, `church_pew`,
+  `catholic_pew`, `wall_torch`, `cave_torch`, `hearth_fire`, `campfire`, `candle`, `hw_candles`, `hw_straw`, `hw_fence`, `hw_pumpkin`,
+  `fountain`, `stone_urn`, `angel_statue`, `wooden_cross`, `cross`, `psxg_tombstone_1..3`, `fallen_log`; animals `cow`, `chicken`,
+  `decor_sheep`, `horse`, `horse_brown`, `horse_black`, `dog`, `cat`. NOT medieval, keep out: `camping_tent`, `park_bench`, `planter`,
+  `city_*`, `psx_lamp_*`.
+- **NEEDS A MODEL (zone-wide, nothing on R2)**: a market stall, an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart,
+  a water trough, a wooden fence run with a gate, a hitching rail, a tavern table with benches.
+- **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
+  south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
