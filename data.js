@@ -10370,6 +10370,13 @@ const RACE_ABILITIES = {
         { id: 'nrCPR', name: 'CPR', tier: 3, families: ['lifesaving'], cost: 75, apCost: 1, spellType: 'human',
           type: 'heal', kind: 'heal', range: 1, healPct: 0.45, cleanse: 2,
           desc: 'Thirty compressions, two breaths. Heals a Single Ally beside her for 45% of their max HP and cleanses 2 debuffs.' },
+        /* INSERVICE (2026-11-16, mondo: "a spell called inservice that is some sort of a team buff (inservice is like mandatory
+           lifeguard training to make sure your skills are still up to par)"): the team runs its drills with her. Every ally
+           within 2 of her (her too) gains +1 DEF and +1 SPD (the warCry kind). On the Iron Bulwark / Azazel's Forge line
+           (T2, 50 MP, two stages, radius 2); cooldown 2. It asks the team to stand close to her, the same zone On Duty covers. */
+        { id: 'nrInservice', name: 'Inservice', tier: 2, families: ['lifesaving'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'buff', kind: 'warCry', range: 0, auraRadius: 2, statStageBoost: { def: 1, spd: 1 },
+          desc: 'Mandatory training: the drills keep everyone\'s skills up to par. Every ally within 2 of her (her too) gains +1 DEF and +1 SPD. Cooldown: 2 rounds.' },
         /* THREE WHISTLES (2026-11-16, the Lifeguard's capstone): three blasts = the beach's call for help. Every ally within 4 under
            half HP is hauled to a free square beside her (nearest first, the lowest HP first), cleansed of 1 debuff and healed 15%
            of max HP. Refused when no ally qualifies. It gathers a broken team round her, so it also bunches them for an area
@@ -22844,7 +22851,7 @@ const SPELL_FAMILIES = {
         glyph: '🛟',
         color: '#c83a3a',
         kind: 'signature',
-        desc: 'Nobody drowns on her watch: a tube that hauls an ally out of trouble, a save from a killing blow, CPR, and three whistles that pull the whole team in.',
+        desc: 'Nobody drowns on her watch: a tube that hauls an ally out of trouble, a save from a killing blow, CPR, the team\'s Inservice drills, and three whistles that pull the whole team in.',
         unique: 'lifeguard',
         identity: { who: ['Lifeguard', 'Rescuer', 'Beach Patrol'], adj: ['Sun-kissed', 'Watchful', 'Fearless'], look: ['a red swimsuit with a white cross', 'a red rescue tube', 'long sun-bleached hair'], vibe: ['pulls you out of the fire', 'will not let you go down'] }
     },

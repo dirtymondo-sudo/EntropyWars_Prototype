@@ -5660,6 +5660,10 @@ allyOnly, range 5, pullDistance 4, cleanse 1, cd 1). **CPR** (T3, heal range 1, 
   families) and her default kit carried neither On Duty nor CPR; the default kit is now those four + Gills, Water Jet, Whirlpool.
   ai.js buff scoring: On Duty is worth the allies in her 4 the next hits could kill; Three Whistles the allies it would haul (0
   with none). VFX: spells-vfx.md "THE LIFEGUARD".
+- INSERVICE (2026-11-16, mondo: "a spell called inservice that is some sort of a team buff (inservice is like mandatory
+  lifeguard training ...)"): `nrInservice`, T2 lifesaving warCry, 50 MP, cd 2, radius 2, +1 DEF +1 SPD to every ally in it, her
+  too (the Iron Bulwark / Azazel's Forge line). In her pool, not in the default kit (the four rungs stay her own four). Probe
+  11-16: 3 allies within 2 buffed, the one 4 away not; VFX = spells-vfx.md "THE LIFEGUARD".
 - THE WOMEN (mondo 11-16 "the women look good"): politician, professor and clown are `both` genders now (sprites.js RACE_SPRITE_GENDERS);
   their female Meshy models + sprites are on R2 `Assets/characters/races/<race>/female/` (RACE_MODELS_3D `female:`,
   _CHARACTER_SPRITES_GENDERED; the politician's sprite moved there from _HERO_RACE_SPRITES, which ignores gender). Same spells as the men.

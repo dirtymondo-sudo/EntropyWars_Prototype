@@ -3825,6 +3825,7 @@ side follow THE RIOT PASS from the viewer's seat (cyan-blue yours, pink-red thei
 - CPR (`aura`): a red heart pumps three times on the chest (a ring each), the breath ring, then the green heal.
 - The save + every Three Whistles haul: `fireGeometry('nrOnDuty:save', x, y, 0, { fromX, fromY, owner, delay })` (relayed to the
   guest by online.js): the buoy drops over the saved ally, a splash + side ring, one whistle ring from her.
+- Inservice (warCry `aura`, radius 2): two whistle rings, a ring on every square of the drill zone, the side ring to its edge.
 - Three Whistles: `fireGeometry('nrThreeWhistles:blow', …, radius)`: three big whistle rings + three floor rings to her reach.
 
 ## THE MAGICIAN (2026-11-16, the new races; mondo: "work on their spell pools and spell vfx")
