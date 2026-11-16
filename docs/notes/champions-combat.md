@@ -5423,3 +5423,23 @@ needs its own bonus spells". Options paper: /mnt/project-files/proposals/SLUDGE_
   Stagger + Radioactive: two statuses, mondo's explicit pick over the old single-status rule); Kaiju Atomic Breath pays
   x1.5 on Staggered OR Radioactive; Nuclear Option (SHARED_NUKE: Mech, General, Overlord, Politician) pays x1.5 on
   Radioactive. ai.js statusValue prices a Radioactive stack.
+
+## THE NEW RACES (2026-11-16, thread cmsg_01XWpxyTn3nnw98znVzKdFjsDBJn8bnEMtiLUUxL1w51CS)
+mondo 11-16: "every new unit needs to feel unique and have a unique combat style". His picks from the proposal doc
+(https://claude.ai/artifact/6VrT9HNemDvTPuSrttdLiu): Sewer Gator, Skater, Banker, Mole Man + his adds Tech CEO, Magician,
+Quetzalcoatl (= his Aztec king model, `Assets/characters/races/aztec/`). One PR a race. Models: /mnt/project-files/new-races/
+(made + rigged by Claude on Meshy; `run.py concepts|models|rig`).
+
+### 1. THE BANKER (urban, support, family `highfinance`)
+The style: he lends and bets, and every deal settles later.
+- **Line of Credit** (T1, heal, range 4): heals an ally 30 % max HP now and puts **Debt** on them (36 % of their max HP, 2 turns).
+  When Debt ends (expiry or cleanse) the borrower pays it back: min(debt, hp - 1) leaves the borrower and heals the banker
+  (it never kills). If the borrower dies with Debt on, the loan goes bad: the banker takes 80 % of it as damage.
+- **Short Sell** (T2, debuff, range 5, cd 2): marks a foe **Shorted** (2 turns, stores `_shortSrcId`). If that foe goes down while
+  shorted, the seller cashes out: +75 MP and 20 % max HP, floating "📉 PAYOUT". battle.js `_settleBankOnDeath(unit)` runs from map.js
+  `defeatUnit` before `endStatusesTiedToUnit`; `_TIED_STATUS_FIELDS` ends Shorted when the seller dies.
+- **Foreclose** (T3, magic 150, range 4): ×1.5 on a Shorted target.
+- Tree: Surveillance → Steal From Rich / Black Budget → Swipe / Fluoride Water → Truth Bomb. Families: highfinance, deepstate,
+  thievery, conspiracyknowledge (none unique to another race). Finisher Foreclosure (sig motionCarries). POINT_OF_ENTRY Downtown.
+- Online: statuses + HP/MP state-sync; the floating text goes through the relayed `showFloatingTextAtTile`.
+- Model `Assets/characters/races/banker/male/Meshy_AI_banker_Running.glb` + `banker.png` (R2 only).

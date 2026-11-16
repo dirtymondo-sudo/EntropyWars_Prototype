@@ -13645,7 +13645,7 @@ const STATUS_DEFS = {
        it, the short-seller is paid (battle.js _settleBankOnDeath). Ids only on the unit (_debtSrcId, _shortSrcId: RULE #2). */
     debt: {
         icon: '💰', glyph: '💰', short: 'DBT', label: 'Debt',
-        colorText: 'owes the bank — the loan comes due with interest',
+        colorText: 'in debt to the bank — the loan comes due with interest',
         kind: 'debuff', category: 'status', stack: 'replace',
         iconSrc: createStatusIconDataUri('💰', '#1c2a1c', '#d8f5d0', '#4caf50'),
         onApply(unit, src, info) {
