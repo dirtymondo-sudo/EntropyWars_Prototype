@@ -12,6 +12,8 @@
    PASS 3 (DRESSING, about 170 props placed by hand): the station's ticket machines, turnstiles, phone, posters, a camp at the platform's end, a body on
    the track, bats; a dead train front + luggage on the east loop; cabinets, drums, cones, bones round the tunnels; the Depot's workshop
    (lathe, drill, bench, hoist, welder, cylinders, compressor), stores along its south wall, the forklift and pallets.
+   PASS 4 (ATMOSPHERE): light on the floor and walls under every lit lamp, the lit car's spill and headlights, green under the gantry (all `glow`);
+   four flickering tubes, the camp's barrel fire, steam in five places, a lit EXIT over each hut's door.
    STANDS TODAY (first build): the Ghost Station's platform 1 m up with its bench, board and maps; two parked trains in the Depot; torches;
    the old room's four bystanders. THE MODEL LIST PASS: the signal frame + signals at the Crossing, depot gear, Metro columns, the well's bucket and rope, railway lanterns. NOT YET: the lit train's light, the garden well's rope as a model,
    station tiles on the tunnel walls. */
@@ -95,7 +97,8 @@ module.exports = {
                     [1.95, 2.07, 2.19].forEach((y, i) => parts.push({ s: 'box', p: P3(u, y, 0.04 + i * 0.01), size: Z3(L, 0.05, 0.05), tint: [0x101010, 0x161310, 0x0c1014][i] }));
                     parts.push({ s: 'box', p: P3(u - L / 2 + 0.6, 1.9, 0.03), size: Z3(0.06, 0.36, 0.1), tint: IRON, n: Math.max(1, Math.round(L / 1.75)), step: Z3(1.75, 0, 0) });
                     for (let q = 1; q < run; q += 3, k++) { const uu = X(b0 + q) + 1.75; parts.push({ s: 'box', p: P3(uu, 2.42, 0.06), size: Z3(0.36, 0.22, 0.14), tint: DARK });
-                        parts.push(k % 3 ? { s: 'box', p: P3(uu, 2.46, 0.15), size: Z3(0.26, 0.13, 0.06), tint: AMBER, glow: 1 } : { s: 'box', p: P3(uu, 2.46, 0.15), size: Z3(0.26, 0.13, 0.06), tint: 0x3a352c }); } }
+                        parts.push(k % 3 ? { s: 'box', p: P3(uu, 2.46, 0.15), size: Z3(0.26, 0.13, 0.06), tint: AMBER, glow: 1 } : { s: 'box', p: P3(uu, 2.46, 0.15), size: Z3(0.26, 0.13, 0.06), tint: 0x3a352c });
+                        if (k % 3) parts.push({ s: 'box', p: P3(uu, 0.85, 0.0), size: Z3(2.1, 1.55, 0.03), key: 'bricks_2', tint: 0xd8bc98, glow: 0.1 }, { s: 'box', p: P3(uu, 0.012, 1.0), size: Z3(2.4, 0.012, 1.7), key: 'urban:ConcreteStriped2c', tint: 0xd8c4a4, glow: 0.1, sides: false }); } }   /* pass 4: what a lit lamp lights */
                     run = 0; } } };
             side(true); side(false); arch(ctx, p.id, 'walls', parts); });
 
@@ -118,8 +121,10 @@ module.exports = {
           [-9, 0, 9].forEach(x => P.push({ s: 'quad', p: [x, 1.52, -13.73], size: [3.9, 0.62], key: sign('GHOST STATION', GREEN, 6.3), glow: 0.4, uv: 'fit' }, { s: 'quad', p: [x - 1.5, 1.86, 6.76], ry: 180, size: [3.9, 0.62], key: sign('GHOST STATION', GREEN, 6.3), glow: 0.35, uv: 'fit' }));
           /* a capital on each of the four columns (the columns are the Metro pack's, in dress) and four tube lamps, two alight */
           [2, 4, 7, 9].forEach(lx => P.push({ s: 'box', p: [XC(lx), 4.9, XC(4)], size: [1.0, 0.32, 1.0], key: CONC }, { s: 'box', p: [XC(lx), 1.0, XC(4)], size: [0.95, 0.2, 0.95], key: CONC }));
-          [-10.5, -3.5, 3.5, 10.5].forEach((x, i) => { P.push({ s: 'box', p: [x, 4.5, -8.6], size: [1.9, 0.12, 0.4], tint: DARK }, { s: 'box', p: [x - 0.7, 4.6, -8.6], size: [0.04, 0.45, 0.04], tint: IRON }, { s: 'box', p: [x + 0.7, 4.6, -8.6], size: [0.04, 0.45, 0.04], tint: IRON });
-              P.push(lit[i] ? { s: 'box', p: [x, 4.43, -8.6], size: [1.6, 0.07, 0.22], tint: LAMP, glow: 1 } : { s: 'box', p: [x, 4.43, -8.6], size: [1.6, 0.07, 0.22], tint: 0x3a3d38 }); });
+          /* (pass 4: the lamps hang over the platform's front half; under each lit one the floor is lit; the second is a flickering tube, in dress) */
+          [-10.5, -3.5, 3.5, 10.5].forEach((x, i) => { P.push({ s: 'box', p: [x, 4.62, -3.5], size: [1.9, 0.12, 0.4], tint: DARK }, { s: 'box', p: [x - 0.7, 4.72, -3.5], size: [0.04, 0.5, 0.04], tint: IRON }, { s: 'box', p: [x + 0.7, 4.72, -3.5], size: [0.04, 0.5, 0.04], tint: IRON });
+              if (lit[i]) P.push({ s: 'box', p: [x, 4.55, -3.5], size: [1.6, 0.07, 0.22], tint: LAMP, glow: 1 }, { s: 'box', p: [x, 1.012, -3.6], size: [6.4, 0.012, 4.8], key: 'urban:MetroFloor', tint: 0xcfd6c2, glow: 0.2, sides: false }, { s: 'box', p: [x, 1.026, -3.6], size: [3.4, 0.012, 2.6], key: 'urban:MetroFloor', tint: 0xdfe6d2, glow: 0.36, sides: false });
+              else if (i === 3) P.push({ s: 'box', p: [x, 4.55, -3.5], size: [1.6, 0.07, 0.22], tint: 0x3a3d38 }); });
           arch(ctx, 'P00-03', 'station', P); }
 
         /* ── THE CROSSING (P02-03): THE SIGNAL GANTRY, 5.2 m, over the square where the two lines cross (lx 6, ly 6); a head to each way,
@@ -132,6 +137,7 @@ module.exports = {
           [[a - 0.16, c, 90], [b + 0.16, c, 270], [c, a - 0.16, 180], [c, b + 0.16, 0]].forEach(q => { const ew = q[2] % 180 !== 0, sz = (w, h, d) => ew ? [d, h, w] : [w, h, d], out = q[2] === 90 ? [-0.16, 0] : q[2] === 270 ? [0.16, 0] : q[2] === 180 ? [0, -0.16] : [0, 0.16];
               P.push({ s: 'box', p: [q[0], 3.45, q[1]], size: sz(0.46, 1.05, 0.28), tint: 0x0e0e0e }, { s: 'box', p: [q[0] + out[0], 4.08, q[1] + out[1]], size: sz(0.22, 0.22, 0.05), tint: 0x3a0c08 },
                   { s: 'box', p: [q[0] + out[0], 3.62, q[1] + out[1]], size: sz(0.22, 0.22, 0.05), tint: 0x2aff6a, glow: 1 }); });
+          [[a - 2.4, c, 1], [b + 2.4, c, 1], [c, a - 2.4, 0], [c, b + 2.4, 0]].forEach(q => P.push({ s: 'box', p: [q[0], 0.11, q[1]], size: q[2] ? [3.0, 0.012, 2.3] : [2.3, 0.012, 3.0], key: PEB, tint: 0x58ff90, glow: 0.14, sides: false }));   /* pass 4: the green falls on the ballast */
           P.push({ s: 'box', p: [a - 0.3, 0.2, b - 0.22], size: [0.05, 4.3, 0.05], tint: IRON }, { s: 'box', p: [a - 0.3, 0.2, b + 0.22], size: [0.05, 4.3, 0.05], tint: IRON }, { s: 'box', p: [a - 0.3, 0.45, b], size: [0.04, 0.04, 0.44], tint: IRON, n: 13, step: [0, 0.32, 0] });
           /* the dead-end line south of the crossing: a buffer stop at its end */
           buffer(XC(6), X(10) + 2.6).forEach(q => { const o = Object.assign({}, q); o.p = [XC(6) + (q.p[2] - (X(10) + 2.6)), q.p[1], X(10) + 2.6 + (q.p[0] - XC(6))]; o.size = [q.size[2], q.size[1], q.size[0]]; P.push(o); });
@@ -157,6 +163,10 @@ module.exports = {
           /* THE LIT TRAIN (road 1; "Two cars. One lit." "The lit one has never moved." "Somebody left the headlight on."): its saloon lights and its two headlights */
           P.push({ s: 'box', p: [XC(5), 2.78, XC(4)], size: [14.6, 0.05, 0.45], tint: 0xfff0c8, glow: 1 }, { s: 'box', p: [XC(5) - 8.2, 1.45, XC(4) - 0.85], size: [0.06, 0.2, 0.22], tint: 0xfff6dc, glow: 1 }, { s: 'box', p: [XC(5) - 8.2, 1.45, XC(4) + 0.85], size: [0.06, 0.2, 0.22], tint: 0xfff6dc, glow: 1 });
           P.push({ s: 'box', p: [0, 0, 1.75], size: [35, 0.02, 24.5], key: 'urban:ConcreteSlab2a', tint: 0x8a8a84, sides: false });   // the hall's concrete over the room's paint
+          /* pass 4: the light on the floor: under the three lit lamps, along the lit car's windows, ahead of its headlights */
+          [[-12.25, -1.75], [12.25, -1.75], [-1.75, 5.25]].forEach(q => P.push({ s: 'cyl', p: [q[0], 0.022, q[1]], r: 3.3, h: 0.012, key: 'urban:ConcreteSlab2a', tint: 0xd8ccb0, glow: 0.1, seg: 22 }, { s: 'cyl', p: [q[0], 0.036, q[1]], r: 1.9, h: 0.012, key: 'urban:ConcreteSlab2a', tint: 0xe6dcc0, glow: 0.2, seg: 22 }));
+          [-2.45, 2.45].forEach(dz => P.push({ s: 'box', p: [XC(5), 0.024, XC(4) + dz], size: [15, 0.012, 1.5], key: 'urban:ConcreteSlab2a', tint: 0xe6dcc0, glow: 0.2, sides: false }));
+          P.push({ s: 'box', p: [XC(5) - 10.2, 0.115, XC(4)], size: [3.6, 0.012, 2.6], key: PEB, tint: 0xfff2cc, glow: 0.5, sides: false }, { s: 'box', p: [XC(5) - 13.8, 0.115, XC(4)], size: [3.6, 0.012, 2.9], key: PEB, tint: 0xfff2cc, glow: 0.22, sides: false });
           arch(ctx, 'P04-03', 'hall', P);
           [XC(4), XC(8)].forEach(z => { ghost(ctx, 'P04-03', X(10) - 0.5, z - 1, X(10) - 0.5, z + 1, 1.1); ghost(ctx, 'P04-03', X(2) + 0.5, z - 1, X(2) + 0.5, z + 1, 1.1); }); }
         leaves.push(hut(ctx, 'P04-03', 'crew', X(1), X(4), X(3), X(1), XC(3), X(1) + 0.7, X(3) - 0.5, 0xffd9a0, 'CREW ROOM'));
@@ -261,6 +271,15 @@ module.exports = {
           lay(id, 'traffic_cone', XC(7), XC(5), 0); lay(id, 'traffic_cone', XC(7), XC(7), 0); lay(id, 'traffic_cone', XC(1), XC(5), 0); lay(id, 'psx_jerrycan_1', XC(8) + 0.9, XC(7) + 0.8, 10); lay(id, 'mop_bucket', XC(1), XC(3), 0); lay(id, 'wet_floor_sign', XC(5), XC(3), 30);
           lay(id, 'hand_truck', XC(4), XC(9) + 0.4, 100); lay(id, 'garbage_bags', -16.6, 13.2, 0); put(id, 'bat_grey', XC(3), XC(6), 0, { y: 7.5, floor: false, noBlock: true });
           ctx.grime('oil', id, 8, 6, 1.8); ctx.grime('oil', id, 4, 5, 1.4); ctx.grime('oil', id, 6, 9, 1.3); }
+        /* ── PASS 4, THE ATMOSPHERE (no room light is spent: `glow` parts in build; here the things that move) ── */
+        const air = (id, key, x, z, o) => { const m = mid(ctx, id); ctx.props.push(Object.assign({ key, x: R2(m[0] + x), z: R2(m[1] + z), noBlock: true }, o || {})); };
+        air('P00-03', 'flicker_tube', -3.5, -3.5, { ceil: true, y: 4.5 }); air('P01-03', 'flicker_tube', XC(9), XC(9), { ceil: true, y: 3.6 }); air('P03-03', 'flicker_tube', XC(7), XC(4), { ceil: true, y: 4.4 }); air('P04-03', 'flicker_tube', XC(5), XC(3) - 0.4, { ceil: true, y: 4.2 });
+        /* the camp's barrel fire (its glow, not one of the ten lights) */
+        air('P00-03', 'psx_metal_barrel_mp_2', 8.3, -3.6, { floor: true, noBlock: false }); air('P00-03', 'hearth_fire', 8.3, -3.6, { floor: true, y: 0.55, noLight: true });
+        /* steam: off the station's track, a leaking main at the Crossing, the compressor, the south tunnel */
+        air('P00-03', 'chimney_smoke', -11.5, 2.2, { y: 0.1 }); air('P00-03', 'chimney_smoke', 7.5, 5.6, { y: 0.1 }); air('P02-03', 'chimney_smoke', X(3), X(5) + 0.5, { y: 2.6 }); air('P04-03', 'chimney_smoke', XC(10), XC(3), { y: 1.3 }); air('P03-03', 'chimney_smoke', XC(6), XC(9), { y: 0.1 });
+        /* a lit EXIT over each hut's door */
+        air('P02-03', 'exit_sign', XC(8), X(5) + 0.2, { y: 2.45, face: 180 }); air('P04-03', 'exit_sign', XC(3), X(3) + 0.2, { y: 2.45, face: 180 }); air('P00-03', 'exit_sign', X(4) - 1.2, X(4) + 0.2, { y: 3.4, face: 180 });
         [2, 4, 7, 9].forEach(lx => { if (ctx.free('P00-03', lx, 4)) ctx.P('metro_column', 'P00-03', lx, 4); });   // PASS 1: four, a square back from the edge
         { const w = ctx.squares('P01-03', 'o').filter(q => Math.abs(q[0] - 5) <= 1 && Math.abs(q[1] - 9) <= 1); putD('wooden_bucket', 'P01-03', w, 0); putD('meshy_rope', 'P01-03', w, 1); }
         ctx.plots.forEach((p, i) => { const dry = ctx.squares(p.id, 'o'); for (let k = 7 + i; k < dry.length; k += 13) ctx.dec('railway_lantern', p.id, dry[k][0], dry[k][1]); });
