@@ -178,6 +178,7 @@ const SOURCES = [
     { re: /Assets\/misc\/wings\.glb$/, how: 'PACK_ANON', src: "Angel wings pair (mondo's upload, maker not recorded): retired 2026-10-27 for the single Meshy wings" },
     { re: /(^|\/)MAL\d_Sniper\.glb$/, how: 'MESHY_C', src: "Meshy animations from the male sniper, consolidated by Claude (a stray copy at the bucket root)" },
     { re: /Assets\/misc\/wings\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (single wing, mirrored in code)' },
+    { re: /races\/(banker|sewer_gator|skater|mole_man|tech_ceo|magician|lifeguard)\/\w+\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/)' },
     { re: /_Character_output\.glb|_withSkin\.glb|Meshy_AI_\w+_Running\.glb/, how: 'MESHY', src: 'Meshy AI rigged character (mondo)' },
     { re: /Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (mondo)' },
     { re: /Assets\/animals\/eagle_rigged/, how: 'MESHY_C', src: "Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs)" },
