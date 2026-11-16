@@ -11857,6 +11857,31 @@ const ThreeRenderer = (function () {
     function _buildTeslaTrapProp3D(x, y, ownerPlayer) { return _npDeployProp(_NP_TESLA_URL, x, y, { h: 0.95 }) || _buildTeslaCoil3D(x, y, ownerPlayer); }
     /* Scrap Mine: mondo's landmine laid on the tile (the red marker only while the file streams) */
     function _buildScrapMine3D(x, y) { return _npDeployProp(_NP_MINE_URL, x, y, { w: 0.5 }); }
+    /* 🐍 THE FEATHERED SERPENT (2026-11-16, Quetzalcoatl): his body is two deployed rows (battle.js _serpentLay, serpentIdx 0 nearest
+       him, 1 the tail). The serpent model (Meshy, made for the race; it lies along its own +z, head at +z) is drawn ONCE, from the
+       row-0 square: across both body squares, its head toward him (toward row 0 from row 1), ~2.3 squares long. Row 1 draws an
+       empty group so the plain wall marker never shows. null while the file streams. */
+    var _NP_SERPENT_URL = 'https://cdn.entropywars.net/Assets/characters/races/aztec/feathered_serpent.glb';
+    function _buildSerpentBody3D(x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var segs = (state._deployedObjects || []).filter(function (o) { return o && o.spellId === 'nrFeatheredSerpent' && o.hp > 0; });
+        var me = null;
+        for (var i = 0; i < segs.length; i++) if (segs[i].x === x && segs[i].y === y) { me = segs[i]; break; }
+        var empty = new THREE.Group(); empty.position.set(x * ts + ts / 2, tileTopY(x, y), y * ts + ts / 2);
+        if (!me || me.serpentIdx !== 0) return empty;
+        var tail = null, king = null;
+        for (var j = 0; j < segs.length; j++) if (segs[j].serpentOf === me.serpentOf && segs[j].serpentIdx === 1) tail = segs[j];
+        for (var k = 0; k < (state.units || []).length; k++) if (state.units[k].id === me.serpentOf) king = state.units[k];
+        var g = _npDeployProp(_NP_SERPENT_URL, x, y, { w: tail ? 2.3 : 1.4 });
+        if (!g) return null;
+        var from = tail || me, to = (tail ? me : king) || me;
+        var dx = to.x - from.x, dz = to.y - from.y;
+        if (!dx && !dz && king) { dx = king.x - me.x; dz = king.y - me.y; }
+        g.rotation.y = Math.atan2(dx, dz);
+        var cx = tail ? (me.x + tail.x) / 2 : me.x, cz = tail ? (me.y + tail.y) / 2 : me.y;
+        g.position.set(cx * ts + ts / 2, Math.min(tileTopY(me.x, me.y), tail ? tileTopY(tail.x, tail.y) : 1e9), cz * ts + ts / 2);
+        return g;
+    }
 
     /* Jack-in-the-Box (mondo 2026-11-01, "yes they should match too"): the clown's painted box with its crank, the same box
        the set and the pop draw (three-vfx-effects.js _afBoxTex) — it stood on the board as the red trap marker */
@@ -11901,8 +11926,10 @@ const ThreeRenderer = (function () {
         raceFederationBeacon: _buildFederationBeacon3D,
         raceLucidTrap: _buildSpringSnare3D,   // THE TRAPS PACK (2026-10-27): the bear trap (was the dreamcatcher, now its stand-in)
         raceFlashbangMine: _buildFlashbangMine3D,
+        nrFeatheredSerpent: null,   /* filled below — the serpent body (2026-11-16, Quetzalcoatl) */
     };
     _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaTrapProp3D;
+    _DEPLOY_3D_BUILDERS.nrFeatheredSerpent = _buildSerpentBody3D;
 
     /* Teleport gate pairs (Grave Passage / Tunnel Network) — until now
        state._gatePairs was never rendered AT ALL. Each endpoint gets a prop:

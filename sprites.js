@@ -531,6 +531,7 @@ const RACE_SPRITE_GENDERS = {
   'tech ceo': 'male',   // 2026-11-16
   'magician': 'male',   // 2026-11-16
   'mole man': 'male',   // 2026-11-16
+  'quetzalcoatl': 'male',   // 2026-11-16
   'atlantean': 'both',
   'dinosaur': 'male',
   'dragon': 'male',
@@ -695,6 +696,7 @@ const _CHARACTER_SPRITES = {
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
   'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
   'mole man': `${_S}/Races/mole_man/male/mole_man.png`,   // 2026-11-16 — cut from its own model
+  'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
   // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
@@ -2424,6 +2426,13 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'magic',
+    }),
+  },
+  'quetzalcoatl': {   // mondo's Aztec king (his rigged Meshy model, never wired as a race before)
+    male: _mkUAL('aztec', 'aztec', {
+      model: `${_S}/Races/aztec/Meshy_AI_aztec_Running.glb`,
+      heightRatio: 1.05,
+      basicAttackKind: 'melee',
     }),
   },
   'mole man': {   // miner's helmet, goggles, digging claws
@@ -6607,6 +6616,7 @@ const RACE_SPRITES = {
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
   'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
   'mole man': `${_S}/Races/mole_man/male/mole_man.png`,   // 2026-11-16 — cut from its own model
+  'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite

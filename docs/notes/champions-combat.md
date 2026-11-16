@@ -5515,3 +5515,23 @@ where he dug in, and the target is thrown up (forced applyFallDamage from 2 leve
 - Online: the move and the fall ride the normal displacement + damage paths; `burrowed` is a plain status in the snapshot.
 - Probe 11-16: Burrow C3 → D5 under the ground (hidden from P2), Erupt from hiding 454 (ambush + super effective on a mech) + a 3-level
   throw 151 (now 2 levels), he surfaced at E6 beside the foe; Cave-In hit and Rooted; 0 page errors.
+
+### 7. QUETZALCOATL (Technoticlan, tank, family `featheredserpent`; mondo's Aztec king model)
+The style: the first unit longer than one square. **Feathered Serpent** (T1, self, cd 2) puts on STATUS_DEFS `serpentForm` (3 rounds):
+he is the head, and the body is two `state._deployedObjects` rows (`serpentOf` = his id, `serpentIdx` 0 nearest him, `blocksMovement`,
+hp 999, spellId `nrFeatheredSerpent`) laid by battle.js `_serpentRaise` behind him (away from his facing). A walk drags the body
+onto the squares he stepped off (finishMoveAt → `_serpentFollow`, the walk's trail); any other arrival far from it lays it fresh
+(`_serpentKeepUp` in resolveTileArrival). Every other unit is blocked by it (canOccupy reads deployed `blocksMovement`), and he cannot
+pass through himself either. unitResistsDisplace says no to push and pull while it is out. onRemove / his death (map.js death hook)
+→ `_serpentDrop`.
+- **Obsidian Blade** (T1, physical 90, range 1): Bleed 2. **Coil** (T2, physical 100, range 2, `requiresSerpent` + `serpentCoil`,
+  cd 2): the body moves onto two touching free squares beside the victim (`_serpentCoil`), and STATUS_DEFS `coiled` (blockMove, 45 at
+  every round end while the king still has the serpent out; `_coilSrcId`) for 2 rounds. Without the serpent: "🐍 Raise the serpent first".
+  **Morning Star** (T3, light magic 145, range 5, `dayMult: 1.4`): computeSpellBase multiplies the base while getCurrentCyclePhase() is day.
+- three-renderer.js `_buildSerpentBody3D` (a _DEPLOY_3D_BUILDERS row): the Meshy serpent (R2 `Assets/characters/races/aztec/feathered_serpent.glb`,
+  it lies along its +z, head at +z) drawn once from row 0, across both body squares, head toward him, ~2.3 squares long; row 1 draws nothing.
+- Elements: light + wind resist, ice weak. Biomes ancient + divine. POINT_OF_ENTRY Technoticlan. Tree: Wing Gust → Crosswind / Divine
+  Light → Tailwind / Divine Smite → Supernova. Finisher The Fifth Sun.
+- Online: the body rows and `coiled` ride the snapshot like any deployed object / status; the guest draws the serpent from them.
+- Probe 11-16: raised behind him (C3, B3), the walk C3 → D5 brought the body to D4, D3 (both blocked for others), push refused,
+  Coil hit 124 and wrapped E5 / E6 round the foe at F5 (its walk refused), Morning Star base 203 by day vs 145 by night; 0 page errors.
