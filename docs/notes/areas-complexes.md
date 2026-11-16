@@ -6170,6 +6170,32 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   - WHAT IS LEFT: pass 4, atmosphere, needs pieces no district can write: light shafts (`_hqLightShaft` draws nothing), mist at a fall's foot (the waterfall
     row's holder), a snow sheet. From this file it can only change the air zones. Pass 5, polish, after mondo's look.
 
+- **PASS 3 OF 5, MORE LANDMARK WORK (the interiors pass's slot; seen, 13 + 8 views).** Order of 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): no questions, five passes at most.
+  - THE SHELF is a hill burial ground: three tombstones with dirt graves, a low grave, Halloween stones, candles, a low stone wall on its south lip.
+  - THE SNOWLINE: the yeti's kills (a body rising from the snow, a body, parts, a butcher knife, a chain, a walkie-talkie, a jerrycan) and about twenty snow drifts
+    (low `dome` parts in the ice sheet). Snow parts carry `gain: 1.7`: an arch part's sheet is multiplied by the building tint and the ice sheet drew grey.
+  - THE OLD TREES: two scarecrows between the trunks, upright cobwebs, hung chrysalises, a bear trap (the pack's two model rows, not the code-drawn key).
+  - THE MEADOW: the drum circle (four straw seats, a rug, six more pack instruments, plates, cans, a mattress, crates), butterflies and bees.
+  - THE TRAIL: the candle ring was a code-drawn piece (`candle_ring`): it is the Halloween pack's `hw_candles` with seven candles round it now; two picket panels.
+  - THE CREEK: the camp's dog, a cooler, cans, a barrel.
+  - SEEN AND TAKEN OUT: the ocean pack's fish in the Falls' pool (reef fish, hovering 1.5 m over the water), with the seaweed, turtle and crab.
+  - FRAME RATE (same two views): the Meadow 1.4 -> 1.0, the Falls 1.2 (first look) -> 1.6. The Meadow's loss is the 30 new pieces round the fire; to win back in the polish pass.
+- **FITS THIS DISTRICT (the whole-list read, 11-16; a helper read MODEL_LIST.md §6, 7, 8, 10, 12b, 13 and the live catalogue end to end).** Placed now: see above.
+  NOT YET PLACED, FIT: `hw_fence` (more), `psxg_railing`, `psxg_wall_corner`, `xmas_snowman_2/3`, `spear`, `psx_stairs_5_wood`, `ship_lantern` (needs a bough over it),
+  `psx_canned_food_mp_4`, `psx_shotgun_ammo_1`, `psx_ammo_box_1`, `urban:ClothTattered*` (prayer rags, a lean-to tarp), `urban:WoodGeneric1b` / `wood_planks` (a lookout deck),
+  `urban:GroundPebbles*` (the creek bed). MESHY, HELD BACK (packs first): `trilithon`, `menhir`, `sarsen`, `decor_stone_arch`, `brazier`, `cauldron`, `taiko_drum`, `femur`, `ulna`,
+  `item_binoculars`, `shotgun`, `field_radio`, `hitching_rail`, `ancient_well`, `paper_lantern`, `footbridge`. AVOID: every `proc` row (`crystal_cluster`, `light_shaft`, `bat_*`,
+  `trap_bear_open`, `stone_altar`, `skiff` …; `cave_torch` and `park_bench` are code under a model and already stand here), the ocean pack in this room (rocks draw black,
+  fish hover), `mushroom` (3.5 m), the Meshy twins of pack pieces. ON R2, NOT WIRED: nothing in §13 fits; the Halloween pack's witch is an FBX with no GLB; the Castle pack's
+  `*_ruined` nodes could be a ruin; the Survival, Vegetation and Mine packs are cut for 3, 2 and 1 pieces only (the rest needs a Blender cut: not done, no new art).
+  NO MODEL IN THE GAME: icicles, a snow drift, green bushes, flowers, moss, vines, reeds, lily pads, deer, bear, owl, a river fish, a rope bridge, a lookout, a lean-to,
+  a fishing rod, a backpack, a sleeping bag, a trail sign with words; no bark, moss, mud or snow sheet.
+- **DECISIONS MADE FOR MONDO (district T; overrule any in one line):** (1) the waterfall comes off a cliff on the map's edge into the pool that feeds the creek, not from a
+  walkable upper way; (2) the whole district wears `grass_dark_fantasy`, the Meadow too; (3) the giant redwood is 26 m, its companions 17 m (heights only, no tree kind
+  changed); (4) the Shelf's crosses became a burial ground with tombstones; (5) the Snowline is the yeti's larder (bodies, parts) with ONE snowman; (6) the Shelf's north half
+  is bare rock ground; (7) the code-drawn candle ring was replaced by pack candles; (8) no fish in the pool rather than reef fish; (9) Meshy pieces that fit were held back
+  while a pack piece could do the job.
+
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
   A boulder or crag = a tapered `cyl` (`r2` under half of `r`, `seg` 5 to 7) so nothing reads as a box; a solid block = a `plateau` (`edge: 0.08`) under a rock box skin 6 cm proud.
