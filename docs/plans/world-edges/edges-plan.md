@@ -60,3 +60,6 @@ kinds `scrub` and `mesa`; `beyond: { kind, d, len }` (a second kind further out:
 4. **The Shore's main waterline** (the 170 m south of the cove) is still one straight line. Tide pools, the lifeguard
    hut and people stand right on it, so bending it moves the Shore district's own content (its row waits for his look).
 5. **The Hills' cliff north of the headland** is still one straight wall (seen only from the Coast Overlook).
+6. **A dark slab in the bay**, south-east of Industrial's dock (about x 300..335, z 255..320, in the strip south of the
+   city's old south line): a flat dark grey rectangle on the water, seen from the air and from the dock. It was there
+   before this work. Not looked into yet (the strip is the city tool's `room.north` south strip).
