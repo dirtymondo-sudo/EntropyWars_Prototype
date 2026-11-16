@@ -4787,6 +4787,41 @@ once that first district is fleshed out and knows what shared assets it can use 
   left alone, it is his pale beach sheet (sprites.js SAND_BEACH, THE TWO SANDS); it reads greyer in the cloud browser than on his Mac.
   Seen on screen by day and at 22:30.
 
+## THE BEACH IS PART OF DISASTER CITY — the Shore stands on the city's own north beach (2026-11-16, second side, the Shore pilot thread)
+
+mondo 11-16: "I think the issue is that the beach is supposed to be a part of the city, like how we connected the hills", then "the city has its
+own beach and you just made a beach, its supposed to be the same ... fix it. combine it ... use the best elements from both. make it bigger".
+The city had a thin north beach (six umbrellas on a 7-square shelf under a sea wall drop) and the Beach zone had the Shore in its own sea room
+behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downtown_streets`, on that north beach.
+
+- **ONE FILE, TWO ROOMS, NEVER TWO BEACHES' WORTH OF CODE:** `docs/disaster-city/districts/W.js` (letter W, the waterfront) runs the Beach
+  zone's own district file `docs/areas/beach/districts/S.js` on the city's sand: it hands S.js the same helpers bake-beach.js does (its own
+  copies of `sheet`, `building`, `put`, `look`, `P`, `dec`, `palm`, `native` ...), with the same dice per stage, so every hut, prop and palm is
+  the same. An edit to S.js changes both rooms: run BOTH `node bake-disaster-city.js` and `node bake-beach.js`.
+- **WHERE:** the Shore's square (sx, sy) = x 259 + 3.5 sx, z -252 + 3.5 (sy - 24). Its rows 24..71 (the wild beach and its camp, the Boardwalk
+  spur + gate, the Tide Pools, the three huts with the snow cone stand, the Surf, the Palms, the Lifeguard Hut, the court) lie along
+  Entertainment from the Hills' Cove to the mole. 39 rows, 196 props, 9 people. Bayside's own beach south of the mole (pier, pavilion,
+  towers, yachts, grill) is untouched: one beach, 336 m.
+- **BIGGER:** B.js `EAST` 20 -> 32 (the room is 42 m wider east; the centred shell adds the same dead strip west, under the forest as before).
+  On the north stretch the sand is 17 squares wide at the boardwalk's own level and falls under the sea past square 163; the sea wall drop,
+  its four ramps and its rail are gone there (B.js beach(): two `rect` rows, `RAMPS_N = []`); the stretch's six umbrellas, chair, boat and
+  buoys are replaced by the Shore's.
+- **HEIGHTS (the trap):** the tool lifts every `arch` row and every prop typed 1 m up or more by the plot levels' height, and the strip beside
+  Entertainment carries that district's 8.75 m though its ground is cut to 0. W.js `last()` takes it back off its own rows. S.js reads
+  `ctx.GROUND` (0 here, 1.2 in the sea room) for a hung prop's height. The Shore's rows carry ids `shore:*` and are left out of the urban
+  decay, sign-font and exterior polish passes (bake-disaster-city.js, one regex beside the Hills').
+- **LEFT OUT HERE (72 rows / props / people of S.js, still in the sea room):** the North Headland (rows under 24: the Hills' cliffs stand
+  there), the Dunes path and bench, the Sandbar, the south camp, the South Dunes (rows from 72: Bayside's beach stands there).
+- **SEEN ON SCREEN** (real game, playtest_city.js, HEAD b927b69 + this): the huts from the sand with the Hills behind, the gate under
+  Entertainment's sea wall, the lifeguard hut and court with the skyline behind, the long view down the beach, the snow cone stand's inside,
+  the mole and Bayside's beach from the court, night at 22:30. KNOWN WRONG: the tide pools are rocks with no water (a `dip` stays dry, a
+  `pool` row is filled again by the beach's cut); the gate's city side reads DISASTER CITY but stands under a blank 8.75 m sea wall with no
+  stair up to Entertainment (the north beach never had one: you come along the boardwalk).
+- **STEP 2, NOT DONE: THE SEA ROOM STILL HOLDS THE OLD COPY.** `site_prebuilt_bermuda_beach` (behind Bayside's `harbour` door) still has its
+  own Shore, so today the game has the Shore twice. To end it: the Long Pier, the Quay and the Flying Dutchman move into the city's water
+  off this beach (or the pier's end becomes the way out to the sea room), the sea room loses its shore and becomes the open ocean only (the
+  Ocean, the Triangle), and its made-up Bayside skyline (`bch:bayside:look`) and west land go. The left-out pieces above need a place first.
+
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
 
 - **PAINT (seen):** the room wears the sea shell's faded look, so everything reads a step greyer than in the city. A painted wall = the
@@ -4843,6 +4878,12 @@ once that first district is fleshed out and knows what shared assets it can use 
 - **THE SHORE'S HELPERS, TO COPY (they live in S.js `build`; none is in the tool, so nothing shared changed):** `wall` (a painted shell),
   `win`, `porch`, `inside`, `In`, `bulbs`, `torch`. If a second district copies one unchanged, that is the moment to move it into
   bake-beach.js `sheet()` (a board note first, its own small PR).
+- **FROM THE LAKE (district L):** a new plan letter `s` paints gravel (`dirt_4`); `o` cobbles read as crazy paving. A prop row's `h` / `span`
+  resizes any model and its blocker (big rocks from `ocean_rock_3`). Put MANY small drawn things in ONE `arch` row (piles, lamp posts): a row
+  costs three to five draw calls. An `arch` over water needs `y: 0` (else it stands on the bed). A deck over lawn needs boards (`j`) painted
+  under it or the grass field grows through. A native in a pool walks the bed. `dockring` is a spaceship part, not a mooring ring. The
+  playground pack (`play_swing`, `play_slide`, `play_sandbox`) and `brass_telescope` stand well outdoors. A `P()` on a deck over the lake needs
+  its square taken out of `taken` first (the water stage marks the lake's squares).
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5494,6 +5535,44 @@ that first district is fleshed out and knows what shared assets it can use for t
 - `hw_web` never seen standing; `psx_wooden_crate_3` drew as a blank box in the probe (the `_4` and `_6` crates are fine); `lion_statue` is a
   tawny lion, not stone (not placed).
 
+## THE ESTATE, DISTRICT L — THE LAKE (2026-11-16, the second district thread; file `docs/areas/estate/districts/L.js`)
+
+mondo 11-16: "now that I think most of these districts have had at least a couple passes on them, can you start threads for another district in
+the zone". Passes as the pilot's, a PR each: exteriors, interiors, dressing, atmosphere, polish.
+
+### THE FIRST LOOK (probe, 12 views + 3)
+- The Lake was a flat pool in a lawn: the rock a mound in the corn's leaf sheet, the dock bare planks, the Boathouse a dark brown box with no
+  window, nothing on any shore, the Marsh two puddles in grass.
+- **THE LOCH NESS MONSTER IS THERE AND IS SEEN.** It never showed in a picture before because it WANDERS: a native in a pool walks the bed
+  (y -1.35 here) and at 2.6 m tall its neck and back stand out of 1 m of water. Find it with `ThreeRenderer.hq.dev.chars()` in a view's `eval`
+  (it prints every character's x, z, y), then point the next view at that spot.
+- `dockring` beside the Boathouse was the Meshy SPACESHIP docking ring, 4.5 m across (placed by its name as a mooring ring). Removed.
+
+### PASS 1, THE EXTERIORS (seen in the cloud browser)
+- **THE BOATHOUSE:** boards lifted to weathered grey (`gain: 1.7` on the wood sheet), a stone footing open at the door, corner boards, a tin gable
+  roof with its ends east and west, the two boat doors on their rail on the lake side at the head of the slip (drawn shut; the walk-in door is
+  the south one), a loft hatch under a hoist beam, seven sashed windows (two lit), a stove pipe, two lanterns, `BOATHOUSE` (font `fell`).
+- **THE DOCK:** a head across its end (a second `deck` row, two squares by four), the slip carried 10 m out over the water, a jetty on the east
+  bank, a boardwalk over the Marsh's south pool. Every deck stands on drawn piles with pale caps; six iron lamp posts on the decks' edges.
+  ALL the piles and lamp posts are ONE `arch` row (`est:lakefittings:look`, `y: 0`): eleven separate rows cost 34 draw calls more.
+- **THE ROCK:** the plateau is gone; eight ocean pack rocks stand on the bed (`ocean_rock_3` at `h: 6.4` down to 1.6 m). A prop row's `h`
+  scales the model and its blocker. They draw near black (the pack's own colour; a prop row takes no tint).
+- **THE PICNIC SHELTER** (South Shore): a drawn pavilion over three by three squares, posts on the corner squares' middles with ghost walls, two
+  plank tables, `PICNIC AREA` read from the lake. Beside it the playground pack's `play_swing`, `play_slide`, `play_sandbox`.
+- **THE GROUND (`plan()`):** gravel shingle on the North Shore, mud at the Reeds' bank and round the Marsh's pools, boards under the shelter, at the
+  Boathouse's door and under every deck. The squares are picked from the lake's own ellipse (`E(x, y)` in L.js), not from the plan's `w` squares:
+  the plan draws the water as a rectangle, the pool is an ellipse, so the plan's corner `w` squares are lawn.
+- **ONE SHARED CHANGE (noted on the board):** bake-estate.js paint rule, plan letter `s` = `dirt_4`, which draws the calm GRAVEL picture. The
+  cobble sheet (`o`) reads as crazy paving, not shingle.
+- **THE MODEL LIST FIRST (mondo 11-16), what the search gave the Lake:** nothing on R2 for reed, cattail, lily, duck, swan, heron, canoe, pier
+  (the NEEDS A MODEL list in L.js). Found and placed: the Cursedlake playground (swing, slide, sandbox), `brass_telescope` (the dock's head).
+  Found for pass 3: the ocean pack's fish, turtle, eel and seaweed (they swim: `swim`), `meshy_campfire_ring`, both camping tents,
+  `beach_cooler`, `beach_life_ring`, `metal_trash_can`, `garbage_bag`, `fishing_net_wall`, `outboard_motor`, `ship_anchor`, `ships_bell`,
+  `meshy_rope`, `footbridge`, `flamingo`, crow, rabbit, ladybug, bees, four butterflies. Camelot's Fairy Forest draws lily pads as notched discs.
+- **THE COST:** the proof view (the whole district from 60 m up): 456 draw calls before, 557 after; the cloud's software renderer drew both at
+  0.20 frames a second (it cannot tell them apart). L's real lights went from four to two.
+- Not done: the Boathouse's inside (pass 2), reeds, lily pads, shore dressing, fish (pass 3), mist and night (pass 4).
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
@@ -5699,6 +5778,17 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
 - **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower.
 - **NEXT**: dressing (stepping paths, plants, edges, the forest floor: the paint is the tool's), then its own light, air and particles (the
   shell is the tool's: `shell.atmos.zones`, a board note first), then polish.
+- **THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
+  keyword search of the prop catalogue and from what the first build already used. Read against MODEL_LIST.md (the Meshy list, the
+  Halloween pack, the orchestral pack, the crow + rabbit upload, section 7a), it had MISSED, all in the game already:
+  `meshy_hanging_lantern` (it had put "a street lantern" on the needs-a-model list), `candelabra`, `confessional_booth`, `holy_tapestry`
+  (the wall-hung row of the carpet's file), `meshy_bible`, `meshy_tongs`, `spell_shield`, `sword`, the orchestral pack's `instrument_*`,
+  `psx_plate_mp_1`, `painting_portrait`, `hw_coffin`, `hw_shovel`, `psxg_iron_gate_1`, `hw_scarecrow`, `hw_pumpkin*`, `rabbit`, `crow`,
+  the door leaf `leaf_stable`. PLACED (seen on screen, one probe, 8 views): 14 street lanterns on drawn posts along the four streets
+  (a lit core for the night); the Inn's minstrels' corner, plates, a candelabra; the Chapel's confessional, two candelabra, two
+  tapestries, the Bible on the pulpit; the Smithy's tongs, shields, a sword, a stable door leaf; the graveyard's coffin, shovel, iron
+  gate, crows; rabbits and a crow on the green; a scarecrow and pumpkins in the kitchen gardens; a dog and a cat; in every burgher
+  house a candelabra and a portrait over the mantel. Not seen in a picture: the Inn's instruments (the view missed the corner).
 
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
@@ -5722,6 +5812,15 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   then `ctx.arch.push({ k: 'arch', id: 'cam:<district>:street', x: 0, z: 0, rot: 0, y: 0, parts: S.P }); flushArch();`. A drawn piece is
   not in the tool's free-ground check: keep it off squares a `put` uses. A drawn piece has no weight: add a ghost wall where it must block.
 - **SIGNS**: a word is a quad with `key: 'txt:WORD|#ink||aspect'`, `uv: 'fit'`, `kind: 'over'` (`T.js` `sign()`).
+- **READ MODEL_LIST.md, NOT ONLY THE CATALOGUE'S KEYS** (mondo's rule). What the Village found there that fits the whole zone:
+  `meshy_hanging_lantern` (hang it at `y` 2.35 from a drawn post: `T.js` THE STREET LANTERNS), `candelabra`, `confessional_booth`,
+  `lectern`, `holy_tapestry` (`h: 3, mount: 2.3`), `stained_glass`, `meshy_bible`, `meshy_tongs`, `spell_shield`, `sword`, `cannon`,
+  `royal_throne`, `royal_bed`, `cot`, `painting_portrait` / `_landscape` (`y` 2.2 on a wall), `instrument_harp` / `_drum` /
+  `_violin_lying` / `_whistle` / `_tambourine`, `meshy_trumpet`, `psx_plate_mp_1`, `psx_healing_potion_mp_1`, `skull_pile`, `menhir`,
+  `meshy_stump`, `rabbit`, `crow`, `wolf`, `hw_scarecrow`, `hw_pumpkin*`, `hw_crop*`, `hw_farmland`, `hw_wall*`, `hw_coffin*`,
+  `hw_shovel`, `psxg_iron_gate_1/2`, `hw_gate_leaf`, door leaves `leaf_stable` / `leaf_barn` / `leaf_portcullis`. The castle pack's
+  one GLB (`Castles_and_Forts.glb`) has only five catalogue rows (wall, gate, tower, tower top, cone): its other pieces (ruined walls
+  among them) have no row yet.
 - **PROPS THAT FIT** (catalogue keys, all on R2): `ancient_well`, `stocks`, `signpost`, `brazier`, `cauldron`, `covered_wagon`, `wooden_bucket`,
   `meshy_burlap_sack`, `psx_wooden_crate_1..6`, `bread_rack`, `armour_stand`, `dojo_weapon_rack`, `sea_chest`, `stone_altar`, `church_pew`,
   `catholic_pew`, `wall_torch`, `cave_torch`, `hearth_fire`, `campfire`, `candle`, `hw_candles`, `hw_straw`, `hw_fence`, `hw_pumpkin`,
@@ -5750,7 +5849,7 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   `ThreeRenderer.hq.dev.renderer().info.memory.geometries` (the room stood at about 1,800 before the houses' insides, 2,020 after).
 - **BLOCKERS ON SQUARES**: mondo's rule holds in every hall: what blocks stands on a whole 3.5 m square's middle with a ghost wall
   (`ctx.feat({ k: 'wall', ghost: true, rail: false, ... })`), decor stands off the middles, the door's column stays open.
-- **NEEDS A MODEL (zone-wide, nothing on R2)**: an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart (the market stall is drawn now: `T.js` `stall()`),
+- **NEEDS A MODEL (zone-wide, nothing on R2)**: an anvil, a hand cart, a hay cart (the market stall is drawn now: `T.js` `stall()`; the street lantern is `meshy_hanging_lantern`),
   a water trough, a wooden fence run with a gate, a hitching rail, a floor carpet / runner (the `holy_carpet` model stands upright), a
   grindstone, a bellows. (A tavern table with benches is drawn in code now: `hall().trestle`.)
 - **ROCKS, CRYSTALS, GROUND PATCHES (from the Fairy Forest, `F.js` `row()`)**: a rock = the cliff sheet `rocks_5` with tint 0xffffff and `gain` 1.7 (a
@@ -5760,6 +5859,15 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **A DISTRICT'S OWN GROUND AND AIR (the tool, 2026-11-16)**: a district file may export `ground: '<sheet>'` (painted under its own plots' `g`
+  and `t` squares) and `airZones(ctx)` = `[{ x0, y0, x1, y1 (kingdom squares), kind, color, n, speed, wind }]` (kinds: dust, motes, spores,
+  fireflies, snow, ash, rain). The kingdom's embers stay over the whole room. Unused, the bake is unchanged.
+- **THE MODEL LIST, WHAT FITS A WOOD (searched 11-16 on his order "look at the model list")**: `psxg_stepping_stone_1/2` (paths), `psxg_rock_1..4` +
+  `hw_stone*` (pack rocks, to 1.26 m), `ocean_seaweed*` (water plants), `ladybug`, `ant`, `anthill`, `chrysalis`, `caterpillar_bug`, `bee`,
+  `bumblebee`, `grasshopper*`, `hawk_moth`, `crow`, `eagle`, `wolf`, `meshy_crystal_shard(s)`, `mushroom_lamp`, `meshy_hanging_lantern`,
+  `footbridge`, `decor_stone_arch`, `item_hagstone`, `item_magic_wand`, `item_wizard_staff`, `item_potion_flask`; trees `tree_21..30` (the
+  nature pack's birches) and `tree_53` (the painted birch); races that live in a wood: fairy, unicorn, gnome, mushroom girl
+  (npc-system.md first). NOT on R2 in any pack: reeds, lily pads, a willow, bushes, small flowers, deer, fox, owl (alive), swan, dragonfly.
 - **THE ORDER THAT WORKED (for the next four district threads)**: (1) one probe of the district as it stands, `fp` views only, and
   LOOK before planning: the Village's two worst faults (the stone lid, the black slabs) were in no note; (2) exteriors with `gain`;
   (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
@@ -5868,6 +5976,11 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   dumpster, tyres, washer, fridge, mattress in the Gully's yard; a rusted car, tyres and a mattress in the upper bed; a sofa, a television, barrels, a crate, tyres
   and tags on both walls in the ravine; a rowboat and dead bushes in the Hollow; barrels, bins and dead bushes at the three mouths. 13 pieces were skipped (plot full).
   `bare` is the whole ravine bed now: no scatter plant lands in it. The campfire is `noLight`.
+- **THE MODEL LIST PASS (same day, mondo's rule THE MODEL LIST FIRST)**: the first dressing used only catalogue rows already known. Found in MODEL_LIST.md and added
+  (37 pieces): a wrapped corpse a few steps short of the sewer mouth with body parts, bones and a flashlight (`hw_body`, `hw_part_*`, `femur`, `ulna`); a second body and
+  parts in the Hollow and by the crag; bats over the three mouths (`bat_black` / `bat_brown`, `y` = their height); the playground's swing and the rowboat in the Hollow;
+  cups, a cooler and cinder blocks at the fire ring; a camping tent by the Tunnel Way; sandbags and a cone at the apron's edge. Skipped, plot full: the full skip
+  (`ind_skip_full`) and the stray `cat` in the Gully's yard. All seen in the probe.
 - **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
   stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
   Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
@@ -5906,6 +6019,24 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   - SEEN, NOT MINE / OPEN: the yeti can stand on the skull pile (the pile is a `put` blocker; the walk of a native is engine code); the ice sheet reads grey,
     not white (no snow sheet exists); thicket trees stand on top of the Falls' wall (it is built on forest squares; it reads as a wooded cliff top).
 
+- **PASS 3, THE DRESSING (seen, 16 views; no walk-in stands in this district's plan, so there is no pass 2):** catalogue pieces only, in `build`.
+  - THE CREEK, UPPER: a fisher's camp on the glade between the trail and the water (`camping_tent`, `rowboat`, `fallen_log`, `wooden_bucket`, a crate, a fish
+    skeleton, a flashlight, a saw, a knife). THE CREEK, LOWER: the rest by the bridge (`signpost`, `park_bench`, log, bucket, stump, dead bush) and six
+    `psxg_stepping_stone_*` in the water (they are a hand wide: they do not read as a crossing; on the needs-a-model list).
+  - Signposts at the trail's joins (the Trail, the Old Trees south); logs and stumps under the old trees; dead bushes on the Shelf and the Snowline.
+  - Scatters (`sow` rows in `build`, every disc inside the district): `psxg_rock_1..4` in and along the creek and along the trails, logs, `mushroom`,
+    `psxg_dead_bush_1`.
+  - **THE MODEL LIST FIRST (mondo 11-16, passed on by the Estate pilot; owner-rules.md §1):** searched MODEL_LIST.md for the district's words and read the
+    Halloween, graveyard, Christmas, Survival, Vegetation, animal, insect, Meshy and PSX sections. MISSED BY THE FIRST CUT, NOW PLACED: the graveyard pack's
+    stepping stones; the Halloween pack's `hw_stone*`, `hw_web*`, `hw_body`, `hw_part_*`, `hw_shovel` (the yeti's larder on the Snowline, webs between the
+    old trees); `psx_flashlight_1`, `psx_hand_saw_1`, `psx_knife_mp_1`, `psx_meat_1`; the animal pack's `wolf`, `rabbit`, `anthill`; `xmas_snowman` (one, on
+    the Snowline). LEFT OUT ON PURPOSE: `bat_*` (drawn by code, no model), `caterpillar` (a 2 m Meshy piece), `hw_tree*` / `psxg_dead_tree_*` (the tree
+    kinds are closed). FOUND, NOT USABLE YET: R2 holds Quaternius' LowPoly nature pack but only its 45 TREES (`Assets/world/nature/OBJ`); the pack's rocks,
+    bushes, logs and snow pieces were never uploaded.
+  - FRAME RATE (same views): the Meadow 1.4 -> 1.4. The Falls view read 0.2 on the run's first view while the Halloween file was still loading; re-measure.
+  - WHAT IS LEFT: pass 4, atmosphere, needs pieces no district can write: light shafts (`_hqLightShaft` draws nothing), mist at a fall's foot (the waterfall
+    row's holder), a snow sheet. From this file it can only change the air zones. Pass 5, polish, after mondo's look.
+
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
   A boulder or crag = a tapered `cyl` (`r2` under half of `r`, `seg` 5 to 7) so nothing reads as a box; a solid block = a `plateau` (`edge: 0.08`) under a rock box skin 6 cm proud.
@@ -5930,6 +6061,13 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   `y` when given (absolute metres), else the ground at its origin: on graded ground give `y: ctx.ground(x, z)` and write parts from there. A waterfall: a wall of 7 m or more behind
   a pool + one `fall` row with `y0` / `y1` given (areas-complexes.md THE WATERFALLS); keep leaners off the sheet's face. FPS in a probe: a view's `eval` that counts
   requestAnimationFrame for 5 s and logs `[HQ] PROBE fps …` (+ `settle: 6500`).
+- **THE MODEL LIST, what fits the Woods beyond the first catalogue search** (district T's finds): `psxg_rock_1..4`, `psxg_dead_bush_*`, `psxg_stepping_stone_*` (tiny),
+  `hw_stone*`, `hw_web*` (hang with `y`), `hw_body*`, `hw_part_*`, `hw_shovel`, `wolf`, `rabbit`, `anthill`, `camping_tent`, `rowboat`, `wooden_bucket`, `signpost`, `xmas_snowman`,
+  the PSX small things (`psx_flashlight_1`, `psx_hand_saw_1`, `psx_knife_mp_1`, `psx_meat_1`, `psx_fish_skeleton_mp_1`). No model: bats, a big fallen trunk, snow ground.
+- **THE MODEL LIST, what fits the Woods beyond the obvious** (grep MODEL_LIST.md yourself too): Halloween pack `hw_body*` corpses, `hw_part*` body parts, `hw_coffin*`,
+  `hw_web*`, `hw_bricks*`, `hw_kerb`, `hw_stone*`, `hw_fence*`; bones `femur`, `ulna`, `skull`; animals `bat_black` / `bat_brown`, `cat`, `dog`, `wolf`, `crow`, `rabbit`,
+  `eagle`, the insects pack; Playground `play_swing` / `play_slide` / `play_sandbox`; Survival `campfire`, `camping_tent`, `ship_lantern`; `beach_cooler`, `solo_cup`,
+  `meshy_cinder_block`, `meshy_sandbags`, `traffic_cone`, `ind_skip_full`; six `trailer_home_*`; `abandoned_house` (a whole house outside, not used yet).
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
@@ -5999,6 +6137,20 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   the room's row in `DOOR_HQ.decals` (marker `SEWERS24-DECALS`; the game draws 80 a room, the tool keeps to 60; a district adds its own with
   `ctx.grime(kind, plot, lx, ly, r)`). District files: rubbish washed into the bends and dead ends (bags, bins, barrels, crates), cobwebs,
   a valve by the pumps, bones in the mine. The murky water was darkened to mud (`sewer_water` tint 0xb44612: more red goes rust, less goes olive).
+- **THE SEWERS' KIT, FROM THE MODEL LIST (mondo 11-16, rule THE MODEL LIST FIRST: "look at the model list right now to see what else they
+  could add"):** MODEL_LIST.md searched for sewer, pipe, pump, drain, valve, rubbish, cell, prison, metro, rail, signal, mine, bone, body,
+  vermin. The first build and the grime pass had used 40 keys; these fit and were NOT used until this pass (all have catalogue rows):
+  PUMPS + PLANT `centrifugal_pump` `gauge_board` `utility_box` `chain_hoist` `pd_lever` `psx_pipe_valve_holder_large_1/2` `iso_tank`
+  `ind_vent` `meshy_vent` `psx_vent_*` · RAIL `signal_lever_frame` `street_signal` `railway_lantern` `cable_drum` `pallet_jack`
+  `welding_cart` `wrapped_pallet` `metro_column` `subway_cart` `metro_poster_1-8` `metro_ticket_machine` · CELLS `steel_toilet`
+  `psx_toilet_mp_1` `psx_old_mattress_mp_1` `psx_bars_metal_1/2` `psx_window_metal_bars_*` `psx_police_baton_mp_1` · RUBBISH `dumpster`
+  `meshy_dumpster` `ind_skip_full` `tire_stack` `traffic_cone` `mop_bucket` `newspaper_bundles` `psx_glass_bottle_*` `psx_tin_can_mp_1_rusty`
+  `psx_syringe_mp_1` `psx_jerrycan_1` `meshy_round_street_drain` · DEAD THINGS `hw_body*` `hw_part*` (the Halloween pack's, new 11-16)
+  `anatomy_skeleton` `skull` `psx_fish_skeleton_mp_1` · MINE `wooden_bucket` `meshy_rope` `ancient_well` `mushroom2` `meshy_hanging_lantern`
+  · TUNNEL PIECES NOT YET TRIED: `psx_tunnel_1`, `psx_tunnel_mp_1_straight / _elbow / _tee / _cross_tee`, `psx_wall_1_tunnel_hole*`,
+  `psx_tunnel_entrance_platform_1` (the PSX pack's own round tunnel sections, about 3 m: side pipes a walker could look into).
+  PLACED IN THIS PASS (about 120 props; each district file's header says where). NOT IN THE GAME AT ALL: rats, bats, roaches, spiders
+  (section 7c has no vermin; the Insects pack is bees, ants, butterflies), a manhole ladder, a sewer grate you look up through.
 - **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
   one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
 - **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
@@ -6057,3 +6209,25 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
     (west), not east: six signs written before this were facing their walls (the guard post's side names, the east fence's plates, the
     hangar's fire exit) and are turned. `iso_tank` is a 1.3 m tank, not a container.
 
+## THE DESERT, GIZA — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/G.js`)
+
+**PASS 1, THE EXTERIORS.** mondo on the first build (step boxes 14 m high, a steel stair): "those pyramids look like fucking ass. and they are way
+too short ... you didn't even get the shape right". So:
+- **A PYRAMID IS A TRUE PYRAMID** (`pyramid(name, cx, cz, foot, o)` in G.js): four straight faces at the real slope (51.8 degrees, rise 1.272 to
+  1), built course by course: each course a `bricks_1` box 1.225 m high, 0.96 m in from the one under it (40 boxes for 49 m; cheap). One `arch`
+  row a monument (`des:giza:<name>`, `y: 0`). The Great Pyramid: 77 m foot, 49 m with its capstone in the better gold (`key: 'gold'`). Khafre:
+  42 m, 26.7 m, the top third a smooth `roof` pyramid in white stucco (its casing). Menkaure: 24.5 m, the lowest courses red granite. Three
+  queens' pyramids of 7 m. A step pyramid on the squares (a tier a square high and a square in, 45 degrees) was tried first and is NOT Giza.
+- **NOT CLIMBED.** A face over 45 degrees is past the walker's `maxSlope`; the first build's walked tiers and stairs are gone. Each pyramid has a
+  ring of thin unseen walls at its foot (`ring()`: `wall` rows with `ghost: true`). A THICK ghost wall has round ends and blocks past its own
+  corners (it shut a stair 5 m away): fence a mass with four thin ones.
+- **A DOOR IN A LEANING FACE** needs upright stones: `mouth(parts, lx, lz, dir, w, h, chevron)` = two granite jambs, a lintel, the dark behind,
+  two pairs of leaning stones over it. The three pyramid doors and Room 444's bay door stand in mouths; no door moved.
+- **THE STONE:** `bricks_1` under an arch part draws mud brown up to `gain` 1.9, whatever the tint; `gain: 2.7` with a pale tint reads as
+  limestone in the sun. The `desert` sheet and `urban:ConcretePanels1a` were no lighter.
+- **THE SPHINX** is rebuilt from parts on 9 x 3 whole squares (it stood half a square off the grid) and still reads as blocks: NEEDS A MODEL.
+- **CHECKED:** offline, a flood on the walker's rule (`hqTerrainFeet`) from the causeway reaches all five door pads; no spot inside a pyramid or
+  the Sphinx is reached. **SEEN** through probe-fast.js, nine views. FPS at the proof view (x 96, z 110, face 115; llvmpipe, so only the
+  before / after counts): before 2.3 (327 calls, 946 k triangles), after 2.0 to 2.3 (301 calls, 739 k triangles).
+- **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
+  scatter and the pine mountains on the east and south edges are the tool row's.
