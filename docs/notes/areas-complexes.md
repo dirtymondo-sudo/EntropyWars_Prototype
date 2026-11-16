@@ -7570,15 +7570,30 @@ table under the windows, brass telescope, radio, cot, star chart, gauges, hose r
 - SEEN: 14 + 4 views. Known: a pine's branch pokes through Bigfoot's high ceiling (the tool's tree zone; a tree stands against the wall). FPS (the first reading of a run is
   warm-up noise: read the second and third): 1.8 to 2.0, before and after.
 
+**PASS 3, DRESSING (live):** every one of the twenty plots dressed from the list below (about 300 pieces, blockers on square middles and never on a trail square, decor off
+the middles). Shastina: frost-split blocks, a climbers' cache. The Summit: a `sea_vent` in the crater, a telescope on the rim, a survey drum, the eagle. The Glacier: melt
+water, crystal shards as blue ice, moraine stones, a wanded route. The Red Banks: fallen blocks, dead scrub. Helen Lake: a rowboat frozen in, the ice-fishing hole, a
+snowman, the camp's kit. The Steam Vents: three fumaroles, a crystal cluster and two torches at the adit, a rope round the hot pool. Avalanche Gulch: logs, snags and
+blocks the slide brought down. The Fork: wands on the three trails, an emergency cache in the windbreak. The Scree: broken stone, the sign for the road east. Bunny Flat:
+five rabbits, the camp's kit, a sprung trap by Bigfoot's. Panther Meadows: a flower meadow with butterflies, the panther (`lion`) lying in it, a totem at the lodge, a
+training post outside the dojo. The Old Lava: black blocks, burnt trees, ferns coming back. The Last Trees: snags, stumps, three young pines (`pine_2`). The Spring:
+stepping stones to the shrine, ferns, frogs, glow-caps. The Switchbacks: rails, a bench, logs. The Lookout: a picket rail along the drop, a telescope, the station's dish.
+The Boulder Field: five big blocks among the small ones. The Trailhead: a hitching rail with a pack horse, seats by the fire, a bin, the line's last pole. The Upper
+Shelf: a pilgrims' camp (tent, fire, guitar). Seven more residents, each off the trails: a nordic on the Summit, a yeti on the Glacier, three hippies (Panther Meadows,
+the Spring, the Upper Shelf), a gnome in the Boulder Field, a tree person at the Last Trees.
+- SEEN: 20 + 6 views. Thrown out after the first look: `yellow_pole` (a thick yellow bollard: the route wands are a thin look now, `wand`), every `hw_stone_*` (they are
+  GRAVESTONE shapes: `psxg_rock_1` with an `h` is the mountain's rock), `psxg_dead_tree_*` (stone-pattern bark: `dead_snag` / `hollow_dead_tree`), `item_dowsing_rod`
+  (draws 1.5 m tall). FPS 1.8 before and after.
+
 **FOR THE NEXT THREAD (zone kit additions):** `hut` + `win` + `cairn` + `seracs` + `block` in S.js are plain functions: copy them. The district's sign face is `alfa`, cream
 `#f0e2c0` on brown `#4a3222`. `rocks_5` walls need `gain` 1.7 and a tint from 0xa0a0a8 up or they read black in daylight. A `cyl` with `ri` + `arc` makes a curved dry-stone wall.
 
 **FITS THIS DISTRICT (the lists, read end to end 11-16: MODEL_LIST.md sections 6, 7, 8, 10, 12b, 13, the live catalogue, pack-claims.md):**
-- Rock, ice, steam: `psxg_rock_1`-`4`, `hw_stone`-`_5`, `hw_grave_slab`, `cave_stone`, `menhir`, `sarsen`, `trilithon`, `ocean_rock_3` / `_4` (dark: lava plots only),
+- Rock, ice, steam: `psxg_rock_1`-`4` (take an `h`; NOT `hw_stone_*`: gravestone shapes), `cave_stone`, `menhir`, `sarsen`, `trilithon`, `ocean_rock_3` / `_4` (dark: lava plots only),
   `asteroid_a` / `_b` (lava bombs), `crystal_cluster` (light), `meshy_crystal_shard(s)`, `sea_vent` (the only fumarole, light) + `chimney_smoke`, `white_cloud`, `light_shaft`.
-- Wood: `dead_snag`, `hollow_dead_tree`, `psxg_dead_tree_1/2`, `psxg_dead_bush_1/2`, `fallen_log`, `stump`, `fern`, `woods_healflower`, `mushroom2`, `woods_glowcap`; tree kinds `pine_2`, `tree_13`-`20`.
+- Wood: `dead_snag`, `hollow_dead_tree`, `psxg_dead_bush_1/2`, `fallen_log`, `stump`, `fern`, `woods_healflower`, `mushroom2`, `woods_glowcap`; tree kinds `pine_2`, `tree_13`-`20`.
 - Camp and trail: `campfire`, `camping_tent`, `meshy_camping_tent`, `signpost`, `missing_board`, `hitching_rail`, `hw_fence`, `footbridge`, `ancient_well`, `wooden_bucket`,
-  `beach_cooler`, `psx_wooden_crate_*`, `psx_supply_crate_1`, `psx_metal_barrel_mp_1`, `meshy_rope`, `cot`, `stock_pots`, `psx_toilet_cabin_mp_1`, `metal_trash_can`, `rowboat`, `yellow_pole`, `roads_g_sign_*`.
+  `beach_cooler`, `psx_wooden_crate_*`, `psx_supply_crate_1`, `psx_metal_barrel_mp_1`, `meshy_rope`, `cot`, `stock_pots`, `psx_toilet_cabin_mp_1`, `metal_trash_can`, `rowboat`.
 - Shrine, shaman, dojo: `votive_stand`, `candelabra`, `candle_ring`, `brazier`, `stone_altar`, `item_censer`, `item_ward_totem`, `item_wizard_staff`, `cauldron`, `crystalBall`,
   `ritual_circle`, `lion_statue`, `ships_bell`, `taiko_drum`, `wing_chun_dummy`, `dojo_weapon_rack`, `punching_bag`, `paper_lantern`, `banner`, `rug_round`, `privacy_screen`, `teapot`, `instrument_*`.
 - Cabin and den: `psx_bed_1`, `couples_bed`, `rocking_chair`, `psx_dinner_table_1`, `psx_chair_mp_1`, `psx_shelf_mp_*`, `hearth_fire`, `kitchen_range`, `meat_hook`, `psx_meat_1`,
@@ -7593,6 +7608,8 @@ table under the windows, brass telescope, radio, cot, star chart, gauges, hose r
 2. The Fire Lookout is a ground cabin, not a tower (no procedural stairs).
 3. The district's sign face is `alfa`, cream on brown, like a park's routed boards.
 4. Helen Lake stays the frozen lake the plan drew (ice); the Climbers' Hut stands on its west shore, in the rock.
+5. Seven more residents from the roster's forest and snow races (nordic, yeti, hippie x 3, gnome, tree person), standing off the trails, with no lines (lines are yours).
+6. The panther of Panther Meadows is the `lion` animal lying in the flowers (no panther model exists).
 
 **NEEDS A MODEL (none placed as a stand-in):** prayer flags, a stone lantern, a gong, a backpack, a sleeping bag, an axe + firewood, a picnic table, a wood stove, an antler
 trophy, a weather mast, a mine cart + rails, a deer / bear / mountain goat, ice pieces (a serac, an icicle), a lamp post.
