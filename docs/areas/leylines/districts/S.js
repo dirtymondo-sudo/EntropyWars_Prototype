@@ -9,6 +9,9 @@
    PASS 1, EXTERIORS (the pilot): the fallen quarter is real fallen sarsens with their lintels lying by them; the 56 Aubrey holes (chalk spots
    inside the bank: Room 56's own number); the Avenue runs between two low banks, the Slaughter Stone lies in its mouth; two portal stones at
    the South Gate; five barrows now (two more on the Plain), each in its ring ditch.
+   PASS 2, INTERIORS: THE LONG BARROW is walked into (the district's one inside): a grass mound 31 m long over a stone-lined passage, a stone
+   front with its doorway at the east end; inside, three pairs of standing slabs make side chambers (the dead, urns, bones, a sealed coffer),
+   torches down the passage, and at the far end the frame of the old draught "down the line" (the old link's mouth: a place now, not a door).
    NOT YET: see the pass list at the end of this file's section in the notes. */
 'use strict';
 /* two more round barrows on the Plain (squares; the tool adds them to the heights). The first three are the layout's own (A.barrows). */
@@ -20,12 +23,14 @@ const RING = (() => { const o = [[0.5, 5.5], [1.5, 5.5], [2.5, 4.5], [3.5, 4.5],
 const FALLEN = q => q[0] < 0 && q[1] > 0 && (Math.round(q[0] * 2 + q[1] * 3) % 3 !== 0);   // the south-west quarter: two stones in three are down
 /* the ground: the plan's square rings are cleared, the bank's chalk and the Avenue are stamped round (the tool's half-square paint) */
 exports.plan = ctx => { const { A, cell } = ctx, h = A.henge;
+    ctx.setRect(A.longbarrow[0], A.longbarrow[1], A.longbarrow[2], A.longbarrow[3], 'p');   // the Long Barrow's earth floor (the mound is drawn over the building)
     for (let y = 0; y < 36; y++) for (let x = 72; x < 108; x++) { const d = Math.hypot(x + 0.5 - h.x, y + 0.5 - h.y), ch = cell[y][x];
         if (ch === 'c' && !(x >= 91 && x < 93 && y >= 18)) cell[y][x] = 'g'; if (ch === 'p' && d > h.ditch - 1.6 && d < h.ditch + 1.3) cell[y][x] = 'g'; } };
 exports.paint = ctx => { const { A, C, gx, gz } = ctx, h = A.henge, X = gx(h.x), Z = gz(h.y), R = h.bank * C;
     const seg = (x, z, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz))); return Math.hypot(x - ax - t * dx, z - az - t * dz); };
     ctx.stamp((x, z) => { const d = Math.hypot(x - X, z - Z), a = (Math.atan2(z - Z, x - X) * 180 / Math.PI + 360) % 360;
         if (seg(x, z, X + 15, Z - 15, gx(107), gz(1)) < 3.6 && d > 21) return 'marble_light';                       // THE AVENUE
+        if (x > gx(A.longbarrow[0]) && x < gx(A.longbarrow[2]) + 3.5 && z > gz(A.longbarrow[1]) && z < gz(A.longbarrow[3])) return 'dirt_2';   // the Long Barrow's earth floor + its doorstep
         if (Math.abs(d - R) < 2.4 && !(a > 303 && a < 327) && !(a > 80 && a < 100)) return 'marble_light';       // the bank's chalk crest
         if (Math.abs(d - (R - 6.2)) < 1.0 && Math.abs(((a + 3.2) % (360 / 56)) - 3.2) < 1.35) return 'marble_light';   // THE 56 AUBREY HOLES
         return null; }); };
@@ -47,7 +52,33 @@ exports.build = ctx => {
         const dx = (q[0] - p[0]) * C, dz = (q[1] - p[1]) * C, len = Math.hypot(dx, dz); if (len > 6) continue;
         a.box((p[0] + q[0]) / 2 * C, 4.25, (p[1] + q[1]) / 2 * C, len + 1.3, 0.75, 1.15, 'rock_wall_1', 0xd0d0c8, { ry: -Math.atan2(dz, dx) * 180 / Math.PI, under: true }); } });
 };
+/* THE LONG BARROW (pass 2): squares A.longbarrow (8 x 3), its front on the east end. Frame of its parts: x across the front, +z out of the door. */
+function longBarrow(ctx) {
+    const { A, C, building, put, Pm, cx, cz, taken } = ctx, q = A.longbarrow, ROCK = 'rock_wall_1', TURF = 'grass_2';
+    const B = building('longbarrow', [q[0], q[1], q[2], q[3], 'E'], 3.2, { leaf: 'leaf_frame_only', keyIn: ROCK, floorIn: 'dirt_2', door: 4 }, (a, w, d, door) => {
+        a.shell(w, 3.2, d, ROCK, 0xb8b4a8, door, [3.5, 3.5]);
+        /* the mound: three turf domes run together, lower toward the tail (hidden with HIDE ROOFS, as a roof) */
+        a.dome(0, 0, 2.5, w / 2 + 4.6, 5.8, TURF, 0xa8c088, { rz: 10.5, seg: 16, rings: 6, roof: true, gain: 1.5 });
+        a.dome(0, 0, -5, w / 2 + 4.4, 5.5, TURF, 0xa8c088, { rz: 10.5, seg: 16, rings: 6, roof: true, gain: 1.5 });
+        a.dome(0, 0, -11.5, w / 2 + 4.0, 5.0, TURF, 0xa8c088, { rz: 9, seg: 16, rings: 6, roof: true, gain: 1.5 });
+        /* the stone front: big slabs either side of the doorway, a capstone over it */
+        [-4.3, -2.6, 3.0, 4.6].forEach((x, i) => a.box(x, 0, d / 2 + 0.45, 1.5, 3.6 - (i % 2) * 0.5, 0.8, ROCK, 0xc4c0b4, { ry: (i % 2 ? 6 : -5) }));
+        a.box(door.lx, 2.25, d / 2 + 0.5, door.cw + 2.4, 0.8, 1.3, ROCK, 0xb0aca0, { under: true });
+        a.box(door.lx - door.cw / 2 - 0.45, 0, d / 2 + 0.5, 0.7, 2.3, 1.1, ROCK, 0xbcb8ac); a.box(door.lx + door.cw / 2 + 0.45, 0, d / 2 + 0.5, 0.7, 2.3, 1.1, ROCK, 0xbcb8ac);
+        /* inside: the slabs that part the side chambers, the passage's roof beams, the draught's frame at the far end */
+        [7, 0, -7].forEach(z => { [-1, 1].forEach(sd => a.box(sd * (w / 2 - 1.6), 0, z, 2.9, 2.7, 0.55, ROCK, 0xa8a498)); a.box(0, 2.75, z, w - 0.4, 0.42, 0.9, ROCK, 0x98948a, { under: true }); });
+        a.box(-0.95, 0, -d / 2 + 0.45, 0.45, 2.5, 0.5, ROCK, 0x8a867c); a.box(0.95, 0, -d / 2 + 0.45, 0.45, 2.5, 0.5, ROCK, 0x8a867c); a.box(0, 2.5, -d / 2 + 0.45, 2.6, 0.45, 0.6, ROCK, 0x8a867c);
+        a.box(0, 0, -d / 2 + 0.2, 1.45, 2.5, 0.1, null, 0x050505);
+    });
+    /* the chambers (lz: +14 = the door, -14 = the tail; lx: -5.25 .. 5.25) */
+    put(B, 'sarcophagus', -3.4, 3.5, { face: 0 }); put(B, 'skull_pile', 3.6, 3.6); put(B, 'stone_urn', 3.9, 10.6); put(B, 'stone_urn', 2.9, 11.6, { h: 0.8 }); put(B, 'greek_amphora', -3.8, 10.8);
+    put(B, 'trap_sarcophagus_box', 3.4, -3.5, { face: 0 }); put(B, 'skull_pile', -3.6, -3.4); put(B, 'cattle_skull', -2.4, -4.4, { y: 0.02 });   // (no loose `skull` / `femur` / `ulna`: those spell props are half a million triangles each)
+    put(B, 'sea_chest', -3.5, -10.6, { face: 90 }); put(B, 'paper_sheet', -2.4, -10.2, { y: 0.02 }); put(B, 'stone_urn', 3.6, -10.4);
+    put(B, 'candle_ring', 0, -11.2); put(B, 'psx_cobweb_1', -4.6, 12.6, { y: 2.2 }); put(B, 'psx_cobweb_2', 4.6, -12.6, { y: 2.2 }); put(B, 'psx_cobweb_4', 4.5, 5.6, { y: 2.1 });
+    [[-1.9, 9.6], [1.9, 2.4], [-1.9, -4.6], [1.9, -9.4]].forEach(p => put(B, 'cave_torch', p[0], p[1]));
+}
 exports.dress = ctx => {
+    longBarrow(ctx);
     const { A, C, P, Pm, dec, tree, gx, gz, cx, cz, taken, rnd } = ctx, h = A.henge, X = gx(h.x), Z = gz(h.y), sq = (dx, dy) => [h.x + dx - 0.5, h.y + dy - 0.5];
     /* THE SARSEN CIRCLE */
     RING.forEach(q => { const s = sq(q[0], q[1]), face = Math.round(90 - Math.atan2(-q[1], q[0]) * 180 / Math.PI);

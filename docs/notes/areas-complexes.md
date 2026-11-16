@@ -13309,6 +13309,16 @@ north at the circle (`henge_s`: x 133, z -30, face 0). FPS there on the probe's 
   THE AVENUE runs between two low banks (`ridge` rows) and THE SLAUGHTER STONE lies in its mouth; two portal sarsens at the South Gate; five
   round barrows (two more on the Plain, `exports.hills`), each in its ring ditch.
   Tried and thrown out: `ocean_rock_3 / _4` as fallen sarsens (they draw near black on land).
+- **PASS 2, INTERIORS** (seen: the mound from the side and the front, two views inside; FPS 0.60). THE LONG BARROW is the district's one inside:
+  a hollow `texbuilding` on the layout's 8 x 3 squares (`ctx.building`, front east, a `leaf_frame_only` doorway) under three turf domes run
+  together (`roof: true`, so HIDE ROOFS lifts the mound), a stone front of slabs + a capstone. Inside: three pairs of standing slabs make
+  side chambers (a sarcophagus, a coffer, skull piles, urns, the chest and its paper), four torches, a candle ring, cobwebs, and at the tail
+  the dark frame of the old draught "down the line" (the old link `stonehenge_gobekli`'s mouth: a place now, not a door). The tool no longer
+  raises a ridge there (the building's ground is level; the mound is the drawn domes).
+  FOUND, FOR EVERY THREAD: the loose bone props `skull`, `femur`, `ulna` are spell props of about half a million triangles EACH (8 to 12 MB
+  files): six of them took the room from 3.4 M to 8.5 M triangles and 0.7 to 0.1 FPS. Use `skull_pile`, `cattle_skull`, `hw_part*` instead.
+  Open: with the barrow in, `renderer.info` reads 8.7 M triangles and 554 calls at the proof view though the frame rate held (0.60); it
+  looks like a second pass, not real geometry (not tracked down).
 
 - **PASS 2, INTERIORS (district M; seen on screen from the floor):** THE HABITAT's inside. A lit white ceiling at 2.82 m (the walk-in's own
   ceiling hangs lower than a 3.5 m wall's top less 0.3: a lit ceiling at 3.12 did not show), the inner walls in painted tin (`keyIn`),
