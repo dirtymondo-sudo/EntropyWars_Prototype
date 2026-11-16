@@ -6711,6 +6711,65 @@ a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil la
 3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
 4. The Sphinx stays parts-built until a model exists.
 
+## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
+
+mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
+Station (P00-03), the Loop Line (P01-03, P03-03, P03-04), the Crossing (P02-03), the Depot (P04-03). The tool, the layout, the rails, the ways
+out (the HQ tunnel west, the garden well, the city's Platform south, the hatch stair, the Junction's well) are the zone row's: untouched.
+
+- **FITS THIS DISTRICT (the model list, read end to end by a sweep of MODEL_LIST.md sections 6 to 13 + pack-claims.md):**
+  STATION `metro_bench` `metro_bin` `metro_vending` `metro_ticket_machine` `metro_gate` `ebd_metro_turnstile` `metro_map` `metro_poster_1..8`
+  (the city uses only 2, 4, 5) `metro_column` `ebd_metro_concrete_pillar` `metro_light` `metro_stairs` `metro_stair_rail` `public_phone`
+  `newspaper_rack` `newspaper_bundles` `wall_clock` `psx_clock_1/2` `exit_sign` `security_camera` `fire_extinguisher` `hose_rack` `notice_board`
+  `missing_board` `departures_board` · TRACK `signal_lever_frame` `railway_lantern` `pd_lever` `utility_box` `ind_panel` `breaker_panel`
+  `gauge_board` `cable_drum` `psx_beam_*` `psx_catwalk_1` `maintenance_stairs` `trap_chain_*` · TRAINS `metro_car` `metro_car_open` (no city
+  district places either) `subway_front` `subway_cart` (city L has it) `hand_truck` `luggage_cart` `forklift` · DEPOT `tool_chest`
+  `tool_pegboard` `welding_cart` `gas_cylinder_rack` `air_compressor` `drill_press` `metal_lathe` `chain_hoist` `engine_hoist` `locker`
+  `office_locker` `footlocker` `ladder_wall_rack` `ebd_gasstation_metal_shelving` `psx_shelf_mp_*` `psx_metal_barrel_mp_*` `psx_supply_crate_*`
+  `wrapped_pallet` `pallet_jack` `tire_stack` `traffic_cone` `item_police_barricade` `meshy_sandbags` `ebd_tacos_roller_shutter` `psx_padlock_*`
+  `psx_car_battery_1` `psx_jerrycan_1` `item_wrench` `psx_screwdriver_mp_*` · CAMP + RUBBISH `psx_old_mattress_mp_1` `cot` `camping_tent`
+  `brazier` `psx_sofa_*` `psx_armchair_*` `psx_carpet_mp_1` `psx_cardboard_box_*` `psx_glass_bottle_*` `psx_tin_can_mp_1_rusty`
+  `psx_canned_food_mp_*` `psx_cig*` `retro_radio` `garbage_bag(s)` `dumpster` · DEAD + VERMIN `bat_black / brown / grey` `skull` `femur`
+  `hw_body*` `hw_part*` `hw_web*` `psx_cobweb_*` · LIGHTS `psx_ceiling_lamp_*_on/_off` `fluorescent` `high_bay_lamp` `ship_lantern`
+  `psx_flashlight_1` · PIECES `psx_tunnel_*` `psx_wall_1_tunnel_hole*` `psx_pipe_1*` `psx_vent_*` `vent_grille` · SHEETS the Metro pack's
+  `urban:MetroFloor / MetroTiles / MetroTactile / MetroConcrete / MetroMetal` (TRAP: `MetroWallTile`, `MetroWhiteTile`, `MetroRails` are
+  JPGs that are not power-of-two: repeated on a part they draw BLACK), `urban:TileSubway1a..4d`, `TileSubwayGen1/2`, `MetalTruss*`,
+  `MetalBeams*`, `MetalWarningStripe1/2`, `ConcreteWarningStripe*`, `MetalShutter*`, `MetalGratingGrid*`, `MetalDiamondPlate*`,
+  `BrickPainted*`, `GroundPebbles*`, `Sign*`, `DecalStain*`. NOT IN THE GAME: a rail piece, a buffer stop, a signal, a switch, a hand car,
+  rats, a graffiti sheet, an emergency lamp (the first four are built from textured parts here; see NEEDS A MODEL).
+- **PASS 1, THE EXTERIORS (seen, 20 views over four runs):**
+  - THE TRACK BED under every rail the tool lays (the same runs, cut a plot): pebble ballast, a sleeper every 0.7 m, a third rail under its
+    board. One `arch` row a plot (`sewT:<plot>:track`).
+  - THE TUNNEL WALLS (`:walls`): three cables on brackets along every south / east wall of two squares or more, a bulkhead lamp every third
+    square, two in three alight (`glow`). The tool's rusted mains keep the north / west walls.
+  - THE GHOST STATION (`:station`): the platform now runs out to the track (plan: the walk between them became platform; the east step
+    stays its way up); terrazzo, a tactile strip and a coping on its edge, a brick face to the track; cream tiles with a green foot on the
+    north wall, tiles on both ends, a tile band + the cables across the track; GHOST STATION six times (the plot's own name); the WAY OUT
+    behind a shut roller shutter in the east end ("no stairs up"); four Metro columns with capitals; four tube lamps, two alight.
+  - THE CROSSING (`:gantry`, `:cabin`): THE SIGNAL GANTRY, 5.2 m, four truss legs round the square where the lines cross, a grating deck,
+    a head to each way, all four green ("Signals green." "There is no train."), a ladder, a check plate; a buffer stop on the dead line
+    south. The cabin: a recess dug north-east (3 x 2 squares), a painted-brick front with a lit green window, the name board, a slab roof.
+  - THE DEPOT (`:hall`, `:crew`): an overhead crane on two rail beams with its hook, six high-bay lamps (three alight), a buffer stop at
+    each end of roads 1 and 2, THE DEPOT + the road numbers on the east wall, a painted dado under a warning line, a concrete floor.
+    THE LIT TRAIN (road 1): saloon strip, two headlights, two bulbs inside (real lights). The crew room: a recess dug north-west.
+  - Both huts have a swinging barred door (`leaf_security`, a `doorsOnly` carrier row, `sewT:doors`) and ghost walls on their fronts.
+  - A signal post where the line leaves each Loop Line plot.
+- **FPS (the probe's software renderer, the Depot view):** 3.5 before, 4.3 after pass 1 (no real cost: about 60 meshes, no new lights).
+- **DECISIONS MADE FOR MONDO (overrule any in a line):** (1) the five cave torches of the first build are gone from the line: a subway is
+  lit by its own lamps, and the room has ten real lights for 30 plots; T now takes two (the lit train's bulbs), everything else is `glow`.
+  (2) The platform reaches the track (it stood a walk's width back). (3) The exit is shuttered, in the east end, not a stair. (4) Every
+  signal is green (the bystander's line). (5) Two recesses were dug for the huts (the Crossing's north-east, the Depot's north-west): the
+  only plan squares changed, both inside T's plots, no way out touched. (6) The cabin's board reads THE CROSSING, the hut's CREW ROOM,
+  the hall's THE DEPOT: plot names or plain labels. (7) The lit train is road 1 (north).
+- **NEEDS A MODEL:** a rail + sleeper section, a buffer stop, a tunnel signal, a signal gantry, a hand car / maintenance trolley, rats,
+  a graffiti sheet, an emergency / strobe lamp, a third-rail shoe. **IDEAS, NOT BUILT (new mechanics):** a train that moves round the
+  loop; signals that change; a lever in the cabin that throws them; riding the lit car.
+- **TRAPS FOUND (for the next thread):** an `arch` row without `y` stands on the ground AT ITS MIDDLE (the station's middle is the
+  platform's edge: the whole row floated 0.45 m): give every row `y`. A `doorsOnly` row's `inner` doors are in the ROW's frame: keep the
+  row at x 0, z 0 and write room metres. The room's walls stand on the squares' lines; a part 0.1 m off the line shows. A west / north
+  wall carries the tool's main at 2.3 to 2.8 m: put doors and signs on south / east walls. The room grew a fifth row on 11-16 (z of
+  every probe view moved 21 m north).
+
 ## THE SEWERS, DISTRICT O · THE OLD WORKINGS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/O.js`)
 
 Two plots on level 0: P01-01 The Old Workings (a 9 x 9 square hall, 21 m to its roof because the trap's rope ladder comes down into it) and
