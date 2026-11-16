@@ -121,12 +121,42 @@ exports.dress = ctx => {
     swim('ocean_manta', 42, 30, 13); swim('ocean_dolphin', 36, 22, 11); swim('ocean_dolphin', 49, 37, 12); swim('ocean_turtle', 30, 30, 3); swim('ocean_turtle', 54, 28, 4);
     [[36, 26, 7], [36, 30, 8], [36, 34, 7], [47, 26, 7], [47, 30, 8], [47, 34, 7]].forEach((q, i) => swim(i % 3 === 1 ? 'ocean_moon_jelly_pulsing' : 'ocean_bioluminescent_jelly', q[0], q[1], q[2]));
     swim('ocean_clownfish', 37, 27, 1.2); swim('ocean_dory', 46, 32, 1.4); swim('ocean_fish_2', 40, 25, 2); swim('ocean_stingray', 50, 30, 1);
+    exports.dress3(ctx);
 };
+
+/* ══ PASS 3, THE DRESSING + THE AIR (2026-11-16) ══ */
+exports.dress3 = ctx => {
+    const { P, dec, swim, scatter, look, gx, gz, MB } = ctx, PALE2 = 0xdfeeee;
+    /* the Agora: urns and amphorae at the stoas' benches, busts on the stoas' ends, a well, shells on the temple's steps, weed at the walls' feet */
+    [[35, 26], [35, 29], [35, 33], [48, 27], [48, 31], [48, 34]].forEach((q, i) => dec(i % 2 ? 'stone_urn' : 'greek_amphora', q[0], q[1]));
+    P('marble_bust', 36, 25); P('marble_bust', 47, 25); P('marble_bust', 36, 35); P('marble_bust', 47, 35); P('ancient_well', 45, 36);
+    dec('ocean_starfish', 40, 24); dec('ocean_conch', 43, 25); dec('ocean_sand_dollar_2', 41, 26); dec('ocean_starfish', 44, 28);
+    scatter('ocean_seaweed', 14, 42, 30, 10, 311, { r0: 26 }); scatter('ocean_seaweed_2', 10, 42, 30, 10, 312, { r0: 24 });
+    /* the canal: anemones glowing on its bed, kelp strands rising past the causeways, clams */
+    scatter('anemone', 36, 42, 30, 13.3, 313, { r0: 37.5 }); scatter('kelp', 26, 42, 30, 13.2, 314, { r0: 38 }); scatter('giant_clam', 7, 42, 30, 13, 315, { r0: 38 });
+    /* the inner ring: Justice before the Treasury and its spilled gold, heroes by the shrines, urns at every small temple's door, a second lintel's drums */
+    P('lady_justice', 46, 16, { face: 180 }); dec('sea_chest', 49, 16); dec('psx_gold_bar_pcs_1', 48, 17); dec('greek_amphora', 45, 14);
+    P('hero_statue_landing', 49, 43, { face: 0 }); P('hero_statue_crossed', 35, 43, { face: 0 });
+    [[58, 33], [58, 37], [26, 33], [26, 37], [38, 46], [45, 46], [25, 25], [38, 14]].forEach((q, i) => dec(i % 3 ? 'stone_urn' : 'greek_amphora', q[0], q[1]));
+    look('drums', gx(42), gz(30), 0, a => { [[50, -44, 0.5, 0.9], [53, -41, 0.5, 0.6], [56, -30, 0.5, 1.1], [-52, 40, 0.45, 0.7], [-48, 46, 0.45, 1.0], [-58, -8, 0.5, 0.8], [58, 8, 0.5, 0.5], [22, 50, 0.45, 0.9], [-26, 26, 0.4, 0.6], [27, -24, 0.4, 0.8]].forEach(q => a.stump(q[0], 0, q[1], q[3], q[2], PALE2)); });
+    /* more life: schools over the ring, a shark high over the dome, a ray, small fish in the stoas, jellies up the temple's flanks */
+    [[28, 28], [56, 32], [42, 44], [35, 17], [50, 43]].forEach(q => dec('fish_school', q[0], q[1]));
+    swim('ocean_shark', 42, 22, 22); swim('ocean_stingray', 33, 31, 1); swim('ocean_fish', 36, 29, 2.5); swim('ocean_fish_3', 47, 29, 2.5); swim('ocean_brown_fish', 30, 22, 2); swim('ocean_tuna', 55, 22, 9);
+    [[37, 21, 9], [46, 21, 10], [39, 19, 14], [44, 19, 15], [42, 17, 18]].forEach((q, i) => swim(['ocean_bioluminescent_jelly', 'ocean_moon_jelly_pulsing', 'ocean_box_jelly'][i % 3], q[0], q[1], q[2]));
+    swim('ocean_octopus', 53, 20, 0.6); swim('ocean_eel', 31, 38, 0.8); dec('ocean_crab', 39, 36); dec('ocean_lobster', 46, 24);
+};
+/* the air: pale drifting motes over the island and the ring, a glow of plankton round the dome */
+exports.airZones = ctx => [
+    { sx0: 24, sy0: 12, sx1: 60, sy1: 48, kind: 'motes', color: 0xbfeff0, n: 260 },
+    { sx0: 36, sy0: 16, sx1: 48, sy1: 26, kind: 'fireflies', color: 0x7ff8e0, n: 70 },
+];
 
 exports.people = ctx => {
     const { native, sayOf, O_ABYSS } = ctx;
     native('atlantean', 40, 29, 180, sayOf(O_ABYSS, 'atlantean', 0));     // "The road goes up to the temple."
     native('mermaid', 45, 33, 300); native('atlantean', 31, 21, 135); native('starfish', 37, 35, 60);
+    /* pass 3: more people (mondo 11-16: more NPCs, none on a road) */
+    native('atlantean', 37, 30, 90); native('mermaid', 46, 27, 240); native('siren', 52, 19, 200); native('atlantean', 55, 35, 280); native('starfish', 29, 38, 30); native('mermaid', 33, 44, 10); native('atlantean', 47, 16, 170);
 };
 
 /* ── THE TEMPLE OF THE DEEP, the dry room (18 x 18 squares, the door south, the dais north, the Oracle in its pool) ── */
