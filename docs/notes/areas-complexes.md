@@ -5114,6 +5114,61 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
   the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
 
+## THE BEACH, THE TRIANGLE — district T (2026-11-16, `docs/areas/beach/districts/T.js`, the Triangle thread)
+
+mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every district, five passes at most, no questions. One line per pass here.
+
+- **PASS 1, THE EXTERIORS + THE LANDMARKS (seen on screen, probe views `p1_*`):**
+  - **THE OLD CAY'S LOOKOUT, CARRIED OVER** (`site_prebuilt_bermuda_sea`: a plateau 2.1 m over the camp, its stair, its rail; the old rooms are
+    untouched): on the Cay a real dune (`hill`, r 15, 2.3 m: the plan's dune stood 0.7 m), on it THE LOOKOUT (a `plateau`, squares 149-150 x
+    88-89, 5.4 m over the sea), the timber stair up its south side (`ramp`, `stairs`, model `forest`, squares 150 x 90-92), a `ranch` rail
+    round it; drawn: a straw shade roof on four posts, a bench, a black flag on a pole. The telescope moved up to it; a `brazier` is its signal fire.
+  - **THE LIGHTHOUSE ROCK** can be climbed now: stone water steps up its east face (`ramp`, model `external`, -1.8 to 3.4 m, square row 102),
+    a `parapet` round the top (open at the steps), a drawn oil store and a red storm flag, an anchor, a crate, a barrel, lobster traps, five
+    rocks in the water round it. The tape and the lighthouse stay the tool's.
+  - **THE MAELSTROM:** the link's own funnel (9 m, the tool's place, not moved) now sits in three arms of foam drawn on the water (chains of
+    short white strokes, 6 to 38 m out), a broken ring of eleven sea stacks (the ocean pack's pillar rock grown to 6-11 m, round rocks kept
+    3 m), and six pieces of wreckage that turn round the hole on the surface (a prop row's `swim` ring: crates, barrels, a rowboat).
+  - **NO FIXED POSITION** (the plan: "open water; the Flight 19 tape"): five torn hull plates standing out of the sea, one for each aircraft.
+  - **THE ISLAND:** THE SHACK (walk-in, 3 x 2 squares at 147-149 x 103-104 on the Island Beach, its door north to the camp fire: teal
+    boards, a rusty tin roof, a straw porch, a dark window; its inside is pass 2); the Jetty's piles, mooring posts, rope and cargo; the
+    camp (two torches, a log, a cauldron, a footlocker, sacks); wreckage on the Island Beach (a ship's wheel, a crate, a fish skeleton,
+    a log, a dead snag); dune scrub, ferns under the palm grove, six more palms.
+  - The Wreck Islet (an anchor, a crate, a barrel, bones, rocks), the Reef (three more corals, anemones, three rocks through the surface,
+    kelp in the deep water round it), the Sandbar (driftwood, a beached rowboat, a snag).
+  - **GONE:** the Jetty's `dockring` (a spaceship docking ring, the Harbour's finding).
+  - **FRAME RATE** (the island from the south-west, the cloud's software GPU): before 16.3 fps, 302 draw calls, 428 k triangles; after, two
+    runs: 14.2 and 8.1 fps at 431-436 calls, 730 k triangles. The cloud's fps swings between runs; the draw calls are the number to hold.
+- **LEARNED (for the zone kit):**
+  - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
+    water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
+  - A `hill` row makes a real dune on this room's sand (the tool's own dune rule gives 0.7 m). A `plateau` with `absY` on top of it stands
+    at its typed height; a `ramp`'s `h0` must be the ground's own height at its foot (read it from the compiled room).
+  - The ocean pack's rocks: `ocean_rock_3` is the PILLAR (a sea stack at `h` 5-11), `ocean_rock_5` / `_9` are round and read as black
+    blocks over 3 m. A blocker with no `y` on a water square stands on the SURFACE, not the bed.
+  - `nacelle` is an airliner's engine 11 m long and `fighter_jet` an F-22: neither is wreckage of 1945. `hullplate` reads as torn wreck.
+  - `kelp` is 4.5 m: in the shallows it stands out of the water like reeds; give it `h` and deep water.
+  - Stair model `forest` = a timber flight with ranch rails; `external` = stone water steps. Rail `ranch` on a plateau wants `y`.
+  - A drawn spiral: parts take `ry` (degrees); a chain of thin boxes (0.03 m high, `sides: false`, `glow` 0.35) on `y` 0.04 shows on the sea.
+- **FITS THIS DISTRICT (the shortlist, from MODEL_LIST.md sections 6-13 + the live catalogue; [used] = placed by this file):**
+  wreck + pirate: `ship_wreck` `sea_chest` `skull_pile` `ship_cannon` `rowboat` `meshy_rowboat` `ship_anchor` `wheel` `lobster_traps`
+  `psx_wooden_crate_4/5/6` `psx_metal_barrel_mp_0/3` `meshy_burlap_sack` `femur` `skull` `psx_fish_skeleton_mp_1` `footlocker` `cauldron` [all used];
+  not yet: `ships_bell` `ship_model` `fishing_net_wall` `meshy_rope` `beach_life_ring` `money_sacks` `psx_gold_bar_pcs_1` `psx_coin_mp_1`
+  `greek_amphora` `sword` `spear` `map_table` `item_spyglass` `bird_cage` `ship_lantern` `meshy_hanging_lantern` `hw_body*` `hw_part*`
+  `wooden_cross` `camping_tent` `hitching_rail` `psx_glass_bottle_2` `wooden_bucket`. Crash: `hullplate` [used], `escapepod`, `satellite`,
+  `astronaut`. Sea: `ocean_coral_4/5/7` `kelp` `anemone` `ocean_rock_3/5/9` [used]; `ocean_anglerfish*`, `ocean_seaweed_2/3`, `fish_school`,
+  `ocean_manta` `ocean_stingray` `ocean_turtle` `ocean_dolphin`. Land: `fallen_log` `dead_snag` `psxg_dead_bush_1/2` `fern` `psxg_rock_1/3` [used];
+  `stump` `hollow_dead_tree` `psxg_stepping_stone_1/2` `flamingo` `eagle` `crow`. Eerie (nothing placed: the plan names none):
+  `obelisk` `menhir` `stone_altar` `decor_stone_arch` `crystal_cluster` `floating_orb` `ufo` `light_shaft` `white_cloud`.
+  Not wired, would fit a ruin: `mcsteeg_castles/Castles_and_Forts.glb` nodes `Wall_2x4_ruined`, `Tower_mid_hollow_ruined`.
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is a rock platform with a timber stair on a real dune, not a
+  timber tower (no tower model; the old one was a plateau too). (2) Flight 19 is five torn hull plates, not planes (no 1945 aircraft
+  model; the F-22 was not used). (3) One walk-in on the island, a wrecker's shack, plain name "the Shack". (4) The Maelstrom's foam is
+  drawn and still; the turning is the link's own funnel and the wreckage. (5) The Lighthouse Rock got steps so the tape can be reached on
+  foot from a boat. (6) The `dockring` at the Jetty was taken out (wrong model).
+- **NEEDS A MODEL:** a Flight 19 Avenger wreck; a timber lookout tower; a raft; a mast and torn sail; a pirate flag; a parrot and gulls;
+  a thatch hut; tropical bushes and flowers; a mooring post; a whirlpool surface that turns wider than 9 m; a wet-sand / reef-floor sheet.
+
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
 The approved plan is `docs/plans/desert/insides_plan.png` (rectangles in `draw-insides.py`). Before this delivery NONE of it was in the game: the
