@@ -12582,3 +12582,56 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
   busts and urns along the walls, amphorae, gold bars, and by the bay's bulkhead the air rack and wetsuit rail (you land there dry).
   The old room's own pieces all stand: dais + stair, the Oracle in its pool (the tape), throne, six braziers, columns, four windows with
   their shafts, the tapestry, the chest, the skulls, the paper, the pool's fish, both residents with their lines, the fight marker.
+- **PASS 3, THE DRESSING + THE AIR (seen on screen, three views + the inside, no errors):** urns, amphorae and busts at the stoas, a
+  well, shells on the temple's steps, weed at the walls' feet; in the canal 36 glowing anemones, 26 kelp strands, clams; on the inner
+  ring Justice before the Treasury with its spilled gold, two heroes by the shrines, urns at every small temple, ten fallen column drums;
+  five more schools, a shark over the dome, jellies up the temple's flanks; seven more people (27 in the room; none on a road); the air:
+  pale motes over the island and ring, a glow of plankton before the temple (`airZones`).
+- **FPS** (llvmpipe, the Agora view, read on a warm second view): first build 1.67 (442 calls, 1.46 M triangles) -> after pass 3 1.67
+  (622 calls, 1.84 M triangles). No loss this probe can measure. The triangles are mostly the ocean pack's animals and the kelp.
+- **STOPPED AT THREE PASSES** (the thread's room ran out, not the order's five). NOT DONE, for whoever takes the last two after mondo's
+  look: the night / dark look seen with the game's own post on (the probe runs with post off); sound; name boards on the buildings; the
+  island's and the rings' edges are saw-toothed (a circle on squares) and wear the rock sheet where a marble quay belongs; the Palace's
+  hall has no roof (the old dome prop stands open inside it); the small temples are solid (only the Temple of the Deep is walked into);
+  whether a `swim()` animal's height is honoured for every model was not checked one by one (a manta meant for 13 m up looked low).
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) Atlantis is a RING CITY, not the old strip. (2) 8 x 5 plots, four
+  districts: the Citadel, the Rings, the Sea Floor, the Trench. (3) The Temple of the Deep stands ON the Agora, a round hall under a dome
+  behind a porch; the old "Palace" keeps its dome on the inner ring. (4) Its dry inside is a NEW room on whole squares; the old Temple
+  room is retired but kept for the fight boards. (5) Room H-20's door still lands inside the Temple. (6) The Upwelling is at the west
+  end, the wreck beside it, the Trench east. (7) You arrive on the Agora, facing the temple; the heal ring is beside you. (8) Plots with
+  no old name have plain labels (the Market, the Baths, the Theatre, the Graves, the Workshops, the Harbour, the Gardens, the Shelf, the
+  Bones, the Lights ...). (9) The causeways are solid banks over the canals, not arched bridges. (10) The surface is 26 m over the Agora.
+  (11) The Bones wear the dinosaur skeleton until a whale's exists. (12) The temple's line about "two doors north" (Hollow Earth,
+  Agartha) is kept word for word though those doors were pruned on 09-18.
+- **NEEDS A MODEL** (exact): 1 a WHALE SKELETON, ribs and skull, 14 m long, lying, for the Bones (P06-04). 2 a BROKEN GREEK COLUMN lying
+  on its side, 4 m, and a column DRUM 1 m, for every ring. 3 a MARKET STALL in stone with an awning frame, 3 x 2 m (the Market P04-00).
+  4 a MOSAIC floor sheet (sea creatures, tileable 3.5 m) for the Agora, the Baths and the Temple's inside. 5 a CORAL sheet (tileable) for
+  the Reef Wall and the Gardens. 6 TUBE WORMS, a clump 1.5 m tall, lit red tips, for the Vents. 7 an ATLANTEAN COLOSSUS: a 12 m statue of
+  a king with a trident for the South Gate and the Statues plot. 8 a TRIREME wreck, 20 m, for the Harbour. 9 a stone ARCHED BRIDGE span,
+  14 m long, 14 m wide, for the eight causeways. 10 a diver's brass HELMET and a station AIRLOCK door for the Station. 11 a GIANT SQUID /
+  kraken body, 15 m, for the Bottom (only its tendrils stand today).
+
+## THE DEEP, THE ZONE KIT — for the R, S and T district threads (2026-11-16, written by the pilot, district C)
+
+- **Read first:** "THE DEEP ON PLOTS" above (stages, ctx helpers, the square letters), your file's header, `/docs/plans/world-zones/the-deep_plot_plan_2.png`.
+- **You swim.** Nobody walks: no stairs are needed, any height is reached, a wall only stops you below its top. So: heights are scenery
+  (make them big), and anything "walk-in" needs `ctx.solid(x, z, w, d, h)` walls or `wall` rows, or the swimmer goes through it.
+- **Marble pieces:** `ctx.look(id, x, z, rot, a => { ... })` with `a.column(x, y, z, h, r, tint)`, `a.stump`, `a.box`, `a.cyl` (`ri` hollow,
+  `arc` + `a0` a curve: the Theatre's tiers, the exedra), `a.dome`, `a.roof('gable' | 'shed', ...)` (`ry: 90` turns the ridge front to
+  back: a pediment over a porch). C.js has `naos(id, deg, w, d, h, tint)` (a small temple) and `tholos(id, deg, r, tint)` (a round one):
+  copy them. Tints that read under water: 0xdfeeee pale, 0x9fd8d0 teal, 0x4fa898 sea green (domes), 0x6f8f98 dark. Marble is lifted by
+  the tool (`glow 0.3`); a part with no key and `glow: 1` is a lamp that costs no light.
+- **Light:** 26 props in the room carry a real light (crystals, smokers, the bathyscaphe, the old dome). The first build did not test
+  more; add glow parts, anemones, clams and the lit jellies before another real light.
+- **Statues from animals:** a prop row with `statue: 0xdfe8e8` casts any model in marble and holds it still (the Agora's dolphins).
+- **Life:** `ctx.swim(key, sx, sy, metresOffTheFloor)`; every `ocean_*` fish and jelly swims its own circle. `fish_school` via `ctx.dec`.
+  Scatter with `ctx.scatter(key, n, sx, sy, radiusInSquares, seed, { r0: innerMetres })` (a ring when r0 is set: a canal's bed).
+- **FROM THE MODEL LIST, FITS AND NOT PLACED YET:** `castle_wall` / `castle_gate` / `castle_tower` (the city wall's walk and towers),
+  `babel_house_small` / `_stair` / `_yard` / `_row` (ancient houses), `italian_building`, `vatican_dome`, `ancient_walkway` (a 6 m stone
+  span), `psx_arc_*` + `psx_pillar_*`, `hw_wall*`, `catacomb_wall`, `trilithon`, `demon_statue`, `jewelry_case`, `museum_vitrine`,
+  `retro_control_panel`, `observation_window`, `psx_tunnel_mp_1_*` (the Station's tubes), `ind_container`, `fishing_boat`, `femur`,
+  `ulna`, `skull`, `asteroid_a / _b` (4 m rocks), `ocean_rock_5..11`, `hw_stone_*`, `psxg_rock_*`, `floating_orb`, `sea_buoy`.
+  NOT wired, on R2: `meshy_decor/greek_column.glb` + `obelisk.glb` (the newer ones mondo approved 11-03), `ewm_trident.glb`,
+  `ewm_royalcrown.glb`. Never: `tentacle`, `tentacle2` (owner-rules: the kraken's arms are `goo_tendril`), modelled smoke.
+- **Textures:** `marble_light`, `marble`, `calm_marble`, `calm_marblemint`, `urban:TileMarble1a..3d` (the nearest to mosaic), `gold`
+  (the better gilt), `rocks_5` (cliffs), `rocks_1`, `calm_darkrock`, `obsidian`, `desert` + the shell's `sand: 'beach'`.
