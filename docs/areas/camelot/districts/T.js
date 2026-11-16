@@ -20,7 +20,7 @@
 
    MISSING / WAITING: no house is walked into (mondo OK'd the five kinds as looks; insides are not asked yet). No anvil, market stall or
    lamp post model exists on R2 (tents, crates and sacks stand in). The streets have no lamps and no people but the two gate knights.
-   HELD BY the Village pilot thread since 2026-11-16 (both files). Passes: 1 exteriors (in), 2 interiors (in: THE INSIDES below + T-houses.js), 3 dressing (in: THE VILLAGE'S GROUND), 4 atmosphere, 5 polish.
+   HELD BY the Village pilot thread since 2026-11-16 (both files). Passes: 1 exteriors (in), 2 interiors (in: THE INSIDES below + T-houses.js), 3 dressing (in: THE VILLAGE'S GROUND), 4 atmosphere (in: chimney smoke, the night look), 5 polish.
    PEOPLE WAIT MONDO: only the two gate knights stand here; who lives in the village is his call (docs/notes/npc-system.md).
    NEEDS A MODEL (nothing on R2): an anvil, a lamp post / street lantern, a hand cart, a fence run with a gate, a floor carpet.
 
@@ -110,7 +110,7 @@ const hall = (B, id, o) => {
         on: (key, x, z, y, face, x2) => inside(B, key, r3(x), r3(z), Object.assign({ face: face || 0, y: r3(y) }, x2 || {})),
         /* a torch on wall 'b' back | 'f' front | 'l' left | 'r' right, `along` that wall, its foot `y` up */
         torch: (wall, along, y) => { const q = wall === 'b' ? [along, -D2 + 0.5, 180] : wall === 'f' ? [along, D2 - 0.5, 0] : wall === 'l' ? [-W2 + 0.5, along, 90] : [W2 - 0.5, along, 270];
-            inside(B, 'wall_torch', r3(q[0]), r3(q[1]), { face: q[2], y: y || 2.2 }); },
+            inside(B, 'wall_torch', r3(q[0]), r3(q[1]), { face: q[2], y: y || 2.2, floor: true }); },   // `floor`: without it a prop by a wall stands on the wall's TOP (these hung over the roofs)
         /* what the walker and a fight cannot cross: a ghost wall from (x0, z0) to (x1, z1), `t` thick, `h` high */
         block: (x0, z0, x1, z1, t, h) => { const p = B.at(x0, z0), q = B.at(x1, z1); ctx.feat({ k: 'wall', x0: p[0], z0: p[1], x1: q[0], z1: q[1], t: t || 0.9, h: h || 1.1, ghost: true, rail: false }); },
         /* the lining: a coat on the four walls to the ceiling (the front one cut at the doorway), a dado to `dh`, the lit ceiling deck, beams */
@@ -206,6 +206,8 @@ const hall = (B, id, o) => {
 HOUSES_FILE.insides(ctx, hall, HOUSE_LIST);   // the 43 houses, furnished by kind (T-houses.js)
 flushArch();
 
+/* PASS 4, THE ATMOSPHERE: smoke off the Inn's and the Smithy's chimneys (the catalogue's `chimney_smoke`, at each chimney's mouth) */
+inside(INN, 'chimney_smoke', r3(INN.fw / 2 - 1.4), r3(-INN.fd / 4), { y: 10.3, rise: 6 }); inside(SMITHY, 'chimney_smoke', r3(-SMITHY.fw / 2 + 1.2), r3(-SMITHY.fd / 2 - 0.6), { y: 10.05, rise: 6 });
 /* ── THE VILLAGE'S GROUND ── */
 note('THE VILLAGE: the market, the graveyard, the green, the gates');
 /* PASS 3, THE DRESSING (2026-11-16, the Village pilot thread). Everything DRAWN on the village's ground is ONE arch row `cam:village:street`

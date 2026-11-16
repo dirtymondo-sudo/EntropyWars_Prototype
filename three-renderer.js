@@ -77598,6 +77598,18 @@ const ThreeRenderer = (function () {
             } catch (err) { console.warn('[HQ] the hearth fire failed', err); }
             return g;
         },
+        /* THE CHIMNEY SMOKE (2026-11-16, the Camelot Village pilot thread; a zone kit piece any district may place): grey puffs that rise off a
+           chimney's mouth, drift and thin out. No body of its own: stand the row AT the chimney's top (`y` = that height). Three sprites a
+           chimney (a mesh each): smoke a few chimneys, not every one. `rise` on the row = how far it climbs, metres (5 when none). */
+        chimney_smoke: function (U, p) {
+            var g = new THREE.Group(), rise = (p && +p.rise > 0) ? +p.rise : 5, puffs = [], sd = (_hqProcSeed++) % 17;
+            for (var i = 0; i < 3; i++) { var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hzGlowTexture(), color: 0x8e8a86, transparent: true, opacity: 0, depthWrite: false })); sp.userData.t = i / 3; puffs.push(sp); g.add(sp); }
+            if (_hq) _hq.tickers.push(function (dt) {
+                for (var k = 0; k < puffs.length; k++) { var q = puffs[k]; q.userData.t += dt * 0.09; if (q.userData.t > 1) q.userData.t -= 1; var t = q.userData.t;
+                    q.position.set((Math.sin(t * 5 + k + sd) * 0.3 + t * 1.2) * U, t * rise * U, Math.cos(t * 4 + k + sd) * 0.3 * U); q.scale.setScalar((1.1 + t * 3.4) * U); q.material.opacity = 0.62 * Math.min(1, t * 6) * (1 - t); }
+            });
+            return g;
+        },
         /* the stake torch is the board's floor torch at the board's own size (THE SAME TORCH EVERYWHERE, 2026-09-15) */
         cave_torch: function (U) {
             var g = new THREE.Group();
