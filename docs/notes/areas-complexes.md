@@ -7824,6 +7824,24 @@ renderer; 1.4 after, with the whole midway in view).
   a solid white ellipse by day and night: do not.
 - **NO SOUND:** as in Western Town, a walk room has no per-district sound bed; nothing was added.
 
+**PASS 5, POLISH. FIVE PASSES LIVE: THE THREAD HAS STOPPED (mondo's order: no sixth pass until he has seen it).**
+- **THE WALK CHECK** (a flood from the gate on `hqTerrainFeet` + `hqTerrainWallAt(info, x, z, 0.3, null, null, feet + climb)`, step
+  0.4375 m): reached = the ring, the Big Top's back, the arcade and its far corner, the sideshow, the maze's door, end and dead end, the
+  tunnel door, the Mandela door, every track, the back gate, the yard's fire, the wheel. Shut, as meant = the stalls, the cage, the
+  gate's towers, the seat banks. It found the banks OPEN FROM BEHIND (a 2 m way runs behind them): four more ghost chords a bank.
+- **ONE ROW FOR THE LOOSE PIECES:** the renderer makes one mesh per sheet + tint + glow of a ROW. Twenty-one stand-alone rows (stalls,
+  boards, gate, cage, flags, bunting, lamps, wash line) are now gathered by `arch()` and written by `flushYard()` as one row,
+  `des:c:yard`, each piece's turn folded into its parts' `ry` (a `step` is turned too; a `ring` takes `a0 + rot`). The midway view went
+  from 667 to 580 draw calls with the same picture. Any district with many small `arch` rows can do the same.
+- **CLOTH AGAIN:** cream wants `gain` 2.05 (1.7 read as concrete in shade); prize boxes are the stucco sheet with `gain` 2.2 + `glow` 0.3
+  (the `carpet` sheet read dark red whatever its tint).
+- **FRAME RATE, HONESTLY:** llvmpipe readings at the midway view were 2.8 (before), then 1.4, 2.4, 1.0 and 1.6 on later passes with the
+  same or more in view: the reading is too noisy on the cloud's software renderer to rank passes. What is solid: draw calls 580 in that
+  view, triangles 1.2 M of which about 1.0 M are the whole Desert's instanced props. It wants one look on a real machine.
+- **AGAINST THE BAR (a finished city district):** has = walk-ins with insides (4), a landmark, second layers (signs, bunting, bulbs,
+  poster boards), a night look, air, dressing on every plot, people (15). Lacks = the missing models above, residents with a day, its
+  own fights, sound, reflecting mirrors, a walk-in fortune tent, upper levels (the high wire's platforms are drawn, not walked).
+
 **FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
 `carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
 `play_slide / play_swing / play_sandbox`, `teacups`. Stalls + games: `popcorn_cart`, `hot_dog_stand`, `money_wheel`, `claw_machine`,

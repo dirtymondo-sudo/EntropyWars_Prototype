@@ -48,11 +48,21 @@
    the square lines (`MAZE_OPEN` = the open ways; every other line is a mirror + a ghost wall). The Penny Arcade and the Sideshow =
    `tentInside()` + machines / exhibits on square middles. A camera or a ceiling: the building's own ceiling is at h - 0.32.
 
+   WHERE IT STANDS (11-16): FIVE PASSES LIVE, STOPPED, waits mondo's look (docs/plans/DISTRICT_THREAD_BRIEF.md: no sixth pass).
+   Pass 5 (polish): a walk flood on the walker's own rule from the gate reaches the ring, the Big Top's back, the arcade, the sideshow, the
+   maze's end and its dead end, both doors, every track and the back gate; the stalls, the cage, the gate's towers and the seat banks are
+   shut (the banks were open from behind: shut now). Every stand-alone piece is ONE row, `des:c:yard` (`arch()` gathers, `flushYard()`
+   writes): 87 fewer draw calls in the midway view.
+
    KNOWN MISSING OR WRONG:
    - `ferris_wheel` and `carousel` are code-sized (6.5 m and 3.6 m): a row's `h` does nothing on them. A big wheel NEEDS A MODEL.
-   - NEEDS A MODEL (nothing in MODEL_LIST.md): balloons, plush prizes, a real string of lights, a funhouse mirror, a bleacher stand, a
-     unicycle, juggling pins, a ring of fire, a trapeze, a cage wagon, a cotton candy cart, circus posters, a striped cloth sheet.
-   - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS). No residents.
+   - NEEDS A MODEL (nothing in MODEL_LIST.md): balloons, plush prizes (the shelves hold painted boxes), a real string of lights, a funhouse
+     mirror (the panes are the tall window sheet), a bleacher stand, a unicycle, juggling pins, a ring of fire, a trapeze artist's rig, a
+     cage wagon, a cotton candy cart, circus posters (the poster boards are the Woods' notice hoarding), a striped cloth sheet.
+   - The mirrors do not reflect (a real reflecting pane exists in the engine for one `barber_mirror` a room: not used, it redraws the room).
+   - The layout's loose-rock squares put grey standing stones on the grounds (the tool's scatter). The fortune tent is still the prop.
+   - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS). No residents with homes and a day. No sound bed.
+   - Frame rate was read on the cloud's software renderer only (1 to 2.8 FPS, noisy): it wants a look on a real machine.
 
    THE HOOKS (bake-desert.js "THE DISTRICT FILES" has the whole list of what ctx holds; each hook is optional):
      buildings(ctx)  the walk-in / shut buildings: building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts) -> a handle (at, face, cx, cz)
@@ -80,7 +90,18 @@ const hex = n => '#' + ('000000' + n.toString(16)).slice(-6);
 const ROTS = { S: 0, W: 90, N: 180, E: 270 };
 /* the stucco sheet is grey: every cloth part is lifted (`gain`), and the small bright things glow a little */
 const lift = a => { a.P.forEach(q => { if (q.key === PLAS && q.gain == null) q.gain = q.tint === CREAM ? 2.05 : 1.7; if (q.key === 'carpet' && q.glow == null) { q.gain = 1.8; q.glow = 0.3; } }); return a; };
-const arch = (id, x, z, rot, a) => feat(lift(a) && { k: 'arch', id: 'des:c:' + id, x: r2(x), z: r2(z), rot, parts: a.P });
+/* THE YARD ROW (pass 5, the frame rate): every stand-alone piece of this file (stalls, boards, the gate, cage, flags, bunting, lamps) is
+   gathered and written as ONE `arch` row, `des:c:yard`, in metres from the block's corner. The renderer draws one mesh per sheet + tint +
+   glow of a ROW, so twenty rows of the same cloth were twenty times the draw calls. A piece's turn goes into each part's `ry`. */
+const YARD = [];
+const arch = (id, x, z, rot, a) => { YARD.push({ x, z, rot, parts: lift(a).P }); };
+const flushYard = () => { const OX = gx(12), OZ = gx(0), out = [];
+    YARD.forEach(r => { const t = r.rot * Math.PI / 180, c = Math.round(Math.cos(t) * 1e6) / 1e6, sn = Math.round(Math.sin(t) * 1e6) / 1e6, dx = r.x - OX, dz = r.z - OZ, rv = (x, z) => [x * c - z * sn, x * sn + z * c];
+        r.parts.forEach(q => { const p = q.p || [0, 0, 0], n = rv(p[0], p[2]), o = Object.assign({}, q, { p: [r2(dx + n[0]), p[1], r2(dz + n[1])] });
+            if (r.rot) { o.ry = ((q.ry || 0) + r.rot) % 360; if (q.step) { const v = rv(q.step[0], q.step[2]); o.step = [r2(v[0]), q.step[1], r2(v[1])]; }
+                if (q.ring) { o.ring = Object.assign({}, q.ring, { a0: (q.ring.a0 || 0) + r.rot }); o.ry = ((q.ry || 0) + 2 * r.rot) % 360; } }
+            out.push(o); }); });
+    YARD.length = 0; feat({ k: 'arch', id: 'des:c:yard', x: r2(OX), z: r2(OZ), rot: 0, parts: out }); };
 const ghost = (x0, z0, x1, z1, h, t) => feat({ k: 'wall', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), h, t: r2(t), key: WD2, ghost: true, rail: false });
 /* a row's frame -> the room (the tool's own turn: building().at) */
 const toRoom = (x, z, rot) => { const t = rot * Math.PI / 180, c = Math.cos(t), s = Math.sin(t); return (lx, lz) => [r2(x + lx * c - lz * s), r2(z + lx * s + lz * c)]; };
@@ -460,6 +481,7 @@ exports.ground = ctx => { bind(ctx);
       for (let x = 34; x <= 46; x += 4) { pole(X(x), Z(30.85)); pole(X(x), Z(33.15)); bunting(a, X(x), Z(30.85), X(x), Z(33.15), 4.9); if (x < 46) { bunting(a, X(x), Z(30.85), X(x + 4), Z(30.85), 4.9, [GOLD, TEAL, RED]); bunting(a, X(x), Z(33.15), X(x + 4), Z(33.15), 4.9, [BLUE, RED, GOLD]); } }
       arch('bunting', OX, OZ, 0, a); }
 
+    flushYard();
     native('ringmaster', 23, 17, 270, sayOf(O_CARN, 'ringmaster')); native('clown', 22, 30, 200); native('giant', 19, 21, 270, sayOf(O_CARN, 'giant')); native('fortune teller', 27, 29, 180, sayOf(O_CARN, 'fortune teller'));
     native('mermaid', 35, 27, 270, sayOf(O_CARN, 'mermaid')); native('gnome', 40, 5, 180, sayOf(O_CARN, 'gnome')); native('catgirl', 16, 22, 90, sayOf(O_CARN, 'catgirl'));
 };
