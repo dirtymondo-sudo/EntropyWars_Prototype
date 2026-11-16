@@ -14,7 +14,13 @@
    with a long window; 01 THE DROP (the tier, its stair, the edge, the X); 03 THE PIT (1.75 m down, its stair, a rail on the rim, a red
    line of light at the bottom); 02 THE CATWALK (two towers, the plank, a stair, a ladder); 04 OBSERVATION (the deck behind a wall of
    round windows); Corridor Five's lane with two rooms west and four closets east; Level -6's rock, the blast door's collar; the Stair's
-   level numbers, light slots and side-room doors. */
+   level numbers, light slots and side-room doors.
+   PASS 2, THE INSIDES + THE DRESSING (11-16, `dress`): the hub's duty desk, lockers and racks under the west gallery, stores under the
+   east, the waiting corner, the board that watches the chambers, cameras on the galleries; 01's mattresses, dummy, camera and scale;
+   03's rim kit (the pit stays empty); 02's mattresses, robot arm and bag; 04's one chair, its recorder, the observers' chairs; Corridor
+   Five's DECON, ARMOURY, STORES, ELECTRICAL, LOCKERS, JANITOR (plain labels, mine); Level -6's guard post; the Stair's guard room and
+   store. Seven more people (no lines yet): two professors, a flesheater in the pit, two androids, a mad scientist, a man in black.
+   NOT YET: the light and the air (pass 3). */
 'use strict';
 const U = n => 'urban:' + n, CONC = U('ConcreteStriped1d'), GRILL = U('MetalSubwayGrill1a'), STEEL = U('MetalCorrugatedPainted3a'), HAZ = 0xe0b020, DARK = 0x2a2c30, RED = 0xff3020, INK = '#e8e4d0';
 const WL = { h: 7, key: CONC, tint: 0xb4b8bc, gain: 1.9 };
@@ -52,6 +58,9 @@ module.exports = {
               R.box(u + du * 0.014, v + dv * 0.014, 8.0, du ? 0.06 : 4.6, 0.55, dv ? 0.06 : 4.6, null, 0xfff2c0, { glow: 1, top: false });            // the slit: someone is up there
               R.box(u + du * 0.014, v + dv * 0.014, 9.6, w + (du ? 0.05 : 0.07), 0.4, d + (dv ? 0.05 : 0.07), null, RED, { glow: 1, top: false });
               R.sign('7', u + du * 0.02, v + dv * 0.02, 5.2, 1.6, 2.0, ry, INK, '', 'stencil', 0.3); }
+          /* the plinth: the tower's first 3.6 m stand a pace proud of the shaft, hazard-banded */
+          R.box(5, 5, 0, 8.1, 3.6, 8.1, CONC, 0xb8bcc0, { uv: [3.5, 1.75], gain: 1.9 });
+          for (const [du, dv, w, d] of [[0, -1.16, 8.16, 0.05], [0, 1.16, 8.16, 0.05], [-1.16, 0, 0.05, 8.16], [1.16, 0, 0.05, 8.16]]) { R.box(5 + du, 5 + dv, 0, w, 1.0, d, null, HAZ, { top: false }); R.box(5 + du * 1.001, 5 + dv * 1.001, 0.25, w + 0.01, 0.18, d + 0.01, null, DARK, { top: false, n: 3, step: [0, 0.3, 0] }); R.box(5 + du, 5 + dv, 3.3, w, 0.3, d, null, HAZ, { top: false }); }
           R.box(5, 5, TH, 7.3, 0.25, 7.3, CONC, 0x9a9ea4, { gain: 1.6 }); R.box(5, 5, TH + 0.25, 1.0, 0.5, 1.0, null, DARK); R.box(5, 5, TH + 0.75, 0.5, 0.35, 0.5, null, RED, { glow: 1 });
           /* the floor: a hazard square round the tower's foot, the four ways */
           for (const [du, dv, w, d] of [[0, -1.5, 10.9, 0.3], [0, 1.5, 10.9, 0.3], [-1.5, 0, 0.3, 10.9], [1.5, 0, 0.3, 10.9]]) line(R, 5 + du, 5 + dv, w, d);
@@ -140,5 +149,67 @@ module.exports = {
           for (const u of [1.02, 4.98]) R.box(u, 2.9, 0.012, 0.16, 0.012, 20, null, HAZ);
           R.wall('v', 0, 2, 6, Object.assign({ doors: [[4, 'leaf_security']] }, wl)); R.wall('v', 6, 2, 6, Object.assign({ doors: [[4, 'leaf_security']] }, wl));
           R.done(); }
+    },
+    /* PASS 2, THE INSIDES + THE DRESSING: what stands in every room (the FITS list in the notes; packs first, the heavy Meshy pieces once). */
+    dress(ctx) {
+        const { r2, plot } = ctx, UP = 3.5, nb = { noBlock: true };
+        /* ── THE HUB ── */
+        { const R = ctx.room('P03-03', 1, 1, 10, 10, 'hub2');
+          /* under the west gallery: lockers; under the east: what came down the stair on a pallet jack */
+          for (const v of [0, 1, 2]) R.B('office_locker', 0, v, 90); R.dec('riot_gear_rack', 0.22, 4.5, 90); R.keep(0, 4); R.dec('scba_rack', 0.22, 5.5, 90); R.keep(0, 5);
+          R.B('wrapped_pallet', 9, 0, 0); R.dec('gas_cylinder_rack', 9.78, 1.5, 270); R.keep(9, 1); R.B('cable_drum', 9, 3, 0); R.B('psx_metal_barrel_mp_1', 9, 5, 0); R.dec('pallet_jack', 8.5, 0.6, 200, nb); R.dec('psx_supply_crate_1', 8.6, 1.6, 20, nb); R.dec('psx_supply_crate_1', 8.5, 1.5, 70, { y: 0.4, noBlock: true });
+          /* the north-west corner: the duty desk; the north-east: where you wait to be told there is no level seven */
+          R.B('tanker_desk', 1, 0, 180); R.dec('computer_chair_grey', 1.5, 0.35, 0); R.dec('psx_pc_monitor_mp_1', 1.3, 0.75, 180, { y: 0.78 }); R.dec('psx_pc_keyboard_mp_1', 1.6, 0.9, 180, { y: 0.78 }); R.dec('clipboard_flat', 1.85, 0.7, 30, { y: 0.78 }); R.hung('key_rack', 2.5, 0.06, 0, 1.5); R.hung('punch_clock', 3.4, 0.06, 0, 1.4); R.hung('wall_clock', 1.5, 0.06, 0, 3.0);
+          R.dec('vending_machine', 8.5, 0.22, 0); R.keep(8, 0); R.B('metro_bin', 7, 0, 0); for (const u of [6.2, 6.8, 7.4]) R.dec('molded_chair', u, 1.4, 180, nb); R.hung('notice_board', 6.6, 0.06, 0, 1.6); R.dec('meshy_water_cooler', 8.7, 1.5, 270, nb);
+          /* the south side: the board that watches the chambers, a barricade by the stair's portal */
+          R.dec('retro_control_panel', 2.5, 9.78, 180); R.keep(2, 9); R.dec('monitor_stack', 3.5, 9.78, 180); R.keep(3, 9); R.hung('gauge_board', 1.5, 9.94, 180, 1.9); R.dec('computer_chair_grey', 2.6, 8.4, 20, nb);
+          R.B('item_police_barricade', 7, 9, 0); R.B('traffic_barrel', 8, 9, 0); R.dec('traffic_cone', 6.6, 8.5, 0, nb);
+          /* on the galleries: a camera on the tower, a chair for whoever watches it */
+          R.dec('film_camera', 0.5, 3.5, 90, { y: UP, noBlock: true }); R.dec('molded_chair', 0.5, 1.5, 90, { y: UP, noBlock: true }); R.dec('studio_camera', 9.5, 2.5, 270, { y: UP, noBlock: true }); R.dec('molded_chair', 9.5, 5.5, 270, { y: UP, noBlock: true }); R.dec('clipboard_flat', 9.4, 5.9, 0, { y: UP + 0.02, noBlock: true });
+          for (const q of [[3.3, 0.06, 0], [6.7, 9.94, 180]]) R.dec('evac_button', q[0], q[1], q[2], { y: 1.3, noLight: true }); R.hung('fire_extinguisher', 3.2, 9.94, 180, 1.0); R.hung('exit_sign', 5, 9.9, 180, 5.4); R.dec('floor_stain', 3.5, 6.5, 0, nb); R.dec('floor_stain', 6.4, 2.6, 0, nb);
+          R.who('professor', 6.5, 2.5, 200); R.done(); }
+        /* ── CHAMBERS 01 + 03 ── */
+        { const R = ctx.room('P02-03', 1, 1, 10, 10, 'ch13b');
+          /* 01: what the subject lands on, who films it, who weighs what is left */
+          for (const q of [[3.6, 1.6, 10], [4.4, 2.6, 80], [3.7, 3.3, 30]]) R.dec('psx_old_mattress_mp_1', q[0], q[1], q[2], nb);
+          R.dec('wing_chun_dummy', 2.5, 2.5, 90, { y: UP, noBlock: true }); R.B('film_camera', 6, 2, 270); R.B('studio_light', 6, 3, 300, { noLight: true }); R.B('platform_scale', 9, 0, 0); R.B('tanker_desk', 8, 2, 270, { nv: 1 }); R.dec('computer_chair_grey', 9.3, 2.5, 270, nb); R.dec('clipboard_flat', 8.5, 2.3, 40, { y: 0.78 }); R.dec('psx_dosimeter_1', 8.4, 2.8, 0, { y: 0.78 });
+          R.hung('notice_board', 7.5, 0.06, 0, 1.6); R.hung('wall_clock', 5, 0.06, 0, 3.2); R.B('hw_body', 7, 3, 20); R.dec('floor_stain', 4.3, 2.2, 0, nb);
+          /* 03: the rim's kit. The pit is left empty: it is a very good pit */
+          R.dec('scba_rack', 0.22, 7.5, 90); R.keep(0, 7); R.dec('hose_rack', 0.22, 9.5, 90); R.keep(0, 9); R.B('studio_light', 9, 9, 250, { noLight: true }); R.dec('warning_tape', 8.6, 8.5, 90, nb); R.dec('psx_flashlight_1', 1.6, 7.3, 40, nb); R.hung('radiation_sign', 9.94, 7.5, 270, 1.7);
+          R.who('flesheater', 3.5, 8.5, 90); ctx.npc[ctx.npc.length - 1].y = r2(plot['P02-03'].base - 1.75);
+          R.done(); }
+        /* ── CHAMBERS 02 + 04 ── */
+        { const R = ctx.room('P04-03', 1, 1, 10, 10, 'ch24b');
+          /* 02: under the plank */
+          for (const q of [[5, 1.5, 0], [6, 1.6, 90], [7, 1.4, 10]]) R.dec('psx_old_mattress_mp_1', q[0], q[1], q[2], nb);
+          R.B('robot_arm', 6, 3, 0); R.B('maintenance_stairs', 9, 3, 270); R.dec('tool_chest', 9.78, 0.5, 270); R.keep(9, 0); R.hung('gauge_board', 6, 0.06, 0, 1.8); R.B('psx_metal_barrel_mp_1', 0, 3, 0); R.B('punching_bag', 4, 3, 0); R.dec('floor_stain', 6.5, 2.4, 0, nb);
+          /* 04: the chair the chamber is observed with; the recorder; the observers' own chairs up on the deck */
+          R.B('molded_chair', 4, 8, 180); R.B('studio_light', 7, 7, 220, { noLight: true }); R.dec('reel_to_reel', 9.78, 7.5, 270); R.keep(9, 7);
+          for (const u of [1.5, 4, 6.5]) R.dec('molded_chair', u, 9.6, 0, { y: UP, noBlock: true }); R.dec('clipboard_flat', 2.4, 9.6, 0, { y: UP + 0.02, noBlock: true }); R.dec('psx_handheld_tablet_1', 5, 9.6, 30, { y: UP + 0.02, noBlock: true });
+          R.who('professor', 6.5, 9.5, 0); ctx.npc[ctx.npc.length - 1].y = r2(plot['P04-03'].base + UP);
+          R.done(); }
+        /* ── CORRIDOR FIVE: DECON and the ARMOURY west, four closets east (plain labels, mine) ── */
+        { const R = ctx.room('P03-02', 3, 0, 6, 12, 'five2');
+          R.dec('shower_stall', 0.5, 0.22, 0); R.keep(0, 0); R.dec('shower_stall', 1.5, 0.22, 0); R.keep(1, 0); R.dec('scba_rack', 0.22, 2.5, 90); R.keep(0, 2); R.dec('turnout_gear_rack', 0.22, 3.5, 90); R.keep(0, 3); R.dec('mop_bucket', 1.5, 4.4, 30, nb); R.dec('floor_drain', 1.2, 1.5, 0, nb); R.hung('hose_rack', 1.94, 1.2, 270, 1.0); R.label('DECON', 2.18, 2.5, -90, 1.1);
+          R.dec('rifle_rack', 0.22, 8.5, 90); R.keep(0, 8); R.dec('riot_gear_rack', 0.22, 10.5, 90); R.keep(0, 10); R.B('footlocker', 1, 11, 0); R.dec('psx_supply_crate_1', 1.5, 8.5, 20, nb); R.dec('psx_ammo_box_1', 1.4, 9.4, 0, nb); R.dec('psx_ammo_box_1', 1.6, 9.5, 40, nb); R.dec('psx_police_baton_mp_1', 1.3, 10.6, 60, nb); R.label('ARMOURY', 2.18, 10, -90, 1.3);
+          R.dec('metal_shelving', 5.78, 0.5, 270); R.keep(5, 0); R.dec('psx_supply_crate_1', 5.5, 2.4, 0, nb); R.label('STORES', 4.82, 1.5, 90, 1.1);
+          R.dec('breaker_panel', 5.94, 4, 270, { y: 1.5 }); R.dec('utility_box', 5.78, 3.5, 270); R.keep(5, 3); R.label('ELECTRICAL', 4.82, 4, 90, 1.6);
+          R.dec('locker', 5.78, 8.5, 270); R.keep(5, 8); R.dec('locker', 5.7, 9.6, 270, nb); R.label('LOCKERS', 4.82, 9, 90, 1.2);
+          R.dec('mop_bucket', 5.5, 10.5, 0, nb); R.dec('trash_bin', 5.6, 11.5, 0, nb); R.dec('wet_floor_sign', 5.3, 11.0, 30, nb); R.label('JANITOR', 4.82, 11, 90, 1.2);
+          R.hung('fire_extinguisher', 2.06, 4.5, 90, 1.0); R.hung('exit_sign', 3.5, 0.06, 0, 3.4); R.hung('notice_board', 4.94, 2.6, 270, 1.6);
+          R.who('android', 4.5, 6.5, 270); R.who('mad scientist', 1.5, 1.5, 90); R.done(); }
+        /* ── LEVEL -6: the guard post that faces the blast door ── */
+        { const R = ctx.room('P03-01', 2, 2, 8, 8, 'minus6b');
+          R.B('meshy_sandbags', 3, 3, 90); R.B('meshy_sandbags', 3, 5, 90); R.B('item_police_barricade', 4, 2, 0); R.B('footlocker', 5, 4, 90); R.dec('field_radio', 5.5, 4.5, 270, { y: 0.42 }); R.dec('psx_walkie_talkie_1', 5.4, 4.2, 30, { y: 0.42 });
+          R.B('psx_metal_barrel_mp_1', 7, 0, 0); R.B('psx_metal_barrel_mp_2', 7, 1, 0); R.B('cable_drum', 6, 7, 0); R.dec('gas_cylinder_rack', 0.22, 7.5, 90); R.keep(0, 7); for (const q of [[1.4, 1.4], [1.8, 1.7], [6.5, 6.3]]) R.dec('cinder_block', q[0], q[1], 30, nb);
+          R.dec('security_camera', 0.3, 2.5, 60, { y: 4.6 }); R.hung('radiation_sign', 0.06, 2.5, 90, 1.7); R.dec('psx_flashlight_1', 4.5, 5.4, 100, nb); R.dec('floor_stain', 2.5, 4.4, 0, nb);
+          R.who('men in black', 4.5, 4.5, 270); R.done(); }
+        /* ── THE STAIR: the guard room west of the foot, the store east of it ── */
+        { const R = ctx.room('P03-04', 3, 0, 6, 12, 'stair2');
+          R.B('tanker_desk', -2, 2, 0); R.dec('computer_chair_grey', -1.5, 3.3, 180, nb); R.dec('psx_pc_monitor_mp_1', -1.4, 2.6, 0, { y: 0.78 }); R.hung('key_rack', -1, 2.06, 0, 1.5); R.dec('office_locker', -1.78, 5.5, 90); R.keep(-2, 5); R.dec('office_locker', -1.78, 4.5, 90); R.keep(-2, 4); R.hung('punch_clock', -0.06, 2.6, 270, 1.4);
+          R.B('wrapped_pallet', 7, 2, 0); R.dec('metal_shelving', 7.5, 5.78, 180); R.keep(7, 5); R.dec('hand_truck', 6.6, 3.6, 120, nb); R.dec('psx_supply_crate_1', 7.5, 3.4, 10, nb); R.dec('psx_supply_crate_1', 6.5, 5.2, 60, nb);
+          R.label('GUARD', -0.18, 4, 90, 1.0); R.label('STORE', 6.18, 4, -90, 1.0); R.hung('exit_sign', 3, 0.3, 0, 4.4);
+          R.B('item_police_barricade', 0, 9, 0); R.B('item_police_barricade', 5, 9, 0); R.B('traffic_barrel', 0, 7, 0); R.B('traffic_barrel', 5, 7, 0);
+          R.who('android', 4.5, 2.5, 180); R.done(); }
     },
 };

@@ -167,6 +167,8 @@ Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
         room: (id, lx, ly, NU, NV, tag) => { const s = sq(id, lx, ly); return mkRoom(tag || (k + ':' + id), s[0], s[1], NU, NV, plot[id].base); },
         squares: (id, chars) => { const p = plot[id], out = []; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if ((chars || 'of').includes(cell[p.sy + ly][p.sx + lx])) out.push([lx, ly]); return out; },
         top: id => topOf(plot[id]), free: (id, lx, ly) => { const s = sq(id, lx, ly); return open(s[0], s[1]) && !taken.has(s[0] + ':' + s[1]); },
+        /* a catalogue WALL piece on the wall of a plot's square: side 'n' | 's' | 'w' | 'e' = which wall of that square, y = its height on it */
+        hang: (key, id, lx, ly, side, y, o) => { const q = sq(id, lx, ly), d = { n: [0, -1.69, 0], s: [0, 1.69, 180], w: [-1.69, 0, 90], e: [1.69, 0, 270] }[side]; if (!open(q[0], q[1])) errs.push(key + ' hangs in the rock at ' + q); props.push(Object.assign({ key, x: r2(gcx(q[0]) + d[0]), z: r2(gcz(q[1]) + d[1]), face: d[2], mount: y == null ? 1.6 : y }, o || {})); },
         keep: (id, lx, ly) => { const s = sq(id, lx, ly); taken.add(s[0] + ':' + s[1]); },
         /* a floor sheet on a plot's squares (the end exclusive) */
         paint: (id, lx0, ly0, lx1, ly1, sheet) => { const p = plot[id]; for (let y = ly0; y < ly1; y++) for (let x = lx0; x < lx1; x++) PAINT[(p.sx + x) + ':' + (p.sy + y)] = sheet; },
