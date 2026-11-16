@@ -2908,7 +2908,7 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - Memorial walk: a two-tier star-shaped stone base (`star`, convex polys) under the statue; the angel became `hero_statue_landing` (Meshy
   image-to-3d of concept S2, mondo's pick 12:43; catalogue entry in data.js, R2 Assets/world/props/meshy/hero_statue_landing.glb, y 1.0 on the base).
 - Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
-  centred on pavement squares, 3 newspaper_rack (decor, off centre), 3 orange/white steam chimneys in the road (arch, decor), a green
+  centred on pavement squares, 3 newspaper_rack (decor, off centre), the 3 orange/white steam chimneys in the road are OUT (mondo 11-15: "why are there chimneys in the middle of the road ... take it out"; never stand street furniture in a lane), a green
   sidewalk shed over the north pavement (x -59.5..-45.5).
 - 11-15 07:46 mondo "use the 3rd example ... as well": `hero_statue_crossed` (Meshy concept S3, arms crossed) on a granite pedestal (`pedestal`, NYC_OPEN) on the
   plaza's south-west square (-36.75, -19.25; a blocker, centred), y 1.4, facing the fountain. R2 Assets/world/props/meshy/hero_statue_crossed.glb.
@@ -3950,7 +3950,19 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
   model sits at dist 0.88 of the sky's radius, right for the old 60 m rooms, INSIDE the 252 m room. `hqWoodsShell({ noLandmarks: true })` drops the sky's landmarks (the bake passes it).
   Lesson: a horizon landmark on a shell made for small rooms must be checked when the room grows.
 - **NO UNEXPLAINED DEAD ENDS (mondo: "get rid of any trails that lead to nowhere, no unexplained dead ends")**: a `secret` TRAIL door gets no waymark post, so its path just
-  stopped at the trees. The three secret ways show what they are: `lemuria` and `lodge` are `way: 'tunnel'` mouths, `lookingglass` is a `hollowtree`. Still `secret`.
+  stopped at the trees. The secret ways are each a `hollowtree` now (`lemuria`, `lodge`, `lookingglass`, the `woods_sewer` link end). Still `secret`.
+- **NO TUNNEL ENDS IN THIS ROOM (2026-11-16, seen in the probe)**: a `way: 'tunnel'` end with a `passage` builds a stone housing on the wall. In this open room it stood in
+  the trees as a big grey stone block you walk through, hard by the Outfall's bridge: THIS was mondo's "castle wall" (the horizon landmark above was also inside the map and is
+  gone too). The two drain links (`streets_drain`, `sewers_drain`) are plain `trail` ends, the secret ones hollow trees (bake-woods.js LINK_ENDS writer + the door rows).
+  A first try that made the secret trails `tunnel` mouths shipped for about an hour (PR 1532) and added two more blocks; reverted here.
+- **THE BALL TREE IS GONE (2026-11-16, mondo on the proof pictures: "the tree with the sphere on top ... get rid of those and delete them from the game immediately")**:
+  the `hollowtree` way's stand-in (three-renderer.js `_hqTreeWay`: a 6 m pole under a leaf-sheet ball) had been the live look, since `hollow_tree` is an `rt` file the
+  builder skips. No door in the game uses the way now (the Woods' ends, the old Redwood room's, the site's bay door are all `trail`); the builder, if ever used again,
+  draws a 3.2 m broken hollow trunk with no crown. The Woods' once-secret ways (`lemuria`, `lodge`, `lookingglass`) are plain signposted trails, no longer secret; the
+  `woods_sewer` link is still secret, so its trail on the Tunnel Way plot ends with no post (the one dead end left; mondo to say what stands there).
+  LESSON: never show him a procedural stand-in; look at what a `way` draws before using it.
+- **STILL OPEN**: tall black slabs stand on the horizon (the `scenery: 'dark'` sky roster's bodies, unlit black in daylight; one shows NE of the Outfall). Not touched.
+- **Probe tip 2**: with every model loaded this room times out the cloud browser's screenshot; `--flags=EW_PERF_LOW` gets pictures (about 1 minute a view).
   Checked: no other path square on the map is a tip that ends at nothing (every edge trail is a door or a link).
 - **Probe tip**: in this room a third-person view (`dist`) puts the camera inside the forest mass's crowns on most plots: use `"fp": true` standing on open ground.
 - **ASKED FOR, NOT BUILT (mondo, same message): a pass that adds WATERFALLS and LIGHT SHAFTS to rooms** ("might need its own thread"). Today rooms have only `pool` /
@@ -4151,6 +4163,20 @@ be cliffs at the north edge which is the hills"; residents "don't worry about it
   door still opens at the Woods' Snowline (the Woods are not changed). The city's closed VATICAN GATE is untouched (ask mondo when the Vatican is built).
   The Vatican's and the Beach zone's plans (`docs/plans/world-zones/`) are not redrawn: Vatican = under Olympus, one step west; Beach = 24 more plots north
   along Entertainment, the cliffs its north edge. No encounter tables, no residents.
+
+## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
+
+mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
+It was still there (the made-up 175 m range with the sign on it). Now the land past the city's north line IS the Hollywood Hills room's own ground.
+- three-renderer.js `_hqEdgeLandFn`: a side may say `land: { room, x, y, back }` (north side only). That room's height field (`terrain.slope.cells`)
+  lies with its far edge on the line, shifted `x` along it; its paint says rock / grass / sand. Past the room's own depth, and beside its two ends,
+  `back` x the old range stands (the city: 0.35, a low ridge; no tall peak over the bay). Kill switch `window.EW_HQ_NO_REAL_LAND`.
+- bake-disaster-city.js `EDGES.n.land = { room: 'site_prebuilt_shasta_hills', x: 21, y: 0, back: 0.35 }`: the Hills' plot columns stand over the city's.
+  E.js `edges.sign` is `at 84, d 66.5, px 1.94`: the far letters stand where the room's own twelve stand. bake-mountains.js: the Hills' city door moved
+  one plot east (H08-02, x 84) so it stands over the city's mountain road (x 105); the Cove's door already stood over the boardwalk's end.
+- Seen on screen (playtest_city.js, three views from Entertainment and the north beach). To know: the far land is a coarse mesh (a row every 15 to 20 m
+  out there), so the Hills' small mounds are smoothed and its buildings, mast and trees are not drawn, only its ground and the sign. Rebake the city
+  after the Hills' ground changes? No: the land is read from the Hills room at load. The Hills room's OWN north edge still shows the old tall range.
 
 ## THE ESTATE ON PLOTS — the fifth area of the world plan, first delivery (2026-11-15)
 
@@ -4462,4 +4488,44 @@ mondo: "yes, continue, and you can playtest to screenshot" (yes = the King's Cha
   once: when main moves 60 minutes on, it serves STALE CHECKOUT until you merge main AND restart it; the probe then says "page never ready".
   (4) The ward crashed the headless browser every time while the telepath stood in it and never without him (the old ward had him too): shoot
   that room with him taken out, ship it with him in. (5) The browser also dies at random; three tries a run is not always enough.
+
+## THE DESERT, THE HIGHWAY — 12 x 12 plots, four exits, cars (2026-11-16, second side)
+
+mondo: "It feels weird having these places right next to each other, can we add a desert highway that connects them together and spreads them
+out. Full highway with exits and stuff, and connected to the roads of disaster city obviously". On plan 4 (`docs/plans/desert/desert_highway_plan.png`):
+"12x12 is fine" · cars: "yes obviously" · the city side: "change whatever you need to and whatever makes sense geographically" · "does disaster
+city not get its own exit too?" (it does: Exit 1).
+
+- **THE ROOM** is still `site_prebuilt_area51_desert`, now 12 x 12 plots (504 m, Disaster City's size). `docs/areas/desert/layout.json` is the new
+  layout, written by `python3 docs/plans/desert/make-layout-4.py` from `layout-8x8.json` (the first build's layout, kept as the source of the four
+  blocks). `node bake-desert.js` writes the room as before.
+- **THE BLOCKS MOVED WHOLE:** the Circus (plots 1-3, 1-3), Western Town (8-11, 1-4), Area 51 (0-3, 8-11), Giza (8-11, 8-11). In the tool every
+  district is still AUTHORED in the first build's squares (`gx / gc / P / put / building`, the old frame) and each row it makes is moved with its
+  block at the end (`MOVE`, metres new - old: C -84 -42 · W +84 -42 · A -84 +84 · G +84 +84). The first build's Road district is gone. New work is
+  authored in the new frame (`nx / nc / nP / nPm`). So an old note that names a Desert square is true in the old frame; add the block's move.
+- **THE HIGHWAY** (new frame squares): it comes in from the west wall (westbound y 2..5, eastbound y 7..10), bends south (southbound x 68..71,
+  northbound x 73..76, a sand median) and ends at y 93, where a road runs east and turns onto Giza's causeway. Three lanes a side, dashed lane
+  lines, yellow median lines, white shoulder lines (terrain marks).
+  - EXIT 1 · DISASTER CITY: at the bend, a road north to the north wall at x -105 = link `downtown_desert`'s Desert end. The city's own way
+    out (Southside's South Street) is at x -105 too, so the two rooms line up. Nothing in the city's tool or block was changed.
+  - THE REST STOP: the Gas Station (store, canopy, sign) on the northbound side, a LAST GAS billboard. The area's battle marker and healing
+    zone stand on the sand beside it (`HQ_AREA_MARKERS`): by the spawn they lay in the westbound lanes.
+  - EXIT 2 · THE CIRCUS: a slip lane, a road west to the circus's own track.
+  - EXIT 3 · WESTERN TOWN: the county road (y 52..55) climbs two earth banks (`ramp` rows) and crosses the highway on a `bridge` row 5.25 m up;
+    two side roads and four stubs make the diamond. East: the town's Trail In. West: the frontage road with the Door and the Bus Stop.
+  - EXIT 4, no sign: the base road west (y 80..82), then south down the west edge to the Gate. The Trailers and the Conspiracy Theorist sit on it.
+  - THE END: the signpost, the road east to Giza.
+- **THE SIGNS:** green gantries (`arch` rows `des:sign:<n>`, the tool's `gantry(sx, sy, dir, words)`: `dir` = the way the traffic that reads it
+  drives). Text is the `txt:` sheet in the `way` face.
+- **THE CARS:** `terrain.traffic`, the city's own system, two one-way lines (`loop: false`, `lane: 0.01` = the middle of a one-way carriageway):
+  in from the west, south to the end, east to Giza; and back. Five cars a line. The tool refuses to bake a prop within 3.2 m of a line.
+- **Rows outside the markers:** `links.downtown_desert.b` (x -105), `links.gobekli_giza.b` (z 157.5), `siteRooms.entry.prebuilt_giza` (x 171,
+  z 192.5), `HQ_AREA_MARKERS`. The insides' three rooms are untouched (their doors moved with their blocks).
+- **CHECKED:** offline, a walk from the spawn on the walker's rule reaches every door pad, every unit but the tower's marksman (up his own
+  stair, as before), the bridge's deck and the lanes under it. **SEEN IN THE BROWSER** (playtest_city.js, ten views, no retry): the bend, the
+  gantries and their words, the lane paint, the overpass with a car passing under it, the view from the bridge, the rest stop, the end.
+  NOT seen: the trailers' and the Door's facings, the districts after the move (they are the same rows, shifted), cars turning the two corners.
+- **NOT DONE:** no cars on the county road, the exits' roads or the base road (the two lines are the highway only). No on-ramp acceleration
+  lanes. Nothing on the city side (a sign for the Desert at the city's way out would be the Disaster City holder's). The canyon from the town
+  to the Dig is cut in two by the move (each end opens on sand).
 

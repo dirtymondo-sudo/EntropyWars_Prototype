@@ -10,7 +10,13 @@
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const REPO = __dirname, DRY = process.argv.includes('--dry-run');
+/* THE HIGHWAY (2026-11-16, mondo: "add a desert highway that connects them together and spreads them out. Full highway with exits and stuff, and
+   connected to the roads of disaster city" · "12x12 is fine" · cars: "yes obviously" · "does disaster city not get its own exit too?"):
+   the room is 12 x 12 plots now. PLAN = the new layout (docs/plans/desert/make-layout-4.py writes it); OLDP = the first build's 8 x 8 layout.
+   The four districts are still AUTHORED in the first build's squares (gx / gc / P / put / building below, the OLD frame) and every row they make is
+   MOVED WHOLE with its block at the end (remap). The highway, its exits, signs, cars and the open desert are authored in the NEW frame (nx / nc). */
 const PLAN = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/areas/desert/layout.json'), 'utf8'));
+const OLDP = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/areas/desert/layout-8x8.json'), 'utf8'));
 const C = 3.5, N = 12, G = 8, W = N * G, HALF = W * C / 2, ROOM = 'site_prebuilt_area51_desert';
 const r2 = v => Math.round(v * 100) / 100, gx = c => r2(-HALF + c * C), gc = c => r2(-HALF + (c + 0.5) * C);
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/'/g, "\\'").replace(/"/g, "'");
@@ -18,8 +24,9 @@ const D = require('./load-data.js').loadGameData();
 const OLDR = id => JSON.parse(vm.runInContext('JSON.stringify((r => r ? { n: r.npcSpots || [], l: r.lines || [], f: (r.terrain && r.terrain.features) || [] } : { n: [], l: [], f: [] })(DOOR_HQ.rooms.' + id + '))', D));
 const O_GIZA = OLDR('site_prebuilt_giza_plateau'), O_GATE = OLDR('site_prebuilt_area51_gate'), O_LINE = OLDR('site_prebuilt_area51_flightline'), O_CARN = OLDR('carnival');
 const sayOf = (R, race, i) => (R.n.filter(n => n.race === race)[i || 0] || {}).say;
-const cell = PLAN.cells.map(r => r.split(''));
-const plot = {}; PLAN.plots.forEach(p => { p.x = +p.id.slice(1, 3); p.y = +p.id.slice(4, 6); plot[p.id] = p; });
+const cell = OLDP.cells.map(r => r.split(''));
+const NW = 144, NHALF = NW * 3.5 / 2, nx = c => Math.round((-NHALF + c * 3.5) * 100) / 100, nc = c => nx(c + 0.5), ncell = PLAN.cells.map(r => r.split(''));
+const plot = {}; OLDP.plots.forEach(p => { p.x = +p.id.slice(1, 3); p.y = +p.id.slice(4, 6); plot[p.id] = p; });
 const F = [], props = [], doors = [], npc = [], marks = [], count = {};
 const feat = o => { F.push(o); return o; };
 let seed = 51; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -28,12 +35,10 @@ const setRect = (x0, y0, x1, y1, ch) => { for (let y = y0; y < y1; y++) for (let
 cell[54][0] = 'f';                                                           // the fence reaches the room's west edge
 
 /* ── THE GROUND: one painted sheet a square (0 = the room's own sand) ── */
-const PAL = ['urban:RoadGeneric1a', 'dirt_2', 'urban:ConcreteSlab2a', 'bricks_1', 'wasteland', 'urban:WoodFlooring1a', 'dirt_4'], paint = new Uint8Array(W * W);
-const paintOf = (ch, x, y) => (ch === 'r' || ch === 'R') ? 1 : ch === 'd' ? 2 : ch === 'c' ? 3 : (ch === 'p' || ch === 's' || /[1-4]/.test(ch)) ? 4 : ch === 'k' ? 5 : ch === 'x' ? 6 : (inBase(x, y) && ch !== 'B') ? 7 : 0;
+const PAL = ['urban:RoadGeneric1a', 'dirt_2', 'urban:ConcreteSlab2a', 'bricks_1', 'wasteland', 'urban:WoodFlooring1a', 'dirt_4'], paint = new Uint8Array(NW * NW);
+const paintOf = (ch, x, y) => (ch === 'r' || ch === 'R') ? 1 : ch === 'd' ? 2 : ch === 'c' ? 3 : (ch === 'p' || ch === 's' || /[1-4]/.test(ch)) ? 4 : ch === 'k' ? 5 : ch === 'x' ? 6 : (y > 102 && x < 45 && ch !== 'B') ? 7 : 0;   // (x, y) = the NEW frame's squares; 7 = the base's own dirt inside Area 51's fence
 /* lane paint: the highway's centre line, the runway's dashes and threshold bars */
 const line = (x0, z0, x1, z1, w, color) => marks.push({ k: 'line', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), w, color });
-line(gx(2) - 0.12, gx(0), gx(2) - 0.12, gx(54), 0.12, 0xe8b830); line(gx(2) + 0.12, gx(0), gx(2) + 0.12, gx(54), 0.12, 0xe8b830);
-line(gx(3), gx(42), gx(43), gx(42), 0.14, 0xe8b830);
 for (let x = 4; x < 40; x += 3) line(gx(x), gx(78), gx(x + 1.5), gx(78), 0.5, 0xf0f0f0);
 for (let i = 0; i < 6; i++) line(gx(2.6), gx(76.4 + i * 0.6), gx(4.2), gx(76.4 + i * 0.6), 0.9, 0xf0f0f0);
 
@@ -46,8 +51,10 @@ function rects(test, cb) { const used = new Uint8Array(W * W);
 const isM = (x, y) => x < 0 || y < 0 || x >= W || y >= W || cell[y][x] === 'm';
 const deepM = (x, y) => cell[y][x] === 'm' && isM(x - 1, y) && isM(x + 1, y) && isM(x, y - 1) && isM(x, y + 1);
 const slab = (x, y, w, h, hh, edge) => feat({ k: 'plateau', x: r2(gx(x) + w * C / 2), z: r2(gx(y) + h * C / 2), w: w * C, d: h * C, h: hh, edge });
-rects((x, y) => cell[y][x] === 'm', (x, y, w, h) => { slab(x, y, w, h, 5.25, 0.5); count.rock = (count.rock || 0) + 1; });
-rects(deepM, (x, y, w, h) => slab(x, y, w, h, 8.75, 0.5));
+/* (a shelf never runs across two blocks: each block's rock is its own rows, so it moves with its block) */
+const blockOf = (x, y) => x >= 48 ? (y >= 48 ? 'G' : 'W') : (y >= 48 ? 'A' : (x >= 12 && y < 36 ? 'C' : 'R'));
+for (const b of ['C', 'W', 'A', 'G']) { rects((x, y) => cell[y][x] === 'm' && blockOf(x, y) === b, (x, y, w, h) => { slab(x, y, w, h, 5.25, 0.5); count.rock = (count.rock || 0) + 1; });
+    rects((x, y) => deepM(x, y) && blockOf(x, y) === b, (x, y, w, h) => slab(x, y, w, h, 8.75, 0.5)); }
 /* THE CANYON: the slot through the rock from the town to the Dig is the plan's dirt squares; a stone arch look over its north mouth is left to the rock itself */
 
 /* ── THE FENCES: chain-link along the plan's `f` squares inside the base (2.6 m, never climbed), a ranch rail round the corral and the pens ── */
@@ -207,17 +214,7 @@ const Pm = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z) 
 const dec = (key, sx, sy, o) => props.push(Object.assign({ key, x: r2(gc(sx) + (rnd() - 0.5) * 1.6), z: r2(gc(sy) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360) }, o || {}));   // off the middle (decor)
 const native = (race, sx, sy, face, say) => { const n = { x: gc(sx), z: gc(sy), face: face || 0, race }; if (say) n.say = say; npc.push(n); };
 
-/* ── THE ROAD ── */
-P('roads_g_sign_003', 3, 2, { face: 180 }); P('signpost', 3, 5, { face: 200 }); dec('traffic_barrel', 4, 9); dec('skull', 8, 6);
-Pm('city_gas_store', gx(12) - 8.6, gx(18), { face: 90 }); Pm('city_gas_canopy', gx(5), gx(18), { face: 90 }); Pm('city_gas_sign', gx(3) + 1.6, gx(13) + 1.2, { face: 90 }); setRect(7, 14, 12, 22, 'B');
-P('car_truck', 4, 16, { face: 0 }); dec('traffic_cone', 3, 21); dec('psx_metal_barrel_mp_1', 6, 22);
-/* THE DOOR: one road, one door (the opening scene and the main menu's own spot): a door frame standing alone by the highway, nothing behind it */
-P('leaf_shabby_wood', 4, 27, { face: 270 }); dec('paper_sheet', 4, 28, { y: 0.01 }); P('signpost', 3, 30, { face: 160 });
-[[13, 37, 0, 1], [19, 38, 0, 3], [13, 45, 180, 2], [19, 44, 180, 5]].forEach(q => { Pm('trailer_home_' + q[3], gx(q[0]) + 8.75, gx(q[1]) + 3.5, { face: q[2] }); setRect(q[0], q[1], q[0] + 5, q[1] + 2, 'B'); });
-P('dish', 25, 38, {}); dec('folding_chair', 18, 40); dec('folding_chair', 19, 40); dec('retro_radio', 20, 40); P('campfire', 24, 39, {}); dec('garbage_bag', 26, 45); P('car_suv', 26, 44, { face: 90 });
-P('bus_shelter', 29, 40, { face: 0 }); Pm('school_bus', gx(32), gc(39), { face: 90 }); P('bus_stop_sign', 28, 40, {});
-P('signpost', 43, 40, { face: 45 }); P('signpost', 44, 43, { face: 135 }); dec('skull', 40, 45); P('crashed_car', 38, 44, { face: 30 });
-native('conspiracy theorist', 21, 40, 200, sayOf(O_LINE, 'conspiracy theorist'));
+/* (THE ROAD district of the first build is gone: the highway and its pieces are authored in the new frame, below) */
 
 /* ── THE CIRCUS (the old carnival, HQ Room 1893, moved out here: its pieces, its people and their own lines) ── */
 Pm('ferris_wheel', gx(42), gx(2), { h: 22, face: 0 }); setRect(39, 1, 45, 3, 'B');
@@ -313,22 +310,8 @@ native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist'));
 [[62, 22], [68, 22], [74, 22], [86, 22], [92, 22], [50, 22], [51, 25], [74, 25], [79, 25]].forEach(q => P('hitching_rail', q[0], q[1], { face: 0 }));       // along Main Street, clear of every door
 Pm('covered_wagon', gx(62), gc(42), { face: 0 }); Pm('covered_wagon', gx(71), gc(47), { face: 180 });                                                   // THE WAGON CAMP
 Pm('water_tower_west', gx(74), gx(9), {});                                                                                                               // by the windmill, on 2 x 2 squares
-{ /* cacti: only on the plan's open sand, never in the base or the circus, one to a square, none beside another piece */
-  const taken = new Set(); props.forEach(p => { const x = Math.floor((p.x + HALF) / C), y = Math.floor((p.z + HALF) / C); for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) taken.add((x + i) + ',' + (y + j)); });
-  npc.forEach(n => taken.add(Math.floor((n.x + HALF) / C) + ',' + Math.floor((n.z + HALF) / C)));
-  doors.forEach(d => { if (d.wall === 'free') { const x = Math.floor((d.x + HALF) / C), y = Math.floor((d.z + HALF) / C); for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) taken.add((x + i) + ',' + (y + j)); } });
-  const sand = (x, y) => x > 0 && y > 0 && x < W - 1 && y < W - 1 && PLAN.cells[y][x] === '.' && cell[y][x] === '.' && !inBase(x, y) && !(x >= 12 && x < 48 && y < 36) && !(y >= 22 && y <= 25 && x >= 48)
-      && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(q => '.uo'.includes(PLAN.cells[y + q[1]][x + q[0]]) && cell[y + q[1]][x + q[0]] !== 'B');
-  let nS = 0, nP = 0, tries = 0;
-  const PEARS = 0;   // mondo 11-15 19:30: "dont use the prickly pear cactus for now" (its model + catalogue row stay; set a count here to plant it again)
-  while ((nS < 60 || nP < PEARS) && tries++ < 20000) { const x = Math.floor(rnd() * W), y = Math.floor(rnd() * W); if (!sand(x, y) || taken.has(x + ',' + y)) continue;
-      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) taken.add((x + i) + ',' + (y + j));
-      if (nS < 60 && (nP >= PEARS || rnd() < 0.58)) { P('saguaro_cactus', x, y, { face: Math.round(rnd() * 360), h: r2(3.8 + rnd() * 2.6) }); nS++; }
-      else { P('prickly_pear', x, y, { face: Math.round(rnd() * 360), h: r2(1.1 + rnd() * 0.8) }); nP++; } }
-  count.cacti = nS + nP; }
-
 /* scattered off the grid: stones, skulls, the odd bone pile (nothing on a road) */
-feat({ k: 'scatter', key: 'cave_stone', n: 60, seed: 5 }); feat({ k: 'scatter', key: 'skull', n: 14, seed: 6 }); feat({ k: 'scatter', key: 'dead_snag', n: 10, seed: 7 });
+feat({ k: 'scatter', key: 'cave_stone', n: 130, seed: 5 }); feat({ k: 'scatter', key: 'skull', n: 26, seed: 6 }); feat({ k: 'scatter', key: 'dead_snag', n: 22, seed: 7 });
 
 /* ── THE WAYS ── (the highway north to Disaster City and the Robbers' Tunnel are LINKS, written at the end; the bay door of Room 444 is siteRooms.entry) */
 doors.push({ id: 'hangar', wall: 'free', x: HANGAR.cx, z: r2(gx(86) - 0.45), face: 0, leaf: 'leaf_bulkhead', wide: true, label: 'AREA 51 · HANGAR 18', sub: 'THE BIG DOOR · INTO THE HANGAR', action: { room: 'site_prebuilt_area51_hangar', at: 'flightline' },
@@ -355,34 +338,129 @@ doors.push({ id: 'mirrors', wall: 'free', x: r2(gx(44) - 0.45), z: gx(28), face:
   const near = p => doors.slice(-3).some(d => Math.hypot(p.x - d.x, p.z - d.z) < 7.5); let cut = 0;
   for (let i = props.length - 1; i >= 0; i--) if (props[i].key === 'saguaro_cactus' && near(props[i])) { props.splice(i, 1); cut++; }
   count.cactiCut = cut; }
+/* ── THE MOVE: every row authored above stands in the first build's squares; its block goes to its new place whole (metres, new − old).
+   A row of the first build's Road district (the old highway strip) is dropped: the tool prints what it dropped. ── */
+const MOVE = { C: [-84, -42], W: [84, -42], A: [-84, 84], G: [84, 84] };
+{ const blockAt = (x, z) => blockOf(Math.max(0, Math.min(W - 1, Math.floor((x + HALF) / C + 1e-6))), Math.max(0, Math.min(W - 1, Math.floor((z + HALF) / C + 1e-6))));
+  const dropped = [];
+  const move = (o, what) => {
+      if (o.wall && o.wall !== 'free') { const b = o.wall === 's' ? (o.x < 0 ? 'A' : 'G') : o.wall === 'e' ? (o.z < 0 ? 'W' : 'G') : o.wall === 'w' ? (o.z < 0 ? 'C' : 'A') : (o.x < 0 ? 'C' : 'W');
+          if (typeof o.x === 'number') o.x = r2(o.x + MOVE[b][0]); if (typeof o.z === 'number') o.z = r2(o.z + MOVE[b][1]); return true; }
+      const ax = o.x != null ? o.x : o.x0 != null ? (o.x0 + o.x1) / 2 : o.pts ? o.pts[0][0] : o.arc ? o.arc.x : null, az = o.z != null ? o.z : o.z0 != null ? (o.z0 + o.z1) / 2 : o.pts ? o.pts[0][1] : o.arc ? o.arc.z : null;
+      if (ax == null || az == null) return true;
+      const b = blockAt(ax, az); if (b === 'R') { dropped.push(what + ':' + (o.key || o.k || o.race || o.id)); return false; }
+      const dx = MOVE[b][0], dz = MOVE[b][1];
+      ['x', 'x0', 'x1'].forEach(k => { if (typeof o[k] === 'number') o[k] = r2(o[k] + dx); }); ['z', 'z0', 'z1'].forEach(k => { if (typeof o[k] === 'number') o[k] = r2(o[k] + dz); });
+      if (o.pts) o.pts = o.pts.map(q => [r2(q[0] + dx), r2(q[1] + dz)].concat(q.slice(2))); if (o.arc) { o.arc = Object.assign({}, o.arc, { x: r2(o.arc.x + dx), z: r2(o.arc.z + dz) }); }
+      return true; };
+  const sweep = (A, what) => { for (let i = A.length - 1; i >= 0; i--) if (!move(A[i], what)) A.splice(i, 1); };
+  sweep(F, 'row'); sweep(props, 'prop'); sweep(npc, 'unit'); sweep(doors, 'door'); sweep(marks, 'mark');
+  if (dropped.length) console.log('dropped with the old Road district: ' + dropped.join(' ')); }
+
+/* ════ THE NEW FRAME: squares 0..144 (nx = a square's west / north line, nc = its middle) ════ */
+const nP = (key, sx, sy, o) => props.push(Object.assign({ key, x: nc(sx), z: nc(sy) }, o || {}));
+const nPm = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z) }, o || {}));
+const ndec = (key, sx, sy, o) => props.push(Object.assign({ key, x: r2(nc(sx) + (rnd() - 0.5) * 1.6), z: r2(nc(sy) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360) }, o || {}));
+const ASPH = 'urban:RoadGeneric1a', WHITE = 0xf0f0f0, YEL = 0xe8b830;
+/* THE HIGHWAY (squares, as make-layout-4.py paints them): westbound y 2..5 and eastbound y 7..10 from the west wall, southbound x 68..71 and
+   northbound x 73..76 down to the end at y 93; three lanes a side, a sand median between. Lane paint: two dashed lines a carriageway, a yellow
+   line on the median side, a white one on the shoulder. */
+{ const dashV = (x, y0, y1) => { for (let y = y0; y + 2 <= y1; y += 4) line(nx(x), nx(y), nx(x), nx(y + 2), 0.14, WHITE); }, dashH = (y, x0, x1) => { for (let x = x0; x + 2 <= x1; x += 4) line(nx(x), nx(y), nx(x + 2), nx(y), 0.14, WHITE); };
+  dashV(69, 11, 90); dashV(70, 11, 90); dashV(74, 6, 90); dashV(75, 6, 90); dashH(3, 0, 72); dashH(4, 0, 72); dashH(8, 0, 67); dashH(9, 0, 67);
+  line(nx(71) - 0.3, nx(10), nx(71) - 0.3, nx(90), 0.16, YEL); line(nx(73) + 0.3, nx(5), nx(73) + 0.3, nx(90), 0.16, YEL); line(nx(0), nx(5) - 0.3, nx(41), nx(5) - 0.3, 0.16, YEL); line(nx(43), nx(5) - 0.3, nx(73), nx(5) - 0.3, 0.16, YEL);
+  line(nx(0), nx(7) + 0.3, nx(41), nx(7) + 0.3, 0.16, YEL); line(nx(43), nx(7) + 0.3, nx(71), nx(7) + 0.3, 0.16, YEL);
+  line(nx(68) + 0.3, nx(10), nx(68) + 0.3, nx(90), 0.14, WHITE); line(nx(76) - 0.3, nx(2), nx(76) - 0.3, nx(90), 0.14, WHITE); line(nx(0), nx(2) + 0.3, nx(41), nx(2) + 0.3, 0.14, WHITE); line(nx(43), nx(2) + 0.3, nx(76), nx(2) + 0.3, 0.14, WHITE); line(nx(0), nx(10) - 0.3, nx(68), nx(10) - 0.3, 0.14, WHITE);
+  /* the two-lane roads: one yellow line down the middle */
+  line(nx(42), nx(0), nx(42), nx(2), 0.14, YEL); line(nx(40), nx(53.5), nx(56), nx(53.5), 0.14, YEL); line(nx(88), nx(53.5), nx(96), nx(53.5), 0.14, YEL); line(nx(3), nx(81), nx(67), nx(81), 0.14, YEL); line(nx(2), nx(82), nx(2), nx(96), 0.14, YEL);
+  line(nx(76), nx(91.5), nx(101), nx(91.5), 0.14, YEL); line(nx(52), nx(44), nx(67), nx(44), 0.14, YEL); }
+/* EXIT 3's OVERPASS: the county road climbs an earth bank either side and crosses the highway on a bridge 5.25 m up (the cars pass under it) */
+feat({ k: 'ramp', x0: nx(56), z0: nx(53.5), x1: r2(nx(64) + 0.5), z1: nx(53.5), w: 10.5, h0: 0, h1: 5.25, edge: 0.6 });
+feat({ k: 'ramp', x0: nx(88), z0: nx(53.5), x1: r2(nx(80) - 0.5), z1: nx(53.5), w: 10.5, h0: 0, h1: 5.25, edge: 0.6 });
+feat({ k: 'bridge', x0: nx(64), z0: nx(53.5), x1: nx(80), z1: nx(53.5), w: 10.5, y: 5.25, key: ASPH });
+/* THE SIGNS: a gantry over the lanes it speaks to, its green board turned to the traffic coming at it (`dir` = the way that traffic drives) */
+{ let n = 0; const FACE = { S: 180, N: 0, E: 90, W: 270 }, STEEL = 'urban:MetalWallRibbed1a';
+  const gantry = (sx, sy, dir, words, span, o) => { o = o || {}; const w = span || 11.4, bw = Math.min(w - 1.2, Math.max(5.5, words.length * 0.42 + 1.2)), bh = o.bh || 2.0, P = [];
+      for (const s of [-1, 1]) P.push({ s: 'box', p: [r2(s * w / 2), 0, 0], size: [0.32, 6.4 + bh, 0.32], key: STEEL, tint: 0x70767c });
+      P.push({ s: 'box', p: [0, 6.0, 0], size: [r2(w + 0.3), 0.3, 0.3], key: STEEL, tint: 0x70767c }, { s: 'box', p: [0, 6.3, 0.12], size: [bw, bh, 0.12], tint: o.bg ? parseInt(o.bg.slice(1), 16) : 0x0b5c3a },
+          { s: 'quad', p: [0, 6.4, 0.2], size: [r2(bw - 0.5), r2(bh - 0.2)], key: 'txt:' + words + '|' + (o.fg || '#ffffff') + '|' + (o.bg || '#0b5c3a') + '|' + r2((bw - 0.5) / (bh - 0.2)) + '||' + (o.font || 'way'), uv: 'fit', kind: 'wall', glow: 0.25 });
+      feat({ k: 'arch', id: 'des:sign:' + (n++), x: nx(sx), z: nx(sy), rot: FACE[dir], parts: P }); };
+  gantry(24, 8.5, 'E', 'EXIT 1 · DISASTER CITY'); gantry(58, 3.5, 'W', 'EXIT 1 · DISASTER CITY'); gantry(74.5, 15, 'N', 'EXIT 1 · DISASTER CITY · LEFT');
+  gantry(69.5, 27, 'S', 'EXIT 2 · THE CIRCUS'); gantry(69.5, 40, 'S', 'EXIT 3 · WESTERN TOWN'); gantry(74.5, 67, 'N', 'EXIT 3 · WESTERN TOWN'); gantry(74.5, 38, 'N', 'REST AREA · GAS');
+  gantry(69.5, 86, 'S', 'GIZA · HIGHWAY ENDS');
+  /* (Exit 4, the base road, has no sign.) The billboard before the rest stop */
+  gantry(81, 37, 'N', 'LAST GAS', 9, { bg: '#7a1c18', fg: '#f0d890', font: 'rye', bh: 3.0 });
+  count.signs = n; }
+/* THE REST STOP: the city chain's gas station (the store, the canopy, the sign), a truck at the pumps */
+nPm('city_gas_canopy', nx(81), nx(27), { face: 90 }); nPm('city_gas_store', r2(nx(81) + 15.9), nx(27), { face: 90 }); nPm('city_gas_sign', r2(nx(79) + 0.6), r2(nx(22) + 1.2), { face: 90 });
+nP('car_truck', 80, 30, { face: 0 }); ndec('traffic_cone', 79, 23); ndec('psx_metal_barrel_mp_1', 89, 31); nP('park_bench', 84, 31, { face: 180 }); ndec('trash_bin', 86, 31);
+/* EXIT 1: the city limit */
+nP('roads_g_sign_003', 44, 0, { face: 180 }); nP('signpost', 39, 0, { face: 200 }); ndec('traffic_barrel', 46, 0); ndec('skull', 36, 0);
+/* THE DOOR: one road, one door (the opening scene and the main menu's own spot): a door frame standing alone by the frontage road, nothing behind it */
+nP('leaf_shabby_wood', 46, 57, { face: 0 }); ndec('paper_sheet', 46, 58, { y: 0.01 }); nP('signpost', 49, 56, { face: 160 });
+/* THE BUS STOP, on the frontage road */
+nP('bus_shelter', 43, 50, { face: 0 }); nPm('school_bus', nx(48), nc(50), { face: 90 }); nP('bus_stop_sign', 41, 50, {});
+/* THE TRAILERS: they sit either side of the base road and watch who takes the turn-off */
+[[40, 75, 0, 1], [47, 76, 0, 3], [40, 84, 180, 2], [47, 85, 180, 5]].forEach(q => nPm('trailer_home_' + q[3], r2(nx(q[0]) + 8.75), r2(nx(q[1]) + 3.5), { face: q[2] }));
+nP('dish', 54, 76, {}); ndec('folding_chair', 45, 78); ndec('folding_chair', 46, 78); ndec('retro_radio', 47, 78); nP('campfire', 53, 78, {}); ndec('garbage_bag', 54, 85); nP('car_suv', 55, 84, { face: 90 });
+npc.push({ x: nc(48), z: nc(78), face: 200, race: 'conspiracy theorist', say: sayOf(O_LINE, 'conspiracy theorist') });
+/* the shoulder: a wreck by the turn-off, the last signpost where the highway stops */
+nP('crashed_car', 65, 68, { face: 30 }); ndec('skull', 64, 71); nP('signpost', 78, 94, { face: 90 }); ndec('traffic_barrel', 67, 94); ndec('traffic_barrel', 72, 94);
+/* THE CARS (data.js terrain.traffic, the city's own system): one line in and down to Giza, one line back out. Each carriageway is one way, so
+   the cars keep to its middle lane; on the two-way road at the end each line keeps to its own side. */
+const TRAFFIC = [
+    { pts: [[nx(0), nx(8.5)], [nx(69.5), nx(8.5)], [nx(69.5), nx(92.2)], [nx(100), nx(92.2)]], loop: false, n: 5, speed: 10, lane: 0.01, kinds: ['suv', 'cadillac', 'taxi', 'suv'] },
+    { pts: [[nx(100), nx(90.8)], [nx(74.5), nx(90.8)], [nx(74.5), nx(3.5)], [nx(0), nx(3.5)]], loop: false, n: 5, speed: 10, lane: 0.01, kinds: ['cadillac', 'suv', 'copcar', 'taxi'] },
+];
+/* THE CACTI: saguaros on the open sand of the whole room, one to a square, never within two squares of a road, a building or another piece,
+   never inside the base, the circus or on Main Street (mondo 11-15: no prickly pear for now: PEARS = 0) */
+{ const taken = new Set(), sq = v => Math.floor((v + NHALF) / 3.5);
+  props.forEach(p => { for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) taken.add((sq(p.x) + i) + ',' + (sq(p.z) + j)); });
+  npc.forEach(q => taken.add(sq(q.x) + ',' + sq(q.z)));
+  doors.forEach(d => { if (d.wall === 'free') for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) taken.add((sq(d.x) + i) + ',' + (sq(d.z) + j)); });
+  F.forEach(f => { if (f.k === 'texbuilding' || f.k === 'plateau' || f.k === 'pool') { const w = (f.w || 2 * (f.r || 2)) / 2 + 3.5, d = (f.d || 2 * (f.rz || f.r || 2)) / 2 + 3.5; for (let x = sq(f.x - w); x <= sq(f.x + w); x++) for (let y = sq(f.z - d); y <= sq(f.z + d); y++) taken.add(x + ',' + y); } });
+  const hard = (x, y) => x < 0 || y < 0 || x >= NW || y >= NW || !'.uo'.includes(ncell[y][x]);
+  const sand = (x, y) => { if (x < 2 || y < 2 || x > NW - 3 || y > NW - 3 || ncell[y][x] !== '.') return false; if (y > 100 && x < 47) return false; if (x >= 12 && x < 48 && y >= 12 && y < 48) return false; if (x >= 96 && y >= 33 && y <= 38) return false;
+      for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) if (hard(x + i, y + j)) return false; return true; };
+  let nS = 0, nPr = 0, tries = 0; const SAG = 130, PEARS = 0;
+  while ((nS < SAG || nPr < PEARS) && tries++ < 60000) { const x = Math.floor(rnd() * NW), y = Math.floor(rnd() * NW); if (!sand(x, y) || taken.has(x + ',' + y)) continue;
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) taken.add((x + i) + ',' + (y + j));
+      if (nS < SAG && (nPr >= PEARS || rnd() < 0.58)) { nP('saguaro_cactus', x, y, { face: Math.round(rnd() * 360), h: r2(3.8 + rnd() * 2.6) }); nS++; }
+      else { nP('prickly_pear', x, y, { face: Math.round(rnd() * 360), h: r2(1.1 + rnd() * 0.8) }); nPr++; } }
+  count.cacti = nS + nPr; }
+/* nothing stands in a driving lane: a piece within 3.2 m of a car line is a bug in this tool */
+props.forEach(p => { TRAFFIC.forEach(t => { for (let i = 0; i + 1 < t.pts.length; i++) { const a = t.pts[i], b = t.pts[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz, u = Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.z - a[1]) * dz) / L2));
+    if (Math.hypot(p.x - a[0] - u * dx, p.z - a[1] - u * dz) < 3.2) throw new Error(p.key + ' stands in a lane at ' + p.x + ', ' + p.z); } }); });
+
 /* ── checks: every prop key and unit exists ── */
 const CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AVAILABLE_RACES', D);
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); });
 npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); });
-for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) paint[y * W + x] = paintOf(PLAN.cells[y][x], x, y);
+for (let y = 0; y < NW; y++) for (let x = 0; x < NW; x++) paint[y * NW + x] = paintOf(ncell[y][x], x, y);
 count.props = props.length; count.features = F.length; count.doors = doors.length; count.natives = npc.length; count.marks = marks.length;
 
 /* ── the room ── */
-const SP = { x: gx(2), z: gc(3) }, LINES = O_GATE.l.concat(O_LINE.l, O_GIZA.l, O_CARN.l), M = [];
+const SP = { x: nx(42), z: nx(1) }, LINES = O_GATE.l.concat(O_LINE.l, O_GIZA.l, O_CARN.l), M = [];
 M.push("        /* DESERT64-BEGIN — THE DESERT ON PLOTS (2026-11-15): written by `node bake-desert.js` from docs/areas/desert/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 M.push("        " + ROOM + ": {");
 M.push("            label: 'THE DESERT',");
-M.push("            sub: 'FIVE DISTRICTS · 64 PLOTS',");
+M.push("            sub: 'THE HIGHWAY · FOUR EXITS · 144 PLOTS',");
 M.push("            kind: 'box', site: 'prebuilt_area51', part: 'desert',");
-M.push("            shell: hqAncientShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + SP.x + ", z: " + SP.z + ", y: 5.0 },");
+M.push("            shell: hqAncientShell({ w: " + (2 * NHALF) + ", d: " + (2 * NHALF) + ", h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + SP.x + ", z: " + SP.z + ", y: 5.0 },");
 M.push("                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },");
 M.push("                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.012 }, scenery: 'none' },");
 M.push("                                    look: HQ_ROOM_LOOKS.plateau }),");
-M.push("            parti: 'Five districts on sixty-four plots, every plot a twelve by twelve board: open sand you can walk anywhere, with a highway, a circus, a western town, a fenced base and three pyramids standing in it.',");
+M.push("            parti: 'A highway down the middle of a hundred and forty-four plots of open sand, and off its exits a circus, a western town, a fenced base and three pyramids, each a long way from the next.',");
 M.push("            typology: 'grid',");
-M.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", n: " + G + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.district, 0])) + " },");
+M.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", n: 12, names: " + J(PLAN.plots.map(p => [p.id, p.name, p.district, 0])) + " },");
 M.push("            terrain: {");
 M.push("                res: 1.75, floor: 'desert', cliff: 'rock_wall_1', path: 'dirt_2',");
 M.push("                noise: { amp: 0.08, scale: 9 },");
 M.push("                /* THE NATURAL EDGES: the desert goes on north (Disaster City is that way) and east, mountains stand west and south (three-renderer.js _hqBuildEdgeLand) */");
 M.push("                backdrop: false, edges: { reach: 440, n: { kind: 'desert' }, w: { kind: 'mountain' }, s: { kind: 'mountain' }, e: { kind: 'desert' } },");
-M.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + W + ", nz: " + W + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
+M.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + nc(0) + ", z0: " + nc(0) + ", nx: " + NW + ", nz: " + NW + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 M.push("                marks: " + J(marks) + ",");
+M.push("                /* THE HIGHWAY'S CARS (the city's own traffic system): in from the west along the eastbound side, south to the end, east to Giza; and back */");
+M.push("                traffic: " + J(TRAFFIC) + ",");
 M.push("                features: [");
 F.forEach(f => M.push("                    " + J(f) + ","));
 M.push("                ],");
@@ -403,7 +481,7 @@ M.push("        },");
 M.push("        /* DESERT64-END */");
 const block = M.join('\n') + '\n';
 /* the ends the data.js rows outside the block must agree with (DOOR_HQ.links + siteRooms.entry): printed so a moved path is noticed */
-const ENDS = { downtown_desert: { wall: 'n', x: gx(2) }, gobekli_giza: { wall: 'e', z: gx(69) }, bay444: { wall: 'free', x: r2(gx(73) - 0.5), z: gx(79), face: 270 } };
+const ENDS = { downtown_desert: { wall: 'n', x: nx(42) }, gobekli_giza: { wall: 'e', z: r2(gx(69) + MOVE.G[1]) }, bay444: { wall: 'free', x: r2(gx(73) - 0.5 + MOVE.G[0]), z: r2(gx(79) + MOVE.G[1]), face: 270 } };
 console.log(JSON.stringify(count)); console.log('ends ' + JSON.stringify(ENDS));
 if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');

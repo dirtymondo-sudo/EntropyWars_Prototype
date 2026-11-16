@@ -1957,6 +1957,45 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE FIELD MERGE + THE FIRST MERGE IS FAST + THE FIGHT'S ONE MATRIX WALK (2026-11-16, fights in the city)
+
+mondo: "going into a fight and the return from a fight are both terrible. I don't understand bc it's the same room. does all
+of the optimization we have done just randomly turn off from fights?? fix all of it" and "why does a fight rebuild
+everything? its supposed to be a seamless transition."
+**The honest answer, for whoever reads this next: yes.** A fight is a different scene. `_hqLeave({handover})` hands every
+merged piece back (`_hqChunkHome`, `_hqBatchDropAll`), `_hqBuildRoomInBattle` takes only what stands within keepM 28 m /
+keepFarM 48 m of the board, hangs each kept piece in a holder of its own (`hq_piece`, one recording each: his "2262 groups")
+and DISPOSES the rest (city: kept ~2,100, culled ~14,500). The way back is a plain `_hqEnter`: every builder runs again and
+the room merges again. Nothing of the walk's merging reached the fight, and nothing survives it.
+What this PR does (three-renderer.js):
+- THE FIELD MERGE (`_fieldBatchTick`, `_fieldBatchDrop`, called beside `_fieldInstTick`): the static batch runs on the
+  fight's room (the record of the fight's instance pass, `R.field`), with the one paint and the sheet stacks (`B.vc` and
+  `_hqStackPrep` take `R.field`), on every piece that can never fade: the fade's own list (`_occFieldBuild`) marks each
+  root it may ghost, each wall side, the ceiling and the sky holder `_ew_noBatch` (a new off flag). Merged meshes hang in one
+  group `hq_field_batch` (`_hqBatchHost`: `root._ew_fbHost`), one recording. Dropped with the fight's instance pass.
+  Off: `window.EW_FIELD_NO_BATCH`. Lens in a fight: "Static batch: the fight's room ...", kinds "fight: merged / may fade
+  (own piece) / never fades, not merged / instances".
+  Cloud fight at the city's spawn (`_hqEncounterFire`, counts): "the fight's room live 346 -> 31", 0 frame errors, 0 batch
+  warnings. What the fight still draws one by one there (1,367 visible meshes): may-fade props 550, the ground's tiles 320
+  (`_ew_hqTerrain`: ALL of the city's ground stands in a fight, farOf() never drops it), outer 58, alone 59.
+- THE FIRST MERGE IS FAST (`_hqBatchTick`, `firstRun`): until a room's first shell + prop merge has gone live, the merge
+  takes `HQ_BATCH.firstSliceMs` 28 ms a frame and waits as behind the card (200 ms). The way back has no card, so its merge
+  ran at 3 ms a frame after two 1.5 s waits: his "12.4 FPS for 30 s". Off: `window.EW_HQ_BATCH_FIRST_SLOW`.
+- THE FIGHT'S ONE MATRIX WALK (`_renderFrameBody`): one `_hqStillSceneWalk(scene)` then `matrixWorldAutoUpdate` false for
+  the battle frame's renders, as the walk's frame since 11-13 (his fight F3: "mask: setup + lights + sort 8.0 · scene:
+  setup 3.5" = two walks of the scene; the cloud profile's top JS rows in a fight are updateMatrix / updateMatrixWorld).
+  Not for the split-screen panes. Off: `window.EW_BATTLE_MW_EVERY_RENDER`.
+NOT DONE, in order (this is the real "seamless"):
+1. THE PARKED CITY: do not dispose what the fight leaves; park it, and on the way back hand everything to the walk instead
+   of building (the walk's record H must survive the fight: doors, counters, colliders, terrain, tickers; plates are
+   stripped from kept pieces at the hand-over and must come back). Until then the way back still runs every builder.
+2. The fight's may-fade props (most of what is left): merge them too and hand a root back the moment the fade's candidate
+   list (`_occFieldCandidates`) names it.
+3. The ground in a fight: 320 tiles stand; drop the ones past keepFarM or merge them per square.
+4. Empty holders are still recorded groups (2,000+): leave a holder whose pieces are all held out of `_ewBunFieldTargets`.
+5. The switch itself (profile of a cloud strike: `_hqTExactTop` 1.8 s, raycasts ~4 s of three's plain intersect, texture
+   writes): not measured on his Mac yet.
+
 ## THE SHELL KEEPS ITS RECORDING (2026-11-15, the shell's rests answered)
 
 mondo's three F3s of one session (23:48-23:50 UTC), after the lens could say why:
