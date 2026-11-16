@@ -7043,7 +7043,8 @@ const SHARED_NUKE = {
     leaveTerrain: 'scorched',
     terrainDeform: { centerDelta: -3, edgeDelta: -1 },
     demolishesBuildings: true,
-    desc: 'The football is open. Mark the grid; at the end of the next round there is no grid. SEVERE magic damage to every enemy in a 5×5, and every building in it is levelled.'
+    bonusVsStatus: { status: 'radioactive', mult: 1.5 },   // ☢ mondo 11-16
+    desc: 'The football is open. Mark the grid; at the end of the next round there is no grid. SEVERE magic damage to every enemy in a 5×5, and every building in it is levelled. Deals bonus damage to Radioactive targets.'
 };
 
 
@@ -10357,8 +10358,8 @@ const RACE_ABILITIES = {
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Atomic Monster. */
         { id: 'goNuclearPulse', name: 'Nuclear Pulse', tier: 2, families: ['kaijuatomic'], cost: 50, apCost: 1,
           spellType: 'tech', element: 'fire', type: 'damage', kind: 'barrage', range: 0, aoeRadius: 1, aoeOriginSelf: true,
-          dmg: 95, damageType: 'magic', statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'The dorsal plates glow, then the whole body discharges. Deals WEAK magic damage to every enemy within 1 tile and Staggers them.' },
+          dmg: 95, damageType: 'magic', statusEffects: [{ id: 'stagger', duration: 1 }, { id: 'radioactive', duration: 1 }],   // ☢ mondo 11-16: + one Radioactive stack
+          desc: 'The dorsal plates glow, then the whole body discharges. Deals WEAK magic damage to every enemy within 1 tile, Staggers them and makes them Radioactive (1 stack).' },
         { id: 'raceCataclysmStomp', element: 'sonic', upgradesBlock: ['upWiden'], tier: 2, families: ['kaiju'], spellType: 'unholy', name: 'Cataclysm Stomp',
           type: 'damage', cost: 50, dmg: 70, range: 0, apCost: 2,   // STATS25 PASS 2026-10-29: dmg 80→70 (533 a cast, still 1.47× the Tier II median; King Kong 61/71%); BALANCE PASS 2026-10-25 (stats21 lab): dmg 100→80 (617 a cast = 1.6× the Tier II median; Kaiju 81%)
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
@@ -10370,8 +10371,8 @@ const RACE_ABILITIES = {
         { id: 'raceAtomicBreath', spellType: 'tech', name: 'Atomic Breath',
           type: 'damage', tier: 4, element: 'fire', families: ['kaijuatomic'], cost: 55, dmg: 160, range: 5,
           kind: 'line', damageType: 'physical', lineWidth: 1,
-          bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Unleash a searing torrent of blue atomic fire, dealing HEAVY magic damage to All Enemies in a line. Deals bonus damage to Staggered targets.' },
+          bonusVsStatus: { status: ['stagger', 'radioactive'], mult: 1.5 },   // ☢ mondo 11-16: + Radioactive
+          desc: 'Unleash a searing torrent of blue atomic fire, dealing HEAVY magic damage to All Enemies in a line. Deals bonus damage to Staggered or Radioactive targets.' },
         { id: 'raceSkyscraperToss', tier: 3, families: ['kaiju'], spellType: 'unholy', name: 'Skyscraper Toss',
           type: 'damage', cost: 35, dmg: 125, range: 5,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, ignoresLineOfSight: true,
