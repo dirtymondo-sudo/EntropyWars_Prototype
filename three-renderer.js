@@ -79196,7 +79196,9 @@ const ThreeRenderer = (function () {
     };
     function _hqTreeWay(U, ctx, dead) {
         var g = new THREE.Group();
-        var H = dead ? 5.0 : 6.0, R = dead ? 0.5 : 0.68, holeW = 0.95, holeH = 1.9, zc = -R * 0.45;
+        /* THE BALL TREE IS GONE (2026-11-16, mondo: "the tree with the sphere on top ... get rid of those and delete them from the game immediately"): the live
+           hollow tree was a 6 m pole under a leaf-sheet ball. It is a broken hollow trunk now, 3.2 m, no crown. The Woods no longer uses the way at all. */
+        var H = dead ? 5.0 : 3.2, R = dead ? 0.5 : 0.68, holeW = 0.95, holeH = 1.9, zc = -R * 0.45;
         var bark = _hqMat('wood', 1, 3, { color: dead ? 0x6a6058 : 0x7a5a3c, shininess: 4 });
         var stand = new THREE.Group(); g.add(stand);
         var trunk = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.78 * U, R * U, H * U, 12), bark); trunk.position.set(0, (H / 2) * U, zc * U); stand.add(trunk);
@@ -79204,8 +79206,6 @@ const ThreeRenderer = (function () {
             [[0.55, 1.1, 0.7], [-0.6, 0.9, -0.5]].forEach(function (b, i) {
                 var bough = _hqBox(0.16, 2.2, 0.16, bark); bough.position.set(b[0] * U, (H * 0.78) * U, (zc + 0.1 * b[2]) * U); bough.rotation.z = b[0] > 0 ? -b[1] : b[1]; bough.rotation.x = 0.25 * b[2]; stand.add(bough);
             });
-        } else {
-            var crown = new THREE.Mesh(new THREE.SphereGeometry(R * 3.4 * U, 12, 10), _hqMat('leaves_3', 2, 2, { color: 0x5a8a4a, shininess: 2 })); crown.position.set(0, (H + 0.5) * U, zc * U); crown.scale.y = 0.85; stand.add(crown);
         }
         for (var ri = 0; ri < 4; ri++) { var root = _hqBox(0.22, 0.28, 0.9, bark); var ra = ri * Math.PI / 2 + 0.6; root.position.set(Math.sin(ra) * R * 1.1 * U, 0.1 * U, (zc + Math.cos(ra) * R * 1.1) * U); root.rotation.y = ra; root.rotation.x = 0.35; g.add(root); }
         /* THE HOLE: a dark recess in the trunk's front with the other side's light in it */

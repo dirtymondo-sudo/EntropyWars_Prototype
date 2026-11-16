@@ -31285,7 +31285,7 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_camelot', part: 'kingdom', wall: 'e', z: 0, sub: 'THE TRAIL · INTO THE WOODS' },   // PLAN 3 (2026-11-15): the east gate's road, out through the Fairy Forest (was z 3.5)     // CAMELOT KINGDOM ON PLOTS (2026-11-15): the Fairy Forest's Woods Trail plot, the kingdom's east wall (bake-camelot.js prints the place)     // CAMELOT CASTLE, REDESIGNED (2026-11-15): the track outside the moat, east end (the Woods lie east; was the old ward's west wall)
           why: 'the path west out of the clearing does not stop at the pasture; it goes on under the trees and comes out at the castle moat', note: 'on foot', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
-          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: 115.5, way: 'hollowtree', sub: 'THE DRAIN · INTO THE TUNNEL' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
+          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: 115.5, way: 'trail', sub: 'THE DRAIN · INTO THE TUNNEL' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
           b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
           why: 'the storm drain in the crag runs the wrong way: the water comes out of the platform wall and into the woods, and the grate between them was welded shut, and then it was not', note: 'the fourth station', draft: true },
         { id: 'woods_ritual', route: 'woods', leaf: 'leaf_hell_arch', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
@@ -31692,7 +31692,7 @@ const DOOR_HQ = {
             prebuilt_hollow_earth:        { room: 'site_prebuilt_hollow_earth_innersun',      door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_derelict:            { room: 'site_prebuilt_derelict_deck',              door: { id: 'bay', wall: 'free', x: 8.75, z: -36.75, face: 180, y: 3.2 } },   // THE CRUISER (2026-11-11): a free door on the nose deck's starboard corner (the docking arm off the side went: mondo "that one part sticking off the side is kind of useless")
             prebuilt_revenge:             { room: 'site_prebuilt_revenge_deck',               door: { id: 'bay', wall: 'free', x: 45.5, z: 24.8, face: 0 } },   // Phase 7: she is an island — the cabin door stands on her deck by the gangway (THE NEW MAP 2026-10-20: the gangway cut in the forecastle's starboard bulwark)
-            prebuilt_fairy_forest: { room: 'site_prebuilt_fairy_forest_plots', door: { id: 'forest', wall: 's', x: -38.5, way: 'hollowtree', leaf: null } },   // the hollow tree, worn as the bay door (the 36-plot Woods since 2026-11-15; was the old clearing's, x -0.875)
+            prebuilt_fairy_forest: { room: 'site_prebuilt_fairy_forest_plots', door: { id: 'forest', wall: 's', x: -38.5, way: 'trail', leaf: null } },   // the hollow tree, worn as the bay door (the 36-plot Woods since 2026-11-15; was the old clearing's, x -0.875)
         },
         built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_stadium',
                 'prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica',
@@ -41181,12 +41181,12 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                {id:'forest',wall:'s',x:-38.5,way:'hollowtree',label:'THE FAIRY FOREST',sub:'THE HOLLOW TREE · BACK · ROOM 420',action:{room:'site_prebuilt_fairy_forest',at:'woods'},desc:'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.'},
+                {id:'forest',wall:'s',x:-38.5,way:'trail',label:'THE FAIRY FOREST',sub:'THE HOLLOW TREE · BACK · ROOM 420',action:{room:'site_prebuilt_fairy_forest',at:'woods'},desc:'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.'},
                 {id:'estate',wall:'s',x:-63,way:'trail',label:'THE ESTATE · THE CORN FIELDS',sub:'THE FENCE LINE · THE GATE',action:{room:'site_prebuilt_skinwalker_estate',at:'woods'},desc:'A fence, and a gate in it. The corn starts on the other side.'},
                 {id:'shasta',wall:'n',x:-122.5,way:'trail',label:'MOUNT SHASTA · THE TRAILHEAD',sub:'THE SNOWLINE · THE TRAIL UP',action:{room:'site_prebuilt_shasta_mountains',at:'woods'},desc:'The trail keeps climbing after the trees give up. There is snow on it from here.'},
-                {id:'lemuria',wall:'n',x:-70,way:'hollowtree',secret:true,label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
-                {id:'lodge',wall:'e',z:-108.5,way:'hollowtree',secret:true,label:'THE LODGE · THE HALLS',sub:'THE MEMBERS’ TUNNEL · UNDER THE LAWN',action:{room:'site_prebuilt_lodge_halls',at:'link_grove_lodge'},desc:'A tunnel under the lake shore that nobody admits to.'},
-                {id:'lookingglass',wall:'e',z:-17.5,way:'hollowtree',secret:true,label:'THE LOOKING-GLASS · THE GARDEN',sub:'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE',action:{room:'site_prebuilt_camelot_kingdom',at:'deadtree'},desc:'Past the dead tree the ground is the wrong colour.'},
+                {id:'lemuria',wall:'n',x:-70,way:'trail',label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
+                {id:'lodge',wall:'e',z:-108.5,way:'trail',label:'THE LODGE · THE HALLS',sub:'THE MEMBERS’ TUNNEL · UNDER THE LAWN',action:{room:'site_prebuilt_lodge_halls',at:'link_grove_lodge'},desc:'A tunnel under the lake shore that nobody admits to.'},
+                {id:'lookingglass',wall:'e',z:-17.5,way:'trail',label:'THE LOOKING-GLASS · THE GARDEN',sub:'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE',action:{room:'site_prebuilt_camelot_kingdom',at:'deadtree'},desc:'Past the dead tree the ground is the wrong colour.'},
             ],
             counters: [],
             props: [
@@ -41364,7 +41364,7 @@ const DOOR_HQ = {
                   label: 'THE WOODS', sub: 'THE NEW WOODS · 36 PLOTS',
                   action: { room: 'site_prebuilt_fairy_forest_plots', at: 'clearing' },
                   desc: 'A trail north that was not here last week. Somebody has measured the forest and it has come out even.' },
-                { id: 'forest', wall: 's', x: -0.875, way: 'hollowtree',
+                { id: 'forest', wall: 's', x: -0.875, way: 'trail',
                   label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420',
                   action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
                   desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' },

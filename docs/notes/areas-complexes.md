@@ -3955,6 +3955,12 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
   the trees as a big grey stone block you walk through, hard by the Outfall's bridge: THIS was mondo's "castle wall" (the horizon landmark above was also inside the map and is
   gone too). The two drain links (`streets_drain`, `sewers_drain`) are plain `trail` ends, the secret ones hollow trees (bake-woods.js LINK_ENDS writer + the door rows).
   A first try that made the secret trails `tunnel` mouths shipped for about an hour (PR 1532) and added two more blocks; reverted here.
+- **THE BALL TREE IS GONE (2026-11-16, mondo on the proof pictures: "the tree with the sphere on top ... get rid of those and delete them from the game immediately")**:
+  the `hollowtree` way's stand-in (three-renderer.js `_hqTreeWay`: a 6 m pole under a leaf-sheet ball) had been the live look, since `hollow_tree` is an `rt` file the
+  builder skips. No door in the game uses the way now (the Woods' ends, the old Redwood room's, the site's bay door are all `trail`); the builder, if ever used again,
+  draws a 3.2 m broken hollow trunk with no crown. The Woods' once-secret ways (`lemuria`, `lodge`, `lookingglass`) are plain signposted trails, no longer secret; the
+  `woods_sewer` link is still secret, so its trail on the Tunnel Way plot ends with no post (the one dead end left; mondo to say what stands there).
+  LESSON: never show him a procedural stand-in; look at what a `way` draws before using it.
 - **STILL OPEN**: tall black slabs stand on the horizon (the `scenery: 'dark'` sky roster's bodies, unlit black in daylight; one shows NE of the Outfall). Not touched.
 - **Probe tip 2**: with every model loaded this room times out the cloud browser's screenshot; `--flags=EW_PERF_LOW` gets pictures (about 1 minute a view).
   Checked: no other path square on the map is a tip that ends at nothing (every edge trail is a door or a link).
