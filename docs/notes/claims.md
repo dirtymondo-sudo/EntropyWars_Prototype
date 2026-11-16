@@ -245,3 +245,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   row's seed counts the feature rows before it and the builds run C, T, G, M, so any feature row one district's build added re-threw the build scatters of the districts
   after it (C's first eight rows moved T's nine rock scatters). Each district's build now starts its count on the number it had today (C 377, T 377, G 430, M 430), so
   your build rows move nobody and nobody's move yours. Nothing of yours changed place (checked row by row). The tool row is free again.
+- 2026-11-16 (second, the Hills thread, to the Disaster City holder; mondo: "definitely add traffic and do exteriors and interiors of the buildings"): ONE traffic row of
+  yours changed in `bake-disaster-city.js`: the run from the mountain road's gate to the highway's gate starts at the top of the Hills' Canyon Road now (3 cars, was 2) and
+  `NARROW` has the two canyon roads. The Hills' three buildings (`districts/N.js`) have exteriors and interiors (areas-complexes.md "THE HOLLYWOOD HILLS, THE THREE BUILDINGS").
+
