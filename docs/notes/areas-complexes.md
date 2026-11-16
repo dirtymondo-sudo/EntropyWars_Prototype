@@ -5780,6 +5780,31 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
 - **OPEN**: the plot names "The Cave Mouth", "The Channel", "The Pool" no longer fit (his to rename; layout.json). The Sewers needs the tunnel's far plot (board note).
   The ground is still the lawn sheet under a blue sky: the atmosphere pass. The cabin is near black outside and bare inside: the interior pass.
 
+## THE REDWOOD TRAIL — the Woods' district T, the second district thread (2026-11-16)
+mondo 11-16: "now that I think most of these districts have had at least a couple passes on them, can you start threads for another district in the zone".
+File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-trail`. The passes, one PR each, each seen in the probe.
+- **THE FIRST LOOK (16 views, before any change):** the Falls was a flat pool and a deck; the Shelf a lawn with crosses; the Snowline a bare ice field; the
+  whole district wore the bright lawn sheet; the 16 m "giant" redwood did not stand out of a mass of 8.5 to 14 m trees; the two Creek plots hold a torch each.
+- **PASS 1, THE EXTERIORS (seen, 13 + 8 views):**
+  - THE FALLS (P02-00): a rock wall on the room's north edge behind the pool (room squares 28..35 x 0..2: 10.5 m at the lip, 7 m shoulders, 3.5 m steps) and
+    ONE `fall` row (`x -12.25, z -118.9, face 180, w 5.25`, y0 = the wall's top, y1 = the pool) pouring into the tool's pool. First use of the waterfall
+    row outside the Sewers; the engine code was not touched. The fall is 10.4 m (his size rule: at least 7 m).
+  - THE SHELF (P01-00): `cut` paints the clearing's north half rock (grass squares -> rock squares, both open: nothing moved). The adit = two 7 m blocks on
+    the plan's own rock squares with a lintel over the one-square trail to the `lemuria` door (the door did not move). The plan's scattered rock squares on
+    the south edge are 3.5 m outcrops.
+  - THE SNOWLINE (P00-00): the mountain's flank on the west / north-west edge (10.5 m at the corner, stepping down south), snow slabs and caps on every
+    top, three snowed outcrops on the field. The `shasta` door and every standing piece stayed.
+  - THE GIANT REDWOOD: 26 m (was 16), its two companions 17 m (were 11): a height in the old `dress` rows, no row added, no kind changed.
+  - THE GROUND: `ground: 'grass_dark_fantasy'` (his forest-floor rule); the Meadow is dark too.
+  - `outcrop(id, blocks, o)` in T.js: blocks `[col, row, cols, rows, height]` -> one `plateau` a block (the blocker, whole squares, marked `taken`) + ONE
+    arch row: a rock skin, a ragged crest, tapered buttresses half sunk in every face that is not the room's edge, leaners at the foot; `snow: true` caps
+    everything in the ice sheet; `clear: [x0, x1]` keeps a south face free (the fall's sheet); `extra` = own parts (the lintel).
+  - PROOF OF NOBODY MOVED: every row with x or z outside the district is the same before and after (623 rows, 0 differ).
+  - FRAME RATE (cloud software GPU, `EW_PERF_LOW`, 5 s count): the Falls view 1.2 -> 0.8, the Meadow view 1.6 -> 1.4. The room's block in data.js grew
+    119 KB -> 204 KB (about 600 arch parts). To watch on the weak PC; the buttress count is the edit (`2.7` m a buttress in `outcrop`).
+  - SEEN, NOT MINE / OPEN: the yeti can stand on the skull pile (the pile is a `put` blocker; the walk of a native is engine code); the ice sheet reads grey,
+    not white (no snow sheet exists); thicket trees stand on top of the Falls' wall (it is built on forest squares; it reads as a wooded cliff top).
+
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
   A boulder or crag = a tapered `cyl` (`r2` under half of `r`, `seg` 5 to 7) so nothing reads as a box; a solid block = a `plateau` (`edge: 0.08`) under a rock box skin 6 cm proud.
@@ -5799,7 +5824,12 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
 - **Dump and hangout props that read well here**: `crashed_car`, `crashed_car_2`, `tire_stack`, `dumpster`, `psx_sofa_1`, `psx_tv_mp_1`, `psx_old_mattress_mp_1`,
   `psx_metal_barrel_mp_*`, `psx_wooden_crate_*`, `psx_glass_bottle_*`, `skateboard`, `campfire` (`noLight`), `fallen_log`, `psxg_dead_bush_*`, `psxg_rock_*`, `graffiti_wall`
   (flat on a wall: 0.1 m off the face, `face: 180` on a wall seen from the south).
-- **Missing zone-wide**: waterfalls, light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
+- **A rock wall, an outcrop, a cliff with a waterfall**: copy `outcrop()` from districts/T.js (plateau blocks + one arch row: skin, crest, buttresses, leaners, optional snow). A flat
+  rock box face reads as a castle wall: the buttresses (tapered `cyl`, `r2` about 0.6 of `r`, half sunk in the face, one every 2.7 m) are what makes it rock. An arch row's base is
+  `y` when given (absolute metres), else the ground at its origin: on graded ground give `y: ctx.ground(x, z)` and write parts from there. A waterfall: a wall of 7 m or more behind
+  a pool + one `fall` row with `y0` / `y1` given (areas-complexes.md THE WATERFALLS); keep leaners off the sheet's face. FPS in a probe: a view's `eval` that counts
+  requestAnimationFrame for 5 s and logs `[HQ] PROBE fps …` (+ `settle: 6500`).
+- **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
   sandbags and barricade; the cantonment's bench, bins, dumpster, pallets, car park; the apron's freight, forklifts, engine stand, a
