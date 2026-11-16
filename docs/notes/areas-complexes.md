@@ -4946,6 +4946,10 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   INSIDE A WALK-IN (the Boathouse, 3.5 m walls): draw the ceiling at 3.16 m (3.4 is above the building's own black one), window panes and
   wall pieces 0.38 m in from the building's line, and never start a `deck` on the wall (0.9 m off). Wall props: `y` = the height, `face` 0 on
   the north wall, 90 west, 180 south, 270 east. `map_table` = a steel sci-fi table; `psx_table_large_2` = a plain wooden one.
+  WATER: `ocean_seaweed*` in a pool's shallows reads as rushes (each sways and is a draw call: keep them few); lily pads = notched `cyl`
+  discs in `leaves_3`, all in one `arch` row at `y: 0`, the disc at the pool's `y` + 0.015; the pool's water is opaque from above (fish under
+  it are never seen); `flamingo` is a good pink flamingo; `sea_buoy` carries a light (`noLight`). A row with a `y` inside a drawn shelter
+  seats itself under the roof: stand table things on the ground.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5729,6 +5733,33 @@ the zone". Passes as the pilot's, a PR each: exteriors, interiors, dressing, atm
   chart table (`psx_table_large_2` is the plain wooden one); `bar_stool` is a red diner stool.
 - **THE COST:** 27 more props, all inside one building; no new real light (the ship's lantern was there). The cloud's frame rate is not a
   measure: the same overview read 0.20 frames a second as a run's first view and 2.6 as its last.
+
+### PASS 3, THE DRESSING (seen in the cloud browser)
+- **THE PATH ROUND THE LAKE (`plan()`):** one square of dirt from the three gaps in the corn, up the west shore, along the north side above the
+  shingle to the Boathouse, down the east bank past the jetty to the boardwalk's far end, back along the south shore past the picnic ground.
+- **THE WATER PLANTS:** no reed, cattail or lily model exists. The ocean pack's `ocean_seaweed` (three kinds, 1.2 to 1.8 m, they sway) stands in
+  the shallows 0.965 of the way out to the lake's edge: its foot is on the bed, its top out of the water, and it reads as rushes. About 35 in
+  all (the Reeds' bank, five clumps on the south shore, the Marsh's pools): each is its own draw call, so they are few.
+- **THE LILY PADS:** about ninety drawn notched discs in the leaf sheet (Camelot's Fairy Forest way), one in five in flower, all ONE `arch` row
+  (`est:lilies:look`) on the Lake, south and both Marsh pools.
+- **THE SHORES:** graveyard pack stones and driftwood on the shingle, a second boat, two `iron_garden_bench` on the north path; ferns, frogs, a
+  rabbit, a grasshopper at the Reeds; rope coils, a crate, `lobster_traps`, a bucket on the dock and a `NO SWIMMING` board at its foot; a camp
+  on the east bank (`camping_tent`, `meshy_campfire_ring` cold, chairs, `beach_cooler`, `railway_lantern`); a chair, bucket and cooler on the
+  jetty's end; the Marsh's `psxg_dead_tree_*`, `hw_tree_3/4`, dead bushes, ferns, frogs and a `flamingo` in the north pool; a `metal_trash_can`
+  and `garbage_bag`, a cooler, two crows on the shelter's ridge, rabbits, butterflies and a bee at the picnic ground; twelve more trees set back
+  from the path; three blank `signpost`s; two `sea_buoy`s off the rock (`noLight`).
+- **TRIED AND CUT:** fish and a turtle (`ocean_fish*`, `hover: 0.55`): the lake's water is opaque from above, nothing shows. Cups and a cooler
+  ON the shelter's tables (`y: 0.8`): they hung under the roof (a row with a `y` seats itself on what is over it in a drawn piece).
+- **THE COST:** the proof view (the whole district from 60 m, last view of a run): 333 draw calls and 2.6 frames a second after pass 2, 618 and
+  2.0 to 2.2 after pass 3 as first built; the swaying plants were then cut from about 58 to 35 and the eight fish removed.
+- **FITS THIS DISTRICT (the lists read 11-16: MODEL_LIST.md sections 6, 7, 10, 12b, 13; the catalogue; `list-models.js --r2`):** placed:
+  `play_swing`, `play_slide`, `play_sandbox`, `brass_telescope`, `ocean_rock*`, `ocean_seaweed*`, `psxg_rock_*`, `psxg_dead_tree_*`,
+  `psxg_dead_bush_*`, `hw_tree_3/4`, `fern`, `flamingo`, `camping_tent`, `meshy_campfire_ring`, `beach_cooler`, `beach_life_ring`,
+  `railway_lantern`, `iron_garden_bench`, `metal_trash_can`, `garbage_bag`, `lobster_traps`, `meshy_rope`, `tire_stack`, `ship_anchor`,
+  `ships_bell`, `fishing_net_wall`, `outboard_motor`, `tool_pegboard`, `tool_chest`, `psx_hand_saw_1`, `psx_jerrycan_1`, `cot`, `sea_buoy`,
+  `signpost`, crow, rabbit, frogs, grasshopper, ladybug, bee, four butterflies. Fits and not placed: `meshy_camping_tent`, `footbridge`,
+  `surfboard_*`, `beach_swim_ring`, `beach_air_mattress_*`, `tentacle` / `tentacle2` (the kraken's: not placed, the lake's monster is Nessie),
+  `ocean_turtle` and the fish (unseen under this water), `fish_school`. Nothing in section 13's unwired files fits a lake.
 
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
