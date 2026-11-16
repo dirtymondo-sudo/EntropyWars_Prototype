@@ -6,7 +6,8 @@
    THE PASSES (docs/notes/areas-complexes.md "ANTARCTICA, DISTRICT S"):
    1 EXTERIORS (11-16): every hut its own building (cold porch, chimney, stacks, vents, drifts against the weather walls, snow on the roofs, name boards),
      the radome, the 30 m mast with its stay anchors, the drill rig, the fuel line on trestles, hand lines along the walks, the yard's board.
-   2 INTERIORS (11-16): all seven huts lined, vaulted and lit inside and furnished on the squares (`insides`). */
+   2 INTERIORS (11-16): all seven huts lined and lit inside and furnished on the squares (`insides`).
+   3 DRESSING + THE NIGHT (11-16): the pads and the lanes dressed (`dressing`), instrument screens, smoke, door lamps, three more flood masts, spindrift. */
 'use strict';
 const ORANGE = 0xff8a30, RED = 0xb23a2e, GREEN = 0x3f7a5a, BLUE = 0x3a6a9a, YELLOW = 0xd8a82a, STEEL = 0x8a9098, DARK = 0x30343a, CREAM = 0xe8e4d8;
 const SNOW = 0xf4f8ff, TIMBER = 0x6a5a48;
@@ -31,6 +32,7 @@ function hut(ctx, id, q, tint, name, x, o) {
         (x.vents || []).forEach(k => a.box(k[0], wallH + rh * 0.8, k[1], 0.7, 0.5, 0.7, COR, 0x9aa0a8, { roof: true }));
         if (x.aerial) { a.cyl(x.aerial[0], wallH + rh * 0.5, x.aerial[1], 0.03, 4.2, COR, 0xc8ccd2, { roof: true }); a.box(x.aerial[0], wallH + rh * 0.5 + 3.4, x.aerial[1], 1.4, 0.03, 0.03, COR, 0xc8ccd2, { roof: true }); a.box(x.aerial[0], wallH + rh * 0.5 + 2.8, x.aerial[1], 1.0, 0.03, 0.03, COR, 0xc8ccd2, { roof: true }); }
         a.sign(name, door.lx, x.porch ? 2.95 : 2.6, d / 2 + (x.porch ? 1.68 : 0.14), Math.min(w - 0.6, 0.34 * name.length + 0.6), 0.5, '#f4f0e6', '#23262b', 'stencil');
+        { const lz = d / 2 + (x.porch ? 1.72 : 0.2); a.box(door.lx + door.cw / 2 + 0.45, 2.25, lz, 0.22, 0.3, 0.18, 'marble_light', 0xffd9a0, { glow: 1.0 }); a.box(door.lx + door.cw / 2 + 0.45, 2.55, lz, 0.3, 0.05, 0.26, COR, DARK); }   // the lamp by the door (pass 3)
         if (x.more) x.more(a, w, d, door, wallH, rh);
         /* THE INSIDE (pass 2): the building's own inside takes no light, so the walls are lined 0.3 m in with a lit board dado + a pale wall, and a
            lit ceiling with ribs closes it (the Mountains' kit: thin boxes, `glow` + `gain`; a quad there loses to the building's own wall) */
@@ -127,6 +129,34 @@ function insides(ctx) {
     { const h = IN('balloon'), g = groundAt(47, 52); h.on('gas_cylinder_rack', -3.5, -3.5, { face: 0 }); h.on('steel_table', 0, -3.5, { face: 0 }); h.on('gas_cylinder_rack', 3.5, -3.5, { face: 0 });
       h.on('map_table', 3.5, 0); h.on('star_chart', -4.5, 0.2, { face: 90 }); h.on('psx_supply_crate_1_2', -3.5, 3.5); h.on('meshy_rope', 3.6, 3.7); h.on('telescope', -3.2, 0.6, { face: 30 }); h.lamp(0, 0, g); }
 }
+/* ── PASS 3, THE DRESSING + THE NIGHT: what lies between the huts (blockers on square middles, small things off them), the instrument screens,
+   smoke over the stacks, three more flood masts (the only real lights; everything else that shines is a drawn part with `glow`). ── */
+function dressing(ctx) {
+    const { P, dec, look, gx, gc, groundAt, props, native, COR, WD2 } = ctx;
+    const smoke = (sx, sy, dx, dz, up) => props.push({ key: 'chimney_smoke', x: gc(sx) + dx, z: gc(sy) + dz, y: groundAt(sx, sy) + up });
+    /* The Station Yard: a sledge train loaded for the Traverse, the drum line, pallets, a bench out of the wind */
+    P('snow_sled', 33, 56); P('snow_sled', 34, 57, { face: 20 }); P('wrapped_pallet', 26, 52); P('wrapped_pallet', 26, 53); P('psx_wooden_crate_3', 35, 53); P('picnic_table', 28, 57); P('trail_sign', 32, 57);
+    ['psx_metal_barrel_mp_0', 'psx_metal_barrel_mp_1', 'psx_metal_barrel_mp_3', 'psx_metal_barrel_mp_1'].forEach((k, i) => dec(k, 35, 54 + i)); dec('psx_supply_crate_1_1', 33, 57); dec('meshy_rope', 34, 55); dec('hw_shovel', 27, 56); dec('seagull', 27, 52, { y: 1.3 }); dec('seagull', 35, 53, { y: 1.1 });
+    /* The Huts: the lane between the two, and their weather sides */
+    P('psx_wooden_crate_1_1', 24, 39); P('psx_metal_barrel_mp_2', 25, 41); dec('hw_shovel', 24, 42); dec('psx_jerrycan_1', 25, 42); dec('backpack', 24, 40); P('flood_mast', 25, 37); dec('icicles', 23, 37, { y: 2.6 }); dec('icicles', 27, 37, { y: 2.6 });
+    P('firewood_stack', 22, 45); P('psx_supply_crate_1_3', 28, 45); dec('snow_sled', 27, 45);
+    /* The Radio Mast: the dishes' pad */
+    P('psx_wooden_crate_5', 40, 39); dec('cable_drum', 39, 42); dec('psx_supply_crate_1', 36, 43); P('utility_box', 39, 40);
+    /* The Garage: the apron */
+    P('psx_metal_barrel_mp_0', 52, 43); P('pallet_jack', 51, 44); dec('psx_jerrycan_1_1', 47, 44); dec('tire_stack', 50, 44, { h: 0.6 }); P('flood_mast', 45, 43); dec('psx_car_battery_1', 48, 44);
+    /* The Ice Core: crates of core, the drum */
+    P('psx_supply_crate_1_2', 18, 41); P('psx_wooden_crate_2', 18, 38); dec('psx_supply_crate_1_4', 14, 43); dec('hw_shovel', 17, 43); dec('meshy_rope', 15, 43);
+    /* The Tank Farm: the drum line, the bottles, the hazard */
+    [20, 21, 22].forEach((x, i) => P('psx_metal_barrel_mp_' + i, x, 51)); P('hand_truck', 22, 56); P('fire_extinguisher', 17, 55); P('flood_mast', 22, 54); dec('psx_jerrycan_1', 21, 56); dec('psx_jerrycan_1_1', 20, 54);
+    /* The Weather Field: three instrument screens, a thing that fell out of the sky */
+    [[52, 51], [53, 53], [52, 55]].forEach((q, i) => look('screen' + i, gc(q[0]), gc(q[1]), i * 25, a => { [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]].forEach(k => a.box(k[0], 0, k[1], 0.05, 1.25, 0.05, WD2, 0xe8e8e8, { gain: 1.5 }));
+        a.box(0, 1.25, 0, 0.8, 0.7, 0.8, 'marble_light', 0xf2f2ee); for (let y = 1.32; y < 1.9; y += 0.12) a.box(0, y, 0, 0.86, 0.03, 0.86, 'marble_light', 0xd0d0cc); a.roof('pyramid', 0, 1.95, 0, 0.95, 0.2, 0.95, 'marble_light', 0xf2f2ee); }));
+    P('satellite', 55, 56, { face: 40 }); dec('warning_tape', 54, 57); dec('traffic_cone', 56, 55); dec('psx_dosimeter_1', 54, 55);
+    /* smoke over the stoves and the sets (a particle prop: never a model) */
+    smoke(22, 39, 0, -2.5, 5.6); smoke(22, 42, 0, 2.5, 5.6); smoke(27, 39, 1.5, -1.5, 6.4); smoke(15, 52, -3, -1.2, 7.4); smoke(15, 52, -3, 0.2, 7.4);
+    /* two more of the station's own */
+    native('men in black', 49, 45, 180, null); native('men in black', 19, 44, 90, null);
+}
 exports.dress = ctx => {
     const { P, dec, native, sayOf } = ctx;
     /* The Station Yard: cargo either side of the Traverse */
@@ -145,6 +175,9 @@ exports.dress = ctx => {
     /* The Weather Field */
     P('weather_mast', 50, 52); P('brass_telescope', 51, 55); P('weather_mast', 50, 55); dec('psx_supply_crate_1_3', 50, 54);
     insides(ctx);
+    dressing(ctx);
     /* who is there */
     native('men in black', 32, 44, 180, null); native('men in black', 41, 52, 270, null);
 };
+/* THE AIR (pass 3): spindrift low over the open yard and the cross track, under the room's own falling snow */
+exports.airZones = () => [{ sx0: 12, sy0: 45, sx1: 60, sy1: 60, kind: 'dust', color: 0xffffff, n: 260, speed: 0.6 }];

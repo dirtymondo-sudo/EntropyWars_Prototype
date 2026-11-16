@@ -45,7 +45,7 @@ as the inside of a plot-built place.
 | Leylines | ley tunnels, Stonehenge, Göbekli Tepe, Babel; Technoticlan is its own site | OLD + PLAN (45) | Giza robbers' tunnel; Technoticlan; bays | free |
 | The Deep (with Atlantis) | `site_prebuilt_atlantis_deep` (8 x 5, a drowned room) + INSIDE the Temple of the Deep (`site_prebuilt_atlantis_pocket`) | PLOTS (11-16; the old Abyss + Temple retired, kept as PvP board sources) | Beach whirlpool -> the Upwelling; the Dutchman's hold -> the wreck's hatch; HQ Room H-20 -> the Temple's inside | second |
 | Outer Space | `site_prebuilt_moon_plots` (5 x 4), `site_prebuilt_mars_plots` (5 x 4), `site_prebuilt_saturn_plots` (4 x 4), `site_prebuilt_singularity_plots` (4 x 4): four rooms, one a world, 72 plots (11-16, `bake-space.js`, plot plan 3) + the Spaceship x4 (handmade, stays). Hub `space` | PLOTS (first build 11-16; the Spaceship handmade) | the ship's collar (Moon, Mars, Saturn; and Antarctica); Moon <> Mars (the bore); Saturn <> the Singularity (the frame); HQ `observatorium` to the Singularity; four bays | second (tool), district M piloted, nine districts free |
-| Antarctica | the Station | OLD + PLAN (12) | the Inner Sun; Agartha; the Spaceship; bay | free |
+| Antarctica | `site_prebuilt_antarctica_plots` (6 x 6 = 36, a sea on its south side; 11-16, `bake-antarctica.js`, plot plan 2). Hub `antarctica` | PLOTS (first build 11-16; the Station is the pilot, 3 passes) | the Cavern twice (the Polar Opening to the Inner Sun, the Admiral's Tunnel to Agartha: both hidden); the Spaceship's airlock (the Collar, behind the Ice Wall); HQ bay door 90S (on the Station Yard) | second (tool STOPPED; S stopped at 3 passes; H W C O F free) |
 | The Astral Realm | waiting room, sea, nightmare, library | OLD + PLAN (36) | HQ `dreamlab`; Camelot mirror; D.U.M.B. dream lab; the Haunted House attic | free |
 
 Loose sites that the world plan folds into a zone but that still stand as their own OLD rooms:
@@ -59,7 +59,7 @@ Loose sites that the world plan folds into a zone but that still stand as their 
 | Cyberpunk City (streets, noodle bar) | later: a reskin of the whole city, not a place | still live; reached by the HQ tunnel and the Sewers |
 | `site_prebuilt_agartha_crystalcity`, `site_prebuilt_technoticlan_templecity` | districts of the Cavern / Leylines | live, no hub claims them (the map files them alone) |
 
-(11-16: Outer Space has a hub now, `space`, anchored on the Spaceship's airlock. Antarctica still has none.)
+(11-16: Outer Space has a hub now, `space`, anchored on the Spaceship's airlock. Antarctica has one too, `antarctica`, anchored on its one room.)
 
 DATA: mondo's zone list in owner-rules.md has 16 names. The game's map (`DOOR_HQ.hubs`) has 15 hubs and they do not match
 one to one: The Mountains and The Astral Realm are hubs but not on the list; Fairy Forest and Atlantis are on the list but
@@ -108,7 +108,7 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 | Leylines (PLAN) | G Göbekli Tepe, B Bug Colony, S Stonehenge, Y The Ley Lines (the road), T Babel, Z Technoticlan | none |
 | Heaven + Hell + Vatican (PLAN) | L Hell, V The Vatican, H Heaven, O Mount Olympus (now in the Mountains, so drop it here) | none |
 | Outer Space | the Moon: M The Mare, C The Crater, F The Far Side · Mars: Y Cydonia, V The Canyon, R The Rover Bay · Saturn: H The Hexagon, G The Ring Shard · the Singularity: D The Drop, A The Accretion Rim | yes since 11-16: `docs/areas/space/districts/<letter>.js` (ten files, the letters unique across the four rooms) |
-| Antarctica (PLAN) | A Antarctica Station | none |
+| Antarctica | H The Hull in the Ice, W The Ice Wall, C The Crevasse, S The Station (pilot: 3 passes), O The Polar Openings, F The Shelf Ice | yes since 11-16: `docs/areas/antarctica/districts/<H W C S O F>.js` |
 | The Astral Realm (PLAN) | L The Library of Unthought Things, S The Sea of Possibility, N The Nightmare | none |
 
 **Rule for every zone not yet on plots:** its FIRST PR lays down the plots, the districts and one empty file per

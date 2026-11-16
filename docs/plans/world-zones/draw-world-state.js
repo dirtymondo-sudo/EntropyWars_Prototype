@@ -49,7 +49,7 @@ o.push(`<rect x="${px(0)}" y="${py(-3)}" width="${13*S}" height="${3*S}" fill="n
 zone(...f,0,12,12,12,'THE DESERT','built',['The Highway · The Circus','Western Town · Area 51 · Giza','144 plots']);
 zone(...f,12,1,14,10,'THE BEACH','built',['The Shore · The Harbour','The Ocean · The Bermuda Triangle','140 plots (a sea room)']);
 zone(...f,12,17,9,5,'LEYLINES','old',['Göbekli Tepe · Stonehenge · Babel','Technoticlan · Bug Colony (new)','old rooms · plan 45']);
-zone(...f,4,27,4,3,'ANTARCTICA','old',['old room · plan 12'],{small:1});
+zone(...f,3,25.4,6,6,'ANTARCTICA','built',['Shelf Ice · Station · Polar Openings','Crevasse · Ice Wall · Hull in the Ice','36 plots']);   // ANTARCTICA ON PLOTS (2026-11-16, bake-antarctica.js)
 // ways
 txt(px(8.75),py(-0.15),'▲ mountain road',10.5,C.way,600,'middle'); txt(px(12.5),py(-0.15),'▲ cove',10.5,C.way,600,'middle');   // (2026-11-16: ground you walk, not doors)
 way(...f,-0.01,-2.2,0,-2.2,'way','');
