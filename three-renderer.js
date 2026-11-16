@@ -73140,7 +73140,8 @@ const ThreeRenderer = (function () {
         stencil:   { f: '"Saira Stencil One"', w: 400, ls: 0.03 },    // Industrial: painted on the sheds
         dot:       { f: '"DotGothic16"', w: 400, ls: 0.06 },          // the scoreboard
         marc:      { f: '"Marcellus SC"', w: 400, ls: 0.06 },         // the museum and the galleries
-        rye:       { f: '"Rye"', w: 400, ls: 0.02 }                   // fight posters
+        rye:       { f: '"Rye"', w: 400, ls: 0.02 },                  // fight posters
+        xmas:      { f: '"Mountains of Christmas"', w: 700, ls: 0.03 }   // the North Pole village: the Workshop (2026-11-16)
     };
     /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
        branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own

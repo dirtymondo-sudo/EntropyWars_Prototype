@@ -4409,6 +4409,20 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   under the roof, `ice` drifts against the three walls without the door and beside the step, icicles (`roof: true`, a little `glow`) along the eaves
   (`front` = the gable is over the door, so the eaves are the sides), a snow-capped wood stack by a house with a chimney; `pane` lays snow on each
   sill and head. Any Mountains building can call the same helper. Seen on screen (six views).
+- **PASS 8, THE PEOPLE + THE SIGN FONTS + THE REST OF THE OUTSIDE LAYER** (mondo 11-16: "Is there not already units tagged with North Pole or ice? yeti,
+  Santa clause, etc figure it out whatever fits. do a font pass for the signs. do the exterior layer"):
+  - PEOPLE: the roster's `polar` biome (RACE_PROFILES) = yeti, santa clause, ice queen, krampus; + the gnome (the old room's native). NEW TOOL HOOK
+    (bake-mountains.js, board note): a district file may export `encounters = { list: [{ race, w }], walkers, spots }`; the tool writes it as the room's
+    own table (data.js THE ENCOUNTER TABLE; his AREA UNITS window still wins). N: yeti 7, krampus 2, gnome 2, santa clause 1, ice queen 1, walkers 3 to 5,
+    `spots: false` (the standing natives keep their place and line). One more stands: the Ice Queen on the lake (no line; a native without a line walks).
+    THE CROWD CAP (data.js `HQ_CROWD_RULES.max` 4) shows FOUR bodies a room: a fifth native (Krampus was tried) never appears, and with four natives
+    standing no table walker gets a body. A district that wants walkers must stand fewer natives. `dev.chars()` in a probe lists who has a body.
+    Chimneys smoke: the catalogue's `chimney_smoke` (the Camelot pilot's piece), `y` = the chimney's top from the room's floor.
+    No levels set: docs/notes/npc-system.md owns levels, rarity tiers and refill.
+  - SIGNS: N.js `board()` (words + white frame + snow on top). One face a trade from the city's `HQ_SIGN_FONTS`; one new id, `xmas` = Mountains of
+    Christmas 700 (three-renderer.js row + the third font sheet in index.html), for the Workshop. A sign shows the old letters until its file arrives.
+  - OUTSIDE: gutters + downpipes (`gunmetal`), a ridge board, gables in shingles (`SHG`, the house's paint, `gain` 1.9), `dado` (a darker band of
+    boards over the stone foot), a lit lantern by every door. Seen on screen (nine views).
 - **PASS 4 + 5, ATMOSPHERE AND THE WALK**: the hearths burn the catalogue's `hearth_fire` (`w` / `h` in metres; a real light), six braziers (real lights)
   stand at the Pole, the lake, the Sleigh Road and the two south ways out. Walked at eye height in the probe (twelve views): one signpost stood inside a
   zone pine's skirt and moved. NOT REACHABLE FROM A DISTRICT FILE, asked of mondo: falling snow, a sound bed and an aurora (the walked rooms have no hook
@@ -4449,6 +4463,8 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
   `bricks_2` 0xb86a54, trim `marble_light` 0xf6f6f2 (the wood sheets cannot be painted white), gilt = `gold`, coal / dark rock = `obsidian`.
 - The village palette: red 0xb84438, green 0x3f6b4a, cream 0xd8c8a8, blue 0x5a7890, ginger 0x9a6238, plum 0x7a4a6a. Warm light 0xffb050 to 0xffc070 against
   the blue night is the zone's one rule of light; coloured bulbs (N.js `bulbs`) are the village's own.
+- Signs: N.js `board()`; fonts by id from three-renderer.js `HQ_SIGN_FONTS` (`xmas`, `marc`, `pacifico`, `bangers`, `rye`, `stencil`, `fell` ...). People: export
+  `encounters` from the district file (the tool writes the room's table); pick from the roster by `RACE_PROFILES[race].biomes`.
 - Lamp post: N.js `lampPost` (candy stripes: the VILLAGE's; another district should keep the lantern and change the post). No lamp model exists.
 - Winter props: `xmas_*` (trees, snowmen, gifts, wreaths, garlands, stockings, food), `sleigh`, `signpost`, `park_bench`, `ancient_well`, `fallen_log`,
   `stump`, `hw_straw`, `hw_fence`, `psx_wooden_crate_*`, `meshy_burlap_sack`, `cardboard_boxes`, `rabbit`, `crow`, `dog`, `brazier`, `campfire`.
@@ -4465,10 +4481,10 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
 
 **5. THE VILLAGE AGAINST A FINISHED CITY DISTRICT (Financial: F.js + F-inside / F-detail / F-atmos), the pilot's remaining work plan:**
 1. A plan and a mock-up mondo OK'd before building (every city district had one; the village was built from the brief's pass list).
-2. PARTLY DONE 11-16 (pass 7, N.js `winter`): a belt board, snow drifted at the wall feet, snow on sills and heads, icicles on the eaves, wood stacks. Still open: roof pieces (ridge, snow guards), a second sheet on parts of a wall, gutters.
+2. DONE 11-16 (passes 7 + 8, N.js `winter` + `dado` + `board`).
 3. DONE 11-16 (pass 6, mondo "continue ... with your recommended"): insides on the fight's squares.
 4. The second inside pass (F-atmos): dado / skirting / crown on the coat, pendants and sconces as real pieces, the Meshy list made.
-5. Residents with homes, beds and a day (the city's `HQ_CITY_RESIDENTS`): the village has three natives standing still. mondo's table decides who.
+5. WHO: DONE 11-16 (pass 8: the `polar` units walk and stand). Homes, beds and a day wait for THE NPC SPAWN SYSTEM (docs/notes/npc-system.md).
 6. A measured-size prop check and the two polish passes living in the bake (the city's props.js, interior-polish.js, exterior-polish.js).
 7. A district look in the tool (lamp colour, banner) shared by the zone, as the city's LOOKS.
 8. Encounter table, PvP arena pick, the Ice Queen: mondo's.
