@@ -98,8 +98,9 @@ What the model pass is:
   and anything a thread called a placeholder. Take the stand-in out when the real model is in.
 - Sizes in the list are real-world and the game uses them as given; a model's facing is as it was made: look before you
   line one up against a wall or a road. Barriers centred on whole squares, decor off centre, nothing blocking a path.
-- Not made: papyrus, whale bones, gold pile, wheat patch. Already in the game under other keys: hitching rail, hammock,
-  bat, small rocks. Still not models: the ground / wall sheets, people, moving effects.
+- Not made: papyrus, whale bones, gold pile, wheat patch. ALREADY IN THE GAME, use these keys (the list's last table):
+  hitching rail = `hitching_rail`; hammock = `hammock` (the Elbolilloduro pack's); bat = `bat_black`, `bat_brown`,
+  `bat_grey`; natural small rocks = `psxg_rock_1` to `psxg_rock_4` (also `ocean_rock_*`). Still not models: the ground / wall sheets, people, moving effects.
 - Animals are props that stand still: use them sparingly, as scenery, never on a path.
 - One PR, seen on screen (probe-fast.js, look at your own pictures, fix), FPS before and after, the upload and the token
   bump. Then cross the placed items off your NEEDS A MODEL list (file header + your areas-complexes.md section), set
