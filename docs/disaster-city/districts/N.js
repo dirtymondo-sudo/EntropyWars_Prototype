@@ -366,13 +366,38 @@ function hillsDressing(ctx) {
     console.warn('[the Hills] dressing ' + JSON.stringify(count) + (skip.length ? ' LEFT OUT ' + skip.join(' ') : ''));
 }
 
+/* ══ PASS 4: THE NIGHT. The Hills are what the city looks up at after dark, so: the letters shine (`glow`) over floods at their feet, the new houses
+   show warm windows, lamp standards stand on the Observatory's terrace, every landmark carries a lantern, the pool glows. All of it is `glow` on drawn
+   parts (drawn unlit at tint x glow: no cost by night or day); REAL lights are kept few (three more of the city's lamp posts: exports.build). ══ */
+function hillsLights(ctx) {
+    const R = ctx, { look, S, mx, mz, gx, gz } = ctx, { O } = hillsKit(ctx), B = R.B, WARM = 0xffc878, LAMP = 0xfff0c8, g = { glow: 1.4 };
+    const also = (b, id, fn) => { look(id, b.cx, b.cz, fn); R.ARCH[R.ARCH.length - 1].rot = b.rot; };
+    /* the houses' lamp-lit windows, a hand proud of the dark glass */
+    also(B.round, 'roundhouse:lit', a => { a.box(0, 1.2, 0, 1.7, 1.5, 0.05, M, WARM, { ring: { n: 5, r: 7.76, a0: 215, arc: 110 }, glow: 0.95 }); a.box(0, 1.2, 0, 1.7, 1.5, 0.05, M, WARM, { ring: { n: 2, r: 7.76, a0: 140, arc: 30 }, glow: 0.95 }); a.box(B.round.door.lx, 2.7, B.round.fd / 2 + 2.3, 0.4, 0.12, 0.4, null, LAMP, g); });
+    also(B.villa, 'villa:lit', a => { const w = B.villa.fw, d = B.villa.fd; for (const x of [-4.8, 5.4]) a.box(x, 1.0, d / 2 + 0.13, 1.2, 1.7, 0.05, M, WARM, { glow: 0.95 }); a.box(w / 2 + 0.13, 1.0, 2.2, 0.05, 1.7, 1.2, M, WARM, { glow: 0.95 }); a.box(0, 1.0, -d / 2 - 0.13, 1.2, 1.7, 0.05, M, WARM, { glow: 0.95 });
+        for (const x of [-3.4, 3.4]) a.box(x, 2.45, d / 2 + 2.3, 0.22, 0.25, 0.22, null, LAMP, g); a.box(w / 2 - 1.9, 5.5, -d / 2 + 1.9 + 1.76, 1.0, 1.5, 0.04, M, WARM, { glow: 0.9, roof: true }); });
+    also(B.aframe, 'aframe:lit', a => { const d = B.aframe.fd; a.box(-3.6, 0.5, d / 2 + 0.13, 2.2, 2.2, 0.05, M, WARM, { glow: 0.95 }); a.box(0, 3.3, d / 2 + 0.09, 2.6, 2.6, 0.04, M, WARM, { glow: 0.9, roof: true }); a.box(B.aframe.door.lx + 1.3, 2.3, d / 2 + 0.2, 0.2, 0.3, 0.2, null, LAMP, g); });
+    /* the Observatory's terrace: eight lamp standards on the balustrade's line, one row (the terrace is level) */
+    { const o = O('H10-01'), X = o.x(6), Z = o.z(6); look('obs_lamps', X, Z, a => { for (const [lx, ly] of [[2.4, 2.4], [9.6, 2.4], [2.4, 9.6], [9.6, 9.6], [4.9, 9.6], [7.1, 9.6], [2.4, 6], [9.6, 6]]) { const x = o.x(lx) - X, z = o.z(ly) - Z;
+          a.cyl(x, 0, z, 0.17, 0.3, M, TRIM, { seg: 8, gain: 2 }); a.cyl(x, 0.3, z, 0.055, 2.5, STL, BRONZE, { seg: 6 }); a.cyl(x, 2.74, z, 0.3, 0.07, STL, BRONZE, { seg: 8 }); a.cyl(x, 2.81, z, 0.2, 0.22, null, LAMP, g); a.dome(x, 3.03, z, 0.2, 0.2, null, LAMP, g); } }); }
+    /* the pool's light, the landmarks' lanterns */
+    { const o = O('H04-02'); look('hillpool:lit', o.x(9), o.z(8.5), a => { a.cyl(0, -0.3, 0, 2.66, 0.06, null, 0x7fe8ff, { ri: 2.4, seg: 28, glow: 1.2 }); for (const [x, z] of [[-5.4, 4.4], [5.4, 4.4]]) { a.cyl(x, 0, z, 0.05, 0.9, STL, 0x2a2a2e, { seg: 6 }); a.box(x, 0.9, z, 0.2, 0.2, 0.2, null, LAMP, g); } }); }
+    { const q = S('H02-00', 8, 8); look('firetower:lit', mx(q[0]), mz(q[1]), a => { a.box(0, 8.76, 0, 0.3, 0.2, 0.3, null, LAMP, g); a.box(0, 10.2, 1.68, 1.6, 0.9, 0.04, M, WARM, { glow: 0.95 }); a.box(1.68, 10.2, 0, 0.04, 0.9, 1.6, M, WARM, { glow: 0.95 }); }); }
+    { const q = S('H05-00', 4, 1); look('masthut:lit', mx(q[0]), mz(q[1]), a => a.box(0, 2.3, 1.62, 0.34, 0.14, 0.14, null, LAMP, g)); }
+    { const o = O('H02-01'); look('damtower:lit', o.x(3.5), o.z(2), a => { for (const [x, z] of [[1.56, 0], [-1.56, 0], [0, 1.56], [0, -1.56]]) a.box(x, 4.8, z, 0.2, 0.26, 0.2, null, LAMP, g); a.box(5.9, 3.45, 0, 0.16, 0.16, 0.16, null, LAMP, g); }); }
+    { const o = O('H06-02'); look('lotshelter:lit', o.x(11), o.z(6), a => a.box(0, 2.42, 0, 0.5, 0.14, 0.5, null, LAMP, g)); }
+    { const o = O('H05-01'); look('horseshed:lit', o.x(3), o.z(10.5), a => a.box(0, 2.3, 1.3, 0.2, 0.3, 0.2, null, LAMP, g)); }
+    { const q = S('H08-00', 4, 2); look('peakpillar:lit', mx(q[0]), mz(q[1]), a => a.box(0, 1.66, 0, 0.12, 0.12, 0.12, null, 0xff5030, { glow: 1.5 })); }
+}
+
 const content = {};
 content.apply = ctx => {
     const R = ctx, { put, dec, tree, native, building, look, flat, cabin, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
   /* ── THE SIGN: twelve letters, each a standing plane cut from the typeface (the city's own sign's font), two legs behind it; you walk under and behind them ── */
   { const WORD = 'DISASTERCITY', LW = 9.4, LH = 13.6, STEEL = U('MetalWallRibbed1a');
     ['H06-01', 'H07-01', 'H08-01', 'H09-01'].forEach((id, pi) => [2, 6, 10].forEach((lx, li) => { const ch = WORD[pi * 3 + li], q = S(id, lx, 5), n = pi * 3 + li, lift = [0, 0, 0, 0, 0, 0, 0, 0, -1.2, 0, 0, -2.2][n], tilt = [0, 0, 5, 0, 0, 0, -4, 0, 0, 0, 0, 7][n];
-        look('sign' + n, gx(q[0]), gz(q[1]), a => { a.quad(0, 1.2 + lift, 0, LW, LH, 'txt:' + ch + '|#f6f4ec||' + r2(LW / LH) + '||anton', null, Object.assign({ uv: 'fit', kind: 'over', ds: true }, tilt ? { rz: tilt } : {}));
+        look('sign' + n, gx(q[0]), gz(q[1]), a => { a.quad(0, 1.2 + lift, 0, LW, LH, 'txt:' + ch + '|#f6f4ec||' + r2(LW / LH) + '||anton', null, Object.assign({ uv: 'fit', kind: 'over', ds: true, glow: 0.92 }, tilt ? { rz: tilt } : {}));   // (`glow`, pass 4: the letters shine by night; by day a white unlit letter reads as it did)
+            for (const fx of [-2.2, 2.2]) { a.box(fx, 0, 2.2, 0.5, 0.3, 0.4, STEEL, 0x3a3c40); a.box(fx, 0.3, 2.1, 0.42, 0.2, 0.26, null, 0xfff4d0, { glow: 1.5 }); }
             for (const sx of [-1, 1]) { a.box(sx * 2.6, 0, -0.9, 0.36, 10.5 + lift, 0.36, STEEL, 0x8a8e94); a.box(sx * 2.6, 6 + lift, -0.45, 0.2, 0.2, 0.9, STEEL, 0x8a8e94); }
             a.box(0, 3.2 + lift, -0.9, 5.6, 0.2, 0.2, STEEL, 0x8a8e94); });
         for (const d of [-1, 0]) R.taken.add((q[0] + d) + ':' + q[1]); })); }
@@ -585,6 +610,7 @@ content.build = ctx => {
   put('H12-02', 'rowboat', 1, 9, { face: 70 }); put('H12-02', 'pool_umbrella', 2, 8); tree('H12-02', 'palm', 8, 0, 8); dec('H12-02', 'ocean_rock', 3, 10);
   hillsInsides(ctx);
   hillsDressing(ctx);
+  hillsLights(ctx);
 };
 
 /* ONE ROAD, ONE STREET SYSTEM (2026-11-16, mondo: "continue making it better and blend together more, natural part of the city"):
@@ -623,6 +649,8 @@ exports.build = ctx => {
           for (let d = 14, k = si; d < len - 6; d += 28, k++) { const sd = k % 2 ? 1 : -1, nx = -uz * sd, nz = ux * sd, x = r2(a[0] + ux * d + nx * off), z = r2(a[1] + uz * d + nz * off); if (z > -252.5) continue;
               const sx = Math.floor((x - X0) / C), sy = Math.floor((z - Z0) / C), ch = R.inR(sx, sy) ? R.cell[sy][sx] : 'r'; if ('rzwYBt'.indexOf(ch) >= 0 || R.taken.has(sx + ':' + sy)) continue;
               if (ctx.lamps.some(l => Math.hypot(l.x - x, l.z - z) < 3)) continue; ctx.lamps.push({ x, z, nx: Math.round(nx), nz: Math.round(nz), d: 'N' }); n++; } });
+      { const K = hillsKit(R), add = (id, lx, ly, nx, nz) => { const o = K.O(id); ctx.lamps.push({ x: o.x(lx), z: o.z(ly), nx, nz, d: 'N' }); n++; };   // (pass 4) the terrace's west way in, the Hikers' Lot, the Villa's drive
+        add('H10-01', 1.5, 7.6, 0, 1); add('H06-02', 1.5, 8.4, 0, -1); add('H10-02', 4.5, 3.5, 1, 0); }
       console.warn('[the Hills] lamps ' + n); }
     /* THE WAYS OUT to the Mountains (the old room's west wall doors, same ids; the Mountains' `hills` and `saddle` doors lead here: bake-mountains.js) */
     ctx.doors.push(Object.assign({ id: 'shasta', wall: 'free', x: r2(gx(0) + 1.75), z: R.out.shasta, face: 270, leaf: null, way: 'road', action: { room: MTN, at: 'hills' } }, DOORWORDS('MOUNT SHASTA', 'THE SHASTA ROAD · WEST INTO THE SNOW', 'The road climbs west out of the brush. Somewhere past the cattle grid it stops being dry.')));

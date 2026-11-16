@@ -8610,3 +8610,16 @@ tile sheet, graffiti.
 - `P` / `D` / `T` (a blocker on a square's middle, decor, a tree) leave a piece OUT when its square is not free and list it in the bake's log (`LEFT OUT`), where the old
   `put` / `dec` stop the bake.
 - Frame rate (cloud software GPU, frames a second over 20 s, measured last in the run): terrace 0.7 then 0.6 after the brush was thickened; Casino court 1.4 then 1.3.
+
+### PASS 4, THE NIGHT (live; seen on screen at hour 22.5 and by day, 14 views)
+(Belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES".) `hillsLights(ctx)` in N.js + two lines in the sign's own block + three lamps in `exports.build`.
+- THE LETTERS SHINE: each letter's plane carries `glow` 0.92 (drawn unlit, so it reads from the Casino court at night as it does by day), two floods at each letter's foot.
+- Warm windows on the three new houses (a pane a hand proud of the dark glass, `glow` 0.95; a `ring` of them round the Round House's drum), lamps at their doors.
+- Eight lamp standards on the Observatory's terrace (ONE drawn row on the level terrace), the pool's ring of light and two rail lamps, a lantern on the fire lookout,
+  the transmitter hut, the intake tower, the lot's shelter, the horse shed; a red point on the Peak's pillar.
+- REAL LIGHTS kept few: three more of the city's lamp posts (`ctx.lamps`, `d: 'N'`): the terrace's west way in, the Hikers' Lot, the Villa's drive (18 in the district).
+  Everything else is `glow` on drawn parts: no cost. The props that carry their own light: two flood masts, the fountain, the A-Frame's fire, the house lamps inside.
+- A PROBE AT NIGHT: a view's eval `window._hqClockHour = function () { return 22.5; }` (then `"settle": 6000`); back to day the same way with 13.
+- NOT DONE: air (dust, embers over the Burn, fireflies). The city's room has no `shell.atmos`; a zone's particles are born at the room's floor, and the Hills stand 26 to
+  45 m over it. It needs the tool's row (a zone with its own ground height): listed for mondo, not built.
+- Frame rate (same measure): terrace 0.7, Casino court 1.1 (1.3 to 1.4 before this pass; the run was still loading 87 files when it was measured).
