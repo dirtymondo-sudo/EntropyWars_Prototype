@@ -73646,6 +73646,25 @@ const ThreeRenderer = (function () {
             W[S0.kind] = (W[S0.kind] || 0) + (1 - t); if (t > 0) W[c.kind] = (W[c.kind] || 0) + t;
             return W;
         };
+        /* THE REAL LAND PAST THE EDGE (2026-11-15, mondo: "is the bad looking fake mountain weenie still there in disaster city? ... shouldn't these
+           mountains replace that?"): a side may say `land: { room, x, y }` = the land past it is ANOTHER ROOM'S OWN GROUND, not made-up hills. That
+           room's height field (terrain.slope.cells) lies with its far edge on this side's line, shifted `x` along it and `y` up; its paint says rock,
+           grass or sand. Past that room's own depth the old range goes on from its back edge. North side only (the city under the Hollywood Hills). */
+        var LAND = (function () {
+            try {
+                var q = sd('n').land; if (!q || !q.room || (typeof window !== 'undefined' && window.EW_HQ_NO_REAL_LAND)) return null;
+                var or = DOOR_HQ.rooms[q.room], sc = or && or.terrain && or.terrain.slope && or.terrain.slope.cells; if (!sc || !sc.d) return null;
+                var bin = atob(sc.d), nx = sc.nx, nz = sc.nz, Hh = new Float32Array((nx + 1) * (nz + 1));
+                var rd = function (ci, k) { var o = (ci * 4 + k) * 2, v = bin.charCodeAt(o) | (bin.charCodeAt(o + 1) << 8); return (v > 32767 ? v - 65536 : v) / 100; };
+                for (var j = 0; j <= nz; j++) for (var i = 0; i <= nx; i++) { var ci = Math.min(nz - 1, j) * nx + Math.min(nx - 1, i), k = (i === nx ? 1 : 0) + (j === nz ? 2 : 0); Hh[j * (nx + 1) + i] = rd(ci, k); }
+                var pt = or.terrain.paint, pd = (pt && pt.d && pt.nx === nx && pt.nz === nz) ? atob(pt.d) : null, pal = (pt && pt.pal) || [];
+                var cls = function (i, j) { if (!pd) return 'grass'; var v = pd.charCodeAt(j * nx + i), key = v ? String(pal[v - 1] || '') : ''; return /rock|cliff|stone|obsidian/.test(key) ? 'rock' : /desert|sand/.test(key) ? 'desert' : 'grass'; };
+                return { res: sc.res, x0: sc.x0 + (+q.x || 0), z0: sc.z0, nx: nx, nz: nz, w: nx * sc.res, dep: nz * sc.res, y: +q.y || 0, back: (q.back != null) ? +q.back : 1,
+                    h: function (lx, lz) { var fx = Math.max(0, Math.min(nx - 1e-4, lx / sc.res)), fz = Math.max(0, Math.min(nz - 1e-4, lz / sc.res)), i = fx | 0, j = fz | 0, u = fx - i, v = fz - j, a = j * (nx + 1) + i;
+                        return (Hh[a] * (1 - u) + Hh[a + 1] * u) * (1 - v) + (Hh[a + nx + 1] * (1 - u) + Hh[a + nx + 2] * u) * v; },
+                    k: function (lx, lz) { return cls(Math.max(0, Math.min(nx - 1, (lx / sc.res) | 0)), Math.max(0, Math.min(nz - 1, (lz / sc.res) | 0))); } };
+            } catch (e) { return null; }
+        })();
         var gCache = new Map();
         var groundAt = function (cx, cz) {
             var gk = Math.round(cx * 50) * 100003 + Math.round(cz * 50), hit = gCache.get(gk); if (hit !== undefined) return hit;
@@ -73667,15 +73686,25 @@ const ThreeRenderer = (function () {
             var eHi = eH;
             if (d > 0.01) { var st = 3.6; if (ez <= 1e-6 || ex > ez) eHi = Math.max(eH, groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz - st))), groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz + st)))); else eHi = Math.max(eH, groundAt(Math.max(R.x0, Math.min(R.x1, cx - st)), cz), groundAt(Math.max(R.x0, Math.min(R.x1, cx + st)), cz)); }
             var e2 = eH + (eHi - eH) * sm(d / 1.2);
-            var y = 0, lift = liftUp - liftDn;   // tucked under the field at the line, over it a step out
+            var y = 0, lift = liftUp - liftDn, landK = null;   // tucked under the field at the line, over it a step out
             if (W.mountain > 0) {
                 var rg = 1 - Math.abs(2 * _hqEdgeFbm(x / 190 + 3.1, z / 190 + 1.7) - 1), rg2 = 1 - Math.abs(2 * _hqEdgeFbm(x / 70 + 9, z / 70 + 4) - 1);
-                y += W.mountain * (e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift);
+                var yM = e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift;
+                if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
+                if (LAND && z < R.z0) {   // THE REAL LAND PAST THE EDGE: the other room's ground from the line out to its own back edge, the range on behind it
+                    var lx = x - LAND.x0, inX = sm(Math.min(lx, LAND.w - lx) / 30 + 0.02), yL;
+                    if (lx > -1 && lx < LAND.w + 1 && inX > 0) {
+                        if (ez <= LAND.dep) { var hl = LAND.h(lx, LAND.dep - ez) + LAND.y, kl = sm(ez / 22); yL = (e2 + lift) * (1 - kl) + hl * kl; if (ez > 6) landK = LAND.k(lx, LAND.dep - ez); }
+                        else { var d2 = ez - LAND.dep; yL = LAND.h(lx, 0) + LAND.y + LAND.back * (30 * sm(d2 / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d2 - 10) / 150) * (1 - 0.8 * sm((d2 - 330) / 420))); }   // `back` = how much of the old range still stands behind the real land (the city: 0.35, a low dry ridge, so the Hills are the skyline)
+                        yM = yM * (1 - inX) + yL * inX; if (inX < 0.5) landK = null;
+                    }
+                }
+                y += W.mountain * yM;
             }
             if (W.forest > 0) { var kf = sm(d / 16); y += W.forest * Math.max(e2 + lift + 6 * _hqEdgeFbm(x / 55, z / 55) * kf - e2 * 0.12 * sm((d - 90) / 200), 0.7 * kf); }
             if (W.desert > 0) { var kd = sm(d / 10), ditch = sm((d - 2.5) / 1.5) * (1 - sm((d - 6) / 1.5)); y += W.desert * ((e2 + lift) * (1 - kd) + 0.9 * kd - 1.1 * ditch); }
             if (W.coast > 0) { var kc = sm((d - 1) / 9); y += W.coast * ((e2 - liftDn) * (1 - kc) + Math.min(e2, seaY - 2.6) * kc); }   // (no lift: a sea bed never rises past the field)
-            return { y: y, W: W, d: d, eH: eH };
+            return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null };
         };
         return { R: R, at: at, seaY: seaY, reach: +E.reach || 440 };
     }
@@ -73711,6 +73740,7 @@ const ThreeRenderer = (function () {
         };
         var colOf = function (P) {   // the vertex tint by kind (the sheet's own colour is 1)
             var W = P.W, c = [0, 0, 0], add = function (w, r, g, b) { c[0] += w * r; c[1] += w * g; c[2] += w * b; };
+            if (P.land === 'grass') return [0.86, 0.9, 0.8];
             add(W.mountain, 0.92, 0.9, 0.88); add(W.forest, 0.62, 0.74, 0.56); add(W.desert, 1, 0.96, 0.86); add(W.coast, 0.8, 0.74, 0.66);
             return c;
         };
@@ -73718,6 +73748,7 @@ const ThreeRenderer = (function () {
             var W = P.W, k = 'grass', b = W.forest;
             if (W.mountain > b) { k = 'rock'; b = W.mountain; } if (W.desert > b) { k = 'desert'; b = W.desert; } if (W.coast > b) { k = (P.y > F.seaY + 0.3 || (P.eH > F.seaY + 0.5 && P.d < 16)) ? 'cliff' : 'desert'; }   // a high edge falls to the sea as a rock cliff; the bed is sand
             if (k === 'rock' && P.y - P.eH > 150 + 30 * _hqEdgeNoise(x / 30, z / 30)) k = 'snow';
+            if (P.land) k = (P.y < F.seaY + 0.4 || (P.land === 'desert' && P.y < F.seaY + 4)) ? 'desert' : (P.land === 'desert' ? 'rock' : P.land);   // THE REAL LAND PAST THE EDGE: the other room's own rock / grass / sand
             return k;
         };
         var pieces = [];

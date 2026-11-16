@@ -4158,6 +4158,20 @@ be cliffs at the north edge which is the hills"; residents "don't worry about it
   The Vatican's and the Beach zone's plans (`docs/plans/world-zones/`) are not redrawn: Vatican = under Olympus, one step west; Beach = 24 more plots north
   along Entertainment, the cliffs its north edge. No encounter tables, no residents.
 
+## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
+
+mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
+It was still there (the made-up 175 m range with the sign on it). Now the land past the city's north line IS the Hollywood Hills room's own ground.
+- three-renderer.js `_hqEdgeLandFn`: a side may say `land: { room, x, y, back }` (north side only). That room's height field (`terrain.slope.cells`)
+  lies with its far edge on the line, shifted `x` along it; its paint says rock / grass / sand. Past the room's own depth, and beside its two ends,
+  `back` x the old range stands (the city: 0.35, a low ridge; no tall peak over the bay). Kill switch `window.EW_HQ_NO_REAL_LAND`.
+- bake-disaster-city.js `EDGES.n.land = { room: 'site_prebuilt_shasta_hills', x: 21, y: 0, back: 0.35 }`: the Hills' plot columns stand over the city's.
+  E.js `edges.sign` is `at 84, d 66.5, px 1.94`: the far letters stand where the room's own twelve stand. bake-mountains.js: the Hills' city door moved
+  one plot east (H08-02, x 84) so it stands over the city's mountain road (x 105); the Cove's door already stood over the boardwalk's end.
+- Seen on screen (playtest_city.js, three views from Entertainment and the north beach). To know: the far land is a coarse mesh (a row every 15 to 20 m
+  out there), so the Hills' small mounds are smoothed and its buildings, mast and trees are not drawn, only its ground and the sign. Rebake the city
+  after the Hills' ground changes? No: the land is read from the Hills room at load. The Hills room's OWN north edge still shows the old tall range.
+
 ## THE ESTATE ON PLOTS — the fifth area of the world plan, first delivery (2026-11-15)
 
 mondo 11-15, on plot plan 2 (`docs/plans/world-zones/estate_plot_plan.png`): "okay, those are all good" = the Estate is the next zone, the plan as

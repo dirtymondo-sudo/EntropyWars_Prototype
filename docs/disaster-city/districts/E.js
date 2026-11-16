@@ -937,4 +937,5 @@ module.exports = { build: function (api) {
    blocks = letters 14.7 m tall, 30 m up the north mountainside, over the city's east half (as near this district as the range reaches before it
    falls into the bay), three letters leaning or slipped. (bake-disaster-city.js merges a district's `edges` into the room's; three-renderer.js
    _hqBuildEdgeLand THE HILL SIGN builds it.) */
-edges: { sign: { side: 'n', at: 100, d: 30, text: 'DISASTER CITY', px: 2.1, lean: { 2: 0.1, 6: -0.08, 11: 0.12 }, drop: { 4: 2, 11: 1.4 } } } };
+/* (2026-11-15, THE REAL LAND PAST THE EDGE: the north land is the Hills room's own ground now, so the letters stand where the room's own twelve stand: its letters' row is 66.5 m past the line, centred on x 84, 13.6 m tall) */
+edges: { sign: { side: 'n', at: 84, d: 66.5, text: 'DISASTER CITY', px: 1.94, lean: { 2: 0.1, 6: -0.08, 11: 0.12 }, drop: { 4: 2, 11: 1.4 } } } };
