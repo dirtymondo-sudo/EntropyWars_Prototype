@@ -128,6 +128,11 @@ exports.dress = function (c) {
     c.put('astronomical_clock', 'P03-05', 4, 6.6, { face: 0 }); c.put('star_projector', 'P03-02', 7, 4);
     c.put('brass_orrery', 'P03-03', 8, 7, { y: 0.02 }); c.put('bird_cage', 'P03-03', 9, 4); c.put('fae_bloom_pink', 'P03-03', 3, 4);
     c.put('psx_door_2_loose', 'P03-00', 9, 4, { face: 300 }); c.put('giant_hourglass', 'P03-00', 3, 7.6, { face: 40 }); c.put('fae_bloom', 'P02-00', 3, 8); c.put('fae_bloom_violet', 'P02-00', 9, 3);
+    /* ── PASS 3 (atmosphere + polish): a lamp where every island's walks meet (a globe that glows; no real light, the frame rate), clouds
+       and orbs hung in the gaps, small lights along the long walks ── */
+    c.plots.forEach((p, i) => { if (p.id === 'P02-02') return; c.put('globe_lamp', p.id, i % 2 ? 4.4 : 7.6, i % 3 ? 4.4 : 7.6); });
+    [['P02-00', 4.4, 9], ['P03-00', 7.6, 9], ['P02-01', 4.4, 2], ['P03-01', 4.4, 9], ['P02-03', 7.6, 2], ['P03-03', 4.4, 9.4], ['P02-04', 7.6, 9.6], ['P03-04', 7.6, 2], ['P01-05', 4.4, 2], ['P00-05', 9, 4.4], ['P04-00', 4.4, 4.4], ['P05-00', 7.6, 7.6]].forEach(q => c.dec('mushroom_lamp', q[0], q[1], q[2]));
+    [['P02-00', 0.2, 6, 5], ['P03-01', 0.4, 0.4, 7], ['P02-03', 11.7, 6, 4], ['P03-03', 0.3, 11.6, 6], ['P02-05', 11.6, 0.4, 5], ['P03-05', 0.3, 6, 3], ['P00-05', 6, 0.3, 4], ['P05-00', 6, 11.7, 5]].forEach(q => c.at('white_cloud', q[0], q[1], q[2], { y: c.base(q[0]) - q[3] }));
     /* clouds under the Sea's islands, hung in the sky between them */
     [['P02-01', 0.3, 11.5, 4], ['P03-03', 11.6, 0.4, 5], ['P02-04', 11.5, 11.5, 3], ['P01-05', 0.3, 0.3, 4], ['P04-00', 0.2, 11.4, 6], ['P03-00', 11.7, 11.6, 3]].forEach(q => c.at('white_cloud', q[0], q[1], q[2], { y: c.base(q[0]) - q[3] }));
 };
@@ -142,6 +147,16 @@ exports.people = function (c) {
     /* the visitors of the first plan (no lines yet: no invented words) */
     c.native('glitch', 'P02-03', 8, 7, 200); c.native('machine elves', 'P02-01', 8, 4, 220); c.native('occulus', 'P03-05', 5, 7, 0);
     c.native('orb of light', 'P03-01', 4, 8, 60); c.native('voidweaver', 'P03-04', 8, 4, 250);
+    /* pass 3, more people (mondo 11-16: "There need to be more NPCs"): units whose own biome is the astral (data.js race biomes), no lines yet */
+    c.native('rabbit', 'P03-00', 4, 4.4, 160); c.native('chess piece', 'P03-00', 8, 7.6, 200); c.native('mushroom girl', 'P01-05', 4, 4.4, 90); c.native('cosmic wraith', 'P03-05', 7.6, 7, 0);
+    c.native('fairy', 'P03-04', 7.6, 7.6, 300); c.native('telepath', 'P02-04', 7.6, 7.6, 300); c.native('watcher', 'P04-00', 7.6, 4.4, 200);
 };
 
-exports.airZones = function (c) { return []; };
+/* THE AIR (pass 3): the realm's violet motes everywhere (the tool's last zone); over the temple and the Still Water fireflies in cyan, over the
+   coral garden pink spores, over the Far Shore a slow white dust like sea mist */
+exports.airZones = function (c) { return [
+    { sx0: 36, sy0: 12, sx1: 48, sy1: 24, kind: 'fireflies', color: 0x9fe8ff, n: 60 },
+    { sx0: 36, sy0: 48, sx1: 48, sy1: 60, kind: 'fireflies', color: 0x9fe8ff, n: 40 },
+    { sx0: 24, sy0: 36, sx1: 36, sy1: 48, kind: 'spores', color: 0xff9ee0, n: 60 },
+    { sx0: 0, sy0: 60, sx1: 24, sy1: 72, kind: 'dust', color: 0xffffff, n: 50, speed: 0.25 },
+]; };

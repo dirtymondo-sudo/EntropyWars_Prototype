@@ -34,13 +34,11 @@
        (arch parts cannot be translucent; `light_shaft` is drawn by code and draws nothing). One pass left: polish. Then STOP.
      - PASS 5 OF 5, THE POLISH (11-16): an eye-level walk of 17 stops; one fix (two severed limbs stood upright in the snow: taken out). FIVE PASSES SPENT:
        THIS DISTRICT IS STOPPED until mondo has seen it (docs/plans/DISTRICT_THREAD_BRIEF.md). What a next thread would do: areas-complexes.md "THE REDWOOD TRAIL".
-     - NEEDS A MODEL (nothing stands in for these): a snow ground sheet; a fallen giant redwood trunk (the pack's `fallen_log` is 2 m);
-       stepping stones a person can see (the graveyard pack's are a hand wide); a bat (the game's bats are drawn by code); a river fish; green bushes, moss, reeds;
-       icicles; deer / bear / owl; a lookout, a lean-to, a rope bridge; a trail sign with words; a bark sheet and a snow sheet; a lit candle (flame).
-     - The two Creek plots hold almost nothing of their own.
-     - Seen in the probe, do not bring back: the thorn vine model (a toothed man-eater on a mound) is wrong for this wood, and the ocean
-       pack's rocks draw as black blocks in this room (the boulders are cave_stone).
-     - The trees are closed ("Good, keep them"): do not change tree kinds unasked.
+     - THE MODEL PASS (11-16, on top of the five; mondo: "use these ones"): placed from docs/plans/WISHLIST_MODELS_ADDED.md: `fallen_redwood`, `stepping_stones`, `river_fish`,
+       `leafy_bush`, `moss_clump`, `reeds`, `icicles`, `deer`, `bear`, `owl_perched`, `timber_lookout`, `lean_to`, `trail_sign`, `lit_candle`, and from the rest of the list
+       `snow_heap`, `ice_block`, `reindeer`, `backpack`, `sleeping_bag`, `fishing_rod`, `firewood_stack`, `prayer_flags`, `wild_flowers`, `carved_totem_pole`, `lake_rock`,
+       `snowshoes`, `ice_axe`, `snow_sled`. NOT PLACED: `rope_bridge` (no gap in this district for a 7 m span). STOPPED again, waits mondo's look.
+     - STILL NEEDS (not models, so not on the wish list): a snow ground sheet, a bark sheet, light shafts, sound.
 
    THE HOOKS (bake-woods.js "THE DISTRICT FILES" calls them; each one is optional):
      tailor(ctx)                          before the levels are read: change this district's squares in ctx.cell[cy][cx]
@@ -178,7 +176,7 @@ module.exports = {
            camp; the animal pack's wolves, rabbits and an anthill; the Christmas pack's snowman on the Snowline. Skipped on purpose: the bats (drawn by code, no model),
            the caterpillar (a 2 m Meshy piece), the Halloween and graveyard packs' trees (the tree kinds are closed). */
         { const { life, props } = ctx, sx = gc(32), sz = gc(28);
-          [[-4.6, 0.3, 1], [-2.9, -0.4, 2], [-1.2, 0.2, 1], [0.6, -0.3, 2], [2.3, 0.3, 1], [4.0, -0.2, 2]].forEach(q => props.push({ key: 'psxg_stepping_stone_' + q[2], x: r2(sx + q[0]), z: r2(sz + q[1]), face: Math.round(rnd() * 360) }));
+          /* (the graveyard pack's hand-wide stepping stones stood here: out, the model pass laid `stepping_stones`) */
           hdec('P02-01', 'psx_flashlight_1', 0, 0); hdec('P02-01', 'psx_hand_saw_1', -1, 0); hdec('P02-01', 'psx_knife_mp_1', 1, -1); hdec('P02-01', 'psx_meat_1', 0, 1);
           hdec('P00-00', 'hw_body', 1, 2, { face: 70 }); hdec('P00-00', 'hw_part_3', -2, 2); hdec('P00-00', 'hw_part_6', 2, 0); hdec('P00-00', 'psx_meat_1', -1, 3); hput('P00-00', 'xmas_snowman', 3, 3, { face: 135 });
           hput('P01-00', 'hw_stone_3', -3, 2); hput('P01-00', 'hw_stone', 3, 1); hdec('P01-00', 'hw_shovel', 2, 3); hdec('P01-00', 'hw_part_6', 1, 2);
@@ -189,17 +187,22 @@ module.exports = {
               ground only, sharing squares (a blocker snaps to its square's middle and claims it). ── */
         { const { centre, props, life, fly } = ctx, open = (cx, cy) => cx >= 0 && cy >= 0 && cx < 36 && cy < 36 && /[gsr]/.test(cell[cy][cx]);
           const at = (id, key, dx, dz, o, blk) => { const c = centre(id), x = gc(c[0]) + dx, z = gc(c[1]) + dz, cx = Math.floor((x + 126) / 3.5), cy = Math.floor((z + 126) / 3.5);
-              if (!open(cx, cy) || (blk && taken.has(cx + ':' + cy))) return false; if (blk) taken.add(cx + ':' + cy);
-              props.push(Object.assign({ key, x: blk ? gc(cx) : r2(x), z: blk ? gc(cy) : r2(z), face: Math.round(rnd() * 360) }, o || {})); return true; };
+              let sq = [cx, cy];
+              if (blk === 'find' && (!open(cx, cy) || taken.has(cx + ':' + cy))) {   /* THE MODEL PASS: a blocker whose square is full takes the plot's nearest free open square */
+                  const p0 = ctx.plot[id]; let best = null, bd = 1e9; for (let ly = 1; ly < 11; ly++) for (let lx = 1; lx < 11; lx++) { const qx = p0.x * 12 + lx, qy = p0.y * 12 + ly; if (!open(qx, qy) || taken.has(qx + ':' + qy)) continue; const d = Math.hypot(gc(qx) - x, gc(qy) - z); if (d < bd) { bd = d; best = [qx, qy]; } }
+                  if (!best) return false; sq = best; }
+              else if (!open(cx, cy) || (blk && taken.has(cx + ':' + cy))) return false;
+              if (blk) taken.add(sq[0] + ':' + sq[1]);
+              props.push(Object.assign({ key, x: blk ? gc(sq[0]) : r2(x), z: blk ? gc(sq[1]) : r2(z), face: Math.round(rnd() * 360) }, o || {})); return true; };
           /* THE SHELF: the crosses are a hill burial ground (graveyard + Halloween packs), a low stone wall on its south lip */
           [['psxg_tombstone_1', -5.2, 2.6], ['psxg_tombstone_2', 5.6, -1.2], ['psxg_tombstone_3', -8.4, -2.2], ['hw_grave_low', 8.6, 5.4], ['hw_stone_2', -1.6, -6.2], ['hw_stone_4', 9.4, -5.2], ['hw_stone_1', -10.2, 6.2]].forEach(q => at('P01-00', q[0], q[1], q[2], { face: 180 }, true));
           [[-5.2, 4.4], [5.6, 0.6], [-8.4, -0.4]].forEach(q => at('P01-00', 'psxg_dirt_grave', q[0], q[1], { face: 0 }));
-          [[2, 1.2, 'hw_candles'], [-3.9, 3.9, 'hw_candle'], [6.6, 1.0, 'hw_candle_2'], [-0.6, -4.9, 'hw_candles_2'], [1.4, 2.4, 'hw_part_7'], [-6.8, 1.2, 'psx_cross_1']].forEach(q => at('P01-00', q[2], q[0], q[1]));
+          [[2, 1.2, 'hw_candles'], [-3.9, 3.9, 'lit_candle'], [6.6, 1.0, 'lit_candle'], [-5.6, 3.4, 'lit_candle'], [5.2, -0.4, 'lit_candle'], [-0.6, -4.9, 'hw_candles_2'], [1.4, 2.4, 'hw_part_7'], [-6.8, 1.2, 'psx_cross_1']].forEach(q => at('P01-00', q[2], q[0], q[1]));
           for (let cx = 13; cx <= 20; cx++) if (open(cx, 8) && !taken.has(cx + ':8') && cx !== 16) { taken.add(cx + ':8'); props.push({ key: cx % 3 ? 'psxg_wall' : 'psxg_wall_pillar', x: gc(cx), z: gc(8), face: 0 }); }
           /* THE SNOWLINE: the yeti's kills in the snow, and drifts (low domes in the ice sheet; decor, off the squares' middles) */
           [['hw_body_rising', -6.4, 5.2, true], ['hw_body_2', 5.2, 7.4], ['hw_part_4', 8.2, 2.4], ['hw_part_9', -8.6, 1.4], ['psx_butcher_knife_mp_1', 4.6, 6.6], ['trap_chain_draped', 10.4, -3.0], ['psx_jerrycan_1', -9.6, 8.4], ['psx_walkie_talkie_1', 5.9, 8.1]].forEach(q => at('P00-00', q[0], q[1], q[2], null, q[3]));
           { const ox = gc(5), oz = gc(5), y0 = r2(ground(ox, oz)), parts = [];
-            for (let i = 0; i < 22; i++) { const cx = 1 + Math.floor(rnd() * 10), cy = 1 + Math.floor(rnd() * 10); if (cell[cy][cx] !== 's') continue; const x = gx(cx) + 0.6 + rnd() * 2.3, z = gx(cy) + 0.6 + rnd() * 2.3, r = 1.5 + rnd() * 1.9;
+            for (let i = 0; i < 10; i++) { const cx = 1 + Math.floor(rnd() * 10), cy = 1 + Math.floor(rnd() * 10); if (cell[cy][cx] !== 's') continue; const x = gx(cx) + 0.6 + rnd() * 2.3, z = gx(cy) + 0.6 + rnd() * 2.3, r = 1.5 + rnd() * 1.9;
                 parts.push({ s: 'dome', p: [r2(x - ox), r2(ground(x, z) - y0 - 0.12), r2(z - oz)], r: r2(r), rz: r2(r * (0.6 + rnd() * 0.5)), h: r2(0.35 + rnd() * 0.45), seg: 10, rings: 3, key: SNOW, tint: T_SNOW, gain: 1.7, uv: [3.5, 3.5] }); }
             features.push({ k: 'arch', id: 'woods:T:drifts', x: ox, z: oz, y: y0, parts }); }
           /* THE OLD TREES: watchers between the trunks, webs and a chrysalis hung at head height, a hunter's trap by the bigfoot's trees */
@@ -212,11 +215,35 @@ module.exports = {
             ['psx_old_mattress_mp_1', -7.4, 6.6], ['psx_open_book_mp_1', 1.2, 6.8], ['psx_tin_can_mp_1_rusty', 6.4, -2.2], ['psx_supply_crate_1', -6.4, -4.4], ['psx_wooden_crate_6', 7.6, 6.2]].forEach(q => at('P01-01', q[0], q[1], q[2]));
           ['butterfly', 'monarch', 'blue_morpho', 'bee'].forEach((k2, i) => fly('P01-01', k2, 0.8 + (i % 3) * 0.4)); life('P01-01', 'ladybug'); life('P01-01', 'grasshopper_brown'); life('P00-01', 'ant_leaf'); life('P00-02', 'caterpillar_bug');
           /* THE TRAIL: the candle ring is the Halloween pack's candles now (the old piece was drawn by code), more candles round it, picket panels at the join */
-          for (let i = 0; i < 7; i++) { const a = i / 7 * 6.2832; at('P01-02', i % 2 ? 'hw_candle' : 'hw_candle_2', Math.cos(a) * 1.5, Math.sin(a) * 1.5); }
+          for (let i = 0; i < 7; i++) { const a = i / 7 * 6.2832; at('P01-02', 'lit_candle', Math.cos(a) * 1.5, Math.sin(a) * 1.5); }
           at('P01-02', 'hw_fence', 5.4, 2.0, { face: 90 }, true); at('P01-02', 'hw_fence', -5.4, 2.0, { face: 90 }, true); at('P01-02', 'psx_cross_mp_2', 0.4, 0.5); at('P01-02', 'hw_part_7', -0.7, -0.4);
           /* PASS 4 OF 5, THE LIT PIECES (drawn glow, no light: the room's ten real lights are the torches and fires): the pack's lantern on the trail's edge at each join (every one `noLight`) */
           { /* SEEN IN THE PROBE, TAKEN OUT: flames built from glowing boxes stood beside the pack's candles and read as pale blocks; a lit candle needs a model */
             [['P01-02', 4.4, -3.2], ['P02-02', -3.6, 3.0], ['P00-02', 3.2, -4.4], ['P01-01', 9.4, -2.6], ['P01-00', -4.4, 8.2], ['P00-00', 7.4, -7.2], ['P00-01', -5.6, 7.4]].forEach(q => at(q[0], 'railway_lantern', q[1], q[2], { noLight: true })); }
+          /* ── THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md). The district's NEEDS A
+                MODEL list, placed; the stand-ins they replace are out (the hand-wide stepping stones, the unlit pack candles of the ring and the burial ground,
+                half the code-built snow drifts). A blocker snaps to its square's middle; animals stand still, off every path. ── */
+          { const hand = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z) }, o || {}));
+            /* the Old Trees: the fallen giant along the south edge of the giant's glade, moss and an owl on a stump, a bear between the trunks, a deer */
+            hand('fallen_redwood', gx(7) + 1.75, gc(21), { face: 0 }); [5, 6, 7, 8, 9].forEach(cx => taken.add(cx + ':21'));
+            at('P00-01', 'owl_perched', -6.2, -6.0, { face: 150 }, 'find'); at('P00-01', 'bear', 6.6, -6.4, { face: 230 }, 'find'); at('P00-02', 'deer', 3.6, -2.0, { face: 40 }, 'find'); at('P00-02', 'owl_perched', -3.4, 2.8, { face: 20 }, 'find');
+            sow('moss_clump', 8, [7, 20], 12, { r0: 0.3 });   /* THE WISH-LIST MODELS ARE HEAVY (3 to 4 MB a file): eight, not forty (the Falls view fell from 1.2 to 0.2 frames with the first cut) */
+            /* the creek: real stepping stones across the lower glade's water, reeds on the banks and round the Falls' pool, trout by the bucket, the rod, the bag */
+            hand('stepping_stones', gc(32) + 0.4, gc(28), { face: 0, y: 0.45 }); hand('stepping_stones', gc(32) + 3.2, gc(28) + 0.3, { face: 8, y: 0.45 });
+            [[-8.4, 0.4], [8.3, 0.6]].forEach(q => hand('reeds', gc(32) + q[0], gc(3) + q[1], { face: Math.round(rnd() * 360) }));
+            [[20, 1.9], [27, 2.1]].forEach(q => hand('reeds', gc(32) + q[1] + (q[0] > 22 ? -1.75 : 1.2), gc(q[0]), { face: Math.round(rnd() * 360) }));
+            at('P02-01', 'fishing_rod', 3.6, -1.2, { face: 90 }, 'find'); at('P02-01', 'sleeping_bag', -2.6, -0.8, { face: 30 }); at('P02-01', 'backpack', -3.4, 1.2, null, 'find'); at('P02-01', 'river_fish', 1.3, 0.3); at('P02-01', 'river_fish', 1.6, 0.5);
+            at('P02-02', 'trail_sign', -3.6, -1.2, { face: 180 }, 'find'); at('P01-01', 'lean_to', -11.4, 2.6, { face: 90 }, 'find'); at('P01-01', 'firewood_stack', -9.6, -3.4, { face: 0 }, 'find');   /* the Creek's glades are full: the shelter and the wood stand at the Meadow's camp */ at('P02-02', 'lake_rock', 5.2, 1.6, null, 'find');
+            /* the Meadow: flowers in the grass, bushes on its edge, prayer flags and a totem pole at the camp, a deer at the far edge */
+            sow('wild_flowers', 8, [18, 18], 11, { r0: 0.3 }); [[-12.2, -8.6], [12.4, -9.2], [-13.4, 7.2]].forEach(q => at('P01-01', 'leafy_bush', q[0], q[1], null, 'find'));
+            at('P01-01', 'prayer_flags', -6.4, 7.8, { face: 20 }); at('P01-01', 'carved_totem_pole', 9.6, 4.2, { face: 250 }, 'find'); at('P01-01', 'deer', -10.6, -11.4, { face: 110 }, 'find'); at('P01-01', 'sleeping_bag', 1.8, 8.6, { face: 80 }); at('P01-02', 'trail_sign', 6.2, -1.6, { face: 180 }, 'find');
+            /* the Shelf: the lookout on its south-west corner, a trail board by the adit; the Snowline: snow heaps, ice blocks, icicles on the flank, a reindeer,
+               the climbers' gear by the kills */
+            at('P01-00', 'timber_lookout', -9.8, 9.6, { face: 0 }, 'find'); at('P01-00', 'trail_sign', 12.4, -9.6, { face: 180 }, 'find'); at('P01-00', 'backpack', -8.2, 8.6, null, 'find');
+            [[-9.4, -3.2], [6.6, -8.4], [10.2, 6.4], [-3.4, 9.6]].forEach(q => at('P00-00', 'snow_heap', q[0], q[1], null, 'find'));
+            at('P00-00', 'ice_block', 10.6, -9.4, null, 'find'); at('P00-00', 'ice_block', -6.6, 10.8, { face: 70 }, 'find'); at('P00-00', 'reindeer', 9.2, 9.6, { face: 300 }, 'find');
+            at('P00-00', 'snowshoes', 6.2, 8.4); at('P00-00', 'ice_axe', 4.1, 7.2); at('P00-00', 'snow_sled', -7.6, 7.2, { face: 40 }); at('P00-00', 'backpack', 5.4, 9.2, null, 'find');
+            [3, 7].forEach((cy, i) => hand('icicles', gx(1) + 0.3, gc(cy), { face: 90, y: cy < 5 ? 5.2 : 3.6 })); hand('icicles', gc(21), gx(2) - 0.2, { face: 0, y: 3.2 }); }
           /* THE CREEK: the camp's dog, cooler, cans */
           at('P02-01', 'dog', 2.4, 1.6); at('P02-01', 'beach_cooler', -1.4, 2.6); at('P02-01', 'psx_canned_food_mp_2', -0.6, 2.2); at('P02-01', 'psx_canned_food_mp_5_rusty', 0.8, -2.4); at('P02-01', 'psx_metal_barrel_mp_1', -4.4, -3.2); at('P02-01', 'psx_lighter_mp_1', 0.3, 1.1);
           at('P02-02', 'psx_supply_crate_1_empty', 2.6, 1.2); at('P02-02', 'psx_tin_can_mp_1_rusty', -1.2, 2.2); at('P02-02', 'psx_bandage_mp_1', 1.4, -0.6); }
