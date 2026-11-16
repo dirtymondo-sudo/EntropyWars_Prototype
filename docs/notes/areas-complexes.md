@@ -12436,7 +12436,7 @@ zone only (the wall round the whole world is an idea he has not approved).
   Opening, to the Inner Sun). Only Antarctica's own ends moved; the far rooms' doors follow their link. hqWorldGraph: all four resolve
   both ways. The tool refuses to bake when one of the five hand-written rows drifts (it prints them).
 - **RETIRED:** `site_prebuilt_antarctica_station` -> the new room (`DOOR_HQ.retired`). It has no literal (the room is made from its site
-  row `HQ_SITE_PARTS`-style at data.js "prebuilt_antarctica: { plazaR: 11 ..."), stays in the data as the PvP board's source
+  row in data.js, the one that starts `prebuilt_antarctica: { plazaR: 11`), stays in the data as the PvP board's source
   (`HQ_ARENA_RULES.picks`), and has no door any more. NEW hub `antarctica` (the zone had none): the map groups it, the healing zone
   stands 2.2 m ahead of the spawn.
 - **WHO IS THERE (10):** the old Station's Yeti and two Men in Black with their own lines (the Yeti at the wall's west foot, "The 1947
@@ -12565,3 +12565,27 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
   the rock is square blocks 3.5 m wide (no cave-rock model exists: NEEDS A MODEL); H and A are a first build only (their rows on the
   board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
 
+
+## ANTARCTICA, DISTRICT S — THE STATION, the pilot (2026-11-16, second side; file `docs/areas/antarctica/districts/S.js`, 8 plots)
+
+The zone's pilot (ZONE_THREAD_BRIEF step 7). Proof view for the frame rate: the Station Yard looking north, x -17.5 z 78.75 y 7, face 0.
+
+### THE FIRST LOOK (the first build, three probe runs)
+Seven barrel-roofed huts on bare timber pads, a mast, a drill rig, three silos, a line of flags; the wall and the range stand over all of it
+from the yard. Thin: every hut the same shape, two of them the same red, nothing between the pads, every inside empty. 1.0 to 1.3 FPS.
+
+### PASS 1, THE EXTERIORS (seen in the cloud browser, 8 views; live)
+- **Every hut its own** (S.js `hut(ctx, id, squares, tint, name, x)`): BUNK HUT (orange, a cold porch, two stove pipes) · MESS HUT (red, porch, the
+  galley's stack, two roof vents) · RADIO (green, an aerial with two cross arms) · GARAGE (yellow, wide and low, two painted roller doors, an apron
+  lamp) · CORE STORE (blue, porch, two core tubes stood by the door) · POWER (steel, two exhaust stacks, louvres, a hazard plate) · BALLOON SHED
+  (orange, the tall one, a gas-bottle rack on its wall). All: a timber sill, lit panes on three walls, snow on the roof's crown, a drift
+  against the back and west walls, a stencil name board.
+- **The landmarks:** the RADIO MAST (30 m, red and white bands, two red lamps, three stay anchors): seen from the shelf, the yard and the
+  crevasse · the RADOME beside the radio hut (a `dome` part on a steel drum) · the DRILL RIG (an 11 m derrick, the string, the winch, a core
+  on its rack).
+- **Between the pads:** the fuel line on trestles from the tanks to the power hut, hand lines (rope on posts) along the cross track, the
+  yard's board (THE STATION · 90 S: the old room's own words), the flag line.
+- FOUND AND FIXED: `a.roof` adds an under-sheet, so the snow crown stood out of the roof as a grey plate (pushed raw now); the orange sheet
+  read brown (a lighter tint, `gain` 2.0); the power hut's louvres lay across its door; a weather mast stood in front of the balloon shed's door.
+- FPS at the proof view: 1.1 (466 calls, 746 k triangles; first build 1.0 to 1.3 at 408 calls): no cost the software renderer can show.
+- NOT DONE in this pass: the insides (pass 2), the pads' dressing (pass 3), the night (pass 4).
