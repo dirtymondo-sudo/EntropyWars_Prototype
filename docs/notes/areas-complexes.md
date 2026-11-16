@@ -7161,6 +7161,14 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   `eval` of `window._hqClockHour = function () { return 22.5 }`. FIXED HERE: pass 3's stone, dead-bush and stump scatters are gone (a scatter lands ON a path: a
   knee-high stone stood in the Trail West). NOT POSSIBLE FROM A DISTRICT FILE: sound, light shafts, a darker sky or mist in the deep woods (the shell and the engine).
   A lit box with no `key` draws pale with a faint lined sheet (it reads as a paper lantern); `glow` lifts every tint toward white.
+- **PASS 5, THE POLISH (seen, 9 + 5 views, day and night) — THE LAST: the thread STOPPED here (his order: five passes).** The lanterns wear a glass sheet (a lit
+  box with no sheet drew as lined paper); the Old Tree's two toadstools are small (at 1.75 m they read as the Ritual Ground's); a cobweb inside the station drew
+  through its roof and is gone; the district file's header lists what stands on each plot now. SEEN, NOT MINE: a thin black column over the treeline north of the
+  camp = the Redwood Trail's 19.35 m `plateau` at x -75.25, z -75.25 (board note to that thread). FRAME RATE (cloud software GPU, `EW_PERF_LOW`, the view down the
+  Stair, 5 s count): 0.8 after pass 1, 1.2 after pass 2, 1.2 to 1.6 after pass 5 (the first-look run read 0.2 while files were still loading, so there is no clean
+  "before"); no pass cost a frame that this renderer can show. The room's block grew 204 KB -> 283 KB (about 330 arch parts and 330 props of this district).
+- **WHAT I WOULD DO NEXT (not started: a sixth pass is his call):** a picnic table and a van at the camp once models exist; a porch sign for the station once he
+  names it; light shafts and sound by plot (engine); the plots' own names in layout.json (the tool's row); a look at the weak PC's frame rate.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.
