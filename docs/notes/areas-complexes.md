@@ -5710,6 +5710,14 @@ and the city saw only a coarse far copy of them. Now they stand IN `site_prebuil
   the walker where B.js' boardwalk cut ends, 2 m north of the line), and the dead strip.
 - **FRAME RATE**: rendering-loading-perf.md "THE HILLS IN THE CITY'S ROOM" (cloud software GPU: looking north at the Hills 49 -> 33 frames in 30 s,
   looking south 19 -> 17; visible meshes +2 %). His F3 on the mountain road is the number that counts.
+- **ONE ROAD, ONE STREET SYSTEM (second pass, 11-16, mondo: "continue making it better and blend together more, natural part of the city")**: this
+  replaces THE ROADS line above. (1) The Hills' road squares are cut OUT of the Hills' ground zone (`zone.out`, 14 boxes N.js writes from its `Y`
+  squares; three-renderer.js `_hqTerrainTiles`): the city's own ground material draws them, so the asphalt is the same sheet, tint and light as the
+  street it runs on from. No seam on the line. (2) The roads are STREETS of the city's plan (N.js `exports.streets`, six runs; the tool lays a
+  district's `streets` into `gen.streets` last, so no lamp / bus / traffic rule reads them): lane lines, kerbs, crossings, covers and stains like
+  any city street (paint quads 1,256 -> 1,595, kerb 840 -> 974). The mountain road's line is carried from the Casino court to the canyon road.
+  (3) 16 of the city's lamp posts stand along them (every 28 m, alternate sides; `ctx.lamps` rows with `d: 'N'`; the tool's `LOOKS.N` = a warm
+  light, no banner). Seen on screen (HEAD of this PR): the foot of the road, the canyon road down to the Casino, the Shasta Road. No traffic yet.
 - **TO KNOW**: rock is not a wall in the city's room (`gen.allOpen`): only a face steeper than the walker climbs (slope over 1) stops him, so a
   crag's gentler top can be walked. Nobody lives in the Hills; no lamps, no traffic on the canyon road; the three buildings are still plain.
 ## DEAD MAN'S CAVE, THE RAVINE — the Woods' district M on mondo's own brief (2026-11-16, the pilot thread)
