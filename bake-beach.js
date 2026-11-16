@@ -182,6 +182,29 @@ const SP = [3, OY + 5];
 const under = (key, sx, sy, y, o) => { spot(sx, sy, key, 'sea', true); props.push(Object.assign({ key, x: r2(mx(sx) + (rnd() - 0.5) * 2), z: r2(mz(sy) + (rnd() - 0.5) * 2), y, hover: 0, face: Math.round(rnd() * 360) }, o || {})); };
 Object.assign(ctx, { OY, flat, spot, feat, building, put, look, sheet, P, dec, afloat, swimmer, under, palm, native, sayOf, O_SEA, O_HARB, U, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT, CORR, PAINT, MAEL, POOL, BAY, GANG, SP, SHIP, PIER_END, LIGHT });
 runStage('build');   // the huts and the lifeguard hut (S), the Quay shed (H), the tribe's shelters (O)
+/* ── THE CITY'S SIDE (2026-11-16, the tool row's holder; mondo's "yes" to fixing the west edge: past it the room showed open sea where Disaster
+   City stands). DRAWN ONLY, past the room's west line (the walker never gets there): the city's SEA WALL with its white rail, open at the city
+   door, and BAYSIDE's front behind it on the edge land (`terrain.edges.w`): eleven pastel blocks in Bayside's own way (districts/B.js: painted
+   plaster at gain 2.3, the pack's dark glass lit a little, white fins and slabs), the district's name in its own neon face on the tallest. One
+   arch row (about ten meshes). Its foot is typed 3 m under level 0 so no block floats wherever the land stands. ── */
+{ const PL1 = U('PlasterWallPainted1a'), GSQ = U('GlassWindowSquare1a'), CONC = U('ConcreteStriped2c'), WHITE = 0xffffff, GLASS = 0xb4e4ff;
+  const X0 = gx(0), Z0 = gz(14), Z1 = gz(106), ZD = gz(OY + 5.5), a = sheet(), B = (x, y, z, w, h, d, key, tint, o) => a.box(x, y, z, w, h, d, key, tint, o);
+  /* the row's frame: rot 270 = its +z looks EAST (to the beach), its +x runs NORTH; a spot's world z is -x here */
+  const along = wz => -(wz - (Z0 + Z1) / 2), LEN = Z1 - Z0, xd = along(ZD);
+  for (const sg of [-1, 1]) { const x0 = sg < 0 ? -LEN / 2 : xd + 4.2, x1 = sg < 0 ? xd - 4.2 : LEN / 2;           // the sea wall, open 8.4 m at the city door
+      B((x0 + x1) / 2, -3, 0, x1 - x0, 5.6, 1.4, CONC, 0xfff6e2, { uv: [3.5, 3.5], gain: 1.8 }); B((x0 + x1) / 2, 2.6, 0.45, x1 - x0, 0.12, 0.5, null, WHITE);
+      for (const y of [3.1, 3.55]) B((x0 + x1) / 2, y, 0.55, x1 - x0, 0.06, 0.06, null, WHITE);
+      a.P.push({ s: 'box', p: [r2(x0 + 0.6), 2.6, 0.55], size: [0.08, 1.0, 0.08], tint: WHITE, n: Math.max(2, Math.floor((x1 - x0) / 3.5)), step: [3.5, 0, 0] }); }
+  const BLD = [[0xffa590, 22, 18, 5], [0xa8ecd6, 28, 30, 8], [0xffe27a, 20, 14, 4], [0x7fdcec, 30, 40, 11], [0xffb4d0, 24, 22, 6], [0xf8dfae, 26, 16, 4], [0xd2bcf6, 22, 34, 9], [0xa8ecd6, 30, 20, 5], [0xffa590, 24, 28, 8], [0x7fdcec, 22, 16, 4], [0xffe27a, 28, 24, 7]];   // [paint, width, height, storeys]
+  const total = BLD.reduce((n, b) => n + b[1], 0), gap = (LEN - total) / (BLD.length - 1); let u = -LEN / 2;
+  BLD.forEach((b, i) => { const [tint, w, h, st] = b, cx = u + w / 2, zc = -26 - (i % 3) * 5, d = 16; u += w + gap;
+      B(cx, -3, zc, w, h + 3, d, PL1, tint, { gain: 2.9, uv: [3.5, 3.5] });   // (2.9: the room's faded look greys a pastel at Bayside's own 2.3, seen)
+      for (const sx of (w > 24 ? [-1, 0, 1] : [-1, 1])) a.P.push({ s: 'quad', p: [r2(cx + sx * w * (w > 24 ? 0.3 : 0.22)), 4.6, r2(zc + d / 2 + 0.06)], size: [r2(w * (w > 24 ? 0.2 : 0.3)), r2(h - 6.4)], key: GSQ, tint: GLASS, glow: 0.3, gain: 2.2, kind: 'wall' });   // glass in bays between painted piers, over a painted ground floor (never a whole glass front)
+      B(cx, 0, zc + d / 2 + 1.2, w * 0.5, 3.6, 2.4, null, WHITE, { top: true }); a.P.push({ s: 'quad', p: [r2(cx), 0.6, r2(zc + d / 2 + 2.42)], size: [r2(w * 0.4), 2.4], key: GSQ, tint: GLASS, glow: 0.4, gain: 2.2, kind: 'wall' });   // the white entrance porch, its lit doors
+      for (let k = 1; k < st; k++) B(cx, 1.2 + k * (h - 3.2) / st - 0.18, zc + d / 2 + 0.4, w - 1.6, 0.22, 0.9, null, WHITE);                  // the white balcony slabs
+      B(cx, h - 0.3, zc, w + 0.8, 0.5, d + 0.8, null, WHITE); for (const sx of [-1, 1]) B(cx + sx * (w / 2 - 0.5), 0, zc + d / 2 + 0.3, 0.7, h + 1.6, 0.6, null, WHITE);   // the cornice, the fins
+      if (i === 3) { B(cx, h + 0.2, zc + d / 2 - 1.3, 18.6, 4.2, 0.3, null, 0x24344e); a.sign('BAYSIDE', cx, h + 0.6, zc + d / 2 - 1.1, 17.6, 3.4, '#ff7a9a', '#24344e', 'monoton', { glow: 0.9 }); } });
+  ARCH.push({ k: 'arch', id: 'bch:bayside:look', x: r2(X0 - 1.2), z: r2((Z0 + Z1) / 2), y: 0, rot: 270, parts: a.P }); }
 runStage('place');   // each district's own things
 runStage('dress');   // THE DRESSING, district by district
 /* ── finish the heights (the buildings' flats are in) and check ── */
@@ -217,7 +240,10 @@ L.push("        " + ROOM + ": {");
 L.push("            label: 'THE BEACH',");
 L.push("            sub: 'THE SHORE · THE HARBOUR · THE OCEAN · THE BERMUDA TRIANGLE',");
 L.push("            kind: 'box', site: 'prebuilt_bermuda', part: 'beach',");
-L.push("            shell: hqSeaShell({ w: " + (2 * HW) + ", d: " + (2 * HD) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 } }),");
+/* THE BEACH'S OWN SKY + SAND (2026-11-16, the tool row's holder; seen on screen: the sea shell's `scenery: 'sea'` bodies drew as black outlines by
+   day and its `waterspout` landmark as a teal spindle over the Harbour): the sea shell's sky without its scenery
+   and landmark (the Estate's fix, THE CLEAN SKY). The sand stays his pale beach sheet (sprites.js SAND_BEACH, THE TWO SANDS). The old sea room keeps the shell as it was. */
+L.push("            shell: hqSeaShell({ w: " + (2 * HW) + ", d: " + (2 * HD) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, sky: Object.assign({}, hqSeaShell().sky, { scenery: 'none', landmarks: [] }) }),");
 L.push("            parti: 'Four districts on 140 plots, most of them water: a shore of sand off the city, a harbour with the Dutchman at the pier head, an ocean you sail, and a right triangle of sea with a lighthouse, an island and a hole at its corners.',");
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + GX + ", nz: " + GZ + ", triangle: " + J(LAYOUT.triangle.map(q => [gx(q[0]), gz(q[1])])) + ", names: " + J(PLAN.plots.filter(p => p.name).map(p => [p.id, p.name, p.d, p.level])) + " },");
@@ -226,6 +252,9 @@ L.push("                res: 1.75, floor: 'desert', cliff: 'rocks_5', path: 'woo
 L.push("                base: 0, noise: { amp: 0.06, scale: 9 }, crag: false,");
 L.push("                sea: { y: 0, key: 'water' },");
 L.push("                outer: { m: 60 },");
+/* THE EDGES (2026-11-16; seen: past the west line the room showed open sea where Disaster City stands): open sea north, east and south, land on
+   the west (three-renderer.js THE NATURAL EDGES) */
+L.push("                backdrop: false, edges: { reach: 300, n: { kind: 'coast' }, e: { kind: 'coast' }, s: { kind: 'coast' }, w: { kind: 'desert', cap: { kind: 'coast', at: 'n', off: 0, len: 42 } } },");
 L.push("                /* THE FLYING DUTCHMAN: the Dutchman map's own ship, drawn at her berth (three-renderer.js _hqBuildMoored) */");
 L.push("                moored: [" + J({ kind: 'galleon', room: SHIP_ROOM, x: SHIP_AT.x, z: SHIP_AT.z }) + "],");
 L.push("                /* THE HEIGHTS ARE THE MAP: sand, sea floor, the quay, the piers, rock, the ship's deck and the volcano are all this grid */");

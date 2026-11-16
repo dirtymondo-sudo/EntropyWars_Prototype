@@ -43,7 +43,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | The Mountains, district O: Mount Olympus (`districts/O.js`, 12 plots) | free | 2026-11-16 | Temple walk-in, thrones, Stadium, Colonnade; Amphitheatre / Terraces are names on flat marble; never seen on screen |
 | The Mountains, district S: Mount Shasta (`districts/S.js`, 20 plots) | free | 2026-11-16 | camps, steam vents, the spring, the trail down; no building at all; only Bunny Flat's west way seen in a probe |
 | The Mountains, district H: The Hollywood Hills (`districts/H.js`, 39 plots, room `site_prebuilt_shasta_hills`) | free | 2026-11-16 | the sign, Observatory, Hill House, Stilt House (plain, "fine for now"), reservoir, Cove; seen in a probe, waits mondo's look. Its ground is the city's north skyline: see the rules, point 8 |
-| The Beach, THE TOOL + SHARED PIECES (`bake-beach.js`, `docs/areas/beach/layout.json`: the height map, the sea, the paint, the Dutchman's berth + gangway, the `quay` door, the links' places, the west edge, the shell / sky, the checks) | free | 2026-11-16 | split into district files 11-16 (mondo: "every single zone needs to be like that. now. so we can work in parallel"); the bake is byte for byte the same. Nobody edits these without a note at the bottom of this board. Rules: areas-complexes.md "THE BEACH, THE DISTRICT FILES" |
+| The Beach, THE TOOL + SHARED PIECES (`bake-beach.js`, `docs/areas/beach/layout.json`: the height map, the sea, the paint, the Dutchman's berth + gangway, the `quay` door, the links' places, the west edge, the shell / sky, the checks) | free | 2026-11-16 | freed by the Shore pilot thread after its four shared items (11-16): the room has its own sky (no sea scenery, no waterspout), `terrain.edges` and a drawn sea wall + Bayside front past the west line (`bch:bayside:look`). Nobody edits these without a note at the bottom of this board. Rules: areas-complexes.md "THE BEACH, THE DISTRICT FILES" |
 | The Beach, district S The Shore (`docs/areas/beach/districts/S.js`, 14 plots) | second | 2026-11-16 | held by the Shore pilot thread (branch `claude/beach-shore-s`): all five passes live (exteriors, interiors, dressing, atmosphere, polish; #1577 #1590 #1594 #1606 + the polish PR), all seen on screen, waits mondo's look. What the next three district threads can use: areas-complexes.md "THE BEACH, THE ZONE KIT" |
 | The Beach, district H The Harbour (`docs/areas/beach/districts/H.js`, 8 plots) | free | 2026-11-16 | Quay + walk-in shed, Breakwater + light, Long Pier, skiff jetty, Channel buoys. Not seen since the Dutchman was berthed alongside (gangway, pier's new length, freight, shed inside); old Harbour's wharves / gantry / slipway not carried over; the Mouth and the Roads empty |
 | The Beach, district O The Ocean (`docs/areas/beach/districts/O.js`, 93 plots) | free | 2026-11-16 | open water + animals, the Volcano Island (cone, landing, 3 drawn shelters), 2 islets. Village never seen up close; tribe has no people or huts (models later); waterspout + whale plots not built; 85 plots empty water; frame rate never measured |
@@ -135,9 +135,16 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   Camelot zone kit, nothing existing changed: data.js `DOOR_HQ.catalogue.chimney_smoke` (one row, beside `hearth_fire`) and three-renderer.js
   `_hqProcBuilders.chimney_smoke` (one builder, right after `hearth_fire`): three grey sprites rising off a chimney's top. Any zone may place it
   (`{ key: 'chimney_smoke', x, z, y: <chimney top>, rise: 5 }`); a few a room, each is three meshes.
+<<<<<<< HEAD
+<<<<<<< HEAD
+- 2026-11-16 (second, the Shore pilot thread, to every Beach district thread): I hold the Beach's TOOL row now (mondo's "yes"). What changes in bake-beach.js: the room's shell (its own sky: no sea scenery, no waterspout landmark; a warmer sand), `terrain.edges` (open sea north, east, south; land on the west) and a drawn sea wall + Bayside skyline past the west line. No helper, hook, square letter, height rule, door or link moves. Rebake after merging main as always.
+=======
+=======
 - 2026-11-16 (second, the district N thread, to every Mountains thread and the tool's row): one small change to the shared tool, on mondo's word
   ("figure it out whatever fits" for the village's units): `bake-mountains.js` finish() writes a room's `encounters` row when a district file exports
   `encounters` (lists of a room's files are joined). No file but N.js exports one, so the Mountains and Hills rooms did not change. Also one row in
   three-renderer.js `HQ_SIGN_FONTS` (`xmas`, Mountains of Christmas) + its family in index.html's third font sheet: any district may use the id.
+>>>>>>> origin/main
 - 2026-11-16 (second, the Dead Man's Cave pilot, to every Woods thread): two more small tool lines in bake-woods.js: a district's `bare` box goes on the three room-wide
   scatter rows as `off` (nothing lands on M's concrete apron), and five of M's plot names changed in layout.json (plain names, mondo's rule in owner-rules.md §2). No row outside district M moved.
+>>>>>>> origin/main
