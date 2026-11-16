@@ -4589,6 +4589,11 @@ sheep, rocks, an eagle. Cloud Line + the Grand Stair's foot: eight clouds on the
 - A blocker that is only a look (a tower's leg): mark its square in `ctx.taken` and add `feat({ k: 'wall', ..., ghost: true, rail: false })` over it.
 - The probe and the board: `hq.skateIssued(true); hq.skate(true); dev.press('w', true)` rides; on the software GPU the game steps 1.4 times a second, so
   a ride goes nowhere. Swap `dev.renderer().render` for a no-op while it rides (probe-fast.js does the same during the load) and sample `dev.walk()`.
+- The weight of a prop is not in the catalogue. A Meshy file of about 2 MB is 100,000+ triangles (`coffee_mug`, `coffee_table`, `mini_fridge`, `hook_rail_long`,
+  `potted_plant`); the pack pieces are a few hundred to a few thousand. The Christmas pack's `xmas_snow_pine*` are 9,600 to 12,900 triangles a tree (the zone's
+  snow tree zones and the Black Run wear them); the retro trees (`pine`, `tree_2`, `tree_3`) are 600 to 900. Count a file: read the GLB's JSON chunk and sum
+  each primitive's index accessor `count / 3`.
+- Measure the frame rate on the LAST view of a probe run, after a 15 s view of the same place: the first seconds are before the models are in.
 - FPS in a probe: count requestAnimationFrame over 10 s at a fixed view and read `dev.renderer().info.render` (calls, triangles). The frame rate is the
   software GPU's (about 1.5): only good against the same view before the change.
 
@@ -4617,6 +4622,42 @@ list holds for the next passes, the models it needs. mondo 11-16: a second distr
     plywood `quarter_pipe` with real vert; a line of them steps down a slope).
   - Open for the next passes: each run ends on a building's back wall (nets and SLOW boards, pass 3); no tree lines or fences between the runs (pass 3);
     the insides (pass 2); night lights, the catalogue's `flood_mast` (pass 4).
+- **PASS 2, INTERIORS** (2 of 5; seen on screen, 8 views three times over). mondo's order of 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): no questions, five
+  passes, read all the lists first. The lists were read end to end (a helper read MODEL_LIST.md sections 6 to 13, the 1,860 catalogue rows, the sheets, the
+  pack claims): the FITS THIS DISTRICT shortlist is below.
+  - K.js `walkIn(id, plot, squares, h, opt, look, In)` builds a house and hands `In` its parts list, the building and `T` (`sq(i, j)` a square's middle,
+    `up(h)` a height over its floor for a prop's `y`, `on(key, i, j)`, `hang(key, x, z, h, face)` a wall piece, `solid(...)` a ghost wall). Helpers: `lit`
+    (the glowing lining + a dado + tie beams + skirting), `night` (a window from inside), `pendant`, `wheelLamp`, `counter`.
+  - The Lodge: the hearth is built stone (piers, head, breast, hearthstone, mantel) round the catalogue's `hearth_fire` (the one real light inside); the
+    bar is a built counter on squares (0..2, 1) with a back bar of 14 bottles; the first delivery's `mobius_bar` and the three 3.4 m `round_table`s (both
+    code-built stand-ins) made way for it and for four pack tables. The stone stack moved to x 8.75 (a square's middle).
+  - FPS (the probe's software GPU, measured AFTER the room's models are all in: a reading taken in the first seconds misses them and reads too well):
+    inside the Lodge 1.96 to 2.01 -> 1.30 to 1.56 (915 -> 1,000 draw calls, 1.31 M -> 1.25 M triangles); the Lodge Yard 1.62 -> 1.84. The inside costs
+    fill, not triangles (a second skin of walls, 150 more props). Won back on the way: five Meshy props of about 2 MB / 100,000+ triangles each were
+    taken out again (`coffee_mug`, `coffee_table`, `mini_fridge`, `hook_rail_long`, `potted_plant`: 2.1 M triangles with them), and no prop with a light
+    of its own but the Lodge's fire (two `ship_lantern`s + two small fires halved the frame rate).
+  - **FITS THIS DISTRICT** (catalogue keys; * = placed): inside: *psx_dinner_table_1, *psx_chair_mp_3, *psx_coffee_table_1, *psx_armchair_1, psx_sofa_1/3/4/5,
+    *chesterfield_sofa, *wingback_chair, rocking_chair, *bar_stool, *psx_glass_bottle_1/2, *xmas_champagne, *espresso_machine, *coffee_maker, *stock_pots,
+    kitchen_range, sink, steel_table, *painting_landscape, *painting_seascape, psx_painting_1, *arms_trophy, *wall_clock, *xmas_wreath, *xmas_garland,
+    xmas_stocking, *notice_board, chalkboard, *locker, *locker_bench, *scarf_rack, *footlocker, umbrella_stand, metro_bench, *form_counter (not used: the
+    counters are built), *cash_register, *key_rack, *brochure_rack, *sunglasses_spinner, *surfboard_rack, *surfboard_short/long/fish, *skateboard,
+    psx_shelf_mp_2..7, *tool_chest, *tool_pegboard, drill_press, psx_jerrycan_1, *radio_console, *field_radio, *gauge_board, *breaker_panel, *punch_clock,
+    *rotary_phone, *item_binoculars, *psx_walkie_talkie_1, retro_control_panel, signal_lever_frame, *hospital_bed, cot, psx_bandage_mp_1, *fire_extinguisher,
+    *map_table, *arcade_cabinet, *pinball_machine, *claw_machine, *jukebox, *air_hockey_table, *trophy_case, *chess_set_game, *xmas_tree, *xmas_gift*,
+    *rug_round, *rug_office, *psx_carpet_mp_1, *table_lamp, *railway_lantern. Lights: ship_lantern, bare_bulb, wall_torch, brazier, campfire, *hearth_fire,
+    flood_mast (the room shares TEN prop lights: HQ_PROP_LIGHT_MAX). Outside (passes 3 + 4): hw_fence, psxg_railing, hitching_rail, item_police_barricade,
+    traffic_barrel, traffic_cone, yellow_pole, rope_stanchion, turnstile, metro_gate, signpost, roads_g_sign_000..014, city_bench, metal_trash_can,
+    psx_wooden_crate_1..6, psx_metal_barrel_mp_0..3, wrapped_pallet, hand_truck, generator, cable_drum, car_ambulance, lifeguard_chair, camping_tent, wolf, dog,
+    eagle, rabbit, crow, psxg_rock_1..4, stump, fallen_log, pa_speaker, telescope, festoon, flood_mast, xmas_snowman*, sleigh, quarter_pipe, riser_*.
+    Sheets for built shapes: `urban:WoodCladding*`, `WoodBeams*`, `WoodPainted*`, `MetalRoofTiles*`, `MetalFenceChainlink*`, `Sign{Caution,Danger,Hazard}1a-f`,
+    `RubberNonSlip*`, `CarpetPattern*`; terrain keys `igloo` (snow blocks), `fur`, `leather`. Unwired R2 files that fit: none (section 13 is clips, creator
+    clothes and copies).
+  - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the chairlift stays a door pair with still chairs: chairs that move or carry the player are
+    a new mechanic, listed, not built. (2) The Half-Pipe stays two snow walls, not plywood quarter pipes (they would step down the slope and are code-built).
+    (3) The lift's gantry towers straddle the Big Jump, because the plan draws the lift over the jump. (4) The ferris cabins that stood in for chairs are
+    gone; `mobius_bar` and `round_table` left the Lodge for a built bar and pack tables. (5) One sign face for the district, `alfa`, cream on dark green;
+    the plain boards SKI LODGE, RENTALS, TOP STATION, BOOT ROOM. (6) No real lights inside but the fire, for the frame rate. (7) The Top Station is the
+    lift man's room with a first-aid bed (nobody had said what it holds).
 - To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
   x 21.4, z -59.3 (the probe, 11-16).
 
@@ -5153,6 +5194,28 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   crest, the old Harbour's `cave_stone` is a 2 m standing stone and a blocker on a walk two squares wide, so they are ten
   `psxg_rock_*` set by hand on the crest's sea side; two people moved to the wharf's rail and one off the Long Pier's walk.
   Frame rate, the quay view: 0.3 fps, 751 draw calls, 1.46 M triangles (first look: 0.8 fps, 895 calls, 2.30 M; the cloud's swing).
+- **STOPPED AFTER FIVE PASSES (DISTRICT_THREAD_BRIEF.md; the order reached this thread after its fifth pass was merged).** SIX PRs in
+  all: the five passes and THE MODEL LIST FINDS, which landed between pass 1 and pass 2 on mondo's own "look at the model list right
+  now". No sixth pass. The brief's end-to-end read of every list was NOT done as it asks: this thread searched MODEL_LIST.md by word,
+  read the pack sections that fit and opened six pack archives (the kit's FROM THE MODEL LIST).
+- **DECISIONS MADE FOR MONDO (overrule any in one line):**
+  1. GROUND THE PLAN DOES NOT DRAW: the quay runs east to the Breakwater's root, a strip behind it carries the wharf and its stair,
+     the Breakwater's head is 3 x 3 round the light. All on the Harbour's own plots; no layout.json or tool edit.
+  2. ONE WHARF, NOT THREE: the old Harbour had three wharves on a 180 m quay; this quay is 42 m, so one wharf (24.5 m), one stair,
+     and the gantry runs to the pier's north arm (the old one ran to the pier's T-head).
+  3. THE SHED IS RED (painted boards, white trim, tin roof). It was "tarred boards" and drew as a black box.
+  4. THE EIGHT `dockring` PROPS ARE OUT (a space-station ring, the wrong model); drawn bollards stand there.
+  5. HOUSES ON PILES are new scenery: one in the Roads, one in the Mouth, one off the skiff jetty (the pack's own stilt houses,
+     solid, nobody goes in). The plan names only buoys and waiting ships there.
+  6. NO SHIP IN THE ROADS: the ghost wreck is the Triangle's landmark and was not used a second time.
+  7. THE CRANE on the wharf is mondo's Babel scaffold crane (`babel_crane`).
+  8. THE GANGWAY is a drawn brow up to the Dutchman's rail at the tool's link place; the ship herself was not touched.
+  9. THE BREAKWATER'S BOULDERS are ten rocks set by hand on its sea side (the earlier scatter of ten put them on the walk).
+  10. EIGHT MORE PEOPLE, no lines: homosapiens, two pirates, one sharkman (the Beach's own races).
+  11. THE HARBOUR STAYED IN THE SEA ROOM: step 2 of "THE BEACH IS PART OF DISASTER CITY" is another thread's and not started.
+- **WHAT THIS THREAD WOULD DO NEXT (not started):** walk it in a real game (the stair, the gantry, the slip, the Breakwater); follow
+  the Shore into the city's room once step 2 is decided; a ship for the Roads and gulls when there are models; an entry port in
+  the Dutchman's rail with her own thread.
 - **ALL FIVE PASSES ARE LIVE.** Still short of Disaster City's best: one walk-in only (the plan draws one building); the brow lands
   on the Dutchman's rail; no ship in the Roads, no gulls, no sound; the people stand still; nobody has walked it in a real game
   (the wharf, the gantry and the Breakwater are checked on the compiled heights and in pictures, not with the walker).
@@ -7539,11 +7602,22 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
   leaf, lit: `glow` 0.5 white / 0.3 red); the sheet `gold` draws as brown wood (the frame and the canopy posts now wear the kit's plain
   gilt tint 0xd8b050, no sheet); `garden_ring` is a PAVED HEDGE RING 7 m across, not a croquet hoop (the four I added are out, the hoops
   are drawn); the tent's underside was near black (the canvas has `glow` 0.28).
+- **PASS 2, THE WALK-IN + THE NAMES (seen, 14 views)**: THE GLASSHOUSE on the lawn's south-east corner (squares 9..11 x 38..39, its door west):
+  dark glass in a white frame on a stone course, a glass gable roof with a gilt-tipped ridge, an urn either side of the door. Inside:
+  lit glass walls and roof, a cobbled walk down the door's side, raised beds of boards and soil along two walls with rose bushes, ferns,
+  heal flowers and a cactus, a palm, a table with a flask, a bottle, a key, biscuits and an open book, butterflies, a bird cage, a
+  chandelier. Seven NAME BOARDS hang under the arches (the plots' own plain names; THE LOOKING-GLASS GARDEN faces the West Gate's bridge).
+  Two more arches. The telescope moved to the west strip. The two code-built stand-ins of pass 1 (`rocking_chair`, `music_box`) are out
+  for real models (`psx_armchair_2`, `decor_music_box_dancer`).
+  WRONG ON THE FIRST LOOK, FIXED: the inside's lit ceiling drew black as `glass` (now `kind: 'wall'`); a strip of lawn showed between the
+  building's own floor and the lining (a cobble slab to the lining); the inside front wall was mirrored (a part's `p` is NOT mirrored, only
+  a `hole`'s x is); `leaf_glass` is a plain grey slab (now `leaf_birch_glass`); the drawn rafters stuck out as spikes (out); the old
+  garden's four `white_cloud` read as floating grey rock piles at 10 to 12 m under this sun (left out: decision 7).
 - **NOBODY ELSE MOVED**: the eleven old `dec` calls run in the old order on the old squares; every new piece is placed by metres (`at()`)
   or by `put` (no dice), so the scatter of F, N and W is untouched.
 - **FRAME RATE** (cloud software GPU, llvmpipe; the lawn looking south at the board): before 1.00 frames a second, 2,022 geometries, 1,039
-  draw calls. After pass 1: 2,222 geometries, 1,200 calls; the reading of 0.20 was taken as the FIRST view of the run while the room was
-  still compiling, so it is not a fair number: measured again in pass 2.
+  draw calls. After pass 1: 2,222 geometries, 1,200 calls (its 0.20 was read as the FIRST view of a run, while the room still compiled:
+  never measure on the first view). After pass 2: 1.20 frames a second, 2,412 geometries, 1,421 calls: no loss (run to run noise is 0.2).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read in sections + the live catalogue's 1,853 keys + section 13's unwired files searched for
   rose / flower / hedge / topiary / card / heart / chess / tea / cake / clock / mirror / flamingo / croquet / garden / fountain / statue):
   the game `chess_set_game`, `chess_board`, tree kinds `chess_*` (12); time `gclock`, `giant_hourglass`, `astronomical_clock`,
@@ -7577,8 +7651,11 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
      the first thing I would ask for.
   5. The gilt frame stands before the mirror's door, it does not replace the stone doorway (the door is the tool's).
   6. The teapots and the cup stack are the catalogue's own giant sizes (a teapot 1 m across): left giant on purpose.
-- **NEXT**: pass 2 (no insides are named here: more landmark work, a walk-in only if one fits), pass 3 dressing + the natives,
-  pass 4 air / light / night, pass 5 polish.
+  7. The old garden's four clouds are left out (as models they read as floating grey rocks here). Its risers, railings, pool umbrella,
+     altar, candle rings, cardboard boxes and lesson sign are code-built stand-ins or HQ furniture: also left out; say which you miss.
+  8. A walk-in was added though none was named: THE GLASSHOUSE (a hedge garden's own building, dark glass as you like it). It took three
+     squares of the south lawn strip.
+- **NEXT**: pass 3 dressing + the natives, pass 4 air / light / night, pass 5 polish.
 ## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
 
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
