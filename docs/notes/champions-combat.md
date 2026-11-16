@@ -5419,3 +5419,7 @@ needs its own bonus spells". Options paper: /mnt/project-files/proposals/SLUDGE_
 - TERRAIN_RULES.sludge turnStatus = { id: 'radioactive', duration: 1, stacks: true }: the tile card says "adds a stack (up
   to 3)". ai.js aiHazardPenaltyAt prices the next tick at the new stack count plus the drain after.
 - Numbers (20 a stack, 3 stacks, drain 1) were the thread's proposal, shown to mondo before the build; his to change.
+- THE RADIOACTIVE SPELLS (11-16, mondo "yes on all 3"): Kaiju Nuclear Pulse also gives 1 Radioactive stack (it now lands
+  Stagger + Radioactive: two statuses, mondo's explicit pick over the old single-status rule); Kaiju Atomic Breath pays
+  x1.5 on Staggered OR Radioactive; Nuclear Option (SHARED_NUKE: Mech, General, Overlord, Politician) pays x1.5 on
+  Radioactive. ai.js statusValue prices a Radioactive stack.
