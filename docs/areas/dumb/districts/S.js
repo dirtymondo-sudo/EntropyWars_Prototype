@@ -20,7 +20,9 @@
    03's rim kit (the pit stays empty); 02's mattresses, robot arm and bag; 04's one chair, its recorder, the observers' chairs; Corridor
    Five's DECON, ARMOURY, STORES, ELECTRICAL, LOCKERS, JANITOR (plain labels, mine); Level -6's guard post; the Stair's guard room and
    store. Seven more people (no lines yet): two professors, a flesheater in the pit, two androids, a mad scientist, a man in black.
-   NOT YET: the light and the air (pass 3). */
+   PASS 3, THE LIGHT + THE AIR + POLISH (11-16, `air()`): five real bulbs (of the base's ten); hanging dome lamps in the hub, the
+   chambers and down the stair's hall; a duct and two pipes under every corridor's roof; the chambers' status lamps; lit window frames;
+   steam off the Vent; stains on the floors (flicker tubes and DECON's steam cost a quarter of the frame rate and went). THREE PASSES LIVE: the district stops here until mondo has looked. */
 'use strict';
 const U = n => 'urban:' + n, CONC = U('ConcreteStriped1d'), GRILL = U('MetalSubwayGrill1a'), STEEL = U('MetalCorrugatedPainted3a'), HAZ = 0xe0b020, DARK = 0x2a2c30, RED = 0xff3020, INK = '#e8e4d0';
 const WL = { h: 7, key: CONC, tint: 0xb4b8bc, gain: 1.9 };
@@ -211,5 +213,64 @@ module.exports = {
           R.label('GUARD', -0.18, 4, 90, 1.0); R.label('STORE', 6.18, 4, -90, 1.0); R.hung('exit_sign', 3, 0.3, 0, 4.4);
           R.B('item_police_barricade', 0, 9, 0); R.B('item_police_barricade', 5, 9, 0); R.B('traffic_barrel', 0, 7, 0); R.B('traffic_barrel', 5, 7, 0);
           R.who('android', 4.5, 2.5, 180); R.done(); }
+        air(ctx);
     },
 };
+
+/* PASS 3, THE LIGHT + THE AIR + POLISH (called at the end of `dress`). Light is the look down here and the base has ten REAL lights in
+   all: this district takes five (`bare_bulb`, a 7 m pool each: the hub's two, the pit's, Level -6's, the stair's foot); everything else is
+   drawn: hanging dome lamps, ducts and pipes under the roofs, status lamps, window frames that glow, steam, stains on the floor. */
+function air(ctx) {
+    const { r2, plot } = ctx, WHITE = 0xdfe8ff, AMBER = 0xffb060;
+    /* a run of services under a roof: a duct and two pipes on hangers (axis 'u' = they run west-east at v, 'v' = north-south at u) */
+    const services = (R, axis, at, a, b, y) => { const L = (b - a) * 3.5, m = (a + b) / 2, B = (off, w, h, tint, key) => axis === 'u' ? R.box(m, at + off / 3.5, y - h, L, h, w, key || null, tint) : R.box(at + off / 3.5, m, y - h, w, h, L, key || null, tint);
+        B(0, 0.7, 0.45, 0x9aa0a6, STEEL); B(0.62, 0.14, 0.14, HAZ); B(0.84, 0.14, 0.14, 0xb03020);
+        for (let t = a + 0.5; t < b; t += 2) { if (axis === 'u') R.box(t, at + 0.2 / 3.5, y - 0.5, 0.06, 0.5, 1.4, null, DARK); else R.box(at + 0.2 / 3.5, t, y - 0.5, 1.4, 0.5, 0.06, null, DARK); } };
+    /* a dome lamp on a long rod (drawn: it glows) */
+    const dome = (R, u, v, top, drop, tint) => { R.box(u, v, top - drop, 0.05, drop, 0.05, null, DARK); R.cyl(u, v, top - drop - 0.35, 0.55, 0.35, null, 0x24402c, { r2: 0.18, seg: 10 }); R.cyl(u, v, top - drop - 0.4, 0.42, 0.06, null, tint == null ? 0xfff0d0 : tint, { glow: 1, seg: 10 }); };
+    /* a window's lit frame on a wall line (the chambers' long windows) */
+    const frame = (R, at, a, b, side) => { const m = (a + b) / 2, L = (b - a) * 3.5, v = at + side * 0.17 / 3.5; R.box(m, v, 0.96, L, 0.05, 0.04, null, WHITE, { glow: 1 }); R.box(m, v, 3.2, L, 0.05, 0.04, null, WHITE, { glow: 1 }); };
+    /* ── THE HUB ── */
+    { const R = ctx.room('P03-03', 1, 1, 10, 10, 'hub3'), top = 12.25;
+      for (const q of [[2.5, 2.5], [7.5, 2.5], [2.5, 7.5], [7.5, 7.5], [5, 1.5], [5, 8.5], [1.8, 5], [8.2, 5]]) dome(R, q[0], q[1], top, 3.4);
+      R.bulb(2.5, 5, 6.0); R.bulb(7.5, 5, 6.0);
+      /* the chambers' status on the south wall, over the board: two in use, two not */
+      [['01', 0x40ff70], ['02', 0x40ff70], ['03', 0xff3020], ['04', 0xff3020]].forEach((q, i) => { const u = 1.6 + i * 0.5; R.box(u, 9.9, 3.1, 0.34, 0.34, 0.08, null, q[1], { glow: 1 }); R.sign(q[0], u, 9.86, 3.62, 0.36, 0.24, 180, INK, '#1c1e22'); });
+      services(R, 'u', 0.6, 1, 9, 6.8); services(R, 'u', 9.4, 1, 9, 6.8);
+      ctx.grime('oil', 'P03-03', 9, 3, 1.3); ctx.grime('grime', 'P03-03', 3, 8, 1.6); ctx.grime('grime', 'P03-03', 7, 4, 1.2);
+      R.done(); }
+    /* ── THE SPOKES: services down each corridor, lit window frames ── */
+    for (const id of ['P02-03', 'P04-03']) { const R = ctx.room(id, 1, 1, 10, 10, 'spoke3:' + id), west = id === 'P02-03';
+      services(R, 'u', 4.5, -1, 11, 6.6);
+      if (west) { frame(R, 4, 1, 6, 1); frame(R, 7, 4, 9, -1); } else frame(R, 4, 4, 9, 1);
+      R.hung('exit_sign', west ? 0.4 : 9.6, 4.06, 0, 2.9);
+      R.done(); }
+    { const R = ctx.room('P02-03', 1, 1, 10, 10, 'ch13c');
+      R.bulb(5, 8.5, 5.0);                                                                                       // the pit's own light
+      ctx.grime('blood', 'P02-03', 5, 3, 1.5); ctx.grime('scorch', 'P02-03', 5, 4, 0.9); ctx.grime('grime', 'P02-03', 9, 6, 1.4);
+      for (const u of [1, 3, 5, 7, 9]) dome(R, u, 2, 7, 1.2);
+      R.done(); }
+    { const R = ctx.room('P04-03', 1, 1, 10, 10, 'ch24c');
+      ctx.grime('oil', 'P04-03', 7, 4, 1.4); ctx.grime('grime', 'P04-03', 3, 6, 1.4); ctx.grime('scorch', 'P04-03', 5, 9, 0.8);
+      for (const u of [1.5, 5, 8.5]) dome(R, u, 2.6, 7, 1.2); dome(R, 4.5, 8.2, 7, 2.6, 0xffffff);                // one hard lamp over the chair
+      R.done(); }
+    /* ── CORRIDOR FIVE ── */
+    { const R = ctx.room('P03-02', 3, 0, 6, 12, 'five3');
+      services(R, 'v', 3.5, 0, 12, 5.1);
+      ctx.grime('puddle', 'P03-02', 4, 1, 1.2); ctx.grime('puddle', 'P03-02', 3, 3, 0.9); ctx.grime('grime', 'P03-02', 6, 4, 1.3); ctx.grime('grime', 'P03-02', 7, 10, 1.1);
+      R.done(); }
+    /* ── LEVEL -6: steam off the Vent, a pool of light before the blast door, scorch on its sill ── */
+    { const R = ctx.room('P03-01', 2, 2, 8, 8, 'minus6c'), B = plot['P03-01'].base;
+      R.bulb(1.6, 4.5, 4.6);
+      for (const q of [[3.6, -1.4, 4, 9], [5.2, -1.0, 9, 9]]) ctx.props.push({ key: 'chimney_smoke', x: R.X(q[0]), z: R.Z(q[1]), y: r2(B + q[2]), rise: q[3] });
+      for (const y of [6, 10, 14]) R.box(4.5, -1.96, y, 3.4, 0.12, 0.06, null, AMBER, { glow: 1 });                  // the shaft's rungs of light, going up
+      ctx.grime('scorch', 'P03-01', 3, 6, 1.4); ctx.grime('puddle', 'P03-01', 7, 8, 1.2); ctx.grime('grime', 'P03-01', 6, 4, 1.5);
+      R.done(); }
+    /* ── THE STAIR: a pool of light at the foot, chevrons where the flight lands ── */
+    { const R = ctx.room('P03-04', 3, 0, 6, 12, 'stair3');
+      R.bulb(3, 5, 5.5);
+      for (let i = 0; i < 6; i++) R.box(1.6 + i * 0.56, 5.8, 0.013, 0.9, 0.012, 0.3, null, i % 2 ? DARK : HAZ, { ry: 30 });
+      for (const q of [[1, 1.5], [5, 1.5], [3, 3.2]]) dome(R, q[0], q[1], 21, 15.2);
+      ctx.grime('grime', 'P03-04', 6, 5, 1.6); ctx.grime('oil', 'P03-04', 4, 2, 1.0);
+      R.done(); }
+}
