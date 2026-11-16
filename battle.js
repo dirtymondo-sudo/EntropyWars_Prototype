@@ -13907,6 +13907,103 @@
         window._settleBankOnDeath = _settleBankOnDeath;
         /* 🐊 THE SEWER GATOR (2026-11-16, the new races): the liquids it hides in, Submerge's surfacing and Death Roll's drag.
            Host-side like every spell; positions + statuses state-sync to the guest, the floating text relays. */
+        /* 💼 THE TECH CEO (2026-11-16, the new races; mondo added it): ownership of the board's objects. Three `cleanseArea` tile
+           casts carry a flag each: `acquire` (every enemy-owned summon, deployed object, trap, bomb, mirror, ward or rune on the
+           square now works for the CEO), `disrupt` (every enemy zone or timed terrain over the 3×3 changes hands), `layoffs`
+           (his own objects and summons are scrapped: +40 MP each and +1 ATK stage). Owners are plain numbers / ids on the rows,
+           so the take-over state-syncs to the guest like the rows themselves. window._ceoPlan feeds the CPU (ai.js). */
+        const _CEO_LISTS = ['turrets', '_deployedObjects', 'traps', 'bombs', 'mirrors', '_visionWards', 'warpRunes'];
+        function _ceoOwnerPlayer(o) {
+            if (!o) return null;
+            for (const k of ['ownerPlayer', 'owner', 'player']) if (typeof o[k] === 'number') return o[k];
+            for (const k of ['ownerUnitId', 'ownerId', 'casterUnitId']) {
+                if (o[k] != null) { const u = unitFromId(o[k]); if (u) return u.player; }
+            }
+            return null;
+        }
+        function _ceoOwnedBy(o, unit) {
+            return !!o && ['ownerUnitId', 'ownerId', 'casterUnitId'].some(k => o[k] != null && o[k] === unit.id);
+        }
+        function _ceoTakeOver(o, unit) {
+            for (const k of ['ownerPlayer', 'owner', 'player']) if (typeof o[k] === 'number') o[k] = unit.player;
+            for (const k of ['ownerUnitId', 'ownerId', 'casterUnitId']) if (o[k] != null) o[k] = unit.id;
+            if (o.caster != null && typeof o.caster !== 'object') o.caster = unit.id;
+        }
+        function _ceoTargets(unit, spell, x, y) {
+            const out = [];
+            if (spell.acquire) {
+                for (const L of _CEO_LISTS) for (const o of (state[L] || [])) {
+                    if (!o || o.x !== x || o.y !== y || o._detonated || o.dead) continue;
+                    const op = _ceoOwnerPlayer(o);
+                    if (op != null && op !== unit.player) out.push({ L, o });
+                }
+            } else if (spell.disrupt) {
+                const area = getSquareArea(x, y, spell.aoeRadius != null ? spell.aoeRadius : 1);
+                for (const z of (state._activeZones || [])) {
+                    if (!z || z.ownerPlayer == null || z.ownerPlayer === unit.player) continue;
+                    if (area.some(t => _zoneCovers(z, t.x, t.y))) out.push({ L: '_activeZones', o: z });
+                }
+                for (const t of (state._timedTerrain || [])) {
+                    if (!t || typeof t.owner !== 'number' || t.owner === unit.player) continue;
+                    if (area.some(a => a.x === t.x && a.y === t.y)) out.push({ L: '_timedTerrain', o: t });
+                }
+            } else if (spell.layoffs) {
+                for (const L of _CEO_LISTS) for (const o of (state[L] || [])) if (o && !o._detonated && _ceoOwnedBy(o, unit)) out.push({ L, o });
+            }
+            return out;
+        }
+        function _ceoNoun(L, o) {
+            if (L === 'turrets') return o.summon ? 'summon' : (o.plant ? 'plant' : 'turret');
+            return ({ _deployedObjects: 'object', traps: 'trap', bombs: 'bomb', mirrors: 'mirror', _visionWards: 'ward', warpRunes: 'rune', _activeZones: 'zone', _timedTerrain: 'patch of terrain' })[L] || 'object';
+        }
+        /* the cast itself (doSpell's cleanseArea branch): false = nothing to take, refused before any MP is spent */
+        function _ceoCast(unit, spell, x, y, cost) {
+            const hits = _ceoTargets(unit, spell, x, y);
+            if (!hits.length) {
+                addLog(spell.layoffs ? `${_ctSp(spell.name)}: ${_ctName(unit)} owns nothing on the board to lay off.`
+                    : `${_ctSp(spell.name)}: nothing the enemy owns ${spell.disrupt ? 'covers that area' : 'stands on that square'}.`, _clickSeat());
+                playErrorSfx();
+                return false;
+            }
+            playSfx(spellLaunchSfx(spell));
+            _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+            unit.mp -= cost;
+            const names = hits.map(h => _ceoNoun(h.L, h.o));
+            if (spell.layoffs) {
+                const gone = new Set(hits.map(h => h.o));
+                for (const L of _CEO_LISTS) if (Array.isArray(state[L])) state[L] = state[L].filter(o => !gone.has(o));
+                const mp0 = unit.mp || 0;
+                unit.mp = Math.min(unit.maxMp || (mp0 + 40 * hits.length), mp0 + 40 * hits.length);
+                addLog(`💼 ${_ctName(unit)} lays off ${hits.length} ${hits.length === 1 ? names[0] : 'assets'}: +${unit.mp - mp0} MP.`);
+                applyStatStageBoost(unit, { atk: 1 }, `${spell.name}: `, unit);
+                showFloatingTextForUnit(unit, `💼 LAYOFFS ×${hits.length}`, 'buff', { durationMs: 1100 });
+            } else {
+                for (const h of hits) _ceoTakeOver(h.o, unit);
+                const what = names.length === 1 ? `the enemy's ${names[0]}` : `${names.length} enemy assets`;
+                addLog(`💼 ${_ctName(unit)} ${spell.disrupt ? 'disrupts' : 'acquires'} ${what} at ${coordLabel(x, y)} — ${names.length === 1 ? 'it works' : 'they work'} for Player ${unit.player} now.`);
+                if (typeof showFloatingTextAtTile === 'function') showFloatingTextAtTile(x, y, spell.disrupt ? '💼 DISRUPTED' : '💼 ACQUIRED', 'buff', { durationMs: 1200 });
+            }
+            try { if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid(); } catch (e) {}
+            try { if (window.ThreeRenderer && typeof ThreeRenderer.invalidateUnits === 'function') ThreeRenderer.invalidateUnits(); } catch (e) {}
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            return true;
+        }
+        /* the CPU's read: the best square for this CEO cast and how much it takes */
+        function _ceoPlan(unit, spell) {
+            if (!unit || !spell) return null;
+            if (spell.layoffs) { const n = _ceoTargets(unit, spell, unit.x, unit.y).length; return n ? { x: unit.x, y: unit.y, n } : null; }
+            const R = getEffectiveSpellRange(unit, spell) || 4;
+            let best = null;
+            for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) > R) continue;
+                const x = unit.x + dx, y = unit.y + dy;
+                if (!isInside(x, y)) continue;
+                const n = _ceoTargets(unit, spell, x, y).length;
+                if (n && (!best || n > best.n)) best = { x, y, n };
+            }
+            return best;
+        }
+        window._ceoPlan = _ceoPlan;
         /* 🛹 THE SKATER (2026-11-16, the new races): a walk that ends in a straight line from where it began banks one Momentum
            stack a square (STATUS_DEFS.momentum adds `gain`, up to 6). Host-side; the unit + status state-sync to the guest. */
         function _skaterBankMove(unit, fx, fy, tx, ty, dist) {
@@ -46965,7 +47062,10 @@
                 case 'shield':        return 'Select an ally to shield with ' + nm + '.';
                 case 'buff':          return 'Select an ally to empower with ' + nm + '.';
                 case 'cleanse':       return 'Select an ally to cleanse with ' + nm + '.';
-                case 'cleanseArea':   return nm + ': select a tile — allies in the 3×3 lose their debuffs, enemies lose their buffs.';
+                case 'cleanseArea':   return spell.acquire ? nm + ': select a square with an enemy summon, object or trap on it to take it over.'
+                    : spell.disrupt ? nm + ': select a tile — enemy zones over the 3×3 change hands.'
+                    : spell.layoffs ? nm + ': select your own square to scrap everything you own on the board.'
+                    : nm + ': select a tile — allies in the 3×3 lose their debuffs, enemies lose their buffs.';
                 case 'steal':         return nm + ': select an enemy to rob.';
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
@@ -83046,6 +83146,18 @@
                     }
                 });
                 completionDelay = _stLand + actionMs(650);
+            }
+
+            /* 💼 the Tech CEO's casts ride the cleanseArea kind with a flag each (_ceoCast) */
+            else if (spell.kind === 'cleanseArea' && (spell.acquire || spell.disrupt || spell.layoffs)) {
+                const _ceoDist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (!isInside(x, y) || _ceoDist > getEffectiveSpellRange(unit, spell)) {
+                    addLog(`${_ctSp(spell.name)}: that tile is out of range.`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!_ceoCast(unit, spell, x, y, effectiveSpellCost)) return 0;
+                completionDelay = actionMs(700);
             }
 
             /* Phase 6: `cleanseArea` — the nun's Purify. A 3×3 tile cast:

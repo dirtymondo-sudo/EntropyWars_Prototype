@@ -6937,6 +6937,11 @@
         /* Phase 6: `cleanseArea` (Purify) — target is the centre TILE.
            Allies in the 3×3 pay out per debuff (crippling ones by the
            output they unlock), enemies per buff stripped. */
+        if (kind === 'cleanseArea' && (spell.acquire || spell.disrupt || spell.layoffs)) {   // 💼 the Tech CEO (battle.js _ceoPlan)
+            const plan = (typeof window !== 'undefined' && typeof window._ceoPlan === 'function') ? window._ceoPlan(unit, spell) : null;
+            if (!plan) return 0;
+            return spell.layoffs ? (plan.n >= 2 || (unit.mp || 0) < 60 ? 40 * plan.n : 0) : 90 * plan.n;
+        }
         if (kind === 'cleanseArea') {
             if (!target) return 0;
             const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
@@ -9439,6 +9444,10 @@
         }
         /* Phase 6: `cleanseArea` — the 3×3 in range that lifts the most
            ally debuffs / strips the most enemy buffs; returns the tile. */
+        if (kind === 'cleanseArea' && (spell.acquire || spell.disrupt || spell.layoffs)) {   // 💼 the Tech CEO's square
+            const plan = (typeof window !== 'undefined' && typeof window._ceoPlan === 'function') ? window._ceoPlan(unit, spell) : null;
+            return plan ? { x: plan.x, y: plan.y } : null;
+        }
         if (kind === 'cleanseArea') {
             const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
             const R = _effRange(unit, spell) || 3;
