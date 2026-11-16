@@ -5196,7 +5196,7 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     district far down the list lights its night with drawn glow only. Wanted from the tool / engine row: the lights nearest the walker.
   - **MONDO 11-16, THREE RULES FROM HIS FIRST LOOK AT THE OCEAN:** NEVER model smoke in 3D (drawn puffs "look terrible"; the game's own
     smoke is the soft sprites of `sea_vent`). A torch is a VARIANT OF THE GAME'S TORCHES (`cave_torch`, `wall_torch`, the new taller
-    `tiki_torch`), never a drawn pole with a glowing cone. A big model must never stand cut off by the water: tentacles = `kraken_arms`.
+    `tiki_torch`), never a drawn pole with a glowing cone. A big model must never stand cut off by the water: tentacles = `goo_tendril` (the symbiote's), never the Meshy `tentacle` models. In a sea: `{ key: 'goo_tendril', y: -0.5, h }`.
   - **(WITHDRAWN for smoke by the rule above; kept for a cloud only) A CLOUD, DRAWN:** puffs = a `dome` (plain paint, `glow` 0.3) over a `cyl` belly that closes to a point (`r` 0.05 -> `r2` = the
     dome's, `cap: false, ds: true, glow` 0.4): seen from under, an open belly is a ring round a hole. Seven puffs growing 3 -> 13 m read as a plume.
   - **FIRELIGHT IN A WINDOW:** a plain quad, tint 0xffa040, `glow` 0.75, behind drawn bars.
@@ -5364,6 +5364,10 @@ sea has things to sail to.
     = the kraken's Constrict effect (`_fx1Tentacles`) as a standing thing: the same two arm models in the spell's unlit look, five in a
     ring, each fitted by its BOTTOM so it rises whole out of the surface, up one after another, tips curling in over the boat, a hold,
     down again, on a 15 s loop, foam where each breaks the water. A `float` prop: it stands on any sea room's surface.
+    REVISION 2 (11-16, his word on that ring: "no, those are still the kraken arms that are messed up. do the tendrils from the symbiote
+    like the radiative sewers did in its sludge"): `kraken_arms` is DELETED from the game (proc and catalogue row); the kraken's place
+    is seven `goo_tendril` (the Sewers' Sludge Pit's prop: the symbiote's black spell tendrils, 2.6 to 5.6 m, their feet typed half a
+    metre under the surface) round the taken boat. The Meshy `tentacle` / `tentacle2` models are never used for a standing arm again.
     STILL DRAWN THE SAME WAY AS THE PLUME, HIS CALL: the waterspout's cloud (grey domes over the funnel).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
