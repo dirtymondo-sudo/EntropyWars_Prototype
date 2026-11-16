@@ -424,7 +424,7 @@
 },
 {
 "id": "P04-03",
-"name": "The Channel, upper",
+"name": "The Dry Creek, upper",
 "district": "M",
 "level": 1,
 "what": "brick channel, graffiti",
@@ -454,7 +454,7 @@
 },
 {
 "id": "P03-04",
-"name": "The Cave Mouth",
+"name": "The Rocks",
 "district": "M",
 "level": 0,
 "what": "LANDMARK: the cave mouth in a rock face; door to the cave inside",
@@ -471,7 +471,7 @@
 },
 {
 "id": "P04-04",
-"name": "The Channel, lower",
+"name": "The Dry Creek, lower",
 "district": "M",
 "level": 0,
 "what": "channel, pipes, drain grates",
@@ -486,7 +486,7 @@
 },
 {
 "id": "P05-04",
-"name": "The Outfall",
+"name": "The Sewer Mouth",
 "district": "M",
 "level": 0,
 "what": "the channel leaves east",
@@ -513,7 +513,7 @@
 },
 {
 "id": "P04-05",
-"name": "The Pool",
+"name": "The Hollow",
 "district": "M",
 "level": 0,
 "what": "still pool",
