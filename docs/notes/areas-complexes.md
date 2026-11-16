@@ -7937,6 +7937,16 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   storm rubbish (toilet, tyres, TVs), mushrooms + frogs, a stash (crates, a jerrycan, cash), a fall of brick, the bats' roost under the
   quay. ALIVE: ten bats (five high in the three 12 m halls), an eel in the Cistern, a brown fish and two crabs at the Outfall, a cat at
   the rest stop, frogs. Eight `graffiti_wall` (the game's own tags), chains / vents / a camera in the bends.
+- **PASS 4, THE ATMOSPHERE (seen, two probe runs; no tool change, the room's air and fog are the shell's):** five `flicker_tube` in the
+  Pump Room, the Pumping Station and the Gallery; fourteen `ship_lantern` swaying at the culverts' bends (`noLight`: its glow, no cast
+  light); `chimney_smoke` with `rise` as MIST at the foot of the three falls and STEAM off the boiler and three mains; three red
+  `evac_button` at the drops; under each dead lamp two lit points at the wall's foot (eyes; the game has no rat); daylight on the floor
+  under the Outfall's two grates (moved over the walks); six puddles (`ctx.grime`).
+  THE COUNT (pass 4): the proof view had grown to 1,856 calls / 3.14 M triangles. A bake without W's dressing = 1,237 / 1.65 M, so W's
+  dressing cost 620 calls and 1.5 M triangles, and no single piece was the cause: every Meshy prop is 5 to 10 thousand triangles (a
+  newspaper bundle, a paper sheet, a round drain, a mug, a camera, the skull pile 38 thousand). The repeated Meshy litter was swapped for
+  the PSX pack's low-poly pieces (cans, bricks, bottles, nails), the skull pile for Halloween-pack parts, two cameras and two mugs out:
+  now 1,843 calls / 2.79 M. The frame rate the software probe prints is noise (10 and 21 on the same view), so only these counts are true.
 - **FPS at the proof view** (after pass 2: 3.2, 1,302 calls, 2.05 M triangles; the room also grew a fifth row, district R, in between) (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
   1.44 M triangles); after pass 1 2.1 to 2.7 (1,142 calls, 1.58 M). The kit is about ten materials a plot; a plot's row is culled whole.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
@@ -7946,7 +7956,11 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   3. Lamp colours: sodium amber in the culverts, cold green-white in the rooms, red only at the hatch.
   4. No stream comes out of a wall on this plan (every stream ends at a tank or a plot line) and no walk is one square wide, so there
      are no dead-end pipe mouths; the culvert mouths went to the Junction's walls.
-- **NEEDS A MODEL:** a bulkhead / cage lamp (drawn from boxes today), a manhole ladder + shaft, a valve wheel on a stand, rats.
+  5. Eyes under the dead lamps (two lit points): a stand-in for rats, which the game does not have. One line removes them.
+  6. The plates' warnings are plain words of mine (DANGER · DEEP WATER, MIND THE DROP, NO SWIMMING, WAY OUT ...); the names are the plan's.
+  7. The Meshy litter of the first build (newspaper bundles, paper, round drains) was swapped for low-poly pack pieces to win triangles back.
+- **NEEDS A MODEL:** a bulkhead / cage lamp (drawn from boxes today), a manhole ladder + shaft, a valve wheel on a stand, rats, low-poly
+  versions (LOD) of the Meshy props used as litter.
 - **NEXT:** pass 2 the rooms' insides (Pump Room, Pumping Station, Gallery, Junction, Cistern, Outfall), 3 dressing (graffiti, pipes
   from the PSX pack, animals, signs), 4 atmosphere, 5 polish.
 
@@ -7970,6 +7984,11 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   a square wide carries it. A blocker (`ctx.P`) goes only on a square `ctx.free()` says is free.
 - **A HUNG THING** (a bat, a life ring on a rail, a stacked crate) = a plain prop row with `y: plot.base + height`. A stacked crate
   drew as a box floating at a wall: stack on the floor only.
+- **TRIANGLES:** a Meshy prop is 5 to 10 thousand triangles, a PSX pack piece a few hundred. Scatter the pack's pieces; keep Meshy
+  models for the one-off machines. `ThreeRenderer.hq.dev.hqScene()` in a probe view's `eval` gives the scene to count meshes in.
+- **MOVING AIR WITHOUT THE TOOL:** `chimney_smoke` with `rise: <m>` (mist at a fall's foot, steam at `y: base + h`), `flicker_tube`
+  and `ship_lantern` as ceiling props at `y: base + h` with `noLight: true` (they keep their glow), `evac_button` for a red point.
+  Drips and a district's own particles need `airZones` in bake-sewers.js (asked on the board).
 - **THE ROOM'S OWN WALL** (a square past the map's edge) is where the ways out stand: never dress it.
 - **THE PLAN HAS NO ONE-SQUARE DEAD ENDS** (walks are a square each side of a stream): `ctx.corners()` is the list of bends.
 - **FITS THE SEWERS (the whole model list was read, sections 6 to 13; placed by W unless marked):**
