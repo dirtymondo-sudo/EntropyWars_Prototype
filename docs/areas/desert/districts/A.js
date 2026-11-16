@@ -45,14 +45,16 @@
    - ATMOSPHERE (11-16, seen by day and at night): Runway 33's edge lights (white, green at the threshold, red at the far end), blue taxi
      lights, warm lit windows and strip lights in every hut, red obstruction lights (hangar roof, radome, radar mast, tower, gate piers),
      floods over the big door, a pale disc under each saucer, a red / green status lamp over every cell door. All lit PARTS (`glow`): the
-     real lights are still the flood masts, which come on at dusk. NO SOUND and NO PARTICLES: a district file has no hook for either.
+     real lights are still the flood masts, which come on at dusk. Dust blows over both Dry Lake plots and the runway (`airZones`). NO SOUND:
+     a district file has no hook for it.
    - People: men in black (gate, apron, the hangar's door), marksmen (gate, the tower's deck), a spy, a bligblog and a grey by the crater,
      a mad scientist at the crater (the last two men have no lines: none were written).
 
    KNOWN MISSING OR WRONG:
    - INSIDE THE WALK-INS (furnish): the guard post (desk, rifle rack, locker), BARRACKS A (eight bunks, footlockers, lockers, the rifle rack),
      BARRACKS B (six cots, the day end), the MESS HALL (serving line, four tables, the machines), the RADAR hut (console, racks, plot table).
-     Each stands on a 10 cm level plateau (the room's ground rolls and came up through the drawn floors). They are dim: no lamp inside yet.
+     Each stands on a 10 cm level plateau (the room's ground rolls and came up through the drawn floors). THE SECOND LAYERS: each is lined
+     (`lined()`: a painted coat, an olive dado, a lit ceiling deck) and wears gear outside (`gear()`: downpipes, an AC box, a louvre).
    - THE WHITE ROOMS are white now (a drawn lining on the room's four walls, `gain` on every plaster wall and ceiling tile). The nurses'
      station, the observation floor's two long walls and Hangar 18's control room are real see-through glass (`pane`, in rooms()).
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS; outside the markers, not this file's).
@@ -85,6 +87,23 @@ const bind = ctx => ({ C, gx, gc, r2, feat, props, doors, npc, count, line, setR
 let POST, HANGAR, WING, BARR_A, BARR_B, MESS, RADAR;
 /* the base's own colours: desert tan walls, olive trim, dark steel. `gain` lifts a sheet the building tint would leave near black (seen 11-16) */
 const LIT = 0xffe2a8, TUBE = 0xf4f8ff, RED = 0xff3020;   // a lit window's warm, a strip light's white, a beacon's red
+/* THE SECOND LAYERS (11-16, the city's bar: F-atmos.js `coat` + its lit ceiling deck; F-detail.js roof gear and pipes).
+   lined(): a walk-in's inside. The hollow building's own walls and ceiling draw near black and the room's ten real lights stay outside, so the
+   hall gets a painted coat 3 cm in front of each wall (open at the doorway), a dado, and a LIT ceiling deck (a sheet with `glow`). */
+const PAINT = 'urban:PlasterWallPainted1a', FIBRE = 'urban:FibreCeilingTile1a', GRILLE = 'urban:MetalSubwayGrill1a';
+function lined(a, w, d, h, door, tint, dado) {
+    const e = 0.36, H = h - 0.32, W2 = w / 2, D2 = d / 2, hole = [r2f(-door.lx), r2f(door.cw + 0.12), 2.25];
+    const coat = (hh, tn, ee, gain) => { const o = { kind: 'wall', gain, glow: 0.18 }, q = (x, z, len, ry, x2) => a.P.push(Object.assign({ s: 'quad', p: [r2f(x), 0, r2f(z)], size: [r2f(len), hh], ry, key: PAINT, tint: tn }, o, x2 || {}));
+        q(0, -D2 + ee, w - 2 * ee, 0); q(0, D2 - ee, w - 2 * ee, 180, { hole: [hole[0], hole[1], Math.min(2.25, hh)] }); q(-W2 + ee, 0, d - 2 * ee, 270); q(W2 - ee, 0, d - 2 * ee, 90); };
+    coat(H, tint, e, 1.9); coat(1.0, dado, e + 0.012, 1.5);
+    a.P.push({ s: 'box', p: [0, r2f(H - 0.05), 0], size: [r2f(w - 2 * e), 0.04, r2f(d - 2 * e)], key: FIBRE, tint: 0xf4f0e4, under: true, top: false, sides: false, glow: 0.55, gain: 1.6, uv: 3.5 });
+}
+const r2f = v => Math.round(v * 100) / 100;
+/* gear(): what stands on and hangs off a building after its massing: a downpipe at each front corner, an AC box and a louvre on a side wall */
+function gear(a, w, d, h, o) { o = o || {};
+    for (const s of [-1, 1]) a.box(s * (w / 2 + 0.1), 0, d / 2 - 0.3, 0.12, h, 0.12, null, 0x3e4446);
+    if (o.ac !== false) { a.box(w / 2 + 0.4, 1.9, -d / 4, 0.7, 0.7, 1.1, COR, 0x9aa0a4); a.box(w / 2 + 0.76, 2.0, -d / 4, 0.03, 0.5, 0.9, GRILLE, 0x5a6064); }
+    a.box(-w / 2 - 0.05, 2.2, d / 4, 0.05, 0.6, 1.2, GRILLE, 0x6a7074); }
 const TAN = 0xd2c19a, TAN2 = 0xb8a67e, OLIVE = 0x66744e, STEEL = 0x3e4446, SLAB = 'urban:ConcreteSlab2a';
 exports.dice = 3180855558;
 
@@ -94,7 +113,8 @@ exports.buildings = ctx => { bind(ctx);
         for (const x of [-3.2, 3.2]) a.box(x, 1.1, d / 2 + 0.06, 1.6, 1.2, 0.06, GLS, LIT, { glow: 0.75 }); a.box(0, 2.85, 0, 1.5, 0.07, 0.22, null, TUBE, { glow: 1 });
         a.sign('RESTRICTED AREA', 0, 2.55, d / 2 + 0.1, 6.0, 0.5, '#ffffff', '#a82a20', 'stencil');
         for (const s of [-1, 1]) a.sign('AREA 51 · MAIN GATE', s * (w / 2 + 0.12), 2.5, 0, 5.2, 0.5, '#ffffff', '#23262b', 'stencil', { ry: s * 90 });                 // read from the road on both sides of the post
-        a.box(0, 0, 0, w + 0.5, 0.35, d + 0.5, null, 0xd8b020, { top: false }); });                                                                              // the yellow kerb round its foot
+        a.box(0, 0, 0, w + 0.5, 0.35, d + 0.5, null, 0xd8b020, { top: false });
+        lined(a, w, d, 3.5, door, 0xdcd8c8, 0x66744e); gear(a, w, d, 3.2, { ac: false }); a.box(2.5, 3.45, -1.2, 0.08, 2.6, 0.08, null, 0x3e4446, { roof: true }); });                                                                              // the yellow kerb round its foot
     HANGAR = building('hangar', [13, 86, 23, 94, 'N'], 14, SOLID, (a, w, d) => {
         a.box(0, 0, 0, w, 10.5, d, RIB, 0xb4bab8, { top: false, uv: [3.5, 3.5], gain: 1.7 }); a.roof('barrel', 0, 10.5, 0, w + 0.6, 5.6, d + 0.6, COR, 0x9aa2a2, { keyEnd: RIB, tintEnd: 0xb4bab8, gain: 1.6 });
         a.box(0, 0, d / 2 + 0.06, 24.5, 9.2, 0.1, COR, 0x7a8488, { uv: [3.5, 3.5], gain: 1.5 });                                                                       // THE BIG DOOR, shut: six leaves on a rail
@@ -107,7 +127,10 @@ exports.buildings = ctx => { bind(ctx);
         for (const x of [-16, 0, 16]) a.box(x, 16.1 - Math.abs(x) * 0.17, d / 2 - 0.2, 0.3, 0.3, 0.3, null, RED, { glow: 1 });                                         // the obstruction lights along the roof's front edge
         for (const x of [-9, 9]) a.box(x, 9.75, d / 2 + 0.5, 1.6, 0.25, 0.5, null, 0xfff2c8, { glow: 1 });                                                           // two floods over the big door
         a.box(0, 0, d / 2 + 0.2, 25.2, 0.5, 0.3, null, 0xd8b020);                                                                                                  // the door's yellow sill
-        for (const s of [-1, 1]) a.box(s * 12.9, 0, d / 2 + 0.16, 0.5, 9.2, 0.2, null, 0xd8b020); });                                                               // and its two yellow jambs
+        for (const s of [-1, 1]) a.box(s * 12.9, 0, d / 2 + 0.16, 0.5, 9.2, 0.2, null, 0xd8b020);
+        for (const s of [-1, 1]) { a.box(s * (w / 2 + 0.08), 6.5, 0, 0.06, 1.6, d - 6, GRILLE, 0x5a6064); a.box(s * (w / 2 + 0.35), 0, d / 2 - 1, 0.14, 10.5, 0.14, null, 0x3e4446); }   // THE SECOND LAYERS: a louvre band down each side, a downpipe
+        a.box(0, 16.0, 0, 1.2, 0.5, d - 2, COR, 0x7c8484, { roof: true });                                                                                         // the ridge vent
+        a.box(w / 2 + 0.07, 0, -6, 0.06, 2.2, 1.1, RIB, 0x8a2a20); a.sign('FIRE EXIT', w / 2 + 0.1, 2.3, -6, 1.2, 0.25, '#ffffff', '#2a8a4a', 'stencil', { ry: 90 }); });   // a fire exit drawn on the east side                                                               // and its two yellow jambs
     WING = building('wing', [27, 89, 31, 93, 'N'], 5.25, SOLID, (a, w, d) => {
         a.box(0, 0, 0, w, 5.25, d, CONC, 0xe8e8e4, { top: false }); a.box(0, 5.25, 0, w + 0.6, 0.3, d + 0.6, CONC, 0xc8c8c4, { under: true });
         for (const x of [-5, 5]) a.box(x, 2.4, d / 2 + 0.06, 1.4, 0.7, 0.06, GLS, 0xf0f4f8, { glow: 0.7 });
@@ -117,10 +140,12 @@ exports.buildings = ctx => { bind(ctx);
         a.shell(w, 2.4, d, COR, TAN, door, [3.5, 3.5]);
         a.roof('barrel', 0, 2.4, 0, d + 0.5, 3.4, w + 0.5, COR, TAN2, { ry: 90, keyEnd: COR, tintEnd: TAN, gain: 1.3 });                                          // the ridge runs front to back: the door is in the round end
         for (const s of [-1, 1]) for (let z = -d / 2 + 3.5; z < d / 2 - 1; z += 3.5) a.box(s * (w / 2 + 0.07), 1.1, z, 0.06, 0.8, 1.3, GLS, LIT, { glow: 0.75 });
-        a.box(0, 3.04, -7, 0.22, 0.07, 1.5, null, TUBE, { glow: 1, n: 5, step: [0, 0, 3.5] });                                                                    // ATMOSPHERE: the strip lights under the ceiling
+        a.box(0, 2.24, -7, 0.22, 0.07, 1.5, null, TUBE, { glow: 1, n: 5, step: [0, 0, 3.5] });                                                                    // ATMOSPHERE: the strip lights under the ceiling
         a.box(door.lx, 0, d / 2 + 0.9, 3.4, 0.16, 1.8, CONC, 0xb0aca0);                                                                                                // the step
         a.sign(words, 0, 2.75, d / 2 + 0.34, 4.6, 0.5, '#f0f0e8', '#3a4630', 'stencil');                                                                           // (in front of the roof's round end, which overhangs the wall)
-        for (const z of [-d / 4, d / 4]) a.cyl(0, 5.6, z, 0.3, 0.7, COR, STEEL, { roof: true }); });
+        for (const z of [-d / 4, d / 4]) a.cyl(0, 5.6, z, 0.3, 0.7, COR, STEEL, { roof: true });
+        lined(a, w, d, 2.68, door, 0xe4dcc4, 0x66744e); a.box(0, 3.5, d / 2 + 0.3, 1.2, 0.8, 0.05, GRILLE, 0x5a6064);                                               // the louvre in the round end over the door
+        a.box(w / 2 + 0.45, 0, -d / 2 + 2, 0.8, 1.3, 1.4, COR, 0x8a9096); });                                                                                  // the oil tank by the back corner
     BARR_A = quonset('barracks_a', [14, 56, 17, 62, 'S'], 'BARRACKS A');
     BARR_B = quonset('barracks_b', [19, 56, 22, 62, 'S'], 'BARRACKS B');
     MESS = building('mess', [25, 56, 31, 61, 'S'], 4.2, { leaf: 'leaf_wired_double', leafDouble: true, keyIn: PLAS, floorIn: U('TileGeneric1a') }, (a, w, d, door) => {
@@ -131,7 +156,9 @@ exports.buildings = ctx => { bind(ctx);
         for (const x of [-5.25, 0, 5.25]) a.box(x, 3.74, -5.25, 0.22, 0.07, 1.6, null, TUBE, { glow: 1, n: 4, step: [0, 0, 3.5] });
         a.sign('MESS HALL', 0, 3.2, d / 2 + 0.12, 6.4, 0.7, '#f0f0e8', '#3a4630', 'stencil');
         a.box(0, 2.9, d / 2 + 1.0, 5.6, 0.14, 2.0, COR, OLIVE, { under: true }); for (const x of [-2.6, 2.6]) a.box(x, 0, d / 2 + 1.9, 0.14, 2.9, 0.14, null, STEEL);     // the porch roof on two posts
-        a.cyl(-6, 4.5, -4, 0.35, 1.6, COR, STEEL, { roof: true }); a.box(5, 4.5, -3, 2.2, 0.9, 1.6, COR, 0x8a9096, { roof: true }); });
+        a.cyl(-6, 4.5, -4, 0.35, 1.6, COR, STEEL, { roof: true }); a.box(5, 4.5, -3, 2.2, 0.9, 1.6, COR, 0x8a9096, { roof: true });
+        lined(a, w, d, 4.2, door, 0xe8e2cc, 0x66744e); gear(a, w, d, 4.2); a.box(0, 4.5, 0, w + 0.9, 0.35, 0.3, CONC, TAN2, { roof: true, n: 2, step: [0, 0, 5] });        // + two roof kerbs
+        a.box(-3, 4.5, 3, 1.2, 0.6, 1.2, GRILLE, 0x6a7074, { roof: true }); a.box(-w / 2 - 0.5, 0, -d / 2 + 1.5, 0.9, 1.5, 0.9, COR, 0x7c8484); });                           // the kitchen's extract, the grease bin out back
     /* THE DISH's own station: the radar hut (walk-in) and the white radome beside the road in */
     RADAR = building('radar', [4, 64, 7, 67, 'S'], 3.5, { leaf: 'leaf_security', keyIn: CONC, floorIn: U('ConcreteSlab2a') }, (a, w, d, door) => {
         a.shell(w, 3.5, d, CONC, TAN, door); a.box(0, 3.5, 0, w + 0.8, 0.25, d + 0.8, CONC, TAN2, { under: true });
@@ -139,7 +166,8 @@ exports.buildings = ctx => { bind(ctx);
         a.box(0, 3.04, -1.75, 0.22, 0.07, 1.5, null, TUBE, { glow: 1, n: 2, step: [0, 0, 3.5] }); a.box(3.0, 1.5, d / 2 + 0.07, 1.2, 0.8, 0.06, GLS, 0x7fe8b0, { glow: 0.8 });   // the scope's green in the window
         a.box(-3, 3.75, -2.5, 0.16, 6.5, 0.16, null, STEEL, { roof: true }); a.box(-3, 8.2, -2.5, 2.4, 0.08, 0.08, null, STEEL, { roof: true }); a.box(-3, 9.2, -2.5, 1.6, 0.08, 0.08, null, STEEL, { roof: true });   // the whip mast, two cross arms
         a.box(-3, 10.25, -2.5, 0.25, 0.25, 0.25, null, 0xff3020, { glow: 1, roof: true });
-        a.box(3, 3.75, 2.4, 1.6, 1.0, 1.2, COR, 0x8a9096, { roof: true }); });
+        a.box(3, 3.75, 2.4, 1.6, 1.0, 1.2, COR, 0x8a9096, { roof: true });
+        lined(a, w, d, 3.5, door, 0xcfd6d0, 0x3e4a52); gear(a, w, d, 3.5); a.box(-w / 2 - 0.08, 0.3, 0, 0.1, 0.1, d - 1, null, 0x3e4446, { n: 3, step: [0, 0.9, 0] }); });       // three cable runs down the west wall
     building('radome', [8, 71, 11, 74, 'S'], 8, SOLID, (a, w, d) => {
         a.cyl(0, 0, 0, 4.9, 2.2, CONC, TAN, { seg: 20 }); a.dome(0, 2.2, 0, 4.9, 5.4, null, 0xf2f2ee); a.box(0, 7.6, 0, 0.25, 0.3, 0.25, null, RED, { glow: 1 }); a.box(0, 0, 4.95, 1.3, 2.0, 0.1, RIB, STEEL);
         a.sign('NO ENTRY', 0, 1.3, 5.02, 1.0, 0.3, '#ffffff', '#a82a20', 'stencil'); });
@@ -208,7 +236,8 @@ exports.ground = ctx => { bind(ctx);
         const sk = { keyTop: SLAB, tintTop: 0xb8b4a8, uv: [3.5, 3.5], gain: 1.3 };
         a.box(0.6, 0, 0, 17.0, 3.53, 11.2, CONC, TAN, sk); a.box(-8.5, 0, -3.25, 1.2, 3.53, 4.7, CONC, TAN, sk); a.box(-8.5, 0, 4.125, 1.2, 3.53, 2.95, CONC, TAN, sk);
         a.box(0.6, 1.2, 5.63, 13, 1.1, 0.06, GLS, 0x24323a, { kind: 'glass' }); a.sign('FLIGHT OPERATIONS', 0.6, 2.6, 5.64, 7.0, 0.5, '#f0f0e8', '#23262b', 'stencil');
-        a.cyl(X, 0, Z, 4.5, 14, CONC, TAN, { seg: 20, uv: [3.5, 3.5], gain: 1.3 }); a.cyl(X, 3.5, Z, 5.5, 0.9, CONC, TAN2, { seg: 20, gain: 1.3 });                // (+ a collar on the deck: the drum's own slope showed at the shaft's foot) a.cyl(X, 13.4, Z, 6.0, 0.2, null, STEEL, { seg: 20 });                                   // the shaft, the gallery round the cab
+        a.cyl(X, 0, Z, 4.5, 14, CONC, TAN, { seg: 20, uv: [3.5, 3.5], gain: 1.3 }); a.cyl(X, 3.5, Z, 5.5, 0.9, CONC, TAN2, { seg: 20, gain: 1.3 }); for (const y of [7, 10.5]) a.cyl(X, y, Z, 4.58, 0.28, CONC, TAN2, { seg: 20, gain: 1.3 });   // + two belt courses
+        for (const y of [5.4, 8.6, 11.8]) a.box(X, y, Z + 4.52, 0.5, 1.2, 0.06, GLS, 0x24323a, { kind: 'glass' });                                               // the stair's three slit windows                // (+ a collar on the deck: the drum's own slope showed at the shaft's foot) a.cyl(X, 13.4, Z, 6.0, 0.2, null, STEEL, { seg: 20 });                                   // the shaft, the gallery round the cab
         a.cyl(X, 13.6, Z, 5.9, 1.0, null, STEEL, { seg: 20, ri: 5.82, cap: false, ds: true });                                                                   // its rail
         a.cyl(X, 14, Z, 4.6, 0.7, CONC, TAN2, { seg: 20 }); a.cyl(X, 14.7, Z, 4.6, 2.5, GLS, 0x1c2a32, { seg: 20, r2: 5.4, kind: 'glass' });                       // the sill, the canted dark glass
         a.cyl(X, 17.2, Z, 5.9, 0.4, CONC, TAN2, { seg: 20 }); a.box(X, 17.6, Z, 0.2, 5.5, 0.2, null, STEEL); a.box(X, 20.4, Z, 2.2, 0.08, 0.08, null, STEEL);
@@ -306,6 +335,10 @@ exports.ground = ctx => { bind(ctx);
     native('men in black', 3, 57, 0, sayOf(O_GATE, 'men in black')); native('marksman', 7, 52, 270, sayOf(O_GATE, 'marksman')); native('men in black', 21, 73, 270, sayOf(O_LINE, 'men in black'));
     native('spy', 30, 62, 180); native('bligblog', 38, 82, 0); native('grey', 41, 74, 200);
 };
+
+/* THE AIR (11-16, the tool's `airZones` hook, home squares): dust blowing over the two Dry Lake plots and, thinner, down Runway 33 */
+exports.airZones = () => [{ sx0: 0, sy0: 84, sx1: 12, sy1: 96, kind: 'dust', color: 0xd8c8a8, n: 120, speed: 0.8, wind: 1.4 }, { sx0: 36, sy0: 84, sx1: 45, sy1: 96, kind: 'dust', color: 0xd8c8a8, n: 90, speed: 0.8, wind: 1.4 },
+    { sx0: 2, sy0: 75, sx1: 38, sy1: 81, kind: 'dust', color: 0xc8bca4, n: 70, speed: 1.1, wind: 2.0 }];
 
 exports.doors = ctx => { bind(ctx);
     doors.push({ id: 'hangar', wall: 'free', x: HANGAR.cx, z: r2(gx(86) - 0.45), face: 0, leaf: 'leaf_bulkhead', wide: true, label: 'AREA 51 · HANGAR 18', sub: 'THE BIG DOOR · INTO THE HANGAR', action: { room: 'site_prebuilt_area51_hangar', at: 'flightline' },
