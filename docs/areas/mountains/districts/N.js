@@ -32,8 +32,8 @@
    - THE ATMOSPHERE (pass 4): a real flame (`hearth_fire`) in every hearth, braziers at the Pole, the lake, the Sleigh Road and the two south ways out
 
    - THE PEOPLE (pass 8, mondo "figure it out whatever fits"): `exports.encounters` = the roster's four `polar` units + the gnome (yeti common; Krampus,
-     gnome uncommon; Santa Clause, the Ice Queen one of a kind), 3 to 5 walking. Standing: Santa Clause, the gnome, the yeti (old lines), the Ice Queen on
-     the lake, Krampus at the Coal store (no lines: none were ever written)
+     gnome uncommon; Santa Clause, the Ice Queen one of a kind), 3 to 5 walking. Standing: Santa Clause, the gnome, the yeti (old lines) and the Ice Queen on
+     the lake (no line). Four is the room's crowd cap, so Krampus is in the table only; chimneys smoke (`chimney_smoke`)
    - THE SIGNS (pass 8): `board()` = the words in a face per trade (WORKSHOP `xmas`, POST OFFICE `marc`, Bakery `pacifico`, TOY SHOP `bangers`, STABLE `rye`,
      COAL `stencil`), a white frame, snow on the top edge
    - THE OUTSIDE LAYERS (passes 7 + 8; `winter`, `dado`): belt board, drifts, icicles, sill snow, wood stacks, gutters + downpipes, a ridge board, shingled
@@ -217,7 +217,8 @@ exports.build = ctx => {
     const SQ = { BL: [-M, -M], BR: [M, -M], FL: [-M, M], FR: [M, M] }, at = (h, sq, key, q) => h.put(key, SQ[sq][0], SQ[sq][1], q);
     const hearthSide = h => (h.q.chimney || 0);
     const xmas = (h, x, z) => { h.put('xmas_tree', x, z, { h: 1.7, floor: true }); h.put('xmas_gift', x - Math.sign(x) * 0.7, z - Math.sign(z) * 0.1, { face: 20 }); h.put('xmas_gift_3', x - Math.sign(x) * 0.2, z - Math.sign(z) * 0.7, { face: 70 }); };
-    const mantel = h => { const c = hearthSide(h); if (!c) return; h.put('hearth_fire', c, -2.72, { w: 0.85, h: 0.75 }); h.put('xmas_stocking', c - 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_stocking_2', c + 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_garland', c, -2.18, { y: 1.66, face: 180 }); };
+    const smoke = (h, x, z, top) => h.put('chimney_smoke', x, z, { y: r2(1.75 + top), rise: 5 });   // (the catalogue's smoke, the Camelot pilot's piece; `y` = the chimney's top from the room's floor)
+    const mantel = h => { const c = hearthSide(h); if (!c) return; smoke(h, c, -3.85, h.q.h + h.q.rh + 0.95); h.put('hearth_fire', c, -2.72, { w: 0.85, h: 0.75 }); h.put('xmas_stocking', c - 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_stocking_2', c + 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_garland', c, -2.18, { y: 1.66, face: 180 }); };
     /* a home with a bed. The bed on the back square away from the hearth. With the hearth on the left (or none) the wardrobe takes FR and BL + FL are the
        walk; with the hearth on the right the bed is on BL, so FR stays free (a wardrobe there would shut BR in) and an armchair sits in its corner */
     const bedHome = (h, tree) => { const c = hearthSide(h), s = c > 0 ? -1 : 1, back = s > 0 ? 'BR' : 'BL';
@@ -240,7 +241,7 @@ exports.build = ctx => {
       h.put('meshy_burlap_sack', 2.75, 2.7); h.put('meshy_burlap_sack', 2.7, 0.55, { face: 80 }); h.put('meshy_burlap_sack', 2.2, 2.85, { face: 200 }); h.put('newspaper_bundles', -2.8, 0.5);
       h.put('xmas_gift_2', -2.7, -2.6); h.put('xmas_gift', 2.6, -2.6, { face: 40 }); h.put('xmas_gift_4', 1.9, -2.75); }
     /* THE BAKERY: the oven under the chimney on BL, the bread on BR, the till on a side table by the right wall; the two front squares are the shop */
-    { const h = B('bakery'); at(h, 'BL', 'deck_oven', { face: 180 }); at(h, 'BR', 'bread_rack', { face: 180 }); h.put('psx_bedside_table_1', 2.75, 0.5, { face: 270 }); h.put('cash_register', 2.75, 0.5, { y: 0.64, face: 270 });
+    { const h = B('bakery'); smoke(h, h.q.flue, -3.85, h.q.h + h.q.rh + 0.95); at(h, 'BL', 'deck_oven', { face: 180 }); at(h, 'BR', 'bread_rack', { face: 180 }); h.put('psx_bedside_table_1', 2.75, 0.5, { face: 270 }); h.put('cash_register', 2.75, 0.5, { y: 0.64, face: 270 });
       h.put('psx_tv_table_1', 2.7, 2.6, { face: 270 }); h.put('xmas_cookies', 2.7, 2.6, { y: 0.74 }); h.put('xmas_gingerbread', 2.55, 2.9, { y: 0.74 }); h.put('xmas_bake', 2.8, 2.3, { y: 0.74 });
       h.put('meshy_burlap_sack', -2.8, 0.5); h.put('meshy_burlap_sack', -2.75, -0.3, { face: 120 }); h.put('xmas_wreath', 1.75, -3.12, Object.assign({ face: 180 }, WALL(2.1))); h.put('wall_clock', -3.14, 2.4, Object.assign({ face: 90 }, WALL(2.1))); }
     /* THE TOY SHOP: a cabinet on each back square, the toys round the front squares' edges, the till on a side table */
@@ -256,7 +257,7 @@ exports.build = ctx => {
       const a0 = h.at(-M - 0.7, -M), a1 = h.at(-M + 0.7, -M); R.feat({ k: 'wall', x0: a0[0], z0: a0[1], x1: a1[0], z1: a1[1], t: 1.6, h: 0.9, ghost: true, rail: false }); }
     /* THE WORKSHOP (5 x 6 squares, their middles at x -7 .. 7, z -8.75 .. 8.75): the aisle from the door down column 0, three benches a side on columns
        -3.5 and 3.5, the side aisles along the walls for the tools and the freight, the hearth's square and the door's square free */
-    { const h = B('workshop'); for (const x of [-3.5, 3.5]) for (const z of [-1.75, 1.75, 5.25]) h.put('psx_table_large_3', x, z, { face: 90 });
+    { const h = B('workshop'); smoke(h, h.fw / 2 - 1.6, -h.fd / 2 + 1.2, 10.5); for (const x of [-3.5, 3.5]) for (const z of [-1.75, 1.75, 5.25]) h.put('psx_table_large_3', x, z, { face: 90 });
       h.put('xmas_hammer', -3.5, -1.5, { y: 0.82 }); h.put('xmas_gingerbread', -3.8, -2.2, { y: 0.91 }); h.put('beach_ball', -3.5, 1.5, { y: 0.91 }); h.put('xmas_gift_3', -3.7, 2.2, { y: 0.91 }); h.put('xmas_hammer_2', -3.4, 5.6, { y: 0.82 }); h.put('xmas_cocoa', -3.8, 4.9, { y: 0.91 });
       h.put('football', 3.4, -2.1, { y: 0.91 }); h.put('xmas_gift_4', 3.6, -1.4, { y: 0.91 }); h.put('decor_carousel_horse', 3.5, 1.75, { y: 0.91, h: 0.7, face: 250 }); h.put('railway_lantern', 3.3, 4.9, { y: 0.91 }); h.put('xmas_gift_2', 3.6, 5.6, { y: 0.91, face: 30 });
       h.put('tool_chest', -7, 5.25, { face: 90 }); h.put('psx_wooden_crate_2', 7, 5.25); h.put('psx_wooden_crate_3', 7, 1.75, { face: 20 }); h.put('xmas_tree', 7, 8.75, { h: 3.2, floor: true }); h.put('xmas_gift_4', 5.9, 9.3, { face: 60 });
@@ -332,7 +333,9 @@ exports.build = ctx => {
     lampPost('P03-03', 9, 7, 1); lampPost('P03-03', 5, 6, 0); put('P03-03', 'signpost', 8, 8, { face: 180 }); put('P03-03', 'xmas_snowman_3', 6, 9); put('P03-03', 'fallen_log', 8, 6);
     /* ── THE ATMOSPHERE (pass 4): warm light in the cold. Braziers (real lights) where people would stand at night ── */
     put('P01-00', 'brazier', 6, 6); put('P01-00', 'brazier', 8, 6); put('P01-02', 'brazier', 8, 5); put('P02-02', 'brazier', 7, 5); put('P01-03', 'brazier', 6, 4); put('P03-03', 'brazier', 7, 8);
-    /* ── THE TWO WHO WERE MISSING (pass 8): the Ice Queen out on her lake, Krampus at the Coal store's door. No lines: nobody wrote them any ── */
-    native('P00-02', 'ice queen', 7, 4, 90); native('P03-00', 'krampus', 6, 6, 200);
+    /* ── THE ONE WHO WAS MISSING (pass 8): the Ice Queen out on her lake (no line: nobody wrote her one; she walks the ice). Krampus is NOT stood here:
+       THE CROWD CAP (data.js HQ_CROWD_RULES, mondo's "way less people") shows four bodies a room, so a fifth native never appeared (seen in the probe:
+       Santa Clause, the gnome, the yeti, the Ice Queen). He is in the room's table (`encounters`) ── */
+    native('P00-02', 'ice queen', 7, 4, 90);
   }
 };

@@ -4414,7 +4414,10 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   - PEOPLE: the roster's `polar` biome (RACE_PROFILES) = yeti, santa clause, ice queen, krampus; + the gnome (the old room's native). NEW TOOL HOOK
     (bake-mountains.js, board note): a district file may export `encounters = { list: [{ race, w }], walkers, spots }`; the tool writes it as the room's
     own table (data.js THE ENCOUNTER TABLE; his AREA UNITS window still wins). N: yeti 7, krampus 2, gnome 2, santa clause 1, ice queen 1, walkers 3 to 5,
-    `spots: false` (the standing natives keep their place and line). Two more stand: the Ice Queen on the lake, Krampus at the Coal store, no lines.
+    `spots: false` (the standing natives keep their place and line). One more stands: the Ice Queen on the lake (no line; a native without a line walks).
+    THE CROWD CAP (data.js `HQ_CROWD_RULES.max` 4) shows FOUR bodies a room: a fifth native (Krampus was tried) never appears, and with four natives
+    standing no table walker gets a body. A district that wants walkers must stand fewer natives. `dev.chars()` in a probe lists who has a body.
+    Chimneys smoke: the catalogue's `chimney_smoke` (the Camelot pilot's piece), `y` = the chimney's top from the room's floor.
     No levels set: docs/notes/npc-system.md owns levels, rarity tiers and refill.
   - SIGNS: N.js `board()` (words + white frame + snow on top). One face a trade from the city's `HQ_SIGN_FONTS`; one new id, `xmas` = Mountains of
     Christmas 700 (three-renderer.js row + the third font sheet in index.html), for the Workshop. A sign shows the old letters until its file arrives.
