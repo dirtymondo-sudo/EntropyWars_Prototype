@@ -67,6 +67,10 @@ const hut = (a, w, d, dr, q, ctx) => { const { WD, WD2, SHG, FLR } = ctx, h = q.
     for (const s of [-1, 1]) { const x0 = dr.lx + s * (dr.cw / 2 + 0.25), e = s * (w / 2 + 0.2); a.box((x0 + e) / 2, 0, d / 2 + 0.1, Math.abs(e - x0), 0.9, 0.2, 'rocks_5', 0x9c9ca4, { gain: 1.5 }); }
     a.box(0, 0, 0, w - 0.1, 0.16, d - 0.1, q.floor || FLR, q.floorTint || 0x8c7a62, { uv: [1.75, 1.75], glow: 0.7 });
     lit(a, w, h, d, dr, q.inKey || WD, q.inTint || 0xd8b088, 0.85, WD2);
+    { const top = h - 0.36, bq = { glow: 0.75, gain: 1.5 };                                                                         // (pass 5) tie beams under the ceiling, a skirting, the lamp hung from the middle beam
+      for (const z of [-d / 4, d / 4]) a.box(0, top - 0.34, z, w - 0.66, 0.22, 0.22, WD2, 0x5a4030, bq); for (const x of [-w / 3, 0, w / 3]) a.box(x, top - 0.34, 0, 0.18, 0.18, d - 0.66, WD2, 0x5a4030, bq);
+      a.box(0, 0.16, -(d / 2 - 0.36), w - 0.7, 0.16, 0.05, WD2, 0x5a4030, bq); for (const s of [-1, 1]) a.box(s * (w / 2 - 0.36), 0.16, 0, 0.05, 0.16, d - 0.7, WD2, 0x5a4030, bq);
+      a.box(0, top - 0.8, 0, 0.03, 0.46, 0.03, WD2, 0x2a2a2a); a.box(0, top - 1.08, 0, 0.26, 0.3, 0.26, 'marble_light', 0xffb050, { glow: 1.3 }); a.box(0, top - 0.78, 0, 0.32, 0.05, 0.32, WD2, 0x2a2a2a); a.box(0, top - 1.12, 0, 0.32, 0.04, 0.32, WD2, 0x2a2a2a); }
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.42, h, 0.42, q.stone ? 'rocks_5' : WD2, q.stone ? 0x8c8c94 : TR, q.stone ? { gain: 1.5 } : null);
     const rk = q.snow ? 'ice' : SHG, rt = q.snow ? 0xf4f8ff : (q.roofTint || 0x6a5038), rq = { gain: 1.6 };
     if (q.roof === 'hip' || q.roof === 'pyramid') a.roof(q.roof, 0, h, 0, w + 2.2, q.rh, d + 2.2, rk, rt, rq);
@@ -86,7 +90,8 @@ const hut = (a, w, d, dr, q, ctx) => { const { WD, WD2, SHG, FLR } = ctx, h = q.
     for (const s of [-1, 1]) for (let z = -d / 2 + 1.75; z < d / 2; z += 3.5) W2(z, s * (w / 2 + 0.08), 1.5, true);
     if (!q.chimney) for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) W2(x, -d / 2 - 0.08, 1.5, false);
     else for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) if (Math.abs(x - q.chimney) > 2.2) W2(x, -d / 2 - 0.08, 1.5, false);
-    if (q.chimney != null && q.chimney !== false) { const cx = q.chimney; a.box(cx, 0, -d / 2 - 0.4, 1.5, h + q.rh + 0.8, 1.0, 'rocks_5', STONE, { roof: true }); a.box(cx, h + q.rh + 0.8, -d / 2 - 0.4, 1.7, 0.2, 1.2, 'rocks_5', 0x6c6c74, { roof: true }); hearth(a, cx, d, h - 0.36, WD2); }
+    if (q.chimney != null && q.chimney !== false) { const cx = q.chimney; a.box(cx, 0, -d / 2 - 0.4, 1.5, h + q.rh + 0.8, 1.0, 'rocks_5', STONE, { roof: true }); a.box(cx, h + q.rh + 0.8, -d / 2 - 0.4, 1.7, 0.2, 1.2, 'rocks_5', 0x6c6c74, { roof: true }); hearth(a, cx, d, h - 0.36, WD2);
+        const sx = cx > 0 ? 1 : -1; a.box(sx * (w / 2 + 0.42), 0, -d / 2 + 1.6, 0.6, 1.0, 2.2, WD2, 0x8a6444, { gain: 1.5 }); a.box(sx * (w / 2 + 0.42), 1.0, -d / 2 + 1.6, 0.7, 0.07, 2.3, q.snow ? 'ice' : WD2, q.snow ? 0xf4f8ff : 0x4a3626); }   // the wood stack under the eaves, beside the chimney
     if (q.porch) { a.box(0, 0, d / 2 + 1.3, w, 0.16, 2.5, FLR, 0x8c7a62); const n = Math.max(2, Math.round(w / 3.5));
         for (let i = 0; i <= n; i++) { const x = -w / 2 + 0.25 + i * (w - 0.5) / n; if (Math.abs(x - dr.lx) < 0.9) continue; a.box(x, 0, d / 2 + 2.4, 0.24, 2.7, 0.24, WD2, TR); }
         a.roof('shed', 0, 2.7, d / 2 + 1.35, w + 0.6, 0.7, 2.9, rk, rt, rq); }
@@ -103,12 +108,13 @@ const block = (R, id, lx, ly) => { const q = R.S(id, lx, ly), k = q[0] + ':' + q
 
 /* the ground a building stands on, in metres over the room's floor (the tool's own rule, bake-mountains.js heights(): the plots' levels blended, read at the
    middle of the building's front). A prop's `y` from 1 up is a height from the ROOM's floor, so a hung piece needs it: UP(B, h) = h over that building's floor */
-const groundAt = (R, plot, q) => { const o = R.o, N = R.N, by = {}; R.plots.forEach(p => { by[p.lx + ':' + p.ly] = p; });
+const baseOf = R => { if (R._sBase) return R._sBase; const o = R.o, N = R.N, by = {}; R.plots.forEach(p => { by[p.lx + ':' + p.ly] = p; });
     const cl = (v, a, b) => Math.max(a, Math.min(b, v)), lv = (i, j) => { i = cl(i, 0, o.pw - 1); j = cl(j, 0, o.ph - 1); const p = by[i + ':' + j]; return ((p ? p.level : o.deadLevel(i, j)) - o.base) * 1.75; };
     const prof = (i, pz) => { const f = o.zflat ? o.zflat(i) : 1 / 3, qz = pz - 0.5, j = cl(Math.floor(qz), 0, o.ph - 2), v = cl((qz - j - f / 2) / (1 - f), 0, 1); return lv(i, j) * (1 - v) + lv(i, j + 1) * v; };
-    const base = (cx, cy) => { const px = cx / N - 0.5, i = cl(Math.floor(px), 0, o.pw - 2), u = cl((px - i - 1 / 6) / (2 / 3), 0, 1); return prof(i, cy / N) * (1 - u) + prof(i + 1, cy / N) * u; };
-    const a0 = R.S(plot, q[0], q[1]), x0 = a0[0], y0 = a0[1], x1 = x0 + q[2] - q[0], y1 = y0 + q[3] - q[1], sd = q[4];
+    return (R._sBase = (cx, cy) => { const px = cx / N - 0.5, i = cl(Math.floor(px), 0, o.pw - 2), u = cl((px - i - 1 / 6) / (2 / 3), 0, 1); return prof(i, cy / N) * (1 - u) + prof(i + 1, cy / N) * u; }); };
+const groundAt = (R, plot, q) => { const base = baseOf(R), a0 = R.S(plot, q[0], q[1]), x0 = a0[0], y0 = a0[1], x1 = x0 + q[2] - q[0], y1 = y0 + q[3] - q[1], sd = q[4];
     return base(sd === 'E' ? x1 : sd === 'W' ? x0 : (x0 + x1) / 2, sd === 'S' ? y1 : sd === 'N' ? y0 : (y0 + y1) / 2); };
+const gnd = (R, plot, lx, ly) => { const q = R.S(plot, lx, ly); return baseOf(R)(q[0] + 0.5, q[1] + 0.5); };   // the walked ground at a square's middle
 const UP = (B, h) => Math.round((B.G + 0.16 + h) * 100) / 100, WALL = (B, h, face) => ({ mount: 0, y: UP(B, h), face });
 
 /* the plan's squares this district opens (rock or trees to walked ground) so its buildings have a doorstep */
@@ -133,7 +139,7 @@ exports.apply = ctx => {
 exports.build = ctx => {
     const R = ctx, { put, dec, tree, native, building, look, flat, cabin, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
   /* ── MOUNT SHASTA ── */
-  put('P14-00', 'cave_stone', 5, 5); dec('P14-00', 'cave_stone', 6, 7); put('P14-00', 'signpost', 7, 8, { face: 180 }); props.push({ key: 'white_cloud', x: mx(S('P14-00', 5, 5)[0]), z: mz(S('P14-00', 5, 5)[1]), y: 16, h: 7 });   // THE SUMMIT: the crater, the cloud parked over it
+  put('P14-00', 'cave_stone', 5, 5); dec('P14-00', 'cave_stone', 6, 7); put('P14-00', 'signpost', 7, 8, { face: 180 }); { const g0 = gnd(R, 'P14-00', 7, 6), q = S('P14-00', 7, 6), cx = mx(q[0]), cz = mz(q[1]), r2 = ctx.r2; for (const [dx, dz, dy, sp] of [[0, 0, 16, 30], [-11, 2, 15, 20], [11, -2, 15, 20], [0, -1, 20, 16]]) props.push({ key: 'white_cloud', x: r2(cx + dx), z: r2(cz + dz), y: r2(g0 + dy), span: sp, face: 90 }); }   // THE SUMMIT: the crater, the cloud parked over it
   dec('P13-00', 'cave_stone', 5, 4); dec('P15-00', 'ocean_rock_5', 6, 5); dec('P13-01', 'cave_stone', 5, 5); dec('P13-01', 'cave_stone', 4, 6);
   put('P14-01', 'camping_tent', 3, 4, { face: 140 }); put('P14-01', 'camping_tent', 8, 4, { face: 220 }); put('P14-01', 'campfire', 5, 3); dec('P14-01', 'sea_chest', 6, 2); native('P14-01', 'yeti', 7, 9, 300, say('shasta', 'yeti'));
   { const q = S('P15-01', 5, 6); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 3.6, rz: 3.0, y: -0.2, depth: 0.5, key: 'water', bank: 0.8 }); R.taken.add(q[0] + ':' + q[1]);   // THE STEAM VENTS: the warm pool
@@ -188,7 +194,7 @@ exports.build = ctx => {
     { const h = B.bigfoot; fire(h, -3.2); h.put('couples_bed', 3.5, -1.75, { face: 180, h: 1.0 }); h.put('psx_dinner_table_1', 0, -1.75, { face: 90 }); h.put('psx_meat_1', 0.2, -1.6, { y: 0.87 }); h.put('psx_fish_skeleton_mp_1', -0.3, -2.0, { y: 0.87, face: 40 }); h.put('psx_canned_food_mp_1', 0.1, -2.2, { y: 0.87 });
       h.put('stump', -1.1, -1.4); h.put('stump', 1.1, -2.0); h.put('psx_armchair_1', -1.9, -0.5, { face: 240 }); h.put('rug_round', -3.2, -1.0, { y: 0.02 }); h.put('stock_pots', -4.4, -1.2, { face: 90 });
       h.put('sea_chest', 4.4, 2.7, { face: 270 }); h.put('psx_shelf_mp_2', -4.6, 2.5, { face: 90 }); h.put('beach_cooler', 2.4, 2.9, { face: 0 }); h.put('meshy_burlap_sack', 3.3, 2.9); h.put('fishing_net_wall', 4.9, -0.2, WALL(h, 1.2, 270));
-      h.put('psx_photo_frame_mp_1', -1.0, -3.14, WALL(h, 1.7, 180)); h.put('fallen_log', -4.2, 0.6, { face: 90, h: 0.5 }); h.put('wooden_bucket', -2.2, 2.9); }
+      h.put('psx_photo_frame_mp_1', -1.0, -3.14, WALL(h, 1.7, 180)); h.put('wooden_bucket', -2.2, 2.9); }
     /* THE SHAMAN'S LODGE: the brazier, the bed roll, the table of the craft */
     { const h = B.shaman; h.put('brazier', 0, -1.75); h.put('cot', -3.5, -1.75, { face: 90 }); h.put('psx_coffee_table_1', 3.5, -1.75, { face: 0 }); h.put('crystalBall', 3.5, -1.75, { y: 0.66 }); h.put('tarotDeck', 3.0, -1.6, { y: 0.66 }); h.put('hw_candles', 4.0, -1.9, { y: 0.66 });
       h.put('rug_round', 1.6, 0.9, { y: 0.02 }); h.put('rug_round', -1.9, 1.1, { y: 0.02 }); h.put('item_ward_totem', -1.5, -2.8, { face: 180 }); h.put('item_ward_totem', 1.5, -2.8, { face: 180 }); h.put('item_wizard_staff', 1.5, 3.0);
@@ -202,17 +208,17 @@ exports.build = ctx => {
     /* THE SPRING SHRINE (2 x 2 squares, middles +-1.75): the altar, the votive stand, the water jars */
     { const h = B.shrine; h.put('stone_altar', 1.75, -1.75, { face: 180 }); h.put('item_censer', 1.4, -1.75, { y: 0.96 }); h.put('meshy_crystal_shard', 2.2, -1.8, { y: 0.96 }); h.put('hw_candles', 1.8, -2.0, { y: 0.96 });
       h.put('votive_stand', -1.9, -2.5, { face: 180 }); h.put('candelabra', 0.2, -2.8); h.put('candelabra', 3.0, -0.4); h.put('greek_amphora', -2.8, 0.2); h.put('greek_amphora', -2.7, -0.8, { face: 60 }); h.put('wooden_bucket', -2.0, 0.6);
-      h.put('rug_round', 1.2, 0.8, { y: 0.02 }); h.put('ships_bell', 2.9, 2.9, { y: UP(h, 1.9), mount: 0, face: 0 }); h.put('candle_ring', 1.2, 0.8, { y: 0.03 }); }
+      h.put('rug_round', 1.2, 0.8, { y: 0.02 }); h.put('ships_bell', 2.9, 2.9, { y: UP(h, 1.9), mount: 0, face: 0 }); h.put('candle_ring', 1.2, 0.8, { y: 0.03, noLight: true }); }
     /* THE FIRE LOOKOUT: the map table under the windows, the telescope, the radio, a cot */
     { const h = B.lookout; h.put('map_table', 0, -1.75, { face: 180 }); h.put('item_binoculars', -0.5, -1.7, { y: 0.8 }); h.put('brass_telescope', 3.5, -1.75, { face: 20 }); h.put('radio_console', -3.5, -1.75, { face: 180 });
       h.put('cot', -3.5, 1.75, { face: 0 }); h.put('psx_pillow_mp_1', -3.5, 1.1, { y: 0.45 }); h.put('psx_bedside_table_1', -4.5, 0.2, { face: 90 }); h.put('field_radio', -4.5, 0.2, { y: 0.64, face: 90 }); h.put('psx_chair_mp_1', 1.0, -0.6, { face: 330 });
       h.put('star_chart', 4.9, 0.9, WALL(h, 1.2, 270)); h.put('gauge_board', 2.6, 3.14, WALL(h, 1.3, 0)); h.put('fire_extinguisher', 1.4, 3.14, WALL(h, 0.9, 0)); h.put('hose_rack', -4.9, -1.2, WALL(h, 1.2, 90)); h.put('coffee_mug', 0.6, -1.9, { y: 0.8 });
-      h.put('footlocker', 4.3, 2.8, { face: 270 }); h.put('ship_lantern', 0, 0.4, { y: UP(h, 2.7), mount: 0 }); }
+      h.put('footlocker', 4.3, 2.8, { face: 270 }); h.put('ship_lantern', 0, 0.4, { y: UP(h, 2.7), mount: 0, noLight: true }); }
     /* THE CLIMBERS' HUT: two cots, the table, the kit by the fire */
     { const h = B.climbers; fire(h, 3.2); h.put('cot', -3.5, -1.75, { face: 90 }); h.put('cot', -3.5, 1.75, { face: 90 }); h.put('psx_pillow_mp_1', -4.1, -1.75, { y: 0.45 }); h.put('psx_pillow_mp_1', -4.1, 1.75, { y: 0.45 });
       h.put('psx_dinner_table_1', 0, -1.75, { face: 90 }); h.put('xmas_cocoa', 0.2, -1.5, { y: 0.87 }); h.put('psx_canned_food_mp_1', -0.2, -2.0, { y: 0.87 }); h.put('psx_flashlight_1', 0.1, -2.3, { y: 0.87 }); h.put('psx_chair_mp_1', 1.1, -1.5, { face: 270 }); h.put('psx_chair_mp_1', -1.1, -2.0, { face: 90 });
       h.put('meshy_rope', 4.3, 0.4); h.put('meshy_rope', 3.8, 1.0, { face: 70 }); h.put('footlocker', 4.3, 2.7, { face: 270 }); h.put('psx_supply_crate_1', 2.6, 2.9); h.put('stock_pots', 1.7, -2.6, { face: 180 }); h.put('hw_shovel', 4.6, -0.9, { face: 80 });
-      h.put('rug_round', 3.0, -0.9, { y: 0.02 }); h.put('notice_board', -1.3, -3.14, WALL(h, 1.3, 180)); h.put('ship_lantern', 0, 0.6, { y: UP(h, 2.7), mount: 0 }); h.put('psx_bandage_mp_1', -4.4, 0, { y: 0.02 }); }
+      h.put('rug_round', 3.0, -0.9, { y: 0.02 }); h.put('notice_board', -1.3, -3.14, WALL(h, 1.3, 180)); h.put('ship_lantern', 0, 0.6, { y: UP(h, 2.7), mount: 0, noLight: true }); h.put('psx_bandage_mp_1', -4.4, 0, { y: 0.02 }); }
   }
   /* ══ PASS 3 (11-16): THE DRESSING, plot by plot, from the model list (areas-complexes.md "MOUNT SHASTA, THE DISTRICT THREAD", FITS THIS DISTRICT).
      P = put (a blocker on a square's middle, never on a trail square), D = dec (decor, off the middle), T = a tree, NPC = a native. ══ */
@@ -237,7 +243,7 @@ exports.build = ctx => {
     { const q = S('P14-01', 5, 7); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 0.7, rz: 0.7, y: -0.1, depth: 0.5, key: 'water', bank: 0.2 }); R.taken.add(q[0] + ':' + q[1]); }
     D('P14-01', [['beach_cooler', 4, 3], ['psx_supply_crate_1', 3, 3], ['psx_fish_skeleton_mp_1', 4, 7], ['wooden_bucket', 6, 6], ['meshy_rope', 2, 5], ['stock_pots', 5, 4], ['psx_canned_food_mp_1', 6, 3], ['psxg_rock_2', 9, 4], ['hw_shovel', 7, 5], ['psx_wooden_crate_1', 9, 3]]);
     /* THE STEAM VENTS: fumaroles on the lava, crystals and torches at the adit, a rope round the hot pool */
-    P('P15-01', [['sea_vent', 4, 4], ['sea_vent', 6, 4, { h: 1.8 }], ['sea_vent', 3, 7, { h: 2.0 }], ['crystal_cluster', 7, 5], ['cave_torch', 8, 5], ['cave_torch', 8, 7]]);
+    P('P15-01', [['sea_vent', 4, 4], ['sea_vent', 6, 4, { h: 1.8, noLight: true }], ['sea_vent', 3, 7, { h: 2.0, noLight: true }], ['crystal_cluster', 7, 5], ['cave_torch', 8, 5], ['cave_torch', 8, 7, { noLight: true }]]);
     D('P15-01', [['rope_stanchion', 4, 6], ['rope_stanchion', 6, 7], ['rope_stanchion', 5, 5], ['psx_metal_barrel_mp_1', 6, 8], ['meshy_crystal_shards', 7, 7], ['meshy_crystal_shard', 7, 6], ['psxg_rock_1', 5, 8], ['psxg_rock_2', 3, 6], ['ocean_rock_7', 5, 3], ['psx_wooden_crate_4', 7, 4], ['hw_shovel', 6, 8], ['psxg_rock_3', 4, 5]]);
     /* AVALANCHE GULCH: what the last slide brought down: snapped trees, logs, blocks */
     P('P13-02', [['fallen_log', 7, 5, F(35)], ['fallen_log', 6, 7, F(110)], ['dead_snag', 8, 5, F(0)], ['psxg_rock_1', 8, 7, { h: 2.0, face: 130 }], ['hollow_dead_tree', 5, 5]]);
@@ -287,6 +293,47 @@ exports.build = ctx => {
     D('P14-07', [['instrument_guitar', 7, 5, { h: 0.9 }], ['hw_candles', 8, 6], ['fern', 5, 6], ['fern', 9, 6], ['beach_cooler', 6, 4], ['rabbit', 6, 7], ['woods_healflower', 8, 7], ['psx_pillow_mp_1', 8, 4], ['stock_pots', 9, 5], ['woods_healflower', 6, 3]]);
     native('P14-07', 'hippie', 7, 4, 150); native('P13-04', 'tree person', 7, 5, 200);
     /* the wands: thin orange poles with a flag that mark the route over snow and ice (a look, no collision, off the square's middle) */
-    for (const [id, lx, ly] of [['P13-00', 7, 4], ['P14-00', 5, 9], ['P15-00', 5, 6], ['P15-00', 7, 7], ['P15-00', 9, 5], ['P14-01', 4, 8], ['P13-02', 6, 4], ['P14-02', 4, 5], ['P14-02', 8, 6], ['P14-02', 6, 1]]) { const q = S(id, lx, ly); look('wand:' + id + ':' + lx + ':' + ly, ctx.r2(mx(q[0]) + 1.1), ctx.r2(mz(q[1]) - 0.9), a => { a.cyl(0, 0, 0, 0.035, 2.3, 'marble_light', 0xd86a20, { seg: 6, glow: 0.9 }); a.box(0.17, 1.95, 0, 0.32, 0.22, 0.02, 'marble_light', 0xe8421c, { glow: 0.95 }); a.dome(0, 0, 0, 0.3, 0.14, 'ice', 0xf4f8ff, { seg: 6, rings: 2 }); }); }
+    { const L = [['P13-00', 7, 4], ['P14-00', 5, 9], ['P15-00', 5, 6], ['P15-00', 7, 7], ['P15-00', 9, 5], ['P14-01', 4, 8], ['P13-02', 6, 4], ['P14-02', 4, 5], ['P14-02', 8, 6], ['P14-02', 6, 1]], o0 = S(L[0][0], L[0][1], L[0][2]), X0 = ctx.r2(mx(o0[0]) + 1.1), Z0 = ctx.r2(mz(o0[1]) - 0.9), G0 = gnd(R, L[0][0], L[0][1], L[0][2]);
+      look('wands', X0, Z0, a => { for (const [id, lx, ly] of L) { const q = S(id, lx, ly), x = ctx.r2(mx(q[0]) + 1.1 - X0), z = ctx.r2(mz(q[1]) - 0.9 - Z0), y = ctx.r2(gnd(R, id, lx, ly) - G0);
+          a.cyl(x, y - 0.3, z, 0.035, 2.6, 'marble_light', 0xd86a20, { seg: 6, glow: 0.9 }); a.box(x + 0.17, y + 1.95, z, 0.32, 0.22, 0.02, 'marble_light', 0xe8421c, { glow: 0.95 }); a.dome(x, y, z, 0.3, 0.14, 'ice', 0xf4f8ff, { seg: 6, rings: 2 }); } }); }
   }
+  /* ══ PASS 4 (11-16): ATMOSPHERE. Steam over every vent and the hot pool, lantern posts down the trail (a glow, not a real light: the frame rate), lanterns at the
+     dojo's eaves, a brazier at the shrine. The air (particles) is `airZones` below. The room's sky and its day are the tool's. ══ */
+  { const r2 = ctx.r2, steam = (id, lx, ly, up, rise) => { const q = S(id, lx, ly); props.push({ key: 'chimney_smoke', x: mx(q[0]), z: mz(q[1]), y: r2(gnd(R, id, lx, ly) + up), rise: rise || 6 }); };
+    steam('P14-00', 7, 6, 2.3, 9); steam('P15-01', 4, 4, 2.3); steam('P15-01', 6, 4, 1.8); steam('P15-01', 3, 7, 2.0); steam('P15-01', 5, 6, 0.4, 4); steam('P15-01', 6, 6, 0.4, 3);
+    /* the lantern post: a timber post, an arm, a caged lantern (the district's own; the village's is candy-striped) */
+    { const L = [['P13-07', 5, 8, -1.3, 0], ['P13-07', 4, 4, 1.2, -1.3], ['P13-07', 8, 2, 1.3, 1.2], ['P13-06', 6, 6, 1.3, 1.3], ['P13-06', 5, 3, -1.3, 1.2], ['P13-05', 5, 6, -1.3, 1.2], ['P13-05', 8, 2, 1.3, -1.2], ['P13-04', 5, 8, 1.3, 1.2], ['P13-04', 6, 4, 1.3, -1.3],
+        ['P13-03', 3, 3, -1.3, -1.2], ['P13-03', 8, 8, 1.2, -1.3], ['P14-03', 3, 3, -1.3, 1.2], ['P14-03', 7, 9, -1.3, 1.3], ['P14-03', 10, 8, 1.3, -1.3], ['P14-04', 3, 3, -1.3, -1.3], ['P14-04', 7, 5, 1.3, 1.2], ['P14-05', 5, 5, 1.3, -1.3], ['P14-05', 5, 9, 1.3, -1.3],
+        ['P14-06', 5, 5, -1.3, -1.3], ['P14-07', 5, 4, -1.3, 1.3], ['P14-02', 4, 6, -1.3, 1.2], ['P14-02', 8, 4, 1.3, 1.3], ['P14-01', 2, 5, 1.3, 1.3], ['P15-01', 3, 8, -1.3, 1.3], ['P13-02', 5, 6, -1.3, 1.3], ['P14-00', 6, 9, 1.3, 1.3]], o0 = S(L[0][0], L[0][1], L[0][2]), X0 = r2(mx(o0[0]) + L[0][3]), Z0 = r2(mz(o0[1]) + L[0][4]), G0 = gnd(R, L[0][0], L[0][1], L[0][2]);   // ONE look for all the posts (26 looks cost draw calls: the frame rate)
+      look('lamps', X0, Z0, a => { for (const [id, lx, ly, ox, oz] of L) { const q = S(id, lx, ly), x = r2(mx(q[0]) + ox - X0), z = r2(mz(q[1]) + oz - Z0), y = r2(gnd(R, id, lx, ly) - G0), sx = ox > 0 ? -1 : 1;
+          a.cyl(x, y - 0.3, z, 0.22, 0.65, 'rocks_5', 0x9c9ca4, { seg: 7, gain: 1.5 }); a.cyl(x, y + 0.35, z, 0.09, 2.75, WD2, 0x5a4030, { seg: 7, gain: 1.5 });
+          a.box(x + sx * 0.28, y + 2.9, z, 0.7, 0.08, 0.08, WD2, 0x5a4030, { gain: 1.5 }); a.box(x + sx * 0.55, y + 2.52, z, 0.03, 0.4, 0.03, WD2, 0x2a2a2a); a.box(x + sx * 0.55, y + 2.2, z, 0.24, 0.34, 0.24, 'marble_light', 0xffb050, { glow: 1.4 }); a.box(x + sx * 0.55, y + 2.54, z, 0.3, 0.05, 0.3, WD2, 0x2a2a2a); a.box(x + sx * 0.55, y + 2.16, z, 0.3, 0.04, 0.3, WD2, 0x2a2a2a); } }); }
+    /* the dojo's eaves, the shrine's fire, the lodge's porch light */
+    { const h = BUILT.dojo; for (const x of [-4.7, 4.7]) h.put('paper_lantern', x, h.fd / 2 + 0.75, { y: UP(h, 2.45), mount: 0, floor: false }); }
+    put('P14-04', 'brazier', 4, 2); dec('P14-03', 'hw_candles', 4, 3); dec('P14-03', 'hw_candles', 2, 3); dec('P14-04', 'hw_candles', 7, 4);
+    dec('P14-04', 'woods_glowcap', 4, 8); dec('P14-04', 'woods_glowcap', 8, 6); dec('P13-06', 'woods_glowcap', 8, 4); dec('P14-03', 'woods_glowcap', 10, 6);
+  }
+  /* ══ PASS 5 (11-16): POLISH. The place boards (every plot's own name from the plan, routed cream on brown, read from both sides of the trail; ONE look), the last
+     pieces at the doors and on the walls. ══ */
+  { const r2 = ctx.r2, L = [['P14-02', 6, 5, 'THE FORK'], ['P13-06', 6, 5, 'THE SWITCHBACK'], ['P13-04', 5, 5, 'THE LAST TREES'], ['P13-03', 5, 4, 'BUNNY FLAT'], ['P14-03', 2, 4, 'PANTHER MEADOWS'], ['P14-04', 3, 4, 'THE SPRING'], ['P14-05', 4, 5, 'THE LOOKOUT'],
+        ['P14-06', 7, 5, 'THE BOULDER FIELD'], ['P14-07', 5, 4, 'THE UPPER SHELF'], ['P15-03', 6, 4, 'THE OLD LAVA'], ['P13-02', 7, 4, 'AVALANCHE GULCH'], ['P15-02', 6, 4, 'THE SCREE'], ['P13-01', 7, 6, 'THE RED BANKS'], ['P14-01', 2, 6, 'HELEN LAKE'],
+        ['P15-01', 2, 6, 'THE STEAM VENTS'], ['P13-00', 7, 5, 'SHASTINA'], ['P14-00', 5, 6, 'THE SUMMIT'], ['P15-00', 5, 7, 'THE GLACIER']];
+    const o0 = S(L[0][0], L[0][1], L[0][2]), X0 = r2(mx(o0[0]) + 0.9), Z0 = r2(mz(o0[1]) + 1.0), G0 = gnd(R, L[0][0], L[0][1], L[0][2]);
+    look('boards', X0, Z0, a => { for (const [id, lx, ly, words] of L) { const q = S(id, lx, ly), x = r2(mx(q[0]) + 0.9 - X0), z = r2(mz(q[1]) + 1.0 - Z0), y = r2(gnd(R, id, lx, ly) - G0), bw = r2(words.length * 0.2 + 0.7);
+        for (const s of [-1, 1]) a.box(x + s * (bw / 2 + 0.07), y - 0.3, z, 0.12, 1.95, 0.12, WD2, 0x5a4030, { gain: 1.5 }); a.box(x, y + 1.02, z, bw + 0.1, 0.56, 0.07, WD2, TR, { gain: 1.4 });
+        a.sign(words, x, y + 1.07, z + 0.045, bw, 0.46, CREAM, BROWN, FONT); a.sign(words, x, y + 1.07, z - 0.045, bw, 0.46, CREAM, BROWN, FONT, { ry: 180 }); a.box(x, y + 1.6, z, bw + 0.3, 0.05, 0.2, WD2, 0x4a3626); } }); }
+  { const B = BUILT; let h = B.ranger; h.put('park_bench', 3.2, h.fd / 2 + 1.3, { face: 180, floor: false }); h.put('psx_metal_barrel_mp_1', -4.5, h.fd / 2 + 1.2, { floor: false }); h.put('psx_painting_1', -3.4, -3.14, WALL(h, 1.6, 180)); h.put('star_chart', -4.9, -1.8, WALL(h, 1.2, 90));
+    h = B.bigfoot; h.put('psx_painting_1', 2.2, -3.14, WALL(h, 1.7, 180)); h.put('wall_shelf', 4.9, 1.6, WALL(h, 1.6, 270)); h.put('psx_canned_food_mp_1', 4.7, 1.6, { y: UP(h, 1.66), mount: 0 }); h.put('skull', -4.5, 2.5, { y: 0.02 }); h.put('stump', h.fw / 2 - 1.2, h.fd / 2 + 1.0, { floor: false });
+    h = B.shaman; h.put('psx_painting_1', -4.9, 0.4, WALL(h, 1.6, 90)); h.put('wall_shelf', 4.9, -1.2, WALL(h, 1.6, 270)); h.put('item_potion_flask', 4.7, -1.2, { y: UP(h, 1.66), mount: 0 }); h.put('hw_candles', -0.9, -2.9); h.put('stump', -3.8, h.fd / 2 + 0.9, { floor: false }); h.put('instrument_drum', 3.6, h.fd / 2 + 0.9, { floor: false });
+    h = B.dojo; h.put('psx_sword_mp_1', -4.9, 0.8, WALL(h, 1.5, 90)); h.put('psx_painting_1', 4.9, -1.4, WALL(h, 1.7, 270)); h.put('wooden_bucket', 4.4, 3.0);
+    h = B.shrine; h.put('psx_painting_1', -3.1, -0.6, WALL(h, 1.7, 90)); h.put('greek_amphora', 2.6, h.fd / 2 + 0.8, { floor: false }); h.put('hw_candles', -2.7, h.fd / 2 + 0.7, { floor: false });
+    h = B.lookout; h.put('psx_painting_1', -4.9, 1.9, WALL(h, 1.7, 90)); h.put('notice_board', -2.6, 3.14, WALL(h, 1.3, 0)); h.put('psx_wooden_crate_4', 4.3, h.fd / 2 + 0.9, { floor: false });
+    h = B.climbers; h.put('psx_painting_1', 4.9, 1.4, WALL(h, 1.7, 270)); h.put('wall_shelf', -4.9, 0, WALL(h, 1.7, 90)); h.put('psx_canned_food_mp_1', -4.7, 0, { y: UP(h, 1.76), mount: 0 }); h.put('hw_shovel', -3.6, h.fd / 2 + 0.7, { floor: false, face: 90 }); h.put('psx_metal_barrel_mp_1', 4.4, h.fd / 2 + 0.9, { floor: false }); }
+};
+
+/* THE AIR (pass 4; the tool's hook `airZones`, bake-mountains.js THE AIR BY DISTRICT): thin snow on the three peaks' plots, white motes of steam at the vents, ash over
+   the two lava plots, fireflies in Panther Meadows, pale motes at the Spring, pollen in the wood. Squares are the room's (from S()). Kept thin: the frame rate. */
+exports.airZones = ctx => { const { S } = ctx, Z = (id, kind, n, q, id2) => { const a = S(id, 0, 0), b = S(id2 || id, 11, 11); return Object.assign({ x0: a[0], y0: a[1], x1: b[0] + 1, y1: b[1] + 1, kind, n }, q || {}); };
+    return [Z('P13-00', 'snow', 260, { speed: 0.7 }, 'P15-00'), Z('P14-01', 'snow', 70, { speed: 0.6 }), Z('P15-01', 'motes', 70, { color: 0xffffff, speed: 0.5 }), Z('P13-01', 'ash', 40), Z('P15-03', 'ash', 40),
+        Z('P14-03', 'fireflies', 50), Z('P14-04', 'motes', 40, { color: 0xbfe8ff, speed: 0.3 }), Z('P13-03', 'dust', 50, { color: 0xffe8a0 }), Z('P13-04', 'dust', 90, { color: 0xffe8a0 }, 'P13-07'), Z('P14-05', 'dust', 70, { color: 0xffe8a0 }, 'P14-07')];
 };

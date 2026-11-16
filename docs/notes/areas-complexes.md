@@ -4612,6 +4612,10 @@ walked; the Stadium's north seats on level ground; a district look in the tool (
 - Tree kinds on snow: `pine` (a conifer, 600 triangles) and `xmas_snow_pine` / `_2` / `_3`. `tree_2` and `tree_3` are summer LEAF trees, wrong here.
 - An arch part with no `key` is an untextured shape (his rule: generated shapes are always textured): give every part a sheet (`marble_light` takes any tint).
 - A sign read from behind: the same `a.sign` again with `{ ry: 180 }` at the other face's z.
+- LIGHTS: a room gives a light to the first ten props that carry one, in the room's prop order (HQ_PROP_LIGHT_MAX); the Mountains room has 39. A later
+  `flood_mast`, `brazier` or `campfire` shows its glow and flame but lights nothing. Do not count on a real light in a district file after P and K.
+- AIR: export `airZones(ctx)` from a district file (bake-mountains.js, 11-16; fields x0, y0, x1, y1 in room squares): kinds dust, embers, fireflies, snow,
+  rain, spores, ash, motes. A room with zones draws only its zones: K.js hands the room's own thin snow back as a whole-room zone.
 - FPS in a probe: count requestAnimationFrame over 10 s at a fixed view and read `dev.renderer().info.render` (calls, triangles). The frame rate is the
   software GPU's (about 1.5): only good against the same view before the change.
 
@@ -4687,6 +4691,18 @@ list holds for the next passes, the models it needs. mondo 11-16: a second distr
     1.84 -> 1.98; inside the Lodge 1.30-1.56 -> 1.45. The Black Run's 24 snow pines became 8 snow pines + 16 retro pines to pay for the tree lines.
   - DECISIONS MADE FOR MONDO, added: (8) the run boards carry the plots' own names and the usual piste marks. (9) Fences and SLOW boards where a run ends
     behind a building, not a re-routed run (the heights are the tool's). (10) No snow guns, nets or ski racks: no model (NEEDS A MODEL), nothing stands in.
+- **PASS 4, ATMOSPHERE** (4 of 5; seen on screen at night, `hqClockSet(22)`, and by day):
+  - THE AIR: `airZones(ctx)` (district S's hook in bake-mountains.js, landed the same hour; K's own cut of it was dropped in the merge): a district file
+    returns [{ x0, y0, x1, y1 (room squares, as `S()` gives them), kind, n, wind, color, speed }]. The site's own air is thin snow (HQ_ATMOS_SITES
+    `prebuilt_shasta`: 220 flakes over the whole room, which is why it already snowed a little), and a room with zones draws ONLY its zones: K hands that
+    air back as a third zone over the whole room (the board has the note). K: snow 520 over the runs, 160 over the yard.
+  - THE NIGHT: the Mountains room holds 39 props with a light of their own and the engine gives the first TEN theirs (three-renderer.js HQ_PROP_LIGHT_MAX,
+    in the room's prop order: P's, then K's Lodge fire and campfire, ...). So K adds no light: 14 lamp posts (`lampPost`: a timber post, a lit lantern), four
+    floodlights on each lift tower, four `flood_mast`s by the runs (their glow shows; their light is past the ten), strings of bulbs (`bulbs`) under every
+    eave and along the Lodge's porch, `glow` on every board, a lit dot on every marker pole, smoke from the Top Station's stove pipe.
+  - FPS (settled, the Lodge Yard at night): 1.66 before -> see the PR (the same view). No new light, about 400 small glowing boxes in merged rows.
+  - DECISIONS MADE FOR MONDO, added: (11) night skiing is glow, not light: real light on the runs needs the room's light cap raised or shared by distance
+    (the engine's; listed, not done). (12) Warm white bulbs only (the coloured strings are the North Pole village's).
 - To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
   x 21.4, z -59.3 (the probe, 11-16).
 
@@ -5156,6 +5172,16 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     2.25 (the kit's 2.68 / 2.5 are for `h` 3.0 / 3.2). Keep a walk-in ONE square off any cone or rock square (the slope blends in through
     the floor). `psx_carpet_mp_1` is a Persian rug; `campfire` with `h: 0.5` is a hearth's fire; a ring of stones = one `cyl` part with
     `ring: { n, r }`. Drawn furniture that reads: a plank platform + a straw pallet (a bed), a banded block with a tall back (a seat).
+  - **A FLOW DOWN A BUILT SLOPE:** never trust the plan's slope: read the built ground in node (`hqTerrainInfo(room)`, `hqTerrainHeight(i, x, z)`
+    through load-data.js) every 1.75 m along the flow and type each `fall` from one height to the next (+0.3 / +0.12). The cone AS BUILT
+    falls 0.7 m a metre, not the plan's 1.2.
+  - **A GARDEN:** `hw_crop` / `hw_crop_2` draw as pale paper tiles; ridges of soil = boxes in the terrain key `dirt_4` (0.5 x 0.16 m, 1.1 m apart);
+    `hw_pumpkin*`, `hw_scarecrow`, a `rail` row `model: 'ranch'` and `chicken` all read. `psxg_stepping_stone_1/2` as a `scatter` is a path.
+  - **THE ROOM'S TEN LIGHTS (zone-wide, the engine's):** fifty props in this room carry a `light`; ten get one, in row order S, H, O, T. A
+    district far down the list lights its night with drawn glow only. Wanted from the tool / engine row: the lights nearest the walker.
+  - **SMOKE, A CLOUD, DRAWN:** puffs = a `dome` (plain paint, `glow` 0.3) over a `cyl` belly that closes to a point (`r` 0.05 -> `r2` = the
+    dome's, `cap: false, ds: true, glow` 0.4): seen from under, an open belly is a ring round a hole. Seven puffs growing 3 -> 13 m read as a plume.
+  - **FIRELIGHT IN A WINDOW:** a plain quad, tint 0xffa040, `glow` 0.75, behind drawn bars. A torch's flame: tint 0xff5a00, `glow` 0.7 (0.9 washes to cream).
   - **TRIANGLES:** a Meshy prop is about 10,000 triangles whatever its size (a skull, a fern, a flamingo); thirty of them is 0.3 M. Count before dressing.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
@@ -5292,6 +5318,25 @@ sea has things to sail to.
     pallets and pillows, two hung mats, the stores (clay pots, an amphora, straw bales), a pole rack with dried meat and fish, drums, two
     woven floor mats; THE NORTH HUT: a hearth, two platforms, a mat, a pot, an urn, straw, a bucket, a spear. The big hut moved ONE SQUARE
     south (109-110 x 16-18): beside the cone its slope came up through the floor. Triangles at the Landing after the pass: 2.64 M (pass 1: 2.5 M).
+  - **PASS 3, DRESSING (seen on screen, by day and at 22:30):** in pack models (a few hundred triangles each) and drawn pieces. The island:
+    THE GARDEN west of the big hut (nine drawn ridges of turned soil, gourds, a scarecrow, a timber fence on two sides), four chickens,
+    stepping stones from the gate to the fire and on to the shrine, THE WATCH FIRE on the north-east point, a tide line on the north
+    beach (shells, a seal, fish bones), dry scrub on the scorched ring, two birds over the crater. THE LAVA FITS THE CONE NOW: nine short
+    falls a flow, typed from the built heights. The sea: THE SHARKS (P07-09: three fins and a hammerhead round fish schools, a boat adrift),
+    THE TURTLES (five, off the south-west islet), THE SEAL ROCK (P13-00: a drawn shelf, four seals on it, two in the water), a bird over
+    the Rocks, a starfish (the Beach's own list, no line) on the south-west islet. NOT placed again: a wreck and jellyfish (the Triangle has both).
+  - **PASS 4, ATMOSPHERE (seen on screen by day and at 22:30):** all DRAWN glow. Firelight in the huts' barred window holes; eleven bamboo
+    torches (the village round its fire, the big hut's door, the shrine, the path to it) and two at the gate; embers in the castaway's
+    fire ring and a torch on his islet; lava lying where the two flows end; THE ASH PLUME over the crater (seven drawn puffs climbing
+    to 55 m and leaning east, its foot glowing: the island is found from the Harbour by it, day or night). WHY NO REAL LIGHT: the room
+    gives ten point lights for its fifty lit props, in row order (three-renderer.js `HQ_PROP_LIGHT_MAX`), so the Shore and the Harbour
+    take them all and the island's `cave_torch` / `brazier` / `campfire` keep only their glow. The night is moonlit and reads without them.
+  - **PASS 5, POLISH (seen on screen, a fifteen-view walk round):** a painted ochre band with bone-white studs under both huts' eaves and
+    a thick thatch edge; door posts and a lintel at the north hut; the lava pools lower and tapered; the sea stacks' tiers closed (sky
+    showed through the joins). THE THREAD STOPPED HERE (five passes): nothing more goes in until mondo has looked.
+  - **FRAME RATE, FINAL:** the cloud still says 0.2 fps at the Landing and 1.2 mid-sea (it said 0.2 and 1.6 before pass 1: no difference
+    it can measure). Triangles drawn, shadow pass included: the Landing 1.62 M -> 2.72 M, mid-sea 1.61 M -> 2.40 M (the Harbour's and
+    the Triangle's work of the same hours is in those numbers; the room has no far cull, so every district's props are drawn from everywhere).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -5318,10 +5363,13 @@ sea has things to sail to.
   gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
   for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
   a ship or raft out at sea; a moving waterspout (this one stands still).
-- **NOT DONE:** more dressing (pass 3); night and the island's real lights (pass 4); polish (pass 5). Nothing
+- **NOT DONE (for after his look):** Nothing
   under the water shows (the sea is opaque from above). No fight set up.
-- **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is a far cull for the whole sea
-  room, the tool row's or the engine's, not fewer props on one island).
+- **WHAT I WOULD DO NEXT (not started):** a far cull / LOD for the whole sea room and its ten lights handed to the props nearest the
+  walker (both the tool row's or the engine's); the tribe's people and proper huts when the models exist; a fight at the shrine or the
+  kraken once the NPC spawn system reaches the zones; things under the water once the sea can be looked into.
+- **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is the far cull above, not fewer
+  props on one island).
 
 ## THE BEACH, THE TRIANGLE — district T (2026-11-16, `docs/areas/beach/districts/T.js`, the Triangle thread)
 
@@ -7157,6 +7205,14 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   `eval` of `window._hqClockHour = function () { return 22.5 }`. FIXED HERE: pass 3's stone, dead-bush and stump scatters are gone (a scatter lands ON a path: a
   knee-high stone stood in the Trail West). NOT POSSIBLE FROM A DISTRICT FILE: sound, light shafts, a darker sky or mist in the deep woods (the shell and the engine).
   A lit box with no `key` draws pale with a faint lined sheet (it reads as a paper lantern); `glow` lifts every tint toward white.
+- **PASS 5, THE POLISH (seen, 9 + 5 views, day and night) — THE LAST: the thread STOPPED here (his order: five passes).** The lanterns wear a glass sheet (a lit
+  box with no sheet drew as lined paper); the Old Tree's two toadstools are small (at 1.75 m they read as the Ritual Ground's); a cobweb inside the station drew
+  through its roof and is gone; the district file's header lists what stands on each plot now. SEEN, NOT MINE: a thin black column over the treeline north of the
+  camp = the Redwood Trail's 19.35 m `plateau` at x -75.25, z -75.25 (board note to that thread). FRAME RATE (cloud software GPU, `EW_PERF_LOW`, the view down the
+  Stair, 5 s count): 0.8 after pass 1, 1.2 after pass 2, 1.2 to 1.6 after pass 5 (the first-look run read 0.2 while files were still loading, so there is no clean
+  "before"); no pass cost a frame that this renderer can show. The room's block grew 204 KB -> 283 KB (about 330 arch parts and 330 props of this district).
+- **WHAT I WOULD DO NEXT (not started: a sixth pass is his call):** a picnic table and a van at the camp once models exist; a porch sign for the station once he
+  names it; light shafts and sound by plot (engine); the plots' own names in layout.json (the tool's row); a look at the weak PC's frame rate.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.
@@ -7372,6 +7428,34 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
 - **LEARNED:** a real (drawn) `wall` row is GROUND for a prop: things on the counter take `y: 0.01`, not the counter's height (the cat
   stood 0.96 m over it). A round `plateau` under a drawn drum: make it 0.8 m and fence the square with four thin ghost walls, or its skirt
   pokes out of the drum as spikes. A sign under 3 m on a barred wall hides behind the bars' head rail from most angles: put it on the brick over them.
+
+**PASS 4, THE LIGHT AND THE AIR (seen, 16 + 10 views, four of them over the walker's shoulder).** `lights(ctx, k)` in H.js:
+- **NO NEW REAL LIGHT.** H keeps its four bare bulbs (the board's count); everything else is drawn. 27 BULKHEAD LAMPS (district W's recipe,
+  rewritten for walls on lines: `lamp(x, z, looks, y, colour, o)`): a lit lens in an iron cage, a wash of lit brick on its wall, a pool of
+  lit floor before it. Cold white-green over each cell's bars and on each lit cell's back wall (cells 3 and 6 have DEAD lamps and stand
+  dark), sodium on the sally gate and in the stores, RED on the cell door (the way down), a dead one in the trap's passage.
+- **THE POOLS:** the lamp's colour mixed half into white, in FOUR steps. Two steps of the pure colour (W's numbers) read here as green and
+  orange mats on the tile floor.
+- Five `flicker_tube` under the bays' crowns (a prop that glows; it is not a real light and takes none of the room's ten).
+- **THE AIR:** `chimney_smoke` at the stack's louvre and over one floor drain reads as steam. The Sewers' tool has no `airZones` for a
+  district (dust in the lamps' light, drips): asked for on the board.
+- Numbers at the proof view on the same run of main: 1,858 calls, 2.82 M triangles, 1.9 FPS (llvmpipe).
+
+**PASS 5, POLISH: THE FRAME RATE (seen, 9 views). STOPPED HERE: five passes, waits mondo's look.**
+- **MEASURED ON ONE COPY OF MAIN** (the proof view: the corridor from the west door, x -117.25, z -87.5, face 90, llvmpipe): the first
+  build 1,610 calls / 2.39 M triangles / 1.2 FPS; after pass 4 1,924 / 3.06 M / 1.5; after pass 5 1,870 / 2.81 M / 1.9. The FPS of
+  the cloud's software renderer swings by half a frame between runs, so the calls and the triangles are the numbers to trust: the district
+  costs 260 calls and 0.42 M triangles more than the open hall did.
+- **WON BACK:** the placed models were counted from their files (a scratch script over the probe's cache): 563,000 triangles, most of it in
+  small things. `security_camera` is 27,000 triangles (3 placed, 1 kept), `coffee_mug` 6,600, `paper_sheet` 3,100, `stapler` 6,000,
+  `meal_tray` 6,300, `ulna` 12,400, `floor_drain` 6,200, `traffic_cone` 6,400. Thirteen of those came out: 427,000 now.
+  The drawn rows went from 93 meshes to about 70: one iron and one rail grey, the light in three steps always on the brick sheet (a mesh
+  per sheet + tint + glow: every new tint is a draw call).
+- DRAIN's plate moved up onto the brick over the bars; the bones in cell 3 are the Halloween pack's parts and a skull.
+- **OPEN (what a sixth pass would do, not started):** more people once the NPC system lands (npc-system.md; the tank and cells 1, 4, 6
+  are empty of people); sound (no hook); dust and drips (the tool has no district `airZones`: asked on the board); the dark triangle
+  where a one-square vault meets a pier (the tool's); a real booking desk, bunks and a cage lamp (NEEDS A MODEL); the old room's tape and
+  finds were not re-homed (no tape / find guards); the walker was not driven through the doors by hand (offline flood + pictures only).
 
 **FITS THIS DISTRICT (the whole catalogue + MODEL_LIST sections 6, 7, 10, 12b, 13 read 11-16; all have rows):** CELLS `cot` `steel_toilet`
 `psx_toilet_mp_1` `sink` `psx_old_mattress_mp_1` `psx_pillow_mp_1/2` `psx_bed_1_frame` `wall_chains` `trap_chain_draped/_straight`
@@ -7593,7 +7677,24 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   that touch a building to `s`. (2) Wall pieces with the catalogue's own `wall` / `mount` (`notice_board`, `hook_rail`, `fire_extinguisher`, `kitchen_range`) hang right with
   `floor: true` when put about 0.4 m off the wall. (3) A window seen from inside is a dusk-blue lit box (`nightPane`): dark navy read as a hole by day. (4) `ocean_fish` is a
   swimmer: it floats at the ceiling indoors. (5) A small iron stove is `stove(a, x, z, top)` (shapes; no stove model exists).
+- **PASS 3, DRESSING** (seen, three probe runs): the shortlist placed plot by plot (the file's header). New shapes any Mountains district can copy: `leanTo` (an open log
+  shelter; turn a `look` with `R.ARCH[R.ARCH.length - 1].rot = 270`), `lampPost`, `snowPoles`, `woodpile`. Three yetis stand (a native with no line walks). `ocean_tuna` floats
+  like every Ocean pack swimmer: do not lay one on ice.
+- **THE OFF-CENTRE MODEL — a renderer fix that moves EVERY Christmas pack tree in the game to its own trunk (three-renderer.js `_nrTree`, 2026-11-16).** Found on screen:
+  a snow pine stood inside the Warming Hut and another on the Sleigh shed, and neither was in the room's data. The live scene said why: `_nrTree` centred a tree model on
+  its box and THEN turned it by a random angle. A turn is about the model's own origin, so a piece whose mesh does not sit on its origin (all six `xmas:` kinds, cut out of
+  one scene: their boxes sit 20 to 30 m off) was drawn up to twice that far from the spot its trunk was planted and collides at. The offset is turned with the model now
+  (three lines; a model on its origin does not move; the random numbers are drawn in the same order). What changes for the other snowy places (the North Pole village,
+  Camelot's Snowy Pines, the Mountains' tree line): the snow pines now stand IN their tree zones, where the walker has always bumped them; the lone pines that stood on
+  trails, roofs and squares (the zone kit's point 4, "stand on trail squares") are gone. Look at your district again after this.
+- **PASS 4, ATMOSPHERE** (seen by day and at night, 17 views; night = a view's `eval` of `hqClockSet(22)` + `settle` 4000): `exports.airZones` (district S's hook) = three snow
+  zones (the Ridge `n` 300 `wind` 0.9 `speed` 1.2; the pass and the Tarn 380; the tree line 110); seven more catalogue fires with a real light (`cave_torch`, `brazier`,
+  `campfire`), 14 lights in the district in all; `chimney_smoke` on the three flues (`floor: false`, `y` = the flue's top from the ROOM's floor: the plot's ground + the wall +
+  the roof). At night the lit panes, the lanterns, the flags (`glow` 0.25), the ice (`glow` 0.35) and the Mast's red lights carry the picture. Not this file's: the south edge
+  forest and the west edge's green trees stay day-bright at night.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+- **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
 - the engine bay (jerrycans, nails on the bench, shovels, three sticks of dynamite, bricks at the firebox), the Ledge (a valve holder), the
@@ -7608,6 +7709,22 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   niches. None stands on a walk a square wide. No new lines (none are invented).
 - **FRAME RATE on today's room** (the other four Sewers threads made the whole room heavier: the same view fell from 2.50 to 1.55 with this
   district's FIRST build baked in): with passes 1 to 3: 1.60. The district's own cost is inside the noise.
+
+**PASS 4, THE ATMOSPHERE** (drawn, because the district has two real lights and the air is the tool's shell):
+- **DRAWN LIGHT:** `wash()` = three sheets of the wall's own brick, paler, with `glow` 0.11 / 0.07 / 0.035, behind a fire that has no real
+  light (the Flood's torch, the candelabra at the niches; the crystal seam's in a cold tint); the firebox's back glows hot. FOUND ON
+  SCREEN: at glow 0.24 a wash reads as a panel of different brick; pools of lit floor under the fires read as round brick rugs from the
+  stump's top (removed); where a REAL light stands (the portcullis) a wash is not needed.
+- **WALLS:** eighteen dark stain runs, rust under the rising main, lime weeping from the niches; two stencilled plates
+  (`THE SUMP · DEEP WATER` on its rail, `THE ADIT` on the stem's first cap beam; the plan's own names).
+- **LIFE IN THE LIGHT:** six `woods_glowcap` (the stump's foot, the Flood's far corner), ferns on the stump, moths in the shaft.
+- **CHECKED OFFLINE** with the game's own `hqTerrainCompile` / `hqTerrainFeet`: the Ledge 1.4 m, the stair's middle 0.61 m, the stump's top
+  3.9 m, the Sump has no footing (never entered), the Flood is waded.
+- **TRAPS:** a stain or wash written at a point with no wall behind it hangs in the air as a dark box (one stood in front of the
+  portcullis: check every wall point against the plan's squares); `femur` and `ulna` stand upright a metre tall (removed);
+  `psx_padlock_2` is fine, it was the box above.
+- **NOT DONE:** particles (dust in the shaft's light, embers at the firebox) and sound need an air / sound hook in `bake-sewers.js`
+  (the tool's row is held: a note is on the board). Frame rate with pass 4: 1.50 (1.55 to 1.60 before: inside the noise).
 
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
@@ -7628,7 +7745,9 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   a backpack, a sleeping bag, a stretcher; a snow heap, icicles, an ice-fishing hole and rod, a pelt rug.
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Ridge looks SOUTH over the pass across two snow slopes, not north off the range (the room's edge is a wall);
   (2) three new walked-in buildings with plain names: GATE HOUSE, SHELTER (the Summit Shelter), FISHING HUT; (3) a radio MAST on the Ridge's east end and THE LOOKOUT on its west end;
-  (4) the Rope Bridge stays solid ground under its planks (the walker needs it), only dressed as a bridge; (5) the sign face is `fell` for the pass, `stencil` for the rescue hut.
+  (4) the Rope Bridge stays solid ground under its planks (the walker needs it), only dressed as a bridge; (5) the sign face is `fell` for the pass, `stencil` for the rescue hut;
+  (6) the pass's people are three yetis (the roster's `polar` unit that fits a high pass), standing, no lines, no encounter table; (7) plain new labels: WAY SHELTER's board reads RESCUE CACHE, the shed reads SLEIGHS;
+  (8) a summit cross by the Shelter and a votive stand at the cairn (pilgrims' things, no names on them); (9) the renderer's tree fix above (it moves snow pines in other zones to their true spots).
 ## MOUNT SHASTA, THE DISTRICT THREAD — district S of the Mountains, pass by pass (2026-11-16, second side; mondo's order: every district prototyped, DISTRICT_THREAD_BRIEF.md)
 
 File `docs/areas/mountains/districts/S.js` (20 plots of `site_prebuilt_shasta_mountains`), branch `claude/mountains-s-shasta`. The tool, the layout and the ways out were not touched.
@@ -7675,7 +7794,31 @@ the Spring, the Upper Shelf), a gnome in the Boulder Field, a tree person at the
   GRAVESTONE shapes: `psxg_rock_1` with an `h` is the mountain's rock), `psxg_dead_tree_*` (stone-pattern bark: `dead_snag` / `hollow_dead_tree`), `item_dowsing_rod`
   (draws 1.5 m tall). FPS 1.8 before and after.
 
-**FOR THE NEXT THREAD (zone kit additions):** `hut` + `win` + `cairn` + `seracs` + `block` in S.js are plain functions: copy them. The district's sign face is `alfa`, cream
+**PASS 4, ATMOSPHERE (live):**
+- THE SAUCER CLOUD was broken since the first delivery: `white_cloud` at `y` 16 is UNDER the Summit's ground (24.5 m), so it lay on the snow like a heap of snowballs, 3 m
+  wide (`h` does nothing on a `span` row). It is four clouds now (`span` 30 / 20 / 20 / 16) parked 15 to 20 m over the crater: the mountain's landmark from the Fork up.
+- Steam (`chimney_smoke`) over the Summit's vent, the three fumaroles and the hot pool. 26 lantern posts down the trails and at the doors (a timber post, an arm, a caged
+  warm lantern: a glow, no real light), ALL IN ONE `arch` look, and the ten route wands in one more (36 looks cost about 100 draw calls; one look each costs 4).
+  Paper lanterns at the dojo's eaves, a brazier at the spring, candles and glow-caps.
+- THE AIR: `exports.airZones` (NEW tool hook, the board's note 11-16): thin snow over the three peaks' plots and Helen Lake, white motes at the Steam Vents, ash over the
+  two lava plots, fireflies in Panther Meadows, pale motes at the Spring, pollen in the wood. 780 points in all.
+- Real lights: the room caps them (`HQ_PROP_LIGHT_MAX`), so S keeps about ten (camp fires, hearths, the Summit's vent, one fumarole, one adit torch, the crystal, the
+  lodge's brazier, the shrine's brazier, the dojo's candle ring) and marks the rest `noLight`.
+- SEEN: 10 + 6 views. Thrown out: a `crystal_cluster` on the Glacier (it glows magenta), four lanterns across the dojo's board (two at the corners now).
+  FPS 1.8 / 1.4 / 1.8 (three readings; before 1.8): no change that the software renderer can show. The room's sky, its day and any night are the tool's.
+
+**PASS 5, POLISH (live; the last pass: STOPPED, waits mondo's look):**
+- THE PLACE BOARDS: eighteen plots carry their own name from the plan on a routed board by the trail, read from both sides (THE FORK, HELEN LAKE, PANTHER MEADOWS, BUNNY
+  FLAT, THE SUMMIT ...), all in ONE look. Inside every building: tie beams under the ceiling, a skirting, a lamp hung from the middle beam (in `hut`), a painting and a
+  shelf or board on the walls. Outside: a wood stack beside each chimney, a bench and a drum on the Ranger Station's porch, small things at the other doors.
+- SEEN: 18 views. Thrown out: a 3.6 m log across Bigfoot's floor (`h` does nothing on a `span` row). FPS 1.8 / 1.6 (first look 1.2 to 2.0 on the same view: the software
+  renderer's readings move by 0.2 to 0.4 from run to run, so no cost that it can show; a real machine has to judge it).
+
+**WHAT I WOULD DO NEXT (not started: five passes are the limit):** (1) the room's own people walking (an `encounters` export: bigfoot, shaman, hippie, yeti, gnome), with
+mondo's word on the list; (2) the pines round Bigfoot's Cabin pulled a square back (the tool's tree zone: a branch comes through its high ceiling); (3) a second inside
+pass like the city's (dado, crown, real sconces); (4) the Upper Shelf's door down to the Woods (the tool's and the Woods holder's); (5) night for the room (the tool's sky).
+
+**FOR THE NEXT THREAD (zone kit additions):** a `span` catalogue row is resized with `span`, an `h` row with `h`. `gnd(R, plot, lx, ly)` = the walked ground at a square (for a `y` from 1 up, or to merge many small looks into one). `hut` + `win` + `cairn` + `seracs` + `block` in S.js are plain functions: copy them. The district's sign face is `alfa`, cream
 `#f0e2c0` on brown `#4a3222`. `rocks_5` walls need `gain` 1.7 and a tint from 0xa0a0a8 up or they read black in daylight. A `cyl` with `ri` + `arc` makes a curved dry-stone wall.
 
 **FITS THIS DISTRICT (the lists, read end to end 11-16: MODEL_LIST.md sections 6, 7, 8, 10, 12b, 13, the live catalogue, pack-claims.md):**
@@ -7700,6 +7843,8 @@ the Spring, the Upper Shelf), a gnome in the Boulder Field, a tree person at the
 4. Helen Lake stays the frozen lake the plan drew (ice); the Climbers' Hut stands on its west shore, in the rock.
 5. Seven more residents from the roster's forest and snow races (nordic, yeti, hippie x 3, gnome, tree person), standing off the trails, with no lines (lines are yours).
 6. The panther of Panther Meadows is the `lion` animal lying in the flowers (no panther model exists).
+7. The saucer cloud is four `white_cloud` models parked over the crater (it reads as a dark-bellied cloud from under it). No saucer and no beam in it: `light_shaft` draws nothing by your own rule, and a ship in the cloud is your call.
+8. Air by plot: snow only on the peaks, fireflies only in Panther Meadows. Falling snow over the whole mountain is one number away if you want it.
 
 **NEEDS A MODEL (none placed as a stand-in):** prayer flags, a stone lantern, a gong, a backpack, a sleeping bag, an axe + firewood, a picnic table, a wood stove, an antler
 trophy, a weather mast, a mine cart + rails, a deer / bear / mountain goat, ice pieces (a serac, an icicle), a lamp post.
@@ -7758,6 +7903,34 @@ renderer; 1.4 after, with the whole midway in view).
   checked against them by hand; the first build's own crate and tambourine stood on one.
 - **FRAME RATE:** 2.8 FPS before any work, 2.4 after three passes (llvmpipe, the midway view; 587 draw calls, 1.1 M triangles in view,
   of which the whole Desert's instanced props are 1.0 M and every `arch` row of the room together 62 k).
+
+**PASS 4, ATMOSPHERE.** Light without lamps (the room's ten prop lights are shared: the Circus keeps two, the wheel's and the carousel's).
+- **THE AIR:** `exports.airZones` in C.js: dust over the midway (150) and the road in (90), `motes` in the Big Top (140, warm), `embers`
+  at the yard's fire (26). The tool keeps the room's old dust as the last zone.
+- **NIGHT:** seen at 19.2 and 21.5 (`_hqClockHour`). What carries it: `glow` on every sign (0.4 to 0.55: a `txt:` sheet lights as a
+  painted, lit board), a bulb every 0.9 m under each bunting cord (one more part per cord in `bunting()`), 80 bulbs round the Big Top's
+  eave + eight strings up the cone, bulbs on each awning and marquee; the cloth itself has `glow` 0.14 (it reads as lit from within).
+- **A LAMP'S CORE:** a `noLight` lamp gets a small `cyl` with no key and `glow: 1`. A flat disc of glow on the sand (`kind: 'over'`) drew as
+  a solid white ellipse by day and night: do not.
+- **NO SOUND:** as in Western Town, a walk room has no per-district sound bed; nothing was added.
+
+**PASS 5, POLISH. FIVE PASSES LIVE: THE THREAD HAS STOPPED (mondo's order: no sixth pass until he has seen it).**
+- **THE WALK CHECK** (a flood from the gate on `hqTerrainFeet` + `hqTerrainWallAt(info, x, z, 0.3, null, null, feet + climb)`, step
+  0.4375 m): reached = the ring, the Big Top's back, the arcade and its far corner, the sideshow, the maze's door, end and dead end, the
+  tunnel door, the Mandela door, every track, the back gate, the yard's fire, the wheel. Shut, as meant = the stalls, the cage, the
+  gate's towers, the seat banks. It found the banks OPEN FROM BEHIND (a 2 m way runs behind them): four more ghost chords a bank.
+- **ONE ROW FOR THE LOOSE PIECES:** the renderer makes one mesh per sheet + tint + glow of a ROW. Twenty-one stand-alone rows (stalls,
+  boards, gate, cage, flags, bunting, lamps, wash line) are now gathered by `arch()` and written by `flushYard()` as one row,
+  `des:c:yard`, each piece's turn folded into its parts' `ry` (a `step` is turned too; a `ring` takes `a0 + rot`). The midway view went
+  from 667 to 580 draw calls with the same picture. Any district with many small `arch` rows can do the same.
+- **CLOTH AGAIN:** cream wants `gain` 2.05 (1.7 read as concrete in shade); prize boxes are the stucco sheet with `gain` 2.2 + `glow` 0.3
+  (the `carpet` sheet read dark red whatever its tint).
+- **FRAME RATE, HONESTLY:** llvmpipe readings at the midway view were 2.8 (before), then 1.4, 2.4, 1.0 and 1.6 on later passes with the
+  same or more in view: the reading is too noisy on the cloud's software renderer to rank passes. What is solid: draw calls 580 in that
+  view, triangles 1.2 M of which about 1.0 M are the whole Desert's instanced props. It wants one look on a real machine.
+- **AGAINST THE BAR (a finished city district):** has = walk-ins with insides (4), a landmark, second layers (signs, bunting, bulbs,
+  poster boards), a night look, air, dressing on every plot, people (15). Lacks = the missing models above, residents with a day, its
+  own fights, sound, reflecting mirrors, a walk-in fortune tent, upper levels (the high wire's platforms are drawn, not walked).
 
 **FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
 `carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
@@ -7842,6 +8015,16 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   storm rubbish (toilet, tyres, TVs), mushrooms + frogs, a stash (crates, a jerrycan, cash), a fall of brick, the bats' roost under the
   quay. ALIVE: ten bats (five high in the three 12 m halls), an eel in the Cistern, a brown fish and two crabs at the Outfall, a cat at
   the rest stop, frogs. Eight `graffiti_wall` (the game's own tags), chains / vents / a camera in the bends.
+- **PASS 4, THE ATMOSPHERE (seen, two probe runs; no tool change, the room's air and fog are the shell's):** five `flicker_tube` in the
+  Pump Room, the Pumping Station and the Gallery; fourteen `ship_lantern` swaying at the culverts' bends (`noLight`: its glow, no cast
+  light); `chimney_smoke` with `rise` as MIST at the foot of the three falls and STEAM off the boiler and three mains; three red
+  `evac_button` at the drops; under each dead lamp two lit points at the wall's foot (eyes; the game has no rat); daylight on the floor
+  under the Outfall's two grates (moved over the walks); six puddles (`ctx.grime`).
+  THE COUNT (pass 4): the proof view had grown to 1,856 calls / 3.14 M triangles. A bake without W's dressing = 1,237 / 1.65 M, so W's
+  dressing cost 620 calls and 1.5 M triangles, and no single piece was the cause: every Meshy prop is 5 to 10 thousand triangles (a
+  newspaper bundle, a paper sheet, a round drain, a mug, a camera, the skull pile 38 thousand). The repeated Meshy litter was swapped for
+  the PSX pack's low-poly pieces (cans, bricks, bottles, nails), the skull pile for Halloween-pack parts, two cameras and two mugs out:
+  now 1,843 calls / 2.79 M. The frame rate the software probe prints is noise (10 and 21 on the same view), so only these counts are true.
 - **FPS at the proof view** (after pass 2: 3.2, 1,302 calls, 2.05 M triangles; the room also grew a fifth row, district R, in between) (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
   1.44 M triangles); after pass 1 2.1 to 2.7 (1,142 calls, 1.58 M). The kit is about ten materials a plot; a plot's row is culled whole.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
@@ -7851,11 +8034,28 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   3. Lamp colours: sodium amber in the culverts, cold green-white in the rooms, red only at the hatch.
   4. No stream comes out of a wall on this plan (every stream ends at a tank or a plot line) and no walk is one square wide, so there
      are no dead-end pipe mouths; the culvert mouths went to the Junction's walls.
-- **NEEDS A MODEL:** a bulkhead / cage lamp (drawn from boxes today), a manhole ladder + shaft, a valve wheel on a stand, rats.
+  5. Eyes under the dead lamps (two lit points): a stand-in for rats, which the game does not have. One line removes them.
+  6. The plates' warnings are plain words of mine (DANGER · DEEP WATER, MIND THE DROP, NO SWIMMING, WAY OUT ...); the names are the plan's.
+  7. The Meshy litter of the first build (newspaper bundles, paper, round drains) was swapped for low-poly pack pieces to win triangles back.
+- **NEEDS A MODEL:** a bulkhead / cage lamp (drawn from boxes today), a manhole ladder + shaft, a valve wheel on a stand, rats, low-poly
+  versions (LOD) of the Meshy props used as litter.
 - **NEXT:** pass 2 the rooms' insides (Pump Room, Pumping Station, Gallery, Junction, Cistern, Outfall), 3 dressing (graffiti, pipes
   from the PSX pack, animals, signs), 4 atmosphere, 5 polish.
 
 ## THE SEWERS, THE ZONE KIT — for the T, H and O district threads (started 2026-11-16 by district W; it grows with each pass)
+
+- **FROM DISTRICT H (the Holding Cells, 11-16), for anyone who builds ROOMS in a plot:** (1) a district may re-cut its own squares in
+  `plan()` (`ctx.setRect`): a whole square of brick between two rooms makes the tool's vaults fall into bays, and rooms can be dug out of a
+  plot's solid rock (keep the row over a lower plot solid). (2) Thin walls stand on square LINES: H.js `mk()` has `k.wall(axis, line, a, b,
+  { style: 'bars' | solid, doors, gaps })` = drawn parts + a ghost `wall` row with `y` = the plot's floor + its height; bars are ONE box
+  part with `n` + `step`. (3) Swinging leaves: one `texbuilding` row with `doorsOnly: true, y: 0` and `inner: [{ x, z, rot, w, leaf, y:
+  floor }]` (`leaf_cell` = a solid rusted cell door, `leaf_security` = a barred gate). (4) An `arch` row at `x: 0, z: 0` with far parts is
+  NOT DRAWN: one row a plot at the plot's middle. (5) A drawn `wall` row (a counter) is ground for a prop on it: `y: 0.01`. (6) A walked
+  deck = a `bridge` row (`plain`, `rails: false`) + a `ramp` with `stairs: true, model: 'steel'`; the walker passes under it. (7) COUNT
+  YOUR MODELS: `security_camera` 27,000 triangles, `metro_bench` (the whole Metro file) 17,000, `ulna` 12,400, `skull` 10,400,
+  `skateboard` 9,300, `crt_terminal` 8,900, `coffee_mug` 6,600, `traffic_cone` 6,400, `wooden_bucket` 6,400, `meal_tray` 6,300, `cot`
+  6,300, `floor_drain` 6,200, `stapler` 6,000, `paper_sheet` 3,100; the PSX pack's pieces are a few hundred each. (8) A drawn row is one
+  mesh per sheet + tint + glow: keep to a few tints. (9) `RubberNonSlip2a` is RED; `wall_padding` is bright white; `femur` stands on end.
 
 - **THE LIGHT IS THE FIRST THING TO KNOW.** Ten real lights for the whole room; `ceil` props win, then row order H, O, T, W. Today:
   H 4 bulbs, W 4 bulbs, O 2 torches. A torch or brazier past the ten only glows. Do not add a ceiling lamp without saying so on the board
@@ -7875,6 +8075,11 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   a square wide carries it. A blocker (`ctx.P`) goes only on a square `ctx.free()` says is free.
 - **A HUNG THING** (a bat, a life ring on a rail, a stacked crate) = a plain prop row with `y: plot.base + height`. A stacked crate
   drew as a box floating at a wall: stack on the floor only.
+- **TRIANGLES:** a Meshy prop is 5 to 10 thousand triangles, a PSX pack piece a few hundred. Scatter the pack's pieces; keep Meshy
+  models for the one-off machines. `ThreeRenderer.hq.dev.hqScene()` in a probe view's `eval` gives the scene to count meshes in.
+- **MOVING AIR WITHOUT THE TOOL:** `chimney_smoke` with `rise: <m>` (mist at a fall's foot, steam at `y: base + h`), `flicker_tube`
+  and `ship_lantern` as ceiling props at `y: base + h` with `noLight: true` (they keep their glow), `evac_button` for a red point.
+  Drips and a district's own particles need `airZones` in bake-sewers.js (asked on the board).
 - **THE ROOM'S OWN WALL** (a square past the map's edge) is where the ways out stand: never dress it.
 - **THE PLAN HAS NO ONE-SQUARE DEAD ENDS** (walks are a square each side of a stream): `ctx.corners()` is the list of bends.
 - **FITS THE SEWERS (the whole model list was read, sections 6 to 13; placed by W unless marked):**
@@ -8019,14 +8224,23 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
   lit glass carry it; no real light was spent (ten in the whole room, the castle's).
   TRIED AND TAKEN OUT: a lit disc on the marble under each lantern ("the light it throws", as the Fairy Forest does on purple grass):
   on white marble by day it is a tan stain.
+- **PASS 5, POLISH (seen, two walks: 14 views, then 9 on the last build)**: the long tea table, the Glasshouse's palm and its table have
+  weight (ghost walls on their squares); the props a weak machine pays most for were thinned (butterflies 16 -> 10, cups 8 -> 5, glowing
+  caps 15 -> 10) and the air too (petals 280 -> 180, fireflies 178 -> 128). A probe walk checked the ladder, the cat on the hedge, the
+  crows, the piers, the Glasshouse inside and out, day and night. **FIVE PASSES ARE IN: THIS THREAD HAS STOPPED and waits mondo's look.**
+- **STILL OPEN (for whoever comes next, or his word)**: a hedge maze (a plan change); lines for the five new natives; sound; the old
+  room's retirement (decision 1); the Dreameater was not seen in the last night view (its body may not have loaded in the probe);
+  the roses in a hedge face are large from 30 cm away (stand inside a hedge square's edge and they fill the screen).
 - **NOBODY ELSE MOVED**: the eleven old `dec` calls run in the old order on the old squares; every new piece is placed by metres (`at()`)
   or by `put` (no dice), so the scatter of F, N and W is untouched.
 - **FRAME RATE** (cloud software GPU, llvmpipe; the lawn looking south at the board): before 1.00 frames a second, 2,022 geometries, 1,039
   draw calls. After pass 1: 2,222 geometries, 1,200 calls (its 0.20 was read as the FIRST view of a run, while the room still compiled:
   never measure on the first view). After pass 2: 1.20 frames a second, 2,412 geometries, 1,421 calls: no loss (run to run noise is 0.2).
   After pass 3: 1.00, 2,590 geometries, 1,780 calls (the new props: each is its own draw call until the room batches them).
-  After pass 4: 2,703 geometries, 1,800 calls; the frame reading in this run was 0.20 (ONE frame in the 5 s window: a hitch, or the
-  particles on a software GPU). Measured again, longer, in pass 5.
+  After pass 4: 2,703 geometries, 1,800 calls (its 0.20 reading was one frame in a 5 s window: a hitch).
+  After pass 5, over 10 s windows: 0.80 and 0.90 before the thinning, then 1.00 after it (2,704 geometries, 1,800 calls). So: 1.00 before
+  the district's work, 1.00 after it, on the cloud's software GPU. A reading taken in the first views of a run is worthless (0.10 to
+  0.20 while the room still warms): read the frame rate after at least three views. His F3 on the lawn is the number that counts.
 - **FITS THIS DISTRICT** (MODEL_LIST.md read in sections + the live catalogue's 1,853 keys + section 13's unwired files searched for
   rose / flower / hedge / topiary / card / heart / chess / tea / cake / clock / mirror / flamingo / croquet / garden / fountain / statue):
   the game `chess_set_game`, `chess_board`, tree kinds `chess_*` (12); time `gclock`, `giant_hourglass`, `astronomical_clock`,
@@ -8066,7 +8280,9 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
      say is yours. The Dragon that stands in the north walk is one of the zone's roaming residents, not this file's.
   8. A walk-in was added though none was named: THE GLASSHOUSE (a hedge garden's own building, dark glass as you like it). It took three
      squares of the south lawn strip.
-- **NEXT**: pass 5 polish (the frame rate first).
+- **WHAT I WOULD DO NEXT** (not started: the five passes are spent): open The Hedges north and south into a real maze with a prize at
+  each heart (the plan's squares, the tool's row); a card-soldier and a rose-bush model so the painters and the beds are not code
+  shapes; a second walk-in (a tea house or the Queen's pavilion at the court); lines for the natives; the old room's retirement.
 ## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
 
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
@@ -8229,6 +8445,22 @@ P00-01 The Chimney (a 7 x 6 hall, 12.25 m). Built on mondo's order of 11-16 (doc
 - **FRAME RATE on today's room** (the other four Sewers threads made the whole room heavier: the same view fell from 2.50 to 1.55 with this
   district's FIRST build baked in): with passes 1 to 3: 1.60. The district's own cost is inside the noise.
 
+**PASS 4, THE ATMOSPHERE** (drawn, because the district has two real lights and the air is the tool's shell):
+- **DRAWN LIGHT:** `wash()` = three sheets of the wall's own brick, paler, with `glow` 0.11 / 0.07 / 0.035, behind a fire that has no real
+  light (the Flood's torch, the candelabra at the niches; the crystal seam's in a cold tint); the firebox's back glows hot. FOUND ON
+  SCREEN: at glow 0.24 a wash reads as a panel of different brick; pools of lit floor under the fires read as round brick rugs from the
+  stump's top (removed); where a REAL light stands (the portcullis) a wash is not needed.
+- **WALLS:** eighteen dark stain runs, rust under the rising main, lime weeping from the niches; two stencilled plates
+  (`THE SUMP · DEEP WATER` on its rail, `THE ADIT` on the stem's first cap beam; the plan's own names).
+- **LIFE IN THE LIGHT:** six `woods_glowcap` (the stump's foot, the Flood's far corner), ferns on the stump, moths in the shaft.
+- **CHECKED OFFLINE** with the game's own `hqTerrainCompile` / `hqTerrainFeet`: the Ledge 1.4 m, the stair's middle 0.61 m, the stump's top
+  3.9 m, the Sump has no footing (never entered), the Flood is waded.
+- **TRAPS:** a stain or wash written at a point with no wall behind it hangs in the air as a dark box (one stood in front of the
+  portcullis: check every wall point against the plan's squares); `femur` and `ulna` stand upright a metre tall (removed);
+  `psx_padlock_2` is fine, it was the box above.
+- **NOT DONE:** particles (dust in the shaft's light, embers at the firebox) and sound need an air / sound hook in `bake-sewers.js`
+  (the tool's row is held: a note is on the board). Frame rate with pass 4: 1.50 (1.55 to 1.60 before: inside the noise).
+
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, all sections, + pack-claims.md; every key checked against the live catalogue).
 Not used anywhere in the Sewers before this district's passes unless marked *:
 MINE GEAR `hw_shovel` `spell_dynamite` `meshy_burlap_sack` `money_sacks` `meshy_rope`* `wooden_bucket`* `ancient_well` `cable_drum`
@@ -8315,6 +8547,26 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
   - NOT POSSIBLE FROM A DISTRICT FILE: real lights (ten a room, held by the old torches and fires), light shafts (`_hqLightShaft` draws nothing), mist on the water,
     sound. The glow boxes read cream, not amber (a glow of 1 washes the tint out).
   - NOBODY MOVED: 891 rows outside the district, 0 differ. FRAME RATE (same Stage view): 0.8 -> 0.8.
+- **PASS 5, THE POLISH (seen, two probe rounds, 23 views; the last pass):**
+  - THE BOATS WERE UNDER WATER: a prop's small `y` is a lift over the ground under it, and in a pool that ground is the BED. Both rowboats, the effigy and the
+    floating candles now carry a height from the room's floor (`ground - 0.42` for a hull, `ground - 0.3` for the water's top) + `floor: true`. Seen afloat.
+  - THE BARROW's heap of boulders covered the hill's top in grey blocks: four smaller stones now, the big back stone out.
+  - THE FRAME RATE: the shore ring 26 -> 16, the three scatter rows 46 -> 28. Same Stage view, cloud software GPU, `EW_PERF_LOW`, 5 s counts taken twice:
+    BEFORE THIS THREAD (the district file as it stood, baked and probed again) 1.2 / 1.0; AFTER FIVE PASSES 1.4 / 1.0. No loss that this probe can measure;
+    the room went from 523 to 1,010 props (the other districts' passes are in that number too), so the weak PC is still worth a look.
+  - NOBODY MOVED: 1,033 rows outside the district, 0 differ.
+- **DECISIONS MADE FOR MONDO (overrule any in one line):**
+  1. The Stage is a timber band shell with a red cloth (not a bare platform). 2. The Owl stands in a horseshoe of ten columns on a stone mound, and its eyes glow.
+  3. The Lake has one jetty on the west shore; the effigy lies in a boat on the water among candles (the bier at the Owl stays). 4. The Mound is a barrow with a
+  stone doorway that leads nowhere, and a graveyard. 5. A walk-in CAMP HOUSE (the members' hall: hearth, feast table, throne, bar, robes) stands between the Tents
+  and the Stage; it has no game role. 6. The old Grove's striped big tent stands at the Fire; the fortune teller has her own tent at the Tents. 7. The Dead Tree is
+  12 m. 8. Lantern posts line every trail in the district. 9. The ground is the dark forest sheet. 10. No pumpkins, no bats, no new natives (the NPC system is
+  another thread's), no names beyond what stands there ("The Camp House", "The Jetty", "The Barrow").
+- **NEEDS A MODEL:** an owl (the bird, for branches); a goat and a deer; a hooded robed figure / statue (the creator's `mhw_donitz_monk_robe*` on R2 are character
+  pieces, not props); a dock / pier piece and a moored-boat set; a bell on a frame; a long trestle table with benches; real hanging lanterns on a string; antlers or
+  a trophy for the hall's wall; a big fallen trunk. Engine pieces no district can write: light shafts, mist on water, sound by district, more than ten real lights.
+- **WHAT I WOULD DO NEXT (after his look):** the way to Room 333 at the Stones (the tool's row); carry the old Grove's four talkers and their lines in and retire
+  that room (his call); a second walk-in (a boathouse on the east shore); robed figures at the Stage and the Owl once a model exists.
 - **FITS THIS DISTRICT (the model list read end to end, 11-16; catalogue keys)**: STONE `menhir`, `sarsen`, `trilithon`, `obelisk`, `greek_column`, `t_pillar`, `decor_stone_arch`,
   `stone_urn`, `ancient_well`, `hw_stone*`, `psxg_rock_*`, `psxg_wall*`. RITUAL `stone_altar`, `brazier`, `cave_torch`, `candleRing`, `candleLine`, `candle`, `hw_candle*`,
   `candelabra`, `votive_stand`, `cauldron`, `crystalBall`, `tarotDeck`, `item_censer`, `item_ward_totem`, `item_drinking_cup`, `taiko_drum`, `ships_bell`, `royal_throne`,
@@ -8408,3 +8660,22 @@ tile sheet, graffiti.
 - THE YARDS: the Villa's south garden (the fountain between palms, urns, a lion, a stone rail), the Round House (the sports car `car_cyber`, flamingos, a dish, a
   saguaro, prickly pears), the A-Frame (four pines, a fire ring with stump seats, a car), the Hill House's pool terrace (loungers, cooler, ball, a float), the Observatory's
   terrace (two more telescopes at the south rail, benches, urns).
+
+### PASS 3, THE DRESSING (live; seen on screen, two probe runs)
+(Belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES".) `hillsDressing(ctx)` in N.js, called at the end of `content.build`; its own random stream (seed 7717).
+- **THE BRUSH**: every free grass square may carry brush (`psxg_dead_bush_1` / `_2`, `fern`; each given `h` 1.0 to 2.3 m: the pack's bushes are knee high and the slope
+  read bare from the air at their own size), a rock (`ocean_rock_2` / `_5` / `_7`, `hw_stone_1` / `_3`, `h` 0.7 to 2.1) or a cactus (`prickly_pear`, `saguaro_cactus`), by
+  the plot's mix (`MIX`: ridge, slope, foot, sign, yard, burn, oaks, cove; `KIND` names the plots that are not their row's). About 530 brush, 100 rocks, 20 cactus. Few
+  model kinds on purpose: the instance pass draws a model placed twice or more as one mesh a 64 m cell. Squares beside a building, a terrace or a taken square stay clear.
+- **THE TREES**: 67 more on grass, never beside a road or a path, none on the letters' plots (they would hide the sign from the city): pines on the ridge, oaks on the
+  slope and thick in the Oak Canyon, dead trees on the Burn. (`tree_43` / `tree_45` read as brown noise from far off: not used.)
+- **EVERY PLOT'S SET** (the model list): a power line along the Shasta Road (`power_pole`); the Burn (nine bare `hw_tree*` / `psxg_dead_tree*`, a barricade); the Boulders
+  (`sarsen`, `menhir`, `asteroid_a`, `ocean_rock_3` / `_4`); the mast's yard (two dishes, a compressor); the tank's yard (`ind_silo`, pump, valve); the dam's plant; the
+  Oak Canyon's picnic ground; the Quarry (`babel_crane`, a full skip, a container, a forklift, a drum, barrels, bricks); the Horse Trail (hay, a hitching rail, a third
+  horse); barricades under the letters and a board (`missing_board` = the trail board) below them; the Dry Wash (a culvert, a wreck); the Gully's camp (tent, fire ring,
+  two `wolf` = the coyote stand-in); the Fire Break's depot (`fire_truck`, a tank, barrels, sandbags, a hydrant); the Hikers' Lot (the tour bus `transit_bus`, the board,
+  a table under the shelter, a vending machine, a flood mast); THE FILM SHOOT in the Brush (a trailer, a camera, two lights, chairs, a costume rack, a vanity); the Cove
+  (a surfboard rack, lobster traps, crabs, a starfish, a seal, driftwood); road signs of the pack the city's kerbs do not use, a wreck and a barricade on the Hairpin.
+- `P` / `D` / `T` (a blocker on a square's middle, decor, a tree) leave a piece OUT when its square is not free and list it in the bake's log (`LEFT OUT`), where the old
+  `put` / `dec` stop the bake.
+- Frame rate (cloud software GPU, frames a second over 20 s, measured last in the run): terrace 0.7 then 0.6 after the brush was thickened; Casino court 1.4 then 1.3.
