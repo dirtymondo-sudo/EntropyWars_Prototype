@@ -4892,3 +4892,26 @@ A set-up change only: how the zone is written, not what is built.
 6. **Visual work gets a browser run** (RULE #1c / #1d: the fresh check, probe-fast.js, the proof picture with the `[EW BUILD]` HEAD).
    Two prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack). No Meshy until mondo says so; the corn waits for it.
 7. A lasting fact goes in this file under your district's own heading in the same PR, and one line on the board.
+
+## THE DESERT, AREA 51 — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/A.js`)
+
+mondo (the set-up thread's brief): one thread per district; passes in order EXTERIORS, INTERIORS, DRESSING, ATMOSPHERE, POLISH, a PR each.
+
+- **PASS 1, EXTERIORS (seen in the browser, playtest_city.js through probe-fast.js, 14 + 14 + 10 views):** as it stood the base was a brown
+  field: the tower drew as a rock mound, the fence as a solid checkered wall 150 m long, the hangar near black, dead trees on the runway,
+  nothing walk-in but the guard post. Now: a real control tower (the old deck + fire escape inside a drawn FLIGHT OPERATIONS block, a round
+  shaft 14 m tall, a dark glass cab), two Quonset barracks + the mess hall + the radar hut (all walk-in, empty inside until pass 2), a white
+  radome, three watchtowers, the gate (piers, boom arms open, the warning board), the fence's steel (posts, rail, wire, WARNING plates), a
+  fuel dump in a bund, concrete blast pens, Runway 33's numbers + edge lines + a taxiway to the apron, the hangar lifted to grey with a
+  yellow door frame.
+- **TWO SHARED CHANGES (noted on the board):** (1) three-renderer.js "THE CHAIN-LINK": a `wall` row whose `key` is a chain-link sheet is
+  drawn blended, two-sided, no shadow (the sheet's holes are clear in the file; walls ignored them). Any room's chain-link wall gains it.
+  (2) bake-desert.js: the three whole-room scatter rows carry `off` = Area 51's paved ground (a piece thrown there is dropped, the rest stay
+  where they stood). mondo's rule: trees never stand on concrete.
+- **THE DOOR LEAVES: CLOSED.** "No door leaf draws in the probe" (THE LOOK PASS above) was the old probe taking its picture before the leaf
+  files were asked for. Through probe-fast.js all 13 of Hangar 18's leaves draw. The door code is fine.
+- **LESSONS:** a `plateau` here draws as a mound with slopes about 0.9 m past its edge (the ground is sampled every 1.75 m): skin it 1.2 m
+  wider. An `arch` row with no `y` stands on the ground under its origin, which on a plateau is the plateau's top: give it `y: 0`. A sheet
+  under a tint reads dark in the shade: `gain` 1.3 to 1.7 on the part. A sign under a barrel roof's overhang is hidden by the roof's end:
+  set it 0.3 m out. Hangar 18's saucer on the floor IS confirmed on screen now.
+
