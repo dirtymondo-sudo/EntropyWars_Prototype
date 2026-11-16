@@ -7,6 +7,8 @@
    sleepers, a third rail), cables + bulkhead lamps along the south / east walls, the Ghost Station's shell (the platform out to the track,
    tiled walls, name panels, the shuttered WAY OUT, tube lamps), the Signal Gantry over the Crossing + its cabin, the Depot's crane, lamps,
    buffer stops, road numbers and crew room. Everything is `arch` parts (drawn) + ghost walls (walked); lit = `glow`, not a light.
+   PASS 2 (INTERIORS): the signal cabin (lever frame, panel, the lit track diagram, desk), the crew room (lockers, table, cot, kettle corner),
+   the station office on the platform (ticket window, lost property, safe), one passenger in the lit car. Each hut has one real bulb.
    STANDS TODAY (first build): the Ghost Station's platform 1 m up with its bench, board and maps; two parked trains in the Depot; torches;
    the old room's four bystanders. THE MODEL LIST PASS: the signal frame + signals at the Crossing, depot gear, Metro columns, the well's bucket and rope, railway lanterns. NOT YET: the lit train's light, the garden well's rope as a model,
    station tiles on the tunnel walls. */
@@ -37,8 +39,8 @@ const buffer = (x, z) => [{ s: 'box', p: [x, 0, z - 0.72], size: [0.22, 1.05, 0.
     { s: 'box', p: [x, 0.62, z], size: [0.26, 0.4, 2.3], key: HAZ }, { s: 'box', p: [x - 0.5, 0, z - 0.72], size: [1.0, 0.16, 0.16], tint: IRON }, { s: 'box', p: [x - 0.5, 0, z + 0.72], size: [1.0, 0.16, 0.16], tint: IRON },
     { s: 'box', p: [x, 1.05, z], size: [0.16, 0.16, 0.16], tint: 0xff2010, glow: 1 }];
 /* a hut built into a recess: its front wall along z = zf between x0 and x1 with a door (middle xd) and a lit window (xw0..xw1), a slab over it */
-function hut(ctx, id, name, x0, x1, zf, zb, xd, xw0, xw1, lit, board) {
-    const H = 3.2, T = 0.3, parts = [], seg = (a, b, y, h, key, tint) => parts.push({ s: 'box', p: [(a + b) / 2, y, zf], size: [b - a, h, T], key: key || PBRICK, tint: tint == null ? 0x8c8c80 : tint });
+function hut(ctx, id, name, x0, x1, zf, zb, xd, xw0, xw1, lit, board, o) {
+    o = o || {}; const H = o.H || 3.2, T = 0.3, parts = [], seg = (a, b, y, h, key, tint) => parts.push({ s: 'box', p: [(a + b) / 2, y, zf], size: [b - a, h, T], key: key || o.key || PBRICK, tint: tint == null ? 0x8c8c80 : tint });
     /* the solid runs between the door and the window, whichever comes first along the wall */
     { const cuts = [[xd - 0.78, xd + 0.78], [xw0, xw1]].sort((a, b) => a[0] - b[0]); let at = x0; cuts.forEach(c => { if (c[0] > at + 0.01) seg(at, c[0], 0, H); at = c[1]; }); if (x1 > at + 0.01) seg(at, x1, 0, H); }
     seg(xd - 0.78, xd + 0.78, 2.3, H - 2.3); seg(xw0, xw1, 0, 1.0); seg(xw0, xw1, 2.5, H - 2.5);
@@ -50,6 +52,8 @@ function hut(ctx, id, name, x0, x1, zf, zb, xd, xw0, xw1, lit, board) {
     [[x0 + 0.06, 'l'], [x1 - 0.06, 'r']].forEach(q => parts.push({ s: 'box', p: [q[0], 0, (zf + zb) / 2], size: [0.1, H, Math.abs(zb - zf)], key: 'urban:PlasterWallPainted1a', tint: 0x7c8474 }));
     parts.push({ s: 'box', p: [(x0 + x1) / 2, 0, zb + (zb < zf ? 0.06 : -0.06)], size: [x1 - x0, H, 0.1], key: 'urban:PlasterWallPainted1a', tint: 0x7c8474 });
     if (board) parts.push({ s: 'quad', p: [(xw0 + xw1) / 2, 2.62, zf + (zb < zf ? 0.17 : -0.17)], ry: zb < zf ? 0 : 180, size: [Math.min(4.2, xw1 - xw0), 0.5], key: sign(board, '#24282c', 8), glow: 0.3, uv: 'fit' });
+    if (o.east) { parts.push({ s: 'box', p: [x1, 0, (zf + zb) / 2], size: [T, H, Math.abs(zb - zf)], key: o.key || PBRICK, tint: 0x8c8c80 }); ghost(ctx, id, x1, zf, x1, zb); }   // a free-standing hut's own east wall
+    if (o.y0) parts.forEach(q => { q.p = [q.p[0], q.p[1] + o.y0, q.p[2]]; });
     arch(ctx, id, name, parts);
     ghost(ctx, id, x0, zf, xd - 0.78, zf); ghost(ctx, id, xd + 0.78, zf, x1, zf);
     const m = mid(ctx, id); return { x: R2(m[0] + xd), z: R2(m[1] + zf), rot: 0, w: 1.55, leaf: 'leaf_security' };
@@ -153,7 +157,16 @@ module.exports = {
           arch(ctx, 'P04-03', 'hall', P);
           [XC(4), XC(8)].forEach(z => { ghost(ctx, 'P04-03', X(10) - 0.5, z - 1, X(10) - 0.5, z + 1, 1.1); ghost(ctx, 'P04-03', X(2) + 0.5, z - 1, X(2) + 0.5, z + 1, 1.1); }); }
         leaves.push(hut(ctx, 'P04-03', 'crew', X(1), X(4), X(3), X(1), XC(3), X(1) + 0.7, X(3) - 0.5, 0xffd9a0, 'CREW ROOM'));
-        /* the two huts' swinging doors (three-renderer.js _hqBuildTexDoors: a `doorsOnly` carrier row) */
+        /* PASS 2: THE STATION OFFICE, a tiled hut on the platform's north-west corner, tucked under the vault's haunch */
+        leaves.push(hut(ctx, 'P00-03', 'office', X(2), X(4), X(4), X(2), X(4) - 1.2, X(2) + 0.7, X(4) - 2.6, 0xffd9a0, 'TICKETS', { y0: 1, east: true, key: TILE, H: 2.9 }));
+        /* PASS 2: what hangs on the huts' walls (drawn): the cabin's lit track diagram (the two lines and the loop, a green lamp a signal) */
+        { const P = [], bx = X(9) + 3.5, bz = X(3) + 0.14, ln = (x, y, w, h) => P.push({ s: 'box', p: [bx + x, 1.2 + y, bz + 0.05], size: [w, h, 0.03], tint: 0xd8d2b8, glow: 0.6 }), dot = (x, y, c) => P.push({ s: 'box', p: [bx + x, 1.2 + y, bz + 0.07], size: [0.09, 0.09, 0.03], tint: c, glow: 1 });
+          P.push({ s: 'box', p: [bx, 1.2, bz], size: [3.6, 1.5, 0.08], tint: 0x14181a }, { s: 'box', p: [bx, 2.7, bz], size: [3.7, 0.06, 0.12], tint: IRON }, { s: 'box', p: [bx, 1.14, bz], size: [3.7, 0.06, 0.12], tint: IRON });
+          ln(0, 0.72, 3.2, 0.035); ln(0.2, 0.2, 0.035, 1.2); ln(-0.9, 0.36, 1.0, 0.035); ln(-1.4, 0.36, 0.035, 0.4); ln(-0.4, 0.36, 0.035, 0.4); ln(1.1, 1.05, 0.8, 0.035); ln(0.7, 0.72, 0.035, 0.36); ln(1.5, 0.72, 0.035, 0.36);
+          [[-1.5, 0.8], [-0.2, 0.8], [0.6, 0.8], [1.5, 0.8], [0.28, 1.3], [0.28, 0.3]].forEach(q => dot(q[0], q[1], 0x2aff6a)); dot(1.1, 1.13, 0xffb020); dot(-0.9, 0.44, 0xffb020);
+          P.push({ s: 'quad', p: [bx, 2.82, bz + 0.06], size: [2.2, 0.26], key: sign('ALL LINES', '#14181a', 8.5), glow: 0.3, uv: 'fit' });
+          arch(ctx, 'P02-03', 'diagram', P); }
+        /* the three huts' swinging doors (three-renderer.js _hqBuildTexDoors: a `doorsOnly` carrier row) */
         ctx.feat({ k: 'texbuilding', id: 'sewT:doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_security', inner: leaves });
 
         /* a signal post where the line leaves each Loop Line plot */
@@ -170,17 +183,37 @@ module.exports = {
     },
     dress(ctx) {
         const st = ctx.squares('P00-03', 'f').filter(q => q[1] === 2);
-        ['metro_bench', 'departures_board', 'tube_map', 'metro_vending', 'metro_bin'].forEach((k, i) => { const q = st[1 + i * 1]; if (q && ctx.free('P00-03', q[0], q[1])) ctx.P(k, 'P00-03', q[0], q[1], { face: 180 }); });
+        ['metro_bench', 'departures_board', 'tube_map', 'metro_vending', 'metro_bin'].forEach((k, i) => { const q = st[2 + i];   /* (pass 2: a square east, the office took the corner) */ if (q && ctx.free('P00-03', q[0], q[1])) ctx.P(k, 'P00-03', q[0], q[1], { face: 180 }); });
         /* THE DEPOT: a train on each siding */
         [[5, 4], [5, 8]].forEach(q => { const s = ctx.sq('P04-03', q[0], q[1]); ctx.props.push({ key: 'track_bed', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), face: 90 }, { key: 'metro_car', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), face: 90 }); });
-        { const s = ctx.sq('P04-03', 5, 4); [-4.2, 4.2].forEach(dx => ctx.props.push({ key: 'bare_bulb', x: ctx.r2(ctx.gcx(s[0]) + dx), z: ctx.gcz(s[1]), ceil: true, y: 2.95 })); }   // THE LIT TRAIN: its saloon lamps (two of the room's ten real lights)
+        { const s = ctx.sq('P04-03', 5, 4); ctx.props.push({ key: 'bare_bulb', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), ceil: true, y: 2.95 }, { key: 'anatomy_skeleton', x: ctx.r2(ctx.gcx(s[0]) + 3.4), z: ctx.r2(ctx.gcz(s[1]) + 0.2), y: 1.12, face: 200, noBlock: true }); }   // THE LIT TRAIN: its saloon lamp (a real light) and the one passenger who stayed
+        /* ── PASS 2, THE INTERIORS: the signal cabin, the crew room, the station office. `put` = a prop at a plot's own metres, on the floor. ── */
+        const put = (id, key, x, z, face, o) => { const m = mid(ctx, id); ctx.props.push(Object.assign({ key, x: R2(m[0] + x), z: R2(m[1] + z), face: face || 0, floor: true }, o || {})); };
+        const bulb = (id, x, z, y) => { const m = mid(ctx, id); ctx.props.push({ key: 'bare_bulb', x: R2(m[0] + x), z: R2(m[1] + z), ceil: true, y }); };
+        { const id = 'P02-03';   /* THE CABIN: x 7..17.5, z -10.5..-3.5; the frame and the panel under the window, the desk at the back */
+          put(id, 'signal_lever_frame', 13.4, -4.75, 180); put(id, 'retro_control_panel', 10.7, -4.5, 180); put(id, 'tanker_desk', 15.6, -9.0, 180); put(id, 'office_chair', 15.6, -9.8, 180);
+          put(id, 'crt_terminal', 15.2, -9.0, 180, { y: 0.78 }); put(id, 'field_radio', 16.2, -8.9, 200, { y: 0.78 }); put(id, 'coffee_mug', 15.9, -8.7, 40, { y: 0.78 });
+          put(id, 'filing_cabinet', 7.45, -9.9, 90); put(id, 'filing_cabinet', 7.45, -9.3, 90); put(id, 'footlocker', 16.9, -4.5, 270); put(id, 'folding_chair', 12.6, -6.2, 180);
+          put(id, 'breaker_panel', 17.3, -7, 270, { y: 1.2 }); put(id, 'gauge_board', 8.7, -10.3, 180, { y: 1.1 }); put(id, 'wall_clock', 15.6, -10.32, 180, { y: 2.3 }); put(id, 'fire_extinguisher', 7.3, -4.2, 90);
+          put(id, 'psx_flashlight_1', 10.9, -6.1, 70); put(id, 'railway_lantern', 9.4, -4.3, 0, { y: 1.02 }); bulb(id, 12.25, -7, 3.05); }
+        { const id = 'P04-03';   /* THE CREW ROOM: x -17.5..-7, z -17.5..-10.5; lockers at the back, a table, a cot, the kettle corner */
+          [-16.9, -16.3, -15.7, -15.1].forEach(x => put(id, 'locker', x, -17.1, 180)); put(id, 'footlocker', -14.2, -17.0, 180);
+          put(id, 'steel_table', -12.25, -14.2, 0); put(id, 'folding_chair', -12.25, -15.2, 0); put(id, 'folding_chair', -11.1, -14.2, 270); put(id, 'molded_chair', -13.4, -14.1, 90);
+          put(id, 'coffee_mug', -12.5, -14.3, 30, { y: 0.8 }); put(id, 'coffee_mug', -11.9, -14.0, 200, { y: 0.8 }); put(id, 'psx_ashtray_1', -12.2, -14.5, 0, { y: 0.8 }); put(id, 'psx_cigs_packet_1', -12.7, -13.9, 60, { y: 0.8 });
+          put(id, 'cot', -16.6, -12.6, 0); put(id, 'psx_sofa_1', -13.6, -11.2, 0); put(id, 'mini_fridge', -10.2, -17.05, 180); put(id, 'microwave', -10.2, -17.05, 180, { y: 0.87 }); put(id, 'water_cooler', -8.9, -17.1, 180);
+          put(id, 'coffee_maker', -11.0, -17.1, 180, { y: 0.02 }); put(id, 'notice_board', -7.2, -14.5, 270, { y: 1.1 }); put(id, 'punch_clock', -7.2, -12.2, 270, { y: 1.2 }); put(id, 'wall_clock', -12.25, -17.32, 180, { y: 2.3 });
+          put(id, 'hook_rail', -17.3, -15.2, 90, { y: 1.7 }); put(id, 'mop_bucket', -7.7, -16.6, 30); put(id, 'metro_poster_7', -17.32, -13.6, 90, { y: 1.0 }); bulb(id, -12.25, -14.2, 3.05); }
+        { const id = 'P00-03';   /* THE STATION OFFICE: x -14..-7, z -14..-7, on the platform; the desk at the ticket window, lost property at the back */
+          put(id, 'tanker_desk', -11.6, -8.0, 180); put(id, 'office_chair', -11.6, -8.9, 180); put(id, 'crt_terminal', -12.0, -8.0, 180, { y: 1.78 }); put(id, 'coffee_mug', -11.0, -7.8, 10, { y: 1.78 });
+          put(id, 'lost_shelf', -12.2, -12.4, 180); put(id, 'floor_safe', -13.3, -10.2, 90); put(id, 'filing_cabinet', -7.6, -11.6, 270); put(id, 'filing_cabinet', -7.6, -12.2, 270);
+          put(id, 'key_rack', -7.25, -9.6, 270, { y: 1.1 }); put(id, 'wall_clock', -13.72, -9, 90, { y: 2.2 }); put(id, 'newspaper_bundles', -9.3, -12.6, 30); bulb(id, -10.5, -10.2, 3.5); }
         /* a blocker on the k-th free square of a list, decor on the k-th square (THE MODEL LIST PASS helpers) */
         const putP = (key, id, list, k, o) => { for (let i = Math.max(0, Math.min(list.length - 1, k)); i < list.length; i++) { const q = list[i]; if (ctx.free(id, q[0], q[1])) { ctx.P(key, id, q[0], q[1], o); return true; } } return false; };
         const putD = (key, id, list, k) => { const q = nth(list, k); if (q) ctx.dec(key, id, q[0], q[1]); };
         /* THE MODEL LIST PASS (mondo 11-16): MODEL_LIST.md searched for metro, rail, signal, depot. THE CROSSING: the signal lever frame and
            two signals (the Signal Gantry's own). THE DEPOT: a cable drum, a pallet jack, a welding cart, a wrapped pallet. THE GHOST
            STATION: two of the Metro pack's columns. THE LOOP LINE: the bucket and the rope under the garden well. Railway lanterns on the walks. */
-        putP('signal_lever_frame', 'P02-03', ctx.corners('P02-03'), 1); putP('street_signal', 'P02-03', ctx.corners('P02-03'), 3); putP('street_signal', 'P02-03', ctx.corners('P02-03'), 6);
+        putP('street_signal', 'P02-03', ctx.corners('P02-03'), 3); putP('street_signal', 'P02-03', ctx.corners('P02-03'), 6);
         { const d = ctx.inner('P04-03'); putP('cable_drum', 'P04-03', d, 4); putP('pallet_jack', 'P04-03', d, 9); putP('welding_cart', 'P04-03', d, 14); putP('wrapped_pallet', 'P04-03', d, 19); }
         [2, 4, 7, 9].forEach(lx => { if (ctx.free('P00-03', lx, 4)) ctx.P('metro_column', 'P00-03', lx, 4); });   // PASS 1: four, a square back from the edge
         { const w = ctx.squares('P01-03', 'o').filter(q => Math.abs(q[0] - 5) <= 1 && Math.abs(q[1] - 9) <= 1); putD('wooden_bucket', 'P01-03', w, 0); putD('meshy_rope', 'P01-03', w, 1); }
@@ -193,6 +226,6 @@ module.exports = {
     people(ctx) {
         const O = ctx.O.tunnels, stand = (race, id, list, k) => { const q = nth(list, k || 0); if (q) ctx.native(race, id, q[0], q[1], 180, ctx.sayOf(O, race)); };
         stand('skeleton', 'P00-03', ctx.squares('P00-03', 'f').filter(q => q[1] === 3), 3);
-        stand('zombie', 'P01-03', ctx.squares('P01-03', 'o'), 6); stand('ai', 'P02-03', ctx.squares('P02-03', 'o'), 5); stand('gangster', 'P04-03', ctx.inner('P04-03'), 2);
+        stand('zombie', 'P01-03', ctx.squares('P01-03', 'o'), 6); ctx.native('ai', 'P02-03', 9, 3, 180, ctx.sayOf(O, 'ai'));   /* (pass 2: at the cabin's frame) */ stand('gangster', 'P04-03', ctx.inner('P04-03'), 2);
     },
 };
