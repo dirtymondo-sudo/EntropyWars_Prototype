@@ -73863,12 +73863,14 @@ const ThreeRenderer = (function () {
        ═══════════════════════════════════════════════════════════════════════ */
     var HQ_EDGE_ROWS = [0, 1.2, 2.5, 4, 6, 8.5, 11.5, 15, 19, 24, 30, 37, 45, 55, 70, 86, 104, 125, 150, 178, 210, 246, 286, 330, 380, 440];
     var HQ_EDGE_NEAR_M = 70;
+    var HQ_EDGE_MESA_AT = 0.66;          // a mesa stands where the land's slow noise passes this (higher = fewer, smaller tables)
     function _hqEdgeNoise(x, z) {
         var h = function (a, b) { var s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
         var xi = Math.floor(x), zi = Math.floor(z), fx = x - xi, fz = z - zi, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
         return (h(xi, zi) * (1 - u) + h(xi + 1, zi) * u) * (1 - v) + (h(xi, zi + 1) * (1 - u) + h(xi + 1, zi + 1) * u) * v;
     }
     function _hqEdgeFbm(x, z) { return _hqEdgeNoise(x, z) * 0.5 + _hqEdgeNoise(x * 2.1, z * 2.1) * 0.27 + _hqEdgeNoise(x * 4.3, z * 4.3) * 0.15 + _hqEdgeNoise(x * 8.7, z * 8.7) * 0.08; }
+    function _hqEdgeSoft(x, z) { return _hqEdgeNoise(x, z) * 0.7 + _hqEdgeNoise(x * 2.3 + 17.1, z * 2.3 + 4.9) * 0.3; }   // two octaves: a line drawn with it wanders, it does not crumble
     /* the land's own arithmetic (no scene): the frame, the kinds' weights and the height at a point past the edge */
     function _hqEdgeLandFn(room, info) {
         var E = room.terrain.edges, hx = info.halfW - 0.5, hz = info.halfD - 0.5;
@@ -73876,16 +73878,30 @@ const ThreeRenderer = (function () {
         var R = { x0: -hx + (+sd('w').inset || 0), x1: hx - (+sd('e').inset || 0), z0: -hz + (+sd('n').inset || 0), z1: hz - (+sd('s').inset || 0) };
         var sm = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
         var seaY = (info.sea && isFinite(+info.sea.y)) ? +info.sea.y : -0.6;
-        var KINDS = ['mountain', 'forest', 'desert', 'coast'];
-        /* a side's kinds at a point along it (x for n / s, z for w / e) */
-        var sideW = function (k, along) {
-            var S0 = sd(k), W = { mountain: 0, forest: 0, desert: 0, coast: 0 }, c = S0.cap, t = 0;
+        /* THE EDGES THAT FIT THE MAP (2026-11-16, mondo: "in desert, its surrounded by mountains but that's not what's actually next to it on the map ...
+           make the edges/boundaries of the map more natural ... hard right angles and straight lines"):
+             · two more kinds: 'scrub' = dry rolling ground that carries the edge's height on (dead trees, cactus), 'mesa' = dead flat sand with
+               flat-topped red rock tables standing far back, each on its own (never a wall round the room);
+             · a side may say `beyond: { kind, d, len }` = past about `d` metres the land turns into that kind over `len` (a desert that
+               reaches the sea a way out; hills before a range). The line between the two wanders (noise), it is never a ruler line;
+             · THE WANDERING LINES: where a side's `cap` turns one kind into another, and on the diagonal where two sides meet at a corner,
+               the line wanders with the distance from the room (nothing moves on the room's own line: the edge stops and seams hold);
+             · the mountains' foot is no longer one wall at one distance: it steps in and out along the side (spurs and gullies).
+           `edges.straight: true` = the old ruler lines (a kill switch per room); `EW_HQ_STRAIGHT_EDGES` = for every room. */
+        var KINDS = ['mountain', 'forest', 'desert', 'coast', 'scrub', 'mesa'];
+        var WANDER = !(E.straight || (typeof window !== 'undefined' && window.EW_HQ_STRAIGHT_EDGES));
+        /* a side's kinds at a point along it (x for n / s, z for w / e); `dist` = how far past the room, `wob` = the point's own wander (-1 … 1) */
+        var sideW = function (k, along, dist, wob) {
+            var S0 = sd(k), W = { mountain: 0, forest: 0, desert: 0, coast: 0, scrub: 0, mesa: 0 }, c = S0.cap, t = 0, by = S0.beyond;
+            if (WANDER && wob) along += wob * Math.min(95, (dist || 0) * 1.15);
             if (c && c.kind && c.len > 0) {
                 var horiz = (k === 'n' || k === 's'), a0 = horiz ? R.x0 : R.z0, a1 = horiz ? R.x1 : R.z1;
                 var fromEnd = (c.at === 'n' || c.at === 'w') ? along - a0 : a1 - along;
                 t = sm(1 - (fromEnd - (+c.off || 0)) / c.len);   // `off` = the last metres of the side are the cap's kind whole
             }
-            W[S0.kind] = (W[S0.kind] || 0) + (1 - t); if (t > 0) W[c.kind] = (W[c.kind] || 0) + t;
+            var tb = 0;
+            if (by && by.kind && by.d > 0) tb = sm(((dist || 0) - by.d * (1 + (WANDER ? 0.55 * (wob || 0) : 0))) / (by.len || 40));
+            W[S0.kind] = (W[S0.kind] || 0) + (1 - t) * (1 - tb); if (tb > 0) W[by.kind] = (W[by.kind] || 0) + (1 - t) * tb; if (t > 0) W[c.kind] = (W[c.kind] || 0) + t;
             return W;
         };
         /* THE REAL LAND PAST THE EDGE (2026-11-15, mondo: "is the bad looking fake mountain weenie still there in disaster city? ... shouldn't these
@@ -73922,18 +73938,20 @@ const ThreeRenderer = (function () {
             var ex = Math.abs(x - cx), ez = Math.abs(z - cz), d = Math.hypot(ex, ez), eH = groundAt(cx, cz);
             var liftUp = 0.45 * sm(d / 1.2), liftDn = 0.25 * (1 - sm(d / 0.6));
             var kx = x < cx ? 'w' : 'e', kz = z < cz ? 'n' : 's', W;
-            if (ez <= 1e-6) W = sideW(kx, cz); else if (ex <= 1e-6) W = sideW(kz, cx);
-            else { var s = sm(ex / (ex + ez)), A = sideW(kz, cx), B = sideW(kx, cz); W = {}; KINDS.forEach(function (q) { W[q] = A[q] * (1 - s) + B[q] * s; }); }
+            var wob = WANDER ? Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 95 + 11.3, z / 95 + 5.9) - 0.5) * 3.2)) : 0;
+            if (ez <= 1e-6) W = sideW(kx, cz, d, wob); else if (ex <= 1e-6) W = sideW(kz, cx, d, wob);
+            else { var tq = ex / (ex + ez), s = sm(tq + 1.2 * wob * tq * (1 - tq) * sm(d / 40)), A = sideW(kz, cx, d, wob), B = sideW(kx, cz, d, wob); W = {}; KINDS.forEach(function (q) { W[q] = A[q] * (1 - s) + B[q] * s; }); }
             /* a step between two plots' levels at the edge is taken up in the land's first metres: past them the land stands on the HIGHER ground either side */
             var eHi = eH;
             if (d > 0.01) { var st = 3.6; if (ez <= 1e-6 || ex > ez) eHi = Math.max(eH, groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz - st))), groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz + st)))); else eHi = Math.max(eH, groundAt(Math.max(R.x0, Math.min(R.x1, cx - st)), cz), groundAt(Math.max(R.x0, Math.min(R.x1, cx + st)), cz)); }
             var e2 = eH + (eHi - eH) * sm(d / 1.2);
-            var y = 0, lift = liftUp - liftDn, landK = null;   // tucked under the field at the line, over it a step out
+            var y = 0, lift = liftUp - liftDn, landK = null, mesaT = 0;   // tucked under the field at the line, over it a step out
             if (W.mountain > 0) {
                 var rg = 1 - Math.abs(2 * _hqEdgeFbm(x / 190 + 3.1, z / 190 + 1.7) - 1), rg2 = 1 - Math.abs(2 * _hqEdgeFbm(x / 70 + 9, z / 70 + 4) - 1);
-                var yM = e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift;
+                var dF = WANDER ? d * (0.5 + 1.0 * _hqEdgeFbm(x / 38 + 21.7, z / 38 + 2.3)) : d;   // the foot steps in and out along the side (was one wall, 14 m off, the whole way)
+                var yM = e2 + 30 * sm(dF / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift;
                 if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);
-                else if (!LAND && z < R.z0 && sd('n').back != null) yM = e2 + lift + (+sd('n').back) * (yM - e2 - lift);   // THE HOLLYWOOD HILLS ARE PART OF THE CITY (2026-11-16): a north side may say `back` by itself = how much of the made-up range stands past it (the city: 0.35, a low dry ridge behind the real Hills' crest)   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
+                else if (!LAND && sd('n').back != null && (WANDER ? z < R.z0 + 45 : z < R.z0)) yM = e2 + lift + (WANDER ? 1 + (+sd('n').back - 1) * sm((R.z0 + 45 - z) / 90) : +sd('n').back) * (yM - e2 - lift);   // (eased in over 90 m across the north line: it was a step, a wall along the line west of the room)   // THE HOLLYWOOD HILLS ARE PART OF THE CITY (2026-11-16): a north side may say `back` by itself = how much of the made-up range stands past it (the city: 0.35, a low dry ridge behind the real Hills' crest)   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
                 if (LAND && z < R.z0) {   // THE REAL LAND PAST THE EDGE: the other room's ground from the line out to its own back edge, the range on behind it
                     var lx = x - LAND.x0, inX = sm(Math.min(lx, LAND.w - lx) / 30 + 0.02), yL;
                     if (lx > -1 && lx < LAND.w + 1 && inX > 0) {
@@ -73946,8 +73964,14 @@ const ThreeRenderer = (function () {
             }
             if (W.forest > 0) { var kf = sm(d / 16); y += W.forest * Math.max(e2 + lift + 6 * _hqEdgeFbm(x / 55, z / 55) * kf - e2 * 0.12 * sm((d - 90) / 200), 0.7 * kf); }
             if (W.desert > 0) { var kd = sm(d / 10), ditch = sm((d - 2.5) / 1.5) * (1 - sm((d - 6) / 1.5)); y += W.desert * ((e2 + lift) * (1 - kd) + 0.9 * kd - 1.1 * ditch); }
+            if (W.scrub > 0) { var ks = sm(d / 14), roll = 5.5 * _hqEdgeFbm(x / 48 + 2.2, z / 48 + 8.1) * sm(d / 40) + 20 * _hqEdgeFbm(x / 150 + 6.4, z / 150 + 1.9) * sm((d - 90) / 240);
+                y += W.scrub * ((e2 + lift) * (1 - ks) + (e2 * (1 - 0.85 * sm((d - 20) / 140)) + 0.5 + roll) * ks); }
+            if (W.mesa > 0) { var km = sm(d / 10), bn = _hqEdgeSoft(x / 105 + 40.5, z / 105 + 17.2), tall = 34 + 46 * _hqEdgeNoise(x / 270 + 5.5, z / 270 + 9.5);
+                var back = sm((d - 140) / 70), table = sm((bn - HQ_EDGE_MESA_AT) / 0.035) * back, scree = sm((bn - HQ_EDGE_MESA_AT + 0.07) / 0.07) * back;
+                mesaT = Math.max(mesaT, W.mesa * table);
+                y += W.mesa * ((e2 + lift) * (1 - km) + (0.9 + 1.6 * _hqEdgeFbm(x / 60 + 3.3, z / 60 + 7.7) * sm(d / 60) + 8 * scree + tall * table) * km); }
             if (W.coast > 0) { var kc = sm((d - 1) / 9); y += W.coast * ((e2 - liftDn) * (1 - kc) + Math.min(e2, seaY - 2.6) * kc); }   // (no lift: a sea bed never rises past the field)
-            return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null };
+            return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null, mesa: mesaT, side: (ez <= 1e-6 || ex > ez) ? kx : kz };
         };
         return { R: R, at: at, seaY: seaY, reach: +E.reach || 440 };
     }
@@ -73965,7 +73989,7 @@ const ThreeRenderer = (function () {
         var matFor = function (key, far) {
             var mk = key + (far ? '|far' : '');
             if (mats[mk]) return mats[mk];
-            var tex = key === 'snow' ? null : _hzTex(key === 'rock' ? 'mountain' : key === 'grass' ? 'grass' : key === 'cliff' ? 'cliff' : 'desert');
+            var tex = key === 'snow' ? null : _hzTex((key === 'rock' || key === 'cliff') ? 'mountain' : key === 'grass' ? 'grass' : 'desert');   // (a sea cliff wears the rock sheet: `cliff.png`, a tan sheet, is banned by the owner's rules and stood as sand-coloured slabs where a range falls into the sea)
             var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far });
             /* THE NATURAL ROCK on the land past the edge (2026-11-15, see _hqTerrainMat): the far mountains and sea cliffs were one small sheet repeated
                up a whole range. The sheet is mixed with itself read 3.7 x larger and its tone drifts over the land (WebGL; the node renderer keeps the plain sheet). */
@@ -73985,12 +74009,14 @@ const ThreeRenderer = (function () {
             var W = P.W, c = [0, 0, 0], add = function (w, r, g, b) { c[0] += w * r; c[1] += w * g; c[2] += w * b; };
             if (P.land === 'grass') return [0.86, 0.9, 0.8];
             add(W.mountain, 0.92, 0.9, 0.88); add(W.forest, 0.62, 0.74, 0.56); add(W.desert, 1, 0.96, 0.86); add(W.coast, 0.8, 0.74, 0.66);
+            add(W.scrub || 0, 0.84, 0.8, 0.64); add(W.mesa || 0, 1, 0.96, 0.86);
+            if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }   // the tables: red rock in bands
             return c;
         };
-        var keyOf = function (P, x, z) {
+        var keyOf = function (P, x, z, yTop) {   // yTop = the piece's highest corner (a far piece is up to 60 m long: one that climbs out of the sea is rock, not a slab of beach sand up a cliff)
             var W = P.W, k = 'grass', b = W.forest;
-            if (W.mountain > b) { k = 'rock'; b = W.mountain; } if (W.desert > b) { k = 'desert'; b = W.desert; } if (W.coast > b) { k = (P.y > F.seaY + 0.3 || (P.eH > F.seaY + 0.5 && P.d < 16)) ? 'cliff' : 'desert'; }   // a high edge falls to the sea as a rock cliff; the bed is sand
-            if (k === 'rock' && P.y - P.eH > 150 + 30 * _hqEdgeNoise(x / 30, z / 30)) k = 'snow';
+            if (W.mountain > b) { k = 'rock'; b = W.mountain; } if (W.desert > b) { k = 'desert'; b = W.desert; } if (W.scrub > b) { k = 'desert'; b = W.scrub; } if (W.mesa > b) { k = P.mesa > 0.25 ? 'rock' : 'desert'; b = W.mesa; } if (W.coast > b) { k = (P.y > F.seaY + 0.3 || (yTop != null && yTop > F.seaY + 4) || (P.eH > F.seaY + 0.5 && P.d < 16)) ? 'cliff' : 'desert'; }   // a high edge falls to the sea as a rock cliff; the bed is sand
+            if (k === 'rock' && !(P.mesa > 0.25) && P.y - P.eH > 150 + 30 * _hqEdgeNoise(x / 30, z / 30)) k = 'snow';
             if (P.land) k = (P.y < F.seaY + 0.4 || (P.land === 'desert' && P.y < F.seaY + 4)) ? 'desert' : (P.land === 'desert' ? 'rock' : P.land);   // THE REAL LAND PAST THE EDGE: the other room's own rock / grass / sand
             return k;
         };
@@ -74001,7 +74027,7 @@ const ThreeRenderer = (function () {
             for (j = 0; j < nz; j++) for (i = 0; i < nx; i++) P[j * nx + i] = F.at(xs[i], zs[j]);
             var B = {};
             for (j = 0; j + 1 < nz; j++) for (i = 0; i + 1 < nx; i++) {
-                var mx = (xs[i] + xs[i + 1]) / 2, mz = (zs[j] + zs[j + 1]) / 2, PM = F.at(mx, mz), far = PM.d >= HQ_EDGE_NEAR_M, key = keyOf(PM, mx, mz), bk = key + (far ? '|far' : '');
+                var mx = (xs[i] + xs[i + 1]) / 2, mz = (zs[j] + zs[j + 1]) / 2, PM = F.at(mx, mz), far = PM.d >= HQ_EDGE_NEAR_M, key = keyOf(PM, mx, mz, Math.max(P[j * nx + i].y, P[j * nx + i + 1].y, P[(j + 1) * nx + i].y, P[(j + 1) * nx + i + 1].y)), bk = key + (far ? '|far' : '');
                 var b = B[bk] || (B[bk] = { key: key, far: far, map: {}, pos: [], col: [], uv: [], nrm: [], idx: [] });
                 var vi = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1].map(function (v) {
                     if (b.map[v] != null) return b.map[v];
@@ -74040,12 +74066,12 @@ const ThreeRenderer = (function () {
         patch(xW, zN, 'nw'); patch(xE, zN, 'ne'); patch(xW, zS, 'sw'); patch(xE, zS, 'se');
         /* the sea runs on over the coast: the room's own sheet and height past the field (east, and the two ends the land falls into it) */
         var seaKey = (info.sea && info.sea.key) || 'water', seaG = null;
-        var anyCoast = ['n', 's', 'w', 'e'].some(function (k) { var s0 = E[k]; return s0 && (s0.kind === 'coast' || (s0.cap && s0.cap.kind === 'coast')); });
+        var anyCoast = ['n', 's', 'w', 'e'].some(function (k) { var s0 = E[k]; return s0 && (s0.kind === 'coast' || (s0.cap && s0.cap.kind === 'coast') || (s0.beyond && s0.beyond.kind === 'coast')); });
         if (anyCoast && typeof fluidMatFor === 'function') {
             try {
                 var sMat = fluidMatFor(seaKey); sMat.side = THREE.DoubleSide;
                 var hxF = info.halfW - 0.5, hzF = info.halfD - 0.5, rr = F.reach, rects = [];
-                var coastOn = function (k) { var s0 = E[k]; return !!(s0 && s0.kind === 'coast'); }, capLen = function (k, end) { var s0 = E[k]; return (s0 && s0.cap && s0.cap.kind === 'coast' && s0.cap.at === end) ? (+s0.cap.len || 0) + (+s0.cap.off || 0) + 30 : 0; };
+                var coastOn = function (k) { var s0 = E[k]; return !!(s0 && (s0.kind === 'coast' || (s0.beyond && s0.beyond.kind === 'coast'))); }, capLen = function (k, end) { var s0 = E[k]; return (s0 && s0.cap && s0.cap.kind === 'coast' && s0.cap.at === end) ? (+s0.cap.len || 0) + (+s0.cap.off || 0) + 30 + (E.straight ? 0 : 110) : 0; };   // (+110: THE WANDERING LINES may carry the shore that much further along the side)
                 if (coastOn('e')) { rects.push([hxF, -hzF - rr, hxF + rr, hzF + rr]); var ln = capLen('n', 'e'), ls = capLen('s', 'e'); if (ln) rects.push([hxF - ln - (+((E.e || {}).inset) || 0), -hzF - rr, hxF, -hzF]); if (ls) rects.push([hxF - ls - (+((E.e || {}).inset) || 0), hzF, hxF, hzF + rr]); }
                 if (coastOn('w')) rects.push([-hxF - rr, -hzF - rr, -hxF, hzF + rr]);
                 if (coastOn('n')) rects.push([-hxF, -hzF - rr, hxF, -hzF]);
@@ -74082,7 +74108,11 @@ const ThreeRenderer = (function () {
                 if (P.d < 1.8 || P.d > 60) continue;
                 var thin = P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;
                 if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
-                else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
+                else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
+                else if ((P.W.scrub || 0) + (P.W.mesa || 0) + P.W.desert > 0.6 && P.d > 4) {   // THE DRY LAND'S PLANTS: a scrub side grows dead trees by itself; any dry side grows what its `plants: { kinds, p, h: [lo, hi] }` says (the room's own cactus runs on past its line)
+                    var PL = (E[P.side] || {}).plants || ((P.W.scrub || 0) > 0.5 ? { kinds: ['tree_5', 'tree_6', 'tree_5', 'pine_2'], p: 0.09, h: [3, 6.5] } : null);
+                    if (!PL || !PL.kinds || !PL.kinds.length || c2 > (PL.p || 0.08) * thin) continue;
+                    var ph = PL.h || [3, 6]; plantTree(PL.kinds[(d2 * PL.kinds.length) | 0], hOf(ph[0] + ((d2 * 7.3) % 1) * (ph[1] - ph[0])), px, pz, P.y * U); planted++; }
             }
         }
         /* THE HILL SIGN (2026-11-15, mondo: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster

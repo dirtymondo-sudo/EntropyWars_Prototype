@@ -8866,3 +8866,40 @@ beach. but keep the ground under industrial as is, concrete."
 - To take the mole back to concrete: the `paintCell` line in beach()'s ground loop (`(mole && cx >= 146) || deck`). To move the west line: the `cx` start in the block.
 - Seen on screen (probe, by day, HEAD of the PR): the strip, the mole, Entertainment's front, the Industrial line. In the pictures the planks are the same
   sheet as the old boardwalk; the sheet is a dark grey-brown, it reads as wood by day and nearly as dark as the concrete at night.
+## THE EDGES THAT FIT THE MAP + THE COVE — the land past each zone's line (2026-11-16, mondo's order)
+mondo 11-16: "fix and improve all of the big weenies on the edges of the map, and make the edges/boundaries of the map more natural. for example in desert, its
+surrounded by mountains but that's not what's actually next to it on the map ... at the end of the beach/shore, at the north, where it meets the hills, there are
+hard right angles and straight lines ... that would be a good spot to turn into a cove". The audit of every zone + what is still open: `docs/plans/world-edges/edges-plan.md`.
+- **THE RULE:** a side of a zone shows what the world map puts there (`docs/plans/world-zones/world_layout.png`, layout 3), never a made-up wall. Check the map before
+  writing a room's `terrain.edges`.
+- **NEW IN `terrain.edges`** (three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`, block THE EDGES THAT FIT THE MAP; all additions, an old room reads as before but for the lines):
+  - kind `scrub`: dry rolling ground that carries the edge's height on; grows dead trees by itself. Kind `mesa`: dead flat sand, flat-topped red rock tables from
+    140 m out, each on its own (`HQ_EDGE_MESA_AT` 0.66: higher = fewer tables). A mesa is rock sheet with a red banded tint, no snow.
+  - `beyond: { kind, d, len }` on a side: past about `d` metres the land turns into that kind over `len` (sand that reaches the sea a way out; hills before a
+    range). A `beyond` coast gets the sea's sheet like a coast side.
+  - `plants: { kinds, p, h: [lo, hi] }` on a dry side (desert / scrub / mesa): tree kinds planted to 60 m (the room's own cactus runs on, so the line does not show).
+    data.js `HQ_TREE_KINDS.saguaro` = the Desert's Meshy prop as a tree kind. `bare: true` on a mountain side: no pines on its foot.
+  - THE WANDERING LINES: a `cap`'s line between two kinds, the diagonal where two sides meet at a corner and a `beyond` line all wander (noise that grows with the
+    distance from the room; nothing moves ON the room's line, so edge stops and seams hold). The mountains' foot steps in and out along the side (was one wall 14 m
+    off). `edges.n.back` is eased in over 90 m across the north line (was a step: a wall along the line west of the city). `edges.straight: true` = a room's old ruler
+    lines; `EW_HQ_STRAIGHT_EDGES` = every room's.
+  - A sea cliff on the land past an edge wears the rock sheet (was `cliff.png`, banned: tan slabs where the range falls into the bay).
+  - A look at any room's land from above with no browser: `node docs/plans/world-edges/preview-edge-land.js <room> out.ppm ['<edges JSON>']` (it runs `_hqEdgeLandFn`
+    out of three-renderer.js in Node; try the numbers there before a bake).
+- **THE DESERT** (`bake-desert.js`, the edges line only; data.js otherwise byte for byte): `n: desert` (the city's side), `w: scrub`, `s: mesa`,
+  `e: desert, beyond coast at 120 m, cap mesa for the south 210 m` (the bay behind Western Town, Leylines' sand by Giza); saguaros on n / s / e. Was `w` + `s: mountain`.
+- **THE COVE** (Disaster City's north-east corner, where the Shore meets the Hills):
+  - `districts/N.js` `exports.cove = { x: 310, z: -262, r: 32, bank: 12, head: [...] }`: the bay's waterline circle and the headland's crest line, in metres.
+  - `districts/B.js beach()`: ONE round sink (`plateau`, `r` = 32 + 0.442 x 12) cuts the bay on both sides of the room's old north line.
+  - `N.js north()` THE COVE: for squares cx >= 144 the corner heights are worked by the metre: `coveSand` (sand where the sea stood under the cliff, level with the
+    Shore's sand on the line, a metre higher at the cliff) and `coveRock` (the headland: a sea cliff profile, a wandering crest, lower and narrower to the point). The
+    Hills' grid is 156 squares wide; past it `at()` now gives the cove's ground to the room's east side (was flat sea bed). Headland squares are painted `rocks_5`.
+  - `N.js build()` THE COVE'S ROCKS: four sea stacks off the point (`ocean_rock_3` / `_4`, standing on the bed), seven grey boulders at the cliff's foot (`psxg_rock_*`).
+  - The Shore's nine props nearest the bay (logs, umbrella, lounger, traps) stand outside the waterline; none was moved. The pocket's sand, the boardwalk's walk
+    onto it and the Cliff Stair trail keep their heights (the tool's walk check still says `cove: walked`).
+  - To move or resize the bay: the three numbers in `exports.cove`; rebake with `node bake-disaster-city.js`.
+- **SEEN ON SCREEN** (real game, playtest_city.js through probe-fast.js): the Desert from the air four ways + from the ground; the cove from above, from the beach,
+  from the crescent, from the air; the city's south shore; the Mountains. Pictures: `docs/plans/world-edges/`.
+- **NOT DONE** (the plan file's section 3): a skyline north of the Desert; the floating things in the zones' skies; the Mountains', North Pole's, Woods', Camelot's and
+  Estate's sides (the Woods, Camelot and the Estate have NO land past their lines yet); the Shore's main waterline; the Hills' cliff north of the headland.
+

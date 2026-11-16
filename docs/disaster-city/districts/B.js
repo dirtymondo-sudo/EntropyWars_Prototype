@@ -1215,6 +1215,12 @@ function beach(ctx, push, ghost) {
        sea in its last squares; no sea wall drop, so no ramps and no rail on this stretch (the room is 32 squares past the plots for it, was 20). */
     rect(XB, ZNN - 2, XE + 2, Z0, 0, { sink: true, edge: 0.3 });                // the Shore's sand, level with the boardwalk
     rect(gx(163.1), ZNN - 16, XE + 16, Z0, DEEP, { sink: true, edge: 12 });     // …falling under the water past square 163 (the waterline about square 164.5)
+    /* THE COVE (2026-11-16, mondo: "at the end of the beach/shore, at the north, where it meets the hills, there are hard right angles and straight lines ...
+       that would be a good spot to turn into a cove"): the sand's north end was a square corner in the sea on the room's old north line. One ROUND sink
+       bites the bay out of that corner, on both sides of the line (districts/N.js `cove` holds its place and size and builds the rest: the crescent of
+       sand under the cliff, the rock headland round it). ZNN - 10 = the bay's middle, 10 m north of the line in this file's frame. */
+    { const CV = require('./N.js').cove, sinkR = CV.r + CV.bank * 0.442;   // the waterline (-1.45 on a bank that falls 0 -> DEEP over `bank` metres) stands 0.442 of the bank inside the sink's rim
+      lateRows.push({ k: 'plateau', x: r3(CV.x), z: r3(ZNN + (CV.z + 252)), r: r3(sinkR), h: DEEP, sink: true, edge: CV.bank, absY: true }); }
     rect(XB, ZN, XE + 2, ZS, SHELF, { sink: true, edge: 0.3 });
     rect(XD, ZN, XE + 16, ZS, DEEP, { sink: true, edge: 12 });   // (THE NATURAL EDGES: the 12 m bank on its east side lies past the field, so no sand bar rises along the room's east edge)
     rect(gx(161), Z0 - 0.4, XE + 2, ZN + 0.4, DEEP, { sink: true, edge: 0.4 });

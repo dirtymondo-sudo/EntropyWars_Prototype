@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 962 |
+| Meshy AI | no | 963 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -3211,6 +3211,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | palm | `Assets/world/hq/models/Meshy_AI_palm_tree_0910054114_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | pine | `Assets/world/nature/retrotreepack/GLB/tree_rt_1_full.glb` | Built by Claude in code (a bake tool writes the file) | THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack's (Pizza Doggy licence) |
 | pine_2 | `Assets/world/nature/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| saguaro | `Assets/world/nature/OBJ/asset:world/props/meshy/saguaro_cactus.glb.obj` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Desert, mondo's OK 2026-11-15 (the prop `saguaro_cactus` planted as the tree kind `saguaro` on the land past a dry room's line, 2026-11-16) |
 | tree | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_1_full.glb` | Built by Claude in code (a bake tool writes the file) | THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack's (Pizza Doggy licence) |
 | tree_10 | `Assets/world/nature/OBJ/Tree_7.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_11 | `Assets/world/nature/OBJ/Tree_8.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |

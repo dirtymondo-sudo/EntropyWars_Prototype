@@ -306,8 +306,17 @@ M.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", n: 12, name
 M.push("            terrain: {");
 M.push("                res: 1.75, floor: 'desert', cliff: 'rock_wall_1', path: 'dirt_2',");
 M.push("                noise: { amp: 0.08, scale: 9 },");
-M.push("                /* THE NATURAL EDGES: the desert goes on north (Disaster City is that way) and east, mountains stand west and south (three-renderer.js _hqBuildEdgeLand) */");
-M.push("                backdrop: false, edges: { reach: 440, n: { kind: 'desert' }, w: { kind: 'mountain' }, s: { kind: 'mountain' }, e: { kind: 'desert' } },");
+/* THE EDGES THAT FIT THE MAP (2026-11-16, mondo: "in desert, its surrounded by mountains but that's not what's actually next to it on the map, so it doesn't
+   make any sense"). What the world map (docs/plans/world-zones/world_layout.png, layout 3) puts on each side, and nothing else:
+     north = Disaster City: open sand, the highway runs into it (as before);
+     west  = the scrub under the Estate (the map's own word: "scrub (edge)"): dry rolling ground with dead trees, no rock wall;
+     south = more desert: flat sand, red rock tables far off (each on its own, never a wall);
+     east  = the bay behind Western Town (the sand reaches the water about 120 m out, on a line that wanders), then, level with Giza, the sand
+             Leylines stands on (flat, tables far off).
+   Was: a snow range with pines 14 m past the west and south lines. The room's own saguaros run on past every line (`plants`), so the line does not show. */
+const EDGE_DRY = "plants: { kinds: ['saguaro'], p: 0.02, h: [3.8, 6.4] }";
+M.push("                /* THE EDGES THAT FIT THE MAP: north the city's sand, west the scrub, south sand and far rock tables, east the bay then Leylines' sand (three-renderer.js _hqBuildEdgeLand) */");
+M.push("                backdrop: false, edges: { reach: 440, n: { kind: 'desert', " + EDGE_DRY + " }, w: { kind: 'scrub' }, s: { kind: 'mesa', " + EDGE_DRY + " }, e: { kind: 'desert', beyond: { kind: 'coast', d: 120, len: 40 }, cap: { kind: 'mesa', at: 's', off: 210, len: 90 }, " + EDGE_DRY + " } },");
 M.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + nc(0) + ", z0: " + nc(0) + ", nx: " + NW + ", nz: " + NW + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 M.push("                marks: " + J(marks) + ",");
 M.push("                /* THE HIGHWAY'S CARS (the city's own traffic system): in from the west along the eastbound side, south to the end, east to Giza; and back */");
