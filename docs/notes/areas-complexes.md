@@ -5468,6 +5468,22 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
     femur and a skull, four ferns, a flamingo, the second eagle, a rowboat, a brazier, lobster traps, a hanging lantern, rope, a spyglass),
     spare sea animals. Stairs + rails are 32 k, palms + sea stacks 27 k, the two insides nothing from outside. The cloud's fps is no
     measure (the bare district read 2.0-3.6 fps and the full one 6.6-7.2 in the same hour): compare draw calls and triangles.
+- **THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md; seen on
+  screen, probe views `m_*`) — THEN STOPPED AGAIN:**
+  - PLACED, AND WHAT STOOD IN FOR IT WENT: `avenger_wreck` x2 at No Fixed Position (the three hull plates went); `timber_lookout` on
+    the lookout's rock (the drawn straw roof, bench and flag went; the rock, stair and rail carried over from the old cay stay, the
+    walker still climbs to the tower's foot); `pirate_flag` on the lookout and at the Jetty's landward end; `thatched_hut` at the camp
+    (the blue dome tent went); `parrot` on the Shack's porch (the bird cage went); `seagull` x3 (the eagle over the light went);
+    `tropical_bush` x4 under the palms (dead scrub went there); `mooring_bollard` x3 on the Jetty (the drawn posts and rope went) and
+    x2 at the Lighthouse Rock's steps; `raft` afloat at the Jetty; `torn_sail_mast` in the water by the Wreck Islet; `wooden_barrel`
+    for every steel drum in the pirate places (the keeper's oil drums stay steel).
+  - FROM THE OTHER LISTS: `banana_plant` x2, `coconuts` x2, `dugout_canoe` at the Lagoon, `oars` by the rowboat, `rope_coils` on the
+    Jetty, `drying_fish`, `woven_baskets` and a `kettle` at the camp.
+  - SEEN: a blocker on a water square stands on the surface, so `y: -0.7` / `-1.3` sinks an `avenger_wreck` to its wings / its
+    canopy; `raft` rides right with no `y`. `thatched_hut` is 5.1 m wide: its middle on the line between two squares. The models'
+    facing needed no turn here.
+  - FRAME RATE (the island view, before / after this pass): 448 draw calls / 759 k triangles -> 460 / 818 k (827 k before four
+    extras were taken out again).
 - **LEARNED (for the zone kit):**
   - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
     water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
@@ -5502,13 +5518,14 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   `stump` `hollow_dead_tree` `psxg_stepping_stone_1/2` `flamingo` `eagle` `crow`. Eerie (nothing placed: the plan names none):
   `obelisk` `menhir` `stone_altar` `decor_stone_arch` `crystal_cluster` `floating_orb` `ufo` `light_shaft` `white_cloud`.
   Not wired, would fit a ruin: `mcsteeg_castles/Castles_and_Forts.glb` nodes `Wall_2x4_ruined`, `Tower_mid_hollow_ruined`.
-- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is a rock platform with a timber stair on a real dune, not a
-  timber tower (no tower model; the old one was a plateau too). (2) Flight 19 is three torn hull plates (five at first; two went for the frame rate), not planes (no 1945 aircraft
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is the old cay's rock platform with a timber stair on a real dune, and since the model pass the
+  `timber_lookout` tower stands on it (the tower is a prop: the walker climbs to its foot, not up it). (2) Flight 19 is three torn hull plates (five at first; two went for the frame rate), not planes (no 1945 aircraft
   model; the F-22 was not used). (3) Two walk-ins: a wrecker's shack on the island ("the Shack", at the Jetty's path, off the fight's sand) and the keeper's store on the Lighthouse Rock; the lighthouse itself is the game's own prop and is not entered. (4) The Maelstrom's foam is
   drawn and still; the turning is the link's own funnel and the wreckage. (5) The Lighthouse Rock got steps so the tape can be reached on
   foot from a boat. (6) The `dockring` at the Jetty was taken out (wrong model).
-- **NEEDS A MODEL:** a Flight 19 Avenger wreck; a timber lookout tower; a raft; a mast and torn sail; a pirate flag; a parrot and gulls;
-  a thatch hut; tropical bushes and flowers; a mooring post; a whirlpool surface that turns wider than 9 m; a wet-sand / reef-floor sheet.
+- **NEEDS A MODEL (after the model pass; the Avenger, the lookout tower, the raft, the mast and sail, the pirate flag, the parrot,
+  the gulls, the thatch hut, the tropical bush and the mooring post are IN and placed):** a whirlpool surface that turns wider than
+  9 m (a moving effect, not a model); a wet-sand / reef-floor sheet (a ground sheet).
 
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
