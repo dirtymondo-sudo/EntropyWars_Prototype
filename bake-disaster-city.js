@@ -602,10 +602,11 @@ const at = (name, fn) => (byName[name] || []).forEach(fn);
 const tree = (p, lx, ly, kind, h) => { lx = Math.floor(lx) + 0.5; ly = Math.floor(ly) + 0.5; const cx = p.x * N + Math.floor(lx), cy = p.y * N + Math.floor(ly); if (!free(cx, cy, '.#')) return; take(cx, cy); features.push({ k: 'tree', x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C), kind, h }); count.trees++; };
 /* a park plot's unconnected band: a tree a square */
 if (0) hedgeCells.forEach((q, i) => { const p = plotOf[pid(Math.floor(q[0] / N), Math.floor(q[1] / N))]; tree(p, q[0] % N + 0.5, q[1] % N + 0.5, ['tree_3', 'tree', 'tree_2', 'tree_4'][(q[0] + q[1] + i) % 4], 3.4 + ((q[0] * 7 + q[1] * 3) % 5) * 0.2); });
-/* BAYSIDE, the opening: the response outside the mall (cop cars nose to tail down the response streets, barricades at the cordon, the ambulances at the medical staging) */
-at('Police staging', p => { [[1.5, 4.9, 70], [3.5, 7.1, 250], [5.6, 4.9, 110], [7.6, 7.1, 290], [9.6, 4.9, 80], [10.6, 7.2, 265]].forEach(q => put(p, 'car_cop', q[0], q[1], q[2], { road: true }));
+/* BAYSIDE, the opening: the response outside the mall (cop cars nose to tail down the response streets, barricades at the cordon, the ambulances at the medical staging).
+   THE ROAD AUDIT (mondo 11-15): a parked car stands in the KERB lane (square 4.5 / 7.5 = 5.25 m off the street's middle); at 4.7..4.9 / 7.1..7.3 it stood on the line the traffic drives (3.5 m off). */
+at('Police staging', p => { [[1.5, 4.5, 70], [3.5, 7.5, 250], [5.6, 4.5, 110], [7.6, 7.5, 290], [9.6, 4.5, 80], [10.6, 7.5, 265]].forEach(q => put(p, 'car_cop', q[0], q[1], q[2], { road: true }));
     [[2.5, 9.5], [5.5, 9.5], [8.5, 9.5]].forEach(q => put(p, 'item_police_barricade', q[0], q[1], 0)); put(p, 'car_cop', 9.5, 10.5, 90); put(p, 'car_cop', 2.5, 10.5, 270); });
-at('Arrival court', p => { put(p, 'car_cop', 4.7, 2.5, 20, { road: true }); put(p, 'car_cop', 7.3, 8.5, 200, { road: true }); put(p, 'car_cop', 4.8, 9.6, 340, { road: true }); put(p, 'item_police_barricade', 9.5, 4.5, 0); put(p, 'item_police_barricade', 9.5, 7.5, 0); put(p, 'traffic_cone', 1.5, 5.5); put(p, 'traffic_cone', 2.5, 6.5); });
+at('Arrival court', p => { put(p, 'car_cop', 4.5, 2.5, 20, { road: true }); put(p, 'car_cop', 7.5, 8.5, 200, { road: true }); put(p, 'car_cop', 4.5, 9.6, 340, { road: true }); put(p, 'item_police_barricade', 9.5, 4.5, 0); put(p, 'item_police_barricade', 9.5, 7.5, 0); put(p, 'traffic_cone', 1.5, 5.5); put(p, 'traffic_cone', 2.5, 6.5); });
 at('Cordon plaza', p => { [[1.5, 4.5], [3.5, 4.5], [8.5, 4.5], [10.5, 4.5], [1.5, 7.5], [3.5, 7.5], [8.5, 7.5], [10.5, 7.5]].forEach(q => put(p, 'item_police_barricade', q[0], q[1], 0));
     put(p, 'car_cop', 2.5, 2.5, 120); put(p, 'car_cop', 9.5, 2.5, 240); put(p, 'car_ambulance', 2.5, 9.5, 0); put(p, 'traffic_cone', 4.5, 8.5); put(p, 'traffic_cone', 7.5, 8.5); });
 at('Medical staging', p => { put(p, 'car_ambulance', 2.5, 5.0, 90, { road: true }); put(p, 'car_ambulance', 5.5, 7.0, 270, { road: true }); put(p, 'fire_truck', 9.0, 5.0, 90, { road: true, span: [[1, 0]] }); put(p, 'car_ambulance', 3.5, 9.8, 60); put(p, 'carnival_tent', 7.5, 10.0, 0, { quiet: true }); put(p, 'car_cop', 2.5, 1.6, 100); });
@@ -616,8 +617,8 @@ at('Street market', p => { put(p, 'hot_dog_stand', 1.5, 2.5, 90, { quiet: true }
 /* the response streets round the mall: a cop car or two on every plot of them (the plan: "multiple blocks of police vehicles") */
 ['P08-08', 'P08-09', 'P09-11', 'P10-11', 'P11-11', 'P11-10', 'P11-09', 'P11-08'].forEach((id, i) => { const p = plotOf[id]; if (!p) return;
     const vert = p.cells[1][5] === 'R' && p.cells[10][5] === 'R';
-    if (vert) { put(p, 'car_cop', 4.9, 1.5 + (i % 3), 10 + i * 7, { road: true, quiet: true }); put(p, 'car_cop', 7.1, 8.5 + (i % 2), 190 - i * 5, { road: true, quiet: true }); }
-    else { put(p, 'car_cop', 1.5 + (i % 3), 4.9, 100 - i * 6, { road: true, quiet: true }); put(p, 'car_cop', 9.5 - (i % 2), 7.1, 280 + i * 5, { road: true, quiet: true }); } });
+    if (vert) { put(p, 'car_cop', 4.5, 1.5 + (i % 3), 10 + i * 7, { road: true, quiet: true }); put(p, 'car_cop', 7.5, 8.5 + (i % 2), 190 - i * 5, { road: true, quiet: true }); }
+    else { put(p, 'car_cop', 1.5 + (i % 3), 4.5, 100 - i * 6, { road: true, quiet: true }); put(p, 'car_cop', 9.5 - (i % 2), 7.5, 280 + i * 5, { road: true, quiet: true }); } });
 /* the hubs */
 at('Hero plaza', p => { put(p, 'fountain', 5.5, 2.5, 0, { span: [[1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]] }); put(p, 'city_bench', 2.5, 1.5, 180); put(p, 'city_bench', 8.5, 1.5, 180); put(p, 'planter', 1.5, 3.5); put(p, 'planter', 10.5, 3.5); put(p, 'hot_dog_stand', 2.5, 8.5, 90); put(p, 'city_bench', 8.5, 9.5, 0); tree(p, 1.5, 9.5, 'tree_3', 3.8); tree(p, 10.5, 9.5, 'tree_3', 3.8); });
 at('Civic plaza', p => { put(p, 'fountain', 2.5, 1.9, 0, { span: [[1, 0], [-1, 0]] }); put(p, 'angel_statue', 8.5, 1.9, 180); put(p, 'city_bench', 4.6, 10.4, 0); put(p, 'city_bench', 9.5, 10.2, 0); put(p, 'planter', 1.5, 9.5); put(p, 'planter', 10.5, 9.5); });
@@ -851,6 +852,12 @@ const TRAFFIC = [
     { pts: back([L(6, 90), L(102, 90), L(102, 42), L(138, 42)]), loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
     { pts: back([L(138, 42), L(102, 42), L(102, 90), L(6, 90)]), loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
 ];
+/* THE NARROW LANES (THE ROAD AUDIT, mondo 11-15): the Permit lane and the gym lane are TWO squares wide (7 m), the avenues four. A car keeps
+   `lane` (3.5 m) off its route's line, so on those two lanes it drove with its middle on the kerb line, half in the Boxing gym's wall and the
+   Permit offices' rooms. A route that uses one names it in `narrow` ([x0, z0, x1, z1]); three-renderer.js _hqLaneAt eases the car in to 1.75 m
+   off the line there. */
+const NARROW = [[L(42, 47), L(54, 47)], [L(44, 96), L(44, 101)]];
+TRAFFIC.forEach(t => { const has = q => t.pts.some(p => p[0] === q[0] && p[1] === q[1]), n = NARROW.filter(g => has(g[0]) && has(g[1])).map(g => [g[0][0], g[0][1], g[1][0], g[1][1]]); if (n.length) t.narrow = n; });
 const sigAt = (x, y, arms, o) => { const c = ctr(x, y); return Object.assign({ x: c[0], z: c[1], arms }, o || {}); };
 const SIGNALS = [sigAt(3, 7, 'NESW', { off: 0 }), sigAt(8, 7, 'NEW', { off: 11 }), sigAt(8, 3, 'NES', { off: 24 }), sigAt(3, 11, 'NES', { off: 6 }), sigAt(11, 7, 'NSW', { flash: true })];   // the avenue's crossing, the Bayside gate, the taxi rank, the highway junction; the coast road's T blinks
 /* every mast stands on a walk square at its junction's corner */
@@ -1130,9 +1137,15 @@ lines.push("            props: [");
    on a pavement band that crosses a street, a car parked askew) is drawn out sideways to the kerb walk, 7.9 m from the middle. Never dropped. */
 const clearLanes = () => { let n = 0; props.forEach(q => { if (q.y || q.floor || /drain|manhole|street_signal|bus_stop_sign/.test(q.key)) return;
     for (const t of TRAFFIC) for (let k = 0; k + 1 < t.pts.length; k++) { const a = t.pts[k], b = t.pts[k + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1, u = Math.max(0, Math.min(1, ((q.x - a[0]) * dx + (q.z - a[1]) * dz) / L / L));
-        const ox = q.x - a[0] - dx * u, oz = q.z - a[1] - dz * u, dd = Math.hypot(ox, oz); if (dd >= 3.2) continue;
+        const ox = q.x - a[0] - dx * u, oz = q.z - a[1] - dz * u, dd = Math.hypot(ox, oz);
+        /* THE ROAD AUDIT (mondo 11-15): the cars drive 3.5 m off this line (2.5..4.5 m), which the 3.2 m rule above never looked at. A thing
+           standing on a road square in that band goes too: a parked vehicle to the kerb lane (5.25 m off), anything else to the pavement.
+           Not on the two narrow lanes (no kerb lane there, and their pavement starts at 3.5 m). */
+        const band = dd >= 3.2 && dd < 4.6 && cellAt(cellOf(q.x), cellOf(q.z)) === 'R' && !NARROW.some(g => (g[0][0] === a[0] && g[0][1] === a[1] && g[1][0] === b[0] && g[1][1] === b[1]) || (g[1][0] === a[0] && g[1][1] === a[1] && g[0][0] === b[0] && g[0][1] === b[1]));
+        if (dd >= 3.2 && !band) continue;
+        const to = (band && /^car_|fire_truck|_bus$|^truck/.test(q.key)) ? 5.25 : 7.9;
         const nx = -dz / L, nz = dx / L, sgn = (ox * nx + oz * nz) >= 0 ? 1 : -1, cross = (ox * nx + oz * nz);
-        q.x = r3(q.x + nx * (sgn * 7.9 - cross)); q.z = r3(q.z + nz * (sgn * 7.9 - cross)); n++; return; } });
+        q.x = r3(q.x + nx * (sgn * to - cross)); q.z = r3(q.z + nz * (sgn * to - cross)); n++; return; } });
   count.laneCleared = (count.laneCleared || 0) + n; };
 clearLanes();
 const propsLine = lines.length, propsN = props.length;

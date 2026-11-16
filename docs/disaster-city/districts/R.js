@@ -361,7 +361,7 @@ function build(ctx) {
         const a = arch(fr, 'P03-00-B1'), W = fr.W, D = fr.D, BR = 0xd87060, dr = doorOf(row);
         a.shell(W, 6.5, D, K.brick, BR, dr);
         a.roof('barrel', 0, 6.5, 0, D, 4.2, W, K.rib, 0xc8d0d8, { ry: 90, keyEnd: K.brick, tintEnd: BR, seg: 12, over: 0.2 });
-        a.box(-W / 2 + 0.3, 0, D / 2 + 0.25, 1.0, 9.2, 0.6, K.brick, 0xa85848, { n: 2, step: [W - 0.6, 0, 0] });        // the front's two piers
+        a.box(-W / 2 + 0.8, 0, D / 2 + 0.25, 1.0, 9.2, 0.6, K.brick, 0xa85848, { n: 2, step: [W - 1.6, 0, 0] });        // the front's two piers (THE ROAD AUDIT: 0.5 m in from the corners; the east one stood past the wall line, in the gym lane)
         a.panel('f', 0, 0, W, D, 0, 3.4, W * 0.8, 2.0, null, 0xfff0d0, { glow: 0.35 });
         a.wins('f', dr.lx > 0 ? -W * 0.2 : W * 0.2, 0, W * 0.6, D, 0.8, { n: 3, ww: 2.0, wh: 2.0, key: K.winF });
         a.quad(0, 7.0, D / 2 + 0.08, 4.2, 2.4, 0, K.winF, 0xffe890, { glow: 0.5, uv: 'fit' });                          // the lit lunette
@@ -496,9 +496,9 @@ function build(ctx) {
         a.roof('gable', 0, 6.9, 0, W - 7, 2.9, D - 4.5, K.rib, TL, { keyEnd: K.plaster, tintEnd: WH, over: 0.7 });
         a.box(0, 9.7, 0, W - 5.4, 0.35, 0.7, K.plaster, 0xe8c860);                                                      // the ridge
         a.wins('f', 0, 0, W, D, 1.2, { n: 8, ww: 2.2, wh: 2.2, key: K.winS, tint: 0xfff4d8, margin: 1 });
-        /* the gate before the door: two posts, a lintel, a tie under it */
-        a.box(dr.lx - 2.6, 0, D / 2 + 5.4, 0.45, 5.0, 0.45, K.plaster, RD, { n: 2, step: [5.2, 0, 0] });
-        a.box(dr.lx, 5.0, D / 2 + 5.4, 7.4, 0.5, 0.8, K.plaster, RD, { under: true }); a.box(dr.lx, 4.0, D / 2 + 5.4, 6.0, 0.35, 0.5, K.plaster, RD, { under: true });
+        /* the gate before the door: two posts, a lintel, a tie under it. ON THE PAVEMENT (THE ROAD AUDIT, mondo 11-15: at D / 2 + 5.4 it stood 1.9 m out in the avenue) */
+        a.box(dr.lx - 2.6, 0, D / 2 + 2.6, 0.45, 5.0, 0.45, K.plaster, RD, { n: 2, step: [5.2, 0, 0] });
+        a.box(dr.lx, 5.0, D / 2 + 2.6, 7.4, 0.5, 0.8, K.plaster, RD, { under: true }); a.box(dr.lx, 4.0, D / 2 + 2.6, 6.0, 0.35, 0.5, K.plaster, RD, { under: true });
         a.done();
     })();
 
@@ -652,13 +652,15 @@ function build(ctx) {
         propAt(pf, 'rowboat', sq(3), sq(6), 0, { y: 0.3 });
     })();
 
-    /* ════════ P03-03 THE STREET COURT: a car wash beside the road (the skate ramps stay) ════════ */
+    /* ════════ P03-03 THE STREET COURT: a car wash beside the road (the skate ramps stay) ════════
+       THE ROAD AUDIT (mondo 11-15): it was 13 m long about square line 3, so its south 3.5 m stood across the pavement and in the south street's
+       lane. Now 9.4 m long inside its own yard (square lines 0..3), its mouth on the pavement. */
     (() => {
-        const pf = plotFrame(3, 3), fr = pf.sub(sq(10), sq(3), 6.4, 13), a = arch(fr, 'P03-03-carwash'), WH = 0xf0f2f4, BL = 0x48a4e8;
-        a.box(-2.95, 0, 0, 0.5, 4.2, 13, K.tile, WH); a.box(2.95, 0, 0, 0.5, 4.2, 13, K.tile, WH);
-        a.box(0, 4.2, 0, 7.4, 0.8, 14, K.plaster, BL, { under: true }); a.panel('f', 0, 0, 7.4, 14, 0, 4.25, 5, 0.7, null, 0xfff8e8, { glow: 0.5 }); a.panel('b', 0, 0, 7.4, 14, 0, 4.25, 5, 0.7, null, 0xfff8e8, { glow: 0.5 });
-        [0xf04c3c, 0x48a4e8, 0xf8c840].forEach((c, i) => { a.cyl(-1.9, 0.2, -4 + i * 4, 0.6, 3.4, K.plaster, c, { seg: 10 }); a.cyl(1.9, 0.2, -4 + i * 4, 0.6, 3.4, K.plaster, [0x48a4e8, 0xf8c840, 0xf04c3c][i], { seg: 10 }); });
-        a.done(); ghost(fr, -2.95, 0, 0.5, 13, 4.2); ghost(fr, 2.95, 0, 0.5, 13, 4.2); claim(fr.rect(0, 0, 7.4, 14, 0));
+        const pf = plotFrame(3, 3), fr = pf.sub(sq(10), sq(1.5), 6.4, 9.4), a = arch(fr, 'P03-03-carwash'), WH = 0xf0f2f4, BL = 0x48a4e8;
+        a.box(-2.95, 0, 0, 0.5, 4.2, 9.4, K.tile, WH); a.box(2.95, 0, 0, 0.5, 4.2, 9.4, K.tile, WH);
+        a.box(0, 4.2, 0, 7.4, 0.8, 10.2, K.plaster, BL, { under: true }); a.panel('f', 0, 0, 7.4, 10.2, 0, 4.25, 5, 0.7, null, 0xfff8e8, { glow: 0.5 }); a.panel('b', 0, 0, 7.4, 10.2, 0, 4.25, 5, 0.7, null, 0xfff8e8, { glow: 0.5 });
+        [0xf04c3c, 0x48a4e8, 0xf8c840].forEach((c, i) => { a.cyl(-1.9, 0.2, -3 + i * 3, 0.6, 3.4, K.plaster, c, { seg: 10 }); a.cyl(1.9, 0.2, -3 + i * 3, 0.6, 3.4, K.plaster, [0x48a4e8, 0xf8c840, 0xf04c3c][i], { seg: 10 }); });
+        a.done(); ghost(fr, -2.95, 0, 0.5, 9.4, 4.2); ghost(fr, 2.95, 0, 0.5, 9.4, 4.2); claim(fr.rect(0, 0, 7.4, 10.2, 0));
     })();
 
     /* DETROIT, THE STREET COURT: the party wall of a house long gone along the plot's west edge, a three-storey mural on it, a hoop, a painted

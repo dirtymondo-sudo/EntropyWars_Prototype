@@ -74552,6 +74552,21 @@ const ThreeRenderer = (function () {
         var r = Math.min(HQ_TRAFFIC_TURN_R, Lin * 0.45, Lout * 0.45);
         return { V: B, din: din, dout: dout, r: r, sharp: Math.min(1, (1 - dot) / 2 * 2) };
     }
+    /* THE NARROW LANES (THE ROAD AUDIT, 2026-11-16): a route may name the stretches of it that run down a two-square (7 m) street in
+       `narrow` (rows [x0, z0, x1, z1], bake-disaster-city.js). Within 2 m of one the car keeps 1.75 m off the line, not `lane` (3.5 m, which
+       put its middle on the kerb and half of it in the wall beside); the offset eases back out over the next 10 m. */
+    function _hqLaneAt(car, x, z) {
+        var N = car.narrow, ln = car.lane || 0; if (!N || !N.length || !ln) return ln;
+        var best = 1e9;
+        for (var i = 0; i < N.length; i++) {
+            var q = N[i], bx = q[2] - q[0], bz = q[3] - q[1], l2 = bx * bx + bz * bz;
+            var t = l2 > 0 ? Math.max(0, Math.min(1, ((x - q[0]) * bx + (z - q[1]) * bz) / l2)) : 0, dd = Math.hypot(x - q[0] - bx * t, z - q[1] - bz * t);
+            if (dd < best) best = dd;
+        }
+        var k = Math.max(0, Math.min(1, (best - 2) / 10)); k = k * k * (3 - 2 * k);
+        var nl = Math.min(Math.abs(ln), 1.75) * (ln < 0 ? -1 : 1);
+        return nl + (ln - nl) * k;
+    }
     function _hqRoutePose(car, s) {
         var pts = car.pts, cum = car.cum, i = 0, L = cum[cum.length - 1], nSeg = pts.length - 1;
         while (i + 2 < cum.length && cum[i + 1] <= s) i++;
@@ -74582,11 +74597,13 @@ const ThreeRenderer = (function () {
             var z = a0 * (V[1] - pick.din[1] * r) + a1 * V[1] + a2 * (V[1] + pick.dout[1] * r);
             var tx = (1 - t) * pick.din[0] + t * pick.dout[0], tz = (1 - t) * pick.din[1] + t * pick.dout[1], tl = Math.hypot(tx, tz) || 1;
             tx /= tl; tz /= tl;
-            return { x: x + (-tz) * car.lane, z: z + tx * car.lane, dx: tx, dz: tz, turn: pick.sharp };
+            var lnc = _hqLaneAt(car, x, z);
+            return { x: x + (-tz) * lnc, z: z + tx * lnc, dx: tx, dz: tz, turn: pick.sharp };
         }
         var a = pts[i], b = pts[i + 1], segL = Math.max(1e-6, cum[i + 1] - cum[i]), tt = Math.max(0, Math.min(1, (s - cum[i]) / segL));
         var dx = (b[0] - a[0]) / segL, dz = (b[1] - a[1]) / segL;
-        return { x: a[0] + (b[0] - a[0]) * tt + (-dz) * car.lane, z: a[1] + (b[1] - a[1]) * tt + dx * car.lane, dx: dx, dz: dz, turn: 0 };
+        var sx0 = a[0] + (b[0] - a[0]) * tt, sz0 = a[1] + (b[1] - a[1]) * tt, lns = _hqLaneAt(car, sx0, sz0);
+        return { x: sx0 + (-dz) * lns, z: sz0 + dx * lns, dx: dx, dz: dz, turn: 0 };
     }
     /* ── THE CITY TRAFFIC (2026-11-13, mondo: "traffic lights and intersections planned out for actual traffic and car routes. Bus sections
        placed in each district with a bus route") ──
@@ -74738,7 +74755,7 @@ const ThreeRenderer = (function () {
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
                     if (kind === 'citybus') { try { _hqCityBusMarks(g, U); } catch (e) {} }   // THE CITY MARKS: Bus Line 1 wears the city's shield
                     g._ew_hqCar = kind; g._ew_bunOut = true; G.add(g);   // THE MOVERS OUT: a car drives; the shell's recording stays still
-                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
+                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, narrow: rt.narrow || null, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
             });
         } finally { _hzKitTs = prevTs; }
@@ -80171,9 +80188,19 @@ const ThreeRenderer = (function () {
             return L ? L.concat(big) : big;
         };
     }
+    /* THE SEAT'S SHARE (2026-11-16, the probes' slow loads): the pass ran 120 ms after the first model that asked, so while a
+       big room's files land (the Disaster City: 730 files, each pass 150-400 ms) it ran back to back and took HALF the main
+       thread for the whole load. The wait is now 12x the last pass's own cost (120 ms at least, 5 s at most): the pass keeps
+       under a tenth of the thread, a small room seats as fast as before, and the last model to land still gets its pass. */
+    var _hqSeatCost = 0;
     function _hqSeatLater() {
         if (_hqSeatTimer) return;
-        _hqSeatTimer = setTimeout(function () { _hqSeatTimer = 0; try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); } }, 120);
+        _hqSeatTimer = setTimeout(function () {
+            _hqSeatTimer = 0;
+            var t0 = performance.now();
+            try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }
+            _hqSeatCost = performance.now() - t0;
+        }, Math.max(120, Math.min(5000, _hqSeatCost * 12)));
     }
     /* THE REAL COLLISION (2026-10-06): which placed prop gets a mesh collider — every floor prop that blocks today (its footprint is
        replaced by its real shape) and every other standing model big enough to walk on or bump into (a footbridge, a stair, a
@@ -80387,6 +80414,7 @@ const ThreeRenderer = (function () {
             litRows = new Set(cands.slice(0, Math.max(0, left)).map(function (c) { return c.p; }));
         })();
         for (var ri = 0; ri < rows.length; ri++) { placeOne(rows[ri]); if ((ri & 3) === 3 && _hqSliceDue()) yield; }
+        _hqSeatCost = 0;   // a new room: its first pass after a model lands waits the short 120 ms again
         try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }   // the procedural furniture is in; the GLBs re-run it as they land
         })();
         if (sliced) return it;

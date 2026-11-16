@@ -142,7 +142,7 @@ const SMART_TURN = () => {
 };
 
 (async () => {
-  const browser = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist','--no-sandbox','--disable-dev-shm-usage'] });
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, args: ['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist','--no-sandbox','--disable-dev-shm-usage'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, ignoreHTTPSErrors: true });
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('PAGEERR', e.message.split('\n')[0]));

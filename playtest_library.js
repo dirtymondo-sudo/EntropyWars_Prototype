@@ -74,7 +74,7 @@ const OUT = path.join(REPO, 'shots/library'); fs.mkdirSync(OUT, { recursive: tru
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const exe = process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-  const browser = await chromium.launch({ headless: true, executablePath: fs.existsSync(exe) ? exe : undefined,
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, executablePath: fs.existsSync(exe) ? exe : undefined,
     args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*', '--autoplay-policy=no-user-gesture-required'] });
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: +(process.env.PW_W || 1600), height: +(process.env.PW_H || 900) } });
   const cache = await installNodeFetchCache(context);

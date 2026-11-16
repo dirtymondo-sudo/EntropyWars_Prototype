@@ -963,7 +963,8 @@ exports.build = function (ctx) {
             cyl(3.75, 0.3, 0, 0.32, 0.9, PLAIN, D, { seg: 8 }), cyl(3.75, 1.2, 0, 0.05, 1.5, PLAIN, 0xcfcfcf, { seg: 4 }), cyl(3.75, 0.6, 0, 0.45, 0.14, PLAIN, R, { seg: 8 }),
             box(-2.3, 0.3, 0, 1.3, 1.2, 1.1, PLAIN, D), box(-2.3, 0.9, 0.7, 1.9, 0.38, 0.14, PLAIN, R), box(-2.3, 0.9, -0.7, 1.9, 0.38, 0.14, PLAIN, R),
             box(-2.9, 0.5, 0.8, 0.9, 1.0, 0.24, PLAIN, D), box(-2.9, 0.5, -0.8, 0.9, 1.0, 0.24, PLAIN, D), box(-2.0, 1.2, 0.72, 0.12, 2.8, 0.12, PLAIN, R), box(-2.0, 1.2, -0.72, 0.12, 2.8, 0.12, PLAIN, R),
-            box(-2.0, 3.95, 0, 0.5, 0.42, 1.6, PLAIN, R), box(-3.2, 0.3, 0, 0.8, 0.75, 0.8, PLAIN, SAB), haz(-3.2, 0.4, 1.12, 1)]);
+            box(-2.0, 3.95, 0, 0.5, 0.42, 1.6, PLAIN, R), box(-3.2, 0.3, 0, 0.8, 0.75, 0.8, PLAIN, SAB), haz(-3.2, 0.4, 1.12, 1)]
+            .map(q => { if (q && q.p) q.p = [Math.round((q.p[0] - 0.9) * 1000) / 1000, q.p[1], q.p[2]]; return q; }));   // THE ROAD AUDIT (mondo 11-15): 0.9 m west, the wellhead stood 0.7 m inside the Local shop's wall
         deco('P02-11', 0, ly + 1, 'psx_metal_barrel_mp_' + n, 0, 0.9, -0.3); });
     /* THE ROCKET (P02-10, the strip behind the Maintenance depot, the long free run nearest the Aerospace lab): a three-stage rocket lying on yellow cradles,
        built from parts (a lying round body = an upper and a lower half drum), its engine bells on a stand at the tail */

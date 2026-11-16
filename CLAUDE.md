@@ -25,6 +25,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/onboarding.md` | Second developer / other account: access, set-up, parallel work, where state lives. | First session on a new account. |
 | `docs/notes/door-docs.md` | Map of the DOOR design docs (DOOR_MASTER, HQ build plan, Phase 9 brief). | Before ANY DOOR / story / hub / HQ work. |
 | `docs/notes/hq-building-rooms.md` | HQ rooms, floors, wings, gallery, seams, directory map, floor plans. | HQ room / floor / link work. |
+| `docs/notes/world-layout.md` | THE WHOLE WORLD (11-16): every zone, how it is reached, built / old / planned, the door check, how the zones sit, which zone is next. | Before picking or starting a zone; before moving a door between zones. |
 | `docs/notes/areas-complexes.md` | Explorable areas, complexes, terrain rooms, Area Content Plan D1-D5, population. | Area / complex / site work. |
 | `docs/notes/seamless-field-encounter.md` | Encounter, Phase 9 field stages, Seamless Field deliveries 1-10. | Fights in the explored room. |
 | `docs/notes/story-party-progression.md` | Tutorial, party, bag, levels/XP, intake, debrief, capture. | Story-mode progression. |
@@ -181,6 +182,8 @@ look at the pictures yourself, fix what is wrong, and show him the proof picture
 A change that is not visual (rules, data, numbers, tooling, docs) still gets only `node --check <file>`: browser runs burn a
 lot of his tokens, so no full "play a match" playtest unless he asks for one ("playtest <mode>"). Keep runs few and aimed:
 one probe run with several views beats many runs. Probe tips: PLAYTEST_NOTES.md "THE CITY PROBE".
+**Every probe launches through `probe-fast.js`** (11-16: llvmpipe, held screenshot, `roomReady`, the checkout's scripts): never
+`chromium.launch` directly, never a fixed `--wait=150000`; read "THE FAST PROBE" there before writing a probe.
 
 ### RULE #1d — THE FRESH CHECK: NEVER BUILD OR TEST ON AN OLD COPY (mondo 11-15)
 A cloud container's clone is shallow and its local `origin/main` ref can be DAYS old. On 11-15 a thread ran

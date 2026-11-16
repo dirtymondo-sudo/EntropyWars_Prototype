@@ -25,7 +25,7 @@ const tex = {}; function standIn(url) { const b = url.toLowerCase(); let c = [14
 const CT = { '.js': 'application/javascript', '.css': 'text/css' };
 const room = process.argv[2] || 'cafeteria'; const views = JSON.parse(process.argv[3] || '[]'); const noGltf = process.argv.includes('--nogltf');
 (async () => {
-  const browser = await chromium.launch({ headless: true, executablePath: fs.existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome') ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' : undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*'] });
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, executablePath: fs.existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome') ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' : undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*'] });
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 800 } });
   const cnt = { mirror: 0, local: 0, tex: 0, miss: 0 };
   await context.route('**/*', async (route) => {

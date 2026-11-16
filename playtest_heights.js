@@ -29,7 +29,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function snap(page, name) { try { await page.screenshot({ path: `${SHOTS}/${name}.png`, timeout: 9000, animations: 'disabled' }); } catch (e) {} }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, ignoreHTTPSErrors: true });
   const cache = await installAssetCache(ctx);
   const page = await ctx.newPage();
