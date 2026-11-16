@@ -12,6 +12,8 @@
    PASS 4, THE ATMOSPHERE: drawn light (lit brick behind the fires that have no real light, the crystal's cold wash, the firebox's hot back),
    wall stains, two stencilled plates, glowing caps, ferns and moths in the Chimney's daylight.
    PASS 5, THE POLISH: the Flood's jetty on piles, mooring posts, a lantern on each pier, drums afloat; the boat and the floater lifted to the sheet.
+   THE MODEL PASS (the wish-list models): beam pump, head wheel, rails + two mine carts + a buffer stop, ore heaps, anvil, wheelbarrow, picks, rats, spiders, a hooded
+   statue, moss, bellows, oars, a bollard; the stand-ins they replace are out.
    Notes, the FITS THIS DISTRICT shortlist, NEEDS A MODEL and DECISIONS MADE FOR MONDO: docs/notes/areas-complexes.md "THE SEWERS, DISTRICT O". */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
@@ -65,7 +67,7 @@ module.exports = {
         /* THE DRIFT to the Chimney: a set a square, boarded over */
         [0.5, 1.6].forEach(l => set(A, 'z', l, 5, 8, 3.3)); lag(A, 0, 2.1, 5, 8, 3.7);
         [9.4, 10.5, 11.5].forEach(l => set(B, 'z', l, 5, 8, 3.3)); lag(B, 9.2, 12, 5, 8, 3.7);
-        board(A, 4.6, 5.5, 5.2, 3); board(A, 6.3, 5.45, 4.6, -2); board(A, 1.2, 6.5, 6.0, 2); board(B, 10.6, 6.5, 6.4, -2); board(B, 8.4, 6.2, 4.4, 9);
+        board(A, 4.6, 5.5, 5.2, 3); board(A, 6.3, 5.45, 4.6, -2); board(B, 8.4, 6.2, 4.4, 9);
         /* THE FIREBOX (the engine bay's furnace, built: brick cheeks, an iron lintel, a flue up into the dark; the fire is a `hearth_fire` in dress) */
         { const f = (y, dx, dz) => at(A, 2 + dx / 3.5, y, 3.5 + dz / 3.5), BR = { key: 'bricks_2', tint: 0x7a5a48 };
           PARTS[A].push(Object.assign({ s: 'box', p: f(0, 0.75, -1.1), size: [1.5, 1.7, 0.55] }, BR), Object.assign({ s: 'box', p: f(0, 0.75, 1.1), size: [1.5, 1.7, 0.55] }, BR),
@@ -160,10 +162,10 @@ module.exports = {
         P('crystal_cluster', B, 8, 8);
         P('cable_drum', A, 4, 2); P('psx_wooden_crate_2', A, 2, 2); P('platform_scale', A, 2, 4);
         put('locker', A, 3.3, 2.14, 180); put('locker', A, 3.62, 2.14, 180);
-        put('hand_truck', A, 4.4, 3.7, 200); put('meshy_burlap_sack', A, 2.9, 3.75, 40); put('meshy_burlap_sack', A, 3.1, 4.2, 110);
+        P('anvil', A, 4, 3); P('ore_heap', A, 3, 4);
         P('psx_table_large_3', A, 4, 4, { face: 90 }); put('psx_hand_saw_1', A, 4.45, 4.4, 30, { y: 0.93 });
         /* THE PUMP LEDGE: the pump over the Sump, its valve, a lantern */
-        put('centrifugal_pump', A, 9.5, 4.5, 0); put('gate_valve', A, 8.55, 4.35, 90); put('railway_lantern', A, 10.6, 4.8, 0);
+        P('beam_pump', A, 9, 4); put('valve_wheel', A, 10.45, 4.3, 0, { noBlock: true }); put('railway_lantern', A, 10.6, 4.8, 0);
         /* THE SUMP: what lives in the deep (a light a long way down) */
         put('ocean_anglerfish', A, 9.5, 3, 0, { y: -1.3 });
         /* THE FLOOD: a sunk boat, a beached one, an anchor (the pack's weed and eel are 100 k triangles apiece: not placed) */
@@ -179,7 +181,7 @@ module.exports = {
         /* by the portcullis: a cage, the stocks */
         put('bird_cage', B, 2.5, 6.6, 0); P('stocks', B, 2, 7, { face: 90 });
         /* THE ADIT's foot: spare ladders, sandbags, crates */
-        put('library_ladder', B, 4.12, 9.6, 90); put('ladder_wall_rack', B, 7.88, 10.4, 270); P('meshy_sandbags', B, 7, 9); P('psx_wooden_crate_2', B, 4, 11); put('psx_wooden_crate_6', B, 4.4, 10.3, 25); put('railway_lantern', B, 5.2, 11.6, 0);
+        put('wooden_ladder', B, 4.12, 9.6, 90, { noBlock: true }); put('ladder_wall_rack', B, 7.88, 10.4, 270); P('meshy_sandbags', B, 7, 9); P('psx_wooden_crate_2', B, 4, 11); put('psx_wooden_crate_6', B, 4.4, 10.3, 25); put('railway_lantern', B, 5.2, 11.6, 0);
         P('signpost', B, 7, 8);
         /* THE DRIFT: shoring logs, drums, a lantern under the boards */
         P('fallen_log', A, 0, 7, { face: 90 }); P('psx_metal_barrel_mp_2', B, 10, 5); put('psx_metal_barrel_mp_1', B, 10.75, 5.2, 0); put('psx_wooden_crate_3', B, 9.4, 7.6, 15);
@@ -197,9 +199,9 @@ module.exports = {
         const lit = (key, id, fx, fy, face, o) => put(key, id, fx, fy, face, Object.assign({ noBlock: true }, o || {}));
         /* the engine bay: fuel, nails, shovels, dynamite by the bench, coal bricks at the firebox */
         lit('psx_jerrycan_1', A, 2.25, 4.35, 20); lit('psx_jerrycan_1', A, 2.5, 4.55, 75); lit('psx_supply_crate_1', A, 4.75, 2.9, 10);
-        lit('hw_shovel', A, 3.3, 3.05, 40); lit('hw_shovel', A, 2.75, 2.75, 120); [[3.9, 4.75, 0], [4.02, 4.82, 60], [3.82, 4.86, 130]].forEach(q => lit('spell_dynamite', A, q[0], q[1], q[2]));
+        lit('pickaxe', A, 3.4, 2.6, 40); lit('hw_shovel', A, 2.75, 2.75, 120); [[3.9, 4.75, 0], [4.02, 4.82, 60], [3.82, 4.86, 130]].forEach(q => lit('spell_dynamite', A, q[0], q[1], q[2]));
         lit('hw_bricks', A, 2.9, 3.2, 0); lit('psx_brick_1', A, 3.2, 3.85, 50); lit('psx_brick_1_1', A, 2.7, 2.6, 15); lit('psx_wooden_crate_1', A, 2.75, 2.3, 30);
-        lit('psx_metal_barrel_mp_0', A, 7.62, 0.4, 0); lit('psx_wooden_crate_1', A, 5.3, 1.2, 60);
+        lit('wooden_barrel', A, 7.62, 0.4, 0); lit('rope_coils', A, 7.3, 1.5, 0); lit('psx_wooden_crate_1', A, 5.3, 1.2, 60);
         /* the Pump Ledge */
         lit('psx_pipe_valve_holder_large_2', A, 10.5, 4.75, 0); lit('psx_jerrycan_1', A, 8.3, 4.2, 140);
         /* the Flood's banks: a floater, bones, a fish's bones, frogs, cans, bottles */
@@ -210,7 +212,7 @@ module.exports = {
         lit('psx_wooden_crate_4', A, 1.5, 5.25, 8); lit('hw_shovel', A, 0.5, 5.3, 80); lit('psx_supply_crate_1', B, 11.3, 7.7, 30); lit('psx_brick_1_1', B, 9.7, 5.4, 70);
         P('missing_board', B, 9, 5, { face: 180 });
         /* THE CAMP under the Chimney (who sleeps down here): a fire ring, mattresses, a chair, a pot, tins, bottles, a book */
-        P('campfire', B, 5, 7, dark); lit('psx_old_mattress_mp_1', B, 3.9, 7.5, 80); lit('psx_old_mattress_mp_1', B, 6.9, 7.3, 100); lit('psx_chair_mp_1', B, 5.9, 6.4, 200);
+        P('campfire', B, 5, 7, dark); lit('psx_old_mattress_mp_1', B, 3.9, 7.5, 80); lit('sleeping_bag', B, 6.9, 7.3, 100); lit('kettle', B, 5.25, 6.75, 0); lit('psx_chair_mp_1', B, 5.9, 6.4, 200);
         P('cauldron', B, 6, 8); lit('psx_glass_bottle_1', B, 6.6, 6.8, 30); lit('psx_glass_bottle_1', B, 3.7, 6.8, 120);
         lit('psx_open_book_mp_1', B, 4.2, 7.9, 40); lit('psx_wooden_crate_1', B, 6.75, 7.9, 20);
         /* the niches: candles, bones, straw, a rusted sword */
@@ -229,6 +231,21 @@ module.exports = {
         [[3.5, 6.5, 1], [9.5, 6.5, 1], [3.5, 9.5, -1], [9.5, 9.5, -1]].forEach(q => put('ship_lantern', A, q[0], q[1] + q[2] * 1.3 / 3.5, 0, { y: 2.95 }));
         put('psx_metal_barrel_mp_1', A, 5.3, 7.2, 0, { y: 0.35, noBlock: true }); put('psx_metal_barrel_mp_3', A, 8.6, 8.5, 0, { y: 0.3, noBlock: true }); put('psx_wooden_crate_2', A, 4.6, 9.0, 25, { y: 0.25, noBlock: true });
         /* (two `culvert_mouth` in the south wall looked right and cost a third of the frame rate at this view, 1.15 against 1.60: taken out) */
+        /* ── THE MODEL PASS (mondo 11-16: the wish-list models are in; docs/plans/WISHLIST_MODELS_ADDED.md read end to end). Every model this
+           district asked for is placed, and the stand-ins are out: the beam pump for the centrifugal pump + gate valve, the ore heap for the
+           sacks, the anvil for the hand truck, a wooden ladder for the library ladder, rails for the drift's boards. ── */
+        /* THE RAILS down the drift from the Chimney's hall to a buffer stop at the Flood's bank, two carts on them */
+        [8.5, 9.5, 10.5, 11.5].forEach(fx => put('rail_section', B, fx, 6.5, 0, { noBlock: true })); [0.5, 1.5].forEach(fx => put('rail_section', A, fx, 6.5, 0, { noBlock: true }));
+        P('mine_cart', B, 10, 6); P('mine_cart', A, 1, 6); P('buffer_stop', A, 2, 6, { face: 90 });
+        /* THE HEAD WHEEL beside the stump (the old hoist), ore at the seam, a barrow, picks */
+        P('head_wheel', B, 6, 4); P('ore_heap', B, 8, 7); lit('wheelbarrow', B, 7.35, 7.75, 60); lit('pickaxe', B, 7.5, 8.9, 100); lit('pickaxe', B, 5.1, 10.8, 20); lit('pickaxe', A, 1.6, 7.6, 200);
+        P('hooded_statue', B, 5, 3, { face: 180 });
+        /* the Ledge, the bay, the Flood's bank, the camp */
+        lit('rope_coils', A, 10.55, 4.75, 0); lit('bellows', A, 2.75, 2.55, 90); lit('oars', A, 5.2, 10.6, 80); lit('mooring_bollard', A, 6.5, 10.2, 0); lit('firewood_stack', B, 4.4, 8.55, 0);
+        [[B, 4.55, 5.25], [B, 6.4, 3.55], [B, 4.5, 3.75]].forEach((q, i) => lit('moss_clump', q[0], q[1], q[2], i * 130));
+        /* RATS and SPIDERS (scenery, off the paths) */
+        [[A, 2.4, 5.4], [A, 9.6, 10.6], [A, 5.7, 0.4], [B, 3.3, 7.2], [B, 8.6, 3.5], [B, 7.7, 11.3]].forEach((q, i) => lit('rat', q[0], q[1], q[2], i * 67));
+        [[B, 2.4, 3.6], [A, 0.4, 5.25], [B, 4.3, 9.3], [A, 10.6, 2.3]].forEach((q, i) => lit('spider', q[0], q[1], q[2], i * 95));
         /* floor stains (the room draws 80; this district adds six) */
         ctx.grime('scorch', A, 3, 3, 1.5); ctx.grime('scorch', B, 5, 7, 1.6); ctx.grime('blood', B, 2, 7, 1.2); ctx.grime('blood', B, 6, 5, 1.3); ctx.grime('puddle', A, 6, 10, 1.6); ctx.grime('puddle', B, 5, 10, 1.4);
     },
