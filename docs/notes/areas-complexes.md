@@ -10311,6 +10311,9 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **FROM THE FOREST (district W, the model pass)**: `lantern_post` wants a drawn lit cap (its glass is dark at night); `reeds` in a 2 m
+  `stream` = `y` 0.9 + `h` 1.8 to 2.4; `medieval_pavilion` fills one square; `firewood_stack` (2 x 0.65 m) is the log stack; `leafy_bush`
+  is a topiary ball, `moss_clump` and `wild_flowers` are the wild ones. Keep wish-list models out of big scatters (triangles).
 - **FROM THE FOREST (district W, pass 3)**: REEDS FOR ANY WATER = `ocean_seaweed` / `_2` / `_3` with `h` 2.3 to 3 in a `stream` 2 m deep (the
   feet stand on the bed; the tops sway over the water). `native()` takes grass squares only. A flat ground patch needs `gain` 1.45 on
   `dirt_2` or it is a black disc.
@@ -10438,6 +10441,23 @@ forest glade, the dead tree's hole.
 - **STOPPED AFTER FIVE PASSES (the order's limit)**. WHAT I WOULD DO NEXT, for whoever mondo sends: a second walk-in (a gamekeeper's
   lodge or a ruined chapel wants plan squares in the east glade: the tool's row); a real great dead tree round the hole's door (the
   door itself is the tool's); a deer, an owl and a fox once models exist; sound (none can be set by a district).
+- **THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; seen: 17 views, then 10, then 10)**.
+  Every model the district asked for is in, and what stood in for one is out. REPLACED: the 17 lantern posts drawn from boxes ->
+  `lantern_post` (2.2 m; they block, so each stands just off its way under the first trees); the two drawn ridge tents ->
+  `medieval_pavilion`; the Ocean pack's weed in the moat -> `reeds` (lifted 0.9 off the bed: feet under water, heads over it); the
+  drawn CAMELOT stone -> `milestone` x 2; the drawn log stacks (the glade, the lean-to, the hut) -> `firewood_stack` x 5; the drawn
+  rug -> `floor_runner`; the plain stump -> `axe_chopping_block`; the game's healing flower as "a flower" -> `wild_flowers`.
+  ADDED: `hand_cart`, `wheelbarrow`, `kennel` at the hut; `kettle`, `antler_trophy`, `woven_baskets`, `lit_candle` in it;
+  `wooden_barrel` at the wagon and the camp, `water_trough` at the hitching rail, `hay_rack` for the camp's horse; `deer` x 2, a `fox`,
+  an `owl_perched` on the firewood, a `raven_perch` at the hole, a `hedgehog`, a `heron`, two `duck`, two `dragonfly`, all off the
+  ways; `willow_tree` x 2 over the bank's track, `leafy_bush` x 5 at forest edges, `moss_clump` and `wild_flowers` in the undergrowth,
+  `cairn` x 2, a `beehive`, a `fishing_rod`, `oars`, `drying_fish` on the bank.
+  LEARNED: (1) `lantern_post`'s glass does not glow and which side its lantern hangs on did not follow the row's `face` in three
+  probes: a lit cap on the post's head (a drawn 3 cm box, `glow` 1) is what finds it at night. (2) `leafy_bush` is a trimmed garden
+  ball: five at forest edges, not in the scatter. (3) A wish-list model is 1,300 to 8,200 triangles with its own texture: the first
+  cut scattered 78 of them through the undergrowth; now one square in eight carries one and the fern stays the filler.
+  FRAME RATE at the bay: 0.60 before, 0.60 after (a reading taken right after the load says 0.40 while the new files settle; the
+  second reading of the same view in the same run is 0.60). Geometries 2,150 -> 2,274.
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
   the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
   (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
@@ -10445,8 +10465,9 @@ forest glade, the dead tree's hole.
   WOODCUTTER over its door, standing on the west glade's north squares with its door on the track; (7) the people are robinhood, a
   knight, a wizard, a tree person and a rabbit, all silent; (8) the moat's reeds are the Ocean pack's seaweed; (9) the two boats lie
   on the bank, not afloat; (10) one small tool change (`groundAlso`), noted on the board.
-- **NEEDS A MODEL** (nothing on R2): an axe + chopping block, a hand cart, a wooden barrel, a medieval tent or pavilion, reeds, a deer,
-  a fox, an owl, a leafy bush, forest flowers, a milestone.
+- **NEEDS A MODEL**: ~~an axe + chopping block, a hand cart, a wooden barrel, a medieval tent or pavilion, reeds, a deer, a fox, an
+  owl, a leafy bush, forest flowers, a milestone~~ all made and placed in the model pass. Nothing is left on the list. (Still drawn,
+  no model: a plain wooden bed, a mooring post.)
 
 ## THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY — one room, no door (2026-11-16, second side)
 
