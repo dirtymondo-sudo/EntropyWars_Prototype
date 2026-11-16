@@ -8139,3 +8139,16 @@ tile sheet, graffiti.
 - **THE CANYON RUN (traffic, 11-16, mondo: "definitely add traffic")**: `bake-disaster-city.js` TRAFFIC: the run that turned round at the mountain road's gate now drives on
   up the mountain road, west along the canyon road and up the Canyon Road to the foot of the letters, and back down to the highway's gate. Three cars (one a taxi). The two
   canyon roads are in `NARROW` (7 m wide). Seen on screen: a taxi on the canyon road in two runs, in two places. No bus goes up; nothing drives the Shasta Road or the Hairpin.
+
+### PASS 2, THE INSIDES OF THE NEW HOUSES + THE YARDS (live; seen on screen, 14 views)
+(The section belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES". The three old buildings' insides are the other Hills thread's: "THE THREE BUILDINGS".)
+- `hillsInsides(ctx)` (N.js, called at the end of `content.build`). `litIn` = the North Pole's lit inside (walls + ceiling again a hand inside the building's own, with
+  `glow` 0.8 to 0.85, so a room reads lit by day and by night), `paneIn` = a window from inside (a dark pane, pale sill and head), `inside(b, …)` writes one `arch` row a
+  house and gives it the building's own turn (`rot`: the Villa faces west). Every inside prop is `floor: true`; a hung piece takes `y` = its height over the floor with it
+  (the Villa's chandelier stood ON the table without one: seen, fixed).
+- THE ROUND HOUSE: a lounge (tulip table on a ring rug, the curved couch, egg chair, a jukebox, a bar corner with stools, pinball, a screen, sputnik and disc lamps).
+  THE VILLA: sofa and wing chair on a carpet, the dining table under a chandelier, a bed behind a screen, a vanity, a range, paintings, a bust.
+  THE A-FRAME: a bed and a footlocker, two chairs at a low table, the TV, a shelf with the radio, a guitar.
+- THE YARDS: the Villa's south garden (the fountain between palms, urns, a lion, a stone rail), the Round House (the sports car `car_cyber`, flamingos, a dish, a
+  saguaro, prickly pears), the A-Frame (four pines, a fire ring with stump seats, a car), the Hill House's pool terrace (loungers, cooler, ball, a float), the Observatory's
+  terrace (two more telescopes at the south rail, benches, urns).
