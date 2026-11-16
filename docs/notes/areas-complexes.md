@@ -5539,6 +5539,17 @@ Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. 
   - **SOUND: NOT DONE, cannot be done from a district file.** A room has no ambience field a district can set (the beds in audio.js are
     the battle maps'), and no bell, forge, market or tavern sound exists on R2 (no SFX generation: owner-rules). On the needs list.
   - Light and colour were settled in passes 1 and 2 (`gain` outdoors, `glow` indoors).
+- **PASS 5, THE POLISH** (a ten-view walk on the live build, then fixes, then three check views):
+  the yard house's front rail ran across its window and door head (now over them); the shop's and yard house's corner posts showed
+  inside the hall as a dark line (they stand proud of the walls now); the Smithy's lean-to roof was a black slab (`gain`); the smoke's
+  puffs were there but a third of the size they were written (the glow sheet falls off fast): enlarged, now a soft grey plume.
+- **WHERE THE VILLAGE STANDS (the pilot's last word, 2026-11-16)**: exteriors, insides (3 halls + 43 houses), dressing, atmosphere and
+  polish are live. OPEN: (1) PEOPLE, waits mondo (who lives here); (2) sound, cannot be done from a district file; (3) the needs-a-model
+  list (anvil, lamp post / street lantern, hand cart, fence run, floor carpet, grindstone, bellows); (4) no upstairs in the two-storey
+  kinds; (5) the 43 OUTSIDE looks are still a row each (about 900 meshes that one gathered row would save: needs a look at how a
+  part's `roof` flag is read first); (6) the frame rate was never measured on mondo's machine (geometries: 1,800 before the houses'
+  insides, about 2,050 now); (7) the shared pieces' faults on the board (the wall towers' floating roofs, the grey mass under the
+  hill's drums, the snow-white trees inside the wall). Not walked by hand: every one of the 43 doors (five were, in probes).
 
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
@@ -5593,6 +5604,16 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
 - **NEEDS A MODEL (zone-wide, nothing on R2)**: an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart (the market stall is drawn now: `T.js` `stall()`),
   a water trough, a wooden fence run with a gate, a hitching rail, a floor carpet / runner (the `holy_carpet` model stands upright), a
   grindstone, a bellows. (A tavern table with benches is drawn in code now: `hall().trestle`.)
+- **THE ORDER THAT WORKED (for the next four district threads)**: (1) one probe of the district as it stands, `fp` views only, and
+  LOOK before planning: the Village's two worst faults (the stone lid, the black slabs) were in no note; (2) exteriors with `gain`;
+  (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
+  on the live build. A PR a pass; merge main and rebake before every PR and again right before merging (main moved under the pilot
+  in four of its seven merges; an index.html conflict = take main's copy, bump the token again).
+- **WHAT FITS WHICH DISTRICT** (the pilot's guess, not a brief): N The Snowy Pines: `campfire`, `chimney_smoke` on any hut, `gain` on
+  snow-side wood, standing torches along the sleigh road. W The Forest: `lane()`-style drawn tracks, `fallen_log`, `covered_wagon` on
+  the road from the bay, a woodcutter's hut from kind 3 (ask on the board: it is T's file). F The Fairy Forest: no torches (its light
+  wants `glow` on its own caps and pond), `lane()` for stepping paths. L The Looking-Glass Garden: `stall()`-style striped cloth for a
+  tea tent (never one flat sheet), `sign()` for its boards.
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
 
@@ -5614,6 +5635,12 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   (rows 53 and 56, trail to east wall, opened in `cut`); the last three squares before the mouth wear a concrete slab and concrete walls (arch parts). The rims carry only
   a low lip and small stones. A forest tree left out by `cut` now counts toward the scatter seeds (bake-woods.js `SOW_SHIFT++`): opening the rims had moved four other
   districts' seeds by two before that fix (caught by the row-by-row check, never shipped). OPEN: a `sow` plant can land on the apron (seen: one thorn vine).
+- **THE NAMES, THE APRON, THE CABIN (same day; mondo: plain names, "continue", "take the plants off of the concrete")**: five plots renamed plainly in layout.json
+  (The Rocks, The Dry Creek upper / lower, The Sewer Mouth, The Hollow; his rule is in owner-rules.md §2). BARE GROUND: a district file's `bare: [x0, z0, x1, z1]`
+  puts an `off` box on the tool's three room-wide scatter rows, and M's own `sow` rows carry the same box: nothing lands on the apron (seen). THE CABIN (the interior
+  pass): its wood tints lifted + `gain: 1.5` on the log walls (it drew near black); a lit plank ceiling at 2.88 m on dark beams (the hollow building's own ceiling is at
+  3.18 m and hides anything above it), a boarded dado, wall shelves, embers in the hearth, a bed frame, a wardrobe, bedside table and lamp, armchair, carpet, shelf,
+  crate, mattress, a caged ceiling lamp. Every lit piece is `noLight`. The cabin still has no game role.
 - **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
   stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
   Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
@@ -5638,6 +5665,10 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
 - **The dice**: one feature row more or less inside an OLD pass (dress / horror / life) still moves later rows' order; put new rows in `build`, new square edits in `cut`.
 - **Checking you moved nobody**: compare every row with x or z outside your nine plots before and after the bake (a re-wrapped props line is not a change).
 - **Probe**: `node playtest_city.js site_prebuilt_fairy_forest_plots '<views>' --flags=EW_PERF_LOW`, `"fp": true`; face 0 looks north, 90 east; about 3 minutes for 13 views.
+- **A walk-in's inside**: copy the cabin in districts/M.js: lift wood tints (about 0xcdbb9f) and add `gain: 1.5` on outside walls; hang a `glow` ceiling deck UNDER 3.18 m;
+  furniture from the PSX Mega Pack (`psx_*`: wardrobe, armchair, shelf, bedside table, lamps, crates); `noLight: true` on every lamp.
+- **Ground nothing should grow on**: export `bare: [x0, z0, x1, z1]` (one box in the room today) and put the same box as `off` on your own `sow` rows.
+- **Names**: plain, for what stands there; never ask mondo (owner-rules.md §2).
 - **Missing zone-wide**: a forest-floor sheet in place of the lawn (the tool's `floor`), waterfalls, light shafts, sound by district.
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
