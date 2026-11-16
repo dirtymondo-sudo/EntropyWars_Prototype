@@ -7468,6 +7468,108 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   (Particles: the pilot added `airZones` the same day; Area 51 now blows dust over both Dry Lake plots and the runway.) real lights are capped at ten a room
   (three-renderer.js HQ_PROP_LIGHT_MAX) and the flood masts already hold them, so the huts' strip lights glow but light nothing.
 
+## THE D.U.M.B. ON PLOTS — the base in a ring, first build (2026-11-16, second side, the D.U.M.B. zone thread)
+
+mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms are "completely redesigned/reimagined with plots and
+districts", without waiting for his OK; "white rooms can go the DUMB"; "then move the exits, it's not that big of a deal".
+
+- **THE PLAN** = plot plan 2: `docs/plans/world-zones/dumb_plot_plan_2.png`, drawn by `node docs/plans/world-zones/draw-dumb.js`, which also
+  writes `dumb-layout-2.json` and the tool's own `docs/areas/dumb/layout.json` (edit the plan THERE, never the json). Plan 1 (6 x 6) stays as history.
+- **THE ROOM** `site_prebuilt_dumb_base` (site `prebuilt_dumb`, part `base`, plate "THE D.U.M.B."): 7 x 7 plots of 12 x 12 squares (294 x 294 m), all
+  underground, written by `node bake-dumb.js [--dry-run]` between `DUMB49-BEGIN / DUMB49-END` in data.js. Squares: `x` rock, `o` corridor, `f` room,
+  `r` the ring's tunnel, `j` the tram track, `w` pool water. `DUMB_DUMP=1` prints the walked map.
+- **FIVE DISTRICTS, one file each** (`docs/areas/dumb/districts/`): `K.js` CERN, The Ring (22 plots: the collider tunnel as an octagon round the whole
+  base; the Control Room + the Vent north, the Detector Hall east, the Blast Door south, the Beam Dump west, a service room a corner) · `P.js` Level P3
+  (7: the tunnel every base is on, straight across the south from ring to ring: the West Gantry, the Ramp, the Bays, the Platform, the Booth, the
+  Freight Lift, the East Gantry) · `S.js` Sub-Level 7 (6, THE PILOT: the Stair, the Hub with the Tower, Chambers 01 + 03, Chambers 02 + 04, Corridor
+  Five, Level -6) · `R.js` Research (7: the White Rooms on two plots, the Ward, the Range, the Service Corridor, the Vat Hall, Disposal) · `C.js`
+  Command (7: the Vault Gantry, the Round Table, the Big Board, the Projection Booth, the Comms Room, the Great Room, the Pool). Stages a file may
+  export: `plan`, `build`, `dress`, `people`; `look` / `looks` (below). Each file's header is its brief and its STANDS TODAY / NOT YET list.
+- **THE LEVELS** (layout `level`, 1 = 1.75 m, a whole-plot `plateau`): 8 = the Ring + Level P3 (14 m, the entry level) · 2 = Research + Command
+  (3.5 m) · 0 = Sub-Level 7. Layout `h` = a plot's roof over its floor; a plot a stair or ladder comes down into is as tall as the plot above (the
+  Stair's hall is 21 m, Level -6's shaft 19 m). Layout `openings`: `stair` (a flight on the low side, 2 in 3, `wide` squares: the stair down from
+  the Platform 14 m and 3 squares wide, the stairs up to Research, the Vault Gantry, the Range and the Comms Room 3.5 m) and `climb` (the Vent: a
+  14 m ladder between the Control Room's plot and Level -6).
+- **THE LOOK is the tool's, a district only names it** (`look`, one plot's in `looks`): `wall / tint / gain` = a sheet LINING on every rock face of the
+  plot's open squares, floor to roof (the room has one traced wall sheet; the lining is how five districts look different); `band` = a painted band
+  at 1.05 m in the district's colour (P red, S hazard yellow, R teal, the Clone rooms blue, C green, the Bunker gold, K blue); `ceil / ceilTint /
+  ceilGain` = the roof slab (seen from under only: the camera looks down through it); `light / every` = drawn strip lights under the roof (they glow;
+  the room's ambient 0.55 does the lighting). Where a plot's roof stands over an open neighbour's the tool hangs a CURTAIN wall from the lower roof
+  up. SEEN 11-16: a sheet under a tint reads near black down here: every lining carries `gain` 1.8 to 2.2. `PlasterWallPainted1c` is PINK.
+- **THE ROOM KIT** (`ctx.room(plotId, lx, ly, NU, NV, tag)`, bake-dumb.js `mkRoom`): the Desert's insides kit on a plot's own floor: `R.wall / pane /
+  ceil / deck / guard / stair / B / dec / hung / bulb / lamp / sign / label / box / cyl / who / keep`, then `R.done()`. All squares and heights are
+  the room's own; the kit adds the plot's floor. Drawn parts from every kit and from the tool land in ONE `arch` row a plot (`dumb:<plot>:in`),
+  every swinging leaf in one `texbuilding` row (`dumb:doors`). `ctx.part(p)` = a raw drawn part in metres, its y over the ROOM's level 0.
+- **THE FLOOR PAINT:** the game reads EIGHT sheets a room; the tool's table by district + square kind uses seven, the Bunker's marble is the eighth.
+  `ctx.paint(plot, lx0, ly0, lx1, ly1, sheet)` must pick one of the eight (the tool throws on a ninth).
+- **THE WHITE ROOMS MOVED IN** (`site_prebuilt_area51_ward`, Area 51's inside until today): the Desert's builder (A.js, 11-16) copied into `R.js`
+  `whiteRooms()` square for square (16 x 12 squares, two floors, 160 props, four people, their lines) as one block on plots P01-01 + P02-01; six of
+  its eight real bulbs became drawn lamps (the base has ten real lights in all). Its four doors keep their ids (`yard`, `stormdrain`, `hangar`,
+  `vent`) and still lead to the Desert; the Desert's four doors (`ward` + `stormdrain` in the Desert room, `white` + `vent` in Hangar 18) now name
+  `site_prebuilt_dumb_base` (the smallest edit in `docs/areas/desert/districts/A.js`; the Desert still WRITES the old ward literal, retired, so
+  nothing of its tool had to change). New: a hospital door in the Dayroom's south wall, down a corridor to the Ward (Dream Research).
+- **THE WAYS OUT (ten, all in the game before; the tool refuses to bake when a row drifts, and walks to every landing):** two bay doors by
+  `DOOR_HQ.siteRooms.entry`: `bay` (Room 555, the Freight Lift's landing on Level P3) and `bay_cern` (Room 999, the collider blast door on the
+  Ring's south side: the same room now); four links re-pointed in `DOOR_HQ.links` (the far end is the link's own): `area51_dumb` (the room's west
+  wall, the tunnel's west end: Hangar 18's floor lift), `garage_motorpool` (free, secret: the Ramp), `cave_dumb` (free: Level -6), `dumb_astral`
+  (free, the dream screen: the Ward); the White Rooms' four doors. GONE: `links.dumb_cern` (the motor pool <> the Ring): both ends are one room,
+  the tunnel's east end walks onto the ring at the East Gantry.
+- **RETIRED (`DOOR_HQ.retired`):** the six old D.U.M.B. parts, `site_prebuilt_cern_ring` and `site_prebuilt_area51_ward` -> the new room. Their
+  literals stay (the tool reads the people's lines, the door plates, the Healing Zone and the two battle markers from them; PvP board sources).
+  Hub `dumb` claims the one room by id; world zone `dumb` (HQ_WORLD.zones, the old door-joined stage of six parts) names the one room, no joins.
+- **WHO IS THERE (27):** every bystander of the eight old rooms with their own lines, placed by the district files; the Healing Zone in Corridor
+  Five; the base's battle marker on the Platform, CERN's in the Detector Hall.
+- **SEEN ON SCREEN** (probe, 18 views in three runs, no page error): the Platform with the tram, the Bays, the long stair, the Hub with the Tower,
+  the spoke to Research, the White Rooms' cell row, the ring with its beam pipe, the Detector Hall, the War Room with DEFCON, the Great Room.
+- **NOT DONE / KNOWN SHORT (the first build is structure, not dressing):** nothing was WALKED by a player (the bake's walk check reaches all 49
+  plots and all ten landings on the walker's own rule; the Vent's ladder is not in that check); the Tower's top is black from above; the Pit is a
+  railed floor, not a pit; no raised platform by the tram; the ring's 14 plain plots are bare tunnel; every district but the pilot holds only the
+  old rooms' props; the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
+
+### FITS THE D.U.M.B. (the lists read 11-16 before anything was placed: MODEL_LIST.md sections 6, 7, 8, 10, 12b, 13, pack-claims.md, prop-sizes.json, the Desert's + the Sewers' kits)
+Keys that exist in the catalogue today (`*` = stands in two rooms or fewer). The old rooms used only: server_rack, monitor_stack, crt_terminal,
+steel_table, iso_tank, eeg_rack, cot, dream_screen, door_furnace, garbage_chute, door_xray, conference_table, world_clocks, subway_cart, track_bed,
+car_suv, car_cop, false_window, pool_lounger, observation_window, meshy_tesla_coil, floating_orb.
+- **K, the Ring:** `psx_pipe_1*` `_short*` `_corner*` `_cross*` + `psx_pipes_holder_1*` `psx_pipe_valve_holder_large_1/2*` (the beamline on stands),
+  `psx_tunnel_mp_1_straight / _elbow / _tee*`, `psx_catwalk_1*`, `dockring*` (h 4.5: reads as a detector ring), `nacelle*` (11 m: a detector
+  barrel / the beam dump's body), `steam_turbine`, `robot_arm`, `chain_hoist`, `retro_control_panel`, `mixing_console*` (a control desk),
+  `radio_console`, `reel_to_reel`, `gauge_board`, `psx_pc_mp_1*` + `psx_pc_monitor_mp_1*` + keyboards, `psx_monitoring_screen_mp_1*`, `scoreboard*`
+  (11 m: a status wall), `departures_board`, `fume_hood`, `psx_magnet_mp_1*`, `psx_dosimeter_*`, `psx_keypad_1/2*`, `high_bay_lamp`, `gate_valve`,
+  `centrifugal_pump`, `gas_cylinder_rack`, `cable_drum`, `ind_panel`, `utility_box`, `breaker_panel`, `psx_vent_2/3*`.
+- **P, Level P3:** `car_cadillac`, `car_pack_1..8*`, `car_truck`, `military_tank`, `forklift`, `aircraft_tug`, `mine_cart*` (a trolley on the
+  rails), `subway_front*`, `metro_car` / `metro_car_open*` (16 m), `platform_edge*`, `tube_map`, `departures_board`, `metro_bench` (heavy),
+  `metro_bin`, `metro_column`, `metro_gate`, `ebd_metro_turnstile`, `signal_lever_frame*`, `railway_lantern`, `concrete_pillar` (a hazard band + a
+  bay number), `parking_bay*`, `car_lift*`, `engine_hoist`, `tire_stack`, `tool_chest`, `psx_jerrycan_1`, `roller_shutter`, `ind_container`,
+  `wrapped_pallet`, `psx_supply_crate_1`, `psx_metal_barrel_mp_0..3`, `metal_detector`, `item_police_barricade`, `meshy_sandbags`, `street_signal*`,
+  `roads_g_sign_000..014`, `key_rack`, `punch_clock`, `field_radio`, `rifle_rack`, `riot_gear_rack`, `psx_elevator_1/2*` + `psx_elevator_doorway_*`
+  + `psx_elevator_buttons_1*` (the freight lift), `flood_mast`, `exit_sign`, `hose_rack`, `vending_machine`.
+- **S, Sub-Level 7:** `observation_window`, `shaft_window*`, `pod_window*`, `porthole`, `psx_bars_metal_1/2*`, leaves `leaf_bulkhead` `leaf_vault`
+  `leaf_security` `leaf_cell`, `psx_catwalk_1*`, `maintenance_stairs`, `library_ladder` (the only standing ladder), `psx_beam_*`, `psx_pillar_2/3*`,
+  `concrete_pillar`, `warning_tape`, `radiation_sign`, `evac_button`, `item_police_barricade`, `meshy_sandbags`, `cinder_block`, `scba_rack`,
+  `riot_gear_rack`, `turnout_gear_rack`, `hose_rack`, `robot_arm`, `thoughtform`, `goo_tendril`, `crystal_cluster`, `meshy_black_blob*`, `alien*`,
+  `decor_tripod_machine*` (8 m), `escapepod`, `saucer_rig*`, `ufo*`, `time_machine`, `meshy_ejection_seat`, `mars_rover`, `astronaut`, `missile`,
+  `rocket_engine`, `trap_spike_pit*`, `trap_pressure_plate`, `wing_chun_dummy`, `punching_bag`, `hw_body`, `anatomy_skeleton`, `autopsy_table`,
+  `retro_control_panel`, `gauge_board`, `studio_light`, `film_camera`, `studio_camera`, `platform_scale`. The Tower: nothing fits; it is built.
+- **R, Research:** `hospital_bed`, `dorm_bed`, `pod_bed*`, `meshy_molten_cryo_tube` (the vat), `dream_eye`, `thoughtform`, `star_projector`,
+  `egg_chair`, `therapy_chaise`, `privacy_screen`, `iv_stand`, `conveyor`, `chain_hoist`, `boiler`, `hearth_fire`, `centrifugal_pump`,
+  `fume_hood`, `lab_glassware`, `microscope`, `specimen_shelf`, `museum_vitrine`, `autopsy_table`, `ebd_dinerscene_steel_table*` (the clean table:
+  `steel_table` carries a blood stain), `anatomy_skeleton`, `hw_body*`, `hw_part*`, `meat_hook`, `item_scalpel*`, `psx_syringe_mp_1`,
+  `ocean_moon_jelly` / `chrysalis` / `meshy_black_blob*` (what is in a vat), `rat*`, `bird_cage`, `treadmill*`, `exercise_bike*`.
+- **C, Command:** `map_table`, `desk_wedge_a/b*` (wedges that build a ring table), `round_desk`, `astronomical_clock*`, `psx_clock_1/2`,
+  `meshy_analog_phone*`, `field_radio`, `radio_console`, `scoreboard*` + `departures_board` + `evidence_board` + `city_scale_model*` (a big
+  board), `film_projector`, `decor_av_cart*`, `cinema_seat_row`, `lectern`, `exec_desk`, `stock_ticker*`, `globe_lamp`, `lap_pool*` /
+  `infinity_pool*`, `palm_tree`, `vault` (a bank vault front, 5 m), `floor_safe`, `deposit_box_wall*`, `cash_cart*`, `money_sacks`,
+  `psx_gold_bar_pcs_1`, `wooden_barrel*`, `xmas_champagne`, `psx_glass_bottle_1/2`, `mobius_bar`, `bar_stool`, `jukebox`, `chesterfield_sofa*`,
+  `wingback_chair`, `shag_rug`, `fur_rug*`, `decor_piano*`, `crystal_chandelier`, `painting_*`, `marble_bust`, `lady_justice*`, `jewelry_case*`,
+  `trophy_case`, `sun_viewport*`, `royal_bed`, `makeup_vanity*`, `pinball_machine`, `arcade_cabinet`, `roulette_table*`, `rowing_machine*`,
+  `kitchen_range`, `psx_canned_food_mp_1..4`, `psx_ammo_box_1`, `footlocker`, `vhs_player*`.
+- **HEAVY (once or never):** `door_furnace` 117 k triangles, `mini_fridge` / `coffee_table` / `potted_plant` / `coffee_mug` 100 k each (Meshy
+  2 MB files), `security_camera` 27 k, `metro_bench` 17 k, `crt_terminal` 8.9 k, `forklift` 8 k, `cot` 6.3 k, `traffic_cone` 6.4 k. CHEAP: every
+  `psx_*` and `hw_*`, the GGBot cars, the procs (`warning_tape`, `parking_bay`, `platform_edge`, `radiation_sign`, `keypad`).
+- **ON R2 WITH NO CATALOGUE ROW that fits:** the two BLACK Meshy cars (`Assets/world/props/meshy/Meshy_AI_a_black_cadillac_…_texture.glb`,
+  `…_a_black_SUV_…`: a fallback only today), `UFO_Low_Poly.fbx`. In downloaded packs but not cut: the Molten SciFi pack (`Air_Con`, bunk beds,
+  `Hydroponics_Lamp`), the Mine pack's `Rails`, a `Ladder` (House / Playground packs).
+
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
 
 mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
@@ -12808,6 +12910,59 @@ the bays and the retired rows in. The helper now stops when the bake fails.
   busts and urns along the walls, amphorae, gold bars, and by the bay's bulkhead the air rack and wetsuit rail (you land there dry).
   The old room's own pieces all stand: dais + stair, the Oracle in its pool (the tape), throne, six braziers, columns, four windows with
   their shafts, the tapestry, the chest, the skulls, the paper, the pool's fish, both residents with their lines, the fight marker.
+- **PASS 3, THE DRESSING + THE AIR (seen on screen, three views + the inside, no errors):** urns, amphorae and busts at the stoas, a
+  well, shells on the temple's steps, weed at the walls' feet; in the canal 36 glowing anemones, 26 kelp strands, clams; on the inner
+  ring Justice before the Treasury with its spilled gold, two heroes by the shrines, urns at every small temple, ten fallen column drums;
+  five more schools, a shark over the dome, jellies up the temple's flanks; seven more people (27 in the room; none on a road); the air:
+  pale motes over the island and ring, a glow of plankton before the temple (`airZones`).
+- **FPS** (llvmpipe, the Agora view, read on a warm second view): first build 1.67 (442 calls, 1.46 M triangles) -> after pass 3 1.67
+  (622 calls, 1.84 M triangles). No loss this probe can measure. The triangles are mostly the ocean pack's animals and the kelp.
+- **STOPPED AT THREE PASSES** (the thread's room ran out, not the order's five). NOT DONE, for whoever takes the last two after mondo's
+  look: the night / dark look seen with the game's own post on (the probe runs with post off); sound; name boards on the buildings; the
+  island's and the rings' edges are saw-toothed (a circle on squares) and wear the rock sheet where a marble quay belongs; the Palace's
+  hall has no roof (the old dome prop stands open inside it); the small temples are solid (only the Temple of the Deep is walked into);
+  whether a `swim()` animal's height is honoured for every model was not checked one by one (a manta meant for 13 m up looked low).
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) Atlantis is a RING CITY, not the old strip. (2) 8 x 5 plots, four
+  districts: the Citadel, the Rings, the Sea Floor, the Trench. (3) The Temple of the Deep stands ON the Agora, a round hall under a dome
+  behind a porch; the old "Palace" keeps its dome on the inner ring. (4) Its dry inside is a NEW room on whole squares; the old Temple
+  room is retired but kept for the fight boards. (5) Room H-20's door still lands inside the Temple. (6) The Upwelling is at the west
+  end, the wreck beside it, the Trench east. (7) You arrive on the Agora, facing the temple; the heal ring is beside you. (8) Plots with
+  no old name have plain labels (the Market, the Baths, the Theatre, the Graves, the Workshops, the Harbour, the Gardens, the Shelf, the
+  Bones, the Lights ...). (9) The causeways are solid banks over the canals, not arched bridges. (10) The surface is 26 m over the Agora.
+  (11) The Bones wear the dinosaur skeleton until a whale's exists. (12) The temple's line about "two doors north" (Hollow Earth,
+  Agartha) is kept word for word though those doors were pruned on 09-18.
+- **NEEDS A MODEL** (exact): 1 a WHALE SKELETON, ribs and skull, 14 m long, lying, for the Bones (P06-04). 2 a BROKEN GREEK COLUMN lying
+  on its side, 4 m, and a column DRUM 1 m, for every ring. 3 a MARKET STALL in stone with an awning frame, 3 x 2 m (the Market P04-00).
+  4 a MOSAIC floor sheet (sea creatures, tileable 3.5 m) for the Agora, the Baths and the Temple's inside. 5 a CORAL sheet (tileable) for
+  the Reef Wall and the Gardens. 6 TUBE WORMS, a clump 1.5 m tall, lit red tips, for the Vents. 7 an ATLANTEAN COLOSSUS: a 12 m statue of
+  a king with a trident for the South Gate and the Statues plot. 8 a TRIREME wreck, 20 m, for the Harbour. 9 a stone ARCHED BRIDGE span,
+  14 m long, 14 m wide, for the eight causeways. 10 a diver's brass HELMET and a station AIRLOCK door for the Station. 11 a GIANT SQUID /
+  kraken body, 15 m, for the Bottom (only its tendrils stand today).
+
+## THE DEEP, THE ZONE KIT — for the R, S and T district threads (2026-11-16, written by the pilot, district C)
+
+- **Read first:** "THE DEEP ON PLOTS" above (stages, ctx helpers, the square letters), your file's header, `/docs/plans/world-zones/the-deep_plot_plan_2.png`.
+- **You swim.** Nobody walks: no stairs are needed, any height is reached, a wall only stops you below its top. So: heights are scenery
+  (make them big), and anything "walk-in" needs `ctx.solid(x, z, w, d, h)` walls or `wall` rows, or the swimmer goes through it.
+- **Marble pieces:** `ctx.look(id, x, z, rot, a => { ... })` with `a.column(x, y, z, h, r, tint)`, `a.stump`, `a.box`, `a.cyl` (`ri` hollow,
+  `arc` + `a0` a curve: the Theatre's tiers, the exedra), `a.dome`, `a.roof('gable' | 'shed', ...)` (`ry: 90` turns the ridge front to
+  back: a pediment over a porch). C.js has `naos(id, deg, w, d, h, tint)` (a small temple) and `tholos(id, deg, r, tint)` (a round one):
+  copy them. Tints that read under water: 0xdfeeee pale, 0x9fd8d0 teal, 0x4fa898 sea green (domes), 0x6f8f98 dark. Marble is lifted by
+  the tool (`glow 0.3`); a part with no key and `glow: 1` is a lamp that costs no light.
+- **Light:** 26 props in the room carry a real light (crystals, smokers, the bathyscaphe, the old dome). The first build did not test
+  more; add glow parts, anemones, clams and the lit jellies before another real light.
+- **Statues from animals:** a prop row with `statue: 0xdfe8e8` casts any model in marble and holds it still (the Agora's dolphins).
+- **Life:** `ctx.swim(key, sx, sy, metresOffTheFloor)`; every `ocean_*` fish and jelly swims its own circle. `fish_school` via `ctx.dec`.
+  Scatter with `ctx.scatter(key, n, sx, sy, radiusInSquares, seed, { r0: innerMetres })` (a ring when r0 is set: a canal's bed).
+- **FROM THE MODEL LIST, FITS AND NOT PLACED YET:** `castle_wall` / `castle_gate` / `castle_tower` (the city wall's walk and towers),
+  `babel_house_small` / `_stair` / `_yard` / `_row` (ancient houses), `italian_building`, `vatican_dome`, `ancient_walkway` (a 6 m stone
+  span), `psx_arc_*` + `psx_pillar_*`, `hw_wall*`, `catacomb_wall`, `trilithon`, `demon_statue`, `jewelry_case`, `museum_vitrine`,
+  `retro_control_panel`, `observation_window`, `psx_tunnel_mp_1_*` (the Station's tubes), `ind_container`, `fishing_boat`, `femur`,
+  `ulna`, `skull`, `asteroid_a / _b` (4 m rocks), `ocean_rock_5..11`, `hw_stone_*`, `psxg_rock_*`, `floating_orb`, `sea_buoy`.
+  NOT wired, on R2: `meshy_decor/greek_column.glb` + `obelisk.glb` (the newer ones mondo approved 11-03), `ewm_trident.glb`,
+  `ewm_royalcrown.glb`. Never: `tentacle`, `tentacle2` (owner-rules: the kraken's arms are `goo_tendril`), modelled smoke.
+- **Textures:** `marble_light`, `marble`, `calm_marble`, `calm_marblemint`, `urban:TileMarble1a..3d` (the nearest to mosaic), `gold`
+  (the better gilt), `rocks_5` (cliffs), `rocks_1`, `calm_darkrock`, `obsidian`, `desert` + the shell's `sand: 'beach'`.
 ## LEYLINES ON PLOTS — the ancient zone, first build (2026-11-16, second side, the Leylines zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots, "completely redesigned/reimagined with

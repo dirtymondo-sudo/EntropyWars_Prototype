@@ -388,9 +388,9 @@ exports.airZones = () => [{ sx0: 0, sy0: 84, sx1: 12, sy1: 96, kind: 'dust', col
 exports.doors = ctx => { bind(ctx);
     doors.push({ id: 'hangar', wall: 'free', x: HANGAR.cx, z: r2(gx(86) - 0.45), face: 0, leaf: 'leaf_bulkhead', wide: true, label: 'AREA 51 · HANGAR 18', sub: 'THE BIG DOOR · INTO THE HANGAR', action: { room: 'site_prebuilt_area51_hangar', at: 'flightline' },
         desc: 'The hangar’s big door from the apron. Eighteen is painted on it in letters taller than the door is; the door is taller than that.' });
-    doors.push({ id: 'ward', wall: 'free', x: WING.cx, z: r2(gx(89) - 0.45), face: 0, leaf: 'leaf_cell', label: 'AREA 51 · THE WHITE ROOMS', sub: 'THE YARD GATE · INTO THE WING', action: { room: 'site_prebuilt_area51_ward', at: 'yard' },
+    doors.push({ id: 'ward', wall: 'free', x: WING.cx, z: r2(gx(89) - 0.45), face: 0, leaf: 'leaf_cell', label: 'THE D.U.M.B. · THE WHITE ROOMS', sub: 'THE YARD GATE · DOWN INTO THE WING', action: { room: 'site_prebuilt_dumb_base', at: 'yard' },
         desc: 'The barred gate into the wing. From out here the white is a light left on.' });
-    doors.push({ id: 'stormdrain', wall: 's', x: gx(34), secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE STORM DRAIN · UNDER THE FENCE INTO THE WHITE ROOMS', action: { room: 'site_prebuilt_area51_ward', at: 'stormdrain' },
+    doors.push({ id: 'stormdrain', wall: 's', x: gx(34), secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE STORM DRAIN · UNDER THE FENCE INTO THE WHITE ROOMS', action: { room: 'site_prebuilt_dumb_base', at: 'stormdrain' },
         desc: 'A culvert mouth in the yard’s south berm. It goes under the fence and comes up through a grate in a white corridor.', draft: true });
 };
 
@@ -517,11 +517,11 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.dec('riot_gear_rack', 2.5, 10.3, 0); R.dec('scba_rack', 1.5, 13.6, 180); R.dec('psx_keycard_1_authorization_level_3', 10.3, 11.6, 40, { y: 0.78 }); R.dec('psx_dosimeter_1', 17.3, 10.6, 0, { y: 0.78 });
       tidy(R, 'the hangar');
       R.doors.push(
-          { id: 'white', wall: 'e', z: R.Z(12.5), leaf: 'leaf_hospital', label: 'THE WHITE ROOMS', sub: 'THE WING · PSYCHIATRIC · QUIET PLEASE', action: { room: 'site_prebuilt_area51_ward', at: 'hangar' },
+          { id: 'white', wall: 'e', z: R.Z(12.5), leaf: 'leaf_hospital', label: 'THE WHITE ROOMS', sub: 'THE WING · PSYCHIATRIC · QUIET PLEASE', action: { room: 'site_prebuilt_dumb_base', at: 'hangar' },
             desc: 'A hospital door in a hangar wall, with a porthole painted over from the other side. The sign says PSYCHIATRIC. Under it, in pencil, FOR THE ONES WHO SAW IT.' },
           { id: 'flightline', wall: 'n', x: R.X(11), leaf: 'leaf_bulkhead', wide: true, label: 'THE FLIGHT LINE', sub: 'THE BIG DOOR · OUT TO RUNWAY 33', action: { room: 'site_prebuilt_area51_desert', at: 'hangar' },
             desc: 'The big door, or the man-sized part of it. Beyond it the apron, the runway, the tower, and the lights that go round the base all night for no reason anyone has filed.' },
-          { id: 'vent', wall: 'w', z: R.Z(8.5), secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE VENT · THE DUCT INTO THE WHITE ROOMS', action: { room: 'site_prebuilt_area51_ward', at: 'vent' },
+          { id: 'vent', wall: 'w', z: R.Z(8.5), secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE VENT · THE DUCT INTO THE WHITE ROOMS', action: { room: 'site_prebuilt_dumb_base', at: 'vent' },
             desc: 'A vent grille behind the tanks with the screws in a cup beside it. The duct is a person wide and goes to the wing, which is where the air was going anyway.', draft: true });
       R.must.push('11,13', '10,0', '11,0', '21,12', '21,8', '0,8');
       R.spawn = { x: R.X(11.5), z: R.Z(12.9), face: 0 };
