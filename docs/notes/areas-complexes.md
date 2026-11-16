@@ -6479,6 +6479,23 @@ P00-01 The Chimney (a 7 x 6 hall, 12.25 m). Built on mondo's order of 11-16 (doc
   letter order (H, O, T, W), so after the cells' four bulbs this district's first torches are lit. Everything else is a glow sprite.
 - **SEEN** through probe-fast.js (11 views). Before: 692 calls, 1.22 M triangles at the Flood view.
 
+**PASS 2, THE LANDMARKS' OWN PIECES** (the district has no insides, so this pass is more landmark work; explicit squares, no dice):
+- **THE ENGINE BAY** (the north chamber's west end): a FIREBOX built of brick parts (cheeks, a hood, a 9 m flue) with a `hearth_fire`
+  in it (a proc: it carries a REAL light), a cable drum, crates, the Mine pack's lockers, sacks, a hand truck, a bench with a saw.
+- **THE PUMP LEDGE:** `centrifugal_pump` + `gate_valve` on the deck, a lantern, a rope. **THE SUMP:** `ocean_anglerfish` 1.3 m down (its lure).
+- **THE FLOOD:** a sunk `meshy_rowboat` (lifted 0.45 m off the bed or the brown sheet hides it), a beached `rowboat`.
+- **THE CHIMNEY's hall:** four `catacomb_wall` arches on the north wall (burial niches the miners broke into), a `sarcophagus`, a coffin and
+  its lid, two candelabra; under the shaft a body, bricks, a crow on the stump; SE the CRYSTAL SEAM (`crystal_cluster`, a real pale light, +
+  shards); by the portcullis a cage and the stocks; at the Adit's foot ladders, sandbags, crates; hanging lanterns under the board roofs.
+- **THE FOUR REAL LIGHTS** are this district's first four light rows: the hearth fire, the Flood's torch, the portcullis' torch, the
+  crystal. Every other fire here carries `noLight` (glow only) so the district takes no more of the room's ten than the first build did.
+- **FRAME RATE** (the Flood view, x -63 z -30 face 180, llvmpipe; frames counted over 20 s): first build 2.50, pass 1 about 2.4, pass 2
+  1.7 at first, 2.20 after the fixes. WHAT COST: `door_furnace` is 117 k triangles (replaced by the built firebox), `ocean_seaweed*` and
+  `ocean_eel` are heavy animated FBX files (removed), a 22 cm `skull` is 10 k triangles (one kept), `tool_chest` 15 k, `ship_anchor` 11 k.
+  TRAP FOR EVERY PROBE: the room's shadow map redraws every second frame, so ONE frame's `calls / triangles` reads either 1.1 M or 2.6 M
+  for the same view; compare counted frames, never one readout (half an hour went on a "second pass" that was this).
+- **LEFT OUT after seeing them:** the old pipe rail (draws white), `psxg_rock_*` (read as paper), `xmas_hammer` (stands upright, 0.95 m).
+
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, all sections, + pack-claims.md; every key checked against the live catalogue).
 Not used anywhere in the Sewers before this district's passes unless marked *:
 MINE GEAR `hw_shovel` `spell_dynamite` `meshy_burlap_sack` `money_sacks` `meshy_rope`* `wooden_bucket`* `ancient_well` `cable_drum`
@@ -6503,6 +6520,8 @@ heap, wheelbarrow, anvil, a pulley / head wheel, a cast-iron beam pump, rats, sp
 2. The Sump sits at the Pump Ledge's foot in the north chamber (the plan names both, places neither).
 3. The Pump Ledge is entered by its own stair from the floor; the trap's rope ladder still lands on the floor of the neck (in the old room it landed on the ledge).
 4. The old tape on the Chimney and the find are not re-homed.
+5. The Chimney's hall has burial niches and a sarcophagus (the brief says "older than the city"); the crystal seam is the mine's ore.
+6. The furnace is a built brick firebox, not the `door_furnace` model (frame rate).
 ## THE RITUAL GROUND — the Woods' district G, the district thread (2026-11-16, second side; file `docs/areas/woods/districts/G.js`)
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped, at most five passes, no questions. Branch `claude/woods-g-ritual-ground`.
 The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, the stage, the owl). All new work is in `build(ctx)` (+ `cut`, `ground`); row ids `woods:G:<name>`.
