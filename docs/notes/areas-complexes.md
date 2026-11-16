@@ -6849,6 +6849,17 @@ small grass clearings in the pine wood. FPS at the proof view (Panther Meadows, 
 - SEEN: 18 + 8 views. Fixed after the first look: stone and dark log walls read near black (shell `gain` 1.7 / 1.9), the cairns read as dark fir trees (shorter, lighter,
   a flag), an inside view from 1.7 m over the eye stood in the roof (a probe view inside takes `y` = the ground + 0.1). FPS after: 1.20 (no change).
 
+**PASS 2, INTERIORS (live):** all seven insides furnished on the fight's squares (blockers on the middles of whole 3.5 m squares, the front row and the door's square
+free, small things off the middles, wall pieces on the lining). Ranger Station: map table, radio console, lockers, brochure rack, rocking chair + dog by the fire, notice
+board, key rack. Bigfoot's Cabin: the big bed, the table with meat and fish, stumps for stools, armchair, pots, chest, net on the wall. The Shaman's Lodge: brazier, cot,
+the table of the craft (crystal ball, cards, candles), two ward totems, staff, drum and rattles, cauldron. The Ki Dojo: mat, wooden dummy, heavy bag, weapon rack, taiko
+drum, tea table and cushions, candle ring, two paper lanterns. Spring Shrine: altar with censer and crystal, votive stand, candelabra, water jars, bell. Fire Lookout: map
+table under the windows, brass telescope, radio, cot, star chart, gauges, hose rack. Climbers' Hut: two cots, table, rope, footlocker, supply crate, pots, shovel.
+- Three open hearths with `hearth_fire` + `chimney_smoke` over the chimney; every window is also drawn from inside (`winIn`: the day in it, a timber frame on the lining).
+- A hung piece needs the building's own floor height: `groundAt(ctx, plot, q)` repeats the tool's height rule, `UP(B, h)` / `WALL(B, h, face)` hang a piece `h` over that floor.
+- SEEN: 14 + 4 views. Known: a pine's branch pokes through Bigfoot's high ceiling (the tool's tree zone; a tree stands against the wall). FPS (the first reading of a run is
+  warm-up noise: read the second and third): 1.8 to 2.0, before and after.
+
 **FOR THE NEXT THREAD (zone kit additions):** `hut` + `win` + `cairn` + `seracs` + `block` in S.js are plain functions: copy them. The district's sign face is `alfa`, cream
 `#f0e2c0` on brown `#4a3222`. `rocks_5` walls need `gain` 1.7 and a tint from 0xa0a0a8 up or they read black in daylight. A `cyl` with `ri` + `arc` makes a curved dry-stone wall.
 
