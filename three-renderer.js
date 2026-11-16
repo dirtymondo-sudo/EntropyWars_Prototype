@@ -3342,12 +3342,12 @@ const ThreeRenderer = (function () {
            poison, its still water and should behave like water"): LOOKS, not liquids. No terrain has these keys; a room's
            `terrain.waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' }` draws its water in them (_hqWaterLook) while the
            liquid stays `water` / `deep_water` for the walk, the swim and the fights. They ride the water sheet under a tint. */
-        sewer_water: { base: 'water', tint: 0x5f5a22,
-                      caustDiff: 'vec3(0.30, 0.32, 0.12)', caustEmis: 'vec3(0.07, 0.08, 0.03)',
-                      glintCol: 'vec3(0.62, 0.66, 0.40)',  hueShift: 'vec3(1.02, 1.0, 0.86)' },
-        sewer_deep:  { base: 'water', tint: 0x3a3814,
-                      caustDiff: 'vec3(0.18, 0.20, 0.08)', caustEmis: 'vec3(0.04, 0.05, 0.02)',
-                      glintCol: 'vec3(0.50, 0.54, 0.32)',  hueShift: 'vec3(1.0, 1.0, 0.86)' },
+        sewer_water: { base: 'water', tint: 0xf0661a,   // (the water sheet is blue-green: a strong orange tint is what turns it brown)
+                      caustDiff: 'vec3(0.24, 0.18, 0.09)', caustEmis: 'vec3(0.035, 0.026, 0.012)',
+                      glintCol: 'vec3(0.58, 0.52, 0.40)',  hueShift: 'vec3(1.06, 0.97, 0.82)' },
+        sewer_deep:  { base: 'water', tint: 0xa8440f,
+                      caustDiff: 'vec3(0.14, 0.10, 0.05)', caustEmis: 'vec3(0.02, 0.015, 0.008)',
+                      glintCol: 'vec3(0.44, 0.40, 0.30)',  hueShift: 'vec3(1.05, 0.97, 0.82)' },
     };
 
     /* Water surfaces sit slightly below the top of their block so every
