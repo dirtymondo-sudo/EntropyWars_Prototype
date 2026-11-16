@@ -14302,7 +14302,13 @@
                     const fx = unit.x, fy = unit.y;
                     unit.x = dest.x; unit.y = dest.y;
                     if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(dest.x, dest.y, unit.z);
-                    animateDisplacement(unit, fx, fy, dest.x, dest.y, 260);
+                    /* THE MOLE MAN PASS (2026-11-16): he goes back under at his tile and climbs out beside the victim (the escape
+                       looks' 'dive' path, the burrow's own dirt) instead of gliding over the board in a quarter second. The
+                       displace relay carries the style to the guest. */
+                    animateDisplacement(unit, fx, fy, dest.x, dest.y, 820, { escStyle: 'dive' });
+                    if (!(typeof _skipVisuals === 'function' && _skipVisuals()) && window.VFX3D && typeof window.VFX3D.fire === 'function') {
+                        try { window.VFX3D.fire('teleport', spell.id, { fromX: fx, fromY: fy, toX: dest.x, toY: dest.y }); } catch (e) {}   // the dirt where he goes down + comes up
+                    }
                     addLog(`⛏ ${_ctName(unit)} bursts out of the ground at ${coordLabel(dest.x, dest.y)}!`, undefined, undefined, { actor: unit });
                     showFloatingTextForUnit(unit, '⛏ ERUPT', 'streak', { durationMs: 1000 });
                     resolveTileArrival(unit, { via: 'displaced' });
@@ -48211,6 +48217,7 @@
                 || k === 'tackle' || k === 'doorBreach') return true;
             if (k === 'teleport') return !spell.teleportAnyUnit;
             if (spell.chargeToTarget || spell.swapOnHit) return true;
+            if (spell.erupt) return true;   // ⛏ Erupt tunnels the Mole Man to the victim's side (the Mole Man pass, 2026-11-16)
             if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) return true;
             return false;
         }
