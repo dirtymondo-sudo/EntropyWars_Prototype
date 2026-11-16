@@ -77908,6 +77908,31 @@ const ThreeRenderer = (function () {
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.56 * U, 0.1 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 0.06 * U, 0.012 * U); g.add(m); }
             return g;
         },
+        /* THE GOO TENDRIL (2026-11-16, mondo on the Sewers' Sludge Pit: "get rid of the kraken arms, use the tentacles that the spells
+           use"): the symbiote's spell tendril standing in a room. Built the way the spells build theirs (three-vfx-effects.js
+           _PZ_SIGS.tendrils / pvTendrilWhip): a chain of tapering black segments in the obsidian sheet along a curl, venom glowing
+           at its tip; it sways. A row's own `h` = its height (default 3.2 m). */
+        goo_tendril: function (U, p) {
+            var g = new THREE.Group(), arm = new THREE.Group(); g.add(arm);
+            var seed = (_hqProcSeed++) * 2.399, H = ((p && +p.h > 0) ? +p.h : 3.2) * U, N = 18, r0 = 0.23 * H / 3.2, lean = 0.22 + 0.2 * Math.abs(Math.sin(seed * 3.1));
+            var dirA = seed * 1.7, cx = Math.cos(dirA), cz = Math.sin(dirA), pts = [];
+            for (var i = 0; i <= 5; i++) { var t = i / 5; pts.push(new THREE.Vector3(cx * H * lean * t * t, H * 0.78 * t, cz * H * lean * t * t)); }
+            /* the curl at the top: a turn and a quarter in the lean's plane */
+            var top = pts[5].clone(), R = H * 0.13;
+            for (var k = 1; k <= 7; k++) { var a = k / 7 * Math.PI * 1.5, q = R * (1 - k / 14); top = new THREE.Vector3(pts[5].x + cx * (R - Math.cos(a) * q) , pts[5].y + Math.sin(a) * q, pts[5].z + cz * (R - Math.cos(a) * q)); pts.push(top); }
+            var curve = new THREE.CatmullRomCurve3(pts), mat = _hqMat('obsidian', 1, 2, { color: 0x3a3442, shininess: 60, specular: 0x6a6aa0 });
+            var A = new THREE.Vector3(), B = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), d = new THREE.Vector3();
+            for (var s = 0; s < N; s++) {
+                curve.getPointAt(s / N, A); curve.getPointAt((s + 1) / N, B); d.subVectors(B, A); var len = d.length() || 0.001;
+                var ra = r0 * (1 - s / N * 0.86), rb = r0 * (1 - (s + 1) / N * 0.86);
+                var seg = new THREE.Mesh(new THREE.CylinderGeometry(rb, ra, len * 1.12, 7), mat);
+                seg.position.copy(A).addScaledVector(d, 0.5); seg.quaternion.setFromUnitVectors(up, d.normalize()); arm.add(seg);
+            }
+            var foot = new THREE.Mesh(new THREE.SphereGeometry(r0 * 1.5, 8, 6), mat); foot.scale.y = 0.35; arm.add(foot);
+            curve.getPointAt(1, A); var glow = _hzGlowSprite(0.5 * U, 0x9dff5e, 0.5, 0, 0, 0); glow.position.copy(A); arm.add(glow);
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; arm.rotation.x = 0.06 * Math.sin(t * 0.9); arm.rotation.z = 0.06 * Math.sin(t * 0.7 + 1.3); glow.material.opacity = 0.35 + 0.2 * Math.sin(t * 2.1); });
+            return g;
+        },
         /* ROOM Y: the slab — a steel table, a door's parts laid out on it, each with a paper tag */
         autopsy_table: function (U) {
             var g = new THREE.Group();

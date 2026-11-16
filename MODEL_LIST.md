@@ -28,7 +28,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Meshy AI | no | 918 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
-| Claude in code (three.js, no file) | no | 82 |
+| Claude in code (three.js, no file) | no | 83 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 5 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
 
@@ -3232,12 +3232,12 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | Street Lamp | `Assets/world/props/meshy/streetlamp/Street Lamp.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | UFO_Low_Poly | `Assets/world/props/meshy/UFO_Low_Poly.fbx` | Asset pack | 3D Game Ready UFO Spaceship · FlexUnit · CC0 | sprites.js |
 
-## 8. Made in code — procedural stand-ins still in the catalogue (82)
+## 8. Made in code — procedural stand-ins still in the catalogue (83)
 
 Catalogue rows with a `proc` and no file: Claude drew them from three.js primitives. These are the props that still
 want a real model; §10 ranks which ones are worth one. (Pack-backed procs — bats, traps — and the car pack are not here.)
 
-`barber_mirror`, `bigtop`, `car_panel`, `cell_bars`, `chimney_smoke`, `clipboard`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_logo_wall`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `graffiti_wall`, `hearth_fire`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `kraken_arms`, `lap_pool`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `street_drain`, `sun_viewport`, `temple_dome`, `thoughtform`, `tiki_torch`, `track_bed`, `tube_map`, `wall_padding`, `wall_plaques`, `warning_tape`, `world_clocks`
+`barber_mirror`, `bigtop`, `car_panel`, `cell_bars`, `chimney_smoke`, `clipboard`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_logo_wall`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `goo_tendril`, `graffiti_wall`, `hearth_fire`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `kraken_arms`, `lap_pool`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `street_drain`, `sun_viewport`, `temple_dome`, `thoughtform`, `tiki_torch`, `track_bed`, `tube_map`, `wall_padding`, `wall_plaques`, `warning_tape`, `world_clocks`
 
 **Procs that already wear a real model** (91: the builder hangs a model file over its own pieces, which only
 show if the file fails) — counted under that model's maker, not as code:
