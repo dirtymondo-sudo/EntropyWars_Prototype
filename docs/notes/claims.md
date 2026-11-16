@@ -16,7 +16,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 |---|---|---|---|
 | The Estate (plot build, prompt 5 of docs/plans/HANDOFF_PROMPTS.md) | second | 2026-11-15 | built + look pass merged (seen in the browser); corn waits for the Meshy key. Two pack prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack) |
 | Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 + the castle as ONE stacked room (`site_prebuilt_camelot_palace`) + five house kinds BUILT, seen on screen in part; the sky castle waits mondo |
-| The Desert | second | 2026-11-16 | plan 4 posted (the highway with exits, the four places spread out on 12 x 12 plots; `docs/plans/desert/desert_highway_plan.png`), waits mondo's OK, nothing built. Before it: the three insides + the Turning Tomb door are live; open finding: no door leaf draws in the probe (areas-complexes.md "THE LOOK PASS") |
+| The Desert | second | 2026-11-16 | the highway is built on mondo's OK (12 x 12 plots, four exits, overpass, signs, cars; areas-complexes.md "THE DESERT, THE HIGHWAY"); seen in the browser, waits his look. Open: no door leaf draws in the probe ("THE LOOK PASS") |
 | The Woods | owner | 2026-11-15 | the life pass (four district looks, per-district particles) is live, waits mondo's look; the cabin has no game role yet |
 | The Mountains (+ the Hollywood Hills room, the city's north beach strip in B.js beach() and EDGES.n.cap) | second | 2026-11-15 | plan 2 built: Hills room, Shasta/Olympus swap, north beach; not seen on screen, waits mondo's look |
 | The Beach (`site_prebuilt_bermuda_beach`, bake-beach.js; plan 4: the Shore, the Harbour, the Ocean, the Bermuda Triangle) | second | 2026-11-15 | first delivery merged; not seen on screen, waits mondo's look |
@@ -41,3 +41,4 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `docs/plans/disaster-city/civic-dc/`) and chose "Owner side makes them". C.js already places them and waits for the catalogue rows. What to do:
   areas-complexes.md "CIVIC CENTER, DC PASS 2", the line FOR THE OWNER SIDE (make, upload, two data.js rows, rebake). The Beach door note is done
   (the city's `harbour` door targets `site_prebuilt_bermuda_beach` at `quay`).
+- 2026-11-16 (second, to the Disaster City holder): the Desert's highway now reaches the city as EXIT 1, at the Desert's north wall x -105 (the same x as Southside's South Street way out; link `downtown_desert`, only its Desert end moved). Nothing in the city's tool, district files or block was touched. A road sign for the Desert at the city's way out would be yours.

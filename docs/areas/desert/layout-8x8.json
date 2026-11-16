@@ -1,0 +1,749 @@
+{
+"area": "The Desert",
+"version": "plan-3 (as built)",
+"squareMeters": 3.5,
+"plotCells": 12,
+"areaPlots": 8,
+"areaMeters": 336.0,
+"districts": {
+"R": "The Road",
+"C": "The Circus",
+"W": "Western Town",
+"A": "Area 51",
+"G": "Giza"
+},
+"plots": [
+{
+"id": "P00-00",
+"name": "The City Limit",
+"district": "R",
+"level": 0,
+"what": "the highway in from Disaster City, road signs",
+"from": "new (the highway from the city's south edge)",
+"exit": [
+"Disaster City (the highway)",
+"open"
+]
+},
+{
+"id": "P00-01",
+"name": "The Gas Station",
+"district": "R",
+"level": 0,
+"what": "the city chain's gas station: canopy, store, sign",
+"from": "Disaster City chain gas station",
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Door",
+"district": "R",
+"level": 0,
+"what": "LANDMARK: one road, one door. The spot from the opening scene and the main menu",
+"from": "THE ROAD: ONE ROAD \u00b7 ONE DOOR",
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Junction",
+"district": "R",
+"level": 0,
+"what": "the highway goes on south to the Gate; a road turns east",
+"from": "new",
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Trailers",
+"district": "R",
+"level": 0,
+"what": "trailer homes, a dish, folding chairs",
+"from": "trailer homes (Area 51 flight line has four)",
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Bus Stop",
+"district": "R",
+"level": 0,
+"what": "a bus shelter with no bus coming, the school bus",
+"from": "pieces that exist (bus shelter, school bus)",
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Crossroads",
+"district": "R",
+"level": 0,
+"what": "signpost: the town north-east, Giza south-east",
+"from": "new",
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Animals",
+"district": "C",
+"level": 0,
+"what": "the pens: the lion, the giraffe, the elephant",
+"from": "The Carnival: the animals",
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Wagons",
+"district": "C",
+"level": 0,
+"what": "the performers' wagons behind the tent",
+"from": "new; trailers exist",
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Wheel",
+"district": "C",
+"level": 0,
+"what": "LANDMARK: the wheel, turning since 1893",
+"from": "The Carnival: the wheel",
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Midway",
+"district": "C",
+"level": 0,
+"what": "stalls, the popcorn cart, the bell (the high striker)",
+"from": "The Carnival: THE MIDWAY, the bell",
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Big Top",
+"district": "C",
+"level": 0,
+"what": "LANDMARK: the big top, the ring inside",
+"from": "The Carnival: the big top",
+"exit": [
+"inside: the ring",
+"new"
+]
+},
+{
+"id": "P03-01",
+"name": "The Horses",
+"district": "C",
+"level": 0,
+"what": "the carousel",
+"from": "The Carnival: the horses",
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Ticket Booth",
+"district": "C",
+"level": 0,
+"what": "ADMIT ONE: the gate and the booth; Room 1893 opens here",
+"from": "The Carnival: THE TICKET BOOTH",
+"exit": [
+"DOOR HQ Room 1893",
+"open"
+]
+},
+{
+"id": "P02-02",
+"name": "The Lady Who Knows",
+"district": "C",
+"level": 0,
+"what": "the fortune teller's tent; the tank act",
+"from": "The Carnival: the lady who knows, the tank",
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Mirrors",
+"district": "C",
+"level": 0,
+"what": "the hall of mirrors; the door to the Mandela Room",
+"from": "The Carnival: the mirrors door",
+"exit": [
+"inside: the Mandela Room",
+"inside"
+]
+},
+{
+"id": "P04-00",
+"name": "Boot Hill",
+"district": "W",
+"level": 3,
+"what": "graves, wooden crosses, a dead tree, on a rise",
+"from": "new; graves, crosses, dead tree exist",
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Church",
+"district": "W",
+"level": 1,
+"what": "a small wooden church, pews, a bell",
+"from": "new building; pews exist",
+"exit": null
+},
+{
+"id": "P06-00",
+"name": "The Windmill",
+"district": "W",
+"level": 1,
+"what": "the wind pump turning, a water trough",
+"from": "wind pump tower + wheel (exist)",
+"exit": null
+},
+{
+"id": "P07-00",
+"name": "The Mine",
+"district": "W",
+"level": 2,
+"what": "mine mouth in the rock, rails, a cart, barrels",
+"from": "Mine pack (CC0, already downloaded)",
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Stables",
+"district": "W",
+"level": 1,
+"what": "stable with the barn door, horses",
+"from": "new building; barn door + horses exist",
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The Saloon",
+"district": "W",
+"level": 1,
+"what": "LANDMARK: the saloon, swinging doors, a bar and a piano inside",
+"from": "new building; saloon door, piano, bar stools exist",
+"exit": [
+"inside: the saloon",
+"new"
+]
+},
+{
+"id": "P06-01",
+"name": "The Bank",
+"district": "W",
+"level": 1,
+"what": "the bank, a vault inside",
+"from": "new building; vault + floor safe exist",
+"exit": null
+},
+{
+"id": "P07-01",
+"name": "The Hotel",
+"district": "W",
+"level": 1,
+"what": "two floors, a balcony over the street",
+"from": "new building",
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Jail",
+"district": "W",
+"level": 1,
+"what": "the Sheriff's office and two cells",
+"from": "new building; cell bars exist",
+"exit": [
+"inside: the jail",
+"new"
+]
+},
+{
+"id": "P05-02",
+"name": "Main Street",
+"district": "W",
+"level": 1,
+"what": "the wide street, the well, where a showdown happens",
+"from": "new; well exists",
+"exit": null
+},
+{
+"id": "P06-02",
+"name": "The General Store",
+"district": "W",
+"level": 1,
+"what": "store front, crates, barrels",
+"from": "new building; crates + barrels exist",
+"exit": null
+},
+{
+"id": "P07-02",
+"name": "The Corral",
+"district": "W",
+"level": 1,
+"what": "a fenced pen, horses and cows",
+"from": "new; fence, horses, cows exist",
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "The Trail In",
+"district": "W",
+"level": 0,
+"what": "the trail forks: town north, the causeway south",
+"from": "new",
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Wagon Camp",
+"district": "W",
+"level": 0,
+"what": "campfire, tents",
+"from": "new; campfire + tents exist",
+"exit": null
+},
+{
+"id": "P06-03",
+"name": "Open range",
+"district": "W",
+"level": 0,
+"what": "sand, skulls",
+"from": "new open desert",
+"exit": null
+},
+{
+"id": "P07-03",
+"name": "The Canyon",
+"district": "W",
+"level": 0,
+"what": "a slot canyon through the rock, south to the Dig",
+"from": "new rock",
+"exit": null
+},
+{
+"id": "P00-04",
+"name": "The Gate",
+"district": "A",
+"level": 0,
+"what": "the fence, the guard post, the warning signs",
+"from": "Area 51: THE GATE",
+"exit": null
+},
+{
+"id": "P01-04",
+"name": "The Ridge",
+"district": "A",
+"level": 3,
+"what": "rock ridge looking down on the base",
+"from": "new rock",
+"exit": null
+},
+{
+"id": "P02-04",
+"name": "The Fence",
+"district": "A",
+"level": 0,
+"what": "chain-link, cameras, flood masts",
+"from": "Area 51: THE FENCE",
+"exit": null
+},
+{
+"id": "P03-04",
+"name": "The Fence, east",
+"district": "A",
+"level": 0,
+"what": "the fence corner, a watch post",
+"from": "Area 51: THE FENCE",
+"exit": null
+},
+{
+"id": "P00-05",
+"name": "The Dish",
+"district": "A",
+"level": 1,
+"what": "the big dish on a rise",
+"from": "satellite dish (exists)",
+"exit": null
+},
+{
+"id": "P01-05",
+"name": "The Apron",
+"district": "A",
+"level": 0,
+"what": "trucks, the bus, sandbags, the fire truck",
+"from": "Area 51: THE FLIGHT LINE",
+"exit": null
+},
+{
+"id": "P02-05",
+"name": "The Tower",
+"district": "A",
+"level": 0,
+"what": "the control tower",
+"from": "Area 51: THE TOWER",
+"exit": null
+},
+{
+"id": "P03-05",
+"name": "The Pens",
+"district": "A",
+"level": 0,
+"what": "four tanks in their pens",
+"from": "Area 51: THE PENS",
+"exit": null
+},
+{
+"id": "P00-06",
+"name": "Runway 33, west",
+"district": "A",
+"level": 0,
+"what": "runway, flood masts",
+"from": "Area 51: RUNWAY 33",
+"exit": null
+},
+{
+"id": "P01-06",
+"name": "Runway 33",
+"district": "A",
+"level": 0,
+"what": "runway, the fighter jet",
+"from": "Area 51: RUNWAY 33",
+"exit": null
+},
+{
+"id": "P02-06",
+"name": "Runway 33, east",
+"district": "A",
+"level": 0,
+"what": "runway runs out into the desert",
+"from": "Area 51: RUNWAY 33",
+"exit": null
+},
+{
+"id": "P03-06",
+"name": "The Crater",
+"district": "A",
+"level": -1,
+"what": "the crater and the saucer in it",
+"from": "Area 51: the crater + saucer",
+"exit": null
+},
+{
+"id": "P00-07",
+"name": "The Dry Lake",
+"district": "A",
+"level": 0,
+"what": "cracked flat ground, the lights that go round all night",
+"from": "new flat",
+"exit": null
+},
+{
+"id": "P01-07",
+"name": "Hangar 18",
+"district": "A",
+"level": 0,
+"what": "LANDMARK: the hangar. Inside is HANGAR 18 as it is today",
+"from": "Area 51: HANGAR 18 (inside kept)",
+"exit": [
+"inside: Hangar 18 (Room 51, lift to the D.U.M.B.)",
+"inside"
+]
+},
+{
+"id": "P02-07",
+"name": "The Yard",
+"district": "A",
+"level": 0,
+"what": "the yard gate of the White Rooms; the storm drain (hidden)",
+"from": "Area 51: THE WHITE ROOMS yard (inside kept)",
+"exit": [
+"inside: the White Rooms",
+"inside"
+]
+},
+{
+"id": "P03-07",
+"name": "The Dry Lake, east",
+"district": "A",
+"level": 0,
+"what": "cracked flat ground",
+"from": "new flat",
+"exit": null
+},
+{
+"id": "P04-04",
+"name": "The Causeway",
+"district": "G",
+"level": 1,
+"what": "the stone road onto the plateau",
+"from": "Giza: THE CAUSEWAY",
+"exit": null
+},
+{
+"id": "P05-04",
+"name": "The Sphinx",
+"district": "G",
+"level": 1,
+"what": "LANDMARK: the Sphinx, facing east",
+"from": "Giza: THE SPHINX",
+"exit": null
+},
+{
+"id": "P06-04",
+"name": "The Dig",
+"district": "G",
+"level": 1,
+"what": "trenches, tents, boxes, the campfire",
+"from": "Giza: THE DIG",
+"exit": null
+},
+{
+"id": "P07-04",
+"name": "The Canyon Mouth",
+"district": "G",
+"level": 1,
+"what": "the canyon from the town opens here",
+"from": "new rock",
+"exit": null
+},
+{
+"id": "P04-05",
+"name": "The Obelisks",
+"district": "G",
+"level": 1,
+"what": "four obelisks, braziers",
+"from": "Giza: the obelisks + braziers",
+"exit": null
+},
+{
+"id": "P05-05",
+"name": "Menkaure",
+"district": "G",
+"level": 2,
+"what": "the third pyramid, two tiers",
+"from": "Giza: MENKAURE",
+"exit": null
+},
+{
+"id": "P06-05",
+"name": "Khafre",
+"district": "G",
+"level": 2,
+"what": "the second pyramid, three tiers",
+"from": "Giza: KHAFRE",
+"exit": null
+},
+{
+"id": "P07-05",
+"name": "The Robbers' Tunnel",
+"district": "G",
+"level": 2,
+"what": "a hole in the rock: the way to the Leylines (hidden)",
+"from": "Giza: THE ROBBERS' TUNNEL",
+"exit": [
+"The Leylines",
+"secret"
+]
+},
+{
+"id": "P04-06",
+"name": "The Oasis",
+"district": "G",
+"level": 0,
+"what": "a pool and the palms",
+"from": "Giza: the palms + pool",
+"exit": null
+},
+{
+"id": "P05-06",
+"name": "The Tomb Door",
+"district": "G",
+"level": 2,
+"what": "the sealed tomb door: DOOR HQ Room 444 opens here",
+"from": "Giza: the bay door (Room 444)",
+"exit": [
+"DOOR HQ Room 444",
+"open"
+]
+},
+{
+"id": "P06-06",
+"name": "The Great Pyramid, north-west",
+"district": "G",
+"level": 2,
+"what": "the north stair up the tiers",
+"from": "Giza: THE GREAT PYRAMID \u00b7 THE NORTH STAIR",
+"exit": null
+},
+{
+"id": "P07-06",
+"name": "The Great Pyramid, north-east",
+"district": "G",
+"level": 2,
+"what": "tiers",
+"from": "Giza: THE GREAT PYRAMID",
+"exit": null
+},
+{
+"id": "P04-07",
+"name": "The Sand Sea",
+"district": "G",
+"level": 1,
+"what": "dunes, a sarcophagus half buried",
+"from": "new open desert; sarcophagus exists",
+"exit": null
+},
+{
+"id": "P05-07",
+"name": "The Sand Sea, east",
+"district": "G",
+"level": 1,
+"what": "dunes",
+"from": "new open desert",
+"exit": null
+},
+{
+"id": "P06-07",
+"name": "The Great Pyramid, south-west",
+"district": "G",
+"level": 2,
+"what": "tiers",
+"from": "Giza: THE GREAT PYRAMID",
+"exit": null
+},
+{
+"id": "P07-07",
+"name": "The Great Pyramid, south-east",
+"district": "G",
+"level": 2,
+"what": "tiers; the top is 14 m up",
+"from": "Giza: THE GREAT PYRAMID",
+"exit": null
+}
+],
+"cells": [
+".rr..........ffff..ffff................................o.............................mmmmmmmmmmm",
+".rr..........f..f..f..f..BB......BB....WWWWWW......hhhh........BBBBB.................mmmmmmmmmmm",
+".rr..........f..f..f..f..BB..BB..BB....WWWWWW....o.hhhhh.......BBBBB.................mmmmmmmmmmm",
+".rr..........ffff..ffff......BB....................hhhhh.......BBBBB.........B.......mmmmmmmmmmm",
+".rr..........................................o.....hhhhh....o..BBBBB.................mmmmmmmmmmm",
+".rr.o............dddddddddddddddddddddddddd.........hhh.....o....x...................mmmmdd.....",
+".rr..............dddddddddddddddddddddddddd..........dddddddddddddddddddddddddddddddddddddd.....",
+".rr..............dd......................dd..........dddddddddddddddddddddddddddddddddddddd.....",
+".rr..............dd..................o...dd...........................dd........................",
+".rr..............dd................o.....dd...........................dd........................",
+".rr..............dd......................dd................o..........dd........................",
+".rr..............dd......................dd...........................dd........................",
+".rr...o..........dd......................dd...........................dd........................",
+".rr..............dd......................ddoKKK.......................dd........................",
+".rrccccBBBBB.BB..dd.BB.....TTTTT.........ddKKKK..............BBBBBBBB.dd.............BBBBBBBB...",
+".rrccccBBBBB....odd.......TTTTTTT........dd.KKK..BBBBBBBB....BBBBBBBB.dd.............BBBBBBBB...",
+".rrccccBBBBB.....dd.......TTTTTTT........dd......BBBBBBBB....BBBBBBBB.ddoBBBBBBB.....BBBBBBBB...",
+".rrccccBBBBB.....dddddddddTTTTTTTdddddddddd......BBBBBBBB....BBBBBBBB.dd.BBBBBBB.....BBBBBBBB...",
+".rrccccBBBBB.....dddddddddTTTTTTTdddddddddd......BBBBBBBB....BBBBBBBB.dd.BBBBBBB.....BBBBBBBB...",
+".rrccccBBBBB.BB..dd.......TTTTTTT........dd......BBBBBBBB....BBBBBBBB.dd.BBBBBBB.....BBBBBBBB...",
+".rrccccBBBBB.....dd..i.....TTTTT.........dd......BBBBBBBB....BBBBBBBB.dd.BBBBBBB.....BBBBBBBB...",
+".rrccccBBBBB.BB..dd.BB...................dd......xxxxxxxx....xxxxxxxx.dd.xxxxxxx.....xxxxxxxx...",
+".rr..............dd......................dd......ddddddddddddddddddddddddddddddddddddddddddddd..",
+".rr..............dd......................dd......ddddddddddddddddddddddddddddddddddddddddddddd..",
+".rr..............dd......................dd......ddddddddddddddddddddddddddddddddddddddddddddd..",
+".rr..............dd......................dd......ddddddddddddddddddddddddddddddddddddddddddddd..",
+".rr..............dd........T.............dd.BBB..xxxxxxxx.............dd.xxxxxxx..........dd....",
+".rr.B............dd.......TTT...ww.......dd.BBB..BBBBBBBB.............dd.BBBBBBB..........dd....",
+".rr..............dd........T....ww.......dd.BBB..BBBBBBBB.............dd.BBBBBBB....fffff.dd....",
+".rr..............dd......................dd.BBB..BBBBBBBB.......ww....dd.BBBBBBB....f...f.dd....",
+".rr............B.dd....o.................dd......BBBBBBBB.......ww....dd.BBBBBBB....f...f.dd....",
+".rrdddddddddddddddddddddddddddddddddddddddd......BBBBBBBB.............dd.BBBBBBB....f...f.dd....",
+".rrdddddddddddddddddddddddddddddddddddddddd..........dd..o............dd............f...f.dd....",
+".rr..................................................dd...............dd............f...f.dd....",
+".rr..........o...........................o.......o...dd...............dd............fffff.dd....",
+".rr..................................................dd...............dd..................dd....",
+".rr..................................................dd.............o.dd................m.dd....",
+".rr..........BBBBB...................................dd........o......ddo..............mmmdd....",
+".rr........o.BBBBB.BBBBB.............................dd...............dd.............mmmmmddmmmm",
+".rr................BBBBB....BB.......................dd...............dd.............mmmmmddmmmm",
+".rr..................................................dd...............dd.............mmmmmddmmmm",
+".rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrdddddddddddd.....o..ddddddddd........mmmmmmmmmmddmmmm",
+".rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrdddddddddddd........ddddddddd........mmmmmmmmmmddmmmm",
+".rr..................................................pp.........................mmmmmmmmmmddmmmm",
+".rr................BBBBB.............................pp.........................mmmmmmmmmmddmmmm",
+".rr..........BBBBB.BBBBB.............................pp.........................mmmmmmmmmmddmmmm",
+".rr..........BBBBB...................................pp.........................mmmmmmmmmmddmmmm",
+".rr...............m..................................pp.........................mmmmmmmmmmddmmmm",
+".rr...............m..................................pp.........................mmmmmmmmmmddmmmm",
+".rr.............mmmmm................................pp.............33..........mmmmmmmmmmddmmmm",
+".rr...........mmmmmmmm...............................pp........2222233....aaaaa.mmmmmmmmmmddmmmm",
+".rr.BB........mmmmmmm................................pp........2222233....a..........mmmmmddmmmm",
+".rroBB........mmmmmmm................................pp.............33....a..........mmmmmddmmmm",
+".rr.BB.........................................o.....pppppppppppppppppppppppp........mmmmmddmmmm",
+".rrfffffffffffffffffffffffffffffffffffffffffff.......pppppppppppppppppppppppp.......ommmmmddmmmm",
+".rr.........................o................f.......pp..............................mmmmmddmmmm",
+".rr...................................o......f.......pp............o........aaaaa.........ddmmm.",
+".rr....................o.....................f.......pp...................................dd.m..",
+".rr..............o...........................f.......pp.........................................",
+".rr..........................................f.......pp................o........................",
+".rr..........................................f.......pp..................1111111111.............",
+".rr..........................................f.......pp..................1111111111.......o.mmmm",
+".rr......B...................................f....i..pp..i.....111111....1122222211........mmmmm",
+".rr.....BBB..cccccccccccccccccccccc.cccccccccf.......pp........111111....1122222211.........mmm.",
+".rr......B...cccccccccccccccBBBcccc..c.c.c.c.f.......pp........112211....1122332211........mmmm.",
+".rr..........cccccccccccccccBBBcccc..c.c.c.c.f.......pppppppppp112211....1122332211.........mm..",
+".rr..........cccccccccccccccBBBcccc..c.c.c.c.f.......pppppppppp111111pp..1122222211.............",
+".rr..........cccccccccccccccBBBcccc..........f.......pp........111111pp..1122222211.............",
+".rrrrrrrrrrrrcccccccccccccccccccccc..........f.......pp..............pp..1111111111.............",
+".rrrrrrrrrrrrcccccccccccccccccccccc..o.......f....i..pp..i...........pp..1111111111.............",
+"......o......cccccccccccccccccccccc..........f.......pp.......ppppppppp.........................",
+".............cccccccccccccccccccccc..........f.......pp.......ppppppppp.........................",
+".............cccccccccccccccccccccc....o.....f.......pp..............pp.........................",
+".............cccccccccccccccccccccc..........f.......pp..............pp..1111111111ss1111111111.",
+".............cccccccccccccccccccccc..........f.......pp..............pp..1111111111ss1111111111.",
+".......................................k.....f.......tp..............pp..1111111111ss1111111111.",
+"..RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRkkk...f....t.o................pp..1112222222ss2222222111.",
+"..RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRkkkkk..f......www.t............pppp1112222222ss2222222111.",
+"..RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRkkkkkkk.f.....wwwww.............pppp1112222222ss2222222111.",
+"..RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRkkkkk..f......www..................1112223333ss3333222111.",
+".................cc...................kkkkk..f.......w............o......1112223333ss3333222111.",
+".................cc..........................f.....t...t.................1112223333ss3333222111.",
+".................cc..........................f...........................1112223334444333222111.",
+".................cc..........................f...........................1112223334444333222111.",
+"kkkkkkkkkkkk....cccc................kkkkkkkkkfkkuuu.uu.u.uuuu.uu.uuuuu.u.1112223334444333222111.",
+"kkkkkkkkkkkk....cccc................kkkkkkkkkfkkuu.u..uuu.uuuu.uu.u.uuuu.1112223334444333222111.",
+"kkkkkkkkkkkk.BBBBBBBBBB..ffffffff...kkkkkkkkkfkku...u.u.u...uu..uu.uuu.u.1112223333333333222111.",
+"kkkkkkkkkkkk.BBBBBBBBBB..fccccccf...kkkkkkkkkfkk..uu.uuuuu.uuu..u..uuu.u.1112223333333333222111.",
+"kkkkkkkkkkkk.BBBBBBBBBBcccccccccf...kkkkkkkkkfkk.uuuuu.u.....uuu.uu.uuu..1112223333333333222111.",
+"kkkkkkkkkkkk.BBBBBBBBBB..fcBBBBcf...kkkkkkkkkfkk.uuu....uuuuuuu.uuuu.uou.1112222222222222222111.",
+"kkkkkkkkkkkk.BBBBBBBBBB..fcBBBBcf...kkkkkkkkkfkkuu.uuuu.uuuuuuuuuuuuuuuu.1112222222222222222111.",
+"kkkkkkkkkkkk.BBBBBBBBBB..fcBBBBcf...kkkkkkkkkfkk.u.uuuuu.uu.uuu.uuu.u..u.1112222222222222222111.",
+"kkkkkkkkkkkk.BBBBBBBBBB..fcBBBBcf...kkkkkkkkkfkkuuuuuu.uuuuuuuuuuu..uuuu.1111111111111111111111.",
+"kkkkkkkkkkkk.BBBBBBBBBB..ffffffff...kkkkkkkkkfkku.u...u.uuuu.uuuuu..uuuu.1111111111111111111111.",
+"kkkkkkkkkkkk........................kkkkkkkkkfkkuuuuuuuu.uuu..uuu.u....u.1111111111111111111111.",
+"kkkkkkkkkkkk........................kkkkkkkkkfkk.uuu..uouuu.uuuuuuuuuuu........................."
+],
+"legend": {
+".": "sand",
+"u": "dunes (walkable)",
+"o": "loose rocks",
+"a": "dry wash / dig trench",
+"m": "rock: butte, mesa, ridge, canyon walls (cannot walk)",
+"r": "asphalt highway",
+"d": "dirt street / trail",
+"x": "plank porch",
+"B": "building",
+"f": "fence",
+"c": "concrete",
+"R": "runway",
+"k": "cracked dry lake / crater",
+"p": "stone causeway",
+"1": "pyramid tier 1 (3.5 m)",
+"2": "tier 2 (7 m)",
+"3": "tier 3 (10.5 m)",
+"4": "tier 4 (14 m)",
+"s": "stair",
+"i": "obelisk",
+"w": "water",
+"t": "palm",
+"h": "graves",
+"T": "tent",
+"W": "the wheel",
+"K": "the carousel"
+}
+}
