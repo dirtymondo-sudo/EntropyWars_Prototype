@@ -5331,6 +5331,12 @@ sea has things to sail to.
     to 55 m and leaning east, its foot glowing: the island is found from the Harbour by it, day or night). WHY NO REAL LIGHT: the room
     gives ten point lights for its fifty lit props, in row order (three-renderer.js `HQ_PROP_LIGHT_MAX`), so the Shore and the Harbour
     take them all and the island's `cave_torch` / `brazier` / `campfire` keep only their glow. The night is moonlit and reads without them.
+  - **PASS 5, POLISH (seen on screen, a fifteen-view walk round):** a painted ochre band with bone-white studs under both huts' eaves and
+    a thick thatch edge; door posts and a lintel at the north hut; the lava pools lower and tapered; the sea stacks' tiers closed (sky
+    showed through the joins). THE THREAD STOPPED HERE (five passes): nothing more goes in until mondo has looked.
+  - **FRAME RATE, FINAL:** the cloud still says 0.2 fps at the Landing and 1.2 mid-sea (it said 0.2 and 1.6 before pass 1: no difference
+    it can measure). Triangles drawn, shadow pass included: the Landing 1.62 M -> 2.72 M, mid-sea 1.61 M -> 2.40 M (the Harbour's and
+    the Triangle's work of the same hours is in those numbers; the room has no far cull, so every district's props are drawn from everywhere).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -5357,10 +5363,13 @@ sea has things to sail to.
   gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
   for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
   a ship or raft out at sea; a moving waterspout (this one stands still).
-- **NOT DONE:** polish (pass 5). Nothing
+- **NOT DONE (for after his look):** Nothing
   under the water shows (the sea is opaque from above). No fight set up.
-- **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is a far cull for the whole sea
-  room, the tool row's or the engine's, not fewer props on one island).
+- **WHAT I WOULD DO NEXT (not started):** a far cull / LOD for the whole sea room and its ten lights handed to the props nearest the
+  walker (both the tool row's or the engine's); the tribe's people and proper huts when the models exist; a fight at the shrine or the
+  kraken once the NPC spawn system reaches the zones; things under the water once the sea can be looked into.
+- **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is the far cull above, not fewer
+  props on one island).
 
 ## THE BEACH, THE TRIANGLE — district T (2026-11-16, `docs/areas/beach/districts/T.js`, the Triangle thread)
 

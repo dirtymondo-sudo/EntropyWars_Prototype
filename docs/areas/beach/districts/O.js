@@ -14,7 +14,7 @@
      P03-09  islet (no name) (level 0): a small islet to land on
      + 85 plots with no name, open ocean (every plot of this district not listed above; `ctx.plot` / `ctx.Pxy` tell you whose a square is)
 
-   WHAT STANDS HERE TODAY (passes 1 to 4, 2026-11-16, all SEEN on screen, by day and at 22:30): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
+   WHAT STANDS HERE TODAY (FIVE PASSES, 2026-11-16, all SEEN on screen, by day and at 22:30; the thread STOPPED here and waits mondo's look): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
    are the tool's and the game's); the ocean pack's animals on rings and six fish schools.
    THE VOLCANO ISLAND: dark volcanic ground (plan letters `b` = `dirt_2`, `c` = `scorched` at the cone's foot), the cone (the height map's,
    obsidian, 16 m, never climbed, lava in the crater) with TWO LAVA FLOWS down it (`fall` rows, east and south), black smokers off it; the
@@ -38,8 +38,9 @@
      typed `y: -0.5` + `hover` (this file's `seaAt`); a drawn thing in water is an `arch` row with `y: 0` (`works`); the ocean pack's rocks
      grown big are flat black slabs; `dinosaur_skeleton` is a museum mount; a long `fall` hangs in the air (short ones typed from the BUILT heights, hqTerrainHeight in node: LAVA_H); a Meshy prop
      is about 10,000 triangles (place few).
-   - FRAME RATE: the cloud's software GPU gives 0.2 fps at the Landing and 1.4-2.0 mid-sea before AND after pass 1 (too low to compare);
-     triangles drawn at the Landing 1.62 M -> 2.5 M, mid-sea 1.61 M -> 2.2 M.
+   - FRAME RATE: the cloud's software GPU gives 0.2 fps at the Landing and 1.2-2.0 mid-sea before AND after all five passes (too low to
+     compare); triangles drawn (shadow pass included, the other Beach districts' work of the same hours in it) at the Landing 1.62 M -> 2.72 M,
+     mid-sea 1.61 M -> 2.40 M. It needs a look on a real machine.
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
      tailor(ctx)  before the heights are made: the plan's squares. Turn each plan building ('B') you build back into its ground with
                   ctx.setRect(x0, y0, x1, y1, ch) / ctx.cell[y][x] = ch (the tool refuses to bake while a 'B' is left that nobody builds).
@@ -93,7 +94,10 @@ build(ctx) {
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * (w / 2 + 0.08), 0, sz * (d / 2 + 0.08), 0.16, h + 0.2, WD2, POLE, { seg: 8, uv: 1 });          // corner posts
         a.box(0, h * 0.5, d / 2 + 0.07, w + 0.2, 0.12, 0.08, WD2, POLE); a.box(0, h * 0.5, -d / 2 - 0.07, w + 0.2, 0.12, 0.08, WD2, POLE);                                  // a lashing rail front and back
         for (const sx of [-1, 1]) a.box(sx * (w / 2 + 0.07), h * 0.5, 0, 0.08, 0.12, d + 0.2, WD2, POLE);
+        for (const sz of [-1, 1]) { a.box(0, h - 0.62, sz * (d / 2 + 0.06), w + 0.1, 0.34, 0.05, null, OCHRE); a.P.push({ s: 'box', p: [r2(-w / 2 + 0.5), r2(h - 0.52), r2(sz * (d / 2 + 0.09))], size: [0.14, 0.14, 0.03], tint: BONE, n: Math.max(2, Math.floor((w - 0.6) / 0.7)), step: [0.7, 0, 0] }); }
+        for (const sx of [-1, 1]) { a.box(sx * (w / 2 + 0.06), h - 0.62, 0, 0.05, 0.34, d + 0.1, null, OCHRE); a.P.push({ s: 'box', p: [r2(sx * (w / 2 + 0.09)), r2(h - 0.52), r2(-d / 2 + 0.5)], size: [0.03, 0.14, 0.14], tint: BONE, n: Math.max(2, Math.floor((d - 0.6) / 0.7)), step: [0, 0, 0.7] }); }   // pass 5: a painted band with bone-white studs under the eaves
         a.roof(roofForm, 0, h, 0, w + 2.2, rh, d + 2.2, SHG, THATCH, { gain: 1.7, uv: [1.2, 1.2] });
+        a.box(0, h - 0.16, 0, w + 2.3, 0.16, d + 2.3, SHG, 0xb89448, { gain: 1.6, uv: [0.6, 0.6], top: false, roof: true });                                         // the thatch's thick edge
         a.box(0, h + rh - 0.12, 0, roofForm === 'pyramid' ? 0.5 : w * 0.5, 0.22, 0.5, SHG, 0x8a6a34, { roof: true });                                                 // the ridge cap
         a.box(door.lx, 0, d / 2 + 0.9, door.cw + 1.6, 0.14, 1.6, FLR, 0xb09870); };                                                                                        // a plank step at the door
     /* ── PASS 2, THE HUTS' INSIDES (2026-11-16; seen before: a brown box under a black ceiling). The Shore's way (S.js `inside`), in the
@@ -135,6 +139,7 @@ build(ctx) {
         a.box(door.lx, 3.05, d / 2 + 1.5, door.cw + 2.4, 0.2, 0.26, WD2, POLE);
         for (const x of [-3.4, 3.2]) { a.P.push({ s: 'quad', p: [x, 1.5, r2(d / 2 + 0.065)], size: [0.9, 0.7], key: null, tint: FIRE, glow: 0.75, kind: 'wall' }); for (const k of [-0.22, 0.22]) a.box(x + k, 1.5, d / 2 + 0.09, 0.06, 0.7, 0.05, WD2, POLE); } });   // two barred window holes
     const NH = building('northhut', [114, 12, 116, 14, 'S'], 2.9, { leaf: 'leaf_wooden', keyIn: WD2, floorIn: FLR }, (a, w, d, door) => { hut(a, w, 2.9, d, door, 'pyramid', 3.4); inside(a, w, d, CEIL_N, door); northRoom(a, w, d);
+        for (const sgn of [-1, 1]) { const x = door.lx + sgn * (door.cw / 2 + 0.6); a.cyl(x, 0, d / 2 + 1.3, 0.15, 2.6, WD2, OCHRE, { seg: 8, uv: 1 }); for (const y of [0.8, 1.6]) a.cyl(x, y, d / 2 + 1.3, 0.18, 0.12, null, BONE, { seg: 8 }); } a.box(door.lx, 2.5, d / 2 + 1.3, door.cw + 1.9, 0.16, 0.22, WD2, POLE);
         a.P.push({ s: 'quad', p: [2.0, 1.4, r2(d / 2 + 0.065)], size: [0.8, 0.6], key: null, tint: FIRE, glow: 0.75, kind: 'wall' }); for (const k of [-0.2, 0.2]) a.box(2.0 + k, 1.4, d / 2 + 0.09, 0.06, 0.6, 0.05, WD2, POLE); });
     /* the huts' things (props): few and light (a Meshy prop is 10,000 triangles; the pack ones are a few hundred) */
     In(BIG, 'campfire', 0.4, 0.2, 0, 0, { glow: 0.7, h: 0.5 }); In(BIG, 'skull', 0.4, -BIG.fd / 2 + 0.52, 0, 2.3);
@@ -156,8 +161,8 @@ build(ctx) {
     look('torches', mx(114), mz(17), 0, a => { [[-5.3, -1.8], [-5.3, 3.4], [4.6, -4.4], [5.4, 3.6], [-1.7, 8.6], [2.4, -9.2], [-3.4, -21.5], [-3.4, -27.5], [6.4, -21.5], [6.4, -27.5], [1.6, -31.5]].forEach(q => torch(a, q[0], q[1])); });
     /* lava lying where the two flows end (a glowing sheet a hand over the scorched ground) and THE ASH PLUME over the crater (drawn puffs,
        each a belly and a head, climbing and leaning east with the wind; it is seen from the Harbour) */
-    look('lavafoot_e', r2(gx(112) + 0.9), mz(10), 0, a => { a.cyl(0, -0.55, 0, 2.3, 0.6, 'lava', 0xffffff, { seg: 9, glow: 0.8 }); a.cyl(1.9, -0.6, 1.2, 1.1, 0.6, 'lava', 0xffffff, { seg: 7, glow: 0.8 }); });
-    look('lavafoot_s', mx(105), r2(gz(16) + 0.9), 0, a => { a.cyl(0, -0.55, 0, 2.1, 0.6, 'lava', 0xffffff, { seg: 9, glow: 0.8 }); a.cyl(-1.5, -0.6, 1.4, 1.0, 0.6, 'lava', 0xffffff, { seg: 7, glow: 0.8 }); });
+    look('lavafoot_e', r2(gx(112) + 0.9), mz(10), 0, a => { a.cyl(0, -0.62, 0, 2.6, 0.6, 'lava', 0xffffff, { r2: 2.2, seg: 9, glow: 0.8 }); a.cyl(1.9, -0.66, 1.2, 1.3, 0.6, 'lava', 0xffffff, { r2: 1.0, seg: 7, glow: 0.8 }); });
+    look('lavafoot_s', mx(105), r2(gz(16) + 0.9), 0, a => { a.cyl(0, -0.62, 0, 2.4, 0.6, 'lava', 0xffffff, { r2: 2.0, seg: 9, glow: 0.8 }); a.cyl(-1.5, -0.66, 1.4, 1.2, 0.6, 'lava', 0xffffff, { r2: 0.9, seg: 7, glow: 0.8 }); });
     works(ctx, 'plume', mx(105.5), mz(9.5), a => { [[0, 17, 0, 3.2, 0x4c4a4c], [1.5, 21, -0.5, 4.4, 0x5a585a], [4, 26, -1, 5.8, 0x6a686a], [8, 32, -1.5, 7.4, 0x7a787c], [14, 38, -2.5, 9.2, 0x8a888e], [22, 44, -4, 11.5, 0x9a989e], [33, 49, -6, 13.5, 0xaaa8ae]].forEach(q => {
         a.cyl(q[0], r2(q[1] - q[3] * 0.8), q[2], 0.05, r2(q[3] * 0.8), null, q[4] - 0x101010, { r2: q[3], seg: 12, cap: false, ds: true, glow: 0.4 });   /* a belly closed to a point (SEEN from under it: an open belly is a ring round a hole) */ a.P.push({ s: 'dome', p: [q[0], q[1], q[2]], r: q[3], h: r2(q[3] * 0.8), seg: 12, rings: 4, tint: q[4], glow: 0.3 }); });
         a.cyl(0, 15.6, 0, 3.0, 2.2, null, 0xff5a10, { r2: 2.2, seg: 10, cap: false, ds: true, glow: 0.9 }); });   // the plume's foot glows with the crater
@@ -222,7 +227,7 @@ place(ctx) {
            rocks grown to this size are flat black slabs; straight prisms read as a stepped cake; a dark tint on `rocks_5` is black here) */
         const stack = (x, z, r, h) => { const tiers = Math.max(2, Math.round(h / 2.2)); let y = -3.6, rr = r, cx = x, cz = z;
             for (let t = 0; t < tiers; t++) { const th = t ? (h / tiers) * (0.8 + rn() * 0.4) : 3.6 + h / tiers, r1 = rr * (t === tiers - 1 ? 0.5 : 0.8 + rn() * 0.1);
-                a.cyl(r2(cx), r2(y), r2(cz), r2(rr), r2(th), 'rocks_5', t % 2 ? 0xe4e4ea : 0xcfcfd8, { r2: r2(r1), seg: 7, a0: Math.round(rn() * 50), uv: [3.5, 3.5] }); y += th; rr = r1 * 1.04; cx += (rn() - 0.5) * r * 0.1; cz += (rn() - 0.5) * r * 0.1; } };
+                a.cyl(r2(cx), r2(y), r2(cz), r2(rr), r2(th), 'rocks_5', t % 2 ? 0xe4e4ea : 0xcfcfd8, { r2: r2(r1), seg: 7, a0: Math.round(rn() * 50), uv: [3.5, 3.5] }); y += th - 0.3; rr = r1 * 1.04;   /* (each tier starts 0.3 m inside the one under it: SEEN, sky showed through the joins) */ cx += (rn() - 0.5) * r * 0.1; cz += (rn() - 0.5) * r * 0.1; } };
         [[-7, -3, 3.4, 9], [0, 0, 4.6, 14], [4, -7, 2.6, 6], [-3, 7, 3.0, 7.5], [8, 4, 3.6, 10.5], [-11, 4, 2.2, 4], [12, -3, 2.4, 5], [3, 9, 1.8, 2.2]].forEach(q => stack(q[0], q[1], q[2], q[3])); });
     [[52, 17], [54, 18], [55, 16], [53, 20], [56, 19]].forEach(q => seaAt(ctx, 'ocean_rock_7', q[0], q[1], -1.6, { h: 1.2 }));   // their blockers: a small rock inside each stack's foot (the skiff and the swimmer go round)
     seaAt(ctx, 'ocean_seal_resting', 54, 20, 0.0, { swim: false }); swimmer('ocean_seal', 50, 17, { swim: { r: 4, v: 1.4, bob: 0.2 } }); swimmer('ocean_seal', 57, 21, { swim: { r: 5, v: 1.2, bob: 0.2 } });
