@@ -13048,6 +13048,15 @@ models", without waiting for his OK. Plan picture: `docs/plans/world-zones/leyli
   down the adit's walls, a lit crystal on each (drawn, `cav:adit`), a wheelbarrow, an anvil, a lever frame, big crystals on the Ledge.
   THE CAMP ON THE SHELF: a tent, a fire, firewood, bedrolls, a lantern by the spring. Seen on screen (Level −6, the cells, the adit).
   Tool: a district may also export `dress2` .. `dress5` (one stage a pass, the same ctx).
+- **PASS 3, THE DRESSING (K.js `dress3`, about 145 props, every key from the FITS list in "THE CAVERN, THE ZONE KIT").** The Crossroads:
+  four lantern posts, a trail sign at each way out, a chest, packs, papers, standing stones. The Terrace: reeds, a frog, pool rocks,
+  glowing caps. The River Chamber: a rowboat at the ford, mooring piles and a bollard at the plank; the Grotto: mushrooms. The Long
+  Ramp: a hauling stage (crates, a cable drum, a hand truck). The hot side: black smokers (`sea_vent`) by the lava, asteroid boulders,
+  a stone arch before Hell's door, skulls, bollards at both ends of the rope bridge. The High Tier: a ring of old stones and a
+  trilithon, the surveyor's telescope. The Mouth: the last camp (tent, fire, bedrolls), a signpost and a lantern at the stair's head, a
+  brass telescope on the Lip. Three bats under every roof, cobwebs and loose stone in the corners. NINE MORE PEOPLE (mondo 11-16: more
+  NPCs): gnomes at the camp, goblins at the river and the ramp, a reptilian, a ghoul, an antperson at the bridge, a man in black
+  in Level −6 (27 in the room now). Frame rate at the Crossroads after the pass: 1.5 FPS (unchanged).
 
 ## LEYLINES, STONEHENGE — the pilot district (2026-11-16, second side; file `docs/areas/leylines/districts/S.js`, 9 plots)
 
