@@ -12586,3 +12586,11 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
   the rock is square blocks 3.5 m wide (no cave-rock model exists: NEEDS A MODEL); H and A are a first build only (their rows on the
   board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
 
+- **PASS 2, THE INSIDE (the Temple of the Deep's dry room; seen on screen, three views, no errors):** the hall reads as a rotunda: a ring
+  of twelve 9.4 m columns under a ring beam with a gilt line (`gold` = the better gilt sheet), a false dome (a two-sided `dome` part) with a
+  lit eye, pilasters and a gilt band round the four walls, surrounds on the three doors (the vault door's with a small pediment; the
+  drowned stair's hanging), the Oracle pool's kerb and a tiled walk round it (`urban:TileMarble1a`, the nearest sheet to a mosaic), the
+  dais's balustrade, the throne's canopy on four columns, a tiled field and the carpet under it, the altar, lions at the stair's foot,
+  busts and urns along the walls, amphorae, gold bars, and by the bay's bulkhead the air rack and wetsuit rail (you land there dry).
+  The old room's own pieces all stand: dais + stair, the Oracle in its pool (the tape), throne, six braziers, columns, four windows with
+  their shafts, the tapestry, the chest, the skulls, the paper, the pool's fish, both residents with their lines, the fight marker.
