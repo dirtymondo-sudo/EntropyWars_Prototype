@@ -10,7 +10,8 @@
    mouths high in the Junction's walls, two street grates in the Outfall's roof, four real bulbs. PASS 2 (THE ROOMS' INSIDES): the Pump Room (second pump, compressor, plinths, risers, the engineer's desk, lockers), the Pumping Station's crew corner, the Gallery's watch post + store,
    the Junction's rest stop + stores + benches, the Cistern's boat, life rings, net, the Outfall's screen and what it caught. PASS 3 (THE DRESSING): name plates + warnings by the lamps, a scene in a bend of each culvert plot (a sleeper's corner, flood works, bones,
    a job half done, storm rubbish, mushrooms + frogs, a stash, a fall of brick, the bats' roost), bats in the halls, an eel, crabs, a cat, graffiti, chains. PASS 4 (THE ATMOSPHERE): flickering tubes, swaying lanterns, mist at the falls, steam, red call points, eyes under the dead lamps,
-   daylight under the Outfall's grates. NOT YET: drips and a district's own air (they need `airZones` in the tool: asked on the board), water sound (the game has none). */
+   daylight under the Outfall's grates. PASS 5 (POLISH): the pilasters' bands, the plinths and the screen's posts wear the concrete sheet (a dark bare tint drew as shiny plate), the lit brick is paler. FIVE PASSES DONE: the thread stops here until mondo has looked.
+   NOT YET: drips and a district's own air (they need `airZones` in the tool: asked on the board), water sound (the game has none). */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
 
@@ -42,11 +43,11 @@ function wallKit(ctx, id) {
                 /* PASS 4: under a dead lamp something looks back (two lit points at the wall's foot; the game has no rat model yet) */
                 [-0.07, 0.07].forEach(u => K.box(f, 0.9 + u, 0.16, 0.12, 0.045, 0.045, 0.04, { tint: 0xff6a30, glow: 1 })); return; }
             K.box(f, 0, y, 0.13, 0.3, 0.44, 0.14, { tint: color, glow: 1 }); K.box(f, 0, y + 0.2, 0.21, 0.34, 0.04, 0.03, { tint: IRON }); K.box(f, 0, y - 0.02, 0.21, 0.04, 0.48, 0.03, { tint: IRON });
-            const pale = (c => { const m = v => Math.round(v + (255 - v) * 0.45); return (m(c >> 16 & 255) << 16) | (m(c >> 8 & 255) << 8) | m(c & 255); })(color);   /* the lit brick is paler than the lens */
+            const pale = (c => { const m = v => Math.round(v + (255 - v) * 0.6); return (m(c >> 16 & 255) << 16) | (m(c >> 8 & 255) << 8) | m(c & 255); })(color);   /* the lit brick is paler than the lens */
             [[1.1, 1.3, 0.22, y - 0.45], [2.1, 2.3, 0.14, y - 1.1], [3.3, 3.2, 0.08, 0.35], [4.8, 3.9, 0.04, 0.12]].forEach((w, k) => K.box(f, 0, w[3], 0.075 - k * 0.012, w[0], w[1], 0.02, { key: 'bricks_2', tint: pale, glow: w[2], top: false, uv: 3.5 }));
             const ns = f.d === 'n' || f.d === 's'; [[1.6, 1.1, 0.14, 0.75], [3.0, 2.2, 0.08, 1.2]].forEach((w, k) => parts.push({ s: 'quad', flat: true, p: K.at(f, 0, 0.035 - k * 0.01, w[3]), size: ns ? [w[0], w[1]] : [w[1], w[0]], key: sheet, tint: pale, glow: w[2] })); },
         /* a brick pilaster, floor to the vault's spring, a stone band on it */
-        pilaster(f) { K.box(f, 0, 0, 0.16, 0.95, 3.1, 0.34, { key: 'bricks_2', tint: 0x8a8274, gain: 1.15, top: false, uv: 3.5 }); K.box(f, 0, 3.1, 0.2, 1.15, 0.22, 0.44, { tint: 0x4a4843 }); K.box(f, 0, 0, 0.2, 1.1, 0.3, 0.42, { tint: 0x4a4843 }); },
+        pilaster(f) { K.box(f, 0, 0, 0.16, 0.95, 3.1, 0.34, { key: 'bricks_2', tint: 0x8a8274, gain: 1.15, top: false, uv: 3.5 }); K.box(f, 0, 3.1, 0.2, 1.15, 0.22, 0.44, { key: 'urban:ConcreteStriped2c', tint: 0x8a8680 }); K.box(f, 0, 0, 0.2, 1.1, 0.3, 0.42, { key: 'urban:ConcreteStriped2c', tint: 0x8a8680 }); },
         /* a stain down the wall */
         streak(f, rnd) { const w = 0.3 + rnd() * 0.7, h = 1.1 + rnd() * 1.6; K.box(f, r2((rnd() - 0.5) * 1.8), r2(0.4 + rnd() * 0.5), 0.04, r2(w), r2(h), 0.025, { key: 'bricks_2', tint: 0x1e2414, top: false }); },
         /* a small drain outlet: a rusted collar, the black in it, the run under it */
@@ -164,7 +165,7 @@ module.exports = {
             /* ── PASS 2, THE ROOMS' INSIDES: drawn pieces of each room (plinths, risers, the Outfall's screen) ── */
             if (p.id === 'P04-00') {   // THE PUMP ROOM: a cast plinth under each machine, a riser from each up into the vault, a checker-plate walk to the desk
                 const L = (lx, ly) => [ctx.r2(ctx.gcx(p.sx + lx) - (ctx.gx(p.sx) + 21)), ctx.r2(ctx.gcz(p.sy + ly) - (ctx.gz(p.sy) + 21))];
-                [[5, 3], [7, 3], [8, 4]].forEach(q => { const c = L(q[0], q[1]); K.parts.push({ s: 'box', p: [c[0], 0, c[1]], size: [2.9, 0.09, 1.9], tint: 0x44443f });
+                [[5, 3], [7, 3], [8, 4]].forEach(q => { const c = L(q[0], q[1]); K.parts.push({ s: 'box', p: [c[0], 0, c[1]], size: [2.9, 0.09, 1.9], key: 'urban:ConcreteStriped2c', tint: 0x8a8680 });
                     K.parts.push({ s: 'cyl', p: [c[0] + 0.9, 0.09, c[1] - 0.75], r: 0.16, h: ctx.r2(K.H - 0.6), key: RUSTK, tint: 0x6a3f24, seg: 8, cap: false }); K.parts.push({ s: 'cyl', p: [c[0] + 0.9, 1.5, c[1] - 0.75], r: 0.23, h: 0.12, tint: IRON, seg: 8 }); });
                 for (let lx = 3; lx <= 9; lx++) { const c = L(lx, 5); K.parts.push({ s: 'quad', flat: true, p: [c[0], 0.025, c[1] + 1.55], size: [3.5, 0.3], tint: 0xc8a018, key: 'urban:ConcreteStriped1e' }); }
             }
@@ -172,7 +173,7 @@ module.exports = {
                 const ox = ctx.gx(p.sx) + 21, oz = ctx.gz(p.sy) + 21, x0 = ctx.gx(p.sx + 4) - ox, x1 = ctx.gx(p.sx + 9) - ox, z = ctx.r2(ctx.gz(p.sy + 9) - oz);
                 for (let x = x0 + 0.2; x < x1; x += 0.42) K.parts.push({ s: 'box', p: [ctx.r2(x), -0.9, z], size: [0.07, 2.5, 0.07], tint: IRON });
                 [-0.1, 0.8, 1.5].forEach(y => K.parts.push({ s: 'box', p: [ctx.r2((x0 + x1) / 2), y, z], size: [ctx.r2(x1 - x0), 0.1, 0.12], tint: IRON }));
-                [x0, x1].forEach(x => K.parts.push({ s: 'box', p: [ctx.r2(x), -0.9, z], size: [0.3, 2.8, 0.3], tint: 0x3a3a38 }));
+                [x0, x1].forEach(x => K.parts.push({ s: 'box', p: [ctx.r2(x), -0.9, z], size: [0.3, 2.8, 0.3], key: 'urban:ConcreteStriped2c', tint: 0x8a8680 }));
             }
             if (p.id === 'P05-00') {   // THE INSPECTION GALLERY: a steel deck plate on the gallery, a lit window strip of gauges over the desk
                 const ox = ctx.gx(p.sx) + 21, oz = ctx.gz(p.sy) + 21; K.parts.push({ s: 'quad', flat: true, p: [ctx.r2(ctx.gx(p.sx + 9.5) - ox), 1.63, ctx.r2(ctx.gz(p.sy + 4) - oz)], size: [10.2, 13.6], key: 'urban:MetalSubwayGrill2a', tint: 0x8a8e90 }); }

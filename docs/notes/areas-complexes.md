@@ -7933,6 +7933,16 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   newspaper bundle, a paper sheet, a round drain, a mug, a camera, the skull pile 38 thousand). The repeated Meshy litter was swapped for
   the PSX pack's low-poly pieces (cans, bricks, bottles, nails), the skull pile for Halloween-pack parts, two cameras and two mugs out:
   now 1,843 calls / 2.79 M. The frame rate the software probe prints is noise (10 and 21 on the same view), so only these counts are true.
+- **PASS 5, POLISH (an eye-level walk, 12 stops, then 8 final views):** FOUND AND FIXED: the pilasters' stone bands, the pump plinths
+  and the screen's posts drew as shiny white plate (a bare part whose tint is dark and grey is read as METAL by `_hqArchSurface`:
+  a concrete piece down here needs a sheet, `urban:ConcreteStriped2c` under `0x8a8680`); the lit brick by a lamp was still a tan slab
+  up close (60 % paler now). Nothing floats or stands in a walk at the 20 stops seen.
+- **WHERE IT STANDS: FIVE PASSES LIVE, THE THREAD HAS STOPPED** (the brief's limit) and waits mondo's look. Final count at the proof
+  view: 1,951 calls / 3.17 M triangles with every district's newest dressing in the room (the other four districts grew from 408 to
+  about 700 props during these passes; W alone is about 395 props + its 15 kit rows).
+  WHAT I WOULD DO NEXT: (1) drips + spores once the tool has `airZones`; (2) LODs or low-poly stand-ins for the Meshy machines, the
+  one real cost left; (3) a real light share in the tool so the culverts can have a few cast lights; (4) the PSX pack's round tunnel
+  pieces (`psx_tunnel_mp_1_*`) as side pipes to look into, never tried on screen; (5) the bystanders are still the first build's four.
 - **FPS at the proof view** (after pass 2: 3.2, 1,302 calls, 2.05 M triangles; the room also grew a fifth row, district R, in between) (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
   1.44 M triangles); after pass 1 2.1 to 2.7 (1,142 calls, 1.58 M). The kit is about ten materials a plot; a plot's row is culled whole.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
