@@ -11377,6 +11377,27 @@ renderer; 1.4 after, with the whole midway in view).
   poster boards), a night look, air, dressing on every plot, people (15). Lacks = the missing models above, residents with a day, its
   own fights, sound, reflecting mirrors, a walk-in fortune tent, upper levels (the high wire's platforms are drawn, not walked).
 
+**THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; one more pass on top of the five, then STOPPED again).**
+The whole of docs/plans/WISHLIST_MODELS_ADDED.md was read. Placed, and the stand-in taken out:
+- `ferris_wheel_big` (18 m, `face: 0` shows its disc to the south) for the 6.5 m code wheel · `cage_wagon` for the drawn cage (the lion
+  cannot be set inside the model: it has a rail pen beside it) · `plush_prizes` at the back of every game stall and in the arcade for the
+  painted boxes · eight `bleacher_stand` in two banks for the drawn curved banks (`face` = `atan2(-cos t, sin t)` turns each to the ring)
+  · `trapeze_rig` over the ring for the drawn trapezes · `funhouse_mirror` against a shut side of every maze square + two outside ·
+  `circus_posters` hung at `y: 1.0` between two drawn posts (`posters()`) for the Woods' hoarding · `clothes_line` for the drawn wash line
+  · `iron_lamp_post` for the indoor globe lamps (the drawn lit core moved to 2.9 m) · `outhouse` for the plastic toilet cabins ·
+  `balloons`, `cotton_candy_cart`, `ring_of_fire`, `unicycle`, `juggling_pins`.
+- From the other districts' asks: camel, peacock, parrot, hay_rack, hay_bale, water_trough, saddle, wheelbarrow, pitchfork, canvas_tent,
+  camper_van, picnic_table, patio_umbrella, drinking_fountain, market_stall, hand_cart, cheval_mirror, gong, top_hat, dartboard, hookah,
+  lit_candle, wooden_barrel, wooden_ladder, tumbleweed.
+- **`string_lights` LEARNED THE HARD WAY:** it is 4 m between two stout posts, 2.4 m high, and it does not glow. Along a stall's front it
+  fenced the counter off; across a 14 m street its posts stood in the walk. It stands along free street edges only (six). The drawn bulbs
+  under the bunting went with it, so the bunting is unlit at night now (the eaves', awnings' and name boards' bulbs stayed).
+- **STILL DRAWN (no model exists):** the Big Top, the game stalls and marquees, the gate, bunting, flag poles, the maze's glass walls,
+  the high wire. `market_stall` is one small eastern stall with no name board: one stands by the children's corner; it does not replace
+  a named game stall.
+- **SEEN:** probe-fast.js, three runs. Draw calls at the midway view 570 (580 before the pass); FPS readings 1.6 and 0.6 against 1.6
+  before, the same noisy software renderer.
+
 **FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
 `carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
 `play_slide / play_swing / play_sandbox`, `teacups`. Stalls + games: `popcorn_cart`, `hot_dog_stand`, `money_wheel`, `claw_machine`,
@@ -11413,6 +11434,10 @@ posters, a striped cloth sheet, a big ferris wheel, a big top. `bigtop` and `fes
 10. Eight more people, all existing units, no lines: mime, chef, luchador, bunny girl, a second clown, cyclops, wizard (and a chef at the
     hot dog stand). Boards read THE GREATEST SHOW, TWICE DAILY, MENAGERIE, FORTUNES TOLD, THE MERMAID, THIS WAY TO THE BIG TOP.
 11. A boxing booth (the ring model + a luchador) stands by the wheel; a LEMONADE stall by the gate.
+12. (the model pass) The lion stands in a small rail pen beside the cage wagon model, not inside it.
+13. (the model pass) The trapeze rig stands in the middle of the ring; the drawn high wire and its two platforms stayed.
+14. (the model pass) The game stalls, the Big Top and the gate stay drawn: the list has no model for them.
+15. (the model pass) The light strings stand at six free street edges only; the bunting has no bulbs at night any more.
 
 ## THE SEWERS, DISTRICT W — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/W.js`, 15 plots)
 
