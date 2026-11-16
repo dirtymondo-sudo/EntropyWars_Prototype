@@ -72289,7 +72289,11 @@ const ThreeRenderer = (function () {
         /* THE HALLS (D.U.M.B., 2026-09-17): a keyed wall material is made ONCE per sheet — a floor plan's traced walls (info.planWalls) are hundreds of rows in one sheet */
         var keyedMats = {};
         var keyedMat = function (key) {
-            if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); if (km.map) _emissiveTerrainMat(km, key, km.map); keyedMats[key] = km; }   // THE HOLO SIM (2026-10-20): a self-lit sheet's rims glow on a wall row (the projected blocks)
+            if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); if (km.map) _emissiveTerrainMat(km, key, km.map);
+                /* THE CHAIN-LINK (2026-11-16, the Desert's Area 51: the base fence drew as a solid checkered wall): a wall row in a chain-link sheet is
+                   see-through. The sheet's holes are clear in the file; the wall never read them. Blended (far off the mesh reads as a grey veil, not a wall), two-sided, casts no shadow. */
+                if (/FenceChainlink/.test(key)) { km.transparent = true; km.alphaTest = 0.02; km.depthWrite = false; km.side = THREE.DoubleSide; km._ew_hqChain = true; }
+                keyedMats[key] = km; }   // THE HOLO SIM (2026-10-20): a self-lit sheet's rims glow on a wall row (the projected blocks)
             return keyedMats[key];
         };
         /* A WALL'S OWN TINT (2026-10-28, mondo: "they are tinted and i cant change them"): a wall row with `tint` wears that colour
@@ -72344,7 +72348,7 @@ const ThreeRenderer = (function () {
                (2026-10-24: every wall row now, the yard's rule was the only one at the board's density) */
             _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (!w.key && !w.glass && !Array.isArray(wm)) ? TS * sheetLook.cliffZoom : TS);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
             if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
-            m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; if (!w.glass) { m.renderOrder = 1; m.castShadow = !w.plan; } G.add(m);
+            m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; if (!w.glass) { m.renderOrder = 1; m.castShadow = !w.plan && !wm._ew_hqChain; } G.add(m);
             if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
         };
         /* THE STANDS (2026-09-26): the tier rows (data.js hqStandBowl) are merged into one mesh per sheet, their seats instanced */

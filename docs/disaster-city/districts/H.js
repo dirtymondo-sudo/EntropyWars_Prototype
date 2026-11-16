@@ -89,7 +89,9 @@ B['P07-04-B1'] = { row: { storeys: 1 }, parts(door) { const a = sheet();
 
 /* 7 · APARTMENTS A — the repeatable block: stone foot, terracotta floors, two bay stacks, a cornice, a water tank */
 function apartments(sx, sz, st, tint, baySide, door) { const a = sheet(), h = st * 3.5;
-    if (door) a.shell(sx, 3.5, sz, STUCCO, 0xe6dfd0, door); else a.box(0, 0, 0, sx + 0.1, 3.5, sz + 0.1, STUCCO, 0xe6dfd0, { top: false });   // a walk-in's ground floor has the real doorway (11-14, the residents' bedrooms) a.box(0, 3.5, 0, sx + 0.1, h - 3.5, sz + 0.1, G_RES, tint, { top: false, glow: 0.12 });
+    if (door) a.shell(sx, 3.5, sz, STUCCO, 0xe6dfd0, door); else a.box(0, 0, 0, sx + 0.1, 3.5, sz + 0.1, STUCCO, 0xe6dfd0, { top: false });   // a walk-in's ground floor has the real doorway (11-14, the residents' bedrooms)
+    /* (11-16: this line had slid into the comment above on 11-14, so Apartments A stood for two days as a ground floor, two bay columns and a roof in the air) */
+    a.box(0, 3.5, 0, sx + 0.1, h - 3.5, sz + 0.1, G_RES, tint, { top: false, glow: 0.12 });
     a.box(0, h, 0, sx + 1.1, 0.6, sz + 1.1, ALU, 0xf2ecde, { under: true }); a.box(0, h + 0.6, 0, sx, 0.7, sz, BRICK, 0xb86a58, { keyTop: CONC, tintTop: 0x8a8a86 });
     const n = { W: [-1, 0], E: [1, 0], N: [0, -1], S: [0, 1] }[baySide];
     for (const o of [-0.28, 0.28]) { if (n[0]) a.box(n[0] * (sx / 2 + 0.6), 3.5, o * sz, 1.2, h - 5.25, 3.2, G_RES, 0xf0e6d6, { glow: 0.12 }); else a.box(o * sx, 3.5, n[1] * (sz / 2 + 0.6), 3.2, h - 5.25, 1.2, G_RES, 0xf0e6d6, { glow: 0.12 }); }
@@ -428,7 +430,7 @@ DET['P04-06-B2'] = a => { const K = kit(a), TR = [0xfff0e0, 0xf6f0e0, 0xeef4fa],
         K.on('N', 8.8, x, 0, 5.95, 0.5, 0.1, MARBLE, STONE);
         K.frames('N', 8.8, [x - 1.3, x + 1.3], 4.6, 1.3, 1.8, STUCCO, TR[i]); K.frames('N', 8.8, [x - 1.3, x + 1.3], 7.8, 1.3, 1.8, STUCCO, TR[i]); K.frames('N', 8.8, [x + 1.2], 1.4, 1.5, 1.6, STUCCO, TR[i]);
         K.on('N', 8.8, x - 0.9, 2.95, 1.7, 0.14, 0.8, null, DR[i], { under: true }); K.on('N', 8.8, x - 0.9, 2.8, 1.4, 0.15, 0.2, STUCCO, TR[i]);
-        for (const o of [-1.15, 1.15]) a.box(x + o, 0.5, -9.9, 0.06, 0.9, 1.4, METAL, DARK);
+        for (const o of [-1.15, 1.15]) { a.box(x + o, 1.38, -9.9, 0.06, 0.06, 1.4, METAL, DARK); a.P.push({ s: 'box', p: [x + o, 0.5, -10.55], size: [0.04, 0.88, 0.04], key: METAL, tint: DARK, n: 5, step: [0, 0, 0.325] }); }   // (11-16: a top rail on pickets; it was a solid plate)
         K.on('N', 8.8, x, hh - 0.55, 5.85, 0.3, 0.3, STUCCO, TR[i]); K.on('N', 8.8, x, hh - 0.2, 5.95, 0.2, 0.45, STUCCO, TR[i]);
         K.lamp('N', 8.8, x - 1.9, 2.5);
         a.box(x + 1.9, hh + 0.4, 3, 0.9, 3.4, 0.9, BRICK, 0xc07860, { roof: true }); a.box(x + 1.9, hh + 3.8, 3, 1.1, 0.18, 1.1, CONC1, 0xd8d4c8, { roof: true }); a.cyl(x + 1.9, hh + 3.98, 3, 0.18, 0.45, null, 0x9a5a3c, { seg: 8, roof: true });
@@ -904,7 +906,7 @@ IN2['P06-05-B1'] = K => { const a = K.a, at = K.at;
    reads as New York. Limestone and tan brick, brownstone on the low street, black iron fire escapes, dark glass at street level; the News
    office's tiers became a wedge tower with a copper globe; lit billboards and a news ticker on the plaza corner; street stairs under green
    globes at the Transit court; a star-shaped stone base on the Memorial walk; wooden water towers; yellow cabs at the kerbs (NO steam chimneys in the road: mondo 11-15, out),
-   carts, news boxes, a sidewalk shed. The tower keeps its look (glow strips on its setbacks + a red beacon: glow only, no lights).
+   carts, news boxes (the sidewalk shed is out, 11-16). The tower keeps its look (glow strips on its setbacks + a red beacon: glow only, no lights).
    Every building keeps its name, use, doors and roof route. NYC[bid] = a third parts list per building, NYC_TINT[bid] = its colour swaps,
    NYC_OPEN = more open pieces, NYC_PROPS = street props (blockers centred on whole 3.5 m squares, decor off centre). ── */
 const IRON = 0x24262a, LIME = 0xe8dcc0, TAN = 0xc9a074, CAB = 0xf2c200, CU_G = 0x5fae9c;
@@ -921,10 +923,13 @@ function nycWedge(a) { const y0 = 11.1, H = 24.5, R = y0 + H + 0.7, gx = -2.5, g
     a.cyl(gx, R + 4.15, gz, 3.3, 0.3, ALU, 0x3f7a6c, { seg: 24, ri: 2.95 }); a.cyl(gx, R + 5.8, gz, 2.7, 0.2, ALU, 0x3f7a6c, { seg: 24, ri: 2.5 });
     a.cyl(gx, R + 7.25, gz, 0.08, 1.6, ALU, 0xd8dce0, { seg: 5 }); a.cyl(gx, R + 8.85, gz, 0.2, 0.3, null, 0xff3020, { seg: 8, glow: 1 }); }
 /* a black iron fire escape on a wall facing ±z (s = +1 south, −1 north): a landing per floor, rails, a flight between floors, a drop ladder */
-function fireEscape(a, s, half, x0, w, floors) {
+function fireEscape(a, s, half, x0, w, floors) { const zo = s * (half + 1.28), np = Math.round(w / 0.35);
     for (let f = 1; f <= floors; f++) { const y = f * 3.5, z = s * (half + 0.65);
-        a.box(x0, y, z, w, 0.1, 1.3, METAL, IRON, { under: true }); a.box(x0, y + 0.1, s * (half + 1.28), w, 0.95, 0.05, METAL, IRON); a.box(x0, y + 1.0, s * (half + 1.28), w, 0.06, 0.08, METAL, IRON);
-        for (const e of [-1, 1]) a.box(x0 + e * (w / 2 - 0.03), y + 0.1, z, 0.05, 0.95, 1.3, METAL, IRON);
+        a.box(x0, y, z, w, 0.1, 1.3, METAL, IRON, { under: true });
+        /* (11-16: the rails are BARS. They were solid plates 0.95 m high, a black band across every floor of the front) */
+        for (const h of [0.1, 0.55, 1.0]) a.box(x0, y + h, zo, w, 0.05, 0.05, METAL, IRON);
+        a.P.push({ s: 'box', p: [x0 - w / 2 + 0.03, y + 0.1, zo], size: [0.035, 0.9, 0.035], key: METAL, tint: IRON, n: np + 1, step: [(w - 0.06) / np, 0, 0] });
+        for (const e of [-1, 1]) { for (const h of [0.55, 1.0]) a.box(x0 + e * (w / 2 - 0.03), y + h, z, 0.05, 0.05, 1.3, METAL, IRON); a.box(x0 + e * (w / 2 - 0.03), y + 0.1, zo, 0.06, 0.95, 0.06, METAL, IRON); }
         if (f < floors) { const d = f % 2 ? 1 : -1; a.P.push({ s: 'box', p: [x0 + d * (-w / 2 + 1.0), y + 0.44, s * (half + 0.85)], size: [0.62, 0.07, 0.75], key: METAL, tint: IRON, n: 7, step: [d * 0.62, 0.44, 0] }); } }
     for (const e of [-0.3, 0.3]) a.box(x0 + w / 2 - 0.8 + e, 1.2, s * (half + 1.2), 0.05, 2.3, 0.05, METAL, IRON); }
 /* a wooden roof water tower on a steel stand (y = the roof) */
@@ -962,46 +967,62 @@ NYC['P07-04-B2'] = a => { fireEscape(a, 1, 12.25, 2.2, 7, 4); fireEscape(a, -1, 
 NYC['P04-06-B1'] = a => waterTower(a, 3.5, 21.7, -6.2, 1.6);
 /* the Townhouse row: brownstone, high stoops with iron rails and newels, iron area railings, a water tower */
 NYC['P04-06-B2'] = a => { for (let i = 0; i < 3; i++) { const x = -5.85 + i * 5.85;
-        a.box(x, 0, -10.65, 2.4, 0.25, 0.5, STUCCO, 0x7a4c3a); for (const o of [-1.15, 1.15]) { a.box(x + o, 0, -10.85, 0.16, 1.15, 0.16, METAL, IRON); a.box(x + o, 1.0, -10.2, 0.05, 0.05, 1.4, METAL, IRON); }
-        for (const o of [-2.3, 2.0]) a.box(x + o, 0, -9.25, 1.0, 0.95, 0.04, METAL, IRON); }
+        a.box(x, 0, -10.65, 2.4, 0.25, 0.5, STUCCO, 0x8a5a44); for (const o of [-1.15, 1.15]) { a.box(x + o, 0, -10.85, 0.16, 1.45, 0.16, METAL, IRON); a.box(x + o, 1.45, -10.85, 0.24, 0.08, 0.24, METAL, IRON); }
+        /* (11-16: the area railings are bars: a top and a foot rail on pickets. They were solid black plates a metre wide beside each stoop) */
+        for (const o of [-2.3, 2.0]) { a.box(x + o, 0.9, -9.25, 1.0, 0.05, 0.05, METAL, IRON); a.box(x + o, 0.1, -9.25, 1.0, 0.04, 0.04, METAL, IRON); a.P.push({ s: 'box', p: [x + o - 0.47, 0, -9.25], size: [0.035, 0.98, 0.035], key: METAL, tint: IRON, n: 6, step: [0.188, 0, 0] }); } }
     waterTower(a, 5.85, 10.5, 5.5, 3.4); };
 const NYC_TINT = {
     'P06-05-B1': { 0xc08468: TAN },
     'P04-06-B1': { 0xd88470: TAN, 0xffb098: 0xe8cfa8, 0x8a4a40: 0x6a5040 },
     'P07-04-B2': { 0xe6a288: 0xd4b088, 0xb86a58: 0xa8845c },
-    'P04-06-B2': { 0xe08a72: 0x9e6248, 0xf0dca0: 0xae7454, 0x88a8c4: 0x965a40, 0x8098b0: 0x4a4e54, 0xe07060: 0x4a4e54, 0xc07860: 0x7a4c3a, 0xfff0e0: 0xd8c4a8, 0xf6f0e0: 0xd8c4a8, 0xeef4fa: 0xd8c4a8 },
+    'P04-06-B2': { glow: 0.3, 0xe08a72: 0xc27c5c, 0xf0dca0: 0xb8805e, 0x88a8c4: 0xb87050, 0x8098b0: 0x4a4e54, 0xe07060: 0x4a4e54, 0xc07860: 0x7a4c3a, 0xfff0e0: 0xd8c4a8, 0xf6f0e0: 0xd8c4a8, 0xeef4fa: 0xd8c4a8 },
 };
-const nycTint = (bid, P) => { const m = NYC_TINT[bid]; if (!m) return P; P.forEach(p => ['tint', 'tintEnd', 'tintTop'].forEach(k => { if (p[k] != null && m[p[k]] != null) p[k] = m[p[k]]; })); return P; };
+/* `glow` in a building's map (11-16): its sheets keep that much of their own light (the brownstone row faces north: it read as black) */
+const nycTint = (bid, P) => { const m = NYC_TINT[bid]; if (!m) return P; P.forEach(p => { ['tint', 'tintEnd', 'tintTop'].forEach(k => { if (p[k] != null && m[p[k]] != null) p[k] = m[p[k]]; });
+    if (m.glow && p.key && !/^txt:/.test(p.key) && !/GlassWindow/.test(p.key) && !(p.glow > 0)) p.glow = m.glow; }); return P; };
 /* a star of stone (five points round a pentagon: every piece convex), radius R, h high, its foot at y */
 function star(a, y, R, h, key, tint) { const r = R * 0.42, P = (ang, d) => [Math.round(d * Math.cos(ang * Math.PI / 180) * 1000) / 1000, Math.round(d * Math.sin(ang * Math.PI / 180) * 1000) / 1000];
     a.P.push({ s: 'poly', p: [0, y, 0], pts: [0, 1, 2, 3, 4].map(k => P(-54 + 72 * k, r)), h, key, tint });
     for (let k = 0; k < 5; k++) { const t = -90 + 72 * k; a.P.push({ s: 'poly', p: [0, y, 0], pts: [P(t, R), P(t + 36, r), P(t - 36, r)], h, key, tint }); } }
 const NYC_OPEN = [
     /* the star base under the Memorial walk's statue (the statue stands on it, its foot 1 m up) */
-    { id: 'star', x: -10.5, z: 20.65, parts() { const a = sheet(); star(a, 0, 3.4, 0.55, U('ConcreteUnderTiles1'), 0xd8d2c6); star(a, 0.55, 2.5, 0.45, MARBLE, 0xe8e2d4); return a.P; } },
+    { id: 'star', x: -10.5, z: 20.65, parts() { const a = sheet(); star(a, 0, 3.4, 0.55, MARBLE, 0xcfc8b8); star(a, 0.55, 2.5, 0.45, MARBLE, 0xf0eadc);   /* (11-16: the lower star was a concrete sheet that drew near black) */ return a.P; } },
     /* a granite pedestal on the plaza's south-west square for the second hero (arms crossed; mondo 11-15 07:46 "use the 3rd example ... as well") */
     { id: 'pedestal', x: -36.75, z: -19.25, parts() { const a = sheet(); a.box(0, 0, 0, 3.3, 0.6, 3.3, U('ConcreteUnderTiles1'), 0xd8d2c6); a.box(0, 0.6, 0, 2.5, 0.8, 2.5, MARBLE, 0xe8e2d4); a.box(0, 1.3, 0, 2.7, 0.1, 2.7, MARBLE, 0xf2ecde); return a.P; } },
-    /* the street stairs down beside the Transit court: rails round a dark well, green globes on the posts, a tiled sign */
-    ...[3.5, 38.5].map((x, i) => ({ id: 'subway' + i, x, z: 17.5, parts() { const a = sheet(), GG = 0x2f6a4a;
-        a.box(0, 0, 0, 3.0, 0.04, 6.4, null, 0x0c0c0e); for (let k = 0; k < 4; k++) a.box(0, 0.04, 3.0 - k * 0.32, 2.9, 0.02, 0.3, TILE, 0x9a9488);
-        for (const e of [-1, 1]) { a.box(e * 1.55, 0, 0, 0.1, 1.05, 6.4, METAL, GG); a.box(e * 1.55, 1.05, 0, 0.16, 0.08, 6.5, METAL, GG); }
-        a.box(0, 0, -3.2, 3.2, 1.05, 0.1, METAL, GG); a.box(0, 1.05, -3.2, 3.3, 0.08, 0.16, METAL, GG);
-        for (const e of [-1, 1]) { a.cyl(e * 1.55, 0, 3.15, 0.08, 2.7, METAL, GG, { seg: 6 }); a.cyl(e * 1.55, 2.7, 3.15, 0.14, 0.18, null, GG, { seg: 8, r2: 0.3 }); a.dome(e * 1.55, 2.88, 3.15, 0.3, 0.32, null, 0x52e89a, { glow: 1 }); a.cyl(e * 1.55, 2.62, 3.15, 0.3, 0.26, null, 0x52e89a, { seg: 10, r2: 0.3, glow: 1 }); }
-        a.box(0, 1.15, -3.2, 2.6, 0.7, 0.12, TILE, 0xffffff); a.quad(0, 1.2, -3.13, 2.3, 0.6, 0, 'txt:TRANSIT|#1a1a1a||4', null, { uv: 'fit', kind: 'over' }); a.quad(0, 1.2, -3.27, 2.3, 0.6, 180, 'txt:TRANSIT|#1a1a1a||4', null, { uv: 'fit', kind: 'over' });
+    /* THE STREET STAIRS beside the Transit court (11-16, rebuilt and moved). They stood ACROSS square lines (x 3.5 / 38.5), the east one half on the
+       square before the court's east door and in its walk; the well was black paint on the ground anyone walked over; the lamps were a cylinder
+       under a half ball, near white (the same upside-down bowls mondo had taken off the chimneys). Now: each fills two whole YARD squares beside the
+       walk (1 x 2, its mouth ON the walk: the west one's to the south, the east one stands south of the court's east walk, turned, its mouth north), an
+       iron and glass kiosk roofs the stair so the well is dark inside, the lamps are green GLOBES, a folding gate shuts the mouth (there is no room
+       below) and the two squares block (`walls`, one storey). NEVER under a roof bridge: the game stands the bridge's piers on the ground under it
+       (the east one first stood under RF91, z 10.5..14, and a pier came up through its roof). */
+    ...[[1.75, 14, 0, 0, 0], [40.25, 28, 180, 0, 7]].map((q, i) => ({ id: 'subway' + i, x: q[0], z: q[1], rot: q[2], wallStoreys: 1, walls: [[0, 0, 3.5, 7]], clear: [1.75, 3.5, q[3], q[4]], parts() { const a = sheet(), GG = 0x2f6a4a, GD = 0x1f4a34, ST = 0xcfc8b8, GLB = 0x16a052, GLS = 0x9ab8a8;
+        a.box(0, 0, 0, 3.0, 0.05, 6.6, null, 0x0a0a0c);
+        [0xb4ae9e, 0x8f8a7c, 0x6a665c, 0x48453f, 0x2a2826, 0x171615].forEach((t, k) => a.box(0, 0.05, 3.1 - k * 0.34, 2.9, 0.02, 0.32, TILE, t));   // the first steps, darker as they go down
+        for (const e of [-1, 1]) a.box(e * 1.6, 0, 0, 0.3, 0.3, 6.9, MARBLE, ST); a.box(0, 0, -3.3, 3.5, 0.3, 0.3, MARBLE, ST);                      // a stone kerb round three sides
+        for (const e of [-1, 1]) { for (const z of [-3.3, -1.2, 0.9]) a.box(e * 1.6, 0.3, z, 0.14, 2.4, 0.14, METAL, GG);                              // the kiosk: posts, an iron dado, glass
+            a.box(e * 1.6, 0.3, -1.2, 0.06, 0.9, 4.2, METAL, GD); a.box(e * 1.6, 1.2, -1.2, 0.05, 1.5, 4.2, G_SQ, GLS);
+            a.box(e * 1.6, 1.2, 2.2, 0.06, 0.06, 2.6, METAL, GG); a.P.push({ s: 'box', p: [e * 1.6, 0.3, 1.05], size: [0.04, 0.9, 0.04], key: METAL, tint: GG, n: 9, step: [0, 0, 0.3] }); }   // the open mouth's rails
+        a.box(0, 0.3, -3.3, 3.2, 0.9, 0.06, METAL, GD); a.box(0, 1.2, -3.3, 3.2, 1.5, 0.05, G_SQ, GLS);
+        a.box(0, 2.7, -1.2, 3.6, 0.16, 4.6, METAL, GG, { under: true }); a.roof('barrel', 0, 2.86, -1.2, 4.6, 0.8, 3.6, METAL, GG, { ry: 90, keyEnd: METAL, tintEnd: GD });
+        a.box(0, 2.25, 0.9, 3.34, 0.45, 0.12, METAL, GD); const q = a.quad(0, 2.28, 0.97, 2.6, 0.4, 0, 'txt:TRANSIT|#ffffff|#1f5a3c|6.5', null, { uv: 'fit', kind: 'over' }); q.glow = 0.7;
+        for (const e of [-1, 1]) { a.cyl(e * 1.6, 0, 3.45, 0.07, 2.7, METAL, GG, { seg: 6 }); a.cyl(e * 1.6, 2.7, 3.45, 0.09, 0.1, METAL, GG, { seg: 8, r2: 0.13 });    // a lamp post each side of the mouth, a green globe on it
+            a.cyl(e * 1.6, 2.8, 3.45, 0.13, 0.13, null, GLB, { seg: 12, r2: 0.27, glow: 0.45 }); a.cyl(e * 1.6, 2.93, 3.45, 0.27, 0.1, null, GLB, { seg: 12, r2: 0.3, glow: 0.45 }); a.dome(e * 1.6, 3.03, 3.45, 0.3, 0.3, null, GLB, { glow: 0.45 }); }
+        for (const y of [0.25, 1.9]) a.box(0, y, 3.45, 3.06, 0.05, 0.05, METAL, IRON); a.P.push({ s: 'box', p: [-1.4, 0.2, 3.45], size: [0.035, 1.75, 0.035], key: METAL, tint: IRON, n: 15, step: [0.2, 0, 0] });   // the folding gate, shut
+        a.box(0, 1.1, 3.49, 1.1, 0.4, 0.03, null, 0xf4f0e6); a.quad(0, 1.13, 3.51, 1.0, 0.34, 0, 'txt:CLOSED|#b02020||2.9', null, { uv: 'fit', kind: 'over' });
         return a.P; } })),
-    /* a green sidewalk shed over the north pavement, four squares long */
-    { id: 'shed', x: -52.5, z: 54.25, parts() { const a = sheet(), GN = 0x2f5a3a;
-        for (const x of [-7, -3.5, 0, 3.5, 7]) for (const z of [-1.5, 1.5]) a.box(x, 0, z, 0.14, 3.0, 0.14, METAL, GN);
-        a.box(0, 3.0, 0, 14.4, 0.22, 3.4, WOOD, 0x8a7a5a, { under: true }); a.box(0, 3.22, 1.66, 14.4, 1.0, 0.06, WOOD, GN); a.box(0, 3.22, -1.66, 14.4, 1.0, 0.06, WOOD, GN);
-        for (const x of [-5.25, 0, 5.25]) a.box(x, 2.88, 0, 0.5, 0.1, 0.25, null, 0xfff0c8, { glow: 0.9 });
-        return a.P; } },
+    /* (the green sidewalk shed over the north pavement is OUT, 11-16: it stood alone in front of an open lot and a stair, against no building) */
 ];
 OPEN.push(...NYC_OPEN);
 const NYC_PROPS = [
     { key: 'hero_statue_crossed', x: -36.75, z: -19.25, face: 45, y: 1.4 },
-    { key: 'car_taxi', x: -59.5, z: 57.75, face: 90 }, { key: 'car_taxi', x: -3.5, z: 68.25, face: 270 }, { key: 'car_taxi', x: 38.5, z: 57.75, face: 90 }, { key: 'car_taxi', x: 63, z: 68.25, face: 270 },
-    { key: 'hot_dog_stand', x: -26.25, z: 54.25, face: 180 }, { key: 'hot_dog_stand', x: 40.25, z: 71.75, face: 0 },
-    { key: 'newspaper_rack', x: -13.6, z: 54.7, face: 180 }, { key: 'newspaper_rack', x: 24.9, z: 71.1, face: 0 }, { key: 'newspaper_rack', x: -36.4, z: 71.2, face: 0 },
+    /* THE CABS (11-16): tight to the kerb (z 63 -+ 5.86) and parked WITH the traffic of their side (the city drives on the right: west on the north side).
+       They stood in the middle of the kerb squares, 0.45 m inside the lane the city's cars drive (a car drove through each cab's side), nose against the traffic. */
+    { key: 'car_taxi', x: -59.5, z: 57.14, face: 270 }, { key: 'car_taxi', x: -3.5, z: 68.86, face: 90 }, { key: 'car_taxi', x: 38.5, z: 57.14, face: 270 }, { key: 'car_taxi', x: 63, z: 68.86, face: 90 },
+    /* THE CARTS (11-16): on yard squares behind the pavement. They stood in the middle of the pavement, which is ONE square wide: each shut it. */
+    { key: 'hot_dog_stand', x: 8.75, z: 50.75, face: 90 }, { key: 'hot_dog_stand', x: 40.25, z: 75.25, face: 270 },   // (face 90 / 270 = the cart's long side along the street; at 0 / 180 it stood end-on to it)
+    /* the news boxes (11-16): at the kerb's edge, their fronts to the people walking (they stood mid-pavement, fronts to the road) */
+    { key: 'newspaper_rack', x: -11.6, z: 55.45, face: 0 }, { key: 'newspaper_rack', x: 24.9, z: 70.55, face: 180 }, { key: 'newspaper_rack', x: -36.4, z: 70.55, face: 180 },
 ];
 
 /* ── build(ctx): the tool's hook, after every row exists. The plan's own row keeps the collision, the inside, the door and the walked roof with
@@ -1056,12 +1077,20 @@ function build(ctx) {
             if (def.props) def.props(c).forEach(q => props.push(R3(q)));
         });
         (M.OPEN || []).forEach(o => {
-            features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: 0, parts: LIFT(R3(dress(o.parts(), DET_OPEN[o.id.replace(/\d+$/, '')], null))) }); nArch++;
-            (o.walls || []).forEach((q, n) => features.push({ k: 'texbuilding', id: 'dc:' + M.district + ':' + o.id + '-w' + n, x: r3(o.x + q[0]), z: r3(o.z + q[1]), w: q[2], d: q[3], rot: 0, storeys: 3, seed: 1, skin: false }));
+            features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: o.rot || 0, parts: LIFT(R3(dress(o.parts(), DET_OPEN[o.id.replace(/\d+$/, '')], null))) }); nArch++;
+            (o.walls || []).forEach((q, n) => features.push({ k: 'texbuilding', id: 'dc:' + M.district + ':' + o.id + '-w' + n, x: r3(o.x + q[0]), z: r3(o.z + q[1]), w: q[2], d: q[3], rot: 0, storeys: o.wallStoreys || 3, seed: 1, skin: false }));
+            /* `clear: [hx, hz, dx, dz]` (11-16): the piece fills whole squares; a prop the tool stood on them steps aside by dx, dz (the east street stair
+               takes the square of a bench on the plot fence: it steps two squares south along the fence). MOVED, never dropped: the tool dresses other districts by a prop's place in the list, so one row
+               less here swapped pots for cacti and turned the rubbish bags all over the city. */
+            if (o.clear) { props.forEach(q => { if (!q.floor && Math.abs(q.x - o.x) < o.clear[0] && Math.abs(q.z - o.z) < o.clear[1]) { q.x = r3(q.x + o.clear[2]); q.z = r3(q.z + o.clear[3]); } });
+                for (let cx = Math.floor((o.x - o.clear[0] + ctx.HALF) / C + 0.01); cx <= Math.floor((o.x + o.clear[0] + ctx.HALF) / C - 0.01); cx++) for (let cy = Math.floor((o.z - o.clear[1] + ctx.HALF) / C + 0.01); cy <= Math.floor((o.z + o.clear[1] + ctx.HALF) / C - 0.01); cy++) {
+                    if (ctx.cellAt(cx, cy) !== '.') console.warn('H: open piece', o.id, 'stands on a square that is not yard:', cx, cy, ctx.cellAt(cx, cy)); ctx.take(cx, cy); } }
         });
         /* NEW YORK: the street's props; the Memorial walk's statue stands on its star base */
         NYC_PROPS.forEach(q => props.push(Object.assign({}, q)));
         props.forEach(q => { if (q.key === 'angel_statue' && Math.abs(q.x + 10.5) < 0.2 && Math.abs(q.z - 20.65) < 0.2) { q.y = 1.0; q.key = 'hero_statue_landing'; } });
+        /* the street props stand on free squares (11-16): a blocker on a road square or a walk square is reported, never silently baked */
+        NYC_PROPS.forEach(q => { if (q.y) return; const ch = ctx.cellAt(Math.floor((q.x + ctx.HALF) / C), Math.floor((q.z + ctx.HALF) / C)); if (q.key === 'car_taxi' ? ch !== 'R' : (q.key === 'hot_dog_stand' && ch !== '.')) console.warn('H: street prop on the wrong ground', q.key, q.x, q.z, ch); });
         /* THE INSIDES: one arch row, the room's props and its ghost walls per walk-in building, in the room's own frame */
         Object.keys(IN).forEach(bid => {
             const row = features.find(r => r.id === 'dc:' + bid); if (!row || row.k !== 'texbuilding' || !row.hollow) { console.warn('H: no walk-in row for the inside of', bid); return; }
@@ -1081,4 +1110,16 @@ function build(ctx) {
 /* THE TOWER (the story door into site_prebuilt_downtown_lobby and the rooms past it) moves off the plaza doorway onto the lift bank of the walk-in
    lobby: square (4, 0) of a room at rot 180 → room metres x 21 − 1.75, z −63 + 10.6 (the lift core's face), facing the lobby (mondo 22:30). */
 const joins = { tower: { x: 19.25, z: -52.45, face: 0, sub: 'THE LIFTS · INTO THE TOWER' } };
-module.exports = { build, joins };
+/* THE PLANTED BEDS (2026-11-16): the tool's `planter` is a bare box of soil, 65 of them in the district: the plaza was ringed by dark empty boxes.
+   Every one in Hero Plaza gets a clipped, rounded box hedge: one arch row per plot (a plot is one level; the row's foot is the ground under its
+   first bed). It runs in the tool's LAST stage, after the exterior polish, which moves some planters: the hedge is written where its planter
+   really stands. A hedge = a 'barrel' roof part (not hidden with the roofs), NOT a box: the polish reads a low arch box as a solid. */
+function last(ctx) {
+    const { features, props } = ctx, beds = {};
+    for (let i = features.length - 1; i >= 0; i--) if (/^arch:H:beds/.test(features[i].id || '')) features.splice(i, 1);
+    props.forEach(q => { if (q.key !== 'planter' || q.y || q.x < -84 || q.x > 84 || q.z < -84 || q.z > 84) return; const k = Math.floor((q.x + 84) / 42) + '-' + Math.floor((q.z + 84) / 42); (beds[k] = beds[k] || []).push(q); });
+    const R = v => Math.round(v * 1000) / 1000;
+    Object.keys(beds).sort().forEach(k => { const L = beds[k], o = L[0];
+        features.push({ k: 'arch', id: 'arch:H:beds' + k, x: o.x, z: o.z, rot: 0, parts: L.map(q => ({ s: 'roof', form: 'barrel', p: [R(q.x - o.x), 0.46, R(q.z - o.z)], size: [1.74, 0.55, 0.78], ry: (q.face === 90 || q.face === 270) ? 90 : 0, key: 'leaves_3', tint: 0xffffff, keyEnd: 'leaves_3', tintEnd: 0xffffff, glow: 0.16, gain: 1.5 })) }); });
+}
+module.exports = { build, joins, last };
