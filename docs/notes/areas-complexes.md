@@ -7581,6 +7581,15 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   barrel, crate, tyres, bags, a toilet), a full skip, a mattress, a battery, a broom and a shovel.
   FOUND: the four real bulbs do light their rooms (the Junction's brick reads for the first time); beside real light the drawn
   lamps' lit brick was too orange, so the wash is now 45 % paler than the lens and a third dimmer.
+- **PASS 3, THE DRESSING (seen, one probe run of 15 views aimed at the new pieces):** MODEL_LIST.md read whole first (the shortlist is
+  in the zone kit below). NAME PLATES: an enamel plate beside the first lit lamp of every plot with the plot's own name from the plan
+  (green, stencil letters: THE PRECINCT DRAIN, THE CULVERTS, THE CISTERN ...), and a yellow warning where one is due (DANGER · DEEP
+  WATER, MIND THE DROP at the three falls' upper mouths, AUTHORISED STAFF ONLY, WAY OUT, NO SWIMMING, HATCH · KEEP CLEAR, KEEP TO THE
+  WALKS); `txt:` quads with `glow: 0.35` on an iron back. A SCENE in one bend of each of the nine culvert plots (`scene(plot, k,
+  items)`; every piece `noBlock`): a sleeper's corner, flood works (sandbags, cone, broom), bones, a job half done (welding cart, gas),
+  storm rubbish (toilet, tyres, TVs), mushrooms + frogs, a stash (crates, a jerrycan, cash), a fall of brick, the bats' roost under the
+  quay. ALIVE: ten bats (five high in the three 12 m halls), an eel in the Cistern, a brown fish and two crabs at the Outfall, a cat at
+  the rest stop, frogs. Eight `graffiti_wall` (the game's own tags), chains / vents / a camera in the bends.
 - **FPS at the proof view** (after pass 2: 3.2, 1,302 calls, 2.05 M triangles; the room also grew a fifth row, district R, in between) (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
   1.44 M triangles); after pass 1 2.1 to 2.7 (1,142 calls, 1.58 M). The kit is about ten materials a plot; a plot's row is culled whole.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
@@ -7608,6 +7617,12 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   under 0.45 m deep on a walk; they have no collision.
 - **SHEETS:** `bricks_2` (the walls; `uv: 3.5` matches them), `urban:MetalCorrugatedPainted2a` under `0x6a3f24` = rust, a part with no
   key and a near-black tint = plate iron, a mid grey = cast concrete. A sheet under a tint reads dark down here: `gain` 1.15 on brick.
+- **A NAME PLATE:** a `quad` with `key: 'txt:<WORDS>|<ink>|<ground>|<w / h>||stencil'`, `uv: 'fit'`, `kind: 'wall'`, `glow: 0.35` (it must
+  read in the dark), on an iron box 3 cm behind it. Use the plan's own plot names and plain warnings; never a made-up name.
+- **SMALL THINGS BLOCK:** a prop with a `foot` blocks the walker unless its row says `noBlock: true`. Everything scattered on a walk
+  a square wide carries it. A blocker (`ctx.P`) goes only on a square `ctx.free()` says is free.
+- **A HUNG THING** (a bat, a life ring on a rail, a stacked crate) = a plain prop row with `y: plot.base + height`. A stacked crate
+  drew as a box floating at a wall: stack on the floor only.
 - **THE ROOM'S OWN WALL** (a square past the map's edge) is where the ways out stand: never dress it.
 - **THE PLAN HAS NO ONE-SQUARE DEAD ENDS** (walks are a square each side of a stream): `ctx.corners()` is the list of bends.
 - **FITS THE SEWERS (the whole model list was read, sections 6 to 13; placed by W unless marked):**
