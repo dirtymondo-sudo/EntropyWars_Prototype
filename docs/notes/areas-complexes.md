@@ -5136,9 +5136,18 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   three `brazier` (the wharf, the light's head, the skiff jetty). The Breakwater's light already turned its beam. NOT GIVEN: sound
   and particles (no hook a district reaches: the kit), gulls (no model). The sea stays day-blue at night: the shell's, not a
   district's (for the tool row). Frame rate, the quay view by day: 0.3 fps, 746 draw calls, 1.22 M triangles.
+- **PASS 5, POLISH (seen on screen, a ten-view walk round from new sides: the beach, the ship, the stair's top, the gantry's end, the
+  water, the open sea, over the gangway, the Roads, the jetty, the lane):** the two nets on the shed's west wall hung over its windows
+  (one between them now, one on the back wall); the Breakwater's ten boulders: the scatter of `ocean_rock_8` drew black lumps on the
+  crest, the old Harbour's `cave_stone` is a 2 m standing stone and a blocker on a walk two squares wide, so they are ten
+  `psxg_rock_*` set by hand on the crest's sea side; two people moved to the wharf's rail and one off the Long Pier's walk.
+  Frame rate, the quay view: 0.3 fps, 751 draw calls, 1.46 M triangles (first look: 0.8 fps, 895 calls, 2.30 M; the cloud's swing).
+- **ALL FIVE PASSES ARE LIVE.** Still short of Disaster City's best: one walk-in only (the plan draws one building); the brow lands
+  on the Dutchman's rail; no ship in the Roads, no gulls, no sound; the people stand still; nobody has walked it in a real game
+  (the wharf, the gantry and the Breakwater are checked on the compiled heights and in pictures, not with the walker).
 - **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
   the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
-- **NOT DONE:** polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+- **NOT DONE (outside a district's reach):** The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
   the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
@@ -7376,7 +7385,20 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
     under each. THE OUTFALL SHAFT: two street grates in the roof, daylight in the bars.
   - FOUR REAL BULBS (`bare_bulb`, a ceiling prop, so it wins a light): over the Junction, the Pump Room, the Cistern's Plank and the
     Outfall's pool. See the decision below.
-- **FPS at the proof view** (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
+- **PASS 2, THE ROOMS' INSIDES (seen, three probe runs, 12 + 6 views):** every piece is a catalogue model; helpers in W.js `dress`: `wp(key,
+  plot, lx, ly, side)` hangs a wall piece on a wall face, `fp()` stands a floor piece only on a free square (a walk a square wide is
+  never shut), `on()` lays a small thing (a desk's lamp takes `y: 0.78` and is seated by the game).
+  THE PUMP ROOM: a second pump + a compressor, each machine on a cast plinth with a rusted riser into the vault (drawn), a hazard line
+  at the room's edge, the engineer's desk (lamp, phone, logbook, mug), three lockers, breaker panel, punch clock, notice board, tool
+  chest, gas cylinders, extinguisher. THE PUMPING STATION (the way up; the door's squares stay clear): lockers, a bench, a hook rail,
+  an exit sign by the door. THE INSPECTION GALLERY: a steel deck, the watch post (desk, monitor, keyboard, radio, cabinet, cot, coffee),
+  a store under it. THE JUNCTION: the rest stop by the Healing Zone (two cots, a drip stand, dressings, candles), stores + a hand truck
+  in the north-east corner, two valves at the pool, two benches. THE CISTERN: a rowboat on the tank, two life rings on the rail, a net,
+  a gauge board, a bucket and rope. THE OUTFALL: THE SCREEN (drawn: iron bars across the pool's foot) with what it caught (cone,
+  barrel, crate, tyres, bags, a toilet), a full skip, a mattress, a battery, a broom and a shovel.
+  FOUND: the four real bulbs do light their rooms (the Junction's brick reads for the first time); beside real light the drawn
+  lamps' lit brick was too orange, so the wash is now 45 % paler than the lens and a third dimmer.
+- **FPS at the proof view** (after pass 2: 3.2, 1,302 calls, 2.05 M triangles; the room also grew a fifth row, district R, in between) (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
   1.44 M triangles); after pass 1 2.1 to 2.7 (1,142 calls, 1.58 M). The kit is about ten materials a plot; a plot's row is culled whole.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
   1. W takes FOUR of the room's ten real lights (it is 15 of the 24 plots and holds the spawn). The cells keep their four bulbs, the
