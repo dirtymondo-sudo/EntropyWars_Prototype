@@ -1,0 +1,1007 @@
+{
+ "area": "Outer Space",
+ "version": "plan-3",
+ "squareMeters": 3.5,
+ "plotCells": 12,
+ "note": "Four rooms, one a world. Written by docs/plans/world-zones/draw-space.js; bake-space.js reads docs/areas/space/layout.json. Never hand-edit: edit the script and rerun.",
+ "legend": {
+  "x": "rock / storm wall / nothing (never walked)",
+  ".": "ground",
+  "p": "track",
+  "c": "crater, canyon or bowl floor",
+  "m": "mesa, terrace or platform top",
+  "r": "ramp",
+  "t": "pyramid tier",
+  "l": "pad",
+  "i": "ring ice",
+  "h": "the hole's floor",
+  "e": "rim, lip or dunes"
+ },
+ "notBuilt": [
+  "flying the Spaceship between worlds",
+  "floating outside the ship",
+  "the Sun, Earth, the asteroid belt and Low Orbit as places (plan 2)"
+ ],
+ "rooms": [
+  {
+   "id": "moon",
+   "name": "The Moon",
+   "room": "site_prebuilt_moon_plots",
+   "site": "prebuilt_moon",
+   "old": "site_prebuilt_moon_mare",
+   "cols": 5,
+   "rows": 4,
+   "districts": {
+    "M": "The Mare",
+    "C": "The Crater",
+    "F": "The Far Side"
+   },
+   "who": "Barbarella (her home); the old room's greys and men in black",
+   "spawn": [
+    30,
+    42
+   ],
+   "marker": [
+    33,
+    36
+   ],
+   "ways": {
+    "bay": {
+     "sx": 30,
+     "sy": 44,
+     "face": 0,
+     "kind": "bay door (Room 1969)"
+    },
+    "moon_derelict": {
+     "sx": 28,
+     "sy": 3,
+     "face": 180,
+     "kind": "the ship's collar, on the Terrace"
+    },
+    "cydonia_mare": {
+     "sx": 3,
+     "sy": 29,
+     "face": 90,
+     "kind": "hidden: the bore to Mars (the Face's mouth)"
+    }
+   },
+   "stairs": [],
+   "bridges": [],
+   "plots": [
+    {
+     "id": "P00-00",
+     "name": "The Saucer",
+     "d": "F",
+     "level": 0,
+     "what": "a saucer on its landing gear in a hollow nobody photographs",
+     "from": "new plot (label mine): the far-side secrets"
+    },
+    {
+     "id": "P01-00",
+     "name": "The Rim, west",
+     "d": "C",
+     "level": 0,
+     "what": "the west foot of the terrace",
+     "from": "The Mare: THE RIM"
+    },
+    {
+     "id": "P02-00",
+     "name": "The Terrace",
+     "d": "C",
+     "level": 2,
+     "what": "LANDMARK of the north: the terrace you climb to, the ship's collar on it",
+     "from": "The Mare: THE TERRACE"
+    },
+    {
+     "id": "P03-00",
+     "name": "The Antenna Platform",
+     "d": "C",
+     "level": 3,
+     "what": "the platform under the rim, the antenna",
+     "from": "The Mare: THE ANTENNA PLATFORM · THE CATWALK"
+    },
+    {
+     "id": "P04-00",
+     "name": "The Dish",
+     "d": "M",
+     "level": 1,
+     "what": "the dish on its platform",
+     "from": "The Mare: THE DISH"
+    },
+    {
+     "id": "P00-01",
+     "name": "The Dig",
+     "d": "F",
+     "level": 0,
+     "what": "a pit somebody dug, floodlit; the thing they found stands in it",
+     "from": "new plot (label mine): the far-side secrets"
+    },
+    {
+     "id": "P01-01",
+     "name": "The Crater, west",
+     "d": "C",
+     "level": 0,
+     "what": "the lip and the west wall of the bowl",
+     "from": "The Mare: THE CRATER"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Crater",
+     "d": "C",
+     "level": -3,
+     "what": "LANDMARK: the one big crater, 70 m across, its central peak",
+     "from": "The Mare: THE BIG CRATER"
+    },
+    {
+     "id": "P03-01",
+     "name": "The Crater, east",
+     "d": "C",
+     "level": 0,
+     "what": "the lip and the east wall of the bowl",
+     "from": "The Mare: THE CRATER"
+    },
+    {
+     "id": "P04-01",
+     "name": "The Habitat",
+     "d": "M",
+     "level": 0,
+     "what": "the habitat, rated for six: a walk-in module",
+     "from": "The Mare: THE HABITAT"
+    },
+    {
+     "id": "P00-02",
+     "name": "The Bore",
+     "d": "F",
+     "level": 0,
+     "what": "the draught: the bore that comes out under the Face on Mars",
+     "from": "The Mare: THE FAR SIDE"
+    },
+    {
+     "id": "P01-02",
+     "name": "The Crater, south-west",
+     "d": "C",
+     "level": 0,
+     "what": "the south lip",
+     "from": "The Mare: THE CRATER"
+    },
+    {
+     "id": "P02-02",
+     "name": "The Crater, south",
+     "d": "C",
+     "level": 0,
+     "what": "the south lip, the track up from the Lander",
+     "from": "The Mare: THE CRATER"
+    },
+    {
+     "id": "P03-02",
+     "name": "The Overlook",
+     "d": "C",
+     "level": 1,
+     "what": "the mound over the crater",
+     "from": "The Mare: THE OVERLOOK"
+    },
+    {
+     "id": "P04-02",
+     "name": "The Tracks",
+     "d": "M",
+     "level": 0,
+     "what": "the rover's tracks, the rover at the end of them",
+     "from": "The Mare: the rover"
+    },
+    {
+     "id": "P00-03",
+     "name": "The Sound Stage",
+     "d": "F",
+     "level": 0,
+     "what": "a second lander, lights and a camera on a patch of raked dust",
+     "from": "new plot (label mine): Room 1969 \"the footage\""
+    },
+    {
+     "id": "P01-03",
+     "name": "The Mare, west",
+     "d": "M",
+     "level": 0,
+     "what": "open dust, small craters: room to fight",
+     "from": "The Mare"
+    },
+    {
+     "id": "P02-03",
+     "name": "The Standing Door",
+     "d": "M",
+     "level": 0,
+     "what": "the bay's door standing without a wall; footprints lead to it",
+     "from": "the bay door (Room 1969)"
+    },
+    {
+     "id": "P03-03",
+     "name": "The Lander",
+     "d": "M",
+     "level": 0,
+     "what": "LANDMARK: the lander on its pad, the flag, the footprints",
+     "from": "The Mare: THE LANDER"
+    },
+    {
+     "id": "P04-03",
+     "name": "The Mare, east",
+     "d": "M",
+     "level": 0,
+     "what": "open dust under the east rim",
+     "from": "The Mare"
+    }
+   ],
+   "cells": [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxx.......xxxx...................xxxxxx...xx",
+    "xxx........xxx....xxxxmmmmmmmmmmmmxxxx..mmmmm.............xx",
+    "xxx.cc.....xxx....xxxxmmmmmmmmmmmmxxxx..mmmmm.............xx",
+    "xx.cccc....xxx....rrrrmmmmmmmmmmmmrrrr..mmmmm.....mmmm...xxx",
+    "xx.cccc....xxx....rrrrmmmmmmmmmmmmrrrr..mmmmm.....mmmm...xxx",
+    "xx..cc.....xxx...........................rr.......mmmm...xxx",
+    "xx......p..xxx............eeeeeeee.......rr.......mmmm...xxx",
+    "xx......p...............eeeeeeeeeeee.....rr........rr....xxx",
+    "xx......ppppppp.......eeeeeeeeeeeeeeee...rr........rr....xxx",
+    "xxx........xxx.......eeeeeeecccceeeeeee..rr........p.....xxx",
+    "xxx........xxx......eeeeecccccccccceeeee...........p.....xxx",
+    "xxx........xxx.....eeeeecccccccccccceeeee.....cc...p.....xxx",
+    "xxx........xxx.....eeeecccccccccccccceeee....cccc..p.....xxx",
+    "xxx........xxx....eeeecccccccccccccccceeee...cccc..p.....xxx",
+    "xxx.cccc...xxx....eeecccccccccccccccccceee....cc..........xx",
+    "xxxcccccc..xxx...eeeecccccccccccccccccceeee...............xx",
+    "xxxcccccc..xxx...eeeecccccccccccccccccceeee...............xx",
+    "xxxcccccc..xxx...eeecccccccccccccccccccceee........p..cc..xx",
+    "xxxcccccc..xxx...eeecccccccccxxccccccccceee........p.cccc.xx",
+    "xx..cccc...xxx...eeecccccccccxxccccccccceee........p.cccc.xx",
+    "xx.........xxx..cceecccccccccccccccccccceee........p..cc..xx",
+    "xx....p....xxx.cccceecccccccccccccccccceeee........p.....xxx",
+    "xx....p....xxx.cccceecccccccccccccccccceeee........p.....xxx",
+    "xx....p....xxx..cceeecccccccccccccccccceee...cc....p.....xxx",
+    "xx....p....xxx....eeeecccccccccccccccceeee..cccc...p.....xxx",
+    "xx....p....xxx.....eeeecccccccccccccceeee..cccccc..p......xx",
+    "xx....p............eeeeecccccccccccceeeee..cccccc..p......xx",
+    "xx....ppppppppp.....eeeeecccccccccceeeee....cccc...p......xx",
+    "xxx.....p.....p......eeeeeeecccceeeeeee......cc....p......xx",
+    "xxx.....p..xxxp.......eeeeeeeeeeeeeeee.............p......xx",
+    "xxx.....p..xxxp.........eeeeeeeeeeee...............pc.....xx",
+    "xx......p..xxxp...........eeeeeeee................cpcc....xx",
+    "xx......p..xxxp...................................cpcc...xxx",
+    "xx......p..xxxp........................p...........pc....xxx",
+    "xx...cc.p..xxxp....cc..................p...........p.....xxx",
+    "xx..ccccp..xxxp...cccc.................p...........p.....xxx",
+    "xx..ccccp..xxxp...cccc...............lllll.........p.....xxx",
+    "xxx..cc.p.xxx.p....cc.....cc.........lllll.........p.....xxx",
+    "xxx.....p.xxx.p..........cccc........lllllpppppppppp......xx",
+    "xxx........xxxp..........cccc........lllll................xx",
+    "xx.........xxxp...........cc.........lllll................xx",
+    "xx.........xxxppppppppppppppppppppppp.....................xx",
+    "xx.........xxx............................................xx",
+    "xxxxxxxxx..xxxxxxxxxxxx...xxxxxxxxxxx..xxxx.xxxxxxx....xxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "mars",
+   "name": "Mars",
+   "room": "site_prebuilt_mars_plots",
+   "site": "prebuilt_mars",
+   "old": "site_prebuilt_mars_cydonia",
+   "cols": 5,
+   "rows": 4,
+   "districts": {
+    "Y": "Cydonia",
+    "V": "The Canyon",
+    "R": "The Rover Bay"
+   },
+   "who": "the Martian and the Droid (their home); the old room's greys",
+   "spawn": [
+    30,
+    43
+   ],
+   "marker": [
+    33,
+    40
+   ],
+   "ways": {
+    "bay": {
+     "sx": 30,
+     "sy": 45,
+     "face": 0,
+     "kind": "bay door (Room 4)"
+    },
+    "mars_derelict": {
+     "sx": 42,
+     "sy": 38,
+     "face": 180,
+     "kind": "the ship's collar: the rover bay's hatch"
+    },
+    "cydonia_mare": {
+     "sx": 8,
+     "sy": 17,
+     "face": 90,
+     "kind": "hidden: the Face's mouth, the bore to the Moon's far side"
+    }
+   },
+   "stairs": [
+    {
+     "sx0": 47,
+     "sy0": 13,
+     "sx1": 48,
+     "sy1": 18,
+     "up": "n",
+     "h0": 0,
+     "h1": 12.25
+    }
+   ],
+   "bridges": [
+    {
+     "sx0": 31,
+     "sy0": 23,
+     "sx1": 31,
+     "sy1": 31,
+     "y": 7
+    }
+   ],
+   "plots": [
+    {
+     "id": "P00-00",
+     "name": "The Face, brow",
+     "d": "Y",
+     "level": 3,
+     "what": "LANDMARK: the Face, a mesa 60 m long; a face from above, a hill from the ground",
+     "from": "Cydonia: THE FACE"
+    },
+    {
+     "id": "P01-00",
+     "name": "The Face, east cheek",
+     "d": "Y",
+     "level": 3,
+     "what": "the way up the cheek",
+     "from": "Cydonia: THE FACE"
+    },
+    {
+     "id": "P02-00",
+     "name": "The Mesas",
+     "d": "Y",
+     "level": 4,
+     "what": "the north mesa",
+     "from": "Cydonia: THE MESAS"
+    },
+    {
+     "id": "P03-00",
+     "name": "The Pyramid, west",
+     "d": "Y",
+     "level": 7,
+     "what": "LANDMARK: the Pyramid, seven tiers",
+     "from": "Cydonia: THE PYRAMID"
+    },
+    {
+     "id": "P04-00",
+     "name": "The Pyramid",
+     "d": "Y",
+     "level": 7,
+     "what": "the Pyramid's east half",
+     "from": "Cydonia: THE PYRAMID"
+    },
+    {
+     "id": "P00-01",
+     "name": "The Face, mouth",
+     "d": "Y",
+     "level": 3,
+     "what": "the mouth: a trench with the bore to the Moon in it",
+     "from": "Cydonia: THE FACE (the mouth)"
+    },
+    {
+     "id": "P01-01",
+     "name": "The Face, chin",
+     "d": "Y",
+     "level": 0,
+     "what": "the foot of the Face",
+     "from": "Cydonia: THE FACE"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Arch",
+     "d": "Y",
+     "level": 4,
+     "what": "the south mesa; the arch joins the two over your head",
+     "from": "Cydonia: THE ARCH · THE MESAS"
+    },
+    {
+     "id": "P03-01",
+     "name": "The Pyramid, stair",
+     "d": "Y",
+     "level": 0,
+     "what": "the stair up the south face; the low mesa",
+     "from": "Cydonia: THE PYRAMID"
+    },
+    {
+     "id": "P04-01",
+     "name": "The Pyramid, east foot",
+     "d": "Y",
+     "level": 0,
+     "what": "the Pyramid's south-east foot",
+     "from": "Cydonia: THE PYRAMID"
+    },
+    {
+     "id": "P00-02",
+     "name": "The Canyon, west",
+     "d": "V",
+     "level": -3,
+     "what": "the canyon's west end and the way down",
+     "from": "Cydonia: THE CANYON"
+    },
+    {
+     "id": "P01-02",
+     "name": "The Canyon",
+     "d": "V",
+     "level": -3,
+     "what": "the canyon floor; the middle way down",
+     "from": "Cydonia: THE CANYON"
+    },
+    {
+     "id": "P02-02",
+     "name": "The Canyon under the Arch",
+     "d": "V",
+     "level": -3,
+     "what": "the canyon floor under the arch",
+     "from": "Cydonia: THE CANYON"
+    },
+    {
+     "id": "P03-02",
+     "name": "The Canals",
+     "d": "V",
+     "level": -3,
+     "what": "two dead-straight cuts off the canyon",
+     "from": "new plot (label mine): the canals"
+    },
+    {
+     "id": "P04-02",
+     "name": "The Canyon Mouth",
+     "d": "V",
+     "level": -3,
+     "what": "the canyon's east end and the way down",
+     "from": "plan 1: The Canyon Mouth"
+    },
+    {
+     "id": "P00-03",
+     "name": "The Dunes",
+     "d": "R",
+     "level": 0,
+     "what": "dunes: room to fight",
+     "from": "plan 1: The Dunes"
+    },
+    {
+     "id": "P01-03",
+     "name": "The Dunes, east",
+     "d": "R",
+     "level": 0,
+     "what": "dunes, the tripod standing in them",
+     "from": "new plot (label mine): the Martian's tripod (spell prop)"
+    },
+    {
+     "id": "P02-03",
+     "name": "The Airlock",
+     "d": "R",
+     "level": 0,
+     "what": "the bay's airlock; red dust in the seal",
+     "from": "the bay door (Room 4)"
+    },
+    {
+     "id": "P03-03",
+     "name": "The Rover Bay",
+     "d": "R",
+     "level": 0,
+     "what": "LANDMARK of the south: the rover bay, walk-in; the ship's collar is its hatch",
+     "from": "Cydonia: THE ROVER BAY'S HATCH"
+    },
+    {
+     "id": "P04-03",
+     "name": "The Tracks",
+     "d": "R",
+     "level": 0,
+     "what": "the rover at the end of its tracks",
+     "from": "Cydonia: the rover's tracks"
+    }
+   ],
+   "cells": [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xx...xxxx.mmmm............xxx..........xxxxxx...xxxxxxxxxxxx",
+    "xx......mmmmmmmm.........................................xxx",
+    "xx.....mmmmmmmmmm..........mmmmmmmm......................xxx",
+    "xx....mmmmmmmmmmmm.........mmmmmmmm......tttttttttttttt...xx",
+    "xxx..mmmmmmmmmmmmmm........mmmmmmmm......tttttttttttttt...xx",
+    "xxx..mmmmmmmmmmmmmm........mmmmmmmm......tttttttttttttt...xx",
+    "xxx.mmmmmmmmmmmmmmmm.......mmmmmmmm......tttttttttttttt..xxx",
+    "xx..mmmcccmmmmcccmmm........rr...........tttttttttttttt..xxx",
+    "xxx.mmmcccmmmmcccmmm........rr...........tttttttttttttt..xxx",
+    "xxxmmmmmmmmmmmmmmmmmmrrrrr..rr...........tttttttttttttt..xxx",
+    "xxxmmmmmmmmmmmmmmmmmmrrrrr..rr...........tttttttttttttt...xx",
+    "xxxmmmmmmmmmmmmmmmmmm....................ttttttrrtttttt...xx",
+    "xxx.mmmmmmmmmmmmmmmm.....................ttttttrrtttttt...xx",
+    "xx..mmmmmmmmmmmmmmmm.....................ttttttrrtttttt...xx",
+    "xx..mmmmmmmmmmmmmmmm.....................ttttttrrtttttt...xx",
+    "xx...mmmccccccccrrm........mmmmmmmmm.....ttttttrrtttttt...xx",
+    "xx...mmmccccccccrrm........mmmmmmmmm.....ttttttrrtttttt...xx",
+    "xx....mmmmmmmmmmmm..rrrrrrrmmmmmmmmm...........pp.........xx",
+    "xxx....mmmmmmmmmm...rrrrrrrmmmmmmmmm...........pp.........xx",
+    "xxx.....mmmmmmmm...........mmmmmmmmm..........c...c.......xx",
+    "xxx.......mmmm.............mmmmmmmmm..........c...c.......xx",
+    "xxx.rr........................................c...c.......xx",
+    "xxx.rr........................................c...c......xxx",
+    "xxx.rr........................................c...c......xxx",
+    "xxx.rr...................ccccccccccccccccc....c...c......xxx",
+    "xxx.rr..............ccccccccccccccccccccccccccc...c......xxx",
+    "xxx.cccccccccccccccccccccccccccccccccccccccccccccccccccc.xxx",
+    "xxx.cccccccccccccccccccccccccccccccccccccccccccccccccccc.xxx",
+    "xxx.ccccccccccccccccccccc.................cccccccccccccc.xxx",
+    "xxx.cccccccccccccccc..rr.......................ccccccccc.xxx",
+    "xx....................rr...mmmmmmmmm............c.....rr.xxx",
+    "xx....................rr...mmmmmmmmmrrrrrrr.....c.....rr.xxx",
+    "xx....................rr...mmmmmmmmmrrrrrrr.....c.....rr.xxx",
+    "xxeeeeeeeeeeeeeeeeeeeerr...mmmmmmmmm............c.....rr.xxx",
+    "xxxeeeeeeeeeeeeeeeeeeeee...mmmmmmmmm............c.....rrpxxx",
+    "xxxeeeeeeeeeppppppppppppppppppp.........................pxxx",
+    "xxxeeeeeeeeeeeeeeeeeeeee......p.........................pxxx",
+    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllll.........pxxx",
+    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllll.........p.xx",
+    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllllpppppppppp.xx",
+    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllll..........xxx",
+    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllll..........xxx",
+    "xxeeeeeeeeeeeeeeeeeeeeee......pppppppp...................xxx",
+    "xxeeeexxxxxxxxxxxxeeeeeexxxxx...x....xxxxxxxx.......xxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "saturn",
+   "name": "Saturn",
+   "room": "site_prebuilt_saturn_plots",
+   "site": "prebuilt_saturn",
+   "old": "site_prebuilt_saturn_hexagon",
+   "cols": 4,
+   "rows": 4,
+   "districts": {
+    "H": "The Hexagon",
+    "G": "The Ring Shard"
+   },
+   "who": "the Grey and the Black Goo (their home); the old room's watcher and android",
+   "spawn": [
+    22,
+    41
+   ],
+   "marker": [
+    24,
+    33
+   ],
+   "ways": {
+    "bay": {
+     "sx": 22,
+     "sy": 43,
+     "face": 0,
+     "kind": "bay door (Room 6)"
+    },
+    "derelict_saturn": {
+     "sx": 25,
+     "sy": 5,
+     "face": 180,
+     "kind": "the ship's collar, on the Docking Shelf"
+    },
+    "saturn_singularity": {
+     "sx": 5,
+     "sy": 23,
+     "face": 90,
+     "kind": "the Drop's frame: to the Singularity"
+    }
+   },
+   "stairs": [],
+   "bridges": [],
+   "plots": [
+    {
+     "id": "P00-00",
+     "name": "The Storm Walls, north-west",
+     "d": "H",
+     "level": 2,
+     "what": "a wall of storm; the rim walk under it",
+     "from": "The Hexagon: THE STORM WALLS"
+    },
+    {
+     "id": "P01-00",
+     "name": "The Storm Walls, north",
+     "d": "H",
+     "level": 2,
+     "what": "the rim walk, the north ramp",
+     "from": "The Hexagon: THE STORM WALLS"
+    },
+    {
+     "id": "P02-00",
+     "name": "The Docking Shelf",
+     "d": "G",
+     "level": 2,
+     "what": "the shelf on the rim: the ship's collar",
+     "from": "The Hexagon: THE DOCKING SHELF"
+    },
+    {
+     "id": "P03-00",
+     "name": "The Ring Shard, north",
+     "d": "G",
+     "level": 2,
+     "what": "the rim walk under the rings",
+     "from": "The Hexagon: THE RING SHARD"
+    },
+    {
+     "id": "P00-01",
+     "name": "The Rim Walk",
+     "d": "H",
+     "level": 2,
+     "what": "the west rim: the Drop's frame, a frame with nothing in it",
+     "from": "The Hexagon: THE RIM WALK · THE DROP'S FRAME"
+    },
+    {
+     "id": "P01-01",
+     "name": "The Eye, north-west",
+     "d": "H",
+     "level": 0,
+     "what": "LANDMARK: the Eye, the storm's own eye in the middle of the plateau",
+     "from": "The Hexagon: THE EYE"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Eye, north-east",
+     "d": "H",
+     "level": 0,
+     "what": "the Eye",
+     "from": "The Hexagon: THE EYE"
+    },
+    {
+     "id": "P03-01",
+     "name": "The Ring Shard",
+     "d": "G",
+     "level": 2,
+     "what": "LANDMARK of the east: a splinter of ring ice across the rim",
+     "from": "The Hexagon: THE RING SHARD"
+    },
+    {
+     "id": "P00-02",
+     "name": "The Camp",
+     "d": "H",
+     "level": 2,
+     "what": "the camp, upwind of the Eye",
+     "from": "The Hexagon: the camp"
+    },
+    {
+     "id": "P01-02",
+     "name": "The Eye, south-west",
+     "d": "H",
+     "level": 0,
+     "what": "the Eye; the plateau: room to fight",
+     "from": "The Hexagon: THE PLATEAU"
+    },
+    {
+     "id": "P02-02",
+     "name": "The Eye, south-east",
+     "d": "H",
+     "level": 0,
+     "what": "the Eye; the plateau",
+     "from": "The Hexagon: THE PLATEAU"
+    },
+    {
+     "id": "P03-02",
+     "name": "The Ring Plane",
+     "d": "G",
+     "level": 2,
+     "what": "the south-east rim: fallen ring ice",
+     "from": "new plot (label mine): \"mind the ring plane\""
+    },
+    {
+     "id": "P00-03",
+     "name": "The Storm Walls, south-west",
+     "d": "H",
+     "level": 2,
+     "what": "a wall of storm",
+     "from": "The Hexagon: THE STORM WALLS"
+    },
+    {
+     "id": "P01-03",
+     "name": "The Airlock",
+     "d": "H",
+     "level": 2,
+     "what": "the bay's airlock, the Mars airlock's twin; frost on it",
+     "from": "the bay door (Room 6)"
+    },
+    {
+     "id": "P02-03",
+     "name": "The Plateau",
+     "d": "H",
+     "level": 2,
+     "what": "the south rim and its ramp",
+     "from": "The Hexagon: THE PLATEAU"
+    },
+    {
+     "id": "P03-03",
+     "name": "The Storm Walls, south-east",
+     "d": "H",
+     "level": 2,
+     "what": "a wall of storm",
+     "from": "The Hexagon: THE STORM WALLS"
+    }
+   ],
+   "cells": [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
+    "xxxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
+    "xxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxx",
+    "xxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxx",
+    "xxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxx",
+    "xxxxxxxxxmmmmmm.......rrrr.......mmmmmmxxxxxxxxx",
+    "xxxxxxxxxmmmmm........rrrr........mmmmmxxxxxxxxx",
+    "xxxxxxxxmmmmmm........rrrr........mmmmmmxxxxxxxx",
+    "xxxxxxxxmmmmm.........rrrr.........mmmmmxxxxxxxx",
+    "xxxxxxxmmmmmm..........p...........miimmmxxxxxxx",
+    "xxxxxxmmmmmm...........p............iimmmmxxxxxx",
+    "xxxxxxmmmmmm...........p............iimmmmxxxxxx",
+    "xxxxxmmmmmm............p.............iimmmmxxxxx",
+    "xxxxxmmmmm...........cccccc..........iimmmmxxxxx",
+    "xxxxmmmmmm..........cccccccc.........iimmmmmxxxx",
+    "xxxxmmmmm..........cccccccccc.........iimmmmxxxx",
+    "xxxmmmmmm.........cccccccccccc........iimmmmmxxx",
+    "xxmmmmmm.........cccccccccccccc.......iimmmmmmxx",
+    "xxmmmmmm.........ccccchhhhccccc.........mmmmmmxx",
+    "xmmmmmm..........ccccchhhhccccc..........mmmmmmx",
+    "xmmmmmm.........pccccchhhhcccccp.........mmmmmmx",
+    "xxmmmmmm........pccccchhhhcccccp........mmmmmmxx",
+    "xxmmmmmm........pccccccccccccccp........mmmmmmxx",
+    "xxxmmmmmm.......p.cccccccccccc.p.......mmmmmmxxx",
+    "xxxxmmmmm.......p..cccccccccc..p.......mmmmmxxxx",
+    "xxxxmmmmmm......p...cccccccc...p......mmmmmmxxxx",
+    "xxxxxmmmmrrrrpppp....cccccc....pppprrrrmmmmxxxxx",
+    "xxxxxmmmmrrrr......................rrrrmmmmxxxxx",
+    "xxxxxxmmmmmm...........p............mmmmmmxxxxxx",
+    "xxxxxxmmmmmm...........p............mmmmmmxxxxxx",
+    "xxxxxxxmmmmmm..........p...........mmmmmmxxxxxxx",
+    "xxxxxxxxmmmmm..........p...........mmmmmxxxxxxxx",
+    "xxxxxxxxmmmmmm........rrrr........mmmmmmxxxxxxxx",
+    "xxxxxxxxxmmmmm........rrrr........mmmmmxxxxxxxxx",
+    "xxxxxxxxxmmmmmm.......rrrr.......mmmmmmxxxxxxxxx",
+    "xxxxxxxxxxmmmmmmmmmmmmrrrrmmmmmmmmmmmmxxxxxxxxxx",
+    "xxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxx",
+    "xxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxx",
+    "xxxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
+    "xxxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "singularity",
+   "name": "The Singularity",
+   "room": "site_prebuilt_singularity_plots",
+   "site": "prebuilt_singularity",
+   "old": "site_prebuilt_singularity_horizon",
+   "cols": 4,
+   "rows": 4,
+   "districts": {
+    "D": "The Drop",
+    "A": "The Accretion Rim"
+   },
+   "who": "the Cosmic Wraith (its home); the old room's watcher, shadow entity, occulus",
+   "spawn": [
+    22,
+    42
+   ],
+   "marker": [
+    30,
+    41
+   ],
+   "ways": {
+    "bay": {
+     "sx": 22,
+     "sy": 44,
+     "face": 0,
+     "kind": "bay door (Room 0)"
+    },
+    "saturn_singularity": {
+     "sx": 18,
+     "sy": 4,
+     "face": 180,
+     "kind": "the frame from Saturn"
+    },
+    "observatorium_singularity": {
+     "sx": 36,
+     "sy": 5,
+     "face": 180,
+     "kind": "hidden: the screen, DOOR HQ's observatory"
+    }
+   },
+   "stairs": [],
+   "bridges": [],
+   "plots": [
+    {
+     "id": "P00-00",
+     "name": "The Accretion Rim, north-west",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim",
+     "from": "The Horizon: THE ACCRETION RIM"
+    },
+    {
+     "id": "P01-00",
+     "name": "The Frame",
+     "d": "A",
+     "level": 0,
+     "what": "the frame from Saturn: a frame with nothing in it",
+     "from": "The Horizon: the frame"
+    },
+    {
+     "id": "P02-00",
+     "name": "The Accretion Rim, north",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim, the first shelf under it",
+     "from": "The Horizon: THE ACCRETION RIM"
+    },
+    {
+     "id": "P03-00",
+     "name": "The Screen",
+     "d": "A",
+     "level": 1,
+     "what": "the screen on its ledge, watching the drop: SIGNAL LOST",
+     "from": "The Horizon: THE SCREEN"
+    },
+    {
+     "id": "P00-01",
+     "name": "The Accretion Rim, west",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim and the shelves",
+     "from": "The Horizon: THE ACCRETION RIM"
+    },
+    {
+     "id": "P01-01",
+     "name": "Zero Volume, north-west",
+     "d": "D",
+     "level": -4,
+     "what": "the lowest shelf and the floor",
+     "from": "The Horizon: ZERO VOLUME"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Drop",
+     "d": "D",
+     "level": -4,
+     "what": "the one straight way in; nothing comes back up",
+     "from": "The Horizon: THE DROP"
+    },
+    {
+     "id": "P03-01",
+     "name": "The Camp",
+     "d": "A",
+     "level": 0,
+     "what": "the camp, upstream of the drop",
+     "from": "The Horizon: the camp"
+    },
+    {
+     "id": "P00-02",
+     "name": "The Accretion Rim, south-west",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim and the shelves",
+     "from": "The Horizon: THE ACCRETION RIM"
+    },
+    {
+     "id": "P01-02",
+     "name": "Zero Volume",
+     "d": "D",
+     "level": -4,
+     "what": "LANDMARK: the hole, a point of no volume",
+     "from": "The Horizon: ZERO VOLUME"
+    },
+    {
+     "id": "P02-02",
+     "name": "Zero Volume, south-east",
+     "d": "D",
+     "level": -4,
+     "what": "the lowest shelf and the floor",
+     "from": "The Horizon: ZERO VOLUME"
+    },
+    {
+     "id": "P03-02",
+     "name": "The Accretion Rim, east",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim: the head of the Drop",
+     "from": "The Horizon: THE ACCRETION RIM"
+    },
+    {
+     "id": "P00-03",
+     "name": "The Accretion Rim, south-west end",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim",
+     "from": "The Horizon: THE ACCRETION RIM"
+    },
+    {
+     "id": "P01-03",
+     "name": "The Standing Frame",
+     "d": "A",
+     "level": 0,
+     "what": "the bay's frame; there is no other side",
+     "from": "the bay door (Room 0)"
+    },
+    {
+     "id": "P02-03",
+     "name": "The Accretion Rim, south",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim",
+     "from": "The Horizon: THE ACCRETION RIM"
+    },
+    {
+     "id": "P03-03",
+     "name": "The Accretion Rim, south-east",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim",
+     "from": "The Horizon: THE ACCRETION RIM"
+    }
+   ],
+   "cells": [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxeeeeeeeeeexxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxeeeeeeeeeeeeeeeexxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxeeeeeeeeeeeeeeeeeeeexxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxeeeeeeeeeeeeeeeeeeeeeemmmmmxxxxxxxxx",
+    "xxxxxxxxxxxeeeeeeeeeeeeeeeeeeeeeeemmmmmxxxxxxxxx",
+    "xxxxxxxxxeeeeeeeeeeerrrrrrrreeeeeemmmmmxxxxxxxxx",
+    "xxxxxxxxeeeeeeeeerrrrrrrrrrrrrreeemmmmmexxxxxxxx",
+    "xxxxxxxeeeeeeeerrrrr........rrrrreerreeeexxxxxxx",
+    "xxxxxxxeeeeeeerrr..............rrrerreeeexxxxxxx",
+    "xxxxxxeeeeeerrrr................rrrreeeeeexxxxxx",
+    "xxxxxeeeeeerrr.......rrrrrr.......rrreeeeeexxxxx",
+    "xxxxxeeeeeerr.....rrrrrrrrrrrr.....rreeeeeexxxxx",
+    "xxxxeeeeeerr.....rrrr......rrrr.....rreeeeeexxxx",
+    "xxxxeeeeerrr....rrr..........rrr....rrreeeeexxxx",
+    "xxxeeeeeerr....rr..............rr....rreeeeeexxx",
+    "xxxeeeeerr....rr.....rrrrrr.....rr....rreeeeexxx",
+    "xxxeeeeerr...rrr....rrrrrrrr....rrr...rreeeeexxx",
+    "xxeeeeeerr...rr....rrrccccrrr....rr...rreeeeeexx",
+    "xxeeeeerr....rr...rrccccccccrr...rr....rreeeeexx",
+    "xxeeeeerr...rr...rrrccchhcccrrr...rr...rreeeeexx",
+    "xxeeeeerr...rr...rrccchhhhcccrr...rr...rreeeeexx",
+    "xxeeeeerr...rr...rrcchhhhhhpppppppppppppppppeexx",
+    "xxeeeeerr...rr...rrcchhhhhhpppppppppppppppppeexx",
+    "xxeeeeerr...rr...rrccchhhhcccrr...rr...rreeeeexx",
+    "xxeeeeerr...rr...rrrccchhcccrrr...rr...rreeeeexx",
+    "xxeeeeerr....rr...rrccccccccrr...rr....rreeeeexx",
+    "xxeeeeeerr...rr....rrrccccrrr....rr...rreeeeeexx",
+    "xxxeeeeerr...rrr....rrrrrrrr....rrr...rreeeeexxx",
+    "xxxeeeeerr....rr.....rrrrrr.....rr....rreeeeexxx",
+    "xxxeeeeeerr....rr..............rr....rreeeeeexxx",
+    "xxxxeeeeerrr....rrr..........rrr....rrreeeeexxxx",
+    "xxxxeeeeeerr.....rrrr......rrrr.....rreeeeeexxxx",
+    "xxxxxeeeeeerr.....rrrrrrrrrrrr.....rreeeeeexxxxx",
+    "xxxxxeeeeeerrr.......rrrrrr.......rrreeeeeexxxxx",
+    "xxxxxxeeeeeerrrr................rrrreeeeeexxxxxx",
+    "xxxxxxxeeeeeeerrr..............rrreeeeeeexxxxxxx",
+    "xxxxxxxeeeeeeeerrrrr........rrrrreeeeeeeexxxxxxx",
+    "xxxxxxxxeeeeeeeeerrrrrrrrrrrrrreeeeeeeeexxxxxxxx",
+    "xxxxxxxxxeeeeeeeeeeerrrrrrrreeeeeeeeeeexxxxxxxxx",
+    "xxxxxxxxxxxeeeeeeeeeeeeeeeeeeeeeeeeeexxxxxxxxxxx",
+    "xxxxxxxxxxxxeeeeeeeeeeeeeeeeeeeeeeeexxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxeeeeeeeeeeeeeeeeeeeexxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxeeeeeeeeeeeeeeeexxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxeeeeeeeeeexxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  }
+ ]
+}

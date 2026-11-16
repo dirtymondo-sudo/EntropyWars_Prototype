@@ -8903,3 +8903,64 @@ hard right angles and straight lines ... that would be a good spot to turn into 
 - **NOT DONE** (the plan file's section 3): a skyline north of the Desert; the floating things in the zones' skies; the Mountains', North Pole's, Woods', Camelot's and
   Estate's sides (the Woods, Camelot and the Estate have NO land past their lines yet); the Shore's main waterline; the Hills' cliff north of the headland.
 
+
+## OUTER SPACE ON PLOTS — four worlds, a room each, first build (2026-11-16, second side, the Outer Space zone thread)
+
+mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old rooms are "completely redesigned/reimagined with plots and
+districts"; on the ship: "I don't know where the ship should leave from or how the player access it yet, but let's just get the world built,
+we can figure that part out later". No OK was waited for (his standing order). Plot plan 3: `docs/plans/world-zones/outer-space_plot_plan_3.png`
+(drawn by `docs/plans/world-zones/draw-space.js`; plan 2, one 12 x 12 solar system you fly through, stays beside it as history).
+
+- **FOUR ROOMS, NOT ONE (decision):** plan 2's 108 plots of open space only work with flying the ship and floating, both NEW MECHANICS
+  (listed, not built). So each world is its own room on plots of 12 x 12 squares, keeps its own sky (`sky.world`: the Moon's and Mars'
+  curved planet ground, Saturn's bands, the void) and its own site, and is reached exactly as before. 72 plots, ten districts:
+  | World | Room | Plots | Districts (file) |
+  |---|---|---|---|
+  | The Moon | `site_prebuilt_moon_plots` | 5 x 4 (210 x 168 m) | M The Mare (7) · C The Crater (9) · F The Far Side (4) |
+  | Mars | `site_prebuilt_mars_plots` | 5 x 4 | Y Cydonia (10) · V The Canyon (5) · R The Rover Bay (5) |
+  | Saturn | `site_prebuilt_saturn_plots` | 4 x 4 (168 m) | H The Hexagon (12) · G The Ring Shard (4) |
+  | The Singularity | `site_prebuilt_singularity_plots` | 4 x 4 | D The Drop (4) · A The Accretion Rim (12) |
+  THE SPACESHIP's four rooms are untouched (handmade, the world plan's word); `DOOR_HQ.ship`, the collar and the nav console work as before.
+- **THE TOOL:** `node bake-space.js [--dry-run]` writes the four rooms between `SPACE72-BEGIN / SPACE72-END` in data.js from
+  `docs/areas/space/layout.json` + `docs/areas/space/districts/<LETTER>.js`. `SPACE_DUMP=moon|mars|saturn|singularity` prints a world's
+  walked map. THE LAYOUT IS WRITTEN BY A SCRIPT: `node docs/plans/world-zones/draw-space.js` designs every world square by square (forms
+  as code: `flat`, `ramp`, `soft`, `bowl`, `lip`), writes the layout json and redraws the plan picture; change a landform there, rerun
+  it, then the bake. Never hand-edit the json or the block.
+- **THE HEIGHTS ARE THE MAP (the Beach's way):** `terrain.slope.cells`, four corners a square. A step over 0.62 m between two squares is a
+  cliff; a ramp rises 0.3 at most; soft ground (crater bowls, dunes, the Singularity's shelves) shares corners. Rock (`x`) is
+  `terrain.gen { kind: 'plan', look: 'rock' }` in the world's cliff sheet (moon_3 / mars_2 / storm / obsidian): the rim round each room,
+  the Moon's limb ridge and central peak, Saturn's six storm walls (everything outside the hexagon), the dark outside the Singularity's bowl.
+  The tool walks every world from its spawn with those rules and refuses to bake when a plot, a way or a unit is not reached.
+- **THE FORMS:** MOON: the big crater (70 m, 5 m deep, a lip, a rock peak), the Terrace (3.5 m, a ramp at each end, the collar on it), the
+  Antenna Platform (5.25 m, its own ramp), the Dish's platform, the Lander's pad, the Overlook mound, nine small craters, the Dig pit, the
+  limb ridge with two passes to the Far Side. MARS: the Face (a mesa 60 x 70 m shaped like a face: two sockets, the nose's ridge, the
+  mouth = a trench with the bore in it; up by the east cheek), the Pyramid (seven tiers of 1.75 m, a `ramp` row with treads up its south
+  face: layout `stairs`), a low table rock, the two mesas either side of the canyon with the Arch between them (a `bridge` row at 7 m:
+  layout `bridges`), the Canyon (5.25 m deep, four squares wide, three ramps down), three dead-straight canals, the Rover Bay's apron,
+  dunes. SATURN: a regular hexagon (apothem 20 squares), the Rim Walk 3.5 m up round it with four ramps, the Eye (a bowl 4 m deep), the
+  Ring Shard (ice blocks 7 m, never climbed). SINGULARITY: the rim, then three shelves joined by ramp rings down to the floor 6.3 m
+  below, the hole's floor in the void sheet, the Drop (the one straight track from the east rim), the Screen's ledge.
+- **THE WAYS (all in the game before; every one moved to a matching spot; all free-standing doors, a door on a tier carries `y`):**
+  bay doors = `siteRooms.entry.prebuilt_moon / _mars / _saturn / _singularity` (the Standing Door on the Mare, the Airlock south of the
+  Rover Bay, the Airlock on Saturn's south rim, the Standing Frame on the south rim). The ship's collar: links `moon_derelict` (on the
+  Terrace), `mars_derelict` (the Rover Bay's north side), `derelict_saturn` (the Docking Shelf); only the world end of each row was
+  re-pointed, the docked end and the ship are as they were, and `hqShipDestinations()` lists the three new rooms + Antarctica.
+  `cydonia_mare` (both ends mine: the Far Side's Bore <> the Face's mouth, still a draught), `saturn_singularity` (both ends mine: the
+  frame on the west rim walk <> the frame on the north rim), `observatorium_singularity` (the Singularity end only: the Screen's ledge;
+  DOOR HQ's end untouched). The tool checks all sixteen rows (bays, link ends, `HQ_AREA_MARKERS`) and refuses to bake when one drifts.
+- **RETIRED (`DOOR_HQ.retired`):** `site_prebuilt_moon_mare`, `…_mars_cydonia`, `…_saturn_hexagon`, `…_singularity_horizon` -> their
+  plot rooms. The four old rooms stay in the data (generated from `HQ_AREA_SPECS`; PvP board sources in HQ_ARENA_RULES.picks, and the tool
+  reads each world's shell, people and lines from them). No door leads to them (checked: `hqWorldGraph()` has no edge into a retired
+  space room). NEW HUB `space` ("OUTER SPACE", anchor = the Spaceship's airlock, sites = the ship + the four worlds). `HQ_WORLD_CLOCK`:
+  the Moon, Saturn and the Singularity `still` (no day), Mars wears Cydonia's `dayLook`.
+- **WHO IS THERE (26):** every one of the old rooms' sixteen bystanders with their own line (placed where the line points: the grey of
+  the pyramid at its foot, the grey of the Face on its brow, the Martian of the mouth by the mouth, the watcher of the frame at the
+  frame ...), plus each world's own (`DOOR_TEXT.POINT_OF_ENTRY`): Barbarella, Mantid, Voidweaver on the Moon; Martian, Droid on Mars;
+  Grey, Black Goo on Saturn; Cosmic Wraith, Watcher at the Singularity. No line was written for the new ones.
+- **SEEN ON SCREEN** (probe through probe-fast.js): see the first-build pictures in the PR; the notes below say what read and what did not.
+- **NEW MECHANICS, LISTED, NOT BUILT:** flying the Spaceship by hand between worlds; floating outside it; open space, the Sun, Earth,
+  the asteroid belt and Low Orbit as places; the Drop as a way out of the Singularity; low gravity on the walk (the battle zone exists).
+- **NOT DONE / KNOWN SHORT (first build):** only district M is piloted; the other nine hold the forms, the old rooms' people and a few
+  props each (each file's header lists what it lacks). The Catwalk (Terrace > Antenna Platform) is not built. The old rooms' four tapes
+  and finds were not re-homed (no tape / find guards). No encounter tables, no residents with routines. Nothing was walked by a player
+  (offline walk + compile + pictures).
