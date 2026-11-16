@@ -4,7 +4,7 @@
    THE PLOTS: P00-01 The Hedges, north · P00-02 The Lawn · P00-03 The Chessboard · P00-04 The Mirror · P00-05 The Tea Party ·
    P00-06 The Hedges, south (squares x 0..12, y 12..84; the garden's zone runs to the moat's west bank, x 0..14).
 
-   WHAT STANDS HERE TODAY (passes 1 + 2 of 5: the exteriors, the walk-in, 2026-11-16; one drawn row `cam:l:garden` in the room's frame + a hedge row a plot):
+   WHAT STANDS HERE TODAY (passes 1 to 3 of 5: the exteriors, the walk-in, the dressing, 2026-11-16; one drawn row `cam:l:garden` in the room's frame + a hedge row a plot):
    the hedges on a stone kerb (the plan's letter `h`: solid by the plan, DRAWN here), topiary on their tops, roses in their faces, rose
    arches over the walks, a stone pier either side of every gateway, lanterns on iron posts. P00-01: the roses being painted (the ladder,
    the pots), the flamingos and the paved ring. P00-02: croquet (hoops, peg, balls, the umpire's chair), spare chess pieces, the small
@@ -14,13 +14,15 @@
    a grandfather clock, the giant hourglass, three doors that lead nowhere. P00-05: the tea party: a long table under a striped tent in
    the east nook, twelve chairs no two alike, the cat on the hedge. P00-06: mushrooms growing out of the hedge tops, a bird cage, urns.
    THE GLASSHOUSE (pass 2; `cam:lglass`, squares 9..11 x 38..39, walked into: beds, a palm, a table). Name boards under seven arches.
-   Four natives with the old garden's lines (gnome, ice queen, fairy, catgirl); benches and a signpost.
+   Pass 3: flower beds at the lawns' and nooks' hedge feet, butterflies, crows, busts at the mirror, presents and music at the tea party,
+   glowing caps along the south walks. Four natives with the old garden's lines (gnome, ice queen, fairy, catgirl) + five with none
+   (two chess pieces, a rabbit, a dreameater, a mushroom girl); benches and a signpost.
 
    NOT HERE (the tool's, shared): THE MIRROR's door on P00-04 (square 7, 53: a way out of the zone, to the Looking-Glass waiting room;
    the tool keeps its square clear), the gap in the west hedge to the old garden (`oldgarden`), the dead tree's hole (`deadtree`, on the
    south wall: W's plot P00-07). Dress round them, do not move or retarget them.
 
-   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO (passes 3 to 5): dressing and the natives, air / light / night, polish. The hedges are not a maze: opening one is a plan change (the tool's).
+   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO (passes 4 + 5): air / light / night, polish. The hedges are not a maze: opening one is a plan change (the tool's).
    NEEDS A MODEL (nothing on R2): a rose bush / flower bed, a card soldier, a top hat, a croquet mallet + hedgehog, a hookah, a garden
    gate, a sundial, a bird bath, a standing mirror. Notes: docs/notes/areas-complexes.md "CAMELOT, THE LOOKING-GLASS GARDEN".
    NEW ROWS: keep new pieces out of `dec()` (one stream of dice: it moves the scatter of F, N and W): use `at()` (metres) or `put`.
@@ -179,7 +181,7 @@ native('fairy', 9, 69, 300, sayOf(OG, 'fairy')); native('catgirl', 5, 69, 60, sa
 at('bird_cage', gc(4) + 1.3, gc(74) - 1.2, { face: 30 }); at('stone_urn', gc(5) - 1.2, gc(75) + 1.2); at('stone_urn', gc(2) - 1.2, gc(74) - 1.2);
 /* ── PASS 2: THE GLASSHOUSE (P00-03, the lawn's south-east corner, squares 9..11 x 38..39): the garden's one walk-in. Dark glass in a white
    frame on a stone course, a glass roof; inside a walk down the west side, raised beds along the east and north walls, a palm, a table. ── */
-{ const GL = 'urban:GlassWindowTall1a', DARK = 0x3e5c6c, WH = 0xf2f0e8, Hh = 5.25, EV = 3.9, BASE = 0.7;
+{ const GL = 'urban:GlassWindowTall1a', DARK = 0x3e5c6c, WH = 0xf2f0e8, Hh = 5.25, EV = 5.3, BASE = 0.7;   // the eaves stand at the building's own top: with lower eaves its flat lid (at Hh) cut through the glass roof
   for (let y = 38; y < 40; y++) for (let x = 9; x < 12; x++) taken.add(x + ':' + y);
   const B = ctx.building('lglass', [9, 38, 12, 40], 'W', Hh, { leafDouble: false, leaf: 'leaf_birch_glass', keyIn: STONEK, floorIn: 'cobblestone' }, (a, w, d, door) => {
       const Q = a.P, W2 = w / 2 + 0.05, D2 = d / 2 + 0.05, post = (x, z, h, t) => Q.push({ s: 'box', p: [r2(x), 0, r2(z)], size: [t || 0.14, h, t || 0.14], key: MARB, tint: WH, gain: 1.3 });
@@ -188,7 +190,8 @@ at('bird_cage', gc(4) + 1.3, gc(74) - 1.2, { face: 30 }); at('stone_urn', gc(5) 
       for (let x = -w / 2; x <= w / 2 + 0.01; x += 1.75) for (const sgn of [-1, 1]) { if (sgn > 0 && Math.abs(x - door.lx) < door.cw / 2 - 0.05) continue; post(x, sgn * (D2 + 0.04), EV); }   // the white frame: a post every 1.75 m
       for (let z = -d / 2 + 1.75; z < d / 2 - 0.01; z += 1.75) for (const sgn of [-1, 1]) post(sgn * (W2 + 0.04), z, EV);
       for (const sgn of [-1, 1]) { Q.push({ s: 'box', p: [0, EV - 0.14, sgn * (D2 + 0.04)], size: [2 * W2 + 0.3, 0.2, 0.18], key: MARB, tint: WH, gain: 1.3 }, { s: 'box', p: [sgn * (W2 + 0.04), EV - 0.14, 0], size: [0.18, 0.2, 2 * D2 + 0.3], key: MARB, tint: WH, gain: 1.3 },
-          { s: 'box', p: [0, 2.2, sgn * (D2 + 0.04)], size: [2 * W2, 0.1, 0.12], key: MARB, tint: WH, gain: 1.3 }, { s: 'box', p: [sgn * (W2 + 0.04), 2.2, 0], size: [0.12, 0.1, 2 * D2], key: MARB, tint: WH, gain: 1.3 }); }
+          { s: 'box', p: [0, 2.2, sgn * (D2 + 0.04)], size: [2 * W2, 0.1, 0.12], key: MARB, tint: WH, gain: 1.3 }, { s: 'box', p: [sgn * (W2 + 0.04), 2.2, 0], size: [0.12, 0.1, 2 * D2], key: MARB, tint: WH, gain: 1.3 },
+          { s: 'box', p: [0, 3.75, sgn * (D2 + 0.04)], size: [2 * W2, 0.1, 0.12], key: MARB, tint: WH, gain: 1.3 }, { s: 'box', p: [sgn * (W2 + 0.04), 3.75, 0], size: [0.12, 0.1, 2 * D2], key: MARB, tint: WH, gain: 1.3 }); }
       a.roof('gable', 0, EV, 0, 2 * D2 + 0.5, 1.5, 2 * W2 + 0.5, GL, DARK, { ry: 90, keyEnd: GL, tintEnd: DARK, glow: 0.12, win: 'keep', kind: 'wall' });
       Q.push({ s: 'box', p: [0, EV + 1.46, 0], size: [0.16, 0.16, 2 * D2 + 0.7], key: MARB, tint: WH, gain: 1.3, roof: true });   // the ridge, its gilt ends
       for (const sgn of [-1, 1]) Q.push({ s: 'cyl', p: [0, EV + 1.6, sgn * (D2 + 0.3)], r: 0.09, r2: 0, h: 0.7, seg: 6, tint: GOLD, roof: true });
@@ -228,6 +231,53 @@ at('bird_cage', gc(4) + 1.3, gc(74) - 1.2, { face: 30 }); at('stone_urn', gc(5) 
   roseArch(7, 39, true, [RED, WHITE]); roseArch(7, 50, true, WHITE);
   board(7, 26, true, 'THE LAWN'); board(7, 39, true, 'THE CHESSBOARD'); board(7, 50, true, 'THE MIRROR'); board(7, 63, true, 'THE TEA PARTY'); board(9, 48, false, 'THE LOOKING-GLASS GARDEN'); board(7, 18, true, 'THE HEDGES'); board(7, 77, true, 'THE HEDGES');
   /* the old garden's four `white_cloud`: tried over the walks at 10 to 12 m; under this room's sun they read as floating grey rock piles. Left out (told to mondo). */ }
+/* ── PASS 3: THE DRESSING. Flower beds along the lawns' and the nooks' hedge feet (on the grass's edge, never in a walk), butterflies and bees
+   at the roses, busts at the mirror, presents and music at the tea party, glowing caps along the south walks, crows on the piers; the natives
+   whose home this is (no lines: none are written for them). ── */
+{ const FL = [RED, WHITE, PINK, 0xf2c830, 0x8a3cd0];   // (a pale blue flower read as a grey pebble: violet)
+  /* a bed: a strip of soil in a low clipped edge, three rows of flowers; (x0, z0)-(x1, z1) = its middle line, in metres */
+  const flowerBed = (x0, z0, x1, z1, seed) => { const ns = Math.abs(z1 - z0) > Math.abs(x1 - x0), L = ns ? Math.abs(z1 - z0) : Math.abs(x1 - x0), cx = r2((x0 + x1) / 2), cz = r2((z0 + z1) / 2), bw = 0.62;
+      P.push({ s: 'box', p: [cx, 0, cz], size: ns ? [bw, 0.1, r2(L)] : [r2(L), 0.1, bw], key: 'dirt_2', tint: 0x8a6a4a });
+      for (const t of [-1, 1]) P.push({ s: 'box', p: ns ? [r2(cx + t * (bw / 2 + 0.07)), 0, cz] : [cx, 0, r2(cz + t * (bw / 2 + 0.07))], size: ns ? [0.14, 0.24, r2(L + 0.28)] : [r2(L + 0.28), 0.24, 0.14], key: LEAF, tint: HEDGE, gain: HG });
+      const n = Math.max(2, Math.floor(L / 0.42));
+      for (let row = 0; row < 3; row++) { const off = (row - 1) * 0.19, c = FL[(seed + row * 2) % 5], st = L / n, a0 = -L / 2 + st * (0.3 + row * 0.2);
+          P.push({ s: 'dome', p: ns ? [r2(cx + off), 0.2, r2(cz + a0)] : [r2(cx + a0), 0.2, r2(cz + off)], r: 0.075, h: 0.11, seg: 6, rings: 2, key: MARB, tint: c, gain: 1.4, glow: c === RED ? 0.3 : 0.45, n: n - (row === 1 ? 1 : 0), step: ns ? [0, 0, r2(st)] : [r2(st), 0, 0] });
+          P.push({ s: 'cyl', p: ns ? [r2(cx + off), 0.1, r2(cz + a0)] : [r2(cx + a0), 0.1, r2(cz + off)], r: 0.11, r2: 0.03, h: 0.13, seg: 5, cap: false, key: LEAF, tint: TOPI, gain: TG, n: n - (row === 1 ? 1 : 0), step: ns ? [0, 0, r2(st)] : [r2(st), 0, 0] }); }
+      count.beds = (count.beds || 0) + 1; };
+  const E = 0.5;   // a bed's middle line stands half a metre off the hedge's foot
+  flowerBed(gx(1) + 0.3, gx(28) + E, gx(6) - 0.3, gx(28) + E, 0); flowerBed(gx(8) + 0.3, gx(28) + E, gx(12) - 0.3, gx(28) + E, 1);   // the lawn's north edge
+  flowerBed(gx(1) + 0.3, gx(40) - E, gx(6) - 0.3, gx(40) - E, 2);                                                                     // its south edge, west of the walk
+  flowerBed(gx(1) + E, gx(29) + 0.6, gx(1) + E, gx(39) - 0.6, 3);                                                                     // its west edge
+  flowerBed(gx(11) - E, gx(66) + 0.3, gx(11) - E, gx(70) - 0.3, 4); flowerBed(gx(4) + E, gx(67) + 0.2, gx(4) + E, gx(69) - 0.2, 1);   // the tea party's two nooks
+  flowerBed(gx(8) + 0.3, gx(26) - E, gx(10) - 0.3, gx(26) - E, 2); flowerBed(gx(10) - E, gx(23) + 0.2, gx(10) - E, gx(25) + 0.2, 0);   // the painters' nook
+  /* stepping stones from the walk to the Glasshouse's door */
+  [[8.15, 38.35, 20], [8.5, 38.75, 70], [8.85, 38.4, 130], [8.3, 39.3, 200], [8.75, 39.55, 300]].forEach((q, i) => at(i % 2 ? 'psxg_stepping_stone_2' : 'psxg_stepping_stone_1', gx(q[0]), gx(q[1]), { face: q[2] }));
+  /* what flies and crawls at the roses */
+  [['butterfly', 8.6, 22.6, 1.5], ['monarch', 5.2, 23.4, 1.2], ['bumblebee', 8.9, 21.8, 1.9], ['swallowtail', 2.4, 28.5, 1.0], ['blue_morpho', 10.2, 28.6, 1.3], ['bee', 1.6, 34.0, 0.7], ['monarch', 6.3, 41.6, 1.9], ['butterfly', 8.4, 45.6, 1.8],
+   ['blue_morpho', 5.4, 54.8, 1.7], ['luna_moth', 9.6, 56.4, 2.4], ['butterfly', 10.4, 67.2, 1.3], ['swallowtail', 4.6, 67.6, 1.2], ['bumblebee', 10.6, 68.8, 0.8], ['monarch', 6.6, 74.4, 1.5], ['luna_moth', 3.2, 72.2, 2.2], ['bee', 4.5, 68.4, 0.7]]
+      .forEach((q, i) => at(q[0], gx(q[1]), gx(q[2]), { y: q[3], face: i * 67 }));
+  at('ladybug', gx(8.92), gx(22.33), { y: 2.75, face: 10 }); at('caterpillar_bug', gc(8) + 0.2, gc(57) + 0.9, { y: 1.72, face: 40 }); at('chrysalis', gc(9) + 1.3, gc(56) + 0.4, { y: 1.3, face: 0 });
+  [[6, 17], [8, 40], [4, 46], [8, 59], [6, 71], [4, 75]].forEach((q, i) => at('crow', gx(q[0]) + (q[0] % 2 ? 0.33 : -0.33), gc(q[1]), { y: 3.86, face: i * 80 + 30 }));   // on the piers' balls
+  /* the painters left their cards by the pots (the game's own cards) */
+  at('tarot', gc(8) + 1.4, gc(22) + 1.3, { y: 0.02, face: 30 }); at('tarot2', gc(8) + 0.3, gc(22) + 1.5, { y: 0.02, face: 110 }); at('tarotDeck', gc(8) - 0.3, gc(22) + 0.5, { y: 0.02, face: 200 });
+  /* THE COURT: candelabra at the canopy's front posts, urns in the corners, a sword and a shield by the guard */
+  at('candelabra', gc(8) - 2.0, gc(43) - 1.25, { face: 0 }); at('candelabra', gc(8) - 2.0, gc(43) + 1.25, { face: 0 }); at('stone_urn', gc(9) + 1.1, gc(44) + 1.1); at('stone_urn', gc(4) - 1.1, gc(44) + 1.15); at('stone_urn', gc(8) + 1.1, gc(42) - 1.15);
+  at('sword', gc(9) + 0.9, gc(44) - 0.5, { face: 200 }); at('spell_shield', gc(8) - 0.9, gc(44) + 1.0, { face: 250 });
+  /* THE MIRROR: a bust on a plinth either side of the frame, a hand mirror and a frog on the fountain's rim, keys before the door */
+  for (const kx of [5, 9]) { sq(kx, 54); P.push({ s: 'box', p: [gc(kx), 0, gc(54)], size: [0.8, 0.12, 0.8], key: STONEK, tint: STONE, gain: SG }, { s: 'box', p: [gc(kx), 0.12, gc(54)], size: [0.62, 0.9, 0.62], key: MARB, tint: WHITE, gain: 1.15 }, { s: 'box', p: [gc(kx), 1.02, gc(54)], size: [0.8, 0.1, 0.8], key: STONEK, tint: 0xe4dfd4, gain: SG });
+      at('marble_bust', gc(kx), gc(54), { y: 1.12, face: 180 }); feat({ k: 'wall', x0: gc(kx) - 0.4, z0: gc(54), x1: gc(kx) + 0.4, z1: gc(54), t: 0.8, h: 1.2, ghost: true, rail: false }); }
+  at('item_hand_mirror', gc(5) + 1.25, gc(53) + 0.95, { y: 0.62, face: 60 }); at('meshy_frog', gc(5) - 1.1, gc(53) + 1.2, { y: 0.62, face: 140 }); at('key', gc(7) + 0.6, gc(54) + 0.9, { y: 0.02, face: 40 }); at('house_key', gc(7) - 0.9, gc(55) - 0.4, { y: 0.02, face: 300 });
+  at('psx_photo_frame_mp_1', gc(4) + 1.2, gc(55) + 1.1, { y: 0.02, face: 120 }); at('item_potion_flask', gc(8) + 1.0, gc(58) - 0.9, { y: 0.02, face: 0 });
+  /* THE TEA PARTY: presents at the tent's foot, music left on the grass, cups down the table, a deck of cards */
+  [['xmas_gift', 8.25, 70.2], ['xmas_gift_2', 8.5, 70.55], ['xmas_gift_3', 8.2, 70.75], ['xmas_gift_4', 8.62, 70.25], ['xmas_gift_3', 10.6, 65.6], ['xmas_gift', 10.3, 65.4]].forEach((q, i) => at(q[0], gx(q[1]), gx(q[2]), { face: i * 55 }));
+  at('instrument_violin_lying', gc(5) + 0.9, gc(68) + 1.2, { face: 40 }); at('instrument_tambourine', gc(5) + 1.3, gc(67) - 0.2, { face: 0 }); at('instrument_guitar_lying', gc(10) + 1.0, gc(69) + 1.0, { face: 120 });
+  { const x = gc(9), z0 = gc(66) - 0.6; for (let i = 0; i < 8; i++) at(i % 3 ? 'item_drinking_cup' : 'coffee_mug', x + (i % 2 ? 0.36 : -0.36), z0 + 0.7 + i * 1.2, { y: 0.98, face: i * 40 });
+    at('tarotDeck', x - 0.2, z0 + 3.9, { y: 0.98 }); at('xmas_champagne', x + 0.1, z0 + 7.25, { y: 0.98 }); at('psx_book_mp_1', x - 0.3, z0 + 1.0, { y: 0.98, face: 20 }); }
+  /* THE HEDGES, SOUTH: glowing caps at the kerbs (the walk's own small lights), a frog */
+  [[6.12, 72.4], [7.88, 73.6], [6.1, 76.3], [7.9, 77.5], [2.12, 71.2], [3.88, 72.7], [2.1, 73.6], [4.4, 73.92], [5.3, 76.08], [3.9, 60.3], [2.1, 66.4], [3.9, 68.8], [6.1, 60.6], [7.9, 62.3], [6.1, 64.2]].forEach((q, i) => at('woods_glowcap', gx(q[0]), gx(q[1]), { face: i * 47, noLight: true }));
+  at('meshy_frog', gx(6.2), gx(75.7), { y: 0.02, face: 200 });
+  /* THE NATIVES whose home this is (no lines: none are written for them) */
+  native('chess piece', 2, 31, 90); native('chess piece', 11, 34, 270); native('rabbit', 10, 29, 240); native('dreameater', 8, 55, 250); native('mushroom girl', 8, 56, 60); }
 arch.push({ k: 'arch', id: 'cam:l:garden', x: 0, z: 0, rot: 0, y: 0, parts: P }); flushArch();
 }
 module.exports = { build };
