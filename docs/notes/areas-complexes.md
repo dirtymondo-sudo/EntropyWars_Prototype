@@ -7477,6 +7477,24 @@ renderer; 1.4 after, with the whole midway in view).
 - **THE PROBE, THE CIRCUS:** room x = -252 + 3.5 x home square, z = -210 + 3.5 x home square. Views: over x -80 z -80 y 45 face 315 pitch
   -0.45 · midway x -189 z -128 face 0 · gate x -70 z -98 face 270 · big top door x -185 z -147 face 90.
 
+**PASS 2, INTERIORS.** Four walk-ins, all in C.js (`tentInside`, `mazeWalls`, the Big Top's own block).
+- **THE BIG TOP:** the building row is `h: 14, storeys: 1` so its own ceiling (at h - 0.32) is over the cloth cone. A round wall and a cone
+  SEEN FROM WITHIN are `cyl` parts with `ri` (the inner shell faces in). The ring (curb `cyl` + `ri`, sawdust = `desert` tinted yellow), two
+  banks of seats (four `cyl` arcs of 130 degrees, rising 0.45 m a row), the band's stand, king poles with platforms, a high wire, two
+  trapezes, eight strings of bulbs (one box with `n` + a sloping `step`). Ghosts: the round wall (15 chords), each bank's front and ends,
+  the stand (0.5 m: climbed).
+- **THE HALL OF MIRRORS:** 4 x 5 squares; `MAZE_OPEN` lists the open ways between squares (a spanning tree: every square is reached, one
+  way through); every other square line is a mirror wall (gilt frame, a pane each side, a ghost wall). A mirror = the tall window sheet
+  with `uv: 'fit', kind: 'wall', win: 'keep'` and `glow` 0.7 (the `aluminium` sheet read as a grey wall). Frames wear the `gold` key.
+- **A REAL MIRROR EXISTS** (three-renderer.js `_hqBuildReflectors`: the first `barber_mirror` prop of a room reflects the scene). Not used:
+  it redraws the whole Desert for one pane. An idea for mondo, not built.
+- **THE FLOOR INSIDE** a hollow building is not the `floorIn` sheet you asked for (sand showed): draw a deck (`box`, `sides: false`, lit).
+- **BULBS:** a part with NO key, a light tint and `glow: 1` (a keyed box read as a tan cube), 0.1 m.
+- **THE PROBE INSIDE:** a view's `y` is the FEET (the eye is about 1.5 m over it): `y: 0.1` inside, or the camera stands in the ceiling and
+  the room reads black from the lining's top up. Spots (face): Big Top x -158.5 z -149.6 (90) · mirrors x -96.2 z -106.6 (0) · arcade
+  x -180.6 z -161.9 (70) · sideshow x -158 z -91.5 (110).
+- **FACES INSIDE** (`put`, the building's frame): 180 looks out of the front (a machine on the back wall), 90 / 270 = the two side walls.
+
 **FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
 `carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
 `play_slide / play_swing / play_sandbox`, `teacups`. Stalls + games: `popcorn_cart`, `hot_dog_stand`, `money_wheel`, `claw_machine`,
@@ -7505,6 +7523,10 @@ posters, a striped cloth sheet, a big ferris wheel, a big top. `bigtop` and `fes
 3. The main gate is on the EAST side, where the Exit 2 road arrives; the ticket booth by the HQ tunnel door stays the west end.
 4. Stall names are plain trade names: RING TOSS, BOTTLE TOSS, CANDY, CAN TOSS, LUCKY WHEEL, PENNY ARCADE, SIDESHOW.
 5. The lion left its rail pen for a cage wagon; the pen holds two horses.
+6. Inside the Hall of Mirrors is a real mirror maze (one way through, a dead end, the eye at the end). The door's old words say "there are
+   no mirrors": the words were left alone; the Mandela door is still the way to that room.
+7. The first build's four riser props in the Big Top were replaced by curved banks of seats; the old drum is on the band's stand.
+8. The Sideshow shows things from the model list only (skeleton, iron maiden, the eye, jars, a tesla coil); no named acts were invented.
 
 ## THE SEWERS, DISTRICT W — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/W.js`, 15 plots)
 
