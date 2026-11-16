@@ -6803,6 +6803,16 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   so the belt past the snow is snow pines (the tool's shell, one row); (2) the snow pine clumps off the track and the road (the tool's tree
   grower: a `treeIn` per zone); (3) who lives here (npc-system.md: levels, a cap, a refill); (4) sound (wind, a fire's crackle: none on R2);
   (5) the models on the NEEDS A MODEL list (axe + block, sled, reindeer, icicles, a pelt).
+- **THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; seen, one probe, 13 views)**: STAND-INS OUT:
+  14 drawn lantern posts -> `lantern_post`; drawn log stacks (three outdoors, two in the huts) -> `firewood_stack` (`span` 1.2 indoors);
+  the drawn fishing hole -> `ice_fishing_hole` + `fishing_rod` (the rod is a 2 m stand with a tackle box); fur-sheet rugs -> `fur_rug`;
+  `hw_fence` -> `fence_with_gate`; the horse before the sleigh -> two `reindeer`; `hw_straw` -> `hay_rack` + `hay_bale`; the verges' bare drawn
+  drifts -> `snow_heap` (fewer, 1.4 m off the way: it blocks). NEW: `axe_chopping_block`, `hand_cart`, `snow_sled` x 2, `snowshoes`,
+  `owl_perched`, `wooden_barrel` x 3, `water_trough`, `icicles` (two under each hut's back eave: `mount: 0`, `y` 1.95, 0.72 m out from the
+  wall: they hang right), `antler_trophy` over the Cabin's mantel, `kettle`, `fox`, `deer`, `mountain_goat`, `raven_perch`, `milestone`, `cairn`.
+  All stood upright and the right way round at first try. NEEDS A MODEL, crossed off: axe + block, log stack, sled, reindeer, deer, fox,
+  owl, icicles, fur pelt, wooden barrel, hay rack. STILL OPEN: nothing from the list; still drawn: the sawhorse, the pond's bank, snow caps.
+  COUNTS at the sleigh stop, before -> after: 540 -> 540 draw calls, 2,249 -> 2,274 geometries.
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
