@@ -4700,9 +4700,24 @@ list holds for the next passes, the models it needs. mondo 11-16: a second distr
     in the room's prop order: P's, then K's Lodge fire and campfire, ...). So K adds no light: 14 lamp posts (`lampPost`: a timber post, a lit lantern), four
     floodlights on each lift tower, four `flood_mast`s by the runs (their glow shows; their light is past the ten), strings of bulbs (`bulbs`) under every
     eave and along the Lodge's porch, `glow` on every board, a lit dot on every marker pole, smoke from the Top Station's stove pipe.
-  - FPS (settled, the Lodge Yard at night): 1.66 before -> see the PR (the same view). No new light, about 400 small glowing boxes in merged rows.
+  - FPS: measured back to back in pass 5 (below). No new light, about 400 small glowing boxes in merged rows.
   - DECISIONS MADE FOR MONDO, added: (11) night skiing is glow, not light: real light on the runs needs the room's light cap raised or shared by distance
     (the engine's; listed, not done). (12) Warm white bulbs only (the coloured strings are the North Pole village's).
+- **PASS 5, POLISH** (5 of 5, the last: THE THREAD HAS STOPPED and waits mondo's look). A walk at eye height (11 views) found: THE HALF-PIPE ran off its
+  board (text cut off: the boards are 4.2 m now, the words 3.0 at most); the Lodge's back board stood half behind the wheel house's column (moved west);
+  a lit pane showed the marble sheet's veins by day (panes wear the plain `ice` sheet); the Rental's hatch had no bar.
+  - FPS, the fair reading: the SAME main, K.js as it was after pass 3 against K.js now, one run after the other, four settled readings each (the probe's
+    software GPU): the Lodge Yard at night 1.44 and 1.76 -> 1.54 and 1.90; from the Top Station at night 1.44 -> 1.48; the Lodge Yard by day 1.78 -> 1.83.
+    Passes 4 and 5 cost nothing that can be measured. The same view read twice in one run differs by 0.3 (1,400 to 2,100 draw calls: the room's own
+    culling), so a single reading proves little. Over the whole thread: the Lodge Yard by day 1.41 before pass 1, 1.83 now; inside the Lodge 2.0 -> 1.45
+    (the one place that got slower: a second skin of walls and 150 props where there was a dark empty hall).
+  - AGAINST A FINISHED CITY DISTRICT (the 75 % bar): has built unique walk-ins with lit furnished insides on the squares, a second layer outside, signs in
+    one face, lamps, a night look, dressing on all twelve plots, air. Still short: nobody works or stands here (the room's 14 bodies are spoken for by
+    24 natives of four districts: waits THE NPC SPAWN SYSTEM), no upstairs or second room in the Lodge, no sound, the lift does not move, the day windows
+    are lit cream panes not dark glass, and the models on the NEEDS A MODEL list.
+  - WHAT I WOULD DO NEXT (for mondo to pick): 1 the lift moves and carries the player (a mechanic). 2 A real night-skiing light: the engine's ten-light cap
+    shared by distance. 3 Staff and guests once the NPC system lands. 4 The Meshy list: skis, snowboards, a snow gun, a groomer, netting, an elk head, a
+    pool table. 5 The Big Jump's line turned so it ends in the yard, not on the Lodge's back wall (the tool's heights and paint).
 - To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
   x 21.4, z -59.3 (the probe, 11-16).
 
