@@ -10,7 +10,7 @@ exports.build = ctx => { const { gx, gz, wall, look } = ctx;
     wall(gx(71), gz(23), gx(71), gz(25), 0, 6);   // the gate is shut
     /* THE OBELISK: a needle of red granite on a marble pedestal, a gilt cross on its tip (the catalogue's `obelisk` is a black monolith with eyes: not this one) */
     look('obelisk', gx(60), gz(24), 0, 0.9, a => { a.box(0, 0, 0, 4.4, 1.2, 4.4, 'marble_2', 0xe8e0d0); a.box(0, 1.2, 0, 3.2, 3, 3.2, 'marble_2', 0xf0e8d8); a.box(0, 4.2, 0, 3.8, 0.5, 3.8, 'marble_2', 0xe8e0d0);
-        a.cyl(0, 4.7, 0, 1.75, 19, 'rocks_3', 0xc98a72, { r2: 1.15, seg: 4, a0: 45 }); a.cyl(0, 23.7, 0, 1.15, 1.6, 'rocks_3', 0xc98a72, { r2: 0, seg: 4, a0: 45 });
+        a.cyl(0, 4.7, 0, 1.75, 19, 'marble_2', 0xd8a08a, { r2: 1.15, seg: 4, a0: 45, glow: 0.35 }); a.cyl(0, 23.7, 0, 1.15, 1.6, 'marble_2', 0xd8a08a, { r2: 0, seg: 4, a0: 45, glow: 0.35 });
         a.box(0, 25.3, 0, 0.14, 1.5, 0.14, 'gold'); a.box(0, 26.2, 0, 0.9, 0.14, 0.14, 'gold'); });
     look('gate', gx(71.5), gz(24), 0, 0, a => {
         a.box(-0.2, 0, 0, 0.3, 6.4, 6.6, 'urban:MetalCorrugated1a', 0x3a2f22);                       // the two bronze leaves

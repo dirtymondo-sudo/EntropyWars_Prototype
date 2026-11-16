@@ -111,6 +111,9 @@ function makeRoom(PLAN) {
     R.wall = (x0, z0, x1, z1, y0, h, o) => feat(Object.assign({ k: 'wall', absY: true, x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), t: 0.4, h: r2(h), y: r2(y0 + h), ghost: true, rail: false }, o || {}));
     R.rail = (x0, z0, x1, z1, y, model) => feat(Object.assign({ k: 'rail', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), model: model || 'balusters_d' }, y != null ? { y: r2(y) } : {}));
     R.mark = m => marks.push(m);
+    /* A SWINGING DOOR in a wall a district built itself (the castle's way: a `doorsOnly` carrier row, three-renderer.js _hqBuildTexDoors): at (x, z)
+       in metres on the wall's line, rot 90 = the wall runs north-south; o: leaf, double (3.1 m), y (its sill) */
+    R.inner = []; R.door = (x, z, rot, o) => R.inner.push(Object.assign({ x: r2(x), z: r2(z), rot: rot || 0, w: 1.55, leaf: 'leaf_wooden' }, o || {}));
     /* DRAWN COLUMNS (the frame rate: the catalogue's `greek_column` is a heavy model; 150 of them in a colonnade cost a million triangles): one
        `arch` row for a whole run of columns (a base, a tapered shaft, a capital, in marble) + a small ghost wall each so the walker goes round.
        list = [[sx, sy], ...] (a column on the middle of each square), h = the shaft's height */
@@ -283,6 +286,7 @@ LAYOUT.rooms.forEach(PLAN => { const R = ROOMS[PLAN.key], S = R.S, fin = finish(
     if (fin.slope) Ln.push("                slope: { cells: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.H + ", d: '" + fin.slope.toString('base64') + "' } },");
     if (fin.paint) Ln.push("                paint: { pal: " + J(S.pal) + ", t: 'u8', res: " + C + ", x0: " + R.mx(0) + ", z0: " + R.mz(0) + ", nx: " + R.W + ", nz: " + R.H + ", d: '" + Buffer.from(fin.paint).toString('base64') + "' },");
     Ln.push("                features: [");
+    if (R.inner.length) R._.LATE.push({ k: 'texbuilding', id: 'aft:' + PLAN.key + ':doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_wooden', inner: R.inner });
     fin.T.concat(R.F, R._.LATE, R.ARCH).forEach(f => Ln.push("                    " + J(f) + ","));
     Ln.push("                ],");
     Ln.push("            },");
