@@ -26,15 +26,19 @@
      siteRooms.entry.prebuilt_giza) is in the west face too.
    - KHAFRE (P10-09): 42 m at the foot, 26.7 m, its top third in smooth white casing. MENKAURE (P09-09): 24.5 m, 15.6 m, its lowest courses red granite.
      THE QUEENS' PYRAMIDS: three of 7 m south of Menkaure. None is climbed (a ring of unseen walls at each foot).
-   - THE SPHINX (P09-08): rebuilt from parts on 9 x 3 squares, facing east (body, haunches, forelegs, head in its headcloth, the stele). Still blocky.
+   - THE SPHINX (P09-08): the model `sphinx`, facing east on a stone floor, two pharaohs before it.
    - THE OBELISKS (P08-09). THE CAUSEWAY (P08-08): the way in from the Giza Road at the Highway's end (the road is the tool's).
    - THE DIG (P10-08): two trenches a metre down, a camp, a sarcophagus. THE OASIS (P08-10): a pool, six palms.
    - THE SAND SEA (P08-11, P09-11): a half-buried sarcophagus, skulls, stones. THE ROBBERS' TUNNEL (P11-09): link `gobekli_giza` on the east wall.
    - THE INSIDE is this file's too (rooms(kit) below): INSIDE THE GREAT PYRAMID (14 x 14 squares, three levels, the door to the Turning Tomb).
    - People (lines read from the old `site_prebuilt_giza_plateau` literal, which must stay): anubis, annunaki, skeleton, conspiracy theorist, mummy, djinn.
 
-   NEEDS A MODEL (nothing on R2 fits; never a placeholder beyond what stands):
-   - THE SPHINX: a real sculpted one (the parts-built one reads as blocks up close). A camel. Fallen casing blocks. A temple's columns (papyrus capitals).
+   THE MODEL PASS (11-16, after the five passes, on mondo's word): the wish-list models are placed and their stand-ins are out. `sphinx` (the model,
+   20 m, in place of the parts-built one), `pharaoh_statue`, `jackal_statue`, `cat_statue`, `casing_block` (for the rubble stones), `canopic_jars`,
+   `papyrus_column` (the causeway), `fallen_column`, `golden_idol`, `market_stall`, `woven_baskets`, `camel` (for the horses), `vulture`, `cobra`,
+   `scorpion`, `reeds` (for the seaweed), `wheelbarrow`, `pickaxe`, `sieve_table`, `wooden_ladder`, `wooden_barrel`, `canvas_tent` (for the nylon
+   tents), `oil_lamp`, also `tripod_bowl`, `hand_cart`, `hookah`, `kettle`, `cairn`, `rope_coils`, `backpack`, `cattle_skull`.
+   STILL NEEDS A MODEL: a hieroglyph / carved-relief wall sheet (a texture, not a model), papyrus plants, a gold pile (neither was made).
 
    KNOWN MISSING OR WRONG:
    - PASS 3 (dressing, 11-16): the Dig has an earth ramp into each trench, rope posts, planks, a finds table, a wagon; the causeway has a stone
@@ -43,7 +47,7 @@
    - PASS 4 (atmosphere, 11-16): `airZones()` (dust on the Sand Sea, round the pyramids and on the causeway; embers on the Tomb Door path; fireflies
      over the oasis), a lit torch core on every door jamb and hall post, the capstone glows; seen at dusk and at night.
    - PASS 5 (polish, 11-16): the Robbers' Tunnel's link door has a rock mouth round it (`des:giza:tunnel`); two name boards (THE DIG, THE OASIS).
-     FIVE PASSES ARE LIVE: THIS FILE IS STOPPED UNTIL MONDO HAS LOOKED (docs/plans/DISTRICT_THREAD_BRIEF.md).
+     FIVE PASSES + THE MODEL PASS ARE LIVE: THIS FILE IS STOPPED UNTIL MONDO HAS LOOKED (docs/plans/DISTRICT_THREAD_BRIEF.md).
    - THE CANYON MOUTH (P11-08) opens on sand: the canyon to Western Town was cut by the move.
    - The pyramids are not climbed any more (the first build's walked tiers and stairs went with the true shape). No temple, no causeway paving beyond
      the layout's stone squares.
@@ -72,6 +76,7 @@
 let C, gx, gc, r2, feat, props, doors, npc, count, line, setRect, pen, building, put, SOLID, P, Pm, dec, native, rnd, sayOf, O_GIZA, O_GATE, O_LINE, O_CARN, U, WD, WD2, SHG, FLR, GLS, RIB, COR, CONC, PLAS;
 const bind = ctx => ({ C, gx, gc, r2, feat, props, doors, npc, count, line, setRect, pen, building, put, SOLID, P, Pm, dec, native, rnd, sayOf, O_GIZA, O_GATE, O_LINE, O_CARN, U, WD, WD2, SHG, FLR, GLS, RIB, COR, CONC, PLAS } = ctx);
 exports.dice = 623573185;
+const SPHINX_FACE = 90;   // the model lies along its own z; this turn points its head east (seen in the probe)
 
 exports.ground = ctx => { bind(ctx);
     /* PASS 1, THE EXTERIORS (2026-11-16; mondo the same day on the stepped first build: "way too short ... you didn't even get the shape right").
@@ -119,29 +124,19 @@ exports.ground = ctx => { bind(ctx);
     /* THE QUEENS' PYRAMIDS: three small ones in a row south of Menkaure, 7 m at the foot */
     for (const qx of [62, 65, 68]) { pyramid('queen' + qx, gx(qx), gx(70), 7, { top: 4.45, tint: i => i % 2 ? LIME : LIME2 });
         for (let j = 69; j <= 70; j++) for (let i = qx - 1; i <= qx; i++) ctx.setPaint(i, j, 'bricks_1'); }
-    /* THE SPHINX, facing east, on nine squares by three (x 62..71, y 50..53): built from parts (NEEDS A MODEL: the file's header). The body
-       with its rounded back, the haunches, the forelegs out in front, the chest, the head in its headcloth, the stele between the paws. */
-    { const ox = gx(66.5), oz = gc(51), S = (o, tint, x) => PYR.push(Object.assign({ key: 'bricks_1', tint: tint == null ? LIME : tint, gain: GAIN, uv: [3.5, 3.5] }, o, { p: [r2(ox + o.p[0]), o.p[1], r2(oz + o.p[2])] }, x || {}));
-      S({ s: 'box', p: [0, 0, 0], size: [31.5, 0.35, 10.5] }, LIME2);
-      S({ s: 'box', p: [-4.5, 0.35, 0], size: [19.5, 4.2, 6.6] }); S({ s: 'roof', form: 'barrel', p: [-4.5, 4.55, 0], size: [19.5, 1.3, 6.6], seg: 8 });
-      for (const sd of [-1, 1]) { S({ s: 'dome', p: [-10.5, 0.35, sd * 3.3], r: 3.4, h: 4.4, rz: 1.9, seg: 12, rings: 5 }, LIME2); S({ s: 'box', p: [-7.2, 0.35, sd * 4.4], size: [5.2, 1.1, 1.5] }, LIME2);
-          S({ s: 'box', p: [10.5, 0.35, sd * 3.3], size: [10.5, 1.9, 2.4] }); S({ s: 'roof', form: 'barrel', p: [10.5, 2.25, sd * 3.3], size: [10.5, 0.6, 2.4], seg: 6 });
-          S({ s: 'box', p: [15.2, 0.35, sd * 3.3], size: [1.1, 2.2, 2.9] }, LIME2);
-          S({ s: 'box', p: [5.6, 4.9, sd * 2.25], size: [1.3, 3.3, 1.1] }, 0xf2d498); S({ s: 'box', p: [6.74, 8.55, sd * 0.78], size: [0.08, 0.34, 0.8], key: undefined, uv: undefined, gain: 1 }, DARK); }
-      S({ s: 'dome', p: [-14.1, 0.35, 0], r: 1.6, h: 4.2, rz: 3.2, seg: 12, rings: 5 }, LIME2);
-      S({ s: 'box', p: [4.2, 0.35, 0], size: [3.6, 6.4, 6.2] }); S({ s: 'box', p: [4.4, 6.75, 0], size: [3.0, 1.0, 3.6] }, LIME2);
-      S({ s: 'cyl', p: [3.9, 6.2, 0], r: 4.3, r2: 2.6, h: 4.9, seg: 4, a0: 45 }, 0xf2d498, { uv: [3.5, 0.875] });                                  // the headcloth
-      S({ s: 'box', p: [5.9, 6.6, 0], size: [1.6, 3.6, 3.0] }); S({ s: 'box', p: [6.2, 5.9, 0], size: [1.0, 0.8, 1.6] }, LIME2); S({ s: 'box', p: [6.6, 10.3, 0], size: [0.4, 0.8, 0.5] }, LIME2);
-      S({ s: 'box', p: [6.74, 7.3, 0], size: [0.08, 0.18, 1.4], key: undefined, uv: undefined, gain: 1 }, DARK);
-      S({ s: 'box', p: [8.6, 0.35, 0], size: [1.0, 0.3, 2.0] }, LIME2); S({ s: 'box', p: [8.6, 0.65, 0], size: [0.5, 2.8, 1.6], uv: [1.75, 1.75] }, GRAN);   // the stele between the paws
-      ring(gx(62) + 0.2, gx(50) + 0.2, gx(71) - 0.2, gx(53) - 0.2, 5);
-      setRect(62, 50, 71, 53, 'B'); for (let j = 50; j < 53; j++) for (let i = 62; i < 71; i++) ctx.setPaint(i, j, 'bricks_1');
-      P('brazier', 72, 49, {}); P('brazier', 72, 53, {}); }
+    /* THE SPHINX, facing east (THE MODEL PASS, 11-16: the model `sphinx`, 20 m long and 10 m high, in place of the one built from parts, which
+       was a placeholder). It lies on a stone floor of six squares by three (x 63..69, y 50..53), two pharaohs before it. */
+    { const ox = gx(66), oz = gc(51);
+      PYR.push({ s: 'box', p: [ox, 0, oz], size: [24.5, 0.12, 10.5], key: 'bricks_1', tint: LIME2, gain: GAIN, uv: [3.5, 3.5] });
+      Pm('sphinx', ox, oz, { face: SPHINX_FACE });
+      ring(gx(63) + 0.2, gx(50) + 0.2, gx(69) - 0.2, gx(53) - 0.2, 5);
+      setRect(62, 50, 70, 53, 'B'); for (let j = 50; j < 53; j++) for (let i = 62; i < 70; i++) ctx.setPaint(i, j, 'bricks_1');
+      P('pharaoh_statue', 71, 49, { face: 90 }); P('pharaoh_statue', 71, 53, { face: 90 }); P('brazier', 72, 49, {}); P('brazier', 72, 53, {}); }
     feat({ k: 'arch', id: 'des:giza:look', x: 0, z: 0, parts: PYR });
     [[50, 62], [57, 62], [50, 69], [57, 69]].forEach(q => P('obelisk', q[0], q[1], {})); P('brazier', 52, 65, {}); P('brazier', 55, 65, {}); P('signpost', 54, 55, { face: 90 });
     /* THE DIG: two trenches a level down, the camp */
     feat({ k: 'plateau', x: gx(76.5), z: gc(50), w: 17.5, d: 3.5, h: -1, sink: true, edge: 0.3 }); feat({ k: 'plateau', x: gx(78.5), z: gc(56), w: 17.5, d: 3.5, h: -1, sink: true, edge: 0.3 });
-    P('campfire', 80, 53, {}); Pm('camping_tent', gc(82), gc(52), { face: 240 }); Pm('camping_tent', gc(82), gc(55), { face: 280 }); dec('cardboard_boxes', 78, 53); dec('cardboard_boxes', 77, 58); P('sarcophagus', 80, 58, { face: 60 }); dec('paper_sheet', 79, 54, { y: 0.01 });
+    P('campfire', 80, 53, {}); Pm('canvas_tent', gc(82), gc(52), { face: 240 }); Pm('canvas_tent', gc(82), gc(55), { face: 280 }); dec('cardboard_boxes', 78, 53); dec('cardboard_boxes', 77, 58); P('sarcophagus', 80, 58, { face: 60 }); dec('paper_sheet', 79, 54, { y: 0.01 });
     dec('psx_wooden_crate_2', 75, 52); P('trap_sarcophagus_box', 78, 56, { y: -1, face: 90 });
     /* THE OASIS */
     feat({ k: 'pool', x: gx(53.5), z: gx(78.5), r: 8.5, rz: 7.5, y: -0.25, depth: 1.0, key: 'water', bank: 1.6 });
@@ -160,7 +155,7 @@ exports.ground = ctx => { bind(ctx);
     P('map_table', 79, 53, { face: 30 }); dec('folding_chair', 78, 54); dec('folding_chair', 80, 54); P('film_camera', 75, 54, { face: 60 });
     dec('greek_amphora', 79, 52); dec('greek_amphora', 76, 53); dec('psx_wooden_crate_1', 77, 54); dec('psx_wooden_crate_3', 82, 57); dec('psx_wooden_crate_6', 74, 57); dec('hw_shovel', 76, 51); dec('hw_shovel', 79, 57);
     dec('wooden_bucket', 77, 51); dec('wooden_bucket', 81, 55); dec('meshy_rope', 80, 51); dec('meshy_burlap_sack', 83, 53); dec('meshy_burlap_sack', 83, 54); dec('railway_lantern', 78, 55, NL); dec('skull', 77, 50, { y: -1 }); dec('femur', 79, 56, { y: -1 });
-    dec('greek_amphora', 75, 50, { y: -1 }); P('covered_wagon', 74, 59, { face: 90 }); P('horse_brown', 77, 59, { face: 270 }); dec('cot', 83, 51); dec('field_radio', 82, 54);
+    dec('greek_amphora', 75, 50, { y: -1 }); P('covered_wagon', 74, 59, { face: 90 }); P('camel', 77, 59, { face: 270 }); dec('cot', 83, 51); dec('field_radio', 82, 54);
     /* THE CANYON MOUTH + THE ROBBERS' TUNNEL: rock fall at the canyon's foot, the robbers' leavings by the tunnel */
     [[88, 56, 'hw_stone_2'], [92, 57, 'hw_stone_4'], [89, 58, 'psxg_rock_3'], [93, 55, 'hw_stone'], [86, 57, 'psxg_rock_1'], [91, 59, 'hw_stone_5'], [87, 59, 'psxg_dead_bush_1'], [94, 58, 'psxg_dead_bush_2'], [85, 55, 'psxg_dead_bush_2']].forEach(q => dec(q[2], q[0], q[1]));
     dec('crow', 88, 57, { y: 0.9 }); dec('crow', 92, 58); P('signpost', 89, 59, { face: 0 });
@@ -183,15 +178,14 @@ exports.ground = ctx => { bind(ctx);
     dec('tomb_plaque', 51, 64); dec('tomb_plaque', 56, 67); dec('hw_stone', 49, 66); dec('hw_stone_3', 58, 64); dec('greek_amphora', 53, 63); dec('greek_amphora', 54, 68); P('stone_altar', 53, 66, { face: 0 }); dec('crow', 50, 62, { y: 7 });
     /* THE OASIS: more palms, the well, reeds at the bank, a boat pulled up, birds, a carpet camp and the old cloth tent */
     [[48, 78, 4.9], [59, 75, 4.5], [52, 83, 5.1], [57, 73, 4.3], [49, 74, 4.7]].forEach(q => feat({ k: 'tree', x: gc(q[0]), z: gc(q[1]), kind: 'palm', h: q[2], r: 1.3 }));
-    P('ancient_well', 58, 77, {}); Pm('rowboat', gx(51), gx(82.3), { face: 30 }); for (const q of [[50.2, 77.2], [51.4, 80.6], [56.6, 80.4], [56.9, 76.6], [52.4, 75.3], [55.3, 82]]) Pm('ocean_seaweed', gx(q[0]), gx(q[1]), { face: Math.round(rnd() * 360) });
+    P('ancient_well', 58, 77, {}); Pm('rowboat', gx(51), gx(82.3), { face: 30 }); for (const q of [[50.2, 77.2], [51.4, 80.6], [56.6, 80.4], [56.9, 76.6], [52.4, 75.3], [55.3, 82]]) Pm('reeds', gx(q[0]), gx(q[1]), { face: Math.round(rnd() * 360) });
     Pm('flamingo', gx(52.2), gx(76.4), { face: 120 }); Pm('flamingo', gx(55.6), gx(81), { face: 300 }); Pm('flamingo', gx(51.2), gx(79.6), { face: 60 }); Pm('meshy_frog', gx(56.4), gx(77.4), {});
     P('fortune_teller_tent', 58, 82, { face: 315 }); Pm('psx_carpet_mp_1', gx(56.5), gx(84.3), { face: 20, y: 0.02 }); Pm('rug_round', gx(59), gx(80.2), { y: 0.02 }); dec('greek_amphora', 59, 83); dec('wooden_bucket', 57, 78); dec('cauldron', 56, 83); Pm('meshy_campfire_ring', gx(57.2), gx(83.2), NL);
-    P('horse_black', 49, 82, { face: 80 }); P('hitching_rail', 49, 83, { face: 0 });
+    P('camel', 49, 82, { face: 80 }); P('camel', 50, 84, { face: 140 }); P('hitching_rail', 49, 83, { face: 0 });
     /* THE TOMB DOOR: the path to it between braziers and plaques */
     for (const i of [62, 65, 68]) { P('brazier', i, 76, NL); P('brazier', i, 79, NL); } dec('tomb_plaque', 63, 76); dec('tomb_plaque', 67, 79); dec('cat', 66, 78); dec('greek_amphora', 70, 76); dec('hw_stone_2', 64, 81); dec('skull', 66, 82);
     /* rubble at the pyramids' feet (blocks that came down the faces) */
-    [[72, 75, 'hw_stone_5'], [71.6, 86, 'hw_stone_4'], [72, 90, 'ocean_rock_3'], [78, 72, 'hw_stone_2'], [92, 72, 'hw_stone_5'], [95.4, 80, 'hw_stone_3'], [95.4, 88, 'hw_stone_4'], [71.5, 68, 'hw_stone_2'], [71.5, 62, 'hw_stone_5'], [80, 59, 'hw_stone_3'], [84.4, 63, 'hw_stone'], [84.4, 69, 'hw_stone_4'],
-     [61.5, 63, 'hw_stone_2'], [69, 63, 'hw_stone_3'], [64, 68, 'hw_stone'], [60.5, 70, 'hw_stone_5'], [66.6, 71.6, 'psxg_rock_2']].forEach(q => Pm(q[2], gx(q[0]), gx(q[1]), { face: Math.round(rnd() * 360) }));
+    [[72, 75], [71.6, 86], [72, 90], [78, 72], [92, 72], [95.4, 80], [95.4, 88], [71.5, 68], [71.5, 62], [80, 59], [84.4, 63], [84.4, 69], [61.5, 63], [69, 63], [64, 68], [60.5, 70], [66.6, 71.6], [75, 96.3], [88, 96.3]].forEach((q, i) => Pm(i % 4 === 3 ? 'hw_stone_' + (2 + i % 3) : 'casing_block', gx(q[0]), gx(q[1]), { face: Math.round(rnd() * 360) }));   // (THE MODEL PASS: `casing_block` in place of the stones that stood in for it)
     /* THE SAND SEA: what the dunes half cover */
     P('meshy_giant_foot', 60, 90, { face: 40 }); Pm('rowboat', gx(52), gx(93), { face: 70, y: -0.25 }); P('dinosaur_skeleton', 66, 92, { face: 200, y: -0.35 }); P('obelisk', 56, 87, { h: 3.2, face: 30 }); Pm('sea_chest', gx(63.4), gx(87.5), { face: 140, y: -0.3 });
     P('trap_coffin_wood', 50, 87, { face: 120, y: -0.15 }); dec('skull', 53, 90); dec('femur', 55, 90); dec('ulna', 61, 93); dec('skull_pile', 69, 94); dec('greek_amphora', 58, 89, { y: -0.3 }); dec('hw_stone_4', 64, 94); dec('psxg_dead_bush_1', 49, 94); dec('psxg_dead_bush_2', 67, 86); dec('psxg_dead_bush_1', 57, 95);
@@ -212,6 +206,28 @@ exports.ground = ctx => { bind(ctx);
           A.sign(words, x, 1.55, z, 2.4, 0.75, '#3a2a18', '#e8d4a8', 'cinzel', { ry }); A.sign(words, x, 1.55, z, 2.4, 0.75, '#3a2a18', '#e8d4a8', 'cinzel', { ry: (ry + 180) % 360 }); };
       board('THE DIG', gx(73) - 0.6, gx(55) + 0.9, 90); board('THE OASIS', gx(56) + 0.4, gx(74) + 0.6, 0);
       feat({ k: 'arch', id: 'des:giza:boards', x: 0, z: 0, y: 0, parts: A.P }); }
+    /* ════ THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"): the wish-list models, where this file's
+       NEEDS A MODEL list said they were missing. Stand-ins went out as the real model came in (the Sphinx, the nylon tents, the horses, the
+       seaweed, the rubble stones: above). ════ */
+    /* the causeway: papyrus columns either side, outside the kerb (decor, off the squares' middles) */
+    for (let j = 57; j <= 73; j += 4) { Pm('papyrus_column', gx(53) - 1.5, gc(j), {}); Pm('papyrus_column', gx(55) + 1.5, gc(j), {}); }
+    /* guardians: jackals at the Great Pyramid's north mouth and at the Tomb Door, pharaohs on the path to it, cats here and there */
+    P('jackal_statue', 86, 71, { face: 0 }); P('jackal_statue', 89, 71, { face: 0 }); P('jackal_statue', 71, 78, { face: 270 }); P('jackal_statue', 71, 79, { face: 270 });
+    P('pharaoh_statue', 61, 76, { face: 270 }); P('pharaoh_statue', 61, 79, { face: 270 }); Pm('cat_statue', gx(57.5) + 1.1, gx(50.5) + 1.2, { face: 270 }); Pm('cat_statue', gx(69.6), gx(82.4), { face: 300 }); Pm('cat_statue', gx(52.3), gx(63.4), { face: 120 });
+    Pm('golden_idol', gc(57), gc(50) - 0.5, { y: 0.96 }); P('tripod_bowl', 56, 50, NL); P('tripod_bowl', 58, 50, NL); dec('oil_lamp', 57, 51); dec('canopic_jars', 58, 51);
+    /* the Dig: the tools the list asked for */
+    Pm('sieve_table', gx(78.4), gx(52.4), { face: 20 }); Pm('wheelbarrow', gx(76.4), gx(52), { face: 250 }); Pm('wheelbarrow', gx(81.3), gx(57.6), { face: 100 }); Pm('pickaxe', gx(75.6), gx(51.3), { face: 40 }); Pm('pickaxe', gx(80.4), gx(55.7), { face: 200 });
+    Pm('wooden_ladder', gx(77.5), gx(51) - 0.25, { y: -1, face: 0 }); Pm('wooden_ladder', gx(79.5), gx(56) + 0.25, { y: -1, face: 180 }); P('wooden_barrel', 83, 56, {}); Pm('wooden_barrel', gx(83.3), gx(57.4), {}); Pm('canopic_jars', gx(79.8), gx(52.7), {}); Pm('kettle', gx(80.9), gx(53.2), {});
+    P('hand_cart', 75, 57, { face: 30 }); Pm('rope_coils', gx(79.4), gx(58.8), {}); Pm('backpack', gx(81.2), gx(51.7), { face: 90 }); Pm('oil_lamp', gx(78.9), gx(53.9), { y: 0.8 });
+    /* the Canyon Mouth and the Robbers' Tunnel */
+    P('vulture', 90, 56, { face: 200 }); P('cairn', 87, 58, {}); Pm('scorpion', gx(91.5), gx(58.4), {}); P('wooden_barrel', 94, 68, {}); Pm('pickaxe', gx(91.3), gx(69.6), { face: 80 }); Pm('rope_coils', gx(92.6), gx(70.4), {}); Pm('oil_lamp', gx(93.4), gx(69.2), {}); Pm('golden_idol', gx(93.6), gx(70.6), {});
+    /* the Oasis: a market by the camp, reeds, a hookah at the tent */
+    P('market_stall', 55, 85, { face: 0 }); P('market_stall', 59, 85, { face: 0 }); Pm('woven_baskets', gx(57.3), gx(85.6), {}); Pm('woven_baskets', gx(60.6), gx(83.4), { face: 70 }); Pm('hookah', gx(58.6), gx(84.2), {}); Pm('oil_lamp', gx(56.8), gx(84.6), {}); Pm('wooden_barrel', gx(54.3), gx(84.5), {});
+    Pm('reeds', gx(54.2), gx(74.9), {}); Pm('reeds', gx(49.8), gx(79.3), {}); Pm('reeds', gx(57.6), gx(79), {});
+    /* the Sand Sea: fallen columns, a camel's bones are not made: a vulture on the giant foot's toe, scorpions, a cobra by the coffin */
+    P('fallen_column', 55, 92, { face: 30 }); P('fallen_column', 65, 88, { face: 100 }); Pm('fallen_column', gx(50.5), gx(89.5), { face: 160, y: -0.3 }); Pm('papyrus_column', gc(68), gc(90), { y: -2.2 }); P('vulture', 61, 91, { face: 300 });
+    Pm('scorpion', gx(57.4), gx(93.3), {}); Pm('scorpion', gx(63.7), gx(91.2), {}); P('cobra', 51, 88, { face: 140 }); Pm('cattle_skull', gx(59.2), gx(87.3), {}); Pm('casing_block', gx(53.4), gx(94.6), { y: -0.35, face: 20 }); Pm('canopic_jars', gx(62.6), gx(87.2), {});
+    P('camel', 70, 93, { face: 250 });
     native('anubis', 76, 54, 200, sayOf(O_GIZA, 'anubis')); native('annunaki', 86, 70, 270, sayOf(O_GIZA, 'annunaki')); native('skeleton', 79, 55, 300, sayOf(O_GIZA, 'skeleton'));
     native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist')); native('mummy', 69, 80, 270); native('djinn', 55, 84, 0);
 };
@@ -307,13 +323,15 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       /* the Relieving Chambers */
       R.dec('skull_pile', 2, 13.4, 0); R.dec('paper_sheet', 3.4, 12.6, 30, { y: L3 + 0.01 }); R.dec('psx_cobweb_5', 1.3, 12.3, 0, { y: L3 + 1.6 });
       /* PASS 2, THE INTERIORS (2026-11-16): what the first build left bare. The King's Chamber was open on its north side (a drop onto the
-         Pit's roof): it has its north wall now. Its walls are lined in red granite under a band of the better gold; two small obelisks flank the door
+         Pit's roof): it has its north wall now. Its walls are lined in red granite under a band of the better gold; two jackals flank the door
          to the Turning Tomb; the gold lies about. Torches stand in every passage (`noLight`: the room's ten lights are spent; a torch's own
          glow still draws). The urns with ferns in them are amphorae. */
       R.wall('u', 11, 5, 10, { key: STONE, tint: 0xd8a888, base: L2, h: 5.6 });
       { const GR = 0xe0aa8a, band = (u, v, w, d) => { R.box(u, v, L2, w, 5.6, d, STONE, GR, { uv: [3.5, 1.75], glow: 0.18 }); R.box(u, v, L2 + 3.3, w + (d < 0.2 ? 0 : 0.06), 0.32, d + (d < 0.2 ? 0.06 : 0), 'gold', null, { glow: 0.35 }); R.box(u, v, L2 + 0.9, w + (d < 0.2 ? 0 : 0.04), 0.1, d + (d < 0.2 ? 0.04 : 0), 'gold', null, { glow: 0.35 }); };
         band(7.5, 13.95, 17.4, 0.08); band(7.5, 11.1, 17.4, 0.08); }
-      R.B('obelisk', 6, 13, 0, { h: 2.8 }); R.B('obelisk', 8, 13, 0, { h: 2.8 });
+      R.B('jackal_statue', 6, 13, 0); R.B('jackal_statue', 8, 13, 0);   // (THE MODEL PASS: the jackals, in place of the small obelisks that stood in)
+      R.dec('canopic_jars', 6.4, 12.7, 0); R.dec('golden_idol', 8.6, 11.7, 0); R.dec('golden_idol', 9.3, 13.4, 60); R.dec('oil_lamp', 5.4, 13.6, 0); R.dec('cat_statue', 4.4, 6.4, 315); R.dec('canopic_jars', 1.6, 6.5, 0); R.B('pharaoh_statue', 8, 1, 180);
+      for (const q of [[6.3, 2.4], [0.5, 2.7], [8.6, 4.6], [1.5, 8.6], [10.4, 11.5]]) R.dec('oil_lamp', q[0], q[1], 0);
       R.box(7.5, 11.2, L2, 17.4, 0.45, 0.8, STONE, 0xe0aa8a, { uv: [3.5, 1.75], glow: 0.18 });                                          // a granite bench along the north wall (it hides the floor's dark edge)
       R.dec('money_sacks', 9.5, 12.5, 40); R.dec('psx_gold_bar_pcs_1', 9.1, 13.2, 80); R.dec('psx_gold_bar_pcs_1', 5.6, 12.4, 10); R.dec('psx_gold_bar_pcs_1', 6.5, 11.4, 140); R.dec('greek_amphora', 9.6, 11.5, 0); R.dec('item_censer', 8.4, 11.4, 0);
       R.dec('trap_sarcophagus_lid', 8.3, 12.9, 100);
