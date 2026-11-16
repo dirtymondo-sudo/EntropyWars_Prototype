@@ -60270,7 +60270,7 @@ const DOOR_HQ = {
                 {key:'psx_fish_skeleton_mp_1',x:106.23,z:99,face:232}, {key:'psx_fish_skeleton_mp_1',x:89.65,z:79.33,face:114}, {key:'skull_pile',x:110.97,z:68.23,face:92}, {key:'wall_chains',x:87.56,z:78.75,face:90},
                 {key:'wall_chains',x:122.44,z:92.75,face:270}, {key:'wall_chains',x:110.25,z:101.44,face:0}, {key:'vent_grille',x:103.25,z:70.06,face:180}, {key:'psx_cobweb_1',x:88.64,z:71.73,face:4},
                 {key:'psx_cobweb_1',x:120.22,z:99.92,face:35}, {key:'psx_cobweb_2',x:47.13,z:71.02,face:67}, {key:'psx_cobweb_2',x:75.56,z:74.75,face:293}, {key:'floor_stain',x:93.1,z:72.41,face:202},
-                {key:'floor_stain',x:120.12,z:81.51,face:107}, {key:'waste_pipe',x:54.25,z:99.75,face:0,y:6.1}, {key:'hazmat_suit',x:66.7,z:96.25,face:90}, {key:'hazmat_suit',x:66.7,z:99.75,face:90},
+                {key:'floor_stain',x:120.12,z:81.51,face:107}, {key:'waste_pipe',x:54.25,z:99.75,face:90,y:6.1}, {key:'hazmat_suit',x:66.7,z:96.25,face:90}, {key:'hazmat_suit',x:66.7,z:99.75,face:90},
                 {key:'hazmat_suit',x:45.7,z:76.35,face:90}, {key:'hazmat_suit',x:101.7,z:68.25,face:90}, {key:'radiation_drum',x:75.25,z:78.75}, {key:'radiation_drum',x:50.75,z:78.75},
                 {key:'radiation_drum',x:75.25,z:103.25}, {key:'radiation_drum',x:68.25,z:103.25}, {key:'radiation_drum',x:103.25,z:64.75}, {key:'radiation_drum',x:75.41,z:75.58,face:180},
                 {key:'radiation_drum',x:75.32,z:92.52,face:164}, {key:'valve_wheel',x:50.75,z:71.75,face:180}, {key:'cage_lamp',x:68.25,z:104.94,face:0,y:9.3}, {key:'cage_lamp',x:75.25,z:104.94,face:0,y:9.3},

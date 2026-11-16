@@ -74,7 +74,7 @@ module.exports = {
         const base = ctx.plot[DRAIN].base, onWall = (key, id, lx, ly, side, gap, o) => { const q = ctx.sq(id, lx, ly), off = 1.75 - gap, d = { n: [0, -off, 180], s: [0, off, 0], e: [off, 0, 270], w: [-off, 0, 90] }[side];
             ctx.props.push(Object.assign({ key, x: ctx.r2(ctx.gcx(q[0]) + d[0]), z: ctx.r2(ctx.gcz(q[1]) + d[1]), face: d[2] }, o || {})); };
         /* the station's WASTE PIPE: lying in the channel's head, the sludge runs out of it */
-        ctx.P('waste_pipe', DRAIN, 3, 10, { face: 0, y: ctx.r2(base - 0.9) });
+        ctx.P('waste_pipe', DRAIN, 3, 10, { face: 90, y: ctx.r2(base - 0.9) });   // (the model's bore runs east-west as made: 90 = along the channel)
         /* HAZMAT SUITS on their hooks: by the bulkhead door, in the gallery, at the Pit's doorway */
         onWall('hazmat_suit', DRAIN, 7, 9, 'w', 0.2); onWall('hazmat_suit', DRAIN, 7, 10, 'w', 0.2); onWall('hazmat_suit', DRAIN, 1, 3, 'w', 0.2, { z: ctx.r2(ctx.gcz(ctx.sq(DRAIN, 1, 3)[1]) + 1.1) }); onWall('hazmat_suit', PIT, 5, 1, 'w', 0.2);
         /* RADIATION DRUMS (the rusty barrels that stood in for them are out): the gallery, the door passage, the Pit's doorway */
