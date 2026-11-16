@@ -6535,6 +6535,15 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   `ri` + `arc`, a dark liner inside it, a rock dome roof, a ghost wall on its four squares). THE OLD STONES (`sarsen` x 4, `menhir` x 2,
   `trilithon`, a low `hill`). New to the district from the model list: `horse_brown`, `horse_black`, `hitching_rail`, `sarsen`, `menhir`,
   `trilithon`, `skull_pile`, `skull`, `femur`, `ulna`.
+- **PASS 2, THE HUTS' INSIDES (seen, two probe runs, 12 views)**: `N.js` `fit(B, id, chimneySide)` = the lining (board quads 0.33 m in, `gain` 1.55
+  + `glow` 0.2), a lit board deck under the black ceiling, two beams, the panes from inside (`calm_ice` sky blue + a timber cross), THE HEARTH
+  (stone slab, jambs, lintel, mantel board, breast, a black back, a bed of embers, the catalogue's `hearth_fire`) on the chimney's back square,
+  a hung `meshy_hanging_lantern` with a lit core, `pelt()` (the `fur` sheet as a rug: it reads as a woven rug), `logs()` (split logs drawn:
+  no log stack on R2), `shelf()`. Both huts: the two back squares block (hearth, `psx_bed_5_4`), the two front ones are free. The doors swing.
+  Wayside Hut: stool, dog, stockings + mugs + candle on the mantel, a wreath, a plate shelf, sacks, a crate, a spear, two gifts. Cabin: rocking
+  chair, the `cauldron` on the fire, saw + rope + nails on a shelf, split logs, a bear trap (`trap_bear_base` + `_jaw`, never placed before).
+  KEPT OUT after seeing them: `cot` (a steel camp cot), `psx_wooden_crate_4` (a HIGHLY FLAMMABLE plate), a `marble_light` pane seen from inside
+  (a white slab).
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
