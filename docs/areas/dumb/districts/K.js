@@ -31,23 +31,23 @@ module.exports = {
           R.B('monitor_stack', 3, 0, 0); R.dec('water_cooler', 7.6, 2.5, 270); R.dec('trash_bin', 0.4, 2.5); R.dec('desk_lamp', 4.2, 1.3, 0, { y: 0.78 });
           R.who('ai', 5.5, 2.5, 0, ctx.sayOf(ctx.O.ring, 'ai')); R.done(); }
         /* the Vent's head + the service bay */
-        ctx.P('radiation_sign', 'P03-00', 7, 10, { face: 270 }); ctx.dec('warning_tape', 'P03-00', 6, 9); ctx.P('traffic_barrel', 'P03-00', 9, 8); ctx.P('traffic_barrel', 'P03-00', 10, 8); ctx.dec('fire_extinguisher', 'P03-00', 8, 9);
+        ctx.hang('radiation_sign', 'P03-00', 7, 10, 'e'); ctx.dec('warning_tape', 'P03-00', 6, 9); ctx.P('traffic_barrel', 'P03-00', 9, 8); ctx.P('traffic_barrel', 'P03-00', 10, 8); ctx.dec('fire_extinguisher', 'P03-00', 8, 9);
         /* THE DETECTOR HALL: THE BEAM in the ring's own lane, the coils in the bays, the gantry along the west bay up its stair */
         { const R = ctx.room('P06-03', 1, 1, 10, 10, 'detector');
           R.B('floating_orb', 4, 4, 0); R.B('meshy_tesla_coil', 8, 2, 0); R.B('meshy_tesla_coil', 8, 7, 0);
           R.deck(0, 0, 2, 7, 3.5, U('MetalSubwayGrill1a')); R.guard('v', 2, 0, 7, 3.5, 0x3a78c0); R.stair(0.5, 10, 0.5, 7, 1, 0, 3.5, 'steel'); R.guard('u', 7, 1, 2, 3.5, 0x3a78c0);
-          R.B('steel_table', 8, 5, 90); R.dec('crt_terminal', 8.5, 5.5, 270, { y: 0.78 }); R.dec('computer_chair_grey', 7.8, 5.5, 90); R.dec('monitor_stack', 9.4, 9.4, 225); R.B('radiation_sign', 2, 9, 0); R.dec('security_camera', 9.8, 0.2, 225, { y: 4.0 }); R.dec('evac_button', 9.85, 4.5, 270, { y: 1.3 });
+          R.B('steel_table', 8, 5, 90); R.dec('crt_terminal', 8.5, 5.5, 270, { y: 0.78 }); R.dec('computer_chair_grey', 7.8, 5.5, 90); R.dec('monitor_stack', 9.4, 9.4, 225); R.hung('radiation_sign', 2.5, 9.94, 180, 1.7); R.dec('security_camera', 9.8, 0.2, 225, { y: 4.0 }); R.dec('evac_button', 9.85, 4.5, 270, { y: 1.3 });
           R.sign('THE BEAM IS ON', 5, 0.08, 6.2, 6, 0.9, 0, '#7fd0ff', '#10202c', 'stencil', 0.6);
           R.who('mad scientist', 2.5, 8.5, 0, ctx.sayOf(ctx.O.ring, 'mad scientist')); R.done();
           const b = ctx.O.ring.c.find(c => c.id === 'battle'), s = ctx.sq('P06-03', 2, 5); if (b) { ctx.counters.push(Object.assign({}, b, { x: gcx(s[0]), z: gcz(s[1]), plateY: r2(plot['P06-03'].base + 2.35) })); ctx.taken.add(s[0] + ':' + s[1]); } }
         /* THE BEAM DUMP: the pile, 3.5 m of it, taped off */
         { const p = plot['P00-03'], s = ctx.sq('P00-03', 1, 4); ctx.feat({ k: 'plateau', x: r2(gx(s[0]) + 3.5), z: r2(gz(s[1]) + 7), w: 7, d: 14, h: r2(p.base + 3.5), edge: 0.15 });
           for (let ly = 4; ly < 8; ly++) for (let lx = 1; lx < 3; lx++) ctx.keep('P00-03', lx, ly);
-          ctx.P('radiation_sign', 'P00-03', 3, 3, { face: 90 }); ctx.P('radiation_sign', 'P00-03', 3, 8, { face: 90 }); ctx.dec('warning_tape', 'P00-03', 3, 5); ctx.dec('warning_tape', 'P00-03', 3, 6); ctx.P('traffic_barrel', 'P00-03', 1, 2); ctx.P('traffic_barrel', 'P00-03', 1, 9); }
+          ctx.hang('radiation_sign', 'P00-03', 3, 2, 'n'); ctx.hang('radiation_sign', 'P00-03', 3, 9, 's'); ctx.dec('warning_tape', 'P00-03', 3, 5); ctx.dec('warning_tape', 'P00-03', 3, 6); ctx.P('traffic_barrel', 'P00-03', 1, 2); ctx.P('traffic_barrel', 'P00-03', 1, 9); }
     },
     dress(ctx) {
         /* the Blast Door's spur, the four service rooms */
-        ctx.P('radiation_sign', 'P03-06', 7, 9, { face: 270 }); ctx.dec('evac_button', 'P03-06', 5, 10, { mount: 1.3 });
+        ctx.hang('radiation_sign', 'P03-06', 7, 9, 'e'); ctx.dec('evac_button', 'P03-06', 5, 10, { mount: 1.3 });
         [['P00-00', 9, 9], ['P06-00', 2, 9], ['P00-06', 9, 2], ['P06-06', 2, 2]].forEach((q, i) => { if (ctx.free(q[0], q[1], q[2])) ctx.P(i % 2 ? 'cardboard_boxes' : 'traffic_barrel', q[0], q[1], q[2]); });
     },
     people(ctx) { ctx.native('glitch', 'P05-06', 6, 6, 135, ctx.sayOf(ctx.O.ring, 'glitch')); },
