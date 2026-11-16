@@ -141,6 +141,8 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/magician/', 'Assets/characters/races/magician/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/mole_man/', 'Assets/characters/races/mole_man/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/lifeguard/', 'Assets/characters/races/lifeguard/'],   // 2026-11-16 THE NEW RACES
+  ['Assets/Sprites/Races/knight/', 'Assets/characters/races/knight/'],   // 2026-11-16 THE NEW RACES (the male knight)
+  ['Assets/Sprites/Races/shaman/', 'Assets/characters/races/shaman/'],   // 2026-11-16 THE NEW RACES (the male shaman)
   ['Assets/Sprites/Races/fallenangel/', 'Assets/characters/races/fallenangel/'],
   ['Assets/Sprites/Races/firefighter/', 'Assets/characters/races/firefighter/'],
   ['Assets/Sprites/Races/flesheater/', 'Assets/characters/races/flesheater/'],
@@ -435,7 +437,7 @@ const RACE_PATH_RULES = {
 const RACE_SPRITE_GENDERS = {
   'homosapien': 'both',
   'pirate': 'both',
-  'swordfighter': 'female',
+  'swordfighter': 'both',   // the man 2026-11-16 (THE NEW RACES)
   'knight': 'both',
   'shaman': 'both',
   'mad scientist': 'both',
@@ -476,8 +478,8 @@ const RACE_SPRITE_GENDERS = {
   'chef': 'male',   // 2026-10-25
   'eagleman': 'male',   // 2026-10-25
   'flesheater': 'male',   // 2026-10-25
-  'mime': 'female',   // 2026-10-25 — the mime_female upload
-  'mummy': 'female',   // 2026-10-25 — the undead batch
+  'mime': 'both',   // 2026-10-25 — the mime_female upload; the man 2026-11-16 (THE NEW RACES)
+  'mummy': 'both',   // 2026-10-25 — the undead batch; the man 2026-11-16 (THE NEW RACES)
   'swamp monster': 'male',   // 2026-10-25
   'undead': 'male',   // 2026-10-25
   'unicorn': 'male',   // 2026-10-27 — one unicorn (one model, one roster tile)
@@ -494,7 +496,7 @@ const RACE_SPRITE_GENDERS = {
   'ghost': 'both',
   'robot': 'both',
   'catgirl': 'female',
-  'succubus': 'female',
+  'succubus': 'both',   // the man 2026-11-16 (THE NEW RACES)
   'ai': 'female',
   'android': 'female',
   'fairy': 'female',
@@ -505,14 +507,14 @@ const RACE_SPRITE_GENDERS = {
   'seraphim': 'both',
   'zombie': 'both',
   'shadow entity': 'both',
-  'cyborg': 'female',
+  'cyborg': 'both',   // the man 2026-11-16 (THE NEW RACES)
   'demon prince': 'male',
   'demon princess': 'female',
   'dreameater': 'both',
   'fallen angel': 'both',
   'goatman': 'male',
   'halfdemon': 'both',
-  'mermaid': 'female',
+  'mermaid': 'both',   // the man 2026-11-16 (THE NEW RACES)
   'nephilim': 'both',
   'vampire': 'both',
   'voidweaver': 'male',
@@ -781,7 +783,27 @@ const WEREWOLF_DAY_SPRITE_FEMALE = `${_S}/Races/Werewolf/female/werewolf_day.png
 
 const FOOTBALL_SPRITE = `${_S}/football.png`;
 
+/* THE MEN (2026-11-16, the new races): the male sides of 15 races that only had a woman; cut from their own Meshy models. */
+const _NEW_MALE_SPRITES = {
+  'vampire': `${_S}/Races/vampire/male/vampire_m.png`,
+  'zombie': `${_S}/Races/zombie/male/zombie_m.png`,
+  'knight': `${_S}/Races/knight/male/knight_m.png`,
+  'shaman': `${_S}/Races/shaman/male/shaman_m.png`,
+  'necromancer': `${_S}/Races/necromancer/male/necromancer_m.png`,
+  'cyborg': `${_S}/Races/cyborg/male/cyborg_m.png`,
+  'ki fighter': `${_S}/Races/kifighter/male/ki_fighter_m.png`,
+  'mummy': `${_S}/Races/mummy/male/mummy_m.png`,
+  'gargoyle': `${_S}/Races/gargoyle/male/gargoyle_m.png`,
+  'atlantean': `${_S}/Races/atlantean/male/atlantean_m.png`,
+  'fallen angel': `${_S}/Races/fallenangel/male/fallen_angel_m.png`,
+  'swordfighter': `${_S}/Races/swordfighter/male/swordfighter_m.png`,
+  'mime': `${_S}/Races/mime/male/mime_m.png`,
+  'mermaid': `${_S}/Races/mermaid/male/merman.png`,
+  'succubus': `${_S}/Races/succubus/male/incubus.png`,
+};
+
 function getR2RaceSpriteUrl(race, gender, cls) {
+  if (gender === 'male' && _NEW_MALE_SPRITES[race]) return _NEW_MALE_SPRITES[race];   // THE MEN 2026-11-16
   if (!race) return null;
   if (_HERO_RACE_SPRITES[race]) return _HERO_RACE_SPRITES[race];
   if (_CHARACTER_SPRITES_GENDERED[race]) {
@@ -1870,6 +1892,10 @@ const RACE_MODELS_3D = {
   // cast clip, serving generic + magic + (via fallback) support. No Regular_Jump
   // export on R2 yet, so `jump` is omitted (falls back to the arc tween).
   'shaman': {
+    male: _mkUAL('shaman/male', 'shaman_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/shaman/male/Meshy_AI_shaman_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
     female: _mk3d('Homosapien/Female/harvester', 'beautiful_attractive_', {
       idle: 'Idle_7', walk: 'Running', hit: 'Hit_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
@@ -1903,6 +1929,10 @@ const RACE_MODELS_3D = {
   // Female Knight — Thrust_Slash is the basic strike, Triple_Combo_Attack
   // the bigger generic cast flourish (spare alt idle on R2: Idle_8).
   'knight': {
+    male: _mkUAL('knight/male', 'knight_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/knight/male/Meshy_AI_knight_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'melee',
+    }),
     female: _mk3d('Homosapien/Female/knight', 'hot_attractive_female', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Triple_Combo_Attack', castMelee: 'Thrust_Slash',
@@ -2067,6 +2097,10 @@ const RACE_MODELS_3D = {
   },
   // Female Atlantean — standard idle (the swim loop read as floating on land).
   'atlantean': {
+    male: _mkUAL('atlantean/male', 'atlantean_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/atlantean/male/Meshy_AI_atlantean_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
     female: _mk3d('atlantean/female', 'hot_attractive_atlant', {
       walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
@@ -2103,6 +2137,10 @@ const RACE_MODELS_3D = {
   // melee, mage_soell_cast_3 (note the _3) for ki blasts / support, backflip
   // jump. Spare on R2: Punch_Forward_… (exact name unconfirmed).
   'ki fighter': {
+    male: _mkUAL('kifighter/male', 'ki_fighter_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/kifighter/male/Meshy_AI_ki_fighter_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
     female: _mk3d('kifighter/female', 'attractive_beautiful_', {
       idle: 'Idle_6', walk: 'Running', jump: 'Backflip_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Punch_Combo_5', castMelee: 'Kung_Fu_Punch',
@@ -2114,6 +2152,10 @@ const RACE_MODELS_3D = {
   // Female Vampire (humanoid form only — bat-swarm form keeps its particle
   // build, the renderer skips models for it).
   'vampire': {
+    male: _mkUAL('vampire/male', 'vampire_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/vampire/male/Meshy_AI_vampire_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'claw',
+    }),
     female: _mk3d('vampire/female', 'beautiful_attractive_', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
@@ -2167,6 +2209,10 @@ const RACE_MODELS_3D = {
   // Mermaid (White Mage, healer) — aquatic: swim-idle like the atlantean;
   // magic surges for basic attacks (no weapon on a tail).
   'mermaid': {
+    male: _mkUAL('mermaid/male', 'merman', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/mermaid/male/Meshy_AI_merman_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
     female: _mkUAL('mermaid/female', 'hot_mermaid_girl', {
       heightRatio: 0.95,
       basicAttackKind: 'magic',
@@ -2204,6 +2250,10 @@ const RACE_MODELS_3D = {
   },
   // Necromancer (Black Mage, caster) — death magic zaps.
   'necromancer': {
+    male: _mkUAL('necromancer/male', 'necromancer_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/necromancer/male/Meshy_AI_necromancer_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
     female: _mkUAL('necromancer/female', 'hot_girl_necromancer', {
       heightRatio: 0.95,
       basicAttackKind: 'magic',
@@ -2211,6 +2261,10 @@ const RACE_MODELS_3D = {
   },
   // Succubus (Psychic, support) — charm/psychic zaps.
   'succubus': {
+    male: _mkUAL('succubus/male', 'incubus', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/succubus/male/Meshy_AI_incubus_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
     female: _mkUAL('succubus/female', 'hot_seductive_pink_su', {
       heightRatio: 0.98,
       basicAttackKind: 'magic',
@@ -2476,6 +2530,10 @@ const RACE_MODELS_3D = {
     }),
   },
   'mime': {
+    male: _mkUAL('mime/male', 'mime_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/mime/male/Meshy_AI_mime_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
     female: _mkUAL('mime', 'mime_female', {
       model: `${_S}/Races/mime/Meshy_AI_mime_female_Running.glb`,
       heightRatio: 0.93, basicAttackKind: 'punch',
@@ -2484,6 +2542,10 @@ const RACE_MODELS_3D = {
   // ── THE UNDEAD BATCH (2026-10-25, mondo) ── Races/<folder>/Meshy_AI_<name>_Running.glb, rigged (the swamp monster's
   // rig carries finger bones: 66 joints)
   'mummy': {
+    male: _mkUAL('mummy/male', 'mummy_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/mummy/male/Meshy_AI_mummy_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
     female: _mkUAL('mummy', 'mummy_female', {
       model: `${_S}/Races/mummy/Meshy_AI_mummy_female_Running.glb`,
       heightRatio: 0.95, basicAttackKind: 'punch',
@@ -2691,6 +2753,10 @@ const RACE_MODELS_3D = {
   },
   // Cyborg (Raider, bruiser) — augmented strikes.
   'cyborg': {
+    male: _mkUAL('cyborg/male', 'cyborg_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/cyborg/male/Meshy_AI_cyborg_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
     female: _mkUAL('cyborg/female', 'hot_girl_futuristic_', {
       heightRatio: 0.97,
       basicAttackKind: 'punch',
@@ -2700,6 +2766,10 @@ const RACE_MODELS_3D = {
   // Zombie (Raider/Bruiser, tank archetype) — shambles with the undead gait,
   // rakes with rotten nails.
   'zombie': {
+    male: _mkUAL('zombie/male', 'zombie_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/zombie/male/Meshy_AI_zombie_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'claw',
+    }),
     female: _mkUAL('zombie/female', 'female_zombie_pretty', {
       heightRatio: 0.96,
       basicAttackKind: 'claw',
@@ -2711,6 +2781,10 @@ const RACE_MODELS_3D = {
   // Swordfighter (Swordmaster, new race 2026-07-13) — pop-idol duelist:
   // fencer ready stance, real sword combos for melee strikes.
   'swordfighter': {
+    male: _mkUAL('swordfighter/male', 'swordfighter_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/swordfighter/male/Meshy_AI_swordfighter_m_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'melee',
+    }),
     female: _mkUAL('swordfighter/female', 'hot_girl_pop_idol_s', {
       heightRatio: 0.94,
       lib: { idle: { clip: 'Sword_Idle' },
@@ -2719,6 +2793,10 @@ const RACE_MODELS_3D = {
   },
   // Fallen Angel (Harbinger, caster) — corrupted grace, magic zaps.
   'fallen angel': {
+    male: _mkUAL('fallenangel/male', 'fallen_angel_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/fallenangel/male/Meshy_AI_fallen_angel_m_Running.glb`,
+      heightRatio: 1.02, basicAttackKind: 'magic',
+    }),
     female: _mkUAL('fallenangel/female', 'fallen_angel_r', {
       heightRatio: 1.0,
       basicAttackKind: 'magic',
@@ -3100,6 +3178,10 @@ const RACE_MODELS_3D = {
   // female model: raking claw basics + monster sway instead of the default
   // feminine idle.
   'gargoyle': {
+    male: _mkUAL('gargoyle/male', 'gargoyle_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
+      model: `${_S}/Races/gargoyle/male/Meshy_AI_gargoyle_m_Running.glb`,
+      heightRatio: 1.1, basicAttackKind: 'claw',
+    }),
     female: _mkUAL('gargoyle/female', 'female_gargoyle_real', {
       heightRatio: 1.05,
       basicAttackKind: 'claw',
@@ -7812,7 +7894,7 @@ if (typeof TERRAIN_SPRITES !== 'undefined') {
       else if (v && typeof v === 'object') walk(v, depth + 1);
     }
   };
-  [_HERO_RACE_SPRITES, _CHARACTER_SPRITES, _CHARACTER_SPRITES_GENDERED, HONDA_CIVIC_SPRITES, TIME_COP_LOOKS, SENTAI_SPRITES,
+  [_HERO_RACE_SPRITES, _CHARACTER_SPRITES, _CHARACTER_SPRITES_GENDERED, _NEW_MALE_SPRITES, HONDA_CIVIC_SPRITES, TIME_COP_LOOKS, SENTAI_SPRITES,
    RACE_SPRITE_ANIMATIONS, RACE_PORTRAITS, RACE_SPRITES, EQUIP_SPRITES, OBJECT_SPRITES, BOSS_SPRITES, DRAGON_SPRITES,
    WEATHER_SPRITES, SEED_TILE_SPRITES, TRAP_TILE_SPRITES].forEach(t => { try { walk(t, 0); } catch (e) {} });
 })();
