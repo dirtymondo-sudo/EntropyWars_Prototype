@@ -43,6 +43,10 @@ const col = (a, x, z, h, r, y0, inn) => { y0 = y0 || 0; const q = inn ? IN : GQ,
     a.cyl(x, y0 + h - 0.5, z, r * 0.84, 0.26, MARB, W1, A(q, { seg: 12, r2: r * 1.3 })); a.box(x, y0 + h - 0.24, z, r * 2.8, 0.24, r * 2.8, GOLD, GT, g); };
 /* a plinth for a statue or a bowl (the prop on it takes `y` = its top, under 1 m: a lift) */
 const plinth = (a, x, z, w, h, inn) => { const q = inn ? IN : GQ, g = inn ? ING : GG; a.box(x, 0, z, w + 0.24, 0.14, w + 0.24, MARB, W2, q); a.box(x, 0.14, z, w, h - 0.26, w, MARB, W1, q); a.box(x, h - 0.12, z, w + 0.2, 0.12, w + 0.2, GOLD, GT, g); };
+/* THE NIGHT (pass 4; the zone's rule of light: warm against the blue night). Parts that glow are drawn unlit, so they cost no light:
+   flame = a gold bowl with a fire in it (on a column, a wall top, a pediment's end); lamp = a small oil lamp hung on a chain under a beam */
+const flame = (a, x, y, z, k, q) => { k = k || 1; a.cyl(x, y, z, 0.16 * k, 0.16 * k, GOLD, GT, A({ seg: 8, r2: 0.34 * k, glow: 0.9 }, q)); a.cyl(x, y + 0.16 * k, z, 0.26 * k, 0.6 * k, null, 0xff7a18, A({ seg: 7, r2: 0.02, glow: 1.6 }, q)); a.cyl(x, y + 0.16 * k, z, 0.15 * k, 0.4 * k, null, 0xffd860, A({ seg: 6, r2: 0.02, glow: 1.8 }, q)); };
+const lamp = (a, x, top, z, q) => { a.box(x, top - 0.6, z, 0.03, 0.6, 0.03, GOLD, GT, A({ glow: 0.8 }, q)); a.cyl(x, top - 0.78, z, 0.2, 0.18, GOLD, GT, A({ seg: 8, r2: 0.1, glow: 0.9 }, q)); a.cyl(x, top - 0.94, z, 0.15, 0.18, null, 0xffb040, A({ seg: 8, glow: 1.8 }, q)); };
 /* THE INSIDE (the zone kit: a walk-in's own walls take no light, so the room is lined a hand inside them with parts that glow). IN = lit marble, ING = lit gold */
 const IN = { glow: 0.9, gain: 1.15 }, ING = { glow: 0.95, gain: 1.5 };
 const cella = (a, w, h, d, dr) => { const top = h - 0.36, i = 0.3, t = 0.04, e = w / 2 - i, x0 = dr.lx - dr.cw / 2, x1 = dr.lx + dr.cw / 2;
@@ -54,7 +58,8 @@ const cella = (a, w, h, d, dr) => { const top = h - 0.36, i = 0.3, t = 0.04, e =
     for (const s of [-1, 1]) { a.box(0, 0.05, s * (d / 2 - 1.3), w - 2.6, 0.012, 0.28, GOLD, GT, A(ING, { sides: false })); a.box(s * (w / 2 - 1.3), 0.05, 0, 0.28, 0.012, d - 2.6, GOLD, GT, A(ING, { sides: false })); }   // …a gold line round it
     a.box(0, top - 0.1, 0, w - 2 * i, 0.02, d - 2 * i, MARB, 0xc8c0aa, { sides: false, top: false, under: true, glow: 0.75 });                           // the ceiling
     for (const z of [-3.5, 0, 3.5]) a.box(0, top - 0.34, z, w - 2 * i, 0.24, 0.3, GOLD, GT, A(ING, { under: true, top: false })); for (const x of [-7, -3.5, 0, 3.5, 7]) a.box(x, top - 0.3, 0, 0.3, 0.2, d - 2 * i, GOLD, GT, A(ING, { under: true, top: false }));   // …its coffers
-    for (const sx of [-1, 1]) for (const z of [-1.75, 1.75]) col(a, sx * 5.25, z, top - 0.34, 0.5, 0, true);                                           // four columns carry it
+    for (const sx of [-1, 1]) for (const z of [-1.75, 1.75]) col(a, sx * 5.25, z, top - 0.34, 0.5, 0, true);
+    for (const x of [-8.75, -1.75, 1.75, 8.75]) for (const z of [-1.75, 1.75]) lamp(a, x, top - 0.34, z); for (const s of [-1, 1]) flame(a, s * 3.1, 1.05, -5.0, 0.9);   // hung lamps; two fires on the statue's base                                           // four columns carry it
     /* the statue's base across the two middle squares of the back row, a step for the altar before it, a gold disc on the wall behind */
     a.box(0, 0, -5.7, 6.8, 0.95, 2.4, MARB, 0xd6cfbd, IN); a.box(0, 0.95, -5.7, 7.0, 0.1, 2.6, GOLD, GT, ING); a.box(0, 0, -4.0, 4.4, 0.4, 1.0, MARB, 0xcfc8b6, IN);
     a.box(0, 1.5, -(d / 2 - i) + 0.05, 3.6, 3.6, 0.06, GOLD, GT, ING); a.box(0, 1.8, -(d / 2 - i) + 0.09, 3.0, 3.0, 0.04, MARB, 0x2c3c66, { glow: 0.9 });
@@ -81,6 +86,8 @@ exports.apply = ctx => {
       for (const s of [-1, 1]) { a.box(0, 8.6, s * (PD / 2 + 1.04), 3.0, 1.3, 0.14, GOLD, GT, A(GG, { roof: true })); for (const t of [-1, 1]) a.box(t * 4.2, 8.45, s * (PD / 2 + 1.04), 1.5, 0.8, 0.12, GOLD, GT, A(GG, { roof: true }));   // the pediment's gold relief
           a.box(0, 11.76, s * (PD / 2 + 1.0), 0.6, 1.1, 0.3, GOLD, GT, { glow: 0.9, roof: true }); for (const t of [-1, 1]) a.box(t * (PW / 2 + 0.8), 8.06, s * (PD / 2 + 0.8), 0.5, 0.9, 0.5, GOLD, GT, { glow: 0.9, roof: true }); }   // the acroteria
       for (const s of [-1, 1]) a.box(dr.lx + s * (dr.cw / 2 + 0.22), 0, d / 2 + 0.09, 0.3, 2.5, 0.16, GOLD, GT, GG); a.box(dr.lx, 2.3, d / 2 + 0.09, dr.cw + 0.9, 0.3, 0.2, GOLD, GT, GG);
+      for (const s of [-1, 1]) for (let i = 0; i < 7; i++) lamp(a, -10.5 + i * 3.5, 7.0, s * 8.75); for (const s of [-1, 1]) for (const z of [-3.5, 0, 3.5]) lamp(a, s * 12.25, 7.0, z);   // lamps under the ring's beam
+      for (const s of [-1, 1]) for (const t of [-1, 1]) flame(a, t * (PW / 2 + 0.8), 8.96, s * (PD / 2 + 0.8), 1.5, { roof: true });
       cella(a, w, 7, d, dr); });   // the door's gold frame
   flat('P11-00', 2, 2, 10, 8);
   { const sq = []; for (let lx = 2; lx <= 9; lx++) sq.push([lx, 2], [lx, 7]); for (let ly = 3; ly <= 6; ly++) sq.push([2, ly], [9, ly]);   // a column blocks its square's middle
@@ -121,6 +128,7 @@ exports.build = ctx => {
       for (const ly of [3, 6]) { col(a, X(1), Z(ly) + (ly === 6 ? -0.9 : 0), 6.2, 0.6); }                                               // the gate: two columns, a beam, a small pediment
       a.box(X(1), 6.2, Z(4.5) - 0.45, 1.5, 0.8, 12.6, MARB, W1, A(GQ, { under: true })); a.box(X(1), 6.45, Z(4.5) - 0.45, 1.58, 0.28, 12.7, GOLD, GT, A(GG, { top: false }));
       a.roof('gable', X(1), 7.0, Z(4.5) - 0.45, 2.0, 1.5, 13.2, U('WoodGeneric2a'), TERRA, { keyEnd: MARB, tintEnd: W1 });
+      for (const s of [-1, 1]) flame(a, X(1), 7.0, Z(4.5) - 0.45 + s * 6.0, 1.3); for (const z of [Z(4), Z(5)]) lamp(a, X(1), 6.2, z);
       onPlinth('P10-02', a, 'angel_statue', 3, 3, 0.9, { face: 180 }); onPlinth('P10-02', a, 'marble_bust', 6, 3, 0.95, { face: 180 }); onPlinth('P10-02', a, 'stone_urn', 5, 6, 0.9); });
   { const q = S('P10-02', 1, 3); R.taken.add(q[0] + ':' + q[1]); feat({ k: 'wall', x0: r2(mx(q[0]) - 0.55), z0: mz(q[1]), x1: r2(mx(q[0]) + 0.55), z1: mz(q[1]), t: 1.1, h: 3, ghost: true, rail: false }); }
   native('P10-02', 'angel', 8, 5, 270, say('olympus', 'angel')); put('P10-02', 'brazier', 2, 3);
@@ -130,7 +138,7 @@ exports.build = ctx => {
       const seats = (lx0, lx1, ly, out) => { const x = (X(lx0) + X(lx1)) / 2, L = (lx1 - lx0 + 1) * C - 0.2, z = Z(ly);   // three tiers, the highest at the back (`out` = -1 north side, +1 south side)
           for (let i = 0; i < 3; i++) a.box(x, 0, z + out * (0.55 + i * 0.55), L, 0.5 * (i + 1), 3.3 - i * 1.1 - 0.0, MARB, i % 2 ? W2 : W1, GQ);
           a.box(x, 1.5, z + out * 1.55, L, 0.5, 0.2, MARB, W2, GQ); for (const s of [-1, 1]) a.box(x + s * (L / 2 + 0.1), 0, z, 0.3, 1.9, 3.4, MARB, W2, GQ); };
-      seats(2, 6, 0, -1); seats(6, 10, 9, 1);
+      seats(2, 6, 0, -1); seats(6, 10, 9, 1); for (const [lx, ly] of [[1, 0], [11, 0], [1, 9], [11, 9]]) flame(a, X(lx), 4.6, Z(ly), 1.6); for (const lx of [2, 6]) flame(a, X(lx) + (lx === 2 ? -1.75 : 1.75), 1.9, Z(0), 1.0); for (const lx of [6, 10]) flame(a, X(lx) + (lx === 6 ? -1.75 : 1.75), 1.9, Z(9), 1.0);
       plinth(a, X(1), Z(5), 1.5, 1.0); for (const ly of [3, 7]) plinth(a, X(1), Z(ly), 1.1, 0.7);
       for (const lx of [2, 11]) { for (let ly = 0; ly < 10; ly++) a.box(X(lx) - 1.6, 0, Z(ly), 0.25, 0.05, 3.5, GOLD, GT, GG); } });   // the start and the finish, gold in the track
   for (let lx = 2; lx <= 6; lx++) block('P10-01', lx, 0); for (let lx = 6; lx <= 10; lx++) block('P10-01', lx, 9);
@@ -140,7 +148,8 @@ exports.build = ctx => {
   /* ── THE COLONNADE (P11-01): two rows of tall columns under beams, rafters across: a pergola over the walk; the fountain in its middle ── */
   for (const ly of [3, 4, 7, 8, 9]) for (const lx of [3, 9]) put('P11-01', 'greek_column', lx, ly, { h: 6 });
   plotLook('P11-01', 'colonnade', 6, 6, true, a => { for (const lx of [3, 9]) for (let ly = 3; ly <= 9; ly++) { a.box(X(lx), 6, Z(ly), 1.3, 0.7, C + 0.02, MARB, W1, A(GQ, { under: true })); a.box(X(lx), 6.22, Z(ly), 1.38, 0.26, C + 0.04, GOLD, GT, A(GG, { top: false })); }
-      for (const ly of [3, 4, 5, 6, 7, 8, 9]) for (let lx = 3; lx < 9; lx++) a.box(X(lx + 0.5), 6.7, Z(ly), C + 0.02, 0.3, 0.45, MARB, W2, A(GQ, { under: true })); });
+      for (const ly of [3, 4, 5, 6, 7, 8, 9]) for (let lx = 3; lx < 9; lx++) a.box(X(lx + 0.5), 6.7, Z(ly), C + 0.02, 0.3, 0.45, MARB, W2, A(GQ, { under: true }));
+      for (const ly of [3, 4, 7, 8, 9]) for (const lx of [5, 7]) lamp(a, X(lx), 6.7, Z(ly)); for (const lx of [3, 9]) for (const ly of [3, 9]) flame(a, X(lx), 6.7, Z(ly), 1.3); });
   put('P11-01', 'fountain', 6, 6);
   { const q = S('P11-02', 2, 6); R.flats.push([q[0], q[1], q[0] + 6, q[1] + 5, 'N']); }   // the theatre stands level (the level of its north edge): a terrace on the slope
   /* ── THE AMPHITHEATRE (P11-02): the round floor, four curved tiers cut into the slope south of it, the stage wall north of it ── */
@@ -150,7 +159,8 @@ exports.build = ctx => {
       a.cyl(x, 0, z, 9.0, 2.4, MARB, W2, A(GQ, { seg: 40, arc: 180, a0: 0, ri: 8.7 }));                                                                  // …its back wall
       a.box(x, 0, Z(6), 4 * C - 0.2, 0.5, 2.6, MARB, W2, GQ); a.box(x, 0.5, Z(6) - 0.9, 4 * C - 0.4, 3.4, 0.6, MARB, W1, GQ);                              // the stage and the wall behind it
       for (let i = 0; i < 5; i++) col(a, x - 6.2 + i * 3.1, Z(6) - 0.2, 3.4, 0.32, 0.5);
-      a.box(x, 3.9, Z(6) - 0.55, 4 * C, 0.5, 1.5, MARB, W1, A(GQ, { under: true })); a.box(x, 4.05, Z(6) - 0.55, 4 * C + 0.08, 0.2, 1.58, GOLD, GT, A(GG, { top: false })); });
+      a.box(x, 3.9, Z(6) - 0.55, 4 * C, 0.5, 1.5, MARB, W1, A(GQ, { under: true })); a.box(x, 4.05, Z(6) - 0.55, 4 * C + 0.08, 0.2, 1.58, GOLD, GT, A(GG, { top: false }));
+      for (const s of [-1, 1]) flame(a, x + s * 6.6, 4.4, Z(6) - 0.55, 1.3); for (let i = 0; i < 5; i++) { const t = (20 + i * 35) * Math.PI / 180; flame(a, x + Math.cos(t) * 8.85, 2.4, z + Math.sin(t) * 8.85, 1.1); } });
   for (let lx = 3; lx <= 6; lx++) { block('P11-02', lx, 6); block('P11-02', lx, 9); block('P11-02', lx, 10); } for (const [lx, ly] of [[2, 8], [7, 8], [2, 9], [7, 9]]) block('P11-02', lx, ly);
   put('P11-02', 'lectern', 4, 7, { face: 0 }); dec('P11-02', 'instrument_harp', 3, 7); dec('P11-02', 'instrument_drum', 6, 7); native('P11-02', 'chosen one', 5, 8, 180);
   /* ── THE TERRACES (P12-02): vine rows on posts between low stone walls, a fountain ── */
