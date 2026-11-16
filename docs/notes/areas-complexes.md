@@ -4989,6 +4989,70 @@ Pass 5 of 5; the row on the board is free again. Where the district stands: the 
 - **LEFT FOR MONDO / A LATER THREAD:** real upper floors (saloon gallery, hotel, hay loft), an inside for the mine, the NEEDS A MODEL
   list, brightness of the insides on his own machine, whether the five added trades stay.
 
+## THE DESERT, THE ZONE KIT — what the next Desert district threads can use (2026-11-16, written by the pilot, Western Town; Area 51 adds its findings under it)
+
+mondo 11-16 (passed on by the set-up thread): "start one district thread in each to try to get it up to par with disaster city, so it will be
+easier to do the other districts once that first district is fleshed out and knows what shared assets it can use for the zone".
+
+**THE TOOL'S HELPERS (ctx; every district has them)**
+- `building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts)`: a hollow walk-in + its look as parts. `opts`: `leaf` (`leaf_shabby_wood` default,
+  `leaf_barn`, `leaf_saloon`, `leaf_cell`), `leafDouble`, `keyIn`, `floorIn`. The handle has `at(lx, lz)`, `face(f)`.
+- `sheet()`: a parts list for a stand-alone `arch` row (`feat({ k: 'arch', id: 'des:<d>:<name>', x, z, rot, parts: a.P })`): box, cyl, dome, quad,
+  roof, shell, `sign(words, x, y, z, w, h, ink, board, font)` (real lettering: the `txt:` sheet; `rye` is the frontier face). A gate, a
+  mine mouth, a privy, a row of lit lamp cores are all one such row.
+- `pen(x0, y0, x1, y1, [side, square])`: a ranch rail ring with a gap. `feat({ k: 'rail', ..., model: 'ranch' })` for a loose stretch.
+- `setPaint(sx, sy, sheet)`: the room's seven ground sheets + `'sand'` on your own squares (boardwalks = `urban:WoodFlooring1a`, a trail = `dirt_2`).
+- `airZones(ctx)` (new 11-16): the air over your plots ("THE AIR HOOK"). Kinds: dust, embers, fireflies, snow, rain, spores, ash, motes.
+- `P` (a blocker on a square's middle), `Pm` (a metre spot), `dec` (off the middle, random turn), `native(race, sx, sy, face, say)`.
+
+**HELPERS IN W.js WORTH LIFTING INTO THE TOOL (not done: ask on the board first; copy them meanwhile)**
+- `western(a, w, d, door, o)`: a plank front (false front, porch or balcony, sash windows, a name). `o.key` = the wall sheet, `o.lit` = lit windows.
+- `inside(a, id, w, d, h, door, o)`: lines a walk-in from within and returns `solid` / `counter` / `shelves` (drawn fittings + ghost blocks,
+  written in `furnish()`); `inn()` = a prop with `floor: true`. Any district's walk-in can use it as it is ("THE INTERIORS PASS").
+
+**SHEETS THAT SUIT THE DESERT** `urban:WoodGeneric1b` (walls; it is brown: it cannot be tinted white, use `urban:PlasterWallStucco2a`),
+`urban:WoodGeneric1a` (trim, posts), `urban:WoodGeneric2a` (shingles), `urban:WoodFlooring1d / 1a` (boards), `bricks_1`, `dirt_2`, `desert`
+(the sand; tinted yellow it reads as hay), `urban:MetalWallRibbed1a` (iron, brass by tint), `urban:GlassWindowTall1a` (give a pane `uv: 'fit'`).
+Tints want to be light: the first build's mid tints drew near black on the plank sheet.
+
+**CATALOGUE PIECES THAT SUIT IT** Meshy, the Desert: `saguaro_cactus`, `prickly_pear`, `covered_wagon`, `water_tower_west`, `hitching_rail`.
+Animals: `horse`, `horse_brown`, `horse_black`, `cow`, `chicken`, `crow`. PSX graveyard pack: `psxg_tombstone_1..3`, `psxg_dirt_grave`,
+`psxg_coffin`, `psxg_dead_tree_1/2`, `psxg_dead_bush_1/2`, `psxg_rock_1..4`. Halloween pack: `hw_straw`, `hw_straw_2`, `hw_fence`, `hw_crop`,
+`hw_scarecrow`, `hw_shovel`, `hw_pumpkin*`, `hw_candles`. Others: `ancient_well`, `decor_windpump_tower` + `_wheel`, `campfire`, `fallen_log`,
+`stump`, `skull`, `skull_pile`, `dead_snag`, `wooden_bucket`, `meshy_burlap_sack`, `psx_wooden_crate_2/3/6`, `psx_metal_barrel_mp_1/2`,
+`rocking_chair`, `iron_garden_bench`, `signpost`, `meshy_hanging_lantern`, `railway_lantern`, `money_sacks`, `spell_dynamite`, `sea_chest`.
+Inside: the list in "THE INTERIORS PASS".
+**WRONG FOR THIS ZONE (they look like something else):** `form_counter` (an office form stand), `round_table` (Camelot's 5.2 m table),
+`mobius_bar` (a modern red bar), `cell_bars` and `psx_shelf_mp_2` (drew as black slabs), `culvert_mouth` (a sewer), `luggage_cart` anywhere but
+a hotel, `cave_stone` (a 2 m standing stone), `camping_tent` (modern nylon).
+
+**THE LOOK RULES SETTLED** Real scale first: a frontier front is 2 to 5 squares wide; anything wider reads as a barn. Fronts stand close, with
+a boardwalk between them and the street. Weathered wood, one strong colour a building, a name on every front. Light comes from glow, not
+lamps: the room has ten prop lights for all four districts (`noLight` + a lit drawn core). Open ground gets a reason to be there (a gate, a
+fence line, cattle, a camp), never scatter alone. The room's rock squares (`m` in the layout) are solid: check the layout before placing.
+
+**WHAT WENT WRONG AND THE FIX** A roof past a false front hid the sign (stop the roof behind it). A prop near a wall stood on the wall
+(`floor: true`). Two ghost walls on one line opened the cells (one a line). A point flood walked through thin walls (test
+`hqTerrainWallAt` at body width). Main moves every minute with many threads: merge, rebake, re-bump the token, and merge the PR in the same
+breath; GitHub can answer "has merge conflicts" for a few seconds after a push, so check `git merge-base --is-ancestor origin/main HEAD`
+and try once more. The baked block conflicts every time: take main's side of data.js and index.html, then rebake and re-bump.
+
+**STILL MISSING ZONE-WIDE** Models: anvil + forge, water trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, a canvas
+tent, a telegraph pole. No upper floor inside any Desert building. No per-district sound. Fights use one table for the whole room
+(`HQ_AREA_ENCOUNTERS`). No residents (the city's `HQ_CITY_RESIDENTS` has no Desert rows). No interior polish pass in the bake (the city's
+`interior-polish.js` moves clipping props; the Desert has none).
+
+**WESTERN TOWN AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and this
+district lacks, in the order to do it:
+1. THE SQUARES inside: the city sets every blocker on the middle of a whole 3.5 m square and keeps walkways whole squares wide. W.js's
+   counters, partitions and the hotel's 2.6 m corridor are placed by the metre. This is one of mondo's standing rules: first to fix.
+2. THE SECOND LAYERS outside (F-detail): belt courses, sills, downpipes, roof gear, other sheets and decals on other parts. The fronts
+   here have one layer.
+3. THE SECOND INTERIOR PASS (F-atmos): a lit ceiling deck, pendants and sconces, pilasters, a crown and skirting. Here: one lining pass.
+4. THE MESHY PIECES: the city made its missing models; here they are only listed.
+5. RESIDENTS with homes and a day, and the district's own fights. Here: four standing people.
+6. WALKED UPPER FLOORS and roofs. Here: none.
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
