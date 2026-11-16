@@ -7574,7 +7574,21 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   swimmer: it floats at the ceiling indoors. (5) A small iron stove is `stove(a, x, z, top)` (shapes; no stove model exists).
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
-- **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
+- **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
+- the engine bay (jerrycans, nails on the bench, shovels, three sticks of dynamite, bricks at the firebox), the Ledge (a valve holder), the
+  Flood's banks (a floater lifted to the sheet, bones, a fish's bones, frogs, tins, bottles), the drift (a crate, a shovel, the
+  `missing_board`), THE CAMP under the Chimney (a `campfire` with `noLight`, two mattresses, a chair, a cauldron, tins, bottles, a book),
+  the niches (four candle clusters, bones, a rusted sword), the portcullis (`wall_chains` on its frame, a padlock), the Adit's foot,
+  `hw_web*` on five timber sets, eight bats (under the board roofs, round the shaft's lip, on the Flood's piers), six floor stains.
+- **THE REAL LIGHTS, corrected:** district W now hangs four ceiling bulbs, so this district gets TWO of the room's ten (the zone kit says so):
+  its first two light rows are the hearth fire and the portcullis' torch. The Flood's torch and the crystal are next in line if a bulb goes.
+- **WHO IS THERE (6):** the old room's ghoul by the Sump and skeleton under the Chimney, with their own lines; + a flesheater at the fire, a
+  swamp monster at the Flood's west bank (the world plan's homes table names both for the Sewers), a zombie at the camp, a ghost at the
+  niches. None stands on a walk a square wide. No new lines (none are invented).
+- **FRAME RATE on today's room** (the other four Sewers threads made the whole room heavier: the same view fell from 2.50 to 1.55 with this
+  district's FIRST build baked in): with passes 1 to 3: 1.60. The district's own cost is inside the noise.
+
+**FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
   `psx_old_mattress_mp_1`*, `footlocker`*, `psx_supply_crate_1..`*, `psx_metal_barrel_mp_0..3`*, `psx_jerrycan_1`*, `meshy_sandbags`*, `money_sacks`*, `cable_drum`*, `hw_shovel`*,
   `library_ladder`*, `ladder_wall_rack`*, `cauldron`*, `wooden_bucket` · radio + rescue `field_radio`*, `radio_console`*, `item_binoculars`*, `item_flare_gun`*, `map_table`*,
@@ -8161,6 +8175,20 @@ P00-01 The Chimney (a 7 x 6 hall, 12.25 m). Built on mondo's order of 11-16 (doc
   for the same view; compare counted frames, never one readout (half an hour went on a "second pass" that was this).
 - **LEFT OUT after seeing them:** the old pipe rail (draws white), `psxg_rock_*` (read as paper), `xmas_hammer` (stands upright, 0.95 m).
 
+**PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
+- the engine bay (jerrycans, nails on the bench, shovels, three sticks of dynamite, bricks at the firebox), the Ledge (a valve holder), the
+  Flood's banks (a floater lifted to the sheet, bones, a fish's bones, frogs, tins, bottles), the drift (a crate, a shovel, the
+  `missing_board`), THE CAMP under the Chimney (a `campfire` with `noLight`, two mattresses, a chair, a cauldron, tins, bottles, a book),
+  the niches (four candle clusters, bones, a rusted sword), the portcullis (`wall_chains` on its frame, a padlock), the Adit's foot,
+  `hw_web*` on five timber sets, eight bats (under the board roofs, round the shaft's lip, on the Flood's piers), six floor stains.
+- **THE REAL LIGHTS, corrected:** district W now hangs four ceiling bulbs, so this district gets TWO of the room's ten (the zone kit says so):
+  its first two light rows are the hearth fire and the portcullis' torch. The Flood's torch and the crystal are next in line if a bulb goes.
+- **WHO IS THERE (6):** the old room's ghoul by the Sump and skeleton under the Chimney, with their own lines; + a flesheater at the fire, a
+  swamp monster at the Flood's west bank (the world plan's homes table names both for the Sewers), a zombie at the camp, a ghost at the
+  niches. None stands on a walk a square wide. No new lines (none are invented).
+- **FRAME RATE on today's room** (the other four Sewers threads made the whole room heavier: the same view fell from 2.50 to 1.55 with this
+  district's FIRST build baked in): with passes 1 to 3: 1.60. The district's own cost is inside the noise.
+
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, all sections, + pack-claims.md; every key checked against the live catalogue).
 Not used anywhere in the Sewers before this district's passes unless marked *:
 MINE GEAR `hw_shovel` `spell_dynamite` `meshy_burlap_sack` `money_sacks` `meshy_rope`* `wooden_bucket`* `ancient_well` `cable_drum`
@@ -8186,6 +8214,7 @@ heap, wheelbarrow, anvil, a pulley / head wheel, a cast-iron beam pump, rats, sp
 3. The Pump Ledge is entered by its own stair from the floor; the trap's rope ladder still lands on the floor of the neck (in the old room it landed on the ledge).
 4. The old tape on the Chimney and the find are not re-homed.
 5. The Chimney's hall has burial niches and a sarcophagus (the brief says "older than the city"); the crystal seam is the mine's ore.
+7. A camp (fire ring, mattresses, a pot) lies under the Chimney, and four residents were added without lines: flesheater, swamp monster, zombie, ghost.
 6. The furnace is a built brick firebox, not the `door_furnace` model (frame rate).
 ## THE RITUAL GROUND — the Woods' district G, the district thread (2026-11-16, second side; file `docs/areas/woods/districts/G.js`)
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped, at most five passes, no questions. Branch `claude/woods-g-ritual-ground`.
