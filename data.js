@@ -31285,7 +31285,7 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_camelot', part: 'kingdom', wall: 'e', z: 0, sub: 'THE TRAIL · INTO THE WOODS' },   // PLAN 3 (2026-11-15): the east gate's road, out through the Fairy Forest (was z 3.5)     // CAMELOT KINGDOM ON PLOTS (2026-11-15): the Fairy Forest's Woods Trail plot, the kingdom's east wall (bake-camelot.js prints the place)     // CAMELOT CASTLE, REDESIGNED (2026-11-15): the track outside the moat, east end (the Woods lie east; was the old ward's west wall)
           why: 'the path west out of the clearing does not stop at the pasture; it goes on under the trees and comes out at the castle moat', note: 'on foot', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
-          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: 115.5, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, sub: 'THE DRAIN · INTO THE TUNNEL' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
+          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: 115.5, way: 'hollowtree', sub: 'THE DRAIN · INTO THE TUNNEL' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
           b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
           why: 'the storm drain in the crag runs the wrong way: the water comes out of the platform wall and into the woods, and the grate between them was welded shut, and then it was not', note: 'the fourth station', draft: true },
         { id: 'woods_ritual', route: 'woods', leaf: 'leaf_hell_arch', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
@@ -31485,7 +31485,7 @@ const DOOR_HQ = {
           note: 'out of order', draft: true },
         { id: 'streets_drain', route: 'sewers', way: 'gutter',
           a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -229.25, z: 239.75, face: 270, sub: 'THE GUTTER · DOWN INTO THE STORM DRAIN' },
-          b: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: 14, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, sub: 'THE CULVERT · UP TO THE STREET' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
+          b: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: 14, way: 'trail', sub: 'THE CULVERT · UP TO THE STREET' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
           why: 'every gutter in the city drains into the same culvert, and the culvert is the one under the woods; the water knows the way and the Department followed it',
           note: 'the gutter', draft: true },
         /* THE UNDERWORLD (HQ plan 9.3 stage 10 — THE COMPLEX CANDIDATES #3, 2026-09-18): the sewers and the running tunnels under
@@ -31515,7 +31515,7 @@ const DOOR_HQ = {
           note: 'the lower street', draft: true },
         { id: 'sewers_drain', route: 'sewers', leaf: 'leaf_cell', secret: true,   // AREA CONTENT D4 (2026-09-20): a DRAUGHT — the drain's second earned exit
           a: { site: 'prebuilt_downtown', part: 'sewers', wall: 'e', z: -12, sub: 'THE OUTFALL GRATE · INTO THE STORM DRAIN' },
-          b: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: 66.5, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, sub: 'THE CULVERT · INTO THE SEWERS' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
+          b: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: 66.5, way: 'trail', sub: 'THE CULVERT · INTO THE SEWERS' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
           why: 'the outfall does not go up; it goes sideways through a grate into the storm drain under the woods, which is where every gutter was draining all along',
           note: 'the same culvert', draft: true },
         { id: 'tunnels_works', route: 'subway', leaf: 'leaf_frame_only',
@@ -41184,8 +41184,8 @@ const DOOR_HQ = {
                 {id:'forest',wall:'s',x:-38.5,way:'hollowtree',label:'THE FAIRY FOREST',sub:'THE HOLLOW TREE · BACK · ROOM 420',action:{room:'site_prebuilt_fairy_forest',at:'woods'},desc:'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.'},
                 {id:'estate',wall:'s',x:-63,way:'trail',label:'THE ESTATE · THE CORN FIELDS',sub:'THE FENCE LINE · THE GATE',action:{room:'site_prebuilt_skinwalker_estate',at:'woods'},desc:'A fence, and a gate in it. The corn starts on the other side.'},
                 {id:'shasta',wall:'n',x:-122.5,way:'trail',label:'MOUNT SHASTA · THE TRAILHEAD',sub:'THE SNOWLINE · THE TRAIL UP',action:{room:'site_prebuilt_shasta_mountains',at:'woods'},desc:'The trail keeps climbing after the trees give up. There is snow on it from here.'},
-                {id:'lemuria',wall:'n',x:-70,way:'tunnel',secret:true,label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
-                {id:'lodge',wall:'e',z:-108.5,way:'tunnel',secret:true,label:'THE LODGE · THE HALLS',sub:'THE MEMBERS’ TUNNEL · UNDER THE LAWN',action:{room:'site_prebuilt_lodge_halls',at:'link_grove_lodge'},desc:'A tunnel under the lake shore that nobody admits to.'},
+                {id:'lemuria',wall:'n',x:-70,way:'hollowtree',secret:true,label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
+                {id:'lodge',wall:'e',z:-108.5,way:'hollowtree',secret:true,label:'THE LODGE · THE HALLS',sub:'THE MEMBERS’ TUNNEL · UNDER THE LAWN',action:{room:'site_prebuilt_lodge_halls',at:'link_grove_lodge'},desc:'A tunnel under the lake shore that nobody admits to.'},
                 {id:'lookingglass',wall:'e',z:-17.5,way:'hollowtree',secret:true,label:'THE LOOKING-GLASS · THE GARDEN',sub:'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE',action:{room:'site_prebuilt_camelot_kingdom',at:'deadtree'},desc:'Past the dead tree the ground is the wrong colour.'},
             ],
             counters: [],
