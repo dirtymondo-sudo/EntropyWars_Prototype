@@ -207,7 +207,7 @@ H.ell(6.5, 40.5, 4.6, 4.6, 'c', F3); H.rect(4, 38, 10, 43, 'm', F3); H.rect(5, 3
 H.stair(5, 31, 8, 35, 'N', F3, GATE, 's', { float: true });                         // THE FOURTH FLIGHT
 /* A · THE GATE (4 plots, sy 24..35): the landing, the wall of cloud, the pearly gate, the book */
 H.rect(2, 26, 46, 31, 'c', GATE); H.rect(3, 27, 45, 30, 'm', GATE);
-H.rect(0, 24, 48, 26, 'K', BANK); H.rect(23, 24, 25, 26, 'm', GATE);                // the wall of cloud; THE GATE in its middle
+H.rect(0, 24, 48, 26, 'K', GATE); H.rect(23, 24, 25, 26, 'm', GATE);                // the wall of cloud; THE GATE in its middle
 /* F · THE CLOUD FIELDS (4 plots, sy 12..23) */
 for (let y = 12; y < 24; y++) for (let x = 1; x < 47; x++) { const e = Math.min(x - 1, 46 - x); if (e === 0 && hash(x, y) < 0.4) continue; H.set(x, y, 'c', GATE); }
 H.ell(24, 18, 3.6, 3.6, 'm', GATE);                                                 // THE SUN: the dial on the floor
@@ -332,7 +332,8 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Wd}" height="${Ht}
 const svgPath = path.join(__dirname, 'heaven-hell-vatican_plot_plan_2.svg'); fs.writeFileSync(svgPath, svg);
 (async () => {
     let pw; try { pw = require('playwright'); } catch (e) { try { pw = require('/opt/node-tools/node_modules/playwright'); } catch (e2) { console.log('no playwright: open the .svg in a browser and save a PNG'); return; } }
-    const b = await pw.chromium.launch(); const pg = await b.newPage({ viewport: { width: Wd, height: Ht } });
+    let exe; try { exe = require('../../../probe-fast.js').EXE; } catch (e) {}   // the cloud's own Chromium (a fresh `npm i playwright` in the repo looks for a newer one)
+    const b = await pw.chromium.launch(exe && fs.existsSync(exe) ? { executablePath: exe } : {}); const pg = await b.newPage({ viewport: { width: Wd, height: Ht } });
     await pg.setContent(`<body style="margin:0;background:#161815">${svg}</body>`); await pg.screenshot({ path: path.join(__dirname, 'heaven-hell-vatican_plot_plan_2.png') }); await b.close(); fs.unlinkSync(svgPath);
     console.log('written: the layout (2 copies) + heaven-hell-vatican_plot_plan_2.png  ' + Wd + ' x ' + Ht);
 })();

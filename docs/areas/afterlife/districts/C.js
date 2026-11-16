@@ -7,7 +7,8 @@
    NOT YET: the arcade's roof and its back wall, the lanes' walls and gates, flower beds, the gardener's shed ("a gardener's door"). */
 'use strict';
 exports.dress = ctx => { const { P, at, tree, cell, gx, gz } = ctx;
-    for (let y = 37; y < 46; y++) for (let x = 13; x < 24; x++) if (cell[y][x] === 'k' && (x + y) % 2 === 0 && x !== 18 && y !== 41) P('greek_column', x, y, { h: 6 });
+    const cols = []; for (let y = 37; y < 46; y++) for (let x = 13; x < 24; x++) if (cell[y][x] === 'k' && (x + y) % 2 === 0 && x !== 18 && y !== 41) cols.push([x, y]);
+    ctx.columns('cloister', cols, 5.4);
     [[16, 39], [21, 39], [16, 43], [21, 43]].forEach(q => tree(q[0], q[1], 'pine', 7)); P('iron_garden_bench', 17, 40, { face: 90 }); P('iron_garden_bench', 20, 43, { face: 270 });
     P('brazier', 27, 38); P('brazier', 34, 38); P('park_bench', 27, 44, { face: 0 }); P('stone_urn', 33, 44); P('wooden_cross', 30, 38, { face: 180 });
     at('fountain', gx(42.5), gz(41.5), { h: 5 }); [[38, 38], [46, 38], [38, 45], [46, 45]].forEach(q => tree(q[0], q[1], 'pine', 8));

@@ -8958,3 +8958,101 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
   the Station's deck is a mound, not a deck on legs; R, S and T have one layer of content each (their files' headers).
 - **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
   fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
+
+## HEAVEN + HELL + VATICAN ON PLOTS — the zone redesigned, first build (2026-11-16, second side, the zone thread)
+
+mondo 11-16: "let's go ahead and start threads for those zones, but most of them I want completely redesigned/reimagined with plots and
+districts etc. like we did for disaster city or Camelot ... Then move the exits, it's not that big of a deal." (docs/plans/ZONE_THREAD_BRIEF.md).
+Plan 2 was drawn, sent to him and built without waiting (`docs/plans/world-zones/heaven-hell-vatican_plot_plan_2.png`).
+
+- **FOUR ROOMS, 66 plots, 14 districts**, written by `node bake-afterlife.js [--dry-run]` between `AFTERLIFE-<HELL|CATACOMBS|VATICAN|HEAVEN>-BEGIN / END`
+  in data.js from `docs/areas/afterlife/layout.json`. THE MAP IS A SCRIPT: `docs/plans/world-zones/draw-afterlife.js` holds every square (a
+  letter + a height) as rects and ellipses, and writes the plan's json, its picture and the layout the tool reads. Change a square there,
+  run it, run the bake. `AFTERLIFE_DUMP=<hell|catacombs|vatican|heaven>` prints a room's walked map (`!` = not reached, `/` = a flight).
+  | Room | Plots | Districts (file `docs/areas/afterlife/districts/<letter>.js`) |
+  |---|---|---|
+  | `site_prebuilt_hell_plots` HELL | 4 x 4 | R the Rim (5) · D the Descent (3) · L the Bowl (4) · W the Walkways (4) |
+  | `site_prebuilt_vatican_under` THE CATACOMBS | 3 x 2 | K the Catacombs (6) |
+  | `site_prebuilt_vatican_plots` THE VATICAN | 6 x 4 | B the Basilica (6, THE PILOT) · S the Square (8) · P the Palace (3) · C the Cloister (3) · G the Gardens (4) |
+  | `site_prebuilt_heaven_plots` HEAVEN | 4 x 5 | T the Stairway (8) · A the Gate (4) · F the Cloud Fields (4) · Y the City (4) |
+- **THE REDESIGN.** THE VATICAN stands as the real one does: the Basilica in the west (a Latin cross 112 m long, its floor 1.75 m up, the
+  dome 60 m), the oval Square east of it inside two arcs of columns with the obelisk and two fountains, the gate in the EAST wall (Disaster
+  City's Civic Center is that way; closed), the palace north (the Observatory on a two-tier mount, the Archive, the Courtyard + Terrace + the
+  Pilgrim Stair's gate), the cloister south (the Cloister, the Cistern, the Fountain), the gardens behind the apse (the Hedge Maze, the
+  Campanile's stump). THE CATACOMBS are their own dungeon under it (the Sewers' kind of room). HELL is one funnel: the rim (14 m), a
+  terrace (8.75 m), the bowl's floor (3.5 m), a lake of lava with the Plinth on its island; the east side has fallen into a sea of lava
+  crossed on four platforms and five walkways; "three flights down" from the Mouth. HEAVEN is one climb: the foot of the Stair in the Sky,
+  four floating flights (3.5 > 8.75 > 14 > 19.25 > 24.5 m), the Gate in a wall of cloud, the Cloud Fields with the Sun, the city on the
+  highest cloud (28 m) with Room 777. Mount Olympus is NOT here (it is the Mountains' district O): its two stairs come in from there.
+- **EVERY OLD NAME HAS A PLACE** (the layout's `from` field a plot): Basilica nave / chancel / triforium / crypt door; Archive stacks /
+  gallery / dome stair; Cortile courtyard / fountain / terrace / cistern / hedges / campanile; Observatory telescope; Catacombs crypt /
+  descent / warm wall / cistern / loculi / font; Pit rim / descent / bowl / warm wall / plinth / alcove / fissure; Walkways high platforms /
+  walkways / the lava below; Stairway four flights / the fall / the long way / the pool; Cloud Fields gate / sun / terraces / cloud paths /
+  grand stair / Room 777. Labels of mine (no game name existed): "The Towers, west / east", "The Book", "The Top of the Stair".
+- **HOW THE ROOMS ARE MADE (three ways in one tool).** HELL + THE VATICAN: THE HEIGHTS ARE THE MAP (`terrain.slope.cells`, the Beach's way):
+  a wall, a hedge, a cliff is a step the walker cannot climb; every row over it wears `absY`. Lava: a `stream` (the sea) + a `pool` (the
+  lake) at 0 over squares sunk to -2 (a walker who steps in is put back); a pool CARVES, so the land inside a lava row's outline (the
+  platforms, the Plinth's island, the ledge) is written again as `plateau` rows after it. THE CATACOMBS: `gen plan / look walls` + `space`
+  rows + plateaus (upright brick; a height-map wall leans). HEAVEN: a VOID room, every run of cloud a `plateau`: FLOATING from sy 31 south
+  (the Stairway), solid north of it; the flights are floating stairs; the marble is drawn sheets on the cloud.
+- **THE WAYS (all were in the game; `hqWorldGraph` resolves every one).** Links re-pointed in `DOOR_HQ.links` (only this zone's ends; the tool
+  refuses to bake when a row drifts): `bureau_vatican` (a frame under the Square's north colonnade) · `vatican_olympus` (the Vatican's north
+  wall, behind the Terrace) · `observatory_stair` (the telescope on the mount <> Heaven's south wall, the foot) · `vatican_hell` (the
+  Catacombs' Warm Wall, east <> Hell's north wall, on the rim) · `cave_hell` (Hell's west wall, the Fissure's End) · `heaven_olympus`
+  (Heaven's east wall, the Cloud Paths) · `skycastle_stair` (Heaven's west wall, the foot). Bay doors (`siteRooms.entry`): the Vatican's on
+  the lane before the Archive, Hell's on the Mouth's ledge, Heaven's before Room 777. Doors of the rooms: Vatican `crypt` (behind the altar)
+  and `well` (the Cistern) <> Catacombs `stair` and `well`. The three BATTLE markers and the Healing Zone are the old rooms' own counters.
+  The Disaster City gate is built CLOSED on this side only (a board note for the city's holder).
+- **RETIRED (`DOOR_HQ.retired`):** all nine old rooms -> the four new ones; hub `divine` opens in the Vatican. The old literals STAY (the
+  tool reads the people's lines, the door plates and the counters from them; the PvP boards are cut from the old Basilica, Walkways,
+  Stairway and Cloud Fields). `HQ_WORLD_CLOCK.still` holds the new Heaven and Hell (their own sky).
+- **THE FRAME RATE (the probe's software GPU, a settled view, 10 s of frames):** the Vatican (from the gate, looking at the Basilica) 0.8 fps
+  / 3.5 M triangles on the first bake -> 1.2 fps / 1.6 M after the colonnade's columns became drawn ones (`ctx.columns`); Hell (the bowl)
+  2.1 fps / 0.72 M; Heaven (the foot) 1.6 fps / 4,151 draw calls -> 1.9 fps / 1,522 after only the Stairway's clouds float; the Catacombs
+  6.3 fps / 0.31 M. (The Hills' proof views read 1.4 to 1.9 on the same machine.)
+- **SEEN ON SCREEN** (playtest_city.js through probe-fast.js, each room loads with no error in 30 to 60 s): the Square with the Basilica's
+  front and dome, the nave, the gardens; Hell from above, the bowl, the walkways; Heaven's foot, the Gate, the fields, Room 777; the
+  Crypt and the Loculi.
+- **NOT DONE / KNOWN SHORT (the first build):** nothing was WALKED by a player (the flights, the bridges, the climb, the doors: the tool's
+  own walk check + the graph only); the Catacombs have one flat brick roof, no vaults; Heaven's solid cloud north of the Gate shows a
+  plain cloud cliff at its edge; the city's towers are the old dark castle pieces; no room has its own air (embers, motes, dust) or
+  lights; no edges past the Vatican's wall (`terrain.edges`: mountains north, the city east would fit); 13 of the 14 districts are a
+  first build only (each file's header lists STANDS TODAY / NOT YET).
+
+### DECISIONS MADE FOR MONDO (overrule any in one line)
+1. The Catacombs are a room of their own under the Vatican (a dungeon like the Sewers), not floors under the Basilica in the same room.
+2. The Observatory is a mount beside the Archive with the telescope on top, not the top of the Basilica's dome (a dome top cannot be walked).
+3. Sizes: Hell 16 plots, the Catacombs 6, the Vatican 24, Heaven 20 (66; the first guess was 48 with Olympus inside).
+4. The Vatican's gate faces east, toward Disaster City, and is closed; the bay door stands outside the Archive.
+5. Hell is under an open, dark red sky, not under a roof (a roof 170 m wide over a 26 m pit cannot be drawn well).
+6. Heaven's city is Room 777 (a hotel hall) + white towers; "The Towers" and "The Book" are labels of mine.
+7. The hub `divine` (the map's GO, Continue) opens in the Vatican's Square, not at the foot of the stair.
+
+### NEEDS A MODEL (found nowhere on R2; exact, for the model list)
+- Statues of saints for the Basilica's attic and the colonnade's roof: one standing robed figure, 3 m, white stone (13 on the front, up to 140 on the arcs).
+- A loculus wall piece for the Catacombs: a brick wall bay 3.5 m wide x 3 m with three grave niches (bones in one).
+- A burnt dead tree for Hell's Ash Flats, 4 to 6 m.
+- A white cloud puff that reads as cloud (the catalogue's `white_cloud` reads as a heap of grey stones): 3 sizes, 2 to 8 m.
+- White city towers for Heaven (the old `castle_tower` pieces are dark stone): a round white tower 12 to 18 m with a gold cap.
+- An Egyptian obelisk (the catalogue's `obelisk` is a black monolith with eyes; the Square's is drawn in code today): 25 m, red granite.
+- Hanging cages and a gibbet for Hell's rim and walkways.
+
+## THE AFTERLIFE, THE ZONE KIT — for the 13 district threads that follow (started 2026-11-16 by the zone thread; it grows with the pilot)
+
+- **Your file** = `docs/areas/afterlife/districts/<letter>.js`; stages `build(ctx)` (terrain rows, buildings, drawn pieces), `dress(ctx)`
+  (props), `people(ctx)`, `air(ctx)`. Squares are the ROOM's (sx west to east, sy north to south); `ctx.gx / gz` = a square's west / north
+  line in metres, `ctx.mx / mz` = its middle, `ctx.hAt(sx, sy)` = its floor's height, `ctx.cell[sy][sx]` = its letter.
+- **ctx helpers:** `P(key, sx, sy, o)` a blocker on a square's middle (refused on a wall, on water, on a taken square) · `dec(key, sx, sy)`
+  decor off centre · `at(key, x, z, o)` a piece at a place in metres (a wall piece with `y`; you answer for it) · `native(race, sx, sy, face,
+  say)` · `say(oldRoom, race, i, gender)` the old rooms' own lines · `tree(sx, sy, kind, h)` (only on `g` / `d` squares) · `look(id, x, z, rot,
+  y, a => ...)` a drawn piece (`a.box / cyl / dome / roof / quad / poly / sign`, three-renderer.js THE ARCHITECTURE) · `columns(id, [[sx, sy]],
+  h, o)` DRAWN columns with their own small ghost walls (use these for any run of columns: the catalogue's `greek_column` is heavy) ·
+  `wall(x0, z0, x1, z1, y0, h)` a ghost wall · `rail(...)` · `building(id, [sx0, sy0, sx1, sy1, side], h, o, parts)` a hollow walk-in hall with
+  a swinging door + `put(BUILT.id, key, lx, lz, o)` a piece inside it · `mark(m)` paint on the floor · `airZone(z)` · `take(sx, sy)`.
+- **What changes the squares is not yours:** a new wall, floor, stair, bridge or pool is a line in `draw-afterlife.js` (the tool row: a
+  dated note on the board first).
+- **Sheets that read right here:** white stone = `urban:PlasterWallPainted1a` with a pale tint and `glow` 0.3 to 0.8 (an unlit face of a
+  drawn piece goes olive-grey without it: the Vatican's look is amber, Heaven's is dream); marble = `marble` / `marble_light` / `marble_2`;
+  gilt = `gold` (the approved one); lead roofs = the plaster sheet tinted 0xa9bcc8; Hell = `obsidian`, `rocks_3`, `rocks_5`, `scorched`.
+- **A curved wall:** `a.cyl` with `arc` + `a0` (degrees; 0 = +x east, 90 = +z south) + `ri`; a half dome the same on `a.dome`.
+- **Pieces already in each room** are listed in each district file's header (STANDS TODAY / NOT YET).

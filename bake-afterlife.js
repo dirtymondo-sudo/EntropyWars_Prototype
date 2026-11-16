@@ -16,8 +16,8 @@
    than the walker climbs is the wall (the Vatican's wall, a hedge, Hell's rock). Rows over it wear `absY: true`.
      HELL      lava = `pool` / `stream` rows at 0 over squares sunk to -2 (a walker who steps in is put back); land that stands INSIDE a lava
                row's outline (the platforms, the Plinth's island) is written again as `plateau` rows after it (a pool carves).
-     HEAVEN    a VOID room (terrain.void): no height grid; every run of cloud is a FLOATING `plateau` (a puff under it), the four flights
-               are floating stairs, the wall of cloud is solid. Stepping off is a fall back to the last cloud stood on.
+     HEAVEN    a VOID room (terrain.void): no height grid; every run of cloud is a `plateau`: FLOATING in the Stairway (a puff under it),
+               one solid mass from the Gate's landing north; the flights are floating stairs. Stepping off is a fall back to the last cloud stood on.
      THE CATACOMBS  a closed shell (a brick roof at 7 m); solid squares stand to the roof.
    Squares are (sx west to east, sy north to south); R.gx / R.gz = a square's west / north line in metres, R.mx / R.mz = its middle.
    Notes: docs/notes/areas-complexes.md "HEAVEN + HELL + VATICAN ON PLOTS" + "THE AFTERLIFE, THE ZONE KIT". */
@@ -57,23 +57,24 @@ const SET = {
     vatican: { site: 'prebuilt_vatican', part: 'plots', mark: 'VATICAN', sub: 'THE BASILICA · THE SQUARE · THE PALACE · THE CLOISTER · THE GARDENS', solid: 'XhT', wet: 'w', hole: 'q',
         pal: ['cobblestone', 'marble_light', 'marble', 'grass_2', 'dirt_2', 'leaves_3', 'bricks_3', 'gold', 'marble_2', 'dungeon'],
         paint: { c: 1, m: 2, k: 3, o: 9, w: 3, B: 3, s: 2, g: 4, d: 5, h: 6, T: 7, t: 2, X: 7, q: 10 },
-        terrain: "res: 1.75, floor: 'cobblestone', cliff: 'bricks_3', path: 'marble_light', base: 0, noise: { amp: 0.02, scale: 9 }, crag: false,",
+        terrain: "res: 0.875, floor: 'cobblestone', cliff: 'bricks_3', path: 'marble_light', base: 0, noise: { amp: 0.02, scale: 9 }, crag: false,",   // (0.875: a wall's or a hedge's face leans a quarter of a square, not a half)
         shell: R => "hqVaticanShell({ w: " + R.WM + ", d: " + R.DM + ", fogD: 0.006, plate: " + J(R.plate) + R.atmos() + " })",
         parti: 'The holy city as the real one stands: the Basilica in the west under its dome, the oval Square east of it inside two arcs of columns, the gate in the east wall, the palace north, the cloister south, the gardens behind the apse.' },
-    catacombs: { site: 'prebuilt_vatican', part: 'under', mark: 'CATACOMBS', sub: 'THE CRYPT · THE DESCENT · THE LOCULI · THE CISTERN · THE FONT · THE WARM WALL', solid: 'X', wet: 'w', hole: '',
+    catacombs: { site: 'prebuilt_vatican', part: 'under', mark: 'CATACOMBS', sub: 'THE CRYPT · THE DESCENT · THE LOCULI · THE CISTERN · THE FONT · THE WARM WALL', solid: 'X', wet: 'w', hole: '', plan: true,
         pal: ['dungeon', 'bricks_3', 'cobblestone'], paint: { f: 1, s: 3, X: 2, w: 1 },
-        terrain: "res: 1.75, floor: 'dungeon', cliff: 'bricks_3', path: 'cobblestone', base: 0, noise: { amp: 0.02, scale: 8 }, crag: false,",
-        shell: R => "{ w: " + R.WM + ", d: " + R.DM + ", h: 7, wallH: 7, dadoH: 1, floor: 'dungeon', wall: 'bricks_3', dado: 'bricks_2', trim: 'marble', ceiling: 'bricks_3', floorColor: 0x8a8078, wallColor: 0x8a7a68, dadoColor: 0x6a5e52, ceilColor: 0x4a4038, pipes: false, strips: false, lights: [], mood: { light: 0xffc890, ambient: 0.34 }, plate: " + J(R.plate) + ", fog: { color: 0x0c0a08, density: 0.028 }, look: HQ_ROOM_LOOKS.catacombs" + R.atmos() + " }",
+        /* THE CATACOMBS are the Sewers' kind of room: every square that is not a `space` is brick to the roof (upright walls), the floors' levels are plateaus */
+        terrain: "res: 0.875, floor: 'dungeon', cliff: 'bricks_3', path: 'cobblestone', noise: { amp: 0.02, scale: 8 }, crag: false, gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_3', rim: 0, forceGrow: -0.3 },",
+        shell: R => "{ w: " + R.WM + ", d: " + R.DM + ", h: 7, wallH: 7, dadoH: 1, floor: 'dungeon', wall: 'bricks_3', dado: 'bricks_2', trim: 'marble', ceiling: 'bricks_3', floorColor: 0x8a8078, wallColor: 0x8a7a68, dadoColor: 0x6a5e52, ceilColor: 0x4a4038, pipes: false, strips: false, lights: [], mood: { light: 0xffc890, ambient: 0.5 }, plate: " + J(R.plate) + ", fog: { color: 0x0c0a08, density: 0.02 }, look: HQ_ROOM_LOOKS.catacombs" + R.atmos() + " }",
         parti: 'The dungeon under the Basilica: the crypt under the altar, two flights down to galleries of graves, a font, the foot of the cistern, and a hall whose far wall is warm.' },
     hell: { site: 'prebuilt_hell', part: 'plots', mark: 'HELL', sub: 'THE RIM · THE DESCENT · THE BOWL · THE WALKWAYS', solid: 'R', wet: '', hole: '', lava: 'L',
         pal: ['scorched', 'rocks_3', 'obsidian', 'rocks_5', 'rubble_3', 'lava'], paint: { r: 1, p: 2, o: 3, R: 4, a: 5, s: 2, L: 6 },
         terrain: "res: 1.75, floor: 'scorched', cliff: 'rocks_5', path: 'rocks_3', base: 0, noise: { amp: 0.12, scale: 5 }, crag: false,",
-        shell: R => "{ w: " + R.WM + ", d: " + R.DM + ", h: 10, wallH: 10, dadoH: 1.05, open: true, edge: 'low', floor: 'scorched', wall: 'obsidian', dado: 'rocks_3', trim: 'obsidian', ceiling: 'obsidian', apron: 'scorched', skirt: 'obsidian', apronColor: 0x5a2a1c, floorColor: 0xc07050, wallColor: 0x5a3828, dadoColor: 0x4a3028, pipes: false, strips: false, lights: [], mood: { light: 0xff7a40, ambient: 0.5 }, " +
+        shell: R => "{ w: " + R.WM + ", d: " + R.DM + ", h: 10, wallH: 10, dadoH: 1.05, open: true, edge: 'low', floor: 'scorched', wall: 'obsidian', dado: 'rocks_3', trim: 'obsidian', ceiling: 'obsidian', apron: 'scorched', skirt: 'obsidian', apronColor: 0x5a2a1c, floorColor: 0xc07050, wallColor: 0x5a3828, dadoColor: 0x4a3028, pipes: false, strips: false, lights: [], mood: { light: 0xff9058, ambient: 0.95 }, " +
             "sky: { night: 1, tint: 0x4a0e06, tintAmt: 0.75, stars: 0, nebula: 0.25, fog: { color: 0x1c0604, amount: 0.7, top: 0.08, band: 0.6, density: 0.012 }, scenery: 'none', density: 0.5, landmarks: [] }, plate: " + J(R.plate) + ", look: HQ_ROOM_LOOKS.hell" + R.atmos() + " }",
         parti: 'One pit: a rim, a terrace, the bowl and a lake of lava with the Plinth on its island; the east side has fallen into a sea of lava, crossed on platforms and walkways.' },
-    heaven: { site: 'prebuilt_heaven', part: 'plots', mark: 'HEAVEN', sub: 'THE STAIRWAY · THE GATE · THE CLOUD FIELDS · THE CITY', solid: 'K', wet: 'w', hole: '', sky: '.', float: true,
+    heaven: { site: 'prebuilt_heaven', part: 'plots', mark: 'HEAVEN', sub: 'THE STAIRWAY · THE GATE · THE CLOUD FIELDS · THE CITY', solid: 'K', wet: 'w', hole: '', sky: '.', float: true, floatFrom: 31,   // (the Stairway's clouds float, sy 31 on; the Gate's landing, the fields and the city are one solid mass of cloud: a floating plateau costs about 40 draw calls)
         top: { c: 'cloud_2', m: 'marble_light', B: 'marble_light', w: 'marble_light', K: 'cloud_thick', s: 'marble_light' },
-        terrain: "res: 1.75, floor: 'cloud_2', cliff: 'cloud_thick', path: 'marble_light', base: 0, noise: { amp: 0, scale: 13 }, crag: false, void: { lip: 1, fall: -10, glow: 0xfff2d0, glowY: -30 },",
+        terrain: "res: 1.75, floor: 'cloud_2', cliff: 'cloud_2', path: 'marble_light', base: 0, noise: { amp: 0, scale: 13 }, crag: false, void: { lip: 1, fall: -10, glow: 0xfff2d0, glowY: -30 },",
         shell: R => "hqDivineShell({ w: " + R.WM + ", d: " + R.DM + ", plate: " + J(R.plate) + R.atmos() + " })",
         parti: 'One climb: the foot of the stair in the sky, four floating flights, the Gate in a wall of cloud, the Cloud Fields behind it and the city on the highest cloud.' },
 };
@@ -110,6 +111,13 @@ function makeRoom(PLAN) {
     R.wall = (x0, z0, x1, z1, y0, h, o) => feat(Object.assign({ k: 'wall', absY: true, x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), t: 0.4, h: r2(h), y: r2(y0 + h), ghost: true, rail: false }, o || {}));
     R.rail = (x0, z0, x1, z1, y, model) => feat(Object.assign({ k: 'rail', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), model: model || 'balusters_d' }, y != null ? { y: r2(y) } : {}));
     R.mark = m => marks.push(m);
+    /* DRAWN COLUMNS (the frame rate: the catalogue's `greek_column` is a heavy model; 150 of them in a colonnade cost a million triangles): one
+       `arch` row for a whole run of columns (a base, a tapered shaft, a capital, in marble) + a small ghost wall each so the walker goes round.
+       list = [[sx, sy], ...] (a column on the middle of each square), h = the shaft's height */
+    R.columns = (id, list, h, o) => { o = o || {}; const key = o.key || 'marble', tint = o.tint != null ? o.tint : 0xf6f0e2, r = o.r || 0.6, g = o.glow != null ? o.glow : 0.3;
+        R.look(id, 0, 0, 0, 0, a => list.forEach(q => { const x = mx(q[0]), z = mz(q[1]), y = hh[q[1]][q[0]]; spot(q[0], q[1], 'column');
+            a.box(x, y, z, r * 2.7, 0.45, r * 2.7, key, tint, { glow: g }); a.cyl(x, y + 0.45, z, r, h, key, tint, { r2: r * 0.84, seg: 10, glow: g, cap: false }); a.box(x, y + 0.45 + h, z, r * 2.5, 0.4, r * 2.5, key, tint, { glow: g });
+            feat({ k: 'wall', absY: true, x0: r2(x - r), z0: z, x1: r2(x + r), z1: z, t: r * 2, h: 3, y: r2(y + 3), ghost: true, rail: false }); })); };
     R.say = say; R.OLD = OLD; R.sheet = sheet; R.U = U; R.GLS = GLS;
     /* a walk-in building on whole squares (the Estate's helper): a hollow `texbuilding` (walls, doorway, swinging leaf, inside) with its own
        outside switched off + its look as an `arch` parts list. q = [sx0, sy0, sx1, sy1, side its front is on]; parts frame: x along the front,
@@ -155,10 +163,18 @@ function finish(R) {
     let slope = null, paint = null;
     if (S.float) {
         /* HEAVEN: every run of cloud of one height and one sheet is a floating plateau; the wall of cloud is solid */
-        rects((x, y) => (S.sky.indexOf(cell[y][x]) < 0) && !stairSq.has(x + ':' + y), (a, b, c, d) => cell[b][a] === cell[d][c] && hh[b][a] === hh[d][c]).forEach(q => { const ch = cell[q[1]][q[0]], h = hh[q[1]][q[0]];
-            const row = { k: 'plateau', x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: r2((q[2] - q[0]) * C + 0.1), d: r2((q[3] - q[1]) * C + 0.1), h, edge: 0.15, top: S.top[ch] || 'cloud_2' };
-            if (S.solid.indexOf(ch) < 0) { row.float = true; row.under = 'cloud'; } T.push(row); });
+        const wetH = (x, y) => S.wet.indexOf(cell[y][x]) >= 0 ? r2(hh[y][x] + 0.45) : hh[y][x];   // (a pool's squares are part of their cloud: the pool row carves its own basin)
+        rects((x, y) => (S.sky.indexOf(cell[y][x]) < 0) && !stairSq.has(x + ':' + y), (a, b, c, d) => wetH(a, b) === wetH(c, d)).forEach(q => {
+            T.push(Object.assign({ k: 'plateau', x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: r2((q[2] - q[0]) * C + 0.1), d: r2((q[3] - q[1]) * C + 0.1), h: wetH(q[0], q[1]), edge: 0.15, top: 'cloud_2' }, q[1] >= S.floatFrom ? { float: true, under: 'cloud' } : {})); });
         count.clouds = T.length;
+        /* the marble: one drawn sheet a run of `m` / `B` squares, lying on its cloud (few plateaus = few draw calls: a plateau a sheet cost 4,000) */
+        R.look('marble', 0, 0, 0, 0, a => rects((x, y) => 'mB'.indexOf(cell[y][x]) >= 0, (p, q2, c, d) => hh[q2][p] === hh[d][c]).forEach(q => a.quad(gx((q[0] + q[2]) / 2), hh[q[1]][q[0]] + 0.05, gz((q[1] + q[3]) / 2), (q[2] - q[0]) * C, (q[3] - q[1]) * C, 'marble_light', 0xffffff, { flat: true, uv: 3.5 })));
+    } else if (S.plan) {
+        /* THE CATACOMBS: the open squares as `space` rows, every floor over 0 a plateau (0.3 m into its neighbours: two plateaus that only touch leave a notch), one brick slab for the roof */
+        rects((x, y) => walk(x, y) || stairSq.has(x + ':' + y), () => true).forEach(q => T.unshift({ k: 'space', x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: (q[2] - q[0]) * C, d: (q[3] - q[1]) * C }));
+        rects((x, y) => walk(x, y) && !stairSq.has(x + ':' + y) && hh[y][x] > 0.1 && S.wet.indexOf(cell[y][x]) < 0, (a, b, c, d) => hh[b][a] === hh[d][c]).forEach(q => T.push({ k: 'plateau', x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: r2((q[2] - q[0]) * C + 0.6), d: r2((q[3] - q[1]) * C + 0.6), h: hh[q[1]][q[0]], edge: 0.15 }));
+        R.look('roof', 0, 0, 0, 0, a => a.quad(0, 7, 0, R.WM, R.DM, 'bricks_3', 0x8a7a68, { flat: true, ds: true, uv: 3.5 }));
+        paint = new Uint8Array(W * H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) paint[y * W + x] = S.paint[cell[y][x]];
     } else {
         /* THE HEIGHTS: four corners a square (cm). A stair's / a slope's squares carry its grade */
         const cor = (x, y) => { const v = hh[y][x]; return [v, v, v, v]; }, grade = {};
