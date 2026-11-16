@@ -172,7 +172,10 @@ run('ground');
 
 run('pieces');   // (Western Town's Meshy pieces: hitching rails, covered wagons, the water tower)
 /* scattered off the grid: stones, skulls, the odd bone pile (nothing on a road) */
-feat({ k: 'scatter', key: 'cave_stone', n: 130, seed: 5 }); feat({ k: 'scatter', key: 'skull', n: 26, seed: 6 }); feat({ k: 'scatter', key: 'dead_snag', n: 22, seed: 7 });
+/* (2026-11-16, the Area 51 thread, noted on the board: `off` = Area 51's paved ground (the apron, Runway 33, the hangar's apron; room metres). A
+   piece thrown there is dropped, never moved, so every other piece stands where it stood: dead trees and stones stood on the runway.) */
+{ const off = [nx(2), nx(111), nx(38), nx(134)];
+  feat({ k: 'scatter', key: 'cave_stone', n: 130, seed: 5, off }); feat({ k: 'scatter', key: 'skull', n: 26, seed: 6, off }); feat({ k: 'scatter', key: 'dead_snag', n: 22, seed: 7, off }); }
 
 /* ── THE WAYS ── (the highway north to Disaster City and the Robbers' Tunnel are LINKS, written at the end; the bay door of Room 444 is siteRooms.entry).
    Each district's doors to other rooms are its file's `doors` hook (Hangar 18, the White Rooms, the storm drain: A · the tunnel, the Mandela Room: C ·
