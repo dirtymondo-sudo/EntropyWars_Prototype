@@ -81,7 +81,7 @@ const INN = kb('inn', WALKIN.inn, 7, { keyIn: STUCCO, floorIn: 'wood_planks' }, 
     a.box(door.lx + 2.4, 3.0, d / 2 + 1.0, 0.12, 0.12, 1.4, null, 0x2a2c30); a.box(door.lx + 2.4, 2.0, d / 2 + 1.5, 0.08, 0.9, 1.0, WOODK, 0x8a5a34, { ds: true });
     a.box(w / 2 - 1.4, 5.25, -d / 4, 1.1, 5, 1.1, 'bricks_2', 0xb86a54, { roof: true });
 });
-HOUSES_FILE.houses(ctx, kb);
+const HOUSE_LIST = HOUSES_FILE.houses(ctx, kb);
 flushArch();
 /* ── THE INSIDES (PASS 2, 2026-11-16, the Village pilot thread). The first build's halls had a black ceiling, bare walls, no light, garden
    benches for inn seats and the Chapel's carpet standing upright. Each hall now has ONE arch row `cam:<id>:in` (a lit timber ceiling, a wall
@@ -94,7 +94,7 @@ flushArch();
 const r3 = v => Math.round(v * 1000) / 1000, GILT = 'gold', WARM = 0xffe2a8, PEWTER = 0x9a9ca0;
 const hall = (B, id, o) => {
     const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w = B.fw, d = B.fd, E = 0.33, W2 = w / 2, D2 = d / 2, lx = B.door.lx, dw = B.door.cw + 0.12;
-    ctx.arch.push({ k: 'arch', id: 'cam:' + id + ':in', x: c[0], z: c[1], rot: B.face(0), parts: P });
+    if (!o.noRow) ctx.arch.push({ k: 'arch', id: 'cam:' + id + ':in', x: c[0], z: c[1], rot: B.face(0), parts: P });   // `noRow`: the caller gathers the parts itself (T-houses.js: one row for all the houses)
     const quad = (x, y, z, qw, qh, ry, key, tint, x2) => P.push(Object.assign({ s: 'quad', p: [r3(x), r3(y), r3(z)], size: [r3(qw), r3(qh)], ry, kind: 'wall' }, key ? { key } : {}, { tint }, x2 || {}));
     const H = {
         a, w, d, W2, D2, E, top: o.top,
@@ -197,6 +197,7 @@ const hall = (B, id, o) => {
     H.put('horse_black', 3.5, 3.5, 100); H.put('hw_straw', 0.6, 6.9, 20); H.put('hw_straw', 6.9, 7.6, 80); H.put('wooden_bucket', 2.2, 4.6, 0);
     H.torch('r', 3.4, 2.2); H.torch('l', 4.5, 2.2); H.torch('l', -3.4, 2.2); H.torch('f', 5.25, 2.6);
 }
+HOUSES_FILE.insides(ctx, hall, HOUSE_LIST);   // the 43 houses, furnished by kind (T-houses.js)
 flushArch();
 
 /* ── THE VILLAGE'S GROUND ── */
