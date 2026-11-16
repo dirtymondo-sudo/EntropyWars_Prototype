@@ -3819,7 +3819,8 @@ Her red-and-white ring is the Beach pack's lifebuoy (data.js catalogue `beach_li
 the spell warm list `_SPELL_MISC_KEYS`); a striped torus in the same colours stands in while the file streams. Rings that tell the
 side follow THE RIOT PASS from the viewer's seat (cyan-blue yours, pink-red theirs); the buoy stays red and white.
 - Rescue Tube (`pull` intent, the battle.js rope stays): the buoy is thrown on an arc, drops over the ally's waist and rides in
-  with the body (ThreeRenderer.getUnitWorldPos each frame); a splash at the bite.
+  with the body (it eases to the ally's board square from the yank on; the model group stays on the old square during a
+  displacement tween, so getUnitWorldPos left it behind); a splash at the bite.
 - On Duty (`aura`): three whistle rings at head height, the buoy held up, then the watch ring runs out to 4 squares.
 - CPR (`aura`): a red heart pumps three times on the chest (a ring each), the breath ring, then the green heal.
 - The save + every Three Whistles haul: `fireGeometry('nrOnDuty:save', x, y, 0, { fromX, fromY, owner, delay })` (relayed to the
