@@ -6659,6 +6659,14 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   course read as a flight of steps (now straight, between stakes); the residents do not stand where their rows put them (the yeti's glade held
   a blue woman, the pond a dark insect figure: the engine's resident system places or dresses them, not the district file).
   COUNTS at the north bridge looking up the road: 748 draw calls, 2,269 geometries (the whole kingdom in view).
+- **PASS 4, THE ATMOSPHERE (seen by day and at 22:00, five probe runs)**: `airZones` = snow over the whole district (`n` 2200; 900 was a few
+  specks), pale `motes` at the pond and the old stones; `chimney_smoke` on both chimneys and two camp fires; LIGHT POOLS: a flat `calm_snow`
+  disc under every lantern and hut window, tint 0xfff3dc + `glow` 0.93 (a glowing part is drawn unlit, so it is near the day's snow by day and
+  a warm pool in the dark; a stronger cream tint showed as a sandy patch by day). The night is the kingdom's own (the shell); what carries it
+  here is the panes, the fires, the ice (`glow` 0.4) and the pools.
+  THE SNOW PINE IS A CLUMP, MEASURED: one planted pine (`xmas:Trees_0*`) stands trunks up to 16 m from its foot. One planted 15.7 m from the
+  Wayside Hut stood a trunk INSIDE it, through the bed (seen only on the night walk). `noTrees` now clears 19 m round each hut. Any district
+  that builds in a snow-pine zone (the Mountains too) needs the same.
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
