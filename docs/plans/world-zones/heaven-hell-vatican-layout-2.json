@@ -1,0 +1,1532 @@
+{
+ "area": "Heaven + Hell + Vatican",
+ "version": "plan-2",
+ "by": "the zone thread, 2026-11-16 (mondo's order: a redesign on plots, no OK needed; his word overrules any of it)",
+ "squareMeters": 3.5,
+ "plotCells": 12,
+ "levelMeters": 1.75,
+ "districts": {
+  "B": {
+   "name": "The Basilica",
+   "room": "vatican",
+   "file": "docs/areas/afterlife/districts/B.js"
+  },
+  "S": {
+   "name": "The Square",
+   "room": "vatican",
+   "file": "docs/areas/afterlife/districts/S.js"
+  },
+  "P": {
+   "name": "The Palace",
+   "room": "vatican",
+   "file": "docs/areas/afterlife/districts/P.js"
+  },
+  "C": {
+   "name": "The Cloister",
+   "room": "vatican",
+   "file": "docs/areas/afterlife/districts/C.js"
+  },
+  "G": {
+   "name": "The Gardens",
+   "room": "vatican",
+   "file": "docs/areas/afterlife/districts/G.js"
+  },
+  "K": {
+   "name": "The Catacombs",
+   "room": "catacombs",
+   "file": "docs/areas/afterlife/districts/K.js"
+  },
+  "R": {
+   "name": "The Rim",
+   "room": "hell",
+   "file": "docs/areas/afterlife/districts/R.js"
+  },
+  "D": {
+   "name": "The Descent",
+   "room": "hell",
+   "file": "docs/areas/afterlife/districts/D.js"
+  },
+  "L": {
+   "name": "The Bowl",
+   "room": "hell",
+   "file": "docs/areas/afterlife/districts/L.js"
+  },
+  "W": {
+   "name": "The Walkways",
+   "room": "hell",
+   "file": "docs/areas/afterlife/districts/W.js"
+  },
+  "T": {
+   "name": "The Stairway",
+   "room": "heaven",
+   "file": "docs/areas/afterlife/districts/T.js"
+  },
+  "A": {
+   "name": "The Gate",
+   "room": "heaven",
+   "file": "docs/areas/afterlife/districts/A.js"
+  },
+  "F": {
+   "name": "The Cloud Fields",
+   "room": "heaven",
+   "file": "docs/areas/afterlife/districts/F.js"
+  },
+  "Y": {
+   "name": "The City",
+   "room": "heaven",
+   "file": "docs/areas/afterlife/districts/Y.js"
+  }
+ },
+ "rooms": [
+  {
+   "key": "hell",
+   "room": "site_prebuilt_hell_plots",
+   "label": "HELL",
+   "cols": 4,
+   "rows": 4,
+   "legend": {
+    "R": "rock wall",
+    "r": "scorched rock",
+    "p": "the second terrace",
+    "a": "ash",
+    "L": "lava (never walked)",
+    "o": "obsidian",
+    "s": "steps"
+   },
+   "plots": [
+    {
+     "id": "P00-00",
+     "name": "The Fissure's End",
+     "d": "R",
+     "level": 8,
+     "what": "where the tunnel from the Cavern comes out: a gorge in the rim",
+     "from": "Pit: THE FISSURE · THE HOT GALLERY"
+    },
+    {
+     "id": "P01-00",
+     "name": "The Rim, north",
+     "d": "R",
+     "level": 8,
+     "what": "the lip of the pit",
+     "from": "Pit: THE RIM"
+    },
+    {
+     "id": "P02-00",
+     "name": "The Warm Wall",
+     "d": "R",
+     "level": 8,
+     "what": "the other side of the Catacombs' warm wall",
+     "from": "Pit: THE WARM WALL, THE OTHER SIDE"
+    },
+    {
+     "id": "P03-00",
+     "name": "The High Platforms",
+     "d": "W",
+     "level": 8,
+     "what": "LANDMARK: the first platform on its pillar over the lava",
+     "from": "Walkways: HIGH PLATFORMS"
+    },
+    {
+     "id": "P00-01",
+     "name": "The Rim, west",
+     "d": "R",
+     "level": 7,
+     "what": "the lip of the pit, the stair down",
+     "from": "Pit: THE RIM"
+    },
+    {
+     "id": "P01-01",
+     "name": "The Descent",
+     "d": "D",
+     "level": 4,
+     "what": "the second terrace and its flights",
+     "from": "Pit: THE DESCENT"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Lava Lake",
+     "d": "L",
+     "level": 3,
+     "what": "the lake's north shore",
+     "from": "plan 1: The Lava Lake"
+    },
+    {
+     "id": "P03-01",
+     "name": "The Walkways",
+     "d": "W",
+     "level": 8,
+     "what": "walkways from platform to platform",
+     "from": "Walkways: WALKWAYS"
+    },
+    {
+     "id": "P00-02",
+     "name": "The Alcove",
+     "d": "D",
+     "level": 7,
+     "what": "a hollow in the rim; the terrace under it",
+     "from": "Pit: the alcove (a door plate)"
+    },
+    {
+     "id": "P01-02",
+     "name": "The Bowl",
+     "d": "L",
+     "level": 3,
+     "what": "the floor of the pit: the stocks, the altar, the chains; \"take a number\"",
+     "from": "Pit: THE BOWL"
+    },
+    {
+     "id": "P02-02",
+     "name": "The Plinth",
+     "d": "L",
+     "level": 3,
+     "what": "LANDMARK: the Plinth on its island, the causeway",
+     "from": "Pit: THE PLINTH"
+    },
+    {
+     "id": "P03-02",
+     "name": "The Lava Below",
+     "d": "W",
+     "level": 3,
+     "what": "a ledge just over the lava, under the third platform",
+     "from": "Walkways: THE LAVA BELOW"
+    },
+    {
+     "id": "P00-03",
+     "name": "The Ash Flats",
+     "d": "D",
+     "level": 8,
+     "what": "a flat of ash on the rim",
+     "from": "plan 1: The Ash Flats"
+    },
+    {
+     "id": "P01-03",
+     "name": "The Rim, south",
+     "d": "R",
+     "level": 7,
+     "what": "THE MOUTH: the bay door on its ledge, \"three flights down\"",
+     "from": "Pit: the mouth (the bay door, the lines)"
+    },
+    {
+     "id": "P02-03",
+     "name": "The Far Shore",
+     "d": "L",
+     "level": 7,
+     "what": "the lake's south shore",
+     "from": "plan 1: The Far Shore"
+    },
+    {
+     "id": "P03-03",
+     "name": "The Walkways, east",
+     "d": "W",
+     "level": 8,
+     "what": "the last platform, the walkway back to the rim",
+     "from": "Walkways: WALKWAYS"
+    }
+   ],
+   "cells": [
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRrrRRRRRRRRRRRRRRRRR",
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRrrRRRRRRRRRRRRRRRRR",
+    "RRRrrrrrRrrrrrrRRrrRrrRRRrRrrrRrrrrrLLLLLLLLLLRR",
+    "RRrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrLLLLLLLLLLRR",
+    "RRrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrLLrrrrrrLLRR",
+    "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrLLrrrrrrLLRR",
+    "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrLLrrrrrrLLRR",
+    "RRRrrrrrrrrrrrrrrrrrrrrssrrrrrrrrrrrLLrrrrrrLLRR",
+    "RRrrrrrrrrrrrrrrrrrrrrrssrrrrrrrrrrrLLrrrrrrLLRR",
+    "RRRRRRRRRrrrrrrrrrrrrrrssrrrrrrrrrrrLLrrrrrrLLRR",
+    "RRRRRRRRRrrrrrrrrrrpppppppppppprrrrrLLLLLLLLLLRR",
+    "RRRrrrrrrrrrrrrrrpppppppppppppppprrrLLLLLLLLLLRR",
+    "RRrrrrrrrrrrrrrpppppppppppppppppppprLLLLLLLLLLRR",
+    "RRrrrrrrrrrrrpppppppppppppppssppppppLLLLLLLLLLRR",
+    "RRrrrrrrrrrrppppppppppppppppssppppppLLLLLLLLLLRR",
+    "RRrrrrrrrrrpppppppppprrrrrrrssppppppLLLrrrrrLLRR",
+    "RRrrrrrrrrrpppppppprrrrrrrrrrrrpppppLLLrrrrrLLRR",
+    "RRRrrrrrrrpppppppprrrrrrrrrrrrrrppppLLLrrrrrLLRR",
+    "RRrrrrrrrppppppprrrrrrrrrrrrrrrrrrppLLLrrrrrLLRR",
+    "RRrrrrrrrppppppprrrrrrrrrrrrrrrrrrppLLLrrrrrLLRR",
+    "RRrrrrrrppppppprrrrrrrrrrrrrrrrrrrrpLLLLLLLLLLRR",
+    "RRrrrrrrpppppprrrrrrrrrrrrrrrrrrrrrrLLLLLLLLLLRR",
+    "RRRrrrrrpppppprrrrrrrrrrrrLLLLLLrrrrLLLLLLLLLLRR",
+    "RRrrrrrrpppppprrrrrrrrrrrLLLLLLLLrrrLLLLLLLLLLRR",
+    "RRrrrrrrpppppprrrrrrrrrrLLLLLLLLLLrrLrrrrrrrrrRR",
+    "RRrrrsssppppprrrrrrrrrrLLLLLLLLLLLLrLrrrrrrrrrRR",
+    "RRRRrssspppppprrrrrrrrrLLLLLLLLLLLLrLrrrrrrrrrRR",
+    "RRRRrrrrpppppprrrrrrrrrLLLLLoooLLLLrLrrrrrrrrrRR",
+    "RRrrrrrrpppppprrrrrrrrrLLLLLoooLLLLrLrrrrrrrrrRR",
+    "RRrrrrrrpppsssrrrrrrrrrLLLLLoooLLLLrLrrrrrrrrrRR",
+    "RRrrrrrrpppsssprrrrrrrrLLLLLLLLLLLLpLrrrrrrrrrRR",
+    "RRrrrrrrrppppppprrrrrrrrLLLLLLLLLLppLrrrrrrrrrRR",
+    "RRRRrrrrrppppppprrrrrrrrrLLLLLLLLrppLrrrrrrrrrRR",
+    "RRRRrrrrrrpppppppprrrrrrrrLLLLLLppppLLLLLLLLLLRR",
+    "RRRRrrrrrrrpppppppprrrrrrrrrrrrpppppLLLLLLLLLLRR",
+    "RRrrrrrrrrrpppppppppprrrrrrrrpppppppLLLLLLLLLLRR",
+    "RRaaaaaaaaaapppppppppsspppppppppppppLLLLLLLLLLRR",
+    "RRaaaaaaaaaarppppssppsspppppppppppppLLLLLLLLLLRR",
+    "RRaaaaaaaaaarrrppssppsspppppppppppprLLrrrrrrLLRR",
+    "RRaaaaaaaaaarrrrrsspppppppppppppprrrLLrrrrrrLLRR",
+    "RRaaaaaaaaaarrrrrrrrppppppppppprrrrrLLrrrrrrLLRR",
+    "RRaaaaaaaaaarrrrrrrrrrrrrrrrrrrrrrrrLLrrrrrrLLRR",
+    "RRaaaaaaaaaarrrrrssrrrrrrrrrrrrrrrrrLLrrrrrrLLRR",
+    "RRaaaaaaaaaarrrrrssrrrrrrrrrrrrrrrrrLLrrrrrrLLRR",
+    "RRaaaaaaaaaarrrroooorrrrrrrrrrrrrrrrLLLLLLLLLLRR",
+    "RRaaaaaaaaaaRrrRooooRrrrrrrrrrrrRrRrLLLLLLLLLLRR",
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+   ],
+   "heights": [
+    "2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,1400,1400,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625",
+    "2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,1400,1400,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625",
+    "2625,2625,2625,1400,1400,1400,1400,1400,2625,1400,1400,1400,1400,1400,1400,2625,2625,1400,1400,2625,1400,1400,2625,2625,2625,1400,2625,1400,1400,1400,2625,1400,1400,1400,1400,1400,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,2625,2625,2625,2625,2625,2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,2625,2625,2625,2625,2625,2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,875,875,1400,1400,1400,1400,1400,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,1400,1400,1400,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,1400,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,350,350,875,875,875,875,875,875,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,350,350,875,875,875,875,875,875,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,875,875,875,875,875,875,-200,-200,-200,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,875,875,875,875,875,-200,-200,-200,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,2625,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,350,350,875,875,875,875,-200,-200,-200,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,875,875,-200,-200,-200,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,875,875,-200,-200,-200,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,875,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,2625,1400,1400,1400,1400,1400,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,350,350,-200,175,175,175,175,175,175,175,175,175,2625,2625",
+    "2625,2625,1400,1400,1400,875,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,350,-200,175,175,175,175,175,175,175,175,175,2625,2625",
+    "2625,2625,2625,2625,1400,875,875,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,350,-200,175,175,1400,1400,1400,1400,1400,175,175,2625,2625",
+    "2625,2625,2625,2625,1400,1400,1400,1400,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,350,350,350,-200,-200,-200,-200,350,-200,175,175,1400,1400,1400,1400,1400,175,175,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,350,350,350,-200,-200,-200,-200,350,-200,175,175,1400,1400,1400,1400,1400,175,175,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,350,350,350,-200,-200,-200,-200,350,-200,175,175,1400,1400,1400,1400,1400,175,175,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,875,875,875,350,350,350,875,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,875,-200,175,175,1400,1400,1400,1400,1400,175,175,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,875,875,-200,175,175,175,175,175,175,175,175,175,2625,2625",
+    "2625,2625,2625,2625,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,-200,-200,350,875,875,-200,175,175,175,175,175,175,175,175,175,2625,2625",
+    "2625,2625,2625,2625,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,-200,-200,-200,-200,-200,-200,875,875,875,875,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,2625,2625,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,350,350,350,350,875,875,875,875,875,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,350,350,350,350,350,350,350,350,875,875,875,875,875,875,875,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,350,350,875,875,875,875,875,875,875,875,875,875,875,875,875,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,350,350,875,875,875,875,875,875,875,875,875,875,875,875,875,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,350,350,875,875,875,875,875,875,875,875,875,875,875,875,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,875,875,875,875,875,875,875,875,875,875,875,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,1400,1400,1400,1400,1400,1400,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1750,1750,1750,1750,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,2625,1400,1400,2625,1750,1750,1750,1750,2625,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,2625,1400,2625,1400,-200,-200,-200,-200,-200,-200,-200,-200,-200,-200,2625,2625",
+    "2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625",
+    "2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625"
+   ],
+   "heightsUnit": "centimetres, one a square, rows north to south",
+   "stairs": [
+    {
+     "x0": 17,
+     "y0": 42,
+     "x1": 19,
+     "y1": 44,
+     "dir": "S",
+     "h0": 14,
+     "h1": 17.5,
+     "model": "stone",
+     "key": "rocks_3"
+    },
+    {
+     "x0": 17,
+     "y0": 37,
+     "x1": 19,
+     "y1": 40,
+     "dir": "S",
+     "h0": 8.75,
+     "h1": 14,
+     "model": "stone",
+     "key": "rocks_3"
+    },
+    {
+     "x0": 23,
+     "y0": 7,
+     "x1": 25,
+     "y1": 10,
+     "dir": "N",
+     "h0": 8.75,
+     "h1": 14,
+     "model": "stone",
+     "key": "rocks_3"
+    },
+    {
+     "x0": 5,
+     "y0": 25,
+     "x1": 8,
+     "y1": 27,
+     "dir": "W",
+     "h0": 8.75,
+     "h1": 14,
+     "model": "stone",
+     "key": "rocks_3"
+    },
+    {
+     "x0": 11,
+     "y0": 29,
+     "x1": 14,
+     "y1": 31,
+     "dir": "W",
+     "h0": 3.5,
+     "h1": 8.75,
+     "model": "stone",
+     "key": "rocks_3"
+    },
+    {
+     "x0": 28,
+     "y0": 13,
+     "x1": 30,
+     "y1": 16,
+     "dir": "N",
+     "h0": 3.5,
+     "h1": 8.75,
+     "model": "stone",
+     "key": "rocks_3"
+    },
+    {
+     "x0": 21,
+     "y0": 36,
+     "x1": 23,
+     "y1": 39,
+     "dir": "S",
+     "h0": 3.5,
+     "h1": 8.75,
+     "model": "stone",
+     "key": "rocks_3"
+    }
+   ],
+   "slopes": [],
+   "bridges": [
+    {
+     "x0": 23,
+     "y0": 28,
+     "x1": 28,
+     "y1": 29,
+     "y": 3.5,
+     "key": "rocks_3",
+     "name": "the causeway to the Plinth"
+    },
+    {
+     "x0": 36,
+     "y0": 6,
+     "x1": 38,
+     "y1": 8,
+     "y": 14,
+     "key": "rocks_3",
+     "rails": true,
+     "name": "walkway 1"
+    },
+    {
+     "x0": 40,
+     "y0": 10,
+     "x1": 42,
+     "y1": 15,
+     "y": 14,
+     "key": "rocks_3",
+     "rails": true,
+     "name": "walkway 2"
+    },
+    {
+     "x0": 40,
+     "y0": 20,
+     "x1": 42,
+     "y1": 26,
+     "y": 14,
+     "key": "rocks_3",
+     "rails": true,
+     "name": "walkway 3"
+    },
+    {
+     "x0": 40,
+     "y0": 31,
+     "x1": 42,
+     "y1": 38,
+     "y": 14,
+     "key": "rocks_3",
+     "rails": true,
+     "name": "walkway 4"
+    },
+    {
+     "x0": 36,
+     "y0": 40,
+     "x1": 38,
+     "y1": 42,
+     "y": 14,
+     "key": "rocks_3",
+     "rails": true,
+     "name": "walkway 5"
+    }
+   ],
+   "climbs": [
+    {
+     "sx": 44,
+     "sy": 28,
+     "face": 90,
+     "look": "rope",
+     "name": "the chains down to the ledge"
+    }
+   ],
+   "ways": [
+    {
+     "id": "link_cave_hell",
+     "kind": "link",
+     "wall": "w",
+     "sy": 6,
+     "name": "The Cavern (the Fissure, the hot gallery)"
+    },
+    {
+     "id": "link_vatican_hell",
+     "kind": "link",
+     "wall": "n",
+     "sx": 30,
+     "name": "up: the Catacombs (the Warm Wall, the other side)"
+    },
+    {
+     "id": "bay",
+     "kind": "bay",
+     "wall": "free",
+     "sx": 18,
+     "sy": 45,
+     "face": 0,
+     "name": "DOOR HQ: Hell's bay door (the mouth)"
+    }
+   ]
+  },
+  {
+   "key": "catacombs",
+   "room": "site_prebuilt_vatican_under",
+   "label": "THE CATACOMBS",
+   "cols": 3,
+   "rows": 2,
+   "legend": {
+    "X": "solid (brick to the roof)",
+    "f": "floor",
+    "s": "steps",
+    "w": "water"
+   },
+   "plots": [
+    {
+     "id": "P00-00",
+     "name": "The Loculi",
+     "d": "K",
+     "level": 0,
+     "what": "\"little places\": galleries of graves",
+     "from": "Catacombs: the ghoul's line"
+    },
+    {
+     "id": "P01-00",
+     "name": "The Crypt",
+     "d": "K",
+     "level": 2,
+     "what": "the crypt under the altar; the stair up",
+     "from": "Catacombs: THE CRYPT UNDER THE BASILICA"
+    },
+    {
+     "id": "P02-00",
+     "name": "The Font",
+     "d": "K",
+     "level": 0,
+     "what": "the font, \"consecrated and cold\"",
+     "from": "Catacombs: the priest's line"
+    },
+    {
+     "id": "P00-01",
+     "name": "The Cistern",
+     "d": "K",
+     "level": 0,
+     "what": "the bottom of the rope",
+     "from": "Catacombs: THE CISTERN"
+    },
+    {
+     "id": "P01-01",
+     "name": "The Descent",
+     "d": "K",
+     "level": 0,
+     "what": "two flights down",
+     "from": "Catacombs: THE DESCENT"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Warm Wall",
+     "d": "K",
+     "level": 0,
+     "what": "\"the wall is warm. It is not the boiler\": the way down to Hell",
+     "from": "Catacombs: THE WARM WALL"
+    }
+   ],
+   "cells": [
+    "XXXXXXXXXXXXXXXXXXffXXXXXXXXXXXXXXXX",
+    "XXXXXXXXXXXXXXXXXXffXXXXXXXXXXXXXXXX",
+    "XXffffffffffXXfffffffffXXXffffffffXX",
+    "XXffffffffffXXfffffffffXXXffffffffXX",
+    "XXffXXffXXffXXfffffffffsssfffwwfffXX",
+    "XXffXXffXXffXXfffffffffsssfffwwfffXX",
+    "XXffffffffffXXfffffffffXXXfffwwfffXX",
+    "XXffffffffffXXfffffffffXXXffffffffXX",
+    "XXffXXffXXffXXfffffffffXXXffffffffXX",
+    "XXffXXffXXffXXXXXssXXXXXXXXXXffXXXXX",
+    "XXffffffffffXXXXXssXXXXXXXXXXffXXXXX",
+    "XXXXXXXXXXffXXXXXssXXXXXXXXXXffXXXXX",
+    "XXXXXXXXXXffXXXffffffXXXXXXXXffXXXXX",
+    "XXXXXXXXXXffsssffffffXXXXXXXXffXXXXX",
+    "XXXXffffXXffsssffffffXXXXfffffffffXX",
+    "XXXffffffXffXXXXXXXXXXXXXfffffffffXX",
+    "XXfffwwfffffXXXXXXXXXXXXXfffffffffXX",
+    "XXffwwwwffffffffffffffffffffffffffff",
+    "XXffwwwwffffffffffffffffffffffffffff",
+    "XXfffwwfffXXXXXXXXXXXXXXXfffffffffXX",
+    "XXXffffffXXXXXXXXXXXXXXXXfffffffffXX",
+    "XXXXffffXXXXXXXXXXXXXXXXXfffffffffXX",
+    "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+   ],
+   "heights": [
+    "700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,350,350,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700",
+    "700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,350,350,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700",
+    "700,700,0,0,0,0,0,0,0,0,0,0,700,700,350,350,350,350,350,350,350,350,350,700,700,700,0,0,0,0,0,0,0,0,700,700",
+    "700,700,0,0,0,0,0,0,0,0,0,0,700,700,350,350,350,350,350,350,350,350,350,700,700,700,0,0,0,0,0,0,0,0,700,700",
+    "700,700,0,0,700,700,0,0,700,700,0,0,700,700,350,350,350,350,350,350,350,350,350,0,0,0,0,0,0,-50,-50,0,0,0,700,700",
+    "700,700,0,0,700,700,0,0,700,700,0,0,700,700,350,350,350,350,350,350,350,350,350,0,0,0,0,0,0,-50,-50,0,0,0,700,700",
+    "700,700,0,0,0,0,0,0,0,0,0,0,700,700,350,350,350,350,350,350,350,350,350,700,700,700,0,0,0,-50,-50,0,0,0,700,700",
+    "700,700,0,0,0,0,0,0,0,0,0,0,700,700,350,350,350,350,350,350,350,350,350,700,700,700,0,0,0,0,0,0,0,0,700,700",
+    "700,700,0,0,700,700,0,0,700,700,0,0,700,700,350,350,350,350,350,350,350,350,350,700,700,700,0,0,0,0,0,0,0,0,700,700",
+    "700,700,0,0,700,700,0,0,700,700,0,0,700,700,700,700,700,175,175,700,700,700,700,700,700,700,700,700,700,0,0,700,700,700,700,700",
+    "700,700,0,0,0,0,0,0,0,0,0,0,700,700,700,700,700,175,175,700,700,700,700,700,700,700,700,700,700,0,0,700,700,700,700,700",
+    "700,700,700,700,700,700,700,700,700,700,0,0,700,700,700,700,700,175,175,700,700,700,700,700,700,700,700,700,700,0,0,700,700,700,700,700",
+    "700,700,700,700,700,700,700,700,700,700,0,0,700,700,700,175,175,175,175,175,175,700,700,700,700,700,700,700,700,0,0,700,700,700,700,700",
+    "700,700,700,700,700,700,700,700,700,700,0,0,0,0,0,175,175,175,175,175,175,700,700,700,700,700,700,700,700,0,0,700,700,700,700,700",
+    "700,700,700,700,0,0,0,0,700,700,0,0,0,0,0,175,175,175,175,175,175,700,700,700,700,0,0,0,0,0,0,0,0,0,700,700",
+    "700,700,700,0,0,0,0,0,0,700,0,0,700,700,700,700,700,700,700,700,700,700,700,700,700,0,0,0,0,0,0,0,0,0,700,700",
+    "700,700,0,0,0,-50,-50,0,0,0,0,0,700,700,700,700,700,700,700,700,700,700,700,700,700,0,0,0,0,0,0,0,0,0,700,700",
+    "700,700,0,0,-50,-50,-50,-50,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "700,700,0,0,-50,-50,-50,-50,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "700,700,0,0,0,-50,-50,0,0,0,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,0,0,0,0,0,0,0,0,0,700,700",
+    "700,700,700,0,0,0,0,0,0,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,0,0,0,0,0,0,0,0,0,700,700",
+    "700,700,700,700,0,0,0,0,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,0,0,0,0,0,0,0,0,0,700,700",
+    "700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700",
+    "700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700,700"
+   ],
+   "heightsUnit": "centimetres, one a square, rows north to south",
+   "stairs": [
+    {
+     "x0": 17,
+     "y0": 9,
+     "x1": 19,
+     "y1": 12,
+     "dir": "N",
+     "h0": 1.75,
+     "h1": 3.5,
+     "model": "stone"
+    },
+    {
+     "x0": 12,
+     "y0": 13,
+     "x1": 15,
+     "y1": 15,
+     "dir": "E",
+     "h0": 0,
+     "h1": 1.75,
+     "model": "stone"
+    },
+    {
+     "x0": 23,
+     "y0": 4,
+     "x1": 26,
+     "y1": 6,
+     "dir": "W",
+     "h0": 0,
+     "h1": 3.5,
+     "model": "stone"
+    }
+   ],
+   "slopes": [],
+   "bridges": [],
+   "climbs": [],
+   "ways": [
+    {
+     "id": "stair",
+     "kind": "door",
+     "wall": "n",
+     "sx": 19,
+     "name": "up: the Basilica (the crypt stair, behind the altar)"
+    },
+    {
+     "id": "well",
+     "kind": "door",
+     "wall": "free",
+     "sx": 6,
+     "sy": 16,
+     "face": 0,
+     "name": "up: the Cistern (the rope)"
+    },
+    {
+     "id": "link_vatican_hell",
+     "kind": "link",
+     "wall": "e",
+     "sy": 18,
+     "name": "down: Hell (the Warm Wall; a door that is not on a plate)"
+    }
+   ]
+  },
+  {
+   "key": "vatican",
+   "room": "site_prebuilt_vatican_plots",
+   "label": "THE VATICAN",
+   "cols": 6,
+   "rows": 4,
+   "legend": {
+    "X": "the wall (8.75 m; its towers 12.25 m)",
+    "c": "cobbles",
+    "m": "marble",
+    "k": "colonnade / arcade (walked between the columns)",
+    "o": "the obelisk's plinth",
+    "w": "a fountain's basin",
+    "B": "a building's floor (walk-in)",
+    "s": "steps",
+    "g": "lawn",
+    "d": "garden walk",
+    "h": "hedge (2.6 m)",
+    "T": "the Campanile's stump",
+    "t": "terrace",
+    "q": "the Cistern's shaft"
+   },
+   "plots": [
+    {
+     "id": "P00-00",
+     "name": "The Hedge Maze",
+     "d": "G",
+     "level": 0,
+     "what": "the hedges \"planted as a maze\"; where the gardener gets lost",
+     "from": "Cortile: the hedges (the gardener's lines)"
+    },
+    {
+     "id": "P01-00",
+     "name": "The Observatory",
+     "d": "P",
+     "level": 2,
+     "what": "LANDMARK: the mount, the Dome Stair, the telescope on top (up: the Stair in the Sky)",
+     "from": "Observatory: THE TOP OF THE DOME · THE TELESCOPE; Archive: THE DOME STAIR"
+    },
+    {
+     "id": "P02-00",
+     "name": "The Archive",
+     "d": "P",
+     "level": 0,
+     "what": "walk-in: the stacks, the gallery, the index desk; the Vatican's bay door",
+     "from": "Archive: THE SECRET ARCHIVE · THE STACKS · THE GALLERY"
+    },
+    {
+     "id": "P03-00",
+     "name": "The Courtyard",
+     "d": "P",
+     "level": 0,
+     "what": "the arcaded yard, the Terrace, the Pilgrim Stair up Mount Olympus",
+     "from": "Cortile: THE COURTYARD · THE TERRACE"
+    },
+    {
+     "id": "P04-00",
+     "name": "The Colonnade, north-west",
+     "d": "S",
+     "level": 0,
+     "what": "the north arc of columns",
+     "from": "Bureau painting: \"a colonnade and a square\""
+    },
+    {
+     "id": "P05-00",
+     "name": "The Colonnade, north-east",
+     "d": "S",
+     "level": 0,
+     "what": "the north arc; the Bureau's painting hangs under it",
+     "from": "Bureau painting: \"a colonnade and a square\""
+    },
+    {
+     "id": "P00-01",
+     "name": "The Gardens",
+     "d": "G",
+     "level": 0,
+     "what": "lawns, pines and statues behind the apse",
+     "from": "plan 1: The Gardens"
+    },
+    {
+     "id": "P01-01",
+     "name": "The Apse",
+     "d": "B",
+     "level": 1,
+     "what": "the chancel, the altar, the chair; the white door down to the crypt",
+     "from": "Basilica: THE CHANCEL · THE CRYPT DOOR BEHIND THE ALTAR"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Nave, north",
+     "d": "B",
+     "level": 1,
+     "what": "LANDMARK: the dome over the crossing; the north aisle, the triforium",
+     "from": "Basilica: THE NAVE · THE TRIFORIUM"
+    },
+    {
+     "id": "P03-01",
+     "name": "The Front, north",
+     "d": "B",
+     "level": 0,
+     "what": "the narthex, the great doors, the steps",
+     "from": "Cortile: \"the façade is the front of the building\""
+    },
+    {
+     "id": "P04-01",
+     "name": "The Square, north-west",
+     "d": "S",
+     "level": 0,
+     "what": "the oval's marble; the north fountain",
+     "from": "plan 1: The Square"
+    },
+    {
+     "id": "P05-01",
+     "name": "The Square, north-east",
+     "d": "S",
+     "level": 0,
+     "what": "LANDMARK: the obelisk (on the plot corner)",
+     "from": "plan 1: The Square"
+    },
+    {
+     "id": "P00-02",
+     "name": "The Campanile",
+     "d": "G",
+     "level": 0,
+     "what": "\"the campanile is a stump\": the stump of the bell tower",
+     "from": "Cortile: the campanile (a line)"
+    },
+    {
+     "id": "P01-02",
+     "name": "The South Transept",
+     "d": "B",
+     "level": 1,
+     "what": "the transept's chapels, the confessionals",
+     "from": "Basilica: the confessionals"
+    },
+    {
+     "id": "P02-02",
+     "name": "The Nave, south",
+     "d": "B",
+     "level": 1,
+     "what": "the south aisle, the pews",
+     "from": "Basilica: THE NAVE · MASS"
+    },
+    {
+     "id": "P03-02",
+     "name": "The Front, south",
+     "d": "B",
+     "level": 0,
+     "what": "the narthex, the steps",
+     "from": "Cortile: the façade"
+    },
+    {
+     "id": "P04-02",
+     "name": "The Square, south-west",
+     "d": "S",
+     "level": 0,
+     "what": "the oval's marble; the south fountain",
+     "from": "plan 1: The Square"
+    },
+    {
+     "id": "P05-02",
+     "name": "The Gate",
+     "d": "S",
+     "level": 0,
+     "what": "the gate in the east wall: Disaster City's Civic Center is on the other side (closed)",
+     "from": "plan 1: The Gate (world plan, layout 3)"
+    },
+    {
+     "id": "P00-03",
+     "name": "The Wall, west",
+     "d": "G",
+     "level": 0,
+     "what": "the wall walk, a tower, pines",
+     "from": "plan 1: The Wall, west"
+    },
+    {
+     "id": "P01-03",
+     "name": "The Cloister",
+     "d": "C",
+     "level": 0,
+     "what": "an arcade round a garth",
+     "from": "Basilica: the cloister door; plan 1: The Cloister"
+    },
+    {
+     "id": "P02-03",
+     "name": "The Cistern",
+     "d": "C",
+     "level": 0,
+     "what": "\"consecrated once, then drained, then a rope\": down to the Catacombs",
+     "from": "Cortile: THE CISTERN DOWN"
+    },
+    {
+     "id": "P03-03",
+     "name": "The Fountain",
+     "d": "C",
+     "level": 0,
+     "what": "the fountain that \"runs on consecrated water\"; the gardener",
+     "from": "Cortile: THE FOUNTAIN"
+    },
+    {
+     "id": "P04-03",
+     "name": "The Colonnade, south-west",
+     "d": "S",
+     "level": 0,
+     "what": "the south arc of columns",
+     "from": "Bureau painting"
+    },
+    {
+     "id": "P05-03",
+     "name": "The Colonnade, south-east",
+     "d": "S",
+     "level": 0,
+     "what": "the south arc of columns",
+     "from": "Bureau painting"
+    }
+   ],
+   "cells": [
+    "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXttXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "XhhhhhhhhhhhcccccccccccccccccccccccccttttttttttccccccccccccccccccccccccX",
+    "XhggggggggghcttttttttccccBBBBBBBBBBBcttttttttttcccccccccccckkccccccccccX",
+    "XhghhhhhhhhhcttttttttccccBBBBBBBBBBBcttttttttttccccccccckkkkkkkkcccccccX",
+    "XhghggggggghcttttttttccccBBBBBBBBBBBcccccssccccccccccckkkkkkkkkkkkcccccX",
+    "XhghghhhhhghcttttttttssscBBBBBBBBBBBckkkkkkkkkkcccccckkkkkmmmmkkkkkccccX",
+    "XhghghggghghcttttttttssscBBBBBBBBBBBckcccccccckccccckkkkmmmmmmmmkkkkcccX",
+    "XhghghhhghghctttsstttccccBBBBBBBBBBBckcccccccckcccckkkkmmmmmmmmmmkkkkccX",
+    "XhghggggghghctttsstttccccBBBBBBBBBBBckcccccccckcccckkkmmmmmmmmmmmmkkkccX",
+    "XhghhhhhhhghctttsstttccccBBBBBBBBBBBckcccccccckccckkkmmmmmmmmmmmmmmkkkcX",
+    "XhggggggggghcttttttttcccccccccccccccckkkkkkkkkkccckkkmmmmmmmmmmmmmmkkkcX",
+    "XhhhhhghhhhhccccccccccccccccccccccccccccccccccccckkkmmmmmmmmmmmmmmmmkkkX",
+    "XdddddddddddccccccccccccccccccccccccccccccccccccckkkmmmmmmmwwmmmmmmmkkkX",
+    "XggggdgggggdccccBBBBBBBBcccccccccccccccccccccccckkkmmmmmmmmwwmmmmmmmmkkk",
+    "XggggdgggggdccccBBBBBBBBcccccccccccccccccccccccckkkmmmmmmmmmmmmmmmmmmkkk",
+    "XggggdgggggdccccBBBBBBBBccccccccccccccccccBBBccckkkmmmmmmmmmmmmmmmmmmkkk",
+    "XgddddddddgdccccBBBBBBBBccccccccccccccccccBBBssskkmmmmmmmmmmmmmmmmmmmmkk",
+    "XggggdgggggdccccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
+    "XggggdgggggdccccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
+    "XggggdgggggdcccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
+    "XggggdgggggdccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
+    "XggggdgggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
+    "XggggdgggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
+    "XgggTTTggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmoommmmmmmmmmm",
+    "XgggTTTggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmoommmmmmmmmmm",
+    "XgggTTTggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
+    "XggggdgggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
+    "XggggdgggggdccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
+    "XggggdgggggdcccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
+    "XggggdgggggdccccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
+    "XggggdgggggdccccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
+    "XggggdgggggdccccBBBBBBBBccccccccccccccccccBBBssskkmmmmmmmmmmmmmmmmmmmmkk",
+    "XggggdgggggdccccBBBBBBBBccccccccccccccccccBBBccckkkmmmmmmmmmmmmmmmmmmkkk",
+    "XggggdgggggdccccBBBBBBBBcccccccccccccccccccccccckkkmmmmmmmmmmmmmmmmmmkkk",
+    "XggggdgggggdccccBBBBBBBBcccccccccccccccccccccccckkkmmmmmmmmwwmmmmmmmmkkk",
+    "XggggdgggggdccccccccccccccccccccccccccccccccccccckkkmmmmmmmwwmmmmmmmkkkX",
+    "XggggdgggggdccccccccccccccccccccccccccccccccccccckkkmmmmmmmmmmmmmmmmkkkX",
+    "XggggdgggggdckkkkkkkkkkkcccccccccccccgggggdggggccckkkmmmmmmmmmmmmmmkkkcX",
+    "XggggdgggggdckggggdggggkcccccccccccccgggggdggggccckkkmmmmmmmmmmmmmmkkkcX",
+    "XggggdgggggdckggggdggggkcccccmmmcccccgggggwggggcccckkkmmmmmmmmmmmmkkkccX",
+    "XgddddddddddckggggdggggkccccmmmmmccccggggwwwgggcccckkkkmmmmmmmmmmkkkkccX",
+    "XggggdgggggdckdddddddddkccccmmmmmccccdddwwwwwddccccckkkkmmmmmmmmkkkkcccX",
+    "XggggdgggggdckggggdggggkccccmmmmmccccggggwwwgggcccccckkkkkmmmmkkkkkccccX",
+    "XggggdgggggdckggggdggggkcccccmmmcccccgggggwggggccccccckkkkkkkkkkkkcccccX",
+    "XggggdgggggdckggggdggggkcccccccccccccgggggdggggccccccccckkkkkkkkcccccccX",
+    "XggggdgggggdckkkkkkkkkkkcccccccccccccgggggdggggcccccccccccckkccccccccccX",
+    "XggggggggggdccccccccccccccccccccccXXcccccccccccccccccccccccccccccccccccX",
+    "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+   ],
+   "heights": [
+    "875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,175,175,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875",
+    "875,260,260,260,260,260,260,260,260,260,260,260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,0,0,0,0,0,0,0,0,260,0,525,525,525,525,525,525,525,525,0,0,0,0,35,35,35,35,35,35,35,35,35,35,35,0,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,260,260,260,260,260,260,260,260,260,0,525,1050,1050,1050,1050,1050,1050,525,0,0,0,0,35,35,35,35,35,35,35,35,35,35,35,0,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,260,0,0,0,0,0,0,0,260,0,525,1050,1050,1050,1050,1050,1050,525,0,0,0,0,35,35,35,35,35,35,35,35,35,35,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,260,0,260,260,260,260,260,0,260,0,525,1050,1050,1050,1050,1050,1050,525,0,0,0,0,35,35,35,35,35,35,35,35,35,35,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,260,0,260,0,0,0,260,0,260,0,525,1050,1050,1050,1050,1050,1050,525,0,0,0,0,35,35,35,35,35,35,35,35,35,35,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,260,0,260,260,260,0,260,0,260,0,525,525,525,525,525,525,525,525,0,0,0,0,35,35,35,35,35,35,35,35,35,35,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,260,0,0,0,0,0,260,0,260,0,525,525,525,525,525,525,525,525,0,0,0,0,35,35,35,35,35,35,35,35,35,35,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,260,260,260,260,260,260,260,0,260,0,525,525,525,525,525,525,525,525,0,0,0,0,35,35,35,35,35,35,35,35,35,35,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,0,0,0,0,0,0,0,0,0,260,0,525,525,525,525,525,525,525,525,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,260,260,260,260,260,0,260,260,260,260,260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,-60,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,-60,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,525,525,525,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,90,90,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,525,525,525,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,90,90,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,525,525,525,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,-60,0,0,0,0,0,0,0,0,0,0,0",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,-60,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,-60,-60,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,-60,-60,-60,-60,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,-60,-60,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-60,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1225,1225,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875"
+   ],
+   "heightsUnit": "centimetres, one a square, rows north to south",
+   "stairs": [
+    {
+     "x0": 45,
+     "y0": 16,
+     "x1": 48,
+     "y1": 32,
+     "dir": "W",
+     "h0": 0,
+     "h1": 1.75,
+     "model": "stone",
+     "key": "marble_light"
+    },
+    {
+     "x0": 21,
+     "y0": 5,
+     "x1": 24,
+     "y1": 7,
+     "dir": "W",
+     "h0": 0,
+     "h1": 5.25,
+     "model": "stone",
+     "key": "marble_light"
+    },
+    {
+     "x0": 16,
+     "y0": 7,
+     "x1": 18,
+     "y1": 10,
+     "dir": "N",
+     "h0": 5.25,
+     "h1": 10.5,
+     "model": "stone",
+     "key": "marble_light"
+    },
+    {
+     "x0": 41,
+     "y0": 4,
+     "x1": 43,
+     "y1": 5,
+     "dir": "N",
+     "h0": 0,
+     "h1": 1.75,
+     "model": "stone",
+     "key": "marble_light"
+    }
+   ],
+   "slopes": [],
+   "bridges": [],
+   "climbs": [],
+   "ways": [
+    {
+     "id": "link_bureau_vatican",
+     "kind": "link",
+     "wall": "free",
+     "sx": 60,
+     "sy": 3,
+     "face": 180,
+     "name": "DOOR HQ, the Bureau of Continuity (the painting)",
+     "note": "the painting of \"a colonnade and a square\" hangs under the north colonnade"
+    },
+    {
+     "id": "link_vatican_olympus",
+     "kind": "link",
+     "wall": "n",
+     "sx": 42,
+     "name": "The Mountains: Mount Olympus (the Pilgrim Stair)"
+    },
+    {
+     "id": "bay",
+     "kind": "bay",
+     "wall": "free",
+     "sx": 30,
+     "sy": 11,
+     "face": 180,
+     "name": "DOOR HQ: the Vatican's bay door (\"the archive service door\")"
+    },
+    {
+     "id": "crypt",
+     "kind": "door",
+     "wall": "free",
+     "sx": 14,
+     "sy": 24,
+     "face": 90,
+     "name": "down: the Catacombs (the white door behind the altar)"
+    },
+    {
+     "id": "well",
+     "kind": "door",
+     "wall": "free",
+     "sx": 30,
+     "sy": 41,
+     "face": 180,
+     "name": "down: the Catacombs (the Cistern, down the rope)"
+    },
+    {
+     "id": "link_observatory_stair",
+     "kind": "link",
+     "wall": "free",
+     "sx": 17,
+     "sy": 4,
+     "face": 180,
+     "name": "up: Heaven (the telescope, the Stair in the Sky)"
+    },
+    {
+     "id": "gate",
+     "kind": "gate",
+     "wall": "e",
+     "sy": 24,
+     "name": "Disaster City: the Civic Center gate (CLOSED; the city is owner side: a note, no link)"
+    }
+   ]
+  },
+  {
+   "key": "heaven",
+   "room": "site_prebuilt_heaven_plots",
+   "label": "HEAVEN",
+   "cols": 4,
+   "rows": 5,
+   "legend": {
+    ".": "open sky (a fall)",
+    "c": "cloud you walk on",
+    "m": "marble",
+    "s": "steps (the four flights float)",
+    "w": "the pool",
+    "K": "the wall of cloud",
+    "B": "a building's floor (walk-in)"
+   },
+   "plots": [
+    {
+     "id": "P00-00",
+     "name": "The Towers, west (label mine)",
+     "d": "Y",
+     "level": 16,
+     "what": "the white towers of the city",
+     "from": "Cloud Fields: 16 castle towers, walls and gates"
+    },
+    {
+     "id": "P01-00",
+     "name": "Room 777, west",
+     "d": "Y",
+     "level": 16,
+     "what": "LANDMARK: the hotel where \"checkout is never\" (walk-in)",
+     "from": "Cloud Fields: Room 777 (the bay door, the lines)"
+    },
+    {
+     "id": "P02-00",
+     "name": "Room 777, east",
+     "d": "Y",
+     "level": 16,
+     "what": "the hotel's east wing; the harps",
+     "from": "Cloud Fields: Room 777; the harps"
+    },
+    {
+     "id": "P03-00",
+     "name": "The Towers, east (label mine)",
+     "d": "Y",
+     "level": 16,
+     "what": "the white towers of the city",
+     "from": "Cloud Fields: the castle towers"
+    },
+    {
+     "id": "P00-01",
+     "name": "The Terraces",
+     "d": "F",
+     "level": 15,
+     "what": "two steps of cloud up to the city",
+     "from": "Cloud Fields: THE TERRACES"
+    },
+    {
+     "id": "P01-01",
+     "name": "The Sun",
+     "d": "F",
+     "level": 14,
+     "what": "LANDMARK: the Sun, a dial on the floor",
+     "from": "Cloud Fields: THE SUN"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Cloud Fields",
+     "d": "F",
+     "level": 14,
+     "what": "\"Is this the queue?\" \"This is the field.\"",
+     "from": "Cloud Fields"
+    },
+    {
+     "id": "P03-01",
+     "name": "The Cloud Paths",
+     "d": "F",
+     "level": 14,
+     "what": "narrow paths over the sky; the Grand Stair's gate of cloud (Mount Olympus)",
+     "from": "Cloud Fields: THE CLOUD PATHS · THE GRAND STAIR"
+    },
+    {
+     "id": "P00-02",
+     "name": "The Top of the Stair",
+     "d": "A",
+     "level": 13,
+     "what": "where the fourth flight lands",
+     "from": "Stairway: THE GATE AT THE TOP"
+    },
+    {
+     "id": "P01-02",
+     "name": "The Gate, west",
+     "d": "A",
+     "level": 14,
+     "what": "LANDMARK: the Gate in the wall of cloud",
+     "from": "Cloud Fields: THE GATE"
+    },
+    {
+     "id": "P02-02",
+     "name": "The Gate, east",
+     "d": "A",
+     "level": 13,
+     "what": "the Gate; the queue",
+     "from": "Cloud Fields: THE GATE"
+    },
+    {
+     "id": "P03-02",
+     "name": "The Book (label mine)",
+     "d": "A",
+     "level": 13,
+     "what": "the lectern: \"Name?\" \"It is in the book.\"",
+     "from": "Cloud Fields: the seraphim's lines, the lectern"
+    },
+    {
+     "id": "P00-03",
+     "name": "The Third Flight",
+     "d": "T",
+     "level": 11,
+     "what": "the third landing; the fourth flight up to the Gate",
+     "from": "Stairway: FOUR FLOATING FLIGHTS"
+    },
+    {
+     "id": "P01-03",
+     "name": "The Second Flight",
+     "d": "T",
+     "level": 8,
+     "what": "the second landing",
+     "from": "Stairway: FOUR FLOATING FLIGHTS"
+    },
+    {
+     "id": "P02-03",
+     "name": "The Long Way, north",
+     "d": "T",
+     "level": 7,
+     "what": "the long way round comes in here",
+     "from": "Stairway: \"the long way is on the left\""
+    },
+    {
+     "id": "P03-03",
+     "name": "The Fall, north",
+     "d": "T",
+     "level": 7,
+     "what": "loose clouds over nothing",
+     "from": "Stairway: THE FALL"
+    },
+    {
+     "id": "P00-04",
+     "name": "The Stair in the Sky",
+     "d": "T",
+     "level": 2,
+     "what": "the foot of the stair (from the telescope); the Sky Bridge to Camelot",
+     "from": "Stairway: THE STAIR THAT ONLY GOES UP"
+    },
+    {
+     "id": "P01-04",
+     "name": "The First Flight",
+     "d": "T",
+     "level": 5,
+     "what": "the first landing, the pool that \"heals the stairs\"",
+     "from": "Stairway: the pool, the Healing Zone"
+    },
+    {
+     "id": "P02-04",
+     "name": "The Long Way",
+     "d": "T",
+     "level": 5,
+     "what": "a path of cloud out over the Fall",
+     "from": "Stairway: the long way"
+    },
+    {
+     "id": "P03-04",
+     "name": "The Fall",
+     "d": "T",
+     "level": 5,
+     "what": "\"I fell.\" \"Everyone falls.\"",
+     "from": "Stairway: THE FALL"
+    }
+   ],
+   "cells": [
+    "................................................",
+    ".cccccccccccccccccccccccccccccccccccccccccccccc.",
+    ".ccccccccccccccccccBBBBBBBBBBcccccccccccccccccc.",
+    ".ccccccccccccccccccBBBBBBBBBBcccccccccccccccccc.",
+    ".ccccccccccccccccccBBBBBBBBBBcccccccccccccccccc.",
+    ".ccccccccccccccccccBBBBBBBBBBcccccccccccccccccc.",
+    ".ccccccccccccccccccBBBBBBBBBBcccccccccccccccccc.",
+    ".ccccccccccccccccccBBBBBBBBBBcccccccccccccccccc.",
+    ".cccccccccccccccccccccccccccccccccccccccccccccc.",
+    ".cmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmc.",
+    ".cmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmc.",
+    ".cccccccccccccccccccccccccccccccccccccccccccccc.",
+    "..cccccccccccccccccccccssccccccccccc....cc......",
+    ".ccccccccccccccccccccccssccccccccccc..cccccc....",
+    "..cccccccscccccccccccccmmccccccccccccccccccc....",
+    "..cccccccscccccccccccmmmmmmccccccccc..cccccc....",
+    ".ccccccccccccccccccccmmmmmmccccccccc....cc......",
+    ".cccccccccccccccccccmmmmmmmmcccccccccccccccccccc",
+    ".cccccccccccccccccccmmmmmmmmcccccccccccccccccccc",
+    ".ccccccccccccccccccccmmmmmmccccccccc....cc......",
+    ".ccccccccccccccccccccmmmmmmccccccccc...ccccc....",
+    "..ccccccccccsccccccccccmmcccccccccccccccccccc...",
+    "..ccccccccccsccccccccccmmccccccccccc...ccccc....",
+    ".ccccccccccccccccccccccmmccccccccccc.....c......",
+    "KKKKKKKKKKKKKKKKKKKKKKKmmKKKKKKKKKKKKKKKKKKKKKKK",
+    "KKKKKKKKKKKKKKKKKKKKKKKmmKKKKKKKKKKKKKKKKKKKKKKK",
+    "..cccccccccccccccccccccccccccccccccccccccccccc..",
+    "..cmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmc..",
+    "..cmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmc..",
+    "..cmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmc..",
+    "..cccccccccccccccccccccccccccccccccccccccccccc..",
+    ".....sss........................................",
+    ".....sss......................cc................",
+    ".....sss.....................cccc...............",
+    ".....sss.....................cccc..........cc...",
+    ".....ccc......................cc..........cccc..",
+    "....ccccc.................................cccc..",
+    "...ccccccc........cccccccc.................cc...",
+    "..ccmmmmmmc......cmmmmmmmmm.....................",
+    "..ccmmmmmmcsssscccmmmmmmmmmc....................",
+    "..ccmmmmmmcsssscccmmmmmmmmmccccccccccccccc......",
+    "..ccmmmmmmcsssscccmmmmmmmmmccccccccccccccc......",
+    "..ccmmmmmmc......cmmmmmmmmm.............ss......",
+    "...ccccccc........cccccccc..............ss......",
+    "....ccccc..........sss..................ss......",
+    "...................sss..................ss......",
+    "...................sss...........cc.....ss......",
+    "...................sss..........cccc....ss......",
+    "......c............ccc..........cccc....ss......",
+    "....ccccc........ccccccc.........cc.....ss......",
+    "...ccccccc......ccccccccc...............ss......",
+    "..ccmmmmmcc....ccmmmmmmmcc..............ss......",
+    "ccccmmmmmccssssccmmmmmmmcc..............ss......",
+    "ccccmmmmmccssssccmmmmwwmcccccccccccccccccc......",
+    "..ccmmmmmccssssccmmmmwwmcccccccccccccccccc......",
+    "...cmmmmmc......cmmmmmmmc.......................",
+    "....ccccc........ccccccc........................",
+    "......cc...........ccc..........................",
+    "......cc........................................",
+    "......cc........................................"
+   ],
+   "heights": [
+    "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,2800,0",
+    "0,0,2800,2800,2800,2800,2800,2800,2800,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,0,0,2450,2450,0,0,0,0,0,0",
+    "0,2450,2800,2800,2800,2800,2800,2800,2800,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,2450,2450,2450,2450,2450,2450,0,0,0,0",
+    "0,0,2800,2800,2800,2800,2800,2800,2800,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,0,0",
+    "0,0,2800,2800,2800,2800,2800,2800,2800,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,2450,2450,2450,2450,2450,2450,0,0,0,0",
+    "0,2450,2800,2800,2800,2800,2800,2800,2800,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,0,0,2450,2450,0,0,0,0,0,0",
+    "0,2450,2800,2800,2800,2800,2800,2800,2800,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450",
+    "0,2450,2800,2800,2800,2800,2800,2800,2800,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450",
+    "0,2450,2800,2800,2800,2800,2800,2800,2800,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,0,0,2450,2450,0,0,0,0,0,0",
+    "0,2450,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,0,2450,2450,2450,2450,2450,0,0,0,0",
+    "0,0,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,0",
+    "0,0,2625,2625,2625,2625,2625,2625,2625,2625,2625,2625,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,0,2450,2450,2450,2450,2450,0,0,0,0",
+    "0,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0,0,0,0,2450,0,0,0,0,0,0",
+    "3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,2450,2450,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150",
+    "3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,2450,2450,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150,3150",
+    "0,0,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0",
+    "0,0,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0",
+    "0,0,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0",
+    "0,0,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0",
+    "0,0,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,2450,0,0",
+    "0,0,0,0,0,1925,1925,1925,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,0,0,0,1925,1925,1925,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1575,1575,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,0,0,0,1925,1925,1925,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1575,1575,1575,1575,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,0,0,0,1925,1925,1925,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1575,1575,1575,1575,0,0,0,0,0,0,0,0,0,0,1225,1225,0,0,0",
+    "0,0,0,0,0,1925,1925,1925,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1575,1575,0,0,0,0,0,0,0,0,0,0,1225,1225,1225,1225,0,0",
+    "0,0,0,0,1925,1925,1925,1925,1925,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1225,1225,1225,1225,0,0",
+    "0,0,0,1925,1925,1925,1925,1925,1925,1925,0,0,0,0,0,0,0,0,1400,1400,1400,1400,1400,1400,1400,1400,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1225,1225,0,0,0",
+    "0,0,1925,1925,1925,1925,1925,1925,1925,1925,1925,0,0,0,0,0,0,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,1925,1925,1925,1925,1925,1925,1925,1925,1925,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,1925,1925,1925,1925,1925,1925,1925,1925,1925,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,0,0,0,0,0,0",
+    "0,0,1925,1925,1925,1925,1925,1925,1925,1925,1925,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,0,0,0,0,0,0",
+    "0,0,1925,1925,1925,1925,1925,1925,1925,1925,1925,0,0,0,0,0,0,1400,1400,1400,1400,1400,1400,1400,1400,1400,1400,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,0,1925,1925,1925,1925,1925,1925,1925,0,0,0,0,0,0,0,0,1400,1400,1400,1400,1400,1400,1400,1400,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,0,0,1925,1925,1925,1925,1925,0,0,0,0,0,0,0,0,0,0,875,875,875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,875,0,0,0,0,0,0,0,0,0,0,0,525,525,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,875,0,0,0,0,0,0,0,0,0,0,525,525,525,525,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,0,0,0,0,350,0,0,0,0,0,0,0,0,0,0,0,0,875,875,875,0,0,0,0,0,0,0,0,0,0,525,525,525,525,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,0,0,350,350,350,350,350,0,0,0,0,0,0,0,0,875,875,875,875,875,875,875,0,0,0,0,0,0,0,0,0,525,525,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,0,350,350,350,350,350,350,350,0,0,0,0,0,0,875,875,875,875,875,875,875,875,875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "0,0,350,350,350,350,350,350,350,350,350,0,0,0,0,875,875,875,875,875,875,875,875,875,875,875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,875,875,875,875,875,875,875,875,875,875,875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875,875,0,0,0,0,0,0",
+    "350,350,350,350,350,350,350,350,350,350,350,350,350,350,350,875,875,875,875,875,875,830,830,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,0,0,0,0,0,0",
+    "0,0,350,350,350,350,350,350,350,350,350,350,350,350,350,875,875,875,875,875,875,830,830,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,875,0,0,0,0,0,0",
+    "0,0,0,350,350,350,350,350,350,350,0,0,0,0,0,0,875,875,875,875,875,875,875,875,875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,0,0,350,350,350,350,350,0,0,0,0,0,0,0,0,875,875,875,875,875,875,875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,0,0,0,0,350,350,0,0,0,0,0,0,0,0,0,0,0,875,875,875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,0,0,0,0,350,350,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,0,0,0,0,350,350,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+   ],
+   "heightsUnit": "centimetres, one a square, rows north to south",
+   "stairs": [
+    {
+     "x0": 11,
+     "y0": 52,
+     "x1": 15,
+     "y1": 55,
+     "dir": "E",
+     "h0": 3.5,
+     "h1": 8.75,
+     "float": true
+    },
+    {
+     "x0": 40,
+     "y0": 42,
+     "x1": 42,
+     "y1": 53,
+     "dir": "N",
+     "h0": 8.75,
+     "h1": 14,
+     "float": true
+    },
+    {
+     "x0": 19,
+     "y0": 44,
+     "x1": 22,
+     "y1": 48,
+     "dir": "N",
+     "h0": 8.75,
+     "h1": 14,
+     "float": true
+    },
+    {
+     "x0": 11,
+     "y0": 39,
+     "x1": 15,
+     "y1": 42,
+     "dir": "W",
+     "h0": 14,
+     "h1": 19.25,
+     "float": true
+    },
+    {
+     "x0": 5,
+     "y0": 31,
+     "x1": 8,
+     "y1": 35,
+     "dir": "N",
+     "h0": 19.25,
+     "h1": 24.5,
+     "float": true
+    },
+    {
+     "x0": 12,
+     "y0": 21,
+     "x1": 13,
+     "y1": 23,
+     "dir": "W",
+     "h0": 24.5,
+     "h1": 26.25,
+     "model": "stone",
+     "key": "marble_light"
+    },
+    {
+     "x0": 9,
+     "y0": 14,
+     "x1": 10,
+     "y1": 16,
+     "dir": "W",
+     "h0": 26.25,
+     "h1": 28,
+     "model": "stone",
+     "key": "marble_light"
+    },
+    {
+     "x0": 23,
+     "y0": 12,
+     "x1": 25,
+     "y1": 14,
+     "dir": "N",
+     "h0": 24.5,
+     "h1": 28,
+     "model": "stone",
+     "key": "marble_light"
+    }
+   ],
+   "slopes": [],
+   "bridges": [],
+   "climbs": [],
+   "ways": [
+    {
+     "id": "link_observatory_stair",
+     "kind": "link",
+     "wall": "s",
+     "sx": 7,
+     "name": "down: the Vatican (the Observatory's telescope)"
+    },
+    {
+     "id": "link_skycastle_stair",
+     "kind": "link",
+     "wall": "w",
+     "sy": 53,
+     "name": "Camelot: the Castle in the Sky (the Sky Bridge)"
+    },
+    {
+     "id": "link_heaven_olympus",
+     "kind": "link",
+     "wall": "e",
+     "sy": 18,
+     "name": "The Mountains: Mount Olympus (the Grand Stair, a gate of cloud)"
+    },
+    {
+     "id": "bay",
+     "kind": "bay",
+     "wall": "free",
+     "sx": 24,
+     "sy": 8,
+     "face": 180,
+     "name": "DOOR HQ: Heaven's bay door (Room 777, \"a hotel room door\")"
+    }
+   ]
+  }
+ ]
+}
