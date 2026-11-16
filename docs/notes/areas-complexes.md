@@ -12319,3 +12319,78 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
   the Station's deck is a mound, not a deck on legs; R, S and T have one layer of content each (their files' headers).
 - **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
   fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
+
+## THE CAVERN ON PLOTS — the underworld of rock redesigned, first build (2026-11-16, second side, the Cavern zone thread)
+
+mondo 11-16: "most of them I want completely redesigned/reimagined with plots and districts etc. like we did for disaster city or Camelot ...
+Then move the exits, it's not that big of a deal. Then we will make new models." Built without waiting for his OK (the zone brief); the plan
+picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `draw-cavern.js` from the layout).
+
+- **THE ROOM** `site_prebuilt_hollow_earth_cavern` (site `prebuilt_hollow_earth`, part `cavern`, plate "THE CAVERN"): ONE room, 6 x 6 plots of
+  12 x 12 squares (252 x 252 m), written by `node bake-cavern.js [--dry-run]` between `CAVERN36-BEGIN / CAVERN36-END` in data.js from
+  `docs/areas/cavern/layout.json` (`CAVERN_DUMP=1` prints the walked map). The first layout was written by
+  `docs/plans/world-zones/make-cavern.js` (chambers, ports, water, paths by fixed dice); from now on a district changes its own squares in its
+  file's `plan()` (`ctx.setRect`), not by rerunning that script (it would redraw every district).
+- **THE REDESIGN, in one line each.** The old zone was eight separate rooms: six small cave boxes off one crossroads, a flat night country
+  with no sun in it, a flat marble floor under a star sky. Now: **K THE CAVERN** (13 plots) is a LOOP over three tiers (levels 4 / 8 / 12,
+  7 m apart): the Crossroads > the Terrace and its fall > up to the Shelf > up to the High Tier > Level −6 > down to the Spur > the rope
+  bridge over the lava chasm > the Hot Shelf's lava lake > the Fissure > down the Long Ramp > the River Chamber > the Crossroads; the
+  Crystal Adit and the Oubliette hang off the Shelf's east stair. **THE MOUTH** is a ledge 7 m over **H HOLLOW EARTH** (11 plots): you stand in
+  the dark and look out over a lit country with the Inner Sun hanging in the middle; a long stair goes down. **A AGARTHA** (12 plots) is
+  terraces (4 / 2 / 0) stepping down round the Spire to a lake and a plaza.
+- **EVERY OLD NAME HAS A PLOT** (layout `from`): the Crossroads + the Hall + the Needle, the Terrace (pool, fall), the West Shelf (now "The
+  Shelf"), the High Tier, the Spur + the Rope Bridge, the Hot Shelf, the Long Ramp, the River Chamber (ford, plank), the Fissure, Level −6,
+  the Crystal Adit + the Crystal Ledge, the Mouth + the Lip + the Crust Ledge, the Oubliette; the Country, the Sun + the Terrace, the Crystal
+  Forest, the Mushroom Shelf + the Overhang, the Old Trees, the Giant's Steps + Seat, the Hot Spring, the Sunken Garden, the Lake + the Jetty;
+  the Gallery, the Upper Terrace + the Balcony, the Adit Terrace, the Lower Terrace, the Spire, the Lake, the Plaza, the Pier. Labels that
+  are mine (plain, the game had none): The Nesting Ground, The East Gate, The Admiral's Tunnel, The Lemuria Stair, The Inner Gate, The Polar
+  Opening. THE GROTTO (a dead end of the old Cavern) has no plot of its own yet: the pilot gives it a corner.
+- **THE DISTRICT FILES** `docs/areas/cavern/districts/K.js H.js A.js`. Stages as in the Sewers (`plan`, `build`, `dress`, `people`, `deep`),
+  plus `suns(ctx)` and `airZones(ctx)`. The ctx is the Sewers' own (bake-sewers.js): `P / dec / native(key, plot, lx, ly)`, `squares / corners
+  / inner / walled / free`, `plot[id].base`, `feat`, `props`, `counters`, `O` (the eight old rooms' people, lines, door plates, counters).
+- **THE WALL** = `terrain.gen { kind: 'plan', look: 'walls', wallKey: 'cave_wall' }`: every square that is not a `space` is rock up to the
+  crust (the shell is 48.25 m high). A square of `x` inside an open district is therefore a 48 m PILLAR, never a boulder (the first build's
+  outcrops along Hollow Earth's terrace lines drew as black towers: taken out).
+- **THE ROOF** (layout `roofed: ['K']`): a K plot wears one BLOCK of rock from its roof line (5.25 m over its floor, or the drop + 5.25 m
+  where a stair or fall comes down into it) up to the crust, so from the open country the cave reads solid over the Mouth; plus up to 16
+  stalactites (tapered `cyl` parts hung point down). One `arch` row a plot, `cav:<plot>:roof`. H and A have no roof: the crust is the shell's
+  ceiling in the haze. `terrain.stalactites: false` (the game's own would hang from the crust).
+- **THE LIGHT, AND THE NEW SHELL ROW `suns`.** "Underground, light is the look, each district its own." The room's ambient is low (0.24) and
+  three BIG LIGHTS do the rest: `shell.suns = [{ x, y, z, color, intensity, dist, decay }]`, four at most a room, read by three-renderer.js
+  `_hqBoxRoomLamps` (plain point lights, not counted in the ten prop lights). H.js: the Inner Sun (30 m up, warm, 170 m reach). A.js: the
+  Spire (pale cyan, 110 m). K.js: the Hot Shelf's lava lake (red, 46 m). The Sun itself is two glowing `dome` halves on a rock spire.
+  Any closed room may use `suns`.
+- **THE LEVELS / THE OPENINGS** as in the Sewers (a `plateau` a plot; layout `openings`: `stair`, `fall` + `by`): 16 stairs (K and H timber
+  flights two squares wide, Agartha built marble flights with glass rails) and 3 falls (the Shelf's spring into the Terrace's pool, the old
+  trees' brook into the Hot Spring, the canal into the Lake). Lava (`l`) is a `stream` with `key: 'lava'`; a `b` run is a deck over what
+  lies beside it (lava under the rope bridge, deep water under a jetty). The walk check never crosses lava.
+- **THE PAINT** (8 sheets, the cap; value 0 = the room's cave floor, v = pal[v - 1]): obsidian (hot side), concrete_floor (Level −6),
+  dungeon_2 (the Oubliette), crystal (the Adit, Agartha's paving), grass_dark_fantasy, dirt_2 (paths), marble_light, desert (sand).
+- **THE WAYS OUT (all were in the game; every one moved to the matching wall).** Links, my end re-pointed in `DOOR_HQ.links`, the far end
+  untouched: `cave_hell` (the Fissure, north), `cave_dumb` (Level −6, north), `workings_oubliette` (the Oubliette, east: the Sewers' end is on
+  their west wall), `shasta_lemuria` (the Lemuria Stair, east), `technoticlan_agartha` (the East Gate, east), `antarctica_polar` (the
+  Admiral's Tunnel, south), `hollow_byrd` (the Polar Opening, south), `well_cellar` (free: the Crossroads), `well_skinwalker` (free: the
+  Mouth). Bays (`DOOR_HQ.siteRooms`): `prebuilt_hollow_earth` > door `bay` (the Polar Opening), `prebuilt_agartha` > door `bay_agartha`
+  (the Inner Gate). Room doors: `dungeon` (DOOR HQ's cell, the Oubliette's north wall, hidden) and `woods` (NEW: the return door of the
+  Woods' one-way `lemuria` trail, world-layout.md A2 no. 4). The tool refuses to bake when a link or bay row drifts.
+  GONE: the four links that joined two old rooms of this zone (`cave_agartha`, `cave_hollow`, `cave_flue`, `cave_crawl`).
+- **RETIRED (`DOOR_HQ.retired`):** the eight old rooms > the new room. Their literals stay (the tool reads the people's lines, the door
+  plates and the counters from them; the Inner Sun and the Crystal City are the rooms the two PvP boards are cut from). Hub `cavern` and
+  world zone `under` name the one room; the clock's `still` list has it (no day or night inside the earth).
+- **WHO IS THERE (18):** the old rooms' bystanders with their own lines, plus the zone's own units with no lines (dinosaur x 2, antperson,
+  goblin, crystal guardian x 2, the Loch Ness Monster by the Pier, a ghoul, a reptilian). The old Inner Sun's `elf` is not a unit today
+  (not in AVAILABLE_RACES): not placed. The two BATTLE markers stand on the Country (`battle`) and the Plaza (`battle_agartha`); the
+  Healing Zone in the Crossroads.
+- **SEEN ON SCREEN** (probe, llvmpipe): the Crossroads and the Needle, the Terrace's fall and stair, the Hot Shelf's lava lake, the view from
+  the Lip over the country to the Sun, the Country, Agartha from the Inner Gate to the Spire. No error; 108 files, ready in 45 s.
+  **FRAME RATE, the first build: 1.5 FPS at the Crossroads, 1.4 on the Country, 1.4 in Agartha** (llvmpipe at 1280 x 800, frames counted
+  over 8 s; the baseline for the pilot's passes).
+- **DECISIONS MADE FOR MONDO (overrule any in one line):** (1) one room for all three districts, not three, so the Sun is seen from the cave;
+  (2) Agartha is a district of the Cavern (its own site until now), both PvP boards kept; (3) the Flue and the Crawl (two hidden short cuts
+  between old rooms) are not rebuilt: their rooms are one walk now; (4) the exits' walls: Hell and the D.U.M.B. north, the Sewers, Shasta
+  and Technoticlan east, Antarctica south; (5) the two Estate wells drop into the Crossroads and the Mouth; (6) a new return door to the
+  Woods at the Lemuria Stair; (7) the six plain labels above.
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, falls, doors: the offline graph + the plan's walk check + pictures);
+  the rock is square blocks 3.5 m wide (no cave-rock model exists: NEEDS A MODEL); H and A are a first build only (their rows on the
+  board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
+
