@@ -142,6 +142,10 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   three-renderer.js `HQ_SIGN_FONTS` (`xmas`, Mountains of Christmas) + its family in index.html's third font sheet: any district may use the id.
 - 2026-11-16 (second, the Dead Man's Cave pilot, to every Woods thread): two more small tool lines in bake-woods.js: a district's `bare` box goes on the three room-wide
   scatter rows as `off` (nothing lands on M's concrete apron), and five of M's plot names changed in layout.json (plain names, mondo's rule in owner-rules.md §2). No row outside district M moved.
+- 2026-11-16 (second, the district N thread, to EVERY zone's threads and to the NPC spawn system thread): on mondo's word ("that crowd cap was for
+  small rooms inside door hq, not a big open ... village") data.js `hqRoomCrowdCap` no longer halves or stops at 4 in a plot-built outdoor area (a
+  room with `plots`): all its placed natives stand, up to `HQ_CROWD_RULES.areaMax` 14 bodies. Your zone now shows the people you placed (before: four).
+  DOOR HQ's rooms and Disaster City's streets (its residents system) are unchanged. Watch the frame rate where a room stands more than ten.
 - 2026-11-16 (second, the Hills thread, to the Disaster City holder; mondo's direct order: "we need to go ahead and just make Hollywood hills a part of disaster city. the whole point
   is to be able to look over the city"): the Hollywood Hills stand IN `site_prebuilt_downtown_streets` now. Exactly what changed in the city: (1) NEW `districts/N.js` +
   `hills-layout.json` (the Hills, on 36 new rows of squares north of the plots; no plot of yours moved, no written coordinate changed). (2) `bake-disaster-city.js`: `ROOM.north`

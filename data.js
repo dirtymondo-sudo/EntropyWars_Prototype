@@ -40752,7 +40752,7 @@ const DOOR_HQ = {
                 {key:'brazier',x:68.25,z:71.75},
             ],
             agents: [],
-            npcSpots: [{x:19.25,z:-15.75,face:180,race:'santa clause',say:'“The workshop is empty because everyone is on the list.”'},{x:54.25,z:-64.75,face:270,race:'gnome',say:'“The bell on the ceiling rings when the chimney is in use. It is ringing.”'},{x:-64.75,z:-57.75,face:90,race:'yeti',say:'“The loft is where the wrapping is kept. I am not allowed up the ladder.”'},{x:-57.75,z:15.75,face:90,race:'ice queen'}],
+            npcSpots: [{x:19.25,z:-15.75,face:180,race:'santa clause',say:'“The workshop is empty because everyone is on the list.”'},{x:54.25,z:-64.75,face:270,race:'gnome',say:'“The bell on the ceiling rings when the chimney is in use. It is ringing.”'},{x:-64.75,z:-57.75,face:90,race:'yeti',say:'“The loft is where the wrapping is kept. I am not allowed up the ladder.”'},{x:64.75,z:-61.25,face:200,race:'krampus'},{x:-57.75,z:15.75,face:90,race:'ice queen'}],
             onlineSpots: [],
             lines: ['“December 25th.” “Every day here.”'],
             spawn: { x: 19.25, z: -12.25, face: 0 },
@@ -73094,6 +73094,7 @@ const HQ_CROWD_RULES = {
     m2PerBody: 20,         // never more than one body per this many m² of floor
     min: 1, max: 4,        // the clamp (a room that plans nobody stays empty)
     cityMax: 6,            // a Disaster City street
+    areaMax: 14,           // an OUTDOOR AREA built on plots (mondo 2026-11-16, on the North Pole village showing four of its five: "that crowd cap was for small rooms inside door hq, not a big open ... village"): every placed native stands and walkers fill up to this many bodies; no halving
     clear: { radius: 2.8, ahead: 6.0, aheadHalfW: 1.3, behind: 4.2, behindHalfW: 1.1, dy: 2.0 },   // metres around / ahead of / behind the landing
     hushMs: 1800,          // the prompt hush after the load card is gone (the arrival card hushes its own length + 300 ms)
 };
@@ -73104,6 +73105,7 @@ function hqRoomCrowdCap(roomId, planned) {
     if (room.noWalkers) return 0;   // a room nobody walks through (your office, mondo 2026-11-13): story cast never counts, so its posts stay
     const hub = (typeof hqHubOf === 'function') ? hqHubOf(roomId) : null;
     const hi = (hub && (hub.id === 'city' || hub.id === 'underworld')) ? R.cityMax : R.max;
+    if (room.plots) return Math.max(R.min, Math.min(R.areaMax || R.max, planned));   // a plot-built outdoor area is not a small room: its people all stand (HQ_CROWD_RULES.areaMax)
     let n = Math.floor(planned * R.share);
     let m2 = 0; try { m2 = hqRoomFloorM2(room, roomId); } catch (e) { m2 = 0; }
     if (m2 > 0) n = Math.min(n, Math.floor(m2 / R.m2PerBody));
