@@ -5505,6 +5505,18 @@ Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. 
   - **PEOPLE: NOT DONE, WAITS MONDO.** The village still has only the two gate knights (+ the room's own walkers). Who lives here (which
     units, how many, what they say) is his call (owner-rules: never invent characters; the NPC spawn system thread is writing the
     blueprint for every zone, docs/notes/npc-system.md). Asked in the pass's reply.
+- **PASS 4, THE ATMOSPHERE** (seen on screen by day and at night, `hqClockSet(22)` in a probe view's `eval`):
+  - **CHIMNEY SMOKE, a new catalogue prop** (`chimney_smoke`: data.js catalogue + three-renderer.js `_hqProcBuilders.chimney_smoke`,
+    beside `hearth_fire`): three grey puffs that rise off a chimney's mouth, drift and thin out. The row stands AT the chimney's top
+    (`y` = that height), `rise` = how far it climbs (5 m). On the Inn, the Smithy and one house in six (`T-houses.js`: `houseLook`'s
+    `chimney()` hands each chimney's mouth back in `CH`). Three sprites a chimney, so ten chimneys, not forty-five.
+  - AT NIGHT the village reads by its lit windows (`glow`), the torches' flames and the hearths; the sky and the room's light are the
+    tool's and were not touched.
+  - **FOUND: THE TORCHES OVER THE ROOFS.** `hall().torch` had no `floor: true`: every wall torch inside the three halls stood on its
+    wall's top, above the roof (a dark stick in the sky over the Inn). Fixed. The rule is in the kit: EVERY prop by a wall takes `floor: true`.
+  - **SOUND: NOT DONE, cannot be done from a district file.** A room has no ambience field a district can set (the beds in audio.js are
+    the battle maps'), and no bell, forge, market or tavern sound exists on R2 (no SFX generation: owner-rules). On the needs list.
+  - Light and colour were settled in passes 1 and 2 (`gain` outdoors, `glow` indoors).
 
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
@@ -5545,6 +5557,10 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   are written first and take most). Every other `wall_torch` (give `y` 2.2), `cave_torch` (standing, 1.9 m, blocks), `hearth_fire`,
   `brazier`, `candle_ring`, `campfire` shows its flame and glow sprite but lights nothing. So light a hall with `glow` on its ceiling,
   walls and windows, and treat fires as things to look at. `noLight: true` on a row keeps it out of the ten.
+- **SMOKE**: `inside(B, 'chimney_smoke', lx, lz, { y: <the chimney's top>, rise: 5 })` (or a plain prop row). Three sprites each: a
+  few chimneys a district. A fire to look at = `hearth_fire` (`noLight: true` when it should not take one of the ten lights).
+- **NIGHT IN A PROBE**: a view's `"eval": "hqClockSet(22)"` + `"settle": 4000` (it stays night for the views after it).
+- **STILL MISSING ZONE-WIDE, NOT A MODEL**: sound (no ambience a district can set; no bell / forge / market / tavern sound on R2).
 - **MESHES ARE THE FRAME'S PRICE** (rendering-loading-perf.md): every arch row costs one mesh per look (sheet + tint + glow + gain) it
   uses. Many small rows with their own tints = hundreds of meshes. Gather repeated things into ONE row (`T-houses.js` `toRoom`: a part's
   place through the building's `at()`, its `ry` + the building's rot, its `step` turned; give the row `y: 0`, the room's middle is the
@@ -5638,6 +5654,8 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   waterfall should lead to a lower pathway or room, not just a random hole in the ground"): 0 = the old mine, the track and the Outfall's
   shaft · 2 = the lower sewers (the Junction's row + the Cistern) · 4 = the upper sewers (the two north rows) · 5 = the cells. Build 1 stepped
   every row 1.75 m with a fall + stair in the corridor at each step: gone.
+  BUILD 3 (mondo 11-16: "the waterfalls still look short, at least twice that height"): every level doubled, so the numbers above read
+  0 / 4 / 8 / 9 and a fall is 7 m (the trap's rope ladder 15.75 m, the Adit, the well and the hatch stair 7 m); a stair flight rises 2 in 3.
   **A FALL IS A WHOLE DROP INTO A ROOM:** an upper culvert's mouth, 3.5 m up a lower room's wall, pours into that room's water. Three: the
   north culvert into the Junction (its hall now runs to its north wall; a stair flight along the wall), the East Return into the Cistern's
   tank (a ladder), the Docks' Outfall down the Outfall Shaft's pool (a ladder). Layout `openings`: `fall` + `by: 'stair' | 'ladder'`;
@@ -5679,7 +5697,7 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
   data.js `hqTerrainCompile` collects the rows as `info.falls`. The editor's ADD list has "Waterfall". Off: `window.EW_NO_HQ_FALLS`.
 - **USED:** the Sewers' three (bake-sewers.js, layout `openings` kind `fall`). **THE RULE HE SET (11-16):** a fall leads somewhere: it drops from an upper way into a lower room or path you can reach, never a step in the same corridor. **WANTED NEXT:** the Woods' Falls plot (`docs/areas/woods/
   districts/T.js`, its creek already steps per grade: one `fall` row per step), the Mountains' streams, the Beach's island.
-- **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen at 1.75 m and 3.5 m.
+- **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen at 1.75 m, 3.5 m and 7 m. **HIS SIZE RULE (11-16):** a waterfall is at least 7 m.
 - **PASS 5, POLISH (an eye-level walk, 18 stops):** every door, the fire escape, the deck, the pens, the crater's edge, the yard. One fix: the
   radar hut's green scope window overlapped its door frame. **WHERE IT STANDS:** all five passes merged and live. Open for mondo: the
   tower's ops block is solid (a walk-in would need the deck rebuilt as a building); the mess hall is sparse; no sound or particles (no
