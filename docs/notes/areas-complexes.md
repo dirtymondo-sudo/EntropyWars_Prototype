@@ -5238,10 +5238,12 @@ district lacks, in the order to do it:
 **AREA 51 AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and Area 51 lacks:
 1. THE SECOND LAYERS outside (F-detail): DONE in part 11-16 (downpipes, AC boxes, louvres, roof kerbs, belt courses, slit windows, a fire
    exit). Still one layer: the hangar's long sides and back, the wing, the watchtowers; no roof walk, no decals (the pack's Sign* plates).
-2. THE SECOND INTERIOR PASS (F-atmos): DONE for the five huts (`lined`). NOT done: skirting, crown, pilasters, pendants, wall pieces
-   (maps, notice boards, clocks on every wall); Hangar 18's shops and south row and the wing's rooms have their first furnishing only.
+2. THE SECOND INTERIOR PASS (F-atmos): DONE 11-16 (mondo: "do 4 and 6"): the huts have a skirting, a dado rail, a crown, pendants and
+   wall pieces; Hangar 18 and the White Rooms have a plate over every door, a number on every cell, wall pieces and floor lines. NOT
+   done: pilasters; the two rooms' walls have no coat or dado of their own (the hangar's shops are bare steel).
 3. THE SQUARES inside: blockers are on whole squares in the huts and both rooms (the kit's `R.B` checks it); the huts' chairs and
-   footlockers are placed by the metre as decor. Not audited against the city's `interior-polish.js` (props clipping walls).
+   footlockers are placed by the metre as decor. THE CLIPPING CHECK: DONE 11-16 (the city's `interior-polish.js` runs over the huts from
+   A.js `pieces`; `tidy()` checks the two rooms).
 4. THE MESHY PIECES: the city made its missing models. Here they are a list: boom arm, windsock, jeep, helicopter, turning radar, flag,
    missile stand (the owner side has the Meshy key).
 5. RESIDENTS with homes and a day (`HQ_CITY_RESIDENTS`): none. Twelve standing people; the barracks' bunks are nobody's.
@@ -5869,4 +5871,18 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
   lined and lit (`lined`), wear gear outside (`gear`), the tower has belt courses and slit windows, the hangar louvres, a ridge vent and
   a fire exit; dust blows over the Dry Lake and the runway (`airZones`). The gap list against a finished city district and Area 51's
   findings for the next Desert threads are in "THE DESERT, THE ZONE KIT" above.
+- **THE WALL DETAIL + THE CLIPPING CHECK (mondo 11-16: "do 4 and 6"; seen, 27 + 7 + 4 views):**
+  - THE HUTS: each walk-in's inside is its own row `des:<id>:in` (`lined()` returns it): the coat, the dado, a dark skirting, a dado rail, a
+    crown, the lit deck, `pendant()` lamps; wall pieces (`hang()` in `furnish`: notice boards, clocks, exit signs, extinguishers, hook rails).
+  - THE CITY'S POLISH, REUSED UNCHANGED: A.js `pieces` runs `docs/disaster-city/interior-polish.js` over the five huts (it wants each
+    hall as a hollow `texbuilding` + inside rows named `…:in`, and the props inside them; the district's home frame is fine). Its tally is in
+    the bake's line (`a51polish`): 92 props given `floor: true`, 1 rug lifted, 6 pieces brought under the ceiling, 3 out of a wall.
+    Any Desert district can call it the same way.
+  - THE TWO ROOMS (`rooms()`): `label()` = a plate over a door, `hung()` = a wall piece, `tidy()` = the clipping check for a kit room (a
+    prop in a kit wall steps out by its measured size, `docs/disaster-city/prop-sizes.json`; a ground-floor prop within 0.75 m of a kit
+    wall gets `floor: true`). FOUND: 39 props stood on wall TOPS (the city's "roof standers", true in kit rooms too): the new
+    extinguishers hung 4.5 m up, and the first build's cell padding sat on the cell walls. None stood inside a wall.
+  - TRAPS: the kit's `u, v` are SQUARES (0.05 square = 17 cm: a piece at `.16` floated 56 cm off its wall). A part's `ry: 90` looks to -x
+    (west), not east: six signs written before this were facing their walls (the guard post's side names, the east fence's plates, the
+    hangar's fire exit) and are turned. `iso_tank` is a 1.3 m tank, not a container.
 
