@@ -24,8 +24,8 @@ function way(fx,fy,x1,y1,x2,y2,kind,label,lx=6,ly=-5){const col=kind==='miss'?C.
   if(label){const X=fx((x1+x2)/2)+lx,Y=fy((y1+y2)/2)+ly;o.push(`<rect x="${X-3}" y="${Y-11}" width="${label.length*6.1+6}" height="15" fill="#000" fill-opacity=".72"/>`);txt(X,Y,label,10.5,col,600)}}
 function hq(fx,fy,x,y,label){const X=fx(x),Y=fy(y);o.push(`<rect x="${X-5}" y="${Y-8}" width="10" height="16" fill="${C.pick}" stroke="#000"/>`);o.push(`<rect x="${X+8}" y="${Y-8}" width="${label.length*6+6}" height="15" fill="#000" fill-opacity=".72"/>`);txt(X+11,Y+3,label,10.5,C.pick,600)}
 o.push(`<rect width="${Wd}" height="${Ht}" fill="${C.bg}"/>`);
-txt(20,36,'ENTROPY WARS · THE WORLD AS IT STANDS · 2026-11-16',24,C.ink,700);
-txt(20,60,'Built zones are drawn at their real size from the game data (one small square = one plot, 42 m). Zones not yet built are placed as on your approved layout 3. North is up.',13,C.dim);
+txt(20,36,'ENTROPY WARS · THE WORLD AS IT STANDS · 2026-11-16, end of day',24,C.ink,700);
+txt(20,60,'Every zone is drawn at its real size from the game data (one small square = one plot, 42 m). Where zones sit against each other follows the approved layout 3. North is up.',13,C.dim);
 txt(20,92,'1.  THE SURFACE',17,C.ink,700);
 // sea + land backdrop
 o.push(`<rect x="20" y="${PADT}" width="${W1*S}" height="${H1*S}" fill="#1b2a1f"/>`);
@@ -73,21 +73,21 @@ o.push(`<rect x="20" y="${U0}" width="${W1*S}" height="${UH*S}" fill="#201c1a"/>
 o.push(`<rect x="${ux(12)}" y="${U0}" width="${(UX0+W1-12)*S}" height="${UH*S}" fill="#0e2040"/>`);
 const g=[ux,uy];
 [[-6,1,6,6,'The Woods'],[-14,0,8,8,'Camelot'],[-6,7,6,6,'The Estate'],[0,0,12,12,'Disaster City'],[0,12,12,12,'The Desert'],[12,1,14,10,'The Beach'],[12,16.5,9,7,'Leylines'],[-12,-5,12,2,'The Mountains (south edge)']].forEach(z=>zone(...g,z[0],z[1],z[2],z[3],z[4],'old',[],{faint:1}));
-zone(...g,2,9,8,2,'THE SEWERS','old',['old rooms · plan 16'],{pick:'① NEXT',small:1});
+zone(...g,3,8,6,5,'THE SEWERS','built',['The Sewers · Running Tunnels','Holding Cells · Old Workings','Radioactive Drain · 30 plots (11-16)']);
 zone(...g,-4,-3,4,4,'HELL','built',['under the Vatican','16 plots (11-16)'],{small:1});
 zone(...g,-6,2,6,6,'THE CAVERN','built',['The Cavern · Hollow Earth','Agartha','36 plots · one room (11-16)']);
 zone(...g,0,18,7,7,'THE D.U.M.B.','built',['CERN, the Ring · Level P3 · Sub-Level 7','Research (+ the White Rooms) · Command','49 plots · one room (11-16)']);
-zone(...g,15,4.5,9,3,'THE DEEP','old',['Atlantis · The Trench · plan 27']);
+zone(...g,15,3.5,8,5,'THE DEEP','built',['Atlantis (the ring city) · the Sea Floor','the Trench · 40 plots, under water (11-16)']);
 way(...g,-2,1,-2,2,'way','the fissure',8,2);
-way(...g,0,7,2,9.5,'way','old workings',10,-14);
+way(...g,0,7,3,9.5,'way','the chimney',10,-14);
 way(...g,-2,8,1.5,18,'way','Level −6',8,0);
 way(...g,-4,8,-4,8.01,'hid','↑ Estate wells',-100,14);
 way(...g,4,9,4,8.99,'way','↑ pump court',-34,-10); way(...g,9.5,10,9.51,10,'way','↑ dock',8,-8); way(...g,7,9,7,8.99,'way','↑ platform',8,-10);
-way(...g,2,10.5,-0.5,6.5,'way','↑ Woods drain',-100,24);
+way(...g,3,10.5,-0.5,6.5,'way','↑ Woods drain',-110,24);
 way(...g,5,18,5,17.99,'way','↑ Hangar 18',8,-8);
-way(...g,19,4.5,19,4.49,'way','↑ whirlpool',8,-8);
-way(...g,6,21,15,7.5,'miss','The Deep · Area 51: on your list, no door',-40,10);
-hq(...g,3,11.6,'HQ ×3'); hq(...g,-5.3,2.6,'HQ dungeon'); hq(...g,1,22.8,'HQ garage');
+way(...g,19,3.5,19,3.49,'way','↑ whirlpool',8,-8);
+
+hq(...g,3.4,13.5,'HQ ×3'); hq(...g,-5.3,2.6,'HQ dungeon'); hq(...g,1,22.8,'HQ garage');
 // legend
 const LX=W1*S+50; let y=PADT+10;
 const box=(t,sub,col)=>{o.push(`<rect x="${LX}" y="${y}" width="${LEG-40}" height="${22+sub.length*15+10}" fill="${col}" fill-opacity=".5" stroke="${col}"/>`);txt(LX+10,y+19,t,13.5,C.ink,700);sub.forEach((s,i)=>txt(LX+10,y+36+i*15,s,11,'#e6e6e6'));y+=22+sub.length*15+20};
@@ -98,14 +98,14 @@ box('OUTER SPACE  (on plots 11-16)',['Moon 5x4, Mars 5x4, Saturn 4x4, the','Sing
 box('THE ASTRAL REALM  (on plots 11-16, 36)',['36 islands over the void, one room. Ways in:','HQ dream lab (the Waiting Room), Camelot’s','mirror (two-way), D.U.M.B., the Haunted attic.'],C.built);
 y+=6;txt(LX,y,'WHAT THE COLOURS MEAN',15,C.ink,700);y+=14;
 const key=(col,dash,t)=>{o.push(`<rect x="${LX}" y="${y}" width="26" height="16" fill="${col}" fill-opacity=".55" stroke="${col}" stroke-width="2" ${dash?'stroke-dasharray="6 4"':''}/>`);txt(LX+36,y+13,t,12);y+=24};
-key(C.built,0,'built on plots (real size)');key(C.old,1,'still old rooms; plot plan drawn, not built');
+key(C.built,0,'built on plots (real size)');
 const lk=(col,dash,t)=>{o.push(`<line x1="${LX}" y1="${y+8}" x2="${LX+26}" y2="${y+8}" stroke="${col}" stroke-width="4" ${dash?'stroke-dasharray="7 5"':''}/>`);txt(LX+36,y+13,t,12);y+=24};
 lk(C.way,0,'a way that works today');lk(C.hid,1,'a hidden way that works today');lk(C.miss,1,'missing / undecided');
 o.push(`<rect x="${LX+8}" y="${y}" width="10" height="16" fill="${C.pick}" stroke="#000"/>`);txt(LX+36,y+13,'a DOOR HQ door comes out here',12);y+=24;
-o.push(`<rect x="${LX}" y="${y}" width="26" height="16" fill="none" stroke="${C.pick}" stroke-width="4"/>`);txt(LX+36,y+13,'① ② ③ = proposed build order',12);y+=40;
-txt(LX,y,'THE ORDER I PROPOSE',15,C.ink,700);y+=20;
-['① The Sewers: 16 plots, seven doors into','    built places, the gate to everything below.','② Heaven + Hell + Vatican: the Mountains’','    stairs and the Civic gate all end at it.','③ The D.U.M.B.: under Area 51, behind the','    HQ garage.','Then: the Cavern, The Deep, Leylines,','the Astral Realm, Antarctica, Outer Space.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
-y+=20;txt(LX,y,'LOOSE ENDS FOUND',15,C.ink,700);y+=20;
-['· Looking-Glass Garden stands twice (old','   room + Camelot district).','· Four doors still name retired rooms: you','   land at the default spot.','· Woods trails to Agartha + the Lodge are','   one-way.','· The Strip, the Lodge, Bohemian Grove are','   still loose old rooms.','· Sewers + Cavern plan pictures predate the','   city’s district move.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
+y+=16;
+txt(LX,y,'WHERE THINGS STAND (11-16, end of day)',15,C.ink,700);y+=20;
+['Every zone is on plots now. Only DOOR HQ and','the Spaceship stay handmade.','Each zone has districts with one file each.','Built today: the Sewers, the D.U.M.B., the','Cavern, Leylines, The Deep, Heaven + Hell +','Vatican, the Astral Realm, Outer Space,','Antarctica; the Hills joined the city.','Old rooms still standing: the Strip,','Cyberpunk City, the Lodge, Bohemian Grove,','the old Looking-Glass Garden, the sky castle.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
+y+=20;txt(LX,y,'LOOSE ENDS IN THE DOORS',15,C.ink,700);y+=20;
+['· Nine doors still name a retired room: you','   land at the new room’s default spot.','· The old Looking-Glass Garden still stands','   beside Camelot’s district.','· Woods trail to the Lodge is one-way.','· Civic gate: the Vatican is built, the city','   side has no door yet (the other account’s).','· Ranch and Desert touch, no way between.','· The Deep to Area 51: struck by mondo.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
 fs.writeFileSync('map.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="${Wd}" height="${Ht}" viewBox="0 0 ${Wd} ${Ht}" font-family="DejaVu Sans, Arial, sans-serif">${o.join('')}</svg>`);
 console.log(Wd,Ht);
