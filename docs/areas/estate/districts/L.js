@@ -18,18 +18,21 @@
        south pool: all decks on piles, boards painted under every one (the grass field grows through a deck on lawn).
      - THE BOATHOUSE (walk-in by the south door): weathered boards on a stone footing, a tin gable roof, the two boat doors on the lake side at the
        head of the slip (drawn shut), a loft hatch and hoist beam, sashed windows (two lit), a stove pipe, lanterns, BOATHOUSE over the door.
-       Inside (not dressed yet, pass 2): a rowboat, a sea chest, a lantern, a bucket, a crate.
+       INSIDE (pass 2, seen): a lit plank ceiling on three tie beams with three lanterns, daylight panes at the seven windows, the boat doors' inner
+       face and bar, a rowboat on its cradle on the slip's line, a workbench under a tool pegboard (saw, bucket, rope), a pot-belly stove under its
+       pipe (drawn), a tool chest, shelving, jerrycans, barrels, an anchor, a net on the wall, a table and chair under the ship's lantern, a cot,
+       rug, radio and a seascape, a sea chest, crates, an outboard motor, a ladder rack, a life ring, the ship's bell by the door.
      - THE PICNIC SHELTER on the South Shore (drawn: four posts on square middles, a shingle roof, two plank tables, PICNIC AREA read from the lake),
        the playground pack's swing, slide and sandbox beside it, benches, a campfire, folding chairs.
      - THE GROUND: gravel shingle on the North Shore (plan char `s`, the tool's one new paint letter), mud at the Reeds and round the Marsh's pools.
      - the Marsh's two pools, rowboats, logs, frogs, moths, dead snags, seven trees, and the Loch Ness Monster (mondo's OK 11-15): it WALKS THE BED,
        its neck and back out of the water, wandering south of the rock (seen on screen 11-16).
    MISSING / WAITING:
-     - pass 2 interiors (the Boathouse's inside), pass 3 dressing (reeds, lily pads, shore line, fish, the Marsh), pass 4 atmosphere (mist, night), pass 5.
+     - pass 3 dressing (reeds, lily pads, shore line, fish, the Marsh), pass 4 atmosphere (mist, night), pass 5.
      - no residents with routines, no encounter table (mondo's baked tables).
    NEEDS A MODEL (nothing on R2 or in any pack file, MODEL_LIST.md searched 11-16: reed, cattail, bulrush, lily, duck, swan, heron, pier, canoe):
      - reeds / cattails (pass 3 will try the ocean pack's seaweed in the shallows and say how it reads), a duck or a heron, a mooring bollard with rope,
-       oars, a fishing rod, a lighter grey lake rock (the ocean pack's rocks draw near black; a prop row takes no tint).
+       oars, a fishing rod, a pot-belly stove (drawn in code today), a lighter grey lake rock (the ocean pack's rocks draw near black; a prop row takes no tint).
    REMOVED 11-16: `dockring` by the Boathouse. It is the Meshy SPACESHIP docking ring (4.5 m), placed by its name as if it were a mooring ring.
    THE HOOKS (bake-estate.js "THE DISTRICT FILES"; a file exports any of these, each is called with this district's own ctx):
      plan(ctx)    first of all: change the plan's squares (ctx.setRect(x0, y0, x1, y1, ch); 'c' = corn, anything else is walked).
