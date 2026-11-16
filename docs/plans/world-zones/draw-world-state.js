@@ -95,7 +95,7 @@ txt(LX,y,'3.  NOT ON THE MAP',15,C.ink,700);y+=12;
 box('DOOR HQ  (the hub, handmade)',['Its doors are the gold marks on the map.','Open at the start: the stair to the Woods,','the taxi to Disaster City.'],C.hq);
 box('② HEAVEN  (old rooms, plan 16)',['Over the Vatican. Up the Grand Stair from','Mount Olympus, or from Camelot’s sky castle.'],C.old);
 box('OUTER SPACE  (on plots 11-16)',['Moon 5x4, Mars 5x4, Saturn 4x4, the','Singularity 4x4: a room each. The Spaceship','handmade. Ways in: the ship, HQ observatorium.'],C.built);
-box('THE ASTRAL REALM  (old rooms, plan 36)',['Ways in: HQ dream lab, Camelot’s mirror,','the D.U.M.B. dream lab, the Haunted attic.'],C.old);
+box('THE ASTRAL REALM  (on plots 11-16, 36)',['36 islands over the void, one room. Ways in:','HQ dream lab (the Waiting Room), Camelot’s','mirror (two-way), D.U.M.B., the Haunted attic.'],C.built);
 y+=6;txt(LX,y,'WHAT THE COLOURS MEAN',15,C.ink,700);y+=14;
 const key=(col,dash,t)=>{o.push(`<rect x="${LX}" y="${y}" width="26" height="16" fill="${col}" fill-opacity=".55" stroke="${col}" stroke-width="2" ${dash?'stroke-dasharray="6 4"':''}/>`);txt(LX+36,y+13,t,12);y+=24};
 key(C.built,0,'built on plots (real size)');key(C.old,1,'still old rooms; plot plan drawn, not built');
@@ -106,6 +106,6 @@ o.push(`<rect x="${LX}" y="${y}" width="26" height="16" fill="none" stroke="${C.
 txt(LX,y,'THE ORDER I PROPOSE',15,C.ink,700);y+=20;
 ['① The Sewers: 16 plots, seven doors into','    built places, the gate to everything below.','② Heaven + Hell + Vatican: the Mountains’','    stairs and the Civic gate all end at it.','③ The D.U.M.B.: under Area 51, behind the','    HQ garage.','Then: the Cavern, The Deep, Leylines,','the Astral Realm, Antarctica, Outer Space.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
 y+=20;txt(LX,y,'LOOSE ENDS FOUND',15,C.ink,700);y+=20;
-['· Looking-Glass Garden stands twice (old','   room + Camelot district); Camelot’s mirror','   to the Astral Realm has no way back.','· Four doors still name retired rooms: you','   land at the default spot.','· Woods trails to Agartha + the Lodge are','   one-way.','· The Strip, the Lodge, Bohemian Grove are','   still loose old rooms.','· Sewers + Cavern plan pictures predate the','   city’s district move.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
+['· Looking-Glass Garden stands twice (old','   room + Camelot district).','· Four doors still name retired rooms: you','   land at the default spot.','· Woods trails to Agartha + the Lodge are','   one-way.','· The Strip, the Lodge, Bohemian Grove are','   still loose old rooms.','· Sewers + Cavern plan pictures predate the','   city’s district move.'].forEach(s=>{txt(LX,y,s,12,'#e6e6e6');y+=17});
 fs.writeFileSync('map.svg',`<svg xmlns="http://www.w3.org/2000/svg" width="${Wd}" height="${Ht}" viewBox="0 0 ${Wd} ${Ht}" font-family="DejaVu Sans, Arial, sans-serif">${o.join('')}</svg>`);
 console.log(Wd,Ht);
