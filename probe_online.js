@@ -13,7 +13,7 @@ async function waitFor(page, fn, ms, every = 400) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
   const mk = async () => { const ctx = await browser.newContext({ viewport: { width: 1100, height: 720 }, ignoreHTTPSErrors: true }); await installAssetCache(ctx); return ctx.newPage(); };
   const host = await mk(), guest = await mk();
   host.on('pageerror', e => log('[HOST] ERR', e.message.split('\n')[0]));

@@ -269,8 +269,10 @@ module.exports.build = function (api) {
         front(w, 7, d, WHITE, D); shell(w, 7, d, WHITE); win('f', D.lx - 1.2 - (w / 2 + D.lx - 2) / 2, 0.6, Math.floor((w / 2 + D.lx - 2) / T) * T, 5.4, d / 2, GLT); win('f', D.lx + 4.7, 0.6, 7, 5.4, d / 2, GLT); win('f', D.lx, 2.5, T, 3.5, d / 2, GLT);
         win('b', 0, 2.6, w - C, T, d / 2, GL); vault(0, 7, 0, w, d + 1.6, 2.6, 'x', ALU, GLT);
         P.push(Object.assign({ s: 'box', p: [r3(-w / 2 + 1), 0, r3(d / 2 + 0.25)], size: [0.3, 7, 0.5], n: Math.floor((w - 12) / C) + 1, step: [C, 0, 0] }, look(ALU)));
-        const gx = w / 2 - 4.5, gz = d / 2 + 2.2; cyl(gx, 0, gz, 3.2, 1.2, CONCD, 16); P.push(Object.assign({ s: 'dome', p: [r3(gx), 4.2, r3(gz)], r: 4.2, h: 4.2, seg: 10, rings: 4, roof: true, glow: 0.3 }, look(['calm_tiles', 0xbcd4ff])));   // the planetarium globe stands OUT of the front (inside the hall it read as a grey lump)
-        cyl(gx, 1.2, gz, 3.2, 3.0, ['calm_tiles', 0xbcd4ff], 10, 4.2, { cap: false, glow: 0.3 }); block(gx, gz, 8, 8, 6);
+        /* THE ROAD AUDIT (mondo 11-15): the globe was 8.4 m across, 2.2 m out from the front, on a 3.5 m pavement: its plinth stood 1.9 m and its
+           belly 2.9 m out in the cross street's lane. Now 4.8 m across, 1.0 m out: all of it over the pavement. */
+        const gx = w / 2 - 4.5, gz = d / 2 + 1.0; cyl(gx, 0, gz, 1.8, 0.7, CONCD, 16); P.push(Object.assign({ s: 'dome', p: [r3(gx), 2.4, r3(gz)], r: 2.4, h: 2.4, seg: 10, rings: 4, roof: true, glow: 0.3 }, look(['calm_tiles', 0xbcd4ff])));   // the planetarium globe stands OUT of the front (inside the hall it read as a grey lump)
+        cyl(gx, 0.7, gz, 1.8, 1.7, ['calm_tiles', 0xbcd4ff], 10, 2.4, { cap: false, glow: 0.3 }); block(gx, gz, 5, 5, 5);
         box(D.lx, 3.1, d / 2 + 1.5, 7, 0.25, 3, ['calm_snow', 0x3c7cd8], { under: true });
     };
     B.clinic = (w, d, row) => {   // the clinic: white tile, a glass-block round corner, a canopy on thin posts, the cross on a pylon. WALK-IN

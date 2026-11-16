@@ -3,13 +3,15 @@
 // (stand-in textures) — every R2 texture / GLB / OBJ loads for real; the urban pack (Assets/world/terrain/urban/) is
 // served from the repo's textures/ folder (+ the root) so an unuploaded sheet still shows. Repo scripts from disk, the
 // JS libraries from node_modules when present. Needs the server (npm start) and playwright + three@0.128.0 (npm i --no-save).
-//   node playtest_city.js <room> '[{"name":"v","x":0,"z":0,"face":0,"pitch":-0.2,"fp":true,"dist":4}]' [--wait=25000] [--nogltf]
+//   node playtest_city.js <room> '[{"name":"v","x":0,"z":0,"face":0,"pitch":-0.2,"fp":true,"dist":4}]' [--wait=<longest wait, ms>] [--sleep=<extra ms>] [--nogltf]
 //   → shots/city/<room>_<name>.png ; prints [HQ] logs + page errors. See PLAYTEST_NOTES "THE CITY PROBE".
 const fs = require('fs'), path = require('path');
 const REPO = __dirname;
 const { chromium } = require(path.join(REPO, 'node_modules/playwright'));
 const OUT = path.join(REPO, 'shots/city'); fs.mkdirSync(OUT, { recursive: true });
+const fast = require('./probe-fast.js');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const T0 = Date.now(), lap = (l) => console.log('TIME ' + ((Date.now() - T0) / 1000).toFixed(1) + ' s  ' + l);
 const NPM_MIRROR = [
   [/\/three\.js\/r128\/three\.min\.js$/, 'three/build/three.min.js'], [/\/three@0\.128\.0\/(examples\/js\/.+)$/, 'three/$1'],
   [/\/socket\.io\.min\.js$/, 'socket.io/client-dist/socket.io.min.js'], [/\/react\.production\.min\.js$/, 'react/umd/react.production.min.js'],
@@ -19,10 +21,10 @@ const CT = { '.js': 'application/javascript', '.css': 'text/css' };
 const args = process.argv.slice(2).filter(a => !a.startsWith('--')), flags = process.argv.slice(2).filter(a => a.startsWith('--'));
 const flag = (k, d) => { const f = flags.find(x => x === '--' + k || x.startsWith('--' + k + '=')); if (!f) return d; const v = f.split('=')[1]; return v === undefined ? true : v; };
 const room = args[0] || 'site_prebuilt_downtown_streets'; const views = JSON.parse(args[1] || '[]'); const noGltf = !!flag('nogltf', false); const WAIT = Number(flag('wait', 22000));
-const EXE = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium'].find(p => fs.existsSync(p));
+const EXE = fast.EXE;
 const run = async () => {
   const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || null;
-  const browser = await chromium.launch({ headless: true, executablePath: EXE, proxy: proxy ? { server: proxy, bypass: 'localhost,127.0.0.1' } : undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--ignore-certificate-errors'] });
+  const browser = await fast.launch(chromium, { headless: true, executablePath: EXE, proxy: proxy ? { server: proxy, bypass: 'localhost,127.0.0.1' } : undefined, args: ['--no-sandbox', '--disable-dev-shm-usage', '--ignore-certificate-errors'] });   // probe-fast.js: llvmpipe when it is there, the held screenshot
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: Number(flag('w', 1280)), height: Number(flag('h', 800)) } });
   const cnt = { mirror: 0, local: 0, urban: 0, cdn: 0, cache: 0, fail: 0 };
   const CACHE = process.env.EW_CDN_CACHE || path.join(REPO, 'shots/.cdn-cache'); fs.mkdirSync(CACHE, { recursive: true });
@@ -60,15 +62,21 @@ const run = async () => {
   if (flag('post', false)) await page.evaluate(() => { window.EW_HQ_NO_POST = false; });
   if (flag('pre', false)) await page.evaluate((js) => { try { eval(js); } catch (e) { console.log('[HQ] PROBE pre failed ' + e.message); } }, String(flag('pre', '')));   // --pre=<js>: run in the page before the room is entered (2026-11-15: switch a part of a room off to find what breaks)
   await page.evaluate((room) => { window._hqEnter({ from: 'play', room }); }, room);
-  await sleep(WAIT);
+  /* THE WAIT (2026-11-16): no fixed sleep. The probe goes on the moment the room's load gate is ready and the network is
+     quiet; --wait is now the LONGEST it waits (default 240 s), --sleep=<ms> adds a fixed pause after it (the old way). */
+  lap('entering ' + room);
+  const rdy = await fast.roomReady(page, { timeout: Math.max(WAIT, 240000) });
+  if (!rdy.ok) console.log('ROOM NOT READY — the pictures below may show a half-loaded room');
+  if (flag('sleep', false)) await sleep(Number(flag('sleep', 0)));
+  lap('room ready');
   await page.evaluate(() => { for (const id of ['hqLoad', 'hqPrompt', 'hqStrip', 'hqToast']) { const h = document.getElementById(id); if (h) h.style.display = 'none'; } });
   const spawn = await page.evaluate((room) => DOOR_HQ.rooms[room].spawn, room);
   const list = views.length ? views : [Object.assign({ name: 'spawn', fp: false, dist: 4.2, pitch: -0.2 }, spawn)];
   for (const v of list) {
     await page.evaluate((v) => { try { if (window._hqPauseDrop) window._hqPauseDrop(); if (window._hqResume) window._hqResume(); } catch (e) {} ThreeRenderer.hq.dev.teleport(v); if (v.eval) { try { eval(v.eval); } catch (e) { console.log('[HQ] eval failed', e); } } }, v);
-    await sleep(v.settle || 2600);
+    await fast.settle(page, v.settle);   // two drawn frames of the new view (or "settle": <ms> on the view)
     await page.evaluate(() => { try { if (window._hqPauseDrop) window._hqPauseDrop(); const pz = document.getElementById('hqPause'); if (pz) pz.style.display = 'none'; } catch (e) {} });
-    const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f, timeout: 180000 }); console.log('SHOT', f, 'room=' + await page.evaluate(() => (window._hqCurRoom || (ThreeRenderer.hq.dev.room && ThreeRenderer.hq.dev.room()) || '?')));
+    const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f, timeout: 180000 }); lap('shot ' + (v.name || 'v')); console.log('SHOT', f, 'room=' + await page.evaluate(() => (window._hqCurRoom || (ThreeRenderer.hq.dev.room && ThreeRenderer.hq.dev.room()) || '?')));
   }
   console.log('COUNTERS', JSON.stringify(cnt)); console.log('ERRORS', JSON.stringify(errs.slice(0, 8))); console.log('LOGS', JSON.stringify(logs.slice(0, 30))); console.log('PROBES', JSON.stringify(logs.filter(t => /PROBE|diner/i.test(t)).slice(0, 12)));
   await browser.close();

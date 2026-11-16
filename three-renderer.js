@@ -27086,9 +27086,10 @@ const ThreeRenderer = (function () {
         var roots = [], skipped = 0;
         group.children.forEach(function (c) {
             if (_occFieldBig(c)) { c.traverse(function (o) { if (o.isMesh) o._ew_occSkip = true; }); skipped++; return; }
-            roots.push({ o: c, c: new THREE.Vector3(), r: 0 });
+            roots.push({ o: c, c: new THREE.Vector3(), r: 0 }); c._ew_noBatch = true;   // THE FIELD MERGE: a piece the fade may ghost is never merged
         });
-        var F = { roots: roots, skipped: skipped, mPx: mPx, blockerPx: ((HR && HR.blockerM > 0) ? HR.blockerM : 2.5) * mPx,
+        group.children.forEach(function (c) { if (c._ew_occWall != null || c.name === 'hq_ceil' || c.name === 'hq_sky') c._ew_noBatch = true; });   // a wall side and the ceiling fade whole
+        var F = { group: group, roots: roots, skipped: skipped, mPx: mPx, blockerPx: ((HR && HR.blockerM > 0) ? HR.blockerM : 2.5) * mPx,
                   refreshMs: ((HR && HR.occRefreshS > 0) ? HR.occRefreshS : 2) * 1000, at: 0, rays: 0, tests: 0, ms: 0, n: 0 };
         roots.forEach(_occFieldMeasure); F.at = performance.now();
         _occField = F;
@@ -52559,6 +52560,7 @@ const ThreeRenderer = (function () {
         S.why = L.why || [];
         S.room = _hq ? ((_hq.opts && _hq.opts.room) || 'central_egress') + (_hq.stage && _hq.stage.id && _hq.stage.id !== _hq.opts.room ? ' (part ' + _hq.stage.id + ')' : '') : '';
         S.batch = (_hq && typeof _hqBatchStats === 'function') ? _hqBatchStats(_hq) : null;
+        if (!_hq && typeof _fieldInstH !== 'undefined' && _fieldInstH && _fieldInstH.batchP) { var fb = _fieldInstH.batchP; S.batch = { "the fight's room": { phase: fb.phase, batches: fb.stats.batches, pieces: fb.stats.pieces, verts: fb.stats.verts, broken: fb.stats.broken, scanned: fb.stats.scanned, loose: 0 } }; }   // THE FIELD MERGE
         try { var ks = _ktxStats(); S.ktx2 = { st: ks, loads: _asOptLoads, falls: _asOptFalls }; } catch (e) {}
         S.bvh = { on: !!_bvhLib(), rays: _bvhStat.rays * 1000 / Math.max(1, span), ms: _bvhStat.ms * 1000 / Math.max(1, span), slow: _bvhStat.slow, trees: _bvhStat.trees, tris: _bvhStat.tris, buildMs: _bvhStat.buildMs, fails: _bvhStat.fails, skinOut: _bvhStat.skinOut * 1000 / Math.max(1, span), skinIn: _bvhStat.skinIn * 1000 / Math.max(1, span) };
         _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0; _bvhStat.skinOut = 0; _bvhStat.skinIn = 0;   // per window; the trees are the session's
@@ -52628,7 +52630,7 @@ const ThreeRenderer = (function () {
             var bk = {}, bn = {}, sq = {}, top = [], MK = (typeof _ewBun !== 'undefined' && _ewBun.marked) || [];
             for (var mi = 0; mi < MK.length; mi++) {
                 var mg = MK[mi], mst = mg._ew_bun; if (!mst || mg._ew_ckOut || mg.visible === false) continue;
-                var nm = mg._ew_bunName || '', kd = mg._ew_sCell ? 'squares' : mg._ew_pChunk ? (mg._ew_pcBld ? 'rooms' : 'prop plots') : (nm === 'instance pass') ? 'instance cells' : / fences$/.test(nm) ? 'fences' : / shell$/.test(nm) ? 'shell rest' : / doors$/.test(nm) ? 'doors' : / props$/.test(nm) ? 'props rest' : 'other';
+                var nm = mg._ew_bunName || '', kd = mg._ew_sCell ? 'squares' : mg._ew_pChunk ? (mg._ew_pcBld ? 'rooms' : 'prop plots') : (nm === 'instance pass') ? 'instance cells' : mg._ew_fieldBatch ? 'fight: merged' : (nm === 'room instances') ? 'fight: instances' : (/^room /.test(nm) && mg._ew_noBatch) ? 'fight: may fade (own piece)' : /^room /.test(nm) ? 'fight: never fades, not merged' : / fences$/.test(nm) ? 'fences' : / shell$/.test(nm) ? 'shell rest' : / doors$/.test(nm) ? 'doors' : / props$/.test(nm) ? 'props rest' : 'other';
                 bk[kd] = (bk[kd] | 0) + (mst.n | 0); bn[kd] = (bn[kd] | 0) + 1; top.push([mst.n | 0, kd + ' ' + (mg._ew_chunk || (typeof mg._ew_pChunk === 'string' ? mg._ew_pChunk : '') || mg.name || '')]);
                 if (mg._ew_sCell) for (var ci2 = 0; ci2 < mg.children.length; ci2++) {
                     var cm2 = mg.children[ci2], mm = cm2.material; if (!cm2.isMesh || !mm || cm2.visible === false) continue;
@@ -53042,6 +53044,7 @@ const ThreeRenderer = (function () {
         _updateSandstormVortices();
         _updateWeatherAmbience();
         try { _fieldInstTick(_frameNow); } catch (e) {}   // THE PERF PASS: the room round the fight draws its repeated props as batches
+        try { _fieldBatchTick(_frameNow); } catch (e) {}   // THE FIELD MERGE: and merges the pieces that never fade
 
         if (_parentEl) {
             var w = _parentEl.clientWidth, h = _parentEl.clientHeight;
@@ -53119,11 +53122,19 @@ const ThreeRenderer = (function () {
                 _ssRenderFrame();
             } else {
                 _quietBefore(cam);   // THE QUIET COMPILE: a piece whose shader is still building sits this frame out — the frame draws
-                if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
-                    ThreePost.render(cam);
-                } else {
-                    renderer.render(scene, cam);
-                }
+                /* THE ONE MATRIX WALK, THE FIGHT'S (2026-11-15, mondo's F3 in a fight in Disaster City: "mask: setup + lights + sort
+                   8.0 · scene: setup + lights + sort 3.5"): each render of a battle frame (the model mask's, the picture) walked every
+                   matrix of the scene again, as the walk's frame did until 11-13. The walk runs once here and the frame's renders
+                   skip theirs (a camera still updates itself). Off: window.EW_BATTLE_MW_EVERY_RENDER = true. */
+                var mwB = !!(scene && scene.matrixWorldAutoUpdate === true && !(typeof window !== 'undefined' && window.EW_BATTLE_MW_EVERY_RENDER));
+                try {
+                    if (mwB) { var _mwSp = _lensIn('matrix walk'); try { _hqStillSceneWalk(scene); } finally { _lensOut(_mwSp); } scene.matrixWorldAutoUpdate = false; }
+                    if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
+                        ThreePost.render(cam);
+                    } else {
+                        renderer.render(scene, cam);
+                    }
+                } finally { if (mwB) scene.matrixWorldAutoUpdate = true; }
                 _quietAfter();
 
                 if (css2dRenderer) _css2dRender(scene, cam);
@@ -74541,6 +74552,21 @@ const ThreeRenderer = (function () {
         var r = Math.min(HQ_TRAFFIC_TURN_R, Lin * 0.45, Lout * 0.45);
         return { V: B, din: din, dout: dout, r: r, sharp: Math.min(1, (1 - dot) / 2 * 2) };
     }
+    /* THE NARROW LANES (THE ROAD AUDIT, 2026-11-16): a route may name the stretches of it that run down a two-square (7 m) street in
+       `narrow` (rows [x0, z0, x1, z1], bake-disaster-city.js). Within 2 m of one the car keeps 1.75 m off the line, not `lane` (3.5 m, which
+       put its middle on the kerb and half of it in the wall beside); the offset eases back out over the next 10 m. */
+    function _hqLaneAt(car, x, z) {
+        var N = car.narrow, ln = car.lane || 0; if (!N || !N.length || !ln) return ln;
+        var best = 1e9;
+        for (var i = 0; i < N.length; i++) {
+            var q = N[i], bx = q[2] - q[0], bz = q[3] - q[1], l2 = bx * bx + bz * bz;
+            var t = l2 > 0 ? Math.max(0, Math.min(1, ((x - q[0]) * bx + (z - q[1]) * bz) / l2)) : 0, dd = Math.hypot(x - q[0] - bx * t, z - q[1] - bz * t);
+            if (dd < best) best = dd;
+        }
+        var k = Math.max(0, Math.min(1, (best - 2) / 10)); k = k * k * (3 - 2 * k);
+        var nl = Math.min(Math.abs(ln), 1.75) * (ln < 0 ? -1 : 1);
+        return nl + (ln - nl) * k;
+    }
     function _hqRoutePose(car, s) {
         var pts = car.pts, cum = car.cum, i = 0, L = cum[cum.length - 1], nSeg = pts.length - 1;
         while (i + 2 < cum.length && cum[i + 1] <= s) i++;
@@ -74571,11 +74597,13 @@ const ThreeRenderer = (function () {
             var z = a0 * (V[1] - pick.din[1] * r) + a1 * V[1] + a2 * (V[1] + pick.dout[1] * r);
             var tx = (1 - t) * pick.din[0] + t * pick.dout[0], tz = (1 - t) * pick.din[1] + t * pick.dout[1], tl = Math.hypot(tx, tz) || 1;
             tx /= tl; tz /= tl;
-            return { x: x + (-tz) * car.lane, z: z + tx * car.lane, dx: tx, dz: tz, turn: pick.sharp };
+            var lnc = _hqLaneAt(car, x, z);
+            return { x: x + (-tz) * lnc, z: z + tx * lnc, dx: tx, dz: tz, turn: pick.sharp };
         }
         var a = pts[i], b = pts[i + 1], segL = Math.max(1e-6, cum[i + 1] - cum[i]), tt = Math.max(0, Math.min(1, (s - cum[i]) / segL));
         var dx = (b[0] - a[0]) / segL, dz = (b[1] - a[1]) / segL;
-        return { x: a[0] + (b[0] - a[0]) * tt + (-dz) * car.lane, z: a[1] + (b[1] - a[1]) * tt + dx * car.lane, dx: dx, dz: dz, turn: 0 };
+        var sx0 = a[0] + (b[0] - a[0]) * tt, sz0 = a[1] + (b[1] - a[1]) * tt, lns = _hqLaneAt(car, sx0, sz0);
+        return { x: sx0 + (-dz) * lns, z: sz0 + dx * lns, dx: dx, dz: dz, turn: 0 };
     }
     /* ── THE CITY TRAFFIC (2026-11-13, mondo: "traffic lights and intersections planned out for actual traffic and car routes. Bus sections
        placed in each district with a bus route") ──
@@ -74727,7 +74755,7 @@ const ThreeRenderer = (function () {
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
                     if (kind === 'citybus') { try { _hqCityBusMarks(g, U); } catch (e) {} }   // THE CITY MARKS: Bus Line 1 wears the city's shield
                     g._ew_hqCar = kind; g._ew_bunOut = true; G.add(g);   // THE MOVERS OUT: a car drives; the shell's recording stays still
-                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
+                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, narrow: rt.narrow || null, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
             });
         } finally { _hzKitTs = prevTs; }
@@ -77432,6 +77460,29 @@ const ThreeRenderer = (function () {
        of the floor, lit from inside — the catalogue's `light` carries each
        one's point light, the builders the flame / the pulse */
     Object.assign(_hqProcBuilders, {
+        /* THE HEARTH FIRE (2026-11-16, mondo in Camelot's kitchen: "chimneys look like shit, need fire just like tiles on fire in battles"):
+           a fire to stand in a hearth or a pit: three logs and the battle's burning-tile flame (ThreeVFXEffects.buildFlameVolume, the same
+           ray-marched volume) scaled to the row's `w` x `h` metres (1.3 x 1.5 when none). The catalogue's `light` + `glow` carry its light. */
+        hearth_fire: function (U, p) {
+            var g = new THREE.Group(), w = (p && +p.w > 0) ? +p.w : 1.3, h = (p && +p.h > 0) ? +p.h : 1.5;
+            var logM = _hqMat(null, 1, 1, { color: 0x2a1c14 }), emb = _hqMat(null, 1, 1, { color: 0xff7a20, emissive: 0xff5a10 });
+            for (var i = 0; i < 3; i++) { var lg = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.1 * U, w * 0.8 * U, 7), logM); lg.rotation.z = Math.PI / 2; lg.rotation.y = (i - 1) * 0.5; lg.position.set(0, (0.1 + (i === 1 ? 0.14 : 0)) * U, (i - 1) * 0.16 * U); g.add(lg); }
+            var bed = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.36 * U, w * 0.4 * U, 0.05 * U, 10), emb); bed.position.y = 0.03 * U; g.add(bed);
+            /* the flame: the board torch's own (three of them across the logs, the middle one the tallest), flickering as it does everywhere.
+               NOT YET the burning tile's ray-marched volume mondo asked for: ThreeVFXEffects.buildFlameVolume is exported for it, but placed
+               here it drew nothing in three tries (uVig set, its clock run from its own draw call); to do, with the battle's scene set-up. */
+            try {
+                [[0, 1.0], [-0.32, 0.72], [0.3, 0.8]].forEach(function (q, i) {
+                    var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
+                    parts.model.children.forEach(function (c) { if (c !== parts.flame) c.visible = false; });
+                    var k = h / (0.44 * HQ_TILE_M) * q[1]; parts.model.scale.set(k * (w / 1.3), k, k * (w / 1.3));   // (the torch's flame is 0.44 of a square tall)
+                    parts.model.position.set(q[0] * w * U, 0.16 * U - (parts.flameY || 0) * k, (i - 1) * 0.08 * U); g.add(parts.model);
+                    var entry = { root: parts.model, flame: parts.flame, mat: parts.flameMat, light: null, seed: ((_hqProcSeed++) * 27 + i * 31) % 100 };
+                    if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
+                });
+            } catch (err) { console.warn('[HQ] the hearth fire failed', err); }
+            return g;
+        },
         /* the stake torch is the board's floor torch at the board's own size (THE SAME TORCH EVERYWHERE, 2026-09-15) */
         cave_torch: function (U) {
             var g = new THREE.Group();
@@ -80137,9 +80188,19 @@ const ThreeRenderer = (function () {
             return L ? L.concat(big) : big;
         };
     }
+    /* THE SEAT'S SHARE (2026-11-16, the probes' slow loads): the pass ran 120 ms after the first model that asked, so while a
+       big room's files land (the Disaster City: 730 files, each pass 150-400 ms) it ran back to back and took HALF the main
+       thread for the whole load. The wait is now 12x the last pass's own cost (120 ms at least, 5 s at most): the pass keeps
+       under a tenth of the thread, a small room seats as fast as before, and the last model to land still gets its pass. */
+    var _hqSeatCost = 0;
     function _hqSeatLater() {
         if (_hqSeatTimer) return;
-        _hqSeatTimer = setTimeout(function () { _hqSeatTimer = 0; try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); } }, 120);
+        _hqSeatTimer = setTimeout(function () {
+            _hqSeatTimer = 0;
+            var t0 = performance.now();
+            try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }
+            _hqSeatCost = performance.now() - t0;
+        }, Math.max(120, Math.min(5000, _hqSeatCost * 12)));
     }
     /* THE REAL COLLISION (2026-10-06): which placed prop gets a mesh collider — every floor prop that blocks today (its footprint is
        replaced by its real shape) and every other standing model big enough to walk on or bump into (a footbridge, a stair, a
@@ -80353,6 +80414,7 @@ const ThreeRenderer = (function () {
             litRows = new Set(cands.slice(0, Math.max(0, left)).map(function (c) { return c.p; }));
         })();
         for (var ri = 0; ri < rows.length; ri++) { placeOne(rows[ri]); if ((ri & 3) === 3 && _hqSliceDue()) yield; }
+        _hqSeatCost = 0;   // a new room: its first pass after a model lands waits the short 120 ms again
         try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }   // the procedural furniture is in; the GLBs re-run it as they land
         })();
         if (sliced) return it;
@@ -89412,13 +89474,13 @@ const ThreeRenderer = (function () {
         _hqTickMotionBlur(H);   // THE THIRD PASS 6.4: the deck at speed, the long fall
         if (!H.ready) _hqGateTick(H, now);
         _lt = _lensMark('tick: ripples + wind + gate', _lt);
-        if (H.ready || H.landed) { try { _hqPropChunkSweep(H, now); } catch (e) { if (!H._pcWarned) { H._pcWarned = true; console.warn('[HQ] the prop chunks failed — the props stay in one group', e); } try { _hqPropChunkHome(H); } catch (e2) {} } }   // THE PROP CHUNKS: before the instance pass reads where each copy stands
+        if (_hqPassOk(H)) { try { _hqPropChunkSweep(H, now); } catch (e) { if (!H._pcWarned) { H._pcWarned = true; console.warn('[HQ] the prop chunks failed — the props stay in one group', e); } try { _hqPropChunkHome(H); } catch (e2) {} } }   // THE PROP CHUNKS: before the instance pass reads where each copy stands
         _lt = _lensMark('tick: prop chunk sweep', _lt);
-        if (H.ready || H.landed) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
+        if (_hqPassOk(H)) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
         _lt = _lensMark('tick: instance pass', _lt);
-        if (H.ready || H.landed) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
+        if (_hqPassOk(H)) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
         _lt = _lensMark('tick: LOD', _lt);
-        if (H.ready || H.landed) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
+        if (_hqPassOk(H)) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         _lt = _lensMark('tick: static batch', _lt);
         try { _hqChunkTick(H, now); } catch (e) { if (!H._ckWarned) { H._ckWarned = true; console.warn('[HQ] the chunk tick failed — every chunk drawn', e); } try { _hqChunkHome(H); } catch (e2) {} }   // THE CHUNKS: after the camera, before the draw
         _lt = _lensMark('tick: chunks', _lt);
@@ -89439,15 +89501,17 @@ const ThreeRenderer = (function () {
         try {
             if (mwHold) { _hqStillSceneWalk(mwScene); mwScene.matrixWorldAutoUpdate = false; }
             _lt = _lensMark('matrix walk', _lt);   // THE STILL WALK: the still groups walk only what moved
-            if (H.reflectors && H.reflectors.length) { var _rsp = _lensIn('mirrors'); try { _hqTickReflectors(H); } finally { _lensOut(_rsp); } }   // THE THIRD PASS 5.4: the mirrored render before the frame
+            var backHold = _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: nothing is drawn until the room is merged (the debrief's picture still covers it)
+            if (!backHold && H.reflectors && H.reflectors.length) { var _rsp = _lensIn('mirrors'); try { _hqTickReflectors(H); } finally { _lensOut(_rsp); } }   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
-            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
+            if (backHold) { /* held */ }
+            else if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
         } finally { if (mwHold) mwScene.matrixWorldAutoUpdate = true; _hqFogBack(fogHold); }
         /* NO HELD FRAME ON THE WAY BACK (2026-10-25, mondo: "no freeze"): the debrief's last picture fades on the room's first
            drawn frame with the walker in it — the room's files still landing land in the live picture — and THE WAY BACK's ease
            starts with the fade, not at the room's READY */
-        if (H.opts.onFirstFrame && !H.firstFramed) {
+        if (H.opts.onFirstFrame && !H.firstFramed && !backHold) {
             var pdF = H.player ? H.player.def : null;
             if (H.playerAttached || !pdF || !pdF.model || !!(_unitGlbCache[pdF.model] && _unitGlbCache[pdF.model].failed) || now - H.t0 > 4000) {
                 H.firstFramed = true; if (H.arrive) H.arrive.go = true;
@@ -89657,8 +89721,28 @@ const ThreeRenderer = (function () {
         return v;
     }
     /* the walk's tick: build once the room is ready, re-run when later files add copies (bounded) */
+    /* THE WAY BACK MERGES FIRST (2026-11-16, mondo back from a fight in Disaster City: "FPS 1.5 · Draw calls 56355 · 30624
+       meshes", no Static batch line, no instance pass, no squares: "going into and coming out of a fight is still really bad,
+       frame rate drops to zero"). The way back shows the room on its FIRST frame, with no card (NO HELD FRAME, 10-25), but the
+       instance pass, the prop chunks, the LOD levels and the merge all waited for the room to have LANDED (every file in) as
+       they do behind a card: so the whole city was drawn piece by piece, 56,000 draws a frame, and at 1.5 FPS its files took
+       long to land. On the way back (an entry with onFirstFrame) those passes now run from the first tick, and in a big room
+       the frame is not drawn and the debrief's picture is not faded until the first merge of the shell and the props is live
+       (at most HQ_BACK_HOLD_MS): with no draw to pay, the merge takes HQ_BATCH.holdSliceMs a tick and is done in about a
+       second. The picture he sees: the debrief stays about two seconds longer, then the city at its normal frame rate, in
+       place of ten and more seconds at 1 to 12 FPS. Off: window.EW_HQ_BACK_NO_HOLD (the draw from the first frame),
+       window.EW_HQ_BACK_OLD (the passes wait for the landing again). */
+    var HQ_BACK_HOLD_MS = 5000;
+    function _hqPassOk(H) { return !!(H.ready || H.landed || (H.opts && H.opts.onFirstFrame && !(typeof window !== 'undefined' && window.EW_HQ_BACK_OLD))); }
+    function _hqFirstMergeDone(H) { return _hqBatchOff() || !!(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')); }
+    function _hqBackHold(H, now) {
+        if (!H.opts || !H.opts.onFirstFrame || H.firstFramed || H.ready) return false;
+        if (typeof window !== 'undefined' && (window.EW_HQ_BACK_NO_HOLD || window.EW_HQ_BACK_OLD)) return false;
+        if (!_hqChunkBig(H) || now - H.t0 > HQ_BACK_HOLD_MS) return false;
+        return !_hqFirstMergeDone(H);
+    }
     function _hqInstTick(H, now) {
-        if (!(H.ready || H.landed) || _hqInstOff()) { if (H.inst && _hqInstOff()) _hqInstDrop(H); return; }
+        if (!_hqPassOk(H) || _hqInstOff()) { if (H.inst && _hqInstOff()) _hqInstDrop(H); return; }
         _hqInstStamp++;
         var I = H.inst;
         if (!I) { if (!H._instTried) { H._instTried = true; try { _hqInstBuild(H); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } } return; }
@@ -90111,7 +90195,36 @@ const ThreeRenderer = (function () {
     var _fieldInstH = null, FIELD_INST_SETTLE_MS = 1500;
     function _fieldInstDrop() {
         var H = _fieldInstH; _fieldInstH = null;
-        if (H) { try { _hqInstDrop(H); } catch (e) {} }
+        if (H) { try { _fieldBatchDrop(H); } catch (e) {} try { _hqInstDrop(H); } catch (e) {} }
+    }
+    /* THE FIELD MERGE (2026-11-15, mondo in a fight in Disaster City: 23 FPS, "bundles 2262 groups, 2608 meshes"; "does all of
+       the optimization we have done just randomly turn off from fights??"): yes, it did. The hand-over hands every merged
+       piece back and the fight hangs each kept piece in a holder of its own, so the fight drew the same streets piece by
+       piece. Now the fight merges too: the static batch runs on the fight's room (the record the fight's instance pass
+       keeps), with the walk's one paint and sheet stacks, over the pieces that can NEVER fade (the ground's neighbours,
+       roads, buildings, backdrops: what the fade's own list leaves out). A piece the fade may ghost (a prop near the
+       line of sight, a wall side, the ceiling) wears `_ew_noBatch` and stays its own. The merged meshes hang in one group
+       (one recording). A piece that changes is handed back by the batch's own watch, as in the walk. Dropped with the
+       fight's instance pass. Off: window.EW_FIELD_NO_BATCH = true. */
+    function _fieldBatchOff() { return _hqBatchOff() || (typeof window !== 'undefined' && !!window.EW_FIELD_NO_BATCH); }
+    function _fieldBatchDrop(H) {
+        if (!H) return;
+        try { _hqBatchDrop(H); } catch (e) {}
+        H.batch = null; H.batchP = null;
+        var g = H._fbHost; H._fbHost = null;
+        if (H.propGroup && H.propGroup._ew_fbHost === g) H.propGroup._ew_fbHost = null;
+        if (g) { if (g.parent) g.parent.remove(g); try { _disposeR(g); } catch (e) {} }
+    }
+    function _fieldBatchTick(now) {
+        var H = _fieldInstH; if (!H) return;
+        if (_fieldBatchOff() || !_occField || _occField.group !== H.propGroup || !_fieldGroundLive()) { if (H._fbHost || H.batchP) _fieldBatchDrop(H); return; }
+        if (now - H.bornAt < FIELD_INST_SETTLE_MS || (!H.inst && !H._instTried)) return;   // after the fight's instance pass took its copies
+        if (!H._fbHost) {
+            var g = new THREE.Group(); g.name = 'hq_field_batch'; g._ew_noBatch = true; g._ew_occNear = true; g._ew_fieldBatch = true;
+            H.propGroup.add(g); H._fbHost = g; H.propGroup._ew_fbHost = g;
+            H.batch = _hqBatchNew('shellGroup', now); H.batch.phase = 'off'; H.batch.lived = true;   // the fight has one group: the facility's
+        }
+        try { _hqBatchTick(H, now); } catch (e) { if (!H._fbWarned) { H._fbWarned = true; console.warn('[ThreeRenderer] the fight\'s merge failed — the room draws piece by piece', e); } _fieldBatchDrop(H); }
     }
     function _fieldInstTick(now) {
         var off = _hqInstOff() || (typeof window !== 'undefined' && window.EW_FIELD_NO_INSTANCE);
@@ -90430,6 +90543,14 @@ const ThreeRenderer = (function () {
                 try { console.warn('[HQ] the room never came to rest (' + S0.why + ') — the card drops after ' + Math.round((now - S0.t0) / 1000) + ' s of settling'); } catch (e) {}
             }
         }
+        /* THE FIELD IS SURVEYED UNDER THE CARD (2026-11-16, the cloud profile of a strike in Disaster City: hqFieldFrame ->
+           hqFieldLattice -> hqFieldTerrainInfo, the room's whole lattice read square by square at the first strike of a
+           session: seconds of one frozen frame in a 504 m room). The lattice is kept on the room once made, so it is made
+           here, behind the card, for a terrain room. Off: window.EW_HQ_NO_FIELD_WARM. */
+        try {
+            var fwRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && H.opts) ? DOOR_HQ.rooms[H.opts.room] : null;
+            if (!H._fieldWarmed && fwRoom && fwRoom.terrain && typeof hqFieldSquareFor === 'function' && typeof hqFieldLattice === 'function' && !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_WARM)) { H._fieldWarmed = true; hqFieldLattice(H.opts.room, true, hqFieldSquareFor(H.opts.room)); }
+        } catch (eFW) {}
         H.landed = true;
         H.ready = true;
         _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
@@ -94028,7 +94149,7 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
+    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, sliceMs: 3, firstSliceMs: 28, holdSliceMs: 220, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
     /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
        procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
        had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
@@ -94038,7 +94159,7 @@ const ThreeRenderer = (function () {
        at once, like a `visible` write. Off: window.EW_HQ_NO_PROP_BATCH (props only) / EW_HQ_NO_BATCH (all). */
     var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
     var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
-                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1, _ew_pd: 1 };
+                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1, _ew_pd: 1, _ew_noBatch: 1 };
     var _HQ_BATCH_MAPS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'envMap'];
     var _hqBatchIds = null, _hqBatchIdN = 0, _hqBatchM = null, _hqBatchM2 = null, _hqBatchN3 = null, _hqBatchV = null;
     function _hqBatchOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_BATCH; }
@@ -94358,7 +94479,7 @@ const ThreeRenderer = (function () {
     }
     /* before a shell build: every sheet its parts could stack stands in a stack. Always true (the fill is at once). */
     function _hqStackPrep(R, B, now) {
-        if (_hqStackOff() || B.grp === 'propGroup' || !_hq || R[B.grp] !== _hq.shellGroup || !_hqChunkBig(_hq)) return true;
+        if (_hqStackOff() || (!R.field && (B.grp === 'propGroup' || !_hq || R[B.grp] !== _hq.shellGroup || !_hqChunkBig(_hq)))) return true;   // (+ THE FIELD MERGE: the fight's room)
         try {
             var groups = {}, seen = new Set(), K = _hqStk.skipped, uses = new Map();
             for (var i = 0; i < B.cands.length; i++) {
@@ -94433,6 +94554,7 @@ const ThreeRenderer = (function () {
     }
     /* where a merged mesh hangs: the prop chunk its pieces stand in, else the batch's root */
     function _hqBatchHost(o, root) {
+        if (root._ew_fbHost) return root._ew_fbHost;   // THE FIELD MERGE: the fight's merged meshes hang in one group of their own (one recording)
         for (var q = o.parent; q && q !== root; q = q.parent) if (q._ew_pChunk) return q;
         return root;
     }
@@ -94457,7 +94579,7 @@ const ThreeRenderer = (function () {
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4(), groups = {}, keys = [], n = 0;
         var U = _hqUnits(), T = (HQ_BATCH.cellM || ((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
-        B.vc = !!(_hq && root === _hq.shellGroup && _hqChunkBig(_hq) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT
+        B.vc = !!(((_hq && root === _hq.shellGroup && _hqChunkBig(_hq)) || R.field) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT (+ THE FIELD MERGE: the fight's pieces merge as the walk's did)
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];
             if (c.loose) {   // THE LOOSE PIECES: always alone (its own key), so it takes the stand-in path
@@ -94540,7 +94662,15 @@ const ThreeRenderer = (function () {
         if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
         _hqStackWatch();   // THE SHEET STACK
         var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
-        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : !H.ready ? HQ_CARD_SLICE_MS : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
+        /* THE FIRST MERGE IS FAST (2026-11-15, mondo back from a fight in Disaster City: 12 FPS for 30 s, "Static batch ... build
+           6252->1265", 1,086 pieces "not yet merged"): the way back builds the room with no card over it, so its first merge ran
+           at the settled room's pace (two 1.5 s waits, then 3 ms a frame: ~1 s of work spread over 30 s of the room drawn piece
+           by piece at 12 FPS). Until a room's first merge of its shell and of its props has gone live, the merge takes
+           HQ_BATCH.firstSliceMs a frame and waits as it does behind the card. After that, the settled pace as before.
+           Off: window.EW_HQ_BATCH_FIRST_SLOW. */
+        var firstRun = !!(H.ready && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_FIRST_SLOW) && !(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')));
+        var held = !H.field && !H.ready && _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: no frame is drawn, the merge has the tick
+        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : held ? (HQ_BATCH.holdSliceMs || 220) : !H.ready ? HQ_CARD_SLICE_MS : firstRun ? (HQ_BATCH.firstSliceMs || 28) : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
             var R = recs[r];
             if (!R.batch) R.batch = _hqBatchNew('shellGroup', now);
@@ -94560,8 +94690,8 @@ const ThreeRenderer = (function () {
                 if (H.ready && B.lived && B.scanAn === _bAn && now - B.at < HQ_BATCH.rescanIdleMs && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_RESCAN_ALWAYS)) continue;
                 B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B);   // THE PERF PASS 2: the late pieces
             }
-            if (B.phase === 'wait') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
-            if (B.phase === 'watch') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
+            if (B.phase === 'wait') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
+            if (B.phase === 'watch') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
             if (_alNow() >= end) return;
             _hqSliceEnd = end;
             var res = null;
@@ -95932,13 +96062,18 @@ const ThreeRenderer = (function () {
         try { _hqGrassDrop(); } catch (e) {}   // THE GRASS FIELD IN A WALKED ROOM: its cells leave with the room
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
-        try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: every fence back in the shell group, every group drawn
-        try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): every merged piece handed back before anything takes the groups
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setMotion) ThreePost.setMotion(0); } catch (e) {}   // THE THIRD PASS 6.4: the blur is the building's
         try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {}   // 5.4: the mirrored targets
         try { if (H.gun && H.gun.wheel) { H.gun.wheel = null; var wEl = document.getElementById('hqWheel'); if (wEl) { wEl.classList.remove('open'); wEl.style.display = 'none'; wEl.innerHTML = ''; } } } catch (e) {}   // THE DOOR WHEEL: never left open over the next screen
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
+        /* THE LAST PICTURE IS THE MERGED ROOM'S (2026-11-16, mondo: "going into a fight ... frame rate drops to zero"; the cloud
+           profile of a strike: _hqLeave -> _hqDissolveStart -> _hqRenderOnce = the longest single step): the dissolve draws the
+           room once more for its picture, and it did so AFTER the chunks went home and every merged piece was handed back, so
+           that one draw was the whole city piece by piece (30,000 meshes, twice with the sun: one frame of 600 ms on his Mac).
+           The picture is taken first now, through the same camera, of the same room still merged; then the pieces go back. */
+        try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: every fence back in the shell group, every group drawn
+        try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): every merged piece handed back before anything takes the groups
         _hqUnbindInput();
         _hq = null;
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: every mesh on its full geometry before the hand-over (the battle's camera is close)

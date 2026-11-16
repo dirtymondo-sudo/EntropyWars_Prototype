@@ -1957,6 +1957,75 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE HAND-OVER'S THREE FREEZES (2026-11-16: the last picture, the field survey, the way back merges first)
+
+mondo after #1547: the fight 23.4 -> 34.0 FPS (2,608 -> 1,158 meshes, "the fight's room live 450->24"), but "going into
+and coming out of a fight is still really bad, frame rate drops to zero. Please fix the handover". His F3 a moment after
+coming back: **1.5 FPS, 56,355 draw calls, 30,624 meshes, no Static batch line, no instance pass, no squares.**
+Still open in the fight's own frame: "bundle check 7.3" (2,300 recorded groups), "mask: projection walk 4.4" (15K visits),
+"rest of the frame 7.9", picks 309/s = 193 ms/s (840 plain meshes raycast), may-fade props 519 meshes in 1,378 groups.
+What froze, and the fix (three-renderer.js):
+1. GOING IN, the last picture (cloud profile of a strike: `_hqLeave -> _hqDissolveStart -> _hqRenderOnce` the longest step):
+   the dissolve draws the room once more for its picture, AFTER `_hqChunkHome` + `_hqBatchDropAll`, so that draw was the whole
+   city piece by piece (one ~600 ms frame on his Mac). `_hqLeave` now takes the picture first (same camera, the room still
+   merged), then hands the pieces back.
+2. GOING IN, the field survey: `hqFieldFrame -> hqFieldLattice -> hqFieldTerrainInfo` reads the room's whole lattice at the
+   first strike of a session (cloud: 3.8 s; kept on the room after). `_hqGateTick` makes it behind the card for a terrain
+   room, just before READY. Off: `window.EW_HQ_NO_FIELD_WARM`. (Costs that time once under the first loading card.)
+3. COMING BACK: the way back draws the room from its first frame with no card, but the instance pass, prop chunks, LOD and
+   the merge waited for `H.landed` (every file in). On an entry with `onFirstFrame` (the way back only) they now run from
+   the first tick (`_hqPassOk`), and in a big room nothing is drawn and the debrief's picture is not faded until the first
+   merge is live (`_hqBackHold`, at most HQ_BACK_HOLD_MS 5 s; the merge takes `HQ_BATCH.holdSliceMs` 220 ms a tick while
+   nothing is drawn). This CHANGES his 10-25 "NO HELD FRAME": the debrief's picture stays ~2 s longer, in place of 10+ s at
+   1-12 FPS; told him. Off: `window.EW_HQ_BACK_NO_HOLD` (draw from the first frame), `window.EW_HQ_BACK_OLD` (all as before).
+Cloud (WebGPU on SwiftShader, a strike at the city's spawn, CPU profile; HEAD on 36cd5fd + this change): `_hqLeave` 34.5 s ->
+0.32 s, the dissolve's draw 34.4 s -> 0.23 s, the field survey (3.8 s) gone from the strike (`room._fieldTerrainBy` made
+under the card), the fight starts ("kept 2116 · culled 14443"), 0 page errors. THE WAY BACK WAS NOT PROVEN: the fight was
+ended from the probe (`u.hp = 0; checkWin()`, then `#encReturnBtn`.click()) and the cloud browser was killed for memory while
+the city was built again (the container's limit; it says nothing about the change). His Mac is the first real run of 3.
+Other rows of the strike's profile, not touched: `_hqSeatTabletops` 1 s, the fight's first frames (2,300 new recordings).
+STILL THE REAL FIX: THE PARKED CITY (see below, item 1): the fight should take the walk's groups whole (merged, chunked)
+under one holder and give them back, so neither direction builds or merges anything.
+
+## THE FIELD MERGE + THE FIRST MERGE IS FAST + THE FIGHT'S ONE MATRIX WALK (2026-11-16, fights in the city)
+
+mondo: "going into a fight and the return from a fight are both terrible. I don't understand bc it's the same room. does all
+of the optimization we have done just randomly turn off from fights?? fix all of it" and "why does a fight rebuild
+everything? its supposed to be a seamless transition."
+**The honest answer, for whoever reads this next: yes.** A fight is a different scene. `_hqLeave({handover})` hands every
+merged piece back (`_hqChunkHome`, `_hqBatchDropAll`), `_hqBuildRoomInBattle` takes only what stands within keepM 28 m /
+keepFarM 48 m of the board, hangs each kept piece in a holder of its own (`hq_piece`, one recording each: his "2262 groups")
+and DISPOSES the rest (city: kept ~2,100, culled ~14,500). The way back is a plain `_hqEnter`: every builder runs again and
+the room merges again. Nothing of the walk's merging reached the fight, and nothing survives it.
+What this PR does (three-renderer.js):
+- THE FIELD MERGE (`_fieldBatchTick`, `_fieldBatchDrop`, called beside `_fieldInstTick`): the static batch runs on the
+  fight's room (the record of the fight's instance pass, `R.field`), with the one paint and the sheet stacks (`B.vc` and
+  `_hqStackPrep` take `R.field`), on every piece that can never fade: the fade's own list (`_occFieldBuild`) marks each
+  root it may ghost, each wall side, the ceiling and the sky holder `_ew_noBatch` (a new off flag). Merged meshes hang in one
+  group `hq_field_batch` (`_hqBatchHost`: `root._ew_fbHost`), one recording. Dropped with the fight's instance pass.
+  Off: `window.EW_FIELD_NO_BATCH`. Lens in a fight: "Static batch: the fight's room ...", kinds "fight: merged / may fade
+  (own piece) / never fades, not merged / instances".
+  Cloud fight at the city's spawn (`_hqEncounterFire`, counts): "the fight's room live 346 -> 31", 0 frame errors, 0 batch
+  warnings. What the fight still draws one by one there (1,367 visible meshes): may-fade props 550, the ground's tiles 320
+  (`_ew_hqTerrain`: ALL of the city's ground stands in a fight, farOf() never drops it), outer 58, alone 59.
+- THE FIRST MERGE IS FAST (`_hqBatchTick`, `firstRun`): until a room's first shell + prop merge has gone live, the merge
+  takes `HQ_BATCH.firstSliceMs` 28 ms a frame and waits as behind the card (200 ms). The way back has no card, so its merge
+  ran at 3 ms a frame after two 1.5 s waits: his "12.4 FPS for 30 s". Off: `window.EW_HQ_BATCH_FIRST_SLOW`.
+- THE FIGHT'S ONE MATRIX WALK (`_renderFrameBody`): one `_hqStillSceneWalk(scene)` then `matrixWorldAutoUpdate` false for
+  the battle frame's renders, as the walk's frame since 11-13 (his fight F3: "mask: setup + lights + sort 8.0 · scene:
+  setup 3.5" = two walks of the scene; the cloud profile's top JS rows in a fight are updateMatrix / updateMatrixWorld).
+  Not for the split-screen panes. Off: `window.EW_BATTLE_MW_EVERY_RENDER`.
+NOT DONE, in order (this is the real "seamless"):
+1. THE PARKED CITY: do not dispose what the fight leaves; park it, and on the way back hand everything to the walk instead
+   of building (the walk's record H must survive the fight: doors, counters, colliders, terrain, tickers; plates are
+   stripped from kept pieces at the hand-over and must come back). Until then the way back still runs every builder.
+2. The fight's may-fade props (most of what is left): merge them too and hand a root back the moment the fade's candidate
+   list (`_occFieldCandidates`) names it.
+3. The ground in a fight: 320 tiles stand; drop the ones past keepFarM or merge them per square.
+4. Empty holders are still recorded groups (2,000+): leave a holder whose pieces are all held out of `_ewBunFieldTargets`.
+5. The switch itself (profile of a cloud strike: `_hqTExactTop` 1.8 s, raycasts ~4 s of three's plain intersect, texture
+   writes): not measured on his Mac yet.
+
 ## THE SHELL KEEPS ITS RECORDING (2026-11-15, the shell's rests answered)
 
 mondo's three F3s of one session (23:48-23:50 UTC), after the lens could say why:
@@ -2616,3 +2685,23 @@ mondo on the Hollywood Hills pictures: "the sides/cliffs texture looks too repea
 - `_hqBuildEdgeLand` matFor: the far land's sheets drift in tone; rock and sea cliff are also mixed with themselves read 3.7 x larger (WebGL only:
   an onBeforeCompile on the Lambert material; the node renderer keeps the plain sheet).
 - Every terrain room gets it (not only the Hills). Cost: up to three more plain reads on a cliff pixel. Kill switch `window.EW_NO_NATURAL_ROCK`.
+
+## THE SLOW PROBES: probe-fast.js + THE SEAT'S SHARE (2026-11-16, mondo: "the screenshots and probes run slow as fuck")
+Measured in the cloud container on the Disaster City (729 files, 5,296 props, every file already in the probe's disk cache):
+- The software GPU (SwiftShader) drew the room at 0.3-0.5 FPS (7,000-9,000 draw calls, 1-2 M triangles). Mesa llvmpipe: 0.8-2 FPS.
+- `page.screenshot` took 20-45 s EACH: ~10 round trips to a page whose main thread sits inside a 2-3 s frame. With the game loop
+  held for the capture: 0.2-2 s.
+- The load never finished in 6 minutes. CPU profile of the page while loading: 74 % drawing the room UNDER the load card (the files
+  land between frames: 4 of 719 after 70 s), 20 % `getImageData` (ui.js `_alphaScanSprite`, a GPU-backed 2D canvas read back through
+  the busy software GPU; `--disable-accelerated-2d-canvas` ends it). With the drawing off, HALF of what was left was
+  `_hqSeatTabletops`: `_hqSeatLater` ran the pass 120 ms after the first model that asked, so with files landing all the time it ran
+  back to back for the whole load.
+- Harnesses with no route of their own loaded the LIVE R2 scripts and played on the red CODE MISMATCH page.
+The fixes: `probe-fast.js` (repo tooling; all 30 harnesses launch through it: llvmpipe on its own Xvfb, the held screenshot,
+`roomReady` = the gate + a quiet network with the drawing off until ready, the checkout's scripts for cdn.entropywars.net) and, in
+the game, THE SEAT'S SHARE: three-renderer.js `_hqSeatLater` waits 12x the last pass's own cost (120 ms .. 5 s; `_hqSeatCost`, reset
+per room), so the pass stays under a tenth of the main thread on any machine and the last model still gets its pass. Players get
+that part too (a big room's load is shorter on a slow CPU). After: the city's files in ~95 s, ready in ~170 s, three pictures by
+~200 s. What is left is the room's real work on a CPU-only machine (GLB parse, texture upload, `_hqWarmRun`, the still-matrix walk).
+Not done, ideas only: the game could skip drawing under an opaque load card for players too (needs the shader warm-up kept).
+
