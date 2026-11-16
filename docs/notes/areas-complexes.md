@@ -5630,6 +5630,12 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   (rows 53 and 56, trail to east wall, opened in `cut`); the last three squares before the mouth wear a concrete slab and concrete walls (arch parts). The rims carry only
   a low lip and small stones. A forest tree left out by `cut` now counts toward the scatter seeds (bake-woods.js `SOW_SHIFT++`): opening the rims had moved four other
   districts' seeds by two before that fix (caught by the row-by-row check, never shipped). OPEN: a `sow` plant can land on the apron (seen: one thorn vine).
+- **THE NAMES, THE APRON, THE CABIN (same day; mondo: plain names, "continue", "take the plants off of the concrete")**: five plots renamed plainly in layout.json
+  (The Rocks, The Dry Creek upper / lower, The Sewer Mouth, The Hollow; his rule is in owner-rules.md §2). BARE GROUND: a district file's `bare: [x0, z0, x1, z1]`
+  puts an `off` box on the tool's three room-wide scatter rows, and M's own `sow` rows carry the same box: nothing lands on the apron (seen). THE CABIN (the interior
+  pass): its wood tints lifted + `gain: 1.5` on the log walls (it drew near black); a lit plank ceiling at 2.88 m on dark beams (the hollow building's own ceiling is at
+  3.18 m and hides anything above it), a boarded dado, wall shelves, embers in the hearth, a bed frame, a wardrobe, bedside table and lamp, armchair, carpet, shelf,
+  crate, mattress, a caged ceiling lamp. Every lit piece is `noLight`. The cabin still has no game role.
 - **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
   stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
   Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
@@ -5654,6 +5660,10 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
 - **The dice**: one feature row more or less inside an OLD pass (dress / horror / life) still moves later rows' order; put new rows in `build`, new square edits in `cut`.
 - **Checking you moved nobody**: compare every row with x or z outside your nine plots before and after the bake (a re-wrapped props line is not a change).
 - **Probe**: `node playtest_city.js site_prebuilt_fairy_forest_plots '<views>' --flags=EW_PERF_LOW`, `"fp": true`; face 0 looks north, 90 east; about 3 minutes for 13 views.
+- **A walk-in's inside**: copy the cabin in districts/M.js: lift wood tints (about 0xcdbb9f) and add `gain: 1.5` on outside walls; hang a `glow` ceiling deck UNDER 3.18 m;
+  furniture from the PSX Mega Pack (`psx_*`: wardrobe, armchair, shelf, bedside table, lamps, crates); `noLight: true` on every lamp.
+- **Ground nothing should grow on**: export `bare: [x0, z0, x1, z1]` (one box in the room today) and put the same box as `off` on your own `sow` rows.
+- **Names**: plain, for what stands there; never ask mondo (owner-rules.md §2).
 - **Missing zone-wide**: a forest-floor sheet in place of the lawn (the tool's `floor`), waterfalls, light shafts, sound by district.
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's

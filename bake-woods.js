@@ -244,7 +244,10 @@ stage('dress');
       const tx = r2(gc(cx) + (rnd() - 0.5) * 1.4), tz = r2(gc(cy) + (rnd() - 0.5) * 1.4), th = r2((mountain ? 7 : wd[1]) * (0.8 + rnd() * 0.4));
       let still = true; for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (cell[cy + dy][cx + dx] !== 't') still = false;   // THE CUT: the square (or one beside it) was opened since
       if (still) features.push({ k: 'tree', x: tx, z: tz, kind: full(mountain ? 'pine' : wd[0]), h: th, r: 0.7 }); else SOW_SHIFT++;   /* a tree left out counts as a row for the seeds (THE SEEDS HOLD) */ if (still) count.bigTrees = (count.bigTrees || 0) + 1; } }
-features.push({ k: 'scatter', key: 'fern', n: 140, seed: 5 }, { k: 'scatter', key: 'stump', n: 18, seed: 6 }, { k: 'scatter', key: 'fallen_log', n: 10, seed: 7, r0: 1.9 });
+/* BARE GROUND (2026-11-16, mondo: "take the plants off of the concrete"): a district file's `bare: [x0, z0, x1, z1]` (metres) is ground no scatter piece lands on
+   (a scatter row's `off` box; one box in the room today: Dead Man's Cave's concrete apron) */
+const BARE = ORDER.map(id => DISTRICTS[id].bare).filter(Boolean)[0], offB = BARE ? { off: BARE } : {};
+features.push(Object.assign({ k: 'scatter', key: 'fern', n: 140, seed: 5 }, offB), Object.assign({ k: 'scatter', key: 'stump', n: 18, seed: 6 }, offB), Object.assign({ k: 'scatter', key: 'fallen_log', n: 10, seed: 7, r0: 1.9 }, offB));
 
 /* ── THE HORROR PASS (2026-11-15, mondo: "What can we do to give more of a horror element to the woods" + "yes you can do the yellow and pink too"):
    it gets worse the farther you walk from the Stair. The Clearing = someone was just here; the Redwood Trail = you are being watched; the Ritual
