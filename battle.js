@@ -13868,7 +13868,28 @@
                 hi._stHold[key] = Object.assign({}, hLo, hHi ? { af: hHi.af } : {});
             } else if (hHi) delete hi._stHold[key];
         }
-        const _TIED_STATUS_FIELDS = [['taunt', '_tauntCasterId'], ['contract', '_contractCasterId'], ['voodoo', '_voodooAllyId'], ['soulBound', '_boundToId']];
+        const _TIED_STATUS_FIELDS = [['taunt', '_tauntCasterId'], ['contract', '_contractCasterId'], ['voodoo', '_voodooAllyId'], ['soulBound', '_boundToId'], ['shorted', '_shortSrcId']];
+        /* 💰 THE LOANS (2026-11-16, the Banker): a unit going down settles the bank. A Debt it wore turns bad (the status's
+           onRemove sees the body _dying and hands the lender the loss); a Short on it pays the short-seller 75 MP + 20% of
+           their max HP. map.js defeatUnit calls this before the tied statuses end. Host-side; HP / MP state-sync to the guest,
+           the floating text relays (online.js showFloatingTextAtTile). */
+        function _settleBankOnDeath(unit) {
+            if (!unit || !unit.status) return;
+            if (unitHasStatus(unit, 'shorted')) {
+                const seller = unit._shortSrcId != null ? unitFromId(unit._shortSrcId) : null;
+                clearStatus(unit, 'shorted');
+                if (seller && !seller.dead && !seller._dying && seller.id !== unit.id) {
+                    const mpBefore = seller.mp || 0;
+                    seller.mp = Math.min(seller.maxMp || mpBefore, mpBefore + 75);
+                    const healed = applyHealingToUnit(seller, Math.round((seller.maxHp || 0) * 0.2), seller);
+                    addLog(`📉 ${_ctName(seller)}'s short pays out: +${seller.mp - mpBefore} MP, +${healed || 0} HP.`);
+                    showFloatingTextForUnit(seller, '📉 PAYOUT', 'buff', { durationMs: 1100 });
+                    markDirty('hud', 'selectedUnit');
+                }
+            }
+            if (unitHasStatus(unit, 'debt')) clearStatus(unit, 'debt');
+        }
+        window._settleBankOnDeath = _settleBankOnDeath;
         function endStatusesTiedToUnit(unit) {
             if (!unit) return 0;
             let n = 0;

@@ -367,6 +367,7 @@ const FINISHERS = {
     'conspiracy theorist': { id: 'fin_conspiracy_theorist', name: 'Wake Up, Sheeple', glyph: '📢', type: 'human', sig: 'wakeUpSheeple', built: true, tagline: 'IT WAS THE VICTIM ALL ALONG', desc: 'Red string from every corner of the map converges on one unit, and the board of evidence closes on them like a bear trap.' },
     'overlord':       { id: 'fin_overlord', name: 'Cataclysm Decree', glyph: '☄', type: 'unholy', sig: 'byOrderOf', built: true, tagline: 'BY ORDER OF', desc: 'The decree is read, the sky agrees, and the victim is the demonstration.' },
     'chosen one':     { id: 'fin_chosen_one', name: 'Prophecy Fulfilled', glyph: '🌟', type: 'divine', sig: 'prophecyFulfilled', built: true, tagline: 'IT WAS WRITTEN', desc: 'The scroll was about this moment. The victim is the last line.' },
+    'banker':         { id: 'fin_banker', name: 'Foreclosure', glyph: '💰', type: 'human', sig: 'motionCarries', built: true, tagline: 'PAYMENT IS DUE', desc: 'The note is called in. A gavel the size of a building comes down, and the victim is repossessed on a technicality.' },   // 2026-11-16 THE NEW RACES — borrows the politician\'s staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
     'dinosaur':       { id: 'fin_dinosaur', name: 'Extinction Event', glyph: '🦖', type: 'anomaly', sig: 'extinctionEvent', built: true, tagline: 'THAT ONE IS PERSONAL', desc: 'The asteroid that ended the dinosaurs is brought back and aimed at one unit.' },
@@ -2855,6 +2856,10 @@ const RACE_PROFILES = {
         label: 'Chosen One',
         types: ['unholy', 'divine']
     },
+    'banker': {   // 2026-11-16 THE NEW RACES (mondo picked it from the new units proposal)
+        label: 'Banker',
+        types: ['human']
+    },
     'politician': {
         label: 'Politician',
         types: ['human']
@@ -3735,7 +3740,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3866,6 +3871,7 @@ const RACE_CLASS = {
     'conspiracy theorist': 'support',
     'overlord': 'bruiser',
     'chosen one': 'assassin',
+    'banker': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
     'dinosaur': 'bruiser',
@@ -4277,6 +4283,7 @@ const RACE_BASE_STATS = {
     'conspiracy theorist':{ hp: 1230, mp: 195, atk:  20, def:  75, mdef:  157, int:  164, vision: 3, crt: 26, spd: 60 },   // STATS26 PASS 2026-10-29: HP 1117→1330, M.ATK 138→195 (37% in STATS26; POWER -188 → about -74 of the median); STATS33 PASS 2026-10-31: HP 1330→1230, M.ATK 195→164 (58.4% in STATS33 (89 games), 56.6% team-adjusted, 55.6% over 211 games (STATS32 + 33, no change between); POWER -42)
     'overlord':           { hp: 910, mp:  75, atk:  71, def:  115, mdef:  32, int:  68, vision: 2, crt: 13, spd: 120 },   // STATS28 PASS 2026-10-29: HP 1593→1150, ATK 109→95, DEF 146→115 (65% over STATS27+28; survives 88% of games); LOOP PASS 1 2026-11-08: HP 1150→910, ATK 95→71, M.ATK 91→68 (60.4% in the 11-08 loop's baseline lab (106 games), 62.3% team-adjusted; POWER -85)
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
+    'banker':             { hp: 1300, mp: 190, atk:  40, def:  120, mdef:  130, int:  180, vision: 3, crt: 15, spd: 85 },   // 2026-11-16 THE NEW RACES — first pass on the support median
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
     'dinosaur':           { hp: 1130, mp:  60, atk:  131, def:  125, mdef:  35, int:   11, vision: 4, crt: 15, spd: 160 },   // STATS24 PASS 2026-10-29: HP 1715→1500 (top race 3 runs: 60/67/82%); STATS25 PASS 2026-10-29: SPD 192→160 = move 5→4 (65% after the HP cut; 669 Cube damage a game, the most); STATS29 PASS 2026-10-30: ATK 197→160, HP 1500→1310 (57% over STATS27-29 (184 games); 612 Cube damage a game on ATK 197); STATS30 PASS 2026-10-30: HP 1310→1140, ATK 160→128 + raceQuake excluded (60% in STATS30; POWER -75; 63% then 60% in STATS29-30 after the ATK/HP cut; 577 Cube damage a game, the most: ATK + HP and the shared earth Quake excluded (RACE_SPELL_EXCLUDES)); STATS34 PASS 2026-11-01: HP 1140→920, ATK 128→105, DEF 185→125 (59.8% in STATS34 (107 games), 60.5% team-adjusted; POWER -70); LOOP PASS 1 2026-11-08: HP 920→1130, ATK 105→131 (41.9% in the 11-08 loop's baseline lab (105 games), 40.1% team-adjusted; POWER +67)
@@ -4424,6 +4431,7 @@ const RACE_PHYSIQUE = {
     'conspiracy theorist': { h: 1.75, w: 78 },
     'overlord':            { h: 2.40, w: 190 },
     'chosen one':          { h: 1.80, w: 75 },
+    'banker':              { h: 1.80, w: 85 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
     'dinosaur':            { h: 4.50, w: 4000 },
@@ -10146,6 +10154,23 @@ const RACE_ABILITIES = {
           range: 3, chargeToTarget: true, executeBonusPct: 0.5,
           desc: 'It was always going to end like this. Charges a Single Enemy up to 3 tiles away for HEAVY physical damage, ×1.5 if the target is under half HP. Cooldown: 2 rounds.' },
     ],
+    'banker': [
+        /* THE LOANS (2026-11-16, the new races; mondo picked the Banker): the one race that lends. A loan comes back with interest
+           two rounds later (status `debt`), a short pays off when the bet goes down (status `shorted`). Rules: data.js STATUS_DEFS
+           debt / shorted + battle.js _settleBankOnDeath. */
+        { id: 'nrLineOfCredit', name: 'Line of Credit', tier: 1, families: ['highfinance'], cost: 25, apCost: 1, spellType: 'human',
+          type: 'heal', kind: 'heal', range: 4, healPct: 0.3,
+          statusEffects: [{ id: 'debt', duration: 2, debtPct: 0.36 }],
+          desc: 'Lends an ally 30% of their max HP now. In 2 rounds the loan comes due: they pay back 36% of their max HP (never below 1 HP) and you heal that much. If they go down first, you take the loss.' },
+        { id: 'nrShortSell', name: 'Short Sell', tier: 2, families: ['highfinance'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'debuff', kind: 'debuff', range: 5,
+          statusEffects: [{ id: 'shorted', duration: 2 }],
+          desc: 'Bets against a Single Enemy within 5 for 2 rounds. If it goes down while Shorted, you restore 75 MP and heal 20% of your max HP. Cooldown: 2 rounds.' },
+        { id: 'nrForeclose', name: 'Foreclose', tier: 3, families: ['highfinance'], cost: 75, apCost: 1, spellType: 'human',
+          type: 'damage', kind: 'damage', damageType: 'magic', dmg: 150, range: 4,
+          bonusVsStatus: { status: 'shorted', mult: 1.5 },
+          desc: 'Calls in the note. Deals MEDIUM magic damage to a Single Enemy within 4. Deals bonus damage to Shorted targets.' },
+    ],
     'politician': [
         { id: 'raceExecutiveOrder', tier: 3, noDamage: true, aoeRadius: 1, cooldownRounds: 2, families: ['politics'], spellType: 'human', name: 'Executive Order',
           type: 'debuff', cost: 35, range: 4, apCost: 1,
@@ -13613,6 +13638,54 @@ const STATUS_DEFS = {
     /* (sirenSong deleted 2026-08-10 — the "lured 1 tile at end of round"
        status was mush. Siren Song is now an honest hook: the mermaid ability
        raceSirenSong is a kind:'pull' spell that drags the target in on cast.) */
+    /* 💰 THE LOANS (2026-11-16, the Banker). debt: the loan is due when it ends (any path: the round tick, a cleanse calls it
+       early). The borrower pays back payload.debtPct of its max HP, never below 1 HP, and the lender heals that much; a borrower
+       who went down first leaves the lender to take the loss (80% of the amount). shorted: if the unit goes down while it wears
+       it, the short-seller is paid (battle.js _settleBankOnDeath). Ids only on the unit (_debtSrcId, _shortSrcId: RULE #2). */
+    debt: {
+        icon: '💰', glyph: '💰', short: 'DBT', label: 'Debt',
+        colorText: 'owes the bank — the loan comes due with interest',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('💰', '#1c2a1c', '#d8f5d0', '#4caf50'),
+        onApply(unit, src, info) {
+            const pct = (info && info.payload && Number(info.payload.debtPct)) || 0.36;
+            unit._debtAmt = Math.max(1, Math.round((unit.maxHp || 0) * pct));
+            unit._debtSrcId = src ? src.id : null;
+        },
+        onRemove(unit) {
+            const amt = unit._debtAmt || 0;
+            const lender = (unit._debtSrcId != null && typeof unitFromId === 'function') ? unitFromId(unit._debtSrcId) : null;
+            delete unit._debtAmt; delete unit._debtSrcId;
+            if (!(amt > 0)) return;
+            const say = (typeof addLog === 'function') ? addLog : function () {};
+            const nm = (u) => (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u && u.race) || 'unit');
+            if (unit.dead || unit._dying || !(unit.hp > 0)) {
+                if (lender && !lender.dead && !lender._dying && lender.id !== unit.id && typeof applyDamageToUnit === 'function') {
+                    applyDamageToUnit(lender, Math.round(amt * 0.8), `Bad loan: ${nm(lender)} takes the loss: `, { ignoreArmor: true, damageType: 'dot', consumeMarked: false });
+                }
+                return;
+            }
+            const pay = Math.max(0, Math.min(amt, (unit.hp || 0) - 1));
+            if (pay > 0) {
+                unit.hp -= pay;
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, `-${pay} 💰`, 'damage', { durationMs: 1100 });
+                say(`💰 ${nm(unit)}'s loan comes due: −${pay} HP.`);
+            }
+            if (lender && !lender.dead && !lender._dying && pay > 0 && typeof applyHealingToUnit === 'function') {
+                const got = applyHealingToUnit(lender, pay, lender);
+                if (got > 0) say(`💰 ${nm(lender)} collects with interest: +${got} HP.`);
+            }
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+        }
+    },
+    shorted: {
+        icon: '📉', glyph: '📉', short: 'SHT', label: 'Shorted',
+        colorText: 'bet against — the bank profits if it goes down',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('📉', '#2a1c1c', '#ffd6d6', '#e05a5a'),
+        onApply(unit, src) { unit._shortSrcId = src ? src.id : null; },
+        onRemove(unit) { delete unit._shortSrcId; }
+    },
     contract: {
         icon: '📜',
         glyph: '📜',
@@ -13808,6 +13881,8 @@ const STATUS_LIBRARY_DESCS = {
     invisible: 'Cannot be seen or directly targeted by enemies. Attacking, an attack spell or taking a hit from an enemy reveals it; moving, buffs and heals do not.',
     charm:     'Beguiled: cannot move at all while it lasts, and cannot attack or cast at the unit that charmed it. It can still attack and cast at anyone else. Evasion drops to zero.',
     indomitable: 'Refuses to die: the next killing blow leaves this unit at 1 HP.',
+    debt:      'Owes the bank: when it ends (or is cleansed) the loan comes due. Pays back the loan with interest (never below 1 HP) and the lender heals that much. Going down first leaves the lender with the loss.',
+    shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
     minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts, and harder to hit: it dodges basic attacks 25% of the time. Spells still always land.',
@@ -19866,6 +19941,7 @@ const EW_RACE_BIOMES = {
     'cosmic wraith': ['space', 'astral'], 'superhero': ['urban', 'stadium'], 'general': ['clandestine'],
     'droid': ['neon_city'], 'antihero': ['urban', 'neon_city'],
     'conspiracy theorist': ['clandestine', 'ranch'], 'overlord': ['infernal'], 'chosen one': ['ancient'],
+    'banker': ['urban'],   // 2026-11-16 — Disaster City, Financial
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
     'gnome': ['inner_earth', 'forest'], 'kaiju': ['urban', 'deep_sea'], 'kraken': ['deep_sea'],
@@ -20501,6 +20577,7 @@ const RACE_TREE = {
     'droid':         ['raceCrashLoop', 'raceSystemAnalysis', 'raceFirewallProtocol', 'empBurst'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
     'overlord':      ['raceHellfireCrown', 'raceInfernalConscription', 'raceBrutalSlam', 'raceCataclysmDecree'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'banker':        ['raceSurveillance', ['raceStealFromRich', 'raceBlackBudget'], ['raceSwipe', 'raceFluorideWater'], 'raceTruthBomb'],   // 2026-11-16
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'dinosaur':      ['raceDinoTailWhip', 'raceApexCharge', ['groundSlam', 'raceApexRoar'], 'raceJurassicJaw'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -22386,6 +22463,16 @@ const SPELL_FAMILIES = {
         kind: 'discipline',
         desc: '',
         unique: null
+    },
+    highfinance: {   // 2026-11-16 THE NEW RACES — the Banker's own
+        id: 'highfinance',
+        name: 'High Finance',
+        glyph: '💰',
+        color: '#3f7a4a',
+        kind: 'signature',
+        desc: 'Money as a weapon: a loan that comes back with interest, a bet against the enemy, and the note called in.',
+        unique: 'banker',
+        identity: { who: ['Banker', 'Financier', 'Lender'], adj: ['Pinstriped', 'Leveraged', 'Smug'], look: ['a pinstripe three-piece suit', 'a gold watch chain', 'slicked-back grey hair'], vibe: ['lends you the HP and wants it back', 'bets on who goes down next'] }
     },
     politics: {
         id: 'politics',
@@ -24579,6 +24666,7 @@ const RACE_FAMILIES = {
     pirate: ['piracy', 'swordsmanship', 'ropework'],
     'police officer': ['policeprocedure', 'policetraining', 'weaponstraining', 'humangrit'],
     'time cop': ['policetraining', 'cowboyskills', 'marksmanship', 'cyberpunkweapons', 'advancedtechnology'],   // 2026-10-24 — one family set per look
+    banker: ['highfinance', 'deepstate', 'thievery', 'conspiracyknowledge'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
     'starfish': ['echinoderm', 'water', 'deepsea', 'healingmagic'],
@@ -25183,6 +25271,7 @@ const CAMPAIGN_RACE_PRICES = {
   'conspiracy theorist': 500,
   'overlord': 850,
   'chosen one': 700,
+  'banker': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
   'gangster': 200,
@@ -27165,7 +27254,8 @@ const DOOR_TEXT = {
         'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
-        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge',
+        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown',   // banker 2026-11-16 (Disaster City, Financial)
+       
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',
         'yeti': 'Antarctica', 'barbarella': 'Moon', 'black goo': 'Saturn', 'golem': 'Tower of Babel',

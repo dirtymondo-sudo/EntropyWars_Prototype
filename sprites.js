@@ -134,6 +134,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/dragon/', 'Assets/characters/races/dragon/'],
   ['Assets/Sprites/Races/dreameater/', 'Assets/characters/races/dreameater/'],
   ['Assets/Sprites/Races/eagleman/', 'Assets/characters/races/eagleman/'],
+  ['Assets/Sprites/Races/banker/', 'Assets/characters/races/banker/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/fallenangel/', 'Assets/characters/races/fallenangel/'],
   ['Assets/Sprites/Races/firefighter/', 'Assets/characters/races/firefighter/'],
   ['Assets/Sprites/Races/flesheater/', 'Assets/characters/races/flesheater/'],
@@ -519,6 +520,7 @@ const RACE_SPRITE_GENDERS = {
   'overlord': 'male',
   'chosen one': 'female',
   'politician': 'male',
+  'banker': 'male',   // 2026-11-16
   'atlantean': 'both',
   'dinosaur': 'male',
   'dragon': 'male',
@@ -677,6 +679,7 @@ const _CHARACTER_SPRITES = {
   // 2026-10-25 — mondo's sprites in each race's own R2 folder (Races/<race>/<race>.png; the chef's in male/)
   'chef': `${_S}/Races/chef/male/chef.png`,
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,
+  'banker': `${_S}/Races/banker/male/banker.png`,   // 2026-11-16 — cut from its own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
   // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
@@ -2375,6 +2378,16 @@ const RACE_MODELS_3D = {
       // as a T-pose through every windup. He idles arms-down (UAL1 Idle_Loop) and hurls overhand (castThrow's clip).
       lib: { idle: { clip: 'Idle_Loop', lib: 0, ts: 1.0 },
              castHurl: { clip: 'OverhandThrow', lib: 1, ts: 1.2, strikeAt: 0.46, defer: true } },
+    }),
+  },
+  /* THE NEW RACES (2026-11-16, mondo picked them from the new units proposal): Meshy image-to-3d (meshy-t2.5, a-pose) from a
+     nano-banana-pro concept, rigged by the Meshy rigging API (24 joints, the same Hips/Spine names the shared library retargets).
+     Sources + scripts: /mnt/project-files/new-races/. */
+  'banker': {
+    male: _mkUAL('banker', 'banker', {
+      model: `${_S}/Races/banker/male/Meshy_AI_banker_Running.glb`,
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
     }),
   },
   'eagleman': {
@@ -6538,6 +6551,7 @@ const RACE_SPRITES = {
   'hippie': `${_S}/character_sprites/hippie_male.png`,   // 2026-10-04 — his own sprite
   'chef': `${_S}/Races/chef/male/chef.png`,   // 2026-10-25 — his own sprite
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,   // 2026-10-25 — his own sprite
+  'banker': `${_S}/Races/banker/male/banker.png`,   // 2026-11-16 — cut from its own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
