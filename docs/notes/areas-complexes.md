@@ -4475,11 +4475,25 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
   `tool_chest`, `ships_bell`, `notice_board`, `wall_clock`. Dark pack furniture reads black: put it against a lit wall.
 - Do NOT use: `xmas_house` (above), `xmas_tree_plain` as a snow tree far from houses (it is a green fir with no snow), `ocean_rock`.
 
+**3b. THE MODEL LIST FIRST: what the pilot had missed (mondo 11-16, owner-rules.md; found by reading MODEL_LIST.md pack by pack and the pack FILE's nodes):**
+- ANIMALS (data.js HQ_CATALOGUE_ANIMALS, the Ocean pack): `ocean_seal_resting` (hauled out on ice), `wolf` (the drifts, any snowline), `horse` / `horse_brown`
+  / `horse_black` (a stable, a sleigh team). NOT the `ocean_penguin` or `ocean_seal`: they are swimmers and lie flat on ice (seen).
+- PLAYGROUND pack: `play_slide`, `play_swing` (a village green; `play_sandbox` is sand).
+- CHRISTMAS pack rows never used before: the feast (`xmas_turkey`, `xmas_carvery`, `xmas_roast`, `xmas_punch*`, `xmas_champagne`), `xmas_baubles`, `xmas_hat`,
+  the two Santa figures (`xmas_santa`, `xmas_santa_2`: a shop figure at `h` 1.0), `xmas_wreath_2`, `xmas_garland_3`. NEW ROW: `xmas_star` (the file's
+  `Christmas_star` node had none). The file's `Snow.*` nodes are its house's roof snow (flat sheets): no use. `Roads.dae` = snowy street tiles 79 m long (`xmas_road*`).
+- PSX MEGA PACK small things for tables and benches: `psx_hand_saw_1`, `psx_screwdriver_mp_*`, `psx_nails_1`, `psx_glass_bottle_*`, `psx_lollipop_mp_*`,
+  `psx_canned_food_mp_*`, `psx_pillow_mp_*`; lamps `psx_lamp_*_on`, `psx_ceiling_lamp_*_on` (not tried yet in a house).
+- mondo's Meshy props worth a look for the other districts: `star`, `meshy_one_meter_of_railing`, `meshy_campfire_ring`, `meshy_dead_snag`, `meshy_pine_with_canopy`,
+  `meshy_rope`, `teapot`, `teacups`, `woods_cabin`, `telescope`, `brass_telescope` (a summit), `greek_column` (Olympus), `menhir`, `obelisk`, `white_cloud`.
+- Placed in N (pass 9): seals on the lake, wolves in the drifts and on the roads, a horse at the Stable, a slide and a swing on the west lane, the star on
+  the Pole, a feast on the homes' tables, tools on the Workshop's benches, a Santa figure and lollipops in the Toy Shop.
+
 **4. STILL MISSING ZONE-WIDE (not a district file's to fix; asked of mondo 11-16):**
 - No falling snow, no sound bed, no aurora: the walked rooms have no hook for them (engine).
 - The tree zones (the tool): `xmas_pine` is a bright green summer tree; the snow pines' skirts are 4 m wide, blurred up close, and stand on trail squares.
 - Ice (`ice_1`) beside snow (`ice`) reads the same at night (the tool's paint).
-- No models: reindeer, sled, skis on a rack, a mail box, an axe + block, a street lamp, icicles. No snow-laden roof edge piece.
+- No models: reindeer, a standing penguin, sled, skis on a rack, a mail box, an axe + block, a street lamp, a snow heap for the ground.
 
 **5. THE VILLAGE AGAINST A FINISHED CITY DISTRICT (Financial: F.js + F-inside / F-detail / F-atmos), the pilot's remaining work plan:**
 1. A plan and a mock-up mondo OK'd before building (every city district had one; the village was built from the brief's pass list).
