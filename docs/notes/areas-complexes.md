@@ -2907,11 +2907,52 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
   TRANSIT sign.
 - Memorial walk: a two-tier star-shaped stone base (`star`, convex polys) under the statue; the angel became `hero_statue_landing` (Meshy
   image-to-3d of concept S2, mondo's pick 12:43; catalogue entry in data.js, R2 Assets/world/props/meshy/hero_statue_landing.glb, y 1.0 on the base).
-- Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
+- (11-16: the street props, the street stairs and the shed changed: THE NEW YORK AUDIT below.) Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
   centred on pavement squares, 3 newspaper_rack (decor, off centre), the 3 orange/white steam chimneys in the road are OUT (mondo 11-15: "why are there chimneys in the middle of the road ... take it out"; never stand street furniture in a lane), a green
   sidewalk shed over the north pavement (x -59.5..-45.5).
 - 11-15 07:46 mondo "use the 3rd example ... as well": `hero_statue_crossed` (Meshy concept S3, arms crossed) on a granite pedestal (`pedestal`, NYC_OPEN) on the
   plaza's south-west square (-36.75, -19.25; a blocker, centred), y 1.4, facing the fountain. R2 Assets/world/props/meshy/hero_statue_crossed.glb.
+
+### HERO PLAZA, THE NEW YORK AUDIT (2026-11-16, mondo: "chimneys placed in the god damn middle of the fucking street ... make sure nothing else retarded got put in with that pass")
+Every row the New York pass (PR #1434) added was checked against the tool's squares (`DC_DUMP=<file> node bake-disaster-city.js --dry-run` writes the
+squares, rows and props; R = carriageway, P = walk, . = yard, D = door) and then looked at in the browser. The chimneys were already out. Found and fixed, all in `districts/H.js`:
+- **THE CABS**: the four parked `car_taxi` stood in the middle of the kerb squares (5.25 m from the street's middle). The city's cars drive 3.5 m from
+  the middle and a cab is 2.28 m wide: every passing car drove through a cab's side (seen on screen), and the cabs faced AGAINST their side's traffic.
+  Now tight to the kerb (z 63 -+ 5.86) and facing with the traffic (the city drives on the right: north side west, face 270; south side east, face 90).
+- **THE STREET STAIRS** (`subway0/1`): stood across square lines (x 3.5 / 38.5); the east one half on the square before the Transit court's east door, in
+  its walk; the well was black paint anyone walked over; the lamps were a cylinder under a half ball, near white (the upside-down bowls again).
+  Rebuilt: each fills two whole yard squares beside the walk, its mouth on the walk: the west one at (1.75, 14), mouth south; the east one at
+  (40.25, 28), south of the court's east walk, `rot: 180`, mouth north (an OPEN piece takes `rot` now). An iron and glass kiosk with a barrel
+  roof over the stair, green GLOBES (two tapers + a half ball, glow 0.45 so they stay green), a shut folding gate with CLOSED on it (there is
+  no room below), and the two squares block (`walls` + `wallStoreys: 1`). A bench on the east one's square steps two squares south along its
+  fence (`clear: [hx, hz, dx, dz]`). NEVER UNDER A ROOF BRIDGE: the game stands the bridge's piers on the ground under it; the east kiosk first
+  stood under RF91 (z 10.5..14) and a pier came up through its roof (seen on screen).
+- **THE SIDEWALK SHED**: OUT. It stood alone on the north pavement in front of an open lot and the stair `dc:stair:P04-06S`, against no building.
+  No building of the district fronts the street's pavement, so there is no honest place for it there (ask mondo before it comes back on a wall).
+- **THE CARTS**: the two `hot_dog_stand` stood in the middle of the pavement, which is ONE square wide (each shut it; the west one stood 9 m from the
+  market's own hot dog stand). Now on yard squares behind the pavement (8.75, 50.75) and (40.25, 75.25), long side along the street (face 90 / 270).
+- **APARTMENTS A HAD NO UPPER WALLS** (the worst find; not from the New York pass): in `apartments()` the box of storeys 2 to 5 had slid into the
+  trailing `//` comment of the line above it on 11-14 (the residents' bedrooms pass), so for two days the block was a ground floor, two glass
+  bay columns and a roof in the air, and the New York pass hung its fire escapes on nothing. The statement is back on its own line. RULE: never
+  end a line with a `//` comment when code follows in the same edit; the other district files were scanned for the same slip (none).
+- **THE NEWS BOXES**: stood mid-pavement with their fronts to the road. Now at the kerb's edge, fronts to the walkers; the tool's prop check
+  (`prop-check.txt`) caught one on a kerb lamp (lamps: north kerb x = -77 + 21k, south kerb x = -66.5 + 21k), moved clear.
+- **THE FIRE ESCAPES** (Apartments A) and **THE STOOPS** (Townhouse row): the rails were solid plates (a black band across every floor; black blocks
+  beside every stoop). Now bars: rails on pickets (one part with `n` + `step` per run). The brownstone drew near black on its north face: lighter
+  tints + `glow: 0.3` in its NYC_TINT map (`nycTint` reads a `glow` key now).
+- **THE STAR BASE** under the Memorial statue: its lower tier was a concrete sheet that drew near black; both tiers are pale stone now.
+- LEFT AS BUILT (checked, sound): the wedge tower + globe, the billboards and tickers (on roofs and walls, none over a walk), the water towers, the
+  tower's glow strips, the second statue's pedestal (one whole square of the two-square walk band, mondo asked for it there), the gates (pillars on the pavement).
+- **THE PLANTED BEDS** (not from that pass; the look): the tool's `planter` is a bare box of soil and Hero Plaza has 67: the plaza was ringed by dark
+  empty boxes. Each gets a clipped, rounded box hedge (`arch:H:beds<plot>`, one row per plot, a 'barrel' roof part in `leaves_3`).
+  TWO RULES learned: (1) a low arch BOX is a solid to the exterior polish: a box hedge pushed its own planter a square away; a `roof` part is not
+  read. (2) the polish moves planters AFTER `build(ctx)`, so the beds run in a NEW hook, `last(ctx)` (bake-disaster-city.js THE LAST STAGE: after
+  the polish, rows written again, drawn rows only, moves nothing).
+- **NEVER SPLICE A PROP OUT in a district file**: the tool dresses other districts by a prop's place in the list (pots / cacti, the rubbish bags).
+  One planter less in Hero Plaza swapped 60 pots and turned 100 rubbish rows in other districts. Move the prop; check with a dump diff that
+  "outside the district" is 0 rows changed (this pass: 0).
+- Probe views that show the district: PLAYTEST_NOTES "THE CITY PROBE" + y = the plot's level x 1.75 + 1.75 for a first-person eye
+  (street z 63: y 11 to 12.5; plaza: y 16; Transit court / Memorial: y 14). A third-person view with a long `dist` ends inside a wall; use `fp`.
 
 ### HERO PLAZA, THE SECOND INSIDES PASS (2026-11-13 night, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere for the interiors")
 - **Where**: H.js `IN2[building id]`, run after the room's first-pass `IN[id]` on the same kit; new kit helpers `put` (a prop with `floor: true`
@@ -4914,3 +4955,26 @@ A set-up change only: how the zone is written, not what is built.
 6. **Visual work gets a browser run** (RULE #1c / #1d: the fresh check, probe-fast.js, the proof picture with the `[EW BUILD]` HEAD).
    Two prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack). No Meshy until mondo says so; the corn waits for it.
 7. A lasting fact goes in this file under your district's own heading in the same PR, and one line on the board.
+
+## THE DESERT, AREA 51 — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/A.js`)
+
+mondo (the set-up thread's brief): one thread per district; passes in order EXTERIORS, INTERIORS, DRESSING, ATMOSPHERE, POLISH, a PR each.
+
+- **PASS 1, EXTERIORS (seen in the browser, playtest_city.js through probe-fast.js, 14 + 14 + 10 views):** as it stood the base was a brown
+  field: the tower drew as a rock mound, the fence as a solid checkered wall 150 m long, the hangar near black, dead trees on the runway,
+  nothing walk-in but the guard post. Now: a real control tower (the old deck + fire escape inside a drawn FLIGHT OPERATIONS block, a round
+  shaft 14 m tall, a dark glass cab), two Quonset barracks + the mess hall + the radar hut (all walk-in, empty inside until pass 2), a white
+  radome, three watchtowers, the gate (piers, boom arms open, the warning board), the fence's steel (posts, rail, wire, WARNING plates), a
+  fuel dump in a bund, concrete blast pens, Runway 33's numbers + edge lines + a taxiway to the apron, the hangar lifted to grey with a
+  yellow door frame.
+- **TWO SHARED CHANGES (noted on the board):** (1) three-renderer.js "THE CHAIN-LINK": a `wall` row whose `key` is a chain-link sheet is
+  drawn blended, two-sided, no shadow (the sheet's holes are clear in the file; walls ignored them). Any room's chain-link wall gains it.
+  (2) bake-desert.js: the three whole-room scatter rows carry `off` = Area 51's paved ground (a piece thrown there is dropped, the rest stay
+  where they stood). mondo's rule: trees never stand on concrete.
+- **THE DOOR LEAVES: CLOSED.** "No door leaf draws in the probe" (THE LOOK PASS above) was the old probe taking its picture before the leaf
+  files were asked for. Through probe-fast.js all 13 of Hangar 18's leaves draw. The door code is fine.
+- **LESSONS:** a `plateau` here draws as a mound with slopes about 0.9 m past its edge (the ground is sampled every 1.75 m): skin it 1.2 m
+  wider. An `arch` row with no `y` stands on the ground under its origin, which on a plateau is the plateau's top: give it `y: 0`. A sheet
+  under a tint reads dark in the shade: `gain` 1.3 to 1.7 on the part. A sign under a barrel roof's overhang is hidden by the roof's end:
+  set it 0.3 m out. Hangar 18's saucer on the floor IS confirmed on screen now.
+

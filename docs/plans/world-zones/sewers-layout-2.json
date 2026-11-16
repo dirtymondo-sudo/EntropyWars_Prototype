@@ -1,0 +1,973 @@
+{
+ "area": "The Sewers",
+ "version": "plan-2",
+ "date": "2026-11-16",
+ "status": "PROPOSAL: waits mondo's OK; nothing is built",
+ "squareMeters": 3.5,
+ "plotCells": 12,
+ "levelMeters": 1.75,
+ "frame": "the city's 12 x 12 plot grid (docs/disaster-city/city-layout.json + move.js): sewer plot Pcc-rr lies under the city plot standing at column cc, row rr",
+ "room": {
+  "cols": 12,
+  "rows": 12,
+  "dug": 31,
+  "meters": [
+   504,
+   504
+  ]
+ },
+ "districts": {
+  "W": {
+   "name": "The Sewers",
+   "plots": 23,
+   "levelsUnderTheCity": 3,
+   "file": "docs/areas/sewers/districts/W.js"
+  },
+  "T": {
+   "name": "The Running Tunnels",
+   "plots": 4,
+   "levelsUnderTheCity": 5,
+   "file": "docs/areas/sewers/districts/T.js"
+  },
+  "H": {
+   "name": "The Holding Cells",
+   "plots": 2,
+   "levelsUnderTheCity": 2,
+   "file": "docs/areas/sewers/districts/H.js"
+  },
+  "O": {
+   "name": "The Old Workings",
+   "plots": 2,
+   "levelsUnderTheCity": 6,
+   "file": "docs/areas/sewers/districts/O.js"
+  }
+ },
+ "build": {
+  "layout": "docs/areas/sewers/layout.json",
+  "districts": [
+   "docs/areas/sewers/districts/W.js",
+   "docs/areas/sewers/districts/T.js",
+   "docs/areas/sewers/districts/H.js",
+   "docs/areas/sewers/districts/O.js"
+  ],
+  "tool": "bake-sewers.js",
+  "room": "one room (id chosen at the build; the four old rooms go in data.js DOOR_HQ.retired)",
+  "boardRows": "one for the tool + shared pieces, one per district"
+ },
+ "retires": [
+  "site_prebuilt_downtown_sewers",
+  "site_prebuilt_downtown_tunnels",
+  "site_prebuilt_downtown_cells",
+  "site_prebuilt_downtown_workings"
+ ],
+ "changedFromPlan1": [
+  "The frame is the city's own 12 x 12 plot grid: sewer plot Pcc-rr lies under the city plot standing at column cc, row rr. Plan 1 was a strip of 8 x 2 with no tie to the plots above.",
+  "31 plots are dug (plan 1: 16). The doors up stand at the city's north-west corner (the precinct, the metro) and its south-east corner (the Dock edge, the Pump court); one room that reaches both cannot be smaller than 21 plots. 11 of the 31 are plain culvert under a street.",
+  "The Pump court and Dock doors moved with Industrial to the city's south-east (columns 10 and 8, row 11). Plan 1 had them at the strip's two ends, the Pump court in the west.",
+  "The Holding Cells are plots now (district H, under Civic Center's Police desk and Holding annex), no longer an inside behind a door: all four old rooms retire.",
+  "The Old Workings lie beside and below the cells (\"the mine under the precinct\"), under the Public library and the Military offices.",
+  "The Running Tunnels run from under the Transit square (the metro stair's plot) south down the city's west edge.",
+  "The main culvert runs under real streets: the west avenue (column 3), the cross street (row 7), the south street (row 11).",
+  "The Woods' storm drain is on the west edge (the Woods lie west of the city), not at the east end.",
+  "Heights follow the city: each plot lies a fixed number of levels under the plot above, so the water runs from the precinct (level 9) down to the Outfall at the bay (level -3).",
+  "Four districts, one file each from the first build PR: W, T, H, O."
+ ],
+ "plots": [
+  {
+   "id": "P00-02",
+   "name": "The Guardroom",
+   "district": "The Holding Cells",
+   "level": 10,
+   "under": {
+    "plot": "P04-02",
+    "name": "Police desk",
+    "district": "C",
+    "level": 12
+   },
+   "what": "the Guardroom, the Catwalk over it (2.2 m), the Property Room, three cells",
+   "from": "Holding Cells: THE GUARDROOM · THE CATWALK · THE PROPERTY ROOM",
+   "ports": [
+    "E"
+   ],
+   "exits": [
+    {
+     "to": "DOOR HQ: Room 24601 (the seventh cell)",
+     "kind": "hq",
+     "today": "link cells_dungeon",
+     "square": [
+      2.4,
+      6
+     ],
+     "note": "DOOR HQ is not on the map"
+    }
+   ]
+  },
+  {
+   "id": "P01-02",
+   "name": "The Drunk Tank",
+   "district": "The Holding Cells",
+   "level": 10,
+   "under": {
+    "plot": "P05-02",
+    "name": "Holding annex",
+    "district": "C",
+    "level": 12
+   },
+   "what": "three cells, the Drunk Tank (the trap under it), the Vent Stack (3.6 m)",
+   "from": "Holding Cells: SIX CELLS · THE DRUNK TANK · THE VENT STACK",
+   "ports": [
+    "E",
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P01-03",
+   "name": "The Old Workings",
+   "district": "The Old Workings",
+   "level": 5,
+   "under": {
+    "plot": "P05-03",
+    "name": "Public library",
+    "district": "C",
+    "level": 11
+   },
+   "what": "the flooded mine: the Flood (waded), the Sump (never), the Pump Ledge; the rope ladder up into the tank",
+   "from": "Old Workings: THE FLOOD · THE PUMP LEDGE",
+   "ports": [
+    "E",
+    "N"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P02-03",
+   "name": "The Chimney",
+   "district": "The Old Workings",
+   "level": 5,
+   "under": {
+    "plot": "P06-03",
+    "name": "Military offices",
+    "district": "C",
+    "level": 11
+   },
+   "what": "LANDMARK: the shaft (3.9 m); the old portcullis; the Adit up into the culverts",
+   "from": "Old Workings: THE CHIMNEY",
+   "ports": [
+    "N",
+    "W"
+   ],
+   "exits": [
+    {
+     "to": "The Cavern: the Oubliette",
+     "kind": "open",
+     "today": "link workings_oubliette",
+     "square": [
+      5.5,
+      8
+     ],
+     "note": "the Cavern is below"
+    }
+   ]
+  },
+  {
+   "id": "P00-03",
+   "name": "The Loop Line",
+   "district": "The Running Tunnels",
+   "level": 6,
+   "under": {
+    "plot": "P04-03",
+    "name": "Transit square",
+    "district": "C",
+    "level": 11
+   },
+   "what": "the track: one way on to the city's Platform, one way on to DOOR HQ's tunnel",
+   "from": "Running Tunnels: THE LOOP LINE",
+   "ports": [
+    "S"
+   ],
+   "exits": [
+    {
+     "to": "the Platform (the city's metro)",
+     "kind": "open",
+     "today": "link tunnels_platform",
+     "square": [
+      1.2,
+      5.2
+     ],
+     "note": "the Platform is the inside behind the metro stair on this same city plot"
+    },
+    {
+     "to": "DOOR HQ: the Tunnel (the track)",
+     "kind": "hq",
+     "today": "link tunnels_works",
+     "square": [
+      1.2,
+      7.6
+     ],
+     "note": "DOOR HQ is not on the map"
+    }
+   ]
+  },
+  {
+   "id": "P00-04",
+   "name": "The Ghost Station",
+   "district": "The Running Tunnels",
+   "level": 5,
+   "under": {
+    "plot": "P00-04",
+    "name": "Dorm court",
+    "district": "U",
+    "level": 10
+   },
+   "what": "a 1 m platform nobody stops at; the garden well's rope comes down here",
+   "from": "Running Tunnels: THE GHOST STATION",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": [
+    {
+     "to": "DOOR HQ: the Garden well",
+     "kind": "hq",
+     "today": "link well_garden",
+     "square": [
+      9,
+      5.5
+     ],
+     "note": "DOOR HQ is not on the map"
+    }
+   ]
+  },
+  {
+   "id": "P00-05",
+   "name": "The Crossing",
+   "district": "The Running Tunnels",
+   "level": 4,
+   "under": {
+    "plot": "P00-05",
+    "name": "Campus green",
+    "district": "U",
+    "level": 9
+   },
+   "what": "two lines cross; the Signal Gantry (5.2 m); the Crossover",
+   "from": "Running Tunnels: THE CROSSING · THE CROSSOVER",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P00-06",
+   "name": "The Depot",
+   "district": "The Running Tunnels",
+   "level": 3,
+   "under": {
+    "plot": "P00-06",
+    "name": "Student cafe",
+    "district": "U",
+    "level": 8
+   },
+   "what": "LANDMARK: two parked trains, one lit; the Maintenance Hatch stair up to the culverts",
+   "from": "Running Tunnels: THE DEPOT · THE MAINTENANCE HATCH",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P02-02",
+   "name": "The Precinct Drain",
+   "district": "The Sewers",
+   "level": 9,
+   "under": {
+    "plot": "P06-02",
+    "name": "Records garden",
+    "district": "C",
+    "level": 12
+   },
+   "what": "the cross drain behind the cells' barred door; the Adit down into the old mine",
+   "from": "Sewers: THE PRECINCT DRAIN · THE ADIT",
+   "ports": [
+    "E",
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-02",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 9,
+   "under": {
+    "plot": "P07-02",
+    "name": "Time Bureau",
+    "district": "C",
+    "level": 12
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-03",
+   "name": "The Inspection Gallery",
+   "district": "The Sewers",
+   "level": 7,
+   "under": {
+    "plot": "P07-03",
+    "name": "Permit offices",
+    "district": "C",
+    "level": 10
+   },
+   "what": "a gallery 1.6 m up its stair, over the culvert",
+   "from": "Sewers: THE INSPECTION GALLERY",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-04",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 7,
+   "under": {
+    "plot": "P03-04",
+    "name": "Faculty homes",
+    "district": "U",
+    "level": 10
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-05",
+   "name": "The Undercity's Gutter",
+   "district": "The Sewers",
+   "level": 5,
+   "under": {
+    "plot": "P03-05",
+    "name": "Psychology lab",
+    "district": "U",
+    "level": 8
+   },
+   "what": "culvert; the grate up to Cyberpunk City's lower street",
+   "from": "Sewers: THE UNDERCITY'S GUTTER (a door plate)",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": [
+    {
+     "to": "Cyberpunk City: the lower street (keep?)",
+     "kind": "open",
+     "today": "link undercity_sewer",
+     "square": [
+      8.6,
+      6.5
+     ],
+     "note": "Cyberpunk City has no place on the city map; this spot is mine"
+    }
+   ]
+  },
+  {
+   "id": "P03-06",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 4,
+   "under": {
+    "plot": "P03-06",
+    "name": "Research annex",
+    "district": "U",
+    "level": 7
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-07",
+   "name": "The Junction",
+   "district": "The Sewers",
+   "level": 3,
+   "under": {
+    "plot": "P03-07",
+    "name": "Loading lane",
+    "district": "U",
+    "level": 6
+   },
+   "what": "LANDMARK: where the big pipes meet; the Healing Zone; you arrive here by default",
+   "from": "Sewers: THE JUNCTION",
+   "ports": [
+    "N",
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P02-07",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 4,
+   "under": {
+    "plot": "P02-07",
+    "name": "Science museum",
+    "district": "U",
+    "level": 7
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P01-07",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 4,
+   "under": {
+    "plot": "P01-07",
+    "name": "Clinic",
+    "district": "U",
+    "level": 7
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P00-07",
+   "name": "The Storm Drain",
+   "district": "The Sewers",
+   "level": 4,
+   "under": {
+    "plot": "P00-07",
+    "name": "Campus gate",
+    "district": "U",
+    "level": 7
+   },
+   "what": "the grate through to the storm drain under the Woods; the Strip's gutter; the hatch stair down to the track",
+   "from": "Sewers: the storm drain grate · THE STRIP'S GUTTER (door plates)",
+   "ports": [
+    "E",
+    "N"
+   ],
+   "exits": [
+    {
+     "to": "The Woods: the storm drain",
+     "kind": "hidden",
+     "today": "link sewers_drain (the Woods' east side)",
+     "square": [
+      0.6,
+      6.5
+     ],
+     "note": "the Woods lie west of the city: the west edge"
+    },
+    {
+     "to": "the Strip: the back lane (keep?)",
+     "kind": "open",
+     "today": "link strip_sewer",
+     "square": [
+      3.2,
+      9.4
+     ],
+     "note": "the Strip's road leaves the city on this plot's west side; the Strip is still an old room"
+    }
+   ]
+  },
+  {
+   "id": "P03-08",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 3,
+   "under": {
+    "plot": "P03-00",
+    "name": "Boxing gym",
+    "district": "R",
+    "level": 6
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-09",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 2,
+   "under": {
+    "plot": "P03-01",
+    "name": "Dojo",
+    "district": "R",
+    "level": 5
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-10",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 1,
+   "under": {
+    "plot": "P03-02",
+    "name": "Community gate",
+    "district": "R",
+    "level": 4
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-11",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 0,
+   "under": {
+    "plot": "P03-03",
+    "name": "Street court",
+    "district": "R",
+    "level": 3
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side; the bend east",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "N"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P04-11",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": -2,
+   "under": {
+    "plot": "P04-11",
+    "name": "Park gate",
+    "district": "S",
+    "level": 1
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P05-11",
+   "name": "The Cistern",
+   "district": "The Sewers",
+   "level": -2,
+   "under": {
+    "plot": "P05-11",
+    "name": "Vendor stalls",
+    "district": "S",
+    "level": 1
+   },
+   "what": "a round tank of deep water; the Plank across it",
+   "from": "Sewers: THE CISTERN · THE PLANK",
+   "ports": [
+    "E",
+    "N",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P05-10",
+   "name": "The East Return",
+   "district": "The Sewers",
+   "level": 0,
+   "under": {
+    "plot": "P05-10",
+    "name": "Locker rooms",
+    "district": "S",
+    "level": 3
+   },
+   "what": "the groundsman's culvert under the stadium's east stand",
+   "from": "Sewers: the stadium door (\"the pitch drains into the east return\")",
+   "ports": [
+    "S"
+   ],
+   "exits": [
+    {
+     "to": "the Stadium (behind the east stand)",
+     "kind": "hidden",
+     "today": "link stadium_sewers",
+     "square": [
+      6.5,
+      3.6
+     ],
+     "note": "the pitch stands on the four plots here; this is its east half"
+    }
+   ]
+  },
+  {
+   "id": "P06-11",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": -2,
+   "under": {
+    "plot": "P06-11",
+    "name": "Equipment court",
+    "district": "S",
+    "level": 1
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P07-11",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": -2,
+   "under": {
+    "plot": "P07-11",
+    "name": "South gate",
+    "district": "S",
+    "level": 1
+   },
+   "what": "brick culvert: a waded stream down the middle, a dry walkway each side",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P08-11",
+   "name": "The Docks' Outfall",
+   "district": "The Sewers",
+   "level": -3,
+   "under": {
+    "plot": "P00-11",
+    "name": "Dock edge",
+    "district": "I",
+    "level": 0
+   },
+   "what": "the grate up to the drowned manhole on the flooded quay",
+   "from": "Sewers: THE DOCKS' OUTFALL (a door plate)",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": [
+    {
+     "to": "Disaster City: the Dock edge (the drowned manhole)",
+     "kind": "open",
+     "today": "link docks_sewer",
+     "square": [
+      6.5,
+      6.5
+     ],
+     "note": "the manhole stands on the Dock edge, square 6, 6: straight above"
+    }
+   ]
+  },
+  {
+   "id": "P09-11",
+   "name": "The Pump Room",
+   "district": "The Sewers",
+   "level": -3,
+   "under": {
+    "plot": "P01-11",
+    "name": "Water works",
+    "district": "I",
+    "level": 0
+   },
+   "what": "the pumps, running all night",
+   "from": "Sewers: THE PUMP ROOM",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P10-11",
+   "name": "The Pumping Station",
+   "district": "The Sewers",
+   "level": -3,
+   "under": {
+    "plot": "P02-11",
+    "name": "Pump court",
+    "district": "I",
+    "level": 0
+   },
+   "what": "the feeder and its stair up to the bulkhead door",
+   "from": "Sewers: THE PUMPING STATION (a door plate)",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": [
+    {
+     "to": "Disaster City: the Pump court",
+     "kind": "open",
+     "today": "door pump <> city door sewer (THE PUMPING STATION)",
+     "square": [
+      6.5,
+      11.4
+     ],
+     "note": "the city door stands on the Pump court's south edge, square 6: straight above"
+    }
+   ]
+  },
+  {
+   "id": "P11-11",
+   "name": "The Outfall",
+   "district": "The Sewers",
+   "level": -3,
+   "under": {
+    "plot": "P03-11",
+    "name": "Rail service",
+    "district": "I",
+    "level": 0
+   },
+   "what": "LANDMARK: the Outfall Shaft (4.4 m); where every gutter pours out to the bay",
+   "from": "Sewers: THE OUTFALL · THE OUTFALL SHAFT",
+   "ports": [
+    "W"
+   ],
+   "exits": []
+  }
+ ],
+ "waysInside": [
+  {
+   "between": [
+    "P01-02",
+    "P02-02"
+   ],
+   "what": "cell door",
+   "wasDoors": "cells.sewers <> sewers.drain"
+  },
+  {
+   "between": [
+    "P01-02",
+    "P01-03"
+   ],
+   "what": "trap + rope ladder",
+   "wasDoors": "cells.trap <> workings.trap (hidden)"
+  },
+  {
+   "between": [
+    "P02-03",
+    "P02-02"
+   ],
+   "what": "the Adit",
+   "wasDoors": "workings.sewers <> sewers.adit (hidden)"
+  },
+  {
+   "between": [
+    "P00-06",
+    "P00-07"
+   ],
+   "what": "Maintenance Hatch",
+   "wasDoors": "tunnels.sewers <> sewers.hatch"
+  }
+ ],
+ "cells": [
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxfffffffffxxfffffffffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxfffffffffxxfffffffffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxfffffffffxxfffffffffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxffffffffffffffffffffffoooooowooooooooooowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxffffffffffffffffffffffwwwwwowowwwwwwwwwowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxffffffffffffffffffffffoooooowooooooooooowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxfffffffffxxfffffffffxxxxxxxowoxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxfffffffffxxfffffffffxxxxxxxowoxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxfffxxxxxxxxxowoxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxfffxxxxxxxxxowoxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxoooxxxxxxxxxoooxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxoooxxxxxxxxxoooxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxooooooooooxxxxxxoooxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxooooooooooxxxooooooooxxxxxxxowofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxooooooooooxxxooooooooxxxxxxxowofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "jjjjjjjjxxxxxoooooooooooooooooooooxxxxxxxowofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "jjjjjjjjxxxxxoowwwwwwoooooooooooooxxxxxxxowofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "ooooooooxxxxxoowwwwwwoooooooooooooxxxxxxxowofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxoowwwwwwooxxxooooooooxxxxxxxowofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxoowwwwwwooxxxooooooooxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxooooooooooxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxjjjjjjjjjxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxjjjjjjjjjxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xffffjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xfjffjjofjfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xfjffjjofjfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xfjffjjofjfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xfjffjjofjfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xfjffjjofjfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xfjffjjofjfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xffffjjofffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxjjoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxffowoffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxffowoffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "ooooooooooooooooooooooooooooooooooooooooowwwffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "ooooooooooooooooooooooooooooooooooooooooowwwffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxffowoffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxffowoffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxfffffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxfffffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxfowofxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxfowofxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxfffffffxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxffowoffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxfffffffxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxfwwbwwfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxfffxxxxxxxfffffffxxxxxxxxxxxxxxxxxxffffffxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxfwwbwwfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxfffxxxxxxxfffffffxxxxxxxxxxxxxxxxxxfwwwwfxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxooooooooooooooooooooooowwbwwoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooowwwwooo",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxwwwwwwwwwwwwwwwwwwwwwwwwwbwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwooowwwwwwwwwwwwwwww",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxooooooooooooooooooooooowwbwwoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooowwwwooo",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxfwwbwwfxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxoooxxxxxxxxfwwwwfxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxfffffffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxoooxxxxxxxxffffffxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxoooxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxoooxxxxxxxxxxxxxxxx"
+ ],
+ "legend": {
+  "x": "solid ground, not dug (cannot walk)",
+  "o": "sewer walkway / mine floor",
+  "w": "water",
+  "f": "concrete room",
+  "j": "rail track",
+  "b": "plank / deck over water"
+ }
+}
