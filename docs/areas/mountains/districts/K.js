@@ -9,7 +9,8 @@
      P07-02 The Run-Out (11)                 P08-02 The Chairlift (11)               P09-02 The Bunny Slope (11)
      P07-03 The Rental Hut (8)               P08-03 The Ski Lodge (8)                P09-03 The Lodge Yard (8)
 
-   WHAT STANDS HERE TODAY (passes 1 to 4 of 5: exteriors, insides, dressing, atmosphere; 11-16; seen on screen by day and at night)
+   FIVE PASSES LIVE, THE THREAD HAS STOPPED (mondo's five-pass order, 11-16): the next change here is his.
+   WHAT STANDS HERE TODAY (passes 1 to 5: exteriors, insides, dressing, atmosphere, polish; 11-16; seen on screen by day and at night)
    - Walked into: THE SKI LODGE (P08-03), THE RENTAL HUT (P07-03), THE TOP STATION (P08-00). Their look is this file's `chalet` (log walls with crossed
      log ends, stone foot, snow roof with deep eaves, lit windows, drifts, icicles): the Lodge adds a glazed gable, a porch with a rail, a gabled way in on
      stone piers and a smoking stone stack; the Rental Hut a serving hatch and the catalogue's `surfboard_rack`; boards in the district's one face (`alfa`).
@@ -37,7 +38,7 @@
 
    KNOWN MISSING OR WRONG
    - Nothing rides the cable: the chairs hang still. Chairs that move, or a chair the player rides, would be a new mechanic: LISTED for mondo, not built
-   - Polish (pass 5). The night lamps glow but light nothing: real night-skiing light needs the room's light cap raised or shared (the engine's)
+   - The night lamps glow but light nothing: real night-skiing light needs the room's light cap raised or shared (the engine's)
    - No encounter table, nobody lives or works here (no one at the bar or the rental counter)
    - The lift's two doors are the plain concrete frame (`leaf_frame_only`): they stay until mondo rules on the lift
 
@@ -79,7 +80,7 @@ const HC = 8.5;   // the lift cable over the snow (m); a chair's seat hangs 3.5 
 /* a lit window: a warm pane, a dark timber frame and cross, snow on the sill (ew: on a side wall, then `z` is the wall's x and `x` runs along z) */
 const win = (a, x, y, z, w, h, ew, WD2, q) => { const o = z < 0 ? -1 : 1, G = Object.assign({ gain: 1.5 }, q || {}),
     B = (px, py, pz, bw, bh, bd, key, tint, g) => ew ? a.box(pz, py, px, bd, bh, bw, key, tint, g) : a.box(px, py, pz, bw, bh, bd, key, tint, g);
-    B(x, y, z, w, h, 0.06, 'marble_light', PANE, Object.assign({ glow: 1.0 }, q || {}));
+    B(x, y, z, w, h, 0.06, 'ice', PANE, Object.assign({ glow: 1.0 }, q || {}));   // (pass 5: `marble_light` showed its veins in a lit pane by day; `ice` is plain)
     B(x, y, z + o * 0.03, 0.08, h, 0.08, WD2, DARK, G); B(x, y + h / 2 - 0.04, z + o * 0.03, w, 0.08, 0.08, WD2, DARK, G);
     for (const s of [-1, 1]) B(x + s * (w / 2 + 0.06), y - 0.06, z + o * 0.04, 0.14, h + 0.2, 0.12, WD2, DARK, G);
     B(x, y - 0.14, z + o * 0.06, w + 0.4, 0.14, 0.22, WD2, DARK, G); B(x, y + h, z + o * 0.05, w + 0.3, 0.14, 0.18, WD2, DARK, G);
@@ -149,7 +150,7 @@ const chalet = (a, w, d, dr, q, ctx) => { const { WD, WD2, FLR } = ctx, h = q.h,
 const lodge = (a, w, d, dr, ctx) => { const { WD, WD2, FLR } = ctx, h = 5.25, rh = 6.2, z0 = d / 2;
     chalet(a, w, d, dr, { h, rh, chimney: 8.75, noWin: ['b0', 'b1', 'b2', 'l4', 'l5', 'r2'] }, ctx);
     for (let k = 0; k < 3; k++) { const y = h + 0.45 + k * 1.75, hw = Math.min(7.2, (w / 2 + 1.2) * (1 - (y + 1.4 - h) / rh) - 0.7), n = Math.max(1, Math.floor((2 * hw) / 1.7)), pw = (2 * hw) / n;   // the great window in the gable: three rows of panes under the rafters
-        for (let i = 0; i < n; i++) a.box(-hw + (i + 0.5) * pw, y, z0 + 0.12, pw - 0.22, 1.4, 0.06, 'marble_light', PANE, { glow: 1.0, roof: true });
+        for (let i = 0; i < n; i++) a.box(-hw + (i + 0.5) * pw, y, z0 + 0.12, pw - 0.22, 1.4, 0.06, 'ice', PANE, { glow: 1.0, roof: true });
         a.box(0, y - 0.2, z0 + 0.14, 2 * hw + 0.3, 0.2, 0.2, WD2, DARK, { roof: true, gain: 1.5 }); }
     a.box(0, h + 0.2, z0 + 0.16, 0.3, rh - 0.5, 0.24, WD2, DARK, { roof: true, gain: 1.5 });                                                     // the king post
     a.box(0, 0, z0 + 1.75, w, 0.16, 3.4, FLR, 0x8c7a62);                                                                                         // the porch: its deck, posts on stone, a rail, a snow roof
@@ -159,12 +160,12 @@ const lodge = (a, w, d, dr, ctx) => { const { WD, WD2, FLR } = ctx, h = 5.25, rh
     a.box(0, 3.0, z0 + 3.25, w, 0.26, 0.26, WD2, DARK, { gain: 1.5 }); bulbs(a, -w / 2 + 0.4, dr.lx - 3.4, 2.92, z0 + 3.42); bulbs(a, dr.lx + 3.4, w / 2 - 0.4, 2.92, z0 + 3.42); a.roof('shed', 0, 3.1, z0 + 1.85, w + 0.6, 0.8, 3.8, 'ice', SNOW);
     for (const s of [-1, 1]) { a.box(dr.lx + s * 2.9, 0, z0 + 4.2, 0.9, 1.2, 0.9, 'rocks_5', STONE); a.box(dr.lx + s * 2.9, 1.2, z0 + 4.2, 0.4, 2.3, 0.4, WD2, DARK, { gain: 1.5 }); a.box(dr.lx + s * 2.9, 1.2, z0 + 4.2, 1.0, 0.1, 1.0, 'ice', SNOW); }   // the way in
     a.box(dr.lx, 3.5, z0 + 4.2, 6.6, 0.4, 0.4, WD2, DARK, { gain: 1.5 }); a.roof('gable', dr.lx, 3.9, z0 + 2.3, 4.6, 1.8, 6.4, 'ice', SNOW, { ry: 90, over: 0.4, keyEnd: WD, tintEnd: LOGC, keyUnder: WD2, gain: 1.9 });
-    board(a, 'SKI LODGE', dr.lx, 3.92, z0 + 4.66, 4.6, 0.82, '#f4ecd8', '#2f4a3a', WD2, { roof: true }); backBoard(a, 'SKI LODGE', -3.5, h + 1.0, -z0 - 0.12, 7.0, 1.3, WD2);
+    board(a, 'SKI LODGE', dr.lx, 3.92, z0 + 4.66, 4.6, 0.82, '#f4ecd8', '#2f4a3a', WD2, { roof: true }); backBoard(a, 'SKI LODGE', -10.0, h + 1.0, -z0 - 0.12, 6.0, 1.15, WD2);   // (west of the wheel house's column, which hid half of it: pass 5)
     for (const s of [-1, 1]) { a.box(dr.lx + s * (dr.cw / 2 + 0.7), 1.7, z0 + 0.2, 0.22, 0.34, 0.22, 'marble_light', 0xffb050, { glow: 1.3 }); a.box(dr.lx + s * (dr.cw / 2 + 0.7), 2.04, z0 + 0.2, 0.3, 0.06, 0.3, 'gunmetal', 0x30343a); } };   // a lantern each side of the door
 /* the Rental Hut: the log building in red, a serving hatch with its shelf and a snow awning (the rack of boards by the door is the catalogue's `surfboard_rack`, put in build) */
 const rental = (a, w, d, dr, ctx) => { const { WD, WD2 } = ctx, h = 3.5, z0 = d / 2, hx = dr.lx + 4.4;
     chalet(a, w, d, dr, { h, rh: 2.8, tint: 0x9c4a3c, wins: false, noWin: ['b0', 'b1', 'b2', 'b3', 'l0'] }, ctx);
-    a.box(hx, 1.15, z0 + 0.08, 3.0, 1.3, 0.06, 'marble_light', PANE, { glow: 1.0 }); for (const s of [-1, 1]) a.box(hx + s * 1.56, 1.05, z0 + 0.12, 0.14, 1.55, 0.14, WD2, DARK, { gain: 1.5 }); a.box(hx, 2.45, z0 + 0.12, 3.3, 0.14, 0.14, WD2, DARK, { gain: 1.5 });
+    a.box(hx, 1.15, z0 + 0.08, 3.0, 1.3, 0.06, 'ice', PANE, { glow: 1.0 }); a.box(hx, 1.15, z0 + 0.11, 0.08, 1.3, 0.06, WD2, DARK, { gain: 1.5 }); for (const s of [-1, 1]) a.box(hx + s * 1.56, 1.05, z0 + 0.12, 0.14, 1.55, 0.14, WD2, DARK, { gain: 1.5 }); a.box(hx, 2.45, z0 + 0.12, 3.3, 0.14, 0.14, WD2, DARK, { gain: 1.5 });
     a.box(hx, 1.0, z0 + 0.36, 3.4, 0.1, 0.62, WD2, 0x7a583c, { gain: 1.5 }); a.box(hx, 1.1, z0 + 0.4, 3.4, 0.05, 0.5, 'ice', SNOW); a.roof('shed', hx, 2.62, z0 + 0.62, 3.8, 0.42, 1.2, 'ice', SNOW);
     board(a, 'RENTALS', 0, h + 0.2, z0 + 0.12, 3.6, 0.78, '#f4ecd8', '#2f4a3a', WD2, { roof: true }); backBoard(a, 'RENTALS', 0, h + 0.2, -z0 - 0.12, 3.6, 0.78, WD2);
     a.box(dr.lx + dr.cw / 2 + 0.6, 1.7, z0 + 0.2, 0.2, 0.3, 0.2, 'marble_light', 0xffb050, { glow: 1.3 }); };
@@ -328,10 +329,10 @@ exports.build = ctx => {
   const ORANGE = 0xe8701c, CREAM = '#f4ecd8', GREEN = '#2f4a3a';
   const block = (sx, sy, half) => { if (!R.open(sx, sy) || R.taken.has(sx + ':' + sy)) throw new Error('K: a taken square ' + sx + ',' + sy); R.taken.add(sx + ':' + sy); feat({ k: 'wall', x0: r2(mx(sx) - half), z0: mz(sy), x1: r2(mx(sx) + half), z1: mz(sy), t: 0.5, h: 2.6, ghost: true, rail: false }); };
   /* a run's board: its name in the district's face on two posts, its grade's mark beside it, read from both sides; it stands on a square's middle and stops the walker */
-  const runBoard = (id, plot, lx, ly, words, mark, ink) => { const q = S(plot, lx, ly), wd = Math.min(3.1, words.length * 0.24 + 0.5); block(q[0], q[1], 1.5);
-      look(id, mx(q[0]), mz(q[1]), a => { for (const s of [-1, 1]) { a.box(s * 1.62, 0, 0, 0.16, 2.75, 0.16, WD2, DARK, { gain: 1.5 }); a.box(s * 1.62, 2.75, 0, 0.24, 0.07, 0.24, 'ice', SNOW); }
-          a.box(0, 1.55, 0, 3.3, 0.95, 0.1, WD2, 0x2a3a30, { gain: 1.5 }); a.box(0, 2.5, 0, 3.4, 0.08, 0.2, 'ice', SNOW);
-          for (const f of [1, -1]) { const o = f > 0 ? { glow: 0.85 } : { ry: 180, glow: 0.85 }; a.sign(words, f * 0.3, 1.72, f * 0.06, wd, 0.6, CREAM, GREEN, FONT, o); a.sign(mark, f * -1.25, 1.72, f * 0.06, 0.6, 0.6, ink, CREAM, FONT, o); } }); };
+  const runBoard = (id, plot, lx, ly, words, mark, ink) => { const q = S(plot, lx, ly), wd = Math.min(3.0, words.length * 0.22 + 0.4); block(q[0], q[1], 1.7);   // (pass 5: the board is 4.2 m, the words 3.0 at most: THE HALF-PIPE ran off the old one)
+      look(id, mx(q[0]), mz(q[1]), a => { for (const s of [-1, 1]) { a.box(s * 2.08, 0, 0, 0.16, 2.75, 0.16, WD2, DARK, { gain: 1.5 }); a.box(s * 2.08, 2.75, 0, 0.24, 0.07, 0.24, 'ice', SNOW); }
+          a.box(0, 1.55, 0, 4.2, 0.95, 0.1, WD2, 0x2a3a30, { gain: 1.5 }); a.box(0, 2.5, 0, 4.3, 0.08, 0.2, 'ice', SNOW);
+          for (const f of [1, -1]) { const o = f > 0 ? { glow: 0.85 } : { ry: 180, glow: 0.85 }; a.sign(words, f * 0.42, 1.72, f * 0.06, wd, 0.6, CREAM, GREEN, FONT, o); a.sign(mark, f * -1.6, 1.72, f * 0.06, 0.6, 0.6, ink, CREAM, FONT, o); } }); };
   runBoard('runBlack', 'P07-00', 3, 2, 'THE BLACK RUN', '◆', '#111111'); runBoard('runJump', 'P08-01', 2, 3, 'THE BIG JUMP', '▲', '#d06010'); runBoard('runPipe', 'P08-00', 11, 10, 'THE HALF-PIPE', '▲', '#d06010');
   runBoard('runSlalom', 'P09-01', 1, 0, 'THE SLALOM', '■', '#2050c0'); runBoard('runBunny', 'P09-02', 0, 1, 'THE BUNNY SLOPE', '●', '#208040');
   /* a yellow SLOW board on one post, both faces */

@@ -69291,7 +69291,7 @@ const ThreeRenderer = (function () {
     function _hqPlantPassageTrees(room, plantTree) {
         (room.doors || []).forEach(function (d) {
             if (!d || d.hidden || !d.wall || d.wall === 'free') return;
-            var P = _hqPassageSpec(d); if (!P || P.look !== 'trail') return;
+            var P = _hqPassageSpec(d); if (!P || P.look !== 'trail' || P.trees === false) return;   // `passage.trees: false` on a link's end (2026-11-16, Camelot's Pass): a trail between rock walls plants none
             var B = _hqBoxWall(room, d.wall, d), ax = -B.nz, az = B.nx;   // along the wall
             var rng = _mulberry32((typeof hqHash === 'function') ? hqHash('trail|' + d.id) : 5);
             var kinds = (room.shell && room.shell.forest && room.shell.forest.kinds) || ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'];
@@ -77686,6 +77686,13 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* the stake torch is the board's floor torch at the board's own size (THE SAME TORCH EVERYWHERE, 2026-09-15) */
+        /* THE TIKI TORCH (2026-11-16, mondo: "the tiki torches need to be variants of the torches already in the game, just longer"): the
+           floor torch itself (its stand, its bowl, its own flame and flicker), half as tall again */
+        tiki_torch: function (U) {
+            var g = new THREE.Group(), t = _hqProcBuilders.cave_torch(U);
+            t.scale.set(1, 1.5, 1); g.add(t);
+            return g;
+        },
         cave_torch: function (U) {
             var g = new THREE.Group();
             var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
@@ -84786,7 +84793,7 @@ const ThreeRenderer = (function () {
         var roomId = opts.room || 'central_egress', prof = opts.profile, av = opts.avatar || {};
         var crowd = opts._crowd || null;   // THE CROWD CAP (2026-10-01): the room's one budget, shared with _hqSpawnPopulation
         var R = _hqRoundsRules(), now = performance.now();
-        _hqNavStart();   // the lattice (built over the next frames) — started first so the stops' floor reads leave the people out of the furniture
+        if (!(_hq._resumed && _hq.nav)) _hqNavStart();   // (THE PARKED ROOM: a resumed room keeps the lattice it has — the people are placed again, the room's walk map is not built again)   // the lattice (built over the next frames) — started first so the stops' floor reads leave the people out of the furniture
         var gone = [];
         try { var cl = (prof && typeof hqEncounterCleared === 'function') ? hqEncounterCleared(prof, roomId) : null; if (cl && cl.ids) gone = cl.ids; } catch (e) { gone = []; }
         var resRoom = false; try { resRoom = _hqResStart(room, opts); } catch (e) { console.warn('[HQ] the residents skipped', e); }   // THE RESIDENTS (2026-11-14): the city's own people
@@ -86634,6 +86641,41 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* A BLACK SMOKER: a chimney of dark rock, a glow in the vent, smoke sprites rising */
+        /* THE KRAKEN'S ARMS (2026-11-16, mondo: the arms standing in the Beach's sea were "clipped off ... look at how the kraken ...
+           does their tentacles in their spell vfx"): the kraken's own Constrict (three-vfx-effects.js _fx1Tentacles) as a thing that
+           stands in a room: the same two arm models, in the spell's own unlit look, in a ring, each fitted by its BOTTOM so it rises whole out of the surface,
+           comes up one after another, curls its tip in over the middle, holds, sinks and comes back; foam where each breaks the water */
+        kraken_arms: function (U, p) {
+            var g = new THREE.Group(), N = 5, R = 3.7 * U, H = 4.2 * U, CYC = 15, seed = ((_hqProcSeed++) * 3.7) % CYC, arms = [];
+            for (var i = 0; i < N; i++) (function (i) {
+                var ang = (i / N) * Math.PI * 2 + 0.3, key = (i % 2) ? 'tentacle2' : 'tentacle';
+                var hold = new THREE.Group(); hold.position.set(Math.cos(ang) * R, 0, Math.sin(ang) * R); hold.rotation.order = 'YXZ'; g.add(hold);
+                var foam = _hzGlowSprite(1.5 * U, 0xffffff, 0.55, 0.3, 0.1, 1.0); foam.position.set(Math.cos(ang) * R, 0.12 * U, Math.sin(ang) * R); foam.visible = false; g.add(foam);
+                var A = { g: null, h: hold, f: foam, ang: ang, d: i * 0.55 }; arms.push(A);
+                var attach = function () {
+                    if (A.g) return true;
+                    var c = null; try { c = _getMiscModelClone(key, H, 'bottom'); } catch (e) { c = null; }
+                    if (!c) return false;
+                    c.rotation.y = -ang + Math.PI; c.visible = false; hold.add(c); A.g = c; return true;
+                };
+                if (!attach() && _MISC_GLB[key]) { try { _loadMiscModel(_R2_MISC + _MISC_GLB[key], true, function () { attach(); if (_hq) _hq.dirty = true; }); } catch (e) {} }
+            })(i);
+            var e3 = function (t) { t = Math.max(0, Math.min(1, t)); return 1 - Math.pow(1 - t, 3); };
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = (now * 0.001 + seed) % CYC;
+                for (var j = 0; j < arms.length; j++) {
+                    var A = arms[j]; if (!A.g) continue;
+                    var up = e3((t - A.d) / 1.3), down = Math.max(0, Math.min(1, (t - (CYC - 2.2) - A.d * 0.25) / 1.3)), k = up * (1 - down);
+                    A.g.visible = k > 0.01; A.g.position.y = -H * 1.04 * (1 - k);
+                    var lean = -0.3 * e3((t - A.d - 1.0) / 1.2) * (1 - down) + 0.07 * Math.sin(now * 0.0013 + j * 1.9);
+                    A.h.rotation.x = Math.sin(A.ang) * lean; A.h.rotation.z = -Math.cos(A.ang) * lean;
+                    var moving = (k > 0.02 && k < 0.98) ? 1 : 0.35;
+                    A.f.visible = k > 0.01; if (A.f.material) A.f.material.opacity = 0.55 * moving * (0.7 + 0.3 * Math.sin(now * 0.006 + j));
+                }
+                if (_hq) _hq.dirty = true;
+            });
+            return g;
+        },
         sea_vent: function (U) {
             var g = new THREE.Group();
             var rock = new THREE.MeshPhongMaterial({ color: 0x2a2624, shininess: 6, flatShading: true });
