@@ -4738,9 +4738,13 @@ once that first district is fleshed out and knows what shared assets it can use 
   line clear of the board rack, the torches' flame; NINE MORE PEOPLE on mondo's new rule ("There need to be more NPCs", 11-16): homosapiens
   on the Boardwalk, at the huts, the lifeguard hut, the court and the Dunes bench, a chef at the hot dog stand, hippies in the Palms and at
   the north camp, a pirate by the headland's boats. No line was written for them. NOT SEEN: the people (playtest_city.js draws no cast).
-- **NEEDS A MODEL (nothing stood in):** hammocks, a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, a towel lying on the sand.
-- **WAITS FOR MONDO:** his look at the whole district; whether the huts' three trades (SURF, BEACH HUT, FLOATS: the first build's reading of
-  "a row of huts") are what he wants; whether the Shore gets a fight / residents with routines once the NPC spawn system (npc-system.md) lands.
+- **THE SNOW CONE STAND + THE NIGHT (11-16, mondo: "looks good, make one of the huts a snow cone stand ... there is night and day cycle in
+  the game already"):** the middle hut (was the sleeping hut) is SNOW CONES: a serving shelf and striped awning at its window, stools, a
+  menu board (Cherry, Lime, Blue), a giant cone on the ridge; inside the counter and till, syrups on a steel bench, two fridges, cool
+  boxes. Seen by day and at 22:30. The night was never off (see the kit); ten real lights added so the Shore is lit after dark.
+- **NEEDS A MODEL (nothing stood in):** hammocks, a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, a towel lying on the
+  sand, an ice shaver and paper cones for the stand.
+- **WAITS FOR MONDO:** his look at the whole district; whether the Shore gets a fight / residents with routines once the NPC spawn system (npc-system.md) lands.
 - **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
@@ -4774,8 +4778,13 @@ once that first district is fleshed out and knows what shared assets it can use 
   glow, no light) on a drawn rope at `G + 2.3`. Put several torches in ONE `look` row when the sand under them is level (a row = three
   meshes; twelve rows of one torch is thirty-six).
 - **NO HOOK FOR A DISTRICT (zone-wide, the tool row's or the engine's):** SOUND (a walked room has no sound bed of its own in the data:
-  surf, gulls, rigging would be new work in audio.js + the shell), PARTICLES (spray at the rocks, gulls wheeling), NIGHT (the sea shell is
-  day only: `night: 0`, so the glows never get their dusk).
+  surf, gulls, rigging would be new work in audio.js + the shell), PARTICLES (spray at the rocks, gulls wheeling).
+- **NIGHT WORKS (corrected 11-16; the pilot first wrote "day only", a misreading of the shell's `night: 0` field, and mondo asked why):**
+  the Beach rides the world clock like every outdoor room (data.js `hqRoomClock`; only `HQ_WORLD_CLOCK.still` rooms do not). Look at it
+  after dark in the probe with `"eval": "hqClockSet(22.5)", "settle": 2500` on a view (it holds for the views after it). What night
+  showed: drawn glow (bulbs, lanterns, lit windows, a hut's lit ceiling) reads well but LIGHTS NOTHING, so the places people sit need a
+  real light: `cave_torch` (a standing torch, a 9 m light, a blocker: `P` on a square's middle) and `brazier` (a fire basket, the same
+  light). The Shore has eight torches and two braziers. `round_table` is a huge meeting table with twelve chairs, not a cafe table.
 - **WATER ON THE SAND:** `feat({ k: 'dip', x, z, r, h })` on sand that stands 0.6 m up, with r 3.4-5.2 m and h 1.5-1.7 m, is a pool the room's
   own sea stands in (waded). A smaller or shallower dip shows no water.
 - **DUNE DRESSING:** `psxg_dead_bush_1/2` read as dry dune scrub; `feat({ k: 'rail', x0, z0, x1, z1, model: 'ranch' })` is a timber
@@ -5608,6 +5617,11 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   rim and never climbs it) + ONE `ramp` row h0 0 -> h1 -3.5 over four squares from the trail (a ramp only RAISES ground, so it goes after the sink row and fills it).
   The walls wear rock slabs and the rims tapered boulders, all in one arch row `woods:M:ravine` (`y: 0`). The ramp, a lane down the bed and the mouth's apron are `taken`
   before the old passes run, so no old piece lands there.
+- **THE BED IS DIRT, THE RIMS ARE WALKED (same day, mondo: "I still need to be able to walk along the edges of the creek, and the riverbed is supposed to be dirt, it can
+  have a little part at the end that turns into concrete")**: the dry bed's squares are `p` (the dirt_2 paint), not rock; one square of dirt path runs along each rim
+  (rows 53 and 56, trail to east wall, opened in `cut`); the last three squares before the mouth wear a concrete slab and concrete walls (arch parts). The rims carry only
+  a low lip and small stones. A forest tree left out by `cut` now counts toward the scatter seeds (bake-woods.js `SOW_SHIFT++`): opening the rims had moved four other
+  districts' seeds by two before that fix (caught by the row-by-row check, never shipped). OPEN: a `sow` plant can land on the apron (seen: one thorn vine).
 - **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
   stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
   Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
@@ -5670,6 +5684,8 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   waterfall should lead to a lower pathway or room, not just a random hole in the ground"): 0 = the old mine, the track and the Outfall's
   shaft · 2 = the lower sewers (the Junction's row + the Cistern) · 4 = the upper sewers (the two north rows) · 5 = the cells. Build 1 stepped
   every row 1.75 m with a fall + stair in the corridor at each step: gone.
+  BUILD 3 (mondo 11-16: "the waterfalls still look short, at least twice that height"): every level doubled, so the numbers above read
+  0 / 4 / 8 / 9 and a fall is 7 m (the trap's rope ladder 15.75 m, the Adit, the well and the hatch stair 7 m); a stair flight rises 2 in 3.
   **A FALL IS A WHOLE DROP INTO A ROOM:** an upper culvert's mouth, 3.5 m up a lower room's wall, pours into that room's water. Three: the
   north culvert into the Junction (its hall now runs to its north wall; a stair flight along the wall), the East Return into the Cistern's
   tank (a ladder), the Docks' Outfall down the Outfall Shaft's pool (a ladder). Layout `openings`: `fall` + `by: 'stair' | 'ladder'`;
@@ -5711,7 +5727,7 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
   data.js `hqTerrainCompile` collects the rows as `info.falls`. The editor's ADD list has "Waterfall". Off: `window.EW_NO_HQ_FALLS`.
 - **USED:** the Sewers' three (bake-sewers.js, layout `openings` kind `fall`). **THE RULE HE SET (11-16):** a fall leads somewhere: it drops from an upper way into a lower room or path you can reach, never a step in the same corridor. **WANTED NEXT:** the Woods' Falls plot (`docs/areas/woods/
   districts/T.js`, its creek already steps per grade: one `fall` row per step), the Mountains' streams, the Beach's island.
-- **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen at 1.75 m and 3.5 m.
+- **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen at 1.75 m, 3.5 m and 7 m. **HIS SIZE RULE (11-16):** a waterfall is at least 7 m.
 - **PASS 5, POLISH (an eye-level walk, 18 stops):** every door, the fire escape, the deck, the pens, the crater's edge, the yard. One fix: the
   radar hut's green scope window overlapped its door frame. **WHERE IT STANDS:** all five passes merged and live. Open for mondo: the
   tower's ops block is solid (a walk-in would need the deck rebuilt as a building); the mess hall is sparse; no sound or particles (no
