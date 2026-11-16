@@ -1,6 +1,6 @@
 # Notes: world-layout — the whole world, its doors, and which zone comes next
 
-Survey of 2026-11-16 (owner side), at main `afbbd24` (PR #1548). Nothing was built or rebaked for it.
+Survey of 2026-11-16 (a thread on the SECOND side; first signed "owner" by mistake, corrected the same day), at main `afbbd24` (PR #1548). Nothing was built or rebaked for it.
 **Where the docs and the data disagree, the data is the truth**; each such place is marked DATA below.
 
 How it was read: `load-data.js` (the real data.js), `hqWorldGraph()` for every door and link, `hqHubOf()` for the zone a
@@ -138,8 +138,11 @@ Heaven), the sea floor (The Deep), the far east (Leylines), and the three off-ma
   a rebuilt area retires its old rooms in the same change.
 - **Not built:** The Sewers, The Cavern, The D.U.M.B., Heaven + Hell + Vatican, Leylines, The Deep, Outer Space,
   Antarctica, The Astral Realm. All nine are `free` on the board.
-- **Held by the second side** (off limits to an owner thread, and they are the neighbours a new zone's doors touch): the
-  Estate, the Desert, the Mountains, the Beach, Civic Center.
+- **Who holds the neighbours** (this thread is on the second side): the Estate, the Desert, the Mountains, the Beach
+  and Civic Center are held by sibling threads on this account, which can be told directly. Disaster City, the Woods,
+  Camelot and DOOR HQ are the owner side's: this side cannot edit their rooms or bake tools, only leave a note on the
+  board. So a zone whose doors land in owner rooms costs a board note and a wait; one whose doors land in second rooms
+  does not.
 - **Waiting already:** five built zones wait for mondo's look; Camelot's next four pieces, the HQ elevator and several
   city districts wait for his answers. A new zone adds a sixth thing to look at.
 - **What unlocks most:** counted as ways into zones that are already built on plots.
@@ -158,15 +161,18 @@ Heaven), the sea floor (The Deep), the far east (Leylines), and the three off-ma
 
 ### C2. The ranked shortlist
 
-1. **The Sewers (recommended).** It is the smallest zone in the plan (16 plots), it lies under the one area the owner
-   side already holds, and it has more doors into built places than any other unbuilt zone: three city doors, the Woods
-   drain, three HQ ways. It is also the gate to the whole underground: Woods > Sewers > Cavern > D.U.M.B. / Hell. The
-   first quest's lift ride shows the Sewers first on the way down. Cost of entry: redraw its plan for the moved
-   districts, show mondo, wait for his OK. No second-side room has to change.
+1. **The Sewers (recommended).** It is the smallest zone in the plan (16 plots) and it has more doors into built places
+   than any other unbuilt zone: three city doors, the Woods drain, three HQ ways. It is also the gate to the whole
+   underground: Woods > Sewers > Cavern > D.U.M.B. / Hell. The first quest's lift ride shows the Sewers first on the
+   way down. Cost of entry: redraw its plan for the moved districts, show mondo, wait for his OK. The catch: every one
+   of its doors lands in an owner-side room (the city, the Woods, DOOR HQ). The old rooms can be retired so those doors
+   still arrive in the new room, but landing each at its matching manhole needs the owner side's bake tools, by a board
+   note, or mondo hands the Sewers to an owner thread.
 2. **Heaven + Hell + Vatican.** The most visible gap: the Mountains' two stairs, the city's Civic gate and Camelot's
-   sky castle all end at it. Three rooms and two second-side neighbours make it the bigger job.
+   sky castle all end at it. Three rooms make it the bigger job, but its main neighbours (the Mountains, Civic Center)
+   are sibling threads on this side; only the sky castle and the HQ painting are the owner side's.
 3. **The D.U.M.B.** The Door Agent's own point of entry, behind the HQ garage and under the built Area 51. Needs the
-   White Rooms answer and a note to the Desert's holder.
+   White Rooms answer; the Desert's holder is a sibling thread on this side.
 
 After those: the Cavern (straight after the Sewers), The Deep (once mondo has seen the Beach), Leylines, the Astral
 Realm, Antarctica, Outer Space last.
