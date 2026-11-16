@@ -4401,6 +4401,10 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   a square's middle, the square marked taken), bulbs strung from the square's lamps to the tree, the well, shop freight, woodpiles, sleighs, the yeti's
   camp, the lake's bench, hares / crows / a dog. THE SIXTEENTH HOUSE: the plan's last `B` run (P03-00 8,8) was the "4 unreached squares": it is built
   now (`north3`), reached over the two squares `tailor` opens. Trails (`o`) and the squares in front of doors are kept clear.
+- **PASS 6, THE SQUARES** (mondo 11-16 "continue working at it, with your recommended"): every inside re-laid on the fight's squares (rule and helpers:
+  THE ZONE KIT, point 2). The Bakery's inside hearth went (opt `flue`: the chimney stands over the oven); the Workshop is six benches in two lines down
+  the door's aisle, the loft's posts on square corners. LESSON: a rewrite of the INSIDES block cut the first delivery's dressing below it (the bake's
+  count showed `natives: 0`): read the bake's counts after every edit.
 - **PASS 4 + 5, ATMOSPHERE AND THE WALK**: the hearths burn the catalogue's `hearth_fire` (`w` / `h` in metres; a real light), six braziers (real lights)
   stand at the Pole, the lake, the Sleigh Road and the two south ways out. Walked at eye height in the probe (twelve views): one signpost stood inside a
   zone pine's skirt and moved. NOT REACHABLE FROM A DISTRICT FILE, asked of mondo: falling snow, a sound bed and an aurora (the walked rooms have no hook
@@ -4429,7 +4433,12 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
 - Every inside prop gets `floor: true` (N.js `onFloor(B)` wraps `B.put`): without it a prop within a body's reach of a wall stands on the wall's TOP.
 - A prop's `y`: under 1 = a lift; from 1 up = a height from the ROOM's floor, so add the plot's ground (N.js `UP(h)`). A hung piece: `mount: 0` + `UP(h)`.
 - Fire: catalogue `hearth_fire` (`w` / `h` in metres, a real light) in an OPEN brick hearth (N.js `hearth`). Outdoors: `campfire`, `brazier` (real lights).
-- Not done in N yet, the city's rule: a thing that BLOCKS stands on the middle of a whole 3.5 m square with a ghost wall (F-inside.js `grid` / `solid`).
+- THE SQUARES (done in N, pass 6; the city's rule, F-inside.js): a thing that BLOCKS stands on the MIDDLE of a whole 3.5 m square; chairs, lamps, sacks,
+  side tables stand off the middles; wall pieces take no square. A plot building covers whole squares, so its squares' middles are (+-1.75, ...) in its
+  own frame (N.js `SQ`, `at(h, 'BL', key)`). A 2 x 2 house takes TWO blockers at most (the two back squares, or one back + one front on the same side):
+  the door's square and one more, joined edge to edge, stay free. Check that no free square is shut in (a blocker on FR beside a blocked BL shuts BR in).
+  An `arch` shape that should block (the coal heap) gets a ghost wall: `R.feat({ k: 'wall', ..., ghost: true, rail: false })`. Outdoors `fallen_log`
+  and big crates block: `put`, not `dec`.
 
 **3. THE KIT (all in the catalogue or the sheets today):**
 - Walls: `WD` boards (painted with `gain`), log brown 0x7a5a40 (`ctx.cabin`, districts K and P), stone foot `rocks_5` 0xa8a8b0, snow roof `ice` 0xf4f8ff, chimney
@@ -4453,7 +4462,7 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
 **5. THE VILLAGE AGAINST A FINISHED CITY DISTRICT (Financial: F.js + F-inside / F-detail / F-atmos), the pilot's remaining work plan:**
 1. A plan and a mock-up mondo OK'd before building (every city district had one; the village was built from the brief's pass list).
 2. The second exterior layers (F-detail): sills, belt courses, downpipes, roof pieces, a second sheet on parts of each wall, drifted snow at wall feet.
-3. Insides on the fight's squares: blockers on whole squares' middles with ghost walls, walkways whole squares wide.
+3. DONE 11-16 (pass 6, mondo "continue ... with your recommended"): insides on the fight's squares.
 4. The second inside pass (F-atmos): dado / skirting / crown on the coat, pendants and sconces as real pieces, the Meshy list made.
 5. Residents with homes, beds and a day (the city's `HQ_CITY_RESIDENTS`): the village has three natives standing still. mondo's table decides who.
 6. A measured-size prop check and the two polish passes living in the bake (the city's props.js, interior-polish.js, exterior-polish.js).
