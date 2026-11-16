@@ -29,6 +29,24 @@ What that means for you:
   `[EW BUILD]` HEAD line), then one line per pass, the FPS before and after, the DECISIONS MADE FOR MONDO list, the
   NEEDS A MODEL list, and what you would do next. Short, plain words.
 
+## Go through ALL the lists before you place anything (mondo 11-16)
+
+His words: "they need to look at the model list and prop list and asset list or whatever. all of it to see what would
+fit". Before pass 1, and again before the dressing pass, read these END TO END (they are long: read them in parts, do
+not grep three words and stop) and write a FITS THIS DISTRICT shortlist into your district's notes section: every model,
+prop, animal, foliage piece, texture and decal that suits the place, with its catalogue key.
+- `MODEL_LIST.md`, the whole file: §6 every room / editor prop (data.js `DOOR_HQ.catalogue`, about 1,800 rows), §7 spell
+  props, sky models, animals, foliage, §8 the code-built stand-ins (avoid these), §10 decor still missing, §12b the Pizza
+  Doggy PSX mega pack, §13 every model file on R2 that is NOT wired yet (over 3,000: a file here can be given a catalogue
+  row and used; say which you wired).
+- The live catalogue through load-data.js (`DOOR_HQ.catalogue`, `DOOR_HQ.textures`, `DOOR_HQ.decals`): the keys you can
+  place today, with their sizes (`docs/disaster-city/prop-sizes.json`, `measure-props.js`).
+- `node list-models.js --r2` and `ASSET_MANIFEST.json`: what is in the bucket right now.
+- `docs/disaster-city/pack-claims.md` (which pack pieces the city's districts already use, so zones do not all wear the
+  same props) and your zone's kit section in areas-complexes.md.
+A model nobody has placed yet is worth more than one every district already has. Wiring an R2 file that has no
+catalogue row is allowed and wanted (add its row, rerun `node list-models.js`, commit MODEL_LIST.md in the same PR).
+
 ## Limits this order does NOT lift
 - No new game rules or mechanics, no invented names, characters or puzzles; list the idea instead of building it.
 - No new art: reuse what is on R2 (MODEL_LIST.md, `node list-models.js --r2`, packs first, the zone kit). No Meshy, no
