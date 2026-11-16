@@ -7093,6 +7093,7 @@ const TERRAIN_SPRITES = {
     urban_wall:       [`${_T}/urban_wall.png`],
     grass_rocky:      [`${_T}/grass_rocky.png`],
     purple_bog:       [`${_T}/liquids/Liquid_Purple_07-128x128.png`],
+    sludge:           [`${_T}/liquids/Liquid_Green_03-128x128.png`],   // ☢ the radioactive sludge (2026-11-16): the bright green sheet, lit by its style (three-renderer.js _LIQUID_STYLES.sludge)
     /* Black liquid family (2026-07-14): 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. Since 2026-10-26 (THE
        LIQUIDS, above) each wears its own liquid sheet; the 3D fluid top darkens both (three-renderer.js _LIQUID_STYLES). */
     /* spell look fix FX-3 (2026-10-26): Black Ooze wears the glossy purple swirl sheet darkened to black-violet (the dark
