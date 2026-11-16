@@ -13319,6 +13319,64 @@ north at the circle (`henge_s`: x 133, z -30, face 0). FPS there on the probe's 
   full plate stood 0.3 m over the floor). The old room's `sea_chest` rows are OUT of this district: the model is a pirate chest full of gold.
   PROBE TIP: a view's `y` is the FLOOR the camera stands on (the eye is added): `"y": 0` inside a building on level ground; `y: 1.7`
   put the camera over the ceiling.
+
+### PASS 3, THE DRESSING + THE NIGHT (seen in the cloud browser by day and at `hqClockSet(22.5)`, 11 views; live) — WHERE THE PILOT STOPS
+(Belongs to "ANTARCTICA, DISTRICT S".) One pass for two of the brief's five (dressing, atmosphere): S.js `dressing` + `airZones`.
+- **Between the huts** (58 props): the yard's sledge train, drum line, pallets, a bench, a trail board, gulls on the cargo; the huts' lane
+  (crates, a drum, shovels, icicles, wood stacks); the dishes' pad; the garage's apron; crates of core; the tank farm's drum line and
+  extinguisher; on the Weather Field three instrument screens (drawn) and a fallen `satellite` behind tape.
+- **The night:** a drawn lamp by every hut's door and the lit panes (`glow`, no cost), the mast's two red lamps, six flood masts in the
+  district (the only real lights: yard x2, the lane, the garage, the core, the tanks), `chimney_smoke` over five stacks. The room's sky is
+  a day sky; at night the game's clock darkens it and the stars and the falling snow show (seen).
+- **The air:** spindrift (`dust`, white) low over the yard and the cross track, under the room's own snow.
+- **Who:** four Men in Black now (the station's own; no lines beyond the old room's two, which stand in districts H and O).
+- FPS at the proof view: 1.0 (556 calls, 891 k triangles; first build 1.0 to 1.3 at 408 calls). The software renderer cannot show a
+  difference this small; the count that grew is triangles (+22 %), nearly all props.
+- **THE PILOT STOPS HERE: 3 passes of 5 live.** Against a finished city district it is short of the 75 % bar in three places: the insides
+  (one layer of furniture, nothing on the walls or tables), the people (four standing figures, no routines, no encounter table), and the
+  ground between the pads (bare snow, no wear, no decals). Two passes are unspent for after mondo's look.
+
+### ANTARCTICA, DISTRICT S: DECISIONS MADE FOR MONDO (overrule any in one line)
+1. Seven huts with plain stencil names (BUNK HUT, MESS HUT, RADIO, GARAGE, CORE STORE, POWER, BALLOON SHED); the yard's board reads THE STATION · 90 S.
+2. Classic painted Quonset huts (orange, red, green, yellow, blue, steel), not a modern raised station.
+3. The old tape's "something frozen in the core" is the cryo casket (`iso_tank`) in the Core Store; nothing is shown inside it.
+4. The station's people are Men in Black (the old room's own); no scientists (no such unit).
+5. A fallen satellite behind tape on the Weather Field (a prop, no story attached).
+
+### ANTARCTICA: NEEDS A MODEL (found nowhere on R2; what, where, how big)
+- An ICEBREAKER or supply ship, moored at the Ice Pier (P02-05), about 40 m long, 12 m high.
+- A SNOWCAT / tracked tractor (Garage apron and the Traverse, 5 x 2.5 x 2.5 m) and a SNOWMOBILE (yard, lanes, 3 m long).
+- PENGUINS that stand (single + a group of five, 0.9 m) for the Seal Beach and the Floes; the pack's penguin is a swimmer and lies flat.
+- ICE: a fallen ice block (2 to 4 m), a serac / ice pinnacle (6 to 10 m) for the wall's foot and the icefall, an iceberg (15 to 30 m) for the sea.
+- A BLOCK OF ICE WITH A DARK SHAPE IN IT (3 m) for the Ice Core: the game cannot draw see-through ice from parts.
+- A weather BALLOON on its tether (2.5 m ball) for the Balloon Shed; a fuel BLADDER / horizontal fuel tank (6 m) for the Tank Farm (`ind_silo` is a grain silo).
+- A hull HATCH and hull plating pieces (3 m panels) for the Hull in the Ice; the hull is two plain vaults today.
+- A rope LADDER and a fixed-rope anchor for the wall and the crevasse; a marker FLAG on a bamboo (drawn today).
+- Past the edges: an ICE kind for `terrain.edges` (engine, not a model): the range is brown rock with snow tops.
+
+## ANTARCTICA, THE ZONE KIT — for the five district threads that follow (2026-11-16, written by the pilot, district S)
+
+Copy from `docs/areas/antarctica/districts/S.js`. A helper all six want belongs in bake-antarctica.js (board note first).
+- **LOOK FIRST.** A view needs its own `y`: the plot's level x 1.75 (shelf 1.75, row 4 = 7, row 3 = 10.5, crevasse 17.5, wall foot 19.25,
+  behind the wall 17.5 to 21). Faces: 0 looks north, 90 east, 180 south, 270 west. Night: a view's `"eval": "hqClockSet(22.5)"`.
+- **THE CTX** (bake-antarctica.js): `P(key, sx, sy, o)` a blocker on a square's middle (refused on mass or a taken square) · `dec(...)` a small
+  thing off the middle · `native(race, sx, sy, face, say)` · `building(id, [x0, y0, x1, y1, side], h, o, parts)` + `put(B, key, lx, lz, o)` ·
+  `look(id, x, z, rot, a => ...)` drawn parts (`a.box / cyl / quad / roof / sign / shell / frame`, raw parts with `a.P.push`) ·
+  `groundAt(sx, sy)` the ground in metres (a prop's `y` from 1 up is a height from the ROOM's zero: add it) · `sayOf(race, i)` the old
+  room's lines · stages `plan / houses / pieces / dress`, optional `airZones`.
+- **A BUILDING'S WALLS ARE 3.5 m OR MORE.** The `texbuilding` under a look is 3.5 m with a flat roof whatever the look says: a lower shell
+  lets that roof show through. `a.roof(...)` also adds a flat under-sheet: a second roof part laid on a roof (snow) is pushed raw.
+- **INSIDES:** line the walls 0.3 m in with thin boxes, `glow` 0.7 to 0.8 + `gain` 1.7; a flat lit ceiling sheet (`under: true`); a lit
+  floor sheet 3 cm up. Every inside prop `floor: true`. Blockers on square middles; the door's square is the column `texbDoor` picks
+  (lx about -0.87: the square west of the middle on an even front, the middle one on an odd front).
+- **THE PALETTE:** corrugated `urban:MetalCorrugated1a` under a strong tint with `gain` 1.5 (orange needs 0xff8a30 + `gain` 2.0 or it reads
+  brown); timber `urban:WoodGeneric1a` 0x6a5a48; snow on things = `ice` 0xf4f8ff; lit pane = `marble_light` 0xffc070 `glow` 1.0; signal
+  red 0xd02a20; steel dark 0x30343a. Signs: font `stencil`, cream on near-black. `igloo` reads as BRICK PAVING: not for snow.
+- **LIGHT:** `flood_mast` is the zone's real light (night only, 26 m); keep them few. Everything else that shines is a drawn part with `glow`.
+  `chimney_smoke` is a particle prop (give it `y`). `iron_lamp_post`, `lantern_post`, `string_lights` carry no light.
+- **NEVER DIG UNDER 0:** the room's sea is one sheet at y 0 and fills every hollow below it.
+- **WHAT EACH DISTRICT HOLDS AND LACKS:** the board rows and each file's header. The two crossings beside the Plank, the Gap, the Collar's
+  slot, the tunnel's and the opening's cuts are the TOOL's squares: do not close them.
 - **PASS 4, THE ATMOSPHERE.** THE TEN REAL LIGHTS (K.js `LIT`): one lit torch in nine plots and two in the Crossroads; every other
   torch, lantern and crystal only glows (`noLight`). The lava lake's red is the room's third big light. THE AIR (`airZones`, the tool
   turns squares into `shell.atmos.zones`): orange sparks over the hot side, warm motes in the Adit, dust over the lower tier, the high
