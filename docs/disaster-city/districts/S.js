@@ -663,7 +663,15 @@ exports.apply = (ctx) => {
           Object.assign({ s: 'box', p: [-20.9, yd, 1.62], size: [0.08, 0.95, 0.08], n: 25, step: [1.75, 0, 0] }, BR),
         ]);
         /* each bent's legs stand in the middle of their square (a lamp-like post pair: a slim blocker centred on the square, the walk passes either side) */
-        for (let k = 0; k < 6; k++) block('trestle-' + id + '-' + k, x0 + 1.75 + k * 7, z0, 0.6, 2.9, 1); }); }
+        for (let k = 0; k < 6; k++) block('trestle-' + id + '-' + k, x0 + 1.75 + k * 7, z0, 0.6, 2.9, 1); });
+      /* THE ROAD AUDIT (mondo 11-15: "make sure there's no other ... things placed that make no sense"): the line was laid over back-lot
+         buildings the tool had already thrown on these squares, so the deck (6.3 m up) ran through the upper floors of five of them and
+         every bent's legs stood inside one. A back-lot building (dc:in / dc:inM) whose footprint lies under the line is out: open ground
+         under the trestle. A planned building (the Bus depot's north edge) stays: the line passes over its roof. */
+      const p0 = ctx.plotOf['P04-08'], p1 = ctx.plotOf['P07-08'], xa = -ctx.HALF + Math.min(p0.x, p1.x) * 42, xb = -ctx.HALF + (Math.max(p0.x, p1.x) + 1) * 42;
+      for (let i = features.length - 1; i >= 0; i--) { const f = features[i]; if (f.k !== 'texbuilding' || !/^dc:in(M)?\d+$/.test(f.id || '')) continue;
+        const q = ((f.rot || 0) % 180) !== 0, hw = (q ? f.d : f.w) / 2, hd = (q ? f.w : f.d) / 2;
+        if (f.z - hd < 87.2 && f.z + hd > 84.3 && f.x + hw > xa && f.x - hw < xb) features.splice(i, 1); } }
     /* ── P04-11 · THE STADIUM GATE (the plan's park gate): stone gate piers with green caps and an arched head over the path to the stadium,
        iron railings either side. The piers stand on their squares' middles. ── */
     { const gx0 = -63, gz0 = gc(133);

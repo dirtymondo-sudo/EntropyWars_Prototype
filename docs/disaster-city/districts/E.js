@@ -586,7 +586,7 @@ module.exports = { build: function (api) {
             for (let i = 0; i < 5; i++) b.dome(0, zc + i * 0.9, 12.6 - i * 1.75, 7, 9.6 - i * 1.3, ST, i % 2 ? '#d8d2c6' : '#ffffff', { rz: 6.4 - i * 1.2, arc: 180, a0: 0, seg: 28, rings: 8, ds: true, glow: 0.25 });
             b.box(0, zc + 2.2, 15, 3.6, 7, 0.06, WOOD, '#8a6a48'); },
         /* CINEMA: the temple front (red columns under the west marquee, a jade roof on the stepped top) and the word down the tall blade */
-        'P11-07-B1': b => { for (const z of [-7, -2.4, 2.4, 7]) { b.cyl(-b.hw - 2.2, z, 0.3, 0, 3.3, PL, '#b02020', { seg: 10 }); b.cyl(-b.hw - 2.2, z, 0.44, 0, 0.45, MB3, '#d8c8a8', { seg: 10 }); }
+        'P11-07-B1': b => { for (const z of [-7, -2.4, 2.4, 4.9]) {   /* THE ROAD AUDIT (mondo 11-15): the fourth column stood at z 7, in the junction's road square; 4.9 is the last of the pavement */ b.cyl(-b.hw - 2.2, z, 0.3, 0, 3.3, PL, '#b02020', { seg: 10 }); b.cyl(-b.hw - 2.2, z, 0.44, 0, 0.45, MB3, '#d8c8a8', { seg: 10 }); }
             b.roof('hip', -b.hw + 2.6, 0, 5.2, b.hd * 2 * 0.4 + 1.6, 13.3, 2.2, CO, '#2f7a62', { ridge: 'z', over: 1.1 });
             b.vtxt('w', 0, 20.2, 2.0, 1.3, 'CINEMA', '#fff6d0', 1.52, 1); },
     };
