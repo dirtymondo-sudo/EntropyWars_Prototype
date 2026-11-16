@@ -63431,6 +63431,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        Looks only, fired from the casts' own VFX intents (relayed like every spell's), so the guest sees the same.
        Kill-switch: window.EW_NO_SKATER_VFX. */
     _WPN_MODELS.skateDeck = { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_a_skateboard_0915212313_texture.glb', axis: 'z', matte: true };
+    if (typeof window !== 'undefined') window._sk8DeckState = function () { var e = _wpnCache.skateDeck; return e ? { loading: !!e.loading, failed: !!e.failed, ready: !!e.root, queued: !!e.queued } : null; };   // probe handle
     function _sk8Off() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_SKATER_VFX); }
     function _sk8Cols(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
     /* the deck, `len` long, wheels down, nose on +Z; null while the file streams */
@@ -63465,7 +63466,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _capRing(fx, fy, C.a, 0.7, 320, 3);
         var wa = _worldPos(fx, fy), wb = _worldPos(tx, ty), yaw = Math.atan2(wb.x - wa.x, wb.z - wa.z);
         /* the deck under her feet: it follows the body, turns one full flip about its long axis through the air, levels for the landing */
-        var deck = _sk8Deck(ts * 0.34);
+        var deck = _sk8Deck(ts * 0.65);
         if (deck && u && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBodyWorld) {
             var g = new THREE.Group(), id = u.id, last = null; g.add(deck); g.rotation.y = yaw; deck.userData.deck.setFade(0);
             var lines = [];
@@ -63487,9 +63488,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var c = tilePx(tx, ty); _sk8Sparks(c.x, c.y, unitSurfaceZ(tx, ty) + 4, 6, Math.sin(yaw), Math.cos(yaw));
         });
     } };
+    EFFECTS['nrKickflip_tele'] = { arrivalDelayMs: 0, layers: [] };   /* the mapping battle.js asks for (hasMapping 'teleport'); _fireTeleport draws the look above */
+    SPELL_MAP['nrKickflip'] = { teleport: 'nrKickflip_tele' };
     /* GRIND: the deck under her on a slant, sparks off the trucks, speed lines round her */
     EFFECTS['nrGrind_center'] = { layers: [
-        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 520, z: 3, tint: 0xffc65a, size0: 30, size1: 110, opacity0: 0.5 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [320, 520], offsetXY: 10, z: [2, 8], vxRange: 70, vyRange: 70, vzRange: [10, 40], drag: 0.9, size0: [10, 16], size1: [24, 34], opacity0: 0.4 },
     ] };
     EFFECTS['nrGrind_aura'] = { aoeRadius: 0, impactCenterEffect: 'nrGrind_center' };
     SPELL_MAP['nrGrind'] = { aura: 'nrGrind_aura' };
@@ -63498,7 +63501,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var u = _fx5UnitAt(tx, ty), C = _sk8Cols(u), F = _nrvFrame(tx, ty), ts = F.ts;
         var yaw = 0;   /* the way she faces (the renderer's own rule: GAME.getUnitFacing → board dx, dy → world yaw) */
         try { var f = (u && typeof GAME !== 'undefined' && GAME.getUnitFacing) ? GAME.getUnitFacing(u) : (u && u.facing); if (f && (f.dx || f.dy)) yaw = Math.atan2(f.dx, f.dy); } catch (e) {}
-        var deck = _sk8Deck(ts * 0.34), dg = new THREE.Group(); dg.rotation.y = yaw; F.g.add(dg);
+        var deck = _sk8Deck(ts * 0.65), dg = new THREE.Group(); dg.rotation.y = yaw; F.g.add(dg);
         if (deck) { deck.rotation.x = -0.22; deck.position.y = ts * 0.04; deck.userData.deck.setFade(0); dg.add(deck); }
         var lines = [];
         for (var i = 0; i < 6; i++) {
@@ -63506,6 +63509,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var hold = new THREE.Group(); hold.rotation.y = a; sl.position.set(r, ts * rn(0.1, 0.55), 0); hold.add(sl); F.g.add(hold);
             lines.push({ h: hold, s: sl, a: a, sp: rn(0.007, 0.011) });
         }
+        _capRing(tx, ty, C.a, 0.75, 420, 3);
         var c = F.c, z0 = unitSurfaceZ(tx, ty) + 5, sx = -Math.sin(yaw), sy = -Math.cos(yaw);
         _sigRunOwned(F.g, 1100, function (el) {
             var fin = Math.min(1, el / 90) * (1 - _sigClamp01((el - 860) / 240));
@@ -63525,7 +63529,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         x = x || {};
         var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
         var cu = _fx5UnitAt(from.x, from.y), C = _sk8Cols(cu), stacks = Math.max(0, Math.min(6, (cu && cu._momentum) || 0));
-        var yaw = Math.atan2(-ln.dx, -ln.dz), deck = _sk8Deck(ts * 0.38), hold = new THREE.Group();
+        var yaw = Math.atan2(-ln.dx, -ln.dz), deck = _sk8Deck(ts * 0.72), hold = new THREE.Group();
         hold.rotation.y = yaw; F.g.add(hold);
         var arm = new THREE.Group(); hold.add(arm);   /* swings from over her shoulder (behind, high) down onto the target */
         if (deck) { deck.position.set(0, ts * 0.62, 0); deck.rotation.x = Math.PI / 2; deck.userData.deck.setFade(0); arm.add(deck); }
