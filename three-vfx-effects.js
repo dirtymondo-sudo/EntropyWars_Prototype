@@ -63778,6 +63778,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         __playFx: __playFx,
         spawnFlameBurst3D: spawnFlameBurst3D,
+        /* THE HEARTH FIRE (2026-11-16, mondo in Camelot's kitchen: "need fire just like tiles on fire in battles"): the burning tile's own
+           ray-marched volume for a room prop (three-renderer.js _hqProcBuilders.hearth_fire scales it and runs its clock) */
+        buildFlameVolume: function (seed) { return _buildFlameVolume(seed, 1, 1); },
+        flameVolumeTile: function () { return _cfg().tileSize || 128; },
 
         /* THE MATCH WARM (2026-09-20): the loading screen's weapon warm + the in-match drip */
         warmWeapons: _wpnWarm,
