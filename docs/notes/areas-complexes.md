@@ -9567,11 +9567,25 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
     no residents with routines; the grass field takes a second to grow round a walker who has just arrived, so a cut field's standing strips are bare for a moment.
   - WHAT THE NEXT THREAD CAN REUSE (also in THE ZONE KIT): `strips()` + `rows()` (a cut field), `board()` (a painted board read from both sides),
     the grouped `lampParts()` (many posts, one row), `at()` (free decor that reports every piece in the corn at once), the verge scatter.
+- **THE MODEL PASS (mondo 11-16, the wish-list models; seen in the cloud browser, day + night, 8 + 4 + 8 + 9 views) — THE THREAD STOPS AGAIN:**
+  - THE CORN READS AS CORN: `corn_row` (seven stalks, 3.5 m, 3,400 triangles, one mesh) at the foot of the bank on every open square's side that touches
+    the corn, 0.33 m inside the open square, `noBlock` (the tool's bank behind still blocks and still shows over the top and in the gaps). All 389
+    segments: 1.3 M triangles more at the proof view. Every other segment: the hedge shows in a checker. Shipped: TWO SEGMENTS IN THREE (about 260 rows,
+    `(x + y) % 3`). The rows are drawn instanced: 14 draw calls for all of them.
+  - `lantern_post` (wooden post, hanging oil lantern) stands where each drawn lamp post stood; the drawn posts are gone. One small drawn flame sits
+    inside every lantern (0.22 m along the arm, 1.36 m up; one `look` for all) so the district is still lit at night. Two posts that stood on a corn
+    square's edge moved one square onto the track.
+  - PLACED: `tractor`, `plough` x 2, `hay_cart`, `water_trough` (the Hub), `wheelbarrow` x 3, `pitchfork` x 4, `barbed_wire_fence` (behind the lay-by, behind
+    the saucer), `braced_gate` x 2 (a leaf standing open at two fields' gaps), `outhouse`, `firewood_stack`, `wooden_ladder`, `wooden_barrel` x 2,
+    `mailbox`, `cattle_skull` x 3, `beehive` x 2.
+  - FPS (proof view, llvmpipe, warm readings; the whole room grew in every district's model pass): the room without C's corn rows 1.2 to 1.4 fps
+    (1,570 calls, 3.67 M triangles); with a row on every other segment 1.2 (1,584 calls, 4.96 M); with all 389 rows a cold run read 1.0 and 0.6.
+  - `corn_row` is under optimize-assets.js's size limit for far-distance levels (`--lod` wrote none), so thinning was the only saving here.
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
   THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle. (6) a saucer set down in a hidden pocket of The Tall Corn (one prop row to remove). (7) horror touches on the verges (flesh, traps, a corpse by the saucer).
-- **NEEDS A MODEL:** a corn stalk (and a row of them as one instanced piece), a flattened-corn ground sheet, a tractor, a plough, a water trough, a
-  wheelbarrow, a pitchfork, a lamp post (the zone's drawn one stands in), a barbed-wire fence.
+- **NEEDS A MODEL (after THE MODEL PASS):** a flattened-corn ground sheet (a sheet, not a model). PLACED and crossed off: the corn stalk (`corn_row`), tractor,
+  plough, water trough, wheelbarrow, pitchfork, lamp post (`lantern_post`), barbed-wire fence.
 ### PASS 3, THE DRESSING (seen in the cloud browser)
 - **THE PATH ROUND THE LAKE (`plan()`):** one square of dirt from the three gaps in the corn, up the west shore, along the north side above the
   shingle to the Boathouse, down the east bank past the jetty to the boardwalk's far end, back along the south shore past the picnic ground.
@@ -12751,6 +12765,72 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
 - **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, falls, doors: the offline graph + the plan's walk check + pictures);
   the rock is square blocks 3.5 m wide (no cave-rock model exists: NEEDS A MODEL); H and A are a first build only (their rows on the
   board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
+
+
+## OUTER SPACE, THE ZONE KIT — for the nine district threads that follow (started 2026-11-16 by the pilot, the Moon's district M)
+
+- **Read first:** "OUTER SPACE ON PLOTS" above, your file's header (STANDS TODAY / NOT YET), `docs/areas/space/districts/M.js` (the pilot).
+- **ctx (bake-space.js), squares are your WORLD's (sx, sy); `ctx.sq(plotId, lx, ly)` gives them from a plot's own 0..11:**
+  `P(key, sx, sy, o)` a blocker on a square's middle (one a square) · `dec(key, sx, sy, o)` decor off the middle (may share) · `on(key, sx, sy, o)`
+  exactly on the middle, sharing (a terminal on a table: give `y`) · `native(race, sx, sy, face, say)` · `sayOf(race, i)` an old room's own line ·
+  `building(id, [x0, y0, x1, y1, side], h, opts, parts)` a walk-in `texbuilding` + its look (the Estate's helper; the ground under it is
+  levelled; `ctx.BUILT[id]` + `put(B, key, lx, lz, o)` furnish it in its own frame) · `look(id, sx, sy, rot, fn)` a drawn piece (an `arch` row;
+  sx / sy may be fractions) · `line(x0, y0, x1, y1, w, color)` a line on the ground in square units (tyre tracks, footprints, cables) ·
+  `grime(kind, sx, sy, r)` a floor decal (`scorch` under a lander) · `flatten(x0, y0, x1, y1, h, ch)` level squares · `hAt(sx, sy)` ·
+  `squares(plotId, chars)` · `free(sx, sy)` · `feat(row)` any terrain row · `airZones(ctx)` (export) the air by district.
+  Sheets: `HULL` (ribbed metal), `PLATE` (diamond plate), `PANEL` (painted tin: with `gain: 2.2` and a white tint it is a white hull),
+  `GRILL`, `TRUSS`, `GLS` (dark glass, glows), `STRIPE` (warning stripe).
+- **A LANDFORM IS NOT YOURS TO PLACE IN YOUR FILE:** craters, mesas, ramps, rock are in `docs/plans/world-zones/draw-space.js` (the tool
+  row). Need one moved or added: take the tool row for that change, note it on the board, free it.
+- **REAL-SIZE ROWS (catalogue, group 'Outer Space'):** the Meshy space props were sized for the old 132 m rooms (the lander 3.2 m). Same
+  files at the size the real thing has: `lunar_lander_full` (7 m), `dish_big` (8.5 m), `saucer_big` (15 m span), `tripod_big` (22 m, the
+  Martian's tripod). Placed so far: the first two (district M). A blocker bigger than a square: add its other squares to `ctx.taken`.
+- **WHAT READS, WHAT DOES NOT (seen on screen):** a dark sheet painted by the square (obsidian on a crater floor) draws black squares with
+  stepped edges: keep the ground sheets close in tone and let the HEIGHTS and the lights show a form. White needs `gain` (the urban metal
+  sheets are dark). `GLS` with a blue tint + `glow: 0.45` on a `roof` part of form `shed` = a solar panel. Lines 0.3 m wide in 0x44464c
+  read as tyre tracks from the air and from the ground. The rock (`gen` look rock, edge 2, jitter 0.4, topNoise 1.1) reads as a ridge.
+- **THE FITS LIST (MODEL_LIST.md §6, §7, §12b, §13 and the live catalogue searched for: space, moon, lunar, mars, astro, alien, ufo, saucer,
+  rocket, satellite, dish, antenna, crater, asteroid, meteor, rover, lander, flag, sci-fi, pod, capsule, solar, telescope, pyramid, obelisk,
+  monolith, planet, shuttle, cryo, crystal, camera, film, studio, tank, console, server, generator, container, crate, barrel):**
+  HEROES `lunar_lander(_full)` `mars_rover` `dish(_big)` `saucer_lg` / `saucer_big` `space_shuttle` (9 m) `satellite` `space_station` (14 m
+  span) `escapepod` `spaceship` `ufo` `decor_tripod_machine` / `tripod_big` `rocket_engine` `astronaut` (a dead one) `hullplate` `nacelle`
+  `dockring` (the ship's wreck pieces) `obelisk` (7 m) · ROCK `asteroid_a` `asteroid_b` (4 m, good boulders) `cave_stone` `crystal_cluster`
+  `meshy_crystal_shard(s)` `meteorite_plinth` · BASE `ind_container` `generator` `cable_drum` `iso_tank` `meshy_molten_cryo_tube` `pod_bed`
+  `pod_window` `server_rack` `radio_console` `retro_console` `crt_terminal` `security_camera` `flood_mast` `psx_supply_crate_*`
+  `psx_metal_barrel_mp_*` `camping_tent` `cot` `steel_table` `mini_fridge` `retro_radio` · FILM (the Sound Stage) `film_camera`
+  `studio_camera` `studio_light` `directors_chair` `film_projector` `mixing_console` · STARS `telescope` `brass_telescope` `star_projector`
+  `star_chart` `star_dome` `floating_orb` · SKY MODELS (§7, horizon builders, not props): `moon` `earth` `alien` (a planet) `star` `solar`.
+  ONLY TWO pieces of the Molten Maps sci-fi pack are on R2 (the cryo tube, the sleeper casket). NOT ON R2 AT ALL: see NEEDS A MODEL in
+  the pilot's section.
+
+## OUTER SPACE, DISTRICT M — THE MOON'S MARE, the pilot (2026-11-16; file `docs/areas/space/districts/M.js`, 7 plots)
+
+- **FRAME RATE (the probe's software renderer, the Lander view x 28 z 68 face 25, 6 s, second read):** first build 2.3 · after pass 1: 2.2.
+- **PASS 1, EXTERIORS (seen on screen, day = the Moon's one sky):** THE LANDER at its real size (`lunar_lander_full`, 7 m) on its pad with
+  a blast mark, THE FLAG (a drawn pole, rod and cloth: bleached white, as the real ones are), the TV camera on its tripod
+  (`studio_camera`), footprints from the Standing Door to the ladder, round the flag and to the camera; THE TRACKS as two tyre lines from
+  the pad east and north to the rover, the crashed probe (`satellite`) in its own small crater; THE HABITAT as a white pressure module
+  (painted tin lifted to white, barrel roof, red stripe, an airlock porch with a lamp, portholes that glow, the plate THE HABITAT, a mast
+  with a red beacon, a vent, two tanks on a plate) with a solar field (three rows), a power hut's worth of gear (generator, cable drum,
+  container, crates, barrels); THE DISH at its real size (`dish_big`, 8.5 m) on its platform with two consoles at the ramp's foot and a
+  cable up the ramp; the Lander's yard (a console, a cable, crates); seven boulders (`asteroid_a/b`) and eight stones on the open dust.
+  Tool, same PR: `ctx.line`, `ctx.grime` (+ the rooms' rows in `DOOR_HQ.decals`, marker `SPACE72-DECALS`), the Moon's tracks in the darker
+  sheet, four real-size catalogue rows.
+## THE CAVERN, DISTRICT K — the pilot (2026-11-16, the Cavern zone thread; file `docs/areas/cavern/districts/K.js`, 13 plots)
+
+A SLIP TO KNOW ABOUT: the first build's PR (#1807) reached main WITHOUT the room in data.js (my merge helper took main's data.js on a conflict
+and its rebake failed unseen); the docs and the tool were live, the old rooms still served. Pass 1's PR put the room, the links, the hub,
+the bays and the retired rows in. The helper now stops when the bake fails.
+
+- **PASS 1, THE ROCK AND THE LANDMARKS (the "exteriors" of a cave).** THE ROCK KIT: the plan's walls are square blocks 3.5 m wide, so every
+  K plot's wall feet wear boulders (squashed `dome` parts half in the wall), stalagmites (tapered `cyl`, point up) and now and then a
+  buttress (a tapered rib floor to roof), one `arch` row a plot (`cav:<plot>:rock`), on `rocks_5` under four pale tints (a dark tint on
+  `cave_wall` drew BLACK spikes: the first try); the hot side's are `obsidian` untinted (its sheet has glowing veins). THE NEEDLE: a
+  dripstone column floor to roof in the Hall (two tapered `cyl` meeting, a flow-stone foot), a ghost wall for its body. THE ROPE
+  BRIDGE's two rails; THE LIP's rail with the long stair's head left open. LEVEL −6: a concrete lining on every wall of the chamber with a
+  hazard band at its foot, a concrete portal round the blast door (the link's own bulkhead leaf) and LEVEL −6 stencilled over it. THE
+  OUBLIETTE: four cells along the west wall, stone walls between them, each floor a step down (`dip`). THE GROTTO: a pocket with a
+  pool off the River Chamber's north-west corner (`plan()`). Seen on screen: the Needle, Level −6, the cells, the hot side.
 
 - **PASS 2, THE INSIDE (the Temple of the Deep's dry room; seen on screen, three views, no errors):** the hall reads as a rotunda: a ring
   of twelve 9.4 m columns under a ring beam with a gilt line (`gold` = the better gilt sheet), a false dome (a two-sided `dome` part) with a
