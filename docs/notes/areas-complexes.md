@@ -4505,6 +4505,55 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
 7. A district look in the tool (lamp colour, banner) shared by the zone, as the city's LOOKS.
 8. Encounter table, PvP arena pick, the Ice Queen: mondo's.
 
+**6. ADDED BY THE SKI LODGE THREAD (district K, 2026-11-16):**
+- THE MODEL LIST FIRST (mondo 11-16). Catalogue rows on R2 that fit a snow zone and that no Mountains file had used: `flood_mast` (a real night light, 26 m),
+  `festoon`, `pa_speaker`, `ticket_booth`, `turnstile` / `metro_gate`, `rope_stanchion`, `surfboard_rack`, `scarf_rack`, `key_rack`, `brochure_rack`, `map_table`,
+  `hw_fence` (a wooden fence, the Halloween pack), `item_police_barricade`, `traffic_barrel`, `telescope`, `radio_console`, `field_radio`, `arms_trophy`,
+  `pinball_machine`, `psx_armchair_*` / `psx_sofa_*`, `psx_metal_barrel_mp_*`, `wrapped_pallet`, `hand_truck`, `wolf`, `eagle`, `quarter_pipe`, `riser_*`.
+  Looked inside the Christmas pack's one file (`Christmas.dae`, 69 nodes): every piece has a row but `Snow` .. `Snow.005`, `Christmas_star`, `Ribbon`,
+  two spare hats; the six `Snow*` are the snow caps of the pack's own house and trees, not loose drifts. Nothing ski-shaped is on R2 (no skis, snowboard,
+  snow gun, groomer, snowmobile, netting): K.js header, NEEDS A MODEL.
+- `hug: true` on an `arch` row lays every corner of every part on the ground under that corner. A box 24 m long is then a straight line from the ground
+  at one end to the ground at the other, a fixed height over both: the lift's cables. `look()` does not pass it: set it on `ctx.ARCH[ctx.ARCH.length - 1]`.
+  The ground it reads includes `ramp` rows (a kicker lifts whatever hangs over it): keep hugging parts' corners off ramps.
+- A `ramp` row laid ALONG the fall line with `h0 = h1` lies on the slope (the compile adds the ground at each end), and its `edge` rounds BOTH flanks by a
+  smoothstep: `w: 17.5, edge: 7, h 3.3` is a snow wall with a curved way up, a 3.5 m top and a back to roll down, in one row. A ramp laid ACROSS the hill
+  is level along its width: down a slope such pieces step (the first delivery's half-pipe).
+- A roof whose gable should sit flush on the wall with the eaves hanging past it: size = the wall's own, `over: 1.2`, `keyUnder` = the soffit's sheet.
+- A blocker that is only a look (a tower's leg): mark its square in `ctx.taken` and add `feat({ k: 'wall', ..., ghost: true, rail: false })` over it.
+- The probe and the board: `hq.skateIssued(true); hq.skate(true); dev.press('w', true)` rides; on the software GPU the game steps 1.4 times a second, so
+  a ride goes nowhere. Swap `dev.renderer().render` for a no-op while it rides (probe-fast.js does the same during the load) and sample `dev.walk()`.
+- FPS in a probe: count requestAnimationFrame over 10 s at a fixed view and read `dev.renderer().info.render` (calls, triangles). The frame rate is the
+  software GPU's (about 1.5): only good against the same view before the change.
+
+
+## THE SKI LODGE + SLOPES, THE DISTRICT THREAD — district K, pass by pass (2026-11-16, second side)
+
+File `docs/areas/mountains/districts/K.js` only; rebake `node bake-mountains.js`. Its header is the brief: what stands, the ride results, what the model
+list holds for the next passes, the models it needs. mondo 11-16: a second district thread in each zone; the pilot is N (the North Pole village).
+- **THE FIRST LOOK** (playtest_city.js, 12 views + five board rides): the three log buildings read near black with olive windows; the lift was six bare
+  posts with no cable, standing ON the Big Jump's line (one in the kicker's run-up), its "chairs" two ferris-wheel cabins lying on the snow (a prop `y`
+  from 1 m up is measured from the room's floor, and the slope there is 5 to 13 m over it); the whole district is one open snow field 126 m wide, so no
+  run read as a run. THE RIDES (W held from the top): Black Run, Big Jump line, the east column (Half-Pipe floor, Slalom, Bunny Slope) all ride clean in
+  about 11 s at the board's top speed; the kicker gives about 2 m of air; the Half-Pipe's straight banks threw the board over their tops and out of the district.
+- **PASS 1, EXTERIORS** (seen on screen, 11 views; FPS of the two proof views on the probe's software GPU, before -> after: the Lodge Yard 1.41 -> 1.86,
+  732 -> 750 draw calls, 889 k -> 818 k triangles; from the Top Station 1.43 -> 1.80, 532 -> 632 calls, 879 k -> 869 k triangles):
+  - K.js `chalet` is the district's log building (the Lodge, the Rental Hut, the Top Station): log walls with `gain`, crossed log ends at the corners, a
+    stone foot, a snow roof flush on the gable with 1.2 m eaves, a lit window every 3.5 m (`win`: warm pane, dark timber frame, snow on the sill), drifts,
+    icicles, a wall plate, a ridge log. `lodge` adds the glazed gable, the porch (deck, posts on stone, rail, snow roof), the gabled way in, lanterns, a
+    stone stack with the catalogue's `chimney_smoke`. `rental` adds the hatch + awning; the board rack is the catalogue's `surfboard_rack`. Boards: K.js
+    `board`, the one face `alfa`, cream on dark green. `ctx.cabin` is no longer called from K (it is still the Warming Hut's, district P): no tool change.
+  - THE LIFT: `wheelhouse` at each end (a bullwheel under a red machine housing on two columns), four gantry `tower`s (legs 17.5 m apart on square
+    middles, ghost walls; the Big Jump passes between them), two cables and 16 built chairs as one `hug` row, the catalogue's `ticket_booth` at the
+    bottom. The two ferris cabins are gone. Nothing moves: chairs that run, or a chair the player rides, is a new mechanic and was ASKED of mondo.
+  - THE HALF-PIPE: two rounded snow walls, each four `ramp` rows along the fall line (THE ZONE KIT, point 6). Ridden: the board climbs a wall, rolls over
+    its top and down its back (W held and no steering). It is not a vert pipe: it does not throw the rider back in. ASKED of mondo (the catalogue has a
+    plywood `quarter_pipe` with real vert; a line of them steps down a slope).
+  - Open for the next passes: each run ends on a building's back wall (nets and SLOW boards, pass 3); no tree lines or fences between the runs (pass 3);
+    the insides (pass 2); night lights, the catalogue's `flood_mast` (pass 4).
+- To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
+  x 21.4, z -59.3 (the probe, 11-16).
+
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
 mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
