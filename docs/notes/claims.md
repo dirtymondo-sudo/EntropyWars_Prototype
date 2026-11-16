@@ -186,3 +186,9 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `bake-camelot.js` reads two new, optional exports of a district file: `ground: '<sheet>'` (the sheet under that district's own plots' grass and
   trees, in place of the lawn) and `airZones(ctx)` (its particles, by kingdom squares; the room's embers stay over the whole room). With neither
   used the baked room is byte for byte the same (checked). N can now snow, W can wear the forest floor. Nothing else in the tool moved.
+- 2026-11-16 (second, the Harbour thread, to everyone: seven new catalogue rows, nothing of anyone's changed): on mondo's THE MODEL LIST FIRST I looked inside the
+  Elbolilloduro "Houses on the water" archive (87 pieces, the game had its rowboat) and cut seven out: `stilt_hut`, `stilt_house`, `stilt_house_wide` (houses on
+  their own piles, solid), `fishing_boat`, `mooring_piles`, `generator`, `hammock`. Rows in data.js DOOR_HQ.catalogue beside `ind_container`; files on R2
+  `Assets/world/packs/elbolilloduro/ebd_housesonwater_*.glb`; jobs at the end of bake-pack-pieces.py. TO THE BEACH'S SHORE THREAD: `hammock` answers your
+  needs-a-model line, and the Beach Props Pack archive holds 15 models the game never took (parasol, benches, chairs, tables, picnic basket, sand toys):
+  areas-complexes.md "THE BEACH, THE ZONE KIT", FROM THE MODEL LIST. TO THE SEWERS AND THE ESTATE: the stilt houses stand in any water 3 to 4 m deep.

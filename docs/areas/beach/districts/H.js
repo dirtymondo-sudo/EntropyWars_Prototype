@@ -40,8 +40,13 @@
    - The Dutchman's bulwarks, deck stairs, crates and cannon are her deck room's rows and are not drawn at the berth; she is not redesigned
      (the world plan wants her rebuilt inside and out: not this file's job without mondo's word). The brow lands on her rail, not in a port.
    - The Roads have buoys and no ship. No kelp (4.5 m tall in 3.5 m of water). No residents with routines, no fight set up.
-   NEEDS A MODEL (nothing stood in): a ship lying in the Roads (a trawler, a tug, a freighter), a harbour crane, gulls, coils of heavy rope,
-   fish boxes, an iron mooring ring / cleat (the bollards are drawn).
+   FROM THE MODEL LIST (11-16, mondo's THE MODEL LIST FIRST; seen on screen): the Roads have a house on piles with a fishing boat lying to it,
+   the Mouth a hut on piles and its rowboat, a fishermen's house on piles stands off the skiff jetty (the Elbolilloduro Houses on the water
+   scene: seven pieces cut out of it, bake-pack-pieces.py); a boat hauled up the slipway, a rowboat at the water steps, mooring piles in the
+   basin, the shed's generator, mondo's scaffold crane on the wharf, seals on the Breakwater.
+   NEEDS A MODEL (nothing stood in): a ship lying in the Roads (a trawler, a tug, a freighter; the only ship models are the Dutchman and the
+   Triangle's ghost wreck), gulls (the animals list has a crow, no sea bird), coils of heavy rope, fish boxes, an iron mooring ring / cleat
+   (the bollards are drawn).
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
      tailor(ctx)  before the heights are made: the plan's squares. Turn each plan building ('B') you build back into its ground with
                   ctx.setRect(x0, y0, x1, y1, ch) / ctx.cell[y][x] = ch (the tool refuses to bake while a 'B' is left that nobody builds).
@@ -241,5 +246,24 @@ dress(ctx) {
     P('ship_cannon', 26, OY + 2, { face: 90 }); put(SHED, 'outboard_motor', -3.6, 3.6, { face: 0 }); put(SHED, 'ship_wheel', 4.9, 0, { y: 1.7, face: 270 }); put(SHED, 'ships_bell', -4.9, -2.0, { y: 1.9, face: 90 });
     [42, 47, 55].forEach(x => P('railway_lantern', x, 53)); [40, 45, 50, 54].forEach(() => { rnd(); rnd(); rnd(); }); dec('ocean_lobster', 44, 53, { anim: false }); dec('psx_wooden_crate_2', 49, 53); dec('sea_chest', 56, 54); dec('lobster_traps', 41, 53);
     feat({ k: 'scatter', key: 'ocean_rock_8', n: 10, x: mx(42), z: mz(OY + 4), r: 22, seed: 63, sea: true });   // (no kelp: 4.5 m tall in 3.5 m of water)
+    /* ── THE MODEL LIST FINDS (2026-11-16, mondo's THE MODEL LIST FIRST: "look at the model list ... to see what else they could add"). The first
+       pass searched the prop catalogue only. MODEL_LIST.md and the pack archives held more: the Elbolilloduro HOUSES ON THE WATER scene (87
+       pieces, only its rowboat was in the game; seven more cut out now: catalogue `stilt_hut`, `stilt_house`, `stilt_house_wide`,
+       `fishing_boat`, `mooring_piles`, `generator`, `hammock`), mondo's own scaffold crane (`babel_crane`), the ocean pack's resting seal.
+       A stilt house's foot is its piles' bottom: `y: 0.6` on the 3.5 m sea bed stands its deck 0.7 m over the water. ── */
+    const stilt = (key, x, z, face, sq) => { props.push({ key, x: r2(x), z: r2(z), y: 0.6, face }); sq.forEach(q => { spot(q[0], q[1], key, 'sea', true); taken.add(q[0] + ':' + q[1]); }); };
+    const adrift = (key, x, z, face) => props.push({ key, x: r2(x), z: r2(z), y: -0.5, hover: 0.55, face });
+    stilt('stilt_house_wide', mx(41), mz(78), 0, [[40, 77], [41, 77], [42, 77], [40, 78], [41, 78], [42, 78], [40, 79], [41, 79], [42, 79]]);   // THE ROADS: a house on piles among the mooring buoys, a boat lying to it
+    adrift('fishing_boat', mx(41), mz(78) + 6.3, 0);
+    stilt('stilt_hut', mx(33), gz(80), 0, [[33, 79], [33, 80]]); adrift('rowboat', mx(33) - 3.2, gz(80), 90);                                    // THE MOUTH: a hut on piles east of the channel, its rowboat
+    stilt('stilt_house', gx(26), gz(69), 90, [[24, 68], [25, 68], [26, 68], [27, 68], [24, 69], [25, 69], [26, 69], [27, 69]]);                    // off the skiff jetty: the fishermen's house
+    adrift('fishing_boat', gx(26), gz(69) + 5.0, 0);
+    props.push({ key: 'fishing_boat', x: gx(26), z: gz(44.6), face: 90 });                                                                       // a boat hauled up the slipway
+    adrift('rowboat', mx(31) - 0.4, mz(44), 80);                                                                                                 // a rowboat at the water steps, under the gantry
+    props.push({ key: 'mooring_piles', x: mx(24), z: mz(47) }); props.push({ key: 'mooring_piles', x: mx(24), z: mz(44) });                      // piles in the boat basin's shallows
+    P('generator', 29, OY + 4, { face: 90 });                                                                                                    // the shed's generator, against its east wall
+    props.push({ key: 'babel_crane', x: mx(31), z: mz(36), face: 180 });                                                                         // THE WHARF'S CRANE (mondo's scaffold crane), on the wharf's back row
+    props.push({ key: 'ocean_seal_resting', x: r2(mx(40) + 0.6), z: r2(mz(39) - 0.5), face: 200 }); props.push({ key: 'ocean_seal_resting', x: r2(mx(43) - 0.4), z: r2(mz(39) - 0.7), face: 150 });   // seals hauled out on the Breakwater
+    props.push({ key: 'ocean_seal_resting', x: r2(gx(26) + 2.2), z: gz(47.2), face: 20 });                                                        // and one at the slip's foot
 },
 };

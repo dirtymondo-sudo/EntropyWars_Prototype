@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 1026 |
+| Asset pack | yes | 1033 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -2351,6 +2351,19 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ind_skip_full | `Assets/world/packs/domi236_industrial/ind_skip_full.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 | ind_vent | `Assets/world/packs/domi236_industrial/ind_vent.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 
+### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (8)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| fishing_boat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_fishing_boat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| generator | `Assets/world/packs/elbolilloduro/ebd_housesonwater_generator.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| hammock | `Assets/world/packs/elbolilloduro/ebd_housesonwater_hammock.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| mooring_piles | `Assets/world/packs/elbolilloduro/ebd_housesonwater_mooring_piles.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| rowboat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_house | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_house.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_house_wide | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_house_wide.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stilt_hut | `Assets/world/packs/elbolilloduro/ebd_housesonwater_stilt_hut.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) — Meshy AI (8)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2687,12 +2700,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | pd_lever | `Assets/world/props/meshy/pd_lever.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; the plot dungeons, mondo 2026-11-15: "Make a new lever"; originals in project files dungeons/meshy/) |
-
-### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| rowboat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Spear (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 
