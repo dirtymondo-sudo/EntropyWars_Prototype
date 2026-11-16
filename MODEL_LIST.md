@@ -28,7 +28,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Meshy AI | no | 918 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
-| Claude in code (three.js, no file) | no | 80 |
+| Claude in code (three.js, no file) | no | 82 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 5 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
 
@@ -2275,6 +2275,25 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | instrument_violin_lying | `Assets/world/packs/instruments/orchestral/Violin.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
 | instrument_whistle | `Assets/world/packs/instruments/orchestral/Whistle.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
 
+### Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) — Meshy AI (14)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| fae_bloom | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_bloom_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_bloom_violet | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_blue | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_gold | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_small_blue | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_small_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_small_violet | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_flower_violet | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| woods_gasplant | `Assets/world/props/meshy/ew_plant_gasplant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| woods_healflower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| woods_thornvine | `Assets/world/props/meshy/ew_plant_thornvine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+
 ### Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) — Asset pack (13)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2553,14 +2572,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | spell_one_angel_wing | `Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_bat_wing | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_dragon_wing | `Assets/characters/gear/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
-
-### Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) — Meshy AI (3)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| woods_gasplant | `Assets/world/props/meshy/ew_plant_gasplant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
-| woods_healflower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
-| woods_thornvine | `Assets/world/props/meshy/ew_plant_thornvine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 
 ### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 
@@ -3232,12 +3243,12 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | Street Lamp | `Assets/world/props/meshy/streetlamp/Street Lamp.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | UFO_Low_Poly | `Assets/world/props/meshy/UFO_Low_Poly.fbx` | Asset pack | 3D Game Ready UFO Spaceship · FlexUnit · CC0 | sprites.js |
 
-## 8. Made in code — procedural stand-ins still in the catalogue (80)
+## 8. Made in code — procedural stand-ins still in the catalogue (82)
 
 Catalogue rows with a `proc` and no file: Claude drew them from three.js primitives. These are the props that still
 want a real model; §10 ranks which ones are worth one. (Pack-backed procs — bats, traps — and the car pack are not here.)
 
-`barber_mirror`, `bigtop`, `car_panel`, `cell_bars`, `chimney_smoke`, `clipboard`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_logo_wall`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `graffiti_wall`, `hearth_fire`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `lap_pool`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `street_drain`, `sun_viewport`, `temple_dome`, `thoughtform`, `track_bed`, `tube_map`, `wall_padding`, `wall_plaques`, `warning_tape`, `world_clocks`
+`barber_mirror`, `bigtop`, `car_panel`, `cell_bars`, `chimney_smoke`, `clipboard`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_logo_wall`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `goo_tendril`, `graffiti_wall`, `hearth_fire`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `lap_pool`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `street_drain`, `sun_viewport`, `temple_dome`, `thoughtform`, `tiki_torch`, `track_bed`, `tube_map`, `wall_padding`, `wall_plaques`, `warning_tape`, `world_clocks`
 
 **Procs that already wear a real model** (91: the builder hangs a model file over its own pieces, which only
 show if the file fails) — counted under that model's maker, not as code:

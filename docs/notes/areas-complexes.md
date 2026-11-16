@@ -5194,9 +5194,12 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     `hw_pumpkin*`, `hw_scarecrow`, a `rail` row `model: 'ranch'` and `chicken` all read. `psxg_stepping_stone_1/2` as a `scatter` is a path.
   - **THE ROOM'S TEN LIGHTS (zone-wide, the engine's):** fifty props in this room carry a `light`; ten get one, in row order S, H, O, T. A
     district far down the list lights its night with drawn glow only. Wanted from the tool / engine row: the lights nearest the walker.
-  - **SMOKE, A CLOUD, DRAWN:** puffs = a `dome` (plain paint, `glow` 0.3) over a `cyl` belly that closes to a point (`r` 0.05 -> `r2` = the
+  - **MONDO 11-16, THREE RULES FROM HIS FIRST LOOK AT THE OCEAN:** NEVER model smoke in 3D (drawn puffs "look terrible"; the game's own
+    smoke is the soft sprites of `sea_vent`). A torch is a VARIANT OF THE GAME'S TORCHES (`cave_torch`, `wall_torch`, the new taller
+    `tiki_torch`), never a drawn pole with a glowing cone. A big model must never stand cut off by the water: tentacles = `goo_tendril` (the symbiote's), never the Meshy `tentacle` models. In a sea: `{ key: 'goo_tendril', y: -0.5, h }`.
+  - **(WITHDRAWN for smoke by the rule above; kept for a cloud only) A CLOUD, DRAWN:** puffs = a `dome` (plain paint, `glow` 0.3) over a `cyl` belly that closes to a point (`r` 0.05 -> `r2` = the
     dome's, `cap: false, ds: true, glow` 0.4): seen from under, an open belly is a ring round a hole. Seven puffs growing 3 -> 13 m read as a plume.
-  - **FIRELIGHT IN A WINDOW:** a plain quad, tint 0xffa040, `glow` 0.75, behind drawn bars. A torch's flame: tint 0xff5a00, `glow` 0.7 (0.9 washes to cream).
+  - **FIRELIGHT IN A WINDOW:** a plain quad, tint 0xffa040, `glow` 0.75, behind drawn bars.
   - **TRIANGLES:** a Meshy prop is about 10,000 triangles whatever its size (a skull, a fern, a flamingo); thirty of them is 0.3 M. Count before dressing.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
@@ -5352,6 +5355,20 @@ sea has things to sail to.
   - **FRAME RATE, FINAL:** the cloud still says 0.2 fps at the Landing and 1.2 mid-sea (it said 0.2 and 1.6 before pass 1: no difference
     it can measure). Triangles drawn, shadow pass included: the Landing 1.62 M -> 2.72 M, mid-sea 1.61 M -> 2.40 M (the Harbour's and
     the Triangle's work of the same hours is in those numbers; the room has no far cull, so every district's props are drawn from everywhere).
+  - **MONDO'S REVISION 1 (11-16, after his first look; seen on screen by day and at 22:30):** his words: "don't 3d model smoke, it looks
+    terrible. the tiki torches need to be variants of the torches already in the game, just longer. Those kraken arms need to be gone,
+    they are clipped off. look at how the kraken or the symbiote does their tentacles in their spell vfx animations and do tentacles
+    like that." DONE: (1) THE ASH PLUME is out (nothing stands in for it). (2) every drawn bamboo torch is out; NEW catalogue prop
+    `tiki_torch` = the floor torch `cave_torch` itself (stand, bowl, its own flame and flicker) half as tall again; ten stand on the
+    island and one on the castaway's islet. (3) the six big `tentacle` props are out; NEW catalogue prop `kraken_arms` (three-renderer.js)
+    = the kraken's Constrict effect (`_fx1Tentacles`) as a standing thing: the same two arm models in the spell's unlit look, five in a
+    ring, each fitted by its BOTTOM so it rises whole out of the surface, up one after another, tips curling in over the boat, a hold,
+    down again, on a 15 s loop, foam where each breaks the water. A `float` prop: it stands on any sea room's surface.
+    REVISION 2 (11-16, his word on that ring: "no, those are still the kraken arms that are messed up. do the tendrils from the symbiote
+    like the radiative sewers did in its sludge"): `kraken_arms` is DELETED from the game (proc and catalogue row); the kraken's place
+    is seven `goo_tendril` (the Sewers' Sludge Pit's prop: the symbiote's black spell tendrils, 2.6 to 5.6 m, their feet typed half a
+    metre under the surface) round the taken boat. The Meshy `tentacle` / `tentacle2` models are never used for a standing arm again.
+    STILL DRAWN THE SAME WAY AS THE PLUME, HIS CALL: the waterspout's cloud (grey domes over the funnel).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -6683,6 +6700,14 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   PICTURE: the ring's fairy and the gnome (three probe views missed them). PROBE TIP: a person within 6 m straight ahead of the camera is
   cleared out of the way (`HQ_CROWD_RULES.clear`): photograph people from 8 m or more, or off to one side.
   The ring's harp IS a harp (seen close: strings); edge-on from the path it reads as a bar. Decision 6 above is superseded by this.
+- **THE GIANT FLOWERS (mondo 11-16: "what if we add giant flowers to the mix ... try making variations of the flower with tinting or recoloring it")**:
+  R2 holds ONE flower model, the heal flower (`ew_plant_healflower.glb`). New catalogue rows on that file: `fae_flower` (3.6 m) + `_pink`,
+  `_violet`, `_blue`, `_gold`; `fae_bloom` (6 m) + `_pink`, `_violet`; `fae_flower_small_pink / _violet / _blue` (0.8 m). THE PETAL COLOURS
+  (three-renderer.js `_hqPetalMat`): a catalogue row's `petal: 0xRRGGBB` recolours the pale, bright texels of the model's sheet (the white
+  petals) on a canvas when the model lands and leaves the stem, leaves, gold trim, heart and dirt as painted; one sheet a colour, cached;
+  the file is never touched; any pale-petalled model can use it. In the forest: 18 tall and giant flowers on whole squares in every glade,
+  13 small coloured ones. SEEN (two probes): white, pink, violet and blue read; gold not caught in a picture. FRAME RATE at the pond: 1.55
+  (before the flowers 1.2 to 1.4: no cost seen), draw calls 462 -> 551. The model is about 8,000 triangles: keep counts in the tens.
 - **WOULD DO NEXT**: a willow and reeds at the pond when a model exists; sound (no hook); the ring's
   harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
   forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.
@@ -6745,6 +6770,16 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   THE SNOW PINE IS A CLUMP, MEASURED: one planted pine (`xmas:Trees_0*`) stands trunks up to 16 m from its foot. One planted 15.7 m from the
   Wayside Hut stood a trunk INSIDE it, through the bed (seen only on the night walk). `noTrees` now clears 19 m round each hut. Any district
   that builds in a snow-pine zone (the Mountains too) needs the same.
+- **PASS 5, THE POLISH (seen, a walk of 14 views + two fix runs)**: THE PASS: the cleft got its own rock faces 3.2 m apart for 25 m and snow on
+  its floor (past the room's edge the ground is the kingdom's lawn and a cobbled path), and the trail plants no saplings there: ONE engine line
+  (three-renderer.js `_hqPlantPassageTrees`: a link end's `passage: { trees: false }`) + that option on `DOOR_HQ.links` `northpole_camelot` end b
+  (nothing moved; board note). A dressed fir (`xmas_tree`) with gifts by the Wayside Hut; pack rocks at the gate crags' feet.
+  LEFT AS IT IS (not this district's, told on the board): a few sprigs of the treeline belt still show high in the cleft; the north bridge
+  has modern steel rails (the tool's bridge row); the residents' looks and places are the engine's.
+- **FIVE PASSES LIVE, THE THREAD HAS STOPPED** (the brief: no sixth). What I would do next, for mondo to pick: (1) a per-zone treeline kind
+  so the belt past the snow is snow pines (the tool's shell, one row); (2) the snow pine clumps off the track and the road (the tool's tree
+  grower: a `treeIn` per zone); (3) who lives here (npc-system.md: levels, a cap, a refill); (4) sound (wind, a fire's crackle: none on R2);
+  (5) the models on the NEEDS A MODEL list (axe + block, sled, reindeer, icicles, a pelt).
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
@@ -6866,6 +6901,8 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   `footbridge`, `decor_stone_arch`, `item_hagstone`, `item_magic_wand`, `item_wizard_staff`, `item_potion_flask`; trees `tree_21..30` (the
   nature pack's birches) and `tree_53` (the painted birch); races that live in a wood: fairy, unicorn, gnome, mushroom girl
   (npc-system.md first). NOT on R2 in any pack: reeds, lily pads, a willow, bushes, small flowers, deer, fox, owl (alive), swan, dragonfly.
+- **GIANT FLOWERS + PETAL COLOURS (11-16)**: catalogue `fae_flower*` (3.6 m), `fae_bloom*` (6 m), `fae_flower_small_*`: the heal flower in white, pink,
+  violet, blue, gold. A row's `petal: 0xRRGGBB` recolours a model's pale petals at load (three-renderer.js THE PETAL COLOURS); L's garden can use it.
 - **THE ORDER THAT WORKED (for the next four district threads)**: (1) one probe of the district as it stands, `fp` views only, and
   LOOK before planning: the Village's two worst faults (the stone lid, the black slabs) were in no note; (2) exteriors with `gain`;
   (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
@@ -7546,7 +7583,9 @@ yard door and two plots; both are one row to change.
   pass 1 used 14 catalogue keys the rest of the Sewers already wore. FITS THIS DISTRICT, found in MODEL_LIST.md and placed (none stood in
   the Sewers before): the control wall `monitor_stack` `server_rack` `retro_control_panel`; the lab bench `steel_table` `lab_glassware`
   `microscope`; machines `air_compressor` `generator` `gas_cylinder_rack`; `locker` `footlocker` `vent_grille` `security_camera` `pipe_run`
-  `wall_chains`; in the tank three kraken `tentacle` / `tentacle2`; on the Pit's walk the Halloween pack's `hw_body` `hw_body_2` `hw_part_1/3/5`,
+  `wall_chains`; in the tank six `goo_tendril` (mondo 11-16 on the first three, the kraken `tentacle` models: "get rid of the kraken arms, use the
+  tentacles that the spells use": the symbiote's black spell tendrils are drawn in code, so they got a catalogue row, proc `goo_tendril`
+  in three-renderer.js, built like the spells' own: tapering obsidian segments on a curl, venom glowing at the tip, swaying; a row's `h` = height); on the Pit's walk the Halloween pack's `hw_body` `hw_body_2` `hw_part_1/3/5`,
   `skull`, `skull_pile`, `psx_fish_skeleton_mp_1`; by the sludge the Woods' `woods_glowcap` (15). FITS, NOT PLACED YET: `psx_catwalk_1`
   (a catwalk over the tank), `psx_pipe_1` family + `psx_pipe_valve_holder_large_*` (tried at the channel's head: the short pipe stands
   upright and thin, taken out; wants a row with a lying pose), `ind_vent`, `ind_silo` (9 m: fits the Pit's 12 m hall), `chain_hoist`,
@@ -7554,7 +7593,7 @@ yard door and two plots; both are one row to change.
   `fae_mushroom` (3.5 m, a blocker: no dead square for it yet), `railway_lantern`, `steam_turbine`.
 - **DECISIONS MADE FOR MONDO:** the door up stands in the Power station's YARD (not in the turbine hall); two plots; the stair climbs from
   the track tunnel; the sludge = Corroded for 2 rounds, no race immune by terrain; who lives there besides kaiju and black goo: mad
-  scientist, swamp monster; something with tentacles lives in the tank (props only, no unit, no rule).
+  scientist, swamp monster; black goo tendrils stand in the tank (props only, no unit, no rule).
 - **NEEDS A MODEL:** a lying waste pipe mouth (1 m bore) for the channel's head; a hazmat suit on a hook; a yellow drum with the trefoil.
 - **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
   the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and
@@ -7762,6 +7801,21 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   `psx_padlock_2` is fine, it was the box above.
 - **NOT DONE:** particles (dust in the shaft's light, embers at the firebox) and sound need an air / sound hook in `bake-sewers.js`
   (the tool's row is held: a note is on the board). Frame rate with pass 4: 1.50 (1.55 to 1.60 before: inside the noise).
+
+**PASS 5, THE POLISH (the last: five passes, STOPPED, waits mondo's look).** The Chimney's plot met the bar after pass 4; the Flood was still a
+bare tank, so the last pass went there:
+- **THE FLOOD:** a rotten JETTY on piles from the north bank, broken off half way (drawn; the sleeper wall shuts its head), four mooring
+  posts, an iron bracket + `ship_lantern` on each of the four piers, two drums and a crate afloat, the boat moored at the jetty's end with
+  the floater in it. A prop's `y` under 1 m lifts it off the BED (about -1.35 m in a waded stream here): the boat sits right at `y: 0.9`,
+  a drum half sunk at 0.3.
+- **TAKEN OUT for the frame rate** (each found by a paired count): two `culvert_mouth` in the Flood's south wall (1.15 against 1.60 fps at
+  the Flood view: the whole cost of this pass), three moths (33 draw calls), frogs and rope coils (5 k triangles apiece), the last
+  skulls, and the `fern` (a potted house plant).
+- **FRAME RATE, final** (the Flood view x -63 z -51 face 180, llvmpipe, frames counted over 20 s after a 25 s pause): the first build 1.55
+  to 1.60, all five passes 1.60.
+- **WHAT I WOULD DO NEXT:** dust in the shaft's light + embers at the firebox (needs the air hook), a water sound, the eight models on the
+  NEEDS A MODEL list (a mine cart on rails down the drift first), lines for the four new residents (his to write), a second look at the
+  drawn washes on his Firefox (it renders brighter).
 
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
@@ -8129,6 +8183,17 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   Drips and a district's own particles need `airZones` in bake-sewers.js (asked on the board).
 - **THE ROOM'S OWN WALL** (a square past the map's edge) is where the ways out stand: never dress it.
 - **THE PLAN HAS NO ONE-SQUARE DEAD ENDS** (walks are a square each side of a stream): `ctx.corners()` is the list of bends.
+- **FROM DISTRICT O (11-16):** (1) FRAME COUNTS: the room's shadow map redraws every second frame, so one frame's `calls / triangles` is
+  1.1 M or 2.6 M for the same view; count frames over 20 s after a 25 s pause, and compare with your first build baked in (`git show
+  <first commit>:<your file>`), because the room gets heavier under you. (2) HEAVY: `culvert_mouth` (two in view cost a third of the
+  frame rate), `door_furnace` 117 k triangles (build a brick firebox + `hearth_fire`, a proc with a real light), `ocean_seaweed*` /
+  `ocean_eel`, moths (11 draw calls each), a 22 cm `skull` is 10 k, `meshy_frog` / `meshy_rope` 5 k. CHEAP: every `psx_*`, `hw_*`,
+  `locker`, `rowboat`, `ship_lantern`, `fallen_log`. (3) A drift is a tall slot (a plot has ONE roof height): timber sets + a board roof
+  (`roof: true`) at 3.7 m make it a drift (`set()` / `lag()` in O.js). (4) A deep tank on its own squares = your own `stream` row with
+  `key: 'deep_water'` (the tool's `deep` list is a whole plot); `hqTerrainFeet` gives it no footing. (5) Daylight = a `glow: 1` disc at
+  `ceil - 1.35` (the tool's vault crosses a shaft a metre down) + sleeves of lit brick. (6) Wrong on screen: `femur` / `ulna` stand upright
+  a metre tall, `fern` is potted, `psxg_rock_*` read as paper, `xmas_hammer` stands on its head, the `pipe` rail draws white, floor
+  "light pools" read as rugs, a wash over glow 0.12 reads as a panel.
 - **FITS THE SEWERS (the whole model list was read, sections 6 to 13; placed by W unless marked):**
   PIPES + PLANT `psx_pipe_1 / _short / _corner / _cross`, `psx_pipes_holder_1`, `psx_pipe_valve_holder_large_1 / _2`, `pipe_run`,
   `gate_valve`, `centrifugal_pump`, `gauge_board`, `utility_box`, `breaker_panel`, `air_compressor`, `gas_cylinder_rack`, `ind_vent`,
@@ -8508,6 +8573,21 @@ P00-01 The Chimney (a 7 x 6 hall, 12.25 m). Built on mondo's order of 11-16 (doc
 - **NOT DONE:** particles (dust in the shaft's light, embers at the firebox) and sound need an air / sound hook in `bake-sewers.js`
   (the tool's row is held: a note is on the board). Frame rate with pass 4: 1.50 (1.55 to 1.60 before: inside the noise).
 
+**PASS 5, THE POLISH (the last: five passes, STOPPED, waits mondo's look).** The Chimney's plot met the bar after pass 4; the Flood was still a
+bare tank, so the last pass went there:
+- **THE FLOOD:** a rotten JETTY on piles from the north bank, broken off half way (drawn; the sleeper wall shuts its head), four mooring
+  posts, an iron bracket + `ship_lantern` on each of the four piers, two drums and a crate afloat, the boat moored at the jetty's end with
+  the floater in it. A prop's `y` under 1 m lifts it off the BED (about -1.35 m in a waded stream here): the boat sits right at `y: 0.9`,
+  a drum half sunk at 0.3.
+- **TAKEN OUT for the frame rate** (each found by a paired count): two `culvert_mouth` in the Flood's south wall (1.15 against 1.60 fps at
+  the Flood view: the whole cost of this pass), three moths (33 draw calls), frogs and rope coils (5 k triangles apiece), the last
+  skulls, and the `fern` (a potted house plant).
+- **FRAME RATE, final** (the Flood view x -63 z -51 face 180, llvmpipe, frames counted over 20 s after a 25 s pause): the first build 1.55
+  to 1.60, all five passes 1.60.
+- **WHAT I WOULD DO NEXT:** dust in the shaft's light + embers at the firebox (needs the air hook), a water sound, the eight models on the
+  NEEDS A MODEL list (a mine cart on rails down the drift first), lines for the four new residents (his to write), a second look at the
+  drawn washes on his Firefox (it renders brighter).
+
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, all sections, + pack-claims.md; every key checked against the live catalogue).
 Not used anywhere in the Sewers before this district's passes unless marked *:
 MINE GEAR `hw_shovel` `spell_dynamite` `meshy_burlap_sack` `money_sacks` `meshy_rope`* `wooden_bucket`* `ancient_well` `cable_drum`
@@ -8739,3 +8819,18 @@ tile sheet, graffiti.
 - NOT DONE: air (dust, embers over the Burn, fireflies). The city's room has no `shell.atmos`; a zone's particles are born at the room's floor, and the Hills stand 26 to
   45 m over it. It needs the tool's row (a zone with its own ground height): listed for mondo, not built.
 - Frame rate (same measure): terrace 0.7, Casino court 1.1 (1.3 to 1.4 before this pass; the run was still loading 87 files when it was measured).
+## DISASTER CITY, THE WIDE BOARDWALK — planks from the coast road to the beach (2026-11-16, mondo's order with a picture)
+mondo (a night picture of the coast road from the air, the ground east of it circled in red, the mole and its arm to the lighthouse too): "this whole ground
+right here that is between the road and the beach, can we make it wooden planks so its like a boardwalk, only along one side of that street, closest to the
+beach. but keep the ground under industrial as is, concrete."
+- WHAT: paint only. `docs/disaster-city/districts/B.js` beach(), block THE WIDE BOARDWALK: every open square (yard `.`, pavement `P`, edge band `#`) between
+  the coast road and the old two-square boardwalk is `wood_planks`. In the city's squares as it stands today: cx 140-143 beside the carriageway (cx 136-139),
+  rows 41-95 (the road's corner in Entertainment down to Bayside's last row); north of the corner, rows 0-39, the line is cx 139 (the east side of
+  Entertainment's lane), so the ground round its beach-front buildings is planks. THE MOLE (rows 48-49, its arm and round head) is planks too, was
+  `urban:ConcreteStriped2a`. 274 squares changed; no feature, prop, height or square letter changed (checked: the tool's dump before and after).
+- NOT TOUCHED: anything west of the road; a building's floor and door square (`I` / `D`); Industrial (rows 96+: its yard `urban:ConcreteUnderTiles1`, its
+  pavement, Q.js' apron). The line between planks and concrete is Bayside's last row.
+- The tool paints a tree's soil bed after the district files, so the palms on the strip keep their sand squares.
+- To take the mole back to concrete: the `paintCell` line in beach()'s ground loop (`(mole && cx >= 146) || deck`). To move the west line: the `cx` start in the block.
+- Seen on screen (probe, by day, HEAD of the PR): the strip, the mole, Entertainment's front, the Industrial line. In the pictures the planks are the same
+  sheet as the old boardwalk; the sheet is a dark grey-brown, it reads as wood by day and nearly as dark as the concrete at night.

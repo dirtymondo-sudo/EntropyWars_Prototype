@@ -67047,6 +67047,38 @@ const ThreeRenderer = (function () {
        them as Lambert + linear map (same treatment as the unit models).
        Converted materials are shared across instances and flagged so
        _disposeR leaves them alone. */
+    /* THE PETAL COLOURS (2026-11-16, mondo on the Fairy Forest: "try making variations of the flower with tinting or recoloring it"): a
+       catalogue row's `petal: 0xRRGGBB` recolours the PALE parts of its model's sheet (bright, nearly colourless texels: a white
+       flower's petals) and leaves the rest (the stem, the leaves, the yellow heart, the dirt) as painted. Done once per sheet + colour
+       on a canvas when the model lands: the file on R2 is never touched, and it needs no shader (both renderers). A sheet that cannot be
+       read (no image yet, a tainted canvas) keeps its own colours. Viewer-local dressing: nothing on `state`, nothing relayed. */
+    var _hqPetalCache = {};
+    function _hqPetalMat(mat, color) {
+        if (!mat || !mat.map || !mat.map.image || typeof document === 'undefined') return mat;
+        var key = mat.uuid + '|' + color, hit = _hqPetalCache[key]; if (hit) return hit;
+        var out = mat;
+        try {
+            var img = mat.map.image, w = Math.min(1024, img.width || 0), h = Math.min(1024, img.height || 0); if (!(w > 0 && h > 0)) return mat;
+            var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+            var cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, w, h);
+            var id = cx.getImageData(0, 0, w, h), d = id.data, tr = ((color >> 16) & 255) / 255, tg = ((color >> 8) & 255) / 255, tb = (color & 255) / 255;
+            for (var i = 0; i < d.length; i += 4) {
+                var r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                if (mx < 96) continue;
+                var sat = (mx - mn) / mx, k = Math.max(0, Math.min(1, (0.34 - sat) / 0.16)) * Math.max(0, Math.min(1, (mx - 96) / 64));   // pale and bright = a petal
+                if (k <= 0) continue;
+                d[i] = r * (1 - k + k * tr); d[i + 1] = g * (1 - k + k * tg); d[i + 2] = b * (1 - k + k * tb);
+            }
+            cx.putImageData(id, 0, 0);
+            var tex = new THREE.CanvasTexture(cv), sm0 = mat.map;
+            tex.flipY = (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) ? false : sm0.flipY;
+            tex.wrapS = sm0.wrapS; tex.wrapT = sm0.wrapT; tex.encoding = sm0.encoding; tex.magFilter = sm0.magFilter; tex.minFilter = sm0.minFilter; tex.generateMipmaps = sm0.generateMipmaps;
+            tex.offset.copy(sm0.offset); tex.repeat.copy(sm0.repeat); tex.needsUpdate = true;
+            out = mat.clone(); out.map = tex; out._ew_shared = true;
+        } catch (e) { out = mat; }
+        _hqPetalCache[key] = out;
+        return out;
+    }
     function _hqPropMatPick(node, sm) {
         if (!sm) return null;
         var cached = _hqPropMatCache.get(sm.uuid);
@@ -69292,7 +69324,7 @@ const ThreeRenderer = (function () {
     function _hqPlantPassageTrees(room, plantTree) {
         (room.doors || []).forEach(function (d) {
             if (!d || d.hidden || !d.wall || d.wall === 'free') return;
-            var P = _hqPassageSpec(d); if (!P || P.look !== 'trail') return;
+            var P = _hqPassageSpec(d); if (!P || P.look !== 'trail' || P.trees === false) return;   // `passage.trees: false` on a link's end (2026-11-16, Camelot's Pass): a trail between rock walls plants none
             var B = _hqBoxWall(room, d.wall, d), ax = -B.nz, az = B.nx;   // along the wall
             var rng = _mulberry32((typeof hqHash === 'function') ? hqHash('trail|' + d.id) : 5);
             var kinds = (room.shell && room.shell.forest && room.shell.forest.kinds) || ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'];
@@ -77687,6 +77719,13 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* the stake torch is the board's floor torch at the board's own size (THE SAME TORCH EVERYWHERE, 2026-09-15) */
+        /* THE TIKI TORCH (2026-11-16, mondo: "the tiki torches need to be variants of the torches already in the game, just longer"): the
+           floor torch itself (its stand, its bowl, its own flame and flicker), half as tall again */
+        tiki_torch: function (U) {
+            var g = new THREE.Group(), t = _hqProcBuilders.cave_torch(U);
+            t.scale.set(1, 1.5, 1); g.add(t);
+            return g;
+        },
         cave_torch: function (U) {
             var g = new THREE.Group();
             var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
@@ -77900,6 +77939,31 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < 3; i++) { var b = new THREE.Mesh(new THREE.RingGeometry(0.07 * U, 0.2 * U, 12, 1, 0, Math.PI / 3), ink); b.rotation.z = i * (2 * Math.PI / 3) + Math.PI / 2 - Math.PI / 6; b.position.set(0, 0.3 * U, 0.011 * U); g.add(b); }
             var tx = _hzTextTex('hq_rad_sign', ['CAUTION · RADIATION', 'AUTHORISED PERSONNEL ONLY'], { w: 512, h: 96, color: '#111111' });
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.56 * U, 0.1 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 0.06 * U, 0.012 * U); g.add(m); }
+            return g;
+        },
+        /* THE GOO TENDRIL (2026-11-16, mondo on the Sewers' Sludge Pit: "get rid of the kraken arms, use the tentacles that the spells
+           use"): the symbiote's spell tendril standing in a room. Built the way the spells build theirs (three-vfx-effects.js
+           _PZ_SIGS.tendrils / pvTendrilWhip): a chain of tapering black segments in the obsidian sheet along a curl, venom glowing
+           at its tip; it sways. A row's own `h` = its height (default 3.2 m). */
+        goo_tendril: function (U, p) {
+            var g = new THREE.Group(), arm = new THREE.Group(); g.add(arm);
+            var seed = (_hqProcSeed++) * 2.399, H = ((p && +p.h > 0) ? +p.h : 3.2) * U, N = 18, r0 = 0.23 * H / 3.2, lean = 0.22 + 0.2 * Math.abs(Math.sin(seed * 3.1));
+            var dirA = seed * 1.7, cx = Math.cos(dirA), cz = Math.sin(dirA), pts = [];
+            for (var i = 0; i <= 5; i++) { var t = i / 5; pts.push(new THREE.Vector3(cx * H * lean * t * t, H * 0.78 * t, cz * H * lean * t * t)); }
+            /* the curl at the top: a turn and a quarter in the lean's plane */
+            var top = pts[5].clone(), R = H * 0.13;
+            for (var k = 1; k <= 7; k++) { var a = k / 7 * Math.PI * 1.5, q = R * (1 - k / 14); top = new THREE.Vector3(pts[5].x + cx * (R - Math.cos(a) * q) , pts[5].y + Math.sin(a) * q, pts[5].z + cz * (R - Math.cos(a) * q)); pts.push(top); }
+            var curve = new THREE.CatmullRomCurve3(pts), mat = _hqMat('obsidian', 1, 2, { color: 0x3a3442, shininess: 60, specular: 0x6a6aa0 });
+            var A = new THREE.Vector3(), B = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), d = new THREE.Vector3();
+            for (var s = 0; s < N; s++) {
+                curve.getPointAt(s / N, A); curve.getPointAt((s + 1) / N, B); d.subVectors(B, A); var len = d.length() || 0.001;
+                var ra = r0 * (1 - s / N * 0.86), rb = r0 * (1 - (s + 1) / N * 0.86);
+                var seg = new THREE.Mesh(new THREE.CylinderGeometry(rb, ra, len * 1.12, 7), mat);
+                seg.position.copy(A).addScaledVector(d, 0.5); seg.quaternion.setFromUnitVectors(up, d.normalize()); arm.add(seg);
+            }
+            var foot = new THREE.Mesh(new THREE.SphereGeometry(r0 * 1.5, 8, 6), mat); foot.scale.y = 0.35; arm.add(foot);
+            curve.getPointAt(1, A); var glow = _hzGlowSprite(0.5 * U, 0x9dff5e, 0.5, 0, 0, 0); glow.position.copy(A); arm.add(glow);
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; arm.rotation.x = 0.06 * Math.sin(t * 0.9); arm.rotation.z = 0.06 * Math.sin(t * 0.7 + 1.3); glow.material.opacity = 0.35 + 0.2 * Math.sin(t * 2.1); });
             return g;
         },
         /* ROOM Y: the slab — a steel table, a door's parts laid out on it, each with a paper tag */
@@ -80546,7 +80610,7 @@ const ThreeRenderer = (function () {
             var instO = {
                 anim: (p.anim != null) ? p.anim : cat.anim, nose: cat.turn || 0,
                 swim: swimM ? { r: (swimM.r || 2) * U * fs, v: (swimM.v || 1) * U * fs, bob: (swimM.bob || 0) * U, dir: swimM.dir || ((Math.round(((p.x || 0) + (p.z || 0)) * 4) & 1) ? -1 : 1) } : null,
-                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : _hqPropMatPick,
+                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : (cat.petal != null ? function (n, mm) { return _hqPetalMat(_hqPropMatPick(n, mm) || mm, cat.petal); } : _hqPropMatPick),   // THE PETAL COLOURS
                 still: !!(cat.statue != null || p.statue != null),   // THE STATUES (2026-11-15, Chicago): a cast animal holds its pose
                 onDone: function (g, s, bb) {
                     /* `lay`: the model is authored on edge (rugs) — turn its
