@@ -8152,3 +8152,22 @@ tile sheet, graffiti.
 - THE YARDS: the Villa's south garden (the fountain between palms, urns, a lion, a stone rail), the Round House (the sports car `car_cyber`, flamingos, a dish, a
   saguaro, prickly pears), the A-Frame (four pines, a fire ring with stump seats, a car), the Hill House's pool terrace (loungers, cooler, ball, a float), the Observatory's
   terrace (two more telescopes at the south rail, benches, urns).
+
+### PASS 3, THE DRESSING (live; seen on screen, two probe runs)
+(Belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES".) `hillsDressing(ctx)` in N.js, called at the end of `content.build`; its own random stream (seed 7717).
+- **THE BRUSH**: every free grass square may carry brush (`psxg_dead_bush_1` / `_2`, `fern`; each given `h` 1.0 to 2.3 m: the pack's bushes are knee high and the slope
+  read bare from the air at their own size), a rock (`ocean_rock_2` / `_5` / `_7`, `hw_stone_1` / `_3`, `h` 0.7 to 2.1) or a cactus (`prickly_pear`, `saguaro_cactus`), by
+  the plot's mix (`MIX`: ridge, slope, foot, sign, yard, burn, oaks, cove; `KIND` names the plots that are not their row's). About 530 brush, 100 rocks, 20 cactus. Few
+  model kinds on purpose: the instance pass draws a model placed twice or more as one mesh a 64 m cell. Squares beside a building, a terrace or a taken square stay clear.
+- **THE TREES**: 67 more on grass, never beside a road or a path, none on the letters' plots (they would hide the sign from the city): pines on the ridge, oaks on the
+  slope and thick in the Oak Canyon, dead trees on the Burn. (`tree_43` / `tree_45` read as brown noise from far off: not used.)
+- **EVERY PLOT'S SET** (the model list): a power line along the Shasta Road (`power_pole`); the Burn (nine bare `hw_tree*` / `psxg_dead_tree*`, a barricade); the Boulders
+  (`sarsen`, `menhir`, `asteroid_a`, `ocean_rock_3` / `_4`); the mast's yard (two dishes, a compressor); the tank's yard (`ind_silo`, pump, valve); the dam's plant; the
+  Oak Canyon's picnic ground; the Quarry (`babel_crane`, a full skip, a container, a forklift, a drum, barrels, bricks); the Horse Trail (hay, a hitching rail, a third
+  horse); barricades under the letters and a board (`missing_board` = the trail board) below them; the Dry Wash (a culvert, a wreck); the Gully's camp (tent, fire ring,
+  two `wolf` = the coyote stand-in); the Fire Break's depot (`fire_truck`, a tank, barrels, sandbags, a hydrant); the Hikers' Lot (the tour bus `transit_bus`, the board,
+  a table under the shelter, a vending machine, a flood mast); THE FILM SHOOT in the Brush (a trailer, a camera, two lights, chairs, a costume rack, a vanity); the Cove
+  (a surfboard rack, lobster traps, crabs, a starfish, a seal, driftwood); road signs of the pack the city's kerbs do not use, a wreck and a barricade on the Hairpin.
+- `P` / `D` / `T` (a blocker on a square's middle, decor, a tree) leave a piece OUT when its square is not free and list it in the bake's log (`LEFT OUT`), where the old
+  `put` / `dec` stop the bake.
+- Frame rate (cloud software GPU, frames a second over 20 s, measured last in the run): terrace 0.7 then 0.6 after the brush was thickened; Casino court 1.4 then 1.3.
