@@ -67,6 +67,10 @@ const hut = (a, w, d, dr, q, ctx) => { const { WD, WD2, SHG, FLR } = ctx, h = q.
     for (const s of [-1, 1]) { const x0 = dr.lx + s * (dr.cw / 2 + 0.25), e = s * (w / 2 + 0.2); a.box((x0 + e) / 2, 0, d / 2 + 0.1, Math.abs(e - x0), 0.9, 0.2, 'rocks_5', 0x9c9ca4, { gain: 1.5 }); }
     a.box(0, 0, 0, w - 0.1, 0.16, d - 0.1, q.floor || FLR, q.floorTint || 0x8c7a62, { uv: [1.75, 1.75], glow: 0.7 });
     lit(a, w, h, d, dr, q.inKey || WD, q.inTint || 0xd8b088, 0.85, WD2);
+    { const top = h - 0.36, bq = { glow: 0.75, gain: 1.5 };                                                                         // (pass 5) tie beams under the ceiling, a skirting, the lamp hung from the middle beam
+      for (const z of [-d / 4, d / 4]) a.box(0, top - 0.34, z, w - 0.66, 0.22, 0.22, WD2, 0x5a4030, bq); for (const x of [-w / 3, 0, w / 3]) a.box(x, top - 0.34, 0, 0.18, 0.18, d - 0.66, WD2, 0x5a4030, bq);
+      a.box(0, 0.16, -(d / 2 - 0.36), w - 0.7, 0.16, 0.05, WD2, 0x5a4030, bq); for (const s of [-1, 1]) a.box(s * (w / 2 - 0.36), 0.16, 0, 0.05, 0.16, d - 0.7, WD2, 0x5a4030, bq);
+      a.box(0, top - 0.8, 0, 0.03, 0.46, 0.03, WD2, 0x2a2a2a); a.box(0, top - 1.08, 0, 0.26, 0.3, 0.26, 'marble_light', 0xffb050, { glow: 1.3 }); a.box(0, top - 0.78, 0, 0.32, 0.05, 0.32, WD2, 0x2a2a2a); a.box(0, top - 1.12, 0, 0.32, 0.04, 0.32, WD2, 0x2a2a2a); }
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.42, h, 0.42, q.stone ? 'rocks_5' : WD2, q.stone ? 0x8c8c94 : TR, q.stone ? { gain: 1.5 } : null);
     const rk = q.snow ? 'ice' : SHG, rt = q.snow ? 0xf4f8ff : (q.roofTint || 0x6a5038), rq = { gain: 1.6 };
     if (q.roof === 'hip' || q.roof === 'pyramid') a.roof(q.roof, 0, h, 0, w + 2.2, q.rh, d + 2.2, rk, rt, rq);
@@ -86,7 +90,8 @@ const hut = (a, w, d, dr, q, ctx) => { const { WD, WD2, SHG, FLR } = ctx, h = q.
     for (const s of [-1, 1]) for (let z = -d / 2 + 1.75; z < d / 2; z += 3.5) W2(z, s * (w / 2 + 0.08), 1.5, true);
     if (!q.chimney) for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) W2(x, -d / 2 - 0.08, 1.5, false);
     else for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) if (Math.abs(x - q.chimney) > 2.2) W2(x, -d / 2 - 0.08, 1.5, false);
-    if (q.chimney != null && q.chimney !== false) { const cx = q.chimney; a.box(cx, 0, -d / 2 - 0.4, 1.5, h + q.rh + 0.8, 1.0, 'rocks_5', STONE, { roof: true }); a.box(cx, h + q.rh + 0.8, -d / 2 - 0.4, 1.7, 0.2, 1.2, 'rocks_5', 0x6c6c74, { roof: true }); hearth(a, cx, d, h - 0.36, WD2); }
+    if (q.chimney != null && q.chimney !== false) { const cx = q.chimney; a.box(cx, 0, -d / 2 - 0.4, 1.5, h + q.rh + 0.8, 1.0, 'rocks_5', STONE, { roof: true }); a.box(cx, h + q.rh + 0.8, -d / 2 - 0.4, 1.7, 0.2, 1.2, 'rocks_5', 0x6c6c74, { roof: true }); hearth(a, cx, d, h - 0.36, WD2);
+        const sx = cx > 0 ? 1 : -1; a.box(sx * (w / 2 + 0.42), 0, -d / 2 + 1.6, 0.6, 1.0, 2.2, WD2, 0x8a6444, { gain: 1.5 }); a.box(sx * (w / 2 + 0.42), 1.0, -d / 2 + 1.6, 0.7, 0.07, 2.3, q.snow ? 'ice' : WD2, q.snow ? 0xf4f8ff : 0x4a3626); }   // the wood stack under the eaves, beside the chimney
     if (q.porch) { a.box(0, 0, d / 2 + 1.3, w, 0.16, 2.5, FLR, 0x8c7a62); const n = Math.max(2, Math.round(w / 3.5));
         for (let i = 0; i <= n; i++) { const x = -w / 2 + 0.25 + i * (w - 0.5) / n; if (Math.abs(x - dr.lx) < 0.9) continue; a.box(x, 0, d / 2 + 2.4, 0.24, 2.7, 0.24, WD2, TR); }
         a.roof('shed', 0, 2.7, d / 2 + 1.35, w + 0.6, 0.7, 2.9, rk, rt, rq); }
@@ -189,7 +194,7 @@ exports.build = ctx => {
     { const h = B.bigfoot; fire(h, -3.2); h.put('couples_bed', 3.5, -1.75, { face: 180, h: 1.0 }); h.put('psx_dinner_table_1', 0, -1.75, { face: 90 }); h.put('psx_meat_1', 0.2, -1.6, { y: 0.87 }); h.put('psx_fish_skeleton_mp_1', -0.3, -2.0, { y: 0.87, face: 40 }); h.put('psx_canned_food_mp_1', 0.1, -2.2, { y: 0.87 });
       h.put('stump', -1.1, -1.4); h.put('stump', 1.1, -2.0); h.put('psx_armchair_1', -1.9, -0.5, { face: 240 }); h.put('rug_round', -3.2, -1.0, { y: 0.02 }); h.put('stock_pots', -4.4, -1.2, { face: 90 });
       h.put('sea_chest', 4.4, 2.7, { face: 270 }); h.put('psx_shelf_mp_2', -4.6, 2.5, { face: 90 }); h.put('beach_cooler', 2.4, 2.9, { face: 0 }); h.put('meshy_burlap_sack', 3.3, 2.9); h.put('fishing_net_wall', 4.9, -0.2, WALL(h, 1.2, 270));
-      h.put('psx_photo_frame_mp_1', -1.0, -3.14, WALL(h, 1.7, 180)); h.put('fallen_log', -4.2, 0.6, { face: 90, h: 0.5 }); h.put('wooden_bucket', -2.2, 2.9); }
+      h.put('psx_photo_frame_mp_1', -1.0, -3.14, WALL(h, 1.7, 180)); h.put('wooden_bucket', -2.2, 2.9); }
     /* THE SHAMAN'S LODGE: the brazier, the bed roll, the table of the craft */
     { const h = B.shaman; h.put('brazier', 0, -1.75); h.put('cot', -3.5, -1.75, { face: 90 }); h.put('psx_coffee_table_1', 3.5, -1.75, { face: 0 }); h.put('crystalBall', 3.5, -1.75, { y: 0.66 }); h.put('tarotDeck', 3.0, -1.6, { y: 0.66 }); h.put('hw_candles', 4.0, -1.9, { y: 0.66 });
       h.put('rug_round', 1.6, 0.9, { y: 0.02 }); h.put('rug_round', -1.9, 1.1, { y: 0.02 }); h.put('item_ward_totem', -1.5, -2.8, { face: 180 }); h.put('item_ward_totem', 1.5, -2.8, { face: 180 }); h.put('item_wizard_staff', 1.5, 3.0);
@@ -308,6 +313,22 @@ exports.build = ctx => {
     put('P14-04', 'brazier', 4, 2); dec('P14-03', 'hw_candles', 4, 3); dec('P14-03', 'hw_candles', 2, 3); dec('P14-04', 'hw_candles', 7, 4);
     dec('P14-04', 'woods_glowcap', 4, 8); dec('P14-04', 'woods_glowcap', 8, 6); dec('P13-06', 'woods_glowcap', 8, 4); dec('P14-03', 'woods_glowcap', 10, 6);
   }
+  /* ══ PASS 5 (11-16): POLISH. The place boards (every plot's own name from the plan, routed cream on brown, read from both sides of the trail; ONE look), the last
+     pieces at the doors and on the walls. ══ */
+  { const r2 = ctx.r2, L = [['P14-02', 6, 5, 'THE FORK'], ['P13-06', 6, 5, 'THE SWITCHBACK'], ['P13-04', 5, 5, 'THE LAST TREES'], ['P13-03', 5, 4, 'BUNNY FLAT'], ['P14-03', 2, 4, 'PANTHER MEADOWS'], ['P14-04', 3, 4, 'THE SPRING'], ['P14-05', 4, 5, 'THE LOOKOUT'],
+        ['P14-06', 7, 5, 'THE BOULDER FIELD'], ['P14-07', 5, 4, 'THE UPPER SHELF'], ['P15-03', 6, 4, 'THE OLD LAVA'], ['P13-02', 7, 4, 'AVALANCHE GULCH'], ['P15-02', 6, 4, 'THE SCREE'], ['P13-01', 7, 6, 'THE RED BANKS'], ['P14-01', 2, 6, 'HELEN LAKE'],
+        ['P15-01', 2, 6, 'THE STEAM VENTS'], ['P13-00', 7, 5, 'SHASTINA'], ['P14-00', 5, 6, 'THE SUMMIT'], ['P15-00', 5, 7, 'THE GLACIER']];
+    const o0 = S(L[0][0], L[0][1], L[0][2]), X0 = r2(mx(o0[0]) + 0.9), Z0 = r2(mz(o0[1]) + 1.0), G0 = gnd(R, L[0][0], L[0][1], L[0][2]);
+    look('boards', X0, Z0, a => { for (const [id, lx, ly, words] of L) { const q = S(id, lx, ly), x = r2(mx(q[0]) + 0.9 - X0), z = r2(mz(q[1]) + 1.0 - Z0), y = r2(gnd(R, id, lx, ly) - G0), bw = r2(words.length * 0.2 + 0.7);
+        for (const s of [-1, 1]) a.box(x + s * (bw / 2 + 0.07), y - 0.3, z, 0.12, 1.95, 0.12, WD2, 0x5a4030, { gain: 1.5 }); a.box(x, y + 1.02, z, bw + 0.1, 0.56, 0.07, WD2, TR, { gain: 1.4 });
+        a.sign(words, x, y + 1.07, z + 0.045, bw, 0.46, CREAM, BROWN, FONT); a.sign(words, x, y + 1.07, z - 0.045, bw, 0.46, CREAM, BROWN, FONT, { ry: 180 }); a.box(x, y + 1.6, z, bw + 0.3, 0.05, 0.2, WD2, 0x4a3626); } }); }
+  { const B = BUILT; let h = B.ranger; h.put('park_bench', 3.2, h.fd / 2 + 1.3, { face: 180, floor: false }); h.put('psx_metal_barrel_mp_1', -4.5, h.fd / 2 + 1.2, { floor: false }); h.put('psx_painting_1', -3.4, -3.14, WALL(h, 1.6, 180)); h.put('star_chart', -4.9, -1.8, WALL(h, 1.2, 90));
+    h = B.bigfoot; h.put('psx_painting_1', 2.2, -3.14, WALL(h, 1.7, 180)); h.put('wall_shelf', 4.9, 1.6, WALL(h, 1.6, 270)); h.put('psx_canned_food_mp_1', 4.7, 1.6, { y: UP(h, 1.66), mount: 0 }); h.put('skull', -4.5, 2.5, { y: 0.02 }); h.put('stump', h.fw / 2 - 1.2, h.fd / 2 + 1.0, { floor: false });
+    h = B.shaman; h.put('psx_painting_1', -4.9, 0.4, WALL(h, 1.6, 90)); h.put('wall_shelf', 4.9, -1.2, WALL(h, 1.6, 270)); h.put('item_potion_flask', 4.7, -1.2, { y: UP(h, 1.66), mount: 0 }); h.put('hw_candles', -0.9, -2.9); h.put('stump', -3.8, h.fd / 2 + 0.9, { floor: false }); h.put('instrument_drum', 3.6, h.fd / 2 + 0.9, { floor: false });
+    h = B.dojo; h.put('psx_sword_mp_1', -4.9, 0.8, WALL(h, 1.5, 90)); h.put('psx_painting_1', 4.9, -1.4, WALL(h, 1.7, 270)); h.put('wooden_bucket', 4.4, 3.0);
+    h = B.shrine; h.put('psx_painting_1', -3.1, -0.6, WALL(h, 1.7, 90)); h.put('greek_amphora', 2.6, h.fd / 2 + 0.8, { floor: false }); h.put('hw_candles', -2.7, h.fd / 2 + 0.7, { floor: false });
+    h = B.lookout; h.put('psx_painting_1', -4.9, 1.9, WALL(h, 1.7, 90)); h.put('notice_board', -2.6, 3.14, WALL(h, 1.3, 0)); h.put('psx_wooden_crate_4', 4.3, h.fd / 2 + 0.9, { floor: false });
+    h = B.climbers; h.put('psx_painting_1', 4.9, 1.4, WALL(h, 1.7, 270)); h.put('wall_shelf', -4.9, 0, WALL(h, 1.7, 90)); h.put('psx_canned_food_mp_1', -4.7, 0, { y: UP(h, 1.76), mount: 0 }); h.put('hw_shovel', -3.6, h.fd / 2 + 0.7, { floor: false, face: 90 }); h.put('psx_metal_barrel_mp_1', 4.4, h.fd / 2 + 0.9, { floor: false }); }
 };
 
 /* THE AIR (pass 4; the tool's hook `airZones`, bake-mountains.js THE AIR BY DISTRICT): thin snow on the three peaks' plots, white motes of steam at the vents, ash over
