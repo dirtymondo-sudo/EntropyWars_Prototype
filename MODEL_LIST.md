@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1172 |
+| Meshy AI | no | 1173 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -179,6 +179,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | swamp monster | `Assets/characters/races/swampmonster/Meshy_AI_swampmonster_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | swordfighter (female) | `Assets/characters/races/swordfighter/female/Meshy_AI_hot_girl_pop_idol_s_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | symbiote (female) | `Assets/characters/races/symbiote/Meshy_AI_a_female_symbiote_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| tech ceo | `Assets/characters/races/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | telepath — creator look also baked | `Assets/characters/races/homosapien/male/psychic/Meshy_AI_male_psychic_trench__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | telepath (female) — creator look also baked | `Assets/characters/races/homosapien/female/psychic/Meshy_AI_psychic_female_with_d_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | time cop | `Assets/characters/races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
