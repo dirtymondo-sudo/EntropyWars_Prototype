@@ -5177,6 +5177,11 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     falls 0.7 m a metre, not the plan's 1.2.
   - **A GARDEN:** `hw_crop` / `hw_crop_2` draw as pale paper tiles; ridges of soil = boxes in the terrain key `dirt_4` (0.5 x 0.16 m, 1.1 m apart);
     `hw_pumpkin*`, `hw_scarecrow`, a `rail` row `model: 'ranch'` and `chicken` all read. `psxg_stepping_stone_1/2` as a `scatter` is a path.
+  - **THE ROOM'S TEN LIGHTS (zone-wide, the engine's):** fifty props in this room carry a `light`; ten get one, in row order S, H, O, T. A
+    district far down the list lights its night with drawn glow only. Wanted from the tool / engine row: the lights nearest the walker.
+  - **SMOKE, A CLOUD, DRAWN:** puffs = a `dome` (plain paint, `glow` 0.3) over a `cyl` belly that closes to a point (`r` 0.05 -> `r2` = the
+    dome's, `cap: false, ds: true, glow` 0.4): seen from under, an open belly is a ring round a hole. Seven puffs growing 3 -> 13 m read as a plume.
+  - **FIRELIGHT IN A WINDOW:** a plain quad, tint 0xffa040, `glow` 0.75, behind drawn bars. A torch's flame: tint 0xff5a00, `glow` 0.7 (0.9 washes to cream).
   - **TRIANGLES:** a Meshy prop is about 10,000 triangles whatever its size (a skull, a fern, a flamingo); thirty of them is 0.3 M. Count before dressing.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
@@ -5320,6 +5325,12 @@ sea has things to sail to.
     falls a flow, typed from the built heights. The sea: THE SHARKS (P07-09: three fins and a hammerhead round fish schools, a boat adrift),
     THE TURTLES (five, off the south-west islet), THE SEAL ROCK (P13-00: a drawn shelf, four seals on it, two in the water), a bird over
     the Rocks, a starfish (the Beach's own list, no line) on the south-west islet. NOT placed again: a wreck and jellyfish (the Triangle has both).
+  - **PASS 4, ATMOSPHERE (seen on screen by day and at 22:30):** all DRAWN glow. Firelight in the huts' barred window holes; eleven bamboo
+    torches (the village round its fire, the big hut's door, the shrine, the path to it) and two at the gate; embers in the castaway's
+    fire ring and a torch on his islet; lava lying where the two flows end; THE ASH PLUME over the crater (seven drawn puffs climbing
+    to 55 m and leaning east, its foot glowing: the island is found from the Harbour by it, day or night). WHY NO REAL LIGHT: the room
+    gives ten point lights for its fifty lit props, in row order (three-renderer.js `HQ_PROP_LIGHT_MAX`), so the Shore and the Harbour
+    take them all and the island's `cave_torch` / `brazier` / `campfire` keep only their glow. The night is moonlit and reads without them.
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -5346,7 +5357,7 @@ sea has things to sail to.
   gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
   for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
   a ship or raft out at sea; a moving waterspout (this one stands still).
-- **NOT DONE:** night and the island's real lights (pass 4); polish (pass 5). Nothing
+- **NOT DONE:** polish (pass 5). Nothing
   under the water shows (the sea is opaque from above). No fight set up.
 - **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is a far cull for the whole sea
   room, the tool row's or the engine's, not fewer props on one island).
