@@ -62,9 +62,15 @@
    the Mouth a hut on piles and its rowboat, a fishermen's house on piles stands off the skiff jetty (the Elbolilloduro Houses on the water
    scene: seven pieces cut out of it, bake-pack-pieces.py); a boat hauled up the slipway, a rowboat at the water steps, mooring piles in the
    basin, the shed's generator, mondo's scaffold crane on the wharf, seals on the Breakwater.
-   NEEDS A MODEL (nothing stood in): a ship lying in the Roads (a trawler, a tug, a freighter; the only ship models are the Dutchman and the
-   Triangle's ghost wreck), gulls (the animals list has a crow, no sea bird), coils of heavy rope, fish boxes, an iron mooring ring / cleat
-   (the bollards are drawn).
+   THE MODEL PASS (11-16, mondo's wish-list models; seen by day and at 22:30): every model this district asked for is placed. A `trawler`
+   lies at the Roads' mooring buoys, the `tugboat` alongside the Long Pier's north side; fourteen `seagull`; `rope_coils`, `fish_boxes`;
+   the seventeen bollards are the `mooring_bollard` model and the seventeen harbour lamps the `iron_lamp_post` model (the drawn ones are
+   out; one drawn flame stays in each lantern, the model has no glow). Also from the list: `cage_lamp` over the shed's door, `drying_fish`,
+   `oars`, `fishing_rod` by the angler's chair, `woven_baskets`, `wooden_barrel`, `coin_telescope` at the light, a `heron`, a `wooden_ladder`,
+   a `wheelbarrow`. Not used: `rat` (21,754 triangles for 12 cm), `lantern_post` (its lantern hangs off-centre: no place for the flame),
+   `string_lights` (stands on its own posts; the shed's eave bulbs are drawn on the eave).
+   NEEDS A MODEL: nothing is open. (Still drawn, and no model on the list: the Mouth's two pile beacons, the Roads' four mooring buoys, the
+   gangway's brow, the gantry's trestles and hoist, the quay's stone walls and the piers' piles.)
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
      tailor(ctx)  before the heights are made: the plan's squares. Turn each plan building ('B') you build back into its ground with
                   ctx.setRect(x0, y0, x1, y1, ch) / ctx.cell[y][x] = ch (the tool refuses to bake while a 'B' is left that nobody builds).
@@ -117,8 +123,8 @@ build(ctx) {
     const SIDES = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // north, east, south, west
     /* a face along one side of square (x, y): a box `t` thick standing `out` proud of the square's line */
     const face = (T, x, y, k, y0, y1, t, key, tint, o) => { const [dx, dy] = SIDES[k], cx = mx(x) + dx * (C / 2 + t / 2 - 0.02), cz = mz(y) + dy * (C / 2 + t / 2 - 0.02); T.box(cx, y0, cz, dx ? t : C, y1 - y0, dx ? C : t, key, tint, o); };
-    /* a mooring bollard (the `dockring` prop is a space-station docking ring: seen) */
-    const bollard = (T, x, z, y) => { T.cyl(x, y, z, 0.17, 0.5, RIB, IRON, { seg: 8, uv: 1 }); T.cyl(x, y + 0.5, z, 0.27, 0.12, RIB, IRON, { seg: 8, uv: 1 }); };
+    /* a mooring bollard (the `dockring` prop that stood at these places is a space-station docking ring: seen) */
+    const bollard = (T, x, z, y) => props.push({ key: 'mooring_bollard', x: r2(x), z: r2(z) });   // THE MODEL PASS (11-16): the wish list's cast iron bollard; it was two drawn cylinders (the stand-in is out)
 
     /* THE WHARF, its stair and the gantry (the walker reads these rows; the looks below dress them) */
     const onWharf = (x, y) => x >= 29 && x <= 35 && y >= 36 && y <= 37;
@@ -226,16 +232,17 @@ build(ctx) {
        door; a work lamp on the gantry's hoist; the Mouth's beacons lit red and green. REAL LIGHT is five props in place() (two floodlight
        masts, three fire baskets). The Breakwater's own light turns its beam already. Sound and particles have no hook a district reaches. ── */
     const LAMP = 0xffe2a8;
-    const lamp = (T, x, z, y, h, ax, az) => { T.cyl(x, y, z, 0.055, h, RIB, IRON, { seg: 6, uv: 1 }); T.box(x + ax * 0.3, y + h - 0.06, z + az * 0.3, ax ? 0.7 : 0.05, 0.05, az ? 0.7 : 0.05, null, IRON);
-        T.cyl(x + ax * 0.6, y + h - 0.34, z + az * 0.6, 0.17, 0.28, null, LAMP, { seg: 8, glow: 0.95, r2: 0.1 }); T.cyl(x + ax * 0.6, y + h - 0.07, z + az * 0.6, 0.24, 0.05, null, IRON, { seg: 8 }); };
-    works('lamps_pier', gx(40), gz(53), T => { [25, 31, 37, 43, 49, 55].forEach(c => lamp(T, gx(c), gz(53) + 0.22, PY, 3.4, 0, 1));
-        [46, 50].forEach(r => lamp(T, gx(30) - 0.22, gz(r), PY, 3.2, -1, 0)); lamp(T, gx(28) + 0.22, gz(57.5), PY, 3.2, 1, 0); lamp(T, gx(31) - 0.22, gz(62.5), PY, 3.2, -1, 0); });
-    works('lamps_quay', gx(30), gz(40), T => { lamp(T, gx(24) + 0.3, gz(43) - 0.3, QY, 3.6, 1, 0); lamp(T, gx(30) - 0.4, gz(43) - 0.3, QY, 3.6, 0, -1); lamp(T, gx(36) - 0.3, gz(41) - 0.3, QY, 3.6, -1, 0); lamp(T, gx(29) + 0.3, gz(38) + 0.4, QY, 3.6, 0, 1);
-        [30.5, 33.5].forEach(c => lamp(T, gx(c), gz(36) + 0.4, WH, 3.0, 0, 1)); lamp(T, gx(36) - 0.4, gz(37), WH, 3.0, -1, 0);
+    /* THE MODEL PASS (11-16): a harbour lamp is the wish list's `iron_lamp_post` (3.5 m, a blocker on the edge it stands at). It was a drawn pole, arm and
+       shade (the stand-in is out). The model carries no glow and no light, so one small drawn flame stays in its lantern: that is its light after dark. */
+    const lamp = (T, x, z, y) => { props.push({ key: 'iron_lamp_post', x: r2(x), z: r2(z) }); T.cyl(x, y + 2.9, z, 0.19, 0.36, null, LAMP, { seg: 4, glow: 1 }); };   // (as wide as the lantern's glass: a thinner flame was hidden inside it at night, seen)
+    works('lamps_pier', gx(40), gz(53), T => { [25, 31, 37, 43, 49, 55].forEach(c => lamp(T, gx(c), gz(53) + 0.22, PY));
+        [46, 50].forEach(r => lamp(T, gx(30) - 0.22, gz(r), PY)); lamp(T, gx(28) + 0.22, gz(57.5), PY); lamp(T, gx(31) - 0.22, gz(62.5), PY); });
+    works('lamps_quay', gx(30), gz(40), T => { lamp(T, gx(24) + 0.3, gz(43) - 0.3, QY); lamp(T, gx(30) - 0.4, gz(43) - 0.3, QY); lamp(T, gx(36) - 0.3, gz(41) - 0.3, QY); lamp(T, gx(29) + 0.3, gz(38) + 0.4, QY);
+        [30.5, 33.5].forEach(c => lamp(T, gx(c), gz(36) + 0.4, WH)); lamp(T, gx(36) - 0.4, gz(37), WH);
         T.cyl(mx(34) - 2.6, WH + 2.86, gz(45.5), 0.16, 0.24, null, LAMP, { seg: 8, glow: 0.95, r2: 0.09 });                                              // the hoist's work lamp
         T.part({ s: 'cyl', p: [r2(gx(27.5) - 4.6), QY + 3.92, r2(gz(42) + 0.5)], r: 0.06, h: 0.12, tint: LAMP, glow: 1, seg: 6, n: 12, step: [0.84, 0, 0] });   // warm bulbs under the shed's front eave
         T.box(gx(27.5), QY + 4.06, gz(42) + 0.5, 9.6, 0.02, 0.02, null, 0x2a2a2a);
-        T.cyl(gx(27.5) - 0.87, QY + 2.36, gz(42) + 0.3, 0.14, 0.2, null, LAMP, { seg: 8, glow: 0.95, r2: 0.08 });                                         // the lamp over the shed's door
+        T.cyl(gx(27.5) - 0.87, QY + 2.44, gz(42) + 0.22, 0.07, 0.14, null, LAMP, { seg: 6, glow: 1 });                                         // the lamp over the shed's door
     });
     /* THE SIGNS (the dressing pass; dark stencil letters on white boards: the kit): a finger post where the pier's arm meets the quay, the
        slipway's board on its winch side, the wharf's name on its brick */
@@ -370,5 +377,22 @@ dress(ctx) {
        mast on the quay's apron and one on the Long Pier before the gangway (`flood_mast`: a 26 m light, lit by the world clock at dusk),
        fire baskets on the wharf, at the light's head and on the skiff jetty (`brazier`: a 9 m light) */
     P('flood_mast', 33, OY + 4); P('flood_mast', 44, 53); on('brazier', 34, 36); on('brazier', 47, 47); P('brazier', 30, 61);
+    /* ── THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to
+       end). What this district asked for and got: `trawler`, `tugboat`, `seagull`, `rope_coils`, `fish_boxes`, `mooring_bollard` (build(): the
+       drawn bollards are out). From the others' asks: `iron_lamp_post` (build(): the drawn lamps are out), `cage_lamp`, `drying_fish`, `oars`,
+       `fishing_rod`, `woven_baskets`, `wooden_barrel`, `coin_telescope`, `heron`, `wooden_ladder`, `wheelbarrow`. ── */
+    const ship = (key, x, z, face, y) => props.push({ key, x: r2(x), z: r2(z), y: y || -1.6, hover: 0.55, face });                                             // afloat, about a metre of her under the water
+    ship('trawler', mx(41), mz(73), 0); for (let x = 38; x <= 43; x++) for (const y of [72, 73]) taken.add(x + ':' + y);                                // THE ROADS: a trawler lying at the mooring buoys (the plan: "where ships wait")
+    props.push({ key: 'tugboat', x: mx(45), z: r2(gz(53) - 5.0), y: -2.2, hover: 0, face: 0 });   /* (her keel is deep: `hover: 0` and a fixed depth; with a `hover` her red bottom rode out of the water whatever `y` said, seen twice) */   /* (her model's keel is deep: at the trawler's -1.6 her red bottom stood out of the water, seen) */ for (let x = 43; x <= 47; x++) for (const y of [51, 52]) taken.add(x + ':' + y);                           // the harbour tug alongside the Long Pier's north side
+    put(SHED, 'cage_lamp', SHED.door.lx, 5.36, { face: 0, floor: true, y: 0.9 + 2.4 }); put(SHED, 'wooden_ladder', 3.2, -5.45, { face: 0, floor: true, y: 0 });
+    P('fish_boxes', 31, OY + 5); P('fish_boxes', 35, OY + 5, { face: 90 }); P('fish_boxes', 45, 53, { face: 20 }); P('wooden_barrel', 35, OY + 6); P('wooden_barrel', 54, 53); P('drying_fish', 28, 55, { face: 90 });
+    off('rope_coils', 30, OY + 6, 1.0, 0.9, { face: 30 }); off('rope_coils', 41, 54, 0.6, 1.0, { face: 110 }); off('rope_coils', 48, 53, -1.0, -0.9); on('rope_coils', 32, 36, { face: 60 });
+    off('woven_baskets', 27, OY + 6, -1.1, 1.0, { face: 40 }); off('woven_baskets', 29, 58, 0.9, 0.3); off('oars', 30, 62, -0.2, 1.2, { face: 80 }); props.push({ key: 'oars', x: r2(gx(26) + 2.6), z: r2(gz(43) + 1.6), face: 10 });
+    off('fishing_rod', 27, 53, 0, -1.2, { face: 0 }); off('wheelbarrow', 31, 36, 1.4, 1.0, { face: 250 }); off('coin_telescope', 45, 47, -0.9, 0.4, { face: 270 });   /* (no `rat`: its file is 21,754 triangles for a 12 cm animal) */
+    props.push({ key: 'heron', x: r2(mx(24) - 0.2), z: r2(mz(45) + 0.6), face: 100 });                                                                // a heron in the boat basin's shallows
+    /* gulls (scenery, off every way): on the quay's kerb, the pier's edges, the Breakwater's boulders' side, the wharf's back edge, the shed's ridge */
+    [[gx(31) + 0.8, gz(43) - 0.25, 160], [gx(34) + 0.5, gz(43) - 0.3, 200], [gx(36) - 0.3, mz(42) + 0.6, 90], [gx(47), gz(53) + 0.2, 0], [gx(52) + 0.9, gz(53) + 0.2, 340], [gx(56) + 1.2, gz(53) + 0.25, 30], [gx(31) - 0.25, gz(64) - 0.6, 100],
+     [mx(39) + 0.7, gz(39) + 0.3, 350], [mx(43) + 1.2, gz(39) + 0.35, 20], [gx(48) - 0.35, mz(46), 80], [gx(31), gz(36) + 0.3, 0], [gx(33) + 0.4, gz(36) + 0.3, 330]].forEach(q => props.push({ key: 'seagull', x: r2(q[0]), z: r2(q[1]), face: q[2] }));
+    props.push({ key: 'seagull', x: r2(gx(27.5) - 2.0), z: gz(40.5), y: 0.9 + 6.82, floor: true, face: 200 }); props.push({ key: 'seagull', x: r2(gx(27.5) + 1.4), z: gz(40.5), y: 0.9 + 6.82, floor: true, face: 160 });   // two on the shed's ridge
 },
 };

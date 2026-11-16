@@ -11,7 +11,9 @@
      P00-02  The Rows, west         level 1  corn rows, crows
      P01-02  The Hub                level 1  four tracks meet; the well
      P02-02  The Rows, east         level 1  corn rows
-   STATE: FIVE PASSES LIVE (exteriors, the Field Shed, dressing, atmosphere, polish), STOPPED, waits mondo's look.
+   STATE: FIVE PASSES + THE MODEL PASS LIVE (mondo 11-16: the wish-list models are in), STOPPED, waits mondo's look.
+     THE MODEL PASS: `corn_row` at the bank's foot on two segments in three (the corn reads as corn), `lantern_post` in place of the drawn lamp posts,
+     tractor, plough, hay cart, water trough, wheelbarrows, pitchforks, barbed wire, an outhouse, a ladder, firewood, a mailbox, cattle skulls, beehives.
    WHAT STANDS HERE (the district thread, 2026-11-16; passes logged in docs/notes/areas-complexes.md "THE ESTATE, DISTRICT C"):
      every plot has its own thing. THE CUT ROWS (strips of tilled soil with drawn furrows + strips of standing young crop = lawn squares
      under the grass field) in The Tall Corn, both Rows and under the Scarecrow; THE CIRCLES with a formation left standing in the flattened
@@ -19,8 +21,9 @@
      the power line and a lay-by on the Farm Track; the Woods gate's verge; drawn lamp posts and painted boards (plain words) all over.
      THE FIELD SHED (walk-in, `houses()`), THE GATE ARCH, the verges' scatter, the hidden pocket with the saucer, the air zones (`airZones()`), night glow.
    MISSING / WAITING (the NEEDS A MODEL list is in the notes):
-     - THE CORN: no corn-stalk model exists on R2 (every list read; the pack's crops blown up are soil mounds, the seaweed is black). The
-       `leaves_3` bank is the tool's and still reads as a hedge. A stalk model, once made, is placed here.
+     - THE CORN'S THIRD SEGMENT: all 389 bank segments in `corn_row` cost 1.3 M triangles more at the proof view; one in three is left bare.
+       A lighter row model (or far-distance levels: the file is under the baker's size limit) would let every segment carry one.
+     - a flattened-corn ground sheet for the circles (a sheet, not a model).
      - one scarecrow, the skinwalker and the mothman have no line (lines are mondo's to give).
      - no residents with routines, no encounter table (mondo's baked tables).
      - the Woods gate (P01-00) and the well (P01-02) are ways out: the tool's.
@@ -102,11 +105,12 @@ module.exports = {
             for (const o of [0.2, 0.5, 0.8]) { const lx = ((ns ? x + o : x + 0.5) - x0) * 3.5, lz = ((ns ? y + 0.5 : y + o) - y0) * 3.5; a.box(lx, -0.12, lz, ns ? 0.86 : 3.56, 0.21 + rnd() * 0.05, ns ? 3.56 : 0.86, 'dirt_3', 0xd8c0a0, { gain: 1.4 }); } } });   // low and wide: at 0.2 m over the ground with a crisp edge they read as timber baulks
         /* THE LAMP POSTS (the zone kit's, H's shape): every post on the district's level ground is ONE drawn piece (one row, a few draw calls for all of
            them); a post near the district's east or south edge, where the ground grades to the next district, is its own piece so it stands on its ground */
-        const LAMPS = [], lampParts = (a, ox, oz, rot) => { const t = rot * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t), X = lz => r2(ox - lz * sn), Z = lz => r2(oz + lz * c), o = { ry: -rot };
+        const badLamp = [], LAMPS = [], lampPartsOld = (a, ox, oz, rot) => { const t = rot * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t), X = lz => r2(ox - lz * sn), Z = lz => r2(oz + lz * c), o = { ry: -rot };
             a.box(ox, 0, oz, 0.34, 0.5, 0.34, null, IRON); a.cyl(ox, 0.5, oz, 0.06, 2.7, null, IRON); a.box(X(0.3), 3.1, Z(0.3), 0.07, 0.07, 0.75, null, IRON, o);
             a.box(X(0.6), 2.62, Z(0.6), 0.24, 0.36, 0.24, null, AMBER, LAMP); a.box(X(0.6), 2.98, Z(0.6), 0.32, 0.07, 0.32, null, IRON); a.box(X(0.6), 2.55, Z(0.6), 0.3, 0.07, 0.3, null, IRON); a.cyl(X(0.6), 3.05, Z(0.6), 0.02, 0.1, null, IRON); };
-        const lampPost = (sx, sy, side) => { const q = { W: [gx(sx) + 0.3, gc(sy), 270], E: [gx(sx + 1) - 0.3, gc(sy), 90], N: [gc(sx), gx(sy) + 0.3, 0], S: [gc(sx), gx(sy + 1) - 0.3, 180] }[side];
-            if (sx < 31 && sy < 31) LAMPS.push(q); else look('lampC' + sx + '_' + sy, q[0], q[1], 0, a => lampParts(a, 0, 0, q[2])); };
+        /* THE MODEL PASS: the wish list's `lantern_post` stands where the drawn post stood (the drawn one is gone); a small drawn flame keeps it lit at night */
+        const lampPost = (sx, sy, side) => { const q = { W: [gx(sx) + 0.35, gc(sy), 270], E: [gx(sx + 1) - 0.35, gc(sy), 90], N: [gc(sx), gx(sy) + 0.35, 0], S: [gc(sx), gx(sy + 1) - 0.35, 180] }[side];
+            if (ctx.cell[sy][sx] === 'c') { badLamp.push(sx + ',' + sy); return; } props.push({ key: 'lantern_post', x: r2(q[0]), z: r2(q[1]), face: q[2], noBlock: true }); if (sx < 31 && sy < 31) LAMPS.push(q); };
         /* a painted board on two posts at a track's edge (plain words only) */
         const board = (id, fx, fy, rot, words, w) => look(id, gx(fx), gx(fy), rot, a => { a.box(-w / 2 + 0.1, 0, 0, 0.12, 1.9, 0.12, ctx.WD, POST); a.box(w / 2 - 0.1, 0, 0, 0.12, 1.9, 0.12, ctx.WD, POST);
             a.box(0, 1.15, 0, w, 0.6, 0.06, ctx.WD, POST); a.sign(words, 0, 1.22, 0.04, w - 0.16, 0.46, '#e0d0a8', '#4a3a2c', 'fell'); a.sign(words, 0, 1.22, -0.04, w - 0.16, 0.46, '#e0d0a8', '#4a3a2c', 'fell', { ry: 180 }); });
@@ -167,9 +171,9 @@ module.exports = {
 
         /* ── THE FARM TRACK (P02-01): the track to the Ranch; the power line runs along it ── */
         for (const x of [24.5, 29.5, 34.5]) at('power_pole', x, 16.12, { face: 0 }); for (const y of [20.5, 25.5]) at('power_pole', 30.12, y, { face: 90 });
-        P('car_truck', 33, 14, { face: 90 }); at('tire_stack', 32.4, 15.5); at('psx_jerrycan_1', 34.5, 15.4); P('psx_metal_barrel_mp_2', 32, 13); at('tool_chest', 34.4, 13.5); at('traffic_cone', 32.5, 14.5);
+        P('car_truck', 33, 14, { face: 90 }); at('tire_stack', 32.4, 15.5); at('psx_jerrycan_1', 34.5, 15.4); at('psx_metal_barrel_mp_2', 32.5, 14.4); at('tool_chest', 34.4, 13.5); at('traffic_cone', 32.5, 14.5);
         P('covered_wagon', 25, 19, { face: 90 }); P('hw_straw', 27, 20); at('hw_straw', 26.5, 19.3); at('hw_straw_2', 27.4, 19.2); at('hw_straw', 26.4, 20.5); at('meshy_burlap_sack', 24.5, 20.5); at('wooden_bucket', 26.2, 18.4);
-        P('hitching_rail', 24, 18, { face: 0 }); P('hitching_rail', 26, 18, { face: 0 }); board('bd_ranch', 31.7, 18.5, 270, 'THE RANCH', 2.0); lampPost(26, 16, 'N'); lampPost(33, 17, 'S'); lampPost(29, 22, 'W');
+        P('hitching_rail', 24, 18, { face: 0 }); P('hitching_rail', 26, 18, { face: 0 }); board('bd_ranch', 31.7, 18.5, 270, 'THE RANCH', 2.0); lampPost(26, 16, 'N'); lampPost(33, 17, 'S'); lampPost(30, 22, 'W');
         at('crow', 24.5, 16.1, { y: 9.6 + 1.75 }); at('crow', 30.1, 20.4, { y: 9.6 + 1.75 }); at('rabbit', 27.5, 18.5); at('psxg_rock_2', 28.3, 13.6); at('psxg_dead_bush_2', 29.6, 12.4);
 
         /* ── THE ROWS, WEST (P00-02): the cut rows, crows ── */
@@ -182,12 +186,12 @@ module.exports = {
         at('psx_wooden_crate_4', 4.5, 31.5); at('meshy_burlap_sack', 5.3, 31.4); at('fallen_log', 13.5, 33.6, { face: 10 }); at('psxg_rock_3', 16.4, 33.5); at('hw_pumpkin_4', 12.4, 32.3);
 
         /* ── THE ROWS, EAST (P02-02): the silo yard and the east rows ── */
-        P('ind_silo', 25, 32); P('ind_silo', 25, 34); P('psx_metal_barrel_mp_3', 27, 34); at('psx_metal_barrel_mp_1', 27.3, 33.4); P('psx_wooden_crate_2', 24, 33); at('psx_wooden_crate_6', 24.4, 31.4);
+        P('ind_silo', 25, 32); P('ind_silo', 25, 34); P('psx_metal_barrel_mp_3', 27, 34); at('psx_metal_barrel_mp_1', 27.3, 33.4); P('psx_wooden_crate_2', 24, 33); at('psx_wooden_crate_6', 24.4, 32.4);
         at('hand_truck', 26.6, 31.4); at('meshy_burlap_sack', 26.3, 34.5); at('meshy_burlap_sack', 26.8, 34.2); at('cable_drum', 27.5, 32.4); at('tire_stack', 24.5, 34.6); at('wooden_bucket', 26.4, 32.5);
         board('bd_silo', 27.6, 33.5, 90, 'GRAIN', 1.6); lampPost(27, 31, 'N');
         P('psx_metal_barrel_mp_1', 27, 29); at('hw_straw', 27.5, 30.7); at('wooden_bucket', 27.3, 29.6);                             // the shed's apron: a rain barrel by the door
         rows(32, 31, 35, 35, true); P('hw_scarecrow_2', 33, 33, { face: 270 }); at('crow', 33.4, 32.4); at('crow', 34.5, 34.4); at('crow', 32.6, 34.5); at('crow', 33.5, 33.5, { y: 2.1 + 1.75 });
-        P('hw_straw', 29, 29); at('hw_straw_2', 28.5, 29.6); at('hw_pumpkin_2', 29.6, 29.4); lampPost(30, 26, 'W'); lampPost(31, 33, 'E'); lampPost(25, 27, 'N');
+        P('hw_straw', 29, 29); at('hw_straw_2', 28.5, 29.6); at('hw_pumpkin_2', 29.6, 29.4); lampPost(30, 26, 'W'); lampPost(29, 33, 'E'); lampPost(25, 27, 'N');
         at('psxg_rock_1', 26.5, 28.6); at('psxg_dead_bush_2', 23.5, 27.4); at('rabbit', 28.4, 33.5);
 
         /* ── PASS 3, THE DRESSING ── */
@@ -213,7 +217,25 @@ module.exports = {
         at('psx_supply_crate_1', 3.4, 14.4); at('wooden_bucket', 7.4, 14.6); at('meshy_rope', 6.4, 18.6); at('hw_part_4', 3.6, 18.3); at('skull', 8.2, 15.4);   // the watchers' camp
         at('luna_moth', 13.4, 17.4, { y: 1.75 + 2.2 }); at('hawk_moth', 15.6, 28.4, { y: 1.75 + 2.1 }); at('butterfly', 10.4, 25.2); at('bumblebee', 28.4, 7.4); at('ladybug', 32.4, 10.4); at('grasshopper_jump', 4.4, 26.5); at('bee', 2.5, 9.5);
         at('rabbit', 21.4, 20.4); at('rabbit', 15.5, 16.4); at('crow', 18.6, 15.3); at('crow', 22.3, 19.5); at('crow', 14.4, 19.4); at('hw_part_5', 20.6, 21.5); at('hw_pumpkin_2', 16.4, 14.6); at('hw_straw_2', 21.6, 16.3);
-        look('lampsC', gx(19.5), gx(28.5), 0, a => LAMPS.forEach(q => lampParts(a, q[0] - gx(19.5), q[1] - gx(28.5), q[2])));
+        /* ── THE MODEL PASS (mondo 11-16: the wish-list models are in) ── */
+        /* THE CORN AT LAST: a `corn_row` (seven stalks, 3.5 m) stands at the foot of the bank on every open square's side that touches the corn, so every track,
+           field and circle is walled by corn plants; the bank behind is the tool's and still blocks (the rows are decor, `noBlock`) */
+        { const corn = (x, y) => x >= 0 && y >= 0 && x <= 35 && y <= 35 && ctx.cell[y][x] === 'c'; let n = 0;
+          for (let y = 2; y < 36; y++) for (let x = 0; x < 36; x++) { if (ctx.cell[y][x] === 'c' || ctx.cell[y][x] === 'B' || (x >= 13 && x <= 16 && y >= 28 && y <= 30)) continue;
+              for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { if (!corn(x + dx, y + dy) || (x + y) % 3 === 0) continue; n++;   // two segments in three: all 389 rows are 1.3 M triangles more at the proof view; every other one left the hedge showing in a checker
+                  props.push({ key: 'corn_row', x: r2(gc(x) + dx * 1.42 + (dx ? 0 : (rnd() - 0.5) * 0.3)), z: r2(gc(y) + dy * 1.42 + (dy ? 0 : (rnd() - 0.5) * 0.3)), face: (dx ? 90 : 0) + (rnd() < 0.5 ? 180 : 0), noBlock: true }); } }
+          ctx.cornRows = n; }
+        /* the farm's own machines and tools, where the NEEDS A MODEL list wanted them */
+        P('tractor', 4, 28, { face: 20 }); at('plough', 2.5, 27.6, { face: 200 }); at('pitchfork', 5.6, 26.4); at('wheelbarrow', 6.4, 24.5, { face: 120 });      // The Rows, west
+        P('hay_cart', 2, 9, { face: 0 }); at('pitchfork', 4.7, 9.4); at('plough', 4.4, 11.4, { face: 90 });                                                     // The Tall Corn's field
+        P('water_trough', 19, 30, { face: 0 }); at('wooden_barrel', 22.6, 30.6); at('wheelbarrow', 17.4, 31.4, { face: 60 });                                   // The Hub
+        at('wheelbarrow', 28.5, 7.5, { face: 300 }); at('pitchfork', 27.4, 6.4); at('cattle_skull', 30.6, 5.5);                                                 // The Scarecrow
+        P('outhouse', 24, 31, { face: 90 }); at('firewood_stack', 27.5, 30.4, { face: 90 }); at('wooden_ladder', 26.5, 31.07, { face: 0 }); at('pitchfork', 27.6, 29.3); at('wooden_barrel', 26.4, 33.5);   // the silo yard
+        at('mailbox', 21.6, 8.6, { face: 180 }); at('cattle_skull', 18.6, 20.5); at('cattle_skull', 5.6, 3.4); at('beehive', 10.5, 5.5); at('beehive', 9.6, 4.4);
+        for (const x of [32, 33, 34]) P('barbed_wire_fence', x, 13, { face: 0 }); for (const x of [2, 3, 4, 5]) at('barbed_wire_fence', x + 0.5, 2.2, { face: 0 });   // wire behind the lay-by and behind the saucer
+        at('braced_gate', 6.1, 9.9, { face: 60 }); at('braced_gate', 7.1, 26.8, { face: 110 });                                                                 // a gate leaf standing open at two fields' gaps
+        look('lampsC', gx(19.5), gx(28.5), 0, a => LAMPS.forEach(q => { const t = q[2] * Math.PI / 180; a.box(r2(q[0] - gx(19.5) + Math.cos(t) * 0.22), 1.36, r2(q[1] - gx(28.5) + Math.sin(t) * 0.22), 0.11, 0.17, 0.11, null, AMBER, LAMP); }));   // the flame inside each model's lantern (it hangs 0.22 m along the arm, 1.45 m up)
+        if (badLamp.length) throw new Error('C: lamp posts on corn squares: ' + badLamp.join(' · '));
         if (bad.length) throw new Error('C: in the corn: ' + bad.join(' · '));
         /* ── the people (the plan's five) ── */
         native('scarecrow', 29, 7, 180, sayOf(O_FIELDS, 'scarecrow', 0)); native('scarecrow', 2, 15, 60, sayOf(O_FIELDS, 'scarecrow', 2)); native('scarecrow', 21, 14, 200);
