@@ -7433,6 +7433,22 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
   district (dust in the lamps' light, drips): asked for on the board.
 - Numbers at the proof view on the same run of main: 1,858 calls, 2.82 M triangles, 1.9 FPS (llvmpipe).
 
+**PASS 5, POLISH: THE FRAME RATE (seen, 9 views). STOPPED HERE: five passes, waits mondo's look.**
+- **MEASURED ON ONE COPY OF MAIN** (the proof view: the corridor from the west door, x -117.25, z -87.5, face 90, llvmpipe): the first
+  build 1,610 calls / 2.39 M triangles / 1.2 FPS; after pass 4 1,924 / 3.06 M / 1.5; after pass 5 1,870 / 2.81 M / 1.9. The FPS of
+  the cloud's software renderer swings by half a frame between runs, so the calls and the triangles are the numbers to trust: the district
+  costs 260 calls and 0.42 M triangles more than the open hall did.
+- **WON BACK:** the placed models were counted from their files (a scratch script over the probe's cache): 563,000 triangles, most of it in
+  small things. `security_camera` is 27,000 triangles (3 placed, 1 kept), `coffee_mug` 6,600, `paper_sheet` 3,100, `stapler` 6,000,
+  `meal_tray` 6,300, `ulna` 12,400, `floor_drain` 6,200, `traffic_cone` 6,400. Thirteen of those came out: 427,000 now.
+  The drawn rows went from 93 meshes to about 70: one iron and one rail grey, the light in three steps always on the brick sheet (a mesh
+  per sheet + tint + glow: every new tint is a draw call).
+- DRAIN's plate moved up onto the brick over the bars; the bones in cell 3 are the Halloween pack's parts and a skull.
+- **OPEN (what a sixth pass would do, not started):** more people once the NPC system lands (npc-system.md; the tank and cells 1, 4, 6
+  are empty of people); sound (no hook); dust and drips (the tool has no district `airZones`: asked on the board); the dark triangle
+  where a one-square vault meets a pier (the tool's); a real booking desk, bunks and a cage lamp (NEEDS A MODEL); the old room's tape and
+  finds were not re-homed (no tape / find guards); the walker was not driven through the doors by hand (offline flood + pictures only).
+
 **FITS THIS DISTRICT (the whole catalogue + MODEL_LIST sections 6, 7, 10, 12b, 13 read 11-16; all have rows):** CELLS `cot` `steel_toilet`
 `psx_toilet_mp_1` `sink` `psx_old_mattress_mp_1` `psx_pillow_mp_1/2` `psx_bed_1_frame` `wall_chains` `trap_chain_draped/_straight`
 `meal_tray(_empty)` `toilet_paper` `wooden_bucket` `graffiti_wall` `psx_padlock_1..4` `stocks` `wall_padding` · BARS + DOORS `leaf_cell`
@@ -7996,6 +8012,19 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   from the PSX pack, animals, signs), 4 atmosphere, 5 polish.
 
 ## THE SEWERS, THE ZONE KIT — for the T, H and O district threads (started 2026-11-16 by district W; it grows with each pass)
+
+- **FROM DISTRICT H (the Holding Cells, 11-16), for anyone who builds ROOMS in a plot:** (1) a district may re-cut its own squares in
+  `plan()` (`ctx.setRect`): a whole square of brick between two rooms makes the tool's vaults fall into bays, and rooms can be dug out of a
+  plot's solid rock (keep the row over a lower plot solid). (2) Thin walls stand on square LINES: H.js `mk()` has `k.wall(axis, line, a, b,
+  { style: 'bars' | solid, doors, gaps })` = drawn parts + a ghost `wall` row with `y` = the plot's floor + its height; bars are ONE box
+  part with `n` + `step`. (3) Swinging leaves: one `texbuilding` row with `doorsOnly: true, y: 0` and `inner: [{ x, z, rot, w, leaf, y:
+  floor }]` (`leaf_cell` = a solid rusted cell door, `leaf_security` = a barred gate). (4) An `arch` row at `x: 0, z: 0` with far parts is
+  NOT DRAWN: one row a plot at the plot's middle. (5) A drawn `wall` row (a counter) is ground for a prop on it: `y: 0.01`. (6) A walked
+  deck = a `bridge` row (`plain`, `rails: false`) + a `ramp` with `stairs: true, model: 'steel'`; the walker passes under it. (7) COUNT
+  YOUR MODELS: `security_camera` 27,000 triangles, `metro_bench` (the whole Metro file) 17,000, `ulna` 12,400, `skull` 10,400,
+  `skateboard` 9,300, `crt_terminal` 8,900, `coffee_mug` 6,600, `traffic_cone` 6,400, `wooden_bucket` 6,400, `meal_tray` 6,300, `cot`
+  6,300, `floor_drain` 6,200, `stapler` 6,000, `paper_sheet` 3,100; the PSX pack's pieces are a few hundred each. (8) A drawn row is one
+  mesh per sheet + tint + glow: keep to a few tints. (9) `RubberNonSlip2a` is RED; `wall_padding` is bright white; `femur` stands on end.
 
 - **THE LIGHT IS THE FIRST THING TO KNOW.** Ten real lights for the whole room; `ceil` props win, then row order H, O, T, W. Today:
   H 4 bulbs, W 4 bulbs, O 2 torches. A torch or brazier past the ten only glows. Do not add a ceiling lamp without saying so on the board
@@ -8600,3 +8629,22 @@ tile sheet, graffiti.
 - THE YARDS: the Villa's south garden (the fountain between palms, urns, a lion, a stone rail), the Round House (the sports car `car_cyber`, flamingos, a dish, a
   saguaro, prickly pears), the A-Frame (four pines, a fire ring with stump seats, a car), the Hill House's pool terrace (loungers, cooler, ball, a float), the Observatory's
   terrace (two more telescopes at the south rail, benches, urns).
+
+### PASS 3, THE DRESSING (live; seen on screen, two probe runs)
+(Belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES".) `hillsDressing(ctx)` in N.js, called at the end of `content.build`; its own random stream (seed 7717).
+- **THE BRUSH**: every free grass square may carry brush (`psxg_dead_bush_1` / `_2`, `fern`; each given `h` 1.0 to 2.3 m: the pack's bushes are knee high and the slope
+  read bare from the air at their own size), a rock (`ocean_rock_2` / `_5` / `_7`, `hw_stone_1` / `_3`, `h` 0.7 to 2.1) or a cactus (`prickly_pear`, `saguaro_cactus`), by
+  the plot's mix (`MIX`: ridge, slope, foot, sign, yard, burn, oaks, cove; `KIND` names the plots that are not their row's). About 530 brush, 100 rocks, 20 cactus. Few
+  model kinds on purpose: the instance pass draws a model placed twice or more as one mesh a 64 m cell. Squares beside a building, a terrace or a taken square stay clear.
+- **THE TREES**: 67 more on grass, never beside a road or a path, none on the letters' plots (they would hide the sign from the city): pines on the ridge, oaks on the
+  slope and thick in the Oak Canyon, dead trees on the Burn. (`tree_43` / `tree_45` read as brown noise from far off: not used.)
+- **EVERY PLOT'S SET** (the model list): a power line along the Shasta Road (`power_pole`); the Burn (nine bare `hw_tree*` / `psxg_dead_tree*`, a barricade); the Boulders
+  (`sarsen`, `menhir`, `asteroid_a`, `ocean_rock_3` / `_4`); the mast's yard (two dishes, a compressor); the tank's yard (`ind_silo`, pump, valve); the dam's plant; the
+  Oak Canyon's picnic ground; the Quarry (`babel_crane`, a full skip, a container, a forklift, a drum, barrels, bricks); the Horse Trail (hay, a hitching rail, a third
+  horse); barricades under the letters and a board (`missing_board` = the trail board) below them; the Dry Wash (a culvert, a wreck); the Gully's camp (tent, fire ring,
+  two `wolf` = the coyote stand-in); the Fire Break's depot (`fire_truck`, a tank, barrels, sandbags, a hydrant); the Hikers' Lot (the tour bus `transit_bus`, the board,
+  a table under the shelter, a vending machine, a flood mast); THE FILM SHOOT in the Brush (a trailer, a camera, two lights, chairs, a costume rack, a vanity); the Cove
+  (a surfboard rack, lobster traps, crabs, a starfish, a seal, driftwood); road signs of the pack the city's kerbs do not use, a wreck and a barricade on the Hairpin.
+- `P` / `D` / `T` (a blocker on a square's middle, decor, a tree) leave a piece OUT when its square is not free and list it in the bake's log (`LEFT OUT`), where the old
+  `put` / `dec` stop the bake.
+- Frame rate (cloud software GPU, frames a second over 20 s, measured last in the run): terrace 0.7 then 0.6 after the brush was thickened; Casino court 1.4 then 1.3.
