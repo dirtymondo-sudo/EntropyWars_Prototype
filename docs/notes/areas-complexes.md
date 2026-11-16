@@ -8752,11 +8752,9 @@ BEFORE (HEAD 4a05856): 66 props and 19 drawn rows on 39 plots; three plain box b
   terraces `calm_flagstone`; pool `calm_tiles_small`; burnt ground `scorched`, `obsidian`; chain fence `urban:MetalFenceChainlink1`.
 - **Stand-ins to avoid** (code shapes): `pool_umbrella` (the old file places two: no model exists), `curved_sofa` (swapped for `curved_couch`), `infinity_pool`, `star_dome`, `hearth_fire`, `planter`, `parking_bay`.
 
-### NEEDS A MODEL (found nowhere on R2)
-Deer, coyote, mountain lion, rattlesnake, lizard, hawk, seagull · agave, yucca, a green chaparral bush, tumbleweed, cypress, a burnt tree · BBQ grill, a patio umbrella
-(only the code stand-in), pool ladder, diving board, hot tub, tennis net, a kerb mailbox, a convertible · a coin viewer telescope, a picnic table, a drinking fountain, a
-trail map board, a horse trough · a lattice mast / pylon, an antenna dish for the mast, a chain fence panel · clapperboard, camera dolly · a fire danger sign · a clay roof
-tile sheet, graffiti.
+### NEEDS A MODEL (after THE MODEL PASS, 11-16: every piece this list asked for was made and is placed, see "THE MODEL PASS" below)
+Still not a model: a clay roof tile sheet, graffiti (sheets); people; dust, embers and fireflies (moving effects). Made but NOT placed, with the reason: `diving_board`
+(3 m long: the Hill House's pool is 5.4 m across).
 
 ### PASS 1, EXTERIORS + LANDMARKS (live; seen on screen, playtest_city.js through probe-fast.js, 16 views)
 - **The kit** (N.js, above `content`): `hillsKit(ctx)` = `glass` (a dark pane), `block` (a ghost wall under a drawn piece), `rail` (a `rail` row by model), `paint` (plot squares
@@ -8903,3 +8901,26 @@ hard right angles and straight lines ... that would be a good spot to turn into 
 - **NOT DONE** (the plan file's section 3): a skyline north of the Desert; the floating things in the zones' skies; the Mountains', North Pole's, Woods', Camelot's and
   Estate's sides (the Woods, Camelot and the Estate have NO land past their lines yet); the Shore's main waterline; the Hills' cliff north of the headland.
 
+
+### THE MODEL PASS (mondo 11-16, on top of the five: "these are models that were added ... use these ones"; live, seen on screen, three probe runs)
+(Belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES"; docs/plans/WISHLIST_MODELS_ADDED.md read end to end.) N.js `hillsModels(ctx)` + key swaps where a stand-in stood.
+- **STAND-INS OUT, THE MODEL IN**: `pool_umbrella` -> `patio_umbrella` (both) · `wolf` -> `coyote` · `missing_board` -> `trail_sign` (four) · `psx_dinner_table_1` ->
+  `picnic_table` (three) · `telescope` -> `coin_telescope` (the terrace's south rail, the Peak) · `mailbox_bank` -> `mailbox` (two) · `car_cyber` -> `convertible_car` ·
+  `dish` -> `antenna_dish` (the mast's yard) · five bare Halloween trees on the Burn -> `burnt_tree` · the brush is `leafy_bush` first, the cactus mix carries `agave`
+  and `yucca` · THE FIRE LOOKOUT drawn from boxes -> `timber_lookout` (its ghost block and one lantern stay) · the terrace's eight drawn lamp standards ->
+  `iron_lamp_post` (the model carries no light: one drawn lit globe stays at each head).
+- **NEW**: `deer` (two, the Oak Canyon), `mountain_lion` (the Boulders), `rattlesnake` + `cattle_skull` (the Dry Wash), `lizard`, `hawk` (on the Peak's pillar),
+  `seagull` (the Cove, the Coast Overlook), `vulture` (the Burn), a `coyote` on the ridge, a `fox`, six `tumbleweed`; three `lattice_pylon` on the ridge, `cairn`s, a
+  `weather_mast` on the Peak, a `chain_fence` on the mast yard's two lines; `fire_danger_sign` (three); `water_trough`, `saddle`, `hay_bale` at the horse shed; the
+  Quarry's `ore_heap`, `mine_cart`, `pickaxe`, `wheelbarrow`; the Hikers' Lot's `outhouse`, `drinking_fountain`, `camper_van`; the camp's `sleeping_bag`, `kettle`; a
+  `drinking_fountain` and a `sundial` on the terrace; the film shoot's `camera_dolly` and `clapperboard`; the pool's `pool_ladder`, `bbq_grill`, two `string_lights`; the
+  Round House's `hot_tub`; the A-Frame's `firewood_stack`, `axe_chopping_block`, `clothes_line`, and inside a `wood_stove` under the flue, a `fur_rug`, an
+  `antler_trophy`; the Round House's bar `beer_taps` + a `dartboard`; the Cove's `beach_towel`s, `sandcastle`, `beach_shower`, `rope_coils`.
+- **THE VILLA'S TENNIS COURT** (H10-02, west of the drive): level concrete (`paint` + `flat` in hillsBuildings, before the brush is sown), white lines drawn, the
+  `tennis_net` across it; six `cypress_tree` line the drive up to the Observatory, two more at the terrace's foot; `olive_tree`, `rose_bed`, `bird_bath`, a `peacock`.
+- **THE FRAME RATE, BISECTED** (cloud software GPU, the Casino court looking up, frames a second, two readings after a warm-up; three switches in N.js for it:
+  `HILLS_BARE`, `HILLS_NO_DRESS`, `HILLS_NO_SCATTER`, + `HILLS_NO_TREES`, `HILLS_SIZED`): none of this thread's work 1.6 / 1.9 · buildings + insides + lights only
+  1.6 / 1.9 (they cost nothing) · + the plot sets and the models, no scatter 1.4 / 1.7 · the full scatter of pass 3 0.9 / 1.1 (the same with or without the size
+  override; 1.1 / 1.4 without its trees). So THE SCATTER WAS THE COST and was cut: 257 brush, 85 rocks, 34 cactus, 49 trees (was 400 / 90 / 30 / 80), every piece at
+  its model's own size -> 1.4 / 1.5. The terrace over the city: 0.6 / 0.6 bare, 0.7 now. The slope reads thinner than pass 3's pictures; `MIX` in hillsDressing is the
+  one place to turn it up or down.

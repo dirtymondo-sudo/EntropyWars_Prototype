@@ -35,7 +35,8 @@
    KNOWN MISSING OR WRONG
    - Nobody lives here (mondo: "don't worry about it yet"; the residents are the NPC spawn system's: npc-system.md). No encounter table.
    - No air (dust, embers over the Burn): a zone's particles are born at the room's floor and the Hills stand 26 to 45 m over it (the tool's row).
-   - The fire lookout, the intake tower and the transmitter hut are drawn, not entered. `pool_umbrella` (two, from the first file) is still the code stand-in.
+   - The fire lookout, the intake tower and the transmitter hut are drawn, not entered. THE MODEL PASS (11-16) put the wish-list models in: `hillsModels`.
+   - Switches for measuring (never ship such a bake): HILLS_BARE, HILLS_NO_DRESS, HILLS_NO_SCATTER, HILLS_NO_TREES, HILLS_SIZED.
    - THE THREE BUILDINGS have their exteriors and interiors (11-16, mondo: "do exteriors and interiors of the buildings"; notes: areas-complexes.md
      "THE HOLLYWOOD HILLS, THE THREE BUILDINGS"). Still open on them: the Stilt House's west deck is drawn only (the walker walks the slope under it);
      the Observatory's doorway is 0.87 m west of the frontispiece's middle (a glazed light fills the other half); the windows are dark panes outside
@@ -209,6 +210,8 @@ function hillsBuildings(ctx) {
         for (const s of [-1, 1]) for (const z of [-2.6, 2.2]) glass(a, s * (w / 2 + 0.07), 1.0, z, 1.2, 1.7, true, 0.25); for (const x of [-4.4, 0, 4.4]) glass(a, x, 1.0, -d / 2 - 0.07, 1.2, 1.7, false, 0.25);
         a.box(-w / 2 + 1.6, 4.2, -1, 0.9, 2.8, 0.9, STUCCO, CREAM, { gain: 1.9, roof: true }); a.box(-w / 2 + 1.6, 7.0, -1, 1.2, 0.18, 1.2, TILE, CLAY, { roof: true }); });
 
+    /* the Villa's TENNIS COURT (the model pass: the net and the lines are hillsModels'): its squares are level concrete before the brush is sown */
+    paint('H10-02', 1, 0, 4, 7, 'f'); flat('H10-02', 1, 0, 4, 7); take('H10-02', 1, 0, 4, 7);
     /* THE A-FRAME (H01-02, new): dark boards, a steep roof to the ridge with a glass gable over the door, a deck */
     B.aframe = building('aframe', 'H01-02', [2, 1, 5, 4, 'S'], 3.0, { keyIn: WCL, floorIn: FLR }, (a, w, d, dr) => {
         a.shell(w, 3.0, d, WCL, 0x9a6a44, dr, null, { gain: 1.3 });
@@ -217,13 +220,9 @@ function hillsBuildings(ctx) {
         for (const x of [-3.6, 2.6]) { if (Math.abs(x - dr.lx) < 1.6) continue; glass(a, x, 0.5, d / 2 + 0.07, 2.2, 2.2, false, 0.2); }
         a.box(0, 0, d / 2 + 1.5, w, 0.12, 2.9, DECK, 0xb89068); a.cyl(3.0, 6.0, -1.5, 0.18, 3.4, STL, 0x2a2a2e, { roof: true, seg: 8 }); });
 
-    /* THE FIRE LOOKOUT (H02-00, new, over the burn): four timber legs, a cab with a glass band, a hip roof; drawn, not climbed */
+    /* THE FIRE LOOKOUT (H02-00, new, over the burn): the wish list's `timber_lookout`; not climbed */
     { const q = S('H02-00', 8, 8), X = mx(q[0]), Z = mz(q[1]);
-      look('firetower', X, Z, a => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * 1.5, 0, sz * 1.5, 0.3, 9, 0.3, BEAM, DARKW);
-          for (const y of [3, 6]) { for (const s of [-1, 1]) { a.box(0, y, s * 1.5, 3.3, 0.16, 0.16, BEAM, DARKW); a.box(s * 1.5, y, 0, 0.16, 0.16, 3.3, BEAM, DARKW); } }
-          a.box(0, 9, 0, 5.2, 0.2, 5.2, DECK, 0xb89068, { under: true }); a.box(0, 9.2, 0, 3.4, 0.9, 3.4, WCL, 0xe8e2d4, { gain: 1.9 }); a.box(0, 10.1, 0, 3.3, 1.1, 3.3, GLS, DGLASS, { glow: 0.25 }); a.box(0, 11.2, 0, 3.4, 0.3, 3.4, WCL, 0xe8e2d4, { gain: 1.9 });
-          a.P.push({ s: 'roof', form: 'pyramid', p: [0, 11.5, 0], size: [4.8, 1.3, 4.8], key: CORR, tint: 0x4a6a52 });
-          for (const s of [-1, 1]) { a.box(0, 10.0, s * 2.5, 5.2, 0.08, 0.08, BEAM, DARKW); a.box(s * 2.5, 10.0, 0, 0.08, 0.08, 5.2, BEAM, DARKW); for (const t of [-1, 0, 1]) { a.box(t * 2.5, 9.2, s * 2.5, 0.1, 0.85, 0.1, BEAM, DARKW); a.box(s * 2.5, 9.2, t * 2.5, 0.1, 0.85, 0.1, BEAM, DARKW); } } });
+      props.push({ key: 'timber_lookout', x: X, z: Z, face: 180 });   // (the model pass: the tower was drawn from boxes until the model came)
       block(X, Z, 3.4, 3.4); R.taken.add(q[0] + ':' + q[1]); }
 
     /* THE TRANSMITTER HUT by the radio mast (H05-00) + antenna arms on the mast */
@@ -273,7 +272,7 @@ function hillsInsides(ctx) {
     /* THE ROUND HOUSE: the lounge under the saucer */
     { const b = B.round; inside(b, 'roundhouse', 3.4, U('PlasterWallPainted1a'), 0xf0e6d0, 0.85, [M, 0xf4e8d0, 0.9], (a, w, d) => { for (const u of [-3, 0.6, 3.4]) paneIn(a, w, d, 'b', u, 0.9, 2.2, 1.9); for (const u of [-3, 0.4, 3.2]) { paneIn(a, w, d, 'l', u, 0.9, 2.2, 1.9); paneIn(a, w, d, 'r', u, 0.9, 2.2, 1.9); } });
       P(b, 'tulip_table', 0, 0); P(b, 'rug_round', 0, 0, 0, { y: 0.02, span: 3 }); P(b, 'tulip_chair', -1.1, 0.4, 100); P(b, 'tulip_chair', 1.1, -0.3, 280); P(b, 'curved_couch', -3.5, -3.5, 45); P(b, 'egg_chair', -3.5, 0, 90); P(b, 'lava_lamp_floor', -4.3, 2.2);
-      P(b, 'jukebox', 3.5, 0, 270); P(b, 'mini_fridge', 3.5, -3.5, 0); P(b, 'bar_stool', 2.4, -2.5); P(b, 'bar_stool', 3.9, -2.2); P(b, 'pinball_machine', 3.5, 3.5, 270); P(b, 'space_divider', 0, -4.2, 0); P(b, 'disc_cluster', 0, 0); P(b, 'sputnik_lamp', -2.6, -2.6); P(b, 'mushroom_lamp', 4.3, -4.3, 0, { y: 0.85 }); }
+      P(b, 'jukebox', 3.5, 0, 270); P(b, 'mini_fridge', 3.5, -3.5, 0); P(b, 'beer_taps', 3.5, -3.5, 270, { y: 0.85 }); P(b, 'dartboard', 4.7, -1.75, 270, { y: 1.6 }); P(b, 'bar_stool', 2.4, -2.5); P(b, 'bar_stool', 3.9, -2.2); P(b, 'pinball_machine', 3.5, 3.5, 270); P(b, 'space_divider', 0, -4.2, 0); P(b, 'disc_cluster', 0, 0); P(b, 'sputnik_lamp', -2.6, -2.6); P(b, 'mushroom_lamp', 4.3, -4.3, 0, { y: 0.85 }); }
     /* THE VILLA: tile and dark wood */
     { const b = B.villa; inside(b, 'villa', 4.2, STUCCO, 0xf6ecd6, 0.85, [BEAM, 0x8a6a48, 0.8], (a, w, d) => { for (const u of [-4.8, 3.0, 5.4]) paneIn(a, w, d, 'f', u, 1.0, 1.1, 1.6); for (const u of [-4.4, 0, 4.4]) paneIn(a, w, d, 'b', u, 1.0, 1.1, 1.6); for (const u of [-2.6, 2.2]) { paneIn(a, w, d, 'l', u, 1.0, 1.1, 1.6); paneIn(a, w, d, 'r', u, 1.0, 1.1, 1.6); } });
       P(b, 'chesterfield_sofa', -5.25, -3.5, 0); P(b, 'wingback_chair', -5.25, 0, 90); P(b, 'coffee_table', -3.6, -1.9); P(b, 'psx_carpet_mp_1', -4.2, -1.6, 0, { y: 0.02 }); P(b, 'psx_dinner_table_1', 1.75, 0); for (const [x, z, f] of [[0.5, 0, 90], [3.0, 0, 270], [1.75, -1.3, 0], [1.75, 1.3, 180]]) P(b, 'psx_chair_mp_1', x, z, f);
@@ -281,7 +280,7 @@ function hillsInsides(ctx) {
       P(b, 'crystal_chandelier', 1.75, 0, 0, { y: 2.45 }); P(b, 'painting_landscape', 1.75, -4.9, 0, { y: 1.9 }); P(b, 'painting_portrait', -6.6, -1.75, 90, { y: 1.9 }); }
     /* THE A-FRAME: one room, a bed, a chair by the stove pipe */
     { const b = B.aframe; inside(b, 'aframe', 3.0, WCL, 0xd0a070, 0.8, null, (a, w, d) => { for (const u of [-3.6, 2.6]) paneIn(a, w, d, 'f', u, 0.5, 2.0, 2.0); });
-      P(b, 'psx_bed_1', 3.5, -3.5, 0); P(b, 'footlocker', 3.5, -1.3, 0); P(b, 'psx_armchair_2', -3.5, -3.5, 45); P(b, 'rocking_chair', -3.5, 0, 90); P(b, 'psx_coffee_table_1', -1.9, -2.0); P(b, 'psx_tv_table_1', 3.5, 3.5, 270); P(b, 'tube_tv', 3.5, 3.5, 270, { y: 0.74 });
+      P(b, 'psx_bed_1', 3.5, -3.5, 0); P(b, 'wood_stove', 3.5, 0, 270); P(b, 'footlocker', 2.2, -4.4, 0); P(b, 'fur_rug', 0, 1.6, 0, { y: 0.03 }); P(b, 'antler_trophy', -4.6, -3.0, 90, { y: 1.9 }); P(b, 'fishing_rod', 4.5, 2.0, 300); P(b, 'psx_armchair_2', -3.5, -3.5, 45); P(b, 'rocking_chair', -3.5, 0, 90); P(b, 'psx_coffee_table_1', -1.9, -2.0); P(b, 'psx_tv_table_1', 3.5, 3.5, 270); P(b, 'tube_tv', 3.5, 3.5, 270, { y: 0.74 });
       P(b, 'psx_shelf_mp_2', 0, -4.6, 0); P(b, 'instrument_guitar', -4.4, 2.2, 60); P(b, 'psx_carpet_mp_1', 0, -0.6, 0, { y: 0.02 }); P(b, 'table_lamp', -1.9, -2.0, 0, { y: 0.66 }); P(b, 'psx_lamp_1_on', -4.3, -1.8); P(b, 'retro_radio', 0, -4.6, 0, { y: 1.4 }); }
 
     /* ── THE YARDS (pass 2): what stands round the houses and on the terraces ── */
@@ -289,16 +288,16 @@ function hillsInsides(ctx) {
     /* the Villa's south garden: a fountain between two palms, urns, a stone rail on the garden's edge; urns at the loggia */
     put('H10-02', 'fountain', 9, 6); tree('H10-02', 'palm', 8, 7, 7); tree('H10-02', 'palm', 8, 11, 7); dec('H10-02', 'stone_urn', 8, 6); dec('H10-02', 'stone_urn', 10, 6); put('H10-02', 'lion_statue', 7, 6, { face: 270 });
     { const o = O('H10-02'); rail(o.x(7), o.z(8) - 0.2, o.x(12) - 0.2, o.z(8) - 0.2, 'stone'); const b = B.villa; b.put('stone_urn', -6.4, b.fd / 2 + 3.1); b.put('stone_urn', 6.4, b.fd / 2 + 3.1); b.put('potted_plant', 2.2, b.fd / 2 + 1.0); }
-    tree('H10-02', 'palm', 8, 2, 3); tree('H10-02', 'palm', 7, 3, 6); dec('H10-02', 'prickly_pear', 1, 1); dec('H10-02', 'prickly_pear', 0, 5);
+    tree('H10-02', 'palm', 8, 0, 3); tree('H10-02', 'palm', 7, 0, 6); dec('H10-02', 'prickly_pear', 0, 1); dec('H10-02', 'prickly_pear', 0, 5);   // (west of the tennis court)
     /* the Round House: the sports car on the grass, cactus, flamingos, the dish */
-    put('H05-02', 'car_cyber', 7, 4, { face: 90 }); put('H05-02', 'mailbox_bank', 1, 4, { face: 180 }); dec('H05-02', 'flamingo', 0, 3); dec('H05-02', 'flamingo', 1, 2); put('H05-02', 'dish', 0, 0, { face: 150 }); put('H05-02', 'saguaro_cactus', 8, 0); dec('H05-02', 'prickly_pear', 7, 1); dec('H05-02', 'prickly_pear', 0, 1);
+    put('H05-02', 'convertible_car', 7, 4, { face: 90 }); put('H05-02', 'mailbox', 1, 4, { face: 180 }); dec('H05-02', 'flamingo', 0, 3); dec('H05-02', 'flamingo', 1, 2); put('H05-02', 'dish', 0, 0, { face: 150 }); put('H05-02', 'saguaro_cactus', 8, 0); dec('H05-02', 'prickly_pear', 7, 1); dec('H05-02', 'prickly_pear', 0, 1);
     /* the A-Frame: pines, a fire ring with stump seats, the car on the track's edge */
     tree('H01-02', 'pine', 7.5, 0, 1); tree('H01-02', 'pine', 6.5, 6, 0); tree('H01-02', 'pine', 8, 7, 1); tree('H01-02', 'pine', 6, 0, 3); put('H01-02', 'campfire', 6, 3); dec('H01-02', 'stump', 7, 3); dec('H01-02', 'stump', 6, 4); dec('H01-02', 'fallen_log', 5, 2); put('H01-02', 'car_pack_4', 9, 4, { face: 90 }); dec('H01-02', 'wooden_bucket', 5, 4);
     /* the Hill House's pool terrace: loungers, a cooler, a ball, a float on the water, plants */
     put('H04-02', 'pool_lounger', 7, 8, { face: 90 }); put('H04-02', 'pool_lounger', 10, 7, { face: 200 }); dec('H04-02', 'beach_ball', 10, 9); dec('H04-02', 'beach_cooler', 7, 9); dec('H04-02', 'potted_plant', 7, 7);
     { const o = O('H04-02'); props.push({ key: 'beach_air_mattress_pink', x: r2(o.x(9) + 0.5), z: r2(o.z(8.5) - 0.4), y: -0.08, face: 30 }); }
     /* the Observatory's terrace: two more telescopes at the south rail, benches, urns at the corners */
-    put('H10-01', 'telescope', 4, 9, { face: 180 }); put('H10-01', 'telescope', 7, 9, { face: 180 }); put('H10-01', 'city_bench', 2, 5, { face: 90 }); put('H10-01', 'city_bench', 9, 5, { face: 270 }); dec('H10-01', 'stone_urn', 2, 2); dec('H10-01', 'stone_urn', 9, 2); dec('H10-01', 'stone_urn', 2, 7); dec('H10-01', 'stone_urn', 9, 7);
+    put('H10-01', 'coin_telescope', 4, 9, { face: 180 }); put('H10-01', 'coin_telescope', 7, 9, { face: 180 }); put('H10-01', 'city_bench', 2, 5, { face: 90 }); put('H10-01', 'city_bench', 9, 5, { face: 270 }); dec('H10-01', 'stone_urn', 2, 2); dec('H10-01', 'stone_urn', 9, 2); dec('H10-01', 'stone_urn', 2, 7); dec('H10-01', 'stone_urn', 9, 7);
 }
 
 /* ══ PASS 3: THE DRESSING. The slopes were bare grass from the ridge to the city's line. (1) THE BRUSH: every free grass square may carry dry brush, a
@@ -320,31 +319,31 @@ function hillsDressing(ctx) {
     P('H00-00', 'power_pole', 4, 7); D('H00-00', 'ocean_rock_3', 7, 3); D('H00-00', 'hw_stone_2', 5, 8); P('H00-00', 'city_bench', 6, 7, { face: 180 });
     for (const id of ['H00-01', 'H01-01', 'H02-01', 'H03-01', 'H04-01', 'H05-01']) P(id, 'power_pole', id === 'H01-01' ? 11 : 1, 4, { face: 90 });   // the line along the Shasta Road
     /* THE BURN: bare black trees on the burnt ground, snags, a barricade on the trail */
-    for (const [k, lx, ly] of [['hw_tree', 2, 8], ['hw_tree_2', 5, 9], ['hw_tree_3', 3, 10], ['hw_tree_4', 6, 7], ['hw_tree_5', 10, 10], ['psxg_dead_tree_1', 1, 10], ['psxg_dead_tree_2', 4, 8], ['hw_tree_2', 10, 7], ['psxg_dead_tree_1', 7, 10]]) P('H02-00', k, lx, ly, { face: Math.round(rnd() * 360) });
+    for (const [k, lx, ly] of [['hw_tree', 2, 8], ['burnt_tree', 5, 9], ['hw_tree_3', 3, 10], ['burnt_tree', 6, 7], ['hw_tree_5', 10, 10], ['burnt_tree', 1, 10], ['psxg_dead_tree_2', 4, 8], ['burnt_tree', 10, 7], ['burnt_tree', 7, 10]]) P('H02-00', k, lx, ly, { face: Math.round(rnd() * 360) });
     D('H02-00', 'fallen_log', 6, 9); D('H02-00', 'stump', 9, 9); D('H02-00', 'meshy_stump', 2, 9); P('H02-00', 'item_police_barricade', 7, 7, { face: 0 }); D('H02-00', 'traffic_cone', 8, 7);
     /* THE BOULDERS */
     for (const [k, lx, ly] of [['sarsen', 1, 8], ['menhir', 4, 9], ['ocean_rock_3', 6, 10], ['asteroid_a', 2, 10], ['ocean_rock_4', 5, 7], ['sarsen', 0, 11], ['ocean_rock_3', 3, 7], ['menhir', 6, 8]]) P('H03-00', k, lx, ly, { face: Math.round(rnd() * 360) });
     for (const [lx, ly] of [[1, 9], [3, 9], [5, 10], [2, 11], [6, 11], [0, 7]]) D('H03-00', pick(['ocean_rock_2', 'hw_stone_3', 'psxg_rock_2']), lx, ly);
     /* the Lookout Rock, the mast's yard, the Peak, the tank's yard, the Headland */
-    P('H04-00', 'trash_bin', 4, 3); D('H04-00', 'item_binoculars', 7, 2, { y: 0 }); P('H04-00', 'missing_board', 8, 1, { face: 180 });
-    P('H05-00', 'dish', 7, 1, { face: 200 }); P('H05-00', 'utility_box', 4, 4); P('H05-00', 'air_compressor', 7, 4, { face: 90 }); P('H05-00', 'dish', 4, 3, { face: 140 });
-    P('H08-00', 'telescope', 6, 4, { face: 180 }); P('H08-00', 'park_bench', 7, 3, { face: 180 }); P('H08-00', 'flood_mast', 3, 1); D('H08-00', 'ocean_rock_2', 8, 1);
+    P('H04-00', 'trash_bin', 4, 3); D('H04-00', 'item_binoculars', 7, 2, { y: 0 }); P('H04-00', 'trail_sign', 8, 1, { face: 180 });
+    P('H05-00', 'antenna_dish', 7, 1, { face: 200 }); P('H05-00', 'utility_box', 4, 4); P('H05-00', 'air_compressor', 7, 4, { face: 90 }); P('H05-00', 'antenna_dish', 4, 3, { face: 140 });
+    P('H08-00', 'coin_telescope', 6, 4, { face: 180 }); P('H08-00', 'park_bench', 7, 3, { face: 180 }); P('H08-00', 'flood_mast', 3, 1); D('H08-00', 'ocean_rock_2', 8, 1);
     P('H10-00', 'ind_silo', 7, 2); P('H10-00', 'centrifugal_pump', 7, 1, { face: 90 }); P('H10-00', 'gate_valve', 4, 3); P('H10-00', 'utility_box', 7, 3);
-    P('H11-00', 'trash_bin', 5, 3); P('H11-00', 'missing_board', 9, 3, { face: 270 }); D('H11-00', 'ocean_rock_2', 6, 8);
+    P('H11-00', 'trash_bin', 5, 3); P('H11-00', 'trail_sign', 9, 3, { face: 270 }); D('H11-00', 'ocean_rock_2', 6, 8);
     /* the slope: the reservoir's shore, the dam's plant, the Oak Canyon's picnic ground, the Quarry, the Horse Trail, under the letters, the overlook */
     D('H01-01', 'fallen_log', 10, 4); D('H01-01', 'ocean_rock_5', 0, 4); P('H01-01', 'signpost', 4, 4, { face: 0 }); D('H01-01', 'psxg_rock_3', 11, 3);
     P('H02-01', 'gate_valve', 7, 3); P('H02-01', 'centrifugal_pump', 8, 4, { face: 0 }); P('H02-01', 'utility_box', 7, 4); P('H02-01', 'culvert_mouth', 9, 3, { face: 90 });
-    P('H03-01', 'psx_dinner_table_1', 8, 3); P('H03-01', 'park_bench', 9, 3, { face: 270 }); P('H03-01', 'trash_bin', 10, 2); D('H03-01', 'beach_cooler', 8, 4); P('H03-01', 'psx_dinner_table_1', 3, 10); D('H03-01', 'rabbit', 6, 3, { y: 0 }); D('H03-01', 'rabbit', 2, 9, { y: 0 }); D('H03-01', 'crow', 9, 4, { y: 0 });
+    P('H03-01', 'picnic_table', 8, 3); P('H03-01', 'park_bench', 9, 3, { face: 270 }); P('H03-01', 'trash_bin', 10, 2); D('H03-01', 'beach_cooler', 8, 4); P('H03-01', 'picnic_table', 3, 10); D('H03-01', 'rabbit', 6, 3, { y: 0 }); D('H03-01', 'rabbit', 2, 9, { y: 0 }); D('H03-01', 'crow', 9, 4, { y: 0 });
     P('H04-01', 'babel_crane', 3, 2, { face: 90 }); P('H04-01', 'ind_skip_full', 5, 2, { face: 0 }); P('H04-01', 'ind_container', 8, 2, { face: 0 }); P('H04-01', 'forklift', 5, 4, { face: 120 }); P('H04-01', 'cable_drum', 9, 4); D('H04-01', 'psx_metal_barrel_mp_1', 2, 4); D('H04-01', 'psx_metal_barrel_mp_2', 2, 3); D('H04-01', 'hw_bricks', 7, 4); D('H04-01', 'hw_shovel', 6, 3); P('H04-01', 'item_police_barricade', 1, 3, { face: 90 });
     P('H05-01', 'hitching_rail', 6, 9, { face: 0 }); P('H05-01', 'hw_straw', 1, 10); D('H05-01', 'hw_straw_2', 1, 11); D('H05-01', 'wooden_bucket', 4, 10); P('H05-01', 'horse_black', 6, 11, { face: 40 }); D('H05-01', 'hw_straw', 9, 11);
     for (const [id, a, b] of [['H06-01', 4, 8], ['H07-01', 0, 8], ['H08-01', 4, 8], ['H09-01', 0, 4]]) { P(id, 'item_police_barricade', a, 7, { face: 0 }); D(id, 'traffic_cone', b, 7); }
-    P('H08-01', 'missing_board', 6, 10, { face: 180 }); P('H07-01', 'trash_bin', 8, 10); P('H09-01', 'park_bench', 5, 10, { face: 180 });
+    P('H08-01', 'trail_sign', 6, 10, { face: 180 }); P('H07-01', 'trash_bin', 8, 10); P('H09-01', 'park_bench', 5, 10, { face: 180 });
     P('H11-01', 'car_pack_2', 7, 9, { face: 90 }); P('H11-01', 'trash_bin', 6, 8); P('H11-01', 'hot_dog_stand', 9, 10, { face: 270 }); D('H11-01', 'crow', 10, 6, { y: 0 });
     /* the foot: the Dry Wash, the Gully's camp, the Fire Break's depot, the Hikers' Lot, the Canyon Road, the film shoot in the Brush, the Cliff Stair, the Cove */
     P('H00-02', 'culvert_mouth', 7, 4, { face: 180 }); P('H00-02', 'crashed_car', 9, 3, { face: 60 }); D('H00-02', 'ocean_rock_2', 8, 5); D('H00-02', 'ocean_rock_5', 10, 3); D('H00-02', 'psxg_rock_4', 8, 2); D('H00-02', 'tire_stack', 10, 4);
-    P('H02-02', 'camping_tent', 8, 2, { face: 200 }); P('H02-02', 'meshy_campfire_ring', 9, 3); D('H02-02', 'fallen_log', 10, 3); D('H02-02', 'beach_cooler', 8, 4); P('H02-02', 'wolf', 2, 9, { face: 60 }); P('H02-02', 'wolf', 3, 10, { face: 100 });
+    P('H02-02', 'camping_tent', 8, 2, { face: 200 }); P('H02-02', 'meshy_campfire_ring', 9, 3); D('H02-02', 'fallen_log', 10, 3); D('H02-02', 'beach_cooler', 8, 4); P('H02-02', 'coyote', 2, 9, { face: 60 }); P('H02-02', 'coyote', 3, 10, { face: 100 });
     P('H03-02', 'fire_truck', 3, 9, { face: 90 }); P('H03-02', 'ind_silo', 9, 10); P('H03-02', 'traffic_barrel', 7, 9); P('H03-02', 'traffic_barrel', 7, 10); D('H03-02', 'meshy_sandbags', 0, 10); D('H03-02', 'meshy_sandbags', 0, 9); P('H03-02', 'fire_hydrant', 11, 9); P('H03-02', 'utility_box', 11, 10);
-    P('H06-02', 'missing_board', 10, 3, { face: 270 }); P('H06-02', 'psx_dinner_table_1', 11, 6); P('H06-02', 'transit_bus', 7, 6, { face: 90 }); P('H06-02', 'flood_mast', 1, 4); P('H06-02', 'vending_machine', 10, 4, { face: 270 }); P('H06-02', 'city_bench', 10, 7, { face: 270 }); D('H06-02', 'crow', 1, 6, { y: 0 });
+    P('H06-02', 'trail_sign', 10, 3, { face: 270 }); P('H06-02', 'picnic_table', 11, 6); P('H06-02', 'transit_bus', 7, 6, { face: 90 }); P('H06-02', 'flood_mast', 1, 4); P('H06-02', 'vending_machine', 10, 4, { face: 270 }); P('H06-02', 'city_bench', 10, 7, { face: 270 }); D('H06-02', 'crow', 1, 6, { y: 0 });
     P('H07-02', 'roads_g_sign_001', 3, 7, { face: 180 }); P('H07-02', 'power_pole', 4, 2); P('H07-02', 'roads_g_sign_009', 7, 3, { face: 270 });
     P('H08-02', 'trailer_home_2', 8, 2, { face: 0 }); P('H08-02', 'film_camera', 10, 7, { face: 20 }); P('H08-02', 'studio_light', 4, 5, { face: 40 }); P('H08-02', 'studio_light', 11, 7, { face: 330 }); P('H08-02', 'directors_chair', 5, 7, { face: 0 }); D('H08-02', 'directors_chair', 6, 7); P('H08-02', 'costume_rack', 9, 5, { face: 90 }); D('H08-02', 'traffic_cone', 3, 7); D('H08-02', 'traffic_cone', 9, 7); P('H08-02', 'makeup_vanity', 10, 5, { face: 270 });
     P('H11-02', 'psxg_railing', 4, 7, { face: 0 }); P('H11-02', 'trash_bin', 4, 4); D('H11-02', 'ocean_rock_2', 9, 5);
@@ -355,27 +354,28 @@ function hillsDressing(ctx) {
 
     /* ── THE TREES ── */
     const MIX = {   // per plot: [brush, rock, cactus] chances a free grass square, the tree kinds and their chance
-        ridge: { b: 0.22, r: 0.08, c: 0.01, kinds: ['pine', 'tree_4', 'tree', 'pine'], t: 0.11, h: [5.5, 8] },
-        slope: { b: 0.22, r: 0.05, c: 0.02, kinds: ['tree_3', 'tree_52', 'tree_3', 'tree_2'], t: 0.08, h: [4.5, 7] },
-        foot:  { b: 0.15, r: 0.04, c: 0.03, kinds: ['tree_3', 'tree_52', 'palm'], t: 0.045, h: [5, 7.5] },
-        sign:  { b: 0.22, r: 0.05, c: 0.02, kinds: [], t: 0 },
+        ridge: { b: 0.14, r: 0.06, c: 0.01, kinds: ['pine', 'tree_4', 'tree', 'pine'], t: 0.07, h: [5.5, 8] },
+        slope: { b: 0.12, r: 0.04, c: 0.04, kinds: ['tree_3', 'tree_52', 'tree_3', 'tree_2'], t: 0.05, h: [4.5, 7] },
+        foot:  { b: 0.08, r: 0.04, c: 0.05, kinds: ['tree_3', 'tree_52', 'palm'], t: 0.03, h: [5, 7.5] },
+        sign:  { b: 0.10, r: 0.05, c: 0.02, kinds: [], t: 0 },
         yard:  { b: 0.10, r: 0.02, c: 0.02, kinds: [], t: 0 },
-        burn:  { b: 0.20, r: 0.05, c: 0, kinds: ['tree_13', 'tree_15', 'tree_17', 'tree_5', 'tree_6'], t: 0.10, h: [4, 6.5], bush: ['psxg_dead_bush_1', 'psxg_dead_bush_2'] },
-        oaks:  { b: 0.18, r: 0.03, c: 0, kinds: ['tree_3', 'tree_52', 'tree_52'], t: 0.16, h: [5.5, 8] },
+        burn:  { b: 0.14, r: 0.05, c: 0, kinds: ['tree_13', 'tree_15', 'tree_17', 'tree_5', 'tree_6'], t: 0.10, h: [4, 6.5], bush: ['psxg_dead_bush_1', 'psxg_dead_bush_2'] },
+        oaks:  { b: 0.18, r: 0.03, c: 0, kinds: ['tree_3', 'tree_52', 'tree_52'], t: 0.12, h: [5.5, 8] },
         cove:  { b: 0, r: 0, c: 0, kinds: [], t: 0 } };
     const KIND = { 'H02-00': 'burn', 'H03-01': 'oaks', 'H06-01': 'sign', 'H07-01': 'sign', 'H08-01': 'sign', 'H09-01': 'sign', 'H12-00': 'cove', 'H12-01': 'cove', 'H12-02': 'cove',
         'H04-02': 'yard', 'H05-02': 'yard', 'H10-02': 'yard', 'H01-02': 'yard', 'H09-02': 'yard', 'H10-01': 'yard' };
-    const BRUSH = ['psxg_dead_bush_1', 'psxg_dead_bush_2', 'fern', 'fern', 'psxg_dead_bush_1'], ROCKS = ['ocean_rock_2', 'ocean_rock_5', 'hw_stone_1', 'hw_stone_3', 'ocean_rock_7', 'ocean_rock_2'], CACT = ['prickly_pear', 'prickly_pear', 'saguaro_cactus'];
+    const BRUSH = ['leafy_bush', 'leafy_bush', 'psxg_dead_bush_1', 'psxg_dead_bush_2', 'fern', 'leafy_bush'], ROCKS = ['ocean_rock_2', 'ocean_rock_5', 'hw_stone_1', 'hw_stone_3', 'ocean_rock_7', 'ocean_rock_2'], CACT = ['prickly_pear', 'agave', 'yucca', 'agave', 'saguaro_cactus', 'yucca'];
     const near = (sx, sy) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = sx + dx, y = sy + dy; if (!R.inR(x, y)) continue; const ch = cell[y][x]; if (ch === 'B' || ch === 'm' || ch === 's') return true; if ((dx || dy) && R.taken.has(x + ':' + y) && ch !== 'g') return true; } return false; };
     const count = { brush: 0, rocks: 0, cactus: 0, trees: 0 };
-    R.plots.forEach(p => { const m = MIX[KIND[p.id] || (p.ly === 0 ? 'ridge' : p.ly === 1 ? 'slope' : 'foot')];
+    R.plots.forEach(p => { if (process.env.HILLS_NO_SCATTER) return; const m = MIX[KIND[p.id] || (p.ly === 0 ? 'ridge' : p.ly === 1 ? 'slope' : 'foot')];
         for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const sx = p.lx * N + lx, sy = p.ly * N + ly, u = rnd(), w = rnd();
             if (cell[sy][sx] !== 'g' || R.taken.has(sx + ':' + sy) || near(sx, sy)) continue;
             const roadside = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(d => R.inR(sx + d[0], sy + d[1]) && 'Yp'.indexOf(cell[sy + d[1]][sx + d[0]]) >= 0);
+            if (m.t && !roadside && u < m.t && process.env.HILLS_NO_TREES) continue;
             if (m.t && !roadside && u < m.t) { R.taken.add(sx + ':' + sy); feat({ k: 'tree', x: r2(mx(sx) + (w - 0.5) * 1.2), z: r2(mz(sy) + (rnd() - 0.5) * 1.2), kind: pick(m.kinds), h: r2(m.h[0] + rnd() * (m.h[1] - m.h[0])), r: 0.8, keep: true }); count.trees++; continue; }
             const q = { x: r2(mx(sx) + (w - 0.5) * 2.4), z: r2(mz(sy) + (rnd() - 0.5) * 2.4), face: Math.round(rnd() * 360) }, t = m.t || 0;
-            if (u < t + m.b) { props.push(Object.assign({ key: pick(m.bush || BRUSH), h: r2(1.0 + rnd() * 1.3) }, q)); count.brush++; }   // (chaparral stands chest to head high: the pack's bushes are knee high)
-            else if (u < t + m.b + m.r) { props.push(Object.assign({ key: pick(ROCKS), h: r2(0.7 + rnd() * 1.4) }, q)); count.rocks++; }
+            if (u < t + m.b) { props.push(Object.assign({ key: pick(m.bush || BRUSH) }, process.env.HILLS_SIZED ? { h: r2(1.0 + rnd() * 1.3) } : (rnd(), {}), q)); count.brush++; }   // (chaparral stands chest to head high: the pack's bushes are knee high)
+            else if (u < t + m.b + m.r) { props.push(Object.assign({ key: pick(ROCKS) }, process.env.HILLS_SIZED ? { h: r2(0.7 + rnd() * 1.4) } : (rnd(), {}), q)); count.rocks++; }
             else if (u < t + m.b + m.r + m.c && !roadside) { props.push(Object.assign({ key: pick(CACT) }, q)); count.cactus++; } } });
     console.warn('[the Hills] dressing ' + JSON.stringify(count) + (skip.length ? ' LEFT OUT ' + skip.join(' ') : ''));
 }
@@ -392,16 +392,61 @@ function hillsLights(ctx) {
         for (const x of [-3.4, 3.4]) a.box(x, 2.45, d / 2 + 2.3, 0.22, 0.25, 0.22, null, LAMP, g); a.box(w / 2 - 1.9, 5.5, -d / 2 + 1.9 + 1.76, 1.0, 1.5, 0.04, M, WARM, { glow: 0.9, roof: true }); });
     also(B.aframe, 'aframe:lit', a => { const d = B.aframe.fd; a.box(-3.6, 0.5, d / 2 + 0.13, 2.2, 2.2, 0.05, M, WARM, { glow: 0.95 }); a.box(0, 3.3, d / 2 + 0.09, 2.6, 2.6, 0.04, M, WARM, { glow: 0.9, roof: true }); a.box(B.aframe.door.lx + 1.3, 2.3, d / 2 + 0.2, 0.2, 0.3, 0.2, null, LAMP, g); });
     /* the Observatory's terrace: eight lamp standards on the balustrade's line, one row (the terrace is level) */
-    { const o = O('H10-01'), X = o.x(6), Z = o.z(6); look('obs_lamps', X, Z, a => { for (const [lx, ly] of [[2.4, 2.4], [9.6, 2.4], [2.4, 9.6], [9.6, 9.6], [4.9, 9.6], [7.1, 9.6], [2.4, 6], [9.6, 6]]) { const x = o.x(lx) - X, z = o.z(ly) - Z;
-          a.cyl(x, 0, z, 0.17, 0.3, M, TRIM, { seg: 8, gain: 2 }); a.cyl(x, 0.3, z, 0.055, 2.5, STL, BRONZE, { seg: 6 }); a.cyl(x, 2.74, z, 0.3, 0.07, STL, BRONZE, { seg: 8 }); a.cyl(x, 2.81, z, 0.2, 0.22, null, LAMP, g); a.dome(x, 3.03, z, 0.2, 0.2, null, LAMP, g); } }); }
+    { const o = O('H10-01'), X = o.x(6), Z = o.z(6), AT = [[2.4, 2.4], [9.6, 2.4], [2.4, 9.6], [9.6, 9.6], [4.9, 9.6], [7.1, 9.6], [2.4, 6], [9.6, 6]];   // (the model pass: `iron_lamp_post`; the posts were drawn from cylinders)
+      AT.forEach(([lx, ly]) => ctx.props.push({ key: 'iron_lamp_post', x: o.x(lx), z: o.z(ly) })); look('obs_lamps', X, Z, a => AT.forEach(([lx, ly]) => a.box(o.x(lx) - X, 3.05, o.z(ly) - Z, 0.26, 0.3, 0.26, null, LAMP, g))); }
     /* the pool's light, the landmarks' lanterns */
     { const o = O('H04-02'); look('hillpool:lit', o.x(9), o.z(8.5), a => { a.cyl(0, -0.3, 0, 2.66, 0.06, null, 0x7fe8ff, { ri: 2.4, seg: 28, glow: 1.2 }); for (const [x, z] of [[-5.4, 4.4], [5.4, 4.4]]) { a.cyl(x, 0, z, 0.05, 0.9, STL, 0x2a2a2e, { seg: 6 }); a.box(x, 0.9, z, 0.2, 0.2, 0.2, null, LAMP, g); } }); }
-    { const q = S('H02-00', 8, 8); look('firetower:lit', mx(q[0]), mz(q[1]), a => { a.box(0, 8.76, 0, 0.3, 0.2, 0.3, null, LAMP, g); a.box(0, 10.2, 1.68, 1.6, 0.9, 0.04, M, WARM, { glow: 0.95 }); a.box(1.68, 10.2, 0, 0.04, 0.9, 1.6, M, WARM, { glow: 0.95 }); }); }
+    { const q = S('H02-00', 8, 8); look('firetower:lit', mx(q[0]), mz(q[1]), a => a.box(0, 6.6, 0, 0.22, 0.22, 0.22, null, LAMP, g)); }
     { const q = S('H05-00', 4, 1); look('masthut:lit', mx(q[0]), mz(q[1]), a => a.box(0, 2.3, 1.62, 0.34, 0.14, 0.14, null, LAMP, g)); }
     { const o = O('H02-01'); look('damtower:lit', o.x(3.5), o.z(2), a => { for (const [x, z] of [[1.56, 0], [-1.56, 0], [0, 1.56], [0, -1.56]]) a.box(x, 4.8, z, 0.2, 0.26, 0.2, null, LAMP, g); a.box(5.9, 3.45, 0, 0.16, 0.16, 0.16, null, LAMP, g); }); }
     { const o = O('H06-02'); look('lotshelter:lit', o.x(11), o.z(6), a => a.box(0, 2.42, 0, 0.5, 0.14, 0.5, null, LAMP, g)); }
     { const o = O('H05-01'); look('horseshed:lit', o.x(3), o.z(10.5), a => a.box(0, 2.3, 1.3, 0.2, 0.3, 0.2, null, LAMP, g)); }
     { const q = S('H08-00', 4, 2); look('peakpillar:lit', mx(q[0]), mz(q[1]), a => a.box(0, 1.66, 0, 0.12, 0.12, 0.12, null, 0xff5030, { glow: 1.5 })); }
+}
+
+
+/* ══ THE MODEL PASS (mondo 2026-11-16, after the five: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md). The
+   stand-ins went out where they stood (the umbrella, the coyote, the trail boards, the picnic tables, the coin telescopes, the mailboxes, the convertible,
+   the dishes, the burnt trees, the green brush, agave and yucca in the scatter, the fire lookout, the terrace's lamp posts); here: what had no stand-in. ══ */
+function hillsModels(ctx) {
+    const R = ctx, { S, mx, mz, props, cell, r2, look } = ctx, { O, paint } = hillsKit(ctx), skip = [];
+    let v = 2468; const rnd = () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 4294967296; };
+    const isFree = (sx, sy) => R.open(sx, sy) && cell[sy][sx] !== 'B' && !R.taken.has(sx + ':' + sy);
+    const P = (id, key, lx, ly, q) => { const [sx, sy] = S(id, lx, ly); if (!isFree(sx, sy)) { skip.push(key + '@' + id + ':' + lx + ',' + ly); return; } R.taken.add(sx + ':' + sy); props.push(Object.assign({ key, x: mx(sx), z: mz(sy) }, q || {})); };
+    const D = (id, key, lx, ly, q) => { const [sx, sy] = S(id, lx, ly); if (!R.open(sx, sy) || cell[sy][sx] === 'B') { skip.push(key + '@' + id + ':' + lx + ',' + ly); return; } props.push(Object.assign({ key, x: r2(mx(sx) + (rnd() - 0.5) * 1.6), z: r2(mz(sy) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360) }, q || {})); };
+    /* the wild things, few and off the paths */
+    P('H03-01', 'deer', 8, 11, { face: 250 }); P('H03-01', 'deer', 10, 11, { face: 200 }); P('H03-00', 'mountain_lion', 4, 11, { face: 160 }); D('H00-02', 'rattlesnake', 8, 4); D('H03-00', 'lizard', 2, 9, { y: 0 }); D('H04-01', 'lizard', 9, 3, { y: 0 }); D('H00-02', 'cattle_skull', 9, 4);
+    D('H12-02', 'seagull', 2, 9, { y: 0 }); D('H12-02', 'seagull', 3, 10, { y: 0 }); D('H11-01', 'seagull', 10, 9, { y: 0 }); D('H02-00', 'vulture', 9, 10, { y: 0 }); D('H07-00', 'coyote', 6, 8); D('H01-02', 'fox', 10, 3);
+    { const q = S('H08-00', 4, 2); props.push({ key: 'hawk', x: mx(q[0]), z: mz(q[1]), y: 1.64, face: 180 }); }   // on the Peak's pillar
+    for (const [id, lx, ly] of [['H00-01', 3, 4], ['H02-01', 10, 4], ['H04-02', 2, 4], ['H07-02', 1, 7], ['H10-02', 4, 10], ['H06-02', 0, 9]]) D(id, 'tumbleweed', lx, ly);
+    /* the ridge: three pylons carry the line, cairns on the trail, a weather mast on the Peak */
+    P('H01-00', 'lattice_pylon', 9, 8); P('H06-00', 'lattice_pylon', 6, 9); P('H09-00', 'lattice_pylon', 5, 9); D('H06-00', 'cairn', 2, 7); D('H00-00', 'cairn', 8, 7); P('H08-00', 'weather_mast', 8, 2); D('H04-00', 'backpack', 6, 3);
+    for (const [lx, ly, f] of [[4, 2, 90], [4, 4, 90], [5, 1, 0], [6, 1, 0]]) { const q = S('H05-00', lx, ly); if (R.open(q[0], q[1])) props.push({ key: 'chain_fence', x: r2(mx(q[0]) + (f ? -1.6 : 0)), z: r2(mz(q[1]) + (f ? 0 : -1.6)), face: f }); }   // the mast yard's fence, on the pad's west and north lines
+    /* fire: danger signs on the roads in, a trough and a saddle at the horse shed */
+    P('H03-02', 'fire_danger_sign', 8, 4, { face: 0 }); P('H02-00', 'fire_danger_sign', 11, 7, { face: 0 }); P('H07-02', 'fire_danger_sign', 3, 3, { face: 90 });
+    P('H05-01', 'water_trough', 7, 10, { face: 0 }); D('H05-01', 'saddle', 3, 11); D('H05-01', 'hay_bale', 2, 11); D('H05-01', 'pitchfork', 4, 11);
+    /* the Quarry's own: an ore heap, a cart, tools */
+    P('H04-01', 'ore_heap', 6, 2); P('H04-01', 'mine_cart', 4, 3, { face: 90 }); D('H04-01', 'pickaxe', 7, 3); D('H04-01', 'wheelbarrow', 3, 4);
+    /* the Hikers' Lot: an outhouse, a fountain, a camper van; the Gully's camp; the Lookout Rock */
+    P('H06-02', 'outhouse', 1, 2, { face: 90 }); P('H06-02', 'drinking_fountain', 10, 5, { face: 270 }); P('H06-02', 'camper_van', 4, 6, { face: 90 }); D('H06-02', 'backpack', 11, 7);
+    D('H02-02', 'sleeping_bag', 7, 3); D('H02-02', 'kettle', 9, 4, { y: 0 }); D('H02-02', 'backpack', 10, 2); P('H10-01', 'drinking_fountain', 2, 4, { face: 90 }); P('H10-01', 'sundial', 9, 8);
+    /* the film shoot: the dolly and the board */
+    P('H08-02', 'camera_dolly', 9, 6, { face: 30 }); D('H08-02', 'clapperboard', 6, 7, { y: 0.02 });
+    /* the houses. The Hill House's pool: a ladder, a grill, lights on the rail. The Round House: a hot tub. The A-Frame: wood, a line. The Villa: a tennis court,
+       cypresses on the drive, olives, roses, a bird bath, a peacock */
+    { const o = O('H04-02'); props.push({ key: 'pool_ladder', x: r2(o.x(9) - 2.75), z: o.z(8.5), face: 90 }); props.push({ key: 'string_lights', x: o.x(8), z: r2(o.z(10) - 0.2), face: 0 }); props.push({ key: 'string_lights', x: o.x(10.4), z: r2(o.z(10) - 0.2), face: 0 }); }
+    P('H04-02', 'bbq_grill', 10, 9, { face: 180 }); D('H04-02', 'tropical_bush', 7, 10); D('H04-02', 'banana_plant', 11, 10);
+    P('H05-02', 'hot_tub', 0, 2); D('H05-02', 'tropical_bush', 1, 0); D('H05-02', 'agave', 8, 3);
+    P('H01-02', 'firewood_stack', 5, 3, { face: 90 }); P('H01-02', 'axe_chopping_block', 6, 1); P('H01-02', 'clothes_line', 0, 2, { face: 90 }); P('H01-02', 'picnic_table', 7, 4);
+    { const o = O('H10-02'), X = o.x(2.5), Z = o.z(3.5);   // THE TENNIS COURT west of the drive: level concrete, white lines (drawn), the net across its middle
+      props.push({ key: 'tennis_net', x: X, z: Z, face: 0, span: 10.2 });
+      look('tennis_lines', X, Z, a => { const W = 0xf4f4f0, L = (x, z, w, d) => a.box(x, 0.012, z, w, 0.012, d, null, W, { sides: false }); L(0, -11.6, 9.6, 0.1); L(0, 11.6, 9.6, 0.1); for (const s of [-1, 1]) { L(s * 4.8, 0, 0.1, 23.3); L(s * 3.6, 0, 0.1, 23.3); L(0, s * 6.2, 7.2, 0.1); } L(0, 0, 0.1, 12.4); }); }
+    for (const [lx, ly] of [[4, 0], [4, 2], [4, 4], [4, 6], [7, 0], [7, 1]]) P('H10-02', 'cypress_tree', lx, ly);
+    P('H10-02', 'olive_tree', 10, 7); P('H10-02', 'rose_bed', 10, 6, { face: 0 }); P('H10-02', 'bird_bath', 8, 6); P('H10-02', 'peacock', 11, 6, { face: 220 }); D('H10-02', 'wild_flowers', 7, 7); D('H10-02', 'wild_flowers', 9, 7);
+    for (const [lx, ly] of [[0, 10], [1, 10]]) P('H10-01', 'cypress_tree', lx, ly);
+    /* the Cove: towels, a sandcastle, a shower at the stair's foot, rope */
+    D('H12-02', 'beach_towel', 1, 8, { y: 0.02 }); D('H12-02', 'beach_towel', 2, 11, { y: 0.02 }); D('H12-02', 'sandcastle', 0, 9); P('H11-02', 'beach_shower', 9, 9); D('H12-02', 'rope_coils', 3, 7);
+    console.warn('[the Hills] the model pass' + (skip.length ? ' LEFT OUT ' + skip.join(' ') : ' all placed'));
 }
 
 const content = {};
@@ -616,15 +661,16 @@ content.build = ctx => {
 
   /* ── THE CANYON FOOT (row 2) ── */
   dec('H00-02', 'cave_stone', 7, 3); dec('H01-02', 'stump', 8, 8); dec('H03-02', 'traffic_cone', 3, 9);
-  put('H04-02', 'mailbox_bank', 6, 7); put('H04-02', 'car_suv', 2, 7, { face: 90 }); tree('H04-02', 'palm', 9, 6, 2); tree('H04-02', 'palm', 8, 11, 8);
+  put('H04-02', 'mailbox', 6, 7); put('H04-02', 'car_suv', 2, 7, { face: 90 }); tree('H04-02', 'palm', 9, 6, 2); tree('H04-02', 'palm', 8, 11, 8);
   dec('H05-02', 'traffic_cone', 9, 7);
   flat('H06-02', 2, 3, 10, 8); put('H06-02', 'car_pack_1', 3, 4); put('H06-02', 'car_pack_3', 5, 4); put('H06-02', 'car_taxi', 8, 4); put('H06-02', 'signpost', 4, 2, { face: 180 }); put('H06-02', 'trash_bin', 9, 2);
-  put('H07-02', 'signpost', 4, 10, { face: 180 }); tree('H09-02', 'palm', 9, 1, 4); tree('H09-02', 'palm', 9, 10, 4); put('H09-02', 'pool_umbrella', 10, 7); put('H09-02', 'pool_lounger', 10, 8, { face: 180 });
+  put('H07-02', 'signpost', 4, 10, { face: 180 }); tree('H09-02', 'palm', 9, 1, 4); tree('H09-02', 'palm', 9, 10, 4); put('H09-02', 'patio_umbrella', 10, 7); put('H09-02', 'pool_lounger', 10, 8, { face: 180 });
   put('H10-02', 'signpost', 4, 7, { face: 0 }); put('H11-02', 'signpost', 7, 7, { face: 90 });
-  put('H12-02', 'rowboat', 1, 9, { face: 70 }); put('H12-02', 'pool_umbrella', 2, 8); tree('H12-02', 'palm', 8, 0, 8); dec('H12-02', 'ocean_rock', 3, 10);
+  put('H12-02', 'rowboat', 1, 9, { face: 70 }); put('H12-02', 'patio_umbrella', 2, 8); tree('H12-02', 'palm', 8, 0, 8); dec('H12-02', 'ocean_rock', 3, 10);
   if (!process.env.HILLS_BARE) hillsInsides(ctx);
-  if (!process.env.HILLS_BARE) hillsDressing(ctx);
+  if (!process.env.HILLS_BARE && !process.env.HILLS_NO_DRESS) hillsDressing(ctx);
   if (!process.env.HILLS_BARE) hillsLights(ctx);
+  if (!process.env.HILLS_BARE && !process.env.HILLS_NO_DRESS) hillsModels(ctx);
 };
 
 /* ONE ROAD, ONE STREET SYSTEM (2026-11-16, mondo: "continue making it better and blend together more, natural part of the city"):
