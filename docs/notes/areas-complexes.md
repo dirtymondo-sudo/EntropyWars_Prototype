@@ -13152,3 +13152,49 @@ north at the circle (`henge_s`: x 133, z -30, face 0). FPS there on the probe's 
   full plate stood 0.3 m over the floor). The old room's `sea_chest` rows are OUT of this district: the model is a pirate chest full of gold.
   PROBE TIP: a view's `y` is the FLOOR the camera stands on (the eye is added): `"y": 0` inside a building on level ground; `y: 1.7`
   put the camera over the ceiling.
+- **PASS 3, DRESSING + AIR + POLISH (district M; seen on screen):** the Standing Door's approach (a mast, stones, a cone), a telescope
+  and more crates in the Lander's yard, an ESCAPE POD down on the Mare's east with its blast mark, skid line and the astronaut beside
+  it, a spent ROCKET ENGINE and a hull plate on the Mare's west, the Dish's cabin (a container), footprints from the rover to the probe;
+  two more people (the second man in black at the camera, a grey at the Dish's consoles: eight in the district); THE AIR
+  (`exports.airZones`): the Moon's own slow dust kept over the whole Mare in two zones, a little more round the Lander.
+  Frame rate at the proof view after pass 3: 2.2 (first build 2.3).
+- **STOPPED AFTER THREE PASSES (of five), WAITS MONDO'S LOOK.** Honest state against the bar (75 % of a Disaster City district): the
+  Lander's site, the Habitat (outside and inside) and the Dish are there; the open dust between them is still thinner than a city
+  district, and what would fill it is on the NEEDS A MODEL list, not on R2. Two passes are left for after his look.
+- **DECISIONS MADE FOR MONDO (the zone + the pilot; overrule any in one line):**
+  1. Four rooms, one a world, not one solar-system room (flying / floating are new mechanics).
+  2. Sizes: Moon and Mars 5 x 4 plots, Saturn and the Singularity 4 x 4 (72 plots in all).
+  3. The ten districts and their names; the six new plain labels: The Saucer, The Dig, The Sound Stage, The Canals, The Dunes east (the
+     tripod), The Ring Plane; and the plot names The Standing Door / The Airlock / The Standing Frame for the bay doors.
+  4. The hub `space` is anchored on the Spaceship's airlock (it joins every world).
+  5. The Far Side is behind a ridge with two passes; its three secrets are a saucer, a floodlit dig with nothing in it yet, and a
+     Sound Stage (a second lander under studio lights: Room 1969's own "the footage").
+  6. Mars: the Face is a mesa shaped like a face and the bore to the Moon is in its mouth; the collar is the Rover Bay's hatch; the
+     Martian's tripod (his spell prop) stands in the dunes.
+  7. Saturn is a true hexagon and everything outside it is storm wall; the Singularity is a bowl in three shelves, the rim in the lava sheet.
+  8. The Moon's props at their real size through new catalogue rows (the 3.2 m lander is 7 m); the flag is white (bleached).
+  9. The old rooms' pirate chests (`sea_chest`) are not carried into the Mare. The old rooms' four tapes were not re-homed.
+  10. Who was added without a line: Barbarella, Mantid, Voidweaver (Moon), Droid, a second Martian (Mars), Black Goo, a grey (Saturn),
+      a second Cosmic Wraith (Singularity), a second man in black and a grey (the Mare).
+- **NEEDS A MODEL (exact; none is on R2):**
+  | What | Where it goes | Size |
+  |---|---|---|
+  | A flag on a pole with a top rod (plain cloth, he picks the picture) | the Lander (replaces the drawn one), the Sound Stage | 2.5 m |
+  | A lunar rover (open frame, four wire wheels, a dish) | the Tracks (replaces the Mars rover standing in) | 3.1 m long |
+  | A space suit on a rack + a suit locker | the Habitat's airlock, the Rover Bay | 2 m |
+  | Habitat modules: a dome, a tube joint, a greenhouse | the Habitat's yard (today one walk-in module) | 6 to 10 m |
+  | A solar panel array on a mast | the Habitat, the Dish, Mars' Rover Bay | 4 m |
+  | Moon boulders and ejecta rocks, three shapes | the Mare, the crater's lip | 1 to 5 m |
+  | A black monolith | the Far Side's Dig (the pit is there, empty) | 1 x 4 x 9, 4 m tall shown |
+  | A film backdrop flat + a clapper board | the Sound Stage | 6 m, 0.4 m |
+  | A rock arch | Mars, over the canyon (today a steel deck) | 32 m span, 7 m up |
+  | A pyramid capstone / altar | the Pyramid's top | 3 m |
+  | Canyon wall pieces, a cave mouth | Mars' canyon | 5 m |
+  | A splinter of ring ice | Saturn's Ring Shard (today ice-topped rock) | 30 m long, 7 m |
+  | A storm wall that moves (a sheet with scrolling cloud) | Saturn, the six walls | a look, not a model |
+  | A projection screen on a stand | the Singularity's Screen ledge | 4 x 3 m |
+  | A lens / disc for the hole | Zero Volume | 18 m |
+  | An Earth for the Moon's sky | the model `earth` exists (§7); no walked-room landmark kind draws it: a renderer row, not art | sky |
+- **WHAT I WOULD DO NEXT:** his look first. Then pass 4 on the Mare with whatever models he has made; the district threads for the
+  nine free districts (Mars' Cydonia is the strongest after the Mare: the Face and the Pyramid already read from the air); the Earth
+  in the Moon's sky; the Catwalk on the Terrace.
