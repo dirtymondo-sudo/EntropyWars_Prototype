@@ -8263,6 +8263,18 @@ rock mouth: two piers, a cap and a dome of `rocks_5` (tint 0xe8d0a8, `gain` 1.7)
 **WHAT A NEXT THREAD WOULD DO (after his look):** a real Sphinx model; carving on the inside's walls once a hieroglyph sheet exists; the canyon
 to Western Town (cut by the move: the tool's); the scatter and the pine mountains on Giza's edges (the tool's); residents and Giza's own fights.
 
+**THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; one pass on top of the five, then STOPPED again).**
+- **IN, AND THE STAND-IN OUT:** `sphinx` (`Pm('sphinx', x, z, { face: 90 })` points its head east; 20 m long, it blocks by itself) for the
+  parts-built Sphinx; `canvas_tent` for the nylon tents; `camel` for the horses; `reeds` for `ocean_seaweed`; `casing_block` for most rubble
+  stones; `jackal_statue` for the small obelisks in the King's Chamber.
+- **NEW:** ten `papyrus_column` along the causeway (outside the kerb), `pharaoh_statue` before the Sphinx and on the Tomb Door path,
+  `jackal_statue` at the north mouth and the Tomb Door, `cat_statue`, `golden_idol`, `canopic_jars`, `tripod_bowl` in the hall, the Dig's
+  `sieve_table` / `wheelbarrow` / `pickaxe` / `wooden_ladder` / `wooden_barrel` / `hand_cart`, two `market_stall` + `woven_baskets` + a `hookah`
+  at the oasis camp, `fallen_column`, `vulture`, `cobra`, `scorpion`, `cattle_skull` in the Sand Sea, `oil_lamp` in the pyramid's passages.
+- **THE COST:** triangles at the proof view went from 1.12 M to 1.90 M (the models are dense); the cloud's frame rate did not drop (3.3 FPS,
+  434 calls), but on a weak machine the columns and statues are the first thing to thin out or to give LODs.
+- **STILL MISSING:** a hieroglyph / carved-relief wall sheet (a texture), papyrus plants and a gold pile (not made).
+
 **FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
 `meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
 `ocean_rock..11`, `psx_brick_1`, `hw_bricks`; pots `greek_amphora`, `cauldron`, `item_censer`, `wooden_bucket`; fire `brazier`, `cave_torch`,
@@ -8282,7 +8294,7 @@ a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil la
 1. The pyramids are true pyramids and are NOT climbed (a real face is too steep for the walker). A zigzag stair up one face is possible.
 2. The King's Chamber keeps the door to the Turning Tomb (his earlier yes); it is walked and stays as built.
 3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
-4. The Sphinx stays parts-built until a model exists.
+4. The Sphinx is the `sphinx` model now (the model pass); the stele I had built between its paws went with the parts-built one.
 - **FROM DISTRICT T (the Running Tunnels, 11-16):** (1) LIGHT THAT FALLS, with no light: under a lit lamp lay a thin part wearing the
   FLOOR'S OWN sheet with `glow` 0.1 to 0.35 (two steps, the inner brighter), and the same on the wall behind it; the floor reads lit.
   (2) A HUT IN A RECESS: T.js `hut(ctx, plot, name, x0, x1, zFront, zBack, xDoor, xWin0, xWin1, glassTint, board, { y0, east, key,
