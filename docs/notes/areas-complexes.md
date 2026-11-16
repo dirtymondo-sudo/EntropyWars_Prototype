@@ -6313,7 +6313,16 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   (6) No new residents: the kingdom's AREA UNITS table decides who stands here and has no fairy folk; adding fairy, unicorn, gnome and
   mushroom girl to that table (or a table per district) is his call. (7) The knolls keep their plain names; the north one carries a great
   oak, the south one the crystals. (8) Two standing stones mark the Woods trail. (9) The air: violet motes + fireflies, spores, blue motes.
-- **WOULD DO NEXT**: the people (once the table is his); a willow and reeds at the pond when a model exists; sound (no hook); the ring's
+- **THE PEOPLE (mondo 11-16, after his look: "add fairy, unicorn, gnome, and mushroom girl to Camelot")**: data.js `HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom`
+  is its own table now (it was the old ward's by reference): the ward's 28 units + fairy, unicorn, gnome, mushroom girl, each at weight 3 (the
+  middle tier; the weight is my pick). The palace and the old rooms keep their tables. In the forest: the ring's fairy, a unicorn at the
+  spring, a mushroom girl in the mushroom glade, a gnome on the north knoll. ONE BODY A RACE A ROOM (the crowd ledger): the garden's fairy
+  and gnome are written first, so the forest's two carry `gender` (a row with a gender is a body of its own, as the priest and the nun are).
+  The room's cap is 14 bodies (`HQ_CROWD_RULES.areaMax`); it stands 12. SEEN: the unicorn and the mushroom girl as themselves. NOT SEEN IN A
+  PICTURE: the ring's fairy and the gnome (three probe views missed them). PROBE TIP: a person within 6 m straight ahead of the camera is
+  cleared out of the way (`HQ_CROWD_RULES.clear`): photograph people from 8 m or more, or off to one side.
+  The ring's harp IS a harp (seen close: strings); edge-on from the path it reads as a bar. Decision 6 above is superseded by this.
+- **WOULD DO NEXT**: a willow and reeds at the pond when a model exists; sound (no hook); the ring's
   harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
   forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.
 - **(THE VILLAGE'S) THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
@@ -6864,6 +6873,43 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
   (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
 
+## THE SEWERS, DISTRICT H — THE HOLDING CELLS (2026-11-16, second side; file `docs/areas/sewers/districts/H.js`, 2 plots)
+
+mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped without asking, at most five passes. Before: one open
+hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The district is all indoors, so pass 1 is its STRUCTURE.
+
+**PASS 1, THE STRUCTURE (seen, 9 views; walked offline).** The squares are (c 0..23 over both plots, r 0..11); the file's header holds the plan.
+- **SIX CELLS** (r 2-3, 2 x 2 squares each): a whole square of brick between two cells (`plan()` sets c 4, 7, 16, 19 to wall), so the tool's
+  vaults cut the two halls into north-south bays, a wide bay over each cell and a narrow one over each brick; the springing is 2.7 m up (the
+  old single vault sprang 1.75 m up at the back wall, over the cots). Each front is IRON BARS on the square line r 4 with a swinging
+  `leaf_cell` door in its east square and the cell's number over it.
+- **THE CELL CORRIDOR** (r 4-5) runs from DOOR HQ's door to the cell door; **THE SALLY GATE** (bars, a double cell door) stands on the plot line.
+- **THE GUARDROOM** (r 6-9, west plot): THE BOOKING COUNTER (the old room's tiled counter, two halves, a brick pier between), the desk behind it.
+- **THE CATWALK** (the old room's, 2.2 m): a steel stair in a well dug south of the Guardroom, a 1.75 m gangway on steel legs over column
+  c 7 to the cells' fronts, railed. It is a `bridge` row: the walker passes under it.
+- **THE PROPERTY ROOM** (dug: c 2-5, r 9-10) behind painted brick and a steel door; **the lockers' nook** (c 8-9, r 9-10) beside the stair.
+- **THE DRUNK TANK** (c 17-21, r 7-8): bars on its front and west side, its door in the front; the trap's passage is one square wide in its
+  back wall (the rope ladder down to the Old Workings is the tool's, untouched).
+- **THE VENT STACK** (the old room's, 3.6 m): a brick drum on one whole square (a round `plateau`: not climbed on foot, a perch for the door
+  gun as before), steel bands, louvres, a duct on up into the vault; **its fan room** dug south of it (c 14-15, r 9-10), a steel door.
+- **THE KIT IN THE FILE** (`mk`): `k.wall(axis, line, a, b, { style: 'bars' | solid, doors, gaps })` = a thin wall on a square LINE (drawn
+  parts + a ghost `wall` row, as the Desert's insides), `k.guard` (a railed edge), `k.sign` (words), `k.P / dec / at / who` in the district's
+  own squares. The leaves swing through ONE `texbuilding` row with `doorsOnly` + `inner` (three-renderer.js _hqBuildTexDoors), `y: 0` and
+  each leaf's `y` = the floor (15.75).
+- **CHECKED:** offline, a flood on the walker's rule (`hqTerrainFeet`) from the corridor reaches all six cells, both outer doors, the
+  Guardroom, the Property Room, the lockers, the Catwalk's top, the tank, the trap's passage and the fan room; the stack's top is not walked.
+- **TRAP FOUND:** an `arch` row written at `x: 0, z: 0` with its parts 100 m away was NOT DRAWN (no error). One row a plot, at the plot's
+  middle, its parts measured from there (as the tool's vault rows are): drawn.
+
+**DECISIONS MADE FOR MONDO (overrule any in one line):**
+1. The cells are real brick rooms (a whole square of brick between two), not bar cages in a hall.
+2. Four small rooms were DUG out of the solid south wall (Property Room, stair well + lockers, the stack's fan room): the two plots were
+   half empty rock. Row 11 stays solid (the mine is under it).
+3. The Catwalk is a narrow steel gangway (1.75 m, half a square), under the narrow bay where the vault is highest; a whole square wide
+   would hit the vault's haunch.
+4. The stack is not climbed on foot (as in the old room, where it carried the door gun's tape).
+5. Words on the walls: the cells' numbers 1-6, BOOKING, PROPERTY, PLANT, TANK. Plain, no invented names.
+6. The four people keep their old lines; the gangster and the politician stand IN cells (2 and 5), as the old room had them.
 ## THE SEWERS, DISTRICT R — The Radioactive Drain, where the Power station drains (2026-11-16, second side)
 
 mondo 11-16: "one sewer district could be radioactive sludge if it connects to the power plant"; on the plan picture
