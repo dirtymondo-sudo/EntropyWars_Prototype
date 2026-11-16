@@ -48,7 +48,7 @@ const hSq = (x, y) => lv[Math.max(0, Math.min(H - 1, y))][Math.max(0, Math.min(W
 const MB = 'marble_light', RU = 'ruins', RK = 'rocks_5';
 function sheet() {
     const P = [];
-    const add = (o, key, tint, x) => { if (key) o.key = key; if (tint != null) o.tint = tint; if (x) Object.assign(o, x); P.push(o); return o; };
+    const add = (o, key, tint, x) => { if (key) o.key = key; if (tint != null) o.tint = tint; if (x) Object.assign(o, x); if (key === MB && o.glow == null) o.glow = 0.3;   /* marble under 20 m of water: lifted a little, or it reads black */ P.push(o); return o; };
     const A = { P,
         box: (x, y, z, w, h, d, key, tint, o) => add({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h), r2(d)] }, key, tint, o),
         cyl: (x, y, z, r, h, key, tint, o) => add({ s: 'cyl', p: [r2(x), r2(y), r2(z)], r, h }, key, tint, o),
@@ -71,6 +71,8 @@ const P = (key, sx, sy, o) => { spot(sx, sy, key); const r = Object.assign({ key
 const decWith = rnd => (key, sx, sy, o) => { spot(sx, sy, key, true); const r = Object.assign({ key, x: r2(cx(sx) + (rnd() - 0.5) * 1.8), z: r2(cz(sy) + (rnd() - 0.5) * 1.8), face: Math.round(rnd() * 360) }, o || {}); props.push(r); return r; };
 const swim = (key, sx, sy, y, o) => { if (!inb(sx, sy)) { errs.push(key + ' swims off the map'); return; } const r = Object.assign({ key, x: cx(sx), z: cz(sy), y }, o || {}); props.push(r); return r; };   // y = metres off the floor
 const native = (race, sx, sy, face, say) => { spot(sx, sy, race); const n = { x: cx(sx), z: cz(sy), face: face || 0, race }; if (say) n.say = say; npc.push(n); return n; };
+/* a drawn piece a swimmer must not pass through: an unseen wall (metres; along x when w > d) */
+const solid = (x, z, w, d, h) => feat(w >= d ? { k: 'wall', x0: r2(x - w / 2), z0: r2(z), x1: r2(x + w / 2), z1: r2(z), h, t: r2(d), key: MB, ghost: true, rail: false } : { k: 'wall', x0: r2(x), z0: r2(z - d / 2), x1: r2(x), z1: r2(z + d / 2), h, t: r2(w), key: MB, ghost: true, rail: false });
 const scatter = (key, n, sx, sy, rSq, seed, o) => feat(Object.assign({ k: 'scatter', key, n, x: cx(sx), z: cz(sy), r: r2(rSq * C), seed, sea: true }, o || {}));
 
 /* ── THE DISTRICT FILES ── */
@@ -80,7 +82,7 @@ Object.keys(PLAN.districts).forEach(k => { if (!DISTRICTS[k]) throw new Error('d
 const CTX = {};
 Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
     CTX[k] = { d: k, C, N, GX, GZ, W, H, HX, HZ, LEVEL, SEA_Y, gx, gz, cx, cz, r2, PLAN, plot, cell, lv, inb, distAt, setSq, setRect, hSq, feat, props, npc, taken, look, sheet, MB, RU, RK,
-        P, dec: decWith(rnd), swim, native, scatter, rnd, sayOf, O_ABYSS, O_TEMPLE,
+        P, dec: decWith(rnd), swim, native, scatter, solid, rnd, sayOf, O_ABYSS, O_TEMPLE,
         squares: id => { const p = plot[id], o = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) o.push([p.x * N + x, p.y * N + y]); return o; },
         sq: (id, lx, ly) => [plot[id].x * N + lx, plot[id].y * N + ly] }; });
 const run = stage => Object.keys(DISTRICTS).forEach(k => { const m = DISTRICTS[k]; if (typeof m[stage] === 'function') { curD = k; try { m[stage](CTX[k]); } finally { curD = null; } } });
