@@ -6721,10 +6721,21 @@ forest glade, the dead tree's hole.
   run noise; no drop); geometries 2,121, draw calls 4,824.
   Seen and NOT mine: a blue winged figure sat on the hut's log stack where the rabbit stood a run before (the spawn system's
   variants change who stands on a native's spot).
+- **PASS 5, POLISH (seen: a walk of 14 views, two at night)**. A lantern half way up each side path; a lit pane under every lantern
+  (the model's own glass does not glow); the stepping stones at 0.6 of their size (they drew as slabs); a paler ring under every
+  patch of trodden earth (the discs had a hard edge); the hut's yard cleared off the lean-to (the log and the stumps moved a square);
+  in the hut a striped rug down the door's column (drawn) and a shelf of jars. Frame rate at the bay 0.60 (as before the first
+  pass); geometries 1,938 -> 2,150, draw calls 3,787 -> 4,924 over the five passes.
+- **STOPPED AFTER FIVE PASSES (the order's limit)**. WHAT I WOULD DO NEXT, for whoever mondo sends: a second walk-in (a gamekeeper's
+  lodge or a ruined chapel wants plan squares in the east glade: the tool's row); a real great dead tree round the hole's door (the
+  door itself is the tool's); a deer, an owl and a fox once models exist; sound (none can be set by a district).
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
   the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
   (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
-  (the zone's own name); (5) the sword in the stone was NOT put here (the castle has it).
+  (the zone's own name); (5) the sword in the stone was NOT put here (the castle has it); (6) the walk-in is a Woodcutter's Hut with the plain word
+  WOODCUTTER over its door, standing on the west glade's north squares with its door on the track; (7) the people are robinhood, a
+  knight, a wizard, a tree person and a rabbit, all silent; (8) the moat's reeds are the Ocean pack's seaweed; (9) the two boats lie
+  on the bank, not afloat; (10) one small tool change (`groundAlso`), noted on the board.
 - **NEEDS A MODEL** (nothing on R2): an axe + chopping block, a hand cart, a wooden barrel, a medieval tent or pavilion, reeds, a deer,
   a fox, an owl, a leafy bush, forest flowers, a milestone.
 
