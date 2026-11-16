@@ -139,6 +139,9 @@ So the surface ring (Mountains, Woods, Camelot, Estate, Desert, Beach, city) is 
 old rooms is below, above or beyond that ring**: the underground (Sewers, Cavern, D.U.M.B., Hell), the sky (Vatican,
 Heaven), the sea floor (The Deep), the far east (Leylines), and the three off-map places.
 
+**What each zone SHOWS past its line** (the land, the sky landmarks) against this table: `docs/plans/world-edges/edges-plan.md` (2026-11-16, the edges
+thread). The Desert's sides and the city's Cove are fixed; the Mountains, the North Pole, the Woods, Camelot and the Estate are listed there, not built.
+
 ### B2. What is inconsistent or missing, with a fix each
 
 1. **The underground plans are out of date.** The Sewers and Cavern plan pictures were drawn before the city's district

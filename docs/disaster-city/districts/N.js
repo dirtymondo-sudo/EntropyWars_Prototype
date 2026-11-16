@@ -59,6 +59,13 @@ const vnoise = (x, y, s) => { const ix = Math.floor(x), iy = Math.floor(y), tx =
 const MTN = 'site_prebuilt_shasta_mountains';
 
 /* the room past the plots (bake-disaster-city.js THE ROOM PAST THE PLOTS): 36 rows of squares north of the city, and the sheets their ground wears */
+/* THE COVE (2026-11-16, mondo: "at the end of the beach/shore, at the north, where it meets the hills, there are hard right angles and straight lines ...
+   that would be a good spot to turn into a cove"). Was: the Shore's sand ended on the room's old north line as a ruler edge with a square corner in the
+   sea, a 3.6 m drop into deep water on the line itself, and the Hills' cliff stood north of it as one straight wall.
+   Now the sea makes a ROUND BAY in the corner (`x, z, r`: the waterline's circle; districts/B.js beach() cuts it with one round sink, on both sides of the
+   line), a crescent of sand runs on north under the cliff from the boardwalk's end, and a ROCK HEADLAND (`head`: its crest line, metres) springs from the
+   cliff and hooks round the bay's north and east, so the cove is closed but for a mouth to the south-east. Sea stacks stand off its point. */
+const COVE = exports.cove = { x: 310, z: -262, r: 32, bank: 12, head: [[259, -303], [285, -306], [310, -311], [334, -305], [349, -292], [356, -277]] };
 exports.room = { north: H, zone: { floor: 'grass_rocky', cliff: 'rocks_5', path: 'dirt_2', pal: ['rocks_5', 'dirt_2', 'calm_flagstone', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'] } };
 /* (the roads: the old room painted them in the roof bitumen sheet; seen on screen beside the city's own road that was a pale band across the mountain road at the
    city's line, so the Hills' roads wear the city's asphalt sheet now: one road from the Casino court to the canyon) */
@@ -651,6 +658,12 @@ exports.build = ctx => {
       for (let sy = 0; sy < H; sy++) for (let sx = 0; sx < W; sx++) if (cell[sy][sx] === 't') { ctx.features.push({ k: 'tree', x: r2(mx(sx) + (rnd() - 0.5) * 1.2), z: r2(mz(sy) + (rnd() - 0.5) * 1.2), kind: KINDS[Math.floor(rnd() * 4)], h: r2(4.5 + rnd() * 3), r: 0.8, keep: true }); n++; }
       console.warn('[the Hills] oaks ' + n); }
     R.ARCH.forEach(a => ctx.lateRows.push(a));
+    /* THE COVE'S ROCKS (2026-11-16): sea stacks off the headland's point (the sea pack's spire, standing on the bed, so about half of each is under water),
+       grey boulders at the cliff's foot along the crescent: real rock models, no drawn stand-ins */
+    { const rk = (key, x, z, h, face) => ctx.props.push({ key, x, z, h, face });
+      rk('ocean_rock_3', 354.5, -262.5, 11.5, 40); rk('ocean_rock_4', 349, -252.5, 8.5, 200); rk('ocean_rock_3', 359, -269, 8, 130); rk('ocean_rock_4', 343, -246, 6.2, 310);
+      rk('psxg_rock_1', 263.2, -271.5, 1.5, 20); rk('psxg_rock_2', 264.6, -279.2, 1.9, 140); rk('psxg_rock_1', 266.3, -287.5, 2.3, 260); rk('psxg_rock_3', 270.5, -294, 1.7, 75);   // (the graveyard pack's grey rocks: the sea pack's small rocks are near black, seen on the mole)
+      rk('psxg_rock_2', 279, -297.5, 1.4, 190); rk('psxg_rock_4', 267.8, -275, 0.9, 300); rk('psxg_rock_3', 272.4, -290.6, 0.8, 15); }
     /* THE LAMPS: the city's post, every 28 m, on alternate sides, on a square that is not road, rock, water or taken */
     { let n = 0; exports.streets.forEach((st, si) => { const a = st.pts[0], b = st.pts[1], len = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / len, uz = (b[1] - a[1]) / len, off = st.w / 2 + 0.85;
           for (let d = 14, k = si; d < len - 6; d += 28, k++) { const sd = k % 2 ? 1 : -1, nx = -uz * sd, nz = ux * sd, x = r2(a[0] + ux * d + nx * off), z = r2(a[1] + uz * d + nz * off); if (z > -252.5) continue;
@@ -702,12 +715,35 @@ exports.north = q => {
       for (let cx = r0; cx <= r1; cx++) { const top = Hc[(H - 4) * (W + 1) + cx]; for (let cy = H - 3; cy < H; cy++) Hc[cy * (W + 1) + cx] = e0 + (top - e0) * (H - cy) / 4; } }
     /* THE JOIN: what the city's line stands at under each Hills square */
     const south = cx => cx < 144 ? q.edge(cx) : cx < 146 ? [0, 0] : cx < 152 ? [SHELF, SHELF] : [DEEP, DEEP];
+    /* THE COVE: the ground east of the cliff's foot, by the metre (not by the square): sand where the sea stood under the cliff, the headland's rock.
+       coveSand(x, z) = the sand's height at a point of the cove (null = not sand); coveRock(x, z) = { h, k } the headland there (k 0..1 = how far in from its foot). */
+    const NXA = Math.max(W, q.nx || W), cvS = t => { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+    const coveSand = (x, z) => { if (x < 255 || z < -299) return null; const w = cvS((302 - x) / 14) * cvS((z + 299) / 9); if (w <= 0) return null;
+        return SEA_BED + (0.05 + (0.2 + 0.9 * cvS((286 - x) / 20)) * cvS((-254 - z) / 14) - SEA_BED) * w; };   // level with the Shore's sand on the line, rising a metre toward the cliff
+    const coveRock = (x0, z0) => { const P = COVE.head; let best = 1e9, bt = 0, acc = 0, tot = 0;
+        const x = x0 + 9 * (vnoise(x0 / 15, z0 / 15, SEED + 61) - 0.5), z = z0 + 9 * (vnoise(x0 / 15, z0 / 15, SEED + 67) - 0.5);   // the crest line itself wanders (it was one even wall)
+        for (let i = 0; i + 1 < P.length; i++) tot += Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]);
+        for (let i = 0; i + 1 < P.length; i++) { const ax = P[i][0], az = P[i][1], bx = P[i + 1][0], bz = P[i + 1][1], L = Math.hypot(bx - ax, bz - az), u = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / (L * L))), d = Math.hypot(x - ax - u * (bx - ax), z - az - u * (bz - az));
+            if (d < best) { best = d; bt = (acc + u * L) / tot; } acc += L; }
+        const n = vnoise(x / 11, z / 11, SEED + 31), n2 = vnoise(x / 3.1, z / 3.1, SEED + 47), n3 = vnoise(x / 19, z / 19, SEED + 53), half = (14.5 - 7 * bt) * (0.55 + 0.9 * n), k = 1 - best / half; if (k <= 0) return null;
+        const top = (13 - 7.5 * bt * bt) * (0.62 + 0.7 * n3), pr = cvS(Math.min(1, k * 2.3));   // a sea cliff: up to its top in the first two fifths, a rough crown, lower to the point
+        return { h: SEA_BED + (top - SEA_BED) * pr + 1.3 * (n2 - 0.5) * pr, k }; };
+    const coveH = (cx, ry, h0, line) => {   // a corner of the north rows (cx across the room, ry down from the north edge): its height with the cove in it
+        const x = X0 + cx * C, z = Z0 + ry * C; let h = h0;
+        if (x >= 255 && (h0 <= SEA_SHORE + 0.01 || line)) { const s = coveSand(x, z); if (s != null) h = line ? Math.max(Math.min(h0, 0), s) : Math.max(h0, s); }   // only where the sea (or its shore line) stood: the cliff, the pocket's sand and the trail keep their heights
+        const rk = coveRock(x, z); if (rk && rk.h > h) h = rk.h;
+        return h; };
     const flag = new Set(R.hollow.map(c => c[0] + ':' + c[1]));
     const at = (cx, ry) => {   // a square of the north rows (cx across the room, ry 0 = the north edge): { h: [NW, NE, SW, SE], sheet, floor }
-        if (cx >= W) return { h: [SEA_BED, SEA_BED, SEA_BED, SEA_BED], sheet: 'desert', floor: 0 };
-        const k = ry * (W + 1) + cx, h = [Hc[k], Hc[k + 1], Hc[k + W + 1], Hc[k + W + 2]];
-        if (ry === H - 1) { const s = south(cx); h[2] = cx >= 152 ? Math.min(h[2], s[0]) : s[0]; h[3] = cx >= 152 ? Math.min(h[3], s[1]) : s[1]; }
-        return { h, sheet: PAINT[cell[ry][cx]] || null, floor: flag.has(cx + ':' + ry) ? 1 : 0 };
+        const hc = (x, y) => (x <= W ? Hc[y * (W + 1) + x] : SEA_BED);
+        const h = [hc(cx, ry), hc(cx + 1, ry), hc(cx, ry + 1), hc(cx + 1, ry + 1)];
+        if (ry === H - 1 && cx < W) { const s = south(cx); h[2] = cx >= 152 ? Math.min(h[2], s[0]) : s[0]; h[3] = cx >= 152 ? Math.min(h[3], s[1]) : s[1]; }
+        if (ry === H - 1 && cx >= W) { h[2] = Math.min(h[2], DEEP); h[3] = Math.min(h[3], DEEP); }
+        let sheet = cx < W ? (PAINT[cell[ry][cx]] || null) : 'desert';
+        if (cx >= 144) {   // THE COVE: its four corners by the metre; on the line itself the sand stands at the Shore's own level (0), so there is no drop along it
+            h[0] = coveH(cx, ry, h[0]); h[1] = coveH(cx + 1, ry, h[1]); h[2] = coveH(cx, ry + 1, h[2], ry === H - 1 && cx >= 146); h[3] = coveH(cx + 1, ry + 1, h[3], ry === H - 1 && cx + 1 >= 146);
+            const rk = coveRock(X0 + (cx + 0.5) * C, Z0 + (ry + 0.5) * C); if (rk && rk.k > 0.12) sheet = 'rocks_5'; }
+        return { h, sheet, floor: (cx < W && flag.has(cx + ':' + ry)) ? 1 : 0 };
     };
     /* the walk check (the old tool's own): from the city's road every plot but the two sea-cliff plots is reached on foot, counting only steps the walker climbs */
     { const hC = (x, y) => { const c = at(x, y).h; return (c[0] + c[1] + c[2] + c[3]) / 4; }, tilt = (x, y) => { const c = at(x, y).h; return Math.max(Math.abs(c[1] - c[0]), Math.abs(c[3] - c[2]), Math.abs(c[2] - c[0]), Math.abs(c[3] - c[1])) / C; },   // (a square's own steepest edge: the walker's maxSlope is 1)
