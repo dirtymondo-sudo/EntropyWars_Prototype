@@ -13689,3 +13689,26 @@ pipe organ case, a pietà, kneelers, a holy water stoup, votive candle racks, a 
   `lion_statue` 450 · `psx_carpet_mp_1` 18. Count before you place twenty of anything.
 - FPS (the gate view, software GPU; two readings back to back differ by a third, so read these loosely): 1.4 -> 1.2 (2.0 M -> 2.4 M
   triangles in the frame).
+
+### PASS 4, THE ATMOSPHERE (live; seen on screen by day and at 22:30, 7 views) + WHERE THE PILOT STOPS
+- THE AIR: `exports.air` (the tool's new hook, the Estate's way): thick gold dust in the nave, paler dust in the crossing and the
+  transepts, a few embers of incense over the altar. The tool keeps the site's own air as a last zone over the whole room (a room with
+  zones draws only its zones); the hook is there for all 14 district files.
+- THE NIGHT: the loggia's window over the middle doors and the dome's lantern are lit (`glow` 0.9); the white stone's own `glow` keeps
+  the front readable under the stars; inside, the gilt vault and the dome's sixteen windows carry the room. The Vatican rides the world
+  clock (Heaven and Hell keep their own sky: `HQ_WORLD_CLOCK.still`).
+- FPS (the gate view, software GPU, two readings): 1.1 and 1.3 (2.08 M triangles). First build 1.2; after four passes 1.2.
+- FOUR PASSES, STOPPED: the bar (75 % of a Disaster City district) is met in my judgement: a landmark seen from every path, a real
+  walk-in building with swinging doors, a furnished inside, dressed yards, a night look. One pass is left unused for after mondo's look.
+- THE FIFTH PASS'S LIST (not done): the lamp posts carry no light of their own at night; the nave's 18 model columns could be drawn
+  ones beyond the first four pairs (about 150,000 triangles back); no sound (bells, an organ, a choir); the front's 13 attic figures are
+  dark stone (the models' own colour) on a pale front; the galleries cannot be reached ("there are no doors on the galleries": kept);
+  the dome cannot be climbed; the crypt door behind the altar is a plain wooden leaf ("a white door, painted by decree"); the chapels
+  want kneelers, a stoup, votive racks, a pietà, a pulpit canopy and the nave a papal altar and floor mosaics (NEEDS A MODEL).
+
+### DECISIONS MADE FOR MONDO, the Basilica (overrule any in one line)
+1. St Peter's is the model: a Latin cross, a front of eight columns under an attic of figures, one great dome. No bell towers.
+2. Its floor is seven steps (1.75 m) over the Square; four double doors; the nave's columns are the catalogue's marble `greek_column`.
+3. The attic's figures are the catalogue's robed `hooded_statue` (twelve) and `god_statue` (the middle one, and the two on the steps).
+4. Two Latin inscriptions are St Peter's own (the front's frieze, the dome's ring): real ones, not written by me.
+5. The organ, the baldachin, the piers, the vaults and the galleries are drawn in code from the game's sheets (no model exists).

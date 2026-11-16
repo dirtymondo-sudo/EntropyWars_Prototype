@@ -36,7 +36,7 @@ const f=[px,py];
 zone(...f,-16,-10,4,4,'NORTH POLE','built',['village · 16'],{small:1});
 zone(...f,-12,-11,12,8,'THE MOUNTAINS','built',['Snowy Pass · Ski Lodge + slopes','Mount Shasta · Mount Olympus','96 plots']);
 zone(...f,0,-3,13,3,'THE HOLLYWOOD HILLS','built',['Disaster City’s north district · 39 plots','ONE room with the city: you walk or drive up, no door']);   // (2026-11-16: part of the city's room, was a room of the Mountains)
-zone(...f,-4,-3,4,4,'THE VATICAN','old',['old rooms · plan 16','Heaven over it','Hell under it'],{small:1,pick:'②'});
+zone(...f,-4,-3,4,4,'THE VATICAN','built',['24 plots (11-16)','Catacombs under · 6','Heaven over it'],{small:1});
 zone(...f,-14,0,8,8,'CAMELOT KINGDOM','built',['The Castle · The Village','The Snowy Pines · The Fairy Forest','Looking-Glass Garden · The Forest','64 plots  (sky castle: old room)']);
 zone(...f,-6,1,6,6,'THE WOODS','built',['Redwood Trail · Ritual Ground','The Clearing · Dead Man’s Cave','36 plots']);
 zone(...f,-6,7,6,6,'THE ESTATE','built',['Corn Fields · The Ranch','Haunted House + Graveyard','The Lake · 36 plots']);
@@ -74,7 +74,7 @@ o.push(`<rect x="${ux(12)}" y="${U0}" width="${(UX0+W1-12)*S}" height="${UH*S}" 
 const g=[ux,uy];
 [[-6,1,6,6,'The Woods'],[-14,0,8,8,'Camelot'],[-6,7,6,6,'The Estate'],[0,0,12,12,'Disaster City'],[0,12,12,12,'The Desert'],[12,1,14,10,'The Beach'],[12,17,9,5,'Leylines'],[-12,-5,12,2,'The Mountains (south edge)']].forEach(z=>zone(...g,z[0],z[1],z[2],z[3],z[4],'old',[],{faint:1}));
 zone(...g,2,9,8,2,'THE SEWERS','old',['old rooms · plan 16'],{pick:'① NEXT',small:1});
-zone(...g,-4,-3,4,4,'HELL','old',['under the Vatican','plan 16'],{small:1,pick:'②'});
+zone(...g,-4,-3,4,4,'HELL','built',['under the Vatican','16 plots (11-16)'],{small:1});
 zone(...g,-6,2,6,6,'THE CAVERN','built',['The Cavern · Hollow Earth','Agartha','36 plots · one room (11-16)']);
 zone(...g,0,18,6,6,'THE D.U.M.B.','old',['Research · Sub-Level 7','Command · Level P3 · CERN','old rooms · plan 36'],{pick:'③'});
 zone(...g,15,4.5,9,3,'THE DEEP','old',['Atlantis · The Trench · plan 27']);
@@ -93,7 +93,7 @@ const LX=W1*S+50; let y=PADT+10;
 const box=(t,sub,col)=>{o.push(`<rect x="${LX}" y="${y}" width="${LEG-40}" height="${22+sub.length*15+10}" fill="${col}" fill-opacity=".5" stroke="${col}"/>`);txt(LX+10,y+19,t,13.5,C.ink,700);sub.forEach((s,i)=>txt(LX+10,y+36+i*15,s,11,'#e6e6e6'));y+=22+sub.length*15+20};
 txt(LX,y,'3.  NOT ON THE MAP',15,C.ink,700);y+=12;
 box('DOOR HQ  (the hub, handmade)',['Its doors are the gold marks on the map.','Open at the start: the stair to the Woods,','the taxi to Disaster City.'],C.hq);
-box('② HEAVEN  (old rooms, plan 16)',['Over the Vatican. Up the Grand Stair from','Mount Olympus, or from Camelot’s sky castle.'],C.old);
+box('HEAVEN  (on plots 11-16, 20)',['Over the Vatican: the telescope’s stair, four','flights, the Gate, the fields, the city. Also up','the Grand Stair from Mount Olympus.'],C.built);
 box('OUTER SPACE  (on plots 11-16)',['Moon 5x4, Mars 5x4, Saturn 4x4, the','Singularity 4x4: a room each. The Spaceship','handmade. Ways in: the ship, HQ observatorium.'],C.built);
 box('THE ASTRAL REALM  (on plots 11-16, 36)',['36 islands over the void, one room. Ways in:','HQ dream lab (the Waiting Room), Camelot’s','mirror (two-way), D.U.M.B., the Haunted attic.'],C.built);
 y+=6;txt(LX,y,'WHAT THE COLOURS MEAN',15,C.ink,700);y+=14;
