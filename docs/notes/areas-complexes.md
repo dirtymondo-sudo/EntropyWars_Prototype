@@ -5606,6 +5606,30 @@ Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. 
   insides, about 2,050 now); (7) the shared pieces' faults on the board (the wall towers' floating roofs, the grey mass under the
   hill's drums, the snow-white trees inside the wall). Not walked by hand: every one of the 43 doors (five were, in probes).
 
+## CAMELOT, THE FAIRY FOREST — the second district thread (2026-11-16, second side; file `docs/areas/camelot/districts/F.js`)
+
+mondo 11-16: "now that I think most of these districts have had at least a couple passes on them, can you start threads for another district in
+the zone"; and on 11-15, of the Woods' life pass: "same with the fairy forest". Six plots east of the moat (squares x 84..96, y 12..84): five small
+glades on a north-south path, the trail east to The Woods through the middle. The fae caps and trees are the tool's forest mass.
+
+- **AS IT STOOD (first probe, 13 views)**: the kingdom's lawn everywhere; the pond a bare pool under a wide deck; the ring twelve pale toadstools
+  on lawn; the spring a 3 m puddle; the knolls two bare grass bumps; night looks like day; no glow reads by day (a prop's glow sprite sits
+  inside its own pale cap). The harp in the ring draws as a bent brown bar (the model, not the row: left as it is, told to mondo).
+- **PASS 1, THE LANDMARKS (seen, 11 views, twice)**: one drawn row a landmark (`cam:f:pond / ring / spring / knolln / knolls`), catalogue props
+  beside them. THE POND: a mossy islet off the jetty's end with one giant `fae_mushroom` on it (`y` 0.45), eleven drawn lily pads (three in
+  flower, lit), mossy stones round the bank, a frog. THE RING: purple grass inside the toadstools, a lit moonstone at the heart, a
+  `woods_glowcap` between every two toadstools. THE SPRING: the pool (now 8.4 x 7 m, on squares 90..93 x 61..62) lies against a three-crag rock
+  outcrop 4.4 m high on squares 93:61-62 (a ghost wall), crystal spikes in the rock, a ring of stones open to the west, six `woods_healflower`
+  (the Rejuvenation plant), a frog. THE KNOLL, NORTH: 2.1 m high, one great oak (`tree_52`, 12 m) on the crown, stones and glowing caps at
+  its roots. THE KNOLL, SOUTH: the crystal knoll, three rock teeth with seven crystal spikes (a ghost wall on 91:72).
+  No waterfall at the spring: his rule is that a fall is at least 7 m and leads somewhere.
+- **NOBODY ELSE MOVED**: the old `dec` calls run in the old order and every new piece is placed by metres, so the dice of N and W are untouched.
+- **FRAME RATE** (cloud software GPU, the pond from the path, the same view before and after): 1.54 -> 1.40 frames a second, geometries
+  2,023 -> 1,985 (run to run noise is about 0.2); draw calls 278 -> 309. His F3 at the pond is the number that counts.
+- **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower.
+- **NEXT**: dressing (stepping paths, plants, edges, the forest floor: the paint is the tool's), then its own light, air and particles (the
+  shell is the tool's: `shell.atmos.zones`, a board note first), then polish.
+
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
 - **THE SHEETS that suit the zone** (keys for `sheet()` parts): `castle_wall` (ctx.WALL: all stone, tint it STONE 0xc4c0b8 / STONE2 0xaeaaa6 /
@@ -5659,6 +5683,13 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
 - **NEEDS A MODEL (zone-wide, nothing on R2)**: an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart (the market stall is drawn now: `T.js` `stall()`),
   a water trough, a wooden fence run with a gate, a hitching rail, a floor carpet / runner (the `holy_carpet` model stands upright), a
   grindstone, a bellows. (A tavern table with benches is drawn in code now: `hall().trestle`.)
+- **ROCKS, CRYSTALS, GROUND PATCHES (from the Fairy Forest, `F.js` `row()`)**: a rock = the cliff sheet `rocks_5` with tint 0xffffff and `gain` 1.7 (a
+  grey tint + gain 1.25 drew near black here). A boulder = a `dome` (`seg` 7, `rings` 3, `rz` under `r`), a moss cap = a second dome 0.7 as wide and
+  1.06 as high in `grass_dark_fantasy`. A crag = THREE tapered `cyl` shafts stacked, each turned and stepped off the one under it (one tapered
+  shaft reads as a pyramid stump). A crystal = a `cyl` with `r2: 0`, `seg` 5, sheet `ice`, tint 0x5fd8ff, `glow` 0.75. A patch of other ground =
+  a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
+  a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
+  hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
 - **THE ORDER THAT WORKED (for the next four district threads)**: (1) one probe of the district as it stands, `fp` views only, and
   LOOK before planning: the Village's two worst faults (the stone lid, the black slabs) were in no note; (2) exteriors with `gain`;
   (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
