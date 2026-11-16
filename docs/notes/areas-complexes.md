@@ -4943,6 +4943,9 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   under it or the grass field grows through. A native in a pool walks the bed. `dockring` is a spaceship part, not a mooring ring. The
   playground pack (`play_swing`, `play_slide`, `play_sandbox`) and `brass_telescope` stand well outdoors. A `P()` on a deck over the lake needs
   its square taken out of `taken` first (the water stage marks the lake's squares).
+  INSIDE A WALK-IN (the Boathouse, 3.5 m walls): draw the ceiling at 3.16 m (3.4 is above the building's own black one), window panes and
+  wall pieces 0.38 m in from the building's line, and never start a `deck` on the wall (0.9 m off). Wall props: `y` = the height, `face` 0 on
+  the north wall, 90 west, 180 south, 270 east. `map_table` = a steel sci-fi table; `psx_table_large_2` = a plain wooden one.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5692,7 +5695,21 @@ the zone". Passes as the pilot's, a PR each: exteriors, interiors, dressing, atm
   `meshy_rope`, `footbridge`, `flamingo`, crow, rabbit, ladybug, bees, four butterflies. Camelot's Fairy Forest draws lily pads as notched discs.
 - **THE COST:** the proof view (the whole district from 60 m up): 456 draw calls before, 557 after; the cloud's software renderer drew both at
   0.20 frames a second (it cannot tell them apart). L's real lights went from four to two.
-- Not done: the Boathouse's inside (pass 2), reeds, lily pads, shore dressing, fish (pass 3), mist and night (pass 4).
+- Not done: reeds, lily pads, shore dressing, fish (pass 3), mist and night (pass 4).
+
+### PASS 2, THE INTERIORS (seen in the cloud browser)
+- The district's one inside is THE BOATHOUSE (14 x 14 m, walls 3.5 m). Drawn in the building's own parts: a plank ceiling (`glow: 0.4`) on three
+  tie beams, three lanterns, the boat doors' inner face with a bar, a daylight pane at each of the seven windows, the boat's cradle, the
+  workbench, a pot-belly stove under the roof's pipe. Props (all `floor: true`): the rowboat lifted onto the cradle (`y: 0.5`), tool pegboard,
+  hand saw, rope, tool chest, shelving, jerrycans, barrels, anchor, net, a wooden table and folding chair under the ship's lantern (the room's
+  real light), cot, rug, radio, seascape, sea chest, crates, outboard motor, ladder rack, life ring, ship's bell, doormat.
+- **LESSONS (in the zone kit too):** a walk-in's own ceiling here sits about 3.3 m up in a 3.5 m building: a drawn ceiling at 3.4 was hidden
+  (black), at 3.16 it shows. The inner wall face is about 0.3 m in from the building's line: a pane 0.25 m in was inside the wall (only its
+  thicker trims showed as black dashes), 0.38 m in it shows. A `deck` that starts ON a walk-in's wall lifts the ground just inside it: a strip
+  of lawn came up through the floor slab along the west wall; start the deck 0.9 m off the wall. `map_table` is a steel sci-fi table, not a
+  chart table (`psx_table_large_2` is the plain wooden one); `bar_stool` is a red diner stool.
+- **THE COST:** 27 more props, all inside one building; no new real light (the ship's lantern was there). The cloud's frame rate is not a
+  measure: the same overview read 0.20 frames a second as a run's first view and 2.6 as its last.
 
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
