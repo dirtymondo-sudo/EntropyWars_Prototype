@@ -4332,10 +4332,13 @@ mondo: "the sky is glitching/flickering in the estate. keep improving the visual
   `terrain.grassField: true` (today the Estate only; any terrain room may). The field is cells of 7 m built round the walker (28 m radius on High,
   16 m on Low, two cells a tick, nearest first) and dropped behind him; ~40 000 tufts stand at once on High. A tuft stands where the room's mask is
   open, the ground wears a grass sheet (the painted sheet there, else the floor; `GGRASS.sheets`, which gained `grass_dark_fantasy`), there is no
-  water, the face is not steep and no `texbuilding` stands. Cells are drawn far to near along the camera's view direction (no tuft writes depth).
+  water, the face is not steep and no `texbuilding` stands. Unlike the board's field the walked room's tufts WRITE DEPTH: each cell sorts only
+  its own tufts, so without depth two cells side by side overlapped wrongly at their shared edge (seen: dark lines of tuft feet along every cell's
+  edge, whatever order the cells were drawn in). With depth the order does not matter and the walker's shins stand in the grass.
   Tufts are 0.8 of the board's height. Settings > Video > Grass (High / Low / Off) rules it; kill switch `window.EW_NO_HQ_GRASS`;
   `window._ewHqGrass` reads the live count. Not done: nothing lays the tufts down (no press map: the walker wades through), props stand in grass,
   the WebGPU twin was not run. The lawn's ground sheet is tinted by the shell, the tufts by the sheet's own colour: they are a little brighter.
+- Seen in the cloud browser (`[EW BUILD]` base 73c958d): one even field at the farmhouse and the barn, no seams; the sky with no bodies.
 - **THE CLEAN SKY:** what flickered was the ranch shell's night scenery (`scenery: 'eyes'`: a ringed body, a door frame and an orb, turning) drawn
   as black outlines in the daytime sky since the room rides the clock. The Estate's shell now carries its own `sky` (the ranch's colours and fog,
   `scenery: 'none'`, no landmarks, fewer stars). The ranch shell itself is unchanged (the old Corn Fields board still uses it).

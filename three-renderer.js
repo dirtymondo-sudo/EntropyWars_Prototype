@@ -8845,6 +8845,10 @@ const ThreeRenderer = (function () {
                 width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / HQ_GRASS.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
                 cells: new Map(), pals: {}, boxes: boxes, press: pr.tex, at: 0, parent: (H.propGroup && H.propGroup.parent) || scene };
             S.mat = _ggMat({ press: pr.tex, inv: [0, 0] });
+            /* THE DEPTH (seen in the browser: dark lines of tuft feet along every cell's edge): the board's field writes no depth and sorts ALL its tufts far to
+               near in one mesh; here each cell sorts only its own, so two cells side by side overlapped wrongly at their shared edge whatever order the
+               cells were drawn in. A walked room's tufts write depth, so the order does not matter (and the walker's shins stand IN the grass). */
+            S.mat.depthWrite = true;
         }
         var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c); live.push(c); } });
         var now = performance.now(); if (now - S.at < HQ_GRASS.tickMs) return; S.at = now;
@@ -8857,8 +8861,13 @@ const ThreeRenderer = (function () {
         /* (far = along the camera's own view direction, as each cell sorts its tufts: a distance from the camera's place put a cell behind
            the eye in front of the one it looks at, and the cells' edges showed as dark lines of tuft feet) */
         var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, fx = 0, fz = 0;
-        if (cam) { cam.updateMatrixWorld(); var ce = cam.matrixWorld.elements, fl = Math.hypot(ce[8], ce[10]); if (fl > 1e-4) { fx = -ce[8] / fl; fz = -ce[10] / fl; } }
         live = live.filter(function (c) { return c.mesh && c.mesh.parent; });
+        if (cam && live.length) {   // the view direction in the cells' OWN frame (the room's group may be turned or mirrored against the world)
+            if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
+            live[0].mesh.updateWorldMatrix(true, false); _ggM.copy(live[0].mesh.matrixWorld).invert();
+            var ce = cam.matrixWorld.elements; _ggV.set(-ce[8], -ce[9], -ce[10]).transformDirection(_ggM);
+            var fl = Math.hypot(_ggV.x, _ggV.z); if (fl > 1e-4) { fx = _ggV.x / fl; fz = _ggV.z / fl; }
+        }
         live.forEach(function (c) { c._d = (fx || fz) ? ((c.cx + 0.5) * cm * fx + (c.cz + 0.5) * cm * fz) : Math.hypot((c.cx + 0.5) * cm - px, (c.cz + 0.5) * cm - pz); });
         live.sort(function (a, b) { return b._d - a._d; });
         for (var o = 0; o < live.length; o++) live[o].mesh.renderOrder = GGRASS.order + o * 0.001;
