@@ -15,7 +15,8 @@
      THE CATWALK: a steel gangway 2.2 m up over column c 7, from the stair in the well to the cells' fronts ("whoever watches the cells").
    The vaults are the tool's: with the cells' brick the plots cut into north-south bays, a wide one over each pair of columns, a narrow one
    over c 4, 7, 16, 19; the three piers stand under narrow bays. Thin walls here run floor to roof slab (5.3 m), so they meet any vault.
-   PASSES: 1 the structure, 2 the interiors (every room furnished), 3 the dressing (`walls()`: dado, floor lines, words, conduit). The notes hold what each placed and the lists.
+   PASSES: 1 the structure, 2 the interiors (every room furnished), 3 the dressing (`walls()`: dado, floor lines, words, conduit),
+   4 the light and the air (`lights()`: drawn lamps, no new real light). The notes hold what each placed and the lists.
    ctx: see W.js. Thin walls, bars, doors, the deck and the signs are this file's own kit (`mk`): walls on square LINES, as the Desert's insides. */
 'use strict';
 const C = 3.5, T = 0.3, DW = 1.75, DH = 2.2, HB = 3.0, TOP = 5.32, CAT = 2.2;
@@ -115,6 +116,37 @@ function walls(ctx, k) {
     return n;
 }
 
+/* PASS 4, THE LIGHT (drawn; the room has ten real lights for all its districts and H keeps its four bulbs). A BULKHEAD LAMP on a wall:
+   (x, z) = the spot on the wall's face, dir = the way it looks ('n' 's' 'w' 'e'), y = its foot over the floor. It is a lit lens in an iron
+   cage, a wash of lit brick on its wall and a pool of lit floor before it (district W's own recipe, written for walls on lines).
+   o: dead (no light), y0 / y1 (the wash stays between them: a spandrel over bars starts 3 m up), sheet (the wall's sheet), pool: false. */
+const COLD = 0xbfe8b0, SODIUM = 0xffa244, REDL = 0xff3a22, FLOOR = 'urban:ConcreteStriped1e';
+function lights(ctx, k) {
+    const X = k.X, Z = k.Z;
+    const lamp = (x, z, dir, y, color, o) => { o = o || {}; const v = DIR[dir];
+        const put = (out, w, h, t, key, tint, x2, yy) => k.box(x + v[0] * out, yy, z + v[1] * out, v[0] ? t : w, h, v[0] ? w : t, key, tint, x2);
+        put(0.05, 0.5, 0.36, 0.1, null, IRON, null, y - 0.03);
+        if (o.dead) { put(0.13, 0.38, 0.26, 0.12, null, 0x34373a, null, y); return; }
+        put(0.13, 0.44, 0.3, 0.14, null, color, { glow: 1 }, y); put(0.215, 0.5, 0.03, 0.03, null, IRON, null, y + 0.08); put(0.215, 0.5, 0.03, 0.03, null, IRON, null, y + 0.2);
+        /* the lit brick and the lit floor wear the lamp's colour mixed half into white, in four steps: two steps of the pure colour read as coloured mats */
+        const mix = (c, t) => { const ch = sh => Math.round(((c >> sh) & 255) * (1 - t) + 255 * t); return (ch(16) << 16) | (ch(8) << 8) | ch(0); }, cw = mix(color, 0.4), cf = mix(color, 0.6);
+        const lo = o.y0 != null ? o.y0 : 0.3, hi = o.y1 != null ? o.y1 : TOP - 0.1;
+        if (o.wash !== false) [[0.9, 1.0, 0.26, y - 0.35], [1.6, 1.7, 0.17, y - 0.7], [2.4, 2.4, 0.1, y - 1.05], [3.3, 3.2, 0.05, y - 1.45]].forEach((w, i) => { const y0 = Math.max(lo, w[3]), h = Math.min(hi, w[3] + w[1]) - y0; if (h > 0.1) put(0.03 + (3 - i) * 0.01, w[0], h, 0.02, o.sheet || BRICK, cw, { glow: w[2], top: false, uv: 3.5 }, y0); });
+        if (o.pool !== false) [[1.2, 0.8, 0.2, 0.6], [2.0, 1.4, 0.14, 0.85], [2.9, 2.0, 0.09, 1.1], [3.8, 2.6, 0.045, 1.35]].forEach((w, i) => k.parts.push({ s: 'quad', flat: true, p: [ctx.r2(x + v[0] * w[3]), 0.062 - i * 0.007, ctx.r2(z + v[1] * w[3])], size: v[0] ? [w[1], w[0]] : [w[0], w[1]], key: FLOOR, tint: cf, glow: w[2] })); };
+    const F4 = Z(4) + T / 2, sp = { y0: 3.0 };
+    /* over each cell's bars (3 and 6 are dead: those cells stand dark), and on each lit cell's back wall */
+    CELLS.forEach((c, i) => { const dead = i === 2 || i === 5; lamp(X(c + 0.5), F4, 's', 3.2, COLD, Object.assign({ dead }, sp)); if (!dead) lamp(X(c + 1), Z(2) + 0.02, 's', 2.7, COLD, {}); });
+    /* the sally gate (sodium, both sides), the cell door (red: the way down), the tank's front and its back wall */
+    [5.45, 7.55].forEach(r => { lamp(X(12) - T / 2, Z(r), 'w', 3.15, SODIUM, sp); lamp(X(12) + T / 2, Z(r), 'e', 3.15, SODIUM, sp); });
+    lamp(X(22) - T / 2, Z(5.5), 'w', 3.15, REDL, sp); lamp(X(22) - T / 2, Z(7.5), 'w', 3.15, REDL, sp);
+    lamp(X(20.5), Z(7) - T / 2, 'n', 3.2, COLD, sp); lamp(X(19.6), Z(9) - T / 2, 'n', 2.7, COLD, { sheet: BRICK });
+    /* the Guardroom: its west wall, over the Property Room's door, the lockers; the Property Room and the fan room inside (sodium, dim stores) */
+    lamp(X(2) + 0.14, Z(7.5), 'e', 2.75, COLD, { y0: 1.4 }); lamp(X(4.7), Z(9) - T / 2, 'n', 2.75, COLD, { sheet: PAINTED }); lamp(X(9), Z(11) - 0.14, 'n', 2.7, COLD, { y0: 1.4 });
+    lamp(X(3.2), Z(11) - 0.02, 'n', 2.9, SODIUM, {}); lamp(X(14.6), Z(9) - T / 2, 'n', 2.75, SODIUM, { sheet: PAINTED }); lamp(X(15), Z(11) - 0.02, 'n', 2.9, SODIUM, {});
+    /* the stair's foot, the trap's passage (one dead lamp: nobody changes a bulb down there) */
+    lamp(X(10) - 0.14, Z(10.4), 'w', 2.6, COLD, { y0: 1.4 }); lamp(X(17) + 0.02, Z(10.5), 'e', 2.6, COLD, { dead: true });
+}
+
 module.exports = {
     /* THE SQUARES: brick between the cells; four rooms dug out of the south wall (two squares deep; row 11 stays solid over the mine) */
     plan(ctx) {
@@ -166,7 +198,7 @@ module.exports = {
         k.sign('BOOKING', X(3), 2.9, Z(6.5), 1.9, 0.4, 180, '#1c1c1c', '#c9c2a0'); k.box(X(3), 2.86, Z(6.5) + 0.03, 2.0, 0.48, 0.04, null, IRON);
         [-0.9, 0.9].forEach(dx => k.box(X(3) + dx, 3.34, Z(6.5) + 0.03, 0.03, TOP - 3.4, 0.03, null, IRON));
         ctx.pier('P00-00', 4, 6); ctx.pier('P01-00', 4, 6); ctx.pier('P01-00', 7, 6);
-        walls(ctx, k);
+        walls(ctx, k); lights(ctx, k);
         /* the kit's rows: the drawn parts, the doors' leaves */
         /* (a row is drawn with the plot chunk it stands in: one row a plot, its parts measured from the plot's middle) */
         ['P00-00', 'P01-00'].forEach((id, i) => { const ox = X(6 + 12 * i), oz = Z(6), mine = k.parts.filter(p => (p.p[0] < X(12)) === (i === 0));
@@ -247,7 +279,6 @@ module.exports = {
         k.at('ind_vent', 14, 7, -1.2, 1.2, { face: 90 }); k.at('ind_vent', 15, 8, -1.0, 1.3, { face: 180 });        // the stack's own cowls at its foot
 
         /* ── PASS 3, THE DRESSING: what hangs, leans and lies about ── */
-        k.at('wall_padding', 21, 7, 1.62, 0.9, { face: E }); k.at('wall_padding', 21, 8, 1.62, 0.3, { face: E });          // the tank's east wall is padded
         k.at('cat', 6, 6, 0.4, 0.05, { y: 0.01, face: 200 });                                                               // on the counter
         ctx.props.push({ key: 'psx_ceiling_fan_mp_1_1_light_off', x: k.X(6), z: k.Z(7.6), ceil: true });                    // over the desk, under the bay's crown
         k.at('newspaper_bundles', 9, 7, -1.1, 1.3, { face: 40 }); k.at('garbage_bags', 16, 7, 0.9, 1.2, { face: 70 }); k.at('garbage_bag', 13, 6, 0.9, 1.3); k.at('metal_trash_can', 13, 5, 1.3, -1.1);
@@ -260,6 +291,11 @@ module.exports = {
         /* past the cell door: what was left by the stair */
         k.at('traffic_cone', 22, 5, 0.9, -1.1); k.at('psx_metal_barrel_mp_1', 23, 5, 0.6, -1.0); k.at('cinder_block', 22, 7, 1.0, 1.3, { face: 30 });
         ctx.grime('oil', 'P01-00', 2, 9, 1.3); ctx.grime('blood', 'P01-00', 8, 3, 1.0);
+
+        /* ── PASS 4, THE LIGHT AND THE AIR: tube lights under the bays' crowns (they glow, they are not real lights), steam, a lantern at the trap ── */
+        [[3, 5], [9, 5], [15, 5.2], [21, 5.2], [3, 7.6]].forEach(q => ctx.props.push({ key: 'flicker_tube', x: k.X(q[0]), z: k.Z(q[1]), ceil: true }));
+        k.at('chimney_smoke', 14, 7, 0, 1.35, { y: k.up(2.9) }); k.at('chimney_smoke', 15, 5, 0.9, 0.2, { y: 0.05 });           // the stack's louvre breathes; so does a floor drain
+        k.at('railway_lantern', 18, 10, -0.9, 1.0, { noLight: true });
         if (lost.length) console.log('H: a blocker found its square taken: ' + lost.join(' '));
     },
     people(ctx) {
