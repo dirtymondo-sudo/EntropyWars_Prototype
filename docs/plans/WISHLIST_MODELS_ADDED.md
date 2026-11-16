@@ -330,3 +330,12 @@ Not made: papyrus, whale bones, gold pile, wheat patch. Skipped because they alr
 | telegraph_key | `Assets/world/props/meshy/wishlist/telegraph_key.glb` | An antique brass telegraph key on a wooden base with wires | 0.29 x 0.07 x 0.3 |
 | telegraph_pole | `Assets/world/props/meshy/wishlist/telegraph_pole.glb` | An old wooden telegraph pole with crossarms and glass insulators | 3.23 x 7.0 x 0.83 |
 | wanted_poster | `Assets/world/props/meshy/wishlist/wanted_poster.glb` | An old west wanted poster | 0.47 x 0.6 x 0.06 |
+
+## Already in the game before this (not made again)
+
+| wish-list line | editor name | file in the bucket |
+|---|---|---|
+| hitching rail | hitching_rail | `Assets/world/props/meshy/hitching_rail.glb` (Meshy, made for the Desert 11-15) |
+| hammock | hammock | `Assets/world/packs/elbolilloduro/ebd_housesonwater_hammock.glb` (Elbolilloduro pack) |
+| bat | bat_black, bat_brown, bat_grey | `Assets/world/animals/bats/bat_black.obj` (+ brown, grey) |
+| natural small rocks | psxg_rock_1 to psxg_rock_4 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_1.glb` ... `_4.glb` (also ocean_rock_* from the Ocean pack) |
