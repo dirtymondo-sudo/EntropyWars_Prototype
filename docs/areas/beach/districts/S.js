@@ -22,7 +22,9 @@
    sea, a railed veranda, the red-over-yellow flag; squares 15-16 x 65-66, door east) and the lifeguard chair; THE VOLLEYBALL COURT south of it
    (a drawn net, Bayside's way; squares 12-15 x 68-70 kept clear); the swim flags on the Surf; THE TIDE POOLS (five `dip` hollows the sea
    stands in, ringed with the graveyard pack's rocks); 51 palms less the islands'; umbrellas, loungers, surfboards, a camp fire, a sandbox, two
-   rowboats, flamingos, shells and crabs; seals and a turtle in the shallows. People: mermaid (Tide Pools), starfish (Sandbar), siren (the Surf).
+   rowboats, flamingos, shells and crabs; seals and a turtle in the shallows. People (12): mermaid (Tide Pools), starfish (Sandbar), siren (the Surf) + THE POLISH PASS's nine: homosapiens on the Boardwalk, at the huts,
+   the lifeguard hut, the court and the Dunes bench, a chef at the hot dog stand, hippies in the Palms and at the north camp, a pirate by the
+   headland's boats (no lines of their own: none were made up).
 
    THE INSIDES (THE INTERIOR PASS, 11-16, seen on screen): each hut is lined (a coat in its own colour over a white board dado, a lit board
    ceiling, tie beams, daylit windows). SURF: the rack, a steel bench under the pegboard, boards and a net on the walls, the cool box.
@@ -45,7 +47,7 @@
    - THE TOOL'S (notes on docs/notes/claims.md, 11-16): the west edge is open sea where the city should stand; the sky's waterspout landmark
      and the sea shell's night bodies draw as a teal spindle and black outlines by day; the dunes' steep faces wear the cliff sheet as grey
      bands; the sand reads grey-white in the cloud browser.
-   - No residents with routines, no fight set up. Weed / kelp / the ocean pack's rocks do NOT go in the shallows or on dry sand (seen: black
+   - No residents with routines, no fight set up (the NPC spawn system is another thread's: docs/notes/npc-system.md). Weed / kelp / the ocean pack's rocks do NOT go in the shallows or on dry sand (seen: black
      spikes and pillars).
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
      tailor(ctx)  before the heights are made: the plan's squares. Turn each plan building ('B') you build back into its ground with
@@ -297,5 +299,10 @@ dress(ctx) {
     P('camping_tent', 5, 88, { face: 60 }); dec('meshy_campfire_ring', 7, 88); dec('fallen_log', 7, 89); dec('lobster_traps', 9, 86); dec('lobster_traps', 10, 87); dec('wooden_bucket', 6, 90); P('rowboat', 12, 84, { face: 20 });
     /* THE SOUTH DUNES: where the sand runs out: a chest half in the sand, a wrecked boat, a bottle at the tide line */
     P('sea_chest', 1, 101, { face: 140, y: -0.25 }); P('meshy_rowboat', 1, 99, { face: 200 }); dec('psx_glass_bottle_1', 2, 101); dec('fallen_log', 4, 96); dec('ocean_conch', 3, 99);
+    /* ── THE POLISH PASS (2026-11-16), at the END. THE PEOPLE (mondo 11-16: "There need to be more NPCs", owner-rules.md): nine more on the
+       Shore, each where its plot's things are, none on a way through, none with a made-up line (units are named after their race; the three
+       first ones keep theirs). Races the Beach or the city beside it already has. ── */
+    native('homosapien', 6, 42, 90); native('chef', 7, 44, 0); native('homosapien', 3, 54, 180); native('homosapien', 18, 66, 90); native('homosapien', 16, 69, 270);
+    native('hippie', 5, 66, 100); native('hippie', 4, 32, 60); native('pirate', 3, 18, 120); native('homosapien', 4, 77, 90);
 },
 };
