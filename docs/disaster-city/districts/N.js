@@ -28,8 +28,11 @@
    ROCK IS NOT A WALL HERE: the city's ground is all open (gen.allOpen), so only a face steeper than the walker climbs stops him.
 
    KNOWN MISSING OR WRONG
-   - Nobody lives here (mondo: "don't worry about it yet"). No encounter table. No street lamps, no traffic on the canyon road
-   - The three buildings are plain boxes by the city's standard ("each one unique, purposeful and recognizable"; his word on them: "fine for now")
+   - Nobody lives here (mondo: "don't worry about it yet"). No encounter table.
+   - THE THREE BUILDINGS have their exteriors and interiors (11-16, mondo: "do exteriors and interiors of the buildings"; notes: areas-complexes.md
+     "THE HOLLYWOOD HILLS, THE THREE BUILDINGS"). Still open on them: the Stilt House's west deck is drawn only (the walker walks the slope under it);
+     the Observatory's doorway is 0.87 m west of the frontispiece's middle (a glazed light fills the other half); the windows are dark panes outside
+     and daylit sheets inside, not see-through; no rails, braces or columns on these three bump the walker (only walls, partitions and whole squares do)
 
    THE HOOKS: `apply` / `build` below are the old district file's own, word for word (S(plotId, lx, ly) = a square of a plot, 0..11, x east, y south;
    put = a blocker on a square's middle, dec = decor, jittered; tree; building (walk-in); look (an `arch` parts list); feat (any terrain row); flat). */
@@ -136,8 +139,9 @@ function board(ctx) {
 
 /* ══ WHAT STANDS HERE: the old district file's own two hooks, unchanged ══ */
 
+
 /* ══ PASS 1 (2026-11-16, mondo's district order: "do each district with all of the interior exterior polish passes"): THE BUILDINGS + THE LANDMARKS as
-   real architecture. The three old buildings keep their plots, squares and doors and get a real look; three more houses stand on the foot row, so the
+   real architecture. The three old buildings are THE THREE BUILDINGS' in content.apply (the other Hills thread, the same day); here: their terraces, three more houses on the foot row, so the
    hillside reads as the Hills from the city's streets (DECISIONS MADE FOR MONDO: areas-complexes.md "THE HOLLYWOOD HILLS, THE FIVE PASSES"). ══ */
 const M = 'marble_light', COPPER = 'calm_copper', STL = U('MetalWallRibbed1a'), TILE = U('MetalRoofTiles1a'), CFORM = U('ConcreteWoodFormed1a'), WCL = U('WoodCladding1a'), DECK = U('WoodFlooring1a'), BEAM = U('WoodBeams1a'),
     STUCCO = U('PlasterWallStucco1a'), CORR = U('MetalCorrugated1a'), WHITE = 0xf2efe6, TRIM = 0xe6e2d6, DARKW = 0x3a2a20, DGLASS = 0x20303a, BRONZE = 0x7a6238, CLAY = 0xb5532e, STONE = 0x9a9088, G15 = { gain: 2.0 }, PATINA = 0x63a892;
@@ -153,24 +157,8 @@ function hillsKit(ctx) {
 }
 function hillsBuildings(ctx) {
     const R = ctx, { put, dec, tree, building, look, flat, S, mx, mz, gx, gz, props, feat, cell, r2 } = ctx, { glass, block, rail, paint, take, O } = hillsKit(ctx), B = R.B = {};
-    /* THE OBSERVATORY (H10-01): white stone on a dark plinth, a copper dome on a windowed drum with a gallery, two small domes on the wings, a columned
-       porch, tall dark windows between pilasters. It stands on a level terrace (the plan's marble squares) with a balustrade: the place to look over the city */
-    B.obs = building('observatory', 'H10-01', [3, 3, 9, 7, 'S'], 6, { leafDouble: true, leaf: 'leaf_lobby_glass_double', keyIn: M, floorIn: M }, (a, w, d, dr) => {
-        a.shell(w, 6, d, M, WHITE, dr, null, G15);
-        a.box(0, 0, 0, w + 0.6, 0.8, d + 0.6, 'rocks_5', 0xb0a898, { faces: 'blr', top: false });
-        { const xa = dr.lx - dr.cw / 2 - 0.25, xb = dr.lx + dr.cw / 2 + 0.25, e = w / 2 + 0.3; a.box((-e + xa) / 2, 0, d / 2 + 0.17, xa + e, 0.8, 0.34, 'rocks_5', 0xb0a898); a.box((xb + e) / 2, 0, d / 2 + 0.17, e - xb, 0.8, 0.34, 'rocks_5', 0xb0a898); }
-        a.box(0, 5.5, 0, w + 0.9, 0.5, d + 0.9, M, TRIM, { top: false, gain: 2.0 }); a.box(0, 6, 0, w + 0.8, 0.5, d + 0.8, M, TRIM, { roof: true, under: true, gain: 2.0 }); a.box(0, 6.5, 0, w - 1.4, 0.45, d - 1.4, M, WHITE, { roof: true, gain: 2.0 });
-        a.cyl(0, 6.95, 0, 4.7, 2.3, M, WHITE, { seg: 24, roof: true, gain: 2.0 }); a.box(0, 7.5, 0, 0.8, 1.2, 0.1, GLS, DGLASS, { ring: { n: 14, r: 4.72 }, glow: 0.3, roof: true });
-        a.cyl(0, 9.25, 0, 5.4, 0.18, M, TRIM, { seg: 24, ri: 4.5, roof: true, gain: 2.0 }); a.box(0, 9.43, 0, 0.08, 0.9, 0.08, STL, BRONZE, { ring: { n: 24, r: 5.3 }, roof: true }); a.cyl(0, 10.3, 0, 5.36, 0.07, STL, BRONZE, { seg: 24, ri: 5.24, roof: true });
-        a.dome(0, 9.25, 0, 4.6, 4.5, STL, PATINA, { roof: true, seg: 24 }); a.cyl(0, 13.7, 0, 0.5, 0.25, STL, BRONZE, { roof: true }); a.cyl(0, 13.95, 0, 0.12, 1.4, STL, BRONZE, { roof: true, r2: 0.03 });
-        for (const sx of [-1, 1]) { const x = sx * (w / 2 - 3); a.cyl(x, 6.95, 0, 2.3, 1.3, M, WHITE, { seg: 16, roof: true, gain: 2.0 }); a.dome(x, 8.25, 0, 2.35, 2.1, STL, PATINA, { roof: true }); a.cyl(x, 10.3, 0, 0.08, 0.7, STL, BRONZE, { roof: true }); }
-        const bays = 6, bw = (w - 0.6) / bays;
-        for (let i = 0; i <= bays; i++) { const x = -w / 2 + 0.3 + i * bw; if (Math.abs(x - dr.lx) < 1.25) continue; a.box(x, 0.8, d / 2 + 0.12, 0.7, 4.7, 0.24, M, TRIM, G15); }
-        for (let i = 0; i < bays; i++) { const x = -w / 2 + 0.3 + (i + 0.5) * bw; glass(a, x, 1.3, -d / 2 - 0.07, 1.7, 3.6, false, 0.25); if (Math.abs(x - dr.lx) < 1.9) continue; glass(a, x, 1.3, d / 2 + 0.07, 1.7, 3.6, false, 0.25); a.box(x, 4.9, d / 2 + 0.09, 2.0, 0.14, 0.12, STL, BRONZE); a.box(x, 1.16, d / 2 + 0.09, 2.0, 0.14, 0.14, M, TRIM, G15); }
-        for (const s of [-1, 1]) for (const z of [-3.6, 0, 3.6]) glass(a, s * (w / 2 + 0.07), 1.3, z, 1.7, 3.6, true, 0.25);
-        const px = dr.lx; for (const o of [-4.4, -1.75, 1.75, 4.4]) { a.cyl(px + o, 0.1, d / 2 + 3.0, 0.42, 5.05, M, WHITE, { seg: 12, gain: 2.0 }); a.box(px + o, 0.1, d / 2 + 3.0, 1.1, 0.3, 1.1, M, TRIM, G15); }
-        a.box(px, 0, d / 2 + 1.8, 10.6, 0.1, 3.5, M, TRIM, G15); a.box(px, 5.15, d / 2 + 1.75, 10.8, 0.85, 3.5, M, WHITE, { gain: 2.0, under: true }); a.box(px, 6.0, d / 2 + 1.75, 9.2, 0.4, 2.9, M, TRIM, { gain: 2.0, roof: true });
-        a.sign('OBSERVATORY', px, 5.28, d / 2 + 3.53, 8.4, 0.6, '#3a3226', '', 'marc', { kind: 'over' }); });
+    /* THE OBSERVATORY'S TERRACE (H10-01; the building itself is THE THREE BUILDINGS' in content.apply): the plan's marble squares are one level terrace
+       with a balustrade, open where the paths and the drive come in: the place to look over the city */
     flat('H10-01', 2, 2, 10, 10);
     { const o = O('H10-01'), X = o.x(6), Z = o.z(9), q = S('H10-01', 5, 8);   // THE MONUMENT on the terrace's axis: a six-sided shaft, a bronze sphere in a ring
       look('obs_monument', X, Z, a => { a.box(0, 0, 0, 3.0, 0.5, 3.0, M, TRIM, G15); a.box(0, 0.5, 0, 2.2, 0.4, 2.2, M, WHITE, G15); a.cyl(0, 0.9, 0, 0.85, 6.6, M, WHITE, { seg: 6, gain: 2.0, r2: 0.6 }); a.cyl(0, 7.5, 0, 0.8, 0.25, M, TRIM, { seg: 6, gain: 2.0 });
@@ -179,31 +167,12 @@ function hillsBuildings(ctx) {
       const i = 0.25; rail(o.x(2) + i, o.z(10) - i, o.x(5), o.z(10) - i, 'balusters_b'); rail(o.x(7), o.z(10) - i, o.x(10) - i, o.z(10) - i, 'balusters_b');
       rail(o.x(2) + i, o.z(2) + i, o.x(2) + i, o.z(8), 'balusters_b'); rail(o.x(10) - i, o.z(2) + i, o.x(10) - i, o.z(8), 'balusters_b'); rail(o.x(2) + i, o.z(2) + i, o.x(5), o.z(2) + i, 'balusters_b'); rail(o.x(7), o.z(2) + i, o.x(10) - i, o.z(2) + i, 'balusters_b'); }
 
-    /* THE HILL HOUSE (H04-02): white stucco under a flat roof that sails out, a raised glass room, a stone wall and chimney, dark glass to the road;
-       across the road its pool terrace hangs over the city (flagstone, a round pool, a glass rail) */
-    B.house = building('hillhouse', 'H04-02', [7, 3, 11, 5, 'S'], 3.5, { keyIn: STUCCO, floorIn: FLR, leaf: 'leaf_birch_glass' }, (a, w, d, dr) => {
-        a.shell(w, 3.5, d, STUCCO, WHITE, dr, null, { gain: 1.9 }); a.box(0, 3.5, 0.9, w + 2.6, 0.3, d + 3.4, BEAM, DARKW, { roof: true, under: true }); a.box(0, 3.46, 0.9, w + 2.7, 0.4, d + 3.5, M, WHITE, { top: false, roof: true, gain: 2.0 });
-        a.box(3.0, 3.8, -0.6, 6.4, 1.3, 4.6, STUCCO, WHITE, { gain: 1.9, roof: true, top: false }); glass(a, 3.0, 4.0, 1.74, 6.0, 0.9, false, 0.3, { roof: true }); a.box(3.0, 5.1, -0.3, 7.8, 0.25, 6.4, M, WHITE, { roof: true, under: true, gain: 2.0 });
-        for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) { if (Math.abs(x - dr.lx) < 1.7) continue; glass(a, x, 0.3, d / 2 + 0.07, 2.9, 2.9, false, 0.2); }
-        for (const z of [-1.6, 1.6]) glass(a, w / 2 + 0.07, 0.3, z, 2.4, 2.9, true, 0.2); for (const x of [-4.4, 0, 4.4]) glass(a, x, 1.9, -d / 2 - 0.07, 2.8, 1.1, false, 0.2);
-        a.box(-w / 2 - 0.6, 0, 0.9, 0.5, 4.4, d + 2.2, 'rocks_5', STONE); a.box(w / 2 - 1.6, 0, -d / 2 - 0.5, 1.8, 6.2, 1.0, 'rocks_5', STONE); a.box(w / 2 - 1.6, 6.2, -d / 2 - 0.5, 2.1, 0.2, 1.3, CFORM, 0xc8c4bc); });
+    /* THE HILL HOUSE'S POOL TERRACE (H04-02, across the road from the house): flagstone, a round pool with a white coping, a glass rail over the city */
     paint('H04-02', 7, 7, 11, 10, 's');
     { const o = O('H04-02'), X = o.x(9), Z = o.z(8.5);
       feat({ k: 'pool', x: X, z: Z, r: 2.7, rz: 2.7, y: -0.12, depth: 1.2, key: 'water', bank: 0.25 });
       look('hillpool', X, Z, a => { a.cyl(0, 0, 0, 3.15, 0.14, M, WHITE, { seg: 28, ri: 2.7, gain: 2.0 }); });
       const i = 0.2; rail(o.x(7) + i, o.z(10) - i, o.x(11) - i, o.z(10) - i, 'glass'); rail(o.x(7) + i, o.z(7.6), o.x(7) + i, o.z(10) - i, 'glass'); take('H04-02', 8, 8, 10, 9); }
-
-    /* THE STILT HOUSE (H09-02): timber boards under a tin shed roof, a stone chimney, a deck out east with a rail */
-    B.stilt = building('stilthouse', 'H09-02', [3, 3, 9, 8, 'S'], 3.5, { keyIn: WCL, floorIn: FLR }, (a, w, d, dr) => {
-        a.shell(w, 3.5, d, WCL, 0xc89a6a, dr, null, { gain: 1.3 }); a.box(0, 3.5, 0.6, w + 1.6, 0.3, d + 2.4, BEAM, DARKW, { roof: true, under: true });
-        a.P.push({ s: 'roof', form: 'shed', p: [0, 3.8, 0.6], size: [w + 1.6, 1.5, d + 2.4], roof: true, key: CORR, tint: 0x8a9a8a, gain: 1.5 });
-        for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) { if (Math.abs(x - dr.lx) < 1.7) continue; glass(a, x, 0.6, d / 2 + 0.07, 2.6, 2.4, false, 0.2); a.box(x, 0.45, d / 2 + 0.1, 2.9, 0.14, 0.16, BEAM, DARKW); }
-        for (const z of [-5.2, -1.7, 1.8, 5.3]) glass(a, w / 2 + 0.07, 0.5, z, 2.6, 2.5, true, 0.2);
-        a.box(-w / 2 - 0.55, 0, -2, 1.1, 6.4, 1.9, 'rocks_5', STONE);
-        for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * (w / 2 - 0.3), -6, sz * (d / 2 - 0.3), 0.4, 6, 0.4, BEAM, DARKW);
-        a.box(w / 2 + 5.25, 0.02, 0, 10.5, 0.12, d, DECK, 0xb89068); for (const z of [-d / 2 + 0.3, 0, d / 2 - 0.3]) a.box(w / 2 + 10.2, -6, z, 0.34, 6, 0.34, BEAM, DARKW); });
-    { const q = S('H09-02', 3, 3), o = O('H09-02'), i = 0.2; R.flats.push([q[0], q[1], q[0] + 9, q[1] + 5, 'S']);
-      rail(o.x(12) - i, o.z(3) + i, o.x(12) - i, o.z(8) - i, 'wood'); rail(o.x(9), o.z(3) + i, o.x(12) - i, o.z(3) + i, 'wood'); rail(o.x(9.6), o.z(8) - i, o.x(12) - i, o.z(8) - i, 'wood'); }
 
     /* THE ROUND HOUSE (H05-02, new): a drum of concrete and dark glass under a saucer roof */
     B.round = building('roundhouse', 'H05-02', [3, 1, 6, 4, 'S'], 3.4, { keyIn: U('PlasterWallPainted1a'), floorIn: FLR, leaf: 'leaf_glass' }, (a, w, d, dr) => {
@@ -263,12 +232,6 @@ function hillsBuildings(ctx) {
       rail(o.x(5) - i, o.z(9.6), o.x(10), o.z(9.6), 'ranch'); rail(o.x(10), o.z(9.6), o.x(10), o.z(12) - i, 'ranch'); rail(o.x(5) - i, o.z(12) - i, o.x(10), o.z(12) - i, 'ranch'); rail(o.x(5) - i, o.z(10.6), o.x(5) - i, o.z(12) - i, 'ranch'); }
     { const o = O('H04-01'), X = o.x(6), Z = o.z(2); look('quarrycut', X, Z, a => { a.box(0, 0, -1.6, 29, 2.6, 3.2, 'rocks_5', 0xb8b0a4); a.box(-2, 2.6, -4.2, 24, 2.6, 2.6, 'rocks_5', 0xa8a094); a.box(1.5, 5.2, -6.4, 17, 2.4, 2.4, 'rocks_5', 0xb8b0a4); a.box(-15.5, 0, 3.6, 2.4, 2.0, 9, 'rocks_5', 0xa8a094); a.box(15.5, 0, 3.0, 2.4, 1.6, 7.6, 'rocks_5', 0xb8b0a4); }); }
 
-    /* what stood inside the three old buildings (pass 2 lays the insides out on the squares) */
-    { const OBS = B.obs, HOUSE = B.house, STILT = B.stilt, F = { floor: true }, P = (b, k, x, z, q) => b.put(k, x, z, Object.assign({}, F, q || {}));
-      P(OBS, 'brass_telescope', 0, -1.5); P(OBS, 'brass_orrery', -6.5, -3.5); P(OBS, 'telescope', 6.5, -3.5, { face: 200 }); P(OBS, 'globe_lamp', -8.5, 4.5); P(OBS, 'lectern', 3, 3.5, { face: 180 }); P(OBS, 'iron_garden_bench', -4, 5.2, { face: 0 });
-      P(HOUSE, 'psx_sofa_3', -3.5, -2.2, { face: 0 }); P(HOUSE, 'psx_tv_table_1', -3.5, 1.6, { face: 180 }); P(HOUSE, 'tube_tv', -3.5, 1.6, { y: 0.6, face: 180 }); P(HOUSE, 'psx_bed_1', 4.6, -1.6, { face: 0 }); P(HOUSE, 'retro_radio', 5.6, 1.8);
-      P(STILT, 'curved_couch', -5, -4.5, { face: 0 }); P(STILT, 'coffee_table', -5, -2.2); P(STILT, 'decor_piano', 6, -5.5, { face: 300 }); P(STILT, 'couples_bed', 6.5, 4.5, { face: 270 }); P(STILT, 'rug_round', -5, -2.2, { y: 0.17 }); P(STILT, 'retro_radio', -9, 6); }
-
     /* THE COAST OVERLOOK + THE HEADLAND: a parapet on the sea side; THE CANYON ROAD: a guard rail on the drop side */
     { const o = O('H11-01'), i = 0.2; rail(o.x(11) - i, o.z(6) + i, o.x(11) - i, o.z(11) - i, 'parapet'); rail(o.x(7.2), o.z(11) - i, o.x(11) - i, o.z(11) - i, 'parapet'); }
     { const o = O('H11-00'); rail(o.x(10) - 0.2, o.z(3) + 0.2, o.x(10) - 0.2, o.z(9) - 0.2, 'parapet'); }
@@ -285,6 +248,179 @@ content.apply = ctx => {
             for (const sx of [-1, 1]) { a.box(sx * 2.6, 0, -0.9, 0.36, 10.5 + lift, 0.36, STEEL, 0x8a8e94); a.box(sx * 2.6, 6 + lift, -0.45, 0.2, 0.2, 0.9, STEEL, 0x8a8e94); }
             a.box(0, 3.2 + lift, -0.9, 5.6, 0.2, 0.2, STEEL, 0x8a8e94); });
         for (const d of [-1, 0]) R.taken.add((q[0] + d) + ':' + q[1]); })); }
+  /* ── THE THREE BUILDINGS (mondo 11-16: "do exteriors and interiors of the buildings"). Each is a walk-in `texbuilding` (its walls, its doorway, its
+     swinging leaf) wearing an `arch` look. Parts frame: the building's middle, x along the front (east), +z out of the front (south, the city), y up
+     from its floor. THE SQUARES: a thing that blocks stands on the middle of a whole 3.5 m square (the square middles are in each block's comment);
+     a prop with no foot of its own that should block gets a ghost block on its square (`blk`); a partition stands on a line between squares, as the
+     outer walls do. Models: every prop is a catalogue row found through MODEL_LIST.md (the PSX Mega Pack furniture, mondo's Meshy props, the
+     Elbolilloduro kitchen and bath pieces, the Meshy city-interior exhibits). ── */
+  const STUCCO = U('PlasterWallStucco1a'), PLAST = U('PlasterWallPainted1a'), WHITE = 0xf2efe6, CREAM = 0xe6e2d6, DARKW = 0x3a2a20, DGLASS = 0x18242e, IRON = 0x24272c, DAY = 0xcfe2f4;
+  const MARB = 'marble_light', GREENM = U('TileMarble1a'), COPPER = U('MetalWallRibbed1a'), VERDI = 0x63b49c, STONE = 'calm_flagstone', BITUMEN = U('ConcreteRoofBitumen1a');
+  const OUT = (side, u, o, hw, hd) => side === 'f' ? [u, hd + o] : side === 'b' ? [u, -hd - o] : side === 'l' ? [-hw - o, u] : [hw + o, u];
+  const SZ = (side, wd, dp) => (side === 'f' || side === 'b') ? [wd, dp] : [dp, wd];
+  /* a window on an outer wall: a dark frame and a pane of dark glass (side f / b / l / r, u along that wall) */
+  const pane = (a, side, u, y, wd, ht, hw, hd, x) => { let p = OUT(side, u, 0.09, hw, hd), s = SZ(side, wd + 0.24, 0.1); a.box(p[0], y - 0.12, p[1], s[0], ht + 0.24, s[1], null, IRON, x);
+      p = OUT(side, u, 0.13, hw, hd); s = SZ(side, wd, 0.1); a.box(p[0], y, p[1], s[0], ht, s[1], GLS, DGLASS, Object.assign({ uv: 'fit', glow: 0.12 }, x || {})); };
+  /* the same window from inside: a frame and a daylit sheet on the inside wall */
+  const winIn = (a, wall, u, y, wd, ht, hw, hd, frame) => { const e = 0.3, ry = wall === 'b' ? 0 : wall === 'f' ? 180 : wall === 'l' ? 270 : 90, at = wall === 'b' ? [u, -hd + e] : wall === 'f' ? [u, hd - e] : wall === 'l' ? [-hw + e, u] : [hw - e, u];
+      const nx = wall === 'l' ? 1 : wall === 'r' ? -1 : 0, nz = wall === 'b' ? 1 : wall === 'f' ? -1 : 0;
+      a.quad(at[0] + nx * 0.02, y - 0.1, at[1] + nz * 0.02, wd + 0.2, ht + 0.2, null, frame == null ? IRON : frame, { ry }); a.quad(at[0] + nx * 0.04, y, at[1] + nz * 0.04, wd, ht, GLS, DAY, { ry, glow: 0.7, uv: 'fit', win: 'keep' }); };
+  /* a hanging lamp: a rod from the ceiling and a lit drum */
+  const pend = (a, x, z, y, top, r) => { a.cyl(x, y + 0.3, z, 0.015, top - y - 0.3, null, 0x202020, { seg: 4, cap: false }); a.cyl(x, y, z, r, 0.3, null, 0xfff0d0, { glow: 0.9, seg: 12, r2: r2(r * 0.6) }); };
+  /* an inside partition: drawn (a plaster wall on a line between squares) + what the walker bumps */
+  const partDraw = (a, w, h, key, tint) => a.box((w[0] + w[2]) / 2, 0, (w[1] + w[3]) / 2, Math.abs(w[2] - w[0]) + 0.16, h, Math.abs(w[3] - w[1]) + 0.16, key, tint);
+  const partWalk = (B, w, h) => { const p = B.at(w[0], w[1]), q = B.at(w[2], w[3]); feat({ k: 'wall', x0: p[0], z0: p[1], x1: q[0], z1: q[1], h, t: 0.2, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }); };
+  const lift = (a, gains) => a.P.forEach(p => { if (p.key && gains[p.key] && !p.glow && p.gain == null) p.gain = gains[p.key]; });   // a grey sheet under a light tint reads as mud: its own colour, lifted (the arch row's `gain`)
+  const lit = (a, x, z, y, w, d) => { a.box(x, y - 0.07, z, w + 0.2, 0.05, d + 0.2, null, 0x8a8e96, { under: true, roof: true }); a.box(x, y - 0.09, z, w, 0.03, d, null, 0xfff4dc, { glow: 1, under: true, roof: true }); };   // a lit panel under a ceiling
+  const blk = (B, lx, lz, h) => { const p = B.at(lx, lz); feat({ k: 'wall', x0: p[0], z0: p[1], x1: p[0], z1: p[1], h: h || 1.1, t: C, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }); };   // a whole square that blocks
+
+  /* THE OBSERVATORY (21 x 14 m, squares x -8.75 -5.25 -1.75 1.75 5.25 8.75 · z -5.25 -1.75 1.75 5.25): a white Art Deco hall, a copper-green dome on a
+     windowed drum over its middle, a small dome on each wing, giant piers between tall dark windows, a frontispiece with a bronze and glass portal.
+     Inside: one exhibit hall, the brass telescope on a round dais under an inner sky dome, the exhibits in the wings, the ticket booth by the door */
+  const OH = 7;
+  const OBS = building('observatory', 'H10-01', [3, 3, 9, 7, 'S'], OH, { storeys: 2, leaf: 'leaf_lobby_glass_double', leafDouble: true, keyIn: MARB, floorIn: U('TileMarble2a') }, (a, w, d, dr) => {
+      const hw = w / 2, hd = d / 2, RF = { roof: true }, Hc = OH - 0.32;
+      a.shell(w, OH, d, MARB, WHITE, dr);
+      /* the base course (the front's stops at the frontispiece) */
+      for (const q of [[0, -hd - 0.1, w + 0.4, 0.2], [-hw - 0.1, 0, 0.2, d], [hw + 0.1, 0, 0.2, d], [-7.45, hd + 0.1, 6.5, 0.2], [7.45, hd + 0.1, 6.5, 0.2]]) a.box(q[0], 0, q[1], q[2], 0.9, q[3], 'calm_marble', 0xb4b0a6);
+      /* the bays: a pier on every bay line, a tall dark window in every bay */
+      const pier = (side, u) => { let p = OUT(side, u, 0.15, hw, hd), s = SZ(side, 0.62, 0.3); a.box(p[0], 0.9, p[1], s[0], OH - 0.9, s[1], MARB, CREAM); s = SZ(side, 0.8, 0.4); a.box(p[0], OH - 0.55, p[1], s[0], 0.55, s[1], MARB, WHITE); a.box(p[0], 0.9, p[1], s[0], 0.3, s[1], MARB, WHITE); };
+      const bays = (side, u0, u1, n, wins) => { const s = (u1 - u0) / n; for (let i = 0; i <= n; i++) pier(side, u0 + i * s); if (wins !== false) for (let i = 0; i < n; i++) { const u = u0 + (i + 0.5) * s; pane(a, side, u, 1.7, 1.3, 4.1, hw, hd); const p = OUT(side, u, 0.14, hw, hd), z = SZ(side, 1.7, 0.28); a.box(p[0], 1.4, p[1], z[0], 0.18, z[1], MARB, CREAM); } };
+      bays('f', -hw + 0.3, -4.7, 2); bays('f', 4.7, hw - 0.3, 2); bays('l', -hd + 0.3, hd - 0.3, 4); bays('r', -hd + 0.3, hd - 0.3, 4); bays('b', -hw + 0.3, hw - 0.3, 6, false);
+      /* THE FRONTISPIECE: two piers and a head, proud of the wall; in its opening the door, a glazed light beside it and a tall light over both */
+      const zf = hd + 0.35;
+      for (const sx of [-1, 1]) { a.box(sx * 3.15, 0, zf, 2.5, 9.0, 0.7, MARB, WHITE); a.box(sx * 3.15, 0, zf + 0.06, 2.7, 0.9, 0.7, 'calm_marble', 0xb4b0a6); a.box(sx * 3.15 - 0.6, 1.6, zf + 0.38, 0.5, 5.0, 0.1, MARB, CREAM, { n: 2, step: [1.2, 0, 0] });
+          a.box(sx * 3.15, 2.5, zf + 0.44, 0.34, 0.7, 0.26, null, 0xffe2a8, { glow: 1 }); a.box(sx * 3.15, 3.2, zf + 0.44, 0.44, 0.1, 0.34, null, 0x6a4a2a); a.box(sx * 3.15, 2.4, zf + 0.44, 0.44, 0.1, 0.34, null, 0x6a4a2a); }
+      a.box(0, 4.9, zf, 3.8, 4.1, 0.7, MARB, WHITE, { under: true }); a.box(0, 9.0, zf - 0.2, 9.2, 0.3, 1.3, MARB, CREAM, { under: true, roof: true });
+      a.sign('OBSERVATORY', 0, 7.3, zf + 0.37, 7.4, 0.95, '#241a10', '', 'cinzel', { kind: 'over' });
+      { const z = hd + 0.12, BR = 0x5a4026;   // the portal's bronze and glass (the doorway itself is the row's: x -1.74 .. 0)
+        a.box(0.9, 0.1, z, 1.62, 2.1, 0.08, GLS, DGLASS, { uv: 'fit', glow: 0.12 }); a.box(0, 2.42, z, 3.5, 2.3, 0.08, GLS, DGLASS, { uv: [1.75, 2.3], glow: 0.12 });
+        for (const x of [-1.84, 0.03, 1.84]) a.box(x, 0, z + 0.02, 0.12, 4.9, 0.14, null, BR); a.box(0, 2.24, z + 0.02, 3.8, 0.16, 0.14, null, BR); a.box(0.9, 0, z + 0.02, 1.7, 0.1, 0.14, null, BR); a.box(0, 4.74, z + 0.02, 3.8, 0.16, 0.14, null, BR); }
+      a.box(0, 0, hd + 2.1, 10.4, 0.07, 2.9, MARB, CREAM);   // the landing before the door
+      /* the roof: a cornice, a parapet, the raised middle, the drum with its ring of windows, the copper dome and its finial; a small dome on each wing */
+      a.box(0, OH, 0, w + 0.9, 0.4, d + 0.9, MARB, CREAM, { roof: true, under: true }); a.box(0, OH + 0.4, 0, w + 0.3, 0.55, d + 0.3, MARB, WHITE, { roof: true, keyTop: BITUMEN, tintTop: 0x9a9a98 });
+      a.box(0, OH + 0.95, 0.3, 8.8, 1.05, d + 0.1, MARB, WHITE, RF); a.box(0, OH + 2.0, 0.3, 9.2, 0.3, d + 0.5, MARB, CREAM, { roof: true, under: true });
+      a.cyl(0, OH + 2.3, 0, 4.7, 1.9, MARB, WHITE, { seg: 24, roof: true }); a.box(0, OH + 2.8, 0, 1.0, 0.95, 0.12, GLS, DGLASS, { ring: { n: 12, r: 4.68 }, roof: true, uv: 'fit', glow: 0.12 });
+      a.cyl(0, OH + 4.2, 0, 4.95, 0.25, MARB, CREAM, { seg: 24, roof: true }); a.dome(0, OH + 4.45, 0, 4.8, 4.3, COPPER, VERDI, { seg: 24, rings: 8, roof: true });
+      a.cyl(0, OH + 8.7, 0, 0.42, 0.5, COPPER, VERDI, RF); a.cyl(0, OH + 9.2, 0, 0.1, 1.7, COPPER, VERDI, { r2: 0, seg: 8, roof: true });
+      for (const sx of [-1, 1]) { a.cyl(sx * 7.2, OH + 0.95, 0, 2.3, 1.2, MARB, WHITE, { seg: 16, roof: true }); a.cyl(sx * 7.2, OH + 2.15, 0, 2.45, 0.18, MARB, CREAM, { seg: 16, roof: true });
+          a.dome(sx * 7.2, OH + 2.33, 0, 2.35, 2.2, COPPER, VERDI, { seg: 16, roof: true }); a.cyl(sx * 7.2, OH + 4.5, 0, 0.07, 0.9, COPPER, VERDI, { r2: 0, seg: 6, roof: true });
+          a.box(sx * 7.2, OH + 1.3, 0, 0.7, 0.6, 0.1, GLS, DGLASS, { ring: { n: 6, r: 2.28 }, roof: true, uv: 'fit', glow: 0.12 }); }
+      /* INSIDE: a green marble dado and a bronze rail, piers on the walls, the daylit windows, the floor's ring, the dais, the inner sky dome, the lamps */
+      const ix = hw - 0.3, iz = hd - 0.3;
+      for (const q of [[0, -iz + 0.03, 2 * ix, 0.06], [-ix + 0.03, 0, 0.06, 2 * iz], [ix - 0.03, 0, 0.06, 2 * iz], [-6.0, iz - 0.03, 8.4, 0.06], [5.13, iz - 0.03, 10.1, 0.06]]) { a.box(q[0], 0, q[1], q[2], 1.2, q[3], GREENM, 0x3a5a48); a.box(q[0], 1.2, q[1], q[2] + 0.04, 0.08, q[3] + 0.04, null, 0x6a4a2a); }
+      for (const x of [-7, -3.5, 3.5, 7]) a.box(x, 0, -iz + 0.09, 0.5, Hc, 0.14, MARB, CREAM); for (const x of [-7.45, -4.4, 4.4, 7.45]) a.box(x, 0, iz - 0.09, 0.5, Hc, 0.14, MARB, CREAM); for (const z of [-3.5, 0, 3.5]) for (const sx of [-1, 1]) a.box(sx * (ix - 0.09), 0, z, 0.14, Hc, 0.5, MARB, CREAM);
+      for (const u of [-8.83, -6.08, 6.08, 8.83]) winIn(a, 'f', u, 1.7, 1.2, 3.9, hw, hd, 0x5a4026); for (const u of [-5.03, -1.68, 1.68, 5.03]) { winIn(a, 'l', u, 1.7, 1.2, 3.9, hw, hd, 0x5a4026); winIn(a, 'r', u, 1.7, 1.2, 3.9, hw, hd, 0x5a4026); }
+      a.cyl(0, 0.04, 0, 4.5, 0.02, 'calm_marble', 0x3a5a48, { ri: 4.0, seg: 32 }); a.cyl(0, 0.04, 0, 3.5, 0.14, 'calm_marble', 0x2e4a3c, { seg: 32, keyTop: MARB, tintTop: CREAM }); a.cyl(0, 0.18, 0, 3.2, 0.16, 'calm_marble', 0x2e4a3c, { seg: 32, keyTop: MARB, tintTop: WHITE });
+      a.cyl(0, Hc - 2.5, 0, 4.45, 0.22, null, 0x6a4a2a, { ri: 4.2, seg: 32, roof: true }); a.dome(0, Hc - 2.3, 0, 4.2, 2.2, null, 0x1c2a5c, { ds: true, seg: 28, rings: 8, glow: 0.45, roof: true });   // (roof parts: they hide with the roofs in the view from above, as the lit panels do)
+      for (const q of [[-7, -3.4], [-7, 3.4], [7, -3.4], [7, 3.4]]) pend(a, q[0], q[1], 4.2, Hc, 0.42);
+      for (const q of [[-7, 0], [7, 0], [0, -5.6], [0, 5.6]]) { a.box(q[0], Hc - 0.1, q[1], 2.6, 0.05, 1.2, null, 0x8a8e96, { under: true, roof: true }); a.box(q[0], Hc - 0.12, q[1], 2.4, 0.03, 1.0, null, 0xfff4dc, { glow: 1, under: true, roof: true }); }
+      /* the plinths of the exhibits that have no foot of their own */
+      for (const q of [[-8.75, -1.75, 0.9], [-8.75, -5.25, 0.25], [5.25, -5.25, 0.25], [8.75, -5.25, 0.25]]) { a.cyl(q[0], 0.03, q[1], 1.1, q[2], 'calm_marble', 0x2e4a3c, { seg: 20, keyTop: MARB, tintTop: CREAM }); }
+      lift(a, { [MARB]: 1.65, [COPPER]: 1.25 });
+  });
+  for (const q of [[-1.75, -1.75], [1.75, -1.75], [-1.75, 1.75], [1.75, 1.75]]) blk(OBS, q[0], q[1], 0.6);   // the dais
+  for (const q of [[-8.75, -1.75], [-8.75, -5.25], [5.25, -5.25], [8.75, -5.25], [1.75, 5.25]]) blk(OBS, q[0], q[1], 1.0);
+  OBS.put('brass_telescope', 0, 0, { y: 0.34, h: 3.3, face: 200 }); for (let i = 0; i < 8; i++) OBS.put('rope_stanchion', r2(2.85 * Math.cos(i * Math.PI / 4 + 0.39)), r2(2.85 * Math.sin(i * Math.PI / 4 + 0.39)), { y: 0.34, face: i * 45 });
+  OBS.put('saturn', 0, 0, { y: 4.7, span: 2.6 }); OBS.put('asteroid_a', 7.6, -1.2, { y: 4.6, span: 1.3 });
+  OBS.put('brass_orrery', -8.75, -1.75, { y: 0.93, h: 1.25 }); OBS.put('rocket_engine', -8.75, -5.25, { y: 0.28, face: 180 }); OBS.put('meteorite_plinth', 5.25, -5.25, { y: 0.28, face: 180 }); OBS.put('museum_vitrine', 8.75, -5.25, { y: 0.28, face: 180 });
+  OBS.put('star_projector', 5.25, -1.75); OBS.put('star_dome', 5.25, -1.75, { y: OH - 0.75 }); OBS.put('lectern', -5.25, 1.75, { face: 90 }); OBS.put('concierge_podium', 1.75, 5.25, { face: 270 }); OBS.put('ticket_machine', 4.3, 6.3, { face: 0 }); OBS.put('ticket_machine', 5.5, 6.3, { face: 0 });
+  OBS.put('astronomical_clock', 0, -6.25, { face: 180 }); OBS.put('marble_bust', -2.7, -6.2, { face: 180 }); OBS.put('marble_bust', 2.7, -6.2, { face: 180 }); OBS.put('star_chart', -5.25, -6.6, { face: 180 }); OBS.put('star_chart', 5.25, -6.6, { face: 180 });
+  OBS.put('iron_garden_bench', -9.55, 3.5, { face: 90 }); OBS.put('iron_garden_bench', 9.55, 1.75, { face: 270 }); OBS.put('iron_garden_bench', 6.9, 6.15, { face: 0 }); OBS.put('globe_lamp', -9.6, 6.1); OBS.put('globe_lamp', 9.6, 6.1);
+  OBS.put('potted_plant', -9.6, -6.1); OBS.put('potted_plant', 9.6, -6.1); OBS.put('stone_urn', -5.0, 8.3); OBS.put('stone_urn', 5.0, 8.3); OBS.put('doormat', OBS.door.lx, 7.6, { y: 0.08 });
+
+  /* THE HILL HOUSE (14 x 7 m, squares x -5.25 -1.75 1.75 5.25 · z -1.75 1.75): mid-century modern on the Hairpin. A white flat roof sailing out on every
+     side and over a carport, a wall of dark glass to the city, a stone chimney wall, a clerestory lantern over the living room.
+     Inside, one open plan: the living room at the fire, the dining table, the kitchen with its bar, the bedroom past a partition with a wash basin */
+  const HH = 3.4, HPART = [3.5, -3.2, 3.5, 0.1];
+  const HOUSE = building('hillhouse', 'H04-02', [7, 3, 11, 5, 'S'], HH, { leaf: 'leaf_orange_glass', keyIn: PLAST, floorIn: FLR }, (a, w, d, dr) => {
+      const hw = w / 2, hd = d / 2, Hc = HH - 0.32, cw = (w - 0.12) / 8, x0 = -(w - 0.12) / 2, colx = c => x0 + (c + 0.5) * cw;
+      a.shell(w, HH, d, PLAST, WHITE, dr);
+      /* the glass wall: storey-high dark panes between steel mullions (the two bedroom bays are boards with a ribbon window) */
+      for (const c of [0, 1, 2, 4, 5]) a.box(colx(c), 0.1, hd + 0.11, cw - 0.1, 2.4, 0.06, GLS, DGLASS, { uv: 'fit', glow: 0.12 });
+      for (const c of [0, 1, 2, 3, 4, 5]) a.box(colx(c), 2.6, hd + 0.11, cw - 0.1, HH - 2.6, 0.06, GLS, DGLASS, { uv: 'fit', glow: 0.12 });
+      for (let c = 0; c <= 6; c++) a.box(x0 + c * cw, 0, hd + 0.13, 0.1, HH, 0.14, null, IRON); a.box(x0 + 3 * cw, 2.5, hd + 0.13, 6 * cw, 0.1, 0.14, null, IRON);
+      for (const q of [[0, 3], [4, 6]]) a.box(x0 + (q[0] + q[1]) / 2 * cw, 0, hd + 0.13, (q[1] - q[0]) * cw, 0.1, 0.14, null, IRON);
+      a.box(colx(6.5), 0, hd + 0.09, 2 * cw, HH, 0.08, WD, 0x9a6a40, { uv: [1.2, 1.2] }); pane(a, 'f', colx(6.5), 2.0, 2.7, 0.7, hw, hd);
+      /* the east wall's slot, the back's clerestory ribbon, the stone chimney wall on the west and its stack */
+      pane(a, 'r', 1.2, 0.5, 0.8, 2.4, hw, hd); pane(a, 'b', -3.4, 2.3, 5.6, 0.7, hw, hd); pane(a, 'b', 4.2, 2.3, 3.6, 0.7, hw, hd);
+      a.box(-hw - 0.4, 0, -0.4, 0.8, HH + 1.0, d + 1.7, STONE, 0xb8ac9c, { uv: [2.2, 2.2] }); a.box(-hw - 0.4, HH + 1.0, -0.2, 1.0, 1.1, 1.7, STONE, 0xb8ac9c, { uv: [2.2, 2.2], roof: true }); a.box(-hw - 0.4, HH + 2.1, -0.2, 1.2, 0.12, 1.9, null, 0x55524e, { roof: true });
+      /* the roof: one white slab with a boarded soffit, out over the carport on two steel posts; the lantern over the living room under a second slab */
+      a.box(1.7, HH, 0.2, w + 5.2, 0.34, d + 2.4, PLAST, WHITE, { roof: true, under: true, keyUnder: WD2, keyTop: BITUMEN, tintTop: 0x9a9a98 });
+      a.box(-2.6, HH + 0.34, 0, 8.4, 0.5, d - 1.4, GLS, DGLASS, { roof: true, top: false, uv: [1.75, 0.5], glow: 0.12 }); a.box(-2.6, HH + 0.84, 0.3, 9.8, 0.24, d + 0.6, PLAST, WHITE, { roof: true, under: true, keyUnder: WD2, keyTop: BITUMEN, tintTop: 0x9a9a98 });
+      for (const z of [-2.9, 3.1]) a.box(hw + 4.0, -0.8, z, 0.14, HH + 0.8, 0.14, null, IRON);
+      /* INSIDE: the daylit glass, the fireplace of the chimney wall, the partition and its closet doors, the kitchen run and its bar, the lamps */
+      const iz = hd - 0.3, ix = hw - 0.3;
+      for (const c of [0, 1, 2, 4, 5]) { a.quad(colx(c), 0.1, iz - 0.04, cw - 0.1, Hc - 0.2, GLS, DAY, { ry: 180, glow: 0.7, uv: 'fit', win: 'keep' }); } for (let c = 0; c <= 6; c++) a.box(x0 + c * cw, 0, iz - 0.05, 0.1, Hc, 0.1, null, IRON);
+      a.quad(colx(6.5), 2.0, iz - 0.04, 2.7, 0.7, GLS, DAY, { ry: 180, glow: 0.7, uv: 'fit', win: 'keep' }); a.quad(-3.4, 2.2, -iz + 0.04, 5.6, 0.6, GLS, DAY, { glow: 0.7, uv: [1.4, 0.6], win: 'keep' });
+      a.box(-ix + 0.3, 0, 0, 0.6, Hc, 2.6, STONE, 0xb8ac9c, { uv: [2.2, 2.2] }); a.box(-ix + 0.62, 0.3, 0, 0.06, 0.85, 1.2, null, 0x0c0c0c); a.box(-ix + 0.8, 0, 0, 1.0, 0.14, 3.0, 'calm_darkstone', 0x8a8680); a.box(-ix + 0.66, 1.5, 0, 0.14, 0.1, 2.2, WD2, DARKW);
+      partDraw(a, HPART, Hc, PLAST, WHITE); for (const z of [-2.6, -1.7, -0.8]) a.quad(3.6, 0.05, z, 0.84, 2.2, WD, 0x9a6a40, { ry: 270, uv: [0.84, 2.2] });
+      const CAB = 0xe8e4da, TOP = 0x3a3c40;   // the kitchen run on the back wall (square 1.75, -1.75) and the bar before it
+      a.box(1.38, 0, -iz + 0.33, 0.55, 0.9, 0.62, PLAST, CAB); a.box(1.38, 0.9, -iz + 0.33, 0.59, 0.05, 0.66, 'calm_darkstone', TOP); a.box(3.3, 0, -iz + 0.33, 0.3, 0.9, 0.62, PLAST, CAB); a.box(0.98, 1.75, -iz + 0.2, 1.35, 0.7, 0.36, WD, 0x9a6a40, { under: true, uv: [1.2, 1.2] });
+      a.box(1.75, 0, -0.6, 2.7, 1.0, 0.6, WD, 0x9a6a40, { uv: [1.2, 1.2] }); a.box(1.75, 1.0, -0.6, 2.9, 0.06, 0.8, 'calm_marble', 0xf0ece4);
+      a.box(ix - 0.03, 1.1, 2.2, 0.04, 0.9, 0.7, GLS, 0xa8c4d4, { uv: 'fit', glow: 0.35 });   // the mirror over the basin
+      pend(a, 1.2, -0.6, 2.0, Hc, 0.2); pend(a, 2.3, -0.6, 2.0, Hc, 0.2); pend(a, -1.75, -1.75, 1.9, Hc, 0.34);
+      for (const q of [[-5.25, 1.75], [5.25, 0], [1.75, 1.75]]) lit(a, q[0], q[1], Hc, 1.3, 1.3);
+      lift(a, { [PLAST]: 1.8, [WD]: 1.3, [WD2]: 1.2 });
+  });
+  partWalk(HOUSE, HPART, 3.0); blk(HOUSE, 1.75, -1.75, 1.0);
+  HOUSE.put('psx_sofa_3', -5.25, -1.75, { face: 180 }); HOUSE.put('coffee_table', -5.25, 1.75); HOUSE.put('shag_rug', -5.25, 0.6, { y: 0.04 }); HOUSE.put('retro_radio', -5.1, 1.7, { y: 0.47, face: 150 }); HOUSE.put('psx_book_mp_1', -5.5, 1.95, { y: 0.47, face: 40 });
+  HOUSE.put('hearth_fire', -6.0, 0, { face: 90, h: 0.75, y: 0.14 }); HOUSE.put('sputnik_lamp', -4.4, 0.2, { y: 2.08 }); HOUSE.put('tulip_chair', -3.75, 2.3, { face: 250 }); HOUSE.put('potted_plant', -6.25, 2.75); HOUSE.put('psx_photo_frame_mp_1', -6.0, -0.9, { y: 1.6, face: 90 });
+  HOUSE.put('tulip_table', -1.75, -1.75); HOUSE.put('tulip_chair', -2.6, -1.75, { face: 90 }); HOUSE.put('tulip_chair', -0.9, -1.75, { face: 270 }); HOUSE.put('tulip_chair', -1.75, -2.6, { face: 180 }); HOUSE.put('psx_plate_mp_1', -1.75, -1.6, { y: 0.75 });
+  HOUSE.put('round_fridge', 0.55, -2.75, { face: 180 }); HOUSE.put('kitchen_range', 2.4, -2.85, { face: 180 }); HOUSE.put('range_hood', 2.4, -3.0, { face: 180 }); HOUSE.put('microwave', 1.38, -2.85, { y: 0.96, face: 180 });
+  HOUSE.put('bar_stool', 1.2, 0.35, { face: 0 }); HOUSE.put('bar_stool', 2.3, 0.35, { face: 0 }); HOUSE.put('psx_plate_mp_1', 1.3, -0.55, { y: 1.07 }); HOUSE.put('psx_plate_mp_1', 2.2, -0.55, { y: 1.07 });
+  HOUSE.put('psx_bed_1', 5.25, -1.75, { face: 180 }); HOUSE.put('psx_bedside_table_1', 6.3, -2.8, { face: 180 }); HOUSE.put('mushroom_lamp', 6.3, -2.8, { y: 0.65 }); HOUSE.put('psx_carpet_mp_1', 5.25, 1.6, { y: 0.04, span: 2.4 });
+  HOUSE.put('sink', 6.45, 2.2, { face: 270 }); HOUSE.put('office_plant', 3.1, 2.75); HOUSE.put('doormat', HOUSE.door.lx, 2.75); HOUSE.put('wall_clock', -0.25, -3.15, { y: 1.9, face: 180 });
+  put('H04-02', 'car_cadillac', 11, 3, { face: 0 });   // under the carport
+
+  /* THE STILT HOUSE (21 x 17.5 m, squares x -8.75 -5.25 -1.75 1.75 5.25 8.75 · z -7 -3.5 0 3.5 7): timber under a butterfly roof, its high side a band of
+     glass to the city; a boarded deck out front and round the west side, where it stands on stilts over the drop.
+     Inside: the lounge with the piano along the view wall; behind a partition the kitchen (open, a bar), the bathroom and the bedroom */
+  const SH = 3.6, SPART = [[-3.5, -1.75, 0, -1.75], [7, -1.75, 10.2, -1.75], [-3.5, -8.45, -3.5, -1.75], [3.5, -8.45, 3.5, -1.75]], TIMBER = 0xd0a472, STN = 0x6b4a32, ROOFM = U('MetalRoofTiles1a');
+  const STILT = building('stilthouse', 'H09-02', [3, 3, 9, 8, 'S'], SH, { leaf: 'leaf_wooden', keyIn: WD, floorIn: FLR }, (a, w, d, dr) => {
+      const hw = w / 2, hd = d / 2, Hc = SH - 0.32, ix = hw - 0.3, iz = hd - 0.3, DECKT = 0x8a6a48;
+      a.shell(w, SH, d, WD, TIMBER, dr, [3.5, 1.75]);
+      /* battens on the boards, a dark plinth, the corner posts */
+      a.box(-hw + 0.9, 0, -hd - 0.08, 0.08, SH, 0.06, WD2, STN, { n: 12, step: [1.75, 0, 0] }); for (const sx of [-1, 1]) a.box(sx * (hw + 0.08), 0, -hd + 0.9, 0.06, SH, 0.08, WD2, STN, { n: 10, step: [0, 0, 1.75] });
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * (hw + 0.02), 0, sz * (hd + 0.02), 0.3, SH, 0.3, WD2, STN);
+      /* the view wall: four wide dark panes and a narrow one, timber posts between; side and back windows */
+      for (const x of [-6.96, -3.48, 1.74, 5.22]) pane(a, 'f', x, 0.3, 3.0, 2.7, hw, hd); pane(a, 'f', 8.3, 0.3, 1.3, 2.7, hw, hd); for (const x of [-8.7, -5.22, -1.86, 0.08, 3.48, 7.18, 9.4]) a.box(x, 0, hd + 0.1, 0.2, SH, 0.24, WD2, STN);
+      for (const z of [-5.25, 1.75, 5.25]) pane(a, 'l', z, 0.9, 2.2, 1.8, hw, hd); for (const z of [-5.25, 3.5]) pane(a, 'r', z, 0.9, 2.2, 1.8, hw, hd); for (const x of [-7, 0, 7]) pane(a, 'b', x, 1.6, 1.8, 1.0, hw, hd);
+      /* THE BUTTERFLY ROOF: two metal slopes down to a valley over the middle; the north one closes on boards, the south one on a band of glass over the view wall */
+      a.roof('shed', 0, SH, -hd / 2, w + 0.1, 1.1, hd, ROOFM, 0x8a949c, { keyEnd: WD, tintEnd: TIMBER, uv: [1.75, 1.75] });
+      a.box(0, SH, hd / 2, w, 0.02, hd, WD2, 0x4a3626, { sides: false, top: false, under: true, roof: true });
+      a.P.push({ s: 'roof', form: 'shed', p: [0, SH, r2(hd / 2)], size: [w + 0.1, 2.1, hd], ry: 180, roof: true, key: ROOFM, tint: 0x8a949c, keyEnd: GLS, tintEnd: DGLASS, uv: [1.75, 2.1] });
+      a.box(0, SH + 2.1, hd + 0.75, w + 1.6, 0.14, 1.7, WD2, STN, { roof: true, under: true }); a.box(0, SH + 1.1, -hd - 0.5, w + 1.6, 0.14, 1.2, WD2, STN, { roof: true, under: true }); a.box(0, SH - 0.02, 0, w + 0.6, 0.3, 0.7, null, 0x55524e, { roof: true });
+      /* THE DECK: boards before the front (the ground is level there) and along the west side, out over the drop on stilts; a rail of posts and two bars */
+      const DZ = hd + 1.95, DW = hw + 1.95;
+      a.box(-0.48, -0.34, DZ, w + 2.95, 0.4, 3.9, FLR, DECKT, { uv: [1.75, 1.75] }); a.box(-DW, -0.34, 0, 3.9, 0.4, d, FLR, DECKT, { uv: [1.75, 1.75], under: true });
+      for (const z of [-7.6, -3.4, 0.8, 5.0, 9.2, 12.4]) { a.box(-hw - 3.6, -6.4, z, 0.3, 6.1, 0.3, WD2, STN); a.box(-hw - 1.85, -1.5, z, 3.6, 0.2, 0.2, WD2, STN); a.box(-hw - 1.85, -3.2, z, 3.6, 0.16, 0.16, WD2, STN); } a.box(-hw - 3.6, -2.2, 2.4, 0.2, 0.24, 20.2, WD2, STN); a.box(-hw - 3.6, -0.6, 2.4, 0.22, 0.28, 20.6, WD2, STN);
+      const rail = (x0, z0, x1, z1) => { const L = Math.hypot(x1 - x0, z1 - z0), ew = Math.abs(x1 - x0) > Math.abs(z1 - z0), n = Math.max(1, Math.round(L / 1.75));
+          a.box(x0, 0.06, z0, 0.1, 1.0, 0.1, WD2, STN, { n: n + 1, step: [(x1 - x0) / n, 0, (z1 - z0) / n] }); for (const y of [0.55, 1.0]) a.box((x0 + x1) / 2, y, (z0 + z1) / 2, ew ? L : 0.07, 0.07, ew ? 0.07 : L, WD2, STN); };
+      rail(-hw - 3.8, hd + 3.8, -3.5, hd + 3.8); rail(3.5, hd + 3.8, hw + 0.9, hd + 3.8); rail(-hw - 3.8, -hd + 0.1, -hw - 3.8, hd + 3.8); rail(-hw - 3.8, -hd + 0.1, -hw, -hd + 0.1);
+      a.box(-hw - 3.2, 0.06, 0, 0.5, 0.45, 5.0, WD, TIMBER); a.box(-hw - 3.4, 0.51, 0, 0.1, 0.4, 5.0, WD, TIMBER);   // the deck's built-in bench
+      /* INSIDE: the daylit view wall, the partitions, the kitchen run and its bar, the bathroom's tiles, the closet wall, the lamps */
+      for (const x of [-6.96, -3.48, 1.74, 5.22]) winIn(a, 'f', x, 0.3, 3.0, 2.6, hw, hd, STN); winIn(a, 'f', 8.3, 0.3, 1.3, 2.6, hw, hd, STN); for (const z of [1.75, 5.25]) winIn(a, 'l', z, 0.9, 2.2, 1.8, hw, hd, STN); winIn(a, 'r', 3.5, 0.9, 2.2, 1.8, hw, hd, STN); winIn(a, 'r', -5.25, 0.9, 2.2, 1.8, hw, hd, STN); winIn(a, 'l', -5.25, 0.9, 2.2, 1.8, hw, hd, STN);
+      SPART.forEach(q => partDraw(a, q, Hc, WD, 0xd8b48a));
+      a.quad(0, 0.045, -5.1, 6.8, 6.5, U('TileGeneric1a'), 0xdfe8ea, { flat: true, uv: [1.75, 1.75] }); a.box(-3.38, 1.1, -3.5, 0.04, 0.9, 0.7, GLS, 0xa8c4d4, { uv: 'fit', glow: 0.35 });
+      for (const z of [-7.6, -6.6, -5.6, -4.6]) a.quad(3.62, 0.05, z, 0.94, 2.3, WD2, 0x6a4a30, { ry: 270, uv: [0.94, 2.3] });   // the closet wall of the bedroom
+      const CAB = 0x2f4a44, TOP = 0xe8e2d6;   // the kitchen run on the back wall (squares -8.75 / -5.25, -7) and the bar (square -5.25, -3.5)
+      a.box(-6.85, 0, -iz + 0.33, 2.3, 0.9, 0.62, PLAST, CAB); a.box(-6.85, 0.9, -iz + 0.33, 2.34, 0.05, 0.66, 'calm_marble', TOP); a.box(-9.85, 0, -iz + 0.33, 0.6, 0.9, 0.62, PLAST, CAB); a.box(-9.85, 0.9, -iz + 0.33, 0.64, 0.05, 0.66, 'calm_marble', TOP);
+      a.box(-4.0, 0, -iz + 0.33, 0.8, 2.3, 0.62, PLAST, CAB); a.box(-6.25, 1.75, -iz + 0.2, 3.5, 0.7, 0.36, PLAST, CAB, { under: true }); a.box(-6.6, 0.93, -iz + 0.33, 0.7, 0.03, 0.45, null, 0x9aa0a6);
+      a.box(-5.25, 0, -2.5, 2.7, 1.0, 0.8, PLAST, CAB); a.box(-5.25, 1.0, -2.5, 2.9, 0.06, 1.0, 'calm_marble', TOP);
+      pend(a, -5.9, -2.5, 2.1, Hc, 0.2); pend(a, -4.6, -2.5, 2.1, Hc, 0.2); pend(a, 5.25, 3.5, 2.0, Hc, 0.36); pend(a, 7, -4.6, 2.2, Hc, 0.3); pend(a, 0, -5.1, 2.3, Hc, 0.26);
+      for (const q of [[-8.75, 6.2], [0, 6.2], [8.75, 6.2], [-1.75, 0.6], [5.25, 0.2], [-7, -5.6], [7, -6.6]]) lit(a, q[0], q[1], Hc, 1.5, 0.9);
+      lift(a, { [WD]: 1.5, [WD2]: 1.3, [FLR]: 1.3 });
+  });
+  SPART.forEach(q => partWalk(STILT, q, 3.2)); for (const q of [[-8.75, -7], [-5.25, -7], [-5.25, -3.5]]) blk(STILT, q[0], q[1], 1.0);
+  STILT.put('curved_sofa', -8.75, 3.5, { face: 90 }); STILT.put('coffee_table', -5.25, 3.5); STILT.put('psx_sofa_3', -1.75, 3.5, { face: 270 }); STILT.put('shag_rug', -5.25, 3.5, { y: 0.04 }); STILT.put('psx_book_mp_1', -5.1, 3.4, { y: 0.47, face: 70 }); STILT.put('sputnik_lamp', -5.25, 3.5, { y: 2.28 });
+  STILT.put('decor_piano', 8.75, 3.5, { face: 270 }); STILT.put('instrument_guitar', 9.75, 1.5, { face: 250 }); STILT.put('psx_dinner_table_1', 5.25, 3.5); STILT.put('psx_chair_mp_3', 5.25, 2.35, { face: 180 }); STILT.put('psx_chair_mp_3', 5.25, 4.65, { face: 0 }); STILT.put('psx_chair_mp_3', 4.1, 3.5, { face: 90 });
+  STILT.put('lava_lamp_floor', -9.6, 1.0); STILT.put('potted_plant', -9.6, 7.9); STILT.put('potted_plant', 9.6, 7.9); STILT.put('painting_seascape', 8.6, -1.6, { y: 1.3, face: 180 }); STILT.put('doormat', STILT.door.lx, 7.95);
+  STILT.put('kitchen_range', -8.75, -8.1, { face: 180 }); STILT.put('range_hood', -8.75, -8.25, { face: 180 }); STILT.put('round_fridge', -5.05, -7.95, { face: 180 }); STILT.put('microwave', -7.4, -8.1, { y: 0.96, face: 180 }); STILT.put('pot_rack', -5.25, -2.5, { y: 2.75 });
+  STILT.put('bar_stool', -5.9, -1.45, { face: 0 }); STILT.put('bar_stool', -4.6, -1.45, { face: 0 }); STILT.put('psx_plate_mp_1', -5.8, -2.4, { y: 1.07 }); STILT.put('retro_radio', -4.5, -2.6, { y: 1.07, face: 200 });
+  STILT.put('psx_toilet_mp_1', -1.75, -7, { face: 180 }); STILT.put('shower_stall', 1.75, -7.85, { face: 180 }); STILT.put('sink', -3.2, -3.5, { face: 90 }); STILT.put('ebd_house_toilet_paper', -2.8, -7.6, { y: 0.8 });
+  STILT.put('couples_bed', 8.75, -7, { face: 180 }); STILT.put('psx_bedside_table_1', 7.2, -7.9, { face: 180 }); STILT.put('mushroom_lamp', 7.2, -7.9, { y: 0.65 }); STILT.put('egg_chair', 8.75, -3.5, { face: 250 }); STILT.put('psx_carpet_mp_1', 6.6, -4.4, { y: 0.04, span: 2.6 });
+  STILT.put('pool_lounger', -8.75, 10.5, { face: 180 }); STILT.put('pool_lounger', -5.25, 10.5, { face: 180 }); STILT.put('beach_cooler', -7.0, 10.9); STILT.put('psx_dinner_table_1', 8.75, 10.5); STILT.put('psx_chair_mp_3', 8.75, 9.4, { face: 180 }); STILT.put('psx_chair_mp_3', 7.6, 10.5, { face: 90 }); STILT.put('psx_chair_mp_3', 9.9, 10.5, { face: 270 });
   hillsBuildings(ctx);
 };
 
@@ -316,7 +452,7 @@ content.build = ctx => {
   put('H04-02', 'mailbox_bank', 6, 7); put('H04-02', 'car_suv', 2, 7, { face: 90 }); tree('H04-02', 'palm', 9, 6, 2); tree('H04-02', 'palm', 8, 11, 8);
   dec('H05-02', 'traffic_cone', 9, 7);
   flat('H06-02', 2, 3, 10, 8); put('H06-02', 'car_pack_1', 3, 4); put('H06-02', 'car_pack_3', 5, 4); put('H06-02', 'car_taxi', 8, 4); put('H06-02', 'signpost', 4, 2, { face: 180 }); put('H06-02', 'trash_bin', 9, 2);
-  put('H07-02', 'signpost', 4, 10, { face: 180 }); tree('H09-02', 'palm', 9, 1, 4); tree('H09-02', 'palm', 9, 10, 1); put('H09-02', 'pool_umbrella', 10, 7); put('H09-02', 'pool_lounger', 10, 6, { face: 180 });
+  put('H07-02', 'signpost', 4, 10, { face: 180 }); tree('H09-02', 'palm', 9, 1, 4); tree('H09-02', 'palm', 9, 10, 4); put('H09-02', 'pool_umbrella', 10, 7); put('H09-02', 'pool_lounger', 10, 8, { face: 180 });
   put('H10-02', 'signpost', 4, 7, { face: 0 }); put('H11-02', 'signpost', 7, 7, { face: 90 });
   put('H12-02', 'rowboat', 1, 9, { face: 70 }); put('H12-02', 'pool_umbrella', 2, 8); tree('H12-02', 'palm', 8, 0, 8); dec('H12-02', 'ocean_rock', 3, 10);
 };
