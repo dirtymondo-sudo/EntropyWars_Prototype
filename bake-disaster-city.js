@@ -73,7 +73,14 @@ DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') inFrame(m, () => m.
    ctx.paintCell(cx, cy, sheet) (the palette holds 8 sheets: 6 are the city's) and builds on them with its own rows. `backdropOpen` = boxes [x0, z0, x1, z1]
    (metres) where no skyline building stands (three-renderer.js _hqBuildCityBackdrop); the west skyline keeps the city's own edge (backdropInset). `sea` = the room's
    one water surface (data.js terrain.sea); the city's ground stays at 0, so only ground a district sinks under it is water. */
-const ROOM = { east: Math.max(0, ...DISTRICTS.map(m => (m.room && +m.room.east) || 0)), sea: DISTRICTS.map(m => m.room && m.room.sea).filter(Boolean)[0] || null, backdropOpen: [].concat(...DISTRICTS.map(m => (m.room && m.room.backdropOpen) || [])) };
+/* THE ROOM PAST THE PLOTS, NORTH (2026-11-16, mondo: "make Hollywood hills a part of disaster city ... the whole point is to be able to look over the city"):
+   a district file may export `room = { north: <rows>, zone: { floor, cliff, path, pal } }` + `north(q)`. `north` grows the room that many rows of
+   squares past the plot grid's NORTH line (the shell is centred, so it grows the same on the south: that strip is sunk and closed behind a ghost
+   wall on the city's old edge, the land past the south edge starts on the old line as before, and no written coordinate moves). The district owns
+   those rows' ground: `north({ edge, nx })` returns { rows, at(cx, ry) -> { h: [NW, NE, SW, SE] metres, sheet, floor } } for every square of them
+   (asked once the city's own ground is known; `edge(cx)` = the city's heights on its north line). `zone` = the ground sheets those rows wear in
+   place of the city's asphalt / concrete / pavement (terrain.zones, three-renderer.js THE GROUND ZONES); its `pal` sheets join the room's palette. */
+const ROOM = { north: Math.max(0, ...DISTRICTS.map(m => (m.room && +m.room.north) || 0)), zone: DISTRICTS.map(m => m.room && m.room.zone).filter(Boolean)[0] || null, east: Math.max(0, ...DISTRICTS.map(m => (m.room && +m.room.east) || 0)), sea: DISTRICTS.map(m => m.room && m.room.sea).filter(Boolean)[0] || null, backdropOpen: [].concat(...DISTRICTS.map(m => (m.room && m.room.backdropOpen) || [])) };
 const paintExt = new Map();
 /* THE CROSSINGS (tailoring): the plan leaves a one-cell nub where a walk crosses a road (PPPPPPPRPPPP, RRRRRRRRPRRR). A row / column that is
    mostly pavement becomes a whole paved crossing; a lone pavement cell in a carriageway becomes road. */
@@ -366,7 +373,7 @@ const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement squa
     return false;
 };
 const npcSpots = [];   // THE PEOPLE a district stands in the city (ctx.npcSpots: { x, z, face, race, say }), written to the room's npcSpots
-dcCtx = { gone: GONE, marks: [], PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
+dcCtx = { gone: GONE, marks: [], doors: [], PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
 dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
@@ -448,7 +455,9 @@ const BENCH = { R: 'park_bench', U: 'iron_garden_bench', S: 'park_bench', C: 'ci
 /* THE REAL LAND PAST THE EDGE (2026-11-15, mondo: "is the bad looking fake mountain weenie still there ... shouldn't these mountains replace that?"):
    the north side's land IS the Hollywood Hills room's own ground (three-renderer.js _hqEdgeLandFn `land`), shifted 21 m so its plot columns stand
    over the city's (its Canyon Road door over the city's mountain road at x 105, its Cove over the boardwalk's north end). */
-const EDGES = { reach: 440, n: { kind: 'mountain', land: { room: 'site_prebuilt_shasta_hills', x: 21, y: 0, back: 0.35 } }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'desert' }, e: { kind: 'coast' } };
+/* THE HOLLYWOOD HILLS ARE PART OF THE CITY (2026-11-16): the Hills stand IN this room now (districts/N.js, `room.north`), so the north side has no
+   `land` (the far copy of the Hills room's ground) any more. Past the ridge the old range stands at `back` 0.35, the low dry ridge it was behind the far copy. */
+const EDGES = { reach: 440, n: { kind: 'mountain', back: 0.35 }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'desert' }, e: { kind: 'coast' } };
 const EDGE_STOP = { n: ['trees', 'wall:1.2'], w: ['trees', 'trees'], s: ['rail:guard', 'rail:cable_fence'], e: ['rail:parapet', 'rail:pipe'] };
 const edgeN = {};
 function boundaryPass(V) {
@@ -789,7 +798,8 @@ for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < NXP; cx++) {
     const ch = cellAt(cx, cy), dd = D[plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))].d];
     paint[cy * NXP + cx] = ch === 'R' ? 0 : (ch === 'P' || ch === 'D') ? 1 : ch === 'I' ? 3 : dd.yard;
 }
-if (ROOM.east) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: -HALF, x1: r3(-HALF - 0.4), z1: HALF, h: 8, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the west strip the centred shell adds: closed on the city's old edge
+if (ROOM.north) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: r3(HALF + 0.4), x1: r3(HALF + ROOM.east * C), z1: r3(HALF + 0.4), h: 8, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the south strip the centred shell adds: closed on the city's old edge
+if (ROOM.east) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: r3(-HALF - ROOM.north * C), x1: r3(-HALF - 0.4), z1: HALF, h: 8, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the west strip the centred shell adds: closed on the city's old edge
 const b64 = Buffer.from(paint).toString('base64');
 
 /* ── THE STREETS: the plan's road connections, joined into straight runs through the plot centres ── */
@@ -873,7 +883,7 @@ lines.push("        site_prebuilt_downtown_streets: {");
 lines.push("            label: 'DISASTER CITY',");
 lines.push("            sub: 'NINE DISTRICTS · 144 PLOTS',");
 lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'streets',");
-lines.push("            shell: hqCityShell({ w: " + (2 * HALF + 2 * ROOM.east * C) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
+lines.push("            shell: hqCityShell({ w: " + (2 * HALF + 2 * ROOM.east * C) + ", d: " + (2 * HALF + 2 * ROOM.north * C) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
 lines.push("            parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',");
 lines.push("            typology: 'grid',");
 lines.push("            dc144: { cell: " + C + ", plot: " + PL + ", plots: " + N + " },");
@@ -886,6 +896,7 @@ lines.push("                /* THE NATURAL EDGES: no ring of backdrop buildings;
    the city's old edge); the bay lies past the city's east edge, so the mountains and the desert fall into it over the strip's width */
 /* THE DISTRICT MOVE (2026-11-15): Industrial is the south-east block now, a port with water on two sides: the bay lies south of its four plots
    too (the world map: 'the bay' under columns 8 to 11), so the south side is coast for the strip + those four plots, then desert. */
+if (ROOM.north) EDGES.s.inset = r3(ROOM.north * C - 0.1);   // the south strip the centred shell adds lies under the land past the city's old south line
 if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: 0, len: 36 };   /* THE NORTH BEACH (2026-11-15): the range runs on across the beach strip and falls into the bay past the sand: the cliffs at the beach's north end (was off: the strip's width, the hills stopped at the city's corner) */ EDGES.s.cap = { kind: 'coast', at: 'e', off: r3(sw + 4 * PL - 14), len: 30 }; }
 /* a district's own say in the land past the edge (2026-11-15, Entertainment's Hollywood hills): a district file may export `edges`; a side's row
    is laid over the room's (its `cap`), any other key (`sign`) is taken whole */
@@ -895,6 +906,7 @@ lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
 const UD = process.env.DC_NO_UD ? null : require(path.join(REPO, 'docs/disaster-city/urban-decay.js'));
 lines.push(UD ? "                floor: '" + UD.GROUND.floor + "', cliff: '" + UD.GROUND.cliff + "', path: '" + UD.GROUND.path + "', floorTint: '#dcdce0',"
               : "                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
+if (ROOM.north && ROOM.zone) lines.push("                zones: " + J([Object.assign({ x0: r3(-HALF - ROOM.east * C), z0: r3(-HALF - ROOM.north * C), x1: r3(HALF + ROOM.east * C), z1: -HALF }, ROOM.zone)]) + ",   // THE GROUND ZONES: the Hills' rows wear their own sheets");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0," + (UD ? " stains: true," : "") + " streets: " + J(streets) + ",");
@@ -1025,9 +1037,19 @@ const LV = (() => {
         const u = fx - i, v = fz - j, o = (j * W + i) * 4;
         return ((cm[o] * (1 - u) + cm[o + 1] * u) * (1 - v) + (cm[o + 2] * (1 - u) + cm[o + 3] * u) * v) / 100;
     };
-    return { cm, at, baseOf, bldBase, mixed, stoops, f64: Buffer.from(flag).toString('base64'), b64: Buffer.from(cm.buffer, cm.byteOffset, cm.byteLength).toString('base64') };
+    return { cm, at, flag, baseOf, bldBase, mixed, stoops, f64: Buffer.from(flag).toString('base64'), b64: Buffer.from(cm.buffer, cm.byteOffset, cm.byteLength).toString('base64') };
 })();
 features.push(...LV.stoops); lvCount.stoops = LV.stoops.length;
+/* THE ROOM PAST THE PLOTS, NORTH: the district's own ground on its rows (asked now that the city's north line is known); LV.at reads it north of the line */
+const NORTH = (() => { const m = ROOM.north ? DISTRICTS.find(q => q.room && q.room.north && typeof q.north === 'function') : null; if (!m) return null;
+    const g = m.north({ edge: cx => [LV.cm[cx * 4] / 100, LV.cm[cx * 4 + 1] / 100], nx: NXP }), rows = g.rows, cells = [];
+    if (rows !== ROOM.north) throw new Error('THE ROOM PAST THE PLOTS: north() gave ' + rows + ' rows, room.north is ' + ROOM.north);
+    for (let ry = 0; ry < rows; ry++) for (let cx = 0; cx < NXP; cx++) cells.push(g.at(cx, ry));
+    const at = (x, z) => { let fx = (x + HALF) / C, fz = (z + HALF) / C + rows, i = Math.floor(fx), j = Math.floor(fz);
+        if (i < 0) { i = 0; fx = 0; } else if (i >= NXP) { i = NXP - 1; fx = NXP; } if (j < 0) { j = 0; fz = 0; } else if (j >= rows) { j = rows - 1; fz = rows; }
+        const u = fx - i, v = fz - j, h = cells[j * NXP + i].h; return (h[0] * (1 - u) + h[1] * u) * (1 - v) + (h[2] * (1 - u) + h[3] * u) * v; };
+    return { rows, cells, at }; })();
+if (NORTH) { const at0 = LV.at; LV.at = (x, z) => z < -HALF ? NORTH.at(x, z) : at0(x, z); }
 if (LV.mixed) console.warn('THE LEVELS: squares under two buildings of different bases:', LV.mixed);
 /* the roof bridges: each at its roofs' real height; two roofs at different heights → the slab at the higher, a flight on the lower roof up to it */
 {
@@ -1090,19 +1112,31 @@ count.levels = lvCount;
       .filter(q => { const sh = sheetAt(cellOfM(q[0]), cellOfM(q[1])); return sh != null && SOIL.indexOf(sh) < 0; });
   if (bad.length) throw new Error('THE TREES STAND IN SOIL: ' + bad.length + ' tree(s) on paving: ' + JSON.stringify(bad.slice(0, 8)));
   count.soil = tally;
-  lines[paintLine] = "                paint: { pal: " + J(UD ? UD.pal(PAL) : PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + Buffer.from(paint).toString('base64') + "' },"; }
+  /* THE ROOM PAST THE PLOTS, NORTH: its rows' sheets lie ahead of the city's; a sheet the city's eight do not hold joins the palette's end (read only by its ground zone) */
+  const palOut = (UD ? UD.pal(PAL) : PAL).slice(), nr = NORTH ? NORTH.rows : 0, paintAll = new Uint8Array(NXP * (144 + nr)); paintAll.set(paint, NXP * nr);
+  if (NORTH) NORTH.cells.forEach((c, k) => { if (!c.sheet) return; let i = palOut.indexOf(c.sheet); if (i < 0) { if (palOut.length >= 16) throw new Error('the ground palette is full (16 sheets): ' + c.sheet); palOut.push(c.sheet); i = palOut.length - 1; } paintAll[k] = i + 1; });
+  lines[paintLine] = "                paint: { pal: " + J(palOut) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + r3(gc(0) - nr * C) + ", nx: " + NXP + ", nz: " + (144 + nr) + ", d: '" + Buffer.from(paintAll).toString('base64') + "' },"; }
 /* ── THE INTERIOR POLISH (docs/disaster-city/interior-polish.js; mondo 11-15: "rugs/carpets flickering ... do another polish pass on disaster
    city"): last of all, over every walk-in building whichever district wrote it: props beside a wall off the roof (`floor: true`), no two drawn
    faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */
 if (!process.env.DC_NO_POLISH) count.interiorPolish = require(path.join(REPO, 'docs/disaster-city/interior-polish.js'))({ features, props, at: LV.at, REPO });   // DC_NO_POLISH=1: the room as the district files wrote it
-lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: 144, nz: 144, f: '" + LV.f64 + "', d: '" + LV.b64 + "' } },";
+if (!NORTH) lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: 144, nz: 144, f: '" + LV.f64 + "', d: '" + LV.b64 + "' } },";
+else {   /* THE ROOM PAST THE PLOTS, NORTH: one grid for the whole field's depth: the district's rows, the city's 144 (its east strip = the edge plots' height carried out,
+            as the engine's clamp did), then the south strip the centred shell adds, sunk under the land and the bay past the city's old south line */
+    const nr = NORTH.rows, nzAll = nr + 144 + nr, all = new Int16Array(NXP * nzAll * 4), fl = new Uint8Array(NXP * nzAll), SUNK = -900;
+    for (let j = 0; j < nzAll; j++) for (let i = 0; i < NXP; i++) { const o = (j * NXP + i) * 4;
+        if (j < nr) { const c = NORTH.cells[j * NXP + i]; for (let k = 0; k < 4; k++) all[o + k] = Math.round(c.h[k] * 100); fl[j * NXP + i] = c.floor ? 1 : 0; }
+        else if (j < nr + 144) { const cy = j - nr, s = (cy * 144 + Math.min(143, i)) * 4; if (i < 144) { for (let k = 0; k < 4; k++) all[o + k] = LV.cm[s + k]; fl[j * NXP + i] = LV.flag[cy * 144 + i]; } else { all[o] = all[o + 1] = LV.cm[s + 1]; all[o + 2] = all[o + 3] = LV.cm[s + 3]; } }
+        else for (let k = 0; k < 4; k++) all[o + k] = SUNK; }
+    lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + r3(gx(0) - nr * C) + ", nx: " + NXP + ", nz: " + nzAll + ", f: '" + Buffer.from(fl).toString('base64') + "', d: '" + Buffer.from(all.buffer, all.byteOffset, all.byteLength).toString('base64') + "' } },"; }
 /* ── THE SIGN FONTS (docs/disaster-city/sign-fonts.js; mondo 11-15: "do a font pass on all of the buildings that have text"): every
    'txt:' sign gets its typeface by its district and what it says, as a sixth field on its key. A district file keeps writing the plain key. */
 { const SIGN_FONTS = require(path.join(REPO, 'docs/disaster-city/sign-fonts.js')), cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
   const dOf = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')), p = (m && plotOf[m[0]]) || (typeof f.x === 'number' && typeof f.z === 'number' ? plotAtCell(cl(f.x), cl(f.z)) : null); return p ? p.d : ''; };
-  const sf = SIGN_FONTS.apply(features, dOf), sp = SIGN_FONTS.apply(props, dOf); count.signFonts = sf.signs + sp.signs;
+  const cityRows = features.filter(f => !/^hills:/.test(String(f.id || '')));   // (the Hills' rows keep the sheets and typefaces they stood in as their own room)
+  const sf = SIGN_FONTS.apply(cityRows, dOf), sp = SIGN_FONTS.apply(props, dOf); count.signFonts = sf.signs + sp.signs;
   /* THE URBAN DECAY PASS: every sheet key the districts wrote, renamed to the pack's sheet (see the file's head); then the check: none of the sheets mondo ruled out is left */
-  if (UD) { count.urbanDecay = UD({ features, props, dOf });
+  if (UD) { count.urbanDecay = UD({ features: cityRows, props, dOf });
     const left = []; features.forEach(f => { ['key', 'keyIn', 'floorIn'].forEach(k => { if (UD.banned.indexOf(f[k]) >= 0) left.push(f[k]); }); (f.parts || []).forEach(p => ['key', 'keyTop', 'keyEnd', 'keyBase'].forEach(k => { if (UD.banned.indexOf(p[k]) >= 0) left.push(p[k]); })); });
     if (left.length) throw new Error('THE URBAN DECAY PASS: ' + left.length + ' ruled-out sheet(s) left: ' + JSON.stringify(left.slice(0, 6))); } }
 const featLine = lines.length, featN = features.filter(f => f.k !== 'gone').length;
@@ -1116,6 +1150,7 @@ lines.push("                busStops: " + J(busStops) + ",");
 lines.push("            },");
 const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + (o.noEntrance ? ", noEntrance: true" : "");   // noEntrance: a door a district hung inside its own building (no sprite entrance building)
 lines.push("            doors: [");
+dcCtx.doors.forEach(d => lines.push("                " + J(d) + ",   // (a district's own door: ctx.doors)"));
 lines.push("                { id: 'harbour', " + dj(JOIN.harbour) + ", leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_bermuda_beach', at: 'quay' },");
 lines.push("                  desc: 'The quay stops and the water starts. A pier goes on out into it, with a skiff tied at the end that nobody is minding.' },");
 /* a district file may move one of these doors into its own building (`joins = { tower: { x, z, face, sub } }`): Hero Plaza stands THE TOWER at the
