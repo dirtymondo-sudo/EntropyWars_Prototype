@@ -229,7 +229,8 @@ Object.assign(count, { plots: PLAN.plots.length, spaces: spaces.length, falls: G
 /* ── the room ── */
 const SPM = { x: gcx(SP[0]), z: gcz(SP[1]) }, CR = plot['P02-01'];
 const SUNS = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].suns === 'function' ? (DISTRICTS[k].suns(CTX[k]) || []) : [])).slice(0, 4);
-const AIR = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].airZones === 'function' ? (DISTRICTS[k].airZones(CTX[k]) || []) : []));
+/* THE AIR BY DISTRICT (shell.atmos.zones): a file's `airZones(ctx)` = [{ sx0, sy0, sx1, sy1 (squares, the end exclusive), kind, color, n, speed }] */
+const AIR = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].airZones === 'function' ? (DISTRICTS[k].airZones(CTX[k]) || []).map(z => { const q = Object.assign({}, z, { x0: gx(z.sx0), z0: gz(z.sy0), x1: gx(z.sx1), z1: gz(z.sy1) }); delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; }) : []));
 const LINES = [].concat(...Object.keys(O).map(k => O[k].l)), L = [];
 L.push("        /* CAVERN36-BEGIN — THE CAVERN ON PLOTS (2026-11-16): written by `node bake-cavern.js` from docs/areas/cavern/layout.json + districts/<K H A>.js. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. */");
 L.push("        " + ROOM + ": {");
