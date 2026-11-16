@@ -34,7 +34,10 @@
        dead bushes, ferns and a flamingo in the Marsh; a bin, a cooler, crows on the shelter, rabbits, butterflies at the picnic ground; twelve more
        trees; three blank signposts; two marker buoys off the rock.
    MISSING / WAITING:
-     - pass 4 atmosphere (mist, night), pass 5 polish.
+     - pass 5 polish.
+   THE AIR + THE NIGHT (pass 4, seen day and night): `airZones()` = a slow pale mist over the water, marsh lights over the Marsh, fireflies at the
+     Reeds. At night the district is carried by the six lamp posts, the Boathouse's two lit windows and three lanterns, the shelter's lantern,
+     the buoys and the picnic campfire (L's two real lights: the campfire and the lantern inside the Boathouse; everything else is drawn glow).
      - no residents with routines, no encounter table (mondo's baked tables).
    NEEDS A MODEL (nothing on R2 or in any pack file, MODEL_LIST.md searched 11-16: reed, cattail, bulrush, lily, duck, swan, heron, pier, canoe):
      - reeds / cattails (pass 3 will try the ocean pack's seaweed in the shallows and say how it reads), a duck or a heron, a mooring bollard with rope,
@@ -76,6 +79,10 @@ module.exports = {
         setRect(45, 31, 48, 34, 'j'); setRect(68, 9, 70, 10, 'j');
         setRect(36, 17, 50, 19, 'j'); setRect(48, 16, 50, 20, 'j'); setRect(58, 7, 67, 8, 'j'); setRect(65, 17, 71, 18, 'j'); setRect(60, 31, 72, 32, 'j');   // boards under every deck (the grass field grew up through the planks)                                                  // boards: the picnic shelter's floor, the landing at the Boathouse's door
     },
+    /* THE AIR (pass 4; bake-estate.js THE AIR BY DISTRICT): a slow pale mist low over the lake, marsh lights over the Marsh, fireflies thick at the Reeds;
+       the rest of the district keeps the room's own fireflies */
+    airZones() { return [{ sx0: 40, sy0: 6, sx1: 68, sy1: 30, kind: 'dust', color: 0xd4e4ec, n: 260, speed: 0.15 }, { sx0: 59, sy0: 23, sx1: 72, sy1: 36, kind: 'motes', color: 0xc8ff90, n: 90, speed: 0.25 },
+        { sx0: 36, sy0: 0, sx1: 48, sy1: 13, kind: 'fireflies', n: 70 }]; },
     houses(ctx) { const { building, put, U, WD, WD2, COR, GLS } = ctx;
         /* THE BOATHOUSE (walk-in; THE EXTERIOR PASS 2026-11-16): weathered grey boards on a stone footing, corner boards, a tin gable roof with its ends to the
            water, the two big boat doors on the lake side at the head of the slip (drawn shut: you go in by the south door), a loft hatch over them, sashed
@@ -189,7 +196,7 @@ module.exports = {
             a.box(lx, y + 2.47, lz, 0.24, 0.36, 0.24, null, AMBER, LAMP); a.box(lx, y + 2.83, lz, 0.32, 0.07, 0.32, null, IRON); a.box(lx, y + 2.4, lz, 0.3, 0.07, 0.3, null, IRON); };
         lamp(gx(40), gx(17) + 0.25, 0, 1, 0.3); lamp(gx(44), gx(17) + 0.25, 0, 1, 0.3); lamp(gx(48), gx(16) + 0.25, 0, 1, 0.3); lamp(gx(50) - 0.25, gx(20) - 0.25, 0, -1, 0.3);   // the dock and its head
         lamp(gx(59), gc(7) - 1.5, 0, 1, 0.3); lamp(gx(66), gc(17) - 1.5, 0, 1, 0.3);                                                                 // the slip's end, the jetty's end
-        { const X = gx(38) - OX, Z = gx(17) + 0.22 - OZ; a.cyl(X, 0.3, Z, 0.06, 1.75, WD2, PILE); a.box(X, 1.45, Z + 0.07, 1.5, 0.5, 0.05, WD2, 0x3a3a36); a.sign('NO SWIMMING', X, 1.5, Z + 0.1, 1.4, 0.4, '#e8e0c8', '#3a3a36', 'fell'); }   // a board at the dock's foot
+        { const X = gx(38) - OX, Z = gx(17) + 0.9 - OZ; a.cyl(X, 0.3, Z - 0.84, 0.06, 1.75, WD2, PILE); a.cyl(X, 0.3, Z + 0.84, 0.06, 1.75, WD2, PILE); a.box(X, 1.45, Z, 0.05, 0.5, 1.6, WD2, 0x3a3a36); a.sign('NO SWIMMING', X - 0.04, 1.5, Z, 1.4, 0.4, '#e8e0c8', '#3a3a36', 'fell', { ry: 90 }); }   // a board at the dock's foot, read walking out
         feat({ k: 'arch', id: 'est:lakefittings:look', x: OX, z: OZ, rot: 0, y: 0, parts: a.P });
         /* THE SHALLOWS (pass 3). No reed, cattail or lily model exists on R2 (the NEEDS A MODEL list): the ocean pack's seaweed stands in the shallows as
            the water plants (it sways; 1.2 to 1.8 m, its top out of the water), two rows round the Reeds' bank, clumps in the Marsh's pools and on the
