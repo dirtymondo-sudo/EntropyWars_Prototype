@@ -4,7 +4,7 @@
    THE PLOTS: P00-01 The Hedges, north · P00-02 The Lawn · P00-03 The Chessboard · P00-04 The Mirror · P00-05 The Tea Party ·
    P00-06 The Hedges, south (squares x 0..12, y 12..84; the garden's zone runs to the moat's west bank, x 0..14).
 
-   WHAT STANDS HERE TODAY (passes 1 to 3 of 5: the exteriors, the walk-in, the dressing, 2026-11-16; one drawn row `cam:l:garden` in the room's frame + a hedge row a plot):
+   WHAT STANDS HERE TODAY (passes 1 to 4 of 5: the exteriors, the walk-in, the dressing, the air, 2026-11-16; one drawn row `cam:l:garden` in the room's frame + a hedge row a plot):
    the hedges on a stone kerb (the plan's letter `h`: solid by the plan, DRAWN here), topiary on their tops, roses in their faces, rose
    arches over the walks, a stone pier either side of every gateway, lanterns on iron posts. P00-01: the roses being painted (the ladder,
    the pots), the flamingos and the paved ring. P00-02: croquet (hoops, peg, balls, the umpire's chair), spare chess pieces, the small
@@ -22,7 +22,7 @@
    the tool keeps its square clear), the gap in the west hedge to the old garden (`oldgarden`), the dead tree's hole (`deadtree`, on the
    south wall: W's plot P00-07). Dress round them, do not move or retarget them.
 
-   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO (passes 4 + 5): air / light / night, polish. The hedges are not a maze: opening one is a plan change (the tool's).
+   MISSING / WAITING: nothing is waiting on mondo. Pass 4: `airZones` (petals, fireflies, spores), steam, the night look. STILL TO DO (pass 5): polish. The hedges are not a maze: opening one is a plan change (the tool's).
    NEEDS A MODEL (nothing on R2): a rose bush / flower bed, a card soldier, a top hat, a croquet mallet + hedgehog, a hookah, a garden
    gate, a sundial, a bird bath, a standing mirror. Notes: docs/notes/areas-complexes.md "CAMELOT, THE LOOKING-GLASS GARDEN".
    NEW ROWS: keep new pieces out of `dec()` (one stream of dice: it moves the scatter of F, N and W): use `at()` (metres) or `put`.
@@ -91,6 +91,7 @@ const gate = (ky, x0, x1) => { pier(gx(x0) - 0.33, gc(ky)); pier(gx(x1) + 0.33, 
 const lamp = (kx, ky, dx, dz) => { const x = gc(kx) + dx * 1.6, z = gc(ky) + dz * 1.6;
     P.push({ s: 'box', p: [r2(x), 0, r2(z)], size: [0.12, 3.05, 0.12], tint: IRON }, { s: 'box', p: [r2(x + dx * 0.4), 2.93, r2(z + dz * 0.4)], size: [dx ? 0.9 : 0.08, 0.08, dz ? 0.9 : 0.08], tint: IRON },
         { s: 'box', p: [r2(x + dx * 0.75), 2.5, r2(z + dz * 0.75)], size: [0.12, 0.2, 0.12], tint: 0xffd890, glow: 1 });
+    /* (pass 4: a lit disc on the marble under each lantern was tried as `the light it throws`: by day it is a tan stain. Out.) */
     at('meshy_hanging_lantern', x + dx * 0.75, z + dz * 0.75, { y: 2.35, floor: true, noLight: true }); count.lanterns = (count.lanterns || 0) + 1; };
 /* a rose tree (a standard): a stem, a clipped ball, roses on it; `half` = the half that is painted already */
 const roseTree = (x, z, col, s, half) => { s = s || 1; P.push({ s: 'cyl', p: [r2(x), 0, r2(z)], r: 0.05, h: 1.35 * s, seg: 6, key: TIMB, tint: TIMT, gain: 1.4 }, { s: 'cyl', p: [r2(x), r2(1.3 * s), r2(z)], r: 0.2 * s, r2: 0.55 * s, h: 0.4 * s, seg: 9, cap: false, key: LEAF, tint: TOPI, gain: TG }, { s: 'dome', p: [r2(x), r2(1.7 * s), r2(z)], r: 0.55 * s, h: 0.55 * s, seg: 9, rings: 3, key: LEAF, tint: TOPI, gain: TG });
@@ -171,7 +172,10 @@ native('fairy', 9, 69, 300, sayOf(OG, 'fairy')); native('catgirl', 5, 69, 60, sa
       P.push({ s: 'roof', form: 'gable', p: [x, TH, zz], size: [tl / ns, 1.5, TW], ry: 90, key: CLOTH, tint: c, gain: 1.6, glow: 0.28, ds: true, keyEnd: CLOTH, tintEnd: c });
       for (const s of [-1, 1]) P.push({ s: 'box', p: [r2(x + s * TW / 2), r2(TH - 0.3 - (k % 2) * 0.08), zz], size: [0.03, 0.3 + (k % 2) * 0.08, tl / ns], key: CLOTH, tint: k % 2 ? PINK : WHITE, gain: 1.6, ds: true }); }
   for (const t of [0, 0.5, 1]) { const zz = r2(tz0 + 0.2 + t * (tl - 0.4)); P.push({ s: 'cyl', p: [x, 0, zz], r: 0.07, h: TH + 1.5, seg: 8, key: TIMB, tint: 0xb89468, gain: 1.4 }); for (const s of [-1, 1]) P.push({ s: 'cyl', p: [r2(x + s * TW / 2), 0, zz], r: 0.06, h: TH, seg: 8, key: TIMB, tint: 0xb89468, gain: 1.4 }); }
-  for (const t of [0.25, 0.5, 0.75]) at('paper_lantern', x + (t === 0.5 ? 0 : 1.4), tz0 + t * tl, { floor: true, y: TH - 0.55, noLight: true });
+  for (const t of [0.25, 0.5, 0.75]) { at('paper_lantern', x + (t === 0.5 ? 0 : 1.4), tz0 + t * tl, { floor: true, y: TH - 0.55, noLight: true });
+      P.push({ s: 'box', p: [r2(x + (t === 0.5 ? 0 : 1.4)), r2(TH - 0.62), r2(tz0 + t * tl)], size: [0.16, 0.1, 0.16], tint: 0xffd890, glow: 1 }); }   // a lit wick under each lantern
+  P.push({ s: 'box', p: [x, 0.006, r2(tz0 + tl / 2)], size: [TW - 0.6, 0.008, tl - 0.6], sides: false, key: 'grass_2', tint: 0xfff0c8, glow: 0.16 });   // the tent's own warm ground (pass 4)
+  at('chimney_smoke', x, z0 - 0.3, { y: 1.75, rise: 1.4 }); at('chimney_smoke', x + 0.1, z0 + 3.7, { y: 1.75, rise: 1.4 });   // the pots steam
   /* the west nook: the seat that is tomorrow's, a music box; the cat on the hedge */
   at('wingback_chair', gc(4) + 0.4, gc(67) + 0.5, { face: 100 }); at('decor_music_box_dancer', gc(4) + 1.6, gc(68) - 0.2, { face: 40 }); at('cat', gc(4) - 0.2, gc(69) + 0.4, { floor: true, y: 2.72, face: 100 });
   roseTree(gc(5) + 0.9, gc(66) - 0.9, PINK); roseTree(gc(8) - 1.1, gc(65) - 0.6, PINK); }
@@ -186,7 +190,7 @@ at('bird_cage', gc(4) + 1.3, gc(74) - 1.2, { face: 30 }); at('stone_urn', gc(5) 
   const B = ctx.building('lglass', [9, 38, 12, 40], 'W', Hh, { leafDouble: false, leaf: 'leaf_birch_glass', keyIn: STONEK, floorIn: 'cobblestone' }, (a, w, d, door) => {
       const Q = a.P, W2 = w / 2 + 0.05, D2 = d / 2 + 0.05, post = (x, z, h, t) => Q.push({ s: 'box', p: [r2(x), 0, r2(z)], size: [t || 0.14, h, t || 0.14], key: MARB, tint: WH, gain: 1.3 });
       a.shell(w, BASE, d, STONEK, STONE, door); Q.slice(-2).forEach(q => { q.gain = SG; });
-      Q.push({ s: 'box', p: [0, BASE, 0], size: [2 * W2, EV - BASE, 2 * D2], top: false, faces: 'blr', key: GL, tint: DARK, glow: 0.22, win: 'keep' }, { s: 'quad', p: [0, BASE, D2], size: [2 * W2, EV - BASE], ry: 0, hole: [door.lx, door.cw, 2.2 - BASE], key: GL, tint: DARK, glow: 0.22, win: 'keep' });
+      Q.push({ s: 'box', p: [0, BASE, 0], size: [2 * W2, EV - BASE, 2 * D2], top: false, faces: 'blr', key: GL, tint: DARK, glow: 0.34, win: 'keep' }, { s: 'quad', p: [0, BASE, D2], size: [2 * W2, EV - BASE], ry: 0, hole: [door.lx, door.cw, 2.2 - BASE], key: GL, tint: DARK, glow: 0.34, win: 'keep' });
       for (let x = -w / 2; x <= w / 2 + 0.01; x += 1.75) for (const sgn of [-1, 1]) { if (sgn > 0 && Math.abs(x - door.lx) < door.cw / 2 - 0.05) continue; post(x, sgn * (D2 + 0.04), EV); }   // the white frame: a post every 1.75 m
       for (let z = -d / 2 + 1.75; z < d / 2 - 0.01; z += 1.75) for (const sgn of [-1, 1]) post(sgn * (W2 + 0.04), z, EV);
       for (const sgn of [-1, 1]) { Q.push({ s: 'box', p: [0, EV - 0.14, sgn * (D2 + 0.04)], size: [2 * W2 + 0.3, 0.2, 0.18], key: MARB, tint: WH, gain: 1.3 }, { s: 'box', p: [sgn * (W2 + 0.04), EV - 0.14, 0], size: [0.18, 0.2, 2 * D2 + 0.3], key: MARB, tint: WH, gain: 1.3 },
@@ -280,4 +284,14 @@ at('bird_cage', gc(4) + 1.3, gc(74) - 1.2, { face: 30 }); at('stone_urn', gc(5) 
   native('chess piece', 2, 31, 90); native('chess piece', 11, 34, 270); native('rabbit', 10, 29, 240); native('dreameater', 8, 55, 250); native('mushroom girl', 8, 56, 60); }
 arch.push({ k: 'arch', id: 'cam:l:garden', x: 0, z: 0, rot: 0, y: 0, parts: P }); flushArch();
 }
-module.exports = { build };
+/* THE AIR (pass 4; the tool's hook, bake-camelot.js `airZones`): rose petals on the wind over the whole garden; fireflies in the mirror's
+   court, at the tea party and along the south walks; spores over the caterpillar's mushrooms. The kingdom's embers stay over the whole room. */
+const airZones = () => [
+    { x0: 0, y0: 17, x1: 12, y1: 79, kind: 'motes', color: 0xffb8d4, n: 280 },
+    { x0: 4, y0: 52, x1: 11, y1: 59, kind: 'fireflies', color: 0xfff0a0, n: 44 },
+    { x0: 8, y0: 55, x1: 11, y1: 59, kind: 'spores', color: 0xe8ffc8, n: 36 },
+    { x0: 4, y0: 65, x1: 11, y1: 71, kind: 'fireflies', color: 0xffd890, n: 50 },
+    { x0: 1, y0: 71, x1: 9, y1: 78, kind: 'fireflies', color: 0xb8ffc0, n: 60 },
+    { x0: 5, y0: 22, x1: 10, y1: 26, kind: 'fireflies', color: 0xffe8c0, n: 24 },
+];
+module.exports = { build, airZones };
