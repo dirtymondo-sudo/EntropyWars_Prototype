@@ -21,7 +21,9 @@
    PASS 3 (dressing + life): five silent natives (robinhood at the camp, a knight at the bay, a wizard in the stone ring, a tree person and a
    rabbit in the woodcutter's glade), signposts at the track's far crossings, trodden earth, leaves under the oaks, stepping stones, flowers,
    bees, butterflies, hens, a wolf, crows, frogs, reeds (the Ocean pack's weed) along the moat's bank.
-   MISSING / WAITING: nothing is waiting on mondo. NEXT: the air, the night, polish.
+   PASS 4 (atmosphere): `airZones` (gold motes through the forest, fireflies over the glades, the bay and the bank, blue motes in the ring,
+   ash at the dead tree's hole), six more lantern posts (the track's crossings, the hut, the camp, the bridge's foot), smoke over the camp's fire.
+   MISSING / WAITING: nothing is waiting on mondo. NEXT: polish.
    NEEDS A MODEL (nothing on R2): an axe + chopping block, a hand cart, a wooden barrel, a medieval tent (the two here are drawn),
    reeds, a deer / fox / owl, a leafy bush, flowers.
    HOW (learned here): a prop within a ghost wall's square takes `floor: true` or it stands on the wall's top (2.2 m up). Pieces by
@@ -213,6 +215,23 @@ for (const x of [30, 58]) at('meshy_frog', gc(x) - 1.9, gx(78) + 0.5, { face: x 
 /* reeds: the Ocean pack's weed standing in the moat's edge (its feet on the bed), in clumps along the south bank */
 for (let x = 14; x < 82; x += 4.2 + rnd() * 5) { if (Math.abs(x - 43) < 4) continue; const n = 2 + Math.floor(rnd() * 3); for (let i = 0; i < n; i++) at(['ocean_seaweed', 'ocean_seaweed_2', 'ocean_seaweed_3'][Math.floor(rnd() * 3)], gx(x) + i * 0.7 + rnd() * 0.4, gx(77.75) - rnd() * 0.5, { h: 2.3 + rnd() * 0.7, face: Math.round(rnd() * 360) }); }
 
+/* ── PASS 4, THE ATMOSPHERE (2026-11-16): four more lantern posts where the forest track meets a way (so the track is found at night), a
+   lantern under the hut's eave, smoke over the camp's fire. The air itself is the airZones export below. ── */
+lantern(gx(9) + 0.45, gx(87) + 0.45, -1); lantern(gx(88) - 0.45, gx(87) + 0.45, 1); lantern(gx(23) - 0.5, gx(89) - 0.45, 1); lantern(gx(66) + 0.2, gx(89) - 0.45, -1);
+lantern(gx(42) - 0.5, gx(79) + 0.5, 1); lantern(gx(44) + 0.5, gx(79) + 0.5, -1);
+at('chimney_smoke', gc(64), gc(90), { y: 1.0, rise: 4 });
+
 arch.push({ k: 'arch', id: 'cam:w:forest', x: 0, z: 0, rot: 0, y: 0, parts: P }); flushArch();
 }
-module.exports = { build, ground, groundAlso };
+/* THE AIR (pass 4): pale gold motes through the whole forest; fireflies over the two glades, the bay and the moat's bank; cold blue motes
+   in the stone ring; ash falling round the dead tree's hole. The kingdom's embers stay over the whole room (the tool's). */
+const airZones = () => [
+    { x0: 0, y0: 79, x1: 96, y1: 96, kind: 'motes', color: 0xfff0b0, n: 300 },
+    { x0: 18, y0: 88, x1: 26, y1: 93, kind: 'fireflies', color: 0xffe890, n: 50 },
+    { x0: 62, y0: 88, x1: 70, y1: 93, kind: 'fireflies', color: 0xffe890, n: 50 },
+    { x0: 39, y0: 84, x1: 47, y1: 96, kind: 'fireflies', color: 0xd8ff90, n: 44 },
+    { x0: 14, y0: 77, x1: 82, y1: 80, kind: 'fireflies', color: 0xd8ff90, n: 90 },
+    { x0: 86, y0: 88, x1: 92, y1: 92, kind: 'motes', color: 0x9fd8ff, n: 60 },
+    { x0: 4, y0: 87, x1: 12, y1: 96, kind: 'ash', n: 70 },
+];
+module.exports = { build, ground, groundAlso, airZones };
