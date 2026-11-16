@@ -3804,6 +3804,25 @@ about the sky castle for now, and no it would not be in the same room", "do all 
 - **A PROBE NEEDS A FRESH CHECKOUT**: three runs in a row gave no page ("page never ready") because main had moved eight PRs and the local
   server served its STALE screen. Merge main before each run.
 
+### MONDO'S EIGHT PINS ON THE FIRST SCREENSHOTS (2026-11-16) — all in both bake tools
+- "random red rectangle and yellow square ... a flag or a banner needs way more detail and thought": `royalBanner()` (same text in both tools):
+  iron rod, gilt finials, crimson cloth with a gold border and a swallowtail foot, Arthur's arms (gold crown over the sword in the stone).
+  Every drawn cloth in Camelot is this one. The Armoury's flat shields and the tilt's cloth strips are gone.
+- "modern metal guard rails for a fantasy castle": the castle tool's own `guard()` (`stone` = low wall under a coping on the roofs, `wood` = a
+  timber balustrade round the hall's gallery). Never the kit's `R.guard` (steel) in Camelot. The tilt is a plank `wall` row, not the engine's `rail`.
+- "don't use this ring of candles": no `candle_ring` anywhere in Camelot.
+- "chimneys look like shit, need fire just like tiles on fire in battles": the kitchen's hearths are stone chimney breasts (jambs, arch, timber
+  mantel, stepped hood, crane) with the new prop `hearth_fire` (data.js catalogue + three-renderer.js `_hqProcBuilders.hearth_fire`, a row's
+  `w` / `h` in metres): three logs, an ember bed, three of the board torch's flames. NOT the burning tile's ray-marched volume yet:
+  `ThreeVFXEffects.buildFlameVolume` is exported for it, but it drew nothing in a room in three tries. Open.
+- "dafuq are these random boxes": the shop counter's goods are baskets of apples / cabbages and a board of loaves.
+- "roofs don't connect": every cone has an eave disc under it (it sat on a narrower gallery with open air between).
+- "no idea what's happening in this screenshot": my camera stood inside the Sword in the Stone. Retaken from the lower court.
+- Also: a stair flight with no `key` wears the path sheet under the shell's GREEN floor colour: every Camelot flight carries
+  `key: 'cobblestone', side: 'castle_wall'`.
+- PROBES: `probe-fast.js` (CLAUDE.md RULE #1c) took 76 s where the old flow took 5 to 10 min and crashed. Leftover probe processes from a
+  timed-out run kill the next run: `pkill -9 -f chrome; pkill -9 -f playtest_city` first.
+
 ### THE HOUSES, FIVE KINDS (2026-11-15, mondo: "yeah they are fine")
 bake-camelot.js `houseKind()` / `houseLook()`: 1 jettied townhouse (11), 2 shop house (2), 3 thatched cottage (12), 4 burgher house (9),
 5 yard house (9), picked by plot size and place (the Market's edge, against the town wall, the rest). Each has a door in a frame on a stone

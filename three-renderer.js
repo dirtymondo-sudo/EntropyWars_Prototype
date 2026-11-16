@@ -77460,6 +77460,29 @@ const ThreeRenderer = (function () {
        of the floor, lit from inside — the catalogue's `light` carries each
        one's point light, the builders the flame / the pulse */
     Object.assign(_hqProcBuilders, {
+        /* THE HEARTH FIRE (2026-11-16, mondo in Camelot's kitchen: "chimneys look like shit, need fire just like tiles on fire in battles"):
+           a fire to stand in a hearth or a pit: three logs and the battle's burning-tile flame (ThreeVFXEffects.buildFlameVolume, the same
+           ray-marched volume) scaled to the row's `w` x `h` metres (1.3 x 1.5 when none). The catalogue's `light` + `glow` carry its light. */
+        hearth_fire: function (U, p) {
+            var g = new THREE.Group(), w = (p && +p.w > 0) ? +p.w : 1.3, h = (p && +p.h > 0) ? +p.h : 1.5;
+            var logM = _hqMat(null, 1, 1, { color: 0x2a1c14 }), emb = _hqMat(null, 1, 1, { color: 0xff7a20, emissive: 0xff5a10 });
+            for (var i = 0; i < 3; i++) { var lg = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.1 * U, w * 0.8 * U, 7), logM); lg.rotation.z = Math.PI / 2; lg.rotation.y = (i - 1) * 0.5; lg.position.set(0, (0.1 + (i === 1 ? 0.14 : 0)) * U, (i - 1) * 0.16 * U); g.add(lg); }
+            var bed = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.36 * U, w * 0.4 * U, 0.05 * U, 10), emb); bed.position.y = 0.03 * U; g.add(bed);
+            /* the flame: the board torch's own (three of them across the logs, the middle one the tallest), flickering as it does everywhere.
+               NOT YET the burning tile's ray-marched volume mondo asked for: ThreeVFXEffects.buildFlameVolume is exported for it, but placed
+               here it drew nothing in three tries (uVig set, its clock run from its own draw call); to do, with the battle's scene set-up. */
+            try {
+                [[0, 1.0], [-0.32, 0.72], [0.3, 0.8]].forEach(function (q, i) {
+                    var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
+                    parts.model.children.forEach(function (c) { if (c !== parts.flame) c.visible = false; });
+                    var k = h / (0.44 * HQ_TILE_M) * q[1]; parts.model.scale.set(k * (w / 1.3), k, k * (w / 1.3));   // (the torch's flame is 0.44 of a square tall)
+                    parts.model.position.set(q[0] * w * U, 0.16 * U - (parts.flameY || 0) * k, (i - 1) * 0.08 * U); g.add(parts.model);
+                    var entry = { root: parts.model, flame: parts.flame, mat: parts.flameMat, light: null, seed: ((_hqProcSeed++) * 27 + i * 31) % 100 };
+                    if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
+                });
+            } catch (err) { console.warn('[HQ] the hearth fire failed', err); }
+            return g;
+        },
         /* the stake torch is the board's floor torch at the board's own size (THE SAME TORCH EVERYWHERE, 2026-09-15) */
         cave_torch: function (U) {
             var g = new THREE.Group();
