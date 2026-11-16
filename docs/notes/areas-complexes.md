@@ -6747,8 +6747,7 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   came up as an Undead, the gnome as a ghost. The ring's old "fairy" row is swapped the same way. One of a race a room, too (the crowd cap).
 - **FRAME RATE, PASS 3** (the same pond view): 1.40 -> 1.17 to 1.29 frames a second on the cloud's software GPU; draw calls 309 -> 459,
   geometries 1,985 -> 2,223 (about 150 new props, most of them small).
-- **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower, bushes,
-  natural small rocks.
+- **NEEDS A MODEL**: all placed in THE MODEL PASS below; only lily pads are still drawn.
 - **PASS 4, THE ATMOSPHERE (seen by day and at night, 10 + 4 views)**: the tool's `airZones`, seven boxes: violet motes through the whole forest
   (320), fireflies over the north knoll (36), the pond (sea green, 60) and the ring (gold, 70), pale spores in the mushroom glade (70),
   blue motes at the spring (60) and the crystal knoll (44). LIGHT WITHOUT LIGHTS (the room's ten real lights are the castle's): the ring's
@@ -6794,6 +6793,16 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   bucket), `#rrggbb` after it = its petal colour, and a kind's `sink` (a share of its height) plants it that deep (the flower stands on its
   own mound of earth: unsunk, 2 m brown mounds lined the path). FRAME RATE at the pond: three kinds of eight (149 flowers) cost half
   (1.55 -> 0.86); three of sixteen reads 1.31 (noise 0.2). SEEN: the path north and south of the crossing, two probes.
+- **THE MODEL PASS (mondo 11-16: the wish-list models, `docs/plans/WISHLIST_MODELS_ADDED.md`; seen, two probes, 9 + 7 views)**: PLACED from this
+  district's own asks: `reeds` (8 in the pond's shallows, 3 at the spring; `noBlock`, they stand in water), `willow_tree` (2: the pond's
+  north bank, south of the spring; 8 m, on whole squares), `swan` (2, on the water: `y` 0.82 over the pool's bed), `duck` (4), `dragonfly`
+  (6), `firefly` (5, 3 cm: the particles carry the look), `wild_flowers` (14), `leafy_bush` (9). REPLACED: every small drawn boulder (the
+  pond's bank, the spring's ring, the glades' corners) is `lake_rock` now, 15 of them (the first try stood 22: at 1.5 m each they hid the
+  spring; its ring is three). FROM THE REST OF THE LIST: `heron` at the pond, `deer` at the spring (a whole square), `fox`, `hedgehog` (2),
+  `owl_perched` on the north knoll's stump, `moss_clump` (8). STILL DRAWN: the lily pads (no model), the crags, the islet, the crystal spikes.
+  A prop ON a pool's water: the row stands on the BED, so `y` = the pool's depth less a little.
+  FRAME RATE at the pond (cloud software GPU): 1.31 before the pass, 0.98 after it, twice (noise about 0.2; triangles 6.74 -> 7.02 million,
+  draw calls 567 -> 596). The first try was thinned by a third and read the same: the cost is real and small; his F3 decides.
 - **WOULD DO NEXT**: a willow and reeds at the pond when a model exists; sound (no hook); the ring's
   harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
   forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.
@@ -12411,6 +12420,90 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
 - **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
   fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
 
+## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
+
+mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
+for his OK. On Antarctica: "I don't know if I want Antarctica to be the late game reveal, I am still writing the story, that is just a
+possibility". So it is built like any zone: no story gate, no reveal, nothing of DOOR HQ's foyer touched. The Ice Wall stands inside this
+zone only (the wall round the whole world is an idea he has not approved).
+
+- **THE PLAN** `docs/plans/world-zones/antarctica_plot_plan_2.png` + `antarctica-layout-2.json`, both written by
+  `node docs/plans/world-zones/draw-antarctica.js` (it also writes the tool's copy, `docs/areas/antarctica/layout.json`; the square map is
+  made in that script: edit it there, never the json). Sent to mondo 11-16; NOT yet answered. Plan 1 (4 x 3, one district) stays as history.
+- **THE ROOM** `site_prebuilt_antarctica_plots` (site `prebuilt_antarctica`, part `plots`, plate "ANTARCTICA"): 6 x 6 plots of 12 x 12
+  squares (252 m a side), written by `node bake-antarctica.js [--dry-run]` between `ANTARCTICA36-BEGIN / -END` in data.js. `ANT_DUMP=1`
+  prints the walked map. Never hand-edit between the markers.
+- **THE IDEA, south to north, one idea a row:** the sea and THE SHELF ICE (F, level 1) · THE STATION (S, levels 4 and 6) with THE POLAR
+  OPENINGS (O) on its west and east flanks · THE CREVASSE (C, level 10) right across the traverse · THE ICE WALL (W, level 11): 35 m sheer,
+  right across, ONE cut through it (the Gap) · THE HULL IN THE ICE (H): what is behind the wall, and the Spaceship's collar on it. The land
+  climbs 17.5 m from the shelf to the wall's foot, so the wall and the range stand over the station from every plot south of it.
+  One track, THE TRAVERSE (squares 30-31), runs the whole way: pier, yard, the Plank, the Gap, the hull.
+- **EVERY OLD LANDMARK HAS A PLOT:** THE HUTS (P02-03), THE CREVASSE (row 2; "the only way over it is a plank" = The Plank P02-02, plus two
+  natural bridges), THE ICE WALL (row 1), THE COLLAR + THE HULL IN THE ICE (P03-00, P02-00), THE STATION YARD (P02-04: the bay door, the
+  spawn, the healing zone), THE POLAR OPENING (P05-03), THE ADMIRAL'S TUNNEL (P00-03), the tape's THE ICE CORE (P01-03). Sixteen plot
+  names are plain labels of mine, marked "(label mine)" in the layout json.
+- **THE MASS IS THE HEIGHT SHEET** (the Mountains' way: `gen { kind: 'plan', look: 'trees' }` with no tree zone, so no gen wall stands;
+  only `space` rows are walked). The plan's `x` the Ice Wall (+35 m in two squares, a broken crest), `r` ice ridge (4 to 11 m), `k` deep
+  drift, `a` the crevasse (15 m down), `z` the sea (bed -5; the shelf's edge stays up as a 1.75 m ice foot), `h` the hull (level; the hull
+  itself is `arch` vaults). The paint: snow = the room's floor `ice`; blue ice, tracks, wall, ridges, crack = `ice_1`; pads `wood_planks`.
+- **THE SEA FILLS EVERY HOLLOW UNDER 0** (seen: the first bake's crevasse, 9 m under sea level, was a canal). `terrain.sea { y: 0 }` is one
+  sheet over the whole room. So the land was raised (levels 1 / 4 / 6 / 10 / 11) and the crack stays 2.5 m over the sea. Any pit you dig
+  in this zone must end above 0.
+- **THE EDGES:** `terrain.edges` north, west, east `mountain` (the range; brown rock with snow tops: there is no ice kind), south `coast`.
+- **THE AIR:** the site's own (data.js `HQ_ATMOS_SITES.prebuilt_antarctica`: snow on a 1.6 wind). A district file may export `airZones`.
+- **THE WAYS (four, all in the game before; no new one):** DOOR HQ's bay door 90S = a free door standing in the snow on the Station Yard
+  (`siteRooms.entry.prebuilt_antarctica`); link `antarctica_derelict` end a = the north wall at the end of the slot in the hull (x 3.5);
+  `antarctica_polar` end a = the west wall, z 17.5 (the Admiral's Tunnel, to Agartha); `hollow_byrd` end b = the east wall, z 14 (the Polar
+  Opening, to the Inner Sun). Only Antarctica's own ends moved; the far rooms' doors follow their link. hqWorldGraph: all four resolve
+  both ways. The tool refuses to bake when one of the five hand-written rows drifts (it prints them).
+- **RETIRED:** `site_prebuilt_antarctica_station` -> the new room (`DOOR_HQ.retired`). It has no literal (the room is made from its site
+  row `HQ_SITE_PARTS`-style at data.js "prebuilt_antarctica: { plazaR: 11 ..."), stays in the data as the PvP board's source
+  (`HQ_ARENA_RULES.picks`), and has no door any more. NEW hub `antarctica` (the zone had none): the map groups it, the healing zone
+  stands 2.2 m ahead of the spawn.
+- **WHO IS THERE (10):** the old Station's Yeti and two Men in Black with their own lines (the Yeti at the wall's west foot, "The 1947
+  survey marked the hull" on the Survey Line, "The story is in the west wall" at the Admiral's Tunnel), two more Men in Black at the
+  station, two Yetis, two Nordics (the Gap, the Collar), a Kaiju on the shelf (POINT_OF_ENTRY: Nordic, Kaiju, Yeti = Antarctica).
+  No encounter table (the old room had none; the tables are mondo's).
+- **SEEN ON SCREEN** (probe, three runs, 18 views, no page error; 97 files, ready in ~75 s): the yard, the station from the air and from
+  the shelf, the huts' lane, the Plank, the wall and the Gap, the hull and the Collar, the pier. FOUND AND FIXED: the crack full of sea
+  (above); the `igloo` sheet on the tracks read as brick paving (tracks are `ice_1` now).
+- **FRAME RATE, first build:** 1.0 to 1.3 FPS at the proof view (the Station Yard looking north, x -17.5 z 78.75; llvmpipe; 408 draw
+  calls, 731 k triangles). Only before / after on the same view counts.
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (the four doors: offline graph only); every hut is empty inside; the two
+  openings are doors on the room's wall, not holes; the Plank and the two bridges are solid ground dressed as a bridge (the Mountains'
+  Rope Bridge way); the range past the edges is brown rock; the old room's tape (THE ICE CORE) was not re-homed (no tape guards);
+  no night seen yet; five districts stand at first-build level (their file headers say what each holds and lacks).
+
+### ANTARCTICA: FITS THIS ZONE (the lists gone through 11-16 before placing anything)
+
+Read: the live catalogue end to end (1,913 keys, `DOOR_HQ.catalogue`), MODEL_LIST.md's section list and its sections 6 / 7c / 10 / 12b
+searched for snow, ice, arctic, polar, penguin, seal, station, antenna, radar, hull, sci-fi. NOT read end to end: section 13 (the 3,223
+unwired R2 files); a district thread should search it for its own plots before its dressing pass.
+- STATION: `weather_mast` `flood_mast` `dish` `satellite` `generator` `ind_silo` `ind_container` `ind_vent` `psx_metal_barrel_mp_0..3`
+  `psx_jerrycan_1` `psx_supply_crate_*` `psx_wooden_crate_*` `wrapped_pallet` `pallet_jack` `hand_truck` `forklift` `cable_drum`
+  `gas_cylinder_rack` `air_compressor` `tool_chest` `engine_hoist` `tire_stack` `car_truck` `car_suv` `snow_sled` `firewood_stack`
+  `wood_stove` `boiler` `utility_box` `security_camera` `trail_sign` `signpost` `prayer_flags` `timber_lookout` `icicles` `fur_rug`.
+- INSIDE THE HUTS: `cot` `footlocker` `sea_chest` `sleeping_bag` `backpack` `steel_table` `folding_chair` `mini_fridge` `coffee_maker`
+  `psx_canned_food_mp_*` `field_radio` `radio_console` `retro_radio` `reel_to_reel` `crt_terminal` `server_rack` `map_table`
+  `evidence_board` `microscope` `lab_glassware` `fume_hood` `specimen_shelf` `meteorite_plinth` `star_chart` `brass_telescope`
+  `telescope` `psx_dosimeter_*` `item_flare_gun` `item_binoculars` `psx_lamp_*_on` `psx_ceiling_lamp_*_on`.
+- THE HULL: `hullplate` `nacelle` `escapepod` `dockring` `saucer_lg` `ufo` `astronaut` `meshy_molten_cryo_tube` `iso_tank` (the Molten
+  cryo casket, NOT a fuel tank) `meshy_tesla_coil` `satellite` `lunar_lander`.
+- ICE + SEA: `ocean_seal_resting` (NOT `ocean_seal` / `ocean_penguin`: swimmers, they lie flat on ice), `ocean_whale` `ocean_humpback`
+  (in the sea), `seagull`, `sea_buoy` `mooring_bollard` `mooring_piles` `ship_anchor` `ship_wreck` `fishing_boat` `rowboat` `submarine`
+  `lobster_traps`, `cave_stone` `hw_stone*` `psxg_rock_*` (grey rock; never black `ocean_rock` on snow), `dinosaur_skeleton`
+  `anatomy_skeleton` `cattle_skull` (something frozen in the ice), `item_flat_earth` (at the wall), `meshy_crystal_shard(s)` (untried as ice).
+- DO NOT USE HERE: anything `xmas_*` (the North Pole's; this is ice desert and science base), trees of any kind, `wolf` / `reindeer`.
+
+### ANTARCTICA: DECISIONS MADE FOR MONDO (first build; overrule any in one line)
+1. Six districts on 36 plots, one room; the rows south to north are sea, station, crevasse, wall, hull.
+2. The Spaceship's collar moved from the station to BEHIND the Ice Wall (the hull is "what is behind it"): the ship is the last thing reached.
+3. The Ice Wall has one cut (the Gap), open, no door in it.
+4. The two ways down stay hidden wall doors where their own text puts them (behind the fuel drums; behind the east berm).
+5. DOOR HQ's bay door stands free in the snow on the Station Yard. No front door of the foyer, no reveal.
+6. A new south side (shelf ice, pier, landing, seals, floes) that the old room did not have.
+7. New hub `antarctica` on the map (colour #bfe6ff).
+8. Sixteen plain plot labels of mine (the json marks them).
 ## THE DEEP, THE CITADEL — district C, the pilot (2026-11-16, `docs/areas/deep/districts/C.js`, the Deep zone thread)
 
 - **PASS 1, THE EXTERIORS (seen on screen, four views, no errors):** the Agora's two stoas are real (back wall with gaps, lean-to roof,
