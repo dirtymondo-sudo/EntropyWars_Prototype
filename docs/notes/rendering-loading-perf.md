@@ -1957,6 +1957,60 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE PARKED ROOM (2026-11-16, a fight no longer ends the walk: nothing is rebuilt either way)
+
+mondo: "why does a fight rebuild everything? its supposed to be a seamless transition ... make it seamless. stop the pointless
+rebuilds." His last F3 just back from a fight: 3.8 FPS, the room drawn while "build 3495->756".
+What it was: `_hqLeave({handover})` handed every merged piece back and gave the room's groups to the fight, which kept what
+stood near the board and DISPOSED the rest (~2,100 of ~16,600 pieces); the way back was a plain `_hqEnter`: every builder,
+then the whole merge.
+What it is now (three-renderer.js, big rooms = `_hqChunkBig`, the room READY, no stage; every other room keeps the old path):
+- LEAVE: `_hqParkOk` -> `_hqLeave` skips the chunk home, the batch drop, the LOD / instance / portal resets, the mirrors'
+  dispose and the scene's disposal, and `_hqParkStash` keeps the record: `_hqParked = { H, roomId, hfog, ao, mats }`. The
+  walk's scene, merged squares, chunks, instance pass, doors: all as they stand, undrawn. Log: "[HQ] left (the room PARKED ...".
+- THE FIGHT: `_hqBuildRoomInBattle` finds no stash and a parked room of its id: `_hqParkHand` gives it three empty groups (+
+  copies of the sky / landmarks), `_hqParkFill(hand, farOf)` fills them with COPIES (`_hqParkClone`) of the pieces inside the
+  fight's radius, read where the walk keeps them (`_hqParkPieces`: shell children + fence plots' children, doors, placements
+  in their prop chunks). A copy shares geometry and looks, carries the piece's own `_ew_` flags and none of the walk's
+  bookkeeping (`_HQ_PARK_SKIP`), shows a piece the merge or the instance pass hides, takes a rig-held lamp's own layers, never
+  a LOD level; it is marked `_ew_parkClone` and `_disposeR` / the hand-over's dispose free nothing it wears. `take()` then
+  runs as on a hand-over. A floor the fight digs is cloned first (`_fieldDeformMesh`, `_ew_parkOwnGeo`). The looks the fight
+  changes (fog off on glows, `_ew_hzNear`) are listed (`P.mats`) and put back at the resume. Log: "... radius 28/48 m ·
+  parked (N copies, M left in the walk)".
+- THE WAY BACK: `_hqEnter` with `from: 'return'` into the parked room -> `_hqResume`: the record is `_hq` again, its per-entry
+  state reset (opts, keys, camera boom as an entry lays it, arrive, a fresh gate, `ready` false until the people's files
+  are in; `_resumed` skips the settle), the air and the look restored, the canvas laid in the host, the PEOPLE placed again
+  (the fight carried their bodies: every char cleared as a stage part clears its own, residents' bodies forgotten, then
+  `_hqSpawnPopulation`, `_hqRideArm`, `_hqRefreshLamps`), input bound, the loop set. No builder, no merge. Log: "[HQ]
+  resumed <room> (parked N s; the fight had M copies) — nothing built, nothing merged".
+- NOBODY CAME BACK: `_hqEnter` into another room / not a return / the switch on -> `_hqParkDrop` tears the parked room down
+  as a left room. A resume that throws falls back to the full build. (deactivate does NOT drop it: map.js puts the board
+  away just before the way back's enter.) Known: a player who leaves a fight for the menu keeps the parked room in memory
+  until the next room entry.
+- Off: `window.EW_HQ_NO_PARK = true` (the old hand-over, the old way back).
+- EVERY ROOM (same day, mondo: "why not small rooms too? the fix needs to be game wide"): `_hqParkOk` no longer asks for a big
+  room. A copy of a mirror's target wears the target's own look (`_ew_reflectOld`); a fading ceiling's looks are the copy's
+  own (`_fieldCeilRegister` clones them; `_ew_parkOwnMat`, disposed with the copy); the resume files the door gun and the pair
+  from the entry's opts (capture choices, strike gate, wedges; standing doors stay). Proof, same probe on a small indoor room
+  (`node playtest_handover.js site_prebuilt_lodge_halls`): the fight drawn from 240 copies, back in 3.1 s, 786 -> 787 meshes,
+  25 merged meshes before and after, the hall's walls and floor as before, 0 errors.
+  THE ONE EXCEPTION: a room with joined neighbours (`H.stage`: the HQ wings, the plot dungeons) keeps the old hand-over.
+  Their copies are written (`_hqParkPieces` reads each attached part through its part root, as `_hqStageFlatten` laid them;
+  `_hqStageLeave` is skipped on a park) but NOT proven: no probe can start a fight there (`_hqEncounterRoomOkNow` refuses the
+  HQ's own rooms; the Training Room's strike never fired). `window.EW_HQ_PARK_STAGE = true` tries it. NEXT: prove it on a
+  plot dungeon fight or the first quest's Training Room fight, then drop the exception.
+PROOF (cloud browser, WebGL on llvmpipe through probe-fast.js, the new repo tool `node playtest_handover.js`; HEAD on 84580c2 +
+this change): Disaster City, a strike 3.5 m from the spawn, the fight drawn (the street, palms, cars from copies: 2,513),
+the enemy's hp set to 0 + `checkWin()`, BACK TO THE ROOM pressed. Before the fight: 43,095 meshes, 4,099 merged meshes, 49
+squares. After the way back: 43,117 / 4,099 / 49: the SAME merge, never rebuilt; the picture is the lit city with the walker
+in it; 0 page errors, 0 frame errors. From the button to the room ready: **9.4 s parked vs 66.2 s on the old path**
+(`--flags=EW_HQ_NO_PARK`, same probe; software rendering, so his Mac will be far quicker on both).
+A probe trap: a strike placed 3 m EAST of the spawn lands the walker in a doorway and the camera inside the wall (a black
+picture on BOTH paths): strike 3.5 m in +z.
+NOT PROVEN YET on his machine: WebGPU (the bundles re-record once on the first frame back), a second fight right after the
+first, the residents' bodies after a resume, a fight whose props were still loading. STILL OPEN from below: the fight's
+may-fade props, the 320 ground tiles, the 2,300 recorded holders ("bundle check 7.3").
+
 ## THE HAND-OVER'S THREE FREEZES (2026-11-16: the last picture, the field survey, the way back merges first)
 
 mondo after #1547: the fight 23.4 -> 34.0 FPS (2,608 -> 1,158 meshes, "the fight's room live 450->24"), but "going into
