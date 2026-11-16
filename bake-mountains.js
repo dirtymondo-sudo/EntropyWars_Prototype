@@ -52,6 +52,7 @@ const DOORWORDS = (label, sub, desc) => ({ label, sub, desc });
                   get(plotId, lx, ly), plot(plotId), N }: change a square of the district's own plots (the letters: layout.json `legend`)
      apply(ctx)   after the room's ways out exist: the standing things (ctx.building: a walked-in building takes its squares here)
      build(ctx)   after every district's apply: the dressing
+     airZones(ctx) the district's air (particles by squares): see finish() THE AIR BY DISTRICT
    A room runs its files in the order of its `files` opt, one stage for all of them, then the next stage.
    ctx = the room (everything makeRoom returns: put, dec, tree, native, building, look, feat, flat, S, gx, gz, mx, mz, cell, byId, plots, props,
    doors, marks, taken, flats, count, open, inR, rnd, o, W, H ...) + anchor(name, { x, z, face }) + say(old, race) + cabin + the constants
@@ -266,6 +267,12 @@ function finish(R, e) {
     { const encs = (o.files || []).map(Lt => DISTRICTS[Lt] && DISTRICTS[Lt].encounters).filter(Boolean);
       if (encs.length) { const list = []; encs.forEach(E => (E.list || []).forEach(x => { if (RACES.indexOf(x.race) < 0) throw new Error(o.id + ': encounters: not a unit: ' + x.race); const y = list.find(z => z.race === x.race); if (y) y.w = Math.max(y.w, x.w); else list.push({ race: x.race, w: x.w }); }));
           L.push("            encounters: " + J(Object.assign({}, encs[0], { list })) + ","); } }
+    /* THE AIR BY DISTRICT (2026-11-16, district S; Camelot's hook): a district file may export `airZones(ctx)` = [{ x0, y0, x1, y1 (the room's squares, from S()),
+       kind, color?, n?, speed?, wind? }] (three-renderer.js HQ_ATMOS_KINDS: snow, motes, fireflies, dust, ash, spores ...). The zones of a room's files are joined
+       into the shell's `atmos`. No file exports one = the shell as it was, byte for byte. */
+    { const air = [].concat(...(o.files || []).map(Lt => (DISTRICTS[Lt] && typeof DISTRICTS[Lt].airZones === 'function') ? R.inDistrict(Lt, () => DISTRICTS[Lt].airZones(R.ctx)) : []))
+          .map(z => { const q = Object.assign({}, z, { x0: gx(z.x0), z0: gz(z.y0), x1: gx(z.x1), z1: gz(z.y1) }); delete q.y0; delete q.y1; return q; });
+      if (air.length) { if (e.shell.indexOf('look: HQ_ROOM_LOOKS') < 0) throw new Error(o.id + ': airZones: the shell has no `look:` to write the air before'); e = Object.assign({}, e, { shell: e.shell.replace('look: HQ_ROOM_LOOKS', 'atmos: ' + J({ kind: air[0].kind, tier: 'open', zones: air }) + ', look: HQ_ROOM_LOOKS') }); } }
     L.push("            shell: " + e.shell + ",");
     L.push("            parti: '" + e.parti + "',");
     L.push("            typology: 'grid',");

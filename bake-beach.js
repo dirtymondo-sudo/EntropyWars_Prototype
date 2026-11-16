@@ -207,6 +207,11 @@ runStage('build');   // the huts and the lifeguard hut (S), the Quay shed (H), t
   ARCH.push({ k: 'arch', id: 'bch:bayside:look', x: r2(X0 - 1.2), z: r2((Z0 + Z1) / 2), y: 0, rot: 270, parts: a.P }); }
 runStage('place');   // each district's own things
 runStage('dress');   // THE DRESSING, district by district
+/* THE AIR BY DISTRICT (2026-11-16, the Triangle thread, the tool row taken for this one change; bake-camelot.js's way): a district file's
+   optional `airZones(ctx)` = [{ x0, y0, x1, y1 (squares), kind, color?, n?, speed?, wind? }] becomes `shell.atmos.zones` (three-renderer.js
+   _hqBuildAtmos: dust, motes, spores, fireflies, embers, snow, ash, rain; each zone its own particles, born inside its box). With no such
+   export the shell is written as before, byte for byte (the sea site's own air is `none`). */
+const AIR = [].concat(...DISTRICTS.filter(m => typeof m.airZones === 'function').map(m => m.airZones(ctx).map(z => { const q = Object.assign({}, z, { x0: gx(z.x0), z0: gz(z.y0), x1: gx(z.x1), z1: gz(z.y1) }); delete q.y0; delete q.y1; return q; })));
 /* ── finish the heights (the buildings' flats are in) and check ── */
 writeSlope();
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
@@ -243,7 +248,7 @@ L.push("            kind: 'box', site: 'prebuilt_bermuda', part: 'beach',");
 /* THE BEACH'S OWN SKY + SAND (2026-11-16, the tool row's holder; seen on screen: the sea shell's `scenery: 'sea'` bodies drew as black outlines by
    day and its `waterspout` landmark as a teal spindle over the Harbour): the sea shell's sky without its scenery
    and landmark (the Estate's fix, THE CLEAN SKY). The sand stays his pale beach sheet (sprites.js SAND_BEACH, THE TWO SANDS). The old sea room keeps the shell as it was. */
-L.push("            shell: hqSeaShell({ w: " + (2 * HW) + ", d: " + (2 * HD) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, sky: Object.assign({}, hqSeaShell().sky, { scenery: 'none', landmarks: [] }) }),");
+L.push("            shell: hqSeaShell({ w: " + (2 * HW) + ", d: " + (2 * HD) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, sky: Object.assign({}, hqSeaShell().sky, { scenery: 'none', landmarks: [] })" + (AIR.length ? ", atmos: " + J({ kind: 'dust', tier: 'open', zones: AIR }) : "") + " }),");
 L.push("            parti: 'Four districts on 140 plots, most of them water: a shore of sand off the city, a harbour with the Dutchman at the pier head, an ocean you sail, and a right triangle of sea with a lighthouse, an island and a hole at its corners.',");
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + GX + ", nz: " + GZ + ", triangle: " + J(LAYOUT.triangle.map(q => [gx(q[0]), gz(q[1])])) + ", names: " + J(PLAN.plots.filter(p => p.name).map(p => [p.id, p.name, p.d, p.level])) + " },");
