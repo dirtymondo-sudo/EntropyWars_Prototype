@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 922 |
+| Meshy AI | no | 962 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -1866,6 +1866,51 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | xmas_turkey | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_food` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_wreath | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_wreath_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath_01` | Asset pack | Christmas pack · Elbolilloduro |
+
+### Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) — Meshy AI (40)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| antler_trophy | `Assets/world/props/meshy/wishlist/antler_trophy.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| anvil | `Assets/world/props/meshy/wishlist/anvil.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| axe_chopping_block | `Assets/world/props/meshy/wishlist/axe_chopping_block.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| backpack | `Assets/world/props/meshy/wishlist/backpack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| bear | `Assets/world/props/meshy/wishlist/bear.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| canvas_tent | `Assets/world/props/meshy/wishlist/canvas_tent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| cattle_skull | `Assets/world/props/meshy/wishlist/cattle_skull.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| deer | `Assets/world/props/meshy/wishlist/deer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| duck | `Assets/world/props/meshy/wishlist/duck.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| firewood_stack | `Assets/world/props/meshy/wishlist/firewood_stack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| fur_rug | `Assets/world/props/meshy/wishlist/fur_rug.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| goat | `Assets/world/props/meshy/wishlist/goat.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| icicles | `Assets/world/props/meshy/wishlist/icicles.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| iron_lamp_post | `Assets/world/props/meshy/wishlist/iron_lamp_post.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| lantern_post | `Assets/world/props/meshy/wishlist/lantern_post.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| leafy_bush | `Assets/world/props/meshy/wishlist/leafy_bush.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| mailbox | `Assets/world/props/meshy/wishlist/mailbox.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| mine_cart | `Assets/world/props/meshy/wishlist/mine_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| mooring_bollard | `Assets/world/props/meshy/wishlist/mooring_bollard.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| mountain_goat | `Assets/world/props/meshy/wishlist/mountain_goat.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| owl_perched | `Assets/world/props/meshy/wishlist/owl_perched.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| pickaxe | `Assets/world/props/meshy/wishlist/pickaxe.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| picnic_table | `Assets/world/props/meshy/wishlist/picnic_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| prayer_flags | `Assets/world/props/meshy/wishlist/prayer_flags.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| rat | `Assets/world/props/meshy/wishlist/rat.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| reeds | `Assets/world/props/meshy/wishlist/reeds.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| reindeer | `Assets/world/props/meshy/wishlist/reindeer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| rope_bridge | `Assets/world/props/meshy/wishlist/rope_bridge.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| seagull | `Assets/world/props/meshy/wishlist/seagull.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| sleeping_bag | `Assets/world/props/meshy/wishlist/sleeping_bag.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| snow_sled | `Assets/world/props/meshy/wishlist/snow_sled.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| string_lights | `Assets/world/props/meshy/wishlist/string_lights.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| timber_lookout | `Assets/world/props/meshy/wishlist/timber_lookout.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| trail_sign | `Assets/world/props/meshy/wishlist/trail_sign.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| tumbleweed | `Assets/world/props/meshy/wishlist/tumbleweed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| water_trough | `Assets/world/props/meshy/wishlist/water_trough.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| weather_mast | `Assets/world/props/meshy/wishlist/weather_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| wheelbarrow | `Assets/world/props/meshy/wishlist/wheelbarrow.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| wood_stove | `Assets/world/props/meshy/wishlist/wood_stove.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| wooden_barrel | `Assets/world/props/meshy/wishlist/wooden_barrel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
 
 ### Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) — Meshy AI (27)
 
