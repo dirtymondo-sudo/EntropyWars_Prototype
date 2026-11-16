@@ -4734,6 +4734,13 @@ once that first district is fleshed out and knows what shared assets it can use 
 - **PASS 4, ATMOSPHERE (seen on screen):** all drawn glow, no new real light: bulbs along the huts' porches and lamp to lamp down the
   Boardwalk, pennants under the gate, bamboo torches (court, huts' fire, Palms, both camps, the Dunes path), paper lanterns on a line in the
   Palms, a lamp over the lifeguard's door, a red light on its roof. Sound, particles and night have no hook a district can reach (the kit).
+- **PASS 5, POLISH (seen on screen, a nine-view walk round, HEAD 5da6d16 + the pass):** the lifeguard hut's lit ceiling and door, the towel
+  line clear of the board rack, the torches' flame; NINE MORE PEOPLE on mondo's new rule ("There need to be more NPCs", 11-16): homosapiens
+  on the Boardwalk, at the huts, the lifeguard hut, the court and the Dunes bench, a chef at the hot dog stand, hippies in the Palms and at
+  the north camp, a pirate by the headland's boats. No line was written for them. NOT SEEN: the people (playtest_city.js draws no cast).
+- **NEEDS A MODEL (nothing stood in):** hammocks, a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, a towel lying on the sand.
+- **WAITS FOR MONDO:** his look at the whole district; whether the huts' three trades (SURF, BEACH HUT, FLOATS: the first build's reading of
+  "a row of huts") are what he wants; whether the Shore gets a fight / residents with routines once the NPC spawn system (npc-system.md) lands.
 - **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
@@ -4781,6 +4788,15 @@ once that first district is fleshed out and knows what shared assets it can use 
   anemones are for deep water only (black pillars and spikes anywhere else).
 - **DRAWN, NO MODEL NEEDED:** a volleyball net (`urban:MetalTruss1a`, `kind: 'over'`, two posts), lamps (a pole + a cream cylinder with
   `glow` 0.9), flags (two thin `ds` boxes), rope rails, rails and steps.
+- **PEOPLE:** `native(race, sx, sy, face)` with no `say` is fine (never write a line for one). Races that belong: the Beach's own list
+  (`HQ_AREA_ENCOUNTERS.site_prebuilt_bermuda_beach`: mermaid, starfish, pirate, jellyfish, sharkman, deep sea fish ...), siren, and from the
+  city beside it homosapien, chef, hippie. A native's square must be free and off the ways through. The probe never draws them.
+- **THE SHORE'S HELPERS, TO COPY (they live in S.js `build`; none is in the tool, so nothing shared changed):** `wall` (a painted shell),
+  `win`, `porch`, `inside`, `In`, `bulbs`, `torch`. If a second district copies one unchanged, that is the moment to move it into
+  bake-beach.js `sheet()` (a board note first, its own small PR).
+- **STILL MISSING ZONE-WIDE:** the four tool-row items on the board (west edge, sky, dune faces, grey sand); sound, particles, night
+  (above); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
+  windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
   dunes to 3.6 m). The first run of a fresh container can crash once while the cache fills; the harness retries.
