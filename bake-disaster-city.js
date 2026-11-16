@@ -391,8 +391,15 @@ const spot = (plotName, lx, ly, face, ok) => { const p = plotNamed(plotName); le
     return { x: gc(cx), z: gc(cy), face }; };
 JOIN.tower = bldDoor('Superhero Tower', 'Superhero Tower'); JOIN.mall = bldDoor('Mall concourse', 'Mall concourse'); JOIN.sewer = bldDoor('Pump court', 'Pump court');
 JOIN.metro = spot('Transit square', 5, 2, 180); JOIN.harbour = spot('Boardwalk exit', 9, 9, 180); JOIN.bay = spot('Arrival court', 9, 6, 270);
-JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 7, 6, 0, 'R');   // 2026-11-13: on the road's dead end itself (was the 3.5 m alley beside the boxing gym, on its east door's step: Southside saw its sign indoors)
-JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_strip = spot('Church', 8, 8, 270); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
+/* THE OLD SITES RETIRED (2026-11-16, mondo: "can we remove all of the old sites from the game, if we already rebuilt them with plots"): the stadium, the Strip and the
+   Lodge are this room's own buildings now (the stadium in Sports + Culture, the casino + wedding chapel in Entertainment, the Members club in Financial), so their
+   old rooms are in data.js DOOR_HQ.retired and the links that joined them to the city are gone (downtown_strip, stadium_downtown, streets_strip). What stays:
+   DOOR HQ's three bay doors land here now (at the stadium's park gate, beside the casino, at the Members club), the sewers' stadium drain comes up on the stadium
+   road's dead end (the old stadium_downtown square), and the Lodge's three hidden ways (the Estate, Olympus, the Woods) come out in the Members club's garden. */
+JOIN.stadium_sewers = spot('P03-00', 7, 6, 0, 'R');   // the stadium road's dead end (2026-11-13: was stadium_downtown's square)
+JOIN.bay_stadium = spot('Park gate', 8, 1, 0); JOIN.bay_strip = spot('Casino', 2, 9, 90); JOIN.bay_lodge = spot('Members club', 3, 1, 90);
+JOIN.ranch_lodge = spot('Members club', 10, 8, 270); JOIN.lodge_olympus = spot('Members club', 10, 10, 270); JOIN.grove_lodge = spot('Members club', 1, 10, 90);   // 2026-11-13: on the road's dead end itself (was the 3.5 m alley beside the boxing gym, on its east door's step: Southside saw its sign indoors)
+JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
 dcCtx.JOIN = JOIN;   // THE JOINS a district may move in `build` (a link door that belongs inside one of its own walk-ins: I.js puts the sewers door on the Pump court's back wall)
 
 /* THE LEVELS, THE CROSSINGS' STAIRS (after the doors above have their squares, before anything is dressed) */
@@ -1170,7 +1177,7 @@ lines.push("                  desc: 'The mall\\'s main entrance: sliding glass, 
 lines.push("                { id: 'metro', " + dj(JOIN.metro) + ", way: 'stairway', passage: { model: 'metro_stairs', w: 3.6, h: 3.6, len: 10, deep: 6.5, rise: -0.55, land: 3.2, wall: 'urban:MetroWallTile', wallColor: 0xf0eee8, trim: 'urban:MetroConcrete', lift: 0.3 },");
 lines.push("                  label: 'THE METRO', sub: 'THE STAIR DOWN · THE PLATFORM', action: { room: 'site_prebuilt_downtown_subway', at: 'street' },");
 lines.push("                  desc: 'A stair down under a sign for every line. The platform under the tower has never once been touched; this is the other way onto it.' },");
-lines.push("                { id: 'sewer', " + dj(JOIN.sewer) + ", leaf: 'leaf_bulkhead', wide: true, label: 'THE SEWERS', sub: 'THE PUMPING STATION · DOWN INTO THE CULVERTS', action: { room: 'site_prebuilt_downtown_sewers', at: 'pump' },");
+lines.push("                { id: 'sewer', " + dj(JOIN.sewer) + ", leaf: 'leaf_bulkhead', wide: true, label: 'THE SEWERS', sub: 'THE PUMPING STATION · DOWN INTO THE CULVERTS', action: { room: 'site_prebuilt_downtown_underworld', at: 'pump' },");   // the Sewers' one room (2026-11-16; was the retired downtown_sewers)
 lines.push("                  desc: 'A pumping station at the end of an alley, its bulkhead door open and its pumps running for a city that stopped paying them. The ladder inside goes down further than the tower ever went up.' },");
 lines.push("            ],");
 lines.push("            counters: [],");
@@ -1242,13 +1249,16 @@ const blockEnd = src.indexOf('        /* DC144-END */');
 { const i = src.indexOf("        site_prebuilt_downtown_streets: {\n            label: 'DISASTER CITY · DOWNTOWN',", blockEnd);
   if (i > 0) { src = src.slice(0, i) + "        site_prebuilt_downtown_oldstreets: {   // THE OLD STREETS (2026-11-13): replaced by the 144 plots above (mondo's decision); kept, unlinked, as the room the site's fight board is cut from\n            label: 'DISASTER CITY · DOWNTOWN'," + src.slice(i + "        site_prebuilt_downtown_streets: {\n            label: 'DISASTER CITY · DOWNTOWN',".length);
       const j = src.indexOf("kind: 'box', site: 'prebuilt_downtown', part: 'streets',", i); src = src.slice(0, j) + "kind: 'box', site: 'prebuilt_downtown', part: 'oldstreets'," + src.slice(j + "kind: 'box', site: 'prebuilt_downtown', part: 'streets',".length); } }
-['downtown_strip', 'stadium_downtown', 'garage_taxi', 'streets_strip', 'streets_drain', 'docks_sewer'].forEach(id => {
+['stadium_sewers', 'garage_taxi', 'streets_drain', 'docks_sewer', 'ranch_lodge', 'lodge_olympus', 'grove_lodge'].forEach(id => {
     const i = src.indexOf("{ id: '" + id + "',"); if (i < 0) { console.warn('JOIN link not found:', id); return; }
     const seg = src.slice(i, i + 900), o = JOIN[id];
     const out = seg.replace(/(\{ site: 'prebuilt_downtown', part: 'streets', )[^\n]*?(sub: )/, "$1wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + ", $2");
     if (out === seg) console.warn('JOIN link end not found:', id); src = src.slice(0, i) + out + src.slice(i + 900);
 });
 sub(/(prebuilt_downtown:  \{ room: 'site_prebuilt_downtown_streets',  door: \{ id: 'bay', )[^}]*\}/, "$1wall: 'free', x: " + JOIN.bay.x + ", z: " + JOIN.bay.z + ", face: " + JOIN.bay.face + " }", 'entry');
+/* THE OLD SITES RETIRED (2026-11-16): DOOR HQ's stadium, Strip and Lodge bay doors stand in this room now */
+[['prebuilt_stadium', 'bay_stadium'], ['prebuilt_strip', 'bay_strip'], ['prebuilt_lodge', 'bay_lodge']].forEach(([site, k]) =>
+    sub(new RegExp('(' + site + ': +\\{ room: \'site_prebuilt_downtown_streets\', +door: \\{ id: \'' + k + '\', )[^}]*\\}'), "$1wall: 'free', x: " + JOIN[k].x + ", z: " + JOIN[k].z + ", face: " + JOIN[k].face + " }", 'entry ' + site));
 /* THE DISTRICT MOVE: the residents' table (HQ_CITY_RESIDENTS, outside the markers) reads a district's block and the beach's box */
 sub(/(\n    districts: )\{[^}]*\}(,   \/\/ a district's first plot)/, "$1{ " + Object.keys(MOVE.to).map(k => k + ': [' + MOVE.to[k][0] + ', ' + MOVE.to[k][1] + ']').join(', ') + " }$2", 'residents districts');
 sub(/(\n    beach: )\[[-\d., ]+\]/, "$1[256, " + (96 + DELTA.B[1] * 42) + ", 304, " + (246 + DELTA.B[1] * 42) + "]", 'residents beach');

@@ -127,10 +127,15 @@ door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILH
    each is a plain signposted trail and no longer secret (2026-11-16, mondo on the hollow-tree way's ball-crowned stand-in: "get rid of those and delete them from the game";
    the path back to Room 420 is a trail end too). NOT a `tunnel`: a tunnel end in this open room builds a big stone block on the wall
    (seen in the probe 11-16: the "castle wall" mondo walked through, and a black shaft over the trees). Still draughts (on no plate, on the map once found). */
-door('lemuria', 'P01-00', 'n', { way: 'trail', label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_agartha_crystalcity', at: 'link_shasta_lemuria' },
+door('lemuria', 'P01-00', 'n', { way: 'trail', label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_hollow_earth_cavern', at: 'woods' },   // THE CAVERN ON PLOTS: Agartha is a district of the Cavern room; its `woods` door at the Lemuria Stair walks back here (2026-11-16, was the retired crystal city)
     desc: 'A draught out of the rock shelf, warmer than the snow above it.' });
-door('lodge', 'P05-00', 'e', { way: 'trail', label: 'THE LODGE · THE HALLS', sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN', action: { room: 'site_prebuilt_lodge_halls', at: 'link_grove_lodge' },
-    desc: 'A tunnel under the lake shore that nobody admits to.' });
+/* THE OLD SITES RETIRED (2026-11-16, mondo: "can we remove all of the old sites from the game, if we already rebuilt them with plots"): the old Lodge room is
+   Disaster City's Members club and the old Bohemian Grove is this district G (data.js DOOR_HQ.retired). The members' tunnel (was the one-way door `lodge`) is the
+   link `grove_lodge` now, two-way, from the lake's east shore to the Members club's garden; Room 333's circle (link `woods_ritual`, was on the retired Ritual Ground
+   room) comes out at the Owl; DOOR HQ's Bohemian Grove bay door is a trail on the north wall over the lake's west shore (siteRooms.entry.prebuilt_bohemian_grove). */
+LINK_ENDS.grove_lodge = ['a', spur('P05-00', 'e'), 'THE MEMBERS\u2019 TUNNEL · UNDER THE LAWN TO THE CLUB'];
+LINK_ENDS.woods_ritual = ['a', spur('P05-01', 'e'), 'THE CIRCLE · ROOM 333'];
+const GROVE_BAY_X = spur('P04-00', 'n');
 door('lookingglass', 'P05-02', 'e', { way: 'trail', label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_camelot_kingdom', at: 'deadtree' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the garden is a district of the kingdom room now (was the old garden room)
    
     desc: 'Past the dead tree the ground is the wrong colour.' });
@@ -348,5 +353,7 @@ Object.keys(LINK_ENDS).forEach(id => { const [side, z, sub] = LINK_ENDS[id], i =
        room's wall is a stone housing 6 m deep standing in the trees. The two drains are plain trail ends now (a waymark post names them); the secret one is a hollow tree. */
     const line = '\n' + m[1] + side + ": { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: " + z + ", way: '" + 'trail' + "', sub: '" + sub + "' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)";
     src = src.slice(0, i + m.index) + line + src.slice(i + m.index + m[0].length); });
+{ const re = /(prebuilt_bohemian_grove: +\{ room: 'site_prebuilt_fairy_forest_plots', door: \{ id: 'bay_grove', wall: 'n', x: )[-\d.]+/; if (!re.test(src)) throw new Error('the Bohemian Grove bay row (siteRooms.entry) not found');
+  src = src.replace(re, '$1' + GROVE_BAY_X); }   // DOOR HQ's Bohemian Grove bay door (2026-11-16)
 fs.writeFileSync(file, src);
 console.log('data.js: site_prebuilt_fairy_forest_plots written (' + block.length + ' bytes)');

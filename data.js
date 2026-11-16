@@ -31195,7 +31195,15 @@ const DOOR_HQ = {
                /* THE ASTRAL REALM ON PLOTS (2026-11-16): the old Sea of Possibility, Nightmare and Library are districts of the one 36-island room now (the Waiting Room stays as its inside) */
                site_prebuilt_lookingglass_sea: 'site_prebuilt_lookingglass_realm', site_prebuilt_lookingglass_nightmare: 'site_prebuilt_lookingglass_realm', site_prebuilt_lookingglass_library: 'site_prebuilt_lookingglass_realm',
                /* THE DEEP ON PLOTS (2026-11-16): the old Abyss is the 40-plot drowned room now, the old Temple its new dry inside (both old rooms stay in the data: the Atlantis fight boards are cut from them) */
-               site_prebuilt_atlantis_abyss: 'site_prebuilt_atlantis_deep', site_prebuilt_atlantis_temple: 'site_prebuilt_atlantis_pocket' },
+               site_prebuilt_atlantis_abyss: 'site_prebuilt_atlantis_deep', site_prebuilt_atlantis_temple: 'site_prebuilt_atlantis_pocket',
+               /* THE OLD SITES RETIRED (2026-11-16, mondo: "there's a spot in the sewers that leads to the old stadium. we already replaced the stadium and its in disaster city already.
+                  can we remove all of the old sites from the game, if we already rebuilt them with plots"): every old room a plot-built area holds now. The stadium is Sports + Culture's,
+                  the Strip's casino + chapel are Entertainment's, the Lodge is Financial's Members club, the Grove is the Woods' district G, the old garden is Camelot's district L, the
+                  old Fairy Forest glade is Camelot's district F, the old Downtown streets are the 144 plots. Their links and DOOR HQ's bay doors stand in the new rooms; the board rooms
+                  the PvP fights are cut from stay in the data, door-less (HQ_ARENA_RULES reads them). The Strip's chapel + casino rooms are deleted. */
+               site_prebuilt_stadium_bowl: 'site_prebuilt_downtown_streets', site_prebuilt_strip_streets: 'site_prebuilt_downtown_streets', site_prebuilt_strip_chapel: 'site_prebuilt_downtown_streets',
+               site_prebuilt_strip_casino: 'site_prebuilt_downtown_streets', site_prebuilt_lodge_halls: 'site_prebuilt_downtown_streets', site_prebuilt_downtown_oldstreets: 'site_prebuilt_downtown_streets',
+               site_prebuilt_bohemian_grove_grove: 'site_prebuilt_fairy_forest_plots', site_prebuilt_lookingglass_garden: 'site_prebuilt_camelot_kingdom', site_prebuilt_fairy_forest_glade: 'site_prebuilt_camelot_kingdom' },
     hubs: {
         hq:      { label: 'D.O.O.R. HEADQUARTERS', room: 'central_egress', facility: true, color: '#f0e6c8' },
         cavern:  { label: 'THE CAVERN', room: 'site_prebuilt_hollow_earth_cavern', rooms: ['site_prebuilt_hollow_earth_cavern'], color: '#c8a2e0' },   // THE CAVERN ON PLOTS (2026-11-16): one room (the Cavern, Hollow Earth, Agartha)
@@ -31339,7 +31347,7 @@ const DOOR_HQ = {
            FIELDS now (route `ranch`); the pasture keeps its fence, its gap and its clearing door. The Lodge left Camelot's hall (the ley
            line) for the fields; the grove is the interchange — its woods gate stays, its ranch gate is new. */
         { id: 'ranch_lodge', route: 'ranch', leaf: 'leaf_saloon',
-          a: { site: 'prebuilt_lodge', part: 'halls', wall: 'n', x: -10, sub: 'THE BACK DOOR · ONTO THE FIELDS' },   // THE AREAS (2026-09-18): off THE HALLS
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -47.25, z: -180.25, face: 270, sub: 'THE MEMBERS CLUB · THE BACK DOOR · ONTO THE FIELDS' },   // THE OLD SITES RETIRED (2026-11-16): the Lodge is Disaster City's Members club: its garden (bake-disaster-city.js writes the place)
           b: { site: 'prebuilt_skinwalker', part: 'estate', wall: 'free', x: 120.75, z: 75.25, face: 180, sub: 'THE SALOON DOOR · INTO THE LODGE' },   // THE ESTATE ON PLOTS (2026-11-15): by the Farmhouse porch (bake-estate.js checks this row)
           why: 'the Lodge\'s back door was Camelot\'s once; the members voted and the door opens on the corn now, where the members are from', note: 'members only, both ways', draft: true },
         /* THE GRAVEYARD and THE WESTERN MAP (the user's ranch list) are NOT launch maps yet — their gates go on the fields' EAST wall
@@ -31372,8 +31380,8 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_moon', part: 'plots', wall: 'free', x: -92.75, z: 19.25, face: 90, sub: 'THE FAR SIDE · THE BORE TO THE FACE' },   // OUTER SPACE ON PLOTS (2026-11-16): a place in the world's plot room; bake-space.js checks this row
           why: 'the face has a mouth and the mouth is a bore; it comes out on the side of the Moon nobody is shown, which is why nobody is shown it', note: 'the dust is finer on the far side', draft: true },
         { id: 'grove_lodge', route: 'ranch', leaf: 'leaf_saloon', secret: true,
-          a: { site: 'prebuilt_bohemian_grove', part: 'grove', wall: 'e', z: 24, sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN TO THE LODGE' },
-          b: { site: 'prebuilt_lodge', part: 'halls', wall: 'e', z: 28, sub: 'THE MEMBERS’ TUNNEL · UNDER THE FIELDS TO THE GROVE' },   // AREA CONTENT D3 (2026-09-19): behind the bar, 14 m from the painting (R3)
+          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: -108.5, way: 'trail', sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN TO THE CLUB' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
+          b: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -78.75, z: -173.25, face: 90, sub: 'THE MEMBERS’ TUNNEL · UNDER THE CITY TO THE GROVE' },   // THE OLD SITES RETIRED (2026-11-16): the Members club's garden (bake-disaster-city.js writes the place)
           why: 'there is no tunnel under the lawn to the Lodge; the members are very clear about that, and they come out of the Lodge\'s east wall smelling of redwood', note: 'there is no tunnel', draft: true },
         /* THE STAIR IS THE DOORWAY (2026-10-01, mondo: "The stairs to the woods in door hq is supposed to be the doorway itself. Climbing it
            and going past a certain threshold should take you to the woods. I dont want to climb the stairs just to walk through a door"):
@@ -31399,14 +31407,11 @@ const DOOR_HQ = {
           b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
           why: 'the storm drain in the crag runs the wrong way: the water comes out of the platform wall and into the woods, and the grate between them was welded shut, and then it was not', note: 'the fourth station', draft: true },
         { id: 'woods_ritual', route: 'woods', leaf: 'leaf_hell_arch', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
-          a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'n', x: -0.875, way: 'trail', sub: 'THE CIRCLE · ROOM 333' },   // NO DOORS IN THE WOODS (2026-10-05): the woods end is a trail; Room 333's end keeps the arch
+          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: -59.5, way: 'trail', sub: 'THE CIRCLE · ROOM 333' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)
           b: { room: 'ritual', wall: 'e', z: 0, sub: 'THE CIRCLE · THE RITUAL GROUND' },
           why: 'the chalk circle in Room 333 and the circle between the stones are one circle drawn from two sides; step over the line indoors and you are outdoors, downwind of the candles', note: 'one circle, two sides', draft: true },
         /* THE DEAD TREE'S OTHER SIDE (2026-09-17): the dead tree on the ritual ground — its hole looks onto the Looking-Glass's marble */
-        { id: 'deadtree_lookingglass', route: 'seams', way: 'deadtree',
-          a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'free', x: 7.0, z: 6.5, face: 300, sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE' },
-          b: { site: 'prebuilt_lookingglass', part: 'garden', wall: 'free', x: 20, z: -28, face: 90, sub: 'THE DEAD TREE · BACK TO THE WOODS' },   // THE AREAS (2026-09-18): free in THE GARDEN
-          why: 'the dead tree at the edge of the ritual ground has a hole in it the size of a door, and through it the ground is marble and the sky is a chessboard\'s; the members call it the second circle', note: 'do not agree to a game', draft: true },
+        /* deadtree_lookingglass — GONE 2026-11-16 (THE OLD SITES RETIRED): both ends were old rooms; the Woods' `lookingglass` trail and Camelot's `deadtree` gap are the same way between the two plot rooms */
         /* THE ASTRAL PLANE (2026-09-19 — THE ASTRAL REALM, complex candidate #10: "it can connect the Dream Research, the Looking Glass, the
            Haunted House"): THREE SCREENS. Every screen the building watches sleepers on shows the same place — Room REM's dream screen draws
            THE WAITING ROOM (the cots' sleepers are queueing there), the D.U.M.B. ward's draws THE STACKS of THE LIBRARY OF UNTHOUGHT THINGS,
@@ -31445,10 +31450,7 @@ const DOOR_HQ = {
            (Nuketown, retired 2026-09-18 — the east end is a dead end now), its west end the same road west to THE STRIP; THE AVENUE's north end is the stadium road; the Strip's
            road runs on, later, to CYBERPUNK CITY's cross street. The board room's north wall is free again. */
         /* downtown_strip, stadium_downtown and streets_strip: retired in G7 (the land), restored in ZONES_PLAN Z0 (2026-09-29) */
-        { id: 'downtown_strip', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -246.75, z: 64.75, face: 270, sub: 'ROUTE 1 · WEST · THE STRIP' },   // ZONES_PLAN Z1: Route 1 (the Desert's entry once the Desert exists; the Strip's streets until then)
-          b: { site: 'prebuilt_strip', part: 'streets', wall: 'e', z: 0, sub: 'ROUTE 1 · EAST · DISASTER CITY' },
-          why: 'the same road, west; the neon starts where the tower\'s shadow stops', note: 'west', draft: true },
+        /* downtown_strip — GONE 2026-11-16 (THE OLD SITES RETIRED): the Strip is Entertainment's casino + wedding chapel, inside the city room */
         /* THE DESERT ON PLOTS (2026-11-15): the highway south out of Disaster City (Southside's Street court, the city's own way out) is the Desert's north end, at the City Limit plot */
         { id: 'downtown_desert', route: 'highway', way: 'road',
           a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -105, z: 247.6, face: 180, sub: 'THE HIGHWAY · SOUTH · THE DESERT' },   // the city's own way out (move.js ways P03-03 S, `open`): the road's last squares in Southside's Street court; bake-disaster-city.js prints the place
@@ -31457,17 +31459,11 @@ const DOOR_HQ = {
         /* THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY (2026-11-16, mondo: "make Hollywood hills a part of disaster city"): the links `downtown_mountains` (the mountain road) and
            `downtown_cove` (the boardwalk's north end) are gone: both are ground you walk in the city's own room now (docs/disaster-city/districts/N.js). The Mountains are reached
            through the city room's doors `shasta` and `ridge`, on the Hills' west side. */
-        { id: 'stadium_downtown', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'n', x: 0, sub: 'THE STADIUM ROAD · DISASTER CITY' },   // THE AREAS (2026-09-18): the road out of THE BOWL — 2026-09-26: at the end of THE PLAYERS' TUNNEL
-          b: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -99.75, z: 106.75, face: 0, sub: 'THE AVENUE · NORTH · THE STADIUM' },
-          why: 'the parking structure joins the stadium to the block; on game day the road is the crowd', note: 'the parking structure', draft: true },
-        { id: 'strip_cyberpunk', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_strip', part: 'streets', wall: 'w', z: 0, sub: 'THE BOULEVARD · WEST · CYBERPUNK CITY' },
-          b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'e', z: 0, sub: 'THE CROSS · EAST · THE STRIP' },
-          why: 'the same road, later; the last exit is the city the Strip was practising for', note: 'the last exit', draft: true },
+        /* stadium_downtown — GONE 2026-11-16 (THE OLD SITES RETIRED): the stadium stands in the city room (Sports + Culture) */
+        /* strip_cyberpunk — GONE 2026-11-16 (THE OLD SITES RETIRED): the Strip is retired; Cyberpunk City stays reached by the HQ tunnel and Downtown's platform */
         /* AREA CONTENT D3 (2026-09-19): THE PITCH DRAIN — a DRAUGHT behind the east stand into the sewers' east return (the bowl's earned exit; the road out is never one) */
         { id: 'stadium_sewers', route: 'sewers', leaf: 'leaf_cell', secret: true,   // a draught still names a catalogued leaf (hqLinkLive's wear rule) — the door wears none
-          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'e', z: 12.25, sub: 'THE PITCH DRAIN · UNDER THE EAST STAND' },   // 2026-09-26: at the end of THE CULVERT (the service tunnel under the east stand)
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -99.75, z: 106.75, face: 0, sub: 'THE STADIUM DRAIN · DOWN INTO THE SEWERS' },   // THE OLD SITES RETIRED (2026-11-16): the stadium is Sports + Culture's: the drain is on the stadium road's dead end (bake-disaster-city.js writes the place)   // 2026-09-26: at the end of THE CULVERT (the service tunnel under the east stand)
           b: { site: 'prebuilt_downtown', part: 'underworld', wall: 'e', z: -40.25, sub: 'THE STADIUM DRAIN · UP TO THE PITCH' },
           why: 'the pitch drains into the east return; the groundsman\'s culvert was never on the plan, and the plate on the back of the east stand says so', note: 'a draught behind the east stand', draft: true },
         /* THE WONDERLAND (the Looking-Glass has no free wall for a landing
@@ -31557,11 +31553,7 @@ const DOOR_HQ = {
            MACHINE in the mall's arcade is the ONLY way from the city into CYBERPUNK ("not just a regular door" — the
            user) and stands FREE on Cyberpunk's north strip at the far end, set for 1954; THE GUTTER in the east kerb
            drops into THE STORM DRAIN (the tunnels — candidate #3's first seam), whose end is its own grate. */
-        { id: 'streets_strip', route: 'highway', leaf: 'leaf_motel',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -222.25, z: 117.25, face: 270, sub: 'THE STRIP · THE CHAPEL\'S PARKING LOT' },
-          b: { site: 'prebuilt_strip', part: 'chapel', wall: 'w', z: 5.0, sub: 'DISASTER CITY · THE STREETS · OUT THE SIDE' },
-          why: 'the chapel\'s side door opens on a parking lot that is not on the Strip; the officiant says the lot is Downtown\'s and Downtown says it is the chapel\'s, and the cars in it are from both',
-          note: 'the parking lot', draft: true },
+        /* streets_strip — GONE 2026-11-16 (THE OLD SITES RETIRED): the chapel is Entertainment's wedding chapel, inside the city room */
         /* streets_stadium (Gate C, a wired double door at n x −24) retired 2026-09-17: THE AVENUE's north end IS the stadium road now (stadium_downtown, a `road` way) */
         { id: 'timemachine_cyberpunk', route: 'seams', way: 'timemachine',
           /* THE SECOND PASS (2026-09-17): the machine moved out of the arcade into the mall's SUPPLY CLOSET (the user's rule) and its far end into the noodle bar's back room on the grid — a building in the city, never the board room's strip */
@@ -31634,7 +31626,7 @@ const DOOR_HQ = {
            door. Every line is Claude's DRAFT (A15 — the user rewrites). */
         { id: 'mirror_lookingglass', route: 'seams', way: 'mirror',
           a: { room: 'barbershop', wall: 'e', z: 0.6 },
-          b: { site: 'prebuilt_lookingglass', part: 'garden', wall: 'free', x: -24, z: -28, face: 90, sub: 'THE MIRROR · BACK TO THE BARBERSHOP' },   // THE AREAS (2026-09-18): free in THE GARDEN
+          b: { site: 'prebuilt_camelot', part: 'kingdom', wall: 'free', x: -141.75, z: 12.25, face: 180, sub: 'THE MIRROR · BACK TO THE BARBERSHOP' },   // THE OLD SITES RETIRED (2026-11-16): in Camelot's Looking-Glass Garden (district L), beside the Astral mirror; bake-camelot.js keeps the square (prints `mirror_lookingglass`)
           why: 'the full-length mirror by the sink shows a marble floor and a sky with no ceiling; the barber says not to look at it while he is cutting and will not say why',
           note: 'it does not reflect the room', draft: true },
         { id: 'natatorium_dutchman', route: 'seams', way: 'pool',
@@ -31653,7 +31645,7 @@ const DOOR_HQ = {
           why: 'the water goes over the weir and nobody said where; the lifeguard is not certified for the edge and the Triangle is where the water was going',
           note: 'you surface in the tide pool by the buoy, dry', draft: true },
         { id: 'lodge_olympus', route: 'seams', way: 'painting',
-          a: { site: 'prebuilt_lodge', part: 'halls', wall: 'e', z: 0 },   // THE AREAS (2026-09-18): the painting on THE HALLS' east wall ⇄ THE SUMMIT
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -47.25, z: -173.25, face: 270, sub: 'THE MEMBERS CLUB · THE PAINTING' },   // THE OLD SITES RETIRED (2026-11-16): the Lodge is the Members club: its garden (bake-disaster-city.js writes the place)
           b: { site: 'prebuilt_shasta', part: 'mountains', wall: 'free', x: 57, z: -157.25, face: 180 },   // THE MOUNTAINS ON PLOTS: written by bake-mountains.js
           why: 'the painting over the mantel in the sanctum is of a mountain with a city on it; the city has lights on at night, which the painting should not know',
           note: 'the frame is warm', draft: true },
@@ -31704,7 +31696,7 @@ const DOOR_HQ = {
            only an alias now, the marker and the register's number live on the entry part. */
         entry: {
             prebuilt_cyberpunk: { room: 'site_prebuilt_cyberpunk_streets', door: { id: 'bay', wall: 's', x: 0 } },
-            prebuilt_strip:     { room: 'site_prebuilt_strip_streets',     door: { id: 'bay', wall: 's', x: -22 } },   // Phase 5: x 0 is the highway's join
+            prebuilt_strip:     { room: 'site_prebuilt_downtown_streets',  door: { id: 'bay_strip', wall: 'free', x: 92.75, z: -218.75, face: 90 } },   // THE OLD SITES RETIRED (2026-11-16): beside the casino in Entertainment (bake-disaster-city.js writes the place)
             prebuilt_downtown:  { room: 'site_prebuilt_downtown_streets',  door: { id: 'bay', wall: 'free', x: 117.25, z: 22.75, face: 270 } },   // Phase 7: the south edge is THE QUAY now (the harbour) — the bay door stands at the waterfront's east end
             /* THE BASES (2026-09-18 — the user: "we don't need the board maps if the place already has an area, like CERN has a
                ring now"): the three bases stand on their own parts — the freight lift lands you in THE MOTOR POOL, the blast
@@ -31746,7 +31738,7 @@ const DOOR_HQ = {
             prebuilt_babel: { room: 'site_prebuilt_gobekli_ancient', door: { id: 'bay11', wall: 's', x: -42 } },   // LEYLINES ON PLOTS (2026-11-16): Room 11's barn door at the end of the Workers' Town's street
             /* THE AREAS (2026-09-18 — the user: "replace all board maps with areas, except for Room 64"): every remaining board is bypassed —
                the twenty generated areas (HQ_AREA_SPECS → hqBuildAreas) and the woods' clearing (its hollow tree IS the bay door) */
-            prebuilt_stadium:             { room: 'site_prebuilt_stadium_bowl',               door: { id: 'bay', wall: 's', x: 0 } },   // 2026-09-26: at the end of THE GATE (the south tunnel) — you come in at pitch level, the concourse is up the stands
+            prebuilt_stadium:             { room: 'site_prebuilt_downtown_streets',           door: { id: 'bay_stadium', wall: 'free', x: -54.25, z: 218.75, face: 0 } },   // THE OLD SITES RETIRED (2026-11-16): at the city stadium's park gate (bake-disaster-city.js writes the place)
             prebuilt_technoticlan: { room: 'site_prebuilt_gobekli_ancient', door: { id: 'bay2012', wall: 's', x: 94.5 } },   // LEYLINES ON PLOTS (2026-11-16): Room 2012's Portcullis at the south causeway's end
             prebuilt_agartha: { room: 'site_prebuilt_hollow_earth_cavern', door: { id: 'bay_agartha', wall: 's', x: 64.75 } },   // THE CAVERN ON PLOTS (2026-11-16): the Inner Gate; bake-cavern.js checks this row
             prebuilt_antarctica: { room: 'site_prebuilt_antarctica_plots', door: { id: 'bay', wall: 'free', x: -10.5, z: 57.75, face: 0 } },   // ANTARCTICA ON PLOTS (2026-11-16): written by bake-antarctica.js (door 90S stands in the snow on the Station Yard)
@@ -31754,10 +31746,10 @@ const DOOR_HQ = {
             prebuilt_olympus: { room: 'site_prebuilt_shasta_mountains', door: { id: 'bay_olympus', wall: 'free', x: 71.75, z: -68.25, face: 270 } },   // THE MOUNTAINS ON PLOTS: written by bake-mountains.js
             prebuilt_mars: { room: 'site_prebuilt_mars_plots', door: { id: 'bay', wall: 'free', x: 1.75, z: 75.25, face: 0 } },   // OUTER SPACE ON PLOTS (2026-11-16): a place in the world's plot room; bake-space.js checks this row
             prebuilt_moon: { room: 'site_prebuilt_moon_plots', door: { id: 'bay', wall: 'free', x: 1.75, z: 71.75, face: 0 } },   // OUTER SPACE ON PLOTS (2026-11-16): a place in the world's plot room; bake-space.js checks this row
-            prebuilt_bohemian_grove:      { room: 'site_prebuilt_bohemian_grove_grove',       door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_bohemian_grove:      { room: 'site_prebuilt_fairy_forest_plots', door: { id: 'bay_grove', wall: 'n', x: 73.5, way: 'trail', leaf: null } },   // THE OLD SITES RETIRED (2026-11-16): a trail over the lake in the Woods' district G (bake-woods.js writes the place)
             prebuilt_northpole: { room: 'site_prebuilt_northpole_plots', door: { id: 'bay', wall: 's', x: -38.5 } },   // THE MOUNTAINS ON PLOTS: written by bake-mountains.js
-            prebuilt_lookingglass:        { room: 'site_prebuilt_lookingglass_garden',        door: { id: 'bay', wall: 's', x: 0 } },
-            prebuilt_lodge:               { room: 'site_prebuilt_lodge_halls',                door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_lookingglass:        { room: 'site_prebuilt_lookingglass_waiting',       door: { id: 'bay', wall: 'w', z: 0 } },   // THE OLD SITES RETIRED (2026-11-16): the Astral Realm's Waiting Room, the inside you arrive in (the old garden is Camelot's district L)
+            prebuilt_lodge:               { room: 'site_prebuilt_downtown_streets',           door: { id: 'bay_lodge', wall: 'free', x: -71.75, z: -204.75, face: 90 } },   // THE OLD SITES RETIRED (2026-11-16): at Financial's Members club (bake-disaster-city.js writes the place)
             prebuilt_singularity: { room: 'site_prebuilt_singularity_plots', door: { id: 'bay', wall: 'free', x: -5.25, z: 71.75, face: 0 } },   // OUTER SPACE ON PLOTS (2026-11-16): a place in the world's plot room; bake-space.js checks this row
             prebuilt_saturn: { room: 'site_prebuilt_saturn_plots', door: { id: 'bay', wall: 'free', x: -5.25, z: 68.25, face: 0, y: 3.5 } },   // OUTER SPACE ON PLOTS (2026-11-16): a place in the world's plot room; bake-space.js checks this row
             prebuilt_haunted: { room: 'site_prebuilt_skinwalker_estate', door: { id: 'bay13', wall: 'free', x: -64.75, z: 26.25, face: 0 } },   // THE ESTATE ON PLOTS (2026-11-15): Room 13's door stands on the Iron Gate's round, below the house (was the old Grounds' south wall); bake-estate.js checks this row
@@ -35759,7 +35751,7 @@ const DOOR_HQ = {
                    own. The seventh secret door; on no plate, like the rest. */
                 { id: 'oubliette', wall: 'w', z: 2.7, leaf: null, secret: true,
                   label: 'A DRAUGHT', sub: 'THE WALL MOVES',
-                  action: { room: 'site_prebuilt_hollow_earth_oubliette', at: 'dungeon' },
+                  action: { room: 'site_prebuilt_hollow_earth_cavern', at: 'dungeon' },   // THE CAVERN ON PLOTS: the oubliette is the Cavern room's; its `dungeon` door walks back (2026-11-16)
                   desc: 'Past the third cell the wall is colder and the draught comes the wrong way along it. Behind it: cells older than the Department, and a cave, and six wells.' },
             ],
             counters: [
@@ -40140,220 +40132,8 @@ const DOOR_HQ = {
             ],
             spawn: { x: -4.0, z: 8.8, face: 0 },   // the boulevard's south sidewalk, by the plaza (the road is the traffic's)
         },
-        /* ── THE CHAPEL — the drive-through window, the altar, the register, the King ── */
-        site_prebuilt_strip_chapel: {
-            label: 'DISASTER CITY · THE CHAPEL',
-            sub: 'THE ALTAR · THE REGISTER · THE CASINO BEYOND',
-            kind: 'box', site: 'prebuilt_strip', part: 'chapel',
-            shell: {
-                w: 10, d: 14, h: 3.4,
-                wallH: 3.4, dadoH: 1.0,
-                floor: 'carpet', wall: 'urban:PlasterWallStucco2a', dado: 'urban:PlasterWallPainted2d', trim: 'gold', ceiling: 'urban:FibreCeilingTile1b',   // THE URBAN PACK (2026-09-17): the cornice stucco, the ochre skirting
-                floorColor: 0x8a2030, wallColor: 0xf0e8dc, dadoColor: 0xd8c8a8, ceilColor: 0xe8e0d0, ceilTile: 1.75,
-                pipes: false,
-                strips: false,
-                lights: [],
-                mood: { light: 0xffd8a8, ambient: 0.44 },
-                plate: { x: 2.6, z: 6.75, y: 2.4 },
-            },
-            doors: [
-                { id: 'street', wall: 's', x: 0, leaf: 'leaf_motel',
-                  label: 'THE STRIP', sub: 'THE MOTEL DOOR · BACK TO THE BOULEVARD',
-                  action: { room: 'site_prebuilt_strip_streets', at: 'chapel' },
-                  desc: 'The motel door, from the inside. The boulevard is behind it, the console is at the end of the boulevard, and the crossing is at the console. DO NOT DISTURB.' },
-                { id: 'casino', wall: 'e', z: 4.6, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'THROUGH THE SALOON DOOR · THE TABLES',   // AREA CONTENT D4 (2026-09-20): a draught (was THE CASINO FLOOR)
-                  action: { room: 'site_prebuilt_strip_casino', at: 'chapel' },
-                  desc: 'A saloon door beside the register. Every chapel on the Strip opens onto a casino floor; the vows are the cover charge.' },
-            ],
-            counters: [],
-            props: [
-                { key: 'stone_altar',       x: 0, z: -6.125, face: 0 },                         // THE ALTAR, against the north wall
-                { key: 'candle_ring',       x: -0.7, z: -6.125, y: 0.95 },                       // its candles
-                { key: 'candle_ring',       x: 0.7, z: -6.125, y: 0.95 },
-                { key: 'riser_1',           x: 0, z: -4.375, face: 0 },                          // THE DAIS (the park rule's ramp, one step)
-                { key: 'railing_1m',        x: -2.0, z: -3.4, face: 0 },                       // THE ALTAR RAIL (the park rule's rail)
-                { key: 'railing_1m',        x: -1.0, z: -3.4, face: 0 },
-                { key: 'railing_1m',        x: 1.0, z: -3.4, face: 0 },
-                { key: 'railing_1m',        x: 2.0, z: -3.4, face: 0 },
-                { key: 'lectern',           x: 3.4, z: -3.6, face: 20 },                       // THE REGISTER
-                { key: 'paper_sheet',       x: 3.4, z: -3.6, y: 1.15, face: 20 },              // open at your surname
-                { key: 'pen',               x: 3.55, z: -3.5, y: 1.15, face: 70 },
-                { key: 'rug_round',         x: 0, z: -2.4 },                                   // the aisle's end
-                { key: 'park_bench',        x: -2.625, z: -0.875, face: 180 },                     // THE PEWS, three a side, facing the altar
-                { key: 'park_bench',        x: 2.625, z: -0.875, face: 180 },
-                { key: 'park_bench',        x: -2.625, z: 0.875, face: 180 },
-                { key: 'park_bench',        x: 2.625, z: 0.875, face: 180 },
-                { key: 'park_bench',        x: -2.625, z: 2.625, face: 180 },
-                { key: 'park_bench',        x: 2.625, z: 2.625, face: 180 },
-                { key: 'candle_ring',       x: -3.6, z: -0.8, y: 0.0 },                        // the aisle candles
-                { key: 'candle_ring',       x: 3.6, z: -0.8, y: 0.0 },
-                { key: 'candle_ring',       x: -3.6, z: 3.2, y: 0.0 },
-                { key: 'candle_ring',       x: 3.6, z: 3.2, y: 0.0 },
-                { key: 'steel_table',       x: -4.375, z: 0.875, face: 90 },                       // THE TILL: the licences, the till
-                { key: 'cash_register',     x: -4.375, z: 0.875, y: 0.76, face: 90 },
-                { key: 'paper_sheet',       x: -4.175, z: 1.275, y: 0.76, face: 300 },             // the licence, blank
-                { key: 'false_window',      wall: 'w', z: -2.0, mount: 1.0 },                  // THE DRIVE-THROUGH WINDOW: the boulevard's neon through the glass
-                { key: 'picture_round_a',   wall: 'e', z: -3.0, mount: 1.95 },                 // the King, signed
-                { key: 'wall_clock',        wall: 'n', x: 3.5, mount: 2.6 },                   // the fountain's timer
-                { key: 'notice_board',      wall: 's', x: 3.2 },                               // the price list; every price is "the price"
-                { key: 'floor_stain',       x: -0.4, z: 4.8 },                                 // the rice
-                { key: 'trash_bin',         x: 4.3, z: 6.2 },
-                { key: 'instrument_guitar', x: 2.4, z: -5.6, face: 200 },   // THE INSTRUMENTS (2026-10-27): the chapel's guitar by the altar
-            ],
-            agents: [],
-            npcSpots: [
-                { x: 0, z: -3.0, face: 180, race: 'chosen one', say: ['“Do you?” “Do I what?” “That is the form. Do you?” “I do.” “Sign here. And here. And here.”'] },   // THE OFFICIANT: the King, in the jumpsuit
-                { x: 2.6, z: 4.4, face: 300, race: 'politician' },                              // the groom, again
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Eleven chapels.” “One marries you to the honda civic.” “Which?” “Not this one. Probably.”',
-                '“The register says your surname.” “It says everyone’s surname.” “In the same hand.” “The King’s.”',
-                '“Drive-through?” “The window is for the car.” “The car is the groom.” “Then the window is for the groom.”',
-            ],
-            spawn: { x: 0, z: 3.6, face: 0 },
-        },
-        /* ── THE CASINO FLOOR — the machines, the tables, the cage, the eye in the sky; no clocks, no windows ── */
-        site_prebuilt_strip_casino: {
-            label: 'DISASTER CITY · THE CASINO FLOOR',
-            sub: 'THE MACHINES · THE TABLES · THE CAGE',
-            kind: 'box', site: 'prebuilt_strip', part: 'casino',
-            shell: {
-                w: 18, d: 14, h: 3.6,
-                wallH: 3.6, dadoH: 1.0,
-                floor: 'urban:TileMarble3c', wall: 'urban:PlasterWallPainted2c', dado: 'urban:PlasterWallPainted2c', trim: 'gold', ceiling: 'urban:FibreCeilingTile2a',   // THE URBAN PACK (2026-09-17): the diamond marble underfoot, the red plaster with its skirting
-                floorColor: 0xb8a8a8, wallColor: 0x9a6a6a, dadoColor: 0x9a6a6a, ceilColor: 0x6a5a5c, ceilTile: 1.75,
-                pipes: false,
-                strips: false,
-                lights: [],
-                mood: { light: 0xffd0a0, ambient: 0.4 },
-                plate: { x: -8.75, z: 2.0, y: 2.4 },
-            },
-            doors: [
-                { id: 'chapel', wall: 'w', z: 4.6, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'THROUGH THE SALOON DOOR · THE ALTAR',   // AREA CONTENT D4 (2026-09-20): a draught (was THE CHAPEL)
-                  action: { room: 'site_prebuilt_strip_chapel', at: 'casino' },
-                  desc: 'The saloon door back to the chapel, and through the chapel the boulevard. The floor has no other door you can see, no clock and no window; the exit is the thing they sell least.' },
-            ],
-            counters: [],
-            props: [
-                { key: 'slot_machine',      x: -6.4, z: -4.375, face: 180 },                     // THE MACHINES: a bank of four, west
-                { key: 'slot_machine',      x: -5.6, z: -4.375, face: 180 },
-                { key: 'slot_machine',      x: -4.8, z: -4.375, face: 180 },
-                { key: 'slot_machine',      x: -4, z: -4.375, face: 180 },
-                { key: 'slot_machine',      x: 4.08, z: -4.375, face: 180 },                      // … and four, east
-                { key: 'slot_machine',      x: 4.88, z: -4.375, face: 180 },
-                { key: 'slot_machine',      x: 5.68, z: -4.375, face: 180 },
-                { key: 'slot_machine',      x: 6.48, z: -4.375, face: 180 },
-                { key: 'riser_2',           x: -0.45, z: -6.125, face: 0 },                          // THE STAGE along the north wall (the park rule's ramp, stepped)
-                { key: 'retro_speakers',    x: -3.45, z: -6.125, y: 0.6, face: 160 },             // the act is on a break
-                { key: 'retro_speakers',    x: 2.55, z: -6.125, y: 0.6, face: 200 },
-                { key: 'round_desk',        x: -0.503, z: -0.875 },                                   // THE TABLES: blackjack, twenty-one, the room's own number
-                { key: 'folding_chair',     x: -1.803, z: -0.875, face: 90 },
-                { key: 'folding_chair',     x: 0.797, z: -0.875, face: 270 },
-                { key: 'folding_chair',     x: -0.503, z: 0.525, face: 0 },
-                { key: 'solo_cup',          x: -0.103, z: -1.075, y: 0.76 },
-                { key: 'round_desk',        x: -0.625, z: 2.625 },
-                { key: 'folding_chair',     x: -1.925, z: 2.625, face: 90 },
-                { key: 'folding_chair',     x: 0.675, z: 2.625, face: 270 },
-                { key: 'folding_chair',     x: -0.625, z: 4.025, face: 0 },
-                { key: 'solo_cup',          x: -0.925, z: 2.925, y: 0.76 },
-                { key: 'papers_b',          x: -0.125, z: 2.325, y: 0.76 },                          // the chips are forms
-                { key: 'steel_table',       x: -5.875, z: -0.875, face: 90 },                      // THE CAGE
-                { key: 'cash_register',     x: -5.875, z: -0.875, y: 0.76, face: 90 },
-                { key: 'railing_1m',        x: -4.6, z: -1.5, face: 90 },                      // the cage rail (the park rule's rail)
-                { key: 'railing_1m',        x: -4.6, z: -0.5, face: 90 },
-                { key: 'railing_1m',        x: -4.6, z: 0.5, face: 90 },
-                { key: 'mobius_bar',        x: 6.375, z: 4.375, face: 270 },                       // THE BAR, the after-hours counter's cousin
-                { key: 'solo_cup',          x: 5.575, z: 4.975, y: 1.5 },
-                { key: 'vending_machine',   wall: 's', x: -3.0 },                              // the ATM; it charges a Key
-                { key: 'security_camera',   wall: 'n', x: -2.0, mount: 3.1 },                  // THE EYE IN THE SKY
-                { key: 'security_camera',   wall: 'n', x: 2.0, mount: 3.1 },
-                { key: 'security_camera',   wall: 's', x: 6.0, mount: 3.1 },
-                { key: 'picture_round_c',   wall: 'e', z: -3.0, mount: 1.95 },                 // a portrait of the House
-                { key: 'floor_stain',       x: 3.0, z: 1.2 },
-                { key: 'trash_bin',         x: -8.2, z: -6.2 },
-                { key: 'trash_bin',         x: 8.2, z: 1.2 },
-                { key: 'cardboard_box',     x: 8.2, z: -6.0, face: 40 },                        // the chips, in the wrong place
-            ],
-            agents: [],
-            npcSpots: [
-                { x: -0.503, z: -2.375, face: 180, race: 'politician', say: ['“Twenty-one.” “Blackjack.” “The room.” “The room pays three to two.”'] },   // THE DEALER: a politician now; always a dealer
-                { x: 5.2, z: -3.2, face: 200, race: 'conspiracy theorist' },                    // at the machines; he knows which one
-                { x: 2.2, z: 5.6, face: 300, race: 'gangster' },                                // the pit boss
-            ],
-            onlineSpots: [{ x: -5.2, z: -3.3, face: 0 }],                                       // an agent at the machines, on the clock
-            lines: [
-                '“No clocks.” “No windows.” “No exit sign.” “The exit is through the chapel.” “That is the trick.”',
-                '“The Department loses at every table.” “And expenses it.” “As fieldwork.” “Finance approved the fieldwork.”',
-                '“The eye in the sky.” “Which one?” “All of them.” “They are the same eye.”',
-            ],
-            spawn: { x: -5.6, z: 4.6, face: 90 },
-            /* D7 THE REVEAL (PHASE9_QUALITY_PLAN §6, 2026-09-16): THE FLOOR WITH NO
-               CLOCK — so the floor never knows what time it is, and the officer
-               finds out only by what is happening on it. Two beats, never a clock:
-               THE DEAD HOUR (3–6 in the morning by YOUR clock: the tables empty,
-               the dealer dealing to nobody, the machines still going, the eye
-               still open) and THE JACKPOT (one visit in five: a machine on the
-               east bank has paid and the whole floor is round it). Same room,
-               same one door. Lines are Claude's DRAFT (A15). */
-            variants: {
-                dead_hour: {
-                    when: { hours: [3, 6] },
-                    label: 'DISASTER CITY · THE CASINO FLOOR', sub: 'THE DEAD HOUR · THE TABLES EMPTY · THE MACHINES ON',
-                    why: 'there is no clock; the floor at this hour is how you learn the hour',
-                    door: { sub: 'THE DEAD HOUR · THE CASINO FLOOR' },
-                    shell: { mood: { light: 0xe0a880, ambient: 0.3 } },
-                    drop: ['solo_cup', 'papers_b'],
-                    add: [
-                        { key: 'mop_bucket',        x: 2.6, z: 1.2 },                                  // the floor gets done in the dead hour
-                        { key: 'wet_floor_sign',    x: 3.2, z: 0.2, face: 30 },
-                        { key: 'floor_stain',       x: -2.4, z: 4.0 },
-                        { key: 'cardboard_box',     x: -7.6, z: 4.0, face: 20 },                       // the night's take, in a box
-                    ],
-                    npcSpots: [
-                        { x: 0, z: -2.5, face: 180, race: 'politician', say: ['“Twenty-one.” “There is nobody at the table.” “The room is at the table.” “The room pays three to two.”'] },   // THE DEALER deals on
-                        { x: 4.8, z: -3.2, face: 200, race: 'conspiracy theorist', say: ['“This one is due.” “It is four in the morning.” “Then it is due at four.”'] },                    // the one who never left
-                    ],
-                    onlineSpots: [{ x: -5.2, z: -3.3, face: 0 }],
-                    lines: [
-                        '“What time is it?” “There is no clock.” “The dealer is alone.” “Then it is the dead hour.”',
-                        '“The machines never stop.” “Somebody has to be losing.” “The Department.” “On expenses.”',
-                        '“The eye in the sky.” “Awake?” “It does not sleep.” “At this hour it is the only one.”',
-                    ],
-                },
-                jackpot: {
-                    when: { p: 0.2 },
-                    label: 'DISASTER CITY · THE CASINO FLOOR', sub: 'JACKPOT · THE EAST BANK · THE WHOLE FLOOR IS ROUND IT',
-                    why: 'one machine has paid; nobody at the tables, everybody at the machine, the cage counting',
-                    door: { sub: 'A JACKPOT ON THE FLOOR · THE CASINO' },
-                    shell: { mood: { light: 0xffe090, ambient: 0.48 } },
-                    drop: ['papers_b'],
-                    add: [
-                        { key: 'cardboard_box',     x: 6.6, z: -3.2, face: 330 },                      // the chips, brought to the machine
-                        { key: 'cardboard_box',     x: 3.2, z: -3.6, face: 70 },
-                        { key: 'solo_cup',          x: 5.0, z: -3.9, y: 0.0 },                         // dropped
-                        { key: 'papers_b',          x: -6.0, z: -0.2, y: 0.76 },                        // the cage: the forms it takes to pay one out
-                        { key: 'floor_stain',       x: 4.4, z: -2.6 },
-                    ],
-                    npcSpots: [
-                        { x: 0, z: -2.5, face: 180, race: 'politician', say: ['“Twenty-one.” “Nobody is playing.” “The room is playing.” “The room just lost.”'] },   // THE DEALER, deserted
-                        { x: 5.2, z: -3.2, face: 200, race: 'conspiracy theorist', say: ['“I said this one.” “You said all of them.” “And I was right about this one.”'] },   // THE WINNER, at the machine
-                        { x: 4.2, z: -2.6, face: 160, race: 'gangster', say: ['“Nobody touch the machine.” “He is touching the machine.” “He is allowed.”'] },              // the pit boss, over him
-                        { x: 6.2, z: -2.4, face: 230 },                                                                                                                       // the crowd (roster draws)
-                        { x: 5.6, z: -1.6, face: 190 },
-                        { x: 3.4, z: -1.8, face: 140 },
-                    ],
-                    onlineSpots: [{ x: -5.2, z: -3.3, face: 0 }, { x: 4.6, z: -1.2, face: 170 }],
-                    lines: [
-                        '“It paid.” “Which one?” “The one he said.” “He said all of them.”',
-                        '“The cage is counting.” “In forms.” “It pays out in forms.” “Finance approved the forms.”',
-                        '“No clock.” “No window.” “A jackpot.” “That is how you know the time: it is time to leave.” “Through the chapel.”',
-                    ],
-                },
-            },
-        },
+        /* site_prebuilt_strip_chapel — DELETED 2026-11-16 (THE OLD SITES RETIRED, mondo: "remove all of the old sites from the game"): the Strip's wedding chapel is Entertainment's (Disaster City); DOOR_HQ.retired sends anything that still names it there */
+        /* site_prebuilt_strip_casino — DELETED 2026-11-16 (THE OLD SITES RETIRED, mondo: "remove all of the old sites from the game"): the Strip's casino is Entertainment's (Disaster City); DOOR_HQ.retired sends anything that still names it there */
         /* ── THE TOWER LOBBY — the ground floor of the tower that came down in 1954, and comes down every year ── */
         site_prebuilt_downtown_lobby: {
             label: 'DISASTER CITY · THE TOWER LOBBY',
@@ -42312,13 +42092,14 @@ const DOOR_HQ = {
                 res: 0.875, floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',
                 noise: { amp: 0.12, scale: 8 },
                 slope: { cells: { res: 3.5, x0: -126, z0: -126, nx: 72, nz: 72, d: 'eAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFYgV4BWIFYgVMBWIFTAVMBTYFTAU2BTYFIQU2BSEFIQULBSEFCwULBfUECwX1BPUE3wT1BN8E3wTJBN8EyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEswTJBLMEswSdBLMEnQSdBIcEnQSHBIcEcgSHBHIEcgRcBHIEXARcBEYEXARGBEYEMARGBDAEMAQaBDAEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEBAQaBAQEBATuAwQE7gPuA9gD7gPYA9gDwwPYA8MDwwOtA8MDrQOtA5cDrQOXA5cDgQOXA4EDgQNrA4EDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFYgV4BWIFYgVMBWIFTAVMBTYFTAU2BTYFIQU2BSEFIQULBSEFCwULBfUECwX1BPUE3wT1BN8E3wTJBN8EyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEswTJBLMEswSdBLMEnQSdBIcEnQSHBIcEcgSHBHIEcgRcBHIEXARcBEYEXARGBEYEMARGBDAEMAQaBDAEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEBAQaBAQEBATuAwQE7gPuA9gD7gPYA9gDwwPYA8MDwwOtA8MDrQOtA5cDrQOXA5cDgQOXA4EDgQNrA4EDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFYgV4BWIFYgVMBWIFTAVMBTYFTAU2BTYFIQU2BSEFIQULBSEFCwULBfUECwX1BPUE3wT1BN8E3wTJBN8EyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEswTJBLMEswSdBLMEnQSdBIcEnQSHBIcEcgSHBHIEcgRcBHIEXARcBEYEXARGBEYEMARGBDAEMAQaBDAEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEBAQaBAQEBATuAwQE7gPuA9gD7gPYA9gDwwPYA8MDwwOtA8MDrQOtA5cDrQOXA5cDgQOXA4EDgQNrA4EDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFYgV4BWIFYgVMBWIFTAVMBTYFTAU2BTYFIQU2BSEFIQULBSEFCwULBfUECwX1BPUE3wT1BN8E3wTJBN8EyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEswTJBLMEswSdBLMEnQSdBIcEnQSHBIcEcgSHBHIEcgRcBHIEXARcBEYEXARGBEYEMARGBDAEMAQaBDAEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEBAQaBAQEBATuAwQE7gPuA9gD7gPYA9gDwwPYA8MDwwOtA8MDrQOtA5cDrQOXA5cDgQOXA4EDgQNrA4EDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFYgV4BWIFYgVMBWIFTAVMBTYFTAU2BTYFIQU2BSEFIQULBSEFCwULBfUECwX1BPUE3wT1BN8E3wTJBN8EyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEswTJBLMEswSdBLMEnQSdBIcEnQSHBIcEcgSHBHIEcgRcBHIEXARcBEYEXARGBEYEMARGBDAEMAQaBDAEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEBAQaBAQEBATuAwQE7gPuA9gD7gPYA9gDwwPYA8MDwwOtA8MDrQOtA5cDrQOXA5cDgQOXA4EDgQNrA4EDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFYgV4BWIFYgVMBWIFTAVMBTYFTAU2BTYFIQU2BSEFIQULBSEFCwULBfUECwX1BPUE3wT1BN8E3wTJBN8EyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEswTJBLMEswSdBLMEnQSdBIcEnQSHBIcEcgSHBHIEcgRcBHIEXARcBEYEXARGBEYEMARGBDAEMAQaBDAEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEBAQaBAQEBATuAwQE7gPuA9gD7gPYA9gDwwPYA8MDwwOtA8MDrQOtA5cDrQOXA5cDgQOXA4EDgQNrA4EDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFYgV4BWIFYgVMBWIFTAVMBTYFTAU2BTYFIQU2BSEFIQULBSEFCwULBfUECwX1BPUE3wT1BN8E3wTJBN8EyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEswTJBLMEswSdBLMEnQSdBIcEnQSHBIcEcgSHBHIEcgRcBHIEXARcBEYEXARGBEYEMARGBDAEMAQaBDAEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEBAQaBAQEBATuAwQE7gPuA9gD7gPYA9gDwwPYA8MDwwOtA8MDrQOtA5cDrQOXA5cDgQOXA4EDgQNrA4EDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFYgV4BWIFYgVMBWIFTAVMBTYFTAU2BTYFIQU2BSEFIQULBSEFCwULBfUECwX1BPUE3wT1BN8E3wTJBN8EyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEyQTJBMkEswTJBLMEswSdBLMEnQSdBIcEnQSHBIcEcgSHBHIEcgRcBHIEXARcBEYEXARGBEYEMARGBDAEMAQaBDAEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEGgQaBBoEBAQaBAQEBATuAwQE7gPuA9gD7gPYA9gDwwPYA8MDwwOtA8MDrQOtA5cDrQOXA5cDgQOXA4EDgQNrA4EDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCeAV4BTYFNgV4BXgFNgU2BXgFeAU2BTYFeAV4BTYFNgV4BXgFNgU2BXgFeAU2BTYFeAV4BTYFNgV4BXgFNgU2BXgFYgU2BSMFYgVMBSMFEAVMBTYFEAX9BDYFIQX9BOoEIQULBeoE1wQLBfUE1wTEBPUE3wTEBLAE3wTJBLAEnQTJBMkEnQSdBMkEyQSdBJ0EyQTJBJ0EnQTJBMkEnQSdBMkEswSdBIcEswSdBIcEcgSdBIcEcgRcBIcEcgRcBEYEcgRcBEYEMARcBEYEMAQaBEYEMAQaBAQEMAQaBAQE7gMaBBoE7gPuAxoEGgTuA+4DGgQaBO4D7gMaBBoE7gPuAxoEBATuA9sDBATuA9sDyAPuA9gDyAO1A9gDwwO1A6IDwwOtA6IDjwOtA5cDjwN7A5cDgQN7A2gDgQNrA2gDVQNrA2sDVQNVA2sDawNVA1UDawNrA1UDVQNrA2sDVQNVA2sDVQNVA0IDVQM/A0IDLwM/AykDLwMcAykDFAMcAwkDFAP+AgkD9QL+AugC9QLiAugC0gLiAs8C0gK8As8CvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCNgU2BfUE9QQ2BTYF9QT1BDYFNgX1BPUENgU2BfUE9QQ2BTYF9QT1BDYFNgX1BPUENgU2BfUE9QQ2BTYF9QT1BDYFIwX1BOQEIwUQBeQE1AQQBf0E1ATEBP0E6gTEBLME6gTXBLMEowTXBMQEowSSBMQEsASSBIIEsASdBIIEcgSdBJ0EcgRyBJ0EnQRyBHIEnQSdBHIEcgSdBJ0EcgRxBJ0EhwRxBFwEhwRyBFwERgRyBFwERgQwBFwERgQwBBoERgQwBBoEBAQwBBoEBATuAxoEBATuA9gDBATuA9gDwwPuA+4DwwPDA+4D7gPDA8MD7gPuA8MDwwPuA+4DwwPDA+4D2wPDA7ID2wPIA7IDogPIA7UDogORA7UDogORA4EDogOPA4EDcAOPA3sDcANgA3sDaANgA1ADaANVA1ADPwNVA1UDPwM/A1UDVQM/Az8DVQNVAz8DPwNVA1UDPwM/A1UDQgM/Ay8DQgMvAy8DHgMvAxwDHgMOAxwDCQMOA/4CCQP1Av4C7QL1AuIC7QLdAuICzwLdAswCzwK8AswCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwC9QT1BLMEswT1BPUEswSzBPUE9QSzBLME9QT1BLMEswT1BPUEswSzBPUE9QSzBLME9QT1BLMEswT1BPUEswSzBPUE5ASzBKUE5ATUBKUEmATUBMQEmASKBMQEswSKBHwEswSjBHwEbwSjBJIEbwRhBJIEggRhBFMEggRyBFMERgRyBHIERgRGBHIEcgRGBEYEcgRyBEYERgRyBHEERgRGBHEEXARGBDAEXARGBDAEGgRGBDAEGgQEBDAEGgQEBO4DGgQEBO4D2AMEBO4D2APDA+4D2APDA60D2APDA60DlwPDA8MDlwOXA8MDwwOXA5cDwwPDA5cDlwPDA8MDlwOXA8MDsgOXA4kDsgOiA4kDewOiA5EDewNuA5EDgQNuA2ADgQNwA2ADUgNwA2ADUgNFA2ADUANFAzcDUAM/AzcDKQM/Az8DKQMpAz8DPwMpAykDPwM/AykDKQM/Az8DKQMpAz8DLwMpAxwDLwMeAxwDDgMeAw4DDgMAAw4D/gIAA/MC/gLtAvMC5QLtAt0C5QLXAt0CzALXAsoCzAK8AsoCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCswSzBHIEcgSzBLMEcgRyBLMEswRyBHIEswSzBHIEcgSzBLMEcgRyBLMEswRyBHIEswSzBHIEcgSzBLMEcgRyBLMEpQRyBGcEpQSYBGcEXASYBIoEXARRBIoEfARRBEYEfARvBEYEOwRvBGEEOwQwBGEEUwQwBCUEUwRGBCUEGgRGBEYEGgQaBEYERgQaBBoERgRGBBoEGgRGBEYEGgQaBEYEMAQaBAQEMAQaBAQE7gMaBAQE7gPYAwQE7gPYA8MD7gPYA8MDrQPYA8MDrQOXA8MDrQOXA4EDrQOXA4EDawOXA5cDawNrA5cDlwNrA2sDlwOXA2sDawOXA5cDawNrA5cDiQNrA2ADiQN7A2ADVQN7A24DVQNKA24DYANKAz8DYANSAz8DNANSA0UDNAMpA0UDNwMpAx4DNwMpAx4DFAMpAykDFAMUAykDKQMUAxQDKQMpAxQDFAMpAykDFAMUAykDHAMUAwkDHAMOAwkD/gIOAwAD/gLzAgAD8wLzAugC8wLlAugC3QLlAtcC3QLSAtcCygLSAscCygK8AscCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCcgRyBDAEMARyBHIEMAQwBHIEcgQwBDAEcgRyBDAEMARyBHIEMAQwBHIEcgQwBDAEcgRyBDAEMARyBHIEMAQwBHIEZwQwBCgEZwRcBCgEHwRcBFEEHwQXBFEERgQXBA8ERgQ7BA8EBwQ7BDAEBwT/AzAEJQT/A/YDJQQaBPYD7gMaBBoE7gPuAxoEGgTuA+4DGgQaBO4D7gMaBBoE7gPuAxoEBATuA9gDBATuA9gDwwPuA9gDwwOtA9gDwwOtA5cDwwOtA5cDgQOtA5cDgQNrA5cDgQNrA1UDgQNrA1UDPwNrA2sDPwM/A2sDawM/Az8DawNrAz8DPwNrA2sDPwM/A2sDYAM/AzcDYANVAzcDLwNVA0oDLwMnA0oDPwMnAx4DPwM0Ax4DFgM0AykDFgMOAykDHgMOAwYDHgMUAwYD/gIUAxQD/gL+AhQDFAP+Av4CFAMUA/4C/gIUAxQD/gL+AhQDCQP+AvUCCQP+AvUC7QL+AvMC7QLlAvMC6ALlAt0C6ALdAt0C1QLdAtIC1QLMAtICxwLMAsQCxwK8AsQCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCMAQwBO4D7gMwBDAE7gPuAzAEMATuA+4DMAQwBO4D7gMwBDAE7gPuAzAEMATuA+4DMAQwBO4D7gMwBDAE7gPuAzAEKATuA+kDKAQfBOkD4wMfBBcE4wPeAxcEDwTeA9gDDwQHBNgD0wMHBP8D0wPNA/8D9gPNA8gD9gPuA8gDwwPuA+4DwwPDA+4D7gPDA8MD7gPuA8MDwwPuA+4DwwPCA+4D2APCA60D2APDA60DlwPDA60DlwOBA60DlwOBA2sDlwOBA2sDVQOBA2sDVQM/A2sDVQM/AykDVQM/AykDFAM/Az8DFAMUAz8DPwMUAxQDPwM/AxQDFAM/Az8DFAMUAz8DNwMUAw4DNwMvAw4DCQMvAycDCQMDAycDHgMDA/4CHgMWA/4C+AIWAw4D+ALzAg4DBgPzAu0CBgP+Au0C6AL+Av4C6ALoAv4C/gLoAugC/gL+AugC6AL+Av4C6ALoAv4C9QLoAuIC9QLtAuIC3QLtAuUC3QLXAuUC3QLXAtIC3QLVAtICzALVAswCzALHAswCxALHAsECxAK8AsECvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwC7gPuA60DrQPuA+4DrQOtA+4D7gOtA60D7gPuA60DrQPuA+4DrQOtA+4D7gOtA60D7gPuA60DrQPuA+4DrQOtA+4D6QOtA6oD6QPjA6oDpwPjA94DpwOkA94D2AOkA6ID2APTA6IDnwPTA80DnwOcA80DyAOcA5kDyAPDA5kDlwPDA8MDlwOXA8MDwwOXA5cDwwPDA5cDlwPDA8IDlwOXA8IDrQOXA4EDrQOXA4EDawOXA4EDawNVA4EDawNVAz8DawNVAz8DKQNVAz8DKQMUAz8DKQMUA/4CKQMUA/4C6AIUAxQD6ALoAhQDFAPoAugCFAMUA+gC6AIUAxQD6ALoAhQDDgPoAuUCDgMJA+UC4gIJAwMD4gLgAgMD/gLgAt0C/gL4At0C2gL4AvMC2gLXAvMC7QLXAtUC7QLoAtUC0gLoAugC0gLSAugC6ALSAtIC6ALoAtIC0gLoAugC0gLSAugC4gLSAs8C4gLdAs8CzALdAtcCzALKAtcC0gLKAscC0gLMAscCxALMAscCxALBAscCwQLBAr8CwQK8Ar8CvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCrQOtA2sDawOtA60DawNrA60DrQNrA2sDrQOtA2sDawOtA60DawNrA60DrQNrA2sDrQOtA2sDawOtA60DawNrA60DqgNrA2sDqgOnA2sDawOnA6QDawNrA6QDogNrA2sDogOfA2sDawOfA5wDawNrA5wDmQNrA2sDmQOXA2sDawOXA5cDawNrA5cDlwNrA2sDlwOXA2sDawOXA5cDawNrA5cDgQNrA1UDgQNrA1UDPwNrA1UDPwMpA1UDPwMpAxQDPwMpAxQD/gIpAxQD/gLoAhQD/gLoAtIC/gLoAtICvALoAugCvAK8AugC6AK8ArwC6ALoArwCvALoAugCvAK8AugC5QK8ArwC5QLiArwCvALiAuACvAK8AuAC3QK8ArwC3QLaArwCvALaAtcCvAK8AtcC1QK8ArwC1QLSArwCvALSAtICvAK8AtIC0gK8ArwC0gLSArwCvALSAtICvAK8AtICzwK8ArwCzwLMArwCvALMAsoCvAK8AsoCxwK8ArwCxwLEArwCvALEAsECvAK8AsECvwK8ArwCvwK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDawNrA2sDVQNrA1UDVQM/A1UDPwM/AykDPwMpAykDFAMpAxQDFAP+AhQD/gL+AugC/gLoAugC0gLoAtIC0gK8AtICvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCawNrAz8DPwNrA2sDPwM/A2sDawM/Az8DawNrAz8DPwNrA2sDPwM/A2sDawM/Az8DawNrAz8DPwNrA2sDPwM/A2sDawM/Az8DawNrAz8DPwNrA2sDPwM/A2sDawM/Az8DawNrAz8DPwNrA2sDPwM/A2sDawM/Az8DawNrAz8DPwNrA2sDPwM/A2sDawM/Az8DawNrAz8DPwNrA2sDPwM/A2sDVQM/AykDVQM/AykDFAM/AykDFAP+AikDFAP+AugCFAP+AugC0gL+AugC0gK8AugC0gK8AqYC0gK8AqYCkAK8ArwCkAKQArwCvAKQApACvAK8ApACkAK8ArwCkAKQArwCvAKQApMCvAK8ApMClgK8ArwClgKYArwCvAKYApsCvAK8ApsCngK8ArwCngKhArwCvAKhAqMCvAK8AqMCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCvAK8AqYCpgK8ArwCpgKmArwCvAKmAqYCPwM/AxQDFAM/Az8DFAMUAz8DPwMUAxQDPwM/AxQDFAM/Az8DFAMUAz8DPwMUAxQDPwM/AxQDFAM/Az8DFAMUAz8DPwMUAxQDPwM/AxQDFAM/Az8DFAMUAz8DPwMUAxQDPwM/AxQDFAM/Az8DFAMUAz8DPwMUAxQDPwM/AxQDFAM/Az8DFAMUAz8DPwMUAxQDPwM/AxQDFAM/Az8DFAMTAz8DKQMTA/4CKQMUA/4C6AIUA/4C6ALSAv4C6ALSArwC6ALSArwCpgLSArwCpgKQArwCpgKQAnoCpgKQAnoCZQKQApACZQJlApACkAJlAmUCkAKQAmUCZQKQApACZQJlApACkwJlAmoCkwKWAmoCbwKWApgCbwJ1ApgCmwJ1AnoCmwKeAnoCgAKeAqECgAKFAqECowKFAosCowKmAosCkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACpgKmApACkAKmAqYCkAKQAqYCpgKQApACFAMUA+gC6AIUAxQD6ALoAhQDFAPoAugCFAMUA+gC6AIUAxQD6ALoAhQDFAPoAugCFAMUA+gC6AIUAxQD6ALoAhQDFAPoAugCFAMUA+gC6AIUAxQD6ALoAhQDFAPoAugCFAMUA+gC6AIUAxQD6ALoAhQDFAPoAugCFAMUA+gC6AIUAxQD6ALoAhQDFAPoAugCFAMUA+gC6AIUAxMD6ALoAhMD/gLoAtIC/gLoAtICvALoAtICvAKmAtICvAKmApACvAKmApACegKmApACegJkApACegJkAk8CegJlAk8COQJlAmUCOQI5AmUCZQI5AjkCZQJlAjkCOQJlAmUCOQI5AmUCagI5AkECagJvAkECSQJvAnUCSQJRAnUCegJRAloCegKAAloCYgKAAoUCYgJqAoUCiwJqAnICiwKQAnICegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoCkAKQAnoCegKQApACegJ6ApACkAJ6AnoC6ALoArwCvALoAugCvAK8AugC6AK8ArwC6ALoArwCvALoAugCvAK8AugC6AK8ArwC6ALoArwCvALoAugCvAK8AugC6AK8ArwC6ALoArwCvALoAugCvAK8AugC6AK8ArwC6ALoArwCvALoAugCvAK8AugC6AK8ArwC6ALoArwCvALoAugCvAK8AugC6AK8ArwC6ALoArwCvALoAugCvAK8AugC0gK8AqYC0gK8AqYCkAK8AqYCkAJ6AqYCkAJ6AmUCkAJ6AmUCTwJ6AmQCTwI5AmQCTwI5AiMCTwI5AiMCDQI5AjkCDQINAjkCOQINAg0COQI5Ag0CDQI5AjkCDQINAjkCQQINAhgCQQJJAhgCIwJJAlECIwIuAlECWgIuAjkCWgJiAjkCRAJiAmoCRAJPAmoCcgJPAloCcgJ6AloCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCegJ6AmUCZQJ6AnoCZQJlAnoCegJlAmUCvAK8ApACkAK8ArwCkAKQArwCvAKQApACvAK8ApACkAK8ArwCkAKQArwCvAKQApACvAK8ApACkAK8ArwCkAKQArwCvAKQApACvAK8ApACkAK8ArwCkAKQArwCvAKQApACvAK8ApACkAK8ArwCkAKQArwCvAKQApACvAK8ApACkAK8ArwCkAKQArwCvAKQApACvAK8ApACkAK8ArwCkAKQArwCpgKQAnoCpgKQAnoCZAKQAnoCZAJPAnoCZQJPAjkCZQJPAjkCIwJPAjkCIwINAjkCIwINAvcBIwINAvcB4QENAg0C4QHhAQ0CDQLhAeEBDQINAuEB4QENAg0C4QHhAQ0CGALhAe8BGAIjAu8B/QEjAi4C/QEKAi4COQIKAhgCOQJEAhgCJgJEAk8CJgIzAk8CWgIzAkECWgJlAkECTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CZQJlAk8CTwJlAmUCTwJPAmUCZQJPAk8CkAKQAmUCZQKQApACZQJlApACkAJlAmUCkAKQAmUCZQKQApACZQJlApACkAJlAmUCkAKQAmUCZQKQApACZQJlApACkAJlAmUCkAKQAmUCZQKQApACZQJlApACkAJlAmUCkAKQAmUCZQKQApACZQJlApACkAJlAmUCkAKQAmUCZQKQApACZQJlApACkAJlAmUCkAKQAmUCZQKQApACZQJkApACegJkAk8CegJkAk8COQJkAk8COQIjAk8COQIjAg0COQIjAg0C9wEjAg0C9wHhAQ0C9wHhAcsB9wHhAcsBtgHhAeEBtgG2AeEB4QG2AbYB4QHhAbYBtgHhAeEBtgG2AeEB7wG2AcYB7wH9AcYB1gH9AQoC1gHnAQoCGALnAfcBGAImAvcBCAImAjMCCAIYAjMCQQIYAigCQQJPAigCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCTwJPAjkCOQJPAk8COQI5Ak8CTwI5AjkCZQJlAjkCOQJlAmUCOQI5AmUCZQI5AjkCZQJlAjkCOQJlAmUCOQI5AmUCZQI5AjkCZQJlAjkCOQJlAmUCOQI5AmUCZQI5AjkCZQJlAjkCOQJlAmUCOQI5AmUCZQI5AjkCZQJlAjkCOQJlAmUCOQI5AmUCZQI5AjkCZQJlAjkCOQJlAmUCOQI5AmUCZQI5AjkCZQJlAjkCOQJlAmQCOQI5AmQCTwI5AiMCTwI5AiMCDQI5AiMCDQL3ASMCDQL3AeEBDQL3AeEBywH3AeEBywG2AeEBywG2AaABywG2AaABigG2AbYBigGKAbYBtgGKAYoBtgG2AYoBigG2AbYBigGKAbYBxgGKAZ0BxgHWAZ0BsAHWAecBsAHDAecB9wHDAdYB9wEIAtYB6QEIAhgC6QH9ARgCKAL9ARACKAI5AhACIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5AiMCIwI5AjkCIwIjAjkCOQIjAiMCOQI5Ag0CDQI5AjkCDQINAjkCOQINAg0COQI5Ag0CDQI5AjkCDQINAjkCOQINAg0COQI5Ag0CDQI5AjkCDQINAjkCOQINAg0COQI5Ag0CDQI5AjkCDQINAjkCOQINAg0COQI5Ag0CDQI5AjkCDQINAjkCOQINAg0COQI5Ag0CDQI5AjkCDQINAjkCOQINAg0COQI5Ag0CDQI5AjkCDQINAjkCIwINAvcBIwINAvcB4QENAvcB4QHLAfcB4QHLAbYB4QHLAbYBoAHLAbYBoAGKAbYBoAGKAXQBoAGKAXQBXgGKAYoBXgFeAYoBigFeAV4BigGKAV4BXgGKAYoBXgFeAYoBnQFeAXQBnQGwAXQBigGwAcMBigGgAcMB1gGgAbYB1gHpAbYBywHpAf0BywHhAf0BEALhAfcBEAIjAvcBDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CIwIjAg0CDQIjAiMCDQINAiMCIwINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0C9wENAvcB9wHhAfcB4QHhAcsB4QHLAcsBtgHLAbYBtgGgAbYBoAGgAYoBoAGKAYoBdAGKAXQBdAFeAXQBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BdAFeAXQBdAGKAXQBigGKAaABigGgAaABtgGgAbYBtgHLAbYBywHLAeEBywHhAeEB9wHhAfcB9wENAvcBDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0C9wENAvcB9wHhAfcB4QHhAcsB4QHLAcsBtgHLAbYBtgGgAbYBoAGgAYoBoAGKAYoBdAGKAXQBdAFeAXQBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BdAFeAXQBdAGKAXQBigGKAaABigGgAaABtgGgAbYBtgHLAbYBywHLAeEBywHhAeEB9wHhAfcB9wENAvcBDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0C9wENAvcB9wHhAfcB4QHhAcsB4QHLAcsBtgHLAbYBtgGgAbYBoAGgAYoBoAGKAYoBdAGKAXQBdAFeAXQBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BdAFeAXQBdAGKAXQBigGKAaABigGgAaABtgGgAbYBtgHLAbYBywHLAeEBywHhAeEB9wHhAfcB9wENAvcBDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0C9wENAvcB9wHhAfcB4QHhAcsB4QHLAcsBtgHLAbYBtgGgAbYBoAGgAYoBoAGKAYoBdAGKAXQBdAFeAXQBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BdAFeAXQBdAGKAXQBigGKAaABigGgAaABtgGgAbYBtgHLAbYBywHLAeEBywHhAeEB9wHhAfcB9wENAvcBDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAg0CDQINAvcB9wENAg0C9wH3AQ0CDQL3AfcBDQINAvcB9wENAg0C9wH3AQ0CDQL3AfcBDQINAvcB9wENAg0C9wH3AQ0CDQL3AfcBDQINAvcB9wENAg0C9wH3AQ0CDQL3AfcBDQINAvcB9wENAg0C9wH3AQ0CDQL3AfcBDQINAvcB9wENAg0C9wH3AQ0CDQL3AfcBDQINAvcB9wENAg0C9wH3AQ0C9wH3AeQB9wHhAeQB0QHhAcsB0QG+AcsBtgG+AasBtgGgAasBlwGgAYoBlwGEAYoBdAGEAXEBdAFeAXEBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BdAFeAW4BdAGKAW4BfwGKAaABfwGPAaABtgGPAaABtgHLAaABsAHLAeEBsAHAAeEB9wHAAdEB9wENAtEB4QENAg0C4QHhAQ0CDQLhAeEBDQINAuEB4QENAg0C4QHhAQ0CDQLhAeEBDQINAuEB4QENAg0C4QHhAQ0CDQLhAeEBDQINAuEB4QENAg0C4QHhAQ0CDQLhAeEBDQINAuEB4QENAg0C4QHhAQ0CDQLhAeEBDQINAuEB4QENAg0C4QHhAQ0CDQLhAd8BDQINAt8B3AENAg0C3AHZAQ0CDQLZAdYBDQINAtYB1AENAg0C1AHRAQ0CDQLRAc4BDQINAs4BywENAg0CywHLAQ0CDQLLAcsBDQINAssBywENAg0CywHLAQ0CDQLLAcsBDQINAssBywENAg0CywHLAQ0CDQLLAcsB9wH3AeEB4QH3AfcB4QHhAfcB9wHhAeEB9wH3AeEB4QH3AfcB4QHhAfcB9wHhAeEB9wH3AeEB4QH3AfcB4QHhAfcB9wHhAeEB9wH3AeEB4QH3AfcB4QHhAfcB9wHhAeEB9wH3AeEB4QH3AfcB4QHhAfcB9wHhAeEB9wH3AeEB4QH3AfcB4QHhAfcB9wHhAeEB9wH3AeEB4QH3AfcB4QHhAfcB5AHhAdEB5AHRAdEBwAHRAb4BwAGwAb4BqwGwAaABqwGXAaABjwGXAYQBjwF/AYQBcQF/AW4BcQFeAW4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BbgFeAWkBbgF/AWkBdAF/AY8BdAF/AY8BoAF/AYoBoAGwAYoBlQGwAcABlQGgAcAB0QGgAasB0QHhAasBtQHhAeEBtQG1AeEB4QG1AbUB4QHhAbUBtQHhAeEBtQG1AeEB4QG1AbUB4QHhAbUBtQHhAeEBtQG1AeEB4QG1AbUB4QHhAbUBtQHhAeEBtQG1AeEB4QG1AbUB4QHhAbUBtQHhAeEBtQG1AeEB4QG1AbUB4QHhAbUBtQHhAeEBtQG1AeEB3wG1AbAB3wHcAbABqwHcAdkBqwGlAdkB1gGlAaAB1gHUAaABmgHUAdEBmgGVAdEBzgGVAY8BzgHLAY8BigHLAcsBigGKAcsBywGKAYoBywHLAYoBigHLAcsBigGKAcsBywGKAYoBywHLAYoBigHLAcsBigGKAcsBywGKAYoB4QHhAcsBywHhAeEBywHLAeEB4QHLAcsB4QHhAcsBywHhAeEBywHLAeEB4QHLAcsB4QHhAcsBywHhAeEBywHLAeEB4QHLAcsB4QHhAcsBywHhAeEBywHLAeEB4QHLAcsB4QHhAcsBywHhAeEBywHLAeEB4QHLAcsB4QHhAcsBywHhAeEBywHLAeEB4QHLAcsB4QHhAcsBywHhAeEBywHLAeEB0QHLAb4B0QHAAb4BsAHAAbABsAGiAbABoAGiAZUBoAGPAZUBhwGPAX8BhwF5AX8BbgF5AWwBbgFeAWwBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BaQFeAWMBaQF0AWMBaQF0AX8BaQFuAX8BigFuAXQBigGVAXQBeQGVAaABeQF/AaABqwF/AYQBqwG1AYQBigG1AbUBigGKAbUBtQGKAYoBtQG1AYoBigG1AbUBigGKAbUBtQGKAYoBtQG1AYoBigG1AbUBigGKAbUBtQGKAYoBtQG1AYoBigG1AbUBigGKAbUBtQGKAYoBtQG1AYoBigG1AbUBigGKAbUBtQGKAYoBtQG1AYoBigG1AbUBigGKAbUBsAGKAYIBsAGrAYIBeQGrAaUBeQFxAaUBoAFxAWkBoAGaAWkBYQGaAZUBYQFZAZUBjwFZAVABjwGKAVABSAGKAYoBSAFIAYoBigFIAUgBigGKAUgBSAGKAYoBSAFIAYoBigFIAUgBigGKAUgBSAGKAYoBSAFIAYoBigFIAUgBywHLAbYBtgHLAcsBtgG2AcsBywG2AbYBywHLAbYBtgHLAcsBtgG2AcsBywG2AbYBywHLAbYBtgHLAcsBtgG2AcsBywG2AbYBywHLAbYBtgHLAcsBtgG2AcsBywG2AbYBywHLAbYBtgHLAcsBtgG2AcsBywG2AbYBywHLAbYBtgHLAcsBtgG2AcsBywG2AbYBywHLAbYBtgHLAcsBtgG2AcsBvgG2AasBvgGwAasBoAGwAaIBoAGVAaIBlQGVAYoBlQGHAYoBfwGHAXkBfwF0AXkBbAF0AWkBbAFeAWkBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BYwFeAV4BYwFpAV4BXgFpAW4BXgFeAW4BdAFeAV4BdAF5AV4BXgF5AX8BXgFeAX8BhAFeAV4BhAGKAV4BXgGKAYoBXgFeAYoBigFeAV4BigGKAV4BXgGKAYoBXgFeAYoBigFeAV4BigGKAV4BXgGKAYoBXgFeAYoBigFeAV4BigGKAV4BXgGKAYoBXgFeAYoBigFeAV4BigGKAV4BXgGKAYoBXgFeAYoBigFeAV4BigGKAV4BXgGKAYoBXgFeAYoBggFeAVMBggF5AVMBSAF5AXEBSAE9AXEBaQE9ATIBaQFhATIBJwFhAVkBJwEcAVkBUAEcAREBUAFIAREBBwFIAUgBBwEGAUgBSAEGAQYBSAFIAQYBBgFIAUgBBgEGAUgBSAEGAQYBSAFIAQYBBgFIAUgBBgEGAUgBSAEGAQYBtgG2AaABoAG2AbYBoAGgAbYBtgGgAaABtgG2AaABoAG2AbYBoAGgAbYBtgGgAaABtgG2AaABoAG2AbYBoAGgAbYBtgGgAaABtgG2AaABoAG2AbYBoAGgAbYBtgGgAaABtgG2AaABoAG2AbYBoAGgAbYBtgGgAaABtgG2AaABoAG2AbYBoAGgAbYBtgGgAaABtgG2AaABoAG2AbYBoAGgAbYBqwGgAZcBqwGgAZcBjwGgAZUBjwGHAZUBigGHAX8BigF/AX8BdwF/AXQBdwFuAXQBaQFuAWYBaQFeAWYBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAVkBXgFeAVkBUwFeAV4BUwFOAV4BXgFOAUgBXgFeAUgBQwFeAV4BQwE9AV4BXgE9ATgBXgFeATgBMgFeAV4BMgEyAV4BXgEyATIBXgFeATIBMgFeAV4BMgEyAV4BXgEyATIBXgFeATIBMgFeAV4BMgEyAV4BXgEyATIBXgFeATIBMgFeAV4BMgEyAV4BXgEyATIBXgFeATIBMgFeAV4BMgEyAV4BXgEyATIBXgFeATIBMgFeAV4BMgEyAV4BUwEyASUBUwFIASUBFwFIAT0BFwEJAT0BMgEJAfwAMgEnAfwA7gAnARwB7gDgABwBEQHgANMAEQEHAdMAxQAHAQYBxQDFAAYBBgHFAMUABgEGAcUAxQAGAQYBxQDFAAYBBgHFAMUABgEGAcUAxQAGAQYBxQDFAAYBBgHFAMUAoAGgAYoBigGgAaABigGKAaABoAGKAYoBoAGgAYoBigGgAaABigGKAaABoAGKAYoBoAGgAYoBigGgAaABigGKAaABoAGKAYoBoAGgAYoBigGgAaABigGKAaABoAGKAYoBoAGgAYoBigGgAaABigGKAaABoAGKAYoBoAGgAYoBigGgAaABigGKAaABoAGKAYoBoAGgAYoBigGgAaABigGKAaABlwGKAYQBlwGPAYQBfwGPAYcBfwF5AYcBfwF5AXQBfwF3AXQBbgF3AW4BbgFpAW4BZgFpAWMBZgFeAWMBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BWQFeAVMBWQFTAVMBSAFTAU4BSAE9AU4BSAE9ATIBSAFDATIBJwFDAT0BJwEcAT0BOAEcAREBOAEyAREBBwEyATIBBwEHATIBMgEHAQcBMgEyAQcBBwEyATIBBwEHATIBMgEHAQcBMgEyAQcBBwEyATIBBwEHATIBMgEHAQcBMgEyAQcBBwEyATIBBwEHATIBMgEHAQcBMgEyAQcBBwEyATIBBwEHATIBMgEHAQcBMgEyAQcBBwEyATIBBwEHATIBJQEHAfYAJQEXAfYA5gAXAQkB5gDVAAkB/ADVAMUA/ADuAMUAtADuAOAAtACkAOAA0wCkAJQA0wDFAJQAgwDFAMUAgwCDAMUAxQCDAIMAxQDFAIMAgwDFAMUAgwCDAMUAxQCDAIMAxQDFAIMAgwDFAMUAgwCDAMUAxQCDAIMAigGKAXQBdAGKAYoBdAF0AYoBigF0AXQBigGKAXQBdAGKAYoBdAF0AYoBigF0AXQBigGKAXQBdAGKAYoBdAF0AYoBigF0AXQBigGKAXQBdAGKAYoBdAF0AYoBigF0AXQBigGKAXQBdAGKAYoBdAF0AYoBigF0AXQBigGKAXQBdAGKAYoBdAF0AYoBigF0AXQBigGKAXQBdAGKAYoBdAF0AYoBhAF0AXEBhAF/AXEBbgF/AXkBbgFsAXkBdAFsAWkBdAFuAWkBZgFuAWkBZgFjAWkBYwFjAWEBYwFeAWEBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BUwFeAU4BUwFIAU4BPQFIAT0BPQEtAT0BMgEtARwBMgEnARwBDAEnARwBDAH8ABwBEQH8AOsAEQEHAesA2wAHAQcB2wDbAAcBBwHbANsABwEHAdsA2wAHAQcB2wDbAAcBBwHbANsABwEHAdsA2wAHAQcB2wDbAAcBBwHbANsABwEHAdsA2wAHAQcB2wDbAAcBBwHbANsABwEHAdsA2wAHAQcB2wDbAAcBBwHbANsABwEHAdsA2wAHAQcB2wDbAAcB9gDbAMgA9gDmAMgAtADmANUAtAChANUAxQChAI4AxQC0AI4AewC0AKQAewBoAKQAlABoAFUAlACDAFUAQgCDAIMAQgBCAIMAgwBCAEIAgwCDAEIAQgCDAIMAQgBCAIMAgwBCAEIAgwCDAEIAQgCDAIMAQgBCAIMAgwBCAEIAdAF0AV4BXgF0AXQBXgFeAXQBdAFeAV4BdAF0AV4BXgF0AXQBXgFeAXQBdAFeAV4BdAF0AV4BXgF0AXQBXgFeAXQBdAFeAV4BdAF0AV4BXgF0AXQBXgFeAXQBdAFeAV4BdAF0AV4BXgF0AXQBXgFeAXQBdAFeAV4BdAF0AV4BXgF0AXQBXgFeAXQBdAFeAV4BdAF0AV4BXgF0AXQBXgFeAXQBcQFeAV4BcQFuAV4BXgFuAWwBXgFeAWwBaQFeAV4BaQFmAV4BXgFmAWMBXgFeAWMBYQFeAV4BYQFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BTgFeAUgBTgE9AUgBMgE9AS0BMgEcAS0BHAEcAQcBHAEMAQcB8QAMAfwA8QDbAPwA6wDbAMUA6wDbAMUArwDbANsArwCvANsA2wCvAK8A2wDbAK8ArwDbANsArwCvANsA2wCvAK8A2wDbAK8ArwDbANsArwCvANsA2wCvAK8A2wDbAK8ArwDbANsArwCvANsA2wCvAK8A2wDbAK8ArwDbANsArwCvANsA2wCvAK8A2wDbAK8ArwDbANsArwCvANsAyACvAJkAyAC0AJkAgwC0AKEAgwBtAKEAjgBtAFcAjgB7AFcAQgB7AGgAQgAsAGgAVQAsABYAVQBCABYAAABCAEIAAAAAAEIAQgAAAAAAQgBCAAAAAABCAEIAAAAAAEIAQgAAAAAAQgBCAAAAAABCAEIAAAAAAEIAQgAAAAAAXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BSAFeAUgBSAEyAUgBMgEyARwBMgEcARwBBwEcAQcBBwHxAAcB8QDxANsA8QDbANsAxQDbAMUAxQCvAMUArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BSAFeAUgBSAEyAUgBMgEyARwBMgEcARwBBwEcAQcBBwHxAAcB8QDxANsA8QDbANsAxQDbAMUAxQCvAMUArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BSAFeAUgBSAEyAUgBMgEyARwBMgEcARwBBwEcAQcBBwHxAAcB8QDxANsA8QDbANsAxQDbAMUAxQCvAMUArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BSAFeAUgBSAEyAUgBMgEyARwBMgEcARwBBwEcAQcBBwHxAAcB8QDxANsA8QDbANsAxQDbAMUAxQCvAMUArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXgFeAUgBSAFeAV4BSAFIAV4BXgFIAUgBXgFeAUgBSAFeAV4BSAFIAV4BXgFIAUgBXgFeAUgBSAFeAV4BSAFIAV4BXgFIAUgBXgFeAUgBSAFeAV4BSAFIAV4BXgFIAUgBXgFeAUgBSAFeAV4BSAFIAV4BXgFIAUgBXgFeAUgBSAFeAV4BSAFIAV4BXgFIAUgBXgFeAUgBSAFeAV4BSAFIAV4BXgFIAUsBXgFeAUsBTgFeAV4BTgFQAV4BXgFQAVMBXgFeAVMBVgFeAV4BVgFZAV4BXgFZAVsBXgFeAVsBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BSAFeAUUBSAEyAUUBLQEyARwBLQEUARwBBwEUAfwABwHxAPwA4wDxANsA4wDKANsAxQDKALIAxQCvALIAmQCvAK8AmQCZAK8ArwCZAJkArwCvAJkAmQCvAK8AmQCZAK8ArwCZAJkArwCvAJkAmQCvAK8AmQCZAK8ArwCZAJkArwCvAJkAmQCvAK8AmQCZAK8ArwCZAJkArwCvAJkAmQCvAK8AmQCZAK8ArwCZAJkArwCvAJkAmQCvAK8AmQCZAK8AmQCZAIYAmQCDAIYAcwCDAG0AcwBgAG0AVwBgAE0AVwBCAE0AOQBCACwAOQAmACwAFgAmABMAFgAAABMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAFIATIBMgFIAUgBMgEyAUgBSAEyATIBSAFIATIBMgFIAUgBMgEyAUgBSAEyATIBSAFIATIBMgFIAUgBMgEyAUgBSAEyATIBSAFIATIBMgFIAUgBMgEyAUgBSAEyATIBSAFIATIBMgFIAUgBMgEyAUgBSAEyATIBSAFIATIBMgFIAUgBMgEyAUgBSAEyATIBSAFIATIBMgFIAUgBMgEyAUgBSwEyATgBSwFOATgBPQFOAVABPQFDAVABUwFDAUgBUwFWAUgBTgFWAVkBTgFTAVkBWwFTAVkBWwFeAVkBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BRQFeAUMBRQEtAUMBJwEtARQBJwEMARQB/AAMAfEA/ADjAPEA1QDjAMoA1QC6AMoAsgC6AJ8AsgCZAJ8AgwCZAJkAgwCDAJkAmQCDAIMAmQCZAIMAgwCZAJkAgwCDAJkAmQCDAIMAmQCZAIMAgwCZAJkAgwCDAJkAmQCDAIMAmQCZAIMAgwCZAJkAgwCDAJkAmQCDAIMAmQCZAIMAgwCZAJkAgwCDAJkAmQCDAIMAmQCZAIMAgwCZAJkAgwCDAJkAhgCDAHMAhgBzAHMAYgBzAGAAYgBSAGAATQBSAEIATQA5AEIAMQA5ACYAMQAhACYAEwAhABAAEwAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMgEyARwBHAEyATIBHAEcATIBMgEcARwBMgEyARwBHAEyATIBHAEcATIBMgEcARwBMgEyARwBHAEyATIBHAEcATIBMgEcARwBMgEyARwBHAEyATIBHAEcATIBMgEcARwBMgEyARwBHAEyATIBHAEcATIBMgEcARwBMgEyARwBHAEyATIBHAEcATIBMgEcARwBMgEyARwBHAEyATIBHAEcATIBOAEcASUBOAE9ASUBLQE9AUMBLQE1AUMBSAE1AT0BSAFOAT0BRQFOAVMBRQFOAVMBWQFOAVYBWQFeAVYBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BQwFeAUABQwEnAUABIgEnAQwBIgEEAQwB8QAEAeYA8QDVAOYAyADVALoAyACqALoAnwCqAIsAnwCDAIsAbQCDAIMAbQBtAIMAgwBtAG0AgwCDAG0AbQCDAIMAbQBtAIMAgwBtAG0AgwCDAG0AbQCDAIMAbQBtAIMAgwBtAG0AgwCDAG0AbQCDAIMAbQBtAIMAgwBtAG0AgwCDAG0AbQCDAIMAbQBtAIMAgwBtAG0AgwCDAG0AbQCDAIMAbQBtAIMAcwBtAGAAcwBiAGAAUgBiAFIAUgBEAFIAQgBEADcAQgAxADcAKQAxACEAKQAbACEAEAAbAA4AEAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAEcAQcBBwEcARwBBwEHARwBHAEHAQcBHAEcAQcBBwEcARwBBwEHARwBHAEHAQcBHAEcAQcBBwEcARwBBwEHARwBHAEHAQcBHAEcAQcBBwEcARwBBwEHARwBHAEHAQcBHAEcAQcBBwEcARwBBwEHARwBHAEHAQcBHAEcAQcBBwEcARwBBwEHARwBHAEHAQcBHAEcAQcBBwEcARwBBwEHARwBJQEHAREBJQEtAREBHAEtATUBHAEnATUBPQEnATIBPQFFATIBPQFFAU4BPQFIAU4BVgFIAVMBVgFeAVMBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BQAFeAT0BQAEiAT0BHAEiAQQBHAH8AAQB5gD8ANsA5gDIANsAugDIAKoAugCZAKoAiwCZAHgAiwBtAHgAVwBtAG0AVwBXAG0AbQBXAFcAbQBtAFcAVwBtAG0AVwBXAG0AbQBXAFcAbQBtAFcAVwBtAG0AVwBXAG0AbQBXAFcAbQBtAFcAVwBtAG0AVwBXAG0AbQBXAFcAbQBtAFcAVwBtAG0AVwBXAG0AbQBXAFcAbQBtAFcAVwBtAG0AVwBXAG0AYABXAE0AYABSAE0AQgBSAEQAQgA3AEQANwA3ACwANwApACwAIQApABsAIQAWABsADgAWAAsADgAAAAsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwEHAfEA8QAHAQcB8QDxAAcBBwHxAPEABwEHAfEA8QAHAQcB8QDxAAcBBwHxAPEABwEHAfEA8QAHAQcB8QDxAAcBBwHxAPEABwEHAfEA8QAHAQcB8QDxAAcBBwHxAPEABwEHAfEA8QAHAQcB8QDxAAcBBwHxAPEABwEHAfEA8QAHAQcB8QDxAAcBBwHxAPEABwEHAfEA8QAHAQcB8QDxAAcBEQHxAP4AEQEcAf4ADAEcAScBDAEaAScBMgEaAScBMgE9AScBNQE9AUgBNQFDAUgBUwFDAVABUwFeAVABXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BPQFeAToBPQEcAToBFwEcAfwAFwHzAPwA2wDzANAA2wC6ANAArAC6AJkArACJAJkAeACJAGUAeABXAGUAQgBXAFcAQgBCAFcAVwBCAEIAVwBXAEIAQgBXAFcAQgBCAFcAVwBCAEIAVwBXAEIAQgBXAFcAQgBCAFcAVwBCAEIAVwBXAEIAQgBXAFcAQgBCAFcAVwBCAEIAVwBXAEIAQgBXAFcAQgBCAFcAVwBCAEIAVwBXAEIAQgBXAFcAQgBCAFcATQBCADkATQBCADkAMQBCADcAMQApADcALAApACEALAAhACEAGQAhABYAGQAQABYACwAQAAgACwAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8QDxANsA2wDxAPEA2wDbAPEA8QDbANsA8QDxANsA2wDxAPEA2wDbAPEA8QDbANsA8QDxANsA2wDxAPEA2wDbAPEA8QDbANsA8QDxANsA2wDxAPEA2wDbAPEA8QDbANsA8QDxANsA2wDxAPEA2wDbAPEA8QDbANsA8QDxANsA2wDxAPEA2wDbAPEA8QDbANsA8QDxANsA2wDxAPEA2wDbAPEA/gDbAOsA/gAMAesA/AAMARoB/AAMARoBJwEMARwBJwE1ARwBLQE1AUMBLQE9AUMBUAE9AU4BUAFeAU4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BOgFeATgBOgEXATgBEQEXAfMAEQHrAPMA0ADrAMUA0ACsAMUAnwCsAIkAnwB4AIkAZQB4AFIAZQBCAFIALABCAEIALAAsAEIAQgAsACwAQgBCACwALABCAEIALAAsAEIAQgAsACwAQgBCACwALABCAEIALAAsAEIAQgAsACwAQgBCACwALABCAEIALAAsAEIAQgAsACwAQgBCACwALABCAEIALAAsAEIAQgAsACwAQgBCACwALABCAEIALAAsAEIAOQAsACYAOQAxACYAIQAxACkAIQAbACkAIQAbABYAIQAZABYAEAAZABAAEAALABAACAALAAUACAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2wDbAMUAxQDbANsAxQDFANsA2wDFAMUA2wDbAMUAxQDbANsAxQDFANsA2wDFAMUA2wDbAMUAxQDbANsAxQDFANsA2wDFAMUA2wDbAMUAxQDbANsAxQDFANsA2wDFAMUA2wDbAMUAxQDbANsAxQDFANsA2wDFAMUA2wDbAMUAxQDbANsAxQDFANsA2wDFAMUA2wDbAMUAxQDbANsAxQDFANsA6wDFANgA6wD8ANgA6wD8AAwB6wD+AAwBHAH+ABEBHAEtAREBJQEtAT0BJQE4AT0BTgE4AUsBTgFeAUsBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BOAFeATUBOAERATUBDAERAesADAHjAOsAxQDjALoAxQCfALoAkQCfAHgAkQBoAHgAUgBoAD8AUgAsAD8AFgAsACwAFgAWACwALAAWABYALAAsABYAFgAsACwAFgAWACwALAAWABYALAAsABYAFgAsACwAFgAWACwALAAWABYALAAsABYAFgAsACwAFgAWACwALAAWABYALAAsABYAFgAsACwAFgAWACwALAAWABYALAAsABYAFgAsACwAFgAWACwAJgAWABMAJgAhABMAEAAhABsAEAAOABsAFgAOAAsAFgAQAAsACAAQAAsACAAFAAsABQAFAAMABQAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAxQDFAK8ArwDFAMUArwCvAMUAxQCvAK8AxQDFAK8ArwDFAMUArwCvAMUAxQCvAK8AxQDFAK8ArwDFAMUArwCvAMUAxQCvAK8AxQDFAK8ArwDFAMUArwCvAMUAxQCvAK8AxQDFAK8ArwDFAMUArwCvAMUAxQCvAK8AxQDFAK8ArwDFAMUArwCvAMUAxQCvAK8AxQDFAK8ArwDFAMUArwCvAMUA2ACvAMUA2ADrAMUA2wDrAP4A2wDxAP4AEQHxAAcBEQElAQcBHAElATgBHAEyATgBSwEyAUgBSwFeAUgBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BNQFeATIBNQEMATIBBgEMAeMABgHbAOMAugDbAK8AugCRAK8AgwCRAGgAgwBYAGgAPwBYACwAPwAWACwAAAAWABYAAAAAABYAFgAAAAAAFgAWAAAAAAAWABYAAAAAABYAFgAAAAAAFgAWAAAAAAAWABYAAAAAABYAFgAAAAAAFgAWAAAAAAAWABYAAAAAABYAFgAAAAAAFgAWAAAAAAAWABYAAAAAABYAFgAAAAAAFgAWAAAAAAAWABYAAAAAABYAEwAAAAAAEwAQAAAAAAAQAA4AAAAAAA4ACwAAAAAACwAIAAAAAAAIAAUAAAAAAAUAAwAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AxQCvAMUAxQDbAMUA2wDbAPEA2wDxAPEABwHxAAcBBwEcAQcBHAEcATIBHAEyATIBSAEyAUgBSAFeAUgBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BMgFeATIBMgEGATIBBgEGAdsABgHbANsArwDbAK8ArwCDAK8AgwCDAFgAgwBYAFgALABYACwALAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AxQCvAMUAxQDbAMUA2wDbAPEA2wDxAPEABwHxAAcBBwEcAQcBHAEcATIBHAEyATIBSAEyAUgBSAFeAUgBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BMgFeATIBMgEGATIBBgEGAdsABgHbANsArwDbAK8ArwCDAK8AgwCDAFgAgwBYAFgALABYACwALAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AxQCvAMUAxQDbAMUA2wDbAPEA2wDxAPEABwHxAAcBBwEcAQcBHAEcATIBHAEyATIBSAEyAUgBSAFeAUgBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BMgFeATIBMgEGATIBBgEGAdsABgHbANsArwDbAK8ArwCDAK8AgwCDAFgAgwBYAFgALABYACwALAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AxQCvAMUAxQDbAMUA2wDbAPEA2wDxAPEABwHxAAYBBwEcAQYBHAEcATIBHAEyATIBSAEyAUgBSAFeAUgBXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BXgFeAV4BMgFeATIBMgEGATIBBgEGAdsABgHbANsArwDbAK8ArwCDAK8AgwCDAFgAgwBYAFgALABYACwALAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAKwArwCvAKwAqgCvAK8AqgCnAK8ArwCnAKQArwCvAKQAoQCvAK8AoQCfAK8ArwCfAJwArwCvAJwAmQCvAK8AmQCZAK8ArwCZAJkArwCvAJkAmQCvAK8AmQCZAK8AxQCZAK8AxQDbAK8AxQDbAPEAxQDbAPEABgHbAPEABgEcAfEABwEcATIBBwEcATIBSAEcATIBSAFeATIBSAFeAV4BSAFIAV4BXgFIAUgBXgFeAUgBSAFeAV4BSAFIAV4BMgFIAR8BMgEGAR8B9gAGAdsA9gDNANsArwDNAKQArwCDAKQAewCDAFgAewBSAFgALABSACkALAAAACkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArACvAKoArACqAKoApACqAKcApACfAKcApACfAJkApAChAJkAlAChAJ8AlACOAJ8AnACOAIkAnACZAIkAgwCZAJkAgwCDAJkAmQCDAIMAmQCZAIMAgwCZAJkAgwCDAJkArwCDAJkArwDFAJkArwDFANsArwDFANsA8QDFANsA8QAHAdsA8QAHARwB8QAHARwBMgEHARwBMgFIARwBMgFIAUgBMgEyAUgBSAEyATIBSAFIATIBMgFIAUgBMgEyAUgBHwEyAQwBHwH2AAwB5gD2AM0A5gC/AM0ApAC/AJkApAB7AJkAcwB7AFIAcwBNAFIAKQBNACYAKQAAACYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AqgCvAKcAqgCkAKcAnwCkAJ8AnwCWAJ8AmQCWAI4AmQCUAI4AhgCUAI4AhgB+AI4AiQB+AHYAiQCDAHYAbQCDAIMAbQBtAIMAgwBtAG0AgwCDAG0AbQCDAIMAbQBtAIMAmQBtAIMAmQCvAIMAmQCvAMUAmQCvAMUA2wCvAMUA2wDxAMUA2wDxAAcB2wDxAAcBHAHxAAYBHAEyAQYBHAEyATIBHAEcATIBMgEcARwBMgEyARwBHAEyATIBHAEcATIBDAEcAfkADAHmAPkA1QDmAL8A1QCyAL8AmQCyAI4AmQBzAI4AawBzAE0AawBHAE0AJgBHACQAJgAAACQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ApwCvAKQApwCfAKQAmQCfAJYAmQCOAJYAjgCOAIMAjgCGAIMAeACGAH4AeABtAH4AdgBtAGIAdgBtAGIAVwBtAG0AVwBXAG0AbQBXAFcAbQBtAFcAVwBtAG0AVwBYAG0AgwBYAG0AgwCZAG0AgwCZAK8AgwCZAK8AxQCZAK8AxQDbAK8AxQDbAPEAxQDbAPEABgHbAPEABgEcAfEABwEcARwBBwEHARwBHAEHAQcBHAEcAQcBBwEcARwBBwEHARwB+QAHAeYA+QDVAOYAxQDVALIAxQCkALIAjgCkAIMAjgBrAIMAYgBrAEcAYgBCAEcAJABCACEAJAAAACEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ApACvAKEApACZAKEAlACZAI4AlACGAI4AgwCGAHgAgwB4AHgAawB4AG0AawBdAG0AYgBdAE8AYgBXAE8AQgBXAFcAQgBCAFcAVwBCAEIAVwBXAEIAQgBXAFgAQgBCAFgAbQBCAFgAbQCDAFgAbQCDAJkAbQCDAJkArwCDAJkArwDFAJkArwDFANsArwDFANsA8QDFANsA8QAHAdsA8QAHAQcB8QDxAAcBBwHxAPEABwEHAfEA8QAHAQcB8QDxAAcB5gDxANMA5gDFANMAtADFAKQAtACWAKQAgwCWAHgAgwBiAHgAWgBiAEIAWgA8AEIAIQA8AB4AIQAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AoQCvAJ8AoQCUAJ8AjgCUAIYAjgB+AIYAeAB+AG0AeABrAG0AXQBrAF0AXQBNAF0ATwBNADwATwBCADwALABCAEIALAAsAEIAQgAsACwAQgBCACwALABCAEIALAAsAEIAWAAsAEIAWABtAEIAVwBtAIMAVwBtAIMAmQBtAIMAmQCvAIMAmQCvAMUAmQCvAMUA2wCvAMUA2wDxAMUA2wDxAPEA2wDbAPEA8QDbANsA8QDxANsA2wDxAPEA2wDbAPEA0wDbAL8A0wC0AL8ApAC0AJYApACJAJYAeACJAG0AeABaAG0AUgBaADwAUgA3ADwAHgA3ABsAHgAAABsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AnwCvAJwAnwCOAJwAiQCOAH4AiQB2AH4AbQB2AGIAbQBdAGIATwBdAE0ATwA8AE0APAA8ACkAPAAsACkAFgAsACwAFgAWACwALAAWABYALAAsABYAFgAsACwAFgAWACwAQgAWACwAQgBXACwAQgBXAG0AQgBYAG0AgwBYAG0AgwCZAG0AgwCZAK8AgwCZAK8AxQCZAK8AxQDbAK8AxQDbANsAxQDFANsA2wDFAMUA2wDbAMUAxQDbANsAxQDFANsAvwDFAKwAvwCkAKwAlACkAIkAlAB7AIkAbQB7AGIAbQBSAGIASgBSADcASgAxADcAGwAxABkAGwAAABkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AnACvAJkAnACJAJkAgwCJAHYAgwBtAHYAYgBtAFgAYgBPAFgAQgBPADwAQgAsADwAKQAsABYAKQAWABYAAAAWABYAAAAAABYAFgAAAAAAFgAWAAAAAAAWABYAAAAAABYALAAAABYALABCABYALABCAFgALABCAFgAbQBCAFgAbQCDAFgAbQCDAJkAbQCDAJkArwCDAJkArwDFAJkArwDFAMUArwCvAMUAxQCvAK8AxQDFAK8ArwDFAMUArwCvAMUArACvAJkArACUAJkAgwCUAHsAgwBtAHsAYgBtAFgAYgBKAFgAQgBKADEAQgAsADEAGQAsABYAGQAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AWABtAFcAWABCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAABYAFgAsABYALAAsAEIALABCAEIAWABCAFgAWABtAFgAbQBtAIMAbQCDAIMAmQCDAJkAmQCvAJkArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AWABtAFcAWABCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAABYAFgAsABYALAAsAEIALABCAEIAWABCAFgAWABtAFgAbQBtAIMAbQCDAIMAmQCDAJkAmQCvAJkArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAABYAFgAsABYALAAsAEIALABCAEIAWABCAFgAWABtAFgAbQBtAIMAbQCDAIMAmQCDAJkAmQCvAJkArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAABYAFgAsABYALAAsAEIALABCAEIAWABCAFgAWABtAFgAbQBtAIMAbQCDAIMAmQCDAJkAmQCvAJkArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAABYAFgAsABYALAAsAEIALABCAEIAWABCAFgAWABtAFgAbQBtAIMAbQCDAIMAmQCDAJkAmQCvAJkArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAABYAFgAsABYALAAsAEIALABCAEIAWABCAFgAWABtAFgAbQBtAIMAbQCDAIMAmQCDAJkAmQCvAJkArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAABYAFgAsABYALAAsAEIALABCAEIAWABCAFgAWABtAFgAbQBtAIMAbQCDAIMAmQCDAJkAmQCvAJkArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAABYAFgAsABYALAAsAEIALABCAEIAWABCAFgAWABtAFgAbQBtAIMAbQCDAIMAmQCDAJkAmQCvAJkArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8ArwCvAK8AmQCvAJkAmQCDAJkAgwCDAG0AgwBtAG0AVwBtAFcAVwBCAFcAQgBCACwAQgAsACwAFgAsABYAFgAAABYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' } },
-                paint: { pal: ['ice','rocks_5','dirt_2','grass_dark_fantasy'], t: 'u8', res: 3.5, x0: -124.25, z0: -124.25, nx: 72, nz: 72, d: 'AQEBAQEBAQQBAQEBBAQEAgICBAQCAwIEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAQEBBAEBAQQBBAEEBAQCAgICAgIDAgQEBAQEBAQEBAAAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQAAAAEBAQEBAQEBAQEBAQEBAEBAQEBAQEBAQEBBAICAgICAgICAgQEBAQEBAQEAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAAABAAAAAQEBAQEBAQEAQEBAQEBAQEBAQMDAgICAgICAgICBAQEBAQEBAQEAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQEAAAAAAAAAAAAAAAEBAQEBAQEAQEBAQEBAQEBAQQEAgIEAgIEAgIEAwICBAQEBAMDAwMDAwMDAwMDAwMEBAQEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAwMDAwMDAQEBAQEBAQEBAQEBAgQCAgQCAgQCAgQCBAQEBAMEBAAAAAQEBAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAwMDAwMDAQEBAQEBAQEBAQEEBAQEBAQEBAQEBAQEBAQEBAMEBAQAAAQEBAQEAwQEBAQEBAQEBAQEBAMDAwMDAAAAAAAAAAAABAQEBAQEAQEBAQEBAQEBAQEBAgQEBAQEBAMDAwMDAwMDAwMEBAQAAAQEBAQEAwQEBAQEBAQDAwMDAwMEAAAAAAAAAAAAAAAEBAQEBAQEAQEBAQEBAQEBAQEBAgQEBAQEAwQEBAQDBAQEAwQEBAQAAAQEBAQEAwQEBAQEBAQEBAQEBAMDAwMAAAAABAAAAAQEBAQEBAQEAQEBAQEBAQEBAQEEAgQCAgQCAwQEBAQCBAQEAwQEBAQAAAQEBAQEAwQEBAQEBAQEBAQEBAQEBAMAAAAEBAQEAwMEBAQEBAQEAQEBAQEBAQEBAQEBBAIDBAICAwQEAgMCBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEAwQEBAQEBAQEBAEBAQEBAQEEAQEBBAIEBAQEAwQCAgQCBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMEBAQEBAQEBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDBAQEBAQEBAQEBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDBAQEBAQEBAQEAwMDAwMDAwMEBAQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDAwQEBAQEBAQEBAQEBAQEBAQEBAQDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDAwQEBAQEBAQEBAQEBAQEBAQEBAQDAwMDAwMEBAQEBAQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMEBAQAAAQEBAQDAwQEBAQEBAQDAwMEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMEBAQAAAQEBAQDAwMEBAQEBAMDAwMDBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDAwMEBAQEAwMDAwMDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAAABAQEBAQDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAAABAQEBAQDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAAABAQEBAQDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwQEBAQAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwQEBAQAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwMDAwQEBAQEBAQEAwQEBAQAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMEAAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMEAAAEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDBAQEAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBAQEAwMDAwMDAwMEBAQEBAQEBAQDAwMDAwQEBAQEAwMDBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDAwMEBAQAAAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDAwMEBAQEAAAEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDBAQEBAQEAAAEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAABAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAAABAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDBAQEAwMDAwMDAwMDBAQEBAQEBAQEBAQAAAAEBAMEBAQEBAQEBAQDAwMDAwMDAwMDAwMDAwMDAwMDBAQEAwMDAwMDAwMDAwMEBAQEBAMDAwMDAwMDBAQEBAQEBAQEBAQEBAAAAAMEBAQEBAQEBAQDAwMDAwMDAwMDAwMDAwMDAwMDBAQEAwMDAwQDAwMDBAQEBAQEBAQDAwMDAwMDBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQEBAQEBAQEAwMDAwQDAwMDBAQEBAQEBAQEBAQEBAMDBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEBAMDAwQEBAQEBAQEAwQEBAQDAwMDBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEBAMDAwQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDBAQEAwMDAwMDAwMDAwMEBAQEBAMDAwQEBAMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEAwMDBAMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDBAMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDBAMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEBAICAgIEBAQEBAQEBAQDAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEAgMDAwQCBAQEBAQEBAQDAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAMDBAQEBAQEBAQEBAQEAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQDBAQEBAQDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEAwMDAwMDAwMDBAQDBAQDAwMDBAQEAwMDAwMEBAQEBAQDAwQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEAwMDAwMDAwMDAwQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAMEBAQEBAQEBAMEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAMEBAQEBAQEBAMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMDAwQEBAQEBAQEAwQDAwMDBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMDAwQEBAQEBAQEAwQDAwMDBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMDAwQEBAQEBAQEAwQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMDAwQEBAQEBAQEAwQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEAwQEAwMDAwQEBAQEBAMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDBAQEBAQEBAQEBAQEAwQEAwMDAwQEBAQEBAMDBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAMDAwQEBAQEBAMDBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMEBAMDAwQEBAQEBAMDAwMEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQDAwQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQDAwQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDAwQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE' },
+                paint: { pal: ['ice','rocks_5','dirt_2','grass_dark_fantasy'], t: 'u8', res: 3.5, x0: -124.25, z0: -124.25, nx: 72, nz: 72, d: 'AQEBAQEBAQQBAQEBBAQEAgICBAQCAwIEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDAwQEBAQEBAQEBAQEBAQEAQEBBAEBAQQBBAEEBAQCAgICAgIDAgQEBAQEBAQEBAAAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQAAAAEBAQEBAQEBAQEBAQEBAEBAQEBAQEBAQEBBAICAgICAgICAgQEBAQEBAQEAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAAABAAAAAQEBAQEBAQEAQEBAQEBAQEBAQMDAgICAgICAgICBAQEBAQEBAQEAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQEAAAAAAAAAAAAAAAEBAQEBAQEAQEBAQEBAQEBAQQEAgIEAgIEAgIEAwICBAQEBAMDAwMDAwMDAwMDAwMEBAQEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAwMDAwMDAQEBAQEBAQEBAQEBAgQCAgQCAgQCAgQCBAQEBAMEBAAAAAQEBAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAwMDAwMDAQEBAQEBAQEBAQEEBAQEBAQEBAQEBAQEBAQEBAMEBAQAAAQEBAQEAwQEBAQEBAQEBAQEBAMDAwMDAAAAAAAAAAAABAQEBAQEAQEBAQEBAQEBAQEBAgQEBAQEBAMDAwMDAwMDAwMEBAQAAAQEBAQEAwQEBAQEBAQDAwMDAwMEAAAAAAAAAAAAAAAEBAQEBAQEAQEBAQEBAQEBAQEBAgQEBAQEAwQEBAQDBAQEAwQEBAQAAAQEBAQEAwQEBAQEBAQEBAQEBAMDAwMAAAAABAAAAAQEBAQEBAQEAQEBAQEBAQEBAQEEAgQCAgQCAwQEBAQCBAQEAwQEBAQAAAQEBAQEAwQEBAQEBAQEBAQEBAQEBAMAAAAEBAQEAwMEBAQEBAQEAQEBAQEBAQEBAQEBBAIDBAICAwQEAgMCBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEAwQEBAQEBAQEBAEBAQEBAQEEAQEBBAIEBAQEAwQCAgQCBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMEBAQEBAQEBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDBAQEBAQEBAQEBAQEAwQEBAQEAAAEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDBAQEBAQEBAQEAwMDAwMDAwMEBAQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDAwQEBAQEBAQEBAQEBAQEBAQEBAQDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDAwQEBAQEBAQEBAQEBAQEBAQEBAQDAwMDAwMEBAQEBAQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMEBAQAAAQEBAQDAwQEBAQEBAQDAwMEBAQEBAQEBAQEBAQEAwQEBAQEBAQDBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMEBAQAAAQEBAQDAwMEBAQEBAMDAwMDBAQEBAQEBAQEBAQEAwQEBAQEBAQDBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDAwMEBAQEAwMDAwMDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAAABAQEBAQDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAAABAQEBAQDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAAABAQEBAQDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwQEBAQAAAQEBAQDBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwQEBAQAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEAwQEBAQAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDBAQEBAQEBAQEAwMDAwQEBAQEBAQEAwQEBAQAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMEAAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMEAAAEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDBAQEAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBAQEAwMDAwMDAwMEBAQEBAQEBAQDAwMDAwQEBAQEAwMDBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDAwMEBAQAAAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDAwMEBAQEAAAEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDBAQEBAQEAAAEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAABAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQEBAAABAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDBAQEAwMDAwMDAwMDBAQEBAQEBAQEBAQAAAAEBAMEBAQEBAQEBAQDAwMDAwMDAwMDAwMDAwMDAwMDBAQEAwMDAwMDAwMDAwMEBAQEBAMDAwMDAwMDBAQEBAQEBAQEBAQEBAAAAAMEBAQEBAQEBAQDAwMDAwMDAwMDAwMDAwMDAwMDBAQEAwMDAwQDAwMDBAQEBAQEBAQDAwMDAwMDBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQEBAQEBAQEAwMDAwQDAwMDBAQEBAQEBAQEBAQEBAMDBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEBAMDAwQEBAQEBAQEAwQEBAQDAwMDBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEBAMDAwQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDBAQEAwMDAwMDAwMDAwMEBAQEBAMDAwQEBAMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEAwMDBAMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDBAMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDBAMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEBAMDAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEBAICAgIEBAQEBAQEBAQDAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDAwQEBAQEBAQEAgMDAwQCBAQEBAQEBAQDAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMDBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQEBAQEBAQDAwMEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAMDBAQEBAQEBAQEBAQEAwMEBAQEBAQEBAQDBAQEBAQEBAQEAwQEBAQDBAQEBAQDAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEAwMDAwMDAwMDBAQDBAQDAwMDBAQEAwMDAwMEBAQEBAQDAwQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEAwMDAwMDAwMDAwQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAMEBAQEBAQEBAMEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAMEBAQEBAQEBAMDBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMDAwQEBAQEBAQEAwQDAwMDBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMDAwQEBAQEBAQEAwQDAwMDBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMDAwQEBAQEBAQEAwQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMDAwQEBAQEBAQEAwQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAMEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEAwQEAwMDAwQEBAQEBAMDAwMDAwMDAwMDAwMDAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDBAQEBAQEBAQEBAQEAwQEAwMDAwQEBAQEBAMDBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMEBAQEBAQEBAQEBAQEBAQEBAQEAwQEBAMDAwQEBAQEBAMDBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMEBAMDAwQEBAQEBAMDAwMEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAQEBAQEAwQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAwMDAwMDAwMDAwMDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQDAwQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAMDAwMDAwMDBAQEBAQEBAQEBAQEBAQEBAQDAwQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQDAwQEBAQEAwMEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE' },
                 gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: 2400, treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'], zones: [{x0:-126,z0:-126,x1:0,z1:-84,kinds:['tree_56','tree_55','tree_56','tree_5'],treeH:[6,9]},{x0:-126,z0:-126,x1:0,z1:0,kinds:['tree_52','tree_52','tree_55','tree_52','tree_53'],treeH:[8.5,13]},{x0:0,z0:-126,x1:126,z1:0,kinds:['tree_55','tree_55','tree_56','tree_6','tree_55'],treeH:[6.5,9.5]},{x0:-126,z0:0,x1:0,z1:126,kinds:['tree_53','tree_54','tree_53','tree_52','tree_54'],treeH:[5.5,8.5]},{x0:0,z0:0,x1:126,z1:126,kinds:['tree_5','tree_6','tree_5','tree_6','tree_55'],treeH:[6,8.5]}] },
                 features: [
                     {k:'space',x:-113.75,z:-124.25,w:24.5,d:3.5},
                     {k:'space',x:-91,z:-124.25,w:14,d:3.5},
                     {k:'space',x:-68.25,z:-110.25,w:10.5,d:31.5},
                     {k:'space',x:-50.75,z:-124.25,w:10.5,d:3.5},
+                    {k:'space',x:73.5,z:-108.5,w:7,d:35},
                     {k:'space',x:-120.75,z:-120.75,w:10.5,d:3.5},
                     {k:'space',x:-106.75,z:-103.25,w:10.5,d:38.5},
                     {k:'space',x:-96.25,z:-105,w:3.5,d:35},
@@ -42326,7 +42107,7 @@ const DOOR_HQ = {
                     {k:'space',x:-75.25,z:-110.25,w:3.5,d:24.5},
                     {k:'space',x:-56,z:-119,w:14,d:7},
                     {k:'space',x:-12.25,z:-113.75,w:10.5,d:17.5},
-                    {k:'space',x:75.25,z:-106.75,w:10.5,d:31.5},
+                    {k:'space',x:78.75,z:-106.75,w:3.5,d:31.5},
                     {k:'space',x:-117.25,z:-101.5,w:10.5,d:35},
                     {k:'space',x:-99.75,z:-101.5,w:3.5,d:35},
                     {k:'space',x:-92.75,z:-101.5,w:3.5,d:35},
@@ -42411,9 +42192,10 @@ const DOOR_HQ = {
                     {k:'space',x:-43.75,z:-57.75,w:3.5,d:10.5},
                     {k:'space',x:47.25,z:-57.75,w:3.5,d:10.5},
                     {k:'space',x:77,z:-61.25,w:7,d:3.5},
-                    {k:'space',x:120.75,z:-57.75,w:3.5,d:10.5},
+                    {k:'space',x:122.5,z:-59.5,w:7,d:7},
                     {k:'space',x:-38.5,z:-57.75,w:7,d:3.5},
                     {k:'space',x:75.25,z:-57.75,w:3.5,d:3.5},
+                    {k:'space',x:120.75,z:-54.25,w:3.5,d:3.5},
                     {k:'space',x:-14,z:-47.25,w:7,d:10.5},
                     {k:'space',x:99.75,z:-29.75,w:3.5,d:38.5},
                     {k:'space',x:110.25,z:-43.75,w:10.5,d:10.5},
@@ -42796,8 +42578,7 @@ const DOOR_HQ = {
                 {id:'forest',wall:'s',x:-38.5,way:'trail',label:'THE FAIRY FOREST',sub:'THE HOLLOW TREE · BACK · ROOM 420',action:{room:'site_prebuilt_fairy_forest',at:'woods'},desc:'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.'},
                 {id:'estate',wall:'s',x:-63,way:'trail',label:'THE ESTATE · THE CORN FIELDS',sub:'THE FENCE LINE · THE GATE',action:{room:'site_prebuilt_skinwalker_estate',at:'woods'},desc:'A fence, and a gate in it. The corn starts on the other side.'},
                 {id:'shasta',wall:'n',x:-122.5,way:'trail',label:'MOUNT SHASTA · THE TRAILHEAD',sub:'THE SNOWLINE · THE TRAIL UP',action:{room:'site_prebuilt_shasta_mountains',at:'woods'},desc:'The trail keeps climbing after the trees give up. There is snow on it from here.'},
-                {id:'lemuria',wall:'n',x:-70,way:'trail',label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
-                {id:'lodge',wall:'e',z:-108.5,way:'trail',label:'THE LODGE · THE HALLS',sub:'THE MEMBERS’ TUNNEL · UNDER THE LAWN',action:{room:'site_prebuilt_lodge_halls',at:'link_grove_lodge'},desc:'A tunnel under the lake shore that nobody admits to.'},
+                {id:'lemuria',wall:'n',x:-70,way:'trail',label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_hollow_earth_cavern',at:'woods'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
                 {id:'lookingglass',wall:'e',z:-17.5,way:'trail',label:'THE LOOKING-GLASS · THE GARDEN',sub:'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE',action:{room:'site_prebuilt_camelot_kingdom',at:'deadtree'},desc:'Past the dead tree the ground is the wrong colour.'},
             ],
             counters: [],
@@ -43097,376 +42878,10 @@ const DOOR_HQ = {
             spawn: { x: -17.5, z: 71.75, face: 180 },
         },
         /* WOODS36-END */
-        /* ── THE CLEARING — the crossroads of the woods: the old tree, the knoll, the stream and its plank, seven ways out ── */
-        site_prebuilt_fairy_forest_clearing: {
-            label: 'THE WOODS · THE CLEARING',
-            sub: 'THE CROSSROADS · SEVEN PATHS · THE OLD TREE',
-            kind: 'box', site: 'prebuilt_fairy_forest', part: 'clearing',
-            shell: hqWoodsShell({ w: 49, d: 38.5, plate: { x: 0, z: -18.6, y: 4.2 }, forest: { depth: 10.5, spacing: 2.5, rows: 2.3, start: 1.4, canopy: { to: 54 } } }),   // THE CANOPY (2026-10-01): the woods run on to the fog — what the stair's top looks out over
-            /* THE FIELD (2026-09-17, the terrain rooms — 49 × 38.5 m): the path in
-               from the forest is the hollow tree on the south wall; THE KNOLL in the
-               north-west (a walkable rise, the trail's door under it); THE STREAM out
-               of the north-east, down through the middle and off into the trees at
-               the south-west, the plank footbridge over it; THE OLD TREE (three
-               redwoods) at the centre with the names carved in it; THE CRAG under the
-               staircase's lane — a 3.6 m rock the walker cannot climb, the garden's
-               tape on top of it (the door gun's); a bank along the south-west, a
-               hollow east of the tree, a low fence rail by the crag. */
-            terrain: {
-                floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',
-                noise: { amp: 0.2, scale: 6 },
-                gen: { kind: 'rooms', seed: 22, loops: 3, open: [{ x: 0, z: 10, r: 10.5 }] },                          // THE FLOOR PLAN (2026-09-17): clearings joined by winding paths through the thicket (seed 11 → 22 on 2026-10-01: the stair's door left the plan, and seed 22 keeps the clearing's 8×8 arena; 2026-10-06: the open disc round the crossroads is the 12×12 arena's floor)
-                features: [
-                    { k: 'hill', x: -13, z: -9, r: 8, h: 2.4 },                                              // THE KNOLL
-                    { k: 'hill', x: 12, z: 12, r: 6, h: 1.0 },
-                    { k: 'ridge', pts: [[-24, 3.5], [-15, 13], [-6, 17.5]], w: 5.5, h: 1.3 },                 // the bank along the south-west
-                    { k: 'plateau', x: 14.875, z: -13.125, w: 6.15, d: 6.15, h: 3.6, edge: 0.3 },        // THE CRAG (the tape's)
-                    { k: 'stream', pts: [[24.5, -13], [21, -8], [19, -3], [18, 4], [14, 10], [8, 14], [-2, 16], [-9, 19.25]], w: 2.6, y: -0.25, depth: 0.55 },   // THE STREAM
-                    { k: 'stream', pts: [[14.4, 9.6], [17, 10.2], [20, 10.3], [22.5, 9.9], [25, 9.625]], w: 2.4, y: -0.25, depth: 0.55 },   // (2026-10-05, mondo) THE STREAM's arm east into DEAD MAN'S CAVE's culvert mouth (the way there, as a trail is elsewhere)
-                    { k: 'deck', x0: 14, z0: 6.125, x1: 19.25, z1: 6.125, w: 1.75, y: 0.2 },                     // THE PLANK over it, past both banks
-                    { k: 'tree', x: 2.625, z: 2.625, kind: 'tree_4', h: 7.5, r: 0.9 },                            // THE OLD TREE
-                    { k: 'tree', x: 4.375, z: 4.375, kind: 'tree_4', h: 6.5, r: 0.8 },
-                    { k: 'tree', x: 0.875, z: 4.375, kind: 'tree_4', h: 6.0, r: 0.75 },
-                    /* AREA CONTENT D4 (2026-09-20): five trees on the eight doors' sightlines (R3 — the hub sees one door from any door) */
-                    { k: 'tree', x: 18.375, z: 13.125, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.375, z: 9.625, kind: 'tree_3', h: 6.5, r: 0.8 },
-                    { k: 'tree', x: 4.375, z: 13.125, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: -6.125, z: -7.875, kind: 'tree', h: 7.0, r: 0.8 },
-                    { k: 'rail', x0: 12.25, z0: -17.0, x1: 17.5, z1: -17.0, model: 'ranch' },                  // a fence rail behind the crag (the park rule's grind)
-                    /* the knoll's ledge (2026-10-05): a 3.4 m rock ledge on the knoll, up a timber stair from the clearing (a handrail down its
-                       middle), a 2 m gap north (a rail across it) to the lookout, a ladder down the lookout's east face to the path */
-                    { k: 'plateau', x: -11.375, z: -9.625, w: 5.25, d: 5.25, h: 3.4, edge: 0.3 },
-                    { k: 'ramp', x0: -10.5, z0: 1.75, x1: -10.5, z1: -7, w: 3.5, h0: 0, h1: 3.4, stairs: true, model: 'forest', edge: 0.2 },
-                    { k: 'rail', pts: [[-10.5, 1.35, 0.16], [-10.5, -6.6, 3.24]], model: 'pipe', block: false },          // its centre handrail
-                    { k: 'plateau', x: -11.375, z: -15.75, w: 5.25, d: 3.5, h: 3.4, edge: 0.3 },                                         // the lookout
-                    { k: 'rail', x0: -11.375, z0: -11.95, x1: -11.375, z1: -14.3, y: 3.4, model: 'pipe', block: false },            // across the gap
-                    { k: 'climb', x: -9.05, z: -16.625, face: 270, look: 'ladder' },
-                    { k: 'rail', x0: -13.8, z0: -12.05, x1: -13.8, z1: -8.4, model: 'ranch' },
-                    /* the bank terrace: a 2.4 m ledge a 1.5 m gap down off the ledge's south-west corner (a rail down across it), a ladder up from the path */
-                    { k: 'plateau', x: -14.875, z: -2.625, w: 5.25, d: 5.25, h: 2.4, edge: 0.3 },
-                    { k: 'rail', x0: -13.125, z0: -7.4, x1: -13.125, z1: -4.85, y0: 3.4, y1: 2.4, model: 'pipe', block: false },
-                    { k: 'rail', x0: -17.2, z0: -4.95, x1: -17.2, z1: -0.6, model: 'ranch' },
-                    { k: 'climb', x: -14.875, z: 0.2, face: 0, look: 'ladder' },                                                 // its ladder off the path
-                    { k: 'rail', x0: -13.8, z0: -17.3, x1: -8.95, z1: -17.3, model: 'ranch' },
-                    { k: 'rail', arc: { x: 2.625, z: 3.5, r: 3.6, a0: 200, a1: 340 }, model: 'ranch', block: false },               // a curved fence round the old tree
-                    /* THE STAIRCASE (2026-10-01, mondo: "those stairs should be one of the weenies of the woods, like they ascend past the tree
-                       line and when youre walking down it you can see a lot of the woods"): a white marble flight standing alone in the north of
-                       the clearing, 14 m up past the treeline, its cheek walls stepping up with it, the blue runner of the building's own stair
-                       up the middle. Its last flight climbs into the dark — the building's stair hall is past it (link woods_stair, a `free`
-                       passage over these treads: no door at the top) */
-                    { k: 'ramp', x0: 8.75, z0: 1.75, x1: 8.75, z1: -15.75, w: 3.5, h0: 0, h1: 13.61, stairs: true, edge: 0.2, model: 'concrete',   // (the building's own flight, not the woods' timber)
-                      built: true, key: 'marble_light', side: 'marble_light', runner: { w: 2.0, color: 0x2f58d0 }, cheek: { h: 1.0, t: 0.4, key: 'marble_light', head: true } },
-                    { k: 'path', pts: [[8, 6], [8.75, 2.6]], w: 1.8 },                                         // the crossroads' path to its foot
-                    { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-5.6, -3.2], [-6.5, -6], [-6.5, -13], [-8.6, -16.5]], w: 1.8 },   // the path in, past the knoll to the lookout's ladder
-                    { k: 'path', pts: [[-1, 8], [8, 6], [16, 4.5], [22, -1], [22, -7.9]], w: 1.6 },           // to the plank and the redwoods
-                    { k: 'path', pts: [[-4, 0], [-7.5, -0.7], [-12, 1.2], [-17, 1.6], [-20.5, 0], [-22, -4.4]], w: 1.6 },   // to the pasture, under the bank terrace
-                    { k: 'path', pts: [[-1, 8], [-10, 10], [-22, 9.6]], w: 1.6 },                             // to the ritual ground
-                    { k: 'path', pts: [[8, 6], [12, 9], [14.2, 9.3]], w: 1.6 },                               // to the stream; its arm runs on into the storm drain
-                    { k: 'grove', n: 26, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 6 },   // GRID FIT (2026-10-26): the seed re-picked so the clearing's arena windows (12 / 10 / 9) stay clear after the pieces moved onto the squares
-                    { k: 'scatter', key: 'fern', n: 18, seed: 5 },
-                    { k: 'scatter', key: 'stump', n: 4, seed: 6 },
-                    { k: 'scatter', key: 'fallen_log', n: 2, seed: 7, r0: 1.9 },
-                ],
-            },
-            doors: [
-                /* THE WOODS ON PLOTS (2026-11-15, the pilot): the trail north to the new 36-plot Woods room (bake-woods.js), for mondo's look; the old rooms stay as they are */
-                { id: 'plots', wall: 'n', x: -15.75, way: 'trail',
-                  label: 'THE WOODS', sub: 'THE NEW WOODS · 36 PLOTS',
-                  action: { room: 'site_prebuilt_fairy_forest_plots', at: 'clearing' },
-                  desc: 'A trail north that was not here last week. Somebody has measured the forest and it has come out even.' },
-                { id: 'forest', wall: 's', x: -0.875, way: 'trail',
-                  label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420',
-                  action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
-                  desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' },
-                /* THE PASSAGES (2026-10-01): the trail and the cave mouth are walked into (DOOR_HQ.ways trail / tunnel) — no frames in the trees */
-                { id: 'redwoods', wall: 'e', z: -7.875, way: 'trail',
-                  label: 'THE REDWOOD TRAIL', sub: 'EAST · TOWARD THE GROVE',
-                  action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'clearing' },
-                  desc: 'The trees get taller as you go. By the creek they are older than the Department, and they know it.' },
-                { id: 'deadmans', wall: 'e', z: 9.625, way: 'tunnel',
-                  passage: { w: 2.4, len: 9, deep: 6.5, mouth: 'culvert_mouth', mouthD: 9.5, mouthY: 2.2, water: true },   // 2026-10-05 (mondo): the Meshy culvert mouth is the way in (three-renderer.js _hqPassageWay), no block outcrop; the stream's arm runs into it
-                  label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
-                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
-                  desc: 'A crag with a culvert mouth in it and paint on the brick. Water comes out of it that did not go in.' },
-                /* NO DOORS IN THE WOODS (2026-10-05, mondo: "No door! trail/dirt path to the next area for the woods"): the gap in the hedge is a trail you walk on */
-                { id: 'ritual', wall: 'w', z: 9.625, way: 'trail', secret: true,
-                  label: 'THE RITUAL GROUND', sub: 'THE STONES · THE FIRE',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE — the stones are not on the way to anywhere (was THE RITUAL GROUND)
-                  action: { room: 'site_prebuilt_fairy_forest_ritual', at: 'clearing' },
-                  desc: 'Candle smoke on the wind, from the west. The stones are older than the candles and the candles are recent.' },
-            ],
-            counters: [],
-            props: [
-                { key: 'cave_torch',     x: 2.625, z: 18.375 },                                 // the torches at the paths: the way in, the trail, the stair, the crag, the pasture
-                { key: 'cave_torch',     x: -6.125, z: -16.625 },
-                { key: 'cave_torch',     x: 11.375, z: 2.625 },                                   // (2026-10-01) at the stair's foot
-                { key: 'cave_torch',     x: 21.875, z: 6.125 },
-                { key: 'cave_torch',     x: -21.875, z: -0.875 },
-                { key: 'campfire',       x: -4.5, z: 6.0 },                                  // somebody's fire, and this week's
-                { key: 'signpost',       x: -0.875, z: 11.375, face: 30 },                       // THE SIGNPOST at the crossroads: seven arms, six of them right
-                { key: 'cardboard_boxes', x: -21.875, z: 12.25, face: 20 },                 // Facilities' rope, at the ritual path
-                { key: 'paper_sheet',    x: -4.375, z: 14.875, y: 0.01, face: 60 },         // a form pinned under a stone: WOODS — WHICH
-                { key: 'floor_stain',    x: 2.625, z: -4.375 },
-                { key: 'lesson_sign',    x: 14.875, z: -2.625, face: 270 },                 // a signpost at the stream: seven arms, six of them right
-                /* THE ANIMALS (2026-10-27): rabbits at the treeline, crows, one wolf watching from the far trees */
-                { key: 'rabbit', x: -18.5, z: 3.2, face: 90 }, { key: 'rabbit', x: 19.5, z: -4.5, face: 90 },
-                { key: 'crow', x: 16.5, z: -16.0, face: 200 }, { key: 'crow', x: -11.5, z: -18.4, face: 30 }, { key: 'wolf', x: 20.5, z: -14.5, face: 300 },
-                /* THE INSECTS (2026-10-27): an anthill by the rabbits and its ants, moths under the trees */
-                { key: 'anthill', x: -19.2, z: 4.6 }, { key: 'ant', x: -18.7, z: 4.1 }, { key: 'ant_leaf', x: -19.6, z: 4.0, face: 200 },
-                { key: 'luna_moth', x: 19.0, z: -5.2 }, { key: 'hawk_moth', x: -12.0, z: -17.8 }, { key: 'moth_frames', x: 17.0, z: -15.4 },
-            ],
-
-            agents: [],
-            npcSpots: [{ x: -3.5, z: 3.5, face: 60, race: 'fairy' }, { x: 17.5, z: 14.5, face: 300, race: 'bigfoot' }],
-            onlineSpots: [],
-            lines: [
-                '“Which way is the ranch?” “Left at the tree.” “Which tree?” “The tree.”',
-                '“The names on the trunk.” “Two of them.” “One is mine.” “The other one is not yet.”',
-                '“You can see the mountain from here.” “You can see the mountain from everywhere. That is what it is for.”',
-                '“Seven paths.” “Six, and the one you came in by.” “That is seven.” “That is the one you leave by.”',
-            ],
-            spawn: { x: 2.0, z: 12.0, face: 0 },
-        },
-        /* ── THE REDWOOD TRAIL — the old trees, the creek and its plank, the owl's gate at the far end ── */
-        site_prebuilt_fairy_forest_redwoods: {
-            label: 'THE WOODS · THE REDWOOD TRAIL',
-            sub: 'THE OLD TREES · THE CREEK · THE WAY TO ROOM 23',
-            kind: 'box', site: 'prebuilt_fairy_forest', part: 'redwoods',
-            shell: hqWoodsShell({ w: 56, d: 42, plate: { x: 0, z: -19.6, y: 5.0 }, floorColor: 0x5e6e46, mood: { light: 0x9fb8d8, ambient: 0.36 } }),
-            /* THE FIELD (2026-09-17): the old trees — THE CREEK north to south with the
-               plank over it, a gully the fallen log spans, a hummock, and THE STAND: a
-               root mound (2.2 m) no jump reaches — the tape on it is the gun's. */
-            terrain: {
-                res: 0.4375,   // THE GRID FIT (2026-10-26): sampled every quarter square, so a tier's edge on a square line never smears into the square beside it
-                floor: 'forest', cliff: 'rock_wall_1', path: 'dirt_2',
-                noise: { amp: 0.2, scale: 4.5 },
-                gen: { kind: 'rooms', seed: 13, rMin: 6.4, rMax: 12.8, perArea: 420, corridor: [4.8, 7.2] },   // 2× EVERYWHERE (2026-10-28): the room grown ×2 — its clearings, its trails and its count of clearings with it
-                features: [
-                    { k: 'hill', x: 16, z: -10, r: 10, h: 1.4 },
-                    { k: 'ridge', pts: [[6, -21], [12, 0], [18, 21]], w: 6.4, h: -0.9 },                   // the gully
-                    { k: 'deck', x0: 12.25, z0: -7, x1: 12.25, z1: 3.5, w: 3.5, y: 0.1, rails: false },        // the log you walk across it
-                    { k: 'stream', pts: [[-6, -21], [-5.2, -6], [-7.2, 8], [-6, 21]], w: 5.2, y: -0.3, depth: 0.7 },   // THE CREEK
-                    { k: 'deck', x0: -14, z0: -1.75, x1: 0, z1: -1.75, w: 3.5, y: 0.15 },                   // THE PLANK, past both banks
-                    { k: 'plateau', x: 19.25, z: 12.25, r: 5.25, h: 2.2, edge: 0.2 },                                // THE STAND
-                    { k: 'rail', x0: -14, z0: -5, x1: -5.6874, z1: -5, model: 'ranch' },                    // the plank's landing rail
-                    /* the root terrace (2026-10-05): a 2.6 m rock ledge on the hummock up a timber stair off the trail, a ranch rail round its
-                       rim, and across a 2.6 m gap over the gully (a rail across it) the west deck, a ladder down to the trail */
-                    { k: 'plateau', x: 17.5, z: -10.5, r: 7, h: 2.6, edge: 0.2 },
-                    { k: 'ramp', x0: 21, z0: 7, x1: 21, z1: -5.3, w: 7, h0: 0, h1: 2.6, stairs: true, model: 'forest', edge: 0.2 },
-                    { k: 'rail', arc: { x: 18.6, z: -9.6, r: 6, a0: -40, a1: 135 }, model: 'ranch' },
-                    { k: 'plateau', x: 3.5, z: -8.75, w: 7, d: 10.5, h: 2.6, edge: 0.2 },                                     // the west deck
-                    { k: 'rail', x0: 7.6, z0: -8.6, x1: 11.8, z1: -8.6, y: 2.6, model: 'pipe', block: false },                 // across the gap
-                    { k: 'climb', x: 3.5, z: -3.0228, face: 0, look: 'ladder' },
-                    { k: 'rail', x0: 0.35, z0: -13.5228, x1: 0.35, z1: -3.9772, model: 'ranch' },
-                    { k: 'path', pts: [[-23.2, -1.8], [-12, -1.8], [0, -1.8], [12, 0], [20.6, 5.8]], w: 3 },
-                    { k: 'grove', n: 12, kinds: ['tree_4'], h: 7.0, seed: 8 },
-                    { k: 'grove', n: 9, kinds: ['tree', 'tree_3', 'tree_5'], seed: 9 },
-                    { k: 'scatter', key: 'fern', n: 12, seed: 10 },
-                    { k: 'scatter', key: 'fallen_log', n: 1, seed: 11, r0: 1.9 },
-                    { k: 'scatter', key: 'stump', n: 3, seed: 12 },
-                ],
-            },
-            doors: [
-                { id: 'clearing', wall: 'w', z: -1.75, way: 'trail',   // THE PASSAGES (2026-10-01): the trail back, walked
-                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'redwoods' },
-                  desc: 'Back west, where the trees are young enough to be trees.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT — the creek goes into a pipe under the bank; the pipe is the storm drain (R4) */
-                { id: 'culvert', wall: 'n', x: -6, secret: true, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6.5, mouth: 'culvert_mouth', mouthD: 9.5, mouthY: 2.2, water: true }, label: 'DEAD MAN’S CAVE', sub: 'THE CULVERT · WHERE THE CREEK GOES UNDER',   // NO DOORS IN THE WOODS (2026-10-05): the pipe mouth in the bank, walked into; (2026-10-05, mondo) the culvert mouth GLB at the creek's end, not a block outcrop beside it
-                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'culvert' },
-                  desc: 'The creek goes into the bank and does not come out. The pipe it goes into is big enough, if you do not mind the dark.', draft: true },
-            ],
-            counters: [],
-            props: [
-                { key: 'cave_torch',     x: -22.75, z: 8.75 },                              // the lantern trail: three stakes, one of them moving when not watched
-                { key: 'cave_torch',     x: 8.75, z: -15.75 },
-                { key: 'cave_torch',     x: 26.25, z: 5.25 },
-                { key: 'candle_ring',    x: 17.5, z: -10.5, y: 2.6 },                       // on the root terrace
-                { key: 'paper_sheet',    x: -10.5, z: 14, y: 0.01, face: 110 },
-                { key: 'floor_stain',    x: 3, z: 7 },
-            ],
-
-            agents: [],
-            npcSpots: [{ x: 3.2, z: -15.6, face: 200, race: 'fairy' }, { x: -17.5, z: 10.5, face: 60, race: 'gnome' }],
-            onlineSpots: [],
-            lines: [
-                '“How old is that one?” “Older than the Bureau.” “How do you know?” “It said so.”',
-                '“Mind the plank.” “Why?” “It is not always there.”',
-                '“The lantern.” “What lantern?” “Exactly.”',
-            ],
-            spawn: { x: -19.25, z: 1.75, face: 90 },
-        },
-        /* ── DEAD MAN'S CAVE — THE STORM DRAIN (2026-09-16, the user: "literally a sewer, a narrow hallway like the service corridors"): an ENCLOSED brick culvert under the crag, the channel down its middle, a sump chamber halfway, the grate onto THE TUNNEL at the far end ── */
-        site_prebuilt_fairy_forest_deadmans: {
-            label: 'THE WOODS · DEAD MAN’S CAVE',
-            sub: 'THE STORM DRAIN · THE CHANNEL · THE WAY TO THE TUNNEL',
-            kind: 'box', site: 'prebuilt_fairy_forest', part: 'deadmans',
-            /* the one INDOOR part of the woods: a closed box (a ceiling, no sky),
-               3 m high, the concrete of the service corridors, lit by its own
-               bulbs; the cave grid's rock is the culvert's brick, to the ceiling */
-            shell: {
-                w: 84, d: 56, h: 3.0, wallH: 3.0, dadoH: 1.0,
-                floor: 'bricks_2', wall: 'bricks_2', dado: 'bricks_2', trim: 'gunmetal', ceiling: 'concrete',
-                floorColor: 0x6e6e66, wallColor: 0x585a56, dadoColor: 0x4a4a44, ceilColor: 0x4a4c48,
-                pipes: false, strips: false, lights: [],
-                mood: { light: 0x9fc0a8, ambient: 0.3 },
-                plate: { x: 4, z: -26.8, y: 2.5 },
-                fog: { color: 0x0e1410, density: 0.05 },   /* the drain's haze (2026-09-17) */
-                look: HQ_ROOM_LOOKS.drain,
-            },
-            terrain: {
-                res: 0.4375,   // THE GRID FIT (2026-10-26): sampled every quarter square, so a tier's edge on a square line never smears into the square beside it
-                /* THE FIELD (LEVEL_DESIGN_PLAN L4, 2026-09-30; the box grew from 35 × 10.5 to 42 × 28): a LAYOUT in brick, the
-                   storm drain as a maze of culverts. THE CHANNEL runs straight down the main culvert from the mouth (west) to the
-                   grate (east) through three chambers: THE MOUTH, THE SUMP (the inspection ledge on its north side), the east
-                   chamber; the street's drain comes down into the mouth, the sewers' drain into side chamber 1, which comes round
-                   to the sump (a loop); side chambers 2 and 3 are dead ends; the culvert pipe runs south from the sump. */
-                floor: 'bricks_2', cliff: 'bricks_2', path: 'concrete', stalactites: false,
-                noise: { amp: 0.02, scale: 3 }, crag: false,
-                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', rim: 0, forceGrow: -0.3 },
-                features: [
-                    { k: 'space', x: -29.75, z: 0, w: 17.5, d: 14 },                                  // THE MOUTH
-                    { k: 'space', x: 3.5, z: -3.5, w: 28, d: 28 },                                 // THE SUMP
-                    { k: 'space', x: 29.75, z: 3.5, w: 17.5, d: 14 },                                   // the east chamber
-                    { k: 'space', x: -12.25, z: 15.75, w: 17.5, d: 10.5 },                                   // side chamber 1
-                    { k: 'space', x: 15.75, z: -22.75, w: 17.5, d: 10.5 },                                  // side chamber 2 (a dead end)
-                    { k: 'space', x: 31.5, z: 21, w: 14, d: 7 },                                // side chamber 3 (a dead end)
-                    { k: 'hall', pts: [[-42, 0], [-38.5, 0]], w: 7 },                            // THE MAIN CULVERT, chamber to chamber
-                    { k: 'hall', pts: [[-21, 0], [-7, 0]], w: 7 },
-                    { k: 'hall', pts: [[14, 0], [21, 0]], w: 7 },
-                    { k: 'hall', pts: [[38.5, 0], [42, 0]], w: 7 },
-                    { k: 'hall', pts: [[-24.5, -28], [-24.5, -7]], w: 7 },                         // the street's drain
-                    { k: 'hall', pts: [[-21, 28], [-21, 21]], w: 7 },                          // the sewers' drain
-                    { k: 'hall', pts: [[-31.5, 7], [-31.5, 17.5], [-21, 17.5]], w: 7 },
-                    { k: 'hall', pts: [[-3.5, 17.5], [3.5, 17.5], [3.5, 7]], w: 7 },
-                    { k: 'hall', pts: [[8.75, 28], [8.75, 7]], w: 3.5 },                             // the culvert pipe
-                    { k: 'hall', pts: [[17.5, -17.5], [17.5, -3.5]], w: 7 },
-                    { k: 'hall', pts: [[31.5, 10.5], [31.5, 17.5]], w: 7 },
-                    /* the water */
-                    { k: 'stream', pts: [[-41, 0], [41, 0]], w: 3.2, y: -0.3, depth: 0.55 },                        // THE CHANNEL
-                    { k: 'pool', x: 4, z: 0, r: 4, y: -0.3, depth: 1.5, key: 'deep_water' },                          // THE SUMP
-                    { k: 'stream', pts: [[10, 27], [10, 2]], w: 2, y: -0.3, depth: 0.45 },                            // the creek down the pipe
-                    /* THE LEDGE on the sump's north side (2026-10-05: an upper level — the ledge in two parts with a 2.3 m gap between them, a
-                       rail across it; side chamber 2 raised with it; concrete steps up from the sump and up the east hall) */
-                    { k: 'plateau', x: -1.75, z: -14, w: 10.5, d: 7, h: 1.0, edge: 0.15 },
-                    { k: 'plateau', x: 12.25, z: -14.5, w: 10.5, d: 8, h: 1.0, edge: 0.15 },
-                    { k: 'plateau', x: 15.75, z: -22.75, w: 17.5, d: 10.5, h: 1.0, edge: 0.15 },                                  // side chamber 2, up
-                    { k: 'ramp', x0: -5.25, z0: -3.5, x1: -5.25, z1: -11.9, w: 4.1, h0: 0, h1: 1.0, stairs: true, model: 'concrete', edge: 0.15 },
-                    { k: 'ramp', x0: 21, z0: -10.5, x1: 21, z1: -18.9, w: 7, h0: 0, h1: 1.0, stairs: true, model: 'concrete', edge: 0.15 },
-                    { k: 'rail', x0: 3.9, z0: -13, x1: 7.7, z1: -13, y: 1.0, model: 'pipe', block: false },              // across the gap
-                    { k: 'rail', x0: -2.38, z0: -10.6556, x1: 3.08, z1: -10.6556, model: 'balusters_b' }, { k: 'rail', x0: 7.525, z0: -10.6556, x1: 16.975, z1: -10.6556, model: 'balusters_b' },
-                    { k: 'rail', arc: { x: 4, z: 0, r: 6.4, a0: -55, a1: 55 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 4, z: 0, r: 6.4, a0: 125, a1: 235 }, model: 'pipe', block: false },   // a skate rail round the sump
-                ],
-            },
-            doors: [
-                { id: 'clearing', wall: 'w', z: 0, way: 'tunnel', passage: { h: 2.6, len: 9, deep: 6 },   // THE PASSAGES (2026-10-01): the culvert's mouth, walked out of
-                  label: 'THE CLEARING', sub: 'BACK OUT · INTO THE TREES',
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'deadmans' },
-                  desc: 'Back out of the mouth into the trees, where the paint stops and the water keeps going.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT's other end (R4) */
-                { id: 'culvert', wall: 's', x: 10, secret: true, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, label: 'THE REDWOOD TRAIL', sub: 'THE CULVERT · OUT UNDER THE REDWOODS',   // NO DOORS IN THE WOODS (2026-10-05): the pipe, walked
-                  action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'culvert' },
-                  desc: 'A pipe in the south wall with daylight at the far end of it and the creek coming down it. The redwoods are up there.', draft: true },
-            ],
-            counters: [],
-            props: [
-                { key: 'graffiti_wall',  x: -20.76, z: -6.5, face: 270 },                  // THE PAINT, flat on the drain's brick (2026-10-05: re-hung on the L4 layout's walls — they stood mid-floor and read mirrored from behind)
-                { key: 'graffiti_wall',  x: 5, z: -18.5, face: 180 },
-                { key: 'graffiti_wall',  x: 21.5, z: 9.8, face: 90 },
-                { key: 'graffiti_wall',  x: -10.5, z: 7.3, face: 90 },
-                { key: 'drain_grate',    x: -33, z: -7.6, face: 0, mount: 0.4 },                   // the grates in the brick: the Works' side of the wall
-                { key: 'drain_grate',    x: 16, z: -25, face: 0, mount: 1.4 },
-                { key: 'bare_bulb',      x: -19.25, z: -1.75 },                                  // the bulbs: the Works' power, nobody's bill
-                { key: 'bare_bulb',      x: 1.75, z: -5.25 },
-                { key: 'bare_bulb',      x: 19.25, z: -1.75 },
-                { key: 'flicker_tube',   x: -8.748, z: 12.246, face: 0 },
-                { key: 'flicker_tube',   x: 12.25, z: -1.75, face: 0 },
-                { key: 'pipe_run',       x: -26.25, z: -8.75, face: 0 },
-                { key: 'pipe_run',       x: 24.5, z: 9.8, face: 0 },
-                { key: 'floor_drain',    x: 9, z: 9 },
-                { key: 'cardboard_boxes', x: 15.752, z: -12.246, face: 15 },                      // somebody's things on the ledge, dry
-                { key: 'wet_floor_sign', x: -26.248, z: -1.75, face: 30 },
-                { key: 'floor_stain',    x: 1.75, z: 8.8 },
-                { key: 'paper_sheet',    x: 14, z: -1.2, y: 0.01, face: 140 },            // a tag on a form: the Department's motto, crossed out, corrected
-            ],
-            agents: [],
-            npcSpots: [{ x: -10, z: 11, face: 300, race: 'ghoul' }, { x: 24.5, z: -2.4, face: 270, race: 'gangster' }],
-            onlineSpots: [],
-            lines: [
-                '“Who is the dead man?” “Read the wall.” “The wall says everybody.” “Then everybody.”',
-                '“The water comes OUT.” “Drains do that.” “Into the woods?” “Into somewhere.”',
-                '“That is the subway.” “That is a grate.” “Behind the grate.” “Behind the grate is the subway.”',
-                '“It is a sewer.” “It is a storm drain.” “What is the difference?” “What is in it.”',
-            ],
-            spawn: { x: -28, z: -1.2, face: 90 },
-
-        },
-        /* ── THE RITUAL GROUND — the stones, the fire, the circle that is Room 333's circle ── */
-        site_prebuilt_fairy_forest_ritual: {
-            label: 'THE WOODS · THE RITUAL GROUND',
-            sub: 'THE STONES · THE FIRE · THE WAY TO ROOM 333',
-            kind: 'box', site: 'prebuilt_fairy_forest', part: 'ritual',
-            shell: hqWoodsShell({ w: 42, d: 42, plate: { x: 0, z: -19.6, y: 4.6 }, floorColor: 0x5a6a44, mood: { light: 0xff9a50, ambient: 0.3 } }),
-            /* THE FIELD (2026-09-17): THE MOUND with the circle on top, a henge ditch
-               round it, the standing stones (the user's menhir) in a ring, THE ALTAR
-               STONE — a 2.4 m rock behind the altar the walker cannot climb (the tape
-               on it), the hell arch on the north, and THE DEAD TREE in the south-east
-               corner: the hole in it looks onto a marble floor. */
-            terrain: {
-                floor: 'grass_dark_fantasy', cliff: 'rock_wall_2', path: 'dirt_2',
-                noise: { amp: 0.14, scale: 5 },
-                gen: { kind: 'rooms', seed: 16, rMin: 6.4, rMax: 12.8, perArea: 420, corridor: [4.8, 7.2] },   // 2× EVERYWHERE (2026-10-28): the room grown ×2 — its clearings, its trails and its count of clearings with it
-                features: [
-                    { k: 'hill', x: 0, z: 0, r: 17, h: 1.1 },                                                // THE MOUND
-                    { k: 'ridge', pts: [[14.8, 0], [10.4, 10.4], [0, 14.8], [-10.4, 10.4], [-14.8, 0], [-10.4, -10.4], [0, -14.8], [10.4, -10.4], [14.8, 0]], w: 4, h: -0.45 },   // the ditch
-                    { k: 'plateau', x: 1.75, z: -12.25, r: 1.75, h: 2.4, edge: 0.3 },                                // THE ALTAR STONE (the tape's)
-                    { k: 'rail', x0: -9, z0: 7.8, x1: -4.4, z1: 7.8, model: 'ranch' },                     // the mound's rail
-                    /* the west ledge (2026-10-05): a 2.2 m rock ledge over the circle, up a timber stair from the north, a ladder down its east
-                       face; a curved fence along the ditch's north-east */
-                    { k: 'plateau', x: -14, z: 7, w: 7, d: 7, h: 2.2, edge: 0.3 },
-                    { k: 'ramp', x0: -12.25, z0: -7, x1: -12.25, z1: 4.9, w: 4.3, h0: 0, h1: 2.2, stairs: true, model: 'forest', edge: 0.2 },
-                    { k: 'climb', x: -10.0334, z: 9.1, face: 270, look: 'ladder' },
-                    { k: 'rail', x0: -17.0334, z0: 3.78, x1: -17.0334, z1: 10.22, model: 'ranch' }, { k: 'rail', x0: -17.0334, z0: 10.22, x1: -11.2, z1: 10.22, model: 'ranch' },
-                    { k: 'rail', arc: { x: 0, z: 0, r: 16.8, a0: 15, a1: 60 }, model: 'ranch' },
-                    { k: 'path', pts: [[17, -1.8], [6, -1.8], [0, -6], [-1.8, -17]], w: 2.8 },
-                    { k: 'grove', n: 8, kinds: ['tree_5', 'tree_6', 'tree'], seed: 19 },
-                    { k: 'scatter', key: 'fern', n: 5, seed: 20 },
-                ],
-            },
-            doors: [
-                { id: 'clearing', wall: 'e', z: -1.75, way: 'trail', secret: true,   // NO DOORS IN THE WOODS (2026-10-05): the trail back east
-                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE (was THE CLEARING)
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'ritual' },
-                  desc: 'Back east, downwind of the candles.' },
-            ],
-            counters: [],
-            props: [
-                { key: 'ritual_circle',  x: 0, z: 0, y: 0.0 },                          // THE CIRCLE: the same chalk as Room 333's, drawn from the other side
-                { key: 'candle_ring',    x: 0, z: 0, y: 0.0 },
-                { key: 'stone_altar',    x: -1.75, z: -5.25, face: 0 },
-                { key: 'menhir',         x: 8.75, z: -1.75, face: 90 },                        // THE STONES
-                { key: 'menhir',         x: 5.45, z: 8.07, face: 45 },
-                { key: 'menhir',         x: -8.95, z: 8.07, face: 315 },
-                { key: 'menhir',         x: -8.75, z: -1.75, face: 270 },
-                { key: 'menhir',         x: -8.75, z: -8.75, face: 225 },
-                { key: 'menhir',         x: 8.75, z: -8.75, face: 135 },
-                { key: 'cave_torch',     x: -15.75, z: -15.75 },
-                { key: 'cave_torch',     x: 14, z: -14 },
-                { key: 'cave_torch',     x: 12.25, z: 12.25 },
-                { key: 'cave_torch',     x: -15.75, z: 12.25 },
-                { key: 'folding_chair',  x: -8.55, z: 5.92, face: 40 },                     // the members' chairs: the fire is formal
-                { key: 'folding_chair',  x: 5.05, z: 5.92, face: 320 },
-                { key: 'paper_sheet',    x: 5.25, z: -8.75, y: 0.01, face: 190 },         // the minutes, weighted with a stone
-                { key: 'floor_stain',    x: -3.5, z: 3.5 },
-            ],
-
-            agents: [],
-            npcSpots: [{ x: 5.25, z: 7, face: 0, race: 'necromancer' }, { x: -5.25, z: -8.75, face: 160, race: 'goatman' }],
-            onlineSpots: [],
-            lines: [
-                '“Whose circle is it?” “Ours.” “It is the same circle as the one downstairs.” “It is the same circle.”',
-                '“The stones face in.” “Stones do not face.” “These do.”',
-                '“Is the fire lit?” “The fire is always lit.” “Who lights it?” “The next one.”',
-            ],
-            spawn: { x: -5.25, z: 10.5, face: 0 },
-        },
+        /* site_prebuilt_fairy_forest_clearing — DELETED 2026-11-16 (THE OLD SITES RETIRED, mondo: "remove all of the old sites from the game"): the Woods are the 36-plot room site_prebuilt_fairy_forest_plots; DOOR_HQ.retired sends anything that still names it there */
+        /* site_prebuilt_fairy_forest_redwoods — DELETED 2026-11-16 (THE OLD SITES RETIRED, mondo: "remove all of the old sites from the game"): the Woods are the 36-plot room; DOOR_HQ.retired sends anything that still names it there */
+        /* site_prebuilt_fairy_forest_deadmans — DELETED 2026-11-16 (THE OLD SITES RETIRED, mondo: "remove all of the old sites from the game"): the Woods are the 36-plot room; DOOR_HQ.retired sends anything that still names it there */
+        /* site_prebuilt_fairy_forest_ritual — DELETED 2026-11-16 (THE OLD SITES RETIRED, mondo: "remove all of the old sites from the game"): the Woods are the 36-plot room; DOOR_HQ.retired sends anything that still names it there */
         /* ═══════════════════════════════════════════════════════════════════
            DISASTER CITY (HQ plan 9.3 stage 7 — THE COMPLEX CANDIDATES #1,
            2026-09-17): DOWNTOWN · THE STRIP · CYBERPUNK · THE STADIUM · THE
@@ -44420,10 +43835,13 @@ const DOOR_HQ = {
                     {k:'tree',x:-250.25,z:50.75,kind:'tree_4',h:5.2},
                     {k:'tree',x:-250.25,z:54.25,kind:'tree',h:4.68},
                     {k:'tree',x:-250.25,z:57.75,kind:'tree_4',h:5.46},
-                    {k:'tree',x:-250.25,z:71.75,kind:'tree',h:4.68},
+                    {k:'tree',x:-250.25,z:61.25,kind:'tree',h:4.94},
+                    {k:'tree',x:-250.25,z:64.75,kind:'tree',h:4.42},
+                    {k:'tree',x:-250.25,z:68.25,kind:'tree',h:5.2},
+                    {k:'tree',x:-250.25,z:71.75,kind:'tree_4',h:4.68},
                     {k:'tree',x:-250.25,z:75.25,kind:'tree',h:5.46},
-                    {k:'tree',x:-250.25,z:78.75,kind:'tree',h:4.94},
-                    {k:'tree',x:-250.25,z:82.25,kind:'tree_4',h:4.42},
+                    {k:'tree',x:-250.25,z:78.75,kind:'tree_3',h:4.94},
+                    {k:'tree',x:-250.25,z:82.25,kind:'tree_3',h:4.42},
                     {k:'wall',x0:-248.5,z0:126,x1:-234.5,z1:126,h:1.2,t:0.9,key:'leaves_3',tint:'#ffffff'},
                     {k:'tree',x:-236.25,z:117.25,kind:'tree_3',h:3.784},
                     {k:'rail',x0:-227.5,z0:126,x1:-210,z1:126,model:'wire_fence'},
@@ -45487,7 +44905,7 @@ const DOOR_HQ = {
                     {k:'arch',id:'dc:in94:arch',x:-82.25,z:-222.25,y:21,rot:270,parts:[{s:'box',p:[0,0,0],size:[17.6,7,3.6],key:'urban:PlasterWallPainted1a',tint:14735560,keyTop:'urban:ConcreteRoofBitumen1a'},{s:'box',p:[0,0,0],size:[17.7,0.9,3.7],key:'marble',tint:11051672,top:false},{s:'quad',p:[0,0.4,1.85],size:[16.5,3.1],ry:0,key:'urban:DecalWindowsResidential1a',tint:16777215},{s:'quad',p:[0,0.4,-1.85],size:[16.5,3.1],ry:180,key:'urban:DecalWindowsResidential1a',tint:16777215},{s:'quad',p:[0,3.5,1.85],size:[16.5,3.1],ry:0,key:'urban:DecalWindowsResidential1a',tint:16777215},{s:'quad',p:[0,3.5,-1.85],size:[16.5,3.1],ry:180,key:'urban:DecalWindowsResidential1a',tint:16777215},{s:'box',p:[0,6.7,0],size:[18,0.45,4],key:'marble',tint:13617336,top:false,under:true},{s:'quad',p:[-7.15,0,1.82],size:[1.5,2.4],ry:0,key:'urban:DoorPaintedHalf1a',tint:13158592,uv:[0.75,2.4],kind:'wall'},{s:'box',p:[-7.15,2.4,1.82],size:[1.8,0.16,0.2],key:'marble',tint:11051672},{s:'box',p:[-7.15,2.98,1.94],size:[0.08,0.08,0.3],tint:2369324},{s:'box',p:[-7.15,2.74,2.06],size:[0.18,0.22,0.18],tint:16767120,glow:1},{s:'quad',p:[-5.85,1.4,1.88],size:[0.45,0.45],ry:0,key:'urban:SignHazard2a',tint:16777215,uv:'fit'},{s:'cyl',p:[8.25,0,1.87],r:0.07,h:6.6,tint:2369324,seg:6,cap:false},{s:'box',p:[8.25,2.178,1.87],size:[0.22,0.08,0.22],tint:2369324,n:2,step:[0,2.178,0]},{s:'box',p:[8.25,6.3,1.87],size:[0.3,0.3,0.3],tint:2369324},{s:'cyl',p:[-8.25,0,-1.87],r:0.07,h:6.6,tint:2369324,seg:6,cap:false},{s:'box',p:[-8.25,2.178,-1.87],size:[0.22,0.08,0.22],tint:2369324,n:2,step:[0,2.178,0]},{s:'box',p:[-8.25,6.3,-1.87],size:[0.3,0.3,0.3],tint:2369324},{s:'box',p:[0,3.42,0],size:[17.74,0.14,3.74],key:'marble',tint:13617336,top:false},{s:'box',p:[3.85,3.8,2.05],size:[0.95,0.6,0.5],key:'urban:MetalCorrugatedPainted3a',tint:11581116},{s:'quad',p:[3.85,3.86,2.31],size:[0.8,0.48],ry:0,key:'urban:MetalSubwayGrill1a',tint:10133670,uv:[0.4,0.48],kind:'wall'},{s:'box',p:[3.85,3.7,2.075],size:[1.05,0.08,0.55],tint:2369324}]},
                     {k:'arch',id:'dc:in101:arch',x:127.75,z:-192.5,y:10.5,rot:270,parts:[{s:'box',p:[0,0,0],size:[7.1,3.5,3.6],key:'bricks_2',tint:12630184,keyTop:'urban:ConcreteRoofBitumen1a'},{s:'box',p:[0,0,0],size:[7.2,0.9,3.7],key:'marble',tint:11051672,top:false},{s:'quad',p:[0,0.4,1.85],size:[6,3.1],ry:0,key:'urban:DecalWindowsFactory1a',tint:16777215},{s:'quad',p:[0,0.4,-1.85],size:[6,3.1],ry:180,key:'urban:DecalWindowsFactory1a',tint:16777215},{s:'box',p:[0,3.2,0],size:[7.5,0.45,4],key:'marble',tint:13617336,top:false,under:true},{s:'quad',p:[-1.9,0,1.82],size:[1.5,2.4],ry:0,key:'urban:DoorPaintedHalf1a',tint:13158592,uv:[0.75,2.4],kind:'wall'},{s:'box',p:[-1.9,2.4,1.82],size:[1.8,0.16,0.2],key:'marble',tint:11051672},{s:'box',p:[-1.9,2.98,1.94],size:[0.08,0.08,0.3],tint:2369324},{s:'box',p:[-1.9,2.74,2.06],size:[0.18,0.22,0.18],tint:16767120,glow:1},{s:'quad',p:[-0.6,1.4,1.88],size:[0.45,0.45],ry:0,key:'urban:SignCaution1a',tint:16777215,uv:'fit'},{s:'cyl',p:[3,0,1.87],r:0.07,h:3.1,tint:2369324,seg:6,cap:false},{s:'box',p:[3,1.023,1.87],size:[0.22,0.08,0.22],tint:2369324,n:2,step:[0,1.0230000000000001,0]},{s:'box',p:[3,2.8,1.87],size:[0.3,0.3,0.3],tint:2369324}]},
                     {k:'arch',id:'dc:in102:arch',x:127.75,z:-183.75,y:10.5,rot:270,parts:[{s:'box',p:[0,0,0],size:[10.6,7,3.6],key:'urban:BrickUrban3a',tint:13150352,keyTop:'urban:ConcreteRoofBitumen1a'},{s:'box',p:[0,0,0],size:[10.7,0.9,3.7],key:'marble',tint:11051672,top:false},{s:'box',p:[0,3.5,0],size:[10.66,3.1,3.66],key:'urban:GlassWindowSquare2a',tint:12635352,uv:[1.75,3.5],top:false,faces:'fb'},{s:'quad',p:[0,0.4,1.85],size:[9.5,3.1],ry:0,key:'urban:DecalWindowsResidential1a',tint:16777215},{s:'quad',p:[0,0.4,-1.85],size:[9.5,3.1],ry:180,key:'urban:DecalWindowsResidential1a',tint:16777215},{s:'box',p:[0,6.7,0],size:[11,0.45,4],key:'marble',tint:13617336,top:false,under:true},{s:'quad',p:[-3.65,0,1.82],size:[1.5,2.4],ry:0,key:'urban:DoorPaintedHalf1a',tint:13158592,uv:[0.75,2.4],kind:'wall'},{s:'box',p:[-3.65,2.4,1.82],size:[1.8,0.16,0.2],key:'marble',tint:11051672},{s:'box',p:[-3.65,2.98,1.94],size:[0.08,0.08,0.3],tint:2369324},{s:'box',p:[-3.65,2.74,2.06],size:[0.18,0.22,0.18],tint:16767120,glow:1},{s:'quad',p:[-2.35,1.4,1.88],size:[0.45,0.45],ry:0,key:'urban:SignHazard2a',tint:16777215,uv:'fit'},{s:'cyl',p:[4.75,0,1.87],r:0.07,h:6.6,tint:2369324,seg:6,cap:false},{s:'box',p:[4.75,2.178,1.87],size:[0.22,0.08,0.22],tint:2369324,n:2,step:[0,2.178,0]},{s:'box',p:[4.75,6.3,1.87],size:[0.3,0.3,0.3],tint:2369324},{s:'cyl',p:[-4.75,0,-1.87],r:0.07,h:6.6,tint:2369324,seg:6,cap:false},{s:'box',p:[-4.75,2.178,-1.87],size:[0.22,0.08,0.22],tint:2369324,n:2,step:[0,2.178,0]},{s:'box',p:[-4.75,6.3,-1.87],size:[0.3,0.3,0.3],tint:2369324},{s:'box',p:[0,3.42,0],size:[10.74,0.14,3.74],key:'marble',tint:13617336,top:false}]},
-                    {k:'arch',id:'dc:F-london:phone0',x:-68.25,z:-204.75,y:19.25,rot:270,parts:[{s:'box',p:[0,0,0],size:[1.15,0.14,1.15],key:'marble',tint:12104358},{s:'box',p:[0,0.14,0],size:[1,2.3,1],key:null,tint:13114920,top:false},{s:'quad',p:[0,0.75,0.51],size:[0.66,1.35],ry:0,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,0.52],size:[0.78,0.2],ry:0,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[-0.51,0.75,0],size:[0.66,1.35],ry:90,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[-0.52,2.12,0],size:[0.78,0.2],ry:90,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0,0.75,-0.51],size:[0.66,1.35],ry:180,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,-0.52],size:[0.78,0.2],ry:180,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0.51,0.75,0],size:[0.66,1.35],ry:270,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0.52,2.12,0],size:[0.78,0.2],ry:270,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'box',p:[0,2.44,0],size:[1.12,0.16,1.12],key:null,tint:13114920},{s:'dome',p:[0,2.6,0],r:0.6,h:0.26,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[0,2.82,0],size:[0.18,0.12,0.18],key:null,tint:13114920},{s:'box',p:[0.36,1.1,0.53],size:[0.05,0.3,0.05],key:null,tint:3158060},{s:'cyl',p:[-1.15,0,0.7],r:0.3,h:0.12,key:null,tint:1842722,seg:12},{s:'cyl',p:[-1.15,0.12,0.7],r:0.27,h:1.18,key:null,tint:13114920,seg:12,cap:false},{s:'cyl',p:[-1.15,1.3,0.7],r:0.31,h:0.08,key:null,tint:13114920,seg:12},{s:'dome',p:[-1.15,1.38,0.7],r:0.28,h:0.16,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[-1.15,1.08,0.96],size:[0.3,0.05,0.05],key:null,tint:921102},{s:'cyl',p:[1.05,0,1.25],r:0.1,h:0.9,key:null,tint:1842722,seg:8,n:3,step:[-0.85,0,0]},{s:'dome',p:[1.05,0.9,1.25],r:0.12,h:0.1,key:null,tint:1842722,roof:false,seg:8,rings:2,n:3,step:[-0.85,0,0]}]},
+                    {k:'arch',id:'dc:F-london:phone0',x:-78.75,z:-201.25,y:19.526,rot:0,parts:[{s:'box',p:[0,0,0],size:[1.15,0.14,1.15],key:'marble',tint:12104358},{s:'box',p:[0,0.14,0],size:[1,2.3,1],key:null,tint:13114920,top:false},{s:'quad',p:[0,0.75,0.51],size:[0.66,1.35],ry:0,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,0.52],size:[0.78,0.2],ry:0,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[-0.51,0.75,0],size:[0.66,1.35],ry:90,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[-0.52,2.12,0],size:[0.78,0.2],ry:90,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0,0.75,-0.51],size:[0.66,1.35],ry:180,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,-0.52],size:[0.78,0.2],ry:180,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0.51,0.75,0],size:[0.66,1.35],ry:270,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0.52,2.12,0],size:[0.78,0.2],ry:270,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'box',p:[0,2.44,0],size:[1.12,0.16,1.12],key:null,tint:13114920},{s:'dome',p:[0,2.6,0],r:0.6,h:0.26,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[0,2.82,0],size:[0.18,0.12,0.18],key:null,tint:13114920},{s:'box',p:[0.36,1.1,0.53],size:[0.05,0.3,0.05],key:null,tint:3158060},{s:'cyl',p:[-1.15,0,0.7],r:0.3,h:0.12,key:null,tint:1842722,seg:12},{s:'cyl',p:[-1.15,0.12,0.7],r:0.27,h:1.18,key:null,tint:13114920,seg:12,cap:false},{s:'cyl',p:[-1.15,1.3,0.7],r:0.31,h:0.08,key:null,tint:13114920,seg:12},{s:'dome',p:[-1.15,1.38,0.7],r:0.28,h:0.16,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[-1.15,1.08,0.96],size:[0.3,0.05,0.05],key:null,tint:921102},{s:'cyl',p:[1.05,0,1.25],r:0.1,h:0.9,key:null,tint:1842722,seg:8,n:3,step:[-0.85,0,0]},{s:'dome',p:[1.05,0.9,1.25],r:0.12,h:0.1,key:null,tint:1842722,roof:false,seg:8,rings:2,n:3,step:[-0.85,0,0]}]},
                     {k:'arch',id:'dc:F-london:phone1',x:-15.75,z:-236.25,y:19.25,rot:0,parts:[{s:'box',p:[0,0,0],size:[1.15,0.14,1.15],key:'marble',tint:12104358},{s:'box',p:[0,0.14,0],size:[1,2.3,1],key:null,tint:13114920,top:false},{s:'quad',p:[0,0.75,0.51],size:[0.66,1.35],ry:0,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,0.52],size:[0.78,0.2],ry:0,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[-0.51,0.75,0],size:[0.66,1.35],ry:90,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[-0.52,2.12,0],size:[0.78,0.2],ry:90,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0,0.75,-0.51],size:[0.66,1.35],ry:180,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,-0.52],size:[0.78,0.2],ry:180,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0.51,0.75,0],size:[0.66,1.35],ry:270,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0.52,2.12,0],size:[0.78,0.2],ry:270,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'box',p:[0,2.44,0],size:[1.12,0.16,1.12],key:null,tint:13114920},{s:'dome',p:[0,2.6,0],r:0.6,h:0.26,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[0,2.82,0],size:[0.18,0.12,0.18],key:null,tint:13114920},{s:'box',p:[0.36,1.1,0.53],size:[0.05,0.3,0.05],key:null,tint:3158060},{s:'cyl',p:[-1.15,0,0.7],r:0.3,h:0.12,key:null,tint:1842722,seg:12},{s:'cyl',p:[-1.15,0.12,0.7],r:0.27,h:1.18,key:null,tint:13114920,seg:12,cap:false},{s:'cyl',p:[-1.15,1.3,0.7],r:0.31,h:0.08,key:null,tint:13114920,seg:12},{s:'dome',p:[-1.15,1.38,0.7],r:0.28,h:0.16,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[-1.15,1.08,0.96],size:[0.3,0.05,0.05],key:null,tint:921102},{s:'cyl',p:[1.05,0,1.25],r:0.1,h:0.9,key:null,tint:1842722,seg:8,n:3,step:[-0.85,0,0]},{s:'dome',p:[1.05,0.9,1.25],r:0.12,h:0.1,key:null,tint:1842722,roof:false,seg:8,rings:2,n:3,step:[-0.85,0,0]}]},
                     {k:'arch',id:'dc:F-london:phone2',x:8.75,z:-134.75,y:15.75,rot:0,parts:[{s:'box',p:[0,0,0],size:[1.15,0.14,1.15],key:'marble',tint:12104358},{s:'box',p:[0,0.14,0],size:[1,2.3,1],key:null,tint:13114920,top:false},{s:'quad',p:[0,0.75,0.51],size:[0.66,1.35],ry:0,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,0.52],size:[0.78,0.2],ry:0,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[-0.51,0.75,0],size:[0.66,1.35],ry:90,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[-0.52,2.12,0],size:[0.78,0.2],ry:90,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0,0.75,-0.51],size:[0.66,1.35],ry:180,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,-0.52],size:[0.78,0.2],ry:180,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0.51,0.75,0],size:[0.66,1.35],ry:270,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0.52,2.12,0],size:[0.78,0.2],ry:270,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'box',p:[0,2.44,0],size:[1.12,0.16,1.12],key:null,tint:13114920},{s:'dome',p:[0,2.6,0],r:0.6,h:0.26,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[0,2.82,0],size:[0.18,0.12,0.18],key:null,tint:13114920},{s:'box',p:[0.36,1.1,0.53],size:[0.05,0.3,0.05],key:null,tint:3158060},{s:'cyl',p:[-1.15,0,0.7],r:0.3,h:0.12,key:null,tint:1842722,seg:12},{s:'cyl',p:[-1.15,0.12,0.7],r:0.27,h:1.18,key:null,tint:13114920,seg:12,cap:false},{s:'cyl',p:[-1.15,1.3,0.7],r:0.31,h:0.08,key:null,tint:13114920,seg:12},{s:'dome',p:[-1.15,1.38,0.7],r:0.28,h:0.16,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[-1.15,1.08,0.96],size:[0.3,0.05,0.05],key:null,tint:921102},{s:'cyl',p:[1.05,0,1.25],r:0.1,h:0.9,key:null,tint:1842722,seg:8,n:3,step:[-0.85,0,0]},{s:'dome',p:[1.05,0.9,1.25],r:0.12,h:0.1,key:null,tint:1842722,roof:false,seg:8,rings:2,n:3,step:[-0.85,0,0]}]},
                     {k:'arch',id:'dc:F-london:phone3',x:47.25,z:-141.75,y:14,rot:180,parts:[{s:'box',p:[0,0,0],size:[1.15,0.14,1.15],key:'marble',tint:12104358},{s:'box',p:[0,0.14,0],size:[1,2.3,1],key:null,tint:13114920,top:false},{s:'quad',p:[0,0.75,0.51],size:[0.66,1.35],ry:0,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,0.52],size:[0.78,0.2],ry:0,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[-0.51,0.75,0],size:[0.66,1.35],ry:90,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[-0.52,2.12,0],size:[0.78,0.2],ry:90,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0,0.75,-0.51],size:[0.66,1.35],ry:180,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0,2.12,-0.52],size:[0.78,0.2],ry:180,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'quad',p:[0.51,0.75,0],size:[0.66,1.35],ry:270,key:'urban:GlassWindowSquare1a',tint:15265520,uv:'fit'},{s:'quad',p:[0.52,2.12,0],size:[0.78,0.2],ry:270,key:'txt:TELEPHONE|#ffffff|#1a1a1a|4.5||playfair',tint:16777215,uv:'fit',glow:0.6},{s:'box',p:[0,2.44,0],size:[1.12,0.16,1.12],key:null,tint:13114920},{s:'dome',p:[0,2.6,0],r:0.6,h:0.26,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[0,2.82,0],size:[0.18,0.12,0.18],key:null,tint:13114920},{s:'box',p:[0.36,1.1,0.53],size:[0.05,0.3,0.05],key:null,tint:3158060},{s:'cyl',p:[-1.15,0,0.7],r:0.3,h:0.12,key:null,tint:1842722,seg:12},{s:'cyl',p:[-1.15,0.12,0.7],r:0.27,h:1.18,key:null,tint:13114920,seg:12,cap:false},{s:'cyl',p:[-1.15,1.3,0.7],r:0.31,h:0.08,key:null,tint:13114920,seg:12},{s:'dome',p:[-1.15,1.38,0.7],r:0.28,h:0.16,key:null,tint:13114920,roof:false,seg:12,rings:3},{s:'box',p:[-1.15,1.08,0.96],size:[0.3,0.05,0.05],key:null,tint:921102},{s:'cyl',p:[1.05,0,1.25],r:0.1,h:0.9,key:null,tint:1842722,seg:8,n:3,step:[-0.85,0,0]},{s:'dome',p:[1.05,0.9,1.25],r:0.12,h:0.1,key:null,tint:1842722,roof:false,seg:8,rings:2,n:3,step:[-0.85,0,0]}]},
@@ -46727,7 +46145,7 @@ const DOOR_HQ = {
                     {k:'wall',x0:77,z0:-91,x1:77,z1:-119,t:0.6,h:2.8,ghost:true,rail:false},
                     {k:'wall',x0:77,z0:-119,x1:65.6,z1:-119,t:0.6,h:2.8,ghost:true,rail:false},
                     {k:'wall',x0:60.4,z0:-119,x1:49,z1:-119,t:0.6,h:2.8,ghost:true,rail:false},
-                    {k:'wall',x0:-68.25,z0:-204.25,x1:-68.25,z1:-205.25,t:1,h:2.6,ghost:true,rail:false},
+                    {k:'wall',x0:-79.25,z0:-201.25,x1:-78.25,z1:-201.25,t:1,h:2.6,ghost:true,rail:false},
                     {k:'wall',x0:-16.25,z0:-236.25,x1:-15.25,z1:-236.25,t:1,h:2.6,ghost:true,rail:false},
                     {k:'wall',x0:8.25,z0:-134.75,x1:9.25,z1:-134.75,t:1,h:2.6,ghost:true,rail:false},
                     {k:'wall',x0:47.75,z0:-141.75,x1:46.75,z1:-141.75,t:1,h:2.6,ghost:true,rail:false},
@@ -47055,6 +46473,7 @@ const DOOR_HQ = {
                     {k:'arch',id:'dc:R-weed-36_8',x:-123.41,z:113.33,y:10.5,rot:135,parts:[{s:'box',p:[0,0,0],size:[0.9,0.28,0.63],key:'leaves_3',tint:13162656},{s:'box',p:[0.135,0.2,-0.09000000000000001],size:[0.405,0.52,0.36000000000000004],key:'leaves_3',tint:11847824}]},
                     {k:'arch',id:'dc:R-weed-2_9',x:-244.09,z:117.25,y:12.25,rot:135,parts:[{s:'box',p:[0,0,0],size:[0.9,0.28,0.63],key:'leaves_3',tint:13162656},{s:'box',p:[0.135,0.2,-0.09000000000000001],size:[0.405,0.4,0.36000000000000004],key:'leaves_3',tint:11847824}]},
                     {k:'arch',id:'dc:R-weed-4_9',x:-235.83,z:117.67,y:12.25,rot:45,parts:[{s:'box',p:[0,0,0],size:[1.7000000000000002,0.44000000000000006,1.19],key:'leaves_3',tint:13162656},{s:'box',p:[0.255,0.2,-0.17000000000000004],size:[0.7650000000000001,0.4,0.6800000000000002],key:'leaves_3',tint:11847824}]},
+                    {k:'arch',id:'dc:R-fire-8_9',x:-221.2,z:118.3,y:12.25,rot:0,parts:[{s:'cyl',p:[0,0.86,0],r:0.24,h:0.1,tint:16742940,glow:1,seg:8},{s:'dome',p:[0,0.92,0],r:0.2,h:0.55,tint:16751140,glow:1},{s:'dome',p:[0.05,0.95,-0.04],r:0.11,h:0.8,tint:16765024,glow:1}]},
                     {k:'arch',id:'dc:R-weed-37_9',x:-119.91,z:117.67,y:10.5,rot:45,parts:[{s:'box',p:[0,0,0],size:[1.7000000000000002,0.44000000000000006,1.19],key:'leaves_3',tint:13162656},{s:'box',p:[0.255,0.2,-0.17000000000000004],size:[0.7650000000000001,0.64,0.6800000000000002],key:'leaves_3',tint:11847824}]},
                     {k:'arch',id:'dc:R-weed-12_11',x:-207.83,z:123.83,y:10.5,rot:45,parts:[{s:'box',p:[0,0,0],size:[0.9,0.36000000000000004,0.63],key:'leaves_3',tint:13162656},{s:'box',p:[0.135,0.2,-0.09000000000000001],size:[0.405,0.64,0.36000000000000004],key:'leaves_3',tint:11847824}]},
                     {k:'arch',id:'dc:R-weed-13_12',x:-205.59,z:128.59,y:10.5,rot:90,parts:[{s:'box',p:[0,0,0],size:[1.3,0.36000000000000004,0.9099999999999999],key:'leaves_3',tint:13162656},{s:'box',p:[0.195,0.2,-0.13],size:[0.5850000000000001,0.52,0.52],key:'leaves_3',tint:11847824}]},
@@ -47097,7 +46516,6 @@ const DOOR_HQ = {
                     {k:'arch',id:'dc:R-weed-2_36',x:-243.25,z:212.59,y:5.25,rot:135,parts:[{s:'box',p:[0,0,0],size:[1.7000000000000002,0.44000000000000006,1.19],key:'leaves_3',tint:13162656},{s:'box',p:[0.255,0.2,-0.17000000000000004],size:[0.7650000000000001,0.4,0.6800000000000002],key:'leaves_3',tint:11847824}]},
                     {k:'arch',id:'dc:R-weed-10_36',x:-214.83,z:210.91,y:5.25,rot:0,parts:[{s:'box',p:[0,0,0],size:[1.3,0.44000000000000006,0.9099999999999999],key:'leaves_3',tint:13162656},{s:'box',p:[0.195,0.2,-0.13],size:[0.5850000000000001,0.52,0.52],key:'leaves_3',tint:11847824}]},
                     {k:'arch',id:'dc:R-weed-28_36',x:-153.09,z:212.17,y:7,rot:135,parts:[{s:'box',p:[0,0,0],size:[1.7000000000000002,0.36000000000000004,1.19],key:'leaves_3',tint:13162656},{s:'box',p:[0.255,0.2,-0.17000000000000004],size:[0.7650000000000001,0.64,0.6800000000000002],key:'leaves_3',tint:11847824}]},
-                    {k:'arch',id:'dc:R-fire-12_37',x:-207.2,z:216.3,y:7,rot:0,parts:[{s:'cyl',p:[0,0.86,0],r:0.24,h:0.1,tint:16742940,glow:1,seg:8},{s:'dome',p:[0,0.92,0],r:0.2,h:0.55,tint:16751140,glow:1},{s:'dome',p:[0.05,0.95,-0.04],r:0.11,h:0.8,tint:16765024,glow:1}]},
                     {k:'arch',id:'dc:R-weed-38_38',x:-117.25,z:219.59,y:5.389,rot:90,parts:[{s:'box',p:[0,0,0],size:[1.3,0.44000000000000006,0.9099999999999999],key:'leaves_3',tint:13162656},{s:'box',p:[0.195,0.2,-0.13],size:[0.5850000000000001,0.64,0.52],key:'leaves_3',tint:11847824}]},
                     {k:'arch',id:'dc:R-weed-1_40',x:-245.91,z:225.33,y:3.95,rot:0,parts:[{s:'box',p:[0,0,0],size:[1.3,0.28,0.9099999999999999],key:'leaves_3',tint:13162656},{s:'box',p:[0.195,0.2,-0.13],size:[0.5850000000000001,0.4,0.52],key:'leaves_3',tint:11847824}]},
                     {k:'arch',id:'dc:R-weed-25_40',x:-161.91,z:225.75,y:7,rot:0,parts:[{s:'box',p:[0,0,0],size:[1.3,0.44000000000000006,0.9099999999999999],key:'leaves_3',tint:13162656},{s:'box',p:[0.195,0.2,-0.13],size:[0.5850000000000001,0.52,0.52],key:'leaves_3',tint:11847824}]},
@@ -47169,7 +46587,7 @@ const DOOR_HQ = {
                 { id: 'metro', wall: 'free', x: -232.75, z: -117.25, face: 180, way: 'stairway', passage: { model: 'metro_stairs', w: 3.6, h: 3.6, len: 10, deep: 6.5, rise: -0.55, land: 3.2, wall: 'urban:MetroWallTile', wallColor: 0xf0eee8, trim: 'urban:MetroConcrete', lift: 0.3 },
                   label: 'THE METRO', sub: 'THE STAIR DOWN · THE PLATFORM', action: { room: 'site_prebuilt_downtown_subway', at: 'street' },
                   desc: 'A stair down under a sign for every line. The platform under the tower has never once been touched; this is the other way onto it.' },
-                { id: 'sewer', wall: 'free', x: 190.75, z: 251.64, face: 0, noEntrance: true, leaf: 'leaf_bulkhead', wide: true, label: 'THE SEWERS', sub: 'THE PUMPING STATION · DOWN INTO THE CULVERTS', action: { room: 'site_prebuilt_downtown_sewers', at: 'pump' },
+                { id: 'sewer', wall: 'free', x: 190.75, z: 251.64, face: 0, noEntrance: true, leaf: 'leaf_bulkhead', wide: true, label: 'THE SEWERS', sub: 'THE PUMPING STATION · DOWN INTO THE CULVERTS', action: { room: 'site_prebuilt_downtown_underworld', at: 'pump' },
                   desc: 'A pumping station at the end of an alley, its bulkhead door open and its pumps running for a city that stopped paying them. The ladder inside goes down further than the tower ever went up.' },
             ],
             counters: [],
@@ -48296,9 +47714,6 @@ const DOOR_HQ = {
                 {key:'city_bin',x:-112.7,z:-168.735,face:0},
                 {key:'city_bench',x:-96.25,z:-168.735,face:0},
                 {key:'city_bench',x:-78.75,z:-168.735,face:0},
-                {key:'planter',x:-50.75,z:-169.75,face:0},
-                {key:'planter',x:-47.25,z:-169.75,face:0},
-                {key:'planter',x:-43.75,z:-169.75,face:0},
                 {key:'city_bench',x:-36.75,z:-168.735,face:0},
                 {key:'city_bench',x:-12.25,z:-168.735,face:0},
                 {key:'city_bench',x:4.875,z:-166.765,face:180},
@@ -49313,7 +48728,6 @@ const DOOR_HQ = {
                 {key:'psx_potted_cactus_mp_1',x:95.24,z:-229.25,face:0,h:0.8},
                 {key:'vending_machine',x:95.09,z:-225.75,face:90},
                 {key:'vending_machine',x:95.09,z:-239.75,face:90},
-                {key:'dumpster',x:89.25,z:-218.75,face:0},
                 {key:'city_bin',x:115.01,z:-232.75,face:0},
                 {key:'psx_planter_pot_mp_1_full',x:120.75,z:-233.76,face:0,h:0.55},
                 {key:'vending_machine',x:124.25,z:-233.86,face:180},
@@ -49331,13 +48745,13 @@ const DOOR_HQ = {
                 {key:'vending_machine',x:194.25,z:-245.79,face:0},
                 {key:'vending_machine',x:180.25,z:-245.49,face:0},
                 {key:'city_bin',x:225.75,z:-237.51,face:0},
-                {key:'psx_potted_cactus_mp_1',x:232.75,z:-237.51,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:232.75,z:-237.51,face:0,h:0.55},
                 {key:'vending_machine',x:236.25,z:-237.56,face:180},
                 {key:'vending_machine',x:222.25,z:-237.51,face:180},
                 {key:'dumpster',x:246.75,z:-243.25,face:270},
                 {key:'vending_machine',x:233.86,z:-225.75,face:270},
                 {key:'city_bin',x:115.01,z:-193.75,face:0},
-                {key:'psx_potted_cactus_mp_1',x:114.76,z:-187.25,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:114.51,z:-187.25,face:0,h:0.55},
                 {key:'vending_machine',x:114.76,z:-183.75,face:270},
                 {key:'vending_machine',x:114.96,z:-197.75,face:270},
                 {key:'dumpster',x:120.75,z:-176.75,face:0},
@@ -49362,24 +48776,24 @@ const DOOR_HQ = {
                 {key:'vending_machine',x:94.84,z:-155.75,face:90},
                 {key:'dumpster',x:89.25,z:-134.75,face:0},
                 {key:'city_bin',x:115.01,z:-148.75,face:0},
-                {key:'psx_planter_pot_mp_1_full',x:120.75,z:-149.51,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:120.75,z:-149.51,face:0,h:0.8},
                 {key:'city_bin',x:148.75,z:-150.01,face:0},
-                {key:'psx_potted_cactus_mp_1',x:149.76,z:-141.75,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:149.76,z:-141.75,face:0,h:0.55},
                 {key:'vending_machine',x:150.06,z:-138.25,face:270},
                 {key:'dumpster',x:159.25,z:-134.75,face:0},
-                {key:'psx_potted_cactus_mp_1',x:145.25,z:-150.01,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:145.25,z:-150.01,face:0,h:0.55},
                 {key:'city_bin',x:153.5,z:-147.49,face:0},
                 {key:'psx_planter_pot_mp_1_full',x:159.25,z:-149.76,face:0,h:0.55},
                 {key:'city_bin',x:183.75,z:-161.49,face:0},
                 {key:'vending_machine',x:194.25,z:-161.44,face:0},
                 {key:'vending_machine',x:180.25,z:-161.44,face:0},
                 {key:'city_bin',x:226,z:-150.01,face:0},
-                {key:'psx_planter_pot_mp_1_full',x:232.75,z:-149.76,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:232.75,z:-149.76,face:0,h:0.8},
                 {key:'vending_machine',x:236.25,z:-149.86,face:180},
                 {key:'dumpster',x:218.75,z:-155.75,face:90},
-                {key:'psx_planter_pot_mp_1_full',x:233.76,z:-142.25,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:233.76,z:-142.25,face:0,h:0.8},
                 {key:'vending_machine',x:233.91,z:-138.25,face:270},
-                {key:'psx_potted_cactus_mp_1',x:145.25,z:-115.01,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:145.25,z:-115.01,face:0,h:0.55},
                 {key:'city_bin',x:148.75,z:-115.01,face:0},
                 {key:'psx_planter_pot_mp_1_full',x:155.75,z:-114.51,face:0,h:0.55},
                 {key:'vending_machine',x:159.25,z:-114.61,face:180},
@@ -49388,8 +48802,8 @@ const DOOR_HQ = {
                 {key:'vending_machine',x:194.25,z:-94.94,face:0},
                 {key:'vending_machine',x:180.25,z:-95.09,face:0},
                 {key:'dumpster',x:201.25,z:-96.25,face:270},
-                {key:'psx_potted_cactus_mp_1',x:187.25,z:-115.01,face:0,h:0.8},
-                {key:'psx_planter_pot_mp_1_full',x:239.75,z:-107.76,face:0,h:0.55},
+                {key:'psx_planter_pot_mp_1_full',x:187.25,z:-115.01,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:239.75,z:-107.76,face:0,h:0.8},
                 {key:'vending_machine',x:243.25,z:-108.01,face:180},
                 {key:'traffic_barrel',x:138.25,z:99.75,face:0},
                 {key:'dumpster',x:246.75,z:117.25,face:0},
@@ -49437,60 +48851,60 @@ const DOOR_HQ = {
                 {key:'vending_machine',x:68.25,z:240.76,face:0},
                 {key:'psx_planter_pot_mp_1_full',x:59.99,z:215.25,face:0,h:0.55},
                 {key:'psx_planter_pot_mp_1_full',x:61.25,z:220.99,face:0,h:0.55},
-                {key:'psx_planter_pot_mp_1_full',x:94.99,z:-68.5,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:94.99,z:-68.5,face:0,h:0.8},
                 {key:'psx_planter_pot_mp_1_full',x:95.49,z:-61.25,face:0,h:0.55},
                 {key:'vending_machine',x:94.94,z:-57.75,face:90},
                 {key:'dumpster',x:89.25,z:-50.75,face:0},
                 {key:'psx_planter_pot_mp_1_full',x:115.01,z:-64.75,face:0,h:0.55},
-                {key:'psx_potted_cactus_mp_1',x:120.75,z:-66.01,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:120.75,z:-66.01,face:0,h:0.55},
                 {key:'palm_tree',x:120.75,z:-47.25},
                 {key:'planter',x:138.25,z:-68.25,face:0},
-                {key:'psx_potted_cactus_mp_1',x:145.25,z:-69.51,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:145.25,z:-69.51,face:0,h:0.55},
                 {key:'vending_machine',x:134.75,z:-69.66,face:180},
                 {key:'psx_planter_pot_mp_1_full',x:138.25,z:-60.24,face:0,h:0.55},
-                {key:'psx_potted_cactus_mp_1',x:145.25,z:-59.99,face:0,h:0.8},
-                {key:'psx_planter_pot_mp_1_full',x:148.75,z:-59.99,face:0,h:0.55},
+                {key:'psx_planter_pot_mp_1_full',x:145.25,z:-59.99,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:148.75,z:-59.99,face:0,h:0.8},
                 {key:'psx_planter_pot_mp_1_full',x:155.75,z:-60.24,face:0,h:0.55},
                 {key:'palm_tree',x:162.75,z:-47.25},
-                {key:'psx_planter_pot_mp_1_full',x:174.26,z:-68.25,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:174.51,z:-68.25,face:0,h:0.8},
                 {key:'psx_planter_pot_mp_1_full',x:174.26,z:-61.25,face:0,h:0.55},
                 {key:'vending_machine',x:174.51,z:-57.75,face:270},
                 {key:'dumpster',x:190.75,z:-50.75,face:0},
                 {key:'palm_tree',x:215.25,z:-78.75},
                 {key:'palm_tree',x:246.75,z:-47.25},
-                {key:'psx_planter_pot_mp_1_full',x:95.24,z:-29.625,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:95.24,z:-29.5,face:0,h:0.8},
                 {key:'vending_machine',x:94.94,z:-28.75,face:90},
-                {key:'psx_potted_cactus_mp_1',x:115.01,z:-22.75,face:0,h:0.8},
-                {key:'psx_planter_pot_mp_1_full',x:120.5,z:-24.01,face:0,h:0.55},
+                {key:'psx_planter_pot_mp_1_full',x:115.01,z:-22.75,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:120.75,z:-24.01,face:0,h:0.8},
                 {key:'palm_tree',x:120.75,z:-5.25},
-                {key:'psx_potted_cactus_mp_1',x:141.75,z:-35.49,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:141.75,z:-35.49,face:0,h:0.55},
                 {key:'vending_machine',x:152.25,z:-35.39,face:0},
                 {key:'dumpster',x:148.75,z:-8.75,face:0},
-                {key:'psx_potted_cactus_mp_1',x:183.75,z:-24.01,face:0,h:0.8},
-                {key:'psx_planter_pot_mp_1_full',x:190.75,z:-24.01,face:0,h:0.55},
+                {key:'psx_planter_pot_mp_1_full',x:183.75,z:-24.01,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:190.75,z:-24.01,face:0,h:0.8},
                 {key:'vending_machine',x:194.25,z:-24.16,face:180},
                 {key:'dumpster',x:173.25,z:-29.75,face:90},
-                {key:'psx_planter_pot_mp_1_full',x:180.25,z:-18.24,face:0,h:0.55},
+                {key:'psx_potted_cactus_mp_1',x:180.25,z:-17.99,face:0,h:0.8},
                 {key:'psx_planter_pot_mp_1_full',x:187.25,z:-17.99,face:0,h:0.55},
                 {key:'palm_tree',x:173.25,z:-36.75},
                 {key:'palm_tree',x:204.75,z:-5.25},
                 {key:'psx_planter_pot_mp_1_full',x:240.76,z:-26.25,face:0,h:0.55},
-                {key:'psx_potted_cactus_mp_1',x:241.01,z:-19.25,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:241.01,z:-19.25,face:0,h:0.55},
                 {key:'vending_machine',x:241.06,z:-15.75,face:270},
                 {key:'psx_planter_pot_mp_1_full',x:221.24,z:-29.75,face:0,h:0.55},
-                {key:'psx_potted_cactus_mp_1',x:220.99,z:-22.75,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:220.99,z:-22.75,face:0,h:0.55},
                 {key:'palm_tree',x:89.25,z:5.25},
                 {key:'palm_tree',x:120.75,z:36.75},
                 {key:'palm_tree',x:131.25,z:5.25},
                 {key:'palm_tree',x:162.75,z:36.75},
                 {key:'psx_planter_pot_mp_1_full',x:174.26,z:15.25,face:0,h:0.55},
-                {key:'psx_potted_cactus_mp_1',x:174.51,z:22.75,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:174.51,z:22.75,face:0,h:0.55},
                 {key:'vending_machine',x:172.81,z:26.25,face:270},
                 {key:'psx_planter_pot_mp_1_full',x:241.01,z:15.75,face:0,h:0.55},
-                {key:'psx_potted_cactus_mp_1',x:241.01,z:22.75,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:241.01,z:22.75,face:0,h:0.55},
                 {key:'vending_machine',x:241.16,z:26.25,face:270},
                 {key:'psx_planter_pot_mp_1_full',x:220.99,z:12.25,face:0,h:0.55},
-                {key:'psx_potted_cactus_mp_1',x:220.99,z:19.25,face:0,h:0.8},
+                {key:'psx_planter_pot_mp_1_full',x:220.99,z:19.25,face:0,h:0.55},
                 {key:'palm_tree',x:89.25,z:47.25},
                 {key:'palm_tree',x:120.75,z:78.75},
                 {key:'palm_tree',x:131.25,z:42.85},
@@ -49515,7 +48929,6 @@ const DOOR_HQ = {
                 {key:'bus_shelter',x:-22.75,z:222.25,face:270,rect:false},
                 {key:'fire_hydrant',x:97.65,z:-243.25,face:90},
                 {key:'roads_g_sign_006',x:112.35,z:-243.25,face:270,h:2.4},
-                {key:'metro_bin',x:97.51,z:-222.25,face:90},
                 {key:'metro_bin',x:112.49,z:-222.25,face:270},
                 {key:'roads_g_sign_012',x:112.35,z:-201.25,face:270,h:2.4},
                 {key:'fire_hydrant',x:-243.25,z:-196.35,face:180},
@@ -49674,7 +49087,6 @@ const DOOR_HQ = {
                 {key:'fire_hydrant',x:223.65,z:218.75,face:90},
                 {key:'roads_g_sign_006',x:238.35,z:218.75,face:270,h:2.4},
                 {key:'fire_hydrant',x:-75.25,z:223.65,face:180},
-                {key:'metro_bin',x:-54.25,z:223.51,face:180},
                 {key:'fire_hydrant',x:-33.25,z:223.65,face:180},
                 {key:'metro_bin',x:-12.25,z:223.51,face:180},
                 {key:'fire_hydrant',x:8.75,z:223.65,face:180},
@@ -52589,6 +52001,7 @@ const DOOR_HQ = {
                 {key:'psx_metal_barrel_mp_3',x:-121.8,z:97.3,face:0,floor:true},
                 {key:'metal_trash_can',x:-173.25,z:107.75,face:90,floor:true},
                 {key:'metal_trash_can',x:-132.25,z:109.83,face:180,floor:true},
+                {key:'psx_metal_barrel_mp_0',x:-221.2,z:118.3,face:0,floor:true},
                 {key:'psx_metal_barrel_mp_3',x:-93.8,z:128.8,face:0,floor:true},
                 {key:'metal_trash_can',x:-176.33,z:132.25,face:270,floor:true},
                 {key:'psx_metal_barrel_mp_0',x:-137.2,z:133.7,face:0,floor:true},
@@ -52598,7 +52011,6 @@ const DOOR_HQ = {
                 {key:'psx_metal_barrel_mp_0',x:-242.2,z:200.2,face:0,floor:true},
                 {key:'metal_trash_can',x:-145.67,z:203.75,face:0,floor:true},
                 {key:'metal_trash_can',x:-142.59,z:203.75,face:90,floor:true},
-                {key:'psx_metal_barrel_mp_1',x:-207.2,z:216.3,face:0,floor:true},
                 {key:'metal_trash_can',x:-172.83,z:228.25,face:270,floor:true},
                 {key:'stone_urn',x:-229.749,z:-56.75,face:180},
                 {key:'stone_urn',x:-233.984,z:-56.75,face:180},
@@ -53003,7 +52415,9 @@ const DOOR_HQ = {
                 {key:'metro_bin',x:96.25,z:-174.3,face:90},
                 {key:'metro_bin',x:-113.75,z:203.7,face:90},
                 {key:'metro_bin',x:-20.3,z:222.25,face:180},
-                {key:'ind_vent',face:270,x:-239.75,z:115.71},
+                {key:'ind_vent',face:270,x:-225.75,z:115.71},
+                {key:'psx_metal_barrel_mp_0',x:-239.3,z:116.05},
+                {key:'psx_metal_barrel_mp_2',x:-240.15,z:116.05},
                 {key:'ind_vent',face:90,x:-176.75,z:90.64},
                 {key:'psx_metal_barrel_mp_2',x:-200.05,z:99.3},
                 {key:'psx_metal_barrel_mp_0',x:-200.05,z:100.15},
@@ -53320,15 +52734,16 @@ const DOOR_HQ = {
                 {key:'utility_box',face:270,x:248.23,z:82.25,floor:true},
                 {key:'psx_wooden_crate_3',face:286,x:247.5,z:68.25},
                 {key:'street_drain',x:229.25,z:64.75},
-                {key:'meshy_sandbags',x:124.25,z:6.6,face:90},
-                {key:'meshy_sandbags',x:166.25,z:31.1,face:90},
-                {key:'meshy_sandbags',x:90.6,z:77.125,face:0},
-                {key:'meshy_sandbags',x:111.6,z:75.25,face:0},
-                {key:'meshy_sandbags',x:115.1,z:15.75,face:0},
-                {key:'meshy_sandbags',x:136.1,z:15.75,face:0},
-                {key:'meshy_sandbags',x:160.6,z:15.75,face:0},
-                {key:'meshy_sandbags',x:136.1,z:26.25,face:0},
-                {key:'meshy_sandbags',x:160.6,z:26.25,face:0},
+                {key:'meshy_sandbags',x:123.25,z:-1.15,face:90},
+                {key:'meshy_sandbags',x:124.25,z:13.6,face:90},
+                {key:'meshy_sandbags',x:123.25,z:41.6,face:90},
+                {key:'meshy_sandbags',x:166.25,z:24.1,face:90},
+                {key:'meshy_sandbags',x:166.25,z:38.1,face:90},
+                {key:'meshy_sandbags',x:101.1,z:75.25,face:0},
+                {key:'meshy_sandbags',x:129.1,z:15.75,face:0},
+                {key:'meshy_sandbags',x:153.6,z:15.75,face:0},
+                {key:'meshy_sandbags',x:129.1,z:26.25,face:0},
+                {key:'meshy_sandbags',x:153.6,z:26.25,face:0},
                 {key:'metro_bin',x:-225,z:-117.25},
                 {key:'garbage_bags',x:124.1,z:87.6,face:310},
                 {key:'garbage_bags',x:124.1,z:94.6,face:84},
@@ -53338,104 +52753,102 @@ const DOOR_HQ = {
                 {key:'metal_trash_can',x:122.9,z:210.7,face:255},
                 {key:'garbage_bag',x:124.1,z:220.6,face:59},
                 {key:'garbage_bag',x:124.1,z:227.6,face:193},
-                {key:'garbage_bag',x:166.1,z:87.6,face:211},
-                {key:'garbage_bag',x:166.1,z:94.6,face:345},
-                {key:'metal_trash_can',x:166.15,z:90.95,face:195},
-                {key:'garbage_bag',x:165.1,z:100.85,face:119},
-                {key:'garbage_bags',x:208.1,z:87.6,face:70},
-                {key:'garbage_bags',x:208.1,z:94.6,face:204},
-                {key:'metal_trash_can',x:208.15,z:90.95,face:12},
-                {key:'garbage_bags',x:208.1,z:101.6,face:338},
-                {key:'garbage_bags',x:192.4,z:-211.9,face:272},
-                {key:'garbage_bags',x:199.4,z:-211.9,face:46},
-                {key:'garbage_bags',x:206.4,z:-211.9,face:180},
-                {key:'metal_trash_can',x:211.3,z:-212.85,face:180},
-                {key:'garbage_bags',x:167.9,z:-169.9,face:182},
-                {key:'garbage_bags',x:174.9,z:-169.9,face:316},
-                {key:'garbage_bags',x:181.9,z:-169.9,face:90},
-                {key:'metal_trash_can',x:185.55,z:-169.85,face:270},
-                {key:'garbage_bag',x:83.4,z:-127.9,face:309},
-                {key:'metal_trash_can',x:87.55,z:-127.85,face:87},
-                {key:'garbage_bag',x:91.15,z:-127.9,face:83},
-                {key:'garbage_bag',x:192.4,z:-127.9,face:209},
-                {key:'garbage_bag',x:199.4,z:-127.9,face:343},
-                {key:'garbage_bag',x:206.4,z:-127.9,face:117},
-                {key:'metal_trash_can',x:211.3,z:-128.225,face:351},
-                {key:'garbage_bags',x:115.4,z:-86.775,face:252},
-                {key:'metal_trash_can',x:119.05,z:-85.85,face:36},
-                {key:'garbage_bags',x:122.4,z:-85.9,face:26},
-                {key:'garbage_bag',x:87.4,z:124.1,face:77},
-                {key:'garbage_bag',x:94.4,z:124.1,face:211},
-                {key:'garbage_bag',x:133.1,z:127.9,face:345},
-                {key:'metal_trash_can',x:129.45,z:127.85,face:195},
-                {key:'garbage_bag',x:140.1,z:127.9,face:119},
-                {key:'garbage_bag',x:171.4,z:124.1,face:253},
-                {key:'garbage_bag',x:178.4,z:124.1,face:27},
-                {key:'metal_trash_can',x:182.05,z:124.15,face:81},
-                {key:'garbage_bag',x:241.4,z:124.1,face:161},
-                {key:'garbage_bags',x:127.9,z:-248.6,face:254},
-                {key:'garbage_bag',x:127.9,z:-164.6,face:321},
-                {key:'metal_trash_can',x:127.85,z:-160.95,face:3},
-                {key:'garbage_bag',x:127.9,z:-157.6,face:95},
-                {key:'garbage_bags',x:124.1,z:-90.9,face:70},
-                {key:'garbage_bags',x:129.775,z:168.6,face:12},
-                {key:'metal_trash_can',x:133.05,z:166.15,face:276},
-                {key:'garbage_bags',x:136.4,z:166.1,face:146},
-                {key:'garbage_bags',x:175.1,z:169.9,face:280},
-                {key:'garbage_bags',x:182.1,z:169.9,face:54},
-                {key:'metal_trash_can',x:178.45,z:169.85,face:162},
-                {key:'garbage_bags',x:214.15,z:164.85,face:188},
-                {key:'garbage_bags',x:169.9,z:-248.6,face:122},
-                {key:'garbage_bags',x:169.9,z:-241.6,face:256},
-                {key:'garbage_bags',x:112.1,z:211.9,face:282},
-                {key:'metal_trash_can',x:108.45,z:211.85,face:6},
-                {key:'garbage_bags',x:119.1,z:211.9,face:56},
-                {key:'garbage_bags',x:150.4,z:208.1,face:190},
-                {key:'garbage_bags',x:157.4,z:208.1,face:324},
-                {key:'metal_trash_can',x:161.05,z:208.15,face:252},
-                {key:'garbage_bags',x:213.4,z:208.1,face:98},
-                {key:'garbage_bags',x:208.1,z:-244.9,face:308},
-                {key:'garbage_bags',x:208.1,z:-237.9,face:82},
-                {key:'garbage_bags',x:211.9,z:-206.6,face:216},
-                {key:'metal_trash_can',x:211.85,z:-202.95,face:288},
-                {key:'garbage_bags',x:211.9,z:-199.6,face:350},
-                {key:'garbage_bags',x:208.1,z:-139.9,face:258},
-                {key:'metal_trash_can',x:208.15,z:-143.55,face:174},
-                {key:'garbage_bags',x:208.1,z:-132.9,face:32},
-                {key:'garbage_bags',x:207.35,z:-91.4,face:166},
-                {key:'garbage_bag',x:-231.1,z:117.1,face:295},
-                {key:'garbage_bags',x:-120.6,z:90.9,face:178},
-                {key:'garbage_bag',x:-246.6,z:139.9,face:19},
-                {key:'garbage_bag',x:-121.85,z:158.1,face:329},
-                {key:'garbage_bags',x:-174.9,z:182.9,face:78},
-                {key:'metal_trash_can',x:-178.55,z:183.85,face:354},
-                {key:'garbage_bags',x:-91.1,z:201.1,face:254},
-                {key:'garbage_bags',x:87.4,z:-218.9,face:234},
-                {key:'metal_trash_can',x:91.05,z:-218.85,face:342},
-                {key:'garbage_bag',x:246.6,z:-241.4,face:201},
-                {key:'metal_trash_can',x:246.65,z:-245.05,face:123},
-                {key:'garbage_bag',x:118.9,z:-176.9,face:243},
-                {key:'metal_trash_can',x:122.55,z:-176.85,face:9},
-                {key:'garbage_bag',x:87.4,z:-134.9,face:143},
-                {key:'garbage_bag',x:157.4,z:-134.9,face:185},
-                {key:'garbage_bag',x:218.9,z:-157.6,face:135},
-                {key:'metal_trash_can',x:219.85,z:-154.2,face:45},
-                {key:'garbage_bag',x:244.9,z:117.1,face:127},
-                {key:'garbage_bags',x:115.6,z:131.4,face:194},
-                {key:'garbage_bags',x:199.6,z:134.9,face:328},
-                {key:'garbage_bag',x:214.15,z:160.6,face:35},
-                {key:'garbage_bags',x:89.4,z:181.9,face:102},
-                {key:'metal_trash_can',x:89.35,z:185.55,face:186},
-                {key:'garbage_bag',x:157.6,z:187.4,face:169},
-                {key:'garbage_bags',x:206.4,z:201.1,face:236},
-                {key:'garbage_bag',x:244.9,z:201.1,face:303},
-                {key:'metal_trash_can',x:248.55,z:201.15,face:309},
-                {key:'garbage_bags',x:183.9,z:241.4,face:10},
-                {key:'garbage_bags',x:88.15,z:-49.4,face:304},
-                {key:'garbage_bag',x:188.9,z:-50.9,face:229},
-                {key:'garbage_bag',x:146.9,z:-8.9,face:179},
-                {key:'garbage_bag',x:173.4,z:-31.6,face:87},
-                {key:'metal_trash_can',x:173.35,z:-27.95,face:21},
+                {key:'garbage_bags',x:166.1,z:87.6,face:10},
+                {key:'garbage_bags',x:166.1,z:94.6,face:144},
+                {key:'metal_trash_can',x:166.15,z:90.95,face:72},
+                {key:'garbage_bags',x:164.85,z:100.85,face:278},
+                {key:'garbage_bag',x:208.1,z:87.6,face:229},
+                {key:'garbage_bag',x:208.1,z:94.6,face:3},
+                {key:'metal_trash_can',x:208.15,z:90.95,face:249},
+                {key:'garbage_bag',x:208.1,z:101.6,face:137},
+                {key:'garbage_bag',x:192.4,z:-211.9,face:71},
+                {key:'garbage_bag',x:199.4,z:-211.9,face:205},
+                {key:'garbage_bag',x:206.4,z:-211.9,face:339},
+                {key:'metal_trash_can',x:211.3,z:-212.85,face:57},
+                {key:'garbage_bag',x:167.9,z:-169.9,face:341},
+                {key:'garbage_bag',x:174.9,z:-169.9,face:115},
+                {key:'garbage_bag',x:181.9,z:-169.9,face:249},
+                {key:'metal_trash_can',x:185.55,z:-169.85,face:147},
+                {key:'garbage_bags',x:83.4,z:-127.9,face:108},
+                {key:'metal_trash_can',x:87.55,z:-127.85,face:324},
+                {key:'garbage_bags',x:91.15,z:-127.9,face:242},
+                {key:'garbage_bags',x:192.4,z:-127.9,face:8},
+                {key:'garbage_bags',x:199.4,z:-127.9,face:142},
+                {key:'garbage_bags',x:206.4,z:-127.9,face:276},
+                {key:'metal_trash_can',x:211.3,z:-128.225,face:228},
+                {key:'garbage_bag',x:115.4,z:-86.65,face:51},
+                {key:'metal_trash_can',x:119.05,z:-85.85,face:273},
+                {key:'garbage_bag',x:122.4,z:-85.9,face:185},
+                {key:'garbage_bags',x:87.4,z:124.1,face:236},
+                {key:'garbage_bags',x:94.4,z:124.1,face:10},
+                {key:'garbage_bags',x:133.1,z:127.9,face:144},
+                {key:'metal_trash_can',x:129.45,z:127.85,face:72},
+                {key:'garbage_bags',x:140.1,z:127.9,face:278},
+                {key:'garbage_bags',x:171.4,z:124.1,face:52},
+                {key:'garbage_bags',x:178.4,z:124.1,face:186},
+                {key:'metal_trash_can',x:182.05,z:124.15,face:318},
+                {key:'garbage_bags',x:241.4,z:124.1,face:320},
+                {key:'garbage_bag',x:127.9,z:-248.6,face:53},
+                {key:'garbage_bags',x:127.9,z:-164.6,face:120},
+                {key:'metal_trash_can',x:127.85,z:-160.95,face:240},
+                {key:'garbage_bags',x:127.9,z:-157.6,face:254},
+                {key:'garbage_bag',x:124.1,z:-90.9,face:229},
+                {key:'garbage_bag',x:129.65,z:168.475,face:171},
+                {key:'metal_trash_can',x:133.05,z:166.15,face:153},
+                {key:'garbage_bag',x:136.4,z:166.1,face:305},
+                {key:'garbage_bag',x:175.1,z:169.9,face:79},
+                {key:'garbage_bag',x:182.1,z:169.9,face:213},
+                {key:'metal_trash_can',x:178.45,z:169.85,face:39},
+                {key:'garbage_bag',x:214.15,z:165.1,face:347},
+                {key:'garbage_bag',x:169.9,z:-248.6,face:281},
+                {key:'garbage_bag',x:169.9,z:-241.6,face:55},
+                {key:'garbage_bag',x:112.1,z:211.9,face:81},
+                {key:'metal_trash_can',x:108.45,z:211.85,face:243},
+                {key:'garbage_bag',x:119.1,z:211.9,face:215},
+                {key:'garbage_bag',x:150.4,z:208.1,face:349},
+                {key:'garbage_bag',x:157.4,z:208.1,face:123},
+                {key:'metal_trash_can',x:161.05,z:208.15,face:129},
+                {key:'garbage_bag',x:213.4,z:208.1,face:257},
+                {key:'garbage_bag',x:208.1,z:-244.9,face:107},
+                {key:'garbage_bag',x:208.1,z:-237.9,face:241},
+                {key:'garbage_bag',x:211.9,z:-206.6,face:15},
+                {key:'metal_trash_can',x:211.85,z:-202.95,face:165},
+                {key:'garbage_bag',x:211.9,z:-199.6,face:149},
+                {key:'garbage_bag',x:208.1,z:-139.9,face:57},
+                {key:'metal_trash_can',x:208.15,z:-143.55,face:51},
+                {key:'garbage_bag',x:208.1,z:-132.9,face:191},
+                {key:'garbage_bag',x:207.35,z:-91.4,face:325},
+                {key:'garbage_bags',x:-231.1,z:117.1,face:94},
+                {key:'garbage_bag',x:-120.6,z:90.9,face:337},
+                {key:'garbage_bags',x:-246.6,z:139.9,face:178},
+                {key:'garbage_bags',x:-121.85,z:160.6,face:128},
+                {key:'garbage_bag',x:-174.4,z:184.65,face:237},
+                {key:'metal_trash_can',x:-178.55,z:183.85,face:231},
+                {key:'garbage_bag',x:-91.1,z:201.1,face:53},
+                {key:'garbage_bag',x:246.6,z:-241.4,face:293},
+                {key:'garbage_bag',x:118.9,z:-176.9,face:335},
+                {key:'garbage_bag',x:87.4,z:-134.9,face:235},
+                {key:'garbage_bag',x:157.4,z:-134.9,face:277},
+                {key:'garbage_bag',x:218.9,z:-157.6,face:227},
+                {key:'garbage_bag',x:244.9,z:117.1,face:219},
+                {key:'metal_trash_can',x:248.55,z:117.15,face:177},
+                {key:'garbage_bags',x:115.6,z:131.4,face:286},
+                {key:'garbage_bags',x:199.6,z:134.9,face:60},
+                {key:'metal_trash_can',x:195.95,z:134.85,face:300},
+                {key:'garbage_bag',x:214.15,z:160.6,face:127},
+                {key:'garbage_bags',x:89.4,z:181.9,face:194},
+                {key:'garbage_bag',x:157.6,z:187.4,face:261},
+                {key:'metal_trash_can',x:153.95,z:187.35,face:63},
+                {key:'garbage_bags',x:206.4,z:201.1,face:328},
+                {key:'garbage_bag',x:244.9,z:201.1,face:35},
+                {key:'garbage_bags',x:183.9,z:241.4,face:102},
+                {key:'metal_trash_can',x:183.85,z:245.05,face:186},
+                {key:'garbage_bags',x:88.15,z:-49.4,face:36},
+                {key:'metal_trash_can',x:91.05,z:-50.85,face:108},
+                {key:'garbage_bag',x:188.9,z:-50.9,face:321},
+                {key:'metal_trash_can',x:192.55,z:-50.85,face:3},
+                {key:'garbage_bag',x:146.9,z:-8.9,face:271},
+                {key:'garbage_bag',x:173.4,z:-31.6,face:179},
                 {key:'power_pole',x:-94.15,z:105,face:0},
                 {key:'power_pole',x:223.65,z:108.5,face:0},
                 {key:'power_pole',x:-112.35,z:129.5,face:0},
@@ -53559,8 +52972,7 @@ const DOOR_HQ = {
                 {key:'psx_metal_barrel_mp_1',x:-205.15,z:196.55},
                 {key:'psx_metal_barrel_mp_0',x:-204.8,z:197.25},
                 {key:'psx_wooden_crate_3',face:106,x:245.875,z:-166.875},
-                {key:'meshy_sandbags',x:124.25,z:53.65,face:90},
-                {key:'garbage_bags',x:201.1,z:-91.4,face:152},
+                {key:'garbage_bags',x:201.1,z:-91.4,face:244},
                 {key:'cardboard_boxes',x:-97.525,z:184.575,face:242},
             ],
             agents: [], npcSpots: [{x:-61.25,z:99.75,face:180,race:'dinosaur'}, {x:327.25,z:-176.75,face:250,race:'mermaid',say:['“The lighthouse is not on the chart.” “Then how do ships find it?” “They do not. It finds them.”']}, {x:316.75,z:-145.25,face:90,race:'siren'}, {x:281.75,z:-187.25,face:90,race:'homosapien'}, {x:285.25,z:-180.25,face:0,race:'chef'}, {x:271.25,z:-145.25,face:180,race:'homosapien'}, {x:323.75,z:-103.25,face:90,race:'homosapien'}, {x:316.75,z:-92.75,face:270,race:'homosapien'}, {x:278.25,z:-103.25,face:100,race:'hippie'}, {x:274.75,z:-222.25,face:60,race:'hippie'}, {x:173.25,z:-92.75,face:0,race:'king kong',say:['“…” “Was that you?” “…” “The tower.” “…” “Every year?” “…”']}],
@@ -57338,7 +56750,6 @@ const DOOR_HQ = {
                 {id:'kitchen',wall:'free',x:-39.37,z:-3.2,face:180,leaf:'leaf_shabby_wood',label:'CAMELOT CASTLE',sub:'THE KITCHEN DOOR · THE WEST WING',action:{room:'site_prebuilt_camelot_palace',at:'kitchen'},desc:'The kitchen door in the West Wing. It smells of bread from here.'},
                 {id:'guard',wall:'free',x:37.63,z:-3.2,face:180,leaf:'leaf_shabby_wood',label:'CAMELOT CASTLE',sub:'THE GUARD DOOR · THE EAST WING',action:{room:'site_prebuilt_camelot_palace',at:'guard'},desc:'The guard room door in the East Wing. Somebody inside is sharpening something.'},
                 {id:'postern',wall:'free',x:-22.75,z:35.45,face:180,leaf:'leaf_shabby_wood',label:'MERLIN’S UNDERCROFT',sub:'THE SALLY PORT · UNDER THE HILL',action:{room:'site_prebuilt_camelot_palace',at:'postern'},desc:'A low door in the foot of the castle hill, beside the Grand Stair. It goes down under the castle, which the besiegers should have found suspicious.'},
-                {id:'oldgarden',wall:'w',z:0,way:'trail',label:'THE LOOKING-GLASS · THE GARDEN',sub:'THE OLD GARDEN · AS IT WAS',action:{room:'site_prebuilt_lookingglass_garden',at:'bay'},desc:'A gap in the west hedge. The garden on the far side is the one that was here before this one was measured.'},
                 {id:'deadtree',wall:'s',x:-140,way:'trail',secret:true,label:'THE WOODS',sub:'THE DEAD TREE · BACK TO THE WOODS',action:{room:'site_prebuilt_fairy_forest_plots',at:'lookingglass'},desc:'The hedge stops at a dead tree with a hole in it the size of a door. Through it the ground is the right colour again.'},
                 {id:'mirror',wall:'free',x:-141.75,z:19.25,face:180,leaf:'leaf_frame_only',label:'THE ASTRAL REALM · THE SEA OF POSSIBILITY',sub:'THE FRAME WITH NOTHING IN IT · THE OTHER SIDE OF THE GLASS',action:{room:'site_prebuilt_lookingglass_realm',at:'mirror'},desc:'A second mirror frame with no glass in it, at the back of the garden where the hedges stop pretending. Through it, a violet sky and an island with nothing under it.'},
             ],
@@ -57969,253 +57380,8 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 50, face: 0 },
         },
-        /* ── THE GREAT HALL — the round table, the dais and the throne, the minstrels' gallery, the loft ── */
-        /* ── THE KEEP — the guardroom, the great stair, the solar, the battlements, the tower top ── */
-        site_prebuilt_camelot_keep: {
-            label: 'CAMELOT · THE KEEP',
-            sub: 'THE GUARDROOM · THE GREAT STAIR · THE SOLAR · THE BATTLEMENTS · THE DOOR TO THE SKY',
-            kind: 'box', site: 'prebuilt_camelot', part: 'keep',
-            shell: {
-                w: 44, d: 44, h: 14,
-                wallH: 14, dadoH: 1.1,
-                floor: 'cobblestone', wall: 'castle_wall', dado: 'bricks_2', trim: 'wood', ceiling: 'dark_woods', ceilTile: 1.75,
-                floorColor: 0x9a948c, wallColor: 0x9c9ca4, dadoColor: 0x847a6e, ceilColor: 0x5a4030,
-                pipes: false, strips: false, lights: [],
-                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xe8d8c0, ambient: 0.30 },
-                fog: { color: 0x0a0806, density: 0.02 },   // THE FAR END rule 3.5
-                plate: { x: 0, z: 20.6, y: 4.8 },
-                look: HQ_ROOM_LOOKS.keep,
-            },
-            /* THE FIELD (44 × 44 m — family C): a `halls` plan round two authored rooms — THE
-               GUARDROOM inside the ward's door and THE STAIRHALL (the BSP wraps them with the
-               stores, the armoury, the kitchen; the cycle rule gives every one two ways). THE
-               GREAT STAIR: a flight up to THE SOLAR (4.5 m) and a second across the hall to THE
-               BATTLEMENTS (9 m, against the north wall — the sky's door stands on them, y 9);
-               THE TOWER TOP off the battlements' east corner (12.5 m — the tape, the door gun's);
-               the hall's stable door on the east wall, the dungeon stair on the west. */
-            terrain: {
-                res: 0.4375,   // THE GRID FIT (2026-10-26): sampled every quarter square, so a tier's edge on a square line never smears into the square beside it
-                floor: 'cobblestone', cliff: 'castle_wall', path: 'wood_planks',
-                noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 1187, loops: 3, wallKey: 'castle_wall', leafMin: 7, leafMax: 13,
-                       rooms: [{ id: 'guard', x: 0, z: 12, w: 16, d: 12 }, { id: 'stairhall', x: -2, z: -9, w: 34, d: 24 }] },
-                features: [
-                    { k: 'plateau', x: -9.625, z: -13.125, w: 12.25, d: 8.75, h: 4.5, edge: 0.2 },                                        // THE SOLAR (x −16..−4, z −17..−9)
-                    { k: 'ramp', x0: -10.5, z0: 1.75, x1: -10.5, z1: -9.45, w: 3.5, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },
-                    /* AREA CONTENT D4 (2026-09-20): THE HEARTH GALLERY — a timber gallery from the solar's west edge to the hearth on the west wall,
-                       where THE CHIMNEY's rungs go up (the bridge layer: the floor under it stays walked, the strip west of the solar is not a pocket) */
-                    { k: 'bridge', x0: -14, z0: -13.125, x1: -19.25, z1: -13.125, w: 1.75, y: 4.5, key: 'wood' },   // the east mouth 0.7 m inside the solar's flat top (x −15.2); the west end stops SHORT of the hearth pad (x −19.2) — a slab over the pad's cell puts the landing on the bridge layer and the solver never finds the door       // THE GREAT STAIR, first flight (L ≥ 2.2 × h; ends 0.7 m inside)
-                    { k: 'plateau', x: 9.625, z: -16.25, w: 8.75, d: 11.5, h: 9.0, edge: 0.2 },                                         // THE BATTLEMENTS (x 6..14, z −22..−10 — against the north wall)
-                    { k: 'ramp', x0: -4.1, z0: -12.25, x1: 5.95, z1: -12.25, w: 3.5, h0: 4.5, h1: 9.0, stairs: true, edge: 0.2 },      // the second flight, across the hall (starts 0.6 m inside the solar, ends 0.7 m inside the battlements)
-                    { k: 'plateau', x: 15.75, z: -19.25, r: 1.75, h: 12.5, edge: 0.2 },                                           // THE TOWER TOP (the tape — the door gun's, from the battlements)
-                    { k: 'rail', x0: -7.7875, z0: -9.1875, x1: -3.9083, z1: -9.1875 },                                                   // the solar's rail, east of the flight (the grind)
-                    { k: 'rail', x0: 5.6875, z0: -10.8833, x1: 13.5625, z1: -10.8833 },                                                  // the battlements' rail
-                    /* THE EAST GALLERY (4.5) under the battlements' south face: a stone flight up from the hall floor, a ladder on up to the
-                       battlements (the way round: floor, gallery, battlements, the great stair down through the solar); its parapet; a pipe
-                       rail laid across the hall from the solar's corner to the gallery (the grind over the gap) */
-                    { k: 'plateau', x: 12.25, z: -6.125, w: 7, d: 8.75, h: 4.5, edge: 0.2 },
-                    { k: 'ramp', x0: -1.75, z0: -5.25, x1: 9.45, z1: -5.25, w: 3.5, h0: 0, h1: 4.5, stairs: true, model: 'stone', edge: 0.2 },
-                    { k: 'climb', x: 12.5682, z: -10.1799, face: 0, look: 'ladder' },
-                    { k: 'rail', x0: 8.9409, z0: -9.5396, x1: 8.9409, z1: -5.4848, y: 4.5, model: 'parapet' }, { k: 'rail', x0: 8.9409, z0: -2.497, x1: 8.9409, z1: -1.9101, y: 4.5, model: 'parapet' },
-                    { k: 'rail', x0: 9.1318, z0: -1.9101, x1: 15.4955, z1: -1.9101, y: 4.5, model: 'parapet' },
-                    { k: 'rail', x0: -4.4, z0: -9.45, x1: 9.9, z1: -9.45, y: 4.5, model: 'pipe', block: false },
-                    /* skate rails: down the middle of the first flight, round the tower top on the battlements */
-                    { k: 'rail', x0: -10.5, z0: 1.5325, x1: -10.5, z1: -9.2325, model: 'pipe', block: false },
-                    { k: 'rail', arc: { x: 15.4, z: -19, r: 2.4, a0: 225, a1: 315 }, y: 9, model: 'pipe', block: false },
-                    { k: 'wall', x0: -5.25, z0: 17.5, x1: 5.25, z1: 17.5, h: 0.5, t: 0.5, key: 'wood' },                               // the guardroom's bench (the rider's ledge)
-                    { k: 'path', pts: [[0, 21], [0, 12], [0, 6], [-10, 2], [-10, 0.6]], w: 2.2 },                            // in, and to the stair's foot
-                    { k: 'path', pts: [[21, 2], [10, 2], [6, 6]], w: 2.0 },                                                  // the hall's door (z 2 since OPEN WORLD Phase 6: back to back with the hall's keep door, the door join)
-                    { k: 'path', pts: [[-21, -4], [-14, -2], [-10, 0.6]], w: 2.0 },                                          // the dungeon stair's door
-                    { k: 'path', pts: [[10, -21], [10, -14]], w: 2.0 },                                                      // across the battlements to the sky's door
-                ],
-            },
-            doors: [
-                { id: 'ward', wall: 's', x: 0, leaf: 'leaf_shabby_wood',
-                  label: 'THE OUTER WARD', sub: 'THE KEEP DOOR · BACK TO THE BAILEY',
-                  action: { room: 'site_prebuilt_camelot_kingdom', at: 'keep' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the castle stands in the kingdom room now     // CAMELOT CASTLE, REDESIGNED (2026-11-15): out into the new castle's guardroom (was the old ward)
-                  desc: 'The keep door from the guardroom side, with the bar across it and the bar’s bracket empty.' },
-                { id: 'dungeon', wall: 'w', z: -4, leaf: 'leaf_cell',
-                  label: 'MERLIN’S UNDERCROFT', sub: 'THE DUNGEON STAIR · DOWN',
-                  action: { room: 'site_prebuilt_camelot_dungeon', at: 'keep' },
-                  desc: 'A barred door at the foot of the great stair, going the other way. Cold comes up it, and a smell of candles that are not lit.' },
-                { id: 'sky', wall: 'n', x: 10, y: 9, leaf: null,
-                  label: 'THE CASTLE IN THE SKY', sub: 'FROM THE BATTLEMENTS · UP',
-                  action: { room: 'site_prebuilt_camelot_sky', at: 'keep' },
-                  desc: 'An opening in the battlements’ back wall with nothing behind it but cloud, lit from above. The sentry says it is a door. The sentry has not used it.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CHIMNEY — the solar's flue climbs into the cloud; the castle in the sky is up it (R4) */
-                { id: 'chimney', wall: 'w', z: -13, y: 4.5, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CHIMNEY · THE SOLAR’S FLUE · UP INTO THE CLOUD',
-                  action: { room: 'site_prebuilt_camelot_sky', at: 'chimney' },
-                  desc: 'The solar’s hearth has no fire and the flue has no smoke. It has a draught, downward, that smells of cloud. The rungs go up.', draft: true },
-            ],
-            counters: [],
-            props: [
-                /* THE GUARDROOM: the armour flanking the way in, the stocks, the bench, the torches on its plan walls */
-                { key: 'armour_stand',   x: -6.125, z: 7.875, face: 180 }, { key: 'armour_stand', x: 6.125, z: 7.875, face: 180 },
-                { key: 'spear',          x: -7.2, z: 7.875, face: 180 }, { key: 'spear', x: 7.2, z: 7.875, face: 180 },   // THE SPEAR (2026-10-27): the guardroom's spears beside its armour
-                { key: 'stocks',         x: 6.125, z: 14.875, face: 270 },
-                { key: 'wall_torch',     x: -7.7, z: 12, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 7.7, z: 10, face: 270, mount: 1.9 },
-                { key: 'banner',         x: -7.7, z: 15, face: 90, mount: 3.2 },
-                /* THE STAIRHALL: the braziers at the stair's foot, the torches on its walls, the armour under the stair */
-                { key: 'brazier',        x: -13.125, z: -6.125 }, { key: 'brazier', x: -7.875, z: -6.125 },
-                { key: 'wall_torch',     x: -18.7, z: -14, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 14.7, z: -2, face: 270, mount: 1.9 },
-                { key: 'banner',         x: -18.7, z: -6, face: 90, mount: 3.4 }, { key: 'banner', x: 14.7, z: -6, face: 270, mount: 3.4 },
-                { key: 'armour_stand',   x: -16.625, z: -2.625, face: 90 },
-                { key: 'dorm_bed',       x: -16.625, z: 2.625, face: 90 }, { key: 'dorm_bed', x: -16.625, z: 6.125, face: 90 },   // THE 2026-09-22 BATCH: the guardroom's bunks
-                /* THE SOLAR: the astrologer's desk, the shelf, the chest */
-                { key: 'lectern',        x: -11.377, z: -14.876, face: 0 },
-                { key: 'royal_bed',      x: -7.874, z: -13.125, y: 4.5, face: 0 },                                   // THE 2026-09-22 BATCH: the king's bed in the solar (the head to the north wall)
-                { key: 'library_shelf',  x: -6.127, z: -16.624, face: 180 },
-                { key: 'sea_chest',      x: -14.874, z: -16.626, face: 30 },
-                /* THE BATTLEMENTS: the brazier, the rail */
-                { key: 'brazier',        x: 7.875, z: -13.125 },
-                { key: 'railing_1m',     x: 9.625, z: -11.376, face: 0 },
-            ],
-            agents: [],
-            npcSpots: [
-                { x: 0, z: 15.2, face: 180, race: 'knight', say: ['“The great stair goes up.” “To the battlements?” “Past them. That is the complaint.”', '“Nobody comes down the dungeon stair.” “Nobody goes down it either.” “Somebody must. There is a wizard down there and he eats.”'] },
-                { x: -12.4, z: -12.4, face: 90, race: 'wizard', say: ['“The stars over the keep are wrong tonight.” “Wrong how?” “They are the stars over a different keep. It is above us, a third of the way up.”', '“I read the sky for the Crown.” “What does it say?” “That the Crown lapsed. It said so in 540. Nobody reads it.”'] },
-                { x: 11.6, z: -14.4, face: 0, race: 'swordfighter', say: ['“I stand here all night.” “Watching what?” “The door with nothing behind it. Something comes through it at dawn and goes back up.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“How many floors has the keep?” “Three.” “I count two.” “The third is not in the keep.”',
-                '“The battlements have a door in the back wall.” “Where does it go?” “Up.” “There is no up.” “There is if you go through.”',
-                '“The tower top has no stair.” “Then how did the flag get up there?” “The flag has always been up there.”',
-                '“The solar is the astrologer’s.” “What does he do?” “Reads the wrong sky, correctly.”',
-                '“The guardroom guards the door.” “Which door?” “Whichever one is open. They are all open.”',
-            ],
-            spawn: { x: 0, z: 18.6, face: 0 },
-        },
-        /* ── MERLIN'S UNDERCROFT — the cistern, the gaoler's ledge, the workshop and the orb, the ossuary shelf, the sally port ── */
-        site_prebuilt_camelot_dungeon: {
-            label: 'CAMELOT · MERLIN’S UNDERCROFT',
-            sub: 'THE CISTERN · THE CELLS · THE WORKSHOP · THE ORB · THE SALLY PORT',
-            kind: 'box', site: 'prebuilt_camelot', part: 'dungeon',
-            shell: {
-                w: 96, d: 72, h: 6,
-                wallH: 6, dadoH: 1.05,
-                floor: 'dungeon', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: 'bricks_2', ceilTile: 1.75,
-                floorColor: 0x8a8880, wallColor: 0x8a8078, dadoColor: 0x6a6058, ceilColor: 0x4a4440,
-                pipes: false, strips: false, lights: [],
-                mood: { lamp: 0xffb060, glow: 0x9fd8c8, strip: 0xbfe8d8, light: 0xa8d0c8, ambient: 0.28 },
-                fog: { color: 0x050403, density: 0.03 },   /* the damp */
-                plate: { x: 42.8, z: -6.4, y: 3.6 },
-                look: HQ_ROOM_LOOKS.undercroft,
-            },
-            terrain: {
-                res: 0.4375,   // THE GRID FIT (2026-10-26): sampled every quarter square, so a tier's edge on a square line never smears into the square beside it
-                /* THE FIELD (LEVEL_DESIGN_PLAN L5, 2026-09-30): a LAYOUT in brick (walls to the vault). The keep's stair comes
-                   down into THE STAIR FOOT (east); MERLIN'S WORKSHOP north of it (the priest hole's stair behind it); THE
-                   CISTERN in the middle; the castle well's alcove off it; THE CELL PASSAGE west with three cells off it and THE
-                   OSSUARY a dead end (the tape); THE GAOLER'S ROOM (its ledge up a stair) by the sally port. Loops: stair foot ⇄
-                   workshop ⇄ cistern ⇄ well alcove ⇄ stair foot; cistern ⇄ cell passage ⇄ sally port ⇄ gaoler's room ⇄ cistern. */
-                floor: 'dungeon', cliff: 'bricks_2', path: 'dungeon_2',
-                noise: { amp: 0.02, scale: 4 }, crag: false,
-                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', wallH: 6, rim: 0, forceGrow: -0.3 },
-                features: [
-                    { k: 'space', x: 38.5, z: 5.25, w: 14, d: 17.5 },                                   // THE STAIR FOOT
-                    { k: 'hall', pts: [[49, 0], [45.5, 0]], w: 7 },
-                    { k: 'space', x: 28, z: -19.25, w: 21, d: 17.5 },                                // MERLIN'S WORKSHOP
-                    { k: 'hall', pts: [[19.25, -36], [19.25, -28]], w: 3.5 },                          // the priest hole's stair
-                    { k: 'hall', pts: [[33.25, -3.5], [33.25, -10.5]], w: 3.5 },
-                    { k: 'space', x: 0, z: 10.5, w: 28, d: 28 },                                  // THE CISTERN
-                    { k: 'space', x: 22.75, z: 19.25, w: 10.5, d: 10.5 },                                  // the well's alcove
-                    { k: 'hall', pts: [[10.5, 19.25], [17.5, 19.25]], w: 3.5 }, { k: 'hall', pts: [[28, 22.75], [36.75, 22.75], [36.75, 14]], w: 3.5 },
-                    { k: 'hall', pts: [[1.75, 3.5], [1.75, -8.75], [8.75, -8.75], [8.75, -19.25], [17.5, -19.25]], w: 3.5 },
-                    { k: 'hall', pts: [[0, -8.75], [-36.75, -8.75], [-36.75, 3.5]], w: 3.5 },                // THE CELL PASSAGE
-                    { k: 'space', x: -21, z: -17.5, w: 7, d: 7 }, { k: 'space', x: -31.5, z: -17.5, w: 7, d: 7 }, { k: 'space', x: -42, z: -17.5, w: 7, d: 7 },   // THE CELLS
-                    { k: 'hall', pts: [[-22.75, -14], [-22.75, -10.5]], w: 3.5 }, { k: 'hall', pts: [[-33.25, -14], [-33.25, -10.5]], w: 3.5 }, { k: 'hall', pts: [[-40.25, -14], [-40.25, -10.5]], w: 3.5 },
-                    { k: 'space', x: -8.75, z: -26.25, w: 17.5, d: 10.5 },                                 // THE OSSUARY (a dead end)
-                    { k: 'hall', pts: [[-8.75, -21], [-8.75, -7]], w: 3.5 },
-                    { k: 'space', x: -31.5, z: 19.25, w: 21, d: 17.5 },                                // THE GAOLER'S ROOM
-                    { k: 'hall', pts: [[-49, 1.75], [-33.25, 1.75], [-33.25, 10.5]], w: 3.5 },                // the sally port's passage
-                    { k: 'hall', pts: [[-21, 15.75], [-10.5, 15.75]], w: 3.5 },
-                    /* the rooms' pieces */
-                    { k: 'pool', x: 0, z: 13, r: 6.8, y: -0.3, depth: 0.9 },                                                  // THE CISTERN (waded)
-                    { k: 'wall', x0: -7, z0: 3.5, x1: 7, z1: 3.5, h: 0.45, t: 0.4, key: 'bricks_2' },                               // its kerb (the grind)
-                    { k: 'plateau', x: 28, z: -21, w: 21, d: 14, h: 0.4, edge: 0.15 },                                     // MERLIN'S WORKSHOP (a raised floor, climbed)
-                    { k: 'plateau', x: -7, z: -28, r: 3.5, h: 4.2, edge: 0.15 },                                               // THE OSSUARY SHELF (the tape — the door gun's)
-                    { k: 'plateau', x: -31.5, z: 24, w: 21, d: 8, h: 1.6, edge: 0.15 },                                          // THE GAOLER'S LEDGE
-                    { k: 'ramp', x0: -33.25, z0: 10.5, x1: -33.25, z1: 22.4, w: 3.5, h0: 0, h1: 1.6, stairs: true, model: 'wood', edge: 0.15, built: true, key: 'dungeon_2' },
-                    { k: 'rail', x0: -41.58, z0: 21.175, x1: -34.44, z1: 21.175 }, { k: 'rail', x0: -28.56, z0: 21.175, x1: -25.2, z1: 21.175 },   // the ledge's chain rail
-                    /* the ledge runs on east at 1.6 through the passage into the cistern room and along its west side (the walkway), down a
-                       timber stair to the cistern's floor: the way between the gaoler's room and the cistern is now over the top */
-                    { k: 'plateau', x: -22.75, z: 17.5, w: 3.5, d: 7, h: 1.6, edge: 0.15 },
-                    { k: 'plateau', x: -18.75, z: 15.75, w: 11.5, d: 3.5, h: 1.6, edge: 0.15 },
-                    { k: 'plateau', x: -10.5, z: 12.25, w: 7, d: 24.5, h: 1.6, edge: 0.15 },
-                    { k: 'ramp', x0: 0, z0: 24.5, x1: -8.4, z1: 24.5, w: 7, h0: 0, h1: 1.6, stairs: true, model: 'wood', edge: 0.15 },
-                    { k: 'rail', x0: -7.125, z0: 1.0366, x1: -7.125, z1: 20.2596, y: 1.6, model: 'bars_curb' },
-                    { k: 'rail', arc: { x: 0, z: 13, r: 7.8, a0: 20, a1: 160 }, model: 'pipe', block: false },                 // round the cistern's east side
-                    /* THE CELLS stepped (0.6, 1.2, 1.6), each up its own short flight from the passage */
-                    { k: 'plateau', x: -21, z: -17.5, w: 7, d: 7, h: 0.6, edge: 0.15 }, { k: 'plateau', x: -31.5, z: -17.5, w: 7, d: 7, h: 1.2, edge: 0.15 }, { k: 'plateau', x: -42, z: -17.5, w: 7, d: 7, h: 1.6, edge: 0.15 },
-                    { k: 'ramp', x0: -22.75, z0: -7, x1: -22.75, z1: -15.2, w: 4.1, h0: 0, h1: 0.6, stairs: true, rails: false, edge: 0.15 },
-                    { k: 'ramp', x0: -33.25, z0: -7, x1: -33.25, z1: -15.6, w: 4.1, h0: 0, h1: 1.2, stairs: true, rails: false, edge: 0.15 },
-                    { k: 'ramp', x0: -40.25, z0: -7, x1: -40.25, z1: -15.4, w: 4.1, h0: 0, h1: 1.6, stairs: true, rails: false, edge: 0.15 },
-                    /* THE WORKSHOP's loft (2.2) along its east wall, up a steel flight from the raised floor */
-                    { k: 'plateau', x: 35, z: -22.75, w: 7, d: 10.5, h: 2.2, edge: 0.15 },
-                    { k: 'ramp', x0: 21, z0: -26.25, x1: 32.7, z1: -26.25, w: 4.1, h0: 0.4, h1: 2.2, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'rail', x0: 31.8388, z0: -22.851, x1: 31.8388, z1: -18.4086, y: 2.2, model: 'bars_curb' },
-                    { k: 'path', pts: [[0, -8], [-36, -8]], w: 2.8 },
-                    { k: 'scatter', key: 'skull_pile', n: 4, x: -8, z: -25, r: 6, seed: 2 },
-                    { k: 'scatter', key: 'cave_stone', n: 3, x: -32, z: 16, r: 6, seed: 3 },
-                ],
-            },
-            doors: [
-                { id: 'keep', wall: 'e', z: 0, leaf: 'leaf_cell',
-                  label: 'THE KEEP', sub: 'THE DUNGEON STAIR · UP',
-                  action: { room: 'site_prebuilt_camelot_keep', at: 'dungeon' },
-                  desc: 'The barred door at the top of the stair, from below. The bars are on this side, which is a comment.' },
-                { id: 'postern', wall: 'w', z: 0, leaf: 'leaf_shabby_wood',
-                  label: 'THE OUTER WARD', sub: 'THE SALLY PORT · OUT UNDER THE MOAT',
-                  action: { room: 'site_prebuilt_camelot_kingdom', at: 'postern' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15)     // CAMELOT CASTLE, REDESIGNED (2026-11-15)
-                  desc: 'A low wet door at the end of the passage. It comes out in the trees outside the moat, dry, which is the trick of it.' },
-            ],
-            counters: [],
-            props: [
-                /* THE WORKSHOP: the orb, the crystals, the desk, the shelf, the chest */
-                { key: 'floating_orb',   x: 26.25, z: -19.248, face: 0 },
-                { key: 'crystal_cluster', x: 36.75, z: -12.244 }, { key: 'crystal_cluster', x: 22.748, z: -22.75 },
-                { key: 'lectern',        x: 22.86, z: -11.812, face: 90 },
-                { key: 'library_shelf',  x: 36.746, z: -22.748, face: 270 },
-                { key: 'sea_chest',      x: 22.65, z: -11.594, face: 20 },
-                /* THE CELLS: the stocks under the ledge, a sarcophagus nobody ordered, the skulls the scatter lays */
-                { key: 'stocks',         x: -40.25, z: 12.252, face: 0 },
-                { key: 'railing_1m',     x: -26.25, z: 22.75, face: 0 },                                               // THE PARK RULE's catalogue rail on the ledge
-                { key: 'sarcophagus',    x: -12.254, z: -29.75, face: 90 },
-                /* THE TRAPS PACK (2026-10-27, mondo's upload): the cells' iron maidens and chains on their back walls, a sprung bear
-                   trap in the middle cell, the ossuary passage's pressure plate between two dart holes (dressing: none blocks a way,
-                   none springs) */
-                { key: 'trap_iron_maiden_open', x: -18.9, z: -19.9, face: 0 },
-                { key: 'trap_chain_draped',     x: -22.8, z: -20.8, face: 0 },
-                { key: 'trap_chain_straight',   x: -33.8, z: -20.8, face: 0 },
-                { key: 'trap_chain_straight',   x: -32, z: -20.8, face: 0 },
-                { key: 'trap_bear_shut',        x: -30.8, z: -16.4, face: 30 },
-                { key: 'trap_iron_maiden',      x: -44, z: -19.9, face: 0 },
-                { key: 'trap_chain_draped',     x: -40.4, z: -20.8, face: 0 },
-                { key: 'trap_trip_wire_broken', x: -27.8, z: -8.75, face: 90 },
-                { key: 'trap_pressure_plate',   x: -8.75, z: -15.8, face: 0 },
-                { key: 'trap_dart_hole',        x: -9.9, z: -13.4, face: 0 },
-                { key: 'trap_dart_hole',        x: -7.6, z: -18.2, face: 0 },
-                /* THE LIGHT: four torches on stakes; the orb and the crystals are the rest */
-                { key: 'cave_torch',     x: 40.25, z: 5.248 }, { key: 'cave_torch', x: -40.25, z: 3 },
-                { key: 'cave_torch',     x: -8.75, z: -22.75 }, { key: 'cave_torch', x: 12.25, z: 19.25 },
-            ],
-            agents: [],
-            npcSpots: [
-                { x: 24.8, z: -19.2, face: 60, race: 'wizard', say: ['“.ngisllac ruoy wonk I” “What?” “Play it backwards. Everything down here is.”', '“The orb shows the future.” “Whose?” “Yours. It is mostly stairs.”'] },
-                { x: -26, z: 14.4, face: 0, race: 'skeleton', say: ['“I am in the stocks.” “For what?” “For being in the stocks. It is circular. So is the table.”'] },
-                { x: -36, z: -9, face: 90, race: 'ghost', say: ['“The cistern is the moat’s.” “The same water?” “The same water as the spring in the woods, and the well, and the sea. It is all one water. Do not drink it.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Merlin is under the castle.” “Alive?” “Backwards.”',
-                '“The sally port goes under the moat.” “Is it dry?” “The passage is dry. The moat is not. They have an arrangement.”',
-                '“The bones on the shelf.” “Whose?” “The thirteenth chair’s.”',
-                '“The orb is Continuity property.” “Then why is it here?” “Because it shows what Continuity denies. Both are true. Sign here.”',
-                '“Why brick a cave?” “So it stays a cave. Unbricked, it wanders.”',
-            ],
-            spawn: { x: 34, z: 4.8, face: 270 },
-        },
+        /* site_prebuilt_camelot_keep — DELETED 2026-11-16 (THE OLD SITES RETIRED, mondo: "remove all of the old sites from the game"): Camelot Castle is one stacked room, site_prebuilt_camelot_palace; DOOR_HQ.retired sends anything that still names it there */
+        /* site_prebuilt_camelot_dungeon — DELETED 2026-11-16 (THE OLD SITES RETIRED, mondo: "remove all of the old sites from the game"): Camelot Castle is one stacked room; DOOR_HQ.retired sends anything that still names it there */
         /* ── THE CASTLE IN THE SKY — the cloud deck, the floating court, the bailey and the keep in the air, the spire, the sky bridge ── */
         site_prebuilt_camelot_sky: {
             label: 'CAMELOT · THE CASTLE IN THE SKY',
@@ -58275,11 +57441,11 @@ const DOOR_HQ = {
             doors: [
                 { id: 'keep', wall: 's', x: 0, leaf: null,
                   label: 'THE KEEP', sub: 'DOWN · TO THE BATTLEMENTS',
-                  action: { room: 'site_prebuilt_camelot_keep', at: 'sky' },
+                  action: { room: 'site_prebuilt_camelot_palace' },   // the castle is one stacked room now (2026-11-16, was the retired keep)
                   desc: 'The opening from above: the battlements, the brazier, the sentry looking up at you. From here it is a hole in the cloud with a castle at the bottom of it.' },
                 /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CHIMNEY's top — a flue that comes up through the cloud (R4) */
                 { id: 'chimney', wall: 's', x: -20, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CHIMNEY · THE FLUE DOWN INTO THE KEEP’S SOLAR',
-                  action: { room: 'site_prebuilt_camelot_keep', at: 'chimney' },
+                  action: { room: 'site_prebuilt_camelot_palace' },   // (2026-11-16, was the retired keep)
                   desc: 'A chimney pot standing on the cloud with no house under it. The rungs inside go down a long way and come out in a room with no fire.', draft: true },
             ],
             counters: [],
