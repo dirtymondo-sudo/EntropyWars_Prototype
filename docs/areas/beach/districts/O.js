@@ -24,14 +24,15 @@
    boulders and dead trees on the scorched ring, 19 palms, ferns. Pass 3: THE GARDEN (soil ridges, gourds, a scarecrow, a fence), chickens,
    stepping stones, the watch fire on the north-east point, a tide line on the north beach, dry scrub, two birds over the crater.
    THE SEA'S PLACES: THE WHALE (P06-02: a humpback and a whale showing their backs, dolphins), THE WATERSPOUT (P11-01: drawn, 63 m, its own
-   cloud), THE ROCKS (P04-01: eight drawn sea stacks, seals), THE KRAKEN (P07-03: six arms, a taken boat, sharks), THE PALM ROCKS (P02-00,
+   cloud), THE ROCKS (P04-01: eight drawn sea stacks, seals), THE KRAKEN (P07-03: seven `goo_tendril`, the symbiote's black tendrils as the Sewers' Sludge Pit has them, round a taken boat; sharks), THE PALM ROCKS (P02-00,
    P12-09: `palmisle`), FLOTSAM (P06-07), THE SEA LANE (six unlit buoys from the Harbour's Mouth to the Landing), the two islets (a
    castaway's camp with a pirate; seals, flamingos, crabs, a starfish). Pass 3: THE SHARKS (P07-09), THE TURTLES (off the south-west
    islet), THE SEAL ROCK (P13-00, drawn).
 
    MISSING / NOT DONE:
    - THE TRIBE HAS NO PEOPLE (mondo: models come later); no model for a hut, a canoe, a totem pole, a mask, whale bones, gulls, black sand
-     (the sheet is `dirt_2`), smoke for the crater. Pass 4 (drawn glow only): firelight in the huts' windows, eleven torches, lava pools at the flows' feet, THE ASH PLUME over the crater.
+     (the sheet is `dirt_2`), smoke for the crater. Pass 4: firelight in the huts' windows, lava pools at the flows' feet. MONDO'S REVISION 1 (11-16): no modelled smoke (the ash plume
+     is out), the torches are `tiki_torch` (the game's floor torch, longer; ten of them), the kraken's arms are `goo_tendril` (revision 2: never the Meshy `tentacle` models).
      The island gets none of the room's ten real lights (they go in row order to the Shore and the Harbour).
    - Nothing under the water shows (the sea is opaque from above). No fight set up.
    - LEARNT: a whale's model hangs about 3 m over its origin (humpback y -4.6, whale y -3.3 = the back shows); a thing in deep water is
@@ -86,9 +87,8 @@ build(ctx) {
        three open shelters, the gate at the Landing. Wattle = the wood sheet left its own brown (a light tint), thatch = the shingle sheet in straw. ── */
     /* ── PASS 4, THE ATMOSPHERE (2026-11-16). The room gives TEN real lights for fifty lit props (three-renderer.js HQ_PROP_LIGHT_MAX, in row
        order: the Shore's and the Harbour's come first), so the island's torches and fire baskets mostly light nothing. What a district can
-       give is DRAWN glow, which reads after dark (seen at 22:30): firelight in the huts' window holes, flames on bamboo, lava lying where
-       the flows end, and by day a plume of ash standing over the crater. ── */
-    const torch = (a, x, z, y0) => { a.cyl(x, y0 == null ? -0.8 : y0, z, 0.045, 2.7, WD2, 0xd8b070, { seg: 6, cap: false }); a.cyl(x, (y0 == null ? -0.8 : y0) + 2.66, z, 0.11, 0.2, null, 0x3a2a1c, { r2: 0.08, seg: 8 }); a.cyl(x, (y0 == null ? -0.8 : y0) + 2.86, z, 0.085, 0.28, null, 0xff5a00, { r2: 0.01, seg: 6, glow: 0.7 }); };
+       give is DRAWN glow, which reads after dark (seen at 22:30): firelight in the huts' window holes, lava lying where the flows end.
+       mondo 11-16: the torches are the GAME'S OWN floor torch made longer (`tiki_torch`, place), never drawn ones; no modelled smoke. ── */
     const hut = (a, w, h, d, door, roofForm, rh) => {
         a.shell(w, h, d, WD2, WATTLE, door, [1.75, 1.75], 1.5); a.frame(door, d, WD, POLE);
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * (w / 2 + 0.08), 0, sz * (d / 2 + 0.08), 0.16, h + 0.2, WD2, POLE, { seg: 8, uv: 1 });          // corner posts
@@ -156,16 +156,11 @@ build(ctx) {
         a.cyl(0, 2.3, 0, 2.8, 2.0, SHG, THATCH, { r2: 0, seg: 10, roof: true, gain: 1.7, uv: [1.2, 1.2] }); a.cyl(0, 2.3, 0, 2.8, 0.02, WD2, 0x4a3626, { seg: 10, roof: true }); a.box(0, 0, 0, 2.7, 0.1, 2.7, FLR, 0xb09870); }));
     /* THE GATE at the Landing (the way up from the boats): two tall posts, a lintel, bone-white bands; bone-white bands */
     look('gate', gx(108), gz(20), 0, a => { for (const s of [-1, 1]) { a.cyl(s * 2.4, -0.6, 0, 0.24, 4.9, WD2, OCHRE, { seg: 8, uv: 1 }); for (const y of [1.2, 2.2, 3.2]) a.cyl(s * 2.4, y, 0, 0.27, 0.16, null, BONE, { seg: 8 }); a.cyl(s * 2.4, 4.3, 0, 0.1, 1.1, WD2, POLE, { r2: 0.02, seg: 6 }); }
-        a.box(0, 3.7, 0, 6.2, 0.26, 0.3, WD2, POLE); a.box(0, 3.3, 0, 5.2, 0.14, 0.2, WD2, POLE); for (const s of [-1, 1]) torch(a, s * 4.4, 1.2, -0.9); });
-    /* the village's and the shrine's torches (one row, the fire at its middle; a pole starts under the sand so it stands on any of it) */
-    look('torches', mx(114), mz(17), 0, a => { [[-5.3, -1.8], [-5.3, 3.4], [4.6, -4.4], [5.4, 3.6], [-1.7, 8.6], [2.4, -9.2], [-3.4, -21.5], [-3.4, -27.5], [6.4, -21.5], [6.4, -27.5], [1.6, -31.5]].forEach(q => torch(a, q[0], q[1])); });
-    /* lava lying where the two flows end (a glowing sheet a hand over the scorched ground) and THE ASH PLUME over the crater (drawn puffs,
-       each a belly and a head, climbing and leaning east with the wind; it is seen from the Harbour) */
+        a.box(0, 3.7, 0, 6.2, 0.26, 0.3, WD2, POLE); a.box(0, 3.3, 0, 5.2, 0.14, 0.2, WD2, POLE); });
+    /* lava lying where the two flows end (a glowing sheet a hand over the scorched ground). (TAKEN OUT 11-16 on mondo's word: THE ASH
+       PLUME, seven drawn puffs over the crater: "don't 3d model smoke, it looks terrible".) */
     look('lavafoot_e', r2(gx(112) + 0.9), mz(10), 0, a => { a.cyl(0, -0.62, 0, 2.6, 0.6, 'lava', 0xffffff, { r2: 2.2, seg: 9, glow: 0.8 }); a.cyl(1.9, -0.66, 1.2, 1.3, 0.6, 'lava', 0xffffff, { r2: 1.0, seg: 7, glow: 0.8 }); });
     look('lavafoot_s', mx(105), r2(gz(16) + 0.9), 0, a => { a.cyl(0, -0.62, 0, 2.4, 0.6, 'lava', 0xffffff, { r2: 2.0, seg: 9, glow: 0.8 }); a.cyl(-1.5, -0.66, 1.4, 1.2, 0.6, 'lava', 0xffffff, { r2: 0.9, seg: 7, glow: 0.8 }); });
-    works(ctx, 'plume', mx(105.5), mz(9.5), a => { [[0, 17, 0, 3.2, 0x4c4a4c], [1.5, 21, -0.5, 4.4, 0x5a585a], [4, 26, -1, 5.8, 0x6a686a], [8, 32, -1.5, 7.4, 0x7a787c], [14, 38, -2.5, 9.2, 0x8a888e], [22, 44, -4, 11.5, 0x9a989e], [33, 49, -6, 13.5, 0xaaa8ae]].forEach(q => {
-        a.cyl(q[0], r2(q[1] - q[3] * 0.8), q[2], 0.05, r2(q[3] * 0.8), null, q[4] - 0x101010, { r2: q[3], seg: 12, cap: false, ds: true, glow: 0.4 });   /* a belly closed to a point (SEEN from under it: an open belly is a ring round a hole) */ a.P.push({ s: 'dome', p: [q[0], q[1], q[2]], r: q[3], h: r2(q[3] * 0.8), seg: 12, rings: 4, tint: q[4], glow: 0.3 }); });
-        a.cyl(0, 15.6, 0, 3.0, 2.2, null, 0xff5a10, { r2: 2.2, seg: 10, cap: false, ds: true, glow: 0.9 }); });   // the plume's foot glows with the crater
     /* a drying rack by the cook's shelter and a boat rest on the Landing: poles lashed in the village's own wood */
     look('rack', mx(116), gz(16) + 0.4, 0, a => { for (const s of [-1, 1]) { a.cyl(s * 1.3, 0, 0, 0.07, 1.9, WD2, POLE, { seg: 6 }); } a.box(0, 1.8, 0, 3.0, 0.08, 0.08, WD2, POLE); a.box(0, 1.2, 0, 3.0, 0.06, 0.06, WD2, POLE); });
 },
@@ -180,7 +175,8 @@ place(ctx) {
     /* THE VOLCANO ISLAND: the landing, the village round its fire, palms along the shore, the cone's glow */
     props.push({ key: 'campfire', x: mx(114), z: mz(17), glow: 0.8 }); taken.add('114:17');
     dec('taiko_drum', 115, 17); dec('spear', 115, 16); dec('spear', 112, 19); dec('skull_pile', 115, 18); dec('item_ward_totem', 112, 14); dec('wooden_bucket', 114, 19); dec('fallen_log', 113, 19);
-    P('cave_torch', 110, 20); P('cave_torch', 117, 14); P('cave_torch', 106, 20); dec('meshy_rowboat', 108, 21, { face: 80 });
+    P('tiki_torch', 110, 20); P('cave_torch', 117, 14); P('tiki_torch', 106, 20);   /* (11-16, mondo: the tall torches are `tiki_torch`, the game's floor torch made longer) */
+    [[112, 16], [116, 16], [111, 19], [115, 18], [113, 14], [117, 9], [117, 11]].forEach(q => P('tiki_torch', q[0], q[1])); dec('meshy_rowboat', 108, 21, { face: 80 });
     [[99, 9], [99, 13], [101, 17], [104, 20], [111, 21], [113, 20], [117, 10], [114, 5], [108, 3]].forEach(q => palm(q[0], q[1]));
     feat({ k: 'scatter', key: 'cave_stone', n: 14, x: mx(106), z: mz(10), r: 30, seed: 41 });
 
@@ -231,8 +227,11 @@ place(ctx) {
         [[-7, -3, 3.4, 9], [0, 0, 4.6, 14], [4, -7, 2.6, 6], [-3, 7, 3.0, 7.5], [8, 4, 3.6, 10.5], [-11, 4, 2.2, 4], [12, -3, 2.4, 5], [3, 9, 1.8, 2.2]].forEach(q => stack(q[0], q[1], q[2], q[3])); });
     [[52, 17], [54, 18], [55, 16], [53, 20], [56, 19]].forEach(q => seaAt(ctx, 'ocean_rock_7', q[0], q[1], -1.6, { h: 1.2 }));   // their blockers: a small rock inside each stack's foot (the skiff and the swimmer go round)
     seaAt(ctx, 'ocean_seal_resting', 54, 20, 0.0, { swim: false }); swimmer('ocean_seal', 50, 17, { swim: { r: 4, v: 1.4, bob: 0.2 } }); swimmer('ocean_seal', 57, 21, { swim: { r: 5, v: 1.2, bob: 0.2 } });
-    /* THE KRAKEN (plot P07-03): arms out of the water in a ring, a boat it has taken, sharks waiting */
-    [[89, 41, 'tentacle', 0], [91, 40, 'tentacle2', 60], [92, 42, 'tentacle', 130], [91, 44, 'tentacle2', 200], [89, 44, 'tentacle', 260], [88, 42, 'tentacle2', 320]].forEach(q => seaAt(ctx, q[2], q[0], q[1], -1.4, { face: q[3], h: 5.2, noBlock: true }));
+    /* THE KRAKEN (plot P07-03): arms rising out of the water in a ring round a boat it has taken, sharks waiting */
+    /* (mondo 11-16, twice: the Meshy `tentacle` arms are "messed up", as props and as the ring `kraken_arms` (deleted): "do the tendrils from
+       the symbiote like the radiative sewers did in its sludge" = the catalogue's `goo_tendril`, the Sewers' Sludge Pit's. Its foot is typed
+       half a metre under the surface, so each rises out of the sea) */
+    [[88, 41, 4.8], [92, 41, 5.6], [89, 44, 4.2], [92, 43, 3.4], [87, 43, 3.0], [91, 40, 3.8], [90, 45, 2.6]].forEach(q => { spot(q[0], q[1], 'goo_tendril', 'sea', true); props.push({ key: 'goo_tendril', x: mx(q[0]), z: mz(q[1]), y: -0.5, h: q[2] }); });
     seaAt(ctx, 'rowboat', 90, 42, -0.25, { face: 30 }); swimmer('ocean_shark', 86, 40, { swim: { r: 7, v: 1.6, bob: 0.2 } }); swimmer('ocean_hammerhead', 94, 45, { y: -0.7, hover: 0.4, swim: { r: 6, v: 1.3, bob: 0.2 } });
     /* THE PALM ROCKS (plots P02-00 and P12-09): one tiny island with a palm each */
     seaAt(ctx, 'palmisle', 30, 6, -0.6, { face: 40 }); seaAt(ctx, 'palmisle', 150, 114, -0.6, { face: 200 });
@@ -245,7 +244,8 @@ place(ctx) {
     /* the two islets: a castaway's camp (north-east), a haul-out of seals, crabs and flamingos (south-west) */
     palm(158, 20); palm(162, 19); dec('meshy_campfire_ring', 160, 21); dec('fallen_log', 161, 20); dec('psx_glass_bottle_1', 159, 21); dec('ship_anchor', 162, 21); dec('rowboat', 158, 21, { face: 120 }); dec('ocean_crab', 160, 19); dec('ocean_crab', 162, 20);
     native('pirate', 160, 19, 180);
-    look('camp_ne', mx(160), mz(20), 0, a => { a.cyl(0, 0, 3.5, 0.34, 0.1, null, 0xff6a1a, { seg: 8, glow: 0.9 }); const y0 = -0.8; a.cyl(-3.2, y0, 0.6, 0.045, 2.7, WD2, 0xd8b070, { seg: 6, cap: false }); a.cyl(-3.2, y0 + 2.66, 0.6, 0.11, 0.2, null, 0x3a2a1c, { r2: 0.08, seg: 8 }); a.cyl(-3.2, y0 + 2.86, 0.6, 0.1, 0.36, null, 0xff7a10, { r2: 0.01, seg: 6, glow: 0.9 }); });   // pass 4: embers in the castaway's fire ring, a torch
+    look('camp_ne', mx(160), mz(20), 0, a => { a.cyl(0, 0, 3.5, 0.34, 0.1, null, 0xff6a1a, { seg: 8, glow: 0.9 }); });   // pass 4: embers in the castaway's fire ring
+    P('tiki_torch', 157, 20);
     palm(38, 112); palm(42, 111); dec('ocean_seal_resting', 39, 111); dec('ocean_seal_resting', 41, 113); dec('ocean_seal_resting', 38, 113); dec('flamingo', 42, 112); dec('flamingo', 43, 112); dec('psxg_rock_2', 37, 112); dec('psxg_rock_3', 40, 110); dec('ocean_crab', 40, 113); dec('ocean_sand_dollar', 42, 113);
 },
 

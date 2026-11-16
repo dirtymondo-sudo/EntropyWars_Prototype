@@ -10,8 +10,8 @@
    the Drain's south passage goes up to the Power station's yard (link `sewers_power`).
    A plot's squares are local (lx, ly 0..11 from its north-west corner). ctx: see W.js.
    STANDS TODAY (2 passes): the valve gallery (pumps, a gate valve, a boiler, breaker panels, radiation signs; pass 2: the control wall, the
-   lab bench, compressor, generator, gas rack, pipe runs, glowing caps by the sludge, three
-   tentacles in the tank, bodies, parts and bones on the Pit's walk, chains), barrels and warning tape along the
+   lab bench, compressor, generator, gas rack, pipe runs, glowing caps by the sludge, six
+   goo tendrils in the tank, bodies, parts and bones on the Pit's walk, chains), barrels and warning tape along the
    channel, hanging bulbs, five bystanders (kaiju, black goo x 2, mad scientist, swamp monster;
    they have no lines: nobody wrote any).
    NOT YET: the station's waste pipes where the channel starts (the pack's pipe pieces stand upright and thin: tried, taken out); a rail
@@ -47,7 +47,7 @@ module.exports = {
         [[2, 5], [6, 3]].forEach(q => ctx.dec('floor_stain', DRAIN, q[0], q[1]));
         /* PASS 2, THE MODEL LIST (mondo 11-16: "look at the model list ... to see what else they could add"). Every piece below was in the
            game and none stood in the Sewers: the PSX mega pack's pipes and valve holders, the Industrial interiors' machines, the lab
-           pieces, the control wall, the Halloween pack's bodies and parts, the kraken tentacles, the Woods' glowing mushrooms. */
+           pieces, the control wall, the Halloween pack's bodies and parts, the symbiote's spell tendrils, the Woods' glowing mushrooms. */
         const base = ctx.plot[DRAIN].base, at = (key, id, lx, ly, dx, dz, o) => { const q = ctx.sq(id, lx, ly); ctx.props.push(Object.assign({ key, x: ctx.r2(ctx.gcx(q[0]) + dx), z: ctx.r2(ctx.gcz(q[1]) + dz) }, o || {})); };
         /* the control wall + the lab bench in the valve gallery */
         wallProp('monitor_stack', DRAIN, 6, 2, 'n'); wallProp('server_rack', DRAIN, 7, 2, 'n'); ctx.P('retro_control_panel', DRAIN, 6, 3, { face: 180 });
@@ -60,7 +60,8 @@ module.exports = {
         /* what grows by the sludge: glowing caps along the channel and round the tank */
         [[5, 5], [9, 5], [7, 7], [4, 8], [2, 9]].forEach(q => ctx.dec('woods_glowcap', DRAIN, q[0], q[1])); [[2, 2], [5, 2], [8, 2], [10, 4], [10, 8], [3, 10], [6, 10], [9, 10], [1, 8], [1, 4]].forEach(q => ctx.dec('woods_glowcap', PIT, q[0], q[1]));
         /* THE PIT: something lives in the tank; what it left on the walk */
-        ctx.P('tentacle', PIT, 6, 4, { face: 40 }); ctx.P('tentacle2', PIT, 4, 8, { face: 200 }); ctx.P('tentacle', PIT, 8, 7, { face: 300 });
+        /* (mondo 11-16: "get rid of the kraken arms, use the tentacles that the spells use": the symbiote's black tendrils, catalogue `goo_tendril`) */
+        [[6, 4, 4.6], [4, 8, 3.6], [8, 7, 5.2], [3, 5, 2.8], [7, 9, 3.2], [9, 4, 2.6]].forEach(q => ctx.P('goo_tendril', PIT, q[0], q[1], { h: q[2], y: ctx.r2(ctx.plot[PIT].base - 0.5) }));
         ctx.dec('hw_body', PIT, 10, 4); ctx.dec('hw_body_2', PIT, 3, 10); ctx.dec('hw_part_3', PIT, 9, 10); ctx.dec('hw_part_5', PIT, 10, 7); ctx.dec('hw_part_1', PIT, 1, 8);
         ctx.dec('skull', PIT, 2, 10); ctx.dec('skull', PIT, 10, 3); ctx.dec('psx_fish_skeleton_mp_1', PIT, 6, 10); ctx.dec('psx_fish_skeleton_mp_1', PIT, 1, 4); ctx.dec('skull_pile', PIT, 7, 1);
         wallProp('wall_chains', PIT, 1, 4, 'w'); wallProp('wall_chains', PIT, 10, 8, 'e'); wallProp('wall_chains', PIT, 7, 10, 's'); wallProp('vent_grille', PIT, 5, 2, 'n');

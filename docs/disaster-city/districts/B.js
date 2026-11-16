@@ -349,6 +349,7 @@ B.harbour = (W, D, lx) => {
    thats like the whole point"; 17:11 "yes add sea wall and water") ══
    Past the plot grid's east edge, along Bayside's four plot rows (cells cx 144.., cy 96..143; bake-disaster-city.js `room.east`):
      cx 144-145  THE BOARDWALK: a plank promenade on top of the sea wall (the city's level, 0)
+                 (2026-11-16 THE WIDE BOARDWALK: the planks run on west to the coast road's kerb, cx 140-143, and over the mole; see beach())
      cx 146-151  THE SAND: a shelf 1.05 m under the boardwalk (the sea wall is that drop), four ramps down to it
      cx 152..    THE BAY: the shelf slopes under the water (terrain.sea at -1.45) to 3.6 m down
      THE PIER on the mall's axis (the mall dome, the East shops), a square head with a pavilion; a bait hut half way
@@ -1214,6 +1215,12 @@ function beach(ctx, push, ghost) {
        sea in its last squares; no sea wall drop, so no ramps and no rail on this stretch (the room is 32 squares past the plots for it, was 20). */
     rect(XB, ZNN - 2, XE + 2, Z0, 0, { sink: true, edge: 0.3 });                // the Shore's sand, level with the boardwalk
     rect(gx(163.1), ZNN - 16, XE + 16, Z0, DEEP, { sink: true, edge: 12 });     // …falling under the water past square 163 (the waterline about square 164.5)
+    /* THE COVE (2026-11-16, mondo: "at the end of the beach/shore, at the north, where it meets the hills, there are hard right angles and straight lines ...
+       that would be a good spot to turn into a cove"): the sand's north end was a square corner in the sea on the room's old north line. One ROUND sink
+       bites the bay out of that corner, on both sides of the line (districts/N.js `cove` holds its place and size and builds the rest: the crescent of
+       sand under the cliff, the rock headland round it). ZNN - 10 = the bay's middle, 10 m north of the line in this file's frame. */
+    { const CV = require('./N.js').cove, sinkR = CV.r + CV.bank * 0.442;   // the waterline (-1.45 on a bank that falls 0 -> DEEP over `bank` metres) stands 0.442 of the bank inside the sink's rim
+      lateRows.push({ k: 'plateau', x: r3(CV.x), z: r3(ZNN + (CV.z + 252)), r: r3(sinkR), h: DEEP, sink: true, edge: CV.bank, absY: true }); }
     rect(XB, ZN, XE + 2, ZS, SHELF, { sink: true, edge: 0.3 });
     rect(XD, ZN, XE + 16, ZS, DEEP, { sink: true, edge: 12 });   // (THE NATURAL EDGES: the 12 m bank on its east side lies past the field, so no sand bar rises along the room's east edge)
     rect(gx(161), Z0 - 0.4, XE + 2, ZN + 0.4, DEEP, { sink: true, edge: 0.4 });
@@ -1232,13 +1239,24 @@ function beach(ctx, push, ghost) {
     push('bay-pier', XB, ZP, 0, B.pier(XH0 - XB, 7));
     push('bay-pavilion', (XH0 + XH1) / 2, ZP, 0, B.pavilion()); ghost((XH0 + XH1) / 2, ZP, 2.6, 1.0);
     push('bay-bait', gx(153), ZP - 7.6, 0, B.bait()); ghost(gx(153), ZP - 7.6, 4.2, 2.6);
-    /* the ground sheets: planks (the boardwalk, the grill deck), sand (the shelf and the bay's floor), concrete (the mole) */
+    /* the ground sheets: planks (the boardwalk, the grill deck, the mole since THE WIDE BOARDWALK below), sand (the shelf and the bay's floor) */
     for (let cy = 8 * N; cy < 12 * N; cy++) for (let cx = 144; cx < 144 + EAST; cx++) {
         const mole = (cy < 8 * N + 2 && cx >= 146 && cx < 161) || (cx >= 159 && cx < 161 && cy < 8 * N + 8) || (Math.hypot(cx + 0.5 - 160, cy + 0.5 - (8 * N + 9)) < 2.2);
         const deck = cx < 146 || (cy >= 136 && cx < 158);
-        paintCell(cx, cy, mole && cx >= 146 ? 'urban:ConcreteStriped2a' : deck ? 'wood_planks' : 'desert');
+        paintCell(cx, cy, (mole && cx >= 146) || deck ? 'wood_planks' : 'desert');   // (THE WIDE BOARDWALK: the mole is planks too, was 'urban:ConcreteStriped2a')
     }
     for (let cy = 4 * N; cy < 8 * N; cy++) for (let cx = 144; cx < 144 + EAST; cx++) paintCell(cx, cy, cx < 146 ? 'wood_planks' : 'desert');   // THE NORTH BEACH: planks and sand
+    /* THE WIDE BOARDWALK (2026-11-16, mondo, a picture of the coast road with the ground east of it circled, the mole and its arm too: "this whole
+       ground right here that is between the road and the beach, can we make it wooden planks so its like a boardwalk, only along one side of that
+       street, closest to the beach. but keep the ground under industrial as is, concrete"). Every OPEN square (yard '.', pavement 'P' or edge band '#'; a building's
+       floor and its door square keep their own) between the coast road and the old two-square boardwalk is planks: squares cx 140-143 beside the
+       carriageway (cx 136-139), down Bayside's four plots and up the road's last rows in Entertainment; north of the road's corner (Entertainment's
+       row 40) the line is cx 139, the east side of that district's lane, so the ground round its beach-front buildings is planks as well. Nothing
+       west of the road is touched, and nothing south of Bayside's last row: Industrial's ground stays concrete. Paint only: no height, wall, prop
+       or square changes. (A tree's soil bed is painted by the tool after this, so the palms keep their sand.) */
+    { const open = (cx, cy) => '.P#'.indexOf(ctx.cellAt(cx, cy)) >= 0; let n = 0;   // ('#' = a plot's edge band: ground too, under its fence or hedge)
+      for (let cy = 4 * N; cy < 12 * N; cy++) for (let cx = (cy < 4 * N + 40 ? 139 : 140); cx < 144; cx++) if (open(cx, cy)) { paintCell(cx, cy, 'wood_planks'); n++; }
+      console.warn('[bayside boardwalk]', n, 'squares of planks between the coast road and the beach'); }
     /* (THE SHORE: no rail between the boardwalk and the sand on the north stretch: you step off the boards onto the beach anywhere) */
     for (let cy = 4 * N + 2; cy < 8 * N; cy += 3) props.push({ key: 'palm_tree', x: r3(X0 + 0.9), z: gx(cy) });
     for (let cy = 4 * N + 4; cy < 8 * N - 3; cy += 9) props.push({ key: 'city_bench', x: r3(XB - 1.0), z: gc(cy), face: 90 });
