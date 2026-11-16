@@ -3337,7 +3337,17 @@ const ThreeRenderer = (function () {
         /* 🩸 the Blood Pool: the deep red sheet, dark red caustics, a wet red glint */
         blood:      { base: 'blood', sheet: true, tint: 0xe0e0e0,
                       caustDiff: 'vec3(0.62, 0.08, 0.10)', caustEmis: 'vec3(0.34, 0.03, 0.05)',
-                      glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' }
+                      glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' },
+        /* THE ROOM'S OWN WATER LOOK (2026-11-16, mondo on the Sewers: "you can make the water murky green or brown without it being
+           poison, its still water and should behave like water"): LOOKS, not liquids. No terrain has these keys; a room's
+           `terrain.waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' }` draws its water in them (_hqWaterLook) while the
+           liquid stays `water` / `deep_water` for the walk, the swim and the fights. They ride the water sheet under a tint. */
+        sewer_water: { base: 'water', tint: 0xb44612,   // (the water sheet is blue-green: a strong orange tint is what turns it brown; kept dark so it is mud, not mustard)
+                      caustDiff: 'vec3(0.15, 0.11, 0.06)', caustEmis: 'vec3(0.018, 0.013, 0.006)',
+                      glintCol: 'vec3(0.46, 0.41, 0.32)',  hueShift: 'vec3(1.05, 0.97, 0.84)' },
+        sewer_deep:  { base: 'water', tint: 0x7c300c,
+                      caustDiff: 'vec3(0.14, 0.10, 0.05)', caustEmis: 'vec3(0.02, 0.015, 0.008)',
+                      glintCol: 'vec3(0.44, 0.40, 0.30)',  hueShift: 'vec3(1.05, 0.97, 0.82)' },
     };
 
     /* Water surfaces sit slightly below the top of their block so every
@@ -3368,7 +3378,9 @@ const ThreeRenderer = (function () {
         purple_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         swamp:      { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
         oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
-        blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 }
+        blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 },
+        sewer_water: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
+        sewer_deep:  { l1dx: 0.07, l1dy: 0.07, l2dx: -0.05, l2dy: 0.05 }
     };
 
     var objectMeshes = new Map();
@@ -71663,7 +71675,7 @@ const ThreeRenderer = (function () {
             zi.room = Object.assign({}, info.room || room, { terrain: Object.assign({}, room.terrain, { floorTint: z.floorTint || null, cliffTint: z.cliffTint || null, pathTint: z.pathTint || null, cliffZoom: z.cliffZoom }) });
             var slot = new Uint8Array(info.paint.pal.length + 1);
             for (var v = 1; v <= info.paint.pal.length; v++) slot[v] = zp.indexOf(String(info.paint.pal[v - 1])) + 1;
-            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
+            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, out: Array.isArray(z.out) ? z.out : null, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
         });
         return out.length ? out : null;
     }
@@ -71677,7 +71689,8 @@ const ThreeRenderer = (function () {
         var byTile = {};
         for (var q = 0; q < idx.length; q += 6) {   // a quad's six indices: a, c, b, b, c, d (a = its low corner)
             var a = idx[q], ai = a % nx, aj = (a - ai) / nx, key = Math.floor(aj / nT) * tx + Math.floor(ai / nT);
-            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
+            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { var zo = zones[zq].out, inO = false; if (zo) for (var oi = 0; oi < zo.length; oi++) if (qx >= zo[oi][0] && qx < zo[oi][2] && qz >= zo[oi][1] && qz < zo[oi][3]) { inO = true; break; }   /* `out`: boxes of the zone that stay the room's own ground (a road that runs on from the room: the room's floor sheet, tint and light, no seam on the line) */
+                if (!inO) key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
             (byTile[key] || (byTile[key] = [])).push(q);
         }
         var out = [];
@@ -71814,6 +71827,11 @@ const ThreeRenderer = (function () {
        `y0` / `y1` left out are read from the water on each side of the lip (hqTerrainFluidAt), else from the ground. Nothing here changes
        the ground, the water or the walk: the room lays a stream / pool on each level and a sheer step between them. Lava, poison and the
        other liquids fall the same way in their own sheet (`key`). Off: window.EW_NO_HQ_FALLS. */
+    /* the look a room draws a liquid in (its `terrain.waterLook` map: a _LIQUID_STYLES key), else the liquid's own */
+    function _hqWaterLook(info, key) {
+        var m = info && info.room && info.room.terrain && info.room.terrain.waterLook, k = m && m[key];
+        return (k && _LIQUID_STYLES[k]) ? k : key;
+    }
     var _hqFallTex = null;
     function _hqFallStreakTex() {
         if (_hqFallTex) return _hqFallTex;
@@ -71861,7 +71879,7 @@ const ThreeRenderer = (function () {
             var y1 = (dn && isFinite(dn.y) && dn.y < y0 - 0.3) ? dn.y : isFinite(f.y1) ? +f.y1 : hqTerrainHeight(info, f.x + dx * 1.75, f.z + dz * 1.75);
             var h = y0 - y1; if (!(h > 0.4)) return;
             var key = f.key || (up && up.key) || 'water'; if (key === 'deep_water') key = 'water';
-            var mat = _liqBlendMat(key); if (!mat) return;
+            var mat = _liqBlendMat(_hqWaterLook(info, key)); if (!mat) return;
             var out = isFinite(f.out) ? +f.out : Math.min(1.5, 0.35 + 0.28 * Math.sqrt(h)), back = 0.9;
             /* the profile: level over the lip (from `back` behind it), then thrown out and down (a body's fall: out by the root of the drop) */
             var prof = [[-back, y0 + 0.02], [0.05, y0 + 0.02]];
@@ -71998,8 +72016,8 @@ const ThreeRenderer = (function () {
                 if (!geo || !mat) return;
                 var m = new THREE.Mesh(geo, mat); m.renderOrder = order; m.name = name; m._ew_hqWater = true; m.receiveShadow = true; G.add(m); made++;
             };
-            lay(build(false), _liqBlendMat(B.key), LIQ_BLEND_ORDER, 'hq:water:' + B.key);
-            if (B.deep.length) lay(build(true), _liqBlendMat('deep_water', true), LIQ_BLEND_ORDER + 1, 'hq:water:deep_water');
+            lay(build(false), _liqBlendMat(_hqWaterLook(info, B.key)), LIQ_BLEND_ORDER, 'hq:water:' + B.key);   // (THE ROOM'S OWN WATER LOOK)
+            if (B.deep.length) lay(build(true), _liqBlendMat(_hqWaterLook(info, 'deep_water'), true), LIQ_BLEND_ORDER + 1, 'hq:water:deep_water');
         });
         return made;
     }
@@ -72383,7 +72401,7 @@ const ThreeRenderer = (function () {
                 wg.setIndex(B.p.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.i, 1) : new THREE.Uint16BufferAttribute(B.i, 1));
                 var wm = new THREE.Mesh(wg, fluidMatFor(key)); wm.renderOrder = 2; wm.name = 'hq:water:' + key; wm._ew_hqWater = true; G.add(wm);
             });
-            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick)
+            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); ['water', 'deep_water'].forEach(function (k) { var lk = _hqWaterLook(info, k); if (lk !== k) fluidMatFor(lk); }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick; a room's own look ticks too)
         } catch (e) { console.warn('[HQ] the water failed', e); }
         try { if (_hqFallsBuild(info, G, U, TM)) { (info.falls || []).forEach(function (f) { var k = f.key || 'water'; fluidMatFor(k === 'deep_water' ? 'water' : k); }); } } catch (e) { console.warn('[HQ] the waterfalls failed', e); }   // THE WATERFALLS
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
@@ -84627,12 +84645,12 @@ const ThreeRenderer = (function () {
         var day = (typeof hqToday === 'function') ? hqToday() : '';
         var list = [];
         HQ_CITY_RESIDENTS.list.forEach(function (r) {
-            var id = 'hq-res-' + (r.race + (r.gender ? '-' + r.gender : '')).replace(/\s+/g, '_');
+            var id = 'hq-res-' + (r.race + (r.gender ? '-' + r.gender : '') + (r.v ? '-' + r.v : '')).replace(/\s+/g, '_');   // THE VARIANTS (2026-11-16): cop b, cop c ... each its own id
             if (gone.indexOf(id) >= 0) return;   // beaten today: gone until tomorrow
             var hm = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'male'), hf = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'female');
-            var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
+            var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + (r.v ? '|' + r.v : '') + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
             /* THE SET LEVELS (2026-11-16, data.js HQ_SPAWN_RULES): the resident's own level, read once; the label shows it and the fight is at it */
-            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home }) : null; } catch (e) { sl = null; }
+            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home, dist: r.dist }) : null; } catch (e) { sl = null; }
             list.push({ r: r, id: id, gender: g, lvl: sl ? sl.lvl : 0, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
         });
         H.res = { G: G, day: day, list: list, next: 0, pts: [], lastPick: 0 };
@@ -84649,7 +84667,10 @@ const ThreeRenderer = (function () {
         var r = s.r, U = _hqUnits(), line = null, sub = (s.lvl > 0 ? 'LV ' + s.lvl + ' · ' : '') + 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
         if (at.spot && at.spot.say) { var sy = at.spot.say; line = Array.isArray(sy) ? (sy.length ? sy[((typeof hqHash === 'function' ? hqHash(H.res.day + '|' + r.race + '|say') : 0) % sy.length)] : null) : String(sy); }
         /* THE BEDS (2026-11-14): the rig carries the sleep pose (UAL2 LayToIdle held on its first frames: flat on the back) beside its own slots */
-        var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null; _hq3DOff(_s3);
+        var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null;
+            /* THE VARIANTS: a variant may wear the race's other look (mondo: "there is a white cop somewhere that you can use too"), seeded by its id */
+            if (r.v && typeof getRaceModelSkin === 'function') { var alt = getRaceModelSkin(r.race, s.gender, { seed: s.id }); if (alt) base = alt; }
+            _hq3DOff(_s3);
             if (base && base.libClips && !base.libClips.hqSleep) { var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales); lc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; lt.hqSleep = HQ_RES_SLEEP.ts; def = Object.assign({}, base, { libClips: lc, libTimeScales: lt }); } } catch (e) { def = null; }
         var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, def: def || undefined, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
         if (!ch) return null;
