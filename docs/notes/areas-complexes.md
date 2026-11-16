@@ -5473,6 +5473,22 @@ Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. 
   - One hearth in three burns (`hearth_fire`, `noLight`), the others are banked embers. No real light in any house (see the kit).
   - NOT DONE: no upstairs (no stair: mondo's "no procedural stairs"); nobody lives in them yet; the houses' OUTSIDE looks are still a row
     each (43 rows; gathering them would cut about 900 more meshes but a roof part's `roof` flag may be read per row: not tried).
+- **PASS 3, THE DRESSING** (`T.js` "THE VILLAGE'S GROUND"; seen on screen, one probe run, 9 views):
+  - Everything drawn on the ground is ONE arch row `cam:village:street` in the room's frame (`y: 0`).
+  - THE MARKET: eight drawn stalls in place of the eight blue camping tents (`stall(kx, ky, kind)`: posts, a counter on a boarded front, a
+    back shelf, a canvas awning in strips of two colours with a scalloped valance, goods by kind: baskets of apples and cabbages / loaves
+    and jars / bolts of cloth and pewter jugs; a ghost wall at the counter). A standing torch at each corner of the two market squares.
+  - SIGNS: `sign(a, x, zf, word)` = an iron bracket, a board, the word drawn on both faces (`txt:` sheet). INN and SMITHY. Plain trade
+    words only. The two shop houses keep their picture boards.
+  - LANES: `lane()` = a strip of the paths' cobbles. The back lane between the two south rows + two cuts from South Street (the five
+    houses that turned from the town wall open on it).
+  - The graveyard: six headstones among the seven crosses. The green: hay bales, a drawn water trough. The Inn's yard: a covered wagon.
+    Kitchen gardens (a bed of earth, two rows of cabbages) behind the north row's cottages. Two plank benches on North Street. A standing
+    torch either side of the north, west and east gates; a wall torch either side of the three halls' doors.
+  - OUT: `camping_tent` x8, `park_bench`, `planter`.
+  - **PEOPLE: NOT DONE, WAITS MONDO.** The village still has only the two gate knights (+ the room's own walkers). Who lives here (which
+    units, how many, what they say) is his call (owner-rules: never invent characters; the NPC spawn system thread is writing the
+    blueprint for every zone, docs/notes/npc-system.md). Asked in the pass's reply.
 
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
@@ -5489,7 +5505,13 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
 - **THE FIVE HOUSE KINDS** (`T-houses.js` `houseLook(kind, a, w, d, i, path)`; mondo OK'd the looks): 1 jettied townhouse, 2 shop house,
   3 thatched cottage, 4 burgher house, 5 yard house. Another district that wants a hut, a mill house or a lodge can require the file's
   pieces only by a board note (it is T's file); the tool's own `sheet()` is everybody's.
-- **CLOTH** = `sheet().banner(x, y, z, w, h)` (the royal banner: mondo's pin, no plain red rectangles).
+- **CLOTH** = `sheet().banner(x, y, z, w, h)` (the royal banner: mondo's pin, no plain red rectangles). An awning or a tent is never one
+  coloured sheet either: strips of two colours + a valance (`T.js` `stall()`: `shed` roof parts 0.5 m wide, `under: true`, pushed
+  straight into the parts list so no timber underside is added).
+- **THE GROUND'S DRAWN PIECES GO IN ONE ROW A DISTRICT** in the room's frame: `const S = ctx.sheet()`, write with `gc(square)` metres,
+  then `ctx.arch.push({ k: 'arch', id: 'cam:<district>:street', x: 0, z: 0, rot: 0, y: 0, parts: S.P }); flushArch();`. A drawn piece is
+  not in the tool's free-ground check: keep it off squares a `put` uses. A drawn piece has no weight: add a ghost wall where it must block.
+- **SIGNS**: a word is a quad with `key: 'txt:WORD|#ink||aspect'`, `uv: 'fit'`, `kind: 'over'` (`T.js` `sign()`).
 - **PROPS THAT FIT** (catalogue keys, all on R2): `ancient_well`, `stocks`, `signpost`, `brazier`, `cauldron`, `covered_wagon`, `wooden_bucket`,
   `meshy_burlap_sack`, `psx_wooden_crate_1..6`, `bread_rack`, `armour_stand`, `dojo_weapon_rack`, `sea_chest`, `stone_altar`, `church_pew`,
   `catholic_pew`, `wall_torch`, `cave_torch`, `hearth_fire`, `campfire`, `candle`, `hw_candles`, `hw_straw`, `hw_fence`, `hw_pumpkin`,
@@ -5514,7 +5536,7 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   `ThreeRenderer.hq.dev.renderer().info.memory.geometries` (the room stood at about 1,800 before the houses' insides, 2,020 after).
 - **BLOCKERS ON SQUARES**: mondo's rule holds in every hall: what blocks stands on a whole 3.5 m square's middle with a ghost wall
   (`ctx.feat({ k: 'wall', ghost: true, rail: false, ... })`), decor stands off the middles, the door's column stays open.
-- **NEEDS A MODEL (zone-wide, nothing on R2)**: a market stall, an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart,
+- **NEEDS A MODEL (zone-wide, nothing on R2)**: an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart (the market stall is drawn now: `T.js` `stall()`),
   a water trough, a wooden fence run with a gate, a hitching rail, a floor carpet / runner (the `holy_carpet` model stands upright), a
   grindstone, a bellows. (A tavern table with benches is drawn in code now: `hall().trestle`.)
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
