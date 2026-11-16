@@ -8489,7 +8489,21 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   stands by the lit car (the dug crew room had moved him inside it); the south tunnel (P03-04) got a cabinet, a drum, a lantern, a
   flicker tube; T's REAL LIGHTS cut from four to two (the zone kit's rule: the lit car and the cabin; the crew room and the station
   office are lit the drawn way: `hut(..., { glowIn: 0.3 })` = glowing plaster, floor and a lit panel under the slab).
-- **WHERE IT STANDS: five passes merged and live, STOPPED.** OPEN FOR MONDO: (a) nothing was WALKED by a player (doors, the step, the
+- **THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end
+  to end; seen, 9 views).** IN, and the stand-in OUT: `rail_section` on every track square (207; the drawn sleepers are out, the pebble
+  ballast and the third rail stay; face 0 = along x, 90 = along z; the model's rails lie on the tool's walked rails); `buffer_stop` x 5
+  (the Depot's four road ends, the Crossing's dead line; the drawn buffers out; face 0 closes a north-south track, 90 / 270 an
+  east-west one); `tunnel_signal` x 4 (the drawn posts out); `signal_gantry` at the Crossing, across the main line a step west of the
+  crossing square, legs on the two walks (the drawn legs, beams, deck, heads and ladder out; the check plate stays); `cage_lamp` on
+  every tunnel lamp (the drawn housings out; the lit lens and what it lights stay). NEW: `hand_car` on the shut stub, `rat` x 12,
+  `spider` x 4, `strobe_lamp` x 5 (dead ends, road ends, over the WAY OUT), `third_rail_shoe` x 3 (the bench, the floor), at the camp a
+  `sleeping_bag`, a `backpack`, a `kettle`; a `kettle` and a `ceiling_fan` in the crew room; a `key_ring` in the station office.
+  NOT USED: `manhole_ladder` (the station has no way up, by its own line), `steel_bench`, `chain_bunk`, `booking_desk` (the cells').
+  NOTE: the gantry model's lamps are red; the bystander says "Signals green" (the four small tunnel signals show all three colours).
+  FPS, the Depot view: 3.0 before, 2.0 after (noise about 1; the room went from 956 to 1,267 props, T's share about 310 small ones).
+- **NEEDS A MODEL, WHAT IS LEFT:** a graffiti sheet (a sheet, not a model), a third Metro car for the east loop, a soft round decal for
+  light pools. Crossed off: rail section, buffer stop, tunnel signal, signal gantry, hand car, rats, emergency lamp, third-rail shoe.
+- **WHERE IT STANDS: five passes + the model pass merged and live, STOPPED.** OPEN FOR MONDO: (a) nothing was WALKED by a player (doors, the step, the
   ghost walls: probe pictures only); (b) the bystanders are the old room's four (no more: the NPC system is its own thread); (c) the
   dead train front on the east loop is the Meshy white nose (`subway_front`): a third Metro car would match better, his call; (d) the
   platform's north half is low under the vault's haunch (1.6 m at the wall): furniture only, by design of the tool's vault; (e) the
@@ -8913,3 +8927,58 @@ hard right angles and straight lines ... that would be a good spot to turn into 
 - **NOT DONE** (the plan file's section 3): a skyline north of the Desert; the floating things in the zones' skies; the Mountains', North Pole's, Woods', Camelot's and
   Estate's sides (the Woods, Camelot and the Estate have NO land past their lines yet); the Shore's main waterline; the Hills' cliff north of the headland.
 
+
+## THE DEEP ON PLOTS — the zone redesigned, first build (2026-11-16, second side, the Deep zone thread)
+
+mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full redesign, no OK needed;
+for this zone: "yes underwater room", "No deep to Area 51". Plan: `docs/plans/world-zones/the-deep_plot_plan_2.png` (sent to him; built
+without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as history.
+
+- **THE ROOMS.** `site_prebuilt_atlantis_deep` (site `prebuilt_atlantis`, part `deep`): 8 x 5 plots of 12 x 12 squares, 336 x 210 m, a
+  DROWNED room (`terrain.sea.under`, `hqAbyssShell`: the walker swims from the first frame, nothing new: the old Abyss's own way).
+  `site_prebuilt_atlantis_pocket` (part `pocket`): the Temple of the Deep's dry inside, 18 x 18 squares, behind the vault door on the Agora.
+  Both written by `node bake-deep.js [--dry-run]` between `DEEP40-BEGIN / DEEP40-END` (+ the Temple's light shafts between
+  `DEEP40-SHAFTS-*`). `DEEP_DUMP=1` prints the square map.
+- **THE PLAN** is made by `python3 docs/plans/world-zones/make-deep.py`: it writes the plan json + picture and copies the json to
+  `docs/areas/deep/layout.json` (`cells` = a char a square, `levels` = a base-36 level a square, 1 level = 1.75 m, the open floor is 8,
+  `ways` = the squares of the Upwelling, the wreck's hatch, the vault door, the drowned stair, the spawn). Change the plan THERE, rerun
+  it, rerun the bake.
+- **THE IDEA: A RING CITY.** Atlantis is Plato's: an island (the Agora, level 11, with the Temple of the Deep on a podium at its north
+  end, level 12), an inner canal (7), an inner ring (10), an outer canal (7), an outer ring (9), a wall (13, 7 m of marble) with four
+  gates. Four straight roads (the Drowned Road) run from the gates over causeways to the Agora, so the dome is seen from every gate. West
+  of the city the sea floor under the Triangle; east the Trench, down to level 2 and 0 in two drops.
+- **FOUR DISTRICTS, ONE FILE EACH** (`docs/areas/deep/districts/`): `C.js` Atlantis, the Citadel (the middle nine plots; the PILOT; it
+  also exports `inside(ctx)` = the Temple's dry room) · `R.js` Atlantis, the Rings (12) · `S.js` The Sea Floor (9: the west column + the
+  four corners of the city's square) · `T.js` The Trench (10). Stages a file may export: `plan` (change squares / levels of its own
+  plots: `ctx.setSq / setRect(x0, y0, x1, y1, ch, level)`), `build` (terrain rows `ctx.feat`, drawn pieces `ctx.look(id, x, z, rot, a => ...)`,
+  `ctx.scatter(key, n, sx, sy, radiusInSquares, seed)`), `dress` (`ctx.P` a blocker on a square's middle, `ctx.dec` decor off it,
+  `ctx.swim(key, sx, sy, metresOffTheFloor)`), `people` (`ctx.native(race, sx, sy, face, say)`), `airZones`. Squares are the ROOM's
+  (sx 0..95, sy 0..59; `ctx.gx / gz` a line in metres, `ctx.cx / cz` a middle; `ctx.sq(plotId, lx, ly)`). A piece on another district's
+  square is printed as a stray, not refused.
+- **THE HEIGHTS ARE THE MAP** (the Beach's way; no `gen`, no `space` rows): sand `s`, kelp floor `k`, trench silt `d` and vent rock `v`
+  are one soft surface; paving `m` ramps between its own levels; city ground `t`, canal bed `c`, the wall `w`, podiums `B` and the
+  Station's deck `f` are flat with a step at their edge; rock `x` and reef `r` are crags. Nothing is a wall to the roof: a swimmer goes
+  over anything, never through it. The surface is at 47.25 m (26 m over the Agora, as the old Abyss had over its floor).
+- **THE DRAWN PIECES** are `arch` rows from a marble sheet (`ctx.sheet()`: box, cyl, dome, roof, quad, and `column(x, y, z, h, r, tint)` /
+  `stump(...)` = a Greek column from three parts). Houses that must stop a swimmer are `wall` rows (R.js `house`).
+- **EVERY OLD PLACE IS KEPT** (old name -> plot): THE SEA FLOOR P00-02 · THE DROWNED ROAD the four roads + P03-03 · THE WRECK / THE
+  DUTCHMAN BELOW P00-01 · THE TRENCH P06-02 · THE UPWELLING P00-03 · THE TEMPLE STEPS + the dome P03-01 · THE SUNKEN AGORA + its four
+  pylons P03-02 · THE PALACE (its dome, its nine metre front) P02-01 · THE STATION + the bathyscaphe P01-00 · THE SPIRE (the tape) P05-00 ·
+  THE REEF WALL P00-04 · the kelp forest P00-00 · the drowned circle P05-04 · the fallen lintel P04-01 · the smokers P07-01 · the
+  sarcophagus P04-04 · the Temple room's DAIS, ORACLE + pool, throne, braziers, windows, tapestry, choir tape: the new inside. Every old
+  resident with lines stands again with the same lines. Plots with no old name carry plain labels of mine (the plan json says which).
+- **THE EXITS MOVED.** Links `bermuda_abyss` (b end: the Upwelling, x -145.25 z 43.75) and `revenge_atlantis` (b end: the hatch by the
+  wreck, x -138.25 z -40.25) now name part `deep`; their far ends (the Beach's Maelstrom, the Dutchman's Hold) did not move and needed no
+  edit. Room H-20's bay door (`siteRooms.entry.prebuilt_atlantis`) lands in the new inside, east wall. `hubs.deep`, `HQ_HEAL_ZONE.rooms.deep`
+  (on the Agora), the sky's `still` list, `HQ_AREA_MARKERS` (the fight marker in the Temple), the two tapes, the find spots (the tape on
+  top of the Spire; on the Oracle) and the AREA UNITS lists carry rows for the new rooms. The tool refuses to bake when a row it depends
+  on has drifted. No way to Area 51.
+- **RETIRED:** `DOOR_HQ.retired` sends `site_prebuilt_atlantis_abyss` -> the Deep and `site_prebuilt_atlantis_temple` -> the new inside.
+  Both old rooms STAY in data.js: the Atlantis fight boards are cut from them (`HQ_ARENA_RULES.picks`). `site_prebuilt_bermuda_island`
+  was not touched.
+- **SEEN ON SCREEN** (probe, llvmpipe, six views, no errors, 119 files in 59 s): the Agora with the temple, the city from the South Gate
+  (the dome at the road's end), the Palace, the Wreck with the kelp, the Station and the humpback behind it, the Trench.
+- **KNOWN THIN (first build):** the marble of the drawn pieces reads dark; the hatch's frame stands a few metres off the wreck's hull;
+  the Station's deck is a mound, not a deck on legs; R, S and T have one layer of content each (their files' headers).
+- **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
+  fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
