@@ -45147,11 +45147,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { count: 9, sprite: 'water-splash', ml: [420, 760], offsetXY: 16, z: [20, 60], tint: 0xcfefff, vxRange: 150, vyRange: 150, vzRange: [120, 240], gravity: 560, drag: 0.4, size0: [9, 13], size1: 3, opacity0: 0.95 },
         { sprite: 'flash', ml: 260, z: 50, size0: 30, size1: 90, tint: 0xffffff, opacity0: 0.55 },
     ] };
+    /* INSERVICE (warCry `aura`, radius 2): her whistle, then every square in the drill zone takes a ring in her side's colour
+       and the allies in it a little red-and-white lift (the geometry adds the side's floor ring out to the edge) */
+    EFFECTS['nrInservice_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 3, tint: 0xffe6e0, size0: 20, size1: 70, opacity0: 0.4, delayMs: 260 },
+        { count: 2, sprite: 'sparkle', ml: [600, 900], offsetXY: 22, z: [10, 40], tint: 0xff8a8a, vzRange: [40, 90], size0: [4, 6], size1: 2, opacity0: 0.8, delayMs: 300 },
+    ] };
+    EFFECTS['nrInservice_center'] = { layers: [
+        { count: 8, sprite: 'sparkle', ml: [600, 1000], offsetXY: 18, z: [60, 110], tint: 0xffffff, vzRange: [20, 60], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 120 },
+    ] };
+    _afAoeDef('nrInservice_aura', 2, 'diamond', 'nrInservice_tile', 'nrInservice_center');
     Object.assign(SPELL_MAP, {
         nrRescueTube:    { pull: 'nrRescueTube_pull' },
         nrOnDuty:        { aura: 'nrOnDuty_aura' },
         nrCPR:           { aura: 'nrCPR_aura' },
         nrThreeWhistles: { aura: 'nrThreeWhistles_aura' },
+        nrInservice:     { aura: 'nrInservice_aura' },
     });
     /* RESCUE TUBE: thrown on an arc (the rope shoots in 280 ms), drops over the waist, rides in with the hauled body */
     function _lgTube3D(tx, ty, r, o) {
@@ -45236,8 +45247,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < 3; i++) _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * reach, ms: 640, color: side, height: ts * 0.05 }); } catch (e) {} }, 120 + i * 240);
         return true;
     }
+    /* INSERVICE: one whistle blast, then the drill zone's ring in her side's colour out to the aura's edge */
+    function _lgInservice3D(tx, ty, r) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, side = _lgSide(null, tx, ty), reach = (r > 0 ? r : 2) + 0.5;
+        _lgWhistle(tx, ty, 2, 200, ts * 1.0, _LG_WHITE);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * reach, ms: 700, color: side, height: ts * 0.05 }); } catch (e) {} }, 260);
+        return true;
+    }
     Object.assign(_spell3DGeometry, {
-        nrRescueTube: _lgTube3D, nrOnDuty: _lgDuty3D, nrCPR: _lgCpr3D,
+        nrRescueTube: _lgTube3D, nrInservice: _lgInservice3D, nrOnDuty: _lgDuty3D, nrCPR: _lgCpr3D,
         'nrOnDuty:save': _lgSave3D, 'nrThreeWhistles:blow': _lgBlow3D,
     });
 
