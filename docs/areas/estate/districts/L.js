@@ -18,18 +18,21 @@
        south pool: all decks on piles, boards painted under every one (the grass field grows through a deck on lawn).
      - THE BOATHOUSE (walk-in by the south door): weathered boards on a stone footing, a tin gable roof, the two boat doors on the lake side at the
        head of the slip (drawn shut), a loft hatch and hoist beam, sashed windows (two lit), a stove pipe, lanterns, BOATHOUSE over the door.
-       Inside (not dressed yet, pass 2): a rowboat, a sea chest, a lantern, a bucket, a crate.
+       INSIDE (pass 2, seen): a lit plank ceiling on three tie beams with three lanterns, daylight panes at the seven windows, the boat doors' inner
+       face and bar, a rowboat on its cradle on the slip's line, a workbench under a tool pegboard (saw, bucket, rope), a pot-belly stove under its
+       pipe (drawn), a tool chest, shelving, jerrycans, barrels, an anchor, a net on the wall, a table and chair under the ship's lantern, a cot,
+       rug, radio and a seascape, a sea chest, crates, an outboard motor, a ladder rack, a life ring, the ship's bell by the door.
      - THE PICNIC SHELTER on the South Shore (drawn: four posts on square middles, a shingle roof, two plank tables, PICNIC AREA read from the lake),
        the playground pack's swing, slide and sandbox beside it, benches, a campfire, folding chairs.
      - THE GROUND: gravel shingle on the North Shore (plan char `s`, the tool's one new paint letter), mud at the Reeds and round the Marsh's pools.
      - the Marsh's two pools, rowboats, logs, frogs, moths, dead snags, seven trees, and the Loch Ness Monster (mondo's OK 11-15): it WALKS THE BED,
        its neck and back out of the water, wandering south of the rock (seen on screen 11-16).
    MISSING / WAITING:
-     - pass 2 interiors (the Boathouse's inside), pass 3 dressing (reeds, lily pads, shore line, fish, the Marsh), pass 4 atmosphere (mist, night), pass 5.
+     - pass 3 dressing (reeds, lily pads, shore line, fish, the Marsh), pass 4 atmosphere (mist, night), pass 5.
      - no residents with routines, no encounter table (mondo's baked tables).
    NEEDS A MODEL (nothing on R2 or in any pack file, MODEL_LIST.md searched 11-16: reed, cattail, bulrush, lily, duck, swan, heron, pier, canoe):
      - reeds / cattails (pass 3 will try the ocean pack's seaweed in the shallows and say how it reads), a duck or a heron, a mooring bollard with rope,
-       oars, a fishing rod, a lighter grey lake rock (the ocean pack's rocks draw near black; a prop row takes no tint).
+       oars, a fishing rod, a pot-belly stove (drawn in code today), a lighter grey lake rock (the ocean pack's rocks draw near black; a prop row takes no tint).
    REMOVED 11-16: `dockring` by the Boathouse. It is the Meshy SPACESHIP docking ring (4.5 m), placed by its name as if it were a mooring ring.
    THE HOOKS (bake-estate.js "THE DISTRICT FILES"; a file exports any of these, each is called with this district's own ctx):
      plan(ctx)    first of all: change the plan's squares (ctx.setRect(x0, y0, x1, y1, ch); 'c' = corn, anything else is walked).
@@ -85,7 +88,7 @@ module.exports = {
             a.roof('gable', 0, 3.5, 0, w + 1.0, 2.8, d + 1.2, COR, 0x7c848c, { keyEnd: WD, tintEnd: GREY, gain: 1.5 });                             // tin, the gable ends east and west
             a.box(0, 6.26, 0, w + 1.1, 0.12, 0.34, null, IRON, { roof: true });                                                                     // the ridge cap
             for (const s of [-1, 1]) { a.box(s * (h2 + 0.5), 3.42, 0, 0.14, 0.16, d + 1.2, WD2, TRIM, { roof: true }); }                            // the barge boards' feet
-            a.cyl(3.6, 4.6, -3.0, 0.14, 2.3, null, IRON, { roof: true }); a.cyl(3.6, 6.9, -3.0, 0.24, 0.1, null, IRON, { roof: true });             // the stove pipe and its cap
+            a.cyl(5.25, 4.2, -5.25, 0.14, 2.3, null, IRON, { roof: true }); a.cyl(5.25, 6.5, -5.25, 0.24, 0.1, null, IRON, { roof: true });             // the stove pipe and its cap
             /* the lake side (west): the boat doors on their rail at the head of the slip, the loft hatch, a lantern */
             for (const s of [-1, 1]) { a.box(-h2 - 0.09, 0.08, SZ + s * 0.88, 0.1, 3.0, 1.72, WD, DOORC, { gain: 1.5, uv: [1.75, 1.75] });
                 a.box(-h2 - 0.16, 0.2, SZ + s * 0.88, 0.05, 0.16, 1.6, WD2, TRIM); a.box(-h2 - 0.16, 1.5, SZ + s * 0.88, 0.05, 0.16, 1.6, WD2, TRIM); a.box(-h2 - 0.16, 2.8, SZ + s * 0.88, 0.05, 0.16, 1.6, WD2, TRIM);
@@ -98,9 +101,41 @@ module.exports = {
             a.frame(door, d, WD2, TRIM);
             a.box(door.lx, 2.62, f + 0.1, 3.3, 0.62, 0.06, WD, 0x3a3a36); a.sign('BOATHOUSE', door.lx, 2.68, f + 0.14, 3.1, 0.5, '#e8e0c8', '#3a3a36', 'fell');
             a.box(door.lx + 1.5, 1.9, f + 0.24, 0.2, 0.3, 0.2, null, AMBER, LAMP); a.box(door.lx + 1.5, 2.2, f + 0.24, 0.28, 0.06, 0.28, null, IRON); a.box(door.lx + 1.5, 2.3, f + 0.12, 0.05, 0.05, 0.3, null, IRON);
+            /* ── THE INSIDE (pass 2, 2026-11-16): a lit plank ceiling on three tie beams (a walk-in's own ceiling draws black), the boat doors' inner face,
+               daylight panes where the windows are, a boat on its cradle on the slip's line, a workbench under the north wall, a pot-belly stove under
+               its pipe, lanterns on the beams. Blockers stand on square middles (x, z = +-1.75, +-5.25). ── */
+            { const iw = h2 - 0.22, id = f - 0.22, BEAM = 0x4a3c2e, TIMB = 0x7a6a54;
+              a.box(0, 3.16, 0, 2 * iw - 0.3, 0.06, 2 * id - 0.3, U('WoodFlooring1a'), 0xa89a80, { glow: 0.4, uv: [1.75, 1.75], top: false });
+              for (const z of [-3.5, 0, 3.5]) { a.box(0, 2.9, z, 2 * iw - 0.3, 0.26, 0.24, WD2, BEAM, { gain: 1.3 }); }
+              for (const q of [[-1.75, -3.5], [1.75, 3.5], [-3.5, 0.3]]) { a.box(q[0], 2.7, q[1], 0.03, 0.2, 0.03, null, IRON); a.box(q[0], 2.4, q[1], 0.2, 0.3, 0.2, null, AMBER, LAMP); a.box(q[0], 2.7, q[1], 0.26, 0.05, 0.26, null, IRON); }
+              for (const s of [-1, 1]) { a.box(-iw + 0.05, 0.08, SZ + s * 0.88, 0.08, 3.0, 1.72, WD, 0x6a6258, { gain: 1.4, uv: [1.75, 1.75] }); a.box(-iw + 0.11, 0.9, SZ + s * 0.88, 0.05, 0.14, 1.6, WD2, TRIM); a.box(-iw + 0.11, 2.4, SZ + s * 0.88, 0.05, 0.14, 1.6, WD2, TRIM); }
+              a.box(-iw + 0.14, 1.5, SZ, 0.1, 0.16, 3.2, WD2, BEAM);                                                                                  // the bar across the boat doors
+              const pane = (face, u, y, ww, hh) => { const fb = face === 'f' || face === 'b', sg = (face === 'f' || face === 'r') ? 1 : -1, b = (fb ? id : iw) - 0.16;
+                  const B = (du, y0, su, sh, sn, key, tint, x) => fb ? a.box(u + du, y0, sg * b, su, sh, sn, key, tint, x) : a.box(sg * b, y0, u + du, sn, sh, su, key, tint, x);
+                  B(0, y, ww, hh, 0.04, null, 0xb8c8d0, { glow: 0.45 }); B(0, y - 0.08, ww + 0.3, 0.08, 0.1, WD2, TRIM); B(0, y + hh, ww + 0.3, 0.1, 0.1, WD2, TRIM); B(0, y, 0.05, hh, 0.06, WD2, TRIM); B(0, y + hh * 0.5, ww, 0.05, 0.06, WD2, TRIM);
+                  B(-ww / 2 - 0.05, y, 0.1, hh, 0.08, WD2, TRIM); B(ww / 2 + 0.05, y, 0.1, hh, 0.08, WD2, TRIM); };
+              pane('f', -4.9, 1.25, 1.1, 1.25); pane('f', 3.4, 1.25, 1.1, 1.25); pane('b', -3.5, 1.25, 1.1, 1.25); pane('b', 3.5, 1.25, 1.1, 1.25); pane('r', -3.5, 1.25, 1.1, 1.25); pane('r', 2.6, 1.25, 1.1, 1.25); pane('l', -4.2, 1.25, 1.1, 1.25);
+              for (const x of [-4.5, -2.5]) { a.box(x, 0.16, SZ, 0.14, 0.4, 1.5, WD2, TIMB, { gain: 1.3 }); for (const s of [-1, 1]) a.box(x, 0.16, SZ + s * 0.62, 0.14, 0.62, 0.14, WD2, TIMB, { gain: 1.3 }); }   // the boat's cradle
+              a.box(-5.25, 0.86, -id + 0.45, 3.3, 0.08, 0.8, U('WoodFlooring1a'), 0xa89878, { gain: 1.3 }); for (const x of [-6.75, -3.75]) for (const z of [0.12, 0.78]) a.box(x, 0.16, -id + z, 0.1, 0.7, 0.1, WD2, TIMB);   // the workbench
+              a.box(-5.25, 0.3, -id + 0.45, 3.1, 0.05, 0.7, WD2, TIMB);
+              a.cyl(5.25, 0.42, -5.25, 0.36, 0.78, null, IRON); a.cyl(5.25, 1.2, -5.25, 0.3, 0.08, null, 0x2a2a30); a.cyl(5.25, 1.28, -5.25, 0.09, 2.2, null, IRON); a.box(5.25, 0.6, -4.87, 0.3, 0.24, 0.04, null, AMBER, { glow: 0.8 });   // the stove, its door aglow
+              for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(5.25 + sx * 0.24, 0.16, -5.25 + sz * 0.24, 0.07, 0.28, 0.07, null, IRON);
+            }
             win('f', -4.9, 1.25, false); win('f', 3.4, 1.25, true); win('b', -3.5, 1.25, false); win('b', 3.5, 1.25, false); win('r', -3.5, 1.25, false); win('r', 2.6, 1.25, true); win('l', -4.2, 1.25, false);
         });
-        put(BOAT, 'rowboat', -2.6, -2.4, { face: 90 }); put(BOAT, 'sea_chest', 4.6, -5.0, { face: 0 }); put(BOAT, 'ship_lantern', 5.2, 4.6); put(BOAT, 'wooden_bucket', 3.8, 1.2); put(BOAT, 'psx_wooden_crate_4', 5.0, -1.6);
+        /* what stands inside (every row on the floor: `floor: true`; a `y` of 1 m or more = a height, the Lake is level 0) */
+        const IN = (key, lx, lz, o) => put(BOAT, key, lx, lz, Object.assign({ floor: true }, o || {})), f = 7, ctxFeat = ctx.feat, r2 = ctx.r2;
+        const blk = (lx0, lz0, lx1, lz1, t, h) => { const p = BOAT.at(lx0, lz0), q = BOAT.at(lx1, lz1); ctxFeat({ k: 'wall', x0: p[0], z0: p[1], x1: q[0], z1: q[1], t, h, ghost: true, rail: false }); };
+        IN('rowboat', -3.5, 1.75, { face: 90, y: 0.5 }); blk(-5.0, 1.75, -2.0, 1.75, 1.3, 1.0);                                                      // the boat on its cradle
+        blk(-6.8, -6.3, -3.7, -6.3, 0.8, 0.9); blk(5.05, -5.25, 5.45, -5.25, 0.8, 1.2);                                                              // the workbench, the stove
+        IN('tool_pegboard', -5.25, -6.7, { y: 1.5, face: 0 }); IN('psx_hand_saw_1', -4.4, -6.3, { y: 0.96, face: 20 }); IN('wooden_bucket', -6.2, -6.3, { y: 0.94 }); IN('meshy_rope', -5.4, -6.35, { y: 0.34, face: 40 });
+        IN('tool_chest', -1.75, -5.25, { face: 0 }); IN('metal_shelving', 1.75, -6.72, { face: 0 }); IN('psx_jerrycan_1', 2.9, -6.2, { face: 30 }); IN('psx_jerrycan_1', 3.3, -5.7, { face: 300 });
+        IN('psx_metal_barrel_mp_1', 1.75, -5.25); IN('ship_anchor', -5.25, -1.75, { face: 60 }); IN('meshy_rope', -4.3, -2.6, { face: 200 }); IN('fishing_net_wall', -6.7, -3.5, { y: 1.5, face: 90 });
+        IN('psx_table_large_2', 1.75, -1.75, { face: 0 }); IN('folding_chair', 0.5, -1.2, { face: 250 }); IN('ship_lantern', 1.75, -1.75);
+        IN('sea_chest', 5.25, -1.75, { face: 270 }); IN('cot', 5.9, 1.75, { face: 90 }); IN('rug_round', 4.2, 1.9); IN('retro_radio', 6.1, 3.3, { y: 0.56 }); IN('psx_wooden_crate_4', 6.1, 3.3, { h: 0.55 });
+        IN('painting_seascape', 6.72, 0, { y: 1.8, face: 270 }); IN('psx_wooden_crate_4', 5.25, 5.25); IN('psx_wooden_crate_6', 4.2, 5.9, { face: 20 }); IN('psx_wooden_crate_4', 5.3, 5.2, { y: 1.08, h: 0.8, face: 30 });
+        IN('outboard_motor', -5.25, 5.25, { face: 45 }); IN('psx_metal_barrel_mp_2', -6.1, 4.0); IN('ladder_wall_rack', -4.4, 6.7, { y: 1.9, face: 180 }); IN('beach_life_ring', 2.4, 6.72, { y: 1.7, face: 180 });
+        IN('ships_bell', 0.9, 6.6, { y: 2.0, face: 180 }); IN('wooden_bucket', 0.4, 5.9); IN('doormat', -0.87, 6.2);
     },
     /* THE PICNIC SHELTER (drawn, the South Shore's landmark): an open timber pavilion over three by three squares, four posts on the corner squares'
        middles, a shingle roof, two plank tables with their benches; the middle aisle stays open north to south. */
@@ -124,7 +159,7 @@ module.exports = {
         feat({ k: 'pool', x: gx(54), z: gx(17.5), r: 49, rz: 41, y: -0.3, depth: 1.0, key: 'water', bank: 2.4 });
         feat({ k: 'deck', x0: gx(36), z0: gx(18), x1: gx(49), z1: gx(18), w: 7, y: 0.3 });                                                          // THE DOCK
         feat({ k: 'deck', x0: gx(49), z0: gx(16), x1: gx(49), z1: gx(20), w: 7, y: 0.3 });                                                          // its head, across the end
-        feat({ k: 'deck', x0: gx(67), z0: gc(7), x1: gx(58), z1: gc(7), w: 3.5, y: 0.3 });                                                          // the Boathouse's slip, out over the water
+        feat({ k: 'deck', x0: r2(gx(67) - 0.9), z0: gc(7), x1: gx(58), z1: gc(7), w: 3.5, y: 0.3 });                                                          // the Boathouse's slip, out over the water
         feat({ k: 'deck', x0: gx(71), z0: gc(17), x1: gx(65), z1: gc(17), w: 3.5, y: 0.3 });                                                        // the east bank's jetty
         feat({ k: 'pool', x: gx(63.5), z: gx(27), r: 9, rz: 7.5, y: -0.25, depth: 0.6, key: 'water', bank: 1.6 }); feat({ k: 'pool', x: gx(68.5), z: gx(32.5), r: 7.5, y: -0.25, depth: 0.6, key: 'water', bank: 1.4 });
         feat({ k: 'deck', x0: gx(60), z0: gc(31), x1: gx(72), z1: gc(31), w: 3.5, y: 0.25 });                                                       // the Marsh's boardwalk, over the south pool

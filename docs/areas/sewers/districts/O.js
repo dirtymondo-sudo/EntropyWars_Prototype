@@ -2,11 +2,98 @@
    One thread a file (docs/notes/claims.md). Read by `node bake-sewers.js`; rules: docs/notes/areas-complexes.md "THE SEWERS ON PLOTS".
    BRIEF: older than the city; bricked, flooded, lit by fire. Reached by the rope ladder from the trap under the Drunk Tank (8.75 m) and by
    the climb in the Adit from the Storm Drain. The Chimney's west door is the old portcullis into the Cavern's Oubliette. ctx: see W.js.
-   THE MODEL LIST PASS: a skeleton, skulls, parts, a bucket, mushrooms. STANDS TODAY (first build): the Flood (waded), torches, a brazier, bones, a signpost, the old room's two bystanders.
-   NOT YET: the Sump (deep, never waded), the Pump Ledge, the Chimney's shaft (3.9 m) as a thing to look up. */
+   STANDS TODAY: the first build (torches, a brazier, bones, a signpost, the old room's two bystanders) + PASS 1, THE EXTERIORS (the district thread,
+   11-16): the Sump (deep, its own stream row), the Pump Ledge (1.4 m) + stair + the pump's iron, four piers in the Flood, the sleeper wall, timber sets
+   and board roofs on the drift / the neck / the Adit, the Chimney (a 3.9 m brick stump with a ladder under a lining with daylight), the raised portcullis.
+   Notes, the FITS THIS DISTRICT shortlist, NEEDS A MODEL and DECISIONS MADE FOR MONDO: docs/notes/areas-complexes.md "THE SEWERS, DISTRICT O". */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
+const feat = (ctx, row) => ctx.feat(row);
 module.exports = {
+    /* PASS 1, THE EXTERIORS (the district thread, 11-16). Everything here is this district's own terrain rows and drawn shapes
+       (`arch` rows: timber wears the wood surface by its brown, iron the metal one). Local squares: (lx, ly), fractions allowed. */
+    build(ctx) {
+        const A = 'P01-01', B = 'P00-01', r2 = ctx.r2;
+        const X = (id, lx) => ctx.gx(ctx.plot[id].sx + lx), Z = (id, ly) => ctx.gz(ctx.plot[id].sy + ly);
+        const take = (id, lx, ly) => { const s = ctx.sq(id, lx, ly); ctx.taken.add(s[0] + ':' + s[1]); };
+        const PARTS = { [A]: [], [B]: [] }, at = (id, lx, y, ly) => [r2(X(id, lx) - X(id, 6)), y, r2(Z(id, ly) - Z(id, 6))];
+        const WOOD = 0x5a4028, WOOD2 = 0x4a3420, IRON = 0x2a2a2e, RUST = 'urban:MetalCorrugatedPainted2a';
+        /* a TIMBER SET (two posts at the walls, a cap beam, lagging boards over it): `along` 'x' = the beam runs west-east on the line ly = line, from lx a0 to a1 */
+        const set = (id, along, line, a0, a1, h) => { const L = (a1 - a0) * 3.5, m = (a0 + a1) / 2, ax = along === 'x';
+            const q = (u, y) => ax ? at(id, u, y, line) : at(id, line, y, u), sz = (l, hh, t) => ax ? [l, hh, t] : [t, hh, l];
+            PARTS[id].push({ s: 'box', p: q(a0 + 0.07, 0), size: [0.34, h, 0.34], tint: WOOD }, { s: 'box', p: q(a1 - 0.07, 0), size: [0.34, h, 0.34], tint: WOOD },
+                { s: 'box', p: q(m, h), size: sz(r2(L), 0.36, 0.4), tint: WOOD2, under: true },
+                { s: 'box', p: q(a0 + 0.07, r2(h - 0.5)), size: [0.5, 0.14, 0.5], tint: WOOD2, under: true }, { s: 'box', p: q(a1 - 0.07, r2(h - 0.5)), size: [0.5, 0.14, 0.5], tint: WOOD2, under: true }); };
+        /* the LAGGING: a board roof over a drift's sets (hidden with HIDE ROOFS, like a building's) */
+        const lag = (id, x0, x1, z0, z1, y) => PARTS[id].push({ s: 'box', p: at(id, (x0 + x1) / 2, y, (z0 + z1) / 2), size: [r2((x1 - x0) * 3.5), 0.1, r2((z1 - z0) * 3.5)], tint: 0x3c2c1c, under: true, roof: true });
+        /* boards laid on the floor as the path (the old room's own) */
+        const board = (id, lx, ly, len, ry) => PARTS[id].push({ s: 'box', p: at(id, lx, 0.02, ly), size: [len, 0.05, 0.9], ry: ry || 0, tint: 0x6a4c30 });
+
+        /* ── THE OLD WORKINGS (P01-01) ── */
+        /* THE SUMP: deep, never waded (the old room's own), in the north chamber's east end, behind bars */
+        feat(ctx, { k: 'stream', pts: [[X(A, 8), Z(A, 3)], [X(A, 11), Z(A, 3)]], w: 7, y: -0.3, depth: 1.8, key: 'deep_water' });
+        for (let lx = 8; lx <= 10; lx++) for (let ly = 2; ly <= 3; ly++) take(A, lx, ly);
+        feat(ctx, { k: 'rail', x0: r2(X(A, 8) - 0.1), z0: r2(Z(A, 2) + 0.2), x1: r2(X(A, 8) - 0.1), z1: r2(Z(A, 4) - 0.1), model: 'ranch' });
+        /* THE PUMP LEDGE (1.4 m, the old room's height): a timber stage over the Sump's south side, up its own flight */
+        feat(ctx, { k: 'plateau', x: r2(X(A, 9.5) + 0.25), z: Z(A, 4.5), w: 11, d: 3.5, h: 1.4, edge: 0.1 });
+        feat(ctx, { k: 'ramp', x0: r2(X(A, 7) + 0.1), z0: Z(A, 4.5), x1: r2(X(A, 8) + 0.4), z1: Z(A, 4.5), w: 3.5, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.15 });
+        feat(ctx, { k: 'rail', x0: r2(X(A, 8) + 0.15), z0: r2(Z(A, 5) - 0.15), x1: r2(X(A, 11) - 0.1), z1: r2(Z(A, 5) - 0.15), y: 1.4, model: 'ranch' });
+        feat(ctx, { k: 'rail', x0: r2(X(A, 8) + 0.15), z0: r2(Z(A, 4) + 0.15), x1: r2(X(A, 11) - 0.1), z1: r2(Z(A, 4) + 0.15), y: 1.4, model: 'ranch' });
+        take(A, 7, 4);
+        PARTS[A].push({ s: 'box', p: at(A, 9.5, 1.4, 4.5), size: [10.4, 0.07, 3.4], tint: 0x6a4c30 },                                   // its deck
+            { s: 'box', p: at(A, 8.1, 0, 4.98), size: [0.28, 1.4, 0.28], tint: WOOD, n: 4, step: [3.3, 0, 0] },                         // the posts along its face
+            { s: 'box', p: at(A, 9.5, 1.05, 5.0), size: [10.4, 0.3, 0.12], tint: WOOD2 },
+            /* the pump's iron: the suction pipe down into the Sump, the rising main up the east wall to the dark */
+            { s: 'cyl', p: at(A, 9.5, -1.6, 3.75), r: 0.16, h: 3.6, key: RUST, tint: 0x6a3f24, seg: 8 },
+            { s: 'box', p: at(A, 9.5, 1.85, 4.15), size: [0.3, 0.3, 1.6], key: RUST, tint: 0x6a3f24, under: true },
+            { s: 'cyl', p: at(A, 10.8, 1.4, 4.5), r: 0.2, h: 13, key: RUST, tint: 0x5a3622, seg: 8 },
+            { s: 'box', p: at(A, 10.88, 3.2, 4.5), size: [0.3, 0.12, 0.6], tint: IRON, n: 4, step: [0, 3, 0] },
+            { s: 'box', p: at(A, 10.2, 1.95, 4.5), size: [1.9, 0.3, 0.3], key: RUST, tint: 0x6a3f24, under: true });
+        /* THE FLOOD's four brick piers, standing in the water, floor to vault */
+        [[3, 6], [9, 6], [3, 9], [9, 9]].forEach(q => ctx.pier(A, q[0], q[1]));
+        /* THE SLEEPER WALL (the old room's grind) on the Flood's north bank; the old pipe rail on its south bank */
+        feat(ctx, { k: 'wall', x0: X(A, 4.4), z0: Z(A, 6), x1: X(A, 8.6), z1: Z(A, 6), h: 0.6, t: 0.5, key: 'bricks_2' });
+        feat(ctx, { k: 'rail', x0: X(A, 4.2), z0: r2(Z(A, 10) + 0.2), x1: X(A, 8.8), z1: r2(Z(A, 10) + 0.2), model: 'pipe', block: false });
+        /* the neck under the trap: two sets, boarded over (open at the rope ladder) */
+        set(A, 'x', 0.95, 5, 8, 3.3); set(A, 'x', 1.9, 5, 8, 3.3); lag(A, 5, 8, 0.8, 2.05, 3.7);
+        /* THE DRIFT to the Chimney: a set a square, boarded over */
+        [0.5, 1.6].forEach(l => set(A, 'z', l, 5, 8, 3.3)); lag(A, 0, 2.1, 5, 8, 3.7);
+        [9.4, 10.5, 11.5].forEach(l => set(B, 'z', l, 5, 8, 3.3)); lag(B, 9.2, 12, 5, 8, 3.7);
+        board(A, 4.6, 5.5, 5.2, 3); board(A, 6.3, 5.45, 4.6, -2); board(A, 1.2, 6.5, 6.0, 2); board(B, 10.6, 6.5, 6.4, -2); board(B, 8.4, 6.2, 4.4, 9);
+        feat(ctx, { k: 'scatter', key: 'cinder_block', n: 4, x: X(A, 3.5), z: Z(A, 3.2), r: 3, seed: 4 });
+
+        /* ── THE CHIMNEY (P00-01) ── */
+        /* THE CHIMNEY: the old shaft to the surface. Its 3.9 m brick stump (the old room's own height) stands under the lining that
+           hangs from the vault; daylight comes down it. A ladder on the stump's south face: stand on it and look up. */
+        const cx = X(B, 5.5), cz = Z(B, 4.5), top = ctx.ceil(B);
+        feat(ctx, { k: 'plateau', x: cx, z: cz, r: 1.75, h: 3.9, edge: 0.15 }); take(B, 5, 4);
+        feat(ctx, { k: 'climb', x: cx, z: r2(cz + 1.75 + 0.3), face: 0, look: 'ladder' });
+        const c = (y, o) => Object.assign({ s: 'cyl', p: at(B, 5.5, y, 4.5), seg: 20 }, o);
+        PARTS[B].push(c(6.9, { r: 2.75, ri: 2.3, h: r2(top - 6.9 + 0.1), key: 'bricks_2', tint: 0x6e665a, cap: false }),                 // the lining
+            c(6.86, { r: 2.75, ri: 2.3, h: 0.05, key: 'bricks_2', tint: 0x4c463e, ds: true }),                                           // its lip, seen from below
+            c(6.5, { r: 2.95, ri: 2.3, h: 0.4, key: 'bricks_2', tint: 0x554e45, ds: true }),                                             // the corbel course
+            c(r2(top - 1.35), { r: 2.29, h: 0.03, tint: 0xcfe2ff, glow: 1, ds: true }),                                                  // the sky: under the vault's own brick, which crosses the shaft a metre down
+            c(r2(top - 3.3), { r: 2.28, h: 1.95, key: 'bricks_2', tint: 0xaab6c6, glow: 0.5, ds: true, cap: false }),                    // daylight on the lining, fading down
+            c(r2(top - 5.0), { r: 2.28, h: 1.7, key: 'bricks_2', tint: 0x9aa4b0, glow: 0.24, ds: true, cap: false }),
+            c(6.92, { r: 2.28, h: r2(top - 5.0 - 6.92), key: 'bricks_2', tint: 0x8a929a, glow: 0.1, ds: true, cap: false }),
+            c(3.93, { r: 1.66, h: 0.02, key: 'bricks_2', tint: 0x9fb48a, glow: 0.3 }),                                                   // the stump's top: lit, mossed
+            c(0.03, { r: 3.6, ri: 1.8, h: 0.01, key: 'bricks_2', tint: 0xa8b4bc, glow: 0.07, kind: 'over' }),                            // the pale ring the shaft throws on the floor
+            c(4.9, { r: 0.03, h: r2(top - 1.35 - 4.9), tint: 0x7a6238, seg: 6 }),                                                                // the old hoist rope, still hanging
+            { s: 'box', p: at(B, 5.5, 7.1, 4.5 - 2.22 / 3.5), size: [0.5, 0.05, 0.08], tint: IRON, n: Math.floor((top - 8.6) / 0.42), step: [0, 0.42, 0] });   // iron rungs up the lining
+        feat(ctx, { k: 'scatter', key: 'cave_stone', n: 5, x: X(B, 7.6), z: Z(B, 3.8), r: 2.6, seed: 3 });
+        /* THE OLD PORTCULLIS (the way into the Cavern's Oubliette): raised in its stone frame, on its chains under the winding beam */
+        { const g = (y, dz) => at(B, 0.3, y, 5.5 + dz / 3.5);
+          PARTS[B].push({ s: 'box', p: g(0, -2.15), size: [0.8, 6.2, 0.8], key: 'bricks_2', tint: 0x5a544a }, { s: 'box', p: g(0, 2.15), size: [0.8, 6.2, 0.8], key: 'bricks_2', tint: 0x5a544a },
+              { s: 'box', p: g(6.2, 0), size: [0.9, 0.8, 5.1], key: 'bricks_2', tint: 0x4e4840, under: true },
+              { s: 'box', p: g(2.75, -1.6), size: [0.07, 2.6, 0.07], tint: IRON, n: 9, step: [0, 0, 0.4] },
+              { s: 'box', p: g(3.15, 0), size: [0.06, 0.08, 3.5], tint: IRON, n: 3, step: [0, 0.95, 0] },
+              { s: 'box', p: g(5.35, -1.2), size: [0.05, 0.85, 0.05], tint: IRON, n: 2, step: [0, 0, 2.4] },
+              { s: 'box', p: g(7.0, 0), size: [0.36, 0.36, 4.3], tint: WOOD2, under: true }, { s: 'cyl', p: g(7.36, 0), r: 0.3, h: 0.5, tint: WOOD, seg: 10 }); }
+        /* THE ADIT (the climb up to the Storm Drain): three sets on the stem, boarded over short of the ladder */
+        [9.1, 10.0, 10.9].forEach(l => set(B, 'x', l, 4, 8, 3.4)); lag(B, 4, 8, 8.95, 10.75, 3.8);
+        board(B, 5.4, 10.2, 5.6, 88); board(B, 6.5, 8.6, 4.2, 84);
+        [A, B].forEach(id => ctx.feat({ k: 'arch', id: 'sew:O:' + id + ':mine', x: X(id, 6), z: Z(id, 6), rot: 0, base: ctx.plot[id].base, parts: PARTS[id] }));
+    },
     dress(ctx) {
         ['P01-01', 'P00-01'].forEach((id, i) => {
             const cs = ctx.corners(id); [0, cs.length - 1].forEach(k => { const q = cs[k]; if (q && ctx.free(id, q[0], q[1])) ctx.P('cave_torch', id, q[0], q[1]); });
