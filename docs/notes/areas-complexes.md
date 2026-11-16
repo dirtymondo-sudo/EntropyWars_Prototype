@@ -6684,8 +6684,7 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   came up as an Undead, the gnome as a ghost. The ring's old "fairy" row is swapped the same way. One of a race a room, too (the crowd cap).
 - **FRAME RATE, PASS 3** (the same pond view): 1.40 -> 1.17 to 1.29 frames a second on the cloud's software GPU; draw calls 309 -> 459,
   geometries 1,985 -> 2,223 (about 150 new props, most of them small).
-- **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower, bushes,
-  natural small rocks.
+- **NEEDS A MODEL**: all placed in THE MODEL PASS below; only lily pads are still drawn.
 - **PASS 4, THE ATMOSPHERE (seen by day and at night, 10 + 4 views)**: the tool's `airZones`, seven boxes: violet motes through the whole forest
   (320), fireflies over the north knoll (36), the pond (sea green, 60) and the ring (gold, 70), pale spores in the mushroom glade (70),
   blue motes at the spring (60) and the crystal knoll (44). LIGHT WITHOUT LIGHTS (the room's ten real lights are the castle's): the ring's
@@ -6731,6 +6730,16 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   bucket), `#rrggbb` after it = its petal colour, and a kind's `sink` (a share of its height) plants it that deep (the flower stands on its
   own mound of earth: unsunk, 2 m brown mounds lined the path). FRAME RATE at the pond: three kinds of eight (149 flowers) cost half
   (1.55 -> 0.86); three of sixteen reads 1.31 (noise 0.2). SEEN: the path north and south of the crossing, two probes.
+- **THE MODEL PASS (mondo 11-16: the wish-list models, `docs/plans/WISHLIST_MODELS_ADDED.md`; seen, two probes, 9 + 7 views)**: PLACED from this
+  district's own asks: `reeds` (8 in the pond's shallows, 3 at the spring; `noBlock`, they stand in water), `willow_tree` (2: the pond's
+  north bank, south of the spring; 8 m, on whole squares), `swan` (2, on the water: `y` 0.82 over the pool's bed), `duck` (4), `dragonfly`
+  (6), `firefly` (5, 3 cm: the particles carry the look), `wild_flowers` (14), `leafy_bush` (9). REPLACED: every small drawn boulder (the
+  pond's bank, the spring's ring, the glades' corners) is `lake_rock` now, 15 of them (the first try stood 22: at 1.5 m each they hid the
+  spring; its ring is three). FROM THE REST OF THE LIST: `heron` at the pond, `deer` at the spring (a whole square), `fox`, `hedgehog` (2),
+  `owl_perched` on the north knoll's stump, `moss_clump` (8). STILL DRAWN: the lily pads (no model), the crags, the islet, the crystal spikes.
+  A prop ON a pool's water: the row stands on the BED, so `y` = the pool's depth less a little.
+  FRAME RATE at the pond (cloud software GPU): 1.31 before the pass, 0.98 after it, twice (noise about 0.2; triangles 6.74 -> 7.02 million,
+  draw calls 567 -> 596). The first try was thinned by a third and read the same: the cost is real and small; his F3 decides.
 - **WOULD DO NEXT**: a willow and reeds at the pond when a model exists; sound (no hook); the ring's
   harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
   forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.
