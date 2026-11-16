@@ -46,7 +46,7 @@ as the inside of a plot-built place.
 | The Deep (with Atlantis) | `site_prebuilt_atlantis_deep` (8 x 5, a drowned room) + INSIDE the Temple of the Deep (`site_prebuilt_atlantis_pocket`) | PLOTS (11-16; the old Abyss + Temple retired, kept as PvP board sources) | Beach whirlpool -> the Upwelling; the Dutchman's hold -> the wreck's hatch; HQ Room H-20 -> the Temple's inside | second |
 | Outer Space | `site_prebuilt_moon_plots` (5 x 4), `site_prebuilt_mars_plots` (5 x 4), `site_prebuilt_saturn_plots` (4 x 4), `site_prebuilt_singularity_plots` (4 x 4): four rooms, one a world, 72 plots (11-16, `bake-space.js`, plot plan 3) + the Spaceship x4 (handmade, stays). Hub `space` | PLOTS (first build 11-16; the Spaceship handmade) | the ship's collar (Moon, Mars, Saturn; and Antarctica); Moon <> Mars (the bore); Saturn <> the Singularity (the frame); HQ `observatorium` to the Singularity; four bays | second (tool), district M piloted, nine districts free |
 | Antarctica | the Station | OLD + PLAN (12) | the Inner Sun; Agartha; the Spaceship; bay | free |
-| The Astral Realm | waiting room, sea, nightmare, library | OLD + PLAN (36) | HQ `dreamlab`; Camelot mirror; D.U.M.B. dream lab; the Haunted House attic | free |
+| The Astral Realm | `site_prebuilt_lookingglass_realm` (36 islands over the void, one room since 11-16) + INSIDE the Waiting Room | PLOTS (first build 11-16, `bake-astral.js`; the old sea, nightmare and library are retired) | HQ `dreamlab` (into the Waiting Room, which has a frame to each district); Camelot's Looking-Glass Garden mirror (two-way, onto the Sea's Mirror island); D.U.M.B. dream lab (the Library's Ward Screen); the Haunted House attic (the Nightmare's Attic Screen) | second (tool STOPPED, waits mondo's look), S piloted, L + N free |
 
 Loose sites that the world plan folds into a zone but that still stand as their own OLD rooms:
 
@@ -74,7 +74,7 @@ and has a way back.** The problems are all loose ends from the rebuilds.
 |---|---|---|---|
 | 1 | Three doors still name a retired room. The game sends you to the new room, but with no arrival spot, so you land at its default spawn, not at the matching door. | HQ `ritual` > the old Ritual Ground (link `woods_ritual`); the old Looking-Glass Garden > the old Ritual Ground (`deadtree_lookingglass`); the sky castle's `keep` + `chimney` > the old Keep | point each at a door of `…fairy_forest_plots` / `…camelot_palace` (Woods + Camelot bake tools, owner) |
 | 2 | The Looking-Glass Garden exists twice: as a Camelot district and as the old room. Camelot's `oldgarden` door goes into the old room and nothing there leads back to Camelot. The HQ barbershop mirror and the Astral waiting room still open on the old room. | `site_prebuilt_lookingglass_garden` | retire it to Camelot (rule: rebuilt areas replace their old rooms); re-point the barbershop mirror and the waiting room's `garden` door at Camelot's district (owner) |
-| 3 | Camelot's mirror into the Astral Realm is one-way: the waiting room's way back opens on the old garden, not Camelot. | `…camelot_kingdom.mirror` | solved by no. 2 |
+| 3 | CLOSED 11-16 (the Astral Realm zone thread): Camelot's mirror opens on the Sea of Possibility's Mirror island and that island's mirror leads back; the Waiting Room's `garden` frame opens on Camelot's mirror too. | `…camelot_kingdom.mirror` <> `…lookingglass_realm.mirror` | done |
 | 4 | Two Woods trails are one-way. Each arrives at a door that belongs to another link, so walking back puts you somewhere else. | Woods `lemuria` > Agartha (walk back = the Mountains); Woods `lodge` > the Lodge (walk back = Bohemian Grove) | give each its own return door, or drop the trail: the Mountains now own the Lemuria stair (mondo's call) |
 | 5 | Retired rooms still carry doors (old Keep 4, old Clearing 5, old Flight Line 4 and others, 25 in all). Nobody can enter them, so it is clutter, not a bug. | 10 retired rooms | empty their door lists when their zone is next rebaked |
 | 6 | `DOOR_HQ.retired` names two rooms that are already deleted (`…camelot_hall`, `…camelot_castle`). Harmless. | data.js | none needed |
@@ -109,7 +109,7 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 | Heaven + Hell + Vatican (PLAN) | L Hell, V The Vatican, H Heaven, O Mount Olympus (now in the Mountains, so drop it here) | none |
 | Outer Space | the Moon: M The Mare, C The Crater, F The Far Side · Mars: Y Cydonia, V The Canyon, R The Rover Bay · Saturn: H The Hexagon, G The Ring Shard · the Singularity: D The Drop, A The Accretion Rim | yes since 11-16: `docs/areas/space/districts/<letter>.js` (ten files, the letters unique across the four rooms) |
 | Antarctica (PLAN) | A Antarctica Station | none |
-| The Astral Realm (PLAN) | L The Library of Unthought Things, S The Sea of Possibility, N The Nightmare | none |
+| The Astral Realm | S The Sea of Possibility (16), L The Library of Unthought Things (10), N The Nightmare (10) | yes since 11-16: `docs/areas/astral/districts/S.js L.js N.js` (areas-complexes.md "THE ASTRAL REALM ON PLOTS") |
 
 **Rule for every zone not yet on plots:** its FIRST PR lays down the plots, the districts and one empty file per
 district (`docs/areas/<zone>/districts/<letter>.js`) with the bake tool reading them, and puts one row per district on
@@ -238,7 +238,7 @@ Realm, Antarctica, Outer Space last.
 - The eight zones still on old rooms get a thread each and are REDESIGNED on plots and districts, not ported
   (`docs/plans/ZONE_THREAD_BRIEF.md` holds his words and the method).
 - The White Rooms go to The D.U.M.B. The Deep is an underwater room. NO way between The Deep and Area 51.
-- A door from Camelot's Looking-Glass Garden to the Astral Realm's Sea of Possibility.
+- A door from Camelot's Looking-Glass Garden to the Astral Realm's Sea of Possibility. BUILT 11-16 (the mirror, two-way).
 - Where the Spaceship leaves from and how the player reaches it: undecided, "let's just get the world built".
 - Antarctica as the late-game reveal is only a possibility: build it like any zone.
 - Exits may move with a redesign ("it's not that big of a deal"). New models come after, from the threads' lists

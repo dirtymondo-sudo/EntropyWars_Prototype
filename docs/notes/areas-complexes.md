@@ -12700,6 +12700,50 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
   - Seven more people, all units whose own biome is the astral (no lines yet: no invented words): a rabbit and a chess piece at the Mirror, a mushroom girl
     at the Hollow Tree, a cosmic wraith at the Edge, a fairy at the Still Water, a telepath at the Impossible Stair, a watcher at the Closet. 17 in the Sea.
   - Frame rate (same view, two counts): 1.40 and 1.25.
+- **Pass 4, the rims + the last landmarks (live 11-16)**. Seen on screen (`proof/S_pass4_*.jpg`). Crystals, shards and small fae flowers on every
+  island's edge (five an island at most), a marble kerb with crystal knobs on the Still Water's two open sides, two more thought-forms, a bust and the
+  `angel_statue` at the temple. Frame rate (same view, two counts): 1.25 and 1.20 (first build 1.35; the counts wander by 0.3).
+- **WHERE IT STOPS: 4 passes of 5 used.** The district reads as a place and every island has its own idea; by my own judging it is near the bar, not over it.
+  THE FIFTH PASS'S LIST (for after mondo's look): (1) the two pools read faint from the ground (clear knee-deep water over the island's own ground: they
+  need a water look of their own or a pale floor); (2) the coats in the Closet are dark boxes; (3) the temple's pediments are plain marble (no relief);
+  (4) the Fortune Tent is the old prop, not a walk-in tent; (5) no sound; (6) the visitors and the seven new people have no lines; (7) the High Thought is
+  reached by steps, not by a jump (the old room made you jump for it).
+- **DECISIONS MADE FOR MONDO, district S**: the temple is square (columns stand on whole squares); the Closet is the crossing into the Nightmare; the Far
+  Shore got a lighthouse and the Near Shore a boat (a sea with no water); the Islands are a coral garden in the air; the fair's pieces stand round the
+  Carousel; the seven new people are astral-biome units with no lines; lamps glow but cast no light (frame rate).
+
+### THE ASTRAL REALM, THE ZONE KIT (for the L and N district threads; written by the pilot)
+- **Your file only**: `docs/areas/astral/districts/L.js` or `N.js`. Stages: `plan(c)` (only `c.fill` to make ground), `build(c)` (pools, drawn pieces),
+  `dress(c)`, `people(c)`, `airZones(c)`. Bake: `node bake-astral.js` (`--dry-run` first). Never edit `draw-astral.js`, the layout or the tool from a district
+  thread: an island's outline, level or port is the tool row's.
+- **Squares**: a plot is 12 x 12, local 0..11. The walks are the squares 5 and 6 along each port's line to the middle, plus a way's own walk; the plot's edge
+  squares are sky or the bridge. `c.put(key, plot, lx, ly)` takes the free ground square NEAREST what you ask, so you need not know the outline; `c.P` is exact
+  and errors. `c.rim(plot)` = the free edge squares with the side the sky is on (shelves with their backs to the sky: districts/L.js). `span: 2` for a
+  four-square piece (the carousel, the fortune tent, the impossible stair, the reading table).
+- **Heights**: everything sits on its island by itself (no `y`). Give a `y` only to hang a thing: `c.at(key, plot, lx, ly, { y: c.base(plot) - 4 })` puts a
+  cloud in the gap under an island; a `y` under 1 on an island is a lift over the ground.
+- **Drawn pieces** (`c.look(name, plot, lx, ly, rot, a => ...)`, frame = that point, y 0 = the island's top): `a.box / cyl / cone / dome / quad / roof(form) /
+  sign`. `box` and `cyl` stand ON their y. Roof forms: gable, hip, pyramid, shed, barrel. Every part with a sheet gets `glow: 0.3`; `wood` and `crystal` get
+  `gain: 2.2` (they read black here otherwise). A part with NO sheet (`null`) wears a surface by its colour and stays unlit: fine for gold (0xd8b050) and
+  metal. Sheets that work: `marble_light`, `crystal`, `wood`, `carpet` (tint it for cloth). Drawn pieces do not block: `c.claim` their squares. Rotations:
+  keep pieces square to the plot (a box's `ry` sign was not tested); a ring is easier as a square of straight lintels.
+- **Dark models**: Meshy furniture (shelves, chairs, kelp) reads near black in this light. Stand a glowing thing beside it (`globe_lamp`, `mushroom_lamp`,
+  `candle_ring`, `thoughtform`, `floating_orb`, `lava_lamp_floor`) or draw the piece. Real lights cost frames: the Sea uses none of its own.
+- **Pools**: `c.pool(plot, lx, ly, r, 'water' | 'lava')`, never over a walk; lava reads well, clear water reads faint (open item).
+- **Rails**: `c.rimRail(plot)` = a marble balustrade on every sky side; three islands of it cost about 0.3 on the weak-GPU count: one or two a district.
+- **Air**: `airZones` in your own squares (`sx0..sy1`); kinds dust, embers (needs torches), fireflies, snow, rain, spores, ash, motes.
+- **People**: only units that exist; the old rooms' people keep their lines through `c.sayOf(c.O.library | c.O.nightmare, race, i)`; anyone new has no line.
+- **Probing**: `node playtest_city.js site_prebuilt_lookingglass_realm '[{"name":"v","x":..,"z":..,"y":<island height + 1.75>,"face":..,"pitch":..,"fp":true}]'`.
+  A plot's middle is x = -105 + 42 x column, z = -105 + 42 x row; its height is level x 1.75. Room ready in about 50 s. Frame-rate view used by the pilot:
+  x -21, z -100, y 14, face 180, pitch -0.15, an rAF count over 20 s.
+- **The ways never move** (six: `waiting`, `library`, `nightmare`, `mirror`, `dumb_astral`, `attic_nightmare`); their squares are taken.
+- **NEEDS A MODEL, the zone's list** (exact, for mondo's model run): (1) THE MAW: a ring of teeth or a jaw, about 14 m across, teeth 3 to 4 m, to stand
+  round the lava throat on P05-05 (standing stones `menhir` now). (2) THE CLOSET: a wardrobe 8 m wide, 5 m high, 3 m deep, doors open, no back, coats on a
+  rail, to stand over a 7 m walk on P04-00 (drawn in boxes now). (3) THE STACKS: bookcase towers 2.6 m square, 11 to 16 m high, books on all four faces, four
+  of them on P00-01 (drawn in boxes now); and a 3.5 m bookcase wall module for the Library's rims (the Meshy `library_shelf_full` reads dark). (4) THE BED: a
+  bed 7 m long for P05-03 (the 2.4 m `royal_bed` now). (5) THOUGHT-FORMS: three or four more kinds (the game has one procedural kind). (6) THE SPIRE: an
+  unfinished crystal spire about 26 m with a scaffold, P02-05 (drawn now). (7) A coat rack of hanging coats (the Closet's two sides). (8) A giant eye on a
+  stalk taller than `dream_eye` for the Bad Nights. (9) Floating stepping stones with a flat top, 3.5 m, for jumps over the gaps.
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
