@@ -1984,6 +1984,10 @@ under the card), the fight starts ("kept 2116 · culled 14443"), 0 page errors. 
 ended from the probe (`u.hp = 0; checkWin()`, then `#encReturnBtn`.click()) and the cloud browser was killed for memory while
 the city was built again (the container's limit; it says nothing about the change). His Mac is the first real run of 3.
 Other rows of the strike's profile, not touched: `_hqSeatTabletops` 1 s, the fight's first frames (2,300 new recordings).
+11-16 02:57, his F3 just back with #1563: 3.8 FPS, the room DRAWN with "build 3495->756" and "tick: static batch 24.0": the
+hold never held. The way back is READY at once (its gate does not wait for the merge) and `_hqBackHold` returned false on
+`H.ready`; its 5 s were also counted from `H.t0`, before the builders ran. Fixed: the hold no longer reads `H.ready`, counts
+6 s from its own first tick (`H._holdT0`). mondo, same message: "make it seamless. stop the pointless rebuilds".
 STILL THE REAL FIX: THE PARKED CITY (see below, item 1): the fight should take the walk's groups whole (merged, chunked)
 under one holder and give them back, so neither direction builds or merges anything.
 
