@@ -2010,6 +2010,14 @@ What it is now (three-renderer.js, big rooms = `_hqChunkBig`, the room READY, no
   timeline again). Probe after the fix (city, parked path, `playtest_handover.js` now prints skinned + chars): 70 skinned
   meshes / 10 chars before the fight, 70 / 10 after: no body is left behind or doubled; 4,397 -> 4,384 merged meshes, 0 errors.
   A probe run whose room is not READY at the strike takes the OLD path on purpose (`_hqParkOk` wants `H.ready`).
+- mondo 11-16 04:36-04:38, five F3s through one fight: walk 40.4 FPS -> THE FIGHT 66.3 and 71.3 FPS (it was 23.4 on 11-15;
+  1,350 meshes, "the fight's room live 603->36") -> just back 25.2 FPS, "tick: doors + residents + scene 16.8" again -> a
+  little later 43.5 FPS, that row 1.5. So keeping `H.nav` in `_hqResume` (#1739) was NOT the whole fix: the rounds' start-up
+  (called by `_hqSpawnPopulation`, the line after `_hqResStart`) calls `_hqNavStart()` unconditionally and made a new, empty
+  lattice. It now keeps the one a resumed room has. Cloud profile of the first 20 s back (`playtest_handover.js --profile`):
+  `_hqResume` 0.27 s where the old path's `_hqEnter` is 20 s (`_hqBuildTerrain` 17.8 s of it); the cloud cannot show the nav
+  row gone (its city never finishes the lattice before the fight), so his next F3 just after a fight is the proof.
+  Probe: give a big room `--wait=480000`, else it strikes before READY and takes the old path.
 PROOF (cloud browser, WebGL on llvmpipe through probe-fast.js, the new repo tool `node playtest_handover.js`; HEAD on 84580c2 +
 this change): Disaster City, a strike 3.5 m from the spawn, the fight drawn (the street, palms, cars from copies: 2,513),
 the enemy's hp set to 0 + `checkWin()`, BACK TO THE ROOM pressed. Before the fight: 43,095 meshes, 4,099 merged meshes, 49
