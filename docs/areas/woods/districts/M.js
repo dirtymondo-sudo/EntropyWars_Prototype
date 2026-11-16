@@ -42,6 +42,12 @@
    (the trees row on the board), the particle engine. Those are the tool's: a note on the board first (docs/notes/claims.md).
    Rules for district threads: docs/notes/areas-complexes.md "THE WOODS, THE DISTRICT FILES". Bake: node bake-woods.js (--dry-run = counts only). */
 'use strict';
+/* arch parts (data.js THE ARCHITECTURE ROW): p = the foot's middle in the row's frame, a tint MULTIPLIES its sheet */
+const R2 = v => Math.round(v * 100) / 100;
+const box = (x, y, z, w, h, d, key, tint, o) => Object.assign({ s: 'box', p: [R2(x), R2(y), R2(z)], size: [R2(w), R2(h), R2(d)], key, tint }, o || {});
+const cyl = (x, y, z, r, h, key, tint, o) => Object.assign({ s: 'cyl', p: [R2(x), R2(y), R2(z)], r: R2(r), h: R2(h), key, tint }, o || {});
+const ROCK = 'rocks_5', BRICK = 'urban:BrickMasonry1a', BRICK2 = 'urban:BrickUrban3a', CONC = 'urban:ConcreteWoodFormed1a', CONC2 = 'urban:ConcreteGeneric3a';
+const T_ROCK = 0xa9a79c, T_ROCK2 = 0x8f9084, T_BRICK = 0xb39a8a, T_BRICK2 = 0x9c8f84, T_CONC = 0xb4b6ac, T_MOSS = 0x8fa07c, T_DARK = 0x16181a;
 module.exports = {
     id: 'M', name: 'Dead Man\'s Cave',
     /* the forest mass: the feature trees planted deep in this district's tree squares [kind, height m, chance a deep square] (plots of level 6 up get pines, the tool's rule) */
@@ -59,10 +65,13 @@ module.exports = {
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
-        { const q = centre('P03-04');   // THE CAVE MOUTH: a crag on the clearing's north side with the storm drain's mouth in its face (the district's landmark)
-          features.push({ k: 'plateau', x: gx(q[0]), z: gc(q[1] - 3), w: 14, d: 7, h: 5.25, edge: 0.5 });
-          props.push({ key: 'culvert_mouth', x: gx(q[0]), z: gx(q[1] - 1) - 0.4, face: 180 }, { key: 'graffiti_wall', x: gc(q[0] + 2), z: gx(q[1] - 1) - 0.2, face: 180 });
-          for (let dy = -4; dy <= -1; dy++) for (let dx = -2; dx <= 1; dx++) taken.add((q[0] + dx) + ':' + (q[1] + dy)); put('P03-04', 'cave_torch', 2, 1); dec('P03-04', 'wet_floor_sign', -1, 1); }
+        { /* THE CAVE MOUTH (the exterior pass, 2026-11-16): the crag stands on the plan's own rock squares now (row 49 + the two arms on row 50), a horseshoe
+             open to the clearing with the north trail walking through its back by a one-square mouth. It stood 2 squares south before, across the
+             alley of row 51. ONE feature row stays here (the east block: an old pass keeps its count of feature rows); the rest is build(). */
+          const p = plot['P03-04'], X = p.x * N, Y = p.y * N;
+          features.push({ k: 'plateau', x: gx(X + 7), z: gc(Y + 1), w: 7, d: 3.5, h: 6.5, edge: 0.08 });
+          props.push({ key: 'culvert_mouth', x: gx(X + 7), z: r2(gx(Y + 2) - 0.4), face: 180 }, { key: 'graffiti_wall', x: r2(gx(X + 7) + 2.3), z: r2(gx(Y + 2) + 0.08), face: 180 });
+          [[3, 2], [4, 1], [6, 1], [7, 1], [8, 2], [7, 2]].forEach(q => taken.add((X + q[0]) + ':' + (Y + q[1]))); put('P03-04', 'cave_torch', 2, -1); dec('P03-04', 'wet_floor_sign', -1, 1); }
         native('P04-05', 'swamp monster', -1, 1, 60); native('P04-05', 'mothman', 1, -1, 300);   // THE HORROR PASS: the thing in the Pool, and the one above it
     },
     /* THE HORROR PASS (mondo 11-15): it gets worse the farther you walk from the Stair */
@@ -130,5 +139,67 @@ module.exports = {
             if (q && rnd() < 0.6) props.push({ key: 'crow', x: gc(q[0]), z: gc(q[1]), y: 4.5, face: Math.round(rnd() * 360) }); });
         DIST('M').forEach((id, i) => { life(id, 'woods_gasplant', { h: 1.3 }); if (i % 2) life(id, 'crow'); });
         ['P04-05', 'P04-05', 'P04-05', 'P05-04', 'P04-04'].forEach(id => life(id, 'meshy_frog'));
+    },
+    /* THE EXTERIOR PASS (2026-11-16, the pilot thread): every plot reads as its name. New rows only, on this district's own dice. */
+    build(ctx) {
+        const { plot, N, gx, gc, r2, features, props, taken } = ctx;
+        const rock = (x, y, z, r, h, top, seg, tint) => cyl(x, y, z, r, h, ROCK, tint || T_ROCK, { r2: top, seg, uv: [3.5, 3.5] });
+        /* ── THE CAVE MOUTH: the rest of the crag (west block, the two arms), its rock skin, the lintel over the mouth ── */
+        { const p = plot['P03-04'], X = p.x * N, Y = p.y * N, ox = gc(X + 5), oz = gc(Y + 1);   // the row's origin = the mouth's middle (square col 5, row 1 of the plot)
+          features.push({ k: 'plateau', x: gc(X + 4), z: gc(Y + 1), w: 3.5, d: 3.5, h: 6, edge: 0.08 },      // the west block
+              { k: 'plateau', x: gc(X + 3), z: gc(Y + 2), w: 3.5, d: 3.5, h: 3.5, edge: 0.08 },                // the west arm
+              { k: 'plateau', x: gc(X + 8), z: gc(Y + 2), w: 3.5, d: 3.5, h: 3.5, edge: 0.08 });               // the east arm
+          const sk = (x, z, w, d, h, t) => box(x, 0, z, w + 0.12, h + 0.06, d + 0.12, ROCK, t, { uv: [3.5, 3.5] });
+          features.push({ k: 'arch', id: 'woods:M:crag', x: ox, z: oz, parts: [
+              sk(-3.5, 0, 3.5, 3.5, 6, T_ROCK), sk(5.25, 0, 7, 3.5, 6.5, T_ROCK), sk(-7, 3.5, 3.5, 3.5, 3.5, T_ROCK2), sk(10.5, 3.5, 3.5, 3.5, 3.5, T_ROCK2),
+              box(0, 4.1, 0, 3.8, 2.6, 4.1, ROCK, T_ROCK2, { uv: [3.5, 3.5], under: true }),                 // the lintel: the mouth is 3.5 m wide, 4.1 m high
+              /* the crowns and the shoulders: tapered stone, so no block reads as a box */
+              rock(-3.6, 6, 0.2, 2.5, 2.2, 1.1, 6), rock(4.2, 6.5, -0.2, 3.2, 3.0, 1.2, 7), rock(7.4, 6.5, 0.4, 2.2, 1.7, 0.8, 5, T_ROCK2), rock(0.2, 6.7, 0, 2.3, 1.5, 0.9, 6, T_ROCK2),
+              rock(-7, 3.5, 3.4, 2.3, 1.6, 0.8, 5), rock(10.5, 3.5, 3.5, 2.4, 1.9, 0.9, 6), rock(-7.4, 0, 0.1, 2.9, 5.0, 1.3, 6, T_ROCK2), rock(11.2, 0, 0.2, 3.1, 5.4, 1.4, 7, T_ROCK2),
+              rock(-5.2, 0, -2.6, 2.4, 3.4, 1.0, 5, T_ROCK2), rock(6.5, 0, -2.8, 2.9, 4.2, 1.2, 6, T_ROCK2), rock(-9.4, 0, 4.2, 1.7, 2.2, 0.7, 5), rock(13, 0, 4.4, 1.9, 2.6, 0.8, 5),
+              rock(-2.1, 0, 2.3, 0.9, 1.5, 0.45, 5, T_ROCK2), rock(2.2, 0, -2.3, 1.0, 1.9, 0.5, 5, T_ROCK2),
+              box(3.5, 0, 1.8, 2.5, 2.7, 0.1, null, T_DARK),                                                 // the dark behind the drain's mouth
+          ] }); }
+        /* ── THE CHANNEL: the creek runs between brick walls from the Channel's upper plot to the Outfall (the plan's brick channel) ── */
+        { const pts = []; features.filter(f => f.k === 'stream').forEach(st => st.pts.forEach(q => { const l = pts[pts.length - 1]; if (q[0] >= 45.4 && q[1] >= 27.9 && q[0] <= 114 && !(l && l[0] === q[0] && l[1] === q[1])) pts.push(q); }));
+          const decks = features.filter(f => f.k === 'deck' && f.w >= 7), under = (x, z) => decks.some(d => d.z0 === d.z1 ? Math.abs(z - d.z0) <= d.w / 2 && x >= d.x0 && x <= d.x1 : Math.abs(x - d.x0) <= d.w / 2 && z >= d.z0 && z <= d.z1);
+          const rows = {}, rowOf = (x, z) => { const px = Math.floor((x + 126) / 42), pz = Math.floor((z + 126) / 42), id = px + ':' + pz; return rows[id] || (rows[id] = { k: 'arch', id: 'woods:M:channel:' + id, x: -126 + px * 42 + 21, z: -126 + pz * 42 + 21, hug: true, parts: [] }); };
+          const OFF = 2.55, nrm = i => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], L = Math.hypot(b[0] - a[0], b[1] - a[1]); return [-(b[1] - a[1]) / L, (b[0] - a[0]) / L]; };
+          for (let i = 0; i + 1 < pts.length; i++) { const a = pts[i], b = pts[i + 1], mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2; if (under(mx, mz)) continue;
+              const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI, nx = -(b[1] - a[1]) / L, nz = (b[0] - a[0]) / L, R = rowOf(mx, mz);
+              for (const sd of [-1, 1]) { const x = mx + nx * sd * OFF - R.x, z = mz + nz * sd * OFF - R.z;
+                  R.parts.push(box(x, -1.2, z, L + 0.1, 1.7, 0.5, BRICK, T_BRICK, { ry: ang, uv: [1.75, 1.75], top: false }), box(x, 0.5, z, L + 0.1, 0.14, 0.72, CONC, T_CONC, { ry: ang })); } }
+          pts.forEach((q, i) => { if (under(q[0], q[1])) return; const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], c = pts[i];
+              const bend = Math.abs(Math.atan2(c[1] - a[1], c[0] - a[0]) - Math.atan2(b[1] - c[1], b[0] - c[0])) > 0.14; if (!bend && i % 3 && i !== pts.length - 1) return;
+              const n = nrm(i), R = rowOf(q[0], q[1]), ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
+              for (const sd of [-1, 1]) { const x = q[0] + n[0] * sd * OFF - R.x, z = q[1] + n[1] * sd * OFF - R.z;
+                  R.parts.push(box(x, -1.2, z, 0.95, 2.0, 0.95, BRICK2, T_BRICK2, { ry: ang, uv: [1.75, 1.75], top: false }), box(x, 0.8, z, 1.1, 0.14, 1.1, CONC, T_CONC, { ry: ang })); } });
+          /* the culvert heads: where the creek dives under a trail's deck, a brick head with a parapet and the dark of its barrel */
+          const head = (x, z, len, ang) => { const R = rowOf(x, z), lx = x - R.x, lz = z - R.z, c = Math.cos(ang * Math.PI / 180), s2 = Math.sin(ang * Math.PI / 180);
+              R.parts.push(box(lx, -1.3, lz, len, 2.5, 0.55, BRICK, T_BRICK, { ry: ang, uv: [1.75, 1.75], top: false }), box(lx, 1.2, lz, len + 0.3, 0.16, 0.8, CONC, T_CONC, { ry: ang }),
+                  box(lx - c * (len / 2 + 0.3), -1.3, lz - s2 * (len / 2 + 0.3), 1.0, 2.9, 1.0, BRICK2, T_BRICK2, { ry: ang, uv: [1.75, 1.75] }), box(lx + c * (len / 2 + 0.3), -1.3, lz + s2 * (len / 2 + 0.3), 1.0, 2.9, 1.0, BRICK2, T_BRICK2, { ry: ang, uv: [1.75, 1.75] }),
+                  box(lx + s2 * 0.3, -1.3, lz - c * 0.3, 4.2, 1.45, 0.08, null, T_DARK, { ry: ang }), box(lx - s2 * 0.3, -1.3, lz + c * 0.3, 4.2, 1.45, 0.08, null, T_DARK, { ry: ang })); };
+          head(21, 17.2, 9, 0); head(45.5, 28.3, 9, 0);          // the Culvert plot's long deck: the creek goes in at its north edge, out at its south
+          head(62.6, 52.2, 7.5, 0); head(72.05, 62.8, 6.5, 90);  // the lower Channel's crossing: in from the north, out to the east
+          Object.keys(rows).forEach(id => features.push(rows[id])); }
+        /* ── THE STORM DRAIN: the trail to the street leaves through a concrete box culvert (the link's own end is the tool's, one square east) ── */
+        { const x = 115.5, z = 14, W = 7.3, H = 4.2, L = 7;
+          features.push({ k: 'arch', id: 'woods:M:stormdrain', x, z, parts: [
+              box(0, 0, -(W / 2 + 0.6), L, H, 1.2, CONC, T_CONC, { uv: [3.5, 3.5] }), box(0, 0, W / 2 + 0.6, L, H, 1.2, CONC, T_CONC, { uv: [3.5, 3.5] }),
+              box(0, H, 0, L + 0.5, 0.7, W + 3.0, CONC, T_CONC, { uv: [3.5, 3.5], under: true, roof: true }), box(-L / 2 - 0.1, H + 0.7, 0, 0.7, 0.6, W + 3.0, CONC2, T_CONC, { roof: true }),
+              box(-L / 2 - 1.6, 0, -(W / 2 + 1.5), 3.6, 2.9, 0.6, CONC, T_CONC, { ry: 150, uv: [3.5, 3.5] }), box(-L / 2 - 1.6, 0, W / 2 + 1.5, 3.6, 2.9, 0.6, CONC, T_CONC, { ry: 30, uv: [3.5, 3.5] }),   // the wing walls
+              box(-L / 2 - 0.02, H - 0.55, 0, 0.06, 0.5, W, 'urban:ConcreteStriped1a', 0xffffff, { uv: [1.75, 0.5] }),                                                                    // the hazard band over the mouth
+              box(-L / 2 - 0.05, 1.5, -(W / 2 + 0.6), 0.05, 0.9, 0.9, 'urban:SignHazard1a', 0xffffff, { uv: 'fit', faces: 'l', top: false }),
+              box(0, 0.02, -(W / 2 - 0.25), L, 0.3, 0.5, CONC2, T_MOSS), box(0, 0.02, W / 2 - 0.25, L, 0.3, 0.5, CONC2, T_MOSS),                                                          // the benches along the barrel's feet
+          ] }); }
+        /* ── THE OUTFALL: the creek runs out into the sewers through a brick mouth under a barrel vault ── */
+        { const x = 119, z = 66.5, W = 9, H = 3.2, L = 7;
+          features.push({ k: 'arch', id: 'woods:M:outfall', x, z, parts: [
+              box(0, -1.2, -(W / 2 + 0.7), L, H + 1.2, 1.4, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }), box(0, -1.2, W / 2 + 0.7, L, H + 1.2, 1.4, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }),
+              { s: 'roof', form: 'barrel', p: [0, H, 0], size: [L, 2.6, W + 2.8], key: BRICK, tint: T_BRICK, keyEnd: BRICK2, tintEnd: T_BRICK2, uv: [1.75, 1.75], roof: true, seg: 12 },
+              box(-L / 2 - 0.15, H - 0.25, 0, 0.5, 0.5, W + 3.0, CONC, T_CONC),                                                    // the stone course the vault springs from
+              box(-L / 2 - 1.5, -1.2, -(W / 2 + 1.7), 3.4, 3.4, 0.6, BRICK, T_BRICK, { ry: 150, uv: [1.75, 1.75] }), box(-L / 2 - 1.5, -1.2, W / 2 + 1.7, 3.4, 3.4, 0.6, BRICK, T_BRICK, { ry: 30, uv: [1.75, 1.75] }),
+              box(-L / 2 - 0.05, 1.6, W / 2 + 0.7, 0.05, 0.9, 0.9, 'urban:SignCaution1a', 0xffffff, { uv: 'fit', faces: 'l', top: false }),
+          ] }); }
     },
 };
