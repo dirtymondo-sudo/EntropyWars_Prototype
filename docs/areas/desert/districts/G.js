@@ -42,7 +42,9 @@
      Tomb Door; rubble lies at the pyramids' feet; the Sand Sea half covers a giant foot, a boat, bones; seven more natives.
    - PASS 4 (atmosphere, 11-16): `airZones()` (dust on the Sand Sea, round the pyramids and on the causeway; embers on the Tomb Door path; fireflies
      over the oasis), a lit torch core on every door jamb and hall post, the capstone glows; seen at dusk and at night.
-   - The Robbers' Tunnel's link door stands as a bare slab on open sand (a rock mouth round it: pass 5). THE CANYON MOUTH (P11-08) opens on sand: the canyon to Western Town was cut by the move.
+   - PASS 5 (polish, 11-16): the Robbers' Tunnel's link door has a rock mouth round it (`des:giza:tunnel`); two name boards (THE DIG, THE OASIS).
+     FIVE PASSES ARE LIVE: THIS FILE IS STOPPED UNTIL MONDO HAS LOOKED (docs/plans/DISTRICT_THREAD_BRIEF.md).
+   - THE CANYON MOUTH (P11-08) opens on sand: the canyon to Western Town was cut by the move.
    - The pyramids are not climbed any more (the first build's walked tiers and stairs went with the true shape). No temple, no causeway paving beyond
      the layout's stone squares.
    - The room's scatter (the tool's: stones, snags) can land beside a pyramid's foot; the east and south edges show pine mountains (the tool's edges).
@@ -196,6 +198,20 @@ exports.ground = ctx => { bind(ctx);
     dec('crow', 60, 91, { y: 2.3 }); dec('anatomy_skeleton', 62, 88, { y: -0.6 });
     /* more of the people who already live here (no new race, no new lines) */
     native('skeleton', 64, 90, 300); native('mummy', 67, 73, 180); native('anubis', 74, 50, 90); native('skeleton', 91, 63, 200); native('mummy', 52, 68, 0); native('anubis', 60, 78, 270); native('djinn', 54, 73, 180);
+    /* ════ PASS 5, THE POLISH (2026-11-16) ════ */
+    /* THE ROBBERS' TUNNEL: the link door stood as a bare slab on open sand at the east wall. A rock mouth round it: two piers and a cap of
+       `rocks_5`, pit props and a beam inside them (the door itself is the link's and has not moved) */
+    { const T = [], ex = gx(96), mz = gx(69), RK = (x, y, z, w, h, d, tint, o) => T.push(Object.assign({ s: 'box', p: [r2(x), y, r2(z)], size: [w, h, d], key: 'rocks_5', tint: tint == null ? 0xe8d0a8 : tint, gain: 1.7, uv: [3.5, 3.5] }, o || {}));
+      for (const sd of [-1, 1]) { RK(ex - 2.0, 0, mz + sd * 3.3, 4.0, 4.3, 3.0); RK(ex - 2.6, 0, mz + sd * 5.6, 2.8, 2.6, 2.2, 0xdcc49c); RK(ex - 3.6, 0, mz + sd * 4.6, 1.6, 1.5, 1.8, 0xd4bc94);
+          T.push({ s: 'box', p: [r2(ex - 3.7), 0, r2(mz + sd * 1.65)], size: [0.3, 3.0, 0.3], key: WD2, tint: 0xc8a070 }); ring(ex - 4.0, mz + sd * 3.3 - 1.5, ex - 0.1, mz + sd * 3.3 + 1.5, 4); }
+      RK(ex - 2.0, 3.2, mz, 4.0, 2.2, 9.6, 0xe0c8a0); T.push({ s: 'dome', p: [r2(ex - 2.0), 5.4, mz], r: 2.0, h: 1.3, rz: 4.6, seg: 10, rings: 4, key: 'rocks_5', tint: 0xdcc49c, gain: 1.7, uv: 3.5 });
+      T.push({ s: 'box', p: [r2(ex - 3.7), 3.0, mz], size: [0.34, 0.3, 3.9], key: WD2, tint: 0xc8a070 }, { s: 'box', p: [r2(ex - 3.55), 2.35, r2(mz + 1.5)], size: [0.16, 0.3, 0.16], tint: 0xffb040, glow: 1 });
+      feat({ k: 'arch', id: 'des:giza:tunnel', x: 0, z: 0, y: 0, parts: T }); }
+    /* two painted boards on posts, each written on both faces (the plots' own plain names) */
+    { const A = ctx.sheet(), board = (words, x, z, ry) => { for (const sd of [-1, 1]) A.box(x + (ry % 180 ? 0 : sd * 1.1), 0, z + (ry % 180 ? sd * 1.1 : 0), 0.14, 2.4, 0.14, WD2, 0xb89060);
+          A.sign(words, x, 1.55, z, 2.4, 0.75, '#3a2a18', '#e8d4a8', 'cinzel', { ry }); A.sign(words, x, 1.55, z, 2.4, 0.75, '#3a2a18', '#e8d4a8', 'cinzel', { ry: (ry + 180) % 360 }); };
+      board('THE DIG', gx(73) - 0.6, gx(55) + 0.9, 90); board('THE OASIS', gx(56) + 0.4, gx(74) + 0.6, 0);
+      feat({ k: 'arch', id: 'des:giza:boards', x: 0, z: 0, y: 0, parts: A.P }); }
     native('anubis', 76, 54, 200, sayOf(O_GIZA, 'anubis')); native('annunaki', 86, 70, 270, sayOf(O_GIZA, 'annunaki')); native('skeleton', 79, 55, 300, sayOf(O_GIZA, 'skeleton'));
     native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist')); native('mummy', 69, 80, 270); native('djinn', 55, 84, 0);
 };

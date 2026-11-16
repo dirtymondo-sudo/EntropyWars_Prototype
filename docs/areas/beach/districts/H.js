@@ -51,7 +51,10 @@
    beacons lit red and green: drawn glow. Real light: two `flood_mast` (the quay's apron, the Long Pier before the gangway), three
    `brazier` (the wharf, the light's head, the skiff jetty). No sound, no particles (no hook a district reaches), no gulls (no model).
 
-   MISSING / NOT DONE (the pass to come: polish):
+   THE POLISH (11-16, a ten-view walk round, seen): the nets off the shed's west windows, the mole's ten boulders set by hand on its sea
+   side (the scatter put black lumps, then 2 m standing stones, on the walk), three people moved off the ways.
+
+   STILL SHORT (all five passes are live):
    - The Dutchman's bulwarks, deck stairs, crates and cannon are her deck room's rows and are not drawn at the berth; she is not redesigned
      (the world plan wants her rebuilt inside and out: not this file's job without mondo's word). The brow lands on her rail, not in a port.
    - The Roads have buoys and no ship. No kelp (4.5 m tall in 3.5 m of water). No residents with routines, no fight set up.
@@ -317,7 +320,10 @@ dress(ctx) {
     P('wrapped_pallet', 30, OY + 3); P('forklift', 29, OY + 2, { face: 90 }); dec('cable_drum', 25, OY + 4); dec('meshy_sandbags', 24, OY + 5); dec('meshy_sandbags', 25, OY + 5); dec('meshy_sandbags', 24, OY + 3);
     P('ship_cannon', 26, OY + 2, { face: 90 });   /* (the shed's outboard, wheel and bell: in build() with the rest of its inside) */
     [42, 47, 55].forEach(x => P('railway_lantern', x, 53)); [40, 45, 50, 54].forEach(() => { rnd(); rnd(); rnd(); }); dec('ocean_lobster', 44, 53, { anim: false }); dec('psx_wooden_crate_2', 49, 53); dec('sea_chest', 56, 54); dec('lobster_traps', 41, 53);
-    feat({ k: 'scatter', key: 'ocean_rock_8', n: 10, x: mx(42), z: mz(OY + 4), r: 22, seed: 63, sea: true });   // (no kelp: 4.5 m tall in 3.5 m of water)
+    /* the mole's boulders (polish; they were a scatter of 10 `ocean_rock_8`: black lumps on the crest, seen; the old Harbour's `cave_stone` is a 2 m standing stone here and a
+       blocker on a crest two squares wide, seen): ten grey boulders set by hand on the crest's OUTER edge (the sea side row), so the inner row stays the walk. (No kelp: 4.5 m tall in 3.5 m of water.) */
+    [[37, 39, -0.6, -1.2, 1], [38, 39, 0.9, -1.3, 3], [40, 39, -1.0, -1.25, 2], [41, 39, 1.1, -1.2, 4], [42, 39, 0.2, -1.3, 1], [44, 39, -0.4, -1.2, 3], [45, 39, 1.0, -1.25, 2], [47, 41, 1.25, 0.4, 4], [47, 43, 1.2, -0.8, 1], [47, 44, 1.25, 0.9, 2]]
+        .forEach((q, k) => props.push({ key: 'psxg_rock_' + q[4], x: r2(mx(q[0]) + q[2]), z: r2(mz(q[1]) + q[3]), face: (k * 67) % 360 }));
     /* ── THE MODEL LIST FINDS (2026-11-16, mondo's THE MODEL LIST FIRST: "look at the model list ... to see what else they could add"). The first
        pass searched the prop catalogue only. MODEL_LIST.md and the pack archives held more: the Elbolilloduro HOUSES ON THE WATER scene (87
        pieces, only its rowboat was in the game; seven more cut out now: catalogue `stilt_hut`, `stilt_house`, `stilt_house_wide`,
@@ -349,7 +355,7 @@ dress(ctx) {
     on('wrapped_pallet', 29, 36); on('psx_supply_crate_1', 32, 36, { face: 10 }); on('psx_supply_crate_1_2', 33, 36, { face: 80 }); on('psx_metal_barrel_mp_2', 35, 36); off('cable_drum', 30, 36, 0.3, -0.2, { face: 40 }); off('psx_metal_barrel_mp_0', 35, 36, -1.3, 0.5); off('meshy_rope', 30, 37, -1.1, -1.2); off('traffic_cone', 33, 36, 1.4, 1.0);
     P('ind_skip', 33, OY + 2, { face: 90 }); P('gas_cylinder_rack', 35, OY + 2, { face: 270 }); P('psx_supply_crate_1_3', 31, OY + 4, { face: 30 }); P('lobster_traps', 24, OY + 4, { face: 90 }); P('lobster_traps', 24, OY + 2, { face: 0 });   // (never on 25, OY + 6: the only way round the shed to the wharf's stair)
     off('pallet_jack', 31, OY + 3, 0.9, 1.1, { face: 200 }); off('tire_stack', 33, OY + 6, 0.2, 1.0); off('tire_stack', 31, OY + 6, -0.9, 1.1); off('psx_jerrycan_1', 29, OY + 4, 1.2, -0.9, { face: 60 }); off('meshy_burlap_sack', 33, OY + 5, 0.6, -0.5); off('meshy_burlap_sack', 33, OY + 5, -0.4, 0.3, { face: 120 }); off('wooden_bucket', 27, OY + 6, 0.9, 0.9);
-    put(SHED, 'fishing_net_wall', -5.42, -1.6, { face: 270, floor: true, y: 0.9 + 1.5 }); put(SHED, 'fishing_net_wall', -5.42, 1.7, { face: 270, floor: true, y: 0.9 + 1.5 }); put(SHED, 'beach_life_ring', 5.42, 0.2, { face: 90, floor: true, y: 0.9 + 1.7 });   // nets drying on the shed's west wall, a ring on its east
+    put(SHED, 'fishing_net_wall', -5.42, 0, { face: 270, floor: true, y: 0.9 + 1.5 }); put(SHED, 'fishing_net_wall', 0, -5.42, { face: 0, floor: true, y: 0.9 + 1.5 });   /* (polish: one net between the west wall's two windows, one on the back wall; two on the west wall hung over the windows, seen) */ put(SHED, 'beach_life_ring', 5.42, 0.2, { face: 90, floor: true, y: 0.9 + 1.7 });   // nets drying on the shed's west wall, a ring on its east
     props.push({ key: 'ocean_crab', x: r2(gx(26) - 1.9), z: r2(gz(43) + 1.2), face: 300 }); props.push({ key: 'ocean_starfish', x: r2(gx(26) + 1.6), z: r2(gz(43) + 2.2), face: 40 });                                                                       // the old Harbour's, at the slipway's dry head
     swimmer('ocean_dolphin', 28, OY + 44, { swim: { r: 6, v: 2.0, bob: 0.35 } }); swimmer('ocean_shark', 27, OY + 52, { y: -0.9, hover: 0.2, swim: { r: 9, v: 1.3, bob: 0.1 } });                                                                             // the old Harbour's second dolphin, and the shark past the buoys
     feat({ k: 'scatter', key: 'fish_school', n: 4, x: mx(34), z: mz(OY + 40), r: 30, seed: 35, sea: true });
@@ -358,8 +364,8 @@ dress(ctx) {
     off('city_bench', 46, 47, 0, 0.9, { face: 180 }); off('railway_lantern', 45, 47, -0.9, 0.9); off('ocean_crab', 43, 40, 0.4, 0.6, { face: 20 });                                                                                                        // a bench at the light, looking out
     /* the people: on the wharf, under the crane, at the slip, on the Breakwater's head, down the Long Pier, at the gangway, on the skiff jetty */
     const who = (race, sx, sy, face, dx, dz) => ctx.npc.push({ x: r2(mx(sx) + (dx || 0)), z: r2(mz(sy) + (dz || 0)), face, race });
-    who('homosapien', 30, 37, 180, 0.8, 0.9); who('homosapien', 32, 37, 0, 0, -1.2); who('pirate', 24, 42, 135, 0.6, 0); who('homosapien', 47, 45, 90, 0.9, 0); who('homosapien', 38, 53, 0, 0, -0.9);
-    who('pirate', 50, 54, 180, -1.2, 0.4); who('homosapien', 29, 60, 90, 0.8, 0); who('sharkman', 34, 41, 200, 0.9, 0.6);
+    who('homosapien', 30, 37, 180, 0.8, 1.25); who('homosapien', 32, 37, 180, 0.4, 1.25);   /* (polish: at the wharf's front rail looking over the harbour, off the walk to the gantry) */ who('pirate', 24, 42, 135, 0.6, 0); who('homosapien', 47, 45, 90, 0.9, 0); who('homosapien', 38, 53, 0, 0, -0.9);
+    who('pirate', 49, 53, 150, 0.2, -0.9); who('homosapien', 29, 60, 90, 0.8, 0); who('sharkman', 34, 41, 200, 0.9, 0.6);
     /* THE ATMOSPHERE PASS, the real light (five props, each on a square's middle; the room carried about 20 lit props before): a floodlight
        mast on the quay's apron and one on the Long Pier before the gangway (`flood_mast`: a 26 m light, lit by the world clock at dusk),
        fire baskets on the wharf, at the light's head and on the skiff jetty (`brazier`: a 9 m light) */
