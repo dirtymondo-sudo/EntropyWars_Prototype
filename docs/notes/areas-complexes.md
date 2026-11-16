@@ -6758,6 +6758,16 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   THE SNOW PINE IS A CLUMP, MEASURED: one planted pine (`xmas:Trees_0*`) stands trunks up to 16 m from its foot. One planted 15.7 m from the
   Wayside Hut stood a trunk INSIDE it, through the bed (seen only on the night walk). `noTrees` now clears 19 m round each hut. Any district
   that builds in a snow-pine zone (the Mountains too) needs the same.
+- **PASS 5, THE POLISH (seen, a walk of 14 views + two fix runs)**: THE PASS: the cleft got its own rock faces 3.2 m apart for 25 m and snow on
+  its floor (past the room's edge the ground is the kingdom's lawn and a cobbled path), and the trail plants no saplings there: ONE engine line
+  (three-renderer.js `_hqPlantPassageTrees`: a link end's `passage: { trees: false }`) + that option on `DOOR_HQ.links` `northpole_camelot` end b
+  (nothing moved; board note). A dressed fir (`xmas_tree`) with gifts by the Wayside Hut; pack rocks at the gate crags' feet.
+  LEFT AS IT IS (not this district's, told on the board): a few sprigs of the treeline belt still show high in the cleft; the north bridge
+  has modern steel rails (the tool's bridge row); the residents' looks and places are the engine's.
+- **FIVE PASSES LIVE, THE THREAD HAS STOPPED** (the brief: no sixth). What I would do next, for mondo to pick: (1) a per-zone treeline kind
+  so the belt past the snow is snow pines (the tool's shell, one row); (2) the snow pine clumps off the track and the road (the tool's tree
+  grower: a `treeIn` per zone); (3) who lives here (npc-system.md: levels, a cap, a refill); (4) sound (wind, a fire's crackle: none on R2);
+  (5) the models on the NEEDS A MODEL list (axe + block, sled, reindeer, icicles, a pelt).
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
@@ -8739,3 +8749,16 @@ tile sheet, graffiti.
 - `P` / `D` / `T` (a blocker on a square's middle, decor, a tree) leave a piece OUT when its square is not free and list it in the bake's log (`LEFT OUT`), where the old
   `put` / `dec` stop the bake.
 - Frame rate (cloud software GPU, frames a second over 20 s, measured last in the run): terrace 0.7 then 0.6 after the brush was thickened; Casino court 1.4 then 1.3.
+
+### PASS 4, THE NIGHT (live; seen on screen at hour 22.5 and by day, 14 views)
+(Belongs to "THE HOLLYWOOD HILLS, THE FIVE PASSES".) `hillsLights(ctx)` in N.js + two lines in the sign's own block + three lamps in `exports.build`.
+- THE LETTERS SHINE: each letter's plane carries `glow` 0.92 (drawn unlit, so it reads from the Casino court at night as it does by day), two floods at each letter's foot.
+- Warm windows on the three new houses (a pane a hand proud of the dark glass, `glow` 0.95; a `ring` of them round the Round House's drum), lamps at their doors.
+- Eight lamp standards on the Observatory's terrace (ONE drawn row on the level terrace), the pool's ring of light and two rail lamps, a lantern on the fire lookout,
+  the transmitter hut, the intake tower, the lot's shelter, the horse shed; a red point on the Peak's pillar.
+- REAL LIGHTS kept few: three more of the city's lamp posts (`ctx.lamps`, `d: 'N'`): the terrace's west way in, the Hikers' Lot, the Villa's drive (18 in the district).
+  Everything else is `glow` on drawn parts: no cost. The props that carry their own light: two flood masts, the fountain, the A-Frame's fire, the house lamps inside.
+- A PROBE AT NIGHT: a view's eval `window._hqClockHour = function () { return 22.5; }` (then `"settle": 6000`); back to day the same way with 13.
+- NOT DONE: air (dust, embers over the Burn, fireflies). The city's room has no `shell.atmos`; a zone's particles are born at the room's floor, and the Hills stand 26 to
+  45 m over it. It needs the tool's row (a zone with its own ground height): listed for mondo, not built.
+- Frame rate (same measure): terrace 0.7, Casino court 1.1 (1.3 to 1.4 before this pass; the run was still loading 87 files when it was measured).

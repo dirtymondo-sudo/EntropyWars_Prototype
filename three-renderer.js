@@ -69291,7 +69291,7 @@ const ThreeRenderer = (function () {
     function _hqPlantPassageTrees(room, plantTree) {
         (room.doors || []).forEach(function (d) {
             if (!d || d.hidden || !d.wall || d.wall === 'free') return;
-            var P = _hqPassageSpec(d); if (!P || P.look !== 'trail') return;
+            var P = _hqPassageSpec(d); if (!P || P.look !== 'trail' || P.trees === false) return;   // `passage.trees: false` on a link's end (2026-11-16, Camelot's Pass): a trail between rock walls plants none
             var B = _hqBoxWall(room, d.wall, d), ax = -B.nz, az = B.nx;   // along the wall
             var rng = _mulberry32((typeof hqHash === 'function') ? hqHash('trail|' + d.id) : 5);
             var kinds = (room.shell && room.shell.forest && room.shell.forest.kinds) || ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'];
