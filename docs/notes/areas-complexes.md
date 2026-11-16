@@ -7609,6 +7609,32 @@ car_suv, car_cop, false_window, pool_lounger, observation_window, meshy_tesla_co
   `…_a_black_SUV_…`: a fallback only today), `UFO_Low_Poly.fbx`. In downloaded packs but not cut: the Molten SciFi pack (`Air_Con`, bunk beds,
   `Hydroponics_Lamp`), the Mine pack's `Rails`, a `Ladder` (House / Playground packs).
 
+## THE D.U.M.B., SUB-LEVEL 7 — the pilot district, pass by pass (2026-11-16, second side; file `docs/areas/dumb/districts/S.js`, 6 plots)
+
+The zone's pilot (ZONE_THREAD_BRIEF.md step 7). Proof views (playtest_city.js, the room `site_prebuilt_dumb_base`): the hub `x -12 z 12 y 0.05 face 45`,
+Corridor Five `x 1.75 z -30 face 180`, the east spoke `x 30 z 0 face 90`. FPS on the probe's software renderer BEFORE the pilot (the first build):
+hub 1.25, Corridor Five 2.13, the east spoke 2.0, the Platform 2.0.
+
+### PASS 1, THE STRUCTURE + THE LANDMARKS (seen in the cloud browser, 22 views)
+- **THE TOWER** (the Hub, P03-03): a 10.5 m plateau on the hub's middle four squares, no stair ("How do they get up?" "They do not."). Its skin is
+  drawn: concrete panels with a reveal every 3.5 m, a hazard skirt, a lit slit on each face 8 m up (someone is up there), a red band, a beacon on
+  the cap, a 7 on every face. The plateau is 15 cm INSIDE the skin (a plateau's foot slopes out and showed through as a dark base).
+- **THE HUB:** a steel gallery 3.5 m up along the west and the east wall, a stair up each from the south; a hazard portal to each of the four
+  spokes; RESEARCH / COMMAND / LEVEL P3 / LEVEL -6 painted on the floor and over the portals; four `concrete_pillar`; drawn wall lamps.
+- **THE CHAMBERS** stand behind walls with a long window (a kit wall = sill + glass `pane` + head) and a `leaf_security` door, numbered 01 to 04.
+  01 THE DROP: a tier 3.5 m up its stair, three sides railed, a red X below the fourth. 03 THE PIT: a `plateau` with `sink: true`, 1.75 m down,
+  a stair INSIDE it (a ramp from -1.75 to 0: a ramp outside a sink is under the floor), a grindable rail on the rim, a red line of light at the
+  bottom, DO NOT THINK ABOUT THE PIT on the floor. 02 THE CATWALK: two towers, the plank (a 1.75 m `bridge`), a stair up one, a `climb` down the
+  other, MAX LOAD: ONE. 04 OBSERVATION: a deck along the south wall behind an upper wall with three `observation_window`; the chamber is empty.
+- **CORRIDOR FIVE:** a three-square lane (the Healing Zone in it), two rooms west and four closets east behind doors (empty until pass 2);
+  portals to the Range's and the Comms Room's stairs.
+- **LEVEL -6:** rock lining (`rocks_5`, gain 2.6: 1.5 read black), a concrete collar and a hazard lintel round the Cavern's blast door, THE VENT.
+- **THE STAIR:** the level numbers 2 to 6 down both walls, each beside a 5 m slot of light, SUB-LEVEL 7 over the foot, the two side rooms' doors.
+- **FOUND, for every district of this zone:** (1) an `arch` row WITHOUT `y` stands on the ground under its ORIGIN; a plot whose middle is a
+  plateau (the Tower) lifted the whole plot's lining, roof and signs 10.5 m. The tool writes `y: plot.base` now. (2) A part's `ry`: 0 looks
+  south, 180 north, -90 EAST, 90 west: a sign on a west wall is `-90`. (3) Ceilings in a dark sheet read black: `ceilGain` 2.0 on concrete.
+- FPS after the pass: hub 1.25, Corridor Five 2.0, the east spoke 2.0 (no cost).
+
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
 
 mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
