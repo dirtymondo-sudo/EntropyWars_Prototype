@@ -7,7 +7,9 @@
    island and the Maelstrom at its corners).
    Reads docs/areas/beach/layout.json (the approved plan 4: every plot's name, district, level and the 168 x 120 square map) and writes the room
    `site_prebuilt_bermuda_beach` into data.js between BEACH140-BEGIN / BEACH140-END. `node bake-beach.js` writes; `--dry-run` prints the counts;
-   `BEACH_DUMP=1` prints the height map. Never hand-edit between the markers: edit this tool or the layout and rerun.
+   `BEACH_DUMP=1` prints the height map. Never hand-edit between the markers: edit a district file, this tool or the layout and rerun.
+   THE DISTRICTS' CONTENT IS NOT HERE (2026-11-16): docs/areas/beach/districts/S.js H.js O.js T.js (see THE DISTRICT FILES below). This tool
+   holds only what is shared; nobody edits it without a note on docs/notes/claims.md.
    Notes: docs/notes/areas-complexes.md "THE BEACH ON PLOTS".
    HOW THE ROOM IS MADE: a SEA room (terrain.sea at 0, the old Bermuda sea room's way: no plan walls, the whole field is walked, waded, swum or
    sailed). THE HEIGHTS ARE THE MAP: terrain.slope.cells carries every square's four corners. Sand rises from the waterline by its distance to
@@ -55,11 +57,22 @@ const SHIP_H = JSON.parse(vm.runInContext(`(() => { const r = DOOR_HQ.rooms.${SH
     return JSON.stringify(o); })()`, D));
 const SHIP_BLOCK = SHIP_H ? r2(Math.min.apply(null, SHIP_H) - 0.8) : 0;   // a flat block hidden inside her hull (her decks are drawn by the renderer): it keeps the walker, the swimmer and the skiff out
 if (!SHIP_H || SHIP_BLOCK < 2) throw new Error('the Dutchman\'s main deck room is not the 34 x 14 galleon this tool berths');
-setRect(29, 65, 31, 68, 'w');                               // THE SKIFF: the plan's block is the boat herself (a prop afloat at the jetty's end)
-/* every plan `B` that stands on sand / quay / rock is named here; the squares become its ground again and the building is built by a row below */
-const B_HUTS = [[2, 50], [5, 50], [8, 50]], B_GUARD = [15, 65], B_SHED = [26, 39], B_LIGHT = [65, 101], B_WRECK = [99, 89], B_TRIBE = [[113, 15], [115, 17], [112, 18]];
-B_HUTS.forEach(q => setRect(q[0], q[1], q[0] + 2, q[1] + 2, 'd')); setRect(B_GUARD[0], B_GUARD[1], B_GUARD[0] + 2, B_GUARD[1] + 2, 'd'); setRect(B_SHED[0], B_SHED[1], B_SHED[0] + 3, B_SHED[1] + 3, 'o');
-setRect(B_LIGHT[0], B_LIGHT[1], B_LIGHT[0] + 2, B_LIGHT[1] + 2, 'r'); cell[B_WRECK[1]][B_WRECK[0]] = 'd'; B_TRIBE.forEach(q => { cell[q[1]][q[0]] = 'd'; });
+/* ── THE DISTRICT FILES (2026-11-16, mondo: "every single zone needs to be like that. now. so we can work in parallel"; the city's pattern,
+   bake-disaster-city.js): docs/areas/beach/districts/<LETTER>.js, one per district (S the Shore, H the Harbour, O the Ocean, T the Bermuda
+   Triangle), so no district's content lands in this tool. A file may export any of: tailor(ctx) = here, before the heights (the plan's
+   squares: each plan building 'B' it builds goes back to its ground); build(ctx) = its buildings; place(ctx) = its props, palms, people;
+   dress(ctx) = the same, a second pass after every district's place; reach = [[sx, sy, name]] squares the walk check must reach. Each stage
+   runs S, H, O, T (the layout's order). The tool keeps what is shared: the height map, the sea, the paint, the Dutchman's berth, the door,
+   the links' places, the checks, the room's own rows. Rules for the threads: docs/notes/areas-complexes.md "THE BEACH, THE DISTRICT FILES".
+   THE DICE: every (district, stage) throws from its own start (DICE = the stream as it stood there when the tool was one file, so the split
+   moved nothing), so a district's new throws never move another district's things. ── */
+const ORDER = Object.keys(LAYOUT.districts);
+const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/areas/beach/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f) && ORDER.includes(f[0])).sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0])).map(f => { const m = require(path.join(dir, f)); m._d = f[0]; return m; }); })();
+const DICE = { place: { S: 345, H: 2218172307, O: 900049978, T: 3230394567 }, dress: { S: 388744000, H: 3707165646, O: 2468876930, T: 122951486 } };
+const LIGHT = [65, 101];                                    // the Lighthouse Rock's two squares each way (the Triangle's west point; the tape lies there)
+const ctx = { LAYOUT, PLAN, C, N, W, H, gx, gz, mx, mz, r2, rnd, cell, setRect, plot, Pxy, inb, count, errs, taken, props, npc, LIGHT };
+const runStage = stage => DISTRICTS.forEach(m => { if (typeof m[stage] !== 'function') return; const s = (DICE[stage] || {})[m._d]; seed = s != null ? s : (m._d.charCodeAt(0) * 7919 + stage.length * 104729) >>> 0; if (process.env.BEACH_DICE) console.log('dice', stage, m._d, seed); m[stage](ctx); });
+runStage('tailor');
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (cell[y][x] === 'B') throw new Error('a plan building nobody builds at ' + x + ',' + y); if (cell[y][x] === 'T') cell[y][x] = 't'; }   // t = sand under a palm grove
 /* planks: over water they are a PIER ('J', a hard deck); on sand they are boards laid on the beach ('j', the Boardwalk) */
 { const seen = new Set(), key = (x, y) => x + ':' + y;
@@ -108,6 +121,7 @@ function writeSlope() { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) 
 /* ── THE BUILDINGS (the Estate's helper): a hollow `texbuilding` (the walls you bump, the doorway, the swinging leaf, the inside) with its own
    outside switched off + its look as an `arch` parts list. Parts frame: the building's middle, x along the front, +z out of the front, y up. ── */
 const U = n => 'urban:' + n, WD = U('WoodGeneric1b'), WD2 = U('WoodGeneric1a'), SHG = U('WoodGeneric2a'), FLR = U('WoodFlooring1d'), GLS = U('GlassWindowTall1a'), COR = U('MetalCorrugated1a'), BRK = U('BrickMasonry1a'), SHUT = U('GlassWindowResidentialShutter1');
+const PAINT = 2.3, CORR = U('MetalCorrugatedPainted1a');   // THE PAINT (Bayside's way): a painted wall takes `gain` PAINT, a roof is the painted corrugated sheet
 const ROT = { S: 0, W: 90, N: 180, E: 270 };
 function sheet() {
     const P = [];
@@ -140,56 +154,6 @@ function building(id, q, h, o, parts) {
 const put = (B, key, lx, lz, o) => { const p = B.at(lx, lz), r = Object.assign({ key, x: p[0], z: p[1] }, o || {}); if (r.face != null) r.face = B.face(r.face); props.push(r); };   // `face` in the building's frame
 function look(id, x, z, rot, fn) { const a = sheet(); fn(a); ARCH.push({ k: 'arch', id: 'bch:' + id + ':look', x: r2(x), z: r2(z), rot: rot || 0, parts: a.P }); }
 
-/* THE BEACH HUTS (walk-in, mondo: "walk ins"): three painted plank huts in a row, each its own colour, a striped gable, a step, a porch post pair */
-/* THE PAINT (seen on screen 11-15: a colour over the brown board sheet read as mud; mondo "brighten the huts"): Bayside's way (districts/B.js) —
-   a painted wall takes `gain` (the tint times it, past white), the roof is the painted corrugated sheet, the trim is plain paint (no sheet) */
-const PAINT = 2.3, CORR = U('MetalCorrugatedPainted1a');
-const HUT_COL = [[0x7fdcec, 0xffffff, 0xff5a7a], [0xffe27a, 0xffffff, 0x38b0aa], [0xffa590, 0xffffff, 0x44669c]];   // aqua / lemon / coral walls, white trim, a hot roof each
-const HUTS = B_HUTS.map((q, i) => building('hut' + (i + 1), [q[0], q[1], q[0] + 2, q[1] + 2, 'S'], 3.0, { leaf: 'leaf_white_wood' }, (a, w, d, door) => {
-    const [COL, TRIM, ROOF] = HUT_COL[i];
-    a.shell(w, 3.0, d, WD, COL, door, [3.5, 1.75], PAINT);
-    a.box(0, 0, 0, w - 0.1, 0.14, d - 0.1, FLR, 0xc8b490, { uv: [1.75, 1.75] });
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.24, 3.0, 0.24, null, TRIM);
-    a.roof('gable', 0, 3.0, 0, w + 0.7, 2.0, d + 0.9, CORR, ROOF, { keyEnd: WD, tintEnd: COL, gain: 2.0 });
-    for (let k = -2; k <= 2; k++) a.box(k * 1.3, 3.0, d / 2 + 0.47, 0.5, 0.06, 0.04, null, k % 2 ? ROOF : TRIM);                              // the striped fascia
-    a.frame(door, d, null, TRIM);
-    a.box(0, 0, d / 2 + 0.6, w, 0.14, 1.2, FLR, 0xc8b490);                                                             // the step
-    for (const s of [-1, 1]) a.box(s * (w / 2 + 0.06), 1.1, 0, 0.08, 1.1, 1.3, SHUT, 0xe8e4d8, { uv: 'fit', faces: s < 0 ? 'l' : 'r', top: false });
-}));
-put(HUTS[0], 'surfboard_rack', -2.2, -2.2, { face: 90 }); put(HUTS[0], 'surfboard_long', 2.6, -2.4, { face: 20 }); put(HUTS[0], 'beach_life_ring', 2.9, 0.6, { y: 1.5 }); put(HUTS[0], 'beach_cooler', 2.2, 2.0);
-put(HUTS[1], 'cot', -2.0, -1.6, { face: 0 }); put(HUTS[1], 'sea_chest', 2.4, -2.4, { face: 270 }); put(HUTS[1], 'retro_radio', 2.5, 0.4); put(HUTS[1], 'rug_round', 0, 0.2, { y: 0.15 }); put(HUTS[1], 'railway_lantern', -2.6, 2.2);
-put(HUTS[2], 'beach_air_mattress_blue', -2.0, -2.0, { face: 0 }); put(HUTS[2], 'beach_air_mattress_pink', -2.0, -0.4, { face: 0 }); put(HUTS[2], 'beach_swim_ring', 2.4, -2.4); put(HUTS[2], 'beach_ball', 2.2, 0.2); put(HUTS[2], 'folding_chair', 2.0, 2.2, { face: 200 });
-/* THE LIFEGUARD HUT (the Shore's landmark, walk-in): a white plank hut, a red roof, the red cross board, its front to the sea */
-const GUARD = building('lifeguard', [B_GUARD[0], B_GUARD[1], B_GUARD[0] + 2, B_GUARD[1] + 2, 'E'], 3.2, { leaf: 'leaf_white_wood' }, (a, w, d, door) => {
-    const WHITE = 0xffffff, RED = 0xe8483c;
-    a.shell(w, 3.2, d, WD, WHITE, door, [3.5, 1.75], PAINT);
-    a.box(0, 0, 0, w - 0.1, 0.14, d - 0.1, FLR, 0xc8b490, { uv: [1.75, 1.75] });
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.26, 3.2, 0.26, WD2, RED);
-    a.roof('pyramid', 0, 3.2, 0, w + 1.2, 1.9, d + 1.2, CORR, RED, { gain: 2.0 });
-    a.frame(door, d, WD2, RED);
-    a.box(0, 0, d / 2 + 0.9, w + 0.4, 0.14, 1.8, FLR, 0xc8b490);                                                        // the deck before the door
-    a.box(2.2, 1.9, d / 2 + 0.07, 0.9, 0.3, 0.06, WD2, RED); a.box(2.2, 1.6, d / 2 + 0.07, 0.3, 0.9, 0.06, WD2, RED);     // the red cross
-    a.cyl(-w / 2 - 0.3, 0, d / 2 + 0.3, 0.05, 5.4, WD2, WHITE); a.box(-w / 2 - 0.3 + 0.45, 4.7, d / 2 + 0.3, 0.9, 0.6, 0.03, null, RED);   // the flag
-});
-put(GUARD, 'cot', -2.0, -2.0, { face: 0 }); put(GUARD, 'beach_life_ring', -2.9, 1.0, { y: 1.5 }); put(GUARD, 'beach_life_ring', 2.9, -1.0, { y: 1.5 }); put(GUARD, 'tool_chest', 2.3, -2.4, { face: 270 }); put(GUARD, 'retro_radio', 2.4, 0.6);
-/* THE QUAY SHED (walk-in): tarred boards, a tin roof, wide doors onto the quay; crates, nets and pots inside */
-const SHED = building('shed', [B_SHED[0], B_SHED[1], B_SHED[0] + 3, B_SHED[1] + 3, 'S'], 4.2, { leaf: 'leaf_barn', leafDouble: true, floorIn: U('WoodFlooring1a') }, (a, w, d, door) => {
-    const TAR = 0x4a4038, TRIM = 0xd8d0bc;
-    a.shell(w, 4.2, d, WD, TAR, door, [3.5, 1.75]);
-    a.box(0, 0, 0, w - 0.1, 0.14, d - 0.1, U('WoodFlooring1a'), 0x8a7c68, { uv: [1.75, 1.75] });
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.3, 4.2, 0.3, WD2, TRIM);
-    a.roof('gable', 0, 4.2, 0, w + 0.8, 2.4, d + 0.8, COR, 0x6a7078, { keyEnd: WD, tintEnd: TAR });
-    a.frame(door, d, WD2, TRIM);
-    a.sign('HARBOUR', door.lx, 2.9, d / 2 + 0.08, 3.4, 0.7, '#e8e0c8', '#2a2622', 'stencil');
-});
-put(SHED, 'lobster_traps', -3.6, -3.4, { face: 0 }); put(SHED, 'fishing_net_wall', 0, -5.0, { y: 1.4, face: 0 }); put(SHED, 'psx_wooden_crate_1', 3.6, -3.6); put(SHED, 'psx_wooden_crate_2', 3.8, -1.8); put(SHED, 'psx_metal_barrel_mp_1', -3.8, -0.6);
-put(SHED, 'ship_anchor', 3.4, 2.6, { face: 110 }); put(SHED, 'railway_lantern', -3.8, 3.4); put(SHED, 'meshy_rope', -1.6, -3.8); put(SHED, 'sea_chest', -3.6, 1.6, { face: 90 });
-
-/* the tribe's three open shelters on the Volcano Island (their people come later: mondo "eventually will make models for"): four posts and a
-   cone of thatch each, walked under */
-B_TRIBE.forEach((q, i) => look('shelter' + (i + 1), mx(q[0]), mz(q[1]), 0, a => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * 1.5, 0, sz * 1.5, 0.11, 2.3, WD2, 0x6a5038);
-    a.cyl(0, 2.3, 0, 2.7, 1.9, SHG, 0xb89a52, { r2: 0, seg: 8, roof: true }); a.box(0, 0, 0, 2.6, 0.1, 2.6, FLR, 0x9a8460); }));
-
 /* ── placing things: a blocker on a square's middle (P), decor off it (dec), people (native); never two on one square ── */
 const DRY_LAND = 'dDtjoJXr';
 function spot(sx, sy, what, where, shared) { if (!inb(sx, sy)) { errs.push(what + ' is off the map'); return; } const ch = cell[sy][sx];
@@ -213,89 +177,13 @@ const POOL = { x: mx(134), z: mz(97), face: 0 };                                
 const BAY = { x: mx(146), z: mz(102), face: 0 };                                             // Room 345's cabin door on the Island Beach (siteRooms.entry.prebuilt_bermuda)
 [[134, 97], [134, 96], [146, 102], [146, 101], [51, 53], [52, 53], [51, 54], [52, 54]].forEach(q => taken.add(q[0] + ':' + q[1]));
 const SP = [3, OY + 5];
-
-/* ── THE SHORE ── */
-[[10, OY + 2], [12, OY + 9], [14, OY + 20], [3, OY + 20], [9, OY + 21], [6, OY + 44], [10, OY + 40], [4, 30], [8, 26], [3, 22], [1, 18], [2, 90], [7, 94], [3, 100]].forEach(q => palm(q[0], q[1]));
-for (let y = 0; y < H; y++) for (let x = 0; x < 24; x++) if (cell[y][x] === 't' && (x + y) % 2 === 0) palm(x, y);                // THE PALMS: the three groves
-P('park_bench', 2, OY + 3, { face: 180 }); P('park_bench', 5, OY + 3, { face: 180 }); P('signpost', 8, OY + 5, { face: 90 }); P('city_bench', 2, OY + 7, { face: 0 }); dec('beach_ball', 9, OY + 8);
-P('surfboard_rack', 11, OY + 15, { face: 0 }); dec('surfboard_short', 12, OY + 17); dec('surfboard_fish', 13, OY + 16); P('campfire', 6, OY + 18); dec('folding_chair', 5, OY + 19); dec('folding_chair', 7, OY + 19); dec('beach_cooler', 7, OY + 17);
-P('pool_umbrella', 13, OY + 22); dec('pool_lounger', 14, OY + 22, { face: 90 }); P('pool_umbrella', 13, OY + 26); dec('pool_lounger', 14, OY + 26, { face: 90 }); dec('beach_ball', 12, OY + 24);
-P('lifeguard_chair', 18, OY + 27, { face: 90 }); dec('beach_life_ring', 17, OY + 31); dec('beach_swim_ring', 13, OY + 33); dec('beach_air_mattress_pink', 12, OY + 34);
-[[16, OY + 3], [18, OY + 7], [14, OY + 9], [20, OY + 10]].forEach((q, i) => dec(['ocean_starfish', 'ocean_crab', 'ocean_conch', 'ocean_sand_dollar'][i], q[0], q[1]));   // THE TIDE POOLS
-dec('ocean_starfish', 15, OY + 8); dec('ocean_crab', 17, OY + 10);
-[[15, OY + 40], [17, OY + 41], [20, OY + 42], [22, OY + 41]].forEach((q, i) => dec(['ocean_sand_dollar_2', 'ocean_conch', 'ocean_seal_resting', 'ocean_crab'][i], q[0], q[1]));   // THE SANDBAR
-dec('fallen_log', 4, OY + 40); dec('ocean_conch', 2, 20); dec('fallen_log', 4, 24); dec('ocean_crab', 8, 32); dec('ocean_sand_dollar_3', 3, 96);
-native('mermaid', 19, OY + 9, 250, sayOf(O_SEA, 'mermaid')); native('starfish', 19, OY + 41, 270); native('siren', 16, OY + 18, 90);
-
-/* ── THE HARBOUR ── */
-P('psx_wooden_crate_3', 24, OY + 2); P('psx_wooden_crate_1', 25, OY + 2); P('psx_metal_barrel_mp_2', 31, OY + 3); P('ship_anchor', 30, OY + 5, { face: 110 }); dec('dockring', 32, OY + 6); dec('dockring', 24, OY + 6); P('railway_lantern', 30, OY + 6);
-dec('cardboard_boxes', 28, OY + 10); dec('sea_chest', 33, OY + 17); dec('folding_chair', 26, OY + 18, { face: 200 }); P('railway_lantern', 24, OY + 17); P('railway_lantern', 36, OY + 18); dec('dockring', 29, OY + 23); dec('dockring', 29, OY + 27);
-props.push({ key: 'skiff', x: mx(31), z: mz(OY + 28), y: 0.32, face: 0 });                                                       // THE SKIFF, afloat at her jetty's end
-props.push({ key: 'lighthouse', x: mx(46), z: mz(OY + 10), face: 0 });                                                           // THE HARBOUR LIGHT on the breakwater's head (the old Harbour's)
-[[30, OY + 38], [24, OY + 38], [30, OY + 47], [24, OY + 47]].forEach(q => afloat('sea_buoy', q[0], q[1]));                        // THE CHANNEL: two pairs of red buoys
-swimmer('ocean_dolphin', 26, OY + 40, { swim: { r: 6, v: 2.2, bob: 0.35 } }); swimmer('ocean_turtle', 42, OY + 44, { swim: { r: 4, v: 0.7, bob: 0.1 } }); swimmer('ocean_tuna', 30, OY + 42, { swim: { r: 6, v: 1.6, bob: 0.2 } });
-native('pirate', 29, OY + 6, 180, sayOf(O_HARB, 'pirate')); native('homosapien', 34, OY + 18, 150, sayOf(O_HARB, 'homosapien'));
-
-/* ── THE OCEAN ── */
-[[60, 20, 'ocean_whale'], [70, 30, 'ocean_humpback'], [60, 80, 'ocean_dolphin'], [62, 82, 'ocean_dolphin'], [84, 50, 'ocean_manta'], [100, 40, 'ocean_turtle'], [120, 60, 'ocean_dolphin'], [76, 100, 'ocean_manta'],
- [50, 100, 'ocean_turtle'], [140, 12, 'ocean_shark'], [30, 112, 'ocean_stingray'], [162, 60, 'ocean_humpback'], [90, 70, 'ocean_tuna'], [130, 28, 'ocean_dolphin']].forEach(q => swimmer(q[2], q[0], q[1], /whale|humpback/.test(q[2]) ? { y: -2.6, hover: 0, swim: { r: 14, v: 1.2, bob: 0.3 } }   /* seen on screen: with a hover the whales flew over the sea */ : { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
-for (const q of [[52, 30], [80, 20], [70, 70], [110, 50], [60, 110], [150, 70]]) feat({ k: 'scatter', key: 'fish_school', n: 3, x: mx(q[0]), z: mz(q[1]), r: 40, seed: q[0], sea: true });
-P('palm_tree', 160, 20, { h: 4.2 }); dec('ocean_conch', 161, 21); dec('sea_chest', 159, 20); P('palm_tree', 40, 112, { h: 3.8 }); dec('ocean_starfish', 41, 112); dec('fallen_log', 39, 113);    // the two unnamed islets
-/* THE VOLCANO ISLAND: the landing, the village round its fire, palms along the shore, the cone's glow */
-props.push({ key: 'campfire', x: mx(114), z: mz(17), glow: 0.8 }); taken.add('114:17');
-dec('taiko_drum', 113, 17); dec('spear', 115, 16); dec('spear', 112, 19); dec('skull_pile', 115, 18); dec('item_ward_totem', 111, 16); dec('wooden_bucket', 114, 19); dec('fallen_log', 113, 19);
-P('cave_torch', 110, 20); P('cave_torch', 116, 14); P('cave_torch', 106, 20); dec('meshy_rowboat', 108, 21, { face: 80 });
-[[99, 9], [99, 13], [101, 17], [104, 20], [111, 21], [113, 20], [117, 10], [114, 5], [108, 3]].forEach(q => palm(q[0], q[1]));
-feat({ k: 'scatter', key: 'cave_stone', n: 14, x: mx(106), z: mz(10), r: 30, seed: 41 });
-
-/* ── THE BERMUDA TRIANGLE ── */
-props.push({ key: 'lighthouse', x: gx(B_LIGHT[0] + 1), z: gz(B_LIGHT[1] + 1), face: 0 });                                         // on its rock at the west point (the beam turns; the tape)
-props.push({ key: 'ship_wreck', x: mx(B_WRECK[0]), z: mz(B_WRECK[1]), face: 30 }); dec('sea_chest', 98, 88); dec('skull_pile', 100, 90); native('siren', 100, 88, 250, sayOf(O_SEA, 'siren'));
-[[146, 37], [154, 37], [146, 47], [154, 47]].forEach(q => afloat('sea_buoy', q[0], q[1]));                                         // the Maelstrom's ring of four red buoys
-props.push({ key: 'ocean_shark', x: MAEL.x, z: MAEL.z, y: -4.2, hover: 0, swim: { r: 9, v: 1.3, bob: 0.2 } }, { key: 'ocean_hammerhead', x: MAEL.x, z: MAEL.z, y: -5.4, hover: 0, swim: { r: 6, v: 1.1, bob: 0.2, dir: -1 } });
-swimmer('ocean_shark', 104, 92, { y: -0.85, hover: 0.25, swim: { r: 14, v: 1.4, bob: 0.1 } }); dec('ocean_seal_resting', 122, 72); dec('ocean_seal_resting', 126, 73); dec('ocean_rock_7', 119, 72);
-swimmer('ocean_moon_jelly', 124, 62, { y: -1.2, hover: 0 }); swimmer('ocean_box_jelly', 128, 66, { y: -1.4, hover: 0 }); swimmer('ocean_bioluminescent_jelly', 120, 80, { y: -1.2, hover: 0 }); swimmer('ocean_moon_jelly_pulsing', 136, 58, { y: -1.0, hover: 0 });
-for (const k of ['ocean_coral', 'ocean_coral_3', 'ocean_coral_6', 'coral_fan', 'coral_brain']) feat({ k: 'scatter', key: k, n: 8, x: mx(113), z: mz(90), r: 16, seed: k.length * 7, sea: true });   // THE REEF
-feat({ k: 'scatter', key: 'ocean_coral_2', n: 5, x: MAEL.x, z: MAEL.z, r: 17, seed: 85, sea: true }); feat({ k: 'scatter', key: 'ocean_seaweed', n: 6, x: MAEL.x, z: MAEL.z, r: 15, seed: 88, sea: true });
-/* the island at the right angle: the Jetty, the Cay and its dune, the Lagoon, the Island Beach */
-for (let y = 84; y < 108; y++) for (let x = 132; x < 156; x++) if (cell[y][x] === 't') palm(x, y);
-[[142, 86], [150, 86], [153, 92], [141, 95], [152, 104], [143, 106]].forEach(q => palm(q[0], q[1]));
-P('campfire', 148, 99); dec('folding_chair', 149, 100); dec('cardboard_box', 147, 101); dec('paper_sheet', 148, 101, { y: 0.01 }); P('signpost', 141, 92, { face: 270 }); dec('wet_floor_sign', 140, 90);
-dec('ocean_crab', 150, 96); dec('ocean_starfish', 143, 98); dec('ocean_conch', 152, 100); dec('ocean_sand_dollar', 145, 104); dec('dockring', 133, 90); P('railway_lantern', 132, 89);
-props.push({ key: 'skiff', x: gx(131), z: gz(90), y: 0.32, face: 90 });                                                           // the island's own skiff, at the Jetty
-native('pirate', 144, 93, 220, sayOf(O_SEA, 'pirate')); native('jellyfish', 139, 104, 20); native('sharkman', 151, 102, 300); native('deep sea fish', 113, 91, 90);
-
 /* ── THE DRESSING (mondo 11-15: "see what other aquatic or oceanic or beach related models you can add to dress the area"): only models the game
    already has (the catalogue; nothing generated). `under` = a thing that stands on the sea floor or hangs in the water at its own depth. ── */
 const under = (key, sx, sy, y, o) => { spot(sx, sy, key, 'sea', true); props.push(Object.assign({ key, x: r2(mx(sx) + (rnd() - 0.5) * 2), z: r2(mz(sy) + (rnd() - 0.5) * 2), y, hover: 0, face: Math.round(rnd() * 360) }, o || {})); };
-/* the Shore: flamingos in the tide pools and the shallows, a sandbox and a ball by the huts, the snack cart and a telescope on the Boardwalk, boats pulled up */
-[[18, OY + 4], [20, OY + 5], [19, OY + 7], [21, OY + 8], [17, OY + 43], [20, OY + 40], [16, OY + 34]].forEach(q => { spot(q[0], q[1], 'flamingo', null, true); props.push({ key: 'flamingo', x: mx(q[0]), z: mz(q[1]), face: Math.round(rnd() * 360) }); });
-P('play_sandbox', 12, OY + 18); dec('football', 9, OY + 19); dec('skateboard', 6, OY + 5); P('popcorn_cart', 5, OY + 6, { face: 180 }); P('brass_telescope', 7, OY + 4, { face: 90 });
-P('rowboat', 15, OY + 13, { face: 70 }); P('meshy_rowboat', 14, OY + 37, { face: 110 }); dec('surfboard_long', 15, OY + 25); dec('surfboard_fish', 12, OY + 29); dec('beach_cooler', 14, OY + 30);
-P('pool_umbrella', 10, OY + 33); dec('pool_lounger', 11, OY + 33, { face: 90 }); P('pool_umbrella', 6, 28); dec('pool_lounger', 7, 28, { face: 90 }); dec('beach_ball', 5, 27); dec('beach_swim_ring', 8, 30);
-[[1, OY + 44, 'psxg_rock_1'], [2, 21, 'psxg_rock_2'], [3, 94, 'psxg_rock_3'], [16, OY + 2, 'psxg_rock_4']].forEach(q => dec(q[2], q[0], q[1]));
-swimmer('ocean_seal', 23, OY + 46, {}); swimmer('ocean_seal', 26, OY + 44, {}); swimmer('ocean_turtle', 22, OY + 16, { swim: { r: 3, v: 0.6, bob: 0.1 } });
-   // (no weed in the shallows: seen on screen, its tops break the surface as black spikes)
-/* the Harbour: freight on the quay (a container, a pallet, the forklift, a cable drum, sandbags: the quay floods), a gun on the quay's corner,
-   the shed's outboard and wheel, lamps and rings down the pier's new length, a lobster on the boards, rocks at the mole's foot */
-props.push({ key: 'ind_container', x: mx(32), z: gz(OY + 4), face: 0 }); taken.add('32:' + (OY + 3)); taken.add('32:' + (OY + 4));
-P('wrapped_pallet', 30, OY + 3); P('forklift', 29, OY + 2, { face: 90 }); dec('cable_drum', 25, OY + 4); dec('meshy_sandbags', 24, OY + 5); dec('meshy_sandbags', 25, OY + 5); dec('meshy_sandbags', 24, OY + 3);
-P('ship_cannon', 26, OY + 2, { face: 90 }); put(SHED, 'outboard_motor', -3.6, 3.6, { face: 0 }); put(SHED, 'ship_wheel', 4.9, 0, { y: 1.7, face: 270 }); put(SHED, 'ships_bell', -4.9, -2.0, { y: 1.9, face: 90 });
-[42, 47, 55].forEach(x => P('railway_lantern', x, 53)); [40, 45, 50, 54].forEach(x => dec('dockring', x, 54)); dec('ocean_lobster', 44, 53, { anim: false }); dec('psx_wooden_crate_2', 49, 53); dec('sea_chest', 56, 54); dec('lobster_traps', 41, 53);
-feat({ k: 'scatter', key: 'ocean_rock_8', n: 10, x: mx(42), z: mz(OY + 4), r: 22, seed: 63, sea: true });   // (no kelp: 4.5 m tall in 3.5 m of water)
-/* the Ocean: black smokers off the volcano, a second pod of dolphins, rays and tuna on the long crossings. (TRIED, NOT SHIPPED: the `palmisle`
-   tiny islands and the kraken `tentacle` models round the Maelstrom did not show in the probe at any `y`; they need a look at how a misc model
-   stands in deep water before they go in.) */
-[[124, 10], [126, 14], [122, 18], [127, 8]].forEach(q => under('sea_vent', q[0], q[1], -3.5));
-[[72, 16, 'ocean_dolphin'], [74, 18, 'ocean_dolphin'], [76, 15, 'ocean_dolphin'], [110, 30, 'ocean_stingray'], [88, 96, 'ocean_tuna'], [140, 24, 'ocean_manta'], [46, 96, 'ocean_seal'], [164, 96, 'ocean_turtle'], [20, 108, 'ocean_stingray']]
-    .forEach(q => swimmer(q[2], q[0], q[1], { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
-/* the Bermuda Triangle: an eel and a squid down the Maelstrom's
-   hole, an octopus under the wreck, clams and tube coral and reef fish on the Reef, a gun and a telescope and a boat on the island */
-props.push({ key: 'ocean_eel', x: r2(MAEL.x + 3), z: r2(MAEL.z - 3), y: -5.8, hover: 0 }, { key: 'ocean_squid', x: r2(MAEL.x - 3), z: r2(MAEL.z + 3), y: -4.8, hover: 0 });
-under('ocean_octopus', 97, 91, -1.6); [[110, 86], [114, 92], [117, 94]].forEach(q => under('giant_clam', q[0], q[1], -0.8)); [[111, 89], [116, 91], [113, 94], [109, 87]].forEach(q => under('coral_tube', q[0], q[1], -0.8));
-[[112, 88, 'ocean_clownfish'], [115, 92, 'ocean_dory'], [110, 90, 'ocean_fish'], [117, 90, 'ocean_fish_2'], [113, 92, 'ocean_fish_3'], [114, 87, 'ocean_brown_fish']].forEach(q => under(q[2], q[0], q[1], -0.5));
-P('ship_cannon', 150, 105, { face: 180 }); P('brass_telescope', 151, 88, { face: 90 }); P('rowboat', 152, 98, { face: 60 }); dec('ocean_seal_resting', 142, 100); dec('psxg_rock_2', 153, 94);
-P('pool_umbrella', 145, 98); dec('pool_lounger', 146, 98, { face: 90 });
+Object.assign(ctx, { OY, flat, spot, feat, building, put, look, sheet, P, dec, afloat, swimmer, under, palm, native, sayOf, O_SEA, O_HARB, U, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT, CORR, PAINT, MAEL, POOL, BAY, GANG, SP, SHIP, PIER_END, LIGHT });
+runStage('build');   // the huts and the lifeguard hut (S), the Quay shed (H), the tribe's shelters (O)
+runStage('place');   // each district's own things
+runStage('dress');   // THE DRESSING, district by district
 /* ── finish the heights (the buildings' flats are in) and check ── */
 writeSlope();
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
@@ -314,6 +202,7 @@ if (!TREES.palm) throw new Error('no palm tree kind');
   while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of N8.slice(0, 4)) { const X = x + dx, Y = y + dy; if (!walk(X, Y) || seen[Y * W + X]) continue;
       const hardStep = !(isSoft(cell[y][x]) && isSoft(cell[Y][X])); if (hardStep ? Math.abs(cH(X, Y) - cH(x, y)) > 0.62 : Math.abs(cH(X, Y) - cH(x, y)) / C > 1.0) continue; seen[Y * W + X] = 1; st.push([X, Y]); } }
   const need = [[3, OY + 5, 'the Boardwalk'], [3, 51 + 2, 'the Beach Huts'], [17, 67, 'the Lifeguard Hut'], [28, OY + 6, 'the Quay'], [36, 53, 'the Long Pier'], [PIER_END - 2, 53, 'the pier alongside the Dutchman'], [29, 62, 'the skiff jetty'], [6, OY + 44, 'the Dunes'], [4, 30, 'the North Headland sand']];
+  DISTRICTS.forEach(m => (m.reach || []).forEach(q => need.push(q)));   // a district file's own squares to reach
   need.forEach(q => { if (!seen[q[1] * W + q[0]]) throw new Error('not reached on foot from the city door: ' + q[2]); });
   for (let y = SHIP[1]; y < SHIP[3]; y++) for (let x = SHIP[0]; x < SHIP[2]; x++) if (seen[y * W + x]) throw new Error('the Dutchman is climbed from the pier');
   let dry = 0, wade = 0, swim = 0; for (let k = 0; k < W * H; k++) { if (hc[k] >= 0) dry++; else if (hc[k] > -1.15) wade++; else swim++; }
@@ -369,7 +258,7 @@ const WANT = [
     ["a: { " + at(MAEL) + " way: 'whirlpool',", 'link bermuda_abyss'],
     ["b: { " + at(POOL), 'link weir_bermuda'],
     ["a: { " + at(GANG), 'link beach_dutchman'],
-    [ROOM + ": { tape: { x: " + gx(B_LIGHT[0] + 1) + ", z: " + r2(gz(B_LIGHT[1] + 1) + 1.2) + " } }", 'the tape on the Lighthouse Rock'],
+    [ROOM + ": { tape: { x: " + gx(LIGHT[0] + 1) + ", z: " + r2(gz(LIGHT[1] + 1) + 1.2) + " } }", 'the tape on the Lighthouse Rock'],
 ];
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const flatSrc = src.replace(/ +/g, ' '), missing = WANT.filter(w => flatSrc.indexOf(w[0]) < 0);
