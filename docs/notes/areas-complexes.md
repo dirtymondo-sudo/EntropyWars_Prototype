@@ -13540,3 +13540,32 @@ Copy from `docs/areas/antarctica/districts/S.js`. A helper all six want belongs 
 - **WHAT I WOULD DO NEXT:** his look first. Then pass 4 on the Mare with whatever models he has made; the district threads for the
   nine free districts (Mars' Cydonia is the strongest after the Mare: the Face and the Pyramid already read from the air); the Earth
   in the Moon's sky; the Catwalk on the Terrace.
+
+## THE AFTERLIFE, THE BASILICA — the zone's pilot district, pass by pass (2026-11-16, second side; file `docs/areas/afterlife/districts/B.js`)
+
+The Vatican's district B, six plots. The idea: St Peter's at its own scale. At most five passes (mondo 11-16), each a merged PR, each seen.
+
+### FITS THIS DISTRICT (MODEL_LIST.md searched for church, chapel, cathedral, altar, pew, organ, candle, saint, statue, stained, bell, relic,
+pulpit, censer, bible, gothic, bust, urn, tapestry, throne, lectern, angel, painting, carpet, stanchion, gold; the live catalogue for sizes)
+IN THE CATALOGUE, PLACED: `greek_column` (the nave: the heavy model is kept for these 22 only), `catholic_pew`, `church_pew`, `stone_altar`,
+`royal_throne`, `lectern`, `church_podium`, `confessional_booth`, `angel_statue`, `brazier`, `stained_glass`, `holy_tapestry`,
+`hooded_statue` + `god_statue` (the attic's figures, the steps' two). IN THE CATALOGUE, FOR THE NEXT PASSES: `candelabra`, `meshy_bible`,
+`rope_stanchion`, `weeping_angel`, `holy_carpet`, `church_wall` (a gothic wall bay, 4 m), `painting_portrait`, `item_censer`,
+`decor_organ_pipe_white` (3 m: an organ), `banner`, `crystal_chandelier`, `candle_ring`, `hw_candles`, `tomb_plaque`, `sarcophagus`,
+`stone_urn`, `ships_bell`, `psx_half_arc_pillar_*` (the PSX pack's arch pillars), `instrument_harp / cello`. NOT FOUND ANYWHERE: a baldachin, a
+pipe organ case, a pietà, kneelers, a holy water stoup, votive candle racks, a papal altar, mosaics (NEEDS A MODEL below).
+
+### PASS 1, THE EXTERIORS (live; seen on screen, 6 views)
+- THE BODY: every outer wall wears a plinth course, giant pilasters every 7 m, two tiers of dark windows with sills and heads, a string
+  course at 11 m and a cornice; the apse is a true curve with its own cornice and a lead half dome. White stone = the plaster sheet, pale,
+  `glow` 0.4 to 0.5 (without the glow a drawn face in shade goes olive in this room's amber look).
+- THE DOME: a stepped drum, 16 columns and 16 windows round it, a cornice, the lead dome (16 m), the lantern with its own ring of 8 columns,
+  the gilt ball and cross: 62 m to the cross. Two small domes on the nave's shoulders.
+- THE FRONT: eight giant columns on pedestals (17 m), the entablature with the inscription, the pediment over the middle, the attic and
+  its windows, the balustrade's plinths with THIRTEEN FIGURES (`hooded_statue` x 12, `god_statue` in the middle), a window and a balcony
+  over each doorway, door surrounds, and two tall figures on pedestals at the ends of the steps.
+- THE DOORS SWING: four double leaves in the front's doorways (the tool's new `ctx.door`: a `doorsOnly` carrier row, the castle's way).
+- The Square's obelisk is rose marble now (the rock sheet read as cracked mud).
+- FPS (the gate view, software GPU): 1.2 before, 1.5 after (the pass is drawn parts in one row: about 150,000 triangles more).
+- OPEN after pass 1: the inside is bare walls and a dark gilt ceiling (pass 2); the flanks' yards are empty cobbles (pass 3); no light of
+  its own (pass 4).
