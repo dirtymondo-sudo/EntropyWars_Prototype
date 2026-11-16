@@ -3301,7 +3301,7 @@ const ThreeRenderer = (function () {
         /* 2026-07-14: the poison bogs render as PURPLE WATER and the black
            ooze / oil family as BLACK WATER — full animated fluid pipeline
            (waves, caustics, glints, shoreline inset), tinted per key below. */
-        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true,
+        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true, sludge: true,
         /* 🩸 2026-10-21: the Blood Pool (Blood Rain) — dark red water */
         blood: true
     };
@@ -3326,6 +3326,11 @@ const ThreeRenderer = (function () {
         purple_bog: { base: 'purple_bog', sheet: true, tint: 0xffffff,
                       caustDiff: 'vec3(0.46, 0.22, 0.66)', caustEmis: 'vec3(0.26, 0.12, 0.42)',
                       glintCol: 'vec3(0.90, 0.70, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
+        /* ☢ the radioactive sludge (2026-11-16, the Sewers' district R): the bright green sheet with caustics that GLOW
+           (a stronger emissive term than the poison's, yellow pulled out of the sheet), a yellow-green glint */
+        sludge:     { base: 'sludge', sheet: true, tint: 0xffffff,
+                      caustDiff: 'vec3(0.34, 0.74, 0.14)', caustEmis: 'vec3(0.16, 0.50, 0.05)',
+                      glintCol: 'vec3(0.80, 1.0, 0.40)',   hueShift: 'vec3(0.80, 1.12, 0.45)' },
         /* black goo (the dark slate sheet) / oil (the brown swirls): darkened toward black, a faint iridescent sheen */
         /* spell look fix FX-3 (2026-10-26): the black goo keeps a violet sheen (the poison pass's goo colour) so it reads wet */
         swamp:      { base: 'swamp', sheet: true, tint: 0xffffff,
@@ -3376,6 +3381,7 @@ const ThreeRenderer = (function () {
         poison:     { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         poison_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         purple_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
+        sludge:     { l1dx: 0.07, l1dy: 0.07, l2dx: -0.05, l2dy: 0.05 },
         swamp:      { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
         oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
         blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 },
@@ -4608,8 +4614,11 @@ const ThreeRenderer = (function () {
         if (obj.isCSS2DObject && obj.element && obj.element.parentNode) {
             obj.element.parentNode.removeChild(obj.element);
         }
+        if (obj._ew_parkClone) { if (obj._ew_parkOwnGeo && obj.geometry) obj.geometry.dispose(); }   // THE PARKED ROOM: a copy's geometry and looks are the walk's (but a floor the fight dug is the copy's own)
+        else {
         if (obj.geometry && !obj.geometry._ew_shared) obj.geometry.dispose();
-        if (obj.material) {
+        }
+        if (obj.material && (!obj._ew_parkClone || obj._ew_parkOwnMat)) {
             if (Array.isArray(obj.material)) {
                 for (var i = 0; i < obj.material.length; i++) {
                     if (!obj.material[i]._ew_shared) obj.material[i].dispose();
@@ -5693,7 +5702,7 @@ const ThreeRenderer = (function () {
             var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava', blood: 'blood' };
             /* mirrors of map.js liquidFamilyOf / _LIQUID_SPREADS — keep in sync */
             var _FLOW_FAM_OF = { water: 'water', deep_water: 'water', poison: 'poison',
-                                 poison_bog: 'poison', purple_bog: 'poison',
+                                 poison_bog: 'poison', purple_bog: 'poison', sludge: 'poison',
                                  swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
             var _FLOW_RANGE = { water: 3, poison: 3, oil: 3, lava: 2, blood: 3 };
             var _noRaycast = function() {};
@@ -36621,7 +36630,7 @@ const ThreeRenderer = (function () {
                      THE DULL LIQUIDS (11-12) add [.., highlight colour, highlight width (shininess), ripple depth, sky sheen]: each
                      liquid's highlight is a dim shade of itself (water's is 0xb4c4c8 / 140 / 0.05 / 1) */
                   liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a, 0x1c2a12, 30, 0.016, 0.3], poison_bog: [0x6a7a26, 0.92, 0x141c08, 0x20240f, 30, 0.016, 0.3],
-                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
+                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], sludge: [0x4fb80e, 0.94, 0x2c7a06, 0x5aa01c, 26, 0.02, 0.2], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
                              oil: [0x14120e, 0.96, 0, 0x22252c, 40, 0.012, 0.3], blood: [0x6a1014, 0.95, 0x1a0204, 0x2a1012, 30, 0.014, 0.25] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
@@ -53818,7 +53827,7 @@ const ThreeRenderer = (function () {
         _fieldInstDrop();   // THE PERF PASS: the fight's batches go before their room
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null; _nearOccGroup = null; _occFieldDrop();
-        try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took
+        try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took   // (THE PARKED ROOM is NOT let go here: map.js puts the board away just before the way back's enter; _hqEnter lets it go when the entry is not the way back into it)
         if (_arenaRuinsGroup) { if (scene) scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
         _arenaRuinsGroup = null; _arenaRuinsKey = '';
         _envGroup = _envGround = _envWall = _envDome = null; _envInited = false;
@@ -90645,7 +90654,7 @@ const ThreeRenderer = (function () {
            drops its card after HQ_SETTLE_CAP_MS (and HQ_SETTLE_CAP_FRAMES drawn frames) of settling, with a console line.
        (3) The walk back from a fight (no card: opts.arrive) settles nothing, as before. Off: window.EW_HQ_NO_SETTLE. */
     var HQ_GATE_CAP_MS = 75000, HQ_GATE_HARD_MS = 600000, HQ_SETTLE_FRAMES = 8, HQ_SETTLE_MS = 500, HQ_SETTLE_CAP_MS = 30000, HQ_SETTLE_CAP_FRAMES = 300, HQ_SETTLE_REWARM = 3;
-    function _hqSettleOff(H) { return (typeof window !== 'undefined' && !!window.EW_HQ_NO_SETTLE) || !!(H.opts && H.opts.arrive); }
+    function _hqSettleOff(H) { return (typeof window !== 'undefined' && !!window.EW_HQ_NO_SETTLE) || !!(H.opts && H.opts.arrive) || !!H._resumed; }
     /* what has reached the card and what is still held back: a frame in which this does not change brought nothing new */
     function _hqSettleSig() {
         var a = [];
@@ -91491,6 +91500,7 @@ const ThreeRenderer = (function () {
             var ms = Array.isArray(o.material) ? o.material : [o.material];
             var cl = ms.map(function (m) { var q = m.clone(); q.transparent = true; return q; });
             o.material = Array.isArray(o.material) ? cl : cl[0];
+            if (o._ew_parkClone) o._ew_parkOwnMat = true;   // THE PARKED ROOM: the fading ceiling's looks are the copy's own
             Array.prototype.push.apply(st.ceil.mats, cl); st.ceil.parts.push(o);
         });
     }
@@ -91770,6 +91780,7 @@ const ThreeRenderer = (function () {
         _fdM = _fdM || new THREE.Matrix4(); _fdInv = _fdInv || new THREE.Matrix4(); _fdV = _fdV || new THREE.Vector3();
         m.updateWorldMatrix(true, false);
         var mw = m.matrixWorld;
+        if (m._ew_parkClone && !m._ew_parkOwnGeo && m.geometry) { m.geometry = m.geometry.clone(); m._ew_parkOwnGeo = true; }   // THE PARKED ROOM: the walk's floor is not the fight's to dig
         /* a box room's floor is ONE quad — the first dig subdivides it (≈ four vertices a tile) in the same frame + UVs */
         var geo = m.geometry, prm = geo.parameters;
         if (prm && prm.width > 0 && prm.height > 0 && (prm.widthSegments || 1) < 4 && !m._ew_fieldOrigGeo) {
@@ -92858,7 +92869,7 @@ const ThreeRenderer = (function () {
        it wears (_liqBlendMat: the battle's animated fluid top — its waves, caustics, glints, tint, see-through alpha), its normals
        up like the sheet's so the light reads the same, a tile of sheet per square as above, and its sheet runs DOWN the face
        (_fieldFallTick moves the fall's own UVs; the shared material is never touched). */
-    var _FALL_FAM = { water: 'water', deep_water: 'water', poison: 'poison', poison_bog: 'poison', purple_bog: 'poison', swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
+    var _FALL_FAM = { water: 'water', deep_water: 'water', poison: 'poison', poison_bog: 'poison', purple_bog: 'poison', sludge: 'poison', swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
     var _fieldFalls = [];   // [{ uv attribute, base v's, speed }] — the falls' sheets running down (rebuilt with the skins)
     function _fieldFallTick(t) {
         for (var i = 0; i < _fieldFalls.length; i++) {
@@ -93212,7 +93223,8 @@ const ThreeRenderer = (function () {
         /* THE HAND-OVER (delivery 4): the walk's own groups, when the walk just left THIS room under true ground — no builder runs */
         var HR = _hqHandoverRules();
         var hand = (trueGround && HR.handover && _hqRoomHandover && _hqRoomHandover.roomId === R.roomId) ? _hqRoomHandover : null;
-        if (hand) { _hqRoomHandover = null; H.shellGroup = hand.shellGroup; H.doorGroup = hand.doorGroup; H.propGroup = hand.propGroup; H.fxPulse = hand.fxPulse.slice(); }
+        if (!hand && trueGround && HR.handover && _hqParked && _hqParked.roomId === R.roomId && !_hqParkOff()) { try { hand = _hqParkHand(_hqParked); } catch (ePH) { hand = null; console.warn('[HQ→battle] the parked room gave no copies — the room is built for the fight', ePH); } }   // THE PARKED ROOM: copies of what stands near the board
+        if (hand) { if (!hand._park) _hqRoomHandover = null; H.shellGroup = hand.shellGroup; H.doorGroup = hand.doorGroup; H.propGroup = hand.propGroup; H.fxPulse = hand.fxPulse.slice(); }
         else _hqHandoverDrop();
         _hq = H;
         try {
@@ -93295,6 +93307,7 @@ const ThreeRenderer = (function () {
            again in the fight's first frames. Now the pieces left behind wait until the kept ones are known, and only what no kept
            piece uses is disposed. As before: window.EW_FIELD_DISPOSE_ALL. */
         var heldOut = (typeof window !== 'undefined' && window.EW_FIELD_DISPOSE_ALL) ? null : [];
+        if (hand && hand._park) { try { _hqParkFill(hand, farOf); } catch (ePF) { console.warn('[HQ→battle] the parked room\'s copies failed', ePF); } }   // THE PARKED ROOM: the pieces in the radius, copied (the rest never leave the walk)
         take(H.shellGroup, false); take(H.doorGroup, false); take(H.propGroup, true);
         if (heldOut && heldOut.length) {
             var keepRes = new Set();
@@ -93304,10 +93317,13 @@ const ThreeRenderer = (function () {
             });
             var dispKeep = function (obj) {
                 if (obj.isCSS2DObject && obj.element && obj.element.parentNode) obj.element.parentNode.removeChild(obj.element);
+                if (obj._ew_parkClone) { /* THE PARKED ROOM: a copy owns nothing */ }
+                else {
                 if (obj.geometry && !obj.geometry._ew_shared && !keepRes.has(obj.geometry)) obj.geometry.dispose();
                 if (obj.material) {
                     var dm = Array.isArray(obj.material) ? obj.material : [obj.material];
                     for (var di = 0; di < dm.length; di++) if (dm[di] && !dm[di]._ew_shared && !keepRes.has(dm[di])) dm[di].dispose();
+                }
                 }
                 if (obj.children) for (var dc = obj.children.length - 1; dc >= 0; dc--) dispKeep(obj.children[dc]);
             };
@@ -93320,6 +93336,7 @@ const ThreeRenderer = (function () {
             var ms = Array.isArray(o.material) ? o.material : [o.material];
             for (var i = 0; i < ms.length; i++) {
                 var m = ms[i]; if (!m) continue;
+                if (hand && hand._park && (m._ew_hzNear !== true || ((m.blending === THREE.AdditiveBlending || m.isSpriteMaterial) && m.fog !== false))) { var pkS = hand._park.matSeen || (hand._park.matSeen = new Set()); if (!pkS.has(m)) { pkS.add(m); hand._park.mats.push([m, m.fog, m._ew_hzNear]); } }   // THE PARKED ROOM: the walk gets its looks back as it had them
                 m._ew_hzNear = true;   // the horizon's altitude fog leaves a near piece alone (the setting's rule)
                 if (m.blending === THREE.AdditiveBlending || m.isSpriteMaterial) { if (m.fog !== false) { m.fog = false; m.needsUpdate = true; } }
             }
@@ -93355,7 +93372,7 @@ const ThreeRenderer = (function () {
         var occF = trueGround ? _occFieldBuild(_facilityNearGroup, ts / C, HR) : null; if (!trueGround) _occFieldDrop();
         _fieldRoomStats = { room: R.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR.keepM, keepFarM: HR.keepFarM, handover: !!hand, trueGround: trueGround, kind: R.cave ? 'cave' : R.terrain ? 'terrain' : 'box',
                             blockers: occF ? occF.roots.length : null, merged: occF ? occF.skipped : null, sky: skyN };
-        console.log('[HQ→battle] ' + R.roomId + ': kept ' + kept + ' · culled ' + dropped + ' (props ' + culledProps + ' · scenery ' + culledScenery + ') · radius ' + HR.keepM + '/' + HR.keepFarM + ' m · ' + (hand ? 'handed over' : 'rebuilt') + ' · walls ' + Object.keys(walls).join('') + ' · ' + _fieldRoomStats.kind
+        console.log('[HQ→battle] ' + R.roomId + ': kept ' + kept + ' · culled ' + dropped + ' (props ' + culledProps + ' · scenery ' + culledScenery + ') · radius ' + HR.keepM + '/' + HR.keepFarM + ' m · ' + (hand ? (hand._park ? 'parked (' + (hand._park.copied | 0) + ' copies, ' + (hand._park.left | 0) + ' left in the walk)' : 'handed over') : 'rebuilt') + ' · walls ' + Object.keys(walls).join('') + ' · ' + _fieldRoomStats.kind
             + (occF ? ' · blockers ' + occF.roots.length + ' (' + occF.skipped + ' merged out)' : '') + (skyN ? ' · sky ' + skyN : ''));
     }
 
@@ -95826,6 +95843,7 @@ const ThreeRenderer = (function () {
         if (_hq) { _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
         _hqHandoverDrop();   // THE HAND-OVER: a stash the battle never took
         if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
+        if (_hqParked && (_hqParked.roomId !== (opts.room || 'central_egress') || opts.from !== 'return' || _hqParkOff() || !D.rooms[_hqParked.roomId])) _hqParkDrop();   // THE PARKED ROOM: not the way back into it
         /* THE BODIES CARRY OVER (2026-10-25): bodies parked for a fight that never took them go; coming back from a fight, the
            viewer's standing units park theirs for the walk (the walker takes its own body back when it is the one the walk lent) */
         _rigCarryDrop();
@@ -95841,6 +95859,11 @@ const ThreeRenderer = (function () {
         }
         var room = D.rooms[opts.room || 'central_egress'];
         if (!room) return false;
+        if (_hqParked) {   // THE PARKED ROOM: the way back resumes the walk the fight left standing
+            var PK = _hqParked;
+            try { if (_hqResume(PK, opts, room)) return true; } catch (eR) { console.error('[HQ] the parked room could not be resumed — it is built again', eR); }
+            _hq = null; _hqParked = PK; _hqParkDrop();
+        }
         var U = _hqUnits(), S = room.shell;
         _hq = Object.assign({
             opts: opts, host: opts.host, profile: opts.profile || null,
@@ -96240,6 +96263,174 @@ const ThreeRenderer = (function () {
                  blockerM: (g.blockerM > 0) ? +g.blockerM : 2.5, occRefreshS: (g.occRefreshS > 0) ? +g.occRefreshS : 2,
                  staticShadow: g.staticShadow !== false && !W.EW_HQ_NO_STATIC_SHADOW, roomSky: g.roomSky !== false && !W.EW_HQ_NO_ROOM_SKY };
     }
+    /* ══ THE PARKED ROOM (2026-11-16, mondo: "why does a fight rebuild everything? its supposed to be a seamless transition ...
+       make it seamless. stop the pointless rebuilds") ══
+       A fight in the room being walked used to END the walk: every merged piece handed back, the room's groups given to the
+       fight, which kept what stood near the board and DISPOSED the rest (the city: ~2,100 of ~16,600 pieces), and the way back
+       ran every builder and merged the room again. Now, in a big room (THE CHUNKS' rule) that is ready, the walk is PARKED:
+       its record, its scene, its merged squares, chunks, instance pass and doors stay exactly as they are, undrawn. The fight
+       builds its room from COPIES of the pieces inside its radius (same geometry, same looks: nothing is uploaded again; a
+       copy is marked `_ew_parkClone` and its disposal frees nothing the walk owns). The way back RESUMES the parked record:
+       no builder runs, nothing is merged, only the people are placed again (the fight carried their bodies) and the room's
+       gate runs once more for them. A parked room nobody comes back to (another room, the menu) is torn down as a left room
+       always was. Off: window.EW_HQ_NO_PARK = true (the old hand-over and the old way back). */
+    var _hqParked = null;   // { H, roomId, hfog: [x, y, z, w], ao, at, mats: [[material, fog, hzNear]] }
+    var _HQ_PARK_SKIP = /^_ew_(b[A-Z]\w*|bv|bun\w*|ck\w*|st|chunk|pChunk|pcBld|sCell|dChunk|noDChunk|inst\w*|noInstance|lod\w*|reach\w*|mk\w*|rch\w*|sh[SCV]|hero\w*|rigMask|fbHost|noBatch|still\w*|parkClone)$/;
+    function _hqParkOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_PARK; }
+    function _hqParkOk(H, opts) {
+        try { return !!(opts && opts.handover && !_hqParkOff() && H && H.scene && H.ready && !H.ghost && _hqHandoverRules().handover && (!H.stage || (typeof window !== 'undefined' && !!window.EW_HQ_PARK_STAGE))); } catch (e) { return false; }   // EVERY room of any size (mondo 11-16: "why not small rooms too? the fix needs to be game wide"). A room with joined neighbours (the stage: the HQ wings, the plot dungeons) keeps the old hand-over until its copies (written: _hqParkPieces reads the parts through their roots) are proven in a fight: window.EW_HQ_PARK_STAGE = true tries them
+    }
+    /* a copy of a room piece for the fight: the three.js clone (same geometry, same materials), the piece's own flags, none of
+       the walk's bookkeeping (the merge's hide, the chunk, the instance pass, the LOD level) */
+    function _hqParkClone(o) {
+        if (!o || o._ew_hqBatch || o._ew_hqInst || o.isCSS2DObject) return null;   // a merged / instanced draw mesh is the walk's; a DOM plate is the walk's
+        var c, ud = o.userData;
+        try { o.userData = {}; c = o.clone(false); } catch (e) { c = null; } finally { o.userData = ud; }
+        if (!c) return null;
+        c.userData = ud;
+        for (var k in o) { if (k.charCodeAt(0) === 95 && k.indexOf('_ew_') === 0 && !_HQ_PARK_SKIP.test(k) && Object.prototype.hasOwnProperty.call(o, k)) c[k] = o[k]; }
+        if (Object.prototype.hasOwnProperty.call(o, 'onBeforeRender')) c.onBeforeRender = o.onBeforeRender;
+        if (Object.prototype.hasOwnProperty.call(o, 'onAfterRender')) c.onAfterRender = o.onAfterRender;
+        if (Object.prototype.hasOwnProperty.call(o, 'raycast')) c.raycast = o.raycast;
+        c._ew_parkClone = true;
+        if (o._ew_bRec || o._ew_bAnc) c.visible = (o._ew_bv !== undefined) ? !!o._ew_bv : true;   // the merge hides its pieces behind a getter: the copy shows as the piece would
+        if (o._ew_instHidden) c.visible = true;                                                  // the instance pass draws this prop in the walk: the copy is the prop itself
+        if (o.isLight && o._ew_rigMask != null) c.layers.mask = o._ew_rigMask;                     // the light rig holds a lamp's layers at 0: the copy has its own
+        if (c.isMesh && c.geometry && c.geometry._ew_lodBase) c.geometry = c.geometry._ew_lodBase; // never a far level
+        if (o._ew_reflectOld) { c.material = o._ew_reflectOld; c._ew_reflectOld = null; }             // a mirror's target wears its own look in the fight (no mirrored render runs there)
+        c.frustumCulled = o.frustumCulled; c.matrixAutoUpdate = o.matrixAutoUpdate; c.matrixWorldAutoUpdate = true;
+        var ch = o.children;
+        for (var i = 0; i < ch.length; i++) { var cc = _hqParkClone(ch[i]); if (cc) c.add(cc); }
+        return c;
+    }
+    /* the room's pieces where the walk keeps them: the shell's children + the fence plots' and edge pieces' children (the
+       chunks hold them), the doors, the placements (in their prop chunks or still under the prop group) */
+    function _hqParkPieces(H) {
+        var out = { shell: [], door: [], prop: [], mats: null }, i, k;
+        /* THE STAGE: the drawn neighbours join the fight's room as the hand-over's flatten laid them: each piece through its part's root */
+        var st = H.stage;
+        if (st && st.parts) for (var sid in st.parts) {
+            var E = st.parts[sid]; if (!E || !E.attached || !E.P || !E.P.partRoot) continue;
+            var SM = E.P.partRoot.matrix, add = function (g, list) { if (!g) return; for (var q = 0; q < g.children.length; q++) { var pc = g.children[q]; if (pc._ew_pChunk) { for (var q2 = 0; q2 < pc.children.length; q2++) { list.push(pc.children[q2]); (out.mats || (out.mats = new Map())).set(pc.children[q2], SM); } } else { list.push(pc); (out.mats || (out.mats = new Map())).set(pc, SM); } } };
+            add(E.P.shellGroup, out.shell); add(E.P.doorGroup, out.door); add(E.P.propGroup, out.prop);
+        }
+        if (H.shellGroup) for (i = 0; i < H.shellGroup.children.length; i++) out.shell.push(H.shellGroup.children[i]);
+        if (H.chunks && H.chunks.cells) for (k in H.chunks.cells) { var g = H.chunks.cells[k]; if (g._ew_sCell) continue; for (i = 0; i < g.children.length; i++) out.shell.push(g.children[i]); }
+        if (H.doorGroup) for (i = 0; i < H.doorGroup.children.length; i++) out.door.push(H.doorGroup.children[i]);
+        if (H.propGroup) for (i = 0; i < H.propGroup.children.length; i++) {
+            var p = H.propGroup.children[i];
+            if (p._ew_pChunk) { for (var j = 0; j < p.children.length; j++) out.prop.push(p.children[j]); }
+            else out.prop.push(p);
+        }
+        return out;
+    }
+    /* park the walk (from _hqLeave, in place of the stash). `st` = what _hqLeave read before it reset the room's fog and AO */
+    function _hqParkStash(H, st) {
+        _hqHandoverDrop(); _hqParkDrop();
+        _hqParked = { H: H, roomId: (H.opts && H.opts.room) || 'central_egress', hfog: st.hfog, ao: st.ao, at: performance.now(), mats: [] };
+        return true;
+    }
+    /* tear a parked room down (nobody came back to it): what _hqLeave does to a room that is left */
+    function _hqParkDrop() {
+        var P = _hqParked; _hqParked = null; if (!P) return;
+        var H = P.H;
+        try { _hqChunkHome(H); } catch (e) {}
+        try { _hqBatchDropAll(H); } catch (e) {}
+        try { _hqLodReset(H); } catch (e) {}
+        try { _hqInstDrop(H); } catch (e) {}
+        try { _hqCullReset(H); } catch (e) {}
+        try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {}
+        try { _hqStageLeave(H); } catch (e) {}
+        try { H.chars.forEach(function (ch) { try { var rig = _unitModelRigs.get(ch.id); if (rig) { _unitModelRigs.delete(ch.id); _disposeModelRig(rig); } _modelAnimState.delete(ch.id); } catch (e) {} }); } catch (e) {}
+        try { for (var i = H.scene.children.length - 1; i >= 0; i--) { var c = H.scene.children[i]; H.scene.remove(c); _disposeR(c); } } catch (e) {}
+        try { _mmLeaveSweep(); } catch (e) {}
+        console.log('[HQ] the parked room ' + P.roomId + ' was let go');
+    }
+    /* the fight's stash from a parked room: empty groups now, filled with copies of the pieces in its radius by _hqParkFill */
+    function _hqParkHand(P) {
+        var H = P.H, sky = null;
+        try { if (H.sky && (H.sky.group || H.sky.landmarks)) sky = { group: H.sky.group ? _hqParkClone(H.sky.group) : null, landmarks: H.sky.landmarks ? _hqParkClone(H.sky.landmarks) : null }; } catch (e) { sky = null; }
+        return { roomId: P.roomId, shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), sky: sky, fxPulse: (H.fxPulse || []).slice(), at: performance.now(), _park: P };
+    }
+    function _hqParkFill(hand, farOf) {
+        var P = hand._park, PS = _hqParkPieces(P.H), n = 0, far = 0;
+        var fill = function (list, into) {
+            for (var i = 0; i < list.length; i++) {
+                var o = list[i];
+                if (o._ew_hqBatch || o._ew_hqInst) continue;
+                if (farOf(o)) { far++; continue; }   // past the fight's radius: it stays in the parked room, never copied
+                var c = _hqParkClone(o); if (c) { var sm = PS.mats ? PS.mats.get(o) : null; if (sm) c.applyMatrix4(sm); into.add(c); n++; } else P.failed = (P.failed | 0) + 1;
+            }
+        };
+        fill(PS.shell, hand.shellGroup); fill(PS.door, hand.doorGroup); fill(PS.prop, hand.propGroup);
+        P.copied = n; P.left = far;
+        return n;
+    }
+    /* the way back into a parked room: no builder, no merge. → true when the walk is running again */
+    function _hqResume(P, opts, room) {
+        var H = P.H, U = _hqUnits(), S = room.shell;
+        _hqParked = null;
+        _hq = H;
+        H.opts = opts; H.host = opts.host; H.profile = opts.profile || null;
+        H.keys = {}; H.drag = null; H.lastDragAt = 0; H.paused = false; H.snap = null; H.focus = null; H.dirty = true; H.targetKey = '';
+        H.t0 = performance.now(); H.lastMs = 0; H.firstFramed = false; H._holdT0 = null;
+        H.fp = false; H.cam = { yaw: 0, pitch: -0.24, dist: Math.min(3.6, Math.max(2.2, ((S && S.d) || 6) * 0.6)), init: false };   // the boom as an entry lays it (the strike's slide and the eye left the parked camera on the fight's pose)
+        H.ready = false; H.landed = false; H.landedAt = 0; H.settle = null; H._gateSig = null; H._gateAt = null; H._resumed = true;   // (the room is warm: the gate waits for the people's files only, never for a settle)
+        H.gate = _alGateOpen('room:' + (opts.room || 'central_egress')); H.playerAttached = false;
+        H.arrive = (opts.arrive && isFinite(+opts.arrive.x) && isFinite(+opts.arrive.z)) ? { eye: opts.arrive, ms: (isFinite(+opts.arrive.ms) && +opts.arrive.ms > 0) ? +opts.arrive.ms : HQ_RETURN_EASE_MS, t0: 0 } : null;
+        /* the door gun and the pair, as this entry's opts file them (the fight may have filled the bag: the capture choices, the strike gate); the doors standing in the room stay */
+        try {
+            if (H.portal) { H.portal.issued = !!(opts.portal && opts.portal.issued); H.portal.slot = (opts.portal && opts.portal.slot === 'b') ? 'b' : 'a'; H.portal.hold = null; H.portal.cross = null; H.portal.aim = null; }
+            if (H.gun) {
+                var gd = (opts.gun && opts.gun.door && opts.gun.door !== 'threshold' && typeof window !== 'undefined' && window.DOOR_GUN_DOORS && window.DOOR_GUN_DOORS[opts.gun.door]) ? opts.gun.door : 'threshold';
+                H.gun.door = gd; H.gun.wheel = null; H.gun.mDown = false; H.gun.aim = null;
+                H.gun.wedges = (opts.gun && Array.isArray(opts.gun.wedges)) ? opts.gun.wedges : null;
+                H.gun.cap = { choices: (opts.gun && opts.gun.capture && Array.isArray(opts.gun.capture.choices)) ? opts.gun.capture.choices : [], sel: 0 };
+                H.gun.strike = (opts.gun && opts.gun.strike) || null; H.gun.armAt = performance.now() + (((opts.gun && opts.gun.strike) || {}).armMs || 3000); H.gun.strikeAt = 0;
+            }
+        } catch (eG) {}
+        /* what the fight changed on looks the room shares with it: back as the walk had them */
+        try { (P.mats || []).forEach(function (r) { var m = r[0]; if (m.fog !== r[1]) { m.fog = r[1]; m.needsUpdate = true; } if (r[2] === undefined) delete m._ew_hzNear; else m._ew_hzNear = r[2]; }); P.mats = []; P.matSeen = null; } catch (e) {}
+        /* the room's air: _hqLeave cleared the height fog and the room-box AO for the fight */
+        try { if (P.hfog) { _EW_HFOG.x = P.hfog[0]; _EW_HFOG.y = P.hfog[1]; _EW_HFOG.z = P.hfog[2]; _EW_HFOG.w = P.hfog[3]; } _HQ_AO.w = P.ao; } catch (e) {}
+        if (H.sky) _horizonFogDirty = true;
+        /* the canvas, as an entry lays it */
+        var host = opts.host, w = host.clientWidth || 960, h = host.clientHeight || 540;
+        if (H.camera) { H.camera.aspect = w / h; H.camera.updateProjectionMatrix(); }
+        if (canvas.parentNode !== host) host.appendChild(canvas);
+        canvas.style.display = 'block';
+        if (css2dRenderer) { if (css2dRenderer.domElement.parentNode !== host) host.appendChild(css2dRenderer.domElement); css2dRenderer.domElement.style.display = ''; css2dRenderer.setSize(w, h); }
+        renderer.setSize(w, h);
+        if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
+        H.w = w; H.h = h;
+        /* the people: the fight carried their bodies, so every one is placed again (as a stage part does when it is re-peopled) */
+        try {
+            (H.chars || []).slice().forEach(function (ch) {
+                try { var rig = _unitModelRigs.get(ch.id); if (rig) { _unitModelRigs.delete(ch.id); _disposeModelRig(rig); } _modelAnimState.delete(ch.id); } catch (e) {}
+                try { if (ch.entry && ch.entry.group) { if (ch.entry.group.parent) ch.entry.group.parent.remove(ch.entry.group); _disposeR(ch.entry.group); } } catch (e) {}
+            });
+            var gone = new Set(); (H.chars || []).forEach(function (ch) { if (ch.entry && ch.entry.group) gone.add(ch.entry.group); });
+            H.blockers = (H.blockers || []).filter(function (b) { return !b.npc && !gone.has(b.obj); });
+            H.chars = []; H.player = null; H.rounds = null; H.roundsExits = null; H.roundsStops = null; H.nav = null;
+            if (H.res && H.res.list) H.res.list.forEach(function (s0) { s0.ch = null; s0.loading = false; s0.want = false; });
+        } catch (e) { console.warn('[HQ] the parked room\'s people could not be cleared', e); }
+        var _p3d = _hq3DOn();
+        try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); } finally { _hq3DOff(_p3d); }
+        try { _hqRideArm(opts); } catch (e) { console.error('[HQ] ride failed', e); }
+        try { _hqRefreshLamps(opts.profile || null); } catch (e) {}
+        var sp = room.spawn || { face: 0 };
+        H.cam.yaw = _hqRad(sp.face || 0);
+        (function (H0) { H0.clearPending = true; setTimeout(function () { if (_hq !== H0 || !H0.clearPending) return; H0.clearPending = false; try { _hqClearArrival(); } catch (e) {} }, 0); })(H);
+        H.hushUntil = performance.now() + 15000;
+        _hqBindInput();
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(S.look, room.label)); } catch (e) {}
+        try { var LRc = _hqLightRules(); if (document.body && document.body.dataset) document.body.dataset.cycle = LRc.cycle || 'day'; var bst = document.getElementById('boardStage'); if (bst && bst.dataset) bst.dataset.cycle = LRc.cycle || 'day'; } catch (e) {}
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setSsaoScale) ThreePost.setSsaoScale('hq', U); } catch (e) {}
+        renderer.setAnimationLoop(_hqFrameGuarded);
+        console.log('[HQ] resumed', P.roomId, '(parked ' + Math.round((performance.now() - P.at) / 1000) + ' s; the fight had ' + (P.copied | 0) + ' copies) — nothing built, nothing merged — chars:', H.chars.length);
+        return true;
+    }
     function _hqHandoverStash(H, opts) {
         _hqHandoverDrop();
         try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: the fences ride in the shell group again
@@ -96258,10 +96449,12 @@ const ThreeRenderer = (function () {
         var H = _hq; if (!H) return;
         try { _hqGrassDrop(); } catch (e) {}   // THE GRASS FIELD IN A WALKED ROOM: its cells leave with the room
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
+        var park = _hqParkOk(H, opts), parkSt = null;   // THE PARKED ROOM: the walk is kept whole for the way back
+        if (park) { try { parkSt = { hfog: [_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w], ao: _HQ_AO.w }; } catch (e) { park = false; } }
         try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setMotion) ThreePost.setMotion(0); } catch (e) {}   // THE THIRD PASS 6.4: the blur is the building's
-        try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {}   // 5.4: the mirrored targets
+        if (!park) { try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {} }   // 5.4: the mirrored targets
         try { if (H.gun && H.gun.wheel) { H.gun.wheel = null; var wEl = document.getElementById('hqWheel'); if (wEl) { wEl.classList.remove('open'); wEl.style.display = 'none'; wEl.innerHTML = ''; } } } catch (e) {}   // THE DOOR WHEEL: never left open over the next screen
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         /* THE LAST PICTURE IS THE MERGED ROOM'S (2026-11-16, mondo: "going into a fight ... frame rate drops to zero"; the cloud
@@ -96269,13 +96462,17 @@ const ThreeRenderer = (function () {
            room once more for its picture, and it did so AFTER the chunks went home and every merged piece was handed back, so
            that one draw was the whole city piece by piece (30,000 meshes, twice with the sun: one frame of 600 ms on his Mac).
            The picture is taken first now, through the same camera, of the same room still merged; then the pieces go back. */
+        if (!park) {
         try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: every fence back in the shell group, every group drawn
         try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): every merged piece handed back before anything takes the groups
+        }
         _hqUnbindInput();
         _hq = null;
+        if (!park) {
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: every mesh on its full geometry before the hand-over (the battle's camera is close)
         try { _hqInstDrop(H); } catch (e) {}   // THE INSTANCE PASS: the originals draw again before the hand-over / the disposal
         try { _hqCullReset(H); } catch (e) {}   // THE PORTALS (G1): every part drawn again before the hand-over / the disposal
+        }
         _hqFrameInfo = null; if (_fpsEl && !active) _fpsEl.style.display = 'none';   // the walk's readout leaves with the walk (the battle's activate shows its own)
         try { if (H.gate) H.gate.close(); } catch (e) {}
         try { _mqDropQueued(2); } catch (e) {}   // THE ASSET LEDGER: this room's unstarted background jobs (its population, a warm) are forgotten with it
@@ -96285,8 +96482,8 @@ const ThreeRenderer = (function () {
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE ONE BRIGHTNESS: same value; the building's auto-exposure eases off
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
-        try { _hqStageLeave(H); } catch (e) {}   // THE STAGE: the neighbours' gates, the detached parts
-        var handed = _hqHandoverStash(H, opts);   // THE HAND-OVER: the room's groups leave the scene before the disposal below
+        if (!park) { try { _hqStageLeave(H); } catch (e) {} }   // THE STAGE: the neighbours' gates, the detached parts (THE PARKED ROOM keeps its stage standing)
+        var handed = park ? _hqParkStash(H, parkSt) : _hqHandoverStash(H, opts);   // THE HAND-OVER: the room's groups leave the scene before the disposal below (THE PARKED ROOM: nothing leaves, nothing is disposed)
         /* characters: evict their rig-cache records (ids are ours) — into a fight, the bodies are PARKED for it (THE BODIES CARRY OVER) */
         var carryRigs = !!(opts && opts.handover);
         H.chars.forEach(function (ch) {
@@ -96296,7 +96493,7 @@ const ThreeRenderer = (function () {
                 _modelAnimState.delete(ch.id);
             } catch (e) {}
         });
-        try {
+        if (!park) try {
             for (var i = H.scene.children.length - 1; i >= 0; i--) {
                 var c = H.scene.children[i];
                 H.scene.remove(c);
@@ -96314,7 +96511,7 @@ const ThreeRenderer = (function () {
                 if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
             }
         } catch (e) {}
-        console.log('[HQ] left' + (handed ? ' (the room handed to the battle)' : ''));
+        console.log('[HQ] left' + (park ? ' (the room PARKED for the fight: nothing handed back, nothing disposed)' : handed ? ' (the room handed to the battle)' : ''));
         if (!handed && !(opts && opts.dissolve)) { try { _mmLeaveSweep(); } catch (e) { console.warn('[ThreeRenderer] the leave sweep failed', e); } }   // THE ROOM GIVES ITS FILES BACK WHEN YOU LEAVE
     }
     function _hqRefreshLamps(profile) {
