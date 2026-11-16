@@ -7,6 +7,8 @@
    and board roofs on the drift / the neck / the Adit, the Chimney (a 3.9 m brick stump with a ladder under a lining with daylight), the raised portcullis.
    PASS 2, THE LANDMARKS' PIECES: the engine bay (a built firebox with a real fire, stores, lockers, a bench), the pump + valve on the Ledge, the anglerfish in
    the Sump, two boats, burial niches + a sarcophagus + a coffin in the Chimney's hall, the crystal seam, a body under the shaft, the Adit's ladders, lanterns.
+   PASS 3, THE DRESSING: about ninety small pieces by hand (fuel, shovels, dynamite, bones, a floater, frogs, tins, webs, bats), the camp under the Chimney, candles in
+   the niches, chains on the portcullis, a missing-persons board, six floor stains; four more residents (flesheater, swamp monster, zombie, ghost).
    Notes, the FITS THIS DISTRICT shortlist, NEEDS A MODEL and DECISIONS MADE FOR MONDO: docs/notes/areas-complexes.md "THE SEWERS, DISTRICT O". */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
@@ -109,12 +111,12 @@ module.exports = {
         const put = (key, id, fx, fy, face, o) => ctx.props.push(Object.assign({ key, x: X(id, fx), z: Z(id, fy), face: face || 0 }, o || {}));
         const dark = { noLight: true };   // a fire that keeps its glow but takes none of the room's ten real lights
 
-        /* ── PASS 2, THE LANDMARKS' OWN PIECES. The four REAL lights first (row order decides who is lit): the furnace, the Flood's
-           torch, the portcullis' torch, the crystal seam. ── */
+        /* ── PASS 2, THE LANDMARKS' OWN PIECES. The REAL lights first (the room has ten; after the cells' and the culverts' ceiling bulbs this
+           district's first two rows are lit: the hearth fire, the portcullis' torch; then, if any are left, the Flood's torch and the crystal seam). ── */
         /* THE ENGINE BAY (the north chamber's west end): the furnace that drove the pump, its stores */
         put('hearth_fire', A, 2.42, 3.5, 90); ctx.taken.add(ctx.sq(A, 2, 3).join(':'));   // in the brick firebox (build): the `door_furnace` model is 117 k triangles, the firebox is 60
-        P('cave_torch', A, 10, 10);
         P('cave_torch', B, 1, 4); P('cave_torch', B, 1, 6, dark);
+        P('cave_torch', A, 10, 10);
         P('crystal_cluster', B, 8, 8);
         P('cable_drum', A, 4, 2); P('psx_wooden_crate_2', A, 2, 2); P('platform_scale', A, 2, 4);
         put('locker', A, 3.3, 2.14, 180); put('locker', A, 3.62, 2.14, 180);
@@ -149,9 +151,47 @@ module.exports = {
         [[8.6, 5.6]].forEach((q, i) => put('skull', A, q[0], q[1], i * 100)); put('hw_part_3', A, 10.4, 8.3, 30); put('hw_part', B, 3.6, 7.5, 0);
         put('mushroom2', B, 2.3, 8.6, 0); put('mushroom2', B, 8.6, 5.4, 0); put('mushroom2', A, 10.6, 5.4, 0);
         ['psx_cobweb_2', 'psx_cobweb_1'].forEach((k, i) => { put(k, A, 2.2 + i * 8.5, 10.7, 0); put(k, B, 2.2 + i * 6.5, 8.75, 0); });
+
+        /* ── PASS 3, THE DRESSING: the small things, by hand. `lit` = decor that blocks nobody (the zone kit: a prop with a foot blocks
+           unless its row says noBlock). Cheap pack pieces first (the Meshy ones are 5 to 10 k triangles apiece). ── */
+        const lit = (key, id, fx, fy, face, o) => put(key, id, fx, fy, face, Object.assign({ noBlock: true }, o || {}));
+        /* the engine bay: fuel, nails, shovels, dynamite by the bench, coal bricks at the firebox */
+        lit('psx_jerrycan_1', A, 2.25, 4.35, 20); lit('psx_jerrycan_1', A, 2.5, 4.55, 75); lit('psx_supply_crate_1', A, 4.75, 2.9, 10); lit('psx_nails_1_rusty', A, 4.6, 4.55, 0, { y: 0.93 });
+        lit('hw_shovel', A, 3.3, 3.05, 40); lit('hw_shovel', A, 2.75, 2.75, 120); [[3.9, 4.75, 0], [4.02, 4.82, 60], [3.82, 4.86, 130]].forEach(q => lit('spell_dynamite', A, q[0], q[1], q[2]));
+        lit('hw_bricks', A, 2.9, 3.2, 0); lit('psx_brick_1', A, 3.2, 3.85, 50); lit('psx_brick_1_1', A, 2.7, 2.6, 15); lit('psx_wooden_crate_1', A, 2.75, 2.3, 30);
+        lit('psx_metal_barrel_mp_0', A, 7.62, 0.4, 0); lit('psx_wooden_crate_1', A, 5.3, 1.2, 60);
+        /* the Pump Ledge */
+        lit('psx_pipe_valve_holder_large_2', A, 10.5, 4.75, 0); lit('psx_jerrycan_1', A, 8.3, 4.2, 140);
+        /* the Flood's banks: a floater, bones, a fish's bones, frogs, cans, bottles */
+        put('hw_body', A, 8.3, 9.2, 200, { y: 0.52 }); lit('femur', A, 6.4, 5.6, 30); lit('ulna', A, 7.1, 5.72, 100); lit('hw_part_5', A, 2.6, 8.4, 0); lit('psx_fish_skeleton_mp_1', A, 6.6, 10.4, 20);
+        lit('meshy_frog', A, 5.2, 10.15, 10); lit('meshy_frog', A, 2.75, 7.3, 80); lit('psx_tin_can_mp_1_rusty', A, 9.3, 10.6, 0); lit('psx_glass_bottle_1', A, 10.6, 7.4, 0); lit('psx_glass_bottle_1', A, 7.9, 10.7, 90);
+        lit('psx_cardboard_box_1', A, 10.65, 9.3, 20); lit('psx_brick_1', A, 10.3, 6.3, 0); lit('hw_bricks_2', A, 2.4, 6.4, 30); lit('psx_wooden_crate_1', A, 8.9, 10.62, 12);
+        /* the drift */
+        lit('psx_wooden_crate_4', A, 1.5, 5.25, 8); lit('hw_shovel', A, 0.5, 5.3, 80); lit('psx_supply_crate_1', B, 11.3, 7.7, 30); lit('psx_brick_1_1', B, 9.7, 5.4, 70); lit('psx_tin_can_mp_1_rusty', B, 11.6, 5.3, 0);
+        P('missing_board', B, 9, 5, { face: 180 });
+        /* THE CAMP under the Chimney (who sleeps down here): a fire ring, mattresses, a chair, a pot, tins, bottles, a book */
+        P('campfire', B, 5, 7, dark); lit('psx_old_mattress_mp_1', B, 3.9, 7.5, 80); lit('psx_old_mattress_mp_1', B, 6.9, 7.3, 100); lit('psx_chair_mp_1', B, 5.9, 6.4, 200);
+        P('cauldron', B, 6, 8); lit('psx_tin_can_mp_1_rusty', B, 4.7, 6.5, 0); lit('psx_canned_food_mp_5_rusty', B, 4.4, 7.2, 0); lit('psx_glass_bottle_1', B, 6.6, 6.8, 30); lit('psx_glass_bottle_1', B, 3.7, 6.8, 120);
+        lit('psx_open_book_mp_1', B, 4.2, 7.9, 40); lit('psx_wooden_crate_1', B, 6.75, 7.9, 20); lit('psx_cardboard_box_1', B, 3.4, 8.3, 0);
+        /* the niches: candles, bones, straw, a rusted sword */
+        [[2.6, 3.45], [3.5, 3.4], [7.5, 3.4], [8.4, 3.45]].forEach((q, i) => lit(i % 2 ? 'hw_candles' : 'hw_candles_2', B, q[0], q[1], i * 50));
+        lit('femur', B, 3.1, 3.6, 70); lit('ulna', B, 7.9, 3.7, 10); lit('skull', B, 2.75, 4.8, 100); lit('psx_sword_mp_1', B, 3.2, 4.3, 140); lit('hw_bricks', B, 8.3, 4.9, 0);
+        /* the portcullis: chains on its frame, a lock on the floor */
+        put('wall_chains', B, 0.56, 4.95, 90); put('wall_chains', B, 0.56, 6.05, 90); lit('psx_padlock_2', B, 1.4, 5.3, 0); lit('femur', B, 1.6, 6.2, 60);
+        /* the Adit's foot */
+        lit('psx_metal_barrel_mp_3', B, 7.6, 11.5, 0); lit('psx_wooden_crate_5', B, 4.5, 9.3, 5); lit('hw_shovel', B, 6.9, 10.6, 20); lit('psx_brick_1', B, 5.6, 11.2, 0); lit('meshy_rope', B, 6.6, 11.55, 0);
+        /* webs on the timber, bats under the boards and round the shaft's lip */
+        [[A, 5.2, 0.95], [A, 0.5, 5.2], [B, 10.5, 7.8], [B, 4.2, 9.1], [B, 7.8, 10.9]].forEach((q, i) => lit(['hw_web', 'hw_web_2', 'hw_web_3'][i % 3], q[0], q[1], q[2], i * 90, { y: 2.3 }));
+        [[B, 4.9, 4.1, 6.3], [B, 6.1, 4.9, 6.35], [B, 5.6, 3.95, 6.3], [A, 1.2, 6.9, 3.5], [A, 6.2, 1.7, 3.5], [B, 5.5, 9.6, 3.6], [A, 9.2, 6.4, 7.5], [A, 3.4, 9.3, 8.2]].forEach((q, i) => lit(['bat_black', 'bat_brown', 'bat_grey'][i % 3], q[0], q[1], q[2], i * 47, { y: q[3] }));
+        /* floor stains (the room draws 80; this district adds six) */
+        ctx.grime('scorch', A, 3, 3, 1.5); ctx.grime('scorch', B, 5, 7, 1.6); ctx.grime('blood', B, 2, 7, 1.2); ctx.grime('blood', B, 6, 5, 1.3); ctx.grime('puddle', A, 6, 10, 1.6); ctx.grime('puddle', B, 5, 10, 1.4);
     },
     people(ctx) {
-        const O = ctx.O.workings, stand = (race, id, k) => { const q = nth(ctx.inner(id), k); if (q) ctx.native(race, id, q[0], q[1], 90, ctx.sayOf(O, race)); };
-        ctx.native('ghoul', 'P01-01', 7, 2, 90, ctx.sayOf(O, 'ghoul')); ctx.native('skeleton', 'P00-01', 4, 6, 20, ctx.sayOf(O, 'skeleton'));   // by the Sump ("do not wade the sump"), under the Chimney ("there is daylight down the chimney")
+        const O = ctx.O.workings;
+        /* the old room's two, with their own lines: by the Sump ("do not wade the sump"), under the Chimney ("there is daylight down the chimney") */
+        ctx.native('ghoul', 'P01-01', 7, 2, 90, ctx.sayOf(O, 'ghoul')); ctx.native('skeleton', 'P00-01', 4, 6, 20, ctx.sayOf(O, 'skeleton'));
+        /* PASS 3 (mondo 11-16: more NPCs, none blocking a path): four more who fit, in the halls, never on a walk a square wide. No lines: none are invented.
+           The plan's homes table names the Flesheater and the Swamp Monster for the Sewers. */
+        ctx.native('flesheater', 'P01-01', 3, 3, 270); ctx.native('swamp monster', 'P01-01', 1, 7, 90); ctx.native('zombie', 'P00-01', 7, 6, 250); ctx.native('ghost', 'P00-01', 3, 3, 180);
     },
 };
