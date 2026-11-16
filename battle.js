@@ -13907,6 +13907,79 @@
         window._settleBankOnDeath = _settleBankOnDeath;
         /* 🐊 THE SEWER GATOR (2026-11-16, the new races): the liquids it hides in, Submerge's surfacing and Death Roll's drag.
            Host-side like every spell; positions + statuses state-sync to the guest, the floating text relays. */
+        /* 🎩 THE MAGICIAN (2026-11-16, the new races; mondo added it): one trick set face down (STATUS_DEFS.trickSet; which one =
+           unit._trick, written to the owner's seat only, the other side sees "Trick Set"). Each springs once:
+           doves  — the next enemy spell aimed at a square with one of his team on it fizzles into doves (doSpell, _magicianDoves),
+           vanish — the next enemy that ends a move beside him finds him gone: he reappears up to 4 squares away (finishMoveAt),
+           switch — the next enemy hit on an ally lands on his box: the ally and the Magician trade squares, no damage (applyDamageToUnit).
+           Host-side; positions + statuses state-sync, floating text relays. */
+        function _magicianWith(trick, player, notId) {
+            return (state.units || []).find(m => m && !m.dead && !m._dying && m.player === player && m.id !== notId
+                && m._trick === trick && unitHasStatus(m, 'trickSet')) || null;
+        }
+        function _magicianSpring(m, label) {
+            clearStatus(m, 'trickSet');
+            delete m._trick;
+            showFloatingTextForUnit(m, `🎩 ${label}!`, 'buff', { durationMs: 1200 });
+        }
+        function _magicianDoves(caster, spell, x, y) {
+            if (!caster || !spell) return false;
+            const t = unitAt(x, y);
+            if (!t || t.dead || !isEnemyUnit(caster, t)) return false;
+            const hostile = (typeof spellHasDamage === 'function' && spellHasDamage(spell)) || spell.kind === 'debuff' || spell.type === 'debuff'
+                || spell.kind === 'pull' || spell.kind === 'possess' || spell.kind === 'steal';
+            if (!hostile) return false;
+            const m = _magicianWith('doves', t.player, null);
+            if (!m) return false;
+            _magicianSpring(m, 'DOVES');
+            caster.mp = Math.max(0, (caster.mp || 0) - getSpellMpCostFor(caster, spell));
+            if (spell.cooldownRounds) { caster._spellCooldowns = caster._spellCooldowns || {}; caster._spellCooldowns[spell.id] = (state.round || 0) + spell.cooldownRounds; }
+            addLog(`🕊 ${_ctName(caster)} casts ${_ctSp(spell.name)} at ${_ctName(t)} — and it bursts into a flock of doves! ${_ctName(m)}'s trick.`);
+            if (typeof showFloatingTextAtTile === 'function') showFloatingTextAtTile(x, y, '🕊 DOVES', 'buff', { durationMs: 1200 });
+            spendAP(caster, spell.apCost || 1);
+            markDirty('hud', 'selectedUnit');
+            return true;
+        }
+        function _magicianVanish(mover) {
+            if (!mover || mover.dead) return;
+            const foe = mover.player === 1 ? 2 : 1;
+            for (const m of (state.units || [])) {
+                if (!m || m.dead || m._dying || m._trick !== 'vanish' || !unitHasStatus(m, 'trickSet') || !isEnemyUnit(mover, m)) continue;
+                if (Math.max(Math.abs(m.x - mover.x), Math.abs(m.y - mover.y)) > 1) continue;
+                let best = null;
+                for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > 4 || (!dx && !dy)) continue;
+                    const nx = m.x + dx, ny = m.y + dy;
+                    if (!isInside(nx, ny) || !canOccupy(nx, ny) || state.units.some(u => !u.dead && u.x === nx && u.y === ny)) continue;
+                    const d = Math.abs(nx - mover.x) + Math.abs(ny - mover.y);
+                    if (!best || d > best.d) best = { x: nx, y: ny, d };
+                }
+                if (!best) continue;
+                const fx = m.x, fy = m.y;
+                _magicianSpring(m, 'VANISHING ACT');
+                m.x = best.x; m.y = best.y;
+                if (typeof nearestWalkableZ === 'function') m.z = nearestWalkableZ(best.x, best.y, m.z);
+                animateDisplacement(m, fx, fy, best.x, best.y, 260);
+                addLog(`🎩 ${_ctName(mover)} reaches for ${_ctName(m)} — gone! It reappears at ${coordLabel(best.x, best.y)}.`);
+                resolveTileArrival(m, { via: 'displaced' });
+                void foe;
+            }
+        }
+        function _magicianSwitcheroo(target, src) {
+            if (!target || !src || !isEnemyUnit(src, target)) return false;
+            const m = _magicianWith('switch', target.player, target.id);
+            if (!m) return false;
+            _magicianSpring(m, 'SWITCHEROO');
+            const tx = target.x, ty = target.y, tz = target.z, mx = m.x, my = m.y, mz = m.z;
+            target.x = mx; target.y = my; target.z = mz;
+            m.x = tx; m.y = ty; m.z = tz;
+            animateDisplacement(target, tx, ty, mx, my, 260);
+            animateDisplacement(m, mx, my, tx, ty, 260);
+            addLog(`📦 Switcheroo! ${_ctName(src)}'s blow lands on an empty box — ${_ctName(target)} and ${_ctName(m)} have traded places.`);
+            showFloatingTextForUnit(target, '📦 SWITCHEROO', 'protect-block', { durationMs: 1100 });
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            return true;
+        }
         /* 💼 THE TECH CEO (2026-11-16, the new races; mondo added it): ownership of the board's objects. Three `cleanseArea` tile
            casts carry a flag each: `acquire` (every enemy-owned summon, deployed object, trap, bomb, mirror, ward or rune on the
            square now works for the CEO), `disrupt` (every enemy zone or timed terrain over the 3×3 changes hands), `layoffs`
@@ -41048,6 +41121,8 @@
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
 
+            // ── 🎩 Switcheroo: a Magician's box takes the next enemy hit on an ally ──
+            if (damage > 0 && opts.sourceUnit && !opts._chivalryRedirected && _magicianSwitcheroo(target, opts.sourceUnit)) return false;
             // ── Chivalry: a pledged knight dashes in and intercepts the next attack on their ward ──
             if (target._guardedBy && !opts._chivalryRedirected && damage > 0) {
                 const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
@@ -45968,6 +46043,7 @@
             // move takes it too; one still in the air only meets the gravity field.
             resolveTileArrival(unit, { via: 'move' });
             _skaterBankMove(unit, _originX, _originY, x, y, dist);   // 🛹 a straight roll banks Momentum
+            _magicianVanish(unit);   // 🎩 Vanishing Act: an enemy ended beside a Magician with it set
 
             if (!_wasAirborne) {
                 /* 🦴 Bone-pile looting — ending a move on an enemy's remains rifles
@@ -80877,6 +80953,7 @@
                 playErrorSfx();
                 return 0;
             }
+            if (canUnitAct(unit) && (unit.mp || 0) >= getSpellMpCostFor(unit, spell) && _magicianDoves(unit, spell, x, y)) return actionMs(600);   // 🎩 Doves
 
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('spell', unit, spell.id) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'spell', x, y, spellId: spell.id, spellName: spell.name });

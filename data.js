@@ -371,6 +371,7 @@ const FINISHERS = {
     'sewer gator':    { id: 'fin_sewer_gator', name: 'Down the Drain', glyph: '🐊', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'SEE YOU LATER', desc: 'The floor gives way to black water, the jaws come up under the victim, and it rolls them down into the dark.' },   // 2026-11-16 THE NEW RACES — borrows the Jaws staging
     'skater':         { id: 'fin_skater', name: '900', glyph: '🛹', type: 'human', sig: 'motionCarries', built: true, tagline: 'LAND IT', desc: 'Two and a half spins off the top of a vert ramp nobody built, and the board comes down on the victim\'s head.' },   // 2026-11-16 THE NEW RACES — borrows the politician\'s staging
     'tech ceo':       { id: 'fin_tech_ceo', name: 'Hostile Takeover', glyph: '💼', type: 'human', sig: 'motionCarries', built: true, tagline: 'WE ARE SO EXCITED TO ANNOUNCE', desc: 'The keynote stage drops from the sky, the slides say the victim has been acquired, and the whole crowd claps on cue.' },   // 2026-11-16 THE NEW RACES — a parody of the type, no real person
+    'magician':       { id: 'fin_magician', name: 'The Prestige', glyph: '🎩', type: 'human', sig: 'motionCarries', built: true, tagline: 'AND FOR MY FINAL TRICK', desc: 'A curtain drops over the victim, a drumroll, the curtain lifts, and there is nobody there at all.' },   // 2026-11-16 THE NEW RACES
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
     'dinosaur':       { id: 'fin_dinosaur', name: 'Extinction Event', glyph: '🦖', type: 'anomaly', sig: 'extinctionEvent', built: true, tagline: 'THAT ONE IS PERSONAL', desc: 'The asteroid that ended the dinosaurs is brought back and aimed at one unit.' },
@@ -2876,6 +2877,10 @@ const RACE_PROFILES = {
         label: 'Tech CEO',
         types: ['human']
     },
+    'magician': {   // 2026-11-16 THE NEW RACES (mondo added it to the picks)
+        label: 'Magician',
+        types: ['human']
+    },
     'politician': {
         label: 'Politician',
         types: ['human']
@@ -3756,7 +3761,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3891,6 +3896,7 @@ const RACE_CLASS = {
     'sewer gator': 'assassin',   // 2026-11-16
     'skater': 'assassin',   // 2026-11-16
     'tech ceo': 'specialist',   // 2026-11-16
+    'magician': 'specialist',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
     'dinosaur': 'bruiser',
@@ -4307,6 +4313,7 @@ const RACE_BASE_STATS = {
     'sewer gator':        { hp: 1250, mp: 120, atk: 168, def: 118, mdef:  58, int:  60, vision: 3, crt: 22, spd: 130 },   // 2026-11-16 THE NEW RACES — first pass between the reptilian and the sharkman
     'skater':             { hp: 1000, mp: 120, atk: 165, def:  85, mdef:  60, int:  55, vision: 3, crt: 24, spd: 150 },   // 2026-11-16 THE NEW RACES — first pass on the catgirl
     'tech ceo':           { hp: 1050, mp: 200, atk:  50, def:  95, mdef: 140, int: 175, vision: 3, crt: 18, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the men in black
+    'magician':           { hp: 1100, mp: 190, atk:  70, def:  95, mdef: 125, int: 170, vision: 3, crt: 22, spd: 115 },   // 2026-11-16 THE NEW RACES — first pass on the specialist median
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
     'dinosaur':           { hp: 1130, mp:  60, atk:  131, def:  125, mdef:  35, int:   11, vision: 4, crt: 15, spd: 160 },   // STATS24 PASS 2026-10-29: HP 1715→1500 (top race 3 runs: 60/67/82%); STATS25 PASS 2026-10-29: SPD 192→160 = move 5→4 (65% after the HP cut; 669 Cube damage a game, the most); STATS29 PASS 2026-10-30: ATK 197→160, HP 1500→1310 (57% over STATS27-29 (184 games); 612 Cube damage a game on ATK 197); STATS30 PASS 2026-10-30: HP 1310→1140, ATK 160→128 + raceQuake excluded (60% in STATS30; POWER -75; 63% then 60% in STATS29-30 after the ATK/HP cut; 577 Cube damage a game, the most: ATK + HP and the shared earth Quake excluded (RACE_SPELL_EXCLUDES)); STATS34 PASS 2026-11-01: HP 1140→920, ATK 128→105, DEF 185→125 (59.8% in STATS34 (107 games), 60.5% team-adjusted; POWER -70); LOOP PASS 1 2026-11-08: HP 920→1130, ATK 105→131 (41.9% in the 11-08 loop's baseline lab (105 games), 40.1% team-adjusted; POWER +67)
@@ -4458,6 +4465,7 @@ const RACE_PHYSIQUE = {
     'sewer gator':         { h: 2.10, w: 180 },   // 2026-11-16
     'skater':              { h: 1.68, w: 55 },   // 2026-11-16
     'tech ceo':            { h: 1.80, w: 75 },   // 2026-11-16
+    'magician':            { h: 1.82, w: 78 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
     'dinosaur':            { h: 4.50, w: 4000 },
@@ -10245,6 +10253,23 @@ const RACE_ABILITIES = {
           type: 'utility', kind: 'cleanseArea', range: 4, aoeRadius: 1, disrupt: true,
           desc: 'Moves fast and breaks their things. Every enemy zone or timed terrain over a 3×3 within 4 changes hands and works for your team. Cooldown: 2 rounds.' },
     ],
+    'magician': [
+        /* THE HIDDEN TRICK (2026-11-16, the new races; mondo added the Magician): one trick set face down at a time, in a fixed
+           order (Doves → Vanishing Act → Switcheroo → Doves…); his own side sees which, the other side only "Trick Set".
+           Rules: data.js STATUS_DEFS trickSet + battle.js _magicianDoves / _magicianVanish / _magicianSwitcheroo. */
+        { id: 'nrSleightOfHand', name: 'Sleight of Hand', tier: 1, families: ['stagemagic'], cost: 25, apCost: 1, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 0,
+          statusEffects: [{ id: 'trickSet', duration: 3 }],
+          desc: 'Sets a trick face down for 3 rounds; the enemy sees a trick is set, never which. The tricks come in turn: DOVES (the next enemy spell aimed at one of your team bursts into doves), VANISHING ACT (the next enemy that steps beside the Magician finds him gone, up to 4 squares away), SWITCHEROO (the next enemy hit on an ally lands on a box; the ally and the Magician trade places).' },
+        { id: 'nrPickACard', name: 'Pick a Card', tier: 2, families: ['stagemagic'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'pickedCard', duration: 2 }],
+          desc: 'Any card. Marks a Single Enemy within 4 for 2 rounds: every spell it casts costs 40 more MP. Cooldown: 2 rounds.' },
+        { id: 'nrSawInHalf', name: 'Saw in Half', tier: 3, families: ['stagemagic'], cost: 75, apCost: 1, spellType: 'human',
+          type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 1,
+          statusEffects: [{ id: 'broken', duration: 2 }],
+          desc: 'The classic, without the trick. Deals HEAVY magic damage to a Single Enemy beside the Magician and leaves it Broken (its passives off) for 2 rounds.' },
+    ],
     'politician': [
         { id: 'raceExecutiveOrder', tier: 3, noDamage: true, aoeRadius: 1, cooldownRounds: 2, families: ['politics'], spellType: 'human', name: 'Executive Order',
           type: 'debuff', cost: 35, range: 4, apCost: 1,
@@ -13788,6 +13813,29 @@ const STATUS_DEFS = {
         },
         onRemove(unit) { delete unit._momentum; }
     },
+    /* 🎩 TRICK SET (2026-11-16, the Magician's Sleight of Hand): which trick = unit._trick, in turn (unit._trickNext). The line
+       naming it goes to his own seat only (addLog seats); everyone else reads "Trick Set". Springs once (battle.js _magician*). */
+    trickSet: {
+        icon: '🎩', glyph: '🎩', short: 'TRK', label: 'Trick Set',
+        colorText: 'hiding a trick up their sleeve',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🎩', '#1c1428', '#eadcff', '#9a6ad4'),
+        onApply(unit) {
+            const order = ['doves', 'vanish', 'switch'], names = { doves: 'DOVES', vanish: 'VANISHING ACT', switch: 'SWITCHEROO' };
+            const i = Math.max(0, (unit._trickNext | 0)) % 3;
+            unit._trick = order[i];
+            unit._trickNext = (i + 1) % 3;
+            if (typeof addLog === 'function') addLog(`🎩 Your trick, face down: ${names[unit._trick]}.`, undefined, undefined, { seats: [unit.player] });
+        },
+        onRemove(unit) { delete unit._trick; }
+    },
+    pickedCard: {
+        icon: '🃏', glyph: '🃏', short: 'CRD', label: 'Picked a Card',
+        colorText: 'holding the Magician\'s card — every spell costs 40 more MP',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        mpCostDelta: 40,
+        iconSrc: createStatusIconDataUri('🃏', '#2a1c2a', '#ffe0f4', '#d45aa0')
+    },
     contract: {
         icon: '📜',
         glyph: '📜',
@@ -13987,6 +14035,8 @@ const STATUS_LIBRARY_DESCS = {
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
     submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
     momentum:  'Rolling: every square moved in a straight line banks a stack (up to 6). Board Slam spends them for damage. Fades a turn after the Skater stops.',
+    trickSet:  'A trick waits face down (Doves, Vanishing Act or Switcheroo, in turn). It springs once, on its cue.',
+    pickedCard: 'Holding the Magician\'s card: every spell it casts costs 40 more MP.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
     minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts, and harder to hit: it dodges basic attacks 25% of the time. Spells still always land.',
@@ -20049,6 +20099,7 @@ const EW_RACE_BIOMES = {
     'sewer gator': ['urban', 'underground_base'],   // 2026-11-16 — The Sewers (no unit of their own before it)
     'skater': ['urban'],   // 2026-11-16 — Disaster City, the Bayside skate park
     'tech ceo': ['urban', 'neon_city'],   // 2026-11-16 — Disaster City, Financial (the towers)
+    'magician': ['urban', 'neon_city'],   // 2026-11-16 — Disaster City, Entertainment (the casino stages)
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
     'gnome': ['inner_earth', 'forest'], 'kaiju': ['urban', 'deep_sea'], 'kraken': ['deep_sea'],
@@ -20688,6 +20739,7 @@ const RACE_TREE = {
     'sewer gator':   ['raceBite', ['raceApexRoar', 'raceSplash'], ['raceRot', 'raceFeralDive'], 'raceJurassicJaw'],   // 2026-11-16
     'skater':        ['raceSprint', ['raceNimbleDodge', 'racePopStageDive'], ['raceVault', 'racePopSpotlight'], 'rampage'],   // 2026-11-16
     'tech ceo':      ['raceTeslaTrap', ['raceMemoryLeak', 'freeEnergy'], ['raceBlueScreen', 'raceClassifiedWeapon'], 'raceSingularity'],   // 2026-11-16
+    'magician':      ['raceBorrowedClaw', ['raceShedSkin', 'raceCharm'], ['raceSkinSwap', 'racePopSpotlight'], 'raceMimicry'],   // 2026-11-16
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'dinosaur':      ['raceDinoTailWhip', 'raceApexCharge', ['groundSlam', 'raceApexRoar'], 'raceJurassicJaw'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -22613,6 +22665,16 @@ const SPELL_FAMILIES = {
         desc: 'Ownership as a weapon: buy out the enemy\'s things, break their zones and lay off what you no longer need.',
         unique: 'tech ceo',
         identity: { who: ['Tech CEO', 'Founder', 'Visionary'], adj: ['Disruptive', 'Venture-backed', 'Smug'], look: ['a black turtleneck', 'white sneakers', 'a very calm smile'], vibe: ['acquires whatever you build', 'lays off his own summons for a stage up'] }
+    },
+    stagemagic: {   // 2026-11-16 THE NEW RACES — the Magician's own
+        id: 'stagemagic',
+        name: 'Stage Magic',
+        glyph: '🎩',
+        color: '#5a2a6a',
+        kind: 'signature',
+        desc: 'Misdirection as a weapon: a trick waiting face down, a card that taxes every spell, and the saw.',
+        unique: 'magician',
+        identity: { who: ['Magician', 'Illusionist', 'Conjurer'], adj: ['Mysterious', 'Showy', 'Sly'], look: ['a top hat', 'tails with a red lining', 'white gloves'], vibe: ['always has something up his sleeve', 'is never where you swing'] }
     },
     politics: {
         id: 'politics',
@@ -24810,6 +24872,7 @@ const RACE_FAMILIES = {
     'sewer gator': ['sewerpredator', 'apexpredator', 'beastabilities', 'poison'],   // 2026-11-16
     'skater': ['skateboarding', 'athleticism', 'dirtyfighting', 'stagepresence'],   // 2026-11-16
     'tech ceo': ['disruption', 'advancedtechnology', 'computerhacking', 'artificialintelligence'],   // 2026-11-16
+    'magician': ['stagemagic', 'trickery', 'stagepresence', 'seduction'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
     'starfish': ['echinoderm', 'water', 'deepsea', 'healingmagic'],
@@ -25418,6 +25481,7 @@ const CAMPAIGN_RACE_PRICES = {
   'sewer gator': 500,   // 2026-11-16
   'skater': 500,   // 2026-11-16
   'tech ceo': 500,   // 2026-11-16
+  'magician': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
   'gangster': 200,
@@ -27400,7 +27464,7 @@ const DOOR_TEXT = {
         'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
-        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown',   // banker + sewer gator + skater + tech ceo 2026-11-16
+        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip',   // banker + sewer gator + skater + tech ceo + magician 2026-11-16
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',

@@ -138,6 +138,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/sewer_gator/', 'Assets/characters/races/sewer_gator/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/skater/', 'Assets/characters/races/skater/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/tech_ceo/', 'Assets/characters/races/tech_ceo/'],   // 2026-11-16 THE NEW RACES
+  ['Assets/Sprites/Races/magician/', 'Assets/characters/races/magician/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/fallenangel/', 'Assets/characters/races/fallenangel/'],
   ['Assets/Sprites/Races/firefighter/', 'Assets/characters/races/firefighter/'],
   ['Assets/Sprites/Races/flesheater/', 'Assets/characters/races/flesheater/'],
@@ -527,6 +528,7 @@ const RACE_SPRITE_GENDERS = {
   'sewer gator': 'male',   // 2026-11-16
   'skater': 'female',   // 2026-11-16
   'tech ceo': 'male',   // 2026-11-16
+  'magician': 'male',   // 2026-11-16
   'atlantean': 'both',
   'dinosaur': 'male',
   'dragon': 'male',
@@ -689,6 +691,7 @@ const _CHARACTER_SPRITES = {
   'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator.png`,   // 2026-11-16 — cut from its own model
   'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
+  'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
   // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
@@ -2416,6 +2419,13 @@ const RACE_MODELS_3D = {
   'tech ceo': {   // a parody of the type, no real person
     male: _mkUAL('tech_ceo', 'tech_ceo', {
       model: `${_S}/Races/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb`,
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
+  },
+  'magician': {   // top hat and tails
+    male: _mkUAL('magician', 'magician', {
+      model: `${_S}/Races/magician/male/Meshy_AI_magician_Running.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'magic',
     }),
@@ -6585,6 +6595,7 @@ const RACE_SPRITES = {
   'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator.png`,   // 2026-11-16 — cut from its own model
   'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
+  'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
