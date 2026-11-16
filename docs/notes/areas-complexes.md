@@ -4594,6 +4594,9 @@ sheep, rocks, an eagle. Cloud Line + the Grand Stair's foot: eight clouds on the
   snow tree zones and the Black Run wear them); the retro trees (`pine`, `tree_2`, `tree_3`) are 600 to 900. Count a file: read the GLB's JSON chunk and sum
   each primitive's index accessor `count / 3`.
 - Measure the frame rate on the LAST view of a probe run, after a 15 s view of the same place: the first seconds are before the models are in.
+- Tree kinds on snow: `pine` (a conifer, 600 triangles) and `xmas_snow_pine` / `_2` / `_3`. `tree_2` and `tree_3` are summer LEAF trees, wrong here.
+- An arch part with no `key` is an untextured shape (his rule: generated shapes are always textured): give every part a sheet (`marble_light` takes any tint).
+- A sign read from behind: the same `a.sign` again with `{ ry: 180 }` at the other face's z.
 - FPS in a probe: count requestAnimationFrame over 10 s at a fixed view and read `dev.renderer().info.render` (calls, triangles). The frame rate is the
   software GPU's (about 1.5): only good against the same view before the change.
 
@@ -4658,6 +4661,17 @@ list holds for the next passes, the models it needs. mondo 11-16: a second distr
     gone; `mobius_bar` and `round_table` left the Lodge for a built bar and pack tables. (5) One sign face for the district, `alfa`, cream on dark green;
     the plain boards SKI LODGE, RENTALS, TOP STATION, BOOT ROOM. (6) No real lights inside but the fire, for the frame rate. (7) The Top Station is the
     lift man's room with a first-aid bed (nobody had said what it holds).
+- **PASS 3, DRESSING** (3 of 5; seen on screen twice, 9 views; the three straight runs ridden again: no snag):
+  - K.js build, "THE DRESSING": `runBoard` (a named board on two posts, both faces, with the grade's mark: black diamond, blue square, green circle, orange
+    triangle for the park runs), `slow` (a yellow SLOW board), `fence` (the pack's `hw_fence`, two lengths to a square), `poles` (marker poles, one `hug` row a
+    run), `block` (a taken square + a ghost wall for a built thing), the tree lines, the yard's and the stations' props. `backBoard`: RENTALS and SKI LODGE on
+    the back walls, read from the runs.
+  - SEEN AND FIXED: `tree_2` and `tree_3` are summer leaf trees (the tree lines stood in green leaf on the first look): only `pine` and the three snow pines
+    now. The Slalom's gates were untextured shapes (`key: null`): they wear a sheet now.
+  - FPS (settled, the probe's software GPU; main brought other districts' work in between, so the triangle counts are the whole room's): the Lodge Yard
+    1.84 -> 1.98; inside the Lodge 1.30-1.56 -> 1.45. The Black Run's 24 snow pines became 8 snow pines + 16 retro pines to pay for the tree lines.
+  - DECISIONS MADE FOR MONDO, added: (8) the run boards carry the plots' own names and the usual piste marks. (9) Fences and SLOW boards where a run ends
+    behind a building, not a re-routed run (the heights are the tool's). (10) No snow guns, nets or ski racks: no model (NEEDS A MODEL), nothing stands in.
 - To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
   x 21.4, z -59.3 (the probe, 11-16).
 
