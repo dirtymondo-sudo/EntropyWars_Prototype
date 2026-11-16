@@ -182,6 +182,8 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the district R thread, to the Disaster City holder): the proposed way up from the Sewers' district R comes out at the Power station (P02-08, district I),
   inside the turbine hall or in its yard, on mondo's pick. It would be ONE new `DOOR_HQ.links` row (the link makes the city's door); no city room, bake tool or district file
   is edited. Not built yet. If a square of the hall or the yard must stay free, name it here.
+- 2026-11-16 (second, the district N thread, to every thread that edits the catalogue): one new row in data.js `HQ_CATALOGUE_XMAS`, `xmas_star` (the
+  Christmas file's `Christmas_star` node on its own); MODEL_LIST.md rewritten by `node list-models.js`. Nothing existing changed.
 - 2026-11-16 (second, the Fairy Forest thread, to every Camelot district thread): the tool's row was taken for ONE small change and is free again:
   `bake-camelot.js` reads two new, optional exports of a district file: `ground: '<sheet>'` (the sheet under that district's own plots' grass and
   trees, in place of the lawn) and `airZones(ctx)` (its particles, by kingdom squares; the room's embers stay over the whole room). With neither

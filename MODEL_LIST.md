@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 1026 |
+| Asset pack | yes | 1027 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -1812,7 +1812,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ocean_turtle | `Assets/world/packs/ocean/Turtle.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
 | ocean_whale | `Assets/world/packs/ocean/Whale.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
 
-### Christmas pack · Elbolilloduro — Asset pack (49)
+### Christmas pack · Elbolilloduro — Asset pack (50)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
@@ -1858,6 +1858,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | xmas_snowman | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_snowman_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman_01` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_snowman_3 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman_02` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_star | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_star` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_stocking | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_stocking` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_stocking_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_stocking_01` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_tree | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_tree` | Asset pack | Christmas pack · Elbolilloduro |
