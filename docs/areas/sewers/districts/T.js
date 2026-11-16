@@ -25,6 +25,7 @@ module.exports = {
         /* THE DEPOT: a train on each siding */
         [[5, 4], [5, 8]].forEach(q => { const s = ctx.sq('P04-03', q[0], q[1]); ctx.props.push({ key: 'track_bed', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), face: 90 }, { key: 'metro_car', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), face: 90 }); });
         ctx.plots.forEach((p, i) => { const cs = ctx.corners(p.id), q = nth(cs, i % 3); if (q && ctx.free(p.id, q[0], q[1])) ctx.P('cave_torch', p.id, q[0], q[1]);
+            for (let k = 1; k < cs.length; k += 4) { const q2 = cs[k]; if (ctx.free(p.id, q2[0], q2[1])) ctx.dec(['garbage_bag', 'psx_wooden_crate_1', 'psx_cobweb_1', 'metal_trash_can'][k % 4], p.id, q2[0], q2[1]); }   // the grime pass
             const dry = ctx.squares(p.id, 'o'); for (let k = 4; k < dry.length; k += 11) ctx.dec(k % 2 ? 'paper_sheet' : 'floor_stain', p.id, dry[k][0], dry[k][1]);
             const b = nth(cs, cs.length - 1); if (b && ctx.free(p.id, b[0], b[1]) && i % 2) ctx.P('traffic_barrel', p.id, b[0], b[1]); });
     },

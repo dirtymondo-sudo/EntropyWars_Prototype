@@ -5,7 +5,7 @@
    A plot's squares are local (lx, ly 0..11 from its north-west corner). ctx: P (a blocker on a square's middle), dec (decor, off centre),
    native (a bystander), feat (a terrain row), squares / corners / inner / walled (lists of local squares), plot[id].base (its floor, m).
    STANDS TODAY (build 4: the tool vaults every tunnel and roofs every plot; ctx.pier / ctx.ceil): torches on the bends, the Pump Room's boiler, the Junction's brazier + Healing Zone, the Inspection Gallery
-   on its step, barrels / grates / stains, the old room's four bystanders. NOT YET: pipes along the walls, graffiti, the Cistern's rail,
+   on its step, barrels / grates / stains, the old room's four bystanders. THE GRIME PASS: the tool lays slime lines, rusted mains, floor decals; here: rubbish in the bends, cobwebs, valves. NOT YET: graffiti, drips, the Cistern's rail,
    anything to look at in the 11 plain culvert plots' dead ends. */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
@@ -33,6 +33,13 @@ module.exports = {
             for (let k = 3 + (i % 4); k < dry.length; k += 9) { const q = dry[k]; ctx.dec(['floor_stain', 'paper_sheet', 'floor_drain', 'floor_stain'][(k + i) % 4], p.id, q[0], q[1]); }
             const tip = nth(ctx.corners(p.id), 1 + (i % 3)); if (tip && ctx.free(p.id, tip[0], tip[1]) && i % 2 === 0) ctx.P(i % 4 ? 'traffic_barrel' : 'cardboard_boxes', p.id, tip[0], tip[1]);
         });
+        /* THE GRIME PASS (mondo 11-16): rubbish washed into the bends and dead ends, cobwebs in the corners, a valve by the pumps */
+        const RUB = ['garbage_bags', 'garbage_bag', 'metal_trash_can', 'psx_metal_barrel_mp_1', 'psx_wooden_crate_3', 'garbage_bag', 'psx_metal_barrel_mp_3'];
+        ctx.plots.forEach((p, i) => { const cs = ctx.corners(p.id);
+            for (let k = 2 + (i % 3); k < cs.length; k += 4) { const q = cs[k]; if (ctx.free(p.id, q[0], q[1])) ctx.dec(RUB[(k + i) % RUB.length], p.id, q[0], q[1]); }
+            for (let k = 1; k < cs.length; k += 5) { const q = cs[k]; ctx.dec(k % 2 ? 'psx_cobweb_1' : 'psx_cobweb_2', p.id, q[0], q[1]); } });
+        ['P04-00', 'P03-00'].forEach(id => { const q = nth(ctx.walled(id), 2); if (q && ctx.free(id, q[0], q[1])) ctx.P('gate_valve', id, q[0], q[1]); });
+        ctx.grime('blood', 'P05-03', 4, 11, 1.3);
         /* the rooms */
         const pr = ctx.inner('P04-00'); { const q = nth(pr, Math.floor(pr.length / 2)); if (q) ctx.P('boiler', 'P04-00', q[0], q[1]); }
         { const w = ctx.walled('P02-02'); [2, Math.floor(w.length / 2), w.length - 3].forEach(k => { const q = nth(w, k); if (q && ctx.free('P02-02', q[0], q[1])) ctx.P('cave_torch', 'P02-02', q[0], q[1]); }); }   // the hall's own fires
