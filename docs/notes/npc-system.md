@@ -45,6 +45,27 @@ later an easy sheet for boss and scripted battles; the result is the blueprint f
   LIVES AT SOUTHSIDE APARTMENTS", lvl 42. NOT photographed: the prompt box itself (the probe's fresh profile did not draw it).
 - Not changed: XP, capture, the one-each list, the 8-body limit, online (story only, nothing on `state`).
 
+## DELIVERY 2 · THE VARIANTS (2026-11-16, live)
+
+- 84 residents where 44 stood: data.js `HQ_SPAWN_RULES.rooms[room].people` = rows `{ race, d, n, work, homes, patrol? }` ("n more of
+  this unit, of district d"). `hqSpawnExpand()` (runs once at load) writes each as a full row into `HQ_CITY_RESIDENTS.list` with `v`
+  (its letter: b, c, d ... per race) and `dist` (its district: its level and, later, its cap). Its day = a shift from `shifts`
+  (work 9 h at `work`, out in its district, 8 h asleep at a home from `homes`). Nothing else in the day code knows a variant.
+- Now in the city (PROPOSAL counts): Police Officer 7 (3 at the Police desk, 2 at Bayside's Police staging, 1 on the Hero Plaza beat),
+  Chef 7 (Community kitchen, Worker cafe, Student cafe, Coffee arcade, Restaurant court, Food hall x 2), Homosapien 9, Firefighter 3,
+  Gangster 3, Zombie 3, Hippie 3, and one more Conspiracy Theorist, Politician, Goblin, Professor, Clown, Mime, Bunny Girl,
+  Quarterback, Luchador, Marksman, Pirate. People per district: Southside 13, Bayside 12, Financial 11, University 10, Hero Plaza
+  10, Entertainment 9, Civic 7, Sports 7, Industrial 5.
+- **Superhero male + Superhero female** are two rows (`gender`), both level 50, both of the Superhero Tower; her day is a proposal
+  (asleep 8-15, the Hero plaza 16-20, patrols Hero Plaza by night).
+- three-renderer.js: ids `hq-res-<race>[-gender][-letter]`; a variant's gender and look are seeded by its id, and it may wear the
+  race's other model (`getRaceModelSkin` alts: the white officer for the cops).
+- The body limit is NOT changed (`drawn` 8 / `drawnLow` 4 / `bodies` 14): the street is fuller because more people are near you, at the
+  same number of rigs. Checked headless: all 84 build a 24 h day, 0 jumps. Seen in the browser (build 1ca2614 + this change): by the
+  Food hall 6 bodies within 70 m (2 Police Officers, 2 Pirates, 2 Hippies; 3 of them are new). A real FPS number cannot be taken in
+  the cloud browser (software GPU, 2 FPS): raising `drawn` waits for a reading on his machine (F3 on the walk).
+- Beds: a variant sleeps in a free bed of its home if there is one, else it goes in through the door (as before).
+
 ## The short table
 
 | # | He asked for | Today | Gap |
@@ -222,9 +243,14 @@ the same district and a shifted day (a cop on the day shift, one on the night sh
 7. **Spontaneous events, a prototype.** A gangster mugs you; a drive-by. Needs from him: what a mugging takes or starts (a fight?).
 8. **The blueprint.** The "add a zone" recipe here; the first other zone's table when he names it.
 
+## HIS ANSWERS, ROUND 2 (2026-11-16)
+
+- The holding tank is a NEW ROOM in DOOR HQ that has to be built; try BOTH a room you walk into and a menu at a counter, "to see
+  which one feels better". (DOOR HQ is the owner side's row: a board note before building in it.)
+- A mugging / a drive-by STARTS A FIGHT. Rare: "like once per hour of playing or something", enough to feel alive, never annoying.
+- A unique you only beat comes back after the 3 days like the others.
+
 ## F. STILL OPEN (his to answer)
 
-1. The level numbers per district and tier (the shipped ones are my proposal). The city's top level.
-2. A unique you only BEAT (no capture): back after the 3 days like the others? (Assumed yes.)
-3. The holding tank: which DOOR HQ room, and is it a room you walk into or a menu at a counter?
-4. A mugging / a drive-by: does it start a fight, take money, or both? How often?
+1. The level numbers per district and tier, and the counts per unit (the shipped ones are my proposal). The city's top level.
+2. `drawn` 8 → 12 bodies near you: worth it on his machine and his friend's PC? (An FPS reading on the walk decides.)
