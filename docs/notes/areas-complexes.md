@@ -4331,6 +4331,20 @@ natives and the marks are the same, and the feature and prop lists hold the same
 written before the Lodge and the Rental Hut (district K), because P runs first (its `texbuilding` row #228 -> #226, its `arch` row #285 -> #283, its 8
 props ahead of the Lodge's and the Rental Hut's 41). No row changed. The block's first comment line names the district files. No browser run (a no-change refactor).
 
+## THE NORTH POLE VILLAGE, THE DISTRICT THREAD — district N, pass by pass (2026-11-16, second side)
+
+File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`. Its header lists what stands, what is missing and the models it needs.
+- **THE FIRST LOOK** (playtest_city.js, 11 views): the sixteen cottages were one white town-house prop (`xmas_house`), wider than its 2 x 2 squares, so
+  neighbours cut into each other and nothing read as a North Pole; the Workshop's windows were olive (the glass sheet under a yellow tint); the Pole stood
+  on three black sea rocks; two squares by the north houses were cut off.
+- **PASS 1, EXTERIORS**: every run of the plan's `B` squares is a built, walked-in house (`COTTAGES`, one row a house: plot, squares, front, paint, opts
+  `front` = gable over the door, `chimney`, `porch`, `name`). Helpers in the file: `cottage` (the look), `pane` (a lit window: warm `marble_light` pane with
+  `glow`, white frame, shutters), `bulbs` (the lights along a front). Wall paint needs `gain` 1.7 on the brown board sheet or it reads black at night.
+  A board on a gable-front house hangs at z `d/2 + 0.86` (in front of the gable's overhang). Five plain boards: POST OFFICE, BAKERY, TOY SHOP, STABLE,
+  COAL (plain labels, waiting for mondo's word). The Workshop: white corner posts, candy posts at the door, its board, the same windows. The Pole: 6.4 m
+  of stripes, a gilt ball (`gold`), a stone ring. `tailor` opens the cut-off nook (0 squares unreached now). Seen on screen at HEAD 206518c.
+- To know: the cottages' insides are empty until pass 2. The gold diamond on the square is the site's PvP arena marker (the engine's), not the village's.
+
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
 mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
@@ -4781,6 +4795,26 @@ same (the whole file, so the Desert's room and the three insides).
    missing) in the same PR; lasting facts go in this file under your own heading.
 6. A piece that needs a model that does not exist: MODEL_LIST rule (list-models.js) + the catalogue row; the old literals the tool reads lines
    from (`carnival`, `site_prebuilt_area51_gate`, `site_prebuilt_area51_flightline`, `site_prebuilt_giza_plateau`) must stay in data.js.
+
+## THE DESERT, WESTERN TOWN — THE EXTERIORS PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/areas/desert/districts/W.js` changed, then a rebake.
+- **WHAT WAS WRONG (first probe):** the seven fronts were 24 to 28 m wide, dark barns with 20 m of sand between them; the mine was a concrete
+  culvert with a pipe and a hotel luggage cart; the canyon's cut end looked straight out at Giza; a gable roof stood out past each false front
+  and hid its name.
+- **THE TOWN NOW:** twelve fronts at 7 to 17.5 m, shoulder to shoulder in two rows, a plank boardwalk each side (`ctx.setPaint`, rows 21 and
+  26 in the home frame). The seven named buildings keep their plots; five small trades fill the rows: BLACKSMITH, BARBER, ASSAY OFFICE,
+  TELEGRAPH, UNDERTAKER (generic frontier trades; told to mondo). `western()` took two changes: `key` (the wall sheet; the church is stucco,
+  the plank sheet cannot be tinted white) and a roof behind a false front is lower than the front and stops at its back.
+- **THE MINE** is an `arch` row (`des:w:mine`): three timber sets, lagging, a dark back, a MINE board, rails and sleepers 15 m south to a
+  buffer. **BOOT HILL** has a ranch rail, a named timber gate (`des:w:boothill`), headstones and grave mounds from the PSX graveyard pack.
+- **THE CANYON** ends in a rock wall (a `plateau` 4 x 3 squares, 8.75 m) on Western Town's own squares: a box canyon.
+- **THE HORSE POND:** the layout's two `w` squares south of the well were never drawn; a `pool` stands there now.
+- **THE PROBE, WESTERN TOWN:** faces are compass degrees (0 looks north, 90 east). Room x = -84 + 3.5 x home square, z = -210 + 3.5 x home
+  square. Main Street's middle is z -126; a good street view is x 112, z -121, face 62, y 1.6. A cold run took 200 s, a warm one 60 s.
+  Swinging door leaves DO draw here (saloon, church, jail).
+- **NEEDS A MODEL:** the list in W.js's header (anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows,
+  prospector's tent, telegraph pole).
 
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
