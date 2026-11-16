@@ -49,8 +49,10 @@ const vnoise = (x, y, s) => { const ix = Math.floor(x), iy = Math.floor(y), tx =
 const MTN = 'site_prebuilt_shasta_mountains';
 
 /* the room past the plots (bake-disaster-city.js THE ROOM PAST THE PLOTS): 36 rows of squares north of the city, and the sheets their ground wears */
-exports.room = { north: H, zone: { floor: 'grass_rocky', cliff: 'rocks_5', path: 'dirt_2', pal: ['rocks_5', 'dirt_2', 'urban:ConcreteRoofBitumen1a', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'] } };
-const PAINT = { r: 'rocks_5', p: 'dirt_2', Y: 'urban:ConcreteRoofBitumen1a', f: 'urban:ConcreteSlab2a', B: 'urban:ConcreteSlab2a', m: 'marble_light', D: 'desert', z: 'desert', w: 'desert', h: 'obsidian', t: 'grass_2' };
+exports.room = { north: H, zone: { floor: 'grass_rocky', cliff: 'rocks_5', path: 'dirt_2', pal: ['rocks_5', 'dirt_2', 'urban:RoadGeneric1a', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'] } };
+/* (the roads: the old room painted them in the roof bitumen sheet; seen on screen beside the city's own road that was a pale band across the mountain road at the
+   city's line, so the Hills' roads wear the city's asphalt sheet now: one road from the Casino court to the canyon) */
+const PAINT = { r: 'rocks_5', p: 'dirt_2', Y: 'urban:RoadGeneric1a', f: 'urban:ConcreteSlab2a', B: 'urban:ConcreteSlab2a', m: 'marble_light', D: 'desert', z: 'desert', w: 'desert', h: 'obsidian', t: 'grass_2' };
 
 /* ══ the district's own board: its squares, and the helpers the old room's tool handed its district file (bake-mountains.js makeRoom, the same arithmetic) ══ */
 let R = null;
