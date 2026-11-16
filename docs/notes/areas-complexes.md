@@ -6238,7 +6238,16 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   (6) No new residents: the kingdom's AREA UNITS table decides who stands here and has no fairy folk; adding fairy, unicorn, gnome and
   mushroom girl to that table (or a table per district) is his call. (7) The knolls keep their plain names; the north one carries a great
   oak, the south one the crystals. (8) Two standing stones mark the Woods trail. (9) The air: violet motes + fireflies, spores, blue motes.
-- **WOULD DO NEXT**: the people (once the table is his); a willow and reeds at the pond when a model exists; sound (no hook); the ring's
+- **THE PEOPLE (mondo 11-16, after his look: "add fairy, unicorn, gnome, and mushroom girl to Camelot")**: data.js `HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom`
+  is its own table now (it was the old ward's by reference): the ward's 28 units + fairy, unicorn, gnome, mushroom girl, each at weight 3 (the
+  middle tier; the weight is my pick). The palace and the old rooms keep their tables. In the forest: the ring's fairy, a unicorn at the
+  spring, a mushroom girl in the mushroom glade, a gnome on the north knoll. ONE BODY A RACE A ROOM (the crowd ledger): the garden's fairy
+  and gnome are written first, so the forest's two carry `gender` (a row with a gender is a body of its own, as the priest and the nun are).
+  The room's cap is 14 bodies (`HQ_CROWD_RULES.areaMax`); it stands 12. SEEN: the unicorn and the mushroom girl as themselves. NOT SEEN IN A
+  PICTURE: the ring's fairy and the gnome (three probe views missed them). PROBE TIP: a person within 6 m straight ahead of the camera is
+  cleared out of the way (`HQ_CROWD_RULES.clear`): photograph people from 8 m or more, or off to one side.
+  The ring's harp IS a harp (seen close: strings); edge-on from the path it reads as a bar. Decision 6 above is superseded by this.
+- **WOULD DO NEXT**: a willow and reeds at the pond when a model exists; sound (no hook); the ring's
   harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
   forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.
 - **(THE VILLAGE'S) THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
