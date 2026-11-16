@@ -19,25 +19,38 @@
      P02-11  The Yard                       home squares x 24..36 · y 84..96
      P03-11  The Dry Lake, east             home squares x 36..48 · y 84..96
 
-   WHAT STANDS HERE TODAY:
-   - THE FENCE (P00-08 .. P03-08): chain-link traced by the TOOL from the layout's `f` squares (not this file). THE GATE (P00-08): the guard
-     post (walk-in, des:guardpost), flood masts, cameras, a cop car. The way in is the Highway's unsigned Exit 4, the base road (the tool's).
-   - THE DISH (P00-09). THE APRON (P01-09): three trucks, a bus, sandbags, a fire truck. THE TOWER (P02-09): the old flight line's own tower
-     rows, copied whole from the old `site_prebuilt_area51_flightline` literal (it must stay in data.js), a marksman up it.
-   - THE PENS (P03-09): four tanks between blast walls. RUNWAY 33 (P00-10 .. P02-10): dashes + threshold bars, a fighter jet, flood masts.
-   - THE CRATER (P03-10): a dip with the big saucer in it. THE DRY LAKE (P00-11, P03-11): lights, a tank.
+   WHAT STANDS HERE TODAY (after the EXTERIORS pass, 2026-11-16; seen in the browser):
+   - THE FENCE (P00-08 .. P03-08): the chain-link is the TOOL's (traced from the layout's `f` squares); this file adds its steel: a post a
+     square, the top rail, three wires, a WARNING plate every four squares (rows des:a51:fence_n / fence_e). The engine now draws a wall row
+     in a chain-link sheet see-through (three-renderer.js "THE CHAIN-LINK"); before, the fence was a solid checkered wall.
+   - THE GATE (P00-08): the guard post (walk-in, des:guardpost), two piers, two boom arms standing open, the stop bar, the four-line warning
+     board north of it (des:a51:gate), a watchtower (des:wt_gate). The way in is the Highway's unsigned Exit 4, the base road (the tool's).
+   - THE CANTONMENT (P01-08 south edge .. P02-08, squares y 56..62): BARRACKS A + B (Quonset huts, walk-in, des:barracks_a/b), the MESS HALL
+     (walk-in, des:mess), the FUEL DUMP (three tank containers in a concrete bund), a watchtower at the north-east corner.
+   - THE DISH (P00-09): the dish, the RADAR hut (walk-in, des:radar) with its whip mast, the white RADOME (solid, des:radome).
+   - THE APRON (P01-09): three trucks, a bus, sandbags, a fire truck. A concrete taxiway joins it to the runway (setPaint).
+   - THE TOWER (P02-09): the old flight line's deck + fire escape (walked, the marksman stands on it) inside a drawn FLIGHT OPERATIONS block,
+     and a round shaft 14 m tall with a dark glass cab, a gallery, an aerial (des:a51:tower; the old 7 m drum is the shaft's core, nobody
+     climbs it: the old ladder and the mast's rock needle are not carried over). The old `site_prebuilt_area51_flightline` literal must stay.
+   - THE PENS (P03-09): four tanks between concrete blast walls + a back wall. RUNWAY 33 (P00-10 .. P02-10): edge lines, dashes, threshold
+     bars, the numbers 33, a yellow taxi line, a fighter jet, flood masts. The hangar's apron is as wide as its door.
+   - THE CRATER (P03-10): a dip with the big saucer in it, a watchtower on the east fence. THE DRY LAKE (P00-11, P03-11): lights, a tank.
    - HANGAR 18 (P01-11): a SHUT shell (des:hangar), door `hangar` -> the room site_prebuilt_area51_hangar. THE YARD (P02-11): the White
      Rooms wing, SHUT (des:wing), door `ward` + the hidden `stormdrain` -> site_prebuilt_area51_ward.
    - THE INSIDES are this file's too (rooms(kit) below): HANGAR 18 (22 x 14 squares) and THE WHITE ROOMS (16 x 12, two floors).
-   - People: men in black (gate, apron), marksmen (gate, tower), a spy, a bligblog and a grey by the crater.
+   - People: men in black (gate, apron), marksmen (gate, the tower's deck), a spy, a bligblog and a grey by the crater.
 
-   KNOWN MISSING OR WRONG (from docs/notes/areas-complexes.md "THE DESERT ON PLOTS", "THE DESERT'S INSIDES", "THE LOOK PASS", "THE HIGHWAY"):
-   - Hangar 18 inside: the saucer on the floor under the catwalk was changed after the first look and NOT confirmed on screen (the probe crashed).
-   - The White Rooms crash the headless browser while the telepath stands in them: shoot the room with him out, ship it with him in.
-   - THE RIDGE (P01-08) and both Dry Lake plots are nearly empty. No barracks, no mess, no fuel dump, nothing walk-in on the base but the post.
-   - The tool keeps cacti out of the base and paints the base's own dirt inside the fence (room squares x < 45, y > 102).
-   - Not seen on screen since the blocks were moved apart (the same rows, shifted). Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS).
-   - No door leaf drew in the probe on any swinging door ("THE LOOK PASS": shared city-door code or the probe; check on a real machine first).
+   KNOWN MISSING OR WRONG:
+   - The four new walk-ins (both barracks, the mess, the radar hut) are EMPTY inside: the INTERIORS pass furnishes them.
+   - THE RIDGE (P01-08, the rock north of the fence) and both Dry Lake plots are nearly empty (the DRESSING pass).
+   - The White Rooms crash the headless browser while the telepath stands in them: not yet looked into (the INTERIORS pass).
+   - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS; outside the markers, not this file's).
+   - A plateau in this room draws as a mound (the ground is sampled every 1.75 m): anything raised needs a drawn skin 1.2 m wider than it,
+     and an `arch` row over raised ground needs `y: 0` or it stands on the plateau's top (the tower floated 7 m up without it).
+   FOUND AND CLOSED (11-16): "no door leaf drew in the probe" was the OLD probe: it took its picture before the leaf models were asked for.
+     Through probe-fast.js every leaf draws (Hangar 18: 13 door groups, 13 with a mesh; seen on screen). Nothing to fix in the door code.
+   NEEDS A MODEL (none in the catalogue; nothing stands in for them): a boom gate arm (drawn from boxes today), a windsock, a jeep / humvee,
+     a helicopter, a radar antenna that turns, a flag on a pole.
 
    THE HOOKS (bake-desert.js "THE DISTRICT FILES" has the whole list of what ctx holds; each hook is optional):
      buildings(ctx)  the walk-in / shut buildings: building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts) -> a handle (at, face, cx, cz)
@@ -53,29 +66,71 @@
    room square = home square + (0, 48). Keep to your own block; the tool warns about a row outside it.
    REBAKE: node bake-desert.js && node bake-desert-insides.js   (--dry-run prints the counts). Rules: docs/notes/areas-complexes.md "THE DESERT, THE DISTRICT FILES". */
 'use strict';
-let C, gx, gc, r2, feat, props, doors, npc, count, line, setRect, pen, building, put, SOLID, P, Pm, dec, native, rnd, sayOf, O_GIZA, O_GATE, O_LINE, O_CARN, U, WD, WD2, SHG, FLR, GLS, RIB, COR, CONC, PLAS;
-const bind = ctx => ({ C, gx, gc, r2, feat, props, doors, npc, count, line, setRect, pen, building, put, SOLID, P, Pm, dec, native, rnd, sayOf, O_GIZA, O_GATE, O_LINE, O_CARN, U, WD, WD2, SHG, FLR, GLS, RIB, COR, CONC, PLAS } = ctx);
-let POST, HANGAR, WING;
+let C, gx, gc, r2, feat, props, doors, npc, count, line, setRect, pen, building, sheet, setPaint, put, SOLID, P, Pm, dec, native, rnd, sayOf, O_GIZA, O_GATE, O_LINE, O_CARN, U, WD, WD2, SHG, FLR, GLS, RIB, COR, CONC, PLAS;
+const bind = ctx => ({ C, gx, gc, r2, feat, props, doors, npc, count, line, setRect, pen, building, sheet, setPaint, put, SOLID, P, Pm, dec, native, rnd, sayOf, O_GIZA, O_GATE, O_LINE, O_CARN, U, WD, WD2, SHG, FLR, GLS, RIB, COR, CONC, PLAS } = ctx);
+let POST, HANGAR, WING, BARR_A, BARR_B, MESS, RADAR;
+/* the base's own colours: desert tan walls, olive trim, dark steel. `gain` lifts a sheet the building tint would leave near black (seen 11-16) */
+const TAN = 0xd2c19a, TAN2 = 0xb8a67e, OLIVE = 0x66744e, STEEL = 0x3e4446, SLAB = 'urban:ConcreteSlab2a';
 exports.dice = 3180855558;
 
 exports.buildings = ctx => { bind(ctx);
     POST = building('guardpost', [4, 51, 6, 54, 'W'], 3.5, { leaf: 'leaf_window_medium', keyIn: CONC, floorIn: U('ConcreteSlab2a') }, (a, w, d, door) => {
         a.shell(w, 3.2, d, CONC, 0xb8b8b0, door); a.box(0, 3.2, 0, w + 1.4, 0.25, d + 1.4, COR, 0x8a8a86, { under: true });
         for (const x of [-3.2, 3.2]) a.box(x, 1.1, d / 2 + 0.06, 1.6, 1.2, 0.06, GLS, 0xa8c0d0);
-        a.sign('RESTRICTED AREA', 0, 2.55, d / 2 + 0.1, 6.0, 0.5, '#ffffff', '#a82a20', 'stencil'); });
+        a.sign('RESTRICTED AREA', 0, 2.55, d / 2 + 0.1, 6.0, 0.5, '#ffffff', '#a82a20', 'stencil');
+        for (const s of [-1, 1]) a.sign('AREA 51 · MAIN GATE', s * (w / 2 + 0.12), 2.5, 0, 5.2, 0.5, '#ffffff', '#23262b', 'stencil', { ry: s * 90 });                 // read from the road on both sides of the post
+        a.box(0, 0, 0, w + 0.5, 0.35, d + 0.5, null, 0xd8b020, { top: false }); });                                                                              // the yellow kerb round its foot
     HANGAR = building('hangar', [13, 86, 23, 94, 'N'], 14, SOLID, (a, w, d) => {
-        a.box(0, 0, 0, w, 10.5, d, RIB, 0x9aa0a0, { top: false, uv: [3.5, 3.5] }); a.roof('barrel', 0, 10.5, 0, w + 0.6, 5.6, d + 0.6, COR, 0x7c8484, { keyEnd: RIB, tintEnd: 0x9aa0a0 });
-        a.box(0, 0, d / 2 + 0.06, 24.5, 9.2, 0.1, COR, 0x5a6266, { uv: [3.5, 3.5] });                                                                       // THE BIG DOOR, shut: six leaves on a rail
+        a.box(0, 0, 0, w, 10.5, d, RIB, 0xb4bab8, { top: false, uv: [3.5, 3.5], gain: 1.7 }); a.roof('barrel', 0, 10.5, 0, w + 0.6, 5.6, d + 0.6, COR, 0x9aa2a2, { keyEnd: RIB, tintEnd: 0xb4bab8, gain: 1.6 });
+        a.box(0, 0, d / 2 + 0.06, 24.5, 9.2, 0.1, COR, 0x7a8488, { uv: [3.5, 3.5], gain: 1.5 });                                                                       // THE BIG DOOR, shut: six leaves on a rail
         for (let i = -3; i <= 3; i++) a.box(i * 4.08, 0, d / 2 + 0.13, 0.16, 9.2, 0.08, RIB, 0x3e4446);
         a.box(0, 9.2, d / 2 + 0.2, 26, 0.5, 0.5, RIB, 0x3e4446);
         a.sign('18', 0, 10.4, d / 2 + 0.2, 5.6, 3.6, '#f0f0f0', '', 'stencil', { kind: 'over' });
         a.sign('HANGAR 18', -14.6, 3.2, d / 2 + 0.08, 4.2, 0.6, '#f0f0f0', '#23262b', 'stencil');
         for (const s of [-1, 1]) for (let z = -d / 2 + 3.5; z < d / 2; z += 7) a.box(s * (w / 2 + 0.3), 0, z, 0.6, 10.5, 0.8, RIB, 0x7c8484);                // the frames down each side
-        for (const x of [-12, 12]) a.box(x, 14.2, 0, 1.4, 1.2, 1.4, COR, 0x5a6266, { roof: true }); });
+        for (const x of [-12, 12]) a.box(x, 14.2, 0, 1.4, 1.2, 1.4, COR, 0x5a6266, { roof: true });
+        a.box(0, 0, d / 2 + 0.2, 25.2, 0.5, 0.3, null, 0xd8b020);                                                                                                  // the door's yellow sill
+        for (const s of [-1, 1]) a.box(s * 12.9, 0, d / 2 + 0.16, 0.5, 9.2, 0.2, null, 0xd8b020); });                                                               // and its two yellow jambs
     WING = building('wing', [27, 89, 31, 93, 'N'], 5.25, SOLID, (a, w, d) => {
         a.box(0, 0, 0, w, 5.25, d, CONC, 0xe8e8e4, { top: false }); a.box(0, 5.25, 0, w + 0.6, 0.3, d + 0.6, CONC, 0xc8c8c4, { under: true });
         for (const x of [-5, 5]) a.box(x, 2.4, d / 2 + 0.06, 1.4, 0.7, 0.06, GLS, 0xf0f4f8, { glow: 0.7 });
         a.sign('PSYCHIATRIC', 0, 3.6, d / 2 + 0.1, 5.2, 0.6, '#23262b', '#f0f0ec', 'way'); });
+    /* THE CANTONMENT (the strip between the fence and the apron, EXTERIORS 11-16): two Quonset barracks, the mess hall. All walk-in. */
+    const quonset = (id, q, words) => building(id, q, 3.5, { leaf: 'leaf_security', keyIn: COR, floorIn: U('ConcreteSlab2a') }, (a, w, d, door) => {
+        a.shell(w, 2.4, d, COR, TAN, door, [3.5, 3.5]);
+        a.roof('barrel', 0, 2.4, 0, d + 0.5, 3.4, w + 0.5, COR, TAN2, { ry: 90, keyEnd: COR, tintEnd: TAN, gain: 1.3 });                                          // the ridge runs front to back: the door is in the round end
+        for (const s of [-1, 1]) for (let z = -d / 2 + 3.5; z < d / 2 - 1; z += 3.5) a.box(s * (w / 2 + 0.07), 1.1, z, 0.06, 0.8, 1.3, GLS, 0x9ab4c0);
+        a.box(door.lx, 0, d / 2 + 0.9, 3.4, 0.16, 1.8, CONC, 0xb0aca0);                                                                                                // the step
+        a.sign(words, 0, 2.75, d / 2 + 0.34, 4.6, 0.5, '#f0f0e8', '#3a4630', 'stencil');                                                                           // (in front of the roof's round end, which overhangs the wall)
+        for (const z of [-d / 4, d / 4]) a.cyl(0, 5.6, z, 0.3, 0.7, COR, STEEL, { roof: true }); });
+    BARR_A = quonset('barracks_a', [14, 56, 17, 62, 'S'], 'BARRACKS A');
+    BARR_B = quonset('barracks_b', [19, 56, 22, 62, 'S'], 'BARRACKS B');
+    MESS = building('mess', [25, 56, 31, 61, 'S'], 4.2, { leaf: 'leaf_wired_double', leafDouble: true, keyIn: PLAS, floorIn: U('TileGeneric1a') }, (a, w, d, door) => {
+        a.shell(w, 4.2, d, CONC, 0xe6d6ae, door); a.box(0, 4.2, 0, w + 1.2, 0.3, d + 1.2, CONC, TAN2, { under: true });
+        a.box(0, 0, 0, w + 0.14, 0.9, d + 0.14, null, OLIVE, { top: false, faces: 'blr' });                                                                      // the olive dado
+        for (const x of [-7.6, -4.6, 4.6, 7.6]) a.box(x, 1.3, d / 2 + 0.07, 2.0, 1.5, 0.06, GLS, 0x8aa4b0);
+        for (const s of [-1, 1]) for (let z = -5; z <= 5; z += 5) a.box(s * (w / 2 + 0.07), 1.3, z, 0.06, 1.5, 2.2, GLS, 0x8aa4b0);
+        a.sign('MESS HALL', 0, 3.2, d / 2 + 0.12, 6.4, 0.7, '#f0f0e8', '#3a4630', 'stencil');
+        a.box(0, 2.9, d / 2 + 1.0, 5.6, 0.14, 2.0, COR, OLIVE, { under: true }); for (const x of [-2.6, 2.6]) a.box(x, 0, d / 2 + 1.9, 0.14, 2.9, 0.14, null, STEEL);     // the porch roof on two posts
+        a.cyl(-6, 4.5, -4, 0.35, 1.6, COR, STEEL, { roof: true }); a.box(5, 4.5, -3, 2.2, 0.9, 1.6, COR, 0x8a9096, { roof: true }); });
+    /* THE DISH's own station: the radar hut (walk-in) and the white radome beside the road in */
+    RADAR = building('radar', [4, 64, 7, 67, 'S'], 3.5, { leaf: 'leaf_security', keyIn: CONC, floorIn: U('ConcreteSlab2a') }, (a, w, d, door) => {
+        a.shell(w, 3.5, d, CONC, TAN, door); a.box(0, 3.5, 0, w + 0.8, 0.25, d + 0.8, CONC, TAN2, { under: true });
+        a.sign('RADAR · STATION 4', 0, 2.6, d / 2 + 0.12, 5.0, 0.5, '#f0f0e8', '#23262b', 'stencil');
+        a.box(-3, 3.75, -2.5, 0.16, 6.5, 0.16, null, STEEL, { roof: true }); a.box(-3, 8.2, -2.5, 2.4, 0.08, 0.08, null, STEEL, { roof: true }); a.box(-3, 9.2, -2.5, 1.6, 0.08, 0.08, null, STEEL, { roof: true });   // the whip mast, two cross arms
+        a.box(-3, 10.25, -2.5, 0.25, 0.25, 0.25, null, 0xff3020, { glow: 1, roof: true });
+        a.box(3, 3.75, 2.4, 1.6, 1.0, 1.2, COR, 0x8a9096, { roof: true }); });
+    building('radome', [8, 71, 11, 74, 'S'], 8, SOLID, (a, w, d) => {
+        a.cyl(0, 0, 0, 4.9, 2.2, CONC, TAN, { seg: 20 }); a.dome(0, 2.2, 0, 4.9, 5.4, null, 0xf2f2ee); a.box(0, 0, 4.95, 1.3, 2.0, 0.1, RIB, STEEL);
+        a.sign('NO ENTRY', 0, 1.3, 5.02, 1.0, 0.3, '#ffffff', '#a82a20', 'stencil'); });
+    /* THE WATCHTOWERS: the gate, the north-east corner, the east fence. Solid on one square each (legs, a boarded cabin, a lamp). */
+    [['wt_gate', 6, 55], ['wt_ne', 43, 56], ['wt_e', 43, 82]].forEach(q => building(q[0], [q[1], q[2], q[1] + 1, q[2] + 1, 'S'], 9, SOLID, (a) => {
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * 1.4, 0, sz * 1.4, 0.24, 6, 0.24, null, STEEL);
+        for (const y of [2, 4]) { for (const sz of [-1, 1]) a.box(0, y, sz * 1.4, 2.8, 0.12, 0.12, null, STEEL); for (const sx of [-1, 1]) a.box(sx * 1.4, y, 0, 0.12, 0.12, 2.8, null, STEEL); }
+        a.box(0, 6, 0, 3.7, 0.2, 3.7, WD2, 0x6a5a44, { under: true }); a.box(0, 6.2, 0, 3.4, 1.05, 3.4, COR, OLIVE, { top: false, gain: 1.4 });
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * 1.6, 7.25, sz * 1.6, 0.14, 1.3, 0.14, null, STEEL);
+        a.roof('pyramid', 0, 8.55, 0, 4.4, 0.9, 4.4, COR, TAN2, { gain: 1.3 });
+        a.box(0, 0, 1.52, 0.55, 6, 0.06, RIB, STEEL); a.box(1.25, 7.3, 1.25, 0.5, 0.5, 0.5, null, 0xfff2c0, { glow: 1 }); }));
 };
 
 exports.furnish = ctx => { bind(ctx);
@@ -84,11 +139,11 @@ exports.furnish = ctx => { bind(ctx);
 
 exports.ground = ctx => { bind(ctx);
     /* RUNWAY 33's paint: the dashes and the threshold bars */
-    for (let x = 4; x < 40; x += 3) line(gx(x), gx(78), gx(x + 1.5), gx(78), 0.5, 0xf0f0f0);
+    for (let x = 13; x < 40; x += 3) line(gx(x), gx(78), gx(x + 1.5), gx(78), 0.5, 0xf0f0f0);   // (from the numbers on)
     for (let i = 0; i < 6; i++) line(gx(2.6), gx(76.4 + i * 0.6), gx(4.2), gx(76.4 + i * 0.6), 0.9, 0xf0f0f0);
     P('radiation_sign', 3, 53, { face: 0, y: 1.2 }); P('flood_mast', 3, 55, {}); P('flood_mast', 8, 55, {}); dec('traffic_barrel', 3, 50); dec('traffic_barrel', 0, 52); P('car_cop', 8, 52, { face: 180 }); P('car_suv', 10, 52, { face: 180 });
     P('security_camera', 7, 54, { y: 2.4, face: 0 }); P('security_camera', 30, 54, { y: 2.4, face: 0 }); P('flood_mast', 24, 55, {}); P('flood_mast', 44, 55, {}); P('roads_g_sign_005', 3, 48, { face: 180 });
-    Pm('dish', gc(9), gc(63), { h: 9 }); P('flood_mast', 6, 66, {});
+    Pm('dish', gc(9), gc(63), { h: 9 }); P('flood_mast', 7, 67, {});
     /* THE APRON: the old flight line's trucks, the bus, the sandbags, the fire truck */
     Pm('car_truck', gc(15), gc(64), { face: 90 }); Pm('car_truck', gc(15), gc(67), { face: 90 }); Pm('car_truck', gc(15), gc(70), { face: 90 }); Pm('school_bus', gc(20), gc(72), { face: 0 }); Pm('fire_truck', gc(33), gc(72), { face: 90 });
     [[19, 64], [19, 68], [23, 64], [23, 68]].forEach(q => Pm('meshy_sandbags', gc(q[0]), gc(q[1]), { h: 1.6 })); P('bus_shelter', 22, 74, { face: 180 }); P('flood_mast', 13, 63, {}); P('flood_mast', 34, 63, {}); P('flood_mast', 13, 74, {}); P('flood_mast', 34, 74, {});
@@ -98,15 +153,71 @@ exports.ground = ctx => { bind(ctx);
           ['x', 'x0', 'x1'].forEach(k => { if (typeof o[k] === 'number') o[k] = r2(o[k] + dx); }); ['z', 'z0', 'z1'].forEach(k => { if (typeof o[k] === 'number') o[k] = r2(o[k] + dz); });
           if (o.pts) o.pts = o.pts.map(p => [r2(p[0] + dx), r2(p[1] + dz)].concat(p.slice(2))); if (o.arc) { o.arc.x = r2(o.arc.x + dx); o.arc.z = r2(o.arc.z + dz); } return o; };
       const keep = O_LINE.f.filter(f => { const x = f.x != null ? f.x : f.x0 != null ? (f.x0 + f.x1) / 2 : f.pts ? f.pts[0][0] : f.arc ? f.arc.x : null, z = f.z != null ? f.z : f.z0 != null ? (f.z0 + f.z1) / 2 : f.pts ? f.pts[0][1] : f.arc ? f.arc.z : null;
-          return x != null && x > -31 && x < -3 && z > -22 && z < -11 && ['plateau', 'ramp', 'rail', 'climb'].indexOf(f.k) >= 0; });
+          return x != null && x > -31 && x < -3 && z > -22 && z < -11 && ['plateau', 'ramp', 'rail'].indexOf(f.k) >= 0 && !(f.k === 'plateau' && f.r && f.r < 1) && !f.arc; });   // (EXTERIORS 11-16: the ladder and the mast's own rock needle are not carried over: the shaft is drawn now, see below)
       if (keep.length < 8) throw new Error('the old tower rows were not found (' + keep.length + ')');
       keep.forEach(f => feat(sh(f))); count.tower = keep.length; setRect(26, 64, 32, 68, 'B');
-      Pm('floating_orb', -11.375 + dx, -14.875 + dz, { face: 0 }); npc.push({ x: r2(-10.8 + dx), z: r2(-17.4 + dz), face: 160, race: 'marksman', say: sayOf(O_LINE, 'marksman') }); }
-    [37, 39, 41, 43].forEach((x, i) => { Pm('military_tank', gc(x), gc(65), { face: i % 2 ? 180 : 0 }); if (i < 3) feat({ k: 'wall', x0: gx(x + 1) + 1.75, z0: gx(64), x1: gx(x + 1) + 1.75, z1: gx(67), h: 1.5, t: 0.6, key: 'wasteland' }); });   // THE PENS
+      /* THE TOWER'S LOOK (EXTERIORS 11-16: the old rows drew as a rock mound). The ops block = the 3.5 m deck up the fire escape (walked); the round
+         shaft = the old 7 m drum inside a drawn shaft 14 m tall, the dark glass cab, the roof, the aerial. Nobody climbs the shaft: the marksman keeps the deck. */
+      { const a = sheet(), X = 0.875, Z = -0.875;
+        /* the block's skin stands 1.2 m outside the walked deck (the ground under it slopes that far) and leaves the fire escape's lane open in its west face */
+        const sk = { keyTop: SLAB, tintTop: 0xb8b4a8, uv: [3.5, 3.5], gain: 1.3 };
+        a.box(0.6, 0, 0, 17.0, 3.53, 11.2, CONC, TAN, sk); a.box(-8.5, 0, -3.25, 1.2, 3.53, 4.7, CONC, TAN, sk); a.box(-8.5, 0, 4.125, 1.2, 3.53, 2.95, CONC, TAN, sk);
+        a.box(0.6, 1.2, 5.63, 13, 1.1, 0.06, GLS, 0x24323a, { kind: 'glass' }); a.sign('FLIGHT OPERATIONS', 0.6, 2.6, 5.64, 7.0, 0.5, '#f0f0e8', '#23262b', 'stencil');
+        a.cyl(X, 0, Z, 4.5, 14, CONC, TAN, { seg: 20, uv: [3.5, 3.5], gain: 1.3 }); a.cyl(X, 3.5, Z, 5.5, 0.9, CONC, TAN2, { seg: 20, gain: 1.3 });                // (+ a collar on the deck: the drum's own slope showed at the shaft's foot) a.cyl(X, 13.4, Z, 6.0, 0.2, null, STEEL, { seg: 20 });                                   // the shaft, the gallery round the cab
+        a.cyl(X, 13.6, Z, 5.9, 1.0, null, STEEL, { seg: 20, ri: 5.82, cap: false, ds: true });                                                                   // its rail
+        a.cyl(X, 14, Z, 4.6, 0.7, CONC, TAN2, { seg: 20 }); a.cyl(X, 14.7, Z, 4.6, 2.5, GLS, 0x1c2a32, { seg: 20, r2: 5.4, kind: 'glass' });                       // the sill, the canted dark glass
+        a.cyl(X, 17.2, Z, 5.9, 0.4, CONC, TAN2, { seg: 20 }); a.box(X, 17.6, Z, 0.2, 5.5, 0.2, null, STEEL); a.box(X, 20.4, Z, 2.2, 0.08, 0.08, null, STEEL);
+        a.box(X, 23.1, Z, 0.35, 0.35, 0.35, null, 0xff3020, { glow: 1 });
+        feat({ k: 'arch', id: 'des:a51:tower', x: gx(29.5), z: gx(66), y: 0, parts: a.P }); }   // (y: 0 = its foot on the apron: without it the row stood on the drum's top)
+      Pm('floating_orb', 0.875 + gx(29.5), -0.875 + gx(66), { face: 0, y: 23.6 }); npc.push({ x: r2(gx(29.5) + 4.5), z: r2(gx(66) + 2.4), face: 160, race: 'marksman', say: sayOf(O_LINE, 'marksman') }); }
+    [37, 39, 41, 43].forEach((x, i) => { Pm('military_tank', gc(x), gc(65), { face: i % 2 ? 180 : 0 }); if (i < 3) feat({ k: 'wall', x0: gx(x + 1) + 1.75, z0: gx(64), x1: gx(x + 1) + 1.75, z1: gx(67), h: 2.4, t: 0.8, key: CONC, tint: '#c8bca0' }); });   // THE PENS: concrete blast walls (EXTERIORS 11-16: they were 1.5 m of cracked earth)
     Pm('fighter_jet', gx(20), gx(78), { face: 90 }); [6, 14, 26, 34].forEach(x => { P('flood_mast', x, 75, {}); P('flood_mast', x, 81, {}); });
     feat({ k: 'dip', x: gx(40.5), z: gx(78.5), r: 11, h: 2.4 }); Pm('saucer_lg', gx(40.5), gx(78.5), { span: 9, y: -2.2 }); dec('warning_tape', 37, 75, { y: 0.01 }); dec('traffic_cone', 36, 80);
     [[2, 86], [9, 92], [38, 88], [43, 93]].forEach(q => P('flood_mast', q[0], q[1], {}));                                 // THE DRY LAKE: the lights that go round all night
     P('radiation_sign', 24, 85, { y: 1.4, face: 0 }); P('military_tank', 12, 84, { face: 90 }); P('psx_supply_crate_1', 24, 87, {}); P('psx_supply_crate_1_2', 24, 89, {});
+    /* ── EXTERIORS (11-16) ── */
+    /* THE GATE: two boom arms standing open over the base road's two lanes, the gate piers, the stop bar, the board everyone photographs */
+    { const a = sheet();
+      for (const x of [-3.5 - 0.4, 3.5 + 0.4]) { a.box(x, 0, 0, 0.7, 3.0, 0.7, CONC, TAN); a.box(x, 3.0, 0, 0.9, 0.2, 0.9, CONC, TAN2); a.box(x, 3.2, 0, 0.3, 0.3, 0.3, null, 0xff3020, { glow: 1 }); }
+      for (const q of [[-3.5 + 0.2, -1, 1.2], [3.5 - 0.2, 1, -1.2]]) { a.box(q[0], 0, q[2], 0.4, 1.1, 0.4, null, 0xd8b020);                                     // the two barrier boxes, their arms up
+          for (let i = 0; i < 5; i++) a.box(q[0] - q[1] * (0.25 + i * 0.26), 1.0 + i * 0.62, q[2], 0.34, 0.7, 0.1, null, i % 2 ? 0xf0f0f0 : 0xc82a20); }
+      a.box(0, 0, -9, 0.14, 3.4, 0.14, null, STEEL, { n: 2, step: [3.6, 0, 0] });
+      a.sign('WARNING · RESTRICTED AREA', 1.8, 2.5, -9, 4.4, 0.6, '#ffffff', '#a82a20', 'stencil', { ry: 180, ds: true });
+      a.sign('NO TRESPASSING BEYOND THIS POINT', 1.8, 1.95, -9, 4.4, 0.45, '#a82a20', '#f0f0e8', 'stencil', { ry: 180, ds: true });
+      a.sign('PHOTOGRAPHY OF THIS AREA IS PROHIBITED', 1.8, 1.5, -9, 4.4, 0.4, '#23262b', '#f0f0e8', 'stencil', { ry: 180, ds: true });
+      a.sign('USE OF DEADLY FORCE AUTHORIZED', 1.8, 1.05, -9, 4.4, 0.4, '#23262b', '#f0f0e8', 'stencil', { ry: 180, ds: true });
+      feat({ k: 'arch', id: 'des:a51:gate', x: gx(2), z: gc(54), parts: a.P }); }
+    line(gx(1), gc(54) - 2.6, gx(3), gc(54) - 2.6, 0.5, 0xf0f0f0);
+    /* THE FENCE's steel: a post every square, the top rail, three strands of wire leaning out, a warning plate every four squares (the chain-link itself is the tool's) */
+    { const a = sheet(), run = (n, step, out) => { const L = (n - 1) * 3.5, mid = [step[0] ? L / 2 : 0, step[2] ? L / 2 : 0], sz = (w) => step[0] ? [L, w, w] : [w, w, L];
+          a.box(0, 0, 0, 0.14, 3.0, 0.14, null, STEEL, { n, step });
+          a.box(mid[0], 2.58, mid[1], sz(0.07)[0], 0.07, sz(0.07)[2], null, STEEL);
+          for (let i = 1; i <= 3; i++) a.box(mid[0] + out[0] * i * 0.11, 2.62 + i * 0.13, mid[1] + out[1] * i * 0.11, sz(0.03)[0], 0.03, sz(0.03)[2], null, 0x8a9096); };
+      run(43, [3.5, 0, 0], [0, -1]);
+      a.sign('WARNING', 5.25, 1.55, -0.16, 1.5, 0.34, '#ffffff', '#a82a20', 'stencil', { ry: 180, n: 10, step: [14, 0, 0] });
+      a.sign('RESTRICTED AREA', 5.25, 1.2, -0.16, 1.5, 0.3, '#23262b', '#f0f0e8', 'stencil', { ry: 180, n: 10, step: [14, 0, 0] });
+      feat({ k: 'arch', id: 'des:a51:fence_n', x: gc(3), z: gc(54), parts: a.P });
+      const b = sheet();
+      b.box(0, 0, 0, 0.14, 3.0, 0.14, null, STEEL, { n: 42, step: [0, 0, 3.5] }); b.box(0, 2.58, 71.75, 0.07, 0.07, 143.5, null, STEEL);
+      for (let i = 1; i <= 3; i++) b.box(i * 0.11, 2.62 + i * 0.13, 71.75, 0.03, 0.03, 143.5, null, 0x8a9096);
+      b.sign('WARNING', 0.16, 1.55, 5.25, 1.5, 0.34, '#ffffff', '#a82a20', 'stencil', { ry: 90, n: 10, step: [0, 0, 14] });
+      b.sign('RESTRICTED AREA', 0.16, 1.2, 5.25, 1.5, 0.3, '#23262b', '#f0f0e8', 'stencil', { ry: 90, n: 10, step: [0, 0, 14] });
+      feat({ k: 'arch', id: 'des:a51:fence_e', x: gc(45), z: gc(54), parts: b.P }); }
+    /* THE PENS' back wall (the tanks nose out south onto the apron) */
+    feat({ k: 'wall', x0: gc(36), z0: gc(63), x1: gc(44), z1: gc(63), h: 2.4, t: 0.8, key: CONC, tint: '#c8bca0' });
+    /* THE FUEL DUMP: three tank containers in a concrete bund, its mouth at the south-east corner */
+    [[gc(36), gc(56), gc(43), gc(56)], [gc(36), gc(56), gc(36), gc(59)], [gc(36), gc(59), gx(42), gc(59)], [gc(43), gc(56), gc(43), gx(60)]].forEach(q => feat({ k: 'wall', x0: q[0], z0: q[1], x1: q[2], z1: q[3], h: 1.1, t: 0.6, key: CONC, tint: '#c8bca0' }));
+    [38, 40, 42].forEach(x => Pm('iso_tank', gx(x), gx(58), {}));
+    { const a = sheet(); a.box(0, 0, 0, 0.12, 2.6, 0.12, null, STEEL, { n: 2, step: [3.2, 0, 0] }); a.sign('FUEL · NO SMOKING · NO OPEN FLAME', 1.6, 1.7, 0, 3.2, 0.8, '#23262b', '#d8b020', 'stencil', { ds: true });
+      feat({ k: 'arch', id: 'des:a51:fuel', x: gx(37.5), z: gc(60) + 1.2, parts: a.P }); }
+    /* RUNWAY 33's concrete: the taxiway from the apron (the strip of sand between them was unpaved), the hangar's own apron as wide as its door,
+       the edge lines, the yellow taxi line, the numbers */
+    for (let x = 13; x < 35; x++) setPaint(x, 75, SLAB);
+    for (let y = 80; y < 86; y++) for (let x = 13; x < 23; x++) setPaint(x, y, SLAB);
+    line(gx(2), gx(76) + 0.4, gx(38), gx(76) + 0.4, 0.3, 0xf0f0f0); line(gx(2), gx(80) - 0.4, gx(38), gx(80) - 0.4, 0.3, 0xf0f0f0);
+    line(gx(18), gx(86), gx(18), gx(78), 0.25, 0xe8c020); line(gx(18), gx(78), gx(24), gx(78), 0.25, 0xe8c020); line(gx(24), gx(78), gx(24), gx(70), 0.25, 0xe8c020);
+    { const a = sheet(); a.P.push({ s: 'quad', flat: true, p: [0, 0.04, 0], size: [9, 6], ry: 90, key: 'txt:33|#f0f0f0||1.5||stencil', uv: 'fit', kind: 'over' });
+      feat({ k: 'arch', id: 'des:a51:rwy33', x: gx(8), z: gx(78), parts: a.P }); }
     native('men in black', 3, 57, 0, sayOf(O_GATE, 'men in black')); native('marksman', 7, 52, 270, sayOf(O_GATE, 'marksman')); native('men in black', 21, 73, 270, sayOf(O_LINE, 'men in black'));
     native('spy', 30, 62, 180); native('bligblog', 38, 82, 0); native('grey', 41, 74, 200);
 };

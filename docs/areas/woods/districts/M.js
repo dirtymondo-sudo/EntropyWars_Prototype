@@ -2,6 +2,12 @@
    2026-11-16 (mondo: "every single zone needs to be like that. now. so we can work in parallel"). One thread = this one file.
    Repo tooling only: nothing here ships; the room is baked into data.js (site_prebuilt_fairy_forest_plots, WOODS36-BEGIN / END).
 
+   MONDO'S BRIEF (2026-11-16, his words; it outranks the plan's brick channel below): "dead man's cave is just this nickname for this spot in the woods by the high
+   school I went to ... there is dry creek, but it is pretty steep, so there are two cliffs basically facing each other with dry riverbed in between, steep walls. And
+   then at the end of the riverbed is a big sewer mouth ... that leads into a tunnel into the sewers. so this part of the woods needs to have a corresponding plot in
+   the sewers". So: the creek bed through this district is DRY and cut deep between two rock walls; it ends (the Outfall, link sewers_drain) at one big sewer mouth.
+   NOT BUILT YET: the plan waits his OK (the creek and the levels are the tool's). A first exterior draft made before the brief is parked, unmerged, on the branch
+   `claude/woods-district-m-draft` (the crag on its plan squares as a walk-through rock mouth, a concrete box culvert at the Storm Drain, a brick sewer mouth).
    THE LOOK: rot and thorns, "where things get dumped". Bare trees, thorn vine, gas plants, spore caps, dead snags with crows; ash in the air.
    THE PLOTS AND WHAT STANDS THERE TODAY
      P03-03 The Culvert (L1)         warning tape, a garbage bag, a dead snag.
