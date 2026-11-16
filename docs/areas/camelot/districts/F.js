@@ -20,11 +20,15 @@
    NOT HERE (the tool's, shared): the trail east to The Woods (link `woods_camelot`, on the east wall at square 48, plot P07-04) and
    the east bridge. Dress round them, do not move them.
 
-   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO (passes 3 to 5): dressing (paths, plants, edges; the ground still wears
-   the kingdom's lawn sheet: the paint is the tool's), its own light, air and particles (the tool's shell: a board note first), polish.
-   The fairy has no lines (never invent them). No walk-in here: none is named.
-   NEEDS A MODEL (nothing on R2; not in the game as stand-ins): reeds / cattails, a willow, a dragonfly, a firefly (particles may do),
-   a swan or duck, a small waterside flower. The lily pads are drawn in code.
+   PASS 3, THE DRESSING (2026-11-16): the forest floor (`ground`, the dark grass), stepping stones into the ring, the mushroom glade and the
+   spring, six painted birches, seven pack stones, Meshy crystal shards, glowing caps down the path's east side, ferns, a log, a stump, an
+   anthill, ladybugs, grasshoppers, caterpillars, a chrysalis, bees, moths, butterflies, two more rabbits, a frog.
+   MISSING / WAITING: WAITS MONDO: who lives here (the kingdom's AREA UNITS table has no fairy, unicorn, gnome or mushroom girl; a person off
+   the table stands as a random race on it, so the ring's own "fairy" is not a fairy on screen either). STILL TO DO (passes 4, 5): its own
+   light, air and particles, the night look, polish. No walk-in here: none is named.
+   NEEDS A MODEL (nothing on R2; not in the game as stand-ins): reeds / cattails (the ocean pack's weed draws black here), a willow, a
+   dragonfly, a firefly (particles may do), a swan or duck, a small waterside flower, bushes, natural small rocks (the graveyard pack's are
+   cut blocks). The lily pads are drawn in code.
    NEW ROWS: keep new pieces out of `dec()` (it draws from the kingdom's one stream of dice and moves N's and W's scatter): use `at()`.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
@@ -118,6 +122,39 @@ many(3, i => put('fae_mushroom', 91 + (i % 2), 54 + i)); dec('fae_toadstool', 90
   [[0.75, 1.5, 0.5, 0.2, 1.0], [-0.55, 2.0, -0.45, 0.16, 0.8], [-1.35, 1.0, 1.1, 0.18, 0.9], [1.25, 0.9, -1.25, 0.15, 0.75], [0.2, 3.0, 0.2, 0.14, 0.7], [-1.3, 0.7, -0.5, 0.13, 0.6], [1.5, 0.6, 0.5, 0.14, 0.65]].forEach((q, i) => S.spike(q[0], y0 + q[1], q[2], q[3], q[4], i * 37));
  }
 put('signpost', 87, 46); put('signpost', 91, 50);
+
+/* ── PASS 3, THE DRESSING (2026-11-16; the model list first: every piece below is a pack or model file already on R2) ──
+   Blockers (birches, pack rocks) stand on whole squares through tree() / put(); everything else is decor by metres through at(). */
+note('THE FAIRY FOREST, the dressing: stepping stones, pack rocks, birches, crystals, small life');
+const E = gx(90);   // the glades' west edge: the path's east side
+/* stepping stones (the graveyard pack's two) from the path into each glade */
+const steps = (pts) => pts.forEach((q, i) => at('psxg_stepping_stone_' + (1 + i % 2), q[0], q[1], { face: (i * 73) % 360 }));
+steps([[E + 0.5, gx(43) + 0.2], [E + 1.5, gx(43) - 0.25]]);                                                                               // into the ring
+steps([[E + 0.6, 25.9], [E + 1.8, 26.2], [E + 3.0, 26.5], [E + 4.2, 27.0], [E + 5.4, 27.6], [E + 6.6, 28.2], [E + 7.8, 28.6], [E + 9.0, 28.8], [E + 10.2, 28.6]]);   // through the mushroom glade
+steps([[E + 0.6, gx(62) + 0.2], [E + 1.6, gx(62) - 0.2], [E + 2.5, gx(62) + 0.15]]);                                                      // to the spring
+/* painted birches at the glades' far sides, the Halloween pack's stones at their corners (the graveyard pack's `psxg_rock_*` are cut blocks, not rocks: out) */
+[[93, 27, 6.2], [93, 33, 5.6], [94, 39, 6.4], [93, 56, 5.8], [92, 63, 6.0], [92, 71, 5.4]].forEach(q => tree('tree_53', q[2], q[0], q[1], 0.5));
+[['hw_stone_3', 91, 26], ['hw_stone_5', 92, 34], ['hw_stone_2', 93, 39], ['hw_stone_2', 91, 57], ['hw_stone_5', 91, 65], ['hw_stone_4', 90, 70], ['hw_stone_4', 91, 24]].forEach((q, i) => put(q[0], q[1], q[2], { face: i * 53 }));
+/* crystals (mondo's Meshy shards) at the rocks' feet. NOT the ocean pack's weed as water plants: it draws black in this room. */
+at('meshy_crystal_shards', gc(93) - 2.3, gx(62) + 3.1, { face: 20 }); at('meshy_crystal_shard', gc(93) - 2.5, gx(62) - 3.0, { face: 140 });
+at('meshy_crystal_shards', gc(91) + 2.4, gc(72) + 1.6, { face: 200 }); at('meshy_crystal_shard', gc(91) - 2.2, gc(72) - 1.5, { face: 300 }); at('meshy_crystal_shard', gc(91) + 1.2, gc(72) + 2.6, { face: 80 });
+/* glowing caps down the path's east side (every 7 m, in twos and threes): the way through the forest at night */
+for (let z = gx(19), i = 0; z < gx(76); z += 7, i++) { if (Math.abs(z) < 5) continue;   // not on the trail's crossing
+    at('woods_glowcap', E + 0.35 + (i % 3) * 0.12, z + 0.4, { face: i * 97, noLight: true }); at('woods_glowcap', E + 0.75, z + 1.0 + (i % 2) * 0.3, { face: i * 31, noLight: true });
+    if (i % 2) at('woods_glowcap', E + 0.3, z + 1.5, { face: i * 59, noLight: true }); }
+/* ferns in the corners, a second log, small life (the insects pack, the rabbit) */
+[[E + 12.6, gx(27) - 0.4], [E + 13.0, gx(34) + 1.2], [E + 15.8, gx(40) + 0.8], [E + 15.6, gx(45) + 1.0], [E + 5.6, gx(50) + 1.0], [E + 12.8, gx(55) - 0.5], [E + 5.4, gx(60) + 0.8], [E + 9.4, gx(65) - 0.4], [E + 8.8, gx(71) + 0.6], [E + 5.8, gx(74) + 1.6], [E + 8.6, gx(21) + 1.0], [E + 1.0, gx(49) + 0.9]]
+    .forEach((q, i) => at('fern', q[0], q[1], { face: i * 67 }));
+at('fallen_log', E + 4.4, gx(51) - 0.6, { face: 25, noBlock: true }); at('stump', E + 9.2, gx(64) + 1.2, { face: 10, noBlock: true });
+at('anthill', E + 1.4, gx(24) + 0.6, { face: 0 }); at('ant', E + 1.9, gx(24) + 0.9, { face: 40 }); at('ant_leaf', E + 2.2, gx(24) + 0.4, { face: 300 });
+[['ladybug', 3.1, gx(26) + 1.2], ['ladybug', 6.6, gx(60) + 1.0], ['ladybug', 2.2, gx(71) + 0.4], ['grasshopper', 4.0, gx(34) - 0.6], ['grasshopper_brown', 3.3, gx(57) + 1.1], ['grasshopper', 6.2, gx(74) + 0.6], ['caterpillar_bug', 5.3, gx(55) + 0.7], ['caterpillar_bug', 2.4, gx(40) + 0.4], ['chrysalis', 12.9, gx(54) + 0.5]]
+    .forEach((q, i) => at(q[0], E + q[1], q[2], { face: i * 71 }));
+[['bumblebee', 2.0, gx(62) - 4.4, 0.5], ['bumblebee', 4.6, gx(62) + 4.9, 0.6], ['bee', 1.6, gx(62) + 3.3, 0.7], ['bee', 7.4, gx(62) - 4.8, 0.5], ['hawk_moth', 4.2, gx(43) - 3.0, 1.2], ['hawk_moth', 9.6, gx(43) + 3.4, 1.4], ['luna_moth', 5.2, gc(22) + 2.0, 1.6], ['blue_morpho', 7.8, gx(55) + 0.2, 1.3], ['monarch', 5.0, gc(72) - 2.6, 1.2], ['swallowtail', 10.6, gx(30.5) + 4.6, 0.9]]
+    .forEach((q, i) => at(q[0], E + q[1], q[2], { floor: true, y: q[3], face: i * 43 }));
+at('rabbit', E + 8.9, gx(23) + 0.8, { face: 200 }); at('rabbit', E + 3.8, gx(53) + 0.8, { face: 60 }); at('meshy_frog', PX + 4.9, PZ + 5.6, { face: 250 });
+/* NO NEW RESIDENTS: the kingdom's AREA UNITS table (mondo's, data.js HQ_AREA_ENCOUNTERS) has no fairy, unicorn, gnome or mushroom girl, and a
+   placed person off that table stands as a random race ON it (a unicorn here came up as an Undead). Who lives in this forest is his to say. */
 flushArch();
 }
-module.exports = { build };
+/* the forest floor (mondo's rule: `grass_dark_fantasy` / `dirt_2`) under this district's grass and trees, in place of the kingdom's lawn */
+module.exports = { build, ground: 'grass_dark_fantasy' };

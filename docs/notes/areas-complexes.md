@@ -5790,10 +5790,22 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
 - **NOBODY ELSE MOVED**: the old `dec` calls run in the old order and every new piece is placed by metres, so the dice of N and W are untouched.
 - **FRAME RATE** (cloud software GPU, the pond from the path, the same view before and after): 1.54 -> 1.40 frames a second, geometries
   2,023 -> 1,985 (run to run noise is about 0.2); draw calls 278 -> 309. His F3 at the pond is the number that counts.
-- **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower.
-- **NEXT**: dressing (stepping paths, plants, edges, the forest floor: the paint is the tool's), then its own light, air and particles (the
-  shell is the tool's: `shell.atmos.zones`, a board note first), then polish.
-- **THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
+- **PASS 3, THE DRESSING (seen, 9 views, twice; the model list searched first on his 11-16 order)**: the forest floor is `grass_dark_fantasy`
+  (the tool's new `ground` export); stepping stones (`psxg_stepping_stone_1/2`) into the ring, through the mushroom glade and to the spring;
+  six painted birches (`tree_53`) and seven Halloween pack stones on whole squares; Meshy crystal shards at the spring and the crystal
+  knoll; `woods_glowcap` in twos and threes down the path's east side every 7 m (their glow reads by day on the dark floor); ferns, a log,
+  a stump, an anthill with ants, ladybugs, grasshoppers, caterpillars, a chrysalis, bees, moths, butterflies, rabbits, a frog.
+  FOUND IN THE PROBE AND TAKEN OUT: `ocean_seaweed*` as water plants draws BLACK in this room (like the ocean rocks in the Woods);
+  `psxg_rock_*` are cut stone blocks, not rocks; stepping stones on a knoll's slope stand out of it like shelves.
+- **THE PEOPLE WAIT MONDO**: four residents (unicorn, mushroom girl, gnome, a second fairy) were placed and taken out again: the kingdom's AREA
+  UNITS table (his, `HQ_AREA_ENCOUNTERS`) lists none of them, and a placed person off the table stands as a random race ON it: the unicorn
+  came up as an Undead, the gnome as a ghost. The ring's old "fairy" row is swapped the same way. One of a race a room, too (the crowd cap).
+- **FRAME RATE, PASS 3** (the same pond view): 1.40 -> 1.17 to 1.29 frames a second on the cloud's software GPU; draw calls 309 -> 459,
+  geometries 1,985 -> 2,223 (about 150 new props, most of them small).
+- **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower, bushes,
+  natural small rocks.
+- **NEXT**: its own light, air and particles (`airZones`), the night look, then polish.
+- **(THE VILLAGE'S) THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
   keyword search of the prop catalogue and from what the first build already used. Read against MODEL_LIST.md (the Meshy list, the
   Halloween pack, the orchestral pack, the crow + rabbit upload, section 7a), it had MISSED, all in the game already:
   `meshy_hanging_lantern` (it had put "a street lantern" on the needs-a-model list), `candelabra`, `confessional_booth`, `holy_tapestry`
