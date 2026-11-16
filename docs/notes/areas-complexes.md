@@ -5994,6 +5994,20 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   the room's row in `DOOR_HQ.decals` (marker `SEWERS24-DECALS`; the game draws 80 a room, the tool keeps to 60; a district adds its own with
   `ctx.grime(kind, plot, lx, ly, r)`). District files: rubbish washed into the bends and dead ends (bags, bins, barrels, crates), cobwebs,
   a valve by the pumps, bones in the mine. The murky water was darkened to mud (`sewer_water` tint 0xb44612: more red goes rust, less goes olive).
+- **THE SEWERS' KIT, FROM THE MODEL LIST (mondo 11-16, rule THE MODEL LIST FIRST: "look at the model list right now to see what else they
+  could add"):** MODEL_LIST.md searched for sewer, pipe, pump, drain, valve, rubbish, cell, prison, metro, rail, signal, mine, bone, body,
+  vermin. The first build and the grime pass had used 40 keys; these fit and were NOT used until this pass (all have catalogue rows):
+  PUMPS + PLANT `centrifugal_pump` `gauge_board` `utility_box` `chain_hoist` `pd_lever` `psx_pipe_valve_holder_large_1/2` `iso_tank`
+  `ind_vent` `meshy_vent` `psx_vent_*` · RAIL `signal_lever_frame` `street_signal` `railway_lantern` `cable_drum` `pallet_jack`
+  `welding_cart` `wrapped_pallet` `metro_column` `subway_cart` `metro_poster_1-8` `metro_ticket_machine` · CELLS `steel_toilet`
+  `psx_toilet_mp_1` `psx_old_mattress_mp_1` `psx_bars_metal_1/2` `psx_window_metal_bars_*` `psx_police_baton_mp_1` · RUBBISH `dumpster`
+  `meshy_dumpster` `ind_skip_full` `tire_stack` `traffic_cone` `mop_bucket` `newspaper_bundles` `psx_glass_bottle_*` `psx_tin_can_mp_1_rusty`
+  `psx_syringe_mp_1` `psx_jerrycan_1` `meshy_round_street_drain` · DEAD THINGS `hw_body*` `hw_part*` (the Halloween pack's, new 11-16)
+  `anatomy_skeleton` `skull` `psx_fish_skeleton_mp_1` · MINE `wooden_bucket` `meshy_rope` `ancient_well` `mushroom2` `meshy_hanging_lantern`
+  · TUNNEL PIECES NOT YET TRIED: `psx_tunnel_1`, `psx_tunnel_mp_1_straight / _elbow / _tee / _cross_tee`, `psx_wall_1_tunnel_hole*`,
+  `psx_tunnel_entrance_platform_1` (the PSX pack's own round tunnel sections, about 3 m: side pipes a walker could look into).
+  PLACED IN THIS PASS (about 120 props; each district file's header says where). NOT IN THE GAME AT ALL: rats, bats, roaches, spiders
+  (section 7c has no vermin; the Insects pack is bees, ants, butterflies), a manhole ladder, a sewer grate you look up through.
 - **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
   one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
 - **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
