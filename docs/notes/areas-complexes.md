@@ -12834,3 +12834,20 @@ models", without waiting for his OK. Plan picture: `docs/plans/world-zones/leyli
   Spiral, Unfinished Top, Crane, Kiln, Brick Stacks, Foundation Shaft, the brick houses (T) · the Causeway, Canal, Ball Court, Pyramid,
   the round tower, Xibalba (Z).
 
+
+### PASS 2, THE INTERIORS (seen in the cloud browser, two runs, 16 views; live)
+- **All seven huts are walked into, lit and furnished** (S.js `insides`, 104 props, every one `floor: true`): BUNK HUT (six cots with a locker or a
+  chest each, the stove, a table, two wall lockers, a fur rug) · MESS HUT (the galley: range, steel table, fridge, pots; three tables with
+  chairs; stove, shelf, water cooler, stores) · RADIO (console, tape deck, server rack, field radio, the chart table, the operator's desk
+  and terminal, the evidence board) · GARAGE (the tractor = `aircraft_tug`, the lift, the hoist, benches along the back) · CORE STORE (the
+  rack, the cryo casket the old tape speaks of = `iso_tank`, the fume hood, a bench with a microscope) · POWER (two sets, the boiler, the
+  gauges) · BALLOON SHED (two gas racks, the filling bench, the chart table, a telescope). Blockers stand on square middles; each door's
+  square and a way through stay free.
+- **The lining** (in `hut`): 0.3 m inside the walls a board dado + a pale wall, a corrugated lit ceiling with ribs at 3.04 m, and a LIT FLOOR
+  sheet 3 cm over the ground (the building's own floor lay half black by day). `x.floorIn: 'concrete'` for the garage and the power hut.
+- FOUND AND FIXED: (1) walls 2.3 m high let the building's own flat roof (it is 3.5 m whatever the look says) come out through the vault
+  at the eaves as a grey plate, and gave a black ceiling inside: a hut's walls are 3.5 m now (the balloon shed 4.4). (2) An inner vault
+  under the roof does not show from inside: the ceiling is a flat lit sheet, the Mountains' way.
+- FPS at the proof view: 1.1 (508 calls, 778 k triangles): no change.
+- STILL OPEN inside: dark pack furniture reads black against the lit walls (server rack, table, chairs); the ceiling lamps are hidden by the
+  ceiling sheet; nothing hangs on a wall but the two boards; no beds made up, no food on the tables.
