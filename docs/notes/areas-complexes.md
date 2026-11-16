@@ -5190,6 +5190,46 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a water trough, a wooden fence run with a gate, a hitching rail, a tavern table with benches.
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
+
+## DEAD MAN'S CAVE, THE RAVINE — the Woods' district M on mondo's own brief (2026-11-16, the pilot thread)
+mondo: "dead man's cave is just this nickname for this spot in the woods by the high school I went to ... there is dry creek, but it is pretty steep, so there are two
+cliffs basically facing each other with dry riverbed in between, steep walls. And then at the end of the riverbed is a big sewer mouth ... that leads into a tunnel into the
+sewers. so this part of the woods needs to have a corresponding plot in the sewers". His answers: "yes the bed should be walkable" · "yes the mouth is the cave" · "why is
+there a pool in the woods ... move the lake somewhere else, this is dead man's cave" · a way from the woods into a tunnel "should just be blackness" (the far side, coming
+out to the woods, "should be light": the Sewers' end of the tunnel, that zone's work).
+- **THE CULVERT** (plot P03-03): the creek's water ends at a brick head on the trail's north edge (x 21 · z 17.9, a black pipe mouth); its dry twin is on the south
+  edge (x 45.5 · z 27.7). The plank decks over the old creek are plain trail again.
+- **THE DRY BED**: below the culvert every creek square is bare rock (`r`, the rocks_5 paint), six shallow `dip` rows let the old line sag. Walked its whole length.
+- **THE RAVINE** (room squares 56..71 x 54..55, plots P04-04 / P05-04): ONE `plateau` row with `sink: true, absY: true, h: -3.5` (data.js THE CUT: the walker drops off its
+  rim and never climbs it) + ONE `ramp` row h0 0 -> h1 -3.5 over four squares from the trail (a ramp only RAISES ground, so it goes after the sink row and fills it).
+  The walls wear rock slabs and the rims tapered boulders, all in one arch row `woods:M:ravine` (`y: 0`). The ramp, a lane down the bed and the mouth's apron are `taken`
+  before the old passes run, so no old piece lands there.
+- **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
+  stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
+  Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
+- **NO POOL**: the Pool's row is dropped by `water()`, its squares are grass, the five frogs went. The Woods keeps the Lake (Ritual Ground) and the Falls' pool.
+- **THE CRAG** (plot P03-04) stands on the plan's own rock squares now: two blocks and two arms round the north trail, a lintel over a one-square way through. It stood
+  two squares south, across the alley. No drain mouth in it any more (the cave is the sewer mouth); the graffiti stays.
+- **THE TOOL** (bake-woods.js, a board note covers it): `water(row, ctx)`, `cut(ctx)` + `cellT`, `SOW_BASE`. Proof: the tool change alone bakes the same bytes; with M's
+  changes no row outside district M differs.
+- **SEEN IN THE PROBE** (HEAD cba2b1b + this PR, `--flags=EW_PERF_LOW`, fp views; in the bed a view needs `"y": -3.5`): the ramp, the bed, the mouth, the rim, the crag,
+  the culvert's two heads, the other two mouths, the plot without its pool.
+- **OPEN**: the plot names "The Cave Mouth", "The Channel", "The Pool" no longer fit (his to rename; layout.json). The Sewers needs the tunnel's far plot (board note).
+  The ground is still the lawn sheet under a blue sky: the atmosphere pass. The cabin is near black outside and bare inside: the interior pass.
+
+## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
+- **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
+  A boulder or crag = a tapered `cyl` (`r2` under half of `r`, `seg` 5 to 7) so nothing reads as a box; a solid block = a `plateau` (`edge: 0.08`) under a rock box skin 6 cm proud.
+- **Masonry**: `urban:BrickMasonry1a` (walls), `urban:BrickUrban3a` (piers, rings), `urban:ConcreteWoodFormed1a` (caps, heads), `uv: [1.75, 1.75]`.
+- **Sunk ground**: `{ k: 'plateau', sink: true, absY: true, h: <below 0> }` then a `ramp` to walk down; open its squares in `cut(ctx)`. Small sag: `{ k: 'dip', x, z, r, rz, h }`.
+- **Water**: `water(row)` in your file drops or shortens the tool's rows on your plots. A head where water goes underground: `hug: true` on the arch row (every corner on the ground).
+- **A way out underground**: copy `mouth()` from districts/M.js (blackness in an arch). Never a `way: 'tunnel'` end in this room (it builds a stone block).
+- **Keeping a spot clear of the old passes' pieces**: add its squares to `taken` at the top of your `dress()`.
+- **The dice**: one feature row more or less inside an OLD pass (dress / horror / life) still moves later rows' order; put new rows in `build`, new square edits in `cut`.
+- **Checking you moved nobody**: compare every row with x or z outside your nine plots before and after the bake (a re-wrapped props line is not a change).
+- **Probe**: `node playtest_city.js site_prebuilt_fairy_forest_plots '<views>' --flags=EW_PERF_LOW`, `"fp": true`; face 0 looks north, 90 east; about 3 minutes for 13 views.
+- **Missing zone-wide**: a forest-floor sheet in place of the lawn (the tool's `floor`), waterfalls, light shafts, sound by district.
+
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
   sandbags and barricade; the cantonment's bench, bins, dumpster, pallets, car park; the apron's freight, forklifts, engine stand, a
   missile; the crater's lamps, camera, tape, pod; landing rings scorched into the Dry Lake west (16-sided rings of flat `line` paint); the

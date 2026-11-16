@@ -6,8 +6,11 @@
    school I went to ... there is dry creek, but it is pretty steep, so there are two cliffs basically facing each other with dry riverbed in between, steep walls. And
    then at the end of the riverbed is a big sewer mouth ... that leads into a tunnel into the sewers. so this part of the woods needs to have a corresponding plot in
    the sewers". So: the creek bed through this district is DRY and cut deep between two rock walls; it ends (the Outfall, link sewers_drain) at one big sewer mouth.
-   NOT BUILT YET: the plan waits his OK (the creek and the levels are the tool's). A first exterior draft made before the brief is parked, unmerged, on the branch
-   `claude/woods-district-m-draft` (the crag on its plan squares as a walk-through rock mouth, a concrete box culvert at the Storm Drain, a brick sewer mouth).
+   BUILT 2026-11-16 (the exterior pass, his answers the same day: the bed is walked; "the mouth is the cave"; no pool here; a way out underground "should
+   just be blackness"): THE CULVERT takes the creek's water under the trail (a brick head, a black pipe) and the bed below is DRY bare rock; THE RAVINE
+   (plots P04-04 / P05-04, room squares 56..71 x 54..55) is cut 3.5 m down between rock walls, a ramp down into it from the trail, and ends at THE SEWER
+   MOUTH (the cave: a brick head with blackness in its arch, link sewers_drain). The Storm Drain and the Tunnel Way end in the same black mouths. The Pool
+   is gone. The crag stands on its plan squares as a rock gate over the north trail and wears no drain. The lists below are older than this.
    THE LOOK: rot and thorns, "where things get dumped". Bare trees, thorn vine, gas plants, spore caps, dead snags with crows; ash in the air.
    THE PLOTS AND WHAT STANDS THERE TODAY
      P03-03 The Culvert (L1)         warning tape, a garbage bag, a dead snag.
@@ -19,14 +22,14 @@
      P05-04 The Outfall (L0)         a fish skeleton, two barrels, a dead snag, a frog. The link sewers_drain (the city sewers) is east.
      P03-05 The Gully (L0)           the yard (tailor below): the trailer home, the school bus, THE CABIN (a walk-in building: one hollow texbuilding
                                      woods:cabin + one arch row, furnished), a garbage bag, a bear trap, a sack.
-     P04-05 The Pool (L0)            natives: swamp monster, mothman; frogs, a dead snag. The Pool is the tool's water.
+     P04-05 The Pool (L0)            NO POOL since 11-16 (grass); natives: swamp monster, mothman; a dead snag. The plot's name waits mondo.
      P05-05 The Tunnel Way (L0)      a sarcophagus box, a skull, a dead snag. The link woods_sewer (the HQ tunnel, secret) is east.
    KNOWN MISSING / WAITING FOR MONDO
      - The life pass and the horror pass are live but wait for his look (the board).
      - THE CABIN HAS NO GAME ROLE: mondo, "Nothing yet". Do not tie a rest spot, a shop, a story beat or an NPC to it until he says what it is for.
-     - NO CAVE INSIDE: the plan gives the Cave Mouth a door to the cave inside. No door is wired; the mouth is a prop in the crag.
-     - The Tunnel Way's trail ends with no post (the link is secret): the one dead end left; mondo is to say what stands there.
-     - The plan's brick channel, pipes and drain grates on the two Channel plots are not built.
+     - THE CAVE IS THE SEWER MOUTH (mondo 11-16); its inside is the tunnel to the Sewers: that zone's plot (the Sewers thread, a board note asks for it).
+     - The Tunnel Way's trail ends at a black mouth now (mondo: "it should just be blackness"); the link itself is still `secret` in the tool.
+     - The plan's brick channel is dropped: his brief makes it a dry rock bed. Plot names "The Cave Mouth", "The Channel", "The Pool" no longer fit: his to rename.
      - The thorn vine model lives in this district only (it is wrong for the other woods).
      - The trees are closed ("Good, keep them"): do not change tree kinds unasked.
 
@@ -48,6 +51,16 @@
    (the trees row on the board), the particle engine. Those are the tool's: a note on the board first (docs/notes/claims.md).
    Rules for district threads: docs/notes/areas-complexes.md "THE WOODS, THE DISTRICT FILES". Bake: node bake-woods.js (--dry-run = counts only). */
 'use strict';
+/* arch parts (data.js THE ARCHITECTURE ROW): p = the foot's middle in the row's frame; a tint MULTIPLIES its sheet */
+const R2 = v => Math.round(v * 100) / 100;
+const box = (x, y, z, w, h, d, key, tint, o) => Object.assign({ s: 'box', p: [R2(x), R2(y), R2(z)], size: [R2(w), R2(h), R2(d)], key, tint }, o || {});
+const cyl = (x, y, z, r, h, key, tint, o) => Object.assign({ s: 'cyl', p: [R2(x), R2(y), R2(z)], r: R2(r), h: R2(h), key, tint }, o || {});
+const ROCK = 'rocks_5', BRICK = 'urban:BrickMasonry1a', BRICK2 = 'urban:BrickUrban3a', CONC = 'urban:ConcreteWoodFormed1a';
+const T_ROCK = 0xd6d2c4, T_ROCK2 = 0xbcb9aa, T_BRICK = 0xb39a8a, T_BRICK2 = 0x9c8f84, T_CONC = 0xb4b6ac, BLACK = 0x000000;
+const rock = (x, y, z, r, h, top, seg, tint) => cyl(x, y, z, r, h, ROCK, tint || T_ROCK, { r2: top, seg, uv: [3.5, 3.5] });
+/* THE RAVINE (mondo 11-16): the bed's squares, cut 3.5 m down, in room squares [col0, col1, row0, row1]: two squares wide from the trail to the east wall.
+   Four of them were forest squares: opened in cut() (bake-woods.js THE CUT keeps the forest's dice where they were). */
+const RAVINE = [[56, 71, 54, 55]], DEEP = -3.5;
 module.exports = {
     id: 'M', name: 'Dead Man\'s Cave',
     /* the forest mass: the feature trees planted deep in this district's tree squares [kind, height m, chance a deep square] (plots of level 6 up get pines, the tool's rule) */
@@ -56,19 +69,40 @@ module.exports = {
     treeZones: ctx => [Object.assign(ctx.zoneOf(3, 3, 6, 6), { kinds: ['tree_5', 'tree_6', 'tree_5', 'tree_6', 'tree_55'], treeH: [6, 8.5] })],               // bare
     airZones: ctx => [Object.assign(ctx.zoneOf(3, 3, 6, 6), { kind: 'ash', color: 0x8a9484, speed: 0.5, n: 240 })],
     /* THE GROUND: this district's own changes to the plan's squares, before the levels and the open ground are read */
+    /* THE WATER (bake-woods.js THE WATER BY DISTRICT): the creek's water ends at the culvert's head on the Culvert plot (north edge of the trail, x 21 · z 17.5);
+       below it the bed is dry. No pool here (mondo: "this is dead man's cave"). */
+    water(row) {
+        if (row.k === 'pool') return (row.x > 0 && row.z > 0) ? null : row;
+        if (row.k !== 'stream') return row;
+        const pts = row.pts.filter(q => !(q[0] > 21.01 && q[1] > 17.51)); return pts.length === row.pts.length ? row : pts.length >= 2 ? Object.assign({}, row, { pts }) : null;
+    },
     tailor(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
         { const p = plot['P03-05']; for (let ly = 9; ly <= 10; ly++) for (let lx = 1; lx <= 10; lx++) cell[p.y * N + ly][p.x * N + lx] = 'g';
           for (let ly = 5; ly <= 8; ly++) for (let lx = 8; lx <= 10; lx++) cell[p.y * N + ly][p.x * N + lx] = 'g';
           for (let lx = 4; lx <= 7; lx++) if (cell[p.y * N + 6][p.x * N + lx] === 't') cell[p.y * N + 6][p.x * N + lx] = 'p'; }   // the alley from the plot's path to the cabin porch
     },
+    /* THE CUT (bake-woods.js): this district's later changes to its squares */
+    cut(ctx) {
+        const { cell } = ctx;
+        /* THE DRY BED (mondo 11-16): below the culvert the creek's squares are bare rock (r), the plank decks are plain trail again (no water to cross),
+           the Pool's squares are grass. No tree square is touched. */
+        for (let cy = 36; cy < 72; cy++) for (let cx = 36; cx < 72; cx++) { const ch = cell[cy][cx], pool = cx >= 50 && cx <= 58 && cy >= 62 && cy <= 70;
+            if (ch === 'w') cell[cy][cx] = pool ? 'g' : (cy <= 40 && cx <= 42) ? 'w' : 'r'; else if (ch === 'b') cell[cy][cx] = 'p'; }
+        RAVINE.forEach(q => { for (let cy = q[2]; cy <= q[3]; cy++) for (let cx = q[0]; cx <= q[1]; cx++) { cell[cy][cx] = 'r'; } });
+    },
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
-        { const q = centre('P03-04');   // THE CAVE MOUTH: a crag on the clearing's north side with the storm drain's mouth in its face (the district's landmark)
-          features.push({ k: 'plateau', x: gx(q[0]), z: gc(q[1] - 3), w: 14, d: 7, h: 5.25, edge: 0.5 });
-          props.push({ key: 'culvert_mouth', x: gx(q[0]), z: gx(q[1] - 1) - 0.4, face: 180 }, { key: 'graffiti_wall', x: gc(q[0] + 2), z: gx(q[1] - 1) - 0.2, face: 180 });
-          for (let dy = -4; dy <= -1; dy++) for (let dx = -2; dx <= 1; dx++) taken.add((q[0] + dx) + ':' + (q[1] + dy)); put('P03-04', 'cave_torch', 2, 1); dec('P03-04', 'wet_floor_sign', -1, 1); }
+        for (let cx = 56; cx <= 71; cx++) { taken.add(cx + ':54'); if (cx <= 60 || cx >= 69) taken.add(cx + ':55'); }   // THE RAVINE: the ramp, a clear lane down the bed and the mouth's apron hold no piece
+        { /* THE CRAG (2026-11-16): mondo, "the mouth is the cave": the sewer mouth at the ravine's end is the district's cave, so the crag wears no drain
+             mouth any more. It stands on the plan's own rock squares now (row 1 of the plot + the two arms on row 2), a horseshoe open to the clearing
+             with the north trail walking through its back; it stood two squares south before, across the alley. ONE feature row stays here (an old
+             pass keeps its count of feature rows); the rest is build(). */
+          const p = plot['P03-04'], X = p.x * N, Y = p.y * N;
+          features.push({ k: 'plateau', x: gx(X + 7), z: gc(Y + 1), w: 7, d: 3.5, h: 6.5, edge: 0.08 });
+          props.push({ key: 'graffiti_wall', x: r2(gx(X + 7) + 1), z: r2(gx(Y + 2) + 0.1), face: 180 });
+          [[3, 2], [4, 1], [6, 1], [7, 1], [8, 2], [7, 2]].forEach(q => taken.add((X + q[0]) + ':' + (Y + q[1]))); put('P03-04', 'cave_torch', 2, -1); dec('P03-04', 'wet_floor_sign', -1, 1); }
         native('P04-05', 'swamp monster', -1, 1, 60); native('P04-05', 'mothman', 1, -1, 300);   // THE HORROR PASS: the thing in the Pool, and the one above it
     },
     /* THE HORROR PASS (mondo 11-15): it gets worse the farther you walk from the Stair */
@@ -135,6 +169,56 @@ module.exports = {
         [['P03-03', 2, 2], ['P04-03', -2, 2], ['P05-03', 2, -2], ['P04-04', -2, -2], ['P05-04', 2, 2], ['P04-05', 3, 2], ['P05-05', -2, 2]].forEach(d => { const q = hput(d[0], 'dead_snag', d[1], d[2], { face: Math.round(rnd() * 360) });
             if (q && rnd() < 0.6) props.push({ key: 'crow', x: gc(q[0]), z: gc(q[1]), y: 4.5, face: Math.round(rnd() * 360) }); });
         DIST('M').forEach((id, i) => { life(id, 'woods_gasplant', { h: 1.3 }); if (i % 2) life(id, 'crow'); });
-        ['P04-05', 'P04-05', 'P04-05', 'P05-04', 'P04-04'].forEach(id => life(id, 'meshy_frog'));
+        /* (the five frogs went with the water, 2026-11-16) */
+    },
+    /* THE EXTERIOR PASS (2026-11-16, the pilot thread, on mondo's brief at the top of this file). New rows only, on this district's own dice. */
+    build(ctx) {
+        const { plot, N, gx, gc, r2, features, props, rnd } = ctx;
+        /* ── THE CRAG: the west block and the two arms, the rock skin, the lintel over the trail's way through ── */
+        { const p = plot['P03-04'], X = p.x * N, Y = p.y * N, ox = gc(X + 5), oz = gc(Y + 1);   // the row's origin = the way through (plot square 5, 1)
+          features.push({ k: 'plateau', x: gc(X + 4), z: gc(Y + 1), w: 3.5, d: 3.5, h: 6, edge: 0.08 }, { k: 'plateau', x: gc(X + 3), z: gc(Y + 2), w: 3.5, d: 3.5, h: 3.5, edge: 0.08 },
+              { k: 'plateau', x: gc(X + 8), z: gc(Y + 2), w: 3.5, d: 3.5, h: 3.5, edge: 0.08 });
+          const sk = (x, z, w, d, h, t) => box(x, 0, z, w + 0.12, h + 0.06, d + 0.12, ROCK, t, { uv: [3.5, 3.5] });
+          features.push({ k: 'arch', id: 'woods:M:crag', x: ox, z: oz, parts: [
+              sk(-3.5, 0, 3.5, 3.5, 6, T_ROCK), sk(5.25, 0, 7, 3.5, 6.5, T_ROCK), sk(-7, 3.5, 3.5, 3.5, 3.5, T_ROCK2), sk(10.5, 3.5, 3.5, 3.5, 3.5, T_ROCK2),
+              box(0, 4.1, 0, 3.8, 2.6, 4.1, ROCK, T_ROCK2, { uv: [3.5, 3.5], under: true }),
+              rock(-3.6, 6, 0.2, 2.5, 2.2, 1.1, 6), rock(4.2, 6.5, -0.2, 3.2, 3.0, 1.2, 7), rock(7.4, 6.5, 0.4, 2.2, 1.7, 0.8, 5, T_ROCK2), rock(0.2, 6.7, 0, 2.3, 1.5, 0.9, 6, T_ROCK2),
+              rock(-7, 3.5, 3.4, 2.3, 1.6, 0.8, 5), rock(10.5, 3.5, 3.5, 2.4, 1.9, 0.9, 6), rock(-7.4, 0, 0.1, 2.9, 5.0, 1.3, 6, T_ROCK2), rock(11.2, 0, 0.2, 3.1, 5.4, 1.4, 7, T_ROCK2),
+              rock(-5.2, 0, -2.6, 2.4, 3.4, 1.0, 5, T_ROCK2), rock(6.5, 0, -2.8, 2.9, 4.2, 1.2, 6, T_ROCK2), rock(-9.4, 0, 4.2, 1.7, 2.2, 0.7, 5), rock(13, 0, 4.4, 1.9, 2.6, 0.8, 5),
+          ] }); }
+        /* ── THE RAVINE: the dry bed cut 3.5 m down between two rock walls, the ramp down into it from the trail, the rock on its rims ── */
+        { const X0 = q => gx(q[0]), X1 = q => gx(q[1] + 1), Z0 = q => gx(q[2]), Z1 = q => gx(q[3] + 1);
+          RAVINE.forEach((q, i) => features.push({ k: 'plateau', x: r2((X0(q) + X1(q)) / 2 + (i === RAVINE.length - 1 ? 0.5 : 0)), z: r2((Z0(q) + Z1(q)) / 2), w: X1(q) - X0(q) + (i === RAVINE.length - 1 ? 1 : 0), d: Z1(q) - Z0(q), h: DEEP, absY: true, sink: true, edge: 0.25 }));
+          features.push({ k: 'ramp', x0: gx(56), z0: gx(55), x1: gx(60), z1: gx(55), w: 7, h0: 0, h1: DEEP, edge: 0.05, absY: true });   // four squares long, a quarter grade
+          /* the walls' rock skin: one slab a wall run, from the bed to a little over the rim; then boulders along both rims */
+          const inR = (cx, cy) => RAVINE.some(q => cx >= q[0] && cx <= q[1] && cy >= q[2] && cy <= q[3]), P = [], ox = gx(64), oz = gx(55);
+          for (let cy = 53; cy <= 56; cy++) for (let cx = 55; cx <= 71; cx++) { if (!inR(cx, cy)) continue;
+              const ramp = cx <= 59, top = ramp ? 0.5 + DEEP * (cx - 56 + 0.5) / 4 : DEEP;   // on the ramp the wall starts at the ramp's own height
+              [[0, -1], [0, 1], [-1, 0]].forEach(d => { if (inR(cx + d[0], cy + d[1]) || (d[0] && cx === 56)) return; const ns = d[1] !== 0, x = gc(cx) + d[0] * 1.8 - ox, z = gc(cy) + d[1] * 1.8 - oz;
+                  P.push(box(x, top - 0.3, z, ns ? 3.6 : 0.3, 0.75 - top, ns ? 0.3 : 3.6, ROCK, (cx + cy) % 2 ? T_ROCK : T_ROCK2, { uv: [3.5, 3.5] }));
+                  if (rnd() < 0.75) { const r = 0.9 + rnd() * 1.1; P.push(rock(x + d[0] * (r * 0.6) + (ns ? (rnd() - 0.5) * 2 : 0), 0, z + d[1] * (r * 0.6) + (ns ? 0 : (rnd() - 0.5) * 2), r, 0.9 + rnd() * 2.2, r * 0.45, 5 + Math.floor(rnd() * 3), rnd() < 0.5 ? T_ROCK : T_ROCK2)); } }); }
+          /* loose stone on the bed */
+          for (let i = 0; i < 9; i++) P.push(rock(gx(61) + rnd() * 40 - ox, DEEP, gx(55) + (rnd() - 0.5) * 2.4 - oz + (rnd() < 0.5 ? -1.6 : 1.6), 0.35 + rnd() * 0.5, 0.3 + rnd() * 0.5, 0.2, 5, T_ROCK2));
+          features.push({ k: 'arch', id: 'woods:M:ravine', x: ox, z: oz, y: 0, parts: P });
+          /* the dry wash above the ravine: the old creek line sags a little, so the bare rock reads as a bed */
+          [[49, 28.5], [54, 30.5], [58.5, 34], [59.5, 40], [61, 46], [69, 60.5]].forEach(q => features.push({ k: 'dip', x: q[0], z: q[1], r: 3.2, rz: 3.2, h: 0.7 })); }
+        /* ── THE MOUTHS: a way out of the woods underground is a masonry head with BLACKNESS in its arch (mondo 11-16: "it should just be blackness").
+              West-facing, on the east wall; the links' own ends are the tool's and stand where they stood. `y` = the foot (the ravine's bed for the sewer mouth). ── */
+        const mouth = (id, z, y, ow, hs, H, Wd, key, tint) => { const fan = (x, r, k, t) => ({ s: 'roof', form: 'barrel', p: [x, hs, 0], size: [0.1, r, 2 * r], key: k, tint: t, keyEnd: k, tintEnd: t, uv: [1.75, 1.75], seg: 14 });
+            features.push({ k: 'arch', id: 'woods:M:' + id, x: 123.6, z, y, parts: [
+                box(1.3, 0, 0, 2.4, H, Wd, key, tint, { uv: [1.75, 1.75] }), box(1.3, H, 0, 2.9, 0.3, Wd + 0.6, CONC, T_CONC),
+                fan(0, ow / 2 + 0.55, BRICK2, T_BRICK2), box(0.02, 0, -(ow / 2 + 0.28), 0.14, hs, 0.55, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }), box(0.02, 0, ow / 2 + 0.28, 0.14, hs, 0.55, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }),
+                fan(-0.08, ow / 2, null, BLACK), box(-0.08, 0, 0, 0.1, hs, ow, null, BLACK),
+                box(-1.6, 0, -(Wd / 2 + 1.1), 3.6, H * 0.6, 0.6, key, tint, { ry: 150, uv: [1.75, 1.75] }), box(-1.6, 0, Wd / 2 + 1.1, 3.6, H * 0.6, 0.6, key, tint, { ry: 30, uv: [1.75, 1.75] }),
+            ] }); };
+        mouth('sewermouth', 66.5, DEEP, 5.4, 2.1, 6.2, 9.5, BRICK, T_BRICK);      // THE CAVE: the big sewer mouth at the end of the dry bed (link sewers_drain)
+        mouth('stormdrain', 14, null, 4.6, 2.2, 5.6, 9, CONC, T_CONC);            // the Storm Drain: up to the street (link streets_drain)
+        mouth('tunnelway', 115.5, null, 4.4, 2.0, 5.2, 8.5, BRICK, T_BRICK2);     // the Tunnel Way (link woods_sewer)
+        /* ── THE CULVERT: where the creek's water goes under the trail for good, and the dry pipe it once came out of ── */
+        { const head = (id, x, z, sd) => features.push({ k: 'arch', id: 'woods:M:' + id, x, z, hug: true, parts: [
+              box(0, -1.4, 0, 7, 2.3, 0.6, BRICK, T_BRICK, { uv: [1.75, 1.75] }), box(0, 0.9, 0, 7.4, 0.16, 0.85, CONC, T_CONC), box(-3.8, -1.4, 0, 1, 2.7, 1, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }), box(3.8, -1.4, 0, 1, 2.7, 1, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }),
+              box(0, -1.4, sd * 0.31, 2.6, 1.0, 0.06, null, BLACK), { s: 'roof', form: 'barrel', p: [0, -0.4, sd * 0.31], ry: 90, size: [0.06, 1.3, 2.6], key: null, tint: BLACK, keyEnd: null, tintEnd: BLACK, seg: 12 },
+          ] });
+          head('culvert:in', 21, 17.9, -1); head('culvert:out', 45.5, 27.7, 1); }
     },
 };
