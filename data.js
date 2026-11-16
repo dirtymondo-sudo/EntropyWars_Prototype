@@ -73284,6 +73284,73 @@ const HQ_CITY_RESIDENTS = {
         { race: 'ghost', home: 'P08-08-B1', homeName: 'Waterfront hotel', noBed: true, day: [[6, 21, 'S', 'home'], [22, 5, 'P', 'b:P08-08-B1']] },
     ],
 };
+/* ══ THE NPC SPAWN SYSTEM (2026-11-16, mondo: "NPCs climb with player level. I want to get rid of that ... There should be set
+   levels for each race or range of levels ... the more rare a unit, the higher their level ... different districts should feel
+   like a different strength") ══ docs/notes/npc-system.md is the plan; this object is THE ONE TABLE, the blueprint every zone
+   copies: another zone adds its own `rooms` row and nothing else.
+   DELIVERY 1 · THE SET LEVELS: an NPC's level is its own, never the party's. level = its HOME district's `base` + its tier's
+   `add` range (seeded by the NPC's id, so the level on its label is the level you fight); a `unique` row is one fixed level.
+   A district's `base` is THE STRENGTH OF THE DISTRICT: Bayside (the Mall, the story's first stop) is the low one and the
+   rise away from it is sharp on purpose (mondo: "so if the player tries to go to those districts early game they die").
+   EVERY NUMBER HERE IS A PROPOSAL HE HAS NOT SET YET (npc-system.md §D): edit the rows, nothing else.
+   `n` / `refillDays` on a tier are read by the later deliveries (variants + caps, the refill: 3 game days, his answer). */
+const HQ_SPAWN_RULES = {
+    tiers: {
+        common:   { n: 4, add: [0, 5],   refillDays: 3 },
+        uncommon: { n: 2, add: [3, 7],   refillDays: 3 },
+        rare:     { n: 1, add: [7, 12],  refillDays: 3 },
+        veryRare: { n: 1, add: [12, 16], refillDays: 3 },
+        unique:   { n: 1, refillDays: null },                       // one of a kind: `lvl` on its row; captured = gone for good in this zone (his answer)
+    },
+    defaultTier: 'uncommon',
+    rooms: {
+        site_prebuilt_downtown_streets: {
+            capBy: 'district',                                      // his answer: the cap is per district; an NPC counts against its HOME district wherever its day takes it
+            /* the home district = the block a home plot was BUILT on (HQ_CITY_RESIDENTS.homes; a plot id names its built place) */
+            districts: {
+                B: { name: 'Bayside', base: 5 },                    // the Mall + the arrival: where the story starts
+                E: { name: 'Entertainment', base: 15 }, I: { name: 'Industrial', base: 15 }, H: { name: 'Hero Plaza', base: 15 },
+                F: { name: 'Financial', base: 25 }, S: { name: 'Sports + Culture', base: 25 },
+                C: { name: 'Civic Center', base: 35 }, U: { name: 'University', base: 35 }, R: { name: 'Southside', base: 35 },
+            },
+            /* a race's tier in this room (a race not named = defaultTier); `race|gender` names one gender */
+            races: {
+                'police officer': 'common', 'chef': 'common', 'homosapien': 'common', 'gangster': 'common', 'zombie': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
+                'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'telepath': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon',
+                'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'pirate': 'uncommon', 'politician': 'uncommon',
+                'ki fighter': 'rare', 'swordfighter': 'rare', 'men in black': 'rare', 'halfdemon': 'rare', 'mad scientist': 'rare', 'reptilian': 'rare', 'ringmaster': 'rare', 'juggernaut': 'rare',
+                'knight': 'rare', 'astronaut': 'rare', 'popstar': 'rare', 'eagleman': 'rare', 'nephilim': 'rare', 'time cop': 'rare',
+                'cult leader': 'veryRare', 'general': 'veryRare', 'ghost': 'veryRare',
+                'sidekick': { tier: 'unique', lvl: 45 }, 'antihero': { tier: 'unique', lvl: 48 }, 'superhero': { tier: 'unique', lvl: 50 }, 'king kong': { tier: 'unique', lvl: 50 },
+            },
+        },
+    },
+};
+/* the home district letter of a city home ('P06-04-B1', 'p:P05-09') in a room with a district grid; null elsewhere */
+function hqSpawnDistrict(roomId, home) {
+    const R = HQ_SPAWN_RULES.rooms[roomId]; if (!R || !R.districts) return null;
+    const m = /P(\d\d)-(\d\d)/.exec(String(home || '')); if (!m) return null;
+    const gx = Math.floor((+m[1]) / 4), gy = Math.floor((+m[2]) / 4);
+    const H = (typeof HQ_CITY_RESIDENTS !== 'undefined' && HQ_CITY_RESIDENTS.room === roomId) ? HQ_CITY_RESIDENTS.homes : null;
+    if (!H) return null;
+    for (const k in H) if (H[k][0] === gx && H[k][1] === gy) return R.districts[k] ? k : null;
+    return null;
+}
+/* THE SET LEVEL of one NPC: { lvl, tier, district } or null when the room has no table (the old party-level rule stands there).
+   `npc` = { id, race, gender, home }. Pure and seeded by the id: the same NPC is the same level every time it is read. */
+function hqSpawnLevel(roomId, npc) {
+    const R = HQ_SPAWN_RULES.rooms[roomId]; if (!R || !npc || !npc.race) return null;
+    const row0 = (npc.gender && R.races[npc.race + '|' + npc.gender]) || R.races[npc.race] || HQ_SPAWN_RULES.defaultTier;
+    const row = (typeof row0 === 'string') ? { tier: row0 } : row0;
+    const T = HQ_SPAWN_RULES.tiers[row.tier] || HQ_SPAWN_RULES.tiers[HQ_SPAWN_RULES.defaultTier];
+    const d = hqSpawnDistrict(roomId, npc.home);
+    const clamp = (v) => Math.max(1, Math.min(LEVEL_CAP, Math.round(v)));
+    if (Number.isFinite(+row.lvl)) return { lvl: clamp(+row.lvl), tier: row.tier, district: d };
+    const base = (d && R.districts[d] && Number.isFinite(+R.districts[d].base)) ? +R.districts[d].base : HQ_LEVEL_RULES.start;
+    const add = Array.isArray(row.add) ? row.add : (T.add || [0, 0]);
+    const rnd = hqLevelRng((npc.id || npc.race) + '|spawnlvl')();
+    return { lvl: clamp(base + add[0] + rnd * (add[1] - add[0])), tier: row.tier, district: d };
+}
 let _hqCityGridCache = null;
 /* THE ROUTE MAP of a room: { nx, nz, x0, z0, res, walk (Uint8: 0 no, 1 ground, 2 road), comp (the walk's own component: 1), openE / openS (Uint8: the
    square to the east / south is walked to), cost, bid (Int16: the walk-in building a square is inside, -1), bld [{ id, inner, outer, ax, az, bx, bz, cells }],
@@ -74792,6 +74859,10 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     const lv = hqEncounterLevels(opts.partyLevel, site, enemyTeam, (roomId || '') + '|' + (ch.id || ch.race) + '|levels',
                                  swarm ? { grunts: { from: swarm.elite, offset: HQ_LEVEL_RULES.swarm.offset } } : null);
     if (ET && ET.levels) lv.levels = lv.levels.map(l => Math.max(1, Math.min(LEVEL_CAP, Math.max(ET.levels[0], Math.min(ET.levels[1], l)))));
+    /* THE SET LEVELS (2026-11-16, THE NPC SPAWN SYSTEM): a native that carries its own level (`ch.lvl`, written at its spawn from
+       HQ_SPAWN_RULES) fights at it, whatever the party's level; so does each member of its group. No clamp to the party. */
+    if ((ch.lvl | 0) > 0) lv.levels[0] = Math.max(1, Math.min(LEVEL_CAP, ch.lvl | 0));
+    members.forEach((x, i) => { if ((x.lvl | 0) > 0 && i + 1 < lv.levels.length) lv.levels[i + 1] = Math.max(1, Math.min(LEVEL_CAP, x.lvl | 0)); });
     /* THE SEAMLESS FIELD (2026-09-22 — the user: "encounters in the haunted house still go to a voxel grid map, not what I wanted at
        all"): a room the rasteriser takes (hqFieldRoomOk — a box part, a cave chamber, a TERRAIN area) fights ITS OWN WINDOW on its own
        ground, so it hands the launch NO area Δ (map.js gates the window on `launchId`); the part's Δ (THE AREA BOARDS, 2026-09-19 —
