@@ -1,0 +1,201 @@
+# THE NPC SPAWN SYSTEM — Disaster City first, then the blueprint for every zone
+
+Started 2026-11-16 on mondo's order (thread "Disaster City NPCs: the spawn system", second side, claims row of that name).
+**State: STEP 1 only. This file is the compare-and-contrast he asked for. Nothing is built. Every number in section D is a
+PROPOSAL; he sets the numbers. The build starts after his OK and his answers to section F.**
+
+His brief, in short: no level scaling with the player; many of the same unit (cop b, cop c ...) with schedules; more NPCs;
+rarity from common to one of a kind (Superhero male + female, Sidekick, Antihero); a set level or level range per race, rarer
+= higher (cops 5 to 10, the Superhero about 50); a cap per zone or district that refills after captures; random zodiac signs;
+later an easy sheet for boss and scripted battles; the result is the blueprint for the other zones.
+
+## The short table
+
+| # | He asked for | Today | Gap |
+|---|---|---|---|
+| 1 | No level scaling with the player | Every enemy's level = the party's level plus a small offset (`hqEncounterLevels`) | A level range per race, read in place of the party level. Small. |
+| 2 | Many of the same unit, as variants with schedules | 44 residents, one row a unit (the Priest twice: male + female) | The list, the ids and the day-seed are keyed by race. Medium. |
+| 3 | More NPCs, the city feels dead | 44 in 144 plots; at most 8 get a body near you (4 on a weak PC), 14 rigs kept | More rows are cheap. More BODIES on screen cost frames. Medium, the frame rate is the risk. |
+| 4 | Rarity tiers, common to one of a kind | A weight per race in the AREA UNITS table; the residents ignore it (one each) | A tier per race per district. Small once 2 is in. |
+| 5 | Level range per race, rarer = higher | No race has a level. A room table can clamp levels (`levels: [min, max]`), unused in the city | The same rows as 1. |
+| 6 | A cap per district that refills over time | A beaten or captured NPC is gone until the next real calendar day, then back | A count per row + a refill timer on the save. Medium. |
+| 7 | Random zodiac per unit | Each enemy rolls a random sign when the FIGHT starts; the walking NPC has none | Roll it at spawn, keep it, show it, carry it into the fight and the capture. Small. |
+| 8 | Easy boss / scripted battles | `QUEST_FIGHTS` rows (the first quest): race + gender + seats; enemy levels still follow the party | Level, sign, stats, spells and place per enemy on that row. Medium. |
+| 9 | The blueprint for other zones | The residents code is tied to one room (`HQ_CITY_RESIDENTS.room`) | Rules as rows keyed by room + district. Comes with 2. |
+
+## A. HOW IT IS NOW
+
+**Who the city's NPCs are.** data.js `HQ_CITY_RESIDENTS.list`: 44 rows for the room `site_prebuilt_downtown_streets`. One row
+a unit; only the Priest has two (male, female). A row = `race`, optional `gender`, `home` (a plan building), `homeName`, and
+`day` = blocks of [from hour, to hour, Sleep | Work | Out | Patrol, place]. The Superhero is ONE row (its gender is picked by a
+hash). In this room the older systems stay out: the random extra walkers (`hqRoomPopulation`, 6 in a city room) and the
+roster draw are not spawned (three-renderer.js `_hqResStart`, called from `_hqSpawnRounds`).
+
+**Homes by district today** (from each row's `home`): Southside 9 · Civic Center 0 (five work there) · Financial 8 ·
+University 5 · Hero Plaza 6 · Entertainment 4 · Sports 4 · Industrial 3 · Bayside 5.
+
+**Schedules, homes, beds.** data.js `hqCityGrid(room)` = the walk map on 3.5 m squares. `hqResidentTimeline(G, r, dayKey)`
+lays a 24 hour day from the row (walks, the bus, pottering inside, patrols), seeded by the day + the race. `hqResidentAt(tl,
+hour)` = where it is now, on the world clock. Beds: `hqCityGrid().beds`, 41 of 44 sleep in a bed; one without a bed still
+goes in through its front door.
+
+**Bodies on screen.** three-renderer.js `_hqTickResidents`: every 0.4 s the nearest `drawn` 8 (`drawnLow` 4) residents
+within `radius` 70 m get a body, kept to `keepM` 85 m, at most `bodies` 14 rigs. Everyone else exists only as a timeline.
+This is the main reason the city feels empty: 44 people over 144 plots, many asleep or indoors, and never more than 8 drawn.
+
+**Where an enemy's level comes from (the scaling).** data.js `hqEncounterLevels(partyLevel, site, n, seed)`:
+level = the party's level (`hqPartyLevel`, the first shift's mean; map.js `_hqPartyLevelNow`) + the site's offset
+(`HQ_LEVEL_RULES.tierOffset`, Disaster City is tier 1 = -1), jittered by `lead` (-1..+3) and `band` (-3..+2), clamped to
+`maxBelow` 6 / `maxAbove` 8 of the party level. Measured: party 5 gives 5, 2, 3; party 40 gives 40, 37, 38.
+Callers: `hqEncounterLaunch` (you hit a walking NPC), `hqMarkerLaunch` (the crystal), `questFightLaunch` (a quest fight).
+map.js `_hqEncounterStart` carries `enemyLevels`; `_msConfirm` writes `storyLevel` on each enemy; `createUnit` builds it.
+Two hooks exist and are almost unused: `HQ_AREA_LEVELS[site]` (only the Training Room) and a room table's `levels: [min,
+max]` clamp (`hqRoomEncTable`; no room sets it).
+
+**The AREA UNITS table.** data.js `HQ_AREA_ENCOUNTERS[room]` (his dev window): `{ list: [{ race, w }], walkers, levels,
+group }`. The city's row has 39 races with weights 7 / 2 / 1. In the city it only decides who may walk in from another room
+and who a crystal fight draws; the residents do not read the weights.
+
+**A fight and a capture.** Click a walking NPC: three-renderer.js `_hqEncounterAim` → `hqEncounterLaunch`. The enemy line =
+that NPC + the members of its walking group (none for a resident: they walk alone). A capture is the One-Way Door item
+(CAPTURE_PLAN.md; battle.js "THE ONE-WAY DOOR"); after a win `hqCaptureEnlist` puts the unit in the party (a free slot, at
+the level it was fought at), else on the roster, else pays a bounty. **A race you already own cannot be captured** (battle.js
+`captureRaceOwned`, the ONE OF EACH rule of 10-20), and no team fields the same unit twice.
+
+**What a beaten or captured NPC leaves behind.** data.js `hqEncounterRecord` writes its id into `door.hq.cleared[room]`
+with today's date; `_hqResStart` skips those ids. The next REAL calendar day (`hqToday`) it is back: same unit, same home,
+same schedule. A capture is the same: the unit joins you AND stands in the city again tomorrow. Nothing counts, nothing refills.
+
+**Zodiac.** It exists in fights: 12 signs (`AVAILABLE_ZODIACS`). A unit whose sign matches the sky's sign gets the sky
+bonus (`ZODIAC_EFFECTS[sign].sky`, +10 % on seven stats; the sky turns every 5 rounds), fire / earth / air / water signs
+give the element surge (×1.25), and a sign can carry natal stat changes (`natal`, empty as shipped). An enemy gets a random
+sign in state.js `randomizeIdentity` when the fight is set up: new every fight, not shown in the field, not kept. A captured
+unit's record can hold a sign (`meta.zodiac`); whether the fight's sign rides into the capture is not checked yet.
+
+**Fixed and scripted fights today.** data.js `QUEST_FIGHTS` (one row: `orientation_portal`, the first quest): site, room,
+guest, `allies` (Agent Locke, `level: 25`, a tactic), `enemies: [{ race, gender }]`, seats, the cutscenes. The enemies'
+levels still come from `hqEncounterLevels` (about the party's). No row can set an enemy's level, sign, stats or spells.
+The crystal (`hqMarkerLaunch`) draws from the table. Plot dungeon fights are stand-ins. There is no boss sheet.
+
+**Online.** All of this is story mode on one machine: nothing is on `state` or relayed (RULE #2 does not bite until a
+fight rule changes).
+
+## B. WHAT HE ASKED (his terms)
+
+1. No level scaling with the player.
+2. Many of the same unit, as variants (cop b, cop c, cop d ...) that each keep a schedule.
+3. More NPCs so the city feels alive.
+4. Rarity tiers from common (many) to one of a kind per district (Superhero male + female, Sidekick, Antihero), "and
+   everything in between".
+5. A set level or level range per race; rarer = higher (cops about 5 to 10, the Superhero about 50: "if I run into them
+   early game I get clobbered").
+6. A cap per zone or per district that refills over time after captures, so the city never goes empty.
+7. Random zodiac signs per unit.
+8. Later: an easy way to make boss and scripted battles (this NPC, this level, this place, these stats).
+9. The result is the blueprint every other zone copies.
+
+## C. THE GAP
+
+| # | Exists | Missing | Files | Size | Risks |
+|---|---|---|---|---|---|
+| 1 | `hqEncounterLevels` + two unused hooks | A level per spawned NPC, carried from the walk into the fight; the party-level maths switched off where a row gives a range | data.js (rules + launch), map.js (`_hqEncounterStart` already carries levels) | Small | The first quest's fight must keep its own levels (see 8). A level-50 kill pays big XP to a level-5 party (`killXpFor`): his call whether that stays. The tutorial lines: no TUTORIAL_MECHANICS lesson watches these functions today; re-check in the PR. |
+| 2 | One row a race; id `hq-res-<race>`; day seeded by race | Variant rows (letter b, c, d ...), each with its own home, day and seed; ids per variant | data.js (`HQ_CITY_RESIDENTS` → the new rules object, `hqResidentTimeline` seed), three-renderer.js (`_hqResStart` ids) | Medium | Homes and beds: a new variant needs a door to go home through (works today) and, to sleep in a bed, a bed the district thread built. Saves: the cleared ids change (he does not care about old saves). |
+| 3 | 8 drawn / 14 rigs | More people AND a way to show more of them | data.js knobs; three-renderer.js `_hqTickResidents` | Medium | **Frame rate.** The city runs about 37 FPS; each drawn body is a skinned rig. More rows cost nothing until they are drawn. Plan: measure FPS at 8, 12, 16 drawn before choosing; keep `drawnLow` for the weak PC. The frame-rate row is held by the second side too: a note goes on the board. "None blocking a path" stays. |
+| 4 | Weights in AREA UNITS (not read by residents) | A tier per race per district; one-of-a-kind = count 1 | data.js | Small | None beyond 2. |
+| 5 | Nothing per race | Level range on the tier, with a per-race override | data.js | Small | Same as 1. |
+| 6 | "Gone until tomorrow" on the real calendar | A live count per district row, a removed-list with times on the save, a refill timer | data.js (ledger beside `cleared`), three-renderer.js (`_hqResStart` reads it), battle.js commit (a capture marks "captured", a win marks "beaten") | Medium | Saves: a new key in `door.hq` (never deletes his saves). The synced blob needs a merge rule (server merges off data.js). ONE OF EACH blocks capturing a second cop: see F. |
+| 7 | A random sign per fight | Rolled once at spawn (seeded by the variant + its refill count), shown on the NPC, carried into the fight and the capture | data.js, three-renderer.js (the sub line), state.js (the lead's identity takes the sign), data.js `hqCaptureEnlist` | Small | None. |
+| 8 | `QUEST_FIGHTS` | Per enemy: `level`, `zodiac`, stat changes, spells, name, seat; a place in the world that starts it | data.js (`QUEST_FIGHTS` / `questFightLaunch`), map.js, state.js | Medium | Must not move the first quest's fight. Stats first, never remove a spell. Names and characters are his: the sheet is empty until he fills it. |
+| 9 | One room hard-wired | Rules keyed by room and district; the residents code reads any room that has rows | data.js, three-renderer.js (`_hqResRoom`) | With 2 | Other zones have no walk grid for schedules yet (`hqCityGrid` reads the city plan): a zone without one falls back to the rounds (loops of stops). |
+
+## D. THE PROPOSED DATA SHAPE (every number is a PROPOSAL)
+
+One new rules object in data.js beside the population helpers (working name `HQ_SPAWN_RULES`): the tier ladder once, then
+one table per room, one block per district. Another zone adds only its own table.
+
+**The tier ladder (PROPOSAL)**
+
+| Tier | At once, per district | Level range | Back after capture or defeat |
+|---|---|---|---|
+| Common | 4 | 5 to 10 | 1 day |
+| Uncommon | 2 | 10 to 20 | 2 days |
+| Rare | 1 | 20 to 35 | 4 days |
+| Very rare | 1 | 35 to 45 | 7 days |
+| One of a kind | 1 in the whole city | 50 | his call (F3) |
+
+A row may override its tier's count, level and refill. "Days" are world-clock days unless he picks real days (F2).
+
+**Hero Plaza, the worked example (PROPOSAL)**
+
+| Unit | Tier | At once | Level | Variants | Refill | Today |
+|---|---|---|---|---|---|---|
+| Police Officer | Common | 4 | 5 to 10 | a, b, c, d: each its own home, shift and beat | 1 day | 1, lives in Apartments A, works at the Police desk |
+| Chef | Common | 3 | 5 to 10 | a, b, c | 1 day | 0 here (the one Chef lives and works in Bayside; his example names chefs: his call if they also work Hero Plaza's Coffee arcade) |
+| Homosapien | Common | 4 | 5 to 8 | a to d | 1 day | 0 here (1 in Southside) |
+| Eagleman | Rare | 1 | 25 to 35 | one | 4 days | 1, Superhero Tower |
+| Nephilim | Rare | 1 | 25 to 35 | one | 4 days | 1, Apartments A |
+| Sidekick | One of a kind | 1 | 40 | one | F3 | 1, Apartments A |
+| Antihero | One of a kind | 1 | 45 | one | F3 | 1, Apartment stair |
+| Superhero (male) | One of a kind | 1 | 50 | one | F3 | 1 row, gender by a hash |
+| Superhero (female) | One of a kind | 1 | 50 | one | F3 | not a row of her own today |
+
+District total: 17 people where 6 live today.
+
+**The other districts (PROPOSAL; units = today's residents by home, no new units)**
+
+| District | Common (4 at once, 5 to 10) | Uncommon (2, 10 to 20) | Rare (1, 20 to 35) | Very rare (1, 35 to 45) |
+|---|---|---|---|---|
+| Southside | Homosapien, Gangster | Priest (male, female), Firefighter, Conspiracy Theorist | Ki Fighter, Swordfighter | Cult Leader |
+| Civic Center (nobody lives here today) | Police Officer, Firefighter | Politician | Time Cop | General |
+| Financial | Honda Civic (on the roads) | Goblin, Spy | Men in Black (cannot be fought today), Halfdemon, Politician | General, Time Cop |
+| University | Zombie | Professor, Telepath | Mad Scientist, Reptilian | |
+| Entertainment | Chef | Clown, Mime, Bunny Girl | Ringmaster | Popstar (works here, lives in Bayside) |
+| Sports + Culture | | Quarterback, Luchador | Juggernaut | King Kong (one of a kind, on his field) |
+| Industrial | | Marksman | Knight, Astronaut | |
+| Bayside | Chef, Hippie | Pirate | Popstar | Ghost (one, haunts the hotel) |
+
+With these counts the city holds about 110 people in place of 44. How many get a BODY near you stays a separate knob
+(`drawn`), set after the FPS measurement.
+
+**The row shape (sketch)**
+
+```
+HQ_SPAWN_RULES = {
+  tiers: { common: { n: 4, lvl: [5, 10], refillDays: 1 }, ..., unique: { n: 1, lvl: [50, 50], refillDays: null } },
+  rooms: { site_prebuilt_downtown_streets: { capBy: 'district', districts: {
+    H: [ { race: 'police officer', tier: 'common' },                       // variants a..d made from n
+         { race: 'superhero', gender: 'male', tier: 'unique', lvl: 50 },
+         { race: 'superhero', gender: 'female', tier: 'unique', lvl: 50 }, ... ] } } }
+}
+```
+
+Each variant's home, day and seed: the first variant keeps today's `HQ_CITY_RESIDENTS` row; b, c, d ... take a home in
+the same district and a shifted day (a cop on the day shift, one on the night shift), written as rows so he can read them.
+
+## E. THE BUILD ORDER (each delivery stands alone, one PR each)
+
+1. **Fixed levels, scaling off.** The tier ladder + a level per city resident; the fight reads it. The level shows on the
+   NPC's label. Needs: his level numbers (D) and F6. Proof: a picture of a level on a nameplate + a fight at that level.
+2. **Variants + counts.** The rules object replaces the one-each list; cops b, c, d walk their own days. Needs: the
+   counts per district, F4. Proof: pictures of the street, FPS before and after at 8 / 12 / 16 drawn.
+3. **The cap + the refill.** Captured or beaten = out of the district's count; back after the tier's time. Needs: F1, F2,
+   F3, F5.
+4. **Zodiac.** A sign per spawned NPC, shown, kept through the fight and the capture. Needs: nothing.
+5. **The scripted / boss battle sheet.** One row = who, level, sign, stats, spells, place. Needs: his first boss, when
+   he has one. The first quest's fight moves onto the sheet unchanged.
+6. **The blueprint.** A short "add a zone" recipe in this file; the first other zone's table when he names it.
+
+## F. QUESTIONS ONLY HE CAN ANSWER
+
+1. The cap: per district (proposed) or one for the whole zone?
+2. The refill: on the world clock or in real days? How fast for a common unit: 1 day as proposed?
+3. One of a kind (Superhero, Sidekick, Antihero): after you capture one, is it gone for good, or back after a long time?
+   And when you only BEAT one (no capture): back the next day as now?
+4. Variants: do cop b, cop c differ only in home and schedule (same name "Police Officer", same look), or also in look?
+   Your rule says units are named after their race.
+5. Capturing a second cop: today a race you own cannot be captured and a team cannot field two of one unit. Keep that
+   (the extra cops are fights only), or allow owning several of one unit?
+6. The level ceiling for the city: the game's cap is 100. Is 50 the top here, with higher levels saved for later zones?
+7. A level-50 kill pays a level-5 party a lot of XP under today's rule. Keep, or cap the XP from a much higher enemy?
+8. Chefs in Hero Plaza: yes (at the Coffee arcade), or only in Bayside and Entertainment where they work today?
+9. The Superhero female: a second resident of the Superhero Tower with her own day?

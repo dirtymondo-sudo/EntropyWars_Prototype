@@ -14,9 +14,10 @@
 
    THE SQUARE MAP: x = solid ground (the wall), o = walkway / mine floor, w = water, f = concrete room, j = rail track, b = plank over water.
    Squares are (sx 0..72 west to east, sy 0..48 north to south); gx() = a square's west / north line in metres, gc() = its middle.
-   THE LEVELS: one height a plot (layout `level`, 1 level = 1.75 m), a whole-plot plateau. Level 0 = the old mine, 1 = the track and the
-   Outfall, 2 / 3 / 4 = the culverts stepping up to the north, 5 = the cells. Where an opening joins two levels (layout `openings`):
-     fall   the stream drops over the lip (a `fall` row, three-renderer.js THE WATERFALLS) and a stair climbs beside it
+   THE LEVELS: one height a plot (layout `level`, 1 level = 1.75 m), a whole-plot plateau. Level 0 = the old mine, the track and the Outfall's
+   shaft, 2 = the lower sewers (the Junction's row, the Cistern), 4 = the upper sewers (the two north rows), 5 = the cells. Where an opening joins two levels (layout `openings`):
+     fall   an upper culvert's mouth pours a whole drop into a lower ROOM's water (a `fall` row, three-renderer.js THE WATERFALLS);
+            the way up beside it is the opening's `by`: 'stair' (a flight along the room's wall) or 'ladder'
      stair  a dry stair (the cell door, the Maintenance Hatch)
      climb  a ladder or a rope on the face (the trap, the Adit, the well at the Junction) */
 'use strict';
@@ -141,7 +142,9 @@ OPEN.forEach((o, i) => {
     if (o.kind === 'climb') { const p = pt(along(o.mid), r2(lineM + sgn * 0.3)); GO.push({ k: 'climb', x: p.x, z: p.z, face: o.ns ? (sgn > 0 ? 0 : 180) : (sgn > 0 ? 270 : 90), look: o.rope ? 'rope' : 'ladder' }); return; }
     /* the stair: on the low side, 1.75 m of rise over a square and a half; beside a fall it takes the walkway on one side (they alternate) */
     const lane = o.kind === 'fall' ? (i % 2 ? 1 : -1) : 0, run = r2(Math.max(5.25, o.rise * 3)), a = along(o.mid + lane), foot = pt(a, r2(lineM + sgn * run)), head = pt(a, r2(lineM - sgn * 0.4));
-    GO.push({ k: 'ramp', x0: foot.x, z0: foot.z, x1: head.x, z1: head.z, w: C, h0: o.lo.base, h1: o.hi.base, stairs: true, model: STAIR[o.lo.d] || 'concrete', edge: 0.15 });
+    /* beside a fall the way up is the opening's `by`: a stair flight along the lower room's wall, or a ladder on the face */
+    if (o.by === 'ladder') { const p = pt(a, r2(lineM + sgn * 0.3)); GO.push({ k: 'climb', x: p.x, z: p.z, face: o.ns ? (sgn > 0 ? 0 : 180) : (sgn > 0 ? 270 : 90), look: 'ladder' }); }
+    else GO.push({ k: 'ramp', x0: foot.x, z0: foot.z, x1: head.x, z1: head.z, w: C, h0: o.lo.base, h1: o.hi.base, stairs: true, model: STAIR[o.lo.d] || 'concrete', edge: 0.15 });
     if (o.kind === 'fall') { const p = pt(along(o.mid), lineM);
         /* THE WATERFALL (three-renderer.js THE WATERFALLS): the lip's middle, the way the water falls (degrees, 0 = north, clockwise), the lip's width, the two water levels */
         GO.push({ k: 'fall', x: p.x, z: p.z, face: o.ns ? (sgn > 0 ? 180 : 0) : (sgn > 0 ? 90 : 270), w: C, y0: r2(o.hi.base - 0.3), y1: r2(o.lo.base - 0.3) }); }
@@ -224,7 +227,7 @@ L.push("            sub: 'THE CULVERTS · THE RUNNING TUNNELS · THE HOLDING CEL
 L.push("            kind: 'box', site: 'prebuilt_downtown', part: '" + PART + "',");
 L.push("            shell: hqSewerShell({ w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: " + SH + ", wallH: " + SH + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(plot['P02-02'].base + 3.2) + " },");
 L.push("                                  mood: { lamp: 0xbfe8b0, glow: 0x9fd0a0, strip: 0xd8f0c8, light: 0xcfe8c0, ambient: 0.22 }, fog: { color: 0x070b08, density: 0.034 } }),   // darker than the old rooms (mondo 11-16: \"dark and grimy and scary\")");
-L.push("            parti: 'A maze under the city: brick culverts that bend, fork and stop, the water stepping down from the precinct to the Outfall over six falls; the subway line under them, the old mine under that.',");
+L.push("            parti: 'A maze under the city: brick culverts that bend, fork and stop, the upper culverts pouring into the lower rooms over three falls; the subway line under them, the old mine under that.',");
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + GX + ", nz: " + GY + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.d, p.level])) + " },");
 L.push("            terrain: {");
