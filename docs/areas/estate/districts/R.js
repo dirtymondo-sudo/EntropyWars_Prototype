@@ -11,16 +11,19 @@
      P03-05  The Ranch Gate         level 1  gate, cattle grid
      P04-05  The Yard               level 1  chicken coop, trough
      P05-05  The Cow Field          level 1  cows, a fence out to the desert road
-   WHAT STANDS HERE TODAY (pass 1 of 5, the exteriors, 2026-11-16; notes: docs/notes/areas-complexes.md "THE ESTATE, DISTRICT R"):
+   WHAT STANDS HERE TODAY (passes 1 to 3 of 5: the exteriors, the insides, the dressing, 2026-11-16; notes: docs/notes/areas-complexes.md "THE ESTATE, DISTRICT R"):
      THE BARN (walk-in: a gambrel tin roof, barn red boards on a stone footing, white trim, sliding doors, the hayloft door under its hoist beam, a cupola
      and weathervane, a lean-to on posts down the east wall with the mower under it), the grain silo beside it (`ind_silo`), THE FARMHOUSE (walk-in: white
      boards, green shingles, a gable over the door, sashed windows with shutters, a railed porch, a smoking chimney), the Yard's hen house and its picket hen
      run, the water tower (`water_tower_west`), the trough and hand pump, THE WINDMILL (`decor_windpump_tower` + wheel) and its stock tank, the Paddock's ring
      rail with its gate, three horses and a trough, the Pasture's cows, trough and a trailer, the Hay Field's bales + a truck + a scarecrow, the kitchen garden
-     and the picket fence by the farmhouse, THE RANCH GATE (two posts, a beam, the board RANCH, two leaves swung back, a cattle grid) on the track from the
-     house (squares 36 x 63..64), two trailers, the Cow Field's fence, tank, cows and the COW SHED (walked into), chickens, two people: a cowboy, a goatman.
+     and the picket fence by the farmhouse, THE RANCH GATE (two posts, a beam, the board RANCH, two leaves swung back) on the track from the
+     house (squares 36 x 63..64), two trailers, the Cow Field's fence, tank, cows and the COW SHED (walked into), chickens, a sheep pen, a woodpile, power poles, an outhouse, the trailers' camp, eight lamp posts, five people: two cowboys, a goatman, a conspiracy
+     theorist, a grey.
    MISSING / WAITING:
-     - the Barn and the Farmhouse have no upstairs; their insides are bare (pass 2).
+     - INSIDE (pass 2): the Barn has a hayloft (seen, not climbed: no stair model fits and no procedural stairs), stalls, pens, a feed store, a wagon;
+       the Farmhouse a kitchen, a dining corner, a living room by the hearth and a bedroom. Neither has an upstairs.
+     - no cattle grid at the gate (the plan names one): drawn flat it lay under the track; it wants a model.
      - the cowboy has no line (his old line named the three gates, which are gone); the goatman has none (lines are mondo's).
      - the Cow Field's "fence out to the desert road" leads nowhere: no door to the Desert exists (a way out = the tool's, mondo's call; not added).
      - Room 512's stable door `bay` (the Yard's south wall) and the Lodge's saloon door by the farmhouse porch are the tool's.
@@ -52,11 +55,15 @@ module.exports = {
     plan(ctx) { const { setRect } = ctx;
         setRect(36, 63, 38, 65, 'p'); setRect(58, 51, 60, 55, 'p'); setRect(67, 70, 70, 72, 'p'); setRect(55, 58, 66, 59, 'p'); setRect(65, 57, 66, 58, 'p');
     },
-    houses(ctx) { const { building, put, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT } = ctx;
+    houses(ctx) { const { building, put, feat, r2, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT } = ctx;
+        const TB = 0xa08a6a;                                                                                                   // the insides' timber
+        const inb = (B, key, lx, lz, o) => put(B, key, lx, lz, Object.assign({ floor: true }, o || {}));                         // a prop on a walk-in's own floor
+        const wallIn = (B, x0, z0, x1, z1, h) => { const p = B.at(x0, z0), q = B.at(x1, z1); feat({ k: 'wall', x0: p[0], z0: p[1], x1: q[0], z1: q[1], t: 0.25, h: h || 1.5, ghost: true, rail: false }); };   // the walker's block under a drawn partition
+        const G1 = 1.75;                                                                                                       // the Ranch's ground over level 0 (a row's y of 1 m and over is a height over level 0)
         /* THE BARN (walk-in). PASS 1: a GAMBREL roof (two steep tin slopes + a low cap, the ridge front to back), barn red boards on a stone footing, white corner
            boards and belts, two big sliding doors on their rail, the hayloft door under a hoist beam, a louvre in the peak, windows down both long walls, a cupola with
            a weathervane, a lean-to on posts down the east wall. */
-        BARN = building('barn', [51, 50, 58, 56, 'S'], 5.25, { leaf: 'leaf_barn', leafDouble: true, floorIn: 'dirt_2', storeys: 1 }, (a, w, d, door) => {
+        BARN = building('barn', [51, 50, 58, 56, 'S'], 5.25, { leaf: 'leaf_barn', leafDouble: true, floorIn: 'dirt_2', keyIn: WD, storeys: 1 }, (a, w, d, door) => {
             const RED = 0xb8402f, DRED = 0x8a3226, TIN = 0x6a6e70, G = { gain: 1.7 }, f = d / 2, h2 = w / 2, lx = door.lx, H = 5.25, BX = 6.6, LOW = 4.6, CAP = 2.6;
             a.shell(w, H, d, WD, RED, door, [3.5, 1.75], G);
             a.box(0, 0, 0, w + 0.3, 0.5, d + 0.3, 'castle_wall', 0x8a8478, { faces: 'blr', top: false });                                          // the stone footing, open across the doors
@@ -98,14 +105,36 @@ module.exports = {
             a.roof('shed', LX, 3.0, LZ, 14.4, 1.3, 7.2, COR, TIN, Object.assign({ ry: 270 }, G));
             a.box(h2 + 6.75, 0, LZ - 7, 0.26, 3.0, 0.26, WD, TIMBER, { n: 5, step: [0, 0, 3.5], gain: 1.9 }); a.box(h2 + 6.75, 2.85, LZ, 0.2, 0.22, 14.4, WD, TIMBER, GW);
             a.box(LX, 2.9, LZ - 7, 7.0, 0.16, 0.16, WD, TIMBER, { n: 5, step: [0, 0, 3.5], gain: 1.9 });
+            /* THE INSIDE (pass 2): a lit plank ceiling under the black one, tie beams, the HAYLOFT over the back two rows of squares on four posts with its rail,
+               three stalls down the west wall and two pens down the east (partitions on the squares' lines, half-open gates), mangers, lanterns on the posts */
+            a.box(0, 4.85, 0, w - 0.3, 0.06, d - 0.3, FLR, 0xc8b490, { sides: false, top: false, under: true, glow: 0.5, gain: 1.6 });   // under the walk-in's own (black) ceiling, which hangs some 0.3 m under the wall's top
+            a.box(0, 4.55, -7, w - 0.3, 0.28, 0.28, WD, TB, { n: 5, step: [0, 0, 3.5], gain: 1.9 });
+            a.box(0, 2.9, -6.95, w - 0.3, 0.16, 6.9, FLR, 0x9a8468, { under: true }); a.box(0, 2.72, -3.5, w - 0.3, 0.32, 0.26, WD, TB, GW);
+            for (const x of [-8.75, -5.25, 5.25, 8.75]) { a.box(x, 0, -3.5, 0.28, 2.72, 0.28, WD, TB, GW); a.box(x, 2.0, -3.28, 0.16, 0.24, 0.16, null, AMBER, LAMP); a.box(x, 2.24, -3.28, 0.2, 0.05, 0.2, null, IRON); }
+            for (const x of [-8.75, 8.75]) a.box(x, 0, 3.5, 0.28, H - 0.2, 0.28, WD, TB, GW);
+            a.box(0, 3.96, -3.5, w - 0.3, 0.08, 0.1, WD, TB, GW); a.box(-11.9, 3.06, -3.5, 0.08, 0.9, 0.08, WD, TB, { n: 18, step: [1.4, 0, 0], gain: 1.9 });
+            for (const sx of [-1, 1]) { const zs = sx < 0 ? [-7, -3.5, 0, 3.5] : [-7, -3.5, 0];
+                for (const z of zs) a.box(sx * 10.5, 0, z, 3.4, 1.5, 0.12, WD, TB, GW);
+                for (let i = 0; i < zs.length - 1; i++) { const z0 = zs[i]; a.box(sx * 8.75, 0, z0 + 1.1, 0.12, 1.5, 2.2, WD, TB, GW); a.box(sx * 8.15, 0.2, z0 + 2.3, 1.2, 1.1, 0.07, WD, TB, GW);
+                    a.box(sx * 11.85, 0.55, z0 + 1.75, 0.5, 0.35, 1.7, WD, TB, GW); } }
         });
-        put(BARN, 'horse_brown', -8.6, -6.4, { face: 180 }); put(BARN, 'cow', 8.6, -6.4, { face: 180 }); put(BARN, 'cow', 8.6, -1.2, { face: 270 });
-        put(BARN, 'meshy_burlap_sack', -10.4, 4.4); put(BARN, 'meshy_burlap_sack', -9.2, 5.6); put(BARN, 'meshy_burlap_sack', -10.6, 6.6); put(BARN, 'wooden_bucket', -6.2, -8.6); put(BARN, 'wooden_bucket', 6.4, -3.6);
-        put(BARN, 'psx_wooden_crate_1', 9.8, 6.8); put(BARN, 'psx_wooden_crate_2', 8.4, 7.4); put(BARN, 'psx_metal_barrel_mp_1', 10.6, 4.6); put(BARN, 'tool_chest', -10.4, -1.2, { face: 90 });
-        put(BARN, 'railway_lantern', 2.4, 8.2); put(BARN, 'psx_cobweb_1', -11.4, -9.6, { y: 3.6 }); put(BARN, 'psx_cobweb_2', 11.4, 9.4, { y: 3.6 });
+        { const zsW = [-7, -3.5, 0, 3.5], zsE = [-7, -3.5, 0];
+          for (const z of zsW) wallIn(BARN, -12.2, z, -8.75, z); for (const z of zsE) wallIn(BARN, 8.75, z, 12.2, z);
+          for (let i = 0; i < 3; i++) wallIn(BARN, -8.75, zsW[i], -8.75, zsW[i] + 2.2); for (let i = 0; i < 2; i++) wallIn(BARN, 8.75, zsE[i], 8.75, zsE[i] + 2.2); }
+        /* the Barn's things: horses in two stalls, straw in the third, the hay store in the north-west corner, cows in the two pens, the feed store, the tools,
+           a wagon under the loft, bales up on the loft, the ladder, a hoist, the one real lamp */
+        inb(BARN, 'horse_brown', -10.4, -5.25, { face: 90 }); inb(BARN, 'horse', -10.4, -1.75, { face: 90 }); inb(BARN, 'hw_straw', -11.2, 1.2, { face: 90 }); inb(BARN, 'hw_straw_2', -10.6, 2.6); inb(BARN, 'wooden_bucket', -9.5, 2.9);
+        for (const q of [[-11.5, -9.8, 0, 0], [-10.1, -9.8, 0, 0], [-11.5, -9.1, 0, 0], [-10.1, -9.1, 0, 0], [-11.5, -8.2, 0, 90], [-10.8, -9.5, 0.86, 0], [-10.8, -8.8, 0.86, 0]]) put(BARN, q[2] ? 'hw_straw_2' : 'hw_straw', q[0], q[1], q[2] ? { y: G1 + q[2], face: q[3] } : { floor: true, face: q[3] });
+        inb(BARN, 'cow', 10.4, -5.25, { face: 270 }); inb(BARN, 'cow', 10.4, -1.75, { face: 270 });
+        inb(BARN, 'meshy_burlap_sack', 10.4, 1.2); inb(BARN, 'meshy_burlap_sack', 11.4, 2.0); inb(BARN, 'meshy_burlap_sack', 10.6, 2.9); inb(BARN, 'psx_supply_crate_1', 11.3, 3.9);
+        inb(BARN, 'psx_metal_barrel_mp_1', 11.3, 5.6); inb(BARN, 'psx_metal_barrel_mp_3', 10.2, 6.2); inb(BARN, 'psx_wooden_crate_1', 9.6, 8.6); inb(BARN, 'psx_wooden_crate_2', 11.0, 8.9); inb(BARN, 'psx_wooden_crate_4', 10.3, 7.6); inb(BARN, 'platform_scale', 9.4, 4.4, { face: 270 });
+        inb(BARN, 'tool_chest', 11.3, -9.4, { face: 270 }); inb(BARN, 'tire_stack', 9.6, -9.6); inb(BARN, 'psx_jerrycan_1', 9.3, -8.4); inb(BARN, 'psx_car_battery_1', 10.4, -8.2); inb(BARN, 'covered_wagon', 1.6, -8.0, { face: 0 }); inb(BARN, 'hw_shovel', -3.6, -9.6, { face: 30 });
+        inb(BARN, 'broom', -7.9, 9.9); inb(BARN, 'psx_wooden_crate_6', -6.9, 9.4); inb(BARN, 'library_ladder', 6.9, -2.9, { face: 180 }); inb(BARN, 'cat', 3.4, 6.2, { face: 220 }); inb(BARN, 'chicken', -3.2, 4.4, { face: 60 }); inb(BARN, 'chicken', 5.2, 1.6, { face: 300 });
+        for (let i = 0; i < 9; i++) { const x = -10.4 + i * 2.5; put(BARN, i % 2 ? 'hw_straw_2' : 'hw_straw', x, -8.9, { y: G1 + 3.06, face: 0 }); if (i % 3 !== 1) put(BARN, 'hw_straw', x + 0.3, -7.9, { y: G1 + 3.06, face: 90 }); if (i % 2 === 0) put(BARN, 'hw_straw_2', x, -8.9, { y: G1 + 3.92, face: 0 }); }
+        put(BARN, 'chain_hoist', 1.4, -3.0, { y: G1 + 2.6 }); put(BARN, 'psx_ceiling_lamp_1_on', 0, 3.5, { y: G1 + 4.38 }); put(BARN, 'bare_bulb', 0, -0.4, { y: G1 + 4.5 });   // the real light: a bare bulb (it casts no cube shadow) put(BARN, 'psx_cobweb_1', -11.4, 9.6, { y: G1 + 4.2 }); put(BARN, 'psx_cobweb_2', 11.4, 9.4, { y: G1 + 4.2 });
         /* THE FARMHOUSE (walk-in). PASS 1: white boards on a stone footing, a green shingle roof with a gable over the door, sashed windows with green shutters (three
            lit), white porch posts and rails, a brick chimney that smokes. */
-        FARM = building('farmhouse', [63, 51, 69, 56, 'S'], 3.5, { leaf: 'leaf_white_wood' }, (a, w, d, door) => {
+        FARM = building('farmhouse', [63, 51, 69, 56, 'S'], 3.5, { leaf: 'leaf_white_wood', keyIn: WD }, (a, w, d, door) => {
             const WALL = 0xe6e0d0, GREEN = 0x4a6048, SHUTC = 0x3a5a44, f = d / 2, h2 = w / 2, lx = door.lx;
             a.shell(w, 3.5, d, WD, WALL, door, [3.5, 1.75], { gain: 2.2 });
             a.box(0, 0, 0, w - 0.1, 0.16, d - 0.1, FLR, 0x8c7a62, { uv: [1.75, 1.75] });
@@ -133,10 +162,27 @@ module.exports = {
             a.roof('shed', 0, 2.8, f + 1.85, w + 0.6, 0.7, 3.8, SHG, GREEN);
             a.box(lx, 2.3, f + 3.1, 0.2, 0.3, 0.2, null, AMBER, LAMP); a.cyl(lx, 2.6, f + 3.1, 0.02, 0.25, null, IRON);                               // the porch lamp
             a.box(6.6, 0, -f - 0.5, 1.6, 7.4, 1.1, BRK, 0x9a6a58, { roof: true }); a.box(6.6, 0, -f + 0.75, 2.2, 1.5, 0.9, BRK, 0x9a6a58); a.box(6.6, 7.4, -f - 0.5, 1.8, 0.2, 1.3, 'castle_wall', 0x8a8478, { roof: true });   // the chimney, its hearth inside
+            /* THE INSIDE (pass 2): a white ceiling under the black one, the bedroom's two walls (east front corner, its doorway the square by the front wall), the
+               kitchen's wall and counter (west back corner), the mantel over the hearth, ceiling beams */
+            const PW = 0xd8d0bc, PG = { gain: 2.0 };
+            a.box(0, 3.06, 0, w - 0.3, 0.06, d - 0.3, null, 0xe8e2d4, { sides: false, top: false, under: true, glow: 0.25 });
+            a.box(0, 2.85, -5.25, w - 0.3, 0.22, 0.22, WD, TB, { n: 4, step: [0, 0, 3.5], gain: 1.9 });
+            a.box(3.5, 0, 3.5, 0.14, 3.06, 3.5, WD, PW, PG); a.box(7.0, 0, 1.75, 7.0, 3.06, 0.14, WD, PW, PG);
+            a.box(-8.75, 0, -1.75, 3.5, 3.06, 0.14, WD, PW, PG); a.box(-5.25, 0, -1.75, 3.5, 0.95, 0.6, WD, TB, GW); a.box(-5.25, 0.95, -1.75, 3.6, 0.06, 0.7, 'castle_wall', 0xb8b2a6);
+            a.box(6.6, 1.5, -f + 1.3, 2.8, 0.12, 0.5, WD, TB, GW); a.box(6.6, 0, -f + 1.25, 2.4, 0.06, 1.0, 'castle_wall', 0x8a8478);
         });
-        put(FARM, 'psx_dinner_table_1', -4.4, -1.2); put(FARM, 'psx_chair_mp_1', -4.4, -2.8, { face: 0 }); put(FARM, 'psx_chair_mp_1', -4.4, 0.4, { face: 180 }); put(FARM, 'psx_chair_mp_1', -6.2, -1.2, { face: 90 });
-        put(FARM, 'psx_bed_1', 6.6, 5.4, { face: 270 }); put(FARM, 'psx_bedside_table_1', 8.9, 6.9); put(FARM, 'rug_round', 1.2, 1.6, { y: 0.17 }); put(FARM, 'psx_armchair_1', 4.4, -5.6, { face: 0 });
-        put(FARM, 'psx_shelf_mp_2', -9.4, -6.6, { face: 90 }); put(FARM, 'retro_radio', -9.3, 3.2); put(FARM, 'cat', 2.6, -4.4, { face: 140 }); put(FARM, 'candle', 6.6, -7.0, { y: 1.5 });
+        wallIn(FARM, 3.5, 1.75, 3.5, 5.25, 3); wallIn(FARM, 3.5, 1.75, 10.4, 1.75, 3); wallIn(FARM, -10.4, -1.75, -7, -1.75, 3); wallIn(FARM, -7, -1.75, -3.5, -1.75, 1);
+        /* the Farmhouse's things. KITCHEN (west back): range, sink, shelf, a work table, the bread rack, pots; DINING (west front): the table and four chairs, a
+           cabinet, the radio; LIVING (by the hearth): the fire, a sofa, two armchairs, a low table, the TV, shelves; BEDROOM (east front): bed, wardrobe, carpet */
+        inb(FARM, 'kitchen_range', -9.6, -8.0, { face: 0 }); inb(FARM, 'sink', -7.8, -8.15, { face: 0 }); inb(FARM, 'psx_shelf_mp_2', -5.4, -8.2, { face: 0 }); inb(FARM, 'bread_rack', -9.9, -4.2, { face: 90 }); inb(FARM, 'psx_table_large_2', -6.6, -5.0);
+        put(FARM, 'stock_pots', -5.25, -1.75, { y: G1 + 1.01 }); put(FARM, 'pot_rack', -7.6, -6.2, { y: G1 + 2.4 }); inb(FARM, 'psx_plate_mp_1', -6.9, -5.1, { y: 0.8 }); inb(FARM, 'broom', -10.1, -2.4);
+        inb(FARM, 'psx_dinner_table_1', -7.0, 3.5); inb(FARM, 'psx_chair_mp_1', -7.0, 1.9, { face: 0 }); inb(FARM, 'psx_chair_mp_1', -7.0, 5.1, { face: 180 }); inb(FARM, 'psx_chair_mp_1', -8.8, 3.5, { face: 90 }); inb(FARM, 'psx_chair_mp_1', -5.2, 3.5, { face: 270 });
+        inb(FARM, 'psx_display_cabinet_mp_1', -9.9, 0.4, { face: 90 }); inb(FARM, 'retro_radio', -9.8, 7.6); inb(FARM, 'psx_plate_mp_1', -7.4, 3.3, { y: 0.8 }); inb(FARM, 'psx_plate_mp_1', -6.6, 3.8, { y: 0.8 });
+        inb(FARM, 'hearth_fire', 6.6, -7.75, { noLight: true });   // noLight: the room's FIRST lit torch / hearth / campfire row casts the cube shadow (six more passes of everything); a walk-in's rows come first inb(FARM, 'psx_sofa_1', 6.6, -3.2, { face: 180 }); inb(FARM, 'psx_armchair_1', 3.2, -5.6, { face: 90 }); inb(FARM, 'psx_armchair_2', 9.7, -5.6, { face: 270 }); inb(FARM, 'psx_coffee_table_1', 6.6, -5.3); inb(FARM, 'rug_round', 6.6, -5.2, { y: 0.17 });
+        inb(FARM, 'psx_tv_table_1', 0.2, -8.1, { face: 0 }); inb(FARM, 'psx_tv_mp_1', 0.2, -8.1, { y: 0.62, face: 0 }); inb(FARM, 'psx_shelf_mp_3', -2.4, -8.2, { face: 0 }); inb(FARM, 'cat', 4.6, -6.6, { face: 140 }); inb(FARM, 'footlocker', 9.8, -1.0, { face: 90 });
+        put(FARM, 'hw_candle_2', 5.9, -7.45, { y: G1 + 1.63 }); put(FARM, 'psx_clock_1', 7.3, -7.45, { y: G1 + 1.63 }); inb(FARM, 'doormat', -0.87, 7.9); inb(FARM, 'umbrella_stand', 0.9, 8.2); inb(FARM, 'rifle_rack', 2.9, -1.2, { face: 90 });
+        inb(FARM, 'psx_bed_1', 8.4, 5.6, { face: 270 }); inb(FARM, 'psx_bedside_table_1', 9.8, 3.0); inb(FARM, 'psx_lamp_1_on', 9.8, 3.0, { y: 0.62, noLight: true }); inb(FARM, 'psx_wardrobe_mp_1', 4.6, 2.5, { face: 0 }); inb(FARM, 'psx_carpet_mp_1', 6.6, 5.9, { y: 0.17 }); inb(FARM, 'footlocker', 6.4, 8.0);
+        put(FARM, 'psx_ceiling_lamp_1_on', 0, 0, { y: G1 + 2.9 }); put(FARM, 'bare_bulb', 0.6, 0.4, { y: G1 + 2.85 }); put(FARM, 'psx_ceiling_lamp_1_on', -7, -5.2, { y: G1 + 2.9, noLight: true });
         put(FARM, 'rocking_chair', -7.6, 10.4, { face: 180 }); put(FARM, 'dog', 5.2, 10.6, { face: 200 }); put(FARM, 'railway_lantern', 9.4, 10.2);
         put(FARM, 'chimney_smoke', 6.6, -9.25, { y: 1.75 + 7.7 });
     },
@@ -172,14 +218,14 @@ module.exports = {
             for (const t of [0.04, 0.5, 0.96]) box(x + dx * L * t, 0.2, z + dz * L * t, 0.1, 1.2, 0.1, WD, TIMBER, GW); };
         const post = (x, z, h, t) => box(x, 0, z, t, h, t, WD, 0x8a7052, GW);
         /* THE RANCH GATE on the district's line (the track from the house comes in on squares 34..35 x 63..64, so the gate stands at 36 x 63..64): two tall posts, the beam over the track with its board, the two leaves swung back
-           along the rail, the cattle grid between the posts */
+           along the rail. NO CATTLE GRID: drawn flat on the ground it lay UNDER the track here (the drawn ground by the corn's bank stands some 0.6 m over the
+           height a hugging row is given); it wants a model or a level site (listed) */
         { const GX = gx(36), Z0 = gx(63), Z1 = gx(65), ZM = gx(64);
           post(GX, Z0, 5.4, 0.42); post(GX, Z1, 5.4, 0.42); box(GX, 4.9, ZM, 0.34, 0.34, 8.2, WD, 0x8a7052, GW); box(GX, 5.24, ZM, 0.5, 0.08, 8.6, WD, 0x7a6a54, GW);
           for (const s of [-1, 1]) { cyl(GX, 4.25, ZM + s * 1.5, 0.02, 0.65, null, IRON); }
           box(GX, 3.45, ZM, 0.1, 0.85, 3.7, WD, 0x7a6048, GW);
           a.sign('RANCH', X(GX - 0.06), 3.5, Z(ZM), 3.5, 0.75, '#efe6d0', '#5a4028', 'fell', { ry: 90 }); a.sign('RANCH', X(GX + 0.06), 3.5, Z(ZM), 3.5, 0.75, '#efe6d0', '#5a4028', 'fell', { ry: 270 });
           leaf(GX + 0.35, Z0 - 0.2, 0, -1, 3.3); leaf(GX + 0.35, Z1 + 0.2, 0, 1, 3.3);
-          box(GX + 1.45, 0, ZM, 2.7, 0.3, 6.5, null, 0x16161a); box(GX + 0.25, 0.3, ZM, 0.1, 0.1, 6.5, COR, 0xc0c6ca, { n: 13, step: [0.2, 0, 0], gain: 1.6 }); for (const s of [-1, 1]) box(GX + 1.45, 0.1, ZM + s * 3.3, 2.8, 0.32, 0.16, COR, 0xc0c6ca, { gain: 1.6 });
           blk(GX, Z0 - 0.2, GX, Z0 + 0.2, 0.45, 2); blk(GX, Z1 - 0.2, GX, Z1 + 0.2, 0.45, 2); }
         /* THE YARD: the trough with its hand pump by the hen run, the chopping place */
         { trough(gc(51), gc(63), 'x'); const px = gc(51) + 1.75, pz = gc(63);
@@ -190,6 +236,11 @@ module.exports = {
         /* THE WINDMILL's stock tank and the pipe from the pump; THE COW FIELD's tank; THE PASTURE's trough */
         { tank(gc(56), gc(42), 1.3); box(gx(55) + 0.2, 0.3, gc(41) + 0.6, 3.2, 0.07, 0.07, null, IRON); cyl(gx(55) + 1.75, 0, gc(41) + 0.6, 0.04, 0.34, null, IRON); taken.add('56:42');
           tank(gc(62), gc(66), 1.3); taken.add('62:66'); trough(gc(43), gc(41), 'x'); taken.add('43:41'); }
+        /* PASS 3: eight iron lamp posts (the zone's lantern: amber at glow 0.7; drawn, they glow only), each on a square's edge with its lantern over the walk */
+        { const lamp = (x, z, dx, dz) => { box(x, 0, z, 0.3, 0.45, 0.3, null, IRON); cyl(x, 0.45, z, 0.06, 2.7, null, IRON); box(x + dx * 0.3, 3.05, z + dz * 0.3, dx ? 0.75 : 0.07, 0.07, dz ? 0.75 : 0.07, null, IRON);
+              box(x + dx * 0.6, 2.6, z + dz * 0.6, 0.24, 0.36, 0.24, null, AMBER, LAMP); box(x + dx * 0.6, 2.96, z + dz * 0.6, 0.32, 0.07, 0.32, null, IRON); };
+          lamp(gx(48) + 0.3, gc(62), 1, 0); lamp(gx(60) - 0.3, gc(62), -1, 0); lamp(gx(53) - 0.3, gx(58), 1, 0); lamp(gc(61), gx(58) - 0.3, 0, 1); lamp(gx(38) + 0.3, gx(65) + 0.4, 0, -1);
+          lamp(gc(52), gc(43), 1, 0); lamp(gx(44) + 0.4, gc(59), -1, 0); lamp(gx(67) - 0.3, gx(70) - 0.4, 1, 0); }
         feat({ k: 'arch', id: 'est:ranchfittings:look', x: OX, z: OZ, rot: 0, hug: true, parts: a.P });
         /* THE COW SHED in the Cow Field (squares 67..69 x 70..71): three boarded walls, a tin roof, open to the north; walked into */
         { const cx = gx(68.5), cz = gx(71), w = 10.5, d = 7;
@@ -202,7 +253,7 @@ module.exports = {
     dress(ctx) { const { gx, gc, r2, feat, props, taken, put, P, dec, tree, native, rail, rnd, flat } = ctx;
         props.push({ key: 'decor_windpump_tower', x: gx(54), z: gx(41), h: 11 }, { key: 'decor_windpump_wheel', x: gx(54), z: r2(gx(41) + 0.9), y: 10.2, span: 4.2 });   // THE WINDMILL (the landmark)
         [[53, 40], [54, 40], [53, 41], [54, 41]].forEach(q => taken.add(q[0] + ':' + q[1])); dec('wooden_bucket', 55, 41); P('cave_torch', 51, 44, { noLight: true });
-        [[38, 40, 60], [41, 44, 200], [45, 38, 300], [39, 46, 120], [46, 45, 20]].forEach(q => P('cow', q[0], q[1], { face: q[2] })); dec('grasshopper', 42, 41); dec('grasshopper_jump', 44, 46); dec('butterfly', 40, 43);
+        [[38, 40, 60], [42, 44, 200], [45, 38, 300], [43, 46, 120], [46, 45, 20]].forEach(q => P('cow', q[0], q[1], { face: q[2] })); dec('grasshopper', 42, 41); dec('grasshopper_jump', 44, 46); dec('butterfly', 40, 43);
         tree(37, 37, 'tree_2', 8); tree(47, 47, 'tree', 7.5); props.push({ key: 'trailer_home_2', x: r2(gx(38) + 8.75), z: gx(39), face: 0 }); for (let y = 38; y < 40; y++) for (let x = 38; x < 43; x++) taken.add(x + ':' + y);
         P('car_truck', 64, 41, { face: 180, span: 6.8 }); dec('meshy_burlap_sack', 66, 43); dec('meshy_burlap_sack', 62, 44); dec('crow', 68, 38); dec('crow', 61, 46); dec('grasshopper_brown', 69, 45);
         { const O = [[40, 50], [44, 50], [46, 52], [46, 56], [44, 58], [40, 58], [38, 56], [38, 52]];   // THE PADDOCK: the ring's rail on the plan's line, its gate in the south side
@@ -210,7 +261,7 @@ module.exports = {
                   feat({ k: 'rail', x0: gx(43), z0: gc(58), x1: gx(44), z1: gc(58), model: 'ranch' }); feat({ k: 'rail', x0: gx(41), z0: gc(58), x1: gx(42), z1: gc(58), model: 'ranch' }); }   // the gap is one square: the gate (pieces)
               else feat({ k: 'rail', x0: gc(a[0]), z0: gc(a[1]), x1: gc(b[0]), z1: gc(b[1]), model: 'ranch' }); }); }
         P('horse_brown', 41, 53, { face: 75 }); P('horse_black', 43, 55, { face: 250 }); P('horse', 42, 51, { face: 15 }); dec('wooden_bucket', 40, 56);
-        P('cave_torch', 50, 57); P('cave_torch', 59, 57); dec('psx_wooden_crate_1', 59, 55); P('psx_metal_barrel_mp_1', 50, 55);
+        P('cave_torch', 50, 57); P('cave_torch', 59, 57, { noLight: true }); dec('psx_wooden_crate_1', 59, 55); P('psx_metal_barrel_mp_1', 50, 55);
         P('signpost', 38, 62, { face: 90 }); P('cave_torch', 37, 67, { noLight: true }); rail(36, 60, 36, 63); rail(36, 65, 36, 72);                         // THE RANCH GATE: the rail on the district's line, the gap on the track
         props.push({ key: 'trailer_home_4', x: r2(gx(39) + 8.75), z: gx(62), face: 0 }, { key: 'trailer_home_6', x: r2(gx(39) + 8.75), z: gx(70), face: 180 });   // the old Corn Fields' three trailers stand on the ranch now
         for (const y0 of [61, 69]) for (let y = y0; y < y0 + 2; y++) for (let x = 39; x < 44; x++) taken.add(x + ':' + y);
@@ -229,13 +280,32 @@ module.exports = {
           props.push({ key: 'hw_straw', x: gc(67), z: gc(41), face: 0 }, { key: 'hw_straw', x: r2(gc(67) + 1.5), z: gc(41), face: 0 }, { key: 'hw_straw_2', x: r2(gc(67) + 0.7), z: gc(41), y: 0.86, face: 0 }); taken.add('67:41');
           P('hw_scarecrow_2', 66, 38, { face: 180 });
           P('hw_straw', 56, 57, { face: 90 }); P('hw_straw_2', 57, 57, { face: 0 }); props.push({ key: 'hw_straw', x: gc(56), z: gc(57), y: 0.86, face: 90 });
-          put(BARN, 'hw_straw', 9.6, -3.4, { face: 0 }); put(BARN, 'hw_straw', 9.6, -4.6, { face: 0 }); put(BARN, 'hw_straw_2', 9.6, -4.0, { face: 0, y: 0.86 }); put(BARN, 'hw_straw', -4.6, -8.6, { face: 90 });
           /* THE KITCHEN GARDEN east of the farmhouse: two tilled beds, their crops, pumpkins */
           for (const x of [70, 71]) { props.push({ key: 'hw_farmland', x: gc(x), z: gx(53), face: 0, y: 0.02 }); for (let i = 0; i < 4; i++) props.push({ key: ['hw_crop', 'hw_crop_2', 'hw_crop_3'][(x + i) % 3], x: r2(gc(x) + (i % 2 ? 0.4 : -0.4)), z: r2(gx(53) - 1.4 + i * 0.95), y: 0.2 }); }
           for (let y = 51; y < 55; y++) for (const x of [70, 71]) taken.add(x + ':' + y); dec('hw_pumpkin_4', 70, 55); dec('hw_pumpkin', 71, 50); dec('hw_pumpkin_2', 69, 56);
           /* the picket fence before the farmhouse porch, a gap at the door */
           const dx = FARM.at(FARM.door.lx, 0)[0]; for (let x = gx(62) + 0.83; x < gx(69); x += 1.66) { if (Math.abs(x - dx) < 1.8) continue; props.push({ key: 'hw_fence', x: r2(x), z: gx(58), face: 0 }); } }
-        native('cowboy', 40, 64, 340); native('goatman', 44, 42, 200);
+        { /* PASS 3, THE DRESSING (the lists read again first: notes "FITS THIS DISTRICT") */
+          /* THE SHEEP PEN in the Pasture's south-west corner (squares 37..40 x 43..46): the ranch rail, a gap on the south side, the spell's sheep */
+          rail(37, 43, 41, 43); rail(41, 43, 41, 47); rail(37, 43, 37, 47); rail(37, 47, 39, 47); rail(40, 47, 41, 47);
+          [[38, 44], [39, 45], [38, 45], [40, 44], [39, 46], [40, 46], [37, 44]].forEach(q => dec('decor_sheep', q[0], q[1])); P('hw_straw', 38, 46, { face: 90 });
+          dec('monarch', 44, 40, { y: 0.9 }); dec('bee', 45, 44, { y: 0.7 }); dec('bumblebee', 39, 41, { y: 0.6 }); dec('ladybug', 43, 37); dec('rabbit', 45, 47); dec('rabbit', 40, 38); P('fallen_log', 46, 40, { face: 60 }); P('stump', 44, 37);
+          /* THE YARD: the woodpile and the chopping block, a hitching rail with a horse at it, three power poles down to the farmhouse */
+          P('fallen_log', 57, 61, { face: 90 }); props.push({ key: 'fallen_log', x: gc(57), z: r2(gc(61) + 0.85), face: 90 }, { key: 'fallen_log', x: gc(57), z: r2(gc(61) + 0.4), y: 0.5, face: 90 }); P('stump', 58, 62); dec('hw_shovel', 58, 63); dec('psx_hand_saw_1', 58, 61);
+          P('hitching_rail', 51, 58, { face: 0 }); P('horse_brown', 51, 59, { face: 0 }); P('power_pole', 47, 64); P('power_pole', 55, 59); P('power_pole', 62, 59);
+          dec('garbage_bag', 56, 66); dec('cinder_block', 49, 67); dec('tire_stack', 48, 70); dec('psx_wooden_crate_4', 53, 70); dec('meshy_burlap_sack', 55, 66); dec('chicken', 51, 65, { face: 20 }); dec('chicken', 58, 64, { face: 250 });
+          /* THE FARMHOUSE's grounds: the outhouse behind, the well, bins, a row of trees north of the house, pots and a bench on the porch, pumpkins, rabbits */
+          P('psx_toilet_cabin_mp_1', 62, 50, { face: 180 }); P('metal_trash_can', 62, 56); dec('garbage_bag', 62, 57);
+          tree(63, 48, 'tree_2', 5.5); tree(65, 48, 'tree', 6); tree(67, 48, 'tree_2', 5.2); tree(69, 48, 'tree', 5.8); P('hw_scarecrow', 71, 49, { face: 180 });
+          for (const x of [-9.4, -5.9, 5.0, 8.6]) put(FARM, 'psx_planter_pot_mp_1_full', x, 11.7, { y: 0.17 }); put(FARM, 'potted_plant', -2.7, 9.4, { y: 0.16 }); put(FARM, 'potted_plant', 1.0, 9.4, { y: 0.16 }); put(FARM, 'iron_garden_bench', 7.6, 9.5, { face: 180, y: 0.16 }); put(FARM, 'cat', -4.6, 11.2, { y: 0.16, face: 150 });
+          dec('hw_pumpkin', 71, 56); dec('hw_pumpkin_3', 69, 58); dec('hw_pumpkin_2', 71, 59); dec('hw_pumpkin_4', 68, 59); dec('hw_pumpkin_3', 71, 57); dec('rabbit', 69, 59); dec('rabbit', 71, 58);
+          /* THE TRAILERS by the gate: a camp (chairs, a cooler, bins, tyres, a mattress); the dog at the gate */
+          P('metal_trash_can', 44, 61); dec('garbage_bags', 44, 62); dec('folding_chair', 46, 62); dec('folding_chair', 45, 63); dec('beach_cooler', 45, 62); dec('psx_old_mattress_mp_1', 44, 68);
+          P('tire_stack', 38, 68); dec('cinder_block', 44, 69); dec('garbage_bag', 38, 67); dec('dog', 38, 66, { face: 250 });
+          /* THE COW FIELD's shed: bales and a cow inside; THE HAY FIELD: crows on the bales */
+          P('hw_straw', 67, 71, { face: 90 }); P('hw_straw_2', 68, 71); P('cow', 69, 70, { face: 340 }); dec('crow', 64, 37, { y: 0.87 }); dec('crow', 70, 43, { y: 0.87 }); dec('crow', 67, 46, { y: 0.87 });
+        }
+        native('cowboy', 40, 64, 340); native('goatman', 44, 42, 200); native('cowboy', 47, 57, 250); native('conspiracy theorist', 46, 61, 200); native('grey', 67, 64, 300);
         flat(53, 40, 55, 42);   // the ground levelled under the windmill
     },
 };
