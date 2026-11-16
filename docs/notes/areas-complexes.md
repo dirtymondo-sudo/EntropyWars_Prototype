@@ -6712,6 +6712,15 @@ forest glade, the dead tree's hole.
   at `h` 2.3 to 3.0 standing on the bed, so 0.3 to 1 m shows over the water (it reads as reeds and it sways). Also: signposts at the
   track's two far crossings, straw and pumpkins at the hut, a drum and a fiddle at the camp, candles on the altar stone, a staff.
   Frame rate at the bay 0.60 (unchanged); geometries 2,068, draw calls 4,675 (the natives and animals).
+- **PASS 4, ATMOSPHERE (seen: 4 day views, 9 night views at `hqClockSet(22)`)**. THE AIR (`airZones`): pale gold motes through the
+  whole forest (300), fireflies over the two glades, the bay and the moat's bank, cold blue motes in the stone ring, ash round the
+  dead tree's hole. LIGHT: six more lantern posts (where the forest track meets the two side paths, at the hut, at the camp, two at
+  the bridge's foot), so the road and the track are found at night; the hut's windows and hearth, the lit banners' road and the camp
+  read at night. Smoke over the camp's fire (`chimney_smoke`, `y` 1, `rise` 4). No real light was taken (the room has ten, the
+  castle's braziers hold them): everything here is `glow`. Frame rate at the bay 0.80 in this run (0.60 in the three before: run to
+  run noise; no drop); geometries 2,121, draw calls 4,824.
+  Seen and NOT mine: a blue winged figure sat on the hut's log stack where the rabbit stood a run before (the spawn system's
+  variants change who stands on a native's spot).
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
   the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
   (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
