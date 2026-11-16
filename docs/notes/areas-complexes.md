@@ -7945,6 +7945,23 @@ the Spring, the Upper Shelf), a gnome in the Boulder Field, a tree person at the
 - SEEN: 18 views. Thrown out: a 3.6 m log across Bigfoot's floor (`h` does nothing on a `span` row). FPS 1.8 / 1.6 (first look 1.2 to 2.0 on the same view: the software
   renderer's readings move by 0.2 to 0.4 from run to run, so no cost that it can show; a real machine has to judge it).
 
+**THE MODEL PASS (live; mondo 11-16: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md, read end to end). STOPPED again.**
+- Every model the district asked for is placed: `prayer_flags` (the Summit, the Fork, Panther Meadows x 3, the Spring, the Upper Shelf), `stone_lantern` (the dojo, the
+  lodge, the shrine), `gong` (the meadow and inside the dojo), `backpack` + `sleeping_bag` (every camp and hut), `axe_chopping_block` + `firewood_stack` (the Ranger
+  Station, Bigfoot's, the huts), `picnic_table` (the Trailhead, Bunny Flat, the Lookout, Panther Meadows), `wood_stove` (the Fire Lookout), `antler_trophy` (five walls),
+  `weather_mast` (the Summit, the Lookout), `mine_cart` (the Lemuria adit), `deer` x 3, `bear` x 1, `mountain_goat` x 3 (all off the trails), `ice_block`, `icicles` (the
+  Climbers' Hut's eaves, the Glacier), `lantern_post`.
+- Stand-ins taken out: the drawn cairns (`cairn`), the drawn seracs (`ice_block`), the 26 drawn lantern posts (`lantern_post`: it BLOCKS, so each stands on the middle of a
+  free square beside the trail; a post whose square was a trail square or taken was dropped), the drawn spoil heap (`ore_heap`), the drawn wood stacks, the ice hole's
+  pool (`ice_fishing_hole`), the `lion` for the panther (`mountain_lion`), `missing_board` for the trail board (`trail_sign`), the plastic privy (`outhouse`), the scaled
+  hand totem (`carved_totem_pole`), a round rug at Bigfoot's (`fur_rug`).
+- From other districts' asks: `timber_lookout` (the Lookout has its tower now, beside the cabin: decision 2 is answered by the model), `camper_van` + `fire_danger_sign` +
+  `mailbox` + `saddle` (the Trailhead), `burnt_tree` (the lava plots, the Gulch), `snow_heap`, `ice_axe`, `snowshoes`, `snow_sled`, `rescue_sled`, `stretcher`, `oars`,
+  `fishing_rod`, `kettle`, `reeds`, `heron`, `lake_rock`, `stepping_stones`, `moss_clump`, `wild_flowers`, `milestone`, `owl_perched`, `hawk`, `raven_perch`, `fox`,
+  `hedgehog`, `river_fish`, `pickaxe`, `wheelbarrow`, `rail_section`, `wooden_barrel`, `lit_candle`.
+- SEEN: 18 views. FPS 1.6 / 1.6 (before 1.8 / 1.6). `cairn()` and `seracs()` stay in S.js as unused helpers for a thread that wants a drawn one.
+- NEEDS A MODEL now: nothing from the first list is open. Still wished: a blue Lemurian crystal (the `crystal_cluster` glows magenta).
+
 **WHAT I WOULD DO NEXT (not started: five passes are the limit):** (1) the room's own people walking (an `encounters` export: bigfoot, shaman, hippie, yeti, gnome), with
 mondo's word on the list; (2) the pines round Bigfoot's Cabin pulled a square back (the tool's tree zone: a branch comes through its high ceiling); (3) a second inside
 pass like the city's (dado, crown, real sconces); (4) the Upper Shelf's door down to the Woods (the tool's and the Woods holder's); (5) night for the room (the tool's sky).
@@ -7977,8 +7994,8 @@ pass like the city's (dado, crown, real sconces); (4) the Upper Shelf's door dow
 7. The saucer cloud is four `white_cloud` models parked over the crater (it reads as a dark-bellied cloud from under it). No saucer and no beam in it: `light_shaft` draws nothing by your own rule, and a ship in the cloud is your call.
 8. Air by plot: snow only on the peaks, fireflies only in Panther Meadows. Falling snow over the whole mountain is one number away if you want it.
 
-**NEEDS A MODEL (none placed as a stand-in):** prayer flags, a stone lantern, a gong, a backpack, a sleeping bag, an axe + firewood, a picnic table, a wood stove, an antler
-trophy, a weather mast, a mine cart + rails, a deer / bear / mountain goat, ice pieces (a serac, an icicle), a lamp post.
+**NEEDS A MODEL:** ~~prayer flags, a stone lantern, a gong, a backpack, a sleeping bag, an axe + firewood, a picnic table, a wood stove, an antler trophy, a weather
+mast, a mine cart + rails, a deer / bear / mountain goat, ice pieces, a lamp post~~: ALL MADE AND PLACED in the model pass (above).
 
 ## THE DESERT, THE CIRCUS — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/C.js`)
 
