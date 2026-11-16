@@ -23,7 +23,7 @@
    The Village pilot thread (2026-11-16) ran five passes on both files and freed the row; where it stands and what is open:
    docs/notes/areas-complexes.md "CAMELOT, THE VILLAGE" (the kit for the other districts: "CAMELOT, THE ZONE KIT"). Passes: 1 exteriors (in), 2 interiors (in: THE INSIDES below + T-houses.js), 3 dressing (in: THE VILLAGE'S GROUND), 4 atmosphere (in: chimney smoke, the night look), 5 polish.
    PEOPLE WAIT MONDO: only the two gate knights stand here; who lives in the village is his call (docs/notes/npc-system.md).
-   NEEDS A MODEL (nothing on R2): an anvil, a lamp post / street lantern, a hand cart, a fence run with a gate, a floor carpet.
+   NEEDS A MODEL (nothing on R2, checked against MODEL_LIST.md): an anvil, a hand cart, a fence run with a gate, a floor carpet.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
    plot Pxx-yy = squares xx*12.. , yy*12.. . gx(k) = a square's west / north edge in metres, gc(k) = its middle. feat(row) writes a terrain row,
@@ -68,7 +68,7 @@ const CHAPEL = kb('chapel', WALKIN.chapel, 7, { floorIn: 'marble' }, (a, w, d, d
     a.box(0, 2.5, -d / 2 - 0.07, 2.4, 3.5, 0.1, G_TALL, 0xd8a8e0, { glow: 0.5 });   // the east window behind the altar
 });
 /* THE SMITHY — timber on a stone foot, an open-fronted forge under a lean-to, the chimney */
-const SMITHY = kb('smithy', WALKIN.smithy, 5.25, { leafDouble: false, keyIn: WOODK, floorIn: 'dirt_2' }, (a, w, d, door) => {
+const SMITHY = kb('smithy', WALKIN.smithy, 5.25, { leafDouble: false, leaf: 'leaf_stable', keyIn: WOODK, floorIn: 'dirt_2' }, (a, w, d, door) => {
     a.shell(w, 5.25, d, WOODK, 0xb89468, door); foot(a, w, d, door, 1.2, 0.2, WALL, STONE2);
     a.roof('gable', 0, 5.25, 0, w + 1.6, 3.4, d + 1.6, WOODD, 0x6a4a34, { keyEnd: WOODK, tintEnd: 0xa88458 });
     a.box(-w / 2 + 1.2, 0, -d / 2 - 0.6, 1.8, 9.5, 1.8, WALL, STONE, {}); a.box(-w / 2 + 1.2, 9.5, -d / 2 - 0.6, 2.2, 0.5, 2.2, WALL, STONE2, { roof: true });
@@ -158,6 +158,10 @@ const hall = (B, id, o) => {
     H.put('hearth_fire', W2 - 0.95, -3.5, 270, { y: 0.1 }); H.block(W2 - 0.85, -5.0, W2 - 0.85, -2.0, 1.1, 2.0); H.put('dog', 6.3, -1.5, 300); H.put('meshy_burlap_sack', 9.2, -0.9, 0); H.put('psx_wooden_crate_2', 9.3, 0.4, 0);
     /* the tables on squares (0..1, 3) and (4..5, 3) */
     for (const s of [-1, 1]) { H.trestle(s * 7, 3.5, 5.6); H.tankards(s * 7 - 1.6, 3.3, 3, 0.9); H.on('candle', s * 7, 3.5, 0.82, 0); a.cyl(s * 7 + 1.2, 0.81, 3.7, 0.16, 0.02, null, PEWTER, { seg: 10 }); a.box(s * 7 + 1.2, 0.83, 3.7, 0.2, 0.08, 0.14, null, 0xc89a58); H.wheel(s * 5.25, 1.75, 3.2); }
+    /* THE MODEL LIST PASS (2026-11-16, mondo's rule "the model list first"): pieces the game already had and the first passes missed.
+       The minstrels' corner by the door (the orchestral pack's harp, drum, a fiddle left on the table, a whistle), plates, a candelabra. */
+    H.put('instrument_harp', -9.2, 6.7, 120); H.put('instrument_drum', -8.1, 7.7, 0); H.on('instrument_violin_lying', -8.3, 3.45, 0.82, 30); H.on('instrument_whistle', -5.6, 3.6, 0.82, 80);
+    for (const q of [[-6.4, 3.3], [-7.6, 3.75], [6.0, 3.3], [8.2, 3.7]]) H.on('psx_plate_mp_1', q[0], q[1], 0.82, 0); H.put('candelabra', 4.5, -3.5, 0);
     H.torch('l', -3.5, 2.2); H.torch('r', 3.5, 2.2); H.torch('f', 5.25 + 1.75, 2.9); H.barrel(-9.5, 7.9); H.barrel(-8.6, 8.0, 0.36, 0.9); H.put('meshy_burlap_sack', 9.3, 7.8, 40);
 }
 /* THE CHAPEL: the nave (twelve pews either side of the aisle), the chancel on a marble step (the altar, the gilt cross, the east window, two
@@ -171,7 +175,9 @@ const hall = (B, id, o) => {
     a.box(0, 0.036, -D2 + 2.2, 2 * W2 - 0.8, 0.06, 3.7, 'marble', 0xf0e8d8, { faces: 'f', gain: 1.3 }); H.put('stone_altar', 0, -8.75, 180);
     a.box(0, 1.0, -8.75, 0.08, 0.9, 0.08, GILT, 0xffffff, { gain: 1.5 }); a.box(0, 1.55, -8.75, 0.5, 0.08, 0.08, GILT, 0xffffff, { gain: 1.5 }); a.box(0, 0.96, -8.75, 0.3, 0.05, 0.2, GILT, 0xffffff, { gain: 1.5 });
     for (const s of [-1, 1]) { H.on('candle', s * 0.75, -8.75, 1.0, 0); H.put('angel_statue', s * 7, -8.75, 180); H.put('cave_torch', s * 3.5, -8.75, 0); }
-    H.put('church_podium', -3.5, -5.25, 180);
+    H.put('church_podium', -3.5, -5.25, 180); H.on('meshy_bible', -3.5, -5.25, 1.32, 180);
+    /* THE MODEL LIST PASS: the confessional in the front corner, a candelabra either side of the altar, a tapestry either side of the door */
+    H.put('confessional_booth', 7, 8.75, 270); for (const s of [-1, 1]) { H.put('candelabra', s * 1.9, -7.2, 0); H.put('holy_tapestry', s * 5.6, D2 - 0.45, 0, { h: 3, mount: 2.3 }); }
     /* the aisle's runner: crimson, a gold edge */
     a.box(0, 0.036, 1.5, 1.7, 0.012, 16.4, STUCCO, CRIM, { sides: false, gain: 1.6, glow: 0.12 }); for (const s of [-1, 1]) a.box(s * 0.92, 0.036, 1.5, 0.14, 0.018, 16.4, GILT, 0xffffff, { sides: false, gain: 1.3 });
     for (const j of [2, 3, 4]) for (const i of [0, 1, 3, 4]) { const q = H.sq(i, j); H.put('catholic_pew', q[0], q[1], 0); }
@@ -192,6 +198,7 @@ const hall = (B, id, o) => {
     a.cyl(-3.5, 0, -3.5, 0.42, 0.6, WOODD, 0x7a5a3c, { seg: 10 }); a.cyl(-3.5, 0.4, -3.5, 0.44, 0.07, null, 0x3a3230, { seg: 10 }); H.block(-3.5, -3.9, -3.5, -3.1, 0.8, 0.6);
     /* the bench along the right wall on squares (4, 1..2) */
     a.box(7.7, 0.85, -1.75, 1.1, 0.1, 6.4, WOODK, 0x8a6238); for (const z of [-4.6, -1.75, 1.1]) a.box(7.7, 0, z, 0.9, 0.85, 0.14, WOODD, 0x5a4230); a.box(7.7, 0.3, -1.75, 0.9, 0.06, 6.0, WOODK, 0x6a4a30); H.block(7.7, -4.95, 7.7, 1.45, 1.1, 0.95);
+    H.on('meshy_tongs', -5.95, -6.3, 1.0, 40); H.on('spell_shield', 7.75, 0.6, 0.96, 250); H.put('spell_shield', 5.6, -7.9, 180); H.put('sword', 6.0, -7.6, 200);   // THE MODEL LIST PASS: the smith's tongs on the forge, shields and a sword by the stands
     H.on('psx_sword_mp_1', 7.7, -3.6, 0.96, 20); H.on('psx_sword_mp_1', 7.6, -0.4, 0.96, 160); a.box(7.9, 0.95, -2.2, 0.5, 0.3, 0.4, WOODK, 0x6a4a30);
     for (const y of [1.7, 2.3]) a.box(W2 - 0.5, y, -1.75, 0.3, 0.05, 5.2, WOODK, 0x7a5632);
     a.box(W2 - 0.5, 1.75, -3.4, 0.2, 0.34, 0.2, null, 0x3a3230, { n: 4, step: [0, 0, 0.9] }); a.box(W2 - 0.5, 2.35, -3.0, 0.16, 0.2, 0.5, null, 0x6a6c70, { n: 3, step: [0, 0, 1.2] });
@@ -243,10 +250,11 @@ lane(36, 64, 36, 69.5, 1.75); lane(32, 69.5, 36.9, 69.5, 1.75); lane(60, 64, 60,
 /* the graveyard by the Chapel: the crosses, headstones between them */
 [[24, 66], [24, 68], [24, 70], [30, 66], [31, 68], [30, 70], [31, 71]].forEach(q => dec('cross', q[0], q[1]));
 [[22, 67, 'psxg_tombstone_1'], [23, 69, 'psxg_tombstone_2'], [22, 71, 'psxg_tombstone_3'], [31, 66, 'psxg_tombstone_2'], [31, 70, 'psxg_tombstone_1'], [23, 71, 'hw_grave']].forEach(q => put(q[2], q[0], q[1], { face: 0 }));
+put('hw_coffin', 22, 65, { face: 90 }); put('hw_shovel', 23, 66, { face: 40 }); put('psxg_iron_gate_1', 24, 64, { face: 0 }); dec('crow', 23, 67); dec('crow', 31, 67);   // THE MODEL LIST PASS: a coffin waiting, the sexton's shovel, the gate, crows
 put('armour_stand', 65, 66, { face: 270 }); put('brazier', 65, 68);
 /* the green behind the castle hill: the animals, hay, a water trough */
 put('cow', 63, 31, { face: 60 }); dec('chicken', 62, 30); dec('chicken', 64, 30); dec('chicken', 65, 31); dec('decor_sheep', 61, 31); dec('decor_sheep', 66, 30);
-put('hw_straw', 62, 31, { face: 20 }); put('hw_straw', 64, 31, { face: 100 });
+put('hw_straw', 62, 31, { face: 20 }); put('hw_straw', 64, 31, { face: 100 }); dec('rabbit', 61, 30); dec('rabbit', 63, 30); dec('crow', 65, 30);
 { const x = gc(65) + 0.9, z = gc(30) - 0.9; S.box(x, 0, z, 1.9, 0.55, 0.7, WOODK, SWT, SW); S.box(x, 0.48, z, 1.7, 0.05, 0.5, STUCCO, 0x3a5a7a, { sides: false, glow: 0.12 }); }
 /* the Inn's yard: the horse, a covered wagon, sacks */
 put('horse_brown', 45, 66, { face: 90 }); dec('meshy_burlap_sack', 45, 68); put('covered_wagon', 45, 69, { face: 0 });
@@ -260,6 +268,12 @@ native('knight', 41, 71, 90); native('knight', 44, 71, 270);
 /* the kitchen gardens behind the north row's cottages, against the town wall: a bed of turned earth, two rows of cabbages */
 ctx.HOUSES.forEach(h => { if (h.y0 !== 23 || (h.x1 - h.x0) < 3) return; const x = ctx.gx((h.x0 + h.x1) / 2), z = gc(22) + 0.2;
     S.box(x, 0, z, 6.0, 0.1, 2.0, 'dirt_2', 0x6a4a30, { gain: 1.2 }); for (const t of [-0.45, 0.45]) S.P.push({ s: 'dome', p: [x - 2.5, 0.1, z + t], r: 0.17, seg: 8, tint: 0x6a9a4a, n: 9, step: [0.62, 0, 0] }); });
+/* THE MODEL LIST PASS: THE STREET LANTERNS. `meshy_hanging_lantern` was in the game all along (the first passes listed a street lantern
+   as "needs a model"): each hangs from a drawn post and arm on a grass square beside its street; a lit core (`glow`) for the night. */
+[[30, 25], [40, 25], [56, 25], [66, 25], [31, 64], [40, 64], [54, 64], [66, 64], [24, 34], [24, 40], [24, 55], [71, 34], [71, 40], [71, 55]].forEach(q => { const x = gc(q[0]), z = gc(q[1]);
+    put('meshy_hanging_lantern', q[0], q[1], { y: 2.35 }); S.box(x + 0.5, 0, z, 0.14, 3.0, 0.14, WOODK, SWT, SW); S.box(x + 0.22, 2.9, z, 0.7, 0.1, 0.1, WOODK, SWT, SW); S.box(x, 2.5, z, 0.12, 0.2, 0.12, null, 0xffd890, { glow: 1 }); });
+/* the kitchen gardens' scarecrow and pumpkins; a dog and a cat in the streets */
+put('hw_scarecrow', 28, 22, { face: 180 }); dec('hw_pumpkin', 37, 22); dec('hw_pumpkin_2', 52, 22); dec('hw_pumpkin_3', 62, 22); dec('dog', 45, 64); dec('cat', 55, 25);
 /* a torch either side of the three halls' doors (outside, on the front wall) */
 [CHAPEL, INN, SMITHY].forEach(B => { for (const s of [-1, 1]) inside(B, 'wall_torch', r3(B.door.lx + s * (B.door.cw / 2 + 0.9)), r3(B.fd / 2 + 0.28), { face: 180, y: 2.1, floor: true }); });
 ctx.arch.push({ k: 'arch', id: 'cam:village:street', x: 0, z: 0, rot: 0, y: 0, parts: S.P }); flushArch();
