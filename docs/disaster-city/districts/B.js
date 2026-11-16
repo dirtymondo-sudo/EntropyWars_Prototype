@@ -817,7 +817,7 @@ B.yacht = (L) => {
    flamingos by the hotel's doors, lobster traps on the boardwalk */
 function miamiStreet(ctx, push, ghost) {
     const { lateRows, features, props, take, free, gc, gx, r3, N, paintCell } = ctx, out = { towers: 0, yachts: 0, palms: 0 };
-    [[112, T.AQUA, T.HOT], [118.5, T.LEMON, T.RED], [107, T.PINK, T.AQUA]].forEach((t, i) => { const x = gc(150), z = gx(t[0]); push('bay-tower' + (i + 1), x, z, 270, B.tower(t[1], t[2])); ghost(x, z, 3.0, 3.4); out.towers++; });
+    [[114, T.AQUA, T.HOT], [118.5, T.LEMON, T.RED], [135, T.PINK, T.AQUA]].forEach(   /* (THE SKATE PARK, 2026-11-16: the towers at rows 112 and 107 stood on the park's bank and pad; now 114 and 135) */ (t, i) => { const x = gc(150), z = gx(t[0]); push('bay-tower' + (i + 1), x, z, 270, B.tower(t[1], t[2])); ghost(x, z, 3.0, 3.4); out.towers++; });
     /* the yachts: afloat (the sea's own level, whatever level the plot beside it stands at) */
     const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
     [[157.4, 100.2, 0, 12], [157.4, 103.6, 180, 10], [162.8, 101.5, 0, 13]].forEach((y, i) => { push('bay-yacht' + (i + 1), gx(y[0]), gx(y[1]), y[2], B.yacht(y[3])); lateRows[lateRows.length - 1].y = r3(SEA_Y - lv); out.yachts++; });
@@ -1229,7 +1229,7 @@ function beach(ctx, push, ghost) {
     rect(gx(159), ZN - 0.5, gx(161), gx(104), 0, { edge: 0.4 });
     lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4, absY: true });
     /* the ramps down to the sand, off the boardwalk at each way out of the city */
-    const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 3.5)];   // (the fourth one square south, 2026-11-15: THE CANAL's mouth runs through the sand on squares 133-134, districts/L.js)
+    const RAMPS = [gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 3.5)];   // (THE SKATE PARK, 2026-11-16: the first one, at row 8N+6, stood where the park's pad is now; the pad meets the boardwalk level and its bank is the way down)   // (the fourth one square south, 2026-11-15: THE CANAL's mouth runs through the sand on squares 133-134, districts/L.js)
     const RAMPS_N = [];   // THE SHORE (2026-11-16): the sand stands at the boardwalk's level here, no ramp (was one at each plot row)
     RAMPS_N.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
     RAMPS.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
@@ -1262,25 +1262,69 @@ function beach(ctx, push, ghost) {
     for (let cy = 4 * N + 4; cy < 8 * N - 3; cy += 9) props.push({ key: 'city_bench', x: r3(XB - 1.0), z: gc(cy), face: 90 });
     props.push({ key: 'signpost', x: gc(144), z: gc(4 * N + 2), face: 0 });   // (THE SHORE: the north stretch's umbrellas, chair, boat and buoys are districts/W.js' now)
     /* the promenade's rail along the sea wall, open at the ramps, the pier and the mole */
-    const gaps = RAMPS.map(z => [z - 2, z + 2]).concat([[ZP - 3.7, ZP + 3.7], [Z0, ZN + 0.2], [ZS, Z1]]);
+    const gaps = RAMPS.map(z => [z - 2, z + 2]).concat([[ZP - 3.7, ZP + 3.7], [Z0, ZN + 0.2], [ZS, Z1], [gx(SKATE.cy0), gx(SKATE.cy1 + 1)]]);   // (the skate park's whole side is open to the boardwalk)
     { let z = Z0; const cuts = gaps.slice().sort((a, b) => a[0] - b[0]); cuts.push([Z1, Z1]);
       cuts.forEach(g => { if (g[0] - z > 1) lateRows.push({ k: 'rail', x0: r3(XB - 0.25), z0: r3(z), x1: r3(XB - 0.25), z1: r3(g[0]), model: 'spear' }); z = Math.max(z, g[1]); }); }
     /* the life on it */
     for (let cy = 8 * N + 1; cy < 12 * N; cy += 3) props.push({ key: 'palm_tree', x: r3(X0 + 0.9), z: gx(cy) });
     for (let cy = 8 * N + 4; cy < 12 * N - 9; cy += 6) props.push({ key: 'city_bench', x: r3(XB - 1.0), z: gc(cy), face: 90 });
     const sand = (cx, cy) => [gc(cx), gc(cy)];
-    [[147, 100], [149, 104], [147, 110], [149, 116], [147, 123], [149, 129], [147, 133]].forEach((c, i) => { const q = sand(c[0], c[1]);
+    [[147, 128], [150, 121], [149, 116], [147, 123], [149, 129], [149, 131], [147, 133]].forEach((c, i) => { const q = sand(c[0], c[1]);
         props.push({ key: 'pool_umbrella', x: q[0], z: q[1] }, { key: 'pool_lounger', x: gc(c[0] + 1), z: q[1], face: 90 }, { key: 'pool_lounger', x: gc(c[0] + 1), z: gc(c[1] + 1), face: 90 }); });
-    props.push({ key: 'lifeguard_chair', x: gc(150), z: gc(8 * N + 13), face: 90 }, { key: 'lifeguard_chair', x: gc(150), z: gc(10 * N + 13), face: 90 });
-    props.push({ key: 'rowboat', x: gc(150), z: gc(8 * N + 4), face: 70 }, { key: 'rowboat', x: gc(150), z: gc(11 * N + 1), face: 110 });
+    props.push({ key: 'lifeguard_chair', x: gc(151), z: gc(8 * N + 16), face: 90 }, { key: 'lifeguard_chair', x: gc(150), z: gc(10 * N + 13), face: 90 });
+    props.push({ key: 'rowboat', x: r3(gc(151) + 0.4), z: gc(8 * N + 4), face: 70 }, { key: 'rowboat', x: gc(150), z: gc(11 * N + 1), face: 110 });
     for (let i = 0; i < 5; i++) props.push({ key: 'sea_buoy', x: gx(156), z: gx(8 * N + 5 + i * 7.5) });
-    push('bay-net', gc(148), gx(9 * N + 6), 90, B.net());
+    push('bay-net', gc(148), gx(9 * N + 7), 90, B.net());   // (one square south since THE SKATE PARK: the park's bank lands on squares 111-112)
     push('bay-lifeguard', gc(148), gx(10 * N + 2), 270, B.lifeguard()); ghost(gc(148), gx(10 * N + 2), 3.4, 3.0);
     /* the light on the mole's head (the Marina lookout's own lighthouse moves out here: its yard square is taken, so the city's is skipped) */
     take(11 * N + 9, 8 * N + 5); take(11 * N + 10, 8 * N + 5); take(11 * N + 9, 8 * N + 6); take(11 * N + 10, 8 * N + 6);
     props.push({ key: 'lighthouse', x: gx(160), z: gx(105), face: 90 });
     /* the grill: the BurgerPiz at its own size on the deck, its long windowed front to the beach */
     props.push({ key: 'city_burgerpiz', x: gx(152), z: gx(140.5), face: 180 });
+    skatePark(ctx, push);
+}
+/* ── THE SKATE PARK (2026-11-16, mondo: "yeah add a skatepark", on the map pass audit: the plot-built world had 5 skate pieces in all; the
+   new units thread's plan puts the Skater's home here, a beach skate park beside the boardwalk). On the sand east of the boardwalk, squares
+   cx SKATE.cx0..cx1 x cy SKATE.cy0..cy1: a concrete pad at the boardwalk's level (0), so the boardwalk runs straight onto it, its spear rail open
+   along the whole side. On it, north to south:
+     - THE BOWL: one round sunk bowl (6 m radius, 1.2 m deep, a 3 m transition all round; its floor stays over the sea's -1.45);
+     - THE FUNBOX: a block 0.6 m high on squares cx 147-149 x cy 105-106, a half-square bank on every side, a pipe rail along its flat top;
+     - THE FLAT BAR: a pipe rail 0.4 m high down the middle of column cx 150, rows 104-106;
+     - THE MINI RAMP: two quarter pipes facing each other across the pad on rows 107-110;
+     - THE BANK: a two-square ramp off the pad's south side down to the sand, a handrail down its middle line.
+   Every rail runs on a square line or a square's middle, whole squares long (the Skater's grind and the board's read the same `rail` rows);
+   a pipe rail (no model, under 0.7 m) is a grind only, never a wall. Nothing else stands on the pad, so every kicker's lane is clear
+   (HQ_TERRAIN_RULES rampRunUp). The umbrellas, the lifeguard chair and the rowboat that stood here moved down the sand; the net one square. ── */
+const SKATE = { cx0: 146, cx1: 150, cy0: 99, cy1: 110 };
+function skatePark(ctx, push) {
+    const { lateRows, props, gc, gx, r3, paintCell } = ctx, S = SKATE;
+    const rail = (x0, z0, x1, z1, h) => lateRows.push({ k: 'rail', id: 'dc:skate:rail', x0: r3(x0), z0: r3(z0), x1: r3(x1), z1: r3(z1), h });
+    /* the pad: one flat tier at the boardwalk's level over the sand (absY: sea level, like the rest of the beach), a sharp lip on the sand */
+    lateRows.push({ k: 'plateau', id: 'dc:skate:pad', x: r3((gx(S.cx0) + gx(S.cx1 + 1)) / 2), z: r3((gx(S.cy0) + gx(S.cy1 + 1)) / 2), w: r3(gx(S.cx1 + 1) - gx(S.cx0)), d: r3(gx(S.cy1 + 1) - gx(S.cy0)), h: 0, edge: 0.05, absY: true });
+    for (let cy = S.cy0; cy <= S.cy1; cy++) for (let cx = S.cx0; cx <= S.cx1; cx++) paintCell(cx, cy, 'urban:ConcreteStriped2a');
+    for (let cy = S.cy1 + 1; cy <= S.cy1 + 2; cy++) for (let cx = 147; cx <= 149; cx++) paintCell(cx, cy, 'urban:ConcreteStriped2a');   // the bank's squares
+    /* the bowl */
+    lateRows.push({ k: 'plateau', id: 'dc:skate:bowl', x: gx(148.5), z: gx(101.5), r: 6, h: -1.2, edge: 3, sink: true, absY: true });
+    /* the funbox and its rail */
+    lateRows.push({ k: 'plateau', id: 'dc:skate:funbox', x: gc(148), z: gx(106), w: 10.5, d: 7, h: 0.6, edge: 1.75, absY: true });
+    rail(gx(147.5), gx(106), gx(149.5), gx(106), 0.4);   // over the funbox's flat top only (a rail row is straight between its two ends' ground)
+    /* the flat bar */
+    rail(gc(150), gx(104), gc(150), gx(107), 0.4);
+    /* the mini ramp: two quarter pipes face each other across the pad */
+    props.push({ key: 'quarter_pipe', x: r3(gx(S.cx0) + 1.3), z: gx(109), face: 90 }, { key: 'quarter_pipe', x: r3(gx(S.cx1 + 1) - 1.3), z: gx(109), face: 270 });
+    /* the bank down to the sand and its handrail */
+    lateRows.push({ k: 'ramp', id: 'dc:skate:bank', x0: gx(148.5), z0: r3(gx(S.cy1 + 1) - 0.2), x1: gx(148.5), z1: r3(gx(S.cy1 + 2.6)), w: 7, h0: 0, h1: SHELF, edge: 0.2, absY: true });
+    rail(gx(148.5), r3(gx(S.cy1 + 1) - 0.6), gx(148.5), r3(gx(S.cy1 + 2.5)), 0.6);
+    /* the steel: a coping ring round the bowl's lip, angle iron round the funbox's top, posts under the rails; a sign on two posts at the
+       boardwalk corner (drawn rows at the pad's level, base 0) */
+    const STEEL = { tint: 0xd4d8de }, DARK = { tint: 0x3c4046 };
+    push('skate-bowl', gx(148.5), gx(101.5), 0, [cyl(0, -0.02, 0, 6.05, 0.09, A({ cap: false, seg: 40 }, STEEL)), cyl(0, -0.03, 0, 5.92, 0.07, A({ cap: false, seg: 40 }, DARK))]);
+    push('skate-funbox', gc(148), gx(106), 0, [box(0, 0.58, -1.75, 7.0, 0.06, 0.08, STEEL), box(0, 0.58, 1.75, 7.0, 0.06, 0.08, STEEL), box(-3.5, 0.58, 0, 0.08, 0.06, 3.5, STEEL), box(3.5, 0.58, 0, 0.08, 0.06, 3.5, STEEL),
+        box(-2.9, 0.6, 0, 0.06, 0.4, 0.06, DARK), box(2.9, 0.6, 0, 0.06, 0.4, 0.06, DARK)]);
+    push('skate-bar', gc(150), gx(105.5), 0, [box(0, 0, -4.6, 0.06, 0.4, 0.06, DARK), box(0, 0, 0, 0.06, 0.4, 0.06, DARK), box(0, 0, 4.6, 0.06, 0.4, 0.06, DARK)]);
+    push('skate-sign', r3(gx(S.cx0) + 0.6), r3(gx(S.cy0) + 0.6), 270, [box(-1.3, 0, 0, 0.1, 2.7, 0.1, DARK), box(1.3, 0, 0, 0.1, 2.7, 0.1, DARK),
+        { s: 'quad', p: [0, 2.0, 0.06], size: [2.8, 0.75], text: 'SKATE PARK', ink: '#ffffff', bg: '#e8483c', ds: true }]);
+    console.warn('[bayside skate park] pad, bowl, funbox + rail, flat bar, two quarter pipes, bank + handrail');
 }
 /* numbers to the millimetre (the data.js block stays short) */
 function round(q, r3) { const o = {}; Object.keys(q).forEach(k => { const v = q[k]; o[k] = typeof v === 'number' && !/^(tint|tintTop|tintEnd)$/.test(k) ? r3(v) : Array.isArray(v) ? v.map(a => typeof a === 'number' ? r3(a) : Array.isArray(a) ? a.map(r3) : a) : (v && typeof v === 'object') ? round(v, r3) : v; }); return o; }

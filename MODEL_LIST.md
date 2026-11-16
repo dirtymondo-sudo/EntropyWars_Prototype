@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1169 |
+| Meshy AI | no | 1170 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -53,6 +53,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | anubis | `Assets/characters/races/anubis/male/Meshy_AI_Anubis_Egyptian_dog__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | astronaut | `Assets/characters/races/astronaut/Meshy_AI_astronaut_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | atlantean (female) | `Assets/characters/races/atlantean/female/Meshy_AI_hot_attractive_atlant_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| banker | `Assets/characters/races/banker/male/Meshy_AI_banker_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | barbarella (female) | `Assets/characters/races/barbarella/Meshy_AI_hot_space_agent_girl__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | bee queen (female) | `Assets/characters/races/beequeen/Meshy_AI_the_hive_queen_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | bigfoot | `Assets/characters/races/bigfoot/male/Meshy_AI_bigfoot_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
