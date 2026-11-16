@@ -5379,6 +5379,14 @@ that first district is fleshed out and knows what shared assets it can use for t
 - The lamps' and grave lights' glass is a plain lit box (pale at `glow: 0.7`): a lantern model would do better (the NEEDS A MODEL list in H.js).
 - DONE (mondo 11-16 "that's fine"): THE GRAVEYARDS' GRASS. No tool change was needed: H.js `plan()` turns the rows the stones stand on from `p` to `g`
   (lawn + the grass field), and leaves the aisles, the wall's square under each lych gate and the fresh mounds' rows as dirt. Seen in the cloud browser.
+- **THE GRAVEYARDS REDONE (mondo 11-16: "this doesn't really look like a graveyard, do better").** What was wrong: one stone every second
+  3.5 m square on bare ground reads as a field with a few stones. A churchyard is crowded. Now: `grave(sx, sy, face, big)` sets THREE graves side
+  by side on every square of a stone row (the middle one on the square's middle and blocking, its two neighbours `noBlock` decor 1.17 m either
+  side), each a different stone, turned up to 11 degrees out of true, one in ten a small timber cross; rows stand back to back. The Graveyard has
+  four rows (66, 67, 69, 71: about 95 stones), the Family Plot two of the big graves (slabs, raised graves) and the angel at the aisle's head.
+  Both yards are lawn (`plan()`), dirt only on the middle aisle from the lych gate and the Graveyard's cross aisle at the obelisk. Two small
+  tomb houses (drawn, a ghost wall each) in the Graveyard's north corners; an open grave with its coffin, lid and shovel. Fresh mounds are gone
+  from the lawn (the grass field hides anything under 0.4 m). `cross` is a 3 m timber cross: not for a grave. Seen in the cloud browser, day + night.
 - mondo 11-16: rain is to be a game-wide dynamic system later (not touched here); lines for the people wait.
 - The door row's own leaf surround shows as a thin strip inside the vestibule's doorway; the door row is the tool's.
 - The people stand on spots with no lines but the ghost's and the ghoul's (lines are mondo's to give).
@@ -5422,6 +5430,8 @@ Read this before dressing C, L or R. It grows with each of H's passes.
 - **LAMP POSTS:** copy `lampPost(sx, sy, side)` from H.js `dress` (side = the walk's edge the post stands on: W, E, N, S). It wants to move into
   the tool as `ctx.lampPost` once a second district uses it (board note first).
 - **NIGHT IN A PROBE:** `"eval": "window._hqClockHour=function(){return 22.0}"` + `"settle": 3000` on one view.
+- **DENSITY:** a place people expect crowded (graves, crops, stalls) wants several pieces a square: one blocker on the square's middle, the rest
+  `noBlock: true` beside it. One piece every second square looks empty. The grass field hides anything under 0.4 m.
 - **KNOWN BAD PIECES:** `hw_web` (unseen since its fix), `psx_wooden_crate_3` (blank box), `lion_statue` (a tawny lion, not stone).
 - **STILL MISSING ZONE-WIDE:** corn stalks (Meshy, waits), a lamp post model, night never seen on screen, no residents with routines, lines for
   most of the people.
