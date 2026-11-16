@@ -5662,6 +5662,14 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   pass): its wood tints lifted + `gain: 1.5` on the log walls (it drew near black); a lit plank ceiling at 2.88 m on dark beams (the hollow building's own ceiling is at
   3.18 m and hides anything above it), a boarded dado, wall shelves, embers in the hearth, a bed frame, a wardrobe, bedside table and lamp, armchair, carpet, shelf,
   crate, mattress, a caged ceiling lamp. Every lit piece is `noLight`. The cabin still has no game role.
+- **THE DRESSING PASS + THE GROUND BY DISTRICT (same day; mondo: "the sky is the sky, there is supposed to be night and day. do the dressing pass. why can't districts
+  have different grounds, or just test it out")**: the sky is not a district's to change (day and night run on the clock). THE GROUND: a district file's
+  `ground: '<terrain sheet>'` paints its grass and forest squares (bake-woods.js THE GROUND BY DISTRICT, a new paint palette entry); district M wears
+  `grass_dark_fantasy`, seen in the probe: the place reads dark and damp, the lawn is gone. The change is a straight line on the plot border (seen only from afar).
+  THE DRESSING (`build`, about 60 pieces, "where things get dumped" + the school kids' hangout): a fire ring, logs, bottles and a skateboard under the crag; a wreck,
+  dumpster, tyres, washer, fridge, mattress in the Gully's yard; a rusted car, tyres and a mattress in the upper bed; a sofa, a television, barrels, a crate, tyres
+  and tags on both walls in the ravine; a rowboat and dead bushes in the Hollow; barrels, bins and dead bushes at the three mouths. 13 pieces were skipped (plot full).
+  `bare` is the whole ravine bed now: no scatter plant lands in it. The campfire is `noLight`.
 - **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
   stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
   Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
@@ -5690,7 +5698,11 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   furniture from the PSX Mega Pack (`psx_*`: wardrobe, armchair, shelf, bedside table, lamps, crates); `noLight: true` on every lamp.
 - **Ground nothing should grow on**: export `bare: [x0, z0, x1, z1]` (one box in the room today) and put the same box as `off` on your own `sow` rows.
 - **Names**: plain, for what stands there; never ask mondo (owner-rules.md §2).
-- **Missing zone-wide**: a forest-floor sheet in place of the lawn (the tool's `floor`), waterfalls, light shafts, sound by district.
+- **Ground**: `ground: 'grass_dark_fantasy'` in your district file (mondo: districts may differ; his forest-floor rule names that sheet and `dirt_2`). The sky stays as it is.
+- **Dump and hangout props that read well here**: `crashed_car`, `crashed_car_2`, `tire_stack`, `dumpster`, `psx_sofa_1`, `psx_tv_mp_1`, `psx_old_mattress_mp_1`,
+  `psx_metal_barrel_mp_*`, `psx_wooden_crate_*`, `psx_glass_bottle_*`, `skateboard`, `campfire` (`noLight`), `fallen_log`, `psxg_dead_bush_*`, `psxg_rock_*`, `graffiti_wall`
+  (flat on a wall: 0.1 m off the face, `face: 180` on a wall seen from the south).
+- **Missing zone-wide**: waterfalls, light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
   sandbags and barricade; the cantonment's bench, bins, dumpster, pallets, car park; the apron's freight, forklifts, engine stand, a
