@@ -7758,6 +7758,17 @@ the Spring, the Upper Shelf), a gnome in the Boulder Field, a tree person at the
 - SEEN: 10 + 6 views. Thrown out: a `crystal_cluster` on the Glacier (it glows magenta), four lanterns across the dojo's board (two at the corners now).
   FPS 1.8 / 1.4 / 1.8 (three readings; before 1.8): no change that the software renderer can show. The room's sky, its day and any night are the tool's.
 
+**PASS 5, POLISH (live; the last pass: STOPPED, waits mondo's look):**
+- THE PLACE BOARDS: eighteen plots carry their own name from the plan on a routed board by the trail, read from both sides (THE FORK, HELEN LAKE, PANTHER MEADOWS, BUNNY
+  FLAT, THE SUMMIT ...), all in ONE look. Inside every building: tie beams under the ceiling, a skirting, a lamp hung from the middle beam (in `hut`), a painting and a
+  shelf or board on the walls. Outside: a wood stack beside each chimney, a bench and a drum on the Ranger Station's porch, small things at the other doors.
+- SEEN: 18 views. Thrown out: a 3.6 m log across Bigfoot's floor (`h` does nothing on a `span` row). FPS 1.8 / 1.6 (first look 1.2 to 2.0 on the same view: the software
+  renderer's readings move by 0.2 to 0.4 from run to run, so no cost that it can show; a real machine has to judge it).
+
+**WHAT I WOULD DO NEXT (not started: five passes are the limit):** (1) the room's own people walking (an `encounters` export: bigfoot, shaman, hippie, yeti, gnome), with
+mondo's word on the list; (2) the pines round Bigfoot's Cabin pulled a square back (the tool's tree zone: a branch comes through its high ceiling); (3) a second inside
+pass like the city's (dado, crown, real sconces); (4) the Upper Shelf's door down to the Woods (the tool's and the Woods holder's); (5) night for the room (the tool's sky).
+
 **FOR THE NEXT THREAD (zone kit additions):** a `span` catalogue row is resized with `span`, an `h` row with `h`. `gnd(R, plot, lx, ly)` = the walked ground at a square (for a `y` from 1 up, or to merge many small looks into one). `hut` + `win` + `cairn` + `seracs` + `block` in S.js are plain functions: copy them. The district's sign face is `alfa`, cream
 `#f0e2c0` on brown `#4a3222`. `rocks_5` walls need `gain` 1.7 and a tint from 0xa0a0a8 up or they read black in daylight. A `cyl` with `ri` + `arc` makes a curved dry-stone wall.
 
