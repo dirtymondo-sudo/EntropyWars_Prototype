@@ -1,0 +1,516 @@
+{
+ "area": "The Deep",
+ "version": "plan-2",
+ "note": "the Deep zone thread, 2026-11-16, built without waiting for an OK (mondo's order of that day); his word wins",
+ "squareMeters": 3.5,
+ "plotCells": 12,
+ "cols": 8,
+ "rows": 5,
+ "levelMeters": 1.75,
+ "seaFloorLevel": 8,
+ "districts": {
+  "C": "Atlantis, the Citadel",
+  "R": "Atlantis, the Rings",
+  "S": "The Sea Floor",
+  "T": "The Trench"
+ },
+ "legend": {
+  "s": "sea floor sand",
+  "m": "drowned paving (roads, the Agora, causeways over the canals)",
+  "t": "city ground (the rings' terraces)",
+  "c": "canal bed (3.5 to 5 m under the rings; swum, bridged by the causeways)",
+  "w": "the city wall (7 m of marble; swum over, never through)",
+  "B": "building (a walk-in or solid house; its file says which)",
+  "k": "kelp forest floor",
+  "r": "reef / coral rock",
+  "x": "rock (crags, spires, the trench's walls)",
+  "d": "the trench floor (dark silt)",
+  "v": "warm vent rock",
+  "f": "the Station's deck"
+ },
+ "plots": [
+  {
+   "id": "P00-00",
+   "name": "The Kelp Forest",
+   "d": "S",
+   "what": "kelp to the surface, the humpback over it",
+   "from": "Abyss: the kelp forest",
+   "level": 8
+  },
+  {
+   "id": "P01-00",
+   "name": "The Station",
+   "d": "S",
+   "what": "the deck on its legs, the bathyscaphe moored off it",
+   "from": "Abyss: THE STATION + the bathyscaphe",
+   "level": 8
+  },
+  {
+   "id": "P02-00",
+   "name": "The Drowned Houses",
+   "d": "R",
+   "what": "roofless houses along the wall",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P03-00",
+   "name": "The North Gate",
+   "d": "R",
+   "what": "the gate, the road in over the outer canal",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P04-00",
+   "name": "The Market",
+   "d": "R",
+   "what": "stalls and a stoa",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P05-00",
+   "name": "The Spire",
+   "d": "S",
+   "what": "a rock needle 15 m high (the tape on top)",
+   "from": "Abyss: THE SPIRE",
+   "level": 8
+  },
+  {
+   "id": "P06-00",
+   "name": "The Shelf",
+   "d": "T",
+   "what": "a ledge half way down",
+   "from": "NEW (label mine)",
+   "level": 8
+  },
+  {
+   "id": "P07-00",
+   "name": "The Dark",
+   "d": "T",
+   "what": "no light but what lives here",
+   "from": "NEW (label mine)",
+   "level": 0
+  },
+  {
+   "id": "P00-01",
+   "name": "The Wreck",
+   "d": "S",
+   "what": "LANDMARK: the Dutchman below, on her side; the hatch in her hull",
+   "from": "Abyss: THE WRECK / THE DUTCHMAN BELOW",
+   "level": 7
+  },
+  {
+   "id": "P01-01",
+   "name": "The Theatre",
+   "d": "R",
+   "what": "a half ring of stone seats",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P02-01",
+   "name": "The Palace",
+   "d": "C",
+   "what": "the Palace on its podium, the front of nine metre columns",
+   "from": "Abyss: THE PALACE (the Sunken Agora, 11-13)",
+   "level": 10
+  },
+  {
+   "id": "P03-01",
+   "name": "The Temple of the Deep",
+   "d": "C",
+   "what": "LANDMARK: the dome over the vault door; the dry inside",
+   "from": "Abyss: THE TEMPLE STEPS + the dome; the Temple room",
+   "level": 10
+  },
+  {
+   "id": "P04-01",
+   "name": "The Columns",
+   "d": "C",
+   "what": "a colonnade on the inner ring, the fallen lintel",
+   "from": "Abyss: the colonnades, the fallen lintel",
+   "level": 10
+  },
+  {
+   "id": "P05-01",
+   "name": "The Workshops",
+   "d": "R",
+   "what": "low halls, the crystal works",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P06-01",
+   "name": "The Edge",
+   "d": "T",
+   "what": "the lip: the floor falls away",
+   "from": "Abyss: THE TRENCH (its lip)",
+   "level": 8
+  },
+  {
+   "id": "P07-01",
+   "name": "The Vents",
+   "d": "T",
+   "what": "the smokers, warm rock",
+   "from": "Abyss: the smokers in the trench",
+   "level": 1
+  },
+  {
+   "id": "P00-02",
+   "name": "The Sea Floor",
+   "d": "S",
+   "what": "open sand, the road from the West Gate, fish schools",
+   "from": "Abyss: THE SEA FLOOR",
+   "level": 8
+  },
+  {
+   "id": "P01-02",
+   "name": "The West Gate",
+   "d": "R",
+   "what": "the gate toward the Upwelling",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P02-02",
+   "name": "The West Bridge",
+   "d": "C",
+   "what": "the causeways over both canals",
+   "from": "NEW (label mine)",
+   "level": 10
+  },
+  {
+   "id": "P03-02",
+   "name": "The Agora",
+   "d": "C",
+   "what": "LANDMARK: the sunken square, the four crystal pylons",
+   "from": "Abyss: THE SUNKEN AGORA",
+   "level": 11
+  },
+  {
+   "id": "P04-02",
+   "name": "The East Bridge",
+   "d": "C",
+   "what": "the causeways over both canals",
+   "from": "NEW (label mine)",
+   "level": 10
+  },
+  {
+   "id": "P05-02",
+   "name": "The East Gate",
+   "d": "R",
+   "what": "the gate toward the Trench",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P06-02",
+   "name": "The Trench",
+   "d": "T",
+   "what": "LANDMARK: the drop, where the East road ends",
+   "from": "Abyss: THE TRENCH",
+   "level": 2
+  },
+  {
+   "id": "P07-02",
+   "name": "The Bottom",
+   "d": "T",
+   "what": "the lowest plot in the world",
+   "from": "NEW (label mine)",
+   "level": 0
+  },
+  {
+   "id": "P00-03",
+   "name": "The Upwelling",
+   "d": "S",
+   "what": "where the whirlpool sets you down: a bowl ringed with rock, the jelly bloom",
+   "from": "Abyss: THE UPWELLING",
+   "level": 7
+  },
+  {
+   "id": "P01-03",
+   "name": "The Gardens",
+   "d": "R",
+   "what": "coral where the gardens were",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P02-03",
+   "name": "The Statues",
+   "d": "C",
+   "what": "a row of statues on the inner ring",
+   "from": "Abyss: the statues (label mine)",
+   "level": 10
+  },
+  {
+   "id": "P03-03",
+   "name": "The Drowned Road",
+   "d": "C",
+   "what": "the road up to the Agora over the south causeway",
+   "from": "Abyss: THE DROWNED ROAD",
+   "level": 10
+  },
+  {
+   "id": "P04-03",
+   "name": "The Obelisks",
+   "d": "C",
+   "what": "two obelisks and the tesla pylons",
+   "from": "Abyss: the obelisks (label mine)",
+   "level": 10
+  },
+  {
+   "id": "P05-03",
+   "name": "The Harbour",
+   "d": "R",
+   "what": "the old docks on the outer canal, the sea chests",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P06-03",
+   "name": "The Slope",
+   "d": "T",
+   "what": "a broken slope down, rock spires",
+   "from": "Abyss: the spires round the trench",
+   "level": 6
+  },
+  {
+   "id": "P07-03",
+   "name": "The Lights",
+   "d": "T",
+   "what": "the anglerfish and the jellies",
+   "from": "Abyss: the anglerfish (label mine)",
+   "level": 0
+  },
+  {
+   "id": "P00-04",
+   "name": "The Reef Wall",
+   "d": "S",
+   "what": "a coral ridge 5 m high",
+   "from": "Abyss: THE REEF WALL",
+   "level": 8
+  },
+  {
+   "id": "P01-04",
+   "name": "The Dunes",
+   "d": "S",
+   "what": "rippled sand, the south road's end",
+   "from": "Abyss: the dunes of grey sand",
+   "level": 9
+  },
+  {
+   "id": "P02-04",
+   "name": "The Baths",
+   "d": "R",
+   "what": "pools and a round hall",
+   "from": "NEW (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P03-04",
+   "name": "The South Gate",
+   "d": "R",
+   "what": "the great gate: the Drowned Road comes in here",
+   "from": "Abyss: THE DROWNED ROAD",
+   "level": 9
+  },
+  {
+   "id": "P04-04",
+   "name": "The Graves",
+   "d": "R",
+   "what": "tombs along the wall, the sarcophagus",
+   "from": "Abyss: the sarcophagus (label mine)",
+   "level": 9
+  },
+  {
+   "id": "P05-04",
+   "name": "The Drowned Circle",
+   "d": "S",
+   "what": "standing stones on a low mound",
+   "from": "Abyss: the drowned circle",
+   "level": 9
+  },
+  {
+   "id": "P06-04",
+   "name": "The Bones",
+   "d": "T",
+   "what": "a whale's bones on the floor",
+   "from": "NEW (label mine)",
+   "level": 4
+  },
+  {
+   "id": "P07-04",
+   "name": "The Far Wall",
+   "d": "T",
+   "what": "the trench's east wall",
+   "from": "NEW (label mine)",
+   "level": 0
+  }
+ ],
+ "ways": [
+  {
+   "id": "upwelling",
+   "sx": 6,
+   "sy": 42,
+   "kind": "open",
+   "label": "The Beach (up the Upwelling to the Maelstrom)",
+   "link": "bermuda_abyss"
+  },
+  {
+   "id": "wreck",
+   "sx": 8,
+   "sy": 18,
+   "kind": "hidden",
+   "label": "the Flying Dutchman's Hold (the wreck's hatch)",
+   "link": "revenge_atlantis"
+  },
+  {
+   "id": "temple",
+   "sx": 42,
+   "sy": 24,
+   "kind": "inside",
+   "label": "inside: the Temple of the Deep (the vault door)"
+  },
+  {
+   "id": "drownedstair",
+   "sx": 47,
+   "sy": 18,
+   "kind": "hidden",
+   "label": "the drowned stair (up into the temple)"
+  },
+  {
+   "id": "spawn",
+   "sx": 42,
+   "sy": 27,
+   "kind": "spawn",
+   "label": "you arrive here (the Agora)"
+  }
+ ],
+ "cells": [
+  "sskskkkkkksssssssssssssssssssssssssssssssmmssssssssssssssssssssssssssssssssxxxddddddddddxdddddxx",
+  "kskkkkkkkkkksssssssssssssssssssssssssssssmmssssssssssssssssssssssssssssssssssxxxddddddddxdddddxx",
+  "skkkkkkkkkksssssssssssssssssssssssswwwwwmmmmwwwwwssssssssssssssssssxsssssssssxxxxxxxddddxdddddxx",
+  "kkkkkkkkkkkksssfffsssssssssssssswwwwwtttmmmmtttwwwwwsssssssssssssssxxsssssssssxxxxxxddddxdddddxx",
+  "kkkkkkkkkkkkkssfffssssssssssswwwwtttttttmmmmtttttttwwwwssssssssssssxxssssssssssxxxxxddddxdddddxx",
+  "kkkkkkkkkkkkkssfffssssssssswwwwtttttttttmmmmtttttttttwwwwsssssssssssxssssssssssxxxxxddddxdddddxx",
+  "kkkkkkkkkkkkkssssssssssssswwwtttttttttttmmmmtttttttttttwwwssssssssssssssssssssxxxxxxddddxdxdddxx",
+  "kkkkkkkkkkkkksssssssssssswwtttttttttttttmmmmtttttttttttttwwsssssssssssssssssssxxxxxxddddxdddddxx",
+  "kkkkkkkkkkksssssssssssswwwttttttttttttttmmmmttttttttttttttwwwssssssssssssssssxxxxxxxddddxdddddxx",
+  "skkkkkkkkkkssssssssssswwtttttttttttttcccmmmmccctttttttttttttwwsssssssssssssssxxxdddddddxddddddxx",
+  "skkkkkkkkkksssssssssswwtttttttttttccccccmmmmcccccctttttttttttwwssssssssssssssxxxdddddddxxdddddxx",
+  "ssskkkkksksssssssssswwttttttttttccccccccmmmmccccccccttttttttttwwssssssssssssxxxdddddddxdddddddxx",
+  "ssssskkksssssssssssswtttttttttccccccccttmmmmttcccccccctttttttttwssssssssssssxxxdddddddxdddddddxx",
+  "ssssssssssssssssssswwttttttttcccccctttttmmmmtttttccccccttttttttwwssssssssssssxxxddddddxdddddddxx",
+  "sssssssssssssssssswwttttttttccccctttttttmmmmtttttttcccccttttttttwwsssssssssssxxxdddddxddddddddxx",
+  "ssssssssssssssssswwttttttttcccctttttttttmmmmtttttttttccccttttttttwwssssssssssxxxdxdddxdddvvdddxx",
+  "ssssssssssssssssswwtttttttccccttttttttttmmmmttttttttttcccctttttttwwsssssssssssxxxddddxdvvvvvvdxx",
+  "sssssssssssssssswwtttttttccccttttttttcccmmmmcccttttttttcccctttttttwwssssssssssxxxddddxdvvvvvvdxx",
+  "sssssssssssssssswwttttttcccctttttttcccccmmmmccccctttttttccccttttttwwsssssssssxxxdddddxdvvvvvvdxx",
+  "sssssssssssssssswtttttttccctttttttccccccmmmmcccccctttttttccctttttttwsssssssssxxxdddddxdvvvvvvdxx",
+  "ssssssssssssssswwttttttcccctttttccccccBBBBBBBBcccccctttttccccttttttwwsssssssxxxdddddxxdddvvdddxx",
+  "ssssssssssssssswtttttttcccttttttccccmmBBBBBBBBmmccccttttttccctttttttwssssssxxxdddddddxddddddddxx",
+  "ssssssssssssssswttttttcccctttttccccmmmBBBBBBBBmmmcccctttttccccttttttwsssssxxxddddddddxddddddddxx",
+  "sssssssssssssswwttttttccctttttccccmmmmBBBBBBBBmmmmcccctttttcccttttttwwsssxxxdddddddddxddddddddxx",
+  "sssssssssssssswwttttttccctttttcccmmmmmmmmmmmmmmmmmmccctttttcccttttttwwssxxxdddddddddddxdddddddxx",
+  "sssssssssssssswttttttccccttttccccmmmmmmmmmmmmmmmmmmccccttttccccttttttwssxxxdddddddddddxdddddddxx",
+  "sssssssssssssswttttttccctttttcccmmmmmmmmmmmmmmmmmmmmccctttttcccttttttwssxxxdddddddddddxdddddddxx",
+  "sssssssssssssswttttttccctttttcccmmmmmmmmmmmmmmmmmmmmccctttttcccttttttwssxxxddddddddddddxddddddxx",
+  "ssssssssssssssmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmssxxxddddddddddddxddddddxx",
+  "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxdddddddddddxddddddxx",
+  "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxdddddddddddxddxddxx",
+  "ssssssssssssssmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmssssxxxdddddddddddxdddddxx",
+  "sssssssssssssswttttttccctttttcccmmmmmmmmmmmmmmmmmmmmccctttttcccttttttwsssssxxxddddddddddxdddddxx",
+  "sssssssssssssswttttttccctttttcccmmmmmmmmmmmmmmmmmmmmccctttttcccttttttwsssssxxxddxdddddddxdddddxx",
+  "sssssssssssssswttttttccccttttccccmmmmmmmmmmmmmmmmmmccccttttccccttttttwsssssxxxddddddddddxdddddxx",
+  "sssssssssssssswwttttttccctttttcccmmmmmmmmmmmmmmmmmmccctttttcccttttttwwsssssxxxddddddddddxdddddxx",
+  "sssssssssssssswwttttttccctttttccccmmmmmmmmmmmmmmmmcccctttttcccttttttwwsssssxxxddddddddddxdddddxx",
+  "ssssxxxsssssssswttttttcccctttttccccmmmmmmmmmmmmmmcccctttttccccttttttwssssssxxxddddddddddxdddddxx",
+  "ssxxssssxxssssswtttttttcccttttttccccmmmmmmmmmmmmccccttttttccctttttttwssssssxxxdddddxddddxdddddxx",
+  "ssxssssssxssssswwttttttcccctttttccccccmmmmmmmmcccccctttttccccttttttwwssssssxxxddddddddddxdddddxx",
+  "sssssssssssssssswtttttttccctttttttccccccmmmmcccccctttttttccctttttttwsssssssxxxddxddddddxddddddxx",
+  "sxsssssssssssssswwttttttcccctttttttcccccmmmmccccctttttttccccttttttwwssssssssxxxddddddddxddddddxx",
+  "sxsssssssssssssswwtttttttccccttttttttcccmmmmcccttttttttcccctttttttwwssssssssxxxddddddddxddddddxx",
+  "sxssssssssssssssswwtttttttccccttttttttttmmmmttttttttttcccctttttttwwssssssssssxxxddddddxdddddddxx",
+  "ssxssssssxssssssswwttttttttcccctttttttttmmmmtttttttttccccttttttttwwsssssssssssxxxdxdddxdddddddxx",
+  "ssxxssssxxsssssssswwttttttttccccctttttttmmmmtttttttcccccttttttttwwsssssssssssssxxxdddxddddddddxx",
+  "ssssxxxxssssssssssswwttttttttcccccctttttmmmmtttttccccccttttttttwwssssssssssssssxxxdddxddddddddxx",
+  "sssssssssssssssssssswtttttttttccccccccttmmmmttcccccccctttttttttwsssssssssssssssxxxdddxddddddddxx",
+  "sssssssssssssssssssswwttttttttttccccccccmmmmccccccccttttttttttwwsssssssssssssssxxxdddxddddddddxx",
+  "ssssssssssssssssssssswwtttttttttttccccccmmmmcccccctttttttttttwwssssssssssssssssxxxdddxddddddddxx",
+  "sssssssssssssssssssssswwtttttttttttttcccmmmmccctttttttttttttwwssssssssssssssssxxxddddxdddxddddxx",
+  "ssssssssssssssssssssssswwwttttttttttttttmmmmttttttttttttttwwwssssssssssssssssxxxdddddxddddddddxx",
+  "ssssssssssssssssssssrrrsswwtttttttttttttmmmmtttttttttttttwwsssssssssssssssssxxxddddddxddddddddxx",
+  "ssssssssssssssssssrrrrrssswwwtttttttttttmmmmtttttttttttwwwssssssssssssssssssxxxddddddxddddddddxx",
+  "srrsssssssssssssrrrrssssssswwwwtttttttttmmmmtttttttttwwwwssssssssssssssssssxxxdddddddxddddddddxx",
+  "srrrrrsssssssrrrrrrsssssssssswwwwtttttttmmmmtttttttwwwwssssssssssssssssssssxxxdddddddxddddddddxx",
+  "ssrrrrrrrrrrrrrrrssssssssssssssswwwwwtttmmmmtttwwwwwsssssssssssssssssssssssxxxddddddddxdddddxdxx",
+  "sssssrrrrrrrrrssssssssssssssssssssswwwwwmmmmwwwwwssssssssssssssssssssssssssxxxddddddddxdddddddxx",
+  "sssssssssssssssssssssssssssssssssssssssssmmssssssssssssssssssssssssssssssssxxxdddddddddxddddddxx",
+  "sssssssssssssssssssssssssssssssssssssssssmmssssssssssssssssssssssssssssssssxxxdddddddddxddddddxx"
+ ],
+ "levels": [
+  "8888888888888888888888888888888888888888888888888888888888888888888888888888642222222222100000fg",
+  "8888888888888888888888888888888888888888888888888888888888888888888888888888886422222222100000ge",
+  "8888888888888888888888888888888888899999999999999888888888888888888c88888888855555552222100000ef",
+  "888888888888888aaa8888888888888899999999999999999999888888888888888hh8888888885555552222100000fg",
+  "888888888888888aaa8888888888899999999999999999999999999888888888888hh8888888888555552222100000ge",
+  "888888888888888aaa88888888899999999999999999999999999999988888888888b8888888888555552222100000ef",
+  "8888888888888888888888888899999999999999999999999999999999888888888888888888885555552222106000fg",
+  "8888888888888888888888888999999999999999999999999999999999988888888888888888885555552222100000ge",
+  "8888888888888888888888899999999999999999999999999999999999999888888888888888855555552222100000ef",
+  "8888888888888888888888999999999999999777999977799999999999999988888888888888886422222221000000fg",
+  "8888888888888888888889999999999999777777999977777799999999999998888888888888886422222221400000ge",
+  "8888888888888888888899999999999977777777999977777777999999999999888888888888864222222210000000ef",
+  "88888888888888888888999999999977777777aaaaaaaa777777779999999999888888888888864222222210000000fg",
+  "88888888888888888889999999999777777aaaaaaaaaaaaaa777777999999999988888888888886422222210000000ge",
+  "888888888888888888999999999977777aaaaaaaaaaaaaaaaaa7777799999999998888888888886422222100000000ef",
+  "8888777788888888899999999997777aaaaaaaaaaaaaaaaaaaaaa77779999999999888888888886428222100011000fg",
+  "887777777788888889999999997777aaaaaaaaaaaaaaaaaaaaaaaa7777999999999888888888888642222101111110ge",
+  "88777777778888889999999997777aaaaaaaa777aaaa777aaaaaaaa777799999999988888888888642222101111110ef",
+  "8877777777888888999999997777aaaaaaa77777aaaa77777aaaaaaa77779999999988888888886422222101111110fg",
+  "887777777788888899999999777aaaaaaa777777aaaa777777aaaaaaa7779999999988888888886422222101111110ge",
+  "888877778888888999999997777aaaaa777777cccccccc777777aaaaa7777999999998888888864222227100011000ef",
+  "88888888888888899999999777aaaaaa7777bbccccccccbb7777aaaaaa777999999998888888642222222100000000fg",
+  "88888888888888899999997777aaaaa7777bbbccccccccbbb7777aaaaa777799999998888886422222222100000000ge",
+  "8888888888888899999999777aaaaa7777bbbbccccccccbbbb7777aaaaa77799999999888864222222222100000000ef",
+  "8888888888888899999999777aaaaa777bbbbbbbbbbbbbbbbbb777aaaaa77799999999888642222222222210000000fg",
+  "8888888888888899999997777aaaa7777bbbbbbbbbbbbbbbbbb7777aaaa77779999999888642222222222210000000ge",
+  "888888888888889999999777aaaaa777bbbbbbbbbbbbbbbbbbbb777aaaaa7779999999888642222222222210000000ef",
+  "888888888888889999999777aaaaa777bbbbbbbbbbbbbbbbbbbb777aaaaa7779999999888642222222222221000000fg",
+  "888888888888889999999999aaaaaaaabbbbbbbbbbbbbbbbbbbbaaaaaaaa9999999999888642222222222221000000ge",
+  "888888888888889999999999aaaaaaaabbbbbbbbbbbbbbbbbbbbaaaaaaaa9999999999888864222222222221000000ef",
+  "888888888888889999999999aaaaaaaabbbbbbbbbbbbbbbbbbbbaaaaaaaa9999999999888886422222222222100500fg",
+  "888888888888889999999999aaaaaaaabbbbbbbbbbbbbbbbbbbbaaaaaaaa9999999999888886422222222222100000ge",
+  "888888888888889999999777aaaaa777bbbbbbbbbbbbbbbbbbbb777aaaaa7779999999888888642222222222100000ef",
+  "888888888888889999999777aaaaa777bbbbbbbbbbbbbbbbbbbb777aaaaa7779999999888888642272222222100000fg",
+  "8888888888888899999997777aaaa7777bbbbbbbbbbbbbbbbbb7777aaaa77779999999888888642222222222100000ge",
+  "8888888888888899999999777aaaaa777bbbbbbbbbbbbbbbbbb777aaaaa77799999999888888642222222222100000ef",
+  "8888888888888899999999777aaaaa7777bbbbbbbbbbbbbbbb7777aaaaa77799999999888888642222222222100000fg",
+  "8888cca8888888899999997777aaaaa7777bbbbbbbbbbbbbb7777aaaaa777799999998888888642222222222100000ge",
+  "88ca8888cb8888899999999777aaaaaa7777bbbbbbbbbbbb7777aaaaaa777999999998888888642222262222100000ef",
+  "88a877778a88888999999997777aaaaa777777bbbbbbbb777777aaaaa7777999999998888888642222222222100000fg",
+  "888777777888888899999999777aaaaaaa777777aaaa777777aaaaaaa7779999999988888888642292222221000000ge",
+  "8b87777778888888999999997777aaaaaaa77777aaaa77777aaaaaaa77779999999988888888864222222221000000ef",
+  "8c877777788888889999999997777aaaaaaaa777aaaa777aaaaaaaa777799999999988888888864222222221000000fg",
+  "8b8777777888888889999999997777aaaaaaaaaaaaaaaaaaaaaaaa7777999999999888888888886422222210000000ge",
+  "88a877778c888888899999999997777aaaaaaaaaaaaaaaaaaaaaa77779999999999888888888888642722210000000ef",
+  "88bb8888cb88888888999999999977777aaaaaaaaaaaaaaaaaa7777799999999998888888888888864222100000000fg",
+  "8888abac888888888889999999999777777aaaaaaaaaaaaaa777777999999999988888888888888864222100000000ge",
+  "88888888888888888888999999999977777777aaaaaaaa777777779999999999888888888888888864222100000000ef",
+  "8888888888889888988899999999999977777777999977777777999999999999888888888888888864222100000000fg",
+  "8888888888889888988899999999999999777777999977777799999999999998888888888888888864222100000000ge",
+  "8888888888888889888988999999999999999777999977799999999999999988888888888888888642222100060000ef",
+  "8888888888888889888988899999999999999999999999999999999999999888888888888888886422222100000000fg",
+  "88888888888888988898aba88999999999999999999999999999999999988888999988888888864222222100000000ge",
+  "888888888888889888abaaa88899999999999999999999999999999999888889999998888888864222222100000000ef",
+  "8ab8888888888988baba89888889999999999999999999999999999998888899999999888888642222222100000000fg",
+  "8aabab8888888abbbaa889888888899999999999999999999999999888888899999999888888642222222100000000ge",
+  "88aaaabababbabaaa88898888888888899999999999999999999888888888889999998888888642222222210000070ef",
+  "88888aaaaaaaaa88988898888888888888899999999999999888888888888888999988888888642222222210000000fg",
+  "8888888888888889888988898888888888888888888888888888888888888888888888888888642222222221000000ge",
+  "8888888888888889888988898888888888888888888888888888888888888888888888888888642222222221000000ef"
+ ]
+}

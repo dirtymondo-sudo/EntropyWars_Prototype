@@ -43,8 +43,8 @@ as the inside of a plot-built place.
 | The D.U.M.B. | six rooms + CERN's ring | OLD + PLAN (36) | Hangar 18; HQ garage motor pool; the Cavern; Astral library (dream lab) | free |
 | Heaven + Hell + Vatican | Vatican x5, Hell x2, Heaven x2 | OLD + PLAN (3 rooms of 16) | HQ `continuity` painting; the Cavern fissure; Olympus (two ways); Camelot's sky castle | free |
 | Leylines | ley tunnels, Stonehenge, Göbekli Tepe, Babel; Technoticlan is its own site | OLD + PLAN (45) | Giza robbers' tunnel; Technoticlan; bays | free |
-| The Deep (with Atlantis) | the Abyss, the Temple of the Deep | OLD + PLAN (27) | Beach whirlpool; the Dutchman's hold | free |
-| Outer Space | the Spaceship x4, Moon, Mars, Saturn, the Singularity | OLD + PLAN (one 12 x 12 solar system) | Antarctica (the ship's collar); HQ `observatorium` to the Singularity; bays | free |
+| The Deep (with Atlantis) | `site_prebuilt_atlantis_deep` (8 x 5, a drowned room) + INSIDE the Temple of the Deep (`site_prebuilt_atlantis_pocket`) | PLOTS (11-16; the old Abyss + Temple retired, kept as PvP board sources) | Beach whirlpool -> the Upwelling; the Dutchman's hold -> the wreck's hatch; HQ Room H-20 -> the Temple's inside | second |
+| Outer Space | `site_prebuilt_moon_plots` (5 x 4), `site_prebuilt_mars_plots` (5 x 4), `site_prebuilt_saturn_plots` (4 x 4), `site_prebuilt_singularity_plots` (4 x 4): four rooms, one a world, 72 plots (11-16, `bake-space.js`, plot plan 3) + the Spaceship x4 (handmade, stays). Hub `space` | PLOTS (first build 11-16; the Spaceship handmade) | the ship's collar (Moon, Mars, Saturn; and Antarctica); Moon <> Mars (the bore); Saturn <> the Singularity (the frame); HQ `observatorium` to the Singularity; four bays | second (tool), district M piloted, nine districts free |
 | Antarctica | the Station | OLD + PLAN (12) | the Inner Sun; Agartha; the Spaceship; bay | free |
 | The Astral Realm | waiting room, sea, nightmare, library | OLD + PLAN (36) | HQ `dreamlab`; Camelot mirror; D.U.M.B. dream lab; the Haunted House attic | free |
 
@@ -58,6 +58,8 @@ Loose sites that the world plan folds into a zone but that still stand as their 
 | the Strip (streets, chapel, casino) | insides of Entertainment's Casino + Wedding chapel; the boulevard a PvP board | still live and still joined to the city (`link_downtown_strip`, `link_streets_strip`) |
 | Cyberpunk City (streets, noodle bar) | later: a reskin of the whole city, not a place | still live; reached by the HQ tunnel and the Sewers |
 | `site_prebuilt_agartha_crystalcity`, `site_prebuilt_technoticlan_templecity` | districts of the Cavern / Leylines | live, no hub claims them (the map files them alone) |
+
+(11-16: Outer Space has a hub now, `space`, anchored on the Spaceship's airlock. Antarctica still has none.)
 
 DATA: mondo's zone list in owner-rules.md has 16 names. The game's map (`DOOR_HQ.hubs`) has 15 hubs and they do not match
 one to one: The Mountains and The Astral Realm are hubs but not on the list; Fairy Forest and Atlantis are on the list but
@@ -102,10 +104,10 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 | The Sewers (PLAN) | W The Sewers, O The Old Workings, T The Running Tunnels | none: not built |
 | The D.U.M.B. (PLAN) | R Research, S Sub-Level 7, C Command, P Level P3 (CERN = the ring) | none |
 | The Cavern (PLAN) | K The Cavern, H Hollow Earth, A Agartha | none |
-| The Deep (PLAN) | A Atlantis, T The Trench | none |
+| The Deep | C Atlantis, the Citadel (pilot: 3 passes), R Atlantis, the Rings, S The Sea Floor, T The Trench | not yet |
 | Leylines (PLAN) | G Göbekli Tepe, B Bug Colony, S Stonehenge, Y The Ley Lines (the road), T Babel, Z Technoticlan | none |
 | Heaven + Hell + Vatican (PLAN) | L Hell, V The Vatican, H Heaven, O Mount Olympus (now in the Mountains, so drop it here) | none |
-| Outer Space (PLAN) | X open space, M The Moon, R Mars, T Saturn, S The Singularity | none |
+| Outer Space | the Moon: M The Mare, C The Crater, F The Far Side · Mars: Y Cydonia, V The Canyon, R The Rover Bay · Saturn: H The Hexagon, G The Ring Shard · the Singularity: D The Drop, A The Accretion Rim | yes since 11-16: `docs/areas/space/districts/<letter>.js` (ten files, the letters unique across the four rooms) |
 | Antarctica (PLAN) | A Antarctica Station | none |
 | The Astral Realm (PLAN) | L The Library of Unthought Things, S The Sea of Possibility, N The Nightmare | none |
 
@@ -189,7 +191,7 @@ thread). The Desert's sides and the city's Cove are fixed; the Mountains, the No
 | The Sewers | 16 | 7 (city x3, Woods, HQ x3) + the Strip, Cyberpunk, stadium | owner (the city) | its plan picture must be redrawn for the moved districts |
 | Heaven + Hell + Vatican | 48 in 3 rooms | 5 (Olympus x2, Camelot's sky castle, HQ painting, the Civic gate) | second (Mountains, Civic) | the sky castle waits mondo; two neighbours to coordinate |
 | The D.U.M.B. | 36 | 2 (Hangar 18, HQ garage) | second (Desert) | the White Rooms question (the plan moved them down; the Desert kept them up) |
-| The Deep | 27 | 2 (the whirlpool, the Dutchman) | second (Beach) | the Beach still waits mondo's first look; "The Deep to Area 51" unanswered |
+| The Deep | 40 | 3 (the whirlpool, the Dutchman, Room H-20) | second (Beach) | BUILT 11-16 (areas-complexes.md "THE DEEP ON PLOTS"); no way to Area 51 (mondo); `world_state_map.png` not redrawn for it yet |
 | The Cavern | 36 | 3 (HQ dungeon, Estate wells) | second (Estate) | wants the Sewers first (its main way in); plan exits out of date |
 | Leylines | 45 | 1 (Giza tunnel) | second (Desert) | the Bug Colony is new: needs models |
 | The Astral Realm | 36 | 3 (HQ, Camelot mirror, attic) | owner / second | A2 no. 2 first |
@@ -243,3 +245,4 @@ Realm, Antarctica, Outer Space last.
   (`docs/plans/MODEL_WISHLIST.md` is the first collected list).
 - Earlier the same day: the Hollywood Hills became Disaster City's district N; The Sewers were built (five districts);
   every district of every built zone got up to five passes (`docs/plans/DISTRICT_THREAD_BRIEF.md`).
+- **Outer Space built (11-16, the zone thread):** four rooms, one a world, on plots (plan 3); the Spaceship untouched. Door check: every bay, collar course and link lands at its own door in the new rooms; `hqWorldGraph()` has no edge into the four retired space rooms. Where the ship leaves from is still open; flying it is listed, not built (areas-complexes.md "OUTER SPACE ON PLOTS").

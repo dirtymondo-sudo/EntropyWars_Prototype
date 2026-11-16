@@ -316,7 +316,8 @@ run('build', ['K', 'T']);
 props.push({ key: 'brazier', x: r2(BAYX - 5.25), z: gc(94) }, { key: 'brazier', x: r2(BAYX + 5.25), z: gc(94) }); put('signpost', 44, 91);
 run('build', ['L', 'F', 'N', 'W']);
 { const m = OG.d.find(d => d.id === 'astral');   // THE MIRROR (in the Looking-Glass Garden, P00-04): the old garden's frame with nothing in it, with its own words
-  doors.push({ id: 'mirror', wall: 'free', x: gc(7), z: gc(53), face: 180, leaf: m.leaf, label: m.label, sub: m.sub, action: { room: 'site_prebuilt_lookingglass_waiting', at: 'garden' }, desc: m.desc }); }
+  /* THE ASTRAL REALM ON PLOTS (2026-11-16, mondo: "just add some sort of door from th looking garden to the astral sea of possibility"): the mirror opens on the Mirror's island in the Sea of Possibility (bake-astral.js door `mirror`, which leads back here) */
+  doors.push({ id: 'mirror', wall: 'free', x: gc(7), z: gc(53), face: 180, leaf: m.leaf, label: 'THE ASTRAL REALM · THE SEA OF POSSIBILITY', sub: 'THE FRAME WITH NOTHING IN IT · THE OTHER SIDE OF THE GLASS', action: { room: 'site_prebuilt_lookingglass_realm', at: 'mirror' }, desc: 'A second mirror frame with no glass in it, at the back of the garden where the hedges stop pretending. Through it, a violet sky and an island with nothing under it.' }); }
 
 /* ── checks: the catalogue, the units, every plot walked to from the portcullis ── */
 if (global.BAD) throw new Error('squares that are not free ground: ' + global.BAD.join(' '));
