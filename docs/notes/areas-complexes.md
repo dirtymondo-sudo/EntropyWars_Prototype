@@ -5863,6 +5863,11 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   dumpster, tyres, washer, fridge, mattress in the Gully's yard; a rusted car, tyres and a mattress in the upper bed; a sofa, a television, barrels, a crate, tyres
   and tags on both walls in the ravine; a rowboat and dead bushes in the Hollow; barrels, bins and dead bushes at the three mouths. 13 pieces were skipped (plot full).
   `bare` is the whole ravine bed now: no scatter plant lands in it. The campfire is `noLight`.
+- **THE MODEL LIST PASS (same day, mondo's rule THE MODEL LIST FIRST)**: the first dressing used only catalogue rows already known. Found in MODEL_LIST.md and added
+  (37 pieces): a wrapped corpse a few steps short of the sewer mouth with body parts, bones and a flashlight (`hw_body`, `hw_part_*`, `femur`, `ulna`); a second body and
+  parts in the Hollow and by the crag; bats over the three mouths (`bat_black` / `bat_brown`, `y` = their height); the playground's swing and the rowboat in the Hollow;
+  cups, a cooler and cinder blocks at the fire ring; a camping tent by the Tunnel Way; sandbags and a cone at the apron's edge. Skipped, plot full: the full skip
+  (`ind_skip_full`) and the stray `cat` in the Gully's yard. All seen in the probe.
 - **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
   stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
   Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
@@ -5925,6 +5930,10 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   `y` when given (absolute metres), else the ground at its origin: on graded ground give `y: ctx.ground(x, z)` and write parts from there. A waterfall: a wall of 7 m or more behind
   a pool + one `fall` row with `y0` / `y1` given (areas-complexes.md THE WATERFALLS); keep leaners off the sheet's face. FPS in a probe: a view's `eval` that counts
   requestAnimationFrame for 5 s and logs `[HQ] PROBE fps …` (+ `settle: 6500`).
+- **THE MODEL LIST, what fits the Woods beyond the obvious** (grep MODEL_LIST.md yourself too): Halloween pack `hw_body*` corpses, `hw_part*` body parts, `hw_coffin*`,
+  `hw_web*`, `hw_bricks*`, `hw_kerb`, `hw_stone*`, `hw_fence*`; bones `femur`, `ulna`, `skull`; animals `bat_black` / `bat_brown`, `cat`, `dog`, `wolf`, `crow`, `rabbit`,
+  `eagle`, the insects pack; Playground `play_swing` / `play_slide` / `play_sandbox`; Survival `campfire`, `camping_tent`, `ship_lantern`; `beach_cooler`, `solo_cup`,
+  `meshy_cinder_block`, `meshy_sandbags`, `traffic_cone`, `ind_skip_full`; six `trailer_home_*`; `abandoned_house` (a whole house outside, not used yet).
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
