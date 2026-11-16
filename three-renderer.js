@@ -73083,7 +73083,7 @@ const ThreeRenderer = (function () {
                         L0.push(put(gb, [-W2, by, bz], [0, fit ? bi / bs : arcL / mv])); R0.push(put(gb, [W2, by, bz], [fit ? 1 : 2 * W2 / mu, fit ? bi / bs : arcL / mv]));
                     }
                     for (var bj = 0; bj < bs; bj++) gb.idx.push(L0[bj], R0[bj], R0[bj + 1], L0[bj], R0[bj + 1], L0[bj + 1]);
-                    [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault
+                    if (P.ends !== false) [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault (`ends: false` = an open vault: a tunnel's, seen from inside with `ds`)
                         var ge = grp(kE, tE), c0 = put(ge, [sd * bw, 0, 0], [0.5 * 2 * D2 / mu, 0]), ring2 = [];
                         for (var ei = 0; ei <= bs; ei++) { var ea = Math.PI * ei / bs, ez = D2 * Math.cos(ea), ey = rh * Math.sin(ea); ring2.push(put(ge, [sd * bw, ey, ez], [(D2 - ez) / mu, ey / mv])); }
                         for (var ej = 0; ej < bs; ej++) { if (sd > 0) ge.idx.push(c0, ring2[ej + 1], ring2[ej]); else ge.idx.push(c0, ring2[ej], ring2[ej + 1]); }
