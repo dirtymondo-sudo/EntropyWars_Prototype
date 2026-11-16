@@ -10306,10 +10306,13 @@ const RACE_ABILITIES = {
            takes him down and out of sight (walls and units do not stop a tunnel), Erupt brings him up under an enemy and throws it
            into the air, Cave-In digs a pit under a group. Rules: data.js STATUS_DEFS burrowed (+ invisible's onRemove) +
            battle.js _moleErupt (the `erupt` spell field). */
-        { id: 'nrBurrow', name: 'Burrow', tier: 1, families: ['burrowing'], cost: 25, apCost: 1, cooldownRounds: 1, spellType: 'anomaly',
+        /* THE MOLE MAN PASS (2026-11-16): Burrow cooldown 1 -> 2. At 1 he could dig every turn and never be on the board (Invisible
+           lasts until his next turn ends, so a recast each turn kept it up for good). At 2 the race has a rhythm the other side can
+           read and punish: a round under the ground, then Erupt brings him up, and he stands on the board through their next turn. */
+        { id: 'nrBurrow', name: 'Burrow', tier: 1, families: ['burrowing'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           element: 'earth', type: 'utility', kind: 'escape', range: 0, teleportDistance: 4,
           statusEffects: [{ id: 'burrowed', duration: 1 }, { id: 'invisible', duration: 1 }],
-          desc: 'Digs down and tunnels up to 4 squares, under walls and units, and stays under the ground: Invisible and untargetable until his next turn ends or he attacks. Cooldown: 1 round.' },
+          desc: 'Digs down and tunnels up to 4 squares, under walls and units, and stays under the ground: Invisible and untargetable until his next turn ends or he attacks. Cooldown: 2 rounds.' },
         { id: 'nrErupt', name: 'Erupt', tier: 2, families: ['burrowing'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 120, range: 4,
           ignoresLineOfSight: true, sneakBonus: true, erupt: true,

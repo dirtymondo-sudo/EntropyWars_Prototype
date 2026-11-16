@@ -55559,6 +55559,157 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     };
 
+    /* ════ THE MOLE MAN (2026-11-16, the Mole Man pass: his three spells get looks of their own in the earth language).
+       · BURROW (escape, _ESC_LOOKS.nrBurrow): he digs straight down through his tile (the 'dive' path) in a spray of soil
+         and stones, a torn hole left behind; on his own side's screen a ridge of soil heaves along the tunnel to where he
+         stays under (hideLanding: the other side never sees where he went, RULE #2 / fog).
+       · ERUPT: the windup is a tremor under the victim (soil hopping, a crack opening: something is coming up); the hit is
+         a fountain of soil and stones out of a crater round the body (the stones in front of the lens fly low and out, so
+         the body and its number stay clear); his surfacing (battle.js _moleErupt) rides the 'dive' path with its own dirt
+         (_ESC_LOOKS.nrErupt, seen by both sides: he is out of the ground now).
+       · CAVE-IN: the 3×3's rim cracks, the rim's stones tip and slide down into the pit, rubble drops in from above and a
+         dust cloud rolls out over the edge (the mark lays the fault lines; no spikes: a pit, not a spike field).
+       Everything rides fire() (relayed), only on tiles the viewer sees (_pzSeen). Kill-switch: EW_DISABLE_EARTH_PASS. ════ */
+    var _MOLE = { soil: 0x6e5236, soilLite: 0x9a7a52, dust: 0xa08a6a };
+    /* the soil spray off a tile: soil clods thrown up, falling back */
+    function _moleSpray(tx, ty, n, up, o) {
+        o = o || {};
+        _capPuff(tx, ty, 'rock-debris', n, { r: o.r != null ? o.r : 0.28, out: o.out != null ? o.out : 70, vz0: up * 0.65, vz1: up, gravity: 620, drag: 0.4,
+            tint: _MOLE.soil, s0: 6, s1: 12, sEnd: 4, op: 1, ml0: 700, ml1: 1050, h: 0.02 });
+        _capPuff(tx, ty, 'dust-puff', Math.ceil(n * 0.5), { r: 0.4, out: o.dustOut || 120, vz0: 10, vz1: 60, s0: 18, s1: 28, sEnd: 58, op: 0.5,
+            tint: _MOLE.dust, ml0: 800, ml1: 1300, drag: 1.3, h: 0.02 });
+    }
+    /* a torn hole of soil on the floor of a tile, held `ms` */
+    function _moleHole(tx, ty, size, ms) {
+        if (!_pzSeen(tx, ty) || !_getVFXScene()) return;
+        var F = _eaFrame(tx, ty), ts = F.ts, mat = _pzSolid(0xffffff, _nvRuptureTex(), { depthWrite: false });
+        var m = _pzMesh(_eaPlaneGeo(), mat, F.g, 0, ts * 0.03, 0); m.rotation.y = rn(0, 6.28);
+        _sigRunOwned(F.g, ms + 40, function (el) {
+            m.scale.setScalar(Math.max(0.01, ts * size * _sigEaseOutCubic(_sigClamp01(el / 180))));
+            mat.opacity = 0.92 * _pzEnv(el, 0, 90, ms - 450, ms);
+        });
+    }
+    /* the tiles a straight line from (fx, fy) to (tx, ty) crosses, ends left out */
+    function _moleLine(fx, fy, tx, ty) {
+        var out = [], n = Math.max(Math.abs(tx - fx), Math.abs(ty - fy)), seen = {};
+        for (var k = 1; k < n; k++) {
+            var x = Math.round(fx + (tx - fx) * k / n), y = Math.round(fy + (ty - fy) * k / n), key = x + ',' + y;
+            if (seen[key] || (x === fx && y === fy) || (x === tx && y === ty)) continue;
+            seen[key] = 1; out.push({ x: x, y: y, k: k / n });
+        }
+        return out;
+    }
+    _ESC_LOOKS.nrBurrow = { style: 'dive', ms: 1000, hideLanding: true, draw: function (fx, fy, tx, ty, land) {
+        _moleSpray(fx, fy, 16, 300);
+        _moleHole(fx, fy, 1.15, 2600);
+        _capShards(fx, fy, 'stone', { n: 4, scale: 0.7, lite: true });
+        _capRing(fx, fy, _EA.amber, 1.0, 460, 3);
+        _capAt(160, function () { _moleSpray(fx, fy, 8, 200, { out: 40 }); });
+        if (!land) return;
+        /* his own side sees the tunnel: the soil heaves up tile by tile under the run, and he stays under at the end */
+        var path = _moleLine(fx, fy, tx, ty);
+        for (var i = 0; i < path.length; i++) (function (q) {
+            _capAt(320 + q.k * 360, function () { if (_pzSeen(q.x, q.y)) _moleSpray(q.x, q.y, 4, 120, { r: 0.2, out: 30, dustOut: 50 }); });
+        })(path[i]);
+        _capAt(680, function () { _moleSpray(tx, ty, 6, 150, { out: 40, dustOut: 60 }); _moleHole(tx, ty, 0.8, 1600); });
+    } };
+    _ESC_LOOKS.nrErupt = { style: 'dive', ms: 820, draw: function (fx, fy, tx, ty, land) {
+        _moleSpray(fx, fy, 10, 240);
+        _moleHole(fx, fy, 1.0, 2200);
+        if (!land) return;
+        _capAt(540, function () { _moleSpray(tx, ty, 12, 260); _moleHole(tx, ty, 1.0, 2200); _capRing(tx, ty, _EA.amber, 0.9, 420, 3); });
+    } };
+    EFFECTS['_fx5_escape'] = EFFECTS['_fx5_escape'] || { layers: [] };
+    SPELL_MAP['nrBurrow'] = Object.assign(SPELL_MAP['nrBurrow'] || {}, { teleport: '_fx5_escape' });
+    SPELL_MAP['nrErupt'] = Object.assign(SPELL_MAP['nrErupt'] || {}, { teleport: '_fx5_escape' });
+    /* the tremor under the victim through the windup: soil hops, a crack opens and the ground jolts as it nears */
+    function _eaEruptTell(P) {
+        var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty) || !_getVFXScene()) return null;
+        var F = _eaFrame(tx, ty), ts = F.ts, M = _eaCrackMats(), crack = _eaCrackAt(F.g, M, new THREE.Vector3(0, 0, 0), ts, rn(0, 6.28), tx, ty);
+        var HOLD = Math.max(360, Math.min(2000, P.hold || 800)), last = -999;
+        return _sigRunOwned(F.g, HOLD + 260, function (el) {
+            var k = _sigClamp01(el / HOLD);
+            _eaSize(crack, Math.max(0.01, ts * (0.35 + 0.8 * k * k)));
+            M.glow.opacity = (0.35 + 0.5 * k) * _pzEnv(el, 0, 120, HOLD, HOLD + 220);
+            M.dark.opacity = 0.75 * _pzEnv(el, 0, 100, HOLD + 60, HOLD + 240);
+            var gap = 260 - 170 * k;
+            if (el < HOLD && el - last > gap && _canSpawn()) {
+                last = el;
+                _capPuff(tx, ty, 'rock-debris', 2 + Math.round(3 * k), { r: 0.35, out: 20, vz0: 50 + 80 * k, vz1: 90 + 120 * k, gravity: 520, drag: 0.4,
+                    tint: _MOLE.soil, s0: 4, s1: 7, sEnd: 3, op: 1, ml0: 380, ml1: 560, h: 0.02 });
+                if (k > 0.4) _capPuff(tx, ty, 'dust-puff', 1, { r: 0.35, out: 30, vz0: 5, vz1: 20, s0: 12, s1: 18, sEnd: 30, op: 0.4, tint: _MOLE.dust, ml0: 500, ml1: 700 });
+            }
+        });
+    }
+    /* the burst: a crater, a fountain of soil out of it and stones thrown up round the body */
+    function _eaErupt(P) {
+        var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty) || !_getVFXScene()) return;
+        var F = _eaFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(false, [1.9, 1.55, 1.15]), cd = _nbCamDir(F), rocks = [];
+        _moleHole(tx, ty, 1.5, 2600);
+        for (var i = 0; i < 14; i++) {
+            var a = i / 14 * Math.PI * 2 + rn(-0.2, 0.2), front = (Math.cos(a) * cd.x + Math.sin(a) * cd.z) > 0.3;
+            var s = ts * rn(0.055, 0.1), m = _pzMesh(_eaRockGeo(i), stone, F.g, 0, -s, 0); m.scale.setScalar(s); m.visible = false;
+            rocks.push({ m: m, a: a, s: s, r0: ts * rn(0.1, 0.3), out: ts * (front ? rn(1.0, 1.4) : rn(0.45, 0.95)), up: ts * (front ? rn(0.35, 0.6) : rn(1.1, 1.9)),
+                fly: rn(640, 900), d: i * 12, sp: rn(-1, 1) });
+        }
+        _moleSpray(tx, ty, 26, 520, { r: 0.32, out: 90, dustOut: 170 });
+        _capAt(120, function () { _moleSpray(tx, ty, 12, 360, { r: 0.4, out: 120 }); });
+        _capRing(tx, ty, _EA.amber, 1.5, 520, 3);
+        _sigShake('hard');
+        var TOTAL = 2000;
+        _sigRunOwned(F.g, TOTAL, function (el) {
+            stone.opacity = el < TOTAL - 20 ? 1 : 0;
+            for (var j = 0; j < rocks.length; j++) {
+                var R = rocks[j], e = el - R.d; R.m.visible = e > 0;
+                if (e <= 0) continue;
+                var k = _sigClamp01(e / R.fly), rr = R.r0 + (R.out - R.r0) * k, y = R.up * 4 * k * (1 - k);
+                var sink = _sigClamp01((e - R.fly - 500) / 400);
+                R.m.position.set(Math.cos(R.a) * rr, k < 1 ? y : -R.s * 1.6 * sink, Math.sin(R.a) * rr);
+                R.m.rotation.set(e * 0.012 * R.sp, e * 0.008, e * 0.01 * R.sp);
+            }
+        });
+    }
+    /* CAVE-IN: the rim gives way into the pit, rubble falls in, dust rolls out over the edge */
+    function _eaCaveIn(P) {
+        var cx = P.tx, cy = P.ty; if (cx == null || !_getVFXScene()) return;
+        var rad = (P.def && P.def.aoeRadius) || 1, F = _eaFrame(cx, cy), ts = F.ts, stone = _eaStoneMat(false, [1.9, 1.55, 1.15]), rocks = [], seenAny = false;
+        for (var dx = -rad; dx <= rad; dx++) for (var dy = -rad; dy <= rad; dy++) {
+            var x = cx + dx, y = cy + dy; if (!_pzSeen(x, y)) continue; seenAny = true;
+            var g = _eaGOff(F, x, y), rim = Math.max(Math.abs(dx), Math.abs(dy)) === rad;
+            /* rim tiles: two stones tip over the lip and slide down to the middle; every tile: one stone drops in from above */
+            for (var r = 0; r < (rim ? 2 : 0); r++) {
+                var ox = dx === 0 ? rn(-0.35, 0.35) : dx * 0.5, oz = dy === 0 ? rn(-0.35, 0.35) : dy * 0.5, s0 = ts * rn(0.07, 0.11);
+                var m = _pzMesh(_eaRockGeo(rocks.length), stone, F.g, g.x + ox * ts, g.y, g.z + oz * ts); m.scale.setScalar(s0); m.visible = false;
+                rocks.push({ m: m, kind: 'slide', x0: g.x + ox * ts, z0: g.z + oz * ts, y0: g.y + s0 * 0.3, x1: g.x - dx * ts * 0.35, z1: g.z - dy * ts * 0.35, y1: g.y - ts * 0.5, s: s0, d: rn(0, 220), ms: rn(520, 760), sp: rn(-1, 1) });
+            }
+            var s1 = ts * rn(0.06, 0.1), mm = _pzMesh(_eaRockGeo(rocks.length + 3), stone, F.g, 0, 0, 0); mm.scale.setScalar(s1); mm.visible = false;
+            var px = g.x + rn(-0.3, 0.3) * ts, pz = g.z + rn(-0.3, 0.3) * ts;
+            rocks.push({ m: mm, kind: 'drop', x0: px, z0: pz, y0: g.y + ts * rn(1.4, 2.0), x1: px, z1: pz, y1: g.y - ts * 0.35, s: s1, d: 160 + rn(0, 420), ms: rn(420, 560), sp: rn(-1, 1), tx: x, ty: y });
+        }
+        if (!seenAny) { _sigDisposeGroup(F.g); return; }
+        _capPuff(cx, cy, 'dust-puff', 18, { r: rad + 0.5, out: 170, vz0: 5, vz1: 40, s0: 24, s1: 38, sEnd: 80, op: 0.55, tint: _MOLE.dust, ml0: 1000, ml1: 1600, drag: 1.2, h: 0.05 });
+        _capAt(260, function () { _capPuff(cx, cy, 'rock-debris', 14, { r: rad + 0.3, out: 40, vz0: 40, vz1: 140, gravity: 560, drag: 0.4, tint: _MOLE.soil, s0: 6, s1: 11, sEnd: 4, op: 1, ml0: 600, ml1: 900 }); });
+        _capRing(cx, cy, _EA.amber, rad + 1.1, 560, 3);
+        _sigShake('hard');
+        var TOTAL = 2100;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            stone.opacity = el < TOTAL - 20 ? 1 : 0;
+            for (var j = 0; j < rocks.length; j++) {
+                var R = rocks[j], e = el - R.d; R.m.visible = e > 0 && e < R.ms + 900;
+                if (!R.m.visible) continue;
+                var k = _sigClamp01(e / R.ms), p = R.m.position;
+                if (R.kind === 'drop') {
+                    var f = k * k; p.set(R.x0, R.y0 + (R.y1 - R.y0) * f, R.z0);
+                    if (k >= 1 && !R.hit) { R.hit = true; if (_pzSeen(R.tx, R.ty)) _capPuff(R.tx, R.ty, 'dust-puff', 2, { r: 0.25, out: 50, vz0: 5, vz1: 25, s0: 14, s1: 20, sEnd: 36, op: 0.45, tint: _MOLE.dust, ml0: 500, ml1: 800 }); }
+                } else {
+                    var ke = _sigEaseInCubic(k); p.set(R.x0 + (R.x1 - R.x0) * k, R.y0 + (R.y1 - R.y0) * ke, R.z0 + (R.z1 - R.z0) * k);
+                }
+                if (k >= 1) p.y -= R.s * 1.6 * _sigClamp01((e - R.ms - 400) / 450);
+                R.m.rotation.set(e * 0.01 * R.sp, e * 0.006, e * 0.009 * R.sp);
+            }
+        });
+    }
+
     /* ── the registry: burst looks (the mark still lays the fault lines under them) ── */
     var _EA_SIG = {
         raceTremorStomp: function (P) { _eaStomp(P, false); },
@@ -55568,6 +55719,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceSandstoneTomb: _eaTomb,
         raceQuicksand:   _eaQuicksand,
         racePetrify:     _eaPetrify,
+        nrErupt:         _eaErupt,     /* the Mole Man pass (2026-11-16) */
+        nrCaveIn:        _eaCaveIn,
         raceRockslide:   function (P) {
             var k = P.tx + ',' + P.ty, S = _eaSlides[k];
             delete _eaSlides[k];
@@ -55577,11 +55730,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     /* windup looks */
     var _EA_CHARGE = {
+        nrErupt: _eaEruptTell,   /* the tremor under the victim */
         raceRockslide: function (P) { var c = _eaCliff(P.tx, P.ty, (P.hold || 900) + 1500); if (c) _eaSlides[P.tx + ',' + P.ty] = { c: c, t: performance.now() }; },
     };
     /* spells whose own look already breaks the floor (the capstones' spikes, the slabs, the cliff): the mark keeps its
        fault lines and leaves the spikes out */
-    var _EA_OWN = { sharedFissure: 1, raceSandstoneTomb: 1, racePetrify: 1, raceRockslide: 1, raceQuicksand: 1, rampart: 1, raceZigguratProtocol: 1, raceShieldWall: 1 };
+    var _EA_OWN = { sharedFissure: 1, raceSandstoneTomb: 1, racePetrify: 1, raceRockslide: 1, raceQuicksand: 1, rampart: 1, raceZigguratProtocol: 1, raceShieldWall: 1, nrCaveIn: 1 };
     /* support casts on yourself or an ally: the tell only, never a hit mark on a friend */
     var _EA_SUPPORT = { buff: 1, shield: 1, aoeShield: 1, warCry: 1, escape: 1, heal: 1, selfHeal: 1 };
     /* kinds whose mechanical grammar stays the read (the kinetic slash of a dash or a leap, the gold of a blessing);
