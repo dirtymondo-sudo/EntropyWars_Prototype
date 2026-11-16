@@ -8023,14 +8023,23 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
   lit glass carry it; no real light was spent (ten in the whole room, the castle's).
   TRIED AND TAKEN OUT: a lit disc on the marble under each lantern ("the light it throws", as the Fairy Forest does on purple grass):
   on white marble by day it is a tan stain.
+- **PASS 5, POLISH (seen, two walks: 14 views, then 9 on the last build)**: the long tea table, the Glasshouse's palm and its table have
+  weight (ghost walls on their squares); the props a weak machine pays most for were thinned (butterflies 16 -> 10, cups 8 -> 5, glowing
+  caps 15 -> 10) and the air too (petals 280 -> 180, fireflies 178 -> 128). A probe walk checked the ladder, the cat on the hedge, the
+  crows, the piers, the Glasshouse inside and out, day and night. **FIVE PASSES ARE IN: THIS THREAD HAS STOPPED and waits mondo's look.**
+- **STILL OPEN (for whoever comes next, or his word)**: a hedge maze (a plan change); lines for the five new natives; sound; the old
+  room's retirement (decision 1); the Dreameater was not seen in the last night view (its body may not have loaded in the probe);
+  the roses in a hedge face are large from 30 cm away (stand inside a hedge square's edge and they fill the screen).
 - **NOBODY ELSE MOVED**: the eleven old `dec` calls run in the old order on the old squares; every new piece is placed by metres (`at()`)
   or by `put` (no dice), so the scatter of F, N and W is untouched.
 - **FRAME RATE** (cloud software GPU, llvmpipe; the lawn looking south at the board): before 1.00 frames a second, 2,022 geometries, 1,039
   draw calls. After pass 1: 2,222 geometries, 1,200 calls (its 0.20 was read as the FIRST view of a run, while the room still compiled:
   never measure on the first view). After pass 2: 1.20 frames a second, 2,412 geometries, 1,421 calls: no loss (run to run noise is 0.2).
   After pass 3: 1.00, 2,590 geometries, 1,780 calls (the new props: each is its own draw call until the room batches them).
-  After pass 4: 2,703 geometries, 1,800 calls; the frame reading in this run was 0.20 (ONE frame in the 5 s window: a hitch, or the
-  particles on a software GPU). Measured again, longer, in pass 5.
+  After pass 4: 2,703 geometries, 1,800 calls (its 0.20 reading was one frame in a 5 s window: a hitch).
+  After pass 5, over 10 s windows: 0.80 and 0.90 before the thinning, then 1.00 after it (2,704 geometries, 1,800 calls). So: 1.00 before
+  the district's work, 1.00 after it, on the cloud's software GPU. A reading taken in the first views of a run is worthless (0.10 to
+  0.20 while the room still warms): read the frame rate after at least three views. His F3 on the lawn is the number that counts.
 - **FITS THIS DISTRICT** (MODEL_LIST.md read in sections + the live catalogue's 1,853 keys + section 13's unwired files searched for
   rose / flower / hedge / topiary / card / heart / chess / tea / cake / clock / mirror / flamingo / croquet / garden / fountain / statue):
   the game `chess_set_game`, `chess_board`, tree kinds `chess_*` (12); time `gclock`, `giant_hourglass`, `astronomical_clock`,
@@ -8070,7 +8079,9 @@ The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this fi
      say is yours. The Dragon that stands in the north walk is one of the zone's roaming residents, not this file's.
   8. A walk-in was added though none was named: THE GLASSHOUSE (a hedge garden's own building, dark glass as you like it). It took three
      squares of the south lawn strip.
-- **NEXT**: pass 5 polish (the frame rate first).
+- **WHAT I WOULD DO NEXT** (not started: the five passes are spent): open The Hedges north and south into a real maze with a prize at
+  each heart (the plan's squares, the tool's row); a card-soldier and a rose-bush model so the painters and the beds are not code
+  shapes; a second walk-in (a tea house or the Queen's pavilion at the court); lines for the natives; the old room's retirement.
 ## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
 
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
