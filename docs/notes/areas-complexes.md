@@ -4730,6 +4730,17 @@ list holds for the next passes, the models it needs. mondo 11-16: a second distr
   - WHAT I WOULD DO NEXT (for mondo to pick): 1 the lift moves and carries the player (a mechanic). 2 A real night-skiing light: the engine's ten-light cap
     shared by distance. 3 Staff and guests once the NPC system lands. 4 The Meshy list: skis, snowboards, a snow gun, a groomer, netting, an elk head, a
     pool table. 5 The Big Jump's line turned so it ends in the yard, not on the Lodge's back wall (the tool's heights and paint).
+- **THE MODEL PASS** (mondo 11-16, on top of the five: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to
+  end; seen on screen, 19 views). Every model K asked for is placed and its stand-in is out: K.js header, THE MODEL PASS, has both lists.
+  - Checked before placing: each wish-list `.opt.glb` used here is 1,600 to 4,200 triangles (not the 100,000 of the older Meshy props), and about 80 of them add 170,000
+    triangles to the room. FPS back to back on the same main, before -> after (the probe's software GPU): the Lodge Yard at night 1.85 and 1.93 -> 1.62 and
+    1.88; from the Top Station at night 1.92 -> 1.76; the Lodge Yard by day 1.92 -> 1.71. A tenth of a frame to two tenths: about the spread of two
+    readings of one view, but all four lean the same way.
+  - `lantern_post` and `string_lights` are NOT lit as made (no `glow`, no `light` on their rows): a lantern post wants a small built flame in its lantern
+    (K.js `lampFlames`, one `hug` row; the lantern hangs 0.23 m to the west of the square's middle at face 180, 1.5 to 1.85 m up). A `glow` on those two
+    catalogue rows would light them everywhere (the rows are shared: not changed from here).
+  - `safety_netting` has no body: give each length a ghost wall. `piste_groomer` is two squares long: K.js `wide()` stands it on the line between two.
+  - Facing: a wish-list model at `face: 180` stands as it was made (its +x to the east).
 - To know for district O: a board that leaves the Half-Pipe east rides the rock's edge into Olympus by the Bunny Slope's join and once stuck fast at
   x 21.4, z -59.3 (the probe, 11-16).
 
@@ -12673,3 +12684,50 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
   busts and urns along the walls, amphorae, gold bars, and by the bay's bulkhead the air rack and wetsuit rail (you land there dry).
   The old room's own pieces all stand: dais + stair, the Oracle in its pool (the tape), throne, six braziers, columns, four windows with
   their shafts, the tapestry, the chest, the skulls, the paper, the pool's fish, both residents with their lines, the fight marker.
+## LEYLINES ON PLOTS — the ancient zone, first build (2026-11-16, second side, the Leylines zone thread)
+
+mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots, "completely redesigned/reimagined with
+plots and districts etc. like we did for disaster city or Camelot ... Then move the exits, it's not that big of a deal. Then we will make new
+models", without waiting for his OK. Plan picture: `docs/plans/world-zones/leylines_plot_plan_2.png` (sent to him; plan 1, 9 x 5, stays as history).
+
+- **THE ROOM** `site_prebuilt_gobekli_ancient` (site `prebuilt_gobekli`, part `ancient`, plate LEYLINES): 9 x 7 plots of 12 x 12 squares
+  (378 x 294 m, 63 plots), written by `node bake-leylines.js [--dry-run]` between `LEYLINES63-BEGIN / LEYLINES63-END` in data.js. Never
+  hand-edit between the markers.
+- **THE PLAN IS A SCRIPT:** `node docs/plans/world-zones/draw-leylines.js` writes the square map (108 x 84 letters), every plot's name and
+  the landmarks' ANCHORS to `docs/areas/leylines/layout.json` (+ the plan's copy and picture). Move a landmark = change its anchor there,
+  run the script, rebake. District files read `ctx.A` (the anchors), never their own copy of a place.
+- **THE IDEA (the redesign):** the ultimate ancient mystery is ONE LINE. The old ley tunnels (a maze under the sites) are now a dead-straight
+  glowing road on the surface, wall to wall through the middle row, from the Desert's robbers' tunnel to the sea; every landmark stands at
+  the end of a FORK of it, at about its real size. Dry sites west by Giza (Babel, Gobekli Tepe), green ones east.
+- **SIX DISTRICTS, one file each** (`docs/areas/leylines/districts/`): `G.js` GOBEKLI TEPE (9 plots: the tell, the Four Enclosures, the
+  Sentinel, the Dig, the Cistern, the First Doorway) · `B.js` BUG COLONY (9, NEW, on mondo's zone list: the Anthill, the Hive, the Honeycomb,
+  the Flower Field, the Tall Grass) · `S.js` STONEHENGE (9, the PILOT: bank + ditch, the Sarsen Circle, the trilithons, the Avenue, the
+  barrows) · `Y.js` THE LEY LINE (9: the Mouths, the Niches, the Forks, the Nexus) · `T.js` BABEL (12: the Tower on an 84 m foot, four tiers
+  28 m up, climbed north / east / south / west; the Kiln, Brick Stacks, Clay Pits, Crane, the Workers' Town) · `Z.js` TECHNOTICLAN (15: an
+  island city in a waded lake, three causeways, the Canal, the Pyramid 56 m / 18 m, the Ball Court, the Round Tower, the Garden Islets).
+  Each file's header is its brief + STANDS TODAY / NOT YET. Stages a file may export: `plan` (letters), `build` (terrain rows), `dress`
+  (props, trees), `people`, plus `hills` and `airZones`. Each file throws its own dice.
+- **OPEN GROUND, NO `gen`:** walked anywhere. Heights = `terrain.slope.cells` from the tool's `heightAt` (the plain rolls, the tell 5.25 m,
+  the anthill 7 m, barrows 2.2 m, the Sentinel's knoll; the line's row, Babel and Technoticlan dead flat). Built height = `ctx.tier()` (a
+  `plateau` + its brick / stone skin as an `arch` box, the Desert's way) and `ctx.stair()` (a built `ramp`, rise 2 in 3). Stonehenge's bank
+  and ditch are `ridge` rows (+1 m / -0.9 m). The lake = every block of the map's `w` as one `stream` (0.7 m deep, waded).
+- **THE LINE'S GLOW (the tool's, shared):** the map's `G` / `f` squares are painted in the better gold (`gold` key) and carry a lit strip
+  (`arch` boxes with `glow`, one slab a plot on the Great Line; a slab every four squares on a fork where the ground is level). The Nexus
+  is three discs in the paving. The Healing Zone is the hub's own (the game places it); the BATTLE marker is `HQ_AREA_MARKERS`.
+- **THE WAYS (all were in the game; none is new):** `siteRooms.entry` x 4: Room 9600 = the First Doorway (free door between two pillars),
+  Room 56 = a frame by the South Gate, Room 11 = the barn door on the south wall at the street's end, Room 2012 = the Portcullis on the
+  south wall at the south causeway's end. Links: `gobekli_giza` end a -> the west wall where the line starts (the Desert's end untouched);
+  `technoticlan_agartha` end a -> a free door under the Ball Court's west end (Agartha's end untouched; board note for the Cavern thread).
+  GONE AS LINKS, walked to inside the room now: `stonehenge_gobekli`, `giza_babel`, `babel_technoticlan`, `well_gobekli`.
+  The tool refuses to bake when one of the six rows drifts.
+- **RETIRED (`DOOR_HQ.retired`):** `site_prebuilt_gobekli_leylines`, `site_prebuilt_stonehenge_henge`, `site_prebuilt_gobekli_tell`,
+  `site_prebuilt_babel_tower`, `site_prebuilt_technoticlan_templecity` -> the new room. Their literals stay: the tool reads the people's
+  lines from them and four are PvP board sources (HQ_ARENA_RULES.picks). Hub `ley` names the one room and claims Technoticlan's site too;
+  world zone `ley`; `HQ_WORLD_CLOCK.dayLook`; `HQ_AREA_MARKERS`.
+- **THE EDGES:** west = the Desert's sand by Giza, the other three sides the sea (`terrain.edges`, the world map's own neighbours).
+- **WHO IS THERE (21):** the five old rooms' bystanders with their own lines, plus the Bee Queen and the Mantid (no lines: none exist).
+- **EVERY OLD NAMED PLACE HAS A HOME:** the Great Line, Nexus, Forks, Niches, four Mouths (Y) · the Bank, Ditch, Sarsen Circle, Trilithons,
+  Avenue, Barrows, the long barrow (S) · the Mound, Four Enclosures, T-Pillars, Sentinel, Dig, First Doorway, Cistern (G) · the Four Tiers,
+  Spiral, Unfinished Top, Crane, Kiln, Brick Stacks, Foundation Shaft, the brick houses (T) · the Causeway, Canal, Ball Court, Pyramid,
+  the round tower, Xibalba (Z).
+
