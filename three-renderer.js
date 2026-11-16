@@ -7703,15 +7703,15 @@ const ThreeRenderer = (function () {
        them now. data.js HQ_TREE_KINDS carries the same names (it wins for every key it lists). */
     var _FOLIAGE_RT_BASE = _R2_FOLIAGE + 'retrotreepack/GLB/';
     var _FOLIAGE_MODEL_FOR_KEY = {
-        tree:   'rt:tree_rt_2_1',
-        tree_2: 'rt:tree_rt_3',
-        tree_3: 'rt:tree_rt_4',
-        tree_4: 'rt:tree_rt_2',
+        tree:   'rt:tree_rt_2_1_full',
+        tree_2: 'rt:tree_rt_3_full',
+        tree_3: 'rt:tree_rt_4_full',
+        tree_4: 'rt:tree_rt_2_full',
         tree_5: 'rt:dead_tree_rt_2',
         tree_6: 'rt:dead_tree_rt_1',
-        pine:   'rt:tree_rt_1',
+        pine:   'rt:tree_rt_1_full',
         pine_2: 'rt:small_tree_rt_1',
-        tree_pine: 'rt:tree_rt_1',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
+        tree_pine: 'rt:tree_rt_1_full',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
         tree_sapling: 'rt:small_tree_rt_1'
     };
     /* THE ISLAND (2026-10-20): a name `kit:<file>` is a GLB in the D.O.O.R. kit folder (DOOR_HQ.assets.models — the palm) */
@@ -7792,8 +7792,13 @@ const ThreeRenderer = (function () {
         var tex = (sm && sm.map) || null;
         if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var leaf = _foliageGlbLeaf(sm);
-        var m = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
+        /* THE PAINTED TREES (2026-11-15, bake-trees.py): a leaf material named `ewleaf_*` and ONE-SIDED in its file carries both
+           windings with the same out-of-the-puff normals, so it is drawn one-sided (two-sided would flip the normal on a back
+           face and shade the two faces of a sheet apart) and its own picture lifts the shade (an underside is shade green, never black) */
+        var painted = leaf && sm.side === THREE.FrontSide && /^ewleaf_/.test(sm.name || '');
+        var m = new THREE.MeshLambertMaterial({ map: tex, side: painted ? THREE.FrontSide : THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
         if (tint != null) m.color.setHex(tint);
+        if (painted) { m.emissive.copy(m.color).multiplyScalar(0.2); m.emissiveMap = tex; }
         return m;
     }
     function _normalizeFoliageModel(root) {
@@ -47722,9 +47727,9 @@ const ThreeRenderer = (function () {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
-            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
+            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); if (c._ew_bRec) S.cB = (S.cB | 0) + 1; else S.cH = (S.cH | 0) + 1; continue; }   // (a piece the merge holds reads hidden while a frame draws)
             if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
-            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }
+            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
             var v0 = S.hv; S.hv = 0;
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
@@ -47827,6 +47832,7 @@ const ThreeRenderer = (function () {
             g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
             var v0 = g.version, recs0 = _ewBun.recs;
             objs += S.n; st.n = S.n;
+            var cB0 = S.cB | 0, cH0 = S.cH | 0, cO0 = S.outs ? S.outs.length : 0, cN0 = g.children.length;
             var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
             g._ew_bunMiss = false;
             if (!g.isBundleGroup) {
@@ -47835,13 +47841,23 @@ const ThreeRenderer = (function () {
                 _ewBun.recs++;
             } else if (st.hs !== S.hs || (stat && st.hv !== S.hv)) {
                 st.why[st.hs !== S.hs ? 'tree' : 'values']++; W[st.hs !== S.hs ? 'tree' : 'values']++;
+                if (st.hs !== S.hs) {   // THE TREE'S WHY (lens): what changed the list of pieces — the merge taking or handing back pieces, a mover going out or coming back, a piece shown or hidden, a piece added or removed
+                    var tO = S.outs ? S.outs.length : 0, tw = ((S.cB | 0) !== (st.cB | 0)) ? 'tB' : (tO !== (st.cO | 0)) ? 'tO' : ((S.cH | 0) !== (st.cH | 0)) ? 'tH' : (g.children.length !== (st.cN | 0)) ? 'tN' : 'tX';
+                    st.why[tw] = (st.why[tw] | 0) + 1;
+                }
                 st.times.push(now);
                 while (st.times.length && now - st.times[0] > 2000) st.times.shift();
                 /* a slow churn (2 a second never makes 5 in 2 s): 8 value re-records within 20 s demote the group too */
                 if (stat && st.hs === S.hs) { (st.vt || (st.vt = [])).push(now); while (st.vt.length && now - st.vt[0] > 20000) st.vt.shift(); if (st.vt.length >= 8) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; st.vt = []; } }
                 if (st.times.length >= 5) {
                     if (stat && st.hs === S.hs) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; }   // only values keep moving: three checks them
-                    else { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                    /* THE SHELL KEEPS ITS RECORDING (2026-11-15, mondo's F3s in Disaster City: "SLOW RIGHT NOW: shell (10655 pieces) is
+                       drawn piece by piece", 2 to 15 times a session, 5 s each): a big still group (a big room's shell: ~10,000
+                       children, nearly all hidden behind their merged squares) costs three a walk of every child in every pass
+                       while it is released, ~10 ms a frame for 5 s, because 5 pieces started or stopped moving within 2 s. A
+                       re-record costs that walk ONCE. So such a group rests only when its list changes on about every third
+                       frame (24 times in 2 s); below that it is recorded again each time. The old 5: window.EW_BUN_REST_AT_5. */
+                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.G !== G || g._ew_bunFree) {   // the lamps / a freed resource it holds: re-records, and none of it counts as the group churning
@@ -47852,6 +47868,7 @@ const ThreeRenderer = (function () {
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
             g._ew_bunFree = false;
+            st.cB = cB0; st.cH = cH0; st.cO = cO0; st.cN = cN0;
             st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
@@ -52620,6 +52637,8 @@ const ThreeRenderer = (function () {
                     sq[why] = (sq[why] | 0) + 1;
                 }
             }
+            var LT = (_ewBun.last || []), nowL = performance.now();   // a big group drawn piece by piece right now: say so, the frame is not the usual one
+            for (var li = 0; li < LT.length; li++) { var lg = LT[li], ls = lg._ew_bun; if (ls && ls.until > nowL && lg.children.length > 200) L.push('SLOW RIGHT NOW: ' + String(lg._ew_bunName || lg.name).replace(/^site_prebuilt_/, '') + ' (' + lg.children.length + ' pieces) is drawn piece by piece for ' + ((ls.until - nowL) / 1000).toFixed(1) + ' s more: its list of pieces changed 5 times in 2 s. This readout is not the steady frame.'); }
             var bks = Object.keys(bk).sort(function (a, b) { return bk[b] - bk[a]; });
             if (bks.length) L.push('Replayed meshes by kind: ' + bks.map(function (k) { return k + ' ' + bk[k] + ' (' + bn[k] + ' groups)'; }).join(' · '));
             var sqs = Object.keys(sq).sort(function (a, b) { return sq[b] - sq[a]; });
@@ -52629,7 +52648,7 @@ const ThreeRenderer = (function () {
         } catch (eBK) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -69345,7 +69364,7 @@ const ThreeRenderer = (function () {
         var byName = {}, names = [];
         spots.forEach(function (sp) {
             var nm = _FOLIAGE_MODEL_FOR_KEY[sp.kind];
-            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3';
+            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3_full';
             if (!byName[nm]) { byName[nm] = []; names.push(nm); }
             byName[nm].push(sp);
         });
@@ -88264,6 +88283,11 @@ const ThreeRenderer = (function () {
             if (o._ew_hqSea) o.receiveShadow = false;   // (2026-10-20) the sea's sheet runs far past the shadow map: its edge drew a pale box round the Dutchman
         });
         [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh) _flagMeshShadows(o); }); });
+        /* A HOUSE UNDER THE SKY (2026-11-15, Camelot Castle's stacked floors): `shell.sunShadow: false` = nothing of the room's own build casts.
+           A building of floors over floors in an OPEN room (its roof walk needs the sky) stood in the shadow of its own slabs: every room
+           under one was black but for the hemisphere, and its furniture read as black blocks. The key keeps its map (the materials are
+           compiled for one: switching the light's own shadow off blanked the room), props and people still cast. */
+        if (room && room.shell && room.shell.sunShadow === false) H.shellGroup.traverse(function (o) { if (o.isMesh) o.castShadow = false; });
     }
     /* the walk's scene tells ONE waiting reader when its world matrices are this frame's (THE STILL TORCH reads its
        casters where they stand now, not where the last frame left them): three's own walk, untouched, then the reader */
