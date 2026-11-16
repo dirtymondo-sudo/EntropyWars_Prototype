@@ -77456,7 +77456,7 @@ const ThreeRenderer = (function () {
                 if (FX && FX.buildFlameVolume) {
                     var e = FX.buildFlameVolume(((_hqProcSeed++) * 13.7) % 97), ts = FX.flameVolumeTile(), t0 = performance.now();
                     e.group.scale.set(w * U / ts, h * U / (ts * 1.4), w * U / ts); e.group.position.y = 0.08 * U; g.add(e.group);
-                    if (_hq) _hq.tickers.push(function () { var t = (performance.now() - t0) / 1000; for (var k = 0; k < e.mats.length; k++) e.mats[k].uniforms.uTime.value = t; });
+                    if (_hq) _hq.tickers.push(function () { var t = (performance.now() - t0) / 1000; for (var k = 0; k < e.mats.length; k++) { e.mats[k].uniforms.uTime.value = t; e.mats[k].uniforms.uVig.value = 1; } });   // (uVig = how high it burns: 0, the material's default, is no flame at all)
                 }
             } catch (err) { console.warn('[HQ] the hearth fire failed', err); }
             return g;
