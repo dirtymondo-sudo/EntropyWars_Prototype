@@ -4997,6 +4997,8 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   discs in `leaves_3`, all in one `arch` row at `y: 0`, the disc at the pool's `y` + 0.015; the pool's water is opaque from above (fish under
   it are never seen); `flamingo` is a good pink flamingo; `sea_buoy` carries a light (`noLight`). A row with a `y` inside a drawn shelter
   seats itself under the roof: stand table things on the ground.
+  A `sign` quad faces south with no `ry`, north with 180, west with 90, east with 270. Mist over water = an `airZones()` `dust` zone, pale,
+  slow, a few hundred; it shows at night, hardly by day.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5965,6 +5967,18 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
 5. The trough, the stock tanks, the gate and the cattle grid are DRAWN from textured parts (no model exists; the plan names them).
 6. No way to the Desert was added (ways out are shared and his call).
 
+### PASS 4, THE ATMOSPHERE (seen in the cloud browser, day and night)
+- **THE AIR (`airZones()`, the pilot's hook):** a slow pale mist over the water (`dust`, `0xd4e4ec`, 260, speed 0.15: squares 40..68 x 6..30),
+  marsh lights over the Marsh (`motes`, `0xc8ff90`, 90), fireflies thick at the Reeds (70). The rest keeps the room's fireflies. By day the
+  mist is faint (small motes against pale water); it is a night thing.
+- **THE NIGHT (probe clock 22:00):** the six lamp posts, the Boathouse's two lit windows and three lanterns, the shelter's lantern, the buoys
+  and the picnic campfire carry the district; the water stays readable, the lily pads go dark on it, the monster's neck still shows.
+  L's real lights are two (the campfire, the lantern inside the Boathouse); every lamp is drawn glow and lights nothing round it.
+- `NO SWIMMING` at the dock's foot now faces the walker (a `sign` quad with `ry: 90` faces west, 270 east, 180 north, none south; set it 4 cm
+  off its board on the side it faces or the board hides it).
+- **THE COST:** three particle zones (three draw calls). The proof view: 582 draw calls, 2.2 frames a second by day, 1.8 at night.
+- Not done: no real light on the dock (the room's ten are shared), no sound bed (a walked room has none), the lamps' glass is a plain lit box.
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
@@ -6763,6 +6777,20 @@ yard door and two plots; both are one row to change.
 - **SEEN ON SCREEN** (probe, three runs): the channel, the fall and the tank glow green in the dark room; the stair, the bulkhead door, the
   yard door in the city. No error. **NOT WALKED** by a player (the stair, the ladder, both doors: offline graph + pictures only); no fight was
   played on the sludge (the rule is the bog's code path with another status).
+- **PASS 2, THE MODEL LIST (mondo 11-16: "look at the model list ... to see what else they could add"; `docs/plans/DISTRICT_THREAD_BRIEF.md`):**
+  pass 1 used 14 catalogue keys the rest of the Sewers already wore. FITS THIS DISTRICT, found in MODEL_LIST.md and placed (none stood in
+  the Sewers before): the control wall `monitor_stack` `server_rack` `retro_control_panel`; the lab bench `steel_table` `lab_glassware`
+  `microscope`; machines `air_compressor` `generator` `gas_cylinder_rack`; `locker` `footlocker` `vent_grille` `security_camera` `pipe_run`
+  `wall_chains`; in the tank three kraken `tentacle` / `tentacle2`; on the Pit's walk the Halloween pack's `hw_body` `hw_body_2` `hw_part_1/3/5`,
+  `skull`, `skull_pile`, `psx_fish_skeleton_mp_1`; by the sludge the Woods' `woods_glowcap` (15). FITS, NOT PLACED YET: `psx_catwalk_1`
+  (a catwalk over the tank), `psx_pipe_1` family + `psx_pipe_valve_holder_large_*` (tried at the channel's head: the short pipe stands
+  upright and thin, taken out; wants a row with a lying pose), `ind_vent`, `ind_silo` (9 m: fits the Pit's 12 m hall), `chain_hoist`,
+  `cable_drum`, `railing_1m` / `psxg_railing` (the channel's rail), `scba_rack`, `turnout_gear_rack`, `autopsy_table`, `eeg_rack`,
+  `fae_mushroom` (3.5 m, a blocker: no dead square for it yet), `railway_lantern`, `steam_turbine`.
+- **DECISIONS MADE FOR MONDO:** the door up stands in the Power station's YARD (not in the turbine hall); two plots; the stair climbs from
+  the track tunnel; the sludge = Corroded for 2 rounds, no race immune by terrain; who lives there besides kaiju and black goo: mad
+  scientist, swamp monster; something with tentacles lives in the tank (props only, no unit, no rule).
+- **NEEDS A MODEL:** a lying waste pipe mouth (1 m bore) for the channel's head; a hazmat suit on a hook; a yellow drum with the trefoil.
 - **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
   the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and
   taken out (the sheet tore into spikes round them); no sound.
