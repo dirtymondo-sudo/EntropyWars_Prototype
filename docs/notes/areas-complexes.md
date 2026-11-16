@@ -5883,9 +5883,21 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
   - THE LAMP POSTS ARE ONE PIECE: every post on level ground (sx, sy under 31) is drawn in one `look` (`lampsC`), the few by the east and south edge keep
     their own row (the ground grades there). FPS at the proof view: 1.8 before the thread, 1.4 with 24 separate posts, 1.6 with the one piece (the other
     districts grew in the same hours, so part of the rest is theirs).
+- **PASS 3, DRESSING (seen in the cloud browser, 8 + 3 + 3 views; the lists read again first):**
+  - THE VERGES (`dress()` "PASS 3"): every track square that touches the corn may carry one small thing at the corn's foot (3 in 10 do), never on the
+    square's middle: rocks, dead bushes, pumpkins, bales, small crates, now and then a crow, a rabbit, an anthill, a shovel, a bear trap, flesh. Pack
+    pieces only: Meshy pieces by the dozen (sacks, stumps, the thornvine) cost triangles and were taken out again.
+  - THE HIDDEN POCKET (The Tall Corn, squares 2..5 x 2..4, one square's width in from the verge): `saucer_lg` on its legs (never placed before), a corpse,
+    stains, candles, a bear trap on the way in, a GO BACK board.
+  - Also: a car run off the track on The Tall Corn's verge, the hollow dead tree at the Rows' rest, bales on every cut field, a pumpkin heap in the east
+    rows, moths at two lamps, insects, rabbits and crows on the circle, a trip wire on the south track.
+  - FOUND: `hw_part_2` is not an arm here but a flayed figure standing 1.8 m (taken out of the tracks); `astronaut` is a white standing figure (taken out).
+  - FRAME COST, MEASURED (proof view, llvmpipe): with all of C's dressing 1,450 draw calls / 3.30 M triangles, with C's dressing switched off 1,094 / 2.76 M,
+    1.4 fps both ways. So the district costs about 350 calls and 0.5 M triangles there and no frame that this probe can measure; the fall from 1.8 to 1.4
+    since the first look is the whole room growing (four districts at once).
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
-  THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle.
+  THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle. (6) a saucer set down in a hidden pocket of The Tall Corn (one prop row to remove). (7) horror touches on the verges (flesh, traps, a corpse by the saucer).
 - **NEEDS A MODEL:** a corn stalk (and a row of them as one instanced piece), a flattened-corn ground sheet, a tractor, a plough, a water trough, a
   wheelbarrow, a pitchfork, a lamp post (the zone's drawn one stands in), a barbed-wire fence.
 ### PASS 3, THE DRESSING (seen in the cloud browser)
