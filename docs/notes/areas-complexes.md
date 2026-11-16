@@ -12647,6 +12647,15 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
   - The Mirror (P03-00): the gilt frame of Camelot's garden (the same piece as `docs/areas/camelot/districts/L.js`) round the door, a marble step.
   - The Frame (P02-00): two crystal piers and a lintel. A marble balustrade (`rail` rows, `balusters_b`) round the Edge and the High Thought.
   - Frame rate (same view as the first build, 20 s counts): 1.35 before, 1.60 / 1.65 after (two counts; a balustrade round a third island cost 0.3 and came off).
+- **Pass 2, the inside + an idea for every plain island (live 11-16)**. Seen on screen (`proof/S_pass2_*.jpg`).
+  - The Waiting Room (the Sea's one inside, handmade, data.js): three frames in its north wall now (the Library's at x -12.5, the Sea's at 0, the Nightmare's
+    at 13), a roped queue to the Sea's, the number dispenser by the lectern, a counter nobody is behind, eight more chairs along the south wall, a departures
+    board, world clocks, a lava lamp by each new frame.
+  - The Far Shore: a `lighthouse` at the end of its walk (seen across the Sea), a rowboat on the grass, a buoy on nothing. The Near Shore: a boat, a chest, a
+    bollard. The Islands: coral, clams and anemones growing in the air, three schools of fish (kelp came off: black rags in this light). The Open Sea: one thing
+    on each stepping island (a piano, a rocking chair, a school desk, a star projector). The Carousel: the ticket booth, the popcorn cart, the high striker.
+    The Impossible Stair: three doors standing alone, an hourglass. The Still Water: a bust looking at itself. Owl, bird cages, the astronomical clock, an orrery.
+  - Frame rate (same view): 1.35 (66 more props; the two counts of pass 1 were 1.60 and 1.65, the first build 1.35: the count wanders by about 0.3).
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
