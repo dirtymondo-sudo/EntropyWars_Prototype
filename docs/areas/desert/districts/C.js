@@ -38,6 +38,11 @@
    eight more of the company (mime, chef, luchador, bunny girl, a second clown, cyclops, wizard). THE BIG TOP IS ALL DRAWN since pass 3:
    no hollow building under it (its handle `BIGTOP` is made by hand), 34 m clear inside, the west gore open as the way in.
 
+   THE ATMOSPHERE (pass 4): `airZones` (dust on the midway and the road in, sawdust motes in the Big Top, sparks at the yard's fire);
+   every name board is lit (`glow` on its sign), a bulb every 0.9 m under every bunting cord, bulbs on the Big Top's eave and up eight
+   seams, on the stalls' awnings and the marquees; cloth glows a little so it reads at night; every lamp is `noLight` with a drawn lit
+   core (row des:c:lamps). Only the wheel and the carousel keep a light of their own (two of the room's ten).
+
    INSIDE (pass 2): the Big Top = a round cloth wall + a striped cone seen from within, the ring (curb, sawdust, bulbs), two banks of
    seats, the band's stand, king poles with platforms, a high wire, two trapezes, strings of bulbs. The Hall of Mirrors = a mirror maze on
    the square lines (`MAZE_OPEN` = the open ways; every other line is a mirror + a ghost wall). The Penny Arcade and the Sideshow =
@@ -85,6 +90,7 @@ const gores = (a, y, r, rTop, h, n, tA, tB, o, skip, cx, cz) => { for (let i = 0
 /* a string of pennants between two points (three tints, a cord) */
 const bunting = (a, x0, z0, x1, z1, y, tints) => { const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz), ry = r2(Math.atan2(dz, dx) * 180 / Math.PI), T = tints || [RED, GOLD, BLUE], gap = 0.62, n = Math.max(3, Math.floor(len / gap));
     a.box((x0 + x1) / 2, y + 0.3, (z0 + z1) / 2, len, 0.025, 0.025, WD2, 0x2a2018, { ry });
+    { const m = Math.max(2, Math.floor(len / 0.9)); a.box(x0 + dx * 0.5 / m, y + 0.34, z0 + dz * 0.5 / m, 0.08, 0.08, 0.08, null, 0xffe8a8, { glow: 1, n: m, step: [r2(dx / m), 0, r2(dz / m)] }); }   // the festoon: a bulb every 0.9 m (pass 4)
     T.forEach((t, k) => { const m = Math.floor((n - k + T.length - 1) / T.length); if (m > 0) a.box(x0 + dx * (k + 0.5) / n, y, z0 + dz * (k + 0.5) / n, 0.36, 0.3, 0.02, CV(), t, { ry, n: m, step: [r2(dx * T.length / n), 0, r2(dz * T.length / n)], glow: 0.5 }); }); };
 /* a pole with a pennant */
 const flagpole = (a, x, z, h, tint, o) => { a.cyl(x, 0, z, 0.07, h, WD2, 0xd8d0c0, Object.assign({ seg: 6 }, o || {})); a.box(x + 0.5, h - 0.75, z, 1.0, 0.6, 0.03, CV(), tint, Object.assign({ glow: 0.5 }, o || {})); };
@@ -102,7 +108,9 @@ function marquee(a, w, d, door, o) {
     a.box(0, h - 0.34, 0, w + 1.04, 0.34, d + 1.04, CV(), o.band || GOLD, { top: false });                                                    // the valance
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * (w / 2 + 0.1), 0, sz * (d / 2 + 0.1), 0.22, h + 0.5, 0.22, WD2, 0xd8d0c0);
     for (const sx of [-1, 1]) flagpole(a, sx * (w / 2 - 0.4), 0, h + (o.rise || 2.6) + 2.2, sx > 0 ? GOLD : t, { roof: true });
-    a.sign(o.name, door.lx, 2.45, d / 2 + 0.16, Math.min(w - 1, o.signW || 7), 1.05, o.ink || '#f8e6a8', o.board || '#5a1a16', 'rye');
+    a.sign(o.name, door.lx, 2.45, d / 2 + 0.16, Math.min(w - 1, o.signW || 7), 1.05, o.ink || '#f8e6a8', o.board || '#5a1a16', 'rye', { glow: 0.5 });
+    a.box(door.lx - Math.min(w - 1, o.signW || 7) / 2, 3.52, d / 2 + 0.18, 0.08, 0.08, 0.06, null, 0xffe8a8, { glow: 1, n: Math.floor(Math.min(w - 1, o.signW || 7) / 0.35) + 1, step: [0.35, 0, 0] });
+    a.P.forEach(q => { if (q.glow == null && q.key === PLAS) q.glow = 0.14; });
     for (const s of [-1, 1]) a.box(door.lx + s * (door.cw / 2 + 0.2), 0, d / 2 + 0.14, 0.2, 2.4, 0.12, WD2, 0xe8d8a0);                   // the door's two gilt posts
     lift(a);
 }
@@ -146,11 +154,13 @@ function stall(id, sx, sy, n, side, name, tint, o) {
     a.box(0, 0.02, d / 2 - 0.02, w - 0.2, 0.96, 0.04, CV(), tint);                                                                        // its painted front
     a.roof('shed', 0, hB, 0, w + 0.7, 0.9, d + 1.1, CV(), tint, { under: true, keyUnder: CV(), keyEnd: CV(), tintEnd: CREAM });
     a.box(0, hB - 0.42, d / 2 + 0.54, w + 0.7, 0.4, 0.04, CV(), GOLD);                                                                    // the awning's valance
-    a.sign(name, 0, hB + 0.02, d / 2 + 0.58, Math.min(w, name.length * 0.52 + 0.8), 0.72, '#fbeeb8', hex(o.board || 0x4a1614), 'rye');
+    a.sign(name, 0, hB + 0.02, d / 2 + 0.58, Math.min(w, name.length * 0.52 + 0.8), 0.72, '#fbeeb8', hex(o.board || 0x4a1614), 'rye', { glow: 0.45 });
+    a.box(-w / 2 + 0.3, hB - 0.5, d / 2 + 0.5, 0.08, 0.08, 0.08, null, 0xffe8a8, { glow: 1, n: Math.floor((w - 0.6) / 0.45) + 1, step: [0.45, 0, 0] });               // bulbs along the awning's edge
     for (const y of [1.25, 1.95]) a.box(0, y, -d / 2 + 0.3, w - 0.5, 0.05, 0.42, WD2, 0xd8c098);                                           // two prize shelves
     const PR = o.prizes || [0xe04848, 0x48a0e0, 0xf0c840, 0x58c070, 0xe070b8], m = Math.floor((w - 0.9) / 0.55);
     PR.forEach((t, k) => { const c = Math.floor((m - k + PR.length - 1) / PR.length); if (c > 0) for (const y of [1.3, 2.0]) a.box(-w / 2 + 0.6 + k * 0.55 + (y > 1.5 ? 0.2 : 0), y, -d / 2 + 0.3, 0.3, y > 1.5 ? 0.3 : 0.4, 0.28, 'carpet', t, { n: c, step: [0.55 * PR.length, 0, 0], uv: [0.6, 0.6] }); });
     a.box(0, hB + 0.05, 0, 0.5, 0.06, 0.5, WD2, 0xfff0c0, { glow: 0.9 });                                                                   // a lit bulb board under the awning
+    a.P.forEach(q => { if (q.glow == null && (q.key === PLAS || q.key === WD || q.key === WD2 || q.key === PLANK)) q.glow = 0.16; });                  // seen at night
     arch('stall:' + id, x, z, rot, a);
     const R = toRoom(x, z, rot), p = R(-w / 2, -0.05), q = R(w / 2, -0.05); ghost(p[0], p[1], q[0], q[1], 2.6, d);
     return { at: R, rot, w, d, top: 1.02 };
@@ -173,7 +183,7 @@ function cage(id, x, z, rot, w, name, tint) {
 function board(id, x, z, rot, words, w, tint, y) {
     const a = sheet(), h = 0.8, y0 = y || 2.3; for (const s of [-1, 1]) a.box(s * (w / 2 + 0.1), 0, 0, 0.16, y0 + h + 0.25, 0.16, WD2, 0xe0d8c8);
     a.box(0, y0, 0, w, h, 0.1, WD, tint, { uv: [1.75, 1.75] }); a.box(0, y0 + h, 0, w + 0.3, 0.1, 0.18, 'gold', 0xffffff, { uv: [1.75, 1.75] });
-    a.sign(words, 0, y0 + 0.06, 0.06, w - 0.3, h - 0.12, '#fbeeb8', hex(tint), 'rye'); a.sign(words, 0, y0 + 0.06, -0.06, w - 0.3, h - 0.12, '#fbeeb8', hex(tint), 'rye', { ry: 180 });
+    a.sign(words, 0, y0 + 0.06, 0.06, w - 0.3, h - 0.12, '#fbeeb8', hex(tint), 'rye', { glow: 0.4 }); a.sign(words, 0, y0 + 0.06, -0.06, w - 0.3, h - 0.12, '#fbeeb8', hex(tint), 'rye', { ry: 180, glow: 0.4 });
     arch('board:' + id, x, z, rot, a);
 }
 
@@ -243,9 +253,23 @@ function dress(S) {
     P('park_bench', 43, 30, { face: 0 }); dec('trash_bin', 42, 29); P('globe_lamp', 40, 30, { noLight: true }); P('globe_lamp', 43, 33, { noLight: true }); P('missing_board', 45, 33, { face: 0 }); P('rope_stanchion', 44, 30, {}); P('rope_stanchion', 46, 30, {});
     P('hot_dog_stand', 36, 33, { face: 0 }); P('park_bench', 38, 33, { face: 0 }); dec('metal_trash_can', 40, 33); P('signpost', 43, 26, { face: 270 }); dec('psxg_dead_bush_1', 40, 26); dec('psxg_rock_2', 38, 24);
 
+    /* THE LIGHT (pass 4): the room has ten prop lights for all four districts, so every lamp here is `noLight` and its lit core is drawn
+       (one row); the yard's fire the same. The wheel and the carousel keep their own lights (two of the ten). */
+    { const a = sheet(), OX = gx(12), OZ = gx(0);
+      for (const q of [[43, 18], [47, 17], [14, 30], [19, 33], [24, 33], [40, 30], [43, 33]]) { const x = gc(q[0]) - OX, z = gc(q[1]) - OZ; a.cyl(x, 1.55, z, 0.2, 0.34, null, 0xfff0c8, { seg: 8, glow: 1 }); }
+      { const x = gc(31) - OX, z = gc(8) - OZ; a.cyl(x, 0.12, z, 0.34, 0.5, null, 0xff9a3a, { seg: 6, r2: 0.05, glow: 1 }); a.cyl(x, 0.1, z, 0.2, 0.75, null, 0xffd060, { seg: 5, r2: 0.02, glow: 1 }); }
+      arch('lamps', OX, OZ, 0, a); }
+
     /* more of the company (mondo 11-16: more people, none on a path) */
     native('mime', 19, 15, 250); native('chef', 22, 16, 180); native('luchador', 37, 10, 90); native('bunny girl', 24, 19, 270); native('clown', 31, 6, 180); native('cyclops', 25, 33, 0); native('wizard', 39, 28, 180);
 }
+
+/* THE AIR (pass 4; the tool's hook, home squares): dust over the midway and the road in, sawdust in the big top's light, sparks at the yard's fire */
+exports.airZones = () => [
+    { sx0: 12, sy0: 12, sx1: 25, sy1: 24, kind: 'dust', color: 0xe8cc98, n: 150, speed: 0.8, wind: 1.3 },
+    { sx0: 25, sy0: 29, sx1: 48, sy1: 34, kind: 'dust', color: 0xe8cc98, n: 90, speed: 0.8, wind: 1.3 },
+    { sx0: 25, sy0: 13, sx1: 34, sy1: 22, kind: 'motes', color: 0xffe6a8, n: 140, speed: 0.4 },
+    { sx0: 30, sy0: 7, sx1: 33, sy1: 10, kind: 'embers', color: 0xffa040, n: 26, speed: 0.7 }];
 
 exports.buildings = ctx => { bind(ctx);
     /* THE BIG TOP: a ROUND striped tent 35 m across, all of it drawn (no hollow building under it: a hollow building's own walls and
@@ -255,8 +279,10 @@ exports.buildings = ctx => { bind(ctx);
         setRect(25, 13, 34, 22, 'B'); count.buildings = (count.buildings || 0) + 1;
         BIGTOP = { at, face: f => (f + rot) % 360, fw: 2 * R0, fd: 2 * R0, cx, cz, rot };
         /* outside */
-        gores(a, 0, R0, R0, hW, N, RED, CREAM, null, [3]); gores(a, 3.4, R0, R0, hW - 3.4, N, RED, CREAM, null, [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        gores(a, hW, R0 + 0.9, 6.2, 7.6, N, RED, CREAM, { roof: true }); gores(a, 13.4, 6.6, 0.25, 4.4, N, CREAM, RED, { roof: true });
+        gores(a, 0, R0, R0, hW, N, RED, CREAM, { glow: 0.14 }, [3]); gores(a, 3.4, R0, R0, hW - 3.4, N, RED, CREAM, { glow: 0.14 }, [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        gores(a, hW, R0 + 0.9, 6.2, 7.6, N, RED, CREAM, { roof: true, glow: 0.14 }); gores(a, 13.4, 6.6, 0.25, 4.4, N, CREAM, RED, { roof: true, glow: 0.14 });
+        a.box(0, hW - 0.75, 0, 0.1, 0.1, 0.1, null, 0xffe8a8, { glow: 1, ring: { n: 80, r: R0 + 1.0 } });                                          // pass 4: bulbs round the eave and up eight seams
+        for (let k = 0; k < 8; k++) { const t = (k * 45) * Math.PI / 180, n = 14, ra = R0 + 0.8, rb = 6.5; a.box(Math.cos(t) * ra, hW + 0.25, Math.sin(t) * ra, 0.1, 0.1, 0.1, null, 0xffe8a8, { glow: 1, roof: true, n, step: [r2(Math.cos(t) * (rb - ra) / n), r2(7.4 / n), r2(Math.sin(t) * (rb - ra) / n)] }); }
         a.cyl(0, hW - 0.55, 0, R0 + 0.95, 0.6, CV(), GOLD, { cap: false, seg: 48, roof: true }); a.cyl(0, 13.25, 0, 6.65, 0.4, CV(), GOLD, { cap: false, seg: 32, roof: true });
         a.cyl(0, 0, 0, 0.1, hW + 0.5, WD2, 0xd8d0c0, { seg: 6, ring: { n: N, r: R0 + 0.12, a0: 11.25 } });                                    // the side poles on the seams
         for (const s of [-1, 1]) { a.cyl(s * 6.9, 13.0, 0, 0.14, 7.8, 'aluminium', 0xd8d8d8, { roof: true, seg: 8 }); a.box(s * 6.9 + 0.85, 19.9, 0, 1.7, 0.85, 0.04, CV(), s > 0 ? GOLD : BLUE, { roof: true, glow: 0.3 }); }
@@ -265,7 +291,7 @@ exports.buildings = ctx => { bind(ctx);
         const zF = 17.5, xP = 3.5;
         for (const s of [-1, 1]) { a.cyl(s * xP, 0, zF, 0.32, 6.4, CV(), CREAM, { seg: 10, uv: [1.75, 1.75] }); gores(a, 0, 0.33, 0.33, 6.4, 8, RED, RED, { seg: 16 }, [0, 2, 4, 6], s * xP, zF); a.cyl(s * xP, 6.4, zF, 0.52, 1.2, CV(), GOLD, { r2: 0.02, seg: 10 }); }
         a.box(0, 3.4, zF, 2 * xP, 2.5, 0.3, WD, RED, { uv: [1.75, 1.75] }); a.box(0, 5.9, zF, 2 * xP + 0.5, 0.22, 0.44, 'gold', 0xffffff, { uv: [1.75, 1.75] }); a.box(0, 3.3, zF, 2 * xP + 0.3, 0.14, 0.4, 'gold', 0xffffff, { uv: [1.75, 1.75] });
-        a.sign('BIG TOP', 0, 3.9, zF + 0.17, 2 * xP - 0.8, 1.6, '#f8e6a8', '#7a1c18', 'rye'); a.sign('WAY OUT', 0, 4.2, zF - 0.17, 3.4, 0.9, '#f8e6a8', '#7a1c18', 'rye', { ry: 180, glow: 0.5 });
+        a.sign('BIG TOP', 0, 3.9, zF + 0.17, 2 * xP - 0.8, 1.6, '#f8e6a8', '#7a1c18', 'rye', { glow: 0.55 }); a.sign('WAY OUT', 0, 4.2, zF - 0.17, 3.4, 0.9, '#f8e6a8', '#7a1c18', 'rye', { ry: 180, glow: 0.5 });
         a.box(-xP + 0.3, 3.5, zF + 0.19, 0.1, 0.1, 0.06, null, 0xfff0c0, { glow: 1, n: 21, step: [0.32, 0, 0] });
         /* inside: the cloth seen from within (wall, two cones), the ground, the ring, two banks of seats, the band's stand, the rigging */
         for (let i = 0; i < N; i++) { const dr = i === 3, T = i % 2 ? RED : CREAM, o = { arc: A, a0: (i + 0.5) * A, cap: false, seg: 32, uv: [3.5, 3.5] };
@@ -302,10 +328,10 @@ exports.buildings = ctx => { bind(ctx);
         a.shell(w, 7, d, WD, 0xb89ad0, door, [3.5, 1.75]);
         a.box(0, 7, 0.0, w + 0.3, 0.3, d + 0.3, WD2, 0x4a3260, { roof: true });
         a.box(0, 7, d / 2 + 0.05, w + 0.6, 2.4, 0.3, WD, PURP, { uv: [3.5, 1.75] }); a.box(0, 9.4, d / 2 + 0.05, w + 1.0, 0.25, 0.5, WD2, GOLD);       // a false front over the roof line
-        a.sign('HALL OF MIRRORS', 0, 7.5, d / 2 + 0.22, w - 0.6, 1.5, '#f6ecff', '#3a2450', 'rye');
+        a.sign('HALL OF MIRRORS', 0, 7.5, d / 2 + 0.22, w - 0.6, 1.5, '#f6ecff', '#3a2450', 'rye', { glow: 0.55 }); a.box(-w / 2 + 0.3, 9.25, d / 2 + 0.24, 0.1, 0.1, 0.06, null, 0xffe8a8, { glow: 1, n: Math.floor((w - 0.6) / 0.4) + 1, step: [0.4, 0, 0] });
         { const X = -(w / 2 + 0.1), Z = d / 2 + 0.1; gores(a, 0, 0.95, 0.95, 9.0, 8, PURP, CREAM, { seg: 16 }, null, X, Z); a.cyl(X, 9.0, Z, 1.3, 2.6, CV(), GOLD, { r2: 0.02, seg: 12 }); flagpole(a, X, Z, 13.2, TEAL); }
         for (const x of [-4.6, 4.2]) { a.box(x, 0.7, d / 2 + 0.1, 2.3, 3.4, 0.08, WD2, GOLD); a.box(x, 0.85, d / 2 + 0.15, 2.0, 3.1, 0.05, 'aluminium', 0xdfeaf2, { glow: 0.45 }); }                 // two tall mirrors on the front
-        a.box(door.lx, 2.35, d / 2 + 0.12, door.cw + 1.4, 0.9, 0.2, WD, RED, { uv: [1.75, 1.75] }); a.sign('THIS WAY IN', door.lx, 2.5, d / 2 + 0.24, door.cw + 1.0, 0.6, '#f8e6a8', '#7a1c18', 'rye');
+        a.box(door.lx, 2.35, d / 2 + 0.12, door.cw + 1.4, 0.9, 0.2, WD, RED, { uv: [1.75, 1.75] }); a.sign('THIS WAY IN', door.lx, 2.5, d / 2 + 0.24, door.cw + 1.0, 0.6, '#f8e6a8', '#7a1c18', 'rye', { glow: 0.5 });
         a.box(door.lx - door.cw / 2 - 0.6, 3.3, d / 2 + 0.26, 0.1, 0.1, 0.06, null, 0xfff0c0, { glow: 1, n: 12, step: [0.3, 0, 0] });
         stripesZ(a, -d / 2, d / 2, 0, 7, w / 2 + 0.09, 0x8a6ab0); stripesZ(a, -d / 2, d / 2, 0, 7, -w / 2 - 0.09, 0x8a6ab0);
         /* ── INSIDE (pass 2): a mirror maze on the square lines, mirrors on every wall, a low lit ceiling ── */
@@ -412,7 +438,7 @@ exports.ground = ctx => { bind(ctx);
         a.cyl(s * X, 7, 0, 1.9, 2.8, CV(), GOLD, { r2: 0.02, seg: 12 }); a.cyl(s * X, 6.7, 0, 1.6, 0.3, WD2, GOLD, { seg: 12 }); flagpole(a, s * X, 0, 12.4, s > 0 ? RED : BLUE);
         a.box(s * X, 1.2, 1.42, 1.0, 1.1, 0.06, GLS, 0x20262c, { uv: 'fit' }); a.sign('TICKETS', s * X, 2.4, 1.44, 1.9, 0.5, '#fbeeb8', '#4a1614', 'rye'); }
       a.box(0, 5.0, 0, 2 * X - 2.6, 1.9, 0.36, WD, RED, { uv: [1.75, 1.75] }); a.box(0, 6.9, 0, 2 * X - 2.2, 0.2, 0.5, WD2, GOLD); a.box(0, 4.8, 0, 2 * X - 2.2, 0.2, 0.5, WD2, GOLD);
-      a.sign('CIRCUS', 0, 5.15, 0.2, 2 * X - 3.4, 1.6, '#f8e6a8', '#7a1c18', 'rye'); a.sign('CIRCUS', 0, 5.15, -0.2, 2 * X - 3.4, 1.6, '#f8e6a8', '#7a1c18', 'rye', { ry: 180 });
+      a.sign('CIRCUS', 0, 5.15, 0.2, 2 * X - 3.4, 1.6, '#f8e6a8', '#7a1c18', 'rye', { glow: 0.55 }); a.sign('CIRCUS', 0, 5.15, -0.2, 2 * X - 3.4, 1.6, '#f8e6a8', '#7a1c18', 'rye', { ry: 180, glow: 0.55 });
       for (const z of [0.2, -0.2]) a.box(-X + 1.6, 7.1, z, 0.1, 0.1, 0.08, null, 0xfff0c0, { glow: 1, n: 23, step: [0.33, 0, 0] });
       arch('gate', gx(47.5), gx(32), 270, a);
       for (const sy of [30, 33]) ghost(gx(47.5), gc(sy) - 1.4, gx(47.5), gc(sy) + 1.4, 7, 2.8); }
