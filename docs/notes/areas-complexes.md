@@ -8365,6 +8365,26 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
   - NOT POSSIBLE FROM A DISTRICT FILE: real lights (ten a room, held by the old torches and fires), light shafts (`_hqLightShaft` draws nothing), mist on the water,
     sound. The glow boxes read cream, not amber (a glow of 1 washes the tint out).
   - NOBODY MOVED: 891 rows outside the district, 0 differ. FRAME RATE (same Stage view): 0.8 -> 0.8.
+- **PASS 5, THE POLISH (seen, two probe rounds, 23 views; the last pass):**
+  - THE BOATS WERE UNDER WATER: a prop's small `y` is a lift over the ground under it, and in a pool that ground is the BED. Both rowboats, the effigy and the
+    floating candles now carry a height from the room's floor (`ground - 0.42` for a hull, `ground - 0.3` for the water's top) + `floor: true`. Seen afloat.
+  - THE BARROW's heap of boulders covered the hill's top in grey blocks: four smaller stones now, the big back stone out.
+  - THE FRAME RATE: the shore ring 26 -> 16, the three scatter rows 46 -> 28. Same Stage view, cloud software GPU, `EW_PERF_LOW`, 5 s counts taken twice:
+    BEFORE THIS THREAD (the district file as it stood, baked and probed again) 1.2 / 1.0; AFTER FIVE PASSES 1.4 / 1.0. No loss that this probe can measure;
+    the room went from 523 to 1,010 props (the other districts' passes are in that number too), so the weak PC is still worth a look.
+  - NOBODY MOVED: 1,033 rows outside the district, 0 differ.
+- **DECISIONS MADE FOR MONDO (overrule any in one line):**
+  1. The Stage is a timber band shell with a red cloth (not a bare platform). 2. The Owl stands in a horseshoe of ten columns on a stone mound, and its eyes glow.
+  3. The Lake has one jetty on the west shore; the effigy lies in a boat on the water among candles (the bier at the Owl stays). 4. The Mound is a barrow with a
+  stone doorway that leads nowhere, and a graveyard. 5. A walk-in CAMP HOUSE (the members' hall: hearth, feast table, throne, bar, robes) stands between the Tents
+  and the Stage; it has no game role. 6. The old Grove's striped big tent stands at the Fire; the fortune teller has her own tent at the Tents. 7. The Dead Tree is
+  12 m. 8. Lantern posts line every trail in the district. 9. The ground is the dark forest sheet. 10. No pumpkins, no bats, no new natives (the NPC system is
+  another thread's), no names beyond what stands there ("The Camp House", "The Jetty", "The Barrow").
+- **NEEDS A MODEL:** an owl (the bird, for branches); a goat and a deer; a hooded robed figure / statue (the creator's `mhw_donitz_monk_robe*` on R2 are character
+  pieces, not props); a dock / pier piece and a moored-boat set; a bell on a frame; a long trestle table with benches; real hanging lanterns on a string; antlers or
+  a trophy for the hall's wall; a big fallen trunk. Engine pieces no district can write: light shafts, mist on water, sound by district, more than ten real lights.
+- **WHAT I WOULD DO NEXT (after his look):** the way to Room 333 at the Stones (the tool's row); carry the old Grove's four talkers and their lines in and retire
+  that room (his call); a second walk-in (a boathouse on the east shore); robed figures at the Stage and the Owl once a model exists.
 - **FITS THIS DISTRICT (the model list read end to end, 11-16; catalogue keys)**: STONE `menhir`, `sarsen`, `trilithon`, `obelisk`, `greek_column`, `t_pillar`, `decor_stone_arch`,
   `stone_urn`, `ancient_well`, `hw_stone*`, `psxg_rock_*`, `psxg_wall*`. RITUAL `stone_altar`, `brazier`, `cave_torch`, `candleRing`, `candleLine`, `candle`, `hw_candle*`,
   `candelabra`, `votive_stand`, `cauldron`, `crystalBall`, `tarotDeck`, `item_censer`, `item_ward_totem`, `item_drinking_cup`, `taiko_drum`, `ships_bell`, `royal_throne`,
