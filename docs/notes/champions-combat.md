@@ -5502,3 +5502,16 @@ else reads "Trick Set". One trick at a time (a recast reads "would do nothing").
 - Online: `_trick` rides the unit in the snapshot (host-only reads it); the guest's screen never names it.
 - Probe 11-16: Doves ate a Migraine (ally lost 0), Vanishing Act moved him C4 → B1 when the foe stepped beside him, Switcheroo
   swapped him with the ally (lost 0), Pick a Card 75 → 115 MP, Saw in Half left Broken; 0 page errors.
+
+### 6. THE MOLE MAN (Hollow Earth, bruiser, family `burrowing`)
+The style: he travels under the board. **Burrow** (T1, escape kind, cd 1): tunnels up to 4 squares (escapeLandingTiles never checks a path,
+so walls and units do not stop it) and stays down: STATUS_DEFS `burrowed` (a marker) + `invisible`, 1 round; invisible.onRemove clears
+`burrowed` too, so an attack or a reveal brings him up. **Erupt** (T2, physical 120, range 4, `ignoresLineOfSight`, `sneakBonus`, cd 2,
+Stagger 1): the `erupt` field runs battle.js `_moleErupt` in _runPostEffects: he surfaces on the free square beside the target nearest
+where he dug in, and the target is thrown up (forced applyFallDamage from 2 levels; colossal and push-anchored units are not thrown).
+**Cave-In** (T3, aoe 3x3, range 3, physical 110): terrainDeform -1 (a pit) + Root 1.
+- Elements: earth resist, light weak. Terrain preference wasteland. Biomes inner_earth + underground_base. POINT_OF_ENTRY Hollow Earth.
+- Tree: Tremor Stomp → Fissure / Cryptid Vanish → Ground Slam / Brutal Slam → Quake. Finisher Six Feet Under (the surfacing staging).
+- Online: the move and the fall ride the normal displacement + damage paths; `burrowed` is a plain status in the snapshot.
+- Probe 11-16: Burrow C3 → D5 under the ground (hidden from P2), Erupt from hiding 454 (ambush + super effective on a mech) + a 3-level
+  throw 151 (now 2 levels), he surfaced at E6 beside the foe; Cave-In hit and Rooted; 0 page errors.

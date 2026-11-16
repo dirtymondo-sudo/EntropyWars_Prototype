@@ -2660,6 +2660,8 @@
             }
             if (spell.dragIntoLiquid && target && !target.dead && !unit.dead
                 && !(typeof _isClashMode === 'function' && _isClashMode())) _deathRollDrag(unit, target, spell);   // 🐊 Death Roll
+            if (spell.erupt && target && !unit.dead
+                && !(typeof _isClashMode === 'function' && _isClashMode())) _moleErupt(unit, target, spell);   // ⛏ Erupt
             if (spell.selfStun && !unit.dead) {
                 applyStatusEffects(unit, [{ id: 'stun', duration: spell.selfStun }],
                     `${spell.name} recoil: `, unit);
@@ -14099,6 +14101,50 @@
         }
         /* _runPostEffects for a `dragIntoLiquid` spell (Death Roll): the victim goes into the nearest free liquid square beside
            the gator or beside itself (deep water first), then gets Drowning (applyStatusPayload bounces it outside deep water). */
+        /* ⛏ _runPostEffects for an `erupt` spell (the Mole Man's Erupt, 2026-11-16): he comes up out of the ground on the free
+           square beside the target nearest to where he dug in (he stays put when already beside it or no square is free), and
+           the target is thrown up into the air: forced fall damage from 2 levels up (state.js applyFallDamage). Colossal units
+           and anchored ones are not thrown. Burrowed ends (the hit already broke Invisible). */
+        function _moleErupt(unit, target, spell) {
+            if (!unit || !target) return;
+            if (unitHasStatus(unit, 'burrowed')) clearStatus(unit, 'burrowed');
+            const adj = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) === 1;
+            if (!adj) {
+                const cands = [];
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = target.x + dx, ny = target.y + dy;
+                    if (!isInside(nx, ny) || !canOccupy(nx, ny)) continue;
+                    if (state.units.some(u => !u.dead && u.id !== unit.id && u.x === nx && u.y === ny)) continue;
+                    cands.push({ x: nx, y: ny, d: Math.abs(nx - unit.x) + Math.abs(ny - unit.y) });
+                }
+                cands.sort((a, b) => a.d - b.d);
+                const dest = cands[0];
+                if (dest) {
+                    const fx = unit.x, fy = unit.y;
+                    unit.x = dest.x; unit.y = dest.y;
+                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(dest.x, dest.y, unit.z);
+                    animateDisplacement(unit, fx, fy, dest.x, dest.y, 260);
+                    addLog(`⛏ ${_ctName(unit)} bursts out of the ground at ${coordLabel(dest.x, dest.y)}!`, undefined, undefined, { actor: unit });
+                    showFloatingTextForUnit(unit, '⛏ ERUPT', 'streak', { durationMs: 1000 });
+                    resolveTileArrival(unit, { via: 'displaced' });
+                }
+            }
+            if (target.dead || target._dying) return;
+            if (getUnitDisplaceWeightClass(target, spell) === 'colossal') {
+                addLog(`${_ctName(target)} is far too heavy to throw!`);
+                showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
+                return;
+            }
+            const anchor = unitResistsDisplace(target, 'push');
+            if (anchor) {
+                addLog(`${anchor.icon || '⚓'} ${_ctName(target)}'s ${anchor.name} holds — the eruption cannot throw them!`);
+                showFloatingTextForUnit(target, `${anchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 1000 });
+                return;
+            }
+            const z = target.z || 0;
+            showFloatingTextForUnit(target, '⛏ THROWN UP', 'debuff', { durationMs: 1000 });
+            if (typeof applyFallDamage === 'function') applyFallDamage(target, z + 2, z, `⛏ ${spell.name} throw: `, { forced: true });
+        }
         function _deathRollDrag(unit, target, spell) {
             if (!unit || !target || target.dead || target._dying) return;
             const label = `${spell.name}: `;

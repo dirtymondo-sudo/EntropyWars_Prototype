@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1174 |
+| Meshy AI | no | 1175 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -133,6 +133,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | mermaid (female) | `Assets/characters/races/mermaid/female/Meshy_AI_hot_mermaid_girl_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mime (female) | `Assets/characters/races/mime/Meshy_AI_mime_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | minotaur | `Assets/characters/races/minotaur/Meshy_AI_minotaur_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| mole man | `Assets/characters/races/mole_man/male/Meshy_AI_mole_man_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | mothman | `Assets/characters/races/mothman/male/Meshy_AI_mothman_cryptid_gian_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mummy (female) | `Assets/characters/races/mummy/Meshy_AI_mummy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mushroom girl (female) | `Assets/characters/races/mushroomgirl/Meshy_AI_mushroom_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
