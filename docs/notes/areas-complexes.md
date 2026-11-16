@@ -7667,7 +7667,13 @@ yard door and two plots; both are one row to change.
 - **DECISIONS MADE FOR MONDO:** the door up stands in the Power station's YARD (not in the turbine hall); two plots; the stair climbs from
   the track tunnel; the sludge = Corroded for 2 rounds, no race immune by terrain; who lives there besides kaiju and black goo: mad
   scientist, swamp monster; black goo tendrils stand in the tank (props only, no unit, no rule).
-- **NEEDS A MODEL:** a lying waste pipe mouth (1 m bore) for the channel's head; a hazmat suit on a hook; a yellow drum with the trefoil.
+- **NEEDS A MODEL:** ~~a lying waste pipe mouth; a hazmat suit on a hook; a yellow drum with the trefoil~~ all three made and placed (below).
+- **THE MODEL PASS (mondo 11-16, `docs/plans/WISHLIST_MODELS_ADDED.md`; R.js `pieces`, called from `dress`):** `waste_pipe` lying in the
+  channel's head (its bore runs east-west as made: face 90 lines it along a north-south channel), four `hazmat_suit` (the door passage,
+  the gallery, the Pit's doorway), seven `radiation_drum` (the rusty barrels that stood in for them are out; a drum is a blocker, so none
+  stands on a one-square walk), a `valve_wheel` between the pumps, fourteen `cage_lamp` on the walls (no light of their own: the room is
+  over its light cap), three `rat` off the walks. Also fits, not placed: `manhole_ladder`, `tunnel_signal`, `steel_bench`, `strobe_lamp`,
+  `stretcher`. FPS in the probe (software renderer, the Drain's gallery view): 2.7 before, 2.7 after.
 - **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
   the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and
   taken out (the sheet tore into spikes round them); no sound.
