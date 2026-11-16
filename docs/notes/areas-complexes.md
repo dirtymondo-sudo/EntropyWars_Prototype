@@ -4946,6 +4946,10 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   INSIDE A WALK-IN (the Boathouse, 3.5 m walls): draw the ceiling at 3.16 m (3.4 is above the building's own black one), window panes and
   wall pieces 0.38 m in from the building's line, and never start a `deck` on the wall (0.9 m off). Wall props: `y` = the height, `face` 0 on
   the north wall, 90 west, 180 south, 270 east. `map_table` = a steel sci-fi table; `psx_table_large_2` = a plain wooden one.
+  WATER: `ocean_seaweed*` in a pool's shallows reads as rushes (each sways and is a draw call: keep them few); lily pads = notched `cyl`
+  discs in `leaves_3`, all in one `arch` row at `y: 0`, the disc at the pool's `y` + 0.015; the pool's water is opaque from above (fish under
+  it are never seen); `flamingo` is a good pink flamingo; `sea_buoy` carries a light (`noLight`). A row with a `y` inside a drawn shelter
+  seats itself under the roof: stand table things on the ground.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5738,6 +5742,127 @@ the zone". Passes as the pilot's, a PR each: exteriors, interiors, dressing, atm
 - **THE COST:** 27 more props, all inside one building; no new real light (the ship's lantern was there). The cloud's frame rate is not a
   measure: the same overview read 0.20 frames a second as a run's first view and 2.6 as its last.
 
+## THE ESTATE, DISTRICT C — THE CORN FIELDS (2026-11-16, a district thread on mondo's nap order; file `docs/areas/estate/districts/C.js`)
+
+mondo 11-16 (DISTRICT_THREAD_BRIEF.md): every district prototyped without asking, at most five passes. As it stood: 24 props on nine plots, hedge-walled
+tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68, face 180, llvmpipe: only the comparison counts): 1.8 before.
+
+- **FITS THIS DISTRICT (every list read: MODEL_LIST.md sections 6, 7, 10, 12b, 13, the live catalogue, pack-claims.md):**
+  crops + straw `hw_straw`, `hw_straw_2`, `hw_farmland`, `hw_crop*` (the pack's crops are pale soil lumps: not used); scarecrows `hw_scarecrow`, `hw_scarecrow_2`;
+  pumpkins `hw_pumpkin*`, `psxg_jack_o_lantern_*`; bare trees `hw_tree*`, `psxg_dead_tree_*`, `psxg_dead_bush_*`, `stump`, `fallen_log`; rocks `psxg_rock_*`, `menhir`;
+  farm furniture `covered_wagon`, `hitching_rail`, the ranch `rail`, `hw_fence`, `ind_silo`, `power_pole`, `car_truck`, `tire_stack`, `tool_chest`, `hand_truck`,
+  `cable_drum`, `psx_metal_barrel_mp_*`, `psx_wooden_crate_*`, `meshy_burlap_sack`, `wooden_bucket`, `hw_shovel`, `psx_jerrycan_1`, `railway_lantern`, `city_bench`,
+  `park_bench`, `signpost`; the watchers `camping_tent`, `flood_mast`, `film_camera`, `field_radio`, `item_police_barricade`, `traffic_cone`, `warning_tape`,
+  `campfire`; animals `crow`, `rabbit`, `cow`, `anthill`, the insects; held back for later passes: `saucer_lg`, `ufo`, `hw_body*`, `hw_part*`, `skull`, `trap_bear_open`.
+  Not on R2 at all: corn, wheat (the bus-stop pack's `Wheat` is only in bucket `dirtymondo`), a tractor, a plough, a trough, a wheelbarrow, a pitchfork.
+- **THE CORN, WHAT WAS TRIED:** the Halloween pack's four crop nodes at 2.5 m (soil mounds), `ocean_seaweed*` / `kelp` (black blades, animated), `fern`
+  (a 2 MB Meshy mesh: too heavy to plant by the hundred). None reads as corn, so the bank is unchanged and the stalk is on the NEEDS A MODEL list.
+- **PASS 1, EXTERIORS (seen in the cloud browser, 13 + 6 views):**
+  - THE CUT ROWS (`plan()` `strips` + `dress()` `rows`): a field is strips one square wide: bare soil with three drawn furrows a square (`dirt_3` boxes in one
+    `look` a field) and lawn squares, where the room's grass field stands as the young crop. Four fields: The Tall Corn, The Rows west, The Rows east, under the
+    Scarecrow. Ranch `rail` fences on their track sides, a pack scarecrow in each, bales, crows.
+  - THE CIRCLES: a ring and beads of lawn squares left standing in the flattened ground (the formation), four `menhir` at its corners, a cow, candles, a
+    KEEP OFF THE CROP board. A ring of corn squares was tried first: one-square banks draw as hedge pyramids. The west circle: a watchers' camp (tent,
+    flood mast, film camera, radio, barricades, a fire).
+  - THE HUB: a drawn FINGERPOST (THE WOODS, THE CIRCLES north; THE LAKE, THE RANCH east; THE HOUSE south), a wagon, hitching rails, a bench, barrels, crates.
+  - THE ROWS, EAST: a silo yard (two `ind_silo`, never placed before), a GRAIN board. THE FARM TRACK: five `power_pole` along the track, a lay-by with the
+    truck, a turning place with a wagon and bales, THE RANCH board. THE WOODS GATE: a verge with a picket fence and a bench, PRIVATE LAND, bare trees.
+  - Twenty-odd drawn LAMP POSTS (H's `lampPost`, copied) and five painted boards (`board()`: plain words, read from both sides).
+  - LIGHTS: C keeps two real ones (the Hub's torch, the big circle's); the rest carry `noLight`.
+  - Props in the district: 24 -> about 220 (+ 8 drawn fields / posts / boards).
+- **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
+  (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
+  THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle.
+- **NEEDS A MODEL:** a corn stalk (and a row of them as one instanced piece), a flattened-corn ground sheet, a tractor, a plough, a water trough, a
+  wheelbarrow, a pitchfork, a lamp post (the zone's drawn one stands in), a barbed-wire fence.
+### PASS 3, THE DRESSING (seen in the cloud browser)
+- **THE PATH ROUND THE LAKE (`plan()`):** one square of dirt from the three gaps in the corn, up the west shore, along the north side above the
+  shingle to the Boathouse, down the east bank past the jetty to the boardwalk's far end, back along the south shore past the picnic ground.
+- **THE WATER PLANTS:** no reed, cattail or lily model exists. The ocean pack's `ocean_seaweed` (three kinds, 1.2 to 1.8 m, they sway) stands in
+  the shallows 0.965 of the way out to the lake's edge: its foot is on the bed, its top out of the water, and it reads as rushes. About 35 in
+  all (the Reeds' bank, five clumps on the south shore, the Marsh's pools): each is its own draw call, so they are few.
+- **THE LILY PADS:** about ninety drawn notched discs in the leaf sheet (Camelot's Fairy Forest way), one in five in flower, all ONE `arch` row
+  (`est:lilies:look`) on the Lake, south and both Marsh pools.
+- **THE SHORES:** graveyard pack stones and driftwood on the shingle, a second boat, two `iron_garden_bench` on the north path; ferns, frogs, a
+  rabbit, a grasshopper at the Reeds; rope coils, a crate, `lobster_traps`, a bucket on the dock and a `NO SWIMMING` board at its foot; a camp
+  on the east bank (`camping_tent`, `meshy_campfire_ring` cold, chairs, `beach_cooler`, `railway_lantern`); a chair, bucket and cooler on the
+  jetty's end; the Marsh's `psxg_dead_tree_*`, `hw_tree_3/4`, dead bushes, ferns, frogs and a `flamingo` in the north pool; a `metal_trash_can`
+  and `garbage_bag`, a cooler, two crows on the shelter's ridge, rabbits, butterflies and a bee at the picnic ground; twelve more trees set back
+  from the path; three blank `signpost`s; two `sea_buoy`s off the rock (`noLight`).
+- **TRIED AND CUT:** fish and a turtle (`ocean_fish*`, `hover: 0.55`): the lake's water is opaque from above, nothing shows. Cups and a cooler
+  ON the shelter's tables (`y: 0.8`): they hung under the roof (a row with a `y` seats itself on what is over it in a drawn piece).
+- **THE COST:** the proof view (the whole district from 60 m, last view of a run): 333 draw calls and 2.6 frames a second after pass 2, 618 and
+  2.0 to 2.2 after pass 3 as first built; the swaying plants were then cut from about 58 to 35 and the eight fish removed.
+- **FITS THIS DISTRICT (the lists read 11-16: MODEL_LIST.md sections 6, 7, 10, 12b, 13; the catalogue; `list-models.js --r2`):** placed:
+  `play_swing`, `play_slide`, `play_sandbox`, `brass_telescope`, `ocean_rock*`, `ocean_seaweed*`, `psxg_rock_*`, `psxg_dead_tree_*`,
+  `psxg_dead_bush_*`, `hw_tree_3/4`, `fern`, `flamingo`, `camping_tent`, `meshy_campfire_ring`, `beach_cooler`, `beach_life_ring`,
+  `railway_lantern`, `iron_garden_bench`, `metal_trash_can`, `garbage_bag`, `lobster_traps`, `meshy_rope`, `tire_stack`, `ship_anchor`,
+  `ships_bell`, `fishing_net_wall`, `outboard_motor`, `tool_pegboard`, `tool_chest`, `psx_hand_saw_1`, `psx_jerrycan_1`, `cot`, `sea_buoy`,
+  `signpost`, crow, rabbit, frogs, grasshopper, ladybug, bee, four butterflies. Fits and not placed: `meshy_camping_tent`, `footbridge`,
+  `surfboard_*`, `beach_swim_ring`, `beach_air_mattress_*`, `tentacle` / `tentacle2` (the kraken's: not placed, the lake's monster is Nessie),
+  `ocean_turtle` and the fish (unseen under this water), `fish_school`. Nothing in section 13's unwired files fits a lake.
+
+## THE ESTATE, DISTRICT R — THE RANCH (2026-11-16, the district thread; file `docs/areas/estate/districts/R.js`)
+
+mondo 11-16 (the nap order, docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped without asking, at most five passes, own judge. Passes,
+a PR each: exteriors, interiors, dressing, atmosphere, polish.
+
+### THE FIRST LOOK (probe, 12 views)
+- The Barn was a near-black red box under one plain gable; its white trim drew grey-brown (a tint only darkens the trim sheet). The hen house was a
+  dark brown shed alone on a bare dirt yard the size of a plot. Both walk-ins were empty brown rooms under a black ceiling. No trough, no gate.
+- **THE GATE GAP WAS IN THE WRONG PLACE.** The rail on the district's line left its gap on squares 36 x 65..66, which face the corn's bank; the track
+  from the house comes in on 34..35 x 63..64 and ran into the rail. The gap, the gate and two squares of dirt (`plan()`) are on 63..64 now.
+
+### FITS THIS DISTRICT (the lists read first: MODEL_LIST.md sections 6, 7, 10, 12b, 13, the live catalogue, R2_MODEL_FILES.json, the Halloween file)
+- **Animals:** `cow`, `horse` / `horse_brown` / `horse_black`, `chicken`, `dog`, `cat`, `rabbit`, `crow`, `decor_sheep` (the spell's sheep, a still
+  model: nobody has placed it), `wolf`, `eagle`; insects `butterfly`, `monarch`, `bee`, `bumblebee`, `grasshopper*`, `ladybug`, `ant` + `anthill`.
+- **Big pieces nobody had placed in this zone:** `ind_silo` (reads as a grain bin on legs, 9 m), `water_tower_west`, `covered_wagon`,
+  `hitching_rail`, `power_pole`, `ride_on_mower`, `tire_stack`, `psx_toilet_cabin_mp_1` (an outhouse), `woods_cabin`, `ancient_well`.
+- **Barn + yard:** `hw_straw*`, `hw_scarecrow*`, `hw_farmland` + `hw_crop*`, `hw_pumpkin*`, `hw_fence` (pickets), `hw_shovel`, `meshy_burlap_sack`,
+  `wooden_bucket`, `psx_wooden_crate_1/2/4/6`, `psx_metal_barrel_mp_*`, `psx_jerrycan_1`, `psx_hand_saw_1`, `psx_car_battery_1`, `cinder_block`,
+  `tool_chest`, `tool_pegboard`, `platform_scale`, `chain_hoist`, `library_ladder`, `meshy_rope`, `hook_rail`, `broom`, `fallen_log`, `stump`,
+  `metal_trash_can`, `garbage_bag`, `railway_lantern`, `psx_cobweb_*`, `leaf_barn`, `leaf_stable`.
+- **Farmhouse:** the PSX mega pack's furniture (`psx_dinner_table_1`, `psx_chair_mp_*`, `psx_bed_*`, `psx_wardrobe_mp_1`, `psx_sofa_*`,
+  `psx_armchair_*`, `psx_shelf_mp_*`, `psx_display_cabinet_mp_*`, `psx_tv_mp_1` + `psx_tv_table_*`, `psx_carpet_mp_1`, `psx_lamp_*_on`,
+  `psx_ceiling_lamp_*_on`, `psx_painting_1`, `psx_photo_frame_mp_*`, `psx_clock_*`, `psx_book_mp_*`, plates and cutlery), `kitchen_range`, `sink`,
+  `pot_rack`, `stock_pots`, `hearth_fire`, `chimney_smoke`, `rocking_chair`, `rug_round`, `retro_radio`, `rifle_rack`, `footlocker`, `coffee_mug`.
+- **Sheets:** `WD` boards (with `gain`), `COR` tin, `SHG` shingles, `FLR` planks, `BRK` brick, `'castle_wall'` stone, `dirt_2`, `grass_2`.
+- **Not on R2 (NEEDS A MODEL, listed in R.js):** tractor, plough, wheelbarrow, pitchfork, saddle, pig, goat, rooster, duck, beehive, kennel, mailbox,
+  clothes line, sunflowers / wheat, cattle skull. The Elbolilloduro packs are on the game bucket only as cut pieces; their whole files (the bus-stop
+  pack's `Wheat`, the mine pack) are in mondo's art bucket and need Blender to cut: not reachable from a cloud thread.
+
+### PASS 1, THE EXTERIORS (seen in the cloud browser)
+- **THE BARN:** a GAMBREL roof made of three roof parts (two `shed` slopes with their high edge to the middle, `ry: 90` west / `ry: 270` east, a
+  low `gable` cap; the wall between the slopes is a box with `faces: 'fb'`; the sheds' own end triangles fill the gambrel's corners), barn red on the
+  board sheet with `gain: 1.7`, a stone footing open across the doors, white corner boards and belts (no sheet), two sliding doors in white frames on
+  an iron rail, the hayloft door under a hoist beam and hook, a louvre in the peak, windows, a cupola with a weathervane, shut back doors, and a
+  LEAN-TO on five posts down the east wall (squares 58..59 x 51..54, dirt under it: the mower, tyres, a barrel).
+- **THE FARMHOUSE:** a stone footing, white corner boards, a cross gable over the door with a lit attic window, thirteen sash windows with green
+  shutters (three lit), white porch posts, rails and balusters (open at the door's bay), a porch lamp, a capped chimney with `chimney_smoke`.
+- **THE HEN HOUSE:** pale boards, a red keeper's door, wire windows, the hatch and ramp, a nest box; a picket HEN RUN (`hw_fence` on the squares'
+  lines, a one-square gap on the west side) with the hens in it.
+- **ONE ROW FOR THE YARD'S FITTINGS** (`est:ranchfittings:look`, an arch row with `hug: true`: every corner lies on the ground under it, so one row
+  serves the Windmill's slope and the gate): plank troughs with water (the Yard's has a hand pump), round tin stock tanks (a hollow `cyl` with `ri` +
+  a water disc), timber gate leaves, THE RANCH GATE (two 5.4 m posts, a beam, the board `RANCH` in `fell` read from both sides, the two leaves swung
+  back along the rail, a cattle grid), the Paddock's gate (its gap is one square now).
+- **THE COW SHED** (Cow Field, squares 67..69 x 70..71): three boarded walls with ghost walls, a tin roof, open to the north, walked into.
+- **Placed:** `ind_silo` by the barn, `water_tower_west` over the Yard, `ride_on_mower` + `tire_stack` under the lean-to.
+- **`plan()`:** dirt under the lean-to and the cow shed, the gate's two squares, a worn path from the barn's track to the farmhouse door.
+- **THE LIGHTS:** R keeps three real ones (the two torches before the barn, the farmhouse's hearth to come); the other torches and the campfire
+  carry `noLight`.
+- **THE COST:** the proof view (the district's middle from 70 m up): 491 draw calls before, 579 after pass 1 (the cloud's software renderer read 3
+  and 19 frames a second on the same view: it cannot tell them apart). The polish pass has to win calls back (fewer tints in one row).
+- **KNOWN:** the cattle grid was not seen in the pass's pictures (it lay under the track's own sheet on the slope; lifted, to be looked at again
+  with pass 2's probe). The dark trim sheet `WD2` draws near black under any tint: weathered timber = `WD` + a tan tint + `gain: 1.9`.
+
+### DECISIONS MADE FOR MONDO (overrule any in one line)
+1. The Barn has a gambrel roof and is barn red with white trim; the Farmhouse is white with a green roof (as it was).
+2. The gate's board says `RANCH` (a plain word, no made-up name).
+3. The gate stands on the track's real opening (squares 36 x 63..64), not where the rail's old gap was.
+4. A grain silo and a water tower were added (models already in the game, nobody had placed them in this zone).
+5. The trough, the stock tanks, the gate and the cattle grid are DRAWN from textured parts (no model exists; the plan names them).
+6. No way to the Desert was added (ways out are shared and his call).
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
@@ -5781,6 +5906,10 @@ Read this before dressing C, L or R. It grows with each of H's passes.
 - **DENSITY:** a place people expect crowded (graves, crops, stalls) wants several pieces a square: one blocker on the square's middle, the rest
   `noBlock: true` beside it. One piece every second square looks empty. The grass field hides anything under 0.4 m.
 - **KNOWN BAD PIECES:** `hw_web` (unseen since its fix), `psx_wooden_crate_3` (blank box), `lion_statue` (a tawny lion, not stone).
+- **FROM THE RANCH (district R):** `hug: true` on an arch row lays every corner on the ground: one row can hold a whole district's small drawn pieces
+  on sloped ground. A GAMBREL roof = two `shed` roofs (`ry: 90` / `270`) + a `gable` cap + a `faces: 'fb'` box between them. The trim sheet `WD2`
+  draws near black under any tint; weathered timber = `WD` + tan + `gain: 1.9`; painted boards want `gain` 1.7 to 2.2. A part turned with
+  `ry: 90` puts its local +z at the row's -x. Pieces first placed here: `ind_silo` (a grain bin), `water_tower_west`, `ride_on_mower`, `tire_stack`.
 - **STILL MISSING ZONE-WIDE:** corn stalks (Meshy, waits), a lamp post model, night never seen on screen, no residents with routines, lines for
   most of the people.
 
@@ -6060,6 +6189,11 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **FROM THE FOREST (district W, pass 1)**: `groundAlso(x, y)` beside `ground` = squares outside a file's plots that wear its ground. A prop
+  standing in a ghost wall's square takes `floor: true` (without it the cross of the wayside shrine stood 2.2 m up, on the wall's top).
+  A lantern post for a road = `W.js` `lantern()`; a banner pole = `bannerPole()`; a log stack = `logpile()` (no lying cylinder exists: a
+  log is a box with a `barrel` roof on it); a ridge tent = `tent()` (six `gable` strips of two colours, dark end strips for the mouth).
+  `lion_statue` (h 1.5) on a 1 m plinth reads well at a gate. A prop over a `stream` does not take `y` the way one over ground does.
 - **A DISTRICT'S OWN GROUND AND AIR (the tool, 2026-11-16)**: a district file may export `ground: '<sheet>'` (painted under its own plots' `g`
   and `t` squares) and `airZones(ctx)` = `[{ x0, y0, x1, y1 (kingdom squares), kind, color, n, speed, wind }]` (kinds: dust, motes, spores,
   fireflies, snow, ash, rain). The kingdom's embers stay over the whole room. Unused, the bake is unchanged.
@@ -6081,6 +6215,55 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   tea tent (never one flat sheet), `sign()` for its boards.
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
+
+## CAMELOT, THE FOREST — the district W thread (2026-11-16, second side; file `docs/areas/camelot/districts/W.js`)
+
+mondo 11-16 (the district order): every district prototyped, own judge, five passes at most. Eight plots along the south wall (squares
+x 0..96, y 84..96) and the forest north of them to the moat's south bank: the road in from DOOR HQ, a loop track, two glades, a deep
+forest glade, the dead tree's hole.
+
+- **AS IT STOOD (first probe, 12 views)**: the kingdom's lawn under thin even trees; a bare cobbled road from the bay to the Drawbridge;
+  two bare knolls with a log each; nothing on the tracks, the bank or at the hole. Frame rate at the bay 0.60 (cloud software GPU).
+- **FITS THIS DISTRICT (the whole MODEL_LIST.md, pack-claims.md and the live catalogue read 11-16)**. Road: `signpost`, `covered_wagon`,
+  `hitching_rail`, `horse` / `horse_brown` / `horse_black`, `brazier`, `cave_torch`, `wall_torch`, `meshy_hanging_lantern`, `ship_lantern`,
+  `ancient_well`, `wooden_bucket`, `hw_fence`, `psxg_wall` / `_corner` / `_pillar`, `psx_wooden_crate_1..6`, `meshy_burlap_sack`,
+  `sea_chest`, `stocks`, `cross`, `hw_candle(s)`, `angel_statue`, `stone_urn`, `lion_statue`. Forest floor: `fern`, `stump`, `meshy_stump`,
+  `fallen_log`, `meshy_fallen_log`, `psxg_rock_1..4`, `hw_stone` + `_1.._5`, `psxg_stepping_stone_1/2`, `psxg_dead_bush_1/2`,
+  `woods_healflower`, `woods_thornvine`, `mushroom2`, `anthill`, `hw_straw`, `psxg_dead_tree_1/2`, `dead_snag`, `hollow_dead_tree`,
+  `hollow_tree`, `meshy_dead_tree_with_a_dark_hole`, `meshy_tree_with_a_hole`. Camp / woodcutter / hunter: `campfire`,
+  `meshy_campfire_ring`, `cauldron`, `psx_hand_saw_1`, `hw_shovel`, `xmas_hammer`, `sword`, `spear`, `arrow`, `spell_shield`,
+  `armour_stand`, `trap_bear_open` / `_shut`, `meshy_rope`, `psx_table_large_2`, `psx_chair_mp_1`, `psx_meat_1`, `instrument_*`,
+  `item_wizard_staff`. Stones and ruins: `menhir`, `sarsen`, `trilithon`, `cave_stone`, `decor_stone_arch`, `stone_altar`, `hw_wall*`,
+  `hw_bricks*`, `psxg_tombstone_1..3`, `hw_grave*`, `footbridge`. Animals: `wolf`, `rabbit`, `crow`, `eagle`, `dog`, `butterfly`,
+  `monarch`, `swallowtail`, `ladybug`, `bee`, `grasshopper*`, `meshy_frog`, `bat_black`. Water: `rowboat`, `meshy_rowboat`,
+  `ocean_seaweed*` (a reed stand-in), `ocean_fish*`. Trees (placed, never remade): `tree_52` great oak, `tree_53/54` birch, `tree_55`
+  spruce, `tree_5` / `tree_6` bare. Races for the people pass (npc-system.md first): robinhood, knight (female), wizard, gnome, goblin,
+  tree person, rabbit, unicorn. Unwired R2 files that fit: none worth a row (§13 holds no forest or medieval piece; the castle pack's
+  ruined walls are nodes of a file, not cut). KEEP OUT: `camping_tent` (modern), `owl_statue` (10 m, the Woods' horror piece),
+  `woods_cabin` (the Woods' own), `crystal_cluster`, the fairy glow pieces (district F's look).
+- **PASS 1, EXTERIORS + LANDMARKS (seen: 13 views, then 10 more after fixes)**. THE CROWN'S ROAD: stone kerbs both sides, seven
+  lantern posts (the Village's lantern on a post with a stone foot), the royal banner (`sheet().banner`) on four poles, at the bay and at
+  the bridge, a CAMELOT milestone (a `txt:` quad), two `lion_statue` on drawn plinths at the bridge's foot (on the bank track's squares
+  41 and 44: the track keeps a whole square past each), a well with its bucket, a wayside `cross` on a stone foot with candles and two
+  flowers, a `covered_wagon` on the east shoulder with a horse, sacks and crates, a hitching rail, great oaks (`tree_52`) at the bay and
+  in the track's notches. THE GLADE, WEST = the woodcutter's glade: a 13 m oak on the knoll, two stacks of cut logs (drawn: a box + a
+  `barrel` roof a log, pale `wood_planks` ends), a saw, stumps. THE GLADE, EAST = a camp: two ridge tents drawn in strips of two
+  colours (never one flat sheet), the fire, a `cauldron`, a horse, a spear and a shield on a crate. THE STONE RING (P07-07): four
+  `menhir` and a `sarsen` round a `stone_altar`. THE DEAD TREE'S HOLE: bare trees (`tree_5`, `tree_6`), dead bushes, crows, two great
+  dead trunks (`meshy_dead_tree_with_a_dark_hole`, `hollow_dead_tree`) by the hole. THE MOAT'S SOUTH BANK: two rowboats at drawn mooring
+  posts. THE UNDERGROWTH: about 250 ferns, pack rocks, dead bushes and stumps under the first trees along the road, the forest track,
+  the side paths and the bank track, by the district's own dice and only on tree squares. THE FOREST FLOOR: `grass_dark_fantasy` under
+  the district and (the tool's new `groundAlso`) under the forest north of it to the bank.
+- **FRAME RATE** (cloud software GPU, the bay looking up the road, the same view): 0.60 before, 0.60 after; geometries 1,938 -> 1,973,
+  draw calls 3,787 -> 4,097. His F3 at the bay is the number that counts.
+- **NOT SEEN YET**: the two rowboats did not draw at the water's level in the first two probes (the bed under a `stream` moves a prop's
+  `y`); two ways are baked now and the next pass's probe settles it.
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
+  the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
+  (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
+  (the zone's own name); (5) the sword in the stone was NOT put here (the castle has it).
+- **NEEDS A MODEL** (nothing on R2): an axe + chopping block, a hand cart, a wooden barrel, a medieval tent or pavilion, reeds, a deer,
+  a fox, an owl, a leafy bush, forest flowers, a milestone.
 
 ## THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY — one room, no door (2026-11-16, second side)
 
@@ -6400,6 +6583,36 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
   (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
 
+## THE SEWERS, DISTRICT R — The Radioactive Drain, where the Power station drains (2026-11-16, second side)
+
+mondo 11-16: "one sewer district could be radioactive sludge if it connects to the power plant"; on the plan picture
+(`docs/plans/world-zones/sewers_r_plot_plan.png`): "make it a new liquid that does corrosion (I think that's poison and burned combined? that's
+close to radiation). kaiju can live there, black goo, whatever else fits". He did not answer the door (inside / yard) or the size: built as the
+yard door and two plots; both are one row to change.
+- **THE FIFTH ROW:** the room is 6 x 5 plots now (252 x 210 m). P00-04..P02-04 are `solid` (not dug), P03-04 carries the Platform's track on to
+  the south wall (42 m more track), **P04-04 The Power Station Drain** (level 4, 7 m up) and **P05-04 The Sludge Pit** (level 0) are district R,
+  `docs/areas/sewers/districts/R.js`. Both names are plain labels (the game had none).
+- **THE WAY THROUGH (a new loop in the maze):** the Loop Line's tunnel (P03-04) > a side stair 7 m up east > the Drain (valve gallery, the
+  channel with a walk each side) > the channel pours 7 m out of the Pit's west wall into its tank, a ladder beside the fall > the Pit's walk
+  round the tank > a doorway north into the Outfall (one level: no opening row, the two plots share open squares). THE PLAN SAID a stair from
+  the Depot: its foot would have stood behind the parked train, so it climbs from the track tunnel and the Depot is untouched.
+- **THE WAY UP:** link `sewers_power` (`DOOR_HQ.links`): the bulkhead door at the end of the Drain's south passage <> a bulkhead door on the
+  Power station's east wall, in its yard (city plot P02-08, x 203.3, z 113.75). No city file edited. No `why` / `note` text (nobody wrote one).
+- **THE LIQUID `sludge` (new):** data.js `TERRAIN_RULES.sludge` "Radioactive Sludge": move cost 2, heals halved, ending a turn in it gives the
+  game's own CORRODED (2 rounds, the bog's number; flyers spared). Poison family for flow and the poison element (map.js `liquidFamilyOf`),
+  so its run-off behaves like the bog's. In a walked room nobody enters it (any liquid but water). Look: sprites.js `TERRAIN_SPRITES.sludge`
+  (the pack's `Liquid_Green_03`, no new art) + three-renderer.js `_LIQUID_STYLES.sludge` (glowing caustics), `_FLUID_DRIFT_3D`, the calm
+  liquids row; also in ai.js (a turn in it is costed as Corroded), ui.js (the move warning), state.js (icon), battle.js (tint), the map
+  editor's Liquids tab + id lists (`MF_TID`, `ME_TERRAIN_IDS`: appended), editor.js. The plan's square `s` = sludge: bake-sewers.js lays it
+  like water with `key: 'sludge'`; a fall fed by it pours sludge. Any room can use it: a `stream` / `pool` with `key: 'sludge'`.
+- **WHO IS THERE (5, no lines):** kaiju, black goo x 2 (his), mad scientist, swamp monster (mine, "whatever else fits").
+- **SEEN ON SCREEN** (probe, three runs): the channel, the fall and the tank glow green in the dark room; the stair, the bulkhead door, the
+  yard door in the city. No error. **NOT WALKED** by a player (the stair, the ladder, both doors: offline graph + pictures only); no fight was
+  played on the sludge (the rule is the bog's code path with another status).
+- **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
+  the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and
+  taken out (the sheet tore into spikes round them); no sound.
+
 ## THE WATERFALLS — a terrain row for any room (2026-11-16)
 
 mondo 11-16: "can we also work on a way to make waterfalls, which we will use elsewhere in other zones too".
@@ -6473,6 +6686,17 @@ too short ... you didn't even get the shape right". So:
   not stone; `trap_sarcophagus` is a pale blue untextured coffin (use `sarcophagus`). The shell's floor / wall colours barely move the grey of
   the `bricks_1` floor sheet.
 - FPS in the King's Chamber: 2.0 (llvmpipe; 225 calls, 768 k triangles; the outside's proof view is unchanged).
+
+**PASS 3, THE DRESSING (`ground()` in G.js, the block "PASS 3").**
+- **THE DIG'S RAMPS:** a plain `ramp` row (no `stairs`) from -1 to 0 over the trench's end square is walked (`k: 'plateau', sink: true` under it);
+  checked with the offline flood. Rope posts (`rope_stanchion`, by the metre), `footbridge` planks across, `map_table`, `film_camera`, amphorae.
+- **THE CAUSEWAY:** a drawn stone kerb (0.38 m, one `arch` row) and a small hall of four granite posts under lintels on whole squares
+  (`des:giza:hall`; each post fenced by `ring()`).
+- **THE OASIS:** five more palms (tree kind `palm`), `ancient_well`, `ocean_seaweed` reads well as reeds at a bank, `rowboat`, `flamingo`,
+  `fortune_teller_tent`, carpets. **THE SAND SEA:** `meshy_giant_foot`, a `rowboat` and a `dinosaur_skeleton` sunk with a small negative `y`.
+- **WRONG PIECES FOUND ON SCREEN:** `babel_crane` is a modern steel tower crane (taken out); `psx_pillar_1` draws near black (taken out);
+  a prop's `y: -2.6` did not sink an `obelisk` (a small negative `y` works on low props); `horse_black` reads as a dark dog from afar.
+- New lights are all `noLight`. FPS at the proof view after the pass: 2.7 (llvmpipe; 427 calls, 1.14 M triangles; before the pass 2.0 to 2.3).
 
 **FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
 `meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
