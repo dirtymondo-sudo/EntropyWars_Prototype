@@ -61,6 +61,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | The Sewers, district T · The Running Tunnels (`districts/T.js`, 5 plots) | free | 2026-11-16 | first build: the Ghost Station's platform + furniture, two trains in the Depot, rails, four bystanders. No Signal Gantry, no lit train, no station tiles |
 | The Sewers, district H · The Holding Cells (`districts/H.js`, 2 plots) | free | 2026-11-16 | first build: cots + bars, the guard's desk, bulbs, four bystanders. An open hall: the six cells are not walled; no Catwalk, Vent Stack, Property Room |
 | The Sewers, district O · The Old Workings (`districts/O.js`, 2 plots) | free | 2026-11-16 | first build: the Flood, torches, brazier, bones, two bystanders. No Sump, Pump Ledge or Chimney shaft |
+| The Sewers, district R · the radioactive district (proposed; build waits mondo's OK) | second | 2026-11-16 | PROPOSAL ONLY, nothing built: mondo 11-16 "one sewer district could be radioactive sludge if it connects to the power plant". Plan picture `docs/plans/world-zones/sewers_r_plot_plan.png` (+ `sewers-r-layout.json`, `draw-sewers-r.js`): a fifth row on the south side, two plots dug (P04-04 the Power Station Drain, level 4; P05-04 the Sludge Pit, level 0; labels mine), a 7 m sludge fall, a stair from the Depot, a doorway from the Outfall, a new link up to the city's Power station. Held by the district R thread (branch `claude/sewers-radioactive-district`); waits his answers to four questions |
 | Everything else | free | | ask mondo which side takes it |
 
 ## Notes between the sides
@@ -169,3 +170,14 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the Hills thread, to the Disaster City holder; mondo: "continue making it better and blend together more, natural part of the city"): three more lines
   in `bake-disaster-city.js`, nothing of yours moved: a district's `exports.streets` are laid into `gen.streets` last (the Hills' six road runs: lane lines + kerbs up the
   canyon; the mountain road's line now runs on past the Casino court's middle to the line), a lamp that carries its own `d` keeps it, and `LOOKS.N` (the Hills' lamp light).
+- 2026-11-16 (second, the district R thread, to the Sewers thread = holder of `bake-sewers.js` + `docs/areas/sewers/layout.json`): mondo asked for a radioactive sludge district
+  that meets the Power station. PROPOSED, not built (picture `docs/plans/world-zones/sewers_r_plot_plan.png`); nothing of yours is edited until he says OK. What the build would
+  change in your files, kept small and apart from your grime pass: (1) layout.json: `rows` 5, twelve more rows of squares, six plot rows (P00-04..P02-04 solid, P03-04 = the
+  Platform's track on to the south wall, P04-04 + P05-04 = district R), `districts.R`, three openings (P04-03 > P04-04 a stair of 7 m; P04-04 > P05-04 a fall, by ladder;
+  P05-03 = P05-04 one level, a plain doorway), 3 x 2 squares dug in the Depot's south wall and 3 in the Outfall's; (2) bake-sewers.js: a plot may be `solid` (no reach check),
+  two plots of one level may simply share open squares on their line, a way `power` (a spur to the south wall of P04-04 + its row in WANT), a stream row may carry a `look`;
+  (3) data.js by hand: the room grows 42 m south, so its middle moves 21 m and the z of docks_sewer, stadium_sewers, tunnels_works, sewers_drain, workings_oubliette,
+  cells_dungeon and well_garden changes (the tool prints each); the Platform's track is 42 m longer. If you would rather it grew another way (your Dead Man's Cave plot?), say so here.
+- 2026-11-16 (second, the district R thread, to the Disaster City holder): the proposed way up from the Sewers' district R comes out at the Power station (P02-08, district I),
+  inside the turbine hall or in its yard, on mondo's pick. It would be ONE new `DOOR_HQ.links` row (the link makes the city's door); no city room, bake tool or district file
+  is edited. Not built yet. If a square of the hall or the yard must stay free, name it here.
