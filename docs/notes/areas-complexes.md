@@ -3748,6 +3748,68 @@ districts ... the north pole to the north of the castle would be good as a rival
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
 
+## CAMELOT CASTLE, ONE STACKED BUILDING — the palace's own room, six levels (2026-11-15)
+mondo on the next-pieces picture: "can we make the 3 rooms stacked like part of the same building, but the castle can be its own loading
+screen" + "real architecture/floor plan"; on the floor plans (`docs/plans/camelot/camelot_castle_stacked_plan.png`): "1) yes", "lets not worry
+about the sky castle for now, and no it would not be in the same room", "do all 3 floors, not just 2", the five house kinds "are fine".
+- **The room** `site_prebuilt_camelot_palace` (site `prebuilt_camelot`, part `palace`), written by `node bake-camelot-castle.js` between
+  `CAMELOT-PALACE-BEGIN / END` in data.js (never hand-edit). 30 x 12 squares = the palace's own footprint (wings u 0-8 and 22-30, the Keep
+  8-22). The tool carries the Desert insides' kit (`mk`, bake-desert-insides.js) and its walk check.
+- **SIX LEVELS, 7 m apart**: Undercroft 0 · floor 0 at 7 (every way out) · floor 1 at 14 · floor 2 at 21 · floor 3 at 28 · Battlements 35.
+  - Undercroft: Merlin's Workshop with the Orb under the throne, Gaoler's Room, three cells, antechamber, Crypt of Kings, Ossuary, Sally
+    Port passage, Well Chamber, the Vaults (under the Kitchen), the Cistern (under the Barracks).
+  - Floor 0: the Throne Hall (14 m high), Robing Room, lobby, Chancery; Kitchen wing (Great Kitchen, Buttery, Pantry, Servery); Barracks wing
+    (Barracks, Arms Store, Captain's Room, Guard Room).
+  - Floor 1: the gallery round the hall's void, King's Office, Treasury, the Chapel Royal (west), the Knights' Hall (east).
+  - Floor 2: Long Gallery, King's Solar, Presence Chamber, Queen's Chamber, Wardrobe, Nursery; the wings' roofs are walked on.
+  - Floor 3: the Great Library, Merlin's Study, the War Room. Battlements: the roof walk, the bridge walk, the Spire Room (its sky door is
+    drawn shut: the sky castle waits).
+- **CHANGED FROM THE DRAWN PLAN, and why** (tell mondo): the plan drew the Great Stair as stacked flights in a stair hall. The engine holds one
+  ground height a point, and a stair is ground, so no stair can stand over another or over a walked room. Built instead: ONE straight stair
+  east along the Keep's north wall (floor 0 > 1 > 2 > 3, a landing a floor, rows v 0-1), the last flight back west up to the Battlements, and
+  the two ways to the cellar as cellar stairs in the wings (Servery > Vaults, Guard Room > Cistern). The north range's rooms are one square
+  shallower for it. The plan's Undercroft Hall and tunnel became the Sally Port passage and the Well Chamber (the portal's sill is solid
+  ground between them). The Spire Room is in the Spire's foot on the Battlements (no climb inside the Spire).
+- **THE RULES THIS BUILD FOUND (stacked floors; they hold for any room):**
+  1. The field = the lowest floor. A floor over a walked room is a `bridge` slab; where nothing lies under it, make it solid (`plateau`),
+     and put every way out there: a wall door's sill and a free door's pad are read on the FIELD.
+  2. Slabs overlap each other and solid ground by 0.5 m (a slab is read 0.12 m in from its edge; a bare seam is a crack).
+  3. A flight ARRIVES 0.4 m into its landing (the landing slab starts exactly on the flight's last line) and LEAVES from 0.5 m under the
+     landing it starts on. `edge: 0` on the ramp.
+  4. A wall with `y0` only HANGS (lets the floor below walk under it) when its foot is over the highest ground under the WHOLE piece.
+     A piece that runs on over a stair stands from the ground up and shuts the floors below: cut the wall where each flight starts and
+     ends, and where a flight's 0.4 / 0.5 m run-on lies (`V1` in the tool).
+  5. A prop or a native on a floor carries `y` = the floor's height (under 1 it stands on the field, in the cellar). The kit's
+     blocker / doorway check is kept a floor (`R.lvl`).
+  6. A lattice of 0.4375 m climbs a 2-in-3 stair (7 m over 10.5 m); the kingdom's 1.75 m lattice needs 1 in 3.
+- **The kingdom room**: the Keep and the wings are SOLID there now (bake-camelot.js); doors `portal`, `kitchen`, `guard` (free, at their fronts)
+  and `postern` open on the castle room's doors of the same names; the old `keep` door, the Throne Hall / Kitchen / Barracks furniture and
+  King Arthur left the kingdom room. Hand rows: `DOOR_HQ.retired` (the old Keep and Undercroft > the castle room; their literals stay),
+  `links.well_camelot.b` (part `palace`, the Well Chamber), `HQ_WORLD_CLOCK.dayLook`, `HQ_AREA_ENCOUNTERS` (the old Keep's list).
+- **THE CASTLE IN THE SKY is untouched** (the old room). Its two doors still name the old Keep, so they land at the castle room's portal;
+  nothing in the castle room opens on it. Waits mondo.
+- **Who is where** (old lines kept word for word): King Arthur + two knights in the Throne Hall, knight + swordfighter in the Barracks wing,
+  knight in the Knights' Hall, Merlin (wizard, the Undercroft's lines) in the Workshop and the astrologer (wizard, the Keep's lines) in
+  Merlin's Study, skeleton in a cell, ghost in the Ossuary, knight + swordfighter on the Battlements.
+- **Checked offline**: data.js parses; the tool's walk (the walker's own rule from the portal) reaches 52 of 52 stops on all six levels and
+  all five door pads; no NaN. `PALACE_FORCE=1` writes a failing build for debugging only.
+- **THE LIGHT (engine, three-renderer.js `_hqShadowFlags`)**: `shell.sunShadow: false` = nothing of the room's own build casts a shadow. The
+  castle is an OPEN room (its roof walk needs the sky), so every floor stood in the shadow of the slabs over it and read black. Switching the
+  key light's own shadow off instead blanked the whole room ("WebGL: too many errors": the materials are compiled for a shadow map): never do that.
+- **SEEN ON SCREEN (browser probe, playtest_city.js, 11-15)**: the Throne Hall with its gallery, the Great Stair, the Undercroft with the Orb,
+  the Kitchen, the Library, the royal floor, the Battlements with the Spire and the sky; the palace's front from the Market. Proof pictures:
+  `docs/plans/camelot/proof/`. Rough edges seen: the wooden furniture models (round table's chairs, library shelves, psx tables) are very dark;
+  the stair flights wear the pack's greenish planks; rooms are plain (bare walls, few lit windows). Not looked at: the Chapel, the Knights'
+  Hall, the cellar stairs, every door leaf swinging, a fight on an upper floor.
+- **A PROBE NEEDS A FRESH CHECKOUT**: three runs in a row gave no page ("page never ready") because main had moved eight PRs and the local
+  server served its STALE screen. Merge main before each run.
+
+### THE HOUSES, FIVE KINDS (2026-11-15, mondo: "yeah they are fine")
+bake-camelot.js `houseKind()` / `houseLook()`: 1 jettied townhouse (11), 2 shop house (2), 3 thatched cottage (12), 4 burgher house (9),
+5 yard house (9), picked by plot size and place (the Market's edge, against the town wall, the rest). Each has a door in a frame on a stone
+step, shutters and a flower box at each window, lit windows, a chimney. All still solid, same plots, same streets. Seen on screen: one shop
+house on the south street (awning, counter, sign, barrels). The other four kinds were not looked at.
+
 ## CAMELOT CASTLE, REDESIGN 2 — one palace on a hill (2026-11-15)
 mondo on the built plan 3: "this whole section i outlined needs to be the castle, like an epic fantasy dragon quest or final fantasy or medieval
 castle. Disney world cinderella's palace. Hogwarts ... the way it is now is stupid because it like a walled off region inside a walled off region.
@@ -3784,7 +3846,7 @@ the castle should be in the center of the map and relatively symmetrical. higher
   well and the wardrobe (no building's inside is reached by that solver in this room, the live Inn included: the doorways are narrower than
   its lattice; the Keep's doorway line reads clear ground and no wall). Drawings of the baked rows: `docs/plans/camelot/castle2_built_rows_front.png`
   and `castle2_built_rows_plan.png`.
-- **ONE STACKED BUILDING, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: mondo on the next-four picture: "can we make the 3 rooms stacked like
+- **ONE STACKED BUILDING: APPROVED AND BUILT, see the section above** (the plan as posted): mondo on the next-four picture: "can we make the 3 rooms stacked like
   part of the same building, but the castle can be its own loading screen" + "real architecture/floor plan". Floor plans:
   `docs/plans/camelot/camelot_castle_stacked_plan.png` (draw-castle-stacked.py): ONE new room CAMELOT CASTLE behind the palace's portal (the
   loading screen): Undercroft -7 m, floor 0 (Throne Hall 14 m high, Kitchen wing, Barracks wing), floor 1 +7 (gallery, Chapel Royal, Knights'
