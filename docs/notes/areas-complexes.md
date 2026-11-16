@@ -5588,6 +5588,40 @@ the zone". Passes as the pilot's, a PR each: exteriors, interiors, dressing, atm
   0.20 frames a second (it cannot tell them apart). L's real lights went from four to two.
 - Not done: the Boathouse's inside (pass 2), reeds, lily pads, shore dressing, fish (pass 3), mist and night (pass 4).
 
+## THE ESTATE, DISTRICT C — THE CORN FIELDS (2026-11-16, a district thread on mondo's nap order; file `docs/areas/estate/districts/C.js`)
+
+mondo 11-16 (DISTRICT_THREAD_BRIEF.md): every district prototyped without asking, at most five passes. As it stood: 24 props on nine plots, hedge-walled
+tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68, face 180, llvmpipe: only the comparison counts): 1.8 before.
+
+- **FITS THIS DISTRICT (every list read: MODEL_LIST.md sections 6, 7, 10, 12b, 13, the live catalogue, pack-claims.md):**
+  crops + straw `hw_straw`, `hw_straw_2`, `hw_farmland`, `hw_crop*` (the pack's crops are pale soil lumps: not used); scarecrows `hw_scarecrow`, `hw_scarecrow_2`;
+  pumpkins `hw_pumpkin*`, `psxg_jack_o_lantern_*`; bare trees `hw_tree*`, `psxg_dead_tree_*`, `psxg_dead_bush_*`, `stump`, `fallen_log`; rocks `psxg_rock_*`, `menhir`;
+  farm furniture `covered_wagon`, `hitching_rail`, the ranch `rail`, `hw_fence`, `ind_silo`, `power_pole`, `car_truck`, `tire_stack`, `tool_chest`, `hand_truck`,
+  `cable_drum`, `psx_metal_barrel_mp_*`, `psx_wooden_crate_*`, `meshy_burlap_sack`, `wooden_bucket`, `hw_shovel`, `psx_jerrycan_1`, `railway_lantern`, `city_bench`,
+  `park_bench`, `signpost`; the watchers `camping_tent`, `flood_mast`, `film_camera`, `field_radio`, `item_police_barricade`, `traffic_cone`, `warning_tape`,
+  `campfire`; animals `crow`, `rabbit`, `cow`, `anthill`, the insects; held back for later passes: `saucer_lg`, `ufo`, `hw_body*`, `hw_part*`, `skull`, `trap_bear_open`.
+  Not on R2 at all: corn, wheat (the bus-stop pack's `Wheat` is only in bucket `dirtymondo`), a tractor, a plough, a trough, a wheelbarrow, a pitchfork.
+- **THE CORN, WHAT WAS TRIED:** the Halloween pack's four crop nodes at 2.5 m (soil mounds), `ocean_seaweed*` / `kelp` (black blades, animated), `fern`
+  (a 2 MB Meshy mesh: too heavy to plant by the hundred). None reads as corn, so the bank is unchanged and the stalk is on the NEEDS A MODEL list.
+- **PASS 1, EXTERIORS (seen in the cloud browser, 13 + 6 views):**
+  - THE CUT ROWS (`plan()` `strips` + `dress()` `rows`): a field is strips one square wide: bare soil with three drawn furrows a square (`dirt_3` boxes in one
+    `look` a field) and lawn squares, where the room's grass field stands as the young crop. Four fields: The Tall Corn, The Rows west, The Rows east, under the
+    Scarecrow. Ranch `rail` fences on their track sides, a pack scarecrow in each, bales, crows.
+  - THE CIRCLES: a ring and beads of lawn squares left standing in the flattened ground (the formation), four `menhir` at its corners, a cow, candles, a
+    KEEP OFF THE CROP board. A ring of corn squares was tried first: one-square banks draw as hedge pyramids. The west circle: a watchers' camp (tent,
+    flood mast, film camera, radio, barricades, a fire).
+  - THE HUB: a drawn FINGERPOST (THE WOODS, THE CIRCLES north; THE LAKE, THE RANCH east; THE HOUSE south), a wagon, hitching rails, a bench, barrels, crates.
+  - THE ROWS, EAST: a silo yard (two `ind_silo`, never placed before), a GRAIN board. THE FARM TRACK: five `power_pole` along the track, a lay-by with the
+    truck, a turning place with a wagon and bales, THE RANCH board. THE WOODS GATE: a verge with a picket fence and a bench, PRIVATE LAND, bare trees.
+  - Twenty-odd drawn LAMP POSTS (H's `lampPost`, copied) and five painted boards (`board()`: plain words, read from both sides).
+  - LIGHTS: C keeps two real ones (the Hub's torch, the big circle's); the rest carry `noLight`.
+  - Props in the district: 24 -> about 220 (+ 8 drawn fields / posts / boards).
+- **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
+  (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
+  THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle.
+- **NEEDS A MODEL:** a corn stalk (and a row of them as one instanced piece), a flattened-corn ground sheet, a tractor, a plough, a water trough, a
+  wheelbarrow, a pitchfork, a lamp post (the zone's drawn one stands in), a barbed-wire fence.
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
