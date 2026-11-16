@@ -37,7 +37,7 @@ const mkRnd = s => { let v = s >>> 0; return () => { v = (v * 1664525 + 10139042
 /* what each world wears: the ground sheets by square char (0 = the room's floor), the rock, the look of its room */
 const WEAR = {
     moon: { label: 'THE MOON', sub: 'THE MARE · THE CRATER · THE FAR SIDE · 20 PLOTS', floor: 'moon', cliff: 'moon_3', path: 'moon_2', wallH: 4.2, noise: 0.12,
-        pal: { p: 'moon_2', c: 'moon_3', e: 'moon_2', m: 'moon_3', r: 'moon_2', l: 'urban:MetalDiamondPlate1a', B: 'urban:MetalDiamondPlate1a' },
+        pal: { p: 'moon_3', c: 'moon_3', e: 'moon_2', m: 'moon_3', r: 'moon_2', l: 'urban:MetalDiamondPlate1a', B: 'urban:MetalDiamondPlate1a' },   // pilot pass 1: the tracks are the darker sheet (obsidian on the crater floors was tried: black squares with stepped edges; out)
         parti: 'A sea of dust with one lander on it, one big crater north of that with the ship\'s collar on a terrace over it, and a ridge to the west with two passes through to the side nobody is shown.' },
     mars: { label: 'MARS', sub: 'CYDONIA · THE CANYON · THE ROVER BAY · 20 PLOTS', floor: 'mars', cliff: 'mars_2', path: 'moon_2', wallH: 5, noise: 0.14,
         pal: { p: 'moon_2', c: 'mars_2', e: 'desert', m: 'mars_2', r: 'moon_2', t: 'mars_2', l: 'urban:MetalDiamondPlate1a', B: 'urban:MetalDiamondPlate1a' },
@@ -74,7 +74,7 @@ function texbDoor(w, door) { const L = Math.max(2, w) - 0.12, cols = Math.max(1,
 const DIR = path.join(REPO, 'docs/areas/space/districts');
 const DISTRICTS = (() => { const o = {}; if (fs.existsSync(DIR)) fs.readdirSync(DIR).filter(f => /^[A-Z]\.js$/.test(f)).sort().forEach(f => { o[f[0]] = require(path.join(DIR, f)); }); return o; })();
 const STAGES = ['plan', 'build', 'dress', 'people'];
-const WANT = [], BLOCK = [], TOTAL = {};
+const WANT = [], BLOCK = [], TOTAL = {}, DECALROWS = [];
 
 function bakeWorld(R) {
     const WR = WEAR[R.id], GX = R.cols, GY = R.rows, W = N * GX, Hh = N * GY, HX = W * C / 2, HZ = Hh * C / 2;
@@ -86,7 +86,7 @@ function bakeWorld(R) {
     const plot = {}; R.plots.forEach(p => { p.x = +p.id.slice(1, 3); p.y = +p.id.slice(4, 6); p.sx = p.x * N; p.sy = p.y * N; if (!R.districts[p.d]) throw new Error('district? ' + p.id); plot[p.id] = p; });
     const plotAt = (sx, sy) => plot['P0' + Math.max(0, Math.min(GX - 1, Math.floor(sx / N))) + '-0' + Math.max(0, Math.min(GY - 1, Math.floor(sy / N)))], distAt = (sx, sy) => plotAt(sx, sy).d;
     const open = (x, y) => x >= 0 && y >= 0 && x < W && y < Hh && cell[y][x] !== 'x';
-    const F = [], ARCH = [], props = [], doors = [], npc = [], count = {}, taken = new Set(), errs = [], strays = [], flats = [], BUILT = {};
+    const F = [], ARCH = [], props = [], doors = [], npc = [], count = {}, taken = new Set(), errs = [], strays = [], flats = [], BUILT = {}, MARKS = [], DECALS = [];
     const feat = o => { F.push(o); return o; };
     const OLD = Q('(r => r ? { n: r.npcSpots || [], l: r.lines || [], d: r.doors || [], shell: r.shell } : null)(DOOR_HQ.rooms.' + R.old + ')');
     if (!OLD) throw new Error('the old room ' + R.old + ' is gone from data.js (its shell, people and lines are read from it)');
@@ -123,6 +123,10 @@ function bakeWorld(R) {
             /* a blocker on a square's middle · decor off it (several may share a square) · a unit. Squares are the WORLD's (sx, sy); ctx.sq(plotId, lx, ly) gives them from a plot's own 0..11 */
             P, dec: decWith(rnd), native, on: (key, sx, sy, o) => { spot(sx, sy, key, true); props.push(Object.assign({ key, x: gcx(sx), z: gcz(sy) }, o || {})); },   // `on` = exactly on a square's middle, sharing it (a terminal on a table)
             hAt: (sx, sy) => r2(hC(sx, sy)), ways: R.ways,
+            /* a line painted on the ground (terrain.marks: tyre tracks, footprints, a pad's edge), in square units (2.5 = the middle of square 2), w in metres */
+            line: (x0, y0, x1, y1, w, color) => MARKS.push({ k: 'line', x0: r2(-HX + x0 * C), z0: r2(-HZ + y0 * C), x1: r2(-HX + x1 * C), z1: r2(-HZ + y1 * C), w, color }),
+            /* a floor decal: kind 'scorch' | 'oil' | 'grime' | 'puddle' | 'blood' (three-renderer.js _hqDecalTex), on a square, r metres */
+            grime: (kind, sx, sy, r) => DECALS.push({ kind, x: gcx(sx), z: gcz(sy), y: r2(hC(sx, sy)), r: r || 1.4, rot: Math.round(rnd() * 360) }),
             free: (sx, sy) => open(sx, sy) && !taken.has(sx + ':' + sy),
             /* every square of a plot whose char is in `chars` (default: plain ground), in reading order, world squares */
             squares: (id, chars) => { const p = plot[id], out = []; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if ((chars || '.').includes(cell[p.sy + ly][p.sx + lx])) out.push([p.sx + lx, p.sy + ly]); return out; },
@@ -203,6 +207,7 @@ function bakeWorld(R) {
     L.push("                res: 0.875, floor: '" + WR.floor + "', cliff: '" + WR.cliff + "', path: '" + WR.path + "',");
     L.push("                noise: { amp: " + WR.noise + ", scale: 10 }, crag: false,");
     L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + slope.toString('base64') + "' } },");
+    if (MARKS.length) L.push("                marks: " + J(MARKS) + ",");
     L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
     L.push("                /* every square that is not a `space` is rock */");
     L.push("                gen: { kind: 'plan', look: 'rock', wallH: " + WR.wallH + ", edge: 2.0, jitter: 0.4, topNoise: 1.1, rim: 0, forceGrow: 0 },");
@@ -227,6 +232,7 @@ function bakeWorld(R) {
     Object.keys(WAY).forEach(k => { const w = WAY[k], yv = r2(hC(w.sx, w.sy)), at = "wall: 'free', x: " + w.x + ", z: " + w.z + ", face: " + w.face + (Math.abs(yv) > 0.3 ? ', y: ' + yv : '');   // a door on a tier carries its height
         if (k === 'bay') WANT.push([R.site + ": { room: '" + R.room + "', door: { id: 'bay', " + at + " } }", 'siteRooms.entry.' + R.site]);
         else WANT.push(["{ site: '" + R.site + "', part: '" + PART + "', " + at + ",", 'link ' + k + ' (the ' + R.name + ' end)']); });
+    DECALROWS.push("    " + R.room + ": " + J(DECALS.slice(0, 60)) + ",   // SPACE72-DECALS: written by bake-space.js\n");
     WANT.push([R.room + ": { x: " + gcx(R.marker[0]) + ", z: " + gcz(R.marker[1]) + " }", 'HQ_AREA_MARKERS.' + R.room]);
 }
 
@@ -243,5 +249,9 @@ if (DRY) process.exit(0);
 const END = '        /* SPACE72-END */\n', b0 = src.indexOf('        /* SPACE72-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const a = src.indexOf('        /* ESTATE36-BEGIN'); if (a < 0) throw new Error('anchor (ESTATE36-BEGIN) not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
+/* the rooms' floor decals: one row a room in DOOR_HQ.decals (written before the Sewers' own row) */
+{ src = src.split('\n').filter(l => l.indexOf('SPACE72-DECALS') < 0).join('\n');
+  const a = src.indexOf('    site_prebuilt_downtown_underworld: ['); if (a < 0 || src.slice(a, src.indexOf('\n', a)).indexOf('SEWERS24-DECALS') < 0) throw new Error('DOOR_HQ.decals anchor (the Sewers\' row) not found');
+  src = src.slice(0, a) + DECALROWS.join('') + src.slice(a); }
 fs.writeFileSync(file, src);
 console.log('data.js: four rooms written (' + block.length + ' bytes)');
