@@ -4384,7 +4384,18 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   A board on a gable-front house hangs at z `d/2 + 0.86` (in front of the gable's overhang). Five plain boards: POST OFFICE, BAKERY, TOY SHOP, STABLE,
   COAL (plain labels, waiting for mondo's word). The Workshop: white corner posts, candy posts at the door, its board, the same windows. The Pole: 6.4 m
   of stripes, a gilt ball (`gold`), a stone ring. `tailor` opens the cut-off nook (0 squares unreached now). Seen on screen at HEAD 206518c.
-- To know: the cottages' insides are empty until pass 2. The gold diamond on the square is the site's PvP arena marker (the engine's), not the village's.
+- To know: the gold diamond on the square is the site's PvP arena marker (the engine's), not the village's.
+- **PASS 2, INTERIORS**: all 15 houses and the Workshop are lit and furnished (N.js build, "THE INSIDES"). Three things learned on screen, true for any
+  walked-in `texbuilding` in a plot room:
+  1. **A building's own inside takes no light**: at night a furnished room was as dark as outside. `lit()` draws the walls, floor and ceiling again a hand
+     inside, as thin BOXES with `glow` (a `quad` there lost to the building's wall). A part with `glow` is drawn UNLIT at tint x glow: 0.8 to 0.9 is a lit
+     room, 0.25 was darker than no glow. Grey sheets (plaster, the board sheet) also need `gain` 1.7.
+  2. **A prop's `y`** (three-renderer.js THE TIER HEIGHT): under 1 = a lift over what is under it; from 1 up = a height from the ROOM's floor, and the village
+     stands 1.75 m over that: gifts for the loft at `y: 3.08` hung under it. N.js `UP(h)` = h over a house's floor.
+  3. **Within about 0.6 m of a building's outer face a prop stands on the wall's 2.15 m walker box** (the mail boxes hung at 6.7 m, the toy shop's cabinets
+     went through the ceiling). Furniture: keep its middle 0.65 m in. A piece hung on the wall: N.js `WALL(h)` (`mount: 0` + the y that lands it at h; h
+     from 1.55 m up), or give it something to hang on that stands out from the wall (the Post Office's sorting wall).
+  Hearths are open brick (`hearth()`), the fire is the catalogue's `campfire` (it carries a real light) at `span` 0.8. Seen on screen at HEAD below.
 
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
@@ -5040,6 +5051,18 @@ mondo (the set-up thread's brief): one thread per district; passes in order EXTE
   wider. An `arch` row with no `y` stands on the ground under its origin, which on a plateau is the plateau's top: give it `y: 0`. A sheet
   under a tint reads dark in the shade: `gain` 1.3 to 1.7 on the part. A sign under a barrel roof's overhang is hidden by the roof's end:
   set it 0.3 m out. Hangar 18's saucer on the floor IS confirmed on screen now.
+- **PASS 2, INTERIORS (seen in the browser: 12 + 8 views of the ward, 4 of the hangar, 9 + 7 inside the huts):**
+  - The guard post, both barracks, the mess hall and the radar hut are furnished (`furnish`). The room's ground rolls 8 cm (`noise`) and came
+    up through every walk-in's drawn floor in patches (the first build's guard post too): each walk-in now stands on a 10 cm `plateau` its
+    own size + 0.6 m, which is a level floor. Any district's walk-in on this room's sand needs the same.
+  - THE WHITE ROOMS were grey. A sheet under the building tint reads grey whatever its tint says: the plaster walls take `gain` 2.1, the
+    ceiling tiles 1.9, and the room's own four walls get a drawn white lining (kit walls with `walk: false`, open at the two doors).
+  - GLASS YOU SEE THROUGH: the kit's `glass` wall is a shiny opaque box, so the observation floor looked at a white wall and the control room
+    at a black one. `pane()` in A.js rooms() has the kit lay the walked rows, frames and leaves with `draw: false`, then turns those rows
+    into real glass `wall` rows (`ghost: false, glass: true`), which drawWall draws see-through. The kit itself is unchanged.
+  - **THE TELEPATH CRASH: CLOSED.** The ward loaded twice with the telepath in (20 pictures, no crash). It was the old SwiftShader probe.
+  - Props to keep out of ordinary rooms: `steel_table` (blood stain under it), `round_table` (Camelot's round table, four metres).
+  - NOT DONE: the huts have no lamp inside (dim); the mess hall is sparse for its size; the tower's ops block is solid, not walk-in.
 
 
 ## CAMELOT, THE VILLAGE — the pilot district thread (2026-11-16, second side; files `docs/areas/camelot/districts/T.js` + `T-houses.js`)
