@@ -62085,7 +62085,7 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_atlantis_temple: { x: 0, z: 0 },   // THE TEMPLE: the dais
     site_prebuilt_stonehenge_henge: { x: 0, z: -28 },   // THE PLAIN: up the avenue from the circle
     site_prebuilt_gobekli_tell: { x: 0, z: 0 },   // THE TELL: its top
-    site_prebuilt_area51_desert: { x: -105, z: -241.5 },   // THE DESERT ON PLOTS (2026-11-15): on the highway at the City Limit
+    site_prebuilt_area51_desert: { x: 42, z: -192.5 },   // THE HIGHWAY (2026-11-16): on the sand beside the Rest Stop (seen in the browser: by the spawn it lay in the westbound lanes, the healing zone with it)   // THE DESERT ON PLOTS (2026-11-15): on the highway at the City Limit
     site_prebuilt_giza_plateau: { x: 4, z: 2 },   // THE PLATEAU: at the pyramid's foot
     site_prebuilt_babel_tower: { x: 0, z: 0 },   // THE TOWER: the top tier (the weenie)
     site_prebuilt_fairy_forest_clearing: { x: 0.5, z: -1.2 },   // THE CLEARING: the crossroads
