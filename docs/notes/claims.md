@@ -15,7 +15,13 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | Area / system | Side | Since | State |
 |---|---|---|---|
 | The Estate (plot build, prompt 5 of docs/plans/HANDOFF_PROMPTS.md) | second | 2026-11-15 | built + look pass merged (seen in the browser); corn waits for the Meshy key. Two pack prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack) |
-| Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 + the castle as ONE stacked room (`site_prebuilt_camelot_palace`) + five house kinds BUILT, seen on screen in part; the sky castle waits mondo |
+| Camelot Kingdom, K The Castle (`docs/areas/camelot/districts/K.js`) + the palace room `site_prebuilt_camelot_palace` + `bake-camelot-castle.js` | owner | 2026-11-15 | held by the castle redesign thread. castle redesign 2 + the castle as ONE stacked room (`site_prebuilt_camelot_palace`) + five house kinds BUILT, seen on screen in part; the sky castle waits mondo |
+| Camelot Kingdom, T The Village (`districts/T.js` + `districts/T-houses.js`, 28 plots) | free | 2026-11-16 | three walk-ins furnished, 43 solid houses in five kinds, market / graveyard / green dressed; no house insides, no lamps or townsfolk; a second thread may take `T-houses.js` alone (say so in the row) |
+| Camelot Kingdom, N The Snowy Pines (`districts/N.js`, 8 plots) | free | 2026-11-16 | thin: sleigh, snowmen, campfires, a yeti; not seen on screen since plan 3 |
+| Camelot Kingdom, F The Fairy Forest (`districts/F.js`, 6 plots) | free | 2026-11-16 | pond, fairy ring, spring, knolls; no light or particles of its own; not seen on screen since plan 3 |
+| Camelot Kingdom, L The Looking-Glass Garden (`districts/L.js`, 6 plots) | free | 2026-11-16 | the old garden's content on the plan (hedges, chessboard, courts, tea party); not seen on screen since plan 3 |
+| Camelot Kingdom, W The Forest (`districts/W.js`, 8 plots) | free | 2026-11-16 | thin: two glade knolls, logs, ferns; the road from the bay to the Drawbridge is bare; not seen on screen since plan 3 |
+| Camelot Kingdom, the tool + shared pieces (`bake-camelot.js`, `docs/areas/camelot/layout.json`: the plan, the kit, the hill, the town wall, the moat, roads, ways out, paint, sky, shell) | free | 2026-11-16 | split into district files on 11-16 (baked room unchanged). Nobody edits these from a district thread: take THIS row first, with a dated note below saying what changes. Rules: areas-complexes.md "CAMELOT, THE DISTRICT FILES" |
 | The Desert | second | 2026-11-16 | the highway is built on mondo's OK (12 x 12 plots, four exits, overpass, signs, cars; areas-complexes.md "THE DESERT, THE HIGHWAY"); seen in the browser, waits his look. Open: no door leaf draws in the probe ("THE LOOK PASS") |
 | The Woods | owner | 2026-11-15 | the life pass (four district looks, per-district particles) is live, waits mondo's look; the cabin has no game role yet |
 | The Mountains (+ the Hollywood Hills room, the city's north beach strip in B.js beach() and EDGES.n.cap) | second | 2026-11-15 | plan 2 built: Hills room, Shasta/Olympus swap, north beach; not seen on screen, waits mondo's look |
@@ -46,3 +52,8 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, to the Disaster City frame rate holder): one engine line changed outside any row, on mondo's "fix the slow probes": three-renderer.js
   `_hqSeatLater` now waits 12x the last seat pass's cost (THE SEAT'S SHARE, rendering-loading-perf.md). All harnesses launch through `probe-fast.js`;
   playtest_city.js needs no `--wait=150000` / `EW_NO_MODEL_QUEUE` (PLAYTEST_NOTES "THE FAST PROBE").
+- 2026-11-16 (second, to the Camelot holder): on mondo's order ("every single zone needs to be like that. now. so we can work in parallel") the Camelot row was `owner` and
+  is now one row per district. What changed: `bake-camelot.js` keeps only the shared pieces; what stands in a district moved, unchanged, to
+  `docs/areas/camelot/districts/<K T L F N W>.js` (+ `T-houses.js`). The baked room is byte for byte the same. The castle's outside (the old `buildCastle()`) is
+  `districts/K.js` `first(ctx)`, still yours with the palace room and `bake-camelot-castle.js`, none of which was touched. The hill's `flight()` / `tier()` / `parapets()`
+  stayed in the tool (shared ground): the castle thread may keep editing those lines, say so here. T, N, F, L, W are free for one thread each.

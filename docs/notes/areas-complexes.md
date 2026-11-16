@@ -3647,6 +3647,57 @@ The bolt shield (mark B) now sits on the city's own street furniture, and the ci
 - THE MANHOLE reads darker (IRON / DARK in `_hqCityManholeTex`). THE HILL SIGN: a letter stands on the highest land under its width and 2.5 m in front,
   so no foot sinks into the slope.
 - LESSON (headless): a prop's GLB can take minutes to arrive after a teleport; until then only its blob shadow is there. Wait and look again before judging a plate.
+## CAMELOT, THE DISTRICT FILES — one thread a district (2026-11-16)
+
+mondo 11-16: "every single zone needs to be like that. now. so we can work in parallel" (like Disaster City's district files). A set-up
+change: how the zone is WRITTEN, not what is built. The baked room `site_prebuilt_camelot_kingdom` is byte for byte the same before and
+after (data.js sha256 `9afc5d47…` both times; `node bake-camelot.js` on fresh main, then again after the split, `cmp` clean).
+
+- **The files** (`docs/areas/camelot/districts/`, loaded by `bake-camelot.js` through ONE hook, "THE DISTRICT FILES" in the tool):
+  | File | District | Plots | Holds |
+  |---|---|---|---|
+  | `K.js` | The Castle | 8 | the castle's OUTSIDE on the kingdom's plots: Keep, wings, towers, Stables, Armoury, the hill's drums and cheek walls, the Lists, the courts, the four doors into the palace room (was `buildCastle()`) |
+  | `T.js` | The Village | 28 | Chapel, Smithy, Inn + their insides, the market, graveyard, green, gates' dressing |
+  | `T-houses.js` | The Village | (same) | the 43 houses: `frontOf()`, `houseKind()`, `houseLook()` (the five kinds). Called by T.js, not by the tool |
+  | `L.js` | The Looking-Glass Garden | 6 | the drawn hedges, chessboard, courts, caterpillar, tea party |
+  | `F.js` | The Fairy Forest | 6 | pond, ring, spring, knolls |
+  | `N.js` | The Snowy Pines | 8 | sleigh, snowmen, campfires, the yeti |
+  | `W.js` | The Forest | 8 | the glades' knolls, logs, ferns |
+  Each file's header is its thread's brief: its plots, what stands there, what is missing or waits mondo, the hooks.
+- **Why the Village has two files**: the houses are most of the village's code and a job of their own (43 looks today, insides later), and
+  the street dressing never touches them. T.js calls T-houses.js at the one place the houses are written, so two threads can hold one each.
+- **The hook**: a file exports `first(ctx)` (right after the hill, before the moat and the wall: K uses it, so the castle's rows still lead
+  the room) and / or `build(ctx)` (after every shared piece stands). The tool runs them in a FIXED order, K T (the road in from the bay)
+  L F N W, not by file name: the order rows are written is the order they are baked, and every scattered piece (`dec`) draws from one
+  stream of dice, so a district that adds a `dec` moves the scatter of every district after it (a few decimetres, harmless, but it shows
+  in the diff of the baked block). ctx is listed in the tool's hook comment.
+- **What stayed in the tool (shared, nobody's district)**: the plan's reading (`layout.json` cells, plots, the houses' and walk-ins' squares),
+  the kit (`sheet()`, `building()`, `inside()`, `solid()`, `flushArch()`), THE HILL (`tier` / `flight` / `parapets`: the two stone steps and
+  the three stairs), the moat and the bridges, the town wall with its towers and gates, the ways out (`oldgarden`, `deadtree`, the bay and
+  its two braziers and signpost, THE MIRROR's door on L's plot P00-04, the links' ends), the open ground, the paint, the tree zones, the
+  checks, the shell and sky, the room's text.
+
+### The rules for a district thread
+1. **One thread = one district file.** Take its row on the board (docs/notes/claims.md) in your first PR; free it in your last.
+2. **Never edit** `bake-camelot.js`, `layout.json`, another district's file or the baked block by hand. A change to the tool or a shared
+   piece (a kit helper, the hill, the wall, the moat, a road, a way out, the paint, the sky) needs the tool's row taken on the board first,
+   with a dated note saying what changes; keep such a PR small and separate from district work. The plan's squares (where a building or a
+   hedge stands, what is open ground) are `layout.json`: the tool's.
+3. **The castle's inside** (`site_prebuilt_camelot_palace`, `bake-camelot-castle.js`) and `districts/K.js` are the castle thread's.
+4. **Scope of a district thread**: exteriors, interiors, dressing, atmosphere, polish, on its own plots, with its own row ids (`cam:` + a
+   name no other district uses). Visual work gets a browser run (RULE #1c): `node playtest_city.js site_prebuilt_camelot_kingdom '[views]'`.
+5. **Rebake and merge**: `node bake-camelot.js` (1 s), `node --check data.js`, commit your file AND data.js, bump the `?v=` token (data.js is
+   an R2 file), PR, merge, `node sync-zip.js --upload`.
+6. **When another district landed first** (the baked block conflicts in data.js): `git fetch origin main && git merge origin/main`, resolve
+   every file EXCEPT the block by hand keeping both sides, then throw the conflicted block away and rerun `node bake-camelot.js` (it
+   rewrites everything between `CAMELOT-KINGDOM-BEGIN / END` from the merged files). Never keep one side of the baked block wholesale,
+   never hand-merge inside it. Merge main again right before you merge your PR, and rebake if anything under `docs/areas/camelot/` or the
+   tool came in.
+7. The tool's checks are everybody's: a piece on a square that is not free ground, a prop not in the catalogue, a plot not walked to from
+   the bay, stops the bake. Fix your file; do not loosen the check.
+- **Where older notes point now**: "bake-camelot.js `buildCastle()`" = `districts/K.js` + the tool's THE HILL; "bake-camelot.js `houseKind()` /
+  `houseLook()`" = `districts/T-houses.js`; `sheet().roof` and the other kit pieces are still in the tool.
+
 ## CAMELOT KINGDOM ON PLOTS, THE CASTLE — the second area of the world plan, first delivery (2026-11-15)
 mondo 11-15: "start ... another thread for the next most important zone" (Camelot Kingdom: the Woods' trail ends there) · 16:39 "i would want the
 old rooms to be redesigned too. Like camelot castle should be designed with the same level of architecture as the most complex buildings in
