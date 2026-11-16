@@ -89860,13 +89860,15 @@ const ThreeRenderer = (function () {
        second. The picture he sees: the debrief stays about two seconds longer, then the city at its normal frame rate, in
        place of ten and more seconds at 1 to 12 FPS. Off: window.EW_HQ_BACK_NO_HOLD (the draw from the first frame),
        window.EW_HQ_BACK_OLD (the passes wait for the landing again). */
-    var HQ_BACK_HOLD_MS = 5000;
+    var HQ_BACK_HOLD_MS = 6000;
     function _hqPassOk(H) { return !!(H.ready || H.landed || (H.opts && H.opts.onFirstFrame && !(typeof window !== 'undefined' && window.EW_HQ_BACK_OLD))); }
     function _hqFirstMergeDone(H) { return _hqBatchOff() || !!(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')); }
     function _hqBackHold(H, now) {
-        if (!H.opts || !H.opts.onFirstFrame || H.firstFramed || H.ready) return false;
+        if (!H.opts || !H.opts.onFirstFrame || H.firstFramed) return false;   // (the way back is READY at once, its gate does not wait for the merge: mondo's F3 11-16 02:57, the room drawn at 3.8 FPS with "build 3495->756")
         if (typeof window !== 'undefined' && (window.EW_HQ_BACK_NO_HOLD || window.EW_HQ_BACK_OLD)) return false;
-        if (!_hqChunkBig(H) || now - H.t0 > HQ_BACK_HOLD_MS) return false;
+        if (!_hqChunkBig(H)) return false;
+        if (H._holdT0 == null) H._holdT0 = now;   // counted from the first tick: the builders' own seconds are not the hold's
+        if (now - H._holdT0 > HQ_BACK_HOLD_MS) return false;
         return !_hqFirstMergeDone(H);
     }
     function _hqInstTick(H, now) {
@@ -94797,7 +94799,7 @@ const ThreeRenderer = (function () {
            HQ_BATCH.firstSliceMs a frame and waits as it does behind the card. After that, the settled pace as before.
            Off: window.EW_HQ_BATCH_FIRST_SLOW. */
         var firstRun = !!(H.ready && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_FIRST_SLOW) && !(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')));
-        var held = !H.field && !H.ready && _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: no frame is drawn, the merge has the tick
+        var held = !H.field && _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: no frame is drawn, the merge has the tick
         var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : held ? (HQ_BATCH.holdSliceMs || 220) : !H.ready ? HQ_CARD_SLICE_MS : firstRun ? (HQ_BATCH.firstSliceMs || 28) : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
             var R = recs[r];
