@@ -6392,6 +6392,36 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
   (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
 
+## THE SEWERS, DISTRICT R — The Radioactive Drain, where the Power station drains (2026-11-16, second side)
+
+mondo 11-16: "one sewer district could be radioactive sludge if it connects to the power plant"; on the plan picture
+(`docs/plans/world-zones/sewers_r_plot_plan.png`): "make it a new liquid that does corrosion (I think that's poison and burned combined? that's
+close to radiation). kaiju can live there, black goo, whatever else fits". He did not answer the door (inside / yard) or the size: built as the
+yard door and two plots; both are one row to change.
+- **THE FIFTH ROW:** the room is 6 x 5 plots now (252 x 210 m). P00-04..P02-04 are `solid` (not dug), P03-04 carries the Platform's track on to
+  the south wall (42 m more track), **P04-04 The Power Station Drain** (level 4, 7 m up) and **P05-04 The Sludge Pit** (level 0) are district R,
+  `docs/areas/sewers/districts/R.js`. Both names are plain labels (the game had none).
+- **THE WAY THROUGH (a new loop in the maze):** the Loop Line's tunnel (P03-04) > a side stair 7 m up east > the Drain (valve gallery, the
+  channel with a walk each side) > the channel pours 7 m out of the Pit's west wall into its tank, a ladder beside the fall > the Pit's walk
+  round the tank > a doorway north into the Outfall (one level: no opening row, the two plots share open squares). THE PLAN SAID a stair from
+  the Depot: its foot would have stood behind the parked train, so it climbs from the track tunnel and the Depot is untouched.
+- **THE WAY UP:** link `sewers_power` (`DOOR_HQ.links`): the bulkhead door at the end of the Drain's south passage <> a bulkhead door on the
+  Power station's east wall, in its yard (city plot P02-08, x 203.3, z 113.75). No city file edited. No `why` / `note` text (nobody wrote one).
+- **THE LIQUID `sludge` (new):** data.js `TERRAIN_RULES.sludge` "Radioactive Sludge": move cost 2, heals halved, ending a turn in it gives the
+  game's own CORRODED (2 rounds, the bog's number; flyers spared). Poison family for flow and the poison element (map.js `liquidFamilyOf`),
+  so its run-off behaves like the bog's. In a walked room nobody enters it (any liquid but water). Look: sprites.js `TERRAIN_SPRITES.sludge`
+  (the pack's `Liquid_Green_03`, no new art) + three-renderer.js `_LIQUID_STYLES.sludge` (glowing caustics), `_FLUID_DRIFT_3D`, the calm
+  liquids row; also in ai.js (a turn in it is costed as Corroded), ui.js (the move warning), state.js (icon), battle.js (tint), the map
+  editor's Liquids tab + id lists (`MF_TID`, `ME_TERRAIN_IDS`: appended), editor.js. The plan's square `s` = sludge: bake-sewers.js lays it
+  like water with `key: 'sludge'`; a fall fed by it pours sludge. Any room can use it: a `stream` / `pool` with `key: 'sludge'`.
+- **WHO IS THERE (5, no lines):** kaiju, black goo x 2 (his), mad scientist, swamp monster (mine, "whatever else fits").
+- **SEEN ON SCREEN** (probe, three runs): the channel, the fall and the tank glow green in the dark room; the stair, the bulkhead door, the
+  yard door in the city. No error. **NOT WALKED** by a player (the stair, the ladder, both doors: offline graph + pictures only); no fight was
+  played on the sludge (the rule is the bog's code path with another status).
+- **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
+  the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and
+  taken out (the sheet tore into spikes round them); no sound.
+
 ## THE WATERFALLS — a terrain row for any room (2026-11-16)
 
 mondo 11-16: "can we also work on a way to make waterfalls, which we will use elsewhere in other zones too".

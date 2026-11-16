@@ -62,7 +62,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | The Sewers, district T · The Running Tunnels (`districts/T.js`, 5 plots) | free | 2026-11-16 | first build: the Ghost Station's platform + furniture, two trains in the Depot, rails, four bystanders. No Signal Gantry, no lit train, no station tiles |
 | The Sewers, district H · The Holding Cells (`districts/H.js`, 2 plots) | free | 2026-11-16 | first build: cots + bars, the guard's desk, bulbs, four bystanders. An open hall: the six cells are not walled; no Catwalk, Vent Stack, Property Room |
 | The Sewers, district O · The Old Workings (`districts/O.js`, 2 plots) | second | 2026-11-16 | HELD by the Old Workings thread, branch `claude/sewers-district-o`, pass 1 of 5 live (exteriors: the Sump behind its rail, the Pump Ledge + stair + pump iron, four piers in the Flood, the sleeper wall, timber sets + board roofs on the drift, the neck and the Adit, the Chimney = a brick stump under a lining with daylight, the raised portcullis). Next: 2 more landmark work (no insides here), 3 dressing, 4 atmosphere, 5 polish. Notes: areas-complexes.md "THE SEWERS, DISTRICT O" |
-| The Sewers, district R · the radioactive district (proposed; build waits mondo's OK) | second | 2026-11-16 | PROPOSAL ONLY, nothing built: mondo 11-16 "one sewer district could be radioactive sludge if it connects to the power plant". Plan picture `docs/plans/world-zones/sewers_r_plot_plan.png` (+ `sewers-r-layout.json`, `draw-sewers-r.js`): a fifth row on the south side, two plots dug (P04-04 the Power Station Drain, level 4; P05-04 the Sludge Pit, level 0; labels mine), a 7 m sludge fall, a stair from the Depot, a doorway from the Outfall, a new link up to the city's Power station. Held by the district R thread (branch `claude/sewers-radioactive-district`); waits his answers to four questions |
+| The Sewers, district R · The Radioactive Drain (`docs/areas/sewers/districts/R.js`, 2 plots: the Power Station Drain P04-04, the Sludge Pit P05-04) + the liquid `sludge` | second | 2026-11-16 | BUILT + LIVE on mondo's word ("make it a new liquid that does corrosion ... kaiju can live there, black goo, whatever else fits"): a fifth row, the glowing sludge (ending a turn in it = Corroded), a 7 m sludge fall, a stair up from the Loop Line's tunnel, a doorway to the Outfall, the bulkhead door up to the Power station's yard (link `sewers_power`), five bystanders. Notes: areas-complexes.md "THE SEWERS, DISTRICT R". Held by the district R thread until he has looked; thin spots = the file's NOT YET list |
 | Everything else | free | | ask mondo which side takes it |
 
 ## Notes between the sides
@@ -224,3 +224,14 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the Sewers thread, to the Redwood Trail thread): mist at a fall's foot is NOT done: I tried it as sprites in the terrain group and they never drew (the group is batched after
   the build), so it wants its own unbatched group; noted in areas-complexes.md "THE WATERFALLS". Sound: not done, the game has no water sound and no SFX may be generated; it is on the list for mondo.
 
+
+- 2026-11-16 (second, the district R thread, to the Sewers tool holder): district R is BUILT. What changed in your files, all small: layout.json `rows` 5 (+ six plot rows,
+  three `solid`; P03-04 carries the Platform's track on and the side stair), `districts.R`, legend `s`, two openings (P03-04 > P04-04 a stair, P04-04 > P05-04 a fall by
+  ladder), 3 squares dug in the Outfall's south wall (the doorway to the Sludge Pit; one level, no opening row). bake-sewers.js: `p.solid` (no vault, not in the walk check),
+  the water pass runs twice (`w`, then `s` = `key: 'sludge'`), a fall fed by `s` carries `key: 'sludge'`, the way `sewers_power`, `'wsj'` where people and props may not stand.
+  The Depot was NOT touched (the plan's stair from the Depot would have landed behind the parked train; it climbs from the track tunnel now). data.js by hand: the room is
+  42 m longer, so seven link rows' sewer-end z moved by -21 (docks_sewer, stadium_sewers, tunnels_works, sewers_drain, workings_oubliette, cells_dungeon, well_garden): if you
+  hold a branch with those rows, take main's. The Platform's track is 42 m longer.
+- 2026-11-16 (second, the district R thread, to the Disaster City holder): the Sewers' new way up stands in your room as a link door only (`DOOR_HQ.links` `sewers_power`:
+  a bulkhead door on the Power station's east wall, yard square 10,8 of plot P02-08, x 203.3, z 113.75, facing east). No city file was edited. Keep that yard square free,
+  or say here where it should stand instead.

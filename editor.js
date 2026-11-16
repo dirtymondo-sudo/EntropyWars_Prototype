@@ -4668,7 +4668,7 @@
                 h += '<div class="ed-note">Hover a name for what it does. Stairs look empty = timber in a forest, the site\'s own, else concrete. Cliff sheet size 1 = one sheet per battle square. A tint is a colour over that sheet (white = none).</div>';
                 /* E3: the sea (one water level over the whole room), the floating ground (no ground round it, a rock underside), the grids */
                 var sea = T.sea || null, fl = T.float || null;
-                var liq = [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava'], ['poison', 'poison'], ['poison_bog', 'poison bog'], ['purple_bog', 'purple bog']], sk = String((sea && sea.key) || 'water');
+                var liq = [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava'], ['poison', 'poison'], ['poison_bog', 'poison bog'], ['purple_bog', 'purple bog'], ['sludge', 'radioactive sludge']], sk = String((sea && sea.key) || 'water');
                 if (!liq.some(function (o) { return o[0] === sk; })) liq.push([sk, sk]);
                 h += '<div class="ed-form" data-scope="ground">' + gw('sea', !!sea) + (sea ? gw('seaY', +sea.y || 0) + '<label class="ed-f ed-tip" title="What the sea is made of"><span>sea liquid</span><select data-k="seaKey" data-t="sel">' + liq.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === sk ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>' + gw('seaUnder', !!sea.under) : '') +
                      gw('floating', !!fl) + (fl ? gw('floatDepth', +(fl.depth || 14)) : '') + '</div>';
