@@ -13384,6 +13384,33 @@ north at the circle (`henge_s`: x 133, z -30, face 0). FPS there on the probe's 
   files): six of them took the room from 3.4 M to 8.5 M triangles and 0.7 to 0.1 FPS. Use `skull_pile`, `cattle_skull`, `hw_part*` instead.
   Open: with the barrow in, `renderer.info` reads 8.7 M triangles and 554 calls at the proof view though the frame rate held (0.60); it
   looks like a second pass, not real geometry (not tracked down).
+- **PASS 3, DRESSING** (seen: the camp, the South Gate, the Plain, the altar; FPS settled 1.00. HOW TO READ THE FPS HERE: take it on the LAST
+  view of a probe, after the others; a reading in the first seconds after "room ready" came out at 0.10 because models were still landing).
+  About 100 props, all from the lists below: the Solstice Camp (a covered wagon, four tents, prayer flags + string lights, bedrolls, packs,
+  wood pile + block, a table, cauldron, barrel, taiko + harp, a dog, two tiki torches); the visitors' side (a rope line of `rope_stanchion`
+  up the fork, three `lesson_sign` plaques, a `trail_sign`, a `brochure_rack` by Room 56's frame, a horse at a `hitching_rail`); the Plain
+  (small flowers at each barrow's foot, eight `leafy_bush`, ten rabbits, two cows, a goat on a barrow, butterflies, an eagle circling over the
+  stones on `hover` + `swim`, an owl on a station stone, six more crows); candles, two candelabra and a `ritual_circle` at the altar; ward
+  totems at the Heel Stone; lantern posts at the Long Barrow; five painted trees on the edges.
+- **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md, the live catalogue, pack-claims.md; keys that exist today):**
+  STONES `sarsen` `trilithon` `menhir` `cave_stone` `stone_altar` `decor_stone_arch` `hw_stone` .. `hw_stone_5` `psxg_rock_1-4`
+  `psxg_stepping_stone_1/2` · BARROWS `sarcophagus` `trap_sarcophagus_box` `skull_pile` `cattle_skull` `stone_urn` `greek_amphora` `tomb_plaque`
+  `culvert_mouth` `catacomb_wall` `psx_cobweb_*` · RITUAL `ritual_circle` `candle_ring` `hw_candles(_2)` `candelabra` `cauldron` `item_ward_totem`
+  `item_hagstone` `crystal_cluster` `meshy_crystal_shard(s)` `sword_stone` · FIRE `brazier` `cave_torch` `tiki_torch` `wall_torch` `campfire`
+  `lantern_post` `paper_lantern` · CAMP `camping_tent` `meshy_camping_tent` `canvas_tent` `covered_wagon` `sleeping_bag` `backpack` `picnic_table`
+  `firewood_stack` `axe_chopping_block` `fur_rug` `beach_cooler` `wooden_barrel` `directors_chair` `folding_chair` `prayer_flags` `string_lights`
+  `hammock` · MUSIC `instrument_drum / _guitar(_lying) / _tambourine / _maracas / _seed_pod / _harp / _whistle` `taiko_drum` · VISITORS
+  `rope_stanchion` `lesson_sign` `trail_sign` `signpost` `brochure_rack` `hitching_rail` `ticket_booth` `bus_shelter` `transit_bus` ·
+  BEASTS `decor_sheep` `rabbit` `cow` `goat` `horse_brown` `dog` `crow` `eagle` `owl_perched` `butterfly` `monarch` `grasshopper` `ladybug`
+  · PLANTS `leafy_bush` `fern` `woods_healflower` `fae_flower_small_*` `psxg_dead_bush_1/2` `stump` `fallen_log`; trees `tree_52..56`
+  (painted), `tree_3`, dead `tree_5` · GROUND (eight sheets a room, no more) `grass_2` `marble_light` (the chalk) `dirt_2` `cobblestone`.
+  NOT USED ON PURPOSE: `skull` / `femur` / `ulna` (half a million triangles each), `ocean_rock_*` (black on land), `sword_stone` (a story
+  piece: mondo's call), `ticket_booth` / `transit_bus` (a visitor centre would be an invented building).
+- **PASS 4, ATMOSPHERE** (seen by day and at 22:30, `"eval": "hqClockSet(22.5)"` on a view; FPS settled 1.00). `exports.airZones`: pale
+  motes inside the bank, fireflies over the barrows and over the camp, thin dust on the Plain. Fire so the stones are lit after dark: four
+  `tiki_torch` up the Avenue, four `cave_torch` at the trilithons' feet, two more braziers at the Heel Stone; a `light_shaft` on the altar.
+  The room is a day room that the clock turns to a starry night; the circle by torchlight is the district's best picture.
+  Tried and thrown out: mist in the ditch as `white_cloud` models laid low (cartoon clouds parked on the grass). There is no mist air kind.
 
 - **PASS 2, INTERIORS (district M; seen on screen from the floor):** THE HABITAT's inside. A lit white ceiling at 2.82 m (the walk-in's own
   ceiling hangs lower than a 3.5 m wall's top less 0.3: a lit ceiling at 3.12 did not show), the inner walls in painted tin (`keyIn`),
@@ -13579,28 +13606,6 @@ Copy from `docs/areas/antarctica/districts/S.js`. A helper all six want belongs 
 - **WHAT I WOULD DO NEXT:** his look first. Then pass 4 on the Mare with whatever models he has made; the district threads for the
   nine free districts (Mars' Cydonia is the strongest after the Mare: the Face and the Pyramid already read from the air); the Earth
   in the Moon's sky; the Catwalk on the Terrace.
-- **PASS 3, DRESSING** (seen: the camp, the South Gate, the Plain, the altar; FPS settled 1.00. HOW TO READ THE FPS HERE: take it on the LAST
-  view of a probe, after the others; a reading in the first seconds after "room ready" came out at 0.10 because models were still landing).
-  About 100 props, all from the lists below: the Solstice Camp (a covered wagon, four tents, prayer flags + string lights, bedrolls, packs,
-  wood pile + block, a table, cauldron, barrel, taiko + harp, a dog, two tiki torches); the visitors' side (a rope line of `rope_stanchion`
-  up the fork, three `lesson_sign` plaques, a `trail_sign`, a `brochure_rack` by Room 56's frame, a horse at a `hitching_rail`); the Plain
-  (small flowers at each barrow's foot, eight `leafy_bush`, ten rabbits, two cows, a goat on a barrow, butterflies, an eagle circling over the
-  stones on `hover` + `swim`, an owl on a station stone, six more crows); candles, two candelabra and a `ritual_circle` at the altar; ward
-  totems at the Heel Stone; lantern posts at the Long Barrow; five painted trees on the edges.
-- **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md, the live catalogue, pack-claims.md; keys that exist today):**
-  STONES `sarsen` `trilithon` `menhir` `cave_stone` `stone_altar` `decor_stone_arch` `hw_stone` .. `hw_stone_5` `psxg_rock_1-4`
-  `psxg_stepping_stone_1/2` · BARROWS `sarcophagus` `trap_sarcophagus_box` `skull_pile` `cattle_skull` `stone_urn` `greek_amphora` `tomb_plaque`
-  `culvert_mouth` `catacomb_wall` `psx_cobweb_*` · RITUAL `ritual_circle` `candle_ring` `hw_candles(_2)` `candelabra` `cauldron` `item_ward_totem`
-  `item_hagstone` `crystal_cluster` `meshy_crystal_shard(s)` `sword_stone` · FIRE `brazier` `cave_torch` `tiki_torch` `wall_torch` `campfire`
-  `lantern_post` `paper_lantern` · CAMP `camping_tent` `meshy_camping_tent` `canvas_tent` `covered_wagon` `sleeping_bag` `backpack` `picnic_table`
-  `firewood_stack` `axe_chopping_block` `fur_rug` `beach_cooler` `wooden_barrel` `directors_chair` `folding_chair` `prayer_flags` `string_lights`
-  `hammock` · MUSIC `instrument_drum / _guitar(_lying) / _tambourine / _maracas / _seed_pod / _harp / _whistle` `taiko_drum` · VISITORS
-  `rope_stanchion` `lesson_sign` `trail_sign` `signpost` `brochure_rack` `hitching_rail` `ticket_booth` `bus_shelter` `transit_bus` ·
-  BEASTS `decor_sheep` `rabbit` `cow` `goat` `horse_brown` `dog` `crow` `eagle` `owl_perched` `butterfly` `monarch` `grasshopper` `ladybug`
-  · PLANTS `leafy_bush` `fern` `woods_healflower` `fae_flower_small_*` `psxg_dead_bush_1/2` `stump` `fallen_log`; trees `tree_52..56`
-  (painted), `tree_3`, dead `tree_5` · GROUND (eight sheets a room, no more) `grass_2` `marble_light` (the chalk) `dirt_2` `cobblestone`.
-  NOT USED ON PURPOSE: `skull` / `femur` / `ulna` (half a million triangles each), `ocean_rock_*` (black on land), `sword_stone` (a story
-  piece: mondo's call), `ticket_booth` / `transit_bus` (a visitor centre would be an invented building).
 
 
 ## THE AFTERLIFE, THE BASILICA — the zone's pilot district, pass by pass (2026-11-16, second side; file `docs/areas/afterlife/districts/B.js`)

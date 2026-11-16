@@ -17,6 +17,9 @@
    pieces (a rope line along the fork, three plaques, a trail sign, a rack of leaflets by Room 56's frame, a horse at a rail); the Plain has
    wild flowers at the barrows' feet, bushes, rabbits, two cows, a goat on a barrow, butterflies, an eagle turning over the stones, an owl on
    a station stone, more crows; candles and two candelabra at the altar, ward totems at the Heel Stone; lantern posts at the Long Barrow.
+   PASS 4, ATMOSPHERE: the air by place (pale motes inside the bank, fireflies over the barrows and the camp, a little dust on the Plain);
+   torches up the Avenue and at the trilithons' feet, two more fires at the Heel Stone, so the stones are lit after
+   dark; a shaft of light on the altar. Seen by day and at 22:30.
    NOT YET: see the pass list at the end of this file's section in the notes. */
 'use strict';
 /* two more round barrows on the Plain (squares; the tool adds them to the heights). The first three are the layout's own (A.barrows). */
@@ -111,6 +114,7 @@ exports.dress = ctx => {
     [[4.5, 2.5], [5.5, -0.5], [-2.5, -4.5]].forEach(q => Pm('crow', X + q[0] * C, Z + q[1] * C, { y: 5.05, face: Math.round(rnd() * 360) }));
     [[72, 0], [73, 7], [72, 17], [73, 34], [107, 34]].forEach((q, i) => tree(q[0], q[1], i % 2 ? 'tree_3' : 'tree_5', 6 + (i % 3)));
     dressing(ctx);
+    atmosphere(ctx);
 };
 /* PASS 3, THE DRESSING (its own stage call from dress, after the first build's pieces so their dice do not move) */
 function dressing(ctx) {
@@ -141,5 +145,19 @@ function dressing(ctx) {
     /* a copse on the west edge */
     [[72, 4], [72, 10], [73, 21], [72, 27], [107, 27]].forEach((q, i) => tree(q[0], q[1], ['tree_52', 'tree_54', 'tree_53', 'tree_55', 'tree_56'][i], 7 + (i % 3)));
 }
+/* PASS 4, THE ATMOSPHERE */
+function atmosphere(ctx) {
+    const { A, C, P, Pm, gx, gz, cx, cz } = ctx, h = A.henge, X = gx(h.x), Z = gz(h.y);
+    /* (mist in the ditch was tried with the `white_cloud` model laid low: it reads as cartoon clouds parked on the grass. Out. The game has no mist air kind.) */
+    /* fire: up the Avenue, at the trilithons' feet, at the Heel Stone */
+    [[97, 10], [101, 10], [101, 6], [105, 6]].forEach(q => P('tiki_torch', q[0], q[1]));   // either side of the Avenue's chalk
+    [[-5.25, -8.75], [5.25, -8.75], [-5.25, 8.75], [5.25, 8.75]].forEach(q => Pm('cave_torch', X + q[0], Z + q[1]));
+    P('brazier', 102, 9); P('brazier', 104, 9);
+    Pm('light_shaft', X, Z - 5.25, { face: 200 });
+}
+exports.airZones = ctx => { const h = ctx.A.henge; return [
+    { sx0: h.x - 12, sy0: h.y - 12, sx1: h.x + 12, sy1: h.y + 12, kind: 'motes', color: 0xfff4d0, n: 110, speed: 0.25 },
+    { sx0: 72, sy0: 10, sx1: 80, sy1: 36, kind: 'fireflies', n: 60 }, { sx0: 96, sy0: 26, sx1: 108, sy1: 36, kind: 'fireflies', n: 50 },
+    { sx0: 72, sy0: 0, sx1: 108, sy1: 36, kind: 'dust', color: 0xe8f0d8, n: 60, speed: 0.3 } ]; };
 exports.people = ctx => { const { native, sayOf, OLD } = ctx;
     native('shaman', 92, 22, 200, sayOf(OLD.henge, 'shaman')); native('conspiracy theorist', 77, 19, 90, sayOf(OLD.henge, 'conspiracy theorist')); native('knight', 103, 27, 300, sayOf(OLD.henge, 'knight')); };
