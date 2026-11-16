@@ -139,7 +139,7 @@ function clipNames(file) {
   // `_biped_Animation_` / `_withSkin`) — the same full-mesh exports.
   chunk(files.filter((f) => f.includes('withSkin') || /^Meshy_AI_sniper_(?!biped_)/.test(f)), 7).forEach((c, i) => jobs.push({ out: 'meshy-' + i, files: c.map((f) => ({ file: f })) }));
   if (!jobs.length) { console.error('nothing to render'); process.exit(1); }
-  const browser = await chromium.launch({
+  const browser = await require('./probe-fast.js').launch(chromium, {
     executablePath: process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', headless: true,
     args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
   });

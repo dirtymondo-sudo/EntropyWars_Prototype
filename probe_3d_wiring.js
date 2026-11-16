@@ -25,7 +25,7 @@ function check(name, ok, detail) {
 
 (async () => {
   const exe = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-  const browser = await chromium.launch({
+  const browser = await require('./probe-fast.js').launch(chromium, {
     headless: true, executablePath: fs.existsSync(exe) ? exe : undefined,
     args: ['--use-gl=swiftshader', '--no-sandbox', '--proxy-server=direct://', '--proxy-bypass-list=*'],
   });

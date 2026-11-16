@@ -3647,6 +3647,58 @@ The bolt shield (mark B) now sits on the city's own street furniture, and the ci
 - THE MANHOLE reads darker (IRON / DARK in `_hqCityManholeTex`). THE HILL SIGN: a letter stands on the highest land under its width and 2.5 m in front,
   so no foot sinks into the slope.
 - LESSON (headless): a prop's GLB can take minutes to arrive after a teleport; until then only its blob shadow is there. Wait and look again before judging a plate.
+## CAMELOT, THE DISTRICT FILES — one thread a district (2026-11-16)
+
+mondo 11-16: "every single zone needs to be like that. now. so we can work in parallel" (like Disaster City's district files). A set-up
+change: how the zone is WRITTEN, not what is built. The baked room `site_prebuilt_camelot_kingdom` is byte for byte the same before and
+after (data.js sha256 `fc5334b0…` both times; `node bake-camelot.js` on fresh main, then again after the split, `cmp` clean; done twice, the
+second time on top of the castle thread's banner / stair / tilt changes that merged meanwhile).
+
+- **The files** (`docs/areas/camelot/districts/`, loaded by `bake-camelot.js` through ONE hook, "THE DISTRICT FILES" in the tool):
+  | File | District | Plots | Holds |
+  |---|---|---|---|
+  | `K.js` | The Castle | 8 | the castle's OUTSIDE on the kingdom's plots: Keep, wings, towers, Stables, Armoury, the hill's drums and cheek walls, the Lists, the courts, the four doors into the palace room (was `buildCastle()`) |
+  | `T.js` | The Village | 28 | Chapel, Smithy, Inn + their insides, the market, graveyard, green, gates' dressing |
+  | `T-houses.js` | The Village | (same) | the 43 houses: `frontOf()`, `houseKind()`, `houseLook()` (the five kinds). Called by T.js, not by the tool |
+  | `L.js` | The Looking-Glass Garden | 6 | the drawn hedges, chessboard, courts, caterpillar, tea party |
+  | `F.js` | The Fairy Forest | 6 | pond, ring, spring, knolls |
+  | `N.js` | The Snowy Pines | 8 | sleigh, snowmen, campfires, the yeti |
+  | `W.js` | The Forest | 8 | the glades' knolls, logs, ferns |
+  Each file's header is its thread's brief: its plots, what stands there, what is missing or waits mondo, the hooks.
+- **Why the Village has two files**: the houses are most of the village's code and a job of their own (43 looks today, insides later), and
+  the street dressing never touches them. T.js calls T-houses.js at the one place the houses are written, so two threads can hold one each.
+- **The hook**: a file exports `first(ctx)` (right after the hill, before the moat and the wall: K uses it, so the castle's rows still lead
+  the room) and / or `build(ctx)` (after every shared piece stands). The tool runs them in a FIXED order, K T (the road in from the bay)
+  L F N W, not by file name: the order rows are written is the order they are baked, and every scattered piece (`dec`) draws from one
+  stream of dice, so a district that adds a `dec` moves the scatter of every district after it (a few decimetres, harmless, but it shows
+  in the diff of the baked block). ctx is listed in the tool's hook comment.
+- **What stayed in the tool (shared, nobody's district)**: the plan's reading (`layout.json` cells, plots, the houses' and walk-ins' squares),
+  the kit (`sheet()`, `royalBanner()`, `building()`, `inside()`, `solid()`, `flushArch()`), THE HILL (`tier` / `flight` / `parapets`: the two stone steps and
+  the three stairs), the moat and the bridges, the town wall with its towers and gates, the ways out (`oldgarden`, `deadtree`, the bay and
+  its two braziers and signpost, THE MIRROR's door on L's plot P00-04, the links' ends), the open ground, the paint, the tree zones, the
+  checks, the shell and sky, the room's text.
+
+### The rules for a district thread
+1. **One thread = one district file.** Take its row on the board (docs/notes/claims.md) in your first PR; free it in your last.
+2. **Never edit** `bake-camelot.js`, `layout.json`, another district's file or the baked block by hand. A change to the tool or a shared
+   piece (a kit helper, the hill, the wall, the moat, a road, a way out, the paint, the sky) needs the tool's row taken on the board first,
+   with a dated note saying what changes; keep such a PR small and separate from district work. The plan's squares (where a building or a
+   hedge stands, what is open ground) are `layout.json`: the tool's.
+3. **The castle's inside** (`site_prebuilt_camelot_palace`, `bake-camelot-castle.js`) and `districts/K.js` are the castle thread's.
+4. **Scope of a district thread**: exteriors, interiors, dressing, atmosphere, polish, on its own plots, with its own row ids (`cam:` + a
+   name no other district uses). Visual work gets a browser run (RULE #1c): `node playtest_city.js site_prebuilt_camelot_kingdom '[views]'`.
+5. **Rebake and merge**: `node bake-camelot.js` (1 s), `node --check data.js`, commit your file AND data.js, bump the `?v=` token (data.js is
+   an R2 file), PR, merge, `node sync-zip.js --upload`.
+6. **When another district landed first** (the baked block conflicts in data.js): `git fetch origin main && git merge origin/main`, resolve
+   every file EXCEPT the block by hand keeping both sides, then throw the conflicted block away and rerun `node bake-camelot.js` (it
+   rewrites everything between `CAMELOT-KINGDOM-BEGIN / END` from the merged files). Never keep one side of the baked block wholesale,
+   never hand-merge inside it. Merge main again right before you merge your PR, and rebake if anything under `docs/areas/camelot/` or the
+   tool came in.
+7. The tool's checks are everybody's: a piece on a square that is not free ground, a prop not in the catalogue, a plot not walked to from
+   the bay, stops the bake. Fix your file; do not loosen the check.
+- **Where older notes point now**: "bake-camelot.js `buildCastle()`" = `districts/K.js` + the tool's THE HILL; "bake-camelot.js `houseKind()` /
+  `houseLook()`" = `districts/T-houses.js`; `sheet().roof` and the other kit pieces are still in the tool.
+
 ## CAMELOT KINGDOM ON PLOTS, THE CASTLE — the second area of the world plan, first delivery (2026-11-15)
 mondo 11-15: "start ... another thread for the next most important zone" (Camelot Kingdom: the Woods' trail ends there) · 16:39 "i would want the
 old rooms to be redesigned too. Like camelot castle should be designed with the same level of architecture as the most complex buildings in
@@ -3803,6 +3855,25 @@ about the sky castle for now, and no it would not be in the same room", "do all 
   Hall, the cellar stairs, every door leaf swinging, a fight on an upper floor.
 - **A PROBE NEEDS A FRESH CHECKOUT**: three runs in a row gave no page ("page never ready") because main had moved eight PRs and the local
   server served its STALE screen. Merge main before each run.
+
+### MONDO'S EIGHT PINS ON THE FIRST SCREENSHOTS (2026-11-16) — all in both bake tools
+- "random red rectangle and yellow square ... a flag or a banner needs way more detail and thought": `royalBanner()` (same text in both tools):
+  iron rod, gilt finials, crimson cloth with a gold border and a swallowtail foot, Arthur's arms (gold crown over the sword in the stone).
+  Every drawn cloth in Camelot is this one. The Armoury's flat shields and the tilt's cloth strips are gone.
+- "modern metal guard rails for a fantasy castle": the castle tool's own `guard()` (`stone` = low wall under a coping on the roofs, `wood` = a
+  timber balustrade round the hall's gallery). Never the kit's `R.guard` (steel) in Camelot. The tilt is a plank `wall` row, not the engine's `rail`.
+- "don't use this ring of candles": no `candle_ring` anywhere in Camelot.
+- "chimneys look like shit, need fire just like tiles on fire in battles": the kitchen's hearths are stone chimney breasts (jambs, arch, timber
+  mantel, stepped hood, crane) with the new prop `hearth_fire` (data.js catalogue + three-renderer.js `_hqProcBuilders.hearth_fire`, a row's
+  `w` / `h` in metres): three logs, an ember bed, three of the board torch's flames. NOT the burning tile's ray-marched volume yet:
+  `ThreeVFXEffects.buildFlameVolume` is exported for it, but it drew nothing in a room in three tries. Open.
+- "dafuq are these random boxes": the shop counter's goods are baskets of apples / cabbages and a board of loaves.
+- "roofs don't connect": every cone has an eave disc under it (it sat on a narrower gallery with open air between).
+- "no idea what's happening in this screenshot": my camera stood inside the Sword in the Stone. Retaken from the lower court.
+- Also: a stair flight with no `key` wears the path sheet under the shell's GREEN floor colour: every Camelot flight carries
+  `key: 'cobblestone', side: 'castle_wall'`.
+- PROBES: `probe-fast.js` (CLAUDE.md RULE #1c) took 76 s where the old flow took 5 to 10 min and crashed. Leftover probe processes from a
+  timed-out run kill the next run: `pkill -9 -f chrome; pkill -9 -f playtest_city` first.
 
 ### THE HOUSES, FIVE KINDS (2026-11-15, mondo: "yeah they are fine")
 bake-camelot.js `houseKind()` / `houseLook()`: 1 jettied townhouse (11), 2 shop house (2), 3 thatched cottage (12), 4 burgher house (9),
@@ -3967,6 +4038,50 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **Probe tip**: in this room a third-person view (`dist`) puts the camera inside the forest mass's crowns on most plots: use `"fp": true` standing on open ground.
 - **ASKED FOR, NOT BUILT (mondo, same message): a pass that adds WATERFALLS and LIGHT SHAFTS to rooms** ("might need its own thread"). Today rooms have only `pool` /
   `stream` / `deck` water, and `_hqLightShaft` returns null (the `light_shaft` prop and `DOOR_HQ.lightShafts` rows draw nothing). The Falls plot and the canopy want them first.
+
+## THE WOODS, THE DISTRICT FILES (2026-11-16, mondo: "every single zone needs to be like that. now. so we can work in parallel")
+The Woods is written the way Disaster City is: the tool holds what is shared, each district's content is its own file, and one thread per
+district can work at the same time. A set-up change only: the baked room did not change (see THE PROOF).
+- **The files**: `docs/areas/woods/districts/C.js` (The Clearing, plots x 0..2 · y 3..5), `T.js` (The Redwood Trail, x 0..2 · y 0..2), `G.js` (The Ritual
+  Ground, x 3..5 · y 0..2), `M.js` (Dead Man's Cave, x 3..5 · y 3..5). Each starts with its brief: its nine plots, what stands there today, what is
+  missing or waits for mondo, the hooks. Read your file's header before anything else.
+- **The one hook** (bake-woods.js "THE DISTRICT FILES", right after the seeded roll): a file exports any of `tailor(ctx)` (its own changes to the plan's
+  squares, before the levels), `dress(ctx)` / `horror(ctx)` / `life(ctx)` (the three passes as they were built), `build(ctx)` (new work, after the three),
+  `wood` (the feature trees in its forest mass), `treeZones(ctx)` / `airZones(ctx)` (its boxes of `terrain.gen.zones` and `shell.atmos.zones`). The passes
+  run C, T, G, M; the zone boxes are written T, G, C, M (the mountain row and the Snowline's snow come first: the first box wins).
+- **What stays in the tool (shared)**: the plan (layout.json), THE TRAILS AND THE PATHS, the ways out (every door row, the `LINK_ENDS`, the Camelot
+  spur check), the glades, the levels, the open ground and its paint, the creek + the three pools + the decks, the helpers (put / dec / tree / native /
+  hput / hdec / life / fly / sow), the room-wide fern / stump / log scatter, the `FULL` tree map, the checks, the room's text and shell. The trees
+  themselves (bake-trees.py, `rt:*_full`, tree kinds) are the trees row on the board. The air's engine (three-renderer.js `_hqBuildAtmos`) is engine code.
+- **THE DICE AS THEY FELL**: the room is thrown with one stream of dice. Each district's pass, and the forest's feature trees, now starts on the dice
+  it had on the day of the split (the tool's `DICE` table), so a district that adds or drops a roll never moves another district's pieces. `tailor` and
+  `build` start on the district's own number. Two things still reach across: (1) a `sow` row's seed is the count of feature rows before it, so a feature
+  row added inside an OLD pass re-throws every later scatter in the room: put new feature rows in `build`; (2) a `tailor` that changes squares moves
+  the forest's feature trees and the open-ground rows after it (the same dice, other squares). Both show up in the bake's diff, neither breaks anything.
+- **The guard**: a helper asked for another district's plot throws (`not yours: districts/T.js asked for P03-02 …`). Rows pushed by hand (`features.push`,
+  `props.push`) are not checked: keep them on your own nine plots.
+
+**THE RULES FOR A DISTRICT THREAD**
+1. One thread = one district file. Take your district's row on the board (docs/notes/claims.md) in your first PR; free it in your last.
+2. The scope of a district thread: exteriors, interiors, dressing, atmosphere, polish, on its own nine plots. Edit only your `districts/<LETTER>.js`
+   (+ your notes here, + a catalogue row in data.js for a new prop, + MODEL_LIST.md when a model is added).
+3. Nobody edits bake-woods.js, layout.json or a shared piece (a door, a link end, a trail, the water, the levels, the sky, the helpers) without a dated
+   note on the board first, signed with the side. Need a new helper or a hook? Ask there; the holder of the "tool + shared pieces" row adds it.
+   Never edit another district's file. The trees (kinds, crowns) are closed by mondo ("Good, keep them") and belong to the trees row.
+4. Never hand-edit data.js between `WOODS36-BEGIN` / `WOODS36-END`. Bake: `node bake-woods.js` (`--dry-run` = the counts only; `WOODS_DUMP=1` prints
+   the square map). The tool checks every prop key against the catalogue, every native against the unit list, and that all 36 plots are reached on foot.
+5. **When another district landed first**: `git fetch origin main && git merge origin/main`. A conflict inside the baked block is NEVER solved by keeping
+   one side: take either side of the block to get past the conflict, run `node bake-woods.js`, and commit what the tool wrote (it holds both districts,
+   because both district files merged cleanly). A conflict in your own district file: keep both sides by hand. Merge main and rebake again right before
+   you merge the PR.
+6. data.js is an R2 file: a PR that changes the baked room bumps the `?v=` token in index.html and runs `node sync-zip.js --upload` (RULE #1, #1b).
+   A visual change gets a browser run through probe-fast.js (RULE #1c); in this room use `"fp": true` on open ground and `--flags=EW_PERF_LOW`.
+7. What mondo has said that binds every district: no doors in the Woods (ways are trails); no unexplained dead ends; no procedural stand-ins shown to
+   him; no apple tree (a Meshy tree); every new glow carries `noLight`; the cabin has no game role yet; small things only on a path's edge, nothing on a path.
+
+**THE PROOF OF NO CHANGE (11-16)**: on main at b055c5b the old tool was run (`node bake-woods.js`: data.js unchanged, sha256 9afc5d47), the tool was split,
+and the split tool was run: data.js is byte for byte the same file (sha256 9afc5d47, 118,860 bytes of room, the same counts: 361 props, 377 feature rows,
+6 doors, 17 natives). No difference to list, so no browser run, no token bump and nothing to upload.
 
 ## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
 
@@ -4163,6 +4278,58 @@ be cliffs at the north edge which is the hills"; residents "don't worry about it
   door still opens at the Woods' Snowline (the Woods are not changed). The city's closed VATICAN GATE is untouched (ask mondo when the Vatican is built).
   The Vatican's and the Beach zone's plans (`docs/plans/world-zones/`) are not redrawn: Vatican = under Olympus, one step west; Beach = 24 more plots north
   along Entertainment, the cliffs its north edge. No encounter tables, no residents.
+
+## THE MOUNTAINS, THE DISTRICT FILES — one thread a district (2026-11-16, second side; mondo: set the Mountains up like Disaster City's districts)
+
+A set-up change: how the zone is written, not what is built. Everything that stands on the plots moved out of `bake-mountains.js` into six files,
+`docs/areas/mountains/districts/<LETTER>.js` (the letters are `layout.json` `districts`):
+
+| File | District | Plots | Room |
+|---|---|---|---|
+| `N.js` | The North Pole village | 16 (P00..P03 x 00..03) | `site_prebuilt_northpole_plots` |
+| `P.js` | The Snowy Pass | 12 (P04..P06 x 00..03) | `site_prebuilt_shasta_mountains` |
+| `K.js` | The Ski Lodge + slopes | 12 (P07..P09 x 00..03) | same |
+| `O.js` | Mount Olympus | 12 (P10..P12 x 00..03) | same |
+| `S.js` | Mount Shasta | 20 (P13..P15 x 00..03, P13..P14 x 04..07) | same |
+| `H.js` | The Hollywood Hills | 39 (H00..H12 x 00..02) | `site_prebuilt_shasta_hills` |
+
+Each file's header is its thread's brief: its plots, what stands there, what is known missing or wrong, the shared pieces that stand in it, the hooks.
+
+**The hook** (bake-mountains.js "THE DISTRICT FILES", the city's pattern): a file exports any of `tailor(t)` (change a square of its own plots before
+the trails are cut), `apply(ctx)` (the standing things: walked-in buildings), `build(ctx)` (the dressing). A room runs its files in its `files` order
+(Mountains: P, K, S, O), one stage for all, then the next. ctx = the room's helpers (put, dec, tree, native, building, look, feat, flat, S, gx/gz/mx/mz,
+props, doors, marks ...) + `anchor(name, at)` + `say(old, race)` (an old room's native line) + `cabin` + the texture constants.
+Two guards: while a file runs, `S()` throws on a plot of another district; `ctx.rnd` is that district's own random stream (room opt `streams`), so a
+piece added in one district never moves another district's decor.
+
+**THE RULES FOR A DISTRICT THREAD**
+1. One thread = one district = one file. Take the district's row on the board (docs/notes/claims.md) in your first PR; free it in your last.
+2. You edit YOUR district file only. Never another district's file. `data.js` between `MOUNTAINS-BEGIN` / `MOUNTAINS-END` is written by the tool: never by hand.
+3. **The tool and the shared pieces belong to nobody's district.** `bake-mountains.js`, `docs/areas/mountains/layout.json` (the plan's squares, levels,
+   names), the heights, the paint, the tree zones, the sky and edges, the spawn, every way out (wall doors, the links' ends, DOOR HQ's bay doors) and
+   `ctx.cabin`: nobody changes them without a dated note in the board's Notes saying what and why, in the same PR. Keep such a change small and of use
+   to every district (a new ctx helper, a new hook); a change to one district's look goes in its file. A plot's squares: use `tailor()`, not layout.json.
+4. A district's own doors (a `wall: 'free'` door on its own plots, like the chairlift's pair) and its anchors are its own. The five anchors the tool
+   needs must stay set: N `hearth`; O `painting`, `bayOlympus`; S `lemuria`, `bayShasta` (the tool throws when one is missing).
+5. **Rebake and merge.** After an edit: `node --check` your file, `node bake-mountains.js` (1 s; it throws on a piece in the rock, on a taken square, on
+   another district's plot, on a plot not reached on foot, on a step too steep). Before merging: `git fetch origin main && git merge origin/main`. If
+   another district landed first, `data.js` conflicts inside the MOUNTAINS block: NEVER keep one side of the block wholesale and never merge it by hand.
+   Take either side to clear the conflict (`git checkout --theirs data.js` is fine ONLY when the block is the file's one conflict; else resolve the
+   other hunks by hand first), then run `node bake-mountains.js`: the tool rewrites the block from all six files as they stand after the merge. Check
+   `git diff origin/main -- data.js` shows only the rows of your district. Same for the `?v=` token: merge, then re-bump (RULE #1b).
+6. Scope of a district thread: exteriors, interiors, dressing, atmosphere, polish of its own plots. Not in scope without mondo: new game rules,
+   characters, names or story (owner-rules.md), encounter tables (his baked tables), the Ice Wall, new ways between zones.
+7. Visual work gets a probe run and pictures (RULE #1c / #1d, `probe-fast.js`). `dev.teleport` puts the walker at height 0: pass `y` = the ground there
+   (`hqTerrainCompile(room).hFn(x, z)`), or the camera sits under the land. `MTN_DUMP=mtn|pole|hills node bake-mountains.js --dry-run` prints a room's walked map.
+8. The Hills thread (H): that room's ground is Disaster City's north skyline, read at load, and the city draws its far sign where the twelve
+   letters stand (`docs/disaster-city/districts/E.js` `edges.sign`). Moving the letters or the ground under them needs a note for the city's holder.
+   The city's north beach (`districts/B.js` beach(), `bake-disaster-city.js` EDGES.n.cap) is the city's, not the Hills'.
+
+**PROOF OF NO CHANGE** (rebake before and after, both loaded with load-data.js and compared room by room, 255 rooms): the North Pole room and the Hills
+room are the same to the byte; every link end and bay door is the same; in the Mountains room the heights, the paint, the tree zones, the doors, the
+natives and the marks are the same, and the feature and prop lists hold the same rows in another ORDER, one cause: the Warming Hut (district P) is now
+written before the Lodge and the Rental Hut (district K), because P runs first (its `texbuilding` row #228 -> #226, its `arch` row #285 -> #283, its 8
+props ahead of the Lodge's and the Rental Hut's 41). No row changed. The block's first comment line names the district files. No browser run (a no-change refactor).
 
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
@@ -4363,6 +4530,46 @@ new areas".
     cay's Lookout and stair. The undersea coral and fish of the old dive route are only partly placed (the Reef, the Maelstrom).
   - No residents with routines, no fights set up in the room, no Deep-to-Area-51 way (still mondo's open question).
 
+## THE BEACH, THE DISTRICT FILES — one thread per district (2026-11-16)
+
+mondo 11-16: "every single zone needs to be like that. now. so we can work in parallel". The Beach is written the way Disaster City is
+(bake-disaster-city.js "THE DISTRICT FILES"): the districts' content left `bake-beach.js` for one file per district, loaded through one hook.
+
+- **THE FILES** `docs/areas/beach/districts/`: `S.js` The Shore (14 plots), `H.js` The Harbour (8), `O.js` The Ocean (93), `T.js` The Bermuda
+  Triangle (25). Each starts with its brief: its plots, what stands there today, what is missing or never seen on screen, the hooks.
+- **THE HOOKS** (all optional, every stage runs S, H, O, T): `tailor(ctx)` before the heights (the plan's squares: a plan building `B` you
+  build goes back to its ground; only the basics are on `ctx` yet: `cell`, `setRect`, `plot`, `Pxy`, `LIGHT`, the grid sizes), `build(ctx)`
+  (walk-ins with `ctx.building`, drawn things with `ctx.look`), `place(ctx)` and `dress(ctx)` (props, palms, people, scatters: `P`, `dec`,
+  `afloat`, `swimmer`, `under`, `palm`, `native`, `feat`, `props`), `reach` (squares the walk check must reach from the city door).
+- **THE DICE:** each (district, stage) throws from its own start (`DICE` in the tool = the one stream's state at that point before the split).
+  A district's new throws never move another district's things; inside your own hook, add at the END to move nothing of your own.
+- **WHAT STAYS IN THE TOOL (shared, nobody edits it without a note at the bottom of claims.md):** `bake-beach.js` and `layout.json`; the
+  height map and every height rule (sand, sea floor, pier, quay, rock, cone); the sea, the paint, the shell / sky, the west edge; the Flying
+  Dutchman's berth, the pier's length and the gangway (`SHIP`, `PIER_END`, `GANG`, `terrain.moored`); the `quay` door to the city and the
+  spawn; the links' places (`MAEL`, `POOL`, `BAY`, the tape at `LIGHT`) and the check of their five data.js rows; the helpers on `ctx`; the
+  walk check; the room's own rows (label, lines, plots). Need a new helper, a new square letter, a new height rule or a moved door: write a
+  note on the board, then make that one change in its own small PR (or ask the thread that holds the tool row).
+- **THE RULES FOR A DISTRICT THREAD:**
+  1. One thread = one district file. Take that district's row on `docs/notes/claims.md` in your own PR; free it (with one line on its state)
+     when you stop. Never edit another district's file, the tool or the layout.
+  2. Your scope: your district's exteriors, interiors, dressing, atmosphere and polish, on your own plots. A thing that crosses into another
+     district's plots (the Long Pier runs into the Ocean's) stays with the file that has it today.
+  3. Never hand-edit data.js between `BEACH140-BEGIN / BEACH140-END`. Edit your file, run `node bake-beach.js` (`--dry-run` = counts only;
+     `BEACH_OUT=<file>` writes the block to a file to diff; `BEACH_DUMP=1` the walked map; `BEACH_DICE=1` the dice starts).
+  4. **When another district landed first** (always assume one did): `git fetch origin main && git merge origin/main` right before you rebake
+     and again right before you merge your PR. A conflict inside the baked block is NEVER resolved by reading it and NEVER by keeping one side
+     wholesale: take either side of the block to get past the merge, keep BOTH sides of everything else, then run `node bake-beach.js`. The
+     tool rewrites the whole block from the four files, so the rebake IS the merge. Bump the `?v=` token again if main bumped it (RULE #1b).
+  5. data.js is an R2 file: every rebake that changes it = token bump + `node sync-zip.js --upload` in the same PR (RULE #1 / #1b).
+  6. A browser run is allowed for what you can only judge by looking (RULE #1c, through `probe-fast.js`). This room is big: read the probe
+     lessons in "THE BEACH ON PLOTS" (keep only the props near your views with `--pre=`, never `EW_NO_MODEL_QUEUE` on the whole room).
+  7. Keep PRs small and land them fast; what you learn goes in this file under your district's own heading, and in your file's header when it
+     changes the brief (a thing seen on screen comes off the "never seen" list).
+- **PROOF OF NO CHANGE (this split):** `BEACH_OUT` before and after the split is the same file byte for byte (277 645 bytes, sha256
+  8a5c015d…), and it equals the block in data.js; data.js did not change, so nothing was uploaded and the token was not bumped. No browser run.
+- **KNOWN TO BE THIN (for whoever holds the tool row):** the walk check's own list still names the Shore's and the Harbour's places in the
+  tool (a district adds its own with `reach`); `place` and `dress` are two passes only because the content was written in two deliveries.
+
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
 The approved plan is `docs/plans/desert/insides_plan.png` (rectangles in `draw-insides.py`). Before this delivery NONE of it was in the game: the
@@ -4529,3 +4736,125 @@ city not get its own exit too?" (it does: Exit 1).
   lanes. Nothing on the city side (a sign for the Desert at the city's way out would be the Disaster City holder's). The canyon from the town
   to the Dig is cut in two by the move (each end opens on sand).
 
+
+## THE DESERT, THE DISTRICT FILES — one thread per district (2026-11-16, second side)
+
+mondo asked for the Desert to be set up the way Disaster City's districts were, so one thread per district can work at the same time. This was a
+set-up change only: nothing that is built changed. PROOF: both tools were rebaked before and after the split and data.js is byte for byte the
+same (the whole file, so the Desert's room and the three insides).
+
+- **THE FILES:** `docs/areas/desert/districts/C.js` (The Circus, 9 plots) · `W.js` (Western Town, 16) · `A.js` (Area 51, 16) · `G.js` (Giza, 16).
+  Each starts with its brief: its plots, what stands there, what is known missing or wrong, its hooks. `bake-desert.js` loads them through ONE
+  hook ("THE DISTRICT FILES" in the tool; the city's pattern). The tool keeps the Highway (R), everything read from the layout's squares (ground
+  paint, rock, the base's chain-link fence), the cacti, the scatter, the edges, the sky, the cars, the room's text.
+- **THE HOOKS** a file may export: `buildings(ctx)`, `furnish(ctx)` (inside its buildings), `ground(ctx)`, `pieces(ctx)` (late), `doors(ctx)`,
+  `dice` (its own dice) and `rooms(kit)` (below). The tool calls each stage in the order the first build wrote the rows (`STAGES`), which is why
+  nothing moved in data.js.
+- **THE FRAME:** a district file writes the FIRST BUILD's squares (0..96; `gx / gc`). The tool moves every row to where the block stands:
+  room square = home square + C (0, 12) · W (48, 12) · A (0, 48) · G (48, 48). A row moves with the FILE that made it (before: by where it
+  stood); the tool warns "OUTSIDE ITS BLOCK" when a file's row stands on another block's squares.
+- **THE DICE:** each file has its own (`ctx.rnd`, `ctx.dec`), so a change in one district never re-throws another's decor. EXCEPT THE CACTI: the
+  tool throws them over the whole room after the districts and keeps them off every piece, so a new piece anywhere can move cacti everywhere.
+  That is expected and nobody's bug; a rebake settles it.
+- **THE GROUND:** the ground sheets come from layout.json (shared). A district changes a square of its own block with
+  `ctx.setPaint(sx, sy, sheet)` (one of the room's seven sheets, or `'sand'`); it does not edit layout.json.
+- **THE INSIDES (decided):** a room belongs to the district whose door leads to it. `A.js rooms(kit)` = Hangar 18 + the White Rooms;
+  `G.js rooms(kit)` = inside the Great Pyramid. `bake-desert-insides.js` keeps only the kit (`mk`), the checks, the rooms' text and the walk
+  check; it belongs to the tool's row. The Circus and Western Town have no room behind a door yet; a new one = a `rooms(kit)` in that file
+  (a NEW room id also needs its rows outside the markers: ask on the board, below).
+
+**THE RULES FOR A DISTRICT THREAD**
+1. ONE THREAD = ONE DISTRICT FILE. Take your row on the board (docs/notes/claims.md) in your first PR. Scope: your district's exteriors,
+   interiors, dressing, atmosphere, polish, on your own plots.
+2. NOBODY touches the shared pieces without a dated note on the board first: `bake-desert.js`, `bake-desert-insides.js`, `layout.json` /
+   `layout-8x8.json`, the Highway, another district's file, the engine (three-renderer.js, map.js), and data.js outside the two marker blocks
+   (links, `siteRooms`, `HQ_AREA_MARKERS`, `HQ_AREA_ENCOUNTERS`, catalogue rows). Need a new ctx helper, a new ground sheet, a catalogue row?
+   Write the note, make the smallest change, say so in the PR. Two threads adding a catalogue row at once is fine (different lines).
+3. NEVER hand-edit between `DESERT64-BEGIN / END` or `DESERT-INSIDES-BEGIN / END`. Edit your file, then `node bake-desert.js` (C, W) or
+   `node bake-desert.js && node bake-desert-insides.js` (A, G). `--dry-run` prints the counts and writes nothing.
+4. MERGING WHEN ANOTHER DISTRICT LANDED FIRST: `git fetch origin main && git merge origin/main`. The district files never conflict (one file a
+   thread). The baked blocks in data.js will: resolve the block any way that parses (never keep one side and stop there), then REBAKE both
+   tools; the rebake writes the block from all four files as they are on the merged tree, and that is the block you commit. Re-bump the `?v=`
+   token (RULE #1b) and `node --check data.js`. If main moved again before your merge, do it again.
+5. Deliver per RULE #1 (PR, merge, `node sync-zip.js --upload`, the token). A visual change gets a browser run (RULE #1c, `probe-fast.js`,
+   playtest_city.js; probe traps: "THE DESERT'S INSIDES, THE LOOK PASS"). Update your board row and your file's header (what stands, what is
+   missing) in the same PR; lasting facts go in this file under your own heading.
+6. A piece that needs a model that does not exist: MODEL_LIST rule (list-models.js) + the catalogue row; the old literals the tool reads lines
+   from (`carnival`, `site_prebuilt_area51_gate`, `site_prebuilt_area51_flightline`, `site_prebuilt_giza_plateau`) must stay in data.js.
+
+## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
+The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
+The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
+`DC_DUMP=<file> node bake-disaster-city.js --dry-run` writes it), the ground height field and the lines the traffic drives.
+**THE RULE (every district thread): nothing solid under 4.3 m stands on a road square, and nothing is laid over a square another thing
+already has. A piece authored before THE DISTRICT MOVE / THE ROADS JOIN AGAIN must be re-read against the roads those two cut.**
+What it found and what was done (all in the district files / the tool, then a rebake):
+- **Harbour master's office (B.js 22)**: the coast road was cut through its squares after it was placed; its east half stood in the road's
+  west lane (the port trucks drove through its desk). Two squares west (squares 1..2), the pavement left clear.
+- **Car wash (R.js P03-03)**: 13 m long about square line 3, its south 3.5 m across the pavement and in the south street's lane. Now 9.4 m
+  long inside its own yard, its mouth on the pavement.
+- **Dojo gate (R.js P03-01-B1)**: two posts + lintel 5.4 m in front of the door = 1.9 m out in the avenue. Now 2.6 m (on the pavement).
+- **Planetarium globe (U.js B.museum)**: 8.4 m across on a 3.5 m pavement, its plinth 1.9 m and its belly 2.9 m out in the cross street's
+  lane. Now 4.8 m across, 1.0 m out from the front.
+- **Cinema (E.js P11-07-B1)**: the fourth marquee column stood in the junction's road square; moved to z 4.9 (the last of the pavement).
+- **Boxing gym piers (R.js P03-00-B1)**: 0.5 m in from the corners (the east one stood past the wall line, in the gym lane).
+- **Pump jacks (I.js PUMP COURT)**: 0.9 m west; each wellhead stood 0.7 m inside the Local shop's wall.
+- **The elevated line (S.js THE CHICAGO PASS)** was laid over six back-lot buildings (dc:in88..in92, dc:inM9): the deck ran through the
+  upper floors of five and the bents' legs stood inside them. S.js takes out every back-lot building under the line (open ground under the
+  trestle); the Bus depot's north edge stays (the line passes over its roof).
+- **Parked cars in the driving lane**: the tool's `clearLanes` only cleared ±3.2 m about a route's line; the cars drive 3.5 m off it. It
+  now also clears the 3.2..4.6 m band on road squares (a parked vehicle to the kerb lane, 5.25 m off; anything else to the pavement), and
+  the Bayside cop-car rows are written at squares 4.5 / 7.5 (the kerb lane), not 4.7..4.9 / 7.1..7.3.
+- **THE NARROW LANES**: the Permit lane and the gym lane (THE ROADS JOIN AGAIN) are two squares wide (7 m) and the cars kept 3.5 m off the
+  line, so they drove with their middle on the kerb, half in the Boxing gym's wall and the Permit offices' rooms. A route names its narrow
+  stretches in `narrow` (rows [x0, z0, x1, z1], the tool's NARROW); three-renderer.js `_hqLaneAt` eases a car in to 1.75 m off the line there.
+LEFT AS THEY ARE (looked at, not changed; each needs mondo's word or a design pass):
+- Cinema marquee: the corner of "the marquee round the corner" hangs over the ring's junction at 3.1 m (cars pass under; a bus roof is 3.5 m).
+- Campus gate (U.js B.gate): its archway is 7 m north of the cross street's middle, so the south turret stands 1.5 m into the road's dead end.
+- Casino (E.js P08-04-B1): the door canopy's two posts stand 0.9 m past the kerb. Members club (F-detail.js): its awning pole stands 2 m out.
+- The Bayside cordon (cop cars, ambulances, a fire truck parked in the kerb lanes, barricades): the plan's "response streets", meant.
+CLEAN: no tree, wall, fence, stair or planned building on a road square; no decor piece floating or sunk; the cars with `y` stand on the
+parking deck / in garages.
+
+## THE ESTATE, THE DISTRICT FILES (2026-11-16)
+
+mondo 11-16: "every single zone needs to be like that. now. so we can work in parallel" (like Disaster City's districts: one thread a district).
+A set-up change only: how the zone is written, not what is built.
+
+- **THE FILES** `docs/areas/estate/districts/<LETTER>.js`: `C.js` THE CORN FIELDS (NW), `L.js` THE LAKE (NE), `H.js` THE HAUNTED HOUSE + GRAVEYARD
+  (SW), `R.js` THE RANCH (SE), nine plots each. Each file's header is its thread's brief: its plots, what stands there today, what is missing or
+  waiting, the hooks. Everything a district builds or places is in its file; `bake-estate.js` holds only what is shared.
+- **THE ONE HOOK** (bake-estate.js "THE DISTRICT FILES", the city's way): a file exports any of `plan(ctx)` (change the plan's squares),
+  `houses(ctx)`, `sheds(ctx)` (buildings), `pieces(ctx)` (drawn pieces, `ctx.flat` levels the ground under one), `water(ctx)`, `dress(ctx)` (props,
+  trees, rails, people, animals). `ctx` = the tool's helpers (`building`, `put`, `look`, `P`, `dec`, `tree`, `native`, `rail`, `feat`, `props`, `npc`,
+  `taken`, `setRect`, `gx`, `gc`, the sheet names, `BUILT` = every building's handle by id) + that district's own dice (`ctx.rnd`, `ctx.dec`).
+  `STAGES` in the tool holds the order the districts run in for each stage (the order the pieces were written in before the split): it only
+  decides the order of the rows in data.js. `SEEDS` = where each district's dice start (where the one shared stream stood before the split), so a
+  piece added in one district never moves another district's pieces. A piece a district stands on another district's square is printed by the
+  bake (not refused).
+- **SHARED = THE TOOL'S** (bake-estate.js + docs/areas/estate/layout.json): the plan and its squares, the corn wall and the pines on it, the levels
+  and the slope, the paint rule, the open ground, the scatter, the shell and the sky, the room's label and lines, the spawn, the checks, and every
+  way out: the Woods gate `woods`, the house's front door `house`, `bay` (Room 512), `bay13` (Room 13), the well (link `well_skinwalker`), the
+  Lodge door (link `ranch_lodge`) and the four data.js rows the tool checks. The rooms behind those doors (the house's five floors, the Lodge,
+  the Cavern) are not district files either.
+- **PROOF OF NO CHANGE:** `node bake-estate.js` on main before the split and after it: data.js byte for byte the same (sha256 `9afc5d47`), the
+  room read through load-data.js the same (`9c9a9019`). So no R2 file changed, no token bump, nothing to upload, no browser run.
+
+### THE RULES FOR A DISTRICT THREAD
+1. **One thread = one district file.** Take your district's row on docs/notes/claims.md in your first PR; free it in your last. Edit only your
+   own `districts/<LETTER>.js`. Read its header first, then "THE ESTATE ON PLOTS", "THE LOOK PASS" and "THE GRASS + THE CLEAN SKY" above.
+2. **Nobody touches the tool, the layout or a shared piece without a note on the board** (claims.md, the "Estate, the tool + shared pieces" row
+   and a dated note at the bottom saying what and why). Need a new helper, a new stage, a change to the corn, the levels, the paint or a way
+   out? Write the note, make the smallest change, say in the PR what moved in the other districts' rows (it should be nothing).
+3. **Stay on your own squares** (C: sx 0..35 · sy 0..35; L: 36..71 · 0..35; H: 0..35 · 36..71; R: 36..71 · 36..71). The bake prints a piece that
+   stands on another district's square: move it, or ask that district's thread on the board.
+4. **Rebake and merge:** `git fetch origin main && git merge origin/main`, then `node bake-estate.js`, then commit data.js with your file. When
+   another district landed first and the baked block (`ESTATE36-BEGIN / ESTATE36-END` in data.js) conflicts: never keep one side of the block
+   wholesale and never merge it by hand. Take main's whole block (either side will do, it is rewritten), keep BOTH sides of everything else,
+   run `node bake-estate.js` again: the tool writes the block from all four files. Merge main once more right before you merge the PR and
+   rebake if main moved. Deliver per RULE #1 (data.js is an R2 file: token bump + `node sync-zip.js --upload`).
+5. **Scope of a district thread:** exteriors, interiors (the walk-ins in your district), dressing, atmosphere, polish. Not in scope: the
+   rooms behind a way out, the plan's plot grid, encounter tables (mondo's baked tables), new R2 game scripts.
+6. **Visual work gets a browser run** (RULE #1c / #1d: the fresh check, probe-fast.js, the proof picture with the `[EW BUILD]` HEAD).
+   Two prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack). No Meshy until mondo says so; the corn waits for it.
+7. A lasting fact goes in this file under your district's own heading in the same PR, and one line on the board.

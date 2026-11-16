@@ -29,7 +29,7 @@ const CT = { '.js': 'application/javascript', '.css': 'text/css' };
 /* THE FIELD PROBE (scratch): enter the cave's gallery offline, stand beside the gnome, strike, and read the battle that starts */
 const room = process.argv[2] || 'site_prebuilt_hollow_earth_gallery';
 (async () => {
-  const browser = await chromium.launch({ headless: true, executablePath: fs.existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome') ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' : undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*'] });
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, executablePath: fs.existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome') ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' : undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*'] });
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 800 } });
   const cnt = { mirror: 0, local: 0, tex: 0, miss: 0 };
   await context.route('**/*', async (route) => {

@@ -24,7 +24,7 @@ const OBJ_STANDIN = 'o t\ng Bark\nv -0.2 0 -0.2\nv 0.2 0 -0.2\nv 0.2 0 0.2\nv -0
 const PAL = [[/grass/, [70, 120, 60]], [/rock/, [120, 112, 108]], [/dirt/, [120, 95, 70]], [/concrete/, [130, 130, 134]], [/water|sea/, [40, 90, 130]]];
 const texC = {}; const standIn = u => { const b = u.toLowerCase(); let c = [140, 130, 150]; for (const [re, col] of PAL) if (re.test(b)) { c = col; break; } const k = c.join(); return texC[k] || (texC[k] = png(32, 32, c)); };
 (async () => {
-  const browser = await chromium.launch({ headless: true, executablePath: fs.existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome') ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' : undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*'] });
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, executablePath: fs.existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome') ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' : undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*'] });
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1400, height: 860 }, acceptDownloads: true });
   await context.route('**/*', async (route) => {
     const url = route.request().url(); let u; try { u = new URL(url); } catch (e) { return route.continue(); }
