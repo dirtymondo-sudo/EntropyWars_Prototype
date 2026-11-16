@@ -4332,7 +4332,7 @@ A set-up change: how the zone is written, not what is built. Everything that sta
 | `K.js` | The Ski Lodge + slopes | 12 (P07..P09 x 00..03) | same |
 | `O.js` | Mount Olympus | 12 (P10..P12 x 00..03) | same |
 | `S.js` | Mount Shasta | 20 (P13..P15 x 00..03, P13..P14 x 04..07) | same |
-| `H.js` | The Hollywood Hills | 39 (H00..H12 x 00..02) | `site_prebuilt_shasta_hills` |
+| (`H.js`) | The Hollywood Hills | 39 (H00..H12 x 00..02) | MOVED 11-16: Disaster City's district N, `docs/disaster-city/districts/N.js` ("THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY") |
 
 Each file's header is its thread's brief: its plots, what stands there, what is known missing or wrong, the shared pieces that stand in it, the hooks.
 
@@ -5181,6 +5181,20 @@ tent, a telegraph pole. No upper floor inside any Desert building. No per-distri
 (`HQ_AREA_ENCOUNTERS`). No residents (the city's `HQ_CITY_RESIDENTS` has no Desert rows). No interior polish pass in the bake (the city's
 `interior-polish.js` moves clipping props; the Desert has none).
 
+**DONE 11-16 (mondo: "do 1 2 and 3"): items 1 to 3 below are built in W.js; 4 to 6 are open.** What the three taught:
+- THE SQUARES: `inside()` returns `X(i)` / `Z(j)` (a square's middle; j counts from the BACK wall) and `LX(i)` / `LZ(j)` (a square line).
+  Blockers on middles, walls on lines, a counter down the middle of a row of squares, a doorway 1.75 m on a square's edge. A building's
+  door square is column `floor((2n - 1) / 2 / 2)` from the left (the tool's `texbDoor`: the middle 1.75 m column, left of centre on an
+  even front): keep that square and the one behind it clear.
+- THE FLOOR YOU SEE in a `western()` building is its own board deck, not the room's floor. It was 0.16 m proud and unlit (props sank into
+  it and the room read black). It is 0.05 m and lit now (`floorKey`, `floorTint`). A deck drawn under it is never seen.
+- `detail(a, w, d, door, o)` (called by `western()`): the second layer. `o.hang` (a trade board over the boardwalk), `o.side` (words on
+  both side walls), `o.chimney: ±1` (a brick stack on that side) or `o.pipe` (a stovepipe at that fraction of the width; `false` = none),
+  `o.back` (the back door's x), `o.shutter`. A board across the street's line is written twice, back to back: a quad draws one face.
+- `inside()` second pass: skirting, dado rail, crown, pilasters on the square lines, `pendant(x, z, drop)`, `sconce(side, z, y)`;
+  `lamps: false` to place them by hand, `lampOdd` to shift the pattern off a door square.
+- The Desert's baked block is 411 KB now (was 153 KB): parts are cheap to draw but not free to ship. Goods on shelves are the bulk.
+
 **WESTERN TOWN AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and this
 district lacks, in the order to do it:
 1. THE SQUARES inside: the city sets every blocker on the middle of a whole 3.5 m square and keeps walkways whole squares wide. W.js's
@@ -5639,6 +5653,61 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
 
+## THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY — one room, no door (2026-11-16, second side)
+
+mondo 11-16: "we need to go ahead and just make Hollywood hills a part of disaster city. the whole point is to be able to look over the city".
+The Hills were their own room (`site_prebuilt_shasta_hills`, the Mountains' district H): from them you saw plain dry land where the city should be,
+and the city saw only a coarse far copy of them. Now they stand IN `site_prebuilt_downtown_streets`, north of the plots, at real height.
+
+- **DISTRICT N** = `docs/disaster-city/districts/N.js` (letter N: the north; the Mountains' own N is the North Pole, another tool) + its squares
+  `docs/disaster-city/hills-layout.json` (the old `layout.json rooms[1]`, word for word, + the lifted levels). Written by `node bake-disaster-city.js`
+  like the other districts; no `frame` entry, so it runs in the city's real squares. Its `apply` / `build` are the old `H.js`, unchanged: the twelve
+  letters, the Observatory, the Hill House, the Stilt House, the mast, the tank, the reservoir + dam, the Hikers' Lot, the lookouts, the Cove.
+  All 66 props and 27 rows stand at the old place + (21, -315) m (checked row by row against the old room). The old room's tree thicket
+  (`t` squares, its generator's zones) is 95 `tree` rows of the same kinds, one a square, on grass.
+- **WHERE**: 13 x 3 plots on 36 new rows of squares north of the city's line (z -378 .. -252; x -252 .. 294). Hills column H00..H11 stands over city
+  plot column 0..11, H12 (the sea cliffs, the Cove) over the beach strip. A Hills square (sx, sy) = city square (sx, sy - 36).
+- **THE ROOM PAST THE PLOTS, NORTH** (the tool, new, the twin of Bayside's `room.east`): a district file exports `room = { north: <rows>, zone }`
+  + `north(q)`. The shell is centred, so the room grows 126 m on the south too: that strip is sunk (-9 m), closed by a ghost wall on the city's old
+  south line, and `edges.s.inset` starts the desert / the bay on the old line as before. NO written coordinate of the city moved. The room is
+  644 x 756 m now (was 644 x 504). `terrain.slope.cells` and `terrain.paint` are one grid each for the whole depth (164 squares across).
+- **THE HEIGHTS**: the old room's own arithmetic (plot levels blended, rock rising from the walked squares, the sea column sunk), in N.js `north()`.
+  THE LIFT: every plot stands 5 levels (8.75 m) over its old level (3 on the H11 column, 0 on the sea column), so the Hills' foot is above the
+  city's north row everywhere (the city's north row stands at 10.5 .. 24.5 m; the foot now 22.75 .. 26.25, the sign's slope 33, the ridge 40 .. 45,
+  crags to 54). `level0` in the json = the old level. H08-02 The Brush is the one plot LOWER than before (level 10, 14 m): the canyon mouth.
+  THE JOIN: the last row's south corners take the city's own height on the line, so the hill rises out of the city's back edge as a rock bank
+  (no concrete wall, no gap). THE COVE'S FOOT: the last three rows east of square 143 rise at most 2 m a square from the line.
+- **THE WAYS UP (ground, not links)**: THE MOUNTAIN ROAD: the Casino court's north gate (city squares cx 100..103, `move.js` ways P08-04 N) runs
+  straight on into The Brush as four squares of road, joins the canyon road and climbs west to the Canyon Road plot (31 %, like the Hills' own
+  grades). THE COVE: the boardwalk's two squares run on north onto the Cove's sand. Links `downtown_mountains` and `downtown_cove` are deleted.
+  N.js checks on every bake that every plot (but the two sea-cliff plots) is walked to from the city's road by steps the walker climbs.
+- **THE MOUNTAINS**: the city room has doors `shasta` (the Shasta Road, x -250.25 z -322) and `ridge` (the Saddle, z -357) on the Hills' west side;
+  the Mountains' `hills` and `saddle` doors lead to them (bake-mountains.js). District H left the Mountains' tool, layout and board.
+  `site_prebuilt_shasta_hills` is in `DOOR_HQ.retired` -> the city (saves, Continue, the map); its sky row and map marker are gone.
+- **THE GROUND ZONES** (three-renderer.js, new; data.js `HQ_GROUND_RULES.paintMax` 8 -> 16): the city's ground sheets are asphalt, board-marked
+  concrete and paving, and its 8-sheet palette was full. `terrain.zones: [{ x0, z0, x1, z1, floor, cliff, path, pal }]` = inside that box the
+  field wears its own three sheets + its own eight painted sheets. The Hills' zone: floor `grass_rocky`, cliff `rocks_5`, path `dirt_2`, the old
+  room's palette. The room's palette is 12 long (the city's 8 + rock, dirt, obsidian, marble); each piece of ground still reads 8. The field's
+  tiles are cut on the zone's line; a zone's tiles carry the zone's material (the same maker, so both renderers). `EW_HQ_NO_GROUND_ZONES` = off.
+- **NO DOUBLES**: the far copy is gone: `EDGES.n.land` (the Hills room's ground as scenery) and Entertainment's `edges.sign` (the far letters) are
+  out. Past the ridge the made-up range stands at `edges.n.back: 0.35` (the low dry ridge it already was behind the far copy; `back` now works on
+  a north side with no `land`). `EDGES.n.cap` and `B.js beach()` are untouched.
+- **KEPT AS THEY STOOD**: the Hills' rows are left out of the urban decay pass, the sign-font pass and the exterior polish (a hillside: nothing
+  stands on flat ground there), so they wear what they wore. Its trees are `keep: true` (the city's tree-move leaves them).
+- **THE ROADS**: the Hills' roads wear the asphalt sheet (`urban:RoadGeneric1a`; the old room painted them roof bitumen). They still read paler
+  than the city's road: the city's asphalt is its FLOOR sheet (tinted, under the shell's floorColor), the Hills' is a painted sheet on calm ground.
+  THE MOUNTAIN ROAD'S FOOT: its four squares north of the line climb in one even grade (on one square it was a bank that wore the rock sheet).
+- **SEEN ON SCREEN** (real game, playtest_city.js through probe-fast.js, HEAD b6dffd1, FRESH; pictures `shots/city/`): the city from under the
+  sign (the Casino, the street, the towers, the bay), from the Observatory terrace, from the ridge behind the letters (their backs), from the Hill
+  House; the Hills from the mountain road in Entertainment (before: the flat far copy with ghost letters); the road's foot and the T junction;
+  the boardwalk's end onto the Cove's sand and back down the beach; the canyon road down to the city. WALKED with the game's own feet rule
+  (hqTerrainFeet, 0.25 m steps, offline): road -> Canyon Road -> sign -> ridge -> both west doors; road -> Observatory; boardwalk -> Cove ->
+  the Cliff Stair trail. Two fixes came out of it: the Cove's first square lies at the boardwalk's level (a rise from the line itself stopped
+  the walker where B.js' boardwalk cut ends, 2 m north of the line), and the dead strip.
+- **FRAME RATE**: rendering-loading-perf.md "THE HILLS IN THE CITY'S ROOM" (cloud software GPU: looking north at the Hills 49 -> 33 frames in 30 s,
+  looking south 19 -> 17; visible meshes +2 %). His F3 on the mountain road is the number that counts.
+- **TO KNOW**: rock is not a wall in the city's room (`gen.allOpen`): only a face steeper than the walker climbs (slope over 1) stops him, so a
+  crag's gentler top can be walked. Nobody lives in the Hills; no lamps, no traffic on the canyon road; the three buildings are still plain.
 ## DEAD MAN'S CAVE, THE RAVINE — the Woods' district M on mondo's own brief (2026-11-16, the pilot thread)
 mondo: "dead man's cave is just this nickname for this spot in the woods by the high school I went to ... there is dry creek, but it is pretty steep, so there are two
 cliffs basically facing each other with dry riverbed in between, steep walls. And then at the end of the riverbed is a big sewer mouth ... that leads into a tunnel into the
@@ -5663,6 +5732,14 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   pass): its wood tints lifted + `gain: 1.5` on the log walls (it drew near black); a lit plank ceiling at 2.88 m on dark beams (the hollow building's own ceiling is at
   3.18 m and hides anything above it), a boarded dado, wall shelves, embers in the hearth, a bed frame, a wardrobe, bedside table and lamp, armchair, carpet, shelf,
   crate, mattress, a caged ceiling lamp. Every lit piece is `noLight`. The cabin still has no game role.
+- **THE DRESSING PASS + THE GROUND BY DISTRICT (same day; mondo: "the sky is the sky, there is supposed to be night and day. do the dressing pass. why can't districts
+  have different grounds, or just test it out")**: the sky is not a district's to change (day and night run on the clock). THE GROUND: a district file's
+  `ground: '<terrain sheet>'` paints its grass and forest squares (bake-woods.js THE GROUND BY DISTRICT, a new paint palette entry); district M wears
+  `grass_dark_fantasy`, seen in the probe: the place reads dark and damp, the lawn is gone. The change is a straight line on the plot border (seen only from afar).
+  THE DRESSING (`build`, about 60 pieces, "where things get dumped" + the school kids' hangout): a fire ring, logs, bottles and a skateboard under the crag; a wreck,
+  dumpster, tyres, washer, fridge, mattress in the Gully's yard; a rusted car, tyres and a mattress in the upper bed; a sofa, a television, barrels, a crate, tyres
+  and tags on both walls in the ravine; a rowboat and dead bushes in the Hollow; barrels, bins and dead bushes at the three mouths. 13 pieces were skipped (plot full).
+  `bare` is the whole ravine bed now: no scatter plant lands in it. The campfire is `noLight`.
 - **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
   stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
   Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
@@ -5691,7 +5768,11 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   furniture from the PSX Mega Pack (`psx_*`: wardrobe, armchair, shelf, bedside table, lamps, crates); `noLight: true` on every lamp.
 - **Ground nothing should grow on**: export `bare: [x0, z0, x1, z1]` (one box in the room today) and put the same box as `off` on your own `sow` rows.
 - **Names**: plain, for what stands there; never ask mondo (owner-rules.md §2).
-- **Missing zone-wide**: a forest-floor sheet in place of the lawn (the tool's `floor`), waterfalls, light shafts, sound by district.
+- **Ground**: `ground: 'grass_dark_fantasy'` in your district file (mondo: districts may differ; his forest-floor rule names that sheet and `dirt_2`). The sky stays as it is.
+- **Dump and hangout props that read well here**: `crashed_car`, `crashed_car_2`, `tire_stack`, `dumpster`, `psx_sofa_1`, `psx_tv_mp_1`, `psx_old_mattress_mp_1`,
+  `psx_metal_barrel_mp_*`, `psx_wooden_crate_*`, `psx_glass_bottle_*`, `skateboard`, `campfire` (`noLight`), `fallen_log`, `psxg_dead_bush_*`, `psxg_rock_*`, `graffiti_wall`
+  (flat on a wall: 0.1 m off the face, `face: 180` on a wall seen from the south).
+- **Missing zone-wide**: waterfalls, light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
   sandbags and barricade; the cantonment's bench, bins, dumpster, pallets, car park; the apron's freight, forklifts, engine stand, a
@@ -5736,6 +5817,14 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   tank (a ladder), the Docks' Outfall down the Outfall Shaft's pool (a ladder). Layout `openings`: `fall` + `by: 'stair' | 'ladder'`;
   `stair` = dry (the cell door, the Maintenance Hatch, 3.5 m); `climb` = a ladder / rope on the face (the trap under the Drunk Tank 8.75 m,
   the Adit 3.5 m, the well at the Junction down to the Crossing 3.5 m: the one opening that was not in the game before).
+- **THE VAULTS + THE ROOF (build 4, mondo 11-16: "still just looks like a boring rectangular room"):** every stretch of open floor wears a
+  brick BARREL VAULT sprung from its walls (an `arch` row a plot, `sew:<plot>:roof`: roof parts `form: 'barrel'`, `ds: true`, and the new
+  `ends: false` = an open-ended vault seen from inside; three-renderer.js _hqArchGeometry); a plot's open squares are cut into rectangles,
+  each vault runs along the long side and spans the short one; one flat brick slab a plot closes what is left between them. A plot's roof
+  stands 5.25 m over its floor; a plot a fall, stair or climb comes down into is that drop taller (`ceilOf`), so the Junction, the Cistern
+  and the Outfall Shaft are 12 m halls and the mine under the trap is 21 m. `ctx.pier(plot, lx, ly)` = a brick pier floor to roof (the
+  Junction's four, two each at the Cistern and the Outfall), `ctx.ceil(plot)`. The shell is darker (ambient 0.13, fog 0.042, darker brick).
+  Reusable anywhere: a tunnel = a `roof` part `barrel` with `ends: false` + `ds`.
 - **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
   one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
 - **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
@@ -5751,9 +5840,7 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
 - **WHO IS THERE (14):** the old rooms' bystanders with their own lines, placed by the district files.
 - **SEEN ON SCREEN** (probe, HEAD of this PR): the Junction, two falls with their stairs, the Outfall, the Depot, the cells' corridor. The room
   loads with no error (74 files, ~35 s in the probe).
-- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); over the low
-  plots the roof is 14 m up, so it reads as a black void, not a vault (a per-plot ceiling needs its own piece); still too bright and too clean
-  for "dark and grimy" (no pipes, grime decals, drips); the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); the vaults meet at each rectangle's end with a step, not a groin; still too clean for "grimy" (no pipes, grime decals, drips); the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
   Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
   (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
 

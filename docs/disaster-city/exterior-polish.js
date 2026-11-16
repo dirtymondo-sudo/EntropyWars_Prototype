@@ -63,6 +63,7 @@ module.exports = function exteriorPolish(o) {
     /* which rows this pass may touch: outdoor things that stand on the ground */
     const outdoor = q => {
         const c = CAT[q.key]; if (!c) return false;
+        if (q.z < -HALF) return false;   // THE ROOM PAST THE PLOTS, NORTH (2026-11-16, the Hollywood Hills, districts/N.js): a hillside, nothing there stands on flat ground; its pieces stay where its file put them
         if (typeof q.wall === 'string' || c.ceil || q.ceil || c.float) return false;
         if (q.key === 'palm_tree') return false;   // THE TREES STAND IN SOIL owns a palm's square (its bed)
         if ((FIXED.test(q.key) && !/^city_(bench|bin)$/.test(q.key)) || (typeof q.y === 'number' && (q.y >= 1 || q.y <= -0.5))) return false;
