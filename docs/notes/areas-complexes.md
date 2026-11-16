@@ -7185,3 +7185,68 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
   `psx_cobweb_*`, `psxg_dead_bush_*`. NOT USED ON PURPOSE: the code-built stand-ins of MODEL_LIST §8 (`crystal_cluster`, `ritual_circle`, `floor_stain` already stand
   from the old passes); the tree kinds (closed). ON R2, NOT WIRED, would fit: the creator's `mhw_donitz_monk_robe*` (robes for a costume rack or a robed figure: a
   character piece, not a prop row). NO MODEL EXISTS: an owl (the bird), a goat, a deer, a dock / pier piece, a pentagram, a hooded robed statue, a bell on a frame.
+
+## THE HOLLYWOOD HILLS, THE FIVE PASSES — the district thread under mondo's 11-16 order (2026-11-16, second side)
+
+mondo 11-16: every district prototyped to "at least 75% of the detail disasterr city has", no questions, at most five passes
+(docs/plans/DISTRICT_THREAD_BRIEF.md). File: `docs/disaster-city/districts/N.js` (+ `hills-layout.json`). Bake: `node bake-disaster-city.js`.
+BEFORE (HEAD 4a05856): 66 props and 19 drawn rows on 39 plots; three plain box buildings; bare grass from the terrace to the city's line.
+
+### FITS THIS DISTRICT (the whole model list read 11-16: MODEL_LIST.md sections 6, 7, 8, 10, 12b, 13, pack-claims.md, prop-sizes.json, the live catalogue)
+(U) = no city district places it. Every key is in `DOOR_HQ.catalogue` unless it says tree kind / sheet.
+- **Mansion / pool / garden**: `pool_lounger`, `fountain`, `iron_garden_bench`, `stone_urn`, `greek_amphora`, `flamingo`, `ride_on_mower`, `dish`, `security_camera`,
+  `mailbox_bank`, `beach_ball`, `beach_air_mattress_blue` / `_pink`, `beach_swim_ring`, `beach_cooler`, `potted_plant`, `chess_set_game` (U), `lion_statue`,
+  `angel_statue`, `greek_column` (U), `hw_gate_leaf` / `hw_gate_leaf_2` (U), `hw_fence_iron` / `_2` / `_3` (U), `psxg_iron_gate_1` / `_2` (U), `psxg_wall` + `_corner` + `_pillar` (U).
+- **Cars**: `car_cadillac`, `car_suv`, `car_taxi`, `car_truck`, `car_pack_1`..`8`, `car_cyber` (U, the only sports car), `crashed_car`, `crashed_car_2`, `fire_truck`,
+  `transit_bus` (U, a tour bus), `trailer_home_1`..`6` (U, film trailers).
+- **Road**: `roads_g_sign_000`..`014` (the city's kerbs use 004 / 005 / 006 / 008 / 012), `traffic_cone`, `traffic_barrel`, `item_police_barricade`, `culvert_mouth` (U),
+  `signpost`; a guard rail is the terrain row `{ k: 'rail', model: 'guard' }` (also `parapet`, `balusters_b`, `glass`, `wood`, `ranch`, `pipe`, `stone`).
+- **Utility**: `power_pole`, `utility_box`, `flood_mast`, `decor_windpump_tower` (U), `water_tower_west`, `ind_silo`, `ind_container`, `ind_skip_full`, `air_compressor`,
+  `centrifugal_pump`, `gate_valve`, `cable_drum`, `psx_metal_barrel_mp_0`..`3`, `babel_crane`, `forklift`, `psx_wooden_crate_1`..`6`, `hw_bricks` (U), `hw_shovel` (U).
+- **Film / tourist**: `film_camera`, `studio_camera`, `studio_light`, `followspot` (U), `directors_chair`, `costume_rack`, `makeup_vanity`, `rope_stanchion`,
+  `brochure_rack`, `sunglasses_spinner`, `hot_dog_stand`, `telescope`, `brass_telescope`, `item_binoculars` (U), `item_old_camera_flash` (U).
+- **Hiking**: `missing_board` (U, a roofed notice board: the trail board), `city_bench`, `park_bench`, `trash_bin`, `campfire` (U), `camping_tent` (U), `hitching_rail` (U),
+  `hw_straw` / `hw_straw_2` (U, hay), `wooden_bucket` (U), `fallen_log`, `stump`, `psx_dinner_table_1` (a picnic table stand-in).
+- **Rocks**: `ocean_rock`..`ocean_rock_11`, `psxg_rock_1`..`4` (U), `hw_stone`, `hw_stone_1`..`5` (U), `cave_stone`, `menhir` (U), `sarsen` (U), `asteroid_a` / `_b` (U).
+- **Plants**: `saguaro_cactus` (U), `prickly_pear` (U), `psxg_dead_bush_1` / `_2` (U, the only dry brush), `psxg_dead_tree_1` / `_2` (U), `hw_tree`, `hw_tree_2`..`5` (U, bare:
+  the burn), `dead_snag`, `hollow_dead_tree` (U), `fern`, `woods_thornvine` (U). Tree kinds: oak `tree_3`, `tree_52`; `palm`; dead `tree_5`, `tree_6`, `tree_13`..`20`, `tree_41`, `tree_42`; pine `pine`, `tree_43`..`47`.
+- **Animals** (catalogue keys): `crow`, `rabbit`, `eagle`, `wolf` (the coyote stand-in), `horse`, `horse_brown`, `horse_black`, `butterfly`, `monarch`, `grasshopper`, `bat_*`;
+  the Cove: `ocean_crab`, `ocean_seal_resting`, `ocean_starfish`, `ocean_conch`, `ocean_sand_dollar`, `ocean_seaweed`.
+- **Cove**: `rowboat`, `skiff` (U), `sea_buoy`, `surfboard_long`, `surfboard_rack`, `lobster_traps`, `ship_anchor`, `beach_life_ring`, `sea_chest` (U).
+- **Observatory inside**: `star_projector` (U), `brass_orrery`, `astronomical_clock`, `meteorite_plinth`, hanging `solar` / `earth` / `moon` / `jupiter` / `saturn` (U),
+  `lunar_lander` (U), `mars_rover` (U), `astronaut` (U), `satellite`, `observation_window` (U), `museum_vitrine`, `rope_stanchion`, `cinema_seat_row`, `gallery_ottoman`, `map_table`, `globe_lamp`, `lectern`, `marble_bust`.
+- **House insides, modern**: `curved_couch`, `chesterfield_sofa`, `egg_chair`, `tulip_chair`, `tulip_table`, `sputnik_lamp` (U), `disc_cluster` (U), `saucer_pendant` (U),
+  `mushroom_lamp` (U), `lava_lamp_floor` (U), `space_divider` (U), `coffee_table`, `decor_piano`, `rug_round`, `royal_bed`, `couples_bed`, `psx_wardrobe_mp_1`, `espresso_machine`, `round_fridge`, `kitchen_range`, `psx_tv_mp_1`.
+  **Rustic**: `rocking_chair` (U), `psx_armchair_1` / `_2`, `psx_dinner_table_1`, `psx_chair_mp_1`, `psx_bed_1`, `psx_shelf_mp_2` (U), `psx_carpet_mp_1`, `tube_tv`, `retro_radio`, `instrument_guitar`, `table_lamp`, `psx_lamp_1_on`.
+- **Sheets**: stucco `urban:PlasterWallStucco1a`; roof `urban:MetalRoofTiles1a` (tinted clay: there is no clay tile sheet), `urban:MetalCorrugated1a`; copper `calm_copper`;
+  boards `urban:WoodCladding1a`, deck `urban:WoodFlooring1a`, beams `urban:WoodBeams1a` (WoodGeneric is bark: not for boards); concrete `urban:ConcreteWoodFormed1a`;
+  terraces `calm_flagstone`; pool `calm_tiles_small`; burnt ground `scorched`, `obsidian`; chain fence `urban:MetalFenceChainlink1`.
+- **Stand-ins to avoid** (code shapes): `pool_umbrella` (the old file places two: no model exists), `curved_sofa` (swapped for `curved_couch`), `infinity_pool`, `star_dome`, `hearth_fire`, `planter`, `parking_bay`.
+
+### NEEDS A MODEL (found nowhere on R2)
+Deer, coyote, mountain lion, rattlesnake, lizard, hawk, seagull · agave, yucca, a green chaparral bush, tumbleweed, cypress, a burnt tree · BBQ grill, a patio umbrella
+(only the code stand-in), pool ladder, diving board, hot tub, tennis net, a kerb mailbox, a convertible · a coin viewer telescope, a picnic table, a drinking fountain, a
+trail map board, a horse trough · a lattice mast / pylon, an antenna dish for the mast, a chain fence panel · clapperboard, camera dolly · a fire danger sign · a clay roof
+tile sheet, graffiti.
+
+### PASS 1, EXTERIORS + LANDMARKS (live; seen on screen, playtest_city.js through probe-fast.js, 16 views)
+- **The kit** (N.js, above `content`): `hillsKit(ctx)` = `glass` (a dark pane), `block` (a ghost wall under a drawn piece), `rail` (a `rail` row by model), `paint` (plot squares
+  to a sheet letter), `take`, `O(plot)` (a plot's own square lines in metres). `hillsBuildings(ctx)` builds everything below and keeps the built frames in `R.B`.
+  `shell()` takes a last argument of extra part fields (`{ gain }`). WHITE NEEDS `gain` 2.0: `marble_light` and the stucco sheet read mid grey under the city's light
+  without it (seen). Copper = the ribbed metal sheet tinted 0x63a892 (`calm_copper` reads brown). The zone palette's third sheet is `calm_flagstone` now (letter `s`; the
+  bitumen it replaced painted no square since the roads left the zone).
+- **THE OBSERVATORY** (H10-01, same squares and door): white stone on a rock plinth, a patina dome on a windowed drum with a railed gallery, two wing domes, a four-column
+  porch with OBSERVATORY in the museum font, pilasters and tall dark windows on all four sides. Its marble squares are one level terrace (`flat`) with a balustrade
+  (`balusters_b`), open where the plan's paths and the drive come in; THE MONUMENT (a six-sided shaft, a bronze sphere in a ring) on the terrace's axis.
+- **THE HILL HOUSE** (H04-02): a white fascia round the sailing roof, a raised glass room, a stone wall + chimney, glass on three sides. Across the road: its pool terrace
+  (flagstone, a round pool with a white coping, a glass rail over the city).
+- **THE STILT HOUSE** (H09-02): boards (`WoodCladding`), a tin shed roof, a stone chimney, glass on the east wall, a railed timber deck out east (the palm that stood there
+  stands north of it; the lounger moved onto the deck).
+- **THREE NEW HOUSES** (walk-in, each its own look): THE ROUND HOUSE (H05-02: a drum of concrete and dark glass, a saucer roof with a glass eye; a curved wall is a `cyl`
+  with `ri` + `arc` 320 / `a0` 110, the gap is the door's porch), THE VILLA (H10-02: cream stucco, a clay hip roof, a square tower, a loggia to the drive, shutters),
+  THE A-FRAME (H01-02: dark boards, a steep roof whose gable end is glass = `keyEnd`, a deck, a flue).
+- **Landmarks**: THE FIRE LOOKOUT over the Burn (H02-00: four legs, a glazed cab, a hip roof; drawn, not climbed), the mast's TRANSMITTER HUT + antenna arms (H05-00), the
+  reservoir's INTAKE TOWER with a walk from the dam + a second rail on the crest (H02-01), the Peak's survey pillar (H08-00), the Hikers' Lot's shelter (H06-02), the Horse
+  Trail's shed + a `ranch` rail corral round the horses (H05-01), the Quarry's cut benches (H04-01), parapets on the Coast Overlook and the Headland, a guard rail on the
+  canyon road's drop side (open at the paths and at the pool terrace).
+- **Frame rate** (cloud software GPU, frames a second over 20 s): from the terrace looking over the city 0.4; from the Casino court looking up 0.8 before and 0.8 after.
