@@ -58,6 +58,10 @@ const IRON = 0x1c1c20, AMBER = 0xff9a30, GHOSTLY = 0x58f0a0, LAMP = { glow: 0.7 
 module.exports = {
     plan(ctx) { const { setRect } = ctx;
         setRect(8, 65, 10, 66, 'p'); setRect(8, 66, 9, 67, 'p');                               // THE CRYPT: the path reaches its door (the plan's path met its corner)
+        /* THE GRAVEYARDS' GRASS (mondo 11-16 "that's fine"): the plan paints both yards as path; the rows the stones stand on are lawn now, the aisles,
+           the wall's row under each lych gate and the fresh mounds' rows stay dirt. Only squares the plan already walks are touched. */
+        { const lawn = (x0, x1, y, skip) => { for (let x = x0; x <= x1; x++) if (x !== skip && ctx.cell[y][x] === 'p') ctx.cell[y][x] = 'g'; };
+          lawn(13, 21, 65, 17); lawn(14, 20, 67, 17); lawn(16, 18, 69); lawn(15, 19, 62, 17); lawn(24, 32, 65, 28); lawn(24, 33, 67, 28); lawn(24, 32, 69, 28); lawn(25, 31, 71, 28); lawn(27, 31, 62, 29); }
         setRect(5, 41, 7, 43, 'j'); setRect(16, 56, 17, 57, 'j'); setRect(19, 56, 20, 57, 'j');   // boards, not lawn, on the treehouse's deck and under the porch's two side bays (the grass field grows on every grass square)
     },
     houses(ctx) { const { building, feat, r2, SOLID, WD, WD2, SHG, FLR, GLS, BRK } = ctx;
