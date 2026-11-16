@@ -214,4 +214,79 @@ exports.build = ctx => {
       h.put('meshy_rope', 4.3, 0.4); h.put('meshy_rope', 3.8, 1.0, { face: 70 }); h.put('footlocker', 4.3, 2.7, { face: 270 }); h.put('psx_supply_crate_1', 2.6, 2.9); h.put('stock_pots', 1.7, -2.6, { face: 180 }); h.put('hw_shovel', 4.6, -0.9, { face: 80 });
       h.put('rug_round', 3.0, -0.9, { y: 0.02 }); h.put('notice_board', -1.3, -3.14, WALL(h, 1.3, 180)); h.put('ship_lantern', 0, 0.6, { y: UP(h, 2.7), mount: 0 }); h.put('psx_bandage_mp_1', -4.4, 0, { y: 0.02 }); }
   }
+  /* ══ PASS 3 (11-16): THE DRESSING, plot by plot, from the model list (areas-complexes.md "MOUNT SHASTA, THE DISTRICT THREAD", FITS THIS DISTRICT).
+     P = put (a blocker on a square's middle, never on a trail square), D = dec (decor, off the middle), T = a tree, NPC = a native. ══ */
+  { const P = (id, list) => list.forEach(q => put(id, q[0], q[1], q[2], q[3])), D = (id, list) => list.forEach(q => dec(id, q[0], q[1], q[2], q[3])), F = f => ({ face: f });
+    /* SHASTINA: the small cone: frost-split stones, a climbers' cache by the cairn */
+    P('P13-00', [['psxg_rock_1', 6, 6, { h: 1.9, face: 40 }], ['psxg_rock_1', 4, 6, { h: 1.5, face: 200 }]]);
+    D('P13-00', [['psxg_rock_1', 5, 6], ['psxg_rock_2', 6, 3], ['psxg_rock_3', 7, 5], ['psx_supply_crate_1', 5, 5], ['meshy_rope', 5, 5], ['crow', 4, 5], ['psxg_rock_4', 3, 5], ['psxg_rock_2', 6, 7]]);
+    /* THE SUMMIT: the vent in the crater, a telescope on the rim, the survey drum */
+    P('P14-00', [['sea_vent', 7, 6], ['telescope', 9, 5, F(250)]]);
+    D('P14-00', [['psxg_rock_1', 6, 6], ['psxg_rock_2', 8, 7], ['psxg_rock_3', 7, 7], ['psx_metal_barrel_mp_1', 8, 4], ['psxg_rock_4', 6, 8], ['psxg_rock_2', 9, 8], ['eagle', 6, 6], ['meshy_rope', 8, 4]]);
+    native('P14-00', 'nordic', 6, 9, 20);
+    /* THE GLACIER: the wanded route across the ice, melt water, moraine stones */
+    { const q = S('P15-00', 7, 5); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 2.4, rz: 1.5, y: -0.15, depth: 0.5, key: 'water', bank: 0.5 }); R.taken.add(q[0] + ':' + q[1]); }
+    P('P15-00', [['psxg_rock_1', 5, 3, { h: 1.4 }]]);
+    D('P15-00', [['meshy_crystal_shards', 6, 3, { h: 1.3 }], ['meshy_crystal_shards', 9, 7, { h: 1.0 }], ['meshy_crystal_shard', 8, 4, { h: 0.9 }], ['psxg_rock_2', 6, 7], ['psxg_rock_1', 8, 6], ['psxg_rock_3', 5, 5], ['hw_shovel', 6, 6], ['meshy_rope', 8, 7], ['psxg_rock_4', 10, 4]]);
+    native('P15-00', 'yeti', 6, 4, 160);
+    /* THE RED BANKS: pumice blocks fallen from the banks, dead scrub */
+    P('P13-01', [['ocean_rock_4', 6, 6, F(70)], ['psxg_rock_1', 6, 4, { h: 1.6 }], ['signpost', 7, 5, F(90)]]);
+    D('P13-01', [['psxg_rock_1', 5, 4], ['psxg_rock_2', 5, 6], ['psxg_rock_1', 4, 5], ['psxg_dead_bush_2', 6, 3], ['psxg_dead_bush_1', 5, 7], ['psxg_rock_3', 7, 6], ['psxg_rock_4', 6, 5], ['ocean_rock_7', 7, 4]]);
+    /* HELEN LAKE: the frozen lake's camp: a boat frozen in, the ice-fishing hole, a snowman */
+    P('P14-01', [['rowboat', 6, 7, F(30)], ['fallen_log', 6, 4, F(100)], ['xmas_snowman', 9, 6, F(220)]]);
+    { const q = S('P14-01', 5, 7); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 0.7, rz: 0.7, y: -0.1, depth: 0.5, key: 'water', bank: 0.2 }); R.taken.add(q[0] + ':' + q[1]); }
+    D('P14-01', [['beach_cooler', 4, 3], ['psx_supply_crate_1', 3, 3], ['psx_fish_skeleton_mp_1', 4, 7], ['wooden_bucket', 6, 6], ['meshy_rope', 2, 5], ['stock_pots', 5, 4], ['psx_canned_food_mp_1', 6, 3], ['psxg_rock_2', 9, 4], ['hw_shovel', 7, 5], ['psx_wooden_crate_1', 9, 3]]);
+    /* THE STEAM VENTS: fumaroles on the lava, crystals and torches at the adit, a rope round the hot pool */
+    P('P15-01', [['sea_vent', 4, 4], ['sea_vent', 6, 4, { h: 1.8 }], ['sea_vent', 3, 7, { h: 2.0 }], ['crystal_cluster', 7, 5], ['cave_torch', 8, 5], ['cave_torch', 8, 7]]);
+    D('P15-01', [['rope_stanchion', 4, 6], ['rope_stanchion', 6, 7], ['rope_stanchion', 5, 5], ['psx_metal_barrel_mp_1', 6, 8], ['meshy_crystal_shards', 7, 7], ['meshy_crystal_shard', 7, 6], ['psxg_rock_1', 5, 8], ['psxg_rock_2', 3, 6], ['ocean_rock_7', 5, 3], ['psx_wooden_crate_4', 7, 4], ['hw_shovel', 6, 8], ['psxg_rock_3', 4, 5]]);
+    /* AVALANCHE GULCH: what the last slide brought down: snapped trees, logs, blocks */
+    P('P13-02', [['fallen_log', 7, 5, F(35)], ['fallen_log', 6, 7, F(110)], ['dead_snag', 8, 5, F(0)], ['psxg_rock_1', 8, 7, { h: 2.0, face: 130 }], ['hollow_dead_tree', 5, 5]]);
+    D('P13-02', [['psxg_rock_1', 7, 6], ['psxg_rock_2', 8, 6], ['stump', 6, 5], ['psxg_rock_1', 6, 8], ['psxg_dead_bush_2', 7, 4], ['psxg_rock_3', 5, 7], ['fallen_log', 8, 4, { h: 0.4 }], ['psxg_rock_4', 9, 6], ['psxg_rock_1', 7, 8]]);
+    /* THE FORK: wands on the three trails, an emergency cache in the windbreak */
+    P('P14-02', [['psxg_rock_1', 5, 2, { h: 1.5 }], ['psxg_rock_1', 9, 6, { h: 1.3 }], ['signpost', 8, 3, F(140)]]);
+    D('P14-02', [['psx_metal_barrel_mp_1', 10, 3], ['psx_supply_crate_1', 9, 3], ['meshy_campfire_ring', 8, 2], ['crow', 7, 5], ['psxg_rock_2', 6, 3], ['psxg_rock_1', 10, 5], ['psxg_rock_3', 5, 6], ['meshy_rope', 8, 2], ['psxg_rock_4', 7, 7], ['psxg_rock_2', 4, 3]]);
+    /* THE SCREE: a slope of broken stone, the sign for the road east */
+    P('P15-02', [['psxg_rock_1', 3, 4, { h: 1.7 }], ['psxg_rock_1', 5, 6, { h: 1.5, face: 80 }], ['psxg_rock_1', 2, 6, { h: 1.2 }], ['signpost', 6, 5, F(90)], ['hitching_rail', 5, 3]]);
+    D('P15-02', [['psxg_rock_1', 4, 4], ['psxg_rock_2', 3, 6], ['psxg_rock_3', 4, 5], ['psxg_rock_1', 5, 5], ['psxg_rock_4', 2, 5], ['psxg_rock_2', 6, 4], ['psxg_dead_bush_2', 4, 7], ['psxg_rock_1', 3, 7], ['psxg_rock_3', 6, 6], ['psxg_dead_bush_1', 2, 4], ['psxg_rock_1', 5, 4], ['psxg_rock_4', 4, 3]]);
+    /* BUNNY FLAT: the rabbits, the camp's kit, a sprung trap by Bigfoot's */
+    P('P13-03', [['stump', 1, 6], ['hollow_dead_tree', 1, 8], ['hitching_rail', 5, 10], ['stump', 5, 7]]);
+    D('P13-03', [['rabbit', 3, 8], ['rabbit', 6, 9], ['rabbit', 2, 9], ['rabbit', 7, 5], ['rabbit', 4, 10], ['beach_cooler', 3, 5], ['stock_pots', 5, 6], ['trap_bear_shut', 7, 9], ['woods_healflower', 3, 9], ['woods_healflower', 6, 8], ['fern', 0, 7], ['fern', 3, 10], ['psx_wooden_crate_1', 7, 7], ['meshy_burlap_sack', 7, 8], ['woods_healflower', 1, 5], ['fern', 8, 7]]);
+    /* PANTHER MEADOWS: the flower meadow, the panther lying in it, a totem at the lodge, the dojo's post outside */
+    P('P14-03', [['item_ward_totem', 4, 2, { h: 2.4, face: 180 }], ['wing_chun_dummy', 7, 8, F(20)], ['stump', 3, 7], ['stump', 7, 5], ['menhir', 10, 4, { h: 2.2 }], ['fallen_log', 2, 9, F(60)]]);
+    D('P14-03', [['lion', 9, 3, { face: 200 }], ['woods_healflower', 3, 4], ['woods_healflower', 4, 9], ['woods_healflower', 8, 5], ['woods_healflower', 9, 6], ['woods_healflower', 2, 6], ['woods_healflower', 6, 3], ['woods_healflower', 10, 7], ['monarch', 4, 5], ['blue_morpho', 8, 4], ['swallowtail', 3, 8], ['monarch', 9, 7],
+      ['fern', 1, 5], ['fern', 10, 9], ['mushroom2', 11, 5, { h: 1.0 }], ['psx_pillow_mp_1', 4, 6], ['psx_pillow_mp_1', 6, 7], ['item_censer', 5, 7], ['hw_candles', 3, 3], ['fern', 5, 2], ['meshy_crystal_shard', 6, 5]]);
+    native('P14-03', 'hippie', 7, 4, 200);
+    /* THE OLD LAVA: black blocks, burnt trees, the first ferns coming back */
+    P('P15-03', [['ocean_rock_3', 4, 5, F(30)], ['ocean_rock_4', 6, 7, F(200)], ['hollow_dead_tree', 6, 5], ['dead_snag', 3, 6], ['ocean_rock_2', 7, 6], ['dead_snag', 5, 4]]);
+    D('P15-03', [['psxg_dead_bush_1', 5, 6], ['psxg_dead_bush_2', 4, 7], ['fern', 7, 5], ['fern', 5, 8], ['ocean_rock_7', 6, 4], ['ocean_rock_9', 4, 6], ['ocean_rock_5', 6, 6], ['psxg_rock_1', 7, 7], ['crow', 5, 5], ['ocean_rock_6', 3, 5], ['fern', 4, 8]]);
+    /* THE LAST TREES: the tree line: snags, stumps, young pines */
+    P('P13-04', [['dead_snag', 8, 6], ['dead_snag', 6, 7], ['stump', 9, 5], ['signpost', 6, 4, F(180)]]); tree('P13-04', 'pine_2', 3.2, 8, 7); tree('P13-04', 'pine_2', 2.6, 5, 6); tree('P13-04', 'pine_2', 3.6, 9, 7);
+    D('P13-04', [['psxg_dead_bush_1', 7, 6], ['psxg_dead_bush_2', 8, 5], ['crow', 8, 8], ['fern', 6, 8], ['psxg_rock_1', 7, 7], ['stump', 7, 4], ['fern', 9, 6], ['psxg_rock_2', 6, 5], ['fallen_log', 7, 8, { h: 0.4 }]]);
+    /* THE SPRING: stepping stones to the shrine, ferns and frogs round the water, a log to sit on */
+    P('P14-04', [['fallen_log', 3, 6, F(10)], ['stump', 4, 3]]);
+    D('P14-04', [['psxg_stepping_stone_1', 7, 3], ['psxg_stepping_stone_2', 7, 4], ['psxg_stepping_stone_1', 5, 4], ['psxg_stepping_stone_2', 4, 4], ['wooden_bucket', 5, 3], ['fern', 4, 5], ['fern', 4, 7], ['fern', 8, 6], ['fern', 3, 4], ['meshy_frog', 4, 6], ['meshy_frog', 8, 5], ['woods_glowcap', 5, 8], ['woods_glowcap', 3, 5], ['hw_candles', 7, 2 + 1], ['blue_morpho', 8, 5], ['woods_healflower', 3, 3], ['woods_healflower', 8, 5]]);
+    native('P14-04', 'hippie', 2, 4, 110);
+    /* THE SWITCHBACK, upper: a rest stop on the bend */
+    P('P13-05', [['hitching_rail', 4, 4, F(90)], ['fallen_log', 7, 3, F(80)], ['park_bench', 5, 3, F(180)], ['stump', 8, 4]]);
+    D('P13-05', [['fern', 4, 5], ['fern', 8, 3], ['woods_healflower', 6, 2], ['woods_healflower', 7, 5], ['psxg_rock_1', 5, 5], ['rabbit', 7, 4], ['fern', 5, 2], ['psxg_rock_2', 8, 5], ['monarch', 6, 3]]);
+    /* THE LOOKOUT: the rail along the drop, a telescope, the station's dish and water drum */
+    P('P14-05', [['hw_fence', 1, 6, F(90)], ['hw_fence', 1, 7, F(90)], ['hw_fence', 1, 8, F(90)], ['telescope', 2, 6, F(270)], ['dish', 6, 9, F(200)], ['stump', 3, 5]]);
+    D('P14-05', [['psx_metal_barrel_mp_1', 5, 9], ['eagle', 3, 6], ['fern', 2, 5], ['fern', 6, 6], ['psxg_rock_1', 5, 5], ['woods_healflower', 4, 8], ['psx_wooden_crate_1', 5, 9], ['crow', 2, 8], ['fern', 4, 5]]);
+    /* THE SWITCHBACK, lower */
+    P('P13-06', [['hitching_rail', 9, 3, F(90)], ['stump', 5, 3], ['fallen_log', 8, 6, F(20)], ['hollow_tree', 6, 2]]);
+    D('P13-06', [['fern', 7, 2], ['fern', 5, 4], ['fern', 9, 4], ['rabbit', 7, 4], ['woods_healflower', 6, 5], ['psxg_rock_2', 8, 3], ['mushroom2', 8, 2, { h: 0.9 }], ['woods_glowcap', 7, 6], ['psxg_rock_1', 6, 6]]);
+    /* THE BOULDER FIELD: the big blocks among the small ones */
+    P('P14-06', [['sarsen', 7, 6, { h: 3.4, face: 40 }], ['psxg_rock_1', 6, 7, { h: 2.3, face: 120 }], ['psxg_rock_1', 8, 7, { h: 2.0, face: 250 }], ['menhir', 6, 9, { h: 2.4, face: 10 }], ['psxg_rock_1', 9, 6, { h: 1.8 }]]);
+    D('P14-06', [['psxg_rock_1', 7, 5, { h: 1.2 }], ['psxg_rock_1', 8, 6, { h: 1.0 }], ['psxg_rock_2', 5, 7], ['psxg_rock_1', 7, 7, { h: 1.1 }], ['psxg_rock_3', 8, 8], ['fern', 5, 8], ['fern', 5, 7], ['crow', 7, 7], ['meshy_rope', 6, 6], ['psxg_rock_2', 9, 8], ['psxg_rock_4', 6, 8], ['fern', 8, 9]]);
+    native('P14-06', 'gnome', 6, 6, 100);
+    /* THE TRAILHEAD: the hitching rail and the pack horse, the fire's seats, the bin, the line's last pole */
+    P('P13-07', [['hitching_rail', 5, 7], ['horse_brown', 6, 7, F(0)], ['fallen_log', 8, 3, F(90)], ['stump', 6, 3], ['power_pole', 10, 4]]);
+    D('P13-07', [['metal_trash_can', 8, 4], ['psx_wooden_crate_4', 5, 4], ['meshy_burlap_sack', 5, 4], ['fern', 9, 6], ['fern', 6, 8], ['woods_healflower', 8, 7], ['wooden_bucket', 6, 6], ['psx_metal_barrel_mp_1', 4, 7 - 1], ['rabbit', 8, 6]]);
+    /* THE UPPER SHELF: a pilgrims' camp off the trail */
+    P('P14-07', [['meshy_camping_tent', 6, 5, F(120)], ['campfire', 8, 5], ['fallen_log', 7, 6, F(100)], ['stump', 9, 4]]);
+    D('P14-07', [['instrument_guitar', 7, 5, { h: 0.9 }], ['hw_candles', 8, 6], ['fern', 5, 6], ['fern', 9, 6], ['beach_cooler', 6, 4], ['rabbit', 6, 7], ['woods_healflower', 8, 7], ['psx_pillow_mp_1', 8, 4], ['stock_pots', 9, 5], ['woods_healflower', 6, 3]]);
+    native('P14-07', 'hippie', 7, 4, 150); native('P13-04', 'tree person', 7, 5, 200);
+    /* the wands: thin orange poles with a flag that mark the route over snow and ice (a look, no collision, off the square's middle) */
+    for (const [id, lx, ly] of [['P13-00', 7, 4], ['P14-00', 5, 9], ['P15-00', 5, 6], ['P15-00', 7, 7], ['P15-00', 9, 5], ['P14-01', 4, 8], ['P13-02', 6, 4], ['P14-02', 4, 5], ['P14-02', 8, 6], ['P14-02', 6, 1]]) { const q = S(id, lx, ly); look('wand:' + id + ':' + lx + ':' + ly, ctx.r2(mx(q[0]) + 1.1), ctx.r2(mz(q[1]) - 0.9), a => { a.cyl(0, 0, 0, 0.035, 2.3, 'marble_light', 0xd86a20, { seg: 6, glow: 0.9 }); a.box(0.17, 1.95, 0, 0.32, 0.22, 0.02, 'marble_light', 0xe8421c, { glow: 0.95 }); a.dome(0, 0, 0, 0.3, 0.14, 'ice', 0xf4f8ff, { seg: 6, rings: 2 }); }); }
+  }
 };
