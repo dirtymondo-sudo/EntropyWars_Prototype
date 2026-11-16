@@ -25,7 +25,10 @@
      yard, the Fence Line's straw / pumpkin patch / well / hens, the stand's litter, a wreck in Deep woods south, the playground's leftovers, three soft scatters.
      PASS 4, THE ATMOSPHERE (atmosphere() + airZones): lamps as lit boxes (no light), a lit office window, the camp's string of bulbs; pollen, sparks, spores.
      PASS 5, THE POLISH: glass lanterns, small toadstools, this header.
+     THE MODEL PASS (models(), mondo's new word 11-16): the wish-list models: camper van, picnic table, tyre swing, outhouse, firewood, packs, braced gate
+     leaves, wood stove, lantern posts, string lights, trail boards, a cairn, a deer; the drawn stand-ins they replace are out.
    KNOWN MISSING / WAITING FOR MONDO
+     - NEEDS A MODEL, what is left after the model pass: nothing asked is missing. The lantern posts and the string lights do not glow at night (the models carry no light).
      - The life pass and the horror pass are live but wait for his look (the board).
      - THE STAIR IS SHARED: the room's spawn, its plate and the link woods_stair's free door (data.js, x -17.5, z 55.5, y 12.06) stand on the
        flight as it is. Do not move or resize the flight without a note on the board.
@@ -86,7 +89,7 @@ function dressing(ctx) {
       hdec('P01-03', 'item_ward_totem', -3, 0); hdec('P01-03', 'fae_toadstool', 2, -2, { noLight: true, h: 0.55 }); hdec('P01-03', 'fae_toadstool', -2, -2, { noLight: true, h: 0.4 });   // small (pass 5: at 1.75 m they read as the Ritual Ground's) hdec('P01-03', 'instrument_violin_lying', 1, 3, { y: 0.02 });
       hdec('P01-03', 'hw_web', -1, -1, { y: 1.5 }); hdec('P01-03', 'psxg_dead_bush_1', 3, 2); hdec('P01-03', 'wooden_bucket', -2, 2); }
     /* ── THE CROSSROADS (P02-03): a bench and a bin by the signpost, a cairn, what walkers leave ── */
-    hput('P02-03', 'iron_garden_bench', -2, -1, { face: 90 }); hput('P02-03', 'metal_trash_can', 1, -2); hdec('P02-03', 'psxg_rock_1', 2, 2); hdec('P02-03', 'psxg_rock_3', 2, 2, { y: 0.6 }); hdec('P02-03', 'psxg_rock_4', -3, 3);
+    hput('P02-03', 'iron_garden_bench', -2, -1, { face: 90 }); hput('P02-03', 'metal_trash_can', 1, -2); hput('P02-03', 'cairn', 2, 2); hdec('P02-03', 'psxg_rock_4', -3, 3);
     hdec('P02-03', 'psx_glass_bottle_2', -1, -3); hdec('P02-03', 'psx_canned_food_mp_5_rusty', 3, 0); hdec('P02-03', 'hw_pumpkin', 4, -2); hdec('P02-03', 'psxg_dead_bush_2', -3, -3); hdec('P02-03', 'item_dowsing_rod', 0, 3, { y: 0.02 });
     /* ── THE TRAIL WEST (P00-03): the station's side yard, mid-chore ── */
     { const yx = gc(11), y0 = gx(41);   // the side yard's column (east of the station), from the porch's line south
@@ -124,8 +127,7 @@ function atmosphere(ctx) {
     const { N, gx, gc, r2, features, doors, plot, centre } = ctx;
     const WARM = 0xffc46a, CAP = 0x35393c;
     const lantern = (x, y, z) => [box(x, y, z, 0.22, 0.32, 0.22, GLASS, WARM, { uv: 'fit', glow: 1 }),   /* a glass sheet (pass 5: a lit box with no sheet drew as lined paper) */ box(x, y + 0.32, z, 0.3, 0.05, 0.3, TIN, CAP), box(x, y - 0.04, z, 0.3, 0.04, 0.3, TIN, CAP)];
-    const lampPost = (x, z, sd) => [box(x, 0, z, 0.2, 2.9, 0.2, WD2, DARK), box(x + sd * 0.35, 2.7, z, 0.7, 0.1, 0.1, WD2, DARK), box(x + sd * 0.6, 2.25, z, 0.03, 0.45, 0.03, TIN, 0x55595c), ...lantern(x + sd * 0.6, 1.93, z)];
-    /* the ranger station (rot 180: +x = west, +z = north, out of the front): the porch lamp by the door, the office window lit from inside */
+        /* the ranger station (rot 180: +x = west, +z = north, out of the front): the porch lamp by the door, the office window lit from inside */
     { const cx = r2(gx(8) + 5.25), cz = r2(gx(42) + 3.5), d = 7;
       features.push({ k: 'arch', id: 'woods:ranger:lights', x: cx, z: cz, rot: 180, parts: [
           box(0.55, 2.3, d / 2 + 0.2, 0.06, 0.06, 0.3, TIN, CAP), ...lantern(0.55, 1.95, d / 2 + 0.34),
@@ -136,17 +138,37 @@ function atmosphere(ctx) {
     { const gap = doors.find(d => d.id === 'estate').x, p = plot['P01-05'], z = gx(p.y * N + N - 1);
       features.push({ k: 'arch', id: 'woods:gate:lights', x: gap, z, rot: 0, parts: [-1, 1].flatMap(sd => [box(sd * 3.5, 2.6, -0.4, 0.06, 0.06, 0.5, TIN, CAP), ...lantern(sd * 3.5, 2.2, -0.6)]) }); }
     /* trail lamps: the Crossroads' join, the Old Tree's turn, the trail down to the camp, the playground's corner (one row, the room's own frame) */
-    { const at = (cx, cy, ox, oz, sd) => lampPost(gx(cx) + ox, gx(cy) + oz, sd);   // a square's north-west corner + an offset: on a path's edge, never on its middle
-      const parts = [...at(27, 42, 0.5, 0.5, 1), ...at(20, 42, -0.4, 0.5, -1), ...at(17, 46, 0.4, 1.0, -1), ...at(30, 46, 0.4, 1.0, -1), ...at(13, 55, 3.1, -0.5, -1), ...at(28, 63, 0.4, 0.6, 1)];   // each on a forest square's edge beside the path
-      const o = [gx(0), gx(36)]; parts.forEach(q => { q.p = [r2(q.p[0] - o[0]), q.p[1], r2(q.p[2] - o[1])]; });
-      /* the ground differs from lamp to lamp, so each lamp is its own row at its own foot */
-      const groups = {}; parts.forEach(q => { const k = Math.round((q.p[0] + o[0]) / 3.5) + ':' + Math.round((q.p[2] + o[1]) / 3.5); (groups[k] = groups[k] || []).push(q); });
-      Object.keys(groups).forEach((k, i) => { const g = groups[k], bx = g[0].p[0] + o[0], bz = g[0].p[2] + o[1];
-          features.push({ k: 'arch', id: 'woods:lamp:' + i, x: r2(bx), z: r2(bz), rot: 0, parts: g.map(q => Object.assign({}, q, { p: [r2(q.p[0] + o[0] - bx), q.p[1], r2(q.p[2] + o[1] - bz)] })) }); }); }
+    /* (the model pass: the six lamps are `lantern_post` models; they were posts and lanterns drawn from boxes) */
+    [[27, 42, 0.5, 0.5], [20, 42, -0.4, 0.5], [17, 46, 0.4, 1.0], [30, 46, 0.4, 1.0], [13, 55, 3.1, -0.5], [28, 63, 0.4, 0.6]].forEach((q, i) => ctx.props.push({ key: 'lantern_post', x: r2(gx(q[0]) + q[2]), z: r2(gx(q[1]) + q[3]), face: i % 2 ? 90 : 0 }));
     /* the camp's string of bulbs: two posts and a wire on the line between two square rows south of the fire, seven bulbs */
-    { const c = centre('P01-04'), fx = gc(c[0]), z = r2(gc(c[1]) + 5.25), COL = [0xffc46a, 0xff8f6a, 0xfff0b0, 0x9fe08a, 0xffc46a, 0x8ac8ff, 0xff8f6a];
-      features.push({ k: 'arch', id: 'woods:camp:lights', x: fx, z, rot: 0, parts: [box(-5.2, 0, 0, 0.14, 2.9, 0.14, WD2, DARK), box(5.2, 0, 0, 0.14, 2.9, 0.14, WD2, DARK), box(0, 2.72, 0, 10.4, 0.025, 0.025, TIN, CAP),
-          ...COL.map((col, i) => box(-4.2 + i * 1.4, 2.56 - (i === 3 ? 0.05 : 0), 0, 0.1, 0.14, 0.1, null, col, { glow: 0.8 }))] }); }
+    { const c = centre('P01-04'), fx = gc(c[0]), z = r2(gc(c[1]) + 5.25);   // the model pass: two `string_lights` (it was a wire and seven drawn bulbs)
+      ctx.props.push({ key: 'string_lights', x: r2(fx - 2.6), z, face: 0 }, { key: 'string_lights', x: r2(fx + 2.6), z, face: 0 }); }
+}
+/* THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... tell all of those district threads that needed models to use these ones";
+   docs/plans/WISHLIST_MODELS_ADDED.md): the pieces this district's NEEDS A MODEL list asked for, and others of the 246 that fit. The stand-ins they replace
+   are taken out where they stood (the drawn stove and firewood, the drawn gate leaves, the drawn lamp posts and bulbs, the rock-pile cairn). */
+function models(ctx) {
+    const { N, gx, gc, r2, props, taken, plot, cell, centre, hput, hdec } = ctx;
+    const P = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z) }, o || {}));
+    /* THE CAMPFIRE: the camper van on two free squares side by side on the glade's east side, a picnic table, packs, a kettle, a clothes line, a grill */
+    { const p = plot['P01-04'], c = centre('P01-04'); let spot = null;
+      for (let lx = N - 2; lx >= 2 && !spot; lx--) for (let ly = 1; ly < N - 1 && !spot; ly++) { const X = p.x * N + lx, Y = p.y * N + ly;
+          if (cell[Y][X] === 'g' && cell[Y][X - 1] === 'g' && !taken.has(X + ':' + Y) && !taken.has((X - 1) + ':' + Y) && Math.abs(Y - c[1]) <= 2) spot = [X, Y]; }
+      if (spot) { taken.add(spot[0] + ':' + spot[1]); taken.add((spot[0] - 1) + ':' + spot[1]); P('camper_van', gx(spot[0]), gc(spot[1]), { face: 0 }); }
+      hput('P01-04', 'picnic_table', -2, 3, { face: 20 }); hput('P01-04', 'clothes_line', 3, 3, { face: 100 }); hput('P01-04', 'bbq_grill', 2, -3); hdec('P01-04', 'backpack', -3, -1); hdec('P01-04', 'backpack', 1, 3);
+      P('kettle', gc(c[0]) + 0.75, gc(c[1]) + 0.55, { face: 60 }); P('sleeping_bag', gc(c[0]) - 3.6, gc(c[1]) - 1.9, { face: 70 }); }
+    /* THE OLD PLAYGROUND: the tyre swing */
+    P('tyre_swing', gc(33) - 0.3, gc(63) + 0.9, { face: 100 });
+    /* THE CROSSROADS: the trail's map board, an outhouse behind the shelter's corner, a milestone */
+    hput('P02-03', 'trail_sign', -1, 2, { face: 0 }); hput('P02-03', 'outhouse', -4, 3, { face: 90 }); hdec('P02-03', 'milestone', 1, -3);
+    /* THE OLD TREE: one deer under it, an owl, moss and flowers */
+    hput('P01-03', 'deer', 3, -1, { face: 250 }); hdec('P01-03', 'moss_clump', -1, 2); hdec('P01-03', 'moss_clump', 2, 0); hdec('P01-03', 'wild_flowers', 1, -2); hdec('P01-03', 'wild_flowers', -3, 2); hdec('P01-03', 'hedgehog', 0, 2);
+    /* THE STAIR: a trail board where the flight meets the woods, flowers */
+    hput('P02-04', 'trail_sign', 3, 3, { face: 0 }); hdec('P02-04', 'wild_flowers', -1, 3); hdec('P02-04', 'wild_flowers', 1, 2);
+    /* THE FENCE LINE: a beehive, a wheelbarrow, a trough, a kennel for the dog, a pitchfork in the straw */
+    hput('P01-05', 'beehive', -3, -2); hput('P01-05', 'kennel', 1, 3, { face: 180 }); hput('P01-05', 'water_trough', 3, -1, { face: 90 }); hdec('P01-05', 'wheelbarrow', -1, 2); hdec('P01-05', 'pitchfork', 2, 2); hdec('P01-05', 'hay_bale', 3, 2); hdec('P01-05', 'rooster', 0, -1);
+    /* THE DEEP WOODS: a raven on its post and a fox (west), a pack by the wreck and a hooded stone (south) */
+    hdec('P00-04', 'raven_perch', -2, 0); hdec('P00-04', 'fox', 2, 1); hdec('P00-04', 'moss_clump', 0, -1); hdec('P00-05', 'backpack', 1, 1); hdec('P00-05', 'moss_clump', -1, 2); hdec('P00-05', 'owl_perched', -2, 1);
 }
 module.exports = {
     id: 'C', name: 'The Clearing',
@@ -236,7 +258,7 @@ module.exports = {
               box(0, H - 0.62, 0, w - 0.5, 0.05, d - 0.5, WD, 0xe8dcc0, { uv: [3.5, 1.75], glow: 0.55, under: true, roof: true }),
               box(-3.5, H - 0.88, 0, 0.24, 0.26, d - 0.5, WD2, DARK, { n: 3, step: [3.5, 0, 0], roof: true }),
               /* the firewood stack under the east end of the porch roof, and the side yard's chopping block */
-              box(-4.3, 0.16, d / 2 + 0.55, 1.6, 0.9, 0.5, WD2, 0x8a7458, { uv: [0.3, 0.3] }),
+              /* (the model pass: the drawn firewood stack is the `firewood_stack` model now, placed below) */
               /* PASS 2, THE INTERIOR (2026-11-16): one room, the office on the west half, the bunk and the stove on the east half. A boarded dado on the three
                  blind walls, the six windows drawn from inside as pale lit panes in their frames (the building's own inside walls have no holes), the wood stove
                  under the pipe on a stone pad, its firewood, a plank counter by the door. */
@@ -246,9 +268,7 @@ module.exports = {
                   return [box(q[0], 1.2, z, 1.5, 1.15, 0.04, GLASS, 0xcfe0e6, { uv: 'fit', glow: 0.75 }), box(q[0], 1.13, z, 1.75, 0.08, 0.1, WD2, TRIM), box(q[0], 2.35, z, 1.75, 0.08, 0.1, WD2, TRIM), box(q[0] - 0.8, 1.2, z, 0.09, 1.15, 0.1, WD2, TRIM), box(q[0] + 0.8, 1.2, z, 0.09, 1.15, 0.1, WD2, TRIM)]; }),
               ...[-1, 1].flatMap(sd => { const x = sd * (w / 2 - 0.29);                                           // the two end panes
                   return [box(x, 1.2, 0.4, 0.04, 1.15, 1.5, GLASS, 0xcfe0e6, { uv: 'fit', glow: 0.75 }), box(x, 1.13, 0.4, 0.1, 0.08, 1.75, WD2, TRIM), box(x, 2.35, 0.4, 0.1, 0.08, 1.75, WD2, TRIM), box(x, 1.2, -0.4, 0.1, 1.15, 0.09, WD2, TRIM), box(x, 1.2, 1.2, 0.1, 1.15, 0.09, WD2, TRIM)]; }),
-              box(-3.6, 0.16, -1.3, 1.4, 0.06, 1.4, ROCK, STONE, { uv: [1.75, 1.75] }), cyl(-3.6, 0.22, -1.3, 0.36, 0.85, TIN, 0x3a3d40, { seg: 10 }), cyl(-3.6, 1.07, -1.3, 0.4, 0.05, TIN, 0x2c2e30, { seg: 10 }),
-              cyl(-3.6, 1.12, -1.3, 0.1, 1.72, TIN, 0x3a3d40, { seg: 8 }), box(-3.23, 0.45, -1.3, 0.04, 0.3, 0.32, null, 0xff7a20, { glow: 1 }),                  // the stove, its pipe, its fire door
-              box(-4.6, 0.16, -0.2, 0.5, 0.55, 0.9, WD2, 0x8a7458, { uv: [0.3, 0.3] }),                                                                            // the firewood by the stove
+              box(-3.6, 0.16, -1.3, 1.4, 0.06, 1.4, ROCK, STONE, { uv: [1.75, 1.75] }), cyl(-3.6, 1.8, -1.3, 0.09, 1.04, TIN, 0x3a3d40, { seg: 8 }),                  // the pipe from the stove's top to the ceiling (the stove itself = the `wood_stove` model since the model pass)
               box(lx, 0.165, d / 2 - 1.0, 1.5, 0.02, 0.9, 'urban:CarpetPlain1c', 0x4f6a4a, { sides: false }),                                                     // the door mat
               box(1.0, 1.02, d / 2 - 0.62, 1.5, 0.06, 0.6, WD2, 0x8a7a62), box(0.33, 0.16, d / 2 - 0.62, 0.08, 0.86, 0.5, WD2, DARK), box(1.67, 0.16, d / 2 - 0.62, 0.08, 0.86, 0.5, WD2, DARK),   // the counter by the door
               box(0.6, 1.9, -d / 2 + 0.34, 1.3, 0.05, 0.3, WD2, DARK), box(4.6, 1.9, -d / 2 + 0.34, 0.6, 0.05, 0.3, WD2, DARK),                                   // two wall shelves on the back wall
@@ -256,7 +276,9 @@ module.exports = {
           features.push({ k: 'arch', id: 'woods:ranger:arch', x: cx, z: cz, rot: 180, parts });
           const P = (key, rx, rz, o) => props.push(Object.assign({ key }, at(rx, rz), o || {}));
           P('rocking_chair', 3.9, d / 2 + 1.5, { face: 160, y: 0.16 }); P('railway_lantern', 1.6, d / 2 + 2.9, { y: 0.16 }); P('psx_wooden_crate_2', -1.9, d / 2 + 0.7, { y: 0.16 });
-          P('metal_trash_can', -6.4, d / 2 + 2.4); P('stump', -7.2, 0.3); P('wooden_bucket', -6.3, -0.6); P('psx_hand_saw_1', -7.0, 1.1, { y: 0.02 });
+          P('metal_trash_can', -6.4, d / 2 + 2.4); P('axe_chopping_block', -7.2, 0.3, { face: 40 }); P('wooden_bucket', -6.3, -0.6);
+          P('firewood_stack', -4.2, d / 2 + 0.5, { y: 0.16 }); P('firewood_stack', -4.62, 0.9, { y: 0.16, face: 90 }); P('wood_stove', -3.6, -1.3, { y: 0.22, face: 270 }); P('backpack', -2.6, d / 2 + 2.6, { y: 0.16, face: 150 });
+          P('fire_danger_sign', 6.2, d / 2 + 4.6, { face: 180 }); P('mailbox', -6.6, d / 2 + 5.2, { face: 180 }); P('antler_trophy', 0.75, -3.12, { y: 2.15, face: 180 });
           /* PASS 2, THE INTERIOR: blockers against the walls, the door's square and the middle of the room clear; every lit piece carries noLight */
           const F = 0.16, T = 1.13;   // the floor boards; the desk's top
           P('psx_table_large_2', 3.0, 2.55, { y: F }); P('psx_chair_mp_1', 3.0, 1.7, { y: F, face: 180 }); P('field_radio', 3.55, 2.75, { y: T }); P('psx_lamp_1_on', 2.35, 2.8, { y: T, noLight: true });
@@ -266,7 +288,7 @@ module.exports = {
           P('evidence_board', 0.75, -2.85, { y: F, face: 180 }); P('rifle_rack', -1.0, -2.9, { y: F, face: 180 }); P('psx_wardrobe_mp_1', -4.3, -2.85, { y: F, face: 180 });
           P('psx_bed_1', -3.45, 2.45, { y: F }); P('psx_pillow_mp_1', -4.4, 2.45, { y: 0.75 }); P('footlocker', -1.75, 2.5, { y: F, face: 90 }); P('psx_armchair_1', -1.9, -0.9, { y: F, face: 90 });
           P('psx_carpet_mp_1', -0.3, 0.2, { y: 0.17 }); P('brochure_rack', 1.0, 3.12, { y: 1.1 }); P('psx_clock_1', 2.75, -3.17, { y: 2.45, face: 180 }); P('psx_painting_1', -w / 2 + 0.36, -2.4, { y: 1.9, face: 270 });
-          P('psx_ceiling_lamp_1_on', 2.3, 0, { y: 2.42, noLight: true }); P('psx_ceiling_lamp_1_on', -2.6, 0, { y: 2.42, noLight: true });
+          /* (the model pass: the two ceiling lamps are out: they drew above the roof, not under the ceiling; the lit plank ceiling lights the room) */
           P('psx_canned_food_mp_1', 0.3, -3.15, { y: 1.96 }); P('psx_canned_food_mp_2', 0.6, -3.15, { y: 1.96 }); P('retro_radio', 0.95, -3.15, { y: 1.96, face: 180 }); P('psx_glass_bottle_1', 4.6, -3.15, { y: 1.96 });
           P('psx_supply_crate_1', -0.4, -2.95, { y: F }); P('psx_jerrycan_1', 4.3, -3.0, { y: F }); P('hw_candles', 0.6, 2.9, { y: 1.09 }); }
         /* ── THE TRAIL SHELTER (P02-03 The Crossroads): a three-sided log lean-to in a pocket of the trees on the trail's south side, open to the trail. Its back and
@@ -281,7 +303,7 @@ module.exports = {
               box(0, 0.14, 1.0, 6.4, 0.34, 0.5, WD2, DARK), box(0, 0.48, 1.0, 6.4, 0.06, 0.6, WD2, 0xa89478),                                                        // the bench along the back wall
           ] });
           const P = (key, rx, rz, o) => props.push(Object.assign({ key }, at(rx, rz), o || {}));
-          P('psx_old_mattress_mp_1', -1.9, 0.0, { y: 0.15, face: 90 }); P('meshy_burlap_sack', 2.3, 0.8, { y: 0.54 }); P('railway_lantern', 0.4, 0.95, { y: 0.54 }); P('psx_canned_food_mp_1', 0.9, 1.0, { y: 0.54 }); }
+          P('sleeping_bag', -1.6, -0.2, { y: 0.14 }); P('backpack', -2.9, 0.9, { y: 0.14, face: 200 }); P('kettle', 1.5, 0.95, { y: 0.54 }); P('meshy_burlap_sack', 2.3, 0.8, { y: 0.54 }); P('railway_lantern', 0.4, 0.95, { y: 0.54 }); P('psx_canned_food_mp_1', 0.9, 1.0, { y: 0.54 }); }
         /* ── THE HUNTER'S STAND (P00-04 Deep woods, west): a box blind on four legs at the glade's east edge, a ladder up its west side. Dressing, not a climb. ── */
         { const cx = gc(8), cz = gc(53), F = 3.0;
           features.push({ k: 'arch', id: 'woods:stand', x: cx, z: cz, rot: 0, parts: [
@@ -301,17 +323,16 @@ module.exports = {
               box(-2.9, 3.5, 0, 1.0, 0.14, 0.14, WD2, DARK), box(2.9, 3.5, 0, 1.0, 0.14, 0.14, WD2, DARK),
               box(-0.9, 3.55, 0, 0.05, 0.55, 0.05, TIN, 0x55595c), box(0.9, 3.55, 0, 0.05, 0.55, 0.05, TIN, 0x55595c), box(0, 2.9, 0, 2.6, 0.65, 0.08, WD, BOARD, { uv: [2.6, 0.65] }),
           ] });
-          const leaf = [box(0.05, 0.1, 0, 0.12, 1.3, 0.1, WD2, DARK), box(3.15, 0.1, 0, 0.12, 1.3, 0.1, WD2, DARK), ...[0.25, 0.6, 0.95, 1.3].map(y => box(1.6, y, 0, 3.1, 0.1, 0.06, WD, BOARD, { uv: [3.1, 0.2] })), box(1.6, 0.25, 0.04, 0.1, 1.15, 0.04, WD2, DARK)];
-          features.push({ k: 'arch', id: 'woods:gate:w', x: r2(gap - 3.3), z: r2(z - 0.2), rot: 255, parts: leaf }, { k: 'arch', id: 'woods:gate:e', x: r2(gap + 3.3), z: r2(z - 0.2), rot: 285, parts: leaf }); }
+          /* the two leaves = the `braced_gate` model since the model pass (they were two arch rows of drawn rails), swung open into the Woods */
+          props.push({ key: 'braced_gate', x: r2(gap - 3.69), z: r2(z - 1.65), face: 105 }, { key: 'braced_gate', x: r2(gap + 3.69), z: r2(z - 1.65), face: 75 }); }
         /* ── THE OLD PLAYGROUND (P02-05 Deep woods, east): the Playground pack's three pieces on a worn dirt lot in the trees ── */
         props.push({ key: 'play_swing', x: gc(32), z: gc(64), face: 20 }, { key: 'play_slide', x: gc(31), z: gc(66), face: 300 }, { key: 'play_sandbox', x: r2(gc(33) - 0.4), z: r2(gc(65) + 0.9), face: 15 });
         /* ── THE COURT AT THE FOOT OF THE STAIR (P02-04): two lamp posts and two stone urns where the marble meets the dirt. The flight itself is not touched. ── */
         { const fx = gx(31), fz = gx(57);   // the foot's middle
-          const post = sd => [box(sd * 2.6, 0, 1.2, 0.2, 2.9, 0.2, WD2, DARK), box(sd * 2.6 - sd * 0.35, 2.7, 1.2, 0.7, 0.1, 0.1, WD2, DARK), box(sd * 2.25, 2.25, 1.2, 0.03, 0.45, 0.03, TIN, 0x55595c),
-              box(sd * 2.25, 1.93, 1.2, 0.22, 0.32, 0.22, GLASS, 0xffc46a, { uv: 'fit', glow: 1 }), box(sd * 2.25, 2.25, 1.2, 0.3, 0.05, 0.3, TIN, 0x35393c), box(sd * 2.25, 1.9, 1.2, 0.3, 0.04, 0.3, TIN, 0x35393c)];
-          features.push({ k: 'arch', id: 'woods:stairfoot', x: fx, z: fz, rot: 0, parts: [...post(-1), ...post(1)] });
+          props.push({ key: 'lantern_post', x: r2(fx - 2.6), z: r2(fz + 1.2), face: 0 }, { key: 'lantern_post', x: r2(fx + 2.6), z: r2(fz + 1.2), face: 0 });   // the model pass: were drawn posts
           props.push({ key: 'stone_urn', x: r2(fx - 2.5), z: r2(fz + 3.2) }, { key: 'stone_urn', x: r2(fx + 2.5), z: r2(fz + 3.2) }); }
         dressing(ctx);
         atmosphere(ctx);
+        models(ctx);
     },
 };
