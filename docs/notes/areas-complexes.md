@@ -4600,6 +4600,52 @@ city not get its own exit too?" (it does: Exit 1).
   lanes. Nothing on the city side (a sign for the Desert at the city's way out would be the Disaster City holder's). The canyon from the town
   to the Dig is cut in two by the move (each end opens on sand).
 
+
+## THE DESERT, THE DISTRICT FILES — one thread per district (2026-11-16, second side)
+
+mondo asked for the Desert to be set up the way Disaster City's districts were, so one thread per district can work at the same time. This was a
+set-up change only: nothing that is built changed. PROOF: both tools were rebaked before and after the split and data.js is byte for byte the
+same (the whole file, so the Desert's room and the three insides).
+
+- **THE FILES:** `docs/areas/desert/districts/C.js` (The Circus, 9 plots) · `W.js` (Western Town, 16) · `A.js` (Area 51, 16) · `G.js` (Giza, 16).
+  Each starts with its brief: its plots, what stands there, what is known missing or wrong, its hooks. `bake-desert.js` loads them through ONE
+  hook ("THE DISTRICT FILES" in the tool; the city's pattern). The tool keeps the Highway (R), everything read from the layout's squares (ground
+  paint, rock, the base's chain-link fence), the cacti, the scatter, the edges, the sky, the cars, the room's text.
+- **THE HOOKS** a file may export: `buildings(ctx)`, `furnish(ctx)` (inside its buildings), `ground(ctx)`, `pieces(ctx)` (late), `doors(ctx)`,
+  `dice` (its own dice) and `rooms(kit)` (below). The tool calls each stage in the order the first build wrote the rows (`STAGES`), which is why
+  nothing moved in data.js.
+- **THE FRAME:** a district file writes the FIRST BUILD's squares (0..96; `gx / gc`). The tool moves every row to where the block stands:
+  room square = home square + C (0, 12) · W (48, 12) · A (0, 48) · G (48, 48). A row moves with the FILE that made it (before: by where it
+  stood); the tool warns "OUTSIDE ITS BLOCK" when a file's row stands on another block's squares.
+- **THE DICE:** each file has its own (`ctx.rnd`, `ctx.dec`), so a change in one district never re-throws another's decor. EXCEPT THE CACTI: the
+  tool throws them over the whole room after the districts and keeps them off every piece, so a new piece anywhere can move cacti everywhere.
+  That is expected and nobody's bug; a rebake settles it.
+- **THE GROUND:** the ground sheets come from layout.json (shared). A district changes a square of its own block with
+  `ctx.setPaint(sx, sy, sheet)` (one of the room's seven sheets, or `'sand'`); it does not edit layout.json.
+- **THE INSIDES (decided):** a room belongs to the district whose door leads to it. `A.js rooms(kit)` = Hangar 18 + the White Rooms;
+  `G.js rooms(kit)` = inside the Great Pyramid. `bake-desert-insides.js` keeps only the kit (`mk`), the checks, the rooms' text and the walk
+  check; it belongs to the tool's row. The Circus and Western Town have no room behind a door yet; a new one = a `rooms(kit)` in that file
+  (a NEW room id also needs its rows outside the markers: ask on the board, below).
+
+**THE RULES FOR A DISTRICT THREAD**
+1. ONE THREAD = ONE DISTRICT FILE. Take your row on the board (docs/notes/claims.md) in your first PR. Scope: your district's exteriors,
+   interiors, dressing, atmosphere, polish, on your own plots.
+2. NOBODY touches the shared pieces without a dated note on the board first: `bake-desert.js`, `bake-desert-insides.js`, `layout.json` /
+   `layout-8x8.json`, the Highway, another district's file, the engine (three-renderer.js, map.js), and data.js outside the two marker blocks
+   (links, `siteRooms`, `HQ_AREA_MARKERS`, `HQ_AREA_ENCOUNTERS`, catalogue rows). Need a new ctx helper, a new ground sheet, a catalogue row?
+   Write the note, make the smallest change, say so in the PR. Two threads adding a catalogue row at once is fine (different lines).
+3. NEVER hand-edit between `DESERT64-BEGIN / END` or `DESERT-INSIDES-BEGIN / END`. Edit your file, then `node bake-desert.js` (C, W) or
+   `node bake-desert.js && node bake-desert-insides.js` (A, G). `--dry-run` prints the counts and writes nothing.
+4. MERGING WHEN ANOTHER DISTRICT LANDED FIRST: `git fetch origin main && git merge origin/main`. The district files never conflict (one file a
+   thread). The baked blocks in data.js will: resolve the block any way that parses (never keep one side and stop there), then REBAKE both
+   tools; the rebake writes the block from all four files as they are on the merged tree, and that is the block you commit. Re-bump the `?v=`
+   token (RULE #1b) and `node --check data.js`. If main moved again before your merge, do it again.
+5. Deliver per RULE #1 (PR, merge, `node sync-zip.js --upload`, the token). A visual change gets a browser run (RULE #1c, `probe-fast.js`,
+   playtest_city.js; probe traps: "THE DESERT'S INSIDES, THE LOOK PASS"). Update your board row and your file's header (what stands, what is
+   missing) in the same PR; lasting facts go in this file under your own heading.
+6. A piece that needs a model that does not exist: MODEL_LIST rule (list-models.js) + the catalogue row; the old literals the tool reads lines
+   from (`carnival`, `site_prebuilt_area51_gate`, `site_prebuilt_area51_flightline`, `site_prebuilt_giza_plateau`) must stay in data.js.
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
@@ -4633,3 +4679,46 @@ LEFT AS THEY ARE (looked at, not changed; each needs mondo's word or a design pa
 - The Bayside cordon (cop cars, ambulances, a fire truck parked in the kerb lanes, barricades): the plan's "response streets", meant.
 CLEAN: no tree, wall, fence, stair or planned building on a road square; no decor piece floating or sunk; the cars with `y` stand on the
 parking deck / in garages.
+
+## THE ESTATE, THE DISTRICT FILES (2026-11-16)
+
+mondo 11-16: "every single zone needs to be like that. now. so we can work in parallel" (like Disaster City's districts: one thread a district).
+A set-up change only: how the zone is written, not what is built.
+
+- **THE FILES** `docs/areas/estate/districts/<LETTER>.js`: `C.js` THE CORN FIELDS (NW), `L.js` THE LAKE (NE), `H.js` THE HAUNTED HOUSE + GRAVEYARD
+  (SW), `R.js` THE RANCH (SE), nine plots each. Each file's header is its thread's brief: its plots, what stands there today, what is missing or
+  waiting, the hooks. Everything a district builds or places is in its file; `bake-estate.js` holds only what is shared.
+- **THE ONE HOOK** (bake-estate.js "THE DISTRICT FILES", the city's way): a file exports any of `plan(ctx)` (change the plan's squares),
+  `houses(ctx)`, `sheds(ctx)` (buildings), `pieces(ctx)` (drawn pieces, `ctx.flat` levels the ground under one), `water(ctx)`, `dress(ctx)` (props,
+  trees, rails, people, animals). `ctx` = the tool's helpers (`building`, `put`, `look`, `P`, `dec`, `tree`, `native`, `rail`, `feat`, `props`, `npc`,
+  `taken`, `setRect`, `gx`, `gc`, the sheet names, `BUILT` = every building's handle by id) + that district's own dice (`ctx.rnd`, `ctx.dec`).
+  `STAGES` in the tool holds the order the districts run in for each stage (the order the pieces were written in before the split): it only
+  decides the order of the rows in data.js. `SEEDS` = where each district's dice start (where the one shared stream stood before the split), so a
+  piece added in one district never moves another district's pieces. A piece a district stands on another district's square is printed by the
+  bake (not refused).
+- **SHARED = THE TOOL'S** (bake-estate.js + docs/areas/estate/layout.json): the plan and its squares, the corn wall and the pines on it, the levels
+  and the slope, the paint rule, the open ground, the scatter, the shell and the sky, the room's label and lines, the spawn, the checks, and every
+  way out: the Woods gate `woods`, the house's front door `house`, `bay` (Room 512), `bay13` (Room 13), the well (link `well_skinwalker`), the
+  Lodge door (link `ranch_lodge`) and the four data.js rows the tool checks. The rooms behind those doors (the house's five floors, the Lodge,
+  the Cavern) are not district files either.
+- **PROOF OF NO CHANGE:** `node bake-estate.js` on main before the split and after it: data.js byte for byte the same (sha256 `9afc5d47`), the
+  room read through load-data.js the same (`9c9a9019`). So no R2 file changed, no token bump, nothing to upload, no browser run.
+
+### THE RULES FOR A DISTRICT THREAD
+1. **One thread = one district file.** Take your district's row on docs/notes/claims.md in your first PR; free it in your last. Edit only your
+   own `districts/<LETTER>.js`. Read its header first, then "THE ESTATE ON PLOTS", "THE LOOK PASS" and "THE GRASS + THE CLEAN SKY" above.
+2. **Nobody touches the tool, the layout or a shared piece without a note on the board** (claims.md, the "Estate, the tool + shared pieces" row
+   and a dated note at the bottom saying what and why). Need a new helper, a new stage, a change to the corn, the levels, the paint or a way
+   out? Write the note, make the smallest change, say in the PR what moved in the other districts' rows (it should be nothing).
+3. **Stay on your own squares** (C: sx 0..35 · sy 0..35; L: 36..71 · 0..35; H: 0..35 · 36..71; R: 36..71 · 36..71). The bake prints a piece that
+   stands on another district's square: move it, or ask that district's thread on the board.
+4. **Rebake and merge:** `git fetch origin main && git merge origin/main`, then `node bake-estate.js`, then commit data.js with your file. When
+   another district landed first and the baked block (`ESTATE36-BEGIN / ESTATE36-END` in data.js) conflicts: never keep one side of the block
+   wholesale and never merge it by hand. Take main's whole block (either side will do, it is rewritten), keep BOTH sides of everything else,
+   run `node bake-estate.js` again: the tool writes the block from all four files. Merge main once more right before you merge the PR and
+   rebake if main moved. Deliver per RULE #1 (data.js is an R2 file: token bump + `node sync-zip.js --upload`).
+5. **Scope of a district thread:** exteriors, interiors (the walk-ins in your district), dressing, atmosphere, polish. Not in scope: the
+   rooms behind a way out, the plan's plot grid, encounter tables (mondo's baked tables), new R2 game scripts.
+6. **Visual work gets a browser run** (RULE #1c / #1d: the fresh check, probe-fast.js, the proof picture with the `[EW BUILD]` HEAD).
+   Two prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack). No Meshy until mondo says so; the corn waits for it.
+7. A lasting fact goes in this file under your district's own heading in the same PR, and one line on the board.
