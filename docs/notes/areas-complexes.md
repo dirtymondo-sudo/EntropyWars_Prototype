@@ -4730,6 +4730,26 @@ same (the whole file, so the Desert's room and the three insides).
 6. A piece that needs a model that does not exist: MODEL_LIST rule (list-models.js) + the catalogue row; the old literals the tool reads lines
    from (`carnival`, `site_prebuilt_area51_gate`, `site_prebuilt_area51_flightline`, `site_prebuilt_giza_plateau`) must stay in data.js.
 
+## THE DESERT, WESTERN TOWN — THE EXTERIORS PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/areas/desert/districts/W.js` changed, then a rebake.
+- **WHAT WAS WRONG (first probe):** the seven fronts were 24 to 28 m wide, dark barns with 20 m of sand between them; the mine was a concrete
+  culvert with a pipe and a hotel luggage cart; the canyon's cut end looked straight out at Giza; a gable roof stood out past each false front
+  and hid its name.
+- **THE TOWN NOW:** twelve fronts at 7 to 17.5 m, shoulder to shoulder in two rows, a plank boardwalk each side (`ctx.setPaint`, rows 21 and
+  26 in the home frame). The seven named buildings keep their plots; five small trades fill the rows: BLACKSMITH, BARBER, ASSAY OFFICE,
+  TELEGRAPH, UNDERTAKER (generic frontier trades; told to mondo). `western()` took two changes: `key` (the wall sheet; the church is stucco,
+  the plank sheet cannot be tinted white) and a roof behind a false front is lower than the front and stops at its back.
+- **THE MINE** is an `arch` row (`des:w:mine`): three timber sets, lagging, a dark back, a MINE board, rails and sleepers 15 m south to a
+  buffer. **BOOT HILL** has a ranch rail, a named timber gate (`des:w:boothill`), headstones and grave mounds from the PSX graveyard pack.
+- **THE CANYON** ends in a rock wall (a `plateau` 4 x 3 squares, 8.75 m) on Western Town's own squares: a box canyon.
+- **THE HORSE POND:** the layout's two `w` squares south of the well were never drawn; a `pool` stands there now.
+- **THE PROBE, WESTERN TOWN:** faces are compass degrees (0 looks north, 90 east). Room x = -84 + 3.5 x home square, z = -210 + 3.5 x home
+  square. Main Street's middle is z -126; a good street view is x 112, z -121, face 62, y 1.6. A cold run took 200 s, a warm one 60 s.
+  Swinging door leaves DO draw here (saloon, church, jail).
+- **NEEDS A MODEL:** the list in W.js's header (anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows,
+  prospector's tent, telegraph pole).
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
