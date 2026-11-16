@@ -7203,6 +7203,17 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   WHAT A NEXT THREAD WOULD DO: (1) a walkable top for the Falls (a path up the wall's west shoulder) if mondo wants the fall to lead somewhere; (2) cut the Survival,
   Vegetation and Mine packs for bushes, a lean-to and the adit's timbering (a Blender job: new art, his OK); (3) a snow sheet and a bark sheet; (4) light shafts in the
   engine (the Woods tool row + the renderer); (5) merge the district's small props into fewer draws if the weak PC shows the cost.
+- **THE MODEL PASS (2026-11-16, on top of the five; mondo: "these are models that were added ... use these ones"; seen, 18 + 9 + 9 + 6 + 10 views) — STOPPED again.**
+  PLACED from docs/plans/WISHLIST_MODELS_ADDED.md: `fallen_redwood` along the giant's glade; `stepping_stones` across the lower Creek (they need `y: 0.45`: at the ground's
+  height the creek's sheet covers them); `reeds` at the Falls' pool and in the creek; `river_fish` by the camp's bucket; `moss_clump`, `owl_perched`, `bear`, `deer` under the
+  old trees; `wild_flowers`, `leafy_bush`, `prayer_flags`, `carved_totem_pole`, `lean_to`, `firewood_stack`, `sleeping_bag` at the Meadow; `timber_lookout`, `trail_sign`,
+  `backpack` on the Shelf; `snow_heap`, `ice_block`, `icicles`, `reindeer`, `snowshoes`, `ice_axe`, `snow_sled` on the Snowline; `lit_candle` for the candle ring and the graves.
+  STAND-INS TAKEN OUT: the graveyard pack's hand-wide stepping stones, the unlit pack candles of the ring and two on the graves, twelve of the 22 code-built snow drifts.
+  NOT PLACED: `rope_bridge` (no 7 m gap in this district), `fishing_rod`, `lake_rock`, one owl, one deer and two trail boards (the Creek plots' and the Old Trees south's glades
+  are full: a blocker needs a free whole square). `at(…, 'find')` in T.js = a blocker takes the plot's nearest free open square.
+  **THE WISH-LIST MODELS ARE HEAVY** (3 to 4 MB a file, about 0.4 to 1 MB optimised): the first cut scattered 40 moss clumps, 22 flower patches and 10 reeds and the Falls
+  view fell from 1.2 to 0.2 frames (cloud software GPU). Now 8 / 8 / 4: the Falls 1.0, the Meadow 1.0 (first look 1.2 / 1.6). Never `sow` a wish-list model by the dozen.
+  STILL NEEDED (not models): a snow ground sheet, a bark sheet, light shafts, sound.
 - **FITS THIS DISTRICT (the whole-list read, 11-16; a helper read MODEL_LIST.md §6, 7, 8, 10, 12b, 13 and the live catalogue end to end).** Placed now: see above.
   NOT YET PLACED, FIT: `hw_fence` (more), `psxg_railing`, `psxg_wall_corner`, `xmas_snowman_2/3`, `spear`, `psx_stairs_5_wood`, `ship_lantern` (needs a bough over it),
   `psx_canned_food_mp_4`, `psx_shotgun_ammo_1`, `psx_ammo_box_1`, `urban:ClothTattered*` (prayer rags, a lean-to tarp), `urban:WoodGeneric1b` / `wood_planks` (a lookout deck),
@@ -7327,6 +7338,8 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
 - **Standing stones that block**: catalogue `sarsen` / `menhir` / `greek_column` with their own `h` (a prop row's `h` scales the model), one a square; `trilithon` on two whole squares (x on the line between them).
 - **A walk-in on ground that is not at 0 m (district G's Camp House, 7 m up)**: give every inside prop `floor: true`; a `y` of 1 m or more must be the ROOM height (ground + lift), a `y` under 1 m is a lift; line the inside walls with a lit board box 0.34 m in (`glow: 0.4`); `holy_carpet` stands upright (a tapestry), `psx_chair_mp_*` are stools.
 - **Lit trails without lights (district G)**: lantern posts as arch parts in the trees' edge beside a path (post + arm + a `glow: 1` box), one arch row a plot; pick the tree squares that touch a path by a hash so the count stays low. **Air by plot**: `airZones` may return several boxes in metres (first listed first); never `embers` (room-wide), use orange `motes`. **A glow on a statue**: measure the model file (parse the GLB's POSITION accessor) before guessing where a face is.
+- **The wish-list models (docs/plans/WISHLIST_MODELS_ADDED.md) in the Woods**: they are heavy (3 to 4 MB each): place by hand, a handful a plot, never a `sow` of dozens
+  (district T lost 80 % of its frames to 60 scattered moss, flower and reed clumps). `stepping_stones` in a creek need `y: 0.45`. A blocker needs a free whole square.
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 - **A yard for a new piece without moving the old ones** (district C): open its squares as `p` in `cut`, not `g` (the plot's middle is the mean of its grass squares).
 - **Level ground for a building**: the ground is flat 7 m either side of a plot's middle and between two neighbours of one level; row 3 of district C is one flat band.
