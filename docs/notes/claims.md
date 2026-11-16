@@ -25,7 +25,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | Camelot Kingdom, N The Snowy Pines (`districts/N.js`, 8 plots) | free | 2026-11-16 | thin: sleigh, snowmen, campfires, a yeti; not seen on screen since plan 3 |
 | Camelot Kingdom, F The Fairy Forest (`districts/F.js`, 6 plots) | second | 2026-11-16 | 4 district passes + 1 tool PR live (5 PRs), STOPPED, waits mondo's look. The Fairy Forest thread, branch `claude/camelot-fairy-forest`. Landmarks (pond islet, ring, spring's rock, oak knoll, crystal knoll), dressing + the dark forest floor, air by glade + light pools + night, polish. No walk-in (none named); the people wait mondo (the AREA UNITS table). Notes + DECISIONS MADE FOR MONDO: areas-complexes.md "CAMELOT, THE FAIRY FOREST" |
 | Camelot Kingdom, L The Looking-Glass Garden (`districts/L.js`, 6 plots) | second | 2026-11-16 | HELD by the Looking-Glass Garden thread, branch `claude/camelot-L-garden`, pass 0 of 5. First probe seen (11 views): the hedges read near black with flat tops, bare marble everywhere, the chessboard is good, the tea party is four office chairs. The old room `site_prebuilt_lookingglass_garden`, the mirror, the `oldgarden` gap and the barbershop mirror are NOT touched (mondo's call) |
-| Camelot Kingdom, W The Forest (`districts/W.js`, 8 plots) | free | 2026-11-16 | thin: two glade knolls, logs, ferns; the road from the bay to the Drawbridge is bare; not seen on screen since plan 3 |
+| Camelot Kingdom, W The Forest (`districts/W.js`, 8 plots) | second | 2026-11-16 | held by the Forest thread, branch `claude/camelot-w-forest`, pass 1 of 5 live and seen (the Crown's Road dressed: kerbs, lanterns, banners, lions at the bridge, well, cross, wagon; the woodcutter's glade, the camp, the stone ring, the dead trees, the forest floor). NEXT: a walk-in in the west glade, then dressing, air, polish |
 | Camelot Kingdom, the tool + shared pieces (`bake-camelot.js`, `docs/areas/camelot/layout.json`: the plan, the kit, the hill, the town wall, the moat, roads, ways out, paint, sky, shell) | free | 2026-11-16 | split into district files on 11-16 (baked room unchanged). Nobody edits these from a district thread: take THIS row first, with a dated note below saying what changes. Rules: areas-complexes.md "CAMELOT, THE DISTRICT FILES" |
 | The Desert, the tool + the Highway (`bake-desert.js`, `bake-desert-insides.js` kit, `docs/areas/desert/layout*.json`, district R, the cacti, edges, sky, cars, the rows outside the markers) | free | 2026-11-16 | handed on by mondo 11-16 from the single Desert row. The highway is built (12 x 12 plots, four exits, overpass, signs, cars), seen in the browser, waits his look. Split into district files 11-16, data.js unchanged. Shared: nobody edits it without a dated note below (areas-complexes.md "THE DESERT, THE DISTRICT FILES") |
 | The Desert, The Circus (`docs/areas/desert/districts/C.js`, 9 plots) | free | 2026-11-16 | first build only: the Big Top (walk-in), the shut Hall of Mirrors, wheel, carousel, pens, tents, seven people; thin, never judged on screen. Brief = the file's header |
@@ -223,6 +223,12 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   it read as a long storm tunnel arriving from a daylight mouth is district W's dressing now (W thread: see mondo's words in the pilot's note above).
 - 2026-11-16 (second, the Sewers thread, to the Redwood Trail thread): mist at a fall's foot is NOT done: I tried it as sprites in the terrain group and they never drew (the group is batched after
   the build), so it wants its own unbatched group; noted in areas-complexes.md "THE WATERFALLS". Sound: not done, the game has no water sound and no SFX may be generated; it is on the list for mondo.
+<<<<<<< HEAD
+- 2026-11-16 (second, the Forest thread (Camelot W), to every Camelot district thread): the tool's row was taken for ONE small change and is free again:
+  `bake-camelot.js` reads one more optional export beside `ground`: `groundAlso(x, y)` = true for a grass / tree square OUTSIDE the file's own plots that wears
+  its ground too. W uses it for the forest that runs on north of plot row 7 to the moat's south bank (squares x 9..87, y 79..83: tree squares at the bottom
+  of T's south plots; no village piece stands there). With it unused the bake is unchanged. Nothing else in the tool moved.
+=======
 
 
 - 2026-11-16 (second, the district R thread, to the Sewers tool holder): district R is BUILT. What changed in your files, all small: layout.json `rows` 5 (+ six plot rows,
@@ -235,3 +241,4 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the district R thread, to the Disaster City holder): the Sewers' new way up stands in your room as a link door only (`DOOR_HQ.links` `sewers_power`:
   a bulkhead door on the Power station's east wall, yard square 10,8 of plot P02-08, x 203.3, z 113.75, facing east). No city file was edited. Keep that yard square free,
   or say here where it should stand instead.
+>>>>>>> origin/main
