@@ -8,7 +8,7 @@
    the sewers". So: the creek bed through this district is DRY and cut deep between two rock walls; it ends (the Outfall, link sewers_drain) at one big sewer mouth.
    BUILT 2026-11-16 (the exterior pass, his answers the same day: the bed is walked; "the mouth is the cave"; no pool here; a way out underground "should
    just be blackness"): THE CULVERT takes the creek's water under the trail (a brick head, a black pipe) and the bed below is DRY bare rock; THE RAVINE
-   (plots P04-04 / P05-04, room squares 56..71 x 54..55) is cut 3.5 m down between rock walls, a ramp down into it from the trail, and ends at THE SEWER
+   (plots P04-04 / P05-04, room squares 56..71 x 54..55) is cut 3.5 m down between rock walls, its bed DIRT with a concrete apron at the end, a dirt path along each rim, a ramp down from the trail, and ends at THE SEWER
    MOUTH (the cave: a brick head with blackness in its arch, link sewers_drain). The Storm Drain and the Tunnel Way end in the same black mouths. The Pool
    is gone. The crag stands on its plan squares as a rock gate over the north trail and wears no drain. The lists below are older than this.
    THE LOOK: rot and thorns, "where things get dumped". Bare trees, thorn vine, gas plants, spore caps, dead snags with crows; ash in the air.
@@ -88,8 +88,10 @@ module.exports = {
         /* THE DRY BED (mondo 11-16): below the culvert the creek's squares are bare rock (r), the plank decks are plain trail again (no water to cross),
            the Pool's squares are grass. No tree square is touched. */
         for (let cy = 36; cy < 72; cy++) for (let cx = 36; cx < 72; cx++) { const ch = cell[cy][cx], pool = cx >= 50 && cx <= 58 && cy >= 62 && cy <= 70;
-            if (ch === 'w') cell[cy][cx] = pool ? 'g' : (cy <= 40 && cx <= 42) ? 'w' : 'r'; else if (ch === 'b') cell[cy][cx] = 'p'; }
-        RAVINE.forEach(q => { for (let cy = q[2]; cy <= q[3]; cy++) for (let cx = q[0]; cx <= q[1]; cx++) { cell[cy][cx] = 'r'; } });
+            if (ch === 'w') cell[cy][cx] = pool ? 'g' : (cy <= 40 && cx <= 42) ? 'w' : 'p'; else if (ch === 'b') cell[cy][cx] = 'p'; }   // the bed is DIRT (mondo 11-16: "the riverbed is supposed to be dirt")
+        RAVINE.forEach(q => { for (let cy = q[2]; cy <= q[3]; cy++) for (let cx = q[0]; cx <= q[1]; cx++) { cell[cy][cx] = 'p'; } });
+        /* THE RIMS (mondo 11-16: "I still need to be able to walk along the edges of the creek"): one square of dirt along each rim of the ravine, trail to east wall */
+        for (let cx = 56; cx <= 71; cx++) for (const cy of [53, 56]) if (cell[cy][cx] === 't') cell[cy][cx] = 'p';
     },
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
@@ -195,10 +197,12 @@ module.exports = {
           for (let cy = 53; cy <= 56; cy++) for (let cx = 55; cx <= 71; cx++) { if (!inR(cx, cy)) continue;
               const ramp = cx <= 59, top = ramp ? 0.5 + DEEP * (cx - 56 + 0.5) / 4 : DEEP;   // on the ramp the wall starts at the ramp's own height
               [[0, -1], [0, 1], [-1, 0]].forEach(d => { if (inR(cx + d[0], cy + d[1]) || (d[0] && cx === 56)) return; const ns = d[1] !== 0, x = gc(cx) + d[0] * 1.8 - ox, z = gc(cy) + d[1] * 1.8 - oz;
-                  P.push(box(x, top - 0.3, z, ns ? 3.6 : 0.3, 0.75 - top, ns ? 0.3 : 3.6, ROCK, (cx + cy) % 2 ? T_ROCK : T_ROCK2, { uv: [3.5, 3.5] }));
-                  if (rnd() < 0.75) { const r = 0.9 + rnd() * 1.1; P.push(rock(x + d[0] * (r * 0.6) + (ns ? (rnd() - 0.5) * 2 : 0), 0, z + d[1] * (r * 0.6) + (ns ? 0 : (rnd() - 0.5) * 2), r, 0.9 + rnd() * 2.2, r * 0.45, 5 + Math.floor(rnd() * 3), rnd() < 0.5 ? T_ROCK : T_ROCK2)); } }); }
+                  const apron = cx >= 69; P.push(box(x, top - 0.3, z, ns ? 3.6 : 0.3, 0.42 - top, ns ? 0.3 : 3.6, apron ? CONC : ROCK, apron ? T_CONC : (cx + cy) % 2 ? T_ROCK : T_ROCK2, { uv: [3.5, 3.5] }));
+                  if (!apron && rnd() < 0.45) { const r = 0.3 + rnd() * 0.35; P.push(rock(x + (ns ? (rnd() - 0.5) * 2.6 : 0), 0, z + (ns ? 0 : (rnd() - 0.5) * 2.6), r, 0.25 + rnd() * 0.45, r * 0.5, 5, rnd() < 0.5 ? T_ROCK : T_ROCK2)); } }); }   // small stones on the lip: the rims are walked
           /* loose stone on the bed */
-          for (let i = 0; i < 9; i++) P.push(rock(gx(61) + rnd() * 40 - ox, DEEP, gx(55) + (rnd() - 0.5) * 2.4 - oz + (rnd() < 0.5 ? -1.6 : 1.6), 0.35 + rnd() * 0.5, 0.3 + rnd() * 0.5, 0.2, 5, T_ROCK2));
+          for (let i = 0; i < 9; i++) P.push(rock(gx(61) + rnd() * 26 - ox, DEEP, gx(55) + (rnd() - 0.5) * 2.4 - oz + (rnd() < 0.5 ? -1.6 : 1.6), 0.35 + rnd() * 0.5, 0.3 + rnd() * 0.5, 0.2, 5, T_ROCK2));
+          /* the last three squares before the mouth are a concrete apron (mondo: "a little part at the end that turns into concrete") */
+          P.push(box(gx(69) + 5.25 - ox, DEEP - 0.1, 0, 10.6, 0.16, 7.1, CONC, T_CONC, { uv: [3.5, 3.5] }), box(gx(69) - ox, DEEP - 0.1, 0, 0.35, 0.22, 7.1, CONC, T_CONC));
           features.push({ k: 'arch', id: 'woods:M:ravine', x: ox, z: oz, y: 0, parts: P });
           /* the dry wash above the ravine: the old creek line sags a little, so the bare rock reads as a bed */
           [[49, 28.5], [54, 30.5], [58.5, 34], [59.5, 40], [61, 46], [69, 60.5]].forEach(q => features.push({ k: 'dip', x: q[0], z: q[1], r: 3.2, rz: 3.2, h: 0.7 })); }
