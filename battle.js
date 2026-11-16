@@ -13910,7 +13910,7 @@
         /* 💼 THE TECH CEO (2026-11-16, the new races; mondo added it): ownership of the board's objects. Three `cleanseArea` tile
            casts carry a flag each: `acquire` (every enemy-owned summon, deployed object, trap, bomb, mirror, ward or rune on the
            square now works for the CEO), `disrupt` (every enemy zone or timed terrain over the 3×3 changes hands), `layoffs`
-           (his own objects and summons are scrapped: +40 MP each and +1 ATK stage). Owners are plain numbers / ids on the rows,
+           (his own objects and summons are scrapped: +50 MP each and +1 ATK stage). Owners are plain numbers / ids on the rows,
            so the take-over state-syncs to the guest like the rows themselves. window._ceoPlan feeds the CPU (ai.js). */
         const _CEO_LISTS = ['turrets', '_deployedObjects', 'traps', 'bombs', 'mirrors', '_visionWards', 'warpRunes'];
         function _ceoOwnerPlayer(o) {
@@ -13973,7 +13973,7 @@
                 const gone = new Set(hits.map(h => h.o));
                 for (const L of _CEO_LISTS) if (Array.isArray(state[L])) state[L] = state[L].filter(o => !gone.has(o));
                 const mp0 = unit.mp || 0;
-                unit.mp = Math.min(unit.maxMp || (mp0 + 40 * hits.length), mp0 + 40 * hits.length);
+                unit.mp = Math.min(unit.maxMp || (mp0 + 50 * hits.length), mp0 + 50 * hits.length);
                 addLog(`💼 ${_ctName(unit)} lays off ${hits.length} ${hits.length === 1 ? names[0] : 'assets'}: +${unit.mp - mp0} MP.`);
                 applyStatStageBoost(unit, { atk: 1 }, `${spell.name}: `, unit);
                 showFloatingTextForUnit(unit, `💼 LAYOFFS ×${hits.length}`, 'buff', { durationMs: 1100 });

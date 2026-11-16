@@ -5472,3 +5472,17 @@ so it carries into her next turn and fades a turn after she stops rolling (onRem
   Grind is the rail in a fight. Tree: Sprint → Nimble Dodge / Stage Dive → Vault / Spotlight → Rampage. Finisher 900.
 - Probe 11-16: straight walk +2, Grind +3, Kickflip capped at 6, Board Slam 569 (318 of it momentum) and spent, a bent walk banks
   nothing; 0 page errors. Model `Assets/characters/races/skater/female/Meshy_AI_skater_Running.glb` + `skater.png` (R2 only).
+
+### 4. THE TECH CEO (Disaster City, Financial, specialist, family `disruption`; a parody of the type, no real person)
+The style: ownership of the board's objects. The three casts ride the `cleanseArea` tile kind (its targeting, glow and prompts)
+with a flag each; battle.js `_ceoCast` does the work, `_ceoTargets` finds the rows, `window._ceoPlan` feeds the CPU (ai.js
+_scoreSpellCore + _findSpellTargetRaw). Owned rows: state.turrets (summons, plants, turrets), _deployedObjects, traps, bombs,
+mirrors, _visionWards, warpRunes; owner fields `ownerPlayer|owner|player` (numbers) + `ownerUnitId|ownerId|casterUnitId` (ids).
+- **Acquisition** (T1, range 4, `acquire`): every enemy-owned row on the square changes owner to the CEO. Refused before MP when none.
+- **Layoffs** (T2, own square, `layoffs`): scraps every row he owns: +50 MP each, +1 ATK stage (applyStatStageBoost).
+- **Disrupt** (T3, 3×3 within 4, `disrupt`): every enemy `_activeZones` zone over the area and enemy `_timedTerrain` changes hands.
+- MP costs follow the tier (getTierMpCost: 25 / 50 / 75), so Layoffs sits at T2. Tree: Tesla Coil → Memory Leak / Free Energy →
+  Blue Screen / Classified Weapon → Singularity (Tesla Coil gives him his own things to lay off). Finisher Hostile Takeover.
+- Probe 11-16: the enemy's Tesla Coil acquired (owner 2 → 1), an empty square refused, the enemy Smoke Screen disrupted (2 → 1),
+  Layoffs scrapped the coil for +50 MP; 0 page errors. Model `…/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb` + `tech_ceo.png`.
+  Known: the turtleneck shows the Meshy texture-seam specks (as banker / politician / lifeguard).

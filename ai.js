@@ -6940,7 +6940,7 @@
         if (kind === 'cleanseArea' && (spell.acquire || spell.disrupt || spell.layoffs)) {   // 💼 the Tech CEO (battle.js _ceoPlan)
             const plan = (typeof window !== 'undefined' && typeof window._ceoPlan === 'function') ? window._ceoPlan(unit, spell) : null;
             if (!plan) return 0;
-            return spell.layoffs ? (plan.n >= 2 || (unit.mp || 0) < 60 ? 40 * plan.n : 0) : 90 * plan.n;
+            return spell.layoffs ? (plan.n >= 2 || (unit.mp || 0) < 60 ? 50 * plan.n : 0) : 90 * plan.n;
         }
         if (kind === 'cleanseArea') {
             if (!target) return 0;
