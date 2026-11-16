@@ -2662,6 +2662,7 @@
                 && !(typeof _isClashMode === 'function' && _isClashMode())) _deathRollDrag(unit, target, spell);   // 🐊 Death Roll
             if (spell.erupt && target && !unit.dead
                 && !(typeof _isClashMode === 'function' && _isClashMode())) _moleErupt(unit, target, spell);   // ⛏ Erupt
+            if (spell.serpentCoil && target && !unit.dead && unitHasStatus(unit, 'serpentForm')) _serpentCoil(unit, target);   // 🐍 Coil
             if (spell.selfStun && !unit.dead) {
                 applyStatusEffects(unit, [{ id: 'stun', duration: spell.selfStun }],
                     `${spell.name} recoil: `, unit);
@@ -5191,6 +5192,7 @@
             if (state.phase !== 'battle') return 0;
             const via = opts.via || 'displaced';
             _gatorSurfaceCheck(unit);   // 🐊 a Submerged unit off the liquid comes up
+            _serpentKeepUp(unit, via);   // 🐍 a serpent body left behind by a blink is laid fresh beside him
             const depth = _chainDepth;
             if (depth >= CHAIN_RULES.maxDepth) {
                 addLog(`⛓ The chain reaction runs out at ${coordLabel(unit.x, unit.y)} (×${depth}).`);
@@ -6884,7 +6886,9 @@
         // the variance window (0 = fully deterministic).
         // ═══════════════════════════════════════════════════════════════════
         function computeSpellBase(spell, spellPower, opts = {}) {
-            const base = opts.baseDmg != null ? opts.baseDmg : ((spell && spell.dmg) || 0);
+            let base = opts.baseDmg != null ? opts.baseDmg : ((spell && spell.dmg) || 0);
+            /* 🐍 Morning Star (`dayMult`, 2026-11-16): stronger while the day and night clock says day */
+            if (spell && spell.dayMult > 0 && typeof getCurrentCyclePhase === 'function' && getCurrentCyclePhase() === 'day') base = Math.round(base * spell.dayMult);
             const v = opts.variance != null ? opts.variance : SPELL_DMG_VARIANCE;
             // Draw from the seeded stream ONLY when variance is live — a
             // variance-0 call must not advance state.rngState (determinism).
@@ -10060,6 +10064,7 @@
             return n;
         }
         function unitResistsDisplace(unit, kind) {                     // immuneDisplace: 'push' | 'pull' | 'terrain' → the passive, or null
+            if (unit && (kind === 'push' || kind === 'pull') && unit.status && unit.status.serpentForm > 0) return { icon: '🐍', name: 'Feathered Serpent' };   // 🐍 Quetzalcoatl's serpent holds him
             if (!unit || typeof getUnitPassives !== 'function') return null;
             return getUnitPassives(unit).find(p => p && Array.isArray(p.immuneDisplace) && p.immuneDisplace.includes(kind)) || null;
         }
@@ -14101,6 +14106,113 @@
         }
         /* _runPostEffects for a `dragIntoLiquid` spell (Death Roll): the victim goes into the nearest free liquid square beside
            the gator or beside itself (deep water first), then gets Drowning (applyStatusPayload bounces it outside deep water). */
+        /* 🐍 THE FEATHERED SERPENT (2026-11-16, Quetzalcoatl): the first unit longer than one square. While he wears serpentForm he
+           is the head; the body is two state._deployedObjects rows (serpentOf = his id, serpentIdx 0 nearest him, blocksMovement,
+           spellId 'nrFeatheredSerpent' so three-renderer.js draws the serpent over them). A walk drags the body along the squares
+           he stepped off (finishMoveAt → _serpentFollow); any other arrival far from it lays it fresh behind him; Coil wraps it
+           round the victim (_serpentCoil). Nothing pushes or pulls him while it is out (unitResistsDisplace). Host-side; the rows
+           ride the snapshot like any deployed object. */
+        function _serpentSegs(unit) {
+            if (!unit) return [];
+            return (state._deployedObjects || []).filter(o => o && o.serpentOf === unit.id && o.hp > 0).sort((a, b) => a.serpentIdx - b.serpentIdx);
+        }
+        function _serpentLay(unit, squares) {
+            state._deployedObjects = (state._deployedObjects || []).filter(o => !(o && o.serpentOf === unit.id));
+            squares.slice(0, 2).forEach((q, i) => state._deployedObjects.push({
+                x: q.x, y: q.y, z: (typeof getHeightAt === 'function') ? getHeightAt(q.x, q.y) : 0,
+                ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player, hp: 999, maxHp: 999,
+                blocksMovement: true, spellId: 'nrFeatheredSerpent', spellName: 'Feathered Serpent', spellType: 'divine',
+                statusEffects: [], serpentOf: unit.id, serpentIdx: i
+            }));
+            try { if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid(); } catch (e) {}
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+        }
+        /* a free square for the body: on the board, walkable, nobody on it, no other object (his own body rows are lifted first) */
+        function _serpentFree(unit, x, y) {
+            if (!isInside(x, y) || (x === unit.x && y === unit.y)) return false;
+            return canOccupy(x, y);
+        }
+        /* two squares chained behind him: first beside him (the square he faces away from first), then beside that one */
+        function _serpentChainFrom(unit, prefer) {
+            const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+            const out = [];
+            let from = unit;
+            for (let n = 0; n < 2; n++) {
+                const opts = dirs.map(([dx, dy]) => ({ x: from.x + dx, y: from.y + dy }))
+                    .filter(q => _serpentFree(unit, q.x, q.y) && !out.some(o => o.x === q.x && o.y === q.y));
+                if (prefer) opts.sort((a, b) => (Math.abs(a.x - prefer.x) + Math.abs(a.y - prefer.y)) - (Math.abs(b.x - prefer.x) + Math.abs(b.y - prefer.y)));
+                if (!opts.length) break;
+                out.push(opts[0]); from = opts[0];
+            }
+            return out;
+        }
+        function _serpentRaise(unit) {
+            if (!unit || unit.dead || state.phase !== 'battle') return;
+            _serpentLay(unit, []);
+            const f = unit._facing || unit.facing;
+            const back = (f && Number.isFinite(f.dx) && Number.isFinite(f.dy)) ? { x: unit.x - f.dx * 2, y: unit.y - f.dy * 2 } : null;
+            const sq = _serpentChainFrom(unit, back);
+            _serpentLay(unit, sq);
+            addLog(`🐍 The feathered serpent rises behind ${_ctName(unit)}${sq.length ? ` (${sq.map(q => coordLabel(q.x, q.y)).join(', ')})` : ' — but there is no room for its body'}!`, undefined, undefined, { actor: unit });
+            showFloatingTextForUnit(unit, '🐍 FEATHERED SERPENT', 'buff', { durationMs: 1200 });
+        }
+        function _serpentDrop(unit) {
+            if (!unit) return;
+            const had = _serpentSegs(unit).length > 0;
+            _serpentLay(unit, []);
+            for (const v of (state.units || [])) if (v && v._coilSrcId === unit.id && unitHasStatus(v, 'coiled')) clearStatus(v, 'coiled');
+            if (had && !unit.dead && !unit._dying) addLog(`🐍 ${_ctName(unit)}'s serpent sinks away.`);
+        }
+        /* a walk: the body takes the squares he stepped off, nearest first (trail = the path before the end, then the start) */
+        function _serpentFollow(unit, ox, oy, trail) {
+            if (!unit || unit.dead || !unitHasStatus(unit, 'serpentForm')) return;
+            const old = _serpentSegs(unit).map(o => ({ x: o.x, y: o.y }));
+            if (!old.length && !unitHasStatus(unit, 'serpentForm')) return;
+            _serpentLay(unit, []);
+            const cand = (Array.isArray(trail) ? trail.map(t => ({ x: t.x, y: t.y })) : []).concat([{ x: ox, y: oy }], old);
+            const out = [];
+            for (const q of cand) {
+                if (out.length >= 2) break;
+                if (out.some(o => o.x === q.x && o.y === q.y) || !_serpentFree(unit, q.x, q.y)) continue;
+                const prev = out.length ? out[out.length - 1] : unit;
+                if (Math.abs(prev.x - q.x) + Math.abs(prev.y - q.y) !== 1) continue;
+                out.push(q);
+            }
+            if (out.length < 2) {   // a short or broken path: chain the rest on from the last square
+                const more = _serpentChainFrom(out.length ? Object.assign({}, unit, out[out.length - 1]) : unit, null)
+                    .filter(q => !(q.x === unit.x && q.y === unit.y) && !out.some(o => o.x === q.x && o.y === q.y));
+                out.push(...more.slice(0, 2 - out.length));
+            }
+            _serpentLay(unit, out);
+        }
+        /* any other arrival (a blink, an escape, a swap): a body left far behind is laid fresh beside him */
+        function _serpentKeepUp(unit, via) {
+            if (!unit || via === 'move' || !unitHasStatus(unit, 'serpentForm')) return;
+            const segs = _serpentSegs(unit);
+            if (segs.length && Math.abs(segs[0].x - unit.x) + Math.abs(segs[0].y - unit.y) === 1) return;
+            if (segs.some(o => (state.units || []).some(v => v && v._coilSrcId === unit.id && !v.dead && Math.abs(v.x - o.x) + Math.abs(v.y - o.y) === 1))) return;   // still wrapped round a Coiled victim
+            _serpentLay(unit, []);
+            _serpentLay(unit, _serpentChainFrom(unit, null));
+        }
+        /* Coil (`serpentCoil`, _runPostEffects): the body moves onto the free squares beside the victim, nearest the king first */
+        function _serpentCoil(unit, target) {
+            if (!unit || !target || target.dead || target._dying) return;
+            _serpentLay(unit, []);
+            const sq = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]
+                .map(([dx, dy]) => ({ x: target.x + dx, y: target.y + dy }))
+                .filter(q => _serpentFree(unit, q.x, q.y))
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+            const pick = [];
+            for (const q of sq) {   // two squares that touch each other, so the coil reads as one body
+                if (pick.length === 0) { pick.push(q); continue; }
+                if (Math.abs(q.x - pick[0].x) + Math.abs(q.y - pick[0].y) === 1) { pick.push(q); break; }
+            }
+            if (pick.length === 1 && sq.length > 1) pick.push(sq.find(q => q !== pick[0]));
+            _serpentLay(unit, pick);
+            addLog(`🐍 The serpent coils round ${_ctName(target)}!`, undefined, undefined, { actor: unit });
+            showFloatingTextForUnit(target, '🐍 COILED', 'debuff', { durationMs: 1100 });
+        }
+        if (typeof window !== 'undefined') Object.assign(window, { _serpentRaise, _serpentDrop, _serpentSegs });
         /* ⛏ _runPostEffects for an `erupt` spell (the Mole Man's Erupt, 2026-11-16): he comes up out of the ground on the free
            square beside the target nearest to where he dug in (he stays put when already beside it or no square is free), and
            the target is thrown up into the air: forced fall damage from 2 levels up (state.js applyFallDamage). Colossal units
@@ -46089,6 +46201,7 @@
             // move takes it too; one still in the air only meets the gravity field.
             resolveTileArrival(unit, { via: 'move' });
             _skaterBankMove(unit, _originX, _originY, x, y, dist);   // 🛹 a straight roll banks Momentum
+            _serpentFollow(unit, _originX, _originY, opts.trail);   // 🐍 the serpent's body follows the path
             _magicianVanish(unit);   // 🎩 Vanishing Act: an enemy ended beside a Magician with it set
 
             if (!_wasAirborne) {
@@ -48370,6 +48483,7 @@
                         && getGravityFieldAt(unit.x, unit.y) === 'super') return '🕳 Pinned by gravity';
                 }
                 if (spell.requiresLiquid && !_gatorOnLiquid(unit.x, unit.y)) return '🐊 Stand in water or sludge';   // Submerge
+                if (spell.requiresSerpent && !unitHasStatus(unit, 'serpentForm')) return '🐍 Raise the serpent first';   // Coil
                 // MP is deliberately checked LAST: canAfford() treats a bare
                 // 'No MP' as passable (its callers gate MP themselves), so no
                 // other block may hide behind it.
@@ -80996,6 +81110,11 @@
             }
             if (spell.requiresLiquid && !_gatorOnLiquid(unit.x, unit.y)) {   // 🐊 Submerge needs a liquid underfoot
                 addLog(`${_ctSp(spell.name)}: ${_ctName(unit)} must stand in water, sludge or ooze.`, _clickSeat());
+                playErrorSfx();
+                return 0;
+            }
+            if (spell.requiresSerpent && !unitHasStatus(unit, 'serpentForm')) {   // 🐍 Coil needs the Feathered Serpent out
+                addLog(`${_ctSp(spell.name)}: ${_ctName(unit)} must raise the Feathered Serpent first.`, _clickSeat());
                 playErrorSfx();
                 return 0;
             }
