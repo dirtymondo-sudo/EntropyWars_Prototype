@@ -1,0 +1,603 @@
+{
+ "area": "The Sewers",
+ "version": "plan-3",
+ "date": "2026-11-16",
+ "status": "PROPOSAL: waits mondo's OK; nothing is built",
+ "squareMeters": 3.5,
+ "plotCells": 12,
+ "levelMeters": 1.75,
+ "frame": "its own block of 6 x 4 plots; not tied to the city's plots (mondo 11-16)",
+ "room": {
+  "cols": 6,
+  "rows": 4,
+  "dug": 24,
+  "meters": [
+   252,
+   168
+  ]
+ },
+ "look": "a dungeon: dark, grimy, scary; lit only by the old rooms' own lights (bare bulbs, cave torches, a brazier, the one lit train)",
+ "districts": {
+  "W": {
+   "name": "The Sewers",
+   "plots": 15,
+   "file": "docs/areas/sewers/districts/W.js"
+  },
+  "T": {
+   "name": "The Running Tunnels",
+   "plots": 5,
+   "file": "docs/areas/sewers/districts/T.js"
+  },
+  "H": {
+   "name": "The Holding Cells",
+   "plots": 2,
+   "file": "docs/areas/sewers/districts/H.js"
+  },
+  "O": {
+   "name": "The Old Workings",
+   "plots": 2,
+   "file": "docs/areas/sewers/districts/O.js"
+  }
+ },
+ "build": {
+  "layout": "docs/areas/sewers/layout.json",
+  "districts": [
+   "docs/areas/sewers/districts/W.js",
+   "docs/areas/sewers/districts/T.js",
+   "docs/areas/sewers/districts/H.js",
+   "docs/areas/sewers/districts/O.js"
+  ],
+  "tool": "bake-sewers.js",
+  "room": "one room (id chosen at the build; the four old rooms go in data.js DOOR_HQ.retired)",
+  "boardRows": "one for the tool + shared pieces, one per district"
+ },
+ "retires": [
+  "site_prebuilt_downtown_sewers",
+  "site_prebuilt_downtown_tunnels",
+  "site_prebuilt_downtown_cells",
+  "site_prebuilt_downtown_workings"
+ ],
+ "changedFromPlan2": [
+  "Its own place: a block of 6 x 4 = 24 plots (252 x 168 m). It no longer lies on the city's grid and no door has to stand under its city plot. Plan 2 was 31 plots in an L under the whole city.",
+  "A maze, not a line: the plots join by 26 openings that make three rings (the culverts, the cells and the mine, the track), with dead ends at the Guardroom, the Ghost Station and the Outfall. Inside a culvert plot the pipes bend, fork and stop.",
+  "A hub: the Junction is the middle, four ways off it. Nine ways lead out, to Disaster City (two), its subway Platform, the stadium, the Woods, the Cavern and DOOR HQ (three).",
+  "The subway is part of it: the Running Tunnels are the south row, with the track on to the city's Platform and on to DOOR HQ's tunnel.",
+  "Wells and ropes: the garden well's rope, the rope ladder under the Drunk Tank, the climb in the Adit, the shaft up to the drowned manhole. ONE new one is mine: a well with a rope from the Junction down to the Crossing (it closes the track's ring).",
+  "The Strip's gutter and Cyberpunk City's gutter are dropped.",
+  "Four depths: the cells one level up, the culverts, the track two levels down, the old mine three levels down. You change depth by rope, ladder or stair."
+ ],
+ "plots": [
+  {
+   "id": "P00-00",
+   "name": "The Guardroom",
+   "district": "The Holding Cells",
+   "level": 1,
+   "what": "the Guardroom, the Catwalk over it (2.2 m), the Property Room, three cells",
+   "from": "Holding Cells: THE GUARDROOM · THE CATWALK · THE PROPERTY ROOM",
+   "ports": [
+    "E"
+   ],
+   "exits": [
+    {
+     "to": "DOOR HQ: Room 24601 (the seventh cell)",
+     "kind": "hq",
+     "how": "a cell door",
+     "today": "link cells_dungeon",
+     "square": [
+      2.6,
+      5.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P01-00",
+   "name": "The Drunk Tank",
+   "district": "The Holding Cells",
+   "level": 1,
+   "what": "three cells, the Drunk Tank and the trap under it, the Vent Stack (3.6 m)",
+   "from": "Holding Cells: SIX CELLS · THE DRUNK TANK · THE VENT STACK",
+   "ports": [
+    "E",
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P02-00",
+   "name": "The Precinct Drain",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "the cross drain behind the cells' barred door",
+   "from": "Sewers: THE PRECINCT DRAIN",
+   "ports": [
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-00",
+   "name": "The Pumping Station",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "the feeder and its stair up to the bulkhead door",
+   "from": "Sewers: THE PUMPING STATION (a door plate)",
+   "ports": [
+    "E",
+    "S"
+   ],
+   "exits": [
+    {
+     "to": "Disaster City: the Pump court",
+     "kind": "open",
+     "how": "a stair and a bulkhead door",
+     "today": "door pump <> the city's door sewer",
+     "square": [
+      8.6,
+      2.4
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P04-00",
+   "name": "The Pump Room",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "the pumps, running all night",
+   "from": "Sewers: THE PUMP ROOM",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P05-00",
+   "name": "The Inspection Gallery",
+   "district": "The Sewers",
+   "level": 1,
+   "what": "a gallery 1.6 m up its stair, looking down on the culvert",
+   "from": "Sewers: THE INSPECTION GALLERY",
+   "ports": [
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P00-01",
+   "name": "The Chimney",
+   "district": "The Old Workings",
+   "level": -3,
+   "what": "LANDMARK: the shaft (3.9 m); the old portcullis; the Adit up into the culverts",
+   "from": "Old Workings: THE CHIMNEY · THE ADIT",
+   "ports": [
+    "E",
+    "S"
+   ],
+   "exits": [
+    {
+     "to": "The Cavern: the Oubliette",
+     "kind": "open",
+     "how": "the old portcullis",
+     "today": "link workings_oubliette",
+     "square": [
+      3,
+      5.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P01-01",
+   "name": "The Old Workings",
+   "district": "The Old Workings",
+   "level": -3,
+   "what": "the flooded mine: the Flood (waded), the Sump (never), the Pump Ledge; the rope ladder up into the tank",
+   "from": "Old Workings: THE FLOOD · THE SUMP · THE PUMP LEDGE",
+   "ports": [
+    "N",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P02-01",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "brick culverts that bend and fork: a waded stream down the middle, a dry walkway each side, dead ends",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "N",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-01",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "brick culverts that bend and fork: a waded stream down the middle, a dry walkway each side, dead ends",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "N",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P04-01",
+   "name": "The Cistern",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "a round tank of deep water; the Plank across it",
+   "from": "Sewers: THE CISTERN · THE PLANK",
+   "ports": [
+    "E",
+    "S"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P05-01",
+   "name": "The East Return",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "the groundsman's culvert under the stadium's east stand",
+   "from": "Sewers: the stadium door (\"the pitch drains into the east return\")",
+   "ports": [
+    "N",
+    "W"
+   ],
+   "exits": [
+    {
+     "to": "the Stadium (behind the east stand)",
+     "kind": "hidden",
+     "how": "a draught in the wall",
+     "today": "link stadium_sewers",
+     "square": [
+      9.5,
+      6.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P00-02",
+   "name": "The Storm Drain",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "the grate through to the storm drain under the Woods",
+   "from": "Sewers: the storm drain grate (a door plate)",
+   "ports": [
+    "E",
+    "N"
+   ],
+   "exits": [
+    {
+     "to": "The Woods: the storm drain",
+     "kind": "hidden",
+     "how": "a grate",
+     "today": "link sewers_drain",
+     "square": [
+      0.8,
+      6.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P01-02",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "brick culverts that bend and fork: a waded stream down the middle, a dry walkway each side, dead ends",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P02-02",
+   "name": "The Junction",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "LANDMARK: where the big pipes meet; the Healing Zone; you arrive here by default",
+   "from": "Sewers: THE JUNCTION",
+   "ports": [
+    "E",
+    "N",
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-02",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "brick culverts that bend and fork: a waded stream down the middle, a dry walkway each side, dead ends",
+   "from": "Sewers: THE CULVERTS",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P04-02",
+   "name": "The Culverts",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "bending culverts; the Maintenance Hatch stair down to the track",
+   "from": "Sewers: THE CULVERTS · THE MAINTENANCE HATCH",
+   "ports": [
+    "E",
+    "N",
+    "S",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P05-02",
+   "name": "The Docks' Outfall",
+   "district": "The Sewers",
+   "level": 0,
+   "what": "the shaft up to the drowned manhole on the flooded quay",
+   "from": "Sewers: THE DOCKS' OUTFALL (a door plate)",
+   "ports": [
+    "S",
+    "W"
+   ],
+   "exits": [
+    {
+     "to": "Disaster City: the Dock edge",
+     "kind": "open",
+     "how": "the drowned manhole: a shaft, climb up",
+     "today": "link docks_sewer",
+     "square": [
+      7.5,
+      4.2
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P00-03",
+   "name": "The Ghost Station",
+   "district": "The Running Tunnels",
+   "level": -2,
+   "what": "a 1 m platform nobody stops at, no stairs up; the track runs on west",
+   "from": "Running Tunnels: THE GHOST STATION",
+   "ports": [
+    "E"
+   ],
+   "exits": [
+    {
+     "to": "DOOR HQ: the Tunnel",
+     "kind": "hq",
+     "how": "the track",
+     "today": "link tunnels_works",
+     "square": [
+      0.8,
+      6.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P01-03",
+   "name": "The Loop Line",
+   "district": "The Running Tunnels",
+   "level": -2,
+   "what": "the track; the garden well's rope comes down here",
+   "from": "Running Tunnels: THE LOOP LINE",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": [
+    {
+     "to": "DOOR HQ: the Garden well",
+     "kind": "hq",
+     "how": "a well: the rope",
+     "today": "link well_garden",
+     "square": [
+      5,
+      9.4
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P02-03",
+   "name": "The Crossing",
+   "district": "The Running Tunnels",
+   "level": -2,
+   "what": "two lines cross; the Signal Gantry (5.2 m); the Crossover",
+   "from": "Running Tunnels: THE CROSSING · THE CROSSOVER",
+   "ports": [
+    "E",
+    "N",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P03-03",
+   "name": "The Loop Line",
+   "district": "The Running Tunnels",
+   "level": -2,
+   "what": "the track; one way on to the city's Platform",
+   "from": "Running Tunnels: THE LOOP LINE",
+   "ports": [
+    "E",
+    "W"
+   ],
+   "exits": [
+    {
+     "to": "the Platform (the city's subway station)",
+     "kind": "open",
+     "how": "the track",
+     "today": "link tunnels_platform",
+     "square": [
+      6.5,
+      10.6
+     ]
+    }
+   ]
+  },
+  {
+   "id": "P04-03",
+   "name": "The Depot",
+   "district": "The Running Tunnels",
+   "level": -2,
+   "what": "LANDMARK: two parked trains, one lit; the Maintenance Hatch stair up to the culverts",
+   "from": "Running Tunnels: THE DEPOT · THE MAINTENANCE HATCH",
+   "ports": [
+    "N",
+    "W"
+   ],
+   "exits": []
+  },
+  {
+   "id": "P05-03",
+   "name": "The Outfall",
+   "district": "The Sewers",
+   "level": -1,
+   "what": "LANDMARK: the Outfall Shaft (4.4 m); where every gutter pours out",
+   "from": "Sewers: THE OUTFALL · THE OUTFALL SHAFT",
+   "ports": [
+    "N"
+   ],
+   "exits": []
+  }
+ ],
+ "waysDropped": [
+  {
+   "to": "the Strip: the back lane",
+   "today": "link strip_sewer",
+   "why": "mondo 11-16: \"forget the strip and the old cyberpunk\""
+  },
+  {
+   "to": "Cyberpunk City: the lower street",
+   "today": "link undercity_sewer",
+   "why": "the same"
+  }
+ ],
+ "waysInside": [
+  {
+   "between": [
+    "P01-00",
+    "P02-00"
+   ],
+   "what": "cell door",
+   "wasDoors": "cells.sewers <> sewers.drain",
+   "new": false
+  },
+  {
+   "between": [
+    "P01-00",
+    "P01-01"
+   ],
+   "what": "trap: a rope ladder",
+   "wasDoors": "cells.trap <> workings.trap (hidden)",
+   "new": false
+  },
+  {
+   "between": [
+    "P00-01",
+    "P00-02"
+   ],
+   "what": "the Adit: a climb",
+   "wasDoors": "workings.sewers <> sewers.adit (hidden)",
+   "new": false
+  },
+  {
+   "between": [
+    "P04-02",
+    "P04-03"
+   ],
+   "what": "Maintenance Hatch: a stair",
+   "wasDoors": "tunnels.sewers <> sewers.hatch",
+   "new": false
+  },
+  {
+   "between": [
+    "P02-02",
+    "P02-03"
+   ],
+   "what": "NEW: a well, a rope down",
+   "wasDoors": null,
+   "new": true
+  }
+ ],
+ "cells": [
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxfffffxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "xxffffffffxxxxffffffffxxxxoooxxxxxxxxxxxfwfffoxxxxxfffffffxxxxxxxxxxfffx",
+  "xxffffffffxxxxffffffffxxxxowoxxxxxxxxxxxfwwwwoxxxxxfffffffxxxxxxxxxxfffx",
+  "xxffffffffxxxxffffffffxxxxowoxxxxxxxxxxxowwowoxxxxxfffffffxxxxoooooofffx",
+  "xxffffffffffffffffffffffooowoxxxxxxxxxxxoowowoooooofffffffooooowwwwwfffx",
+  "xxffffffffffffffffffffffwwwwooooooxxxxxxxowowwwwwwwooooooowwwwwwooowfffx",
+  "xxffffffffffffffffffffffoowwwwwwwoxxxxxxxowooooooowwwwwwwwwoooooooowfffx",
+  "xxffffffffxxxxffffffffxxxoowwwwoooxxxxxxxowoxxxxxoooooooowooxxxxxowwfffx",
+  "xxffffffffxxxxxxxfffxxxxxxoooowoxxxxxxxxxowoxxxxxxxxxxxxoooxxxxxxowooxxx",
+  "xxxxxxxxxxxxxxxxxfffxxxxxxxxxowoxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxx",
+  "xxxxxxxxxxxxxxxxxfffxxxxxxxxxowoxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxx",
+  "xxxxxxxxxxxxxxxxxoooxxxxxxxxxowoxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxx",
+  "xxxxxxxxxxxxxxxxxoooxxxxxxxxoowoxxxxxxoooowoxxxxxxxxxxxxxxxxxxxxxowoxxxx",
+  "xxxxxxxxxxxxxxoooooooooxxxxoowwoxxxxxxowwwwoxxxxxxfffffffffxxooooowoxxxx",
+  "xxoooooooxxxxxoooooooooxxxxowwwoxxxxxxowowooxxxxxxfwwwbwwwfxxowwwwwoxxxx",
+  "xxoooooooxxxxxoooooooooxxxxowowoxxxxxxowowoxxxxxxxfwwwbwwwfxxowoooooooxx",
+  "xxoooooooooooooooooooooxxxxowowoooooooowowoxxxxxxxfwwwbwwwfooowwwwwwwoxx",
+  "xxooooooooooooowwwwwwwoxxxxowwwwwwwwwwwwwwoxxxxxxxfwwwbwwwwwwwwoooooooxx",
+  "xxooooooooooooowwwwwwwoxxxxowowoooooooowoooxxxxxxxfwwwbwwwfoooooxxxxxxxx",
+  "xxoooooooxxxxxowwwwwwwoxxxxowwwoooxxxxowoooooooxxxfwwwbwwwfxxxxxxxxxxxxx",
+  "xxxxooooxxxxxxowwwwwwwoxxxxooowwwoxxxxowwwwwwwoxxxfwwwbwwwfxxxxxxxxxxxxx",
+  "xxxxooooxxxxxxoooooooooxxxxxxowoooxxxxoooooooooxxxffffwffffxxxxxxxxxxxxx",
+  "xxxxooooxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxx",
+  "xxxxxowooxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxx",
+  "xooooowwoxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowooxxxxxxxxxxxxxxx",
+  "xowwooowoxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowwoxxxxxxxxxxxxxxx",
+  "xoowoxowoxxxooooooooooxxxxxfffwfffxxoooooooooxxxxxxxxoowoxxxxxxxxxfffxxx",
+  "xxowoxowoxxxowwwwwwwwooxxxxfffwfffxxwwwwwwwwoxxxxxooooowoxxxxooooofffxxx",
+  "ooowoxowooooowowwwwwwwoooooffwwwffoowooooowwooooooowwwwwoooooowwwwwwfxxx",
+  "wwwwoxowwwwwwwowoooowwwwwwwwwwwwwwwwwwwwoooowwwwwwwwooowwwwwwwwooowwoxxx",
+  "ooowooowwoooooowoxxooooooooffwwwffooowowwwwwwoooooowwwwwwoooooooxowwoxxx",
+  "xxowwwwwwoxxxxowooxxxxxxxxxfffwfffxxowooooooooxxxxooooowooxxxxxxxowwoxxx",
+  "xxooooooooxxxxowwoxxxxxxxxxfffwfffxxowwwwwwoxxxxxxxxxoowoxxxxxxxxowooxxx",
+  "xxxxxxxxxxxxxxooooxxxxxxxxxxxowoxxxxooooooooxxxxxxxxxowwoxxxxxxxxowoxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxowoxxxxxxxxxxxxxxxxxxxxxowooxxxxxxxxowoxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxxxxxxxxxxxxxxxxojoxxxxxxxxxowoxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxxxxxxxxxxxxxxxxojoxxxxxxxxxowoxxxx",
+  "xxffffffffxxxxxxxxxxxxxxxxxxxojoxxxxxxxxxxxxxxxxxxxxxojoxxxxxxxxxowoxxxx",
+  "xxffffffffxxxxxxoooxxxxxxxxxxojoxxxxxxxxxxxxxxxxxfffffjffffxxxxxxowoxxxx",
+  "xxffffffffxxxxxxojoxxxxxxxxxxojoxxxxoooooooooooxxfjjjjjjjjfxxxxfffwfffxx",
+  "ooooooooooooooooojoxxooooooooojoooooojjjjjjjjjooofffffjffffxxxxfwwwwwfxx",
+  "jjjjjjjjjjjjjjjoojoxxojjjjjjjjjjjjjjjjojoojoojjjjjjjjjjffffxxxxfwwwwwfxx",
+  "oooooooooooooojoojoooojooooooojoooooooojoojooooooffffffffffxxxxfwwwwwfxx",
+  "xxxxxxxxxxxxxojjjjjjjjjoxxxxxxjxxxxxxxojoojoxxxxxfjjjjjjjjfxxxxfwwwwwfxx",
+  "xxxxxxxxxxxxxoooooooooooxxxxxxjxxxxxxxojooooxxxxxffffffffffxxxxfwwwwwfxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxjxxxxxxxojjjjoxxxxxxxxxxxxxxxxxxxfffffffxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxoooojoxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+ ],
+ "legend": {
+  "x": "solid ground, not dug (cannot walk)",
+  "o": "sewer walkway / mine floor",
+  "w": "water",
+  "f": "concrete room",
+  "j": "rail track",
+  "b": "plank over water"
+ }
+}
