@@ -11840,7 +11840,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'anchor',   /* the pirate's Anchor (FX-2, 2026-10-26) */
                             'firetruck', 'ambulance',   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
                             'satellite', 'space_shuttle', 'space_station', 'hullplate', 'lunar_lander',   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
-                            'church_building', 'catholic_pew', 'church_pew', 'church_podium', 'field_goal_post', 'skull_pile'];   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
+                            'church_building', 'catholic_pew', 'church_pew', 'church_podium', 'field_goal_post', 'skull_pile',
+                            'beach_life_ring'];   /* THE LIFEGUARD (2026-11-16): her rescue ring */   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gilt.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
@@ -45058,6 +45059,184 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigLoveRay: _afLoveRay3D, sigExcessiveMachine: _afOrgan3D, sigEyesGoBlack: _afBlackEyes3D, sigEngulf: _afEngulf3D,
         raceOpenVein: _afOpenVein3D, raceConduction: _afConduct3D, raceThornlash: _afThornlash3D, raceCrosswind: _afCrosswind3D,
         raceEyeOfTheStorm: _afStorm3D, raceMudslide: _afMudslide3D, 'raceFarSight:view': _afFarSight3D,
+    });
+
+    /* ══ THE LIFEGUARD (2026-11-16, mondo: "Work on their spell pools and spell vfx") ══ Her red-and-white ring is the Beach
+       pack's own lifebuoy (data.js catalogue `beach_life_ring`, warmed with the spell library, cloned through
+       ThreeRenderer.getMiscModelClone); while the file streams a striped torus in the same red and white stands in its place.
+       The side reads from the viewer's seat (THE RIOT PASS): her watch ring, the save's splash ring and the whistle's floor ring
+       run cyan-blue for your side, pink-red for the other; the ring itself stays red and white (it is the object).
+         RESCUE TUBE (pull): the ring is thrown on an arc, drops over the ally's waist and rides in with the body.
+         ON DUTY (aura, self): three whistle blasts ring out at head height, then the watch ring runs out to 4 squares.
+         CPR (aura, the ally beside her): three compressions pump a red heart on the chest, then the breath, then the heal.
+         THE SAVE ('nrOnDuty:save', battle.js _lifeguardSave + Three Whistles' hauls): the ring drops over the saved ally
+           where she hauled it, a splash ring, one whistle blast from her.
+         THREE WHISTLES ('nrThreeWhistles:blow'): three big blasts and a floor ring out to her reach. */
+    var _LG_RED = 0xe0303a, _LG_WHITE = 0xfff4f0;
+    function _lgSide(owner, tx, ty) {
+        try {
+            if (owner == null && typeof state !== 'undefined' && state && state.units) {
+                for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === tx && u.y === ty) { owner = u.player; break; } }
+            }
+            var vp = (typeof window.getViewerPlayer === 'function') ? window.getViewerPlayer() : 1;
+            return owner === vp ? 0x1deeff : 0xfd1674;
+        } catch (e) { return 0x1deeff; }
+    }
+    function _lgUidAt(tx, ty) {
+        try { var us = state.units; for (var i = 0; i < us.length; i++) { var u = us[i]; if (u && !u.dead && u.x === tx && u.y === ty) return u.id; } } catch (e) {}
+        return null;
+    }
+    function _lgBodyH(uid, ts) {
+        try { if (uid != null && ThreeRenderer.getUnitVisualHeight) { var h = ThreeRenderer.getUnitVisualHeight(uid); if (h > 0) return h; } } catch (e) {}
+        return ts * 0.5;
+    }
+    function _lgStripeTex() {
+        return _sigTex('lg-stripe', 128, function (ctx, S) {
+            for (var i = 0; i < 8; i++) { ctx.fillStyle = (i % 2) ? '#f6f2ee' : '#d8262e'; ctx.fillRect(i * S / 8, 0, S / 8, S); }
+        });
+    }
+    /* the lifebuoy `d` across, lying flat (its hole up); { g, fade(op) } */
+    function _lgRing(d) {
+        var g = new THREE.Group(), mats = [], raw = null;
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) raw = ThreeRenderer.getMiscModelClone('beach_life_ring', d, 'center'); } catch (e) { raw = null; }
+        if (raw) {
+            raw.rotation.x = -Math.PI / 2;   // stood up facing +Z in the file: laid flat
+            raw.traverse(function (n) { if (n.isMesh && n.material) { n.material.transparent = true; mats.push(n.material); } });
+            g.add(raw);
+        } else {
+            var m = new THREE.MeshBasicMaterial({ map: _lgStripeTex(), transparent: true, opacity: 0, depthWrite: true, fog: false });
+            var tor = new THREE.Mesh(new THREE.TorusGeometry(d * 0.36, d * 0.13, 10, 28), m);
+            tor.rotation.x = -Math.PI / 2; g.add(tor); mats.push(m);
+        }
+        return { g: g, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+    }
+    /* where the body stands, in the frame F: its square on the board (state; the host moved it, the guest has it from the
+       snapshot), eased toward each frame so the ring rides a haul at the slide's pace. (getUnitWorldPos read the model's
+       group, which stays on the old square while a displacement tween draws the body elsewhere: the ring was left behind.) */
+    function _lgFeet(F, uid, cur) {
+        var u = null;
+        try { var us = state.units; for (var i = 0; i < us.length; i++) if (us[i] && us[i].id === uid) { u = us[i]; break; } } catch (e) {}
+        var to = (u && !u.dead) ? _afTo(F, u.x, u.y) : new THREE.Vector3();
+        if (!cur) return to;
+        cur.x += (to.x - cur.x) * 0.12; cur.z += (to.z - cur.z) * 0.12; cur.y += (to.y - cur.y) * 0.12;
+        return cur;
+    }
+    /* a whistle blast: a thin ring out from the head, `n` of them `gap` ms apart */
+    function _lgWhistle(x, y, n, gap, r1, color, hMul) {
+        if (_afFogHides(x, y)) return;
+        var uid = _lgUidAt(x, y), ts = _worldPos(x, y).ts, h = _lgBodyH(uid, ts) * (hMul || 0.92);
+        for (var i = 0; i < n; i++) _fxDelay(function () { try { _sigShockRing3D(x, y, { r0: ts * 0.12, r1: r1 || ts * 0.9, ms: 340, color: color || _LG_WHITE, height: h }); } catch (e) {} }, i * gap);
+    }
+    EFFECTS['nrRescueTube_pull'] = { layers: [
+        { count: 7, sprite: 'water-splash', ml: [420, 700], offsetXY: 14, z: [20, 50], tint: 0xcfefff, vxRange: 120, vyRange: 120, vzRange: [90, 200], gravity: 520, drag: 0.4, size0: [8, 12], size1: 3, opacity0: 0.95, delayMs: 300 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 600, z: 3, tint: 0x9fe8ff, size0: 30, size1: 120, opacity0: 0.55, delayMs: 300 },
+    ] };
+    EFFECTS['nrOnDuty_aura'] = { layers: [
+        { count: 6, sprite: 'sparkle', ml: [500, 800], offsetXY: 20, z: [60, 110], tint: 0xffe2dc, vzRange: [10, 40], size0: [4, 7], size1: 2, opacity0: 0.85, delayMs: 200 },
+    ] };
+    EFFECTS['nrCPR_aura'] = { layers: [
+        { count: 10, sprite: 'heal-glow', ml: [700, 1100], offsetXY: 22, z: [20, 70], tint: 0x8affc0, vzRange: [40, 90], size0: [6, 10], size1: 3, opacity0: 0.85, delayMs: 820 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 800, z: 3, tint: 0x8affc0, size0: 40, size1: 130, opacity0: 0.5, delayMs: 820 },
+    ] };
+    EFFECTS['nrThreeWhistles_aura'] = { layers: [
+        { count: 8, sprite: 'sparkle', ml: [500, 900], offsetXY: 24, z: [60, 120], tint: 0xffe2dc, vzRange: [10, 50], size0: [4, 7], size1: 2, opacity0: 0.85, delayMs: 200 },
+    ] };
+    EFFECTS['nrOnDuty_save'] = { layers: [
+        { count: 9, sprite: 'water-splash', ml: [420, 760], offsetXY: 16, z: [20, 60], tint: 0xcfefff, vxRange: 150, vyRange: 150, vzRange: [120, 240], gravity: 560, drag: 0.4, size0: [9, 13], size1: 3, opacity0: 0.95 },
+        { sprite: 'flash', ml: 260, z: 50, size0: 30, size1: 90, tint: 0xffffff, opacity0: 0.55 },
+    ] };
+    Object.assign(SPELL_MAP, {
+        nrRescueTube:    { pull: 'nrRescueTube_pull' },
+        nrOnDuty:        { aura: 'nrOnDuty_aura' },
+        nrCPR:           { aura: 'nrCPR_aura' },
+        nrThreeWhistles: { aura: 'nrThreeWhistles_aura' },
+    });
+    /* RESCUE TUBE: thrown on an arc (the rope shoots in 280 ms), drops over the waist, rides in with the hauled body */
+    function _lgTube3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = (o && o.uid != null) ? o.uid : _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var from = _afCaster(tx, ty, o), a = _afTo(F, from.x, from.y); a.y += h * 0.75;
+        var R = _lgRing(h * 0.62); F.g.add(R.g);
+        var flyMs = 300, total = 2600, waist = h * 0.5, feet = new THREE.Vector3();
+        return _sigRunOwned(F.g, total, function (el) {
+            if (el > 420) feet = _lgFeet(F, uid, feet);   // the ring holds at the bite until the yank (rope 280 ms + 120)
+            var at = feet.clone(); at.y += waist;
+            if (el < flyMs && !from.fogged) {
+                var k = _sigClamp01(el / flyMs), p = _afArc(a, at, ts * 0.6, k);
+                R.g.position.copy(p); R.g.rotation.set(0.5 * Math.sin(el * 0.02), el * 0.03, 0);
+            } else {
+                var drop = _sigEaseOutBack(_sigClamp01((el - flyMs) / 220));
+                R.g.position.set(at.x, at.y + h * 0.35 * (1 - drop), at.z); R.g.rotation.set(0, R.g.rotation.y + 0.01, 0);
+            }
+            R.fade(_afEnv(el, 0, 60, total - 450, total));
+        });
+    }
+    /* ON DUTY: three whistle blasts, then the watch ring runs out to her reach (4 squares) in her side's colour */
+    function _lgDuty3D(tx, ty) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, side = _lgSide(null, tx, ty);
+        _lgWhistle(tx, ty, 3, 160, ts * 0.9, _LG_WHITE);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * 4.5, ms: 900, color: side, height: ts * 0.05 }); } catch (e) {} }, 480);
+        var F = _nrvFrame(tx, ty), uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var R = _lgRing(h * 0.42); F.g.add(R.g);   // the ring held up over her head while she whistles
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid);
+            var up = _sigEaseOutBack(_sigClamp01(el / 260));
+            R.g.position.set(feet.x, feet.y + h * (0.9 + 0.35 * up), feet.z); R.g.rotation.set(Math.PI / 2 * 0.85, el * 0.004, 0);
+            R.fade(_afEnv(el, 0, 120, 900, total));
+        });
+    }
+    /* CPR: three compressions (a red heart pumps on the chest, a small ring each), then the breath, then the heal */
+    function _lgCpr3D(tx, ty) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var heart = _finSprite(0xff4a5a, _afHeartTex(), h * 0.3, 160); F.g.add(heart);
+        var pumps = [0, 240, 450], total = 1500;
+        for (var i = 0; i < pumps.length; i++) _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.08, r1: ts * 0.55, ms: 260, color: 0xff6a6a, height: h * 0.62 }); } catch (e) {} }, pumps[i]);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.8, ms: 420, color: 0xdffcff, height: h * 0.9 }); } catch (e) {} }, 700);
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid);
+            var beat = 0;
+            for (var i = 0; i < pumps.length; i++) { var d = el - pumps[i]; if (d >= 0 && d < 200) beat = Math.max(beat, 1 - d / 200); }
+            var s = h * (0.26 + 0.12 * beat) * (el > 700 ? 1 + 0.6 * _sigClamp01((el - 700) / 500) : 1);
+            heart.scale.set(s, s, 1); heart.position.set(feet.x, feet.y + h * 0.62 + (el > 700 ? h * 0.5 * _sigClamp01((el - 700) / 700) : 0), feet.z);
+            heart.material.opacity = 0.95 * _afEnv(el, 0, 60, 900, total);
+        });
+    }
+    /* THE SAVE: the ring drops over the saved ally (and rides its haul), a splash ring in her side's colour, her whistle */
+    function _lgSave3D(tx, ty, r, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var run = function () {
+            if (o.fromX != null && !_afFogHides(o.fromX, o.fromY)) _lgWhistle(o.fromX, o.fromY, 1, 0, null, _LG_WHITE);
+            if (_afFogHides(tx, ty)) return null;
+            var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), side = _lgSide(o.owner != null ? o.owner : null, o.fromX != null ? o.fromX : tx, o.fromX != null ? o.fromY : ty);
+            _afRecipe('nrOnDuty_save', tx, ty);
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 1.1, ms: 520, color: side, height: ts * 0.05 }); } catch (e) {}
+            var R = _lgRing(h * 0.62); F.g.add(R.g);
+            var total = 2000;
+            return _sigRunOwned(F.g, total, function (el) {
+                var feet = _lgFeet(F, uid);
+                var drop = _sigEaseOutBack(_sigClamp01(el / 300));
+                R.g.position.set(feet.x, feet.y + h * (0.5 + 1.4 * (1 - drop)), feet.z); R.g.rotation.set(0, el * 0.004, 0);
+                R.fade(_afEnv(el, 0, 80, total - 500, total));
+            });
+        };
+        if (o.delay > 0) { _fxDelay(run, o.delay); return true; }
+        return run() || true;
+    }
+    /* THREE WHISTLES: three big blasts and a floor ring out to her reach */
+    function _lgBlow3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, side = _lgSide(o && o.owner != null ? o.owner : null, tx, ty), reach = (r > 0 ? r : 4) + 0.5;
+        _lgWhistle(tx, ty, 3, 240, ts * 1.6, _LG_WHITE);
+        for (var i = 0; i < 3; i++) _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * reach, ms: 640, color: side, height: ts * 0.05 }); } catch (e) {} }, 120 + i * 240);
+        return true;
+    }
+    Object.assign(_spell3DGeometry, {
+        nrRescueTube: _lgTube3D, nrOnDuty: _lgDuty3D, nrCPR: _lgCpr3D,
+        'nrOnDuty:save': _lgSave3D, 'nrThreeWhistles:blow': _lgBlow3D,
     });
 
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build

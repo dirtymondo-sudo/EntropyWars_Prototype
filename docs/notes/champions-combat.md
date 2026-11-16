@@ -5545,6 +5545,19 @@ allyOnly, range 5, pullDistance 4, cleanse 1, cd 1). **CPR** (T3, heal range 1, 
   Tidal Surge / Tidal Blessing → Underdog Spirit / Call of the Deep → Flood. Finisher Red Flag (the wave staging).
 - Probe 11-16: On Duty then a 99999 hit on an ally 3 away: it held at 1 HP and was hauled B4 → D4; the duty was spent; Rescue Tube
   pulled an ally 3 and cleansed; CPR healed 603 and lifted Burn; 0 page errors.
+- THE LIFEGUARD POLISH (2026-11-16, mondo: "Work on their spell pools and spell vfx ... unique fun strategic playstyles, but still
+  balanced"). The playstyle: the zone of safety. She stands a few squares behind the fight; On Duty covers every ally in her 4,
+  Rescue Tube pulls a straggler back into that zone, a save lands the ally BESIDE her, where CPR (range 1) reaches it next turn.
+  The enemy's answers: kill her first, catch an ally outside her 4, or burst it twice (the watch is spent on the first save), and
+  the round On Duty is down. Changes: **On Duty cooldown 2 → 3** (with duration 2 it was up every round: no window to play
+  around). **Three Whistles** (new, T4, `nrThreeWhistles`, 90 MP, cd 4, self): every ally within 4 under 50% HP, lowest first,
+  is hauled to the free square beside her nearest it (the save's rule: colossal and already-beside stay put; Clash keeps
+  formation), cleansed of 1 debuff and healed 15% max HP; refused with nobody to pull in. The trade: it bunches the team for an
+  area spell. battle.js `_lifeguardRescueList` / `_lifeguardMassRescue` (buff branch, `massRescue` row field). **RACE_TREE**
+  lifeguard = her own four (Rescue Tube, On Duty, CPR, Three Whistles): the old row named Underdog Spirit (humangrit, outside her
+  families) and her default kit carried neither On Duty nor CPR; the default kit is now those four + Gills, Water Jet, Whirlpool.
+  ai.js buff scoring: On Duty is worth the allies in her 4 the next hits could kill; Three Whistles the allies it would haul (0
+  with none). VFX: spells-vfx.md "THE LIFEGUARD".
 - THE WOMEN (mondo 11-16 "the women look good"): politician, professor and clown are `both` genders now (sprites.js RACE_SPRITE_GENDERS);
   their female Meshy models + sprites are on R2 `Assets/characters/races/<race>/female/` (RACE_MODELS_3D `female:`,
   _CHARACTER_SPRITES_GENDERED; the politician's sprite moved there from _HERO_RACE_SPRITES, which ignores gender). Same spells as the men.

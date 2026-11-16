@@ -39284,7 +39284,7 @@ const ThreeRenderer = (function () {
        never finds it gone) and its sheets capped at 1024. Returns one settle check per key (true once landed or failed). */
     /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (Assets/world/hq/models/:
        the lunar lander, which the Lunar Lander flies; the Mars rover): the room's own url, so a room that places it and a cast share one cache entry */
-    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1 };
+    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1, beach_life_ring: 1 };   // + THE LIFEGUARD's rescue ring (2026-11-16)
     function _spellCatUrl(key) {
         if (!_SPELL_CAT_KEYS[key] || typeof DOOR_HQ === 'undefined' || !DOOR_HQ.catalogue) return null;
         var cat = DOOR_HQ.catalogue[key];

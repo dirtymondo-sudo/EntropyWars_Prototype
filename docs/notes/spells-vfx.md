@@ -3813,3 +3813,16 @@ Rules: champions-combat.md "THE ASTRAL BODY".
 - THE RULE THAT CAME WITH IT (his pick on the card, "extras pay Entropy"): champions-combat.md "EVERY EXTRA SOURCE".
 - Seen on screen (real casts, Grave Chill): super effective, super effective + combo, combo on a resisted type, resisted
   only. Built but NOT seen on screen: basic attack crit, counter, the guest's view, Action Cam off, multi-target spells.
+
+## THE LIFEGUARD (2026-11-16, three-vfx-effects.js, before "THE SPACE PROPS")
+Her red-and-white ring is the Beach pack's lifebuoy (data.js catalogue `beach_life_ring`; three-renderer.js `_SPELL_CAT_KEYS` +
+the spell warm list `_SPELL_MISC_KEYS`); a striped torus in the same colours stands in while the file streams. Rings that tell the
+side follow THE RIOT PASS from the viewer's seat (cyan-blue yours, pink-red theirs); the buoy stays red and white.
+- Rescue Tube (`pull` intent, the battle.js rope stays): the buoy is thrown on an arc, drops over the ally's waist and rides in
+  with the body (ThreeRenderer.getUnitWorldPos each frame); a splash at the bite.
+- On Duty (`aura`): three whistle rings at head height, the buoy held up, then the watch ring runs out to 4 squares.
+- CPR (`aura`): a red heart pumps three times on the chest (a ring each), the breath ring, then the green heal.
+- The save + every Three Whistles haul: `fireGeometry('nrOnDuty:save', x, y, 0, { fromX, fromY, owner, delay })` (relayed to the
+  guest by online.js): the buoy drops over the saved ally, a splash + side ring, one whistle ring from her.
+- Three Whistles: `fireGeometry('nrThreeWhistles:blow', …, radius)`: three big whistle rings + three floor rings to her reach.
+

@@ -14133,8 +14133,58 @@
                 }
             }
             flashUnit(target.id, 'heal');
+            /* THE LIFEGUARD POLISH (2026-11-16): the save reads on the board — the red ring drops over the ally where she hauled
+               it, her whistle rings out (fireGeometry is relayed to the guest, fog-gated on the tile) */
+            _sigVfxGeom('nrOnDuty:save', target.x, target.y, 0, { fromX: guard.x, fromY: guard.y, owner: guard.player });
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             return true;
+        }
+        /* 🛟 THREE WHISTLES (2026-11-16, the Lifeguard's capstone, data.js nrThreeWhistles `massRescue`): every ally within
+           `radius` under `hpPct` of max HP — the lowest first — is hauled to the free square beside her nearest it, cleansed of
+           `cleanse` debuffs and healed `healPct` of its max HP. A colossal ally, an ally already beside her or one with no free
+           square left stays put (the heal + cleanse still land); Clash keeps formation. Host-side; HP, squares and statuses
+           state-sync, the looks ride fireGeometry. */
+        function _lifeguardRescueList(guard, spell) {
+            const mr = spell && spell.massRescue;
+            if (!guard || !mr || !Array.isArray(state.units)) return [];
+            const R = mr.radius || 4, P = mr.hpPct || 0.5;
+            return state.units.filter(a => a && a.id !== guard.id && !a.dead && !a._dying && a.hp > 0 && a.maxHp > 0
+                && a.player === guard.player && a.hp / a.maxHp < P && Math.abs(a.x - guard.x) + Math.abs(a.y - guard.y) <= R)
+                .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+        }
+        function _lifeguardMassRescue(guard, spell) {
+            const mr = spell.massRescue || {}, list = _lifeguardRescueList(guard, spell);
+            const pinned = typeof _isClashMode === 'function' && _isClashMode();
+            _sigVfxGeom('nrThreeWhistles:blow', guard.x, guard.y, mr.radius || 4, { owner: guard.player });
+            if (!list.length) { addLog(`🛟 ${_ctName(guard)} blows three whistles — nobody is in trouble.`); return; }
+            addLog(`🛟 ${_ctName(guard)} blows three whistles — ${list.length} ${list.length === 1 ? 'ally is' : 'allies are'} pulled in!`, undefined, undefined, { actor: guard });
+            list.forEach((a, i) => {
+                const fx = a.x, fy = a.y;
+                if (!pinned && Math.abs(guard.x - a.x) + Math.abs(guard.y - a.y) > 1
+                    && !(typeof getUnitDisplaceWeightClass === 'function' && getUnitDisplaceWeightClass(a, null) === 'colossal')) {
+                    const sq = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: guard.x + dx, y: guard.y + dy }))
+                        .filter(q => isInside(q.x, q.y) && canOccupy(q.x, q.y))
+                        .sort((p, q) => (Math.abs(p.x - a.x) + Math.abs(p.y - a.y)) - (Math.abs(q.x - a.x) + Math.abs(q.y - a.y)));
+                    if (sq[0]) {
+                        a.x = sq[0].x; a.y = sq[0].y;
+                        if (typeof nearestWalkableZ === 'function') a.z = nearestWalkableZ(sq[0].x, sq[0].y, a.z);
+                        animateDisplacement(a, fx, fy, sq[0].x, sq[0].y, 320 + i * 60);
+                        addLog(`🛟 ${_ctName(a)} is hauled in to ${coordLabel(sq[0].x, sq[0].y)}.`);
+                    }
+                }
+                if (mr.cleanse) {
+                    const gone = getActiveStatusKeys(a).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured').slice(0, mr.cleanse);
+                    for (const k of gone) clearStatus(a, k);
+                    if (gone.length) _logCleansed(spell.name, a, gone);
+                }
+                if (mr.healPct > 0) {
+                    const got = applyHealingToUnit(a, Math.floor(a.maxHp * mr.healPct), guard, { preScaled: true });
+                    if (got > 0) addLog(`${_ctSp(spell.name)}: ${_ctName(a)} restores ${got} HP.`);
+                }
+                showFloatingTextForUnit(a, '🛟 PULLED IN!', 'heal', { durationMs: 1300 });
+                _sigVfxGeom('nrOnDuty:save', a.x, a.y, 0, { fromX: guard.x, fromY: guard.y, owner: guard.player, delay: 120 + i * 140 });
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: a });
+            });
         }
         /* 🐍 THE FEATHERED SERPENT (2026-11-16, Quetzalcoatl): the first unit longer than one square. While he wears serpentForm he
            is the head; the body is two state._deployedObjects rows (serpentOf = his id, serpentIdx 0 nearest him, blocksMovement,
@@ -82123,6 +82173,14 @@
                 addLog(`${_ctName(unit)} grants ${_ctName(_st)} a ${shieldGain} HP shield.`);
                 completionDelay = Math.max(completionDelay, _shResult.completionDelay);
             } else if (spell.kind === 'buff') {
+                /* 🛟 Three Whistles with nobody to pull in is refused before anything is spent */
+                if (spell.massRescue && !_lifeguardRescueList(unit, spell).length) {
+                    if (!_silentReject) {
+                        addLog(`${_ctSp(spell.name)}: no ally within ${spell.massRescue.radius || 4} is under ${Math.round((spell.massRescue.hpPct || 0.5) * 100)}% HP.`, _clickSeat());
+                        playErrorSfx();
+                    }
+                    return 0;
+                }
                 // Phase 4 migration: buff uses ally support pipeline
                 const _buffResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
                     errorMsg: 'Choose a living ally for that spell.'
@@ -82210,6 +82268,7 @@
                     // THE SPELL AUDIT Batch D: spawnDecoy on a buff row (Mimicry) — the Shed Skin decoy beside the caster
                     if (spell.spawnDecoy && !unit.dead) _spawnCasterDecoy(unit, spell);
                     if (spell.timedStatBonus) _applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft (the Quickened status)
+                    if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
                     markDirty('hud');
                     renderIfDirty();
                 }, _buffResult.applyAt || 0);
