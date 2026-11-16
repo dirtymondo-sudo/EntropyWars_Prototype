@@ -13026,3 +13026,15 @@ models", without waiting for his OK. Plan picture: `docs/plans/world-zones/leyli
   THE CAMP ON THE SHELF: a tent, a fire, firewood, bedrolls, a lantern by the spring. Seen on screen (Level −6, the cells, the adit).
   Tool: a district may also export `dress2` .. `dress5` (one stage a pass, the same ctx).
 
+## LEYLINES, STONEHENGE — the pilot district (2026-11-16, second side; file `docs/areas/leylines/districts/S.js`, 9 plots)
+
+The zone's pilot (ZONE_THREAD_BRIEF step 7): at most five passes, each a merged PR, each seen on screen. Proof view = the South Gate looking
+north at the circle (`henge_s`: x 133, z -30, face 0). FPS there on the probe's software GPU, the room settled: first build 0.90 (3.24 M triangles).
+
+- **PASS 1, EXTERIORS** (seen: from the air, the fallen quarter, the Avenue from the Heel Stone, inside the circle; FPS 0.70, 3.41 M triangles:
+  within the probe's own spread, eight props added). The south-west quarter's fallen sarsens are grey boulders on their squares with five
+  lintels lying where they dropped (drawn boxes); THE 56 AUBREY HOLES are chalk spots inside the bank (a paint stamp; Room 56's own number);
+  THE AVENUE runs between two low banks (`ridge` rows) and THE SLAUGHTER STONE lies in its mouth; two portal sarsens at the South Gate; five
+  round barrows (two more on the Plain, `exports.hills`), each in its ring ditch.
+  Tried and thrown out: `ocean_rock_3 / _4` as fallen sarsens (they draw near black on land).
+
