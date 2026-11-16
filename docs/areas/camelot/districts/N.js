@@ -6,7 +6,7 @@
    y 0..12). The snow runs on south to the moat's north bank (the zone is y 0..17), over the top of the village's north plots: that
    strip is dressed here too (the campfire and the yeti at 30..31, 12..13 stand on it).
 
-   WHAT STANDS HERE TODAY (pass 1 of 5, the exteriors, 2026-11-16; the drawn rows are `cam:n:<name>`):
+   WHAT STANDS HERE TODAY (passes 1 + 2 of 5, 2026-11-16; the drawn rows are `cam:n:<name>`):
    THE RIDGE: snow-capped crags along the north edge and round both ends (three ranks: on the pines' own squares, in the kingdom's treeline
    past the room's edge, the peaks behind); THE PASS = the cleft the sleigh road leaves through (two rock walls 24 m long round the trail).
    THE SLEIGH STOP (the road's clearing): the sleigh and a horse west of the road, THE WAYSIDE HUT (walked into, squares 50..52 x 4..6, its
@@ -22,8 +22,12 @@
    room over the mountains) and the north bridge. The way out is a TRAIL: the walker follows it 10 m past the room's edge, between two rows
    of saplings the engine plants (summer green: the room's treeline kinds). The Pass is built round that trail; never shut it at the wall.
 
-   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO: the two huts' insides (pass 2), dressing (pass 3), snow in the air, smoke,
-   the night look (pass 4), polish (pass 5). Notes + the FITS THIS DISTRICT list: areas-complexes.md "CAMELOT, THE SNOWY PINES".
+   THE HUTS' INSIDES (pass 2): each is 2 x 2 squares; the hearth (stone, a real fire) and a bed stand on the two back squares with ghost walls,
+   the rest is decor: a hanging lantern, a rug, the mantel; the Wayside Hut has a stool, a dog, stockings, a wreath, a plate shelf, sacks, a
+   spear; the Cabin a rocking chair, the pot on the fire, a tool shelf (saw, rope, nails), split logs, a bear trap, sacks.
+
+   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO: dressing (pass 3), snow in the air, smoke, the night look (pass 4), polish
+   (pass 5). Notes + the FITS THIS DISTRICT list: areas-complexes.md "CAMELOT, THE SNOWY PINES".
    NEVER more `dec()` calls than the two below (the kingdom's one stream of dice: The Forest's scatter would move): use `at()` and `rn()`.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
@@ -104,8 +108,8 @@ const hut = (id, q, side, chimSide) => { take(q[0], q[1], q[2], q[3]);
         a.P.push({ s: 'roof', form: 'shed', p: [door.lx, 2.55, D2 + 1.0], size: [door.cw + 1.6, 0.7, 2.0], roof: true, ry: 0, under: true, key: SNOW, tint: 0xffffff, gain: SG, keyEnd: PLANK, tintEnd: 0x9a7650, keyUnder: PLANK });
         for (const s of [-1, 1]) a.box(door.lx + s * (door.cw / 2 + 0.6), 0, D2 + 1.8, 0.2, 2.6, 0.2, LOG, 0x5a4230, { gain: 1.5 });
         /* the chimney on a gable end, a cap of snow on its shoulder */
-        const cx = chimSide * (W2 + 0.45); a.box(cx, 0, -0.6, 1.0, 6.3, 1.3, ROCK, 0xffffff, { gain: RG }); a.box(cx, 6.3, -0.6, 1.25, 0.22, 1.55, ROCK, 0xe8e8e8, { gain: RG, roof: true }); a.box(cx, 6.52, -0.6, 0.7, 0.1, 1.0, null, 0x181614, { roof: true });
-        pane(a, -chimSide * (W2 + 0.12), 1.25, 0, true, 0.9, 0.9); pane(a, 0, 1.25, -(D2 + 0.12), false, 0.9, 0.9);
+        const cx = chimSide * (W2 + 0.45); a.box(cx, 0, -1.75, 1.0, 5.6, 1.5, ROCK, 0xffffff, { gain: RG }); a.box(cx, 5.6, -1.75, 1.25, 0.22, 1.75, ROCK, 0xe8e8e8, { gain: RG, roof: true }); a.box(cx, 5.82, -1.75, 0.7, 0.1, 1.1, null, 0x181614, { roof: true });
+        pane(a, -chimSide * (W2 + 0.12), 1.25, 1.75, true, 0.9, 0.9); pane(a, 0, 1.25, -(D2 + 0.12), false, 0.9, 0.9);
         pane(a, door.lx + (door.lx < 0 ? 1 : -1) * (door.cw / 2 + 1.5), 1.25, D2 + 0.12, false, 0.8, 0.9);
     }); };
 
@@ -148,6 +152,63 @@ put('campfire', 7, 8); dec('stump', 5, 8);
       S.drift(Math.cos(a) * 5.2 * k, -0.25, Math.sin(a) * 4.3 * k, rr(1.1, 1.8), rr(0.55, 0.9), rr(0.8, 1.2), Math.round(a * 180 / Math.PI + 90)); }
   S.rock(-5.0, -0.3, -2.9, 1.0, 0.9, 30); S.rock(4.9, -0.3, 2.9, 1.2, 1.0, 110); S.rock(1.5, -0.3, -4.7, 0.8, 0.7, 70); }
 dec('stump', 91, 8); put('xmas_snowman_3', 91, 7);
+
+/* ── PASS 2, THE HUTS' INSIDES. Each hut is two squares by two (7 m): the door's square (front left, seen from inside looking at the door) and the
+   front right one stay free; the two BACK squares carry what blocks (the hearth on the chimney's side, a bed on the other), each with a ghost
+   wall; everything else is decor off the squares' middles. A hollow building's inside takes no light and its ceiling is black, so the walls are
+   lined 0.33 m in (boards, `gain` + a little `glow`), a lit board deck hangs under the ceiling, the panes glow. Frame: x along the front, +z out
+   of the front (the door at z = +3.5), y up; a prop's face 0 looks at the back wall, 180 at the door. ── */
+const r3 = v => Math.round(v * 1000) / 1000;
+const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w = B.fw, d = B.fd, W2 = w / 2, D2 = d / 2, E = 0.33, TOP = 2.95, lx = B.door.lx, dw = B.door.cw + 0.12;
+    arch.push({ k: 'arch', id: 'cam:' + id + ':in', x: c[0], z: c[1], rot: B.face(0), parts: P });
+    const quad = (x, y, z, qw, qh, ry, key, tint, x2) => P.push(Object.assign({ s: 'quad', p: [r3(x), r3(y), r3(z)], size: [r3(qw), r3(qh)], ry, kind: 'wall', key, tint }, x2 || {}));
+    const LIN = { gain: 1.55, glow: 0.2 }, H = {
+        a, cs,
+        put: (key, x, z, face, o) => ctx.inside(B, key, r3(x), r3(z), Object.assign({ face: face || 0, floor: true }, o || {})),
+        on: (key, x, z, y, face, o) => ctx.inside(B, key, r3(x), r3(z), Object.assign({ face: face || 0, y: r3(y) }, o || {})),
+        block: (x0, z0, x1, z1, t, h) => { const p = B.at(x0, z0), q = B.at(x1, z1); feat({ k: 'wall', x0: p[0], z0: p[1], x1: q[0], z1: q[1], t: t || 0.9, h: h || 1.1, ghost: true, rail: false }); } };
+    /* the lining, the lit deck, two beams, the panes seen from inside */
+    quad(0, 0, -D2 + E, w - 2 * E, TOP, 0, PLANK, 0xb08a5c, LIN); quad(0, 0, D2 - E, w - 2 * E, TOP, 180, PLANK, 0xb08a5c, Object.assign({ hole: [r3(-lx), r3(dw), 2.25] }, LIN));
+    quad(-W2 + E, 0, 0, d - 2 * E, TOP, 270, PLANK, 0xb08a5c, LIN); quad(W2 - E, 0, 0, d - 2 * E, TOP, 90, PLANK, 0xb08a5c, LIN);
+    a.box(0, TOP, 0, w - 2 * E, 0.06, d - 2 * E, PLANK, 0x9a7650, { sides: false, top: false, under: true, glow: 0.6 });
+    for (const x of [-1.75, 1.75]) a.box(x, TOP - 0.26, 0, 0.26, 0.26, d - 2 * E, LOG, 0x5a4230, { glow: 0.3, gain: 1.4 });
+    const win = (x, z, ns) => { a.box(x, 1.25, z, ns ? 0.04 : 0.9, 0.9, ns ? 0.9 : 0.04, 'calm_ice', 0x9ccaf4, { glow: 0.8 }); a.box(x, 1.25, z, ns ? 0.07 : 0.07, 0.9, ns ? 0.07 : 0.07, PLANK, 0x6a4a30, { gain: 1.4 }); a.box(x, 1.66, z, ns ? 0.07 : 0.9, 0.07, ns ? 0.9 : 0.07, PLANK, 0x6a4a30, { gain: 1.4 }); a.box(x, 1.13, z, ns ? 0.14 : 1.2, 0.12, ns ? 1.2 : 0.14, PLANK, 0x6a4a30, { gain: 1.4 }); a.box(x, 2.15, z, ns ? 0.1 : 1.2, 0.12, ns ? 1.2 : 0.1, PLANK, 0x6a4a30, { gain: 1.4 }); };
+    win(-cs * (W2 - E - 0.03), 1.75, true); win(0, -(D2 - E - 0.03), false);
+    /* THE HEARTH on the chimney's back square: a slab, two stone jambs, the lintel with its mantel board, the breast to the ceiling, a black back */
+    const hx = cs * (W2 - E - 0.5), hz = -1.75, ST = { gain: 1.5, glow: 0.12 };
+    a.box(hx, 0, hz, 1.0, 0.16, 2.3, ROCK, 0xffffff, ST); for (const s of [-1, 1]) a.box(hx, 0.16, hz + s * 0.95, 1.0, 1.25, 0.4, ROCK, 0xffffff, ST);
+    a.box(hx, 1.41, hz, 1.05, 0.36, 2.4, ROCK, 0xffffff, ST); a.box(hx - cs * 0.1, 1.77, hz, 1.25, 0.07, 2.6, PLANK, 0x7a5632, { gain: 1.5, glow: 0.15 });
+    a.box(cs * (W2 - E - 0.32), 1.84, hz, 0.64, TOP - 1.84, 1.9, ROCK, 0xffffff, ST); a.box(cs * (W2 - E - 0.05), 0.16, hz, 0.08, 1.25, 1.5, null, 0x161210);
+    a.box(hx, 0.16, hz, 0.7, 0.05, 1.2, null, 0xff7a20, { glow: 1 });   // the bed of embers
+    H.on('hearth_fire', hx, hz, 0.2, 0); H.block(hx, hz - 1.15, hx, hz + 1.15, 1.1, 1.3);
+    H.hx = hx; H.hz = hz; H.W2 = W2; H.D2 = D2; H.E = E; H.TOP = TOP;
+    /* a hanging lantern in the middle: a chain, the catalogue's lantern, a lit core */
+    a.box(0, 2.45, 0.4, 0.04, TOP - 2.45, 0.04, null, 0x2a2c30); ctx.inside(B, 'meshy_hanging_lantern', 0, 0.4, { y: 1.97, noLight: true }); a.box(0, 2.1, 0.4, 0.1, 0.18, 0.1, null, 0xffd890, { glow: 1 });
+    /* a pelt on the boards (the fur sheet), a stack of split logs by the hearth (drawn: no log stack on R2) */
+    H.pelt = (x, z, pw, pd, ry, tint) => a.box(x, 0.036, z, pw, 0.03, pd, 'fur', tint, { ry, gain: 1.4, glow: 0.1 });
+    H.logs = (x, z, ry) => { for (let k = 0; k < 3; k++) a.box(x, 0.036 + k * 0.17, z, 0.9, 0.16, 0.16, LOG, k % 2 ? 0x8a6444 : 0x7a5638, { ry, gain: 1.6, glow: 0.1, n: 3 - k, step: ry ? [0, 0, 0.18] : [0, 0, 0.18] }); };
+    H.shelf = (x, z, len, y, ns) => { a.box(x, y, z, ns ? 0.3 : len, 0.05, ns ? len : 0.3, PLANK, 0x8a6238, { gain: 1.5, glow: 0.12 }); for (const s of [-1, 1]) a.box(ns ? x : x + s * (len / 2 - 0.15), y - 0.22, ns ? z + s * (len / 2 - 0.15) : z, ns ? 0.26 : 0.05, 0.22, ns ? 0.05 : 0.26, PLANK, 0x6a4a30, { gain: 1.4 }); };
+    return H; };
+/* THE WAYSIDE HUT: a traveller's rest. The hearth on the right, a bed in the back left corner, a stool and a dog by the fire, stockings and
+   mugs on the mantel, a wreath, plates on the shelf, sacks and a crate by the door wall, a spear by the door. */
+{ const H = fit(WAYHUT, 'n_wayhut', 1), a = H.a, W2 = H.W2, D2 = H.D2;
+    H.put('psx_bed_5_4', -1.75, -1.75, 0); H.block(-1.75, -2.8, -1.75, -0.7, 1.4, 0.9);   // (the catalogue's `cot` is a steel camp cot: not here)
+    H.pelt(0.7, 0.3, 2.2, 1.5, 20, 0x9a7a5c); H.put('psx_chair_mp_1', 1.0, -0.6, 300); H.put('dog', 0.4, -2.3, 120);
+    H.on('xmas_cocoa', H.hx - 0.1, H.hz - 0.7, 1.85, 0); H.on('xmas_cocoa', H.hx - 0.15, H.hz - 0.35, 1.85, 40); H.on('candle', H.hx - 0.1, H.hz + 0.8, 1.85, 0);
+    ctx.inside(WAYHUT, 'xmas_stocking', r3(H.hx - 0.56), r3(H.hz - 0.45), { face: 270, mount: 0, y: 1.3 }); ctx.inside(WAYHUT, 'xmas_stocking_2', r3(H.hx - 0.56), r3(H.hz + 0.45), { face: 270, mount: 0, y: 1.3 });
+    ctx.inside(WAYHUT, 'xmas_wreath', -1.9, r3(-D2 + 0.4), { face: 180, mount: 0, y: 1.75 });
+    H.shelf(1.2, -D2 + 0.5, 1.6, 1.5, false); H.on('psx_plate_mp_1', 0.8, -D2 + 0.5, 1.56, 0); H.on('psx_plate_mp_1', 1.2, -D2 + 0.5, 1.56, 0); H.on('item_drinking_cup', 1.6, -D2 + 0.5, 1.56, 0); H.on('item_drinking_cup', 1.8, -D2 + 0.52, 1.56, 0);
+    H.logs(W2 - 0.95, 0.1, 0); H.put('meshy_burlap_sack', W2 - 0.8, D2 - 0.8, 30); H.put('meshy_burlap_sack', W2 - 0.75, D2 - 1.6, 200); H.put('psx_wooden_crate_5', W2 - 1.7, D2 - 0.9, 10);   // (crate_4 wears a HIGHLY FLAMMABLE plate) H.put('wooden_bucket', 1.0, D2 - 0.7, 0);
+    H.put('spear', -W2 + 0.55, D2 - 0.55, 0); H.put('xmas_gift', -W2 + 0.7, 0.7, 30); H.put('xmas_gift_3', -W2 + 0.6, 1.2, 80); }
+/* THE WOODCUTTER'S CABIN: the hearth on the left with the pot in it, the bed in the back right corner, the rocking chair, the saw and the
+   rope on the wall shelf, split logs, a bear trap, sacks. */
+{ const H = fit(CABIN, 'n_cabin', -1), a = H.a, W2 = H.W2, D2 = H.D2;
+    H.put('psx_bed_5_4', 1.75, -1.75, 0); H.block(1.75, -2.8, 1.75, -0.7, 1.4, 0.9);
+    H.pelt(0.5, 0.6, 2.3, 1.5, 340, 0x8a6a50); H.put('rocking_chair', -0.3, -0.5, 250); H.on('cauldron', H.hx + 0.05, H.hz, 0.2, 0, { h: 0.55 });
+    H.shelf(W2 - 0.5, 1.4, 2.2, 1.35, true); H.on('psx_hand_saw_1', W2 - 0.5, 0.8, 1.41, 90); H.on('meshy_rope', W2 - 0.5, 1.6, 1.41, 0); H.on('psx_nails_1', W2 - 0.5, 2.2, 1.41, 0); H.on('candle', W2 - 0.5, 0.45, 1.41, 0);
+    H.logs(-W2 + 0.95, 0.2, 0); H.logs(-W2 + 0.95, 1.0, 0); H.put('trap_bear_base', W2 - 0.8, D2 - 0.75, 20); H.put('trap_bear_jaw', W2 - 0.8, D2 - 0.75, 20);
+    H.put('meshy_burlap_sack', 0.9, D2 - 0.75, 100); H.put('psx_wooden_crate_5', 2.0, D2 - 1.9, 5); H.put('wooden_bucket', -W2 + 0.7, 2.6, 0); H.on('candle', H.hx + 0.1, H.hz + 0.85, 1.85, 0);
+    ctx.inside(CABIN, 'xmas_wreath_2', 0.2, r3(-D2 + 0.4), { face: 180, mount: 0, y: 1.75 }); }
 flushArch();
 return { WAYHUT, CABIN };
 }
