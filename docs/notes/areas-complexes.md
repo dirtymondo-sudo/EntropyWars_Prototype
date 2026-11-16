@@ -5037,10 +5037,20 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   a plank loft drawn on the tie beams is a black slab from below (out); a wall prop on the FRONT wall wants `face: 0` (180 shows its
   back); `brass_telescope` is a floor tripod 2 m tall, not a desk piece; `railway_lantern` lights nothing at night.
   Frame rate, the quay view: 0.3 fps this run against 0.8 to 1.8 before, with FEWER draw calls (659): the cloud's number is noise.
+- **PASS 3, DRESSING (seen on screen; MODEL_LIST.md searched first):** 66 props, 8 people, 1 drawn row. Freight on the wharf's back
+  row under the crane; a skip, a gas rack, crates, pots, tyres, sacks, a pallet jack on the quay; nets drying on the shed's west wall
+  and a life ring on its east; ship's stores down the Long Pier's north row; pots on the skiff jetty; a bench at the light. Drawn: a
+  finger post where the pier's arm meets the quay (LONG PIER, BREAKWATER, WHARF, SLIPWAY: the plan's own names), the slip's KEEP
+  CLEAR board, WHARF on the brick. CARRIED OVER from the old Harbour room: the crab and the starfish at the slip's head, the second
+  dolphin, the shark past the buoys, the fish schools. PEOPLE (mondo: "There need to be more NPCs"): homosapiens on the wharf, the
+  Breakwater's head, the Long Pier, the skiff jetty; pirates at the slip and the gangway; a sharkman on the quay. No line written.
+  NOT SEEN: the people (the probe draws no cast). LEARNED: `psx_supply_crate_*` is a small crate of bottles, not freight; a prop on
+  the wharf or the Breakwater is pushed by hand (the tool's `P` only knows the plan's squares). WEIGHT: every prop the Harbour
+  places, 122 of them, is 0.40 M triangles in all (counted from the files); the quay view's own count swung 1.0 / 2.1 / 3.3 M
+  between runs with the same content, so the cloud's frame rate (0.3 to 1.8 fps) says nothing about a pass.
 - **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
   the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
-- **NOT DONE:** freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the night look (pass 4: the quay
-  is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+- **NOT DONE:** harbour lights and the night look (pass 4: the quay is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
   the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.

@@ -39,9 +39,15 @@
    ship's model), a telescope, a star chart, the sea chest, the anchor, sacks, a lantern; the wheel, a life ring and the bell on the walls.
    It is the district's only walk-in (the plan draws no other building; the stilt houses are solid pack models).
 
-   MISSING / NOT DONE (the passes to come: dressing, atmosphere, polish):
+   THE DRESSING (11-16, seen): freight on the wharf's back row under the crane, a skip, a gas rack, crates, pots, tyres and sacks on the quay,
+   nets drying on the shed's west wall, ship's stores down the Long Pier's north row, pots on the skiff jetty, a bench at the light; a
+   finger post (LONG PIER, BREAKWATER, WHARF, SLIPWAY), the slip's KEEP CLEAR board, WHARF on the brick. From the old Harbour room: the
+   crab and starfish at the slip's head, the second dolphin, the shark, the fish schools. People: 10 (8 more, no lines).
+   THE WAYS THAT MUST STAY CLEAR: square 25 x 42 and the west lane (24-25 x 38-41) = the only way round the shed to the wharf's stair;
+   the wharf's front row (37) to the gantry at 34; the Long Pier's south row (54); squares 51-52 x 53-54 (the gangway).
+
+   MISSING / NOT DONE (the passes to come: atmosphere, polish):
    - At night the quay, the wharf and the piers have NO light (seen at 22:30: `railway_lantern` lights nothing): the atmosphere pass.
-   - The wharf, the gantry and the Breakwater's crest are bare; the quay's freight is thin: the dressing pass.
    - No harbour lights after dark besides the old lanterns and the light's beam: the atmosphere pass.
    - The Dutchman's bulwarks, deck stairs, crates and cannon are her deck room's rows and are not drawn at the berth; she is not redesigned
      (the world plan wants her rebuilt inside and out: not this file's job without mondo's word). The brow lands on her rail, not in a port.
@@ -208,6 +214,17 @@ build(ctx) {
         T.part({ s: 'cyl', p: [r2(x), 0.72, r2(z)], r: 0.22, h: 0.07, ri: 0.14, key: RIB, tint: IRON, seg: 8, uv: 1 }); };
     works('roads', mx(41), mz(77), T => { [[38, 75], [44, 75], [38, 80], [44, 80]].forEach(q => mooring(T, mx(q[0]), mz(q[1]))); });
 
+    /* THE SIGNS (the dressing pass; dark stencil letters on white boards: the kit): a finger post where the pier's arm meets the quay, the
+       slipway's board on its winch side, the wharf's name on its brick */
+    works('signs', gx(30), gz(43), T => { const px = gx(30) + 0.5, pz = gz(43) - 0.6;
+        T.cyl(px, QY, pz, 0.07, 3.0, null, WHITE, { seg: 6 }); T.cyl(px, QY + 3.0, pz, 0.11, 0.1, null, IRON, { seg: 6 });
+        [['LONG PIER', 2.55, 0], ['BREAKWATER', 2.1, 0], ['WHARF', 1.65, 180], ['SLIPWAY', 1.2, 180]].forEach(q => { const dir = q[2] ? -1 : 1, w = q[0].length * 0.2 + 0.3;
+            T.box(px + dir * (w / 2 + 0.1), QY + q[1], pz, w, 0.34, 0.05, null, WHITE);
+            T.sign(q[0], px + dir * (w / 2 + 0.1), QY + q[1] + 0.04, pz + 0.035, w - 0.12, 0.26, '#2a2622', '#ffffff', 'stencil'); T.sign(q[0], px + dir * (w / 2 + 0.1), QY + q[1] + 0.04, pz - 0.035, w - 0.12, 0.26, '#2a2622', '#ffffff', 'stencil', { ry: 180 }); });
+        T.box(gx(27) + 0.5, QY, gz(43) - 0.35, 0.08, 1.5, 0.08, null, WHITE); T.box(gx(27) + 0.5, QY + 1.0, gz(43) - 0.3, 1.9, 0.7, 0.05, null, WHITE);
+        T.sign('SLIPWAY', gx(27) + 0.5, QY + 1.36, gz(43) - 0.265, 1.7, 0.28, '#2a2622', '#ffffff', 'stencil'); T.sign('KEEP CLEAR', gx(27) + 0.5, QY + 1.05, gz(43) - 0.265, 1.7, 0.24, '#c8281e', '#ffffff', 'stencil');
+        T.box(gx(32.5), QY + 1.75, gz(38) + 0.2, 4.4, 0.8, 0.05, null, WHITE); T.sign('WHARF', gx(32.5), QY + 1.83, gz(38) + 0.235, 4.0, 0.64, '#2a2622', '#ffffff', 'stencil');
+    });
     /* THE QUAY SHED (walk-in): red painted boards, white trim, a tin roof, barn doors onto the quay, a hoist beam in the gable, its name on a
        white board (the kit's paint: the painted corrugated sheet at gain 2.9; tar over the brown board sheet was a black box, seen) */
     /* ── THE INTERIOR PASS (2026-11-16; seen first: a brown box under a black ceiling, nine props). The Shore's `inside` (the zone kit), for a
@@ -300,5 +317,28 @@ dress(ctx) {
     props.push({ key: 'babel_crane', x: mx(31), z: mz(36), face: 180 });                                                                         // THE WHARF'S CRANE (mondo's scaffold crane), on the wharf's back row
     props.push({ key: 'ocean_seal_resting', x: r2(mx(40) + 0.6), z: r2(mz(39) - 0.5), face: 200 }); props.push({ key: 'ocean_seal_resting', x: r2(mx(43) - 0.4), z: r2(mz(39) - 0.7), face: 150 });   // seals hauled out on the Breakwater
     props.push({ key: 'ocean_seal_resting', x: r2(gx(26) + 2.2), z: gz(47.2), face: 20 });                                                        // and one at the slip's foot
+    /* ── THE DRESSING PASS (2026-11-16; MODEL_LIST.md searched first, the zone kit's FROM THE MODEL LIST). Every place has work lying about it:
+       freight on the wharf's back row under the crane (its front row is the walk to the gantry), stores on the quay's east apron and its
+       west lane, nets drying on the shed's walls, ship's stores on the Long Pier's north row (the south row is the walk), pots on the skiff
+       jetty, a bench at the light. CARRIED OVER FROM THE OLD HARBOUR ROOM: the crab and the starfish at the slipway's head, the second
+       dolphin, the shark past the buoys, the fish schools. Drawn: a finger post where the pier's arm meets the quay, the slip's board,
+       the wharf's name on its brick (plain words: the plan's own place names). MORE PEOPLE (mondo 11-16: "There need to be more NPCs"):
+       eight, none with a line, none on a way through. ── */
+    const on = (key, sx, sy, o) => props.push(Object.assign({ key, x: mx(sx), z: mz(sy) }, o));                                   // a blocker on a square's middle, on ground the tool's `P` does not know (the wharf, the Breakwater)
+    const off = (key, sx, sy, dx, dz, o) => props.push(Object.assign({ key, x: r2(mx(sx) + dx), z: r2(mz(sy) + dz) }, o));        // decor off the middle, placed by hand
+    on('wrapped_pallet', 29, 36); on('psx_supply_crate_1', 32, 36, { face: 10 }); on('psx_supply_crate_1_2', 33, 36, { face: 80 }); on('psx_metal_barrel_mp_2', 35, 36); off('cable_drum', 30, 36, 0.3, -0.2, { face: 40 }); off('psx_metal_barrel_mp_0', 35, 36, -1.3, 0.5); off('meshy_rope', 30, 37, -1.1, -1.2); off('traffic_cone', 34, 36, 0.9, 0.6);
+    P('ind_skip', 33, OY + 2, { face: 90 }); P('gas_cylinder_rack', 35, OY + 2, { face: 270 }); P('psx_supply_crate_1_3', 31, OY + 4, { face: 30 }); P('lobster_traps', 24, OY + 4, { face: 90 }); P('lobster_traps', 24, OY + 2, { face: 0 });   // (never on 25, OY + 6: the only way round the shed to the wharf's stair)
+    off('pallet_jack', 31, OY + 3, 0.9, 1.1, { face: 200 }); off('tire_stack', 33, OY + 6, 0.2, 1.0); off('tire_stack', 31, OY + 6, -0.9, 1.1); off('psx_jerrycan_1', 29, OY + 4, 1.2, -0.9, { face: 60 }); off('meshy_burlap_sack', 33, OY + 5, 0.6, -0.5); off('meshy_burlap_sack', 33, OY + 5, -0.4, 0.3, { face: 120 }); off('wooden_bucket', 27, OY + 6, 0.9, 0.9);
+    put(SHED, 'fishing_net_wall', -5.42, -1.6, { face: 270, floor: true, y: 0.9 + 1.5 }); put(SHED, 'fishing_net_wall', -5.42, 1.7, { face: 270, floor: true, y: 0.9 + 1.5 }); put(SHED, 'beach_life_ring', 5.42, 0.2, { face: 90, floor: true, y: 0.9 + 1.7 });   // nets drying on the shed's west wall, a ring on its east
+    props.push({ key: 'ocean_crab', x: r2(gx(26) - 1.9), z: r2(gz(43) + 1.2), face: 300 }); props.push({ key: 'ocean_starfish', x: r2(gx(26) + 1.6), z: r2(gz(43) + 2.2), face: 40 });                                                                       // the old Harbour's, at the slipway's dry head
+    swimmer('ocean_dolphin', 28, OY + 44, { swim: { r: 6, v: 2.0, bob: 0.35 } }); swimmer('ocean_shark', 27, OY + 52, { y: -0.9, hover: 0.2, swim: { r: 9, v: 1.3, bob: 0.1 } });                                                                             // the old Harbour's second dolphin, and the shark past the buoys
+    feat({ k: 'scatter', key: 'fish_school', n: 4, x: mx(34), z: mz(OY + 40), r: 30, seed: 35, sea: true });
+    P('wrapped_pallet', 50, 53); P('psx_supply_crate_1_1', 53, 53, { face: 20 }); P('psx_metal_barrel_mp_3', 46, 53); off('meshy_rope', 48, 53, 0.4, -0.5); off('psx_wooden_crate_4', 44, 53, 1.0, -0.6, { face: 15 }); off('meshy_burlap_sack', 54, 53, -0.3, -0.7); off('wooden_bucket', 39, 53, 0.5, -0.9);   // ship's stores down the Long Pier's north row
+    P('lobster_traps', 28, 57, { face: 90 }); off('wooden_bucket', 29, 61, -0.9, 0.4); off('ocean_crab', 30, 62, 0.5, -0.4, { face: 120 }); off('meshy_rope', 29, 63, -0.8, 0.8);                                                                             // the skiff jetty
+    off('city_bench', 46, 47, 0, 0.9, { face: 180 }); off('railway_lantern', 45, 47, -0.9, 0.9); off('ocean_crab', 43, 40, 0.4, 0.6, { face: 20 });                                                                                                        // a bench at the light, looking out
+    /* the people: on the wharf, under the crane, at the slip, on the Breakwater's head, down the Long Pier, at the gangway, on the skiff jetty */
+    const who = (race, sx, sy, face, dx, dz) => ctx.npc.push({ x: r2(mx(sx) + (dx || 0)), z: r2(mz(sy) + (dz || 0)), face, race });
+    who('homosapien', 30, 37, 180, 0.8, 0.9); who('homosapien', 32, 37, 0, 0, -1.2); who('pirate', 24, 42, 135, 0.6, 0); who('homosapien', 47, 45, 90, 0.9, 0); who('homosapien', 38, 53, 0, 0, -0.9);
+    who('pirate', 50, 54, 180, -1.2, 0.4); who('homosapien', 29, 60, 90, 0.8, 0); who('sharkman', 34, 41, 200, 0.9, 0.6);
 },
 };
