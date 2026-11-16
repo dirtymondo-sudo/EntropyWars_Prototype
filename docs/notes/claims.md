@@ -16,7 +16,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 |---|---|---|---|
 | The Estate (plot build, prompt 5 of docs/plans/HANDOFF_PROMPTS.md) | second | 2026-11-15 | built + look pass merged (seen in the browser); corn waits for the Meshy key. Two pack prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack) |
 | Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 + the castle as ONE stacked room (`site_prebuilt_camelot_palace`) + five house kinds BUILT, seen on screen in part; the sky castle waits mondo |
-| The Desert | free | 2026-11-15 | second side built the three insides of the approved plan (Hangar 18, White Rooms, inside the Great Pyramid; bake-desert-insides.js); not seen on screen, waits mondo's look; the King's Chamber > Turning Tomb door waits his answer |
+| The Desert | free | 2026-11-15 | second side built the three insides (bake-desert-insides.js) + the King's Chamber door to the Turning Tomb; look pass done in the browser for the White Rooms and the pyramid, the hangar's saucer not confirmed; open finding: no door leaf draws in the probe, the old saloon door included (areas-complexes.md "THE LOOK PASS") |
 | The Woods | owner | 2026-11-15 | the life pass (four district looks, per-district particles) is live, waits mondo's look; the cabin has no game role yet |
 | The Mountains (+ the Hollywood Hills room, the city's north beach strip in B.js beach() and EDGES.n.cap) | second | 2026-11-15 | plan 2 built: Hills room, Shasta/Olympus swap, north beach; not seen on screen, waits mondo's look |
 | The Beach (`site_prebuilt_bermuda_beach`, bake-beach.js; plan 4: the Shore, the Harbour, the Ocean, the Bermuda Triangle) | second | 2026-11-15 | first delivery merged; not seen on screen, waits mondo's look |
@@ -25,6 +25,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | DOOR HQ (rooms, elevator, Main Hall) | owner | 2026-11-15 | elevator redesign waits mondo's OK |
 | First quest cutscenes + cutscene editor | second | 2026-11-15 | handed over by mondo's prompt 1; the three open shots (lift doors, hall <> foyer atrium, Locke's walk-off) checked and fixed in the code, not seen on screen: waits mondo's look (what to look at: story-party-progression.md "THE THREE OPEN SHOTS") |
 | Disaster City frame rate (the Main Hall crash stays with the owner side) | second | 2026-11-15 | handed over by mondo's prompt; 36.9 FPS at 3,264 meshes after THE SPLIT STACK (#1508); THE KEPT LIGHT LIST waits his F3; notes rendering-loading-perf.md, newest section first from "THE KEPT LIGHT LIST" |
+| The trees (bake-trees.py, the `rt:*_full` tree files, tree kinds; NOT the Woods room) | second | 2026-11-15 | THE PAINTED TREES live in every room and battle map (palms, bare trees, Christmas pines unchanged); next (mondo asked): alien / exotic trees |
 | Everything else | free | | ask mondo which side takes it |
 
 ## Notes between the sides

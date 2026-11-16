@@ -4256,6 +4256,28 @@ update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs w
 - **THE OAK AGAIN (same day, mondo: "the one on the very left looks bad, the rest are good")**: the oak's picture is wider than tall, so whole stem-to-outline slices
   were great flat boards. bake-trees.py form `oak`: twelve tiers, more boughs a tier standing steep, each slice cut into an inner and an outer sheet with their own
   tilt and turn, the crown pulled in to 82 % and started 10 % higher so the trunk shows. About 470 leaf triangles. The other four trees are byte-identical.
+- **THE PAINTED TREES (same day, replaces all of the above; mondo: "the undersides of the trees are all black. the new trees mess up dirt paths in the woods bc the
+  leaves start too low ... Not these shitty looking paper machete trees ... AAA game. leaves on branches. Anime Ghibli style. simple yet effective")**:
+  `bake-trees.py` was rewritten and needs no Blender (`pip install numpy pillow`). Same five file names (`<name>_full.glb`), same kinds (tree_52-56), so the Woods
+  wears them with no change to bake-woods.js or the room. Nothing is cut from the pack's crown pictures any more:
+  - THE WOOD: a trunk with real boughs and twigs (tapered tubes) in the pack tree's own bark picture. Oak: forks at 36 % into five boughs + twigs + three leaders.
+    Birch: one stem with side boughs from 46 % up. Fir / pine: one stem.
+  - THE LEAVES: a leafy tree carries round PUFFS at its bough ends (a ball of 8-11 small sheets facing outward, tilted every way). A fir carries ten tiers of
+    drooping bough sheets + a shorter shade layer under each tier.
+  - THE PAINT: the sheets wear leaf sprays DRAWN by the tool (512 x 384, four sprays x three tones: sunlit, mid, shade) in the pack tree's own green (the mean of its
+    picture). A sheet on top of a puff wears the sunlit row, one underneath the shade row: the crown reads round and painted in any light.
+  - THE NORMALS + THE ONE-SIDED LEAF: a sheet's normals point out of its puff and a little up. The leaf material is named `ewleaf_<tree>` and is ONE-SIDED in the
+    file, with both windings written. three-renderer.js `_foliageGlbMat` reads that (`painted`): draws it FrontSide (two-sided would flip the normal on a back face,
+    which was the black underside) and lifts the shade with the leaf's own picture (emissive 0.2 x the tint). Old pack trees are untouched (their leaf is two-sided).
+  - THE CLEARANCE: the tool lifts any sheet that would hang under 40 % of the tree's height (fir / pine 30 %) and prints `lowest leaf N% up`. A 6 m tree clears 2.4 m.
+  - Cost: oak 460 wood + 648 leaf triangles, birch 288 + 396, fir 36 + 872, pine 36 + 600 (leaf counts are both windings). Files 155-190 KB (were 0.2-1.6 MB).
+  - Seen in the game (playtest_city.js on `site_prebuilt_fairy_forest_plots`, birch / oak / fir quarters, from a path and looking up). Lessons: the first trunks were
+    twice too fat at Woods heights (a 13 m oak) and the first greens washed out pale in the game's light: keep the picture's values low (sunlit 0.56, mid 0.41, shade 0.27).
+  - **EVERYWHERE (same day, mondo: "much better, can you use these trees everywhere, I guess except for the palm trees")**: data.js HQ_TREE_KINDS `tree`, `tree_2`,
+    `tree_3`, `tree_4`, `pine` (and three-renderer.js `_FOLIAGE_MODEL_FOR_KEY`, + `tree_pine`, + the canopy's fallback) draw the painted `_full` files: every room and
+    every battle map that placed a pack tree. Unchanged: bare trees (tree_5 / tree_6), the sapling (pine_2), palms, Christmas pines, the old OBJ kinds (tree_7-51, no
+    room places them). NOT seen in the browser outside the Woods; cost to watch: a card tree was ~100 triangles, a painted one 700-1,100 (Disaster City's frame rate).
+  - Still open (mondo asked): alien / exotic trees, "maybe use something from the noise or abstract texture packs".
 
 ## THE BEACH ON PLOTS — the sixth area of the world plan, first delivery (2026-11-15)
 
@@ -4393,4 +4415,31 @@ hangar and the ward were still the old BSP rooms and the pyramid had no inside. 
   - PROBE LESSON: in a room this big the software browser never requests the props before the shot, and `EW_NO_MODEL_QUEUE` on the whole room
     kills it. What works: `--pre=` a filter that keeps only the props near the views (and drops the scatters and trees), then the flag.
     Not seen this way: the flamingos up close, the island's and the Reef's pieces, anything under the water (the sea is opaque from above).
+
+## THE DESERT'S INSIDES, THE LOOK PASS + THE TURNING TOMB DOOR (2026-11-15, second side)
+
+mondo: "yes, continue, and you can playtest to screenshot" (yes = the King's Chamber holds the door to the Turning Tomb).
+
+- **A DOOR INTO A DUNGEON (map.js, any room can use it):** a door whose action is `{ pd: '<level>', back: { room, at } }` enters that plot dungeon
+  (`window._pdDoor`); the panel's button is GO THROUGH, E walks straight in. Leaving the dungeon (`_pdLeave`) or solving it (2.6 s after the SOLVED
+  line) comes back through that door (`window._pdBack`), never to the main menu. Dungeons entered from Settings behave as before.
+  The pyramid's door: `turning`, the King's Chamber's south wall, level `tomb1`. Not walked in the browser (the door and its label were seen).
+- **SEEN IN THE BROWSER (playtest_city.js) and changed:**
+  - Hangar 18: the game draws `saucer_rig` as the 6 m landing-gear saucer, under 3 m tall, so the first build's 1.75 m test pit hid it. The pit is
+    gone; the saucer stands on the floor in its tape ring and the 3.5 m catwalk crosses over it. NOT confirmed on screen after the change (the
+    hangar probe crashed six times in a row).
+  - The carrier row for the leaves took its foot from the ground under the room's middle (the pit; in the pyramid, the mass): it carries `y: 0` now.
+  - The White Rooms: unlit plaster read grey and the window sheet read as dark mullions. The walls are lit a little by themselves (`glow`), the
+    glass is a plain pale pane (it reads opaque from most angles).
+  - The pyramid: ambient 0.8, thinner fog, roof slabs lit a little, both slopes 0.6 m wider than their passages (a black strip showed beside the
+    Gallery). Chambers, Gallery, Pit, the Cut, the entrance passage, the ladder and the Turning Tomb door all read.
+- **OPEN FINDING, NOT MINE TO CLOSE BLIND: NO DOOR LEAF DRAWS IN THE PROBE.** Every doorway shows its frame and no leaf. The room's 22 `hq_city_door`
+  groups exist and hold no mesh. The Desert's saloon (the first delivery's own city door) shows the same: 9 groups, no mesh, an open doorway.
+  So it is the shared city-door code (`_hqBuildTexDoors`) or the probe, not these rooms. The leaf files are fetched (they are in the probe's cache).
+  Check on a real machine: does the saloon's front door show a leaf?
+- **PROBE TRAPS LEARNED:** (1) the first one or two views of a run in the pyramid come out black (the room has not settled); put a throwaway view
+  first. (2) `ThreeRenderer.hq.dev.hqScene()` is the room's scene (`scene()` is the battle's). (3) The local server reads the checkout's freshness
+  once: when main moves 60 minutes on, it serves STALE CHECKOUT until you merge main AND restart it; the probe then says "page never ready".
+  (4) The ward crashed the headless browser every time while the telepath stood in it and never without him (the old ward had him too): shoot
+  that room with him taken out, ship it with him in. (5) The browser also dies at random; three tries a run is not always enough.
 

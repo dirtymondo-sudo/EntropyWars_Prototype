@@ -7703,15 +7703,15 @@ const ThreeRenderer = (function () {
        them now. data.js HQ_TREE_KINDS carries the same names (it wins for every key it lists). */
     var _FOLIAGE_RT_BASE = _R2_FOLIAGE + 'retrotreepack/GLB/';
     var _FOLIAGE_MODEL_FOR_KEY = {
-        tree:   'rt:tree_rt_2_1',
-        tree_2: 'rt:tree_rt_3',
-        tree_3: 'rt:tree_rt_4',
-        tree_4: 'rt:tree_rt_2',
+        tree:   'rt:tree_rt_2_1_full',
+        tree_2: 'rt:tree_rt_3_full',
+        tree_3: 'rt:tree_rt_4_full',
+        tree_4: 'rt:tree_rt_2_full',
         tree_5: 'rt:dead_tree_rt_2',
         tree_6: 'rt:dead_tree_rt_1',
-        pine:   'rt:tree_rt_1',
+        pine:   'rt:tree_rt_1_full',
         pine_2: 'rt:small_tree_rt_1',
-        tree_pine: 'rt:tree_rt_1',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
+        tree_pine: 'rt:tree_rt_1_full',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
         tree_sapling: 'rt:small_tree_rt_1'
     };
     /* THE ISLAND (2026-10-20): a name `kit:<file>` is a GLB in the D.O.O.R. kit folder (DOOR_HQ.assets.models — the palm) */
@@ -7792,8 +7792,13 @@ const ThreeRenderer = (function () {
         var tex = (sm && sm.map) || null;
         if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var leaf = _foliageGlbLeaf(sm);
-        var m = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
+        /* THE PAINTED TREES (2026-11-15, bake-trees.py): a leaf material named `ewleaf_*` and ONE-SIDED in its file carries both
+           windings with the same out-of-the-puff normals, so it is drawn one-sided (two-sided would flip the normal on a back
+           face and shade the two faces of a sheet apart) and its own picture lifts the shade (an underside is shade green, never black) */
+        var painted = leaf && sm.side === THREE.FrontSide && /^ewleaf_/.test(sm.name || '');
+        var m = new THREE.MeshLambertMaterial({ map: tex, side: painted ? THREE.FrontSide : THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
         if (tint != null) m.color.setHex(tint);
+        if (painted) { m.emissive.copy(m.color).multiplyScalar(0.2); m.emissiveMap = tex; }
         return m;
     }
     function _normalizeFoliageModel(root) {
@@ -47618,7 +47623,7 @@ const ThreeRenderer = (function () {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
-            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); S.cH = (S.cH | 0) + 1; continue; }
+            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); if (c._ew_bRec) S.cB = (S.cB | 0) + 1; else S.cH = (S.cH | 0) + 1; continue; }   // (a piece the merge holds reads hidden while a frame draws)
             if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
             var v0 = S.hv; S.hv = 0;
@@ -47742,7 +47747,13 @@ const ThreeRenderer = (function () {
                 if (stat && st.hs === S.hs) { (st.vt || (st.vt = [])).push(now); while (st.vt.length && now - st.vt[0] > 20000) st.vt.shift(); if (st.vt.length >= 8) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; st.vt = []; } }
                 if (st.times.length >= 5) {
                     if (stat && st.hs === S.hs) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; }   // only values keep moving: three checks them
-                    else { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                    /* THE SHELL KEEPS ITS RECORDING (2026-11-15, mondo's F3s in Disaster City: "SLOW RIGHT NOW: shell (10655 pieces) is
+                       drawn piece by piece", 2 to 15 times a session, 5 s each): a big still group (a big room's shell: ~10,000
+                       children, nearly all hidden behind their merged squares) costs three a walk of every child in every pass
+                       while it is released, ~10 ms a frame for 5 s, because 5 pieces started or stopped moving within 2 s. A
+                       re-record costs that walk ONCE. So such a group rests only when its list changes on about every third
+                       frame (24 times in 2 s); below that it is recorded again each time. The old 5: window.EW_BUN_REST_AT_5. */
+                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.G !== G || g._ew_bunFree) {   // the lamps / a freed resource it holds: re-records, and none of it counts as the group churning
@@ -69249,7 +69260,7 @@ const ThreeRenderer = (function () {
         var byName = {}, names = [];
         spots.forEach(function (sp) {
             var nm = _FOLIAGE_MODEL_FOR_KEY[sp.kind];
-            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3';
+            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3_full';
             if (!byName[nm]) { byName[nm] = []; names.push(nm); }
             byName[nm].push(sp);
         });

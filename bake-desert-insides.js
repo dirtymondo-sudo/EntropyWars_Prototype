@@ -29,14 +29,14 @@ function mk(NU, NV, pre) {
        (leaf 'none' = the bare doorway), gaps [[from, to]] (a plain opening, whole squares), draw: false (walked only), walk: false (drawn only) */
     R.wall = (axis, at, a, b, o) => { o = o || {}; const h = o.h || 3.5, y0 = o.y0 || 0, base = o.base || 0;
         const seg = (s0, s1) => { if (s1 - s0 < 0.02) return; const m = (s0 + s1) / 2, L = (s1 - s0) * C, px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m);
-            if (o.draw !== false) { const p = { s: 'box', p: [px, r2(base + y0), pz], size: axis === 'u' ? [r2(L), h, T] : [T, h, r2(L)], uv: [3.5, 1.75] }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.glass) { p.kind = 'glass'; p.uv = 7; } R.P.push(p); }
+            if (o.draw !== false) { const p = { s: 'box', p: [px, r2(base + y0), pz], size: axis === 'u' ? [r2(L), h, T] : [T, h, r2(L)], uv: [3.5, 1.75] }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.glass) { p.kind = 'glass'; p.uv = 7; } if (o.glow) p.glow = o.glow; R.P.push(p); }
             if (o.walk !== false) { const e = Math.min(0.15, L / 2 - 0.01), row = Object.assign({ k: 'wall' }, axis === 'u' ? { x0: r2(X(s0) + e), z0: pz, x1: r2(X(s1) - e), z1: pz } : { x0: px, z0: r2(Z(s0) + e), x1: px, z1: r2(Z(s1) - e) }, { t: T, ghost: true, rail: false });
                 row.h = h; row.y = r2(base + y0 + h); if (y0 > 0) row.y0 = r2(base + y0); R.F.push(row); } };   // `y` = its top, `y0` = an upper floor wall's own foot (absolute: a stair under the line never lifts it)
         const cuts = (o.doors || []).map(d => ({ a: d[0] - DW / 2 / C, b: d[0] + DW / 2 / C, d })).concat((o.gaps || []).map(g => ({ a: g[0], b: g[1] }))).sort((p, q) => p.a - q.a);
         let cur = a;
         cuts.forEach(c => { seg(cur, c.a); cur = c.b; if (!c.d) return;
             const m = c.d[0], px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m), yb = r2(base + y0), fr = o.frame != null ? o.frame : 0x3a3d42;
-            if (h > DH + 0.05) { const p = { s: 'box', p: [px, r2(yb + DH), pz], size: axis === 'u' ? [DW, r2(h - DH), T] : [T, r2(h - DH), DW], uv: [3.5, 1.75], under: true }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.glass) { p.kind = 'glass'; p.uv = 7; } R.P.push(p); }
+            if (h > DH + 0.05) { const p = { s: 'box', p: [px, r2(yb + DH), pz], size: axis === 'u' ? [DW, r2(h - DH), T] : [T, r2(h - DH), DW], uv: [3.5, 1.75], under: true }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.glass) { p.kind = 'glass'; p.uv = 7; } if (o.glow) p.glow = o.glow; R.P.push(p); }
             [-1, 1].forEach(sd => R.P.push({ s: 'box', p: axis === 'u' ? [r2(px + sd * (DW / 2 + 0.06)), yb, pz] : [px, yb, r2(pz + sd * (DW / 2 + 0.06))], size: axis === 'u' ? [0.12, DH + 0.1, T + 0.08] : [T + 0.08, DH + 0.1, 0.12], tint: fr }));
             R.P.push({ s: 'box', p: [px, r2(yb + DH), pz], size: axis === 'u' ? [DW + 0.24, 0.12, T + 0.08] : [T + 0.08, 0.12, DW + 0.24], tint: fr });
             if (c.d[1] && c.d[1] !== 'none') { const r = { x: px, z: pz, rot: axis === 'u' ? 0 : 90, w: DW - 0.2, leaf: c.d[1] }; if (c.d[2]) r.double = true; if (yb > 0) r.y = yb; R.inner.push(r); }
@@ -94,11 +94,9 @@ const HG = mk(22, 14);
   R.wall('v', 13, 10, 14, Object.assign({ doors: [[12.5, 'leaf_frosted_single']] }, wh)); R.wall('v', 18, 10, 14, Object.assign({ doors: [[12.5, 'leaf_hospital']] }, wh));
   /* the low rooms' roofs (3.5 m): the hall goes on up to the trusses over them */
   [[0, 0, 4, 4], [0, 4, 4, 7], [0, 7, 4, 10], [18, 0, 22, 4], [18, 4, 22, 7], [18, 7, 22, 10], [0, 10, 22, 14]].forEach(q => R.ceil(q[0], q[1], q[2], q[3], 3.5, CONC, 0xb0b4b8));
-  /* THE SAUCER on its rig, in the test pit (1.75 m down, railed all round, the tape ring on the floor round it): the catwalk crosses over it */
-  R.F.push({ k: 'plateau', x: R.X(11), z: R.Z(5), w: 14, d: 14, h: -1.75, sink: true, edge: 0.15 });
-  [['u', 3, 9, 13], ['u', 7, 9, 13], ['v', 9, 3, 7], ['v', 13, 3, 7]].forEach(q => { R.F.push(Object.assign({ k: 'rail', model: 'balusters_b' }, q[0] === 'u' ? { x0: R.X(q[2]), z0: R.Z(q[1]), x1: R.X(q[3]), z1: R.Z(q[1]) } : { x0: R.X(q[1]), z0: R.Z(q[2]), x1: R.X(q[1]), z1: R.Z(q[3]) })); });
-  for (let u = 9; u < 13; u++) for (let v = 3; v < 7; v++) R.block[u + ',' + v] = 'the pit';
-  R.props.push({ key: 'saucer_rig', x: R.X(11), z: R.Z(5), y: -1.75, face: 0 });
+  /* THE SAUCER on its rig, the tape ring on the floor round it. The game draws `saucer_rig` as the landing-gear saucer, 6 m across and
+     under 3 m tall, so it stands on the floor and the 3.5 m catwalk crosses over it (seen in the browser 11-15: a pit hid it). */
+  R.props.push({ key: 'saucer_rig', x: R.X(11), z: R.Z(5), face: 0 }); for (let u = 10; u < 12; u++) for (let v = 4; v < 6; v++) R.block[u + ',' + v] = 'saucer_rig';
   [[8.5, 2.5, 0], [13.5, 2.5, 0], [8.5, 7.5, 0], [13.5, 7.5, 0], [8.5, 5, 90], [13.5, 5, 90], [11, 2.5, 0], [11, 7.5, 0]].forEach(q => R.dec('warning_tape', q[0], q[1], q[2], { y: 0.01 }));
   /* THE UPPER FLOOR (3.5 m): the catwalk over the saucer, the mezzanine along the south side, the control room in glass at its east end */
   R.deck(10, 1, 12, 8.2, 3.5, GRILL); R.deck(10, 8, 18, 10, 3.5, GRILL);                                                    // (the catwalk runs 0.7 m on over the mezzanine: two slabs that only touch leave a seam the walker falls through)
@@ -166,7 +164,7 @@ const HG = mk(22, 14);
 
 /* ════ THE WHITE ROOMS (16 x 12) ════ */
 const WD = mk(16, 12);
-{ const R = WD, WH = 0xf2f2f4, wh = { key: PLAS, tint: WH, frame: 0xd0d2d6 }, gl = { glass: true, key: GLS, tint: 0xdfe8ee, frame: 0xd0d2d6 };
+{ const R = WD, WH = 0xffffff, wh = { key: PLAS, tint: WH, frame: 0xd0d2d6, glow: 0.45 }, gl = { glass: true, tint: 0xd8ecf2, frame: 0xd0d2d6, glow: 0.2 };   // (seen in the browser 11-15: unlit plaster read grey and the window sheet read as dark mullions; the walls are lit a little by themselves, the glass is plain)
   /* THE CELL ROW: eight padded cells down the west wall (3.5 x 7 m each), one standing open; the row's own hall beside them */
   R.wall('v', 2, 0, 8, Object.assign({ doors: [0, 1, 2, 3, 4, 5, 6, 7].map(i => [i + 0.5, i === 5 ? 'none' : 'leaf_cell']) }, wh));
   for (let v = 1; v < 8; v++) R.wall('u', v, 0, 2, wh);
@@ -270,11 +268,11 @@ const PY = mk(14, 14);
   rects(ch => ch === '#', (x, y, w, h) => slab(x, y, w, h, TOP));
   for (const ch of ['1', '2', '3']) rects(c => c === ch, (x, y, w, h) => slab(x, y, w, h, lvl(ch)));
   /* THE DESCENT: level 1 down to the Pit, one slope two squares wide (the mass under it is the slope itself) */
-  R.F.push({ k: 'ramp', x0: R.X(7), z0: R.Z(9), x1: R.X(7), z1: R.Z(6), w: 7, h0: 0, h1: L1, stairs: true, built: true, edge: 0.05, key: STONE });
+  R.F.push({ k: 'ramp', x0: R.X(7), z0: R.Z(9), x1: R.X(7), z1: R.Z(6), w: 7.6, h0: 0, h1: L1, stairs: true, built: true, edge: 0.05, key: STONE });
   /* THE GRAND GALLERY: level 1 up to level 2, a ramp two squares wide and six long under a corbelled roof 8 m over it */
-  R.F.push({ k: 'ramp', x0: R.X(11), z0: R.Z(5), x1: R.X(11), z1: R.Z(11), w: 7, h0: L1, h1: L2, stairs: true, built: true, edge: 0.05, key: STONE });
+  R.F.push({ k: 'ramp', x0: R.X(11), z0: R.Z(5), x1: R.X(11), z1: R.Z(11), w: 7.6, h0: L1, h1: L2, stairs: true, built: true, edge: 0.05, key: STONE });
   /* the roofs: every passage and chamber under its own stone ceiling */
-  const roof = (u0, v0, u1, v1, y, tint) => R.ceil(u0, v0, u1, v1, y, STONE, tint != null ? tint : 0xb8a680);
+  const roof = (u0, v0, u1, v1, y, tint) => { R.ceil(u0, v0, u1, v1, y, STONE, tint != null ? tint : 0xb8a680); R.P[R.P.length - 1].glow = 0.25; };   // (a roof's underside gets no light from the room's lamps: lit a little by itself)
   roof(6, 0, 8, 6, L1 + 3.5); roof(0, 2, 6, 3, L1 + 3.2, 0x8a7a60); roof(8, 2, 12, 5, L1 + 3.5); roof(5, 5, 6, 6, L1 + 3.2); roof(0, 8, 3, 9, L1 + 3.5); roof(2, 7, 3, 8, L1 + 3.2);
   roof(6, 6, 8, 9, L1 + 3.5); roof(4, 9, 10, 11, 5.25, 0x8a7a60);
   /* the Queen's Chamber: a gabled roof */
@@ -312,7 +310,10 @@ const PY = mk(14, 14);
         desc: 'A slab that turns on its middle. It lets out on the west face, a few steps from the Tomb Door.' },
       { id: 'cut', wall: 'w', z: R.Z(2.5), secret: true, leaf: 'leaf_frame_only', label: 'A DRAUGHT', sub: 'THE ROBBERS’ CUT · OUT THROUGH THE WEST FACE', action: { room: 'site_prebuilt_area51_desert', at: 'cut' },
         desc: 'A rough hole hacked through the casing stones. Whoever cut it did not come for the view.', draft: true });
-  R.must.push('6,0', '7,0', '0,8', '0,2');
+  /* THE TURNING TOMB (mondo 11-15: yes): the King's Chamber holds the door to the puzzle dungeon (data.js PD_DUNGEONS.tomb, level `tomb1`); leaving or solving it comes back here (map.js _pdDoor) */
+  R.doors.push({ id: 'turning', wall: 's', x: R.X(7.5), leaf: 'leaf_portcullis', label: 'THE TURNING TOMB', sub: 'THE KING’S CHAMBER · THE DOOR BEHIND THE SARCOPHAGUS', action: { pd: 'tomb1', back: { room: 'site_prebuilt_giza_pyramid', at: 'turning' } },
+      desc: 'A door in the south wall of the King’s Chamber, behind the sarcophagus.' });
+  R.must.push('6,0', '7,0', '0,8', '0,2', '7,13');
   R.spawn = { x: R.X(7), z: R.Z(1.2), face: 180 };
   R.lines = [];
   R.stops = [[7, 1, L1], [3, 2.5, L1], [3, 5.5, L1], [1.5, 8.5, L1], [7, 10, 0], [11, 12.5, L2], [7.5, 13.4, L2]];
@@ -323,7 +324,7 @@ check('the hangar', HG); check('the white rooms', WD); check('the pyramid', PY);
 /* ── the rooms' text ── */
 function emit(id, R, head, terrainHead) {
     const M = [], F = R.F.concat([{ k: 'arch', id: 'des:' + id + ':in', x: 0, z: 0, parts: R.P }]);
-    if (R.inner.length) F.push({ k: 'texbuilding', id: 'des:' + id + ':doors', x: 0, z: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_office', inner: R.inner });
+    if (R.inner.length) F.push({ k: 'texbuilding', id: 'des:' + id + ':doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_office', inner: R.inner });
     M.push('        ' + id + ': {'); head.forEach(l => M.push('            ' + l));
     M.push('            terrain: {'); terrainHead.forEach(l => M.push('                ' + l));
     M.push('                features: ['); F.forEach(f => M.push('                    ' + J(f) + ',')); M.push('                ],'); M.push('            },');
@@ -342,7 +343,7 @@ emit('site_prebuilt_area51_hangar', HG, [
     "                       floor: 'urban:ConcreteStriped1b', wall: 'urban:MetalCorrugatedPainted1a', dado: 'urban:MetalCorrugatedPainted1c', ceiling: 'urban:MetalSubwayGrill1a',",
     "                       floorColor: 0xb0b4b8, wallColor: 0xa8b0b8, dadoColor: 0x7a848c, ceilColor: 0x6a7078,",
     "                       mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f0ff, ambient: 0.55 }, fog: { color: 0x0c1018, density: 0.008 }, look: HQ_ROOM_LOOKS.hangar }),",
-    "parti: 'One hall fourteen metres high with the saucer in a pit under a catwalk; shops, bays and offices round it on whole squares, a glass control room up on the mezzanine.',",
+    "parti: 'One hall fourteen metres high with the saucer on its rig under a catwalk; shops, bays and offices round it on whole squares, a glass control room up on the mezzanine.',",
 ], ["res: 0.4375, floor: 'urban:ConcreteStriped1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric3a',", "noise: { amp: 0, scale: 5 }, crag: false,"]).forEach(l => OUT.push(l));
 emit('site_prebuilt_area51_ward', WD, [
     "label: 'AREA 51 · THE WHITE ROOMS',", "sub: 'PSYCHIATRIC · THE CELL ROW · THE DAYROOM · THE OBSERVATION FLOOR · FOR THE ONES WHO SAW IT',", "kind: 'box', site: 'prebuilt_area51', part: 'ward',",
@@ -357,7 +358,7 @@ emit('site_prebuilt_giza_pyramid', PY, [
     "shell: hqBunkerShell({ w: " + PY.W + ", d: " + PY.D + ", h: 18, wallH: 18, plate: { x: " + PY.spawn.x + ", z: " + r2(-PY.D / 2 + 1.2) + ", y: 6.2 },",
     "                       floor: 'bricks_1', wall: 'bricks_1', dado: 'bricks_1', ceiling: 'bricks_1',",
     "                       floorColor: 0xc8b890, wallColor: 0xc8b890, dadoColor: 0xb8a880, ceilColor: 0x8a7a60,",
-    "                       mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, ambient: 0.5 }, fog: { color: 0x1a140c, density: 0.02 }, look: HQ_ROOM_LOOKS.plateau }),",
+    "                       mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, ambient: 0.8 }, fog: { color: 0x2a2014, density: 0.008 }, look: HQ_ROOM_LOOKS.plateau }),",
     "parti: 'Passages two squares wide cut through one mass of stone on three levels: down to the Pit, level to the Queen, up the Grand Gallery to the King.',",
 ], ["res: 0.4375, floor: 'bricks_1', cliff: 'bricks_1', path: 'bricks_1',", "noise: { amp: 0, scale: 5 }, crag: false,"]).forEach(l => OUT.push(l));
 OUT.push('        /* DESERT-INSIDES-END */');
