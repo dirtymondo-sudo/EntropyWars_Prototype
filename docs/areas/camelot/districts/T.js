@@ -13,14 +13,15 @@
    wall (squares x 18.5..77.5, y 21.5..73.5); the wall, its towers and gates, the moat and the four bridges stand on these plots but are
    the tool's. Outside the moat the same plots are woods: north of it The Snowy Pines' (N.js), south The Forest's (W.js).
 
-   WHAT STANDS HERE TODAY: the Chapel, the Smithy and the Inn (walked into, furnished: layout.json `walkins`); 43 houses, solid
-   (T-houses.js); the Market either side of the Grand Stair (eight tents, the well, the stocks, bread racks, crates, a signpost); the
+   WHAT STANDS HERE TODAY (the list below is the first build's; the passes' notes have today's): the Chapel, the Smithy and the Inn
+   (walked into, furnished: layout.json `walkins`); 43 houses (T-houses.js; walked into since pass 2b); the Market either side of the Grand Stair (eight tents, the well, the stocks, bread racks, crates, a signpost); the
    graveyard by the Chapel (seven crosses); the green behind the castle hill (a cow, chickens, sheep); a horse and sacks by the Inn; the
    gate braziers and two knights at the Drawbridge gate; signposts at the gates; ten street trees; a bench and a planter on North Street.
 
    MISSING / WAITING: no house is walked into (mondo OK'd the five kinds as looks; insides are not asked yet). No anvil, market stall or
    lamp post model exists on R2 (tents, crates and sacks stand in). The streets have no lamps and no people but the two gate knights.
-   HELD BY the Village pilot thread since 2026-11-16 (both files). Passes: 1 exteriors (in), 2 interiors (in: THE INSIDES below + T-houses.js), 3 dressing (in: THE VILLAGE'S GROUND), 4 atmosphere (in: chimney smoke, the night look), 5 polish.
+   The Village pilot thread (2026-11-16) ran five passes on both files and freed the row; where it stands and what is open:
+   docs/notes/areas-complexes.md "CAMELOT, THE VILLAGE" (the kit for the other districts: "CAMELOT, THE ZONE KIT"). Passes: 1 exteriors (in), 2 interiors (in: THE INSIDES below + T-houses.js), 3 dressing (in: THE VILLAGE'S GROUND), 4 atmosphere (in: chimney smoke, the night look), 5 polish.
    PEOPLE WAIT MONDO: only the two gate knights stand here; who lives in the village is his call (docs/notes/npc-system.md).
    NEEDS A MODEL (nothing on R2): an anvil, a lamp post / street lantern, a hand cart, a fence run with a gate, a floor carpet.
 
@@ -71,7 +72,7 @@ const SMITHY = kb('smithy', WALKIN.smithy, 5.25, { leafDouble: false, keyIn: WOO
     a.shell(w, 5.25, d, WOODK, 0xb89468, door); foot(a, w, d, door, 1.2, 0.2, WALL, STONE2);
     a.roof('gable', 0, 5.25, 0, w + 1.6, 3.4, d + 1.6, WOODD, 0x6a4a34, { keyEnd: WOODK, tintEnd: 0xa88458 });
     a.box(-w / 2 + 1.2, 0, -d / 2 - 0.6, 1.8, 9.5, 1.8, WALL, STONE, {}); a.box(-w / 2 + 1.2, 9.5, -d / 2 - 0.6, 2.2, 0.5, 2.2, WALL, STONE2, { roof: true });
-    sign(a, door.lx - 2.2, d / 2, 'SMITHY'); a.roof('shed', 3, 3.2, d / 2 + 1.6, 6, 1.2, 3.2, WOODD, 0x6a4a34, { ry: 180, under: true }); for (const x of [0.3, 5.7]) a.box(x, 0, d / 2 + 2.9, 0.3, 3.2, 0.3, WOODD, TIMBER);
+    sign(a, door.lx - 2.2, d / 2, 'SMITHY'); a.roof('shed', 3, 3.2, d / 2 + 1.6, 6, 1.2, 3.2, WOODK, 0x8a6a48, { ry: 180, under: true, gain: 1.5 }); for (const x of [0.3, 5.7]) a.box(x, 0, d / 2 + 2.9, 0.3, 3.2, 0.3, WOODD, TIMBER);
 });
 /* THE INN — two storeys, plaster over a stone ground floor, a jettied upper floor on timber, the sign */
 const INN = kb('inn', WALKIN.inn, 7, { keyIn: STUCCO, floorIn: 'wood_planks' }, (a, w, d, door) => {
