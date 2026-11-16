@@ -1,6 +1,16 @@
 # Plot layouts for the remaining zones, and the whole-world map
 
-## The Sewers, plan 2 (2026-11-16, waits mondo's OK)
+## The Sewers, plan 3 (2026-11-16, waits mondo's OK)
+
+mondo on plan 2 (11-16): "it overall needs to be more labyrinth like. its basically just a long L shape. it doesn't have to be as big as the whole city ... the sewers is supposed to be a dungeon. the archetypical representation of a sewer. dark and grimy and scary. there should be wells or ropes. the subway station can be connected to / a part of the sewers. It's really meant to be an underground hub zone kinda like door hq, so it doesn't have to physically map onto disaster city. it can and should be its own thing." Also: own zone or the city's lower level = "kinda both"; the precinct match (Civic's Police desk + Holding annex) "sounds right"; "forget the strip and the old cyberpunk".
+
+`sewers_plot_plan_3.png` + `sewers-layout-3.json`, drawn by `node docs/plans/world-zones/draw-sewers.js`.
+
+- Its own block of 6 x 4 = 24 plots, a maze: 26 openings between plots, three rings, dead ends; the Junction is the hub's middle.
+- Districts W The Sewers (15), T The Running Tunnels (5, the south row: the subway), H The Holding Cells (2), O The Old Workings (2). One file each from the first build PR.
+- Nine ways out, all in the game today. The Strip's and Cyberpunk's gutters are dropped. One new opening inside the room is proposed: a well with a rope from the Junction down to the Crossing.
+
+## The Sewers, plan 2 (2026-11-16, NOT taken: see plan 3)
 
 `sewers_plot_plan_2.png` + `sewers-layout-2.json`, drawn by `node docs/plans/world-zones/draw-sewers.js` (it reads the built city's files for the outline). It replaces `sewers_plot_plan.png` (plan 1, 8 x 2), which was drawn before the city's districts moved.
 

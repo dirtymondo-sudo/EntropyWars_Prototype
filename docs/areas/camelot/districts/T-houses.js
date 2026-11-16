@@ -4,18 +4,32 @@
    its plot is), what it looks like (houseLook: one parts list a house). Every house is SOLID today: a texbuilding with no inside.
    Its squares are the plan's runs of `B` (ctx.HOUSES, read by the tool). `i` = the house's number in that list: its id is 'cam:house_' + i,
    and its tints, shutters and flowers are picked by i, so the list's order is part of the look.
-   MISSING / WAITING: no house is walked into; mondo's OK ("yeah they are fine") covers the five looks only. Seen on screen: one shop.
+   MISSING / WAITING: no house is walked into; mondo's OK ("yeah they are fine") covers the five looks only.
+   HELD BY the Village pilot thread since 2026-11-16 (with T.js). PASS 1, THE EXTERIORS, is in: gains, timber frames, fronts, door paths, back and
+   side windows; seen on screen (notes: areas-complexes.md "CAMELOT, THE VILLAGE" + "CAMELOT, THE ZONE KIT").
    Hooks and rules: T.js's header. kb(id, [x0, y0, x1, y1, front], h, o, parts) = ctx.building with the front in the squares' fifth place. */
 'use strict';
 const U = n => 'urban:' + n, STUCCO = U('PlasterWallStucco2a'), G_TALL = U('GlassWindowTall1a'), SLATE = U('MetalRoofTiles1a'), WOODK = 'wood_planks', WOODD = 'wood';
 const STONE = 0xc4c0b8, STONE2 = 0xaeaaa6, STONE3 = 0xd2ccc0, GLASS = 0xa8c4ec, TIMBER = 0x4a3626;
+/* THE EXTERIOR PASS (2026-11-16, the Village pilot thread, after the first look on screen): under the kingdom's light the plaster sheet read as
+   mud and a shaded wall as black, so the five kinds could not be told apart. `gain` (the renderer's THE PAINTED WALL) lifts a sheet's tint:
+   PG on plaster and thatch, SG on dressed stone. A roof part's gain is the whole part's, so a roof with a plaster / stone gable end takes the
+   gain and its own tint is divided by it (`dimBy`): the slate stays as dark as it was. */
+const PG = 1.6, SG = 1.35, TG = 1.35;
+const dimBy = (t, g) => ((Math.round((t >> 16 & 255) / g) << 16) | (Math.round((t >> 8 & 255) / g) << 8) | Math.round((t & 255) / g));
 function houses(ctx, kb) {
 const { WALL, W, cell, HOUSES, count } = ctx;
 /* the houses: plaster on a stone foot, a dark timber frame, a gable; the door faces the nearest street */
 const HTINT = [0xe8dcc0, 0xd8c8a8, 0xf0e8d8, 0xc8b89c], RTINT = [0xa84a3c, 0x7a5a3c, 0x5a6c96, 0x8a4a34], RKEY = [SLATE, WOODD, SLATE, SLATE];
 function frontOf(h) { const n = { N: 0, S: 0, W: 0, E: 0 }, road = (x, y) => (x >= 0 && y >= 0 && x < W && y < W && cell[y][x] === 'c') ? 1 : 0;
     for (const k of [1, 2, 3]) { const wt = 4 - k; for (let x = h.x0; x < h.x1; x++) { n.N += wt * road(x, h.y0 - k); n.S += wt * road(x, h.y1 - 1 + k); } for (let y = h.y0; y < h.y1; y++) { n.W += wt * road(h.x0 - k, y); n.E += wt * road(h.x1 - 1 + k, y); } }
-    return ['S', 'N', 'E', 'W'].sort((a, b) => n[b] - n[a])[0]; }
+    if (n.N + n.S + n.W + n.E > 0) return ['S', 'N', 'E', 'W'].sort((a, b) => n[b] - n[a])[0];
+    /* THE EXTERIOR PASS (2026-11-16): a house with no street within three squares fell to 'S' whatever stood there, so the five houses of the
+       south back row and the two in the south corners turned their doors to the town wall. Now: look again three squares wider to each side
+       (a street round the corner), and failing that the door looks to the castle (the back lane between the two south rows). */
+    for (const k of [1, 2, 3]) { for (let x = h.x0 - 3; x < h.x1 + 3; x++) { n.N += road(x, h.y0 - k); n.S += road(x, h.y1 - 1 + k); } for (let y = h.y0 - 3; y < h.y1 + 3; y++) { n.W += road(h.x0 - k, y); n.E += road(h.x1 - 1 + k, y); } }
+    if (n.N + n.S + n.W + n.E > 0) return ['N', 'S', 'E', 'W'].sort((a, b) => n[b] - n[a])[0];
+    const dx = 48 - (h.x0 + h.x1) / 2, dy = 45 - (h.y0 + h.y1) / 2; return Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? 'N' : 'S') : (dx < 0 ? 'W' : 'E'); }
 /* THE HOUSES, FIVE KINDS (2026-11-15, mondo's OK on docs/plans/camelot/camelot_castle2_next_plan.png "yeah they are fine"): every house was one
    shape (a plaster box, four posts, a gable). Now, by where it stands and how big its plot is:
      1 JETTIED TOWNHOUSE   stone ground floor, a plaster and timber upper floor that overhangs on beams, a steep roof, a brick chimney
@@ -30,32 +44,41 @@ function houseKind(h, i) { const cx = (h.x0 + h.x1) / 2, cy = (h.y0 + h.y1) / 2,
     if (Math.abs(cx - 48) < 22 && cy > 56 && cy < 70) return (i % 2) ? 4 : 2;                       // round the Market: the burghers and the shops
     if (cx < 21.5 || cx > 74.5 || cy < 24.5 || cy > 71) return small ? 3 : ((i % 2) ? 5 : 3);       // against the town wall: yards and cottages
     return small ? 3 : ((i % 3) === 1 ? 4 : 1); }
-function houseLook(kind, a, w, d, i) {
+function houseLook(kind, a, w, d, i, path) {
     const tint = HTINT[i % 4], sh = SHUT[i % 4], fl = BLOOM[(i * 3) % 4], dx = ((i % 2) ? 1 : -1) * Math.min(1.6, w / 2 - 1.3), dT = [0x5a3c26, 0x3a4a3a, 0x6a2a24, 0x4a3a5a][(i * 5) % 4];
     const along = d > w;                                                                             // the ridge runs along the longer side
-    const gable = (y, rh, over, key, t, o) => along ? a.roof('gable', 0, y, 0, d + over, rh, w + over, key, t, Object.assign({ ry: 90 }, o)) : a.roof('gable', 0, y, 0, w + over, rh, d + over, key, t, o);
+    const gable = (y, rh, over, key, t, o) => { if (o && o.keyEnd) { const gn = o.keyEnd === STUCCO ? PG : SG; o = Object.assign({ gain: gn }, o); t = dimBy(t, gn); } return along ? a.roof('gable', 0, y, 0, d + over, rh, w + over, key, t, Object.assign({ ry: 90 }, o)) : a.roof('gable', 0, y, 0, w + over, rh, d + over, key, t, o); };
     const win = (x, y, ww, hh, zf, lit) => { a.box(x, y, zf, ww, hh, 0.1, G_TALL, lit ? 0xf0d890 : GLASS, { glow: lit ? 0.55 : 0.3 }); a.box(x, y + hh, zf, ww + 0.3, 0.14, 0.16, WOODD, TIMBER);
         for (const s of [-1, 1]) a.box(x + s * (ww / 2 + 0.2), y, zf + 0.02, 0.34, hh, 0.06, WOODK, sh);
         a.box(x, y - 0.3, zf + 0.14, ww + 0.3, 0.24, 0.26, WOODD, TIMBER); a.box(x, y - 0.08, zf + 0.14, ww + 0.1, 0.2, 0.2, null, 0x4a8a3a); a.box(x, y + 0.08, zf + 0.16, ww - 0.1, 0.12, 0.16, null, fl, { n: 1 }); };
-    const sideWin = (y, hh) => { for (const s of [-1, 1]) if (d > 5) a.box(s * (w / 2 - 0.1), y, 0, 0.12, hh, 1.0, G_TALL, GLASS); };
+    /* a side window: glass in a timber frame with its two shutters (`xo` = how far that floor's wall stands out past the plot's edge) */
+    const sideWin = (y, hh, xo) => { if (d > 5) for (const s of [-1, 1]) { const xw = s * (w / 2 - 0.1 + (xo || 0)); a.box(xw, y, 0, 0.12, hh, 1.0, G_TALL, GLASS);
+        a.box(xw, y + hh, 0, 0.22, 0.14, 1.3, WOODD, TIMBER); a.box(xw, y - 0.14, 0, 0.28, 0.14, 1.3, WOODD, TIMBER); for (const t of [-1, 1]) a.box(xw + s * 0.02, y, t * 0.68, 0.08, hh, 0.32, WOODK, sh); } };
+    /* a back window (the wall away from the street was blank): the same glass, lintel, sill and shutters, no flower box */
+    const backWin = (x, y, ww, hh, zb, lit) => { a.box(x, y, -zb, ww, hh, 0.1, G_TALL, lit ? 0xf0d890 : GLASS, { glow: lit ? 0.55 : 0.3 }); a.box(x, y + hh, -zb, ww + 0.3, 0.14, 0.16, WOODD, TIMBER); a.box(x, y - 0.14, -zb, ww + 0.3, 0.14, 0.2, WOODD, TIMBER);
+        for (const s of [-1, 1]) a.box(x + s * (ww / 2 + 0.2), y, -zb - 0.02, 0.34, hh, 0.06, WOODK, sh); };
     const door = (x, zf) => { a.box(x, 0.18, zf, 1.15, 2.05, 0.12, WOODK, dT); for (const s of [-1, 1]) a.box(x + s * 0.68, 0, zf + 0.02, 0.2, 2.4, 0.2, WOODD, TIMBER); a.box(x, 2.3, zf + 0.02, 1.7, 0.2, 0.24, WOODD, TIMBER);
-        a.box(x, 0, zf + 0.5, 1.9, 0.18, 0.9, WALL, STONE2); a.box(x + 0.38, 1.1, zf + 0.08, 0.08, 0.08, 0.06, null, 0xd8b050); };
+        a.box(x, 0, zf + 0.5, 1.9, 0.18, 0.9, WALL, STONE2); a.box(x + 0.38, 1.1, zf + 0.08, 0.08, 0.08, 0.06, null, 0xd8b050);
+        if (path > 0.3) a.box(x, 0, d / 2 + 0.85 + path / 2, 1.5, 0.05, path, 'cobblestone', 0xc8c4bc, { sides: false }); };   // the flagged path from the step to the street
     const chimney = (x, z, y0, top, key, t) => { a.box(x, y0, z, 0.9, top - y0, 0.9, key, t, { roof: true }); a.box(x, top, z, 1.1, 0.2, 1.1, key, t, { roof: true }); a.box(x, top + 0.2, z, 0.5, 0.35, 0.5, null, 0x3a3230, { roof: true }); };
     const barrel = (x, z) => { a.cyl(x, 0, z, 0.36, 0.9, WOODK, 0x8a5a34, { seg: 10 }); a.cyl(x, 0.2, z, 0.38, 0.06, null, 0x3a3230, { seg: 10 }); a.cyl(x, 0.64, z, 0.38, 0.06, null, 0x3a3230, { seg: 10 }); };
     const f = d / 2 - 0.1;
     if (kind === 1) {   // JETTIED TOWNHOUSE
         const g = 3.3, u = 3.5, ov = 0.45, zf = d / 2 + ov - 0.1;
-        a.box(0, 0, 0, w - 0.3, g, d - 0.3, WALL, STONE3, { top: false }); a.box(0, 0, 0, w, 0.7, d, WALL, STONE2, { top: true });
-        a.box(0, g, 0, w + 2 * ov - 0.3, u, d + 2 * ov - 0.3, STUCCO, tint, { top: false, under: true });
+        a.box(0, 0, 0, w - 0.3, g, d - 0.3, WALL, STONE3, { top: false, gain: SG }); a.box(0, 0, 0, w, 0.7, d, WALL, STONE2, { top: true });
+        a.box(0, g, 0, w + 2 * ov - 0.3, u, d + 2 * ov - 0.3, STUCCO, tint, { top: false, under: true, gain: PG });
         for (let x = -w / 2 - ov + 0.2; x <= w / 2 + ov - 0.19; x += (w + 2 * ov - 0.4) / Math.max(2, Math.round(w / 1.75))) for (const s of [-1, 1]) a.box(x, g, s * (d / 2 + ov - 0.14), 0.2, u, 0.2, WOODD, TIMBER);
-        for (const s of [-1, 1]) { a.box(s * (w / 2 + ov - 0.14), g, 0, 0.2, u, d + 2 * ov - 0.3, WOODD, TIMBER, { faces: s < 0 ? 'l' : 'r', top: false }); for (const y of [g, g + u - 0.24]) a.box(0, y, s * (d / 2 + ov - 0.14), w + 2 * ov - 0.2, 0.24, 0.22, WOODD, TIMBER); }
+        /* the side walls were one timber sheet each (a black slab two squares long on screen): posts and two plates now, the plaster shows between */
+        for (const s of [-1, 1]) { const xs = s * (w / 2 + ov - 0.14); for (let z = -d / 2 - ov + 0.2; z <= d / 2 + ov - 0.19; z += (d + 2 * ov - 0.4) / Math.max(2, Math.round(d / 1.75))) a.box(xs, g, z, 0.2, u, 0.2, WOODD, TIMBER);
+            for (const y of [g, g + u - 0.24]) { a.box(xs, y, 0, 0.22, 0.24, d + 2 * ov - 0.2, WOODD, TIMBER); a.box(0, y, s * (d / 2 + ov - 0.14), w + 2 * ov - 0.2, 0.24, 0.22, WOODD, TIMBER); }
+            a.box(xs, g + u / 2 - 0.1, 0, 0.2, 0.2, d + 2 * ov - 0.2, WOODD, TIMBER); a.box(0, g + u / 2 - 0.1, -(d / 2 + ov - 0.14), w + 2 * ov - 0.2, 0.2, 0.2, WOODD, TIMBER); }
         for (let x = -w / 2 + 0.5; x <= w / 2 - 0.49; x += (w - 1) / Math.max(1, Math.round(w / 2.2))) a.box(x, g - 0.5, d / 2 + ov / 2 - 0.1, 0.22, 0.5, ov + 0.1, WOODD, TIMBER);
         gable(g + u, 4.2, 1.3 + 2 * ov, RKEY[1], 0x7a5a3c, { keyEnd: STUCCO, tintEnd: tint });
-        door(dx, f); win(-dx || 1.6, 1.3, 1.0, 1.3, f, true); for (const x of (w > 8 ? [-w / 4, w / 4] : [-1.4, 1.4])) win(x, g + 1.1, 0.9, 1.3, zf, i % 2 === 0); sideWin(g + 1.1, 1.2);
+        door(dx, f); win(-dx || 1.6, 1.3, 1.0, 1.3, f, true); for (const x of (w > 8 ? [-w / 4, w / 4] : [-1.4, 1.4])) win(x, g + 1.1, 0.9, 1.3, zf, i % 2 === 0); sideWin(g + 1.1, 1.2, ov - 0.05); for (const x of (w > 8 ? [-w / 4, w / 4] : [0])) backWin(x, g + 1.1, 0.9, 1.3, zf, i % 3 === 0); backWin(dx, 1.3, 1.0, 1.3, f, false);
         chimney(-dx * 0.9, -d / 4, g + u, g + u + 5.2, 'bricks_2', BRICK); barrel(w / 2 - 0.5, d / 2 + 0.35);
     } else if (kind === 2) {   // SHOP HOUSE
         const hh = 3.6, cw = Math.min(5.2, w - 3.2), cx = -dx * 0.9 + (dx > 0 ? -0.6 : 0.6);
-        a.box(0, 0, 0, w - 0.3, hh, d - 0.3, STUCCO, tint, { top: false }); a.box(0, 0, 0, w, 0.8, d, WALL, STONE2, { top: true });
+        a.box(0, 0, 0, w - 0.3, hh, d - 0.3, STUCCO, tint, { top: false, gain: PG }); a.box(0, 0, 0, w, 0.8, d, WALL, STONE2, { top: true });
         for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(s * (w / 2 - 0.2), 0.8, t * (d / 2 - 0.2), 0.3, hh - 0.8, 0.3, WOODD, TIMBER); a.box(0, hh - 0.26, 0, w, 0.26, d, WOODD, TIMBER, { top: false, under: true });
         gable(hh, 3.2, 1.0, SLATE, 0x5a6c96, { keyEnd: STUCCO, tintEnd: tint });
         door(dx, f); a.box(cx, 1.0, f, cw, 1.5, 0.1, null, 0x241c18); a.box(cx, 0.9, f + 0.3, cw + 0.3, 0.12, 0.7, WOODK, 0x9a6a3c); a.box(cx, 0.8, f + 0.05, cw + 0.2, 0.1, 0.1, WOODD, TIMBER);
@@ -65,40 +88,46 @@ function houseLook(kind, a, w, d, i) {
                 for (const q of [[-0.1, -0.06], [0.1, -0.05], [0, 0.1], [-0.02, -0.01]]) a.P.push({ s: 'dome', p: [bx + q[0], q === 3 ? 1.26 : 1.2, f + 0.32 + q[1]], r: kind ? 0.1 : 0.08, seg: 8, tint: kind ? 0x6a9a4a : 0xb83a34 }); } }
         a.roof('shed', cx, 2.6, f + 0.75, cw + 0.6, 0.55, 1.5, null, (i % 2) ? 0xb03a3a : 0x3a5a9a, { ry: 180 }); for (const s of [-1, 1]) a.box(cx + s * (cw / 2 + 0.2), 0, f + 1.4, 0.12, 2.65, 0.12, WOODD, TIMBER);
         a.box(dx, 3.0, f + 0.6, 0.1, 0.1, 1.2, null, 0x2a2c30); a.box(dx, 2.2, f + 1.0, 0.08, 0.75, 0.9, WOODK, 0x8a5a34, { ds: true }); a.box(dx, 2.42, f + 1.0, 0.1, 0.3, 0.4, null, [0xd8b050, 0xc84a5a, 0x4a8a3a][i % 3], { ds: true });
-        sideWin(1.5, 1.1); chimney(w / 2 - 1.3, -d / 4, hh, hh + 4.0, WALL, STONE2); barrel(-w / 2 + 0.5, d / 2 + 0.35); barrel(-w / 2 + 1.25, d / 2 + 0.3);
+        sideWin(1.5, 1.1); backWin(-dx, 1.5, 1.0, 1.2, f, i % 2 === 1); chimney(w / 2 - 1.3, -d / 4, hh, hh + 4.0, WALL, STONE2); barrel(-w / 2 + 0.5, d / 2 + 0.35); barrel(-w / 2 + 1.25, d / 2 + 0.3);
     } else if (kind === 3) {   // THATCHED COTTAGE
         const hh = 2.8, rh = 3.6 + (i % 2) * 0.5;
-        a.box(0, 0, 0, w - 0.3, hh, d - 0.3, STUCCO, tint, { top: false }); a.box(0, 0, 0, w, 0.6, d, WALL, STONE2, { top: true });
-        if (along) a.roof('hip', 0, hh, 0, d + 1.5, rh, w + 1.5, WOODD, STRAW, { ry: 90 }); else a.roof('hip', 0, hh, 0, w + 1.5, rh, d + 1.5, WOODD, STRAW);
+        a.box(0, 0, 0, w - 0.3, hh, d - 0.3, STUCCO, tint, { top: false, gain: PG }); a.box(0, 0, 0, w, 0.6, d, WALL, STONE2, { top: true });
+        if (along) a.roof('hip', 0, hh, 0, d + 1.5, rh, w + 1.5, WOODD, STRAW, { ry: 90, gain: TG }); else a.roof('hip', 0, hh, 0, w + 1.5, rh, d + 1.5, WOODD, STRAW, { gain: TG });
         a.box(0, hh - 0.05, 0, w + 1.3, 0.3, d + 1.3, WOODD, 0xb09a54, { under: true, top: false });
-        door(dx, f); if (w > 4.5) win(-dx || 1.4, 1.2, 0.8, 0.9, f, true); sideWin(1.3, 0.9);
+        door(dx, f); if (w > 4.5) { win(-dx || 1.4, 1.2, 0.8, 0.9, f, true); backWin(dx, 1.2, 0.8, 0.9, f, false); } sideWin(1.3, 0.9);
         chimney(w > d ? w / 2 - 0.9 : 0, w > d ? 0 : -d / 2 + 0.9, 0, hh + rh + 0.4, WALL, STONE2);
         for (let k = 0; k < 4; k++) a.box(-w / 2 + 0.5 + k * 0.42, 0, d / 2 + 0.3, 0.36, 0.3 + (k % 2) * 0.22, 0.9, WOODD, 0x7a5a3c);   // the firewood by the door
     } else if (kind === 4) {   // BURGHER HOUSE
         const hh = 7.4, st = [STONE, STONE3, 0xb8b4ac, 0xcac4b4][i % 4];
-        a.box(0, 0, 0, w - 0.2, hh, d - 0.2, WALL, st, { top: false }); a.box(0, 0, 0, w + 0.1, 1.0, d + 0.1, WALL, STONE2, { top: true });
+        a.box(0, 0, 0, w - 0.2, hh, d - 0.2, WALL, st, { top: false, gain: SG }); a.box(0, 0, 0, w + 0.1, 1.0, d + 0.1, WALL, STONE2, { top: true });
         a.box(0, 3.5, 0, w + 0.1, 0.3, d + 0.1, WALL, STONE3, { top: false, under: true }); a.box(0, hh - 0.35, 0, w + 0.3, 0.35, d + 0.3, WALL, STONE3, { top: false, under: true });
         for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(s * (w / 2 - 0.2), 1.0, t * (d / 2 - 0.2), 0.5, 0.55, 0.5, WALL, STONE3, { n: 6, step: [0, 1.05, 0] });
         gable(hh, 3.6, 0.9, SLATE, 0x4a5c8c, { keyEnd: WALL, tintEnd: st });
         door(dx, f); a.roof('gable', dx, 2.55, f + 0.55, 2.3, 0.8, 1.3, SLATE, 0x4a5c8c); for (const s of [-1, 1]) a.box(dx + s * 0.95, 0, f + 1.05, 0.18, 2.55, 0.18, WALL, STONE3);
-        win(-dx || 1.6, 1.5, 1.0, 1.5, f, true); const n = w > 8 ? 3 : 2; for (let k = 0; k < n; k++) win(-w / 2 + (k + 0.5) * w / n, 4.4, 1.0, 1.7, f, k % 2 === i % 2); sideWin(4.4, 1.5);
+        win(-dx || 1.6, 1.5, 1.0, 1.5, f, true); const n = w > 8 ? 3 : 2; for (let k = 0; k < n; k++) { win(-w / 2 + (k + 0.5) * w / n, 4.4, 1.0, 1.7, f, k % 2 === i % 2); backWin(-w / 2 + (k + 0.5) * w / n, 4.4, 1.0, 1.7, f, k % 2 !== i % 2); } backWin(dx, 1.5, 1.0, 1.5, f, false); sideWin(4.4, 1.5); sideWin(1.5, 1.4);
         if (along) { chimney(0, -d / 2 + 0.7, hh, hh + 4.6, WALL, STONE2); chimney(0, d / 2 - 0.7, hh, hh + 4.6, WALL, STONE2); } else { chimney(-w / 2 + 0.7, 0, hh, hh + 4.6, WALL, STONE2); chimney(w / 2 - 0.7, 0, hh, hh + 4.6, WALL, STONE2); }
     } else {   // YARD HOUSE
         const hh = 3.6, hw = Math.max(3.4, w * 0.6), sd = dx > 0 ? -1 : 1, hx = -sd * (w - hw) / 2, lx = sd * hw / 2, lw = w - hw;
-        a.box(hx, 0, 0, hw - 0.3, hh, d - 0.3, STUCCO, tint, { top: false }); a.box(hx, 0, 0, hw, 0.8, d, WALL, STONE2, { top: true });
+        a.box(hx, 0, 0, hw - 0.3, hh, d - 0.3, STUCCO, tint, { top: false, gain: PG }); a.box(hx, 0, 0, hw, 0.8, d, WALL, STONE2, { top: true });
         for (const s of [-1, 1]) for (const t of [-1, 1]) a.box(hx + s * (hw / 2 - 0.2), 0.8, t * (d / 2 - 0.2), 0.3, hh - 0.8, 0.3, WOODD, TIMBER); a.box(hx, 2.0, d / 2 - 0.14, hw, 0.2, 0.2, WOODD, TIMBER); a.box(hx, hh - 0.26, 0, hw, 0.26, d, WOODD, TIMBER, { top: false, under: true });
-        a.roof('gable', hx, hh, 0, d + 0.9, 3.0, hw + 0.9, RKEY[0], 0xa84a3c, { ry: 90, keyEnd: STUCCO, tintEnd: tint });
+        a.roof('gable', hx, hh, 0, d + 0.9, 3.0, hw + 0.9, RKEY[0], dimBy(0xa84a3c, PG), { ry: 90, keyEnd: STUCCO, tintEnd: tint, gain: PG });
         a.box(lx, 0, 0, lw - 0.2, 2.5, d - 0.4, WOODK, 0x8a6a48, { top: false }); a.roof('shed', lx, 2.5, 0, d - 0.1, 1.0, lw + 0.4, WOODD, 0x6a4a34, { ry: sd > 0 ? 90 : 270 });
         a.box(lx, 0.2, d / 2 - 0.18, Math.max(1.2, lw - 1.2), 1.9, 0.1, null, 0x2a201a);
-        const ddx = hx + (hw > 4.4 ? -sd * 0.9 : 0); door(ddx, f); if (hw > 4.4) win(hx + sd * 1.0, 1.4, 0.9, 1.1, f, true);
+        const ddx = hx + (hw > 4.4 ? -sd * 0.9 : 0); door(ddx, f); if (hw > 4.4) win(hx + sd * 1.0, 1.4, 0.9, 1.1, f, true); backWin(hx, 1.4, 0.9, 1.1, f, i % 2 === 0);
         chimney(hx, -d / 4, hh, hh + 4.0, 'bricks_2', BRICK); barrel(lx, d / 2 + 0.35); for (let k = 0; k < 3; k++) a.box(lx + sd * (lw / 2 + 0.1), 0, d / 2 + 0.2 - k * 0.5, 0.3, 0.3 + k * 0.2, 0.4, WOODD, 0x7a5a3c);
     }
 }
+/* how far the street is from a house's front: the squares of grass between its door step and the cobbles (0 = it stands on the street) */
+const road = (x, y) => x >= 0 && y >= 0 && x < W && y < W && cell[y][x] === 'c';
+function reach(h, side) { for (let k = 1; k <= 3; k++) { let hit = false;
+        if (side === 'N' || side === 'S') { for (let x = h.x0; x < h.x1; x++) hit = hit || road(x, side === 'N' ? h.y0 - k : h.y1 - 1 + k); } else for (let y = h.y0; y < h.y1; y++) hit = hit || road(side === 'W' ? h.x0 - k : h.x1 - 1 + k, y);
+        if (hit) return k - 1; } return 0; }
 const KCOUNT = {};
 HOUSES.forEach((h, i) => {
     const side = frontOf(h), kind = houseKind(h, i), hh = (kind === 1 || kind === 4) ? 7 : 3.6;
-    kb('house_' + i, [h.x0, h.y0, h.x1, h.y1, side], hh, { hollow: false, leaf: undefined, leafDouble: undefined, keyIn: undefined, floorIn: undefined }, (a, w, d) => houseLook(kind, a, w, d, i));
+    kb('house_' + i, [h.x0, h.y0, h.x1, h.y1, side], hh, { hollow: false, leaf: undefined, leafDouble: undefined, keyIn: undefined, floorIn: undefined }, (a, w, d) => houseLook(kind, a, w, d, i, Math.max(0, reach(h, side) * ctx.C - 0.75)));
     count.houses = (count.houses || 0) + 1; KCOUNT[kind] = (KCOUNT[kind] || 0) + 1;
+    if (process.env.CAM_HOUSES) console.log('house_' + i, 'kind ' + kind, 'front ' + side, 'squares ' + [h.x0, h.y0, h.x1, h.y1].join(' '), 'street ' + reach(h, side));   // CAM_HOUSES=1 node bake-camelot.js --dry-run: the list (which house is which kind, for a probe's views)
 });
 count.houseKinds = KCOUNT;
 }
