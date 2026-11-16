@@ -26,6 +26,8 @@
    PASS 4, THE ATMOSPHERE (2026-11-16): `airZones` (violet motes through the forest; fireflies over the north knoll, the pond and the ring;
    spores in the mushroom glade; blue motes at the spring and the crystal knoll); the ring's purple ground now runs under the toadstools,
    with a lit disc under each (the light it throws), one under the islet's mushroom; seen by day and at night (`hqClockSet(23)`).
+   PASS 5, POLISH (2026-11-16): a walk of twelve views by day and night; two standing stones (`menhir`) flank the Woods trail east of the
+   crossing. FIVE PRs ARE IN (four district passes + the tool's hooks): THIS THREAD HAS STOPPED and waits mondo's look.
    MISSING / WAITING: WAITS MONDO: who lives here (the kingdom's AREA UNITS table has no fairy, unicorn, gnome or mushroom girl; a person off
    the table stands as a random race on it, so the ring's own "fairy" is not a fairy on screen either). STILL TO DO (passes 4, 5): its own
    light, air and particles, the night look, polish. No walk-in here: none is named.
@@ -159,6 +161,9 @@ at('anthill', E + 1.4, gx(24) + 0.6, { face: 0 }); at('ant', E + 1.9, gx(24) + 0
 [['bumblebee', 2.0, gx(62) - 4.4, 0.5], ['bumblebee', 4.6, gx(62) + 4.9, 0.6], ['bee', 1.6, gx(62) + 3.3, 0.7], ['bee', 7.4, gx(62) - 4.8, 0.5], ['hawk_moth', 4.2, gx(43) - 3.0, 1.2], ['hawk_moth', 9.6, gx(43) + 3.4, 1.4], ['luna_moth', 5.2, gc(22) + 2.0, 1.6], ['blue_morpho', 7.8, gx(55) + 0.2, 1.3], ['monarch', 5.0, gc(72) - 2.6, 1.2], ['swallowtail', 10.6, gx(30.5) + 4.6, 0.9]]
     .forEach((q, i) => at(q[0], E + q[1], q[2], { floor: true, y: q[3], face: i * 43 }));
 at('rabbit', E + 8.9, gx(23) + 0.8, { face: 200 }); at('rabbit', E + 3.8, gx(53) + 0.8, { face: 60 }); at('meshy_frog', PX + 4.9, PZ + 5.6, { face: 250 });
+/* PASS 5: two standing stones (mondo's Meshy menhir) flank the Woods trail east of the crossing, glowing caps at their feet */
+put('menhir', 90, 46, { face: 20 }); put('menhir', 90, 49, { face: 200 });
+[[0.9, gx(46) + 0.5], [2.7, gx(46) + 2.9], [0.8, gx(50) - 0.3], [2.8, gx(49) + 0.5]].forEach((q, i) => at('woods_glowcap', E + q[0], q[1], { face: i * 77, noLight: true }));
 /* NO NEW RESIDENTS: the kingdom's AREA UNITS table (mondo's, data.js HQ_AREA_ENCOUNTERS) has no fairy, unicorn, gnome or mushroom girl, and a
    placed person off that table stands as a random race ON it (a unicorn here came up as an Undead). Who lives in this forest is his to say. */
 flushArch();
