@@ -4539,6 +4539,15 @@ across the two middle squares of the back row, a night-blue panel in a gold fram
 in the back corners, four busts on plinths along the side walls, the harp, a lectern, a votive stand, the great hourglass, amphorae and an urn by the door. The door is a
 swinging double leaf (`leaf_wooden`; it was `leaf_frame_only`, an open hole). `holy_carpet` is a HANGING carpet (it stands upright on a floor): not used.
 
+**PASS 3, DRESSING (seen on screen, nine views):** every plot got the model list's pieces. Thrones: an owl statue at 1.4 m, a spear and a shield, a harp, amphorae, an orrery,
+the hourglass, an eagle over the hearth, clouds on the dais's rim. The Temple's court: two lions by the steps, braziers on plinths, urns. Stadium: prize amphorae, an arms
+trophy, spears, shields, a drum and a trumpet. Colonnade: four busts and an orrery on plinths, iron benches, potted plants, butterflies. Amphitheatre: braziers at the
+stage's ends, a tambourine, a trumpet, a pipe. Terraces: a well, amphorae, crates, a bench, bees and butterflies on the vines (the vine sheet lightened). Olive Grove: four
+sheep, a rabbit, oil jars, a bench. Pilgrim Stair: a shrine (altar, votive stand, candles, a censer, a bench). Goat Track: a spyglass at the cliff, a standing stone, three
+sheep, rocks, an eagle. Cloud Line + the Grand Stair's foot: eight clouds on the walk (nothing that blocks). SIX MORE UNITS stand as natives, all `divine` / `ancient` in
+`RACE_PROFILES.biomes`: valkraye (thrones), giant (Stadium), nephilim (Sacred Way), unicorn (Olive Grove), occulus (Goat Track), watcher (Cloud Line); none on a way.
+`white_cloud` takes `span` (5 to 8 m) and a small `y`. A prop on a plinth on a sloping row floats or sinks: keep plinths on the plot's level rows.
+
 **FOR THE NEXT THREAD (learned here):**
 - A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
   never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
@@ -4557,6 +4566,8 @@ swinging double leaf (`leaf_wooden`; it was `leaf_frame_only`, an open hole). `h
 5. No names added: the plots keep the plan's names; no sign boards.
 6. The Temple's statue is Lady Justice at 4.3 m (the one goddess-like statue in the game); a statue of a named god is on the NEEDS A MODEL list.
 7. The Temple has a wooden double door that swings (your rule for walk-ins); it was an open frame.
+8. Six more units stand in the district (valkraye, giant, nephilim, unicorn, occulus, watcher): your word 11-16 was more NPCs; all are `divine` / `ancient` units. None has a line (no invented words).
+9. The spyglass at the Goat Track is the game's modern telescope (the world is a parody of the real one).
 
 **NEEDS A MODEL:** an olive tree; a grape vine on a trellis (the vine rows are a leaf sheet on posts); a laurel wreath; a chariot; a discus and a javelin rack; a tripod bowl
 (the brazier stands in); a Greek couch; a lyre (the harp stands in); a statue of a god (the angel, the bust and Lady Justice stand in); a goat for the Goat Track.
