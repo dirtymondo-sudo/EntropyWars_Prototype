@@ -38,7 +38,8 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
   Cyberpunk City is a future reskin of the WHOLE Disaster City, not a district. The Desert = Western Town + Giza + Area 51.
 - **Disaster City** (`site_prebuilt_downtown_streets`, 144 plots): the ocean stays by Bayside + the Beach; the other map
   edges may change. PvP Downtown keeps the old board. Notes: `areas-complexes.md`.
-- Fewer NPCs, none blocking a path. No followers. Units are named after their race. No factions.
+- **More NPCs** (11-16: "Disaster city feels dead right now. There need to be more NPCs"; this replaces the old "fewer NPCs"), none
+  blocking a path. No followers. Units are named after their race. No factions. The NPC spawn system: `npc-system.md`.
 
 ## 3. Visuals
 
