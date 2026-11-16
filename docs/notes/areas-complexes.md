@@ -7339,6 +7339,18 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
   stood 0.96 m over it). A round `plateau` under a drawn drum: make it 0.8 m and fence the square with four thin ghost walls, or its skirt
   pokes out of the drum as spikes. A sign under 3 m on a barred wall hides behind the bars' head rail from most angles: put it on the brick over them.
 
+**PASS 4, THE LIGHT AND THE AIR (seen, 16 + 10 views, four of them over the walker's shoulder).** `lights(ctx, k)` in H.js:
+- **NO NEW REAL LIGHT.** H keeps its four bare bulbs (the board's count); everything else is drawn. 27 BULKHEAD LAMPS (district W's recipe,
+  rewritten for walls on lines: `lamp(x, z, looks, y, colour, o)`): a lit lens in an iron cage, a wash of lit brick on its wall, a pool of
+  lit floor before it. Cold white-green over each cell's bars and on each lit cell's back wall (cells 3 and 6 have DEAD lamps and stand
+  dark), sodium on the sally gate and in the stores, RED on the cell door (the way down), a dead one in the trap's passage.
+- **THE POOLS:** the lamp's colour mixed half into white, in FOUR steps. Two steps of the pure colour (W's numbers) read here as green and
+  orange mats on the tile floor.
+- Five `flicker_tube` under the bays' crowns (a prop that glows; it is not a real light and takes none of the room's ten).
+- **THE AIR:** `chimney_smoke` at the stack's louvre and over one floor drain reads as steam. The Sewers' tool has no `airZones` for a
+  district (dust in the lamps' light, drips): asked for on the board.
+- Numbers at the proof view on the same run of main: 1,858 calls, 2.82 M triangles, 1.9 FPS (llvmpipe).
+
 **FITS THIS DISTRICT (the whole catalogue + MODEL_LIST sections 6, 7, 10, 12b, 13 read 11-16; all have rows):** CELLS `cot` `steel_toilet`
 `psx_toilet_mp_1` `sink` `psx_old_mattress_mp_1` `psx_pillow_mp_1/2` `psx_bed_1_frame` `wall_chains` `trap_chain_draped/_straight`
 `meal_tray(_empty)` `toilet_paper` `wooden_bucket` `graffiti_wall` `psx_padlock_1..4` `stocks` `wall_padding` · BARS + DOORS `leaf_cell`
