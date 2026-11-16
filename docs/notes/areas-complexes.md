@@ -6100,6 +6100,15 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
     district; eight low green marker lights round the formation (`circleGlow`, the zone's grave-light green) and a lit disc on the ground under the
     saucer (`saucerGlow`). All drawn glow: C still spends only two real lights.
   - No sound bed (a walked room has none per district, as H found).
+- **PASS 5, POLISH (seen in the cloud browser, an audit of every plot: 11 + 3 views) — THE THREAD STOPS HERE, the district waits mondo's look:**
+  - The drawn furrows stood 0.2 m proud with a crisp edge and read as timber baulks: now 0.1 m and wider (soil ridges).
+  - FPS, measured properly: the first view of a run reads low (0.2 to 1.8: the room is still compiling). Warm, the proof view (x -57.75, z -68, face 180)
+    gives 2.0 fps twice running on llvmpipe, against 1.8 at the thread's first look. Measure on a second or third view, never the first.
+  - STILL OPEN (what the next look should take): the corn bank is a hedge until a stalk model exists; the tool's own `dead_snag` scatter can land on a
+    track (seen once in The Tall Corn: the tool's row, not touched); lamp glass is a plain lit box (the zone's known limit); the people have no lines;
+    no residents with routines; the grass field takes a second to grow round a walker who has just arrived, so a cut field's standing strips are bare for a moment.
+  - WHAT THE NEXT THREAD CAN REUSE (also in THE ZONE KIT): `strips()` + `rows()` (a cut field), `board()` (a painted board read from both sides),
+    the grouped `lampParts()` (many posts, one row), `at()` (free decor that reports every piece in the corn at once), the verge scatter.
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
   THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle. (6) a saucer set down in a hidden pocket of The Tall Corn (one prop row to remove). (7) horror touches on the verges (flesh, traps, a corpse by the saucer).
@@ -6299,6 +6308,12 @@ Read this before dressing C, L or R. It grows with each of H's passes.
   draws near black under any tint; weathered timber = `WD` + tan + `gain: 1.9`; painted boards want `gain` 1.7 to 2.2. A part turned with
   `ry: 90` puts its local +z at the row's -x. Pieces first placed here: `ind_silo` (a grain bin), `water_tower_west`, `ride_on_mower`, `tire_stack`.
 - **A WALK-IN'S LIT CEILING (district R, pass 2):** the walk-in's own black ceiling hangs about 0.3 m under the wall's top; put the lit part 0.4 m under the top. By the corn's bank a `hug` row sits up to 0.6 m under the drawn ground: nothing flat there.
+- **FROM DISTRICT C (the Corn Fields thread, 11-16), free to copy out of C.js:** a CUT FIELD = `plan()` `strips()` (alternate squares `p` and `g`: the grass field on the
+  lawn squares is the standing crop) + `dress()` `rows()` (three low `dirt_3` ridges a soil square, one `look` a field); `board(id, fx, fy, rot, words, w)` (a painted
+  board on two posts, read from both sides); `lampParts()` + `LAMPS` (every lamp post on level ground in ONE `look`: 24 separate posts cost frames); `at()` (free decor
+  that lists every piece standing in the corn in one error). Blown up, the pack's `hw_crop*` are soil lumps; `hw_part_2` is a flayed standing figure, not an arm;
+  `astronaut` is a white standing figure. Meshy pieces by the dozen (sacks, stumps, `woods_thornvine`) cost triangles: scatter pack pieces. An FPS reading from a
+  run's first view is the room still compiling: measure on the second or third.
 - **STILL MISSING ZONE-WIDE:** corn stalks (Meshy, waits), a lamp post model, night never seen on screen, no residents with routines, lines for
   most of the people.
 
