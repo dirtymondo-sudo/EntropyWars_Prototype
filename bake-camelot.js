@@ -330,7 +330,7 @@ check(props, npc);
 Object.assign(count, { features: F.length, props: props.length, doors: doors.length, natives: npc.length });
 
 /* ── the room ── */
-const SNOW = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'], FAE = ['fae_cap', 'tree_3', 'fae_cap_2', 'tree', 'tree_2'];
+const SNOW = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'], FAE = ['fae_cap', 'tree_3', 'fae_bloom_tree_pink', 'fae_cap_2', 'tree', 'tree_2', 'fae_cap', 'tree_3', 'fae_bloom_tree', 'fae_cap_2', 'tree', 'tree_2', 'tree_3', 'fae_bloom_tree_violet', 'tree', 'tree_2'];   // THE GIANT FLOWERS (2026-11-16, mondo "yes do that"): three of the sixteen draws of the east woods' mass are the heal flower grown to a tree (three of eight cost the pond view half its frame rate)
 const zone = (x0, y0, x1, y1, o) => Object.assign({ x0: gx(x0), z0: gx(y0), x1: gx(x1), z1: gx(y1) }, o);
 /* a district's own clearings in the tree mass (its file's `noTrees`: [[x0, y0, x1, y1] kingdom squares]): a walked-into building or a ghost wall is
    SOLID to the tree grower, which rings it with trunks (one stood in a hut's doorway). These zones come first: the first zone a trunk stands in wins. */

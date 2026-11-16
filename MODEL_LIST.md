@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 918 |
+| Meshy AI | no | 922 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -3157,6 +3157,10 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | chess_queen_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_queen_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_rook | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_rook_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| fae_bloom_tree | `Assets/world/nature/OBJ/asset:world/props/meshy/ew_plant_healflower.glb.obj` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_bloom_tree_blue | `Assets/world/nature/OBJ/asset:world/props/meshy/ew_plant_healflower.glb#78c8ff.obj` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_bloom_tree_pink | `Assets/world/nature/OBJ/asset:world/props/meshy/ew_plant_healflower.glb#ff8fc8.obj` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| fae_bloom_tree_violet | `Assets/world/nature/OBJ/asset:world/props/meshy/ew_plant_healflower.glb#b890ff.obj` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 | fae_cap | `Assets/world/props/meshy/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fae_cap_2 | `Assets/world/props/meshy/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | palm | `Assets/world/hq/models/Meshy_AI_palm_tree_0910054114_texture.glb` | Meshy AI | Meshy AI (mondo) |

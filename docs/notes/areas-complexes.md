@@ -6708,6 +6708,12 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   the file is never touched; any pale-petalled model can use it. In the forest: 18 tall and giant flowers on whole squares in every glade,
   13 small coloured ones. SEEN (two probes): white, pink, violet and blue read; gold not caught in a picture. FRAME RATE at the pond: 1.55
   (before the flowers 1.2 to 1.4: no cost seen), draw calls 462 -> 551. The model is about 8,000 triangles: keep counts in the tens.
+- **THE FLOWERS IN THE FOREST MASS (mondo 11-16: "yes do that")**: the east woods' tree zone (bake-camelot.js `FAE`, the tool: a board note) draws
+  three of its sixteen kinds as the heal flower grown to a tree: data.js `HQ_TREE_KINDS.fae_bloom_tree` + `_pink`, `_violet` (`_blue` is there
+  too, not planted). About 70 of the zone's trees. NEW IN THE RENDERER: a tree kind's model may be `asset:<path under Assets/>` (any GLB in the
+  bucket), `#rrggbb` after it = its petal colour, and a kind's `sink` (a share of its height) plants it that deep (the flower stands on its
+  own mound of earth: unsunk, 2 m brown mounds lined the path). FRAME RATE at the pond: three kinds of eight (149 flowers) cost half
+  (1.55 -> 0.86); three of sixteen reads 1.31 (noise 0.2). SEEN: the path north and south of the crossing, two probes.
 - **WOULD DO NEXT**: a willow and reeds at the pond when a model exists; sound (no hook); the ring's
   harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
   forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.

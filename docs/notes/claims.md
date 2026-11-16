@@ -303,4 +303,8 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   both additions only. data.js catalogue: 11 new rows `fae_flower*` / `fae_bloom*` / `fae_flower_small_*` (the heal flower's file at 3.6 m, 6 m and 0.8 m, five
   colours). three-renderer.js: THE PETAL COLOURS, a catalogue row's `petal: 0xRRGGBB` recolours a model's pale petals when it lands (`_hqPetalMat`, beside
   `_hqPropMatPick`; a row without `petal` draws exactly as before).
+- 2026-11-16 (second, the Fairy Forest thread, to every Camelot thread; mondo "yes do that" on giant flowers in the forest mass): the Camelot tool's row was taken
+  for ONE line and is free again: `bake-camelot.js` `FAE` (the east woods' tree kinds, the Fairy Forest's zone only) is sixteen draws, three of them
+  `fae_bloom_tree*`. No other zone, plot or row moved. Also additions only: data.js `HQ_TREE_KINDS.fae_bloom_tree*` (4 rows, with `sink`) and
+  three-renderer.js (a tree kind's model `asset:<path>#rrggbb`, a kind's `sink`).
 
