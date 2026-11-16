@@ -38,7 +38,15 @@
    THE POLISH (pass 5): the Pass's cleft has its own rock faces 3.2 m apart and snow on its floor, and the trail plants no saplings there
    (the link end's `passage: { trees: false }`, data.js `DOOR_HQ.links` `northpole_camelot`); a dressed fir with gifts by the hut.
 
-   FIVE PASSES ARE LIVE: this thread has STOPPED and waits mondo's look (the brief: no sixth pass).
+   THE MODEL PASS (2026-11-16, mondo's wish-list models, docs/plans/WISHLIST_MODELS_ADDED.md): stand-ins OUT, models IN: the drawn lantern
+   posts -> `lantern_post`; the drawn log stacks (out and in) -> `firewood_stack`; the drawn fishing hole -> `ice_fishing_hole` + `fishing_rod`;
+   the fur sheet rugs -> `fur_rug`; the Halloween picket -> `fence_with_gate`; the horse before the sleigh -> two `reindeer`; the straw ->
+   `hay_rack` + `hay_bale`; the bare drawn drifts on the verges -> `snow_heap`. NEW: `axe_chopping_block`, `hand_cart`, `snow_sled` x 2,
+   `snowshoes`, `owl_perched`, `wooden_barrel` x 3, `water_trough`, `icicles` under both huts' back eaves, `antler_trophy`, `kettle`, `fox`,
+   `deer`, `mountain_goat`, `raven_perch`, `milestone`, `cairn`. Still drawn (no model, or snow ON a thing): the sawhorse, the pond's bank,
+   the snow caps on rocks, the light pools.
+
+   FIVE PASSES + THE MODEL PASS ARE LIVE: this thread has STOPPED again and waits mondo's look.
    Notes + the FITS THIS DISTRICT list + the decisions made for him: areas-complexes.md "CAMELOT, THE SNOWY PINES".
    NEVER more `dec()` calls than the two below (the kingdom's one stream of dice: The Forest's scatter would move): use `at()` and `rn()`.
 
@@ -133,7 +141,7 @@ const hut = (id, q, side, chimSide) => { take(q[0], q[1], q[2], q[3]);
     }); };
 
 /* ── THE SLEIGH STOP (P03-00 / P04-00): the sleigh and its horse on the west side of the road, the wayside hut and a hitching rail on the east ── */
-put('sleigh', 45, 6, { face: 0 }); put('horse_brown', 45, 5, { face: 0 }); put('xmas_snowman', 46, 3); put('signpost', 46, 8);
+put('sleigh', 45, 6, { face: 0 }); put('reindeer', 45, 5, { face: 0 }); put('reindeer', 45, 4, { face: 0 });   // THE MODEL PASS: the sleigh's team is reindeer (a horse stood in) put('xmas_snowman', 46, 3); put('signpost', 46, 8);
 const WAYHUT = hut('n_wayhut', [50, 4, 52, 6], 'W', 1);
 put('hitching_rail', 50, 7, { face: 0 }); put('horse_black', 51, 7, { face: 270 });
 
@@ -204,28 +212,28 @@ const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w =
     /* a hanging lantern in the middle: a chain, the catalogue's lantern, a lit core */
     a.box(0, 2.45, 0.4, 0.04, TOP - 2.45, 0.04, null, 0x2a2c30); ctx.inside(B, 'meshy_hanging_lantern', 0, 0.4, { y: 1.97, noLight: true }); a.box(0, 2.1, 0.4, 0.1, 0.18, 0.1, null, 0xffd890, { glow: 1 });
     /* a pelt on the boards (the fur sheet), a stack of split logs by the hearth (drawn: no log stack on R2) */
-    H.pelt = (x, z, pw, pd, ry, tint) => a.box(x, 0.036, z, pw, 0.03, pd, 'fur', tint, { ry, gain: 1.4, glow: 0.1 });
-    H.logs = (x, z, ry) => { for (let k = 0; k < 3; k++) a.box(x, 0.036 + k * 0.17, z, 0.9, 0.16, 0.16, LOG, k % 2 ? 0x8a6444 : 0x7a5638, { ry, gain: 1.6, glow: 0.1, n: 3 - k, step: ry ? [0, 0, 0.18] : [0, 0, 0.18] }); };
+    H.pelt = (x, z, ry) => ctx.inside(B, 'fur_rug', r3(x), r3(z), { face: ry, floor: true });   // THE MODEL PASS: the wish list's bear skin (the fur sheet on a box stood in)
+    H.logs = (x, z) => ctx.inside(B, 'firewood_stack', r3(x), r3(z), { face: 90, floor: true, span: 1.2 });   // THE MODEL PASS: `firewood_stack` at hearth size (drawn logs stood in)
     H.shelf = (x, z, len, y, ns) => { a.box(x, y, z, ns ? 0.3 : len, 0.05, ns ? len : 0.3, PLANK, 0x8a6238, { gain: 1.5, glow: 0.12 }); for (const s of [-1, 1]) a.box(ns ? x : x + s * (len / 2 - 0.15), y - 0.22, ns ? z + s * (len / 2 - 0.15) : z, ns ? 0.26 : 0.05, 0.22, ns ? 0.05 : 0.26, PLANK, 0x6a4a30, { gain: 1.4 }); };
     return H; };
 /* THE WAYSIDE HUT: a traveller's rest. The hearth on the right, a bed in the back left corner, a stool and a dog by the fire, stockings and
    mugs on the mantel, a wreath, plates on the shelf, sacks and a crate by the door wall, a spear by the door. */
 { const H = fit(WAYHUT, 'n_wayhut', 1), a = H.a, W2 = H.W2, D2 = H.D2;
     H.put('psx_bed_5_4', -1.75, -1.75, 0); H.block(-1.75, -2.8, -1.75, -0.7, 1.4, 0.9);   // (the catalogue's `cot` is a steel camp cot: not here)
-    H.pelt(0.7, 0.3, 2.2, 1.5, 20, 0x9a7a5c); H.put('psx_chair_mp_1', 1.0, -0.6, 300); H.put('dog', 0.4, -2.3, 120);
+    H.pelt(0.4, 0.5, 20); H.put('psx_chair_mp_1', 1.0, -0.6, 300); H.put('dog', 0.4, -2.3, 120);
     H.on('xmas_cocoa', H.hx - 0.1, H.hz - 0.7, 1.85, 0); H.on('xmas_cocoa', H.hx - 0.15, H.hz - 0.35, 1.85, 40); H.on('candle', H.hx - 0.1, H.hz + 0.8, 1.85, 0);
     ctx.inside(WAYHUT, 'xmas_stocking', r3(H.hx - 0.56), r3(H.hz - 0.45), { face: 270, mount: 0, y: 1.3 }); ctx.inside(WAYHUT, 'xmas_stocking_2', r3(H.hx - 0.56), r3(H.hz + 0.45), { face: 270, mount: 0, y: 1.3 });
     ctx.inside(WAYHUT, 'xmas_wreath', -1.9, r3(-D2 + 0.4), { face: 180, mount: 0, y: 1.75 });
     H.shelf(1.2, -D2 + 0.5, 1.6, 1.5, false); H.on('psx_plate_mp_1', 0.8, -D2 + 0.5, 1.56, 0); H.on('psx_plate_mp_1', 1.2, -D2 + 0.5, 1.56, 0); H.on('item_drinking_cup', 1.6, -D2 + 0.5, 1.56, 0); H.on('item_drinking_cup', 1.8, -D2 + 0.52, 1.56, 0);
-    H.logs(W2 - 0.95, 0.1, 0); H.put('meshy_burlap_sack', W2 - 0.8, D2 - 0.8, 30); H.put('meshy_burlap_sack', W2 - 0.75, D2 - 1.6, 200); H.put('psx_wooden_crate_5', W2 - 1.7, D2 - 0.9, 10);   // (crate_4 wears a HIGHLY FLAMMABLE plate) H.put('wooden_bucket', 1.0, D2 - 0.7, 0);
+    H.logs(W2 - 0.8, 0.3); H.on('kettle', H.hx - 0.15, H.hz + 0.35, 1.85, 30); H.put('wooden_barrel', -W2 + 0.85, 1.9, 0); H.put('meshy_burlap_sack', W2 - 0.8, D2 - 0.8, 30); H.put('meshy_burlap_sack', W2 - 0.75, D2 - 1.6, 200); H.put('psx_wooden_crate_5', W2 - 1.7, D2 - 0.9, 10);   // (crate_4 wears a HIGHLY FLAMMABLE plate) H.put('wooden_bucket', 1.0, D2 - 0.7, 0);
     H.put('spear', -W2 + 0.55, D2 - 0.55, 0); H.put('xmas_gift', -W2 + 0.7, 0.7, 30); H.put('xmas_gift_3', -W2 + 0.6, 1.2, 80); }
 /* THE WOODCUTTER'S CABIN: the hearth on the left with the pot in it, the bed in the back right corner, the rocking chair, the saw and the
    rope on the wall shelf, split logs, a bear trap, sacks. */
 { const H = fit(CABIN, 'n_cabin', -1), a = H.a, W2 = H.W2, D2 = H.D2;
     H.put('psx_bed_5_4', 1.75, -1.75, 0); H.block(1.75, -2.8, 1.75, -0.7, 1.4, 0.9);
-    H.pelt(0.5, 0.6, 2.3, 1.5, 340, 0x8a6a50); H.put('rocking_chair', -0.3, -0.5, 250); H.on('cauldron', H.hx + 0.05, H.hz, 0.2, 0, { h: 0.55 });
+    H.pelt(0.5, 0.7, 340); H.put('rocking_chair', -0.3, -0.5, 250); H.on('cauldron', H.hx + 0.05, H.hz, 0.2, 0, { h: 0.55 });
     H.shelf(W2 - 0.5, 1.4, 2.2, 1.35, true); H.on('psx_hand_saw_1', W2 - 0.5, 0.8, 1.41, 90); H.on('meshy_rope', W2 - 0.5, 1.6, 1.41, 0); H.on('psx_nails_1', W2 - 0.5, 2.2, 1.41, 0); H.on('candle', W2 - 0.5, 0.45, 1.41, 0);
-    H.logs(-W2 + 0.95, 0.2, 0); H.logs(-W2 + 0.95, 1.0, 0); H.put('trap_bear_base', W2 - 0.8, D2 - 0.75, 20); H.put('trap_bear_jaw', W2 - 0.8, D2 - 0.75, 20);
+    H.logs(-W2 + 0.8, 0.5); ctx.inside(CABIN, 'antler_trophy', r3(H.hx + 0.2), r3(H.hz), { face: 90, mount: 0, y: 1.95 }); H.put('wooden_barrel', -W2 + 0.85, 2.3, 0); H.put('trap_bear_base', W2 - 0.8, D2 - 0.75, 20); H.put('trap_bear_jaw', W2 - 0.8, D2 - 0.75, 20);
     H.put('meshy_burlap_sack', 0.9, D2 - 0.75, 100); H.put('psx_wooden_crate_5', 2.0, D2 - 1.9, 5); H.put('wooden_bucket', -W2 + 0.7, 2.6, 0); H.on('candle', H.hx + 0.1, H.hz + 0.85, 1.85, 0);
     ctx.inside(CABIN, 'xmas_wreath_2', 0.2, r3(-D2 + 0.4), { face: 180, mount: 0, y: 1.75 }); }
 
@@ -233,47 +241,41 @@ const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w =
    frame) so the looks stay few: timber, rock, snow, split logs, the lit cores. Nothing stands on the track's or the road's own squares. ── */
 { const S = row('dress', 0, 0), P = S.P, TIM = 0x6a4a30, TG = { gain: 1.5 };
   const NORTH = gx(9), SOUTH = gx(11), RW = gx(47), RE = gx(49);
-  /* a lantern post on a verge: the post, an arm out over the way, the catalogue's hanging lantern, a lit core, snow on the post's head */
-  const lantern = (x, z, dx, dz, lit) => { P.push({ s: 'box', p: [r2(x), 0, r2(z)], size: [0.16, 3.1, 0.16], key: PLANK, tint: TIM, gain: 1.5 }, { s: 'box', p: [r2(x + dx * 0.34), 2.86, r2(z + dz * 0.34)], size: [dx ? 0.84 : 0.1, 0.1, dz ? 0.84 : 0.1], key: PLANK, tint: TIM, gain: 1.5 },
-      { s: 'box', p: [r2(x), 3.1, r2(z)], size: [0.26, 0.1, 0.26], key: SNOW, tint: 0xffffff, gain: SG }, { s: 'box', p: [r2(x + dx * 0.66), 2.46, r2(z + dz * 0.66)], size: [0.1, 0.18, 0.1], tint: 0xffd890, glow: 1 });
-      P.push({ s: 'cyl', p: [r2(x + dx * 0.66), 0.014, r2(z + dz * 0.66)], r: 1.5, h: 0.012, seg: 14, key: SNOW, tint: 0xfff3dc, glow: 0.93 });   // its pool of light on the snow (a part with `glow` is drawn unlit: no more than the day's snow by day, warm in the dark)
-      at('meshy_hanging_lantern', x + dx * 0.66, z + dz * 0.66, Object.assign({ y: 2.32 }, lit ? {} : { noLight: true })); };
+  /* a lantern post on a verge: the wish list's `lantern_post` (THE MODEL PASS: it was a drawn post + arm + a hung lantern), its pool of light on the snow
+     (a part with `glow` is drawn unlit: near the day's snow by day, warm in the dark) */
+  const lantern = (x, z, dx, dz) => { at('lantern_post', x, z, { face: dx > 0 ? 90 : dx < 0 ? 270 : dz > 0 ? 180 : 0 });
+      P.push({ s: 'cyl', p: [r2(x + dx * 0.5), 0.014, r2(z + dz * 0.5)], r: 1.5, h: 0.012, seg: 14, key: SNOW, tint: 0xfff3dc, glow: 0.93 }); };
   [[1.5, -1], [8.6, 1], [12.5, -1], [15.3, 1]].forEach(q => q[1] < 0 ? lantern(RW - 0.45, gx(q[0]), 1, 0, q[0] === 8.6) : lantern(RE + 0.45, gx(q[0]), -1, 0, q[0] === 8.6));
   [10, 18, 26, 36, 42, 54, 60, 72, 78, 84].forEach((k, i) => i % 2 ? lantern(gc(k), SOUTH + 0.45, 0, -1) : lantern(gc(k), NORTH - 0.45, 0, 1));
   /* drifts and snow-capped rocks on the verges (never where a verge opens on a clearing, a glade or the crossing) */
   const shut = k => (k >= 28.5 && k < 32.5) || (k >= 66.5 && k < 69.5), shutS = k => (k >= 26.5 && k < 34.5) || (k >= 64.5 && k < 72.5), cross = k => k > 45.5 && k < 50.5;
   for (let i = 0; i < 64; i++) { const k = rr(7, 86), n = rn() < 0.5, off = rr(0.7, 2.6); if (cross(k) || (n ? shut(k) : shutS(k))) continue; const x = gx(k), z = n ? NORTH - off : SOUTH + off;
-      if (i % 3 === 0) { const r = rr(0.5, 1.1); S.rock(x, -0.15, z, r, r * rr(0.7, 1.0), Math.round(rn() * 180)); S.drift(x + 0.1, r * 0.45, z, r * 0.75, r * 0.45, r * 0.6); } else S.drift(x, -0.25, z, rr(1.0, 2.0), rr(0.5, 0.95), rr(0.7, 1.3), Math.round(rn() * 180)); }
-  for (let i = 0; i < 18; i++) { const k = rr(0.6, 16.6), w = rn() < 0.5, off = rr(0.7, 2.4); if ((k > 2.6 && k < 11.4)) continue; S.drift(w ? RW - off : RE + off, -0.25, gx(k), rr(1.0, 1.8), rr(0.5, 0.9), rr(0.7, 1.2), Math.round(rn() * 180)); }
+      if (i % 3 === 0) { const r = rr(0.5, 1.1); S.rock(x, -0.15, z, r, r * rr(0.7, 1.0), Math.round(rn() * 180)); S.drift(x + 0.1, r * 0.45, z, r * 0.75, r * 0.45, r * 0.6); } else if (i % 3 === 1) at('snow_heap', x, n ? z - 0.9 : z + 0.9, { face: Math.round(rn() * 360), span: r2(rr(1.7, 2.5)) }); else rn(); }   // (THE MODEL PASS: the bare drawn drifts are the wish list's `snow_heap` now, fewer of them)
+  for (let i = 0; i < 18; i++) { const k = rr(0.6, 16.6), w = rn() < 0.5, off = rr(0.7, 2.4); if ((k > 2.6 && k < 11.4)) continue; if (i % 2) at('snow_heap', w ? RW - off - 1.0 : RE + off + 1.0, gx(k), { face: Math.round(rn() * 360), span: r2(rr(1.7, 2.4)) }); }
   /* the sleigh's two runner tracks down the middle of the road */
   for (const o of [-0.62, 0.62]) P.push({ s: 'box', p: [o, 0.012, r2((gx(0.3) + gx(16.7)) / 2)], size: [0.1, 0.012, r2(gx(16.7) - gx(0.3))], sides: false, key: SNOW, tint: 0xa9b6c8 });
-  /* a stack of split logs between two stakes: `n` logs a course, three courses, lying along x (`ns` = along z), snow on top. (The first cut
-     stepped each course back: it read as a flight of steps.) */
-  const stack = (x, z, n, len, ns) => { const wd = n * 0.3;
-      for (let c = 0; c < 3; c++) P.push({ s: 'box', p: [r2(x + (ns ? (c % 2) * 0.05 : 0)), r2(c * 0.27), r2(z + (ns ? 0 : (c % 2) * 0.05))], size: ns ? [0.26, 0.26, len] : [len, 0.26, 0.26], key: LOG, tint: c % 2 ? 0x8a6444 : 0xa07c56, gain: 1.6, n, step: ns ? [0.3, 0, 0] : [0, 0, 0.3] });
-      for (const e of [-0.2, wd - 0.1]) P.push({ s: 'box', p: [r2(x + (ns ? e : 0)), 0, r2(z + (ns ? 0 : e))], size: [0.1, 1.05, 0.1], key: PLANK, tint: TIM, gain: 1.5 });
-      P.push({ s: 'box', p: [r2(x + (ns ? wd / 2 - 0.15 : 0)), 0.8, r2(z + (ns ? 0 : wd / 2 - 0.15))], size: ns ? [wd, 0.12, len + 0.12] : [len + 0.12, 0.12, wd], key: SNOW, tint: 0xffffff, gain: SG }); };
   /* the light the huts' panes throw on the snow: a warm patch under each window (the same trick as the lanterns' pools) */
   [[WAYHUT, 1], [CABIN, -1]].forEach(q => { const B = q[0], cs = q[1], W2 = B.fw / 2, D2 = B.fd / 2, pool = (lx, lz, r) => { const c = B.at(lx, lz); P.push({ s: 'cyl', p: [c[0], 0.014, c[1]], r, h: 0.012, seg: 12, key: SNOW, tint: 0xfff3dc, glow: 0.93 }); };
       pool(-cs * (W2 + 1.5), 1.75, 1.4); pool(0, -(D2 + 1.5), 1.4); pool(B.door.lx + (B.door.lx < 0 ? 1 : -1) * (B.door.cw / 2 + 1.5), D2 + 1.4, 1.2); });
   /* THE WOODCUTTER'S YARD */
-  stack(gx(5) - 1.0, gx(6) - 1.3, 5, 2.2, false); stack(gx(6) + 0.5, gx(8) + 0.35, 4, 1.6, true);
+  at('firewood_stack', gx(5), gx(6) - 0.75, { face: 0 }); at('firewood_stack', gx(4) + 1.2, gx(8) + 0.55, { face: 0 });   // (THE MODEL PASS: the drawn log stacks are `firewood_stack`)
+  put('axe_chopping_block', 7, 7, { face: 200 }); put('hand_cart', 8, 8, { face: 60 }); at('snow_sled', gx(6.6), gx(8.7), { face: 40 }); at('snowshoes', gx(6) + 0.5, gx(6) + 0.5, { face: 20 }); at('owl_perched', gx(4.4), gx(5.6), { face: 140 });
   { const x = gc(7) + 0.5, z = gc(6) - 0.5;   // the sawhorse, a log on it, the saw
     for (const sx of [-0.55, 0.55]) for (const sz of [-0.22, 0.22]) P.push({ s: 'box', p: [r2(x + sx), 0, r2(z + sz)], size: [0.09, 0.74, 0.09], key: PLANK, tint: TIM, gain: 1.5 });
     P.push({ s: 'box', p: [r2(x), 0.66, r2(z)], size: [1.5, 0.09, 0.1], key: PLANK, tint: TIM, gain: 1.5 }, { s: 'box', p: [r2(x), 0.75, r2(z)], size: [1.9, 0.26, 0.26], key: LOG, tint: 0x9a7450, gain: 1.6 });
     at('psx_hand_saw_1', x + 0.2, z, { y: 1.02, face: 80, floor: true }); }
   put('meshy_stump', 6, 5); put('meshy_stump', 4, 8); put('fallen_log', 8, 7, { face: 90 }); at('stump', gx(8.7), gx(6.4), { face: 40 }); at('rabbit', gx(8.4), gx(8.6), { face: 200 }); at('crow', gx(6.2), gx(5.4), { face: 100 });
   /* THE SLEIGH STOP: a covered wagon north of the hut, straw and a bucket for the horse, the sleigh's load, the hut's own stack */
-  take(49, 3, 51, 4); at('covered_wagon', gx(50), gc(3), { face: 0 }); put('hw_straw', 52, 7, { face: 20 }); at('hw_straw_2', gc(52) - 0.3, gc(6) + 0.6, { face: 70 }); at('wooden_bucket', gc(50) + 1.1, gc(7) - 1.2);
+  take(49, 3, 51, 4); at('covered_wagon', gx(50), gc(3), { face: 0 }); put('hay_rack', 52, 7, { face: 20 }); at('hay_bale', gc(52) + 0.2, gc(6) + 1.0, { face: 70 }); at('water_trough', gc(50), gc(7) - 1.1, { face: 0 });
   at('xmas_gift', gc(44) + 0.9, gc(6) + 0.2, { face: 20 }); at('xmas_gift_2', gc(44) + 0.5, gc(6) - 0.5, { face: 70 }); at('xmas_gift_4', gc(44) + 1.1, gc(6) - 0.4, { face: 130 }); at('meshy_burlap_sack', gc(44) + 0.4, gc(5) + 0.8, { face: 10 }); at('meshy_burlap_sack', gc(44) + 1.0, gc(5) + 0.4, { face: 250 });
-  stack(gx(51) - 1.2, gx(6) + 0.25, 4, 2.2, false);
+  at('firewood_stack', gx(51), gx(6) + 0.6, { face: 0 }); put('wooden_barrel', 51, 3); at('snow_sled', gc(46) + 0.9, gc(3) + 1.0, { face: 300 });
   /* (no torches by the doors: a `wall_torch` within 2 m of a hut stood on its roof, with or without `floor`; the road's lantern posts light the stop) */
   at('eagle', gx(52), gx(2.5), { y: 15, face: 250 });
   /* PASS 5: a dressed fir by the hut's porch with gifts under it, rocks at the feet of the Pass's gate crags */
   put('xmas_tree', 49, 6, { face: 30 }); at('xmas_gift_3', gc(49) + 0.8, gc(6) + 0.6, { face: 40 }); at('xmas_gift_2', gc(49) - 0.7, gc(6) + 0.8, { face: 200 });
   at('psxg_rock_1', gx(46.2), gx(1.4), { face: 30 }); at('psxg_rock_2', gx(49.9), gx(1.9), { face: 120 }); at('psxg_rock_3', gx(46.5), gx(2.3), { face: 200 }); at('psxg_rock_4', gx(49.6), gx(0.9), { face: 300 });
   /* THE FROZEN POND: a fishing hole cut in the ice, a stool, the catch, dead bushes on the bank, crows; the ice queen */
-  { const x = gx(89.5) - 1.3, z = gx(6.6) + 0.7; P.push({ s: 'cyl', p: [r2(x), 0, r2(z)], r: 0.44, h: 0.085, seg: 10, key: 'deep_water', tint: 0x162a40 }, { s: 'cyl', p: [r2(x), 0, r2(z)], r: 0.66, ri: 0.44, h: 0.15, seg: 10, key: SNOW, tint: 0xffffff, gain: SG });
+  { const x = gx(89.5) - 1.3, z = gx(6.6) + 0.7; at('ice_fishing_hole', x, z, { y: 0.07 }); at('fishing_rod', x + 0.2, z - 1.3, { y: 0.07, face: 180 }); at('fox', gx(87.3), gx(8.3), { face: 60 });   // THE MODEL PASS: the hole was two drawn discs
     at('psx_chair_mp_1', x + 1.0, z + 0.3, { face: 250, y: 0.07 }); at('psx_fish_skeleton_mp_1', x - 0.3, z + 0.9, { face: 30, y: 0.08 }); at('wooden_bucket', x + 0.5, z + 1.0, { y: 0.07 });
     at('crow', x - 2.4, z - 1.6, { face: 60, y: 0.07 }); at('crow', x + 3.0, z - 2.2, { face: 200, y: 0.07 }); }
   put('psxg_dead_tree_1', 91, 6); at('psxg_dead_bush_1', gx(87.4), gx(6.2), { face: 30 }); at('psxg_dead_bush_2', gx(88.6), gx(8.5), { face: 120 }); at('psxg_dead_bush_1', gx(90.4), gx(4.8), { face: 200 });
@@ -292,11 +294,13 @@ const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w =
   [[0.9, 0.5, 0.28], [1.3, -0.2, 0.2], [0.6, -0.6, 0.16]].forEach(q => P.push({ s: 'dome', p: [r2(gc(67) + q[0]), 0, r2(gc(8) + q[1])], r: q[2], seg: 8, rings: 3, key: SNOW, tint: 0xffffff, gain: SG }));
   at('wolf', gx(57.4), NORTH - 1.4, { face: 160 }); at('wolf', gx(58.3), NORTH - 2.3, { face: 200 }); at('wolf', gx(59.5), NORTH - 1.2, { face: 230 });
   at('rabbit', gx(20.5), SOUTH + 0.9, { face: 20 }); at('rabbit', gx(76.4), NORTH - 0.8, { face: 170 }); at('crow', gx(38.5), NORTH - 0.7, { face: 90 }); at('crow', gx(14.2), SOUTH + 0.8, { face: 310 });
-  /* a split-rail run either side of the road down to the north bridge */
-  for (let k = 0; k < 4; k++) for (const s of [-1, 1]) at('hw_fence', s < 0 ? RW - 0.35 : RE + 0.35, gx(13) + 0.83 + k * 1.65, { face: 90 });
+  /* a fence either side of the road down to the north bridge */
+  for (let k = 0; k < 2; k++) for (const s of [-1, 1]) at('fence_with_gate', s < 0 ? RW - 0.35 : RE + 0.35, gx(13) + 1.75 + k * 3.5, { face: 90 });   // THE MODEL PASS: the wish list's split-rail run (a Halloween picket stood in)
+  at('milestone', RE + 0.7, gx(11.7), { face: 270 }); at('cairn', gx(46.2), gx(0.9), { face: 0 }); at('deer', gx(22.5), NORTH - 2.0, { face: 150 }); at('mountain_goat', gx(50.9), gx(1.7), { face: 220 }); at('raven_perch', gc(70) + 0.9, gc(13) + 0.9, { face: 300 });
 }
 /* ── PASS 4, THE ATMOSPHERE: smoke off both chimneys and the three camp fires (the catalogue's `chimney_smoke`); the snow in the air is
    `airZones` below; the night is carried by what glows: the panes, the lanterns' cores, the fires, the ice. ── */
+[WAYHUT, CABIN].forEach(B => { for (const x of [-1.9, 1.9]) ctx.inside(B, 'icicles', x, r3(-(B.fd / 2 + 0.72)), { face: 0, mount: 0, y: 1.95 }); });   // THE MODEL PASS: icicles under the back eaves
 ctx.inside(WAYHUT, 'chimney_smoke', r3(WAYHUT.fw / 2 + 0.45), -1.75, { y: 6.0, rise: 6 }); ctx.inside(CABIN, 'chimney_smoke', r3(-CABIN.fw / 2 - 0.45), -1.75, { y: 6.0, rise: 6 });
 [[30, 12], [7, 8]].forEach(q => at('chimney_smoke', gc(q[0]), gc(q[1]), { y: 0.7, rise: 4 }));
 flushArch();
