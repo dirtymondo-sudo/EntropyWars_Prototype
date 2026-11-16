@@ -71799,8 +71799,8 @@ const ThreeRenderer = (function () {
         var cv = document.createElement('canvas'); cv.width = 128; cv.height = 64;
         var c = cv.getContext && cv.getContext('2d'); if (!c) return null;
         var seed = 31, rnd = function () { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-        for (var i = 0; i < 260; i++) {
-            var x = rnd() * 128, y = rnd() * rnd() * 64, r = 2 + rnd() * 7, a = (0.10 + rnd() * 0.3) * (1 - y / 64) * Math.min(1, x / 14, (128 - x) / 14);
+        for (var i = 0; i < 120; i++) {
+            var x = 10 + rnd() * 108, y = 6 + rnd() * rnd() * 50, r = 2 + rnd() * 6, a = (0.08 + rnd() * 0.22) * (1 - y / 60) * Math.min(1, (x - 6) / 24, (122 - x) / 24);
             var g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,255,255,' + Math.max(0, a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
             c.fillStyle = g; c.fillRect(x - r, y - r, 2 * r, 2 * r);
         }
@@ -71856,7 +71856,7 @@ const ThreeRenderer = (function () {
                 var fl = Math.min(3.2, 1.2 + h * 0.35), fx0 = out - 0.25, yF = y1 + 0.05, p3 = [], u3 = [0, 0, 1, 0, 0, 1, 1, 1];
                 [[fx0, -1], [fx0, 1], [fx0 + fl, -1], [fx0 + fl, 1]].forEach(function (q) { p3.push((f.x + dx * q[0] + px * q[1] * (w / 2 + 0.3)) * U, yF * U, (f.z + dz * q[0] + pz * q[1] * (w / 2 + 0.3)) * U); });
                 var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(p3, 3)); g3.setAttribute('uv', new THREE.Float32BufferAttribute(u3, 2)); g3.setIndex([0, 2, 1, 1, 2, 3]);
-                var fm = new THREE.MeshBasicMaterial({ map: ft, transparent: true, depthWrite: false, opacity: 0.85, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 });
+                var fm = new THREE.MeshBasicMaterial({ map: ft, transparent: true, depthWrite: false, opacity: 0.7, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 });
                 var m3 = new THREE.Mesh(g3, fm); m3.renderOrder = 4; m3.name = 'hq:fall:foam'; G.add(m3); rec.foam = fm;
             }
             list.push(rec); n++;
@@ -71872,7 +71872,7 @@ const ThreeRenderer = (function () {
             var F = L[i], a = F.uv.array, off = (F.speed * t) % 1;
             for (var j = 0; j < F.base.length; j++) a[j * 2 + 1] = F.base[j] + off;
             F.uv.needsUpdate = true;
-            if (F.foam) F.foam.opacity = 0.7 + 0.2 * Math.sin(t * 5.3 + F.ph) * Math.sin(t * 1.9 + F.ph * 2);
+            if (F.foam) F.foam.opacity = 0.6 + 0.2 * Math.sin(t * 5.3 + F.ph) * Math.sin(t * 1.9 + F.ph * 2);
         }
     }
     function _hqGridWaterBuild(info, G, U, TM) {

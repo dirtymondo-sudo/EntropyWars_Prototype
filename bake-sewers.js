@@ -192,7 +192,7 @@ const spaces = [];
 /* ── THE PAINT: one sheet a square (0 = the room's own concrete) ── */
 const PAL = ['urban:RubberNonSlip3a', 'bricks_2', 'urban:TileGeneric4b', 'urban:ConcreteStriped1e', 'wood_planks', 'urban:TileSubway4a'], paint = new Uint8Array(W * Hh);
 for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x], d = distAt(x, y);
-    paint[y * W + x] = ch === 'x' ? 0 : d === 'O' ? 2 : d === 'H' ? 3 : d === 'T' ? (ch === 'f' ? 6 : 4) : ch === 'b' ? 5 : ch === 'o' ? 1 : 0; }
+    paint[y * W + x] = ch === 'x' ? 0 : d === 'O' ? 2 : d === 'H' ? 3 : d === 'T' ? (ch === 'f' ? 6 : 0) : ch === 'b' ? 5 : ch === 'o' ? 1 : 0; }
 
 /* ── checks: every prop key and unit exists; nothing stands in the wall; every plot is reached from the Junction through the plan's
    openings (a square-to-square walk on the plan; a level change is crossed only on an opening's own squares) ── */
