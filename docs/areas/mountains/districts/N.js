@@ -31,8 +31,16 @@
 
    - THE ATMOSPHERE (pass 4): a real flame (`hearth_fire`) in every hearth, braziers at the Pole, the lake, the Sleigh Road and the two south ways out
 
+   - THE PEOPLE (pass 8, mondo "figure it out whatever fits"): `exports.encounters` = the roster's four `polar` units + the gnome (yeti common; Krampus,
+     gnome uncommon; Santa Clause, the Ice Queen one of a kind), 3 to 5 walking. Standing: Santa Clause, the gnome, the yeti (old lines) and the Ice Queen on
+     the lake (no line). Four is the room's crowd cap, so Krampus is in the table only; chimneys smoke (`chimney_smoke`)
+   - THE SIGNS (pass 8): `board()` = the words in a face per trade (WORKSHOP `xmas`, POST OFFICE `marc`, Bakery `pacifico`, TOY SHOP `bangers`, STABLE `rye`,
+     COAL `stencil`), a white frame, snow on the top edge
+   - THE OUTSIDE LAYERS (passes 7 + 8; `winter`, `dado`): belt board, drifts, icicles, sill snow, wood stacks, gutters + downpipes, a ridge board, shingled
+     gables, a darker band of boards over the stone foot, a lantern by every door
+
    KNOWN MISSING OR WRONG
-   - No Ice Queen is placed. No encounter table. Nobody stands inside a house (Santa's old line: "The workshop is empty because everyone is on the list.")
+   - Nobody stands inside a house (Santa's old line: "The workshop is empty because everyone is on the list.")
    - The five boards (POST OFFICE, BAKERY, TOY SHOP, STABLE, COAL) are plain labels: waiting for mondo's word
    - The world plan's Ice Wall is still open with mondo: do not build it without his word
    - NOT A DISTRICT FILE'S TO FIX (the tool's or the engine's; asked of mondo 11-16): no falling snow, no sound bed and no aurora (the walked rooms have
@@ -66,9 +74,9 @@ exports.apply = ctx => {
       for (const s of [-1, 1]) for (let i = 0; i < 5; i++) a.box(dr.lx + s * (dr.cw / 2 + 0.14), i * 0.5, d / 2 + 0.12, 0.26, 0.5, 0.26, 'marble_light', i % 2 ? TRIM : 0xc83030);   // candy posts at the door
       a.box(dr.lx, 2.5, d / 2 + 0.12, dr.cw + 0.8, 0.22, 0.26, 'marble_light', TRIM); a.box(dr.lx, 0, d / 2 + 0.7, dr.cw + 1.6, 0.14, 1.3, 'rocks_5', 0xb8b8c0);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.4, 5.25, 0.4, 'marble_light', TRIM);
-      a.sign('WORKSHOP', dr.lx, 3.3, d / 2 + 0.16, 6.2, 1.1, '#f6efd8', '#1f4a2a', 'fell'); bulbs(a, -w / 2 + 0.4, w / 2 - 0.4, 5.05, d / 2 + 0.16);
+      board(a, 'WORKSHOP', dr.lx, 3.15, d / 2 + 0.16, 7.0, 1.5, '#f6efd8', '#1f4a2a', 'xmas', null); bulbs(a, -w / 2 + 0.4, w / 2 - 0.4, 5.05, d / 2 + 0.16);
       a.box(w / 2 - 1.6, 5.25, -d / 2 + 1.2, 1.3, 5.2, 1.3, 'bricks_2', 0xb86a54, { roof: true });                       // the chimney over the hearth
-      winter(a, w, 5.25, d, dr, false, WD2, 1); hearth(a, w / 2 - 1.6, d, 5.25 - 0.36, 1.4, WD2); lit(a, w, 5.25, d, dr, WD, 0xd8b088, 0.9, ctx);   // the hearth inside (its fire: build), the lit inside
+      winter(a, w, 5.25, d, dr, false, WD2, 1); dado(a, w, d, dr, 0xb84438, WD2); hearth(a, w / 2 - 1.6, d, 5.25 - 0.36, 1.4, WD2); lit(a, w, 5.25, d, dr, WD, 0xd8b088, 0.9, ctx);   // the hearth inside (its fire: build), the lit inside
       /* THE LOFT (the yeti's line: "The loft is where the wrapping is kept. I am not allowed up the ladder."): a deck over the back left corner, a ladder, a rail */
       a.box(-5.1, 2.9, -6.85, 6.7, 0.18, 6.7, FLR, 0x8c7a62, { uv: [1.75, 1.75], glow: 0.7 }); for (const x of [-1.75, -5.25]) a.box(x, 0, -3.5, 0.24, 2.9, 0.24, WD2, 0x5a4030);   // (the posts on the squares' corners)
       a.box(-5.1, 3.9, -3.46, 6.7, 0.1, 0.1, WD2, 0x5a4030); for (let x = -8.3; x <= -1.75; x += 1.09) a.box(x, 3.08, -3.46, 0.08, 0.82, 0.08, WD2, 0x5a4030);
@@ -82,6 +90,11 @@ exports.apply = ctx => {
   COTTAGES.forEach(([id, plot, lx, ly, side, tint, q]) => { q = Object.assign({ h: 3.3, rh: 2.6, tint }, q);
       BUILT[id] = building(id, plot, [lx, ly, lx + 2, ly + 2, side], q.h, { keyIn: q.wood ? WD : 'urban:PlasterWallPainted1a', floorIn: 'wood_planks' }, (a, w, d, dr) => cottage(a, w, d, dr, q, ctx)); onFloor(BUILT[id]).q = q; R.count.cottages = (R.count.cottages || 0) + 1; });
 };
+/* THE VILLAGE'S PEOPLE (mondo 11-16: "Is there not already units tagged with North Pole or ice? yeti, Santa clause, etc figure it out whatever fits").
+   The roster's `polar` biome (data.js RACE_PROFILES) is exactly four units: yeti, santa clause, ice queen, krampus; the gnome is the old room's third
+   native. The yeti is the common walker (the drifts are its), Krampus and the gnome the uncommon, Santa Clause and the Ice Queen one of a kind.
+   `spots: false`: the five who STAND in the village keep their own places and lines. No levels: THE NPC SPAWN SYSTEM (docs/notes/npc-system.md) sets those. */
+exports.encounters = { list: [{ race: 'yeti', w: 7 }, { race: 'krampus', w: 2 }, { race: 'gnome', w: 2 }, { race: 'santa clause', w: 1 }, { race: 'ice queen', w: 1 }], walkers: [3, 5], spots: false };
 exports.tailor = t => { t.set('P03-00', 7, 8, 's'); t.set('P03-00', 7, 9, 's'); };   // the plan's sixteenth house (P03-00 8,8) was cut off by one drift square: these two squares are its way in
 
 /* ── a cottage's look. Parts frame: the house's middle, x along the front, +z out of the front. ── */
@@ -119,7 +132,21 @@ const winter = (a, w, h, d, dr, front, WD2, wood) => {
     const L = i => 0.18 + 0.34 * (((i * 7919) % 13) / 13), ic = (x, z, i) => a.box(x, h - L(i) + 0.02, z, 0.05, L(i), 0.05, 'ice', ICE, { roof: true, glow: 0.7 });
     if (front) { for (const s of [-1, 1]) for (let i = 0, z = -d / 2 - 0.5; z <= d / 2 + 0.5; z += 0.45, i++) if (i % 5 !== 3) ic(s * (w / 2 + 0.74), z, i + (s > 0 ? 3 : 0)); }
     else for (const s of [-1, 1]) for (let i = 0, x = -w / 2 - 0.5; x <= w / 2 + 0.5; x += 0.45, i++) if (i % 5 !== 3) ic(x, s * (d / 2 + 0.74), i + (s > 0 ? 3 : 0));
+    /* gutters under the eaves, a downpipe at the back corner, a ridge board with its two ends, a lantern by the door */
+    const G = 'gunmetal', GT = 0x4a5058;
+    if (front) { for (const s of [-1, 1]) { a.box(s * (w / 2 + 0.7), h - 0.06, 0, 0.12, 0.1, d + 1.5, G, GT, { roof: true }); a.box(s * (w / 2 + 0.06), 0.32, -d / 2 + 0.2, 0.09, h - 0.38, 0.09, G, GT); } }
+    else { for (const s of [-1, 1]) a.box(0, h - 0.06, s * (d / 2 + 0.7), w + 1.5, 0.1, 0.12, G, GT, { roof: true }); for (const s of [-1, 1]) a.box(s * (w / 2 - 0.2), 0.32, -d / 2 - 0.06, 0.09, h - 0.38, 0.09, G, GT); }
+    a.box(dr.lx + dr.cw / 2 + 0.5, 1.75, d / 2 + 0.16, 0.18, 0.26, 0.18, 'marble_light', 0xffb050, { glow: 1.3 }); a.box(dr.lx + dr.cw / 2 + 0.5, 2.01, d / 2 + 0.16, 0.24, 0.05, 0.24, G, GT); a.box(dr.lx + dr.cw / 2 + 0.5, 1.7, d / 2 + 0.1, 0.06, 0.05, 0.12, G, GT);
     if (wood) { const x = Math.sign(wood) * (w / 2 + 0.36); a.box(x, 0, -d / 2 + 1.5, 0.5, 0.95, 2.0, WD2, 0x8a6444, { gain: 1.4 }); a.box(x, 0.95, -d / 2 + 1.5, 0.62, 0.1, 2.1, 'ice', SNOWC); } };
+/* a second sheet on the lower wall: a band of darker boards from the stone foot to the sills, proud of the wall, the door left open */
+const dark = (t, k) => (Math.round(((t >> 16) & 255) * k) << 16) | (Math.round(((t >> 8) & 255) * k) << 8) | Math.round((t & 255) * k);
+const dado = (a, w, d, dr, tint, WD2) => { const t = dark(tint, 0.68), q = { gain: 1.9 }, y = 0.8, hh = 0.22, e = 0.07;
+    a.box(0, y, -(d / 2 + e / 2), w + 2 * e, hh, e, WD2, t, q); for (const s of [-1, 1]) a.box(s * (w / 2 + e / 2), y, 0, e, hh, d, WD2, t, q);
+    const x0 = dr.lx - dr.cw / 2 - 0.22, x1 = dr.lx + dr.cw / 2 + 0.22, E = w / 2 + e; a.box((x0 - E) / 2, y, d / 2 + e / 2, x0 + E, hh, e, WD2, t, q); a.box((x1 + E) / 2, y, d / 2 + e / 2, E - x1, hh, e, WD2, t, q); };
+/* a painted board: the words (THE SIGN FONTS: one face a trade), a white frame round it, snow lying on its top edge */
+const board = (a, words, x, y, z, w, h, fg, bg, font, q) => { a.sign(words, x, y, z, w, h, fg, bg, font, q);
+    const f = (px, py, bw, bh) => a.box(px, py, z - 0.02, bw, bh, 0.06, 'marble_light', TRIM, q || null); f(x, y - 0.07, w + 0.14, 0.07); f(x, y + h, w + 0.14, 0.07); for (const s of [-1, 1]) f(x + s * (w / 2 + 0.035), y, 0.07, h);
+    a.box(x, y + h + 0.07, z, w + 0.2, 0.08, 0.16, 'ice', 0xf4f8ff, q || null); };
 const cottage = (a, w, d, dr, q, ctx) => { const { WD, WD2, FLR } = ctx, h = q.h;
     a.shell(w, h, d, WD, q.tint, dr, [3.5, 1.75]); a.P.slice(-2).forEach(p => { p.gain = 1.7; });   // (gain: the boards' paint read as near black at night under the brown sheet)
     a.box(0, 0, 0, w + 0.4, 0.8, d + 0.4, 'rocks_5', 0xa8a8b0, { faces: 'blr', top: false });
@@ -127,8 +154,9 @@ const cottage = (a, w, d, dr, q, ctx) => { const { WD, WD2, FLR } = ctx, h = q.h
     if (q.wood) lit(a, w, h, d, dr, WD, 0xd8b088, 0.85, ctx); else lit(a, w, h, d, dr, 'urban:PlasterWallPainted1a', q.wall || 0xffe2b8, 0.85, ctx);
     if (q.inside) q.inside(a, w, d);
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.3, h, 0.3, 'marble_light', TRIM);
-    if (q.front) a.roof('gable', 0, h, 0, d + 1.6, q.rh, w + 1.6, 'ice', 0xf4f8ff, { ry: 90, keyEnd: WD, tintEnd: q.tint, gain: 1.7 });      // the gable over the door
-    else a.roof('gable', 0, h, 0, w + 1.6, q.rh, d + 1.6, 'ice', 0xf4f8ff, { keyEnd: WD, tintEnd: q.tint, gain: 1.7 });                      // the eaves over the door
+    if (q.front) a.roof('gable', 0, h, 0, d + 1.6, q.rh, w + 1.6, 'ice', 0xf4f8ff, { ry: 90, keyEnd: ctx.SHG, tintEnd: q.tint, gain: 1.9 });      // the gable over the door (shingles in the house's paint)
+    else a.roof('gable', 0, h, 0, w + 1.6, q.rh, d + 1.6, 'ice', 0xf4f8ff, { keyEnd: ctx.SHG, tintEnd: q.tint, gain: 1.9 });                      // the eaves over the door
+    dado(a, w, d, dr, q.tint, WD2); if (q.front) a.box(0, h + q.rh - 0.04, 0, 0.2, 0.16, d + 1.9, WD2, 0x4a3626, { roof: true }); else a.box(0, h + q.rh - 0.04, 0, w + 1.9, 0.16, 0.2, WD2, 0x4a3626, { roof: true });   // the ridge board
     /* the door: white posts and head, a step, the lights */
     for (const s of [-1, 1]) a.box(dr.lx + s * (dr.cw / 2 + 0.1), 0, d / 2 + 0.1, 0.2, 2.4, 0.2, 'marble_light', TRIM); a.box(dr.lx, 2.25, d / 2 + 0.1, dr.cw + 0.5, 0.2, 0.2, 'marble_light', TRIM);
     a.box(dr.lx, 0, d / 2 + 0.55, dr.cw + 0.9, 0.14, 1.0, 'rocks_5', 0xb8b8c0);
@@ -146,13 +174,13 @@ const cottage = (a, w, d, dr, q, ctx) => { const { WD, WD2, FLR } = ctx, h = q.h
     winter(a, w, h, d, dr, !!q.front, WD2, q.chimney || 0);
     if (q.porch) { a.box(0, 0, d / 2 + 1.2, w, 0.16, 2.3, FLR, 0x8c7a62); for (const s of [-1, 1]) for (let i = 0; i < 5; i++) a.box(s * (w / 2 - 0.2), i * 0.52, d / 2 + 2.15, 0.2, 0.52, 0.2, 'marble_light', i % 2 ? TRIM : 0xc83030);   // candy posts
         a.roof('shed', 0, 2.6, d / 2 + 1.25, w + 0.4, 0.6, 2.6, 'ice', 0xf4f8ff); }
-    if (q.name) a.sign(q.name, 0, q.front ? h - 0.1 : 2.5, d / 2 + (q.porch ? 2.5 : q.front ? 0.86 : 0.16), Math.min(w - 1.2, q.name.length * 0.55 + 1.0), 0.72, '#f6efd8', q.board || '#7a1f1f', 'fell', (q.front || q.porch) ? { roof: true } : null); };
+    if (q.name) board(a, q.name, 0, q.front ? h - 0.12 : 2.5, d / 2 + (q.porch ? 2.5 : q.front ? 0.86 : 0.16), Math.min(w - 1.0, q.name.length * 0.5 + 1.6), 0.86, q.ink || '#f6efd8', q.board || '#7a1f1f', q.font || 'fell', (q.front || q.porch) ? { roof: true } : null); };
 const RED = 0xb84438, GREEN = 0x3f6b4a, CREAM = 0xd8c8a8, BLUE = 0x5a7890, GINGER = 0x9a6238, PLUM = 0x7a4a6a, LOG = 0x7a5a40;
 const COTTAGES = [
     /* the village square (P02-01), round the tree */
-    ['post', 'P02-01', 2, 2, 'E', BLUE, { name: 'POST OFFICE', board: '#1f3a5a', front: true, shut: 0xf6f6f2, inside: (a, w, d) => a.box(-0.65, 0, -d / 2 + 0.47, 3.6, 2.2, 0.4, 'urban:WoodGeneric1a', 0x9a7450, { glow: 0.85, gain: 1.5 }) }],   // (the sorting wall the mail boxes hang on)
-    ['bakery', 'P02-01', 8, 3, 'W', GINGER, { name: 'BAKERY', board: '#5a2a1a', flue: -1.75, porch: true, h: 3.5, shut: 0xf6f6f2 }],
-    ['toys', 'P02-01', 3, 8, 'N', RED, { name: 'TOY SHOP', board: '#1f4a2a', front: true, h: 3.6, rh: 3.0, shut: 0x3f6b4a }],
+    ['post', 'P02-01', 2, 2, 'E', BLUE, { name: 'POST OFFICE', board: '#1f3a5a', font: 'marc', front: true, shut: 0xf6f6f2, inside: (a, w, d) => a.box(-0.65, 0, -d / 2 + 0.47, 3.6, 2.2, 0.4, 'urban:WoodGeneric1a', 0x9a7450, { glow: 0.85, gain: 1.5 }) }],   // (the sorting wall the mail boxes hang on)
+    ['bakery', 'P02-01', 8, 3, 'W', GINGER, { name: 'Bakery', board: '#f6efd8', ink: '#7a2a1a', font: 'pacifico', flue: -1.75, porch: true, h: 3.5, shut: 0xf6f6f2 }],
+    ['toys', 'P02-01', 3, 8, 'N', RED, { name: 'TOY SHOP', board: '#1f4a2a', ink: '#ffd84a', font: 'bangers', front: true, h: 3.6, rh: 3.0, shut: 0x3f6b4a }],
     ['square4', 'P02-01', 8, 8, 'N', GREEN, { chimney: -1.8, shut: 0xb84438 }],
     /* the west lane (P01-01), homes */
     ['west1', 'P01-01', 2, 2, 'E', CREAM, { chimney: 1.8, shut: 0xb84438 }],
@@ -160,7 +188,7 @@ const COTTAGES = [
     ['west3', 'P01-01', 3, 8, 'N', GREEN, { front: true, h: 3.5, shut: 0xf6f6f2, porch: true }],
     ['west4', 'P01-01', 8, 8, 'N', PLUM, { chimney: 1.8, shut: 0xf6f6f2 }],
     /* the east lane (P03-01), by the Pass Gate */
-    ['stable', 'P03-01', 2, 2, 'E', LOG, { name: 'STABLE', board: '#3a2a20', front: true, h: 3.8, rh: 2.8, wood: true }],
+    ['stable', 'P03-01', 2, 2, 'E', LOG, { name: 'STABLE', board: '#3a2a20', ink: '#e8d8b0', font: 'rye', front: true, h: 3.8, rh: 2.8, wood: true }],
     ['east2', 'P03-01', 8, 3, 'W', BLUE, { chimney: -1.8, shut: 0xf6f6f2 }],
     ['east3', 'P03-01', 3, 8, 'N', CREAM, { front: true, shut: 0x3f6b4a }],
     ['east4', 'P03-01', 8, 8, 'N', RED, { chimney: 1.8, shut: 0x3f6b4a, porch: true }],
@@ -168,7 +196,7 @@ const COTTAGES = [
     ['north1', 'P03-00', 2, 2, 'S', GREEN, { front: true, shut: 0xf6f6f2 }],
     ['north2', 'P03-00', 8, 3, 'W', GINGER, { chimney: 1.8, shut: 0xb84438 }],
     ['north3', 'P03-00', 8, 8, 'W', PLUM, { chimney: -1.8, shut: 0xf6f6f2 }],   // (the plan's sixteenth house: its two squares were cut off by one drift square until `tailor` opened it)
-    ['coal', 'P03-00', 3, 8, 'N', 0x4a4a52, { name: 'COAL', board: '#1a1a1e', front: true, h: 3.0, rh: 2.4, wood: true, coal: true }],
+    ['coal', 'P03-00', 3, 8, 'N', 0x4a4a52, { name: 'COAL', board: '#1a1a1e', ink: '#d8d8d8', font: 'stencil', front: true, h: 3.0, rh: 2.4, wood: true, coal: true }],
 ];
 
 exports.build = ctx => {
@@ -189,7 +217,8 @@ exports.build = ctx => {
     const SQ = { BL: [-M, -M], BR: [M, -M], FL: [-M, M], FR: [M, M] }, at = (h, sq, key, q) => h.put(key, SQ[sq][0], SQ[sq][1], q);
     const hearthSide = h => (h.q.chimney || 0);
     const xmas = (h, x, z) => { h.put('xmas_tree', x, z, { h: 1.7, floor: true }); h.put('xmas_gift', x - Math.sign(x) * 0.7, z - Math.sign(z) * 0.1, { face: 20 }); h.put('xmas_gift_3', x - Math.sign(x) * 0.2, z - Math.sign(z) * 0.7, { face: 70 }); };
-    const mantel = h => { const c = hearthSide(h); if (!c) return; h.put('hearth_fire', c, -2.72, { w: 0.85, h: 0.75 }); h.put('xmas_stocking', c - 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_stocking_2', c + 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_garland', c, -2.18, { y: 1.66, face: 180 }); };
+    const smoke = (h, x, z, top) => h.put('chimney_smoke', x, z, { y: r2(1.75 + top), rise: 5 });   // (the catalogue's smoke, the Camelot pilot's piece; `y` = the chimney's top from the room's floor)
+    const mantel = h => { const c = hearthSide(h); if (!c) return; smoke(h, c, -3.85, h.q.h + h.q.rh + 0.95); h.put('hearth_fire', c, -2.72, { w: 0.85, h: 0.75 }); h.put('xmas_stocking', c - 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_stocking_2', c + 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_garland', c, -2.18, { y: 1.66, face: 180 }); };
     /* a home with a bed. The bed on the back square away from the hearth. With the hearth on the left (or none) the wardrobe takes FR and BL + FL are the
        walk; with the hearth on the right the bed is on BL, so FR stays free (a wardrobe there would shut BR in) and an armchair sits in its corner */
     const bedHome = (h, tree) => { const c = hearthSide(h), s = c > 0 ? -1 : 1, back = s > 0 ? 'BR' : 'BL';
@@ -212,7 +241,7 @@ exports.build = ctx => {
       h.put('meshy_burlap_sack', 2.75, 2.7); h.put('meshy_burlap_sack', 2.7, 0.55, { face: 80 }); h.put('meshy_burlap_sack', 2.2, 2.85, { face: 200 }); h.put('newspaper_bundles', -2.8, 0.5);
       h.put('xmas_gift_2', -2.7, -2.6); h.put('xmas_gift', 2.6, -2.6, { face: 40 }); h.put('xmas_gift_4', 1.9, -2.75); }
     /* THE BAKERY: the oven under the chimney on BL, the bread on BR, the till on a side table by the right wall; the two front squares are the shop */
-    { const h = B('bakery'); at(h, 'BL', 'deck_oven', { face: 180 }); at(h, 'BR', 'bread_rack', { face: 180 }); h.put('psx_bedside_table_1', 2.75, 0.5, { face: 270 }); h.put('cash_register', 2.75, 0.5, { y: 0.64, face: 270 });
+    { const h = B('bakery'); smoke(h, h.q.flue, -3.85, h.q.h + h.q.rh + 0.95); at(h, 'BL', 'deck_oven', { face: 180 }); at(h, 'BR', 'bread_rack', { face: 180 }); h.put('psx_bedside_table_1', 2.75, 0.5, { face: 270 }); h.put('cash_register', 2.75, 0.5, { y: 0.64, face: 270 });
       h.put('psx_tv_table_1', 2.7, 2.6, { face: 270 }); h.put('xmas_cookies', 2.7, 2.6, { y: 0.74 }); h.put('xmas_gingerbread', 2.55, 2.9, { y: 0.74 }); h.put('xmas_bake', 2.8, 2.3, { y: 0.74 });
       h.put('meshy_burlap_sack', -2.8, 0.5); h.put('meshy_burlap_sack', -2.75, -0.3, { face: 120 }); h.put('xmas_wreath', 1.75, -3.12, Object.assign({ face: 180 }, WALL(2.1))); h.put('wall_clock', -3.14, 2.4, Object.assign({ face: 90 }, WALL(2.1))); }
     /* THE TOY SHOP: a cabinet on each back square, the toys round the front squares' edges, the till on a side table */
@@ -228,7 +257,7 @@ exports.build = ctx => {
       const a0 = h.at(-M - 0.7, -M), a1 = h.at(-M + 0.7, -M); R.feat({ k: 'wall', x0: a0[0], z0: a0[1], x1: a1[0], z1: a1[1], t: 1.6, h: 0.9, ghost: true, rail: false }); }
     /* THE WORKSHOP (5 x 6 squares, their middles at x -7 .. 7, z -8.75 .. 8.75): the aisle from the door down column 0, three benches a side on columns
        -3.5 and 3.5, the side aisles along the walls for the tools and the freight, the hearth's square and the door's square free */
-    { const h = B('workshop'); for (const x of [-3.5, 3.5]) for (const z of [-1.75, 1.75, 5.25]) h.put('psx_table_large_3', x, z, { face: 90 });
+    { const h = B('workshop'); smoke(h, h.fw / 2 - 1.6, -h.fd / 2 + 1.2, 10.5); for (const x of [-3.5, 3.5]) for (const z of [-1.75, 1.75, 5.25]) h.put('psx_table_large_3', x, z, { face: 90 });
       h.put('xmas_hammer', -3.5, -1.5, { y: 0.82 }); h.put('xmas_gingerbread', -3.8, -2.2, { y: 0.91 }); h.put('beach_ball', -3.5, 1.5, { y: 0.91 }); h.put('xmas_gift_3', -3.7, 2.2, { y: 0.91 }); h.put('xmas_hammer_2', -3.4, 5.6, { y: 0.82 }); h.put('xmas_cocoa', -3.8, 4.9, { y: 0.91 });
       h.put('football', 3.4, -2.1, { y: 0.91 }); h.put('xmas_gift_4', 3.6, -1.4, { y: 0.91 }); h.put('decor_carousel_horse', 3.5, 1.75, { y: 0.91, h: 0.7, face: 250 }); h.put('railway_lantern', 3.3, 4.9, { y: 0.91 }); h.put('xmas_gift_2', 3.6, 5.6, { y: 0.91, face: 30 });
       h.put('tool_chest', -7, 5.25, { face: 90 }); h.put('psx_wooden_crate_2', 7, 5.25); h.put('psx_wooden_crate_3', 7, 1.75, { face: 20 }); h.put('xmas_tree', 7, 8.75, { h: 3.2, floor: true }); h.put('xmas_gift_4', 5.9, 9.3, { face: 60 });
@@ -304,5 +333,9 @@ exports.build = ctx => {
     lampPost('P03-03', 9, 7, 1); lampPost('P03-03', 5, 6, 0); put('P03-03', 'signpost', 8, 8, { face: 180 }); put('P03-03', 'xmas_snowman_3', 6, 9); put('P03-03', 'fallen_log', 8, 6);
     /* ── THE ATMOSPHERE (pass 4): warm light in the cold. Braziers (real lights) where people would stand at night ── */
     put('P01-00', 'brazier', 6, 6); put('P01-00', 'brazier', 8, 6); put('P01-02', 'brazier', 8, 5); put('P02-02', 'brazier', 7, 5); put('P01-03', 'brazier', 6, 4); put('P03-03', 'brazier', 7, 8);
+    /* ── THE ONE WHO WAS MISSING (pass 8): the Ice Queen out on her lake (no line: nobody wrote her one; she walks the ice). Krampus is NOT stood here:
+       THE CROWD CAP (data.js HQ_CROWD_RULES, mondo's "way less people") shows four bodies a room, so a fifth native never appeared (seen in the probe:
+       Santa Clause, the gnome, the yeti, the Ice Queen). He is in the room's table (`encounters`) ── */
+    native('P00-02', 'ice queen', 7, 4, 90);
   }
 };

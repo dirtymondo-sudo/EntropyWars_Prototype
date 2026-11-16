@@ -17,7 +17,7 @@
    WHAT STANDS HERE TODAY (after THE EXTERIOR PASS, 11-16; all of it seen on screen): THE BOARDWALK inside the city door `quay` (the door, the
    spawn and the west wall are the tool's): planks on the sand in a timber kerb, bollards with rope, four lamps, THE GATE at the door (two white
    pylons, a navy beam, "The Beach" to the sand, "DISASTER CITY · BAYSIDE" to the city), benches, a signpost, the snack cart, a telescope; the
-   three BEACH HUTS (walk-in: aqua SURF, lemon BEACH HUT, coral FLOATS; squares 2-9 x 50-51, fronts south; each a porch, a shuttered window, its
+   three BEACH HUTS (walk-in: aqua SURF, lemon SNOW CONES (mondo 11-16; was a sleeping hut), coral FLOATS; squares 2-9 x 50-51, fronts south; each a porch, a shuttered window, its
    word on a board, its number, its own door leaf); the LIFEGUARD HUT (walk-in, white boards, red band and roof, LIFEGUARD on the roof to the
    sea, a railed veranda, the red-over-yellow flag; squares 15-16 x 65-66, door east) and the lifeguard chair; THE VOLLEYBALL COURT south of it
    (a drawn net, Bayside's way; squares 12-15 x 68-70 kept clear); the swim flags on the Surf; THE TIDE POOLS (five `dip` hollows the sea
@@ -28,10 +28,11 @@
 
    THE INSIDES (THE INTERIOR PASS, 11-16, seen on screen): each hut is lined (a coat in its own colour over a white board dado, a lit board
    ceiling, tie beams, daylit windows). SURF: the rack, a steel bench under the pegboard, boards and a net on the walls, the cool box.
-   BEACH HUT: a bed, a bedside lamp, the chest, a rocking chair, a rug, a seascape. FLOATS: the counter and till, a cart of balls, a shelf,
+   SNOW CONES: the counter and till at the serving window, syrups on a steel bench, fridges and cool boxes, stools, the menu board outside. FLOATS: the counter and till, a cart of balls, a shelf,
    rings and air beds in stacks, paper lanterns. LIFEGUARD: the cot, the desk with the radio and the glasses, the tool chest, the board, rings.
 
-   THE LIGHT (THE ATMOSPHERE PASS, 11-16, seen on screen; all drawn glow, no new real light): bulbs strung along each hut's porch and lamp
+   THE LIGHT (THE ATMOSPHERE PASS, 11-16, seen on screen: drawn glow; + THE NIGHT, 11-16: ten real lights, eight standing torches and two
+   braziers at the gate, because drawn glow lights nothing after dark): bulbs strung along each hut's porch and lamp
    to lamp down the Boardwalk, pennants under the gate, bamboo torches (the court's corners, the huts' fire, the Palms' bench, both camps,
    the foot of the Dunes path), a line of paper lanterns in the Palms, a lamp over the lifeguard's door and a red light on its roof.
 
@@ -41,12 +42,13 @@
    the Palms (a bench, chairs, a guitar, the radio), the court's chairs and ball, THE DUNES (a ranch-rail path three squares wide, rows 76-78,
    up to the high bench and a second glass; dry scrub), the Sandbar's shells and seals, the fishermen's camp south (tent, fire ring, traps, a
    boat), the South Dunes (a chest half in the sand, a wrecked boat, a bottle).
-   - NEEDS A MODEL (not stood in for): hammocks (the Palms), a windbreak, a sandcastle, gulls, coconuts, a surf-side shower. (Towels are
+   - NEEDS A MODEL (not stood in for): hammocks (the Palms), a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, an ice shaver and paper cones
+     (the snow cone stand). (Towels are
      drawn on a line; a towel lying on the sand still needs a model.)
-   - NO HOOK FOR A DISTRICT: sound (the room has one bed, the shell's), particles (spray, gulls wheeling), night (the shell is day only).
-   - THE TOOL'S (notes on docs/notes/claims.md, 11-16): the west edge is open sea where the city should stand; the sky's waterspout landmark
-     and the sea shell's night bodies draw as a teal spindle and black outlines by day; the dunes' steep faces wear the cliff sheet as grey
-     bands; the sand reads grey-white in the cloud browser.
+   - NO HOOK FOR A DISTRICT: sound (the room has one bed, the shell's), particles (spray, gulls wheeling). NIGHT WORKS: the Beach rides the
+     world clock like every outdoor room (data.js hqRoomClock); the pilot's "day only" was a misreading of the shell's `night: 0` field.
+   - (The tool's four items of the first look are settled, 11-16: the city's sea wall and Bayside's front stand past the west line, the sky
+     is clean; the "rock bands" are the plan's headland rock and the sand is his pale beach sheet. areas-complexes.md "THE BEACH, THE SHORE".)
    - No residents with routines, no fight set up (the NPC spawn system is another thread's: docs/notes/npc-system.md). Weed / kelp / the ocean pack's rocks do NOT go in the shallows or on dry sand (seen: black
      spikes and pillars).
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
@@ -133,8 +135,9 @@ build(ctx) {
     /* a torch on a bamboo pole: the flame is drawn glow */
     const torch = (a, x, z) => { a.cyl(x, 0, z, 0.04, 1.7, WD2, 0xd8b070, { seg: 6, cap: false }); a.cyl(x, 1.66, z, 0.1, 0.18, null, 0x3a2a1c, { r2: 0.07, seg: 8 }); a.cyl(x, 1.84, z, 0.08, 0.3, null, 0xff7a10, { r2: 0.01, seg: 6, glow: 0.8 }); };
     /* THE BEACH HUTS (walk-in, mondo: "walk ins"): three painted board huts in a row, each its own colour: a porch, a shuttered window, a
-       striped gable, its number and its trade on a board (plain trade words, never a made-up name) */
-    const HUT_COL = [[0x4fd4f0, 0xff4a70, 'SURF'], [0xffdc50, 0x24a8a0, 'BEACH HUT'], [0xff8e70, 0x3a60a8, 'FLOATS']];   // aqua / lemon / coral walls, a hot roof each, white trim
+       striped gable, its number and its trade on a board (plain trade words, never a made-up name). THE MIDDLE ONE IS THE SNOW CONE STAND (mondo 11-16: "make
+       one of the huts a snow cone stand"; it was the sleeping hut): a serving counter at its window, the menu board, a giant cone on the ridge */
+    const HUT_COL = [[0x4fd4f0, 0xff4a70, 'SURF'], [0xffdc50, 0x24a8a0, 'SNOW CONES'], [0xff8e70, 0x3a60a8, 'FLOATS']];   // aqua / lemon / coral walls, a hot roof each, white trim
     HUTS = B_HUTS.map((q, i) => building('hut' + (i + 1), [q[0], q[1], q[0] + 2, q[1] + 2, 'S'], 3.0, { leaf: ['leaf_wooden', 'leaf_beige_wood', 'leaf_stable'][i] }, (a, w, d, door) => {
         const [COL, ROOF, WORD] = HUT_COL[i];
         wall(a, w, 3.0, d, COL, door);
@@ -149,6 +152,16 @@ build(ctx) {
         a.box(0, 3.5, d / 2 + 0.47, (WORD.length > 5 ? 3.2 : 2.2) + 0.16, 0.72, 0.05, null, ROOF); a.sign(WORD, 0, 3.55, d / 2 + 0.5, WORD.length > 5 ? 3.2 : 2.2, 0.62, '#1f3a5c', '#ffffff', 'pacifico');
         a.sign(String(i + 1), door.lx - 1.3, 1.55, d / 2 + 0.08, 0.4, 0.4, '#1f3a5c', '#ffffff', 'way');
         for (const s of [-1, 1]) a.box(s * (w / 2 + 0.06), 1.1, 0, 0.08, 1.1, 1.3, SHUT, WHITE, { uv: 'fit', faces: s < 0 ? 'l' : 'r', top: false, gain: 1.6 });
+        if (i === 1) {   // THE SNOW CONE STAND
+            a.box(1.95, 0.92, d / 2 + 0.32, 2.3, 0.08, 0.6, null, WHITE); for (const sx of [-1, 1]) a.box(1.95 + sx * 1.05, 0.5, d / 2 + 0.5, 0.06, 0.42, 0.06, null, WHITE);   // the serving shelf under the window
+            for (let k = -3; k <= 3; k++) a.box(1.95 + k * 0.33, 2.22, d / 2 + 0.5, 0.33, 0.05, 0.95, null, k % 2 ? WHITE : ROOF);                                   // the striped awning over it
+            for (let k = -3; k <= 3; k++) a.box(1.95 + k * 0.33, 2.04, d / 2 + 0.96, 0.33, 0.18, 0.03, null, k % 2 ? ROOF : WHITE);
+            a.box(-2.55, 0.95, d / 2 + 0.08, 1.2, 1.5, 0.05, null, 0x2a3a4a); a.sign('CHERRY', -2.55, 1.98, d / 2 + 0.12, 1.0, 0.3, '#ff5a6a', '', 'pacifico', { kind: 'over' });   // the menu board
+            a.sign('LIME', -2.55, 1.58, d / 2 + 0.12, 0.8, 0.3, '#8ae05a', '', 'pacifico', { kind: 'over' }); a.sign('BLUE', -2.55, 1.18, d / 2 + 0.12, 0.8, 0.3, '#5ac8ff', '', 'pacifico', { kind: 'over' });
+            const cz = d / 2 - 0.2;                                                                                                                              // the giant cone on the ridge
+            a.cyl(0, 5.0, cz, 0.06, 0.5, null, WHITE, { seg: 6, roof: true }); a.cyl(0, 5.5, cz, 0.1, 1.5, null, 0xfff6e2, { r2: 0.62, seg: 12, roof: true });
+            a.P.push({ s: 'dome', p: [0, 7.0, r2(cz)], r: 0.66, h: 0.62, tint: 0xff5a8a, seg: 12, roof: true }, { s: 'cyl', p: [0, 6.98, r2(cz)], r: 0.66, h: 0.1, tint: 0x5ac8ff, seg: 12, roof: true });
+        }
         bulbs(a, -w / 2, d / 2 + 1.98, w / 2, d / 2 + 1.98, 2.56, 0.7, 0.12);                                                  // a string of bulbs along the porch
         inside(a, w, d, 2.68, [0xa8ecff, 0xfff0a0, 0xffc4b0][i], door, [['f', 1.95, 1.05, 1.3, 1.15], ['l', 0, 1.1, 1.2, 1.1], ['r', 0, 1.1, 1.2, 1.1]]);
     }));
@@ -156,10 +169,11 @@ build(ctx) {
       In(B, 'surfboard_rack', -1.75, -1.75, 90); In(B, 'steel_table', 1.75, -1.75, 0); In(B, 'retro_radio', 1.5, -1.8, 200, 0.76); In(B, 'psx_glass_bottle_1', 2.2, -1.6, 0, 0.76); In(B, 'wooden_bucket', 2.6, -0.7, 0);
       In(B, 'tool_pegboard', 1.75, -3.02, 180, 1.25); In(B, 'surfboard_long', 2.95, 0.5, 285); In(B, 'surfboard_short', 0.1, -2.95, 10); In(B, 'surfboard_fish', -0.6, -2.95, 350);
       In(B, 'fishing_net_wall', -3.05, 0.9, 90, 0.9); In(B, 'beach_life_ring', 3.02, 2.2, 270, 1.5); In(B, 'beach_cooler', 2.4, 2.4, 30); In(B, 'folding_chair', 1.3, 2.3, 200); In(B, 'doormat', door0(B), 2.75, 0, 0.01); }
-    { const B = HUTS[1];   // THE BEACH HUT: a bed, a chest, a rocking chair by the window, a rug, the radio, a seascape
-      In(B, 'dorm_bed', -1.75, -1.75, 180); In(B, 'psx_bedside_table_1', -0.2, -2.8, 180); In(B, 'table_lamp', -0.2, -2.8, 0, 0.64); In(B, 'sea_chest', 1.75, -1.75, 180); In(B, 'retro_radio', 1.75, -1.75, 160, 0.7);
-      In(B, 'rocking_chair', 1.75, 1.75, 215); In(B, 'rug_round', 0.2, 0.3, 0, 0.02); In(B, 'railway_lantern', -2.8, 0.2, 0); In(B, 'painting_seascape', 1.4, -3.05, 180, 1.35); In(B, 'wall_shelf', -3.06, 1.0, 90, 1.5); In(B, 'psx_glass_bottle_2', -2.96, 1.0, 0, 1.52);
-      In(B, 'hook_rail', 3.06, 2.4, 270, 1.6); In(B, 'beach_ball', 2.7, -0.4, 0); In(B, 'doormat', door0(B), 2.75, 0, 0.01); }
+    { const B = HUTS[1];   // THE SNOW CONE STAND: the counter and till at the window, the syrups on a steel bench, two fridges and cool boxes of ice, stools
+      In(B, 'form_counter', 1.75, 1.75, 180); In(B, 'cash_register', 1.3, 1.75, 180, 1.15); In(B, 'steel_table', 1.75, -1.75, 0); [[1.2, -1.9, 1], [1.6, -1.6, 2], [2.0, -1.9, 1], [2.3, -1.6, 2]].forEach(q => In(B, 'psx_glass_bottle_' + q[2], q[0], q[1], 0, 0.76));
+      In(B, 'mini_fridge', -1.75, -1.75, 180); In(B, 'round_fridge', -0.5, -2.7, 180); In(B, 'beach_cooler', 2.75, 0.1, 270); In(B, 'beach_cooler', 2.75, -0.6, 250); In(B, 'wooden_bucket', 0.6, -2.6, 0);
+      In(B, 'price_tag', -2.6, 2.5, 150); In(B, 'bar_stool', 0.2, 1.0, 0); In(B, 'painting_seascape', -3.05, -0.4, 90, 1.35); In(B, 'doormat', door0(B), 2.75, 0, 0.01);
+      put(B, 'bar_stool', 1.5, 4.55, { floor: true, y: 0.16 }); put(B, 'bar_stool', 2.5, 4.55, { floor: true, y: 0.16 }); }
     { const B = HUTS[2];   // THE FLOAT HUT: the counter and its till, a cart of balls, a shelf, rings and air beds in stacks, paper lanterns
       In(B, 'form_counter', 1.75, 1.75, 270); In(B, 'cash_register', 1.75, 1.75, 270, 1.15); In(B, 'ball_cart', -1.75, -1.75, 20); In(B, 'psx_shelf_mp_2', 1.75, -1.75, 180);
       [0, 0.29, 0.58].forEach(y => In(B, 'beach_swim_ring', 2.6, 0.1, 0, y)); In(B, 'beach_air_mattress_blue', -0.2, -2.6, 90); In(B, 'beach_air_mattress_pink', -0.2, -2.6, 90, 0.25); In(B, 'beach_ball', -2.7, 0.2, 0); In(B, 'beach_ball', 0.4, -1.2, 40);
@@ -229,13 +243,10 @@ build(ctx) {
         [[-1.8, RED, WHITE], [-0.6, 0x24a8a0, WHITE], [0.6, 0xffd23c, NAVY], [1.8, 0xff4a70, WHITE]].forEach(q => { a.box(0, 0.8, q[0], 0.02, 1.1, 0.8, null, q[1], { ds: true }); for (const y of [1.0, 1.35, 1.7]) a.box(0, y, q[0], 0.03, 0.09, 0.8, null, q[2], { ds: true }); }); });
     /* THE ATMOSPHERE PASS: torches where people sit at dusk (the huts' fire, the Palms' bench, both camps, the foot of the Dunes path) and a
        line of paper lanterns in the Palms (the lanterns are props, hung at G + their height: see `In`) */
-    look('torch-huts', mx(6), mz(54), 0, a => { torch(a, -4.6, 1.2); torch(a, 4.6, 1.2); });
-    look('torch-palms', mx(6), mz(63), 0, a => { torch(a, 0.4, -2.6); torch(a, 0.4, 2.6);
+    look('torch-palms', mx(6), mz(63), 0, a => {
         for (const sg of [-1, 1]) a.cyl(3.4, 0, sg * 5.2, 0.07, 3.1, WD2, 0xb89a74, { seg: 6 }); a.box(3.4, 3.0, 0, 0.03, 0.03, 10.4, null, ROPE); });
     [-3.6, -1.2, 1.2, 3.6].forEach(dz => props.push({ key: 'paper_lantern', x: r2(mx(6) + 3.4), z: r2(mz(63) + dz), y: r2(G + 2.28), floor: true }));
-    look('torch-camp-n', mx(5), mz(33), 0, a => torch(a, 1.9, -1.6));
-    look('torch-camp-s', mx(7), mz(88), 0, a => torch(a, 1.7, -1.5));
-    look('torch-dunes', gx(11.6), gz(77.5), 0, a => { torch(a, 0, -5.6); torch(a, 0, 5.6); });
+    /* (THE NIGHT, below in `dress`: the torches at the fire, the bench, the camps and the Dunes path are real `cave_torch` props now) */
     /* THE TIDE POOLS (the plan: "rock pools, starfish"): hollows in the wet sand that the sea stands in, each ringed with rocks in `dress` */
     TIDE.forEach(q => feat({ k: 'dip', x: r2(gx(q[0])), z: r2(gz(q[1])), r: q[2], h: q[3] }));
 },
@@ -302,6 +313,11 @@ dress(ctx) {
     /* ── THE POLISH PASS (2026-11-16), at the END. THE PEOPLE (mondo 11-16: "There need to be more NPCs", owner-rules.md): nine more on the
        Shore, each where its plot's things are, none on a way through, none with a made-up line (units are named after their race; the three
        first ones keep theirs). Races the Beach or the city beside it already has. ── */
+    /* THE NIGHT (mondo 11-16: "there is night and day cycle in the game already"; the Beach rides the world clock, data.js hqRoomClock. Seen
+       at 22:30: drawn glow shows but lights nothing, the sand stayed flat grey): REAL light where people sit after dark: standing torches
+       (`cave_torch`, a 9 m light each) at the huts' fire, the Palms' bench, both camps and the foot of the Dunes path, braziers at the gate */
+    [[4, 55], [8, 55], [6, 62], [6, 64], [6, 32], [8, 87], [11, 75], [11, 79]].forEach(q => P('cave_torch', q[0], q[1]));
+    P('brazier', 1, 40); P('brazier', 1, 42);
     native('homosapien', 6, 42, 90); native('chef', 7, 44, 0); native('homosapien', 3, 54, 180); native('homosapien', 18, 66, 90); native('homosapien', 16, 69, 270);
     native('hippie', 5, 66, 100); native('hippie', 4, 32, 60); native('pirate', 3, 18, 120); native('homosapien', 4, 77, 90);
 },

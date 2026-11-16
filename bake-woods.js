@@ -67,6 +67,7 @@ let seed = 36; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; r
    lands in this tool and one thread per district can work at the same time. THIS is the one hook. A file may export any of:
      tailor(ctx)                          before the levels: its own changes to the plan's squares (ctx.cell)
      cut(ctx)                             after the glades: LATER changes to its squares (THE CUT below; new square edits go here)
+     ground                               a terrain sheet for its grass and forest floor (THE GROUND BY DISTRICT); bare = [x0, z0, x1, z1] no scatter lands on
      water(row, ctx)                      each water row of the tool (stream / pool): return it, a changed one, or null (THE WATER BY DISTRICT)
      dress(ctx), horror(ctx), life(ctx)   the three passes as they were built (the dressing, THE HORROR PASS, THE LIFE PASS)
      build(ctx)                           after the three passes: new work
@@ -171,7 +172,10 @@ for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) {
 }
 /* the paint: snow on the Snowline, bare rock on the Shelf and the cave's crag (0 = the room's own sheet) */
 const PAL = ['ice', 'rocks_5', 'dirt_2']   /* no snow sheet exists in the game: the Snowline wears the ice sheet */, paint = new Uint8Array(W * W);
-for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { const ch = cell[cy][cx]; paint[cy * W + cx] = ch === 's' ? 1 : ch === 'r' ? 2 : (ch === 'p' || ch === 'b') ? 3 : 0; }
+/* THE GROUND BY DISTRICT (2026-11-16, mondo: "why can't districts have different grounds"): a district file's `ground: '<terrain sheet>'` paints its grass AND its
+   forest squares in that sheet (0 stays the room's own sheet for a district that names none) */
+const GROUND = {}; ORDER.forEach(id => { const k = DISTRICTS[id].ground; if (k) { let i = PAL.indexOf(k); if (i < 0) { PAL.push(k); i = PAL.length - 1; } GROUND[id] = i + 1; } });
+for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { const ch = cell[cy][cx]; paint[cy * W + cx] = ch === 's' ? 1 : ch === 'r' ? 2 : (ch === 'p' || ch === 'b') ? 3 : (ch === 'g' || ch === 't') ? (GROUND[P(Math.floor(cx / N), Math.floor(cy / N)).district] || 0) : 0; }
 
 /* ── THE WATER: the creek from the Falls to the Outfall, one short `stream` row a square so the water steps down the hill with the ground
    (a stream row is one flat sheet); the lake, the falls' pool, the Pool. A plank deck wherever a path crosses. ── */
@@ -244,7 +248,10 @@ stage('dress');
       const tx = r2(gc(cx) + (rnd() - 0.5) * 1.4), tz = r2(gc(cy) + (rnd() - 0.5) * 1.4), th = r2((mountain ? 7 : wd[1]) * (0.8 + rnd() * 0.4));
       let still = true; for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (cell[cy + dy][cx + dx] !== 't') still = false;   // THE CUT: the square (or one beside it) was opened since
       if (still) features.push({ k: 'tree', x: tx, z: tz, kind: full(mountain ? 'pine' : wd[0]), h: th, r: 0.7 }); else SOW_SHIFT++;   /* a tree left out counts as a row for the seeds (THE SEEDS HOLD) */ if (still) count.bigTrees = (count.bigTrees || 0) + 1; } }
-features.push({ k: 'scatter', key: 'fern', n: 140, seed: 5 }, { k: 'scatter', key: 'stump', n: 18, seed: 6 }, { k: 'scatter', key: 'fallen_log', n: 10, seed: 7, r0: 1.9 });
+/* BARE GROUND (2026-11-16, mondo: "take the plants off of the concrete"): a district file's `bare: [x0, z0, x1, z1]` (metres) is ground no scatter piece lands on
+   (a scatter row's `off` box; one box in the room today: Dead Man's Cave's concrete apron) */
+const BARE = ORDER.map(id => DISTRICTS[id].bare).filter(Boolean)[0], offB = BARE ? { off: BARE } : {};
+features.push(Object.assign({ k: 'scatter', key: 'fern', n: 140, seed: 5 }, offB), Object.assign({ k: 'scatter', key: 'stump', n: 18, seed: 6 }, offB), Object.assign({ k: 'scatter', key: 'fallen_log', n: 10, seed: 7, r0: 1.9 }, offB));
 
 /* ── THE HORROR PASS (2026-11-15, mondo: "What can we do to give more of a horror element to the woods" + "yes you can do the yellow and pink too"):
    it gets worse the farther you walk from the Stair. The Clearing = someone was just here; the Redwood Trail = you are being watched; the Ritual

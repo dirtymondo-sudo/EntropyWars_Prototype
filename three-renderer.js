@@ -71630,7 +71630,44 @@ const ThreeRenderer = (function () {
         for (var k = 0; k < n; k++) { var v = P ? P[k] : 0; if (v > 0 && v <= 8) { var q = v - 1, arr = q < 3 ? A : q < 6 ? B : C; arr[k * 3 + (q % 3)] = 1; } }
         geo.setAttribute('aPaintA', new THREE.BufferAttribute(A, 3)); geo.setAttribute('aPaintB', new THREE.BufferAttribute(B, 3)); geo.setAttribute('aPaintC', new THREE.BufferAttribute(C, 3));
     }
-    function _hqTerrainTiles(geo, idx, nx, nz, res) {
+    /* THE GROUND ZONES (2026-11-16, mondo: "make Hollywood hills a part of disaster city"): a room may say `terrain.zones: [{ x0, z0, x1, z1,
+       floor, cliff, path, pal: [sheet ... <= 8], floorTint, cliffTint, pathTint, floorColor }]` = inside that box the field wears ITS OWN three
+       sheets and its own eight painted sheets, not the room's (the city's north rows are hillside: dry grass, rock cliffs, dirt trails, where the
+       room's own are asphalt, board-marked concrete and paving). The shader reads at most 8 painted sheets, so the room's palette may now hold
+       16 (data.js HQ_GROUND_RULES.paintMax) and each piece of ground reads 8 of them: the room's first 8, or its zone's `pal`. The field's tiles
+       are cut on the zone's line (a quad belongs to the zone its middle lies in) and a zone's tiles carry the zone's material: the same
+       material maker, so both renderers. A field of one tile has no zones. Kill switch window.EW_HQ_NO_GROUND_ZONES. */
+    /* THE DEAD STRIP (2026-11-16, the Hills in the city's room: the frame rate): a room grown past its plots on one side grows the same on the other
+       (the shell is centred), and `terrain.edges.<side>.inset` starts the land past the edge on the room's OLD line, over that strip. The field
+       under it was still built and drawn (the city: a 70 m strip down the west side, now a 126 m strip along the south too, a third of the
+       field). Quads more than 2 m past an inset line are left out of the field's mesh; the heights, the walker and the land past the edge read
+       the same ground as before. Kill switch window.EW_HQ_DRAW_DEAD_STRIP. */
+    function _hqDeadStrip(room, info) {
+        if (info._ew_dead !== undefined) return info._ew_dead;
+        var E = room && room.terrain && room.terrain.edges, d = null;
+        if (E && _hqEdgeLandOn(room) && !(typeof window !== 'undefined' && window.EW_HQ_DRAW_DEAD_STRIP)) {
+            var ins = function (k) { var v = +((E[k] || {}).inset) || 0; return v > 4 ? v - 2 : 0; }, w = ins('w'), e = ins('e'), n = ins('n'), s2 = ins('s');
+            if (w || e || n || s2) d = { x0: w ? -info.halfW + w : -Infinity, x1: e ? info.halfW - e : Infinity, z0: n ? -info.halfD + n : -Infinity, z1: s2 ? info.halfD - s2 : Infinity };
+        }
+        info._ew_dead = d; return d;
+    }
+    function _hqGroundZones(room, info, S) {
+        var Z = room && room.terrain && room.terrain.zones;
+        if (!Array.isArray(Z) || !Z.length || !info.paint || !info.paint.pal || (typeof window !== 'undefined' && window.EW_HQ_NO_GROUND_ZONES)) return null;
+        var out = [];
+        Z.forEach(function (z) {
+            if (!z || !(z.x1 > z.x0) || !(z.z1 > z.z0)) return;
+            var zi = Object.create(info), zp = (z.pal || []).slice(0, 8).map(String);
+            zi.floor = z.floor || info.floor; zi.cliff = z.cliff || info.cliff; zi.path = z.path || info.path;
+            zi.paint = { pal: zp, P: info.paint.P };
+            zi.room = Object.assign({}, info.room || room, { terrain: Object.assign({}, room.terrain, { floorTint: z.floorTint || null, cliffTint: z.cliffTint || null, pathTint: z.pathTint || null, cliffZoom: z.cliffZoom }) });
+            var slot = new Uint8Array(info.paint.pal.length + 1);
+            for (var v = 1; v <= info.paint.pal.length; v++) slot[v] = zp.indexOf(String(info.paint.pal[v - 1])) + 1;
+            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
+        });
+        return out.length ? out : null;
+    }
+    function _hqTerrainTiles(geo, idx, nx, nz, res, zones, info) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_TILES) return null;
         var tileM = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES.tileM > 0) ? HQ_ENGINE_RULES.tileM : 32;
         var nT = Math.max(4, Math.round(tileM / res)), tx = Math.ceil((nx - 1) / nT), tz = Math.ceil((nz - 1) / nT);
@@ -71640,11 +71677,13 @@ const ThreeRenderer = (function () {
         var byTile = {};
         for (var q = 0; q < idx.length; q += 6) {   // a quad's six indices: a, c, b, b, c, d (a = its low corner)
             var a = idx[q], ai = a % nx, aj = (a - ai) / nx, key = Math.floor(aj / nT) * tx + Math.floor(ai / nT);
+            if (zones) { var qx = info.x0 + (ai + 0.5) * res, qz = info.z0 + (aj + 0.5) * res; for (var zq = 0; zq < zones.length; zq++) if (qx >= zones[zq].x0 && qx < zones[zq].x1 && qz >= zones[zq].z0 && qz < zones[zq].z1) { key += (zq + 1) * tx * tz; break; } }   // THE GROUND ZONES: a zone's quads are tiles of their own
             (byTile[key] || (byTile[key] = [])).push(q);
         }
         var out = [];
         Object.keys(byTile).forEach(function (key) {
-            var k = +key, ti = k % tx, tj = (k - ti) / tx, i0 = ti * nT, j0 = tj * nT, i1 = Math.min(nx - 1, i0 + nT), j1 = Math.min(nz - 1, j0 + nT);
+            var k = +key, zn = Math.floor(k / (tx * tz)), zslot = zn ? zones[zn - 1].slot : null, PP = zslot ? info.paint.P : null; k -= zn * tx * tz;
+            var ti = k % tx, tj = (k - ti) / tx, i0 = ti * nT, j0 = tj * nT, i1 = Math.min(nx - 1, i0 + nT), j1 = Math.min(nz - 1, j0 + nT);
             var bw = i1 - i0 + 1, bh = j1 - j0 + 1, n = bw * bh;
             var pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), bl = new Float32Array(n * 2), ao = new Float32Array(n);
             var pa = PA ? [new Float32Array(n * 3), new Float32Array(n * 3), new Float32Array(n * 3)] : null;
@@ -71654,7 +71693,8 @@ const ThreeRenderer = (function () {
                 pos[dst * 3] = P[src * 3]; pos[dst * 3 + 1] = P[src * 3 + 1]; pos[dst * 3 + 2] = P[src * 3 + 2];
                 nor[dst * 3] = N[src * 3]; nor[dst * 3 + 1] = N[src * 3 + 1]; nor[dst * 3 + 2] = N[src * 3 + 2];
                 uv[dst * 2] = UV[src * 2]; uv[dst * 2 + 1] = UV[src * 2 + 1]; bl[dst * 2] = B[src * 2]; bl[dst * 2 + 1] = B[src * 2 + 1]; ao[dst] = O[src];
-                if (pa) for (var pq = 0; pq < 3; pq++) { pa[pq][dst * 3] = PA[pq][src * 3]; pa[pq][dst * 3 + 1] = PA[pq][src * 3 + 1]; pa[pq][dst * 3 + 2] = PA[pq][src * 3 + 2]; }
+                if (pa && zslot) { var zv = zslot[PP[src]] | 0; if (zv > 0) pa[(zv - 1) / 3 | 0][dst * 3 + (zv - 1) % 3] = 1; }   // THE GROUND ZONES: the node's sheet in the zone's own eight
+                else if (pa) for (var pq = 0; pq < 3; pq++) { pa[pq][dst * 3] = PA[pq][src * 3]; pa[pq][dst * 3 + 1] = PA[pq][src * 3 + 1]; pa[pq][dst * 3 + 2] = PA[pq][src * 3 + 2]; }
                 var py = P[src * 3 + 1]; if (py < y0) y0 = py; if (py > y1) y1 = py;
             }
             var li = [], qs = byTile[key];
@@ -71666,7 +71706,7 @@ const ThreeRenderer = (function () {
             if (pa) { tg.setAttribute('aPaintA', new THREE.BufferAttribute(pa[0], 3)); tg.setAttribute('aPaintB', new THREE.BufferAttribute(pa[1], 3)); tg.setAttribute('aPaintC', new THREE.BufferAttribute(pa[2], 3)); }
             tg.setIndex(li);
             tg.computeBoundingBox(); tg.computeBoundingSphere();
-            tg._ew_hqTile = [ti, tj];
+            tg._ew_hqTile = [ti, tj]; tg._ew_zone = zn;
             out.push(tg);
         });
         return out.length > 1 ? out : null;
@@ -72236,6 +72276,7 @@ const ThreeRenderer = (function () {
             });
             if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
             if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
+            var dS = _hqDeadStrip(room, info); if (dS && (mx < dS.x0 || mx > dS.x1 || mz < dS.z0 || mz > dS.z1)) continue;   // THE DEAD STRIP: ground under the land past the edge is never drawn
             var uf = (floats.length || (info.void && !info.void.holesOnly)) ? underFloat(mx, mz) : 0;
             if (!underEscalator && !uf && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
             else if ((uf === 1 || uf === 3) && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) { fillQ.push(a, b, c, d); fillK.push(uf); }   // THE FLAT FILL
@@ -72253,9 +72294,10 @@ const ThreeRenderer = (function () {
         /* THE TILES (OPEN_WORLD_PLAN §5.5, Phase 1): the field is cut into HQ_ENGINE_RULES.tileM squares — one mesh each, the
            same material, the normals of the WHOLE field (no seam in the light) — so the frustum drops the squares behind the
            camera: "only a chunk of the map is being rendered". A field of one tile stays one mesh. */
-        var tiles = _hqTerrainTiles(geo, idx, nx, nz, res);
+        var gZones = _hqGroundZones(room, info, S);   // THE GROUND ZONES: a box of the field in its own sheets (the city's hills)
+        var tiles = _hqTerrainTiles(geo, idx, nx, nz, res, gZones, info);
         (tiles || [geo]).forEach(function (tg) {
-            var fm = new THREE.Mesh(tg, fieldMat);
+            var fm = new THREE.Mesh(tg, (gZones && tg._ew_zone) ? gZones[tg._ew_zone - 1].mat : fieldMat);
             fm.position.y = 0.3; fm.receiveShadow = true; fm.renderOrder = 1; fm._ew_hqPart = 'floor'; fm._ew_hqTerrain = true;
             G.add(fm); if (!field) field = fm;
         });
@@ -73083,7 +73125,7 @@ const ThreeRenderer = (function () {
                         L0.push(put(gb, [-W2, by, bz], [0, fit ? bi / bs : arcL / mv])); R0.push(put(gb, [W2, by, bz], [fit ? 1 : 2 * W2 / mu, fit ? bi / bs : arcL / mv]));
                     }
                     for (var bj = 0; bj < bs; bj++) gb.idx.push(L0[bj], R0[bj], R0[bj + 1], L0[bj], R0[bj + 1], L0[bj + 1]);
-                    [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault
+                    if (P.ends !== false) [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault (`ends: false` = an open vault: a tunnel's, seen from inside with `ds`)
                         var ge = grp(kE, tE), c0 = put(ge, [sd * bw, 0, 0], [0.5 * 2 * D2 / mu, 0]), ring2 = [];
                         for (var ei = 0; ei <= bs; ei++) { var ea = Math.PI * ei / bs, ez = D2 * Math.cos(ea), ey = rh * Math.sin(ea); ring2.push(put(ge, [sd * bw, ey, ez], [(D2 - ez) / mu, ey / mv])); }
                         for (var ej = 0; ej < bs; ej++) { if (sd > 0) ge.idx.push(c0, ring2[ej + 1], ring2[ej]); else ge.idx.push(c0, ring2[ej], ring2[ej + 1]); }
@@ -73140,7 +73182,8 @@ const ThreeRenderer = (function () {
         stencil:   { f: '"Saira Stencil One"', w: 400, ls: 0.03 },    // Industrial: painted on the sheds
         dot:       { f: '"DotGothic16"', w: 400, ls: 0.06 },          // the scoreboard
         marc:      { f: '"Marcellus SC"', w: 400, ls: 0.06 },         // the museum and the galleries
-        rye:       { f: '"Rye"', w: 400, ls: 0.02 }                   // fight posters
+        rye:       { f: '"Rye"', w: 400, ls: 0.02 },                  // fight posters
+        xmas:      { f: '"Mountains of Christmas"', w: 700, ls: 0.03 }   // the North Pole village: the Workshop (2026-11-16)
     };
     /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
        branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
@@ -73816,7 +73859,8 @@ const ThreeRenderer = (function () {
             if (W.mountain > 0) {
                 var rg = 1 - Math.abs(2 * _hqEdgeFbm(x / 190 + 3.1, z / 190 + 1.7) - 1), rg2 = 1 - Math.abs(2 * _hqEdgeFbm(x / 70 + 9, z / 70 + 4) - 1);
                 var yM = e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift;
-                if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
+                if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);
+                else if (!LAND && z < R.z0 && sd('n').back != null) yM = e2 + lift + (+sd('n').back) * (yM - e2 - lift);   // THE HOLLYWOOD HILLS ARE PART OF THE CITY (2026-11-16): a north side may say `back` by itself = how much of the made-up range stands past it (the city: 0.35, a low dry ridge behind the real Hills' crest)   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
                 if (LAND && z < R.z0) {   // THE REAL LAND PAST THE EDGE: the other room's ground from the line out to its own back edge, the range on behind it
                     var lx = x - LAND.x0, inX = sm(Math.min(lx, LAND.w - lx) / 30 + 0.02), yL;
                     if (lx > -1 && lx < LAND.w + 1 && inX > 0) {
@@ -77603,10 +77647,10 @@ const ThreeRenderer = (function () {
            chimney (a mesh each): smoke a few chimneys, not every one. `rise` on the row = how far it climbs, metres (5 when none). */
         chimney_smoke: function (U, p) {
             var g = new THREE.Group(), rise = (p && +p.rise > 0) ? +p.rise : 5, puffs = [], sd = (_hqProcSeed++) % 17;
-            for (var i = 0; i < 3; i++) { var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hzGlowTexture(), color: 0x8e8a86, transparent: true, opacity: 0, depthWrite: false })); sp.userData.t = i / 3; puffs.push(sp); g.add(sp); }
+            for (var i = 0; i < 3; i++) { var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hzGlowTexture(), color: 0x9a9896, transparent: true, opacity: 0, depthWrite: false })); sp.userData.t = i / 3; puffs.push(sp); g.add(sp); }
             if (_hq) _hq.tickers.push(function (dt) {
                 for (var k = 0; k < puffs.length; k++) { var q = puffs[k]; q.userData.t += dt * 0.09; if (q.userData.t > 1) q.userData.t -= 1; var t = q.userData.t;
-                    q.position.set((Math.sin(t * 5 + k + sd) * 0.3 + t * 1.2) * U, t * rise * U, Math.cos(t * 4 + k + sd) * 0.3 * U); q.scale.setScalar((1.1 + t * 3.4) * U); q.material.opacity = 0.62 * Math.min(1, t * 6) * (1 - t); }
+                    q.position.set((Math.sin(t * 5 + k + sd) * 0.3 + t * 1.2) * U, t * rise * U, Math.cos(t * 4 + k + sd) * 0.3 * U); q.scale.setScalar((3.2 + t * 8) * U); q.material.opacity = 0.9 * Math.min(1, t * 6) * (1 - t); }   // (the glow sheet falls off fast: what reads of a puff is about a third of its scale)
             });
             return g;
         },
@@ -83824,8 +83868,8 @@ const ThreeRenderer = (function () {
         var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
-        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
-        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
+        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, lvl: c.lvl || 0, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
        + gaze in METRES in the room frame, and the ground under the eye's column
@@ -84587,7 +84631,9 @@ const ThreeRenderer = (function () {
             if (gone.indexOf(id) >= 0) return;   // beaten today: gone until tomorrow
             var hm = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'male'), hf = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'female');
             var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
-            list.push({ r: r, id: id, gender: g, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
+            /* THE SET LEVELS (2026-11-16, data.js HQ_SPAWN_RULES): the resident's own level, read once; the label shows it and the fight is at it */
+            var sl = null; try { sl = (typeof hqSpawnLevel === 'function') ? hqSpawnLevel(roomId, { id: id, race: r.race, gender: g, home: r.home }) : null; } catch (e) { sl = null; }
+            list.push({ r: r, id: id, gender: g, lvl: sl ? sl.lvl : 0, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
         });
         H.res = { G: G, day: day, list: list, next: 0, pts: [], lastPick: 0 };
         return true;
@@ -84600,14 +84646,14 @@ const ThreeRenderer = (function () {
         for (var i = H.blockers.length - 1; i >= 0; i--) if (H.blockers[i].obj === ch.entry.group) H.blockers.splice(i, 1);
     }
     function _hqResSpawn(H, s, at) {
-        var r = s.r, U = _hqUnits(), line = null, sub = 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
+        var r = s.r, U = _hqUnits(), line = null, sub = (s.lvl > 0 ? 'LV ' + s.lvl + ' · ' : '') + 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
         if (at.spot && at.spot.say) { var sy = at.spot.say; line = Array.isArray(sy) ? (sy.length ? sy[((typeof hqHash === 'function' ? hqHash(H.res.day + '|' + r.race + '|say') : 0) % sy.length)] : null) : String(sy); }
         /* THE BEDS (2026-11-14): the rig carries the sleep pose (UAL2 LayToIdle held on its first frames: flat on the back) beside its own slots */
         var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null; _hq3DOff(_s3);
             if (base && base.libClips && !base.libClips.hqSleep) { var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales); lc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; lt.hqSleep = HQ_RES_SLEEP.ts; def = Object.assign({}, base, { libClips: lc, libTimeScales: lt }); } } catch (e) { def = null; }
         var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, def: def || undefined, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
         if (!ch) return null;
-        ch.resident = s; s.ch = ch;
+        ch.resident = s; s.ch = ch; if (s.lvl > 0) ch.lvl = s.lvl;
         var y = _hqNavQuery(at.x, at.z, null); if (y !== null && y !== undefined && isFinite(y)) { ch.y = ch.visY = y; }
         ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
         for (var i = H.blockers.length - 1; i >= 0; i--) if (H.blockers[i].obj === ch.entry.group) { ch._resBlk = H.blockers[i]; break; }
@@ -89860,13 +89906,15 @@ const ThreeRenderer = (function () {
        second. The picture he sees: the debrief stays about two seconds longer, then the city at its normal frame rate, in
        place of ten and more seconds at 1 to 12 FPS. Off: window.EW_HQ_BACK_NO_HOLD (the draw from the first frame),
        window.EW_HQ_BACK_OLD (the passes wait for the landing again). */
-    var HQ_BACK_HOLD_MS = 5000;
+    var HQ_BACK_HOLD_MS = 6000;
     function _hqPassOk(H) { return !!(H.ready || H.landed || (H.opts && H.opts.onFirstFrame && !(typeof window !== 'undefined' && window.EW_HQ_BACK_OLD))); }
     function _hqFirstMergeDone(H) { return _hqBatchOff() || !!(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')); }
     function _hqBackHold(H, now) {
-        if (!H.opts || !H.opts.onFirstFrame || H.firstFramed || H.ready) return false;
+        if (!H.opts || !H.opts.onFirstFrame || H.firstFramed) return false;   // (the way back is READY at once, its gate does not wait for the merge: mondo's F3 11-16 02:57, the room drawn at 3.8 FPS with "build 3495->756")
         if (typeof window !== 'undefined' && (window.EW_HQ_BACK_NO_HOLD || window.EW_HQ_BACK_OLD)) return false;
-        if (!_hqChunkBig(H) || now - H.t0 > HQ_BACK_HOLD_MS) return false;
+        if (!_hqChunkBig(H)) return false;
+        if (H._holdT0 == null) H._holdT0 = now;   // counted from the first tick: the builders' own seconds are not the hold's
+        if (now - H._holdT0 > HQ_BACK_HOLD_MS) return false;
         return !_hqFirstMergeDone(H);
     }
     function _hqInstTick(H, now) {
@@ -94797,7 +94845,7 @@ const ThreeRenderer = (function () {
            HQ_BATCH.firstSliceMs a frame and waits as it does behind the card. After that, the settled pace as before.
            Off: window.EW_HQ_BATCH_FIRST_SLOW. */
         var firstRun = !!(H.ready && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_FIRST_SLOW) && !(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')));
-        var held = !H.field && !H.ready && _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: no frame is drawn, the merge has the tick
+        var held = !H.field && _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: no frame is drawn, the merge has the tick
         var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : held ? (HQ_BATCH.holdSliceMs || 220) : !H.ready ? HQ_CARD_SLICE_MS : firstRun ? (HQ_BATCH.firstSliceMs || 28) : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
             var R = recs[r];
