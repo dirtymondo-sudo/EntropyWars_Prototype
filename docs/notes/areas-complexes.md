@@ -5398,8 +5398,22 @@ Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. 
   - THE SMITHY: a brick forge under its hood in the back left corner (under the outside chimney), the quench trough, the tool wall,
     the bench with swords, the coal bin, armour and weapon racks, a horse in for shoeing; an iron-bound oak block WAITS FOR ITS ANVIL
     (needs a model).
-  - Real lights added: 11 wall torches, 2 hearth fires, 2 candle rings, 2 standing torches. Not measured: the frame rate with them.
+  - Fires added: 11 wall torches, 2 hearth fires, 2 candle rings, 2 standing torches. They are flames and glow only: the room's ten real
+    lights are taken by rows written earlier (see the kit, LIGHTS).
   - NOT DONE: nobody stands in the three halls (people = the dressing pass); the Inn has no upstairs; no door leaf was looked at.
+- **PASS 2b, EVERY HOUSE IS WALKED INTO** (`T-houses.js`; the brief: "one furnished inside per house kind, reused"; seen on screen, 3 probe runs):
+  - The 43 houses are hollow texbuildings now (one hall, a single swinging door at the row's own door place). In the looks: `walls()` (three
+    faces + a front with the doorway cut), `footS()` (strips, no lid), the drawn door panel gone (frame, step, path at the real doorway),
+    the ground windows clear of it (`wx`), the shop's counter right of its door, the yard house's house part on the left.
+  - `insides(ctx, hall, list)`: laid out BY RULE on whatever squares a house has: the door's column stays open to the back wall, where the
+    hearth stands; the other squares take, back row first and far from the door first, the bed (drawn: plank frame, straw mattress, a
+    blanket; the pack's beds are iron hospital frames), the table with two stools, then the kind's own pieces (1 a chest and a dresser,
+    2 the counter, bread racks, crates, 3 straw and a bucket, 4 a bookcase, a dining table with chairs, a round rug, 5 a workbench, barrels).
+  - **ONE ROW FOR ALL 43** (`cam:houses:in`, parts turned into the room's frame by `toRoom`): measured in the probe, a row a house added
+    1,570 geometries to the room (1,800 -> 3,380); gathered, about 250. Few looks (one wood, one linen): a new tint or glow is a new mesh.
+  - One hearth in three burns (`hearth_fire`, `noLight`), the others are banked embers. No real light in any house (see the kit).
+  - NOT DONE: no upstairs (no stair: mondo's "no procedural stairs"); nobody lives in them yet; the houses' OUTSIDE looks are still a row
+    each (43 rows; gathering them would cut about 900 more meshes but a roof part's `roof` flag may be read per row: not tried).
 
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
@@ -5430,8 +5444,15 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   height from the floor); (4) NEVER a box with a top over the whole plan in a walked-into building's look (the stone lid); (5) a thing
   laid on the floor starts at y 0.036 and is at least 12 mm thick; (6) dark wood needs `gain` 1.4 indoors or it is a black shape.
   The camera's eye is about 1.1 m up: judge heights in a probe picture by that.
-- **LIGHTS THAT ARE REAL** (catalogue props with a light): `wall_torch` (give `y` 2.2), `cave_torch` (a standing torch, 1.9 m, blocks),
-  `hearth_fire`, `brazier`, `candle_ring`, `campfire`. Indoors nothing else lights a hall but `glow`.
+- **LIGHTS: ONLY TEN ARE REAL IN THE WHOLE ROOM** (three-renderer.js `HQ_PROP_LIGHT_MAX` = 10, first rows first; the castle's braziers
+  are written first and take most). Every other `wall_torch` (give `y` 2.2), `cave_torch` (standing, 1.9 m, blocks), `hearth_fire`,
+  `brazier`, `candle_ring`, `campfire` shows its flame and glow sprite but lights nothing. So light a hall with `glow` on its ceiling,
+  walls and windows, and treat fires as things to look at. `noLight: true` on a row keeps it out of the ten.
+- **MESHES ARE THE FRAME'S PRICE** (rendering-loading-perf.md): every arch row costs one mesh per look (sheet + tint + glow + gain) it
+  uses. Many small rows with their own tints = hundreds of meshes. Gather repeated things into ONE row (`T-houses.js` `toRoom`: a part's
+  place through the building's `at()`, its `ry` + the building's rot, its `step` turned; give the row `y: 0`, the room's middle is the
+  hill's top) and keep the looks few. Read the count in a probe: a view's `"eval"` printing
+  `ThreeRenderer.hq.dev.renderer().info.memory.geometries` (the room stood at about 1,800 before the houses' insides, 2,020 after).
 - **BLOCKERS ON SQUARES**: mondo's rule holds in every hall: what blocks stands on a whole 3.5 m square's middle with a ghost wall
   (`ctx.feat({ k: 'wall', ghost: true, rail: false, ... })`), decor stands off the middles, the door's column stays open.
 - **NEEDS A MODEL (zone-wide, nothing on R2)**: a market stall, an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart,
