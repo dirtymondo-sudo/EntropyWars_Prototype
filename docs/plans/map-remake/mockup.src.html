@@ -1,0 +1,258 @@
+<title>Entropy Wars Map Remake</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: the game's own map panel. One black screen, white-outlined panels: places list | the sheet | the card. */
+:root {
+  color-scheme: dark;
+  --bg: #000; --panel: #030305; --stage: #070a14; --line: #f2efe6; --line-dim: rgba(242,239,230,.28);
+  --ink: #f2efe6; --ink-dim: #9b968a; --ink-faint: #5d5a52; --here: #ffd23f; --way: #6ee58a; --hid: #ff8ad8; --hq: #ffd23f; --sea: #12325c; --ice: #6f8ea3;
+  --back: #e0524a; --go: #58c86a;
+  --f-title: 'Cormorant SC', 'Cormorant Garamond', Georgia, serif; --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; padding-block: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.mocknote { border: 1px dashed var(--line-dim); padding: 8px 12px; color: var(--ink-dim); line-height: 1.6; letter-spacing: .04em; }
+.mocknote b { color: var(--here); font-weight: 600; }
+.head { border: 1px solid var(--line); padding: 6px 14px 8px; }
+.head h1 { font-family: var(--f-title); font-weight: 700; font-size: 34px; letter-spacing: .12em; margin: 0; line-height: 1.05; }
+.head p { margin: 2px 0 0; font-size: 10px; letter-spacing: .28em; color: var(--ink-dim); text-transform: uppercase; }
+.cols { display: grid; grid-template-columns: 216px minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+.col { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+h2 { font-family: var(--f-title); font-size: 19px; letter-spacing: .2em; margin: 0; font-weight: 700; }
+.sub { font-size: 9px; letter-spacing: .22em; color: var(--ink-dim); text-transform: uppercase; }
+.list { display: flex; flex-direction: column; gap: 2px; }
+.list .grp { margin: 8px 0 2px; font-size: 8.5px; letter-spacing: .3em; color: var(--ink-faint); }
+.row { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 1px solid transparent; color: var(--ink); font: inherit; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; text-align: left; padding: 6px 6px; cursor: pointer; }
+.row:hover, .row:focus-visible { border-color: var(--line-dim); outline: none; }
+.row.on { color: var(--here); border-color: var(--here); }
+.row .sw { flex: 0 0 11px; height: 11px; border-radius: 50%; border: 2px solid var(--c, var(--ink-dim)); }
+.row.dist { padding: 4px 6px 4px 22px; font-size: 9.5px; color: var(--ink-dim); }
+.row.dist .sw { border-radius: 0; background: var(--c); border: 0; opacity: .8; }
+.row.dist.on { color: var(--ink); border-color: var(--line-dim); }
+.row .n { margin-left: auto; font-size: 8.5px; color: var(--ink-faint); white-space: nowrap; }
+.row .nm { min-width: 0; overflow-wrap: anywhere; }
+.crumb { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.crumb button { background: none; border: 0; color: var(--ink-dim); font: inherit; font-size: 10px; letter-spacing: .22em; text-transform: uppercase; cursor: pointer; padding: 2px 0; text-decoration: underline dotted; text-underline-offset: 3px; }
+.crumb button:last-of-type { color: var(--ink); text-decoration: none; cursor: default; }
+.crumb i { color: var(--ink-faint); font-style: normal; }
+.bar { border: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; justify-content: space-between; padding: 5px 8px; }
+.bar span { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+.bar .btns { display: flex; flex-wrap: wrap; gap: 5px; }
+.btn { background: none; border: 1px solid var(--line-dim); border-radius: 12px; color: var(--ink-dim); font: inherit; font-size: 9px; letter-spacing: .18em; text-transform: uppercase; padding: 4px 10px; cursor: pointer; }
+.btn:hover, .btn:focus-visible { color: var(--ink); border-color: var(--line); outline: none; }
+.btn.on { color: var(--here); border-color: var(--here); }
+.btn.demo { border-style: dashed; }
+.stage { position: relative; background: var(--stage); border: 1px solid rgba(184,160,96,.4); aspect-ratio: 11 / 9; max-width: 100%; overflow: hidden; }
+.stage svg { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; user-select: none; }
+.stage svg text { font-family: var(--f-mono); pointer-events: none; }
+.stage svg .t { font-family: var(--f-title); }
+.key { border: 1px solid var(--line); padding: 7px 10px; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 8.5px; letter-spacing: .18em; color: var(--ink-dim); text-transform: uppercase; align-items: center; }
+.key b { font-family: var(--f-title); font-size: 13px; letter-spacing: .3em; color: var(--ink); margin-right: 6px; }
+.key i { display: inline-block; vertical-align: middle; margin-right: 6px; }
+.k-line { width: 22px; height: 0; border-top: 2px solid var(--way); } .k-line.hid { border-top: 2px dashed var(--hid); }
+.k-door { width: 7px; height: 11px; background: var(--hq); } .k-in { width: 9px; height: 9px; border: 2px solid var(--ink); transform: rotate(45deg); } .k-old { width: 16px; height: 11px; border: 1px dashed var(--ink-dim); }
+.k-here { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 11px solid var(--here); }
+.card { border: 1px solid var(--line); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.card .ey { font-size: 8.5px; letter-spacing: .3em; color: var(--ink-dim); text-transform: uppercase; }
+.card h3 { font-family: var(--f-title); font-size: 24px; letter-spacing: .1em; margin: 0; line-height: 1.1; text-wrap: balance; overflow-wrap: anywhere; }
+.card .meta { font-size: 9.5px; letter-spacing: .16em; color: var(--ink-dim); text-transform: uppercase; line-height: 1.7; }
+.card .sec { font-size: 8.5px; letter-spacing: .3em; color: var(--ink-faint); margin-top: 4px; }
+.card .it { display: flex; gap: 8px; align-items: baseline; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; line-height: 1.5; background: none; border: 0; color: var(--ink); font-family: inherit; text-align: left; padding: 2px 0; width: 100%; cursor: pointer; }
+.card .it:hover span:last-child, .card .it:focus-visible span:last-child { text-decoration: underline; }
+.card .it.plain { cursor: default; } .card .it.plain:hover span:last-child { text-decoration: none; }
+.card .it .tag { flex: 0 0 auto; font-size: 8px; letter-spacing: .14em; border: 1px solid currentColor; border-radius: 9px; padding: 0 6px; }
+.tag.zone { color: var(--way); } .tag.secret { color: var(--hid); } .tag.hq { color: var(--hq); } .tag.inside { color: var(--ink); } .tag.old { color: var(--ink-dim); }
+.card .it span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.go { align-self: flex-start; background: none; border: 1px solid var(--go); color: var(--go); font: inherit; font-size: 10px; letter-spacing: .2em; padding: 6px 14px; cursor: pointer; text-transform: uppercase; }
+.go[disabled] { border-color: var(--ink-faint); color: var(--ink-faint); cursor: default; }
+.help { color: var(--ink-dim); line-height: 1.7; letter-spacing: .04em; font-size: 11px; margin: 0; }
+.foot { text-align: right; font-size: 8.5px; letter-spacing: .3em; color: var(--ink-faint); }
+@media (max-width: 980px) { .cols { grid-template-columns: minmax(0, 1fr); } .stage { aspect-ratio: 1 / 1; } .head h1 { font-size: 26px; } }
+@media (prefers-reduced-motion: no-preference) { .row, .btn { transition: border-color .12s, color .12s; } }
+</style>
+<div class="wrap">
+  <div class="mocknote"><b>MOCK-UP · NOT IN THE GAME YET.</b> Every zone, district, plot name and door on this page is read from the game's own data (data.js at main 67adc4c, 2026-11-16). Click a zone, then a district, then a plot. Wheel zooms, drag pans. The dashed buttons only exist in this mock-up.</div>
+  <div class="head"><h1>THE MAP</h1><p id="headsub">THE WORLD · EVERY ZONE · M CLOSES</p></div>
+  <div class="cols">
+    <div class="col"><h2>PLACES</h2><div class="sub" id="placesub"></div><div class="list" id="list"></div></div>
+    <div class="col">
+      <div class="crumb" id="crumb"></div>
+      <div class="bar"><span id="count"></span><div class="btns" id="btns"></div></div>
+      <div class="stage"><svg id="svg" role="group" aria-label="The map"></svg></div>
+      <div class="key"><b>KEY</b><span><i class="k-line"></i>a way between zones</span><span><i class="k-line hid"></i>a hidden way, once found</span><span><i class="k-door"></i>a DOOR HQ door</span><span><i class="k-in"></i>a way inside (a building, a ship, a cave)</span><span><i class="k-old"></i>a zone still on its old rooms</span><span><i class="k-here"></i>you are here</span></div>
+    </div>
+    <div class="col"><div class="card" id="card"></div><p class="help" id="help"></p></div>
+  </div>
+  <div class="foot">ESC · RIGHT CLICK · CLOSE</div>
+</div>
+<script>
+const DATA = /*DATA*/null;
+const U = 100, $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const Z = {}; DATA.zones.forEach(z => { Z[z.id] = z; });
+const OFFMAP = [{ id: 'hq', label: 'D.O.O.R. HEADQUARTERS', note: 'The building is not a place in the world: its doors come out at the gold marks. It keeps its own sheet, the floors and rooms directory, as it is today.' },
+  { id: 'heaven', label: 'HEAVEN', note: 'Over the Vatican. Still on its old rooms.' }, { id: 'space', label: 'OUTER SPACE', note: 'The Spaceship, the Moon, Mars, Saturn, the Singularity. Still on its old rooms.' }, { id: 'astral', label: 'THE ASTRAL REALM', note: 'Behind the mirrors. Still on its old rooms.' }];
+/* the mock-up's "new save": what an officer who took the taxi and one walk in the Woods has on the map */
+const NEW_SAVE = { city: p => p.d === 'H' || (p.d === 'B' && p.c <= 9) || (p.d === 'F' && p.r >= 5) || (p.c === 8 && p.r === 6), woods: p => p.d === 'C' };
+const S = { mode: 'world', layer: 'surface', zone: null, district: null, pick: null, fog: false, view: null, fit: null, here: { zone: 'city', sheet: 0, c: 8.3, r: 6.7 } };
+const walked = (z, p) => !S.fog || !!(NEW_SAVE[z.id] && NEW_SAVE[z.id](p));
+const entered = z => !S.fog || !!NEW_SAVE[z.id];
+const seenZone = z => entered(z) || DATA.zones.some(o => entered(o) && o.sheets.some(s => s.doors.some(d => d.to === z.id && d.kind === 'zone' && doorSeen(o, s, d))));
+function plotAt(sh, c, r) { return sh.plots.find(p => p.c === Math.floor(c) && p.r === Math.floor(r)) || null; }
+function doorSeen(z, sh, d) { if (!S.fog) return true; if (d.kind === 'secret') return false; const p = plotAt(sh, Math.min(sh.cols - .01, Math.max(0, d.c)), Math.min(sh.rows - .01, Math.max(0, d.r))); return !!(p && walked(z, p)); }
+const zoneBox = z => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; z.sheets.forEach(s => { x0 = Math.min(x0, s.wx); y0 = Math.min(y0, s.wy); x1 = Math.max(x1, s.wx + s.cols); y1 = Math.max(y1, s.wy + s.rows); }); return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }; };
+const WORLD_BOX = { surface: { x: -17, y: -12, w: 44.5, h: 42 }, under: { x: -15, y: -4.5, w: 42, h: 30 } };
+function fitOf(b, pad) { const st = $('svg').getBoundingClientRect(), ar = (st.width || 880) / (st.height || 720); let w = (b.w + 2 * pad) * U, h = (b.h + 2 * pad) * U; const cx = (b.x + b.w / 2) * U, cy = (b.y + b.h / 2) * U; if (w / h < ar) w = h * ar; else h = w / ar; return [cx - w / 2, cy - h / 2, w, h]; }
+function districtBox(z, L) { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; z.sheets.forEach(s => s.plots.forEach(p => { if (p.d !== L) return; x0 = Math.min(x0, s.wx + p.c); y0 = Math.min(y0, s.wy + p.r); x1 = Math.max(x1, s.wx + p.c + 1); y1 = Math.max(y1, s.wy + p.r + 1); })); return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }; }
+function wrap(name, max) { const words = String(name).split(/\s+/), lines = []; let cur = ''; for (const w of words) { if (w.length > max) return null; if (!cur) cur = w; else if ((cur + ' ' + w).length <= max) cur += ' ' + w; else { lines.push(cur); cur = w; } } if (cur) lines.push(cur); return lines; }
+function setView(v) { S.view = v.slice(); $('svg').setAttribute('viewBox', v.map(n => n.toFixed(1)).join(' ')); }
+function open(mode, zone, district, keepPick) { S.mode = mode; S.zone = zone || null; S.district = district || null; if (!keepPick) S.pick = null; if (zone) S.layer = Z[zone].layer; S.view = null; render(); }
+
+function render() {
+  const svg = $('svg'); const world = S.mode === 'world', z = S.zone ? Z[S.zone] : null;
+  const box = world ? WORLD_BOX[S.layer] : S.district ? districtBox(z, S.district) : zoneBox(z);
+  S.fit = fitOf(box, world ? 0.4 : S.district ? 0.45 : 0.7); if (!S.view) setView(S.fit);
+  const ppu = (svg.getBoundingClientRect().width || 880) / S.view[2];   // screen px per user unit
+  const px = n => n / ppu, plotPx = U * ppu;
+  let o = '';
+  const text = (x, y, s, size, fill, opt) => { opt = opt || {}; return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${px(size).toFixed(2)}" fill="${fill}" text-anchor="${opt.anchor || 'middle'}"${opt.cls ? ` class="${opt.cls}"` : ''}${opt.weight ? ` font-weight="${opt.weight}"` : ''}${opt.ls ? ` letter-spacing="${px(opt.ls).toFixed(2)}"` : ''}${opt.op ? ` opacity="${opt.op}"` : ''}>${esc(s)}</text>`; };
+  const plate = (x, y, s, size, fill, opt) => { opt = opt || {}; const w = px(String(s).length * size * 0.66 + 10), h = px(size + 7); const x0 = opt.anchor === 'start' ? x : x - w / 2; return `<rect x="${x0.toFixed(1)}" y="${(y - h * 0.72).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#000" fill-opacity=".8"${opt.stroke ? ` stroke="${opt.stroke}" stroke-width="${px(1)}"` : ''}/>` + text(opt.anchor === 'start' ? x + px(5) : x, y, s, size, fill, { anchor: opt.anchor, weight: opt.weight, ls: 1 }); };
+  /* the ground */
+  if (S.layer === 'surface') { o += `<rect x="${12 * U}" y="${-40 * U}" width="${60 * U}" height="${65 * U}" fill="var(--sea)" opacity=".55"/><rect x="${-60 * U}" y="${25 * U}" width="${140 * U}" height="${30 * U}" fill="var(--ice)" opacity=".28"/>`; if (world) o += text(21 * U, 14.5 * U, 'THE OCEAN', 11, '#8fb0dc', { ls: 3 }) + text(-10 * U, 27.6 * U, 'THE ICE', 11, '#b9cfdc', { ls: 3 }); }
+  else if (world) o += `<rect x="${12 * U}" y="${-40 * U}" width="${60 * U}" height="${65 * U}" fill="#0b1830" opacity=".8"/>` + text(21 * U, 13 * U, 'UNDER THE SEA', 11, '#6f8fc0', { ls: 3 });
+  const drawSheet = (zn, sh, mode) => {   // mode: 'world' | 'zone'
+    const ox = sh.wx * U, oy = sh.wy * U; let s = '';
+    const grid = {}; sh.plots.forEach(p => { grid[p.c + ',' + p.r] = p; });
+    const showNames = mode === 'zone' && plotPx >= 58;
+    sh.plots.forEach(p => {
+      const w = walked(zn, p), dim = S.district && mode === 'zone' && p.d !== S.district, sel = S.pick && S.pick.zone === zn.id && S.pick.plot === p.id && S.pick.sheet === zn.sheets.indexOf(sh);
+      const col = zn.districts[p.d].color;
+      s += `<rect class="plot" data-zone="${zn.id}" data-sheet="${zn.sheets.indexOf(sh)}" data-plot="${p.id}" x="${ox + p.c * U}" y="${oy + p.r * U}" width="${U}" height="${U}" fill="${w ? col : '#1a1f2c'}" fill-opacity="${w ? (dim ? .2 : .58) : .5}" stroke="${sel ? 'var(--here)' : '#000'}" stroke-opacity="${sel ? 1 : .45}" stroke-width="${sel ? px(2.5) : px(1)}"><title>${esc(w ? p.name + ' · ' + zn.districts[p.d].name : 'NOT WALKED YET')}</title></rect>`;
+      if (showNames && !dim) { if (!w) s += text(ox + (p.c + .5) * U, oy + (p.r + .55) * U, '?', 13, 'var(--ink-faint)'); else { const size = plotPx >= 110 ? 10.5 : 8.5, max = Math.floor((plotPx - 10) / (size * 0.64)), lines = wrap(p.name.toUpperCase(), max); if (lines && lines.length * (size + 3) < plotPx - 12) lines.forEach((l, i) => { s += text(ox + (p.c + .5) * U, oy + (p.r + .5) * U + px((i - (lines.length - 1) / 2) * (size + 3) + size * .35), l, size, '#f6f3ea', { weight: 500 }); }); } }
+    });
+    /* district borders: a thick line wherever the district changes or the sheet ends */
+    const line = (x1, y1, x2, y2) => `<line x1="${ox + x1 * U}" y1="${oy + y1 * U}" x2="${ox + x2 * U}" y2="${oy + y2 * U}" stroke="#000" stroke-width="${px(mode === 'zone' ? 3 : 1.6)}" stroke-linecap="square"/><line x1="${ox + x1 * U}" y1="${oy + y1 * U}" x2="${ox + x2 * U}" y2="${oy + y2 * U}" stroke="${zn.color}" stroke-opacity=".75" stroke-width="${px(mode === 'zone' ? 1.2 : .7)}"/>`;
+    sh.plots.forEach(p => { [[1, 0, p.c + 1, p.r, p.c + 1, p.r + 1], [0, 1, p.c, p.r + 1, p.c + 1, p.r + 1], [-1, 0, p.c, p.r, p.c, p.r + 1], [0, -1, p.c, p.r, p.c + 1, p.r]].forEach(e => { const n = grid[(p.c + e[0]) + ',' + (p.r + e[1])]; if (!n || (n.d !== p.d && (e[0] > 0 || e[1] > 0) && (walked(zn, p) || walked(zn, n)))) s += line(e[2], e[3], e[4], e[5]); }); });
+    return s;
+  };
+  const districtLabels = (zn, mode, boxes) => { let s = ''; Object.keys(zn.districts).forEach(L => {
+      const pl = []; zn.sheets.forEach(sh => sh.plots.forEach(p => { if (p.d === L) pl.push({ x: sh.wx + p.c + .5, y: sh.wy + p.r + .5, w: walked(zn, p) }); })); if (!pl.length || !pl.some(p => p.w)) return;
+      const b = districtBox(zn, L), name = zn.districts[L].name.toUpperCase(), names = mode === 'zone' && plotPx >= 58;
+      let cx = pl.reduce((a, p) => a + p.x, 0) / pl.length, cy = pl.reduce((a, p) => a + p.y, 0) / pl.length;
+      const near = pl.reduce((a, p) => (Math.hypot(p.x - cx, p.y - cy) < Math.hypot(a.x - cx, a.y - cy) ? p : a), pl[0]); if (Math.hypot(near.x - cx, near.y - cy) > .8) { cx = near.x; cy = near.y; }
+      const size = mode === 'world' ? 8.5 : names ? 22 : 12, wpx = b.w * plotPx - 8;
+      const lines = wrap(name, Math.max(4, Math.floor(wpx / (size * 0.66)))); if (!lines || (mode === 'world' && (lines.length > 2 || b.h * plotPx < lines.length * 12))) return;
+      if (S.district && mode === 'zone' && L !== S.district) return;
+      if (names) { if (S.district) return; const top = pl.reduce((a, p) => (p.y < a.y || (p.y === a.y && p.x < a.x) ? p : a), pl[0]); s += plate((top.x - .5) * U + px(4), (top.y - .5) * U + px(13), name, 8.5, zn.districts[L].color, { anchor: 'start', weight: 600, stroke: zn.districts[L].color }); return; }
+      lines.forEach((l, i) => { const y = cy * U + px((i - (lines.length - 1) / 2) * (size + 3) + size * .35); if (boxes && !names) { const w = px(l.length * size * 0.66 + 14), h = px(size + 9); boxes.push({ x: cx * U - w / 2, y: y - h * .8, w, h: h * 1.1 }); } s += names ? text(cx * U, y, l, size, '#fff', { cls: 't', weight: 700, ls: 3, op: .2 }) : (mode === 'zone' ? plate(cx * U, y, l, size, '#fff', { weight: 600 }) : text(cx * U, y, l, size, '#fff', { weight: 500, ls: .6 })); });
+    }); return s; };
+  const doorMark = (x, y, d, zn, sh, withLabel, boxes) => { let s = ''; const r = px(withLabel ? 5.5 : 3.6), col = d.kind === 'hq' ? 'var(--hq)' : d.kind === 'secret' ? 'var(--hid)' : (d.kind === 'inside' || d.kind === 'self') ? 'var(--ink)' : d.kind === 'old' ? 'var(--ink-dim)' : 'var(--way)';
+    const tip = `${d.toLabel}${d.sub ? ' · ' + d.sub : ''}`;
+    const attrs = `class="door" data-zone="${zn.id}" data-sheet="${zn.sheets.indexOf(sh)}" data-door="${d.id}" style="cursor:pointer"`;
+    if (d.kind === 'hq') s += `<rect ${attrs} x="${x - r * .7}" y="${y - r * 1.1}" width="${r * 1.4}" height="${r * 2.2}" fill="${col}" stroke="#000" stroke-width="${px(1)}"><title>${esc(tip)}</title></rect>`;
+    else if (d.kind === 'inside' || d.kind === 'self') s += `<rect ${attrs} x="${x - r * .8}" y="${y - r * .8}" width="${r * 1.6}" height="${r * 1.6}" transform="rotate(45 ${x} ${y})" fill="#000" stroke="${col}" stroke-width="${px(1.6)}"><title>${esc(tip)}</title></rect>`;
+    else s += `<circle ${attrs} cx="${x}" cy="${y}" r="${r}" fill="${col}" stroke="#000" stroke-width="${px(1.2)}"><title>${esc(tip)}</title></circle>`;
+    if (withLabel) { const lab = ((d.kind === 'inside' || d.kind === 'self') ? '' : '▸ ') + d.toLabel.replace(/^DOOR HQ · /, 'HQ · '), size = 8, w = px(lab.length * size * 0.66 + 10), h = px(size + 7); let lx = x + px(9), ly = y + px(3); if (lx + w > S.view[0] + S.view[2] || (x - ox(sh)) / U > sh.cols - 1.2) lx = x - px(9) - w; const bx = { x: lx, y: ly - h, w, h: h * 1.3 }; if (!boxes.some(b => bx.x < b.x + b.w && bx.x + bx.w > b.x && bx.y < b.y + b.h && bx.y + bx.h > b.y)) { boxes.push(bx); s += plate(lx, ly, lab, size, col, { anchor: 'start' }); } }
+    return s; };
+  const ox = sh => sh.wx * U;
+  if (world) {
+    /* what lies on the other level, as an outline */
+    DATA.zones.filter(zn => zn.layer !== S.layer && seenZone(zn)).forEach(zn => zn.sheets.forEach(sh => { o += `<rect x="${sh.wx * U}" y="${sh.wy * U}" width="${sh.cols * U}" height="${sh.rows * U}" fill="none" stroke="var(--ink-faint)" stroke-dasharray="${px(3)} ${px(4)}" stroke-width="${px(1)}"/>`; }));
+    DATA.zones.filter(zn => zn.layer !== S.layer && seenZone(zn)).forEach(zn => { const b = zoneBox(zn); o += text((b.x + .2) * U, (b.y + .75) * U, zn.label + (S.layer === 'under' ? ' (ABOVE)' : ' (BELOW)'), 8, 'var(--ink-faint)', { anchor: 'start' }); });
+    DATA.old.filter(b => b.layer === S.layer && !S.fog).forEach(b => { o += `<g class="oldz" data-old="${b.id}|${esc(b.label)}" style="cursor:pointer"><rect x="${b.x * U}" y="${b.y * U}" width="${b.w * U}" height="${b.h * U}" fill="${b.color}" fill-opacity=".07" stroke="${b.color}" stroke-opacity=".7" stroke-dasharray="${px(6)} ${px(4)}" stroke-width="${px(1.3)}"/>` + `</g>`; });
+    const here = DATA.zones.filter(zn => zn.layer === S.layer);
+    here.forEach(zn => { if (!seenZone(zn)) return; if (!entered(zn)) { const b = zoneBox(zn); o += `<rect x="${b.x * U}" y="${b.y * U}" width="${b.w * U}" height="${b.h * U}" fill="#1a1f2c" fill-opacity=".4" stroke="var(--ink-faint)" stroke-dasharray="${px(5)} ${px(4)}" stroke-width="${px(1.2)}"/>` + text((b.x + b.w / 2) * U, (b.y + b.h / 2) * U + px(6), '?', 20, 'var(--ink-faint)'); return; }
+      o += `<g class="zone" data-zone="${zn.id}" style="cursor:pointer">` + zn.sheets.map(sh => drawSheet(zn, sh, 'world')).join('') + `</g>`; });
+    /* the ways between zones: door to door */
+    const done = {}; let ways = '', marks = '';
+    here.forEach(zn => { if (!entered(zn)) return; zn.sheets.forEach(sh => sh.doors.forEach(d => {
+      if (!doorSeen(zn, sh, d)) return; const ax = (sh.wx + d.c) * U, ay = (sh.wy + d.r) * U;
+      if (d.kind === 'hq') { marks += doorMark(ax, ay, d, zn, sh, false); return; }
+      if (d.kind === 'inside' || d.kind === 'self') return;
+      let bx = null, by = null, hid = d.secret;
+      if (d.to && Z[d.to] && d.to !== zn.id) { const tz = Z[d.to]; if (tz.layer !== S.layer) { marks += doorMark(ax, ay, d, zn, sh, false) + text(ax, ay + px(3), tz.layer === 'under' ? '▼' : '▲', 7, '#000', { weight: 700 }); return; } const ts = tz.sheets.find(s2 => s2.room === d.toRoom) || tz.sheets[0]; const td = ts.doors.find(x => x.id === d.toAt); if (td) { bx = (ts.wx + td.c) * U; by = (ts.wy + td.r) * U; hid = hid || td.secret; if (S.fog && hid) return; } else { marks += doorMark(ax, ay, d, zn, sh, false); return; } }
+      else if (d.to === zn.id && d.toRoom !== sh.room) { const ts = zn.sheets.find(s2 => s2.room === d.toRoom); const td = ts && ts.doors.find(x => x.id === d.toAt); if (td) { bx = (ts.wx + td.c) * U; by = (ts.wy + td.r) * U; } }
+      else if (d.kind === 'old' || d.kind === 'secret') { const b = DATA.old.find(x => x.id === d.to && x.layer === S.layer); if (b && !S.fog) { bx = Math.max(b.x, Math.min(b.x + b.w, sh.wx + d.c)) * U; by = Math.max(b.y, Math.min(b.y + b.h, sh.wy + d.r)) * U; } else { marks += doorMark(ax, ay, d, zn, sh, false); return; } }
+      if (bx == null) return; const col = hid ? 'var(--hid)' : 'var(--way)'; const key = [Math.round(Math.min(ax, bx)), Math.round(Math.min(ay, by)), Math.round(Math.max(ax, bx)), Math.round(Math.max(ay, by))].join(','); if (done[key]) return; done[key] = 1;
+      ways += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="#000" stroke-width="${px(5)}" stroke-linecap="round"/><line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${col}" stroke-width="${px(2.4)}" stroke-linecap="round"${hid ? ` stroke-dasharray="${px(4)} ${px(4)}"` : ''}/>`;
+      marks += `<circle cx="${ax}" cy="${ay}" r="${px(3.4)}" fill="${col}" stroke="#000" stroke-width="${px(1)}"><title>${esc(d.toLabel + ' · ' + d.sub)}</title></circle><circle cx="${bx}" cy="${by}" r="${px(3.4)}" fill="${col}" stroke="#000" stroke-width="${px(1)}"/>`;
+    })); });
+    o += here.filter(entered).map(zn => districtLabels(zn, 'world')).join('') + ways + marks;
+    DATA.old.filter(b => b.layer === S.layer && !S.fog).forEach(b => { o += plate((b.x + b.w / 2) * U, (b.y + b.h / 2) * U, b.label, 10, b.color, { weight: 600 }) + text((b.x + b.w / 2) * U, (b.y + b.h / 2) * U + px(15), 'OLD ROOMS · ' + b.rooms.length, 7.5, 'var(--ink-dim)'); });
+    here.forEach(zn => { if (!entered(zn)) return; const sh = zn.sheets[0]; o += plate((sh.wx + .12) * U, (sh.wy + .16) * U + px(12), zn.label, 10.5, zn.color, { anchor: 'start', weight: 600, stroke: zn.color }); });
+  } else {
+    const boxes = []; o += `<g>` + z.sheets.map(sh => drawSheet(z, sh, 'zone')).join('') + `</g>` + districtLabels(z, 'zone', boxes); z.sheets.forEach(sh => sh.doors.forEach(d => { if (!doorSeen(z, sh, d)) return; if (d.kind === 'hq' && /THE BAY$/.test(d.toLabel) && plotPx < 58) return; o += doorMark((sh.wx + d.c) * U, (sh.wy + d.r) * U, d, z, sh, plotPx >= 34, boxes); }));
+  }
+  /* you are here */
+  const hz = Z[S.here.zone]; if (hz.layer === S.layer && (world || S.zone === hz.id)) { const hs = hz.sheets[S.here.sheet], x = (hs.wx + S.here.c) * U, y = (hs.wy + S.here.r) * U, r = px(world ? 7 : 10); o += `<circle cx="${x}" cy="${y}" r="${r * 1.9}" fill="none" stroke="var(--here)" stroke-width="${px(1.2)}" opacity=".7"/><path d="M${x} ${y - r} L${x + r * .8} ${y + r * .8} L${x} ${y + r * .35} L${x - r * .8} ${y + r * .8} Z" fill="var(--here)" stroke="#000" stroke-width="${px(1)}"><title>YOU ARE HERE</title></path>`; }
+  svg.innerHTML = o;
+  chrome();
+}
+function chrome() {
+  const world = S.mode === 'world', z = S.zone ? Z[S.zone] : null;
+  let c = `<button data-go="world">THE WORLD</button>`; if (z) { c += `<i>▸</i><button data-go="zone">${esc(z.label)}</button>`; if (S.district) c += `<i>▸</i><button>${esc(z.districts[S.district].name)}</button>`; } else c += `<i>▸</i><button>${S.layer === 'surface' ? 'THE SURFACE' : 'UNDER THE GROUND'}</button>`;
+  $('crumb').innerHTML = c;
+  const all = []; DATA.zones.forEach(zn => zn.sheets.forEach(sh => sh.plots.forEach(p => all.push([zn, p]))));
+  const scope = z ? all.filter(a => a[0] === z && (!S.district || a[1].d === S.district)) : all;
+  $('count').textContent = `${scope.filter(a => walked(a[0], a[1])).length} OF ${scope.length} PLOTS WALKED` + (world ? ` · ${DATA.zones.filter(entered).length} OF ${DATA.zones.length + DATA.old.length - 1 + 3} ZONES` : '');
+  $('btns').innerHTML = `<button class="btn${world && S.layer === 'surface' ? ' on' : ''}" data-layer="surface">SURFACE</button><button class="btn${world && S.layer === 'under' ? ' on' : ''}" data-layer="under">UNDERGROUND</button><button class="btn" data-zoom="1.3">+</button><button class="btn" data-zoom="0.77">−</button><button class="btn" data-fit="1">FIT</button><button class="btn demo${S.fog ? ' on' : ''}" data-fog="1" title="mock-up only: how a new save reads">${S.fog ? 'A NEW SAVE' : 'ALL WALKED'}</button>`;
+  $('headsub').textContent = world ? 'THE WORLD · EVERY ZONE AT ITS REAL SIZE · ONE SQUARE = ONE PLOT (42 M) · M CLOSES' : `${z.label} · ${Object.keys(z.districts).length} DISTRICTS · ${z.sheets.reduce((a, s) => a + s.plots.length, 0)} PLOTS · M CLOSES`;
+  $('placesub').textContent = `${DATA.zones.length} ZONES ON PLOTS · ${DATA.old.length - 1 + 3} ON OLD ROOMS`;
+  let l = `<button class="row${world ? ' on' : ''}" data-go="world"><span class="sw" style="--c:#f2efe6"></span><span class="nm">THE WORLD</span></button><button class="row" data-off="hq"><span class="sw" style="--c:#f0e6c8;border-radius:0"></span><span class="nm">D.O.O.R. HEADQUARTERS</span></button><div class="grp">THE ZONES</div>`;
+  DATA.zones.forEach(zn => { if (!seenZone(zn)) return; const pl = []; zn.sheets.forEach(sh => sh.plots.forEach(p => pl.push(p))); const ent = entered(zn);
+    l += `<button class="row${S.zone === zn.id ? ' on' : ''}" ${ent ? `data-zone="${zn.id}"` : 'disabled'}><span class="sw" style="--c:${zn.color}"></span><span class="nm">${ent ? esc(zn.label) : '? NOT REACHED'}</span><span class="n">${ent ? pl.filter(p => walked(zn, p)).length + '/' + pl.length : ''}</span></button>`;
+    if (S.zone === zn.id) Object.keys(zn.districts).forEach(L => { const dp = pl.filter(p => p.d === L); if (!dp.some(p => walked(zn, p))) return; l += `<button class="row dist${S.district === L ? ' on' : ''}" data-district="${L}"><span class="sw" style="--c:${zn.districts[L].color}"></span><span class="nm">${esc(zn.districts[L].name)}</span><span class="n">${dp.filter(p => walked(zn, p)).length}/${dp.length}</span></button>`; }); });
+  if (!S.fog) { l += `<div class="grp">STILL ON OLD ROOMS</div>`; const seen = {}; DATA.old.forEach(b => { const k = b.id + b.label; if (seen[k]) return; seen[k] = 1; l += `<button class="row" data-old="${b.id}|${esc(b.label)}"><span class="sw" style="--c:${b.color}"></span><span class="nm">${esc(b.label)}</span><span class="n">${b.rooms.length} ROOMS</span></button>`; }); OFFMAP.slice(1).forEach(f => { l += `<button class="row" data-off="${f.id}"><span class="sw"></span><span class="nm">${esc(f.label)}</span></button>`; }); }
+  $('list').innerHTML = l;
+  card();
+}
+function card(extra) {
+  const z = S.zone ? Z[S.zone] : null; let h = '';
+  const doorRow = (zn, sh, d) => { const tag = d.kind === 'zone' ? 'WAY' : d.kind === 'secret' ? 'HIDDEN' : d.kind === 'hq' ? 'DOOR HQ' : d.kind === 'inside' ? 'INSIDE' : d.kind === 'self' ? 'HERE' : 'OLD ROOMS'; const can = d.to && Z[d.to] && d.to !== zn.id; return `<button class="it${can ? '' : ' plain'}"${can ? ` data-zone="${d.to}"` : ''}><span class="tag ${d.kind}">${tag}</span><span>${esc(d.toLabel.replace(/^DOOR HQ · /, ''))}${d.sub ? ' · ' + esc(d.sub.split(' · ')[0]) : ''}</span></button>`; };
+  if (extra) h = extra;
+  else if (S.pick) { const zn = Z[S.pick.zone], sh = zn.sheets[S.pick.sheet], p = sh.plots.find(x => x.id === S.pick.plot), w = walked(zn, p);
+    const ds = sh.doors.filter(d => Math.floor(Math.min(sh.cols - .01, Math.max(0, d.c))) === p.c && Math.floor(Math.min(sh.rows - .01, Math.max(0, d.r))) === p.r && doorSeen(zn, sh, d));
+    h = `<div class="ey">A PLOT · ${esc(zn.label)}</div><h3>${w ? esc(p.name.toUpperCase()) : 'NOT WALKED YET'}</h3><div class="meta">${w ? esc(zn.districts[p.d].name) + ' · ' : ''}PLOT ${p.c + 1}-${p.r + 1}${S.here.zone === zn.id && Math.floor(S.here.c) === p.c && Math.floor(S.here.r) === p.r ? ' · YOU ARE HERE' : ''}</div>`;
+    if (w && ds.length) h += `<div class="sec">ON THIS PLOT</div>` + ds.map(d => doorRow(zn, sh, d)).join('');
+    h += `<button class="go"${w ? '' : ' disabled'}>${w ? 'GO ▸ ' + esc(p.name.toUpperCase()) : 'WALK THERE FIRST'}</button>`; }
+  else if (z) { const pl = []; z.sheets.forEach(sh => sh.plots.forEach(p => pl.push(p)));
+    if (S.district) { const dp = pl.filter(p => p.d === S.district); h = `<div class="ey">A DISTRICT · ${esc(z.label)}</div><h3>${esc(z.districts[S.district].name.toUpperCase())}</h3><div class="meta">${dp.filter(p => walked(z, p)).length} OF ${dp.length} PLOTS WALKED</div><div class="sec">ITS PLOTS</div>` + dp.filter(p => walked(z, p)).map(p => `<button class="it" data-plot="${p.id}"><span>${esc(p.name)}</span></button>`).join(''); }
+    else { h = `<div class="ey">A ZONE</div><h3>${esc(z.label)}</h3><div class="meta">${Object.keys(z.districts).length} DISTRICTS · ${pl.filter(p => walked(z, p)).length} OF ${pl.length} PLOTS WALKED${S.here.zone === z.id ? ' · YOU ARE HERE' : ''}</div><div class="sec">THE DISTRICTS</div>` + Object.keys(z.districts).filter(L => pl.some(p => p.d === L && walked(z, p))).map(L => `<button class="it" data-district="${L}"><span class="tag" style="color:${z.districts[L].color}">${pl.filter(p => p.d === L).length}</span><span>${esc(z.districts[L].name)}</span></button>`).join('');
+      const ds = []; z.sheets.forEach(sh => sh.doors.forEach(d => { if (d.kind !== 'inside' && d.kind !== 'self' && !(d.to === z.id) && doorSeen(z, sh, d)) ds.push(doorRow(z, sh, d)); })); if (ds.length) h += `<div class="sec">THE WAYS OUT</div>` + ds.join('');
+      const ins = {}; z.sheets.forEach(sh => sh.doors.forEach(d => { if (d.kind === 'inside' && doorSeen(z, sh, d)) ins[d.toLabel] = 1; })); if (Object.keys(ins).length) h += `<div class="sec">THE INSIDES</div>` + Object.keys(ins).map(n => `<div class="it plain"><span class="tag inside">INSIDE</span><span>${esc(n)}</span></div>`).join(''); } }
+  else h = `<div class="ey">THE WORLD</div><h3>${S.layer === 'surface' ? 'THE SURFACE' : 'UNDER THE GROUND'}</h3><div class="meta">NORTH IS UP · ONE SQUARE = ONE PLOT · 42 M</div><div class="sec">THE ZONES HERE</div>` + DATA.zones.filter(zn => zn.layer === S.layer && entered(zn)).map(zn => `<button class="it" data-zone="${zn.id}"><span class="tag" style="color:${zn.color}">${zn.sheets.reduce((a, s) => a + s.plots.length, 0)}</span><span>${esc(zn.label)}</span></button>`).join('');
+  $('card').innerHTML = h;
+  $('help').textContent = S.pick ? 'GO lands you on a plot you have already walked. A plot you have not walked shows a question mark until you stand on it.' : S.mode === 'world' ? 'The world is drawn where the zones really sit. A green line joins the two doors of a way. Click a zone for its plots.' : 'Each square is one plot with the name the game gives it. Pick a district to see it closer, pick a plot for what is on it.';
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-go],[data-zone],[data-district],[data-plot],[data-layer],[data-zoom],[data-fit],[data-fog],[data-old],[data-off]'); if (!t || t.closest('svg')) return;
+  const d = t.dataset;
+  if (d.go === 'world') open('world'); else if (d.go === 'zone') open('zone', S.zone);
+  else if (d.zone) open('zone', d.zone); else if (d.district) open('zone', S.zone, S.district === d.district && !t.classList.contains('it') ? null : d.district);
+  else if (d.plot) { const z = Z[S.zone]; const si = z.sheets.findIndex(s => s.plots.some(p => p.id === d.plot)); S.pick = { zone: z.id, sheet: si, plot: d.plot }; render(); }
+  else if (d.layer) { S.layer = d.layer; S.mode = 'world'; S.zone = null; S.district = null; S.pick = null; S.view = null; render(); }
+  else if (d.zoom) { const k = 1 / +d.zoom, v = S.view; setView([v[0] + v[2] * (1 - k) / 2, v[1] + v[3] * (1 - k) / 2, v[2] * k, v[3] * k]); render(); }
+  else if (d.fit) { S.view = null; render(); } else if (d.fog) { S.fog = !S.fog; if (S.zone && !entered(Z[S.zone])) { S.mode = 'world'; S.zone = null; } S.district = null; S.pick = null; S.view = null; render(); }
+  else if (d.old) oldCard(d.old); else if (d.off) { const f = OFFMAP.find(x => x.id === d.off); card(`<div class="ey">NOT ON THE WORLD SHEET</div><h3>${esc(f.label)}</h3><p class="help">${esc(f.note)}</p>`); }
+});
+function oldCard(key) { const [id, label] = key.split('|'); const b = DATA.old.find(x => x.id === id && x.label === label) || DATA.old.find(x => x.id === id); card(`<div class="ey">A ZONE STILL ON ITS OLD ROOMS</div><h3>${esc(b.label)}</h3><div class="meta">${b.rooms.length} ROOMS · NOT ON PLOTS YET</div><p class="help">It keeps today's room sheet until it is rebuilt. The day it gets plots, it draws like the built zones with no map work.</p><div class="sec">ITS ROOMS</div>` + b.rooms.map(r => `<div class="it plain"><span>${esc(r)}</span></div>`).join('')); }
+/* the sheet: click, wheel zoom, drag pan */
+(function () {
+  const svg = $('svg'); let drag = null;
+  const pt = e => { const r = svg.getBoundingClientRect(), v = S.view; return [v[0] + (e.clientX - r.left) / r.width * v[2], v[1] + (e.clientY - r.top) / r.height * v[3]]; };
+  svg.addEventListener('wheel', e => { e.preventDefault(); const k = e.deltaY > 0 ? 1.18 : 0.85, p = pt(e), v = S.view; if (v[2] * k > S.fit[2] * 1.6 || v[2] * k < U * 2.5) return; setView([p[0] - (p[0] - v[0]) * k, p[1] - (p[1] - v[1]) * k, v[2] * k, v[3] * k]); render(); }, { passive: false });
+  svg.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, v: S.view.slice(), moved: false, target: e.target }; svg.setPointerCapture(e.pointerId); });
+  svg.addEventListener('pointermove', e => { if (!drag) return; const r = svg.getBoundingClientRect(), dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.hypot(dx, dy) > 5) drag.moved = true; if (drag.moved) setView([drag.v[0] - dx / r.width * drag.v[2], drag.v[1] - dy / r.height * drag.v[3], drag.v[2], drag.v[3]]); });
+  svg.addEventListener('pointerup', e => { const d = drag; drag = null; if (!d) return; if (d.moved) { render(); return; }
+    const t = d.target, door = t.closest && t.closest('.door'), zone = t.closest && t.closest('.zone'), old = t.closest && t.closest('.oldz');
+    if (door) { const zn = Z[door.dataset.zone], dd = zn.sheets[+door.dataset.sheet].doors.find(x => x.id === door.dataset.door); if (dd.to && Z[dd.to] && dd.to !== zn.id) open('zone', dd.to); return; }
+    if (S.mode === 'world') { if (zone) open('zone', zone.dataset.zone); else if (old) oldCard(old.dataset.old); return; }
+    if (t.classList && t.classList.contains('plot')) { S.pick = { zone: t.dataset.zone, sheet: +t.dataset.sheet, plot: t.dataset.plot }; render(); } });
+  window.addEventListener('resize', () => { S.view = null; render(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (S.pick) { S.pick = null; render(); } else if (S.district) open('zone', S.zone); else if (S.zone) open('world'); } });
+})();
+window.MAPMOCK = { S, open, render };
+render();
+</script>

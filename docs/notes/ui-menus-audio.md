@@ -788,6 +788,13 @@ S Blue/Silver".
 - Grade faces live in styles-base.css `.ew-grade.grade-*` (the ONLY drawing path): F red, C orange, B yellow, A green,
   S blue / silver. data.js STAT_GRADE_COLORS / STAT_GRADE_FACE still hold the old hues but nothing draws from them.
 
+## THE MAP REMAKE (2026-11-16, plan + mock-up, waits mondo's OK; nothing built)
+mondo: "completely remake the map/directory in the game to reflect the new plan/layout/world map with the districts and plots, like what's actually in the game".
+- Why: the map draws one dot per ROOM; a plot-built zone is one room, so its districts and plots never show (pictures `docs/plans/map-remake/today_*.png`).
+- The plan, the mock-up pictures, the page and the scripts that draw them from data.js: `docs/plans/map-remake/` (`MAP_REMAKE_PLAN.md` first).
+- Already in the data: every plot-built room but Disaster City carries `room.plots.names` = `[plot id, name, district, level]`; nothing in the game reads it yet.
+- Open: his answers to the plan's four questions (GO per plot, zone places, what a new save shows, the underground sheet). Board row: claims.md "The map / directory".
+
 ## THE MAP (ZONES_PLAN Z3, 2026-09-30, token 20260930-zones-04-cors)
 - Area sheet draws a LAYOUT room as its plan: data.js `hqRoomPlan(roomId)` / `hqRoomPlanModel(profile, roomId, hereSpace)`;
   map.js `_hqAreaPlans` (called after `_hqAreaLayout`, non-HQ areas only). Space node ids are `<room>~<space>`; `_hqMapTravel`
