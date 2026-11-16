@@ -262,6 +262,22 @@ module.exports = {
           B('psx_metal_barrel_mp_2', 95.6, 64.1); B('psx_metal_barrel_mp_3', 96.7, 64.3); B('psx_wooden_crate_3', 93.4, 64.2); B('tire_stack', 102.3, 68.9); B('psx_old_mattress_mp_1', 106.4, 64.4, { face: 80 }); B('skateboard', 109.2, 68.6);
           B('psxg_rock_2', 99.4, 64.0); B('psxg_rock_4', 111.6, 68.9); B('traffic_barrel', 114.6, 64.0);
           props.push({ key: 'graffiti_wall', x: 100.5, z: 63.3, face: 180 }, { key: 'graffiti_wall', x: 108, z: 69.7, face: 0 }, { key: 'graffiti_wall', x: 45.5, z: 28.1, face: 180 }); }
+        /* ── THE MODEL LIST PASS (2026-11-16, mondo's rule THE MODEL LIST FIRST: the first dressing was built from the catalogue rows I already knew). Found in
+              MODEL_LIST.md and missed: the Halloween pack's corpses and body parts (`hw_body*`, `hw_part*`: the dead man of Dead Man's Cave), the bones
+              (`femur`, `ulna`), the bats, the stray cat, the playground's swing, the party's cups and cooler, cinder blocks, bricks, sandbags, cones,
+              the camping tent, the full skip. ── */
+        { const { hput, hdec } = ctx, B = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z), face: Math.round(rnd() * 360) }, o || {}));
+          /* the dead man: in the bed, a few steps short of the mouth, with what is left near him; more of it where the ghoul and the flesheater stand */
+          B('hw_body', 112.4, 68.6, { face: 70 }); B('hw_part_3', 110.9, 68.9); B('hw_part_6', 113.6, 67.9); B('femur', 108.4, 64.2); B('ulna', 107.6, 64.6); B('psx_flashlight_1', 111.5, 67.8);
+          hdec('P03-04', 'hw_part_2', -3, 1); hdec('P03-04', 'hw_part_7', 3, 2); hdec('P03-04', 'femur', -2, 2); hdec('P04-05', 'hw_body_2', 1, 1); hdec('P04-05', 'hw_part_4', 0, 2); hdec('P04-05', 'ulna', -1, 1);
+          /* bats over the three mouths (small things in the air: no square) */
+          [[121, 66.5, -1.2], [120, 65, 0.4], [121.5, 68, 1.6], [121, 14, 3.4], [120.5, 15.5, 4.1], [121, 115.5, 3.2], [120.4, 114, 3.9]].forEach((q, i) => B(i % 2 ? 'bat_brown' : 'bat_black', q[0], q[1], { y: q[2] }));
+          /* the party under the crag, the stray in the yard, the swing nobody uses in the Hollow, a camp by the Tunnel Way */
+          hdec('P03-04', 'solo_cup', 1, 1); hdec('P03-04', 'solo_cup', 0, 2); hdec('P03-04', 'solo_cup', -1, 1); hdec('P03-04', 'beach_cooler', 1, 2); hdec('P03-04', 'meshy_cinder_block', -1, 2);
+          hdec('P03-05', 'cat', 2, 3); hput('P03-05', 'ind_skip_full', -4, 3); hdec('P03-05', 'meshy_cinder_block', 1, 4); hdec('P03-05', 'hw_bricks', 3, 4); hdec('P03-05', 'traffic_cone', -1, 3);
+          hput('P04-05', 'play_swing', -1, -1); hput('P05-05', 'camping_tent', -1, -1); hdec('P05-05', 'solo_cup', 0, 0); hdec('P05-05', 'meshy_cinder_block', 1, 0);
+          B('meshy_sandbags', 116.2, 69.2, { face: 90 }); B('traffic_cone', 115.2, 63.9); B('hw_bricks', 97.8, 68.9); B('meshy_cinder_block', 94.3, 68.8); B('solo_cup', 90.2, 68.4); B('solo_cup', 88.6, 67.7);
+          B('meshy_cinder_block', 58.9, 38.2); B('hw_bricks', 60.2, 45.1); B('hw_part_9', 56.6, 37.4); }
         /* ── THE CULVERT: where the creek's water goes under the trail for good, and the dry pipe it once came out of ── */
         { const head = (id, x, z, sd) => features.push({ k: 'arch', id: 'woods:M:' + id, x, z, hug: true, parts: [
               box(0, -1.4, 0, 7, 2.3, 0.6, BRICK, T_BRICK, { uv: [1.75, 1.75] }), box(0, 0.9, 0, 7.4, 0.16, 0.85, CONC, T_CONC), box(-3.8, -1.4, 0, 1, 2.7, 1, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }), box(3.8, -1.4, 0, 1, 2.7, 1, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }),
