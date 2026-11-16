@@ -13079,3 +13079,84 @@ north at the circle (`henge_s`: x 133, z -30, face 0). FPS there on the probe's 
   full plate stood 0.3 m over the floor). The old room's `sea_chest` rows are OUT of this district: the model is a pirate chest full of gold.
   PROBE TIP: a view's `y` is the FLOOR the camera stands on (the eye is added): `"y": 0` inside a building on level ground; `y: 1.7`
   put the camera over the ceiling.
+- **PASS 4, THE ATMOSPHERE.** THE TEN REAL LIGHTS (K.js `LIT`): one lit torch in nine plots and two in the Crossroads; every other
+  torch, lantern and crystal only glows (`noLight`). The lava lake's red is the room's third big light. THE AIR (`airZones`, the tool
+  turns squares into `shell.atmos.zones`): orange sparks over the hot side, warm motes in the Adit, dust over the lower tier, the high
+  tier and the Mouth. Steam (`chimney_smoke` with `rise`) at the three vents and the Fissure's crack, mist under the fall. Five
+  glowing crystals in the dark corners. Seen on screen (the fall's mist, the vents). Frame rate at the Crossroads: 1.6 FPS (first
+  build 1.5).
+- **THE PILOT STOPPED AFTER FOUR PASSES** (the bar is met as far as a cave can meet it with the models there are; a fifth would be
+  polish on what mondo has not seen yet). WHAT A FIFTH PASS WOULD DO: the Lip's and the bridge's rails barely show (a `rail` row is
+  thin: build posts and a rope in parts); name the ways out on the trail signs (`txt:` plates); a plank deck where the stream crosses
+  the Crossroads' south way; the Crystal Ledge as a real raised ledge; drips; the old rooms' tapes.
+- **DECISIONS MADE FOR MONDO, the pilot:** the Needle is a dripstone column (the old room stood a menhir for it); Level −6 has a guard
+  post and one man in black; the Oubliette's cells have no bars ("no doors on the cells. A step."); the diggers' camp is on the Shelf;
+  a stone arch stands before Hell's door; nobody was given new lines.
+- **NEEDS A MODEL (exact; none exists on R2, nothing was put in as a stand-in):**
+  K: (1) CAVE ROCK WALL PIECES, the big one: a kit of 3 or 4 rough rock faces 3.5 m wide x 5 m high x 1 m deep that tile along the
+  square walls, + 2 inside corners (the walls are flat blocks today); (2) stalactite and stalagmite clusters, 3 sizes, 1 to 4 m (drawn
+  cones today); (3) a rope bridge 7 m long x 1.75 m wide with posts (the catalogue's `rope_bridge` is 7 m but its deck did not line
+  up with the plank row: not placed); (4) a square military blast door and frame, 3.5 m wide x 3.5 m high (the link wears the
+  submarine bulkhead leaf); (5) a raised portcullis in a stone frame, 3.5 x 3.5 m, for the Oubliette's way to the Sewers; (6) wall
+  shackles on a plate, 0.6 m; (7) a mine timber set (two posts and a cap, 3.5 m wide x 3 m high) and a 3.5 m length of mine rail;
+  (8) glow worms / hanging cave moss, a 2 m strip to hang under a roof.
+  H: a living dinosaur as scenery (2 or 3 kinds, 3 to 8 m), a nest with eggs (2 m), a tree fern and a cycad (3 to 6 m), a giant tree
+  trunk (4 m thick, 25 m), a crystal tree (4 to 8 m), a giant's stone seat (6 m high) and steps (each 1.2 m), a sun altar with a disc
+  (2.5 m), a big ant hill with doors (4 m), a hut for gnomes and one for goblins (3 to 4 m), the Inner Sun (drawn today: a 13 m ball).
+  A: THE SPIRE (a crystal tower about 10 m across x 36 m; drawn today as a cone), crystal houses for the terraces (3 kinds, 7 x 7 m,
+  walk-in), a marble balustrade (3.5 m lengths) and a marble stair 7 m wide, the Inner Gate (7 m wide x 6 m), an observatory dome
+  (7 m), a marble pier (10.5 x 3.5 m), crystal lamp posts (3 m), the Loch Ness Monster's neck rising from the Lake (5 m).
+  ALL: a moss / lichen ground sheet; a light shaft that draws.
+
+## THE CAVERN, THE ZONE KIT — for the H and A district threads (2026-11-16, written by the pilot, district K)
+
+- **THE LIGHT FIRST.** Ambient 0.24; fog 0.007 (you see across a district). The room has TEN prop lights and K's torches hold all
+  ten (K.js `LIT`): to light something in H or A, say so on the board and K gives one up, or light it the drawn way (a part with
+  `glow` 0.8 to 1.5; `crystal` under a pale tint glows well; `noLight: true` on every torch, brazier, lantern and `crystal_cluster`
+  you place). The big lights are `suns(ctx)` in your file: ONE each (the tool keeps four: the Sun, the Spire, the lava lake, one
+  spare). A sun's `glow` over 1 on a pale tint burns white: the Inner Sun is 0.8 on 0xffd98a.
+- **ROCK IS A PILLAR.** A square of `x` is rock up to the crust (48 m). For a boulder or an outcrop use drawn parts (K.js THE ROCK
+  KIT: squashed `dome`s and tapered `cyl`s on `rocks_5` under PALE tints, 0xd6d2c4 / 0xbcb9aa / 0xcfc8b8; a dark tint on `cave_wall`
+  draws black) or `ocean_rock*`, `asteroid_a / _b`, `hw_stone*` props scaled with `h`.
+- **HEIGHTS.** A prop's `y` and an `arch` row's `base` are over the ROOM's level 0: use `ctx.plot[id].base + h`. K's floors stand at
+  7 / 14 / 21 m (the Oubliette 5.25), H's at 0 / 1.75 / 3.5, A's at 0 / 3.5 / 7. A probe view needs the plot's `y`.
+- **ONE ARCH ROW A PLOT, AT THE PLOT'S MIDDLE** (a row at 0, 0 with far parts is not drawn). A `cyl` with `r` < `r2` is a stalactite;
+  a `dome` with a negative `h` hangs (needs `ds: true`).
+- **TERRACE EDGES IN H AND A are plateau cliffs on the plot lines** (`rocks_5`): a walker can step off a 1.75 m edge. Rail them or
+  bank them if that matters; the stairs are the openings in the layout.
+- **WATER.** Shallow water is waded and is ground; `deep: [plot ids]` in your file makes a plot's water deep (the Lake, the Pier, the
+  Jetty are). A fall = a layout opening, the tool's own.
+- **STAGES:** `plan`, `build`, `dress`, `dress2` .. `dress5`, `people`, `suns`, `airZones`, `deep`. A blocker goes on a free square
+  (`ctx.free`); small things carry `noBlock: true`.
+- **WRONG ON SCREEN (found here):** a dark tint on `cave_wall` parts = black; the `rail` row is too thin to read; `dip` makes the
+  whole cell's floor a bowl (fine for a sunken cell, wrong for a room); the link's well draws its own well head (do not add one).
+- **FITS THE CAVERN (the whole model list was read, sections 6 to 13; `*` = no zone had placed it; K = placed by the pilot):**
+  ROCK `cave_stone` K, `menhir` K, `sarsen` K, `trilithon` K, `ocean_rock` .. `_11` K, `hw_stone` .. `_5` K, `asteroid_a / _b` K,
+  `meshy_crystal_shard(s)` K, `crystal_cluster` K, `sea_vent` K, `*icicles`, `*meteorite_plinth`
+  · LIGHT `cave_torch` K, `wall_torch`, `brazier`, `campfire` K, `*lantern_post` K, `ship_lantern` K, `railway_lantern`,
+  `meshy_hanging_lantern`, `hw_candles` K, `candleRing` K, `candelabra`, `bare_bulb` K, `flicker_tube` K
+  · MINE + CAMP `*mine_cart` K, `*pickaxe` K, `*wheelbarrow` K, `*wooden_barrel` K, `*anvil` K, `*firewood_stack` K, `*canvas_tent` K,
+  `*sleeping_bag` K, `*backpack` K, `*signal_lever_frame` K, `cable_drum` K, `hand_truck` K, `psx_wooden_crate_1 / _2` K, `chain_hoist`,
+  `psx_beam_*`, `*psx_tunnel_mp_1_*` (built tunnel modules, untried)
+  · WATER `rowboat` K, `*mooring_piles` K, `*mooring_bollard` K, `*reeds` K, `meshy_frog` K, `*footbridge`, `*ancient_walkway`, `skiff`,
+  `*fishing_boat`, `*stilt_hut`, `*hammock`, `ocean_turtle`, `flamingo`, `*duck`, `ocean_anglerfish` (a lit lure for a dark pool)
+  · GAOL `stocks` K, `*trap_iron_maiden` K, `wall_chains` K, `trap_chain_draped` K, `psx_old_mattress_mp_1` K, `cot` K, `*rat` K,
+  `cauldron` K, `skull_pile` K, `hw_body*` K, `hw_part*` K, `*trap_spike_pit`, `hw_fence_iron*`, `*psxg_iron_gate_*`, `catacomb_wall`
+  · BASE `breaker_panel` K, `security_camera` K (27 k triangles: one), `locker` K, `utility_box` K, `pipe_run` K, `rifle_rack` K,
+  `item_police_barricade` K, `meshy_sandbags` K, `retro_control_panel` K, `footlocker` K, `psx_keypad_*`, `psx_elevator_*`, `vault`
+  · ALIVE `bat_black / _brown / _grey` K, `psx_cobweb_*` K, `mushroom2` K, `woods_glowcap` K, `fae_toadstool` K, `ant`, `ant_queen`,
+  `anthill`, `caterpillar`, `blue_morpho`, `eagle`
+  · HOLLOW EARTH (for H): tree kinds `tree_3` / `tree_52` (oak, scale 12 to 18 m), `tree_6` (bare giant), `palm`, `fae_cap` / `fae_cap_2`
+  (giant mushrooms), `fae_bloom_tree*` (giant flowers); props `hollow_tree`, `fallen_log`, `*leafy_bush`, `fae_flower*`, `mushroom`,
+  `dinosaur_skeleton`, `*cattle_skull`, `hw_straw`, `royal_throne` + `meshy_giant_foot` (the Giant's Seat), `t_pillar`, `obelisk`,
+  `item_ward_totem`, `*prayer_flags`, `*timber_lookout`, `woods_cabin`, `instrument_drum`, `giant_clam`, `ocean_coral*` (tinted, the
+  Sunken Garden)
+  · AGARTHA (for A): `greek_column`, `pearly_gate` (the Inner Gate), `*vatican_dome` (an observatory, 12 m), `obelisk`, `angel_statue`,
+  `marble_bust`, `*lady_justice`, `hero_statue_*`, `greek_amphora`, `crystal_chandelier`, `*iron_lamp_post`, `fountain`,
+  `iron_garden_bench`, `*wedding_arch`, `brass_telescope`, `*brass_orrery`, `*astronomical_clock`, `*star_projector`, `lectern`,
+  `moon` / `earth` / `saturn` / `*solar` (planet models, an orrery hall), `floating_orb`, `*meshy_tesla_coil`, `skiff`, `sea_buoy`;
+  sheets `marble_light`, `urban:TileMarble1a..3d`, `crystal`, `diamond`, `gold` (the approved gilt only)
+  · DO NOT USE: `fern` (potted), `psxg_rock_*` (paper), `lion_statue` (a live lion), `stone_urn` (a fern urn), `psx_pillar_1` (black),
+  `tentacle` / `tentacle2` (banned), `planter` (a code box); `castle_wall` is in 1,800 rows.
+  NOT IN THE GAME: see NEEDS A MODEL in the pilot's section.
+
