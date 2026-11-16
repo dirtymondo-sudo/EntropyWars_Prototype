@@ -4335,7 +4335,7 @@ const RACE_BASE_STATS = {
     'overlord':           { hp: 910, mp:  75, atk:  71, def:  115, mdef:  32, int:  68, vision: 2, crt: 13, spd: 120 },   // STATS28 PASS 2026-10-29: HP 1593→1150, ATK 109→95, DEF 146→115 (65% over STATS27+28; survives 88% of games); LOOP PASS 1 2026-11-08: HP 1150→910, ATK 95→71, M.ATK 91→68 (60.4% in the 11-08 loop's baseline lab (106 games), 62.3% team-adjusted; POWER -85)
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
     'banker':             { hp: 1300, mp: 190, atk:  40, def:  120, mdef:  130, int:  180, vision: 3, crt: 15, spd: 85 },   // 2026-11-16 THE NEW RACES — first pass on the support median
-    'sewer gator':        { hp: 1250, mp: 120, atk: 168, def: 118, mdef:  58, int:  60, vision: 3, crt: 22, spd: 130 },   // 2026-11-16 THE NEW RACES — first pass between the reptilian and the sharkman
+    'sewer gator':        { hp: 1100, mp: 120, atk: 168, def: 118, mdef:  58, int:  60, vision: 3, crt: 22, spd: 125 },   // 2026-11-16 THE NEW RACES — first pass between the reptilian and the sharkman; polish 11-16: HP 1250→1100, SPD 130→125 (POWER 892 → ~852, the target 815 +5 %: it can also not be targeted for 2 rounds)
     'skater':             { hp: 1000, mp: 120, atk: 165, def:  85, mdef:  60, int:  55, vision: 3, crt: 24, spd: 150 },   // 2026-11-16 THE NEW RACES — first pass on the catgirl
     'tech ceo':           { hp: 1050, mp: 200, atk:  50, def:  95, mdef: 140, int: 175, vision: 3, crt: 18, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the men in black
     'magician':           { hp: 1100, mp: 190, atk:  70, def:  95, mdef: 125, int: 170, vision: 3, crt: 22, spd: 115 },   // 2026-11-16 THE NEW RACES — first pass on the specialist median
@@ -10245,14 +10245,19 @@ const RACE_ABILITIES = {
           element: 'water', type: 'buff', kind: 'buff', range: 0, requiresLiquid: true,
           statusEffects: [{ id: 'submerged', duration: 2 }, { id: 'invisible', duration: 2 }],
           desc: 'Sinks under the surface. Cast while standing in water, sludge or ooze: the gator is Invisible and cannot be targeted for 2 rounds, until it attacks or climbs out of the liquid. Cooldown: 2 rounds.' },
-        { id: 'nrDeathRoll', name: 'Death Roll', tier: 2, families: ['sewerpredator'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+        /* 🐊 DRAG UNDER (11-16 polish): was "Death Roll", but the gator's own pool (apexpredator) already holds the croc's
+           raceDeathRoll, so its spell list showed two "Death Roll"s; renamed in mondo's words ("bite + drag under"). Same id. */
+        { id: 'nrDeathRoll', name: 'Drag Under', tier: 2, families: ['sewerpredator'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 1,
           sneakBonus: true, dragIntoLiquid: true,
-          desc: 'Clamps its jaws and rolls. Deals MEDIUM physical damage to a Single Enemy beside the gator, more from under the surface, and drags it into the nearest liquid square beside either of them. In deep water the victim starts Drowning. Cooldown: 2 rounds.' },
+          desc: 'Clamps its jaws, rolls and pulls. Deals MEDIUM physical damage to a Single Enemy beside the gator (x1.5 from under the surface) and drags it into the nearest liquid square beside either of them. In deep water the victim starts Drowning. Cooldown: 2 rounds.' },
         { id: 'nrTailSweep', name: 'Tail Sweep', tier: 3, families: ['sewerpredator'], cost: 75, apCost: 1, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'cross', range: 0, aoeOriginSelf: true, crossRadius: 1,
           damageType: 'physical', dmg: 120, pushDistance: 1,
-          desc: 'A sweep of the spiked tail. Deals MEDIUM physical damage to All Enemies beside the gator and knocks them 1 square away, into the water if it is there.' },
+          /* 🐊 THE CHURN (11-16 polish): the sweep floods the gator's own square for 2 rounds, so the kit works on a dry board
+             too: sweep, then Submerge in the puddle (battle.js cross branch paints it after the pushes) */
+          paintTerrain: { terrain: 'water', radius: 0, rounds: 2 },
+          desc: 'A sweep of the spiked tail. Deals MEDIUM physical damage to All Enemies beside the gator and knocks them 1 square away, into the water if it is there. The churn turns the gator\'s own square to water for 2 rounds.' },
     ],
     'skater': [
         /* THE MOMENTUM (2026-11-16, the new races; mondo picked the Skater): every square she rolls in a straight line banks a

@@ -14103,7 +14103,22 @@
             if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
             addLog(`🐊 ${_ctName(unit)} climbs out of the water and surfaces!`);
             showFloatingTextForUnit(unit, '🐊 SURFACED', 'debuff', { durationMs: 1000 });
+            _gatorSurfaceFx(unit);
         }
+        /* 🐊 the surfacing splash (11-16 VFX polish): rides VFX3D.fire, which online.js relays, so the guest sees it too;
+           the effect draws only where the viewer sees the tile (three-vfx-effects.js _PZ_SIGS.gtSubmerge, intent 'impact') */
+        function _gatorSurfaceFx(unit) {
+            try {
+                if (!unit || state.phase !== 'battle' || _skipVisuals()) return;
+                const V = window.ThreeVFXEffects;
+                if (V && V.hasMapping('nrSubmerge', 'impact')) V.fire('impact', 'nrSubmerge', { tx: unit.x, ty: unit.y });
+            } catch (e) {}
+        }
+        /* ☢🐊 AT HOME IN THE SLUDGE (11-16 polish): the Sewer Gator lives in the radioactive sludge, so ending a turn in it adds
+           no Radioactive stack (map.js applyTerrainTurnEffects). Without it the glow (isUnitConcealedFrom) undid Submerge in
+           every sludge pool. Radioactive from an enemy spell still lands and still lights it up: that is the counterplay. */
+        function _gatorAtHomeInSludge(unit) { return !!unit && unit.race === 'sewer gator'; }
+        window._gatorAtHomeInSludge = _gatorAtHomeInSludge;
         /* _runPostEffects for a `dragIntoLiquid` spell (Death Roll): the victim goes into the nearest free liquid square beside
            the gator or beside itself (deep water first), then gets Drowning (applyStatusPayload bounces it outside deep water). */
         /* 🛟 THE LIFEGUARD (2026-11-16, the new races): a teammate On Duty within 4 of an ally that just took a killing blow spends
@@ -45376,7 +45391,7 @@
             if (!state._timedTerrain || !state._timedTerrain.length) return;
             const r = state.round || 1;
             const keep = [];
-            let reverted = 0, thawed = 0;
+            let reverted = 0, thawed = 0, drained = 0;
             let melted = 0;
             for (const e of state._timedTerrain) {
                 if (r < e.expiresRound) { keep.push(e); continue; }
@@ -45397,9 +45412,12 @@
                     if (e.meltTo) { melted++; continue; }
                     reverted++;
                     if (e.terrain === 'ice') thawed++;
+                    if (e.terrain === 'water') drained++;   // 🐊 the Tail Sweep churn's puddle
                 }
             }
             state._timedTerrain = keep;
+            /* 🐊 a puddle that dries under a Submerged gator leaves it on dry ground: it surfaces (no hiding on dry land) */
+            if (reverted || melted) { for (const _su of (state.units || [])) { if (_su && !_su.dead && _su.status && _su.status.submerged > 0) _gatorSurfaceCheck(_su); } }
             if (melted) {
                 state._terrainVersion = (state._terrainVersion || 0) + 1;
                 addLog(`The snow wall melts away on ${melted} tile${melted !== 1 ? 's' : ''}.`);
@@ -45407,7 +45425,8 @@
             }
             if (reverted) {
                 state._terrainVersion = (state._terrainVersion || 0) + 1;
-                addLog(`The ${thawed === reverted ? 'ice thaws' : thawed ? 'ooze dries up and the ice thaws' : 'ooze dries up'} on ${reverted} tile${reverted !== 1 ? 's' : ''}.`);
+                addLog(drained === reverted ? `The water drains away on ${reverted} tile${reverted !== 1 ? 's' : ''}.`
+                    : `The ${thawed === reverted ? 'ice thaws' : thawed ? 'ooze dries up and the ice thaws' : 'ooze dries up'} on ${reverted} tile${reverted !== 1 ? 's' : ''}.`);
                 scheduleBoardRender();
             }
         }
@@ -83812,6 +83831,11 @@
                         });
                     addLog(`${_ctSp(spell.name)} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a${spell.diamond ? ' resonant diamond' : spell.diagonal ? 'n X pattern' : ' cross pattern'}.`);
                     if (_crStats.pushMark) _logHoist(_crStats.pushMark);   // the summary before the pushes (Resonance Pulse)
+                    /* 🐊 THE CHURN (Tail Sweep, 11-16): a self-centred cross with `paintTerrain` paints the caster's own square once
+                       the pushes are done (the sweep's victims are already out of it) */
+                    if (spell.paintTerrain && spell.aoeOriginSelf && !unit.dead && !unit._dying) {
+                        _paintTimedTerrain(unit.x, unit.y, spell.paintTerrain, unit, spell.name, unit.z);   // logs "turns 1 tile to Water"
+                    }
                     scheduleBoardRender();
                 }, timing.impactDelay);
             }

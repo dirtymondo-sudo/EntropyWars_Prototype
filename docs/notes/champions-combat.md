@@ -5459,6 +5459,21 @@ The style: an ambush from the water. "Liquid" = water, deep water, radioactive s
 - Probe 11-16: Submerge refused on grass, hid it in deep water (concealed from P2); Death Roll broke cover, dragged the foe into deep
   water, Drowning; Tail Sweep pushed 1; walking out surfaced it; 0 page errors.
 - Model `Assets/characters/races/sewer_gator/male/Meshy_AI_sewer_gator_Running.glb` + `sewer_gator.png` (R2 only).
+- **THE POLISH (11-16, the gator thread):** Death Roll is now **Drag Under** (same id `nrDeathRoll`; the croc's `raceDeathRoll` in the
+  same pool is also "Death Roll", and "drag under" is mondo's own word). **Tail Sweep's churn** (`paintTerrain {water, radius 0,
+  rounds 2}` on a self-origin cross, doSpell's cross branch -> `_paintTimedTerrain`): the gator's own square turns to water for 2
+  rounds, so Submerge works on dry maps (sweep, then hide next turn). When that puddle dries (`_tickTimedTerrain`) a Submerged unit on it
+  surfaces (log "The water drains away"). **At home in sludge**: the sludge tile's Radioactive glow skips the gator (map.js
+  applyTerrainTurnEffects + battle.js `_gatorAtHomeInSludge`), because the glow would undo Submerge in its own home; Radioactive from enemy
+  spells still lands (the counterplay). Stats trimmed for the power target: HP 1250 -> 1100, SPD 130 -> 125 (raceTotalPower 892 -> ~852,
+  rank 19 of 143). Submerged sinks the body another 0.32 m (three-renderer.js `_submergedSink`, structural serial rebuilds it).
+- **THE VFX (11-16)**, three-vfx-effects.js block "SEWER GATOR": `gtSubmerge` (aura = splash, ring with the seat colour edge, swirl, yellow
+  eyes sliding under, bubbles; impact = the surfacing splash, fired from `_gatorSurfaceFx` and relayed), `gtDragUnder` (a croc snout in
+  textured hide with bone teeth snaps, rolls 360 degrees and sinks; replaced the shared cartoon-mouth jaws), `gtTailSweep` (a segmented tail
+  spins one turn, each arm of the cross hit as the tail passes, spray off the tip).
+- Probe 11-16 (polish): Tail Sweep on grass 352 + push + the puddle; Submerge on it (concealed); Drag Under from below 786 (ambush x1.5,
+  shallow water underfoot x1.25), 395 in the open; no water near = "no water close enough"; walking off and the puddle drying both
+  surface it; sludge: the enemy glows, the gator does not. Proof sheet `/mnt/project-files/new-races/gator/`.
 
 ### 3. THE SKATER (Disaster City, Bayside skate park, assassin, female, family `skateboarding`)
 The style: momentum. A walk that ends in a straight line from where it began banks one **Momentum** stack a square
