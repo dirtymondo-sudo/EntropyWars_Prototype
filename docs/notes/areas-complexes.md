@@ -9239,7 +9239,8 @@ only `docs/areas/desert/districts/W.js` + a rebake. The list: `docs/plans/WISHLI
   arms run east-west at face 0 (so the line runs north-south); top arm insulators at y 6.62, x +-0.55 and +-1.35. `lantern_post` hangs its
   lantern 0.48 m EAST of the post at face 0, glass at y 1.4. `mine_cart` is long along x: `face: 90` on a north-south track.
 - **A PROP ON A WALL'S LINE STANDS ON THE WALL'S TOP outside too:** a poster 8 cm off a front wall drew on the porch roof. `floor: true` fixes
-  it (the sheriff's notice board had the same fault since pass 3; it is on the jail's side wall now, facing the trail).
+  it (the sheriff's notice board had the same fault since pass 3; it is on the jail's side wall now, facing the trail). `notice_board` hangs about
+  1.2 m over its `y`: `y: 0.4` puts it at eye height.
 - **WISH-LIST MODELS ARE LIGHT:** 1,300 to 2,600 triangles each (not the 10,000 of the older Meshy props); 0.4 to 0.9 MB a file.
 - **FPS** (the probe's software GPU, same three views, before -> after, warm readings): Main Street 2.0 -> 2.0 (1,271 -> 1,297 draw calls,
   1.90 M -> 2.07 M triangles), the mine 2.6 -> 2.0 to 2.8 (288 -> 307, 0.45 M -> 0.58 M), the camp 2.2 -> 2.2 (802 -> 817, 1.48 M -> 1.55 M).

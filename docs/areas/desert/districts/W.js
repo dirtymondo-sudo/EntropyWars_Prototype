@@ -447,7 +447,7 @@ function dress() {
     Pm('rocking_chair', gc(85), gc(21) - 0.4, { face: 180 }); Pm('luggage_cart', gc(88) + 0.8, gc(21) - 0.2, { face: 20 }); dec('potted_plant', 89, 21);
     [51.5, 57.5, 63, 67.5, 74.5, 78.5, 82, 87].forEach(x => lamp(gx(x) + 1.1, gx(22) - 0.35));
     /* the south porches (row 26) */
-    Pm('notice_board', gx(53) + 0.12, gc(28), { y: 1.5, face: 90, floor: true });   // on the jail's side wall, to the trail (the front wall has the wanted posters now)
+    Pm('notice_board', gx(53) + 0.12, gc(28), { y: 0.4, face: 90, floor: true });   // on the jail's side wall, to the trail (the front wall has the wanted posters now)
     dec(sack, 73, 26); dec(sack, 76, 26); Pm(crate, gc(77) + 0.6, gc(26), { face: 12 }); Pm('psx_wooden_crate_6', gc(77) + 0.6, gc(26), { y: 1.08, face: 40 }); dec('hw_pumpkin', 74, 26); dec('hw_pumpkin_2', 76, 26);
     dec(keg, 72, 26); Pm('psxg_coffin', gc(55) - 0.9, gx(27) - 0.5, { face: 90 }); [51.5, 56.5, 75].forEach(x => lamp(gx(x) + 1.1, gx(26) + 0.35));
     /* the street itself: a wagon drawn up at the store, the trail in between the jail and the undertaker */
