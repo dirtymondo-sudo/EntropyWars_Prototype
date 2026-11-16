@@ -12320,6 +12320,14 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
 - **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
   fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
 
+## THE DEEP, THE CITADEL — district C, the pilot (2026-11-16, `docs/areas/deep/districts/C.js`, the Deep zone thread)
+
+- **PASS 1, THE EXTERIORS (seen on screen, four views, no errors):** the Agora's two stoas are real (back wall with gaps, lean-to roof,
+  bench); the Palace has its three walls to the beam, a cornice, corner piers, a pediment and five lit niches (its walls stop a swimmer);
+  on the inner ring four small temples (`naos`: the Treasury, two shrines, a house), two round temples (`tholos`), an exedra; the Agora's
+  middle is a stepped plinth with two marble dolphins (the ocean pack's dolphin with `statue: 0xdfe8e8`); a propylon at the top of the
+  Drowned Road; balustrades on the four causeways; lions at the temple's steps; lit finials on the pediment. Tool: marble on drawn pieces
+  is lifted (`glow 0.3`: under the sea it read black) and `ctx.solid(x, z, w, d, h)` = an unseen wall so a drawn piece stops a swimmer.
 ## THE CAVERN ON PLOTS — the underworld of rock redesigned, first build (2026-11-16, second side, the Cavern zone thread)
 
 mondo 11-16: "most of them I want completely redesigned/reimagined with plots and districts etc. like we did for disaster city or Camelot ...
