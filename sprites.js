@@ -139,6 +139,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/skater/', 'Assets/characters/races/skater/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/tech_ceo/', 'Assets/characters/races/tech_ceo/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/magician/', 'Assets/characters/races/magician/'],   // 2026-11-16 THE NEW RACES
+  ['Assets/Sprites/Races/mole_man/', 'Assets/characters/races/mole_man/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/fallenangel/', 'Assets/characters/races/fallenangel/'],
   ['Assets/Sprites/Races/firefighter/', 'Assets/characters/races/firefighter/'],
   ['Assets/Sprites/Races/flesheater/', 'Assets/characters/races/flesheater/'],
@@ -529,6 +530,7 @@ const RACE_SPRITE_GENDERS = {
   'skater': 'female',   // 2026-11-16
   'tech ceo': 'male',   // 2026-11-16
   'magician': 'male',   // 2026-11-16
+  'mole man': 'male',   // 2026-11-16
   'atlantean': 'both',
   'dinosaur': 'male',
   'dragon': 'male',
@@ -692,6 +694,7 @@ const _CHARACTER_SPRITES = {
   'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
   'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
+  'mole man': `${_S}/Races/mole_man/male/mole_man.png`,   // 2026-11-16 — cut from its own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
   // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
@@ -2421,6 +2424,13 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'magic',
+    }),
+  },
+  'mole man': {   // miner's helmet, goggles, digging claws
+    male: _mkUAL('mole_man', 'mole_man', {
+      model: `${_S}/Races/mole_man/male/Meshy_AI_mole_man_Running.glb`,
+      heightRatio: 0.95,
+      basicAttackKind: 'claw',
     }),
   },
   'magician': {   // top hat and tails
@@ -6596,6 +6606,7 @@ const RACE_SPRITES = {
   'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
   'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
+  'mole man': `${_S}/Races/mole_man/male/mole_man.png`,   // 2026-11-16 — cut from its own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
