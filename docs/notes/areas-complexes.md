@@ -7687,7 +7687,20 @@ the Spring, the Upper Shelf), a gnome in the Boulder Field, a tree person at the
   GRAVESTONE shapes: `psxg_rock_1` with an `h` is the mountain's rock), `psxg_dead_tree_*` (stone-pattern bark: `dead_snag` / `hollow_dead_tree`), `item_dowsing_rod`
   (draws 1.5 m tall). FPS 1.8 before and after.
 
-**FOR THE NEXT THREAD (zone kit additions):** `hut` + `win` + `cairn` + `seracs` + `block` in S.js are plain functions: copy them. The district's sign face is `alfa`, cream
+**PASS 4, ATMOSPHERE (live):**
+- THE SAUCER CLOUD was broken since the first delivery: `white_cloud` at `y` 16 is UNDER the Summit's ground (24.5 m), so it lay on the snow like a heap of snowballs, 3 m
+  wide (`h` does nothing on a `span` row). It is four clouds now (`span` 30 / 20 / 20 / 16) parked 15 to 20 m over the crater: the mountain's landmark from the Fork up.
+- Steam (`chimney_smoke`) over the Summit's vent, the three fumaroles and the hot pool. 26 lantern posts down the trails and at the doors (a timber post, an arm, a caged
+  warm lantern: a glow, no real light), ALL IN ONE `arch` look, and the ten route wands in one more (36 looks cost about 100 draw calls; one look each costs 4).
+  Paper lanterns at the dojo's eaves, a brazier at the spring, candles and glow-caps.
+- THE AIR: `exports.airZones` (NEW tool hook, the board's note 11-16): thin snow over the three peaks' plots and Helen Lake, white motes at the Steam Vents, ash over the
+  two lava plots, fireflies in Panther Meadows, pale motes at the Spring, pollen in the wood. 780 points in all.
+- Real lights: the room caps them (`HQ_PROP_LIGHT_MAX`), so S keeps about ten (camp fires, hearths, the Summit's vent, one fumarole, one adit torch, the crystal, the
+  lodge's brazier, the shrine's brazier, the dojo's candle ring) and marks the rest `noLight`.
+- SEEN: 10 + 6 views. Thrown out: a `crystal_cluster` on the Glacier (it glows magenta), four lanterns across the dojo's board (two at the corners now).
+  FPS 1.8 / 1.4 / 1.8 (three readings; before 1.8): no change that the software renderer can show. The room's sky, its day and any night are the tool's.
+
+**FOR THE NEXT THREAD (zone kit additions):** a `span` catalogue row is resized with `span`, an `h` row with `h`. `gnd(R, plot, lx, ly)` = the walked ground at a square (for a `y` from 1 up, or to merge many small looks into one). `hut` + `win` + `cairn` + `seracs` + `block` in S.js are plain functions: copy them. The district's sign face is `alfa`, cream
 `#f0e2c0` on brown `#4a3222`. `rocks_5` walls need `gain` 1.7 and a tint from 0xa0a0a8 up or they read black in daylight. A `cyl` with `ri` + `arc` makes a curved dry-stone wall.
 
 **FITS THIS DISTRICT (the lists, read end to end 11-16: MODEL_LIST.md sections 6, 7, 8, 10, 12b, 13, the live catalogue, pack-claims.md):**
@@ -7712,6 +7725,8 @@ the Spring, the Upper Shelf), a gnome in the Boulder Field, a tree person at the
 4. Helen Lake stays the frozen lake the plan drew (ice); the Climbers' Hut stands on its west shore, in the rock.
 5. Seven more residents from the roster's forest and snow races (nordic, yeti, hippie x 3, gnome, tree person), standing off the trails, with no lines (lines are yours).
 6. The panther of Panther Meadows is the `lion` animal lying in the flowers (no panther model exists).
+7. The saucer cloud is four `white_cloud` models parked over the crater (it reads as a dark-bellied cloud from under it). No saucer and no beam in it: `light_shaft` draws nothing by your own rule, and a ship in the cloud is your call.
+8. Air by plot: snow only on the peaks, fireflies only in Panther Meadows. Falling snow over the whole mountain is one number away if you want it.
 
 **NEEDS A MODEL (none placed as a stand-in):** prayer flags, a stone lantern, a gong, a backpack, a sleeping bag, an axe + firewood, a picnic table, a wood stove, an antler
 trophy, a weather mast, a mine cart + rails, a deer / bear / mountain goat, ice pieces (a serac, an icicle), a lamp post.
