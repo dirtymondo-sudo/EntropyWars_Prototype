@@ -79,6 +79,36 @@ and has a way back.** The problems are all loose ends from the rebuilds.
 Not a problem, for the record: the bay thresholds are one-way out of the bay rooms by design (`ring_m` / `ring_g` take
 the way back).
 
+### A3. Districts, and one file per district (added 2026-11-16)
+
+Relayed to this thread as mondo's order of 2026-11-16: "every single zone needs to be like that [one file per district,
+like Disaster City's `docs/disaster-city/districts/`]. now. so we can work in parallel". Set-up threads are splitting the
+six built zones into `docs/areas/<zone>/districts/<letter>.js`; each replaces its zone's board row with one row per
+district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/areas/*/districts`.
+
+| Zone | Districts (letter in its layout json) | District files |
+|---|---|---|
+| Disaster City | S Southside, C Civic Center, F Financial, U University, H Hero Plaza, E Entertainment, I Industrial, R Sports + Culture, B Bayside (+ L, Q shared files) | YES, `docs/disaster-city/districts/` |
+| The Woods | T The Redwood Trail, G The Ritual Ground, C The Clearing, M Dead Man's Cave | not yet (one layout.json + bake-woods.js) |
+| Camelot Kingdom | K The Castle, T The Village, N The Snowy Pines, F The Fairy Forest, L The Looking-Glass Garden, W The Forest | not yet |
+| The Desert | R The Highway, C The Circus, W Western Town, A Area 51, G Giza | not yet |
+| The Estate | C The Corn Fields, R The Ranch, H The Haunted House + Graveyard, L The Lake | not yet |
+| The Mountains | N The North Pole village, P The Snowy Pass, K The Ski Lodge + slopes, S Mount Shasta, O Mount Olympus, H The Hollywood Hills | not yet |
+| The Beach | S The Shore, H The Harbour, O The Ocean, T The Bermuda Triangle | not yet |
+| The Sewers (PLAN) | W The Sewers, O The Old Workings, T The Running Tunnels | none: not built |
+| The D.U.M.B. (PLAN) | R Research, S Sub-Level 7, C Command, P Level P3 (CERN = the ring) | none |
+| The Cavern (PLAN) | K The Cavern, H Hollow Earth, A Agartha | none |
+| The Deep (PLAN) | A Atlantis, T The Trench | none |
+| Leylines (PLAN) | G Göbekli Tepe, B Bug Colony, S Stonehenge, Y The Ley Lines (the road), T Babel, Z Technoticlan | none |
+| Heaven + Hell + Vatican (PLAN) | L Hell, V The Vatican, H Heaven, O Mount Olympus (now in the Mountains, so drop it here) | none |
+| Outer Space (PLAN) | X open space, M The Moon, R Mars, T Saturn, S The Singularity | none |
+| Antarctica (PLAN) | A Antarctica Station | none |
+| The Astral Realm (PLAN) | L The Library of Unthought Things, S The Sea of Possibility, N The Nightmare | none |
+
+**Rule for every zone not yet on plots:** its FIRST PR lays down the plots, the districts and one empty file per
+district (`docs/areas/<zone>/districts/<letter>.js`) with the bake tool reading them, and puts one row per district on
+the board, so district threads can start side by side at once. No zone starts as one big layout file again.
+
 ---
 
 ## B. The layout: how the zones sit
@@ -164,7 +194,8 @@ Heaven), the sea floor (The Deep), the far east (Leylines), and the three off-ma
 1. **The Sewers (recommended).** It is the smallest zone in the plan (16 plots) and it has more doors into built places
    than any other unbuilt zone: three city doors, the Woods drain, three HQ ways. It is also the gate to the whole
    underground: Woods > Sewers > Cavern > D.U.M.B. / Hell. The first quest's lift ride shows the Sewers first on the
-   way down. Cost of entry: redraw its plan for the moved districts, show mondo, wait for his OK. The catch: every one
+   way down. Cost of entry: redraw its plan for the moved districts, show mondo, wait for his OK. Its first PR sets up
+   three district files (W, O, T) per A3, so three threads can build at once. The catch: every one
    of its doors lands in an owner-side room (the city, the Woods, DOOR HQ). The old rooms can be retired so those doors
    still arrive in the new room, but landing each at its matching manhole needs the owner side's bake tools, by a board
    note, or mondo hands the Sewers to an owner thread.
