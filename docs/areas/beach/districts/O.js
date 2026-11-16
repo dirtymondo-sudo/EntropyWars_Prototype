@@ -24,7 +24,7 @@
    boulders and dead trees on the scorched ring, 19 palms, ferns. Pass 3: THE GARDEN (soil ridges, gourds, a scarecrow, a fence), chickens,
    stepping stones, the watch fire on the north-east point, a tide line on the north beach, dry scrub, two birds over the crater.
    THE SEA'S PLACES: THE WHALE (P06-02: a humpback and a whale showing their backs, dolphins), THE WATERSPOUT (P11-01: drawn, 63 m, its own
-   cloud), THE ROCKS (P04-01: eight drawn sea stacks, seals), THE KRAKEN (P07-03: the catalogue's `kraken_arms`, five arms that rise, curl in and sink, round a taken boat; sharks), THE PALM ROCKS (P02-00,
+   cloud), THE ROCKS (P04-01: eight drawn sea stacks, seals), THE KRAKEN (P07-03: seven `goo_tendril`, the symbiote's black tendrils as the Sewers' Sludge Pit has them, round a taken boat; sharks), THE PALM ROCKS (P02-00,
    P12-09: `palmisle`), FLOTSAM (P06-07), THE SEA LANE (six unlit buoys from the Harbour's Mouth to the Landing), the two islets (a
    castaway's camp with a pirate; seals, flamingos, crabs, a starfish). Pass 3: THE SHARKS (P07-09), THE TURTLES (off the south-west
    islet), THE SEAL ROCK (P13-00, drawn).
@@ -32,7 +32,7 @@
    MISSING / NOT DONE:
    - THE TRIBE HAS NO PEOPLE (mondo: models come later); no model for a hut, a canoe, a totem pole, a mask, whale bones, gulls, black sand
      (the sheet is `dirt_2`), smoke for the crater. Pass 4: firelight in the huts' windows, lava pools at the flows' feet. MONDO'S REVISION 1 (11-16): no modelled smoke (the ash plume
-     is out), the torches are `tiki_torch` (the game's floor torch, longer; ten of them), the kraken is `kraken_arms`.
+     is out), the torches are `tiki_torch` (the game's floor torch, longer; ten of them), the kraken's arms are `goo_tendril` (revision 2: never the Meshy `tentacle` models).
      The island gets none of the room's ten real lights (they go in row order to the Shore and the Harbour).
    - Nothing under the water shows (the sea is opaque from above). No fight set up.
    - LEARNT: a whale's model hangs about 3 m over its origin (humpback y -4.6, whale y -3.3 = the back shows); a thing in deep water is
@@ -228,7 +228,10 @@ place(ctx) {
     [[52, 17], [54, 18], [55, 16], [53, 20], [56, 19]].forEach(q => seaAt(ctx, 'ocean_rock_7', q[0], q[1], -1.6, { h: 1.2 }));   // their blockers: a small rock inside each stack's foot (the skiff and the swimmer go round)
     seaAt(ctx, 'ocean_seal_resting', 54, 20, 0.0, { swim: false }); swimmer('ocean_seal', 50, 17, { swim: { r: 4, v: 1.4, bob: 0.2 } }); swimmer('ocean_seal', 57, 21, { swim: { r: 5, v: 1.2, bob: 0.2 } });
     /* THE KRAKEN (plot P07-03): arms rising out of the water in a ring round a boat it has taken, sharks waiting */
-    afloat('kraken_arms', 90, 42, { y: 0 });   /* (11-16, mondo: the six big `tentacle` props stood "clipped off" by the water; the arms are the catalogue's `kraken_arms` now: five, the kraken's own Constrict effect standing in the sea) */
+    /* (mondo 11-16, twice: the Meshy `tentacle` arms are "messed up", as props and as the ring `kraken_arms` (deleted): "do the tendrils from
+       the symbiote like the radiative sewers did in its sludge" = the catalogue's `goo_tendril`, the Sewers' Sludge Pit's. Its foot is typed
+       half a metre under the surface, so each rises out of the sea) */
+    [[88, 41, 4.8], [92, 41, 5.6], [89, 44, 4.2], [92, 43, 3.4], [87, 43, 3.0], [91, 40, 3.8], [90, 45, 2.6]].forEach(q => { spot(q[0], q[1], 'goo_tendril', 'sea', true); props.push({ key: 'goo_tendril', x: mx(q[0]), z: mz(q[1]), y: -0.5, h: q[2] }); });
     seaAt(ctx, 'rowboat', 90, 42, -0.25, { face: 30 }); swimmer('ocean_shark', 86, 40, { swim: { r: 7, v: 1.6, bob: 0.2 } }); swimmer('ocean_hammerhead', 94, 45, { y: -0.7, hover: 0.4, swim: { r: 6, v: 1.3, bob: 0.2 } });
     /* THE PALM ROCKS (plots P02-00 and P12-09): one tiny island with a palm each */
     seaAt(ctx, 'palmisle', 30, 6, -0.6, { face: 40 }); seaAt(ctx, 'palmisle', 150, 114, -0.6, { face: 200 });
