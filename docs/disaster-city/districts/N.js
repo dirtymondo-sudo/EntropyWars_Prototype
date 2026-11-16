@@ -27,8 +27,15 @@
    zone (`room.zone`: dry grass, rock cliffs, dirt trails; three-renderer.js THE GROUND ZONES), not the city's asphalt and concrete.
    ROCK IS NOT A WALL HERE: the city's ground is all open (gen.allOpen), so only a face steeper than the walker climbs stops him.
 
+   THE FIVE PASSES (2026-11-16, the district thread under mondo's district order; notes: areas-complexes.md "THE HOLLYWOOD HILLS, THE FIVE PASSES"):
+   `hillsKit` (helpers) · `hillsBuildings` (pass 1: the terraces, three new walk-in houses = Round House H05-02, Villa H10-02, A-Frame H01-02, the fire
+   lookout, the dam's tower, the hut, shelters, rails) · `hillsInsides` (pass 2: those houses' insides + the six yards) · `hillsDressing` (pass 3: brush,
+   rocks, cactus, trees, every plot's own set) · `hillsLights` (pass 4: the night). Each is called from the end of content.apply / content.build.
+
    KNOWN MISSING OR WRONG
-   - Nobody lives here (mondo: "don't worry about it yet"). No encounter table.
+   - Nobody lives here (mondo: "don't worry about it yet"; the residents are the NPC spawn system's: npc-system.md). No encounter table.
+   - No air (dust, embers over the Burn): a zone's particles are born at the room's floor and the Hills stand 26 to 45 m over it (the tool's row).
+   - The fire lookout, the intake tower and the transmitter hut are drawn, not entered. `pool_umbrella` (two, from the first file) is still the code stand-in.
    - THE THREE BUILDINGS have their exteriors and interiors (11-16, mondo: "do exteriors and interiors of the buildings"; notes: areas-complexes.md
      "THE HOLLYWOOD HILLS, THE THREE BUILDINGS"). Still open on them: the Stilt House's west deck is drawn only (the walker walks the slope under it);
      the Observatory's doorway is 0.87 m west of the frontispiece's middle (a glazed light fills the other half); the windows are dark panes outside
@@ -277,7 +284,7 @@ function hillsInsides(ctx) {
     { const o = O('H10-02'); rail(o.x(7), o.z(8) - 0.2, o.x(12) - 0.2, o.z(8) - 0.2, 'stone'); const b = B.villa; b.put('stone_urn', -6.4, b.fd / 2 + 3.1); b.put('stone_urn', 6.4, b.fd / 2 + 3.1); b.put('potted_plant', 2.2, b.fd / 2 + 1.0); }
     tree('H10-02', 'palm', 8, 2, 3); tree('H10-02', 'palm', 7, 3, 6); dec('H10-02', 'prickly_pear', 1, 1); dec('H10-02', 'prickly_pear', 0, 5);
     /* the Round House: the sports car on the grass, cactus, flamingos, the dish */
-    put('H05-02', 'car_cyber', 8, 4, { face: 90 }); put('H05-02', 'mailbox_bank', 1, 4, { face: 180 }); dec('H05-02', 'flamingo', 0, 3); dec('H05-02', 'flamingo', 1, 2); put('H05-02', 'dish', 0, 0, { face: 150 }); put('H05-02', 'saguaro_cactus', 8, 0); dec('H05-02', 'prickly_pear', 7, 1); dec('H05-02', 'prickly_pear', 0, 1);
+    put('H05-02', 'car_cyber', 7, 4, { face: 90 }); put('H05-02', 'mailbox_bank', 1, 4, { face: 180 }); dec('H05-02', 'flamingo', 0, 3); dec('H05-02', 'flamingo', 1, 2); put('H05-02', 'dish', 0, 0, { face: 150 }); put('H05-02', 'saguaro_cactus', 8, 0); dec('H05-02', 'prickly_pear', 7, 1); dec('H05-02', 'prickly_pear', 0, 1);
     /* the A-Frame: pines, a fire ring with stump seats, the car on the track's edge */
     tree('H01-02', 'pine', 7.5, 0, 1); tree('H01-02', 'pine', 6.5, 6, 0); tree('H01-02', 'pine', 8, 7, 1); tree('H01-02', 'pine', 6, 0, 3); put('H01-02', 'campfire', 6, 3); dec('H01-02', 'stump', 7, 3); dec('H01-02', 'stump', 6, 4); dec('H01-02', 'fallen_log', 5, 2); put('H01-02', 'car_pack_4', 9, 4, { face: 90 }); dec('H01-02', 'wooden_bucket', 5, 4);
     /* the Hill House's pool terrace: loungers, a cooler, a ball, a float on the water, plants */
@@ -325,16 +332,16 @@ function hillsDressing(ctx) {
     P('H05-01', 'hitching_rail', 6, 9, { face: 0 }); P('H05-01', 'hw_straw', 1, 10); D('H05-01', 'hw_straw_2', 1, 11); D('H05-01', 'wooden_bucket', 4, 10); P('H05-01', 'horse_black', 6, 11, { face: 40 }); D('H05-01', 'hw_straw', 9, 11);
     for (const [id, a, b] of [['H06-01', 4, 8], ['H07-01', 0, 8], ['H08-01', 4, 8], ['H09-01', 0, 4]]) { P(id, 'item_police_barricade', a, 7, { face: 0 }); D(id, 'traffic_cone', b, 7); }
     P('H08-01', 'missing_board', 6, 10, { face: 180 }); P('H07-01', 'trash_bin', 8, 10); P('H09-01', 'park_bench', 5, 10, { face: 180 });
-    P('H11-01', 'trash_bin', 6, 8); P('H11-01', 'hot_dog_stand', 9, 10, { face: 270 }); D('H11-01', 'crow', 10, 6, { y: 0 });
+    P('H11-01', 'car_pack_2', 7, 9, { face: 90 }); P('H11-01', 'trash_bin', 6, 8); P('H11-01', 'hot_dog_stand', 9, 10, { face: 270 }); D('H11-01', 'crow', 10, 6, { y: 0 });
     /* the foot: the Dry Wash, the Gully's camp, the Fire Break's depot, the Hikers' Lot, the Canyon Road, the film shoot in the Brush, the Cliff Stair, the Cove */
     P('H00-02', 'culvert_mouth', 7, 4, { face: 180 }); P('H00-02', 'crashed_car', 9, 3, { face: 60 }); D('H00-02', 'ocean_rock_2', 8, 5); D('H00-02', 'ocean_rock_5', 10, 3); D('H00-02', 'psxg_rock_4', 8, 2); D('H00-02', 'tire_stack', 10, 4);
     P('H02-02', 'camping_tent', 8, 2, { face: 200 }); P('H02-02', 'meshy_campfire_ring', 9, 3); D('H02-02', 'fallen_log', 10, 3); D('H02-02', 'beach_cooler', 8, 4); P('H02-02', 'wolf', 2, 9, { face: 60 }); P('H02-02', 'wolf', 3, 10, { face: 100 });
     P('H03-02', 'fire_truck', 3, 9, { face: 90 }); P('H03-02', 'ind_silo', 9, 10); P('H03-02', 'traffic_barrel', 7, 9); P('H03-02', 'traffic_barrel', 7, 10); D('H03-02', 'meshy_sandbags', 0, 10); D('H03-02', 'meshy_sandbags', 0, 9); P('H03-02', 'fire_hydrant', 11, 9); P('H03-02', 'utility_box', 11, 10);
     P('H06-02', 'missing_board', 10, 3, { face: 270 }); P('H06-02', 'psx_dinner_table_1', 11, 6); P('H06-02', 'transit_bus', 7, 6, { face: 90 }); P('H06-02', 'flood_mast', 1, 4); P('H06-02', 'vending_machine', 10, 4, { face: 270 }); P('H06-02', 'city_bench', 10, 7, { face: 270 }); D('H06-02', 'crow', 1, 6, { y: 0 });
     P('H07-02', 'roads_g_sign_001', 3, 7, { face: 180 }); P('H07-02', 'power_pole', 4, 2); P('H07-02', 'roads_g_sign_009', 7, 3, { face: 270 });
-    P('H08-02', 'trailer_home_2', 8, 2, { face: 0 }); P('H08-02', 'film_camera', 10, 7, { face: 20 }); P('H08-02', 'studio_light', 4, 5, { face: 40 }); P('H08-02', 'studio_light', 11, 7, { face: 330 }); P('H08-02', 'directors_chair', 5, 7, { face: 0 }); D('H08-02', 'directors_chair', 6, 7); P('H08-02', 'costume_rack', 9, 5, { face: 90 }); D('H08-02', 'traffic_cone', 3, 7); D('H08-02', 'traffic_cone', 10, 7); P('H08-02', 'makeup_vanity', 10, 5, { face: 270 });
+    P('H08-02', 'trailer_home_2', 8, 2, { face: 0 }); P('H08-02', 'film_camera', 10, 7, { face: 20 }); P('H08-02', 'studio_light', 4, 5, { face: 40 }); P('H08-02', 'studio_light', 11, 7, { face: 330 }); P('H08-02', 'directors_chair', 5, 7, { face: 0 }); D('H08-02', 'directors_chair', 6, 7); P('H08-02', 'costume_rack', 9, 5, { face: 90 }); D('H08-02', 'traffic_cone', 3, 7); D('H08-02', 'traffic_cone', 9, 7); P('H08-02', 'makeup_vanity', 10, 5, { face: 270 });
     P('H11-02', 'psxg_railing', 4, 7, { face: 0 }); P('H11-02', 'trash_bin', 4, 4); D('H11-02', 'ocean_rock_2', 9, 5);
-    P('H12-02', 'surfboard_rack', 0, 10, { face: 90 }); P('H12-02', 'lobster_traps', 3, 8); D('H12-02', 'ocean_crab', 2, 10, { y: 0 }); D('H12-02', 'ocean_crab', 1, 11, { y: 0 }); D('H12-02', 'ocean_starfish', 3, 11, { y: 0 }); D('H12-02', 'ocean_conch', 0, 10, { y: 0 }); D('H12-02', 'fallen_log', 2, 7); P('H12-02', 'ocean_seal_resting', 3, 9, { face: 120 }); D('H12-02', 'beach_cooler', 1, 8);
+    P('H12-02', 'surfboard_rack', 0, 10, { face: 90 }); P('H12-02', 'lobster_traps', 3, 8); D('H12-02', 'ocean_crab', 2, 10, { y: 0 }); D('H12-02', 'ocean_crab', 1, 11, { y: 0 }); D('H12-02', 'ocean_starfish', 3, 11, { y: 0 }); D('H12-02', 'ocean_conch', 1, 10, { y: 0 }); D('H12-02', 'fallen_log', 2, 7); P('H12-02', 'ocean_seal_resting', 3, 9, { face: 120 }); D('H12-02', 'beach_cooler', 1, 8);
     /* road signs on the canyon road and the Shasta Road (the pack's signs the city's kerbs do not use), cones and a wreck on the Hairpin */
     P('H03-02', 'roads_g_sign_002', 4, 4, { face: 0 }); P('H05-02', 'roads_g_sign_010', 6, 7, { face: 90 }); P('H05-02', 'crashed_car_2', 10, 10, { face: 200 }); P('H05-02', 'item_police_barricade', 9, 10, { face: 90 });
     P('H00-01', 'roads_g_sign_013', 6, 4, { face: 0 }); P('H03-01', 'roads_g_sign_003', 6, 7, { face: 180 }); P('H10-02', 'roads_g_sign_007', 4, 5, { face: 90 });
@@ -342,9 +349,9 @@ function hillsDressing(ctx) {
     /* ── THE TREES ── */
     const MIX = {   // per plot: [brush, rock, cactus] chances a free grass square, the tree kinds and their chance
         ridge: { b: 0.22, r: 0.08, c: 0.01, kinds: ['pine', 'tree_4', 'tree', 'pine'], t: 0.11, h: [5.5, 8] },
-        slope: { b: 0.30, r: 0.05, c: 0.02, kinds: ['tree_3', 'tree_52', 'tree_3', 'tree_2'], t: 0.08, h: [4.5, 7] },
-        foot:  { b: 0.28, r: 0.04, c: 0.03, kinds: ['tree_3', 'tree_52', 'palm'], t: 0.07, h: [5, 7.5] },
-        sign:  { b: 0.36, r: 0.05, c: 0.02, kinds: [], t: 0 },
+        slope: { b: 0.22, r: 0.05, c: 0.02, kinds: ['tree_3', 'tree_52', 'tree_3', 'tree_2'], t: 0.08, h: [4.5, 7] },
+        foot:  { b: 0.15, r: 0.04, c: 0.03, kinds: ['tree_3', 'tree_52', 'palm'], t: 0.045, h: [5, 7.5] },
+        sign:  { b: 0.22, r: 0.05, c: 0.02, kinds: [], t: 0 },
         yard:  { b: 0.10, r: 0.02, c: 0.02, kinds: [], t: 0 },
         burn:  { b: 0.20, r: 0.05, c: 0, kinds: ['tree_13', 'tree_15', 'tree_17', 'tree_5', 'tree_6'], t: 0.10, h: [4, 6.5], bush: ['psxg_dead_bush_1', 'psxg_dead_bush_2'] },
         oaks:  { b: 0.18, r: 0.03, c: 0, kinds: ['tree_3', 'tree_52', 'tree_52'], t: 0.16, h: [5.5, 8] },
@@ -574,7 +581,7 @@ content.apply = ctx => {
   STILT.put('psx_toilet_mp_1', -1.75, -7, { face: 180 }); STILT.put('shower_stall', 1.75, -7.85, { face: 180 }); STILT.put('sink', -3.2, -3.5, { face: 90 }); STILT.put('ebd_house_toilet_paper', -2.8, -7.6, { y: 0.8 });
   STILT.put('couples_bed', 8.75, -7, { face: 180 }); STILT.put('psx_bedside_table_1', 7.2, -7.9, { face: 180 }); STILT.put('mushroom_lamp', 7.2, -7.9, { y: 0.65 }); STILT.put('egg_chair', 8.75, -3.5, { face: 250 }); STILT.put('psx_carpet_mp_1', 6.6, -4.4, { y: 0.04, span: 2.6 });
   STILT.put('pool_lounger', -8.75, 10.5, { face: 180 }); STILT.put('pool_lounger', -5.25, 10.5, { face: 180 }); STILT.put('beach_cooler', -7.0, 10.9); STILT.put('psx_dinner_table_1', 8.75, 10.5); STILT.put('psx_chair_mp_3', 8.75, 9.4, { face: 180 }); STILT.put('psx_chair_mp_3', 7.6, 10.5, { face: 90 }); STILT.put('psx_chair_mp_3', 9.9, 10.5, { face: 270 });
-  hillsBuildings(ctx);
+  if (!process.env.HILLS_BARE) hillsBuildings(ctx);
 };
 
 content.build = ctx => {
@@ -608,9 +615,9 @@ content.build = ctx => {
   put('H07-02', 'signpost', 4, 10, { face: 180 }); tree('H09-02', 'palm', 9, 1, 4); tree('H09-02', 'palm', 9, 10, 4); put('H09-02', 'pool_umbrella', 10, 7); put('H09-02', 'pool_lounger', 10, 8, { face: 180 });
   put('H10-02', 'signpost', 4, 7, { face: 0 }); put('H11-02', 'signpost', 7, 7, { face: 90 });
   put('H12-02', 'rowboat', 1, 9, { face: 70 }); put('H12-02', 'pool_umbrella', 2, 8); tree('H12-02', 'palm', 8, 0, 8); dec('H12-02', 'ocean_rock', 3, 10);
-  hillsInsides(ctx);
-  hillsDressing(ctx);
-  hillsLights(ctx);
+  if (!process.env.HILLS_BARE) hillsInsides(ctx);
+  if (!process.env.HILLS_BARE) hillsDressing(ctx);
+  if (!process.env.HILLS_BARE) hillsLights(ctx);
 };
 
 /* ONE ROAD, ONE STREET SYSTEM (2026-11-16, mondo: "continue making it better and blend together more, natural part of the city"):
