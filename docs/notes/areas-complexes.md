@@ -5052,9 +5052,17 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   the wharf or the Breakwater is pushed by hand (the tool's `P` only knows the plan's squares). WEIGHT: every prop the Harbour
   places, 122 of them, is 0.40 M triangles in all (counted from the files); the quay view's own count swung 1.0 / 2.1 / 3.3 M
   between runs with the same content, so the cloud's frame rate (0.3 to 1.8 fps) says nothing about a pass.
+- **PASS 4, ATMOSPHERE (seen by day and at 22:30; before it the quay, the wharf and the piers were black after dark):** DRAWN GLOW:
+  seventeen harbour lamps on iron posts (H.js `lamp`: a pole, an arm, a cream shade with `glow` 0.95) down the Long Pier's north
+  edge, on the pier's arm, the skiff jetty, the quay's corners and the wharf's rail; warm bulbs under the shed's eave, a lamp over
+  its door, the hoist's work lamp; a lit lamp on each of the Mouth's beacons (red, green). REAL LIGHT, five props: two `flood_mast`
+  (the quay's apron, the Long Pier before the gangway: a 26 m light the world clock switches on at dusk, its lamp bank glows) and
+  three `brazier` (the wharf, the light's head, the skiff jetty). The Breakwater's light already turned its beam. NOT GIVEN: sound
+  and particles (no hook a district reaches: the kit), gulls (no model). The sea stays day-blue at night: the shell's, not a
+  district's (for the tool row). Frame rate, the quay view by day: 0.3 fps, 746 draw calls, 1.22 M triangles.
 - **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
   the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
-- **NOT DONE:** harbour lights and the night look (pass 4: the quay is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+- **NOT DONE:** polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
   the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
@@ -6712,6 +6720,76 @@ too short ... you didn't even get the shape right". So:
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
 
+## THE SEWERS, DISTRICT W — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/W.js`, 15 plots)
+
+mondo 11-16 (before a nap): every district prototyped, no questions, five passes at most (docs/plans/DISTRICT_THREAD_BRIEF.md).
+
+- **WHAT WAS WRONG FIRST (the baseline probe, nine views):** black. The room has TEN real lights (three-renderer.js `HQ_PROP_LIGHT_MAX`),
+  ceiling lamps first, then row order, and the districts are baked H, O, T, W: the cells' four bulbs and the mine's torches took all ten, so
+  not one of W's 30 torches cast light (a torch with no light still shows its glow sprite, which is all the old pictures showed). Walls
+  bare above the slime line; the Junction's 12 m hall empty; the Cistern's tank had no rail.
+- **PASS 1, THE WALLS (seen, three probe runs of nine views):**
+  - THE WALL KIT (`wallKit(ctx, plot)` in W.js; one `arch` row a plot, `sew:W:<plot>:kit`, drawn only): `K.faces` = every wall face of
+    the plot (a square + the side its wall stands on); `K.box / K.quad(face, along, foot, out, w, h, d)` = a part on a wall face.
+    `K.lamp(face, colour, dead, y)` = THE DRAWN BULKHEAD LAMP: iron plate + cage + a lens at `glow: 1`, the brick behind it lit in four
+    steps (`bricks_2` under the lamp's colour, `glow` 0.3 / 0.19 / 0.11 / 0.05, `uv: 3.5` = the wall's own brick size), two lit patches
+    of floor. No light is cast, so it costs a weak machine nothing and the room's ten real lights stay free. `K.pilaster` (brick, a stone
+    band and plinth; in the 12 m halls it runs to the roof), `K.streak` (a stain down the wall), `K.outlet` (a rusted drain collar over
+    its run), `K.rail(x0, z0, x1, z1)` (two rails + posts).
+  - PLACED: 69 lit lamps + 17 dead ones (one every three squares of wall or so), sodium amber `0xffa244` in the culverts and the
+    Junction, cold green-white `0xbfe8b0` (the shell's own lamp colour) in the rooms, one red `0xff3a22` at the Maintenance Hatch;
+    about 150 pilasters, 200 stains, 45 outlets.
+  - THE CISTERN: a rail round the tank (open at the Plank's ends), a red-and-white depth staff. THE INSPECTION GALLERY: a rail along its
+    drop. THE JUNCTION ("where the big pipes meet"): four `culvert_mouth` models 4.6 m up its side walls (scale 1.25), a long stain
+    under each. THE OUTFALL SHAFT: two street grates in the roof, daylight in the bars.
+  - FOUR REAL BULBS (`bare_bulb`, a ceiling prop, so it wins a light): over the Junction, the Pump Room, the Cistern's Plank and the
+    Outfall's pool. See the decision below.
+- **FPS at the proof view** (the Junction, x -29.75 z 22.75 face 90; llvmpipe, so only before / after counts): before 2.6 (896 calls,
+  1.44 M triangles); after pass 1 2.1 to 2.7 (1,142 calls, 1.58 M). The kit is about ten materials a plot; a plot's row is culled whole.
+- **DECISIONS MADE FOR MONDO (overrule any in one line):**
+  1. W takes FOUR of the room's ten real lights (it is 15 of the 24 plots and holds the spawn). The cells keep their four bulbs, the
+     mine keeps two torches; the mine loses two lit torches and the tunnels two (they still glow). A fairer share needs the tool's row.
+  2. The light in the culverts is drawn (lit brick), not cast. If he wants real light everywhere the engine's cap of ten must go up.
+  3. Lamp colours: sodium amber in the culverts, cold green-white in the rooms, red only at the hatch.
+  4. No stream comes out of a wall on this plan (every stream ends at a tank or a plot line) and no walk is one square wide, so there
+     are no dead-end pipe mouths; the culvert mouths went to the Junction's walls.
+- **NEEDS A MODEL:** a bulkhead / cage lamp (drawn from boxes today), a manhole ladder + shaft, a valve wheel on a stand, rats.
+- **NEXT:** pass 2 the rooms' insides (Pump Room, Pumping Station, Gallery, Junction, Cistern, Outfall), 3 dressing (graffiti, pipes
+  from the PSX pack, animals, signs), 4 atmosphere, 5 polish.
+
+## THE SEWERS, THE ZONE KIT — for the T, H and O district threads (started 2026-11-16 by district W; it grows with each pass)
+
+- **THE LIGHT IS THE FIRST THING TO KNOW.** Ten real lights for the whole room; `ceil` props win, then row order H, O, T, W. Today:
+  H 4 bulbs, W 4 bulbs, O 2 torches. A torch or brazier past the ten only glows. Do not add a ceiling lamp without saying so on the board
+  (it takes a light from someone). Light your walls the drawn way instead: copy `wallKit` from W.js (plain functions, nothing from the
+  tool) and call `K.lamp(face, colour)`. Colours in use: sodium `0xffa244`, cold `0xbfe8b0`, red `0xff3a22`.
+- **A ROW'S `y`:** a prop's `y` of 1 m or more is a height over the ROOM's level 0, not over its plot's floor (levels: 0 / 7 / 14 /
+  15.75 m). A thing hung on a wall or from the roof = `ctx.plot[id].base + height`. An `arch` row takes `base: plot.base` and its parts'
+  `y` are then over the plot's floor.
+- **WALL FACES:** a wall stands on a square's line (the tool's slime line sits 1 to 9 cm in front of it). A part's `ry`: 0 looks south
+  (+z), 90 west, 180 north, 270 east. A wall PROP's `face`: n wall 180, s 0, w 90, e 270 (`culvert_mouth` checked). Keep drawn pieces
+  under 0.45 m deep on a walk; they have no collision.
+- **SHEETS:** `bricks_2` (the walls; `uv: 3.5` matches them), `urban:MetalCorrugatedPainted2a` under `0x6a3f24` = rust, a part with no
+  key and a near-black tint = plate iron, a mid grey = cast concrete. A sheet under a tint reads dark down here: `gain` 1.15 on brick.
+- **THE ROOM'S OWN WALL** (a square past the map's edge) is where the ways out stand: never dress it.
+- **THE PLAN HAS NO ONE-SQUARE DEAD ENDS** (walks are a square each side of a stream): `ctx.corners()` is the list of bends.
+- **FITS THE SEWERS (the whole model list was read, sections 6 to 13; placed by W unless marked):**
+  PIPES + PLANT `psx_pipe_1 / _short / _corner / _cross`, `psx_pipes_holder_1`, `psx_pipe_valve_holder_large_1 / _2`, `pipe_run`,
+  `gate_valve`, `centrifugal_pump`, `gauge_board`, `utility_box`, `breaker_panel`, `air_compressor`, `gas_cylinder_rack`, `ind_vent`,
+  `ind_panel`, `iso_tank`, `boiler`, `chain_hoist`, `pd_lever`, `tool_chest`, `welding_cart`, `maintenance_stairs`, `ladder_wall_rack`
+  · STRUCTURE `culvert_mouth`, `drain_grate`, `psx_tunnel_mp_1_straight / _elbow / _tee`, `psx_wall_1_tunnel_hole*`, `psx_catwalk_1`,
+  `psx_bars_metal_1/2`, `psx_beam_*`, `psx_arc_*`, `psx_stairs_5_concrete`, `railing_1m`, `cell_bars`, `leaf_portcullis`
+  · LIGHTS `bare_bulb`, `flicker_tube`, `fluorescent`, `psx_ceiling_lamp_*_on / _off`, `railway_lantern`, `ship_lantern`,
+  `meshy_hanging_lantern`, `exit_sign`, `evac_button`, `security_camera`
+  · RUBBISH `dumpster`, `ind_skip_full`, `tire_stack`, `garbage_bag(s)`, `metal_trash_can`, `psx_metal_barrel_mp_0..3`,
+  `psx_wooden_crate_*` (not `_3`: a blank box), `psx_supply_crate_*`, `cinder_block`, `psx_brick_1*`, `meshy_sandbags`,
+  `psx_old_mattress_mp_1`, `psx_toilet_mp_1`, `psx_car_battery_1`, `psx_jerrycan_1`, bottles, cans, syringes, `psx_underwear_mp_1`,
+  `mop_bucket`, `wet_floor_sign`, `traffic_cone`, `traffic_barrel`, `warning_tape`, `graffiti_wall`
+  · DEAD THINGS `hw_body*`, `hw_part*`, `skull`, `skull_pile`, `femur`, `ulna`, `anatomy_skeleton`, `psx_fish_skeleton_mp_1`,
+  `trap_chain_draped / _straight`, `wall_chains`, `meat_hook`
+  · ALIVE `bat_black / _brown / _grey`, `meshy_frog`, `ocean_eel`, `ocean_crab`, `ocean_brown_fish`, `cat`, `crow`, moths, `mushroom2`,
+  `psx_cobweb_1/2/4/5`. NOT IN THE GAME: rats, roaches, spiders, snakes, moss, a manhole, a ladder, a cage lamp, a shopping trolley.
+  `light_shaft` draws nothing (switched off 10-04). The domi236 industrial pieces (`ind_*`) are free to every district.
 **PASS 2, THE INTERIORS (inside the Great Pyramid, `rooms(kit)` in G.js).**
 - **THE TURNING TOMB DOOR IS WALKED:** in a probe `window._pdDoor({ pd: 'tomb1', back: { room, at: 'turning' } })` loads the Turning Tomb and
   `window._pdLeave()` comes back to the King's Chamber at the door, its prompt showing. No code changed.
