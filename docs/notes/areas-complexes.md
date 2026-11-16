@@ -4915,6 +4915,19 @@ Pass 2 of 5. Only `docs/areas/desert/districts/W.js`, then a rebake (the Desert'
   bank, 190.75 assay, 203 telegraph, 220.5 hotel; south row z -113.8 face 180 at x 96.25 jail, 113.75 undertaker, 178.5 store; church
   x 145.25 z -194.2 face 0.
 
+## THE DESERT, WESTERN TOWN — THE DRESSING PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 3 of 5. Only `docs/areas/desert/districts/W.js` (`dress()`, called from `ground`), then a rebake.
+- Porches: rocking chairs, benches, barrels, sacks, straw, a hanging lantern by every door (`noLight`: a glow, the lamps come with the
+  atmosphere pass), the hotel's luggage cart, the sheriff's notice board, pumpkins and crates at the store. Chickens by the livery, crows on
+  Boot Hill's gate, the well and the corral. A covered wagon at the store.
+- Back yards: three privies (`des:w:privy:*`, an `arch` + one ghost block each), woodpiles, dead bushes.
+- The trail in now runs on dirt between the jail and the undertaker (`setPaint`), under a timber gate (`des:w:gate`) with a ranch rail.
+- The south half: logs, pot and a horse line at the Wagon Camp; five cows and a broken fence on Open range (its squares x 80..89, y 41..47
+  are ROCK in the layout: a cow placed there stood on the mesa); the box canyon is a hideout (fire, cot, money sacks, dynamite, a horse).
+- A crop patch and scarecrow by the windmill (Halloween pack), pickets at the church (hw_fence).
+- Still modern: the camp's two `camping_tent`s. On the NEEDS A MODEL list.
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
