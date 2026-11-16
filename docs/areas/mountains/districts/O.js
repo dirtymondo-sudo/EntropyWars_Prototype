@@ -16,7 +16,9 @@
    - THE STADIUM (P10-01): the track, lane lines (ctx.marks), stone seats on both long sides, the prize plinth, a cyclops and a minotaur
    - THE COLONNADE (P11-01): two rows of tall columns under beams (a pergola), a fountain. THE SACRED WAY (P10-02): the gate, statues on plinths
    - THE AMPHITHEATRE (P11-02): four curved tiers of seats, the round floor, the stage wall; DOOR HQ's Diplomatic bay door stands here (ctx.anchor('bayOlympus'))
-   - THE TERRACES (P12-02): vine rows on posts, low walls, a fountain. Olive trees, two lions at the Pilgrim Stair
+   - THE TERRACES (P12-02): grape trellises, a fountain. Olive trees, two lions at the Pilgrim Stair
+   - THE MODEL PASS (11-16): the wish-list models are in (olive_tree, grape_trellis, tripod_bowl for every brazier, god_statue, lyre, chariot, discus_rack, greek_couch,
+     laurel_wreath, mountain_goat, cypress_tree ...). NEEDS A MODEL: nothing open
 
    KNOWN MISSING OR WRONG
    - The cloud is the deep-drift swell wearing another sheet (the tool's). No encounter table (the room is shared by four districts)
@@ -96,9 +98,9 @@ exports.apply = ctx => {
   /* THE CELLA (pass 2). Every prop of a walk-in is `floor: true`; a blocker stands on a square's middle (the squares' middles here: x -8.75 .. 8.75, z -5.25 .. 5.25) */
   { const T = (key, lx, lz, q) => TEMPLE.put(key, lx, lz, Object.assign({ floor: true }, q || {}));
     const ghost = (lx, lz, wd) => { const a0 = TEMPLE.at(lx - wd / 2, lz), a1 = TEMPLE.at(lx + wd / 2, lz); feat({ k: 'wall', x0: a0[0], z0: a0[1], x1: a1[0], z1: a1[1], t: Math.min(wd, 3.2), h: 2, ghost: true, rail: false }); };
-    T('lady_justice', 0, -5.7, { y: 0.98, h: 4.3, face: 180 }); ghost(0, -5.25, 6.8); T('stone_altar', 0, -4.0, { y: 0.4, face: 180 });                // the statue on its base, the altar on the step
-    for (const s of [-1, 1]) { T('brazier', s * 1.75, -1.75); T('angel_statue', s * 8.75, -5.25, { face: s < 0 ? 150 : 210 }); for (const z of [-1.75, 1.75]) { ghost(s * 5.25, z, 1.1); T('marble_bust', s * 8.75, z, { y: 0.95, face: s < 0 ? 90 : 270 }); } }
-    T('instrument_harp', -8.75, 5.25, { face: 120 }); T('lectern', 5.25, 5.25, { face: 180 }); T('votive_stand', -5.25, 5.25, { face: 180 }); T('giant_hourglass', 8.75, 5.25);
+    T('god_statue', 0, -5.7, { y: 0.98, face: 180 }); ghost(0, -5.25, 6.8); T('stone_altar', 0, -4.0, { y: 0.4, face: 180 });                // the statue on its base, the altar on the step
+    for (const s of [-1, 1]) { T('tripod_bowl', s * 1.75, -1.75); { const q = TEMPLE.at(s * 1.75, -1.75); look('oly:fire:cella:' + s, q[0], q[1], a => flame(a, 0, 1.3, 0, 1.0)); } T('angel_statue', s * 8.75, -5.25, { face: s < 0 ? 150 : 210 }); for (const z of [-1.75, 1.75]) { ghost(s * 5.25, z, 1.1); T('marble_bust', s * 8.75, z, { y: 0.95, face: s < 0 ? 90 : 270 }); } }
+    T('greek_couch', -8.75, 5.25, { face: 90 }); T('lyre', -7.3, 4.2, { face: 140 }); T('laurel_wreath', 0.5, -3.6, { y: 0.42 }); T('oil_lamp', -0.5, -3.6, { y: 0.42 }); T('lectern', 5.25, 5.25, { face: 180 }); T('votive_stand', -5.25, 5.25, { face: 180 }); T('giant_hourglass', 8.75, 5.25);
     T('greek_amphora', 7.4, 6.0); T('greek_amphora', 9.7, 4.0, { face: 80 }); T('stone_urn', -7.4, 6.1); T('candelabra', -3.9, -4.3); T('candelabra', 3.9, -4.3); }
   R.anchor('painting', { x: TEMPLE.at(-6, -TEMPLE.fd / 2 + 0.25)[0], z: TEMPLE.at(-6, -TEMPLE.fd / 2 + 0.25)[1], face: TEMPLE.face(180) });   // the link `lodge_olympus` (a painting on the cella's back wall)
   native('P11-00', 'seraphim', 7, 9, 180, say('olympus', 'seraphim'));
@@ -115,6 +117,8 @@ exports.build = ctx => {
       R.taken.add(k); feat({ k: 'wall', x0: r2(mx(q[0]) - (w || 3.2) / 2), z0: mz(q[1]), x1: r2(mx(q[0]) + (w || 3.2) / 2), z1: mz(q[1]), t: w || 3.2, h: h || 1.2, ghost: true, rail: false }); };
   /* a plinth is its own small look on its own square (a plinth inside a plot-wide `hug` look sank into the ground and stood a metre off its statue) */
   const plinthAt = (id, lx, ly, w, h) => { const q = S(id, lx, ly); look('oly:pl:' + id + ':' + lx + ':' + ly, mx(q[0]), mz(q[1]), a => plinth(a, 0, 0, w, h)); };
+  /* THE MODEL PASS: a bronze tripod bowl (the wish list's `tripod_bowl`, in place of the brazier) with a fire in it (a part that glows; `lift` = the plinth under it) */
+  const bowl = (id, lx, ly, lift) => { const q = S(id, lx, ly); put(id, 'tripod_bowl', lx, ly, lift ? { y: lift } : {}); look('oly:fire:' + id + ':' + lx + ':' + ly, mx(q[0]), mz(q[1]), a => flame(a, 0, (lift || 0) + 1.3, 0, 1.0)); };
   const onPlinth = (id, a, key, lx, ly, h, q) => { plinthAt(id, lx, ly, 1.3, h); put(id, key, lx, ly, Object.assign({ y: h }, q || {})); };
 
   /* ── THE TWELVE THRONES (P10-00): eight seats in a ring on a round dais, four on the north row, the hearth in the middle ── */
@@ -125,7 +129,7 @@ exports.build = ctx => {
         a.cyl(x, 0, z, 13.6, 0.12, MARB, W2, A(GQ, { seg: 40 })); a.cyl(x, 0.12, z, 8.1, 0.03, GOLD, GT, A(GG, { seg: 40, ri: 7.7 })); a.cyl(x, 0.12, z, 12.9, 0.03, GOLD, GT, A(GG, { seg: 40, ri: 12.6 }));   // the dais and its two gold rings
         a.cyl(x, 0, z, 1.5, 0.5, MARB, W1, A(GQ, { seg: 16 })); a.cyl(x, 0.5, z, 1.62, 0.1, GOLD, GT, A(GG, { seg: 16, ri: 1.2 }));                                  // the hearth's kerb
     });
-    put('P10-00', 'brazier', 5, 4, { y: 0.5 }); }
+    bowl('P10-00', 5, 4, 0.5); }
   /* ── THE SACRED WAY (P10-02): the gate at its west end, statues on plinths along its north side ── */
   plotLook('P10-02', 'way', 3, 4, true, a => {
       for (const ly of [3, 6]) { col(a, X(1), Z(ly) + (ly === 6 ? -0.9 : 0), 6.2, 0.6); }                                               // the gate: two columns, a beam, a small pediment
@@ -134,7 +138,7 @@ exports.build = ctx => {
       for (const s of [-1, 1]) flame(a, X(1), 7.0, Z(4.5) - 0.45 + s * 6.0, 1.3); for (const z of [Z(4), Z(5)]) lamp(a, X(1), 6.2, z);
       onPlinth('P10-02', a, 'angel_statue', 3, 3, 0.9, { face: 180 }); onPlinth('P10-02', a, 'marble_bust', 6, 3, 0.95, { face: 180 }); onPlinth('P10-02', a, 'stone_urn', 5, 6, 0.9); });
   { const q = S('P10-02', 1, 3); R.taken.add(q[0] + ':' + q[1]); feat({ k: 'wall', x0: r2(mx(q[0]) - 0.55), z0: mz(q[1]), x1: r2(mx(q[0]) + 0.55), z1: mz(q[1]), t: 1.1, h: 3, ghost: true, rail: false }); }
-  native('P10-02', 'angel', 8, 5, 270, say('olympus', 'angel')); put('P10-02', 'brazier', 2, 3);
+  native('P10-02', 'angel', 8, 5, 270, say('olympus', 'angel')); bowl('P10-02', 2, 3);
   /* ── THE STADIUM (P10-01): the track, its lanes, stone seats on both long sides, the prize at the west end ── */
   { const p = R.byId['P10-01']; for (let i = 1; i < 5; i++) R.marks.push({ k: 'line', x0: gx(p.lx * N + 2), z0: r2(gz(p.ly * N) + i * 7), x1: gx(p.lx * N + 11), z1: r2(gz(p.ly * N) + i * 7), w: 0.14, color: 0xf4f0e4 }); }
   plotLook('P10-01', 'stadium', 6, 5, true, a => {
@@ -145,7 +149,7 @@ exports.build = ctx => {
       for (const lx of [2, 11]) { for (let ly = 0; ly < 10; ly++) a.box(X(lx) - 1.6, 0, Z(ly), 0.25, 0.05, 3.5, GOLD, GT, GG); } });   // the start and the finish, gold in the track
   for (let lx = 2; lx <= 6; lx++) block('P10-01', lx, 0); for (let lx = 6; lx <= 10; lx++) block('P10-01', lx, 9);
   plinthAt('P10-01', 1, 5, 1.5, 1.0); for (const ly of [3, 7]) plinthAt('P10-01', 1, ly, 1.1, 0.7);
-  put('P10-01', 'decor_trophy_cup', 1, 5, { y: 1.0 }); put('P10-01', 'brazier', 1, 3, { y: 0.7 }); put('P10-01', 'brazier', 1, 7, { y: 0.7 });
+  put('P10-01', 'decor_trophy_cup', 1, 5, { y: 1.0 }); bowl('P10-01', 1, 3, 0.7); bowl('P10-01', 1, 7, 0.7); props.push({ key: 'laurel_wreath', x: r2(mx(S('P10-01', 1, 5)[0]) + 0.45), z: r2(mz(S('P10-01', 1, 5)[1]) + 0.4), y: 0.99 });
   for (const [lx, ly] of [[1, 0], [11, 0], [1, 9], [11, 9]]) put('P10-01', 'greek_column', lx, ly, { h: 4.6 });
   native('P10-01', 'cyclops', 3, 2, 120, say('olympus', 'cyclops')); native('P10-01', 'minotaur', 9, 7, 300);
   /* ── THE COLONNADE (P11-01): two rows of tall columns under beams, rafters across: a pergola over the walk; the fountain in its middle ── */
@@ -165,49 +169,45 @@ exports.build = ctx => {
       a.box(x, 3.9, Z(6) - 0.55, 4 * C, 0.5, 1.5, MARB, W1, A(GQ, { under: true })); a.box(x, 4.05, Z(6) - 0.55, 4 * C + 0.08, 0.2, 1.58, GOLD, GT, A(GG, { top: false }));
       for (const s of [-1, 1]) flame(a, x + s * 6.6, 4.4, Z(6) - 0.55, 1.3); for (let i = 0; i < 5; i++) { const t = (20 + i * 35) * Math.PI / 180; flame(a, x + Math.cos(t) * 8.85, 2.4, z + Math.sin(t) * 8.85, 1.1); } });
   for (let lx = 3; lx <= 6; lx++) { block('P11-02', lx, 6); block('P11-02', lx, 9); block('P11-02', lx, 10); } for (const [lx, ly] of [[2, 8], [7, 8], [2, 9], [7, 9]]) block('P11-02', lx, ly);
-  put('P11-02', 'lectern', 4, 7, { face: 0 }); dec('P11-02', 'instrument_harp', 3, 7); dec('P11-02', 'instrument_drum', 6, 7); native('P11-02', 'chosen one', 5, 8, 180);
+  put('P11-02', 'lectern', 4, 7, { face: 0 }); dec('P11-02', 'lyre', 3, 7); dec('P11-02', 'instrument_drum', 6, 7); native('P11-02', 'chosen one', 5, 8, 180);
   /* ── THE TERRACES (P12-02): vine rows on posts between low stone walls, a fountain ── */
-  plotLook('P12-02', 'terraces', 4, 7, false, a => {
-      const vine = (lx, ly) => { const x = X(lx), z = Z(ly); for (const s of [-1, 1]) a.box(x + s * 1.5, 0, z, 0.14, 1.9, 0.14, WD2, 0x6a4a30, { gain: 1.4 }); a.box(x, 1.84, z, 3.5, 0.1, 0.12, WD2, 0x6a4a30, { gain: 1.4 });
-          a.box(x, 0.5, z, 3.3, 1.5, 0.55, 'leaves', 0x7fae4a, { gain: 2.0 }); a.box(x, 0, z, 3.5, 0.5, 1.1, 'rocks_5', 0xb8b4a8); };
-      for (const ly of [6, 8]) for (const lx of [1, 2, 3, 5, 6, 7]) vine(lx, ly); });
-  for (const ly of [6, 8]) for (const lx of [1, 2, 3, 5, 6, 7]) block('P12-02', lx, ly, 3.4, 1.6);
+  for (const ly of [6, 8]) for (const lx of [1, 2, 3, 5, 6, 7]) put('P12-02', 'grape_trellis', lx, ly, {});   // the wish list's trellis, one a square (the model pass: the leaf sheet on posts is gone)
   put('P12-02', 'fountain', 4, 5); dec('P12-02', 'greek_amphora', 2, 5); dec('P12-02', 'stone_urn', 6, 5); native('P12-02', 'orb of light', 3, 7, 200);
   /* ── THE OLIVE GROVE, THE PILGRIM STAIR, THE GOAT TRACK ── */
-  for (const d of [[3, 4], [6, 5], [4, 6], [7, 7], [3, 8], [5, 8], [7, 5]]) tree('P10-03', 'tree_2', 4.2, d[0], d[1], 0.6); dec('P10-03', 'stone_urn', 5, 5);
-  put('P11-03', 'lion_statue', 3, 6, { face: 180 }); put('P11-03', 'lion_statue', 6, 6, { face: 180 }); put('P11-03', 'brazier', 2, 8); dec('P12-03', 'cave_stone', 6, 5);
+  [[3, 4, 0], [6, 5, 70], [4, 6, 200], [7, 7, 120], [3, 8, 300], [5, 8, 40], [7, 5, 250]].forEach(d => put('P10-03', 'olive_tree', d[0], d[1], { face: d[2] }));   // the wish list's olive tree (was the stand-in `tree_2`) dec('P10-03', 'stone_urn', 5, 5);
+  put('P11-03', 'lion_statue', 3, 6, { face: 180 }); put('P11-03', 'lion_statue', 6, 6, { face: 180 }); bowl('P11-03', 2, 8); dec('P12-03', 'cave_stone', 6, 5);
   /* ══ PASS 3, THE DRESSING (the model list's pieces: owl, busts, amphorae, arms, instruments, sheep, eagle, butterflies, clouds; more of the gods' own units) ══ */
   /* the thrones: each god's things beside a seat, clouds drifting over the dais's rim */
-  put('P10-00', 'owl_statue', 4, 6, { h: 1.4, face: 20 }); dec('P10-00', 'spear', 7, 5, { y: 0.02 }); dec('P10-00', 'spell_shield', 8, 5); dec('P10-00', 'instrument_harp', 3, 5); dec('P10-00', 'greek_amphora', 4, 3); dec('P10-00', 'greek_amphora', 6, 5);
+  put('P10-00', 'owl_statue', 4, 6, { h: 1.4, face: 20 }); dec('P10-00', 'spear', 7, 5, { y: 0.02 }); dec('P10-00', 'spell_shield', 8, 5); dec('P10-00', 'lyre', 3, 5); dec('P10-00', 'laurel_wreath', 5, 5, { y: 0.02 }); put('P10-00', 'peacock', 6, 6, { face: 300 }); put('P10-00', 'greek_couch', 9, 6, { face: 315 }); dec('P10-00', 'greek_amphora', 4, 3); dec('P10-00', 'greek_amphora', 6, 5);
   dec('P10-00', 'brass_orrery', 6, 3); dec('P10-00', 'item_drinking_cup', 5, 5); dec('P10-00', 'giant_hourglass', 4, 1); dec('P10-00', 'eagle', 5, 6);
   for (const [lx, ly, sp] of [[10, 3, 6], [3, 4, 5], [9, 7, 7], [5, 0, 5]]) dec('P10-00', 'white_cloud', lx, ly, { span: sp, y: 0.4 });
   native('P10-00', 'valkraye', 9, 4, 270);
   /* the Temple's court: lions by the steps, braziers on plinths, urns */
   for (const lx of [3, 8]) plinthAt('P11-00', lx, 9, 1.3, 0.8);
-  put('P11-00', 'brazier', 3, 9, { y: 0.8 }); put('P11-00', 'brazier', 8, 9, { y: 0.8 }); put('P11-00', 'lion_statue', 4, 8, { face: 180 }); put('P11-00', 'lion_statue', 7, 8, { face: 180 });
+  bowl('P11-00', 3, 9, 0.8); bowl('P11-00', 8, 9, 0.8); put('P11-00', 'lion_statue', 4, 8, { face: 180 }); put('P11-00', 'lion_statue', 7, 8, { face: 180 });
   dec('P11-00', 'stone_urn', 2, 10); dec('P11-00', 'stone_urn', 9, 10); dec('P11-00', 'greek_amphora', 1, 9); dec('P11-00', 'white_cloud', 1, 5, { span: 6, y: 0.5 });
   /* the Stadium: prize amphorae, arms, a shield and spears by the seats */
   dec('P10-01', 'greek_amphora', 2, 4); dec('P10-01', 'greek_amphora', 2, 6); dec('P10-01', 'arms_trophy', 7, 1, { y: 0.9 }); dec('P10-01', 'spear', 1, 1); dec('P10-01', 'spear', 11, 8); dec('P10-01', 'spell_shield', 11, 1); dec('P10-01', 'spell_shield', 5, 8);
-  dec('P10-01', 'instrument_drum', 1, 8); dec('P10-01', 'meshy_trumpet', 2, 8, { y: 0.3 }); native('P10-01', 'giant', 10, 4, 270);
+  dec('P10-01', 'instrument_drum', 1, 8); dec('P10-01', 'meshy_trumpet', 2, 8, { y: 0.3 }); native('P10-01', 'giant', 10, 4, 270); put('P10-01', 'chariot', 3, 8, { face: 90 }); put('P10-01', 'discus_rack', 11, 3, { face: 270 }); put('P10-01', 'discus_rack', 2, 2, { face: 90 });
   /* the Colonnade: busts on plinths, benches, pots, an orrery */
   for (const [lx, ly] of [[4, 4], [8, 4], [4, 8], [8, 8]]) plinthAt('P11-01', lx, ly, 1.2, 0.95); plinthAt('P11-01', 5, 8, 1.0, 0.8);
   for (const [lx, ly, f] of [[4, 4, 90], [8, 4, 270], [4, 8, 90], [8, 8, 270]]) put('P11-01', 'marble_bust', lx, ly, { y: 0.95, face: f }); put('P11-01', 'brass_orrery', 5, 8, { y: 0.8 });
-  dec('P11-01', 'iron_garden_bench', 5, 4); dec('P11-01', 'iron_garden_bench', 7, 8); dec('P11-01', 'potted_plant', 5, 3); dec('P11-01', 'potted_plant', 8, 7); dec('P11-01', 'potted_plant', 4, 7); dec('P11-01', 'stone_urn', 7, 3);
+  put('P11-01', 'greek_couch', 5, 4, { face: 0 }); put('P11-01', 'greek_couch', 7, 8, { face: 180 }); dec('P11-01', 'lyre', 6, 4); dec('P11-01', 'potted_plant', 5, 3); dec('P11-01', 'potted_plant', 8, 7); dec('P11-01', 'potted_plant', 4, 7); dec('P11-01', 'stone_urn', 7, 3);
   dec('P11-01', 'butterfly', 5, 7, { y: 0.9 }); dec('P11-01', 'monarch', 7, 4);
   /* the Sacred Way */
   dec('P10-02', 'greek_amphora', 4, 6); dec('P10-02', 'stone_urn', 2, 5); native('P10-02', 'nephilim', 10, 4, 270);
   /* the Amphitheatre: fire at the stage's ends, the players' things on the floor */
-  put('P11-02', 'brazier', 2, 6); put('P11-02', 'brazier', 7, 6); dec('P11-02', 'instrument_tambourine_up', 5, 7, { y: 0.1 }); dec('P11-02', 'meshy_trumpet', 3, 8, { y: 0.1 }); dec('P11-02', 'instrument_whistle', 6, 8); dec('P11-02', 'greek_amphora', 1, 7); dec('P11-02', 'greek_amphora', 0, 8);
+  bowl('P11-02', 2, 6); bowl('P11-02', 7, 6); dec('P11-02', 'instrument_tambourine_up', 5, 7, { y: 0.1 }); dec('P11-02', 'meshy_trumpet', 3, 8, { y: 0.1 }); dec('P11-02', 'instrument_whistle', 6, 8); dec('P11-02', 'greek_amphora', 1, 7); dec('P11-02', 'greek_amphora', 0, 8);
   /* the Terraces: the harvest (amphorae, crates, a well), butterflies and bees on the vines */
-  put('P12-02', 'ancient_well', 4, 9); for (const [lx, ly] of [[2, 7], [6, 7], [5, 9]]) dec('P12-02', 'greek_amphora', lx, ly); dec('P12-02', 'psx_wooden_crate_2', 3, 9); dec('P12-02', 'psx_wooden_crate_1', 7, 7); dec('P12-02', 'iron_garden_bench', 3, 5);
-  for (const [k, lx, ly] of [['butterfly', 2, 7], ['monarch', 5, 7], ['bee', 6, 9], ['bee', 4, 7], ['butterfly', 4, 4]]) dec('P12-02', k, lx, ly, { y: 0.9 }); dec('P12-02', 'psx_planter_pot_mp_1_full', 5, 5, { h: 0.6 }); dec('P12-02', 'psx_planter_pot_mp_1_full', 3, 4, { h: 0.6 });
+  put('P12-02', 'ancient_well', 4, 9); for (const [lx, ly] of [[2, 7], [6, 7], [5, 9]]) dec('P12-02', 'greek_amphora', lx, ly); dec('P12-02', 'psx_wooden_crate_2', 3, 9); dec('P12-02', 'psx_wooden_crate_1', 7, 7); put('P12-02', 'greek_couch', 3, 5, { face: 90 }); put('P12-02', 'wooden_barrel', 2, 9); put('P12-02', 'wooden_barrel', 6, 9); dec('P12-02', 'woven_baskets', 6, 7); put('P12-02', 'sundial', 4, 4); put('P12-02', 'cypress_tree', 3, 10); put('P12-02', 'cypress_tree', 5, 10); dec('P12-02', 'wild_flowers', 2, 5); dec('P12-02', 'wild_flowers', 6, 5);
+  for (const [k, lx, ly] of [['butterfly', 2, 7], ['monarch', 5, 7], ['bee', 5, 9], ['bee', 4, 7], ['butterfly', 5, 4]]) dec('P12-02', k, lx, ly, { y: 0.9 }); dec('P12-02', 'psx_planter_pot_mp_1_full', 5, 5, { h: 0.6 }); dec('P12-02', 'psx_planter_pot_mp_1_full', 3, 4, { h: 0.6 });
   /* the Olive Grove: a flock, oil jars, a bench, a unicorn (a `forest` + `divine` unit) */
-  for (const [lx, ly] of [[5, 4], [6, 6], [4, 7], [7, 6]]) dec('P10-03', 'decor_sheep', lx, ly); dec('P10-03', 'rabbit', 5, 7); dec('P10-03', 'greek_amphora', 4, 5); dec('P10-03', 'greek_amphora', 6, 8); dec('P10-03', 'psx_wooden_crate_3', 6, 4); dec('P10-03', 'iron_garden_bench', 5, 6);
+  for (const [lx, ly] of [[5, 4], [6, 6], [4, 7], [7, 6]]) dec('P10-03', 'decor_sheep', lx, ly); dec('P10-03', 'rabbit', 5, 7); dec('P10-03', 'greek_amphora', 4, 5); dec('P10-03', 'greek_amphora', 6, 8); dec('P10-03', 'psx_wooden_crate_3', 6, 4); put('P10-03', 'greek_couch', 5, 6, { face: 20 }); put('P10-03', 'beehive', 3, 5); put('P10-03', 'goat', 8, 5, { face: 200 }); dec('P10-03', 'wild_flowers', 4, 4); dec('P10-03', 'wild_flowers', 6, 7); dec('P10-03', 'wild_flowers', 5, 9);
   dec('P10-03', 'butterfly', 4, 4, { y: 0.8 }); dec('P10-03', 'bee', 6, 7, { y: 0.8 }); native('P10-03', 'unicorn', 4, 8, 40);
   /* the Pilgrim Stair: a shrine for those who come up from the Vatican (an altar, candles, a censer, a bench) */
-  put('P11-03', 'stone_altar', 2, 7, { face: 90 }); put('P11-03', 'votive_stand', 6, 8, { face: 270 }); for (const [lx, ly] of [[2, 6], [5, 8], [1, 7], [6, 7]]) dec('P11-03', 'hw_candles', lx, ly); dec('P11-03', 'item_censer', 3, 7); dec('P11-03', 'iron_garden_bench', 5, 5); dec('P11-03', 'stone_urn', 4, 5);
+  put('P11-03', 'stone_altar', 2, 7, { face: 90 }); put('P11-03', 'votive_stand', 6, 8, { face: 270 }); for (const [lx, ly] of [[2, 6], [5, 8], [1, 7], [6, 7]]) dec('P11-03', 'lit_candle', lx, ly); dec('P11-03', 'oil_lamp', 3, 8); dec('P11-03', 'item_censer', 3, 7); dec('P11-03', 'iron_garden_bench', 5, 5); dec('P11-03', 'stone_urn', 4, 5);
   /* the Goat Track: a spyglass over the cliff, a boundary stone, a small flock, an eagle on the wind */
-  put('P12-03', 'brass_telescope', 8, 5, { face: 90 }); put('P12-03', 'menhir', 6, 2); for (const [lx, ly] of [[7, 3], [6, 4], [8, 4]]) dec('P12-03', 'decor_sheep', lx, ly); dec('P12-03', 'psxg_rock_2', 7, 6, { h: 0.9 }); dec('P12-03', 'psxg_rock_3', 5, 3, { h: 0.7 }); dec('P12-03', 'eagle', 7, 4); native('P12-03', 'occulus', 6, 5, 200);
+  put('P12-03', 'brass_telescope', 8, 5, { face: 90 }); put('P12-03', 'menhir', 6, 2); [[7, 3, 100], [6, 4, 220], [8, 4, 30]].forEach(d => put('P12-03', 'mountain_goat', d[0], d[1], { face: d[2] })); put('P12-03', 'cypress_tree', 9, 3); dec('P12-03', 'psxg_rock_2', 7, 6, { h: 0.9 }); dec('P12-03', 'psxg_rock_3', 5, 3, { h: 0.7 }); dec('P12-03', 'eagle', 7, 4); native('P12-03', 'occulus', 6, 5, 200);
   /* the Cloud Line and the Grand Stair's foot: cloud on the walk (nothing that blocks: the ways are the tool's) */
   for (const [id, lx, ly, sp] of [['P12-01', 7, 2, 6], ['P12-01', 7, 8, 7], ['P12-01', 3, 5, 6], ['P12-01', 5, 6, 5], ['P12-01', 7, 5, 8], ['P12-00', 7, 9, 6], ['P12-00', 8, 5, 7], ['P12-00', 2, 6, 5]]) dec(id, 'white_cloud', lx, ly, { span: sp, y: 0.5 });
   native('P12-01', 'watcher', 1, 5, 90);
