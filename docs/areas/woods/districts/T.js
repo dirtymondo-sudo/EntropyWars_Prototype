@@ -22,7 +22,12 @@
        THE SNOWLINE = the mountain's flank on the west / north-west edge with snow on every top + three snowed outcrops; the giant redwood is 26 m (was 16);
        the district wears `grass_dark_fantasy`. Passes still to do: dressing (the two Creek plots), atmosphere (no light shafts exist in the engine, no mist
        row, no snow sheet: the snow is the ice sheet), polish. No walk-in stands in this district's plan (no interior pass).
-     - NEEDS A MODEL (nothing stands in for these): a snow ground sheet; a fallen giant redwood trunk (the pack's `fallen_log` is 2 m).
+     - PASS 3, THE DRESSING (11-16, `build`): the fisher's camp on the upper Creek's glade (tent, rowboat, log, bucket, crate, small things); the rest by the
+       bridge on the lower Creek (signpost, bench, log, stepping stones in the water); signposts at the trail's joins; rocks in and along the creek, rocks, logs,
+       dead bushes and mushrooms along the trails; from THE MODEL LIST (owner-rules.md §1): Halloween stones, cobwebs, a corpse and body parts (the yeti's
+       larder), wolves, rabbits, an anthill, a snowman on the Snowline. 7 of 62 hand-placed pieces were skipped (plot full).
+     - NEEDS A MODEL (nothing stands in for these): a snow ground sheet; a fallen giant redwood trunk (the pack's `fallen_log` is 2 m);
+       stepping stones a person can see (the graveyard pack's are a hand wide); a bat (the game's bats are drawn by code).
      - The two Creek plots hold almost nothing of their own.
      - Seen in the probe, do not bring back: the thorn vine model (a toothed man-eater on a mound) is wrong for this wood, and the ocean
        pack's rocks draw as black blocks in this room (the boulders are cave_stone).
@@ -144,5 +149,30 @@ module.exports = {
         outcrop('flank', [[0, 0, 1, 5, 10.5], [1, 0, 2, 1, 7], [0, 5, 1, 4, 7], [1, 1, 1, 1, 3.5], [0, 9, 1, 2, 3.5]], { snow: true });
         { const want = [[2, 8], [9, 9], [9, 1], [3, 5], [8, 6]].filter(q => cell[q[1]][q[0]] === 's' && !taken.has(q[0] + ':' + q[1])).slice(0, 3);
           want.forEach((q, i) => outcrop('snowrock' + i, [[q[0], q[1], 1, 1, 3.5]], { snow: true })); }
+        /* ── PASS 3, THE DRESSING (2026-11-16): catalogue props only, packs first. hput / hdec skip a piece when its plot is full; the scatters are `sow` rows
+              added here, so they re-throw nobody's (bake-woods.js THE SEEDS HOLD). ── */
+        const { hput, hdec, sow } = ctx;
+        /* THE CREEK, UPPER (P02-01): a fisher's camp on the glade between the trail and the water */
+        hput('P02-01', 'camping_tent', -1, -2, { face: 120 }); hput('P02-01', 'rowboat', 1, 1, { face: 20 }); hdec('P02-01', 'fallen_log', 0, 1); hdec('P02-01', 'wooden_bucket', 1, 0);
+        hdec('P02-01', 'psx_fish_skeleton_mp_1', 1, -1); hdec('P02-01', 'psx_wooden_crate_2', -1, -1); hdec('P02-01', 'stump', -1, 1); hdec('P02-01', 'psx_glass_bottle_1', 0, -1);
+        /* THE CREEK, LOWER (P02-02): the rest by the bridge where the trails meet */
+        hput('P02-02', 'signpost', -1, 1); hput('P02-02', 'park_bench', 1, -1, { face: 180 }); hdec('P02-02', 'fallen_log', 2, 0); hdec('P02-02', 'wooden_bucket', 1, 1); hdec('P02-02', 'stump', 0, -1); hdec('P02-02', 'psxg_dead_bush_1', 2, 1);
+        /* the trail's joins and the old trees */
+        hput('P01-02', 'signpost', 2, 0); hput('P00-02', 'signpost', 1, 1); hdec('P00-02', 'fallen_log', -1, -1); hdec('P00-01', 'fallen_log', 2, -2); hdec('P00-01', 'stump', -2, 2); hdec('P01-01', 'fallen_log', 3, 0); hdec('P01-01', 'stump', -3, 2);
+        hdec('P01-00', 'psxg_dead_bush_2', -3, -1); hdec('P01-00', 'psxg_dead_bush_1', 3, 3); hdec('P00-00', 'psxg_dead_bush_2', 3, 3); hdec('P00-00', 'psxg_dead_bush_1', -3, -1);
+        /* THE MODEL LIST FIRST (mondo 11-16; owner-rules.md §1): pieces of the packs the first cut had missed. The graveyard pack's stepping stones across the creek at
+           the lower glade; the Halloween pack's stones, cobwebs, a corpse and body parts (the yeti's larder, the bigfoot's trees); the PSX pack's small things at the
+           camp; the animal pack's wolves, rabbits and an anthill; the Christmas pack's snowman on the Snowline. Skipped on purpose: the bats (drawn by code, no model),
+           the caterpillar (a 2 m Meshy piece), the Halloween and graveyard packs' trees (the tree kinds are closed). */
+        { const { life, props } = ctx, sx = gc(32), sz = gc(28);
+          [[-4.6, 0.3, 1], [-2.9, -0.4, 2], [-1.2, 0.2, 1], [0.6, -0.3, 2], [2.3, 0.3, 1], [4.0, -0.2, 2]].forEach(q => props.push({ key: 'psxg_stepping_stone_' + q[2], x: r2(sx + q[0]), z: r2(sz + q[1]), face: Math.round(rnd() * 360) }));
+          hdec('P02-01', 'psx_flashlight_1', 0, 0); hdec('P02-01', 'psx_hand_saw_1', -1, 0); hdec('P02-01', 'psx_knife_mp_1', 1, -1); hdec('P02-01', 'psx_meat_1', 0, 1);
+          hdec('P00-00', 'hw_body', 1, 2, { face: 70 }); hdec('P00-00', 'hw_part_3', -2, 2); hdec('P00-00', 'hw_part_6', 2, 0); hdec('P00-00', 'psx_meat_1', -1, 3); hput('P00-00', 'xmas_snowman', 3, 3, { face: 135 });
+          hput('P01-00', 'hw_stone_3', -3, 2); hput('P01-00', 'hw_stone', 3, 1); hdec('P01-00', 'hw_shovel', 2, 3); hdec('P01-00', 'hw_part_6', 1, 2);
+          hdec('P00-01', 'hw_web', 1, -1, { y: 1.4 }); hdec('P00-01', 'hw_web_2', -1, 1, { y: 1.9 }); hdec('P00-02', 'hw_web', 1, 0, { y: 1.5 }); hdec('P00-01', 'hw_part_3', -2, -2); hdec('P00-01', 'anthill', 3, -1);
+          life('P00-02', 'wolf'); life('P01-02', 'wolf'); life('P01-00', 'wolf'); life('P01-01', 'rabbit'); life('P01-01', 'rabbit'); life('P02-02', 'rabbit'); life('P02-01', 'anthill'); }
+        /* rocks in and along the creek (the Falls' pool down to the bridge), rocks and logs along the trails, more mushrooms under the giants */
+        sow('psxg_rock_2', 9, [32, 4], 9, { r0: 2.5 }); sow('psxg_rock_1', 10, [32, 14], 12, { r0: 0.5 }); sow('psxg_rock_3', 10, [32, 26], 12, { r0: 0.5 }); sow('psxg_rock_4', 8, [31, 19], 8);
+        sow('psxg_rock_1', 8, [16, 27], 20, { r0: 0.5 }); sow('psxg_rock_4', 8, [20, 12], 28, { r0: 0.5 }); sow('fallen_log', 6, [16, 26], 26, { r0: 1.9 }); sow('mushroom', 12, [7, 20], 22, { h: 0.5, r0: 0.25 }); sow('psxg_dead_bush_1', 8, [14, 6], 30);
     },
 };
