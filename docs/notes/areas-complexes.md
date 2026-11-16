@@ -5423,6 +5423,12 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   missile; the crater's lamps, camera, tape, pod; landing rings scorched into the Dry Lake west (16-sided rings of flat `line` paint); the
   range on the Dry Lake east; the wing's yard. Two more men (hangar door, crater), no lines. A sign with `ds: true` reads mirrored from
   behind: give a board a back, or two signs back to back. `missile` lies flat (it has no stand): on the "needs a model" list.
+- **PASS 4, ATMOSPHERE (seen by day and at night, 16 views):** lit parts only (`glow` on drawn boxes): runway edge / threshold / end lights,
+  blue taxi lights, warm windows + strip lights in the huts, red obstruction lights, floods over the big door, a pale disc under each
+  saucer, a status lamp over every cell door. PROBE TIP: a view's `eval` of `window._hqClockHour = function () { return 22.5 }` (+ `settle`
+  2500) turns the room to night for the views after it. **NOT POSSIBLE FROM A DISTRICT FILE (reported to mondo):** sound cues and particles
+  (dust, heat haze, a hum by the saucer): there is no row or hook for either in a room's terrain; real lights are capped at ten a room
+  (three-renderer.js HQ_PROP_LIGHT_MAX) and the flood masts already hold them, so the huts' strip lights glow but light nothing.
 
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
 
