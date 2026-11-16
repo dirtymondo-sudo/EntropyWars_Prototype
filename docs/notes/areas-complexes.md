@@ -6180,6 +6180,34 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
 - **THE COST:** three particle zones (three draw calls). The proof view: 582 draw calls, 2.2 frames a second by day, 1.8 at night.
 - Not done: no real light on the dock (the room's ten are shared), no sound bed (a walked room has none), the lamps' glass is a plain lit box.
 
+### PASS 5, THE POLISH (seen in the cloud browser) — FIVE PASSES LIVE, STOPPED, waits mondo's look
+- The Boathouse's boards (`gain` 2.1) and tin (1.9) read weathered grey by day now (they read dark brown). The spruce that grew through the
+  shelter's roof moved two squares. The west shore between the dock and the picnic ground: two benches to the water, the Woods' `missing_board`
+  at the dock's foot, a stump, ferns. Boats tied at the slip's and the jetty's end. Two lamp posts on the Marsh's boardwalk.
+- **THE COST, measured the same way before and after (the whole district from 60 m up, the same view twice, the second reading):** before the
+  five passes 472 draw calls, 1.8 frames a second; after them 996 draw calls, 1.8 frames a second. The cloud's software renderer is bound by
+  pixels, not by draw calls, so it shows no loss; a weak PC with a slow CPU may feel the extra 520 calls. Where they come from: about 35
+  swaying water plants, 30 stones, 25 ferns, 19 trees, 12 dead trees and bushes, the Boathouse's props (inside, culled from outside or not:
+  not checked). L's real lights: two (were four).
+- **DECISIONS MADE FOR MONDO (overrule any in one line):**
+  1. The rock in the lake is a cluster of the ocean pack's rocks (near black), not a mound.
+  2. The Boathouse's boat doors on the lake side are drawn shut; you walk in by the south door.
+  3. Reeds = the ocean pack's seaweed in the shallows; lily pads = drawn discs (no model exists for either).
+  4. A picnic shelter, the playground pack's swing, slide and sandbox, a camp on the east bank, a jetty there, a boardwalk over the Marsh, a
+     head on the dock: none is in the plan's words, all are plain lake things. No name was invented for any.
+  5. Signs: `BOATHOUSE`, `PICNIC AREA`, `NO SWIMMING`. The Woods' MISSING board stands at the dock's foot.
+  6. A flamingo stands in the Marsh (the model list's only wading bird).
+  7. `dockring` (a spaceship docking ring) was removed from beside the Boathouse.
+  8. Shingle = the gravel sheet through a new plan letter `s` in bake-estate.js (the one shared change, noted on the board).
+  9. No people were added: the plan gives the Lake only the Loch Ness Monster ("more NPCs" is his rule, but who lives here is his to name).
+  10. The kraken tentacles (`tentacle`, `tentacle2`) were NOT placed: the lake's monster is Nessie.
+- **WHAT IS STILL OPEN:** NEEDS A MODEL: reeds / cattails, a duck or heron, a mooring bollard, oars, a fishing rod, a pot-belly stove (drawn in
+  code today), a lighter lake rock, a lamp post / lantern (the zone's). The lamps light nothing (drawn glow; the room has ten real lights for
+  four districts). The pool's outline is stepped from above (the terrain's 0.875 m grid). The door row's leaf-sheet surround shows as thin
+  green edges at the Boathouse's door from inside (the tool's door row, as in H). Fish cannot be seen under the opaque water. No sound
+  bed. No residents with routines, no lines, no encounter table (mondo's). The draw calls doubled (see THE COST): the next step is to find
+  which props batch and which do not, and merge or thin the ones that do not.
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
