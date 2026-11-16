@@ -18,7 +18,12 @@
    braziers and its signpost), the Crown's Road itself, the dead tree's hole on P00-07 (`deadtree`, a secret way to The Woods), the moat,
    the Drawbridge. Dress round them, do not move them: the arrival is the first thing a player sees of the kingdom.
 
-   MISSING / WAITING: nothing is waiting on mondo. NEXT: people, more dressing, the air, the night.
+   PASS 3 (dressing + life): five silent natives (robinhood at the camp, a knight at the bay, a wizard in the stone ring, a tree person and a
+   rabbit in the woodcutter's glade), signposts at the track's far crossings, trodden earth, leaves under the oaks, stepping stones, flowers,
+   bees, butterflies, hens, a wolf, crows, frogs, reeds (the Ocean pack's weed) along the moat's bank.
+   PASS 4 (atmosphere): `airZones` (gold motes through the forest, fireflies over the glades, the bay and the bank, blue motes in the ring,
+   ash at the dead tree's hole), six more lantern posts (the track's crossings, the hut, the camp, the bridge's foot), smoke over the camp's fire.
+   MISSING / WAITING: nothing is waiting on mondo. NEXT: polish.
    NEEDS A MODEL (nothing on R2): an axe + chopping block, a hand cart, a wooden barrel, a medieval tent (the two here are drawn),
    reeds, a deer / fox / owl, a leafy bush, flowers.
    HOW (learned here): a prop within a ghost wall's square takes `floor: true` or it stands on the wall's top (2.2 m up). Pieces by
@@ -180,6 +185,53 @@ for (let x = 9; x < 88; x += 0.7 + rnd() * 0.9) { under(gx(x), gx(87) - 0.5 - rn
 for (let x = 13; x < 83; x += 1.2 + rnd() * 1.4) under(gx(x), gx(80) + 0.5 + rnd() * 1.4);
 for (let y = 80; y < 96; y += 0.9 + rnd() * 0.9) { under(gx(7) - 0.5 - rnd() * 1.3, gx(y)); under(gx(9) + 0.5 + rnd() * 1.3, gx(y)); under(gx(88) - 0.5 - rnd() * 1.3, gx(y)); under(gx(90) + 0.5 + rnd() * 1.3, gx(y)); }
 
+/* ── PASS 3, THE DRESSING AND THE LIFE (2026-11-16). People (silent: nobody's lines are invented), animals, signposts at the track's two
+   far crossings, reeds along the moat's bank, flowers under the oaks, trodden earth where feet go, stepping stones into the glades ── */
+native('robinhood', 66, 89, 200); native('knight', 41, 93, 90); native('wizard', 89, 91, 0); native('tree person', 20, 91, 60); native('rabbit', 23, 92, 300);
+put('signpost', 6, 88, { face: 90 }); put('signpost', 90, 87, { face: 270 });
+/* trodden earth: before the hut's door, round the camp's fire, inside the stone ring, at the well and the wagon; fallen leaves under the oaks */
+const patch = (x, z, r, key, tint, o) => P.push(Object.assign({ s: 'cyl', p: [r2(x), 0, r2(z)], r, h: 0.03, seg: 22, key, tint, gain: 1.45 }, o || {}));
+patch(gc(64), gc(90), 3.1, 'dirt_2', 0xc8b8a0); patch(gc(89), gc(90), 4.4, 'dirt_2', 0xb8b0a0); patch(gc(41), gc(85), 2.0, 'dirt_2', 0xc8b8a0); patch(gx(46), gc(86), 3.0, 'dirt_2', 0xc8b8a0); patch(gc(22) + 1.2, gc(89) + 0.8, 2.4, 'dirt_2', 0xc8b8a0);
+for (const q of [[41, 92, 2.6], [44, 93, 2.4], [21, 86, 2.6], [66, 86, 2.5]]) patch(gc(q[0]), gc(q[1]), q[2], 'leaves_3', 0xd8c890, { gain: 1.3 });
+/* stepping stones: from the track into the camp, and into the stone ring */
+[[65.2, 88.9, 10], [65.0, 89.25, 200], [64.7, 89.6, 80], [89.9, 88.6, 40], [89.6, 89.0, 150], [89.3, 89.35, 260]].forEach((q, i) => at(i % 2 ? 'psxg_stepping_stone_2' : 'psxg_stepping_stone_1', gx(q[0]), gx(q[1]), { face: q[2] }));
+/* flowers under the great oaks and at the glades' edges (the Rejuvenation flower: the only flower in the game), bees and butterflies over them */
+[[41, 91, 0.9, 0.6], [41, 91, -0.8, -0.9], [44, 92, 0.7, -0.8], [41, 95, 0.2, 0.5], [44, 95, -0.5, 0.2], [22, 86, 0.6, 0.4], [22, 86, -0.9, -0.3], [25, 90, 0.8, 0.9], [20, 91, -1.0, 0.9], [22, 92, 0.3, 1.0],
+ [64, 91, 0.4, -0.6], [69, 89, 1.0, -1.1], [66, 92, 0.2, 1.0], [88, 91, -1.0, 0.9], [90, 91, 1.0, 0.9], [91, 90, 1.1, -0.4]].forEach((q, i) => { const key = i % 5 === 3 ? 'woods_thornvine' : 'woods_healflower';
+    if (cell[q[1]][q[0]] !== 'g') throw new Error('W: a flower off the grass at ' + q[0] + ',' + q[1]); at(key, gc(q[0]) + q[2], gc(q[1]) + q[3], { face: (i * 67) % 360, h: key === 'woods_thornvine' ? 0.9 : 0.55 + (i % 3) * 0.12 }); });
+at('bee', gc(41) + 0.9, gc(91) + 0.6, { y: 0.8 }); at('bumblebee', gc(22) + 0.6, gc(86) + 0.4, { y: 0.7 }); at('monarch', gc(23), gc(91), { y: 1.3 }); at('swallowtail', gc(65), gc(91), { y: 1.5 }); at('butterfly', gc(89) + 1, gc(90) + 1, { y: 1.2 }); at('butterfly', gc(44) + 0.4, gc(89) - 1.0, { y: 1.1 });
+at('ladybug', gc(40) + 0.2, gc(86) + 0.1, { y: 0.62 }); at('anthill', gc(22) + 0.9, gc(86) - 0.9, { face: 30 }); at('ant', gc(22) + 0.4, gc(86) - 0.5, { face: 200 }); at('ant', gc(22) + 0.1, gc(86) - 0.2, { face: 210 });
+/* the hut's yard: straw, hens, a pumpkin patch by the lean-to; the camp: a drum and a fiddle by the fire log, hay for the horse */
+at('hw_straw', gc(22) - 0.9, gc(89) - 0.6, { face: 80 }); at('hw_straw_2', gc(22) - 0.8, gc(89) + 0.5, { face: 95 }); at('chicken', gc(23) + 0.3, gc(90) + 0.9, { face: 140 }); at('chicken', gc(24) - 0.5, gc(91) - 1.1, { face: 300 }); at('chicken', gc(22) + 1.0, gc(91) - 1.4, { face: 30 });
+at('hw_pumpkin', gc(24) + 1.1, gc(90) + 1.2, { face: 10 }); at('hw_pumpkin_2', gc(25) - 0.4, gc(90) + 0.6, { face: 100 });
+at('instrument_drum', gc(63) + 0.9, gc(90) - 1.2, { face: 20 }); at('instrument_violin_lying', gc(63) - 0.2, gc(90) + 1.25, { face: 110 }); at('hw_straw', gc(68) + 1.2, gc(91) - 0.9, { face: 60 }); at('wooden_bucket', gc(68) - 1.2, gc(91) + 0.9);
+/* the stone ring: candles on the altar, a staff leant on a stone; a wolf at the forest's edge beyond it; crows on the stones */
+at('hw_candles', gc(89) - 0.5, gc(90), { y: 0.95, floor: true }); at('hw_candle', gc(89) + 0.4, gc(90) + 0.1, { y: 0.95, floor: true }); at('item_wizard_staff', gc(88) + 0.7, gc(91) - 0.5, { face: 40, floor: true });
+at('wolf', gc(91) + 0.2, gc(91) + 1.0, { face: 300 }); at('crow', gc(87), gc(89), { y: 2.62, floor: true, face: 100 }); at('crow', gc(89), gc(89), { y: 3.42, floor: true, face: 200 });
+/* the road: a crow on the milestone, rabbits on the verge, a frog at each boat, hay and a sack at the rest by the stump */
+at('crow', RE - 0.5, gx(84.5), { y: 1.07, face: 250 }); at('rabbit', gc(44) - 0.4, gc(95) - 0.8, { face: 310 }); at('rabbit', gc(41) + 0.3, gc(86) + 0.9, { face: 50 });
+at('hw_straw_2', gc(41) - 0.3, gc(86) - 0.7, { face: 10 }); at('meshy_burlap_sack', gc(41) + 1.0, gc(86) - 0.2, { face: 120 });
+for (const x of [30, 58]) at('meshy_frog', gc(x) - 1.9, gx(78) + 0.5, { face: x * 3 });
+/* reeds: the Ocean pack's weed standing in the moat's edge (its feet on the bed), in clumps along the south bank */
+for (let x = 14; x < 82; x += 4.2 + rnd() * 5) { if (Math.abs(x - 43) < 4) continue; const n = 2 + Math.floor(rnd() * 3); for (let i = 0; i < n; i++) at(['ocean_seaweed', 'ocean_seaweed_2', 'ocean_seaweed_3'][Math.floor(rnd() * 3)], gx(x) + i * 0.7 + rnd() * 0.4, gx(77.75) - rnd() * 0.5, { h: 2.3 + rnd() * 0.7, face: Math.round(rnd() * 360) }); }
+
+/* ── PASS 4, THE ATMOSPHERE (2026-11-16): four more lantern posts where the forest track meets a way (so the track is found at night), a
+   lantern under the hut's eave, smoke over the camp's fire. The air itself is the airZones export below. ── */
+lantern(gx(9) + 0.45, gx(87) + 0.45, -1); lantern(gx(88) - 0.45, gx(87) + 0.45, 1); lantern(gx(23) - 0.5, gx(89) - 0.45, 1); lantern(gx(66) + 0.2, gx(89) - 0.45, -1);
+lantern(gx(42) - 0.5, gx(79) + 0.5, 1); lantern(gx(44) + 0.5, gx(79) + 0.5, -1);
+at('chimney_smoke', gc(64), gc(90), { y: 1.0, rise: 4 });
+
 arch.push({ k: 'arch', id: 'cam:w:forest', x: 0, z: 0, rot: 0, y: 0, parts: P }); flushArch();
 }
-module.exports = { build, ground, groundAlso };
+/* THE AIR (pass 4): pale gold motes through the whole forest; fireflies over the two glades, the bay and the moat's bank; cold blue motes
+   in the stone ring; ash falling round the dead tree's hole. The kingdom's embers stay over the whole room (the tool's). */
+const airZones = () => [
+    { x0: 0, y0: 79, x1: 96, y1: 96, kind: 'motes', color: 0xfff0b0, n: 300 },
+    { x0: 18, y0: 88, x1: 26, y1: 93, kind: 'fireflies', color: 0xffe890, n: 50 },
+    { x0: 62, y0: 88, x1: 70, y1: 93, kind: 'fireflies', color: 0xffe890, n: 50 },
+    { x0: 39, y0: 84, x1: 47, y1: 96, kind: 'fireflies', color: 0xd8ff90, n: 44 },
+    { x0: 14, y0: 77, x1: 82, y1: 80, kind: 'fireflies', color: 0xd8ff90, n: 90 },
+    { x0: 86, y0: 88, x1: 92, y1: 92, kind: 'motes', color: 0x9fd8ff, n: 60 },
+    { x0: 4, y0: 87, x1: 12, y1: 96, kind: 'ash', n: 70 },
+];
+module.exports = { build, ground, groundAlso, airZones };

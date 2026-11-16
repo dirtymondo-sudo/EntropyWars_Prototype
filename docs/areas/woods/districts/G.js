@@ -52,7 +52,7 @@ module.exports = {
         { const q = centre('P04-02'), R = 2; put('P04-02', 'ritual_circle', 0, 0, { y: 0.01 });   // THE STONES: six round the circle
           [[-R, -1], [-R, 1], [R, -1], [R, 1], [0, -R], [0, R]].forEach(d => put('P04-02', 'menhir', d[0], d[1])); dec('P04-02', 'candle_ring', 1, 0); put('P04-02', 'cave_torch', -3, 3); }
         put('P03-02', 'campfire', 0, 0); dec('P03-02', 'folding_chair', 1, 1); dec('P03-02', 'folding_chair', -1, 1); put('P03-02', 'cave_torch', 2, -2);
-        put('P05-02', 'dead_snag', 0, 0); dec('P05-02', 'floor_stain', 1, 0);                                                                               // THE DEAD TREE
+        put('P05-02', 'dead_snag', 0, 0, { h: 12 });   /* pass 3: the plot's landmark stands 12 m (at the catalogue's 4.6 m it was lost among the spruce: seen) */ dec('P05-02', 'floor_stain', 1, 0);                                                                               // THE DEAD TREE
         put('P03-01', 'camping_tent', 0, 0, { face: 180 }); put('P03-01', 'camping_tent', 2, 1, { face: 200 }); put('P03-01', 'camping_tent', -2, 1, { face: 160 }); dec('P03-01', 'sea_chest', 0, 2); dec('P03-01', 'retro_radio', 1, 2);
         { const q = centre('P04-01');   // THE STAGE: a low timber stage (one level up), steps at its south side
           features.push({ k: 'plateau', x: gx(q[0]), z: gx(q[1] - 1), w: 14, d: 7, h: 1.75, edge: 0.3 }, { k: 'ramp', x0: gx(q[0]), z0: gx(q[1] + 2), x1: gx(q[0]), z1: gx(q[1]), w: 3.5, h0: 0, h1: 1.75, stairs: true, model: 'wood', edge: 0.2 });
@@ -217,5 +217,68 @@ module.exports = {
           inP('psx_wooden_crate_2', 6.3, 2.2, { y: F }); inP('psx_metal_barrel_mp_1', -2.6, 2.8, { y: F }); inP('psx_metal_barrel_mp_2', -3.4, 2.8, { y: F });
           inP('psx_ceiling_lamp_1_on', -3.5, 0, { y: 2.42, noLight: true }); inP('psx_ceiling_lamp_1_on', 2.6, -0.5, { y: 2.42, noLight: true });
           inP('psx_cobweb_1', 6.5, -3.0, { y: 2.4 }); inP('railway_lantern', lx - 2.2, d / 2 + 0.5, { noLight: true }); }
+        /* ═══ PASS 3 · THE DRESSING ═══ (catalogue pieces only; the model list read end to end first: areas-complexes.md "THE RITUAL GROUND", FITS THIS DISTRICT)
+           sq = a blocker on a free square's middle (skipped when the square is not free); sm = a small thing at a spot in metres, only on open ground that is no
+           path (so nothing lands on a trail); up = a height for a piece that sits ON something (1 m or more is a height from the room's floor, so the ground is added) */
+        { const cellAt = (x, z) => { const cx = Math.floor((x + 126) / 3.5), cy = Math.floor((z + 126) / 3.5); return cy >= 0 && cy < 36 && cx >= 36 && cx < 72 ? cell[cy][cx] : 't'; };
+          const sq = (key, cx, cy, o) => { if (!free(cx, cy)) return false; take(cx, cy); props.push(Object.assign({ key, x: gc(cx), z: gc(cy) }, o || {})); return true; };
+          const sm = (key, x, z, o) => { if (!/[gsr]/.test(cellAt(x, z)) && !(o && o.any)) return false; const p = Object.assign({ key, x: r2(x), z: r2(z) }, o || {}); delete p.any; props.push(p); return true; };
+          const up = (x, z, lift, extra) => r2(ground(x, z) + lift + (extra || 0));
+          /* THE MOUND: a burial ground on the hill: stones, fresh graves, one rising, a coffin and a skull pile at the barrow's door, candles, crows */
+          { const q = centre('P03-00'), ox = gc(q[0]), oz = gc(q[1]); take(43, 7); take(43, 8);
+            [[41, 5, 'psxg_tombstone_1', 350], [44, 5, 'psxg_tombstone_2', 10], [45, 7, 'psxg_tombstone_3', 20], [41, 7, 'hw_grave', 340], [45, 4, 'psxg_tombstone_1', 0], [40, 6, 'hw_grave_low', 80]].forEach(t => {
+                if (sq(t[2], t[0], t[1], { face: t[3] })) sm('psxg_dirt_grave', gc(t[0]) + 0.1, gc(t[1]) + 1.25, { face: t[3], y: 0.02 }); });
+            sm('hw_body_rising', gc(44) + 0.2, gc(5) + 1.3, { face: 200 }); sm('hw_shovel', gc(41) + 0.9, gc(7) + 1.0, { face: 40, y: 0.03 }); sq('psxg_coffin', 42, 8, { face: 25 }); sq('skull_pile', 44, 8);
+            sm('hw_candles', ox - 2.0, oz + 7.5, { noLight: true }); sm('hw_candles_2', ox + 2.1, oz + 7.6, { noLight: true }); sm('skull', ox + 0.9, oz + 7.9, { face: 200 });
+            sm('crow', ox + 1.2, oz + 6.9, { y: up(ox, oz, 3.2), floor: true, face: 160 }); sm('crow', gc(41), gc(5), { y: up(gc(41), gc(5), 1.2, 1.4), floor: true, face: 90 }); }
+          /* THE LAKE, WEST: the jetty's end of the shore: a bench, a signpost, traps and a bucket, a fish on the boards; rocks along the water */
+          { sq('park_bench', 51, 5, { face: 90 }); sq('signpost', 53, 7, { face: 90 }); sm('lobster_traps', gc(50) + 0.6, gc(6) - 0.9, { face: 30 }); sm('wooden_bucket', gc(51) - 0.4, gc(6) + 1.0);
+            props.push({ key: 'psx_fish_skeleton_mp_1', x: r2(gx(55) + 0.4), z: r2(gc(6) + 0.8), y: 0.33, face: 70 }, { key: 'wooden_bucket', x: r2(gx(56) + 1.2), z: r2(gc(6) - 0.9), y: 0.31 }, { key: 'meshy_rope', x: r2(gx(54)), z: r2(gc(6) - 1.0), y: 0.32, face: 10 });
+            sm('fallen_log', gc(51), gc(9), { face: 70 }); }
+          /* THE LAKE, EAST: pews turned to the water, urns, a votive stand; out on the lake the effigy lies in a boat among candles */
+          { sq('church_pew', 66, 7, { face: 270 }); sq('church_pew', 67, 6, { face: 270 }); sq('votive_stand', 65, 3, { noLight: true }); sm('stone_urn', gc(66) - 1.2, gc(3) + 0.9); sm('stone_urn', gc(67) + 0.8, gc(7) + 1.1);
+            const bx = gx(61), bz = gc(5); props.push({ key: 'rowboat', x: bx, z: bz, y: -0.25, face: 100 }, { key: 'decor_effigy_figure', x: bx, z: bz, y: 0.1, face: 100 },
+                { key: 'hw_candles', x: r2(bx + 0.9), z: r2(bz + 0.2), y: 0.12, noLight: true }, { key: 'hw_candles_2', x: r2(bx - 0.9), z: r2(bz - 0.2), y: 0.12, noLight: true }); }
+          { const cxl = gx(60), czl = gc(5); for (let k = 0; k < 26; k++) { const a = k / 26 * 6.2832 + 0.1, x = cxl + Math.cos(a) * (22.6 + (k % 3) * 0.7), z = czl + Math.sin(a) * (14.6 + (k % 2) * 0.8);   // rocks and dead bushes round the shore, only on grass
+                sm(k % 3 === 2 ? 'psxg_dead_bush_' + (1 + k % 2) : 'psxg_rock_' + (1 + k % 4), x, z, { face: k * 53 % 360 }); } }
+          /* THE TENTS: the fortune teller's own tent, a covered wagon on two squares, crates, barrels, pots, straw, lanterns */
+          { sq('fortune_teller_tent', 42, 15, { face: 180 }); sm('psx_carpet_mp_1', gc(42), gc(16) - 0.2, { y: 0.02 }); sm('crystalBall', gc(42) + 0.5, gc(16) - 0.6, { y: 0.05 }); sm('tarotDeck', gc(42) - 0.3, gc(16) - 0.4, { y: 0.04 });
+            if (free(43, 20) && free(44, 20)) { take(43, 20); take(44, 20); props.push({ key: 'covered_wagon', x: gx(44), z: gc(20), face: 0 }); }
+            sq('psx_wooden_crate_2', 44, 14); sm('psx_wooden_crate_1', gc(44) - 1.2, gc(14) + 0.9); sq('hw_straw', 41, 16, { face: 90 }); sm('psx_metal_barrel_mp_1', gc(40) + 0.9, gc(16) - 0.8); sm('psx_metal_barrel_mp_2', gc(40) + 0.2, gc(17) + 0.7);
+            sm('stock_pots', gc(43) - 0.8, gc(16) + 0.6); sm('railway_lantern', gc(42) + 1.2, gc(18) - 0.9, { noLight: true }); sm('wooden_bucket', gc(41) + 0.8, gc(19) - 0.6); sm('cat', gc(45) + 0.6, gc(19) + 0.9, { face: 200 }); }
+          /* THE STAGE: the band's gear on the deck, two followspots and four pews on the grass, rope posts at the steps */
+          { const q = centre('P04-01'), ox = gx(q[0]), oz = gx(q[1] - 1);
+            props.push({ key: 'drum_kit', x: r2(ox + 3.6), z: r2(oz - 1.4), face: 180 }, { key: 'pa_speaker', x: r2(ox - 5.3), z: r2(oz + 2.3), face: 180 }, { key: 'pa_speaker', x: r2(ox + 5.3), z: r2(oz + 2.3), face: 180 },
+                { key: 'music_stand', x: r2(ox - 3.0), z: r2(oz - 0.4), face: 180 }, { key: 'music_stand', x: r2(ox - 4.4), z: r2(oz - 1.0), face: 200 }, { key: 'instrument_harp', x: r2(ox - 4.2), z: r2(oz - 1.9), face: 150 }, { key: 'taiko_drum', x: r2(ox + 1.2), z: r2(oz - 1.8), face: 180 });
+            sq('followspot', 51, 16, { face: 60 }); sq('followspot', 58, 16, { face: 300 });
+            [[51, 19], [52, 19], [55, 19], [56, 19]].forEach(c => sq('church_pew', c[0], c[1], { face: 0 }));
+            [-2.5, 2.5].forEach(dx => { sm('rope_stanchion', ox + dx, gx(q[1] + 2) + 0.5); sm('rope_stanchion', ox + dx, gx(q[1] + 2) + 2.4); }); }
+          /* THE OWL: the altar is laid (a book, candles, a skull, a censer), drums either side, urns and votive stands at the steps, candles at the columns' feet */
+          { const q = centre('P05-01'), ox = gx(q[0]), oz = gx(q[1]), az = r2(oz + 2.6);
+            props.push({ key: 'psx_open_book_mp_1', x: ox, z: az, y: 0.97, face: 180 }, { key: 'hw_candles', x: r2(ox - 0.75), z: az, y: 0.97, noLight: true }, { key: 'hw_candles_2', x: r2(ox + 0.75), z: az, y: 0.97, noLight: true },
+                { key: 'skull', x: r2(ox + 0.35), z: r2(az + 0.25), y: 0.97, face: 200 }, { key: 'item_censer', x: r2(ox - 0.4), z: r2(az + 0.25), y: 0.97 });
+            sq('taiko_drum', 65, 18); sq('taiko_drum', 68, 18); sm('stone_urn', ox - 3.1, oz + 10.9); sm('stone_urn', ox + 3.1, oz + 10.9); sm('votive_stand', ox - 3.3, oz + 7.3, { noLight: true }); sm('votive_stand', ox + 3.3, oz + 7.3, { noLight: true });
+            sm('candleRing', ox, oz + 12.2, { noLight: true });
+            [[66, 16], [67, 16], [65, 17], [68, 17], [64, 19], [69, 19]].forEach((c, k) => sm(k % 2 ? 'hw_candles' : 'hw_candles_2', gc(c[0]) + (k % 2 ? 0.7 : -0.7), gc(c[1]) + 0.75, { noLight: true })); }
+          /* THE FIRE: log seats round the fire, the big tent on four squares, a drum, a cooler, cups, bottles, pots, crates, straw */
+          { sq('fallen_log', 40, 27, { face: 0 }); sq('fallen_log', 39, 28, { face: 90 }); sq('fallen_log', 41, 28, { face: 90 });
+            if (free(42, 27) && free(43, 27) && free(42, 28) && free(43, 28)) { [[42, 27], [43, 27], [42, 28], [43, 28]].forEach(c => take(c[0], c[1])); props.push({ key: 'carnival_tent', x: gx(43), z: gx(28), face: 270 }); }
+            sq('taiko_drum', 41, 30); sq('stump', 38, 29); sq('psx_wooden_crate_2', 37, 27); sq('hw_straw', 38, 27, { face: 20 });
+            sm('beach_cooler', gc(40) + 1.1, gc(29) + 0.9, { face: 30 }); [[39, 27, 0.9, 1.1], [41, 29, -0.9, 0.8], [40, 29, 0.2, 1.3]].forEach(c => sm('solo_cup', gc(c[0]) + c[2], gc(c[1]) + c[3], { y: 0.02 }));
+            sm('psx_glass_bottle_1', gc(39) - 0.9, gc(28) + 1.2, { y: 0.02 }); sm('psx_glass_bottle_2', gc(41) + 1.0, gc(28) - 1.2, { y: 0.02 }); sm('stock_pots', gc(40) - 1.2, gc(26) + 0.4); sm('psx_knife_mp_1', gc(40) + 0.7, gc(26) + 0.9, { y: 0.03 }); }
+          /* THE STONES: a candle at every menhir's foot, ward totems at the four quarters, the stocks, what was left on the ground */
+          { const q = centre('P04-02'), ox = gc(q[0]), oz = gc(q[1]);
+            [[-2, -1], [-2, 1], [2, -1], [2, 1], [0, -2], [0, 2]].forEach((d, k) => { const l = Math.hypot(d[0], d[1]); sm(k % 2 ? 'hw_candles' : 'hw_candles_2', ox + d[0] * 3.5 * (1 - 1.3 / (l * 3.5)), oz + d[1] * 3.5 * (1 - 1.3 / (l * 3.5)), { noLight: true }); });
+            sq('item_ward_totem', 53, 26); sq('item_ward_totem', 55, 34); sq('item_ward_totem', 50, 30); sq('item_ward_totem', 58, 30); sq('stocks', 51, 28, { face: 120 });
+            sm('hw_body', ox + 0.9, oz + 0.3, { face: 70, y: 0.03 }); sm('hw_part_1', ox - 1.4, oz + 1.2, { y: 0.03 }); sm('hw_part_3', ox + 1.5, oz - 1.3, { y: 0.03 }); sm('psx_butcher_knife_mp_1', ox + 0.2, oz + 1.1, { y: 0.04, face: 40 });
+            sm('crow', gc(52), gc(29), { y: up(gc(52), gc(29), 3.3), floor: true, face: 100 }); sm('crow', gc(56), gc(31), { y: up(gc(56), gc(31), 3.3), floor: true, face: 280 }); sm('wolf', gc(57) + 0.5, gc(32) + 0.6, { face: 300 }); }
+          /* THE DEAD TREE: stones and a scarecrow under the snag, cages, a body, webs, dead bushes, crows */
+          { sq('psxg_tombstone_3', 65, 29, { face: 170 }); sq('hw_grave', 67, 29, { face: 190 }); sq('hw_scarecrow', 64, 30, { face: 100 }); sq('hw_scarecrow_2', 68, 30, { face: 250 });
+            sm('bird_cage', gc(65) + 0.9, gc(30) + 0.8); sm('bird_cage', gc(67) - 0.2, gc(33) - 0.6, { face: 40 }); sm('hw_body_2', gc(65) - 0.5, gc(32) + 0.4, { face: 130, y: 0.03 });
+            sm('hw_web', gc(66) + 1.3, gc(30) + 0.9, { y: up(gc(66), gc(30), 1.6), floor: true }); sm('hw_web_2', gc(65) + 0.6, gc(31) + 1.2, { y: up(gc(65), gc(31), 2.1), floor: true, face: 80 });
+            [[64, 31, 0.8, -0.6], [68, 31, -0.7, 0.9], [66, 33, 1.1, 0.2], [65, 33, -0.9, 0.5], [67, 31, 0.9, 1.3]].forEach((c, k) => sm('psxg_dead_bush_' + (1 + k % 2), gc(c[0]) + c[2], gc(c[1]) + c[3], { face: k * 70 }));
+            sm('crow', gc(65), gc(29), { y: up(gc(65), gc(29), 1.2), floor: true, face: 30 }); sm('crow', gc(67) + 0.9, gc(32) + 0.7, { face: 220 }); sm('crow', gc(64) + 0.9, gc(32) - 0.5, { face: 80 }); }
+          /* scatter, non-blockers only (a scatter row may land on a path): dead bushes and small mushrooms over the whole district (sow rows in build re-throw nobody) */
+          ctx.sow('psxg_dead_bush_1', 16, [54, 18], 60); ctx.sow('psxg_dead_bush_2', 12, [54, 18], 60); ctx.sow('mushroom', 18, [54, 18], 60, { h: 0.35, r0: 0.2 }); }
     },
 };

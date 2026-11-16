@@ -32,6 +32,8 @@
      - PASS 4 OF 5, THE ATMOSPHERE (11-16, `airZones` + `build`): mist at the Falls (white rising + hanging particles), fireflies over the Meadow and the creek's
        glades, heavier snow, seven pack lanterns on the trail's edges (`noLight`). Seen by day and at 22:30. Light shafts are NOT possible from a district file
        (arch parts cannot be translucent; `light_shaft` is drawn by code and draws nothing). One pass left: polish. Then STOP.
+     - PASS 5 OF 5, THE POLISH (11-16): an eye-level walk of 17 stops; one fix (two severed limbs stood upright in the snow: taken out). FIVE PASSES SPENT:
+       THIS DISTRICT IS STOPPED until mondo has seen it (docs/plans/DISTRICT_THREAD_BRIEF.md). What a next thread would do: areas-complexes.md "THE REDWOOD TRAIL".
      - NEEDS A MODEL (nothing stands in for these): a snow ground sheet; a fallen giant redwood trunk (the pack's `fallen_log` is 2 m);
        stepping stones a person can see (the graveyard pack's are a hand wide); a bat (the game's bats are drawn by code); a river fish; green bushes, moss, reeds;
        icicles; deer / bear / owl; a lookout, a lean-to, a rope bridge; a trail sign with words; a bark sheet and a snow sheet; a lit candle (flame).
@@ -195,7 +197,7 @@ module.exports = {
           [[2, 1.2, 'hw_candles'], [-3.9, 3.9, 'hw_candle'], [6.6, 1.0, 'hw_candle_2'], [-0.6, -4.9, 'hw_candles_2'], [1.4, 2.4, 'hw_part_7'], [-6.8, 1.2, 'psx_cross_1']].forEach(q => at('P01-00', q[2], q[0], q[1]));
           for (let cx = 13; cx <= 20; cx++) if (open(cx, 8) && !taken.has(cx + ':8') && cx !== 16) { taken.add(cx + ':8'); props.push({ key: cx % 3 ? 'psxg_wall' : 'psxg_wall_pillar', x: gc(cx), z: gc(8), face: 0 }); }
           /* THE SNOWLINE: the yeti's kills in the snow, and drifts (low domes in the ice sheet; decor, off the squares' middles) */
-          [['hw_body_rising', -6.4, 5.2, true], ['hw_body_2', 5.2, 7.4], ['hw_part', 3.4, -4.6], ['hw_part_2', -4.4, -6.2], ['hw_part_4', 8.2, 2.4], ['hw_part_9', -8.6, 1.4], ['psx_butcher_knife_mp_1', 4.6, 6.6], ['trap_chain_draped', 10.4, -3.0], ['psx_jerrycan_1', -9.6, 8.4], ['psx_walkie_talkie_1', 5.9, 8.1]].forEach(q => at('P00-00', q[0], q[1], q[2], null, q[3]));
+          [['hw_body_rising', -6.4, 5.2, true], ['hw_body_2', 5.2, 7.4], ['hw_part_4', 8.2, 2.4], ['hw_part_9', -8.6, 1.4], ['psx_butcher_knife_mp_1', 4.6, 6.6], ['trap_chain_draped', 10.4, -3.0], ['psx_jerrycan_1', -9.6, 8.4], ['psx_walkie_talkie_1', 5.9, 8.1]].forEach(q => at('P00-00', q[0], q[1], q[2], null, q[3]));
           { const ox = gc(5), oz = gc(5), y0 = r2(ground(ox, oz)), parts = [];
             for (let i = 0; i < 22; i++) { const cx = 1 + Math.floor(rnd() * 10), cy = 1 + Math.floor(rnd() * 10); if (cell[cy][cx] !== 's') continue; const x = gx(cx) + 0.6 + rnd() * 2.3, z = gx(cy) + 0.6 + rnd() * 2.3, r = 1.5 + rnd() * 1.9;
                 parts.push({ s: 'dome', p: [r2(x - ox), r2(ground(x, z) - y0 - 0.12), r2(z - oz)], r: r2(r), rz: r2(r * (0.6 + rnd() * 0.5)), h: r2(0.35 + rnd() * 0.45), seg: 10, rings: 3, key: SNOW, tint: T_SNOW, gain: 1.7, uv: [3.5, 3.5] }); }
