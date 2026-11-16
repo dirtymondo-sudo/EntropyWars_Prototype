@@ -2653,6 +2653,7 @@
                 return !_flies && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(_self));
               if (_t === 'poison' || _t === 'poison_bog')
                 return !(typeof unitIsPoisonTerrainImmune === 'function' && unitIsPoisonTerrainImmune(_self));
+              if (_t === 'sludge') return !_flies;   // ☢ the radioactive sludge corrodes whoever ends a turn in it
               if (_t === 'deep_water')
                 return !_flies && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(_self));
               return false;
