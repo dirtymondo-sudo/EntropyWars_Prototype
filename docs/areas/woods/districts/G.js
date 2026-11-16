@@ -13,7 +13,8 @@
      P03-02 The Fire (L3)              campfire, two folding chairs, torch, meat, a hand saw, a cauldron, a crystal; native: cult leader.
      P04-02 The Stones (L3)            the ritual circle, six menhirs, candle rings, a cauldron, skulls, a torch, the 14-cap fae ring 10.5 m out; native: goatman. PASS 1: two trilithons, eight sarsens.
      P05-02 The Dead Tree (L3)         the dead snag, a stain, a cobweb, two dolls, a crystal. The lookingglass door (Camelot Kingdom's garden) is east.
-   STATE (2026-11-16): FIVE PASSES LIVE (exteriors, interiors, dressing, atmosphere, polish). STOPPED: nothing more here until mondo has seen it (his order).
+   STATE (2026-11-16): FIVE PASSES + THE MODEL PASS LIVE (exteriors, interiors, dressing, atmosphere, polish; then the wish-list models: every model this district
+   asked for is placed and the stand-ins are out). STOPPED: nothing more here until mondo has seen it (his order).
    KNOWN MISSING / WAITING FOR MONDO
      - NO WAY TO ROOM 333: the plan gives the Stones a hidden way to Room 333. The link woods_ritual still ends on the retired Ritual Ground
        room, so coming through it lands at the Woods' spawn. The same for the link deadtree_lookingglass. A door or a link end is the tool's.
@@ -57,12 +58,12 @@ module.exports = {
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
-        for (let y = 16; y <= 17; y++) for (let x = 45; x <= 48; x++) taken.add(x + ':' + y);   // the Camp House's eight squares (build, pass 2): no old piece lands in it
+        for (let y = 16; y <= 17; y++) for (let x = 45; x <= 48; x++) taken.add(x + ':' + y); for (let y = 23; y <= 24; y++) for (let x = 65; x <= 68; x++) taken.add(x + ':' + y);   // the Camp House's eight squares (build, pass 2): no old piece lands in it
         { const q = centre('P04-02'), R = 2; put('P04-02', 'ritual_circle', 0, 0, { y: 0.01 });   // THE STONES: six round the circle
           [[-R, -1], [-R, 1], [R, -1], [R, 1], [0, -R], [0, R]].forEach(d => put('P04-02', 'menhir', d[0], d[1])); dec('P04-02', 'candle_ring', 1, 0); put('P04-02', 'cave_torch', -3, 3); }
         put('P03-02', 'campfire', 0, 0); dec('P03-02', 'folding_chair', 1, 1); dec('P03-02', 'folding_chair', -1, 1); put('P03-02', 'cave_torch', 2, -2);
         put('P05-02', 'dead_snag', 0, 0, { h: 12 });   /* pass 3: the plot's landmark stands 12 m (at the catalogue's 4.6 m it was lost among the spruce: seen) */ dec('P05-02', 'floor_stain', 1, 0);                                                                               // THE DEAD TREE
-        put('P03-01', 'camping_tent', 0, 0, { face: 180 }); put('P03-01', 'camping_tent', 2, 1, { face: 200 }); put('P03-01', 'camping_tent', -2, 1, { face: 160 }); dec('P03-01', 'sea_chest', 0, 2); dec('P03-01', 'retro_radio', 1, 2);
+        put('P03-01', 'canvas_tent', 0, 0, { face: 180 }); put('P03-01', 'canvas_tent', 2, 1, { face: 200 }); put('P03-01', 'canvas_tent', -2, 1, { face: 160 });   /* THE MODEL PASS: canvas wall tents (the blue dome tents were modern tents in an old camp) */ dec('P03-01', 'sea_chest', 0, 2); dec('P03-01', 'retro_radio', 1, 2);
         { const q = centre('P04-01');   // THE STAGE: a low timber stage (one level up), steps at its south side
           features.push({ k: 'plateau', x: gx(q[0]), z: gx(q[1] - 1), w: 14, d: 7, h: 1.75, edge: 0.3 }, { k: 'ramp', x0: gx(q[0]), z0: gx(q[1] + 2), x1: gx(q[0]), z1: gx(q[1]), w: 3.5, h0: 0, h1: 1.75, stairs: true, model: 'wood', edge: 0.2 });
           for (let dy = -2; dy <= 1; dy++) for (let dx = -2; dx <= 1; dx++) taken.add((q[0] + dx) + ':' + (q[1] + dy));
@@ -104,7 +105,9 @@ module.exports = {
     ground: 'grass_dark_fantasy',
     /* THE CUT (pass 1): the jetty's squares on the Lake's west shore: one dirt square on the bank, four bridge squares out over the water (the tool lays the plank deck) */
     cut(ctx) { const { cell } = ctx; cell[6][52] = 'p'; for (let x = 53; x <= 56; x++) cell[6][x] = 'b';
-        for (let y = 16; y <= 17; y++) for (let x = 47; x <= 48; x++) cell[y][x] = 'g'; },   // pass 2: the Camp House's east half (its west half stands on the Tents' glade); columns 47 / 48 are a plot's rim, so no plot's clearing middle moves
+        for (let y = 16; y <= 17; y++) for (let x = 47; x <= 48; x++) cell[y][x] = 'g';
+        for (let y = 23; y <= 24; y++) for (let x = 65; x <= 68; x++) cell[y][x] = 'g'; },   // the model pass: the fallen redwood's eight squares beside the trail from the Owl to the Dead Tree (rows 23 / 24 are plot rims: no clearing middle moves)
+    /* (pass 2: the Camp House's east half; its west half stands on the Tents' glade; columns 47 / 48 are a plot's rim, so no plot's clearing middle moves) */
     /* ── THE DISTRICT THREAD'S PASSES (2026-11-16, mondo's order: every district prototyped, at most five passes; docs/plans/DISTRICT_THREAD_BRIEF.md). New work only:
        its own dice, nothing that stands is thrown again. Row ids woods:G:<name>. ── */
     build(ctx) {
@@ -130,7 +133,6 @@ module.exports = {
               ...[-6.85, 6.85].flatMap(x => [box(x, 0, 3.3, 0.34, T + H, 0.34, WD2, DARK), box(x, T, -3.2, 0.34, H, 0.34, WD2, DARK)]),   // the four corner posts (the front ones stand on the ground; none in the middle: the steps and the cloth stay clear)
               box(0, T + H - 0.3, 3.3, 14.2, 0.3, 0.3, WD2, DARK), box(-6.85, T + H - 0.3, 0, 0.3, 0.3, 6.8, WD2, DARK), box(6.85, T + H - 0.3, 0, 0.3, 0.3, 6.8, WD2, DARK), box(0, T + H - 0.3, 0, 0.3, 0.3, 6.8, WD2, DARK),   // the beams
               { s: 'roof', form: 'gable', p: [0, T + H, 0], size: [15.2, 2.4, 8.0], key: SH, tint: MOSS, keyEnd: WD, tintEnd: LOG, over: 0.5, roof: true },
-              ...[-5.2, -2.6, 2.6, 5.2].map(x => box(x, T + 0.08, 3.25, 0.34, 0.16, 0.26, null, 0xffd9a0, { glow: 1 })),                    // the footlights
           ];
           features.push({ k: 'arch', id: 'woods:G:stage', x: ox, z: oz, y: y0, parts });
           features.push({ k: 'rail', x0: r2(ox - 6.6), z0: r2(oz - 3.0), x1: r2(ox + 6.6), z1: r2(oz - 3.0), model: 'ranch' }, { k: 'rail', x0: r2(ox - 6.6), z0: r2(oz - 3.0), x1: r2(ox - 6.6), z1: r2(oz + 3.0), model: 'ranch' }, { k: 'rail', x0: r2(ox + 6.6), z0: r2(oz - 3.0), x1: r2(ox + 6.6), z1: r2(oz + 3.0), model: 'ranch' }); }
@@ -148,8 +150,7 @@ module.exports = {
         /* THE JETTY (P04-00, the Lake's west shore; the squares are cut above): mooring posts down both sides of the tool's plank deck, a lamp post at its head, a rowboat */
         { const x0 = gx(53) - 1.75, x1 = gx(57) + 1.75, oz = gc(6), ox = r2((x0 + x1) / 2), y0 = r2(ground(gx(52), oz)), L = x1 - x0, parts = [];
           for (let k = 0; k <= 5; k++) for (const sd of [-1, 1]) parts.push(box(-L / 2 + 0.3 + k * (L - 0.6) / 5, -1.6, sd * 1.9, 0.26, 2.5 + (k % 2) * 0.25, 0.26, WD2, DARK));
-          parts.push(box(0, 0.86, -1.9, L - 0.6, 0.1, 0.12, WD2, DARK), box(L / 2 - 0.3, -1.6, 0, 0.3, 4.6, 0.3, WD2, DARK), box(L / 2 - 0.3, 2.7, 0.35, 0.12, 0.12, 0.7, WD2, DARK),
-              box(L / 2 - 0.3, 2.34, 0.62, 0.26, 0.34, 0.26, null, 0xffc070, { glow: 1 }));                                                 // one rail, the lamp post, its arm and its lamp (drawn glow, no light)
+          parts.push(box(0, 0.86, -1.9, L - 0.6, 0.1, 0.12, WD2, DARK));                                                 // one rail, the lamp post, its arm and its lamp (drawn glow, no light)
           features.push({ k: 'arch', id: 'woods:G:jetty', x: ox, z: oz, y: y0, parts });
           props.push({ key: 'rowboat', x: r2(gx(55)), z: r2(oz + 3.6), y: r2(y0 - 0.42), floor: true, face: 80 }); }   /* pass 5: a height from the room's floor (the water's top is 0.3 m under the bank): as a lift of -0.25 it stood on the lake's BED, under water (seen) */
         /* THE BARROW (P03-00, the Mound): a stone doorway in the hill's south face (two uprights, a lintel, blackness), boulders heaped on its shoulders, kerb stones round the foot */
@@ -186,7 +187,6 @@ module.exports = {
               ...win(-4.6), ...win(2.7), ...win(5.3),                                                                                       // three tall dark windows on the front
               { s: 'roof', form: 'shed', p: [lx, 2.5, r2(d / 2 + 0.7)], size: [3.0, 0.6, 1.4], key: SH, tint: MOSS, roof: true },           // the hood over the door, on two brackets (no posts: the path is whole)
               box(lx - 1.3, 1.9, d / 2 + 0.35, 0.12, 0.6, 0.7, WD2, DARK), box(lx + 1.3, 1.9, d / 2 + 0.35, 0.12, 0.6, 0.7, WD2, DARK),
-              box(lx - 1.5, 1.55, d / 2 + 0.2, 0.22, 0.3, 0.22, null, 0xffc070, { glow: 1 }), box(lx + 1.5, 1.55, d / 2 + 0.2, 0.22, 0.3, 0.22, null, 0xffc070, { glow: 1 }),   // two door lamps
               box(-w / 2 - 0.6, 0, 0, 1.2, 8.2, 2.0, ROCK, STONE, { roof: true, uv: [1.75, 1.75], gain: 1.4 }),                             // the stone chimney up the west end
               /* the inside */
               box(0, 0, 0, w - 0.1, 0.16, d - 0.1, FL, 0xc9b9a0, { uv: [1.75, 1.75] }),                                                    // a real board slab
@@ -201,20 +201,18 @@ module.exports = {
               box(-w / 2 + 0.75, 0.16, 0, 1.0, 1.6, 2.6, ROCK, STONE, { uv: [1.75, 1.75], gain: 1.4 }), box(-w / 2 + 0.8, 1.76, 0, 1.2, 0.16, 3.0, WD2, DARK),   // the hearth and its mantel
               box(-w / 2 + 1.0, 0.16, 0, 0.56, 0.9, 1.3, null, BLACK), box(-w / 2 + 1.2, 0.2, 0, 0.3, 0.24, 0.8, null, 0xff7a20, { glow: 1 }),
               box(-w / 2 + 0.75, 1.92, 0, 0.9, H - 2.54, 1.8, ROCK, STONE2, { uv: [1.75, 1.75], gain: 1.4 }),                               // the breast up to the ceiling
-              box(-w / 2 + 0.32, 2.05, 0, 0.05, 0.9, 1.2, CLOTH, RED),                                                                      // a red cloth over the mantel
               box(4.6, 0.16, 2.55, 4.2, 1.02, 0.6, WD, 0xb89a78, { uv: [1.75, 1.0] }), box(4.6, 1.18, 2.5, 4.4, 0.06, 0.8, WD2, DARK),      // the bar and its top
               box(4.6, 1.5, d / 2 - 0.52, 4.0, 0.05, 0.3, WD2, DARK), box(4.6, 2.0, d / 2 - 0.52, 4.0, 0.05, 0.3, WD2, DARK),                 // two shelves behind it
               box(lx, 0.165, d / 2 - 1.0, 1.5, 0.02, 0.9, CLOTH, 0x7a4a3a, { sides: false }),
           ];
           features.push({ k: 'arch', id: 'woods:G:camphouse:arch', x: cx, z: cz, parts });
           const F = 0.16, Y0 = r2(ground(cx, cz)), inP = (key, rx, rz, o) => { const p = Object.assign({ key, x: r2(cx + rx), z: r2(cz + rz), floor: true }, o || {}); if (p.y >= 1) p.y = r2(p.y + Y0); props.push(p); };   // a prop's y of 1 m or more is a height from the ROOM's floor, not a lift (three-renderer.js THE TIER HEIGHT): on this 7 m ground the table's food lay on the boards.   // floor: true = the room's ground (without it a prop beside a wall stands on the wall's TOP: seen, the mantel's skull and the shelf bottles were on the roof)
-          inP('psx_armchair_1', -4.4, -1.3, { face: 250, y: F }); inP('psx_armchair_2', -4.4, 1.3, { face: 290, y: F }); inP('psx_carpet_mp_1', -4.2, 0, { y: F + 0.01, face: 90 });
+          inP('psx_armchair_1', -4.4, -1.3, { face: 250, y: F }); inP('psx_armchair_2', -4.4, 1.3, { face: 290, y: F }); 
           inP('skull', -6.15, -0.9, { y: 1.93, face: 90 }); inP('hw_candles', -6.15, 0.9, { y: 1.93, noLight: true }); inP('bird_cage', -6.2, 2.7, { y: F }); inP('wooden_bucket', -5.7, -2.2, { y: F });
           inP('psx_carpet_mp_1', 1.1, -0.5, { y: F + 0.01 }); inP('psx_carpet_mp_1', 4.2, -0.5, { y: F + 0.01 });   // (holy_carpet is a standing tapestry 6 m tall: seen filling the room, taken out)
-          [0.9, 2.6, 4.3].forEach(x => inP('psx_table_large_2', x, -0.5, { y: F }));                                                        // the feast table, three lengths
-          [0.6, 1.9, 3.2, 4.5].forEach((x, i) => { inP('psx_chair_mp_' + (1 + i % 3), x, -1.55, { y: F, face: 180 }); inP('psx_chair_mp_' + (1 + (i + 1) % 3), x, 0.55, { y: F, face: 0 }); });   // the pack's chairs are low stools (at h 0.95 they read as side tables: seen)
+          inP('trestle_table', 1.4, -0.5, { y: F, face: 0, span: 2.3 }); inP('trestle_table', 3.8, -0.5, { y: F, face: 0, span: 2.3 });                                                                              // THE MODEL PASS: the `trestle_table` with its two benches (was three pack tables and eight stools); two at span 2.3: at its listed 3.5 m the model's top stands 1.22 m up (seen)
           inP('royal_throne', 6.0, -0.5, { y: F, face: 270 });
-          const TT = F + 0.96; inP('xmas_turkey', 2.6, -0.5, { y: TT }); inP('xmas_roast', 1.2, -0.45, { y: TT }); inP('xmas_punch', 3.9, -0.55, { y: TT }); inP('xmas_champagne', 0.6, -0.7, { y: TT }); inP('xmas_champagne', 4.6, -0.3, { y: TT });
+          const TT = F + 0.8;   // the trestle's top inP('xmas_turkey', 2.6, -0.5, { y: TT }); inP('xmas_roast', 1.2, -0.45, { y: TT }); inP('xmas_punch', 3.9, -0.55, { y: TT }); inP('xmas_champagne', 1.0, -0.7, { y: TT }); inP('xmas_champagne', 4.2, -0.3, { y: TT });
           [[0.9, -0.85], [1.9, -0.15], [3.2, -0.85], [4.3, -0.15]].forEach(q => inP('psx_plate_mp_1', q[0], q[1], { y: TT })); [[1.6, -0.8], [3.5, -0.2], [2.2, -0.2]].forEach(q => inP('item_drinking_cup', q[0], q[1], { y: TT }));
           inP('hw_candles', 2.0, -0.5, { y: TT, noLight: true }); inP('hw_candles_2', 3.4, -0.5, { y: TT, noLight: true });
           inP('candelabra', -0.4, -0.5, { y: F, noLight: true }); inP('candelabra', 6.3, 1.0, { y: F, noLight: true });
@@ -223,7 +221,7 @@ module.exports = {
           inP('psx_painting_1', -3.6, -3.1, { y: 1.9, face: 0 }); inP('psx_painting_1', 6.6, -1.9, { y: 1.9, face: 270 });
           inP('psx_glass_bottle_1', 3.2, 2.5, { y: F + 1.09 }); inP('psx_glass_bottle_2', 3.6, 2.6, { y: F + 1.09 }); inP('crystalBall', 5.4, 2.5, { y: F + 1.09 }); inP('tarotDeck', 5.0, 2.45, { y: F + 1.09 }); inP('item_drinking_cup', 4.3, 2.4, { y: F + 1.09 });
           [3.2, 3.7, 4.4, 5.6].forEach((x, i) => inP(i % 2 ? 'psx_glass_bottle_2' : 'psx_glass_bottle_1', x, d / 2 - 0.52, { y: 1.56 })); [3.5, 4.9, 5.9].forEach(x => inP('xmas_champagne', x, d / 2 - 0.52, { y: 2.06 }));
-          inP('psx_wooden_crate_2', 6.3, 2.2, { y: F }); inP('psx_metal_barrel_mp_1', -2.6, 2.8, { y: F }); inP('psx_metal_barrel_mp_2', -3.4, 2.8, { y: F });
+          inP('psx_wooden_crate_2', 6.3, 2.2, { y: F }); inP('wooden_barrel', -2.6, 2.8, { y: F }); inP('wooden_barrel', -3.5, 2.75, { y: F });
           inP('psx_ceiling_lamp_1_on', -3.5, 0, { y: 2.42, noLight: true }); inP('psx_ceiling_lamp_1_on', 2.6, -0.5, { y: 2.42, noLight: true });
           inP('psx_cobweb_1', 6.5, -3.0, { y: 2.4 }); inP('railway_lantern', lx - 2.2, d / 2 + 0.5, { noLight: true }); }
         /* ═══ PASS 3 · THE DRESSING ═══ (catalogue pieces only; the model list read end to end first: areas-complexes.md "THE RITUAL GROUND", FITS THIS DISTRICT)
@@ -291,20 +289,17 @@ module.exports = {
           ctx.sow('psxg_dead_bush_1', 10, [54, 18], 60); ctx.sow('psxg_dead_bush_2', 8, [54, 18], 60); ctx.sow('mushroom', 10, [54, 18], 60, { h: 0.35, r0: 0.2 }); }   // pass 5: 46 -> 28 (the frame rate)
         /* ═══ PASS 4 · THE ATMOSPHERE ═══ (drawn glow only: the room's ten real lights are the old torches and fires; nothing here adds a light)
            The air by plot is airZones above. Here: lantern posts along the trails, bulbs and paper lanterns on the Stage, the owl's eyes, candles afloat on the Lake. */
-        { const AMB = 0xffc070, byPlot = {}, inG = (cx, cy) => cx >= 36 && cx < 72 && cy >= 0 && cy < 36, at = (cx, cy) => inG(cx, cy) ? cell[cy][cx] : 't';
+        { const byPlot = {}, LDZ = -0.25, inG = (cx, cy) => cx >= 36 && cx < 72 && cy >= 0 && cy < 36, at = (cx, cy) => inG(cx, cy) ? cell[cy][cx] : 't';
           /* THE LANTERN POSTS: a post in the trees' edge beside a path, about one every four squares of wood edge, leaning its lamp over the path (never on a path square) */
           let nPost = 0;
-          for (let cy = 1; cy < 35; cy++) for (let cx = 37; cx < 71; cx++) { if (at(cx, cy) !== 't' || (cx * 7 + cy * 13) % 4 !== 0) continue;
+          for (let cy = 1; cy < 35; cy++) for (let cx = 37; cx < 71; cx++) { if (at(cx, cy) !== 't' || (cx * 7 + cy * 13) % 5 !== 0) continue;
               const d = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(q => at(cx + q[0], cy + q[1]) === 'p'); if (!d) continue;
-              const px = Math.floor(cx / 12), py = Math.floor(cy / 12), O = byPlot[px + ':' + py] || (byPlot[px + ':' + py] = { x: gx(px * 12 + 6), z: gx(py * 12 + 6), parts: [] }), parts = O.parts;   // one arch row a plot (a row is drawn by its own origin's distance)
-              const x = gc(cx) + d[0] * 1.35 - O.x, z = gc(cy) + d[1] * 1.35 - O.z, y = r2(ground(x + O.x, z + O.z));
-              parts.push(box(x, y - 0.2, z, 0.16, 3.1, 0.16, WD2, DARK), box(x + d[0] * 0.4, y + 2.74, z + d[1] * 0.4, d[0] ? 0.9 : 0.1, 0.1, d[1] ? 0.9 : 0.1, WD2, DARK),
-                  box(x + d[0] * 0.75, y + 2.36, z + d[1] * 0.75, 0.24, 0.34, 0.24, null, AMB, { glow: 1 }), box(x + d[0] * 0.75, y + 2.7, z + d[1] * 0.75, 0.3, 0.05, 0.3, WD2, DARK)); nPost++; }
-          ctx.count.gPosts = nPost;
-          Object.keys(byPlot).sort().forEach(k => features.push({ k: 'arch', id: 'woods:G:lanterns:' + k.replace(':', '-'), x: byPlot[k].x, z: byPlot[k].z, y: 0, parts: byPlot[k].parts })); }
+              const x = r2(gc(cx) + d[0] * 1.35), z = r2(gc(cy) + d[1] * 1.35), px = Math.floor(cx / 12), py = Math.floor(cy / 12), O = byPlot[px + ':' + py] || (byPlot[px + ':' + py] = { x: gx(px * 12 + 6), z: gx(py * 12 + 6), parts: [] });
+              props.push({ key: 'lantern_post', x, z, face: 0, floor: true, noLight: true }); O.parts.push(box(x - O.x, r2(ground(x, z)) + 1.3, z - O.z + LDZ, 0.13, 0.17, 0.13, null, 0xffc070, { glow: 1 })); nPost++; }   // the model has no glow of its own: a small drawn flame sits in its lantern (measured on the file: 0.25 m north of the pole at face 0, 1.4 m up; seen)
+          Object.keys(byPlot).sort().forEach(k => features.push({ k: 'arch', id: 'woods:G:lanterns:' + k.replace(':', '-'), x: byPlot[k].x, z: byPlot[k].z, y: 0, parts: byPlot[k].parts }));   // THE MODEL PASS: the `lantern_post` model (was a post, an arm and a lamp drawn from boxes)
+          ctx.count.gPosts = nPost; }
         { const q = centre('P04-01'), ox = gx(q[0]), oz = gx(q[1] - 1), y0 = r2(ground(ox, oz)), T = 1.75, H = 5.4;   // THE STAGE: a string of bulbs under the front beam, three paper lanterns in the shell
-          features.push({ k: 'arch', id: 'woods:G:stage:lights', x: ox, z: oz, y: y0, parts: [
-              box(-6.0, T + H - 0.48, 3.3, 0.14, 0.16, 0.14, null, 0xffd9a0, { glow: 1, n: 13, step: [1.0, 0, 0] }), box(0, T + H - 0.36, 3.3, 12.4, 0.03, 0.03, null, BLACK) ] });
+          [-4.1, 0, 4.1].forEach(dx => props.push({ key: 'string_lights', x: r2(ox + dx), z: r2(oz + 3.05), noLight: true }));   // THE MODEL PASS: three `string_lights` standing on the deck's front edge (were 13 glow boxes on a drawn wire; the model has its own posts, hung from the beam they floated: seen)
           [-3.4, 0, 3.4].forEach(dx => props.push({ key: 'paper_lantern', x: r2(ox + dx), z: r2(oz + 0.6), y: r2(y0 + T + H - 1.3), floor: true, noLight: true })); }
         { const q = centre('P05-01'), ox = gx(q[0]), oz = gx(q[1]), y0 = r2(ground(ox, oz));   // THE OWL: its eyes burn (two small drawn glows; the statue's own stone is untouched)
           features.push({ k: 'arch', id: 'woods:G:owl:eyes', x: ox, z: r2(oz - 1.0), y: y0, parts: [-0.6, 0.6].map(dx => box(dx, 1.75 + 8.3, 1.78, 0.34, 0.34, 0.1, null, 0xff8a20, { glow: 1 })) }); }   // measured on the model: the face's front is 1.8 m before the owl's middle at 10 m tall, the eyes 8.5 m up, 0.6 m off the middle (two tries seen first: inside the head, then on the brow)
@@ -312,5 +307,46 @@ module.exports = {
           const wy = r2(ground(bx, bz) - 0.3);   // the water's top (a height from the room's floor)
           [[1.9, 1.2], [-1.6, 1.7], [2.6, -1.0], [-2.4, -1.3], [0.3, 2.6], [-0.4, -2.5]].forEach(d => props.push({ key: 'candle', x: r2(bx + d[0]), z: r2(bz + d[1]), y: wy, floor: true, noLight: true }));
           [[1.6, -1.4], [2.4, 0.9]].forEach(d => props.push({ key: 'candle', x: r2(gx(57) + 1.75 + d[0]), z: r2(gc(6) + d[1]), y: wy, floor: true, noLight: true })); }
+        /* ═══ THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... tell all of those district threads that needed models to use these ones"; one pass on
+           top of the five; docs/plans/WISHLIST_MODELS_ADDED.md read end to end). The ten this district asked for are placed; the stand-ins they replace are gone
+           (the box-built lantern posts, bulbs, footlights and lamps, the pack tables and stools, the dome tents, the metal barrels: edited where they stood, above). ═══ */
+        { const cellAt = (x, z) => { const cx = Math.floor((x + 126) / 3.5), cy = Math.floor((z + 126) / 3.5); return cy >= 0 && cy < 36 && cx >= 36 && cx < 72 ? cell[cy][cx] : 't'; };
+          const sq = (key, cx, cy, o) => { if (!free(cx, cy)) return false; take(cx, cy); props.push(Object.assign({ key, x: gc(cx), z: gc(cy) }, o || {})); return true; };
+          const sm = (key, x, z, o) => { if (!/[gsr]/.test(cellAt(x, z))) return false; props.push(Object.assign({ key, x: r2(x), z: r2(z) }, o || {})); return true; };
+          const top = (x, z, lift) => r2(ground(x, z) + lift);
+          /* THE FALLEN REDWOOD: on its eight cut squares beside the trail between the Owl and the Dead Tree, an owl on it */
+          props.push({ key: 'fallen_redwood', x: gx(67), z: gx(24), face: 0 }); sm('moss_clump', gx(67) - 4.6, gx(24) - 2.9); sm('moss_clump', gx(67) + 3.9, gx(24) - 3.0); sm('fox', gx(67) + 5.4, gx(22) + 1.0, { face: 200 });
+          /* THE OWL: hooded figures between the columns and at the steps' foot, the bell on its frame, a gong */
+          { const q = centre('P05-01'), ox = gx(q[0]), oz = gx(q[1]);
+            sq('hooded_statue', 65, 18, { face: 90 }) || sm('hooded_statue', gc(65), gc(18) + 1.2, { face: 90 }); sm('hooded_statue', ox - 3.4, oz + 9.2, { face: 180 }); sm('hooded_statue', ox + 3.4, oz + 9.2, { face: 180 });
+            sm('hooded_statue', gc(65) + 1.2, gc(17) + 1.3, { face: 135 }); sm('hooded_statue', gc(68) - 1.2, gc(17) + 1.3, { face: 225 });
+            sq('bell_frame', 68, 16, { face: 180 }); sq('gong', 68, 20, { face: 270 }) || sm('gong', gc(68) + 1.1, gc(21) + 0.4, { face: 270 }); }
+          /* THE STAGE: a hooded figure at each front corner (on the grass), an owl on the roof's beam end */
+          { const q = centre('P04-01'), ox = gx(q[0]), oz = gx(q[1] - 1);
+            sq('hooded_statue', 51, 17, { face: 180 }); sq('hooded_statue', 56, 17, { face: 180 }); props.push({ key: 'owl_perched', x: r2(ox - 6.85), z: r2(oz + 3.3), y: top(ox, oz, 1.75 + 5.4), floor: true, face: 180 }); }
+          /* THE LAKE: the dock with its boat on the east shore, a bollard, rope and oars on the jetty, a lantern post at its head, a rod, reeds and lake rocks on the
+             shores, a swan and ducks on the water, a heron, two deer come down to drink */
+          { const wy = r2(ground(gx(61), gc(5)) - 0.3), jz = gc(6);
+            props.push({ key: 'dock_boat', x: r2(gx(65) - 1.0), z: r2(gc(5) + 0.4), y: r2(wy - 0.5), floor: true, face: 0 });
+            props.push({ key: 'lantern_post', x: r2(gx(57) + 1.2), z: r2(jz + 1.5), y: 0.3, face: 0, noLight: true }, { key: 'mooring_bollard', x: r2(gx(57) + 0.9), z: r2(jz - 1.3), y: 0.3 }, { key: 'rope_coils', x: r2(gx(56) - 0.6), z: r2(jz + 1.1), y: 0.31 }, { key: 'oars', x: r2(gx(54) + 1.2), z: r2(jz + 1.2), y: 0.31, face: 80 });
+            sm('fishing_rod', gc(51) + 0.9, gc(7) - 0.9, { face: 90 });
+            const cxl = gx(60), czl = gc(5); for (let k = 0; k < 14; k++) { const a = k / 14 * 6.2832 + 0.33, x = cxl + Math.cos(a) * (21.6 + (k % 3) * 0.5), z = czl + Math.sin(a) * (13.7 + (k % 2) * 0.5); sm(k % 4 === 3 ? 'lake_rock' : 'reeds', x, z, { face: k * 61 % 360 }); }
+            props.push({ key: 'swan', x: r2(gx(59)), z: r2(gc(3)), y: wy, floor: true, face: 120 }, { key: 'duck', x: r2(gx(63) + 1), z: r2(gc(7) + 0.5), y: wy, floor: true, face: 300 }, { key: 'duck', x: r2(gx(63) + 1.9), z: r2(gc(7) + 1.1), y: wy, floor: true, face: 320 });
+            sm('heron', gc(51) + 1.2, gc(5) + 1.3, { face: 100 }); sm('deer', gc(66) + 0.4, gc(3) + 0.6, { face: 250 }); sm('deer', gc(67) - 0.6, gc(3) - 0.9, { face: 200 }); }
+          /* THE MOUND: a weeping angel among the graves, an owl on the barrow's lintel (the crow there stays on its stone), a raven on its perch */
+          { const q = centre('P03-00'), ox = gc(q[0]), oz = gc(q[1]); sq('weeping_angel', 42, 5, { face: 160 }) || sq('weeping_angel', 44, 4, { face: 160 }); props.push({ key: 'owl_perched', x: r2(ox - 1.3), z: r2(oz + 6.9), y: top(ox, oz, 3.2), floor: true, face: 180 }); sm('raven_perch', gc(45) + 1.0, gc(6) + 0.9, { face: 250 }); }
+          /* THE STONES: two goats tethered outside the circle (the goatman's), a raven on its perch */
+          { sm('goat', gc(57) + 0.8, gc(29) + 0.8, { face: 240 }); sm('goat', gc(57) - 0.4, gc(30) + 1.2, { face: 300 }); sm('raven_perch', gc(51) + 1.0, gc(30) - 1.0, { face: 80 }); }
+          /* THE FIRE: a chopping block, stacked firewood, a kettle by the fire, barrels at the big tent */
+          { sq('axe_chopping_block', 37, 28) || sm('axe_chopping_block', gc(37), gc(28) + 1.2); sm('firewood_stack', gc(38) + 0.3, gc(30) + 0.9, { face: 20 }); sm('kettle', gc(40) + 1.0, gc(28) + 0.9, { y: 0.02 }); sm('wooden_barrel', gc(41) + 1.3, gc(27) - 1.1); sm('wooden_barrel', gc(41) + 1.2, gc(29) + 1.3); }
+          /* THE TENTS: firewood against the Camp House's chimney, a barrel, a cairn at the path's fork */
+          { sm('firewood_stack', gx(45) - 1.6, gc(17) + 0.6, { face: 90 }); sm('wooden_barrel', gc(44) + 1.0, gc(15) + 1.0); }
+          /* THE DEAD TREE: an owl on a gravestone, a raven on its perch */
+          { props.push({ key: 'owl_perched', x: gc(67), z: gc(29), y: top(gc(67), gc(29), 1.33), floor: true, face: 200 }); sm('raven_perch', gc(64) + 0.9, gc(32) + 0.9, { face: 60 }); }
+          /* THE CAMP HOUSE: the antler trophy over the mantel, beer taps on the bar, a bear rug at the hearth, cage lamps at the door, an owl on the hood */
+          { const cx = gx(47), cz = gx(17), Y0 = r2(ground(cx, cz)), w = 14, d = 7, inP = (key, rx, rz, o) => { const p = Object.assign({ key, x: r2(cx + rx), z: r2(cz + rz), floor: true }, o || {}); if (p.y >= 1) p.y = r2(p.y + Y0); props.push(p); };
+            const L = w - 0.12, cols = Math.round(L / 1.75), cw = L / cols, lx = r2(-L / 2 + (Math.floor((cols - 1) / 2) + 0.5) * cw);
+            inP('antler_trophy', -w / 2 + 1.35, 0, { y: 2.0, face: 90 }); inP('fur_rug', -4.0, 0, { y: 0.22, face: 90 });
+            inP('cage_lamp', lx - 1.5, d / 2 + 0.2, { y: 1.6, noLight: true }); inP('cage_lamp', lx + 1.5, d / 2 + 0.2, { y: 1.6, noLight: true }); inP('owl_perched', lx, d / 2 + 0.9, { y: 2.95, face: 180 }); } }
     },
 };

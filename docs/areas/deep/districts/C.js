@@ -151,5 +151,39 @@ exports.inside = ctx => {
     put('ocean_fish_3', 0, g(13), { y: -0.85, hover: 0.5, swim: { r: 4.6, v: 0.5, bob: 0.05 } });
     put('ocean_conch', -9.6, g(13) + 2, { face: 40 }); put('ocean_starfish', 9.4, g(13) - 3); put('ocean_sand_dollar_2', 8, g(13) + 5.6);
     native('atlantean', 7, 7, 150, sayOf(O_TEMPLE, 'atlantean', 0)); native('mermaid', 5, 14, 60, sayOf(O_TEMPLE, 'mermaid', 0));
+    /* ══ PASS 2, THE INSIDE (2026-11-16): the hall reads as a rotunda under the dome: a ring of twelve columns and its beam, the false dome
+       with a lit eye, pilasters and a gilt band round the walls, the pool's kerb and tiled walk, the throne's canopy, the three doors' surrounds ══ */
+    const GOLD = 'gold', TILE = 'urban:TileMarble1a', T2 = 0x9fd8d0, PL = 0xdfeeee, DK = 0x6f8f98;
+    look('rotunda', 0, 0, 0, a => {
+        for (let i = 0; i < 12; i++) { const t = (i + 0.5) * Math.PI / 6; a.column(Math.sin(t) * 24.5, 0, Math.cos(t) * 24.5, 9.4, 0.62, PL); }
+        a.cyl(0, 9.4, 0, 25.3, 0.9, MB, PL, { ri: 23.7, seg: 48 }); a.cyl(0, 10.3, 0, 25.1, 0.25, GOLD, null, { ri: 23.9, seg: 48, glow: 0.35 });
+        a.dome(0, 10.5, 0, 23.8, 3.3, MB, 0x4fa898, { seg: 48, ds: true, glow: 0.2 }); a.cyl(0, 13.5, 0, 3.2, 0.2, null, 0xcffff6, { seg: 24, glow: 1 });
+    });
+    look('walls', 0, 0, 0, a => {
+        for (const s of [-1, 1]) for (let i = 0; i < 9; i++) { const v = -28 + i * 7; if (Math.abs(v) < 1) continue;
+            a.box(s * 31.1, 0, v, 0.7, 12.4, 1.3, MB, PL); a.box(v, 0, s * 31.1, 1.3, 12.4, 0.7, MB, PL); }
+        for (const s of [-1, 1]) { a.box(s * 31.25, 10.6, 0, 0.3, 0.5, 62.6, GOLD, null, { glow: 0.3 }); a.box(0, 10.6, s * 31.25, 62.6, 0.5, 0.3, GOLD, null, { glow: 0.3 }); }
+        /* the three doors' surrounds: the vault door south, the bay's bulkhead east, the drowned stair's hanging west */
+        a.box(-3.2, 0, 30.9, 1.1, 6.4, 1.2, MB, DK); a.box(3.2, 0, 30.9, 1.1, 6.4, 1.2, MB, DK); a.box(0, 6.4, 30.9, 7.6, 1.0, 1.2, MB, DK); a.roof('gable', 0, 7.4, 30.9, 7.8, 1.5, 1.4, MB, T2, { keyEnd: MB });
+        a.box(30.9, 0, -2.6, 1.2, 4.6, 0.9, MB, DK); a.box(30.9, 0, 2.6, 1.2, 4.6, 0.9, MB, DK); a.box(30.9, 4.6, 0, 1.2, 0.8, 6.1, MB, DK);
+        a.box(-30.9, 0, -2.2, 1.2, 4.2, 0.8, MB, DK); a.box(-30.9, 0, 2.2, 1.2, 4.2, 0.8, MB, DK); a.box(-30.9, 4.2, 0, 1.2, 0.7, 5.2, MB, DK); a.box(-31.2, 0.2, 0, 0.08, 4.0, 3.6, null, 0x2a5f6a, { glow: 0.15 });
+    });
+    look('pool', 0, g(13), 0, a => { a.cyl(0, 0, 0, 9.5, 0.45, MB, PL, { ri: 8.75, seg: 40 }); a.cyl(0, 0, 0, 12.2, 0.04, TILE, 0x9fd0cc, { ri: 9.5, seg: 40, uv: 1.75 }); });
+    /* the dais: its front balustrade, the throne's canopy (four columns, a beam, a small pediment), the tiled field under it */
+    look('dais', 0, g(3), 0, a => {
+        for (const s of [-1, 1]) { a.box(s * 8.75, 3.5, 6.75, 10.4, 0.9, 0.35, MB, PL); for (let k = 0; k < 6; k++) a.cyl(s * (4.2 + k * 1.8), 3.5, 6.75, 0.14, 0.9, MB, T2); }
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.column(sx * 3.1, 3.5, -2.4 + sz * 2.2, 5.6, 0.34, PL);
+        a.box(0, 9.1, -2.4, 7.4, 0.5, 5.6, MB, PL); a.roof('gable', 0, 9.6, -2.4, 5.8, 1.4, 7.6, MB, T2, { ry: 90, keyEnd: MB }); a.box(0, 9.3, 0.45, 2.2, 0.5, 0.12, GOLD, null, { glow: 0.5 });
+        a.quad(0, 3.53, -1, 12, 9, TILE, 0x8fc8c4, { flat: true, uv: 1.75 });
+    });
+    /* what stands in it */
+    put('stone_altar', 0, g(5) - 3.2, { y: 3.5 }); put('holy_carpet', 0, g(3) + 3.4, { y: 3.52, face: 0 });   // on the dais, before the altar
+    put('lion_statue', -5.25, g(9) + 1.75, { face: 180 }); put('lion_statue', 5.25, g(9) + 1.75, { face: 180 });
+    [[-29.4, -21], [-29.4, -7], [-29.4, 7], [-29.4, 21], [29.4, -21], [29.4, -7], [29.4, 7], [29.4, 21]].forEach((q, i) => { put(i % 2 ? 'marble_bust' : 'stone_urn', q[0], q[1], { face: q[0] < 0 ? 90 : 270 }); });
+    [[-12.25, g(2)], [12.25, g(2) + 3.5], [-13, g(4)]].forEach((q, i) => put(i === 1 ? 'stone_urn' : 'greek_amphora', q[0], q[1], { y: 3.5 }));
+    put('greek_amphora', -22.5, 27, {}); put('greek_amphora', -24, 25.6, { face: 70 }); put('stone_urn', 22.75, 27, {}); put('psx_gold_bar_pcs_1', 11.4, g(2) + 1, { y: 3.5 });
+    put('scba_rack', 29.6, -6.2, { face: 270 }); put('wetsuit_rail', 29.4, 6.4, { face: 270 });                 // by the bay's bulkhead: you land here dry
+    put('ocean_starfish', -7.2, g(13) + 7.4, {}); put('ocean_conch', 6.5, g(13) + 8.2, { face: 200 });
+    native('starfish', 12, 13, 250);
     [[-27, -14, 90], [-27, 14, 90], [27, -14, 270], [27, 14, 270]].forEach(q => shaft({ x: q[0], z: q[1], top: 11, h: 12, w: 2.8, tilt: 34, dir: q[2], color: 0xbfe8e0, intensity: 0.3 }));
 };

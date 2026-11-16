@@ -7398,7 +7398,7 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   names it; light shafts and sound by plot (engine); the plots' own names in layout.json (the tool's row); a look at the weak PC's frame rate.
 - **THE MODEL PASS (mondo's new word 11-16, on top of the five; seen, 12 views; the whole list of 246 read) — the thread STOPPED again.** `models(ctx)` in C.js.
   ASKED AND PLACED: `camper_van` + `picnic_table` (the camp), `tyre_swing` (the playground), `outhouse` (the Crossroads), `firewood_stack` (the station's porch and
-  by its stove), `backpack` (camp, shelter, porch, the wreck), `braced_gate` x 2 (the gate's leaves), `deer` (one, under the Old Tree). A hammock was not placed.
+  by its stove), `backpack` (camp, shelter, porch, the wreck), `braced_gate` x 2 (the gate's leaves), `deer` (one, under the Old Tree). The `hammock` (in the game before the list: the Houses on the water pack's) hangs on the Old Tree's glade (a follow-up PR the same day, on the coordinating thread's note; seen).
   STAND-INS TAKEN OUT: the drawn stove (now `wood_stove`, the pipe kept), the two drawn firewood boxes, the gate's two drawn leaves (two arch rows), the eight
   drawn lamp posts (now `lantern_post`), the camp's wire and bulbs (now two `string_lights`), the rock-pile cairn (now `cairn`), a stump + saw (`axe_chopping_block`),
   the shelter's mattress (`sleeping_bag`). ALSO FROM THE LIST: `trail_sign` (Crossroads, the Stair), `fire_danger_sign` + `mailbox` + `antler_trophy` (the station),
@@ -7410,7 +7410,7 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.
-- **NEEDS A MODEL:** ~~a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a backpack, a camper van, a braced gate leaf~~ (all placed in the model pass); ~~a hammock~~ (in the game as `hammock`, not placed).
+- **NEEDS A MODEL:** ~~a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a backpack, a camper van, a braced gate leaf~~ (all placed in the model pass); ~~a hammock~~ (placed: `hammock`, the Old Tree's glade).
 
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
@@ -8666,6 +8666,20 @@ sea has things to sail to.
     is seven `goo_tendril` (the Sewers' Sludge Pit's prop: the symbiote's black spell tendrils, 2.6 to 5.6 m, their feet typed half a
     metre under the surface) round the taken boat. The Meshy `tentacle` / `tentacle2` models are never used for a standing arm again.
     STILL DRAWN THE SAME WAY AS THE PLUME, HIS CALL: the waterspout's cloud (grey domes over the funnel).
+  - **THE MODEL PASS (11-16, mondo: "these are models that were added ... use these ones"; seen on screen):** the wish-list models
+    (docs/plans/WISHLIST_MODELS_ADDED.md, read end to end) in place of what stood in. ASKED AND PLACED: `thatched_hut` x 2 (the
+    sleepers' drawn shelter is one now; a watcher's hut by the watch fire. The two WALK-IN huts stay: a model is not walked into),
+    `carved_totem_pole` x 2 (by the gate; in the village, where the hand-sized `item_ward_totem` stood), `dugout_canoe` x 3 (the
+    Landing's three rowboats), `drying_fish` x 2 (the drawn pole rack and its hung meat are out), seven `seagull`, `woven_baskets`
+    (village, garden, both huts), `coconuts` under the palms, four `banana_plant`, six `tropical_bush`, `raft` x 2 (the castaway's,
+    in place of his rowboat; adrift in the Flotsam), a `trawler` working the Sharks' ground (was a rowboat adrift), `hammock` x 2
+    (the pack's own key). FROM THE REST OF THE LIST: three `burnt_tree` (for dead snags on the scorched ring), `golden_idol` on the
+    altar (was a gold bar), `fur_rug` before the high seat, `torn_sail_mast` standing out of the Flotsam, two `parrot`, a `dodo`, a
+    `heron`, `oars`, `fishing_rod`, `firewood_stack`, the castaway's `lean_to` and `pirate_flag`. NOT TOUCHED: his revisions (no
+    modelled smoke, `tiki_torch`, `goo_tendril`). SEEN AND MOVED: a hut west of the big hut stood against the south flow's lava pool.
+    FRAME RATE: the cloud 0.2 fps at the Landing and 1.0-1.6 mid-sea before and after; triangles drawn 3.14 M -> 4.10 M at the
+    Landing, 2.89 M -> 3.20 M mid-sea (the new models are 2,000-5,000 triangles each; the Landing's jump is more than their sum,
+    so something near it draws them several times over: for the engine row to look at, with the far cull).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -8688,10 +8702,8 @@ sea has things to sail to.
   6. The sea's places wear plain names for what is there: THE ROCKS, THE KRAKEN, THE PALM ROCKS, FLOTSAM, THE SEA LANE.
   7. One castaway stands on the north-east islet: a pirate (the Beach's own list), no line.
   8. Lava runs down the cone in two flows; it is scenery (the cone is never climbed, the flows end on scorched ground nobody needs to cross).
-- **NEEDS A MODEL (nothing stood in):** the tribe's people; a thatched hut and a totem pole / carved mask (the huts are drawn walls, the
-  gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
-  for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
-  a ship or raft out at sea; a moving waterspout (this one stands still).
+- **NEEDS A MODEL (after the model pass; everything else on the first list is placed):** the tribe's people; a whale's bones (not
+  made); a black sand sheet; a carved mask; a moving waterspout (this one stands still). Smoke is never modelled (mondo 11-16).
 - **NOT DONE (for after his look):** Nothing
   under the water shows (the sea is opaque from above). No fight set up.
 - **WHAT I WOULD DO NEXT (not started):** a far cull / LOD for the whole sea room and its ten lights handed to the props nearest the
@@ -10624,6 +10636,7 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
 - **Standing stones that block**: catalogue `sarsen` / `menhir` / `greek_column` with their own `h` (a prop row's `h` scales the model), one a square; `trilithon` on two whole squares (x on the line between them).
 - **A walk-in on ground that is not at 0 m (district G's Camp House, 7 m up)**: give every inside prop `floor: true`; a `y` of 1 m or more must be the ROOM height (ground + lift), a `y` under 1 m is a lift; line the inside walls with a lit board box 0.34 m in (`glow: 0.4`); `holy_carpet` stands upright (a tapestry), `psx_chair_mp_*` are stools.
 - **Lit trails without lights (district G)**: lantern posts as arch parts in the trees' edge beside a path (post + arm + a `glow: 1` box), one arch row a plot; pick the tree squares that touch a path by a hash so the count stays low. **Air by plot**: `airZones` may return several boxes in metres (first listed first); never `embers` (room-wide), use orange `motes`. **A glow on a statue**: measure the model file (parse the GLB's POSITION accessor) before guessing where a face is.
+- **The wish-list models in the Woods (district G's model pass)**: `lantern_post` (no glow of its own: add a drawn flame 0.25 m north of the pole at `face: 0`, 1.4 m up), `string_lights` (has its own posts: stand it, do not hang it), `trestle_table` (use `span: 2.3`, at 3.5 its top is 1.22 m up), `canvas_tent`, `dock_boat` (give it the water's height, `ground - 0.8`, + `floor: true`), `fallen_redwood` (12 x 4.8 m: eight squares; open them on plot-rim rows / columns so no clearing middle moves), `hooded_statue`, `owl_perched`, `raven_perch`, `reeds`, `lake_rock`.
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
 - **A yard for a new piece without moving the old ones** (district C): open its squares as `p` in `cut`, not `g` (the plot's middle is the mean of its grass squares).
 - **Level ground for a building**: the ground is flat 7 m either side of a plot's middle and between two neighbours of one level; row 3 of district C is one flat band.
@@ -11071,8 +11084,17 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   reindeer for the sleigh team, a cairn and a prayer-flag string as real models); (3) one look for all lamp posts and poles; (4) lines for the yetis and a keeper at the
   Gate House once the NPC system says who lives here; (5) with the tool's row: grey the rock sheet's scale on the crags, take the tile grid out of the snow paint,
   winter trees on the west edge land past the Pass Gate.
+- **THE MODEL PASS** (mondo 11-16, on top of the five passes: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to end;
+  seen, two probe runs, 26 views; proof `docs/areas/mountains/proof/P_models_*.jpg`). What was replaced, added and what stays a shape: the file's header. Learned:
+  - A prop row takes `noBlock: true` (the `rope_bridge` model blocks by its catalogue row: on a walked square it must not) and its own `h` / `span` (the great cairn is
+    `cairn` at `h` 3.6; `icicles` at `span` 1.4 so they end over head height). A hung piece: `floor: false` + `y` = the plot's ground + the eave's height - the piece's own height.
+  - `timber_gate` and `icicles` run along x at `face` 0; `prayer_flags` too. `rope_bridge` runs along x: `face: 90` for a north-south crossing. `lantern_post` has no light.
+  - The Rope Bridge's crossing went from two squares wide to one (`tailor`: one `j` column became the slot), because the model is one 1.7 m walkway.
+  - CROSSED OFF the needs-a-model list: prayer flags, cairn, rope bridge, timber gate (as leaves), lantern post, weather mast, reindeer, goat, bear, snowshoes, snow sled,
+    ice axe, pickaxe, wood stove, kettle, firewood pile, axe + block, backpack, sleeping bag, stretcher, snow heap, icicles, ice-fishing hole and rod, pelt rug.
+    STILL NO MODEL: skis as a loose pair (the `ski_rack` has them), a wide gate frame, a big log shelter, a lit lantern post.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles; after the model pass 243 calls / 331 k triangles (the models are heavier than the boxes they replace, the calls are level; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
@@ -12026,6 +12048,25 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
     BEFORE THIS THREAD (the district file as it stood, baked and probed again) 1.2 / 1.0; AFTER FIVE PASSES 1.4 / 1.0. No loss that this probe can measure;
     the room went from 523 to 1,010 props (the other districts' passes are in that number too), so the weak PC is still worth a look.
   - NOBODY MOVED: 1,033 rows outside the district, 0 differ.
+- **THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... tell all of those district threads that needed models to use these ones"; one pass on top of
+  the five; `docs/plans/WISHLIST_MODELS_ADDED.md` read end to end; seen, three probe rounds, 28 views):**
+  - ALL TEN ASKED FOR ARE PLACED: `owl_perched` (the barrow's lintel, the Stage's beam end, a gravestone at the Dead Tree, the Camp House's door hood), `goat` (two by
+    the Stones, the goatman's), `deer` (two at the Lake's east shore), `hooded_statue` (five at the Owl, two at the Stage's front corners), `dock_boat` (the east shore),
+    `bell_frame` (behind the Owl), `trestle_table` (the hall's feast table), `string_lights` (the Stage's front edge), `antler_trophy` (over the hall's mantel),
+    `fallen_redwood` (beside the trail between the Owl and the Dead Tree, on eight squares opened in `cut`; rows 23 / 24 are plot rims, so no clearing middle moved).
+  - STAND-INS TAKEN OUT: the 37 box-built lantern posts -> 27 `lantern_post`; the Stage's 13 glow-box bulbs and four footlight boxes -> three `string_lights`; the
+    jetty's box lamp post -> a `lantern_post`; the hall's two box door lamps -> `cage_lamp`; three pack tables + eight stools -> two `trestle_table`; the three blue
+    dome `camping_tent` -> `canvas_tent`; the hall's metal barrels -> `wooden_barrel`; the mantel's red cloth -> the trophy; the hearth's carpet -> `fur_rug`.
+  - ALSO FROM THE LIST: `weeping_angel`, `raven_perch` (three), `gong`, `mooring_bollard`, `rope_coils`, `oars`, `fishing_rod`, `reeds` + `lake_rock` round the shore,
+    `swan`, two `duck`, `heron`, `fox`, `moss_clump`, `axe_chopping_block`, `firewood_stack`, `kettle`.
+  - SEEN AND FIXED: (1) `string_lights` has its own two posts: hung from the beam they floated; they stand on the deck's front edge now. (2) `trestle_table` at its
+    listed 3.5 m has its top 1.22 m up: two at `span: 2.3` (top 0.8 m). (3) `beer_taps` read as a giant white teapot on the bar: left out. (4) `antler_trophy` stood
+    inside the chimney breast: moved 0.6 m out. (5) `lantern_post` has no glow row: a small drawn flame sits in each lantern (the model's lantern hangs 0.25 m north of
+    the pole at `face: 0`, 1.4 m up, measured on the file and seen), so the trails still read lit at night.
+  - NOT USED ON PURPOSE: `willow_tree` at the Lake (the trees row is closed), the circus pieces (the striped tent is the old Grove's, nothing is added to it).
+  - NOBODY MOVED: 1,031 rows outside the district, 0 differ. FRAME RATE (same Stage view, two counts): 1.4 / 1.0 before this pass, 1.2 / 0.8 after (within the
+    probe's own scatter of about 0.2; the room holds 1,069 props).
+  - NEEDS A MODEL, WHAT IS LEFT after this pass: nothing from the model list. Still engine pieces: light shafts, mist on water, sound by district, more than ten real lights.
 - **DECISIONS MADE FOR MONDO (overrule any in one line):**
   1. The Stage is a timber band shell with a red cloth (not a bare platform). 2. The Owl stands in a horseshoe of ten columns on a stone mound, and its eyes glow.
   3. The Lake has one jetty on the west shore; the effigy lies in a boat on the water among candles (the bier at the Owl stays). 4. The Mound is a barrow with a
@@ -12033,7 +12074,7 @@ The district = the fairy forest gone wrong + the old Bohemian Grove (the lake, t
   and the Stage; it has no game role. 6. The old Grove's striped big tent stands at the Fire; the fortune teller has her own tent at the Tents. 7. The Dead Tree is
   12 m. 8. Lantern posts line every trail in the district. 9. The ground is the dark forest sheet. 10. No pumpkins, no bats, no new natives (the NPC system is
   another thread's), no names beyond what stands there ("The Camp House", "The Jetty", "The Barrow").
-- **NEEDS A MODEL:** an owl (the bird, for branches); a goat and a deer; a hooded robed figure / statue (the creator's `mhw_donitz_monk_robe*` on R2 are character
+- **NEEDS A MODEL (as written after pass 5; ALL MADE AND PLACED in the model pass, see above):** an owl (the bird, for branches); a goat and a deer; a hooded robed figure / statue (the creator's `mhw_donitz_monk_robe*` on R2 are character
   pieces, not props); a dock / pier piece and a moored-boat set; a bell on a frame; a long trestle table with benches; real hanging lanterns on a string; antlers or
   a trophy for the hall's wall; a big fallen trunk. Engine pieces no district can write: light shafts, mist on water, sound by district, more than ten real lights.
 - **WHAT I WOULD DO NEXT (after his look):** the way to Room 333 at the Stones (the tool's row); carry the old Grove's four talkers and their lines in and retire
@@ -12419,6 +12460,16 @@ without waiting; his word wins). Plan 1 (9 x 3, a strip) stays beside it as hist
 - **NEW MECHANIC IDEAS, NOT BUILT:** a current that carries the swimmer along the canals; the Trench getting darker with depth (the wet
   fog is one colour a room today); air you have to hold (a breath gauge); the bathyscaphe as the only way into the Bottom.
 
+### THE ASTRAL REALM, DISTRICT S, THE SEA OF POSSIBILITY (the pilot; `docs/areas/astral/districts/S.js`)
+- **Pass 1, exteriors + landmarks (live 11-16)**. Seen on screen (pictures `docs/areas/astral/proof/S_pass1_*.jpg`).
+  - The Thought-Forms (P03-01): an open temple with no roof. Ten `greek_column` on the squares round a 2 x 2 pool, the south side open, a marble lintel all
+    round, a pediment north and south, crystal finials, the orb over the water, the fish over that.
+  - The Closet (P04-00): a wardrobe 7.9 m wide over the walk south, both doors open, a rail of eight coats, hat shelves, no back. You walk through it onto the
+    floating steps down into the Nightmare.
+  - The Spire (P02-05): seven crystal drums, 26 m, a scaffold up the first three, the last drum hanging beside the top.
+  - The Mirror (P03-00): the gilt frame of Camelot's garden (the same piece as `docs/areas/camelot/districts/L.js`) round the door, a marble step.
+  - The Frame (P02-00): two crystal piers and a lintel. A marble balustrade (`rail` rows, `balusters_b`) round the Edge and the High Thought.
+  - Frame rate (same view as the first build, 20 s counts): 1.35 before, 1.60 / 1.65 after (two counts; a balustrade round a third island cost 0.3 and came off).
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
@@ -12585,3 +12636,11 @@ picture he was sent: `docs/plans/world-zones/cavern_plot_plan_2.png` (drawn by `
   the rock is square blocks 3.5 m wide (no cave-rock model exists: NEEDS A MODEL); H and A are a first build only (their rows on the
   board say what each lacks); the old rooms' tapes and finds were not re-homed (no tape / find guards); no sound.
 
+- **PASS 2, THE INSIDE (the Temple of the Deep's dry room; seen on screen, three views, no errors):** the hall reads as a rotunda: a ring
+  of twelve 9.4 m columns under a ring beam with a gilt line (`gold` = the better gilt sheet), a false dome (a two-sided `dome` part) with a
+  lit eye, pilasters and a gilt band round the four walls, surrounds on the three doors (the vault door's with a small pediment; the
+  drowned stair's hanging), the Oracle pool's kerb and a tiled walk round it (`urban:TileMarble1a`, the nearest sheet to a mosaic), the
+  dais's balustrade, the throne's canopy on four columns, a tiled field and the carpet under it, the altar, lions at the stair's foot,
+  busts and urns along the walls, amphorae, gold bars, and by the bay's bulkhead the air rack and wetsuit rail (you land there dry).
+  The old room's own pieces all stand: dais + stair, the Oracle in its pool (the tape), throne, six braziers, columns, four windows with
+  their shafts, the tapestry, the chest, the skulls, the paper, the pool's fish, both residents with their lines, the fight marker.

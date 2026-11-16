@@ -11,28 +11,62 @@
 'use strict';
 const CRY = 'crystal', MRB = 'marble_light', WD = 'wood';
 
-exports.plan = function (c) { c.fill('P02-05', 7, 7, 8, 8); };   // the Spire's foot
+exports.plan = function (c) {
+    c.fill('P02-05', 7, 7, 8, 8);     // the Spire's foot
+    c.fill('P03-01', 6, 1, 10, 5);    // the temple's floor (the Thought-Forms)
+    c.fill('P04-00', 2, 8, 9, 10);    // the Closet's floor, either side of the walk south
+};
 
+const GOLD = 0xd8b050, WAL = 0xc09a6c, WALD = 0x8a6644;
 exports.build = function (c) {
-    /* THE THOUGHT-FORMS (P03-01, the landmark): the knee-deep pool in the north-east of the island, four columns round it, the orb over it */
-    c.pool('P03-01', 8.5, 3, 5.6, 'water');
+    /* THE THOUGHT-FORMS (P03-01, the landmark; pass 1): the home of thought-forms is an open temple with no roof. Twelve squares round a
+       square pool: ten columns (dress), the south side left open; over them a marble lintel all round and a pediment north and south.
+       The orb hangs over the water. The frame: the pool's middle. */
+    c.pool('P03-01', 9, 3, 3.9, 'water');
+    c.look('temple', 'P03-01', 9, 3, 0, a => { const T = 3.6, Hf = 5.25;
+        a.box(0, T, -Hf, 14.9, 0.6, 1.0, MRB, 0xffffff); a.box(0, T, Hf, 14.9, 0.6, 1.0, MRB, 0xffffff); a.box(-Hf, T, 0, 1.0, 0.6, 11.5, MRB, 0xffffff); a.box(Hf, T, 0, 1.0, 0.6, 11.5, MRB, 0xffffff);
+        a.box(0, T + 0.6, -Hf, 15.5, 0.22, 1.3, MRB, 0xe8e0ff); a.box(0, T + 0.6, Hf, 15.5, 0.22, 1.3, MRB, 0xe8e0ff);
+        a.roof('gable', 0, T + 0.82, -Hf, 15.5, 2.4, 1.1, MRB, 0xf4f0ff, { glow: 0.3 }); a.roof('gable', 0, T + 0.82, Hf, 15.5, 2.4, 1.1, MRB, 0xf4f0ff, { glow: 0.3 });
+        [[-7.4, -Hf], [7.4, -Hf], [-7.4, Hf], [7.4, Hf], [0, -Hf], [0, Hf]].forEach((q, i) => a.dome(q[0], T + (i > 3 ? 3.25 : 0.85), q[1], 0.32, 0.32, CRY, 0xe0d0ff, { glow: 0.7 }));   // crystal finials
+        /* the two piers of the open south side, where the columns are left out */
+        a.box(-1.75, 0, Hf, 0.5, 0.5, 0.5, MRB, 0xffffff); a.box(1.75, 0, Hf, 0.5, 0.5, 0.5, MRB, 0xffffff); });
     /* THE STILL WATER (P03-04) */
     c.pool('P03-04', 3, 8.5, 5.2, 'water');
-    /* THE CLOSET (P04-00): a closet standing on its own over the walk south, no back to it: you walk through the coats and down the steps
-       into the Nightmare. Drawn: two sides, a top, a door ajar. */
-    c.look('closet', 'P04-00', 6, 9.4, 0, a => {
-        a.box(-3.7, 0, 0, 0.3, 4.2, 2.4, WD, 0x6a4a34); a.box(3.7, 0, 0, 0.3, 4.2, 2.4, WD, 0x6a4a34); a.box(0, 4.2, 0, 7.7, 0.3, 2.4, WD, 0x5a3e2c);
-        a.box(-2.6, 0, -1.9, 2.2, 3.9, 0.12, WD, 0x7a5a40, { ry: 62 }); a.box(0, 3.75, -1.1, 7.1, 0.12, 0.12, 'metal', 0x888888);
-        for (let i = 0; i < 7; i++) a.box(-2.9 + i * 0.95, 1.5, -1.1 + (i % 2) * 0.2, 0.55, 2.2, 0.16, 'carpet', [0x3a3a52, 0x5a2c2c, 0x2c4a3a, 0x4a4a4a, 0x6a5a3a, 0x2a2a3a, 0x5a3a5a][i]);   // the coats (they are yours)
+    /* THE CLOSET (P04-00; pass 1): a wardrobe seven metres wide standing over the walk south, both doors open, no back to it. You walk
+       through between the coats and the floating steps behind it go down into the Nightmare. The frame: the middle of its floor. */
+    c.look('closet', 'P04-00', 6, 9.5, 0, a => { const Wd = 3.95, Ht = 5.0, Dp = 1.5;
+        a.box(-Wd, 0, 0, 0.35, Ht, 2 * Dp, WD, WAL); a.box(Wd, 0, 0, 0.35, Ht, 2 * Dp, WD, WAL); a.box(0, Ht, 0, 2 * Wd + 0.35, 0.35, 2 * Dp, WD, WAL);
+        a.box(0, Ht + 0.35, 0, 2 * Wd + 1.0, 0.3, 2 * Dp + 0.5, WD, WALD); a.roof('gable', 0, Ht + 0.65, -Dp + 0.1, 2 * Wd + 0.6, 1.1, 0.4, WD, WALD);
+        a.box(-Wd, 0, 0, 0.9, 0.3, 2 * Dp + 0.3, WD, WALD); a.box(Wd, 0, 0, 0.9, 0.3, 2 * Dp + 0.3, WD, WALD);
+        /* the doors, swung wide open to the north */
+        a.box(-Wd - 0.1, 0.1, -Dp - 1.75, 0.14, Ht - 0.3, 3.5, WD, WAL); a.box(Wd + 0.1, 0.1, -Dp - 1.75, 0.14, Ht - 0.3, 3.5, WD, WAL);
+        a.dome(-Wd + 0.1, 2.3, -Dp - 3.2, 0.1, 0.1, null, GOLD); a.dome(Wd - 0.1, 2.3, -Dp - 3.2, 0.1, 0.1, null, GOLD);
+        /* the rail and the coats (they are yours), either side of the way through */
+        a.box(0, Ht - 0.9, 0, 2 * Wd, 0.1, 0.1, null, 0x9a9aa4);
+        [0x4a4a72, 0x7a3434, 0x34684c, 0x6a6a6a, 0x8a7444, 0x3a3a5a, 0x7a4a7a, 0x2c5a6a].forEach((col, i) => { const x = (i < 4 ? -3.5 + i * 0.55 : 1.85 + (i - 4) * 0.55);
+            a.box(x, Ht - 3.1, (i % 2) * 0.25 - 0.1, 0.42, 2.1, 0.75, 'carpet', col); a.box(x, Ht - 1.0, (i % 2) * 0.25 - 0.1, 0.5, 0.12, 0.06, null, 0x9a9aa4); });
+        a.box(-2.7, Ht - 0.6, 0, 2.0, 0.08, 2 * Dp - 0.3, WD, WALD); a.box(2.7, Ht - 0.6, 0, 2.0, 0.08, 2 * Dp - 0.3, WD, WALD);   // the hat shelves
     });
-    /* THE SPIRE (P02-05): the unfinished spire. Crystal drums, each smaller, the top one missing: somebody is still not thinking of it. */
-    c.look('spire', 'P02-05', 7.5, 7.5, 12, a => { let y = 0; [[2.6, 3.2], [2.1, 3.0], [1.65, 2.8], [1.25, 2.6], [0.9, 2.4], [0.6, 2.0]].forEach(([r, h], i) => { a.cyl(0, y, 0, r, h, CRY, [0xb8a0ff, 0xc4b0ff, 0xd0c0ff, 0xdcd0ff, 0xe8e0ff, 0xf4f0ff][i], { seg: 6, glow: 0.12 + i * 0.05 }); y += h; a.cyl(0, y, 0, r + 0.25, 0.25, MRB, 0xffffff, { seg: 6 }); y += 0.25; });
-        a.cyl(1.4, y + 1.2, -0.6, 0.45, 1.6, CRY, 0xf4f0ff, { seg: 6, glow: 0.4 }); });   // the last drum, not yet set down
-    c.claim('P02-05', 7, 7, 8, 8);
-    /* THE MIRROR's island (P03-00): a marble court round the frame, two piers */
-    c.look('mirrorcourt', 'P03-00', 6, 1.5, 0, a => { a.box(-2.6, 0, -0.6, 0.7, 4.4, 0.7, MRB, 0xffffff); a.box(2.6, 0, -0.6, 0.7, 4.4, 0.7, MRB, 0xffffff); a.box(0, 4.4, -0.6, 6.4, 0.5, 0.9, MRB, 0xf0ecff); a.box(0, 4.9, -0.6, 4.2, 0.35, 0.7, 'gold_2', 0xffe9a0); });
-    /* THE FRAME's island (P02-00): the same two piers in violet crystal */
-    c.look('framecourt', 'P02-00', 6, 1.5, 0, a => { a.box(-2.6, 0, -0.6, 0.7, 4.0, 0.7, CRY, 0xc8b0ff, { glow: 0.2 }); a.box(2.6, 0, -0.6, 0.7, 4.0, 0.7, CRY, 0xc8b0ff, { glow: 0.2 }); a.box(0, 4.0, -0.6, 6.4, 0.45, 0.9, CRY, 0xe0d0ff, { glow: 0.3 }); });
+    c.claim('P04-00', 2, 9, 4, 9); c.claim('P04-00', 7, 9, 9, 9);
+    /* THE SPIRE (P02-05): the unfinished spire. Crystal drums, each smaller, the top one missing: somebody is still not thinking of it.
+       Pass 1: twice as tall, a scaffold up one side, the last drum hanging beside the top, not yet set down. */
+    c.look('spire', 'P02-05', 8, 8, 12, a => { let y = 0; const D = [[2.9, 4.2], [2.45, 4.0], [2.0, 3.8], [1.6, 3.6], [1.25, 3.4], [0.95, 3.0], [0.7, 2.6]];
+        D.forEach(([r, h], i) => { a.cyl(0, y, 0, r, h, CRY, [0xb8a0ff, 0xc4b0ff, 0xd0c0ff, 0xdcd0ff, 0xe8e0ff, 0xf0e8ff, 0xf8f4ff][i], { seg: 6, glow: 0.25 + i * 0.07 }); y += h; a.cyl(0, y, 0, r + 0.25, 0.25, MRB, 0xffffff, { seg: 6 }); y += 0.25; });
+        a.cyl(1.9, y + 0.9, -0.8, 0.5, 1.9, CRY, 0xffffff, { seg: 6, glow: 0.9 });
+        /* the scaffold: four poles and their decks, up the first three drums */
+        for (const [px, pz] of [[3.3, 3.3], [3.3, 1.6], [1.6, 3.3]]) a.cyl(px, 0, pz, 0.07, 12.6, WD, WAL, { seg: 6 });
+        for (const yy of [4.2, 8.4, 12.4]) { a.box(2.6, yy, 2.6, 2.2, 0.1, 2.2, WD, WAL); a.box(3.3, yy + 0.9, 2.45, 0.06, 0.06, 1.8, WD, WALD); } });
+    /* THE MIRROR (P03-00; pass 1): the gilt looking-glass frame of Camelot's garden (districts/L.js there, the same piece), round the door
+       on this side of the glass; a marble step before it */
+    c.look('mirrorframe', 'P03-00', 6, 1.5, 0, a => { const IW = 2.15, Hc = 5.3;
+        for (const sd of [-1, 1]) { const x = sd * (IW + 0.3); a.box(x, 0, 0, 0.6, 0.5, 0.6, MRB, 0xffffff); a.cyl(x, 0.5, 0, 0.22, Hc - 0.5, null, GOLD, { seg: 10 }); a.box(x, Hc, 0, 0.6, 0.18, 0.6, null, GOLD); a.cone(x, Hc + 0.18, 0, 0.2, 0.08, 0.9, null, GOLD, { seg: 8 }); a.dome(x, Hc + 1.08, 0, 0.2, 0.2, null, GOLD); }
+        a.roof('barrel', 0, Hc + 0.18, 0, 0.4, 1.5, 2 * IW + 0.6, null, GOLD, { ry: 90, ends: false, ds: true, seg: 12 });
+        for (let i = 1; i < 12; i++) { const t = Math.PI * i / 12; a.dome(Math.cos(t) * (IW + 0.32), Hc + 0.2 + Math.sin(t) * 1.5, 0, i === 6 ? 0.3 : 0.13, i === 6 ? 0.3 : 0.13, null, GOLD); }
+        a.box(0, 0, 1.6, 6.4, 0.12, 2.4, MRB, 0xffffff); });
+    /* THE FRAME (P02-00): two crystal piers and a lintel round the frame you were called through */
+    c.look('framecourt', 'P02-00', 6, 1.5, 0, a => { a.box(-2.6, 0, -0.2, 0.7, 4.0, 0.7, CRY, 0xe0d0ff, { glow: 0.5 }); a.box(2.6, 0, -0.2, 0.7, 4.0, 0.7, CRY, 0xe0d0ff, { glow: 0.5 }); a.box(0, 4.0, -0.2, 6.4, 0.45, 0.9, CRY, 0xf0e8ff, { glow: 0.6 }); });
+    /* a marble balustrade round the islands you stand on to look out: the Edge, the High Thought (the Mirror's was taken off again: 0.3 frames a second on the weak-GPU count) */
+    c.rimRail('P03-05'); c.rimRail('P03-02');
 };
 
 exports.dress = function (c) {
@@ -41,15 +75,16 @@ exports.dress = function (c) {
     /* The Mirror */
     c.put('marble_bust', 'P03-00', 3, 3); c.put('marble_bust', 'P03-00', 8, 3); c.put('crystal_cluster', 'P03-00', 2, 6); c.put('crystal_cluster', 'P03-00', 9, 7); c.put('fae_bloom_violet', 'P03-00', 4, 8); c.put('thoughtform', 'P03-00', 8, 8);
     /* The Closet */
-    c.put('costume_rack', 'P04-00', 3, 8, { face: 90 }); c.put('costume_rack', 'P04-00', 8, 8, { face: 270 }); c.put('door_stack', 'P04-00', 2, 3, { face: 30 }); c.put('hollow_dead_tree', 'P04-00', 9, 3); c.put('dream_eye', 'P04-00', 8, 2);
+    c.put('door_stack', 'P04-00', 2, 3, { face: 30 }); c.put('hollow_dead_tree', 'P04-00', 9, 3); c.put('dream_eye', 'P04-00', 8, 2);
     /* The Carousel */
     c.put('carousel', 'P05-00', 6.5, 7, { span: 2 }); c.at('pearly_gate', 'P05-00', 4, 4.2, { face: 90 }); c.put('decor_carousel_horse', 'P05-00', 4, 8); c.put('thoughtform', 'P05-00', 8, 3);
     /* The Near Shore */
     c.put('thoughtform', 'P02-01', 3, 3); c.put('thoughtform', 'P02-01', 8, 8); c.put('crystal_cluster', 'P02-01', 2, 8); c.put('crystal_cluster', 'P02-01', 8, 2); c.put('park_bench', 'P02-01', 3, 7, { face: 90 }); c.put('fae_bloom', 'P02-01', 9, 4);
     /* The Thought-Forms: the colonnade round the pool, the orb, the book of what you were about to think */
-    c.put('greek_column', 'P03-01', 7, 1); c.put('greek_column', 'P03-01', 10, 2); c.put('greek_column', 'P03-01', 7, 4.6); c.put('greek_column', 'P03-01', 10.4, 4.4);
-    c.put('floating_orb', 'P03-01', 3, 3); c.put('lectern', 'P03-01', 4, 4, { face: 0 }); c.put('thoughtform', 'P03-01', 2, 7); c.put('thoughtform', 'P03-01', 3, 9); c.put('thoughtform', 'P03-01', 8, 8); c.put('thoughtform', 'P03-01', 9, 9.5); c.put('crystal_cluster', 'P03-01', 2, 2);
-    c.at('fish_school', 'P03-01', 8.5, 3, { y: 3 });
+    [[7, 1], [8, 1], [9, 1], [10, 1], [10, 2], [10, 3], [10, 4], [7, 4], [7, 3], [7, 2]].forEach(q => c.P('greek_column', 'P03-01', q[0], q[1]));
+    c.at('floating_orb', 'P03-01', 9, 3, { y: 0.6 });
+    c.put('lectern', 'P03-01', 8, 5.4, { face: 0 }); c.put('thoughtform', 'P03-01', 2, 7); c.put('thoughtform', 'P03-01', 3, 9); c.put('thoughtform', 'P03-01', 8, 8); c.put('thoughtform', 'P03-01', 9, 9.5); c.put('crystal_cluster', 'P03-01', 2, 2);
+    c.at('fish_school', 'P03-01', 9, 3, { y: 5 });
     /* The Open Sea: the stepping islands */
     c.put('crystal_cluster', 'P02-02', 1, 1); c.put('dream_eye', 'P02-02', 10, 2); c.put('crystal_cluster', 'P02-02', 2, 9); c.put('thoughtform', 'P02-02', 9, 9); c.put('hollow_dead_tree', 'P02-02', 10, 10);
     c.at('white_cloud', 'P02-02', 2.5, 5.5, { y: c.base('P02-02') - 3 }); c.at('white_cloud', 'P02-02', 9.5, 6, { y: c.base('P02-02') - 5 });
