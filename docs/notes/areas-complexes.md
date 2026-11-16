@@ -4832,9 +4832,65 @@ once that first district is fleshed out and knows what shared assets it can use 
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
+- **FROM THE HARBOUR (11-16, district H's first pass; all seen):**
+  - **`dockring` IS NOT A MOORING RING:** the catalogue's `dockring` is a three-metre space-station docking ring. A bollard is drawn (H.js
+    `bollard`: two cylinders in dark `urban:MetalWallRibbed1a`). No model for a mooring ring or cleat.
+  - **A TERRAIN ROW IN THIS ROOM WEARS `absY: true`** (`plateau`, `ramp`, `bridge`, `deck`): its heights are then metres over the sea.
+    Without it the game adds the height of the square under the row's own anchor (data.js `_hqTSlopeFeatures`): a wharf typed 3.9 stood at
+    4.8. A `rail` row's `y` is always absolute; a rail with no `y` follows the ground (keep it 0.5 m inside a ramp's edge or it sags down
+    the blended side). The tool's walk check reads the squares only: check such rows with `hqTerrainHeight` in node (H's way).
+  - **A DRAWN ROW IN WORLD METRES** (H.js `works(id, x, z, T => ...)`): an `arch` row pushed with `ctx.feat` and `y: 0` has its foot at the
+    sea, so every part's height is typed absolute: the way to draw anything that stands in water (walls down to the sea bed at -3.7,
+    piles, beacons, buoys). `ctx.sheet()` is the tool's part writer.
+  - **SHEETS THAT READ:** timber over water = the terrain key `wood_planks` (the pier's own sheet) with a light tint; a colour over
+    `WoodGeneric1a/1b` is black here. Dressed stone = `urban:BrickMasonry1a` tinted 0xb4aa9a; brick = `BRK` at gain 1.7; steel and iron =
+    `urban:MetalWallRibbed1a` (tinted grey, yellow, near black); cut-out bracing = `urban:MetalTruss1a`, `kind: 'over'`, `ds: true`.
+  - **A SLOPE THAT IS DRAWN:** `{ s: 'roof', form: 'shed', size: [w, rise, run] }` is a solid wedge (its high edge at -z, `ry: 180`
+    turns it): a slipway's concrete over the `ramp` the walker reads, a gangway's planks. Battens and posts climb it with `n` + `step`.
+  - **STAIRS:** `ramp` + `stairs: true` + `model`: `concrete` (stone flight, balusters), `external` (stone, parapets: the water steps),
+    `steel` (a steel flight, cross-braced rails). `grate` draws black seen from above. All are the stairs pack's models.
+  - **RAILS:** `balusters_b` (steel balusters: a wharf, a light's head), `parapet` (a low stone wall), `pipe` (a low pipe rail, never a
+    wall). A rail on a `bridge` takes `block: false` (a wall hung over open ground trips the solver: the old Harbour's note).
+  - **THE SHED'S RED:** `CORR`, 0xd04a3a, gain 2.9, white corner posts and barge boards, `CORR` 0xc4ccd4 at gain 2.6 for a tin roof.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
   dunes to 3.6 m). The first run of a fresh container can crash once while the cache fills; the harness retries.
+
+## THE BEACH, THE HARBOUR — district H (2026-11-16, `docs/areas/beach/districts/H.js`, the second Beach district thread)
+
+mondo 11-16: "now that I think most of these districts have had at least a couple passes on them, can you start threads for another
+district in the zone". The pilot's passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish.
+
+- **THE FIRST LOOK (12 views, HEAD f706133):** the Quay Shed was a black box with a grey sign (tar over the brown board sheet); the quay
+  a bare cobbled slab 9 x 5 squares; the Breakwater a flat grey bar with the light off its head's middle and no way onto it; the piers
+  planks with smeared sides and no piles; eight `dockring` props were three-metre space-station rings; nothing showed the way aboard the
+  Dutchman (her hull stands against the pier, the link is a spot on the boards); the shed's inside a brown box under a black ceiling;
+  none of the old Harbour's works; the Mouth four buoys, the Roads nothing.
+- **PASS 1, EXTERIORS (seen on screen):**
+  - **THE OLD HARBOUR'S WORKS, CARRIED OVER** (`site_prebuilt_downtown_harbour`'s rows at this room's heights; owner rule "never delete
+    content he didn't name"): THE WHARF (brick, 3.0 m over the quay, its front railings) up its concrete stair; THE GANTRY from the wharf
+    out over the quay and the water, west to a steel stair down onto the pier's north arm (steel trestles and a hoist frame drawn under
+    and over it); THE SLIPWAY into the boat basin with its pipe rails (a drawn concrete slip, timber skids, a winch); two WATER STEPS;
+    the quay's PARAPET; the way onto THE BREAKWATER (a cobbled slope) and the railing round the light. The plan drew none of them, so
+    `tailor` gives them ground on the district's own plots in the plan's own letters: the quay runs east to the Breakwater's root
+    (33-35 x 38-42), a strip behind it carries the stair and the wharf (24-35 x 36-37), the Breakwater's head is 3 x 3 round the light.
+  - **MADE RECOGNISABLE:** the shed (red boards, white trim, tin roof, windows, hoist beam, HARBOUR dark on white); the quay's walls
+    (dressed stone to the sea bed, a kerb, bollards); a fascia and a pile under every square line of the north arm, the Long Pier and
+    the skiff jetty; armour blocks along the Breakwater's sea side; THE GANGWAY (a brow of planks from the pier up to the Dutchman's
+    waist at the tool's place GANG, posts, a rope either side of its foot: drawn only, the link did not move).
+  - **THE MOUTH + THE ROADS** (the plan: "open water, buoys" · "open water where ships wait"): two pile beacons (a red can, a green cone)
+    between the Channel's buoys; four mooring buoys in the Roads. No ship: there is no model.
+  - **GONE:** the eight `dockring` props (the wrong model: bollards stand there). Two crates moved off the way to the wharf's stair.
+  - **FRAME RATE (the proof view over the quay, the cloud's software GPU, so only the comparison counts):** 0.8 fps before (895 draw calls); after, two runs: 0.8 fps (973 calls) and 1.8 fps (611 calls).
+    The cloud's number swings more between runs than the pass moved it: about 80 draw calls added in that view, no new light.
+  - **CHECKED IN NODE** (`hqTerrainHeight` on the compiled room): the stair 0.9 -> 3.9, the wharf 3.9, the steel stair 0.6 -> 3.9, the
+    slip 0.9 -> the sea bed, both water steps, the slope 0.9 -> 1.6 onto the Breakwater and its crest flat to the light.
+- **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter), a harbour crane, gulls, coils of heavy
+  rope, fish boxes, an iron mooring ring / cleat.
+- **NOT DONE:** the shed's inside (pass 2); freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the
+  night look (pass 4); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+  file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
+- **WAITS FOR MONDO:** nothing blocks the next pass.
 
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
