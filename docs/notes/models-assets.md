@@ -2027,6 +2027,8 @@ metres, polys, prompt; batches 1 = asked by 3+ districts, 2 animals + plants, 3 
 - Pipeline: `python3 run.py <batch>` (concept nano-banana-pro 9 credits -> image-to-3d meshy-t2.5 textured 15 credits = ~24 a model), prep (desert-plots/meshy/prep.mjs:
   base y 0, centred, metallic 0), `optimize-assets.js` (.opt.glb beside each), `sync-zip.js --put` to `Assets/world/props/meshy/wishlist/<key>.glb`, manifest rows
   added by script (sha1[:12]), data.js HQ_CATALOGUE_ALL block "THE WISH LIST" (editor groups `Meshy props · wish list · <group>`), list-models.js SOURCES row (folder regex).
-- BATCH 1 LIVE (40 models). Batches 2-6 (210) NOT MADE: the Meshy API key hit its own credit limit ("API key credit limit reached", HTTP 402) though the
-  account still had ~7,800 credits; mondo raises the key's limit on meshy.ai, then rerun `run.py 2` .. `6` and repeat the steps.
+- BATCH 1 LIVE (40 models, PR #1783). The key's credit cap stopped batches 2-6 until mondo removed it (11-16 ~09:00 UTC); then BATCHES 2-6 LIVE (206 more,
+  246 in all). Every thumbnail sheet checked (project files meshy-wishlist/batch*_sheet.jpg); remade once with firmer prompts: leafy bush (rejected by mondo:
+  shards; 3 tries, the smooth ball kept), hedgehog, willow, oars, windbreak, hot tub. NOT MADE: papyrus, whale bones, gold pile (Meshy shards twice;
+  `rejected/`), wheat patch (Meshy server error twice). Meshy foliage tends to come out as flat shards: ask for "solid", "painted in the texture".
 - Facing is as Meshy made it (animals stand along z); check before lining one up.
