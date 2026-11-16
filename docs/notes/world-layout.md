@@ -3,6 +3,10 @@
 Survey of 2026-11-16 (a thread on the SECOND side; first signed "owner" by mistake, corrected the same day), at main `afbbd24` (PR #1548). Nothing was built or rebaked for it.
 **Where the docs and the data disagree, the data is the truth**; each such place is marked DATA below.
 
+**THE MAP: `docs/plans/world-zones/world_state_map.png`** (drawn by `docs/plans/world-zones/draw-world-state.js`, which
+writes an SVG; render it in a browser to a PNG). Built zones at their real size from the data, unbuilt zones placed as on
+layout 3, every way between zones, the DOOR HQ doors, the missing ways in red, the proposed order as 1, 2, 3.
+
 How it was read: `load-data.js` (the real data.js), `hqWorldGraph()` for every door and link, `hqHubOf()` for the zone a
 room belongs to, `DOOR_HQ.retired` for the rooms a rebuilt area replaced. To redo it: load the data, walk
 `hqWorldGraph().edges`, drop every room that is a key of `DOOR_HQ.retired`.
