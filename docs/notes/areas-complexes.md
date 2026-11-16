@@ -4563,6 +4563,17 @@ added no real light after pass 3. A true number needs his Mac or the friend's PC
 WHAT A NEXT PASS WOULD DO (not started): an olive tree and a vine model in place of `tree_2` and the leaf sheet; steps cut into the Amphitheatre's tiers so the seats can be
 walked; the Stadium's north seats on level ground; a district look in the tool (the marble paint is grey beside the lit marble of the buildings); cloud that drifts.
 
+**THE MODEL PASS (mondo 11-16, one pass on top of the five; DISTRICT_THREAD_BRIEF.md "THE MODEL PASS"; seen on screen, two probe runs):** the wish-list models stand where
+this district's list said one was missing, and each stand-in is out. `olive_tree` x 7 in the Olive Grove (was `tree_2`). `grape_trellis` x 12 on the Terraces (the leaf sheet
+on posts, its low wall and its ghost walls are gone: the trellis blocks by itself). `tripod_bowl` in place of EVERY brazier (eleven), each with a small fire part in it;
+the bowl gives no light, so the district's real lights are now only its two fountains. `god_statue` in the Temple (Lady Justice is out). `lyre` in place of the harps
+(thrones, the cella, the theatre). `chariot` and two `discus_rack` at the Stadium, a `laurel_wreath` by the prize cup, on the altar and at the hearth. `greek_couch` in place
+of the iron benches (Colonnade, Terraces, Olive Grove) and one in the cella and at the thrones. Three `mountain_goat` on the Goat Track (the sheep there are out) and a `goat`
+in the grove. From other districts' asks: `cypress_tree` x 3 (Terraces, Goat Track), `peacock` at the thrones, `sundial`, `wooden_barrel` x 2, `woven_baskets`, `beehive`,
+`wild_flowers`, `lit_candle` (the shrine's Halloween candles are out), `oil_lamp`. Sizes as the list gives them.
+TO KNOW: the `olive_tree`'s leaves draw as grey shards with black backs up close (its leaf cards; the model's, not the placement). FPS at the proof view, warm: 1.4 before,
+1.4 after (llvmpipe; the first count after a cold load reads 0.1 to 0.6 while 200 new files stream: count twice).
+
 **FOR THE NEXT THREAD (learned here):**
 - A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
   never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
@@ -4579,13 +4590,14 @@ walked; the Stadium's north seats on level ground; a district look in the tool (
 3. The seats and tiers block (ghost walls): nobody climbs them. The Stadium's track stays open end to end.
 4. No encounter table: the room is shared with three other districts, so a table here would put Olympus units on the ski slopes. The gods stand as natives.
 5. No names added: the plots keep the plan's names; no sign boards.
-6. The Temple's statue is Lady Justice at 4.3 m (the one goddess-like statue in the game); a statue of a named god is on the NEEDS A MODEL list.
+6. The Temple's statue is the wish list's `god_statue` since the model pass (it was Lady Justice).
+10. Every brazier became a tripod bowl (the brief's word), so their real lights are gone; say so if you want some braziers back for the night.
 7. The Temple has a wooden double door that swings (your rule for walk-ins); it was an open frame.
 8. Six more units stand in the district (valkraye, giant, nephilim, unicorn, occulus, watcher): your word 11-16 was more NPCs; all are `divine` / `ancient` units. None has a line (no invented words).
 9. The spyglass at the Goat Track is the game's modern telescope (the world is a parody of the real one).
 
-**NEEDS A MODEL:** an olive tree; a grape vine on a trellis (the vine rows are a leaf sheet on posts); a laurel wreath; a chariot; a discus and a javelin rack; a tripod bowl
-(the brazier stands in); a Greek couch; a lyre (the harp stands in); a statue of a god (the angel, the bust and Lady Justice stand in); a goat for the Goat Track.
+**NEEDS A MODEL:** nothing open. PLACED in the model pass (11-16): olive tree, grape trellis, laurel wreath, chariot, discus and javelin rack, tripod bowl, Greek couch,
+lyre, statue of a god, goats. Still wanted, not asked before: a fire with real flame and light for the tripod bowl; an olive tree whose leaves draw clean.
 **6. ADDED BY THE SKI LODGE THREAD (district K, 2026-11-16):**
 - THE MODEL LIST FIRST (mondo 11-16). Catalogue rows on R2 that fit a snow zone and that no Mountains file had used: `flood_mast` (a real night light, 26 m),
   `festoon`, `pa_speaker`, `ticket_booth`, `turnstile` / `metro_gate`, `rope_stanchion`, `surfboard_rack`, `scarf_rack`, `key_rack`, `brochure_rack`, `map_table`,
@@ -6814,6 +6826,16 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   so the belt past the snow is snow pines (the tool's shell, one row); (2) the snow pine clumps off the track and the road (the tool's tree
   grower: a `treeIn` per zone); (3) who lives here (npc-system.md: levels, a cap, a refill); (4) sound (wind, a fire's crackle: none on R2);
   (5) the models on the NEEDS A MODEL list (axe + block, sled, reindeer, icicles, a pelt).
+- **THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; seen, one probe, 13 views)**: STAND-INS OUT:
+  14 drawn lantern posts -> `lantern_post`; drawn log stacks (three outdoors, two in the huts) -> `firewood_stack` (`span` 1.2 indoors);
+  the drawn fishing hole -> `ice_fishing_hole` + `fishing_rod` (the rod is a 2 m stand with a tackle box); fur-sheet rugs -> `fur_rug`;
+  `hw_fence` -> `fence_with_gate`; the horse before the sleigh -> two `reindeer`; `hw_straw` -> `hay_rack` + `hay_bale`; the verges' bare drawn
+  drifts -> `snow_heap` (fewer, 1.4 m off the way: it blocks). NEW: `axe_chopping_block`, `hand_cart`, `snow_sled` x 2, `snowshoes`,
+  `owl_perched`, `wooden_barrel` x 3, `water_trough`, `icicles` (two under each hut's back eave: `mount: 0`, `y` 1.95, 0.72 m out from the
+  wall: they hang right), `antler_trophy` over the Cabin's mantel, `kettle`, `fox`, `deer`, `mountain_goat`, `raven_perch`, `milestone`, `cairn`.
+  All stood upright and the right way round at first try. NEEDS A MODEL, crossed off: axe + block, log stack, sled, reindeer, deer, fox,
+  owl, icicles, fur pelt, wooden barrel, hay rack. STILL OPEN: nothing from the list; still drawn: the sawhorse, the pond's bank, snow caps.
+  COUNTS at the sleigh stop, before -> after: 540 -> 540 draw calls, 2,249 -> 2,274 geometries.
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
