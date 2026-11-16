@@ -5874,6 +5874,15 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
   - Twenty-odd drawn LAMP POSTS (H's `lampPost`, copied) and five painted boards (`board()`: plain words, read from both sides).
   - LIGHTS: C keeps two real ones (the Hub's torch, the big circle's); the rest carry `noLight`.
   - Props in the district: 24 -> about 220 (+ 8 drawn fields / posts / boards).
+- **PASS 2, INTERIORS + LANDMARKS (seen in the cloud browser, 7 + 5 views):**
+  - THE FIELD SHED (`houses()`, id `est:fieldshed`, squares 24..26 x 29..30, door east on the silo yard): the district's one inside. Weathered boards, a tin
+    gable roof, a stone footing, four dark windows, a lantern and a TOOLS board by the door. Inside: a plank floor slab over the lawn's roll, a lit ceiling
+    with tie beams, a drawn work bench and two shelves, the tool chest, barrels, crates, sacks, bales, jerrycans, a radio and a lamp on the bench, a hung lantern.
+    A thing on the bench or a shelf carries the plot's ground in its `y` (1.75 + the height); the hung lantern is placed without `floor`.
+  - THE GATE ARCH (`look` `archC`): two posts and a beam over the track south of the Woods gate's clearing, THE ESTATE on a hung board, read from both sides.
+  - THE LAMP POSTS ARE ONE PIECE: every post on level ground (sx, sy under 31) is drawn in one `look` (`lampsC`), the few by the east and south edge keep
+    their own row (the ground grades there). FPS at the proof view: 1.8 before the thread, 1.4 with 24 separate posts, 1.6 with the one piece (the other
+    districts grew in the same hours, so part of the rest is theirs).
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
   THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle.
@@ -7067,6 +7076,12 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
 - **WRONG PIECES FOUND ON SCREEN:** `babel_crane` is a modern steel tower crane (taken out); `psx_pillar_1` draws near black (taken out);
   a prop's `y: -2.6` did not sink an `obelisk` (a small negative `y` works on low props); `horse_black` reads as a dark dog from afar.
 - New lights are all `noLight`. FPS at the proof view after the pass: 2.7 (llvmpipe; 427 calls, 1.14 M triangles; before the pass 2.0 to 2.3).
+
+**PASS 4, THE ATMOSPHERE.** `exports.airZones` in G.js (the pilot's air hook, no tool change): dust over the Sand Sea (220, wind 1.9), round
+the pyramids (130) and on the causeway (80), embers on the Tomb Door path (50), fireflies over the oasis (45). Light without lamps: a bracket + a
+lit core (`glow: 1`, tint 0xffb040) on each jamb of every mouth and on the hall's posts; the gold capstone has `glow` 0.45. Seen at 19.2 and
+21.5 (`window._hqClockHour`): the pale stone holds at night, the capstone and the cores read, fireflies show over the pool. A `noLight`
+brazier's flame is small at night (its sprite only). FPS at the proof view: 2.0 (433 calls, 1.15 M triangles): no cost against pass 3 beyond noise.
 
 **FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
 `meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
