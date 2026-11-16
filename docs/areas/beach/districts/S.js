@@ -42,6 +42,8 @@
    the Palms (a bench, chairs, a guitar, the radio), the court's chairs and ball, THE DUNES (a ranch-rail path three squares wide, rows 76-78,
    up to the high bench and a second glass; dry scrub), the Sandbar's shells and seals, the fishermen's camp south (tent, fire ring, traps, a
    boat), the South Dunes (a chest half in the sand, a wrecked boat, a bottle).
+   THE MODEL LIST PASS (11-16): the taco stand, two snowmen and punch cups at the snow cone stand, the sunglasses spinner, the wetsuit rail,
+   the ship's bell / wheel / outboard motor, red cups, rubbish bags, a dog, a cat, crows. All were in MODEL_LIST.md and had been missed.
    - NEEDS A MODEL (not stood in for): hammocks (the Palms), a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, an ice shaver and paper cones
      (the snow cone stand). (Towels are
      drawn on a line; a towel lying on the sand still needs a model.)
@@ -170,7 +172,7 @@ build(ctx) {
       In(B, 'tool_pegboard', 1.75, -3.02, 180, 1.25); In(B, 'surfboard_long', 2.95, 0.5, 285); In(B, 'surfboard_short', 0.1, -2.95, 10); In(B, 'surfboard_fish', -0.6, -2.95, 350);
       In(B, 'fishing_net_wall', -3.05, 0.9, 90, 0.9); In(B, 'beach_life_ring', 3.02, 2.2, 270, 1.5); In(B, 'beach_cooler', 2.4, 2.4, 30); In(B, 'folding_chair', 1.3, 2.3, 200); In(B, 'doormat', door0(B), 2.75, 0, 0.01); }
     { const B = HUTS[1];   // THE SNOW CONE STAND: the counter and till at the window, the syrups on a steel bench, two fridges and cool boxes of ice, stools
-      In(B, 'form_counter', 1.75, 1.75, 180); In(B, 'cash_register', 1.3, 1.75, 180, 1.15); In(B, 'steel_table', 1.75, -1.75, 0); [[1.2, -1.9, 1], [1.6, -1.6, 2], [2.0, -1.9, 1], [2.3, -1.6, 2]].forEach(q => In(B, 'psx_glass_bottle_' + q[2], q[0], q[1], 0, 0.76));
+      In(B, 'form_counter', 1.75, 1.75, 180); In(B, 'cash_register', 1.3, 1.75, 180, 1.15); In(B, 'steel_table', 1.75, -1.75, 0); [[1.2, -1.9, 'xmas_punch'], [1.6, -1.6, 'xmas_punch_2'], [2.0, -1.9, 'xmas_punch_3'], [2.3, -1.6, 'xmas_punch'], [1.4, -2.1, 'solo_cup'], [1.9, -1.4, 'solo_cup']].forEach(q => In(B, q[2], q[0], q[1], 0, 0.76));   // (THE MODEL LIST PASS: the Christmas pack's punch cups and the red cups are the cones' cups; were brown bottles)
       In(B, 'mini_fridge', -1.75, -1.75, 180); In(B, 'round_fridge', -0.5, -2.7, 180); In(B, 'beach_cooler', 2.75, 0.1, 270); In(B, 'beach_cooler', 2.75, -0.6, 250); In(B, 'wooden_bucket', 0.6, -2.6, 0);
       In(B, 'price_tag', -2.6, 2.5, 150); In(B, 'bar_stool', 0.2, 1.0, 0); In(B, 'painting_seascape', -3.05, -0.4, 90, 1.35); In(B, 'doormat', door0(B), 2.75, 0, 0.01);
       put(B, 'bar_stool', 1.5, 4.55, { floor: true, y: 0.16 }); put(B, 'bar_stool', 2.5, 4.55, { floor: true, y: 0.16 }); }
@@ -313,6 +315,18 @@ dress(ctx) {
     /* ── THE POLISH PASS (2026-11-16), at the END. THE PEOPLE (mondo 11-16: "There need to be more NPCs", owner-rules.md): nine more on the
        Shore, each where its plot's things are, none on a way through, none with a made-up line (units are named after their race; the three
        first ones keep theirs). Races the Beach or the city beside it already has. ── */
+    /* ── THE MODEL LIST PASS (mondo 11-16: "every thread working on a district needs to know it needs to look at the model list"; owner-rules.md
+       THE MODEL LIST FIRST). MODEL_LIST.md searched for every beach word and the fitting packs read whole. What the Shore had missed and now
+       wears (all already in the catalogue, placed at the END for the dice): the Elbolilloduro TACO STAND (a whole stand, real size), the
+       Christmas pack's SNOWMEN and punch cups (the snow cone stand's own joke and its cups), Bayside's Meshy pieces (the sunglasses spinner,
+       the wetsuit rail, the ship's bell, the ship's wheel, the outboard motor), the red cups, the public phone, rubbish bags, and the animals
+       pack (a dog by the fire, a cat on a porch, crows on the rocks and the rail). ── */
+    P('xmas_snowman', 7, 53, { face: 160 }); P('xmas_snowman_3', 9, 49, { face: 200 });                                     // the snowmen of the snow cone stand
+    props.push({ key: 'solo_cup', x: r2(gx(5) + 5.0), z: r2(gz(52) + 0.5), y: 1.02, floor: true }, { key: 'xmas_punch', x: r2(gx(5) + 5.6), z: r2(gz(52) + 0.5), y: 1.02, floor: true });   // cups on the serving shelf
+    dec('sunglasses_spinner', 2, 53, { floor: true }); dec('wetsuit_rail', 1, 49, { floor: true }); dec('outboard_motor', 12, 31); dec('ship_wheel', 2, 17);
+    props.push({ key: 'ships_bell', x: r2(gx(17) + 2.1), z: r2(gz(65) - 0.2), y: 1.5, floor: true });                         // the lifeguard's bell, on the veranda's corner post
+    P('city_taco_stand', 10, 44, { face: 180 }); P('city_bin', 12, 44); dec('garbage_bag', 9, 46); dec('garbage_bag', 5, 43); dec('solo_cup', 6, 45); dec('solo_cup', 5, 56);
+    dec('dog', 5, 56, { face: 30 }); dec('cat', 3, 52, { floor: true, y: 0.17 }); [[14, 38], [16, 44], [19, 46], [13, 41], [3, 39], [6, 43], [12, 61]].forEach(q => dec('crow', q[0], q[1]));
     /* THE NIGHT (mondo 11-16: "there is night and day cycle in the game already"; the Beach rides the world clock, data.js hqRoomClock. Seen
        at 22:30: drawn glow shows but lights nothing, the sand stayed flat grey): REAL light where people sit after dark: standing torches
        (`cave_torch`, a 9 m light each) at the huts' fire, the Palms' bench, both camps and the foot of the Dunes path, braziers at the gate */
