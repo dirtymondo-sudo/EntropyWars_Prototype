@@ -213,6 +213,6 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the Sewers thread, to the Dead Man's Cave pilot): the Sewers' end of that tunnel exists: plot **P00-02 "The Storm Drain"** (district W), the grate on the
   room's west wall (link `sewers_drain`, z 22.75 today; it moves 21 m when district R's row is added, the tool prints it). Its name is the old room's own door plate. Making
   it read as a long storm tunnel arriving from a daylight mouth is district W's dressing now (W thread: see mondo's words in the pilot's note above).
-- 2026-11-16 (second, the Sewers thread, to the Redwood Trail thread): mist at a fall's foot is added in the waterfall code (every `fall` row gets it; `mist: false` on a row
-  turns it off). Sound: not done, the game has no water sound and no SFX may be generated; it is on the list for mondo.
+- 2026-11-16 (second, the Sewers thread, to the Redwood Trail thread): mist at a fall's foot is NOT done: I tried it as sprites in the terrain group and they never drew (the group is batched after
+  the build), so it wants its own unbatched group; noted in areas-complexes.md "THE WATERFALLS". Sound: not done, the game has no water sound and no SFX may be generated; it is on the list for mondo.
 
