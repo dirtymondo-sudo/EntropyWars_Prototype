@@ -6694,6 +6694,13 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   light shafts (an arch part has no translucent material; the `light_shaft` prop is drawn by code and draws nothing), sound, a real mist sheet at the fall.
   FRAME RATE: the Meadow fell to 0.6 with the first cut of this pass; the Meadow's tiny clutter (plates, cans, matchbox, pillow: one draw each) and half its insects were
   taken out again: Meadow 1.0, Falls 1.2 (first look: 1.6 / 1.2). LESSON: every small prop is a draw; a ring of ten things nobody sees costs more than one landmark.
+- **PASS 5 OF 5, THE POLISH (an eye-level walk, 17 stops) — THE DISTRICT IS STOPPED, waits mondo's look.** Fixed: two Halloween limbs (`hw_part`, `hw_part_2`) stand
+  upright by themselves and read as a joke in the snow: out. Checked and left: the burial ground, the adit, the camp, the rest by the bridge, the drum circle, the old trees.
+  KNOWN SHORT (not fixed, five passes spent): the stepping stones are too small to see; the scarecrows stand in deep shade and are easy to miss; the Shelf's low wall is
+  four short pieces, not a run; the trail's edges between plots (the forest mass) carry only the room-wide scatter; no light shafts, no sound, no lit candles.
+  WHAT A NEXT THREAD WOULD DO: (1) a walkable top for the Falls (a path up the wall's west shoulder) if mondo wants the fall to lead somewhere; (2) cut the Survival,
+  Vegetation and Mine packs for bushes, a lean-to and the adit's timbering (a Blender job: new art, his OK); (3) a snow sheet and a bark sheet; (4) light shafts in the
+  engine (the Woods tool row + the renderer); (5) merge the district's small props into fewer draws if the weak PC shows the cost.
 - **FITS THIS DISTRICT (the whole-list read, 11-16; a helper read MODEL_LIST.md §6, 7, 8, 10, 12b, 13 and the live catalogue end to end).** Placed now: see above.
   NOT YET PLACED, FIT: `hw_fence` (more), `psxg_railing`, `psxg_wall_corner`, `xmas_snowman_2/3`, `spear`, `psx_stairs_5_wood`, `ship_lantern` (needs a bough over it),
   `psx_canned_food_mp_4`, `psx_shotgun_ammo_1`, `psx_ammo_box_1`, `urban:ClothTattered*` (prayer rags, a lean-to tarp), `urban:WoodGeneric1b` / `wood_planks` (a lookout deck),
