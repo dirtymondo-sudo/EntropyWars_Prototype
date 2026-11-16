@@ -445,7 +445,10 @@ const BENCH = { R: 'park_bench', U: 'iron_garden_bench', S: 'park_bench', C: 'ci
    stands on the city's outer line in front of it. North = the high side: steep mountains (they turn the north-west corner and run a way
    down the west side, and end in a headland over the bay in the north-east); west = tall forest on the hillside; south = flat desert;
    east = the bay (sea cliffs north of Bayside's beach). */
-const EDGES = { reach: 440, n: { kind: 'mountain' }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'desert' }, e: { kind: 'coast' } };
+/* THE REAL LAND PAST THE EDGE (2026-11-15, mondo: "is the bad looking fake mountain weenie still there ... shouldn't these mountains replace that?"):
+   the north side's land IS the Hollywood Hills room's own ground (three-renderer.js _hqEdgeLandFn `land`), shifted 21 m so its plot columns stand
+   over the city's (its Canyon Road door over the city's mountain road at x 105, its Cove over the boardwalk's north end). */
+const EDGES = { reach: 440, n: { kind: 'mountain', land: { room: 'site_prebuilt_shasta_hills', x: 21, y: 0, back: 0.35 } }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'desert' }, e: { kind: 'coast' } };
 const EDGE_STOP = { n: ['trees', 'wall:1.2'], w: ['trees', 'trees'], s: ['rail:guard', 'rail:cable_fence'], e: ['rail:parapet', 'rail:pipe'] };
 const edgeN = {};
 function boundaryPass(V) {

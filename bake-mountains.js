@@ -437,12 +437,13 @@ const M = makeRoom({ id: MTN, tag: 'mtn', px0: 4, py0: 0, pw: 12, ph: 8, base: 8
    at the east end over the north end of the city's beach. Base level 2: the Cove's sand is at 0 m, the sea at -0.6. */
 const HL = makeRoom({ id: HILLS, tag: 'hills', room: 1, px0: 0, py0: 0, pw: 13, ph: 3, base: 2, seed: 39, rockCap: 16, seaBed: -4.2, seaShore: -1.4, deadLevel: () => 10, trail: () => 'p',
     carves: [7, 8, 9, 10, 11].flatMap(lx => [['H07-02', lx, 8, 'Y'], ['H07-02', lx, 9, 'Y']])
+        .concat([10, 11].flatMap(ly => [['H08-02', 5, ly, 'Y'], ['H08-02', 6, ly, 'Y']]))   // the road's last squares down to the city (the door stands over the city's own mountain road: Hills x 84 = city x 105)
         .concat([1, 2, 3].flatMap(ly => [['H10-00', 4, ly, 'f'], ['H10-00', 7, ly, 'f']]), [2, 3].flatMap(ly => [['H05-00', 5, ly, 'f'], ['H05-00', 6, ly, 'f']])) });   // (the tank's and the mast's pads are concrete, not rooms)   // the canyon road runs on east through the spur (the drawing stopped it at the rock)
 { const R = HL, { put, dec, tree, building, look, S, door, mx, mz, gx, gz, props, feat } = R;
   /* ── THE WAYS ── */
   door('shasta', 'H00-01', 'w', Object.assign({ way: 'road', action: { room: MTN, at: 'hills' } }, DOORWORDS('MOUNT SHASTA', 'THE SHASTA ROAD · WEST INTO THE SNOW', 'The road climbs west out of the brush. Somewhere past the cattle grid it stops being dry.')));
   door('ridge', 'H00-00', 'w', Object.assign({ way: 'trail', action: { room: MTN, at: 'saddle' } }, DOORWORDS('MOUNT SHASTA', 'THE SADDLE · THE GLACIER SIDE', 'The crest trail runs west onto the ice. The volcano is closer than it has any right to be.')));
-  R.out = { road: R.spur('H07-02', 's', 'Y'), cove: R.spur('H12-02', 's', 'D') };
+  R.out = { road: gx(S('H08-02', 6, 0)[0]), cove: R.spur('H12-02', 's', 'D') };
   const flat = (id, lx0, ly0, lx1, ly1) => { const a = S(id, lx0, ly0); R.flats.push([a[0], a[1], a[0] + lx1 - lx0, a[1] + ly1 - ly0, 'S']); };   // level ground (the reservoir, a car park)
 
   /* ── THE SIGN: twelve letters, each a standing plane cut from the typeface (the city's own sign's font), two legs behind it; you walk under and behind them ── */

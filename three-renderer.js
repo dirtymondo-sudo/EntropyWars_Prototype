@@ -7703,15 +7703,15 @@ const ThreeRenderer = (function () {
        them now. data.js HQ_TREE_KINDS carries the same names (it wins for every key it lists). */
     var _FOLIAGE_RT_BASE = _R2_FOLIAGE + 'retrotreepack/GLB/';
     var _FOLIAGE_MODEL_FOR_KEY = {
-        tree:   'rt:tree_rt_2_1',
-        tree_2: 'rt:tree_rt_3',
-        tree_3: 'rt:tree_rt_4',
-        tree_4: 'rt:tree_rt_2',
+        tree:   'rt:tree_rt_2_1_full',
+        tree_2: 'rt:tree_rt_3_full',
+        tree_3: 'rt:tree_rt_4_full',
+        tree_4: 'rt:tree_rt_2_full',
         tree_5: 'rt:dead_tree_rt_2',
         tree_6: 'rt:dead_tree_rt_1',
-        pine:   'rt:tree_rt_1',
+        pine:   'rt:tree_rt_1_full',
         pine_2: 'rt:small_tree_rt_1',
-        tree_pine: 'rt:tree_rt_1',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
+        tree_pine: 'rt:tree_rt_1_full',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
         tree_sapling: 'rt:small_tree_rt_1'
     };
     /* THE ISLAND (2026-10-20): a name `kit:<file>` is a GLB in the D.O.O.R. kit folder (DOOR_HQ.assets.models — the palm) */
@@ -8482,7 +8482,7 @@ const ThreeRenderer = (function () {
            and takes the same light as the ground beside it; lit = a trim on that. A tuft's foot is rootK of it, its belly the
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
-                  grass: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
+                  grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
         lit: 1.0, rootK: 0.50, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 2.6,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
@@ -8773,6 +8773,110 @@ const ThreeRenderer = (function () {
                 }
         }
         G.press.needsUpdate = true;
+    }
+    /* ══ THE GRASS FIELD IN A WALKED ROOM (2026-11-15, mondo on the Estate: "I want the grass from the battle maps on this grass too") ══
+       The same tufts, shader, colours and wind as the board's field (above), grown on a walked room's own ground. A room asks for it with
+       `terrain.grassField: true` (data.js; today the Estate). A whole area is far too many tufts to hold at once, so the field is CELLS of
+       HQ_GRASS.cellM metres built round the walker (nearest first, a few a tick) and dropped behind him. A tuft stands only where the
+       ground is open (the room's mask), wears a grass sheet (the painted sheet there, else the room's floor: GGRASS.sheets), is not
+       water, not a steep face and not inside a building. The tufts write no depth, so the cells are drawn far to near (renderOrder by
+       distance) and each cell sorts its own tufts (_ggFace). Settings > Video > Grass (High / Low / Off) rules it as on the board.
+       Kill switch: window.EW_NO_HQ_GRASS. No press map (nothing lays the tufts down here yet). */
+    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 16, low: { radiusM: 16, perSquare: 10 }, perTick: 2, tickMs: 100, steep: 0.55, height: 0.8 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
+    var _hqGG = null;
+    function _hqGrassDrop() {
+        var S = _hqGG; _hqGG = null; if (!S) return;
+        S.cells.forEach(function (c) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } });
+        try { if (S.mat) S.mat.dispose(); if (S.press) S.press.dispose(); } catch (e) {}
+    }
+    function _hqGrassCell(S, cx, cz) {
+        var info = S.info, U = S.U, C = GGRASS, cm = HQ_GRASS.cellM, ts = 3.5 * U, n = Math.max(2, Math.round(S.N * cm / 3.5)), x0 = cx * cm, z0 = cz * cm;
+        var seed = (((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) & 0x7FFFFFFF | 1;
+        var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
+        var pos = [], col = [], gg = [], gs = [], roots = [], P = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).P, PT = info.paint, kw = S.windK;
+        for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) {
+            var xm = x0 + (i + rnd()) / n * cm, zm = z0 + (j + rnd()) / n * cm;
+            var r0 = rnd(), r1 = rnd(), r2 = rnd(), r4 = rnd(), r5 = rnd();
+            var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
+            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
+            var nk = nj * info.nx + ni;
+            if (info.mask && !info.mask[nk]) continue;
+            var sheet = (PT && PT.P[nk]) ? PT.pal[PT.P[nk] - 1] : info.floor, pal = S.pals[sheet];
+            if (pal === undefined) pal = S.pals[sheet] = _ggPalette(sheet) || null;
+            if (!pal) continue;
+            var inB = false; for (var b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = dx * B[4] + dz * B[5], lz0 = -dx * B[5] + dz * B[4]; if (Math.abs(lx0) < B[2] && Math.abs(lz0) < B[3]) { inB = true; break; } }
+            if (inB) continue;
+            if (hqTerrainFluidAt(info, xm, zm)) continue;
+            if (hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
+            var wx = xm * U, wz = zm * U, gy = hqTerrainHeight(info, xm, zm) * U;
+            var clump = _ewValHash(xm / (3.5 * 0.55) + 11.3, zm / (3.5 * 0.55) + 4.7), patch = _ewValHash(xm / (3.5 * C.patchM) + 3.1, zm / (3.5 * C.patchM) + 8.9);
+            var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
+            var h = ts * HQ_GRASS.height * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
+            var hw = ts * S.width * 0.5 * (0.8 + 0.4 * r2);
+            var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
+            var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
+            for (var k = 0; k < 7; k++) {
+                var f = P[k][1], bf = f * f, cr, cg, cb;
+                pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
+                if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
+                else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                col.push(cr, cg, cb); gg.push(wx * kw, wz * kw, h * f, f); gs.push(P[k][0] * hw);
+            }
+            roots.push(wx, wz);
+        }
+        if (!roots.length) return { mesh: null };
+        var geo = new THREE.BufferGeometry(), pa = new Float32Array(pos), nor = new Float32Array(pa.length); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
+        geo.setAttribute('position', new THREE.BufferAttribute(pa, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(new Float32Array(gg), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(new Float32Array(gs), 1));
+        var nB = roots.length / 2, ia = new Uint32Array(nB * 15), T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T;
+        for (var t = 0; t < nB; t++) for (var e = 0; e < 15; e++) ia[t * 15 + e] = t * 7 + T[e];
+        geo.setIndex(new THREE.BufferAttribute(ia, 1));
+        var mesh = new THREE.Mesh(geo, S.mat);
+        mesh.frustumCulled = false; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
+        S.parent.add(mesh);
+        return { mesh: mesh, roots: new Float32Array(roots), blades: nB, ia: ia, sortDir: null, cx: cx, cz: cz };
+    }
+    function _hqGrassTick() {
+        var H = _hq, T = H && H.room && H.room.terrain, on = false;
+        try { on = !!(H && H.terrain && H.player && T && T.grassField && _ggOn() && !window.EW_NO_HQ_GRASS && typeof hqTerrainHeight === 'function'); } catch (e) { on = false; }
+        if (!on) { if (_hqGG) _hqGrassDrop(); return; }
+        var S = _hqGG;
+        if (!S || S.H !== H || S.level !== _ggLevel) {
+            _hqGrassDrop();
+            var LOW = (_ggLevel === 'low'), U = _hqUnits(), pr = _ggPressTex(1, 1), boxes = [];
+            ((T.features) || []).forEach(function (f) { if (f && f.k === 'texbuilding') { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.4, f.d / 2 + 0.4, Math.cos(a), Math.sin(a)]); } });
+            S = _hqGG = { H: H, level: _ggLevel, info: H.terrain, U: U, N: LOW ? HQ_GRASS.low.perSquare : HQ_GRASS.perSquare, R: LOW ? HQ_GRASS.low.radiusM : HQ_GRASS.radiusM,
+                width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / HQ_GRASS.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
+                cells: new Map(), pals: {}, boxes: boxes, press: pr.tex, at: 0, parent: (H.propGroup && H.propGroup.parent) || scene };
+            S.mat = _ggMat({ press: pr.tex, inv: [0, 0] });
+            /* THE DEPTH (seen in the browser: dark lines of tuft feet along every cell's edge): the board's field writes no depth and sorts ALL its tufts far to
+               near in one mesh; here each cell sorts only its own, so two cells side by side overlapped wrongly at their shared edge whatever order the
+               cells were drawn in. A walked room's tufts write depth, so the order does not matter (and the walker's shins stand IN the grass). */
+            S.mat.depthWrite = true;
+        }
+        var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c); live.push(c); } });
+        var now = performance.now(); if (now - S.at < HQ_GRASS.tickMs) return; S.at = now;
+        var cm = HQ_GRASS.cellM, px = H.player.x, pz = H.player.z, pcx = Math.floor(px / cm), pcz = Math.floor(pz / cm), rc = Math.ceil(S.R / cm), want = [];
+        for (var dz = -rc; dz <= rc; dz++) for (var dx = -rc; dx <= rc; dx++) { var cx = pcx + dx, cz = pcz + dz, d = Math.hypot((cx + 0.5) * cm - px, (cz + 0.5) * cm - pz); if (d > S.R) continue; if (!S.cells.has(cx + ',' + cz)) want.push([d, cx, cz]); }
+        want.sort(function (a, b) { return a[0] - b[0]; });
+        for (var w = 0; w < want.length && w < HQ_GRASS.perTick; w++) { var made = null; try { made = _hqGrassCell(S, want[w][1], want[w][2]); } catch (e) { made = { mesh: null }; if (!S._warned) { S._warned = true; console.warn('[HQ] the grass field', e); } } S.cells.set(want[w][1] + ',' + want[w][2], made); if (made.mesh) live.push(made); }
+        S.cells.forEach(function (c, key) { var q = key.split(','), d = Math.hypot((+q[0] + 0.5) * cm - px, (+q[1] + 0.5) * cm - pz); if (d > S.R + 2 * cm) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } S.cells.delete(key); } });
+        /* far cells first: no tuft writes depth, so a near cell must be drawn over a far one */
+        /* (far = along the camera's own view direction, as each cell sorts its tufts: a distance from the camera's place put a cell behind
+           the eye in front of the one it looks at, and the cells' edges showed as dark lines of tuft feet) */
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, fx = 0, fz = 0;
+        live = live.filter(function (c) { return c.mesh && c.mesh.parent; });
+        if (cam && live.length) {   // the view direction in the cells' OWN frame (the room's group may be turned or mirrored against the world)
+            if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
+            live[0].mesh.updateWorldMatrix(true, false); _ggM.copy(live[0].mesh.matrixWorld).invert();
+            var ce = cam.matrixWorld.elements; _ggV.set(-ce[8], -ce[9], -ce[10]).transformDirection(_ggM);
+            var fl = Math.hypot(_ggV.x, _ggV.z); if (fl > 1e-4) { fx = _ggV.x / fl; fz = _ggV.z / fl; }
+        }
+        live.forEach(function (c) { c._d = (fx || fz) ? ((c.cx + 0.5) * cm * fx + (c.cz + 0.5) * cm * fz) : Math.hypot((c.cx + 0.5) * cm - px, (c.cz + 0.5) * cm - pz); });
+        live.sort(function (a, b) { return b._d - a._d; });
+        for (var o = 0; o < live.length; o++) live[o].mesh.renderOrder = GGRASS.order + o * 0.001;
+        try { window._ewHqGrass = { cells: live.length, tufts: live.reduce(function (s, c) { return s + c.blades; }, 0), level: _ggLevel }; } catch (e) {}
     }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;
@@ -69271,7 +69375,7 @@ const ThreeRenderer = (function () {
         var byName = {}, names = [];
         spots.forEach(function (sp) {
             var nm = _FOLIAGE_MODEL_FOR_KEY[sp.kind];
-            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3';
+            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3_full';
             if (!byName[nm]) { byName[nm] = []; names.push(nm); }
             byName[nm].push(sp);
         });
@@ -73553,6 +73657,25 @@ const ThreeRenderer = (function () {
             W[S0.kind] = (W[S0.kind] || 0) + (1 - t); if (t > 0) W[c.kind] = (W[c.kind] || 0) + t;
             return W;
         };
+        /* THE REAL LAND PAST THE EDGE (2026-11-15, mondo: "is the bad looking fake mountain weenie still there in disaster city? ... shouldn't these
+           mountains replace that?"): a side may say `land: { room, x, y }` = the land past it is ANOTHER ROOM'S OWN GROUND, not made-up hills. That
+           room's height field (terrain.slope.cells) lies with its far edge on this side's line, shifted `x` along it and `y` up; its paint says rock,
+           grass or sand. Past that room's own depth the old range goes on from its back edge. North side only (the city under the Hollywood Hills). */
+        var LAND = (function () {
+            try {
+                var q = sd('n').land; if (!q || !q.room || (typeof window !== 'undefined' && window.EW_HQ_NO_REAL_LAND)) return null;
+                var or = DOOR_HQ.rooms[q.room], sc = or && or.terrain && or.terrain.slope && or.terrain.slope.cells; if (!sc || !sc.d) return null;
+                var bin = atob(sc.d), nx = sc.nx, nz = sc.nz, Hh = new Float32Array((nx + 1) * (nz + 1));
+                var rd = function (ci, k) { var o = (ci * 4 + k) * 2, v = bin.charCodeAt(o) | (bin.charCodeAt(o + 1) << 8); return (v > 32767 ? v - 65536 : v) / 100; };
+                for (var j = 0; j <= nz; j++) for (var i = 0; i <= nx; i++) { var ci = Math.min(nz - 1, j) * nx + Math.min(nx - 1, i), k = (i === nx ? 1 : 0) + (j === nz ? 2 : 0); Hh[j * (nx + 1) + i] = rd(ci, k); }
+                var pt = or.terrain.paint, pd = (pt && pt.d && pt.nx === nx && pt.nz === nz) ? atob(pt.d) : null, pal = (pt && pt.pal) || [];
+                var cls = function (i, j) { if (!pd) return 'grass'; var v = pd.charCodeAt(j * nx + i), key = v ? String(pal[v - 1] || '') : ''; return /rock|cliff|stone|obsidian/.test(key) ? 'rock' : /desert|sand/.test(key) ? 'desert' : 'grass'; };
+                return { res: sc.res, x0: sc.x0 + (+q.x || 0), z0: sc.z0, nx: nx, nz: nz, w: nx * sc.res, dep: nz * sc.res, y: +q.y || 0, back: (q.back != null) ? +q.back : 1,
+                    h: function (lx, lz) { var fx = Math.max(0, Math.min(nx - 1e-4, lx / sc.res)), fz = Math.max(0, Math.min(nz - 1e-4, lz / sc.res)), i = fx | 0, j = fz | 0, u = fx - i, v = fz - j, a = j * (nx + 1) + i;
+                        return (Hh[a] * (1 - u) + Hh[a + 1] * u) * (1 - v) + (Hh[a + nx + 1] * (1 - u) + Hh[a + nx + 2] * u) * v; },
+                    k: function (lx, lz) { return cls(Math.max(0, Math.min(nx - 1, (lx / sc.res) | 0)), Math.max(0, Math.min(nz - 1, (lz / sc.res) | 0))); } };
+            } catch (e) { return null; }
+        })();
         var gCache = new Map();
         var groundAt = function (cx, cz) {
             var gk = Math.round(cx * 50) * 100003 + Math.round(cz * 50), hit = gCache.get(gk); if (hit !== undefined) return hit;
@@ -73574,15 +73697,25 @@ const ThreeRenderer = (function () {
             var eHi = eH;
             if (d > 0.01) { var st = 3.6; if (ez <= 1e-6 || ex > ez) eHi = Math.max(eH, groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz - st))), groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz + st)))); else eHi = Math.max(eH, groundAt(Math.max(R.x0, Math.min(R.x1, cx - st)), cz), groundAt(Math.max(R.x0, Math.min(R.x1, cx + st)), cz)); }
             var e2 = eH + (eHi - eH) * sm(d / 1.2);
-            var y = 0, lift = liftUp - liftDn;   // tucked under the field at the line, over it a step out
+            var y = 0, lift = liftUp - liftDn, landK = null;   // tucked under the field at the line, over it a step out
             if (W.mountain > 0) {
                 var rg = 1 - Math.abs(2 * _hqEdgeFbm(x / 190 + 3.1, z / 190 + 1.7) - 1), rg2 = 1 - Math.abs(2 * _hqEdgeFbm(x / 70 + 9, z / 70 + 4) - 1);
-                y += W.mountain * (e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift);
+                var yM = e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift;
+                if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
+                if (LAND && z < R.z0) {   // THE REAL LAND PAST THE EDGE: the other room's ground from the line out to its own back edge, the range on behind it
+                    var lx = x - LAND.x0, inX = sm(Math.min(lx, LAND.w - lx) / 30 + 0.02), yL;
+                    if (lx > -1 && lx < LAND.w + 1 && inX > 0) {
+                        if (ez <= LAND.dep) { var hl = LAND.h(lx, LAND.dep - ez) + LAND.y, kl = sm(ez / 22); yL = (e2 + lift) * (1 - kl) + hl * kl; if (ez > 6) landK = LAND.k(lx, LAND.dep - ez); }
+                        else { var d2 = ez - LAND.dep; yL = LAND.h(lx, 0) + LAND.y + LAND.back * (30 * sm(d2 / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d2 - 10) / 150) * (1 - 0.8 * sm((d2 - 330) / 420))); }   // `back` = how much of the old range still stands behind the real land (the city: 0.35, a low dry ridge, so the Hills are the skyline)
+                        yM = yM * (1 - inX) + yL * inX; if (inX < 0.5) landK = null;
+                    }
+                }
+                y += W.mountain * yM;
             }
             if (W.forest > 0) { var kf = sm(d / 16); y += W.forest * Math.max(e2 + lift + 6 * _hqEdgeFbm(x / 55, z / 55) * kf - e2 * 0.12 * sm((d - 90) / 200), 0.7 * kf); }
             if (W.desert > 0) { var kd = sm(d / 10), ditch = sm((d - 2.5) / 1.5) * (1 - sm((d - 6) / 1.5)); y += W.desert * ((e2 + lift) * (1 - kd) + 0.9 * kd - 1.1 * ditch); }
             if (W.coast > 0) { var kc = sm((d - 1) / 9); y += W.coast * ((e2 - liftDn) * (1 - kc) + Math.min(e2, seaY - 2.6) * kc); }   // (no lift: a sea bed never rises past the field)
-            return { y: y, W: W, d: d, eH: eH };
+            return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null };
         };
         return { R: R, at: at, seaY: seaY, reach: +E.reach || 440 };
     }
@@ -73618,6 +73751,7 @@ const ThreeRenderer = (function () {
         };
         var colOf = function (P) {   // the vertex tint by kind (the sheet's own colour is 1)
             var W = P.W, c = [0, 0, 0], add = function (w, r, g, b) { c[0] += w * r; c[1] += w * g; c[2] += w * b; };
+            if (P.land === 'grass') return [0.86, 0.9, 0.8];
             add(W.mountain, 0.92, 0.9, 0.88); add(W.forest, 0.62, 0.74, 0.56); add(W.desert, 1, 0.96, 0.86); add(W.coast, 0.8, 0.74, 0.66);
             return c;
         };
@@ -73625,6 +73759,7 @@ const ThreeRenderer = (function () {
             var W = P.W, k = 'grass', b = W.forest;
             if (W.mountain > b) { k = 'rock'; b = W.mountain; } if (W.desert > b) { k = 'desert'; b = W.desert; } if (W.coast > b) { k = (P.y > F.seaY + 0.3 || (P.eH > F.seaY + 0.5 && P.d < 16)) ? 'cliff' : 'desert'; }   // a high edge falls to the sea as a rock cliff; the bed is sand
             if (k === 'rock' && P.y - P.eH > 150 + 30 * _hqEdgeNoise(x / 30, z / 30)) k = 'snow';
+            if (P.land) k = (P.y < F.seaY + 0.4 || (P.land === 'desert' && P.y < F.seaY + 4)) ? 'desert' : (P.land === 'desert' ? 'rock' : P.land);   // THE REAL LAND PAST THE EDGE: the other room's own rock / grass / sand
             return k;
         };
         var pieces = [];
@@ -79072,7 +79207,9 @@ const ThreeRenderer = (function () {
     };
     function _hqTreeWay(U, ctx, dead) {
         var g = new THREE.Group();
-        var H = dead ? 5.0 : 6.0, R = dead ? 0.5 : 0.68, holeW = 0.95, holeH = 1.9, zc = -R * 0.45;
+        /* THE BALL TREE IS GONE (2026-11-16, mondo: "the tree with the sphere on top ... get rid of those and delete them from the game immediately"): the live
+           hollow tree was a 6 m pole under a leaf-sheet ball. It is a broken hollow trunk now, 3.2 m, no crown. The Woods no longer uses the way at all. */
+        var H = dead ? 5.0 : 3.2, R = dead ? 0.5 : 0.68, holeW = 0.95, holeH = 1.9, zc = -R * 0.45;
         var bark = _hqMat('wood', 1, 3, { color: dead ? 0x6a6058 : 0x7a5a3c, shininess: 4 });
         var stand = new THREE.Group(); g.add(stand);
         var trunk = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.78 * U, R * U, H * U, 12), bark); trunk.position.set(0, (H / 2) * U, zc * U); stand.add(trunk);
@@ -79080,8 +79217,6 @@ const ThreeRenderer = (function () {
             [[0.55, 1.1, 0.7], [-0.6, 0.9, -0.5]].forEach(function (b, i) {
                 var bough = _hqBox(0.16, 2.2, 0.16, bark); bough.position.set(b[0] * U, (H * 0.78) * U, (zc + 0.1 * b[2]) * U); bough.rotation.z = b[0] > 0 ? -b[1] : b[1]; bough.rotation.x = 0.25 * b[2]; stand.add(bough);
             });
-        } else {
-            var crown = new THREE.Mesh(new THREE.SphereGeometry(R * 3.4 * U, 12, 10), _hqMat('leaves_3', 2, 2, { color: 0x5a8a4a, shininess: 2 })); crown.position.set(0, (H + 0.5) * U, zc * U); crown.scale.y = 0.85; stand.add(crown);
         }
         for (var ri = 0; ri < 4; ri++) { var root = _hqBox(0.22, 0.28, 0.9, bark); var ra = ri * Math.PI / 2 + 0.6; root.position.set(Math.sin(ra) * R * 1.1 * U, 0.1 * U, (zc + Math.cos(ra) * R * 1.1) * U); root.rotation.y = ra; root.rotation.x = 0.35; g.add(root); }
         /* THE HOLE: a dark recess in the trunk's front with the other side's light in it */
@@ -88190,6 +88325,11 @@ const ThreeRenderer = (function () {
             if (o._ew_hqSea) o.receiveShadow = false;   // (2026-10-20) the sea's sheet runs far past the shadow map: its edge drew a pale box round the Dutchman
         });
         [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh) _flagMeshShadows(o); }); });
+        /* A HOUSE UNDER THE SKY (2026-11-15, Camelot Castle's stacked floors): `shell.sunShadow: false` = nothing of the room's own build casts.
+           A building of floors over floors in an OPEN room (its roof walk needs the sky) stood in the shadow of its own slabs: every room
+           under one was black but for the hemisphere, and its furniture read as black blocks. The key keeps its map (the materials are
+           compiled for one: switching the light's own shadow off blanked the room), props and people still cast. */
+        if (room && room.shell && room.shell.sunShadow === false) H.shellGroup.traverse(function (o) { if (o.isMesh) o.castShadow = false; });
     }
     /* the walk's scene tells ONE waiting reader when its world matrices are this frame's (THE STILL TORCH reads its
        casters where they stand now, not where the last frame left them): three's own walk, untouched, then the reader */
@@ -89252,6 +89392,7 @@ const ThreeRenderer = (function () {
         try { _hqTickClipBeside(); } catch (e) { if (!_hq._cbWarned) { _hq._cbWarned = true; console.warn('[HQ] clip beside', e); } }   // THE CUT BESIDE
         _hqTickRounds(wdt);
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
+        try { _hqGrassTick(); } catch (e) { if (!H._ggWarned) { H._ggWarned = true; console.warn('[HQ] the grass field tick', e); } }   // THE GRASS FIELD IN A WALKED ROOM (2026-11-15)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
             var _sd = H._sceneDoor, _sn = performance.now();
             if (_sd.k !== _sd.to) { var _sq = Math.min(1, (_sn - _sd.t0) / _sd.ms); _sd.k = _sd.from + (_sd.to - _sd.from) * (1 - Math.pow(1 - _sq, 3)); if (_sq >= 1) _sd.k = _sd.to; H.dirty = true; }
@@ -95836,6 +95977,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        try { _hqGrassDrop(); } catch (e) {}   // THE GRASS FIELD IN A WALKED ROOM: its cells leave with the room
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
         try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: every fence back in the shell group, every group drawn

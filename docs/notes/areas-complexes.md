@@ -2908,7 +2908,7 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - Memorial walk: a two-tier star-shaped stone base (`star`, convex polys) under the statue; the angel became `hero_statue_landing` (Meshy
   image-to-3d of concept S2, mondo's pick 12:43; catalogue entry in data.js, R2 Assets/world/props/meshy/hero_statue_landing.glb, y 1.0 on the base).
 - Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
-  centred on pavement squares, 3 newspaper_rack (decor, off centre), 3 orange/white steam chimneys in the road (arch, decor), a green
+  centred on pavement squares, 3 newspaper_rack (decor, off centre), the 3 orange/white steam chimneys in the road are OUT (mondo 11-15: "why are there chimneys in the middle of the road ... take it out"; never stand street furniture in a lane), a green
   sidewalk shed over the north pavement (x -59.5..-45.5).
 - 11-15 07:46 mondo "use the 3rd example ... as well": `hero_statue_crossed` (Meshy concept S3, arms crossed) on a granite pedestal (`pedestal`, NYC_OPEN) on the
   plaza's south-west square (-36.75, -19.25; a blocker, centred), y 1.4, facing the fountain. R2 Assets/world/props/meshy/hero_statue_crossed.glb.
@@ -3748,6 +3748,68 @@ districts ... the north pole to the north of the castle would be good as a rival
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
 
+## CAMELOT CASTLE, ONE STACKED BUILDING — the palace's own room, six levels (2026-11-15)
+mondo on the next-pieces picture: "can we make the 3 rooms stacked like part of the same building, but the castle can be its own loading
+screen" + "real architecture/floor plan"; on the floor plans (`docs/plans/camelot/camelot_castle_stacked_plan.png`): "1) yes", "lets not worry
+about the sky castle for now, and no it would not be in the same room", "do all 3 floors, not just 2", the five house kinds "are fine".
+- **The room** `site_prebuilt_camelot_palace` (site `prebuilt_camelot`, part `palace`), written by `node bake-camelot-castle.js` between
+  `CAMELOT-PALACE-BEGIN / END` in data.js (never hand-edit). 30 x 12 squares = the palace's own footprint (wings u 0-8 and 22-30, the Keep
+  8-22). The tool carries the Desert insides' kit (`mk`, bake-desert-insides.js) and its walk check.
+- **SIX LEVELS, 7 m apart**: Undercroft 0 · floor 0 at 7 (every way out) · floor 1 at 14 · floor 2 at 21 · floor 3 at 28 · Battlements 35.
+  - Undercroft: Merlin's Workshop with the Orb under the throne, Gaoler's Room, three cells, antechamber, Crypt of Kings, Ossuary, Sally
+    Port passage, Well Chamber, the Vaults (under the Kitchen), the Cistern (under the Barracks).
+  - Floor 0: the Throne Hall (14 m high), Robing Room, lobby, Chancery; Kitchen wing (Great Kitchen, Buttery, Pantry, Servery); Barracks wing
+    (Barracks, Arms Store, Captain's Room, Guard Room).
+  - Floor 1: the gallery round the hall's void, King's Office, Treasury, the Chapel Royal (west), the Knights' Hall (east).
+  - Floor 2: Long Gallery, King's Solar, Presence Chamber, Queen's Chamber, Wardrobe, Nursery; the wings' roofs are walked on.
+  - Floor 3: the Great Library, Merlin's Study, the War Room. Battlements: the roof walk, the bridge walk, the Spire Room (its sky door is
+    drawn shut: the sky castle waits).
+- **CHANGED FROM THE DRAWN PLAN, and why** (tell mondo): the plan drew the Great Stair as stacked flights in a stair hall. The engine holds one
+  ground height a point, and a stair is ground, so no stair can stand over another or over a walked room. Built instead: ONE straight stair
+  east along the Keep's north wall (floor 0 > 1 > 2 > 3, a landing a floor, rows v 0-1), the last flight back west up to the Battlements, and
+  the two ways to the cellar as cellar stairs in the wings (Servery > Vaults, Guard Room > Cistern). The north range's rooms are one square
+  shallower for it. The plan's Undercroft Hall and tunnel became the Sally Port passage and the Well Chamber (the portal's sill is solid
+  ground between them). The Spire Room is in the Spire's foot on the Battlements (no climb inside the Spire).
+- **THE RULES THIS BUILD FOUND (stacked floors; they hold for any room):**
+  1. The field = the lowest floor. A floor over a walked room is a `bridge` slab; where nothing lies under it, make it solid (`plateau`),
+     and put every way out there: a wall door's sill and a free door's pad are read on the FIELD.
+  2. Slabs overlap each other and solid ground by 0.5 m (a slab is read 0.12 m in from its edge; a bare seam is a crack).
+  3. A flight ARRIVES 0.4 m into its landing (the landing slab starts exactly on the flight's last line) and LEAVES from 0.5 m under the
+     landing it starts on. `edge: 0` on the ramp.
+  4. A wall with `y0` only HANGS (lets the floor below walk under it) when its foot is over the highest ground under the WHOLE piece.
+     A piece that runs on over a stair stands from the ground up and shuts the floors below: cut the wall where each flight starts and
+     ends, and where a flight's 0.4 / 0.5 m run-on lies (`V1` in the tool).
+  5. A prop or a native on a floor carries `y` = the floor's height (under 1 it stands on the field, in the cellar). The kit's
+     blocker / doorway check is kept a floor (`R.lvl`).
+  6. A lattice of 0.4375 m climbs a 2-in-3 stair (7 m over 10.5 m); the kingdom's 1.75 m lattice needs 1 in 3.
+- **The kingdom room**: the Keep and the wings are SOLID there now (bake-camelot.js); doors `portal`, `kitchen`, `guard` (free, at their fronts)
+  and `postern` open on the castle room's doors of the same names; the old `keep` door, the Throne Hall / Kitchen / Barracks furniture and
+  King Arthur left the kingdom room. Hand rows: `DOOR_HQ.retired` (the old Keep and Undercroft > the castle room; their literals stay),
+  `links.well_camelot.b` (part `palace`, the Well Chamber), `HQ_WORLD_CLOCK.dayLook`, `HQ_AREA_ENCOUNTERS` (the old Keep's list).
+- **THE CASTLE IN THE SKY is untouched** (the old room). Its two doors still name the old Keep, so they land at the castle room's portal;
+  nothing in the castle room opens on it. Waits mondo.
+- **Who is where** (old lines kept word for word): King Arthur + two knights in the Throne Hall, knight + swordfighter in the Barracks wing,
+  knight in the Knights' Hall, Merlin (wizard, the Undercroft's lines) in the Workshop and the astrologer (wizard, the Keep's lines) in
+  Merlin's Study, skeleton in a cell, ghost in the Ossuary, knight + swordfighter on the Battlements.
+- **Checked offline**: data.js parses; the tool's walk (the walker's own rule from the portal) reaches 52 of 52 stops on all six levels and
+  all five door pads; no NaN. `PALACE_FORCE=1` writes a failing build for debugging only.
+- **THE LIGHT (engine, three-renderer.js `_hqShadowFlags`)**: `shell.sunShadow: false` = nothing of the room's own build casts a shadow. The
+  castle is an OPEN room (its roof walk needs the sky), so every floor stood in the shadow of the slabs over it and read black. Switching the
+  key light's own shadow off instead blanked the whole room ("WebGL: too many errors": the materials are compiled for a shadow map): never do that.
+- **SEEN ON SCREEN (browser probe, playtest_city.js, 11-15)**: the Throne Hall with its gallery, the Great Stair, the Undercroft with the Orb,
+  the Kitchen, the Library, the royal floor, the Battlements with the Spire and the sky; the palace's front from the Market. Proof pictures:
+  `docs/plans/camelot/proof/`. Rough edges seen: the wooden furniture models (round table's chairs, library shelves, psx tables) are very dark;
+  the stair flights wear the pack's greenish planks; rooms are plain (bare walls, few lit windows). Not looked at: the Chapel, the Knights'
+  Hall, the cellar stairs, every door leaf swinging, a fight on an upper floor.
+- **A PROBE NEEDS A FRESH CHECKOUT**: three runs in a row gave no page ("page never ready") because main had moved eight PRs and the local
+  server served its STALE screen. Merge main before each run.
+
+### THE HOUSES, FIVE KINDS (2026-11-15, mondo: "yeah they are fine")
+bake-camelot.js `houseKind()` / `houseLook()`: 1 jettied townhouse (11), 2 shop house (2), 3 thatched cottage (12), 4 burgher house (9),
+5 yard house (9), picked by plot size and place (the Market's edge, against the town wall, the rest). Each has a door in a frame on a stone
+step, shutters and a flower box at each window, lit windows, a chimney. All still solid, same plots, same streets. Seen on screen: one shop
+house on the south street (awning, counter, sign, barrels). The other four kinds were not looked at.
+
 ## CAMELOT CASTLE, REDESIGN 2 — one palace on a hill (2026-11-15)
 mondo on the built plan 3: "this whole section i outlined needs to be the castle, like an epic fantasy dragon quest or final fantasy or medieval
 castle. Disney world cinderella's palace. Hogwarts ... the way it is now is stupid because it like a walled off region inside a walled off region.
@@ -3784,7 +3846,7 @@ the castle should be in the center of the map and relatively symmetrical. higher
   well and the wardrobe (no building's inside is reached by that solver in this room, the live Inn included: the doorways are narrower than
   its lattice; the Keep's doorway line reads clear ground and no wall). Drawings of the baked rows: `docs/plans/camelot/castle2_built_rows_front.png`
   and `castle2_built_rows_plan.png`.
-- **ONE STACKED BUILDING, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: mondo on the next-four picture: "can we make the 3 rooms stacked like
+- **ONE STACKED BUILDING: APPROVED AND BUILT, see the section above** (the plan as posted): mondo on the next-four picture: "can we make the 3 rooms stacked like
   part of the same building, but the castle can be its own loading screen" + "real architecture/floor plan". Floor plans:
   `docs/plans/camelot/camelot_castle_stacked_plan.png` (draw-castle-stacked.py): ONE new room CAMELOT CASTLE behind the palace's portal (the
   loading screen): Undercroft -7 m, floor 0 (Throne Hall 14 m high, Kitchen wing, Barracks wing), floor 1 +7 (gallery, Chapel Royal, Knights'
@@ -3888,7 +3950,19 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
   model sits at dist 0.88 of the sky's radius, right for the old 60 m rooms, INSIDE the 252 m room. `hqWoodsShell({ noLandmarks: true })` drops the sky's landmarks (the bake passes it).
   Lesson: a horizon landmark on a shell made for small rooms must be checked when the room grows.
 - **NO UNEXPLAINED DEAD ENDS (mondo: "get rid of any trails that lead to nowhere, no unexplained dead ends")**: a `secret` TRAIL door gets no waymark post, so its path just
-  stopped at the trees. The three secret ways show what they are: `lemuria` and `lodge` are `way: 'tunnel'` mouths, `lookingglass` is a `hollowtree`. Still `secret`.
+  stopped at the trees. The secret ways are each a `hollowtree` now (`lemuria`, `lodge`, `lookingglass`, the `woods_sewer` link end). Still `secret`.
+- **NO TUNNEL ENDS IN THIS ROOM (2026-11-16, seen in the probe)**: a `way: 'tunnel'` end with a `passage` builds a stone housing on the wall. In this open room it stood in
+  the trees as a big grey stone block you walk through, hard by the Outfall's bridge: THIS was mondo's "castle wall" (the horizon landmark above was also inside the map and is
+  gone too). The two drain links (`streets_drain`, `sewers_drain`) are plain `trail` ends, the secret ones hollow trees (bake-woods.js LINK_ENDS writer + the door rows).
+  A first try that made the secret trails `tunnel` mouths shipped for about an hour (PR 1532) and added two more blocks; reverted here.
+- **THE BALL TREE IS GONE (2026-11-16, mondo on the proof pictures: "the tree with the sphere on top ... get rid of those and delete them from the game immediately")**:
+  the `hollowtree` way's stand-in (three-renderer.js `_hqTreeWay`: a 6 m pole under a leaf-sheet ball) had been the live look, since `hollow_tree` is an `rt` file the
+  builder skips. No door in the game uses the way now (the Woods' ends, the old Redwood room's, the site's bay door are all `trail`); the builder, if ever used again,
+  draws a 3.2 m broken hollow trunk with no crown. The Woods' once-secret ways (`lemuria`, `lodge`, `lookingglass`) are plain signposted trails, no longer secret; the
+  `woods_sewer` link is still secret, so its trail on the Tunnel Way plot ends with no post (the one dead end left; mondo to say what stands there).
+  LESSON: never show him a procedural stand-in; look at what a `way` draws before using it.
+- **STILL OPEN**: tall black slabs stand on the horizon (the `scenery: 'dark'` sky roster's bodies, unlit black in daylight; one shows NE of the Outfall). Not touched.
+- **Probe tip 2**: with every model loaded this room times out the cloud browser's screenshot; `--flags=EW_PERF_LOW` gets pictures (about 1 minute a view).
   Checked: no other path square on the map is a tip that ends at nothing (every edge trail is a door or a link).
 - **Probe tip**: in this room a third-person view (`dist`) puts the camera inside the forest mass's crowns on most plots: use `"fp": true` standing on open ground.
 - **ASKED FOR, NOT BUILT (mondo, same message): a pass that adds WATERFALLS and LIGHT SHAFTS to rooms** ("might need its own thread"). Today rooms have only `pool` /
@@ -4090,6 +4164,20 @@ be cliffs at the north edge which is the hills"; residents "don't worry about it
   The Vatican's and the Beach zone's plans (`docs/plans/world-zones/`) are not redrawn: Vatican = under Olympus, one step west; Beach = 24 more plots north
   along Entertainment, the cliffs its north edge. No encounter tables, no residents.
 
+## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
+
+mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
+It was still there (the made-up 175 m range with the sign on it). Now the land past the city's north line IS the Hollywood Hills room's own ground.
+- three-renderer.js `_hqEdgeLandFn`: a side may say `land: { room, x, y, back }` (north side only). That room's height field (`terrain.slope.cells`)
+  lies with its far edge on the line, shifted `x` along it; its paint says rock / grass / sand. Past the room's own depth, and beside its two ends,
+  `back` x the old range stands (the city: 0.35, a low ridge; no tall peak over the bay). Kill switch `window.EW_HQ_NO_REAL_LAND`.
+- bake-disaster-city.js `EDGES.n.land = { room: 'site_prebuilt_shasta_hills', x: 21, y: 0, back: 0.35 }`: the Hills' plot columns stand over the city's.
+  E.js `edges.sign` is `at 84, d 66.5, px 1.94`: the far letters stand where the room's own twelve stand. bake-mountains.js: the Hills' city door moved
+  one plot east (H08-02, x 84) so it stands over the city's mountain road (x 105); the Cove's door already stood over the boardwalk's end.
+- Seen on screen (playtest_city.js, three views from Entertainment and the north beach). To know: the far land is a coarse mesh (a row every 15 to 20 m
+  out there), so the Hills' small mounds are smoothed and its buildings, mast and trees are not drawn, only its ground and the sign. Rebake the city
+  after the Hills' ground changes? No: the land is read from the Hills room at load. The Hills room's OWN north edge still shows the old tall range.
+
 ## THE ESTATE ON PLOTS — the fifth area of the world plan, first delivery (2026-11-15)
 
 mondo 11-15, on plot plan 2 (`docs/plans/world-zones/estate_plot_plan.png`): "okay, those are all good" = the Estate is the next zone, the plan as
@@ -4211,7 +4299,11 @@ update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs w
   - Cost: oak 460 wood + 648 leaf triangles, birch 288 + 396, fir 36 + 872, pine 36 + 600 (leaf counts are both windings). Files 155-190 KB (were 0.2-1.6 MB).
   - Seen in the game (playtest_city.js on `site_prebuilt_fairy_forest_plots`, birch / oak / fir quarters, from a path and looking up). Lessons: the first trunks were
     twice too fat at Woods heights (a 13 m oak) and the first greens washed out pale in the game's light: keep the picture's values low (sunlit 0.56, mid 0.41, shade 0.27).
-  - Asked next by mondo (not done here): these trees everywhere but the palms; alien / exotic trees from the noise / abstract texture packs.
+  - **EVERYWHERE (same day, mondo: "much better, can you use these trees everywhere, I guess except for the palm trees")**: data.js HQ_TREE_KINDS `tree`, `tree_2`,
+    `tree_3`, `tree_4`, `pine` (and three-renderer.js `_FOLIAGE_MODEL_FOR_KEY`, + `tree_pine`, + the canopy's fallback) draw the painted `_full` files: every room and
+    every battle map that placed a pack tree. Unchanged: bare trees (tree_5 / tree_6), the sapling (pine_2), palms, Christmas pines, the old OBJ kinds (tree_7-51, no
+    room places them). NOT seen in the browser outside the Woods; cost to watch: a card tree was ~100 triangles, a painted one 700-1,100 (Disaster City's frame rate).
+  - Still open (mondo asked): alien / exotic trees, "maybe use something from the noise or abstract texture packs".
 
 ## THE BEACH ON PLOTS — the sixth area of the world plan, first delivery (2026-11-15)
 
@@ -4349,4 +4441,91 @@ hangar and the ward were still the old BSP rooms and the pyramid had no inside. 
   - PROBE LESSON: in a room this big the software browser never requests the props before the shot, and `EW_NO_MODEL_QUEUE` on the whole room
     kills it. What works: `--pre=` a filter that keeps only the props near the views (and drops the scatters and trees), then the flag.
     Not seen this way: the flamingos up close, the island's and the Reef's pieces, anything under the water (the sea is opaque from above).
+
+## THE ESTATE, THE GRASS + THE CLEAN SKY (2026-11-15)
+
+mondo: "the sky is glitching/flickering in the estate. keep improving the visuals. I want the grass from the battle maps on this grass too".
+
+- **THE GRASS FIELD IN A WALKED ROOM** (three-renderer.js `_hqGrassTick` / `_hqGrassCell` / `_hqGrassDrop`, tunables `HQ_GRASS` = `window.EW_HQ_GRASS`):
+  the board's grass field (THE GRASS FIELD, 11-12: the same tufts, material, colours, wind) on a walked room's ground. A room asks with
+  `terrain.grassField: true` (today the Estate only; any terrain room may). The field is cells of 7 m built round the walker (28 m radius on High,
+  16 m on Low, two cells a tick, nearest first) and dropped behind him; ~40 000 tufts stand at once on High. A tuft stands where the room's mask is
+  open, the ground wears a grass sheet (the painted sheet there, else the floor; `GGRASS.sheets`, which gained `grass_dark_fantasy`), there is no
+  water, the face is not steep and no `texbuilding` stands. Unlike the board's field the walked room's tufts WRITE DEPTH: each cell sorts only
+  its own tufts, so without depth two cells side by side overlapped wrongly at their shared edge (seen: dark lines of tuft feet along every cell's
+  edge, whatever order the cells were drawn in). With depth the order does not matter and the walker's shins stand in the grass.
+  Tufts are 0.8 of the board's height. Settings > Video > Grass (High / Low / Off) rules it; kill switch `window.EW_NO_HQ_GRASS`;
+  `window._ewHqGrass` reads the live count. Not done: nothing lays the tufts down (no press map: the walker wades through), props stand in grass,
+  the WebGPU twin was not run. The lawn's ground sheet is tinted by the shell, the tufts by the sheet's own colour: they are a little brighter.
+- Seen in the cloud browser (`[EW BUILD]` base 73c958d): one even field at the farmhouse and the barn, no seams; the sky with no bodies.
+- **THE CLEAN SKY:** what flickered was the ranch shell's night scenery (`scenery: 'eyes'`: a ringed body, a door frame and an orb, turning) drawn
+  as black outlines in the daytime sky since the room rides the clock. The Estate's shell now carries its own `sky` (the ranch's colours and fog,
+  `scenery: 'none'`, no landmarks, fewer stars). The ranch shell itself is unchanged (the old Corn Fields board still uses it).
+
+## THE DESERT'S INSIDES, THE LOOK PASS + THE TURNING TOMB DOOR (2026-11-15, second side)
+
+mondo: "yes, continue, and you can playtest to screenshot" (yes = the King's Chamber holds the door to the Turning Tomb).
+
+- **A DOOR INTO A DUNGEON (map.js, any room can use it):** a door whose action is `{ pd: '<level>', back: { room, at } }` enters that plot dungeon
+  (`window._pdDoor`); the panel's button is GO THROUGH, E walks straight in. Leaving the dungeon (`_pdLeave`) or solving it (2.6 s after the SOLVED
+  line) comes back through that door (`window._pdBack`), never to the main menu. Dungeons entered from Settings behave as before.
+  The pyramid's door: `turning`, the King's Chamber's south wall, level `tomb1`. Not walked in the browser (the door and its label were seen).
+- **SEEN IN THE BROWSER (playtest_city.js) and changed:**
+  - Hangar 18: the game draws `saucer_rig` as the 6 m landing-gear saucer, under 3 m tall, so the first build's 1.75 m test pit hid it. The pit is
+    gone; the saucer stands on the floor in its tape ring and the 3.5 m catwalk crosses over it. NOT confirmed on screen after the change (the
+    hangar probe crashed six times in a row).
+  - The carrier row for the leaves took its foot from the ground under the room's middle (the pit; in the pyramid, the mass): it carries `y: 0` now.
+  - The White Rooms: unlit plaster read grey and the window sheet read as dark mullions. The walls are lit a little by themselves (`glow`), the
+    glass is a plain pale pane (it reads opaque from most angles).
+  - The pyramid: ambient 0.8, thinner fog, roof slabs lit a little, both slopes 0.6 m wider than their passages (a black strip showed beside the
+    Gallery). Chambers, Gallery, Pit, the Cut, the entrance passage, the ladder and the Turning Tomb door all read.
+- **OPEN FINDING, NOT MINE TO CLOSE BLIND: NO DOOR LEAF DRAWS IN THE PROBE.** Every doorway shows its frame and no leaf. The room's 22 `hq_city_door`
+  groups exist and hold no mesh. The Desert's saloon (the first delivery's own city door) shows the same: 9 groups, no mesh, an open doorway.
+  So it is the shared city-door code (`_hqBuildTexDoors`) or the probe, not these rooms. The leaf files are fetched (they are in the probe's cache).
+  Check on a real machine: does the saloon's front door show a leaf?
+- **PROBE TRAPS LEARNED:** (1) the first one or two views of a run in the pyramid come out black (the room has not settled); put a throwaway view
+  first. (2) `ThreeRenderer.hq.dev.hqScene()` is the room's scene (`scene()` is the battle's). (3) The local server reads the checkout's freshness
+  once: when main moves 60 minutes on, it serves STALE CHECKOUT until you merge main AND restart it; the probe then says "page never ready".
+  (4) The ward crashed the headless browser every time while the telepath stood in it and never without him (the old ward had him too): shoot
+  that room with him taken out, ship it with him in. (5) The browser also dies at random; three tries a run is not always enough.
+
+## THE DESERT, THE HIGHWAY — 12 x 12 plots, four exits, cars (2026-11-16, second side)
+
+mondo: "It feels weird having these places right next to each other, can we add a desert highway that connects them together and spreads them
+out. Full highway with exits and stuff, and connected to the roads of disaster city obviously". On plan 4 (`docs/plans/desert/desert_highway_plan.png`):
+"12x12 is fine" · cars: "yes obviously" · the city side: "change whatever you need to and whatever makes sense geographically" · "does disaster
+city not get its own exit too?" (it does: Exit 1).
+
+- **THE ROOM** is still `site_prebuilt_area51_desert`, now 12 x 12 plots (504 m, Disaster City's size). `docs/areas/desert/layout.json` is the new
+  layout, written by `python3 docs/plans/desert/make-layout-4.py` from `layout-8x8.json` (the first build's layout, kept as the source of the four
+  blocks). `node bake-desert.js` writes the room as before.
+- **THE BLOCKS MOVED WHOLE:** the Circus (plots 1-3, 1-3), Western Town (8-11, 1-4), Area 51 (0-3, 8-11), Giza (8-11, 8-11). In the tool every
+  district is still AUTHORED in the first build's squares (`gx / gc / P / put / building`, the old frame) and each row it makes is moved with its
+  block at the end (`MOVE`, metres new - old: C -84 -42 · W +84 -42 · A -84 +84 · G +84 +84). The first build's Road district is gone. New work is
+  authored in the new frame (`nx / nc / nP / nPm`). So an old note that names a Desert square is true in the old frame; add the block's move.
+- **THE HIGHWAY** (new frame squares): it comes in from the west wall (westbound y 2..5, eastbound y 7..10), bends south (southbound x 68..71,
+  northbound x 73..76, a sand median) and ends at y 93, where a road runs east and turns onto Giza's causeway. Three lanes a side, dashed lane
+  lines, yellow median lines, white shoulder lines (terrain marks).
+  - EXIT 1 · DISASTER CITY: at the bend, a road north to the north wall at x -105 = link `downtown_desert`'s Desert end. The city's own way
+    out (Southside's South Street) is at x -105 too, so the two rooms line up. Nothing in the city's tool or block was changed.
+  - THE REST STOP: the Gas Station (store, canopy, sign) on the northbound side, a LAST GAS billboard. The area's battle marker and healing
+    zone stand on the sand beside it (`HQ_AREA_MARKERS`): by the spawn they lay in the westbound lanes.
+  - EXIT 2 · THE CIRCUS: a slip lane, a road west to the circus's own track.
+  - EXIT 3 · WESTERN TOWN: the county road (y 52..55) climbs two earth banks (`ramp` rows) and crosses the highway on a `bridge` row 5.25 m up;
+    two side roads and four stubs make the diamond. East: the town's Trail In. West: the frontage road with the Door and the Bus Stop.
+  - EXIT 4, no sign: the base road west (y 80..82), then south down the west edge to the Gate. The Trailers and the Conspiracy Theorist sit on it.
+  - THE END: the signpost, the road east to Giza.
+- **THE SIGNS:** green gantries (`arch` rows `des:sign:<n>`, the tool's `gantry(sx, sy, dir, words)`: `dir` = the way the traffic that reads it
+  drives). Text is the `txt:` sheet in the `way` face.
+- **THE CARS:** `terrain.traffic`, the city's own system, two one-way lines (`loop: false`, `lane: 0.01` = the middle of a one-way carriageway):
+  in from the west, south to the end, east to Giza; and back. Five cars a line. The tool refuses to bake a prop within 3.2 m of a line.
+- **Rows outside the markers:** `links.downtown_desert.b` (x -105), `links.gobekli_giza.b` (z 157.5), `siteRooms.entry.prebuilt_giza` (x 171,
+  z 192.5), `HQ_AREA_MARKERS`. The insides' three rooms are untouched (their doors moved with their blocks).
+- **CHECKED:** offline, a walk from the spawn on the walker's rule reaches every door pad, every unit but the tower's marksman (up his own
+  stair, as before), the bridge's deck and the lanes under it. **SEEN IN THE BROWSER** (playtest_city.js, ten views, no retry): the bend, the
+  gantries and their words, the lane paint, the overpass with a car passing under it, the view from the bridge, the rest stop, the end.
+  NOT seen: the trailers' and the Door's facings, the districts after the move (they are the same rows, shifted), cars turning the two corners.
+- **NOT DONE:** no cars on the county road, the exits' roads or the base road (the two lines are the highway only). No on-ramp acceleration
+  lanes. Nothing on the city side (a sign for the Desert at the city's way out would be the Disaster City holder's). The canyon from the town
+  to the Dig is cut in two by the move (each end opens on sand).
 
