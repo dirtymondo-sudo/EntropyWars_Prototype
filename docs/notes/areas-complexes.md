@@ -7055,6 +7055,12 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   a prop's `y: -2.6` did not sink an `obelisk` (a small negative `y` works on low props); `horse_black` reads as a dark dog from afar.
 - New lights are all `noLight`. FPS at the proof view after the pass: 2.7 (llvmpipe; 427 calls, 1.14 M triangles; before the pass 2.0 to 2.3).
 
+**PASS 4, THE ATMOSPHERE.** `exports.airZones` in G.js (the pilot's air hook, no tool change): dust over the Sand Sea (220, wind 1.9), round
+the pyramids (130) and on the causeway (80), embers on the Tomb Door path (50), fireflies over the oasis (45). Light without lamps: a bracket + a
+lit core (`glow: 1`, tint 0xffb040) on each jamb of every mouth and on the hall's posts; the gold capstone has `glow` 0.45. Seen at 19.2 and
+21.5 (`window._hqClockHour`): the pale stone holds at night, the capstone and the cores read, fireflies show over the pool. A `noLight`
+brazier's flame is small at night (its sprite only). FPS at the proof view: 2.0 (433 calls, 1.15 M triangles): no cost against pass 3 beyond noise.
+
 **FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
 `meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
 `ocean_rock..11`, `psx_brick_1`, `hw_bricks`; pots `greek_amphora`, `cauldron`, `item_censer`, `wooden_bucket`; fire `brazier`, `cave_torch`,
