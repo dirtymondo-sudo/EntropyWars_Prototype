@@ -4164,6 +4164,58 @@ be cliffs at the north edge which is the hills"; residents "don't worry about it
   The Vatican's and the Beach zone's plans (`docs/plans/world-zones/`) are not redrawn: Vatican = under Olympus, one step west; Beach = 24 more plots north
   along Entertainment, the cliffs its north edge. No encounter tables, no residents.
 
+## THE MOUNTAINS, THE DISTRICT FILES — one thread a district (2026-11-16, second side; mondo: set the Mountains up like Disaster City's districts)
+
+A set-up change: how the zone is written, not what is built. Everything that stands on the plots moved out of `bake-mountains.js` into six files,
+`docs/areas/mountains/districts/<LETTER>.js` (the letters are `layout.json` `districts`):
+
+| File | District | Plots | Room |
+|---|---|---|---|
+| `N.js` | The North Pole village | 16 (P00..P03 x 00..03) | `site_prebuilt_northpole_plots` |
+| `P.js` | The Snowy Pass | 12 (P04..P06 x 00..03) | `site_prebuilt_shasta_mountains` |
+| `K.js` | The Ski Lodge + slopes | 12 (P07..P09 x 00..03) | same |
+| `O.js` | Mount Olympus | 12 (P10..P12 x 00..03) | same |
+| `S.js` | Mount Shasta | 20 (P13..P15 x 00..03, P13..P14 x 04..07) | same |
+| `H.js` | The Hollywood Hills | 39 (H00..H12 x 00..02) | `site_prebuilt_shasta_hills` |
+
+Each file's header is its thread's brief: its plots, what stands there, what is known missing or wrong, the shared pieces that stand in it, the hooks.
+
+**The hook** (bake-mountains.js "THE DISTRICT FILES", the city's pattern): a file exports any of `tailor(t)` (change a square of its own plots before
+the trails are cut), `apply(ctx)` (the standing things: walked-in buildings), `build(ctx)` (the dressing). A room runs its files in its `files` order
+(Mountains: P, K, S, O), one stage for all, then the next. ctx = the room's helpers (put, dec, tree, native, building, look, feat, flat, S, gx/gz/mx/mz,
+props, doors, marks ...) + `anchor(name, at)` + `say(old, race)` (an old room's native line) + `cabin` + the texture constants.
+Two guards: while a file runs, `S()` throws on a plot of another district; `ctx.rnd` is that district's own random stream (room opt `streams`), so a
+piece added in one district never moves another district's decor.
+
+**THE RULES FOR A DISTRICT THREAD**
+1. One thread = one district = one file. Take the district's row on the board (docs/notes/claims.md) in your first PR; free it in your last.
+2. You edit YOUR district file only. Never another district's file. `data.js` between `MOUNTAINS-BEGIN` / `MOUNTAINS-END` is written by the tool: never by hand.
+3. **The tool and the shared pieces belong to nobody's district.** `bake-mountains.js`, `docs/areas/mountains/layout.json` (the plan's squares, levels,
+   names), the heights, the paint, the tree zones, the sky and edges, the spawn, every way out (wall doors, the links' ends, DOOR HQ's bay doors) and
+   `ctx.cabin`: nobody changes them without a dated note in the board's Notes saying what and why, in the same PR. Keep such a change small and of use
+   to every district (a new ctx helper, a new hook); a change to one district's look goes in its file. A plot's squares: use `tailor()`, not layout.json.
+4. A district's own doors (a `wall: 'free'` door on its own plots, like the chairlift's pair) and its anchors are its own. The five anchors the tool
+   needs must stay set: N `hearth`; O `painting`, `bayOlympus`; S `lemuria`, `bayShasta` (the tool throws when one is missing).
+5. **Rebake and merge.** After an edit: `node --check` your file, `node bake-mountains.js` (1 s; it throws on a piece in the rock, on a taken square, on
+   another district's plot, on a plot not reached on foot, on a step too steep). Before merging: `git fetch origin main && git merge origin/main`. If
+   another district landed first, `data.js` conflicts inside the MOUNTAINS block: NEVER keep one side of the block wholesale and never merge it by hand.
+   Take either side to clear the conflict (`git checkout --theirs data.js` is fine ONLY when the block is the file's one conflict; else resolve the
+   other hunks by hand first), then run `node bake-mountains.js`: the tool rewrites the block from all six files as they stand after the merge. Check
+   `git diff origin/main -- data.js` shows only the rows of your district. Same for the `?v=` token: merge, then re-bump (RULE #1b).
+6. Scope of a district thread: exteriors, interiors, dressing, atmosphere, polish of its own plots. Not in scope without mondo: new game rules,
+   characters, names or story (owner-rules.md), encounter tables (his baked tables), the Ice Wall, new ways between zones.
+7. Visual work gets a probe run and pictures (RULE #1c / #1d, `probe-fast.js`). `dev.teleport` puts the walker at height 0: pass `y` = the ground there
+   (`hqTerrainCompile(room).hFn(x, z)`), or the camera sits under the land. `MTN_DUMP=mtn|pole|hills node bake-mountains.js --dry-run` prints a room's walked map.
+8. The Hills thread (H): that room's ground is Disaster City's north skyline, read at load, and the city draws its far sign where the twelve
+   letters stand (`docs/disaster-city/districts/E.js` `edges.sign`). Moving the letters or the ground under them needs a note for the city's holder.
+   The city's north beach (`districts/B.js` beach(), `bake-disaster-city.js` EDGES.n.cap) is the city's, not the Hills'.
+
+**PROOF OF NO CHANGE** (rebake before and after, both loaded with load-data.js and compared room by room, 255 rooms): the North Pole room and the Hills
+room are the same to the byte; every link end and bay door is the same; in the Mountains room the heights, the paint, the tree zones, the doors, the
+natives and the marks are the same, and the feature and prop lists hold the same rows in another ORDER, one cause: the Warming Hut (district P) is now
+written before the Lodge and the Rental Hut (district K), because P runs first (its `texbuilding` row #228 -> #226, its `arch` row #285 -> #283, its 8
+props ahead of the Lodge's and the Rental Hut's 41). No row changed. The block's first comment line names the district files. No browser run (a no-change refactor).
+
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
 mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
