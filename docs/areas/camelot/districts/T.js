@@ -20,8 +20,9 @@
 
    MISSING / WAITING: no house is walked into (mondo OK'd the five kinds as looks; insides are not asked yet). No anvil, market stall or
    lamp post model exists on R2 (tents, crates and sacks stand in). The streets have no lamps and no people but the two gate knights.
-   HELD BY the Village pilot thread since 2026-11-16 (both files). Passes: 1 exteriors (in), 2 interiors (the three halls in: THE INSIDES below), 3 dressing, 4 atmosphere, 5 polish.
-   NEEDS A MODEL (nothing on R2): a market stall, an anvil, a lamp post / street lantern, a hand cart, a trough, a fence run, a tavern table.
+   HELD BY the Village pilot thread since 2026-11-16 (both files). Passes: 1 exteriors (in), 2 interiors (in: THE INSIDES below + T-houses.js), 3 dressing (in: THE VILLAGE'S GROUND), 4 atmosphere, 5 polish.
+   PEOPLE WAIT MONDO: only the two gate knights stand here; who lives in the village is his call (docs/notes/npc-system.md).
+   NEEDS A MODEL (nothing on R2): an anvil, a lamp post / street lantern, a hand cart, a fence run with a gate, a floor carpet.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
    plot Pxx-yy = squares xx*12.. , yy*12.. . gx(k) = a square's west / north edge in metres, gc(k) = its middle. feat(row) writes a terrain row,
@@ -47,6 +48,11 @@ const foot = (a, w, d, door, h, out, key, tint) => { const t = out + 0.05;
     a.box(0, 0, -(d / 2 + t / 2), w + 2 * t, h, t, key, tint); for (const s of [-1, 1]) a.box(s * (w / 2 + t / 2), 0, 0, t, h, d, key, tint);
     const x0 = -(w / 2 + t), x1 = w / 2 + t, a0 = door.lx - door.cw / 2 - 0.12, a1 = door.lx + door.cw / 2 + 0.12;
     a.box((x0 + a0) / 2, 0, d / 2 + t / 2, a0 - x0, h, t, key, tint); a.box((a1 + x1) / 2, 0, d / 2 + t / 2, x1 - a1, h, t, key, tint); };
+/* a hanging sign: an iron bracket out of the front wall at x, a board across the street's length, its word on both faces (a drawn `txt:` sheet:
+   plain trade words only, never a made-up name) */
+const sign = (a, x, zf, word) => { const wd = Math.max(1.3, word.length * 0.3), key = 'txt:' + word + '|#f0d890||' + (Math.round(wd * 0.82 / 0.42 * 100) / 100);
+    a.box(x, 3.05, zf + 0.9, 0.1, 0.1, 1.8, null, 0x2a2c30); a.box(x, 2.25, zf + 1.1, 0.08, 0.7, wd, WOODK, 0x6a4628, { gain: 1.4 }); for (const s of [-1, 1]) a.box(x, 2.95, zf + 1.1 + s * (wd / 2 - 0.15), 0.04, 0.12, 0.04, null, 0x2a2c30);
+    a.P.push({ s: 'quad', p: [x + 0.05, 2.39, zf + 1.1], size: [wd * 0.82, 0.42], ry: 270, key, tint: 0xffffff, uv: 'fit', kind: 'over' }, { s: 'quad', p: [x - 0.05, 2.39, zf + 1.1], size: [wd * 0.82, 0.42], ry: 90, key, tint: 0xffffff, uv: 'fit', kind: 'over' }); };
 function build(ctx) {
 const { WALL, r2, gc, note, props, inside, flushArch, put, dec, tree, native } = ctx, WALKIN = ctx.WALKIN;
 const kb = (id, q, h, o, parts) => ctx.building(id, q, q[4], h, o, parts);
@@ -65,7 +71,7 @@ const SMITHY = kb('smithy', WALKIN.smithy, 5.25, { leafDouble: false, keyIn: WOO
     a.shell(w, 5.25, d, WOODK, 0xb89468, door); foot(a, w, d, door, 1.2, 0.2, WALL, STONE2);
     a.roof('gable', 0, 5.25, 0, w + 1.6, 3.4, d + 1.6, WOODD, 0x6a4a34, { keyEnd: WOODK, tintEnd: 0xa88458 });
     a.box(-w / 2 + 1.2, 0, -d / 2 - 0.6, 1.8, 9.5, 1.8, WALL, STONE, {}); a.box(-w / 2 + 1.2, 9.5, -d / 2 - 0.6, 2.2, 0.5, 2.2, WALL, STONE2, { roof: true });
-    a.roof('shed', 3, 3.2, d / 2 + 1.6, 6, 1.2, 3.2, WOODD, 0x6a4a34, { ry: 180, under: true }); for (const x of [0.3, 5.7]) a.box(x, 0, d / 2 + 2.9, 0.3, 3.2, 0.3, WOODD, TIMBER);
+    sign(a, door.lx - 2.2, d / 2, 'SMITHY'); a.roof('shed', 3, 3.2, d / 2 + 1.6, 6, 1.2, 3.2, WOODD, 0x6a4a34, { ry: 180, under: true }); for (const x of [0.3, 5.7]) a.box(x, 0, d / 2 + 2.9, 0.3, 3.2, 0.3, WOODD, TIMBER);
 });
 /* THE INN — two storeys, plaster over a stone ground floor, a jettied upper floor on timber, the sign */
 const INN = kb('inn', WALKIN.inn, 7, { keyIn: STUCCO, floorIn: 'wood_planks' }, (a, w, d, door) => {
@@ -78,7 +84,7 @@ const INN = kb('inn', WALKIN.inn, 7, { keyIn: STUCCO, floorIn: 'wood_planks' }, 
     a.box(-w / 2 + 1.5, 4.6, d / 2 + 0.47, 1.0, 1.3, 0.1, G_TALL, 0xf0d890, { n: Math.max(2, Math.floor(w / 3.5)), step: [(w - 3) / Math.max(1, Math.floor(w / 3.5) - 1), 0, 0], glow: 0.5 });
     for (const x of [-8.75, -5.25, 5.25, 8.75]) { a.box(x, 1.4, d / 2 + 0.07, 1.0, 1.2, 0.1, G_TALL, 0xf0d890, { glow: 0.5 }); a.box(x, 2.6, d / 2 + 0.09, 1.3, 0.14, 0.16, WOODD, TIMBER); a.box(x, 1.26, d / 2 + 0.09, 1.3, 0.14, 0.2, WOODD, TIMBER); }   // the taproom's windows (the insides' lit ones)
     a.roof('gable', 0, 7, 0, w + 1.8, 4.4, d + 1.8, SLATE, 0x692e26, { keyEnd: STUCCO, tintEnd: 0xe6dcc4, gain: 1.6 });   // the roof's tint is 0xa84a3c divided by the gain (T-houses.js dimBy)
-    a.box(door.lx + 2.4, 3.0, d / 2 + 1.0, 0.12, 0.12, 1.4, null, 0x2a2c30); a.box(door.lx + 2.4, 2.0, d / 2 + 1.5, 0.08, 0.9, 1.0, WOODK, 0x8a5a34, { ds: true });
+    sign(a, door.lx + 2.4, d / 2, 'INN');
     a.box(w / 2 - 1.4, 5.25, -d / 4, 1.1, 5, 1.1, 'bricks_2', 0xb86a54, { roof: true });
 });
 const HOUSE_LIST = HOUSES_FILE.houses(ctx, kb);
@@ -202,16 +208,57 @@ flushArch();
 
 /* ── THE VILLAGE'S GROUND ── */
 note('THE VILLAGE: the market, the graveyard, the green, the gates');
+/* PASS 3, THE DRESSING (2026-11-16, the Village pilot thread). Everything DRAWN on the village's ground is ONE arch row `cam:village:street`
+   in the room's own frame (x east, z south, metres; `y: 0`: the room's middle is the hill's top), so the stalls, lanes, beds and benches
+   share their meshes (the zone kit: meshes are the frame's price). Catalogue props still go through put / dec (the tool's free-ground check).
+   OUT: the eight camping tents, the park bench, the planter (not medieval). No market stall, lamp post, hand cart or trough model exists:
+   the stalls and the trough are drawn in the kit's sheets; the lamp post and the cart stay on the NEEDS A MODEL list. */
 const MK = 'c';   // the market's pieces stand on its cobbles (rows 58-61, either side of the Grand Stair), clear of the street (62-63)
-[32, 34, 36, 38, 58, 60, 62, 64].forEach(x => put('camping_tent', x, 60, { face: 180 }, MK)); put('ancient_well', 40, 60, {}, MK); put('stocks', 56, 60, { face: 0 }, MK);
+const S = ctx.sheet(), SW = { gain: 1.4 }, SWT = 0x8a6238, CLOTH = { gain: 1.5, under: true };
+const blockW = (x0, z0, x1, z1, t, h) => ctx.feat({ k: 'wall', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), t, h, ghost: true, rail: false });
+/* a market stall on square (kx, ky), its counter to the south (the street): four posts, a counter on a boarded front, a back shelf, a striped
+   canvas awning (strips of two colours, a scalloped valance: mondo's pin on cloth, no plain rectangle), its goods by `kind` */
+const STRIPE = [[0xb03a3a, 0xf0e8d8], [0x3a5a9a, 0xf0e8d8], [0x3a7a4a, 0xf0e8d8], [0xc89a30, 0x7a3a2a]];
+const stall = (kx, ky, kind) => { const x = gc(kx), z = gc(ky), col = STRIPE[kind % 4];
+    for (const s of [-1, 1]) for (const t of [-1, 1]) S.box(x + s * 1.35, 0, z + t * 0.95, 0.12, t > 0 ? 2.2 : 2.7, 0.12, WOODK, SWT, SW);
+    S.box(x, 0.85, z + 0.6, 2.9, 0.08, 0.85, WOODK, SWT, SW); S.box(x, 0, z + 1.0, 2.8, 0.85, 0.06, WOODK, SWT, SW); S.box(x, 1.25, z - 0.85, 2.8, 0.06, 0.4, WOODK, SWT, SW); S.box(x, 0, z - 0.98, 2.8, 1.9, 0.05, WOODK, SWT, SW);
+    for (let k = 0; k < 6; k++) { const sx = x - 1.25 + k * 0.5; S.P.push(Object.assign({ s: 'roof', form: 'shed', p: [sx, 2.2, z], size: [0.5, 0.5, 2.3], key: STUCCO, tint: col[k % 2] }, CLOTH));
+        S.box(sx, 1.98 - (k % 2) * 0.06, z + 1.15, 0.5, 0.22 + (k % 2) * 0.06, 0.03, STUCCO, col[(k + 1) % 2], { gain: 1.5, ds: true }); }
+    if (kind % 3 === 0) for (let k = 0; k < 3; k++) { const bx = x - 0.9 + k * 0.9, veg = (kx + k) % 2; S.cyl(bx, 0.93, z + 0.6, 0.3, 0.2, WOODK, 0xb89460, { seg: 10, gain: 1.3 });   // baskets of apples and cabbages
+        for (const q of [[-0.12, -0.08], [0.12, -0.06], [0, 0.12], [0, 0]]) S.P.push({ s: 'dome', p: [bx + q[0], 1.1, z + 0.6 + q[1]], r: veg ? 0.12 : 0.09, seg: 8, tint: veg ? 0x6a9a4a : 0xb83a34 }); }
+    else if (kind % 3 === 1) { S.box(x, 0.93, z + 0.6, 2.4, 0.04, 0.5, WOODK, 0x9a6a3c, SW); for (let k = 0; k < 7; k++) S.box(x - 1.0 + k * 0.33, 0.97, z + 0.6, 0.2, 0.13, 0.34, STUCCO, 0xc89a58, { gain: 1.5 }); for (let k = 0; k < 4; k++) S.cyl(x - 0.9 + k * 0.6, 1.31, z - 0.85, 0.11, 0.24, STUCCO, 0xa8683a, { seg: 8, gain: 1.4 }); }   // loaves, jars on the shelf
+    else { for (let k = 0; k < 4; k++) S.box(x - 0.95 + k * 0.62, 0.93, z + 0.6, 0.5, 0.16 + (k % 2) * 0.1, 0.6, STUCCO, [0x7a3a2a, 0x3a5a7a, 0xc8a850, 0x4a6a3a][(kx + k) % 4], { gain: 1.6 }); for (let k = 0; k < 3; k++) S.cyl(x - 0.7 + k * 0.7, 1.31, z - 0.85, 0.13, 0.3, STUCCO, 0x8a8c90, { seg: 8, gain: 1.4 }); }   // bolts of cloth, pewter jugs
+    blockW(x - 1.4, z + 0.1, x + 1.4, z + 0.1, 2.0, 0.9); };
+[32, 34, 36, 38, 58, 60, 62, 64].forEach((x, k) => stall(x, 60, k)); put('ancient_well', 40, 60, {}, MK); put('stocks', 56, 60, { face: 0 }, MK);
 put('bread_rack', 33, 59, { face: 180 }, MK); put('bread_rack', 63, 59, { face: 180 }, MK); put('psx_wooden_crate_2', 37, 59, {}, MK); put('psx_wooden_crate_2', 59, 59, {}, MK); dec('meshy_burlap_sack', 35, 59, {}, MK); dec('meshy_burlap_sack', 61, 59, {}, MK);
+[[31, 58], [43, 58], [52, 58], [64, 58]].forEach(q => put('cave_torch', q[0], q[1], {}, MK));   // a standing torch at each corner of the two market squares
+/* a flagged lane: a strip of the paths' cobbles from (x0, y0) to (x1, y1) in squares' edges */
+const lane = (x0, y0, x1, y1, wd) => { const ax = ctx.gx(x0), az = ctx.gx(y0), bx = ctx.gx(x1), bz = ctx.gx(y1), ns = Math.abs(bz - az) > Math.abs(bx - ax);
+    S.box((ax + bx) / 2, 0, (az + bz) / 2, ns ? wd : Math.abs(bx - ax) + wd, 0.05, ns ? Math.abs(bz - az) : wd, 'cobblestone', 0xc8c4bc, { sides: false }); };
+/* the back lane between the two south rows (the five houses that turned from the town wall open on it), reached by two cuts from South Street */
+lane(36, 64, 36, 69.5, 1.75); lane(32, 69.5, 36.9, 69.5, 1.75); lane(60, 64, 60, 69.5, 1.75); lane(56, 69.5, 65, 69.5, 1.75);
+/* the graveyard by the Chapel: the crosses, headstones between them */
 [[24, 66], [24, 68], [24, 70], [30, 66], [31, 68], [30, 70], [31, 71]].forEach(q => dec('cross', q[0], q[1]));
+[[22, 67, 'psxg_tombstone_1'], [23, 69, 'psxg_tombstone_2'], [22, 71, 'psxg_tombstone_3'], [31, 66, 'psxg_tombstone_2'], [31, 70, 'psxg_tombstone_1'], [23, 71, 'hw_grave']].forEach(q => put(q[2], q[0], q[1], { face: 0 }));
 put('armour_stand', 65, 66, { face: 270 }); put('brazier', 65, 68);
-put('cow', 63, 31, { face: 60 }); dec('chicken', 62, 30); dec('chicken', 64, 30); dec('chicken', 65, 31); dec('decor_sheep', 61, 31); dec('decor_sheep', 66, 30);   // the green, behind the castle hill now
-put('horse_brown', 45, 66, { face: 90 }); dec('meshy_burlap_sack', 45, 68);
+/* the green behind the castle hill: the animals, hay, a water trough */
+put('cow', 63, 31, { face: 60 }); dec('chicken', 62, 30); dec('chicken', 64, 30); dec('chicken', 65, 31); dec('decor_sheep', 61, 31); dec('decor_sheep', 66, 30);
+put('hw_straw', 62, 31, { face: 20 }); put('hw_straw', 64, 31, { face: 100 });
+{ const x = gc(65) + 0.9, z = gc(30) - 0.9; S.box(x, 0, z, 1.9, 0.55, 0.7, WOODK, SWT, SW); S.box(x, 0.48, z, 1.7, 0.05, 0.5, STUCCO, 0x3a5a7a, { sides: false, glow: 0.12 }); }
+/* the Inn's yard: the horse, a covered wagon, sacks */
+put('horse_brown', 45, 66, { face: 90 }); dec('meshy_burlap_sack', 45, 68); put('covered_wagon', 45, 69, { face: 0 });
+/* the gates: braziers and the two knights at the Drawbridge gate, a standing torch either side of the other three inside the wall, signposts */
 put('brazier', 41, 70); put('brazier', 44, 70); put('signpost', 46, 24); put('signpost', 75, 46); put('signpost', 20, 46); put('signpost', 44, 61, {}, MK);
+[[46, 23], [49, 23], [21, 46], [21, 49], [74, 46], [74, 49]].forEach(q => put('cave_torch', q[0], q[1]));
 native('knight', 41, 71, 90); native('knight', 44, 71, 270);
 [[45, 30], [50, 30], [37, 31], [59, 31], [29, 30], [67, 30], [27, 46], [69, 46], [27, 61], [69, 61]].forEach((q, i) => tree(i % 2 ? 'tree_4' : 'tree_2', r2(5 + (i % 3) * 0.5), q[0], q[1], 0.6));
-put('park_bench', 46, 29, { face: 180 }); put('planter', 50, 29);
+/* a plank bench on North Street, under the trees */
+[[46, 29], [51, 29]].forEach(q => { const x = gc(q[0]), z = gc(q[1]) + 0.9; S.box(x, 0.42, z, 1.9, 0.07, 0.4, WOODK, SWT, SW); for (const s of [-1, 1]) S.box(x + s * 0.8, 0, z, 0.1, 0.42, 0.36, WOODK, SWT, SW); });
+/* the kitchen gardens behind the north row's cottages, against the town wall: a bed of turned earth, two rows of cabbages */
+ctx.HOUSES.forEach(h => { if (h.y0 !== 23 || (h.x1 - h.x0) < 3) return; const x = ctx.gx((h.x0 + h.x1) / 2), z = gc(22) + 0.2;
+    S.box(x, 0, z, 6.0, 0.1, 2.0, 'dirt_2', 0x6a4a30, { gain: 1.2 }); for (const t of [-0.45, 0.45]) S.P.push({ s: 'dome', p: [x - 2.5, 0.1, z + t], r: 0.17, seg: 8, tint: 0x6a9a4a, n: 9, step: [0.62, 0, 0] }); });
+/* a torch either side of the three halls' doors (outside, on the front wall) */
+[CHAPEL, INN, SMITHY].forEach(B => { for (const s of [-1, 1]) inside(B, 'wall_torch', r3(B.door.lx + s * (B.door.cw / 2 + 0.9)), r3(B.fd / 2 + 0.28), { face: 180, y: 2.1, floor: true }); });
+ctx.arch.push({ k: 'arch', id: 'cam:village:street', x: 0, z: 0, rot: 0, y: 0, parts: S.P }); flushArch();
 }
 module.exports = { build };
