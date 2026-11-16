@@ -989,10 +989,9 @@ const NYC_OPEN = [
         for (const e of [-1, 1]) { a.cyl(e * 1.55, 0, 3.15, 0.08, 2.7, METAL, GG, { seg: 6 }); a.cyl(e * 1.55, 2.7, 3.15, 0.14, 0.18, null, GG, { seg: 8, r2: 0.3 }); a.dome(e * 1.55, 2.88, 3.15, 0.3, 0.32, null, 0x52e89a, { glow: 1 }); a.cyl(e * 1.55, 2.62, 3.15, 0.3, 0.26, null, 0x52e89a, { seg: 10, r2: 0.3, glow: 1 }); }
         a.box(0, 1.15, -3.2, 2.6, 0.7, 0.12, TILE, 0xffffff); a.quad(0, 1.2, -3.13, 2.3, 0.6, 0, 'txt:TRANSIT|#1a1a1a||4', null, { uv: 'fit', kind: 'over' }); a.quad(0, 1.2, -3.27, 2.3, 0.6, 180, 'txt:TRANSIT|#1a1a1a||4', null, { uv: 'fit', kind: 'over' });
         return a.P; } })),
-    /* steam chimneys in the road: orange and white bands, a white plume */
+    /* steam chimneys in the road: orange and white bands. NO PLUME (mondo 11-15: the white flare + two domes on top read as upside-down bowls; out) */
     ...[[-62.3, 64.1], [-24.9, 62.6], [44.6, 63.7]].map((q, i) => ({ id: 'steam' + i, x: q[0], z: q[1], parts() { const a = sheet();
         a.cyl(0, 0, 0, 0.6, 0.15, null, 0x2a2a2c, { seg: 12 }); for (let k = 0; k < 4; k++) a.cyl(0, 0.15 + k * 0.42, 0, 0.42 - k * 0.03, 0.42, null, k % 2 ? 0xf6f4ee : 0xf07020, { seg: 12, r2: 0.39 - k * 0.03, glow: 0.2 });
-        a.cyl(0, 1.83, 0, 0.22, 0.6, null, 0xe8e8e6, { seg: 8, r2: 0.36, glow: 0.3 }); a.dome(0.08, 2.3, 0.05, 0.4, 0.45, null, 0xe8e8e6, { glow: 0.3 }); a.dome(-0.25, 2.6, -0.15, 0.3, 0.4, null, 0xeeeeec, { glow: 0.3 });
         return a.P; } })),
     /* a green sidewalk shed over the north pavement, four squares long */
     { id: 'shed', x: -52.5, z: 54.25, parts() { const a = sheet(), GN = 0x2f5a3a;
