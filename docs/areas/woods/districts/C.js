@@ -18,6 +18,7 @@
      THE HUNTER'S STAND in Deep woods west, THE GATE on the Fence Line, THE OLD PLAYGROUND in Deep woods east, the lamp posts and urns at the Stair's foot,
      the Old Tree at 19 m, the dark forest floor. The yards are DIRT squares opened in cut (YARDS below): a path square is not a free square, so no plot's
      middle moved and the Stair stands where it stood.
+     PASS 2, THE INTERIORS: the ranger station's one room (office west, bunk + wood stove east; parts in its arch row, props through P()); the shelter's deck.
    KNOWN MISSING / WAITING FOR MONDO
      - The life pass and the horror pass are live but wait for his look (the board).
      - THE STAIR IS SHARED: the room's spawn, its plate and the link woods_stair's free door (data.js, x -17.5, z 55.5, y 12.06) stand on the
@@ -119,7 +120,7 @@ module.exports = {
           const parts = [
               box(0, 0, 0, w + 2 * E, H, d + 2 * E, WD, SAGE, { faces: 'blr', top: false, uv: [1.75, 3.5], gain: 1.5 }),                                           // three board walls
               { s: 'quad', p: [0, 0, r2(d / 2 + E)], size: [r2(w + 2 * E), H], key: WD, tint: SAGE, uv: [1.75, 3.5], gain: 1.5, hole: [lx, r2(cw), 2.2] },         // the front, its doorway cut
-              box(0, 0, 0, w + 0.36, 0.85, d + 0.36, ROCK, STONE, { faces: 'blr', uv: [1.75, 1.75] }),                                                               // the stone base course
+              box(0, 0, 0, w + 0.36, 0.85, d + 0.36, ROCK, STONE, { faces: 'blr', top: false, uv: [1.75, 1.75] }), box(0, 0.85, -d / 2 - 0.12, w + 0.36, 0.04, 0.14, ROCK, STONE), box(-w / 2 - 0.12, 0.85, 0, 0.14, 0.04, d + 0.36, ROCK, STONE), box(w / 2 + 0.12, 0.85, 0, 0.14, 0.04, d + 0.36, ROCK, STONE),                                                               // the stone base course
               box(-w / 2 - 0.09, 0, d / 2 + 0.09, 0.18, 0.85, 0.18, ROCK, STONE), box(w / 2 + 0.09, 0, d / 2 + 0.09, 0.18, 0.85, 0.18, ROCK, STONE),
               { s: 'roof', form: 'gable', p: [0, H, 0], size: [w + 1.6, 2.5, d + 1.4], key: TIN, tint: ROOFG, keyEnd: WD, tintEnd: SAGE, over: 0.5, roof: true },   // green tin, the ridge along the front
               ...[[-1, 1], [1, 1], [-1, -1], [1, -1]].map(q => box(q[0] * w / 2, 0.85, q[1] * d / 2, 0.24, H - 0.85, 0.24, WD2, TRIM)),                             // corner boards
@@ -140,15 +141,42 @@ module.exports = {
               box(-3.5, H - 0.88, 0, 0.24, 0.26, d - 0.5, WD2, DARK, { n: 3, step: [3.5, 0, 0], roof: true }),
               /* the firewood stack under the east end of the porch roof, and the side yard's chopping block */
               box(-4.3, 0.16, d / 2 + 0.55, 1.6, 0.9, 0.5, WD2, 0x8a7458, { uv: [0.3, 0.3] }),
+              /* PASS 2, THE INTERIOR (2026-11-16): one room, the office on the west half, the bunk and the stove on the east half. A boarded dado on the three
+                 blind walls, the six windows drawn from inside as pale lit panes in their frames (the building's own inside walls have no holes), the wood stove
+                 under the pipe on a stone pad, its firewood, a plank counter by the door. */
+              box(0, 0.16, -d / 2 + 0.3, w - 0.6, 1.0, 0.05, WD2, 0xb7a488, { uv: [1.75, 1.0] }), box(-w / 2 + 0.3, 0.16, 0, 0.05, 1.0, d - 0.6, WD2, 0xb7a488, { uv: [1.75, 1.0] }), box(w / 2 - 0.3, 0.16, 0, 0.05, 1.0, d - 0.6, WD2, 0xb7a488, { uv: [1.75, 1.0] }),
+              box(0, 1.16, -d / 2 + 0.32, w - 0.6, 0.07, 0.09, WD2, DARK), box(-w / 2 + 0.32, 1.16, 0, 0.09, 0.07, d - 0.6, WD2, DARK), box(w / 2 - 0.32, 1.16, 0, 0.09, 0.07, d - 0.6, WD2, DARK),
+              ...[[-3.55, 1], [2.75, 1], [-2.6, -1], [2.6, -1]].flatMap(q => { const z = q[1] * (d / 2 - 0.29);   // front + back panes, seen from inside
+                  return [box(q[0], 1.2, z, 1.5, 1.15, 0.04, GLASS, 0xcfe0e6, { uv: 'fit', glow: 0.75 }), box(q[0], 1.13, z, 1.75, 0.08, 0.1, WD2, TRIM), box(q[0], 2.35, z, 1.75, 0.08, 0.1, WD2, TRIM), box(q[0] - 0.8, 1.2, z, 0.09, 1.15, 0.1, WD2, TRIM), box(q[0] + 0.8, 1.2, z, 0.09, 1.15, 0.1, WD2, TRIM)]; }),
+              ...[-1, 1].flatMap(sd => { const x = sd * (w / 2 - 0.29);                                           // the two end panes
+                  return [box(x, 1.2, 0.4, 0.04, 1.15, 1.5, GLASS, 0xcfe0e6, { uv: 'fit', glow: 0.75 }), box(x, 1.13, 0.4, 0.1, 0.08, 1.75, WD2, TRIM), box(x, 2.35, 0.4, 0.1, 0.08, 1.75, WD2, TRIM), box(x, 1.2, -0.4, 0.1, 1.15, 0.09, WD2, TRIM), box(x, 1.2, 1.2, 0.1, 1.15, 0.09, WD2, TRIM)]; }),
+              box(-3.6, 0.16, -1.3, 1.4, 0.06, 1.4, ROCK, STONE, { uv: [1.75, 1.75] }), cyl(-3.6, 0.22, -1.3, 0.36, 0.85, TIN, 0x3a3d40, { seg: 10 }), cyl(-3.6, 1.07, -1.3, 0.4, 0.05, TIN, 0x2c2e30, { seg: 10 }),
+              cyl(-3.6, 1.12, -1.3, 0.1, 1.72, TIN, 0x3a3d40, { seg: 8 }), box(-3.23, 0.45, -1.3, 0.04, 0.3, 0.32, null, 0xff7a20, { glow: 1 }),                  // the stove, its pipe, its fire door
+              box(-4.6, 0.16, -0.2, 0.5, 0.55, 0.9, WD2, 0x8a7458, { uv: [0.3, 0.3] }),                                                                            // the firewood by the stove
+              box(lx, 0.165, d / 2 - 1.0, 1.5, 0.02, 0.9, 'urban:CarpetPlain1c', 0x4f6a4a, { sides: false }),                                                     // the door mat
+              box(1.0, 1.02, d / 2 - 0.62, 1.5, 0.06, 0.6, WD2, 0x8a7a62), box(0.33, 0.16, d / 2 - 0.62, 0.08, 0.86, 0.5, WD2, DARK), box(1.67, 0.16, d / 2 - 0.62, 0.08, 0.86, 0.5, WD2, DARK),   // the counter by the door
+              box(0.6, 1.9, -d / 2 + 0.34, 1.3, 0.05, 0.3, WD2, DARK), box(4.6, 1.9, -d / 2 + 0.34, 0.6, 0.05, 0.3, WD2, DARK),                                   // two wall shelves on the back wall
           ];
           features.push({ k: 'arch', id: 'woods:ranger:arch', x: cx, z: cz, rot: 180, parts });
           const P = (key, rx, rz, o) => props.push(Object.assign({ key }, at(rx, rz), o || {}));
           P('rocking_chair', 3.9, d / 2 + 1.5, { face: 160, y: 0.16 }); P('railway_lantern', 1.6, d / 2 + 2.9, { y: 0.16 }); P('psx_wooden_crate_2', -1.9, d / 2 + 0.7, { y: 0.16 });
-          P('metal_trash_can', -6.4, d / 2 + 2.4); P('stump', -7.2, 0.3); P('wooden_bucket', -6.3, -0.6); P('psx_hand_saw_1', -7.0, 1.1, { y: 0.02 }); }
+          P('metal_trash_can', -6.4, d / 2 + 2.4); P('stump', -7.2, 0.3); P('wooden_bucket', -6.3, -0.6); P('psx_hand_saw_1', -7.0, 1.1, { y: 0.02 });
+          /* PASS 2, THE INTERIOR: blockers against the walls, the door's square and the middle of the room clear; every lit piece carries noLight */
+          const F = 0.16, T = 1.13;   // the floor boards; the desk's top
+          P('psx_table_large_2', 3.0, 2.55, { y: F }); P('psx_chair_mp_1', 3.0, 1.7, { y: F, face: 180 }); P('field_radio', 3.55, 2.75, { y: T }); P('psx_lamp_1_on', 2.35, 2.8, { y: T, noLight: true });
+          P('item_walkie_talkie', 3.15, 2.4, { y: T, face: 40 }); P('coffee_mug', 2.6, 2.35, { y: T }); P('psx_book_mp_1', 2.75, 2.7, { y: T, face: 20 }); P('item_binoculars', 3.65, 2.35, { y: T, face: 300 });
+          P('radio_console', 4.5, 2.6, { y: F }); P('psx_shelf_mp_5', 4.72, -2.2, { y: F, face: 90 }); P('psx_bedside_table_1', 4.6, 0.4, { y: F, face: 90 }); P('coffee_maker', 4.6, 0.25, { y: 0.8 }); P('coffee_mug', 4.55, 0.65, { y: 0.8 });
+          P('map_table', 1.7, -0.5, { y: F }); P('psx_book_mp_2', 1.3, -0.4, { y: 0.94, face: 15 }); P('psx_flashlight_1', 2.3, -0.7, { y: 0.94, face: 70 }); P('item_flare_gun', 1.9, -0.2, { y: 0.94, face: 200 }); P('psx_matchbox_1', 1.1, -0.8, { y: 0.94 });
+          P('evidence_board', 0.75, -2.85, { y: F, face: 180 }); P('rifle_rack', -1.0, -2.9, { y: F, face: 180 }); P('psx_wardrobe_mp_1', -4.3, -2.85, { y: F, face: 180 });
+          P('psx_bed_1', -3.45, 2.45, { y: F }); P('psx_pillow_mp_1', -4.4, 2.45, { y: 0.75 }); P('footlocker', -1.75, 2.5, { y: F, face: 90 }); P('psx_armchair_1', -1.9, -0.9, { y: F, face: 90 });
+          P('psx_carpet_mp_1', -0.3, 0.2, { y: 0.17 }); P('brochure_rack', 1.0, 3.12, { y: 1.1 }); P('psx_clock_1', 2.75, -3.17, { y: 2.45, face: 180 }); P('psx_painting_1', -w / 2 + 0.36, -2.4, { y: 1.9, face: 270 });
+          P('psx_ceiling_lamp_1_on', 2.3, 0, { y: 2.42, noLight: true }); P('psx_ceiling_lamp_1_on', -2.6, 0, { y: 2.42, noLight: true });
+          P('psx_canned_food_mp_1', 0.3, -3.15, { y: 1.96 }); P('psx_canned_food_mp_2', 0.6, -3.15, { y: 1.96 }); P('retro_radio', 0.95, -3.15, { y: 1.96, face: 180 }); P('psx_glass_bottle_1', 4.6, -3.15, { y: 1.96 });
+          P('psx_supply_crate_1', -0.4, -2.95, { y: F }); P('psx_cobweb_1', 4.9, 3.1, { y: 2.3 }); P('psx_jerrycan_1', 4.3, -3.0, { y: F }); P('hw_candles', 0.6, 2.9, { y: 1.09 }); }
         /* ── THE TRAIL SHELTER (P02-03 The Crossroads): a three-sided log lean-to in a pocket of the trees on the trail's south side, open to the trail. Its back and
            its two ends stand on the pocket's own forest edges, so the walls you see are the walls you meet. ── */
         { const cx = gx(26), cz = gc(42), at = frame(cx, cz, 0);
-          const logs = (x, z, w, d, h) => Array.from({ length: Math.round(h / 0.3) }, (_, i) => box(x, i * 0.3, z, w, 0.29, d, WD, i % 2 ? 0xbfae93 : LOG, { uv: [3.5, 0.3] }));
+          const logs = (x, z, w, d, h) => Array.from({ length: Math.round(h / 0.3) }, (_, i) => box(x, i * 0.3, z, w, 0.29, d, WD, i % 2 ? 0xd9c9ad : 0xeadcc2, { uv: [3.5, 0.3], gain: 1.5 }));
           features.push({ k: 'arch', id: 'woods:shelter', x: cx, z: cz, rot: 0, parts: [
               ...logs(0, 1.5, 7.0, 0.3, 2.4), ...logs(-3.35, 0, 0.3, 3.0, 2.7), ...logs(3.35, 0, 0.3, 3.0, 2.7),
               box(-3.35, 0, -1.55, 0.3, 3.1, 0.3, WD2, DARK), box(3.35, 0, -1.55, 0.3, 3.1, 0.3, WD2, DARK), box(0, 0, -1.55, 0.26, 3.1, 0.26, WD2, DARK), box(0, 2.95, -1.55, 7.2, 0.24, 0.26, WD2, DARK),
