@@ -5746,6 +5746,15 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **A DISTRICT'S OWN GROUND AND AIR (the tool, 2026-11-16)**: a district file may export `ground: '<sheet>'` (painted under its own plots' `g`
+  and `t` squares) and `airZones(ctx)` = `[{ x0, y0, x1, y1 (kingdom squares), kind, color, n, speed, wind }]` (kinds: dust, motes, spores,
+  fireflies, snow, ash, rain). The kingdom's embers stay over the whole room. Unused, the bake is unchanged.
+- **THE MODEL LIST, WHAT FITS A WOOD (searched 11-16 on his order "look at the model list")**: `psxg_stepping_stone_1/2` (paths), `psxg_rock_1..4` +
+  `hw_stone*` (pack rocks, to 1.26 m), `ocean_seaweed*` (water plants), `ladybug`, `ant`, `anthill`, `chrysalis`, `caterpillar_bug`, `bee`,
+  `bumblebee`, `grasshopper*`, `hawk_moth`, `crow`, `eagle`, `wolf`, `meshy_crystal_shard(s)`, `mushroom_lamp`, `meshy_hanging_lantern`,
+  `footbridge`, `decor_stone_arch`, `item_hagstone`, `item_magic_wand`, `item_wizard_staff`, `item_potion_flask`; trees `tree_21..30` (the
+  nature pack's birches) and `tree_53` (the painted birch); races that live in a wood: fairy, unicorn, gnome, mushroom girl
+  (npc-system.md first). NOT on R2 in any pack: reeds, lily pads, a willow, bushes, small flowers, deer, fox, owl (alive), swan, dragonfly.
 - **THE ORDER THAT WORKED (for the next four district threads)**: (1) one probe of the district as it stands, `fp` views only, and
   LOOK before planning: the Village's two worst faults (the stone lid, the black slabs) were in no note; (2) exteriors with `gain`;
   (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
@@ -5994,6 +6003,20 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   the room's row in `DOOR_HQ.decals` (marker `SEWERS24-DECALS`; the game draws 80 a room, the tool keeps to 60; a district adds its own with
   `ctx.grime(kind, plot, lx, ly, r)`). District files: rubbish washed into the bends and dead ends (bags, bins, barrels, crates), cobwebs,
   a valve by the pumps, bones in the mine. The murky water was darkened to mud (`sewer_water` tint 0xb44612: more red goes rust, less goes olive).
+- **THE SEWERS' KIT, FROM THE MODEL LIST (mondo 11-16, rule THE MODEL LIST FIRST: "look at the model list right now to see what else they
+  could add"):** MODEL_LIST.md searched for sewer, pipe, pump, drain, valve, rubbish, cell, prison, metro, rail, signal, mine, bone, body,
+  vermin. The first build and the grime pass had used 40 keys; these fit and were NOT used until this pass (all have catalogue rows):
+  PUMPS + PLANT `centrifugal_pump` `gauge_board` `utility_box` `chain_hoist` `pd_lever` `psx_pipe_valve_holder_large_1/2` `iso_tank`
+  `ind_vent` `meshy_vent` `psx_vent_*` · RAIL `signal_lever_frame` `street_signal` `railway_lantern` `cable_drum` `pallet_jack`
+  `welding_cart` `wrapped_pallet` `metro_column` `subway_cart` `metro_poster_1-8` `metro_ticket_machine` · CELLS `steel_toilet`
+  `psx_toilet_mp_1` `psx_old_mattress_mp_1` `psx_bars_metal_1/2` `psx_window_metal_bars_*` `psx_police_baton_mp_1` · RUBBISH `dumpster`
+  `meshy_dumpster` `ind_skip_full` `tire_stack` `traffic_cone` `mop_bucket` `newspaper_bundles` `psx_glass_bottle_*` `psx_tin_can_mp_1_rusty`
+  `psx_syringe_mp_1` `psx_jerrycan_1` `meshy_round_street_drain` · DEAD THINGS `hw_body*` `hw_part*` (the Halloween pack's, new 11-16)
+  `anatomy_skeleton` `skull` `psx_fish_skeleton_mp_1` · MINE `wooden_bucket` `meshy_rope` `ancient_well` `mushroom2` `meshy_hanging_lantern`
+  · TUNNEL PIECES NOT YET TRIED: `psx_tunnel_1`, `psx_tunnel_mp_1_straight / _elbow / _tee / _cross_tee`, `psx_wall_1_tunnel_hole*`,
+  `psx_tunnel_entrance_platform_1` (the PSX pack's own round tunnel sections, about 3 m: side pipes a walker could look into).
+  PLACED IN THIS PASS (about 120 props; each district file's header says where). NOT IN THE GAME AT ALL: rats, bats, roaches, spiders
+  (section 7c has no vermin; the Insects pack is bees, ants, butterflies), a manhole ladder, a sewer grate you look up through.
 - **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
   one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
 - **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
@@ -6052,3 +6075,25 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
     (west), not east: six signs written before this were facing their walls (the guard post's side names, the east fence's plates, the
     hangar's fire exit) and are turned. `iso_tank` is a 1.3 m tank, not a container.
 
+## THE DESERT, GIZA — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/G.js`)
+
+**PASS 1, THE EXTERIORS.** mondo on the first build (step boxes 14 m high, a steel stair): "those pyramids look like fucking ass. and they are way
+too short ... you didn't even get the shape right". So:
+- **A PYRAMID IS A TRUE PYRAMID** (`pyramid(name, cx, cz, foot, o)` in G.js): four straight faces at the real slope (51.8 degrees, rise 1.272 to
+  1), built course by course: each course a `bricks_1` box 1.225 m high, 0.96 m in from the one under it (40 boxes for 49 m; cheap). One `arch`
+  row a monument (`des:giza:<name>`, `y: 0`). The Great Pyramid: 77 m foot, 49 m with its capstone in the better gold (`key: 'gold'`). Khafre:
+  42 m, 26.7 m, the top third a smooth `roof` pyramid in white stucco (its casing). Menkaure: 24.5 m, the lowest courses red granite. Three
+  queens' pyramids of 7 m. A step pyramid on the squares (a tier a square high and a square in, 45 degrees) was tried first and is NOT Giza.
+- **NOT CLIMBED.** A face over 45 degrees is past the walker's `maxSlope`; the first build's walked tiers and stairs are gone. Each pyramid has a
+  ring of thin unseen walls at its foot (`ring()`: `wall` rows with `ghost: true`). A THICK ghost wall has round ends and blocks past its own
+  corners (it shut a stair 5 m away): fence a mass with four thin ones.
+- **A DOOR IN A LEANING FACE** needs upright stones: `mouth(parts, lx, lz, dir, w, h, chevron)` = two granite jambs, a lintel, the dark behind,
+  two pairs of leaning stones over it. The three pyramid doors and Room 444's bay door stand in mouths; no door moved.
+- **THE STONE:** `bricks_1` under an arch part draws mud brown up to `gain` 1.9, whatever the tint; `gain: 2.7` with a pale tint reads as
+  limestone in the sun. The `desert` sheet and `urban:ConcretePanels1a` were no lighter.
+- **THE SPHINX** is rebuilt from parts on 9 x 3 whole squares (it stood half a square off the grid) and still reads as blocks: NEEDS A MODEL.
+- **CHECKED:** offline, a flood on the walker's rule (`hqTerrainFeet`) from the causeway reaches all five door pads; no spot inside a pyramid or
+  the Sphinx is reached. **SEEN** through probe-fast.js, nine views. FPS at the proof view (x 96, z 110, face 115; llvmpipe, so only the
+  before / after counts): before 2.3 (327 calls, 946 k triangles), after 2.0 to 2.3 (301 calls, 739 k triangles).
+- **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
+  scatter and the pine mountains on the east and south edges are the tool row's.
