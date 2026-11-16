@@ -7722,8 +7722,15 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   `campfire`), 14 lights in the district in all; `chimney_smoke` on the three flues (`floor: false`, `y` = the flue's top from the ROOM's floor: the plot's ground + the wall +
   the roof). At night the lit panes, the lanterns, the flags (`glow` 0.25), the ice (`glow` 0.35) and the Mast's red lights carry the picture. Not this file's: the south edge
   forest and the west edge's green trees stay day-bright at night.
+- **PASS 5, POLISH** (seen, 15 views by day and at night; proof `docs/areas/mountains/proof/P_pass5_*.jpg`): tie beams under the hut's ceiling, rafters in the log shelters,
+  the sleigh's runner lines (two flat `ice` boxes a shade darker than the snow: the only "track" there is, no decal exists), the ROPE BRIDGE board, lamp posts on three
+  sheets. **THE DISTRICT IS STOPPED after its five passes** (mondo's order): nothing more until he has looked.
+  WHAT I WOULD DO NEXT: (1) his word on the nine decisions below; (2) the Meshy list (a wood stove, skis + snowshoes on a rack, a snow sled, an ice axe, a backpack,
+  reindeer for the sleigh team, a cairn and a prayer-flag string as real models); (3) one look for all lamp posts and poles; (4) lines for the yetis and a keeper at the
+  Gate House once the NPC system says who lives here; (5) with the tool's row: grey the rock sheet's scale on the crags, take the tile grid out of the snow paint,
+  winter trees on the west edge land past the Pass Gate.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
