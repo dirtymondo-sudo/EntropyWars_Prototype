@@ -4659,6 +4659,10 @@ once that first district is fleshed out and knows what shared assets it can use 
   board dado, a lit board ceiling, tie beams, daylit windows; SURF (rack, steel bench, pegboard, boards, net), BEACH HUT (bed, lamp, chest,
   rocking chair, rug, seascape), FLOATS (counter + till, ball cart, shelf, rings, air beds, paper lanterns), LIFEGUARD (cot, desk with radio
   and glasses, tool chest, board, rings). What went wrong on the way is in the kit below (the coat's depth, prop heights on raised sand).
+- **PASS 3, DRESSING (seen on screen):** every plot has a reason to walk to it now: the North Headland's boats and bench, a camp on the wild
+  beach, the hot dog stand and bins at the Boardwalk, a towel line (drawn) at the huts, toys adrift in the Surf, a bench, a guitar and the
+  radio in the Palms, chairs and the ball at the court, a fenced path over the Dunes to a high bench with a glass, dry scrub on every dune,
+  the fishermen's camp south, a chest and a wrecked boat where the sand runs out. 79 props, 2 rails, 1 drawn piece; catalogue models only.
 - **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
@@ -4687,6 +4691,12 @@ once that first district is fleshed out and knows what shared assets it can use 
   ones (pegboard, net, painting, life ring, notice board not checked). `bare_bulb` stands on the floor here: light a hut with the deck's glow.
 - **WATER ON THE SAND:** `feat({ k: 'dip', x, z, r, h })` on sand that stands 0.6 m up, with r 3.4-5.2 m and h 1.5-1.7 m, is a pool the room's
   own sea stands in (waded). A smaller or shallower dip shows no water.
+- **DUNE DRESSING:** `psxg_dead_bush_1/2` read as dry dune scrub; `feat({ k: 'rail', x0, z0, x1, z1, model: 'ranch' })` is a timber
+  fence that follows the dunes (a path = two rails three squares apart, on square lines); `meshy_campfire_ring` is a fire ring with no
+  light (the room already carries 20 lit props: buoys, vents, fires). `camping_tent`, `lobster_traps`, `rowboat`, `ship_anchor`,
+  `fallen_log`, `hot_dog_stand`, `city_bin` all read right on sand.
+- **A THING ADRIFT** that is not a `float` prop (a ball, an air bed): `{ y: -0.5, hover: 0.55 }` puts it on the surface (a small `y` alone is
+  a lift over the SEA BED, so it sinks; a `y` over 1 hangs in the air).
 - **ROCKS:** on dry sand the graveyard pack's `psxg_rock_1..4` (grey boulders, about 1 m). The ocean pack's `ocean_rock_*`, weed, kelp and
   anemones are for deep water only (black pillars and spikes anywhere else).
 - **DRAWN, NO MODEL NEEDED:** a volleyball net (`urban:MetalTruss1a`, `kind: 'over'`, two posts), lamps (a pole + a cream cylinder with

@@ -30,7 +30,11 @@
    rings and air beds in stacks, paper lanterns. LIFEGUARD: the cot, the desk with the radio and the glasses, the tool chest, the board, rings.
 
    STILL MISSING (the work plan's later passes):
-   - DRESSING: both headlands, the Dunes, the South Dunes and the four no-name plots are nearly bare.
+   THE DRESSING (THE DRESSING PASS, 11-16, seen on screen): the North Headland (anchor, a boat pulled up, traps, the bench), the wild beach
+   north (a camp, a boat on the wet sand), the Boardwalk (hot dog stand, bins), the Huts (the towel line, chairs, a bin), the Surf (toys adrift),
+   the Palms (a bench, chairs, a guitar, the radio), the court's chairs and ball, THE DUNES (a ranch-rail path three squares wide, rows 76-78,
+   up to the high bench and a second glass; dry scrub), the Sandbar's shells and seals, the fishermen's camp south (tent, fire ring, traps, a
+   boat), the South Dunes (a chest half in the sand, a wrecked boat, a bottle).
    - NEEDS A MODEL (not stood in for): hammocks (the Palms), beach towels, a windbreak, a sandcastle, gulls.
    - THE TOOL'S (notes on docs/notes/claims.md, 11-16): the west edge is open sea where the city should stand; the sky's waterspout landmark
      and the sea shell's night bodies draw as a teal spindle and black outlines by day; the dunes' steep faces wear the cliff sheet as grey
@@ -194,6 +198,9 @@ build(ctx) {
     /* THE SURF: the swim flags at the waterline either side of the pier's foot (red over yellow), the black-ball board */
     [[17, 50], [17, 57]].forEach((q, i) => look('swimflag' + (i + 1), mx(q[0]), mz(q[1]), 270, a => {
         a.cyl(0, 0, 0, 0.05, 3.4, null, WHITE, { seg: 6 }); a.box(0.5, 2.95, 0, 0.95, 0.36, 0.03, null, RED, { ds: true }); a.box(0.5, 2.59, 0, 0.95, 0.36, 0.03, null, 0xffd23c, { ds: true }); }));
+    /* THE TOWEL LINE east of the huts (drawn: the game has no towel model): two posts, a rope, four towels on it */
+    look('towels', mx(11), gz(51), 0, a => { for (const sg of [-1, 1]) a.cyl(0, 0, sg * 2.6, 0.06, 2.0, WD2, 0xb89a74, { seg: 6 }); a.box(0, 1.9, 0, 0.03, 0.03, 5.2, null, ROPE);
+        [[-1.8, RED, WHITE], [-0.6, 0x24a8a0, WHITE], [0.6, 0xffd23c, NAVY], [1.8, 0xff4a70, WHITE]].forEach(q => { a.box(0, 0.8, q[0], 0.02, 1.1, 0.8, null, q[1], { ds: true }); for (const y of [1.0, 1.35, 1.7]) a.box(0, y, q[0], 0.03, 0.09, 0.8, null, q[2], { ds: true }); }); });
     /* THE TIDE POOLS (the plan: "rock pools, starfish"): hollows in the wet sand that the sea stands in, each ringed with rocks in `dress` */
     TIDE.forEach(q => feat({ k: 'dip', x: r2(gx(q[0])), z: r2(gz(q[1])), r: q[2], h: q[3] }));
 },
@@ -228,5 +235,34 @@ dress(ctx) {
     TIDE.forEach((q, i) => { const n = 4 + (i % 2); for (let k = 0; k < n; k++) { const t = (k / n) * Math.PI * 2 + i, rr = q[2] / 3.5 * 0.62;
             props.push({ key: 'psxg_rock_' + (1 + (k + i) % 4), x: r2(gx(q[0] + Math.cos(t) * rr)), z: r2(gz(q[1] + Math.sin(t) * rr)), face: Math.round(rnd() * 360) }); }
         props.push({ key: i % 2 ? 'ocean_crab' : 'ocean_starfish', x: r2(gx(q[0]) + 0.5), z: r2(gz(q[1]) - 0.4), y: -0.05, face: Math.round(rnd() * 360) }); });
+    /* ── THE DRESSING PASS (2026-11-16), all at the END (the dice). Every plot gets a reason to walk to it; only models the game has.
+       Blockers (P) on a square's middle, the rest (dec) off it. ── */
+    /* THE NORTH HEADLAND: where the fishing boats are pulled up under the rock; a bench to look out to the Volcano Island */
+    P('ship_anchor', 1, 16, { face: 30 }); P('rowboat', 3, 20, { face: 40 }); dec('lobster_traps', 2, 19); dec('lobster_traps', 4, 21); P('park_bench', 5, 23, { face: 90 }); dec('fallen_log', 2, 23); dec('wooden_bucket', 4, 20); dec('ocean_crab', 5, 22);
+    /* the two no-name plots north (the wild beach): a camp in the lee of the palms, a boat on the wet sand */
+    P('camping_tent', 3, 33, { face: 120 }); dec('meshy_campfire_ring', 5, 33); dec('folding_chair', 6, 33); dec('folding_chair', 5, 34); dec('instrument_guitar_lying', 4, 34); dec('beach_cooler', 6, 34);
+    P('rowboat', 13, 33, { face: 100 }); dec('lobster_traps', 12, 31); dec('fallen_log', 10, 29); dec('ocean_conch', 12, 30); dec('ocean_starfish', 11, 34);
+    /* THE BOARDWALK: the hot dog stand and the bins on the sand beside the boards */
+    P('hot_dog_stand', 7, 43, { face: 0 }); P('city_bin', 4, 43); P('city_bin', 7, 39); dec('folding_chair', 8, 43); dec('beach_ball', 6, 44);
+    /* THE TIDE POOLS: a bucket, shells */
+    dec('wooden_bucket', 14, 42); dec('ocean_conch', 16, 43); dec('ocean_sand_dollar', 13, 39); dec('ocean_sand_dollar_2', 17, 37);
+    /* THE BEACH HUTS: a bin, boards against the surf hut's porch, chairs out front */
+    P('city_bin', 1, 53); dec('surfboard_long', 1, 52, { floor: true }); dec('folding_chair', 6, 53); dec('folding_chair', 9, 53); dec('beach_swim_ring', 10, 52); dec('wooden_bucket', 4, 53);
+    /* THE SURF: toys adrift where the bathers wade */
+    afloat('beach_air_mattress_blue', 20, 51, { y: -0.5, hover: 0.55, face: 70 }); afloat('beach_swim_ring', 21, 57, { y: -0.5, hover: 0.53 }); afloat('beach_ball', 19, 50, { y: -0.5, hover: 0.58 });   // (a thing that is not a `float` prop rides the surface as y -0.5 + hover: a small y is a lift over the SEA BED)
+    /* THE PALMS: a bench and chairs in the shade, a guitar, the radio on the cool box */
+    P('iron_garden_bench', 6, 63, { face: 90 }); dec('folding_chair', 7, 66); dec('folding_chair', 6, 67); dec('instrument_guitar_lying', 7, 67); P('beach_cooler', 1, 66); props.push({ key: 'retro_radio', x: mx(1), z: mz(66), y: 0.56, face: 100 }); dec('beach_ball', 2, 61);
+    /* THE LIFEGUARD HUT: chairs by the court (the plan's "chairs"), the ball, a rescue board against the hut, a bin */
+    dec('folding_chair', 13, 71); dec('folding_chair', 15, 71); props.push({ key: 'beach_ball', x: r2(gx(13) + 1.2), z: r2(gz(69.5) + 0.8), face: 0 }); P('city_bin', 17, 64); dec('surfboard_long', 14, 64, { floor: true });
+    /* THE DUNES: a fenced path up to the high bench and its glass; dry scrub on the dunes (the graveyard pack's bushes) */
+    feat({ k: 'rail', x0: gx(11), z0: gz(76), x1: gx(5), z1: gz(76), model: 'ranch' }); feat({ k: 'rail', x0: gx(11), z0: gz(79), x1: gx(5), z1: gz(79), model: 'ranch' });
+    P('park_bench', 3, 77, { face: 90 }); P('brass_telescope', 3, 78, { face: 90 }); dec('fallen_log', 8, 74);
+    [[2, 73], [6, 75], [9, 81], [4, 82], [10, 73], [1, 80], [7, 87], [3, 86], [9, 90], [5, 92], [1, 95], [4, 98], [0, 103], [2, 100]].forEach((q, i) => dec('psxg_dead_bush_' + (1 + i % 2), q[0], q[1]));
+    /* THE SANDBAR: more of the low-water life out on the bar */
+    dec('ocean_starfish', 16, 78); dec('ocean_conch', 21, 78); dec('ocean_seal_resting', 22, 78); dec('ocean_crab', 14, 79); dec('ocean_sand_dollar_3', 18, 77);
+    /* the two no-name plots south: the fishermen's camp in the dunes above the rocks */
+    P('camping_tent', 5, 88, { face: 60 }); dec('meshy_campfire_ring', 7, 88); dec('fallen_log', 7, 89); dec('lobster_traps', 9, 86); dec('lobster_traps', 10, 87); dec('wooden_bucket', 6, 90); P('rowboat', 12, 84, { face: 20 });
+    /* THE SOUTH DUNES: where the sand runs out: a chest half in the sand, a wrecked boat, a bottle at the tide line */
+    P('sea_chest', 1, 101, { face: 140, y: -0.25 }); P('meshy_rowboat', 1, 99, { face: 200 }); dec('psx_glass_bottle_1', 2, 101); dec('fallen_log', 4, 96); dec('ocean_conch', 3, 99);
 },
 };
