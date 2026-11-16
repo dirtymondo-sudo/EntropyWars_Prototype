@@ -10829,6 +10829,22 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
   where a one-square vault meets a pier (the tool's); a real booking desk, bunks and a cage lamp (NEEDS A MODEL); the old room's tape and
   finds were not re-homed (no tape / find guards); the walker was not driven through the doors by hand (offline flood + pictures only).
 
+**THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; seen, 14 + 7 + 3 views; walked offline). STOPPED AGAIN.**
+`docs/plans/WISHLIST_MODELS_ADDED.md` read end to end. All ten of this district's asks are placed, each where its stand-in stood:
+- `chain_bunk` in each of the six cells (the cots are out of the cells; the tank keeps the old room's one cot) · `cage_lamp` is the
+  fitting of all 26 drawn lamps (the boxes are gone; a lit lamp keeps one glowing plate behind its cage, the wash and the pool stay: they
+  are light, not a model; `noLight`, so H still has four real lights) · two `booking_desk` on row 6 in place of the tiled wall row (the
+  counter's phone went to the guard's desk, the cat to the coffee table) · `steel_bench` x 3 for the blue metro seats (tank x 2, the
+  waiting bench) · `key_ring` x 2 for the `key` (corridor floor, the Property Room) · `food_trolley` in the corridor · `height_board` by
+  the wall of faces · `handcuffs` x 3 · `rat` x 5 (scenery, off the walks) · `ceiling_fan` x 2 (the desk, the tank) for the PSX fan.
+- From other districts' lists: `valve_wheel` (fan room), `strobe_lamp` over DRAIN, `wanted_poster` x 3, `dartboard` (lockers),
+  `drinking_fountain` (corridor), `spider` (cell 6's web), `top_hat` + `backpack` (the Property Room).
+- **FACINGS FOUND:** `steel_bench`'s front is its -x (face 90 looks north, 0 west, 270 south); `chain_bunk` and `booking_desk` at
+  face 180 stand right on a north wall / look north over the counter. `cage_lamp` is a small pale disc and does not glow by itself.
+- Numbers at the proof view on one copy of main: before 1,925 calls / 2.56 M triangles / 1.35 FPS; after 1,892 / 2.41 M / 1.27 (the FPS
+  swings more than that between runs; the pass is lighter: 26 cage lamps are 53,000 triangles, three metro benches were 52,000).
+- **NEEDS A MODEL now:** nothing of the first list is left. Still open: see pass 5's OPEN list (people, sound, dust and drips).
+
 **FITS THIS DISTRICT (the whole catalogue + MODEL_LIST sections 6, 7, 10, 12b, 13 read 11-16; all have rows):** CELLS `cot` `steel_toilet`
 `psx_toilet_mp_1` `sink` `psx_old_mattress_mp_1` `psx_pillow_mp_1/2` `psx_bed_1_frame` `wall_chains` `trap_chain_draped/_straight`
 `meal_tray(_empty)` `toilet_paper` `wooden_bucket` `graffiti_wall` `psx_padlock_1..4` `stocks` `wall_padding` · BARS + DOORS `leaf_cell`
@@ -10842,9 +10858,8 @@ hall of 8 x 7 squares a plot with cots, loose bar panels and a table. The distri
 `luggage_cart` `manila_folders` `psx_cash_*` `psx_id_mp_1` `psx_keycard_*` `psx_key_mp_*` `revolver` `pistol` `shotgun` `psx_knife_mp_1`
 · THE TANK `metro_bench` `floor_drain` `drain_grate` `mop_bucket` `mop` `wet_floor_sign` `psx_glass_bottle_1/2` `solo_cup` · THE STACK
 `ind_vent` `meshy_vent` `psx_vent_*` `vent_grille` `air_compressor` `gate_valve` `gauge_board` `utility_box` `tool_chest` `psx_pipe_1*`.
-**NEEDS A MODEL (exists nowhere):** handcuffs, a bunk bed with a chain, a cage lamp, a prison food hatch trolley, a fingerprint / mugshot
-height board on a stand, a rat, a booking desk (the counter is a tiled wall row), a ceiling fan housing for the stack, a drunk-tank bench
-in steel (the blue metro seats stand in), a turnkey's key ring big enough to read on the floor.
+**NEEDS A MODEL: ALL MADE AND PLACED (the model pass, 11-16):** ~~handcuffs, a bunk bed with a chain, a cage lamp, a food trolley, a
+mugshot height board, a rat, a booking desk, a ceiling fan, a steel drunk-tank bench, a turnkey's key ring~~.
 
 **DECISIONS MADE FOR MONDO (overrule any in one line):**
 1. The cells are real brick rooms (a whole square of brick between two), not bar cages in a hall.
