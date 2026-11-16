@@ -14,29 +14,33 @@
      P03-09  islet (no name) (level 0): a small islet to land on
      + 85 plots with no name, open ocean (every plot of this district not listed above; `ctx.plot` / `ctx.Pxy` tell you whose a square is)
 
-   WHAT STANDS HERE TODAY (passes 1 + 2, 2026-11-16, all SEEN on screen): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
+   WHAT STANDS HERE TODAY (FIVE PASSES, 2026-11-16, all SEEN on screen, by day and at 22:30; the thread STOPPED here and waits mondo's look): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
    are the tool's and the game's); the ocean pack's animals on rings and six fish schools.
    THE VOLCANO ISLAND: dark volcanic ground (plan letters `b` = `dirt_2`, `c` = `scorched` at the cone's foot), the cone (the height map's,
    obsidian, 16 m, never climbed, lava in the crater) with TWO LAVA FLOWS down it (`fall` rows, east and south), black smokers off it; the
    Landing (THE GATE, three boats, torches); THE VILLAGE = THE BIG HUT (walk-in, 109-110 x 16-18, door east to the fire; one square off the cone: SEEN, beside it the cone's slope came up through the floor) and THE NORTH HUT
    (walk-in, 114-115 x 12-13, door south), both FURNISHED (pass 2: a lit thatch ceiling, a hearth, sleeping platforms, mats, stores; the big hut's high seat), the plan's three open shelters (the cook's 113,15 / the drum's 115,17 / the
    sleepers' 112,18) round the fire, a drying rack; THE SHRINE at the cone's east foot (an idol, an altar, standing stones, two fire baskets);
-   boulders and dead trees on the scorched ring, 19 palms, ferns.
+   boulders and dead trees on the scorched ring, 19 palms, ferns. Pass 3: THE GARDEN (soil ridges, gourds, a scarecrow, a fence), chickens,
+   stepping stones, the watch fire on the north-east point, a tide line on the north beach, dry scrub, two birds over the crater.
    THE SEA'S PLACES: THE WHALE (P06-02: a humpback and a whale showing their backs, dolphins), THE WATERSPOUT (P11-01: drawn, 63 m, its own
    cloud), THE ROCKS (P04-01: eight drawn sea stacks, seals), THE KRAKEN (P07-03: six arms, a taken boat, sharks), THE PALM ROCKS (P02-00,
    P12-09: `palmisle`), FLOTSAM (P06-07), THE SEA LANE (six unlit buoys from the Harbour's Mouth to the Landing), the two islets (a
-   castaway's camp with a pirate; seals, flamingos, crabs).
+   castaway's camp with a pirate; seals, flamingos, crabs, a starfish). Pass 3: THE SHARKS (P07-09), THE TURTLES (off the south-west
+   islet), THE SEAL ROCK (P13-00, drawn).
 
    MISSING / NOT DONE:
    - THE TRIBE HAS NO PEOPLE (mondo: models come later); no model for a hut, a canoe, a totem pole, a mask, whale bones, gulls, black sand
-     (the sheet is `dirt_2`), smoke for the crater. Night never looked at (pass 4).
+     (the sheet is `dirt_2`), smoke for the crater. Pass 4 (drawn glow only): firelight in the huts' windows, eleven torches, lava pools at the flows' feet, THE ASH PLUME over the crater.
+     The island gets none of the room's ten real lights (they go in row order to the Shore and the Harbour).
    - Nothing under the water shows (the sea is opaque from above). No fight set up.
    - LEARNT: a whale's model hangs about 3 m over its origin (humpback y -4.6, whale y -3.3 = the back shows); a thing in deep water is
      typed `y: -0.5` + `hover` (this file's `seaAt`); a drawn thing in water is an `arch` row with `y: 0` (`works`); the ocean pack's rocks
-     grown big are flat black slabs; `dinosaur_skeleton` is a museum mount; a long `fall` hangs in the air (use short ones); a Meshy prop
+     grown big are flat black slabs; `dinosaur_skeleton` is a museum mount; a long `fall` hangs in the air (short ones typed from the BUILT heights, hqTerrainHeight in node: LAVA_H); a Meshy prop
      is about 10,000 triangles (place few).
-   - FRAME RATE: the cloud's software GPU gives 0.2 fps at the Landing and 1.4-2.0 mid-sea before AND after pass 1 (too low to compare);
-     triangles drawn at the Landing 1.62 M -> 2.5 M, mid-sea 1.61 M -> 2.2 M.
+   - FRAME RATE: the cloud's software GPU gives 0.2 fps at the Landing and 1.2-2.0 mid-sea before AND after all five passes (too low to
+     compare); triangles drawn (shadow pass included, the other Beach districts' work of the same hours in it) at the Landing 1.62 M -> 2.72 M,
+     mid-sea 1.61 M -> 2.40 M. It needs a look on a real machine.
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
      tailor(ctx)  before the heights are made: the plan's squares. Turn each plan building ('B') you build back into its ground with
                   ctx.setRect(x0, y0, x1, y1, ch) / ctx.cell[y][x] = ch (the tool refuses to bake while a 'B' is left that nobody builds).
@@ -58,7 +62,7 @@
 const B_TRIBE = [[113, 15], [115, 17], [112, 18]];   // the plan's building squares: the tribe's three shelters, one square each
 const ISLE = [96, 0, 121, 24];                       // the Volcano Island's box of squares
 const G1 = 1.2;                                      // the village's flat sand (a level 1 plot's cap, bake-beach.js CAP[1])
-const THATCH = 0xd2b060, POLE = 0x6a4a30, WATTLE = 0xcdb88a, DARK = 0x1a120c, BONE = 0xe8e0cc, OCHRE = 0xa8452a;
+const FIRE = 0xffa040, THATCH = 0xd2b060, POLE = 0x6a4a30, WATTLE = 0xcdb88a, DARK = 0x1a120c, BONE = 0xe8e0cc, OCHRE = 0xa8452a;
 /* a thing in open water (the Ocean's own squares only): `y` -0.5 + `hover` = its foot's height over the sea (three-renderer.js THE TIER HEIGHT) */
 const seaAt = (ctx, key, sx, sy, up, o) => { const p = ctx.Pxy(sx, sy); if (!p || p.d !== 'O') ctx.errs.push(key + ' is outside the Ocean at ' + sx + ',' + sy); ctx.spot(sx, sy, key, 'sea', true);
     ctx.props.push(Object.assign({ key, x: ctx.mx(sx), z: ctx.mz(sy), y: -0.5, hover: ctx.r2(0.5 + up) }, o || {})); };
@@ -80,12 +84,20 @@ build(ctx) {
     /* ── THE VILLAGE (pass 1, 2026-11-16; seen before: three bare roofs on pale sand). The tribe's people come later (mondo: "eventually will
        make models for"), so this is their PLACE: THE BIG HUT (a walk-in long hut, its door to the fire), THE NORTH HUT (a walk-in), the plan's
        three open shelters, the gate at the Landing. Wattle = the wood sheet left its own brown (a light tint), thatch = the shingle sheet in straw. ── */
+    /* ── PASS 4, THE ATMOSPHERE (2026-11-16). The room gives TEN real lights for fifty lit props (three-renderer.js HQ_PROP_LIGHT_MAX, in row
+       order: the Shore's and the Harbour's come first), so the island's torches and fire baskets mostly light nothing. What a district can
+       give is DRAWN glow, which reads after dark (seen at 22:30): firelight in the huts' window holes, flames on bamboo, lava lying where
+       the flows end, and by day a plume of ash standing over the crater. ── */
+    const torch = (a, x, z, y0) => { a.cyl(x, y0 == null ? -0.8 : y0, z, 0.045, 2.7, WD2, 0xd8b070, { seg: 6, cap: false }); a.cyl(x, (y0 == null ? -0.8 : y0) + 2.66, z, 0.11, 0.2, null, 0x3a2a1c, { r2: 0.08, seg: 8 }); a.cyl(x, (y0 == null ? -0.8 : y0) + 2.86, z, 0.085, 0.28, null, 0xff5a00, { r2: 0.01, seg: 6, glow: 0.7 }); };
     const hut = (a, w, h, d, door, roofForm, rh) => {
         a.shell(w, h, d, WD2, WATTLE, door, [1.75, 1.75], 1.5); a.frame(door, d, WD, POLE);
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * (w / 2 + 0.08), 0, sz * (d / 2 + 0.08), 0.16, h + 0.2, WD2, POLE, { seg: 8, uv: 1 });          // corner posts
         a.box(0, h * 0.5, d / 2 + 0.07, w + 0.2, 0.12, 0.08, WD2, POLE); a.box(0, h * 0.5, -d / 2 - 0.07, w + 0.2, 0.12, 0.08, WD2, POLE);                                  // a lashing rail front and back
         for (const sx of [-1, 1]) a.box(sx * (w / 2 + 0.07), h * 0.5, 0, 0.08, 0.12, d + 0.2, WD2, POLE);
+        for (const sz of [-1, 1]) { a.box(0, h - 0.62, sz * (d / 2 + 0.06), w + 0.1, 0.34, 0.05, null, OCHRE); a.P.push({ s: 'box', p: [r2(-w / 2 + 0.5), r2(h - 0.52), r2(sz * (d / 2 + 0.09))], size: [0.14, 0.14, 0.03], tint: BONE, n: Math.max(2, Math.floor((w - 0.6) / 0.7)), step: [0.7, 0, 0] }); }
+        for (const sx of [-1, 1]) { a.box(sx * (w / 2 + 0.06), h - 0.62, 0, 0.05, 0.34, d + 0.1, null, OCHRE); a.P.push({ s: 'box', p: [r2(sx * (w / 2 + 0.09)), r2(h - 0.52), r2(-d / 2 + 0.5)], size: [0.03, 0.14, 0.14], tint: BONE, n: Math.max(2, Math.floor((d - 0.6) / 0.7)), step: [0, 0, 0.7] }); }   // pass 5: a painted band with bone-white studs under the eaves
         a.roof(roofForm, 0, h, 0, w + 2.2, rh, d + 2.2, SHG, THATCH, { gain: 1.7, uv: [1.2, 1.2] });
+        a.box(0, h - 0.16, 0, w + 2.3, 0.16, d + 2.3, SHG, 0xb89448, { gain: 1.6, uv: [0.6, 0.6], top: false, roof: true });                                         // the thatch's thick edge
         a.box(0, h + rh - 0.12, 0, roofForm === 'pyramid' ? 0.5 : w * 0.5, 0.22, 0.5, SHG, 0x8a6a34, { roof: true });                                                 // the ridge cap
         a.box(door.lx, 0, d / 2 + 0.9, door.cw + 1.6, 0.14, 1.6, FLR, 0xb09870); };                                                                                        // a plank step at the door
     /* ── PASS 2, THE HUTS' INSIDES (2026-11-16; seen before: a brown box under a black ceiling). The Shore's way (S.js `inside`), in the
@@ -125,9 +137,10 @@ build(ctx) {
         for (const s of [-1, 1]) { const x = door.lx + s * (door.cw / 2 + 0.75); a.cyl(x, 0, d / 2 + 1.5, 0.2, 3.3, WD2, OCHRE, { seg: 8, uv: 1 }); a.cyl(x, 3.3, d / 2 + 1.5, 0.3, 0.16, WD2, POLE, { seg: 8 });
             for (const y of [0.9, 1.7, 2.5]) a.cyl(x, y, d / 2 + 1.5, 0.23, 0.14, null, BONE, { seg: 8 }); }                                                           // two painted door posts, banded in bone white
         a.box(door.lx, 3.05, d / 2 + 1.5, door.cw + 2.4, 0.2, 0.26, WD2, POLE);
-        for (const x of [-3.4, 3.2]) { a.P.push({ s: 'quad', p: [x, 1.5, r2(d / 2 + 0.065)], size: [0.9, 0.7], key: null, tint: DARK, kind: 'wall' }); for (const k of [-0.22, 0.22]) a.box(x + k, 1.5, d / 2 + 0.09, 0.06, 0.7, 0.05, WD2, POLE); } });   // two barred window holes
+        for (const x of [-3.4, 3.2]) { a.P.push({ s: 'quad', p: [x, 1.5, r2(d / 2 + 0.065)], size: [0.9, 0.7], key: null, tint: FIRE, glow: 0.75, kind: 'wall' }); for (const k of [-0.22, 0.22]) a.box(x + k, 1.5, d / 2 + 0.09, 0.06, 0.7, 0.05, WD2, POLE); } });   // two barred window holes
     const NH = building('northhut', [114, 12, 116, 14, 'S'], 2.9, { leaf: 'leaf_wooden', keyIn: WD2, floorIn: FLR }, (a, w, d, door) => { hut(a, w, 2.9, d, door, 'pyramid', 3.4); inside(a, w, d, CEIL_N, door); northRoom(a, w, d);
-        a.P.push({ s: 'quad', p: [2.0, 1.4, r2(d / 2 + 0.065)], size: [0.8, 0.6], key: null, tint: DARK, kind: 'wall' }); for (const k of [-0.2, 0.2]) a.box(2.0 + k, 1.4, d / 2 + 0.09, 0.06, 0.6, 0.05, WD2, POLE); });
+        for (const sgn of [-1, 1]) { const x = door.lx + sgn * (door.cw / 2 + 0.6); a.cyl(x, 0, d / 2 + 1.3, 0.15, 2.6, WD2, OCHRE, { seg: 8, uv: 1 }); for (const y of [0.8, 1.6]) a.cyl(x, y, d / 2 + 1.3, 0.18, 0.12, null, BONE, { seg: 8 }); } a.box(door.lx, 2.5, d / 2 + 1.3, door.cw + 1.9, 0.16, 0.22, WD2, POLE);
+        a.P.push({ s: 'quad', p: [2.0, 1.4, r2(d / 2 + 0.065)], size: [0.8, 0.6], key: null, tint: FIRE, glow: 0.75, kind: 'wall' }); for (const k of [-0.2, 0.2]) a.box(2.0 + k, 1.4, d / 2 + 0.09, 0.06, 0.6, 0.05, WD2, POLE); });
     /* the huts' things (props): few and light (a Meshy prop is 10,000 triangles; the pack ones are a few hundred) */
     In(BIG, 'campfire', 0.4, 0.2, 0, 0, { glow: 0.7, h: 0.5 }); In(BIG, 'skull', 0.4, -BIG.fd / 2 + 0.52, 0, 2.3);
     In(BIG, 'spear', -0.75, -BIG.fd / 2 + 0.6, 0); In(BIG, 'spear', 1.55, -BIG.fd / 2 + 0.6, 0);
@@ -143,7 +156,16 @@ build(ctx) {
         a.cyl(0, 2.3, 0, 2.8, 2.0, SHG, THATCH, { r2: 0, seg: 10, roof: true, gain: 1.7, uv: [1.2, 1.2] }); a.cyl(0, 2.3, 0, 2.8, 0.02, WD2, 0x4a3626, { seg: 10, roof: true }); a.box(0, 0, 0, 2.7, 0.1, 2.7, FLR, 0xb09870); }));
     /* THE GATE at the Landing (the way up from the boats): two tall posts, a lintel, bone-white bands; bone-white bands */
     look('gate', gx(108), gz(20), 0, a => { for (const s of [-1, 1]) { a.cyl(s * 2.4, -0.6, 0, 0.24, 4.9, WD2, OCHRE, { seg: 8, uv: 1 }); for (const y of [1.2, 2.2, 3.2]) a.cyl(s * 2.4, y, 0, 0.27, 0.16, null, BONE, { seg: 8 }); a.cyl(s * 2.4, 4.3, 0, 0.1, 1.1, WD2, POLE, { r2: 0.02, seg: 6 }); }
-        a.box(0, 3.7, 0, 6.2, 0.26, 0.3, WD2, POLE); a.box(0, 3.3, 0, 5.2, 0.14, 0.2, WD2, POLE); });
+        a.box(0, 3.7, 0, 6.2, 0.26, 0.3, WD2, POLE); a.box(0, 3.3, 0, 5.2, 0.14, 0.2, WD2, POLE); for (const s of [-1, 1]) torch(a, s * 4.4, 1.2, -0.9); });
+    /* the village's and the shrine's torches (one row, the fire at its middle; a pole starts under the sand so it stands on any of it) */
+    look('torches', mx(114), mz(17), 0, a => { [[-5.3, -1.8], [-5.3, 3.4], [4.6, -4.4], [5.4, 3.6], [-1.7, 8.6], [2.4, -9.2], [-3.4, -21.5], [-3.4, -27.5], [6.4, -21.5], [6.4, -27.5], [1.6, -31.5]].forEach(q => torch(a, q[0], q[1])); });
+    /* lava lying where the two flows end (a glowing sheet a hand over the scorched ground) and THE ASH PLUME over the crater (drawn puffs,
+       each a belly and a head, climbing and leaning east with the wind; it is seen from the Harbour) */
+    look('lavafoot_e', r2(gx(112) + 0.9), mz(10), 0, a => { a.cyl(0, -0.62, 0, 2.6, 0.6, 'lava', 0xffffff, { r2: 2.2, seg: 9, glow: 0.8 }); a.cyl(1.9, -0.66, 1.2, 1.3, 0.6, 'lava', 0xffffff, { r2: 1.0, seg: 7, glow: 0.8 }); });
+    look('lavafoot_s', mx(105), r2(gz(16) + 0.9), 0, a => { a.cyl(0, -0.62, 0, 2.4, 0.6, 'lava', 0xffffff, { r2: 2.0, seg: 9, glow: 0.8 }); a.cyl(-1.5, -0.66, 1.4, 1.2, 0.6, 'lava', 0xffffff, { r2: 0.9, seg: 7, glow: 0.8 }); });
+    works(ctx, 'plume', mx(105.5), mz(9.5), a => { [[0, 17, 0, 3.2, 0x4c4a4c], [1.5, 21, -0.5, 4.4, 0x5a585a], [4, 26, -1, 5.8, 0x6a686a], [8, 32, -1.5, 7.4, 0x7a787c], [14, 38, -2.5, 9.2, 0x8a888e], [22, 44, -4, 11.5, 0x9a989e], [33, 49, -6, 13.5, 0xaaa8ae]].forEach(q => {
+        a.cyl(q[0], r2(q[1] - q[3] * 0.8), q[2], 0.05, r2(q[3] * 0.8), null, q[4] - 0x101010, { r2: q[3], seg: 12, cap: false, ds: true, glow: 0.4 });   /* a belly closed to a point (SEEN from under it: an open belly is a ring round a hole) */ a.P.push({ s: 'dome', p: [q[0], q[1], q[2]], r: q[3], h: r2(q[3] * 0.8), seg: 12, rings: 4, tint: q[4], glow: 0.3 }); });
+        a.cyl(0, 15.6, 0, 3.0, 2.2, null, 0xff5a10, { r2: 2.2, seg: 10, cap: false, ds: true, glow: 0.9 }); });   // the plume's foot glows with the crater
     /* a drying rack by the cook's shelter and a boat rest on the Landing: poles lashed in the village's own wood */
     look('rack', mx(116), gz(16) + 0.4, 0, a => { for (const s of [-1, 1]) { a.cyl(s * 1.3, 0, 0, 0.07, 1.9, WD2, POLE, { seg: 6 }); } a.box(0, 1.8, 0, 3.0, 0.08, 0.08, WD2, POLE); a.box(0, 1.2, 0, 3.0, 0.06, 0.06, WD2, POLE); });
 },
@@ -179,8 +201,12 @@ place(ctx) {
     /* LAVA DOWN THE CONE (data.js THE WATERFALLS, the liquid = lava): two flows over the crater's lip, east to the shrine's side and south to
        the Landing's. SEEN: one long fall is a ballistic arc that hangs in the air off the cone; a flow = four short falls, one a square, each
        from the cone's own height on one square line to the next (the cone falls 4.2 m a square), so it runs down the rock as cascades */
-    for (let k = 0; k < 8; k++) { const y0 = r2(15.7 - (k ? 1.6 : 0) - k * 1.72), y1 = r2(14.1 - (k + 1) * 1.72), o = { w: r2(3.0 - k * 0.14), y0, y1, key: 'lava', out: 1.75, foam: false };   // (SEEN: whole-square falls still arched 2 m off the rock from the side; half-square ones typed at the cone's own height still hung 1 m off it, so they are typed 1 m into the rock)
-        feat(Object.assign({ k: 'fall', x: r2(gx(108) + 0.2 + k * 1.75), z: mz(10), face: 90 }, o)); feat(Object.assign({ k: 'fall', x: mx(105), z: r2(gz(12) + 0.2 + k * 1.75), face: 180 }, o)); }
+    /* (SEEN: whole-square falls arched 2 m off the rock; falls typed from the plan's 4.2 m a square still hung off it, because the cone AS BUILT
+       falls only 0.7 m a metre from the square line west / north of the crater's last lava square. LAVA_H = the built heights every 1.75 m along
+       both flows, read with hqTerrainHeight in node; each fall runs from one to the next, a hand over the rock) */
+    const LAVA_H = [15.3, 14.0, 12.8, 11.6, 10.4, 9.3, 8.3, 6.4, 4.6, 3.6];
+    for (let k = 0; k < 9; k++) { const o = { w: r2(3.0 - k * 0.12), y0: r2(LAVA_H[k] + 0.3), y1: r2(LAVA_H[k + 1] + 0.12), key: 'lava', out: 1.75, foam: false };
+        feat(Object.assign({ k: 'fall', x: r2(gx(107) + k * 1.75), z: mz(10), face: 90 }, o)); feat(Object.assign({ k: 'fall', x: mx(105), z: r2(gz(11) + k * 1.75), face: 180 }, o)); }
 
     /* ── PASS 1, THE SEA: things to sail to (every one on the Ocean's own squares; the sea between them stays open) ── */
     /* THE WHALE (plot P06-02, the plan's "scenery: the whale"): a humpback and a whale showing their backs, a pod of dolphins round them */
@@ -201,7 +227,7 @@ place(ctx) {
            rocks grown to this size are flat black slabs; straight prisms read as a stepped cake; a dark tint on `rocks_5` is black here) */
         const stack = (x, z, r, h) => { const tiers = Math.max(2, Math.round(h / 2.2)); let y = -3.6, rr = r, cx = x, cz = z;
             for (let t = 0; t < tiers; t++) { const th = t ? (h / tiers) * (0.8 + rn() * 0.4) : 3.6 + h / tiers, r1 = rr * (t === tiers - 1 ? 0.5 : 0.8 + rn() * 0.1);
-                a.cyl(r2(cx), r2(y), r2(cz), r2(rr), r2(th), 'rocks_5', t % 2 ? 0xe4e4ea : 0xcfcfd8, { r2: r2(r1), seg: 7, a0: Math.round(rn() * 50), uv: [3.5, 3.5] }); y += th; rr = r1 * 1.04; cx += (rn() - 0.5) * r * 0.1; cz += (rn() - 0.5) * r * 0.1; } };
+                a.cyl(r2(cx), r2(y), r2(cz), r2(rr), r2(th), 'rocks_5', t % 2 ? 0xe4e4ea : 0xcfcfd8, { r2: r2(r1), seg: 7, a0: Math.round(rn() * 50), uv: [3.5, 3.5] }); y += th - 0.3; rr = r1 * 1.04;   /* (each tier starts 0.3 m inside the one under it: SEEN, sky showed through the joins) */ cx += (rn() - 0.5) * r * 0.1; cz += (rn() - 0.5) * r * 0.1; } };
         [[-7, -3, 3.4, 9], [0, 0, 4.6, 14], [4, -7, 2.6, 6], [-3, 7, 3.0, 7.5], [8, 4, 3.6, 10.5], [-11, 4, 2.2, 4], [12, -3, 2.4, 5], [3, 9, 1.8, 2.2]].forEach(q => stack(q[0], q[1], q[2], q[3])); });
     [[52, 17], [54, 18], [55, 16], [53, 20], [56, 19]].forEach(q => seaAt(ctx, 'ocean_rock_7', q[0], q[1], -1.6, { h: 1.2 }));   // their blockers: a small rock inside each stack's foot (the skiff and the swimmer go round)
     seaAt(ctx, 'ocean_seal_resting', 54, 20, 0.0, { swim: false }); swimmer('ocean_seal', 50, 17, { swim: { r: 4, v: 1.4, bob: 0.2 } }); swimmer('ocean_seal', 57, 21, { swim: { r: 5, v: 1.2, bob: 0.2 } });
@@ -219,6 +245,7 @@ place(ctx) {
     /* the two islets: a castaway's camp (north-east), a haul-out of seals, crabs and flamingos (south-west) */
     palm(158, 20); palm(162, 19); dec('meshy_campfire_ring', 160, 21); dec('fallen_log', 161, 20); dec('psx_glass_bottle_1', 159, 21); dec('ship_anchor', 162, 21); dec('rowboat', 158, 21, { face: 120 }); dec('ocean_crab', 160, 19); dec('ocean_crab', 162, 20);
     native('pirate', 160, 19, 180);
+    look('camp_ne', mx(160), mz(20), 0, a => { a.cyl(0, 0, 3.5, 0.34, 0.1, null, 0xff6a1a, { seg: 8, glow: 0.9 }); const y0 = -0.8; a.cyl(-3.2, y0, 0.6, 0.045, 2.7, WD2, 0xd8b070, { seg: 6, cap: false }); a.cyl(-3.2, y0 + 2.66, 0.6, 0.11, 0.2, null, 0x3a2a1c, { r2: 0.08, seg: 8 }); a.cyl(-3.2, y0 + 2.86, 0.6, 0.1, 0.36, null, 0xff7a10, { r2: 0.01, seg: 6, glow: 0.9 }); });   // pass 4: embers in the castaway's fire ring, a torch
     palm(38, 112); palm(42, 111); dec('ocean_seal_resting', 39, 111); dec('ocean_seal_resting', 41, 113); dec('ocean_seal_resting', 38, 113); dec('flamingo', 42, 112); dec('flamingo', 43, 112); dec('psxg_rock_2', 37, 112); dec('psxg_rock_3', 40, 110); dec('ocean_crab', 40, 113); dec('ocean_sand_dollar', 42, 113);
 },
 
@@ -228,5 +255,32 @@ dress(ctx) {
     [[124, 10], [126, 14], [122, 18], [127, 8]].forEach(q => under('sea_vent', q[0], q[1], -3.5));
     [[72, 16, 'ocean_dolphin'], [74, 18, 'ocean_dolphin'], [76, 15, 'ocean_dolphin'], [110, 30, 'ocean_stingray'], [88, 96, 'ocean_tuna'], [140, 24, 'ocean_manta'], [46, 96, 'ocean_seal'], [164, 96, 'ocean_turtle'], [20, 108, 'ocean_stingray']]
         .forEach(q => swimmer(q[2], q[0], q[1], { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
+
+    /* ── PASS 3, THE DRESSING (2026-11-16): the small things that say somebody lives here, in pack models (a few hundred triangles each;
+       a Meshy prop is 10,000) and drawn pieces. ── */
+    /* THE GARDEN west of the big hut: ridges of turned soil, gourds, a scarecrow, a timber fence on two sides */
+    look('garden', gx(105.5), gz(19), 0, a => { for (let i = 0; i < 9; i++) a.box(-4.4 + i * 1.1, 0, 0, 0.5, 0.16, 6.0, 'dirt_4', 0xc8b49a, { uv: [1.75, 1.75] }); });   // nine ridges of turned soil (SEEN: `hw_crop` draws as pale paper tiles here)
+    dec('hw_pumpkin', 104, 18); dec('hw_pumpkin_2', 105, 19); dec('hw_pumpkin_3', 106, 18); dec('hw_pumpkin', 105, 18); P('hw_scarecrow', 104, 17, { face: 160 }); dec('wooden_bucket', 106, 19);
+    feat({ k: 'rail', x0: gx(104), z0: gz(18), x1: gx(107), z1: gz(18), model: 'ranch' }); feat({ k: 'rail', x0: gx(104), z0: gz(18), x1: gx(104), z1: gz(20), model: 'ranch' });
+    /* chickens in the village, stepping stones from the gate to the fire and on to the shrine */
+    dec('chicken', 113, 17); dec('chicken', 112, 19); dec('chicken', 116, 15); dec('chicken', 111, 15);
+    [[111.5, 19.2, 2.6, 5], [113, 16.2, 2.4, 4], [113.6, 13.4, 2.2, 4]].forEach((q, i) => feat({ k: 'scatter', key: i % 2 ? 'psxg_stepping_stone_2' : 'psxg_stepping_stone_1', n: q[3], x: mx(q[0]), z: mz(q[1]), r: q[2], seed: 60 + i }));
+    /* the watch fire on the north-east point, the tide line on the north beach, dry scrub on the scorched ring */
+    props.push({ key: 'campfire', x: mx(116), z: mz(7), glow: 0.7 }); taken.add('116:7'); dec('fallen_log', 115, 7); dec('psxg_rock_2', 116, 8); dec('spear', 115, 8);
+    dec('ocean_conch', 105, 3); dec('ocean_starfish', 107, 3); dec('ocean_sand_dollar', 110, 3); dec('ocean_crab', 109, 3); dec('ocean_seal_resting', 111, 3); dec('psx_fish_skeleton_mp_1', 106, 3); dec('ocean_crab', 117, 13);
+    [[98, 9], [98, 13], [102, 16], [106, 16], [112, 8], [113, 5], [110, 15]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1]));
+    /* birds: two over the crater, one over the Rocks (the game's `eagle`: there is no gull) */
+    props.push({ key: 'eagle', x: mx(105), z: mz(10), hover: 7, swim: { r: 17, v: 5, bob: 1 } }, { key: 'eagle', x: mx(106), z: mz(9), hover: 12, swim: { r: 24, v: 4, bob: 1.5 } }, { key: 'eagle', x: mx(54), z: mz(18), hover: 24, swim: { r: 14, v: 5, bob: 1 } });
+    /* THE SEA, three more places: THE SHARKS (P07-09: a feeding ground, fins round the fish), THE TURTLES (off the south-west islet),
+       THE SEAL ROCK (P13-00: a low shelf of rock, drawn, seals on it) */
+    [[90, 113], [93, 111], [88, 110]].forEach(q => feat({ k: 'scatter', key: 'fish_school', n: 3, x: mx(q[0]), z: mz(q[1]), r: 9, seed: q[0], sea: true }));
+    [[89, 112, 6], [92, 113, 8], [91, 110, 5]].forEach(q => swimmer('ocean_shark', q[0], q[1], { swim: { r: q[2], v: 1.8, bob: 0.2 } })); swimmer('ocean_hammerhead', 94, 112, { y: -0.7, hover: 0.4, swim: { r: 7, v: 1.4, bob: 0.2 } });
+    seaAt(ctx, 'rowboat', 91, 112, -0.25, { face: 200 }); seaAt(ctx, 'beach_life_ring', 92, 111, 0.0);
+    [[46, 110], [48, 113], [45, 115], [50, 111], [47, 117]].forEach(q => swimmer('ocean_turtle', q[0], q[1], { swim: { r: 3 + (q[0] % 3), v: 0.7, bob: 0.2 } }));
+    works(ctx, 'sealrock', mx(162), mz(6), a => { a.cyl(0, -3.6, 0, 7.5, 4.1, 'rocks_5', 0xdcdce4, { r2: 6.2, seg: 7, uv: [3.5, 3.5] }); a.cyl(1.5, 0.5, -0.8, 4.0, 0.9, 'rocks_5', 0xcfcfd8, { r2: 2.6, seg: 7, a0: 20, uv: [3.5, 3.5] }); a.cyl(-4, -3.6, 5, 2.6, 4.6, 'rocks_5', 0xe4e4ea, { r2: 1.4, seg: 6, a0: 10, uv: [3.5, 3.5] }); });
+    [[161, 6, 0.55, 40], [163, 7, 0.55, 200], [162, 5, 1.45, 120], [160, 5, 0.55, 300]].forEach(q => seaAt(ctx, 'ocean_seal_resting', q[0], q[1], q[2], { face: q[3], swim: false }));
+    seaAt(ctx, 'ocean_rock_7', 162, 6, -1.6, { h: 1.2 }); swimmer('ocean_seal', 165, 8, { swim: { r: 4, v: 1.3, bob: 0.2 } }); swimmer('ocean_seal', 159, 3, { swim: { r: 5, v: 1.1, bob: 0.2 } });
+    /* one of the sea's own people on the south-west islet (the Beach's list; no line) */
+    native('starfish', 41, 111, 135);
 },
 };

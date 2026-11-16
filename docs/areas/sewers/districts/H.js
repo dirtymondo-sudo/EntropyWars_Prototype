@@ -15,12 +15,14 @@
      THE CATWALK: a steel gangway 2.2 m up over column c 7, from the stair in the well to the cells' fronts ("whoever watches the cells").
    The vaults are the tool's: with the cells' brick the plots cut into north-south bays, a wide one over each pair of columns, a narrow one
    over c 4, 7, 16, 19; the three piers stand under narrow bays. Thin walls here run floor to roof slab (5.3 m), so they meet any vault.
-   PASSES: 1 the structure, 2 the interiors (every room furnished), 3 the dressing (`walls()`: dado, floor lines, words, conduit). The notes hold what each placed and the lists.
+   PASSES: 1 the structure, 2 the interiors (every room furnished), 3 the dressing (`walls()`: dado, floor lines, words, conduit),
+   4 the light and the air (`lights()`: drawn lamps, no new real light), 5 polish (the frame rate: heavy small models out, fewer materials).
+   FIVE PASSES DONE: stopped until mondo has looked (docs/plans/DISTRICT_THREAD_BRIEF.md). The notes hold what each placed and the lists.
    ctx: see W.js. Thin walls, bars, doors, the deck and the signs are this file's own kit (`mk`): walls on square LINES, as the Desert's insides. */
 'use strict';
 const C = 3.5, T = 0.3, DW = 1.75, DH = 2.2, HB = 3.0, TOP = 5.32, CAT = 2.2;
 const BRICK = 'bricks_2', PAINTED = 'urban:BrickPainted1a', STEEL = 'urban:MetalCorrugatedPainted2a', GRILL = 'urban:MetalSubwayGrill1a', TILE = 'urban:TileSubway2c';
-const IRON = 0x25282c, SPAN = 0x6a6458, WALLT = 0x8f9a8c;
+const IRON = 0x25282c, RAILC = 0x3c4046, SPAN = 0x6a6458, WALLT = 0x8f9a8c;
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
 const CELLS = [2, 5, 8, 14, 17, 20];                 // each cell's west column; it is c, c + 1 by r 2, 3; its door is in the east square's front
 let K = null;
@@ -63,8 +65,8 @@ function mk(ctx) {
     k.keep = (c, r) => { const l = loc(c, r), s = ctx.sq(l[0], l[1], l[2]); ctx.taken.add(s[0] + ':' + s[1]); };
     /* a rail on the catwalk's edge at height y: posts, two bars, and a low wall nobody up there walks through (the walker below passes under) */
     k.guard = (axis, at, a, b, y) => { const q = along(axis, at, (a + b) / 2), L = (b - a) * C;
-        [0.55, 1.05].forEach(yy => { const s = sz(axis, L, 0.05, 0.05); k.box(q[0], y + yy, q[1], s[0], s[1], s[2], null, 0x3c4046); });
-        for (let s = a; s <= b + 0.001; s += 0.5) { const p = along(axis, at, s); k.box(p[0], y, p[1], 0.06, 1.08, 0.06, null, 0x3c4046); }
+        [0.55, 1.05].forEach(yy => { const s = sz(axis, L, 0.05, 0.05); k.box(q[0], y + yy, q[1], s[0], s[1], s[2], null, RAILC); });
+        for (let s = a; s <= b + 0.001; s += 0.5) { const p = along(axis, at, s); k.box(p[0], y, p[1], 0.06, 1.08, 0.06, null, RAILC); }
         walk(axis, at, a, b, 1.1, y); };
     /* words on a wall: a plate facing `ry` (0 = south, 180 = north, 90 = west, 270 = east) */
     k.sign = (words, x, y, z, w, h, ry, fg, bg) => parts.push({ s: 'quad', p: [r2(x), r2(y), r2(z)], size: [w, h], ry: ry || 0, key: 'txt:' + words + '|' + (fg || '#e8e4d0') + '|' + (bg || '') + '|' + r2(w / h) + '||stencil', uv: 'fit', kind: bg ? 'wall' : 'over' });
@@ -102,17 +104,48 @@ function walls(ctx, k) {
     flat(X(18.5), Z(7) - 0.95, 5 * C - 0.4, 0.12, null, YEL, 0.035);                                        // before the tank
     flat(X(7.5), Z(10.5), 1.9, 2.6, 'urban:SignHazard1a', 0xb8b0a0, 0.035, { uv: 1.75 });                       // the stair's landing
     /* THE WORDS */
-    k.sign('DRAIN', X(22) - T / 2 - 0.02, 2.5, Z(6.5), 1.3, 0.38, 90, '#1c1c1c', '#c9c2a0');                 // over the cell door, read from the corridor
+    k.sign('DRAIN', X(22) - T / 2 - 0.02, 3.3, Z(6.5), 1.5, 0.44, 90, '#1c1c1c', '#c9c2a0');                 // over the cell door, read from the corridor
     k.sign('CELLS 4 5 6', X(12) - T / 2 - 0.02, 3.3, Z(6.5), 2.1, 0.36, 90, '#d8d2b8'); k.sign('CELLS 1 2 3', X(12) + T / 2 + 0.02, 3.3, Z(6.5), 2.1, 0.36, 270, '#d8d2b8');
     k.sign('STAND BEHIND THE LINE', X(6), 3.35, Z(4) + T / 2 + 0.02, 3.2, 0.3, 0, '#c9a227'); k.sign('STAND BEHIND THE LINE', X(18), 3.35, Z(4) + T / 2 + 0.02, 3.2, 0.3, 0, '#c9a227');
     k.sign('STAFF ONLY', X(7.75) + 0.04, 0.5, Z(9.75), 1.3, 0.3, 270, '#1c1c1c', '#c9a227');                      // on the stair's flank, read from the lockers
     k.sign('NO VISITORS PAST THIS GATE', X(12) - T / 2 - 0.02, 3.02, Z(6.5), 2.6, 0.22, 90, '#c9a227');
     /* THE CONDUIT: a steel conduit over the cells' bars, a drop to each door's lamp box, a junction box a cell */
-    [[2, 10], [14, 22]].forEach(q => k.box((X(q[0]) + X(q[1])) / 2, 3.72, Z(4) + T / 2 + 0.05, X(q[1]) - X(q[0]), 0.06, 0.06, null, 0x3c4046));
-    CELLS.forEach(c => { k.box(X(c + 0.4), 3.6, Z(4) + T / 2 + 0.07, 0.3, 0.3, 0.12, null, 0x3c4046); k.box(X(c + 1.5), 3.05, Z(4) + T / 2 + 0.05, 0.05, 0.7, 0.05, null, 0x3c4046); });
+    [[2, 10], [14, 22]].forEach(q => k.box((X(q[0]) + X(q[1])) / 2, 3.72, Z(4) + T / 2 + 0.05, X(q[1]) - X(q[0]), 0.06, 0.06, null, RAILC));
+    CELLS.forEach(c => { k.box(X(c + 0.4), 3.6, Z(4) + T / 2 + 0.07, 0.3, 0.3, 0.12, null, RAILC); k.box(X(c + 1.5), 3.05, Z(4) + T / 2 + 0.05, 0.05, 0.7, 0.05, null, RAILC); });
     /* THE STACK'S DUCTWORK: a square duct from the drum over the fan room's door, hangers */
     { const sx = X(14.5), sz = Z(8.5); k.box(sx, 2.75, sz + 1.2, 0.8, 0.6, 1.5, STEEL, 0x70685c, { under: true }); [0.75, 1.6].forEach(d => k.box(sx, 3.35, sz + d, 0.05, TOP - 3.35, 0.05, null, IRON)); }
     return n;
+}
+
+/* PASS 4, THE LIGHT (drawn; the room has ten real lights for all its districts and H keeps its four bulbs). A BULKHEAD LAMP on a wall:
+   (x, z) = the spot on the wall's face, dir = the way it looks ('n' 's' 'w' 'e'), y = its foot over the floor. It is a lit lens in an iron
+   cage, a wash of lit brick on its wall and a pool of lit floor before it (district W's own recipe, written for walls on lines).
+   o: dead (no light), y0 / y1 (the wash stays between them: a spandrel over bars starts 3 m up), pool: false. */
+const COLD = 0xbfe8b0, SODIUM = 0xffa244, REDL = 0xff3a22, FLOOR = 'urban:ConcreteStriped1e';
+function lights(ctx, k) {
+    const X = k.X, Z = k.Z;
+    const lamp = (x, z, dir, y, color, o) => { o = o || {}; const v = DIR[dir];
+        const put = (out, w, h, t, key, tint, x2, yy) => k.box(x + v[0] * out, yy, z + v[1] * out, v[0] ? t : w, h, v[0] ? w : t, key, tint, x2);
+        put(0.05, 0.5, 0.36, 0.1, null, IRON, null, y - 0.03);
+        if (o.dead) { put(0.13, 0.38, 0.26, 0.12, null, IRON, null, y); return; }
+        put(0.13, 0.44, 0.3, 0.14, null, color, { glow: 1 }, y); put(0.215, 0.5, 0.03, 0.03, null, IRON, null, y + 0.08); put(0.215, 0.5, 0.03, 0.03, null, IRON, null, y + 0.2);
+        /* the lit brick and the lit floor wear the lamp's colour mixed half into white, in three steps (the pure colour read as coloured mats; the steps share their glow so wall and floor are six materials a colour) */
+        const mix = (c, t) => { const ch = sh => Math.round(((c >> sh) & 255) * (1 - t) + 255 * t); return (ch(16) << 16) | (ch(8) << 8) | ch(0); }, cw = mix(color, 0.4), cf = mix(color, 0.6);
+        const lo = o.y0 != null ? o.y0 : 0.3, hi = o.y1 != null ? o.y1 : TOP - 0.1;
+        if (o.wash !== false) [[1.0, 1.1, 0.24, y - 0.4], [1.9, 2.0, 0.14, y - 0.85], [3.0, 3.0, 0.06, y - 1.35]].forEach((w, i) => { const y0 = Math.max(lo, w[3]), h = Math.min(hi, w[3] + w[1]) - y0; if (h > 0.1) put(0.03 + (2 - i) * 0.01, w[0], h, 0.02, BRICK, cw, { glow: w[2], top: false, uv: 3.5 }, y0); });
+        if (o.pool !== false) [[1.3, 0.9, 0.24, 0.65], [2.4, 1.6, 0.14, 0.95], [3.6, 2.5, 0.06, 1.3]].forEach((w, i) => k.parts.push({ s: 'quad', flat: true, p: [ctx.r2(x + v[0] * w[3]), 0.058 - i * 0.008, ctx.r2(z + v[1] * w[3])], size: v[0] ? [w[1], w[0]] : [w[0], w[1]], key: FLOOR, tint: cf, glow: w[2] })); };
+    const F4 = Z(4) + T / 2, sp = { y0: 3.0 };
+    /* over each cell's bars (3 and 6 are dead: those cells stand dark), and on each lit cell's back wall */
+    CELLS.forEach((c, i) => { const dead = i === 2 || i === 5; lamp(X(c + 0.5), F4, 's', 3.2, COLD, Object.assign({ dead }, sp)); if (!dead) lamp(X(c + 1), Z(2) + 0.02, 's', 2.7, COLD, {}); });
+    /* the sally gate (sodium, both sides), the cell door (red: the way down), the tank's front and its back wall */
+    [5.45, 7.55].forEach(r => { lamp(X(12) - T / 2, Z(r), 'w', 3.15, SODIUM, sp); lamp(X(12) + T / 2, Z(r), 'e', 3.15, SODIUM, sp); });
+    lamp(X(22) - T / 2, Z(5.5), 'w', 3.15, REDL, sp); lamp(X(22) - T / 2, Z(7.5), 'w', 3.15, REDL, sp);
+    lamp(X(20.5), Z(7) - T / 2, 'n', 3.2, COLD, sp); lamp(X(19.6), Z(9) - T / 2, 'n', 2.7, COLD, {});
+    /* the Guardroom: its west wall, over the Property Room's door, the lockers; the Property Room and the fan room inside (sodium, dim stores) */
+    lamp(X(2) + 0.14, Z(7.5), 'e', 2.75, COLD, { y0: 1.4 }); lamp(X(4.7), Z(9) - T / 2, 'n', 2.75, COLD, {}); lamp(X(9), Z(11) - 0.14, 'n', 2.7, COLD, { y0: 1.4 });
+    lamp(X(3.2), Z(11) - 0.02, 'n', 2.9, SODIUM, {}); lamp(X(14.6), Z(9) - T / 2, 'n', 2.75, SODIUM, {}); lamp(X(15), Z(11) - 0.02, 'n', 2.9, SODIUM, {});
+    /* the stair's foot, the trap's passage (one dead lamp: nobody changes a bulb down there) */
+    lamp(X(10) - 0.14, Z(10.4), 'w', 2.6, COLD, { y0: 1.4 }); lamp(X(17) + 0.02, Z(10.5), 'e', 2.6, COLD, { dead: true });
 }
 
 module.exports = {
@@ -158,15 +191,15 @@ module.exports = {
           ctx.feat({ k: 'bridge', x0: x, z0: ctx.r2(Z(4) + 0.2), x1: x, z1: ctx.r2(Z(9) + 0.3), w: 1.75, y, key: GRILL, rails: false, plain: true });
           const w = 0.875 / C; k.guard('v', 7.5 - w, 4.06, 9, CAT); k.guard('v', 7.5 + w, 4.06, 9, CAT); k.guard('u', 4.06, 7.5 - w, 7.5 + w, CAT);
           /* what carries it: two steel legs under each end and the middle, a beam under each edge */
-          [4.4, 6.5, 8.6].forEach(r => [-0.8, 0.8].forEach(dx => k.box(x + dx, 0, Z(r), 0.12, CAT - 0.12, 0.12, null, 0x3c4046)));
-          [-0.8, 0.8].forEach(dx => k.box(x + dx, CAT - 0.2, (Z(4.06) + Z(9)) / 2, 0.1, 0.14, (9 - 4.06) * C, null, 0x3c4046));
+          [4.4, 6.5, 8.6].forEach(r => [-0.8, 0.8].forEach(dx => k.box(x + dx, 0, Z(r), 0.12, CAT - 0.12, 0.12, null, RAILC)));
+          [-0.8, 0.8].forEach(dx => k.box(x + dx, CAT - 0.2, (Z(4.06) + Z(9)) / 2, 0.1, 0.14, (9 - 4.06) * C, null, RAILC));
           k.keep(7, 9); k.keep(7, 10); k.keep(8, 10); }
         /* THE BOOKING COUNTER (the old room's): a tiled counter along row 6, a brick pier between its two halves */
         [[2, 4], [5, 7]].forEach(s => { ctx.feat({ k: 'wall', x0: ctx.r2(X(s[0]) + 0.3), z0: Z(6.5), x1: ctx.r2(X(s[1]) - 0.3), z1: Z(6.5), h: 0.95, t: 0.7, key: TILE }); for (let c = s[0]; c < s[1]; c++) k.keep(c, 6); });
         k.sign('BOOKING', X(3), 2.9, Z(6.5), 1.9, 0.4, 180, '#1c1c1c', '#c9c2a0'); k.box(X(3), 2.86, Z(6.5) + 0.03, 2.0, 0.48, 0.04, null, IRON);
         [-0.9, 0.9].forEach(dx => k.box(X(3) + dx, 3.34, Z(6.5) + 0.03, 0.03, TOP - 3.4, 0.03, null, IRON));
         ctx.pier('P00-00', 4, 6); ctx.pier('P01-00', 4, 6); ctx.pier('P01-00', 7, 6);
-        walls(ctx, k);
+        walls(ctx, k); lights(ctx, k);
         /* the kit's rows: the drawn parts, the doors' leaves */
         /* (a row is drawn with the plot chunk it stands in: one row a plot, its parts measured from the plot's middle) */
         ['P00-00', 'P01-00'].forEach((id, i) => { const ox = X(6 + 12 * i), oz = Z(6), mine = k.parts.filter(p => (p.p[0] < X(12)) === (i === 0));
@@ -188,35 +221,35 @@ module.exports = {
         /* 2 the gangster: his tray, his cup, his smokes, his cards money */
         k.at('meal_tray', 5, 3, 0.9, 0.6, { face: 20 }); k.at('solo_cup', 5, 3, 1.3, 0.2); k.at('psx_cigs_packet_1', 6, 2, -1.0, 1.2); k.at('psx_cash_1', 5, 3, -0.6, 1.1); k.at('psx_lighter_mp_1', 6, 2, -0.7, 1.3);
         /* 3 somebody they forgot: bones on the mattress, a web, the chains */
-        k.at('skull', 8, 3, 1.1, -0.9, { face: 200 }); k.at('ulna', 8, 3, -0.3, 0.5, { face: 310 }); k.at('hw_part_3', 8, 3, 0.9, 0.2, { face: 40 }); k.at('psx_cobweb_2', 9, 2, 1.3, -1.3, { y: k.up(2.2) });
-        k.at('trap_chain_draped', 8, 2, -1.62, 0.6, { face: W }); k.at('meal_tray_empty', 8, 3, 1.2, 1.2, { face: 250 });
+        k.at('skull', 8, 3, 1.1, -0.9, { face: 200 }); k.at('hw_part_3', 8, 3, 0.9, 0.2, { face: 40 }); k.at('hw_part_5', 8, 3, -0.3, 0.5, { face: 310 }); k.at('psx_cobweb_2', 9, 2, 1.3, -1.3, { y: k.up(2.2) });
+        k.at('trap_chain_draped', 8, 2, -1.62, 0.6, { face: W });
         /* 4 the wet one: a bucket under the drip, the scrawl on the back wall */
         P('wooden_bucket', 14, 3); k.at('graffiti_wall', 14, 2, 0.9, -1.66, { face: N }); ctx.grime('puddle', 'P01-00', 2, 3, 1.5); k.dec('mop', 15, 3);
         /* 5 the politician: his ballot box, his papers */
-        k.at('ballot_box', 17, 3, -1.1, 0.9, { face: 30 }); k.at('papers_a', 17, 3, 0.4, 1.2); k.at('papers_b', 18, 2, -0.9, 1.3); k.at('manila_folder', 17, 3, 0.9, 0.3); k.at('pen', 17, 3, 0.6, 1.0);
+        k.at('ballot_box', 17, 3, -1.1, 0.9, { face: 30 }); k.at('papers_a', 17, 3, 0.4, 1.2); k.at('papers_b', 18, 2, -0.9, 1.3); k.at('pen', 17, 3, 0.6, 1.0);
         /* 6 stripped: a bed frame on end, the chains, a web */
         k.at('wall_chains', 21, 2, 1.62, -0.2, { face: E }); k.at('psx_cobweb_4', 20, 2, -1.3, -1.3, { y: k.up(2.3) }); k.at('psx_tin_can_mp_1_rusty', 20, 3, 0.5, 0.8); k.at('trap_chain_draped', 20, 2, 0.6, -1.64, { face: N });
 
         /* ── THE CELL CORRIDOR ── */
         k.at('city_seal', 4, 4, 0, -1.72, { face: N, y: k.up(1.9) });                       // on the brick between cells 1 and 2
         k.at('public_phone', 16, 4, 0, -1.6, { face: N }); k.at('fire_extinguisher', 19, 4, 0.4, -1.66, { face: N }); k.at('fire_extinguisher', 7, 4, 1.2, -1.66, { face: N });
-        k.at('exit_sign', 22, 6, 0, 0, { face: E, y: k.up(3.2) }); k.at('security_camera', 10, 5, -1.7, -1.6, { face: E }); k.at('security_camera', 21, 4, 1.5, -1.6, { face: W });
-        [[6, 5], [15, 5], [20, 5]].forEach(q => k.at('floor_drain', q[0], q[1], 0.9, 0.2));
+        k.at('security_camera', 10, 5, -1.7, -1.6, { face: E });                             // ONE camera (the model is 27,000 triangles): it feeds the wall of screens
+        [[6, 5], [15, 5]].forEach(q => k.at('floor_drain', q[0], q[1], 0.9, 0.2));
         k.put('wheelchair', 10, 7, -0.4, 1.0, { face: 130 }); k.put('laundry_cart', 13, 7, 0.3, 0.9, { face: 80 }); k.at('item_police_barricade', 23, 7, 0, 1.1, { face: 15 });
         k.put('metro_bench', 13, 5, 0, -1.3, { face: N });                                 // where a visitor waits, by the gate
-        [[3, 5, 'floor_stain'], [9, 5, 'paper_sheet'], [15, 4, 'floor_stain'], [20, 6, 'paper_sheet'], [12, 6, 'paper_sheet']].forEach(q => k.dec(q[2], q[0], q[1]));
+        [[3, 5, 'floor_stain'], [9, 5, 'paper_sheet'], [15, 4, 'floor_stain'], [20, 6, 'floor_stain']].forEach(q => k.dec(q[2], q[0], q[1]));
         k.dec('key', 18, 5);                                                                // the ring, on the floor, as in the old room
 
         /* ── THE GUARDROOM: the booking counter's side, the desk, the screens, the wall of faces ── */
         k.at('number_dispenser', 2, 5, 1.2, 1.2, { face: 0 }); [[2, -0.6], [3, 0.2], [3, 1.0]].forEach(q => k.at('rope_stanchion', q[0], 5, q[1], 0.2));
-        k.at('clipboard_flat', 3, 6, -0.5, 0, { y: 0.01, face: 30 }); k.at('stapler', 2, 6, 0.6, 0.1, { y: 0.01 }); k.at('rotary_phone', 5, 6, 0.3, 0.1, { y: 0.01, face: 180 }); k.at('papers_a', 6, 6, -0.4, 0, { y: 0.01 }); k.at('coffee_mug', 5, 6, 1.1, -0.1, { y: 0.01 });
+        k.at('clipboard_flat', 3, 6, -0.5, 0, { y: 0.01, face: 30 }); k.at('rotary_phone', 5, 6, 0.3, 0.1, { y: 0.01, face: 180 }); k.at('papers_a', 6, 6, -0.4, 0, { y: 0.01 });
         P('steel_table', 5, 7, { face: 180 }); k.at('crt_terminal', 5, 7, -0.2, 0, { y: 0.76, face: 180 }); k.at('desk_lamp', 5, 7, 0.55, 0.15, { y: 0.76, face: 200 }); k.at('manila_folders', 5, 7, -0.6, -0.2, { y: 0.76 });
         P('office_chair', 5, 8, { face: 0 }); k.at('psx_police_baton_mp_1', 5, 7, 0.1, -0.3, { y: 0.78, face: 60 });
         k.put('filing_cabinet', 2, 7, -1.45, 0.6, { face: W }); k.put('filing_cabinet', 2, 7, -1.45, 0.1, { face: W }); k.put('filing_cabinet', 2, 8, -1.45, -0.6, { face: W });
         k.at('key_rack', 2, 8, -1.6, 0.9, { face: W, y: k.up(1.25) }); k.at('wall_clock', 2, 7, -1.7, -0.9, { face: W, y: k.up(2.4) }); k.at('punch_clock', 2, 8, -1.7, 0.1, { face: W });
         k.at('mugshot_wall', 4, 8, 0.4, 1.55, { face: S }); k.at('notice_board', 2, 8, 0.6, 1.58, { face: S }); k.at('breaker_panel', 5, 8, 1.1, 1.6, { face: S });
-        k.put('monitor_stack', 6, 8, 0, 1.4, { face: S }); k.at('security_camera', 9, 8, 1.6, 1.5, { face: W });
-        P('steel_table', 9, 7, { face: 270 }); k.at('coffee_maker', 9, 7, 0.1, -0.4, { y: 0.76, face: 270 }); k.at('coffee_mug', 9, 7, -0.1, 0.4, { y: 0.76 }); k.at('meal_tray', 9, 7, 0, 0.9, { y: 0.76, face: 90 });
+        k.put('monitor_stack', 6, 8, 0, 1.4, { face: S });
+        P('steel_table', 9, 7, { face: 270 }); k.at('coffee_maker', 9, 7, 0.1, -0.4, { y: 0.76, face: 270 });
         k.at('water_cooler', 9, 8, 1.5, -0.6, { face: E }); k.at('metal_trash_can', 8, 7, 1.0, -1.2);
         /* the lockers' nook: riot gear and long guns on the east wall, a row of lockers on the south */
         k.put('riot_gear_rack', 9, 9, 1.35, 0, { face: 270 }); k.put('rifle_rack', 9, 10, 1.3, 0.2, { face: 270 });
@@ -236,7 +269,7 @@ module.exports = {
         P('cot', 17, 8, { face: 0 }); P('steel_toilet', 21, 7, { face: 270 });
         k.put('metro_bench', 20, 8, -0.4, 1.3, { face: S }); k.put('metro_bench', 21, 8, 0.2, 1.3, { face: S });
         k.at('floor_drain', 19, 7, 0.6, 0.9); k.at('psx_glass_bottle_1', 19, 8, 0.9, -0.2, { face: 80 }); k.at('psx_glass_bottle_2', 20, 7, -0.3, 0.6); k.at('psx_glass_bottle_1', 21, 8, -1.0, -0.6, { face: 200 });
-        k.at('solo_cup', 20, 7, 0.9, 1.1); k.at('solo_cup', 19, 7, -1.1, 0.3); k.at('psx_tin_can_mp_1_rusty', 17, 7, 0.8, 0.7); k.dec('floor_stain', 20, 7); k.dec('psx_old_mattress_mp_1', 19, 8);
+        k.at('solo_cup', 20, 7, 0.9, 1.1); k.at('psx_tin_can_mp_1_rusty', 17, 7, 0.8, 0.7); k.dec('floor_stain', 20, 7); k.dec('psx_old_mattress_mp_1', 19, 8);
         ctx.grime('puddle', 'P01-00', 8, 8, 1.6); ctx.grime('grime', 'P01-00', 6, 7, 1.8);
         k.at('wet_floor_sign', 20, 6, 0.4, 0.6, { face: 30 }); k.put('mop_bucket', 20, 6, -0.9, 0.9, { face: 200 });
 
@@ -247,7 +280,6 @@ module.exports = {
         k.at('ind_vent', 14, 7, -1.2, 1.2, { face: 90 }); k.at('ind_vent', 15, 8, -1.0, 1.3, { face: 180 });        // the stack's own cowls at its foot
 
         /* ── PASS 3, THE DRESSING: what hangs, leans and lies about ── */
-        k.at('wall_padding', 21, 7, 1.62, 0.9, { face: E }); k.at('wall_padding', 21, 8, 1.62, 0.3, { face: E });          // the tank's east wall is padded
         k.at('cat', 6, 6, 0.4, 0.05, { y: 0.01, face: 200 });                                                               // on the counter
         ctx.props.push({ key: 'psx_ceiling_fan_mp_1_1_light_off', x: k.X(6), z: k.Z(7.6), ceil: true });                    // over the desk, under the bay's crown
         k.at('newspaper_bundles', 9, 7, -1.1, 1.3, { face: 40 }); k.at('garbage_bags', 16, 7, 0.9, 1.2, { face: 70 }); k.at('garbage_bag', 13, 6, 0.9, 1.3); k.at('metal_trash_can', 13, 5, 1.3, -1.1);
@@ -255,11 +287,16 @@ module.exports = {
         k.at('psx_cobweb_5', 2, 4, -1.4, -1.4, { y: k.up(2.9) }); k.at('psx_cobweb_1', 21, 4, 1.4, -1.4, { y: k.up(2.9) }); k.at('psx_cobweb_2', 9, 10, 1.4, 1.4, { y: k.up(2.6) }); k.at('psx_cobweb_4', 2, 10, -1.4, 1.4, { y: k.up(2.5) });
         k.at('psx_padlock_2', 5, 9, 1.0, 0.1, { y: 0.72, face: 270 });                                                      // on the safe
         /* the trap's passage: a rope, a bucket, cones and tape before the hole, bats under its vault */
-        k.at('traffic_cone', 17, 10, 0.3, 1.2); k.at('traffic_cone', 19, 10, -0.3, 1.2); k.at('warning_tape', 18, 10, 0, 1.5, { face: 0 }); k.at('meshy_rope', 19, 9, 1.0, 0.6, { face: 40 }); k.at('wooden_bucket', 17, 9, -1.1, 0.8);
+        k.at('traffic_cone', 17, 10, 0.3, 1.2); k.at('traffic_cone', 19, 10, -0.3, 1.2); k.at('warning_tape', 18, 10, 0, 1.5, { face: 0 }); k.at('meshy_rope', 19, 9, 1.0, 0.6, { face: 40 });
         k.at('bat_grey', 18, 10, 0.5, -0.6, { y: k.up(3.0) }); k.at('bat_black', 17, 10, 0.2, 0.9, { y: k.up(2.8) }); k.at('bat_brown', 19, 11, -0.4, 0, { y: k.up(3.1) });
         /* past the cell door: what was left by the stair */
-        k.at('traffic_cone', 22, 5, 0.9, -1.1); k.at('psx_metal_barrel_mp_1', 23, 5, 0.6, -1.0); k.at('cinder_block', 22, 7, 1.0, 1.3, { face: 30 });
+        k.at('psx_metal_barrel_mp_1', 23, 5, 0.6, -1.0); k.at('psx_metal_barrel_mp_2', 22, 5, 0.9, -1.1); k.at('cinder_block', 22, 7, 1.0, 1.3, { face: 30 });
         ctx.grime('oil', 'P01-00', 2, 9, 1.3); ctx.grime('blood', 'P01-00', 8, 3, 1.0);
+
+        /* ── PASS 4, THE LIGHT AND THE AIR: tube lights under the bays' crowns (they glow, they are not real lights), steam, a lantern at the trap ── */
+        [[3, 5], [9, 5], [15, 5.2], [21, 5.2], [3, 7.6]].forEach(q => ctx.props.push({ key: 'flicker_tube', x: k.X(q[0]), z: k.Z(q[1]), ceil: true }));
+        k.at('chimney_smoke', 14, 7, 0, 1.35, { y: k.up(2.9) }); k.at('chimney_smoke', 15, 5, 0.9, 0.2, { y: 0.05 });           // the stack's louvre breathes; so does a floor drain
+        k.at('railway_lantern', 18, 10, -0.9, 1.0, { noLight: true });
         if (lost.length) console.log('H: a blocker found its square taken: ' + lost.join(' '));
     },
     people(ctx) {
