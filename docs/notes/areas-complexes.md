@@ -6902,8 +6902,13 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
     (a sagging rope / a string of prayer flags between two points on ONE axis: a part has no tilt, so a line is a row of small boxes), `lantern`, `winter` (drifts + icicles).
   - A bare-colour shell (`a.shell(w, h, d, null, RED, dr)`) reads as painted metal (the Summit Shelter); `roof('barrel', …)` is the round roof.
   - A sign turned to face along x: `a.sign(..., { ry: 90 })` (the Pass Gate's board, both faces).
+- **PASS 2, INTERIORS** (seen, 11 inside views): the four insides lit and furnished on the squares (the file's header lists them). Learned: (1) a ZONE PINE STOOD INSIDE THE
+  WARMING HUT: a tree zone square that touches a building's corner or wall plants trees through it (the zone's trees jitter past their square). `tailor` the `t` squares
+  that touch a building to `s`. (2) Wall pieces with the catalogue's own `wall` / `mount` (`notice_board`, `hook_rail`, `fire_extinguisher`, `kitchen_range`) hang right with
+  `floor: true` when put about 0.4 m off the wall. (3) A window seen from inside is a dusk-blue lit box (`nightPane`): dark navy read as a hole by day. (4) `ocean_fish` is a
+  swimmer: it floats at the ceiling indoors. (5) A small iron stove is `stove(a, x, z, top)` (shapes; no stove model exists).
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
   `psx_old_mattress_mp_1`*, `footlocker`*, `psx_supply_crate_1..`*, `psx_metal_barrel_mp_0..3`*, `psx_jerrycan_1`*, `meshy_sandbags`*, `money_sacks`*, `cable_drum`*, `hw_shovel`*,
