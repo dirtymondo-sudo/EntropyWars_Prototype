@@ -27,8 +27,21 @@
      - THE GROUND: gravel shingle on the North Shore (plan char `s`, the tool's one new paint letter), mud at the Reeds and round the Marsh's pools.
      - the Marsh's two pools, rowboats, logs, frogs, moths, dead snags, seven trees, and the Loch Ness Monster (mondo's OK 11-15): it WALKS THE BED,
        its neck and back out of the water, wandering south of the rock (seen on screen 11-16).
+     - THE DRESSING (pass 3, seen): a dirt path round the whole lake from the three gaps in the corn; the ocean pack's seaweed as the water plants
+       in the shallows (the Reeds, the south shore, the Marsh's pools); about ninety drawn lily pads on the Lake, south and the Marsh's pools; stones
+       and driftwood on the shingle, a second boat, two iron benches; ferns, frogs, a rabbit at the Reeds; rope, a crate, traps on the dock, a
+       NO SWIMMING board at its foot; a camp on the east bank (tent, fire ring, chairs, cooler); a chair, bucket and cooler on the jetty; dead trees,
+       dead bushes, ferns and a flamingo in the Marsh; a bin, a cooler, crows on the shelter, rabbits, butterflies at the picnic ground; twelve more
+       trees; three blank signposts; two marker buoys off the rock.
+   THE POLISH (pass 5, seen): the Boathouse's boards and tin lifted to a weathered grey, the tree out of the shelter's roof, the west shore dressed
+     (two benches to the water, the Woods' MISSING board at the dock's foot, a stump, ferns), boats tied at the slip's and the jetty's end, two
+     lamp posts on the Marsh's boardwalk.
+   FIVE PASSES LIVE (2026-11-16): STOPPED, waits mondo's look (docs/plans/DISTRICT_THREAD_BRIEF.md). What is still open is in areas-complexes.md
+     "THE ESTATE, DISTRICT L", "WHAT IS STILL OPEN".
    MISSING / WAITING:
-     - pass 3 dressing (reeds, lily pads, shore line, fish, the Marsh), pass 4 atmosphere (mist, night), pass 5.
+   THE AIR + THE NIGHT (pass 4, seen day and night): `airZones()` = a slow pale mist over the water, marsh lights over the Marsh, fireflies at the
+     Reeds. At night the district is carried by the six lamp posts, the Boathouse's two lit windows and three lanterns, the shelter's lantern,
+     the buoys and the picnic campfire (L's two real lights: the campfire and the lantern inside the Boathouse; everything else is drawn glow).
      - no residents with routines, no encounter table (mondo's baked tables).
    NEEDS A MODEL (nothing on R2 or in any pack file, MODEL_LIST.md searched 11-16: reed, cattail, bulrush, lily, duck, swan, heron, pier, canoe):
      - reeds / cattails (pass 3 will try the ocean pack's seaweed in the shallows and say how it reads), a duck or a heron, a mooring bollard with rope,
@@ -63,15 +76,23 @@ module.exports = {
             if (x >= 47 && x <= 62) { if (e < 1.52 - 0.13 * ((x * 7 + y * 3) % 3)) cell[y][x] = 's'; }            // THE NORTH SHORE: shingle (`s` = the gravel sheet), a ragged upper edge
             else if (x < 47 && e < 1.4 - 0.1 * ((x * 5 + y) % 3)) cell[y][x] = 'p'; }                              // THE REEDS: mud at the water's edge
         for (let y = 23; y < 36; y++) for (let x = 59; x < 72; x++) { const m = M(x, y); if (m >= 0.8 && m < 1.75 - 0.15 * ((x * 3 + y * 5) % 3) && E(x, y) >= 1 && free(x, y)) cell[y][x] = 'p'; }   // THE MARSH: mud round both pools
+        /* THE PATH ROUND THE LAKE (pass 3): one square wide, dirt, from the three gaps in the corn: up the west shore, along the north side above the shingle
+           to the Boathouse, down the east bank past the jetty to the boardwalk's far end, along the south shore past the picnic ground */
+        { const path = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (free(x, y) && E(x, y) >= 1.02 && M(x, y) >= 1.2) cell[y][x] = 'p'; };
+          path(37, 1, 37, 30); path(36, 7, 36, 8); path(36, 16, 36, 16); path(36, 30, 36, 31); path(37, 1, 66, 1); path(66, 1, 66, 9); path(66, 9, 67, 9); path(70, 9, 71, 9); path(71, 9, 71, 31); path(37, 30, 59, 30); path(59, 30, 59, 31); }
         setRect(45, 31, 48, 34, 'j'); setRect(68, 9, 70, 10, 'j');
         setRect(36, 17, 50, 19, 'j'); setRect(48, 16, 50, 20, 'j'); setRect(58, 7, 67, 8, 'j'); setRect(65, 17, 71, 18, 'j'); setRect(60, 31, 72, 32, 'j');   // boards under every deck (the grass field grew up through the planks)                                                  // boards: the picnic shelter's floor, the landing at the Boathouse's door
     },
+    /* THE AIR (pass 4; bake-estate.js THE AIR BY DISTRICT): a slow pale mist low over the lake, marsh lights over the Marsh, fireflies thick at the Reeds;
+       the rest of the district keeps the room's own fireflies */
+    airZones() { return [{ sx0: 40, sy0: 6, sx1: 68, sy1: 30, kind: 'dust', color: 0xd4e4ec, n: 260, speed: 0.15 }, { sx0: 59, sy0: 23, sx1: 72, sy1: 36, kind: 'motes', color: 0xc8ff90, n: 90, speed: 0.25 },
+        { sx0: 36, sy0: 0, sx1: 48, sy1: 13, kind: 'fireflies', n: 70 }]; },
     houses(ctx) { const { building, put, U, WD, WD2, COR, GLS } = ctx;
         /* THE BOATHOUSE (walk-in; THE EXTERIOR PASS 2026-11-16): weathered grey boards on a stone footing, corner boards, a tin gable roof with its ends to the
            water, the two big boat doors on the lake side at the head of the slip (drawn shut: you go in by the south door), a loft hatch over them, sashed
            windows, a stove pipe, a lantern at each door, BOATHOUSE over the south door. */
         const BOAT = building('boathouse', [67, 5, 71, 9, 'S'], 3.5, { leaf: 'leaf_shabby_wood', floorIn: U('WoodFlooring1a') }, (a, w, d, door) => {
-            const f = d / 2, h2 = w / 2, BOARD = { gain: 1.7 }, DOORC = 0x6a6258, SZ = 1.75;   // SZ: the slip meets the west wall 1.75 m south of its middle
+            const f = d / 2, h2 = w / 2, BOARD = { gain: 2.1 }, DOORC = 0x6a6258, SZ = 1.75;   // SZ: the slip meets the west wall 1.75 m south of its middle
             /* a window on a face ('f' front, 'b' back: u along x · 'l' / 'r' the sides: u along z) */
             const win = (face, u, y, lit, ww, hh) => { ww = ww || 1.1; hh = hh || 1.25; const fb = face === 'f' || face === 'b', sg = (face === 'f' || face === 'r') ? 1 : -1, base = fb ? f : h2;
                 const B = (du, y0, dn, su, sh, sn, key, tint, x) => fb ? a.box(u + du, y0, sg * (base + dn), su, sh, sn, key, tint, x) : a.box(sg * (base + dn), y0, u + du, sn, sh, su, key, tint, x);
@@ -85,7 +106,7 @@ module.exports = {
             { const l = door.lx - door.cw / 2 - 0.12, r = door.lx + door.cw / 2 + 0.12; a.box((-h2 - 0.18 + l) / 2, 0, f + 0.09, l + h2 + 0.18, 0.5, 0.18, 'castle_wall', 0x8a8880); a.box((h2 + 0.18 + r) / 2, 0, f + 0.09, h2 + 0.18 - r, 0.5, 0.18, 'castle_wall', 0x8a8880); }
             for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * h2, 0.5, sz * f, 0.3, 3.0, 0.3, WD2, TRIM);                              // corner boards
             a.box(0, 3.38, 0, w + 0.3, 0.2, d + 0.3, WD2, TRIM, { top: false });                                                                    // the eaves board
-            a.roof('gable', 0, 3.5, 0, w + 1.0, 2.8, d + 1.2, COR, 0x7c848c, { keyEnd: WD, tintEnd: GREY, gain: 1.5 });                             // tin, the gable ends east and west
+            a.roof('gable', 0, 3.5, 0, w + 1.0, 2.8, d + 1.2, COR, 0x8a929a, { keyEnd: WD, tintEnd: GREY, gain: 1.9 });                             // tin, the gable ends east and west
             a.box(0, 6.26, 0, w + 1.1, 0.12, 0.34, null, IRON, { roof: true });                                                                     // the ridge cap
             for (const s of [-1, 1]) { a.box(s * (h2 + 0.5), 3.42, 0, 0.14, 0.16, d + 1.2, WD2, TRIM, { roof: true }); }                            // the barge boards' feet
             a.cyl(5.25, 4.2, -5.25, 0.14, 2.3, null, IRON, { roof: true }); a.cyl(5.25, 6.5, -5.25, 0.24, 0.1, null, IRON, { roof: true });             // the stove pipe and its cap
@@ -178,8 +199,24 @@ module.exports = {
             a.box(X, y, Z, 0.3, 0.4, 0.3, null, IRON); a.cyl(X, y + 0.4, Z, 0.06, 2.6, null, IRON); a.box(X + ux * 0.3, y + 2.95, Z + uz * 0.3, ux ? 0.75 : 0.07, 0.07, uz ? 0.75 : 0.07, null, IRON);
             a.box(lx, y + 2.47, lz, 0.24, 0.36, 0.24, null, AMBER, LAMP); a.box(lx, y + 2.83, lz, 0.32, 0.07, 0.32, null, IRON); a.box(lx, y + 2.4, lz, 0.3, 0.07, 0.3, null, IRON); };
         lamp(gx(40), gx(17) + 0.25, 0, 1, 0.3); lamp(gx(44), gx(17) + 0.25, 0, 1, 0.3); lamp(gx(48), gx(16) + 0.25, 0, 1, 0.3); lamp(gx(50) - 0.25, gx(20) - 0.25, 0, -1, 0.3);   // the dock and its head
-        lamp(gx(59), gc(7) - 1.5, 0, 1, 0.3); lamp(gx(66), gc(17) - 1.5, 0, 1, 0.3);                                                                 // the slip's end, the jetty's end
+        lamp(gx(59), gc(7) - 1.5, 0, 1, 0.3); lamp(gx(66), gc(17) - 1.5, 0, 1, 0.3); lamp(gx(63), gc(31) - 1.5, 0, 1, 0.25); lamp(gx(69), gc(31) + 1.5, 0, -1, 0.25);                                                                 // the slip's end, the jetty's end
+        { const X = gx(38) - OX, Z = gx(17) + 0.9 - OZ; a.cyl(X, 0.3, Z - 0.84, 0.06, 1.75, WD2, PILE); a.cyl(X, 0.3, Z + 0.84, 0.06, 1.75, WD2, PILE); a.box(X, 1.45, Z, 0.05, 0.5, 1.6, WD2, 0x3a3a36); a.sign('NO SWIMMING', X - 0.04, 1.5, Z, 1.4, 0.4, '#e8e0c8', '#3a3a36', 'fell', { ry: 90 }); }   // a board at the dock's foot, read walking out
         feat({ k: 'arch', id: 'est:lakefittings:look', x: OX, z: OZ, rot: 0, y: 0, parts: a.P });
+        /* THE SHALLOWS (pass 3). No reed, cattail or lily model exists on R2 (the NEEDS A MODEL list): the ocean pack's seaweed stands in the shallows as
+           the water plants (it sways; 1.2 to 1.8 m, its top out of the water), two rows round the Reeds' bank, clumps in the Marsh's pools and on the
+           south shore. LILY PADS are drawn (Camelot's Fairy Forest way: a notched disc in the leaf sheet on the water), ONE arch row, some in flower. */
+        { const rnd = ctx.rnd, CX = gx(54), CZ = gx(17.5), weed = (x, z) => props.push({ key: ['ocean_seaweed', 'ocean_seaweed_2', 'ocean_seaweed_3'][Math.floor(rnd() * 3)], x: r2(x), z: r2(z), face: Math.round(rnd() * 360) });
+          for (let t = 206; t <= 246; t += 1.9) for (const k of [0.965]) { const q = (t + (rnd() - 0.5) * 1.6) * Math.PI / 180, kk = k + (rnd() - 0.5) * 0.02; weed(CX + 49 * kk * Math.cos(q), CZ + 41 * kk * Math.sin(q)); }
+          for (const t of [100, 106, 130, 62, 68]) { const q = t * Math.PI / 180; weed(CX + 49 * 0.965 * Math.cos(q), CZ + 41 * 0.965 * Math.sin(q)); }                       // the south shore's clumps
+          for (const m of [[gx(63.5), gx(27), 9, 7.5], [gx(68.5), gx(32.5), 7.5, 7.5]]) for (let t = 20; t < 360; t += 75) { const q = (t + rnd() * 20) * Math.PI / 180; if (Math.abs(m[1] + m[3] * 0.8 * Math.sin(q) - gc(31)) < 2.4) continue; weed(m[0] + m[2] * 0.8 * Math.cos(q), m[1] + m[3] * 0.8 * Math.sin(q)); }
+          const L = sheet(), pad = (x, z, y) => { const r = r2(0.3 + rnd() * 0.32); L.P.push({ s: 'cyl', p: [r2(x - OX), y, r2(z - OZ)], r, h: 0.02, seg: 9, arc: 320, a0: Math.round(rnd() * 360), key: 'leaves_3', tint: 0xb8e088, gain: 1.5 });
+              if (rnd() < 0.22) { L.P.push({ s: 'cyl', p: [r2(x - OX), y + 0.02, r2(z - OZ)], r: 0.13, h: 0.09, seg: 6, tint: rnd() < 0.5 ? 0xf6f0e0 : 0xf0b8d0, glow: 0.25 }); L.P.push({ s: 'cyl', p: [r2(x - OX), y + 0.1, r2(z - OZ)], r: 0.05, h: 0.05, seg: 5, tint: 0xf0c040, glow: 0.4 }); } };
+          const drift = (cx, cz, n, sp, y) => { for (let i = 0; i < n; i++) { const q = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * sp; pad(cx + Math.cos(q) * d, cz + Math.sin(q) * d * 0.7, y); } };
+          [[50, -34, 9, 3.4], [57, -30.5, 8, 3], [65, -29, 9, 3.6], [73, -30.5, 8, 3], [80, -34.5, 9, 3.4], [61, -36, 7, 2.6], [70, -37, 7, 2.8], [44, -40, 6, 2.4], [87, -40, 6, 2.4]].forEach(q => drift(q[0], q[1], q[2], q[3], -0.285));   // the Lake, south
+          drift(gx(63.5), gx(27), 9, 5, -0.235); drift(gx(68.5), r2(gx(32.5) + 2.5), 7, 3.6, -0.235);                                                // the Marsh's pools
+          feat({ k: 'arch', id: 'est:lilies:look', x: OX, z: OZ, rot: 0, y: 0, parts: L.P });
+          props.push({ key: 'sea_buoy', x: r2(gc(54) - 11), z: r2(gc(18) - 9), noLight: true }); props.push({ key: 'sea_buoy', x: r2(gc(54) + 12), z: r2(gc(18) + 10), noLight: true });   // two marker buoys off the rock (they glow, no real light)
+        }
         /* THE ROCK in the lake's middle: big rocks of the ocean pack standing on the bed (was a mound in the corn's leaf sheet) */
         const RX = gc(54), RZ = gc(18), rock = (key, dx, dz, h, face) => props.push({ key, x: r2(RX + dx), z: r2(RZ + dz), h, face });
         rock('ocean_rock_3', 0, 0, 6.4, 20); rock('ocean_rock_4', -3.4, 1.3, 4.4, 140); rock('ocean_rock_3', 2.9, -2.4, 3.8, 250); rock('ocean_rock_2', 2.2, 3.0, 3.0, 80); rock('ocean_rock', -2.4, -3.1, 2.6, 300);
@@ -190,8 +227,37 @@ module.exports = {
         P('cave_torch', 36, 16, { noLight: true }); P('cave_torch', 36, 19, { noLight: true }); P('meshy_rowboat', 66, 10, { face: 300 }); dec('wooden_bucket', 69, 10);   // (the room's ten real lights: L keeps the campfire and the Boathouse's lantern)
         P('park_bench', 40, 31, { face: 0 }); P('park_bench', 44, 32, { face: 0 }); P('campfire', 42, 33); dec('folding_chair', 41, 34); dec('folding_chair', 43, 34); dec('butterfly', 46, 31);
         dec('meshy_frog', 61, 30); dec('meshy_frog', 66, 29); dec('meshy_frog', 70, 35); dec('meshy_frog', 64, 33); P('dead_snag', 62, 33); P('dead_snag', 70, 28); dec('hawk_moth', 67, 26);
-        tree(38, 1, 'tree', 7.5); tree(70, 2, 'tree_2', 8); tree(37, 33, 'tree', 7); tree(47, 34, 'tree_2', 7.5); tree(58, 33, 'tree', 8); tree(70, 14, 'tree_2', 7); tree(70, 21, 'tree', 7.5);
+        tree(39, 3, 'tree', 7.5); tree(70, 2, 'tree_2', 8); tree(37, 33, 'tree', 7); tree(49, 35, 'tree_2', 7.5); tree(58, 33, 'tree', 8); tree(70, 14, 'tree_2', 7); tree(70, 21, 'tree', 7.5);
         npc.push({ x: gc(54), z: gc(23), face: 0, race: 'loch ness monster' });                                                    // in the water, south of the rock (mondo's OK 11-15)
+        /* ── THE DRESSING (pass 3, 2026-11-16) ── */
+        { const rnd = ctx.rnd, at = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z), face: Math.round(rnd() * 360) }, o || {}));
+          /* the North Shore's shingle: stones of the graveyard pack, driftwood, a second boat pulled up, an iron bench on the path */
+          for (let i = 0; i < 26; i++) { const sx = 47 + Math.floor(rnd() * 16), sy = 2 + Math.floor(rnd() * 4); if (ctx.cell[sy][sx] !== 's') continue; at(['psxg_rock_1', 'psxg_rock_2', 'psxg_rock_3', 'psxg_rock_4', 'psxg_rock_2', 'psxg_rock_3'][Math.floor(rnd() * 6)], gc(sx) + (rnd() - 0.5) * 3, gc(sy) + (rnd() - 0.5) * 3, { noBlock: true }); }
+          dec('stump', 55, 2); dec('meshy_fallen_log', 61, 4); P('meshy_rowboat', 56, 4, { face: 200 }); at('iron_garden_bench', gc(53), gc(1) - 1.1, { face: 0 }); at('iron_garden_bench', gc(44), gc(1) - 1.1, { face: 0 });
+          /* the Reeds: ferns on the mud behind the water plants, frogs, a heron's worth of quiet */
+          for (let i = 0; i < 14; i++) { const q = (207 + rnd() * 40) * Math.PI / 180, k = 1.04 + rnd() * 0.07; at('fern', gx(54) + 49 * k * Math.cos(q), gx(17.5) + 41 * k * Math.sin(q)); }
+          dec('meshy_frog', 41, 9); dec('meshy_frog', 43, 6); dec('meshy_frog', 40, 11); dec('grasshopper', 40, 5); dec('blue_morpho', 42, 4); dec('rabbit', 40, 2); P('signpost', 38, 8, { face: 90 });
+          /* the dock: rope, a crate, the traps, a bucket; the slip and the Boathouse's yard */
+          at('meshy_rope', gx(42) + 1, gx(18) + 2.6); at('meshy_rope', gx(47), gx(17) + 0.9); at('psx_wooden_crate_4', gx(45), gx(18) + 2.7, { face: 10 }); at('wooden_bucket', gx(49) - 0.6, gx(19) + 1.2); at('lobster_traps', gc(48) + 0.3, gc(19) + 0.9, { face: 30 });
+          P('psx_metal_barrel_mp_1', 70, 10); dec('psx_wooden_crate_6', 71, 10); dec('tire_stack', 66, 8); dec('meshy_rope', 67, 9); dec('ship_anchor', 71, 6, { noBlock: true }); at('meshy_rope', gx(60), gc(7) + 1.0); P('signpost', 66, 0, { face: 180 });
+          /* the east bank: a camp by the jetty (tent, a cold fire ring, chairs, a cooler), a chair and a bucket on the jetty's end */
+          P('camping_tent', 69, 12, { face: 270 }); at('meshy_campfire_ring', gc(69) + 0.4, gc(13) + 1.0); dec('folding_chair', 68, 14); dec('folding_chair', 70, 14, { }); dec('beach_cooler', 70, 13); dec('railway_lantern', 69, 14);
+          at('folding_chair', gc(66) - 0.5, gc(17) + 0.5, { face: 270 }); at('wooden_bucket', gc(66) + 0.6, gc(17) - 0.9); at('beach_cooler', gc(67), gc(17) + 1.0, { face: 80 });
+          /* the Marsh: dead trees and bushes on the mud, ferns, more frogs, a flamingo in the shallows, a signpost where the boardwalk starts */
+          P('psxg_dead_tree_1', 61, 32); P('psxg_dead_tree_2', 67, 22); P('hw_tree_4', 60, 34); P('psxg_dead_tree_1', 65, 35); P('hw_tree_3', 71, 34);
+          for (const q of [[61, 26], [66, 30], [64, 30], [71, 29], [66, 35], [62, 29], [69, 28]]) dec(rnd() < 0.5 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1]);
+          for (const q of [[60, 28], [61, 24], [67, 24], [65, 31 - 1], [70, 29], [63, 31 + 1], [67, 35], [71, 33]]) dec('fern', q[0], q[1]);
+          dec('meshy_frog', 62, 30); dec('meshy_frog', 67, 30); dec('meshy_frog', 71, 35); dec('luna_moth', 64, 24); at('flamingo', gx(63.5) + 5.5, gx(27) - 3.6, { face: 200 }); P('signpost', 59, 32, { face: 270 });
+          /* the picnic ground: a bin and its bag, a cooler and cups on the tables, crows on the shelter's ridge, rabbits, butterflies */
+          dec('metal_trash_can', 44, 31); dec('garbage_bag', 44, 31); at('beach_cooler', gc(45) + 1.2, gc(32) - 0.9, { face: 20 });
+          at('crow', gc(46) - 1.5, gc(32), { y: 4.68, face: 100 }); at('crow', gc(46) + 2.2, gc(32), { y: 4.68, face: 250 }); dec('rabbit', 39, 34); dec('rabbit', 55, 34); dec('monarch', 49, 33); dec('swallowtail', 41, 32); dec('bee', 52, 34); dec('ladybug', 46, 34);
+          /* THE POLISH (pass 5): the west shore between the dock and the picnic ground (two benches to the water, the Woods' MISSING board by the dock's
+             foot, a stump, a boat pulled up), boats tied at the slip's and the jetty's end */
+          P('park_bench', 39, 21, { face: 90 }); P('park_bench', 39, 27, { face: 90 }); P('missing_board', 38, 15, { face: 90 }); dec('stump', 38, 23); dec('fern', 39, 25); dec('fern', 38, 20); dec('monarch', 39, 22);
+          props.push({ key: 'rowboat', x: r2(gx(58) + 1.2), z: r2(gc(7) + 2.9), y: 0.95, face: 95 }); props.push({ key: 'meshy_rowboat', x: r2(gx(65) + 1.5), z: r2(gc(17) - 2.9), y: 0.95, face: 80 });
+          /* more trees on the grass (birch, oak, spruce, pine of the tree pack), set back from the path */
+          tree(41, 4, 'tree_3', 8.5); tree(44, 3, 'pine', 7); tree(64, 3, 'tree', 7.5); tree(69, 3, 'tree_4', 8.5); tree(69, 20, 'tree_3', 8); tree(69, 25, 'tree_4', 8); tree(39, 13, 'tree_4', 8); tree(39, 24, 'tree_3', 8.5);
+          tree(52, 35, 'tree_3', 8); tree(56, 34, 'pine', 7.5); tree(43, 35, 'tree', 7); tree(63, 0, 'pine', 7); }
         /* on the dock's head: a bench looking down the lake, a boat tied up beside it */
         /* THE MODEL LIST FIRST (mondo 11-16): the playground pack's swing, slide and sandbox on the South Shore, the brass telescope on the dock's head */
         P('play_swing', 50, 32, { face: 0 }); P('play_slide', 53, 32, { face: 90 }); props.push({ key: 'play_sandbox', x: r2(gc(51) + 0.9), z: r2(gc(34) - 0.4), span: 3, face: 10 });

@@ -162,9 +162,13 @@ const solid = (id, p, side, storeys) => feat({ k: 'texbuilding', id: 'cam:' + id
                   native(race, x, y, face, say), many(n, f), rnd(), sayOf(room, race), old.garden, old.pole
    A file may also export (2026-11-16, the Fairy Forest thread; both are the Woods' ways, bake-woods.js):
      ground: '<sheet>'   the sheet under its own plots' grass and its trees' feet (plan letters g and t), in place of the kingdom's lawn.
+     groundAlso(x, y)    with `ground`: true for a grass / tree square OUTSIDE its own plots that wears its ground too (W: the forest north of its plots).
      airZones(ctx)       its air: [{ x0, y0, x1, y1 (kingdom squares), kind, color?, n?, speed?, wind? }] (three-renderer.js _hqBuildAtmos
                          `shell.atmos.zones`: dust, motes, spores, fireflies, snow, ash, rain). With one zone from any file the shell
                          carries them all, then the kingdom's own embers over the whole room, as before.
+     noTrees: [[x0, y0, x1, y1], ...]   (2026-11-16, the Snowy Pines thread) kingdom squares where the tree mass plants nothing: round a hut, a den, a pond.
+   THE SNOW (2026-11-16, the Snowy Pines thread): the paint's first sheet was 'ice' (it read as pale paving tiles); it is 'calm_snow' now. Only the
+   plan's `s` and `T` squares wear it, and those are all north of the moat (district N).
    A district writes its own rows with its own ids ('cam:' + ...), on its own plots. The checks at the end are everybody's: a piece on a
    square that is not free ground, a prop not in the catalogue, a plot not walked to, stops the tool. ── */
 const ORDER = ['K', 'T', 'L', 'F', 'N', 'W'];
@@ -280,18 +284,18 @@ const HOUSES = [];
       let h = 1; rows: while (cy + h < W) { for (let i = 0; i < w; i++) if (used[(cy + h) * W + cx + i] || !open(cx + i, cy + h)) break rows; h++; }
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(cy + j) * W + cx + i] = 1;
       feat({ k: 'space', x: r2(gx(cx) + w * C / 2), z: r2(gx(cy) + h * C / 2), w: w * C, d: h * C }); count.spaces = (count.spaces || 0) + 1; } }
-/* the paint: snow under the pines (no snow sheet exists: the Woods' Snowline wears the ice sheet too), the trodden snow road, the forest's
+/* the paint: snow under the pines (the calm snow sheet; it was the ice sheet until 2026-11-16), the trodden snow road, the forest's
    dirt, the village's cobbles, the garden's marble, the ground under the hedges */
 /* the castle's ground: marble on the upper court, cobbles on the lower court and the stairs, grass under the orchard rows */
 const castlePaint = (x, y) => { const u = Q.upper; if (x >= u[0] && x < u[2] && y >= u[1] && y < u[3]) return 5; return (y >= 34 && y < 52 && (x < 31 || x >= 65)) ? 0 : 4; };
-const PAL = ['ice', 'ice_1', 'dirt_2', 'cobblestone', 'marble', 'igloo', 'leaves_3'], paint = new Uint8Array(W * W);
+const PAL = ['calm_snow', 'ice_1', 'dirt_2', 'cobblestone', 'marble', 'igloo', 'leaves_3'], paint = new Uint8Array(W * W);
 for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x];
     paint[y * W + x] = ch === 'Q' ? castlePaint(x, y) : (ch === 's' || ch === 'T') ? 1 : ch === 'p' ? 3 : (ch === 'c' || ch === 'b') ? 4 : (ch === 'm' || ch === 'x' || ch === 'X') ? 5 : ch === 'i' ? 6 : ch === 'h' ? 7 : 0; }
 
 /* a district's own ground (its file's `ground`): under its plots' grass and its trees */
 { const at = {}; PLAN.plots.forEach(p => { at[p.x + ':' + p.y] = p.district; });
   DISTRICTS.forEach(m => { if (!m.ground) return; let i = PAL.indexOf(m.ground); if (i < 0) { PAL.push(m.ground); i = PAL.length - 1; }
-      for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; if ((ch === 'g' || ch === 't') && at[Math.floor(x / N) + ':' + Math.floor(y / N)] === m._cmFile) paint[y * W + x] = i + 1; } }); }
+      for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; if ((ch === 'g' || ch === 't') && (at[Math.floor(x / N) + ':' + Math.floor(y / N)] === m._cmFile || (typeof m.groundAlso === 'function' && m.groundAlso(x, y)))) paint[y * W + x] = i + 1; } }); }   // groundAlso(x, y) (2026-11-16, the Forest thread): squares outside its own plots that wear its ground too (the forest runs north of plot row 7 to the moat's bank)
 
 /* ── THE DRESSING HELPERS: by square. A blocker stands on its square's middle; decor stands off it. A piece may only stand on free ground
    (grass, snow, marble; `on` names another), never twice on one square: the tool stops if a square is wrong ── */
@@ -328,7 +332,10 @@ Object.assign(count, { features: F.length, props: props.length, doors: doors.len
 /* ── the room ── */
 const SNOW = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'], FAE = ['fae_cap', 'tree_3', 'fae_cap_2', 'tree', 'tree_2'];
 const zone = (x0, y0, x1, y1, o) => Object.assign({ x0: gx(x0), z0: gx(y0), x1: gx(x1), z1: gx(y1) }, o);
-const ZONES = [zone(0, 0, W, 17, { kinds: SNOW, treeH: [5.5, 8] }), zone(0, 17, 14, 79, { none: true }), zone(82, 17, W, 79, { kinds: FAE })];
+/* a district's own clearings in the tree mass (its file's `noTrees`: [[x0, y0, x1, y1] kingdom squares]): a walked-into building or a ghost wall is
+   SOLID to the tree grower, which rings it with trunks (one stood in a hut's doorway). These zones come first: the first zone a trunk stands in wins. */
+const NOTREE = [].concat(...DISTRICTS.filter(m => Array.isArray(m.noTrees)).map(m => m.noTrees.map(q => zone(q[0], q[1], q[2], q[3], { none: true }))));
+const ZONES = NOTREE.concat([zone(0, 0, W, 17, { kinds: SNOW, treeH: [5.5, 8] }), zone(0, 17, 14, 79, { none: true }), zone(82, 17, W, 79, { kinds: FAE })]);
 /* THE AIR BY DISTRICT (the district files' `airZones`); none = the shell as it was (the site's embers) */
 const AIR = [].concat(...DISTRICTS.filter(m => typeof m.airZones === 'function').map(m => m.airZones(ctx).map(z => { const q = Object.assign({}, z, { x0: gx(z.x0), z0: gx(z.y0), x1: gx(z.x1), z1: gx(z.y1) }); delete q.y0; delete q.y1; return q; })));
 const ATMOS = AIR.length ? ", atmos: " + J({ kind: 'embers', n: 160, tier: 'open', zones: AIR.concat([{ x0: -HALF, z0: -HALF, x1: HALF, z1: HALF, kind: 'embers', n: 160 }]) }) : "";

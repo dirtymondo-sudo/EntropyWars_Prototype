@@ -2801,6 +2801,11 @@
                 if (ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');
                 cost += ((unit.hp || 0) < (unit.maxHp || 0) ? 5 : 0);
             }
+        } else if (terr === 'sludge') {
+            /* ☢ RADIOACTIVE SLUDGE (11-16): a turn ended in it gives CORRODED (data.js TERRAIN_RULES.sludge turnStatus), costed
+               like the bog's poison: the rounds it adds × Corroded's 44 a round */
+            const cs = (unit.status && unit.status.corroded) || 0;
+            if (cs < 2) cost += (2 - cs) * _ghHit(unit, 44, 'poison');
         } else if (terr === 'plague_flesh') {
             const ps = (unit.status && unit.status.poison) || 0;
             if (unit.race !== 'necromancer' && ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');
@@ -6755,7 +6760,7 @@
                 if (info.shoveTo) {
                     const lt = g.getTerrainAt(info.shoveTo.x, info.shoveTo.y);
                     if (lt === 'lava' || lt === 'deep_water' || lt === 'chasm' || lt === 'void') s += 120;
-                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog' || lt === 'purple_bog' || lt === 'swamp' || lt === 'oil') s += 40;
+                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog' || lt === 'purple_bog' || lt === 'sludge' || lt === 'swamp' || lt === 'oil') s += 40;
                     if ((g.state.traps || []).some(tr => tr.x === info.shoveTo.x && tr.y === info.shoveTo.y && tr.owner === unit.player)) s += 80;
                 }
             }
@@ -9802,7 +9807,7 @@
                 if (info.shoveTo) {
                     const lt = g.getTerrainAt(info.shoveTo.x, info.shoveTo.y);
                     if (lt === 'lava' || lt === 'deep_water' || lt === 'chasm' || lt === 'void') s += 30;
-                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog' || lt === 'purple_bog' || lt === 'swamp' || lt === 'oil') s += 12;
+                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog' || lt === 'purple_bog' || lt === 'sludge' || lt === 'swamp' || lt === 'oil') s += 12;
                     if ((g.state.traps || []).some(tr => tr.x === info.shoveTo.x && tr.y === info.shoveTo.y && tr.owner === unit.player)) s += 25;
                 }
                 if (s > bestShoveS) { bestShoveS = s; bestShove = { x: e.x, y: e.y }; }
