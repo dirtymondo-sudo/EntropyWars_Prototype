@@ -14,12 +14,12 @@
      P03-09  islet (no name) (level 0): a small islet to land on
      + 85 plots with no name, open ocean (every plot of this district not listed above; `ctx.plot` / `ctx.Pxy` tell you whose a square is)
 
-   WHAT STANDS HERE TODAY (pass 1, 2026-11-16, all SEEN on screen): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
+   WHAT STANDS HERE TODAY (passes 1 + 2, 2026-11-16, all SEEN on screen): open water 3.5 m deep (the sea, its floor and the skiff / swimmer rules
    are the tool's and the game's); the ocean pack's animals on rings and six fish schools.
    THE VOLCANO ISLAND: dark volcanic ground (plan letters `b` = `dirt_2`, `c` = `scorched` at the cone's foot), the cone (the height map's,
    obsidian, 16 m, never climbed, lava in the crater) with TWO LAVA FLOWS down it (`fall` rows, east and south), black smokers off it; the
-   Landing (THE GATE, three boats, torches); THE VILLAGE = THE BIG HUT (walk-in, 109-110 x 15-17, door east to the fire) and THE NORTH HUT
-   (walk-in, 114-115 x 12-13, door south), both EMPTY INSIDE, the plan's three open shelters (the cook's 113,15 / the drum's 115,17 / the
+   Landing (THE GATE, three boats, torches); THE VILLAGE = THE BIG HUT (walk-in, 109-110 x 16-18, door east to the fire; one square off the cone: SEEN, beside it the cone's slope came up through the floor) and THE NORTH HUT
+   (walk-in, 114-115 x 12-13, door south), both FURNISHED (pass 2: a lit thatch ceiling, a hearth, sleeping platforms, mats, stores; the big hut's high seat), the plan's three open shelters (the cook's 113,15 / the drum's 115,17 / the
    sleepers' 112,18) round the fire, a drying rack; THE SHRINE at the cone's east foot (an idol, an altar, standing stones, two fire baskets);
    boulders and dead trees on the scorched ring, 19 palms, ferns.
    THE SEA'S PLACES: THE WHALE (P06-02: a humpback and a whale showing their backs, dolphins), THE WATERSPOUT (P11-01: drawn, 63 m, its own
@@ -29,7 +29,7 @@
 
    MISSING / NOT DONE:
    - THE TRIBE HAS NO PEOPLE (mondo: models come later); no model for a hut, a canoe, a totem pole, a mask, whale bones, gulls, black sand
-     (the sheet is `dirt_2`), smoke for the crater. The huts' insides are bare (pass 2). Night never looked at (pass 4).
+     (the sheet is `dirt_2`), smoke for the crater. Night never looked at (pass 4).
    - Nothing under the water shows (the sea is opaque from above). No fight set up.
    - LEARNT: a whale's model hangs about 3 m over its origin (humpback y -4.6, whale y -3.3 = the back shows); a thing in deep water is
      typed `y: -0.5` + `hover` (this file's `seaAt`); a drawn thing in water is an `arch` row with `y: 0` (`works`); the ocean pack's rocks
@@ -88,14 +88,55 @@ build(ctx) {
         a.roof(roofForm, 0, h, 0, w + 2.2, rh, d + 2.2, SHG, THATCH, { gain: 1.7, uv: [1.2, 1.2] });
         a.box(0, h + rh - 0.12, 0, roofForm === 'pyramid' ? 0.5 : w * 0.5, 0.22, 0.5, SHG, 0x8a6a34, { roof: true });                                                 // the ridge cap
         a.box(door.lx, 0, d / 2 + 0.9, door.cw + 1.6, 0.14, 1.6, FLR, 0xb09870); };                                                                                        // a plank step at the door
-    building('bighut', [109, 15, 111, 18, 'E'], 3.4, { leaf: 'leaf_stable', keyIn: WD2, floorIn: FLR }, (a, w, d, door) => {
-        hut(a, w, 3.4, d, door, 'hip', 3.8);
+    /* ── PASS 2, THE HUTS' INSIDES (2026-11-16; seen before: a brown box under a black ceiling). The Shore's way (S.js `inside`), in the
+       village's own stuff: a coat of pale woven wall 0.335 m in from the building's line (lit a little, the hollow building's own walls draw
+       dark), a lit thatch ceiling under the roof, pole rafters. What stands inside: the tribe's THINGS only (their people come later):
+       a hearth, sleeping platforms, stores, mats; drawn where the game has no model (a platform, a seat, a hung mat, a pole rack). ── */
+    const CEIL_BIG = 2.85, CEIL_N = 2.3, FY = 0.14;   // the lit decks' heights, SEEN: at 3.08 / 2.42 they stood over the buildings' own black ceilings (row h 3.4 front E, h 2.9 front S)
+    const inside = (a, w, d, Hc, door) => { const W2 = w / 2, D2 = d / 2, e = 0.335, lit = { gain: 1.9, glow: 0.2, uv: [1.75, 1.75], kind: 'wall' };
+        const Q = (x, y, z, qw, qh, ry, key, tn, o) => a.P.push(Object.assign({ s: 'quad', p: [r2(x), r2(y), r2(z)], size: [r2(qw), r2(qh)], ry, key, tint: tn }, o));
+        Q(0, 0, -D2 + e, w - 2 * e, Hc, 0, WD2, 0xe0cc9c, lit); Q(0, 0, D2 - e, w - 2 * e, Hc, 180, WD2, 0xe0cc9c, Object.assign({}, lit, { hole: [r2(-door.lx), r2(door.cw + 0.12), 2.25] }));
+        Q(-W2 + e, 0, 0, d - 2 * e, Hc, 270, WD2, 0xe0cc9c, lit); Q(W2 - e, 0, 0, d - 2 * e, Hc, 90, WD2, 0xe0cc9c, lit);
+        a.box(0, Hc - 0.05, 0, w - 0.66, 0.04, d - 0.66, SHG, 0xf0d890, { glow: 0.8, gain: 2.2, under: true, roof: true, top: false, ds: true, uv: [1.2, 1.2] });      // the lit thatch overhead
+        for (let x = -W2 + 1.2; x < W2 - 0.6; x += 1.75) a.box(x, Hc - 0.2, 0, 0.12, 0.14, d - 0.7, WD2, POLE, { roof: true });                                         // pole rafters
+        for (const s of [-1, 1]) a.box(0, 1.0, s * (D2 - e - 0.03), w - 0.7, 0.07, 0.05, WD2, POLE); };                                                                    // a lashing rail round the wall
+    const hearth = (a, x, z, r) => { a.P.push({ s: 'cyl', p: [x, FY, z], r: 0.17, h: 0.22, key: 'rocks_5', tint: 0xd8d8de, seg: 6, ring: { n: 9, r } }); a.cyl(x, FY, z, r - 0.12, 0.08, null, 0x241a14, { seg: 10 });
+        a.cyl(x, FY + 0.08, z, r * 0.55, 0.05, null, 0xff6a1a, { seg: 8, glow: 0.9 }); for (const k of [0, 60, 120]) a.box(x, FY + 0.1, z, r * 1.3, 0.11, 0.12, WD2, 0x4a3424, { ry: k }); };
+    const bedp = (a, x, z, len, turn) => { const bw = turn ? len : 1.15, bd = turn ? 1.15 : len; a.box(x, FY, z, bw, 0.32, bd, FLR, 0xb09870); a.box(x, FY + 0.32, z, bw - 0.1, 0.07, bd - 0.1, SHG, 0xe2c878, { gain: 1.8, uv: [0.9, 0.9] }); };   // a plank platform under a straw pallet
+    const hung = (a, x, y, z, ry, mw, mh, tn) => { a.P.push({ s: 'quad', p: [r2(x), y, r2(z)], size: [mw, mh], ry, key: SHG, tint: tn, gain: 1.9, uv: [0.6, 0.6], kind: 'wall' });
+        const fx = ry === 90 ? -0.02 : 0, fz = ry === 0 ? 0.02 : 0; for (const b of [[0.72, 0.12, OCHRE], [0.5, 0.06, DARK], [0.16, 0.12, OCHRE]]) a.P.push({ s: 'quad', p: [r2(x + fx), r2(y + mh * b[0]), r2(z + fz)], size: [mw, r2(mh * b[1])], ry, key: null, tint: b[2], kind: 'wall' }); };
+    const mat = (a, x, z, mw, md, tn) => { a.box(x, FY, z, mw, 0.03, md, SHG, tn, { gain: 1.9, uv: [0.6, 0.6] }); for (const k of [-0.36, 0.36]) a.box(x + k * mw, FY, z, 0.12, 0.035, md, null, OCHRE); };   // a woven floor mat (SEEN: `psx_carpet_mp_1` is a Persian rug)
+    /* THE BIG HUT (10.5 x 7 m; x along its front, the door at x -0.87 on the +z wall): the hearth in the middle, the high seat against the back
+       wall under a skull, sleeping platforms down the left end, the stores down the right end, mats by the door */
+    const bigRoom = (a, w, d) => { const e = 0.36, zb = -d / 2 + e;
+        hearth(a, 0.4, 0.2, 0.75); mat(a, 1.9, 2.1, 2.4, 1.5, 0xe2c878); mat(a, -2.6, 2.2, 1.8, 1.3, 0xd6b464);
+        a.box(0.4, FY, zb + 0.5, 1.5, 0.55, 0.8, WD2, OCHRE); a.box(0.4, FY, zb + 0.14, 1.5, 2.1, 0.16, WD2, OCHRE); for (const y of [0.9, 1.5, 2.0]) a.box(0.4, FY + y, zb + 0.24, 1.54, 0.08, 0.02, null, BONE);
+        for (const s of [-1, 1]) a.box(0.4 + s * 0.84, FY, zb + 0.5, 0.16, 0.95, 0.8, WD2, POLE);                                                                          // the high seat: a block, a tall back banded in bone white, two arms
+        bedp(a, -w / 2 + e + 0.62, -1.9, 2.1); bedp(a, -w / 2 + e + 0.62, 1.3, 2.1); bedp(a, -3.0, zb + 0.62, 2.1, true);
+        hung(a, -2.9, 1.25, zb + 0.02, 0, 1.6, 1.1, 0xe6cf88); hung(a, 3.2, 1.25, zb + 0.02, 0, 1.6, 1.1, 0xd9b870);
+        for (const s of [-1, 1]) a.cyl(w / 2 - e - 0.2, FY, 0.2 + s * 1.5, 0.06, 2.1, WD2, POLE, { seg: 6 }); a.box(w / 2 - e - 0.2, FY + 1.95, 0.2, 0.08, 0.08, 3.1, WD2, POLE); };   // a pole rack on the right wall (the dried meat hangs on it)
+    const northRoom = (a, w, d) => { const e = 0.36, zb = -d / 2 + e;
+        hearth(a, 1.2, 0.3, 0.6); mat(a, -0.9, 1.0, 2.2, 1.5, 0xe2c878); bedp(a, -w / 2 + e + 0.62, -1.4, 2.1); bedp(a, 0.3, zb + 0.62, 2.1, true);
+        hung(a, w / 2 - e - 0.02, 1.2, -0.6, 90, 1.5, 1.0, 0xe6cf88); };
+    /* a prop inside a hut: on the plank floor, typed over the village's sand when hung (the kit: A PROP'S HEIGHT ON RAISED SAND) */
+    const In = (B, key, lx, lz, face, y, o) => { const yy = FY + (y || 0); put(B, key, lx, lz, Object.assign({ face: face || 0, floor: true, y: r2(yy < 1 ? yy : G1 + yy) }, o)); };
+    const BIG = building('bighut', [109, 16, 111, 19, 'E'], 3.4, { leaf: 'leaf_stable', keyIn: WD2, floorIn: FLR }, (a, w, d, door) => {
+        hut(a, w, 3.4, d, door, 'hip', 3.8); inside(a, w, d, CEIL_BIG, door); bigRoom(a, w, d);
         for (const s of [-1, 1]) { const x = door.lx + s * (door.cw / 2 + 0.75); a.cyl(x, 0, d / 2 + 1.5, 0.2, 3.3, WD2, OCHRE, { seg: 8, uv: 1 }); a.cyl(x, 3.3, d / 2 + 1.5, 0.3, 0.16, WD2, POLE, { seg: 8 });
             for (const y of [0.9, 1.7, 2.5]) a.cyl(x, y, d / 2 + 1.5, 0.23, 0.14, null, BONE, { seg: 8 }); }                                                           // two painted door posts, banded in bone white
         a.box(door.lx, 3.05, d / 2 + 1.5, door.cw + 2.4, 0.2, 0.26, WD2, POLE);
         for (const x of [-3.4, 3.2]) { a.P.push({ s: 'quad', p: [x, 1.5, r2(d / 2 + 0.065)], size: [0.9, 0.7], key: null, tint: DARK, kind: 'wall' }); for (const k of [-0.22, 0.22]) a.box(x + k, 1.5, d / 2 + 0.09, 0.06, 0.7, 0.05, WD2, POLE); } });   // two barred window holes
-    building('northhut', [114, 12, 116, 14, 'S'], 2.9, { leaf: 'leaf_wooden', keyIn: WD2, floorIn: FLR }, (a, w, d, door) => { hut(a, w, 2.9, d, door, 'pyramid', 3.4);
+    const NH = building('northhut', [114, 12, 116, 14, 'S'], 2.9, { leaf: 'leaf_wooden', keyIn: WD2, floorIn: FLR }, (a, w, d, door) => { hut(a, w, 2.9, d, door, 'pyramid', 3.4); inside(a, w, d, CEIL_N, door); northRoom(a, w, d);
         a.P.push({ s: 'quad', p: [2.0, 1.4, r2(d / 2 + 0.065)], size: [0.8, 0.6], key: null, tint: DARK, kind: 'wall' }); for (const k of [-0.2, 0.2]) a.box(2.0 + k, 1.4, d / 2 + 0.09, 0.06, 0.6, 0.05, WD2, POLE); });
+    /* the huts' things (props): few and light (a Meshy prop is 10,000 triangles; the pack ones are a few hundred) */
+    In(BIG, 'campfire', 0.4, 0.2, 0, 0, { glow: 0.7, h: 0.5 }); In(BIG, 'skull', 0.4, -BIG.fd / 2 + 0.52, 0, 2.3);
+    In(BIG, 'spear', -0.75, -BIG.fd / 2 + 0.6, 0); In(BIG, 'spear', 1.55, -BIG.fd / 2 + 0.6, 0);
+    In(BIG, 'psx_pillow_mp_1', -BIG.fw / 2 + 0.95, -2.7, 90, 0.4); In(BIG, 'psx_pillow_mp_2', -BIG.fw / 2 + 0.95, 0.5, 90, 0.4); In(BIG, 'psx_pillow_mp_1', -3.8, -BIG.fd / 2 + 0.95, 0, 0.4);
+    In(BIG, 'psx_planter_pot_mp_1_empty', 4.3, -2.6, 0); In(BIG, 'psx_planter_pot_mp_1_empty', 3.6, -2.75, 40); In(BIG, 'greek_amphora', 4.45, -1.8, 200); In(BIG, 'hw_straw', 4.2, 2.6, 90); In(BIG, 'hw_straw_2', 3.1, 2.75, 0);
+    In(BIG, 'psx_meat_1', BIG.fw / 2 - 0.58, -0.6, 90, 1.55); In(BIG, 'psx_meat_1_1', BIG.fw / 2 - 0.58, 0.9, 90, 1.55); In(BIG, 'psx_fish_skeleton_mp_1', BIG.fw / 2 - 0.58, 0.2, 90, 1.6);
+    In(BIG, 'instrument_drum', -2.4, 2.6, 0); In(BIG, 'instrument_drum', -3.2, 2.3, 30); In(BIG, 'instrument_maracas', -2.7, 1.9, 60);
+    In(NH, 'campfire', 1.2, 0.3, 0, 0, { glow: 0.6, h: 0.4 }); In(NH, 'psx_pillow_mp_2', -NH.fw / 2 + 0.95, -2.2, 90, 0.4); In(NH, 'psx_pillow_mp_1', 1.1, -NH.fd / 2 + 0.95, 0, 0.4);
+    In(NH, 'psx_planter_pot_mp_1_empty', 2.6, -2.5, 0); In(NH, 'stone_urn', 2.7, -1.6, 0); In(NH, 'hw_straw', -2.5, 2.4, 0); In(NH, 'wooden_bucket', 2.5, 2.3, 0); In(NH, 'spear', -3.0, 1.2, 0);
     /* the plan's three open shelters: four posts, a plank floor, a cone of thatch; each has a use (the dressing below): the cook's, the drum's, the sleepers' */
     B_TRIBE.forEach((q, i) => look('shelter' + (i + 1), mx(q[0]), mz(q[1]), 0, a => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * 1.5, 0, sz * 1.5, 0.12, 2.35, WD2, POLE, { seg: 8, uv: 1 });
         for (const s of [-1, 1]) { a.box(0, 2.2, s * 1.5, 3.3, 0.12, 0.12, WD2, POLE); a.box(s * 1.5, 2.2, 0, 0.12, 0.12, 3.3, WD2, POLE); }
@@ -124,7 +165,7 @@ place(ctx) {
     /* ── PASS 1 (2026-11-16), THE ISLAND ── */
     /* the village: the cook's shelter (113,15), the drum's (115,17), the sleepers' (112,18) */
     dec('cauldron', 113, 15); dec('stock_pots', 113, 16); dec('psx_meat_1', 116, 16, { y: r2(G1 + 1.25), floor: true }); dec('psx_fish_skeleton_mp_1', 116, 16, { y: r2(G1 + 1.3), floor: true }); dec('greek_amphora', 114, 15); dec('stone_urn', 112, 16);
-    dec('instrument_drum', 115, 17); dec('instrument_maracas', 116, 17); dec('psx_carpet_mp_1', 112, 18, { y: 0.12 }); dec('spear', 111, 19);
+    dec('instrument_drum', 115, 17); dec('instrument_maracas', 116, 17); dec('psx_old_mattress_mp_1', 112, 18, { y: 0.12 }); dec('psx_pillow_mp_2', 112, 18, { y: 0.3 }); dec('spear', 111, 19);
     /* THE SHRINE at the cone's foot (east): an idol with its back to the fire mountain, an altar before it, standing stones, two fire baskets */
     P('demon_statue', 113, 10, { face: 90 }); P('stone_altar', 115, 10, { face: 90 }); P('sarsen', 113, 8); P('menhir', 115, 8, { face: 40 }); P('menhir', 116, 9); P('sarsen', 116, 11, { face: 70 }); P('menhir', 112, 11, { face: 20 }); P('brazier', 114, 9); P('brazier', 114, 11);
     dec('skull_pile', 115, 11); dec('greek_amphora', 115, 9); dec('psx_gold_bar_pcs_1', 115, 10, { y: 0.97 });
