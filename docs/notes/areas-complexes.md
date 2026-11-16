@@ -12772,3 +12772,12 @@ models", without waiting for his OK. Plan picture: `docs/plans/world-zones/leyli
   Spiral, Unfinished Top, Crane, Kiln, Brick Stacks, Foundation Shaft, the brick houses (T) · the Causeway, Canal, Ball Court, Pyramid,
   the round tower, Xibalba (Z).
 
+- **PASS 2, INTERIORS (district M; seen on screen from the floor):** THE HABITAT's inside. A lit white ceiling at 2.82 m (the walk-in's own
+  ceiling hangs lower than a 3.5 m wall's top less 0.3: a lit ceiling at 3.12 did not show), the inner walls in painted tin (`keyIn`),
+  three ribs, a warning stripe inside the airlock; THE BUNK ROOM behind a white wall with a red line and the plate BUNKS: six bunks
+  ("rated for six"), two of them lived in (a crate each, the radio); THE GALLEY: a table, four chairs, a mug, the fridge, crates, a
+  barrel; THE LAB behind a wall with a blue line and the plate LAB: two consoles, a desk with the terminal, two cryo tubes, the
+  isolation tank, a meteorite on its plinth. One real light (a bare bulb in the galley), three drawn lamps. The skirt is a ring now (the
+  full plate stood 0.3 m over the floor). The old room's `sea_chest` rows are OUT of this district: the model is a pirate chest full of gold.
+  PROBE TIP: a view's `y` is the FLOOR the camera stands on (the eye is added): `"y": 0` inside a building on level ground; `y: 1.7`
+  put the camera over the ceiling.
