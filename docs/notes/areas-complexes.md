@@ -5596,6 +5596,11 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   rim and never climbs it) + ONE `ramp` row h0 0 -> h1 -3.5 over four squares from the trail (a ramp only RAISES ground, so it goes after the sink row and fills it).
   The walls wear rock slabs and the rims tapered boulders, all in one arch row `woods:M:ravine` (`y: 0`). The ramp, a lane down the bed and the mouth's apron are `taken`
   before the old passes run, so no old piece lands there.
+- **THE BED IS DIRT, THE RIMS ARE WALKED (same day, mondo: "I still need to be able to walk along the edges of the creek, and the riverbed is supposed to be dirt, it can
+  have a little part at the end that turns into concrete")**: the dry bed's squares are `p` (the dirt_2 paint), not rock; one square of dirt path runs along each rim
+  (rows 53 and 56, trail to east wall, opened in `cut`); the last three squares before the mouth wear a concrete slab and concrete walls (arch parts). The rims carry only
+  a low lip and small stones. A forest tree left out by `cut` now counts toward the scatter seeds (bake-woods.js `SOW_SHIFT++`): opening the rims had moved four other
+  districts' seeds by two before that fix (caught by the row-by-row check, never shipped). OPEN: a `sow` plant can land on the apron (seen: one thorn vine).
 - **THE SEWER MOUTH = THE CAVE** (east wall, z 66.5, the foot on the bed): `mouth()` in M.js: a masonry head, a brick ring and BLACKNESS in the arch. An arch part cannot
   stand a circle upright, so the arch is the END FAN of a 10 cm `roof` `form: 'barrel'` (black in front, a wider brick one behind it). The same `mouth()` stands at the
   Storm Drain (z 14) and the Tunnel Way (z 115.5). The links' own ends did not move; the Tunnel Way's link is still `secret` in the tool.
