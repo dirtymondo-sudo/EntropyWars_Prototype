@@ -12149,6 +12149,68 @@ hard right angles and straight lines ... that would be a good spot to turn into 
   Estate's sides (the Woods, Camelot and the Estate have NO land past their lines yet); the Shore's main waterline; the Hills' cliff north of the headland.
 
 
+## THE ASTRAL REALM ON PLOTS (2026-11-16, the zone thread; first build)
+
+mondo 11-16: the eight zones still on old rooms go on plots "completely redesigned/reimagined", built without waiting for his OK
+(docs/plans/ZONE_THREAD_BRIEF.md). For the Astral Realm: "just add some sort of door from th looking garden to the astral sea of possibility".
+
+- **The room**: `site_prebuilt_lookingglass_realm` (site `prebuilt_lookingglass`, part `realm`), 6 x 6 plots, 252 m a side. Written by `node bake-astral.js`
+  from `docs/areas/astral/layout.json` + `docs/areas/astral/districts/S.js L.js N.js`. The layout json and the plan picture are written by
+  `node docs/plans/world-zones/draw-astral.js` (plot names, levels, ports and the island shapes live there: change a plot there, rerun both).
+- **PLAN 3, the redesign** (`docs/plans/world-zones/astral-realm_plot_plan_3.png`; plan 2 = three flat strips, kept as history): NO GROUND. Every plot is
+  its own island over the void at its own height, open sky between them. It is the old Sea's own machinery (mondo 09-30: "the astral realm to have floating
+  platforms that you have to jump across"): `terrain.void` + `float` plateaus, no new mechanic. The world plan's open idea "the plots hang apart in the Sea
+  with gaps between them" is taken, for the WHOLE zone, as fixed islands (nothing moves).
+  - S THE SEA OF POSSIBILITY, 16 plots, an S through the middle (levels 5 to 10). Landmark: the Thought-Forms (columns, the knee-deep pool, the orb).
+  - L THE LIBRARY OF UNTHOUGHT THINGS, 10 plots, west: the islands CLIMB to the Stacks (level 14 = 24.5 m, the highest ground). A library with no walls or roof.
+  - N THE NIGHTMARE, 10 plots, east: the islands SINK to the Maw (level 1 = 1.75 m, just over the glow). Landmark: the Bed.
+  - Islands join only at a port: a cloud bridge (same level, a float plateau `under: 'cloud'`) or a flight of floating steps (a float stair `ramp`; two levels
+    at most = 3.5 m over 7 m). 45 joins. FOUR cross a district line: Reading Room <> Near Shore, the Returns <> the Hollow Tree, the Closet <> the Back of the
+    Closet (you walk through the closet), the Fortune Tent <> the Stairs Down. None Library <> Nightmare (mondo: "at most 2 or 3 crossings").
+- **Every old name still stands**: the Frame, the Closet, the home of Thought-Forms, the 9 m high thought (now "The High Thought"), the carousel, the fortune
+  tent, the impossible stair, the hollow tree, the spire (the Sea's tape); the Stacks, the Reading Room, the Card Catalogue, Not Yet Written, the three
+  lecterns; the Bad Nights, the Maw, the Bed, the Thing Under It, the stage, the tanks, the lava. The old rooms' people keep their own lines (the tool reads
+  the old literals, so the three old room literals STAY in data.js). Plot names that are mine are marked "(label mine)" in the layout's `from`.
+- **The Waiting Room** (`site_prebuilt_lookingglass_waiting`) stays as the Realm's INSIDE, handmade: you arrive in it from HQ's Dream Lab (link `rem_astral`,
+  untouched). It now has a frame to each district (`sea`, new `library`, new `nightmare`, all in its north wall) and its `garden` frame opens on Camelot's
+  Looking-Glass Garden (door `mirror`).
+- **The ways** (bake-astral.js `WAY`, shared, never moved by a district): doors `waiting` (the Frame P02-00), `library` (the Library Frame P01-00), `nightmare`
+  (the Bad Nights P05-01), `mirror` (the Mirror P03-00 <> Camelot `site_prebuilt_camelot_kingdom@mirror`, two-way; bake-camelot.js re-pointed, world-layout A2
+  no. 3 closed); links `dumb_astral` (the Ward Screen P00-04) and `attic_nightmare` (the Attic Screen P05-04): the tool refuses to bake if a link row drifts.
+  Each way stands at the end of its own short walk on a side of its plot that has no port.
+- **Retired** (`DOOR_HQ.retired`): `site_prebuilt_lookingglass_sea`, `_nightmare`, `_library` -> the new room. Hub `astral` = the new room + the Waiting Room.
+  The three tapes moved to the new room's row; their old find spots dropped. NOT retired: the old Looking-Glass Garden room (not this zone's; noted on the board).
+- **The helpers a district gets** (bake-astral.js THE DISTRICT FILES): `put` (a blocker on the free ground square nearest a wanted one, so a file does not
+  depend on an island's outline; `span: 2` = a four-square piece), `P`, `dec`, `at`, `native`, `pool`, `look` (a drawn piece), `claim`, `rim`, `squares`,
+  `fill` (plan stage), `base`. The tool refuses: a piece over the void without its own `y`, a blocker on a walk, two blockers on a square, an unknown key or unit,
+  a plot not walked to from the Frame.
+- **What the first probe taught** (real game, playtest_city.js): (1) `terrain.outer: false` closes the room in a block with a flat bottom: wrong here. The land
+  past the edge is dropped with `outer: { m: 2, keep: 0, lift: -300 }` instead: open sky all round. (2) A drawn `arch` part reads black in this night room: the
+  tool's `sheet()` gives every part `glow: 0.3` unless it sets its own; use light tints. (3) The healing ring is the hub's own (the game lays it at the hub
+  room's spawn): the room carries no counter row. (4) A free door stands fine on an island. (5) The big grey lumps in a high view are the sky's own floating
+  islands (`sky.scenery: 'islands'`), not props.
+- **Frame rate, first build** (cloud software GPU, frames a second over 20 s, from the Frame looking south over the room): 1.35.
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the whole zone is ONE void room of 36 floating islands, not three rooms. (2) Height is the
+  districts' sign: Library up, Nightmare down. (3) The Sea is an S, 16 plots; Library and Nightmare 10 each. (4) Bridges and steps join every island (nothing must
+  be jumped; the Open Sea's stepping islands hang on single cloud squares). (5) The Waiting Room is kept as it was, as the inside, with two new frames. (6) The
+  Camelot mirror goes to the Sea's Mirror island and back; the Waiting Room's `garden` frame goes to Camelot too. (7) The Maw's teeth are standing stones for
+  now. (8) The Library keeps the old room's patchwork carpet (`carpet_3`).
+- **NEEDS A MODEL** (first list; the pilot's passes add to it): a giant jaw / ring of teeth for the Maw (about 14 m across, 4 m teeth); a real closet / wardrobe
+  with an open back, 7 m wide (the Closet, drawn in boxes now); tall bookcase modules 3.5 m wide and 7 to 14 m high for the Stacks (drawn in boxes now); a
+  thought-form cast (the game has one procedural kind); a giant bed 7 m long for the Bed.
+
+### THE ASTRAL REALM, FITS THIS ZONE (the lists read 11-16: DOOR_HQ.catalogue, all 1,913 keys by group; MODEL_LIST.md by theme)
+- Sea: `thoughtform dream_eye impossible_stair floating_orb white_cloud carousel decor_carousel_horse fortune_tent pearly_gate greek_column telescope
+  brass_telescope crystal_cluster meshy_crystal_shard(s) door_stack hollow_tree hollow_dead_tree fish_school giant_hourglass astronomical_clock brass_orrery
+  music_box crib_mobile mirror_ball star_projector lava_lamp_floor mushroom_lamp fae_flower* fae_bloom* kelp coral_* anemone (sea things in the air) bird_cage
+  item_hand_mirror barber_mirror marble_bust meshy_wings film_camera park_bench decor_piano ferris_wheel paper_lantern psx_door_*_loose (doors standing alone)`.
+- Library: `library_shelf library_shelf_full psx_shelf_mp_* card_catalogue card_catalog microfiche_reader library_ladder library_chandelier banker_lamp
+  globe_lamp lectern psx_book_mp_1..10 psx_open_book_mp_1 wingback_chair chesterfield_sofa conference_table psx_table_large_* museum_vitrine marble_bust
+  newspaper_rack map_table form_counter number_dispenser now_serving_sign meshy_bible paper_sheet papers_a/b candelabra`.
+- Nightmare: `nightmare_bloom dream_eye goo_tendril (the Thing Under It; never the kraken arms) demon_statue sarcophagus skull_pile candle_ring iso_tank
+  eeg_rack iv_stand cot hospital_bed royal_bed psx_bed_* psx_old_mattress_mp_1 psx_wardrobe_mp_1 costume_rack rocking_chair crib_mobile meshy_voodoo_doll
+  meshy_black_blob film_projector cinema_seat_row followspot music_stand school_desk chalkboard anatomy_skeleton therapy_chaise wheelchair meat_hook wall_chains
+  hw_body_rising hw_part* hw_web* hw_tree* hw_coffin psxg_dead_tree_* menhir`.
 ## THE DEEP ON PLOTS — the zone redesigned, first build (2026-11-16, second side, the Deep zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full redesign, no OK needed;
