@@ -31,9 +31,9 @@
    THE GIANT FLOWERS (mondo 11-16): 18 tall (3.6 m) and giant (6 m) heal flowers in five colours on whole squares in every glade, 13 small ones.
    THE PEOPLE (mondo 11-16): fairy, unicorn, gnome and mushroom girl are on the kingdom's AREA UNITS table; here stand the ring's fairy, a
    unicorn at the spring, a mushroom girl in the mushroom glade, a gnome on the north knoll. STILL OPEN: sound; no walk-in here (none is named).
-   NEEDS A MODEL (nothing on R2; not in the game as stand-ins): reeds / cattails (the ocean pack's weed draws black here), a willow, a
-   dragonfly, a firefly (particles may do), a swan or duck, a small waterside flower, bushes, natural small rocks (the graveyard pack's are
-   cut blocks). The lily pads are drawn in code.
+   THE MODEL PASS (2026-11-16, the wish-list models): PLACED: reeds, two willows, swans, ducks, a heron, dragonflies, fireflies, wild flowers,
+   bushes, moss; the lake rock in place of every small drawn boulder (the pond's bank, the spring's ring, the glades' corners); a deer, a fox,
+   hedgehogs, an owl. NEEDS A MODEL, STILL: lily pads (drawn in code). The crags, the islet and the crystal spikes stay drawn (landmarks).
    NEW ROWS: keep new pieces out of `dec()` (it draws from the kingdom's one stream of dice and moves N's and W's scatter): use `at()`.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
@@ -84,8 +84,8 @@ dec('butterfly', 87, 27, { floor: true, y: 1.2 }); dec('blue_morpho', 93, 26, { 
   [[-2.0, -4.8, 0.5, 1], [-0.4, -5.2, 0.42, 0], [1.6, -4.4, 0.55, 0], [-2.8, -4.0, 0.36, 0], [-1.6, 4.6, 0.52, 0], [0.4, 5.2, 0.4, 1], [2.0, 4.0, 0.46, 0], [3.6, -3.0, 0.4, 0], [3.9, 2.9, 0.5, 1], [0.9, -3.9, 0.3, 0], [0.2, 4.0, 0.3, 0]].forEach((q, i) => {
       S.P.push({ s: 'cyl', p: [q[0], -0.29, q[1]], r: q[2], h: 0.02, seg: 9, arc: 320, a0: i * 67, key: 'leaves_3', tint: 0xc8f090, gain: 1.6, glow: 0.2 });   // a lily pad: a notched disc on the water
       if (q[3]) S.P.push({ s: 'dome', p: [r2(q[0] + 0.1), -0.27, r2(q[1] - 0.06)], r: 0.13, h: 0.14, seg: 6, rings: 2, key: 'marble', tint: 0xffb8e0, glow: 0.55 }); });
-  [[-150, 0.7, 0.5], [-115, 0.95, 0.7], [-72, 0.6, 0.45], [-40, 0.8, 0.6], [38, 0.9, 0.65], [75, 0.6, 0.4], [112, 1.0, 0.7], [148, 0.7, 0.5]].forEach((q, i) => { const a = q[0] * Math.PI / 180;
-      S.rock(Math.cos(a) * 6.1, -0.15, Math.sin(a) * 6.9, q[1], q[2] + 0.15, i * 50, i % 2 === 0); });
+  [[-115, 0.95, 0.7], [-40, 0.8, 0.6], [38, 0.9, 0.65], [112, 1.0, 0.7], [148, 0.7, 0.5]].forEach((q, i) => { const a = q[0] * Math.PI / 180;
+      at('lake_rock', PX + Math.cos(a) * 6.1, PZ + Math.sin(a) * 6.9, { face: i * 50, noBlock: true }); });   // THE MODEL PASS: the bank's stones are the lake rock (they were drawn domes)
   at('meshy_frog', PX - 2.0, PZ - 4.8, { y: -0.27, face: 120 }); }
 /* ── THE RING (P07-03): purple grass inside the toadstools, a moonstone at the heart, a small glowing cap between every two toadstools ── */
 { const x = gx(92), z = gx(43); many(12, i => { const q = i * Math.PI / 6; props.push({ key: 'fae_toadstool', x: r2(x + Math.cos(q) * 5.6), z: r2(z + Math.sin(q) * 5.6), face: i * 30 }); });   // THE RING
@@ -104,8 +104,8 @@ dec('butterfly', 87, 27, { floor: true, y: 1.2 }); dec('blue_morpho', 93, 26, { 
   const S = row('spring', x, z), ox = RX - x, oz = RZ - z;
   S.crag(ox, -0.9, oz + 0.2, 1.95, 0.8, 5.3, 6, 12); S.crag(ox + 0.3, -0.9, oz + 2.3, 1.5, 0.6, 3.9, 5, 40); S.crag(ox + 0.2, -0.9, oz - 2.1, 1.35, 0.55, 3.3, 5, 75);
   S.rock(ox - 1.2, -0.7, oz + 1.4, 1.2, 1.5, 30); S.rock(ox - 1.0, -0.7, oz - 1.5, 1.0, 1.3, 100); S.rock(ox + 0.2, 4.2, oz + 0.2, 0.75, 0.3, 0);
-  [[95, 0.55], [128, 0.75], [160, 0.5], [196, 0.6], [228, 0.8], [262, 0.5], [-52, 0.6]].forEach((q, i) => { const a = q[0] * Math.PI / 180;
-      S.rock(Math.cos(a) * 4.4, -0.15, Math.sin(a) * 3.7, q[1], q[1] * 0.75 + 0.15, i * 40, i % 2 === 1); });   // the ring of stones: open to the west, where you come from
+  [[118, 0.75], [238, 0.8], [-52, 0.6]].forEach((q, i) => { const a = q[0] * Math.PI / 180;
+      at('lake_rock', x + Math.cos(a) * 5.0, z + Math.sin(a) * 4.3, { face: i * 40, noBlock: true }); });   // (THE MODEL PASS: the lake rock, not drawn domes)   // the ring of stones: open to the west, where you come from
   [[-1.7, 0.1, 2.6, 0.2, 1.0], [-1.9, 0.0, -2.5, 0.17, 0.85], [-1.5, 1.2, 0.9, 0.15, 0.7], [0.9, 3.3, 1.9, 0.14, 0.7], [-0.6, 2.6, -1.9, 0.14, 0.65], [-2.2, -0.1, 0.3, 0.13, 0.55]].forEach((q, i) => S.spike(ox + q[0], q[1], oz + q[2], q[3], q[4], i * 41));   // crystals out of the rock
   [[-5.2, -2.8], [-3.2, -4.6], [-0.6, -4.9], [-5.0, 3.0], [-2.4, 4.8], [0.6, 5.0]].forEach((q, i) => at('woods_healflower', x + q[0], z + q[1], { face: i * 61 }));
   at('meshy_frog', x - 4.6, z + 1.2, { face: 70 });
@@ -141,9 +141,8 @@ steps([[E + 0.6, 25.9], [E + 1.8, 26.2], [E + 3.0, 26.5], [E + 4.2, 27.0], [E + 
 steps([[E + 0.6, gx(62) + 0.2], [E + 1.6, gx(62) - 0.2], [E + 2.5, gx(62) + 0.15]]);                                                      // to the spring
 /* painted birches at the glades' far sides. NOT the packs' stones: `hw_stone*` are gravestones (a headstone, a Celtic cross) and `psxg_rock_*` are cut blocks */
 [[93, 27, 6.2], [93, 33, 5.6], [94, 39, 6.4], [93, 56, 5.8], [92, 63, 6.0], [92, 71, 5.4]].forEach(q => tree('tree_53', q[2], q[0], q[1], 0.5));
-{ const S = row('stones', E, 0);   // mossy boulders at the glades' corners, off the squares' middles (drawn: they weigh nothing)
-  [[5.9, gx(26) + 0.7, 0.8, 0.6], [9.6, gx(35) - 0.9, 0.95, 0.7], [12.4, gx(40) - 0.7, 0.75, 0.55], [5.8, gx(58) - 0.8, 0.9, 0.65], [6.2, gx(66) - 1.1, 0.8, 0.6], [1.3, gx(50) + 1.2, 0.6, 0.45], [12.7, gx(57) - 0.9, 0.7, 0.5]]
-      .forEach((q, i) => S.rock(q[0], -0.12, q[1], q[2], q[3], i * 47, i % 3 !== 1)); }
+/* THE MODEL PASS: the glades' corner boulders are the lake rock (they were drawn domes), off the squares' middles, weighing nothing */
+[[5.9, gx(26) + 0.7], [9.6, gx(35) - 0.9], [12.4, gx(40) - 0.7], [5.8, gx(58) - 0.8], [6.2, gx(66) - 1.1], [1.3, gx(50) + 1.2], [12.7, gx(57) - 0.9]].forEach((q, i) => at('lake_rock', E + q[0], q[1], { face: i * 47, noBlock: true }));
 /* crystals (mondo's Meshy shards) at the rocks' feet. NOT the ocean pack's weed as water plants: it draws black in this room. */
 at('meshy_crystal_shards', gc(93) - 2.3, gx(62) + 3.1, { face: 20 }); at('meshy_crystal_shard', gc(93) - 2.5, gx(62) - 3.0, { face: 140 });
 at('meshy_crystal_shards', gc(91) + 2.4, gc(72) + 1.6, { face: 200 }); at('meshy_crystal_shard', gc(91) - 2.2, gc(72) - 1.5, { face: 300 }); at('meshy_crystal_shard', gc(91) + 1.2, gc(72) + 2.6, { face: 80 });
@@ -164,6 +163,29 @@ at('rabbit', E + 8.9, gx(23) + 0.8, { face: 200 }); at('rabbit', E + 3.8, gx(53)
 /* PASS 5: two standing stones (mondo's Meshy menhir) flank the Woods trail east of the crossing, glowing caps at their feet */
 put('menhir', 90, 46, { face: 20 }); put('menhir', 90, 49, { face: 200 });
 [[0.9, gx(46) + 0.5], [2.7, gx(46) + 2.9], [0.8, gx(50) - 0.3], [2.8, gx(49) + 0.5]].forEach((q, i) => at('woods_glowcap', E + q[0], q[1], { face: i * 77, noLight: true }));
+/* ── THE MODEL PASS (mondo 2026-11-16: the wish-list models are in the catalogue, docs/plans/WISHLIST_MODELS_ADDED.md; "use these ones") ──
+   Every piece this file's NEEDS A MODEL list asked for, placed where it was missing: reeds in the shallows of the pond and the spring, a willow on
+   the pond's north bank and one by the spring, swans and ducks, a heron, dragonflies over the water, fireflies in the ring, wild flowers, bushes, moss.
+   From the rest of the list: a deer at the spring, a fox, hedgehogs, an owl on the north knoll's stump. Animals stand still: scenery, off every path. */
+note('THE FAIRY FOREST, the model pass: reeds, willows, swans, ducks, a heron, dragonflies, wild flowers, bushes, moss, a deer, a fox, hedgehogs, an owl');
+[[-148, 0.9], [-96, 0.9], [-62, 0.86], [-30, 0.92], [28, 0.9], [58, 0.86], [96, 0.9], [152, 0.92]].forEach((q, i) => { const a = q[0] * Math.PI / 180;
+    at('reeds', PX + Math.cos(a) * 5.6 * q[1], PZ + Math.sin(a) * 6.4 * q[1], { face: i * 61, noBlock: true }); });
+[[150, 0.9], [205, 0.88], [250, 0.9]].forEach((q, i) => { const a = q[0] * Math.PI / 180; at('reeds', gx(92) + Math.cos(a) * 4.2 * q[1], gx(62) + Math.sin(a) * 3.5 * q[1], { face: i * 83, noBlock: true }); });
+put('willow_tree', 91, 27, { face: 30 }); put('willow_tree', 90, 65, { face: 200 });
+at('swan', PX + 1.4, PZ + 4.0, { y: 0.82, face: 250, noBlock: true }); at('swan', PX - 0.6, PZ - 4.4, { y: 0.82, face: 80, noBlock: true });   // on the water: the pool's bed is 0.9 m under it
+at('duck', PX + 2.6, PZ - 3.4, { y: 0.84, face: 130 }); at('duck', PX - 4.9, PZ + 5.4, { face: 40 }); at('duck', PX - 4.2, PZ + 5.9, { face: 300 }); at('duck', gx(92) - 1.4, gx(62) + 1.2, { y: 0.64, face: 200 });
+at('heron', PX + 5.0, PZ - 4.6, { face: 230 });
+[[1.8, -2.6, 0.5], [-1.2, 3.4, 0.7], [3.8, 1.8, 0.4], [0.4, -5.0, 0.9]].forEach((q, i) => at('dragonfly', PX + q[0], PZ + q[1], { floor: true, y: q[2], face: i * 77 }));
+[[0.8, 1.6, 0.6], [-1.4, -0.8, 1.0]].forEach((q, i) => at('dragonfly', gx(92) + q[0], gx(62) + q[1], { floor: true, y: q[2], face: i * 131 }));
+[[2.2, 1.4, 1.2], [-2.6, 0.6, 0.9], [0.6, -3.0, 1.5], [-1.0, 3.2, 1.1], [3.4, -1.8, 0.8]].forEach((q, i) => at('firefly', gx(92) + q[0], gx(43) + q[1], { floor: true, y: q[2], face: i * 59 }));
+[[2.4, gx(26) + 2.2], [1.2, gx(34) + 0.6], [9.0, gx(34) + 2.4], [3.0, gx(39) + 1.4], [14.6, gx(40) + 1.2], [1.0, gx(46) + 2.6], [5.6, gx(46) + 1.2], [2.0, gx(50) + 2.6],
+ [6.4, gx(53) + 2.2], [2.4, gx(57) + 2.4], [8.2, gx(60) + 2.6], [3.0, gx(66) + 0.6], [5.6, gx(70) + 1.6], [3.4, gx(20) + 1.6]].forEach((q, i) => at('wild_flowers', E + q[0], q[1], { face: i * 53 }));
+[[12.9, gx(26) + 1.4], [0.9, gx(35) - 0.6], [15.9, gx(42) + 1.6], [6.6, gx(49) + 1.4], [12.9, gx(54) + 2.8], [0.9, gx(58) - 0.7], [9.9, gx(63) + 2.6], [6.4, gx(70) + 0.5], [9.6, gx(23) + 1.2]].forEach((q, i) => at('leafy_bush', E + q[0], q[1], { face: i * 71, noBlock: true }));
+[[5.0, gx(26) + 1.4], [10.4, gx(35) - 0.3], [6.8, gx(58) - 0.4], [2.2, gx(50) + 1.6], [4.4, gc(22) + 2.2], [3.8, gc(72) + 2.6], [8.4, gx(62) - 4.6], [8.8, gx(62) + 4.6]]
+    .forEach((q, i) => at('moss_clump', E + q[0], q[1], { face: i * 67 }));
+put('deer', 90, 60, { face: 110 });
+at('fox', E + 6.0, gx(74) + 2.4, { face: 300 }); at('hedgehog', E + 4.6, gx(56) + 1.6, { face: 40 }); at('hedgehog', E + 2.8, gx(64) + 0.6, { face: 220 });
+at('owl_perched', gc(90) + 0.2, gc(21) + 0.1, { y: 0.55, face: 150, noBlock: true });
 /* THE GIANT FLOWERS (mondo 2026-11-16: "what if we add giant flowers to the mix ... try making variations of the flower with tinting or recoloring
    it"): the heal flower's model tall (3.6 m, `fae_flower*`) and giant (6 m, `fae_bloom*`), in white, pink, violet, blue and gold (data.js catalogue
    `petal`). They block, so each stands on a whole free square; small coloured ones are decor by metres. */
