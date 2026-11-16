@@ -6544,6 +6544,19 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   chair, the `cauldron` on the fire, saw + rope + nails on a shelf, split logs, a bear trap (`trap_bear_base` + `_jaw`, never placed before).
   KEPT OUT after seeing them: `cot` (a steel camp cot), `psx_wooden_crate_4` (a HIGHLY FLAMMABLE plate), a `marble_light` pane seen from inside
   (a white slab).
+- **PASS 3, THE DRESSING (seen, four probe runs)**: one drawn row `cam:n:dress` (timber, rock, snow, split logs, lit cores) + about 110 props by
+  metres with the district's own dice (no new `dec`). Fourteen lantern posts (`lantern()`: post, arm, `meshy_hanging_lantern`, a lit core) on the
+  verges of the road and the track; 60 drifts and snow-capped rocks on the verges; the sleigh's two runner tracks; `stack()` log stacks between
+  stakes; the woodcutter's sawhorse + `psx_hand_saw_1`, `meshy_stump`, `fallen_log`; `covered_wagon`, `hw_straw`, gifts and sacks by the sleigh;
+  a fishing hole in the ice (a dark `deep_water` disc in a snow rim, a stool, `psx_fish_skeleton_mp_1`, a bucket); `psxg_dead_tree_1/2`,
+  `psxg_dead_bush_1/2`; `bat_black` / `bat_grey`, `psx_meat_1`, more bones at the den; `hw_candles` on the old stones' flat stone; `hw_fence`
+  either side of the road down to the north bridge; `wolf` x 3, `rabbit`, `crow`, an `eagle` over the stop. Residents (races, no invented
+  lines: the old North Pole room's where it had them): `ice queen`, `krampus`, `bigfoot`. THE BELT WALL: a 10 m rock block in the treeline
+  belt (its face 2 m INSIDE the room: the belt's crowns reach that far) ended the summer green between the crags for good.
+  WHAT WENT WRONG: a `wall_torch` within 2 m of a hut stands on its ROOF, with or without `floor` (taken out); log stacks stepped back a
+  course read as a flight of steps (now straight, between stakes); the residents do not stand where their rows put them (the yeti's glade held
+  a blue woman, the pond a dark insect figure: the engine's resident system places or dresses them, not the district file).
+  COUNTS at the north bridge looking up the road: 748 draw calls, 2,269 geometries (the whole kingdom in view).
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
