@@ -4384,7 +4384,18 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   A board on a gable-front house hangs at z `d/2 + 0.86` (in front of the gable's overhang). Five plain boards: POST OFFICE, BAKERY, TOY SHOP, STABLE,
   COAL (plain labels, waiting for mondo's word). The Workshop: white corner posts, candy posts at the door, its board, the same windows. The Pole: 6.4 m
   of stripes, a gilt ball (`gold`), a stone ring. `tailor` opens the cut-off nook (0 squares unreached now). Seen on screen at HEAD 206518c.
-- To know: the cottages' insides are empty until pass 2. The gold diamond on the square is the site's PvP arena marker (the engine's), not the village's.
+- To know: the gold diamond on the square is the site's PvP arena marker (the engine's), not the village's.
+- **PASS 2, INTERIORS**: all 15 houses and the Workshop are lit and furnished (N.js build, "THE INSIDES"). Three things learned on screen, true for any
+  walked-in `texbuilding` in a plot room:
+  1. **A building's own inside takes no light**: at night a furnished room was as dark as outside. `lit()` draws the walls, floor and ceiling again a hand
+     inside, as thin BOXES with `glow` (a `quad` there lost to the building's wall). A part with `glow` is drawn UNLIT at tint x glow: 0.8 to 0.9 is a lit
+     room, 0.25 was darker than no glow. Grey sheets (plaster, the board sheet) also need `gain` 1.7.
+  2. **A prop's `y`** (three-renderer.js THE TIER HEIGHT): under 1 = a lift over what is under it; from 1 up = a height from the ROOM's floor, and the village
+     stands 1.75 m over that: gifts for the loft at `y: 3.08` hung under it. N.js `UP(h)` = h over a house's floor.
+  3. **Within about 0.6 m of a building's outer face a prop stands on the wall's 2.15 m walker box** (the mail boxes hung at 6.7 m, the toy shop's cabinets
+     went through the ceiling). Furniture: keep its middle 0.65 m in. A piece hung on the wall: N.js `WALL(h)` (`mount: 0` + the y that lands it at h; h
+     from 1.55 m up), or give it something to hang on that stands out from the wall (the Post Office's sorting wall).
+  Hearths are open brick (`hearth()`), the fire is the catalogue's `campfire` (it carries a real light) at `span` 0.8. Seen on screen at HEAD below.
 
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
