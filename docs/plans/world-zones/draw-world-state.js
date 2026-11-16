@@ -44,7 +44,7 @@ zone(...f,-6,7,6,6,'THE ESTATE','built',['Corn Fields · The Ranch','Haunted Hou
 zone(...f,0,0,12,12,'','built',[],{nogrid:1});
 const D=[['Civic Center','Financial','Entertainment'],['University','Hero Plaza','Bayside'],['Sports + Culture','Southside','Industrial']];
 D.forEach((r,j)=>r.forEach((n,i)=>{o.push(`<rect x="${px(i*4)}" y="${py(j*4)}" width="${4*S}" height="${4*S}" fill="none" stroke="#000" stroke-opacity=".45"/>`);txt(px(i*4+2),py(j*4+2.2),n,11,'#e6e6e6',400,'middle')}));
-txt(px(8.6),py(1.2),'DISASTER CITY · 144 plots + the Hills',15,C.ink,700,'middle');
+txt(px(6),py(3.5),'DISASTER CITY · 144 + 39 plots',15,C.ink,700,'middle');
 o.push(`<rect x="${px(0)}" y="${py(-3)}" width="${13*S}" height="${3*S}" fill="none" stroke="${C.ink}" stroke-width="3"/>`);o.push(`<path d="M${px(0)} ${py(0)} V${py(12)} H${px(12)} V${py(0)}" fill="none" stroke="${C.ink}" stroke-width="3"/>`);   // one outline round the city + its Hills: one room
 zone(...f,0,12,12,12,'THE DESERT','built',['The Highway · The Circus','Western Town · Area 51 · Giza','144 plots']);
 zone(...f,12,1,14,10,'THE BEACH','built',['The Shore · The Harbour','The Ocean · The Bermuda Triangle','140 plots (a sea room)']);

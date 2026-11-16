@@ -5615,6 +5615,18 @@ and the city saw only a coarse far copy of them. Now they stand IN `site_prebuil
   a north side with no `land`). `EDGES.n.cap` and `B.js beach()` are untouched.
 - **KEPT AS THEY STOOD**: the Hills' rows are left out of the urban decay pass, the sign-font pass and the exterior polish (a hillside: nothing
   stands on flat ground there), so they wear what they wore. Its trees are `keep: true` (the city's tree-move leaves them).
+- **THE ROADS**: the Hills' roads wear the asphalt sheet (`urban:RoadGeneric1a`; the old room painted them roof bitumen). They still read paler
+  than the city's road: the city's asphalt is its FLOOR sheet (tinted, under the shell's floorColor), the Hills' is a painted sheet on calm ground.
+  THE MOUNTAIN ROAD'S FOOT: its four squares north of the line climb in one even grade (on one square it was a bank that wore the rock sheet).
+- **SEEN ON SCREEN** (real game, playtest_city.js through probe-fast.js, HEAD b6dffd1, FRESH; pictures `shots/city/`): the city from under the
+  sign (the Casino, the street, the towers, the bay), from the Observatory terrace, from the ridge behind the letters (their backs), from the Hill
+  House; the Hills from the mountain road in Entertainment (before: the flat far copy with ghost letters); the road's foot and the T junction;
+  the boardwalk's end onto the Cove's sand and back down the beach; the canyon road down to the city. WALKED with the game's own feet rule
+  (hqTerrainFeet, 0.25 m steps, offline): road -> Canyon Road -> sign -> ridge -> both west doors; road -> Observatory; boardwalk -> Cove ->
+  the Cliff Stair trail. Two fixes came out of it: the Cove's first square lies at the boardwalk's level (a rise from the line itself stopped
+  the walker where B.js' boardwalk cut ends, 2 m north of the line), and the dead strip.
+- **FRAME RATE**: rendering-loading-perf.md "THE HILLS IN THE CITY'S ROOM" (cloud software GPU: looking north at the Hills 49 -> 33 frames in 30 s,
+  looking south 19 -> 17; visible meshes +2 %). His F3 on the mountain road is the number that counts.
 - **TO KNOW**: rock is not a wall in the city's room (`gen.allOpen`): only a face steeper than the walker climbs (slope over 1) stops him, so a
   crag's gentler top can be walked. Nobody lives in the Hills; no lamps, no traffic on the canyon road; the three buildings are still plain.
 ## DEAD MAN'S CAVE, THE RAVINE — the Woods' district M on mondo's own brief (2026-11-16, the pilot thread)

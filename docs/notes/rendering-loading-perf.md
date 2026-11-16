@@ -2705,3 +2705,29 @@ that part too (a big room's load is shorter on a slow CPU). After: the city's fi
 ~200 s. What is left is the room's real work on a CPU-only machine (GLB parse, texture upload, `_hqWarmRun`, the still-matrix walk).
 Not done, ideas only: the game could skip drawing under an opaque load card for players too (needs the shader warm-up kept).
 
+
+## THE HILLS IN THE CITY'S ROOM — the ground zones, the dead strip, the numbers (2026-11-16, second side)
+
+mondo 11-16: "make Hollywood hills a part of disaster city ... the whole point is to be able to look over the city". The Hills are 36 rows of
+squares north of the city's plots in `site_prebuilt_downtown_streets` now (areas-complexes.md "THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY").
+Three engine pieces came with it:
+- **THE GROUND ZONES** (three-renderer.js `_hqGroundZones`, `_hqTerrainTiles`; data.js `HQ_GROUND_RULES.paintMax` 8 -> 16): `terrain.zones:
+  [{ x0, z0, x1, z1, floor, cliff, path, pal, floorTint, cliffTint, pathTint, floorColor }]`. Inside the box the field wears the zone's own floor /
+  cliff / path sheets and its own eight painted sheets. The shader still reads 8 painted sheets a material (11 samplers with the three role
+  sheets); the room's palette may be 16 long, and a zone's tiles map a node's sheet to the zone's slot. The tiles are cut on the zone's line
+  (a quad is its middle's zone). A zone's material is made by `_hqTerrainMat` from a copy of the room's info, so the node renderer gets it
+  through the same `_ewNodeTag`. One more ground material + one more program a zone. `EW_HQ_NO_GROUND_ZONES` = off (the zone wears the room's sheets).
+  This is also the way to a ground sheet per city district (the note "the palette is FULL at 8"): a zone a district.
+- **THE DEAD STRIP** (`_hqDeadStrip`): where `edges.<side>.inset` starts the land past the edge on the room's old line, the field under that land
+  is not put in the mesh (quads more than 2 m past the line). The city: the 70 m west strip (drawn, unseen, since Bayside's beach grew the room)
+  and the new 126 m south strip. Heights, walker and edge land read the same ground. `EW_HQ_DRAW_DEAD_STRIP` = draw it again.
+- **`edges.n.back`** without `land` (`_hqEdgeLandFn`): how much of the made-up range stands past a north side (the city 0.35, behind the Hills' crest).
+- **THE NUMBERS** (cloud browser, Mesa llvmpipe, the same two views before and after: x 105 z -190 y 12.4, first person, looking north up the
+  mountain road and looking south down it; frames drawn in 30 s; before = main 4e39efb + newer, after = this change):
+  looking NORTH (the Hills now fill that view): 49 -> 33 frames; looking SOUTH (no Hills in view): 19 -> 17 (16 before the dead strip was cut).
+  Meshes in the scene 43,109 -> 44,352 (+2.9 %); visible in the north view 12,346 -> 12,614 (+2.2 %). The field is 741 x 869 nodes (was 741 x 581),
+  a third of it not meshed. The software GPU pays for triangles and pixels, his Mac for meshes fed to the GPU (see THE SPLIT STACK), so the north
+  view's drop there is the real hillside's triangles (126 x 546 m at 0.875 m a node in place of a coarse far mesh); on his Mac expect the +2 %
+  meshes. NOT measured on his machine: his F3 on the mountain road looking north is the number that counts.
+- If his F3 says the Hills cost too much: (1) a coarser lattice for a zone (`zones[].res`, not built: the field is one lattice); (2) the 95 oaks +
+  5 palms are single `tree` rows (the thicket's instanced trees were the old room's generator).
