@@ -4997,6 +4997,8 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   discs in `leaves_3`, all in one `arch` row at `y: 0`, the disc at the pool's `y` + 0.015; the pool's water is opaque from above (fish under
   it are never seen); `flamingo` is a good pink flamingo; `sea_buoy` carries a light (`noLight`). A row with a `y` inside a drawn shelter
   seats itself under the roof: stand table things on the ground.
+  A `sign` quad faces south with no `ry`, north with 180, west with 90, east with 270. Mist over water = an `airZones()` `dust` zone, pale,
+  slow, a few hundred; it shows at night, hardly by day.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5965,6 +5967,18 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
 5. The trough, the stock tanks, the gate and the cattle grid are DRAWN from textured parts (no model exists; the plan names them).
 6. No way to the Desert was added (ways out are shared and his call).
 
+### PASS 4, THE ATMOSPHERE (seen in the cloud browser, day and night)
+- **THE AIR (`airZones()`, the pilot's hook):** a slow pale mist over the water (`dust`, `0xd4e4ec`, 260, speed 0.15: squares 40..68 x 6..30),
+  marsh lights over the Marsh (`motes`, `0xc8ff90`, 90), fireflies thick at the Reeds (70). The rest keeps the room's fireflies. By day the
+  mist is faint (small motes against pale water); it is a night thing.
+- **THE NIGHT (probe clock 22:00):** the six lamp posts, the Boathouse's two lit windows and three lanterns, the shelter's lantern, the buoys
+  and the picnic campfire carry the district; the water stays readable, the lily pads go dark on it, the monster's neck still shows.
+  L's real lights are two (the campfire, the lantern inside the Boathouse); every lamp is drawn glow and lights nothing round it.
+- `NO SWIMMING` at the dock's foot now faces the walker (a `sign` quad with `ry: 90` faces west, 270 east, 180 north, none south; set it 4 cm
+  off its board on the side it faces or the board hides it).
+- **THE COST:** three particle zones (three draw calls). The proof view: 582 draw calls, 2.2 frames a second by day, 1.8 at night.
+- Not done: no real light on the dock (the room's ten are shared), no sound bed (a walked room has none), the lamps' glass is a plain lit box.
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
@@ -6835,6 +6849,53 @@ too short ... you didn't even get the shape right". So:
   before / after counts): before 2.3 (327 calls, 946 k triangles), after 2.0 to 2.3 (301 calls, 739 k triangles).
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
+
+## MOUNT SHASTA, THE DISTRICT THREAD — district S of the Mountains, pass by pass (2026-11-16, second side; mondo's order: every district prototyped, DISTRICT_THREAD_BRIEF.md)
+
+File `docs/areas/mountains/districts/S.js` (20 plots of `site_prebuilt_shasta_mountains`), branch `claude/mountains-s-shasta`. The tool, the layout and the ways out were not touched.
+
+**THE FIRST LOOK (26 views, before any work):** twenty plots with one to five props each and no building. The upper plots are snow on grey rock (the Summit, the Fork, the
+Gulch, the Scree), ice (Helen Lake IS the frozen lake; the Glacier) or the lava sheet (`obsidian` paint: the Red Banks, the Steam Vents, the Old Lava); the lower eleven are
+small grass clearings in the pine wood. FPS at the proof view (Panther Meadows, P14-03 square 6,9, face 0; llvmpipe, so only before / after counts): 1.20.
+
+**PASS 1, EXTERIORS (live):**
+- `hut(a, w, d, dr, q, ctx)`: the district's one building helper (log or field-stone walls with `gain`, a stone foot, corner posts, gable / hip / pyramid roof in shingles or
+  snow, dark-glass windows in dark timber frames, a stone chimney + open hearth, a porch, a door lantern, a routed board). Every inside is lined with `lit` (the pilot's rule).
+- Seven walked-in buildings, each named for what it is: RANGER STATION (P13-07, porch), BIGFOOT'S CABIN (P13-03, tall, gable front), THE SHAMAN'S LODGE (P14-03, pyramid roof),
+  THE KI DOJO (P14-03, hip roof, open frame door), SPRING SHRINE (P14-04, stone), FIRE LOOKOUT (P14-05, hip roof, wide windows), CLIMBERS' HUT (P14-01, stone, snow roof).
+  Buildings stand in the trees or the rock beside a clearing with the door on the clearing (`tailor` opens five squares for doorsteps).
+- Landmarks (textured `arch` looks; a look that should stop a walker takes its square with `block()` = a ghost wall): the Summit's rim of `menhir` / `sarsen` stones and its
+  cairn with a register box; seracs on the Glacier (`ice_1` prisms); Shastina's cairn; the Red Banks (red pumice domes); the Lemuria adit's timber set + spoil heap; the Fork's
+  great cairn and a stone windbreak with a bench; the Trailhead's gate (MOUNT SHASTA) + `missing_board` as the notice board + `psx_toilet_cabin_mp_1`; the spring head.
+- SEEN: 18 + 8 views. Fixed after the first look: stone and dark log walls read near black (shell `gain` 1.7 / 1.9), the cairns read as dark fir trees (shorter, lighter,
+  a flag), an inside view from 1.7 m over the eye stood in the roof (a probe view inside takes `y` = the ground + 0.1). FPS after: 1.20 (no change).
+
+**FOR THE NEXT THREAD (zone kit additions):** `hut` + `win` + `cairn` + `seracs` + `block` in S.js are plain functions: copy them. The district's sign face is `alfa`, cream
+`#f0e2c0` on brown `#4a3222`. `rocks_5` walls need `gain` 1.7 and a tint from 0xa0a0a8 up or they read black in daylight. A `cyl` with `ri` + `arc` makes a curved dry-stone wall.
+
+**FITS THIS DISTRICT (the lists, read end to end 11-16: MODEL_LIST.md sections 6, 7, 8, 10, 12b, 13, the live catalogue, pack-claims.md):**
+- Rock, ice, steam: `psxg_rock_1`-`4`, `hw_stone`-`_5`, `hw_grave_slab`, `cave_stone`, `menhir`, `sarsen`, `trilithon`, `ocean_rock_3` / `_4` (dark: lava plots only),
+  `asteroid_a` / `_b` (lava bombs), `crystal_cluster` (light), `meshy_crystal_shard(s)`, `sea_vent` (the only fumarole, light) + `chimney_smoke`, `white_cloud`, `light_shaft`.
+- Wood: `dead_snag`, `hollow_dead_tree`, `psxg_dead_tree_1/2`, `psxg_dead_bush_1/2`, `fallen_log`, `stump`, `fern`, `woods_healflower`, `mushroom2`, `woods_glowcap`; tree kinds `pine_2`, `tree_13`-`20`.
+- Camp and trail: `campfire`, `camping_tent`, `meshy_camping_tent`, `signpost`, `missing_board`, `hitching_rail`, `hw_fence`, `footbridge`, `ancient_well`, `wooden_bucket`,
+  `beach_cooler`, `psx_wooden_crate_*`, `psx_supply_crate_1`, `psx_metal_barrel_mp_1`, `meshy_rope`, `cot`, `stock_pots`, `psx_toilet_cabin_mp_1`, `metal_trash_can`, `rowboat`, `yellow_pole`, `roads_g_sign_*`.
+- Shrine, shaman, dojo: `votive_stand`, `candelabra`, `candle_ring`, `brazier`, `stone_altar`, `item_censer`, `item_ward_totem`, `item_wizard_staff`, `cauldron`, `crystalBall`,
+  `ritual_circle`, `lion_statue`, `ships_bell`, `taiko_drum`, `wing_chun_dummy`, `dojo_weapon_rack`, `punching_bag`, `paper_lantern`, `banner`, `rug_round`, `privacy_screen`, `teapot`, `instrument_*`.
+- Cabin and den: `psx_bed_1`, `couples_bed`, `rocking_chair`, `psx_dinner_table_1`, `psx_chair_mp_1`, `psx_shelf_mp_*`, `hearth_fire`, `kitchen_range`, `meat_hook`, `psx_meat_1`,
+  `skull_pile`, `femur`, `trap_bear_open`, `meshy_giant_foot`, `evidence_board`, `fishing_net_wall`, `sea_chest`.
+- Ranger and lookout: `telescope`, `brass_telescope`, `item_binoculars`, `map_table`, `field_radio`, `radio_console`, `tanker_desk`, `office_locker`, `key_rack`, `brochure_rack`,
+  `notice_board`, `gauge_board`, `star_chart`, `dish`, `fire_extinguisher`, `hose_rack`, `specimen_shelf`.
+- Animals: `eagle` (the only one that moves), `wolf`, `crow`, `rabbit`, `lion` (the panther's stand-in), `dog`, `decor_sheep`, butterflies, `meshy_frog`.
+- Lemuria / the saucer: `dockring`, `obelisk`, `t_pillar`, `tomb_plaque`, `thoughtform`, `floating_orb`, `saucer_lg`, `ufo`, `light_shaft`. Adit: `culvert_mouth`, `cave_torch`, `wall_torch`, `track_bed`, `psx_beam_*`, `pd_lever`.
+
+**DECISIONS MADE FOR MONDO (overrule any in one line):**
+1. Seven buildings, named plainly for what they are (no invented names): Ranger Station, Bigfoot's Cabin, The Shaman's Lodge, The Ki Dojo, Spring Shrine, Fire Lookout, Climbers' Hut.
+2. The Fire Lookout is a ground cabin, not a tower (no procedural stairs).
+3. The district's sign face is `alfa`, cream on brown, like a park's routed boards.
+4. Helen Lake stays the frozen lake the plan drew (ice); the Climbers' Hut stands on its west shore, in the rock.
+
+**NEEDS A MODEL (none placed as a stand-in):** prayer flags, a stone lantern, a gong, a backpack, a sleeping bag, an axe + firewood, a picnic table, a wood stove, an antler
+trophy, a weather mast, a mine cart + rails, a deer / bear / mountain goat, ice pieces (a serac, an icicle), a lamp post.
 
 ## THE DESERT, THE CIRCUS — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/C.js`)
 
