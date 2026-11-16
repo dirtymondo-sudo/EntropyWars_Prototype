@@ -4,7 +4,7 @@
    north row to the Outfall. Lit by few fires only. Names are the old Sewers' own sub-areas and door plates: invent none.
    A plot's squares are local (lx, ly 0..11 from its north-west corner). ctx: P (a blocker on a square's middle), dec (decor, off centre),
    native (a bystander), feat (a terrain row), squares / corners / inner / walled (lists of local squares), plot[id].base (its floor, m).
-   STANDS TODAY (first build): torches on the bends, the Pump Room's boiler, the Junction's brazier + Healing Zone, the Inspection Gallery
+   STANDS TODAY (build 4: the tool vaults every tunnel and roofs every plot; ctx.pier / ctx.ceil): torches on the bends, the Pump Room's boiler, the Junction's brazier + Healing Zone, the Inspection Gallery
    on its step, barrels / grates / stains, the old room's four bystanders. NOT YET: pipes along the walls, graffiti, the Cistern's rail,
    anything to look at in the 11 plain culvert plots' dead ends. */
 'use strict';
@@ -17,9 +17,12 @@ module.exports = {
         const g = ctx.plot['P05-00'], x0 = ctx.gx(g.sx + 8), x1 = ctx.gx(g.sx + 11), z0 = ctx.gz(g.sy + 2), z1 = ctx.gz(g.sy + 6);
         ctx.feat({ k: 'plateau', x: ctx.r2((x0 + x1) / 2), z: ctx.r2((z0 + z1) / 2), w: ctx.r2(x1 - x0), d: ctx.r2(z1 - z0), h: ctx.r2(g.base + 1.6), edge: 0.15 });
         ctx.feat({ k: 'ramp', x0: ctx.gcx(g.sx + 9), z0: ctx.gz(g.sy + 8), x1: ctx.gcx(g.sx + 9), z1: ctx.r2(ctx.gz(g.sy + 6) - 0.4), w: 3.5, h0: g.base, h1: ctx.r2(g.base + 1.6), stairs: true, model: 'grate', edge: 0.15 });
+        /* THE JUNCTION'S PIERS: four brick piers round the pool, floor to vault; the Cistern's and the Outfall's, two each by the fall */
+        [[4, 4], [8, 4], [4, 8], [8, 8]].forEach(q => ctx.pier('P02-02', q[0], q[1]));
+        [[2, 2], [2, 10]].forEach(q => ctx.pier('P04-01', q[0], q[1])); [[3, 4], [9, 4]].forEach(q => ctx.pier('P05-03', q[0], q[1]));
         /* THE HEALING ZONE at the Junction (the old Sewers' own counter, moved with its words) */
         const hz = ctx.O.sewers.c.find(c => c.id === 'healzone');
-        if (hz) { const s = ctx.sq('P02-02', 8, 8); ctx.counters.push(Object.assign({}, hz, { x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), plateY: ctx.r2(ctx.plot['P02-02'].base + 2.35) })); ctx.taken.add(s[0] + ':' + s[1]); }
+        if (hz) { const s = ctx.sq('P02-02', 4, 9); ctx.counters.push(Object.assign({}, hz, { x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), plateY: ctx.r2(ctx.plot['P02-02'].base + 2.35) })); ctx.taken.add(s[0] + ':' + s[1]); }
     },
     dress(ctx) {
         ctx.plots.forEach((p, i) => {
@@ -32,6 +35,7 @@ module.exports = {
         });
         /* the rooms */
         const pr = ctx.inner('P04-00'); { const q = nth(pr, Math.floor(pr.length / 2)); if (q) ctx.P('boiler', 'P04-00', q[0], q[1]); }
+        { const w = ctx.walled('P02-02'); [2, Math.floor(w.length / 2), w.length - 3].forEach(k => { const q = nth(w, k); if (q && ctx.free('P02-02', q[0], q[1])) ctx.P('cave_torch', 'P02-02', q[0], q[1]); }); }   // the hall's own fires
         const jn = ctx.inner('P02-02'); { const q = nth(jn, 0); if (q) ctx.P('brazier', 'P02-02', q[0], q[1]); }
         ['P03-00', 'P05-02', 'P05-03'].forEach(id => { const w = ctx.walled(id), q = nth(w, 1); if (q) ctx.P('traffic_barrel', id, q[0], q[1]); const r = nth(ctx.walled(id), 4); if (r) ctx.dec('wet_floor_sign', id, r[0], r[1]); });
         ctx.squares('P05-00', 'f').filter(q => q[1] <= 5).slice(0, 2).forEach(q => ctx.dec('drain_grate', 'P05-00', q[0], q[1]));

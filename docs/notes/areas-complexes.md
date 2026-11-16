@@ -5747,6 +5747,14 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   tank (a ladder), the Docks' Outfall down the Outfall Shaft's pool (a ladder). Layout `openings`: `fall` + `by: 'stair' | 'ladder'`;
   `stair` = dry (the cell door, the Maintenance Hatch, 3.5 m); `climb` = a ladder / rope on the face (the trap under the Drunk Tank 8.75 m,
   the Adit 3.5 m, the well at the Junction down to the Crossing 3.5 m: the one opening that was not in the game before).
+- **THE VAULTS + THE ROOF (build 4, mondo 11-16: "still just looks like a boring rectangular room"):** every stretch of open floor wears a
+  brick BARREL VAULT sprung from its walls (an `arch` row a plot, `sew:<plot>:roof`: roof parts `form: 'barrel'`, `ds: true`, and the new
+  `ends: false` = an open-ended vault seen from inside; three-renderer.js _hqArchGeometry); a plot's open squares are cut into rectangles,
+  each vault runs along the long side and spans the short one; one flat brick slab a plot closes what is left between them. A plot's roof
+  stands 5.25 m over its floor; a plot a fall, stair or climb comes down into is that drop taller (`ceilOf`), so the Junction, the Cistern
+  and the Outfall Shaft are 12 m halls and the mine under the trap is 21 m. `ctx.pier(plot, lx, ly)` = a brick pier floor to roof (the
+  Junction's four, two each at the Cistern and the Outfall), `ctx.ceil(plot)`. The shell is darker (ambient 0.13, fog 0.042, darker brick).
+  Reusable anywhere: a tunnel = a `roof` part `barrel` with `ends: false` + `ds`.
 - **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
   one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
 - **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
@@ -5762,9 +5770,7 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
 - **WHO IS THERE (14):** the old rooms' bystanders with their own lines, placed by the district files.
 - **SEEN ON SCREEN** (probe, HEAD of this PR): the Junction, two falls with their stairs, the Outfall, the Depot, the cells' corridor. The room
   loads with no error (74 files, ~35 s in the probe).
-- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); over the low
-  plots the roof is 14 m up, so it reads as a black void, not a vault (a per-plot ceiling needs its own piece); still too bright and too clean
-  for "dark and grimy" (no pipes, grime decals, drips); the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); the vaults meet at each rectangle's end with a step, not a groin; still too clean for "grimy" (no pipes, grime decals, drips); the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
   Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
   (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
 
