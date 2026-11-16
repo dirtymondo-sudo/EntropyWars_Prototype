@@ -20,7 +20,8 @@
 
    MISSING / WAITING: no house is walked into (mondo OK'd the five kinds as looks; insides are not asked yet). No anvil, market stall or
    lamp post model exists on R2 (tents, crates and sacks stand in). The streets have no lamps and no people but the two gate knights.
-   The village has been seen on screen only in part (one shop, the Market from the hill).
+   HELD BY the Village pilot thread since 2026-11-16 (both files). Passes: 1 exteriors (in), 2 interiors, 3 dressing, 4 atmosphere, 5 polish.
+   NEEDS A MODEL (nothing on R2): a market stall, an anvil, a lamp post / street lantern, a hand cart, a trough, a fence run, a tavern table.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
    plot Pxx-yy = squares xx*12.. , yy*12.. . gx(k) = a square's west / north edge in metres, gc(k) = its middle. feat(row) writes a terrain row,
@@ -60,10 +61,14 @@ const SMITHY = kb('smithy', WALKIN.smithy, 5.25, { leafDouble: false, keyIn: WOO
 });
 /* THE INN — two storeys, plaster over a stone ground floor, a jettied upper floor on timber, the sign */
 const INN = kb('inn', WALKIN.inn, 7, { keyIn: STUCCO, floorIn: 'wood_planks' }, (a, w, d, door) => {
-    a.shell(w, 3.5, d, WALL, STONE3, door); a.box(0, 3.5, 0, w + 0.9, 3.5, d + 0.9, STUCCO, 0xe6dcc4, { top: false, under: true });
-    for (const s of [-1, 1]) { a.box(s * (w / 2 + 0.4), 3.5, 0, 0.25, 3.5, d + 1.0, WOODD, TIMBER); a.box(0, 3.5, s * (d / 2 + 0.4), w + 1.0, 0.3, 0.25, WOODD, TIMBER); a.box(0, 6.7, s * (d / 2 + 0.4), w + 1.0, 0.3, 0.25, WOODD, TIMBER); }
+    a.shell(w, 3.5, d, WALL, STONE3, door); a.box(0, 3.5, 0, w + 0.9, 3.5, d + 0.9, STUCCO, 0xe6dcc4, { top: false, under: true, gain: 1.6 });
+    /* the timber frame: posts every bay and two plates on all four sides (each side wall was ONE timber sheet: a black slab on screen) */
+    for (const s of [-1, 1]) { for (const y of [3.5, 6.7]) { a.box(0, y, s * (d / 2 + 0.4), w + 1.0, 0.3, 0.25, WOODD, TIMBER); a.box(s * (w / 2 + 0.4), y, 0, 0.25, 0.3, d + 1.0, WOODD, TIMBER); }
+        for (let x = -w / 2 - 0.38; x <= w / 2 + 0.39; x += (w + 0.76) / Math.round(w / 3.5)) a.box(x, 3.5, s * (d / 2 + 0.4), 0.25, 3.5, 0.25, WOODD, TIMBER);
+        for (let z = -d / 2 - 0.38; z <= d / 2 + 0.39; z += (d + 0.76) / Math.round(d / 3.5)) a.box(s * (w / 2 + 0.4), 3.5, z, 0.25, 3.5, 0.25, WOODD, TIMBER);
+        a.box(s * (w / 2 + 0.47), 4.6, 0, 0.1, 1.3, 1.0, G_TALL, 0xf0d890, { glow: 0.5 }); }
     a.box(-w / 2 + 1.5, 4.6, d / 2 + 0.47, 1.0, 1.3, 0.1, G_TALL, 0xf0d890, { n: Math.max(2, Math.floor(w / 3.5)), step: [(w - 3) / Math.max(1, Math.floor(w / 3.5) - 1), 0, 0], glow: 0.5 });
-    a.roof('gable', 0, 7, 0, w + 1.8, 4.4, d + 1.8, SLATE, 0xa84a3c, { keyEnd: STUCCO, tintEnd: 0xe6dcc4 });
+    a.roof('gable', 0, 7, 0, w + 1.8, 4.4, d + 1.8, SLATE, 0x692e26, { keyEnd: STUCCO, tintEnd: 0xe6dcc4, gain: 1.6 });   // the roof's tint is 0xa84a3c divided by the gain (T-houses.js dimBy)
     a.box(door.lx + 2.4, 3.0, d / 2 + 1.0, 0.12, 0.12, 1.4, null, 0x2a2c30); a.box(door.lx + 2.4, 2.0, d / 2 + 1.5, 0.08, 0.9, 1.0, WOODK, 0x8a5a34, { ds: true });
     a.box(w / 2 - 1.4, 5.25, -d / 4, 1.1, 5, 1.1, 'bricks_2', 0xb86a54, { roof: true });
 });
