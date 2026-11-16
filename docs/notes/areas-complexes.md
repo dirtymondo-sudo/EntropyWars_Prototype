@@ -7375,8 +7375,18 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   that touch a building to `s`. (2) Wall pieces with the catalogue's own `wall` / `mount` (`notice_board`, `hook_rail`, `fire_extinguisher`, `kitchen_range`) hang right with
   `floor: true` when put about 0.4 m off the wall. (3) A window seen from inside is a dusk-blue lit box (`nightPane`): dark navy read as a hole by day. (4) `ocean_fish` is a
   swimmer: it floats at the ceiling indoors. (5) A small iron stove is `stove(a, x, z, top)` (shapes; no stove model exists).
+- **PASS 3, DRESSING** (seen, three probe runs): the shortlist placed plot by plot (the file's header). New shapes any Mountains district can copy: `leanTo` (an open log
+  shelter; turn a `look` with `R.ARCH[R.ARCH.length - 1].rot = 270`), `lampPost`, `snowPoles`, `woodpile`. Three yetis stand (a native with no line walks). `ocean_tuna` floats
+  like every Ocean pack swimmer: do not lay one on ice.
+- **THE OFF-CENTRE MODEL — a renderer fix that moves EVERY Christmas pack tree in the game to its own trunk (three-renderer.js `_nrTree`, 2026-11-16).** Found on screen:
+  a snow pine stood inside the Warming Hut and another on the Sleigh shed, and neither was in the room's data. The live scene said why: `_nrTree` centred a tree model on
+  its box and THEN turned it by a random angle. A turn is about the model's own origin, so a piece whose mesh does not sit on its origin (all six `xmas:` kinds, cut out of
+  one scene: their boxes sit 20 to 30 m off) was drawn up to twice that far from the spot its trunk was planted and collides at. The offset is turned with the model now
+  (three lines; a model on its origin does not move; the random numbers are drawn in the same order). What changes for the other snowy places (the North Pole village,
+  Camelot's Snowy Pines, the Mountains' tree line): the snow pines now stand IN their tree zones, where the walker has always bumped them; the lone pines that stood on
+  trails, roofs and squares (the zone kit's point 4, "stand on trail squares") are gone. Look at your district again after this.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
   `psx_old_mattress_mp_1`*, `footlocker`*, `psx_supply_crate_1..`*, `psx_metal_barrel_mp_0..3`*, `psx_jerrycan_1`*, `meshy_sandbags`*, `money_sacks`*, `cable_drum`*, `hw_shovel`*,
@@ -7396,7 +7406,9 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   a backpack, a sleeping bag, a stretcher; a snow heap, icicles, an ice-fishing hole and rod, a pelt rug.
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Ridge looks SOUTH over the pass across two snow slopes, not north off the range (the room's edge is a wall);
   (2) three new walked-in buildings with plain names: GATE HOUSE, SHELTER (the Summit Shelter), FISHING HUT; (3) a radio MAST on the Ridge's east end and THE LOOKOUT on its west end;
-  (4) the Rope Bridge stays solid ground under its planks (the walker needs it), only dressed as a bridge; (5) the sign face is `fell` for the pass, `stencil` for the rescue hut.
+  (4) the Rope Bridge stays solid ground under its planks (the walker needs it), only dressed as a bridge; (5) the sign face is `fell` for the pass, `stencil` for the rescue hut;
+  (6) the pass's people are three yetis (the roster's `polar` unit that fits a high pass), standing, no lines, no encounter table; (7) plain new labels: WAY SHELTER's board reads RESCUE CACHE, the shed reads SLEIGHS;
+  (8) a summit cross by the Shelter and a votive stand at the cairn (pilgrims' things, no names on them); (9) the renderer's tree fix above (it moves snow pines in other zones to their true spots).
 ## MOUNT SHASTA, THE DISTRICT THREAD — district S of the Mountains, pass by pass (2026-11-16, second side; mondo's order: every district prototyped, DISTRICT_THREAD_BRIEF.md)
 
 File `docs/areas/mountains/districts/S.js` (20 plots of `site_prebuilt_shasta_mountains`), branch `claude/mountains-s-shasta`. The tool, the layout and the ways out were not touched.

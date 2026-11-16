@@ -26,8 +26,18 @@
    - Gate House: the keeper's bed, his desk under the back window, a hearth with a pot, keys, a rifle rack. Summit Shelter: two cots, a radio console, crates, fuel,
      first aid, a flare gun, an extinguisher. Fishing Hut: an iron stove, the hole in the floor, a stool, a bucket, traps, a net, a cooler
 
-   KNOWN MISSING OR WRONG (the next passes: 3 dressing, 4 atmosphere, 5 polish)
-   - Nobody lives here. The Switchbacks, the Sleigh Bend and both Tree Line plots are still thin
+   THE DRESSING (pass 3, seen): every plot has its own things, from the model list's shortlist (the notes).
+   - Shapes of this file (no model exists): `leanTo` (the WAY SHELTER with the RESCUE CACHE at the Switchbacks, the SLEIGH shed at the Sleigh Bend, turned with
+     `R.ARCH[..].rot`), `lampPost` (a log post with a lit lantern, 11 of them), `snowPoles` (banded trail markers with a red top), `woodpile`, the outhouse
+   - The Lookout: a bench, a dead tree, crows. The Ridge: a summit cross, stores by the Shelter. The Mast: a cable drum, gas bottles, a barrel
+   - The Gate's yard: the keeper's horse at a hitching rail, hay, a barrel, sandbags, a snowman. The High Pass: a sarsen, an urn, a votive stand, candles, loose stones
+   - The Switchbacks: the Way Shelter, dead trees, a snow fence. The Sleigh Bend: the shed with a sleigh and hay, a horse, a second sleigh, gifts and sacks
+   - The Tarn: the fishers' camp (tent, fire, chest), a boat frozen in, stools and a bucket by the holes, traps. The Tree Line: the woodcutter's camp (two wood stacks,
+     a sawhorse, a tent, a fire) with three wolves and bones; the climbers' camp (two tents, a fire, a pot, stumps). The Hut's yard: an outhouse, lamps, a dog, a snowman
+   - PEOPLE: three yetis stand (the High Pass, the Sleigh Bend, the climbers' camp); no line, so they walk. No `encounters` export: the room's table is mondo's
+
+   KNOWN MISSING OR WRONG (the next passes: 4 atmosphere, 5 polish)
+   - The lamps and lanterns are lit boxes, not real lights (pass 4); night never seen
    - NOT THIS FILE'S (the tool's / the engine's): green summer trees stand past the Pass Gate (the room's west edge land); the room's edge wall north of the Ridge;
      the snow's paint shows its tile grid; the rock sheet is very large on the crags; a north drop off the Ridge is not possible (the edge land climbs from the wall)
 
@@ -120,6 +130,20 @@ const rope = (a, x0, y0, z0, x1, y1, z1, sag, t) => { const ax = Math.abs(x1 - x
 const flagLine = (a, x0, y0, z0, x1, y1, z1, sag, k) => { rope(a, x0, y0, z0, x1, y1, z1, sag, 0.03); const ax = Math.abs(x1 - x0) > Math.abs(z1 - z0), L = Math.hypot(x1 - x0, z1 - z0), n = Math.round(L / 0.5);
     for (let i = 1; i < n; i++) { const u = i / n; a.box(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u - sag * 4 * u * (1 - u) - 0.36, z0 + (z1 - z0) * u, ax ? 0.36 : 0.03, 0.34, ax ? 0.03 : 0.36, null, FLAGS[(i + (k || 0)) % 5], { glow: 0.25 }); } };
 
+/* ── THE DRESSING'S SHAPES (pass 3): things the pass needs that no model exists for (the NEEDS A MODEL list), built as textured parts ── */
+/* an open-fronted log shelter: its back at -z, open to +z, a shed roof falling to the back, a bench along the back wall */
+const leanTo = (a, w, d, ctx) => { const { WD, WD2 } = ctx, g = { gain: 1.7 }, P = 0x5a4030;
+    a.box(0, 0, -d / 2 + 0.14, w, 2.3, 0.28, WD, LOG, g); for (const s of [-1, 1]) a.box(s * (w / 2 - 0.14), 0, 0, 0.28, 2.3, d - 0.1, WD, LOG, g);
+    for (let y = 0.3; y < 2.2; y += 0.5) { a.box(0, y, -d / 2 + 0.3, w - 0.5, 0.24, 0.06, WD2, 0x6a4c36, g); }
+    const n = Math.max(2, Math.round(w / 3.5)); for (let i = 0; i <= n; i++) a.cyl(-w / 2 + 0.2 + i * (w - 0.4) / n, 0, d / 2 - 0.2, 0.15, 3.1, WD2, P, { seg: 8, gain: 1.6 });
+    a.box(0, 3.0, d / 2 - 0.2, w + 0.2, 0.22, 0.22, WD2, P, { gain: 1.6 }); for (const s of [-1, 1]) a.box(s * (w / 2 - 0.14), 2.3, 0, 0.2, 0.16, d, WD2, P, { gain: 1.6 });
+    a.roof('shed', 0, 2.45, 0, w + 0.9, 0.9, d + 1.0, 'ice', SNOW, { ry: 180 });
+    a.box(0, 0.42, -d / 2 + 0.62, w - 1.4, 0.08, 0.5, WD2, 0x8a6a4a, g); for (let x = -w / 2 + 1.0; x <= w / 2 - 0.99; x += (w - 2) / 2) a.box(x, 0, -d / 2 + 0.62, 0.1, 0.42, 0.44, WD2, P, { gain: 1.6 });
+    a.box(0, 0, -d / 2 - 0.4, w + 1.2, 0.4, 0.8, 'ice', SNOW); };
+/* a stack of split logs under a cap of snow (along x) */
+const woodpile = (a, x, z, w) => { for (let r = 0; r < 3; r++) for (let i = 0, n = Math.round(w / 0.34); i < n; i++) a.box(x - w / 2 + 0.17 + i * 0.34, r * 0.3, z, 0.3, 0.28, 1.0 - r * 0.06, ctx0.WD2, (i + r) % 3 ? 0x8a6444 : 0x6e4e34, { gain: 1.5 });
+    a.box(x, 0.9, z, w + 0.1, 0.1, 1.1, 'ice', SNOW); for (const s of [-1, 1]) a.box(x + s * (w / 2 + 0.06), 0, z, 0.1, 1.1, 0.1, ctx0.WD2, 0x5a4030, { gain: 1.6 }); };
+const ctx0 = {};
 /* THE SQUARES: the rock between the Ridge and the pass below it is two open SNOW SLOPES now (letter `k`, the deep drift: nobody walks it, nothing stands on it), so
    the Ridge looks down on the Pass Gate and on the High Pass and they look up at it (the first look: every plot was a pit between rock walls; a drop cut to the
    north only faced the room's own edge wall). The Lookout gains two squares on the slope's lip, and the Frozen Tarn a snow shore round its ice */
@@ -127,7 +151,7 @@ exports.tailor = t => {
     const fill = (id, x0, y0, x1, y1, ch) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (t.get(id, x, y) === 'r') t.set(id, x, y, ch); };
     fill('P04-00', 3, 7, 4, 7, 's'); fill('P04-00', 2, 8, 9, 11, 'k'); fill('P04-01', 2, 0, 9, 1, 'k');
     fill('P05-00', 8, 6, 11, 11, 'k'); fill('P05-01', 9, 0, 11, 1, 'k');
-    for (const [x, y] of [[2, 2], [3, 2], [8, 2], [8, 3]]) if (t.get('P06-03', x, y) === 't') t.set('P06-03', x, y, 's');   // no tree zone against the Warming Hut's corners (a zone pine stood INSIDE the hut, by the bunks)
+    for (const [x, y] of [[2, 2], [3, 2], [8, 2], [8, 3]]) if (t.get('P06-03', x, y) === 't') t.set('P06-03', x, y, 's');   // a little more yard round the Warming Hut (the pine INSIDE the hut was the renderer's: see the notes, THE OFF-CENTRE MODEL)
     { const id = 'P05-02', sh = []; for (let y = 0; y < t.N; y++) for (let x = 0; x < t.N; x++) { if (t.get(id, x, y) !== 'i') continue;
           if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const X = x + dx, Y = y + dy; return X >= 0 && Y >= 0 && X < t.N && Y < t.N && t.get(id, X, Y) === 'r'; })) sh.push([x, y]); }
       sh.forEach(([x, y]) => t.set(id, x, y, 's')); }
@@ -180,7 +204,7 @@ exports.apply = ctx => {
       lantern(a, dr.lx + dr.cw / 2 + 0.45, 1.6, d / 2 + 0.16); board(a, 'FISHING HUT', dr.lx, 2.42, d / 2 + 0.1, 3.0, 0.5, '#f4ecd8', '#3a2a20', 'fell'); }));
 };
 
-exports.build = ctx => {
+exports.build = ctx => { ctx0.WD2 = ctx.WD2;
     const R = ctx, { put, dec, tree, native, building, look, flat, cabin, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
     const LG = { gain: 1.6 }, POST = 0x5a4030;
     const mark = (id, lx, ly) => { const q = S(id, lx, ly); R.taken.add(q[0] + ':' + q[1]); return q; };
@@ -241,12 +265,10 @@ exports.build = ctx => {
         a.box(2.2, 0.3, -0.6, 1.1, 1.7, 0.8, GM, 0x6a7078, { gain: 1.5 }); a.box(2.2, 2.0, -0.6, 1.2, 0.08, 0.9, 'ice', SNOW); a.box(2.2, 1.5, -0.18, 0.08, 0.08, 0.04, null, 0x40ff60, { glow: 1.6 }); }); }
   put('P06-00', 'dish', 8, 4, { face: 180 }); put('P05-00', 'hw_stone_4', 6, 6); dec('P05-00', 'eagle', 8, 4, { y: 0.02 }); dec('P05-00', 'psxg_rock_2', 3, 6); dec('P06-00', 'psxg_rock_1', 6, 6);
   /* ── THE SLEIGH BEND, THE FROZEN TARN ── */
-  put('P04-02', 'sleigh', 5, 6, { face: 30 }); put('P04-02', 'xmas_snowman', 3, 7);
   { const p = R.byId['P05-02'], q = S('P05-02', 6, 6); look('tarn', gx(q[0]), gz(q[1]), a => {   // THE TARN: the ice itself, a sheet on every ice square, and two fishing holes
         for (let ly = 0; ly < N; ly++) { let x0 = -1; for (let lx = 0; lx <= N; lx++) { const on = lx < N && cell[p.ly * N + ly][p.lx * N + lx] === 'i';
             if (on && x0 < 0) x0 = lx; if (!on && x0 >= 0) { a.box(((x0 + lx) / 2 - 6) * C, 0.03, (ly + 0.5 - 6) * C, (lx - x0) * C, 0.04, C, 'ice_1', 0x8cc4ec, { uv: 7, glow: 0.35, sides: false }); x0 = -1; } } }
         for (const [x, z] of [[5.6, -5.4], [-4.4, 6.2]]) { a.cyl(x, 0.06, z, 0.62, 0.03, null, 0x0c1c2c, { seg: 12 }); a.cyl(x, 0.05, z, 0.8, 0.05, 'ice', SNOW, { seg: 12, ri: 0.62 }); } }); }
-  put('P05-02', 'camping_tent', 9, 4, { face: 200 }); dec('P05-02', 'sea_chest', 9, 6);
   /* ── THE ROPE BRIDGE (P06-02): planks on two stringers, four posts on stone feet, two ropes a side with their hangers; ranch rails along both lips of the slot ── */
   { const p = R.byId['P06-02'], z0 = gz(p.ly * N + 5), z1 = gz(p.ly * N + 7), xa = gx(p.lx * N + 5), xb = gx(p.lx * N + 7);
     for (const [x0, x1] of [[gx(p.lx * N), xa], [xb, gx(p.lx * N + N)]]) for (const z of [r2(z0 - 0.4), r2(z1 + 0.4)]) feat({ k: 'rail', x0, z0: z, x1, z1: z, model: 'ranch' });
@@ -257,5 +279,52 @@ exports.build = ctx => {
             rope(a, sx * 3.3, 2.3, -4.3, sx * 3.3, 2.3, 4.3, 0.75, 0.09); rope(a, sx * 3.3, 1.2, -4.3, sx * 3.3, 1.2, 4.3, 0.5, 0.07);
             for (let z = -3.6; z <= 3.61; z += 0.9) { const u = (z + 4.3) / 8.6, top = 2.3 - 0.75 * 4 * u * (1 - u); a.box(sx * 3.3, 0.14, z, 0.04, top - 0.14, 0.04, null, HEMP); } } }); }
   put('P06-02', 'signpost', 5, 3, { face: 180 }); dec('P06-02', 'meshy_rope', 7, 8);
-  dec('P04-03', 'fallen_log', 5, 5); dec('P04-03', 'wolf', 4, 6); dec('P05-03', 'stump', 5, 6); tree('P05-03', 'xmas_snow_pine', 6, 6, 5); dec('P06-03', 'fallen_log', 3, 7); put('P06-03', 'signpost', 8, 6, { face: 0 });
+  /* ══ THE DRESSING (pass 3): every plot its own things, from the shortlist (areas-complexes.md "THE MOUNTAINS, THE SNOWY PASS"). Blockers on free squares' middles,
+     small things off them, the trails' squares left clear ══ */
+  const ghost = (id, lx, ly, t) => { const q = S(id, lx, ly); feat({ k: 'wall', x0: r2(mx(q[0]) - (t || 1.2) / 2), z0: mz(q[1]), x1: r2(mx(q[0]) + (t || 1.2) / 2), z1: mz(q[1]), t: t || 1.2, h: 2, ghost: true, rail: false }); };
+  /* a lamp post: a log post on a stone foot, a lit lantern on its arm (the village's is candy-striped; the pass's is a bare log) */
+  const lampPost = (id, lx, ly, turn) => { const q = mark(id, lx, ly), sx = turn ? -1 : 1; look('lamp:' + id + ':' + lx + ':' + ly, mx(q[0]), mz(q[1]), a => { a.cyl(0, 0, 0, 0.3, 0.3, 'rocks_5', 0x9a9aa0, ROCK(0, { seg: 8 })); a.cyl(0, 0.3, 0, 0.1, 2.9, WD2, POST, { seg: 8, gain: 1.6 });
+        a.box(sx * 0.3, 2.95, 0, 0.7, 0.08, 0.08, WD2, POST, LG); lantern(a, sx * 0.55, 2.5, 0); a.box(sx * 0.55, 2.84, 0, 0.03, 0.12, 0.03, GM, GT); a.cyl(0, 3.2, 0, 0.14, 0.08, 'ice', SNOW, { seg: 8 }); }); };
+  /* a snow pole: the trail's marker, banded, a red top that shows at night */
+  const snowPoles = (id, list) => { list.forEach(([lx, ly, dx, dz]) => { const q = S(id, lx, ly); look('pole:' + id + ':' + lx + ':' + ly, r2(mx(q[0]) + dx), r2(mz(q[1]) + dz), a => { for (let i = 0; i < 5; i++) a.cyl(0, i * 0.5, 0, 0.045, 0.5, null, i % 2 ? 0x1c1c1c : 0xf08a20, { seg: 6 }); a.cyl(0, 2.5, 0, 0.06, 0.16, null, 0xff3020, { seg: 6, glow: 1.4 }); }); }); };
+  /* THE RIDGE */
+  put('P04-00', 'park_bench', 5, 4, { face: 180 }); put('P04-00', 'psxg_dead_tree_1', 4, 4); dec('P04-00', 'psxg_dead_bush_2', 6, 5); dec('P04-00', 'crow', 6, 6, { y: 0.02 }); lampPost('P04-00', 4, 6, 1);
+  dec('P05-00', 'cross', 5, 6, { face: 180 }); dec('P05-00', 'psx_supply_crate_1', 5, 8); dec('P05-00', 'psx_jerrycan_1', 5, 9); put('P05-00', 'yellow_pole', 2, 8); dec('P05-00', 'psxg_dead_bush_1', 4, 5); lampPost('P05-00', 6, 8, 0);
+  put('P06-00', 'cable_drum', 6, 6); put('P06-00', 'gas_cylinder_rack', 8, 6, { face: 270 }); dec('P06-00', 'psx_metal_barrel_mp_1', 6, 4); dec('P06-00', 'psxg_dead_bush_2', 8, 5);
+  snowPoles('P05-00', [[5, 3, 0, -1.5], [8, 3, 0, -1.5], [11, 3, 0, -1.5]]); snowPoles('P06-00', [[2, 3, 0, -1.5], [5, 3, 0, -1.5]]);
+  /* THE PASS GATE's yard: the keeper's horse at its rail, his stores, two lamps */
+  put('P04-01', 'hitching_rail', 9, 4, { face: 90 }); put('P04-01', 'horse_brown', 9, 5, { face: 0 }); put('P04-01', 'hw_straw', 8, 4, { face: 90 }); lampPost('P04-01', 4, 3, 0); lampPost('P04-01', 8, 7, 1);
+  put('P04-01', 'psx_metal_barrel_mp_0', 8, 3); dec('P04-01', 'psx_wooden_crate_4', 4, 4); dec('P04-01', 'hw_shovel', 4, 5); put('P04-01', 'xmas_snowman_2', 4, 7); dec('P04-01', 'meshy_sandbags', 3, 5, { face: 90 }); dec('P04-01', 'crow', 6, 6, { y: 0.02 });
+  /* THE HIGH PASS: the pilgrims' things round the cairn */
+  put('P05-01', 'sarsen', 7, 1); put('P05-01', 'stone_urn', 6, 3); dec('P05-01', 'votive_stand', 4, 3, { face: 180 }); dec('P05-01', 'hw_candles', 4, 5); dec('P05-01', 'hw_candles', 6, 5);
+  for (const [lx, ly, k] of [[3, 3, 1], [7, 3, 2], [3, 5, 3], [7, 5, 4], [4, 1, 2], [6, 1, 1], [1, 4, 3], [9, 4, 2]]) dec('P05-01', 'psxg_rock_' + k, lx, ly); dec('P05-01', 'crow', 8, 5, { y: 0.02 }); dec('P05-01', 'psxg_stepping_stone_1', 5, 5); dec('P05-01', 'psxg_stepping_stone_2', 5, 3);
+  native('P05-01', 'yeti', 8, 3, 200);
+  /* THE SWITCHBACKS: the way shelter in the rock's nook with the rescue cache, dead trees, the poles */
+  { const q = S('P06-01', 4, 2); look('wayshelter', mx(q[0]), mz(q[1]), a => { leanTo(a, 10.5, 3.5, ctx);
+        a.box(3.6, 0, -0.9, 1.5, 0.9, 0.8, null, RED); a.box(3.6, 0.9, -0.9, 1.56, 0.08, 0.86, null, 0x8a1c18); a.box(3.6, 0.34, -0.49, 0.5, 0.14, 0.03, null, 0xf4f4f4, { glow: 0.5 }); a.box(3.6, 0.16, -0.49, 0.14, 0.5, 0.03, null, 0xf4f4f4, { glow: 0.5 });   // the rescue cache: a red chest with a white cross
+        board(a, 'RESCUE CACHE', 0, 3.3, 1.72, 4.0, 0.55, '#ffffff', '#8a1c18', 'stencil'); lantern(a, -4.6, 2.3, 1.2); }); }
+  dec('P06-01', 'meshy_rope', 5, 2); dec('P06-01', 'psx_supply_crate_1', 3, 2, { face: 20 }); dec('P06-01', 'psx_jerrycan_1', 3, 2); put('P06-01', 'psxg_dead_tree_2', 2, 4); put('P06-01', 'dead_snag', 6, 3); dec('P06-01', 'psxg_dead_bush_1', 5, 5); dec('P06-01', 'psxg_rock_3', 2, 3); put('P06-01', 'yellow_pole', 6, 5);
+  { const q = S('P06-01', 2, 3); feat({ k: 'rail', x0: r2(gx(q[0]) - 0.3), z0: gz(q[1]), x1: r2(gx(q[0]) - 0.3), z1: gz(q[1] + 3), model: 'wood_fence', block: false }); }   // a snow fence on the windward side
+  snowPoles('P06-01', [[4, 6, 1.5, 1.6], [2, 7, 0, -1.6], [6, 7, 1.6, 0]]);
+  /* THE SLEIGH BEND: the sleigh shed in the west nook, the team's horse, hay, a second sleigh out on the snow */
+  { const q = S('P04-02', 2, 7); look('sleighshed', mx(q[0]), mz(q[1]), a => { leanTo(a, 10.5, 3.5, ctx); board(a, 'SLEIGHS', 0, 3.3, 1.72, 2.6, 0.55, '#f4ecd8', '#3a2a20', 'fell'); lantern(a, 4.6, 2.3, 1.2); }); R.ARCH[R.ARCH.length - 1].rot = 270; }
+  put('P04-02', 'sleigh', 2, 7, { face: 90 }); put('P04-02', 'hw_straw', 2, 6, { face: 0 }); dec('P04-02', 'hw_straw_2', 2, 8); put('P04-02', 'sleigh', 5, 6, { face: 30 }); put('P04-02', 'xmas_snowman', 6, 8);
+  put('P04-02', 'hitching_rail', 3, 9, { face: 0 }); put('P04-02', 'horse_black', 4, 9, { face: 90 }); dec('P04-02', 'xmas_gift', 5, 7); dec('P04-02', 'money_sacks', 4, 6); lampPost('P04-02', 4, 5, 0); native('P04-02', 'yeti', 5, 8, 300);
+  /* THE FROZEN TARN: the fishers' camp on the east shore, a boat frozen in, the catch by the holes */
+  put('P05-02', 'camping_tent', 9, 4, { face: 200 }); put('P05-02', 'campfire', 9, 5); dec('P05-02', 'sea_chest', 8, 5); put('P05-02', 'rowboat', 9, 8, { face: 60 }); dec('P05-02', 'lobster_traps', 8, 8);
+  dec('P05-02', 'wooden_bucket', 8, 4); dec('P05-02', 'psx_chair_mp_1', 7, 5); dec('P05-02', 'psx_fish_skeleton_mp_1', 4, 7, { y: 0.06 }); dec('P05-02', 'psx_chair_mp_1', 5, 8); dec('P05-02', 'beach_cooler', 4, 8);
+  /* THE ROPE BRIDGE */
+  lampPost('P06-02', 4, 4, 0); dec('P06-02', 'psx_wooden_crate_1', 7, 3); dec('P06-02', 'psx_supply_crate_1', 5, 4);
+  /* THE TREE LINE, WEST: the woodcutter's camp, and the wolves that watch it */
+  { const q = mark('P04-03', 2, 7); look('woodcamp', mx(q[0]), mz(q[1]), a => { woodpile(a, 0, 0, 3.0); woodpile(a, 0, 3.5, 3.0);
+        for (const s of [-1, 1]) { a.box(5.0 + s * 0.6, 0, -3.3, 0.08, 0.8, 0.5, WD2, POST, LG); a.box(5.0 + s * 0.6, 0.4, -3.3, 0.5, 0.08, 0.08, WD2, POST, LG); } a.box(5.0, 0.8, -3.3, 1.9, 0.26, 0.26, WD2, 0x8a6444, { gain: 1.5 }); }); mark('P04-03', 2, 8); ghost('P04-03', 2, 7, 3); ghost('P04-03', 2, 8, 3); }   // two wood stacks, a log on a sawhorse
+  put('P04-03', 'stump', 4, 7); put('P04-03', 'fallen_log', 5, 8, { face: 20 }); put('P04-03', 'dead_snag', 6, 6); dec('P04-03', 'meshy_camping_tent', 3, 5, { face: 160 }); put('P04-03', 'campfire', 4, 5);
+  dec('P04-03', 'wolf', 6, 7); dec('P04-03', 'wolf', 5, 9, { face: 330 }); dec('P04-03', 'wolf', 3, 9, { face: 20 }); dec('P04-03', 'skull', 6, 8); dec('P04-03', 'femur', 5, 7); dec('P04-03', 'trap_bear_open', 3, 6); dec('P04-03', 'psx_hand_saw_1', 4, 6, { y: 0.02 });
+  /* THE TREE LINE: the climbers' camp */
+  put('P05-03', 'camping_tent', 6, 4, { face: 135 }); put('P05-03', 'camping_tent', 6, 7, { face: 20 }); put('P05-03', 'campfire', 7, 5); dec('P05-03', 'meshy_fallen_log', 8, 6, { face: 40 }); dec('P05-03', 'meshy_stump', 6, 5); dec('P05-03', 'meshy_stump', 8, 5);
+  put('P05-03', 'cauldron', 7, 4); dec('P05-03', 'footlocker', 5, 4); dec('P05-03', 'psx_metal_barrel_mp_2', 9, 6); dec('P05-03', 'psx_old_mattress_mp_1', 9, 5, { y: 0.03 }); dec('P05-03', 'rabbit', 9, 4, { y: 0.02 }); dec('P05-03', 'rabbit', 6, 6, { y: 0.02 }); native('P05-03', 'yeti', 8, 4, 220);
+  /* THE WARMING HUT's yard */
+  { const q = mark('P06-03', 2, 4); look('outhouse', mx(q[0]), mz(q[1]), a => { a.box(0, 0, 0, 1.5, 2.3, 1.5, WD, 0x8a6a4a, { gain: 1.7 }); a.roof('shed', 0, 2.3, 0, 1.9, 0.5, 1.9, 'ice', SNOW, { ry: 270 }); a.box(0.76, 0, 0, 0.04, 2.0, 0.8, WD2, 0x5a4030, { gain: 1.6 }); a.box(0.79, 1.5, 0, 0.03, 0.22, 0.22, 'marble_light', PANE, { glow: 1.0 }); }); ghost('P06-03', 2, 4, 1.5); }
+  put('P06-03', 'fallen_log', 3, 7, { face: 80 }); put('P06-03', 'signpost', 8, 6, { face: 0 }); lampPost('P06-03', 2, 6, 0); lampPost('P06-03', 8, 4, 1); put('P06-03', 'stump', 2, 5); dec('P06-03', 'dog', 5, 7); put('P06-03', 'xmas_snowman_3', 7, 7);
+  dec('P06-03', 'psx_metal_barrel_mp_2', 8, 3); dec('P06-03', 'hw_shovel', 3, 6); dec('P06-03', 'psx_wooden_crate_2', 8, 5);
 };
