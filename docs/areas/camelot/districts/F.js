@@ -21,8 +21,13 @@
    the east bridge. Dress round them, do not move them.
 
    PASS 3, THE DRESSING (2026-11-16): the forest floor (`ground`, the dark grass), stepping stones into the ring, the mushroom glade and the
-   spring, six painted birches, seven pack stones, Meshy crystal shards, glowing caps down the path's east side, ferns, a log, a stump, an
+   spring, six painted birches, seven drawn boulders, Meshy crystal shards, glowing caps down the path's east side, ferns, a log, a stump, an
    anthill, ladybugs, grasshoppers, caterpillars, a chrysalis, bees, moths, butterflies, two more rabbits, a frog.
+   PASS 4, THE ATMOSPHERE (2026-11-16): `airZones` (violet motes through the forest; fireflies over the north knoll, the pond and the ring;
+   spores in the mushroom glade; blue motes at the spring and the crystal knoll); the ring's purple ground now runs under the toadstools,
+   with a lit disc under each (the light it throws), one under the islet's mushroom; seen by day and at night (`hqClockSet(23)`).
+   PASS 5, POLISH (2026-11-16): a walk of twelve views by day and night; two standing stones (`menhir`) flank the Woods trail east of the
+   crossing. FIVE PRs ARE IN (four district passes + the tool's hooks): THIS THREAD HAS STOPPED and waits mondo's look.
    MISSING / WAITING: WAITS MONDO: who lives here (the kingdom's AREA UNITS table has no fairy, unicorn, gnome or mushroom girl; a person off
    the table stands as a random race on it, so the ring's own "fairy" is not a fairy on screen either). STILL TO DO (passes 4, 5): its own
    light, air and particles, the night look, polish. No walk-in here: none is named.
@@ -75,6 +80,7 @@ dec('butterfly', 87, 27, { floor: true, y: 1.2 }); dec('blue_morpho', 93, 26, { 
 { const S = row('pond', PX, PZ);
   S.rock(3.2, -1.2, 0, 2.1, 1.75, 20); S.rock(4.5, -1.2, 1.3, 1.1, 1.45, 70, false); S.rock(2.2, -1.2, -1.5, 0.9, 1.3, 130, false);   // the islet: its top stands 0.55 m over the ground, 0.85 over the water
   at('fae_mushroom', PX + 3.2, PZ, { y: 0.45, face: 40, noLight: true });
+  S.P.push({ s: 'cyl', p: [3.2, 0.52, 0], r: 1.5, h: 0.012, seg: 10, key: MOSS, tint: 0xc8ffd8, glow: 0.55 });   // PASS 4: its light on the islet's moss
   [[-2.0, -4.8, 0.5, 1], [-0.4, -5.2, 0.42, 0], [1.6, -4.4, 0.55, 0], [-2.8, -4.0, 0.36, 0], [-1.6, 4.6, 0.52, 0], [0.4, 5.2, 0.4, 1], [2.0, 4.0, 0.46, 0], [3.6, -3.0, 0.4, 0], [3.9, 2.9, 0.5, 1], [0.9, -3.9, 0.3, 0], [0.2, 4.0, 0.3, 0]].forEach((q, i) => {
       S.P.push({ s: 'cyl', p: [q[0], -0.29, q[1]], r: q[2], h: 0.02, seg: 9, arc: 320, a0: i * 67, key: 'leaves_3', tint: 0xc8f090, gain: 1.6, glow: 0.2 });   // a lily pad: a notched disc on the water
       if (q[3]) S.P.push({ s: 'dome', p: [r2(q[0] + 0.1), -0.27, r2(q[1] - 0.06)], r: 0.13, h: 0.14, seg: 6, rings: 2, key: 'marble', tint: 0xffb8e0, glow: 0.55 }); });
@@ -85,7 +91,8 @@ dec('butterfly', 87, 27, { floor: true, y: 1.2 }); dec('blue_morpho', 93, 26, { 
 { const x = gx(92), z = gx(43); many(12, i => { const q = i * Math.PI / 6; props.push({ key: 'fae_toadstool', x: r2(x + Math.cos(q) * 5.6), z: r2(z + Math.sin(q) * 5.6), face: i * 30 }); });   // THE RING
   for (let y = 40; y < 46; y++) for (let x2 = 89; x2 < 95; x2++) taken.add(x2 + ':' + y); props.push({ key: 'instrument_harp', x: r2(x + 0.6), z: r2(z - 0.5), face: 200 }); npc.push({ x: r2(x + 1.75), z: r2(z + 1.75), face: 220, race: 'fairy' });
   const S = row('ring', x, z);
-  S.flat(0, 0, 0, 5.0, 0.03, 'purple_grass', 0xffffff, { gain: 1.2 });
+  S.flat(0, 0, 0, 6.7, 0.03, 'purple_grass', 0xffffff, { gain: 1.2, glow: 0.12 });
+  many(12, i => { const q = i * Math.PI / 6; S.flat(Math.cos(q) * 5.6, 0.035, Math.sin(q) * 5.6, 0.95, 0.012, 'purple_grass', 0xf0c8ff, { glow: 0.42, seg: 12 }); });   // PASS 4: the light each toadstool throws on the ground (a lit disc: the room has no real light to spare)
   S.flat(0, 0.03, 0, 1.7, 0.06, 'ice', 0xd8e8ff, { glow: 0.5, seg: 12 });   // the moonstone: the ice sheet, lit
   S.P.push({ s: 'cyl', p: [0, 0.03, 0], r: 1.95, ri: 1.7, h: 0.1, seg: 12, key: ROCK, tint: STONE, gain: RG });   // its kerb
   many(12, i => { const q = (i + 0.5) * Math.PI / 6; at('woods_glowcap', x + Math.cos(q) * 5.5, z + Math.sin(q) * 5.5, { face: i * 47, noLight: true }); }); }
@@ -132,9 +139,11 @@ const steps = (pts) => pts.forEach((q, i) => at('psxg_stepping_stone_' + (1 + i 
 steps([[E + 0.5, gx(43) + 0.2], [E + 1.5, gx(43) - 0.25]]);                                                                               // into the ring
 steps([[E + 0.6, 25.9], [E + 1.8, 26.2], [E + 3.0, 26.5], [E + 4.2, 27.0], [E + 5.4, 27.6], [E + 6.6, 28.2], [E + 7.8, 28.6], [E + 9.0, 28.8], [E + 10.2, 28.6]]);   // through the mushroom glade
 steps([[E + 0.6, gx(62) + 0.2], [E + 1.6, gx(62) - 0.2], [E + 2.5, gx(62) + 0.15]]);                                                      // to the spring
-/* painted birches at the glades' far sides, the Halloween pack's stones at their corners (the graveyard pack's `psxg_rock_*` are cut blocks, not rocks: out) */
+/* painted birches at the glades' far sides. NOT the packs' stones: `hw_stone*` are gravestones (a headstone, a Celtic cross) and `psxg_rock_*` are cut blocks */
 [[93, 27, 6.2], [93, 33, 5.6], [94, 39, 6.4], [93, 56, 5.8], [92, 63, 6.0], [92, 71, 5.4]].forEach(q => tree('tree_53', q[2], q[0], q[1], 0.5));
-[['hw_stone_3', 91, 26], ['hw_stone_5', 92, 34], ['hw_stone_2', 93, 39], ['hw_stone_2', 91, 57], ['hw_stone_5', 91, 65], ['hw_stone_4', 90, 70], ['hw_stone_4', 91, 24]].forEach((q, i) => put(q[0], q[1], q[2], { face: i * 53 }));
+{ const S = row('stones', E, 0);   // mossy boulders at the glades' corners, off the squares' middles (drawn: they weigh nothing)
+  [[5.9, gx(26) + 0.7, 0.8, 0.6], [9.6, gx(35) - 0.9, 0.95, 0.7], [12.4, gx(40) - 0.7, 0.75, 0.55], [5.8, gx(58) - 0.8, 0.9, 0.65], [6.2, gx(66) - 1.1, 0.8, 0.6], [1.3, gx(50) + 1.2, 0.6, 0.45], [12.7, gx(57) - 0.9, 0.7, 0.5]]
+      .forEach((q, i) => S.rock(q[0], -0.12, q[1], q[2], q[3], i * 47, i % 3 !== 1)); }
 /* crystals (mondo's Meshy shards) at the rocks' feet. NOT the ocean pack's weed as water plants: it draws black in this room. */
 at('meshy_crystal_shards', gc(93) - 2.3, gx(62) + 3.1, { face: 20 }); at('meshy_crystal_shard', gc(93) - 2.5, gx(62) - 3.0, { face: 140 });
 at('meshy_crystal_shards', gc(91) + 2.4, gc(72) + 1.6, { face: 200 }); at('meshy_crystal_shard', gc(91) - 2.2, gc(72) - 1.5, { face: 300 }); at('meshy_crystal_shard', gc(91) + 1.2, gc(72) + 2.6, { face: 80 });
@@ -152,9 +161,24 @@ at('anthill', E + 1.4, gx(24) + 0.6, { face: 0 }); at('ant', E + 1.9, gx(24) + 0
 [['bumblebee', 2.0, gx(62) - 4.4, 0.5], ['bumblebee', 4.6, gx(62) + 4.9, 0.6], ['bee', 1.6, gx(62) + 3.3, 0.7], ['bee', 7.4, gx(62) - 4.8, 0.5], ['hawk_moth', 4.2, gx(43) - 3.0, 1.2], ['hawk_moth', 9.6, gx(43) + 3.4, 1.4], ['luna_moth', 5.2, gc(22) + 2.0, 1.6], ['blue_morpho', 7.8, gx(55) + 0.2, 1.3], ['monarch', 5.0, gc(72) - 2.6, 1.2], ['swallowtail', 10.6, gx(30.5) + 4.6, 0.9]]
     .forEach((q, i) => at(q[0], E + q[1], q[2], { floor: true, y: q[3], face: i * 43 }));
 at('rabbit', E + 8.9, gx(23) + 0.8, { face: 200 }); at('rabbit', E + 3.8, gx(53) + 0.8, { face: 60 }); at('meshy_frog', PX + 4.9, PZ + 5.6, { face: 250 });
+/* PASS 5: two standing stones (mondo's Meshy menhir) flank the Woods trail east of the crossing, glowing caps at their feet */
+put('menhir', 90, 46, { face: 20 }); put('menhir', 90, 49, { face: 200 });
+[[0.9, gx(46) + 0.5], [2.7, gx(46) + 2.9], [0.8, gx(50) - 0.3], [2.8, gx(49) + 0.5]].forEach((q, i) => at('woods_glowcap', E + q[0], q[1], { face: i * 77, noLight: true }));
 /* NO NEW RESIDENTS: the kingdom's AREA UNITS table (mondo's, data.js HQ_AREA_ENCOUNTERS) has no fairy, unicorn, gnome or mushroom girl, and a
    placed person off that table stands as a random race ON it (a unicorn here came up as an Undead). Who lives in this forest is his to say. */
 flushArch();
 }
+/* PASS 4, THE AIR (2026-11-16; the Woods' way, per glade): violet motes through the whole forest, and each glade its own: fireflies over the
+   north knoll, the pond (sea green) and the ring (gold), pale spores in the mushroom glade, blue motes at the spring and on the crystal knoll.
+   Squares x0, y0, x1, y1. The first zone listed is drawn first; counts are small (a weak PC halves them). */
+const airZones = () => [
+    { x0: 84, y0: 17, x1: 96, y1: 79, kind: 'motes', color: 0xd8b4ff, n: 320 },
+    { x0: 89, y0: 19, x1: 94, y1: 25, kind: 'fireflies', n: 36 },
+    { x0: 89, y0: 26, x1: 95, y1: 35, kind: 'fireflies', color: 0x9fffd8, n: 60 },
+    { x0: 89, y0: 39, x1: 95, y1: 46, kind: 'fireflies', color: 0xffe890, n: 70 },
+    { x0: 89, y0: 49, x1: 95, y1: 58, kind: 'spores', color: 0xe8ffc8, n: 70 },
+    { x0: 89, y0: 59, x1: 95, y1: 66, kind: 'motes', color: 0x8fe8ff, n: 60 },
+    { x0: 89, y0: 69, x1: 94, y1: 75, kind: 'motes', color: 0x8fe8ff, n: 44 },
+];
 /* the forest floor (mondo's rule: `grass_dark_fantasy` / `dirt_2`) under this district's grass and trees, in place of the kingdom's lawn */
-module.exports = { build, ground: 'grass_dark_fantasy' };
+module.exports = { build, ground: 'grass_dark_fantasy', airZones };
