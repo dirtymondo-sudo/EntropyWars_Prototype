@@ -7774,8 +7774,17 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   reindeer for the sleigh team, a cairn and a prayer-flag string as real models); (3) one look for all lamp posts and poles; (4) lines for the yetis and a keeper at the
   Gate House once the NPC system says who lives here; (5) with the tool's row: grey the rock sheet's scale on the crags, take the tile grid out of the snow paint,
   winter trees on the west edge land past the Pass Gate.
+- **THE MODEL PASS** (mondo 11-16, on top of the five passes: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to end;
+  seen, two probe runs, 26 views; proof `docs/areas/mountains/proof/P_models_*.jpg`). What was replaced, added and what stays a shape: the file's header. Learned:
+  - A prop row takes `noBlock: true` (the `rope_bridge` model blocks by its catalogue row: on a walked square it must not) and its own `h` / `span` (the great cairn is
+    `cairn` at `h` 3.6; `icicles` at `span` 1.4 so they end over head height). A hung piece: `floor: false` + `y` = the plot's ground + the eave's height - the piece's own height.
+  - `timber_gate` and `icicles` run along x at `face` 0; `prayer_flags` too. `rope_bridge` runs along x: `face: 90` for a north-south crossing. `lantern_post` has no light.
+  - The Rope Bridge's crossing went from two squares wide to one (`tailor`: one `j` column became the slot), because the model is one 1.7 m walkway.
+  - CROSSED OFF the needs-a-model list: prayer flags, cairn, rope bridge, timber gate (as leaves), lantern post, weather mast, reindeer, goat, bear, snowshoes, snow sled,
+    ice axe, pickaxe, wood stove, kettle, firewood pile, axe + block, backpack, sleeping bag, stretcher, snow heap, icicles, ice-fishing hole and rod, pelt rug.
+    STILL NO MODEL: skis as a loose pair (the `ski_rack` has them), a wide gate frame, a big log shelter, a lit lantern post.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles; after the model pass 243 calls / 331 k triangles (the models are heavier than the boxes they replace, the calls are level; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
