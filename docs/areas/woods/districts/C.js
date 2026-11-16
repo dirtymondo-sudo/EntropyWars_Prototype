@@ -157,6 +157,12 @@ function models(ctx) {
       if (spot) { taken.add(spot[0] + ':' + spot[1]); taken.add((spot[0] - 1) + ':' + spot[1]); P('camper_van', gx(spot[0]), gc(spot[1]), { face: 0 }); }
       hput('P01-04', 'picnic_table', -2, 3, { face: 20 }); hput('P01-04', 'clothes_line', 3, 3, { face: 100 }); hput('P01-04', 'bbq_grill', 2, -3); hdec('P01-04', 'backpack', -3, -1); hdec('P01-04', 'backpack', 1, 3);
       P('kettle', gc(c[0]) + 0.75, gc(c[1]) + 0.55, { face: 60 }); P('sleeping_bag', gc(c[0]) - 3.6, gc(c[1]) - 1.9, { face: 70 }); }
+    /* THE OLD TREE: the hammock (in the game before the wish list as `hammock`, the Houses on the water pack's; mondo 11-16: "a lot of the requested models we
+       already have too"), on two free squares side by side on the glade's south side */
+    { const p = plot['P01-03'], c = centre('P01-03'); let spot = null;
+      for (let ly = N - 2; ly >= 1 && !spot; ly--) for (let lx = 2; lx < N - 1 && !spot; lx++) { const X = p.x * N + lx, Y = p.y * N + ly;
+          if (cell[Y][X] === 'g' && cell[Y][X - 1] === 'g' && !taken.has(X + ':' + Y) && !taken.has((X - 1) + ':' + Y) && Y > c[1]) spot = [X, Y]; }
+      if (spot) { taken.add(spot[0] + ':' + spot[1]); taken.add((spot[0] - 1) + ':' + spot[1]); P('hammock', gx(spot[0]), gc(spot[1]), { face: 0 }); } }
     /* THE OLD PLAYGROUND: the tyre swing */
     P('tyre_swing', gc(33) - 0.3, gc(63) + 0.9, { face: 100 });
     /* THE CROSSROADS: the trail's map board, an outhouse behind the shelter's corner, a milestone */
