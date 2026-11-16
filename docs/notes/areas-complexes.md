@@ -4731,6 +4731,9 @@ once that first district is fleshed out and knows what shared assets it can use 
   beach, the hot dog stand and bins at the Boardwalk, a towel line (drawn) at the huts, toys adrift in the Surf, a bench, a guitar and the
   radio in the Palms, chairs and the ball at the court, a fenced path over the Dunes to a high bench with a glass, dry scrub on every dune,
   the fishermen's camp south, a chest and a wrecked boat where the sand runs out. 79 props, 2 rails, 1 drawn piece; catalogue models only.
+- **PASS 4, ATMOSPHERE (seen on screen):** all drawn glow, no new real light: bulbs along the huts' porches and lamp to lamp down the
+  Boardwalk, pennants under the gate, bamboo torches (court, huts' fire, Palms, both camps, the Dunes path), paper lanterns on a line in the
+  Palms, a lamp over the lifeguard's door, a red light on its roof. Sound, particles and night have no hook a district can reach (the kit).
 - **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
@@ -4755,8 +4758,17 @@ once that first district is fleshed out and knows what shared assets it can use 
   typed `G + 1.5` with G = the plot's sand (`CAP[level]`: 0.6 / 1.2 / 2.0). And within about 0.4 m of a walk-in's wall the ground under a
   prop is the WALL's top (boards, pegboard and rings stood on the roof): give it `floor: true`. S.js `In(B, key, lx, lz, face, y)` does
   both. A thing on a table: use `steel_table` / `tanker_desk` (tops 0.76) so its `y` stays under 1.
-- **WALL PROPS:** a catalogue prop with `wall: true` (clock, clipboard, shelf, hook rail, extinguisher) did not show in a hut; use the plain
-  ones (pegboard, net, painting, life ring, notice board not checked). `bare_bulb` stands on the floor here: light a hut with the deck's glow.
+- **WALL PROPS** (pegboard, net, painting, life ring, extinguisher) show once typed as above (`floor: true`, G + height, 0.15 m off the
+  inner face). `bare_bulb` and other `ceil` props stand on the floor here: light a hut with the deck's glow.
+- **THE CEILING IS NOT WHERE THE ROW SAYS:** the huts (row `h` 3.0, front S) have theirs at 2.68; the lifeguard hut (`h` 3.2, front E) at
+  2.5. Look once from inside before placing a lit deck (`inside`'s `h` = the ceiling as seen; deck 5 cm under it; no tie beams under 2.6).
+- **LIGHT A DISTRICT CAN GIVE** (S.js `bulbs`, `torch`): a string of bulbs = small `glow: 1` cylinders on a dark wire (glow washes a
+  colour to pastel: fine by day); a torch = a bamboo pole, a cup, a `glow` cone (tint 0xff7a10, glow 0.8); `paper_lantern` props (they
+  glow, no light) on a drawn rope at `G + 2.3`. Put several torches in ONE `look` row when the sand under them is level (a row = three
+  meshes; twelve rows of one torch is thirty-six).
+- **NO HOOK FOR A DISTRICT (zone-wide, the tool row's or the engine's):** SOUND (a walked room has no sound bed of its own in the data:
+  surf, gulls, rigging would be new work in audio.js + the shell), PARTICLES (spray at the rocks, gulls wheeling), NIGHT (the sea shell is
+  day only: `night: 0`, so the glows never get their dusk).
 - **WATER ON THE SAND:** `feat({ k: 'dip', x, z, r, h })` on sand that stands 0.6 m up, with r 3.4-5.2 m and h 1.5-1.7 m, is a pool the room's
   own sea stands in (waded). A smaller or shallower dip shows no water.
 - **DUNE DRESSING:** `psxg_dead_bush_1/2` read as dry dune scrub; `feat({ k: 'rail', x0, z0, x1, z1, model: 'ranch' })` is a timber
