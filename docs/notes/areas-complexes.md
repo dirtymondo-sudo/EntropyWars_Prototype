@@ -5874,6 +5874,15 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
   - Twenty-odd drawn LAMP POSTS (H's `lampPost`, copied) and five painted boards (`board()`: plain words, read from both sides).
   - LIGHTS: C keeps two real ones (the Hub's torch, the big circle's); the rest carry `noLight`.
   - Props in the district: 24 -> about 220 (+ 8 drawn fields / posts / boards).
+- **PASS 2, INTERIORS + LANDMARKS (seen in the cloud browser, 7 + 5 views):**
+  - THE FIELD SHED (`houses()`, id `est:fieldshed`, squares 24..26 x 29..30, door east on the silo yard): the district's one inside. Weathered boards, a tin
+    gable roof, a stone footing, four dark windows, a lantern and a TOOLS board by the door. Inside: a plank floor slab over the lawn's roll, a lit ceiling
+    with tie beams, a drawn work bench and two shelves, the tool chest, barrels, crates, sacks, bales, jerrycans, a radio and a lamp on the bench, a hung lantern.
+    A thing on the bench or a shelf carries the plot's ground in its `y` (1.75 + the height); the hung lantern is placed without `floor`.
+  - THE GATE ARCH (`look` `archC`): two posts and a beam over the track south of the Woods gate's clearing, THE ESTATE on a hung board, read from both sides.
+  - THE LAMP POSTS ARE ONE PIECE: every post on level ground (sx, sy under 31) is drawn in one `look` (`lampsC`), the few by the east and south edge keep
+    their own row (the ground grades there). FPS at the proof view: 1.8 before the thread, 1.4 with 24 separate posts, 1.6 with the one piece (the other
+    districts grew in the same hours, so part of the rest is theirs).
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
   THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle.
@@ -6305,6 +6314,10 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **FROM THE FOREST (district W, pass 2)**: a small walk-in on open ground needs no plan letters: `ctx.building('w_hut', [x0, y0, x1, y1], 'N', 3.5, …)`
+  on grass squares, then `sq()` every square it covers. `sheet().shell()` takes no `gain`: set it on the two parts it pushed
+  (`a.P.slice(-2)`). In a 3.5 m house the lit ceiling hangs at 2.95 (at 3.18 it lies in the building's own black ceiling). `cot` is a
+  modern camping cot: draw a bed. A boat on a `stream` cannot be set afloat by `y`: pull it up on the bank.
 - **FROM THE FOREST (district W, pass 1)**: `groundAlso(x, y)` beside `ground` = squares outside a file's plots that wear its ground. A prop
   standing in a ghost wall's square takes `floor: true` (without it the cross of the wayside shrine stood 2.2 m up, on the wall's top).
   A lantern post for a road = `W.js` `lantern()`; a banner pole = `bannerPole()`; a log stack = `logpile()` (no lying cylinder exists: a
@@ -6381,6 +6394,15 @@ forest glade, the dead tree's hole.
   draw calls 3,787 -> 4,097. His F3 at the bay is the number that counts.
 - **NOT SEEN YET**: the two rowboats did not draw at the water's level in the first two probes (the bed under a `stream` moves a prop's
   `y`); two ways are baked now and the next pass's probe settles it.
+- **PASS 2, INTERIORS (seen: 11 views, then 7 after fixes)**. THE WOODCUTTER'S HUT (`cam:w_hut`, squares 19..21 x 89..90, its door on
+  the forest track): boards on a stone foot, corner posts, a thatched hip roof, a stone chimney with smoke, two shuttered lit windows,
+  a WOODCUTTER board over the door, a lean-to with cut logs on the gable end. Walked into (`leaf_shabby_wood`, swinging), three squares
+  by two; the door's column stays clear and the four corner squares hold what blocks: a stone HEARTH with a fire and a pot, a drawn
+  BED (the catalogue's `cot` is a white camping cot: out) with a chest, a TABLE with two stools, a plate, the supper and a candle, a
+  WORKBENCH with the saw, a mallet, rope and cut logs. A dog in the yard. Fixed after the first look: the walls and thatch drew near
+  black (the shell now takes `gain` 1.5, the thatch 1.9); the lit ceiling sat ON the building's black one (it hangs at 2.95 in a 3.5 m
+  house now); the two rowboats are pulled up on the bank (a prop's `y` under 1 m is a lift from the ground UNDER it: over the moat
+  that is the bed, so a boat set "at the water's level" sank; 1 m or more is a height from the room's level, and it flew).
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
   the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
   (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
