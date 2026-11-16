@@ -7569,7 +7569,9 @@ yard door and two plots; both are one row to change.
   pass 1 used 14 catalogue keys the rest of the Sewers already wore. FITS THIS DISTRICT, found in MODEL_LIST.md and placed (none stood in
   the Sewers before): the control wall `monitor_stack` `server_rack` `retro_control_panel`; the lab bench `steel_table` `lab_glassware`
   `microscope`; machines `air_compressor` `generator` `gas_cylinder_rack`; `locker` `footlocker` `vent_grille` `security_camera` `pipe_run`
-  `wall_chains`; in the tank three kraken `tentacle` / `tentacle2`; on the Pit's walk the Halloween pack's `hw_body` `hw_body_2` `hw_part_1/3/5`,
+  `wall_chains`; in the tank six `goo_tendril` (mondo 11-16 on the first three, the kraken `tentacle` models: "get rid of the kraken arms, use the
+  tentacles that the spells use": the symbiote's black spell tendrils are drawn in code, so they got a catalogue row, proc `goo_tendril`
+  in three-renderer.js, built like the spells' own: tapering obsidian segments on a curl, venom glowing at the tip, swaying; a row's `h` = height); on the Pit's walk the Halloween pack's `hw_body` `hw_body_2` `hw_part_1/3/5`,
   `skull`, `skull_pile`, `psx_fish_skeleton_mp_1`; by the sludge the Woods' `woods_glowcap` (15). FITS, NOT PLACED YET: `psx_catwalk_1`
   (a catwalk over the tank), `psx_pipe_1` family + `psx_pipe_valve_holder_large_*` (tried at the channel's head: the short pipe stands
   upright and thin, taken out; wants a row with a lying pose), `ind_vent`, `ind_silo` (9 m: fits the Pit's 12 m hall), `chain_hoist`,
@@ -7577,7 +7579,7 @@ yard door and two plots; both are one row to change.
   `fae_mushroom` (3.5 m, a blocker: no dead square for it yet), `railway_lantern`, `steam_turbine`.
 - **DECISIONS MADE FOR MONDO:** the door up stands in the Power station's YARD (not in the turbine hall); two plots; the stair climbs from
   the track tunnel; the sludge = Corroded for 2 rounds, no race immune by terrain; who lives there besides kaiju and black goo: mad
-  scientist, swamp monster; something with tentacles lives in the tank (props only, no unit, no rule).
+  scientist, swamp monster; black goo tendrils stand in the tank (props only, no unit, no rule).
 - **NEEDS A MODEL:** a lying waste pipe mouth (1 m bore) for the channel's head; a hazmat suit on a hook; a yellow drum with the trefoil.
 - **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
   the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and

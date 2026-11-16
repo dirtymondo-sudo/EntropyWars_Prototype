@@ -77914,7 +77914,7 @@ const ThreeRenderer = (function () {
            at its tip; it sways. A row's own `h` = its height (default 3.2 m). */
         goo_tendril: function (U, p) {
             var g = new THREE.Group(), arm = new THREE.Group(); g.add(arm);
-            var seed = (_hqProcSeed++) * 2.399, H = ((p && +p.h > 0) ? +p.h : 3.2) * U, N = 18, r0 = 0.16 * H / 3.2, lean = 0.22 + 0.2 * Math.abs(Math.sin(seed * 3.1));
+            var seed = (_hqProcSeed++) * 2.399, H = ((p && +p.h > 0) ? +p.h : 3.2) * U, N = 18, r0 = 0.23 * H / 3.2, lean = 0.22 + 0.2 * Math.abs(Math.sin(seed * 3.1));
             var dirA = seed * 1.7, cx = Math.cos(dirA), cz = Math.sin(dirA), pts = [];
             for (var i = 0; i <= 5; i++) { var t = i / 5; pts.push(new THREE.Vector3(cx * H * lean * t * t, H * 0.78 * t, cz * H * lean * t * t)); }
             /* the curl at the top: a turn and a quarter in the lean's plane */
