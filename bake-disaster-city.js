@@ -856,7 +856,10 @@ const TRAFFIC = [
     { pts: back([L(6, 90), L(138, 90)]), loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac'] },
     { pts: RING, loop: true, n: 3, speed: 4.0, lane: 3.5, kinds: ['taxi', 'suv', 'taxi'] },
     { pts: RING.slice().reverse(), loop: true, n: 3, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'taxi', 'suv'] },
-    { pts: back([L(102, 3), L(102, 90), L(42, 90)].concat(GYM, [L(42, 138)])), loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'suv'] },   // the mountain road's gate to the highway's
+    /* THE CANYON RUN (2026-11-16, mondo: "definitely add traffic"): the Hills are in the room, so this run no longer turns round at the mountain road's gate. It goes on
+       up the mountain road, west along the canyon road and up the Canyon Road to the foot of the letters (the Hills' own squares: row -3 = the canyon road, column 90 = the
+       Canyon Road, row -24 = its top; districts/N.js `streets`), and back down to the highway's gate. Three cars now, one a taxi. */
+    { pts: back([L(90, -24), L(90, -3), L(102, -3), L(102, 90), L(42, 90)].concat(GYM, [L(42, 138)])), loop: true, n: 3, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'suv', 'taxi'] },   // the letters' slope to the highway's gate
     { pts: back([L(138, 133), L(138, 90), L(6, 90)]), loop: true, n: 2, speed: 3.4, lane: 3.5, kinds: ['truck', 'truck'] },   // the port's trucks, out along the cross street
     { pts: back(WEST.slice().reverse()), loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
     { pts: back([L(6, 90), L(102, 90), L(102, 42), L(138, 42)]), loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
@@ -866,7 +869,7 @@ const TRAFFIC = [
    `lane` (3.5 m) off its route's line, so on those two lanes it drove with its middle on the kerb line, half in the Boxing gym's wall and the
    Permit offices' rooms. A route that uses one names it in `narrow` ([x0, z0, x1, z1]); three-renderer.js _hqLaneAt eases the car in to 1.75 m
    off the line there. */
-const NARROW = [[L(42, 47), L(54, 47)], [L(44, 96), L(44, 101)]];
+const NARROW = [[L(42, 47), L(54, 47)], [L(44, 96), L(44, 101)], [L(90, -24), L(90, -3)], [L(90, -3), L(102, -3)]];   // (+ the Hills' two canyon roads, 7 m wide)
 TRAFFIC.forEach(t => { const has = q => t.pts.some(p => p[0] === q[0] && p[1] === q[1]), n = NARROW.filter(g => has(g[0]) && has(g[1])).map(g => [g[0][0], g[0][1], g[1][0], g[1][1]]); if (n.length) t.narrow = n; });
 const sigAt = (x, y, arms, o) => { const c = ctr(x, y); return Object.assign({ x: c[0], z: c[1], arms }, o || {}); };
 const SIGNALS = [sigAt(3, 7, 'NESW', { off: 0 }), sigAt(8, 7, 'NEW', { off: 11 }), sigAt(8, 3, 'NES', { off: 24 }), sigAt(3, 11, 'NES', { off: 6 }), sigAt(11, 7, 'NSW', { flash: true })];   // the avenue's crossing, the Bayside gate, the taxi rank, the highway junction; the coast road's T blinks
