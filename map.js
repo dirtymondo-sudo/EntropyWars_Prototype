@@ -2450,7 +2450,7 @@
         window._hqCurRoomId = function () { try { const ed = window.EWEditor, es = (ed && ed.state) ? ed.state() : null; if (es && es.open && !es.playing) return null;   // the editor's viewport is not the walk
             return (state.gameState === GS.HQ && !_hqSuspended && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ? _hqCurRoom : null; } catch (e) { return null; } };
         window._hqGoRoom = function (roomId, at) {
-            { const _rt = _hqRetiredTo(roomId); if (_rt) { roomId = _rt; at = null; } }   // THE RETIRED ROOMS (data.js DOOR_HQ.retired)
+            { const _rt = _hqRetiredTo(roomId); if (_rt) { roomId = _rt; if (!(at && (DOOR_HQ.rooms[_rt].doors || []).some(d => d && d.id === at))) at = null; } }   /* a door id the new room kept (the Sewers' `pump`) still lands at that door (2026-11-16) */   // THE RETIRED ROOMS (data.js DOOR_HQ.retired)
             /* `site_<mapId>` is an alias since the board rooms went (2026-09-27): it walks into the site's entry part */
             if (!_hqRoomExists(roomId)) { try { const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, at) : null; if (ent && ent.room) { roomId = ent.room; at = ent.at; } } catch (e) {} }
             if (!_hqRoomExists(roomId)) { console.warn('[HQ] no such room', roomId); return false; }
