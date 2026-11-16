@@ -9,6 +9,9 @@
    buffer stops, road numbers and crew room. Everything is `arch` parts (drawn) + ghost walls (walked); lit = `glow`, not a light.
    PASS 2 (INTERIORS): the signal cabin (lever frame, panel, the lit track diagram, desk), the crew room (lockers, table, cot, kettle corner),
    the station office on the platform (ticket window, lost property, safe), one passenger in the lit car. Each hut has one real bulb.
+   PASS 3 (DRESSING, about 170 props placed by hand): the station's ticket machines, turnstiles, phone, posters, a camp at the platform's end, a body on
+   the track, bats; a dead train front + luggage on the east loop; cabinets, drums, cones, bones round the tunnels; the Depot's workshop
+   (lathe, drill, bench, hoist, welder, cylinders, compressor), stores along its south wall, the forklift and pallets.
    STANDS TODAY (first build): the Ghost Station's platform 1 m up with its bench, board and maps; two parked trains in the Depot; torches;
    the old room's four bystanders. THE MODEL LIST PASS: the signal frame + signals at the Crossing, depot gear, Metro columns, the well's bucket and rope, railway lanterns. NOT YET: the lit train's light, the garden well's rope as a model,
    station tiles on the tunnel walls. */
@@ -136,24 +139,24 @@ module.exports = {
         const leaves = [];
         leaves.push(hut(ctx, 'P02-03', 'cabin', X(8), X(11), X(5), X(3), XC(8), X(9) + 0.6, X(11) - 0.7, 0x9fe0b0, 'THE CROSSING'));
 
-        /* ── THE DEPOT (P04-03): the hall is x -17.5..17.5, z -10.5..10.5, 12 m to the vault. An overhead crane on its two rails, six high-bay
+        /* ── THE DEPOT (P04-03): the hall is x -17.5..17.5, z -10.5..14, 12 m to the vault. An overhead crane on its two rails, six high-bay
            lamps (three alight), a buffer stop at each end of the two roads, the road numbers and the name on the east wall, a painted
            dado. The crew room in the north-west recess. ── */
         { const P = [];
-          [-10.25, 10.25].forEach(z => P.push({ s: 'box', p: [0, 6.5, z], size: [35, 0.45, 0.35], key: BEAM, tint: 0x8a8880 }, { s: 'box', p: [-15.75, 5.9, z], size: [0.5, 0.6, 0.5], key: CONC, n: 6, step: [6.3, 0, 0] }));
-          P.push({ s: 'box', p: [5.25, 6.95, 0], size: [0.9, 0.8, 20.8], key: 'urban:MetalPanelPainted1a', tint: 0xb8901c }, { s: 'box', p: [5.25, 6.95, -10.25], size: [2.2, 0.5, 0.5], tint: IRON }, { s: 'box', p: [5.25, 6.95, 10.25], size: [2.2, 0.5, 0.5], tint: IRON },
+          [-10.25, 13.75].forEach(z => P.push({ s: 'box', p: [0, 6.5, z], size: [35, 0.45, 0.35], key: BEAM, tint: 0x8a8880 }, { s: 'box', p: [-15.75, 5.9, z], size: [0.5, 0.6, 0.5], key: CONC, n: 6, step: [6.3, 0, 0] }));
+          P.push({ s: 'box', p: [5.25, 6.95, 1.75], size: [0.9, 0.8, 24.3], key: 'urban:MetalPanelPainted1a', tint: 0xb8901c }, { s: 'box', p: [5.25, 6.95, -10.25], size: [2.2, 0.5, 0.5], tint: IRON }, { s: 'box', p: [5.25, 6.95, 13.75], size: [2.2, 0.5, 0.5], tint: IRON },
               { s: 'box', p: [5.25, 6.45, -1.75], size: [1.2, 0.5, 1.2], tint: DARK }, { s: 'box', p: [5.25, 3.25, -1.75], size: [0.05, 3.2, 0.05], tint: IRON }, { s: 'box', p: [5.25, 2.8, -1.75], size: [0.36, 0.46, 0.26], key: HAZ });
           [[-12.25, -1.75], [-1.75, -1.75], [12.25, -1.75], [-12.25, 5.25], [-1.75, 5.25], [12.25, 5.25]].forEach((q, i) => { P.push({ s: 'box', p: [q[0], 6.2, q[1]], size: [0.04, 3.2, 0.04], tint: IRON }, { s: 'cyl', p: [q[0], 5.85, q[1]], r: 0.48, r2: 0.16, h: 0.36, tint: DARK, seg: 10 });
               P.push(i % 2 === 0 ? { s: 'cyl', p: [q[0], 5.8, q[1]], r: 0.4, h: 0.05, tint: 0xffe2a8, glow: 1, seg: 10 } : { s: 'cyl', p: [q[0], 5.8, q[1]], r: 0.4, h: 0.05, tint: 0x3a352c, seg: 10 }); });
           [XC(4), XC(8)].forEach(z => { buffer(X(10) - 0.5, z).forEach(q => P.push(q)); buffer(X(2) + 0.5, z).forEach(q => { const o = Object.assign({}, q); o.p = [2 * (X(2) + 0.5) - q.p[0], q.p[1], q.p[2]]; P.push(o); }); });
           /* the walls: a painted-brick dado under a warning line; the south and the east wall whole, the north wall east of the stair */
           const dado = (x, z, w, d) => P.push({ s: 'box', p: [x, 0, z], size: [w, 1.5, d], key: PBRICK, tint: 0x7c8474 }, { s: 'box', p: [x, 1.5, z], size: [w + (w > d ? 0 : 0.04), 0.14, d + (w > d ? 0.04 : 0)], key: HAZ });
-          dado(0, 10.42, 35, 0.14); dado(17.42, 0, 0.14, 21); dado(12.25, -10.42, 10.5, 0.14); dado(-17.42, 8.75, 0.14, 3.5); dado(-17.42, -7, 0.14, 7);
+          dado(0, 13.92, 35, 0.14); dado(17.42, 1.75, 0.14, 24.5); dado(12.25, -10.42, 10.5, 0.14); dado(-17.42, 10.5, 0.14, 7); dado(-17.42, -7, 0.14, 7);
           P.push({ s: 'quad', p: [17.3, 4.0, 1.75], ry: 90, size: [7.5, 1.5], key: sign('THE DEPOT', '#24282c', 5), glow: 0.22, uv: 'fit' },
               { s: 'quad', p: [17.3, 2.1, XC(4)], ry: 90, size: [1.2, 1.2], key: sign('1', '#24282c', 1), glow: 0.3, uv: 'fit' }, { s: 'quad', p: [17.3, 2.1, XC(8)], ry: 90, size: [1.2, 1.2], key: sign('2', '#24282c', 1), glow: 0.3, uv: 'fit' });
           /* THE LIT TRAIN (road 1; "Two cars. One lit." "The lit one has never moved." "Somebody left the headlight on."): its saloon lights and its two headlights */
           P.push({ s: 'box', p: [XC(5), 2.78, XC(4)], size: [14.6, 0.05, 0.45], tint: 0xfff0c8, glow: 1 }, { s: 'box', p: [XC(5) - 8.2, 1.45, XC(4) - 0.85], size: [0.06, 0.2, 0.22], tint: 0xfff6dc, glow: 1 }, { s: 'box', p: [XC(5) - 8.2, 1.45, XC(4) + 0.85], size: [0.06, 0.2, 0.22], tint: 0xfff6dc, glow: 1 });
-          P.push({ s: 'box', p: [0, 0, 0], size: [35, 0.02, 21], key: 'urban:ConcreteSlab2a', tint: 0x8a8a84, sides: false });   // the hall's concrete over the room's paint
+          P.push({ s: 'box', p: [0, 0, 1.75], size: [35, 0.02, 24.5], key: 'urban:ConcreteSlab2a', tint: 0x8a8a84, sides: false });   // the hall's concrete over the room's paint
           arch(ctx, 'P04-03', 'hall', P);
           [XC(4), XC(8)].forEach(z => { ghost(ctx, 'P04-03', X(10) - 0.5, z - 1, X(10) - 0.5, z + 1, 1.1); ghost(ctx, 'P04-03', X(2) + 0.5, z - 1, X(2) + 0.5, z + 1, 1.1); }); }
         leaves.push(hut(ctx, 'P04-03', 'crew', X(1), X(4), X(3), X(1), XC(3), X(1) + 0.7, X(3) - 0.5, 0xffd9a0, 'CREW ROOM'));
@@ -213,8 +216,51 @@ module.exports = {
         /* THE MODEL LIST PASS (mondo 11-16): MODEL_LIST.md searched for metro, rail, signal, depot. THE CROSSING: the signal lever frame and
            two signals (the Signal Gantry's own). THE DEPOT: a cable drum, a pallet jack, a welding cart, a wrapped pallet. THE GHOST
            STATION: two of the Metro pack's columns. THE LOOP LINE: the bucket and the rope under the garden well. Railway lanterns on the walks. */
-        putP('street_signal', 'P02-03', ctx.corners('P02-03'), 3); putP('street_signal', 'P02-03', ctx.corners('P02-03'), 6);
-        { const d = ctx.inner('P04-03'); putP('cable_drum', 'P04-03', d, 4); putP('pallet_jack', 'P04-03', d, 9); putP('welding_cart', 'P04-03', d, 14); putP('wrapped_pallet', 'P04-03', d, 19); }
+        /* (pass 3: the two street signals left the Crossing, the gantry is its signal; the Depot's gear is placed by hand below) */
+        /* ── PASS 3, THE DRESSING (the model list's shortlist: areas-complexes.md "THE SEWERS, DISTRICT T"). `put` = a plot's own metres. ── */
+        const lay = (id, key, x, z, face, o) => put(id, key, x, z, face, Object.assign({ noBlock: true }, o || {}));   // small things nobody walks into
+        { const id = 'P00-03', Y = { y: 0 };   /* THE GHOST STATION: the platform is x -14..14, z -14..0 (1 m up: `floor` finds it) */
+          put(id, 'metro_ticket_machine', -5.25, -13.2, 180); put(id, 'metro_ticket_machine', -3.9, -13.2, 180); put(id, 'metro_gate', XC(8), XC(2), 90); put(id, 'metro_gate', XC(8), XC(3), 90);   /* (the pack's cut turnstile drew as a blank block: the Metro gate) */
+          put(id, 'public_phone', 13.2, -13.3, 270); put(id, 'newspaper_rack', 9.6, -13.3, 180); put(id, 'missing_board', -13.2, -2.6, 90);
+          [[-1.6, 'metro_poster_1'], [2.4, 'metro_poster_3'], [6.2, 'metro_poster_6'], [11.6, 'metro_poster_8']].forEach(q => put(id, q[1], q[0], -13.72, 180, { y: 0.02 }));
+          put(id, 'metro_map', -6.8, -8.6, 90, { y: 0.9 }); put(id, 'security_camera', XC(4) + 0.5, XC(4), 120, { y: 3.6 }); put(id, 'fire_extinguisher', 13.5, -7.4, 270);
+          /* somebody lives at the east end, by the edge */
+          lay(id, 'psx_old_mattress_mp_1', 11.6, -2.3, 80); lay(id, 'psx_carpet_mp_1', 9.9, -2.6, 10); lay(id, 'psx_pillow_mp_1', 12.3, -2.2, 30, { y: 0.2 }); lay(id, 'retro_radio', 10.6, -1.4, 200); lay(id, 'psx_cardboard_box_1', 12.9, -3.3, 20);
+          lay(id, 'psx_canned_food_mp_1', 10.1, -2.0, 0); lay(id, 'psx_canned_food_mp_3', 10.4, -3.1, 70); lay(id, 'psx_glass_bottle_1', 9.3, -1.6, 0); lay(id, 'psx_glass_bottle_2', 11.0, -3.4, 0); lay(id, 'psx_cigs_packet_1', 10.9, -2.2, 0);
+          lay(id, 'newspaper_bundles', -2.2, -1.9, 40); lay(id, 'garbage_bags', 6.4, -12.9, 10); lay(id, 'psx_tin_can_mp_1_rusty', 1.3, -4.1, 0); lay(id, 'psx_glass_bottle_1', -4.8, -2.2, 0); lay(id, 'wet_floor_sign', 4.2, -6.4, 20);
+          /* on the track: what fell or was thrown */
+          lay(id, 'hw_body_2', -8.4, 1.9, 100); lay(id, 'hand_truck', 4.6, 2.3, 300); lay(id, 'traffic_cone', 9.2, 1.2, 0); lay(id, 'psx_brick_1', -2.1, 2.4, 30); lay(id, 'psx_brick_1', -1.5, 1.3, 80); lay(id, 'skull', 16.2, 5.6, 200);
+          ['bat_black', 'bat_brown', 'bat_grey'].forEach((k, i) => put(id, k, -6 + i * 7, 2.5 + i, 60 * i, { y: 3.6, floor: false, noBlock: true }));
+          ctx.grime('blood', id, 3, 6, 1.2); ctx.grime('puddle', id, 8, 7, 1.3); }
+        { const id = 'P01-03';   /* THE LOOP LINE (west): the stub north is shut off; cabinets and rubbish round the loop; bones in the south-west bend */
+          put(id, 'item_police_barricade', XC(5), XC(4) + 1.2, 0); put(id, 'cable_drum', XC(4), XC(3), 20); lay(id, 'psx_supply_crate_1', XC(6) - 0.4, XC(3) + 0.3, 30); lay(id, 'psx_supply_crate_1_2', XC(6) - 0.2, XC(3) - 0.5, 80); lay(id, 'hand_truck', XC(6) + 0.3, XC(4), 200);
+          put(id, 'utility_box', XC(1) + 0.9, XC(8) + 1.1, 0); put(id, 'utility_box', XC(11) - 0.4, XC(9), 0); lay(id, 'traffic_cone', XC(3), XC(7), 0); lay(id, 'traffic_cone', XC(8), XC(9) + 0.6, 0);
+          lay(id, 'skull', XC(1) + 0.5, XC(9), 40); lay(id, 'femur', XC(1) + 1.1, XC(9) - 0.4, 10); lay(id, 'hw_web', XC(1) - 1.2, XC(9) + 1.2, 45); lay(id, 'psx_metal_barrel_mp_2', XC(10), XC(9) + 0.9, 0); lay(id, 'psx_jerrycan_1', XC(9) + 0.6, XC(9) + 1.0, 50);
+          put(id, 'bat_black', XC(7), XC(8), 0, { y: 3.4, floor: false, noBlock: true }); ctx.grime('puddle', id, 5, 9, 1.5); }
+        { const id = 'P02-03';   /* THE CROSSING: the trackside cabinets, a drum, cones; the dead line south is fenced with what fell in at its end */
+          put(id, 'utility_box', X(6) - 1.2, X(6) - 1.2, 90); put(id, 'ind_panel', X(7) + 1.2, X(7) + 1.2, 270); put(id, 'cable_drum', XC(2), XC(5), 70); lay(id, 'traffic_cone', XC(4), XC(7), 0); lay(id, 'traffic_cone', XC(8), XC(7) + 0.5, 0);
+          lay(id, 'cinder_block', XC(6) - 0.5, XC(10) + 1.0, 20); lay(id, 'cinder_block', XC(6) + 0.6, XC(10) + 1.3, 70); lay(id, 'psx_brick_1', XC(6), XC(10) + 0.2, 10); lay(id, 'psx_brick_1_1', XC(6) + 0.9, XC(10) + 0.6, 110); lay(id, 'hw_web_2', XC(6) - 1.0, XC(10) + 1.4, 30);
+          lay(id, 'wooden_bucket', XC(5), XC(1), 0); lay(id, 'meshy_rope', XC(7) - 0.5, XC(1), 40); lay(id, 'psx_flashlight_mp_1', XC(4), XC(5) + 0.9, 150); ctx.grime('oil', id, 6, 5, 1.4); }
+        { const id = 'P03-03';   /* THE LOOP LINE (east): a train's front stands dead on the passing loop; its luggage; a camp of one by the wall */
+          const s3 = ctx.sq(id, 5, 5); ctx.props.push({ key: 'subway_front', x: ctx.gcx(s3[0]), z: ctx.gcz(s3[1]), face: 90 }); ctx.taken.add(s3[0] + ':' + s3[1]);
+          put(id, 'luggage_cart', XC(3), XC(4), 80); lay(id, 'footlocker', XC(4) + 0.6, XC(4) - 0.3, 20); lay(id, 'psx_cardboard_box_2_1', XC(2), XC(4) + 0.4, 60); lay(id, 'newspaper_bundles', XC(8), XC(4), 10);
+          put(id, 'utility_box', XC(10), XC(4) - 1.0, 180); lay(id, 'traffic_cone', XC(9), XC(4), 0); lay(id, 'traffic_cone', XC(1), XC(7), 0); lay(id, 'garbage_bag', XC(10) + 0.8, XC(7) + 0.5, 0);
+          lay(id, 'hw_part_2', XC(3) + 0.4, XC(9) + 0.3, 0); lay(id, 'skull_pile', XC(3) - 0.6, XC(9) - 0.2, 0); lay(id, 'hw_web_3', XC(5), XC(11) + 0.9, 0); put(id, 'bat_brown', XC(4), XC(9), 0, { y: 3.3, floor: false, noBlock: true });
+          ctx.grime('oil', id, 5, 6, 1.5); ctx.grime('puddle', id, 4, 10, 1.2); }
+        if (ctx.plot['P03-04']) { const id = 'P03-04', dry = ctx.squares(id, 'o');   /* THE LOOP LINE (south, to the city's Platform): cabinets, cones, a barrel fire's cold barrel */
+          [3, 11, 19].forEach((k, i) => { const q = nth(dry, k); if (q) lay(id, ['traffic_cone', 'psx_metal_barrel_mp_1', 'wet_floor_sign'][i], XC(q[0]) + 0.5, XC(q[1]) + 0.4, 30 * i); });
+          const q = nth(dry, 7); if (q) put(id, 'utility_box', XC(q[0]) + 1.1, XC(q[1]), 0); }
+        { const id = 'P04-03';   /* THE DEPOT: the hall is x -17.5..17.5, z -10.5..14. The workshop east of the buffer stops; stores along the south wall; the forklift west */
+          put(id, 'metal_lathe', XC(9), XC(7), 0); put(id, 'drill_press', XC(10), XC(7), 270); put(id, 'steel_table', XC(9), XC(5) + 0.9, 0); put(id, 'tool_chest', XC(10), XC(5) + 0.9, 270);
+          lay(id, 'item_wrench', XC(9) - 0.3, XC(5) + 0.9, 30, { y: 0.82 }); lay(id, 'psx_screwdriver_mp_1', XC(9) + 0.3, XC(5) + 0.8, 80, { y: 0.82 }); lay(id, 'psx_car_battery_1', XC(9) + 0.5, XC(5) + 1.1, 0, { y: 0.82 });
+          put(id, 'tool_pegboard', 17.3, XC(6), 270, { y: 1.5 }); put(id, 'engine_hoist', XC(8), XC(7), 200); put(id, 'welding_cart', XC(8), XC(5), 40); put(id, 'gas_cylinder_rack', XC(10), XC(5) - 1.0, 270); put(id, 'air_compressor', XC(10), XC(3), 270);
+          put(id, 'fire_extinguisher', 17.2, XC(8) - 1.4, 270); put(id, 'hose_rack', 17.3, XC(3) + 1.3, 270, { y: 1.2 });
+          put(id, 'ebd_gasstation_metal_shelving', XC(8), 13.3, 0); put(id, 'ebd_gasstation_metal_shelving', XC(9), 13.3, 0); put(id, 'ladder_wall_rack', XC(5), 13.8, 0, { y: 1.6 }); lay(id, 'psx_supply_crate_1_1', XC(8) - 0.2, 13.3, 0, { y: 0.95 }); lay(id, 'psx_jerrycan_1_1', XC(9) + 0.2, 13.3, 90, { y: 0.95 }); lay(id, 'psx_supply_crate_1_4', XC(9) - 0.3, 13.3, 0, { y: 0.2 }); put(id, 'psx_metal_barrel_mp_1', XC(10), 12.9, 0); put(id, 'psx_metal_barrel_mp_3', XC(10) - 0.9, 13.2, 0);
+          lay(id, 'psx_supply_crate_1', XC(2), 12.9, 10); lay(id, 'psx_supply_crate_1_3', XC(2) + 0.8, 13.1, 70); lay(id, 'psx_supply_crate_1', XC(2) + 0.3, 12.95, 30, { y: 0.38 }); put(id, 'cable_drum', XC(3) + 0.6, 12.8, 90);
+          put(id, 'forklift', XC(2), XC(7), 90); put(id, 'wrapped_pallet', XC(1), XC(7) - 0.9, 0); put(id, 'wrapped_pallet', XC(1), XC(7) + 0.5, 10); put(id, 'pallet_jack', XC(3) + 1.0, XC(7) + 0.4, 250);
+          lay(id, 'traffic_cone', XC(7), XC(5), 0); lay(id, 'traffic_cone', XC(7), XC(7), 0); lay(id, 'traffic_cone', XC(1), XC(5), 0); lay(id, 'psx_jerrycan_1', XC(8) + 0.9, XC(7) + 0.8, 10); lay(id, 'mop_bucket', XC(1), XC(3), 0); lay(id, 'wet_floor_sign', XC(5), XC(3), 30);
+          lay(id, 'hand_truck', XC(4), XC(9) + 0.4, 100); lay(id, 'garbage_bags', -16.6, 13.2, 0); put(id, 'bat_grey', XC(3), XC(6), 0, { y: 7.5, floor: false, noBlock: true });
+          ctx.grime('oil', id, 8, 6, 1.8); ctx.grime('oil', id, 4, 5, 1.4); ctx.grime('oil', id, 6, 9, 1.3); }
         [2, 4, 7, 9].forEach(lx => { if (ctx.free('P00-03', lx, 4)) ctx.P('metro_column', 'P00-03', lx, 4); });   // PASS 1: four, a square back from the edge
         { const w = ctx.squares('P01-03', 'o').filter(q => Math.abs(q[0] - 5) <= 1 && Math.abs(q[1] - 9) <= 1); putD('wooden_bucket', 'P01-03', w, 0); putD('meshy_rope', 'P01-03', w, 1); }
         ctx.plots.forEach((p, i) => { const dry = ctx.squares(p.id, 'o'); for (let k = 7 + i; k < dry.length; k += 13) ctx.dec('railway_lantern', p.id, dry[k][0], dry[k][1]); });

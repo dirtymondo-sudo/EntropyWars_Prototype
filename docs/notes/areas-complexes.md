@@ -7603,6 +7603,18 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   property shelf, a floor safe, cabinets, the key rack. THE LIT CAR: one bulb in the saloon and a skeleton standing in the aisle (the
   car itself is a blocker: nobody boards it). `hut(ctx, plot, name, ...)` in T.js builds any such hut (front wall, window, slab, floor,
   ghost walls, the door's row); `put(plot, key, x, z, face, { y })` places a prop at a plot's own metres with `floor: true`.
+- **PASS 3, THE DRESSING (seen, 10 views; about 170 props placed by hand from the shortlist):** THE GHOST STATION: two Metro ticket
+  machines, two Metro gates before the WAY OUT, a public phone, a newspaper rack, the missing-persons board, four Metro posters (1, 3,
+  6, 8: the ones the city does not use), the Metro map, a camera, a camp at the platform's east end (mattress, carpet, radio, cans,
+  bottles), a body, a hand truck, bricks and a cone on the track, three bats under the vault. THE LOOP LINE WEST: the stub north shut
+  with a barricade, a cable drum, crates, two trackside cabinets, bones and a web in the bend. THE CROSSING: cabinets at the gantry's
+  feet, a drum, cones, the fall of bricks at the dead line's end, the bucket and rope under the Junction's well (the two street
+  signals of the first model pass are gone: the gantry is the signal). THE LOOP LINE EAST: a dead train front (`subway_front`) on the
+  passing loop, a luggage cart, a trunk, a cabinet, a skull pile. THE DEPOT: the workshop east of the buffer stops (lathe, drill press,
+  bench with tools, tool chest, pegboard, engine hoist, welding cart, cylinder rack, compressor, hose rack), stores along the south
+  wall (two racks, a ladder rack, barrels, crates, a drum), the forklift with two pallets and the pallet jack west, cones, oil.
+  FOUND: `ebd_metro_turnstile` draws as a blank grey block (use `metro_gate`); the Depot's hall is SEVEN squares deep (z -10.5..14):
+  pass 1's south dado and crane rail stood 3.5 m short of the wall and are moved.
 - **FPS (the probe's software renderer, the Depot view):** 3.5 before, 4.3 after pass 1 (no real cost: about 60 meshes, no new lights).
 - **DECISIONS MADE FOR MONDO (overrule any in a line):** (1) the five cave torches of the first build are gone from the line: a subway is
   lit by its own lamps, and the room has ten real lights for 30 plots; T takes four (the lit car, the cabin, the crew room, the station office), everything else is `glow`.
