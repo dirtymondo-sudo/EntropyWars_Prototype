@@ -4816,6 +4816,28 @@ Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/are
 - **NEEDS A MODEL:** the list in W.js's header (anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows,
   prospector's tent, telegraph pole).
 
+## THE DESERT, WESTERN TOWN — THE INTERIORS PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 2 of 5. Only `docs/areas/desert/districts/W.js`, then a rebake (the Desert's block grew from 153 to 262 KB: the fittings are parts).
+- **WHAT WAS WRONG (probe of the twelve insides):** bare dark boxes with a black ceiling and no window from within; `form_counter` is a white
+  office form stand (it was every shop's counter); `round_table` is Camelot's 5.2 m Round Table (the saloon had two); `cell_bars` and
+  `psx_shelf_mp_2` drew as black slabs; `mobius_bar` is a modern red bar.
+- **`inside(a, id, w, d, h, door, o)` in W.js** (called in each building's parts callback, after `western()`): a dado + a wall band 0.34 m in
+  from the row's edge (the room's own wall is at 0.30 m), a ceiling at `o.ceil` or h - 0.36 with beams, and a lit pane behind every window
+  `western()` draws. Everything it draws is lit a little (`glow`, x 1.7, capped 0.78) because the room has no lamp of its own. It returns
+  `solid` (a drawn box + a ghost block), `counter`, `shelves` (planks with goods: boxes and bottles in a list of tints).
+- **THE GHOST BLOCKS:** the parts callback has no handle, so `solid` only records [x, z, w, d, h] in `INS[id]`; `furnish()` writes them as
+  `{ k: 'wall', ghost: true, rail: false }` rows through the handle's `at()`. A prop inside wears `floor: true` (W.js `inn`), or it stands on
+  top of the nearest wall or ghost block (the city's interior polish found the same).
+- **PROPS THAT ARE RIGHT FOR A FRONTIER ROOM:** `psx_dinner_table_1` + `psx_chair_mp_3`, `psx_bed_4_1..4`, `psx_wardrobe_mp_1`,
+  `psx_bedside_table_1`, `blackjack_table`, `roulette_table`, `crystal_chandelier` (give it `y`), `rifle_rack`, `mugshot_wall`, `key_rack`,
+  `platform_scale`, `hw_straw`, `lectern`, `wooden_cross`, `meshy_hanging_lantern` (`noLight: true`).
+- **NOT DONE:** no upstairs (saloon gallery and hay loft are drawn only; a real upper floor needs the stacked-room rules of "CAMELOT CASTLE,
+  ONE STACKED BUILDING"); the mine has no inside; the hotel's six rooms were not seen on screen.
+- **PROBE SPOTS (inside the door, y 1.6):** north row z -138.2 face 0 at x 96.25 stables, 117.25 smith, 136.5 saloon, 152.25 barber, 176.75
+  bank, 190.75 assay, 203 telegraph, 220.5 hotel; south row z -113.8 face 180 at x 96.25 jail, 113.75 undertaker, 178.5 store; church
+  x 145.25 z -194.2 face 0.
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
