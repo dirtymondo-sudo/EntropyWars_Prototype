@@ -1988,6 +1988,17 @@ What it is now (three-renderer.js, big rooms = `_hqChunkBig`, the room READY, no
   away just before the way back's enter.) Known: a player who leaves a fight for the menu keeps the parked room in memory
   until the next room entry.
 - Off: `window.EW_HQ_NO_PARK = true` (the old hand-over, the old way back).
+- EVERY ROOM (same day, mondo: "why not small rooms too? the fix needs to be game wide"): `_hqParkOk` no longer asks for a big
+  room. A copy of a mirror's target wears the target's own look (`_ew_reflectOld`); a fading ceiling's looks are the copy's
+  own (`_fieldCeilRegister` clones them; `_ew_parkOwnMat`, disposed with the copy); the resume files the door gun and the pair
+  from the entry's opts (capture choices, strike gate, wedges; standing doors stay). Proof, same probe on a small indoor room
+  (`node playtest_handover.js site_prebuilt_lodge_halls`): the fight drawn from 240 copies, back in 3.1 s, 786 -> 787 meshes,
+  25 merged meshes before and after, the hall's walls and floor as before, 0 errors.
+  THE ONE EXCEPTION: a room with joined neighbours (`H.stage`: the HQ wings, the plot dungeons) keeps the old hand-over.
+  Their copies are written (`_hqParkPieces` reads each attached part through its part root, as `_hqStageFlatten` laid them;
+  `_hqStageLeave` is skipped on a park) but NOT proven: no probe can start a fight there (`_hqEncounterRoomOkNow` refuses the
+  HQ's own rooms; the Training Room's strike never fired). `window.EW_HQ_PARK_STAGE = true` tries it. NEXT: prove it on a
+  plot dungeon fight or the first quest's Training Room fight, then drop the exception.
 PROOF (cloud browser, WebGL on llvmpipe through probe-fast.js, the new repo tool `node playtest_handover.js`; HEAD on 84580c2 +
 this change): Disaster City, a strike 3.5 m from the spawn, the fight drawn (the street, palms, cars from copies: 2,513),
 the enemy's hp set to 0 + `checkWin()`, BACK TO THE ROOM pressed. Before the fight: 43,095 meshes, 4,099 merged meshes, 49
