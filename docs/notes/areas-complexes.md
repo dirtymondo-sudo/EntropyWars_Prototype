@@ -4505,6 +4505,53 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
 7. A district look in the tool (lamp colour, banner) shared by the zone, as the city's LOOKS.
 8. Encounter table, PvP arena pick, the Ice Queen: mondo's.
 
+## MOUNT OLYMPUS, THE DISTRICT THREAD — district O, pass by pass (2026-11-16, second side)
+
+mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped without asking, at most five passes. File `docs/areas/mountains/districts/O.js`, 12 plots
+of `site_prebuilt_shasta_mountains`. The first look (13 views) found: flat grey marble, thrones and a brazier, a six-column temple with a dark bare inside, small stained columns,
+nothing at the Amphitheatre, the Stadium or the Terraces.
+
+**FITS THIS DISTRICT (the lists read first: MODEL_LIST.md sections 6, 7, 10, 12b, 13, the live catalogue, the tree kinds):**
+- Stone and statues: `greek_column` (takes `h`: 4.6 at the Stadium, 6 at the Colonnade), `angel_statue`, `lion_statue`, `marble_bust`, `stone_urn`, `greek_amphora`, `lady_justice`,
+  `hero_statue_landing` / `hero_statue_crossed`, `owl_statue` (10 m, the Woods' piece), `obelisk`, `menhir`, `decor_stone_arch`, `stone_altar`, `fountain`, `royal_throne`, `lectern`.
+- Fire and light: `brazier` (a real light), `wall_torch`, `cave_torch`, `candelabra`, `votive_stand`, `hw_candles`, `crystal_chandelier`, `light_shaft`, `floating_orb`.
+- Gods' things: `instrument_harp`, `instrument_drum`, `instrument_whistle`, `taiko_drum`, `meshy_trumpet`, `giant_hourglass`, `brass_orrery`, `astronomical_clock`, `telescope`,
+  `decor_trophy_cup`, `arms_trophy`, `spear`, `spell_shield`, `sword`, `armour_stand`, `banner`, `holy_carpet`, `item_drinking_cup`, `item_censer`, `item_heart_scales`,
+  `crystalBall`, `cauldron`, `chess_set_game`, the feast (`xmas_turkey`, `xmas_roast`, `xmas_carvery`, `xmas_punch`, `xmas_champagne`, `bread_rack`), `psx_glass_bottle_*`.
+- Living: `eagle` (hovers), `decor_sheep`, `horse`, `lion`, `butterfly`, `monarch`, `bee`, `rabbit`; `white_cloud`.
+- Garden: `planter`, `psx_planter_pot_mp_1_full`, `potted_plant`, `iron_garden_bench`, `park_bench`, `ancient_well`, `wooden_bucket`, `psx_wooden_crate_*`, tree kinds `tree_2` .. `tree_56`.
+- Sheets: `marble_light` (with `gain` 1.7), `gold` (the better gold, `gain` 1.6), `rocks_5`, `leaves`, `urban:WoodGeneric2a` (tiles under a terracotta tint).
+- Section 13 (files on R2 with no row) holds nothing Greek: no olive tree, no vine, no laurel, no chariot, no discus. See NEEDS A MODEL.
+
+**PASS 1, EXTERIORS (seen on screen, probe-fast.js, nine views):**
+- THE TEMPLE is a peripteral temple now: the cella (the walk-in, 6 x 4 squares) inside a ring of 24 built columns, 8 x 6, each on the middle of a whole square with a ghost
+  wall (a blocker), under one entablature with a gold frieze, a tiled roof, gold relief in both pediments, gold acroteria, a gold door frame.
+- THE TWELVE THRONES: a round marble dais with two gold rings, the hearth on a kerb in the middle, the thrones at 2.5 m (gods' seats).
+- THE STADIUM: three tiers of stone seats on both long sides (blockers), the start and finish in gold, the prize cup on a plinth between two braziers at the west end.
+- THE COLONNADE: the columns at 6 m under two beams with a gold band and rafters across (a pergola over the walk).
+- THE AMPHITHEATRE: a round floor with a gold rim, four curved tiers and a back wall south of it, a stage with five columns and a beam north of it. Its squares stand level
+  (a terrace: `R.flats` with side N) and the nub behind the seats went back to rock (`tailor`).
+- THE SACRED WAY: a gate (two columns, a beam, a small tiled pediment) at its west end; an angel, a bust and an urn on plinths. THE TERRACES: six vine rows on posts over low walls.
+
+**FOR THE NEXT THREAD (learned here):**
+- A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
+  never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
+  and cut long beams into one piece a square.
+- A plot is level only two squares either side of its middle row; the rest grades to its neighbours. Something that must stand level takes `R.flats.push([sx0, sy0, sx1, sy1, 'N'])`
+  (the side names the edge whose height it keeps).
+- A built shape that should block: one ghost wall on the square's middle (O.js `block`), and the square goes in `R.taken`.
+- Marble under the room's light is grey without `gain`: 1.7 on `marble_light`, 1.6 on `gold`. `dev.teleport` with `fp: true` and a raised `y` is the only far view (the third-person camera stays close).
+- A curved wall or tier = `cyl` with `arc`, `a0`, `ri` (angle 0 = east, 90 = south).
+
+**DECISIONS MADE FOR MONDO (overrule any in one line):**
+1. The Temple became a full ring of columns (was six in front): the peak's landmark should read from the Stadium and the Colonnade.
+2. The Amphitheatre's seats are south of its floor and face north to the stage; the plot's through way (the Sacred Way's line) stays clear north of the stage.
+3. The seats and tiers block (ghost walls): nobody climbs them. The Stadium's track stays open end to end.
+4. No encounter table: the room is shared with three other districts, so a table here would put Olympus units on the ski slopes. The gods stand as natives.
+5. No names added: the plots keep the plan's names; no sign boards.
+
+**NEEDS A MODEL:** an olive tree; a grape vine on a trellis (the vine rows are a leaf sheet on posts); a laurel wreath; a chariot; a discus and a javelin rack; a tripod bowl
+(the brazier stands in); a Greek couch; a lyre (the harp stands in); a statue of a god (the angel, the bust and Lady Justice stand in); a goat for the Goat Track.
 **6. ADDED BY THE SKI LODGE THREAD (district K, 2026-11-16):**
 - THE MODEL LIST FIRST (mondo 11-16). Catalogue rows on R2 that fit a snow zone and that no Mountains file had used: `flood_mast` (a real night light, 26 m),
   `festoon`, `pa_speaker`, `ticket_booth`, `turnstile` / `metro_gate`, `rope_stanchion`, `surfboard_rack`, `scarf_rack`, `key_rack`, `brochure_rack`, `map_table`,
@@ -5052,12 +5099,75 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   the wharf or the Breakwater is pushed by hand (the tool's `P` only knows the plan's squares). WEIGHT: every prop the Harbour
   places, 122 of them, is 0.40 M triangles in all (counted from the files); the quay view's own count swung 1.0 / 2.1 / 3.3 M
   between runs with the same content, so the cloud's frame rate (0.3 to 1.8 fps) says nothing about a pass.
+- **PASS 4, ATMOSPHERE (seen by day and at 22:30; before it the quay, the wharf and the piers were black after dark):** DRAWN GLOW:
+  seventeen harbour lamps on iron posts (H.js `lamp`: a pole, an arm, a cream shade with `glow` 0.95) down the Long Pier's north
+  edge, on the pier's arm, the skiff jetty, the quay's corners and the wharf's rail; warm bulbs under the shed's eave, a lamp over
+  its door, the hoist's work lamp; a lit lamp on each of the Mouth's beacons (red, green). REAL LIGHT, five props: two `flood_mast`
+  (the quay's apron, the Long Pier before the gangway: a 26 m light the world clock switches on at dusk, its lamp bank glows) and
+  three `brazier` (the wharf, the light's head, the skiff jetty). The Breakwater's light already turned its beam. NOT GIVEN: sound
+  and particles (no hook a district reaches: the kit), gulls (no model). The sea stays day-blue at night: the shell's, not a
+  district's (for the tool row). Frame rate, the quay view by day: 0.3 fps, 746 draw calls, 1.22 M triangles.
 - **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
   the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
-- **NOT DONE:** harbour lights and the night look (pass 4: the quay is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+- **NOT DONE:** polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
   the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
+
+## THE BEACH, THE TRIANGLE — district T (2026-11-16, `docs/areas/beach/districts/T.js`, the Triangle thread)
+
+mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every district, five passes at most, no questions. One line per pass here.
+
+- **PASS 1, THE EXTERIORS + THE LANDMARKS (seen on screen, probe views `p1_*`):**
+  - **THE OLD CAY'S LOOKOUT, CARRIED OVER** (`site_prebuilt_bermuda_sea`: a plateau 2.1 m over the camp, its stair, its rail; the old rooms are
+    untouched): on the Cay a real dune (`hill`, r 15, 2.3 m: the plan's dune stood 0.7 m), on it THE LOOKOUT (a `plateau`, squares 149-150 x
+    88-89, 5.4 m over the sea), the timber stair up its south side (`ramp`, `stairs`, model `forest`, squares 150 x 90-92), a `ranch` rail
+    round it; drawn: a straw shade roof on four posts, a bench, a black flag on a pole. The telescope moved up to it; a `brazier` is its signal fire.
+  - **THE LIGHTHOUSE ROCK** can be climbed now: stone water steps up its east face (`ramp`, model `external`, -1.8 to 3.4 m, square row 102),
+    a `parapet` round the top (open at the steps), a drawn oil store and a red storm flag, an anchor, a crate, a barrel, lobster traps, five
+    rocks in the water round it. The tape and the lighthouse stay the tool's.
+  - **THE MAELSTROM:** the link's own funnel (9 m, the tool's place, not moved) now sits in three arms of foam drawn on the water (chains of
+    short white strokes, 6 to 38 m out), a broken ring of eleven sea stacks (the ocean pack's pillar rock grown to 6-11 m, round rocks kept
+    3 m), and six pieces of wreckage that turn round the hole on the surface (a prop row's `swim` ring: crates, barrels, a rowboat).
+  - **NO FIXED POSITION** (the plan: "open water; the Flight 19 tape"): five torn hull plates standing out of the sea, one for each aircraft.
+  - **THE ISLAND:** THE SHACK (walk-in, 3 x 2 squares at 147-149 x 103-104 on the Island Beach, its door north to the camp fire: teal
+    boards, a rusty tin roof, a straw porch, a dark window; its inside is pass 2); the Jetty's piles, mooring posts, rope and cargo; the
+    camp (two torches, a log, a cauldron, a footlocker, sacks); wreckage on the Island Beach (a ship's wheel, a crate, a fish skeleton,
+    a log, a dead snag); dune scrub, ferns under the palm grove, six more palms.
+  - The Wreck Islet (an anchor, a crate, a barrel, bones, rocks), the Reef (three more corals, anemones, three rocks through the surface,
+    kelp in the deep water round it), the Sandbar (driftwood, a beached rowboat, a snag).
+  - **GONE:** the Jetty's `dockring` (a spaceship docking ring, the Harbour's finding).
+  - **FRAME RATE** (the island from the south-west, the cloud's software GPU): before 16.3 fps, 302 draw calls, 428 k triangles; after, two
+    runs: 14.2 and 8.1 fps at 431-436 calls, 730 k triangles. The cloud's fps swings between runs; the draw calls are the number to hold.
+- **LEARNED (for the zone kit):**
+  - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
+    water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
+  - A `hill` row makes a real dune on this room's sand (the tool's own dune rule gives 0.7 m). A `plateau` with `absY` on top of it stands
+    at its typed height; a `ramp`'s `h0` must be the ground's own height at its foot (read it from the compiled room).
+  - The ocean pack's rocks: `ocean_rock_3` is the PILLAR (a sea stack at `h` 5-11), `ocean_rock_5` / `_9` are round and read as black
+    blocks over 3 m. A blocker with no `y` on a water square stands on the SURFACE, not the bed.
+  - `nacelle` is an airliner's engine 11 m long and `fighter_jet` an F-22: neither is wreckage of 1945. `hullplate` reads as torn wreck.
+  - `kelp` is 4.5 m: in the shallows it stands out of the water like reeds; give it `h` and deep water.
+  - Stair model `forest` = a timber flight with ranch rails; `external` = stone water steps. Rail `ranch` on a plateau wants `y`.
+  - A drawn spiral: parts take `ry` (degrees); a chain of thin boxes (0.03 m high, `sides: false`, `glow` 0.35) on `y` 0.04 shows on the sea.
+- **FITS THIS DISTRICT (the shortlist, from MODEL_LIST.md sections 6-13 + the live catalogue; [used] = placed by this file):**
+  wreck + pirate: `ship_wreck` `sea_chest` `skull_pile` `ship_cannon` `rowboat` `meshy_rowboat` `ship_anchor` `wheel` `lobster_traps`
+  `psx_wooden_crate_4/5/6` `psx_metal_barrel_mp_0/3` `meshy_burlap_sack` `femur` `skull` `psx_fish_skeleton_mp_1` `footlocker` `cauldron` [all used];
+  not yet: `ships_bell` `ship_model` `fishing_net_wall` `meshy_rope` `beach_life_ring` `money_sacks` `psx_gold_bar_pcs_1` `psx_coin_mp_1`
+  `greek_amphora` `sword` `spear` `map_table` `item_spyglass` `bird_cage` `ship_lantern` `meshy_hanging_lantern` `hw_body*` `hw_part*`
+  `wooden_cross` `camping_tent` `hitching_rail` `psx_glass_bottle_2` `wooden_bucket`. Crash: `hullplate` [used], `escapepod`, `satellite`,
+  `astronaut`. Sea: `ocean_coral_4/5/7` `kelp` `anemone` `ocean_rock_3/5/9` [used]; `ocean_anglerfish*`, `ocean_seaweed_2/3`, `fish_school`,
+  `ocean_manta` `ocean_stingray` `ocean_turtle` `ocean_dolphin`. Land: `fallen_log` `dead_snag` `psxg_dead_bush_1/2` `fern` `psxg_rock_1/3` [used];
+  `stump` `hollow_dead_tree` `psxg_stepping_stone_1/2` `flamingo` `eagle` `crow`. Eerie (nothing placed: the plan names none):
+  `obelisk` `menhir` `stone_altar` `decor_stone_arch` `crystal_cluster` `floating_orb` `ufo` `light_shaft` `white_cloud`.
+  Not wired, would fit a ruin: `mcsteeg_castles/Castles_and_Forts.glb` nodes `Wall_2x4_ruined`, `Tower_mid_hollow_ruined`.
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is a rock platform with a timber stair on a real dune, not a
+  timber tower (no tower model; the old one was a plateau too). (2) Flight 19 is five torn hull plates, not planes (no 1945 aircraft
+  model; the F-22 was not used). (3) One walk-in on the island, a wrecker's shack, plain name "the Shack". (4) The Maelstrom's foam is
+  drawn and still; the turning is the link's own funnel and the wreckage. (5) The Lighthouse Rock got steps so the tape can be reached on
+  foot from a boat. (6) The `dockring` at the Jetty was taken out (wrong model).
+- **NEEDS A MODEL:** a Flight 19 Avenger wreck; a timber lookout tower; a raft; a mast and torn sail; a pirate flag; a parrot and gulls;
+  a thatch hut; tropical bushes and flowers; a mooring post; a whirlpool surface that turns wider than 9 m; a wet-sand / reef-floor sheet.
 
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
@@ -6423,6 +6533,13 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   - THE CREEK: the camp's dog, a cooler, cans, a barrel.
   - SEEN AND TAKEN OUT: the ocean pack's fish in the Falls' pool (reef fish, hovering 1.5 m over the water), with the seaweed, turtle and crab.
   - FRAME RATE (same two views): the Meadow 1.4 -> 1.0, the Falls 1.2 (first look) -> 1.6. The Meadow's loss is the 30 new pieces round the fire; to win back in the polish pass.
+- **PASS 4 OF 5, THE ATMOSPHERE (seen by day and at night, 12 + 6 views):** `airZones` in metres (a zone is `{ x0, z0, x1, z1, kind, color?, n?, speed? }`, one Points each):
+  MIST at the Falls = white `spores` (they rise; `speed: 1.6`) in a 5 m strip at the fall's foot + pale `dust` over the pool; `fireflies` over the Meadow (45) and along the
+  creek's glades (60); the Snowline's snow 150 -> 260. Seven `railway_lantern` on the trail's edges, `noLight`. NIGHT (`_hqClockHour` 22.5): the district reads, the fireflies and
+  the two torches carry it. TRIED AND TAKEN OUT: candle flames from glowing boxes (they stood beside the pack's candles as pale blocks). NOT POSSIBLE FROM A DISTRICT FILE:
+  light shafts (an arch part has no translucent material; the `light_shaft` prop is drawn by code and draws nothing), sound, a real mist sheet at the fall.
+  FRAME RATE: the Meadow fell to 0.6 with the first cut of this pass; the Meadow's tiny clutter (plates, cans, matchbox, pillow: one draw each) and half its insects were
+  taken out again: Meadow 1.0, Falls 1.2 (first look: 1.6 / 1.2). LESSON: every small prop is a draw; a ring of ten things nobody sees costs more than one landmark.
 - **FITS THIS DISTRICT (the whole-list read, 11-16; a helper read MODEL_LIST.md §6, 7, 8, 10, 12b, 13 and the live catalogue end to end).** Placed now: see above.
   NOT YET PLACED, FIT: `hw_fence` (more), `psxg_railing`, `psxg_wall_corner`, `xmas_snowman_2/3`, `spear`, `psx_stairs_5_wood`, `ship_lantern` (needs a bough over it),
   `psx_canned_food_mp_4`, `psx_shotgun_ammo_1`, `psx_ammo_box_1`, `urban:ClothTattered*` (prayer rags, a lean-to tarp), `urban:WoodGeneric1b` / `wood_planks` (a lookout deck),
@@ -6438,6 +6555,45 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
   changed); (4) the Shelf's crosses became a burial ground with tombstones; (5) the Snowline is the yeti's larder (bodies, parts) with ONE snowman; (6) the Shelf's north half
   is bare rock ground; (7) the code-drawn candle ring was replaced by pack candles; (8) no fish in the pool rather than reef fish; (9) Meshy pieces that fit were held back
   while a pack piece could do the job.
+
+## THE CLEARING — the Woods' district C, the third district thread (2026-11-16)
+mondo 11-16 (his order before a nap, docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped, no questions, at most five passes.
+File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR a pass, each seen in the probe.
+- **THE FIRST LOOK (12 views, before any change):** a bright lawn under birches; the Old Tree (9.5 m) did not stand out of 8.5 m birches; the Trail West, the
+  Crossroads and the three Deep woods plots held a sign or an animal each; the Fence Line's gate was a gap in the rail; the Stair stood on bare grass.
+- **FITS THIS DISTRICT (the lists read: the whole live catalogue, 1,853 keys, + MODEL_LIST.md §6, §7, §12b, §13's folders, pack-claims.md):** camp: `camping_tent`,
+  `meshy_camping_tent`, `campfire`, `fallen_log`, `beach_cooler`, `solo_cup`, `folding_chair`, `instrument_guitar_lying`, `instrument_tambourine`, `instrument_drum`,
+  `retro_radio`, `psx_cassette_tape_mp_*`, `psx_glass_bottle_*`, `psx_canned_food_mp_*`, `coffee_mug`, `cauldron`, `psx_matchbox_*`, `psx_lighter_mp_1`, `meshy_rope`,
+  `item_binoculars`, `psx_old_mattress_mp_1`, `shag_rug`, `skateboard`; trailhead + station: `signpost`, `missing_board`, `metal_trash_can`, `rocking_chair`,
+  `railway_lantern`, `ship_lantern`, `meshy_hanging_lantern`, `iron_garden_bench`, `field_radio`, `radio_console`, `map_table`, `brochure_rack`, `item_walkie_talkie`,
+  `psx_walkie_talkie_*`, `item_flare_gun`, `footlocker`, `cot`, `psx_bed_*`, `psx_shelf_mp_*`, `psx_chair_mp_*`, `psx_table_large_*`, `coffee_maker`, `fire_extinguisher`,
+  `psx_flashlight_*`, `evidence_board`, `key_rack`, `turnout_gear_rack`, `power_pole`; the fence + the Estate's edge: `hw_straw*`, `hw_pumpkin*`, `hw_scarecrow*`,
+  `hw_crop*`, `hw_farmland`, `hw_shovel`, `wooden_bucket`, `ancient_well`, `hitching_rail`, `chicken`; the old playground: `play_swing`, `play_slide`, `play_sandbox`
+  (free on the city's pack list), `beach_ball`, `football`, `psx_lollipop_mp_*`, `skateboard`; the deep woods: `hollow_dead_tree`, `hollow_tree`, `crashed_car_2`,
+  `tire_stack`, `hw_body*`, `hw_part_*`, `femur`, `ulna`, `psx_meat_1`, `psxg_rock_*`, `psxg_dead_bush_*`, `hw_web*`, `trap_*`, `bee_frames`, `chrysalis`, `caterpillar_bug`,
+  `mushroom`, `fae_toadstool`, `owl_statue` (G's), `bat_*`; the Stair's foot: `stone_urn`, `rope_stanchion`, `doormat`. LEFT OUT: `abandoned_house` (36 x 23 m, bigger
+  than any glade here), `park_bench` / `notice_board` / `lesson_sign` (code-built stand-ins, MODEL_LIST §8), the six trailers (M's look).
+- **PASS 1, THE EXTERIORS (seen, 11 + 8 views):** all in `build` (new rows, the district's own dice) on yards opened in `cut`.
+  - THE YARDS: forest squares opened as DIRT (`p`), not grass. A path square is walked and painted but is not a "free square", so a plot's clearing middle, and with
+    it THE STAIR, the spawn and every old piece, stays where it was. (Opening grass in `cut` moves the middle and every `put` / `dec` of the plot.)
+  - THE RANGER STATION (P00-03, squares 8..10 x 42..43, porch on row 41, front to the trail): a walk-in, the cabin's recipe (hollow `texbuilding` `woods:ranger` + one
+    arch row): sage boards on a stone base course, a green tin gable, six dark panes in pale frames, a railed porch under a tin lean-to, a stove pipe, a radio mast.
+    It stands on the row-3 flat band (rows 40..43 are level at 3.5 m from the west wall to column 31).
+  - THE TRAIL SHELTER (P02-03, squares 25..26 x 42): a three-sided log lean-to in a pocket of the trees, open to the trail; its walls are the pocket's own forest edges.
+  - THE HUNTER'S STAND (P00-04, square 8 x 53): a box blind on four legs with a ladder (dressing, not a climb; walked under).
+  - THE GATE (P01-05): two 4.5 m posts and a beam over the Estate trail, a blank hung board, both plank leaves open (three arch rows; a leaf = its own row with `rot`).
+  - THE OLD PLAYGROUND (P02-05, squares 30..33 x 63..66): `play_swing`, `play_slide`, `play_sandbox` on a worn dirt lot.
+  - THE COURT AT THE STAIR'S FOOT (squares 29..32 x 58..59): two lamp posts (lit boxes, no light) and two `stone_urn`. The flight, the spawn and the link are untouched.
+  - THE OLD TREE: 19 m (was 9.5), companions 11.5 and 10.5: heights in the old `dress` row, no row added, no kind changed.
+  - THE GROUND: `ground: 'grass_dark_fantasy'`, like T and M. Only G still wears the lawn.
+  - THE TOOL (board note 11-16): bake-woods.js THE BUILD SEEDS HOLD. A `sow` row's seed counts the feature rows before it and the builds run C, T, G, M, so C's eight
+    new rows re-threw T's nine rock scatters. Each district's build now starts its count on the day's number (`BUILD_SOW`). PROOF OF NOBODY MOVED: every row
+    outside the district is the same before and after except the ground's paint map and one floor rectangle that was re-split (the same squares).
+  - PROBE TIP: an fp view's `y` is the walker's FEET (the ground there: 3.5 on row 3, 1.75 / 0 lower down); 1.7 m more and the eye is in the ceiling.
+- **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
+  the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
+  Playground); dirt yards under the new pieces.
+- **NEEDS A MODEL:** a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a hammock, a backpack, a camper van; a gate leaf with a diagonal brace.
 
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
@@ -6474,6 +6630,12 @@ File `docs/areas/woods/districts/T.js`; branch `claude/woods-district-t-redwood-
 - **A timber stage / band shell on a plateau** (`woods:G:stage` in districts/G.js): deck slab + skirt boxes (leave the steps' width open in the front skirt), a back wall, corner posts, a `roof` `form: 'gable'`; `rail` rows keep the walker on it. No post in the middle of the front: it stands on the steps.
 - **Standing stones that block**: catalogue `sarsen` / `menhir` / `greek_column` with their own `h` (a prop row's `h` scales the model), one a square; `trilithon` on two whole squares (x on the line between them).
 - **Missing zone-wide**: light shafts, sound by district; the other three districts still wear the lawn sheet (each may name its own `ground`).
+- **A yard for a new piece without moving the old ones** (district C): open its squares as `p` in `cut`, not `g` (the plot's middle is the mean of its grass squares).
+- **Level ground for a building**: the ground is flat 7 m either side of a plot's middle and between two neighbours of one level; row 3 of district C is one flat band.
+- **A lean-to roof**: `form: 'shed'` is low at +z and draws a full-height board on its high side: keep `size[1]` under a metre, or it reads as a wall.
+- **A swung gate or door leaf**: its own arch row with `rot` (parts cannot turn). **A lamp post**: a lit box (`glow: 1`, no key) under a dark cap, no light.
+- **Sheets that read well on a timber building**: `urban:WoodGeneric1b` tinted sage `0xa9c29a` + `gain: 1.5`, trim `0xe2dccb`, `urban:MetalCorrugatedPainted1a` tinted
+  `0x7f9a78` for a tin roof, `urban:GlassWindowResidential1a` tinted `0x6c747c` with `uv: 'fit'` for a dark pane.
 
 - **PASS 3, DRESSING (seen in the browser, 14 views):** catalogue props only. The watchers' camp on the Ridge outside the fence; the gate's
   sandbags and barricade; the cantonment's bench, bins, dumpster, pallets, car park; the apron's freight, forklifts, engine stand, a
@@ -6681,6 +6843,57 @@ too short ... you didn't even get the shape right". So:
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
 
+## THE DESERT, THE CIRCUS — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/C.js`)
+
+mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions, be its own judge. Only C.js changes, then a rebake.
+
+**PASS 1, EXTERIORS.** Before: a striped box, about 40 pieces on nine plots of bare sand (2.8 FPS at the proof view on the cloud's software
+renderer; 1.4 after, with the whole midway in view).
+- **THE BIG TOP IS ROUND.** The hall you walk in is still the 7 x 7 square building; its look is a 35 m round tent drawn with `cyl` parts:
+  sixteen gores (`arc` 22.5 each, two tints), a cone (`r` to `r2`), a second cone, poles on the seams (`ring`), king poles and pennants
+  (`roof: true`), a cloth tunnel from the round wall to the door. The gap between cloth and hall is shut by a ring of sixteen GHOST walls
+  (`k: 'wall', ghost: true`) plus two along the tunnel. Any round building over a square walk-in can be made this way.
+- **CLOTH = THE STUCCO SHEET + `gain`.** The `canvas` key is a creator fabric, not a wall sheet: it drew flat. `urban:PlasterWallStucco2a`
+  with a tint drew grey-brown; `gain: 1.7` on the part makes it read as painted cloth (C.js `lift`). Flags and prizes want `glow` 0.3 to 0.5.
+- **THE STALL** (`stall(id, sx, sy, n, side, name, tint)`): n squares wide, one deep, solid (one ghost block), a counter, two prize shelves,
+  an awning, its name in `rye`. `marquee()` = a walk-in cloth hall. `cage()` = a barred wagon body (bars are one box with `n` + `step`).
+- **BUNTING** = one cord + three boxes with `n` / `step` along the line (three tints); the whole district's bunting is ONE `arch` row whose
+  origin is the block's corner, so its parts are written in metres from the corner. Poles must stay off the streets' squares.
+- **FACES SEEN:** `ferris_wheel` `face: 90` shows its disc to the south. `ferris_wheel` and `carousel` are code-built at 6.5 m and 3.6 m: a
+  row's `h` does nothing (the first build's `h: 22` never drew).
+- **THE WAY IN** is the east side (the highway's Exit 2 road meets the track at home squares 47, 31..32): the gate stands there.
+- **THE PROBE, THE CIRCUS:** room x = -252 + 3.5 x home square, z = -210 + 3.5 x home square. Views: over x -80 z -80 y 45 face 315 pitch
+  -0.45 · midway x -189 z -128 face 0 · gate x -70 z -98 face 270 · big top door x -185 z -147 face 90.
+
+**FITS THE CIRCUS (the model lists read end to end, 11-16; every key checked against the live catalogue).** Rides: `ferris_wheel`,
+`carousel`, `decor_carousel_horse`, `decor_ferris_gondola`, `high_striker`, `carnival_tent`, `fortune_tent`, `ticket_booth`, `boxing_ring`,
+`play_slide / play_swing / play_sandbox`, `teacups`. Stalls + games: `popcorn_cart`, `hot_dog_stand`, `money_wheel`, `claw_machine`,
+`arcade_cabinet`, `pinball_machine`, `air_hockey_table`, `slot_machine`, `jukebox`, `cash_register`, `psx_glass_bottle_1/2`,
+`psx_tin_can_mp_1_rusty`, `beach_ball`, `beach_swim_ring`, `ball_cart`, `psx_lollipop_mp_1*`, `xmas_gift*`, `xmas_baubles`,
+`decor_trophy_cup`. Light + cloth: `paper_lantern`, `followspot`, `studio_light`, `flood_mast`, `globe_lamp`, `mirror_ball`,
+`crystal_chandelier`, `pa_speaker`, `banner`, `xmas_garland*`. Fences + signs: `rope_stanchion`, `hw_fence`, `hitching_rail`,
+`item_police_barricade`, `signpost`, `missing_board`, `turnstile`. Animals: `lion`, `elephant`, `giraffe`, `horse*`, `dog`, `rabbit`,
+`flamingo`, `ocean_seal`, `hw_straw*`, `wooden_bucket`, `meshy_burlap_sack`, `psx_meat_1`, `bird_cage`. Wagons + stores: `covered_wagon`,
+`trailer_home_1..6`, `car_truck`, `psx_wooden_crate_*`, `psx_metal_barrel_mp_*`, `sea_chest`, `footlocker`, `gas_cylinder_rack`,
+`air_compressor`, `cable_drum`. Acts: `ship_cannon`, `instrument_*`, `drum_kit`, `taiko_drum`, `decor_piano`, `dumbbell_rack`,
+`weight_bench`, `item_bullwhip_rigged`, `spell_throwing_knife`, `library_ladder`, `maintenance_stairs`, `decor_armour_plinth`,
+`costume_rack`, `makeup_vanity`, `privacy_screen`, `psx_wardrobe_mp_1`, `directors_chair`. Seats: `riser_1..3`, `cinema_seat_row`,
+`church_pew`, `folding_chair`, `royal_throne`. Sideshow: `specimen_shelf`, `museum_vitrine`, `psx_display_cabinet_mp_*`,
+`anatomy_skeleton`, `trap_iron_maiden`, `dream_eye`, `meshy_tesla_coil`, `giant_hourglass`, `mugshot_wall`, `psx_cobweb_*`. Fortune:
+`crystalBall`, `tarot`, `tarotDeck`, `candelabra`, `candleRing`, `holy_carpet`, `item_censer`, `skull`, `cat`, `crow`. Sheets:
+`checkerboard`, `diamond`, `damask*`, `carpet*`, `tigerfur`, `wood_planks`, `aluminium` (the nearest thing to a mirror), `gold`.
+**NOT THERE (section 13 has no unwired circus file):** balloons, plush prizes, a string of lights (`festoon` is a code stand-in), a
+funhouse mirror, a bleacher stand, a unicycle, juggling pins, a ring of fire, a trapeze, a cage wagon, a cotton candy cart, circus
+posters, a striped cloth sheet, a big ferris wheel, a big top. `bigtop` and `festoon` in the catalogue are code stand-ins: not used.
+
+**DECISIONS MADE FOR MONDO (overrule any in one line)**
+1. The Big Top is round and 35 m across; its door still faces west, onto the Midway.
+2. The Hall of Mirrors is a walk-in funhouse (it was shut); it moved one square north and its front turned south, to the gate's forecourt.
+   The Mandela Room's door did not move: it is the side door on the hall's west wall.
+3. The main gate is on the EAST side, where the Exit 2 road arrives; the ticket booth by the HQ tunnel door stays the west end.
+4. Stall names are plain trade names: RING TOSS, BOTTLE TOSS, CANDY, CAN TOSS, LUCKY WHEEL, PENNY ARCADE, SIDESHOW.
+5. The lion left its rail pen for a cage wagon; the pen holds two horses.
+
 ## THE SEWERS, DISTRICT W — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/W.js`, 15 plots)
 
 mondo 11-16 (before a nap): every district prototyped, no questions, five passes at most (docs/plans/DISTRICT_THREAD_BRIEF.md).
@@ -6794,6 +7007,65 @@ a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil la
 2. The King's Chamber keeps the door to the Turning Tomb (his earlier yes); it is walked and stays as built.
 3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
 4. The Sphinx stays parts-built until a model exists.
+
+## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
+
+mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
+Station (P00-03), the Loop Line (P01-03, P03-03, P03-04), the Crossing (P02-03), the Depot (P04-03). The tool, the layout, the rails, the ways
+out (the HQ tunnel west, the garden well, the city's Platform south, the hatch stair, the Junction's well) are the zone row's: untouched.
+
+- **FITS THIS DISTRICT (the model list, read end to end by a sweep of MODEL_LIST.md sections 6 to 13 + pack-claims.md):**
+  STATION `metro_bench` `metro_bin` `metro_vending` `metro_ticket_machine` `metro_gate` `ebd_metro_turnstile` `metro_map` `metro_poster_1..8`
+  (the city uses only 2, 4, 5) `metro_column` `ebd_metro_concrete_pillar` `metro_light` `metro_stairs` `metro_stair_rail` `public_phone`
+  `newspaper_rack` `newspaper_bundles` `wall_clock` `psx_clock_1/2` `exit_sign` `security_camera` `fire_extinguisher` `hose_rack` `notice_board`
+  `missing_board` `departures_board` · TRACK `signal_lever_frame` `railway_lantern` `pd_lever` `utility_box` `ind_panel` `breaker_panel`
+  `gauge_board` `cable_drum` `psx_beam_*` `psx_catwalk_1` `maintenance_stairs` `trap_chain_*` · TRAINS `metro_car` `metro_car_open` (no city
+  district places either) `subway_front` `subway_cart` (city L has it) `hand_truck` `luggage_cart` `forklift` · DEPOT `tool_chest`
+  `tool_pegboard` `welding_cart` `gas_cylinder_rack` `air_compressor` `drill_press` `metal_lathe` `chain_hoist` `engine_hoist` `locker`
+  `office_locker` `footlocker` `ladder_wall_rack` `ebd_gasstation_metal_shelving` `psx_shelf_mp_*` `psx_metal_barrel_mp_*` `psx_supply_crate_*`
+  `wrapped_pallet` `pallet_jack` `tire_stack` `traffic_cone` `item_police_barricade` `meshy_sandbags` `ebd_tacos_roller_shutter` `psx_padlock_*`
+  `psx_car_battery_1` `psx_jerrycan_1` `item_wrench` `psx_screwdriver_mp_*` · CAMP + RUBBISH `psx_old_mattress_mp_1` `cot` `camping_tent`
+  `brazier` `psx_sofa_*` `psx_armchair_*` `psx_carpet_mp_1` `psx_cardboard_box_*` `psx_glass_bottle_*` `psx_tin_can_mp_1_rusty`
+  `psx_canned_food_mp_*` `psx_cig*` `retro_radio` `garbage_bag(s)` `dumpster` · DEAD + VERMIN `bat_black / brown / grey` `skull` `femur`
+  `hw_body*` `hw_part*` `hw_web*` `psx_cobweb_*` · LIGHTS `psx_ceiling_lamp_*_on/_off` `fluorescent` `high_bay_lamp` `ship_lantern`
+  `psx_flashlight_1` · PIECES `psx_tunnel_*` `psx_wall_1_tunnel_hole*` `psx_pipe_1*` `psx_vent_*` `vent_grille` · SHEETS the Metro pack's
+  `urban:MetroFloor / MetroTiles / MetroTactile / MetroConcrete / MetroMetal` (TRAP: `MetroWallTile`, `MetroWhiteTile`, `MetroRails` are
+  JPGs that are not power-of-two: repeated on a part they draw BLACK), `urban:TileSubway1a..4d`, `TileSubwayGen1/2`, `MetalTruss*`,
+  `MetalBeams*`, `MetalWarningStripe1/2`, `ConcreteWarningStripe*`, `MetalShutter*`, `MetalGratingGrid*`, `MetalDiamondPlate*`,
+  `BrickPainted*`, `GroundPebbles*`, `Sign*`, `DecalStain*`. NOT IN THE GAME: a rail piece, a buffer stop, a signal, a switch, a hand car,
+  rats, a graffiti sheet, an emergency lamp (the first four are built from textured parts here; see NEEDS A MODEL).
+- **PASS 1, THE EXTERIORS (seen, 20 views over four runs):**
+  - THE TRACK BED under every rail the tool lays (the same runs, cut a plot): pebble ballast, a sleeper every 0.7 m, a third rail under its
+    board. One `arch` row a plot (`sewT:<plot>:track`).
+  - THE TUNNEL WALLS (`:walls`): three cables on brackets along every south / east wall of two squares or more, a bulkhead lamp every third
+    square, two in three alight (`glow`). The tool's rusted mains keep the north / west walls.
+  - THE GHOST STATION (`:station`): the platform now runs out to the track (plan: the walk between them became platform; the east step
+    stays its way up); terrazzo, a tactile strip and a coping on its edge, a brick face to the track; cream tiles with a green foot on the
+    north wall, tiles on both ends, a tile band + the cables across the track; GHOST STATION six times (the plot's own name); the WAY OUT
+    behind a shut roller shutter in the east end ("no stairs up"); four Metro columns with capitals; four tube lamps, two alight.
+  - THE CROSSING (`:gantry`, `:cabin`): THE SIGNAL GANTRY, 5.2 m, four truss legs round the square where the lines cross, a grating deck,
+    a head to each way, all four green ("Signals green." "There is no train."), a ladder, a check plate; a buffer stop on the dead line
+    south. The cabin: a recess dug north-east (3 x 2 squares), a painted-brick front with a lit green window, the name board, a slab roof.
+  - THE DEPOT (`:hall`, `:crew`): an overhead crane on two rail beams with its hook, six high-bay lamps (three alight), a buffer stop at
+    each end of roads 1 and 2, THE DEPOT + the road numbers on the east wall, a painted dado under a warning line, a concrete floor.
+    THE LIT TRAIN (road 1): saloon strip, two headlights, two bulbs inside (real lights). The crew room: a recess dug north-west.
+  - Both huts have a swinging barred door (`leaf_security`, a `doorsOnly` carrier row, `sewT:doors`) and ghost walls on their fronts.
+  - A signal post where the line leaves each Loop Line plot.
+- **FPS (the probe's software renderer, the Depot view):** 3.5 before, 4.3 after pass 1 (no real cost: about 60 meshes, no new lights).
+- **DECISIONS MADE FOR MONDO (overrule any in a line):** (1) the five cave torches of the first build are gone from the line: a subway is
+  lit by its own lamps, and the room has ten real lights for 30 plots; T now takes two (the lit train's bulbs), everything else is `glow`.
+  (2) The platform reaches the track (it stood a walk's width back). (3) The exit is shuttered, in the east end, not a stair. (4) Every
+  signal is green (the bystander's line). (5) Two recesses were dug for the huts (the Crossing's north-east, the Depot's north-west): the
+  only plan squares changed, both inside T's plots, no way out touched. (6) The cabin's board reads THE CROSSING, the hut's CREW ROOM,
+  the hall's THE DEPOT: plot names or plain labels. (7) The lit train is road 1 (north).
+- **NEEDS A MODEL:** a rail + sleeper section, a buffer stop, a tunnel signal, a signal gantry, a hand car / maintenance trolley, rats,
+  a graffiti sheet, an emergency / strobe lamp, a third-rail shoe. **IDEAS, NOT BUILT (new mechanics):** a train that moves round the
+  loop; signals that change; a lever in the cabin that throws them; riding the lit car.
+- **TRAPS FOUND (for the next thread):** an `arch` row without `y` stands on the ground AT ITS MIDDLE (the station's middle is the
+  platform's edge: the whole row floated 0.45 m): give every row `y`. A `doorsOnly` row's `inner` doors are in the ROW's frame: keep the
+  row at x 0, z 0 and write room metres. The room's walls stand on the squares' lines; a part 0.1 m off the line shows. A west / north
+  wall carries the tool's main at 2.3 to 2.8 m: put doors and signs on south / east walls. The room grew a fifth row on 11-16 (z of
+  every probe view moved 21 m north).
 
 ## THE SEWERS, DISTRICT O · THE OLD WORKINGS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/O.js`)
 
