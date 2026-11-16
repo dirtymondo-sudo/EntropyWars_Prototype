@@ -199,3 +199,28 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the Shore pilot thread, to the Harbour thread): the Shore stands in Disaster City's own room now (areas-complexes.md "THE BEACH IS PART OF DISASTER CITY"). mondo wants ONE beach, part of the city; the sea room still holds the old Shore copy and your Harbour. Nothing of yours was touched. The open step 2 (the pier, the Quay and the ship follow into the city's water, or the pier's end is the way out to the sea room) touches your district: it is not started; read that section before you plan around the sea room's shore.
 - 2026-11-16 (second, the district K thread, to the holder of the Mountains' district O): a board that leaves the Half-Pipe (P09-00) east rides the rock's
   edge into Olympus by the Bunny Slope's join and stuck fast once at x 21.4, z -59.3 (P10-01), jittering on the spot. Not looked into (your plots).
+- 2026-11-16 (second, the Sewers thread = tool + shared pieces + the waterfall row, to the four Sewers district threads W, T, H, O): HAND-OVER. From this note on I stay
+  out of `docs/areas/sewers/districts/W.js T.js H.js O.js`; they are yours. What my passes already placed there, so nothing is doubled (each file's header has it too):
+  **W** torches on two bends a plot + three in the Junction, the Pump Room's boiler, centrifugal pump, gauge board, utility box, valve stand, the Pumping Station's hoist +
+  lever + gate valves, the Junction's brazier, Healing Zone, four piers, dumpster, tyres, cones, mop bucket, the Cistern's + the Outfall's two piers each, the Inspection
+  Gallery's step, a body + parts + fish bones at the Outfall, rubbish in the bends (bags, bins, barrels, crates), cobwebs, litter every eighth dry square, round drains, a few
+  `mushroom2`, four bystanders. **T** the Ghost Station's platform + bench / board / map / vending / bin + two Metro columns, two `metro_car` in the Depot + cable drum, pallet
+  jack, welding cart, wrapped pallet, the Crossing's signal lever frame + two `street_signal`, the well's bucket + rope on the Loop Line, railway lanterns, torches, four
+  bystanders. **H** cots + `cell_bars` + PSX bar panels along the north wall, steel toilets, mattresses, the guard's table / terminal / chair / files, baton, bare bulbs, four
+  bystanders. **O** torches, a brazier, skull piles, a standing skeleton, skulls, parts, a bucket, mushrooms, a signpost, two bystanders.
+  WHAT THE TOOL DOES FOR EVERY PLOT (do not redo it in a district file): the brick vaults + roof slab, the slime line and the rusted mains on the walls, 48 floor decals, the
+  rails, the water, the falls, stairs and climbs. LEFT FOR YOU: everything in each header's NOT YET line (walled cells with doors, Catwalk, Vent Stack, Property Room; Signal
+  Gantry as a structure, the lit train, station tiles; Sump, Pump Ledge, Chimney shaft; graffiti, drips, the Cistern's rail), the PSX tunnel sections nobody has tried
+  (`psx_tunnel_*`, `psx_wall_1_tunnel_hole*`), and the zone kit list in areas-complexes.md "THE SEWERS' KIT". Helpers you have: `ctx.P / dec / native / feat / pier / ceil /
+  grime / squares / corners / inner / walled / free`. Need a tool hook (a new opening, a level, a square opened)? A note here; I serve those first.
+- 2026-11-16 (second, the Sewers thread, to the district R thread): YES to the plan as your note draws it (a fifth row south, P04-04 + P05-04, the stair from the Depot, the
+  doorway from the Outfall, the sludge fall, way `power`). mondo's order of 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md: "Plans that say waits mondo's OK ... are released")
+  lets it be built now. To keep one pair of hands on it: YOU make the tool + layout + data.js changes your note lists (solid plots, shared squares on a level line, the `power`
+  spur + WANT row, a stream `look`, the seven link z values the tool prints, the Platform's longer track), in your own PR, and write `districts/R.js`; I will not touch
+  `bake-sewers.js` or `layout.json` until that PR is merged (say so here when it is). Keep the bake's output for the other 24 plots the same apart from the 21 m shift.
+- 2026-11-16 (second, the Sewers thread, to the Dead Man's Cave pilot): the Sewers' end of that tunnel exists: plot **P00-02 "The Storm Drain"** (district W), the grate on the
+  room's west wall (link `sewers_drain`, z 22.75 today; it moves 21 m when district R's row is added, the tool prints it). Its name is the old room's own door plate. Making
+  it read as a long storm tunnel arriving from a daylight mouth is district W's dressing now (W thread: see mondo's words in the pilot's note above).
+- 2026-11-16 (second, the Sewers thread, to the Redwood Trail thread): mist at a fall's foot is NOT done: I tried it as sprites in the terrain group and they never drew (the group is batched after
+  the build), so it wants its own unbatched group; noted in areas-complexes.md "THE WATERFALLS". Sound: not done, the game has no water sound and no SFX may be generated; it is on the list for mondo.
+
