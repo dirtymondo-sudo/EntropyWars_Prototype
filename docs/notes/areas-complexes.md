@@ -13430,6 +13430,24 @@ north at the circle (`henge_s`: x 133, z -30, face 0). FPS there on the probe's 
   `tiki_torch` up the Avenue, four `cave_torch` at the trilithons' feet, two more braziers at the Heel Stone; a `light_shaft` on the altar.
   The room is a day room that the clock turns to a starry night; the circle by torchlight is the district's best picture.
   Tried and thrown out: mist in the ditch as `white_cloud` models laid low (cartoon clouds parked on the grass). There is no mist air kind.
+- **PASS 5, POLISH** (seen; FPS settled 1.20; 685 props in the whole room). Two hippies and a second shaman at the camp (silent: no lines
+  exist for them); a forecourt of kerb stones at the Long Barrow; chalk on the causeway through the South Gate; seat stones and a stump at
+  the fire. Thrown out on sight: `hw_stone*` (they are gravestones) and `tomb_plaque` (a pirate's skull board).
+  **FIVE PASSES, STOPPED: waits mondo's look.**
+- **NOT DONE (Stonehenge):** no rails or steps anywhere (none needed: nothing is climbed); the bank and ditch are a metre, not the real two;
+  the Aubrey holes are paint; the lintels and fallen lintels are drawn boxes with no collision (the standing stones under them collide); the
+  Long Barrow's doorway is the engine's plain frame; nobody was WALKED through the district by hand (probe views only); no sound; the old
+  Plain's tape and find were not re-homed (no tape / find guards); fights use the room's default encounter table.
+- **DECISIONS MADE FOR MONDO (overrule any in one line):** (1) the monument's axis faces SOUTH, down the fork to the line (the real one
+  faces north-east; the Avenue still leaves to the north-east); (2) the south-west quarter of the circle is the fallen one; (3) the Long
+  Barrow is the district's one inside, and the old draught "down the line" is a dark frame at its tail, not a door; (4) a rope line and
+  plaques stand for the visitors' side of the real place, but no visitor centre, car park or coach (a new building is his call); (5) hippies
+  at the camp are silent; (6) no `sword_stone` in the circle (a story piece).
+- **NEEDS A MODEL (Stonehenge; what, where, how big):** a FALLEN SARSEN lying flat (the south-west quarter, 6 of them, 4.5 x 1.5 x 1 m) ·
+  a LINTEL stone (the ring's 22 + 5 fallen, 4.8 x 1.1 x 0.75 m: today a textured box) · a true BLUESTONE (12 in the inner ring, 2 m, darker
+  and slimmer than `menhir`) · the ALTAR STONE as a flat slab (centre, 4.9 x 1 x 0.5 m: today a carved pedestal) · a BARROW DOORWAY
+  (the Long Barrow's front, two jambs + a capstone, 3 m) · a camper van and a wicker man (the camp, 5 m / 8 m) · a grazing sheep (the
+  `decor_sheep` stands stiff) · a low MIST (an air kind, not a model) · a chalk ground sheet (`marble_light` stands in).
 
 - **PASS 2, INTERIORS (district M; seen on screen from the floor):** THE HABITAT's inside. A lit white ceiling at 2.82 m (the walk-in's own
   ceiling hangs lower than a 3.5 m wall's top less 0.3: a lit ceiling at 3.12 did not show), the inner walls in painted tin (`keyIn`),
@@ -13674,6 +13692,47 @@ pipe organ case, a pietà, kneelers, a holy water stoup, votive candle racks, a 
   the pews, the chandeliers; with 18 candelabra and 4 chandeliers it read 0.9 / 2.9 M, so they were cut to 6 and 3).
 - OPEN after pass 2: the chapels are thin (an altar and a picture); no kneelers, stoups, votive racks, pietà, pulpit canopy (NEEDS A MODEL);
   the yards outside are empty; no air, no night look.
+
+## LEYLINES, THE ZONE KIT — for the five district threads that follow (2026-11-16, written by the pilot, Stonehenge)
+
+Read "LEYLINES ON PLOTS" first, then your district file's header (its STANDS TODAY / NOT YET list is your brief).
+- **YOUR FILE ONLY:** `docs/areas/leylines/districts/<G|B|Y|T|Z>.js`. Stages: `plan` (letters: `ctx.setRect`), `build` (terrain rows),
+  `paint` (`ctx.stamp`), `dress` (props, trees; a walk-in `ctx.building` goes here too), `people`, plus `hills` and `airZones`. Rebake with
+  `node bake-leylines.js`; it throws on a clash and prints every piece you stood on another district's squares. The landmarks' places are
+  `ctx.A` (layout.json `anchors`): to MOVE one, that is the tool row (draw-leylines.js), with a board note.
+- **SQUARES:** `P(key, sx, sy, o)` = a blocker on a square's middle (claims the square); `dec(...)` = decor thrown off the middle (your own
+  dice); `Pm(key, xMetres, zMetres, o)` = a metre spot, claims nothing (inside a building, on a tier: give `y`). `tree(sx, sy, kind, h)`
+  only on grass / earth / sand letters. `native(race, sx, sy, face, say)`; old lines: `sayOf(OLD.<ley|henge|tell|babel|temple>, race, i)`.
+- **BUILT HEIGHT:** `tier(id, x0, y0, x1, y1, footM, topM, sheet, tint)` = a plateau you stand on + its skin with its own top;
+  `stair(x0m, z0m, x1m, z1m, w, h0, h1, sheet)` = a built flight (rise up to 2 in 3 walks). Round: a `plateau` with `r` + a `cyl` skin.
+- **DRAWN PIECES, the three traps the first build fell into:** (1) a terrain sheet on an `arch` part is near black without `gain` (the
+  tool's `sheet()` adds 2.2 by itself; pass `gain` to change it); (2) an `arch` row with no `y` stands on the ground UNDER ITS MIDDLE,
+  which is the top of a plateau standing there: `look(id, x, z, rot, fn, y)` with `y: 0` for anything drawn round a tier (a skin drew 28 m
+  up); (3) `box` takes `ry` in degrees, a `cyl` with `ri` is a ring, `roof: true` hides a part with HIDE ROOFS (a mound over a walk-in).
+- **GROUND:** EIGHT paint sheets a room and they are taken (`desert`, `dirt_2`, `marble_light`, `cobblestone`, `bricks_1`, `gold`,
+  `grass_dark_fantasy`, + `wasteland` unused: ask the tool row to swap it for one you need). A ninth draws as grass. Paint is on half
+  squares: `ctx.stamp((xm, zm) => sheet | null)` draws a round or slanting shape; a letter rule that follows the stamps can still win
+  (Stonehenge's `m` = turf), so set your letters in `plan` first. Tinted floors on a tier come from the tier's own top, never from paint.
+- **WATER:** a `w` letter = waded lake (the tool cuts it into `stream` rows). A deck over it = a `deck` row in your `build` (Z.js).
+- **LIGHT + NIGHT:** the room is a day room the clock turns to night (`hqClockSet(22.5)` in a probe view's `eval`). Real lights only:
+  `brazier`, `cave_torch`, `tiki_torch`, `campfire`, `lantern_post`, `candle_ring`. A glow part (`glow: 1`) does not light anything.
+- **HEAVY, DO NOT PLACE:** `skull`, `femur`, `ulna` (half a million triangles each). Black on land: `ocean_rock_*`. Gravestones, not
+  boulders: `hw_stone*`. A skull board: `tomb_plaque`. Cartoon clouds, not mist: `white_cloud`.
+- **PROBE:** `node playtest_city.js site_prebuilt_gobekli_ancient '<views json>'` (server on :3000). Metres from squares: x = -189 + 3.5 sx,
+  z = -147 + 3.5 sy. A view on a tier or a hill needs its `"y"`. Read the FPS on the LAST view (`settle` 12500 + the rAF counter), never
+  right after "room ready". The pilot's proof view: x 133, z -30, face 0, pitch -0.22, dist 16 (1.20 FPS on the software GPU at the stop).
+- **THE ZONE'S DECISIONS (mondo may overrule):** the ley tunnels are a road on the surface, not tunnels; Technoticlan is an island in a
+  lake; Babel's "spiral" is four flights north / east / south / west, as the old room had it; the Bug Colony's plot names are plain labels;
+  the first plan's three "new" insides (the Tower, the Pyramid, the Cavern down the line) are NOT built: they were not in the game.
+- **NEEDS A MODEL, THE ZONE (for mondo's model run):** BUG COLONY: a hive box (Bee Yard, 12, 0.6 x 0.6 x 0.9 m), a skep hive (2 m), a
+  honeycomb wall piece (3.5 x 2.5 m), a honey pot (0.5 m), an ant tunnel mouth (4 at the Anthill, 3.5 m arch), egg + larva clusters (1 m),
+  a giant grass blade and a giant leaf (4 m) · GOBEKLI TEPE: the site's shelter roof (a membrane canopy on posts, 30 x 25 m, one over rings
+  C + D), a tarp on poles (4 x 4 m), a sieve table, a surveyor's tripod, a timber scaffold walk (7 m pieces), a half-buried T-pillar ·
+  THE LEY LINE: a carved way stone (1.5 m), a cairn (1.2 m), a tall tripod brazier (2.5 m), a tunnel mouth for the West Mouth (4 x 4 m) ·
+  BABEL: a mud-brick sheet (ground + wall), a brick stack with moulds (2 x 2 x 1.5 m), a timber scaffold (7 x 7 m face piece), a ladder
+  (7 m), a market stall with an awning (3.5 m), a lamassu (4 m, two at the north stair), an ox cart · TECHNOTICLAN: a stone hoop (2, 2 m
+  ring on the court's banks), a skull rack (7 x 3 m, the plaza), a serpent head (2, 2 m, the stair's foot), a jaguar and an eagle statue
+  (2.5 m), a dugout canoe (5 m), a chinampa bed with maize (7 x 3.5 m), a hologram glyph panel + a neon glyph sign (3 m, the techno half).
 
 ### PASS 3, THE DRESSING (live; seen on screen, 10 views in two runs)
 - INSIDE: each of the eight chapels has a rug, two candles on its altar and its painting hung right (a wall piece's `face` is the way it

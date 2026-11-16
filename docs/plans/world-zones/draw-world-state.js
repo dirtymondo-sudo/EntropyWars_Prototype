@@ -48,7 +48,7 @@ txt(px(6),py(3.5),'DISASTER CITY · 144 + 39 plots',15,C.ink,700,'middle');
 o.push(`<rect x="${px(0)}" y="${py(-3)}" width="${13*S}" height="${3*S}" fill="none" stroke="${C.ink}" stroke-width="3"/>`);o.push(`<path d="M${px(0)} ${py(0)} V${py(12)} H${px(12)} V${py(0)}" fill="none" stroke="${C.ink}" stroke-width="3"/>`);   // one outline round the city + its Hills: one room
 zone(...f,0,12,12,12,'THE DESERT','built',['The Highway · The Circus','Western Town · Area 51 · Giza','144 plots']);
 zone(...f,12,1,14,10,'THE BEACH','built',['The Shore · The Harbour','The Ocean · The Bermuda Triangle','140 plots (a sea room)']);
-zone(...f,12,17,9,5,'LEYLINES','old',['Göbekli Tepe · Stonehenge · Babel','Technoticlan · Bug Colony (new)','old rooms · plan 45']);
+zone(...f,12,16.5,9,7,'LEYLINES','built',['Göbekli Tepe · Bug Colony · Stonehenge','The Ley Line · Babel · Technoticlan','63 plots']);
 zone(...f,3,25.4,6,6,'ANTARCTICA','built',['Shelf Ice · Station · Polar Openings','Crevasse · Ice Wall · Hull in the Ice','36 plots']);   // ANTARCTICA ON PLOTS (2026-11-16, bake-antarctica.js)
 // ways
 txt(px(8.75),py(-0.15),'▲ mountain road',10.5,C.way,600,'middle'); txt(px(12.5),py(-0.15),'▲ cove',10.5,C.way,600,'middle');   // (2026-11-16: ground you walk, not doors)
@@ -72,7 +72,7 @@ txt(20,U0-18,'2.  UNDER THE GROUND AND THE SEA   (grey outlines = what is above)
 o.push(`<rect x="20" y="${U0}" width="${W1*S}" height="${UH*S}" fill="#201c1a"/>`);
 o.push(`<rect x="${ux(12)}" y="${U0}" width="${(UX0+W1-12)*S}" height="${UH*S}" fill="#0e2040"/>`);
 const g=[ux,uy];
-[[-6,1,6,6,'The Woods'],[-14,0,8,8,'Camelot'],[-6,7,6,6,'The Estate'],[0,0,12,12,'Disaster City'],[0,12,12,12,'The Desert'],[12,1,14,10,'The Beach'],[12,17,9,5,'Leylines'],[-12,-5,12,2,'The Mountains (south edge)']].forEach(z=>zone(...g,z[0],z[1],z[2],z[3],z[4],'old',[],{faint:1}));
+[[-6,1,6,6,'The Woods'],[-14,0,8,8,'Camelot'],[-6,7,6,6,'The Estate'],[0,0,12,12,'Disaster City'],[0,12,12,12,'The Desert'],[12,1,14,10,'The Beach'],[12,16.5,9,7,'Leylines'],[-12,-5,12,2,'The Mountains (south edge)']].forEach(z=>zone(...g,z[0],z[1],z[2],z[3],z[4],'old',[],{faint:1}));
 zone(...g,2,9,8,2,'THE SEWERS','old',['old rooms · plan 16'],{pick:'① NEXT',small:1});
 zone(...g,-4,-3,4,4,'HELL','old',['under the Vatican','plan 16'],{small:1,pick:'②'});
 zone(...g,-6,2,6,6,'THE CAVERN','built',['The Cavern · Hollow Earth','Agartha','36 plots · one room (11-16)']);
