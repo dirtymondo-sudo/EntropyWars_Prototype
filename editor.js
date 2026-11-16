@@ -205,6 +205,7 @@
             else if (k === 'spiral') out.push(rectBox(x, z, 2 * num(row.r1, 4), 2 * num(row.r1, 4), 0, Math.min(num(row.h0, 0), num(row.h1, 0)) - 0.1, Math.max(num(row.h0, 0), num(row.h1, 0)) + 0.2));
             else if (k === 'grove' || k === 'scatter') out.push(rectBox(x, z, 2 * num(row.r, 5), 2 * num(row.r, 5), 0, g0 - 0.05, g0 + 0.25));
             else if (k === 'tree') { var th = num(row.h, row.kind === 'tree_4' ? 5.6 : 2.9) * 1.75; out.push(rectBox(x, z, Math.max(1.2, th * 0.3), Math.max(1.2, th * 0.3), 0, g0, g0 + th)); }
+            else if (k === 'fall') out.push(rectBox(x, z, num(row.w, 3.5), 1.2, row.face, g0 - 2, g0 + 1));
             else if (k === 'climb') out.push(rectBox(x, z, num(row.w, 0.8), 0.8, row.face, num(row.y0, g0), isFinite(row.y1) ? row.y1 : g0 + 3));
             else out.push(rectBox(x, z, 1, 1, 0, g0, g0 + 1));
             return out;
@@ -234,6 +235,7 @@
             { id: 'grove', label: 'Grove (trees in a disc)', row: function (x, z) { return { k: 'grove', x: x, z: z, r: 8, n: 10, kinds: ['tree', 'tree_2', 'tree_3'], seed: 1 }; } },
             { id: 'scatter', label: 'Scatter (props in a disc)', row: function (x, z) { return { k: 'scatter', key: 'fern', x: x, z: z, r: 6, n: 8, seed: 1 }; } },
             { id: 'climb', label: 'Climb (ladder, rope …)', row: function (x, z) { return { k: 'climb', x: x, z: z, face: 0, look: 'ladder' }; } },
+            { id: 'fall', label: 'Waterfall (over a step, between two waters)', row: function (x, z) { return { k: 'fall', x: x, z: z, face: 180, w: 3.5 }; } },
             /* E1: the building pieces (the draw tools make most of these by dragging; the ADD list drops a default one) */
             { id: 'slab', label: 'Floor slab (walk on it, walk under it)', row: function (x, z) { return { k: 'bridge', x0: x - 3, z0: z, x1: x + 3, z1: z, w: 6, y: 3, thick: 0.28, plain: true, rails: false }; } },
             { id: 'texbuilding', label: 'Building (textured block)', row: function (x, z) { return { k: 'texbuilding', x: x, z: z, w: 10, d: 8, rot: 0, storeys: 3 }; } },

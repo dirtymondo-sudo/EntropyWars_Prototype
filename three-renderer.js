@@ -71765,6 +71765,116 @@ const ThreeRenderer = (function () {
        spell sheets (_liqBlendMat), same draw order (LIQ_BLEND_ORDER: the tile plates land on top). Off: window.EW_HQ_WATER_STEPS
        (the old outline, for every liquid). */
     var GRID_WATER_SEGS = 24, GRID_WATER_LAY_LIFT = 0.15;   // (24: 12 drew the shore's fade as steps on an inside corner)
+    /* ── THE WATERFALLS (2026-11-16, mondo: "can we also work on a way to make waterfalls, which we will use elsewhere in other zones too") ──
+       A room's `fall` rows (data.js hqTerrainCompile, `info.falls`): `{ k: 'fall', x, z, face, w, y0?, y1?, key?, out?, foam? }`. One fall =
+       (1) THE SHEET: the liquid's own animated sheet (_liqBlendMat, the very material of the water above and below it), from the lip out
+           and down in a thrown curve to the lower water, its UVs running down the face (_hqFallsTick);
+       (2) THE STREAKS: a second sheet a hand in front of it, white streaks running down faster (one shared canvas texture);
+       (3) THE FOAM: a churned white patch on the lower water at its foot, breathing.
+       `y0` / `y1` left out are read from the water on each side of the lip (hqTerrainFluidAt), else from the ground. Nothing here changes
+       the ground, the water or the walk: the room lays a stream / pool on each level and a sheer step between them. Lava, poison and the
+       other liquids fall the same way in their own sheet (`key`). Off: window.EW_NO_HQ_FALLS. */
+    var _hqFallTex = null;
+    function _hqFallStreakTex() {
+        if (_hqFallTex) return _hqFallTex;
+        var cv = document.createElement('canvas'); cv.width = 128; cv.height = 256;
+        var c = cv.getContext && cv.getContext('2d'); if (!c) return null;
+        c.clearRect(0, 0, 128, 256);
+        var seed = 77, rnd = function () { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+        for (var i = 0; i < 70; i++) {
+            var x = Math.floor(rnd() * 128), y = Math.floor(rnd() * 256), len = 40 + Math.floor(rnd() * 150), wd = 1 + Math.floor(rnd() * 4), al = 0.18 + rnd() * 0.5;
+            for (var k = -1; k <= 1; k++) {   // (drawn three times so a streak wraps over the texture's top and bottom)
+                var g = c.createLinearGradient(0, y + k * 256, 0, y + k * 256 + len);
+                g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.3, 'rgba(255,255,255,' + al.toFixed(2) + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
+                c.fillStyle = g; c.fillRect(x, y + k * 256, wd, len);
+            }
+        }
+        var t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        if (THREE.sRGBEncoding !== undefined && 'encoding' in t) t.encoding = THREE.sRGBEncoding; else if (THREE.SRGBColorSpace !== undefined) t.colorSpace = THREE.SRGBColorSpace;
+        return (_hqFallTex = t);
+    }
+    var _hqFoamTex = null;
+    function _hqFallFoamTex() {
+        if (_hqFoamTex) return _hqFoamTex;
+        var cv = document.createElement('canvas'); cv.width = 128; cv.height = 64;
+        var c = cv.getContext && cv.getContext('2d'); if (!c) return null;
+        var seed = 31, rnd = function () { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+        for (var i = 0; i < 120; i++) {
+            var x = 10 + rnd() * 108, y = 6 + rnd() * rnd() * 50, r = 2 + rnd() * 6, a = (0.08 + rnd() * 0.22) * (1 - y / 60) * Math.min(1, (x - 6) / 24, (122 - x) / 24);
+            var g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,255,255,' + Math.max(0, a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
+            c.fillStyle = g; c.fillRect(x - r, y - r, 2 * r, 2 * r);
+        }
+        var t = new THREE.CanvasTexture(cv);
+        if (THREE.sRGBEncoding !== undefined && 'encoding' in t) t.encoding = THREE.sRGBEncoding; else if (THREE.SRGBColorSpace !== undefined) t.colorSpace = THREE.SRGBColorSpace;
+        return (_hqFoamTex = t);
+    }
+    function _hqFallsBuild(info, G, U, TM) {
+        if (_hq) _hq.falls = null;
+        var rows = info && info.falls; if (!rows || !rows.length || window.EW_NO_HQ_FALLS || typeof hqTerrainFluidAt !== 'function') return 0;
+        var list = [], n = 0, SEG = 8;
+        rows.forEach(function (f) {
+            if (!isFinite(f.x) || !isFinite(f.z)) return;
+            var a = (+f.face || 0) * Math.PI / 180, dx = Math.sin(a), dz = -Math.cos(a), px = -dz, pz = dx, w = (+f.w > 0 ? +f.w : 3.5) * 0.96;
+            /* the water above and below the lip (a square's worth each way), else the ground */
+            var up = hqTerrainFluidAt(info, f.x - dx * 1.75, f.z - dz * 1.75), dn = hqTerrainFluidAt(info, f.x + dx * 1.75, f.z + dz * 1.75);
+            var y0 = (up && isFinite(up.y)) ? up.y : isFinite(f.y0) ? +f.y0 : hqTerrainHeight(info, f.x - dx * 1.75, f.z - dz * 1.75);
+            var y1 = (dn && isFinite(dn.y) && dn.y < y0 - 0.3) ? dn.y : isFinite(f.y1) ? +f.y1 : hqTerrainHeight(info, f.x + dx * 1.75, f.z + dz * 1.75);
+            var h = y0 - y1; if (!(h > 0.4)) return;
+            var key = f.key || (up && up.key) || 'water'; if (key === 'deep_water') key = 'water';
+            var mat = _liqBlendMat(key); if (!mat) return;
+            var out = isFinite(f.out) ? +f.out : Math.min(1.5, 0.35 + 0.28 * Math.sqrt(h)), back = 0.9;
+            /* the profile: level over the lip (from `back` behind it), then thrown out and down (a body's fall: out by the root of the drop) */
+            var prof = [[-back, y0 + 0.02], [0.05, y0 + 0.02]];
+            for (var i = 1; i <= SEG; i++) { var t = i / SEG; prof.push([0.05 + out * Math.sqrt(t), y0 + 0.02 - h * t]); }
+            var pos = [], uv = [], col = [], idx = [], base = [], run = 0;
+            for (i = 0; i < prof.length; i++) {
+                if (i) run += Math.hypot(prof[i][0] - prof[i - 1][0], prof[i][1] - prof[i - 1][1]);
+                var cx = f.x + dx * prof[i][0], cz = f.z + dz * prof[i][0], al = i === 0 ? 0 : 1;
+                for (var sd = -1; sd <= 1; sd += 2) { pos.push((cx + px * sd * w / 2) * U, prof[i][1] * U, (cz + pz * sd * w / 2) * U); uv.push((sd + 1) / 2 * (w / TM), -run / TM); base.push(-run / TM); col.push(1, 1, 1, al); }
+                if (i) { var v0 = (i - 1) * 2; idx.push(v0, v0 + 2, v0 + 1, v0 + 1, v0 + 2, v0 + 3, v0, v0 + 1, v0 + 2, v0 + 1, v0 + 3, v0 + 2); }   // (seen from both sides: the shared material draws front faces only)
+            }
+            var geo = new THREE.BufferGeometry(), nrm = []; for (i = 0; i < pos.length / 3; i++) nrm.push(0, 1, 0);   // lit like the sheet above, never a darker wall
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4)); geo.setIndex(idx);
+            var m = new THREE.Mesh(geo, mat); m.renderOrder = 3; m.name = 'hq:fall:' + key; m._ew_hqWater = true; G.add(m);
+            var speed = (key === 'lava' ? 0.18 : 0.55 + 0.12 * Math.sqrt(h));
+            var rec = { uv: geo.attributes.uv, base: base, speed: speed, foam: null, ph: n * 1.7 };
+            /* THE STREAKS: the same curve a hand in front, white streaks running down (not on lava: it creeps) */
+            var st = key === 'lava' ? null : _hqFallStreakTex();
+            if (st) {
+                var p2 = [], u2 = [], i2 = [], fwd = 0.06;
+                for (i = 1; i < prof.length; i++) { var c2x = f.x + dx * (prof[i][0] + fwd), c2z = f.z + dz * (prof[i][0] + fwd), tt = (y0 - prof[i][1]) / 3.5;
+                    for (sd = -1; sd <= 1; sd += 2) { p2.push((c2x + px * sd * w / 2) * U, prof[i][1] * U, (c2z + pz * sd * w / 2) * U); u2.push((sd + 1) / 2 * Math.max(1, Math.round(w / 3.5)), -tt); }
+                    if (i > 1) { var q0 = (i - 2) * 2; i2.push(q0, q0 + 2, q0 + 1, q0 + 1, q0 + 2, q0 + 3); } }
+                var g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(p2, 3)); g2.setAttribute('uv', new THREE.Float32BufferAttribute(u2, 2)); g2.setIndex(i2);
+                if (!_hqFallsBuild.mat) _hqFallsBuild.mat = new THREE.MeshBasicMaterial({ map: st, transparent: true, depthWrite: false, opacity: 0.6, side: THREE.DoubleSide });
+                var m2 = new THREE.Mesh(g2, _hqFallsBuild.mat); m2.renderOrder = 4; m2.name = 'hq:fall:streaks'; G.add(m2);
+            }
+            /* THE FOAM: a churned patch lying on the lower water, from the foot out */
+            var ft = (f.foam === false || key === 'lava') ? null : _hqFallFoamTex();
+            if (ft) {
+                var fl = Math.min(3.2, 1.2 + h * 0.35), fx0 = out - 0.25, yF = y1 + 0.05, p3 = [], u3 = [0, 0, 1, 0, 0, 1, 1, 1];
+                [[fx0, -1], [fx0, 1], [fx0 + fl, -1], [fx0 + fl, 1]].forEach(function (q) { p3.push((f.x + dx * q[0] + px * q[1] * (w / 2 + 0.3)) * U, yF * U, (f.z + dz * q[0] + pz * q[1] * (w / 2 + 0.3)) * U); });
+                var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(p3, 3)); g3.setAttribute('uv', new THREE.Float32BufferAttribute(u3, 2)); g3.setIndex([0, 2, 1, 1, 2, 3]);
+                var fm = new THREE.MeshBasicMaterial({ map: ft, transparent: true, depthWrite: false, opacity: 0.7, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 });
+                var m3 = new THREE.Mesh(g3, fm); m3.renderOrder = 4; m3.name = 'hq:fall:foam'; G.add(m3); rec.foam = fm;
+            }
+            list.push(rec); n++;
+        });
+        if (_hq && list.length) _hq.falls = list;
+        return n;
+    }
+    function _hqFallsTick(dt) {
+        var L = _hq && _hq.falls; if (!L) return;
+        _hqFallsTick.t = (_hqFallsTick.t || 0) + dt; var t = _hqFallsTick.t;
+        if (_hqFallTex) _hqFallTex.offset.y = (t * 1.5) % 1;
+        for (var i = 0; i < L.length; i++) {
+            var F = L[i], a = F.uv.array, off = (F.speed * t) % 1;
+            for (var j = 0; j < F.base.length; j++) a[j * 2 + 1] = F.base[j] + off;
+            F.uv.needsUpdate = true;
+            if (F.foam) F.foam.opacity = 0.6 + 0.2 * Math.sin(t * 5.3 + F.ph) * Math.sin(t * 1.9 + F.ph * 2);
+        }
+    }
     function _hqGridWaterBuild(info, G, U, TM) {
         if (typeof window !== 'undefined' && window.EW_HQ_WATER_STEPS) return 0;
         if (typeof hqFluidGridCover !== 'function' || typeof hqTerrainHeight !== 'function') return 0;
@@ -72233,6 +72343,7 @@ const ThreeRenderer = (function () {
             });
             if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick)
         } catch (e) { console.warn('[HQ] the water failed', e); }
+        try { if (_hqFallsBuild(info, G, U, TM)) { (info.falls || []).forEach(function (f) { var k = f.key || 'water'; fluidMatFor(k === 'deep_water' ? 'water' : k); }); } } catch (e) { console.warn('[HQ] the waterfalls failed', e); }   // THE WATERFALLS
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
            DoubleSide so a diver (and the drowned abyss) sees it from below; the sky's fog takes it at the horizon */
         if (info.sea) {
@@ -87825,6 +87936,7 @@ const ThreeRenderer = (function () {
            reads shared time / drift uniforms that only the battle loop
            advances — drive them here for the moat's liquid */
         if (H.moatTick) _hqTickMoat(dt);
+        if (H.falls) _hqFallsTick(dt);   // THE WATERFALLS
         /* THE DEEP (2026-09-18): the look under the surface, the rays, the snow, the bubbles */
         if (H.seaFx) { try { _hqTickSea(dt, now); } catch (e) {} }
         /* a setting's trees land as their OBJs arrive (HQ plan 7.2 stage 5) —

@@ -58,8 +58,10 @@
    No sound: the walk rooms have no per-district sound, and no SFX may be generated.
 
    KNOWN MISSING OR WRONG:
+   - WALKED (the polish pass, 11-16, a flood on the walker's own rule from Main Street): every building's floor, all six hotel rooms, the
+     stalls, the chancel, Boot Hill, the mine mouth, the camp, the canyon's end are reached; the cells and the bank's vault side are shut.
    - No upstairs anywhere: the saloon's gallery and the stables' loft are drawn and not reached; the hotel's upper floor is its front only.
-     THE MINE has no inside. The hotel's six rooms were not seen on screen (the probe stood in a partition).
+     THE MINE has no inside. The hotel's six rooms were seen only through a doorway from the lobby.
    - The insides read dark in the cloud browser even with lit linings (mondo's Firefox renders brighter): judge on his machine.
    - The lanterns glow and light nothing (the room has ten lamps for all four districts). The camp's two tents are modern (NEEDS A MODEL).
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS, not this file's).
@@ -215,7 +217,7 @@ exports.buildings = ctx => { bind(ctx);
         a.box(0, 0, 0, w + 0.3, 1.2, d + 0.3, 'bricks_1', 0xc8b8a4, { top: false, faces: 'blr' });
         const I = inside(a, 'jail', w, d, 4.2, door, { key: 'bricks_1', tint: 0xc0b09c, dadoKey: 'bricks_1', dado: 0x9a8a78, ceilTint: 0x6a5a4a, glow: 0.32, uv: [1.75, 1.75] });
         /* two cells across the back: iron bars wall to wall, a barred wall between them */
-        const zB = -1.3, IR = 0x3a3a40; I.solid(0, zB, 2 * I.iw, 0.1, 0.12, RIB, IR); I.solid(0, (zB - I.il) / 2, 0.1, I.il + zB, 0.12, RIB, IR);
+        const zB = -1.3, IR = 0x3a3a40; a.box(0, 0, zB, 2 * I.iw, 0.12, 0.1, RIB, IR, { glow: 0.2 }); a.box(0, 0, (zB - I.il) / 2, 0.1, 0.12, I.il + zB, RIB, IR, { glow: 0.2 });   // (one ghost a line: where two lie on each other the walker meets the first, a low one would open the cells)
         INS.jail.push([0, zB, 2 * I.iw, 0.12, 2.6], [0, (zB - I.il) / 2, 0.12, I.il + zB, 2.6]);
         a.cyl(-I.iw + 0.1, 0.12, zB, 0.028, 2.5, RIB, IR, { seg: 6, glow: 0.2, n: 60, step: [(2 * I.iw - 0.2) / 59, 0, 0] }); a.cyl(0, 0.12, zB - 0.15, 0.028, 2.5, RIB, IR, { seg: 6, glow: 0.2, n: 22, step: [0, 0, -(I.il + zB - 0.3) / 21] });
         for (const y of [1.3, 2.6]) { a.box(0, y, zB, 2 * I.iw, 0.08, 0.1, RIB, IR, { glow: 0.2 }); a.box(0, y, (zB - I.il) / 2, 0.1, 0.08, I.il + zB, RIB, IR, { glow: 0.2 }); }

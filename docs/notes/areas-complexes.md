@@ -5031,6 +5031,83 @@ Pass 4 of 5. `docs/areas/desert/districts/W.js` and ONE change to the shared too
 - **THE CLOCK IN A PROBE:** a view's `"eval": "window._hqClockHour=function(){return 21.5}"` + `"settle": 2500` shoots it at night (19.2 = dusk).
 - **NO SOUND:** walk rooms have no per-district sound bed (ambience is a battle map's `env.ambience`); nothing was added.
 
+## THE DESERT, WESTERN TOWN — THE POLISH PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 5 of 5; the row on the board is free again. Where the district stands: the header of `docs/areas/desert/districts/W.js`.
+- **THE WALK CHECK:** a flood from Main Street on the walker's own rule (`hqTerrainInfo`, `hqTerrainFeet`, step 0.4375 m, and
+  `hqTerrainWallAt(info, x, z, 0.3)`: a wall whose top is over `rules.climb` (0.62 m) stops it; without that test a point flood steps
+  straight through a 0.12 m wall). Every floor, the six hotel rooms, the stalls, the chancel, Boot Hill, the mine mouth, the camp and the
+  canyon's end are reached; the two cells and the bank's vault side are shut, as meant.
+- **TWO GHOST WALLS ON ONE LINE:** `hqTerrainWallAt` returns the FIRST wall in reach, not the tallest. The jail's bars had a 0.12 m ghost
+  (the bars' foot rail) under the 2.6 m one: the walker met the low one and walked into the cells. One ghost a line; draw the rest.
+- **A STAGE UNDER 0.62 m IS CLIMBED** (the saloon's is 0.5 m: you can step up to the piano). A counter (1.02 m) is not.
+- **LEFT FOR MONDO / A LATER THREAD:** real upper floors (saloon gallery, hotel, hay loft), an inside for the mine, the NEEDS A MODEL
+  list, brightness of the insides on his own machine, whether the five added trades stay.
+
+## THE DESERT, THE ZONE KIT — what the next Desert district threads can use (2026-11-16, written by the pilot, Western Town; Area 51 adds its findings under it)
+
+mondo 11-16 (passed on by the set-up thread): "start one district thread in each to try to get it up to par with disaster city, so it will be
+easier to do the other districts once that first district is fleshed out and knows what shared assets it can use for the zone".
+
+**THE TOOL'S HELPERS (ctx; every district has them)**
+- `building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts)`: a hollow walk-in + its look as parts. `opts`: `leaf` (`leaf_shabby_wood` default,
+  `leaf_barn`, `leaf_saloon`, `leaf_cell`), `leafDouble`, `keyIn`, `floorIn`. The handle has `at(lx, lz)`, `face(f)`.
+- `sheet()`: a parts list for a stand-alone `arch` row (`feat({ k: 'arch', id: 'des:<d>:<name>', x, z, rot, parts: a.P })`): box, cyl, dome, quad,
+  roof, shell, `sign(words, x, y, z, w, h, ink, board, font)` (real lettering: the `txt:` sheet; `rye` is the frontier face). A gate, a
+  mine mouth, a privy, a row of lit lamp cores are all one such row.
+- `pen(x0, y0, x1, y1, [side, square])`: a ranch rail ring with a gap. `feat({ k: 'rail', ..., model: 'ranch' })` for a loose stretch.
+- `setPaint(sx, sy, sheet)`: the room's seven ground sheets + `'sand'` on your own squares (boardwalks = `urban:WoodFlooring1a`, a trail = `dirt_2`).
+- `airZones(ctx)` (new 11-16): the air over your plots ("THE AIR HOOK"). Kinds: dust, embers, fireflies, snow, rain, spores, ash, motes.
+- `P` (a blocker on a square's middle), `Pm` (a metre spot), `dec` (off the middle, random turn), `native(race, sx, sy, face, say)`.
+
+**HELPERS IN W.js WORTH LIFTING INTO THE TOOL (not done: ask on the board first; copy them meanwhile)**
+- `western(a, w, d, door, o)`: a plank front (false front, porch or balcony, sash windows, a name). `o.key` = the wall sheet, `o.lit` = lit windows.
+- `inside(a, id, w, d, h, door, o)`: lines a walk-in from within and returns `solid` / `counter` / `shelves` (drawn fittings + ghost blocks,
+  written in `furnish()`); `inn()` = a prop with `floor: true`. Any district's walk-in can use it as it is ("THE INTERIORS PASS").
+
+**SHEETS THAT SUIT THE DESERT** `urban:WoodGeneric1b` (walls; it is brown: it cannot be tinted white, use `urban:PlasterWallStucco2a`),
+`urban:WoodGeneric1a` (trim, posts), `urban:WoodGeneric2a` (shingles), `urban:WoodFlooring1d / 1a` (boards), `bricks_1`, `dirt_2`, `desert`
+(the sand; tinted yellow it reads as hay), `urban:MetalWallRibbed1a` (iron, brass by tint), `urban:GlassWindowTall1a` (give a pane `uv: 'fit'`).
+Tints want to be light: the first build's mid tints drew near black on the plank sheet.
+
+**CATALOGUE PIECES THAT SUIT IT** Meshy, the Desert: `saguaro_cactus`, `prickly_pear`, `covered_wagon`, `water_tower_west`, `hitching_rail`.
+Animals: `horse`, `horse_brown`, `horse_black`, `cow`, `chicken`, `crow`. PSX graveyard pack: `psxg_tombstone_1..3`, `psxg_dirt_grave`,
+`psxg_coffin`, `psxg_dead_tree_1/2`, `psxg_dead_bush_1/2`, `psxg_rock_1..4`. Halloween pack: `hw_straw`, `hw_straw_2`, `hw_fence`, `hw_crop`,
+`hw_scarecrow`, `hw_shovel`, `hw_pumpkin*`, `hw_candles`. Others: `ancient_well`, `decor_windpump_tower` + `_wheel`, `campfire`, `fallen_log`,
+`stump`, `skull`, `skull_pile`, `dead_snag`, `wooden_bucket`, `meshy_burlap_sack`, `psx_wooden_crate_2/3/6`, `psx_metal_barrel_mp_1/2`,
+`rocking_chair`, `iron_garden_bench`, `signpost`, `meshy_hanging_lantern`, `railway_lantern`, `money_sacks`, `spell_dynamite`, `sea_chest`.
+Inside: the list in "THE INTERIORS PASS".
+**WRONG FOR THIS ZONE (they look like something else):** `form_counter` (an office form stand), `round_table` (Camelot's 5.2 m table),
+`mobius_bar` (a modern red bar), `cell_bars` and `psx_shelf_mp_2` (drew as black slabs), `culvert_mouth` (a sewer), `luggage_cart` anywhere but
+a hotel, `cave_stone` (a 2 m standing stone), `camping_tent` (modern nylon).
+
+**THE LOOK RULES SETTLED** Real scale first: a frontier front is 2 to 5 squares wide; anything wider reads as a barn. Fronts stand close, with
+a boardwalk between them and the street. Weathered wood, one strong colour a building, a name on every front. Light comes from glow, not
+lamps: the room has ten prop lights for all four districts (`noLight` + a lit drawn core). Open ground gets a reason to be there (a gate, a
+fence line, cattle, a camp), never scatter alone. The room's rock squares (`m` in the layout) are solid: check the layout before placing.
+
+**WHAT WENT WRONG AND THE FIX** A roof past a false front hid the sign (stop the roof behind it). A prop near a wall stood on the wall
+(`floor: true`). Two ghost walls on one line opened the cells (one a line). A point flood walked through thin walls (test
+`hqTerrainWallAt` at body width). Main moves every minute with many threads: merge, rebake, re-bump the token, and merge the PR in the same
+breath; GitHub can answer "has merge conflicts" for a few seconds after a push, so check `git merge-base --is-ancestor origin/main HEAD`
+and try once more. The baked block conflicts every time: take main's side of data.js and index.html, then rebake and re-bump.
+
+**STILL MISSING ZONE-WIDE** Models: anvil + forge, water trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, a canvas
+tent, a telegraph pole. No upper floor inside any Desert building. No per-district sound. Fights use one table for the whole room
+(`HQ_AREA_ENCOUNTERS`). No residents (the city's `HQ_CITY_RESIDENTS` has no Desert rows). No interior polish pass in the bake (the city's
+`interior-polish.js` moves clipping props; the Desert has none).
+
+**WESTERN TOWN AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and this
+district lacks, in the order to do it:
+1. THE SQUARES inside: the city sets every blocker on the middle of a whole 3.5 m square and keeps walkways whole squares wide. W.js's
+   counters, partitions and the hotel's 2.6 m corridor are placed by the metre. This is one of mondo's standing rules: first to fix.
+2. THE SECOND LAYERS outside (F-detail): belt courses, sills, downpipes, roof gear, other sheets and decals on other parts. The fronts
+   here have one layer.
+3. THE SECOND INTERIOR PASS (F-atmos): a lit ceiling deck, pendants and sconces, pilasters, a crown and skirting. Here: one lining pass.
+4. THE MESHY PIECES: the city made its missing models; here they are only listed.
+5. RESIDENTS with homes and a day, and the district's own fights. Here: four standing people.
+6. WALKED UPPER FLOORS and roofs. Here: none.
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
@@ -5337,3 +5414,64 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   range on the Dry Lake east; the wing's yard. Two more men (hangar door, crater), no lines. A sign with `ds: true` reads mirrored from
   behind: give a board a back, or two signs back to back. `missile` lies flat (it has no stand): on the "needs a model" list.
 
+## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
+
+mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
+which we will use elsewhere in other zones too. So changes in elevation for these rooms too". Before that, on plan 2: "more labyrinth like ...
+it doesn't have to be as big as the whole city ... a dungeon. the archetypical representation of a sewer. dark and grimy and scary. there should
+be wells or ropes. the subway station can be connected to / a part of the sewers ... an underground hub zone kinda like door hq, so it doesn't
+have to physically map onto disaster city"; own zone or the city's lower level: "kinda both"; "forget the strip and the old cyberpunk".
+
+- **THE ROOM** `site_prebuilt_downtown_underworld` (site `prebuilt_downtown`, part `underworld`, plate "DISASTER CITY · THE SEWERS"): 6 x 4 plots
+  of 12 x 12 squares (252 x 168 m), written by `node bake-sewers.js [--dry-run]` between `SEWERS24-BEGIN / SEWERS24-END` in data.js from
+  `docs/areas/sewers/layout.json` (the plan's square map: `x` wall, `o` walkway, `w` water, `f` room, `j` track, `b` plank). `SEWERS_DUMP=1`
+  prints the walked map. Never hand-edit between the markers.
+- **THE DISTRICT FILES from the first build:** `docs/areas/sewers/districts/W.js` The Sewers (15 plots), `T.js` The Running Tunnels (5),
+  `H.js` The Holding Cells (2), `O.js` The Old Workings (2). Stages a file may export: `plan` (change the squares), `build` (terrain rows),
+  `dress` (props), `people`; `deep: [plot ids]` = tanks nobody wades. A plot's squares are local (0..11): `ctx.P / dec / native(key, plotId, lx, ly)`,
+  `ctx.squares / corners / inner / walled(plotId)` list squares, `ctx.plot[id].base` = its floor in metres. Each file's header is its brief
+  and its STANDS TODAY / NOT YET list. The tool keeps the shared pieces: levels, openings, water, rails, ways out, shell, checks.
+- **THE WALL** = `terrain.gen { kind: 'plan', look: 'walls', wallKey: 'bricks_2' }`: every square that is not a `space` (94 greedy rects) is
+  brick to the roof. The old sewer shell (`hqSewerShell`), darker (ambient 0.22, fog 0.034).
+- **THE LEVELS** (layout `level`, 1 = 1.75 m, a whole-plot `plateau`; a plateau runs 1 m into a neighbour as high or higher, or two plateaus
+  that only touch leave a notch): 0 the old mine · 1 the track + the Outfall · 2 / 3 / 4 the culverts' three rows, stepping up to the north ·
+  5 the cells. Layout `openings` say how two levels meet: `fall` = the stream drops over the lip + a stair beside it (six), `stair` = dry
+  (the cell door, the Maintenance Hatch), `climb` = a ladder / rope on the face (the trap under the Drunk Tank 8.75 m, the Adit 3.5 m, the
+  well at the Junction down to the Crossing: the one opening that was not in the game before, shown to mondo on the plan).
+- **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
+  one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
+- **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
+- **THE WAYS OUT (nine, all in the game before):** door `pump` (north wall, the Pumping Station; the city's `sewer` door names the old room and
+  `at: 'pump'`: map.js now keeps a door id the replacing room still has, so it lands at this door with no change on the owner side) + eight
+  links whose sewer end was re-pointed in `DOOR_HQ.links` (the other end, and so the far room's door, is the link's own: nothing in the
+  city, the Woods or DOOR HQ had to change): `docks_sewer` (e), `stadium_sewers` (e), `tunnels_platform` (s), `well_garden` (free, the Loop
+  Line), `tunnels_works` (w), `sewers_drain` (w), `workings_oubliette` (w), `cells_dungeon` (w). The tool refuses to bake when a link row drifts.
+  DROPPED on his word: `strip_sewer`, `undercity_sewer`.
+- **RETIRED (`DOOR_HQ.retired`):** the four old rooms (`…downtown_sewers / _tunnels / _cells / _workings`) -> the new room. Their literals stay
+  (the tool reads the people's lines, the door plates and the Healing Zone from them; PvP board sources). Hub `underworld` and world zone
+  `underworld` name the one room.
+- **WHO IS THERE (14):** the old rooms' bystanders with their own lines, placed by the district files.
+- **SEEN ON SCREEN** (probe, HEAD of this PR): the Junction, two falls with their stairs, the Outfall, the Depot, the cells' corridor. The room
+  loads with no error (74 files, ~35 s in the probe).
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); over the low
+  plots the roof is 14 m up, so it reads as a black void, not a vault (a per-plot ceiling needs its own piece); still too bright and too clean
+  for "dark and grimy" (no pipes, grime decals, drips); the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
+  Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
+  (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
+
+## THE WATERFALLS — a terrain row for any room (2026-11-16)
+
+mondo 11-16: "can we also work on a way to make waterfalls, which we will use elsewhere in other zones too".
+- **THE ROW:** `{ k: 'fall', x, z, face, w, y0?, y1?, key?, out?, foam? }` in a room's `terrain.features`. (x, z) = the lip's middle; `face` =
+  the way the water falls (degrees, 0 = north, clockwise); `w` = the lip's width (m); `y0` / `y1` = the water's level above / below (left
+  out: read from the stream or pool on each side, else the ground); `key` = the liquid (default: the one above; lava, poison … fall in their
+  own sheet); `out` = how far it lands from the lip (default by height); `foam: false` = none.
+- **IT DRAWS ONLY.** It changes no height, no water and no walk. A room lays a `stream` / `pool` on each level and a sheer step between them
+  (a `plateau` edge, a cliff), then one `fall` row on the lip. A stair or a climb beside it is the room's.
+- **WHAT IT IS** (three-renderer.js `_hqFallsBuild` / `_hqFallsTick`, called from `_hqBuildTerrain` after the square water): the liquid's
+  own animated sheet (`_liqBlendMat`, the material of the water above and below) from 0.9 m behind the lip out and down a thrown curve, its
+  UVs running down; white streaks a hand in front (one shared canvas texture, scrolling); a foam patch on the lower water, breathing.
+  data.js `hqTerrainCompile` collects the rows as `info.falls`. The editor's ADD list has "Waterfall". Off: `window.EW_NO_HQ_FALLS`.
+- **USED:** the Sewers' six (bake-sewers.js, layout `openings` kind `fall`). **WANTED NEXT:** the Woods' Falls plot (`docs/areas/woods/
+  districts/T.js`, its creek already steps per grade: one `fall` row per step), the Mountains' streams, the Beach's island.
+- **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen only at 1.75 m.
