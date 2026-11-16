@@ -7643,8 +7643,13 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   (three lines; a model on its origin does not move; the random numbers are drawn in the same order). What changes for the other snowy places (the North Pole village,
   Camelot's Snowy Pines, the Mountains' tree line): the snow pines now stand IN their tree zones, where the walker has always bumped them; the lone pines that stood on
   trails, roofs and squares (the zone kit's point 4, "stand on trail squares") are gone. Look at your district again after this.
+- **PASS 4, ATMOSPHERE** (seen by day and at night, 17 views; night = a view's `eval` of `hqClockSet(22)` + `settle` 4000): `exports.airZones` (district S's hook) = three snow
+  zones (the Ridge `n` 300 `wind` 0.9 `speed` 1.2; the pass and the Tarn 380; the tree line 110); seven more catalogue fires with a real light (`cave_torch`, `brazier`,
+  `campfire`), 14 lights in the district in all; `chimney_smoke` on the three flues (`floor: false`, `y` = the flue's top from the ROOM's floor: the plot's ground + the wall +
+  the roof). At night the lit panes, the lanterns, the flags (`glow` 0.25), the ice (`glow` 0.35) and the Mast's red lights carry the picture. Not this file's: the south edge
+  forest and the west edge's green trees stay day-bright at night.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
-  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+  after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view; the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
