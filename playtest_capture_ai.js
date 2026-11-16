@@ -77,7 +77,7 @@ const TAG = process.env.TAG || SPELL;
 const TILT_START = process.env.START_CAM ? JSON.parse(process.env.START_CAM) : null;
 (async () => {
   const exe = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-  const browser = await chromium.launch({ headless: true, executablePath: fs.existsSync(exe) ? exe : undefined,
+  const browser = await require('./probe-fast.js').launch(chromium, { headless: true, executablePath: fs.existsSync(exe) ? exe : undefined,
     args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*'] });
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 720 } });
   const counters = { mirror: 0, local: 0, tex: 0, miss: 0 };

@@ -4489,6 +4489,45 @@ mondo: "yes, continue, and you can playtest to screenshot" (yes = the King's Cha
   (4) The ward crashed the headless browser every time while the telepath stood in it and never without him (the old ward had him too): shoot
   that room with him taken out, ship it with him in. (5) The browser also dies at random; three tries a run is not always enough.
 
+## THE DESERT, THE HIGHWAY — 12 x 12 plots, four exits, cars (2026-11-16, second side)
+
+mondo: "It feels weird having these places right next to each other, can we add a desert highway that connects them together and spreads them
+out. Full highway with exits and stuff, and connected to the roads of disaster city obviously". On plan 4 (`docs/plans/desert/desert_highway_plan.png`):
+"12x12 is fine" · cars: "yes obviously" · the city side: "change whatever you need to and whatever makes sense geographically" · "does disaster
+city not get its own exit too?" (it does: Exit 1).
+
+- **THE ROOM** is still `site_prebuilt_area51_desert`, now 12 x 12 plots (504 m, Disaster City's size). `docs/areas/desert/layout.json` is the new
+  layout, written by `python3 docs/plans/desert/make-layout-4.py` from `layout-8x8.json` (the first build's layout, kept as the source of the four
+  blocks). `node bake-desert.js` writes the room as before.
+- **THE BLOCKS MOVED WHOLE:** the Circus (plots 1-3, 1-3), Western Town (8-11, 1-4), Area 51 (0-3, 8-11), Giza (8-11, 8-11). In the tool every
+  district is still AUTHORED in the first build's squares (`gx / gc / P / put / building`, the old frame) and each row it makes is moved with its
+  block at the end (`MOVE`, metres new - old: C -84 -42 · W +84 -42 · A -84 +84 · G +84 +84). The first build's Road district is gone. New work is
+  authored in the new frame (`nx / nc / nP / nPm`). So an old note that names a Desert square is true in the old frame; add the block's move.
+- **THE HIGHWAY** (new frame squares): it comes in from the west wall (westbound y 2..5, eastbound y 7..10), bends south (southbound x 68..71,
+  northbound x 73..76, a sand median) and ends at y 93, where a road runs east and turns onto Giza's causeway. Three lanes a side, dashed lane
+  lines, yellow median lines, white shoulder lines (terrain marks).
+  - EXIT 1 · DISASTER CITY: at the bend, a road north to the north wall at x -105 = link `downtown_desert`'s Desert end. The city's own way
+    out (Southside's South Street) is at x -105 too, so the two rooms line up. Nothing in the city's tool or block was changed.
+  - THE REST STOP: the Gas Station (store, canopy, sign) on the northbound side, a LAST GAS billboard. The area's battle marker and healing
+    zone stand on the sand beside it (`HQ_AREA_MARKERS`): by the spawn they lay in the westbound lanes.
+  - EXIT 2 · THE CIRCUS: a slip lane, a road west to the circus's own track.
+  - EXIT 3 · WESTERN TOWN: the county road (y 52..55) climbs two earth banks (`ramp` rows) and crosses the highway on a `bridge` row 5.25 m up;
+    two side roads and four stubs make the diamond. East: the town's Trail In. West: the frontage road with the Door and the Bus Stop.
+  - EXIT 4, no sign: the base road west (y 80..82), then south down the west edge to the Gate. The Trailers and the Conspiracy Theorist sit on it.
+  - THE END: the signpost, the road east to Giza.
+- **THE SIGNS:** green gantries (`arch` rows `des:sign:<n>`, the tool's `gantry(sx, sy, dir, words)`: `dir` = the way the traffic that reads it
+  drives). Text is the `txt:` sheet in the `way` face.
+- **THE CARS:** `terrain.traffic`, the city's own system, two one-way lines (`loop: false`, `lane: 0.01` = the middle of a one-way carriageway):
+  in from the west, south to the end, east to Giza; and back. Five cars a line. The tool refuses to bake a prop within 3.2 m of a line.
+- **Rows outside the markers:** `links.downtown_desert.b` (x -105), `links.gobekli_giza.b` (z 157.5), `siteRooms.entry.prebuilt_giza` (x 171,
+  z 192.5), `HQ_AREA_MARKERS`. The insides' three rooms are untouched (their doors moved with their blocks).
+- **CHECKED:** offline, a walk from the spawn on the walker's rule reaches every door pad, every unit but the tower's marksman (up his own
+  stair, as before), the bridge's deck and the lanes under it. **SEEN IN THE BROWSER** (playtest_city.js, ten views, no retry): the bend, the
+  gantries and their words, the lane paint, the overpass with a car passing under it, the view from the bridge, the rest stop, the end.
+  NOT seen: the trailers' and the Door's facings, the districts after the move (they are the same rows, shifted), cars turning the two corners.
+- **NOT DONE:** no cars on the county road, the exits' roads or the base road (the two lines are the highway only). No on-ramp acceleration
+  lanes. Nothing on the city side (a sign for the Desert at the city's way out would be the Disaster City holder's). The canyon from the town
+  to the Dig is cut in two by the move (each end opens on sand).
 
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).

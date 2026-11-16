@@ -181,6 +181,8 @@ look at the pictures yourself, fix what is wrong, and show him the proof picture
 A change that is not visual (rules, data, numbers, tooling, docs) still gets only `node --check <file>`: browser runs burn a
 lot of his tokens, so no full "play a match" playtest unless he asks for one ("playtest <mode>"). Keep runs few and aimed:
 one probe run with several views beats many runs. Probe tips: PLAYTEST_NOTES.md "THE CITY PROBE".
+**Every probe launches through `probe-fast.js`** (11-16: llvmpipe, held screenshot, `roomReady`, the checkout's scripts): never
+`chromium.launch` directly, never a fixed `--wait=150000`; read "THE FAST PROBE" there before writing a probe.
 
 ### RULE #1d — THE FRESH CHECK: NEVER BUILD OR TEST ON AN OLD COPY (mondo 11-15)
 A cloud container's clone is shallow and its local `origin/main` ref can be DAYS old. On 11-15 a thread ran
