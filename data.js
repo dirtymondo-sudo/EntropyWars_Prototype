@@ -1647,10 +1647,12 @@ const TERRAIN_RULES = {
     },
     /* ☢ RADIOACTIVE SLUDGE (2026-11-16, mondo on the Sewers' radioactive district: "make it a new liquid that does corrosion
        (I think that's poison and burned combined? that's close to radiation)"): a liquid of its own in the poison family.
-       Ending a turn in it gives the game's own CORRODED status (STATUS_DEFS.corroded: chemical fire, counts as Burn and
-       Poison) the way the bog gives Poison; flyers are spared (map.js applyTerrainTurnEffects). No new status, no new number:
-       the 2 rounds are the bog's. In a walked room it is a liquid nobody enters (any liquid but water: hqTerrainWalkable).
+       It first gave Corroded; since the radioactive status below it gives RADIOACTIVE. Flyers are spared (map.js
+       applyTerrainTurnEffects skips anyone airborne). In a walked room it is a liquid nobody enters (any liquid but water: hqTerrainWalkable).
        Look: sprites.js TERRAIN_SPRITES.sludge + three-renderer.js _LIQUID_STYLES.sludge. */
+    /* ☢ THE RADIOACTIVE STATUS (2026-11-16, mondo picked "Radiation: its own status", named it "radioactive", and ruled it is NOT
+       Poison: "it needs its own bonus spells"): the sludge gives RADIOACTIVE, not Corroded. Each turn ended in it adds one stack
+       (up to 3, STATUS_DEFS.radioactive); `stacks: true` tells the tile card + the move ghost to say "adds a stack". */
     sludge: {
         label: 'Radioactive Sludge',
         short: 'SLG',
@@ -1658,9 +1660,9 @@ const TERRAIN_RULES = {
         moveCost: 2,
         blocksRanged: false,
         healMultiplier: 0.5,
-        turnStatus: { id: 'corroded', duration: 2 },
+        turnStatus: { id: 'radioactive', duration: 1, stacks: true },
         endTurn(unit) {
-            return { type: 'status', id: this.turnStatus.id, duration: this.turnStatus.duration };   // one log line: applyStatusPayload's "Radioactive Sludge: X is CORRODED"
+            return { type: 'status', id: this.turnStatus.id, duration: this.turnStatus.duration };   // one log line: applyStatusPayload's "Radioactive Sludge: X is RADIOACTIVE"
         }
     },
     /* Black liquid family (2026-07-14): 'swamp' is the Black Goo Ooze Trail's
@@ -11768,7 +11770,7 @@ const _MF_HARD_CC = { stun:13, freeze:13, frozen:14, sleep:13, charm:13, silence
                       // CHAMP REWORK Phase 4: the victim loses (part of) its turn
                       feared:12, possessed:14, infected:13 };
 const _MF_SOFT_CC = { slow:6, stagger:6, root:6, blockMove:6, snare:6, blind:7 };
-const _MF_DOT     = { burn:7, poison:7, bleed:7, haunted:8, corroded:9 };
+const _MF_DOT     = { burn:7, poison:7, bleed:7, haunted:8, corroded:9, radioactive:8 };
 const _MF_DEBUFF  = { marked:5, discord:6, vulnerable:5, weak:5,
                       goo:6, grievous:5, soulBound:6, voodoo:6, tethered:7 };
 const _MF_BUFF    = { protect:20, invulnerable:15, invisible:12, untargetable:12, regen:6,
@@ -12603,6 +12605,56 @@ const STATUS_DEFS = {
             const _dealt = _hpB - unit.hp;
             if (_src && !_src.dead && _src.player !== unit.player && _dealt > 0) {
                 _src._trackDmgDealt = (_src._trackDmgDealt || 0) + _dealt;
+            }
+        }
+    },
+    /* ☢️ RADIOACTIVE (2026-11-16, mondo: "radioactive for the name"; its own status, not Poison, not Corroded). The value is
+       the STACKS, not a countdown: every landing adds one (applyStatusPayload `stack: 'add'`, up to `maxStacks`). At the end
+       of every round it deals `dotPerStack` x stacks (DEF ignored), then drops one stack unless the unit is still standing
+       in radioactive sludge (battle.js _unitInSludge), so it builds while you stay and drains after you leave. It is not
+       on the round countdown (`ownTick`). Water and rain do NOT wash it off; a cleanse does. It GLOWS: an irradiated unit
+       is seen through fog by both sides and cannot hide (map.js computeVisibleTiles, battle.js isUnitConcealedFrom).
+       No countsAs: Poison payoffs do not pay on it (mondo 11-16). */
+    radioactive: {
+        icon: '☢️',
+        glyph: '☢',
+        short: 'RAD',
+        label: 'Radioactive',
+        colorText: 'radioactive',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'add',
+        maxStacks: 3,
+        dotPerStack: 20,
+        dot: 20,
+        ownTick: true,
+        glows: true,
+        iconSrc: createStatusIconDataUri('☢', '#2a3a08', '#f4ffd8', '#a6ff2a'),
+        onRoundEnd(unit) {
+            const stacks = Math.max(0, Math.min(this.maxStacks, Math.round(Number((unit.status && unit.status.radioactive) || 0))));
+            if (!(stacks > 0)) return;
+            const _srcId = unit._statusSrc && unit._statusSrc.radioactive;
+            const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
+            const _hpB = unit.hp;
+            applyDamageToUnit(unit, this.dotPerStack * stacks, `☢️ The radiation burns through ${unitDisplayName(unit)}${stacks > 1 ? ` (${stacks} stacks)` : ''}: `, {
+                ignoreArmor: true,
+                damageType: 'dot',
+                consumeMarked: false,
+                scaleByTargetLevel: true,
+                flashColor: 'poison'
+            });
+            const _dealt = _hpB - unit.hp;
+            if (_src && !_src.dead && _src.player !== unit.player && _dealt > 0) {
+                _src._trackDmgDealt = (_src._trackDmgDealt || 0) + _dealt;
+            }
+            if (unit.dead || !unit.status) return;
+            // still in the sludge: the stacks stay; out of it: one drains away
+            if (typeof _unitInSludge === 'function' && _unitInSludge(unit)) return;
+            if (stacks - 1 > 0) unit.status.radioactive = stacks - 1;
+            else {
+                if (typeof clearStatus === 'function') clearStatus(unit, 'radioactive'); else delete unit.status.radioactive;
+                if (typeof addLog === 'function') addLog(`☢️ ${unitDisplayName(unit)} is no longer Radioactive.`);
             }
         }
     },
@@ -13710,6 +13762,7 @@ const STATUS_LIBRARY_DESCS = {
     // CHAMP REWORK Phase 4 (2026-09-07): the §5.1 batch.
     haunted:   'Wracked by a restless spirit: takes 28 base damage at the end of every round (DEF and M DEF ignored). Boo hits Haunted targets harder.',
     corroded:  'Eaten by chemical fire: takes 44 base damage at the end of every round (DEF ignored). Counts as BOTH Burn and Poison for every payoff. Burn and Poison together become Corroded, and fire on a poison bog corrodes everyone in it. Water puts the fire out and leaves the Poison.',
+    radioactive: 'Glowing with radiation. Each turn ended in Radioactive Sludge adds a stack (up to 3). At the end of every round it takes 20 base damage per stack (DEF ignored), then loses one stack if it is out of the sludge. Water does not wash it off; a cleanse does. Radioactive units glow: they can be seen through fog and cannot hide. It is not Poison.',
     grievous:  'A wound that will not close: healing received is halved.',
     feared:    'Paralysed with fear: no attacks, no spells. Its next activation is spent fleeing from what frightened it, and the fear ends with that flight. A unit with nowhere to run cowers and stays Feared.',
     possessed: 'A hostile will steers this body: the possessor\'s player controls the unit for its next activation(s), whole kit included.',

@@ -2889,6 +2889,15 @@
             return !!(fl && fl.t === 'poison');
         }
 
+        /* ☢ standing (on the ground) in radioactive sludge: STATUS_DEFS.radioactive keeps its stacks while this holds */
+        function _unitInSludge(u) {
+            if (!u || u.dead || typeof getTerrainAt !== 'function') return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            const _lowBlk = (u.z != null && typeof getBaseHeightAt === 'function' && u.z < getBaseHeightAt(u.x, u.y) && typeof getBlockAt === 'function') ? getBlockAt(u.x, u.y, u.z) : null;
+            return (_lowBlk ? (_lowBlk.terrain || 'grass') : getTerrainAt(u.x, u.y)) === 'sludge';
+        }
+        window._unitInSludge = _unitInSludge;
+
         function _isLavaTile(x, y) {
             if (getTerrainAt(x, y) === 'lava') return true;
             const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
@@ -10446,7 +10455,7 @@
 
         const CT_STATUS_WORDS = {
             burn: 'burn|burning|burned|burnt', poison: 'poison|poisoned', bleed: 'bleeding|bleed', goo: 'gooed', haunted: 'haunted',
-            corroded: 'corroded', feared: 'feared', possessed: 'possessed', infected: 'infected', stoneform: 'stoneform', voodoo: 'voodoo',
+            corroded: 'corroded', radioactive: 'radioactive|irradiated', feared: 'feared', possessed: 'possessed', infected: 'infected', stoneform: 'stoneform', voodoo: 'voodoo',
             tethered: 'roped', sparkling: 'sparkling', levitating: 'levitating', blessed: 'blessed', quickened: 'quickened',
             silence: 'silence|silenced', stun: 'stun|stunned', sleep: 'asleep|sleeping', projecting: 'projecting', root: 'rooted', stagger: 'stagger|staggered', marked: 'marked',
             jammed: 'jammed', drowning: 'drowning', wet: 'wet|soaked', protect: 'protect|protected', discord: 'discord', slow: 'slow|slowed',
@@ -10835,6 +10844,10 @@
             const _hadBefore = Number(status[payload.id] || 0) > 0;
             if (meta.stack === 'replace') {
                 status[payload.id] = nextValue;
+            } else if (meta.stack === 'add') {
+                /* ☢ RADIOACTIVE (11-16): the value is stacks; each landing adds its own (the sludge adds one), up to maxStacks */
+                const _cap = Math.max(1, Number(meta.maxStacks) || 3);
+                status[payload.id] = Math.min(_cap, Number(status[payload.id] || 0) + Math.max(1, Math.round(Number(payload.duration ?? payload.value ?? 1)) || 1));
             } else {
                 status[payload.id] = Math.max(Number(status[payload.id] || 0), nextValue);
             }
@@ -10859,7 +10872,7 @@
             // damage resolves source-less (STATUS_DEFS onRoundEnd), so the
             // applier is remembered here and credited at tick time.
             if ((payload.id === 'poison' || payload.id === 'burn' || payload.id === 'bleed'
-                || payload.id === 'haunted' || payload.id === 'corroded'
+                || payload.id === 'haunted' || payload.id === 'corroded' || payload.id === 'radioactive'
                 || payload.id === 'soulBound' || payload.id === 'voodoo') && sourceUnit
                 && sourceUnit.player !== target.player) {
                 target._statusSrc = target._statusSrc || {};
@@ -12818,6 +12831,8 @@
                blood-marks pierce invisibility and smoke alike. Mark first,
                then the cloak means nothing — reliable stealth counterplay. */
             if (unitHasStatus(unit, 'marked')) return false;
+            /* ☢️ A Radioactive unit glows (mondo 11-16): it cannot hide either */
+            if (unitHasStatus(unit, 'radioactive')) return false;
 
             /* 📷 Cryptid (bigfoot passive, plan §5.2): concealed from a viewer
                with no living unit within `targetableWithin` tiles. Rides the
@@ -13226,6 +13241,13 @@
             }
             for (const ts of sts) {
                 const off = !!unit && !gets.includes(ts.id);
+                if (ts.stacks) {   // ☢ the sludge: a stack, not rounds
+                    const _cap = (STATUS_DEFS[ts.id] && STATUS_DEFS[ts.id].maxStacks) || 3;
+                    chips.push({ kind: 'status', id: ts.id, text: stLabel(ts.id).toUpperCase() + ' · STACKS', off,
+                        title: 'Ending a turn here adds a ' + stLabel(ts.id) + ' stack (up to ' + _cap + ')' + (off ? '. Not this unit.' : '') });
+                    words.push('Ending a turn here adds a ' + stLabel(ts.id) + ' stack (up to ' + _cap + ').');
+                    continue;
+                }
                 chips.push({ kind: 'status', id: ts.id, text: stLabel(ts.id).toUpperCase() + (ts.grows ? ' · GROWS' : ''), off,
                     title: 'Ending a turn here gives ' + stLabel(ts.id) + ' (' + ts.duration + ' rounds)' + (ts.grows ? ', worse each turn you stay' : '') + (off ? '. Not this unit.' : '') });
                 words.push('Ending a turn here gives ' + stLabel(ts.id) + ' for ' + ts.duration + ' rounds' + (ts.grows ? ', worse each turn you stay' : '') + '.');
@@ -13581,7 +13603,7 @@
            Holds are plain unit data (_stHold: { key: { r: round it ends in, by: applier id, af: landed after the target's
            turn } }), so state-sync carries them to the guest (RULE #2); only the host engine expires them. Buffs, terrain /
            weather / end-of-round statuses, Strike, Simul and the Mystery Dungeon clock keep the plain end-of-round count. */
-        const _STATUS_HOLD_SKIP = new Set(['stagger', 'possessed', 'infected', 'statUp', 'statDown', 'climbing', 'exited', 'captured', 'sealed']);
+        const _STATUS_HOLD_SKIP = new Set(['stagger', 'possessed', 'infected', 'statUp', 'statDown', 'climbing', 'exited', 'captured', 'sealed', 'radioactive']);   // ☢ radioactive counts stacks, not rounds
         function _statusHoldsOn() {
             if (state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
             if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
@@ -13672,6 +13694,7 @@
                 const tick = calcStatusDurationTick(
                     [...getActiveStatusKeys(u)]
                         .filter(key => STATUS_DEFS[key])
+                        .filter(key => !STATUS_DEFS[key].ownTick)   // ☢ radioactive drains its own stacks (STATUS_DEFS.radioactive.onRoundEnd)
                         // 💫 a stagger still owed (landed after the unit acted) stays up until its short turn
                         .filter(key => !(key === 'stagger' && (u._staggerApDebt || 0) > 0))
                         // ONE ROUND = ONE TURN: landed after this unit's turn this round → skip this tick once

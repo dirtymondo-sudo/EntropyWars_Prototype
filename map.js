@@ -15580,6 +15580,15 @@
                 }
             }
 
+            /* ☢️ THE GLOW (2026-11-16, mondo's Radioactive status): an irradiated unit's own square is seen through fog and
+               smoke by every viewer. Status rides the state-sync, so the guest's fog shows the same glow (RULE #2). */
+            function _addGlowingUnits() {
+                for (const u of state.units) {
+                    if (!u || u.dead || u._dying || _realmKeyOf(u)) continue;
+                    if (u.status && Number(u.status.radioactive || 0) > 0) visible.add(posKey(u.x, u.y));
+                }
+            }
+
             /* 🌑 THE SHADOW REALM: on a realm pair's turn the screen is the realm — the viewer sees what its unit in
                there sees, plus the two of them; on the board's turns a realm unit lends no sight */
             const _rv = (typeof window.realmViewKey === 'function') ? window.realmViewKey() : null;
@@ -15597,6 +15606,7 @@
             if (_solo) {
                 addVisibleFrom(_vx(_solo), _vy(_solo), getUnitVisionRange(_solo), _vz(_solo), _solo.wallVision, _losOnlyVision());
                 _dropEnemySmokeTiles();
+                _addGlowingUnits();
                 return visible;
             }
 
@@ -15695,6 +15705,7 @@
             }
 
             _dropEnemySmokeTiles();
+            _addGlowingUnits();
 
             return visible;
         }
