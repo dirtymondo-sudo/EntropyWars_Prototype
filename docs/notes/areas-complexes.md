@@ -5588,6 +5588,67 @@ the zone". Passes as the pilot's, a PR each: exteriors, interiors, dressing, atm
   0.20 frames a second (it cannot tell them apart). L's real lights went from four to two.
 - Not done: the Boathouse's inside (pass 2), reeds, lily pads, shore dressing, fish (pass 3), mist and night (pass 4).
 
+## THE ESTATE, DISTRICT R — THE RANCH (2026-11-16, the district thread; file `docs/areas/estate/districts/R.js`)
+
+mondo 11-16 (the nap order, docs/plans/DISTRICT_THREAD_BRIEF.md): every district prototyped without asking, at most five passes, own judge. Passes,
+a PR each: exteriors, interiors, dressing, atmosphere, polish.
+
+### THE FIRST LOOK (probe, 12 views)
+- The Barn was a near-black red box under one plain gable; its white trim drew grey-brown (a tint only darkens the trim sheet). The hen house was a
+  dark brown shed alone on a bare dirt yard the size of a plot. Both walk-ins were empty brown rooms under a black ceiling. No trough, no gate.
+- **THE GATE GAP WAS IN THE WRONG PLACE.** The rail on the district's line left its gap on squares 36 x 65..66, which face the corn's bank; the track
+  from the house comes in on 34..35 x 63..64 and ran into the rail. The gap, the gate and two squares of dirt (`plan()`) are on 63..64 now.
+
+### FITS THIS DISTRICT (the lists read first: MODEL_LIST.md sections 6, 7, 10, 12b, 13, the live catalogue, R2_MODEL_FILES.json, the Halloween file)
+- **Animals:** `cow`, `horse` / `horse_brown` / `horse_black`, `chicken`, `dog`, `cat`, `rabbit`, `crow`, `decor_sheep` (the spell's sheep, a still
+  model: nobody has placed it), `wolf`, `eagle`; insects `butterfly`, `monarch`, `bee`, `bumblebee`, `grasshopper*`, `ladybug`, `ant` + `anthill`.
+- **Big pieces nobody had placed in this zone:** `ind_silo` (reads as a grain bin on legs, 9 m), `water_tower_west`, `covered_wagon`,
+  `hitching_rail`, `power_pole`, `ride_on_mower`, `tire_stack`, `psx_toilet_cabin_mp_1` (an outhouse), `woods_cabin`, `ancient_well`.
+- **Barn + yard:** `hw_straw*`, `hw_scarecrow*`, `hw_farmland` + `hw_crop*`, `hw_pumpkin*`, `hw_fence` (pickets), `hw_shovel`, `meshy_burlap_sack`,
+  `wooden_bucket`, `psx_wooden_crate_1/2/4/6`, `psx_metal_barrel_mp_*`, `psx_jerrycan_1`, `psx_hand_saw_1`, `psx_car_battery_1`, `cinder_block`,
+  `tool_chest`, `tool_pegboard`, `platform_scale`, `chain_hoist`, `library_ladder`, `meshy_rope`, `hook_rail`, `broom`, `fallen_log`, `stump`,
+  `metal_trash_can`, `garbage_bag`, `railway_lantern`, `psx_cobweb_*`, `leaf_barn`, `leaf_stable`.
+- **Farmhouse:** the PSX mega pack's furniture (`psx_dinner_table_1`, `psx_chair_mp_*`, `psx_bed_*`, `psx_wardrobe_mp_1`, `psx_sofa_*`,
+  `psx_armchair_*`, `psx_shelf_mp_*`, `psx_display_cabinet_mp_*`, `psx_tv_mp_1` + `psx_tv_table_*`, `psx_carpet_mp_1`, `psx_lamp_*_on`,
+  `psx_ceiling_lamp_*_on`, `psx_painting_1`, `psx_photo_frame_mp_*`, `psx_clock_*`, `psx_book_mp_*`, plates and cutlery), `kitchen_range`, `sink`,
+  `pot_rack`, `stock_pots`, `hearth_fire`, `chimney_smoke`, `rocking_chair`, `rug_round`, `retro_radio`, `rifle_rack`, `footlocker`, `coffee_mug`.
+- **Sheets:** `WD` boards (with `gain`), `COR` tin, `SHG` shingles, `FLR` planks, `BRK` brick, `'castle_wall'` stone, `dirt_2`, `grass_2`.
+- **Not on R2 (NEEDS A MODEL, listed in R.js):** tractor, plough, wheelbarrow, pitchfork, saddle, pig, goat, rooster, duck, beehive, kennel, mailbox,
+  clothes line, sunflowers / wheat, cattle skull. The Elbolilloduro packs are on the game bucket only as cut pieces; their whole files (the bus-stop
+  pack's `Wheat`, the mine pack) are in mondo's art bucket and need Blender to cut: not reachable from a cloud thread.
+
+### PASS 1, THE EXTERIORS (seen in the cloud browser)
+- **THE BARN:** a GAMBREL roof made of three roof parts (two `shed` slopes with their high edge to the middle, `ry: 90` west / `ry: 270` east, a
+  low `gable` cap; the wall between the slopes is a box with `faces: 'fb'`; the sheds' own end triangles fill the gambrel's corners), barn red on the
+  board sheet with `gain: 1.7`, a stone footing open across the doors, white corner boards and belts (no sheet), two sliding doors in white frames on
+  an iron rail, the hayloft door under a hoist beam and hook, a louvre in the peak, windows, a cupola with a weathervane, shut back doors, and a
+  LEAN-TO on five posts down the east wall (squares 58..59 x 51..54, dirt under it: the mower, tyres, a barrel).
+- **THE FARMHOUSE:** a stone footing, white corner boards, a cross gable over the door with a lit attic window, thirteen sash windows with green
+  shutters (three lit), white porch posts, rails and balusters (open at the door's bay), a porch lamp, a capped chimney with `chimney_smoke`.
+- **THE HEN HOUSE:** pale boards, a red keeper's door, wire windows, the hatch and ramp, a nest box; a picket HEN RUN (`hw_fence` on the squares'
+  lines, a one-square gap on the west side) with the hens in it.
+- **ONE ROW FOR THE YARD'S FITTINGS** (`est:ranchfittings:look`, an arch row with `hug: true`: every corner lies on the ground under it, so one row
+  serves the Windmill's slope and the gate): plank troughs with water (the Yard's has a hand pump), round tin stock tanks (a hollow `cyl` with `ri` +
+  a water disc), timber gate leaves, THE RANCH GATE (two 5.4 m posts, a beam, the board `RANCH` in `fell` read from both sides, the two leaves swung
+  back along the rail, a cattle grid), the Paddock's gate (its gap is one square now).
+- **THE COW SHED** (Cow Field, squares 67..69 x 70..71): three boarded walls with ghost walls, a tin roof, open to the north, walked into.
+- **Placed:** `ind_silo` by the barn, `water_tower_west` over the Yard, `ride_on_mower` + `tire_stack` under the lean-to.
+- **`plan()`:** dirt under the lean-to and the cow shed, the gate's two squares, a worn path from the barn's track to the farmhouse door.
+- **THE LIGHTS:** R keeps three real ones (the two torches before the barn, the farmhouse's hearth to come); the other torches and the campfire
+  carry `noLight`.
+- **THE COST:** the proof view (the district's middle from 70 m up): 491 draw calls before, 579 after pass 1 (the cloud's software renderer read 3
+  and 19 frames a second on the same view: it cannot tell them apart). The polish pass has to win calls back (fewer tints in one row).
+- **KNOWN:** the cattle grid was not seen in the pass's pictures (it lay under the track's own sheet on the slope; lifted, to be looked at again
+  with pass 2's probe). The dark trim sheet `WD2` draws near black under any tint: weathered timber = `WD` + a tan tint + `gain: 1.9`.
+
+### DECISIONS MADE FOR MONDO (overrule any in one line)
+1. The Barn has a gambrel roof and is barn red with white trim; the Farmhouse is white with a green roof (as it was).
+2. The gate's board says `RANCH` (a plain word, no made-up name).
+3. The gate stands on the track's real opening (squares 36 x 63..64), not where the rail's old gap was.
+4. A grain silo and a water tower were added (models already in the game, nobody had placed them in this zone).
+5. The trough, the stock tanks, the gate and the cattle grid are DRAWN from textured parts (no model exists; the plan names them).
+6. No way to the Desert was added (ways out are shared and his call).
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
@@ -5631,6 +5692,10 @@ Read this before dressing C, L or R. It grows with each of H's passes.
 - **DENSITY:** a place people expect crowded (graves, crops, stalls) wants several pieces a square: one blocker on the square's middle, the rest
   `noBlock: true` beside it. One piece every second square looks empty. The grass field hides anything under 0.4 m.
 - **KNOWN BAD PIECES:** `hw_web` (unseen since its fix), `psx_wooden_crate_3` (blank box), `lion_statue` (a tawny lion, not stone).
+- **FROM THE RANCH (district R):** `hug: true` on an arch row lays every corner on the ground: one row can hold a whole district's small drawn pieces
+  on sloped ground. A GAMBREL roof = two `shed` roofs (`ry: 90` / `270`) + a `gable` cap + a `faces: 'fb'` box between them. The trim sheet `WD2`
+  draws near black under any tint; weathered timber = `WD` + tan + `gain: 1.9`; painted boards want `gain` 1.7 to 2.2. A part turned with
+  `ry: 90` puts its local +z at the row's -x. Pieces first placed here: `ind_silo` (a grain bin), `water_tower_west`, `ride_on_mower`, `tire_stack`.
 - **STILL MISSING ZONE-WIDE:** corn stalks (Meshy, waits), a lamp post model, night never seen on screen, no residents with routines, lines for
   most of the people.
 
