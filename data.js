@@ -4334,7 +4334,7 @@ const RACE_BASE_STATS = {
     'conspiracy theorist':{ hp: 1230, mp: 195, atk:  20, def:  75, mdef:  157, int:  164, vision: 3, crt: 26, spd: 60 },   // STATS26 PASS 2026-10-29: HP 1117→1330, M.ATK 138→195 (37% in STATS26; POWER -188 → about -74 of the median); STATS33 PASS 2026-10-31: HP 1330→1230, M.ATK 195→164 (58.4% in STATS33 (89 games), 56.6% team-adjusted, 55.6% over 211 games (STATS32 + 33, no change between); POWER -42)
     'overlord':           { hp: 910, mp:  75, atk:  71, def:  115, mdef:  32, int:  68, vision: 2, crt: 13, spd: 120 },   // STATS28 PASS 2026-10-29: HP 1593→1150, ATK 109→95, DEF 146→115 (65% over STATS27+28; survives 88% of games); LOOP PASS 1 2026-11-08: HP 1150→910, ATK 95→71, M.ATK 91→68 (60.4% in the 11-08 loop's baseline lab (106 games), 62.3% team-adjusted; POWER -85)
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
-    'banker':             { hp: 1300, mp: 190, atk:  40, def:  120, mdef:  130, int:  180, vision: 3, crt: 15, spd: 85 },   // 2026-11-16 THE NEW RACES — first pass on the support median
+    'banker':             { hp: 1100, mp: 190, atk:  40, def:  80, mdef:  150, int:  180, vision: 3, crt: 15, spd: 85 },   // 2026-11-16 THE NEW RACES — first pass on the support median; THE BANKER PASS 2026-11-16: HP 1300→1100, DEF 120→80, M.DEF 130→150 (the first pass sat 230 HP + 50 DEF over the 26 supports' median, and every loan that comes due heals him 36% of an ally's max HP on top: the bulk is in the loans now)
     'sewer gator':        { hp: 1250, mp: 120, atk: 168, def: 118, mdef:  58, int:  60, vision: 3, crt: 22, spd: 130 },   // 2026-11-16 THE NEW RACES — first pass between the reptilian and the sharkman
     'skater':             { hp: 1000, mp: 120, atk: 165, def:  85, mdef:  60, int:  55, vision: 3, crt: 24, spd: 150 },   // 2026-11-16 THE NEW RACES — first pass on the catgirl
     'tech ceo':           { hp: 1050, mp: 200, atk:  50, def:  95, mdef: 140, int: 175, vision: 3, crt: 18, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the men in black
@@ -10224,10 +10224,13 @@ const RACE_ABILITIES = {
         /* THE LOANS (2026-11-16, the new races; mondo picked the Banker): the one race that lends. A loan comes back with interest
            two rounds later (status `debt`), a short pays off when the bet goes down (status `shorted`). Rules: data.js STATUS_DEFS
            debt / shorted + battle.js _settleBankOnDeath. */
+        /* THE BANKER PASS (2026-11-16, mondo: "unique fun strategic playstyles, but still balanced"): `noSelf` (the bank never
+           lends to itself: a self-loan paid itself back, a free 30% heal every turn), range 4 → 3 (the T1 heals' reach), and a
+           loan taken while one is open ADDS to it (STATUS_DEFS debt onApply): rolling a loan used to wipe the old debt. */
         { id: 'nrLineOfCredit', name: 'Line of Credit', tier: 1, families: ['highfinance'], cost: 25, apCost: 1, spellType: 'human',
-          type: 'heal', kind: 'heal', range: 4, healPct: 0.3,
+          type: 'heal', kind: 'heal', range: 3, healPct: 0.3, noSelf: true,
           statusEffects: [{ id: 'debt', duration: 2, debtPct: 0.36 }],
-          desc: 'Lends an ally 30% of their max HP now. In 2 rounds the loan comes due: they pay back 36% of their max HP (never below 1 HP) and you heal that much. If they go down first, you take the loss.' },
+          desc: 'Lends another ally 30% of their max HP now. In 2 rounds the loan comes due: they pay back 36% of their max HP (never below 1 HP) and you heal that much. A second loan before then adds to the debt. If they go down first, you take the loss.' },
         { id: 'nrShortSell', name: 'Short Sell', tier: 2, families: ['highfinance'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'debuff', kind: 'debuff', range: 5,
           statusEffects: [{ id: 'shorted', duration: 2 }],
@@ -13841,7 +13844,10 @@ const STATUS_DEFS = {
         iconSrc: createStatusIconDataUri('💰', '#1c2a1c', '#d8f5d0', '#4caf50'),
         onApply(unit, src, info) {
             const pct = (info && info.payload && Number(info.payload.debtPct)) || 0.36;
-            unit._debtAmt = Math.max(1, Math.round((unit.maxHp || 0) * pct));
+            const add = Math.max(1, Math.round((unit.maxHp || 0) * pct));
+            /* THE BANKER PASS (2026-11-16): a loan on top of an open one adds to the debt (a refresh used to overwrite it, so
+               rolling the loan every turn was a free heal that never came due); the clock restarts from the new loan */
+            unit._debtAmt = ((info && info.refreshed && unit._debtAmt > 0) ? unit._debtAmt : 0) + add;
             unit._debtSrcId = src ? src.id : null;
         },
         onRemove(unit) {
@@ -13851,8 +13857,12 @@ const STATUS_DEFS = {
             if (!(amt > 0)) return;
             const say = (typeof addLog === 'function') ? addLog : function () {};
             const nm = (u) => (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u && u.race) || 'unit');
+            const _fx = (intent, a, b) => {   // THE BANKER PASS VFX: rides ThreeVFXEffects.fire, which online.js relays to the guest
+                try { if (a && b && typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fire) ThreeVFXEffects.fire(intent, 'nrLineOfCredit', { fromX: a.x, fromY: a.y, tx: b.x, ty: b.y }); } catch (e) {}
+            };
             if (unit.dead || unit._dying || !(unit.hp > 0)) {
                 if (lender && !lender.dead && !lender._dying && lender.id !== unit.id && typeof applyDamageToUnit === 'function') {
+                    _fx('badLoan', unit, lender);
                     applyDamageToUnit(lender, Math.round(amt * 0.8), `Bad loan: ${nm(lender)} takes the loss: `, { ignoreArmor: true, damageType: 'dot', consumeMarked: false });
                 }
                 return;
@@ -13864,6 +13874,7 @@ const STATUS_DEFS = {
                 say(`💰 ${nm(unit)}'s loan comes due: −${pay} HP.`);
             }
             if (lender && !lender.dead && !lender._dying && pay > 0 && typeof applyHealingToUnit === 'function') {
+                _fx('collect', unit, lender);
                 const got = applyHealingToUnit(lender, pay, lender);
                 if (got > 0) say(`💰 ${nm(lender)} collects with interest: +${got} HP.`);
             }

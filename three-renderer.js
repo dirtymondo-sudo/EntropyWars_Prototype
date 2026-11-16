@@ -38565,6 +38565,7 @@ const ThreeRenderer = (function () {
         spaceship: 'Meshy_AI_spaceship_0727195825_texture.glb',
         clock:     'Meshy_AI_analog_clock_realist_0727195259_texture.glb',
         gclock:    'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',
+        bank_cash: 'psxmp/items_and_weapons/cash_1.glb',   // THE BANKER SIGNATURES (2026-11-16): the PSX Mega Pack's banded stack of dollar bills (Line of Credit, Foreclose, the bad loan)
         skateboard: 'Meshy_AI_a_skateboard_0915212313_texture.glb',   // SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck under the rider — 1.0 long along X, 0.29 wide, 0.17 tall (the wheels down); MODEL_INDEX §3d
         /* THE 2026-09-22 BATCH (seventeen Meshy models on R2 Assets/misc/ — MODEL_INDEX §3q). Every one is placed through a
            DOOR_HQ.catalogue row (`base: 'misc'`, the file named there) — the keys here are the register and the board's own

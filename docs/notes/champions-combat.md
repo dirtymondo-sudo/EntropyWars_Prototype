@@ -5443,6 +5443,18 @@ The style: he lends and bets, and every deal settles later.
   thievery, conspiracyknowledge (none unique to another race). Finisher Foreclosure (sig motionCarries). POINT_OF_ENTRY Downtown.
 - Online: statuses + HP/MP state-sync; the floating text goes through the relayed `showFloatingTextAtTile`.
 - Model `Assets/characters/races/banker/male/Meshy_AI_banker_Running.glb` + `banker.png` (R2 only).
+- **THE BANKER PASS (2026-11-16, thread "Polish Banker spells and VFX", mondo: "unique fun strategic playstyles, but still
+  balanced"):** three holes closed, no rule invented. (1) A self-loan paid itself back (lender = borrower), a free 30 % heal
+  every turn: Line of Credit is `noSelf` (new spell field: battle.js spellTargetUsableOn leaves the caster out of every list
+  and the AI, doSpell refuses a direct call "needs another ally" before any cost). (2) A loan on an ally already in Debt
+  overwrote the old debt (stack 'replace' + onApply), so rolling the loan every turn healed for ever and never came due: a
+  refresh now ADDS (debt onApply reads `info.refreshed`), the clock restarts. Two loans = 72 % of max HP due at once (never
+  below 1 HP): the risk is the play. (3) Range 4 → 3 (every other T1 heal's reach). Stats HP 1300 → 1100, DEF 120 → 80,
+  M.DEF 130 → 150 (the first pass sat 230 HP + 50 DEF over the 26 supports' median and every collected loan heals him 36 %
+  of an ally's max HP on top). Foreclose 150 (×1.5 on Shorted) and Short Sell stay: in line with the T3 magic rows.
+  Probe (VS CPU, real doSpell): self-loan refused; loan 402 → Debt 482; second loan → Debt 964; due → ally −964 (to 376),
+  banker +730; Short Sell + Foreclose 532 ×1.5; Shorted foe killed → "+75 MP" payout; borrower killed → banker −351; 0 page errors.
+  VFX: spells-vfx.md "THE BANKER SIGNATURES".
 
 ### 2. THE SEWER GATOR (The Sewers, assassin, family `sewerpredator`)
 mondo's look: concept B (the skeletal croc with a chain); the vest version was rejected ("more horror and monster esque").
