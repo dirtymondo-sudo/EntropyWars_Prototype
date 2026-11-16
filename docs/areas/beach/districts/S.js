@@ -121,7 +121,7 @@ build(ctx) {
        `y` under 1 is a lift over the ground under it; a `y` of 1 or more is a height over the ROOM's level 0, not over this sand (three-renderer.js
        THE TIER HEIGHT), so a thing hung 1.5 m up a hut wall is typed G + 1.5; and within about 0.4 m of a wall "the ground under it" is the wall
        row's top unless the prop says `floor: true`. G = the huts' sand (a level 1 plot's cap, bake-beach.js CAP[1]). */
-    const G = 1.2;
+    const G = ctx.GROUND != null ? ctx.GROUND : 1.2;   // (in Disaster City's room, districts/W.js, the Shore's flat sand stands at the boardwalk's level, 0)
     const In = (B, key, lx, lz, face, y, o) => { const yy = FY + (y || 0); put(B, key, lx, lz, Object.assign({ face: face || 0, floor: true, y: r2(yy < 1 ? yy : G + yy) }, o)); };
     /* ── THE ATMOSPHERE PASS (2026-11-16): what a district can give its own light with. All of it DRAWN glow (no new real light: the room
        already carries 20 lit props): strings of coloured bulbs, torches on bamboo, the lit lamps and windows of the passes before. The room's
@@ -221,7 +221,7 @@ build(ctx) {
         for (const s of [-1, 1]) { a.box(gxl, 0, s * 2.7, 0.8, 4.4, 0.8, CORR, WHITE, { gain: 3.2, uv: [2.4, 2.4] }); a.box(gxl, 4.4, s * 2.7, 1.0, 0.16, 1.0, null, NAVY); a.cyl(gxl, 4.56, s * 2.7, 0.24, 0.32, null, CREAM, { glow: 0.9, seg: 8 }); }
         a.box(gxl, 3.3, 0, 0.3, 0.95, 5.4, null, NAVY);
         a.P.push({ s: 'quad', p: [r2(gxl + 0.16), 3.38, 0], size: [4.6, 0.8], ry: 270, key: 'txt:THE BEACH|#ffffff|#44669c|5.75||pacifico', uv: 'fit', kind: 'wall' });
-        a.P.push({ s: 'quad', p: [r2(gxl - 0.16), 3.38, 0], size: [4.6, 0.8], ry: 90, key: 'txt:DISASTER CITY · BAYSIDE|#ffffff|#44669c|5.75||way', uv: 'fit', kind: 'wall' });
+        a.P.push({ s: 'quad', p: [r2(gxl - 0.16), 3.38, 0], size: [4.6, 0.8], ry: 90, key: 'txt:' + (ctx.CITY_SIDE || 'DISASTER CITY · BAYSIDE') + '|#ffffff|#44669c|5.75||way', uv: 'fit', kind: 'wall' });
         for (const sg of [-1, 1]) bulbs(a, x0 + 5.6, sg * (D / 2 - 0.5), L / 2 - 1.2, sg * (D / 2 - 0.5), 3.3, 1.0, 0.45);       // THE ATMOSPHERE PASS: bulbs strung lamp to lamp, both sides
         for (let k = -4; k <= 4; k++) a.box(gxl + 0.2, 2.92, k * 0.5, 0.02, 0.36, 0.3, null, [RED, 0xffd23c, 0x24a8a0, WHITE][(k + 4) % 4], { ds: true });   // pennants under the gate's beam
     });

@@ -355,7 +355,7 @@ B.harbour = (W, D, lx) => {
      THE BREAKWATER: a concrete mole off the boardwalk's north end, the lighthouse on its head
      THE GRILL DECK: the BurgerPiz (the pack's own building, real size) on a plank deck at the south end
    North of Bayside the strip is open water under a quay wall (the city's east edge). */
-const EAST = 20, SEA_Y = -1.45, SHELF = -1.05, DEEP = -3.6;
+const EAST = 32, SEA_Y = -1.45, SHELF = -1.05, DEEP = -3.6;
 /* no skyline in the water: the whole east side, the north side past the quay, the south side past the grill deck */
 const room = { east: EAST, sea: { y: SEA_Y, key: 'water', field: true }, backdropOpen: [[252 + EAST * 3.5 - 1, -400, 400, 400], [254, -400, 400, -250], [252 + 14 * 3.5 - 4, 250, 400, 400]] };
 
@@ -1208,8 +1208,12 @@ function beach(ctx, push, ghost) {
        in this file's frame (Entertainment stands straight north of Bayside: squares cy 4N..8N here). Was: open water under a quay wall. */
     const ZNN = gx(4 * N);
     rect(X0 + 0.4, ZNN - 2, XB + 0.2, Z0, 0, { sink: true, edge: 0.3 });        // the boardwalk on its sea wall (the city's level 0)
-    rect(XB, ZNN - 2, XE + 2, Z0, SHELF, { sink: true, edge: 0.3 });            // the sand shelf
-    rect(XD, ZNN - 16, XE + 16, Z0, DEEP, { sink: true, edge: 12 });            // …sloping under the water like Bayside's
+    /* THE SHORE IS THIS BEACH (2026-11-16, mondo: "the city has its own beach and you just made a beach, its supposed to be the same ... combine it
+       ... make it bigger"): the north beach is THE SHORE now (districts/W.js stands the Beach zone's Shore here: the huts, the snow cone stand, the
+       lifeguard hut, the court, the palms, the tide pools). Its sand is WIDE (17 squares) and stands at the boardwalk's own level, falling to the
+       sea in its last squares; no sea wall drop, so no ramps and no rail on this stretch (the room is 32 squares past the plots for it, was 20). */
+    rect(XB, ZNN - 2, XE + 2, Z0, 0, { sink: true, edge: 0.3 });                // the Shore's sand, level with the boardwalk
+    rect(gx(163.1), ZNN - 16, XE + 16, Z0, DEEP, { sink: true, edge: 12 });     // …falling under the water past square 163 (the waterline about square 164.5)
     rect(XB, ZN, XE + 2, ZS, SHELF, { sink: true, edge: 0.3 });
     rect(XD, ZN, XE + 16, ZS, DEEP, { sink: true, edge: 12 });   // (THE NATURAL EDGES: the 12 m bank on its east side lies past the field, so no sand bar rises along the room's east edge)
     rect(gx(161), Z0 - 0.4, XE + 2, ZN + 0.4, DEEP, { sink: true, edge: 0.4 });
@@ -1219,7 +1223,7 @@ function beach(ctx, push, ghost) {
     lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4, absY: true });
     /* the ramps down to the sand, off the boardwalk at each way out of the city */
     const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 3.5)];   // (the fourth one square south, 2026-11-15: THE CANAL's mouth runs through the sand on squares 133-134, districts/L.js)
-    const RAMPS_N = [4, 5, 6, 7].map(r => gx(r * N + 6));   // THE NORTH BEACH: a ramp down to the sand at each plot row
+    const RAMPS_N = [];   // THE SHORE (2026-11-16): the sand stands at the boardwalk's level here, no ramp (was one at each plot row)
     RAMPS_N.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
     RAMPS.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
     /* the pier (the mall's axis: rows 5-6 of the row-10 plots), its head, the bait hut's bit of deck */
@@ -1235,12 +1239,10 @@ function beach(ctx, push, ghost) {
         paintCell(cx, cy, mole && cx >= 146 ? 'urban:ConcreteStriped2a' : deck ? 'wood_planks' : 'desert');
     }
     for (let cy = 4 * N; cy < 8 * N; cy++) for (let cx = 144; cx < 144 + EAST; cx++) paintCell(cx, cy, cx < 146 ? 'wood_planks' : 'desert');   // THE NORTH BEACH: planks and sand
-    { let z = ZNN; RAMPS_N.map(q => [q - 2, q + 2]).concat([[Z0, Z0]]).forEach(g => { if (g[0] - z > 1) lateRows.push({ k: 'rail', x0: r3(XB - 0.25), z0: r3(z), x1: r3(XB - 0.25), z1: r3(g[0]), model: 'spear' }); z = Math.max(z, g[1]); }); }
+    /* (THE SHORE: no rail between the boardwalk and the sand on the north stretch: you step off the boards onto the beach anywhere) */
     for (let cy = 4 * N + 2; cy < 8 * N; cy += 3) props.push({ key: 'palm_tree', x: r3(X0 + 0.9), z: gx(cy) });
     for (let cy = 4 * N + 4; cy < 8 * N - 3; cy += 9) props.push({ key: 'city_bench', x: r3(XB - 1.0), z: gc(cy), face: 90 });
-    [[147, 52], [149, 58], [147, 66], [149, 73], [147, 81], [149, 88]].forEach(c => props.push({ key: 'pool_umbrella', x: gc(c[0]), z: gc(c[1]) }, { key: 'pool_lounger', x: gc(c[0] + 1), z: gc(c[1]), face: 90 }));
-    props.push({ key: 'lifeguard_chair', x: gc(150), z: gc(6 * N + 2), face: 90 }, { key: 'rowboat', x: gc(150), z: gc(4 * N + 3), face: 80 }, { key: 'signpost', x: gc(144), z: gc(4 * N + 2), face: 0 });
-    for (let i = 0; i < 6; i++) props.push({ key: 'sea_buoy', x: gx(156), z: gx(4 * N + 4 + i * 7.5) });
+    props.push({ key: 'signpost', x: gc(144), z: gc(4 * N + 2), face: 0 });   // (THE SHORE: the north stretch's umbrellas, chair, boat and buoys are districts/W.js' now)
     /* the promenade's rail along the sea wall, open at the ramps, the pier and the mole */
     const gaps = RAMPS.map(z => [z - 2, z + 2]).concat([[ZP - 3.7, ZP + 3.7], [Z0, ZN + 0.2], [ZS, Z1]]);
     { let z = Z0; const cuts = gaps.slice().sort((a, b) => a[0] - b[0]); cuts.push([Z1, Z1]);
