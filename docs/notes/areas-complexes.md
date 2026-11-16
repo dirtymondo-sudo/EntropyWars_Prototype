@@ -7665,6 +7665,21 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
 - **NOT DONE:** particles (dust in the shaft's light, embers at the firebox) and sound need an air / sound hook in `bake-sewers.js`
   (the tool's row is held: a note is on the board). Frame rate with pass 4: 1.50 (1.55 to 1.60 before: inside the noise).
 
+**PASS 5, THE POLISH (the last: five passes, STOPPED, waits mondo's look).** The Chimney's plot met the bar after pass 4; the Flood was still a
+bare tank, so the last pass went there:
+- **THE FLOOD:** a rotten JETTY on piles from the north bank, broken off half way (drawn; the sleeper wall shuts its head), four mooring
+  posts, an iron bracket + `ship_lantern` on each of the four piers, two drums and a crate afloat, the boat moored at the jetty's end with
+  the floater in it. A prop's `y` under 1 m lifts it off the BED (about -1.35 m in a waded stream here): the boat sits right at `y: 0.9`,
+  a drum half sunk at 0.3.
+- **TAKEN OUT for the frame rate** (each found by a paired count): two `culvert_mouth` in the Flood's south wall (1.15 against 1.60 fps at
+  the Flood view: the whole cost of this pass), three moths (33 draw calls), frogs and rope coils (5 k triangles apiece), the last
+  skulls, and the `fern` (a potted house plant).
+- **FRAME RATE, final** (the Flood view x -63 z -51 face 180, llvmpipe, frames counted over 20 s after a 25 s pause): the first build 1.55
+  to 1.60, all five passes 1.60.
+- **WHAT I WOULD DO NEXT:** dust in the shaft's light + embers at the firebox (needs the air hook), a water sound, the eight models on the
+  NEEDS A MODEL list (a mine cart on rails down the drift first), lines for the four new residents (his to write), a second look at the
+  drawn washes on his Firefox (it renders brighter).
+
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
   `psx_old_mattress_mp_1`*, `footlocker`*, `psx_supply_crate_1..`*, `psx_metal_barrel_mp_0..3`*, `psx_jerrycan_1`*, `meshy_sandbags`*, `money_sacks`*, `cable_drum`*, `hw_shovel`*,
@@ -7958,6 +7973,17 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   drew as a box floating at a wall: stack on the floor only.
 - **THE ROOM'S OWN WALL** (a square past the map's edge) is where the ways out stand: never dress it.
 - **THE PLAN HAS NO ONE-SQUARE DEAD ENDS** (walks are a square each side of a stream): `ctx.corners()` is the list of bends.
+- **FROM DISTRICT O (11-16):** (1) FRAME COUNTS: the room's shadow map redraws every second frame, so one frame's `calls / triangles` is
+  1.1 M or 2.6 M for the same view; count frames over 20 s after a 25 s pause, and compare with your first build baked in (`git show
+  <first commit>:<your file>`), because the room gets heavier under you. (2) HEAVY: `culvert_mouth` (two in view cost a third of the
+  frame rate), `door_furnace` 117 k triangles (build a brick firebox + `hearth_fire`, a proc with a real light), `ocean_seaweed*` /
+  `ocean_eel`, moths (11 draw calls each), a 22 cm `skull` is 10 k, `meshy_frog` / `meshy_rope` 5 k. CHEAP: every `psx_*`, `hw_*`,
+  `locker`, `rowboat`, `ship_lantern`, `fallen_log`. (3) A drift is a tall slot (a plot has ONE roof height): timber sets + a board roof
+  (`roof: true`) at 3.7 m make it a drift (`set()` / `lag()` in O.js). (4) A deep tank on its own squares = your own `stream` row with
+  `key: 'deep_water'` (the tool's `deep` list is a whole plot); `hqTerrainFeet` gives it no footing. (5) Daylight = a `glow: 1` disc at
+  `ceil - 1.35` (the tool's vault crosses a shaft a metre down) + sleeves of lit brick. (6) Wrong on screen: `femur` / `ulna` stand upright
+  a metre tall, `fern` is potted, `psxg_rock_*` read as paper, `xmas_hammer` stands on its head, the `pipe` rail draws white, floor
+  "light pools" read as rugs, a wash over glow 0.12 reads as a panel.
 - **FITS THE SEWERS (the whole model list was read, sections 6 to 13; placed by W unless marked):**
   PIPES + PLANT `psx_pipe_1 / _short / _corner / _cross`, `psx_pipes_holder_1`, `psx_pipe_valve_holder_large_1 / _2`, `pipe_run`,
   `gate_valve`, `centrifugal_pump`, `gauge_board`, `utility_box`, `breaker_panel`, `air_compressor`, `gas_cylinder_rack`, `ind_vent`,
@@ -8336,6 +8362,21 @@ P00-01 The Chimney (a 7 x 6 hall, 12.25 m). Built on mondo's order of 11-16 (doc
   `psx_padlock_2` is fine, it was the box above.
 - **NOT DONE:** particles (dust in the shaft's light, embers at the firebox) and sound need an air / sound hook in `bake-sewers.js`
   (the tool's row is held: a note is on the board). Frame rate with pass 4: 1.50 (1.55 to 1.60 before: inside the noise).
+
+**PASS 5, THE POLISH (the last: five passes, STOPPED, waits mondo's look).** The Chimney's plot met the bar after pass 4; the Flood was still a
+bare tank, so the last pass went there:
+- **THE FLOOD:** a rotten JETTY on piles from the north bank, broken off half way (drawn; the sleeper wall shuts its head), four mooring
+  posts, an iron bracket + `ship_lantern` on each of the four piers, two drums and a crate afloat, the boat moored at the jetty's end with
+  the floater in it. A prop's `y` under 1 m lifts it off the BED (about -1.35 m in a waded stream here): the boat sits right at `y: 0.9`,
+  a drum half sunk at 0.3.
+- **TAKEN OUT for the frame rate** (each found by a paired count): two `culvert_mouth` in the Flood's south wall (1.15 against 1.60 fps at
+  the Flood view: the whole cost of this pass), three moths (33 draw calls), frogs and rope coils (5 k triangles apiece), the last
+  skulls, and the `fern` (a potted house plant).
+- **FRAME RATE, final** (the Flood view x -63 z -51 face 180, llvmpipe, frames counted over 20 s after a 25 s pause): the first build 1.55
+  to 1.60, all five passes 1.60.
+- **WHAT I WOULD DO NEXT:** dust in the shaft's light + embers at the firebox (needs the air hook), a water sound, the eight models on the
+  NEEDS A MODEL list (a mine cart on rails down the drift first), lines for the four new residents (his to write), a second look at the
+  drawn washes on his Firefox (it renders brighter).
 
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, all sections, + pack-claims.md; every key checked against the live catalogue).
 Not used anywhere in the Sewers before this district's passes unless marked *:
