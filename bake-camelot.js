@@ -162,6 +162,7 @@ const solid = (id, p, side, storeys) => feat({ k: 'texbuilding', id: 'cam:' + id
                   native(race, x, y, face, say), many(n, f), rnd(), sayOf(room, race), old.garden, old.pole
    A file may also export (2026-11-16, the Fairy Forest thread; both are the Woods' ways, bake-woods.js):
      ground: '<sheet>'   the sheet under its own plots' grass and its trees' feet (plan letters g and t), in place of the kingdom's lawn.
+     groundAlso(x, y)    with `ground`: true for a grass / tree square OUTSIDE its own plots that wears its ground too (W: the forest north of its plots).
      airZones(ctx)       its air: [{ x0, y0, x1, y1 (kingdom squares), kind, color?, n?, speed?, wind? }] (three-renderer.js _hqBuildAtmos
                          `shell.atmos.zones`: dust, motes, spores, fireflies, snow, ash, rain). With one zone from any file the shell
                          carries them all, then the kingdom's own embers over the whole room, as before.
@@ -294,7 +295,7 @@ for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x];
 /* a district's own ground (its file's `ground`): under its plots' grass and its trees */
 { const at = {}; PLAN.plots.forEach(p => { at[p.x + ':' + p.y] = p.district; });
   DISTRICTS.forEach(m => { if (!m.ground) return; let i = PAL.indexOf(m.ground); if (i < 0) { PAL.push(m.ground); i = PAL.length - 1; }
-      for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; if ((ch === 'g' || ch === 't') && at[Math.floor(x / N) + ':' + Math.floor(y / N)] === m._cmFile) paint[y * W + x] = i + 1; } }); }
+      for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; if ((ch === 'g' || ch === 't') && (at[Math.floor(x / N) + ':' + Math.floor(y / N)] === m._cmFile || (typeof m.groundAlso === 'function' && m.groundAlso(x, y)))) paint[y * W + x] = i + 1; } }); }   // groundAlso(x, y) (2026-11-16, the Forest thread): squares outside its own plots that wear its ground too (the forest runs north of plot row 7 to the moat's bank)
 
 /* ── THE DRESSING HELPERS: by square. A blocker stands on its square's middle; decor stands off it. A piece may only stand on free ground
    (grass, snow, marble; `on` names another), never twice on one square: the tool stops if a square is wrong ── */

@@ -10794,6 +10794,10 @@ puts the camera UNDER the land: you photograph the sea sheet or the shell floor 
 first, headless: `hqTerrainCompile(DOOR_HQ.rooms[id], id).hFn(x, z)` (load-data.js sandbox), and pass `"y": <that + 0.05>`. `face` 0 looks north, 90 east.
 
 ## THE CITY PROBE — playtest_city.js: the HQ with THE REAL SHEETS (2026-09-17, THE URBAN PACK)
+**THE HAND-OVER PROBE (2026-11-16):** `node playtest_handover.js [room] [--flags=EW_HQ_NO_PARK]` walks a room, strikes
+(`window._hqEncounterFire`), ends the fight (`u.hp = 0; checkWin()`), presses `#encReturnBtn` and comes back; pictures in
+`shots/fight/`, counts (merged meshes, squares, "BACK after N s") and the `[HQ] left / resumed` lines in the log. Use it for any
+change to the walk -> fight -> walk hand-over (rendering-loading-perf.md "THE PARKED ROOM").
 **THE FAST PROBE (2026-11-16, read this first; it replaces tip 2 and RULE 3 below).** Every harness now launches through
 `probe-fast.js` (`require('./probe-fast.js').launch(chromium, {...})`); a probe you write yourself must do the same. What it does:
 (1) runs Chromium on Mesa llvmpipe under its own Xvfb, 2-4x the frame rate of SwiftShader (`EW_PROBE_GL=swiftshader` = the old
