@@ -14,9 +14,12 @@
    (lathe, drill, bench, hoist, welder, cylinders, compressor), stores along its south wall, the forklift and pallets.
    PASS 4 (ATMOSPHERE): light on the floor and walls under every lit lamp, the lit car's spill and headlights, green under the gantry (all `glow`);
    four flickering tubes, the camp's barrel fire, steam in five places, a lit EXIT over each hut's door.
+   THE MODEL PASS (mondo 11-16, the wish-list models): `rail_section` a track square (the drawn sleepers out), `buffer_stop` x 5, `tunnel_signal` x 4,
+   `signal_gantry` (the drawn gantry out), `cage_lamp` on every tunnel lamp (the drawn boxes out), `hand_car`, `rat` x 12, `spider` x 4, `strobe_lamp` x 5,
+   `third_rail_shoe` x 3, a sleeping bag, a backpack, kettles, a key ring, a ceiling fan.
    STANDS TODAY (first build): the Ghost Station's platform 1 m up with its bench, board and maps; two parked trains in the Depot; torches;
    the old room's four bystanders. THE MODEL LIST PASS: the signal frame + signals at the Crossing, depot gear, Metro columns, the well's bucket and rope, railway lanterns. PASS 5 (POLISH): an eye-level walk of twelve stops; the green under the gantry toned down, the gangster by the lit car, the south tunnel dressed;
-   T's real lights cut from four to two (the room has ten: the zone kit). FIVE PASSES DONE: STOPPED, waits mondo's look.
+   T's real lights cut from four to two (the room has ten: the zone kit). FIVE PASSES + THE MODEL PASS DONE: STOPPED, waits mondo's look.
    Open list: areas-complexes.md "THE SEWERS, DISTRICT T". */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
@@ -84,8 +87,8 @@ module.exports = {
                 let m = 1; while (i + m < n && ((horiz ? sx + m : sy + m) % 12) !== 0) m++;
                 if (p) { const L = m * S, a = (horiz ? X(sx - p.sx) : X(sy - p.sy)) + L / 2, c = horiz ? XC(sy - p.sy) : XC(sx - p.sx), P3 = (u, yy, v) => horiz ? [u, yy, v] : [v, yy, u], Z3 = (u, h, v) => horiz ? [u, h, v] : [v, h, u];
                     bed[p.id].push({ s: 'box', p: P3(a, 0, c), size: Z3(L, horiz ? 0.045 : 0.05, 3.0), key: PEB, tint: 0x5c574f, sides: false },
-                        { s: 'box', p: P3(a - L / 2 + 0.35, 0.03, c), size: Z3(0.24, 0.075, 2.4), tint: 0x35281b, n: Math.round(L / 0.7), step: Z3(0.7, 0, 0) },
                         { s: 'box', p: P3(a, 0.08, c + 1.2), size: Z3(L, 0.16, 0.09), tint: 0x25262a }, { s: 'box', p: P3(a, 0.27, c + 1.26), size: Z3(L, 0.035, 0.26), tint: WOODT }); }
+                if (p) for (let q = 0; q < m; q++) ctx.props.push({ key: 'rail_section', x: ctx.gcx(sx + (horiz ? q : 0)), z: ctx.gcz(sy + (horiz ? 0 : q)), face: horiz ? 0 : 90, y: 0.04, noBlock: true });   /* THE MODEL PASS: a rail section a square (the drawn sleepers are out) */
                 i += m; } }
         ctx.plots.forEach(p => arch(ctx, p.id, 'track', bed[p.id]));
 
@@ -98,7 +101,7 @@ module.exports = {
                 if (wall) { run++; continue; } if (run >= 2) { const b0 = b - run, L = run * S, u = X(b0) + L / 2, w = X(a + 1) - 0.07, P3 = (uu, y, off) => horiz ? [uu, y, w - off] : [w - off, y, uu], Z3 = (l, h, t) => horiz ? [l, h, t] : [t, h, l];
                     [1.95, 2.07, 2.19].forEach((y, i) => parts.push({ s: 'box', p: P3(u, y, 0.04 + i * 0.01), size: Z3(L, 0.05, 0.05), tint: [0x101010, 0x161310, 0x0c1014][i] }));
                     parts.push({ s: 'box', p: P3(u - L / 2 + 0.6, 1.9, 0.03), size: Z3(0.06, 0.36, 0.1), tint: IRON, n: Math.max(1, Math.round(L / 1.75)), step: Z3(1.75, 0, 0) });
-                    for (let q = 1; q < run; q += 3, k++) { const uu = X(b0 + q) + 1.75; parts.push({ s: 'box', p: P3(uu, 2.42, 0.06), size: Z3(0.36, 0.22, 0.14), tint: DARK });
+                    for (let q = 1; q < run; q += 3, k++) { const uu = X(b0 + q) + 1.75; { const m0 = mid(ctx, p.id), q3 = P3(uu, 2.36, 0.04); ctx.props.push({ key: 'cage_lamp', x: R2(m0[0] + q3[0]), z: R2(m0[1] + q3[2]), y: 2.36, face: horiz ? 0 : 270, noBlock: true }); }   /* THE MODEL PASS: the caged lamp (was a drawn box) */
                         parts.push(k % 3 ? { s: 'box', p: P3(uu, 2.46, 0.15), size: Z3(0.26, 0.13, 0.06), tint: AMBER, glow: 1 } : { s: 'box', p: P3(uu, 2.46, 0.15), size: Z3(0.26, 0.13, 0.06), tint: 0x3a352c });
                         if (k % 3) parts.push({ s: 'box', p: P3(uu, 0.85, 0.0), size: Z3(2.1, 1.55, 0.03), key: 'bricks_2', tint: 0xd8bc98, glow: 0.1 }, { s: 'box', p: P3(uu, 0.012, 1.0), size: Z3(2.4, 0.012, 1.7), key: 'urban:ConcreteStriped2c', tint: 0xd8c4a4, glow: 0.1, sides: false }); } }   /* pass 4: what a lit lamp lights */
                     run = 0; } } };
@@ -132,17 +135,12 @@ module.exports = {
         /* ── THE CROSSING (P02-03): THE SIGNAL GANTRY, 5.2 m, over the square where the two lines cross (lx 6, ly 6); a head to each way,
            all four green. The check plate under it; a ladder up the south-west leg. The cabin in the north-east recess. ── */
         { const P = [], a = X(6) - 0.2, b = X(7) + 0.2, c = (a + b) / 2;
-          [[a, a], [b, a], [a, b], [b, b]].forEach(q => P.push({ s: 'box', p: [q[0], 0, q[1]], size: [0.32, 5.2, 0.32], key: TRUSS, tint: 0x8a8f8a }, { s: 'box', p: [q[0], 0, q[1]], size: [0.6, 0.2, 0.6], key: CONC }));
-          [[c, a, true], [c, b, true], [a, c, false], [b, c, false]].forEach(q => P.push({ s: 'box', p: [q[0], 4.5, q[1]], size: q[2] ? [b - a, 0.7, 0.22] : [0.22, 0.7, b - a], key: TRUSS, tint: 0x8a8f8a, ds: true }));
-          P.push({ s: 'box', p: [c, 4.42, c], size: [b - a, 0.08, b - a], key: GRID, tint: 0x7a7a74, under: true }, { s: 'box', p: [c, 0.06, c], size: [3.3, 0.05, 3.3], key: PLATE, tint: 0x6a6a64, sides: false });
-          /* the four heads hang under the beams over each track's middle; the lit lens looks out along its line */
-          [[a - 0.16, c, 90], [b + 0.16, c, 270], [c, a - 0.16, 180], [c, b + 0.16, 0]].forEach(q => { const ew = q[2] % 180 !== 0, sz = (w, h, d) => ew ? [d, h, w] : [w, h, d], out = q[2] === 90 ? [-0.16, 0] : q[2] === 270 ? [0.16, 0] : q[2] === 180 ? [0, -0.16] : [0, 0.16];
-              P.push({ s: 'box', p: [q[0], 3.45, q[1]], size: sz(0.46, 1.05, 0.28), tint: 0x0e0e0e }, { s: 'box', p: [q[0] + out[0], 4.08, q[1] + out[1]], size: sz(0.22, 0.22, 0.05), tint: 0x3a0c08 },
-                  { s: 'box', p: [q[0] + out[0], 3.62, q[1] + out[1]], size: sz(0.22, 0.22, 0.05), tint: 0x2aff6a, glow: 1 }); });
-          [[a - 2.4, c, 1], [b + 2.4, c, 1], [c, a - 2.4, 0], [c, b + 2.4, 0]].forEach(q => P.push({ s: 'box', p: [q[0], 0.11, q[1]], size: q[2] ? [3.0, 0.012, 2.3] : [2.3, 0.012, 3.0], key: PEB, tint: 0x4a9a66, glow: 0.07, sides: false }));   /* pass 4: the green falls on the ballast */
-          P.push({ s: 'box', p: [a - 0.3, 0.2, b - 0.22], size: [0.05, 4.3, 0.05], tint: IRON }, { s: 'box', p: [a - 0.3, 0.2, b + 0.22], size: [0.05, 4.3, 0.05], tint: IRON }, { s: 'box', p: [a - 0.3, 0.45, b], size: [0.04, 0.04, 0.44], tint: IRON, n: 13, step: [0, 0.32, 0] });
+          /* THE MODEL PASS: the gantry is the `signal_gantry` model now (6 m, across the main line a step west of the crossing square, its legs on the two walks);
+             the drawn legs, beams, deck, heads and ladder are out. The check plate and a little green on the ballast stay. */
+          P.push({ s: 'box', p: [c, 0.06, c], size: [3.3, 0.05, 3.3], key: PLATE, tint: 0x6a6a64, sides: false }, { s: 'box', p: [a - 2.6, 0.11, c], size: [3.0, 0.012, 2.3], key: PEB, tint: 0x4a9a66, glow: 0.07, sides: false });
+          { const m0 = mid(ctx, 'P02-03'); ctx.props.push({ key: 'signal_gantry', x: R2(m0[0] + a - 0.9), z: R2(m0[1] + c), face: 90, noBlock: true }); }
           /* the dead-end line south of the crossing: a buffer stop at its end */
-          buffer(XC(6), X(10) + 2.6).forEach(q => { const o = Object.assign({}, q); o.p = [XC(6) + (q.p[2] - (X(10) + 2.6)), q.p[1], X(10) + 2.6 + (q.p[0] - XC(6))]; o.size = [q.size[2], q.size[1], q.size[0]]; P.push(o); });
+          { const m0 = mid(ctx, 'P02-03'); ctx.props.push({ key: 'buffer_stop', x: R2(m0[0] + XC(6)), z: R2(m0[1] + X(10) + 2.6), face: 0, noBlock: true }); }   /* THE MODEL PASS */
           arch(ctx, 'P02-03', 'gantry', P); ghost(ctx, 'P02-03', X(6) + 0.4, X(10) + 2.6, X(7) - 0.4, X(10) + 2.6, 1.1); }
         const leaves = [];
         leaves.push(hut(ctx, 'P02-03', 'cabin', X(8), X(11), X(5), X(3), XC(8), X(9) + 0.6, X(11) - 0.7, 0x9fe0b0, 'THE CROSSING'));
@@ -156,7 +154,7 @@ module.exports = {
               { s: 'box', p: [5.25, 6.45, -1.75], size: [1.2, 0.5, 1.2], tint: DARK }, { s: 'box', p: [5.25, 3.25, -1.75], size: [0.05, 3.2, 0.05], tint: IRON }, { s: 'box', p: [5.25, 2.8, -1.75], size: [0.36, 0.46, 0.26], key: HAZ });
           [[-12.25, -1.75], [-1.75, -1.75], [12.25, -1.75], [-12.25, 5.25], [-1.75, 5.25], [12.25, 5.25]].forEach((q, i) => { P.push({ s: 'box', p: [q[0], 6.2, q[1]], size: [0.04, 3.2, 0.04], tint: IRON }, { s: 'cyl', p: [q[0], 5.85, q[1]], r: 0.48, r2: 0.16, h: 0.36, tint: DARK, seg: 10 });
               P.push(i % 2 === 0 ? { s: 'cyl', p: [q[0], 5.8, q[1]], r: 0.4, h: 0.05, tint: 0xffe2a8, glow: 1, seg: 10 } : { s: 'cyl', p: [q[0], 5.8, q[1]], r: 0.4, h: 0.05, tint: 0x3a352c, seg: 10 }); });
-          [XC(4), XC(8)].forEach(z => { buffer(X(10) - 0.5, z).forEach(q => P.push(q)); buffer(X(2) + 0.5, z).forEach(q => { const o = Object.assign({}, q); o.p = [2 * (X(2) + 0.5) - q.p[0], q.p[1], q.p[2]]; P.push(o); }); });
+          { const m0 = mid(ctx, 'P04-03'); [XC(4), XC(8)].forEach(z => ctx.props.push({ key: 'buffer_stop', x: R2(m0[0] + X(10) - 0.6), z: R2(m0[1] + z), face: 90, noBlock: true }, { key: 'buffer_stop', x: R2(m0[0] + X(2) + 0.6), z: R2(m0[1] + z), face: 270, noBlock: true })); }   /* THE MODEL PASS: the buffer stop model at each road's two ends */
           /* the walls: a painted-brick dado under a warning line; the south and the east wall whole, the north wall east of the stair */
           const dado = (x, z, w, d) => P.push({ s: 'box', p: [x, 0, z], size: [w, 1.5, d], key: PBRICK, tint: 0x7c8474 }, { s: 'box', p: [x, 1.5, z], size: [w + (w > d ? 0 : 0.04), 0.14, d + (w > d ? 0.04 : 0)], key: HAZ });
           dado(0, 13.92, 35, 0.14); dado(17.42, 1.75, 0.14, 24.5); dado(12.25, -10.42, 10.5, 0.14); dado(-17.42, 10.5, 0.14, 7); dado(-17.42, -7, 0.14, 7);
@@ -185,7 +183,8 @@ module.exports = {
         ctx.feat({ k: 'texbuilding', id: 'sewT:doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_security', inner: leaves });
 
         /* a signal post where the line leaves each Loop Line plot */
-        arch(ctx, 'P01-03', 'signal', signalPost(X(1) + 0.3, X(6) - 0.25, 90)); arch(ctx, 'P03-03', 'signal', signalPost(X(11) - 0.3, X(6) - 0.25, 270));
+        /* THE MODEL PASS: the `tunnel_signal` model (the drawn posts are out) */
+        [['P00-03', X(11) + 1.2, X(8) - 0.5, 270], ['P01-03', X(1) + 0.3, X(6) - 0.25, 90], ['P03-03', X(11) - 0.3, X(6) - 0.25, 270], ['P04-03', X(1) - 1.4, X(6) - 0.3, 270]].forEach(q => { const m0 = mid(ctx, q[0]); ctx.props.push({ key: 'tunnel_signal', x: R2(m0[0] + q[1]), z: R2(m0[1] + q[2]), face: q[3], noBlock: true }); });
     },
     plan(ctx) {
         /* the platform's east step needs its square open */
@@ -277,6 +276,15 @@ module.exports = {
           lay(id, 'traffic_cone', XC(7), XC(5), 0); lay(id, 'traffic_cone', XC(7), XC(7), 0); lay(id, 'traffic_cone', XC(1), XC(5), 0); lay(id, 'psx_jerrycan_1', XC(8) + 0.9, XC(7) + 0.8, 10); lay(id, 'mop_bucket', XC(1), XC(3), 0); lay(id, 'wet_floor_sign', XC(5), XC(3), 30);
           lay(id, 'hand_truck', XC(4), XC(9) + 0.4, 100); lay(id, 'garbage_bags', -16.6, 13.2, 0); put(id, 'bat_grey', XC(3), XC(6), 0, { y: 7.5, floor: false, noBlock: true });
           ctx.grime('oil', id, 8, 6, 1.8); ctx.grime('oil', id, 4, 5, 1.4); ctx.grime('oil', id, 6, 9, 1.3); }
+        /* ── THE MODEL PASS (mondo 11-16: the wish-list models, docs/plans/WISHLIST_MODELS_ADDED.md): rats, spiders, the hand car, beacons, shoes, camp gear ── */
+        [['P00-03', 3.2, 4.4], ['P00-03', -9.5, 5.9], ['P00-03', 12.4, -4.6], ['P01-03', XC(2) + 0.7, XC(9) + 0.9], ['P01-03', XC(9) - 0.8, XC(5) + 0.6], ['P02-03', XC(6) + 0.9, XC(9)], ['P02-03', XC(1), XC(7) + 1.1],
+         ['P03-03', XC(8) + 0.5, XC(7) + 0.9], ['P03-03', XC(4) - 0.6, XC(10)], ['P04-03', XC(9) + 0.9, 13.4], ['P04-03', -16.4, 12.2], ['P04-03', XC(6) + 0.8, XC(3) - 0.6]].forEach((q, i) => lay(q[0], 'rat', q[1], q[2], 47 * i));
+        lay('P01-03', 'spider', XC(1) - 0.9, XC(9) + 0.9, 30); lay('P02-03', 'spider', XC(6) - 0.8, XC(10) + 1.0, 200); lay('P03-03', 'spider', XC(5) + 0.4, XC(11) + 0.6, 100); lay('P00-03', 'spider', 15.8, 6.1, 300);
+        put('P01-03', 'hand_car', XC(5), XC(4) - 0.4, 90);   /* on the shut stub, behind the barricade */
+        [['P02-03', XC(6) + 1.5, X(10) + 3.2, 180], ['P01-03', XC(4) - 1.5, X(3) + 0.3, 0], ['P04-03', 17.2, XC(4), 270], ['P04-03', 17.2, XC(8), 270], ['P00-03', 13.6, -10.5, 270]].forEach(q => put(q[0], 'strobe_lamp', q[1], q[2], q[3], { y: q[0] === 'P00-03' ? 4.3 : 2.6, floor: false, noBlock: true }));
+        lay('P04-03', 'third_rail_shoe', XC(9) - 0.5, XC(5) + 1.2, 20, { y: 0.82 }); lay('P04-03', 'third_rail_shoe', XC(9) + 0.1, XC(5) + 0.7, 100, { y: 0.82 }); lay('P04-03', 'third_rail_shoe', XC(8) - 0.9, XC(6) + 0.9, 60);
+        lay('P00-03', 'sleeping_bag', 12.2, -1.2, 95); lay('P00-03', 'backpack', 13.2, -2.6, 200); lay('P00-03', 'kettle', 9.0, -3.0, 0); lay('P04-03', 'kettle', -11.6, -14.5, 40, { y: 0.8 }); lay('P00-03', 'key_ring', -11.2, -8.2, 0, { y: 1.78 });
+        put('P04-03', 'ceiling_fan', -12.25, -13.0, 0, { y: 3.0, floor: false, noBlock: true });
         /* ── PASS 4, THE ATMOSPHERE (no room light is spent: `glow` parts in build; here the things that move) ── */
         air('P00-03', 'flicker_tube', -3.5, -3.5, { ceil: true, y: 4.5 }); air('P01-03', 'flicker_tube', XC(9), XC(9), { ceil: true, y: 3.6 }); air('P03-03', 'flicker_tube', XC(7), XC(4), { ceil: true, y: 4.4 }); air('P04-03', 'flicker_tube', XC(5), XC(3) - 0.4, { ceil: true, y: 4.2 });
         /* the camp's barrel fire (its glow, not one of the ten lights) */
