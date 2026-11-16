@@ -6745,6 +6745,16 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   THE SNOW PINE IS A CLUMP, MEASURED: one planted pine (`xmas:Trees_0*`) stands trunks up to 16 m from its foot. One planted 15.7 m from the
   Wayside Hut stood a trunk INSIDE it, through the bed (seen only on the night walk). `noTrees` now clears 19 m round each hut. Any district
   that builds in a snow-pine zone (the Mountains too) needs the same.
+- **PASS 5, THE POLISH (seen, a walk of 14 views + two fix runs)**: THE PASS: the cleft got its own rock faces 3.2 m apart for 25 m and snow on
+  its floor (past the room's edge the ground is the kingdom's lawn and a cobbled path), and the trail plants no saplings there: ONE engine line
+  (three-renderer.js `_hqPlantPassageTrees`: a link end's `passage: { trees: false }`) + that option on `DOOR_HQ.links` `northpole_camelot` end b
+  (nothing moved; board note). A dressed fir (`xmas_tree`) with gifts by the Wayside Hut; pack rocks at the gate crags' feet.
+  LEFT AS IT IS (not this district's, told on the board): a few sprigs of the treeline belt still show high in the cleft; the north bridge
+  has modern steel rails (the tool's bridge row); the residents' looks and places are the engine's.
+- **FIVE PASSES LIVE, THE THREAD HAS STOPPED** (the brief: no sixth). What I would do next, for mondo to pick: (1) a per-zone treeline kind
+  so the belt past the snow is snow pines (the tool's shell, one row); (2) the snow pine clumps off the track and the road (the tool's tree
+  grower: a `treeIn` per zone); (3) who lives here (npc-system.md: levels, a cap, a refill); (4) sound (wind, a fire's crackle: none on R2);
+  (5) the models on the NEEDS A MODEL list (axe + block, sled, reindeer, icicles, a pelt).
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.
