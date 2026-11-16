@@ -5922,6 +5922,13 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
   sludge, one sewer district could be radioactive sludge if it connects to the power plant"): the two looks are brown now (the water sheet
   is blue-green, so the tint that reads brown is a strong orange). HIS IDEA, NOT BUILT: one sewer district of radioactive sludge where the
   Sewers meet the city's Power station (Industrial); it would be its own look row and a district of its own, on his word.
+- **THE GRIME PASS (mondo 11-16: "do a grime pass"):** the tool, for every plot: the vaults' brick in five damp tints by the dice; along
+  every wall a dark SLIME LINE at its foot; along the north / west wall of each run of three squares or more a RUSTED MAIN on brackets with
+  a thin line under it and a downpipe at its end (70 runs; `arch` parts in the plot's roof row, a wall = a square that is not open in the
+  ROOM, so no pipe crosses a plot line's opening); 48 FLOOR DECALS (grime on the walks, puddles by the water, oil on the track) written as
+  the room's row in `DOOR_HQ.decals` (marker `SEWERS24-DECALS`; the game draws 80 a room, the tool keeps to 60; a district adds its own with
+  `ctx.grime(kind, plot, lx, ly, r)`). District files: rubbish washed into the bends and dead ends (bags, bins, barrels, crates), cobwebs,
+  a valve by the pumps, bones in the mine. The murky water was darkened to mud (`sewer_water` tint 0xb44612: more red goes rust, less goes olive).
 - **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
   one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
 - **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
@@ -5937,7 +5944,7 @@ have to physically map onto disaster city"; own zone or the city's lower level: 
 - **WHO IS THERE (14):** the old rooms' bystanders with their own lines, placed by the district files.
 - **SEEN ON SCREEN** (probe, HEAD of this PR): the Junction, two falls with their stairs, the Outfall, the Depot, the cells' corridor. The room
   loads with no error (74 files, ~35 s in the probe).
-- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); the vaults meet at each rectangle's end with a step, not a groin; still too clean for "grimy" (no pipes, grime decals, drips); the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); the vaults meet at each rectangle's end with a step, not a groin; no drips, no graffiti, no wall stains above the slime line; the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
   Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
   (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
 

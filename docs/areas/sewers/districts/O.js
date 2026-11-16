@@ -11,6 +11,7 @@ module.exports = {
         ['P01-01', 'P00-01'].forEach((id, i) => {
             const cs = ctx.corners(id); [0, cs.length - 1].forEach(k => { const q = cs[k]; if (q && ctx.free(id, q[0], q[1])) ctx.P('cave_torch', id, q[0], q[1]); });
             const mid = ctx.inner(id), q = nth(mid, 3 + i * 4); if (q) ctx.P(i ? 'skull_pile' : 'brazier', id, q[0], q[1]);
+            for (let k = 1; k < cs.length - 1; k += 3) { const q2 = cs[k]; if (ctx.free(id, q2[0], q2[1])) ctx.dec(['skull_pile', 'psx_cobweb_2', 'psx_wooden_crate_3', 'psx_cobweb_1'][k % 4], id, q2[0], q2[1]); }   // the grime pass
             const dry = ctx.squares(id, 'o'); for (let k = 6; k < dry.length; k += 12) ctx.dec('floor_stain', id, dry[k][0], dry[k][1]);
         });
         const s = nth(ctx.inner('P00-01'), 0); if (s) ctx.P('signpost', 'P00-01', s[0], s[1]);

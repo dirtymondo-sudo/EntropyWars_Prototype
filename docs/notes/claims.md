@@ -8,6 +8,7 @@ Two Claude accounts work on this repo and cannot message each other. This file i
 3. Taking something: add or change its row in your FIRST PR for that work (a one-line docs PR is fine).
 4. Finished, paused or stopped: set the row to `free` with one line on where it stands, in your last PR.
 5. Questions or warnings for the other side go in the Notes section at the bottom, dated. Remove a note once answered.
+0. **THE MODEL LIST FIRST (mondo 11-16, owner-rules.md section 1):** before building or dressing anything, search `MODEL_LIST.md` for your theme and look inside the pack files; the prop catalogue is not the whole list.
 6. A row older than 3 days with no merged PR behind it counts as stale: ask mondo before taking it over.
 
 Sides: **owner** = mondo's Claude project (many threads). **second** = the other account (plain Claude Code chats).

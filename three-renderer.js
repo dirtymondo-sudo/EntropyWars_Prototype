@@ -3342,10 +3342,10 @@ const ThreeRenderer = (function () {
            poison, its still water and should behave like water"): LOOKS, not liquids. No terrain has these keys; a room's
            `terrain.waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' }` draws its water in them (_hqWaterLook) while the
            liquid stays `water` / `deep_water` for the walk, the swim and the fights. They ride the water sheet under a tint. */
-        sewer_water: { base: 'water', tint: 0xf0661a,   // (the water sheet is blue-green: a strong orange tint is what turns it brown)
-                      caustDiff: 'vec3(0.24, 0.18, 0.09)', caustEmis: 'vec3(0.035, 0.026, 0.012)',
-                      glintCol: 'vec3(0.58, 0.52, 0.40)',  hueShift: 'vec3(1.06, 0.97, 0.82)' },
-        sewer_deep:  { base: 'water', tint: 0xa8440f,
+        sewer_water: { base: 'water', tint: 0xb44612,   // (the water sheet is blue-green: a strong orange tint is what turns it brown; kept dark so it is mud, not mustard)
+                      caustDiff: 'vec3(0.15, 0.11, 0.06)', caustEmis: 'vec3(0.018, 0.013, 0.006)',
+                      glintCol: 'vec3(0.46, 0.41, 0.32)',  hueShift: 'vec3(1.05, 0.97, 0.84)' },
+        sewer_deep:  { base: 'water', tint: 0x7c300c,
                       caustDiff: 'vec3(0.14, 0.10, 0.05)', caustEmis: 'vec3(0.02, 0.015, 0.008)',
                       glintCol: 'vec3(0.44, 0.40, 0.30)',  hueShift: 'vec3(1.05, 0.97, 0.82)' },
     };
