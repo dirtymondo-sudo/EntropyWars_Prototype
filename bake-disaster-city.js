@@ -1133,7 +1133,7 @@ else {   /* THE ROOM PAST THE PLOTS, NORTH: one grid for the whole field's depth
    'txt:' sign gets its typeface by its district and what it says, as a sixth field on its key. A district file keeps writing the plain key. */
 { const SIGN_FONTS = require(path.join(REPO, 'docs/disaster-city/sign-fonts.js')), cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
   const dOf = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')), p = (m && plotOf[m[0]]) || (typeof f.x === 'number' && typeof f.z === 'number' ? plotAtCell(cl(f.x), cl(f.z)) : null); return p ? p.d : ''; };
-  const cityRows = features.filter(f => !/^hills:/.test(String(f.id || '')));   // (the Hills' rows keep the sheets and typefaces they stood in as their own room)
+  const cityRows = features.filter(f => !/^(hills|shore):/.test(String(f.id || '')));   // (the Hills' rows keep the sheets and typefaces they stood in as their own room)
   const sf = SIGN_FONTS.apply(cityRows, dOf), sp = SIGN_FONTS.apply(props, dOf); count.signFonts = sf.signs + sp.signs;
   /* THE URBAN DECAY PASS: every sheet key the districts wrote, renamed to the pack's sheet (see the file's head); then the check: none of the sheets mondo ruled out is left */
   if (UD) { count.urbanDecay = UD({ features: cityRows, props, dOf });

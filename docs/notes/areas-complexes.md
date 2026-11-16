@@ -4773,6 +4773,41 @@ once that first district is fleshed out and knows what shared assets it can use 
   left alone, it is his pale beach sheet (sprites.js SAND_BEACH, THE TWO SANDS); it reads greyer in the cloud browser than on his Mac.
   Seen on screen by day and at 22:30.
 
+## THE BEACH IS PART OF DISASTER CITY — the Shore stands on the city's own north beach (2026-11-16, second side, the Shore pilot thread)
+
+mondo 11-16: "I think the issue is that the beach is supposed to be a part of the city, like how we connected the hills", then "the city has its
+own beach and you just made a beach, its supposed to be the same ... fix it. combine it ... use the best elements from both. make it bigger".
+The city had a thin north beach (six umbrellas on a 7-square shelf under a sea wall drop) and the Beach zone had the Shore in its own sea room
+behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downtown_streets`, on that north beach.
+
+- **ONE FILE, TWO ROOMS, NEVER TWO BEACHES' WORTH OF CODE:** `docs/disaster-city/districts/W.js` (letter W, the waterfront) runs the Beach
+  zone's own district file `docs/areas/beach/districts/S.js` on the city's sand: it hands S.js the same helpers bake-beach.js does (its own
+  copies of `sheet`, `building`, `put`, `look`, `P`, `dec`, `palm`, `native` ...), with the same dice per stage, so every hut, prop and palm is
+  the same. An edit to S.js changes both rooms: run BOTH `node bake-disaster-city.js` and `node bake-beach.js`.
+- **WHERE:** the Shore's square (sx, sy) = x 259 + 3.5 sx, z -252 + 3.5 (sy - 24). Its rows 24..71 (the wild beach and its camp, the Boardwalk
+  spur + gate, the Tide Pools, the three huts with the snow cone stand, the Surf, the Palms, the Lifeguard Hut, the court) lie along
+  Entertainment from the Hills' Cove to the mole. 39 rows, 196 props, 9 people. Bayside's own beach south of the mole (pier, pavilion,
+  towers, yachts, grill) is untouched: one beach, 336 m.
+- **BIGGER:** B.js `EAST` 20 -> 32 (the room is 42 m wider east; the centred shell adds the same dead strip west, under the forest as before).
+  On the north stretch the sand is 17 squares wide at the boardwalk's own level and falls under the sea past square 163; the sea wall drop,
+  its four ramps and its rail are gone there (B.js beach(): two `rect` rows, `RAMPS_N = []`); the stretch's six umbrellas, chair, boat and
+  buoys are replaced by the Shore's.
+- **HEIGHTS (the trap):** the tool lifts every `arch` row and every prop typed 1 m up or more by the plot levels' height, and the strip beside
+  Entertainment carries that district's 8.75 m though its ground is cut to 0. W.js `last()` takes it back off its own rows. S.js reads
+  `ctx.GROUND` (0 here, 1.2 in the sea room) for a hung prop's height. The Shore's rows carry ids `shore:*` and are left out of the urban
+  decay, sign-font and exterior polish passes (bake-disaster-city.js, one regex beside the Hills').
+- **LEFT OUT HERE (72 rows / props / people of S.js, still in the sea room):** the North Headland (rows under 24: the Hills' cliffs stand
+  there), the Dunes path and bench, the Sandbar, the south camp, the South Dunes (rows from 72: Bayside's beach stands there).
+- **SEEN ON SCREEN** (real game, playtest_city.js, HEAD b927b69 + this): the huts from the sand with the Hills behind, the gate under
+  Entertainment's sea wall, the lifeguard hut and court with the skyline behind, the long view down the beach, the snow cone stand's inside,
+  the mole and Bayside's beach from the court, night at 22:30. KNOWN WRONG: the tide pools are rocks with no water (a `dip` stays dry, a
+  `pool` row is filled again by the beach's cut); the gate's city side reads DISASTER CITY but stands under a blank 8.75 m sea wall with no
+  stair up to Entertainment (the north beach never had one: you come along the boardwalk).
+- **STEP 2, NOT DONE: THE SEA ROOM STILL HOLDS THE OLD COPY.** `site_prebuilt_bermuda_beach` (behind Bayside's `harbour` door) still has its
+  own Shore, so today the game has the Shore twice. To end it: the Long Pier, the Quay and the Flying Dutchman move into the city's water
+  off this beach (or the pier's end becomes the way out to the sea room), the sea room loses its shore and becomes the open ocean only (the
+  Ocean, the Triangle), and its made-up Bayside skyline (`bch:bayside:look`) and west land go. The left-out pieces above need a place first.
+
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
 
 - **PAINT (seen):** the room wears the sea shell's faded look, so everything reads a step greyer than in the city. A painted wall = the
