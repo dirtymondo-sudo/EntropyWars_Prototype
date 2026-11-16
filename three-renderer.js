@@ -41654,8 +41654,12 @@ const ThreeRenderer = (function () {
                 n.castShadow = true; n.receiveShadow = true;
             });
             model.scale.setScalar(s);
-            model.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
-            model.rotation.y = K.rng() * Math.PI * 2;
+            /* THE OFF-CENTRE MODEL (2026-11-16, the Snowy Pass: a snow pine stood inside the Warming Hut, 30 m from its own trunk): the model is centred on its box and
+               then turned, and a turn is about the model's own origin, so a piece whose mesh does not sit on its origin (every Christmas pack tree, cut out of one scene)
+               swung away from the spot by up to twice that offset. The centring offset is turned with it now; a model on its origin is where it always was. */
+            var _try = K.rng() * Math.PI * 2, _tcx = (bb.min.x + bb.max.x) * 0.5 * s, _tcz = (bb.min.z + bb.max.z) * 0.5 * s, _tco = Math.cos(_try), _tsi = Math.sin(_try);
+            model.position.set(-(_tcx * _tco + _tcz * _tsi), -bb.min.y * s, _tcx * _tsi - _tcz * _tco);
+            model.rotation.y = _try;
             _nrInjectWorld(K, model);   // a world-rim tree (K._wdFog) joins the haze + the dissolve
             g.add(model); _objectsLanded = true;
         };
