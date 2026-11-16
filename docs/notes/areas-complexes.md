@@ -6391,6 +6391,23 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
   cattle grid, the lamps' glass and the trough; wall pictures and a clock in the Farmhouse; stairs to the hayloft; curtains; the Yard's bare
   middle (a tractor wants a model); lines for the five people; residents with routines; the Desert road (his call).
 
+### THE MODEL PASS (mondo 11-16: "these are models that were added ... use these ones"; seen in the cloud browser)
+- **STAND-INS OUT, MODELS IN:** the three drawn plank troughs -> `water_trough`; the drawn gate leaves -> `braced_gate` (the Ranch Gate's two, swung
+  back along the rail) and `fence_with_gate` (the Paddock's gate: the panel is 3.5 m = one square); the eight drawn lamp posts -> `iron_lamp_post`
+  (`noBlock`, `noLight`); the toilet cabin -> `outhouse`; the library's rolling ladder -> `wooden_ladder`; the log pile and stump ->
+  `firewood_stack` + `axe_chopping_block`; the barn's steel drums -> `wooden_barrel`. The fittings row keeps only what has no model: the round
+  stock tanks, the hand pump, the Ranch Gate's posts, beam and board.
+- **EVERY PIECE THE LIST ASKED FOR IS PLACED:** `tractor` (the Yard's middle), `plough` + `hay_cart` + `pitchfork` (Hay Field), `wheelbarrow` (Yard,
+  garden, barn), `saddle` x 2 before the horses' stalls, a PIG PEN (Yard, squares 49..50 x 66..67: the ranch rail, a `fence_with_gate` panel,
+  three `pig`s), `goat` x 2 (Pasture), `rooster` (hen run), `duck` x 3 at the Windmill's tank, `beehive` x 3 + a `tyre_swing` under the trees north
+  of the house, `kennel`, `mailbox` at the gate, `clothes_line`, a row of `sunflowers` by the kitchen garden, `cattle_skull` over the barn doors.
+- **ALSO FITTED (read from the whole list):** `anvil`, `grindstone`, `owl_perched` (barn), `wood_stove`, `oil_lamp`, `antler_trophy`,
+  `firewood_stack` (farmhouse), `rose_bed`, `leafy_bush`, `bird_bath`, `wild_flowers`, `hay_rack` x 2, `hawk`, and at the trailers' camp
+  `antenna_dish`, `picnic_table`, `bbq_grill`.
+- **THE COST:** the proof view: 901 draw calls before, 969 after (3.16 M triangles).
+- **STILL NEEDS A MODEL:** a cattle grid, a round stock tank, a hand pump, wheat (not made).
+- A wish-list model's facing is as it was made: the kennel's mouth and the skull were placed by eye from one picture each.
+
 ### DECISIONS MADE FOR MONDO (overrule any in one line)
 1. The Barn has a gambrel roof and is barn red with white trim; the Farmhouse is white with a green roof (as it was).
 2. The gate's board says `RANCH` (a plain word, no made-up name).
@@ -7286,10 +7303,21 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   "before"); no pass cost a frame that this renderer can show. The room's block grew 204 KB -> 283 KB (about 330 arch parts and 330 props of this district).
 - **WHAT I WOULD DO NEXT (not started: a sixth pass is his call):** a picnic table and a van at the camp once models exist; a porch sign for the station once he
   names it; light shafts and sound by plot (engine); the plots' own names in layout.json (the tool's row); a look at the weak PC's frame rate.
+- **THE MODEL PASS (mondo's new word 11-16, on top of the five; seen, 12 views; the whole list of 246 read) — the thread STOPPED again.** `models(ctx)` in C.js.
+  ASKED AND PLACED: `camper_van` + `picnic_table` (the camp), `tyre_swing` (the playground), `outhouse` (the Crossroads), `firewood_stack` (the station's porch and
+  by its stove), `backpack` (camp, shelter, porch, the wreck), `braced_gate` x 2 (the gate's leaves), `deer` (one, under the Old Tree). A hammock was not placed.
+  STAND-INS TAKEN OUT: the drawn stove (now `wood_stove`, the pipe kept), the two drawn firewood boxes, the gate's two drawn leaves (two arch rows), the eight
+  drawn lamp posts (now `lantern_post`), the camp's wire and bulbs (now two `string_lights`), the rock-pile cairn (now `cairn`), a stump + saw (`axe_chopping_block`),
+  the shelter's mattress (`sleeping_bag`). ALSO FROM THE LIST: `trail_sign` (Crossroads, the Stair), `fire_danger_sign` + `mailbox` + `antler_trophy` (the station),
+  `clothes_line`, `bbq_grill`, `kettle` (camp), `milestone`, `moss_clump`, `wild_flowers`, `hedgehog`, `beehive`, `kennel`, `water_trough`, `wheelbarrow`,
+  `pitchfork`, `hay_bale`, `rooster`, `raven_perch`, `fox`, `owl_perched`. KEPT AS BUILT (architecture, not stand-ins): the station, the shelter, the hunter's stand,
+  the gate's posts and beam, the roof mast, the hung lanterns on the porch / shelter / gate. FOUND: `lantern_post` and `string_lights` carry no glow, so the trail
+  is darker at night than after pass 4; `psx_ceiling_lamp_1_on` at `y: 2.42` drew above the station's roof (both removed); `leafy_bush` is a clipped ball (not
+  used). FRAME RATE (same view): 1.2 before, 1.2 after. NEEDS A MODEL now: nothing; wanted: a lit lantern post (a glow on the model's row).
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.
-- **NEEDS A MODEL:** a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a hammock, a backpack, a camper van; a gate leaf with a diagonal brace.
+- **NEEDS A MODEL:** ~~a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a backpack, a camper van, a braced gate leaf~~ (all placed in the model pass); ~~a hammock~~ (in the game as `hammock`, not placed).
 
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
