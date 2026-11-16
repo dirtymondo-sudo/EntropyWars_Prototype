@@ -93,7 +93,7 @@ district. State below is main at `b055c5b` (PR #1551); recheck with `ls docs/are
 | Zone | Districts (letter in its layout json) | District files |
 |---|---|---|
 | Disaster City | S Southside, C Civic Center, F Financial, U University, H Hero Plaza, E Entertainment, I Industrial, R Sports + Culture, B Bayside (+ L, Q shared files) | YES, `docs/disaster-city/districts/` |
-| The Woods | T The Redwood Trail, G The Ritual Ground, C The Clearing, M Dead Man's Cave | not yet (one layout.json + bake-woods.js) |
+| The Woods | T The Redwood Trail, G The Ritual Ground, C The Clearing, M Dead Man's Cave | yes since 11-16: `docs/areas/woods/districts/C.js T.js G.js M.js` (areas-complexes.md "THE WOODS, THE DISTRICT FILES") |
 | Camelot Kingdom | K The Castle, T The Village, N The Snowy Pines, F The Fairy Forest, L The Looking-Glass Garden, W The Forest | not yet |
 | The Desert | R The Highway, C The Circus, W Western Town, A Area 51, G Giza | not yet |
 | The Estate | C The Corn Fields, R The Ranch, H The Haunted House + Graveyard, L The Lake | not yet |
