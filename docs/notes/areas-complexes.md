@@ -4738,9 +4738,13 @@ once that first district is fleshed out and knows what shared assets it can use 
   line clear of the board rack, the torches' flame; NINE MORE PEOPLE on mondo's new rule ("There need to be more NPCs", 11-16): homosapiens
   on the Boardwalk, at the huts, the lifeguard hut, the court and the Dunes bench, a chef at the hot dog stand, hippies in the Palms and at
   the north camp, a pirate by the headland's boats. No line was written for them. NOT SEEN: the people (playtest_city.js draws no cast).
-- **NEEDS A MODEL (nothing stood in):** hammocks, a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, a towel lying on the sand.
-- **WAITS FOR MONDO:** his look at the whole district; whether the huts' three trades (SURF, BEACH HUT, FLOATS: the first build's reading of
-  "a row of huts") are what he wants; whether the Shore gets a fight / residents with routines once the NPC spawn system (npc-system.md) lands.
+- **THE SNOW CONE STAND + THE NIGHT (11-16, mondo: "looks good, make one of the huts a snow cone stand ... there is night and day cycle in
+  the game already"):** the middle hut (was the sleeping hut) is SNOW CONES: a serving shelf and striped awning at its window, stools, a
+  menu board (Cherry, Lime, Blue), a giant cone on the ridge; inside the counter and till, syrups on a steel bench, two fridges, cool
+  boxes. Seen by day and at 22:30. The night was never off (see the kit); ten real lights added so the Shore is lit after dark.
+- **NEEDS A MODEL (nothing stood in):** hammocks, a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, a towel lying on the
+  sand, an ice shaver and paper cones for the stand.
+- **WAITS FOR MONDO:** his look at the whole district; whether the Shore gets a fight / residents with routines once the NPC spawn system (npc-system.md) lands.
 - **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
@@ -4774,8 +4778,13 @@ once that first district is fleshed out and knows what shared assets it can use 
   glow, no light) on a drawn rope at `G + 2.3`. Put several torches in ONE `look` row when the sand under them is level (a row = three
   meshes; twelve rows of one torch is thirty-six).
 - **NO HOOK FOR A DISTRICT (zone-wide, the tool row's or the engine's):** SOUND (a walked room has no sound bed of its own in the data:
-  surf, gulls, rigging would be new work in audio.js + the shell), PARTICLES (spray at the rocks, gulls wheeling), NIGHT (the sea shell is
-  day only: `night: 0`, so the glows never get their dusk).
+  surf, gulls, rigging would be new work in audio.js + the shell), PARTICLES (spray at the rocks, gulls wheeling).
+- **NIGHT WORKS (corrected 11-16; the pilot first wrote "day only", a misreading of the shell's `night: 0` field, and mondo asked why):**
+  the Beach rides the world clock like every outdoor room (data.js `hqRoomClock`; only `HQ_WORLD_CLOCK.still` rooms do not). Look at it
+  after dark in the probe with `"eval": "hqClockSet(22.5)", "settle": 2500` on a view (it holds for the views after it). What night
+  showed: drawn glow (bulbs, lanterns, lit windows, a hut's lit ceiling) reads well but LIGHTS NOTHING, so the places people sit need a
+  real light: `cave_torch` (a standing torch, a 9 m light, a blocker: `P` on a square's middle) and `brazier` (a fire basket, the same
+  light). The Shore has eight torches and two braziers. `round_table` is a huge meeting table with twelve chairs, not a cafe table.
 - **WATER ON THE SAND:** `feat({ k: 'dip', x, z, r, h })` on sand that stands 0.6 m up, with r 3.4-5.2 m and h 1.5-1.7 m, is a pool the room's
   own sea stands in (waded). A smaller or shallower dip shows no water.
 - **DUNE DRESSING:** `psxg_dead_bush_1/2` read as dry dune scrub; `feat({ k: 'rail', x0, z0, x1, z1, model: 'ranch' })` is a timber
@@ -5517,6 +5526,17 @@ Passes in order, a PR each: exteriors, interiors, dressing, atmosphere, polish. 
   - **SOUND: NOT DONE, cannot be done from a district file.** A room has no ambience field a district can set (the beds in audio.js are
     the battle maps'), and no bell, forge, market or tavern sound exists on R2 (no SFX generation: owner-rules). On the needs list.
   - Light and colour were settled in passes 1 and 2 (`gain` outdoors, `glow` indoors).
+- **PASS 5, THE POLISH** (a ten-view walk on the live build, then fixes, then three check views):
+  the yard house's front rail ran across its window and door head (now over them); the shop's and yard house's corner posts showed
+  inside the hall as a dark line (they stand proud of the walls now); the Smithy's lean-to roof was a black slab (`gain`); the smoke's
+  puffs were there but a third of the size they were written (the glow sheet falls off fast): enlarged, now a soft grey plume.
+- **WHERE THE VILLAGE STANDS (the pilot's last word, 2026-11-16)**: exteriors, insides (3 halls + 43 houses), dressing, atmosphere and
+  polish are live. OPEN: (1) PEOPLE, waits mondo (who lives here); (2) sound, cannot be done from a district file; (3) the needs-a-model
+  list (anvil, lamp post / street lantern, hand cart, fence run, floor carpet, grindstone, bellows); (4) no upstairs in the two-storey
+  kinds; (5) the 43 OUTSIDE looks are still a row each (about 900 meshes that one gathered row would save: needs a look at how a
+  part's `roof` flag is read first); (6) the frame rate was never measured on mondo's machine (geometries: 1,800 before the houses'
+  insides, about 2,050 now); (7) the shared pieces' faults on the board (the wall towers' floating roofs, the grey mass under the
+  hill's drums, the snow-white trees inside the wall). Not walked by hand: every one of the 43 doors (five were, in probes).
 
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
@@ -5571,6 +5591,16 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
 - **NEEDS A MODEL (zone-wide, nothing on R2)**: an anvil, a lamp post / hanging street lantern, a hand cart, a hay cart (the market stall is drawn now: `T.js` `stall()`),
   a water trough, a wooden fence run with a gate, a hitching rail, a floor carpet / runner (the `holy_carpet` model stands upright), a
   grindstone, a bellows. (A tavern table with benches is drawn in code now: `hall().trestle`.)
+- **THE ORDER THAT WORKED (for the next four district threads)**: (1) one probe of the district as it stands, `fp` views only, and
+  LOOK before planning: the Village's two worst faults (the stone lid, the black slabs) were in no note; (2) exteriors with `gain`;
+  (3) insides through `hall()`; (4) the ground's drawn pieces in one row; (5) smoke / fires / the night view; (6) a walk of ten views
+  on the live build. A PR a pass; merge main and rebake before every PR and again right before merging (main moved under the pilot
+  in four of its seven merges; an index.html conflict = take main's copy, bump the token again).
+- **WHAT FITS WHICH DISTRICT** (the pilot's guess, not a brief): N The Snowy Pines: `campfire`, `chimney_smoke` on any hut, `gain` on
+  snow-side wood, standing torches along the sleigh road. W The Forest: `lane()`-style drawn tracks, `fallen_log`, `covered_wagon` on
+  the road from the bay, a woodcutter's hut from kind 3 (ask on the board: it is T's file). F The Fairy Forest: no torches (its light
+  wants `glow` on its own caps and pond), `lane()` for stepping paths. L The Looking-Glass Garden: `stall()`-style striped cloth for a
+  tea tent (never one flat sheet), `sign()` for its boards.
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
 
