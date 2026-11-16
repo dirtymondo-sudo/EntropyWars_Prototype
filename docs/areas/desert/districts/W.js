@@ -30,13 +30,22 @@
      rail, a timber gate with its name, crosses, headstones, grave mounds. THE WINDMILL (P10-01): windpump, well, water tower.
    - THE MINE (P11-01): a timbered adit in the rock (drawn; the rock stops the walker), a narrow track across the back street to a buffer.
    - THE CANYON (P11-04): a box canyon now; its south end is a rock wall (the other end is Giza's Canyon Mouth, far off since the move).
-   - THE WAGON CAMP (P09-04): campfire, two tents, two covered wagons. OPEN RANGE (P10-04): skulls, snags. Twelve hitching rails.
+   - THE WAGON CAMP (P09-04): campfire, two canvas wall tents, two covered wagons. OPEN RANGE (P10-04): skulls, snags. Twelve hitching rails.
    - THE TRAIL IN (P08-04): the way in from the Highway's Exit 3 (the county road and the overpass are the tool's).
    - People: sheriff, two cowboys (one says the old flight line's cowboy line), a skeleton on Boot Hill.
 
-   NEEDS A MODEL (nothing in the packs or the catalogue; no stand-in placed): anvil + forge (the blacksmith has a brazier and barrels only),
-   water trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, a canvas prospector's tent (the camp's two are modern
-   camping tents), a telegraph key / pole.
+   NEEDS A MODEL: nothing open. THE MODEL PASS (2026-11-16, mondo's wish-list models, docs/plans/WISHLIST_MODELS_ADDED.md; seen in the browser)
+   placed every piece the list asked for and crossed it off: ~~anvil + forge~~ (the smith's, with `bellows` and `grindstone`; the drawn brick
+   forge is out), ~~water trough~~ (six, by the rails, in the corral, at the camp), ~~hay bale~~ (the livery's loft and floor, its porch, the
+   corral; the drawn yellow blocks are out), ~~mine cart~~ (on the mine's track, with `buffer_stop`, `ore_heap`, `head_wheel`, `wheelbarrow`),
+   ~~pickaxe~~, ~~wanted poster~~ (seven: the sheriff's, the saloon, the telegraph, the store), ~~tumbleweed~~, ~~gallows~~ (the open lot by
+   the undertaker), ~~canvas tent~~ (the camp's two nylon tents are out; a third at the mine), ~~telegraph key / pole~~ (keys on the desk and
+   the counter; three poles south out of town, the drawn pole is out).
+   Also from the list: `wooden_barrel` (every barrel; it was the pack's steel drum), `outhouse` (the three drawn privies are out),
+   `axe_chopping_block` + `firewood_stack`, `cattle_skull` (the gate's beam, the range), `coyote` (the two wolves are out), `vulture`, `hawk`,
+   `rattlesnake`, `scorpion`, `lizard`, `rooster`, `agave`, `yucca`, `lantern_post`, `hand_cart`, `hearse_carriage` (behind the undertaker),
+   `hay_rack`, `saddle`, `pitchfork`, `wooden_ladder`, `clothes_line`, `bell_frame` (the church's bell, in its yard), `plough`, `kettle`,
+   `wood_stove`, `woven_baskets`, `antler_trophy`, `handcuffs`.
 
    THE INSIDES (after THE INTERIORS PASS, 2026-11-16; seen in the browser bar the hotel's six rooms):
    - `inside()` lines every walk-in (dado, wall band, board ceiling + beams, a lit pane behind each window) and gives `solid` / `counter` /
@@ -79,7 +88,7 @@
    - No upstairs anywhere: the saloon's gallery and the stables' loft are drawn and not reached; the hotel's upper floor is its front only.
      THE MINE has no inside. The hotel's rooms were seen only through a doorway.
    - The insides read dark in the cloud browser even with lit linings (mondo's Firefox renders brighter): judge on his machine.
-   - The lanterns glow and light nothing (the room has ten lamps for all four districts). The camp's two tents are modern (NEEDS A MODEL).
+   - The lanterns glow and light nothing (the room has ten lamps for all four districts).
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS, not this file's).
    - Door leaves DO draw in the probe here (saloon, church, jail seen 11-16); the open finding in "THE LOOK PASS" is not true of this town.
 
@@ -230,12 +239,11 @@ exports.buildings = ctx => { bind(ctx);
         for (let i = 1; i < I.nx; i++) I.solid(I.LX(i), I.Z(0), 0.12, 3.3, 1.5, WD, 0x9a7450);
         for (let i = 0; i < I.nx; i++) a.box(I.X(i) - 1.0, 1.0, I.LZ(1), 1.4, 0.1, 0.1, WD2, 0x6a4e38, { glow: I.g });
         a.box(0, 3.3, I.Z(0), 2 * I.iw, 0.16, 3.5, WD, 0x9a7450, { under: true, glow: I.g }); a.box(0, 3.46, I.LZ(1), 2 * I.iw, 0.9, 0.08, WD2, 0x6a4e38, { glow: I.g });
-        for (const i of [0, 1, 3, 4]) a.box(I.X(i), 3.46, I.Z(0) - 0.4, 1.8, 0.8, 1.5, 'desert', 0xe8c860, { glow: I.g }); });
+ });                                    // (the loft's hay is the `hay_bale` model now: furnish())
     /* BLACKSMITH, 3 x 3: the forge on the back middle square, the bench down the east column's back two squares */
     SMITH = building('smith', [56, 18, 59, 21, 'S'], 4.2, { floorIn: 'dirt_2' }, (a, w, d, door) => { western(a, w, d, door, { h: 4.2, tint: 0x9a8474, trim: 0x3a3028, roofTint: 0x6a625c, roof: 'shed', name: 'BLACKSMITH', ink: '#e8dcc0', board: '#3a3028', chimney: -1, hang: 'SMITH', floorKey: 'dirt_2', floorTint: 0xc8a888 });
         const I = inside(a, 'smith', w, d, 4.2, door, { tint: 0x7a6a5c, dado: 0x5a4a3e, ceilTint: 0x5a4a3e, glow: 0.3, lampOdd: true });
-        I.solid(I.X(1), I.Z(0), 2.6, 2.0, 0.95, 'bricks_1', 0xa87a64); a.box(I.X(1), 0.95, I.Z(0), 1.9, 0.08, 1.3, 'bricks_1', 0xff7a30, { glow: 1 });
-        a.roof('pyramid', I.X(1), 2.1, I.Z(0), 2.9, 0.9, 2.3, RIB, 0x4a4440); a.box(I.X(1), 3.0, I.Z(0), 0.6, 0.9, 0.6, 'bricks_1', 0x8a6454, { glow: I.g });
+        /* (the forge on the back middle square is the `forge` model now, with the anvil, the bellows and the grindstone: furnish()) */
         I.counter(I.X(2), I.LZ(1), 6.4, true, 0x6a5038); });
     /* SALOON, 4 x 5: the bar down the west column (rows 1..3), the stage on the back row's two east squares, the gallery drawn over the back row */
     SALOON = building('saloon', [61, 16, 65, 21, 'S'], 7, { leaf: 'leaf_saloon', leafDouble: true }, (a, w, d, door) => { western(a, w, d, door, { h: 7, tint: 0xd8785a, trim: 0x5a3424, roofTint: RF, front: 2.4, step: 0.9, porch: 'balcony', lit: 0.85, name: 'SALOON', ink: '#f0d890', board: '#3a1c14', chimney: -1, hang: 'BEER', side: 'WHISKEY', shutter: 0x3a2a22 });
@@ -265,7 +273,7 @@ exports.buildings = ctx => { bind(ctx);
         I.counter(I.LX(1), I.Z(1), 6.6, false, 0x7a5638); I.shelves(0, -I.il + 0.05, 2 * I.iw - 0.6, false, 2.6, [0x8a8a8a, 0xc8a850, 0x6a5a4a, 0xb0b0b8, 0x9a7a50]); });
     /* TELEGRAPH, 2 x 3: the counter right across the middle row with its wicket, pigeonholes on the back wall; the pole and its arm outside */
     WIRE = building('telegraph', [81, 18, 83, 21, 'S'], 4.9, {}, (a, w, d, door) => { western(a, w, d, door, { h: 4.9, tint: 0xa8b4c0, trim: 0x3a4450, roofTint: RF, front: 1.6, name: 'TELEGRAPH', ink: '#f0e8d0', board: '#2a3440', pipe: false });
-        a.cyl(w / 2 + 0.9, 0, -d / 2 + 1.0, 0.13, 8.4, WD2, 0x6a5038, { seg: 8 }); a.box(w / 2 + 0.9, 7.6, -d / 2 + 1.0, 1.9, 0.12, 0.12, WD2, 0x6a5038); for (const s of [-0.8, -0.3, 0.3, 0.8]) a.cyl(w / 2 + 0.9 + s, 7.72, -d / 2 + 1.0, 0.045, 0.14, GLS, 0x7ab0a0, { seg: 6 });
+        /* (the pole outside is the `telegraph_pole` model now, the first of the line that leaves town south: dress()) */
         const I = inside(a, 'telegraph', w, d, 4.9, door, { key: PLAS, tint: 0xb8c4cc, dado: 0x3a4450, glow: 0.38 });
         I.counter(0, I.Z(1), 2 * I.iw, false, 0x5a4a3e); a.cyl(-1.2, 1.09, I.Z(1), 0.022, 1.0, RIB, 0xd8b060, { seg: 6, glow: 0.5, n: 13, step: [0.2, 0, 0] }); a.box(0, 2.09, I.Z(1), 2.7, 0.08, 0.1, RIB, 0xd8b060, { glow: 0.5 });
         I.shelves(0, -I.il + 0.05, 2 * I.iw - 0.4, false, 2.7, [0xf0e8d0, 0xe0d0a8, 0xf0e8d0, 0xd8c8a0]); });
@@ -323,7 +331,7 @@ exports.furnish = ctx => { bind(ctx);
     for (const z of [-4, -1.5, 1]) inn(SALOON, 'psx_glass_bottle_' + (z < -2 ? 1 : 2), sx(SALOON, 0), z, { y: 1.1 }); inn(SALOON, 'cash_register', sx(SALOON, 0), 2.6, { y: 1.1, face: 90 });
     at(SALOON, 'decor_piano', 3, 0, { y: 0.5, face: 180 }); inn(SALOON, 'bar_stool', sx(SALOON, 3), sz(SALOON, 0) + 1.0, { y: 0.5 }); inn(SALOON, 'crystal_chandelier', sx(SALOON, 2) - 1.75, sz(SALOON, 2), { y: 4.9, h: 1.7 });
     at(SALOON, 'blackjack_table', 3, 1, { face: 180 }); at(SALOON, 'roulette_table', 3, 2, { face: 270 }); set(SALOON, 2, 2, 3); set(SALOON, 2, 4, 4); set(SALOON, 3, 4, 2); set(SALOON, 1, 3, 3);
-    inn(SALOON, 'slot_machine', 6.2, sz(SALOON, 3) + 1.2, { face: 270 }); inn(SALOON, 'psx_metal_barrel_mp_1', -5.9, 7.6, {}); inn(SALOON, 'painting_portrait', 6.33, sz(SALOON, 1) + 0.9, { y: 2.0, face: 270 });
+    inn(SALOON, 'slot_machine', 6.2, sz(SALOON, 3) + 1.2, { face: 270 }); inn(SALOON, 'wooden_barrel', -5.9, 7.6, {}); inn(SALOON, 'painting_portrait', 6.33, sz(SALOON, 1) + 0.9, { y: 2.0, face: 270 });
     /* THE BANK (3 x 4): the vault on the back row's middle square, the manager's desk on its west square */
     at(BANK, 'vault', 1, 0, { face: 180, h: 4.4 }); at(BANK, 'exec_desk', 0, 0, { face: 90 }); inn(BANK, 'psx_chair_mp_3', sx(BANK, 0) - 1.0, sz(BANK, 0), { face: 90 }); inn(BANK, 'floor_safe', 4.2, sz(BANK, 0) - 0.9, { face: 270 }); inn(BANK, 'money_sacks', 4.0, sz(BANK, 0) + 0.8, {});
     inn(BANK, 'money_counter', -3.0, sz(BANK, 1), { y: 1.1 }); inn(BANK, 'psx_gold_bar_pcs_1', -1.0, sz(BANK, 1), { y: 1.1 }); inn(BANK, 'psx_cash_1', 0.6, sz(BANK, 1), { y: 1.1 });
@@ -335,16 +343,16 @@ exports.furnish = ctx => { bind(ctx);
     /* THE CHURCH (3 x 5): pews on the two side columns of rows 1..3, the aisle (column 1) clear from the door to the table */
     for (const j of [1, 2, 3]) for (const i of [0, 2]) at(CHURCH, 'church_pew', i, j, { face: 0 });
     at(CHURCH, 'stone_altar', 1, 0, { y: 0.3 }); inn(CHURCH, 'wooden_cross', 0, -8.02, { y: 2.2, face: 0, h: 2.4 }); at(CHURCH, 'lectern', 2, 0, { y: 0.3, face: 180 }); inn(CHURCH, 'meshy_bible', 0, sz(CHURCH, 0), { y: 1.26 });
-    inn(CHURCH, 'candle_ring', -3.9, sz(CHURCH, 0) - 0.9, { y: 0.3, noLight: true }); inn(CHURCH, 'hw_candles', -0.7, sz(CHURCH, 0), { y: 1.26 }); inn(CHURCH, 'hw_candles_2', 0.7, sz(CHURCH, 0), { y: 1.26 }); inn(CHURCH, 'decor_piano', -3.9, sz(CHURCH, 0) + 0.7, { y: 0.3, face: 90 }); inn(CHURCH, 'ships_bell', 4.2, 7.6, {});
+    inn(CHURCH, 'candle_ring', -3.9, sz(CHURCH, 0) - 0.9, { y: 0.3, noLight: true }); inn(CHURCH, 'hw_candles', -0.7, sz(CHURCH, 0), { y: 1.26 }); inn(CHURCH, 'hw_candles_2', 0.7, sz(CHURCH, 0), { y: 1.26 }); inn(CHURCH, 'decor_piano', -3.9, sz(CHURCH, 0) + 0.7, { y: 0.3, face: 90 }); 
     /* THE GENERAL STORE (4 x 4): the door square (1, 3) and the way round the counter (column 3) stay clear */
     inn(STORE, 'cash_register', -3.0, sz(STORE, 1), { y: 1.1, face: 180 }); for (let i = 0; i < 4; i++) inn(STORE, 'psx_canned_food_mp_' + (1 + i), -0.6 + i * 0.3, sz(STORE, 1), { y: 1.1 }); inn(STORE, 'platform_scale', 1.6, sz(STORE, 1) - 1.2, {});
-    at(STORE, 'bread_rack', 3, 0, { face: 270 }); inn(STORE, 'psx_metal_barrel_mp_1', 5.9, sz(STORE, 2) + 1.0, {}); inn(STORE, 'psx_metal_barrel_mp_2', 6.0, sz(STORE, 3) - 0.6, {}); inn(STORE, 'meshy_burlap_sack', 5.9, sz(STORE, 3) + 0.9, {}); inn(STORE, 'meshy_burlap_sack', 4.9, 6.0, { face: 40 });
+    at(STORE, 'bread_rack', 3, 0, { face: 270 }); inn(STORE, 'wooden_barrel', 5.9, sz(STORE, 2) + 1.0, {}); inn(STORE, 'wooden_barrel', 6.0, sz(STORE, 3) - 0.6, {}); inn(STORE, 'meshy_burlap_sack', 5.9, sz(STORE, 3) + 0.9, {}); inn(STORE, 'meshy_burlap_sack', 4.9, 6.0, { face: 40 });
     inn(STORE, 'psx_wooden_crate_2', 1.0, 5.9, {}); inn(STORE, 'psx_wooden_crate_3', 2.3, 6.0, { face: 30 }); inn(STORE, 'psx_wooden_crate_6', 1.2, 5.9, { y: 1.08, face: 20 }); inn(STORE, 'rocking_chair', -5.6, 5.6, { face: 150 });
     /* THE LIVERY STABLE (5 x 5): a horse on the middle of three stalls, straw and sacks along the walls */
     at(STABLES, 'horse', 0, 0, { face: 0 }); at(STABLES, 'horse_brown', 1, 0, { face: 0 }); at(STABLES, 'horse_black', 4, 0, { face: 0 });
     at(STABLES, 'hw_straw_2', 2, 0, { face: 20 }); at(STABLES, 'hw_straw', 3, 0, { face: 100 }); at(STABLES, 'hw_straw', 0, 2, { face: 0 }); inn(STABLES, 'hw_straw', -7.6, sz(STABLES, 3) - 0.9, { face: 90 }); at(STABLES, 'hw_straw', 4, 4, { face: 0 });
     inn(STABLES, 'meshy_burlap_sack', 7.6, sz(STABLES, 2) - 0.9, {}); inn(STABLES, 'meshy_burlap_sack', 7.5, sz(STABLES, 2) + 0.6, { face: 60 }); inn(STABLES, 'wooden_bucket', sx(STABLES, 0) + 1.1, sz(STABLES, 1) - 1.0, {}); inn(STABLES, 'wooden_bucket', sx(STABLES, 3) + 1.1, sz(STABLES, 1) - 1.0, {});
-    inn(STABLES, 'psx_wooden_crate_2', 7.5, 7.5, {}); inn(STABLES, 'psx_metal_barrel_mp_1', -7.5, 7.5, {}); inn(STABLES, 'library_ladder', 7.9, sz(STABLES, 1), { face: 270 }); inn(STABLES, 'hw_shovel', -7.9, sz(STABLES, 1) + 1.0, {});
+    inn(STABLES, 'psx_wooden_crate_2', 7.5, 7.5, {}); inn(STABLES, 'wooden_barrel', -7.5, 7.5, {}); inn(STABLES, 'wooden_ladder', 7.86, sz(STABLES, 1), { face: 270 }); inn(STABLES, 'hw_shovel', -7.9, sz(STABLES, 1) + 1.0, {});
     /* THE HOTEL (4 x 6): the lobby (rows 4, 5); rooms W1 / W2 (2 x 2 squares) and E1 / E2 (1 x 2), the bed on a square's middle */
     inn(HOTEL, 'key_rack', sx(HOTEL, 0), sz(HOTEL, 4) - 1.5, { y: 1.6, face: 180 }); inn(HOTEL, 'cash_register', sx(HOTEL, 0) + 0.9, sz(HOTEL, 4), { y: 1.1, face: 0 }); inn(HOTEL, 'psx_armchair_1', 5.9, sz(HOTEL, 5) + 1.0, { face: 230 }); inn(HOTEL, 'psx_armchair_1', 5.9, sz(HOTEL, 4) - 0.9, { face: 290 });
     inn(HOTEL, 'psx_coffee_table_1', 5.7, sz(HOTEL, 5) - 1.0, {}); inn(HOTEL, 'psx_carpet_mp_1', sx(HOTEL, 2), sz(HOTEL, 5) - 1.75, { y: 0.075 }); inn(HOTEL, 'potted_plant', -6.0, 9.6, {}); inn(HOTEL, 'painting_landscape', 6.33, sz(HOTEL, 5) - 1.75, { y: 1.9, face: 270 }); inn(HOTEL, 'wall_clock', sx(HOTEL, 1), sz(HOTEL, 4) - 1.6, { y: 2.6, face: 180 });
@@ -359,7 +367,7 @@ exports.furnish = ctx => { bind(ctx);
     inn(ASSAY, 'platform_scale', 4.0, sz(ASSAY, 0) + 0.9, {}); inn(ASSAY, 'floor_safe', -4.2, sz(ASSAY, 0) + 0.9, { face: 90 }); inn(ASSAY, 'psx_gold_bar_pcs_1', -2.6, sz(ASSAY, 1), { y: 1.1 }); inn(ASSAY, 'psxg_rock_3', -1.2, sz(ASSAY, 1), { y: 1.1, h: 0.3 }); inn(ASSAY, 'psxg_rock_4', -0.4, sz(ASSAY, 1), { y: 1.1 });
     inn(ASSAY, 'psx_wooden_crate_2', 4.1, 4.1, {}); inn(ASSAY, 'money_sacks', -4.2, 4.0, {}); inn(ASSAY, 'psx_chair_mp_3', -1.75, sz(ASSAY, 1) - 1.0, { face: 180 });
     at(WIRE, 'exec_desk', 1, 0, { face: 180 }); inn(WIRE, 'psx_chair_mp_3', sx(WIRE, 1), sz(WIRE, 0) - 1.0, { face: 180 }); inn(WIRE, 'wall_clock', -2.0, -4.83, { y: 3.1, face: 0 }); inn(WIRE, 'iron_garden_bench', 2.5, sz(WIRE, 2) + 0.6, { face: 270 }); inn(WIRE, 'notice_board', -3.07, sz(WIRE, 2), { y: 1.5, face: 90 });
-    at(SMITH, 'stump', 0, 1, {}); inn(SMITH, 'psx_metal_barrel_mp_1', -4.1, sz(SMITH, 0) - 0.6, {}); inn(SMITH, 'wooden_bucket', -2.4, sz(SMITH, 0) + 0.9, {}); inn(SMITH, 'psx_wooden_crate_2', -4.1, 4.1, {}); inn(SMITH, 'hw_shovel', -4.5, sz(SMITH, 1) + 1.1, {});
+    inn(SMITH, 'wooden_barrel', -4.1, sz(SMITH, 0) - 0.6, {}); inn(SMITH, 'wooden_bucket', -2.4, sz(SMITH, 0) + 0.9, {}); inn(SMITH, 'hw_shovel', -4.5, sz(SMITH, 1) + 1.1, {});
     /* THE MODEL LIST PASS, inside: the pack's own coffins and a body at the undertaker's, tongs and a quench tub at the forge, guns and
        shells at the sheriff's, cash and coins on the card tables, a confessional and the stained glass in the church, cobwebs, meat on the
        store's counter, pictures and pillows in the hotel */
@@ -374,6 +382,18 @@ exports.furnish = ctx => { bind(ctx);
     inn(STORE, 'psx_meat_1', 1.4, sz(STORE, 1), { y: 1.1 }); inn(STORE, 'psx_butcher_knife_mp_1', 1.9, sz(STORE, 1), { y: 1.1 }); inn(STORE, 'psx_ammo_box_1', -4.6, sz(STORE, 1), { y: 1.1 }); inn(STORE, 'meshy_rope', 6.3, sz(STORE, 2), { y: 1.5 }); inn(STORE, 'cauldron', -5.8, 6.0, {});
     for (const j of [0, 2]) { inn(HOTEL, 'psx_photo_frame_mp_1', -6.0, sz(HOTEL, j) + 1.4, { y: 0.64 }); inn(HOTEL, 'psx_painting_1', -6.33, sz(HOTEL, j + 1), { y: 1.7, face: 90 }); }
     inn(STABLES, 'meshy_rope', sx(STABLES, 1) + 1.75, sz(STABLES, 1) - 0.2, { y: 1.5 }); inn(STABLES, 'psx_cobweb_1', -7.9, -7.9, { y: 4.6 }); inn(STABLES, 'psx_cobweb_2', 7.9, 7.9, { y: 4.6 }); inn(STABLES, 'cat', 7.4, 6.4, { y: 1.08 });
+    /* THE MODEL PASS, inside (2026-11-16, mondo's wish-list models: docs/plans/WISHLIST_MODELS_ADDED.md). The forge, the anvil on its stump,
+       the bellows and a grindstone at the smith's (the drawn brick forge and the bare stump are out); real hay bales in the livery's loft
+       (the drawn yellow blocks are out) and on its floor, saddles, a pitchfork, a plain ladder; the telegraph key on the operator's desk and
+       the counter; wanted posters and handcuffs at the sheriff's; a pot-belly stove and baskets in the store; antlers in the saloon and the
+       hotel's lobby. Every barrel in town is the oak `wooden_barrel` now (it was the pack's steel drum). */
+    at(SMITH, 'forge', 1, 0, { face: 180 }); at(SMITH, 'anvil', 0, 1, { face: 180 }); inn(SMITH, 'bellows', sx(SMITH, 1) - 1.6, sz(SMITH, 0) - 0.5, { face: 180 }); at(SMITH, 'grindstone', 0, 2, { face: 90 });
+    for (const i of [0, 1, 3, 4]) { const x = sx(STABLES, i), z = sz(STABLES, 0) - 0.55; inn(STABLES, 'hay_bale', x - 0.55, z, { y: 3.47, face: 0 }); inn(STABLES, 'hay_bale', x + 0.55, z + 0.1, { y: 3.47, face: 8 }); inn(STABLES, 'hay_bale', x + 0.1, z + 0.05, { y: 3.95, face: 0 }); }
+    inn(STABLES, 'hay_bale', 7.3, sz(STABLES, 3) - 0.5, { face: 90 }); inn(STABLES, 'hay_bale', 7.3, sz(STABLES, 3) + 0.6, { face: 84 }); inn(STABLES, 'hay_bale', 7.3, sz(STABLES, 3) + 0.05, { y: 0.48, face: 90 });
+    inn(STABLES, 'saddle', -7.5, sz(STABLES, 2) - 0.9, { face: 90 }); inn(STABLES, 'saddle', -7.5, sz(STABLES, 2) + 0.6, { face: 90 }); inn(STABLES, 'pitchfork', 7.9, sz(STABLES, 1) + 1.1, {});
+    inn(WIRE, 'telegraph_key', sx(WIRE, 1) + 0.5, sz(WIRE, 0) + 0.1, { y: 0.8, face: 180 }); inn(WIRE, 'telegraph_key', 0.7, sz(WIRE, 1), { y: 1.1, face: 0 });
+    inn(JAIL, 'wanted_poster', -4.86, sz(JAIL, 2) + 0.35, { y: 1.7, face: 90 }); inn(JAIL, 'wanted_poster', -4.86, sz(JAIL, 2) + 0.95, { y: 1.55, face: 90 }); inn(JAIL, 'handcuffs', sx(JAIL, 2) + 0.35, sz(JAIL, 1) - 0.1, { y: 0.8 });
+    at(STORE, 'wood_stove', 2, 2, {}); inn(STORE, 'woven_baskets', -3.6, 6.0, {}); inn(SALOON, 'antler_trophy', 6.4, sz(SALOON, 2) + 0.2, { y: 2.9, face: 270 }); inn(HOTEL, 'antler_trophy', -6.4, sz(HOTEL, 5) - 0.4, { y: 2.2, face: 90 });
     inn(SMITH, 'psx_hand_saw_1', sx(SMITH, 2), sz(SMITH, 0), { y: 1.1 }); inn(SMITH, 'tool_chest', 4.1, 4.1, { face: 270 }); inn(SMITH, 'ladder_wall_rack', -4.83, sz(SMITH, 1), { y: 2.0, face: 90 });
 };
 
@@ -397,20 +417,20 @@ exports.ground = ctx => { bind(ctx);
         a.box(0, 3.04, 1.0, 3.8, 0.1, 4.0, WD, 0x8a6a4c); for (const s of [-1, 1]) a.box(s * 1.72, 0, 0.9, 0.08, 2.7, 3.8, WD, 0x6a5038);
         a.sign('MINE', 0, 3.2, 3.0, 2.4, 0.7, '#e8dcc0', '#3a2a1c', 'rye');
         for (const s of [-1, 1]) a.box(s * 0.45, 0.06, 7.2, 0.08, 0.1, 15.6, RIB, 0x4a4440); a.box(0, 0, -0.4, 1.5, 0.07, 0.2, WD2, 0x4a3626, { n: 24, step: [0, 0, 0.66] });
-        a.box(0, 0, 15.2, 1.6, 0.7, 0.3, WD2, T);                                                                                                           // the buffer at the track's end
         feat({ k: 'arch', id: 'des:w:mine', x: gx(90), z: gx(5), rot: 0, parts: a.P }); }
-    P('psx_metal_barrel_mp_1', 92, 6, {}); P('psx_wooden_crate_2', 93, 6, {}); dec('railway_lantern', 88, 6); dec('psx_wooden_crate_3', 91, 9); dec('hw_shovel', 88, 8);
+    P('wooden_barrel', 92, 6, {}); P('psx_wooden_crate_2', 93, 6, {}); dec('railway_lantern', 88, 6); dec('psx_wooden_crate_3', 91, 9); dec('hw_shovel', 88, 8);
     /* THE CANYON (P11-04): its other end is Giza's now, a long way off, so this end is a box canyon: the slot stops at a rock wall */
     feat({ k: 'plateau', x: gx(91), z: gx(46.5), w: 4 * C, d: 3 * C, h: 8.75, edge: 0.5 });
     /* MAIN STREET: the well where the showdown happens, the horse pond on the open lot south of it */
     P('ancient_well', 66, 24, {}); dec('wooden_bucket', 67, 24); P('signpost', 59, 22, { face: 90 });
     feat({ k: 'pool', x: gx(65), z: gx(30), r: 3.2, rz: 3.2, y: -0.2, depth: 0.8, key: 'water', bank: 0.8 });
-    [[55, 21], [60, 21], [69, 21], [80, 21], [84, 21], [54, 26], [59, 26], [78, 26]].forEach(q => dec(rnd() < 0.5 ? 'psx_metal_barrel_mp_1' : 'psx_wooden_crate_2', q[0], q[1]));
+    [[55, 21], [60, 21], [69, 21], [80, 21], [84, 21], [54, 26], [59, 26], [78, 26]].forEach(q => dec(rnd() < 0.5 ? 'wooden_barrel' : 'psx_wooden_crate_2', q[0], q[1]));
     Pm('horse', gc(54), gc(22) + 1.7, { face: 0 }); Pm('horse_brown', gc(77), gc(25) - 1.7, { face: 180 }); P('iron_garden_bench', 72, 21, { face: 180 }); P('rocking_chair', 49, 26, { face: 0 });
     Pm('barber_pole', gc(69) - 0.6, gx(21) + 0.3, { y: 1.5 }); Pm('psxg_coffin', gc(58) + 0.4, gx(27) - 0.5, { face: 90 }); Pm('trap_coffin_lid', gc(54) + 0.9, gx(27) - 0.4, {});
     pen(84, 28, 88, 34, [0, 86]); P('horse_black', 85, 30, { face: 90 }); P('cow', 86, 32, { face: 300 }); P('cow', 87, 30, { face: 40 }); dec('wooden_bucket', 85, 33);                           // THE CORRAL
-    P('campfire', 66, 44, {}); Pm('camping_tent', gc(64), gc(45), { face: 120 }); Pm('camping_tent', gc(68), gc(46), { face: 220 }); dec('sea_chest', 67, 46); dec('instrument_guitar_lying', 65, 43);
-    dec('skull', 76, 43); dec('skull', 80, 39); dec('psx_fish_skeleton_mp_1', 78, 45, { y: 0.02 }); P('dead_snag', 74, 40, {}); P('dead_snag', 79, 42, {});
+    P('campfire', 66, 44, {}); P('canvas_tent', 64, 45, { face: 0 }); P('canvas_tent', 68, 46, { face: 180 }); dec('sea_chest', 66, 46);   // the camp's tents are the 1800s canvas wall tent now (they were modern nylon)
+    dec('instrument_guitar_lying', 65, 43);
+    dec('cattle_skull', 76, 43); dec('cattle_skull', 80, 39); dec('psx_fish_skeleton_mp_1', 78, 45, { y: 0.02 }); P('dead_snag', 74, 40, {}); P('dead_snag', 79, 42, {});
     dress();
     native('sheriff', 52, 25, 0); native('cowboy', 64, 22, 180, sayOf(O_LINE, 'cowboy')); native('cowboy', 60, 24, 90); native('skeleton', 54, 2, 180);
 };
@@ -419,39 +439,36 @@ exports.ground = ctx => { bind(ctx);
    Only pieces the catalogue has; what it lacks is on the NEEDS A MODEL list in the header. Whole-square blockers go through P (a square's
    middle), loose things through dec / Pm (off the middle). Lanterns wear `noLight` (a glow, no lamp): the atmosphere pass lights the town. */
 function dress() {
-    const sack = 'meshy_burlap_sack', crate = 'psx_wooden_crate_2', keg = 'psx_metal_barrel_mp_1', LIT = sheet(), OX = gc(72), OZ = gc(24), lamp = (x, z, y) => { Pm('meshy_hanging_lantern', x, z, { y: y || 2.45, noLight: true }); LIT.box(x - OX, (y || 2.45) + 0.1, z - OZ, 0.15, 0.2, 0.15, GLS, 0xffc060, { glow: 1, uv: 'fit' }); };
-    /* a privy: plank box, lean-to roof, a board door with its moon; drawn + one ghost block (a back yard's own small building) */
-    const privy = (sx, sy, id) => { const a = sheet(), T = 0x9a7a5a; a.box(0, 0, 0, 1.3, 2.2, 1.3, WD, T, { uv: [1.75, 1.75] }); a.roof('shed', 0, 2.2, 0, 1.6, 0.4, 1.6, SHG, 0x6a5a4a); a.box(0, 0.05, 0.66, 0.7, 1.9, 0.04, WD2, 0x6a4e38);
-        a.cyl(0, 1.5, 0.69, 0.12, 0.02, WD2, 0x1a1410, { seg: 8 }); feat({ k: 'arch', id: 'des:w:privy:' + id, x: gc(sx), z: gc(sy), rot: 0, parts: a.P });
-        feat({ k: 'wall', x0: gc(sx) - 0.65, z0: gc(sy), x1: gc(sx) + 0.65, z1: gc(sy), h: 2.2, t: 1.3, key: WD2, ghost: true, rail: false }); };
+    const sack = 'meshy_burlap_sack', crate = 'psx_wooden_crate_2', keg = 'wooden_barrel', LIT = sheet(), OX = gc(72), OZ = gc(24), lamp = (x, z, y) => { Pm('meshy_hanging_lantern', x, z, { y: y || 2.45, noLight: true }); LIT.box(x - OX, (y || 2.45) + 0.1, z - OZ, 0.15, 0.2, 0.15, GLS, 0xffc060, { glow: 1, uv: 'fit' }); };
     /* MAIN STREET, the north porches (row 21; the door squares stay clear) */
     Pm('hw_straw', gc(49) + 0.2, gc(21), { face: 90 }); Pm('hw_straw_2', gc(49) + 0.3, gc(21) - 1.0, { face: 0 }); dec('wooden_bucket', 53, 21); dec('chicken', 55, 23); dec('chicken', 50, 22); dec('chicken', 54, 20);
-    dec(keg, 58, 21); dec('psx_metal_barrel_mp_2', 56, 21); Pm('rocking_chair', gc(61), gc(21) - 0.4, { face: 180 }); Pm('rocking_chair', gc(64) + 0.6, gc(21) - 0.4, { face: 200 }); dec('psx_glass_bottle_1', 64, 21); dec('psx_glass_bottle_2', 61, 21);
+    dec(keg, 58, 21); dec('wooden_barrel', 56, 21); Pm('rocking_chair', gc(61), gc(21) - 0.4, { face: 180 }); Pm('rocking_chair', gc(64) + 0.6, gc(21) - 0.4, { face: 200 }); dec('psx_glass_bottle_1', 64, 21); dec('psx_glass_bottle_2', 61, 21);
     Pm('iron_garden_bench', gc(66), gc(21) - 0.9, { face: 180 }); dec('psx_potted_cactus_mp_1', 68, 21, { h: 0.6 }); dec(crate, 79, 21); dec(sack, 77, 21); Pm('iron_garden_bench', gc(82) + 0.9, gc(21) - 0.9, { face: 180 });
     Pm('rocking_chair', gc(85), gc(21) - 0.4, { face: 180 }); Pm('luggage_cart', gc(88) + 0.8, gc(21) - 0.2, { face: 20 }); dec('potted_plant', 89, 21);
     [51.5, 57.5, 63, 67.5, 74.5, 78.5, 82, 87].forEach(x => lamp(gx(x) + 1.1, gx(22) - 0.35));
     /* the south porches (row 26) */
-    Pm('notice_board', gc(52) + 0.6, gx(27) - 0.12, { y: 1.5, face: 0 }); dec(sack, 73, 26); dec(sack, 76, 26); Pm(crate, gc(77) + 0.6, gc(26), { face: 12 }); Pm('psx_wooden_crate_6', gc(77) + 0.6, gc(26), { y: 1.08, face: 40 }); dec('hw_pumpkin', 74, 26); dec('hw_pumpkin_2', 76, 26);
+    Pm('notice_board', gx(53) + 0.12, gc(28), { y: 0.4, face: 90, floor: true });   // on the jail's side wall, to the trail (the front wall has the wanted posters now)
+    dec(sack, 73, 26); dec(sack, 76, 26); Pm(crate, gc(77) + 0.6, gc(26), { face: 12 }); Pm('psx_wooden_crate_6', gc(77) + 0.6, gc(26), { y: 1.08, face: 40 }); dec('hw_pumpkin', 74, 26); dec('hw_pumpkin_2', 76, 26);
     dec(keg, 72, 26); Pm('psxg_coffin', gc(55) - 0.9, gx(27) - 0.5, { face: 90 }); [51.5, 56.5, 75].forEach(x => lamp(gx(x) + 1.1, gx(26) + 0.35));
     /* the street itself: a wagon drawn up at the store, the trail in between the jail and the undertaker */
     Pm('covered_wagon', gc(81), gc(25) - 0.6, { face: 0 }); Pm('horse_black', gc(60), gc(22) + 1.7, { face: 0 }); dec('wooden_bucket', 65, 25);
     for (let y = 27; y < 32; y++) for (const x of [53, 54]) setPaint(x, y, 'dirt_2');
     /* the back yards */
-    privy(66, 14, 's'); privy(91, 16, 'h'); privy(79, 33, 'g'); P('fallen_log', 62, 15, { face: 0 }); P('stump', 64, 15, {}); dec('psx_hand_saw_1', 63, 14); P('fallen_log', 75, 32, { face: 90 }); dec('stump', 76, 33);
-    dec(keg, 60, 19); dec(crate, 60, 17); dec(crate, 84, 19); dec(keg, 90, 20); dec('psxg_dead_bush_1', 58, 15); dec('psxg_dead_bush_2', 71, 15); dec('psxg_dead_bush_1', 82, 15); dec('psxg_dead_bush_2', 60, 31); dec('psxg_dead_bush_1', 70, 33);
+    P('outhouse', 66, 14, { face: 180 }); P('outhouse', 91, 16, { face: 270 }); P('outhouse', 79, 33, { face: 0 }); P('fallen_log', 62, 15, { face: 0 }); P('axe_chopping_block', 64, 15, {}); dec('psx_hand_saw_1', 63, 14); P('fallen_log', 75, 32, { face: 90 }); Pm('axe_chopping_block', gc(76) + 0.4, gc(33) - 0.3, {});
+    dec(keg, 60, 19); dec(crate, 60, 17); dec(crate, 83, 16); dec(keg, 90, 20); dec('psxg_dead_bush_1', 58, 15); dec('psxg_dead_bush_2', 71, 15); dec('psxg_dead_bush_1', 82, 15); dec('psxg_dead_bush_2', 60, 31); dec('psxg_dead_bush_1', 70, 33);
     dec('crow', 53, 6, { y: 3.56 }); dec('crow', 57, 3); dec('crow', 66, 24, { y: 1.15 }); dec('crow', 84, 28, { y: 1.25 });
     /* THE CHURCH YARD + THE WINDMILL'S PATCH */
     for (const x of [62, 63, 68, 69]) Pm('hw_fence', gc(x), gx(6) - 0.2, { face: 0 }); dec('psxg_dead_bush_2', 62, 3); P('psxg_dead_tree_2', 69, 2, {}); Pm('iron_garden_bench', gc(63), gc(5), { face: 180 });
     for (const q of [[80, 6], [81, 6], [82, 6], [80, 7], [81, 7], [82, 7]]) Pm((q[0] + q[1]) % 2 ? 'hw_crop' : 'hw_crop_2', gc(q[0]), gc(q[1] + 2), { face: 0 }); P('hw_scarecrow', 83, 9, { face: 200 }); dec('hw_shovel', 79, 9); dec('hw_pumpkin_3', 82, 10); dec('chicken', 79, 6);
     /* THE MINE'S YARD */
-    dec('spell_dynamite', 92, 7, { h: 0.5 }); dec('psxg_rock_1', 89, 9); dec('psxg_rock_2', 91, 9); dec('psxg_rock_3', 90, 10); dec('psxg_rock_2', 88, 10); dec(sack, 93, 8); dec(keg, 87, 5); lamp(gx(90) + 1.2, gx(5) + 3.0, 2.3);
+    dec('spell_dynamite', 92, 7, { h: 0.5 }); dec('psxg_rock_1', 89, 9); dec('psxg_rock_2', 91, 9); dec('psxg_rock_3', 90, 10); dec('psxg_rock_2', 88, 10); dec(sack, 93, 8); dec(keg, 91, 5); lamp(gx(90) + 1.2, gx(5) + 3.0, 2.3);
     /* THE CORRAL */
     Pm('hw_straw', gc(89), gc(29), { face: 0 }); Pm('hw_straw_2', gc(89), gc(30) + 0.2, { face: 90 }); dec('wooden_bucket', 87, 27); dec(keg, 83, 28); dec('chicken', 89, 32);
     /* THE TRAIL IN (P08-04): a timber gate over the trail where it reaches town, a ranch rail either side, a bleached skull on the beam */
     { const a = sheet(), T = 0x7a5a40; for (const s of [-1, 1]) { a.box(s * 4.0, 0, 0, 0.36, 5.2, 0.36, WD2, T); a.box(s * 3.3, 4.2, 0, 1.4, 0.2, 0.2, WD2, T); } a.box(0, 4.8, 0, 9.2, 0.34, 0.34, WD2, T);
-        feat({ k: 'arch', id: 'des:w:gate', x: gx(54), z: gc(35), rot: 0, parts: a.P }); Pm('skull', gx(54), gc(35), { y: 5.14, face: 180, h: 0.6 });
+        feat({ k: 'arch', id: 'des:w:gate', x: gx(54), z: gc(35), rot: 0, parts: a.P }); Pm('cattle_skull', gx(54), gc(35) + 0.2, { y: 4.3, face: 180, span: 1.1 });
         feat({ k: 'rail', x0: gc(49), z0: gc(35), x1: gx(54) - 4.0, z1: gc(35), model: 'ranch' }); feat({ k: 'rail', x0: gx(54) + 4.0, z0: gc(35), x1: gc(59), z1: gc(35), model: 'ranch' }); }
-    P('signpost', 51, 40, { face: 90 }); dec('psxg_rock_1', 50, 38); dec('psxg_dead_bush_1', 57, 39); dec('skull', 56, 43); dec('psxg_rock_3', 49, 44); P('dead_snag', 58, 45, {}); dec('psxg_dead_bush_2', 51, 46); dec(crate, 55, 37);
+    P('signpost', 51, 40, { face: 90 }); dec('psxg_rock_1', 50, 38); dec('psxg_dead_bush_1', 57, 39); dec('cattle_skull', 56, 43); dec('psxg_rock_3', 49, 44); P('dead_snag', 58, 45, {}); dec('psxg_dead_bush_2', 51, 46); dec(crate, 55, 37);
     /* THE WAGON CAMP (P09-04): logs to sit on round the fire, the pot, the horse line */
     P('fallen_log', 66, 42, { face: 0 }); P('fallen_log', 68, 44, { face: 90 }); dec(keg, 63, 42); dec(crate, 70, 46); dec(sack, 62, 44); dec('wooden_bucket', 65, 46); lamp(gc(64), gc(43), 0.02);
     P('hitching_rail', 62, 46, { face: 0 }); Pm('horse', gc(62), gc(46) + 1.7, { face: 0 }); Pm('horse_brown', gc(62) + 1.5, gc(46) - 1.7, { face: 180 }); dec('psxg_dead_bush_1', 61, 38); dec('psxg_rock_2', 70, 40);
@@ -468,10 +485,35 @@ function dress() {
     P('hw_stone_3', 52, 2, { face: 180 }); P('hw_stone', 56, 2, { face: 180 }); P('hw_stone_1', 50, 5, { face: 180 }); P('hw_body_rising', 54, 4, { face: 160 }); Pm('hw_coffin', gc(57) - 0.4, gc(4), { face: 70 }); Pm('hw_coffin_lid', gc(57) + 0.9, gc(4) + 0.6, { face: 40 });
     dec('femur', 53, 4); dec('ulna', 51, 4); Pm('hw_coffin_2', gc(57) + 0.2, gx(27) - 0.9, { face: 90 }); Pm('hw_coffin_lid_2', gc(58) + 0.3, gx(27) - 0.5, { face: 100 });
     dec('dog', 61, 22); dec('cat', 74, 26, { y: 0.2 }); dec('dog', 67, 45); dec('rabbit', 59, 41); dec('rabbit', 72, 44);
-    P('wolf', 83, 37, { face: 250 }); P('wolf', 84, 39, { face: 290 }); Pm('eagle', gc(88), gc(44), { y: 9.5 }); Pm('eagle', gc(53), gc(2), { y: 6 });
-    P('decor_sheep', 74, 41, { face: 100 }); P('decor_sheep', 76, 42, { face: 40 }); dec('femur', 77, 39); dec('ulna', 80, 40); dec('skull', 78, 38); dec('femur', 90, 38); dec('ulna', 91, 41);
+    Pm('coyote', gc(82), gc(38), { face: 250 }); Pm('coyote', gc(83) + 0.6, gc(40) - 0.4, { face: 290 }); Pm('eagle', gc(88), gc(44), { y: 9.5 }); Pm('eagle', gc(53), gc(2), { y: 6 });
+    P('decor_sheep', 74, 41, { face: 100 }); P('decor_sheep', 76, 42, { face: 40 }); dec('femur', 77, 39); dec('ulna', 80, 40); dec('cattle_skull', 78, 38); dec('femur', 90, 38); dec('ulna', 91, 41);
     Pm('bat_black', gx(90) - 0.6, gx(5) + 1.2, { y: 2.3 }); Pm('bat_brown', gx(90) + 0.5, gx(5) + 0.6, { y: 2.4 }); Pm('bat_grey', gx(90) + 0.1, gx(5) + 2.0, { y: 2.5 }); Pm('psx_cobweb_1', gx(90) - 1.3, gx(5) + 2.7, { y: 1.9, face: 0 }); Pm('psx_cobweb_2', gx(90) + 1.3, gx(5) + 2.7, { y: 1.9, face: 0 });
     P('cauldron', 67, 43, {}); Pm('meshy_rope', gc(84) + 0.2, gc(31), { y: 1.1 }); Pm('meshy_rope', gc(86) + 1.6, gc(28), { y: 1.1 });
+    /* THE MODEL PASS, outside (2026-11-16, mondo's wish-list models). What the NEEDS A MODEL list asked for, and what else on the list suits
+       a frontier town. Stand-ins taken out in the same pass: the drawn privies, the drawn pole and buffer, the nylon tents, the wolves that
+       stood for coyotes, the human skulls that stood for cattle skulls, the stumps that stood for a chopping block. */
+    /* the mine: an ore cart on the track, a real buffer, the ore dump, the head wheel, picks, a barrow, the prospector's tent */
+    Pm('mine_cart', gx(90), gx(5) + 12.4, { face: 90 }); Pm('buffer_stop', gx(90), gx(5) + 15.6, { face: 180 }); P('ore_heap', 92, 9, {}); P('head_wheel', 94, 7, { face: 90 }); P('canvas_tent', 93, 11, { face: 180 });
+    Pm('pickaxe', gx(90) + 1.25, gx(5) + 3.6, { face: 40 }); dec('pickaxe', 89, 8); Pm('wheelbarrow', gx(88) + 0.8, gc(9), { face: 200 });
+    /* Main Street: troughs by the rails, bales at the livery, tumbleweeds, wanted posters on the fronts, a hand cart, the gallows on the open lot */
+    [[51, 22, -0.9], [55, 22, -0.9], [61, 22, -0.9], [73, 25, 0.9]].forEach(q => Pm('water_trough', gc(q[0]) + 0.3, gc(q[1]) + q[2], { face: 0 })); Pm('water_trough', gc(86), gc(29) - 0.6, { face: 0 }); Pm('water_trough', gc(63) + 0.2, gc(47) + 0.2, { face: 0 });
+    Pm('hay_bale', gc(52) + 0.7, gc(21) - 0.9, { face: 0 }); Pm('hay_bale', gc(53) + 0.1, gc(21) - 0.8, { face: 12 }); Pm('hay_bale', gc(52) + 1.2, gc(21) - 0.85, { y: 0.48, face: 4 }); Pm('rooster', gc(55) + 0.5, gc(21) + 0.3, { face: 150 });
+    [[57, 24], [68, 23], [79, 24], [88, 24], [62, 33], [56, 40], [75, 44], [71, 12]].forEach(q => dec('tumbleweed', q[0], q[1]));
+    const bill = (x, z, y, face) => Pm('wanted_poster', x, z, { y, face, floor: true });                                 // on a front wall (`floor`: without it a prop on a wall's line stands on the wall's top)
+    bill(gx(51) + 0.45, gx(27) - 0.08, 1.7, 0); bill(gx(51) - 0.12, gx(27) - 0.08, 1.5, 0); bill(gx(63) + 0.55, gx(21) + 0.08, 1.6, 180); bill(gx(82) + 0.55, gx(21) + 0.08, 1.6, 180); bill(gx(75) - 0.55, gx(27) - 0.08, 1.6, 0);
+    Pm('hand_cart', gc(80), gc(22) - 0.6, { face: 15 }); Pm('gallows', gx(62), gx(29), { face: 0 }); Pm('hearse_carriage', gx(57), gc(32), { face: 0 });
+    for (const q of [[62, 26], [68, 26], [56, 36]]) { P('lantern_post', q[0], q[1], { face: 0 }); LIT.box(gc(q[0]) + 0.48 - OX, 1.4, gc(q[1]) - OZ, 0.09, 0.16, 0.09, GLS, 0xffc060, { glow: 1, uv: 'fit' }); }   // the lantern hangs 0.48 m east of its post
+    /* the telegraph line: the office's pole and two more, south out of town past the corral */
+    for (const y of [19, 27, 35]) P('telegraph_pole', 84, y, { face: 0 });
+    { const a = sheet(); for (const x of [-1.35, -0.55, 0.55, 1.35]) a.box(x, 6.62, 0, 0.025, 0.025, 16 * C, RIB, 0x2a2a2e); feat({ k: 'arch', id: 'des:w:wire', x: gc(84), z: gx(27.5), rot: 0, parts: a.P }); }   // the wires on the top arm's insulators
+    /* the yards: split wood at two back doors, the hotel's washing, the church's bell in its frame, a plough by the crop patch */
+    Pm('firewood_stack', gx(63.8), gx(16) - 0.45, { face: 0 }); Pm('firewood_stack', gx(74.5), gx(31) + 0.45, { face: 0 }); Pm('clothes_line', gx(87), gc(13), { face: 0 }); P('bell_frame', 68, 4, { face: 0 }); Pm('plough', gc(80), gc(10) + 0.5, { face: 20 });
+    /* the corral: the hay rack, bales, a saddle on its stand by the rail */
+    P('hay_rack', 87, 33, { face: 0 }); Pm('hay_bale', gc(85) + 0.6, gc(32) + 0.5, { face: 30 }); Pm('hay_bale', gc(85) - 0.4, gc(32) + 0.9, { face: 100 }); Pm('saddle', gc(84) - 0.9, gc(31), { face: 90 });
+    /* the camp + the range + the trail: a kettle by the fire, cattle skulls, a vulture, a hawk on the old fence's post, snake, scorpion, lizards, agave and yucca */
+    Pm('kettle', gc(66) + 0.95, gc(44) + 0.6, {}); Pm('vulture', gc(77) + 0.9, gc(39) + 0.4, { face: 200 }); P('vulture', 58, 3, { face: 240 }); Pm('hawk', gc(78), gc(36), { face: 180 });
+    Pm('rattlesnake', gc(80) + 0.5, gc(44), { face: 300 }); dec('rattlesnake', 57, 41); dec('scorpion', 75, 46); dec('lizard', 71, 39); dec('lizard', 50, 37);
+    P('yucca', 58, 38, {}); P('agave', 50, 43, {}); P('yucca', 61, 35, {}); P('agave', 69, 37, {}); P('agave', 78, 44, {}); P('yucca', 72, 38, {});
     /* the lanterns' flames: one drawn row of lit cores (a glow costs none of the room's ten lamps) */
     feat({ k: 'arch', id: 'des:w:lamps', x: OX, z: OZ, rot: 0, parts: LIT.P });
 }
