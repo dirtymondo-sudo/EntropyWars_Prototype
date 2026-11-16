@@ -6,7 +6,7 @@
    y 0..12). The snow runs on south to the moat's north bank (the zone is y 0..17), over the top of the village's north plots: that
    strip is dressed here too (the campfire and the yeti at 30..31, 12..13 stand on it).
 
-   WHAT STANDS HERE TODAY (passes 1 to 3 of 5, 2026-11-16; the drawn rows are `cam:n:<name>`):
+   WHAT STANDS HERE TODAY (passes 1 to 4 of 5, 2026-11-16; the drawn rows are `cam:n:<name>`):
    THE RIDGE: snow-capped crags along the north edge and round both ends (three ranks: on the pines' own squares, in the kingdom's treeline
    past the room's edge, the peaks behind); THE PASS = the cleft the sleigh road leaves through (two rock walls 24 m long round the trail).
    THE SLEIGH STOP (the road's clearing): the sleigh and a horse west of the road, THE WAYSIDE HUT (walked into, squares 50..52 x 4..6, its
@@ -32,7 +32,10 @@
    bridge, wolves, rabbits, crows, an eagle; residents with no lines of their own: the ice queen (pond), krampus (stones), bigfoot (west nook).
    THE BELT WALL (in `cam:n:ridge`): a 10 m block of rock in the kingdom's treeline belt, behind the front crags, so no summer green shows.
 
-   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO: snow in the air, smoke, the night look (pass 4), polish (pass 5).
+   THE ATMOSPHERE (pass 4): `airZones` (snow over the whole district, pale ice dust at the pond and the stones), smoke off both chimneys and
+   two camp fires, a pool of warm light on the snow under every lantern and window (drawn, `glow`: it shows in the dark).
+
+   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO: polish (pass 5).
    Notes + the FITS THIS DISTRICT list: areas-complexes.md "CAMELOT, THE SNOWY PINES".
    NEVER more `dec()` calls than the two below (the kingdom's one stream of dice: The Forest's scatter would move): use `at()` and `rn()`.
 
@@ -227,6 +230,7 @@ const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w =
   /* a lantern post on a verge: the post, an arm out over the way, the catalogue's hanging lantern, a lit core, snow on the post's head */
   const lantern = (x, z, dx, dz, lit) => { P.push({ s: 'box', p: [r2(x), 0, r2(z)], size: [0.16, 3.1, 0.16], key: PLANK, tint: TIM, gain: 1.5 }, { s: 'box', p: [r2(x + dx * 0.34), 2.86, r2(z + dz * 0.34)], size: [dx ? 0.84 : 0.1, 0.1, dz ? 0.84 : 0.1], key: PLANK, tint: TIM, gain: 1.5 },
       { s: 'box', p: [r2(x), 3.1, r2(z)], size: [0.26, 0.1, 0.26], key: SNOW, tint: 0xffffff, gain: SG }, { s: 'box', p: [r2(x + dx * 0.66), 2.46, r2(z + dz * 0.66)], size: [0.1, 0.18, 0.1], tint: 0xffd890, glow: 1 });
+      P.push({ s: 'cyl', p: [r2(x + dx * 0.66), 0.014, r2(z + dz * 0.66)], r: 1.5, h: 0.012, seg: 14, key: SNOW, tint: 0xfff3dc, glow: 0.93 });   // its pool of light on the snow (a part with `glow` is drawn unlit: no more than the day's snow by day, warm in the dark)
       at('meshy_hanging_lantern', x + dx * 0.66, z + dz * 0.66, Object.assign({ y: 2.32 }, lit ? {} : { noLight: true })); };
   [[1.5, -1], [8.6, 1], [12.5, -1], [15.3, 1]].forEach(q => q[1] < 0 ? lantern(RW - 0.45, gx(q[0]), 1, 0, q[0] === 8.6) : lantern(RE + 0.45, gx(q[0]), -1, 0, q[0] === 8.6));
   [10, 18, 26, 36, 42, 54, 60, 72, 78, 84].forEach((k, i) => i % 2 ? lantern(gc(k), SOUTH + 0.45, 0, -1) : lantern(gc(k), NORTH - 0.45, 0, 1));
@@ -236,13 +240,16 @@ const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w =
       if (i % 3 === 0) { const r = rr(0.5, 1.1); S.rock(x, -0.15, z, r, r * rr(0.7, 1.0), Math.round(rn() * 180)); S.drift(x + 0.1, r * 0.45, z, r * 0.75, r * 0.45, r * 0.6); } else S.drift(x, -0.25, z, rr(1.0, 2.0), rr(0.5, 0.95), rr(0.7, 1.3), Math.round(rn() * 180)); }
   for (let i = 0; i < 18; i++) { const k = rr(0.6, 16.6), w = rn() < 0.5, off = rr(0.7, 2.4); if ((k > 2.6 && k < 11.4)) continue; S.drift(w ? RW - off : RE + off, -0.25, gx(k), rr(1.0, 1.8), rr(0.5, 0.9), rr(0.7, 1.2), Math.round(rn() * 180)); }
   /* the sleigh's two runner tracks down the middle of the road */
-  for (const o of [-0.62, 0.62]) P.push({ s: 'box', p: [o, 0.012, r2((gx(0.3) + gx(16.7)) / 2)], size: [0.1, 0.012, r2(gx(16.7) - gx(0.3))], sides: false, key: 'calm_ice', tint: 0xd0dcea });
+  for (const o of [-0.62, 0.62]) P.push({ s: 'box', p: [o, 0.012, r2((gx(0.3) + gx(16.7)) / 2)], size: [0.1, 0.012, r2(gx(16.7) - gx(0.3))], sides: false, key: SNOW, tint: 0xa9b6c8 });
   /* a stack of split logs between two stakes: `n` logs a course, three courses, lying along x (`ns` = along z), snow on top. (The first cut
      stepped each course back: it read as a flight of steps.) */
   const stack = (x, z, n, len, ns) => { const wd = n * 0.3;
       for (let c = 0; c < 3; c++) P.push({ s: 'box', p: [r2(x + (ns ? (c % 2) * 0.05 : 0)), r2(c * 0.27), r2(z + (ns ? 0 : (c % 2) * 0.05))], size: ns ? [0.26, 0.26, len] : [len, 0.26, 0.26], key: LOG, tint: c % 2 ? 0x8a6444 : 0xa07c56, gain: 1.6, n, step: ns ? [0.3, 0, 0] : [0, 0, 0.3] });
       for (const e of [-0.2, wd - 0.1]) P.push({ s: 'box', p: [r2(x + (ns ? e : 0)), 0, r2(z + (ns ? 0 : e))], size: [0.1, 1.05, 0.1], key: PLANK, tint: TIM, gain: 1.5 });
       P.push({ s: 'box', p: [r2(x + (ns ? wd / 2 - 0.15 : 0)), 0.8, r2(z + (ns ? 0 : wd / 2 - 0.15))], size: ns ? [wd, 0.12, len + 0.12] : [len + 0.12, 0.12, wd], key: SNOW, tint: 0xffffff, gain: SG }); };
+  /* the light the huts' panes throw on the snow: a warm patch under each window (the same trick as the lanterns' pools) */
+  [[WAYHUT, 1], [CABIN, -1]].forEach(q => { const B = q[0], cs = q[1], W2 = B.fw / 2, D2 = B.fd / 2, pool = (lx, lz, r) => { const c = B.at(lx, lz); P.push({ s: 'cyl', p: [c[0], 0.014, c[1]], r, h: 0.012, seg: 12, key: SNOW, tint: 0xfff3dc, glow: 0.93 }); };
+      pool(-cs * (W2 + 1.5), 1.75, 1.4); pool(0, -(D2 + 1.5), 1.4); pool(B.door.lx + (B.door.lx < 0 ? 1 : -1) * (B.door.cw / 2 + 1.5), D2 + 1.4, 1.2); });
   /* THE WOODCUTTER'S YARD */
   stack(gx(5) - 1.0, gx(6) - 1.3, 5, 2.2, false); stack(gx(6) + 0.5, gx(8) + 0.35, 4, 1.6, true);
   { const x = gc(7) + 0.5, z = gc(6) - 0.5;   // the sawhorse, a log on it, the saw
@@ -279,10 +286,22 @@ const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w =
   /* a split-rail run either side of the road down to the north bridge */
   for (let k = 0; k < 4; k++) for (const s of [-1, 1]) at('hw_fence', s < 0 ? RW - 0.35 : RE + 0.35, gx(13) + 0.83 + k * 1.65, { face: 90 });
 }
+/* ── PASS 4, THE ATMOSPHERE: smoke off both chimneys and the three camp fires (the catalogue's `chimney_smoke`); the snow in the air is
+   `airZones` below; the night is carried by what glows: the panes, the lanterns' cores, the fires, the ice. ── */
+ctx.inside(WAYHUT, 'chimney_smoke', r3(WAYHUT.fw / 2 + 0.45), -1.75, { y: 6.0, rise: 6 }); ctx.inside(CABIN, 'chimney_smoke', r3(-CABIN.fw / 2 - 0.45), -1.75, { y: 6.0, rise: 6 });
+[[30, 12], [7, 8]].forEach(q => at('chimney_smoke', gc(q[0]), gc(q[1]), { y: 0.7, rise: 4 }));
 flushArch();
 return { WAYHUT, CABIN };
 }
 /* where the tree mass plants nothing (the tool's `noTrees`, kingdom squares): round the two huts, the den, the pond
-   (a snow pine is a CLUMP of trunks metres wide: one planted three squares off still stood a trunk in a hut's doorway, so the zones are wide) */
-const noTrees = [[48.6, 1, 55, 9], [1, 3, 9, 9], [30.5, 9.5, 36, 14.5], [86, 3, 93.5, 9]];
-module.exports = { build, noTrees };
+   (a snow pine is a CLUMP: one planted pine stands trunks up to 16 m from its foot. One planted 15.7 m off stood a trunk INSIDE the Wayside
+   Hut, through the bed. So a hut is cleared 19 m round; the den and the pond, where a trunk at the edge does no harm, less.) */
+const noTrees = [[44.5, -1.5, 57.5, 11.5], [-1.5, 0.5, 11.5, 13.5], [30.5, 9.5, 36, 14.5], [86, 3, 93.5, 9]];
+/* THE AIR (the tool's `airZones`, kingdom squares): snow falling over the whole district, down to the moat's north bank; a little pale ice dust
+   over the pond and round the old stones. Counts are small (a weak PC halves them). */
+const airZones = () => [
+    { x0: 0, y0: 0, x1: 96, y1: 17, kind: 'snow', n: 2200 },
+    { x0: 87, y0: 4, x1: 92, y1: 9, kind: 'motes', color: 0xcfeaff, n: 36 },
+    { x0: 65, y0: 10, x1: 72, y1: 15, kind: 'motes', color: 0xcfeaff, n: 30 },
+];
+module.exports = { build, noTrees, airZones };
