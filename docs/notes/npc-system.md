@@ -4,7 +4,7 @@ Started 2026-11-16 on mondo's order (thread "Disaster City NPCs: the spawn syste
 **State (11-16): his answers are in (next section). DELIVERY 1 · THE SET LEVELS is live. Deliveries 2-8 are not built.
 Every number is still a PROPOSAL he has not set: they are rows in data.js `HQ_SPAWN_RULES`.**
 
-His brief, in short: no level scaling with the player; many of the same unit (cop b, cop c ...) with schedules; more NPCs;
+His brief, in short: no level scaling with the player; many of the same unit (cop b, cop c ...) with schedules; more NPCs (in big outdoor spaces; small indoor rooms stay at few, mondo 11-16);
 rarity from common to one of a kind (Superhero male + female, Sidekick, Antihero); a set level or level range per race, rarer
 = higher (cops 5 to 10, the Superhero about 50); a cap per zone or district that refills after captures; random zodiac signs;
 later an easy sheet for boss and scripted battles; the result is the blueprint for the other zones.

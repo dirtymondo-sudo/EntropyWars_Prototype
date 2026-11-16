@@ -47,8 +47,9 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
 - **Place names are plain and cheap (11-16).** mondo: "just call them woods 1 2 and 3 for all I care ... we are just trying to build the areas right now ... simple
   names instead of ... deep ai slop psuedointellectual names ... that im just gonna have to rename later". Name a plot for what stands there ("The Rocks", "The Dry
   Creek"); never spend a question to him on a name while an area is being built.
-- **More NPCs** (11-16: "Disaster city feels dead right now. There need to be more NPCs"; this replaces the old "fewer NPCs"), none
-  blocking a path. No followers. Units are named after their race. No factions. The NPC spawn system: `npc-system.md`.
+- **NPC counts depend on the space** (mondo 11-16: "the fewer npcs rule was meant for small indoor rooms, not for big outdoor
+  spaces"): FEWER NPCs in small indoor rooms; MORE are wanted in big outdoor spaces ("Disaster city feels dead right now. There need
+  to be more NPCs"). None ever blocking a path. No followers. Units are named after their race. No factions. The NPC spawn system: `npc-system.md`.
 
 ## 3. Visuals
 
