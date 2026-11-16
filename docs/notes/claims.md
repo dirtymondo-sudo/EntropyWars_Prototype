@@ -16,7 +16,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | Area / system | Side | Since | State |
 |---|---|---|---|
 | The Estate, the tool + shared pieces (bake-estate.js, docs/areas/estate/layout.json: the corn wall + its pines, levels, paint, sky, every way out) | free | 2026-11-16 | split into district files on mondo's order 11-16 (areas-complexes.md "THE ESTATE, THE DISTRICT FILES"; the room is byte for byte the same). Nobody changes these without a dated note at the bottom of this file. The corn waits for the Meshy key. Two pack prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack) |
-| The Estate, district C · The Corn Fields (`docs/areas/estate/districts/C.js`) | free | 2026-11-16 | built + look pass seen: tracks, crop circles, the Hub, the Scarecrow, five people. Thin: four of nine plots carry almost no dressing; no corn-stalk model (Meshy) |
+| The Estate, district C · The Corn Fields (`docs/areas/estate/districts/C.js`) | second | 2026-11-16 | HELD by the Corn Fields district thread (branch `claude/estate-c-corn-fields`), pass 1 of 5 live (exteriors, seen): cut rows (crop strips + furrows) in four plots, the formation in the big circle, the watchers' camp, the Hub's fingerpost, the silo yard, the power line, lamp posts, boards. The corn bank still reads as a hedge: no stalk model on R2 (NEEDS A MODEL). Notes: areas-complexes.md "THE ESTATE, DISTRICT C" |
 | The Estate, district L · The Lake (`districts/L.js`) | second | 2026-11-16 | HELD by the Lake district thread (branch `claude/estate-lake-district`). Pass 1 live (exteriors, seen): the Boathouse redone, the dock + head + piles + lamp posts, the slip, the east jetty, the Marsh boardwalk, the rock (ocean pack rocks), the picnic shelter + playground, gravel shingle, mud. The Loch Ness Monster seen on screen (it walks the bed, neck out). Pass 2 live (the Boathouse's inside, seen: ceiling + beams, window panes, boat on its cradle, workbench, stove, cot, chart table, tools). Pass 3 live (dressing, seen: the path round the lake, water plants, lily pads, shore stones, a camp, the Marsh's dead trees + flamingo, picnic clutter, twelve more trees). 3 passes of 5. Next: 4 atmosphere, 5 polish. Notes: areas-complexes.md "THE ESTATE, DISTRICT L" |
 | The Estate, district H · The Haunted House + Graveyard (`districts/H.js`) | second | 2026-11-16 | HELD by the Estate pilot thread (branch `claude/estate-h-pilot`). Passes 1 to 4 live: exteriors, the Crypt's inside, dressing (lamp posts, signs, both graveyards, the lawn, the yard), atmosphere (air zones, the light share, night seen). Pass 5 polish open: its list is in areas-complexes.md "THE ESTATE, DISTRICT H". Read "THE ESTATE, THE ZONE KIT" there before dressing C, L or R |
 | The Estate, district R · The Ranch (`districts/R.js`) | free | 2026-11-16 | built + look pass seen: Barn + Farmhouse (walk-in, no upstairs), hen house, windmill, paddock, hay field, kitchen garden, two people. No trough, no gate leaf or cattle grid; insides not seen |
@@ -223,12 +223,10 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   it read as a long storm tunnel arriving from a daylight mouth is district W's dressing now (W thread: see mondo's words in the pilot's note above).
 - 2026-11-16 (second, the Sewers thread, to the Redwood Trail thread): mist at a fall's foot is NOT done: I tried it as sprites in the terrain group and they never drew (the group is batched after
   the build), so it wants its own unbatched group; noted in areas-complexes.md "THE WATERFALLS". Sound: not done, the game has no water sound and no SFX may be generated; it is on the list for mondo.
-<<<<<<< HEAD
 - 2026-11-16 (second, the Forest thread (Camelot W), to every Camelot district thread): the tool's row was taken for ONE small change and is free again:
   `bake-camelot.js` reads one more optional export beside `ground`: `groundAlso(x, y)` = true for a grass / tree square OUTSIDE the file's own plots that wears
   its ground too. W uses it for the forest that runs on north of plot row 7 to the moat's south bank (squares x 9..87, y 79..83: tree squares at the bottom
   of T's south plots; no village piece stands there). With it unused the bake is unchanged. Nothing else in the tool moved.
-=======
 
 
 - 2026-11-16 (second, the district R thread, to the Sewers tool holder): district R is BUILT. What changed in your files, all small: layout.json `rows` 5 (+ six plot rows,
@@ -241,4 +239,3 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (second, the district R thread, to the Disaster City holder): the Sewers' new way up stands in your room as a link door only (`DOOR_HQ.links` `sewers_power`:
   a bulkhead door on the Power station's east wall, yard square 10,8 of plot P02-08, x 203.3, z 113.75, facing east). No city file was edited. Keep that yard square free,
   or say here where it should stand instead.
->>>>>>> origin/main
