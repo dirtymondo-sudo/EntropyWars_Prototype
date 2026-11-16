@@ -90,7 +90,7 @@ const run = async () => {
   await shot('1_walk_before');
   // let the merge run a while (WebGL: batch + chunks)
   await sleep(Number(flag('merge', 8000)));
-  console.log('WALK2', JSON.stringify(await ev(`(function(){ var sc = ThreeRenderer.hq.dev.hqScene(), n = 0, b = 0, cells = 0; sc.traverse(function (o) { if (o.isMesh) n++; if (o._ew_hqBatch) b++; if (o._ew_sCell) cells++; }); return { meshes: n, batchMeshes: b, squares: cells }; })()`)));
+  console.log('WALK2', JSON.stringify(await ev(`(function(){ var sc = ThreeRenderer.hq.dev.hqScene(), n = 0, b = 0, cells = 0, sk = 0; sc.traverse(function (o) { if (o.isMesh) n++; if (o.isSkinnedMesh) sk++; if (o._ew_hqBatch) b++; if (o._ew_sCell) cells++; }); return { meshes: n, batchMeshes: b, squares: cells, skinned: sk, chars: (function () { try { return ThreeRenderer.hq.dev.chars().length; } catch (e) { return -1; } })() }; })()`)));
   console.log('CAM-BEFORE', JSON.stringify(await camd()));
   console.log('DIAG-BEFORE', JSON.stringify(await diag()));
   await shot('2_walk_merged');
@@ -115,7 +115,7 @@ const run = async () => {
   await fast.settle(page, 0, 6);
   await shot('5_back');
   await sleep(8000);
-  console.log('BACK2', JSON.stringify(await stat()), JSON.stringify(await ev(`(function(){ var sc = ThreeRenderer.hq.dev.hqScene(), n = 0, b = 0, cells = 0; sc.traverse(function (o) { if (o.isMesh) n++; if (o._ew_hqBatch) b++; if (o._ew_sCell) cells++; }); return { meshes: n, batchMeshes: b, squares: cells }; })()`)));
+  console.log('BACK2', JSON.stringify(await stat()), JSON.stringify(await ev(`(function(){ var sc = ThreeRenderer.hq.dev.hqScene(), n = 0, b = 0, cells = 0, sk = 0; sc.traverse(function (o) { if (o.isMesh) n++; if (o.isSkinnedMesh) sk++; if (o._ew_hqBatch) b++; if (o._ew_sCell) cells++; }); return { meshes: n, batchMeshes: b, squares: cells, skinned: sk, chars: (function () { try { return ThreeRenderer.hq.dev.chars().length; } catch (e) { return -1; } })() }; })()`)));
   console.log('CAM-AFTER', JSON.stringify(await camd()));
   console.log('DIAG-AFTER', JSON.stringify(await diag()));
   await shot('6_back_later');
