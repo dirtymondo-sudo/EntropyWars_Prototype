@@ -4563,6 +4563,17 @@ added no real light after pass 3. A true number needs his Mac or the friend's PC
 WHAT A NEXT PASS WOULD DO (not started): an olive tree and a vine model in place of `tree_2` and the leaf sheet; steps cut into the Amphitheatre's tiers so the seats can be
 walked; the Stadium's north seats on level ground; a district look in the tool (the marble paint is grey beside the lit marble of the buildings); cloud that drifts.
 
+**THE MODEL PASS (mondo 11-16, one pass on top of the five; DISTRICT_THREAD_BRIEF.md "THE MODEL PASS"; seen on screen, two probe runs):** the wish-list models stand where
+this district's list said one was missing, and each stand-in is out. `olive_tree` x 7 in the Olive Grove (was `tree_2`). `grape_trellis` x 12 on the Terraces (the leaf sheet
+on posts, its low wall and its ghost walls are gone: the trellis blocks by itself). `tripod_bowl` in place of EVERY brazier (eleven), each with a small fire part in it;
+the bowl gives no light, so the district's real lights are now only its two fountains. `god_statue` in the Temple (Lady Justice is out). `lyre` in place of the harps
+(thrones, the cella, the theatre). `chariot` and two `discus_rack` at the Stadium, a `laurel_wreath` by the prize cup, on the altar and at the hearth. `greek_couch` in place
+of the iron benches (Colonnade, Terraces, Olive Grove) and one in the cella and at the thrones. Three `mountain_goat` on the Goat Track (the sheep there are out) and a `goat`
+in the grove. From other districts' asks: `cypress_tree` x 3 (Terraces, Goat Track), `peacock` at the thrones, `sundial`, `wooden_barrel` x 2, `woven_baskets`, `beehive`,
+`wild_flowers`, `lit_candle` (the shrine's Halloween candles are out), `oil_lamp`. Sizes as the list gives them.
+TO KNOW: the `olive_tree`'s leaves draw as grey shards with black backs up close (its leaf cards; the model's, not the placement). FPS at the proof view, warm: 1.4 before,
+1.4 after (llvmpipe; the first count after a cold load reads 0.1 to 0.6 while 200 new files stream: count twice).
+
 **FOR THE NEXT THREAD (learned here):**
 - A free-standing `look` stands on the ground under its ORIGIN, not under each part: put the origin on a walked square of the plot (O.js `plotLook(id, tag, ox, oy, hug, fn)`),
   never on the plot's corner (a rock corner lifted the whole look out of sight). On a sloping plot set `hug: true` on the row (every corner then lies on the ground under it)
@@ -4579,13 +4590,14 @@ walked; the Stadium's north seats on level ground; a district look in the tool (
 3. The seats and tiers block (ghost walls): nobody climbs them. The Stadium's track stays open end to end.
 4. No encounter table: the room is shared with three other districts, so a table here would put Olympus units on the ski slopes. The gods stand as natives.
 5. No names added: the plots keep the plan's names; no sign boards.
-6. The Temple's statue is Lady Justice at 4.3 m (the one goddess-like statue in the game); a statue of a named god is on the NEEDS A MODEL list.
+6. The Temple's statue is the wish list's `god_statue` since the model pass (it was Lady Justice).
+10. Every brazier became a tripod bowl (the brief's word), so their real lights are gone; say so if you want some braziers back for the night.
 7. The Temple has a wooden double door that swings (your rule for walk-ins); it was an open frame.
 8. Six more units stand in the district (valkraye, giant, nephilim, unicorn, occulus, watcher): your word 11-16 was more NPCs; all are `divine` / `ancient` units. None has a line (no invented words).
 9. The spyglass at the Goat Track is the game's modern telescope (the world is a parody of the real one).
 
-**NEEDS A MODEL:** an olive tree; a grape vine on a trellis (the vine rows are a leaf sheet on posts); a laurel wreath; a chariot; a discus and a javelin rack; a tripod bowl
-(the brazier stands in); a Greek couch; a lyre (the harp stands in); a statue of a god (the angel, the bust and Lady Justice stand in); a goat for the Goat Track.
+**NEEDS A MODEL:** nothing open. PLACED in the model pass (11-16): olive tree, grape trellis, laurel wreath, chariot, discus and javelin rack, tripod bowl, Greek couch,
+lyre, statue of a god, goats. Still wanted, not asked before: a fire with real flame and light for the tripod bowl; an olive tree whose leaves draw clean.
 **6. ADDED BY THE SKI LODGE THREAD (district K, 2026-11-16):**
 - THE MODEL LIST FIRST (mondo 11-16). Catalogue rows on R2 that fit a snow zone and that no Mountains file had used: `flood_mast` (a real night light, 26 m),
   `festoon`, `pa_speaker`, `ticket_booth`, `turnstile` / `metro_gate`, `rope_stanchion`, `surfboard_rack`, `scarf_rack`, `key_rack`, `brochure_rack`, `map_table`,
@@ -5120,6 +5132,10 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   seats itself under the roof: stand table things on the ground.
   A `sign` quad faces south with no `ry`, north with 180, west with 90, east with 270. Mist over water = an `airZones()` `dust` zone, pale,
   slow, a few hundred; it shows at night, hardly by day.
+  THE WISH-LIST MODELS (seen at the Lake): `reeds`, `lake_rock` (scales to 7 m by `span`), `iron_lamp_post` (no glow: add a drawn amber
+  box 0.3 x 0.4 x 0.3 at 2.78 m), `wood_stove`, `picnic_table`, `heron`, `duck`, `swan`, `mooring_bollard`, `oars`, `fishing_rod` (a 2 m
+  stand), `willow_tree` (`noBlock`, its foot is the crown), `string_lights`, `trail_sign`, `leafy_bush`, `wild_flowers`, `moss_clump`,
+  `bbq_grill`, `firewood_stack`, `rope_coils`, `fish_boxes` all draw right at their listed sizes.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5273,6 +5289,18 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   crest, the old Harbour's `cave_stone` is a 2 m standing stone and a blocker on a walk two squares wide, so they are ten
   `psxg_rock_*` set by hand on the crest's sea side; two people moved to the wharf's rail and one off the Long Pier's walk.
   Frame rate, the quay view: 0.3 fps, 751 draw calls, 1.46 M triangles (first look: 0.8 fps, 895 calls, 2.30 M; the cloud's swing).
+- **THE MODEL PASS (11-16, mondo: "these are models that were added ... tell all of those district threads that needed models to use
+  these ones"; docs/plans/WISHLIST_MODELS_ADDED.md read end to end; seen by day and at 22:30):** ASKED FOR AND PLACED: `trawler` (at
+  the Roads' mooring buoys), `tugboat` (alongside the Long Pier), `seagull` x 14 (kerbs, pier edges, the Breakwater, the wharf, the
+  shed's ridge), `rope_coils` x 4, `fish_boxes` x 3, `mooring_bollard` x 17. STAND-INS TAKEN OUT: the seventeen drawn bollards and the
+  seventeen drawn lamps (now `iron_lamp_post`; the model has no glow or light, so one drawn flame as wide as its glass stays in each
+  lantern). FROM THE OTHER DISTRICTS' ASKS: `cage_lamp`, `drying_fish`, `oars`, `fishing_rod`, `woven_baskets`, `wooden_barrel` x 2,
+  `coin_telescope`, `heron`, `wooden_ladder`, `wheelbarrow`. NOT USED: `rat` (21,754 triangles for a 12 cm animal: for whoever
+  optimises the list), `lantern_post` (the lantern hangs off-centre), `string_lights` (it stands on its own posts).
+  LEARNED: a ship afloat = `{ y: <depth of her keel>, hover: 0 }` (the trawler rides right at -1.6 with a hover; the tug's keel is
+  deep and with a `hover` she rode high whatever `y` said: `y: -2.2, hover: 0`). WEIGHT: the Harbour's 208 props are 0.66 M triangles
+  (0.40 M before this pass). Frame rate, the quay view: 0.3 fps before and after; 1,701 draw calls and 4.0 M triangles in view now,
+  most of it the other Beach districts that landed since (the room went from 508 to 911 props).
 - **STOPPED AFTER FIVE PASSES (DISTRICT_THREAD_BRIEF.md; the order reached this thread after its fifth pass was merged).** SIX PRs in
   all: the five passes and THE MODEL LIST FINDS, which landed between pass 1 and pass 2 on mondo's own "look at the model list right
   now". No sixth pass. The brief's end-to-end read of every list was NOT done as it asks: this thread searched MODEL_LIST.md by word,
@@ -5286,7 +5314,7 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   4. THE EIGHT `dockring` PROPS ARE OUT (a space-station ring, the wrong model); drawn bollards stand there.
   5. HOUSES ON PILES are new scenery: one in the Roads, one in the Mouth, one off the skiff jetty (the pack's own stilt houses,
      solid, nobody goes in). The plan names only buoys and waiting ships there.
-  6. NO SHIP IN THE ROADS: the ghost wreck is the Triangle's landmark and was not used a second time.
+  6. THE ROADS' SHIP IS THE TRAWLER and the tug lies at the Long Pier (the model pass); the ghost wreck stays the Triangle's.
   7. THE CRANE on the wharf is mondo's Babel scaffold crane (`babel_crane`).
   8. THE GANGWAY is a drawn brow up to the Dutchman's rail at the tool's link place; the ship herself was not touched.
   9. THE BREAKWATER'S BOULDERS are ten rocks set by hand on its sea side (the earlier scatter of ten put them on the walk).
@@ -5298,8 +5326,7 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
 - **ALL FIVE PASSES ARE LIVE.** Still short of Disaster City's best: one walk-in only (the plan draws one building); the brow lands
   on the Dutchman's rail; no ship in the Roads, no gulls, no sound; the people stand still; nobody has walked it in a real game
   (the wharf, the gantry and the Breakwater are checked on the compiled heights and in pictures, not with the walker).
-- **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
-  the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
+- **NEEDS A MODEL:** nothing open (the trawler, the tug, the gulls, the rope, the fish boxes and the bollard are in: THE MODEL PASS).
 - **NOT DONE (outside a district's reach):** The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
 - **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
@@ -5468,6 +5495,22 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
     femur and a skull, four ferns, a flamingo, the second eagle, a rowboat, a brazier, lobster traps, a hanging lantern, rope, a spyglass),
     spare sea animals. Stairs + rails are 32 k, palms + sea stacks 27 k, the two insides nothing from outside. The cloud's fps is no
     measure (the bare district read 2.0-3.6 fps and the full one 6.6-7.2 in the same hour): compare draw calls and triangles.
+- **THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; docs/plans/WISHLIST_MODELS_ADDED.md; seen on
+  screen, probe views `m_*`) — THEN STOPPED AGAIN:**
+  - PLACED, AND WHAT STOOD IN FOR IT WENT: `avenger_wreck` x2 at No Fixed Position (the three hull plates went); `timber_lookout` on
+    the lookout's rock (the drawn straw roof, bench and flag went; the rock, stair and rail carried over from the old cay stay, the
+    walker still climbs to the tower's foot); `pirate_flag` on the lookout and at the Jetty's landward end; `thatched_hut` at the camp
+    (the blue dome tent went); `parrot` on the Shack's porch (the bird cage went); `seagull` x3 (the eagle over the light went);
+    `tropical_bush` x4 under the palms (dead scrub went there); `mooring_bollard` x3 on the Jetty (the drawn posts and rope went) and
+    x2 at the Lighthouse Rock's steps; `raft` afloat at the Jetty; `torn_sail_mast` in the water by the Wreck Islet; `wooden_barrel`
+    for every steel drum in the pirate places (the keeper's oil drums stay steel).
+  - FROM THE OTHER LISTS: `banana_plant` x2, `coconuts` x2, `dugout_canoe` at the Lagoon, `oars` by the rowboat, `rope_coils` on the
+    Jetty, `drying_fish`, `woven_baskets` and a `kettle` at the camp.
+  - SEEN: a blocker on a water square stands on the surface, so `y: -0.7` / `-1.3` sinks an `avenger_wreck` to its wings / its
+    canopy; `raft` rides right with no `y`. `thatched_hut` is 5.1 m wide: its middle on the line between two squares. The models'
+    facing needed no turn here.
+  - FRAME RATE (the island view, before / after this pass): 448 draw calls / 759 k triangles -> 460 / 818 k (827 k before four
+    extras were taken out again).
 - **LEARNED (for the zone kit):**
   - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
     water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
@@ -5502,13 +5545,14 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   `stump` `hollow_dead_tree` `psxg_stepping_stone_1/2` `flamingo` `eagle` `crow`. Eerie (nothing placed: the plan names none):
   `obelisk` `menhir` `stone_altar` `decor_stone_arch` `crystal_cluster` `floating_orb` `ufo` `light_shaft` `white_cloud`.
   Not wired, would fit a ruin: `mcsteeg_castles/Castles_and_Forts.glb` nodes `Wall_2x4_ruined`, `Tower_mid_hollow_ruined`.
-- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is a rock platform with a timber stair on a real dune, not a
-  timber tower (no tower model; the old one was a plateau too). (2) Flight 19 is three torn hull plates (five at first; two went for the frame rate), not planes (no 1945 aircraft
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is the old cay's rock platform with a timber stair on a real dune, and since the model pass the
+  `timber_lookout` tower stands on it (the tower is a prop: the walker climbs to its foot, not up it). (2) Flight 19 is three torn hull plates (five at first; two went for the frame rate), not planes (no 1945 aircraft
   model; the F-22 was not used). (3) Two walk-ins: a wrecker's shack on the island ("the Shack", at the Jetty's path, off the fight's sand) and the keeper's store on the Lighthouse Rock; the lighthouse itself is the game's own prop and is not entered. (4) The Maelstrom's foam is
   drawn and still; the turning is the link's own funnel and the wreckage. (5) The Lighthouse Rock got steps so the tape can be reached on
   foot from a boat. (6) The `dockring` at the Jetty was taken out (wrong model).
-- **NEEDS A MODEL:** a Flight 19 Avenger wreck; a timber lookout tower; a raft; a mast and torn sail; a pirate flag; a parrot and gulls;
-  a thatch hut; tropical bushes and flowers; a mooring post; a whirlpool surface that turns wider than 9 m; a wet-sand / reef-floor sheet.
+- **NEEDS A MODEL (after the model pass; the Avenger, the lookout tower, the raft, the mast and sail, the pirate flag, the parrot,
+  the gulls, the thatch hut, the tropical bush and the mooring post are IN and placed):** a whirlpool surface that turns wider than
+  9 m (a moving effect, not a model); a wet-sand / reef-floor sheet (a ground sheet).
 
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
@@ -6457,6 +6501,25 @@ a PR each: exteriors, interiors, dressing, atmosphere, polish.
   green edges at the Boathouse's door from inside (the tool's door row, as in H). Fish cannot be seen under the opaque water. No sound
   bed. No residents with routines, no lines, no encounter table (mondo's). The draw calls doubled (see THE COST): the next step is to find
   which props batch and which do not, and merge or thin the ones that do not.
+
+### THE MODEL PASS (2026-11-16, mondo: "these are models that were added ... use these ones"; seen in the cloud browser, day and night)
+- **STAND-INS OUT, MODELS IN:** the ocean seaweed -> `reeds` (about 27 clumps, 1.6 to 2.1 m, `noBlock`); the near-black ocean rocks ->
+  eight `lake_rock` (a row's `span` 7.5 m down to 2 m: the 1.5 m boulder scales up cleanly); the eight drawn lamp posts -> `iron_lamp_post`
+  (`noBlock`, on the decks' edges); the drawn pot-belly stove -> `wood_stove`; the two drawn picnic tables -> `picnic_table`; the flamingo ->
+  two `heron` (one in the Marsh's north pool, one on the Reeds' mud).
+- **NEW:** five `duck` among the lily pads and two `swan` north of the dock (a floating bird in the 1 m lake = `y: 0.97`, a lift off the bed),
+  six `mooring_bollard`, `oars` by the shingle boat and in the Boathouse, three `fishing_rod` (dock head, jetty, Boathouse; it is a rod on a
+  2 m stand: `span: 1.6`, `noBlock`), `firewood_stack` by the stove, `fish_boxes` and `rope_coils` on the dock, two `willow_tree` at the
+  water (`noBlock`: its catalogue foot is the crown, 3.85 m), `leafy_bush`, `wild_flowers`, `moss_clump`, a `bbq_grill` and two
+  `string_lights` at the shelter, a `trail_sign` at the north gap (was a blank signpost), `backpack`, `sleeping_bag`, `kettle` at the camp,
+  `dragonfly`, one `deer` under the north trees.
+- **THE LAMPS AT NIGHT:** `iron_lamp_post` has no glow of its own (dark at night as placed). A drawn amber box 0.3 x 0.4 x 0.3 at 2.78 m
+  over the foot, in the fittings row, fills the lantern and lights it; a smaller one (0.2) stayed hidden inside the glass.
+- **THE COST, back to back in one sitting (the whole district from 60 m, second reading):** main before this pass 1,138 draw calls and
+  1.2 frames a second; with the model pass 1,151 and 1.6. No loss to measure (the cloud's rate wanders between 1.0 and 1.8 run to run; the
+  calls in this view rose from 996 to 1,138 through other districts' passes). The props batch: 40 fewer reeds changed no draw call.
+- **NEEDS A MODEL: nothing left.** Not used: `lantern_post`, `dock_boat` (a pier section with its own boat: the decks are the room's).
+- Board row: "5 passes live + the model pass, STOPPED, waits mondo's look".
 
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
@@ -7638,7 +7701,13 @@ yard door and two plots; both are one row to change.
 - **DECISIONS MADE FOR MONDO:** the door up stands in the Power station's YARD (not in the turbine hall); two plots; the stair climbs from
   the track tunnel; the sludge = Corroded for 2 rounds, no race immune by terrain; who lives there besides kaiju and black goo: mad
   scientist, swamp monster; black goo tendrils stand in the tank (props only, no unit, no rule).
-- **NEEDS A MODEL:** a lying waste pipe mouth (1 m bore) for the channel's head; a hazmat suit on a hook; a yellow drum with the trefoil.
+- **NEEDS A MODEL:** ~~a lying waste pipe mouth; a hazmat suit on a hook; a yellow drum with the trefoil~~ all three made and placed (below).
+- **THE MODEL PASS (mondo 11-16, `docs/plans/WISHLIST_MODELS_ADDED.md`; R.js `pieces`, called from `dress`):** `waste_pipe` lying in the
+  channel's head (its bore runs east-west as made: face 90 lines it along a north-south channel), four `hazmat_suit` (the door passage,
+  the gallery, the Pit's doorway), seven `radiation_drum` (the rusty barrels that stood in for them are out; a drum is a blocker, so none
+  stands on a one-square walk), a `valve_wheel` between the pumps, fourteen `cage_lamp` on the walls (no light of their own: the room is
+  over its light cap), three `rat` off the walks. Also fits, not placed: `manhole_ladder`, `tunnel_signal`, `steel_bench`, `strobe_lamp`,
+  `stretcher`. FPS in the probe (software renderer, the Drain's gallery view): 2.7 before, 2.7 after.
 - **NOT DONE / KNOWN SHORT:** the sludge gives no light of its own on the walls (the room is over the 10 prop lights already: its glow is
   the sheet's emissive only) and its sheet reads flat from far off; no pipes where the channel starts; brick piers in the tank were tried and
   taken out (the sheet tore into spikes round them); no sound.
