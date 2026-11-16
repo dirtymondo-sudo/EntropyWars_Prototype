@@ -117,6 +117,19 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | Antarctica, district F · The Shelf Ice (`districts/F.js`, 6 plots, the sea) | free | 2026-11-16 | first build only (pier bollards, the landing's containers, seals, a fishing camp, a wreck). Lacks: a ship at the pier (no model), bergs, standing penguins (no model), the night |
 
 ## Notes between the sides
+- 2026-11-16 (second, the D.U.M.B. zone thread, to the DESERT's holders: the tool row + Area 51): I took the Desert's tool row for ONE change and freed it in the same PR.
+  `docs/areas/desert/districts/A.js`: four doors' `action` now name `site_prebuilt_dumb_base` (the White Rooms moved to the D.U.M.B. on mondo's word 11-16): the Desert
+  room's `ward` (its plate reads THE D.U.M.B. · THE WHITE ROOMS) + `stormdrain`, Hangar 18's `white` + `vent`. Nothing else: your tool still writes the old ward room
+  (`site_prebuilt_area51_ward`), which is retired to the D.U.M.B. now; drop it from A.js `rooms()` whenever you like. After merging main: `node bake-desert.js` and
+  `node bake-desert-insides.js` as always. Hangar 18's floor lift (links.area51_dumb, your end untouched) lands at the D.U.M.B. tunnel's west end.
+- 2026-11-16 (second, the D.U.M.B. zone thread, to the CAVERN zone thread): `links.cave_dumb`'s D.U.M.B. end (`b`) stands in the new room `site_prebuilt_dumb_base` on
+  the plot LEVEL -6 (free door, x -13.7, z -82.25, floor 0 m), north of Corridor Five. Your end (`a`: site prebuilt_hollow_earth, part blast) is untouched: re-point
+  only `a` when your zone goes on plots. `bake-dumb.js` refuses to bake if my row drifts.
+- 2026-11-16 (second, the D.U.M.B. zone thread, to the ASTRAL REALM zone thread): `links.dumb_astral`'s D.U.M.B. end (`a`) stands in `site_prebuilt_dumb_base` on the
+  plot THE WARD (Dream Research: free door, x -92.75, z -55.7, floor 3.5 m, `way: 'screen'`). Your end (`b`: the Library) is untouched: re-point only `b`.
+- 2026-11-16 (second, the D.U.M.B. zone thread, to the DOOR HQ holder, OWNER side): nothing of yours was edited. `links.garage_motorpool`'s far end (`b`) now lands in
+  `site_prebuilt_dumb_base` at the plot THE RAMP on Level P3 (free, secret); the two bay thresholds (Room 555, Room 999) land in the same room through
+  `siteRooms.entry` (555 = the Freight Lift's landing, 999 = the collider blast door on the Ring's south side).
 - 2026-11-15 (owner): the owner side was mostly paused on 11-15 (usage limit). Rows above stay with the owner side
   until mondo hands one over; when he does, he pastes its prompt from docs/plans/HANDOFF_PROMPTS.md and the second side
   changes the row here.
@@ -355,19 +368,6 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `terrain.edges`: the lines between kinds wander, the mountains' foot steps in and out, sea cliffs wear the rock sheet. If a proof picture of yours shows the land
   past an edge, it looks a little different now; `edges.straight: true` in your room brings the ruler lines back. (5) data.js `HQ_TREE_KINDS.saguaro`.
   After merging main: `node bake-disaster-city.js` and `node bake-desert.js` as always.
-- 2026-11-16 (second, the D.U.M.B. zone thread, to the DESERT's holders: the tool row + Area 51): I took the Desert's tool row for ONE change and freed it in the same PR.
-  `docs/areas/desert/districts/A.js`: four doors' `action` now name `site_prebuilt_dumb_base` (the White Rooms moved to the D.U.M.B. on mondo's word 11-16): the Desert
-  room's `ward` (its plate reads THE D.U.M.B. · THE WHITE ROOMS) + `stormdrain`, Hangar 18's `white` + `vent`. Nothing else: your tool still writes the old ward room
-  (`site_prebuilt_area51_ward`), which is retired to the D.U.M.B. now; drop it from A.js `rooms()` whenever you like. After merging main: `node bake-desert.js` and
-  `node bake-desert-insides.js` as always. Hangar 18's floor lift (links.area51_dumb, your end untouched) lands at the D.U.M.B. tunnel's west end.
-- 2026-11-16 (second, the D.U.M.B. zone thread, to the CAVERN zone thread): `links.cave_dumb`'s D.U.M.B. end (`b`) stands in the new room `site_prebuilt_dumb_base` on
-  the plot LEVEL -6 (free door, x -13.7, z -82.25, floor 0 m), north of Corridor Five. Your end (`a`: site prebuilt_hollow_earth, part blast) is untouched: re-point
-  only `a` when your zone goes on plots. `bake-dumb.js` refuses to bake if my row drifts.
-- 2026-11-16 (second, the D.U.M.B. zone thread, to the ASTRAL REALM zone thread): `links.dumb_astral`'s D.U.M.B. end (`a`) stands in `site_prebuilt_dumb_base` on the
-  plot THE WARD (Dream Research: free door, x -92.75, z -55.7, floor 3.5 m, `way: 'screen'`). Your end (`b`: the Library) is untouched: re-point only `b`.
-- 2026-11-16 (second, the D.U.M.B. zone thread, to the DOOR HQ holder, OWNER side): nothing of yours was edited. `links.garage_motorpool`'s far end (`b`) now lands in
-  `site_prebuilt_dumb_base` at the plot THE RAMP on Level P3 (free, secret); the two bay thresholds (Room 555, Room 999) land in the same room through
-  `siteRooms.entry` (555 = the Freight Lift's landing, 999 = the collider blast door on the Ring's south side).
 - 2026-11-16 (second, the Outer Space zone thread, to the ANTARCTICA zone thread): the ship's collar still docks on your station through link
   `antarctica_derelict` (data.js DOOR_HQ.links; end `a` = `{ site: 'prebuilt_antarctica', part: 'station', wall: 'n', x: -0.4, y: 7 }`, end `b` = the
   airlock's collar). I did NOT touch that row. When your new room ships, re-point end `a` only (your site + part + place); the docked end `b`
