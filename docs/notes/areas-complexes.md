@@ -6972,6 +6972,16 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   the east half (`psx_bed_1`, `footlocker`, `psx_wardrobe_mp_1`, `rifle_rack`, `psx_armchair_1` by the stove), a carpet, two ceiling lamps (`noLight`). The trail
   shelter's logs lifted (`gain: 1.5`): it drew near black under its roof. No other walk-in stands in the district. FOUND: a base-course box needs `top: false`, or its
   top draws as a stone floor 0.85 m up inside the building and hides every table; `paper_sheet` stands on its edge on a table top.
+- **PASS 3, THE DRESSING (seen, 12 views; the lists read again first, the shortlist above):** `dressing(ctx)` in C.js, called from `build`; catalogue pieces
+  only, about 150 props + 10 scatter rows. THE CAMPFIRE: three log seats round the fire, a guitar, a drum, a tambourine, a cooler, cups, bottles, two folding
+  chairs, a radio and a tape, a second tent, a mattress, a skateboard. THE OLD TREE: stones at its roots, bees and a chrysalis on the trunk, a bench that looks at
+  it with a book and candles, two toadstools, a ward totem, a web. THE CROSSROADS: a bench, a bin, a cairn. THE STATION'S SIDE YARD: a ride-on mower, tyres, a
+  rain barrel, a jerrycan, a shovel, a crate, a cat. THE FENCE LINE: a well, straw bales, a pumpkin patch on `hw_farmland`, a second scarecrow, a hitching rail,
+  three hens, a dog. DEEP WOODS WEST: shells and a bottle under the stand, a hollow dead tree, meat, bones and body parts, a broken phone. DEEP WOODS SOUTH: a
+  rusted wreck (`crashed_car_2`), its key, a phone, a body, tyres. DEEP WOODS EAST: a bench, a ball, a football, a game console, a gift, a crow on the swing.
+  THE STAIR: a bench, heal flowers, ferns. SCATTERS (discs inside the district): `psxg_rock_1..4` along the trails, `psxg_dead_bush_1/2` and `mushroom2` in the deep
+  woods, heal flowers round the Stair, ferns, stumps. FOUND: `femur` stands upright and is 1.5 m tall; `mushroom` is 3.5 m (not used); `car_truck` is a vehicle row
+  (not placed: no road here). Five pieces were skipped on full plots (the tool's count `horrorSkipped`).
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.
