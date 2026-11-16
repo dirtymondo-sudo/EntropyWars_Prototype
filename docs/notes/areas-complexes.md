@@ -6042,6 +6042,11 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **FROM THE FOREST (district W, pass 1)**: `groundAlso(x, y)` beside `ground` = squares outside a file's plots that wear its ground. A prop
+  standing in a ghost wall's square takes `floor: true` (without it the cross of the wayside shrine stood 2.2 m up, on the wall's top).
+  A lantern post for a road = `W.js` `lantern()`; a banner pole = `bannerPole()`; a log stack = `logpile()` (no lying cylinder exists: a
+  log is a box with a `barrel` roof on it); a ridge tent = `tent()` (six `gable` strips of two colours, dark end strips for the mouth).
+  `lion_statue` (h 1.5) on a 1 m plinth reads well at a gate. A prop over a `stream` does not take `y` the way one over ground does.
 - **A DISTRICT'S OWN GROUND AND AIR (the tool, 2026-11-16)**: a district file may export `ground: '<sheet>'` (painted under its own plots' `g`
   and `t` squares) and `airZones(ctx)` = `[{ x0, y0, x1, y1 (kingdom squares), kind, color, n, speed, wind }]` (kinds: dust, motes, spores,
   fireflies, snow, ash, rain). The kingdom's embers stay over the whole room. Unused, the bake is unchanged.
@@ -6063,6 +6068,55 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   tea tent (never one flat sheet), `sign()` for its boards.
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
+
+## CAMELOT, THE FOREST — the district W thread (2026-11-16, second side; file `docs/areas/camelot/districts/W.js`)
+
+mondo 11-16 (the district order): every district prototyped, own judge, five passes at most. Eight plots along the south wall (squares
+x 0..96, y 84..96) and the forest north of them to the moat's south bank: the road in from DOOR HQ, a loop track, two glades, a deep
+forest glade, the dead tree's hole.
+
+- **AS IT STOOD (first probe, 12 views)**: the kingdom's lawn under thin even trees; a bare cobbled road from the bay to the Drawbridge;
+  two bare knolls with a log each; nothing on the tracks, the bank or at the hole. Frame rate at the bay 0.60 (cloud software GPU).
+- **FITS THIS DISTRICT (the whole MODEL_LIST.md, pack-claims.md and the live catalogue read 11-16)**. Road: `signpost`, `covered_wagon`,
+  `hitching_rail`, `horse` / `horse_brown` / `horse_black`, `brazier`, `cave_torch`, `wall_torch`, `meshy_hanging_lantern`, `ship_lantern`,
+  `ancient_well`, `wooden_bucket`, `hw_fence`, `psxg_wall` / `_corner` / `_pillar`, `psx_wooden_crate_1..6`, `meshy_burlap_sack`,
+  `sea_chest`, `stocks`, `cross`, `hw_candle(s)`, `angel_statue`, `stone_urn`, `lion_statue`. Forest floor: `fern`, `stump`, `meshy_stump`,
+  `fallen_log`, `meshy_fallen_log`, `psxg_rock_1..4`, `hw_stone` + `_1.._5`, `psxg_stepping_stone_1/2`, `psxg_dead_bush_1/2`,
+  `woods_healflower`, `woods_thornvine`, `mushroom2`, `anthill`, `hw_straw`, `psxg_dead_tree_1/2`, `dead_snag`, `hollow_dead_tree`,
+  `hollow_tree`, `meshy_dead_tree_with_a_dark_hole`, `meshy_tree_with_a_hole`. Camp / woodcutter / hunter: `campfire`,
+  `meshy_campfire_ring`, `cauldron`, `psx_hand_saw_1`, `hw_shovel`, `xmas_hammer`, `sword`, `spear`, `arrow`, `spell_shield`,
+  `armour_stand`, `trap_bear_open` / `_shut`, `meshy_rope`, `psx_table_large_2`, `psx_chair_mp_1`, `psx_meat_1`, `instrument_*`,
+  `item_wizard_staff`. Stones and ruins: `menhir`, `sarsen`, `trilithon`, `cave_stone`, `decor_stone_arch`, `stone_altar`, `hw_wall*`,
+  `hw_bricks*`, `psxg_tombstone_1..3`, `hw_grave*`, `footbridge`. Animals: `wolf`, `rabbit`, `crow`, `eagle`, `dog`, `butterfly`,
+  `monarch`, `swallowtail`, `ladybug`, `bee`, `grasshopper*`, `meshy_frog`, `bat_black`. Water: `rowboat`, `meshy_rowboat`,
+  `ocean_seaweed*` (a reed stand-in), `ocean_fish*`. Trees (placed, never remade): `tree_52` great oak, `tree_53/54` birch, `tree_55`
+  spruce, `tree_5` / `tree_6` bare. Races for the people pass (npc-system.md first): robinhood, knight (female), wizard, gnome, goblin,
+  tree person, rabbit, unicorn. Unwired R2 files that fit: none worth a row (§13 holds no forest or medieval piece; the castle pack's
+  ruined walls are nodes of a file, not cut). KEEP OUT: `camping_tent` (modern), `owl_statue` (10 m, the Woods' horror piece),
+  `woods_cabin` (the Woods' own), `crystal_cluster`, the fairy glow pieces (district F's look).
+- **PASS 1, EXTERIORS + LANDMARKS (seen: 13 views, then 10 more after fixes)**. THE CROWN'S ROAD: stone kerbs both sides, seven
+  lantern posts (the Village's lantern on a post with a stone foot), the royal banner (`sheet().banner`) on four poles, at the bay and at
+  the bridge, a CAMELOT milestone (a `txt:` quad), two `lion_statue` on drawn plinths at the bridge's foot (on the bank track's squares
+  41 and 44: the track keeps a whole square past each), a well with its bucket, a wayside `cross` on a stone foot with candles and two
+  flowers, a `covered_wagon` on the east shoulder with a horse, sacks and crates, a hitching rail, great oaks (`tree_52`) at the bay and
+  in the track's notches. THE GLADE, WEST = the woodcutter's glade: a 13 m oak on the knoll, two stacks of cut logs (drawn: a box + a
+  `barrel` roof a log, pale `wood_planks` ends), a saw, stumps. THE GLADE, EAST = a camp: two ridge tents drawn in strips of two
+  colours (never one flat sheet), the fire, a `cauldron`, a horse, a spear and a shield on a crate. THE STONE RING (P07-07): four
+  `menhir` and a `sarsen` round a `stone_altar`. THE DEAD TREE'S HOLE: bare trees (`tree_5`, `tree_6`), dead bushes, crows, two great
+  dead trunks (`meshy_dead_tree_with_a_dark_hole`, `hollow_dead_tree`) by the hole. THE MOAT'S SOUTH BANK: two rowboats at drawn mooring
+  posts. THE UNDERGROWTH: about 250 ferns, pack rocks, dead bushes and stumps under the first trees along the road, the forest track,
+  the side paths and the bank track, by the district's own dice and only on tree squares. THE FOREST FLOOR: `grass_dark_fantasy` under
+  the district and (the tool's new `groundAlso`) under the forest north of it to the bank.
+- **FRAME RATE** (cloud software GPU, the bay looking up the road, the same view): 0.60 before, 0.60 after; geometries 1,938 -> 1,973,
+  draw calls 3,787 -> 4,097. His F3 at the bay is the number that counts.
+- **NOT SEEN YET**: the two rowboats did not draw at the water's level in the first two probes (the bed under a `stream` moves a prop's
+  `y`); two ways are baked now and the next pass's probe settles it.
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
+  the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
+  (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
+  (the zone's own name); (5) the sword in the stone was NOT put here (the castle has it).
+- **NEEDS A MODEL** (nothing on R2): an axe + chopping block, a hand cart, a wooden barrel, a medieval tent or pavilion, reeds, a deer,
+  a fox, an owl, a leafy bush, forest flowers, a milestone.
 
 ## THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY — one room, no door (2026-11-16, second side)
 
