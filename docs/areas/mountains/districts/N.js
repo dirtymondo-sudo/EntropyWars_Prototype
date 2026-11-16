@@ -73,6 +73,7 @@ exports.apply = ctx => {
       a.box(-5.2, 3.9, -4.36, 6.6, 0.1, 0.1, WD2, 0x5a4030); for (let x = -8.3; x <= -2.0; x += 1.05) a.box(x, 3.08, -4.36, 0.08, 0.82, 0.08, WD2, 0x5a4030);
       for (const x of [-1.2, -0.7]) a.box(x, 0, -6.2, 0.07, 3.6, 0.07, WD2, 0x6a4a34); for (let y = 0.35; y < 3.5; y += 0.35) a.box(-0.95, y, -6.2, 0.5, 0.05, 0.05, WD2, 0x6a4a34);
       for (const z of [-6, 0, 6]) for (const x of [-4.4, 4.4]) lamp(a, x, 5.25 - 0.32, z); });                                      // the hearth inside, on the back wall
+  onFloor(SHOP);
   SHOP.put('psx_table_large_3', -2, -2, { face: 90 }); SHOP.put('psx_table_large_3', -2, -7, { face: 90 }); SHOP.put('xmas_hammer', -2, -2, { y: 0.82 }); SHOP.put('xmas_hammer_2', -1.2, -7, { y: 0.82 });
   SHOP.put('xmas_cocoa', -2.6, -6.6, { y: 0.82 }); SHOP.put('xmas_gingerbread', -2.4, -2.6, { y: 0.82 }); SHOP.put('xmas_gift', -6.8, -8.6); SHOP.put('xmas_gift_2', -5.6, -8.9, { face: 30 }); SHOP.put('xmas_gift_3', -7, -6.6);
   SHOP.put('xmas_gift_4', 6.6, 6.8, { face: 60 }); SHOP.put('cardboard_boxes', -6.6, 6.4); SHOP.put('cardboard_box', -5.2, 7.4, { face: 40 }); SHOP.put('sea_chest', 6.4, 2.2, { face: 270 }); SHOP.put('xmas_tree', 5.6, 8.0, { h: 3.2, floor: true });
@@ -81,11 +82,13 @@ exports.apply = ctx => {
   /* THE COTTAGES (the exteriors pass, 11-16): the first look showed sixteen copies of one white town house prop, too wide for their squares. Each run of
      the plan's `B` squares is now a built house of its own you can walk into: [id, plot, lx, ly, front, wall tint, opts]. */
   COTTAGES.forEach(([id, plot, lx, ly, side, tint, q]) => { q = Object.assign({ h: 3.3, rh: 2.6, tint }, q);
-      BUILT[id] = building(id, plot, [lx, ly, lx + 2, ly + 2, side], q.h, { keyIn: q.wood ? WD : 'urban:PlasterWallPainted1a', floorIn: 'wood_planks' }, (a, w, d, dr) => cottage(a, w, d, dr, q, ctx)); BUILT[id].q = q; R.count.cottages = (R.count.cottages || 0) + 1; });
+      BUILT[id] = building(id, plot, [lx, ly, lx + 2, ly + 2, side], q.h, { keyIn: q.wood ? WD : 'urban:PlasterWallPainted1a', floorIn: 'wood_planks' }, (a, w, d, dr) => cottage(a, w, d, dr, q, ctx)); onFloor(BUILT[id]).q = q; R.count.cottages = (R.count.cottages || 0) + 1; });
 };
 exports.tailor = t => { t.set('P03-00', 7, 8, 's'); t.set('P03-00', 7, 9, 's'); };   // the plan's sixteenth house (P03-00 8,8) was cut off by one drift square: these two squares are its way in
 
 /* ── a cottage's look. Parts frame: the house's middle, x along the front, +z out of the front. ── */
+/* every prop of a walk-in is `floor: true` (the city's INTERIOR POLISH: without it a prop within a body's reach of a wall stands on the wall's TOP) */
+const onFloor = B => { const p = B.put; B.put = (key, lx, lz, q) => p(key, lx, lz, Object.assign({ floor: true }, q || {})); return B; };
 const BUILT = {};   // id -> the built house (its frame: x along the front, +z out of the front, the back wall at -3.5), for the insides
 const TRIM = 0xf6f6f2, PANE = 0xffc070, BULBS = [0xff3828, 0x38d058, 0xffc030, 0x4890ff];
 const pane = (a, x, y, z, w, h, ew, shut, ctx, inn) => {   // a lit window: a warm pane, a white frame and cross, shutters (ew: on a side wall; inn: seen from inside, the night in it)
@@ -161,12 +164,12 @@ exports.build = ctx => {
     const R = ctx, { put, dec, tree, native, building, look, flat, cabin, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
   /* ══ THE INSIDES (pass 2, 11-16). A house's frame: x along its front, +z out of the door, the back wall at z -3.5; `face` 180 looks out of the front, 0 at
      the back wall, 90 to +x, 270 to -x. A 7 m house has 6.4 m inside.
-     A PROP WHOSE FOOT TOUCHES A WALL'S 0.3 m BOX LANDS ON THE ROOF (seen 11-16: the mail boxes at y 6.7): keep a wall piece's middle 0.4 m off the outer face. ══ */
+     A prop near a wall stood on the wall's top (seen 11-16: the mail boxes at y 6.7) until every inside prop got `floor: true` (onFloor). ══ */
   { const B = id => BUILT[id], T = 0.86;
     /* A PROP'S `y` (three-renderer.js THE TIER HEIGHT, measured here 11-16): under 1 it is a lift over what is under the prop; from 1 up it is a height from
-       the ROOM's floor, and the village stands 1.75 m over that, so UP(h) = h over a house's floor. Within about 0.6 m of a building's outer face a prop
-       stands on the wall's 2.15 m walker box (the mail boxes hung at y 6.7): WALL(h) = h up the wall for a piece hung there (h from 1.55 up; pass mount 0). */
-    const G = 1.9, UP = h => h < 1 ? h : r2(G + h), WALL = h => ({ mount: 0, y: h >= 2.03 ? r2(G + h) : r2(h - 2.03) });
+       the ROOM's floor, and the village stands 1.75 m over that, so UP(h) = h over a house's floor. A piece hung on a wall: WALL(h) (`mount: 0` = not the
+       catalogue's own hanging height; every inside prop is `floor: true` through onFloor, so the wall beside it does not lift it). */
+    const G = 1.9, UP = h => h < 1 ? h : r2(G + h), WALL = h => ({ mount: 0, y: UP(h) });
     const hearthSide = h => (h.q.chimney || 0);
     const xmas = (h, x, z) => { h.put('xmas_tree', x, z, { h: 1.9, floor: true }); h.put('xmas_gift', x - 0.7, z - 0.2, { face: 20 }); h.put('xmas_gift_3', x - 0.3, z - 0.7, { face: 70 }); };
     const mantel = h => { const c = hearthSide(h); if (!c) return; h.put('hearth_fire', c, -2.72, { w: 0.85, h: 0.75 }); h.put('xmas_stocking', c - 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_stocking_2', c + 0.5, -2.2, { y: 1.05, face: 180 }); h.put('xmas_garland', c, -2.18, { y: 1.66, face: 180 }); };
@@ -181,11 +184,11 @@ exports.build = ctx => {
         h.put('psx_dinner_table_1', s * 1.75, -1.4); h.put('psx_chair_mp_3', s * 1.75, -0.35, { face: 0 }); h.put('psx_chair_mp_3', s * 1.75, -2.45, { face: 180 });
         h.put('xmas_cocoa', s * 1.5, -1.3, { y: T }); h.put('xmas_cookies', s * 2.05, -1.55, { y: T }); h.put('xmas_cocoa_2', s * 1.95, -1.0, { y: T });
         h.put('psx_sofa_1', -s * 2.45, -0.5, { face: s > 0 ? 90 : 270 }); h.put('rug_round', -s * 0.7, 0.2); h.put('psx_shelf_mp_5', s * 2.85, 1.2, { face: s > 0 ? 270 : 90 });
-        mantel(h); if (tree) xmas(h, -s * 2.3, 2.3); h.put('psx_painting_1', -s * 3.12, 0.2, Object.assign({ face: s > 0 ? 90 : 270 }, WALL(1.7))); };
+        mantel(h); if (tree) xmas(h, -s * 2.3, 2.3); h.put('psx_painting_1', -s * 3.12, 1.9, Object.assign({ face: s > 0 ? 90 : 270 }, WALL(1.7))); };
     bedHome(B('square4'), true); tableHome(B('west1'), true); bedHome(B('west2'), false); tableHome(B('west3'), false); bedHome(B('west4'), true);
     tableHome(B('east2'), false); bedHome(B('east3'), true); tableHome(B('east4'), true); bedHome(B('north1'), false); tableHome(B('north2'), true); bedHome(B('north3'), true);
     /* THE POST OFFICE: the counter, the boxes on the back wall, the sacks */
-    { const h = B('post'); h.put('form_counter', -1.3, -0.9, { face: 180 }); h.put('form_counter', 0.9, -0.9, { face: 180 }); h.put('mailbox_bank', -1.6, -2.58, { y: 0.9, face: 180 }); h.put('mailbox_bank', 0.3, -2.58, { y: 0.9, face: 180 });
+    { const h = B('post'); h.put('form_counter', -1.3, -0.9, { face: 180 }); h.put('form_counter', 0.9, -0.9, { face: 180 }); h.put('mailbox_bank', -1.6, -2.58, { y: 0.9, face: 180 }); h.put('mailbox_bank', 0.3, -2.58, { y: 0.9, face: 180 }); h.put('notice_board', 3.1, -1.9, Object.assign({ face: 270 }, WALL(1.1)));
       h.put('wall_clock', 2.2, -3.14, Object.assign({ face: 180 }, WALL(2.2))); h.put('platform_scale', 2.5, -2.2, { face: 180 }); h.put('meshy_burlap_sack', 2.6, 2.3); h.put('meshy_burlap_sack', 2.2, 1.5, { face: 80 }); h.put('meshy_burlap_sack', 2.75, 0.8, { face: 200 });
       h.put('newspaper_bundles', -2.6, 2.5); h.put('xmas_gift_2', -2.5, -2.4); h.put('xmas_gift', -1.9, -2.2, { face: 40 }); h.put('xmas_gift_4', -2.6, -1.7); }
     /* THE BAKERY: the oven beside the hearth, the racks, the counter */
@@ -205,7 +208,7 @@ exports.build = ctx => {
     /* THE WORKSHOP: three more benches, the toys on them, the tools, the bell by the chimney (the gnome's line), the wrapping in the loft */
     { const h = B('workshop'); h.put('psx_table_large_3', -2, 3.5, { face: 90 }); h.put('psx_table_large_3', 3.5, -2, { face: 90 }); h.put('psx_table_large_3', 3.5, 3.5, { face: 90 });
       h.put('beach_ball', -2, 3.2, { y: 0.91 }); h.put('xmas_gift_3', -2.2, 4.2, { y: 0.91 }); h.put('football', 3.4, -2.4, { y: 0.91 }); h.put('decor_carousel_horse', 3.5, 3.5, { y: 0.91, h: 0.7, face: 250 }); h.put('xmas_gift_4', 3.6, -1.4, { y: 0.91 }); h.put('railway_lantern', 3.3, 2.6, { y: 0.91 });
-      h.put('tool_pegboard', -8.38, 0.5, Object.assign({ face: 90 }, WALL(1.6))); h.put('tool_pegboard', -8.38, 3.0, Object.assign({ face: 90 }, WALL(1.6))); h.put('tool_chest', -7.9, 5.6, { face: 90 }); h.put('ships_bell', 4.6, -10.1, Object.assign({ face: 180 }, WALL(3.0)));
+      h.put('tool_pegboard', -8.38, 0.5, Object.assign({ face: 90 }, WALL(1.2))); h.put('tool_pegboard', -8.38, 3.0, Object.assign({ face: 90 }, WALL(1.2))); h.put('tool_chest', -7.9, 5.6, { face: 90 }); h.put('ships_bell', 4.6, -10.1, Object.assign({ face: 180 }, WALL(3.0)));
       h.put('xmas_gift', -7.6, -9.2, { y: UP(3.08) }); h.put('xmas_gift_2', -6.4, -9.4, { y: UP(3.08), face: 30 }); h.put('xmas_gift', -5.0, -9.3, { y: UP(3.08), face: 60 }); h.put('xmas_gift_4', -7.8, -7.6, { y: UP(3.08) }); h.put('cardboard_boxes', -3.6, -9.2, { y: UP(3.08) });
       h.put('cardboard_box', -7.6, -6.0, { y: UP(3.08), face: 40 }); h.put('xmas_gift_3', -6.4, -9.4, { y: UP(3.56) }); h.put('xmas_garland_2', -5.2, -10.12, Object.assign({ face: 180 }, WALL(4.3))); h.put('psx_wooden_crate_2', 7.4, 6.0); h.put('psx_wooden_crate_3', 7.5, 4.6, { face: 20 }); }
   }
