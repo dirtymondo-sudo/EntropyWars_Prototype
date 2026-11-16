@@ -14,15 +14,18 @@
    WHAT STANDS HERE TODAY (seen on screen 11-16, the district thread's first look + the exteriors pass)
    - THE WORKSHOP (P02-00, walked into, door east): red boards on a stone foot, snow roof, white trim, lit windows, its board over the door, hearth, two work
      tables, gifts. Its hearth is the link `northpole_haunted` (ctx.anchor('hearth'))
-   - 15 COTTAGES, each a walked-in building (COTTAGES below: one row a house; 7 x 7 m, a door, lit windows, a snow roof, lights along the front). Five wear a
+   - 16 COTTAGES, each a walked-in building (COTTAGES below: one row a house; 7 x 7 m, a door, lit windows, a snow roof, lights along the front). Five wear a
      plain board (POST OFFICE, BAKERY, TOY SHOP, STABLE, COAL): plain labels, waiting for mondo's word.
    - THE INSIDES (pass 2): every house is lit and furnished (build, "THE INSIDES"): ten homes on two plans (a bed home, a table home; brick hearths with a
      real fire where the house has a chimney), the Post Office (counter, sorting wall, sacks), the Bakery (oven, racks, counter), the Toy Shop (cabinets, a
      horse, a counter), the Stable (a sleigh, straw), the Coal store (the heap, sacks, the scale). The Workshop: five benches, the loft with the wrapping and
      its ladder (the yeti's line), the bell by the chimney (the gnome's line), tools, lamps
-   - THE POLE (P01-00): a striped pole with a gilt ball on a stone ring. The village tree, benches, a fire, Santa Clause (P02-01), a gnome (P03-00), the yeti in
-     the Drift (P00-00), all with their old lines
-   - THE FROZEN LAKE: walked and skated on, a pipe grind rail round its north shore. Sleighs on the Sleigh Road, snowmen, plain trees
+   - THE POLE (P01-00): a striped pole with a gilt ball on a stone ring, four lamps and two benches round it. The village tree, a fire, Santa Clause (P02-01),
+     a gnome (P03-00), the yeti in the Drift (P00-00), all with their old lines
+   - THE DRESSING (pass 3; build, "THE DRESSING"): 31 candy-striped lamp posts (`lampPost`, a look on a square's middle), lights strung from the square's four
+     lamps to the tree, the well on the west lane, the shop fronts' freight, wood by the doors, a sleigh being loaded at the Workshop, the Coal store's heap,
+     the yeti's stones and fire, a bench and a snowman at the lake, freight and a camp on the Sleigh Road, hares, crows, a dog
+   - THE FROZEN LAKE: walked and skated on, a pipe grind rail round its north shore
    - Night sky, snow pines in the plan's tree squares (the tool's tree zones)
 
    KNOWN MISSING OR WRONG
@@ -75,7 +78,7 @@ exports.apply = ctx => {
   COTTAGES.forEach(([id, plot, lx, ly, side, tint, q]) => { q = Object.assign({ h: 3.3, rh: 2.6, tint }, q);
       BUILT[id] = building(id, plot, [lx, ly, lx + 2, ly + 2, side], q.h, { keyIn: q.wood ? WD : 'urban:PlasterWallPainted1a', floorIn: 'wood_planks' }, (a, w, d, dr) => cottage(a, w, d, dr, q, ctx)); BUILT[id].q = q; R.count.cottages = (R.count.cottages || 0) + 1; });
 };
-exports.tailor = t => { t.set('P03-00', 7, 8, 's'); t.set('P03-00', 7, 9, 's'); };   // the two-square nook east of the Coal store was cut off by one drift square: it is the store's yard now
+exports.tailor = t => { t.set('P03-00', 7, 8, 's'); t.set('P03-00', 7, 9, 's'); };   // the plan's sixteenth house (P03-00 8,8) was cut off by one drift square: these two squares are its way in
 
 /* ── a cottage's look. Parts frame: the house's middle, x along the front, +z out of the front. ── */
 const BUILT = {};   // id -> the built house (its frame: x along the front, +z out of the front, the back wall at -3.5), for the insides
@@ -145,6 +148,7 @@ const COTTAGES = [
     /* the north end (P03-00), under the rock */
     ['north1', 'P03-00', 2, 2, 'S', GREEN, { front: true, shut: 0xf6f6f2 }],
     ['north2', 'P03-00', 8, 3, 'W', GINGER, { chimney: 1.8, shut: 0xb84438 }],
+    ['north3', 'P03-00', 8, 8, 'W', PLUM, { chimney: -1.8, shut: 0xf6f6f2 }],   // (the plan's sixteenth house: its two squares were cut off by one drift square until `tailor` opened it)
     ['coal', 'P03-00', 3, 8, 'N', 0x4a4a52, { name: 'COAL', board: '#1a1a1e', front: true, h: 3.0, rh: 2.4, wood: true, coal: true }],
 ];
 
@@ -174,7 +178,7 @@ exports.build = ctx => {
         h.put('psx_sofa_1', -s * 2.45, -0.5, { face: s > 0 ? 90 : 270 }); h.put('rug_round', -s * 0.7, 0.2); h.put('psx_shelf_mp_5', s * 2.85, 1.2, { face: s > 0 ? 270 : 90 });
         mantel(h); if (tree) xmas(h, -s * 2.3, 2.3); h.put('psx_painting_1', -s * 3.12, 0.2, Object.assign({ face: s > 0 ? 90 : 270 }, WALL(1.7))); };
     bedHome(B('square4'), true); tableHome(B('west1'), true); bedHome(B('west2'), false); tableHome(B('west3'), false); bedHome(B('west4'), true);
-    tableHome(B('east2'), false); bedHome(B('east3'), true); tableHome(B('east4'), true); bedHome(B('north1'), false); tableHome(B('north2'), true);
+    tableHome(B('east2'), false); bedHome(B('east3'), true); tableHome(B('east4'), true); bedHome(B('north1'), false); tableHome(B('north2'), true); bedHome(B('north3'), true);
     /* THE POST OFFICE: the counter, the boxes on the back wall, the sacks */
     { const h = B('post'); h.put('form_counter', -1.3, -0.9, { face: 180 }); h.put('form_counter', 0.9, -0.9, { face: 180 }); h.put('mailbox_bank', -1.6, -2.58, { y: 0.9, face: 180 }); h.put('mailbox_bank', 0.3, -2.58, { y: 0.9, face: 180 });
       h.put('wall_clock', 2.2, -3.14, Object.assign({ face: 180 }, WALL(2.2))); h.put('platform_scale', 2.5, -2.2, { face: 180 }); h.put('meshy_burlap_sack', 2.6, 2.3); h.put('meshy_burlap_sack', 2.2, 1.5, { face: 80 }); h.put('meshy_burlap_sack', 2.75, 0.8, { face: 200 });
@@ -219,4 +223,49 @@ exports.build = ctx => {
   /* THE FROZEN LAKE: you walk (and skate) on it; a pipe rail round the north shore to grind */
   { const q = S('P00-02', 9, 6); R.feat({ k: 'rail', arc: { x: mx(q[0]), z: mz(q[1]), r: 24, a0: 300, a1: 60 }, model: 'pipe', block: false }); }
   dec('P00-03', 'cave_stone', 4, 5); dec('P01-02', 'stump', 6, 5);
+
+  /* ══ THE DRESSING (pass 3, 11-16): the lanes' lamps, the shop fronts, the yards, the lake's edge, the road. Blockers stand on a square's middle (put,
+     lampPost); the small things lie off it (dec). The two-wide trails (`o`) and the squares in front of doors stay clear. ══ */
+  { const lampPost = (id, lx, ly, turn) => { const q = S(id, lx, ly), k = q[0] + ':' + q[1]; if (!R.open(q[0], q[1]) || R.cell[q[1]][q[0]] === 'B' || R.taken.has(k)) throw new Error('lamp post on a square that is not free: ' + id + ' ' + lx + ',' + ly);
+        R.taken.add(k); const sx = turn ? -1 : 1;
+        look('lamp:' + id + ':' + lx + ':' + ly, mx(q[0]), mz(q[1]), a => { a.cyl(0, 0, 0, 0.17, 0.3, 'rocks_5', 0xa8a8b0, { seg: 8 }); for (let i = 0; i < 6; i++) a.cyl(0, 0.3 + i * 0.45, 0, 0.07, 0.45, 'marble_light', i % 2 ? 0xf4f4f4 : 0xc83030, { seg: 8 });
+            a.box(sx * 0.25, 2.95, 0, 0.62, 0.06, 0.06, 'marble_light', 0x2a2a2a); a.box(sx * 0.5, 2.55, 0, 0.26, 0.36, 0.26, 'marble_light', 0xffb050, { glow: 1.3 }); a.box(sx * 0.5, 2.91, 0, 0.36, 0.06, 0.36, 'marble_light', 0x2a2a2a); a.box(sx * 0.5, 2.97, 0, 0.32, 0.06, 0.32, 'ice', 0xf4f8ff); }); };
+    /* THE SQUARE (P02-01): a lamp at each corner, lights strung from them to the tree, benches, the shop fronts */
+    for (const [lx, ly, t] of [[1, 1, 0], [9, 1, 1], [1, 7, 0], [9, 7, 1]]) lampPost('P02-01', lx, ly, t);
+    { const c = S('P02-01', 5, 5); look('square:strings', mx(c[0]), mz(c[1]), a => { for (const [lx, ly, t] of [[1, 1, 0], [9, 1, 1], [1, 7, 0], [9, 7, 1]]) { const ex = (lx - 5) * C + (t ? -0.5 : 0.5), ez = (ly - 5) * C, n = Math.round(Math.hypot(ex, ez) / 0.8);
+            for (let i = 2; i < n; i++) { const u = i / n; a.box(ex * u, 4.3 + (2.62 - 4.3) * u - 0.9 * Math.sin(Math.PI * u), ez * u, 0.12, 0.12, 0.12, 'marble_light', BULBS[i % 4], { glow: 1.6 }); } } }); }
+    put('P02-01', 'park_bench', 7, 4, { face: 270 }); put('P02-01', 'park_bench', 5, 3, { face: 180 }); dec('P02-01', 'xmas_gift_2', 6, 5); dec('P02-01', 'xmas_gift_3', 4, 5);
+    dec('P02-01', 'meshy_burlap_sack', 4, 4); dec('P02-01', 'newspaper_bundles', 4, 1); put('P02-01', 'psx_wooden_crate_2', 10, 3); dec('P02-01', 'psx_wooden_crate_6', 10, 4); dec('P02-01', 'meshy_burlap_sack', 10, 5);
+    dec('P02-01', 'decor_carousel_horse', 2, 8, { h: 1.3 }); put('P02-01', 'xmas_snowman_3', 7, 8); dec('P02-01', 'xmas_gift_4', 6, 8); dec('P02-01', 'stump', 6, 9); dec('P02-01', 'rabbit', 2, 6);
+    /* THE WEST LANE (P01-01): the well, a dog, the wood for the fires */
+    for (const [lx, ly, t] of [[4, 1, 0], [9, 2, 1], [2, 4, 0], [8, 7, 1]]) lampPost('P01-01', lx, ly, t);
+    put('P01-01', 'ancient_well', 5, 5); dec('P01-01', 'wooden_bucket', 6, 5, { h: 0.34 }); dec('P01-01', 'dog', 4, 3); dec('P01-01', 'fallen_log', 10, 3); dec('P01-01', 'stump', 10, 4); put('P01-01', 'park_bench', 7, 3, { face: 180 });
+    dec('P01-01', 'rabbit', 6, 1); dec('P01-01', 'psx_wooden_crate_1', 5, 8); dec('P01-01', 'xmas_gift', 7, 8);
+    /* THE EAST LANE (P03-01): the Stable's yard, the last lamp before the Pass Gate */
+    for (const [lx, ly, t] of [[8, 2, 1], [2, 5, 0], [10, 4, 1], [7, 7, 0]]) lampPost('P03-01', lx, ly, t);
+    put('P03-01', 'hw_straw', 2, 4); dec('P03-01', 'wooden_bucket', 3, 4, { h: 0.34 }); put('P03-01', 'sleigh', 6, 2, { face: 90 }); dec('P03-01', 'hw_straw_2', 4, 4); put('P03-01', 'park_bench', 7, 5, { face: 270 }); dec('P03-01', 'rabbit', 6, 8); dec('P03-01', 'fallen_log', 5, 9);
+    /* THE NORTH END (P03-00): the Coal store's yard in the nook, wood by the doors */
+    for (const [lx, ly, t] of [[1, 4, 0], [7, 5, 1], [6, 2, 1]]) lampPost('P03-00', lx, ly, t);
+    { const q = S('P03-00', 5, 8); look('coal:yard', mx(q[0]), mz(q[1]), a => { a.dome(0, 0, 0, 1.35, 0.95, 'obsidian', 0x3a3a40); a.dome(0.9, 0, 0.9, 0.6, 0.4, 'obsidian', 0x3a3a40); }); R.taken.add(q[0] + ':' + q[1]); }
+    put('P03-00', 'psx_wooden_crate_2', 2, 8); dec('P03-00', 'meshy_burlap_sack', 6, 8); dec('P03-00', 'meshy_burlap_sack', 5, 9); dec('P03-00', 'fallen_log', 1, 3); dec('P03-00', 'stump', 0, 4); dec('P03-00', 'crow', 6, 7); dec('P03-00', 'xmas_gift_2', 4, 6);
+    /* THE WORKSHOP'S YARD (P02-00): a lamp each side of the door, a sleigh being loaded, the crates */
+    lampPost('P02-00', 9, 3, 1); lampPost('P02-00', 9, 6, 1); put('P02-00', 'sleigh', 9, 2, { face: 200 }); dec('P02-00', 'xmas_gift', 8, 2); dec('P02-00', 'xmas_gift_2', 7, 2); dec('P02-00', 'xmas_gift_4', 8, 1);
+    put('P02-00', 'psx_wooden_crate_3', 10, 3); dec('P02-00', 'cardboard_boxes', 10, 4); dec('P02-00', 'psx_wooden_crate_6', 10, 5); put('P02-00', 'xmas_tree_plain', 6, 1, { h: 4.0, floor: true });
+    /* THE POLE (P01-00): four lamps round it, benches to look at it from */
+    for (const [lx, ly, t] of [[5, 4, 0], [9, 4, 1], [4, 7, 0], [9, 8, 1]]) lampPost('P01-00', lx, ly, t);
+    put('P01-00', 'park_bench', 7, 3, { face: 180 }); put('P01-00', 'park_bench', 10, 6, { face: 270 }); dec('P01-00', 'xmas_gift', 6, 7); dec('P01-00', 'xmas_gift_4', 8, 7); put('P01-00', 'xmas_snowman', 6, 8);
+    /* THE DRIFT (P00-00, P00-01): the yeti's end: stones, a fire, what the snow left */
+    put('P00-00', 'hw_stone_3', 3, 6); dec('P00-00', 'hw_stone', 3, 8); dec('P00-00', 'psxg_rock_1', 4, 5); dec('P00-00', 'fallen_log', 6, 5); put('P00-00', 'campfire', 6, 7); dec('P00-00', 'stump', 7, 8); dec('P00-00', 'crow', 5, 9);
+    lampPost('P00-01', 8, 4, 1); dec('P00-01', 'stump', 4, 5); dec('P00-01', 'rabbit', 7, 7); dec('P00-01', 'psxg_rock_2', 5, 3); dec('P00-01', 'hw_stone_2', 7, 4);
+    /* THE FROZEN LAKE: a snowman on the ice, a bench and a lamp at the east edge, stumps to sit on */
+    put('P00-02', 'xmas_snowman_2', 5, 4); dec('P00-02', 'stump', 3, 3); dec('P00-02', 'stump', 4, 3); lampPost('P01-02', 9, 4, 1); put('P01-02', 'park_bench', 9, 6, { face: 270 }); dec('P01-02', 'xmas_gift_3', 8, 6);
+    put('P00-03', 'xmas_snowman', 3, 4); dec('P00-03', 'stump', 6, 6); lampPost('P00-03', 8, 5, 1); dec('P00-03', 'rabbit', 5, 7);
+    /* THE SLEIGH ROAD (P02-02, P03-02): freight for the sleighs, a camp at the turn */
+    lampPost('P02-02', 3, 5, 0); lampPost('P02-02', 7, 6, 1); put('P02-02', 'psx_wooden_crate_2', 4, 4); dec('P02-02', 'cardboard_boxes', 6, 4); put('P02-02', 'signpost', 4, 7, { face: 180 }); dec('P02-02', 'meshy_burlap_sack', 3, 6); dec('P02-02', 'xmas_gift_2', 6, 6);
+    lampPost('P03-02', 8, 6, 1); dec('P03-02', 'fallen_log', 7, 7); dec('P03-02', 'stump', 4, 7); put('P03-02', 'sleigh', 7, 8, { face: 200 }); dec('P03-02', 'xmas_gift', 6, 8);
+    /* THE SNOWLINE (P01-03, P02-03, P03-03): the last lamps before the ways out */
+    lampPost('P01-03', 4, 6, 0); lampPost('P01-03', 8, 4, 1); dec('P01-03', 'xmas_gift_3', 5, 4); put('P01-03', 'signpost', 7, 6, { face: 180 });
+    lampPost('P02-03', 2, 7, 0); put('P02-03', 'xmas_snowman', 6, 6); dec('P02-03', 'stump', 3, 8); dec('P02-03', 'rabbit', 5, 6);
+    lampPost('P03-03', 9, 7, 1); lampPost('P03-03', 5, 6, 0); put('P03-03', 'signpost', 8, 8, { face: 180 }); put('P03-03', 'xmas_snowman_3', 6, 9); dec('P03-03', 'fallen_log', 8, 6);
+  }
 };
