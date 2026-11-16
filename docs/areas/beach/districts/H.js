@@ -12,24 +12,36 @@
      P02-06  The Harbour Mouth (level 0): open water, buoys
      P03-06  The Roads (level 0): open water where ships wait
 
-   WHAT STANDS HERE TODAY: the stone QUAY (0.9 m, cobbles) with the QUAY SHED (walk-in, tarred boards, tin roof, barn doors, HARBOUR sign;
-   squares 26-28 x 39-41, front south; crates, traps, a net, an anchor, the outboard, wheel and bell inside); freight on the quay (a
-   container, a pallet, the forklift, a cable drum, sandbags, a gun); the BREAKWATER (rock, 1.6 m) with the harbour light on its head and
-   rocks at its foot; the LONG PIER from the sand east to square 56 (lamps, rings, traps, a lobster, a crate, a chest); the skiff afloat at
-   her jetty's end; the Channel's four red buoys; a dolphin, a turtle, a tuna. People: pirate (Quay), homosapien (Long Pier).
+   WHAT STANDS HERE TODAY (after THE EXTERIOR PASS, 11-16; all of it seen on screen): the stone QUAY (0.9 m, cobbles; squares 24-35 x 38-42, it
+   runs east to the Breakwater's root now) walled in dressed stone down to the sea bed, a kerb, bollards, a PARAPET on its basin side; the QUAY
+   SHED (walk-in, squares 26-28 x 39-41, front south: red painted boards, white trim, a tin roof, barn doors, windows, a hoist beam, HARBOUR on
+   a white board). CARRIED OVER FROM THE OLD HARBOUR ROOM: the WHARF (brick, 3.0 m over the quay, squares 29-35 x 36-37, railed) up a concrete
+   STAIR from the landing (24-25 x 36-37); the GANTRY from the wharf out over the quay and the basin (square column 34, then west along row 47)
+   to a STEEL STAIR down onto the pier's north arm, on steel trestles, a hoist frame over its corner; the SLIPWAY (squares 25-26 x 43-48, a
+   concrete slip with timber skids, pipe rails, a winch) into the boat basin; two WATER STEPS (off the quay at column 32, beside the Long Pier
+   at column 40); a cobbled slope from the quay onto the BREAKWATER (rock, 1.6 m), which is walked out to the HARBOUR LIGHT on its head (three
+   squares each way, railed), armour blocks along its sea side. THE PIERS (the north arm, the LONG PIER to square 56, the skiff jetty): a
+   timber fascia and a pile under every square line, bollards (the eight `dockring` props were space-station rings: gone). THE GANGWAY at the
+   tool's place GANG: a brow of planks up to the Dutchman's waist, posts, a rope either side of its foot. THE MOUTH: two pile beacons (a red
+   can, a green cone) between the Channel's four red buoys. THE ROADS: four mooring buoys. Freight on the quay (a container, a pallet, the
+   forklift, a cable drum, sandbags, a gun); lamps, traps, a lobster, a crate, a chest down the Long Pier; the skiff afloat at her jetty's
+   end; a dolphin, a turtle, a tuna. People: pirate (Quay), homosapien (Long Pier).
    THE FLYING DUTCHMAN IS THE TOOL'S, NOT THIS FILE'S: her berth (ctx.SHIP, squares 35-68 x 56-69, she runs out into the Ocean's plots), the
-   pier's length (ctx.PIER_END), the gangway (ctx.GANG, link `beach_dutchman`) and `terrain.moored` are shared pieces. She is drawn by
+   pier's length (ctx.PIER_END), the gangway's PLACE (ctx.GANG, link `beach_dutchman`) and `terrain.moored` are shared pieces. She is drawn by
    three-renderer.js _hqBuildMoored from her own deck room. Moving or redressing her = a note on the board first.
+   HEIGHTS IN THIS FILE: a `plateau` / `ramp` / `bridge` row wears `absY: true` (its heights are metres over the sea; without it the game adds
+   the height of the square under the row's own anchor: the wharf stood at 4.8, seen in the numbers). A `rail` row's `y` is always absolute.
+   The tool's walk check reads the squares only, not these rows: `reach` cannot name the wharf, the gantry or the Breakwater.
 
-   MISSING / NEVER SEEN ON SCREEN (from the notes + the board):
-   - Seen 11-15: the real ship at the pier and the Quay shed draw. NOT seen since she was berthed ALONGSIDE: whether the gangway reads as a
-     way aboard, the pier's new length and its dressing, the freight on the quay, the shed's inside, how the hard steps (pier sides, the
-     quay wall) are textured.
-   - Not carried over from the old Harbour room (the plan does not draw them): the wharves, the gantry, the slipway, the water steps.
+   MISSING / NOT DONE (the passes to come: interiors, dressing, atmosphere, polish):
+   - The shed's inside is still a brown box under a black ceiling with nine props (seen 11-16): the interior pass.
+   - The wharf, the gantry and the Breakwater's crest are bare; the quay's freight is thin: the dressing pass.
+   - No harbour lights after dark besides the old lanterns and the light's beam: the atmosphere pass.
    - The Dutchman's bulwarks, deck stairs, crates and cannon are her deck room's rows and are not drawn at the berth; she is not redesigned
-     (the world plan wants her rebuilt inside and out: not this file's job without mondo's word).
-   - The Harbour Mouth and the Roads are empty water ("ships wait" there: no ships). No kelp (4.5 m tall in 3.5 m of water).
-   - No residents with routines, no fight set up.
+     (the world plan wants her rebuilt inside and out: not this file's job without mondo's word). The brow lands on her rail, not in a port.
+   - The Roads have buoys and no ship. No kelp (4.5 m tall in 3.5 m of water). No residents with routines, no fight set up.
+   NEEDS A MODEL (nothing stood in): a ship lying in the Roads (a trawler, a tug, a freighter), a harbour crane, gulls, coils of heavy rope,
+   fish boxes, an iron mooring ring / cleat (the bollards are drawn).
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
      tailor(ctx)  before the heights are made: the plan's squares. Turn each plan building ('B') you build back into its ground with
                   ctx.setRect(x0, y0, x1, y1, ch) / ctx.cell[y][x] = ch (the tool refuses to bake while a 'B' is left that nobody builds).
@@ -55,19 +67,153 @@ tailor(ctx) {
     const { C, N, W, H, OY, gx, gz, mx, mz, r2, rnd, cell, setRect, plot, Pxy, flat, taken, spot, feat, props, building, put, look, P, dec, afloat, swimmer, under, palm, native, sayOf, O_SEA, O_HARB, U, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT, CORR, PAINT, MAEL, POOL, BAY, GANG, SP, SHIP, PIER_END, LIGHT } = ctx;   // eslint-disable-line no-unused-vars
     setRect(29, 65, 31, 68, 'w');                               // THE SKIFF: the plan's block is the boat herself (a prop afloat at the jetty's end)
     setRect(B_SHED[0], B_SHED[1], B_SHED[0] + 3, B_SHED[1] + 3, 'o');
+    /* THE EXTERIOR PASS (2026-11-16): the old Harbour's works need ground the plan does not draw. All on this district's own plots, in the
+       plan's own letters: the quay runs on east to the Breakwater's root, a strip behind it (north) carries the stair and the WHARF, and the
+       Breakwater's head is three squares each way round the light (it was two, the light off its middle) */
+    setRect(33, 38, 36, 43, 'o'); setRect(24, 36, 36, 38, 'o'); setRect(45, 45, 48, 48, 'r');
 },
 
 build(ctx) {
     const { C, N, W, H, OY, gx, gz, mx, mz, r2, rnd, cell, setRect, plot, Pxy, flat, taken, spot, feat, props, building, put, look, P, dec, afloat, swimmer, under, palm, native, sayOf, O_SEA, O_HARB, U, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT, CORR, PAINT, MAEL, POOL, BAY, GANG, SP, SHIP, PIER_END, LIGHT } = ctx;   // eslint-disable-line no-unused-vars
-    /* THE QUAY SHED (walk-in): tarred boards, a tin roof, wide doors onto the quay; crates, nets and pots inside */
+    /* ── THE EXTERIOR PASS (2026-11-16, the Harbour thread; seen on screen first, HEAD f706133: the shed was a black box with a grey sign, the
+       quay a bare slab 9 x 5 squares, the Breakwater a flat grey bar, the piers planks with smeared sides and no piles, eight `dockring` props
+       were three-metre space-station rings, nothing showed the way aboard the Dutchman, and none of the old Harbour's works were here).
+       THE OLD HARBOUR'S WORKS, CARRIED OVER (`site_prebuilt_downtown_harbour`: its rows, at this room's heights): the WHARF along the back of
+       the quay (3.0 m over it, its stair, its front railings), the GANTRY from the wharf out over the water to a steel stair down onto the
+       pier, the SLIPWAY into the water with its pipe rails, the WATER STEPS (the ways out of the water), the quay's PARAPET, the stair onto the
+       Breakwater, the railing round the light. Everything DRAWN is one `arch` row per place with its foot typed at level 0 (`y: 0`: the sea). ── */
+    const WHITE = 0xffffff, FALU = 0xd04a3a, TIN = 0xc4ccd4, PILE = 0xa08868, BEAM = 0xc4a880, STONE = 0xb4aa9a, STEEL = 0x7c8894, IRON = 0x3c4046, ROPE = 0xd8c49a;
+    const QY = 0.9, PY = 0.6, WH = 3.9, MOLE = 1.6, BED = -3.7;
+    const PLK = 'wood_planks', CONC = U('ConcreteStriped2c'), MAS = U('BrickMasonry1a'), RIB = U('MetalWallRibbed1a'), TRUSS = U('MetalTruss1a');
+    /* a drawn row in WORLD metres (x east, z south, y over the sea) */
+    const works = (id, ox, oz, fn) => { const a = ctx.sheet(), X0 = r2(ox), Z0 = r2(oz);
+        const T = { a, box: (x, y, z, w, h, d, key, tint, o) => a.box(x - X0, y, z - Z0, w, h, d, key, tint, o), cyl: (x, y, z, r, h, key, tint, o) => a.cyl(x - X0, y, z - Z0, r, h, key, tint, o),
+            part: o => { o.p = [r2(o.p[0] - X0), r2(o.p[1]), r2(o.p[2] - Z0)]; a.P.push(o); return o; }, sign: (words, x, y, z, w, h, fg, bg, font, o) => a.sign(words, x - X0, y, z - Z0, w, h, fg, bg, font, o) };
+        fn(T); feat({ k: 'arch', id: 'bch:h_' + id + ':look', x: X0, z: Z0, y: 0, rot: 0, parts: a.P }); };
+    const isW = (x, y) => cell[y] && cell[y][x] === 'w';
+    const SIDES = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // north, east, south, west
+    /* a face along one side of square (x, y): a box `t` thick standing `out` proud of the square's line */
+    const face = (T, x, y, k, y0, y1, t, key, tint, o) => { const [dx, dy] = SIDES[k], cx = mx(x) + dx * (C / 2 + t / 2 - 0.02), cz = mz(y) + dy * (C / 2 + t / 2 - 0.02); T.box(cx, y0, cz, dx ? t : C, y1 - y0, dx ? C : t, key, tint, o); };
+    /* a mooring bollard (the `dockring` prop is a space-station docking ring: seen) */
+    const bollard = (T, x, z, y) => { T.cyl(x, y, z, 0.17, 0.5, RIB, IRON, { seg: 8, uv: 1 }); T.cyl(x, y + 0.5, z, 0.27, 0.12, RIB, IRON, { seg: 8, uv: 1 }); };
+
+    /* THE WHARF, its stair and the gantry (the walker reads these rows; the looks below dress them) */
+    const onWharf = (x, y) => x >= 29 && x <= 35 && y >= 36 && y <= 37;
+    feat({ k: 'plateau', absY: true, x: gx(32.5), z: gz(37), w: 7 * C, d: 2 * C, h: WH, edge: 0.15 });                                                     // THE WHARF: squares 29-35 x 36-37, 3.0 m over the quay
+    feat({ k: 'ramp', absY: true, x0: r2(gx(26) + 0.2), z0: gz(37), x1: r2(gx(29) + 0.7), z1: gz(37), w: 2 * C, h0: QY, h1: WH, stairs: true, model: 'concrete', edge: 0.1 });   // its stair, from the landing (squares 24-25 x 36-37)
+    feat({ k: 'rail', x0: r2(gx(29) + 0.9), z0: r2(gz(38) - 0.25), x1: gx(34), z1: r2(gz(38) - 0.25), y: WH, model: 'balusters_b' });               // the wharf's front railing, open at the gantry
+    feat({ k: 'rail', x0: gx(35), z0: r2(gz(38) - 0.25), x1: r2(gx(36) - 0.25), z1: r2(gz(38) - 0.25), y: WH, model: 'balusters_b' });
+    feat({ k: 'rail', pts: [[r2(gx(29) + 0.9), r2(gz(36) + 0.25)], [r2(gx(36) - 0.25), r2(gz(36) + 0.25)], [r2(gx(36) - 0.25), r2(gz(38) - 0.25)]], y: WH, model: 'balusters_b' });   // its sea side and east end
+    feat({ k: 'bridge', absY: true, x0: mx(34), z0: r2(gz(38) - 0.5), x1: mx(34), z1: gz(47), w: C, y: WH, thick: 0.3, rails: false, key: 'metal', id: 'bch:gantry_n' });   // THE GANTRY: out over the quay and the water ...
+    feat({ k: 'bridge', absY: true, x0: gx(35), z0: mz(47), x1: gx(33), z1: mz(47), w: C, y: WH, thick: 0.3, rails: false, key: 'metal', id: 'bch:gantry_w' });           // ... and west ...
+    feat({ k: 'ramp', absY: true, x0: gx(30), z0: mz(47), x1: gx(33), z1: mz(47), w: C, h0: PY, h1: WH, stairs: true, model: 'steel', edge: 0.1 });                       // ... to a steel stair (`grate` draws black from above: seen) down onto the pier's north arm
+    feat({ k: 'rail', pts: [[r2(mx(34) + 1.6), gz(38)], [r2(mx(34) + 1.6), r2(gz(48) - 0.15)], [gx(33), r2(gz(48) - 0.15)]], y: WH, model: 'balusters_b', block: false });   // its railings (a grind only, the old Harbour's way)
+    feat({ k: 'rail', pts: [[r2(mx(34) - 1.6), gz(38)], [r2(mx(34) - 1.6), r2(gz(47) + 0.15)], [gx(33), r2(gz(47) + 0.15)]], y: WH, model: 'balusters_b', block: false });
+    /* THE SLIPWAY (squares 25-26 x 43-48, down into the boat basin between the sand and the pier's arm) and its pipe rails */
+    feat({ k: 'ramp', absY: true, x0: gx(26), z0: gz(43), x1: gx(26), z1: gz(49), w: 2 * C, h0: QY, h1: -2.6, edge: 0.2 });
+    feat({ k: 'rail', x0: r2(gx(25) + 0.5), z0: r2(gz(43) + 0.3), x1: r2(gx(25) + 0.5), z1: gz(46), model: 'pipe', block: false });
+    feat({ k: 'rail', x0: r2(gx(27) - 0.5), z0: r2(gz(43) + 0.3), x1: r2(gx(27) - 0.5), z1: gz(46), model: 'pipe', block: false });
+    /* THE WATER STEPS (the ways out of the water): off the quay into the basin under the gantry, and beside the Long Pier */
+    feat({ k: 'ramp', absY: true, x0: mx(32), z0: gz(46), x1: mx(32), z1: r2(gz(43) - 0.5), w: C, h0: -1.8, h1: QY, stairs: true, model: 'external', edge: 0.1 });
+    feat({ k: 'ramp', absY: true, x0: mx(40), z0: gz(50), x1: mx(40), z1: r2(gz(53) + 0.5), w: C, h0: -1.8, h1: PY, stairs: true, model: 'external', edge: 0.1 });
+    /* the way onto THE BREAKWATER (a cobbled slope from the quay up to its crest) and the railing round the light's head */
+    feat({ k: 'ramp', absY: true, x0: gx(35), z0: gz(40), x1: r2(gx(36) + 0.3), z1: gz(40), w: 2 * C, h0: QY, h1: MOLE, edge: 0.1 });
+    feat({ k: 'rail', pts: [[gx(46), r2(gz(45) + 0.3)], [r2(gx(45) + 0.3), r2(gz(45) + 0.3)], [r2(gx(45) + 0.3), r2(gz(48) - 0.3)], [r2(gx(48) - 0.3), r2(gz(48) - 0.3)], [r2(gx(48) - 0.3), r2(gz(41) + 0.3)]], y: MOLE, model: 'balusters_b' });
+    /* THE QUAY'S PARAPET: open at the slipway, the pier's arm, the water steps and the Breakwater */
+    [[30, 32], [33, 36]].forEach(q => feat({ k: 'rail', x0: r2(gx(q[0]) + (q[0] === 24 ? 0.25 : 0)), z0: r2(gz(43) - 0.22), x1: r2(gx(q[1]) - (q[1] === 36 ? 0.25 : 0)), z1: r2(gz(43) - 0.22), model: 'parapet' }));
+    feat({ k: 'rail', x0: r2(gx(36) - 0.22), z0: r2(gz(38) + 0.1), x1: r2(gx(36) - 0.22), z1: gz(39), model: 'parapet' }); feat({ k: 'rail', x0: r2(gx(36) - 0.22), z0: gz(41), x1: r2(gx(36) - 0.22), z1: r2(gz(43) - 0.22), model: 'parapet' });
+    for (let y = 36; y <= 37; y++) for (let x = 26; x <= 35; x++) taken.add(x + ':' + y);                                                       // the stair and the wharf: nothing is scattered on them
+    [[25, 43], [26, 43], [32, 43], [34, 38], [34, 39], [34, 40], [34, 41], [34, 42], [35, 39], [35, 40], [25, 36], [25, 37], [25, 38]].forEach(q => taken.add(q[0] + ':' + q[1]));   // the ways: slip head, water steps, under the gantry, the mole's slope, the landing
+
+    /* THE QUAY'S WALLS: dressed stone down to the sea bed on every water side, a kerb stone along the top; the wharf is brick over a stone foot */
+    works('quay', gx(30), gz(40), T => {
+        for (let y = 36; y <= 42; y++) for (let x = 24; x <= 35; x++) { if (cell[y][x] !== 'o') continue; const wh = onWharf(x, y);
+            SIDES.forEach((d, k) => { if (!isW(x + d[0], y + d[1])) return;
+                face(T, x, y, k, BED, QY, 0.3, MAS, STONE, { uv: [3.5, 1.75] });
+                if (wh) face(T, x, y, k, QY, WH - 0.16, 0.22, BRK, 0xc08a6a, { uv: [3.5, 3.5], gain: 1.7 });
+                face(T, x, y, k, (wh ? WH : QY) - 0.16, (wh ? WH : QY) + 0.06, 0.42, CONC, 0xd8d2c4, { uv: [3.5, 3.5] }); }); }
+        T.box(gx(32.5), QY, gz(38) + 0.09, 7 * C, WH - QY - 0.16, 0.18, BRK, 0xc08a6a, { uv: [3.5, 3.5], gain: 1.7 });                                 // the wharf's face to the quay: brick, a stone band on top, iron rings
+        T.box(gx(32.5), WH - 0.16, gz(38) + 0.12, 7 * C + 0.2, 0.22, 0.3, CONC, 0xd8d2c4, { uv: [3.5, 3.5] });
+        T.box(r2(gx(36) + 0.09), QY, gz(37), 0.18, WH - QY - 0.16, 2 * C, BRK, 0xc08a6a, { uv: [3.5, 3.5], gain: 1.7 });
+        for (let k = 0; k < 4; k++) T.part({ s: 'cyl', p: [r2(gx(30.5) + k * 5.25), 1.9, r2(gz(38) + 0.2)], r: 0.2, h: 0.06, ri: 0.13, key: RIB, tint: IRON, seg: 10, uv: 1 });
+        [[24, 43, -0.5], [28, 43, -0.5], [30, 43, 0.5], [34, 43, -0.5]].forEach(q => bollard(T, mx(q[0]) + q[2], gz(q[1]) - 0.75, QY));                // bollards along the quay's water edge
+        bollard(T, gx(36) - 0.75, mz(38), QY); bollard(T, gx(36) - 0.75, mz(42), QY);
+    });
+    /* THE SLIPWAY'S LOOK: a concrete slip (a wedge on the slope the walker reads), two timber skids down it, a winch post at its head */
+    works('slip', gx(26), gz(46), T => {
+        T.part({ s: 'roof', form: 'shed', p: [gx(26), -2.56, gz(46)], size: [2 * C - 0.1, QY + 2.6, 6 * C], key: CONC, tint: 0xcfc8b8, uv: [3.5, 3.5], keyEnd: CONC, tintEnd: 0xcfc8b8 });
+        for (const sx of [-1, 1]) T.part({ s: 'roof', form: 'shed', p: [r2(gx(26) + sx * 1.3), -2.44, gz(46)], size: [0.3, QY + 2.6, 6 * C], key: PLK, tint: BEAM, uv: [1.75, 1.75] });
+        T.cyl(mx(27) + 1.2, QY, gz(43) - 0.9, 0.2, 1.0, RIB, IRON, { seg: 8, uv: 1 }); T.box(mx(27) + 1.2, QY + 0.55, gz(43) - 0.9, 0.9, 0.36, 0.36, RIB, 0x8a4a32, { uv: 1 });   // the winch: a post and its drum
+        T.cyl(mx(27) + 0.72, QY + 0.63, gz(43) - 0.9, 0.3, 0.06, RIB, IRON, { seg: 10, uv: 1 });
+    });
+    /* THE GANTRY'S LOOK: steel trestles down to the sea bed with truss bracing, a hoist frame over its end with a hook on its chain */
+    works('gantry', mx(34), gz(43), T => {
+        const leg = (x, z, y0) => T.box(x, y0, z, 0.26, WH - 0.3 - y0, 0.26, RIB, STEEL, { uv: [1.75, 1.75], gain: 1.6 });
+        [[40, QY], [42, QY], [44.5, BED], [47.5, BED]].forEach(q => { const z = gz(q[0]); for (const sx of [-1, 1]) leg(mx(34) + sx * 1.5, z, q[1]);
+            T.box(mx(34), WH - 0.62, z, 3.4, 0.3, 0.3, RIB, STEEL, { uv: [1.75, 1.75], gain: 1.6 });
+            T.part({ s: 'quad', p: [mx(34), Math.max(q[1], 0), z], size: [3.0, r2(WH - 0.6 - Math.max(q[1], 0))], key: TRUSS, tint: STEEL, kind: 'over', ds: true, uv: 'fit' }); });
+        for (const sz of [-1, 1]) leg(gx(33.4), mz(47) + sz * 1.5, BED);
+        T.box(gx(33.4), WH - 0.62, mz(47), 0.3, 0.3, 3.4, RIB, STEEL, { uv: [1.75, 1.75], gain: 1.6 });
+        /* the hoist: two posts and a beam over the gantry's corner, the beam run out past the edge over the basin */
+        for (const sx of [-1, 1]) T.box(mx(34) + sx * 1.6, WH, gz(45.5), 0.22, 3.2, 0.22, RIB, 0xd8a032, { uv: [1.75, 1.75], gain: 1.8 });
+        T.box(mx(34) - 1.4, WH + 3.2, gz(45.5), 6.6, 0.34, 0.3, RIB, 0xd8a032, { uv: [1.75, 1.75], gain: 1.8 });
+        T.box(mx(34) - 3.9, WH + 2.9, gz(45.5), 0.5, 0.3, 0.44, RIB, IRON, { uv: 1 }); T.cyl(mx(34) - 3.9, WH + 0.6, gz(45.5), 0.035, 2.3, null, IRON, { seg: 5 });
+        T.part({ s: 'cyl', p: [r2(mx(34) - 3.9), WH + 0.22, gz(45.5)], r: 0.2, h: 0.08, ri: 0.12, key: RIB, tint: IRON, seg: 10, uv: 1 });
+    });
+    /* THE PIERS: a timber fascia along every water edge and a pile under every square line, down to the sea bed (the district's piers from
+       the Quay's plots east: the north arm, the Long Pier out to the Dutchman's bow, the skiff jetty), and bollards where the rings were */
+    works('piers', gx(40), gz(54), T => { const piles = new Set();
+        for (let y = 43; y <= 64; y++) for (let x = 24; x <= PIER_END; x++) { if (!cell[y] || cell[y][x] !== 'J') continue;
+            SIDES.forEach((d, k) => { if (!isW(x + d[0], y + d[1])) return; face(T, x, y, k, PY - 0.46, PY - 0.02, 0.16, PLK, BEAM, { uv: [1.75, 1.75] });
+                const cs = d[0] ? [[x + (d[0] > 0 ? 1 : 0), y], [x + (d[0] > 0 ? 1 : 0), y + 1]] : [[x, y + (d[1] > 0 ? 1 : 0)], [x + 1, y + (d[1] > 0 ? 1 : 0)]];
+                cs.forEach(c => { const key = c[0] + ':' + c[1]; if (piles.has(key)) return; piles.add(key); T.cyl(gx(c[0]) + d[0] * 0.2, BED, gz(c[1]) + d[1] * 0.2, 0.19, PY + 0.34 - BED, PLK, PILE, { seg: 6, uv: [1.75, 1.75] }); }); }); }
+        [[40, 55], [45, 55], [50, 55], [55, 55], [43, 53], [48, 53], [53, 53]].forEach(q => bollard(T, mx(q[0]), gz(q[1]) + (q[1] === 55 ? -0.4 : 0.4), PY));   // the Long Pier's bollards, both edges
+        [[30, 59], [30, 63], [30, 48], [30, 51]].forEach(q => bollard(T, gx(q[0]) - 0.4 + (q[1] > 59 ? C : 0), mz(q[1]), PY));
+    });
+    /* THE GANGWAY (the tool's place GANG, link `beach_dutchman`; nothing showed the way aboard: seen): a brow of planks from the pier up to her
+       waist, battens across it, stanchions up both sides, two posts with a rope across the pier's edge either side of its foot */
+    works('gangway', GANG.x, GANG.z, T => { const run = 4.6, top = 4.5, z0 = GANG.z - run + 0.5, n = 9, dy = r2((top - PY) / n), dz = r2(run / n);
+        T.part({ s: 'roof', form: 'shed', p: [GANG.x, PY, r2(z0 + run / 2)], ry: 180, size: [1.5, top - PY, run], key: PLK, tint: 0xe8d8b8, uv: [1.75, 1.75], keyEnd: PLK, tintEnd: BEAM });
+        T.part({ s: 'box', p: [GANG.x, r2(PY + dy * 0.5 + 0.02), r2(z0 + dz * 0.5)], size: [1.5, 0.05, 0.08], key: PLK, tint: PILE, n, step: [0, dy, dz] });
+        for (const sx of [-1, 1]) { T.part({ s: 'box', p: [r2(GANG.x + sx * 0.72), r2(PY + dy * 0.5), r2(z0 + dz * 0.5)], size: [0.07, 1.0, 0.07], tint: WHITE, n, step: [0, dy, dz] });
+            T.part({ s: 'cyl', p: [r2(GANG.x + sx * 0.72), r2(PY + dy * 0.5 + 1.0), r2(z0 + dz * 0.5)], r: 0.07, h: 0.07, tint: ROPE, seg: 6, n, step: [0, dy, dz] });
+            T.cyl(GANG.x + sx * 1.3, PY, z0 - 0.3, 0.09, 1.25, PLK, BEAM, { seg: 6 }); T.cyl(GANG.x + sx * 1.3, PY + 1.25, z0 - 0.3, 0.13, 0.1, null, WHITE, { seg: 6 });
+            T.box(GANG.x + sx * 2.4, PY + 0.95, z0 - 0.3, 2.2, 0.05, 0.05, null, ROPE); T.cyl(GANG.x + sx * 3.5, PY, z0 - 0.3, 0.09, 1.25, PLK, BEAM, { seg: 6 }); T.cyl(GANG.x + sx * 3.5, PY + 1.25, z0 - 0.3, 0.13, 0.1, null, WHITE, { seg: 6 }); }
+    });
+    /* THE BREAKWATER: armour blocks tipped along its sea side (north) and round its head, half in the water (its own dice) */
+    works('mole', gx(42), gz(40), T => { const blk = (x, z) => { const s = r2(1.1 + rnd() * 0.9); T.box(x + (rnd() - 0.5) * 0.8, r2(-0.9 + rnd() * 0.9), z + (rnd() - 0.5) * 0.8, s, r2(s * (0.7 + rnd() * 0.4)), s, 'rocks_5', 0xd0cabc, { ry: Math.round(rnd() * 80), uv: [1.75, 1.75] }); };
+        for (let x = gx(36.3); x < gx(48); x += 1.9) { blk(x, gz(39) - 1.0); if (rnd() < 0.5) blk(x, gz(39) - 2.3); }
+        for (let x = gx(36.3); x < gx(45.6); x += 2.6) blk(x, gz(41) + 0.9);
+        for (let z = gz(41.4); z < gz(44.8); z += 2.6) blk(gx(46) - 0.9, z);
+        for (let x = gx(45); x < gx(47.6); x += 2.0) blk(x, gz(48) + 1.0); for (let z = gz(45); z < gz(48); z += 2.0) blk(gx(45) - 1.0, z);
+    });
+    /* THE HARBOUR MOUTH + THE ROADS (the plan: "open water, buoys" · "open water where ships wait"): the Mouth's gate = two pile beacons, a red
+       can to port and a green cone to starboard coming in; the Roads' mooring buoys, where a waiting ship would lie (NEEDS A MODEL: the ship) */
+    const beacon = (T, x, z, tint, cone) => { for (const q of [[0.45, 0.2], [-0.4, 0.3], [0, -0.45]]) T.cyl(x + q[0], BED, z + q[1], 0.19, 2.6 - BED, PLK, PILE, { seg: 6, uv: [1.75, 1.75] });
+        T.cyl(x, 1.5, z, 0.62, 0.14, RIB, IRON, { seg: 8, uv: 1 }); T.cyl(x, 2.5, z, 0.5, 0.1, PLK, BEAM, { seg: 8 }); T.cyl(x, 2.6, z, 0.08, 1.9, null, WHITE, { seg: 6 });
+        T.cyl(x, 4.5, z, 0.62, 1.25, RIB, tint, { seg: 10, r2: cone ? 0.02 : 0.62, uv: 1, gain: 2.2 }); };
+    works('mouth', mx(27), mz(78), T => { beacon(T, mx(24), mz(78), 0xe03a30, false); beacon(T, mx(30), mz(78), 0x2aa860, true); });
+    const mooring = (T, x, z) => { T.cyl(x, -0.35, z, 0.75, 0.95, RIB, 0xf0902a, { seg: 10, uv: 1, gain: 2.2 }); T.cyl(x, 0.6, z, 0.75, 0.12, RIB, WHITE, { seg: 10, uv: 1, gain: 2.4 });
+        T.part({ s: 'cyl', p: [r2(x), 0.72, r2(z)], r: 0.22, h: 0.07, ri: 0.14, key: RIB, tint: IRON, seg: 8, uv: 1 }); };
+    works('roads', mx(41), mz(77), T => { [[38, 75], [44, 75], [38, 80], [44, 80]].forEach(q => mooring(T, mx(q[0]), mz(q[1]))); });
+
+    /* THE QUAY SHED (walk-in): red painted boards, white trim, a tin roof, barn doors onto the quay, a hoist beam in the gable, its name on a
+       white board (the kit's paint: the painted corrugated sheet at gain 2.9; tar over the brown board sheet was a black box, seen) */
+    const win = (a, x, y, z, w, h) => { a.box(x, y - 0.08, z, w + 0.24, h + 0.16, 0.06, null, WHITE); a.box(x, y, z + 0.03, w, h, 0.04, GLS, 0xdcecff, { uv: 'fit', win: 'keep', glow: 0.35 });
+        a.box(x, y + h / 2 - 0.03, z + 0.06, w, 0.06, 0.03, null, WHITE); a.box(x, y, z + 0.06, 0.06, h, 0.03, null, WHITE); };
     SHED = building('shed', [B_SHED[0], B_SHED[1], B_SHED[0] + 3, B_SHED[1] + 3, 'S'], 4.2, { leaf: 'leaf_barn', leafDouble: true, floorIn: U('WoodFlooring1a') }, (a, w, d, door) => {
-        const TAR = 0x4a4038, TRIM = 0xd8d0bc;
-        a.shell(w, 4.2, d, WD, TAR, door, [3.5, 1.75]);
+        a.shell(w, 4.2, d, CORR, FALU, door, [2.4, 2.4], 2.9);
         a.box(0, 0, 0, w - 0.1, 0.14, d - 0.1, U('WoodFlooring1a'), 0x8a7c68, { uv: [1.75, 1.75] });
-        for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.3, 4.2, 0.3, WD2, TRIM);
-        a.roof('gable', 0, 4.2, 0, w + 0.8, 2.4, d + 0.8, COR, 0x6a7078, { keyEnd: WD, tintEnd: TAR });
-        a.frame(door, d, WD2, TRIM);
-        a.sign('HARBOUR', door.lx, 2.9, d / 2 + 0.08, 3.4, 0.7, '#e8e0c8', '#2a2622', 'stencil');
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.3, 4.2, 0.3, null, WHITE);
+        for (const sx of [-1, 1]) a.box(sx * (w / 2 + 0.06), 0, 0, 0.05, 0.34, d, null, WHITE); a.box(0, 0, -(d / 2 + 0.06), w, 0.34, 0.05, null, WHITE);
+        a.roof('gable', 0, 4.2, 0, w + 1.0, 2.6, d + 0.9, CORR, TIN, { keyEnd: CORR, tintEnd: FALU, gain: 2.6 });
+        a.box(0, 4.14, d / 2 + 0.42, w + 1.0, 0.16, 0.06, null, WHITE); a.box(0, 4.14, -(d / 2 + 0.42), w + 1.0, 0.16, 0.06, null, WHITE);              // the white barge boards
+        a.frame(door, d, null, WHITE);
+        a.box(door.lx, 2.62, d / 2 + 0.07, 3.9, 0.96, 0.06, null, WHITE); a.sign('HARBOUR', door.lx, 2.75, d / 2 + 0.11, 3.5, 0.7, '#2a2622', '#ffffff', 'stencil');
+        [-3.75, 1.9, 3.85].forEach(x => win(a, x, 1.15, d / 2 + 0.06, 1.2, 1.2));
+        a.box(door.lx, 5.5, d / 2 + 1.0, 0.2, 0.22, 2.0, null, WHITE); a.cyl(door.lx, 4.6, d / 2 + 1.8, 0.03, 0.9, null, IRON, { seg: 5 });           // the hoist beam in the gable, its chain and block
+        a.box(door.lx, 4.42, d / 2 + 1.8, 0.2, 0.2, 0.2, RIB, IRON, { uv: 1 });
+        for (const s of [-1, 1]) for (const z of [-2.6, 2.6]) { a.box(s * (w / 2 + 0.06), 1.3, z, 0.06, 1.3, 1.4, null, WHITE); a.box(s * (w / 2 + 0.09), 1.38, z, 0.04, 1.14, 1.24, GLS, 0xdcecff, { uv: 'fit', win: 'keep', glow: 0.35, faces: s < 0 ? 'l' : 'r', top: false }); }   // two windows each side
     });
     put(SHED, 'lobster_traps', -3.6, -3.4, { face: 0 }); put(SHED, 'fishing_net_wall', 0, -5.0, { y: 1.4, face: 0 }); put(SHED, 'psx_wooden_crate_1', 3.6, -3.6); put(SHED, 'psx_wooden_crate_2', 3.8, -1.8); put(SHED, 'psx_metal_barrel_mp_1', -3.8, -0.6);
     put(SHED, 'ship_anchor', 3.4, 2.6, { face: 110 }); put(SHED, 'railway_lantern', -3.8, 3.4); put(SHED, 'meshy_rope', -1.6, -3.8); put(SHED, 'sea_chest', -3.6, 1.6, { face: 90 });
@@ -75,8 +221,10 @@ build(ctx) {
 
 place(ctx) {
     const { C, N, W, H, OY, gx, gz, mx, mz, r2, rnd, cell, setRect, plot, Pxy, flat, taken, spot, feat, props, building, put, look, P, dec, afloat, swimmer, under, palm, native, sayOf, O_SEA, O_HARB, U, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT, CORR, PAINT, MAEL, POOL, BAY, GANG, SP, SHIP, PIER_END, LIGHT } = ctx;   // eslint-disable-line no-unused-vars
-    P('psx_wooden_crate_3', 24, OY + 2); P('psx_wooden_crate_1', 25, OY + 2); P('psx_metal_barrel_mp_2', 31, OY + 3); P('ship_anchor', 30, OY + 5, { face: 110 }); dec('dockring', 32, OY + 6); dec('dockring', 24, OY + 6); P('railway_lantern', 30, OY + 6);
-    dec('cardboard_boxes', 28, OY + 10); dec('sea_chest', 33, OY + 17); dec('folding_chair', 26, OY + 18, { face: 200 }); P('railway_lantern', 24, OY + 17); P('railway_lantern', 36, OY + 18); dec('dockring', 29, OY + 23); dec('dockring', 29, OY + 27);
+    const skip = () => { rnd(); rnd(); rnd(); };   // a `dockring` that stood here (a three-metre space-station docking ring: seen): the bollards in build() took its place; its throws are kept so nothing else moved
+    P('psx_wooden_crate_3', 24, OY); P('psx_wooden_crate_1', 24, OY + 1);   // (moved off the way to the wharf's stair: the landing's west side)
+    P('psx_metal_barrel_mp_2', 31, OY + 3); P('ship_anchor', 30, OY + 5, { face: 110 }); skip(); skip(); P('railway_lantern', 30, OY + 6);
+    dec('cardboard_boxes', 28, OY + 10); dec('sea_chest', 33, OY + 17); dec('folding_chair', 26, OY + 18, { face: 200 }); P('railway_lantern', 24, OY + 17); P('railway_lantern', 36, OY + 18); skip(); skip();
     props.push({ key: 'skiff', x: mx(31), z: mz(OY + 28), y: 0.32, face: 0 });                                                       // THE SKIFF, afloat at her jetty's end
     props.push({ key: 'lighthouse', x: mx(46), z: mz(OY + 10), face: 0 });                                                           // THE HARBOUR LIGHT on the breakwater's head (the old Harbour's)
     [[30, OY + 38], [24, OY + 38], [30, OY + 47], [24, OY + 47]].forEach(q => afloat('sea_buoy', q[0], q[1]));                        // THE CHANNEL: two pairs of red buoys
@@ -91,7 +239,7 @@ dress(ctx) {
     props.push({ key: 'ind_container', x: mx(32), z: gz(OY + 4), face: 0 }); taken.add('32:' + (OY + 3)); taken.add('32:' + (OY + 4));
     P('wrapped_pallet', 30, OY + 3); P('forklift', 29, OY + 2, { face: 90 }); dec('cable_drum', 25, OY + 4); dec('meshy_sandbags', 24, OY + 5); dec('meshy_sandbags', 25, OY + 5); dec('meshy_sandbags', 24, OY + 3);
     P('ship_cannon', 26, OY + 2, { face: 90 }); put(SHED, 'outboard_motor', -3.6, 3.6, { face: 0 }); put(SHED, 'ship_wheel', 4.9, 0, { y: 1.7, face: 270 }); put(SHED, 'ships_bell', -4.9, -2.0, { y: 1.9, face: 90 });
-    [42, 47, 55].forEach(x => P('railway_lantern', x, 53)); [40, 45, 50, 54].forEach(x => dec('dockring', x, 54)); dec('ocean_lobster', 44, 53, { anim: false }); dec('psx_wooden_crate_2', 49, 53); dec('sea_chest', 56, 54); dec('lobster_traps', 41, 53);
+    [42, 47, 55].forEach(x => P('railway_lantern', x, 53)); [40, 45, 50, 54].forEach(() => { rnd(); rnd(); rnd(); }); dec('ocean_lobster', 44, 53, { anim: false }); dec('psx_wooden_crate_2', 49, 53); dec('sea_chest', 56, 54); dec('lobster_traps', 41, 53);
     feat({ k: 'scatter', key: 'ocean_rock_8', n: 10, x: mx(42), z: mz(OY + 4), r: 22, seed: 63, sea: true });   // (no kelp: 4.5 m tall in 3.5 m of water)
 },
 };

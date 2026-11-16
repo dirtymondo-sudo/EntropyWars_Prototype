@@ -3,7 +3,7 @@
    BRIEF: a gaol nobody runs any more. The cell door at the Drunk Tank's east side leads down a stair into the Precinct Drain; the trap under
    the tank drops by rope ladder to the Old Workings; the Guardroom's west door is DOOR HQ's Room 24601 ("the seventh cell"). ctx: see W.js.
    STANDS TODAY (first build): cots and bars along the north wall, the guard's table, terminal and files, bare bulbs, the old room's four
-   bystanders. NOT YET: the six cells as walled cells with doors, the Catwalk (2.2 m), the Vent Stack (3.6 m), the Property Room. */
+   bystanders. THE MODEL LIST PASS: steel toilets, mattresses, PSX bar panels between the cells, the baton. NOT YET: cell doors, the Catwalk (2.2 m), the Vent Stack (3.6 m), the Property Room. */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
 module.exports = {
@@ -14,6 +14,16 @@ module.exports = {
             const mid = ctx.inner(id); [2, mid.length - 3].forEach(k => { const q = nth(mid, k); if (q) { const s = ctx.sq(id, q[0], q[1]); ctx.props.push({ key: 'bare_bulb', x: ctx.gcx(s[0]), z: ctx.gcz(s[1]), ceil: true }); } });
             const dry = ctx.squares(id, 'f'); for (let k = 9; k < dry.length; k += 13) ctx.dec(k % 2 ? 'floor_stain' : 'paper_sheet', id, dry[k][0], dry[k][1]);
         });
+        /* a blocker on the k-th free square of a list, decor on the k-th square (THE MODEL LIST PASS helpers) */
+        const putP = (key, id, list, k, o) => { for (let i = Math.max(0, Math.min(list.length - 1, k)); i < list.length; i++) { const q = list[i]; if (ctx.free(id, q[0], q[1])) { ctx.P(key, id, q[0], q[1], o); return true; } } return false; };
+        const putD = (key, id, list, k) => { const q = nth(list, k); if (q) ctx.dec(key, id, q[0], q[1]); };
+        /* THE MODEL LIST PASS (mondo 11-16): MODEL_LIST.md searched for cell, prison, police. A steel toilet and an old mattress a cell,
+           the guard's baton, and the bars are the PSX pack's own bar panels now (a blocker a square: the cells are walled at last). */
+        ['P00-00', 'P01-00'].forEach(id => { const north = ctx.squares(id, 'f').filter(q => q[1] === 2);
+            [2, 4, 6].forEach(k => { const q = north[k]; if (q && ctx.free(id, q[0], q[1])) ctx.P('steel_toilet', id, q[0], q[1], { face: 180 }); });
+            [1, 3, 5].forEach(k => { const q = north[k]; if (q) ctx.dec('psx_old_mattress_mp_1', id, q[0], q[1] + 2); });
+            north.forEach((q, k) => { if (k % 2 === 0 && k > 0 && ctx.free(id, q[0], q[1] + 1)) ctx.P('psx_bars_metal_1', id, q[0], q[1] + 1, { face: 0 }); }); });
+        putD('psx_police_baton_mp_1', 'P00-00', ctx.inner('P00-00'), 22);
         const g = ctx.inner('P00-00');
         [['steel_table', 20], ['crt_terminal', 21], ['folding_chair', 28], ['filing_cabinet', 30]].forEach(r => { const q = nth(g, r[1]); if (q && ctx.free('P00-00', q[0], q[1])) ctx.P(r[0], 'P00-00', q[0], q[1], { face: 180 }); });
         const k = nth(ctx.inner('P01-00'), 12); if (k) ctx.dec('key', 'P01-00', k[0], k[1]);

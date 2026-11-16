@@ -909,6 +909,7 @@ lines.push(UD ? "                floor: '" + UD.GROUND.floor + "', cliff: '" + U
 if (ROOM.north && ROOM.zone) lines.push("                zones: " + J([Object.assign({ x0: r3(-HALF - ROOM.east * C), z0: r3(-HALF - ROOM.north * C), x1: r3(HALF + ROOM.east * C), z1: -HALF }, ROOM.zone)]) + ",   // THE GROUND ZONES: the Hills' rows wear their own sheets");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
+DISTRICTS.forEach(m => (m.streets || []).forEach(st => streets.push(st)));   // a district's own streets past the plots (the Hills' roads: districts/N.js): lane lines, kerbs and covers like the city's; laid in last, so no lamp, bus or traffic rule of the plan reads them
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0," + (UD ? " stains: true," : "") + " streets: " + J(streets) + ",");
 const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
@@ -945,9 +946,11 @@ const LOOKS = {
     H: { lamp: '#fff0b8', name: 'HERO PLAZA', bg: '#c22a2a', ink: '#ffffff' },       E: { lamp: '#ff7ad8', name: 'ENTERTAINMENT', bg: '#7a3cc8', ink: '#ffffff' },
     I: { lamp: '#ff9a3c', name: 'INDUSTRIAL', bg: '#e0b020', ink: '#1c1a14' },       S: { lamp: '#f2faff', name: 'SPORTS + CULTURE', bg: '#2a8c4a', ink: '#ffffff' },
     B: { lamp: '#8ce8dc', name: 'BAYSIDE', bg: '#1a8c9c', ink: '#ffffff' },
+    N: { lamp: '#ffd9a0', name: 'THE HOLLYWOOD HILLS', bg: '#6a5a3a', ink: '#ffffff' },   // (2026-11-16, district N: a warm sodium light on the canyon roads; no banner hangs there, its lamps carry no `b`)
 };
 { const seen = {}; count.banners = 0;
   lamps.forEach(l => { const p = plotAtCell(Math.max(0, Math.min(N * 12 - 1, Math.floor((l.x + HALF) / C))), Math.max(0, Math.min(N * 12 - 1, Math.floor((l.z + HALF) / C))));
+      if (l.d && LOOKS[l.d]) return;   // (a lamp its district stood past the plots keeps its district: the Hills')
       if (!p || !LOOKS[p.d]) return; l.d = p.d; seen[p.d] = (seen[p.d] || 0) + 1; if (seen[p.d] % 2) { l.b = 1; count.banners++; } }); }
 lines[lampLine] = "                    looks: " + J(LOOKS) + ",\n                    lamps: " + J(lamps) + ",";
 features.push(...lateRows);
