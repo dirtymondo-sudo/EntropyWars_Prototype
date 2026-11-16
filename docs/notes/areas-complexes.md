@@ -4395,6 +4395,7 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   3. **Within about 0.6 m of a building's outer face a prop stands on the wall's 2.15 m walker box** (the mail boxes hung at 6.7 m, the toy shop's cabinets
      went through the ceiling). Furniture: keep its middle 0.65 m in. A piece hung on the wall: N.js `WALL(h)` (`mount: 0` + the y that lands it at h; h
      from 1.55 m up), or give it something to hang on that stands out from the wall (the Post Office's sorting wall).
+     LATER THE SAME DAY: the city's fix is better and N.js uses it now: every inside prop is `floor: true` (`onFloor`), so a wall piece hangs at any height.
   Hearths are open brick (`hearth()`), the fire is the catalogue's `campfire` (it carries a real light) at `span` 0.8. Seen on screen at HEAD below.
 - **PASS 3, DRESSING**: N.js build, "THE DRESSING": 31 lamp posts (`lampPost(plot, lx, ly, turn)`: a candy-striped post with a lit lantern, a `look` on
   a square's middle, the square marked taken), bulbs strung from the square's lamps to the tree, the well, shop freight, woodpiles, sleighs, the yeti's
@@ -4404,6 +4405,60 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   stand at the Pole, the lake, the Sleigh Road and the two south ways out. Walked at eye height in the probe (twelve views): one signpost stood inside a
   zone pine's skirt and moved. NOT REACHABLE FROM A DISTRICT FILE, asked of mondo: falling snow, a sound bed and an aurora (the walked rooms have no hook
   for them: an engine job), the lake's ice paint, the green `xmas_pine` in the tree zones (the tool's). The header of N.js lists them and the models it needs.
+
+## THE MOUNTAINS, THE ZONE KIT — what the pilot district learned, for the five district threads that follow (2026-11-16, district N thread)
+
+mondo 11-16: "start one district thread in each to try to get it up to par with disaster city, so it will be easier to do the other districts once
+that first district is fleshed out and knows what shared assets it can use for the zone". The North Pole village (N.js) is the Mountains' pilot.
+Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy from N.js; a helper all six want belongs in bake-mountains.js (board note first).
+
+**1. LOOK FIRST. What the first look found (expect the same in P, K, O, S, H: none was seen before):**
+- A pack BUILDING used as a prop (`xmas_house`, 16 copies) was wider than its squares, cut its neighbours and read as a suburb. Buildings are built
+  (`ctx.building` + an `arch` look), never a house prop.
+- Windows = the glass sheet under a warm tint read OLIVE. A lit window is a `marble_light` box, tint 0xffc070, `glow` 1.0, with a white frame (N.js `pane`).
+- Wall paint on the board sheet (`WD`) reads near BLACK at night: add `gain` 1.7 to the shell's two parts (`a.P.slice(-2)`) and to the gable (`tintEnd`).
+- A board on a gable-front house must hang at z `d/2 + 0.86` or the gable's overhang hides it. Fonts: `fell` for the village; pick ONE per district.
+- Black `ocean_rock` on snow looks wrong. Grey rock = `hw_stone*`, `psxg_rock_*`, `cave_stone`, or a `rocks_5` part.
+- A plot's `B` run the walker cannot reach is counted in `unreachedSquares`: open it with `tailor`, do not leave it.
+- The probe: `dev.teleport` needs `y` = the ground (the village: 1.75, the lake + roads 0). A view from `fp: true` INSIDE a roof or wall shows nonsense.
+
+**2. INSIDES (true for every walked-in `texbuilding` in a plot room):**
+- The building's own inside takes NO light: at night a furnished room is black. N.js `lit(a, w, h, d, dr, key, tint, glow, ctx)` lines the walls, floor
+  and ceiling with thin boxes 0.30 m in, `glow` 0.85 + `gain` 1.7 (a part with `glow` is drawn UNLIT at tint x glow: 0.25 is DARKER than none). The city
+  does the same with quads (`kind: 'wall'`, each turned to its wall: F-atmos.js `coat`); a quad not turned to its wall does not show.
+- Every inside prop gets `floor: true` (N.js `onFloor(B)` wraps `B.put`): without it a prop within a body's reach of a wall stands on the wall's TOP.
+- A prop's `y`: under 1 = a lift; from 1 up = a height from the ROOM's floor, so add the plot's ground (N.js `UP(h)`). A hung piece: `mount: 0` + `UP(h)`.
+- Fire: catalogue `hearth_fire` (`w` / `h` in metres, a real light) in an OPEN brick hearth (N.js `hearth`). Outdoors: `campfire`, `brazier` (real lights).
+- Not done in N yet, the city's rule: a thing that BLOCKS stands on the middle of a whole 3.5 m square with a ghost wall (F-inside.js `grid` / `solid`).
+
+**3. THE KIT (all in the catalogue or the sheets today):**
+- Walls: `WD` boards (painted with `gain`), log brown 0x7a5a40 (`ctx.cabin`, districts K and P), stone foot `rocks_5` 0xa8a8b0, snow roof `ice` 0xf4f8ff, chimney
+  `bricks_2` 0xb86a54, trim `marble_light` 0xf6f6f2 (the wood sheets cannot be painted white), gilt = `gold`, coal / dark rock = `obsidian`.
+- The village palette: red 0xb84438, green 0x3f6b4a, cream 0xd8c8a8, blue 0x5a7890, ginger 0x9a6238, plum 0x7a4a6a. Warm light 0xffb050 to 0xffc070 against
+  the blue night is the zone's one rule of light; coloured bulbs (N.js `bulbs`) are the village's own.
+- Lamp post: N.js `lampPost` (candy stripes: the VILLAGE's; another district should keep the lantern and change the post). No lamp model exists.
+- Winter props: `xmas_*` (trees, snowmen, gifts, wreaths, garlands, stockings, food), `sleigh`, `signpost`, `park_bench`, `ancient_well`, `fallen_log`,
+  `stump`, `hw_straw`, `hw_fence`, `psx_wooden_crate_*`, `meshy_burlap_sack`, `cardboard_boxes`, `rabbit`, `crow`, `dog`, `brazier`, `campfire`.
+- Inside: the PSX pack (`psx_bed_1`, `psx_dinner_table_1`, `psx_chair_mp_3`, `psx_sofa_1`, `psx_wardrobe_mp_1`, `psx_shelf_mp_*`, `psx_display_cabinet_mp_*`),
+  `rocking_chair`, `rug_round`, `table_lamp`, `form_counter`, `cash_register`, `deck_oven`, `bread_rack`, `mailbox_bank`, `platform_scale`, `tool_pegboard`,
+  `tool_chest`, `ships_bell`, `notice_board`, `wall_clock`. Dark pack furniture reads black: put it against a lit wall.
+- Do NOT use: `xmas_house` (above), `xmas_tree_plain` as a snow tree far from houses (it is a green fir with no snow), `ocean_rock`.
+
+**4. STILL MISSING ZONE-WIDE (not a district file's to fix; asked of mondo 11-16):**
+- No falling snow, no sound bed, no aurora: the walked rooms have no hook for them (engine).
+- The tree zones (the tool): `xmas_pine` is a bright green summer tree; the snow pines' skirts are 4 m wide, blurred up close, and stand on trail squares.
+- Ice (`ice_1`) beside snow (`ice`) reads the same at night (the tool's paint).
+- No models: reindeer, sled, skis on a rack, a mail box, an axe + block, a street lamp, icicles. No snow-laden roof edge piece.
+
+**5. THE VILLAGE AGAINST A FINISHED CITY DISTRICT (Financial: F.js + F-inside / F-detail / F-atmos), the pilot's remaining work plan:**
+1. A plan and a mock-up mondo OK'd before building (every city district had one; the village was built from the brief's pass list).
+2. The second exterior layers (F-detail): sills, belt courses, downpipes, roof pieces, a second sheet on parts of each wall, drifted snow at wall feet.
+3. Insides on the fight's squares: blockers on whole squares' middles with ghost walls, walkways whole squares wide.
+4. The second inside pass (F-atmos): dado / skirting / crown on the coat, pendants and sconces as real pieces, the Meshy list made.
+5. Residents with homes, beds and a day (the city's `HQ_CITY_RESIDENTS`): the village has three natives standing still. mondo's table decides who.
+6. A measured-size prop check and the two polish passes living in the bake (the city's props.js, interior-polish.js, exterior-polish.js).
+7. A district look in the tool (lamp colour, banner) shared by the zone, as the city's LOOKS.
+8. Encounter table, PvP arena pick, the Ice Queen: mondo's.
 
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
@@ -4655,6 +4710,14 @@ once that first district is fleshed out and knows what shared assets it can use 
 - **PASS 1, EXTERIORS (seen on screen):** the huts (painted boards, porch, shuttered window, word board, number, a door leaf each), the
   Lifeguard Hut (white, red band, LIFEGUARD roof board, railed veranda, the flag), the Boardwalk (kerb, bollards + rope, four lamps, THE GATE
   at the city door), the volleyball court (a drawn net), the swim flags, the Tide Pools (five `dip` hollows the sea stands in + rocks).
+- **PASS 2, INTERIORS (seen on screen):** the four huts lined and furnished (S.js `inside` + `In`): a coat in the hut's colour over a white
+  board dado, a lit board ceiling, tie beams, daylit windows; SURF (rack, steel bench, pegboard, boards, net), BEACH HUT (bed, lamp, chest,
+  rocking chair, rug, seascape), FLOATS (counter + till, ball cart, shelf, rings, air beds, paper lanterns), LIFEGUARD (cot, desk with radio
+  and glasses, tool chest, board, rings). What went wrong on the way is in the kit below (the coat's depth, prop heights on raised sand).
+- **PASS 3, DRESSING (seen on screen):** every plot has a reason to walk to it now: the North Headland's boats and bench, a camp on the wild
+  beach, the hot dog stand and bins at the Boardwalk, a towel line (drawn) at the huts, toys adrift in the Surf, a bench, a guitar and the
+  radio in the Palms, chairs and the ball at the court, a fenced path over the Dunes to a high bench with a glass, dry scrub on every dune,
+  the fishermen's camp south, a chest and a wrecked boat where the sand runs out. 79 props, 2 rails, 1 drawn piece; catalogue models only.
 - **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
@@ -4670,8 +4733,25 @@ once that first district is fleshed out and knows what shared assets it can use 
   reads as a grey steel door here.
 - **A WINDOW, A PORCH** (S.js `win`, `porch`): glass = `GLS` with `glow` 0.35 in a white frame, shutters = `SHUT` tinted; a porch = a plank
   deck, two posts, a `shed` roof. Copy them; they are a few lines each.
+- **A HUT'S INSIDE** (S.js `inside(a, w, d, h, tint, door, windows)`, copy it): the hollow building's inner wall face stands 0.30 m in, so
+  the coat stands at 0.335 (the city's 0.27 is behind the wall here); the ceiling is at 2.68 m whatever the row's `h`, so the lit deck is at
+  2.63; the deck wears `CORR` (a tint over the dark plank sheet stays dark). Never draw one box across a hut above head height (the
+  lifeguard's red band was the inside's black ceiling): four strips.
+- **A PROP'S HEIGHT ON RAISED SAND (the big one):** every Beach plot stands 0.6-2.0 m over the room's level 0. A prop's `y` under 1 is a
+  lift over the ground under it; a `y` of 1 or more is a height over LEVEL 0 (three-renderer.js THE TIER HEIGHT), so "1.5 m up the wall" is
+  typed `G + 1.5` with G = the plot's sand (`CAP[level]`: 0.6 / 1.2 / 2.0). And within about 0.4 m of a walk-in's wall the ground under a
+  prop is the WALL's top (boards, pegboard and rings stood on the roof): give it `floor: true`. S.js `In(B, key, lx, lz, face, y)` does
+  both. A thing on a table: use `steel_table` / `tanker_desk` (tops 0.76) so its `y` stays under 1.
+- **WALL PROPS:** a catalogue prop with `wall: true` (clock, clipboard, shelf, hook rail, extinguisher) did not show in a hut; use the plain
+  ones (pegboard, net, painting, life ring, notice board not checked). `bare_bulb` stands on the floor here: light a hut with the deck's glow.
 - **WATER ON THE SAND:** `feat({ k: 'dip', x, z, r, h })` on sand that stands 0.6 m up, with r 3.4-5.2 m and h 1.5-1.7 m, is a pool the room's
   own sea stands in (waded). A smaller or shallower dip shows no water.
+- **DUNE DRESSING:** `psxg_dead_bush_1/2` read as dry dune scrub; `feat({ k: 'rail', x0, z0, x1, z1, model: 'ranch' })` is a timber
+  fence that follows the dunes (a path = two rails three squares apart, on square lines); `meshy_campfire_ring` is a fire ring with no
+  light (the room already carries 20 lit props: buoys, vents, fires). `camping_tent`, `lobster_traps`, `rowboat`, `ship_anchor`,
+  `fallen_log`, `hot_dog_stand`, `city_bin` all read right on sand.
+- **A THING ADRIFT** that is not a `float` prop (a ball, an air bed): `{ y: -0.5, hover: 0.55 }` puts it on the surface (a small `y` alone is
+  a lift over the SEA BED, so it sinks; a `y` over 1 hangs in the air).
 - **ROCKS:** on dry sand the graveyard pack's `psxg_rock_1..4` (grey boulders, about 1 m). The ocean pack's `ocean_rock_*`, weed, kelp and
   anemones are for deep water only (black pillars and spikes anywhere else).
 - **DRAWN, NO MODEL NEEDED:** a volleyball net (`urban:MetalTruss1a`, `kind: 'over'`, two posts), lamps (a pole + a cream cylinder with
@@ -4961,6 +5041,83 @@ Pass 4 of 5. `docs/areas/desert/districts/W.js` and ONE change to the shared too
 - **THE CLOCK IN A PROBE:** a view's `"eval": "window._hqClockHour=function(){return 21.5}"` + `"settle": 2500` shoots it at night (19.2 = dusk).
 - **NO SOUND:** walk rooms have no per-district sound bed (ambience is a battle map's `env.ambience`); nothing was added.
 
+## THE DESERT, WESTERN TOWN — THE POLISH PASS (2026-11-16, second side, the Western Town district thread)
+
+Pass 5 of 5; the row on the board is free again. Where the district stands: the header of `docs/areas/desert/districts/W.js`.
+- **THE WALK CHECK:** a flood from Main Street on the walker's own rule (`hqTerrainInfo`, `hqTerrainFeet`, step 0.4375 m, and
+  `hqTerrainWallAt(info, x, z, 0.3)`: a wall whose top is over `rules.climb` (0.62 m) stops it; without that test a point flood steps
+  straight through a 0.12 m wall). Every floor, the six hotel rooms, the stalls, the chancel, Boot Hill, the mine mouth, the camp and the
+  canyon's end are reached; the two cells and the bank's vault side are shut, as meant.
+- **TWO GHOST WALLS ON ONE LINE:** `hqTerrainWallAt` returns the FIRST wall in reach, not the tallest. The jail's bars had a 0.12 m ghost
+  (the bars' foot rail) under the 2.6 m one: the walker met the low one and walked into the cells. One ghost a line; draw the rest.
+- **A STAGE UNDER 0.62 m IS CLIMBED** (the saloon's is 0.5 m: you can step up to the piano). A counter (1.02 m) is not.
+- **LEFT FOR MONDO / A LATER THREAD:** real upper floors (saloon gallery, hotel, hay loft), an inside for the mine, the NEEDS A MODEL
+  list, brightness of the insides on his own machine, whether the five added trades stay.
+
+## THE DESERT, THE ZONE KIT — what the next Desert district threads can use (2026-11-16, written by the pilot, Western Town; Area 51 adds its findings under it)
+
+mondo 11-16 (passed on by the set-up thread): "start one district thread in each to try to get it up to par with disaster city, so it will be
+easier to do the other districts once that first district is fleshed out and knows what shared assets it can use for the zone".
+
+**THE TOOL'S HELPERS (ctx; every district has them)**
+- `building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts)`: a hollow walk-in + its look as parts. `opts`: `leaf` (`leaf_shabby_wood` default,
+  `leaf_barn`, `leaf_saloon`, `leaf_cell`), `leafDouble`, `keyIn`, `floorIn`. The handle has `at(lx, lz)`, `face(f)`.
+- `sheet()`: a parts list for a stand-alone `arch` row (`feat({ k: 'arch', id: 'des:<d>:<name>', x, z, rot, parts: a.P })`): box, cyl, dome, quad,
+  roof, shell, `sign(words, x, y, z, w, h, ink, board, font)` (real lettering: the `txt:` sheet; `rye` is the frontier face). A gate, a
+  mine mouth, a privy, a row of lit lamp cores are all one such row.
+- `pen(x0, y0, x1, y1, [side, square])`: a ranch rail ring with a gap. `feat({ k: 'rail', ..., model: 'ranch' })` for a loose stretch.
+- `setPaint(sx, sy, sheet)`: the room's seven ground sheets + `'sand'` on your own squares (boardwalks = `urban:WoodFlooring1a`, a trail = `dirt_2`).
+- `airZones(ctx)` (new 11-16): the air over your plots ("THE AIR HOOK"). Kinds: dust, embers, fireflies, snow, rain, spores, ash, motes.
+- `P` (a blocker on a square's middle), `Pm` (a metre spot), `dec` (off the middle, random turn), `native(race, sx, sy, face, say)`.
+
+**HELPERS IN W.js WORTH LIFTING INTO THE TOOL (not done: ask on the board first; copy them meanwhile)**
+- `western(a, w, d, door, o)`: a plank front (false front, porch or balcony, sash windows, a name). `o.key` = the wall sheet, `o.lit` = lit windows.
+- `inside(a, id, w, d, h, door, o)`: lines a walk-in from within and returns `solid` / `counter` / `shelves` (drawn fittings + ghost blocks,
+  written in `furnish()`); `inn()` = a prop with `floor: true`. Any district's walk-in can use it as it is ("THE INTERIORS PASS").
+
+**SHEETS THAT SUIT THE DESERT** `urban:WoodGeneric1b` (walls; it is brown: it cannot be tinted white, use `urban:PlasterWallStucco2a`),
+`urban:WoodGeneric1a` (trim, posts), `urban:WoodGeneric2a` (shingles), `urban:WoodFlooring1d / 1a` (boards), `bricks_1`, `dirt_2`, `desert`
+(the sand; tinted yellow it reads as hay), `urban:MetalWallRibbed1a` (iron, brass by tint), `urban:GlassWindowTall1a` (give a pane `uv: 'fit'`).
+Tints want to be light: the first build's mid tints drew near black on the plank sheet.
+
+**CATALOGUE PIECES THAT SUIT IT** Meshy, the Desert: `saguaro_cactus`, `prickly_pear`, `covered_wagon`, `water_tower_west`, `hitching_rail`.
+Animals: `horse`, `horse_brown`, `horse_black`, `cow`, `chicken`, `crow`. PSX graveyard pack: `psxg_tombstone_1..3`, `psxg_dirt_grave`,
+`psxg_coffin`, `psxg_dead_tree_1/2`, `psxg_dead_bush_1/2`, `psxg_rock_1..4`. Halloween pack: `hw_straw`, `hw_straw_2`, `hw_fence`, `hw_crop`,
+`hw_scarecrow`, `hw_shovel`, `hw_pumpkin*`, `hw_candles`. Others: `ancient_well`, `decor_windpump_tower` + `_wheel`, `campfire`, `fallen_log`,
+`stump`, `skull`, `skull_pile`, `dead_snag`, `wooden_bucket`, `meshy_burlap_sack`, `psx_wooden_crate_2/3/6`, `psx_metal_barrel_mp_1/2`,
+`rocking_chair`, `iron_garden_bench`, `signpost`, `meshy_hanging_lantern`, `railway_lantern`, `money_sacks`, `spell_dynamite`, `sea_chest`.
+Inside: the list in "THE INTERIORS PASS".
+**WRONG FOR THIS ZONE (they look like something else):** `form_counter` (an office form stand), `round_table` (Camelot's 5.2 m table),
+`mobius_bar` (a modern red bar), `cell_bars` and `psx_shelf_mp_2` (drew as black slabs), `culvert_mouth` (a sewer), `luggage_cart` anywhere but
+a hotel, `cave_stone` (a 2 m standing stone), `camping_tent` (modern nylon).
+
+**THE LOOK RULES SETTLED** Real scale first: a frontier front is 2 to 5 squares wide; anything wider reads as a barn. Fronts stand close, with
+a boardwalk between them and the street. Weathered wood, one strong colour a building, a name on every front. Light comes from glow, not
+lamps: the room has ten prop lights for all four districts (`noLight` + a lit drawn core). Open ground gets a reason to be there (a gate, a
+fence line, cattle, a camp), never scatter alone. The room's rock squares (`m` in the layout) are solid: check the layout before placing.
+
+**WHAT WENT WRONG AND THE FIX** A roof past a false front hid the sign (stop the roof behind it). A prop near a wall stood on the wall
+(`floor: true`). Two ghost walls on one line opened the cells (one a line). A point flood walked through thin walls (test
+`hqTerrainWallAt` at body width). Main moves every minute with many threads: merge, rebake, re-bump the token, and merge the PR in the same
+breath; GitHub can answer "has merge conflicts" for a few seconds after a push, so check `git merge-base --is-ancestor origin/main HEAD`
+and try once more. The baked block conflicts every time: take main's side of data.js and index.html, then rebake and re-bump.
+
+**STILL MISSING ZONE-WIDE** Models: anvil + forge, water trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, a canvas
+tent, a telegraph pole. No upper floor inside any Desert building. No per-district sound. Fights use one table for the whole room
+(`HQ_AREA_ENCOUNTERS`). No residents (the city's `HQ_CITY_RESIDENTS` has no Desert rows). No interior polish pass in the bake (the city's
+`interior-polish.js` moves clipping props; the Desert has none).
+
+**WESTERN TOWN AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and this
+district lacks, in the order to do it:
+1. THE SQUARES inside: the city sets every blocker on the middle of a whole 3.5 m square and keeps walkways whole squares wide. W.js's
+   counters, partitions and the hotel's 2.6 m corridor are placed by the metre. This is one of mondo's standing rules: first to fix.
+2. THE SECOND LAYERS outside (F-detail): belt courses, sills, downpipes, roof gear, other sheets and decals on other parts. The fronts
+   here have one layer.
+3. THE SECOND INTERIOR PASS (F-atmos): a lit ceiling deck, pendants and sconces, pilasters, a crown and skirting. Here: one lining pass.
+4. THE MESHY PIECES: the city made its missing models; here they are only listed.
+5. RESIDENTS with homes and a day, and the district's own fights. Here: four standing people.
+6. WALKED UPPER FLOORS and roofs. Here: none.
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
@@ -5071,6 +5228,46 @@ that first district is fleshed out and knows what shared assets it can use for t
   `_hqGrassTick` keeps the grass field off a building tier (`plateau` + `bld`) as it does off a `texbuilding`: tufts grew on the deck.
 - Not done in this pass: the district at night, the Drive and the Lawn (dressing), the Crypt's inside (interiors).
 
+### PASS 2, THE INTERIORS (seen in the cloud browser)
+- The house is not a walk-in out here (its five floors are the old rooms behind the tool's door), so the district's one inside is THE CRYPT:
+  a stone floor slab over the lawn (the room's lawn noise came up through a walk-in's own floor), the sarcophagus on a dais on a square's
+  middle, burial niches in two tiers down both side walls between pilasters on the square lines (some sealed with a slab), the demon in a dim
+  green recess, an iron ring of eight candles, candelabra, a coffin and an open coffin on squares' middles, urns, skulls, cobwebs, a chain, two
+  bats, grave lights on the pilasters, and a lit vault (a walk-in's own ceiling draws black: a thin stone deck with `glow: 0.3` under it).
+- THE TREEHOUSE's deck: a telescope, a crate, a rocking chair in the hut.
+
+### PASS 3, THE DRESSING (seen in the cloud browser)
+- THIRTEEN LAMP POSTS, drawn (`lampPost(sx, sy, side)` in H.js: an iron post at a walk's edge against the corn, the lantern out over the walk): the
+  Drive, the cross path, the gazebo's path, the Lawn's walk. No collision needed: they hug the bank.
+- The house's grounds: the porch's rocking chair and crate, a cauldron and crates in the back yard, a small grave under a wooden cross, six bats
+  round the tower, crows on the ridge and a bay's gable. The Lawn: a swing, urns, stepping stones to the fountain. The gate's round: a bench, an
+  urn, pumpkins. The gazebo: a bench and candles inside. Both graveyards: slabs between the stones, more graves on the far rows, stone crosses,
+  stepping stones down each aisle, crows on the wall, bats.
+- TWO SIGNS (`a.sign`): `REQUIESCAT IN PACE` carved on the Crypt's frieze (font `cinzel`), a `KEEP OUT` board on the gate's pier read from the corn
+  track (font `fell`). No made-up names anywhere.
+- `plan()` also opens square (8, 66): the corn's bank cut across the Crypt's portico.
+
+### PASS 4, THE ATMOSPHERE (seen in the cloud browser, day and night)
+- **THE AIR BY DISTRICT (bake-estate.js, one shared change, noted on the board):** a district file may export `airZones()` = [{ sx0, sy0, sx1, sy1
+  (its own squares, the end exclusive), kind, color, n, speed, wind }]; the tool writes `shell.atmos.zones` (the Woods' and the Desert's way). With
+  no zone from any file the shell line is byte for byte what it was. With one, the zone's own air (HQ_ATMOS_SITES.prebuilt_skinwalker: fireflies
+  160) is kept as a last zone over the whole room. H: grave-light motes (`0x9fffc8`, 110) over the Crypt and both graveyards, a slow grey dust
+  (130) round the house, the lawn and the gazebo; the gate, the treehouse and the Drive keep the fireflies.
+- **THE LIGHTS:** a room has ten real prop lights for all four districts, given in row order (the districts' `dress` runs C, L, H, R). H keeps
+  three (the two torches at the house's walk, one in the Graveyard); every other torch, the brazier and the fountain carry `noLight` and only
+  glow. Lamps, lanterns and windows are drawn glow.
+- **NIGHT:** seen with the probe's clock (`"eval": "window._hqClockHour=function(){return 22.0}"` + `"settle": 3000` on a view; later views stay at
+  night): lit windows, lamps and torches carry the district; the sky is the tool's.
+- **NO SOUND:** a walked room has no per-district sound bed (the Desert's Western Town found the same); nothing was added.
+
+### PASS 5, THE POLISH: what is still open
+- The lamps' and grave lights' glass is a plain lit box (pale at `glow: 0.7`): a lantern model would do better (the NEEDS A MODEL list in H.js).
+- The Graveyard's ground is one bare dirt sheet (the paint is the tool's: `p` squares are `dirt_2`); grass between the rows needs a paint rule.
+- The door row's own leaf surround shows as a thin strip inside the vestibule's doorway; the door row is the tool's.
+- The people stand on spots with no lines but the ghost's and the ghoul's (lines are mondo's to give).
+- `hw_web` never seen standing; `psx_wooden_crate_3` drew as a blank box in the probe (the `_4` and `_6` crates are fine); `lion_statue` is a
+  tawny lion, not stone (not placed).
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
@@ -5097,6 +5294,18 @@ Read this before dressing C, L or R. It grows with each of H's passes.
 - **DRAWN PIECES HAVE NO COLLISION:** an `arch` / `look` is seen only. Give it `blk()` walls or stand it on squares nobody walks.
 - **PROBING:** a view needs its own `y` (the compiled ground: `hqTerrainHeight(hqTerrainInfo(room), x, z)`); first person (`fp: true`) with a
   small upward pitch shows a building best; one run of 13 views takes about 3 minutes.
+- **A ROW'S `y`:** under 1 m it is a lift over the ground; 1 m and over it is a HEIGHT over the room's level 0. So a thing hung in the air or on
+  a wall carries its plot's ground: level x 1.75 m + the height you want (a cobweb at `y: 2.8` on a level-2 plot lies on the floor).
+- **A PROP INSIDE A WALK-IN** carries `floor: true` (else, near a wall, it stands on the wall's top). Lay a floor slab part over the lawn inside.
+- **THE LIGHT BUDGET:** ten real prop lights for the whole room, in row order (C, L, H, R). H takes three. Suggested share: C 2, L 2, H 3, R 3;
+  every other `cave_torch` / `brazier` / `fountain` / `campfire` / `candle_ring` gets `noLight: true` (it still glows).
+- **THE AIR:** export `airZones()` from your file (PASS 4 above). Kinds: dust, embers, fireflies, snow, rain, spores, ash, motes.
+- **SIGNS:** `a.sign(words, x, y, z, w, h, ink, ground, font, { ry })` in a building's or a look's parts; fonts used here: `cinzel` (carved
+  stone), `fell` (old painted boards). Plain words only, never a made-up name.
+- **LAMP POSTS:** copy `lampPost(sx, sy, side)` from H.js `dress` (side = the walk's edge the post stands on: W, E, N, S). It wants to move into
+  the tool as `ctx.lampPost` once a second district uses it (board note first).
+- **NIGHT IN A PROBE:** `"eval": "window._hqClockHour=function(){return 22.0}"` + `"settle": 3000` on one view.
+- **KNOWN BAD PIECES:** `hw_web` (unseen since its fix), `psx_wooden_crate_3` (blank box), `lion_statue` (a tawny lion, not stone).
 - **STILL MISSING ZONE-WIDE:** corn stalks (Meshy, waits), a lamp post model, night never seen on screen, no residents with routines, lines for
   most of the people.
 
@@ -5287,4 +5496,76 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
   missile; the crater's lamps, camera, tape, pod; landing rings scorched into the Dry Lake west (16-sided rings of flat `line` paint); the
   range on the Dry Lake east; the wing's yard. Two more men (hangar door, crater), no lines. A sign with `ds: true` reads mirrored from
   behind: give a board a back, or two signs back to back. `missile` lies flat (it has no stand): on the "needs a model" list.
+- **PASS 4, ATMOSPHERE (seen by day and at night, 16 views):** lit parts only (`glow` on drawn boxes): runway edge / threshold / end lights,
+  blue taxi lights, warm windows + strip lights in the huts, red obstruction lights, floods over the big door, a pale disc under each
+  saucer, a status lamp over every cell door. PROBE TIP: a view's `eval` of `window._hqClockHour = function () { return 22.5 }` (+ `settle`
+  2500) turns the room to night for the views after it. **NOT POSSIBLE FROM A DISTRICT FILE (reported to mondo):** sound cues and particles
+  (dust, heat haze, a hum by the saucer): there is no row or hook for either in a room's terrain; real lights are capped at ten a room
+  (three-renderer.js HQ_PROP_LIGHT_MAX) and the flood masts already hold them, so the huts' strip lights glow but light nothing.
+
+## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
+
+mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
+which we will use elsewhere in other zones too. So changes in elevation for these rooms too". Before that, on plan 2: "more labyrinth like ...
+it doesn't have to be as big as the whole city ... a dungeon. the archetypical representation of a sewer. dark and grimy and scary. there should
+be wells or ropes. the subway station can be connected to / a part of the sewers ... an underground hub zone kinda like door hq, so it doesn't
+have to physically map onto disaster city"; own zone or the city's lower level: "kinda both"; "forget the strip and the old cyberpunk".
+
+- **THE ROOM** `site_prebuilt_downtown_underworld` (site `prebuilt_downtown`, part `underworld`, plate "DISASTER CITY · THE SEWERS"): 6 x 4 plots
+  of 12 x 12 squares (252 x 168 m), written by `node bake-sewers.js [--dry-run]` between `SEWERS24-BEGIN / SEWERS24-END` in data.js from
+  `docs/areas/sewers/layout.json` (the plan's square map: `x` wall, `o` walkway, `w` water, `f` room, `j` track, `b` plank). `SEWERS_DUMP=1`
+  prints the walked map. Never hand-edit between the markers.
+- **THE DISTRICT FILES from the first build:** `docs/areas/sewers/districts/W.js` The Sewers (15 plots), `T.js` The Running Tunnels (5),
+  `H.js` The Holding Cells (2), `O.js` The Old Workings (2). Stages a file may export: `plan` (change the squares), `build` (terrain rows),
+  `dress` (props), `people`; `deep: [plot ids]` = tanks nobody wades. A plot's squares are local (0..11): `ctx.P / dec / native(key, plotId, lx, ly)`,
+  `ctx.squares / corners / inner / walled(plotId)` list squares, `ctx.plot[id].base` = its floor in metres. Each file's header is its brief
+  and its STANDS TODAY / NOT YET list. The tool keeps the shared pieces: levels, openings, water, rails, ways out, shell, checks.
+- **THE WALL** = `terrain.gen { kind: 'plan', look: 'walls', wallKey: 'bricks_2' }`: every square that is not a `space` (94 greedy rects) is
+  brick to the roof. The old sewer shell (`hqSewerShell`), darker (ambient 0.22, fog 0.034).
+- **THE LEVELS** (layout `level`, 1 = 1.75 m, a whole-plot `plateau`; a plateau runs 1 m into a neighbour as high or higher, or two plateaus
+  that only touch leave a notch): 0 the old mine · 1 the track + the Outfall · 2 / 3 / 4 the culverts' three rows, stepping up to the north ·
+  5 the cells. Layout `openings` say how two levels meet: `fall` = the stream drops over the lip + a stair beside it (six), `stair` = dry
+  (the cell door, the Maintenance Hatch), `climb` = a ladder / rope on the face (the trap under the Drunk Tank 8.75 m, the Adit 3.5 m, the
+  well at the Junction down to the Crossing: the one opening that was not in the game before, shown to mondo on the plan).
+- **THE WATER:** every run of `w` squares is a `stream` a square wide at its plot's level (0.3 m under the walk, waded); a block of water is
+  one wide stream; the Cistern is deep (`W.js deep`); a `b` run is a `deck` over deep water. 74 runs, 10 tanks.
+- **THE RAILS:** two 0.14 m `wall` rows along every run of `j` (the old Running Tunnels' own, grindable).
+- **THE WAYS OUT (nine, all in the game before):** door `pump` (north wall, the Pumping Station; the city's `sewer` door names the old room and
+  `at: 'pump'`: map.js now keeps a door id the replacing room still has, so it lands at this door with no change on the owner side) + eight
+  links whose sewer end was re-pointed in `DOOR_HQ.links` (the other end, and so the far room's door, is the link's own: nothing in the
+  city, the Woods or DOOR HQ had to change): `docks_sewer` (e), `stadium_sewers` (e), `tunnels_platform` (s), `well_garden` (free, the Loop
+  Line), `tunnels_works` (w), `sewers_drain` (w), `workings_oubliette` (w), `cells_dungeon` (w). The tool refuses to bake when a link row drifts.
+  DROPPED on his word: `strip_sewer`, `undercity_sewer`.
+- **RETIRED (`DOOR_HQ.retired`):** the four old rooms (`…downtown_sewers / _tunnels / _cells / _workings`) -> the new room. Their literals stay
+  (the tool reads the people's lines, the door plates and the Healing Zone from them; PvP board sources). Hub `underworld` and world zone
+  `underworld` name the one room.
+- **WHO IS THERE (14):** the old rooms' bystanders with their own lines, placed by the district files.
+- **SEEN ON SCREEN** (probe, HEAD of this PR): the Junction, two falls with their stairs, the Outfall, the Depot, the cells' corridor. The room
+  loads with no error (74 files, ~35 s in the probe).
+- **NOT DONE / KNOWN SHORT:** nothing was WALKED by a player (stairs, the three climbs, every door: offline graph + compile only); over the low
+  plots the roof is 14 m up, so it reads as a black void, not a vault (a per-plot ceiling needs its own piece); still too bright and too clean
+  for "dark and grimy" (no pipes, grime decals, drips); the cells are an open hall with cots, not six walled cells; no Catwalk, Vent Stack,
+  Signal Gantry, Sump, Pump Ledge, Chimney shaft; the 11 plain culvert plots' bends are the plan sketch's dice, not designed; no water sound
+  (the game has no water ambience at all); the old rooms' four tapes and finds were not re-homed (no tape / find guards).
+
+## THE WATERFALLS — a terrain row for any room (2026-11-16)
+
+mondo 11-16: "can we also work on a way to make waterfalls, which we will use elsewhere in other zones too".
+- **THE ROW:** `{ k: 'fall', x, z, face, w, y0?, y1?, key?, out?, foam? }` in a room's `terrain.features`. (x, z) = the lip's middle; `face` =
+  the way the water falls (degrees, 0 = north, clockwise); `w` = the lip's width (m); `y0` / `y1` = the water's level above / below (left
+  out: read from the stream or pool on each side, else the ground); `key` = the liquid (default: the one above; lava, poison … fall in their
+  own sheet); `out` = how far it lands from the lip (default by height); `foam: false` = none.
+- **IT DRAWS ONLY.** It changes no height, no water and no walk. A room lays a `stream` / `pool` on each level and a sheer step between them
+  (a `plateau` edge, a cliff), then one `fall` row on the lip. A stair or a climb beside it is the room's.
+- **WHAT IT IS** (three-renderer.js `_hqFallsBuild` / `_hqFallsTick`, called from `_hqBuildTerrain` after the square water): the liquid's
+  own animated sheet (`_liqBlendMat`, the material of the water above and below) from 0.9 m behind the lip out and down a thrown curve, its
+  UVs running down; white streaks a hand in front (one shared canvas texture, scrolling); a foam patch on the lower water, breathing.
+  data.js `hqTerrainCompile` collects the rows as `info.falls`. The editor's ADD list has "Waterfall". Off: `window.EW_NO_HQ_FALLS`.
+- **USED:** the Sewers' six (bake-sewers.js, layout `openings` kind `fall`). **WANTED NEXT:** the Woods' Falls plot (`docs/areas/woods/
+  districts/T.js`, its creek already steps per grade: one `fall` row per step), the Mountains' streams, the Beach's island.
+- **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen only at 1.75 m.
+- **PASS 5, POLISH (an eye-level walk, 18 stops):** every door, the fire escape, the deck, the pens, the crater's edge, the yard. One fix: the
+  radar hut's green scope window overlapped its door frame. **WHERE IT STANDS:** all five passes merged and live. Open for mondo: the
+  tower's ops block is solid (a walk-in would need the deck rebuilt as a building); the mess hall is sparse; no sound or particles (no
+  hook); six models on the file's "needs a model" list (boom arm, windsock, jeep, helicopter, turning radar, flag, missile stand).
 

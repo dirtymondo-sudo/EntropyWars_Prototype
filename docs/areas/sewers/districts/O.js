@@ -1,0 +1,22 @@
+/* THE SEWERS, district O · THE OLD WORKINGS (2 plots: the Old Workings, the Chimney). The mine under the precinct, the lowest level (0).
+   One thread a file (docs/notes/claims.md). Read by `node bake-sewers.js`; rules: docs/notes/areas-complexes.md "THE SEWERS ON PLOTS".
+   BRIEF: older than the city; bricked, flooded, lit by fire. Reached by the rope ladder from the trap under the Drunk Tank (8.75 m) and by
+   the climb in the Adit from the Storm Drain. The Chimney's west door is the old portcullis into the Cavern's Oubliette. ctx: see W.js.
+   STANDS TODAY (first build): the Flood (waded), torches, a brazier, bones, a signpost, the old room's two bystanders.
+   NOT YET: the Sump (deep, never waded), the Pump Ledge, the Chimney's shaft (3.9 m) as a thing to look up. */
+'use strict';
+const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
+module.exports = {
+    dress(ctx) {
+        ['P01-01', 'P00-01'].forEach((id, i) => {
+            const cs = ctx.corners(id); [0, cs.length - 1].forEach(k => { const q = cs[k]; if (q && ctx.free(id, q[0], q[1])) ctx.P('cave_torch', id, q[0], q[1]); });
+            const mid = ctx.inner(id), q = nth(mid, 3 + i * 4); if (q) ctx.P(i ? 'skull_pile' : 'brazier', id, q[0], q[1]);
+            const dry = ctx.squares(id, 'o'); for (let k = 6; k < dry.length; k += 12) ctx.dec('floor_stain', id, dry[k][0], dry[k][1]);
+        });
+        const s = nth(ctx.inner('P00-01'), 0); if (s) ctx.P('signpost', 'P00-01', s[0], s[1]);
+    },
+    people(ctx) {
+        const O = ctx.O.workings, stand = (race, id, k) => { const q = nth(ctx.inner(id), k); if (q) ctx.native(race, id, q[0], q[1], 90, ctx.sayOf(O, race)); };
+        stand('ghoul', 'P01-01', 9); stand('skeleton', 'P00-01', 12);
+    },
+};
