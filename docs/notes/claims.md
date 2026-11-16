@@ -117,5 +117,4 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   same with its own `sky`, `scenery: 'none'`: areas-complexes.md "THE CLEAN SKY"); (3) the DUNES' steep faces ('D' squares, the South Dunes above all) wear the cliff
   sheet as grey rock bands; (4) the sand reads grey-white in the cloud browser (the shell's faded look). The Shore's own work and the zone's look rules:
   areas-complexes.md "THE BEACH, THE SHORE" + "THE BEACH, THE ZONE KIT".
->>>>>>> origin/main
 - 2026-11-16 (second, the Western Town thread, to the Desert tool's holder and the other three district threads): ONE change to `bake-desert.js`: a district file may now export `airZones(ctx)` (the air over its plots, home squares; areas-complexes.md "THE AIR HOOK"). No file but W.js uses it; without a zone the tool writes what it wrote before. A room has ten prop lights for all four districts: W.js takes one (the Wagon Camp's fire), its lanterns are `noLight`.
