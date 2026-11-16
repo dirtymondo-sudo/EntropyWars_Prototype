@@ -3301,7 +3301,7 @@ const ThreeRenderer = (function () {
         /* 2026-07-14: the poison bogs render as PURPLE WATER and the black
            ooze / oil family as BLACK WATER — full animated fluid pipeline
            (waves, caustics, glints, shoreline inset), tinted per key below. */
-        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true,
+        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true, sludge: true,
         /* 🩸 2026-10-21: the Blood Pool (Blood Rain) — dark red water */
         blood: true
     };
@@ -3326,6 +3326,11 @@ const ThreeRenderer = (function () {
         purple_bog: { base: 'purple_bog', sheet: true, tint: 0xffffff,
                       caustDiff: 'vec3(0.46, 0.22, 0.66)', caustEmis: 'vec3(0.26, 0.12, 0.42)',
                       glintCol: 'vec3(0.90, 0.70, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
+        /* ☢ the radioactive sludge (2026-11-16, the Sewers' district R): the bright green sheet with caustics that GLOW
+           (the emissive term is three times the poison's), a yellow-green glint */
+        sludge:     { base: 'sludge', sheet: true, tint: 0xffffff,
+                      caustDiff: 'vec3(0.55, 0.95, 0.20)', caustEmis: 'vec3(0.50, 1.10, 0.14)',
+                      glintCol: 'vec3(0.90, 1.0, 0.45)',   hueShift: 'vec3(1.00, 1.18, 0.62)' },
         /* black goo (the dark slate sheet) / oil (the brown swirls): darkened toward black, a faint iridescent sheen */
         /* spell look fix FX-3 (2026-10-26): the black goo keeps a violet sheen (the poison pass's goo colour) so it reads wet */
         swamp:      { base: 'swamp', sheet: true, tint: 0xffffff,
@@ -3376,6 +3381,7 @@ const ThreeRenderer = (function () {
         poison:     { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         poison_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         purple_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
+        sludge:     { l1dx: 0.07, l1dy: 0.07, l2dx: -0.05, l2dy: 0.05 },
         swamp:      { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
         oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
         blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 },
@@ -5693,7 +5699,7 @@ const ThreeRenderer = (function () {
             var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava', blood: 'blood' };
             /* mirrors of map.js liquidFamilyOf / _LIQUID_SPREADS — keep in sync */
             var _FLOW_FAM_OF = { water: 'water', deep_water: 'water', poison: 'poison',
-                                 poison_bog: 'poison', purple_bog: 'poison',
+                                 poison_bog: 'poison', purple_bog: 'poison', sludge: 'poison',
                                  swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
             var _FLOW_RANGE = { water: 3, poison: 3, oil: 3, lava: 2, blood: 3 };
             var _noRaycast = function() {};
@@ -36621,7 +36627,7 @@ const ThreeRenderer = (function () {
                      THE DULL LIQUIDS (11-12) add [.., highlight colour, highlight width (shininess), ripple depth, sky sheen]: each
                      liquid's highlight is a dim shade of itself (water's is 0xb4c4c8 / 140 / 0.05 / 1) */
                   liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a, 0x1c2a12, 30, 0.016, 0.3], poison_bog: [0x6a7a26, 0.92, 0x141c08, 0x20240f, 30, 0.016, 0.3],
-                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
+                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], sludge: [0x86e014, 0.94, 0x4a9a08, 0x9adf30, 26, 0.02, 0.2], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
                              oil: [0x14120e, 0.96, 0, 0x22252c, 40, 0.012, 0.3], blood: [0x6a1014, 0.95, 0x1a0204, 0x2a1012, 30, 0.014, 0.25] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
@@ -92858,7 +92864,7 @@ const ThreeRenderer = (function () {
        it wears (_liqBlendMat: the battle's animated fluid top — its waves, caustics, glints, tint, see-through alpha), its normals
        up like the sheet's so the light reads the same, a tile of sheet per square as above, and its sheet runs DOWN the face
        (_fieldFallTick moves the fall's own UVs; the shared material is never touched). */
-    var _FALL_FAM = { water: 'water', deep_water: 'water', poison: 'poison', poison_bog: 'poison', purple_bog: 'poison', swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
+    var _FALL_FAM = { water: 'water', deep_water: 'water', poison: 'poison', poison_bog: 'poison', purple_bog: 'poison', sludge: 'poison', swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
     var _fieldFalls = [];   // [{ uv attribute, base v's, speed }] — the falls' sheets running down (rebuilt with the skins)
     function _fieldFallTick(t) {
         for (var i = 0; i < _fieldFalls.length; i++) {

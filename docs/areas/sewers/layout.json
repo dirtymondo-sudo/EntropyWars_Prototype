@@ -1,17 +1,18 @@
 {
  "area": "The Sewers",
  "version": "build-3",
- "approved": "mondo 2026-11-16 on plot plan 3 (docs/plans/world-zones/sewers_plot_plan_3.png): \"that's good\"; then \"changes in elevation for these rooms too\" and waterfalls",
+ "approved": "mondo 2026-11-16 on plot plan 3 (docs/plans/world-zones/sewers_plot_plan_3.png): \"that's good\"; then \"changes in elevation for these rooms too\" and waterfalls; district R (the fifth row): mondo 2026-11-16 \"one sewer district could be radioactive sludge if it connects to the power plant\", then on the plan docs/plans/world-zones/sewers_r_plot_plan.png: \"make it a new liquid that does corrosion ... kaiju can live there, black goo, whatever else fits\"",
  "squareMeters": 3.5,
  "plotCells": 12,
  "cols": 6,
- "rows": 4,
+ "rows": 5,
  "levelMeters": 1.75,
  "districts": {
   "W": "The Sewers",
   "T": "The Running Tunnels",
   "H": "The Holding Cells",
-  "O": "The Old Workings"
+  "O": "The Old Workings",
+  "R": "The Radioactive Drain"
  },
  "legend": {
   "x": "solid ground, not dug (cannot walk)",
@@ -19,33 +20,40 @@
   "w": "water",
   "f": "concrete room",
   "j": "rail track",
-  "b": "plank over water"
+  "b": "plank over water",
+  "s": "radioactive sludge (district R; the liquid `sludge`)"
  },
  "plots": [
-  { "id": "P00-00", "name": "The Guardroom", "d": "H", "level": 9, "what": "the Guardroom, the Catwalk over it (2.2 m), the Property Room, three cells", "from": "Holding Cells: THE GUARDROOM \u00b7 THE CATWALK \u00b7 THE PROPERTY ROOM", "ports": "E" },
-  { "id": "P01-00", "name": "The Drunk Tank", "d": "H", "level": 9, "what": "three cells, the Drunk Tank and the trap under it, the Vent Stack (3.6 m)", "from": "Holding Cells: SIX CELLS \u00b7 THE DRUNK TANK \u00b7 THE VENT STACK", "ports": "ESW" },
+  { "id": "P00-00", "name": "The Guardroom", "d": "H", "level": 9, "what": "the Guardroom, the Catwalk over it (2.2 m), the Property Room, three cells", "from": "Holding Cells: THE GUARDROOM · THE CATWALK · THE PROPERTY ROOM", "ports": "E" },
+  { "id": "P01-00", "name": "The Drunk Tank", "d": "H", "level": 9, "what": "three cells, the Drunk Tank and the trap under it, the Vent Stack (3.6 m)", "from": "Holding Cells: SIX CELLS · THE DRUNK TANK · THE VENT STACK", "ports": "ESW" },
   { "id": "P02-00", "name": "The Precinct Drain", "d": "W", "level": 8, "what": "the cross drain behind the cells' barred door", "from": "Sewers: THE PRECINCT DRAIN", "ports": "SW" },
   { "id": "P03-00", "name": "The Pumping Station", "d": "W", "level": 8, "what": "the feeder and its stair up to the bulkhead door", "from": "Sewers: THE PUMPING STATION (a door plate)", "ports": "ES" },
   { "id": "P04-00", "name": "The Pump Room", "d": "W", "level": 8, "what": "the pumps, running all night", "from": "Sewers: THE PUMP ROOM", "ports": "EW" },
   { "id": "P05-00", "name": "The Inspection Gallery", "d": "W", "level": 8, "what": "a gallery 1.6 m up its stair, looking down on the culvert", "from": "Sewers: THE INSPECTION GALLERY", "ports": "SW" },
-  { "id": "P00-01", "name": "The Chimney", "d": "O", "level": 0, "what": "LANDMARK: the shaft (3.9 m); the old portcullis; the Adit up into the culverts", "from": "Old Workings: THE CHIMNEY \u00b7 THE ADIT", "ports": "ES" },
-  { "id": "P01-01", "name": "The Old Workings", "d": "O", "level": 0, "what": "the flooded mine: the Flood (waded), the Sump (never), the Pump Ledge; the rope ladder up into the tank", "from": "Old Workings: THE FLOOD \u00b7 THE SUMP \u00b7 THE PUMP LEDGE", "ports": "NW" },
+  { "id": "P00-01", "name": "The Chimney", "d": "O", "level": 0, "what": "LANDMARK: the shaft (3.9 m); the old portcullis; the Adit up into the culverts", "from": "Old Workings: THE CHIMNEY · THE ADIT", "ports": "ES" },
+  { "id": "P01-01", "name": "The Old Workings", "d": "O", "level": 0, "what": "the flooded mine: the Flood (waded), the Sump (never), the Pump Ledge; the rope ladder up into the tank", "from": "Old Workings: THE FLOOD · THE SUMP · THE PUMP LEDGE", "ports": "NW" },
   { "id": "P02-01", "name": "The Culverts", "d": "W", "level": 8, "what": "brick culverts that bend and fork: a waded stream down the middle, a dry walkway each side, dead ends", "from": "Sewers: THE CULVERTS", "ports": "ENS" },
   { "id": "P03-01", "name": "The Culverts", "d": "W", "level": 8, "what": "brick culverts that bend and fork: a waded stream down the middle, a dry walkway each side, dead ends", "from": "Sewers: THE CULVERTS", "ports": "NW" },
-  { "id": "P04-01", "name": "The Cistern", "d": "W", "level": 4, "what": "a round tank of deep water; the Plank across it", "from": "Sewers: THE CISTERN \u00b7 THE PLANK", "ports": "ES" },
+  { "id": "P04-01", "name": "The Cistern", "d": "W", "level": 4, "what": "a round tank of deep water; the Plank across it", "from": "Sewers: THE CISTERN · THE PLANK", "ports": "ES" },
   { "id": "P05-01", "name": "The East Return", "d": "W", "level": 8, "what": "the groundsman's culvert under the stadium's east stand", "from": "Sewers: the stadium door (\"the pitch drains into the east return\")", "ports": "NW" },
   { "id": "P00-02", "name": "The Storm Drain", "d": "W", "level": 4, "what": "the grate through to the storm drain under the Woods", "from": "Sewers: the storm drain grate (a door plate)", "ports": "EN" },
   { "id": "P01-02", "name": "The Culverts", "d": "W", "level": 4, "what": "brick culverts that bend and fork: a waded stream down the middle, a dry walkway each side, dead ends", "from": "Sewers: THE CULVERTS", "ports": "EW" },
   { "id": "P02-02", "name": "The Junction", "d": "W", "level": 4, "what": "LANDMARK: where the big pipes meet; the Healing Zone; you arrive here by default", "from": "Sewers: THE JUNCTION", "ports": "ENSW" },
   { "id": "P03-02", "name": "The Culverts", "d": "W", "level": 4, "what": "brick culverts that bend and fork: a waded stream down the middle, a dry walkway each side, dead ends", "from": "Sewers: THE CULVERTS", "ports": "EW" },
-  { "id": "P04-02", "name": "The Culverts", "d": "W", "level": 4, "what": "bending culverts; the Maintenance Hatch stair down to the track", "from": "Sewers: THE CULVERTS \u00b7 THE MAINTENANCE HATCH", "ports": "ENSW" },
+  { "id": "P04-02", "name": "The Culverts", "d": "W", "level": 4, "what": "bending culverts; the Maintenance Hatch stair down to the track", "from": "Sewers: THE CULVERTS · THE MAINTENANCE HATCH", "ports": "ENSW" },
   { "id": "P05-02", "name": "The Docks' Outfall", "d": "W", "level": 4, "what": "the shaft up to the drowned manhole on the flooded quay", "from": "Sewers: THE DOCKS' OUTFALL (a door plate)", "ports": "SW" },
   { "id": "P00-03", "name": "The Ghost Station", "d": "T", "level": 0, "what": "a 1 m platform nobody stops at, no stairs up; the track runs on west", "from": "Running Tunnels: THE GHOST STATION", "ports": "E" },
   { "id": "P01-03", "name": "The Loop Line", "d": "T", "level": 0, "what": "the track; the garden well's rope comes down here", "from": "Running Tunnels: THE LOOP LINE", "ports": "EW" },
-  { "id": "P02-03", "name": "The Crossing", "d": "T", "level": 0, "what": "two lines cross; the Signal Gantry (5.2 m); the Crossover", "from": "Running Tunnels: THE CROSSING \u00b7 THE CROSSOVER", "ports": "ENW" },
+  { "id": "P02-03", "name": "The Crossing", "d": "T", "level": 0, "what": "two lines cross; the Signal Gantry (5.2 m); the Crossover", "from": "Running Tunnels: THE CROSSING · THE CROSSOVER", "ports": "ENW" },
   { "id": "P03-03", "name": "The Loop Line", "d": "T", "level": 0, "what": "the track; one way on to the city's Platform", "from": "Running Tunnels: THE LOOP LINE", "ports": "EW" },
-  { "id": "P04-03", "name": "The Depot", "d": "T", "level": 0, "what": "LANDMARK: two parked trains, one lit; the Maintenance Hatch stair up to the culverts", "from": "Running Tunnels: THE DEPOT \u00b7 THE MAINTENANCE HATCH", "ports": "NW" },
-  { "id": "P05-03", "name": "The Outfall", "d": "W", "level": 0, "what": "LANDMARK: the Outfall Shaft (4.4 m); where every gutter pours out", "from": "Sewers: THE OUTFALL \u00b7 THE OUTFALL SHAFT", "ports": "N" }
+  { "id": "P04-03", "name": "The Depot", "d": "T", "level": 0, "what": "LANDMARK: two parked trains, one lit; the Maintenance Hatch stair up to the culverts", "from": "Running Tunnels: THE DEPOT · THE MAINTENANCE HATCH", "ports": "NW" },
+  { "id": "P05-03", "name": "The Outfall", "d": "W", "level": 0, "what": "LANDMARK: the Outfall Shaft (4.4 m); where every gutter pours out", "from": "Sewers: THE OUTFALL · THE OUTFALL SHAFT", "ports": "N" },
+  { "id": "P00-04", "name": "Solid ground", "d": "W", "level": 0, "solid": true, "what": "not dug", "from": "district R's row (11-16)", "ports": "" },
+  { "id": "P01-04", "name": "Solid ground", "d": "W", "level": 0, "solid": true, "what": "not dug", "from": "district R's row (11-16)", "ports": "" },
+  { "id": "P02-04", "name": "Solid ground", "d": "W", "level": 0, "solid": true, "what": "not dug", "from": "district R's row (11-16)", "ports": "" },
+  { "id": "P03-04", "name": "The Loop Line", "d": "T", "level": 0, "what": "the track runs on to the city's Platform", "from": "Running Tunnels: THE LOOP LINE (the same track, 42 m more of it)", "ports": "N" },
+  { "id": "P04-04", "name": "The Power Station Drain", "d": "R", "level": 4, "what": "the stair up from the Depot; the valve gallery; the station's waste pipes pour sludge into a channel; the bulkhead door up to the Power station's yard", "from": "NEW 11-16 (label mine)", "ports": "NE" },
+  { "id": "P05-04", "name": "The Sludge Pit", "d": "R", "level": 0, "what": "LANDMARK: a 12 m hall; the channel pours 7 m into a deep tank of sludge; a ladder beside the fall; a doorway north into the Outfall", "from": "NEW 11-16 (label mine)", "ports": "NW" }
  ],
  "openings": [
   { "a": "P01-00", "b": "P02-00", "kind": "stair", "name": "the cell door" },
@@ -55,7 +63,9 @@
   { "a": "P02-02", "b": "P02-03", "kind": "climb", "rope": true, "name": "the well at the Junction: a rope" },
   { "a": "P02-01", "b": "P02-02", "kind": "fall", "by": "stair", "name": "the north culvert pours into the Junction" },
   { "a": "P05-01", "b": "P04-01", "kind": "fall", "by": "ladder", "name": "the East Return pours into the Cistern" },
-  { "a": "P05-02", "b": "P05-03", "kind": "fall", "by": "ladder", "name": "the Docks' Outfall pours down the Outfall Shaft" }
+  { "a": "P05-02", "b": "P05-03", "kind": "fall", "by": "ladder", "name": "the Docks' Outfall pours down the Outfall Shaft" },
+  { "a": "P04-03", "b": "P04-04", "kind": "stair", "name": "the stair from the Depot up to the Power Station Drain" },
+  { "a": "P04-04", "b": "P05-04", "kind": "fall", "by": "ladder", "name": "the sludge channel pours into the Sludge Pit" }
  ],
  "cells": [
   "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -104,8 +114,20 @@
   "oooooooooooooojoojoooojooooooojoooooooojoojooooooffffffffffxxxxfwwwwwfxx",
   "xxxxxxxxxxxxxojjjjjjjjjoxxxxxxjxxxxxxxojoojoxxxxxfjjjjjjjjfxxxxfwwwwwfxx",
   "xxxxxxxxxxxxxoooooooooooxxxxxxjxxxxxxxojooooxxxxxffffffffffxxxxfwwwwwfxx",
-  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxjxxxxxxxojjjjoxxxxxxxxxxxxxxxxxxxfffffffxx",
-  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxoooojoxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxjxxxxxxxojjjjoxxxxxxxxxoooxxxxxxxfffffffxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxoooojoxxxxxxxxxoooxxxxxxxxxoooxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxxxxoooxxxxxxxxxoooxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxxxxoooxxxxxxxxxoooxxxx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxfffffffffxxxffffffffffx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxfffffffffxxxfssssssssfx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxfffffffffxxxfssssssssfx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxooooooooooofssssssssfx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxosssssssssssssssssssfx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxosooooooooofssssssssfx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxosoxxoooxxxfssssssssfx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxosoxxoooxxxfssssssssfx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxosoxxoooxxxffffffffffx",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxojoxxxxxxoooxxoooxxxxxxxxxxxxxx"
  ],
- "levelsNote": "0 = the old mine, the track and the Outfall's shaft; 4 = the lower sewers (the Junction's row and the Cistern); 8 = the upper sewers (the two north rows); 9 = the cells. A waterfall is a whole drop of 7 m from an upper culvert's mouth into a lower ROOM's water (mondo 11-16: \"the waterfall should lead to a lower pathway or room\"; then \"the waterfalls still look short, at least twice that height\")."
+ "levelsNote": "0 = the old mine, the track and the Outfall's shaft; 4 = the lower sewers (the Junction's row and the Cistern); 8 = the upper sewers (the two north rows); 9 = the cells. A waterfall is a whole drop of 7 m from an upper culvert's mouth into a lower ROOM's water (mondo 11-16: \"the waterfall should lead to a lower pathway or room\"; then \"the waterfalls still look short, at least twice that height\"). District R (11-16): the Power Station Drain stands on level 4 and pours its sludge 7 m into the Sludge Pit on level 0; the Sludge Pit and the Outfall are one level and share a doorway (no opening row: two plots of one level simply share open squares on their line)."
 }
