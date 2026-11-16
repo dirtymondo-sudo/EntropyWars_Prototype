@@ -7315,7 +7315,7 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
   names it; light shafts and sound by plot (engine); the plots' own names in layout.json (the tool's row); a look at the weak PC's frame rate.
 - **THE MODEL PASS (mondo's new word 11-16, on top of the five; seen, 12 views; the whole list of 246 read) — the thread STOPPED again.** `models(ctx)` in C.js.
   ASKED AND PLACED: `camper_van` + `picnic_table` (the camp), `tyre_swing` (the playground), `outhouse` (the Crossroads), `firewood_stack` (the station's porch and
-  by its stove), `backpack` (camp, shelter, porch, the wreck), `braced_gate` x 2 (the gate's leaves), `deer` (one, under the Old Tree). A hammock was not placed.
+  by its stove), `backpack` (camp, shelter, porch, the wreck), `braced_gate` x 2 (the gate's leaves), `deer` (one, under the Old Tree). The `hammock` (in the game before the list: the Houses on the water pack's) hangs on the Old Tree's glade (a follow-up PR the same day, on the coordinating thread's note; seen).
   STAND-INS TAKEN OUT: the drawn stove (now `wood_stove`, the pipe kept), the two drawn firewood boxes, the gate's two drawn leaves (two arch rows), the eight
   drawn lamp posts (now `lantern_post`), the camp's wire and bulbs (now two `string_lights`), the rock-pile cairn (now `cairn`), a stump + saw (`axe_chopping_block`),
   the shelter's mattress (`sleeping_bag`). ALSO FROM THE LIST: `trail_sign` (Crossroads, the Stair), `fire_danger_sign` + `mailbox` + `antler_trophy` (the station),
@@ -7327,7 +7327,7 @@ File `docs/areas/woods/districts/C.js`; branch `claude/woods-district-c`. One PR
 - **DECISIONS MADE FOR MONDO (overrule any in one line):** a ranger station at the Trail West (a second walk-in in the Woods, no game role); the dark forest floor in
   the friendly district too; the Old Tree doubled; the playground in Deep woods east; plain names (The Ranger Station, The Trail Shelter, The Hunter's Stand, The Old
   Playground); dirt yards under the new pieces.
-- **NEEDS A MODEL:** ~~a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a backpack, a camper van, a braced gate leaf~~ (all placed in the model pass); ~~a hammock~~ (in the game as `hammock`, not placed).
+- **NEEDS A MODEL:** ~~a picnic table, a deer, a tyre swing, an outhouse, a firewood stack, a backpack, a camper van, a braced gate leaf~~ (all placed in the model pass); ~~a hammock~~ (placed: `hammock`, the Old Tree's glade).
 
 ## THE WOODS, THE ZONE KIT — for the district threads (started 2026-11-16 by the Dead Man's Cave pilot; it grows with each pass)
 - **Rock**: sheet `rocks_5`. A tint MULTIPLIES the sheet and the building tint multiplies again: `0xa9a79c` drew near black, `0xd6d2c4` / `0xbcb9aa` read as grey stone.
