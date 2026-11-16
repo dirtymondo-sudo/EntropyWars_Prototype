@@ -12,6 +12,14 @@
    PASS 2, INTERIORS: THE LONG BARROW is walked into (the district's one inside): a grass mound 31 m long over a stone-lined passage, a stone
    front with its doorway at the east end; inside, three pairs of standing slabs make side chambers (the dead, urns, bones, a sealed coffer),
    torches down the passage, and at the far end the frame of the old draught "down the line" (the old link's mouth: a place now, not a door).
+   PASS 3, DRESSING (the lists read first: FITS THIS DISTRICT in the notes): the Solstice Camp is a camp (a wagon, four tents, prayer flags and
+   string lights between poles, bedrolls, packs, a wood pile, a table, drums and a harp, a dog); the visitors' side of the real place as a few
+   pieces (a rope line along the fork, three plaques, a trail sign, a rack of leaflets by Room 56's frame, a horse at a rail); the Plain has
+   wild flowers at the barrows' feet, bushes, rabbits, two cows, a goat on a barrow, butterflies, an eagle turning over the stones, an owl on
+   a station stone, more crows; candles and two candelabra at the altar, ward totems at the Heel Stone; lantern posts at the Long Barrow.
+   PASS 4, ATMOSPHERE: the air by place (pale motes inside the bank, fireflies over the barrows and the camp, a little dust on the Plain);
+   torches up the Avenue and at the trilithons' feet, two more fires at the Heel Stone, so the stones are lit after
+   dark; a shaft of light on the altar. Seen by day and at 22:30.
    NOT YET: see the pass list at the end of this file's section in the notes. */
 'use strict';
 /* two more round barrows on the Plain (squares; the tool adds them to the heights). The first three are the layout's own (A.barrows). */
@@ -105,6 +113,51 @@ exports.dress = ctx => {
     [[75, 27], [78, 28], [80, 26], [83, 30], [79, 33], [86, 32], [74, 9], [78, 10], [106, 22], [105, 28]].forEach(q => dec('decor_sheep', q[0], q[1]));
     [[4.5, 2.5], [5.5, -0.5], [-2.5, -4.5]].forEach(q => Pm('crow', X + q[0] * C, Z + q[1] * C, { y: 5.05, face: Math.round(rnd() * 360) }));
     [[72, 0], [73, 7], [72, 17], [73, 34], [107, 34]].forEach((q, i) => tree(q[0], q[1], i % 2 ? 'tree_3' : 'tree_5', 6 + (i % 3)));
+    dressing(ctx);
+    atmosphere(ctx);
 };
+/* PASS 3, THE DRESSING (its own stage call from dress, after the first build's pieces so their dice do not move) */
+function dressing(ctx) {
+    const { A, C, P, Pm, dec, tree, gx, gz, cx, cz, rnd } = ctx, h = A.henge, X = gx(h.x), Z = gz(h.y), c = A.camp;
+    /* THE SOLSTICE CAMP */
+    P('covered_wagon', c.x - 4, c.y + 2, { face: 70 }); ctx.taken.add((c.x - 5) + ':' + (c.y + 2));
+    P('canvas_tent', c.x + 1, c.y - 3, { face: 180 }); P('camping_tent', c.x - 3, c.y - 3, { face: 150 }); P('picnic_table', c.x + 3, c.y + 3, { face: 20 }); P('firewood_stack', c.x - 2, c.y + 4, { face: 90 }); P('axe_chopping_block', c.x - 1, c.y + 4);
+    P('wooden_barrel', c.x + 4, c.y - 2); P('cauldron', c.x + 1, c.y + 1); dec('sleeping_bag', c.x - 1, c.y - 2); dec('sleeping_bag', c.x + 2, c.y - 1); dec('sleeping_bag', c.x - 2, c.y + 1); dec('fur_rug', c.x + 1, c.y + 2, { y: 0.02 });
+    P('backpack', c.x + 3, c.y); dec('beach_cooler', c.x + 4, c.y + 2); dec('directors_chair', c.x - 1, c.y + 2); dec('directors_chair', c.x + 2, c.y + 2); dec('taiko_drum', c.x, c.y - 2); dec('instrument_harp', c.x - 3, c.y); dec('dog', c.x + 1, c.y + 4);
+    [[c.x - 3, c.y - 1, c.x + 3, c.y - 2], [c.x + 3, c.y - 2, c.x + 4, c.y + 3]].forEach((q, i) => { const mx = (cx(q[0]) + cx(q[2])) / 2, mz = (cz(q[1]) + cz(q[3])) / 2, f = Math.round(Math.atan2(cz(q[3]) - cz(q[1]), cx(q[2]) - cx(q[0])) * -180 / Math.PI);
+        Pm(i ? 'string_lights' : 'prayer_flags', mx, mz, { face: f, span: 6 }); });
+    P('tiki_torch', c.x - 3, c.y - 1); P('tiki_torch', c.x + 4, c.y + 4);
+    /* the visitors' side: a rope line up the fork, plaques, the leaflets */
+    for (let y = 31; y < 36; y++) { dec('rope_stanchion', 90, y); dec('rope_stanchion', 93, y); }
+    P('lesson_sign', 95, 31, { face: 200 }); P('lesson_sign', 104, 7, { face: 230 }); P('lesson_sign', 83, 5, { face: 110 }); P('trail_sign', 89, 35, { face: 180 }); dec('brochure_rack', 95, 34);
+    P('hitching_rail', 96, 35, { face: 0 }); P('horse_brown', 96, 34, { face: 180 });
+    /* THE PLAIN: flowers at the barrows' feet, bushes, beasts */
+    A.barrows.concat(MORE).forEach((b, i) => { for (let k = 0; k < 4; k++) { const a = (i * 70 + k * 85) * Math.PI / 180, fx = Math.round(b[0] + 3.4 * Math.cos(a)), fy = Math.round(b[1] + 3.4 * Math.sin(a)); if (fx < 72 || fy > 35) continue; dec(['fae_flower_small_pink', 'woods_healflower', 'fae_flower_small_blue', 'fae_flower_small_violet'][(i + k) % 4], fx, fy); } });
+    [[73, 11], [78, 20], [76, 27], [84, 30], [106, 30], [98, 3], [88, 2], [107, 20]].forEach(q => P('leafy_bush', q[0], q[1], { h: 1.1 + rnd() * 0.5, face: Math.round(rnd() * 360) }));
+    [[77, 15], [79, 24], [82, 27], [85, 35], [88, 30], [99, 28], [105, 25], [86, 4], [95, 2], [107, 12]].forEach(q => dec('rabbit', q[0], q[1]));
+    P('cow', 77, 33, { face: 80 }); P('cow', 82, 25, { face: 200 }); P('goat', 75, 23, { face: 130, y: 2.1 }); dec('psxg_dead_bush_1', 73, 14); dec('psxg_dead_bush_1', 78, 32); dec('psxg_dead_bush_1', 106, 3);
+    for (let i = 0; i < 8; i++) Pm(i % 2 ? 'monarch' : 'butterfly', cx(76 + (i * 5) % 12), cz(26 + (i * 3) % 8), { h: 0.35, y: 0.7 + (i % 3) * 0.4, face: (i * 67) % 360 });
+    Pm('eagle', X, Z, { hover: 16, swim: { r: 26, v: 4, bob: 1.5 } });
+    Pm('owl_perched', cx(84), cz(10), { y: 1.6, face: 120 }); [[-4.5, -2.5], [-5.5, 0.5], [0.5, -5.5], [2.5, 4.5]].forEach(q => Pm('crow', X + q[0] * C, Z + q[1] * C, { y: 5.05, face: Math.round(rnd() * 360) })); dec('crow', 100, 10); dec('crow', 81, 6);
+    /* the stones' own: candles at the altar, totems at the Heel Stone, lamps at the barrow's door */
+    Pm('hw_candles', X - 1.5, Z - 4.2); Pm('hw_candles_2', X + 1.6, Z - 4.3); Pm('candelabra', X - 2.6, Z - 5.25); Pm('candelabra', X + 2.6, Z - 5.25); Pm('ritual_circle', X, Z - 1.2, { y: 0.02 });
+    dec('item_ward_totem', 104, 8); dec('item_ward_totem', 102, 7); P('lantern_post', 83, 2, { face: 90 }); P('lantern_post', 83, 6, { face: 90 });
+    /* a copse on the west edge */
+    [[72, 4], [72, 10], [73, 21], [72, 27], [107, 27]].forEach((q, i) => tree(q[0], q[1], ['tree_52', 'tree_54', 'tree_53', 'tree_55', 'tree_56'][i], 7 + (i % 3)));
+}
+/* PASS 4, THE ATMOSPHERE */
+function atmosphere(ctx) {
+    const { A, C, P, Pm, gx, gz, cx, cz } = ctx, h = A.henge, X = gx(h.x), Z = gz(h.y);
+    /* (mist in the ditch was tried with the `white_cloud` model laid low: it reads as cartoon clouds parked on the grass. Out. The game has no mist air kind.) */
+    /* fire: up the Avenue, at the trilithons' feet, at the Heel Stone */
+    [[97, 10], [101, 10], [101, 6], [105, 6]].forEach(q => P('tiki_torch', q[0], q[1]));   // either side of the Avenue's chalk
+    [[-5.25, -8.75], [5.25, -8.75], [-5.25, 8.75], [5.25, 8.75]].forEach(q => Pm('cave_torch', X + q[0], Z + q[1]));
+    P('brazier', 102, 9); P('brazier', 104, 9);
+    Pm('light_shaft', X, Z - 5.25, { face: 200 });
+}
+exports.airZones = ctx => { const h = ctx.A.henge; return [
+    { sx0: h.x - 12, sy0: h.y - 12, sx1: h.x + 12, sy1: h.y + 12, kind: 'motes', color: 0xfff4d0, n: 110, speed: 0.25 },
+    { sx0: 72, sy0: 10, sx1: 80, sy1: 36, kind: 'fireflies', n: 60 }, { sx0: 96, sy0: 26, sx1: 108, sy1: 36, kind: 'fireflies', n: 50 },
+    { sx0: 72, sy0: 0, sx1: 108, sy1: 36, kind: 'dust', color: 0xe8f0d8, n: 60, speed: 0.3 } ]; };
 exports.people = ctx => { const { native, sayOf, OLD } = ctx;
     native('shaman', 92, 22, 200, sayOf(OLD.henge, 'shaman')); native('conspiracy theorist', 77, 19, 90, sayOf(OLD.henge, 'conspiracy theorist')); native('knight', 103, 27, 300, sayOf(OLD.henge, 'knight')); };
