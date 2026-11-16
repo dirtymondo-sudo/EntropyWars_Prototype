@@ -4405,6 +4405,10 @@ File `docs/areas/mountains/districts/N.js` only; rebake `node bake-mountains.js`
   THE ZONE KIT, point 2). The Bakery's inside hearth went (opt `flue`: the chimney stands over the oven); the Workshop is six benches in two lines down
   the door's aisle, the loft's posts on square corners. LESSON: a rewrite of the INSIDES block cut the first delivery's dressing below it (the bake's
   count showed `natives: 0`): read the bake's counts after every edit.
+- **PASS 7, THE SECOND LAYER OUTSIDE**: N.js `winter(a, w, h, d, dr, front, WD2, wood)` is called by every house and the Workshop: a white belt board
+  under the roof, `ice` drifts against the three walls without the door and beside the step, icicles (`roof: true`, a little `glow`) along the eaves
+  (`front` = the gable is over the door, so the eaves are the sides), a snow-capped wood stack by a house with a chimney; `pane` lays snow on each
+  sill and head. Any Mountains building can call the same helper. Seen on screen (six views).
 - **PASS 4 + 5, ATMOSPHERE AND THE WALK**: the hearths burn the catalogue's `hearth_fire` (`w` / `h` in metres; a real light), six braziers (real lights)
   stand at the Pole, the lake, the Sleigh Road and the two south ways out. Walked at eye height in the probe (twelve views): one signpost stood inside a
   zone pine's skirt and moved. NOT REACHABLE FROM A DISTRICT FILE, asked of mondo: falling snow, a sound bed and an aurora (the walked rooms have no hook
@@ -4461,7 +4465,7 @@ Everything below was seen on screen in `site_prebuilt_northpole_plots`. Copy fro
 
 **5. THE VILLAGE AGAINST A FINISHED CITY DISTRICT (Financial: F.js + F-inside / F-detail / F-atmos), the pilot's remaining work plan:**
 1. A plan and a mock-up mondo OK'd before building (every city district had one; the village was built from the brief's pass list).
-2. The second exterior layers (F-detail): sills, belt courses, downpipes, roof pieces, a second sheet on parts of each wall, drifted snow at wall feet.
+2. PARTLY DONE 11-16 (pass 7, N.js `winter`): a belt board, snow drifted at the wall feet, snow on sills and heads, icicles on the eaves, wood stacks. Still open: roof pieces (ridge, snow guards), a second sheet on parts of a wall, gutters.
 3. DONE 11-16 (pass 6, mondo "continue ... with your recommended"): insides on the fight's squares.
 4. The second inside pass (F-atmos): dado / skirting / crown on the coat, pendants and sconces as real pieces, the Meshy list made.
 5. Residents with homes, beds and a day (the city's `HQ_CITY_RESIDENTS`): the village has three natives standing still. mondo's table decides who.
