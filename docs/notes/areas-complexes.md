@@ -5131,6 +5131,47 @@ district lacks, in the order to do it:
 5. RESIDENTS with homes and a day, and the district's own fights. Here: four standing people.
 6. WALKED UPPER FLOORS and roofs. Here: none.
 
+**AREA 51's FINDINGS FOR THE ZONE KIT (2026-11-16, the Area 51 thread; the pilot's lines above are unchanged)**
+- **Helpers in A.js worth lifting into the tool (copy them meanwhile):** `lined(a, w, d, h, door, tint, dado)` = a walk-in's painted coat
+  (0.36 m in from the building's edge: the city's 0.27 lies inside this tool's walls), a dado, a LIT ceiling deck; `gear(a, w, d, h)` =
+  downpipes, an AC box, a louvre; `quonset(id, squares, words)` = a barrel-roofed hut with its door in the round end; `pane(R, ...)` in
+  `rooms()` = a kit wall drawn as real see-through glass; the 10 cm `plateau` under every walk-in (a level floor: the room's ground rolls
+  8 cm and comes up through a drawn floor).
+- **Sheets that suit a base:** `urban:ConcretePanels1a` (tan by tint, `gain` 1.3), `urban:MetalCorrugated1a` (huts, hangar doors),
+  `urban:MetalWallRibbed1a`, `urban:MetalSubwayGrill1a` (louvres, catwalks), `urban:PlasterWallPainted1a` (inside coats),
+  `urban:FibreCeilingTile1a` (lit ceilings), `urban:ConcreteSlab2a` (aprons; it is one of the room's ground sheets). A bare part (no
+  sheet) in white is the cleanest white there is (the radome); a sheet under the building tint never reaches white without `gain` 1.9+.
+- **Catalogue pieces that suit it:** `military_tank`, `fighter_jet`, `missile` (lies flat), `saucer_lg`, `saucer_rig`, `escapepod`, `dish`,
+  `flood_mast`, `followspot`, `iso_tank`, `ind_container`, `gas_cylinder_rack`, `hose_rack`, `jet_engine_stand`, `rocket_engine`,
+  `engine_hoist`, `forklift`, `pallet_jack`, `hand_truck`, `wrapped_pallet`, `psx_supply_crate_*`, `psx_ammo_box_*`, `psx_metal_barrel_mp_*`,
+  `meshy_sandbags` (`h: 1.6`), `item_police_barricade`, `traffic_cone / _barrel`, `warning_tape`, `radiation_sign`, `security_camera`,
+  `dumpster`, `cable_drum`. Inside: `dorm_bed`, `cot`, `footlocker`, `office_locker`, `locker_bench`, `rifle_rack`, `field_radio`,
+  `radio_console`, `server_rack`, `map_table`, `monitor_stack`, `tanker_desk`, `serving_line`, `psx_dinner_table_1`, `cafeteria_chair`,
+  `meal_tray`, `vending_machine`, `weight_bench`, `chalkboard`. The watchers' camp: `camping_tent`, `telescope`, `film_camera`.
+- **Wrong here:** `steel_table` outside a lab (a blood stain is part of it), `round_table` (Camelot's), `floating_orb` as a beacon by day
+  (a black ball on a stick).
+- **What went wrong and the fix:** (1) "no door leaf draws" and "the White Rooms crash with the telepath in" were both the OLD probe
+  (pictures before the files were asked for; SwiftShader). Through probe-fast.js neither happens; no code was changed. (2) A `plateau`
+  draws as a mound (ground sampled every 1.75 m): skin it 1.2 m wider, and give an `arch` row over it `y: 0` or it stands on the top.
+  (3) A chain-link `wall` row was a solid wall: fixed in the engine for every room. (4) The whole-room scatter threw dead trees on
+  concrete: the tool's rows carry `off` (ONE rectangle a row; a second paved area needs the scatter split, ask on the board). (5) A
+  `roof()` lays a dark sheet under itself at its foot: a lit ceiling must hang below that, not at the building's own height. (6) A kit
+  `glass` wall is opaque: use `pane`. (7) A sign with `ds: true` reads mirrored from behind.
+
+**AREA 51 AGAINST THE BAR (a finished city district: F.js + F-inside.js + F-detail.js + F-atmos.js)** What the city has and Area 51 lacks:
+1. THE SECOND LAYERS outside (F-detail): DONE in part 11-16 (downpipes, AC boxes, louvres, roof kerbs, belt courses, slit windows, a fire
+   exit). Still one layer: the hangar's long sides and back, the wing, the watchtowers; no roof walk, no decals (the pack's Sign* plates).
+2. THE SECOND INTERIOR PASS (F-atmos): DONE for the five huts (`lined`). NOT done: skirting, crown, pilasters, pendants, wall pieces
+   (maps, notice boards, clocks on every wall); Hangar 18's shops and south row and the wing's rooms have their first furnishing only.
+3. THE SQUARES inside: blockers are on whole squares in the huts and both rooms (the kit's `R.B` checks it); the huts' chairs and
+   footlockers are placed by the metre as decor. Not audited against the city's `interior-polish.js` (props clipping walls).
+4. THE MESHY PIECES: the city made its missing models. Here they are a list: boom arm, windsock, jeep, helicopter, turning radar, flag,
+   missile stand (the owner side has the Meshy key).
+5. RESIDENTS with homes and a day (`HQ_CITY_RESIDENTS`): none. Twelve standing people; the barracks' bunks are nobody's.
+6. ITS OWN FIGHTS: the whole Desert shares one table (`HQ_AREA_ENCOUNTERS`, outside the markers).
+7. WALKED UPPER FLOORS and roofs: the tower's deck and the two rooms' upper floors only; the tower's ops block and shaft are solid.
+8. SOUND: no hook in a room for a district's sound (the city has none per district either).
+
 ## DISASTER CITY, THE ROAD AUDIT (2026-11-15/16, mondo: "why ... would it suggest chimneys in the middle of the road ... Do an audit of the entirety of disaster city and make sure there's no other ... things placed that make no sense")
 The start: three orange/white "steam chimneys" stood in the Hero Plaza lanes (the New York pass, #1434). They are deleted (#1544, #1545).
 The audit read every row of the baked room (3,334 features, 5,296 props) against the plan's ROAD squares (`R` in the tool's cell map,
@@ -5514,8 +5555,8 @@ out to the woods, "should be light": the Sewers' end of the tunnel, that zone's 
 - **PASS 4, ATMOSPHERE (seen by day and at night, 16 views):** lit parts only (`glow` on drawn boxes): runway edge / threshold / end lights,
   blue taxi lights, warm windows + strip lights in the huts, red obstruction lights, floods over the big door, a pale disc under each
   saucer, a status lamp over every cell door. PROBE TIP: a view's `eval` of `window._hqClockHour = function () { return 22.5 }` (+ `settle`
-  2500) turns the room to night for the views after it. **NOT POSSIBLE FROM A DISTRICT FILE (reported to mondo):** sound cues and particles
-  (dust, heat haze, a hum by the saucer): there is no row or hook for either in a room's terrain; real lights are capped at ten a room
+  2500) turns the room to night for the views after it. **NOT POSSIBLE FROM A DISTRICT FILE (reported to mondo):** sound cues: there is no row or hook for them in a room's terrain.
+  (Particles: the pilot added `airZones` the same day; Area 51 now blows dust over both Dry Lake plots and the runway.) real lights are capped at ten a room
   (three-renderer.js HQ_PROP_LIGHT_MAX) and the flood masts already hold them, so the huts' strip lights glow but light nothing.
 
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
@@ -5588,4 +5629,8 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
   radar hut's green scope window overlapped its door frame. **WHERE IT STANDS:** all five passes merged and live. Open for mondo: the
   tower's ops block is solid (a walk-in would need the deck rebuilt as a building); the mess hall is sparse; no sound or particles (no
   hook); six models on the file's "needs a model" list (boom arm, windsock, jeep, helicopter, turning radar, flag, missile stand).
+- **THE SECOND LAYERS (after the set-up thread passed on mondo's "up to par with disaster city"; seen, 11 + 4 views):** the five huts are
+  lined and lit (`lined`), wear gear outside (`gear`), the tower has belt courses and slit windows, the hangar louvres, a ridge vent and
+  a fire exit; dust blows over the Dry Lake and the runway (`airZones`). The gap list against a finished city district and Area 51's
+  findings for the next Desert threads are in "THE DESERT, THE ZONE KIT" above.
 
