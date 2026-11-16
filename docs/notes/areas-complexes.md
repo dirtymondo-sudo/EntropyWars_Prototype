@@ -5023,6 +5023,7 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   colour to pastel: fine by day); a torch = a bamboo pole, a cup, a `glow` cone (tint 0xff7a10, glow 0.8); `paper_lantern` props (they
   glow, no light) on a drawn rope at `G + 2.3`. Put several torches in ONE `look` row when the sand under them is level (a row = three
   meshes; twelve rows of one torch is thirty-six).
+- **PARTICLES HAVE A HOOK NOW (11-16, the Triangle thread):** a district file's `airZones(ctx)`, see "THE BEACH, THE TRIANGLE" pass 4.
 - **NO HOOK FOR A DISTRICT (zone-wide, the tool row's or the engine's):** SOUND (a walked room has no sound bed of its own in the data:
   surf, gulls, rigging would be new work in audio.js + the shell), PARTICLES (spray at the rocks, gulls wheeling).
 - **NIGHT WORKS (corrected 11-16; the pilot first wrote "day only", a misreading of the shell's `night: 0` field, and mondo asked why):**
@@ -5340,6 +5341,18 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   crate and a barrel on the Shack's porch; the keeper's bench; a sword and an amphora on the Wreck Islet; a dead tree, a stump, three palms.
   FRAME RATE (the same island view): 8.2 fps, 492 draw calls, 1.03 M triangles (the Ocean's and the Harbour's passes landed in the room
   between the runs, so this is the room's number, not this pass's).
+- **PASS 4, THE ATMOSPHERE (seen by day and at night, `hqClockSet(22.5)`, probe views `p4_*`):**
+  - **THE AIR BY DISTRICT, A NEW OPTIONAL HOOK IN THE TOOL** (`bake-beach.js`, the tool row taken for this one change and freed; the Camelot
+    tool's way): a district file may export `airZones(ctx)` = `[{ x0, y0, x1, y1 (squares), kind, color?, n?, speed?, wind? }]`; the tool
+    writes them as `shell.atmos.zones` (three-renderer.js `_hqBuildAtmos`; kinds dust, motes, spores, fireflies, embers, snow, ash,
+    rain). With no such export the room is baked byte for byte as before (checked: `BEACH_OUT` sha 82ecfeaa before and after). So the
+    zone kit's "NO HOOK FOR A DISTRICT: PARTICLES" is solved for S, H and O too. Sound is still zone-wide.
+  - T's zones: a squall of `rain` (240) and white spray `motes` (140) over the Maelstrom, a low pale mist over No Fixed Position (90)
+    and round the wreck (40), `embers` off the camp's fire (40), `fireflies` in the Cay's palms (40). 590 points in all.
+  - REAL LIGHT: `cave_torch` at the Jetty's landward end, the lookout stair's foot, the Wreck Islet, the Sandbar, the top of the
+    Lighthouse Rock's steps and the store's door; a `brazier` on the south beach. With the camp's fire, its two torches and the
+    lookout's brazier the island reads after dark. The fight's sand stays open.
+  - FRAME RATE (the island view): 8.3 fps, 518 draw calls (492 before the pass), 1.07 M triangles, 560 points.
 - **LEARNED (for the zone kit):**
   - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
     water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
