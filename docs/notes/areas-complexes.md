@@ -5314,6 +5314,16 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   - **GONE:** the Jetty's `dockring` (a spaceship docking ring, the Harbour's finding).
   - **FRAME RATE** (the island from the south-west, the cloud's software GPU): before 16.3 fps, 302 draw calls, 428 k triangles; after, two
     runs: 14.2 and 8.1 fps at 431-436 calls, 730 k triangles. The cloud's fps swings between runs; the draw calls are the number to hold.
+- **PASS 2, THE INSIDES (seen on screen, probe views `p2_*`):**
+  - **THE SHACK MOVED** to squares 143-144 x 94-96 (2 x 3, its door east to the palm grove, where the Jetty's path meets the island): data.js
+    `HQ_AREA_MARKERS` stands Room 345's fight on square 148,104, and its rings lay inside the first shack. ITS INSIDE: teal board walls over
+    a white dado, a lit board ceiling, two tie beams, a back window to the Lagoon, two shelves; a bed, a footlocker, a table and chair
+    with a lantern and a bottle, a sea chest, a barrel, money sacks, a model ship on a crate, two amphorae, a net and an arms trophy on
+    the walls, a ship's wheel, a bell by the door, a hanging lantern, rope, a spyglass and gold on the shelves.
+  - **THE KEEPER'S STORE** on the Lighthouse Rock (walk-in, 2 x 1 squares at 67-68 x 100, its door south to the light; it replaces the drawn
+    oil store): white boards, a red tin roof, a blue door frame and window; inside oil barrels, jerrycans, a crate with a field radio,
+    a life ring, rope, a lantern. The parapet is open where its walls stand.
+  - Reef: the round rocks went (a round rock given `h` 1.8 is a black slab 8 m wide); three small pillars instead.
 - **LEARNED (for the zone kit):**
   - THE PLAN'S COLUMNS: `PLAN.cells[y]` starts at square 0; the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107), the Lagoon's
     water sx 136-140. Print the compiled heights before placing (`hqTerrainHeight` over a square range).
@@ -5324,6 +5334,13 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   - `nacelle` is an airliner's engine 11 m long and `fighter_jet` an F-22: neither is wreckage of 1945. `hullplate` reads as torn wreck.
   - `kelp` is 4.5 m: in the shallows it stands out of the water like reeds; give it `h` and deep water.
   - Stair model `forest` = a timber flight with ranch rails; `external` = stone water steps. Rail `ranch` on a plateau wants `y`.
+  - A WALK-IN NEEDS A LEVEL PAD: `flat()` only levels the ring round a building where the sand is 3 squares from the water. Nearer the
+    shore the floor's corners sag with the beach and sand lies over the floorboards (seen). A building's plot is read at its MIDDLE: one
+    that straddles two plots takes the level of the plot its middle is in.
+  - A walk-in with its front E has its ceiling at 2.45 (row `h` 3.0); with its front S on rock (`h` 2.8) at 2.4.
+  - THE PROBE: a view's `y` is the walker's FEET; inside a walk-in type the floor (ground + 0.15), or the camera stands on the roof.
+  - `map_table` is a steel briefing table (science fiction); the wooden one is `psx_table_large_2` (top 0.96) with `psx_chair_mp_3`.
+  - data.js `HQ_AREA_MARKERS` (the tool's) puts Room 345's fight rings on square 148,104 of the Island Beach: keep that sand open.
   - A drawn spiral: parts take `ry` (degrees); a chain of thin boxes (0.03 m high, `sides: false`, `glow` 0.35) on `y` 0.04 shows on the sea.
 - **FITS THIS DISTRICT (the shortlist, from MODEL_LIST.md sections 6-13 + the live catalogue; [used] = placed by this file):**
   wreck + pirate: `ship_wreck` `sea_chest` `skull_pile` `ship_cannon` `rowboat` `meshy_rowboat` `ship_anchor` `wheel` `lobster_traps`
@@ -5338,7 +5355,7 @@ mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): prototype every distr
   Not wired, would fit a ruin: `mcsteeg_castles/Castles_and_Forts.glb` nodes `Wall_2x4_ruined`, `Tower_mid_hollow_ruined`.
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Lookout is a rock platform with a timber stair on a real dune, not a
   timber tower (no tower model; the old one was a plateau too). (2) Flight 19 is five torn hull plates, not planes (no 1945 aircraft
-  model; the F-22 was not used). (3) One walk-in on the island, a wrecker's shack, plain name "the Shack". (4) The Maelstrom's foam is
+  model; the F-22 was not used). (3) Two walk-ins: a wrecker's shack on the island ("the Shack", at the Jetty's path, off the fight's sand) and the keeper's store on the Lighthouse Rock; the lighthouse itself is the game's own prop and is not entered. (4) The Maelstrom's foam is
   drawn and still; the turning is the link's own funnel and the wreckage. (5) The Lighthouse Rock got steps so the tape can be reached on
   foot from a boat. (6) The `dockring` at the Jetty was taken out (wrong model).
 - **NEEDS A MODEL:** a Flight 19 Avenger wreck; a timber lookout tower; a raft; a mast and torn sail; a pirate flag; a parrot and gulls;
@@ -7796,7 +7813,19 @@ out (the HQ tunnel west, the garden well, the city's Platform south, the hatch s
   wall (two racks, a ladder rack, barrels, crates, a drum), the forklift with two pallets and the pallet jack west, cones, oil.
   FOUND: `ebd_metro_turnstile` draws as a blank grey block (use `metro_gate`); the Depot's hall is SEVEN squares deep (z -10.5..14):
   pass 1's south dado and crane rail stood 3.5 m short of the wall and are moved.
-- **FPS (the probe's software renderer, the Depot view):** 3.5 before, 4.3 after pass 1 (no real cost: about 60 meshes, no new lights).
+- **PASS 4, THE ATMOSPHERE (seen, 8 views).** The room has ten real lights and the zone's air (fog, particles) is the tool's row, so
+  the district lights itself with `glow` and with the catalogue's moving props: (1) LIGHT THAT FALLS: under each lit station tube a lit
+  patch of the platform's own terrazzo (two steps), under each lit tunnel lamp a lit patch of the wall's brick and of the walk, under
+  the Depot's three lit lamps a round pool, along the lit car a strip each side, ahead of its headlights two steps on the ballast,
+  green on the ballast under each gantry head: all parts wearing the FLOOR'S OWN SHEET with a low `glow` (0.1 to 0.36), so the floor
+  reads lit, not painted. (2) FOUR `flicker_tube` props (the station's second lamp, both loops, the Depot by the crew room). (3) The
+  camp's barrel fire: `hearth_fire` in a `psx_metal_barrel_mp_2`, `noLight`. (4) STEAM: `chimney_smoke` in five places (the station's
+  track twice, a leaking main at the Crossing, the compressor, the east loop). (5) An `exit_sign` over each hut's door. No night look:
+  the place is underground (no clock). NOT POSSIBLE FROM A DISTRICT FILE: fog, drips, dust motes, sound (the tool's row / no hook);
+  light shafts draw nothing since 10-04 (`_hqLightShaft` returns null), so the garden well has no daylight beam.
+- **FPS (the probe's software renderer, the Depot view, 5 s):** 3.5 before pass 1 (the room held 315 props), 4.3 after pass 1, 3.0
+  after pass 4 (the room holds 679 props: every Sewers thread's). Run-to-run noise is about 1; T's own cost: about 75 meshes of parts,
+  about 250 props, four bulbs out of the room's ten, no texture the room did not already load except the tile and metal sheets.
 - **DECISIONS MADE FOR MONDO (overrule any in a line):** (1) the five cave torches of the first build are gone from the line: a subway is
   lit by its own lamps, and the room has ten real lights for 30 plots; T takes four (the lit car, the cabin, the crew room, the station office), everything else is `glow`.
   (2) The platform reaches the track (it stood a walk's width back). (3) The exit is shuttered, in the east end, not a stair. (4) Every
