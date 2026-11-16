@@ -3,7 +3,12 @@
 mondo 11-16: "completely remake the map/directory in the game to reflect the new plan/layout/world map with the
 districts and plots, like what's actually in the game".
 
-**State: plan and mock-up only. Nothing in the game is changed. The build starts after his OK** (owner-rules.md §8:
+**State (2026-11-16, later): BUILT (M1-M3 + the zone card) by the owner project on mondo's order: "do this map remake plan, but make the
+maps look kinda like the images" (the map-pass thread's top-down height maps). The zones are drawn as their GROUND (each room's
+heights baked by `bake-map.js` into `Assets/ui/map/<room>.png`), not as flat district colours. Notes: docs/notes/ui-menus-audio.md
+"THE MAP REMAKE". Still open: M4 (plot-by-plot charting, GO to a plot), M5 (plot search) and the four questions in §6.**
+
+~~State: plan and mock-up only. Nothing in the game is changed. The build starts after his OK~~ (owner-rules.md §8:
 design work on UI and maps = a plan and a mock-up first).
 
 Thread: second side. Board row: `docs/notes/claims.md` "The map / directory".

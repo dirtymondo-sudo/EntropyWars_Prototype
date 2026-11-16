@@ -2827,3 +2827,40 @@ Please replace any ai generated DOOR logos with these assets."
   whose BACK button is on top (`.ms-back-btn`, `.lobby-back`, `.sq-back`, `[data-back]`, or a button whose text starts with
   BACK) presses that button. A new screen gets ESC + right click for free by having a BACK button; a handler that acts on
   ESC must preventDefault or the button is pressed too.
+
+### THE MAP REMAKE (2026-11-16, owner project, the map remake thread)
+mondo 11-16 (in the map-pass thread): "can you start a thread to do this map remake plan, but make the maps look kinda like the images you have
+provided here" = build `docs/plans/map-remake/MAP_REMAKE_PLAN.md` (the second side's plan) with the look of the map-pass thread's top-down
+audit maps (/mnt/project-files/map-pass/audit_*.png: every 3.5 m square by its height, soft ground green, hard ground grey, water blue, lit
+from the top-left).
+- THE PICTURES: `node bake-map.js` (about 2 minutes, 4 rooms at a time; `node bake-map.js <room>` for one; `--table` = only data.js) compiles
+  each plot-built room's terrain (hqTerrainInfo) and samples every square: height (hqTerrainFeet), water / lava / sludge / sea
+  (hqTerrainFluidAt), solid (hqTerrainSolidAt / WallAt), paint family, trees. It writes `Assets/ui/map/<room>.png`, ONE PIXEL A SQUARE, a
+  data picture (R = height in `hs` m steps over `h0`, G = ground kind, B = flags: 1 solid, 2 tree, 4 water, 8 lava, 16 sludge, 32 sea,
+  64 nothing, 128 ground you cannot stand on = the forest mass), 0.2-14 KB each, on R2 at the same key. The picture's sha (`v`) is in the
+  table and on the URL (`?h=`), so a rebake reaches players with the data.js that names it.
+- THE TABLE: data.js `HQ_ZONE_MAP` (between ZONEMAP-BEGIN / END, written by the tool): per zone (hub id) its rooms with their WORLD place
+  (`wx, wy` in plots, layout 3, north up, the city's first plot = 0,0; `layer` surface / under / off), their ZONE-SHEET place (`zx, zy`),
+  the plot grid's origin in metres (`ox, oz`), cols / rows, the picture's size + `h0 / hs / v`; the district names (each zone's
+  layout.json) + inks; Disaster City's 183 plots (from docs/disaster-city/: the game has no plot list for the city). Every other room's
+  plot names are read LIVE from `room.plots.names`. Where a zone sits is the tool's ZONES table (edit there, rerun `--table`).
+- THE PAINT (map.js `_zmPaint`, 4 screen px a square): the kind's colour lifted by height (lighter = higher), a slope light from the
+  top-left, water / sea blue with glints, lava orange, sludge green, the forest mass dark green with leaf noise, a tree = a dark dot, a solid
+  square darker. Painted once per room per session to a data URL, then reused.
+- THE ZONE SHEET (mode 'area' on a hub with a HQ_ZONE_MAP row): the ground, a thin dark plot grid, white district borders, the district
+  names (full size when they fit, down to 50 %, else not drawn), every plot's name once it fits its square (measured in the theme's own
+  font, two lines at most; then the district names go off), the doors (gold = DOOR HQ, green = a way out, white diamond = a way inside;
+  hidden ways stay off unless EW_HQ_MAP_ALL), YOU ARE HERE (ThreeRenderer.hq.pos()). Several rooms (the Mountains + North Pole, Heaven +
+  Vatican + Catacombs + Hell, the four worlds of Outer Space) stand side by side with their names. Click a plot = its card (name,
+  district, room, its doors; GO = the zone, as before); click it again = GO. The right column lists the districts (plots each) + the ways out.
+- THE WORLD SHEET: every charted zone's ground at its place, SURFACE or UNDERGROUND (buttons in the bar; the other layer's zones are
+  dashed outlines), a zone you have only seen a door to = a dashed "?" block, a zone you never heard of is not drawn (as before). Zone names
+  go on last (over every picture), shrunk to fit (60 %) or off. A click on a zone opens its sheet; zooming in over a zone opens it, zooming
+  out of a zone sheet comes back (the map's own thresholds). DOOR HQ + Heaven, Outer Space, the Astral Realm are rows in LOCATIONS.
+- UNCHANGED: DOOR HQ's own sheet and any non-plot place (the old room sheet), M / Escape / right click, the LOCATIONS list, the search,
+  the card's GO rules (charted rooms only). `window.EW_OLD_MAP = true` = the old sheets. Viewer-local, nothing relayed (RULE #2).
+- PROBE NOTE: a harness tap must target `.hq-map-stage [data-mapnode=...]`: the first `[data-mapnode="w:hub:x"]` in the page is the
+  LOCATIONS list's button (a pointer event on it does nothing). Pointer events work; a synthetic Enter keydown did not reach the sheet.
+- OPEN (the plan's M4 / M5 + §6): a plot charted when you stand on it + GO to a plot; plot search; mondo's four answers (the defaults used:
+  GO to a zone as today; zones as layout 3 places them; a zone shows whole once charted; the underground on its own sheet).
+
