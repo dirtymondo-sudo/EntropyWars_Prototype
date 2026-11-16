@@ -276,7 +276,7 @@ PLAN.plots.forEach(p => { const L = lookOf(p), top = TOPS[p.id], H = r2(top - p.
 const ARCH = [];
 { const by = {}; PARTS.forEach(q => { const sx = Math.floor((q.p[0] + HX) / C), sy = Math.floor((q.p[2] + HZ) / C), p = plotAt(sx, sy); (by[p.id] = by[p.id] || []).push(q); });
   PLAN.plots.forEach(p => { const l = by[p.id]; if (!l) return; const ox = r2(gx(p.sx) + N * C / 2), oz = r2(gz(p.sy) + N * C / 2);
-      ARCH.push({ k: 'arch', id: 'dumb:' + p.id + ':in', x: ox, z: oz, rot: 0, base: p.base, parts: l.map(q => Object.assign({}, q, { p: [r2(q.p[0] - ox), r2(q.p[1] - p.base), r2(q.p[2] - oz)] })) }); });
+      ARCH.push({ k: 'arch', id: 'dumb:' + p.id + ':in', x: ox, z: oz, rot: 0, y: p.base /* `y`, never `base`: without it the row stands on the ground under its ORIGIN (the Hub's is the Tower's top) */, parts: l.map(q => Object.assign({}, q, { p: [r2(q.p[0] - ox), r2(q.p[1] - p.base), r2(q.p[2] - oz)] })) }); });
   count.parts = PARTS.length; }
 const DOORROW = INNER.length ? [{ k: 'texbuilding', id: 'dumb:doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_office', inner: INNER }] : [];
 

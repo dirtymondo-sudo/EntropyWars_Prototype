@@ -8,52 +8,137 @@
      east   CHAMBERS 02 + 04 (P04-03): the spoke to the Vault Gantry's stair; 02 THE CATWALK north, 04 OBSERVATION south
      north  CORRIDOR FIVE (P03-02: "Five is the corridor. Five was always the corridor."): the Healing Zone; stairs up to the Range and
             the Comms Room; then LEVEL -6 (P03-01): rock cut square, the blast door to the Cavern (links.cave_dumb), the Vent's ladder
-   STANDS TODAY: see the passes in the notes. */
+   STANDS TODAY: see the passes in the notes.
+   PASS 1, THE STRUCTURE + THE LANDMARKS (11-16): THE TOWER's skin (panels, a hazard skirt, lit slits, a red band, a beacon), the hub's two
+   steel galleries up their stairs, four hazard portals, the ways painted on the floor, four pillars, wall lamps; each chamber behind a wall
+   with a long window; 01 THE DROP (the tier, its stair, the edge, the X); 03 THE PIT (1.75 m down, its stair, a rail on the rim, a red
+   line of light at the bottom); 02 THE CATWALK (two towers, the plank, a stair, a ladder); 04 OBSERVATION (the deck behind a wall of
+   round windows); Corridor Five's lane with two rooms west and four closets east; Level -6's rock, the blast door's collar; the Stair's
+   level numbers, light slots and side-room doors. */
 'use strict';
-const U = n => 'urban:' + n, CONC = U('ConcreteStriped1d'), GRILL = U('MetalSubwayGrill1a'), HAZ = 0xe0b020, DARK = 0x2a2c30;
+const U = n => 'urban:' + n, CONC = U('ConcreteStriped1d'), GRILL = U('MetalSubwayGrill1a'), STEEL = U('MetalCorrugatedPainted3a'), HAZ = 0xe0b020, DARK = 0x2a2c30, RED = 0xff3020, INK = '#e8e4d0';
+const WL = { h: 7, key: CONC, tint: 0xb4b8bc, gain: 1.9 };
+
+/* ── the district's own pieces (plain functions on a kit room R) ── */
+/* a hazard portal: two yellow posts with black bands and a lintel round an opening on a line (axis / at as R.wall), from a to b, H high */
+function portal(R, axis, at, a, b, H, words, side) {
+    const C = 3.5, L = (b - a) * C, mid = (a + b) / 2, P = (m, y, w, h, d, tint, x) => axis === 'u' ? R.box(m, at, y, w, h, d, null, tint, x) : R.box(at, m, y, d, h, w, null, tint, x);
+    for (const m of [a + 0.06, b - 0.06]) { P(m, 0, 0.42, H, 0.5, HAZ); P(m, 0.5, 0.44, 0.3, 0.52, DARK, { n: Math.floor((H - 0.6) / 1.0), step: [0, 1.0, 0] }); }
+    P(mid, H, L + 0.42, 0.5, 0.5, HAZ);
+    if (words) { const off = (side || 1) * 0.27; if (axis === 'u') R.sign(words, mid, at + off / 3.5, H + 0.95, Math.min(L, words.length * 0.62), 0.8, side > 0 ? 0 : 180, INK, '', 'stencil', 0.35); else R.sign(words, at + off / 3.5, mid, H + 0.95, Math.min(L, words.length * 0.62), 0.8, side > 0 ? -90 : 90, INK, '', 'stencil', 0.35); }
+}
+/* words painted on the floor (ry: the way the words' top points: 0 north, 90 east) */
+const floorWords = (R, words, u, v, w, d, ry, col) => R.part({ s: 'quad', flat: true, p: [R.X(u), 0.03, R.Z(v)], size: [w, d], ry: ry || 0, key: 'txt:' + words + '|' + (col || '#e0b020') + '||' + Math.round(w / d * 100) / 100 + '||stencil', uv: 'fit', kind: 'over' });
+/* a painted line on the floor */
+const line = (R, u, v, w, d, tint) => R.box(u, v, 0.012, w, 0.012, d, null, tint == null ? HAZ : tint);
+/* a wall lamp: a caged bulkhead light on a wall face (drawn, glows) */
+const wallLamp = (R, u, v, y, tint) => { R.box(u, v, y, 0.34, 0.2, 0.34, null, DARK); R.box(u, v, y - 0.08, 0.26, 0.1, 0.26, null, tint == null ? 0xfff0d0 : tint, { glow: 1 }); };
+
 module.exports = {
-    look: { wall: CONC, tint: 0xb4b8bc, band: HAZ, ceil: GRILL, ceilTint: 0x8a9096, light: 0xdfe8ff, every: 3 },
-    looks: { 'P03-01': { wall: 'rocks_5', tint: 0x9a9690, band: null, ceil: 'rocks_5', ceilTint: 0x6a6660, light: 0xffb060, every: 5 } },
+    look: { wall: CONC, tint: 0xb4b8bc, band: HAZ, ceil: U('ConcreteStriped2e'), ceilTint: 0xb0b4b8, ceilGain: 2.0, light: 0xdfe8ff, every: 3 },
+    looks: { 'P03-01': { wall: 'rocks_5', tint: 0xc8c2b8, gain: 2.6, band: null, ceil: 'rocks_5', ceilTint: 0x9a948a, ceilGain: 2.0, light: 0xffb060, every: 4 } },
     build(ctx) {
-        const { C, r2, gcx, gcz, gx, gz, plot } = ctx, O = ctx.O, wl = { h: 7, key: CONC, tint: 0xb4b8bc };
-        /* ── THE HUB (P03-03): THE TOWER, 10.5 m of concrete on the hub's middle four squares, no stair, a lit band round its head ── */
-        { const p = plot['P03-03'], cx = gx(p.sx + 6), cz = gz(p.sy + 6);
-          ctx.feat({ k: 'plateau', x: cx, z: cz, w: 7, d: 7, h: 10.5, edge: 0.1 }); for (const q of [[5, 5], [6, 5], [5, 6], [6, 6]]) ctx.keep('P03-03', q[0], q[1]);
-          for (const [dx, dz, w, d] of [[0, -3.56, 7.2, 0.1], [0, 3.56, 7.2, 0.1], [-3.56, 0, 0.1, 7.2], [3.56, 0, 0.1, 7.2]]) { ctx.part({ s: 'box', p: [r2(cx + dx), 9.4, r2(cz + dz)], size: [w, 0.5, d], tint: 0xff3020, glow: 1 }); ctx.part({ s: 'box', p: [r2(cx + dx), 0, r2(cz + dz)], size: [w, 1.2, d], tint: HAZ }); }
-          const R = ctx.room('P03-03', 1, 1, 10, 10, 'hub');
-          R.sign('SUB-LEVEL 7', 5, 3.42, 6.4, 5.2, 0.9, 180, '#e8e4d0', '', 'stencil', 0.3); R.sign('SUB-LEVEL 7', 5, 6.58, 6.4, 5.2, 0.9, 0, '#e8e4d0', '', 'stencil', 0.3);
-          R.B('steel_table', 1, 1, 0); R.dec('crt_terminal', 1.5, 1.5, 0, { y: 0.78 }); R.dec('computer_chair_grey', 1.5, 2.3, 180); R.B('monitor_stack', 8, 1, 0); R.B('cardboard_boxes', 8, 8, 0); R.dec('traffic_cone', 2.4, 8.5); R.dec('security_camera', 0.2, 0.2, 135, { y: 5.0 }); R.dec('floor_stain', 3.5, 6.5);
+        const { C, r2, gcx, gcz, gx, gz, plot } = ctx, O = ctx.O;
+        /* ══ THE HUB (P03-03): THE TOWER on its middle four squares, 10.5 m of concrete with no stair; a steel gallery along the east and
+           west walls; a hazard portal to each department; the way to each painted on the floor ══ */
+        { const R = ctx.room('P03-03', 1, 1, 10, 10, 'hub'), TH = 10.5;
+          ctx.feat({ k: 'plateau', x: R.X(5), z: R.Z(5), w: 6.7, d: 6.7, h: TH, edge: 0.05 });   /* (a hand inside its skin: a plateau's foot slopes out) */ for (const q of [[4, 4], [5, 4], [4, 5], [5, 5]]) R.keep(q[0], q[1]);
+          /* the tower's skin: concrete panels with a reveal every 3.5 m, a hazard skirt, slit windows that are lit, a red band and a beacon */
+          for (const [du, dv, w, d, ry] of [[0, -1.008, 7.04, 0.06, 180], [0, 1.008, 7.04, 0.06, 0], [-1.008, 0, 0.06, 7.04, 90], [1.008, 0, 0.06, 7.04, -90]]) { const u = 5 + du, v = 5 + dv;
+              R.box(u, v, 0, w, TH, d, CONC, 0xc4c8cc, { uv: [3.5, 1.75], gain: 1.9, top: false });
+              R.box(u + du * 0.012, v + dv * 0.012, 0, w + (du ? 0.04 : 0.06), 1.2, d + (dv ? 0.04 : 0.06), null, HAZ, { top: false });
+              R.box(u + du * 0.012, v + dv * 0.012, 0.3, w + (du ? 0.05 : 0.07), 0.2, d + (dv ? 0.05 : 0.07), null, DARK, { top: false, n: 3, step: [0, 0.35, 0] });
+              for (const y of [3.5, 7.0]) R.box(u + du * 0.012, v + dv * 0.012, y, w + (du ? 0.03 : 0.05), 0.07, d + (dv ? 0.03 : 0.05), null, 0x6a6e74, { top: false });
+              R.box(u + du * 0.014, v + dv * 0.014, 8.0, du ? 0.06 : 4.6, 0.55, dv ? 0.06 : 4.6, null, 0xfff2c0, { glow: 1, top: false });            // the slit: someone is up there
+              R.box(u + du * 0.014, v + dv * 0.014, 9.6, w + (du ? 0.05 : 0.07), 0.4, d + (dv ? 0.05 : 0.07), null, RED, { glow: 1, top: false });
+              R.sign('7', u + du * 0.02, v + dv * 0.02, 5.2, 1.6, 2.0, ry, INK, '', 'stencil', 0.3); }
+          R.box(5, 5, TH, 7.3, 0.25, 7.3, CONC, 0x9a9ea4, { gain: 1.6 }); R.box(5, 5, TH + 0.25, 1.0, 0.5, 1.0, null, DARK); R.box(5, 5, TH + 0.75, 0.5, 0.35, 0.5, null, RED, { glow: 1 });
+          /* the floor: a hazard square round the tower's foot, the four ways */
+          for (const [du, dv, w, d] of [[0, -1.5, 10.9, 0.3], [0, 1.5, 10.9, 0.3], [-1.5, 0, 0.3, 10.9], [1.5, 0, 0.3, 10.9]]) line(R, 5 + du, 5 + dv, w, d);
+          floorWords(R, 'RESEARCH', 1.7, 5, 5.2, 1.1, 270); floorWords(R, 'COMMAND', 8.3, 5, 4.8, 1.1, 90); floorWords(R, 'LEVEL P3', 5, 8.4, 5.2, 1.1, 180); floorWords(R, 'LEVEL -6', 5, 1.6, 5.2, 1.1, 0);
+          /* the four portals (each spoke's own roof is lower: the tool hangs the wall over them) */
+          portal(R, 'u', 0, 3.5, 6.5, 4.4, 'CORRIDOR 5', 1); portal(R, 'u', 10, 3.5, 6.5, 4.4, 'STAIR · P3', -1); portal(R, 'v', 0, 3.5, 6.5, 3.2, null, 1); portal(R, 'v', 10, 3.5, 6.5, 3.2, null, -1); R.sign('RESEARCH', 1.08, 5, 5.0, 4.6, 0.8, -90, INK, '', 'stencil', 0.35); R.sign('COMMAND', 8.92, 5, 5.0, 4.4, 0.8, 90, INK, '', 'stencil', 0.35);
+          /* the galleries: a steel deck 3.5 m up along the west and the east wall, a stair up each from the south */
+          for (const [u0, u1, ug, su] of [[0, 1, 1, 0.5], [9, 10, 9, 9.5]]) { R.deck(u0, 0, u1, 7, 3.5, GRILL); R.guard('v', ug, 0, 7, 3.5, HAZ); R.stair(su, 10, su, 7, 1, 0, 3.5, 'steel'); R.guard('u', 7, u0, u1, 3.5, HAZ);
+              for (let v = 0.5; v < 7; v += 2) R.box(ug === 1 ? 0.92 : 9.08, v, 0, 0.16, 3.5, 0.16, null, DARK); }
+          /* four pillars (the catalogue's own: a hazard band and a bay number), wall lamps at the gallery's height */
+          for (const q of [[2, 2], [7, 2], [2, 7], [7, 7]]) R.B('concrete_pillar', q[0], q[1], 0);
+          for (const v of [1.5, 5, 8.5]) { wallLamp(R, 0.14, v, 5.6); wallLamp(R, 9.86, v, 5.6); } for (const u of [1.5, 8.5]) { wallLamp(R, u, 0.14, 5.6); wallLamp(R, u, 9.86, 5.6); }
           R.who('men in black', 6.5, 8.5, 250, ctx.sayOf(O.sublevel7, 'men in black')); R.done(); }
-        /* ── CHAMBERS 01 + 03 (P02-03) ── */
+
+        /* ══ CHAMBERS 01 + 03 (P02-03): the west spoke between two test chambers, each behind a wall with a long window ══ */
         { const R = ctx.room('P02-03', 1, 1, 10, 10, 'ch13');
-          R.wall('u', 4, 0, 10, Object.assign({ doors: [[7.5, 'leaf_security']] }, wl)); R.wall('u', 7, 0, 10, Object.assign({ doors: [[2.5, 'leaf_security']] }, wl));
-          R.sign('01', 7.5, 4.18, 3.2, 1.2, 0.9, 0, '#e8e4d0', '', 'stencil', 0.3); R.label('THE DROP', 7.5, 4.18, 0, 1.4); R.sign('03', 2.5, 6.82, 3.2, 1.2, 0.9, 180, '#e8e4d0', '', 'stencil', 0.3); R.label('THE PIT', 2.5, 6.82, 180, 1.2);
-          /* 01 THE DROP: a tier 3.5 m up a stair, and the edge */
-          ctx.feat({ k: 'plateau', x: R.X(1.5), z: R.Z(2), w: 3 * C, d: 4 * C, h: 3.5, edge: 0.1 }); R.stair(6, 1.5, 3, 1.5, 1, 0, 3.5, 'concrete'); for (let u = 0; u < 3; u++) for (let v = 0; v < 4; v++) R.keep(u, v);
-          R.box(3.02, 2, 3.5, 0.08, 0.02, 4 * C, null, HAZ);
-          R.who('mad scientist', 8.5, 2.5, 90, ctx.sayOf(O.sublevel7, 'mad scientist'));
-          /* 03 THE PIT: a railed bowl (the pit itself is the pilot's) */
-          R.who('telepath', 6.5, 8.5, 200, ctx.sayOf(O.sublevel7, 'telepath')); R.B('radiation_sign', 0, 9, 90); R.dec('warning_tape', 4.5, 8.5, 0);
+          R.wall('u', 4, 0, 10, Object.assign({ doors: [[8.5, 'leaf_security']], gaps: [[1, 6]] }, WL)); R.wall('u', 4, 1, 6, Object.assign({}, WL, { h: 1.0 })); R.wall('u', 4, 1, 6, Object.assign({}, WL, { y0: 3.2, h: 3.8, walk: false })); R.pane('u', 4, 1, 6, { y0: 1.0, h: 2.2 });
+          R.wall('u', 7, 0, 10, Object.assign({ doors: [[1.5, 'leaf_security']], gaps: [[4, 9]] }, WL)); R.wall('u', 7, 4, 9, Object.assign({}, WL, { h: 1.0 })); R.wall('u', 7, 4, 9, Object.assign({}, WL, { y0: 3.2, h: 3.8, walk: false })); R.pane('u', 7, 4, 9, { y0: 1.0, h: 2.2 });
+          R.sign('01', 8.5, 4.18, 3.3, 1.3, 1.0, 0, INK, '', 'stencil', 0.3); R.label('THE DROP', 8.5, 4.18, 0, 1.4); R.sign('03', 1.5, 6.82, 3.3, 1.3, 1.0, 180, INK, '', 'stencil', 0.3); R.label('THE PIT', 1.5, 6.82, 180, 1.2);
+          line(R, 5, 4.35, 35, 0.16); line(R, 5, 6.65, 35, 0.16);
+          /* 01 THE DROP: a tier 3.5 m up its stair; three sides railed, the fourth is the experiment */
+          ctx.feat({ k: 'plateau', x: R.X(1.5) - 0.1, z: R.Z(2), w: 3 * C - 0.2, d: 4 * C, h: 3.5, edge: 0.05 }); R.stair(6, 0.5, 3, 0.5, 1, 0, 3.5, 'concrete'); for (let u = 0; u < 3; u++) for (let v = 0; v < 4; v++) R.keep(u, v);
+          R.box(1.5, 2, 0, 3 * C + 0.06, 3.5, 4 * C + 0.06, CONC, 0xc4c8cc, { uv: [3.5, 1.75], gain: 1.9, top: false });
+          R.box(2.96, 2.5, 3.5, 0.3, 0.02, 3 * C, null, HAZ); R.box(3.04, 2.5, 2.9, 0.06, 0.6, 3 * C, null, HAZ, { top: false }); R.box(3.05, 2.5, 3.05, 0.07, 0.15, 3 * C, null, DARK, { top: false, n: 2, step: [0, 0.25, 0] });
+          R.guard('u', 4, 0, 3, 3.5, HAZ); R.guard('u', 1, 0, 3, 3.5, HAZ);
+          floorWords(R, 'X', 4.2, 2.5, 2.2, 2.2, 90, '#ff3020'); line(R, 4.2, 2.5, 3.0, 0.1, RED); line(R, 4.2, 2.5, 0.1, 3.0, RED);
+          R.who('mad scientist', 7.5, 2.5, 270, ctx.sayOf(O.sublevel7, 'mad scientist'));
+          /* 03 THE PIT: 1.75 m down, a stair in at its east end, a rail round its rim that is ground on, a red line of light at the bottom */
+          ctx.feat({ k: 'plateau', sink: true, x: R.X(5), z: R.Z(8.5), w: 6 * C, d: 2 * C, h: -1.75, edge: 0.1 }); R.stair(6, 8.5, 8, 8.5, 1, -1.75, 0, 'concrete');
+          for (const [u, v, w, d] of [[5, 7.52, 6 * C, 0.08], [5, 9.48, 6 * C, 0.08], [2.02, 8.5, 0.08, 2 * C]]) { R.box(u, v, -1.7, w, 0.1, d, null, RED, { glow: 1 }); }
+          ctx.feat({ k: 'wall', x0: R.X(2), z0: R.Z(7.5) - 0.2, x1: R.X(8), z1: R.Z(7.5) - 0.2, h: 0.5, t: 0.1, key: 'metal' }); ctx.feat({ k: 'wall', x0: R.X(2) - 0.2, z0: R.Z(7.5), x1: R.X(2) - 0.2, z1: R.Z(9.5), h: 0.5, t: 0.1, key: 'metal' });
+          floorWords(R, 'DO NOT THINK ABOUT THE PIT', 5, 7.25, 9.0, 0.5, 0);
+          R.who('telepath', 9.5, 7.5, 200, ctx.sayOf(O.sublevel7, 'telepath'));
           R.done(); }
-        /* ── CHAMBERS 02 + 04 (P04-03) ── */
+
+        /* ══ CHAMBERS 02 + 04 (P04-03) ══ */
         { const R = ctx.room('P04-03', 1, 1, 10, 10, 'ch24');
-          R.wall('u', 4, 0, 10, Object.assign({ doors: [[2.5, 'leaf_security']] }, wl)); R.wall('u', 7, 0, 10, Object.assign({ doors: [[7.5, 'leaf_security']] }, wl));
-          R.sign('02', 2.5, 4.18, 3.2, 1.2, 0.9, 0, '#e8e4d0', '', 'stencil', 0.3); R.label('THE CATWALK', 2.5, 4.18, 0, 1.7); R.sign('04', 7.5, 6.82, 3.2, 1.2, 0.9, 180, '#e8e4d0', '', 'stencil', 0.3); R.label('OBSERVATION', 7.5, 6.82, 180, 1.7);
-          /* 02 THE CATWALK: two towers 3.5 m and the plank between them; a stair up the west one */
-          ctx.feat({ k: 'plateau', x: R.X(4.5), z: R.Z(1.5), w: C, d: C, h: 3.5, edge: 0.1 }); ctx.feat({ k: 'plateau', x: R.X(8.5), z: R.Z(1.5), w: C, d: C, h: 3.5, edge: 0.1 }); R.keep(4, 1); R.keep(8, 1);
-          R.deck(5, 1.25, 8, 1.75, 3.5, U('MetalCorrugatedPainted3a')); R.stair(1, 1.5, 4, 1.5, 1, 0, 3.5, 'steel');
+          R.wall('u', 4, 0, 10, Object.assign({ doors: [[1.5, 'leaf_security']], gaps: [[4, 9]] }, WL)); R.wall('u', 4, 4, 9, Object.assign({}, WL, { h: 1.0 })); R.wall('u', 4, 4, 9, Object.assign({}, WL, { y0: 3.2, h: 3.8, walk: false })); R.pane('u', 4, 4, 9, { y0: 1.0, h: 2.2 });
+          R.wall('u', 7, 0, 10, Object.assign({ doors: [[8.5, 'leaf_security']] }, WL));
+          R.sign('02', 1.5, 4.18, 3.3, 1.3, 1.0, 0, INK, '', 'stencil', 0.3); R.label('THE CATWALK', 1.5, 4.18, 0, 1.7); R.sign('04', 8.5, 6.82, 3.3, 1.3, 1.0, 180, INK, '', 'stencil', 0.3); R.label('OBSERVATION', 8.5, 6.82, 180, 1.7);
+          line(R, 5, 4.35, 35, 0.16); line(R, 5, 6.65, 35, 0.16);
+          /* 02 THE CATWALK: two towers 3.5 m and the plank between them (rated for one); a stair up the west tower, a ladder down the east */
+          for (const u of [3.5, 8.5]) { ctx.feat({ k: 'plateau', x: R.X(u), z: R.Z(1.5), w: C - 0.25, d: C - 0.25, h: 3.5, edge: 0.05 }); R.keep(u - 0.5, 1); R.box(u, 1.5, 0, C + 0.06, 3.5, C + 0.06, CONC, 0xc4c8cc, { uv: [3.5, 1.75], gain: 1.9, top: false }); R.box(u, 1.5, 3.5, C + 0.1, 0.03, C + 0.1, null, HAZ); }
+          R.deck(4, 1.25, 8, 1.75, 3.5, STEEL); R.stair(0, 1.5, 3, 1.5, 1, 0, 3.5, 'steel');
+          ctx.feat({ k: 'climb', x: r2(R.X(9) + 0.3), z: R.Z(1.5), face: 270, look: 'ladder' });
+          R.sign('MAX LOAD: ONE', 6, 1.24, 3.05, 2.6, 0.32, 0, '#1c1c1c', '#e0b020');
           R.who('android', 6.5, 3.2, 0, ctx.sayOf(O.sublevel7, 'android'));
-          /* 04 OBSERVATION: the deck behind the round windows, up its stair */
-          R.deck(0, 9, 7, 10, 3.5, GRILL); R.guard('u', 9, 0, 7, 3.5, HAZ); R.stair(9.5, 9.5, 7, 9.5, 1, 0, 3.5, 'steel');
-          R.B('observation_window', 2, 7, 0); R.B('observation_window', 5, 7, 0); R.B('steel_table', 9, 7, 90); R.dec('clipboard_flat', 9.5, 7.5, 10, { y: 0.78 }); R.dec('desk_lamp', 9.4, 7.3, 0, { y: 0.78 });
-          R.who('grey', 3.5, 8.5, 270, ctx.sayOf(O.sublevel7, 'grey')); R.done(); }
-        /* ── CORRIDOR FIVE (P03-02): the Healing Zone ── */
+          /* 04 OBSERVATION: the deck along the south wall behind the round windows; the chamber it observes is empty */
+          R.deck(0, 9, 8, 10, 3.5, GRILL); R.wall('u', 9, 0, 8, Object.assign({}, WL, { y0: 3.5, h: 3.5 })); R.stair(9.5, 9.5, 8, 9.5, 1, 0, 3.5, 'steel');
+          for (const u of [1.5, 4, 6.5]) R.dec('observation_window', u, 8.94, 180, { y: 4.7 });
+          for (let u = 0.5; u < 8; u += 2.5) R.box(u, 9.04, 0, 0.18, 3.5, 0.18, null, DARK);
+          floorWords(R, 'KEEP CLEAR', 4, 8.2, 5.0, 0.7, 0); for (const [u, v, w, d] of [[4, 7.4, 21, 0.14], [4, 8.9, 21, 0.14], [1, 8.15, 0.14, 5.4], [7, 8.15, 0.14, 5.4]]) line(R, u, v, w, d);
+          R.who('grey', 3.5, 9.5, 0, ctx.sayOf(O.sublevel7, 'grey')); ctx.npc[ctx.npc.length - 1].y = r2(plot['P04-03'].base + 3.5);
+          R.done(); }
+
+        /* ══ CORRIDOR FIVE (P03-02): the lane up the middle, the Healing Zone in it; rooms off it west, closets east ══ */
         { const hz = O.sublevel7.c.find(c => c.id === 'healzone'), s = ctx.sq('P03-02', 6, 9); if (hz) { ctx.counters.push(Object.assign({}, hz, { x: gcx(s[0]), z: gcz(s[1]), plateY: r2(plot['P03-02'].base + 2.35) })); ctx.taken.add(s[0] + ':' + s[1]); }
-          const R = ctx.room('P03-02', 3, 0, 6, 12, 'five'); R.sign('5', 0.08, 2.5, 2.6, 1.6, 2.0, 90, '#e8e4d0', '', 'stencil', 0.3); R.sign('5', 5.92, 9.5, 2.6, 1.6, 2.0, -90, '#e8e4d0', '', 'stencil', 0.3); R.done(); }
-        /* ── LEVEL -6 (P03-01): the blast door in the rock (the link's own door), the camera that has not been dusted ── */
-        { const R = ctx.room('P03-01', 2, 2, 8, 8, 'minus6'); R.dec('security_camera', 0.3, 7.7, 45, { y: 4.0 }); R.B('radiation_sign', 0, 2, 90); R.B('cardboard_boxes', 7, 7, 0); R.dec('bare_bulb', 4, 4, 0, {}); R.props.pop(); ctx.props.pop();
-          R.sign('LEVEL -6', 0.08, 4.5, 3.4, 3.0, 0.7, 90, '#e8e4d0', '', 'stencil', 0.4); R.done(); }
-        /* ── THE STAIR (P03-04): the two side rooms ── */
-        ctx.P('cardboard_boxes', 'P03-04', 1, 2); ctx.P('traffic_cone', 'P03-04', 10, 5); ctx.P('office_locker', 'P03-04', 1, 5, { face: 90 }); ctx.P('office_locker', 'P03-04', 10, 2, { face: 270 });
+          const R = ctx.room('P03-02', 3, 0, 6, 12, 'five'), wl = Object.assign({}, WL, { h: 5.25 });
+          R.wall('v', 2, 0, 5, Object.assign({ doors: [[2.5, 'leaf_security']] }, wl)); R.wall('v', 2, 8, 12, Object.assign({ doors: [[10, 'leaf_security']] }, wl));
+          R.wall('v', 5, 0, 5, Object.assign({ doors: [[1.5, 'leaf_office'], [4, 'leaf_office']] }, wl)); R.wall('v', 5, 8, 12, Object.assign({ doors: [[9, 'leaf_office'], [11, 'leaf_office']] }, wl));
+          R.wall('u', 5, 0, 2, wl); R.wall('u', 8, 0, 2, wl); R.wall('u', 5, 5, 6, wl); R.wall('u', 8, 5, 6, wl); R.wall('u', 3, 5, 6, wl); R.wall('u', 10, 5, 6, wl);
+          R.sign('5', 2.18, 0.9, 2.3, 1.4, 1.8, -90, INK, '', 'stencil', 0.3); R.sign('5', 4.82, 11.1, 2.3, 1.4, 1.8, 90, INK, '', 'stencil', 0.3);
+          line(R, 3.5, 6, 0.16, 42); floorWords(R, '5', 3.5, 3, 1.6, 2.2, 0); floorWords(R, '5', 3.5, 10.6, 1.6, 2.2, 180);
+          portal(R, 'v', 0, 5, 8, 3.6, 'THE RANGE', 1); portal(R, 'v', 6, 5, 8, 3.6, 'COMMS', -1);
+          for (const v of [1, 4, 9, 11]) { wallLamp(R, 2.16, v, 3.4); wallLamp(R, 4.84, v, 3.4); }
+          R.done(); }
+
+        /* ══ LEVEL -6 (P03-01): rock cut square, 19 m up to the Vent; the blast door's concrete collar; a guard post that faces it ══ */
+        { const R = ctx.room('P03-01', 2, 2, 8, 8, 'minus6');
+          /* the collar round the link's own door on the west wall (the room's square 0, 4) */
+          for (const dv of [-1.05, 1.05]) R.box(0.12, 4.5 + dv / 3.5 * 3.5 / 3.5 * 1, 0, 0.5, 4.4, 0.6, CONC, 0xc4c8cc, { gain: 1.9 }); R.box(0.12, 4.5, 4.0, 0.5, 0.9, 4.4, CONC, 0xc4c8cc, { gain: 1.9 });
+          R.box(0.4, 4.5, 4.05, 0.06, 0.5, 4.2, null, HAZ, { glow: 0.3 }); R.sign('LEVEL -6', 0.46, 4.5, 4.3, 3.2, 0.42, -90, '#1c1c1c', '', 'stencil');
+          R.sign('THE CAVERN', 0.1, 4.5, 5.6, 4.0, 0.8, -90, INK, '', 'stencil', 0.4);
+          floorWords(R, 'STAND CLEAR', 2.2, 4.5, 4.4, 0.8, 90); for (const v of [3.2, 5.8]) line(R, 1.8, v, 10.5, 0.16);
+          /* the Vent's foot: hazard hoops up the shaft's first metres */
+          R.sign('THE VENT', 4.5, -1.9, 3.2, 2.6, 0.6, 0, INK, '', 'stencil', 0.4);
+          for (const [u, v] of [[0.14, 1.5], [0.14, 7], [7.86, 2], [7.86, 6], [3, 7.86], [5.5, 7.86]]) wallLamp(R, u, v, 3.6, 0xffb060);
+          R.done(); }
+
+        /* ══ THE STAIR (P03-04): the level numbers down the hall's walls, lamps that follow the flight, the two side rooms' doors ══ */
+        { const R = ctx.room('P03-04', 3, 0, 6, 12, 'stair'), wl = Object.assign({}, WL, { h: 4.0 });
+          /* the flight comes down from the south line (v 12, 14 m) to v 6 (0 m): a number every 3.5 m of height */
+          [['2', 11.0], ['3', 9.9], ['4', 8.8], ['5', 7.7], ['6', 6.6]].map(q => [q[0], q[1], r2(14 * (q[1] - 6) / 6)]).forEach(q => { R.sign(q[0], 0.08, q[1], q[2] + 1.8, 2.0, 2.6, -90, INK, '', 'stencil', 0.4); R.sign(q[0], 5.92, q[1], q[2] + 1.8, 2.0, 2.6, 90, INK, '', 'stencil', 0.4);
+              for (const u of [0.1, 5.9]) R.box(u, q[1] - 0.45, q[2] + 0.4, 0.1, 5.0, 0.22, null, 0xdfe8ff, { glow: 1 }); wallLamp(R, 0.16, q[1] + 0.6, q[2] + 2.6); wallLamp(R, 5.84, q[1] + 0.6, q[2] + 2.6); });
+          R.sign('SUB-LEVEL 7', 3, 0.3, 5.6, 6.0, 1.0, 0, INK, '', 'stencil', 0.35); floorWords(R, '7', 3, 3.6, 3.4, 4.4, 180);
+          for (const u of [1.02, 4.98]) R.box(u, 2.9, 0.012, 0.16, 0.012, 20, null, HAZ);
+          R.wall('v', 0, 2, 6, Object.assign({ doors: [[4, 'leaf_security']] }, wl)); R.wall('v', 6, 2, 6, Object.assign({ doors: [[4, 'leaf_security']] }, wl));
+          R.done(); }
     },
 };
