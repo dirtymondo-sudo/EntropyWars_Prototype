@@ -4183,6 +4183,58 @@ be cliffs at the north edge which is the hills"; residents "don't worry about it
   The Vatican's and the Beach zone's plans (`docs/plans/world-zones/`) are not redrawn: Vatican = under Olympus, one step west; Beach = 24 more plots north
   along Entertainment, the cliffs its north edge. No encounter tables, no residents.
 
+## THE MOUNTAINS, THE DISTRICT FILES — one thread a district (2026-11-16, second side; mondo: set the Mountains up like Disaster City's districts)
+
+A set-up change: how the zone is written, not what is built. Everything that stands on the plots moved out of `bake-mountains.js` into six files,
+`docs/areas/mountains/districts/<LETTER>.js` (the letters are `layout.json` `districts`):
+
+| File | District | Plots | Room |
+|---|---|---|---|
+| `N.js` | The North Pole village | 16 (P00..P03 x 00..03) | `site_prebuilt_northpole_plots` |
+| `P.js` | The Snowy Pass | 12 (P04..P06 x 00..03) | `site_prebuilt_shasta_mountains` |
+| `K.js` | The Ski Lodge + slopes | 12 (P07..P09 x 00..03) | same |
+| `O.js` | Mount Olympus | 12 (P10..P12 x 00..03) | same |
+| `S.js` | Mount Shasta | 20 (P13..P15 x 00..03, P13..P14 x 04..07) | same |
+| `H.js` | The Hollywood Hills | 39 (H00..H12 x 00..02) | `site_prebuilt_shasta_hills` |
+
+Each file's header is its thread's brief: its plots, what stands there, what is known missing or wrong, the shared pieces that stand in it, the hooks.
+
+**The hook** (bake-mountains.js "THE DISTRICT FILES", the city's pattern): a file exports any of `tailor(t)` (change a square of its own plots before
+the trails are cut), `apply(ctx)` (the standing things: walked-in buildings), `build(ctx)` (the dressing). A room runs its files in its `files` order
+(Mountains: P, K, S, O), one stage for all, then the next. ctx = the room's helpers (put, dec, tree, native, building, look, feat, flat, S, gx/gz/mx/mz,
+props, doors, marks ...) + `anchor(name, at)` + `say(old, race)` (an old room's native line) + `cabin` + the texture constants.
+Two guards: while a file runs, `S()` throws on a plot of another district; `ctx.rnd` is that district's own random stream (room opt `streams`), so a
+piece added in one district never moves another district's decor.
+
+**THE RULES FOR A DISTRICT THREAD**
+1. One thread = one district = one file. Take the district's row on the board (docs/notes/claims.md) in your first PR; free it in your last.
+2. You edit YOUR district file only. Never another district's file. `data.js` between `MOUNTAINS-BEGIN` / `MOUNTAINS-END` is written by the tool: never by hand.
+3. **The tool and the shared pieces belong to nobody's district.** `bake-mountains.js`, `docs/areas/mountains/layout.json` (the plan's squares, levels,
+   names), the heights, the paint, the tree zones, the sky and edges, the spawn, every way out (wall doors, the links' ends, DOOR HQ's bay doors) and
+   `ctx.cabin`: nobody changes them without a dated note in the board's Notes saying what and why, in the same PR. Keep such a change small and of use
+   to every district (a new ctx helper, a new hook); a change to one district's look goes in its file. A plot's squares: use `tailor()`, not layout.json.
+4. A district's own doors (a `wall: 'free'` door on its own plots, like the chairlift's pair) and its anchors are its own. The five anchors the tool
+   needs must stay set: N `hearth`; O `painting`, `bayOlympus`; S `lemuria`, `bayShasta` (the tool throws when one is missing).
+5. **Rebake and merge.** After an edit: `node --check` your file, `node bake-mountains.js` (1 s; it throws on a piece in the rock, on a taken square, on
+   another district's plot, on a plot not reached on foot, on a step too steep). Before merging: `git fetch origin main && git merge origin/main`. If
+   another district landed first, `data.js` conflicts inside the MOUNTAINS block: NEVER keep one side of the block wholesale and never merge it by hand.
+   Take either side to clear the conflict (`git checkout --theirs data.js` is fine ONLY when the block is the file's one conflict; else resolve the
+   other hunks by hand first), then run `node bake-mountains.js`: the tool rewrites the block from all six files as they stand after the merge. Check
+   `git diff origin/main -- data.js` shows only the rows of your district. Same for the `?v=` token: merge, then re-bump (RULE #1b).
+6. Scope of a district thread: exteriors, interiors, dressing, atmosphere, polish of its own plots. Not in scope without mondo: new game rules,
+   characters, names or story (owner-rules.md), encounter tables (his baked tables), the Ice Wall, new ways between zones.
+7. Visual work gets a probe run and pictures (RULE #1c / #1d, `probe-fast.js`). `dev.teleport` puts the walker at height 0: pass `y` = the ground there
+   (`hqTerrainCompile(room).hFn(x, z)`), or the camera sits under the land. `MTN_DUMP=mtn|pole|hills node bake-mountains.js --dry-run` prints a room's walked map.
+8. The Hills thread (H): that room's ground is Disaster City's north skyline, read at load, and the city draws its far sign where the twelve
+   letters stand (`docs/disaster-city/districts/E.js` `edges.sign`). Moving the letters or the ground under them needs a note for the city's holder.
+   The city's north beach (`districts/B.js` beach(), `bake-disaster-city.js` EDGES.n.cap) is the city's, not the Hills'.
+
+**PROOF OF NO CHANGE** (rebake before and after, both loaded with load-data.js and compared room by room, 255 rooms): the North Pole room and the Hills
+room are the same to the byte; every link end and bay door is the same; in the Mountains room the heights, the paint, the tree zones, the doors, the
+natives and the marks are the same, and the feature and prop lists hold the same rows in another ORDER, one cause: the Warming Hut (district P) is now
+written before the Lodge and the Rental Hut (district K), because P runs first (its `texbuilding` row #228 -> #226, its `arch` row #285 -> #283, its 8
+props ahead of the Lodge's and the Rental Hut's 41). No row changed. The block's first comment line names the district files. No browser run (a no-change refactor).
+
 ## DISASTER CITY'S NORTH EDGE IS THE REAL HILLS — the scenery range is gone (2026-11-15, second side)
 
 mondo: "so is the bad looking fake mountain weenie still there in disaster city? can we get rid of that? shouldn't these mountains replace that?"
@@ -4667,3 +4719,46 @@ LEFT AS THEY ARE (looked at, not changed; each needs mondo's word or a design pa
 - The Bayside cordon (cop cars, ambulances, a fire truck parked in the kerb lanes, barricades): the plan's "response streets", meant.
 CLEAN: no tree, wall, fence, stair or planned building on a road square; no decor piece floating or sunk; the cars with `y` stand on the
 parking deck / in garages.
+
+## THE ESTATE, THE DISTRICT FILES (2026-11-16)
+
+mondo 11-16: "every single zone needs to be like that. now. so we can work in parallel" (like Disaster City's districts: one thread a district).
+A set-up change only: how the zone is written, not what is built.
+
+- **THE FILES** `docs/areas/estate/districts/<LETTER>.js`: `C.js` THE CORN FIELDS (NW), `L.js` THE LAKE (NE), `H.js` THE HAUNTED HOUSE + GRAVEYARD
+  (SW), `R.js` THE RANCH (SE), nine plots each. Each file's header is its thread's brief: its plots, what stands there today, what is missing or
+  waiting, the hooks. Everything a district builds or places is in its file; `bake-estate.js` holds only what is shared.
+- **THE ONE HOOK** (bake-estate.js "THE DISTRICT FILES", the city's way): a file exports any of `plan(ctx)` (change the plan's squares),
+  `houses(ctx)`, `sheds(ctx)` (buildings), `pieces(ctx)` (drawn pieces, `ctx.flat` levels the ground under one), `water(ctx)`, `dress(ctx)` (props,
+  trees, rails, people, animals). `ctx` = the tool's helpers (`building`, `put`, `look`, `P`, `dec`, `tree`, `native`, `rail`, `feat`, `props`, `npc`,
+  `taken`, `setRect`, `gx`, `gc`, the sheet names, `BUILT` = every building's handle by id) + that district's own dice (`ctx.rnd`, `ctx.dec`).
+  `STAGES` in the tool holds the order the districts run in for each stage (the order the pieces were written in before the split): it only
+  decides the order of the rows in data.js. `SEEDS` = where each district's dice start (where the one shared stream stood before the split), so a
+  piece added in one district never moves another district's pieces. A piece a district stands on another district's square is printed by the
+  bake (not refused).
+- **SHARED = THE TOOL'S** (bake-estate.js + docs/areas/estate/layout.json): the plan and its squares, the corn wall and the pines on it, the levels
+  and the slope, the paint rule, the open ground, the scatter, the shell and the sky, the room's label and lines, the spawn, the checks, and every
+  way out: the Woods gate `woods`, the house's front door `house`, `bay` (Room 512), `bay13` (Room 13), the well (link `well_skinwalker`), the
+  Lodge door (link `ranch_lodge`) and the four data.js rows the tool checks. The rooms behind those doors (the house's five floors, the Lodge,
+  the Cavern) are not district files either.
+- **PROOF OF NO CHANGE:** `node bake-estate.js` on main before the split and after it: data.js byte for byte the same (sha256 `9afc5d47`), the
+  room read through load-data.js the same (`9c9a9019`). So no R2 file changed, no token bump, nothing to upload, no browser run.
+
+### THE RULES FOR A DISTRICT THREAD
+1. **One thread = one district file.** Take your district's row on docs/notes/claims.md in your first PR; free it in your last. Edit only your
+   own `districts/<LETTER>.js`. Read its header first, then "THE ESTATE ON PLOTS", "THE LOOK PASS" and "THE GRASS + THE CLEAN SKY" above.
+2. **Nobody touches the tool, the layout or a shared piece without a note on the board** (claims.md, the "Estate, the tool + shared pieces" row
+   and a dated note at the bottom saying what and why). Need a new helper, a new stage, a change to the corn, the levels, the paint or a way
+   out? Write the note, make the smallest change, say in the PR what moved in the other districts' rows (it should be nothing).
+3. **Stay on your own squares** (C: sx 0..35 · sy 0..35; L: 36..71 · 0..35; H: 0..35 · 36..71; R: 36..71 · 36..71). The bake prints a piece that
+   stands on another district's square: move it, or ask that district's thread on the board.
+4. **Rebake and merge:** `git fetch origin main && git merge origin/main`, then `node bake-estate.js`, then commit data.js with your file. When
+   another district landed first and the baked block (`ESTATE36-BEGIN / ESTATE36-END` in data.js) conflicts: never keep one side of the block
+   wholesale and never merge it by hand. Take main's whole block (either side will do, it is rewritten), keep BOTH sides of everything else,
+   run `node bake-estate.js` again: the tool writes the block from all four files. Merge main once more right before you merge the PR and
+   rebake if main moved. Deliver per RULE #1 (data.js is an R2 file: token bump + `node sync-zip.js --upload`).
+5. **Scope of a district thread:** exteriors, interiors (the walk-ins in your district), dressing, atmosphere, polish. Not in scope: the
+   rooms behind a way out, the plan's plot grid, encounter tables (mondo's baked tables), new R2 game scripts.
+6. **Visual work gets a browser run** (RULE #1c / #1d: the fresh check, probe-fast.js, the proof picture with the `[EW BUILD]` HEAD).
+   Two prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack). No Meshy until mondo says so; the corn waits for it.
+7. A lasting fact goes in this file under your district's own heading in the same PR, and one line on the board.
