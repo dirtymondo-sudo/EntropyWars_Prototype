@@ -47,9 +47,8 @@
      drawn on a line; a towel lying on the sand still needs a model.)
    - NO HOOK FOR A DISTRICT: sound (the room has one bed, the shell's), particles (spray, gulls wheeling). NIGHT WORKS: the Beach rides the
      world clock like every outdoor room (data.js hqRoomClock); the pilot's "day only" was a misreading of the shell's `night: 0` field.
-   - THE TOOL'S (notes on docs/notes/claims.md, 11-16): the west edge is open sea where the city should stand; the sky's waterspout landmark
-     and the sea shell's night bodies draw as a teal spindle and black outlines by day; the dunes' steep faces wear the cliff sheet as grey
-     bands; the sand reads grey-white in the cloud browser.
+   - (The tool's four items of the first look are settled, 11-16: the city's sea wall and Bayside's front stand past the west line, the sky
+     is clean; the "rock bands" are the plan's headland rock and the sand is his pale beach sheet. areas-complexes.md "THE BEACH, THE SHORE".)
    - No residents with routines, no fight set up (the NPC spawn system is another thread's: docs/notes/npc-system.md). Weed / kelp / the ocean pack's rocks do NOT go in the shallows or on dry sand (seen: black
      spikes and pillars).
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):

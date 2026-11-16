@@ -4745,7 +4745,15 @@ once that first district is fleshed out and knows what shared assets it can use 
 - **NEEDS A MODEL (nothing stood in):** hammocks, a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, a towel lying on the
   sand, an ice shaver and paper cones for the stand.
 - **WAITS FOR MONDO:** his look at the whole district; whether the Shore gets a fight / residents with routines once the NPC spawn system (npc-system.md) lands.
-- **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
+- **THE TOOL ROW'S FOUR ITEMS (11-16, mondo's "yes"; this thread held the tool row for them, bake-beach.js only):**
+  (1) THE CITY'S SIDE: `terrain.edges` (open sea north, east, south; land on the west) and, drawn past the west line in one arch row
+  `bch:bayside:look`, the city's sea wall with its white rail (open at the city door) and Bayside's front: eleven pastel blocks in
+  Bayside's way (painted plaster, glass in bays between piers over a painted ground floor, white balcony slabs, fins, an entrance porch),
+  BAYSIDE in the district's neon face on the tallest. Scenery only; nobody walks there. (2) THE SKY: the Beach's shell carries the sea
+  shell's sky with `scenery: 'none', landmarks: []` (no black outlines by day, no teal waterspout spindle; the old sea room keeps both).
+  (3) THE DUNES' "grey rock bands": withdrawn, they are the plan's headland rock (the 'r' squares in `rocks_5`), not a fault. (4) THE SAND:
+  left alone, it is his pale beach sheet (sprites.js SAND_BEACH, THE TWO SANDS); it reads greyer in the cloud browser than on his Mac.
+  Seen on screen by day and at 22:30.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
 
@@ -4803,8 +4811,8 @@ once that first district is fleshed out and knows what shared assets it can use 
 - **THE SHORE'S HELPERS, TO COPY (they live in S.js `build`; none is in the tool, so nothing shared changed):** `wall` (a painted shell),
   `win`, `porch`, `inside`, `In`, `bulbs`, `torch`. If a second district copies one unchanged, that is the moment to move it into
   bake-beach.js `sheet()` (a board note first, its own small PR).
-- **STILL MISSING ZONE-WIDE:** the four tool-row items on the board (west edge, sky, dune faces, grey sand); sound, particles, night
-  (above); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
+- **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
+  city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
