@@ -9,6 +9,8 @@
    the Sump, two boats, burial niches + a sarcophagus + a coffin in the Chimney's hall, the crystal seam, a body under the shaft, the Adit's ladders, lanterns.
    PASS 3, THE DRESSING: about ninety small pieces by hand (fuel, shovels, dynamite, bones, a floater, frogs, tins, webs, bats), the camp under the Chimney, candles in
    the niches, chains on the portcullis, a missing-persons board, six floor stains; four more residents (flesheater, swamp monster, zombie, ghost).
+   PASS 4, THE ATMOSPHERE: drawn light (lit brick behind the fires that have no real light, the crystal's cold wash, the firebox's hot back),
+   wall stains, two stencilled plates, glowing caps, ferns and moths in the Chimney's daylight.
    Notes, the FITS THIS DISTRICT shortlist, NEEDS A MODEL and DECISIONS MADE FOR MONDO: docs/notes/areas-complexes.md "THE SEWERS, DISTRICT O". */
 'use strict';
 const nth = (list, i) => list.length ? list[Math.min(list.length - 1, Math.max(0, i))] : null;
@@ -101,6 +103,33 @@ module.exports = {
         /* THE ADIT (the climb up to the Storm Drain): three sets on the stem, boarded over short of the ladder */
         [9.1, 10.0, 10.9].forEach(l => set(B, 'x', l, 4, 8, 3.4)); lag(B, 4, 8, 8.95, 10.75, 3.8);
         board(B, 5.4, 10.2, 5.6, 88); board(B, 6.5, 8.6, 4.2, 84);
+
+        /* ── PASS 4, THE ATMOSPHERE. The room has ten real lights and this district gets two, so its other fires light their walls and
+           floor the DRAWN way (the zone kit's rule): the same sheet, paler, with `glow`. No particles: the air is the tool's shell. ── */
+        const FIRE = 0xd8c0a0, COLD = 0xa8d0c4, DIRV = { s: [0, 1, 0], n: [0, -1, 180], e: [1, 0, 270], w: [-1, 0, 90] };
+        /* (pools of lit floor under the fires were tried and read as round rugs from above: left out) */
+        /* the wall behind a fire, lit: (fx, fy) = the point on the wall's line, `d` = the way the wall faces */
+        const wash = (id, d, fx, fy, col, y) => { const v = DIRV[d]; [[1.2, 1.4, 0.11, (y || 1.7) - 0.5], [2.3, 2.5, 0.07, Math.max(0.3, (y || 1.7) - 1.2)], [3.6, 3.6, 0.035, 0.15]].forEach((q, i) =>
+            PARTS[id].push({ s: 'box', p: at(id, fx + v[0] * (0.07 - i * 0.015) / 3.5, q[3], fy + v[1] * (0.07 - i * 0.015) / 3.5), size: [q[0], q[1], 0.02], ry: v[2], key: 'bricks_2', tint: col || FIRE, glow: q[2], top: false, uv: 3.5 })); };
+        /* a stain run down a wall */
+        const streak = (id, d, fx, fy, w, h, tint) => { const v = DIRV[d]; PARTS[id].push({ s: 'box', p: at(id, fx + v[0] * 0.04 / 3.5, 0.45, fy + v[1] * 0.04 / 3.5), size: [w, h, 0.025], ry: v[2], key: 'bricks_2', tint: tint || 0x1e2414, top: false }); };
+        /* a stencilled plate on an iron back */
+        const plate = (id, d, fx, fy, y, words) => { const v = DIRV[d], w = r2(Math.max(1.2, words.length * 0.16));
+            PARTS[id].push({ s: 'box', p: at(id, fx + v[0] * 0.03 / 3.5, y - 0.04, fy + v[1] * 0.03 / 3.5), size: [w + 0.12, 0.44, 0.04], ry: v[2], tint: IRON },
+                { s: 'quad', p: at(id, fx + v[0] * 0.06 / 3.5, y, fy + v[1] * 0.06 / 3.5), size: [w, 0.36], ry: v[2], key: 'txt:' + words + '|#e8d9a0|#3a2a1c|' + r2(w / 0.36) + '||stencil', uv: 'fit', kind: 'wall', glow: 0.35 }); };
+        /* the Old Workings */ wash(A, 'w', 11, 10.5); wash(A, 'n', 10.5, 11);                       // the Flood's torch
+        PARTS[A].push({ s: 'box', p: at(A, 2 + 0.3 / 3.5, 0.92, 3.5), size: [0.1, 0.7, 1.6], tint: 0xff7a28, glow: 0.8 });   // the firebox's back, hot
+        plate(A, 'w', 8 - 0.14 / 3.5, 3.0, 0.62, 'THE SUMP · DEEP WATER');
+        [['s', 3.4, 2, 0.5, 2.2], ['s', 9.3, 2, 0.8, 1.5], ['e', 2, 2.6, 0.6, 2.6], ['n', 5.5, 11, 0.9, 1.8], ['n', 8.2, 11, 0.4, 2.4], ['w', 11, 7.4, 0.7, 2.0], ['w', 11, 9.1, 0.35, 2.8], ['e', 2, 9.6, 0.8, 1.6], ['e', 5, 0.6, 0.5, 2.1], ['w', 8, 0.9, 0.6, 1.7]]
+            .forEach(q => streak(A, q[0], q[1], q[2], q[3], q[4]));
+        streak(A, 'w', 11, 4.6, 0.5, 3.4, 0x5a2e14);                                                    // rust under the rising main
+        /* the Chimney */
+        /* (the portcullis' torch is one of the two real lights: nothing drawn there) */
+        wash(B, 's', 4.15, 3, FIRE, 1.9); wash(B, 's', 6.85, 3, FIRE, 1.9);                             // the candelabra at the niches wash(B, 'w', 9, 8.5, COLD, 1.2); wash(B, 'n', 8.5, 9, COLD, 1.2); // the crystal seam's cold light
+        plate(B, 'n', 6, 9.1 - 0.21 / 3.5, 3.42, 'THE ADIT');
+        [['s', 5.6, 3, 0.7, 2.4], ['e', 2, 7.6, 0.5, 2.0], ['w', 9, 3.6, 0.6, 2.7], ['n', 3.4, 9, 0.5, 1.9], ['e', 4, 10.4, 0.6, 2.2], ['w', 8, 9.8, 0.4, 2.6], ['s', 10.4, 5, 0.6, 1.6], ['n', 11.2, 8, 0.8, 1.3]]
+            .forEach(q => streak(B, q[0], q[1], q[2], q[3], q[4]));
+        streak(B, 's', 3.0, 3, 1.1, 2.9, 0x8a927a); streak(B, 's', 8.0, 3, 0.9, 2.5, 0x8a927a);         // lime weeping out of the niches
         [A, B].forEach(id => ctx.feat({ k: 'arch', id: 'sew:O:' + id + ':mine', x: X(id, 6), z: Z(id, 6), rot: 0, base: ctx.plot[id].base, parts: PARTS[id] }));
     },
     dress(ctx) {
@@ -163,7 +192,7 @@ module.exports = {
         /* the Pump Ledge */
         lit('psx_pipe_valve_holder_large_2', A, 10.5, 4.75, 0); lit('psx_jerrycan_1', A, 8.3, 4.2, 140);
         /* the Flood's banks: a floater, bones, a fish's bones, frogs, cans, bottles */
-        put('hw_body', A, 8.3, 9.2, 200, { y: 0.52 }); lit('femur', A, 6.4, 5.6, 30); lit('ulna', A, 7.1, 5.72, 100); lit('hw_part_5', A, 2.6, 8.4, 0); lit('psx_fish_skeleton_mp_1', A, 6.6, 10.4, 20);
+        put('hw_body', A, 8.3, 9.2, 200, { y: 0.52 }); lit('hw_part_5', A, 2.6, 8.4, 0); lit('psx_fish_skeleton_mp_1', A, 6.6, 10.4, 20);
         lit('meshy_frog', A, 5.2, 10.15, 10); lit('meshy_frog', A, 2.75, 7.3, 80); lit('psx_tin_can_mp_1_rusty', A, 9.3, 10.6, 0); lit('psx_glass_bottle_1', A, 10.6, 7.4, 0); lit('psx_glass_bottle_1', A, 7.9, 10.7, 90);
         lit('psx_cardboard_box_1', A, 10.65, 9.3, 20); lit('psx_brick_1', A, 10.3, 6.3, 0); lit('hw_bricks_2', A, 2.4, 6.4, 30); lit('psx_wooden_crate_1', A, 8.9, 10.62, 12);
         /* the drift */
@@ -175,14 +204,18 @@ module.exports = {
         lit('psx_open_book_mp_1', B, 4.2, 7.9, 40); lit('psx_wooden_crate_1', B, 6.75, 7.9, 20); lit('psx_cardboard_box_1', B, 3.4, 8.3, 0);
         /* the niches: candles, bones, straw, a rusted sword */
         [[2.6, 3.45], [3.5, 3.4], [7.5, 3.4], [8.4, 3.45]].forEach((q, i) => lit(i % 2 ? 'hw_candles' : 'hw_candles_2', B, q[0], q[1], i * 50));
-        lit('femur', B, 3.1, 3.6, 70); lit('ulna', B, 7.9, 3.7, 10); lit('skull', B, 2.75, 4.8, 100); lit('psx_sword_mp_1', B, 3.2, 4.3, 140); lit('hw_bricks', B, 8.3, 4.9, 0);
-        /* the portcullis: chains on its frame, a lock on the floor */
-        put('wall_chains', B, 0.56, 4.95, 90); put('wall_chains', B, 0.56, 6.05, 90); lit('psx_padlock_2', B, 1.4, 5.3, 0); lit('femur', B, 1.6, 6.2, 60);
+        lit('skull', B, 2.75, 4.8, 100); lit('psx_sword_mp_1', B, 3.2, 4.3, 140); lit('hw_bricks', B, 8.3, 4.9, 0);
+        /* the portcullis: chains on its frame, a bone */
+        put('wall_chains', B, 0.56, 4.95, 90); put('wall_chains', B, 0.56, 6.05, 90);
         /* the Adit's foot */
         lit('psx_metal_barrel_mp_3', B, 7.6, 11.5, 0); lit('psx_wooden_crate_5', B, 4.5, 9.3, 5); lit('hw_shovel', B, 6.9, 10.6, 20); lit('psx_brick_1', B, 5.6, 11.2, 0); lit('meshy_rope', B, 6.6, 11.55, 0);
         /* webs on the timber, bats under the boards and round the shaft's lip */
         [[A, 5.2, 0.95], [A, 0.5, 5.2], [B, 10.5, 7.8], [B, 4.2, 9.1], [B, 7.8, 10.9]].forEach((q, i) => lit(['hw_web', 'hw_web_2', 'hw_web_3'][i % 3], q[0], q[1], q[2], i * 90, { y: 2.3 }));
         [[B, 4.9, 4.1, 6.3], [B, 6.1, 4.9, 6.35], [B, 5.6, 3.95, 6.3], [A, 1.2, 6.9, 3.5], [A, 6.2, 1.7, 3.5], [B, 5.5, 9.6, 3.6], [A, 9.2, 6.4, 7.5], [A, 3.4, 9.3, 8.2]].forEach((q, i) => lit(['bat_black', 'bat_brown', 'bat_grey'][i % 3], q[0], q[1], q[2], i * 47, { y: q[3] }));
+        /* PASS 4: what grows and flies in the little light there is: glowing caps and ferns at the stump's foot and in the Flood's far corner, moths in the shaft */
+        [[B, 4.55, 3.9], [B, 6.5, 4.0], [B, 6.35, 5.05], [A, 2.2, 10.6], [A, 2.6, 9.5], [A, 2.25, 8.5]].forEach((q, i) => lit('woods_glowcap', q[0], q[1], q[2], i * 61));
+        [[4.7, 4.9], [6.3, 3.6], [4.9, 3.6]].forEach((q, i) => lit('fern', B, q[0], q[1], i * 120));
+        [[5.3, 4.4, 4.8], [5.8, 4.7, 5.5], [5.5, 4.2, 6.1]].forEach((q, i) => lit(i % 2 ? 'hawk_moth' : 'luna_moth', B, q[0], q[1], i * 100, { y: q[2] }));
         /* floor stains (the room draws 80; this district adds six) */
         ctx.grime('scorch', A, 3, 3, 1.5); ctx.grime('scorch', B, 5, 7, 1.6); ctx.grime('blood', B, 2, 7, 1.2); ctx.grime('blood', B, 6, 5, 1.3); ctx.grime('puddle', A, 6, 10, 1.6); ctx.grime('puddle', B, 5, 10, 1.4);
     },
