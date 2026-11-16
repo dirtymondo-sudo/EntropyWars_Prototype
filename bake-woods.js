@@ -66,6 +66,8 @@ let seed = 36; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; r
    bake-disaster-city.js THE DISTRICT FILES): docs/areas/woods/districts/<LETTER>.js, one per district (C T G M), so no district's content
    lands in this tool and one thread per district can work at the same time. THIS is the one hook. A file may export any of:
      tailor(ctx)                          before the levels: its own changes to the plan's squares (ctx.cell)
+     cut(ctx)                             after the glades: LATER changes to its squares (THE CUT below; new square edits go here)
+     water(row, ctx)                      each water row of the tool (stream / pool): return it, a changed one, or null (THE WATER BY DISTRICT)
      dress(ctx), horror(ctx), life(ctx)   the three passes as they were built (the dressing, THE HORROR PASS, THE LIFE PASS)
      build(ctx)                           after the three passes: new work
      wood                                 [kind, height, chance]: the feature trees deep in its forest mass
@@ -147,6 +149,11 @@ function ground(xm, zm) {
     const t = v => Math.min(1, Math.max(0, (v - 1 / 6) / (2 / 3))), u = t(px - i), v = t(pz - j);
     return (LV(i, j) * (1 - u) + LV(i + 1, j) * u) * (1 - v) + (LV(i, j + 1) * (1 - u) + LV(i + 1, j + 1) * u) * v;
 }
+/* THE CUT (2026-11-16): a district's LATER changes to its squares: districts/<LETTER>.js cut(ctx), after the glades. The forest's feature trees are still
+   thrown on the squares as they stood before it (cellT), so a district that opens or dries ground moves no other district's trees; a tree is only left
+   out where its square is no longer forest. New square edits go in `cut`, never in `tailor` (a tailor edit moves the glades and the forest's dice). */
+const cellT = cell.map(r => r.slice());
+stage('cut');
 const slope = Buffer.alloc(W * W * 8);
 for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { const o = (cy * W + cx) * 8;
     [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope.writeInt16LE(Math.round(ground(gx(cx + q[0]), gx(cy + q[1])) * 100), o + k * 2)); }
@@ -168,6 +175,10 @@ for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { const ch = cell[
 
 /* ── THE WATER: the creek from the Falls to the Outfall, one short `stream` row a square so the water steps down the hill with the ground
    (a stream row is one flat sheet); the lake, the falls' pool, the Pool. A plank deck wherever a path crosses. ── */
+/* THE WATER BY DISTRICT (2026-11-16, mondo on Dead Man's Cave: "dry creek ... dry riverbed"; "why is there a pool in the woods ... this is dead man's cave"):
+   every water row passes each district's own `water(row)` (districts/<LETTER>.js): it returns the row, a changed row (a stream cut short) or null (dropped).
+   A district only touches water on its own plots. */
+function water(row, ok) { for (const id of ORDER) { if (row && typeof DISTRICTS[id].water === 'function') row = DISTRICTS[id].water(row, ctx); } if (row) { features.push(row); if (ok) ok(); } }
 const CREEK = [[32, 5], [33, 14], [31, 22], [33, 30], [38, 39], [45, 42], [52, 45], [54, 53], [63, 55], [72, 54.5]];   // squares (the plan's course)
 { const pts = []; for (let i = 0; i + 1 < CREEK.length; i++) { const a = CREEK[i], b = CREEK[i + 1], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1])));
       for (let q = 0; q < n; q++) pts.push([gx(a[0] + (b[0] - a[0]) * q / n + 0.5), gx(a[1] + (b[1] - a[1]) * q / n + 0.5)]); }
@@ -177,11 +188,11 @@ const CREEK = [[32, 5], [33, 14], [31, 22], [33, 30], [38, 39], [45, 42], [52, 4
   let i = 0; while (i + 1 < pts.length) { let j = i + 1, lo = Math.min(...hsOf(pts[i])), hi = Math.max(...hsOf(pts[i]));
       for (;;) { const h = hsOf(pts[j]), l2 = Math.min(lo, ...h), h2 = Math.max(hi, ...h); if (h2 - l2 > 0.45 && j > i + 1) break; lo = l2; hi = h2; if (j + 1 >= pts.length) { j++; break; } j++; }
       const seg = pts.slice(i, Math.min(j, pts.length - 1) + 1), h0 = ground(seg[0][0], seg[0][1]);
-      features.push({ k: 'stream', pts: seg.map(q => [r2(q[0]), r2(q[1])]), w: 4.4, y: r2(lo - h0 - 0.25), depth: r2(hi - lo + 0.6), key: 'water' }); count.creek = (count.creek || 0) + 1;
+      water({ k: 'stream', pts: seg.map(q => [r2(q[0]), r2(q[1])]), w: 4.4, y: r2(lo - h0 - 0.25), depth: r2(hi - lo + 0.6), key: 'water' }, () => { count.creek = (count.creek || 0) + 1; });
       i = Math.min(j, pts.length - 1); if (i >= pts.length - 1) break; } }
-features.push({ k: 'pool', x: gc(32), z: gc(3), r: 7, rz: 6, y: -0.25, depth: 0.9, key: 'water', bank: 1.2 });                      // the Falls' pool
-features.push({ k: 'pool', x: gx(60), z: gc(5), r: 21, rz: 13, y: -0.3, depth: 1.0, key: 'water', bank: 2.0 });                      // THE LAKE, both shores
-features.push({ k: 'pool', x: gc(54), z: gc(66), r: 8, rz: 7, y: -0.3, depth: 0.9, key: 'water', bank: 1.4 });                       // THE POOL
+water({ k: 'pool', x: gc(32), z: gc(3), r: 7, rz: 6, y: -0.25, depth: 0.9, key: 'water', bank: 1.2 });                      // the Falls' pool
+water({ k: 'pool', x: gx(60), z: gc(5), r: 21, rz: 13, y: -0.3, depth: 1.0, key: 'water', bank: 2.0 });                      // THE LAKE, both shores
+water({ k: 'pool', x: gc(54), z: gc(66), r: 8, rz: 7, y: -0.3, depth: 0.9, key: 'water', bank: 1.4 });                       // THE POOL
 { const seen = new Uint8Array(W * W);   // a deck over each run of bridge squares, along the way the path runs
   for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { if (cell[cy][cx] !== 'b' || seen[cy * W + cx]) continue;
       const st = [[cx, cy]], run = []; seen[cy * W + cx] = 1;
@@ -215,20 +226,24 @@ function life(id, key, o) {   // a small thing somewhere on the plot's open grou
     const f = freeSquares(id); if (!f.length) return null; const fr = f.filter(q => !taken.has(q[0] + ':' + q[1])), q = (fr.length ? fr : f)[Math.floor(rnd() * (fr.length ? fr.length : f.length))];
     const a = rnd() * 6.2832, d = 0.7 + rnd() * 0.8; props.push(Object.assign({ key, x: r2(gc(q[0]) + Math.cos(a) * d), z: r2(gc(q[1]) + Math.sin(a) * d), face: Math.round(rnd() * 360) }, o || {})); return q; }
 const fly = (id, key, y) => life(id, key, { floor: true, y: r2(y * (0.8 + rnd() * 0.5)) });
-const sow = (key, n, sq, r, o) => features.push(Object.assign({ k: 'scatter', key, n, seed: 100 + features.length, x: gx(sq[0]), z: gx(sq[1]), r }, o || {}));   // a scatter over a disc (squares → m)
+const SOW_BASE = 260; let SOW_SHIFT = 0;   // THE SEEDS HOLD (2026-11-16): a sow's seed counts the feature rows before it; the count at the dressing's start is pinned to the day's (SOW_BASE), so a district that dries a creek or changes its squares re-throws nobody's scatter
+const sow = (key, n, sq, r, o) => features.push(Object.assign({ k: 'scatter', key, n, seed: 100 + features.length + SOW_SHIFT, x: gx(sq[0]), z: gx(sq[1]), r }, o || {}));   // a scatter over a disc (squares → m)
 const DIST = d => PLAN.plots.filter(p => p.district === d).map(p => p.id);
 const zoneOf = (x0, y0, x1, y1) => ({ x0: gx(x0 * N), z0: gx(y0 * N), x1: gx(x1 * N), z1: gx(y1 * N) });   // a box of plots in metres (the tree zones, the air zones)
 Object.assign(ctx, { ground, freeSquares, taken, centre, near, put, dec, tree, full, native, hput, hdec, softAt, life, fly, sow, DIST, zoneOf, rnd });
 /* each district's own pieces: districts/<LETTER>.js dress(ctx) (THE CLEARING, THE REDWOOD TRAIL + MOUNT SHASTA, THE RITUAL GROUND + BOHEMIAN GROVE, DEAD MAN'S CAVE) */
+if (process.env.WOODS_DICE) console.log('rows before the dressing ' + features.length); SOW_SHIFT = SOW_BASE - features.length;
 stage('dress');
 
 /* trees in the forest mass that give a district its own wood: redwoods through the Redwood Trail, pines up the mountain, dead trees round the cave */
 { const want = {}; ORDER.forEach(id => { want[id] = DISTRICTS[id].wood; });   // each district's own wood: districts/<LETTER>.js `wood`
   if (process.env.WOODS_DICE) console.log('dice trees ' + seed); else seed = DICE.trees;
-  for (let cy = 1; cy < W - 1; cy++) for (let cx = 1; cx < W - 1; cx++) { if (cell[cy][cx] !== 't') continue; const p = P(Math.floor(cx / N), Math.floor(cy / N)), wd = want[p.district];
-      let deep = true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (cell[cy + dy][cx + dx] !== 't') deep = false;
+  for (let cy = 1; cy < W - 1; cy++) for (let cx = 1; cx < W - 1; cx++) { if (cellT[cy][cx] !== 't') continue; const p = P(Math.floor(cx / N), Math.floor(cy / N)), wd = want[p.district];
+      let deep = true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (cellT[cy + dy][cx + dx] !== 't') deep = false;
       if (!deep || rnd() > wd[2]) continue; const mountain = p.level >= 6;
-      features.push({ k: 'tree', x: r2(gc(cx) + (rnd() - 0.5) * 1.4), z: r2(gc(cy) + (rnd() - 0.5) * 1.4), kind: full(mountain ? 'pine' : wd[0]), h: r2((mountain ? 7 : wd[1]) * (0.8 + rnd() * 0.4)), r: 0.7 }); count.bigTrees = (count.bigTrees || 0) + 1; } }
+      const tx = r2(gc(cx) + (rnd() - 0.5) * 1.4), tz = r2(gc(cy) + (rnd() - 0.5) * 1.4), th = r2((mountain ? 7 : wd[1]) * (0.8 + rnd() * 0.4));
+      let still = true; for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (cell[cy + dy][cx + dx] !== 't') still = false;   // THE CUT: the square (or one beside it) was opened since
+      if (still) features.push({ k: 'tree', x: tx, z: tz, kind: full(mountain ? 'pine' : wd[0]), h: th, r: 0.7 }); if (still) count.bigTrees = (count.bigTrees || 0) + 1; } }
 features.push({ k: 'scatter', key: 'fern', n: 140, seed: 5 }, { k: 'scatter', key: 'stump', n: 18, seed: 6 }, { k: 'scatter', key: 'fallen_log', n: 10, seed: 7, r0: 1.9 });
 
 /* ── THE HORROR PASS (2026-11-15, mondo: "What can we do to give more of a horror element to the woods" + "yes you can do the yellow and pink too"):
