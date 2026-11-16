@@ -5459,3 +5459,16 @@ The style: an ambush from the water. "Liquid" = water, deep water, radioactive s
 - Probe 11-16: Submerge refused on grass, hid it in deep water (concealed from P2); Death Roll broke cover, dragged the foe into deep
   water, Drowning; Tail Sweep pushed 1; walking out surfaced it; 0 page errors.
 - Model `Assets/characters/races/sewer_gator/male/Meshy_AI_sewer_gator_Running.glb` + `sewer_gator.png` (R2 only).
+
+### 3. THE SKATER (Disaster City, Bayside skate park, assassin, female, family `skateboarding`)
+The style: momentum. A walk that ends in a straight line from where it began banks one **Momentum** stack a square
+(battle.js `_skaterBankMove` from finishMoveAt; up to 6 on `unit._momentum`). The status is the clock: every gain resets it to 2,
+so it carries into her next turn and fades a turn after she stops rolling (onRemove clears the count).
+- **Kickflip** (T1, escape 3): jumps over gaps, walls or units to a square within 3; +2 Momentum (`gain` on the status payload).
+- **Grind** (T2, self buff, cd 2): +2 MOV this turn (timedStatBonus) and +3 Momentum. spellIsPureStatus skips a payload with
+  `gain`, so a stacking status never reads "would do nothing".
+- **Board Slam** (T3, physical 110, range 1, `momentumSpend: 35`): a second blow of 35 a stack (_runPostEffects), then spent.
+- The park's rails (terrain `rail` rows, map-pass PR #1873) are walk-mode skating; the battle board does not carry them yet, so
+  Grind is the rail in a fight. Tree: Sprint → Nimble Dodge / Stage Dive → Vault / Spotlight → Rampage. Finisher 900.
+- Probe 11-16: straight walk +2, Grind +3, Kickflip capped at 6, Board Slam 569 (318 of it momentum) and spent, a bent walk banks
+  nothing; 0 page errors. Model `Assets/characters/races/skater/female/Meshy_AI_skater_Running.glb` + `skater.png` (R2 only).

@@ -136,6 +136,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/eagleman/', 'Assets/characters/races/eagleman/'],
   ['Assets/Sprites/Races/banker/', 'Assets/characters/races/banker/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/sewer_gator/', 'Assets/characters/races/sewer_gator/'],   // 2026-11-16 THE NEW RACES
+  ['Assets/Sprites/Races/skater/', 'Assets/characters/races/skater/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/fallenangel/', 'Assets/characters/races/fallenangel/'],
   ['Assets/Sprites/Races/firefighter/', 'Assets/characters/races/firefighter/'],
   ['Assets/Sprites/Races/flesheater/', 'Assets/characters/races/flesheater/'],
@@ -523,6 +524,7 @@ const RACE_SPRITE_GENDERS = {
   'politician': 'male',
   'banker': 'male',   // 2026-11-16
   'sewer gator': 'male',   // 2026-11-16
+  'skater': 'female',   // 2026-11-16
   'atlantean': 'both',
   'dinosaur': 'male',
   'dragon': 'male',
@@ -683,6 +685,7 @@ const _CHARACTER_SPRITES = {
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,
   'banker': `${_S}/Races/banker/male/banker.png`,   // 2026-11-16 — cut from its own model
   'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator.png`,   // 2026-11-16 — cut from its own model
+  'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
   // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
@@ -2398,6 +2401,13 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/sewer_gator/male/Meshy_AI_sewer_gator_Running.glb`,
       heightRatio: 1.15,
       basicAttackKind: 'claw',
+    }),
+  },
+  'skater': {   // the Bayside skate park's own (female)
+    female: _mkUAL('skater', 'skater', {
+      model: `${_S}/Races/skater/female/Meshy_AI_skater_Running.glb`,
+      heightRatio: 0.95,
+      basicAttackKind: 'punch',
     }),
   },
   'eagleman': {
@@ -6563,6 +6573,7 @@ const RACE_SPRITES = {
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,   // 2026-10-25 — his own sprite
   'banker': `${_S}/Races/banker/male/banker.png`,   // 2026-11-16 — cut from its own model
   'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator.png`,   // 2026-11-16 — cut from its own model
+  'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
