@@ -5156,6 +5156,11 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
     2.25 (the kit's 2.68 / 2.5 are for `h` 3.0 / 3.2). Keep a walk-in ONE square off any cone or rock square (the slope blends in through
     the floor). `psx_carpet_mp_1` is a Persian rug; `campfire` with `h: 0.5` is a hearth's fire; a ring of stones = one `cyl` part with
     `ring: { n, r }`. Drawn furniture that reads: a plank platform + a straw pallet (a bed), a banded block with a tall back (a seat).
+  - **A FLOW DOWN A BUILT SLOPE:** never trust the plan's slope: read the built ground in node (`hqTerrainInfo(room)`, `hqTerrainHeight(i, x, z)`
+    through load-data.js) every 1.75 m along the flow and type each `fall` from one height to the next (+0.3 / +0.12). The cone AS BUILT
+    falls 0.7 m a metre, not the plan's 1.2.
+  - **A GARDEN:** `hw_crop` / `hw_crop_2` draw as pale paper tiles; ridges of soil = boxes in the terrain key `dirt_4` (0.5 x 0.16 m, 1.1 m apart);
+    `hw_pumpkin*`, `hw_scarecrow`, a `rail` row `model: 'ranch'` and `chicken` all read. `psxg_stepping_stone_1/2` as a `scatter` is a path.
   - **TRIANGLES:** a Meshy prop is about 10,000 triangles whatever its size (a skull, a fern, a flamingo); thirty of them is 0.3 M. Count before dressing.
 - **THE PROBE:** `node playtest_city.js site_prebuilt_bermuda_beach '<views>' --flags=EW_NO_MODEL_QUEUE` runs now (about 50 s to ready, every
   prop in); no `--pre=` filter needed since THE FAST PROBE. `face` 0 looks north, 90 east; give every view its own `y` (sand is 0.6-1.2 m,
@@ -5292,6 +5297,13 @@ sea has things to sail to.
     pallets and pillows, two hung mats, the stores (clay pots, an amphora, straw bales), a pole rack with dried meat and fish, drums, two
     woven floor mats; THE NORTH HUT: a hearth, two platforms, a mat, a pot, an urn, straw, a bucket, a spear. The big hut moved ONE SQUARE
     south (109-110 x 16-18): beside the cone its slope came up through the floor. Triangles at the Landing after the pass: 2.64 M (pass 1: 2.5 M).
+  - **PASS 3, DRESSING (seen on screen, by day and at 22:30):** in pack models (a few hundred triangles each) and drawn pieces. The island:
+    THE GARDEN west of the big hut (nine drawn ridges of turned soil, gourds, a scarecrow, a timber fence on two sides), four chickens,
+    stepping stones from the gate to the fire and on to the shrine, THE WATCH FIRE on the north-east point, a tide line on the north
+    beach (shells, a seal, fish bones), dry scrub on the scorched ring, two birds over the crater. THE LAVA FITS THE CONE NOW: nine short
+    falls a flow, typed from the built heights. The sea: THE SHARKS (P07-09: three fins and a hammerhead round fish schools, a boat adrift),
+    THE TURTLES (five, off the south-west islet), THE SEAL ROCK (P13-00: a drawn shelf, four seals on it, two in the water), a bird over
+    the Rocks, a starfish (the Beach's own list, no line) on the south-west islet. NOT placed again: a wreck and jellyfish (the Triangle has both).
   - **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md sections 1-13, the live catalogue, pack-claims.md, the manifest):**
     sea: `ocean_whale` `ocean_humpback` `ocean_dolphin` `ocean_shark` `ocean_hammerhead` `ocean_manta` `ocean_stingray` `ocean_turtle`
     `ocean_seal` `ocean_seal_resting` `ocean_tuna` `ocean_crab` `ocean_starfish` `ocean_conch` `ocean_sand_dollar` `fish_school` `shark`
@@ -5318,7 +5330,7 @@ sea has things to sail to.
   gate plain posts); a dugout canoe or outrigger (rowboats lie on the Landing); a whale's bones; gulls; a black sand sheet; smoke and ash
   for the crater (`chimney_smoke` is a code stand-in); a hammock, baskets, a fish drying rack's fish, coconuts, banana plants, jungle bush;
   a ship or raft out at sea; a moving waterspout (this one stands still).
-- **NOT DONE:** more dressing (pass 3); night and the island's real lights (pass 4); polish (pass 5). Nothing
+- **NOT DONE:** night and the island's real lights (pass 4); polish (pass 5). Nothing
   under the water shows (the sea is opaque from above). No fight set up.
 - **WAITS FOR MONDO:** his look; the frame rate on a real machine (if the room is slow there, the cure is a far cull for the whole sea
   room, the tool row's or the engine's, not fewer props on one island).
@@ -6646,6 +6658,19 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   chair, the `cauldron` on the fire, saw + rope + nails on a shelf, split logs, a bear trap (`trap_bear_base` + `_jaw`, never placed before).
   KEPT OUT after seeing them: `cot` (a steel camp cot), `psx_wooden_crate_4` (a HIGHLY FLAMMABLE plate), a `marble_light` pane seen from inside
   (a white slab).
+- **PASS 3, THE DRESSING (seen, four probe runs)**: one drawn row `cam:n:dress` (timber, rock, snow, split logs, lit cores) + about 110 props by
+  metres with the district's own dice (no new `dec`). Fourteen lantern posts (`lantern()`: post, arm, `meshy_hanging_lantern`, a lit core) on the
+  verges of the road and the track; 60 drifts and snow-capped rocks on the verges; the sleigh's two runner tracks; `stack()` log stacks between
+  stakes; the woodcutter's sawhorse + `psx_hand_saw_1`, `meshy_stump`, `fallen_log`; `covered_wagon`, `hw_straw`, gifts and sacks by the sleigh;
+  a fishing hole in the ice (a dark `deep_water` disc in a snow rim, a stool, `psx_fish_skeleton_mp_1`, a bucket); `psxg_dead_tree_1/2`,
+  `psxg_dead_bush_1/2`; `bat_black` / `bat_grey`, `psx_meat_1`, more bones at the den; `hw_candles` on the old stones' flat stone; `hw_fence`
+  either side of the road down to the north bridge; `wolf` x 3, `rabbit`, `crow`, an `eagle` over the stop. Residents (races, no invented
+  lines: the old North Pole room's where it had them): `ice queen`, `krampus`, `bigfoot`. THE BELT WALL: a 10 m rock block in the treeline
+  belt (its face 2 m INSIDE the room: the belt's crowns reach that far) ended the summer green between the crags for good.
+  WHAT WENT WRONG: a `wall_torch` within 2 m of a hut stands on its ROOF, with or without `floor` (taken out); log stacks stepped back a
+  course read as a flight of steps (now straight, between stakes); the residents do not stand where their rows put them (the yeti's glade held
+  a blue woman, the pond a dark insect figure: the engine's resident system places or dresses them, not the district file).
+  COUNTS at the north bridge looking up the road: 748 draw calls, 2,269 geometries (the whole kingdom in view).
 - **THE TOOL, TWO SMALL CHANGES (its row taken and freed, board note 11-16)**: (1) the paint's first sheet `ice` -> `calm_snow` (only the
   plan's `s` / `T` squares wear it: all in N); (2) a district file may export `noTrees: [[x0, y0, x1, y1]]` (kingdom squares the tree mass
   leaves bare). Unused by the others; their rows did not move.

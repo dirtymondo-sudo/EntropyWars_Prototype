@@ -6,7 +6,7 @@
    y 0..12). The snow runs on south to the moat's north bank (the zone is y 0..17), over the top of the village's north plots: that
    strip is dressed here too (the campfire and the yeti at 30..31, 12..13 stand on it).
 
-   WHAT STANDS HERE TODAY (passes 1 + 2 of 5, 2026-11-16; the drawn rows are `cam:n:<name>`):
+   WHAT STANDS HERE TODAY (passes 1 to 3 of 5, 2026-11-16; the drawn rows are `cam:n:<name>`):
    THE RIDGE: snow-capped crags along the north edge and round both ends (three ranks: on the pines' own squares, in the kingdom's treeline
    past the room's edge, the peaks behind); THE PASS = the cleft the sleigh road leaves through (two rock walls 24 m long round the trail).
    THE SLEIGH STOP (the road's clearing): the sleigh and a horse west of the road, THE WAYSIDE HUT (walked into, squares 50..52 x 4..6, its
@@ -26,8 +26,14 @@
    the rest is decor: a hanging lantern, a rug, the mantel; the Wayside Hut has a stool, a dog, stockings, a wreath, a plate shelf, sacks, a
    spear; the Cabin a rocking chair, the pot on the fire, a tool shelf (saw, rope, nails), split logs, a bear trap, sacks.
 
-   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO: dressing (pass 3), snow in the air, smoke, the night look (pass 4), polish
-   (pass 5). Notes + the FITS THIS DISTRICT list: areas-complexes.md "CAMELOT, THE SNOWY PINES".
+   THE DRESSING (pass 3, one drawn row `cam:n:dress`): fourteen lantern posts on the road's and the track's verges, drifts and snow-capped
+   rocks, the sleigh's runner tracks, log stacks, the woodcutter's sawhorse and stumps, a covered wagon, straw, the sleigh's load, a fishing
+   hole in the pond's ice, dead trees and bushes, bones and bats at the den, candles on the old stones' flat stone, a fence down to the north
+   bridge, wolves, rabbits, crows, an eagle; residents with no lines of their own: the ice queen (pond), krampus (stones), bigfoot (west nook).
+   THE BELT WALL (in `cam:n:ridge`): a 10 m block of rock in the kingdom's treeline belt, behind the front crags, so no summer green shows.
+
+   MISSING / WAITING: nothing is waiting on mondo. STILL TO DO: snow in the air, smoke, the night look (pass 4), polish (pass 5).
+   Notes + the FITS THIS DISTRICT list: areas-complexes.md "CAMELOT, THE SNOWY PINES".
    NEVER more `dec()` calls than the two below (the kingdom's one stream of dice: The Forest's scatter would move): use `at()` and `rn()`.
 
    THE HOOKS (bake-camelot.js "THE DISTRICT FILES" lists the whole ctx): squares are the kingdom's (kx, ky), 0..96, a plot = 12 x 12 of them,
@@ -77,6 +83,10 @@ note('THE SNOWY PINES + THE FOREST');
   /* the middle rank stands IN the kingdom's treeline (a belt of summer trees 2 to 14 m past the room's edge), shoulder to shoulder, so no green shows between the crags */
   for (let x = W0 - 12; x < E0 + 14; x += rr(8.5, 10.5)) { if (Math.abs(x) < 16) continue; S.crag(x, N0 - rr(8.5, 10), rr(8.6, 10), rr(17, 23), 1, -1); }
   for (let z = N0 - 4; z < gx(16.6); z += rr(8.5, 10.5)) { S.crag(W0 - rr(8.5, 10), z, rr(8.6, 10), rr(17, 23), 1, -1); S.crag(E0 + rr(8.5, 10), z, rr(8.6, 10), rr(17, 23), 1, -1); }
+  /* THE BELT WALL: one long block of rock, 10 m high, standing in the kingdom's treeline belt behind the front rank (its summer trees are 6 to 9 m:
+     they showed green between the crags); snow on its top. Cut at the Pass. */
+  { const wall = (x0, z0, x1, z1) => S.P.push({ s: 'box', p: [r2((x0 + x1) / 2), -0.5, r2((z0 + z1) / 2)], size: [r2(x1 - x0), 10.5, r2(z1 - z0)], key: ROCK, tint: 0xffffff, gain: RG, keyTop: SNOW, tintTop: 0xffffff });
+    wall(W0 - 14.5, N0 - 14.5, -9.8, N0 + 2.0); wall(9.8, N0 - 14.5, E0 + 14.5, N0 + 2.0); wall(W0 - 14.5, N0 + 2.0, W0 + 2.0, gx(17)); wall(E0 - 2.0, N0 + 2.0, E0 + 14.5, gx(17)); }   // (its face 2 m inside the room, on the pines' squares: the belt's crowns reach that far)
   /* THE PASS: the way out is a trail the walker follows 10 m past the room's edge (data.js ways.trail), so the cleft is real: two rock walls 3 m
      apart for 24 m (they swallow the trail's own rows of summer saplings), crags on their heads, the cleft's end shut by rock, the far peak over it */
   for (const s of [-1, 1]) { [0.9, 7.3, 13.7, 20.1].forEach((dep, i) => { const h = rr(8.5, 11.5); S.shaft(s * 5.6, -1, N0 - dep, 4.1, 3.75, h + 1, 7, Math.round(rn() * 50), false); S.crag(s * 6.4, N0 - dep, 3.7, rr(6, 9), 1, h - 0.6); });
@@ -137,8 +147,8 @@ put('campfire', 30, 12); native('yeti', 31, 13, 120, sayOf(ONP, 'yeti'));
   [[66, 11, 20], [70, 11, 80], [66, 13, 150], [70, 13, 200]].forEach(q => { taken.add(q[0] + ':' + q[1]); at('sarsen', gc(q[0]), gc(q[1]), { face: q[2] }); });
   [[65, 12, 40], [71, 12, 110]].forEach(q => { taken.add(q[0] + ':' + q[1]); at('menhir', gc(q[0]), gc(q[1]), { face: q[2] }); });
   take(67, 14, 69, 15); at('trilithon', gx(68), gc(14), { face: 0 });
-  const S = row('stones', x, z); S.P.push({ s: 'cyl', p: [0, 0.5, 0], r: 1.5, h: 0.22, seg: 9, key: ROCK, tint: 0xffffff, gain: RG });   // the flat stone at the ring's heart
-  S.drift(1.0, 0.6, 0.5, 0.9, 0.3); }
+  const S = row('stones', x, z); S.P.push({ s: 'cyl', p: [0, 0.75, 0], r: 1.5, h: 0.22, seg: 9, key: ROCK, tint: 0xffffff, gain: RG });   // the flat stone at the ring's heart
+  S.drift(1.0, 0.85, 0.5, 0.9, 0.3); }
 put('xmas_snowman_2', 67, 8);
 
 /* ── THE WOODCUTTER'S CAMP (P00-00): the cabin, the fire before its door ── */
@@ -209,6 +219,66 @@ const fit = (B, id, cs) => { const a = ctx.sheet(), P = a.P, c = B.at(0, 0), w =
     H.logs(-W2 + 0.95, 0.2, 0); H.logs(-W2 + 0.95, 1.0, 0); H.put('trap_bear_base', W2 - 0.8, D2 - 0.75, 20); H.put('trap_bear_jaw', W2 - 0.8, D2 - 0.75, 20);
     H.put('meshy_burlap_sack', 0.9, D2 - 0.75, 100); H.put('psx_wooden_crate_5', 2.0, D2 - 1.9, 5); H.put('wooden_bucket', -W2 + 0.7, 2.6, 0); H.on('candle', H.hx + 0.1, H.hz + 0.85, 1.85, 0);
     ctx.inside(CABIN, 'xmas_wreath_2', 0.2, r3(-D2 + 0.4), { face: 180, mount: 0, y: 1.75 }); }
+
+/* ── PASS 3, THE DRESSING. Everything by metres with the district's own dice; ONE drawn row for the whole district (`cam:n:dress`, the room's
+   frame) so the looks stay few: timber, rock, snow, split logs, the lit cores. Nothing stands on the track's or the road's own squares. ── */
+{ const S = row('dress', 0, 0), P = S.P, TIM = 0x6a4a30, TG = { gain: 1.5 };
+  const NORTH = gx(9), SOUTH = gx(11), RW = gx(47), RE = gx(49);
+  /* a lantern post on a verge: the post, an arm out over the way, the catalogue's hanging lantern, a lit core, snow on the post's head */
+  const lantern = (x, z, dx, dz, lit) => { P.push({ s: 'box', p: [r2(x), 0, r2(z)], size: [0.16, 3.1, 0.16], key: PLANK, tint: TIM, gain: 1.5 }, { s: 'box', p: [r2(x + dx * 0.34), 2.86, r2(z + dz * 0.34)], size: [dx ? 0.84 : 0.1, 0.1, dz ? 0.84 : 0.1], key: PLANK, tint: TIM, gain: 1.5 },
+      { s: 'box', p: [r2(x), 3.1, r2(z)], size: [0.26, 0.1, 0.26], key: SNOW, tint: 0xffffff, gain: SG }, { s: 'box', p: [r2(x + dx * 0.66), 2.46, r2(z + dz * 0.66)], size: [0.1, 0.18, 0.1], tint: 0xffd890, glow: 1 });
+      at('meshy_hanging_lantern', x + dx * 0.66, z + dz * 0.66, Object.assign({ y: 2.32 }, lit ? {} : { noLight: true })); };
+  [[1.5, -1], [8.6, 1], [12.5, -1], [15.3, 1]].forEach(q => q[1] < 0 ? lantern(RW - 0.45, gx(q[0]), 1, 0, q[0] === 8.6) : lantern(RE + 0.45, gx(q[0]), -1, 0, q[0] === 8.6));
+  [10, 18, 26, 36, 42, 54, 60, 72, 78, 84].forEach((k, i) => i % 2 ? lantern(gc(k), SOUTH + 0.45, 0, -1) : lantern(gc(k), NORTH - 0.45, 0, 1));
+  /* drifts and snow-capped rocks on the verges (never where a verge opens on a clearing, a glade or the crossing) */
+  const shut = k => (k >= 28.5 && k < 32.5) || (k >= 66.5 && k < 69.5), shutS = k => (k >= 26.5 && k < 34.5) || (k >= 64.5 && k < 72.5), cross = k => k > 45.5 && k < 50.5;
+  for (let i = 0; i < 64; i++) { const k = rr(7, 86), n = rn() < 0.5, off = rr(0.7, 2.6); if (cross(k) || (n ? shut(k) : shutS(k))) continue; const x = gx(k), z = n ? NORTH - off : SOUTH + off;
+      if (i % 3 === 0) { const r = rr(0.5, 1.1); S.rock(x, -0.15, z, r, r * rr(0.7, 1.0), Math.round(rn() * 180)); S.drift(x + 0.1, r * 0.45, z, r * 0.75, r * 0.45, r * 0.6); } else S.drift(x, -0.25, z, rr(1.0, 2.0), rr(0.5, 0.95), rr(0.7, 1.3), Math.round(rn() * 180)); }
+  for (let i = 0; i < 18; i++) { const k = rr(0.6, 16.6), w = rn() < 0.5, off = rr(0.7, 2.4); if ((k > 2.6 && k < 11.4)) continue; S.drift(w ? RW - off : RE + off, -0.25, gx(k), rr(1.0, 1.8), rr(0.5, 0.9), rr(0.7, 1.2), Math.round(rn() * 180)); }
+  /* the sleigh's two runner tracks down the middle of the road */
+  for (const o of [-0.62, 0.62]) P.push({ s: 'box', p: [o, 0.012, r2((gx(0.3) + gx(16.7)) / 2)], size: [0.1, 0.012, r2(gx(16.7) - gx(0.3))], sides: false, key: 'calm_ice', tint: 0xd0dcea });
+  /* a stack of split logs between two stakes: `n` logs a course, three courses, lying along x (`ns` = along z), snow on top. (The first cut
+     stepped each course back: it read as a flight of steps.) */
+  const stack = (x, z, n, len, ns) => { const wd = n * 0.3;
+      for (let c = 0; c < 3; c++) P.push({ s: 'box', p: [r2(x + (ns ? (c % 2) * 0.05 : 0)), r2(c * 0.27), r2(z + (ns ? 0 : (c % 2) * 0.05))], size: ns ? [0.26, 0.26, len] : [len, 0.26, 0.26], key: LOG, tint: c % 2 ? 0x8a6444 : 0xa07c56, gain: 1.6, n, step: ns ? [0.3, 0, 0] : [0, 0, 0.3] });
+      for (const e of [-0.2, wd - 0.1]) P.push({ s: 'box', p: [r2(x + (ns ? e : 0)), 0, r2(z + (ns ? 0 : e))], size: [0.1, 1.05, 0.1], key: PLANK, tint: TIM, gain: 1.5 });
+      P.push({ s: 'box', p: [r2(x + (ns ? wd / 2 - 0.15 : 0)), 0.8, r2(z + (ns ? 0 : wd / 2 - 0.15))], size: ns ? [wd, 0.12, len + 0.12] : [len + 0.12, 0.12, wd], key: SNOW, tint: 0xffffff, gain: SG }); };
+  /* THE WOODCUTTER'S YARD */
+  stack(gx(5) - 1.0, gx(6) - 1.3, 5, 2.2, false); stack(gx(6) + 0.5, gx(8) + 0.35, 4, 1.6, true);
+  { const x = gc(7) + 0.5, z = gc(6) - 0.5;   // the sawhorse, a log on it, the saw
+    for (const sx of [-0.55, 0.55]) for (const sz of [-0.22, 0.22]) P.push({ s: 'box', p: [r2(x + sx), 0, r2(z + sz)], size: [0.09, 0.74, 0.09], key: PLANK, tint: TIM, gain: 1.5 });
+    P.push({ s: 'box', p: [r2(x), 0.66, r2(z)], size: [1.5, 0.09, 0.1], key: PLANK, tint: TIM, gain: 1.5 }, { s: 'box', p: [r2(x), 0.75, r2(z)], size: [1.9, 0.26, 0.26], key: LOG, tint: 0x9a7450, gain: 1.6 });
+    at('psx_hand_saw_1', x + 0.2, z, { y: 1.02, face: 80, floor: true }); }
+  put('meshy_stump', 6, 5); put('meshy_stump', 4, 8); put('fallen_log', 8, 7, { face: 90 }); at('stump', gx(8.7), gx(6.4), { face: 40 }); at('rabbit', gx(8.4), gx(8.6), { face: 200 }); at('crow', gx(6.2), gx(5.4), { face: 100 });
+  /* THE SLEIGH STOP: a covered wagon north of the hut, straw and a bucket for the horse, the sleigh's load, the hut's own stack */
+  take(49, 3, 51, 4); at('covered_wagon', gx(50), gc(3), { face: 0 }); put('hw_straw', 52, 7, { face: 20 }); at('hw_straw_2', gc(52) - 0.3, gc(6) + 0.6, { face: 70 }); at('wooden_bucket', gc(50) + 1.1, gc(7) - 1.2);
+  at('xmas_gift', gc(44) + 0.9, gc(6) + 0.2, { face: 20 }); at('xmas_gift_2', gc(44) + 0.5, gc(6) - 0.5, { face: 70 }); at('xmas_gift_4', gc(44) + 1.1, gc(6) - 0.4, { face: 130 }); at('meshy_burlap_sack', gc(44) + 0.4, gc(5) + 0.8, { face: 10 }); at('meshy_burlap_sack', gc(44) + 1.0, gc(5) + 0.4, { face: 250 });
+  stack(gx(51) - 1.2, gx(6) + 0.25, 4, 2.2, false);
+  /* (no torches by the doors: a `wall_torch` within 2 m of a hut stood on its roof, with or without `floor`; the road's lantern posts light the stop) */
+  at('eagle', gx(52), gx(2.5), { y: 15, face: 250 });
+  /* THE FROZEN POND: a fishing hole cut in the ice, a stool, the catch, dead bushes on the bank, crows; the ice queen */
+  { const x = gx(89.5) - 1.3, z = gx(6.6) + 0.7; P.push({ s: 'cyl', p: [r2(x), 0, r2(z)], r: 0.44, h: 0.085, seg: 10, key: 'deep_water', tint: 0x162a40 }, { s: 'cyl', p: [r2(x), 0, r2(z)], r: 0.66, ri: 0.44, h: 0.15, seg: 10, key: SNOW, tint: 0xffffff, gain: SG });
+    at('psx_chair_mp_1', x + 1.0, z + 0.3, { face: 250, y: 0.07 }); at('psx_fish_skeleton_mp_1', x - 0.3, z + 0.9, { face: 30, y: 0.08 }); at('wooden_bucket', x + 0.5, z + 1.0, { y: 0.07 });
+    at('crow', x - 2.4, z - 1.6, { face: 60, y: 0.07 }); at('crow', x + 3.0, z - 2.2, { face: 200, y: 0.07 }); }
+  put('psxg_dead_tree_1', 91, 6); at('psxg_dead_bush_1', gx(87.4), gx(6.2), { face: 30 }); at('psxg_dead_bush_2', gx(88.6), gx(8.5), { face: 120 }); at('psxg_dead_bush_1', gx(90.4), gx(4.8), { face: 200 });
+  native('ice queen', 89, 8, 0, sayOf(ONP, 'ice queen'));
+  /* THE YETI'S CAVE: bats under the roof, the leavings of meals, dead trees, rocks */
+  { const x = gx(33), z = gx(12); at('bat_black', x - 1.0, z + 0.5, { y: 2.3, floor: true }); at('bat_grey', x - 0.6, z - 0.7, { y: 2.45, floor: true });
+    at('psx_meat_1', gc(30) + 1.0, gc(12) - 0.9, { face: 40 }); at('femur', gc(29) + 0.5, gc(12) + 0.9, { face: 110 }); at('skull', gc(30) - 0.6, gc(13) + 0.5, { face: 300 }); at('psx_fish_skeleton_mp_1', gc(31) - 0.4, gc(12) - 1.0, { face: 200 });
+    S.rock(gx(27.5), -0.2, gx(13.6), 0.9, 0.8, 30); S.rock(gx(29.2), -0.2, gx(14.4), 0.7, 0.6, 100); S.drift(gx(27.8), -0.2, gx(11.3), 1.3, 0.6); }
+  put('psxg_dead_tree_2', 27, 11); put('psxg_dead_tree_1', 28, 13);
+  /* THE OLD STONES: candles on the flat stone, crows, krampus */
+  { const x = gc(68), z = gc(12); at('hw_candles', x - 0.5, z + 0.3, { y: 0.1 }); at('hw_candles_2', x + 0.5, z - 0.3, { y: 0.1 }); at('hw_candle', x + 0.1, z + 0.7, { y: 0.1 });
+    at('crow', gc(66) + 0.9, gc(12) + 0.8, { face: 40 }); at('crow', gc(70) - 0.8, gc(12) - 0.6, { face: 250 }); at('crow', gc(69) + 0.3, gc(13) + 0.9, { face: 150 }); at('rabbit', gc(67) - 0.5, gc(11) + 0.6, { face: 300 }); }
+  native('krampus', 68, 13, 0, sayOf(ONP, 'krampus'));
+  /* the nooks on the track: bigfoot in the west one; snowballs by the snowman in the east one; wolves in the pines north of the track */
+  native('bigfoot', 30, 8, 180, sayOf(ONP, 'bigfoot'));
+  [[0.9, 0.5, 0.28], [1.3, -0.2, 0.2], [0.6, -0.6, 0.16]].forEach(q => P.push({ s: 'dome', p: [r2(gc(67) + q[0]), 0, r2(gc(8) + q[1])], r: q[2], seg: 8, rings: 3, key: SNOW, tint: 0xffffff, gain: SG }));
+  at('wolf', gx(57.4), NORTH - 1.4, { face: 160 }); at('wolf', gx(58.3), NORTH - 2.3, { face: 200 }); at('wolf', gx(59.5), NORTH - 1.2, { face: 230 });
+  at('rabbit', gx(20.5), SOUTH + 0.9, { face: 20 }); at('rabbit', gx(76.4), NORTH - 0.8, { face: 170 }); at('crow', gx(38.5), NORTH - 0.7, { face: 90 }); at('crow', gx(14.2), SOUTH + 0.8, { face: 310 });
+  /* a split-rail run either side of the road down to the north bridge */
+  for (let k = 0; k < 4; k++) for (const s of [-1, 1]) at('hw_fence', s < 0 ? RW - 0.35 : RE + 0.35, gx(13) + 0.83 + k * 1.65, { face: 90 });
+}
 flushArch();
 return { WAYHUT, CABIN };
 }
