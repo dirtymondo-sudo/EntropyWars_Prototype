@@ -5874,6 +5874,15 @@ tracks, a gravel disc for a crop circle. FPS at the proof view (x -57.75, z -68,
   - Twenty-odd drawn LAMP POSTS (H's `lampPost`, copied) and five painted boards (`board()`: plain words, read from both sides).
   - LIGHTS: C keeps two real ones (the Hub's torch, the big circle's); the rest carry `noLight`.
   - Props in the district: 24 -> about 220 (+ 8 drawn fields / posts / boards).
+- **PASS 2, INTERIORS + LANDMARKS (seen in the cloud browser, 7 + 5 views):**
+  - THE FIELD SHED (`houses()`, id `est:fieldshed`, squares 24..26 x 29..30, door east on the silo yard): the district's one inside. Weathered boards, a tin
+    gable roof, a stone footing, four dark windows, a lantern and a TOOLS board by the door. Inside: a plank floor slab over the lawn's roll, a lit ceiling
+    with tie beams, a drawn work bench and two shelves, the tool chest, barrels, crates, sacks, bales, jerrycans, a radio and a lamp on the bench, a hung lantern.
+    A thing on the bench or a shelf carries the plot's ground in its `y` (1.75 + the height); the hung lantern is placed without `floor`.
+  - THE GATE ARCH (`look` `archC`): two posts and a beam over the track south of the Woods gate's clearing, THE ESTATE on a hung board, read from both sides.
+  - THE LAMP POSTS ARE ONE PIECE: every post on level ground (sx, sy under 31) is drawn in one `look` (`lampsC`), the few by the east and south edge keep
+    their own row (the ground grades there). FPS at the proof view: 1.8 before the thread, 1.4 with 24 separate posts, 1.6 with the one piece (the other
+    districts grew in the same hours, so part of the rest is theirs).
 - **DECISIONS MADE FOR MONDO (overrule in one line):** (1) the crop circle's pattern is lawn squares, not corn; (2) a camp of watchers on the west circle
   (tent, camera, barricades), nobody named; (3) silos, not a second windmill, in The Rows east; (4) board words: KEEP OFF THE CROP, PRIVATE LAND, NO WAY
   THROUGH, GRAIN, THE RANCH; (5) a live cow in the big circle.
@@ -6305,6 +6314,10 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
   a flat `cyl` 3 cm high (`purple_grass` inside the fairy ring). Write a landmark's row with `y: 0` (no `y` = the ground under the row's middle:
   a pool's bed) and take a hill's height yourself. KEEP OUT: the catalogue's `crystal_cluster` (in this room it drew as big blue and gold gems
   hanging in the air). A piece by metres with no dice: `props.push` directly (`dec` moves the scatter of every district after yours).
+- **FROM THE FOREST (district W, pass 2)**: a small walk-in on open ground needs no plan letters: `ctx.building('w_hut', [x0, y0, x1, y1], 'N', 3.5, …)`
+  on grass squares, then `sq()` every square it covers. `sheet().shell()` takes no `gain`: set it on the two parts it pushed
+  (`a.P.slice(-2)`). In a 3.5 m house the lit ceiling hangs at 2.95 (at 3.18 it lies in the building's own black ceiling). `cot` is a
+  modern camping cot: draw a bed. A boat on a `stream` cannot be set afloat by `y`: pull it up on the bank.
 - **FROM THE FOREST (district W, pass 1)**: `groundAlso(x, y)` beside `ground` = squares outside a file's plots that wear its ground. A prop
   standing in a ghost wall's square takes `floor: true` (without it the cross of the wayside shrine stood 2.2 m up, on the wall's top).
   A lantern post for a road = `W.js` `lantern()`; a banner pole = `bannerPole()`; a log stack = `logpile()` (no lying cylinder exists: a
@@ -6332,6 +6345,13 @@ Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is t
 - **WHAT WENT WRONG, AND THE FIX**: a `dist` (third-person) probe view = black (use `fp` + `y`); a house with no street near it faces
   south blind (the `frontOf` fallback above); a jettied floor hides anything set at the ground floor's wall line (push it out by the overhang).
 
+- **A HEDGE GARDEN'S KIT (from the Looking-Glass Garden, `L.js`, 2026-11-16)**: the leaf sheet `leaves_3` is dark: a hedge needs `gain` 1.75 or it is a
+  black slab (tint 0x8fc46c; clipped pieces 0xa8dc84 + gain 1.95). `topi(x, y0, z, kind, s)` = a ball on a stem / cone / three tiers / pawn;
+  `roseArch(kx, ky, ns, col)` = an arch over a two-square walk (a `roof` part, form `barrel`, `ends: false`, `ds: true`, `ry: 90` to span x:
+  the only way to draw a vertical arc); `pier(x, z)`; `lamp(kx, ky, dx, dz)` = the hanging lantern on an iron post; `roseTree()`. A small
+  flower = a `dome` 8 cm across on the `marble` sheet with `glow` 0.3 to 0.5 (unlit it reads grey). The sheet `gold` draws as brown wood:
+  gilt = no sheet, tint 0xd8b050. `garden_ring` is a paved ring of low hedge 7 m across. `stone_urn` is an urn with a fern. A canvas roof
+  seen from under needs `glow` about 0.28. Everything near a hedge or under a drawn roof takes `floor: true` (or it stands on top of it).
 ## CAMELOT, THE FOREST — the district W thread (2026-11-16, second side; file `docs/areas/camelot/districts/W.js`)
 
 mondo 11-16 (the district order): every district prototyped, own judge, five passes at most. Eight plots along the south wall (squares
@@ -6374,6 +6394,15 @@ forest glade, the dead tree's hole.
   draw calls 3,787 -> 4,097. His F3 at the bay is the number that counts.
 - **NOT SEEN YET**: the two rowboats did not draw at the water's level in the first two probes (the bed under a `stream` moves a prop's
   `y`); two ways are baked now and the next pass's probe settles it.
+- **PASS 2, INTERIORS (seen: 11 views, then 7 after fixes)**. THE WOODCUTTER'S HUT (`cam:w_hut`, squares 19..21 x 89..90, its door on
+  the forest track): boards on a stone foot, corner posts, a thatched hip roof, a stone chimney with smoke, two shuttered lit windows,
+  a WOODCUTTER board over the door, a lean-to with cut logs on the gable end. Walked into (`leaf_shabby_wood`, swinging), three squares
+  by two; the door's column stays clear and the four corner squares hold what blocks: a stone HEARTH with a fire and a pot, a drawn
+  BED (the catalogue's `cot` is a white camping cot: out) with a chest, a TABLE with two stools, a plate, the supper and a candle, a
+  WORKBENCH with the saw, a mallet, rope and cut logs. A dog in the yard. Fixed after the first look: the walls and thatch drew near
+  black (the shell now takes `gain` 1.5, the thatch 1.9); the lit ceiling sat ON the building's black one (it hangs at 2.95 in a 3.5 m
+  house now); the two rowboats are pulled up on the bank (a prop's `y` under 1 m is a lift from the ground UNDER it: over the moat
+  that is the bed, so a boat set "at the water's level" sank; 1 m or more is a height from the room's level, and it flew).
 - **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the west glade is the woodcutter's, the east glade a travellers' camp,
   the deep forest glade a stone ring: plain uses, no names, no story; (2) the lions at the bridge stand on the bank track's squares;
   (3) the forest floor is the dark forest grass, also north of the district's plots up to the bank; (4) the milestone says CAMELOT
@@ -6894,6 +6923,44 @@ too short ... you didn't even get the shape right". So:
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
 
+## THE MOUNTAINS, THE SNOWY PASS — district P, pass by pass (2026-11-16, second side, the Snowy Pass district thread)
+
+File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node bake-mountains.js`. mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions.
+- **THE FIRST LOOK** (playtest_city.js through probe-fast.js, 15 views; the district had never been on screen): every plot was a pit between tall grey rock walls; the
+  cairn and the hut's walls read BLACK (`rocks_5` and the board sheet need `gain` 1.7), the hut's windows olive, four black `ocean_rock` on snow, the Tarn had no ice to see
+  (`ice_1` paint beside snow paint reads the same), the Ridge was a trench with nothing to look at. Green summer trees stand past the Pass Gate (the room's west edge land: the tool's).
+- **PASS 1, EXTERIORS + LANDMARKS** (seen, two probe runs): see the file's header for the list. What the next thread can copy from P.js:
+  - `level(ctx, plot, lx0, ly0, lx1, ly1)`: level ground at the PLOT'S OWN height. The tool's `flat` reads the height at the rectangle's south edge, which is already
+    on the grade to the next plot. A plot is level only on its squares 4..8 each way; outside them it grades to its neighbours (a "lake" drawn over squares 2..10 sloped 1.3 m).
+  - **THE SNOW SLOPE**: `tailor` may turn rock (`r`) into deep drift (`k`): nobody walks it, it wears the snow paint, and it only swells 2.4 m over the plots' own grade,
+    so two plots at different levels SEE each other over it (rock climbs up to 26 m). The Ridge (level 18-19) looks down on the Pass Gate (12) and the High Pass (15) this way.
+    A `k` strip one square wide is flat; a rock strip one square wide is flat too. Do not cut a drop (`a`) toward the room's edge: the shell's wall and the edge land stand right behind it.
+  - `logHouse` (the zone's cabin redrawn: `gain` on the paint, proud log courses as boxes, round corner logs, `pane` windows, a porch on log posts), `rope` + `flagLine`
+    (a sagging rope / a string of prayer flags between two points on ONE axis: a part has no tilt, so a line is a row of small boxes), `lantern`, `winter` (drifts + icicles).
+  - A bare-colour shell (`a.shell(w, h, d, null, RED, dr)`) reads as painted metal (the Summit Shelter); `roof('barrel', …)` is the round roof.
+  - A sign turned to face along x: `a.sign(..., { ry: 90 })` (the Pass Gate's board, both faces).
+- **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
+  after pass 1 166 calls / 193 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
+- **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
+  rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
+  `psx_old_mattress_mp_1`*, `footlocker`*, `psx_supply_crate_1..`*, `psx_metal_barrel_mp_0..3`*, `psx_jerrycan_1`*, `meshy_sandbags`*, `money_sacks`*, `cable_drum`*, `hw_shovel`*,
+  `library_ladder`*, `ladder_wall_rack`*, `cauldron`*, `wooden_bucket` · radio + rescue `field_radio`*, `radio_console`*, `item_binoculars`*, `item_flare_gun`*, `map_table`*,
+  `evidence_board`*, `psx_bandage_mp_1`*, `beach_life_ring`*, `turnout_gear_rack`*, `scba_rack`*, `scarf_rack`*, `hook_rail`* · fire + light `campfire`, `brazier`, `hearth_fire`,
+  `cave_torch`*, `wall_torch`*, `ship_lantern`* (real lights); `railway_lantern`, `meshy_hanging_lantern`*, `votive_stand`*, `hw_candles`* (no light of their own) · hut
+  `kitchen_range`*, `stock_pots`*, `psx_table_large_2`*, `psx_shelf_mp_5`*, `psx_carpet_mp_1`*, `psx_open_book_mp_1`*, `painting_landscape`*, `psx_photo_frame_mp_1`*, `ships_bell`,
+  `key_rack`* · fences + posts rail models `ranch`, `wood_fence`*, `cable`*, `cable_fence`*; `hitching_rail`*, `psxg_wall`*, `psxg_wall_pillar`*, `yellow_pole`* (a snow pole),
+  `missing_board`*, `footbridge`*, `psx_beam_1..5`*, `dish`*, `power_pole`* · the tarn `lobster_traps`*, `fishing_net_wall`*, `rowboat`*, `psx_fish_skeleton_mp_1`*, `ocean_tuna`* ·
+  animals `wolf`, `eagle`, `rabbit`, `crow`, `dog`, `horse*`, `decor_sheep`* · dead wood `dead_snag`, `psxg_dead_tree_1/2`*, `hw_tree..5`*, `psxg_dead_bush_1/2`*, `meshy_fallen_log`*,
+  `meshy_stump`*; tree kinds `xmas_snow_pine`, `_2`, `_3`, bare `tree_5`, `tree_13..20`, dead birch `tree_31..40` · a lost climber `cross`*, `psx_cross_1`*, `psxg_tombstone_1..3`*,
+  `psxg_dirt_grave`*, `skull`, `femur`, `hw_body`. Sheets: `ice`, `ice_1`, `igloo`, `snow_wall`, `rocks_1..5`, `rock_wall_1/2`, `fur..fur_3`, `wood_planks`. No snow / track decal exists.
+  NOT WIRED: section 13 holds no snow or camp prop without a row (clips, clothes, `.opt` / `.lod` copies); the Survival PSX pack has uncut nodes but is not on R2 (needs Blender + project files).
+  AVOID: `ocean_rock*` (black on snow), `xmas_house`, `woods_cabin`, `xmas_pine`, `ocean_penguin`, `ocean_seal`, the section 8 code stand-ins.
+- **NEEDS A MODEL** (searched, nothing in the catalogue or on R2): reindeer, goat / ibex, bear; skis, snowshoes, a snow sled, an ice axe, a pickaxe; prayer flags, a cairn,
+  a rope bridge, a timber gate, a lantern post, a weather mast (all built as textured shapes here); a wood stove with a flue, a kettle, a firewood pile, an axe + block;
+  a backpack, a sleeping bag, a stretcher; a snow heap, icicles, an ice-fishing hole and rod, a pelt rug.
+- **DECISIONS MADE FOR MONDO** (overrule any in one line): (1) the Ridge looks SOUTH over the pass across two snow slopes, not north off the range (the room's edge is a wall);
+  (2) three new walked-in buildings with plain names: GATE HOUSE, SHELTER (the Summit Shelter), FISHING HUT; (3) a radio MAST on the Ridge's east end and THE LOOKOUT on its west end;
+  (4) the Rope Bridge stays solid ground under its planks (the walker needs it), only dressed as a bridge; (5) the sign face is `fell` for the pass, `stencil` for the rescue hut.
 ## MOUNT SHASTA, THE DISTRICT THREAD — district S of the Mountains, pass by pass (2026-11-16, second side; mondo's order: every district prototyped, DISTRICT_THREAD_BRIEF.md)
 
 File `docs/areas/mountains/districts/S.js` (20 plots of `site_prebuilt_shasta_mountains`), branch `claude/mountains-s-shasta`. The tool, the layout and the ways out were not touched.
@@ -7085,6 +7152,12 @@ mondo 11-16 (before a nap): every district prototyped, no questions, five passes
   a prop's `y: -2.6` did not sink an `obelisk` (a small negative `y` works on low props); `horse_black` reads as a dark dog from afar.
 - New lights are all `noLight`. FPS at the proof view after the pass: 2.7 (llvmpipe; 427 calls, 1.14 M triangles; before the pass 2.0 to 2.3).
 
+**PASS 4, THE ATMOSPHERE.** `exports.airZones` in G.js (the pilot's air hook, no tool change): dust over the Sand Sea (220, wind 1.9), round
+the pyramids (130) and on the causeway (80), embers on the Tomb Door path (50), fireflies over the oasis (45). Light without lamps: a bracket + a
+lit core (`glow: 1`, tint 0xffb040) on each jamb of every mouth and on the hall's posts; the gold capstone has `glow` 0.45. Seen at 19.2 and
+21.5 (`window._hqClockHour`): the pale stone holds at night, the capstone and the cores read, fireflies show over the pool. A `noLight`
+brazier's flame is small at night (its sprite only). FPS at the proof view: 2.0 (433 calls, 1.15 M triangles): no cost against pass 3 beyond noise.
+
 **FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
 `meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
 `ocean_rock..11`, `psx_brick_1`, `hw_bricks`; pots `greek_amphora`, `cauldron`, `item_censer`, `wooden_bucket`; fire `brazier`, `cave_torch`,
@@ -7106,6 +7179,73 @@ a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil la
 3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
 4. The Sphinx stays parts-built until a model exists.
 
+## CAMELOT, THE LOOKING-GLASS GARDEN — the district thread (2026-11-16, second side; file `docs/areas/camelot/districts/L.js`)
+
+mondo 11-16 (before a nap): every district prototyped to a respectable standard, at most five passes, no questions (docs/plans/DISTRICT_THREAD_BRIEF.md).
+Six plots west of the moat (squares x 0..12, y 12..84): a hedge garden on two marble walks, the West Gate's bridge on its middle.
+The hedges are SOLID BY THE PLAN (`layout.json` letter `h`, the tool's): this file only draws them, so everything new stands on a hedge
+(its top, its face, its end) or on the free marble and grass. No plan square was changed.
+
+- **AS IT STOOD (first probe, 11 views)**: the hedges near black (the leaf sheet with no `gain`), flat tops, bare marble everywhere; the
+  chessboard and its pieces good; the tea party = four office chairs at a small table IN the walk; the mirror's door a bare stone box.
+- **PASS 1, THE EXTERIORS (seen, 14 views)**: THE HEDGES on a stone kerb, lifted (`gain` 1.75, a paler top); 55 TOPIARY pieces on the
+  hedge tops beside the walks (ball on a stem, cone, three tiers, a pawn); ROSES in every hedge face that looks at a walk (white up north
+  where they are being painted, red at the court, white at the mirror, pink at the tea party); 13 ROSE ARCHES over the walks; a stone
+  PIER with a ball either side of every gateway (28); 22 LANTERNS (`meshy_hanging_lantern` on an iron post standing in a hedge face).
+  THE HEDGES, NORTH: the roses are being painted: a white rose tree half red, the ladder, the pots, the spill.
+  THE LAWN: croquet (six drawn hoops, the peg, four balls, two more flamingos, the old garden's high chair as the umpire's), five spare
+  chess pieces beside the board, the old garden's small board on a table with two chairs, the telescope.
+  THE COURT: the throne under a crimson-and-white striped canopy on gilt posts, a crimson carpet with a gold edge, two suits of armour.
+  THE MIRROR: a gilt looking-glass frame (two columns, an arch of beads) stands 2 m before the door; a grandfather clock, the giant
+  hourglass, three doors that lead nowhere (`psx_door_*_loose`), the caterpillar's smoke (`chimney_smoke`), more mushrooms.
+  THE TEA PARTY: MOVED three squares east out of the walk onto the grass nook: six tables end to end under a pink-and-white striped
+  tent, a cloth, twelve chairs no two alike (+ the old four), three teapots, the cups, the cake, biscuits, a candelabra, paper lanterns;
+  the cat on the hedge; a wingback chair and a music box in the west nook.
+  THE HEDGES, SOUTH: giant mushrooms growing out of the hedge tops, a bird cage, urns.
+- **WRONG ON THE FIRST LOOK, FIXED IN THE SAME PASS**: a rose as a 13 cm dome read as a grey shelf fungus (now 8.5 cm, sunk half into the
+  leaf, lit: `glow` 0.5 white / 0.3 red); the sheet `gold` draws as brown wood (the frame and the canopy posts now wear the kit's plain
+  gilt tint 0xd8b050, no sheet); `garden_ring` is a PAVED HEDGE RING 7 m across, not a croquet hoop (the four I added are out, the hoops
+  are drawn); the tent's underside was near black (the canvas has `glow` 0.28).
+- **NOBODY ELSE MOVED**: the eleven old `dec` calls run in the old order on the old squares; every new piece is placed by metres (`at()`)
+  or by `put` (no dice), so the scatter of F, N and W is untouched.
+- **FRAME RATE** (cloud software GPU, llvmpipe; the lawn looking south at the board): before 1.00 frames a second, 2,022 geometries, 1,039
+  draw calls. After pass 1: 2,222 geometries, 1,200 calls; the reading of 0.20 was taken as the FIRST view of the run while the room was
+  still compiling, so it is not a fair number: measured again in pass 2.
+- **FITS THIS DISTRICT** (MODEL_LIST.md read in sections + the live catalogue's 1,853 keys + section 13's unwired files searched for
+  rose / flower / hedge / topiary / card / heart / chess / tea / cake / clock / mirror / flamingo / croquet / garden / fountain / statue):
+  the game `chess_set_game`, `chess_board`, tree kinds `chess_*` (12); time `gclock`, `giant_hourglass`, `astronomical_clock`,
+  `pocket_watch`, `pocket_watch_hung`, `clock`, `meshy_clock`, `psx_clock_1/2`, `wall_clock`; the tea `teapot`, `teacups`, `wedding_cake`,
+  `xmas_cookies`, `xmas_gingerbread`, `xmas_flan`, `xmas_punch*`, `xmas_cocoa*`, `coffee_mug`, `item_drinking_cup`, `item_milk_and_cookies`,
+  `psx_plate_mp_1`, `candelabra`, `pastry_case`, `psx_table_large_2/3` + `psx_dinner_table_1` (and their colour variants), chairs
+  `psx_chair_mp_1..5` (+ variants), `psx_armchair_1/2`, `wingback_chair`, `rocking_chair`, `tulip_chair`, `egg_chair`, `chesterfield_sofa`;
+  the mirror `psx_door_1..4_loose`, `psx_door_mp_1/6_loose`, `leaf_frame_only`, `item_hand_mirror`, `barber_mirror` (a wall prop),
+  `psx_photo_frame_mp_1/2`, `psx_painting_1`, `painting_portrait`; drink me `item_potion_flask`, `psx_healing_potion_mp_1/2`,
+  `psx_glass_bottle_1/2`, `house_key`, `key`, `psx_key_mp_*`; cards `tarot`, `tarot2`, `tarotDeck`; the garden `fountain`, `angel_statue`,
+  `stone_urn` (an urn with a fern), `marble_bust`, `bird_cage`, `iron_garden_bench`, `park_bench`, `garden_ring` (a paved hedge ring),
+  `garden_tree`, `planter`, `potted_plant`, `psx_planter_pot_mp_1_full`, `wedding_arch`, `greek_column`, `decor_stone_arch`,
+  `psxg_stepping_stone_1/2`, `psxg_iron_gate_1/2`, `hw_fence_iron*`, `psxg_railing`, `lifeguard_chair`, `brass_telescope`, `music_box`,
+  `decor_music_box_dancer`, `paper_lantern`, `festoon`, `crystal_chandelier`, `meshy_hanging_lantern`; mushrooms `mushroom`, `mushroom2`,
+  `fae_mushroom`, `fae_toadstool`, `mushroom_lamp`, `woods_glowcap`; animals `flamingo`, `rabbit`, `cat`, `caterpillar`, `caterpillar_bug`,
+  `chrysalis`, `butterfly`, `monarch`, `blue_morpho`, `swallowtail`, `luna_moth`, `ladybug`, `bee`, `bumblebee`, `meshy_frog`, `crow`;
+  the dreameater's `dream_eye`, `thoughtform`, `impossible_stair`, `floating_orb`, `white_cloud`; races whose home this is (npc-system.md):
+  chess piece, rabbit, dreameater, + the old garden's gnome, ice queen, fairy, catgirl. Section 13 (the unwired R2 files) holds nothing
+  for a garden: no rose, flower, hedge, topiary, card or hat file exists in the bucket.
+- **NEEDS A MODEL** (nothing on R2; drawn in code or left out): a rose bush / flower bed, a playing-card soldier, a top hat, a croquet
+  mallet and a hedgehog, a hookah, a small garden gate, a sundial, a bird bath, a standing mirror (cheval glass), a peacock, a dodo.
+- **DECISIONS MADE FOR MONDO (overrule any in one line)**:
+  1. The old room `site_prebuilt_lookingglass_garden` is NOT retired and the `oldgarden` gap, the mirror and the barbershop mirror are
+     not moved: they are the tool's rows and shared ways out. Your rule (rebuilt areas replace their old rooms) says the old garden
+     should go once this one is right: say the word and it is one `DOOR_HQ.retired` row + the barbershop link's far end.
+  2. The tea party moved out of the walk (it stood on walkway square 7:68) into the east grass nook, and grew from four chairs to a long
+     table under a tent. The old table and chairs are at its head.
+  3. The office chairs (`teal_chair`) and the tulip table stay as the old garden had them (DOOR's furniture in Wonderland); the new
+     chairs are mismatched wooden and stuffed ones.
+  4. The hedges were not opened into a maze: that is a plan change (`layout.json`, the tool's). A maze in The Hedges north / south is
+     the first thing I would ask for.
+  5. The gilt frame stands before the mirror's door, it does not replace the stone doorway (the door is the tool's).
+  6. The teapots and the cup stack are the catalogue's own giant sizes (a teapot 1 m across): left giant on purpose.
+- **NEXT**: pass 2 (no insides are named here: more landmark work, a walk-in only if one fits), pass 3 dressing + the natives,
+  pass 4 air / light / night, pass 5 polish.
 ## THE SEWERS, DISTRICT T · THE RUNNING TUNNELS — the district thread (2026-11-16, second side; file `docs/areas/sewers/districts/T.js`)
 
 mondo's order 11-16 (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions. The abandoned metro under the sewers: the Ghost
