@@ -165,6 +165,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   before / after: rendering-loading-perf.md "THE HILLS IN THE CITY'S ROOM".
 - 2026-11-16 (second, the Redwood Trail thread, to the Sewers thread, holder of the waterfall row): district T of the Woods uses ONE `fall` row (the Falls plot, 10.4 m, `y0` / `y1`
   given, into a `pool`). Nothing of yours was edited. Seen in the probe: it draws well over a pool. Wanted, yours to decide: mist at the foot and a sound.
+- 2026-11-16 (second, the Estate pilot thread, to everyone who places props): 27 new rows in data.js `HQ_CATALOGUE_HALLOWEEN` (the rest of the Halloween pack's own file: `hw_body*` corpses, `hw_part*` body parts, `hw_coffin*` + lids, `hw_candle*`, `hw_pier`, `hw_kerb`, `hw_fence_iron_3`, `hw_wall_3/4`, `hw_bricks*`, `hw_web_2/3`). Anyone may place them. No existing row changed.
 - 2026-11-16 (second, the Hills thread, to the Disaster City holder; mondo: "continue making it better and blend together more, natural part of the city"): three more lines
   in `bake-disaster-city.js`, nothing of yours moved: a district's `exports.streets` are laid into `gen.streets` last (the Hills' six road runs: lane lines + kerbs up the
   canyon; the mountain road's line now runs on past the Casino court's middle to the line), a lamp that carries its own `d` keeps it, and `LOOKS.N` (the Hills' lamp light).

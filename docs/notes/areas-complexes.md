@@ -5406,6 +5406,18 @@ that first district is fleshed out and knows what shared assets it can use for t
   Both yards are lawn (`plan()`), dirt only on the middle aisle from the lych gate and the Graveyard's cross aisle at the obelisk. Two small
   tomb houses (drawn, a ghost wall each) in the Graveyard's north corners; an open grave with its coffin, lid and shovel. Fresh mounds are gone
   from the lawn (the grass field hides anything under 0.4 m). `cross` is a 3 m timber cross: not for a grave. Seen in the cloud browser, day + night.
+- **THE HORROR GRAVEYARD (mondo 11-16: "don't we literally have a graveyard asset pack? and a horror or halloween one? where are the flesh and body
+  parts like from the zombie spell. Are you using the model list").** The fault: the pass placed only what earlier threads had made placeable (61
+  catalogue rows) and never opened the pack. The Halloween pack's file holds 119 pieces; MODEL_LIST.md section 7e already named the ones the spells
+  cut out of it (bodies, body parts, coffins). 27 NEW CATALOGUE ROWS (data.js HQ_CATALOGUE_HALLOWEEN, sizes measured in the page with FBXLoader):
+  `hw_body` / `hw_body_2` (corpses lying), `hw_body_rising` / `_2` (sitting up out of the ground), `hw_part` .. `hw_part_9` (flesh; `hw_part_2` is an
+  arm reaching up, 1 m), `hw_coffin` / `_2` + `hw_coffin_lid` / `_2`, `hw_candle` / `_2`, `hw_pier`, `hw_kerb`, `hw_fence_iron_3`, `hw_wall_3` /
+  `_4`, `hw_bricks` / `_2`, `hw_web_2` / `_3` (flat cards, by span). In the graveyards: the tall iron fence in place of the low wall; open graves on
+  a row of bare earth (a coffin dragged half out, its lid thrown aside, the earth heaped, a corpse in two of them); two corpses sitting up out of the
+  ground and one in the Family Plot; an arm out of the ground at a dozen graves; flesh, skulls and meat strewn on the aisles (`parts()`, `bones()`);
+  three mossy chest tombs (`sarcophagus`); the pack's 6 to 7 m bare trees in the rows; ground fog (a pale dust zone) over the Graveyard.
+  NOT FOR THE GROUND: `femur` / `ulna` (the spells' bones stand on end, a metre tall), `trap_sarcophagus_box` (bright white beside the stones).
+  LESSON (zone kit): before dressing a theme, grep MODEL_LIST.md for it AND list the pack file's own pieces; the catalogue is not the whole pack.
 - mondo 11-16: rain is to be a game-wide dynamic system later (not touched here); lines for the people wait.
 - The door row's own leaf surround shows as a thin strip inside the vestibule's doorway; the door row is the tool's.
 - The people stand on spots with no lines but the ghost's and the ghoul's (lines are mondo's to give).
@@ -5449,6 +5461,9 @@ Read this before dressing C, L or R. It grows with each of H's passes.
 - **LAMP POSTS:** copy `lampPost(sx, sy, side)` from H.js `dress` (side = the walk's edge the post stands on: W, E, N, S). It wants to move into
   the tool as `ctx.lampPost` once a second district uses it (board note first).
 - **NIGHT IN A PROBE:** `"eval": "window._hqClockHour=function(){return 22.0}"` + `"settle": 3000` on one view.
+- **LOOK IN THE PACK, NOT ONLY THE CATALOGUE:** grep MODEL_LIST.md for your theme first (section 7e lists Halloween pieces only the spells used).
+  The Halloween file has 119 pieces; 64 have rows now (`hw_*`), among them corpses, body parts, coffins, a pier, a kerb. A missing piece = a new row
+  (`node: '<name>'`, `h` in metres from the file's centimetres; a flat card takes `span`) + a board note + `node list-models.js`.
 - **DENSITY:** a place people expect crowded (graves, crops, stalls) wants several pieces a square: one blocker on the square's middle, the rest
   `noBlock: true` beside it. One piece every second square looks empty. The grass field hides anything under 0.4 m.
 - **KNOWN BAD PIECES:** `hw_web` (unseen since its fix), `psx_wooden_crate_3` (blank box), `lion_statue` (a tawny lion, not stone).
