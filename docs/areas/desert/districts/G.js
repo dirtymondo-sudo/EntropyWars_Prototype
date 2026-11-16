@@ -41,7 +41,9 @@
    - The pyramids are not climbed any more (the first build's walked tiers and stairs went with the true shape). No temple, no causeway paving beyond
      the layout's stone squares.
    - The room's scatter (the tool's: stones, snags) can land beside a pyramid's foot; the east and south edges show pine mountains (the tool's edges).
-   - The pyramid's inside: the Turning Tomb door was seen, not walked through: pass 2. The first views of a probe run in there come out black.
+   - The pyramid's inside (PASS 2, 11-16): the Turning Tomb door is WALKED (in, and back out to the King's Chamber). The King's Chamber has its north
+     wall, a granite lining under gold bands, treasure; torches in every passage. Still bare: the walls carry no carving (no hieroglyph sheet
+     exists), the floor sheet is grey. The first views of a probe run in there come out black.
    - Rows outside this file that must agree with it: `links.gobekli_giza.b`, `siteRooms.entry.prebuilt_giza` (the tool prints their places as "ends").
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS). The doors' frames are the engine's grey frame with a green lamp.
    - STONE: `bricks_1` under an arch part needs `gain` 2.7 to read as pale limestone in the sun (1.9 and under draws mud brown).
@@ -216,13 +218,32 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.B('brazier', 6, 1, 0); R.dec('cave_torch', 7.75, 3.3, 0); R.dec('cave_torch', 9.5, 4.75, 0); R.dec('skull', 3.4, 2.6, 40); R.dec('cave_stone', 1.5, 2.3, 0); R.dec('psx_cobweb_2', 4.5, 2.2, 0, { y: L1 + 2.2 });
       R.dec('cave_torch', 0.4, 8.25, 0); R.dec('trap_sarcophagus_lid', 2.4, 8.7, 70);
       /* the Queen's Chamber */
-      R.B('stone_altar', 1, 5, 90); R.B('stone_urn', 1, 4, 0); R.B('stone_urn', 4, 4, 0); R.dec('brazier', 4.5, 6.5, 0); R.dec('item_heart_scales', 1.5, 5.5, 90, { y: L1 + 1.0 }); R.dec('psx_cobweb_4', 1.2, 4.2, 0, { y: L1 + 2.6 });
+      R.B('stone_altar', 1, 5, 90); R.B('greek_amphora', 1, 4, 0); R.B('greek_amphora', 4, 4, 0); R.dec('brazier', 4.5, 6.5, 0); R.dec('item_heart_scales', 1.5, 5.5, 90, { y: L1 + 1.0 }); R.dec('psx_cobweb_4', 1.2, 4.2, 0, { y: L1 + 2.6 });
       /* the Gallery's foot and head */
       R.dec('cave_torch', 10.25, 4.8, 0); R.dec('cave_torch', 4.4, 10.6, 0);                                                      // (nine lights in all: the Pit has one of them)
       /* the King's Chamber: the sarcophagus, the gold */
-      R.B('sarcophagus', 7, 12, 90); R.B('brazier', 5, 11, 0); R.B('brazier', 9, 11, 0); R.B('stone_urn', 5, 13, 0); R.dec('sea_chest', 9.4, 13.5, 200); R.dec('psx_gold_bar_pcs_1', 8.8, 13.6, 30); R.dec('skull', 6.4, 13.6, 100);
+      R.B('sarcophagus', 7, 12, 90); R.B('brazier', 5, 11, 0); R.B('brazier', 9, 11, 0); R.B('greek_amphora', 5, 13, 0); R.dec('sea_chest', 9.4, 13.5, 200); R.dec('psx_gold_bar_pcs_1', 8.8, 13.6, 30); R.dec('skull', 6.4, 13.6, 100);
       /* the Relieving Chambers */
       R.dec('skull_pile', 2, 13.4, 0); R.dec('paper_sheet', 3.4, 12.6, 30, { y: L3 + 0.01 }); R.dec('psx_cobweb_5', 1.3, 12.3, 0, { y: L3 + 1.6 });
+      /* PASS 2, THE INTERIORS (2026-11-16): what the first build left bare. The King's Chamber was open on its north side (a drop onto the
+         Pit's roof): it has its north wall now. Its walls are lined in red granite under a band of the better gold; two small obelisks flank the door
+         to the Turning Tomb; the gold lies about. Torches stand in every passage (`noLight`: the room's ten lights are spent; a torch's own
+         glow still draws). The urns with ferns in them are amphorae. */
+      R.wall('u', 11, 5, 10, { key: STONE, tint: 0xd8a888, base: L2, h: 5.6 });
+      { const GR = 0xe0aa8a, band = (u, v, w, d) => { R.box(u, v, L2, w, 5.6, d, STONE, GR, { uv: [3.5, 1.75], glow: 0.18 }); R.box(u, v, L2 + 3.3, w + (d < 0.2 ? 0 : 0.06), 0.32, d + (d < 0.2 ? 0.06 : 0), 'gold', null, { glow: 0.35 }); R.box(u, v, L2 + 0.9, w + (d < 0.2 ? 0 : 0.04), 0.1, d + (d < 0.2 ? 0.04 : 0), 'gold', null, { glow: 0.35 }); };
+        band(7.5, 13.95, 17.4, 0.08); band(7.5, 11.1, 17.4, 0.08); }
+      R.B('obelisk', 6, 13, 0, { h: 2.8 }); R.B('obelisk', 8, 13, 0, { h: 2.8 });
+      R.box(7.5, 11.2, L2, 17.4, 0.45, 0.8, STONE, 0xe0aa8a, { uv: [3.5, 1.75], glow: 0.18 });                                          // a granite bench along the north wall (it hides the floor's dark edge)
+      R.dec('money_sacks', 9.5, 12.5, 40); R.dec('psx_gold_bar_pcs_1', 9.1, 13.2, 80); R.dec('psx_gold_bar_pcs_1', 5.6, 12.4, 10); R.dec('psx_gold_bar_pcs_1', 6.5, 11.4, 140); R.dec('greek_amphora', 9.6, 11.5, 0); R.dec('item_censer', 8.4, 11.4, 0);
+      R.dec('trap_sarcophagus_lid', 8.3, 12.9, 100);
+      /* the Queen's Chamber: the feather beside the scales, a second sarcophagus, the cat */
+      R.dec('item_maat_feather', 1.5, 5.2, 30, { y: L1 + 1.0 }); R.B('sarcophagus', 3, 6, 0); R.dec('cat', 3.4, 4.5, 200); R.dec('greek_amphora', 2.5, 4.3, 0); R.dec('candleRing', 2.6, 5.4, 0, { noLight: true });
+      /* the entrance: two pillars and a plaque; the passages: torches, bones */
+      R.dec('psx_pillar_1', 6.25, 1.6, 0); R.dec('psx_pillar_1', 7.75, 1.6, 0); R.dec('tomb_plaque', 7.7, 0.5, 200);
+      for (const q of [[6.3, 3.6], [8.6, 2.4], [11.6, 3.4], [5.5, 5.5], [2.6, 7.5], [1.4, 2.6], [6.3, 6.6], [7.7, 8.2], [4.4, 9.4], [9.6, 10.6], [10.3, 12.6], [5.4, 11.4], [9.6, 13.6], [1.4, 13.5]]) R.dec('cave_torch', q[0], q[1], 0, { noLight: true });
+      R.dec('femur', 2.4, 2.6, 70); R.dec('skull', 5.2, 2.4, 10); R.dec('femur', 6.6, 9.6, 30); R.dec('ulna', 7.4, 10.5, 120); R.dec('psx_cobweb_1', 0.3, 2.2, 0, { y: L1 + 2.4 }); R.dec('psx_cobweb_2', 11.7, 2.3, 0, { y: L1 + 2.6 });
+      R.dec('bat_black', 6.2, 9.8, 0, { y: 3.6 }); R.dec('bat_brown', 8.2, 10.3, 90, { y: 3.9 }); R.dec('bat_grey', 4.8, 10.4, 200, { y: 3.3 });
+      R.dec('wall_chains', 9.9, 9.5, 270, { y: 2.0 }); R.dec('meshy_burlap_sack', 2.3, 13.5, 0); R.dec('femur', 3.6, 13.3, 50);
       R.who('mummy', 8.6, 12.4, 270); R.who('anubis', 6.4, 11.5, 135);
       R.doors.push(
           { id: 'north', wall: 'n', x: R.X(7), leaf: 'leaf_frame_only', label: 'GIZA', sub: 'THE NORTH FACE · THE WAY OUT', action: { room: 'site_prebuilt_area51_desert', at: 'pyramid' },
@@ -245,8 +266,8 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
             "label: 'GIZA · INSIDE THE GREAT PYRAMID',", "sub: 'THE DESCENT · THE PIT · THE QUEEN’S CHAMBER · THE GRAND GALLERY · THE KING’S CHAMBER',", "kind: 'box', site: 'prebuilt_giza', part: 'pyramid',",
             "shell: hqBunkerShell({ w: " + PY.W + ", d: " + PY.D + ", h: 18, wallH: 18, plate: { x: " + PY.spawn.x + ", z: " + r2(-PY.D / 2 + 1.2) + ", y: 6.2 },",
             "                       floor: 'bricks_1', wall: 'bricks_1', dado: 'bricks_1', ceiling: 'bricks_1',",
-            "                       floorColor: 0xc8b890, wallColor: 0xc8b890, dadoColor: 0xb8a880, ceilColor: 0x8a7a60,",
-            "                       mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, ambient: 0.8 }, fog: { color: 0x2a2014, density: 0.008 }, look: HQ_ROOM_LOOKS.plateau }),",
+            "                       floorColor: 0xf0d8a8, wallColor: 0xf0d8a8, dadoColor: 0xdcc090, ceilColor: 0xa89068,",
+            "                       mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, ambient: 0.95 }, fog: { color: 0x2a2014, density: 0.008 }, look: HQ_ROOM_LOOKS.plateau }),",
             "parti: 'Passages two squares wide cut through one mass of stone on three levels: down to the Pit, level to the Queen, up the Grand Gallery to the King.',",
         ], terrain: ["res: 0.4375, floor: 'bricks_1', cliff: 'bricks_1', path: 'bricks_1',", "noise: { amp: 0, scale: 5 }, crag: false,"] },
     ];

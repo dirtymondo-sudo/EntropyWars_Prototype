@@ -4943,6 +4943,9 @@ behind a door. STEP 1 (this delivery): the Shore stands IN `site_prebuilt_downto
   under it or the grass field grows through. A native in a pool walks the bed. `dockring` is a spaceship part, not a mooring ring. The
   playground pack (`play_swing`, `play_slide`, `play_sandbox`) and `brass_telescope` stand well outdoors. A `P()` on a deck over the lake needs
   its square taken out of `taken` first (the water stage marks the lake's squares).
+  INSIDE A WALK-IN (the Boathouse, 3.5 m walls): draw the ceiling at 3.16 m (3.4 is above the building's own black one), window panes and
+  wall pieces 0.38 m in from the building's line, and never start a `deck` on the wall (0.9 m off). Wall props: `y` = the height, `face` 0 on
+  the north wall, 90 west, 180 south, 270 east. `map_table` = a steel sci-fi table; `psx_table_large_2` = a plain wooden one.
 - **STILL MISSING ZONE-WIDE:** sound and particles (above); the Bayside front past the west line is scenery (its blocks are not the
   city's own buildings and the far sea reads greener than the near sea from high up); the huts' window glass is drawn light, not see-through; no walk-in has an upstairs; no model for hammocks, towels, gulls,
   windbreaks, sandcastles, coconuts; the people stand still (no routines until the NPC spawn system reaches the zones).
@@ -5026,12 +5029,21 @@ district in the zone". The pilot's passes in order, a PR each: exteriors, interi
   resting seal. ADDED: seven catalogue rows cut from the scene (the zone kit lists them); a house on piles with a fishing boat in the
   Roads, a hut on piles and its rowboat in the Mouth, a fishermen's house on piles off the skiff jetty, a boat hauled up the slipway,
   a rowboat at the water steps, mooring piles in the basin, the shed's generator, the crane on the wharf, three seals.
+- **PASS 2, INTERIORS (seen on screen by day and at 22:30):** the Quay Shed, the district's only walk-in (the plan draws no other
+  building; the stilt houses are solid pack models). The kit's `inside` copied for a working shed (cream boards over a red dado, a lit
+  board ceiling at 3.83 under the building's own 3.88, three tie beams, seven daylit windows) and 33 props on its 3 x 3 squares: pots,
+  a steel bench under the pegboard, crates, nets, the outboard, the fish scale, the hand truck, the harbour desk with the ship's
+  model, a telescope, a star chart, the anchor, the wheel, a life ring, the bell. The nine props that stood there are kept. LEARNED:
+  a plank loft drawn on the tie beams is a black slab from below (out); a wall prop on the FRONT wall wants `face: 0` (180 shows its
+  back); `brass_telescope` is a floor tripod 2 m tall, not a desk piece; `railway_lantern` lights nothing at night.
+  Frame rate, the quay view: 0.3 fps this run against 0.8 to 1.8 before, with FEWER draw calls (659): the cloud's number is noise.
 - **NEEDS A MODEL (nothing stood in):** a ship for the Roads (a trawler, a tug, a freighter: the only ship models are the Dutchman and
   the ghost wreck), gulls, coils of heavy rope, fish boxes, an iron mooring ring / cleat.
-- **NOT DONE:** the shed's inside (pass 2); freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the
-  night look (pass 4); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
+- **NOT DONE:** freight, nets, signs on the wharf / gantry / Breakwater (pass 3); harbour lights and the night look (pass 4: the quay
+  is black at 22:30); polish (pass 5). The brow lands on the Dutchman's rail, not in an entry port (she is her deck room's, not this
   file's). The tool's walk check cannot see the wharf, the gantry or the Breakwater (it reads squares, not rows).
-- **WAITS FOR MONDO:** nothing blocks the next pass.
+- **WAITS FOR MONDO:** STEP 2 of "THE BEACH IS PART OF DISASTER CITY" (does the Harbour follow the Shore into the city's water, or does
+  the Long Pier's end become the way out to the sea room). H.js is written on the tool's helpers like S.js, so W.js can run it either way.
 
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
@@ -5692,7 +5704,21 @@ the zone". Passes as the pilot's, a PR each: exteriors, interiors, dressing, atm
   `meshy_rope`, `footbridge`, `flamingo`, crow, rabbit, ladybug, bees, four butterflies. Camelot's Fairy Forest draws lily pads as notched discs.
 - **THE COST:** the proof view (the whole district from 60 m up): 456 draw calls before, 557 after; the cloud's software renderer drew both at
   0.20 frames a second (it cannot tell them apart). L's real lights went from four to two.
-- Not done: the Boathouse's inside (pass 2), reeds, lily pads, shore dressing, fish (pass 3), mist and night (pass 4).
+- Not done: reeds, lily pads, shore dressing, fish (pass 3), mist and night (pass 4).
+
+### PASS 2, THE INTERIORS (seen in the cloud browser)
+- The district's one inside is THE BOATHOUSE (14 x 14 m, walls 3.5 m). Drawn in the building's own parts: a plank ceiling (`glow: 0.4`) on three
+  tie beams, three lanterns, the boat doors' inner face with a bar, a daylight pane at each of the seven windows, the boat's cradle, the
+  workbench, a pot-belly stove under the roof's pipe. Props (all `floor: true`): the rowboat lifted onto the cradle (`y: 0.5`), tool pegboard,
+  hand saw, rope, tool chest, shelving, jerrycans, barrels, anchor, net, a wooden table and folding chair under the ship's lantern (the room's
+  real light), cot, rug, radio, seascape, sea chest, crates, outboard motor, ladder rack, life ring, ship's bell, doormat.
+- **LESSONS (in the zone kit too):** a walk-in's own ceiling here sits about 3.3 m up in a 3.5 m building: a drawn ceiling at 3.4 was hidden
+  (black), at 3.16 it shows. The inner wall face is about 0.3 m in from the building's line: a pane 0.25 m in was inside the wall (only its
+  thicker trims showed as black dashes), 0.38 m in it shows. A `deck` that starts ON a walk-in's wall lifts the ground just inside it: a strip
+  of lawn came up through the floor slab along the west wall; start the deck 0.9 m off the wall. `map_table` is a steel sci-fi table, not a
+  chart table (`psx_table_large_2` is the plain wooden one); `bar_stool` is a red diner stool.
+- **THE COST:** 27 more props, all inside one building; no new real light (the ship's lantern was there). The cloud's frame rate is not a
+  measure: the same overview read 0.20 frames a second as a run's first view and 2.6 as its last.
 
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
@@ -5910,7 +5936,31 @@ glades on a north-south path, the trail east to The Woods through the middle. Th
   geometries 1,985 -> 2,223 (about 150 new props, most of them small).
 - **NEEDS A MODEL** (nothing on R2): reeds / cattails, a willow, a dragonfly, a firefly, a swan or duck, a small waterside flower, bushes,
   natural small rocks.
-- **NEXT**: its own light, air and particles (`airZones`), the night look, then polish.
+- **PASS 4, THE ATMOSPHERE (seen by day and at night, 10 + 4 views)**: the tool's `airZones`, seven boxes: violet motes through the whole forest
+  (320), fireflies over the north knoll (36), the pond (sea green, 60) and the ring (gold, 70), pale spores in the mushroom glade (70),
+  blue motes at the spring (60) and the crystal knoll (44). LIGHT WITHOUT LIGHTS (the room's ten real lights are the castle's): the ring's
+  purple ground runs under the toadstools and glows a little, a brighter lit disc lies under each toadstool and under the islet's
+  mushroom (the light it throws); the moonstone, the crystals and the lily flowers are lit parts. At night the pools read bright blue,
+  the ring violet, the fireflies carry the glades. NIGHT IN A PROBE: `hqClockSet(23)` + `settle` 5000.
+  FOUND AND FIXED: `hw_stone*` (the Halloween pack's "stones") are GRAVESTONES, a headstone and a Celtic cross: seven stood in the forest
+  for one pass (pass 3) and are out; the corners wear drawn mossy boulders. A lit disc that overhangs its ground reads by day as a
+  hard purple decagon on the grass: keep a light pool inside ground of its own colour.
+- **FRAME RATE, PASS 4** (the same pond view): 1.39 frames a second (pass 3: 1.17 to 1.29; before the thread: 1.54), draw calls 477.
+- **PASS 5, POLISH (a walk, 12 views by day and night)**: the bridge approach, the crossing, every glade from a second side. Added: two
+  standing stones (`menhir`) flanking the Woods trail east of the crossing, glowing caps at their feet. Nothing floats, clips or draws
+  black in the twelve views. **STOPPED after this: five PRs (four district passes + the tool's hooks); waits mondo's look.**
+- **FRAME RATE, END** (the pond view, cloud software GPU): 1.54 before the thread, 1.20 to 1.39 after (run to run noise about 0.2); draw
+  calls 278 -> 462, geometries 2,023 -> 2,191. Well under his 3 FPS a pass on any real GPU; his F3 at the pond is the number that counts.
+- **DECISIONS MADE FOR MONDO (overrule any in one line)**: (1) no walk-in in the Fairy Forest: none is named, pass 2 went to landmarks.
+  (2) No waterfall at the spring (his rule: a fall is 7 m and leads somewhere); it is a still pool against a rock. (3) The forest floor is
+  the dark grass, not the kingdom's lawn. (4) The fairy ring's inside is purple grass with a pale lit "moonstone" (no name on screen).
+  (5) Crystals are drawn spikes of the ice sheet + his Meshy shards; the catalogue's `crystal_cluster` is left out (floating gems here).
+  (6) No new residents: the kingdom's AREA UNITS table decides who stands here and has no fairy folk; adding fairy, unicorn, gnome and
+  mushroom girl to that table (or a table per district) is his call. (7) The knolls keep their plain names; the north one carries a great
+  oak, the south one the crystals. (8) Two standing stones mark the Woods trail. (9) The air: violet motes + fireflies, spores, blue motes.
+- **WOULD DO NEXT**: the people (once the table is his); a willow and reeds at the pond when a model exists; sound (no hook); the ring's
+  harp draws as a bent brown bar (the `instrument_harp` model in this room: not this file's to fix, worth a look); the fae caps of the
+  forest mass (the tool's) crowd the glades' edges and hide the sky: thinning them is a tool change.
 - **(THE VILLAGE'S) THE MODEL LIST PASS (2026-11-16, after mondo's rule "THE MODEL LIST FIRST", owner-rules.md section 1)**: the pilot had worked from a
   keyword search of the prop catalogue and from what the first build already used. Read against MODEL_LIST.md (the Meshy list, the
   Halloween pack, the orchestral pack, the crow + rabbit upload, section 7a), it had MISSED, all in the game already:
@@ -6344,7 +6394,7 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
   data.js `hqTerrainCompile` collects the rows as `info.falls`. The editor's ADD list has "Waterfall". Off: `window.EW_NO_HQ_FALLS`.
 - **USED:** the Sewers' three (bake-sewers.js, layout `openings` kind `fall`). **THE RULE HE SET (11-16):** a fall leads somewhere: it drops from an upper way into a lower room or path you can reach, never a step in the same corridor. **WANTED NEXT:** the Woods' Falls plot (`docs/areas/woods/
   districts/T.js`, its creek already steps per grade: one `fall` row per step), the Mountains' streams, the Beach's island.
-- **NOT DONE:** no sound, no mist, no light of its own; a fall wider than its stream is not clipped to the rock; seen at 1.75 m, 3.5 m and 7 m. **HIS SIZE RULE (11-16):** a waterfall is at least 7 m.
+- **NOT DONE:** no sound (the game has no water sound and no SFX may be generated); no mist (tried 11-16 as sprites in the terrain group: they never drew, the group is batched after the build; it wants its own unbatched group, like the decals' `propGroup`); no light of its own; a fall wider than its stream is not clipped to the rock; seen at 1.75 m, 3.5 m and 7 m. **HIS SIZE RULE (11-16):** a waterfall is at least 7 m.
 - **PASS 5, POLISH (an eye-level walk, 18 stops):** every door, the fire escape, the deck, the pens, the crater's edge, the yard. One fix: the
   radar hut's green scope window overlapped its door frame. **WHERE IT STANDS:** all five passes merged and live. Open for mondo: the
   tower's ops block is solid (a walk-in would need the deck rebuilt as a building); the mess hall is sparse; no sound or particles (no
@@ -6390,3 +6440,36 @@ too short ... you didn't even get the shape right". So:
   before / after counts): before 2.3 (327 calls, 946 k triangles), after 2.0 to 2.3 (301 calls, 739 k triangles).
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
+
+**PASS 2, THE INTERIORS (inside the Great Pyramid, `rooms(kit)` in G.js).**
+- **THE TURNING TOMB DOOR IS WALKED:** in a probe `window._pdDoor({ pd: 'tomb1', back: { room, at: 'turning' } })` loads the Turning Tomb and
+  `window._pdLeave()` comes back to the King's Chamber at the door, its prompt showing. No code changed.
+- **THE KING'S CHAMBER WAS OPEN ON ITS NORTH SIDE** (a 5 m drop onto the Pit's roof): it has its wall. Its long walls are lined in red granite
+  (`bricks_1`, tint 0xe0aa8a, `glow` 0.18) under two bands of the better gold; a granite bench hides the floor mesh's dark edge at the wall
+  (a slab's last 0.44 m is a slope: cover it). Two small obelisks flank the door; sacks, gold bars, a censer, an amphora.
+- **TORCHES:** fourteen `cave_torch` with `noLight` (their own glow sprite still draws; the room's ten lights were spent by the first build).
+- **WRONG PIECES FOUND ON SCREEN:** `stone_urn` is a garden urn with a fern (now `greek_amphora`); `lion_statue` draws as a live tawny lion,
+  not stone; `trap_sarcophagus` is a pale blue untextured coffin (use `sarcophagus`). The shell's floor / wall colours barely move the grey of
+  the `bricks_1` floor sheet.
+- FPS in the King's Chamber: 2.0 (llvmpipe; 225 calls, 768 k triangles; the outside's proof view is unchanged).
+
+**FITS THIS DISTRICT (from the whole model list + the live catalogue, 11-16; keys that exist):** monuments `obelisk`, `tomb_plaque`,
+`meshy_giant_foot`, `greek_column`, `psx_pillar_1..3`, `decor_stone_arch`, `ancient_walkway`, `stone_altar`; stone `hw_stone..5`, `psxg_rock_1..4`,
+`ocean_rock..11`, `psx_brick_1`, `hw_bricks`; pots `greek_amphora`, `cauldron`, `item_censer`, `wooden_bucket`; fire `brazier`, `cave_torch`,
+`wall_torch`, `campfire`, `candleRing`, `railway_lantern`; the dead `sarcophagus`, `trap_sarcophagus_box` + `_lid`, `trap_coffin_wood`,
+`decor_effigy_bier` + `_figure`, `skull`, `skull_pile`, `femur`, `ulna`, `anatomy_skeleton`, `dinosaur_skeleton`; treasure `sea_chest`,
+`money_sacks`, `psx_gold_bar_pcs_1`, `item_heart_scales`, `item_maat_feather`, `jewelry_case`; traps (decor only) `trap_spike_pit`,
+`trap_pressure_plate`, `wall_chains`; webs `psx_cobweb_1/2/4/5`; animals `cat`, `crow`, `eagle`, `bat_black/brown/grey`, `horse*`; plants the
+tree kind `palm`, `palm_tree`, `psxg_dead_bush_1/2`, `ocean_seaweed*` (reeds); the dig `babel_crane` (a timber scaffold crane), `footbridge`
+(planks), `psx_stairs_5_wood`, `hw_shovel`, `psx_wooden_crate_1..6`, `meshy_rope`, `meshy_burlap_sack`, `map_table`, `folding_chair`, `cot`,
+`film_camera`, `brass_telescope`, `field_radio`, `museum_vitrine`, `rope_stanchion`, `signpost`, `hw_fence`, `covered_wagon`,
+`fortune_teller_tent` (the only old-cloth tent), `psx_carpet_mp_1`, `rug_round`; the oasis `ancient_well`, `rowboat`, `flamingo`, `meshy_frog`.
+**EXISTS NOWHERE (NEEDS A MODEL):** a sphinx, a pharaoh / jackal / cat statue, a casing block, canopic jars, a hieroglyph or carved-relief
+sheet, a papyrus column, a fallen column, a camel, a vulture, a cobra, a scorpion, reeds / papyrus, a wheelbarrow, a pickaxe, a sieve table,
+a plain wooden ladder prop, a wooden barrel, a canvas expedition tent, an oil lamp, a market stall, baskets, a gold pile, an idol.
+
+**DECISIONS MADE FOR MONDO (overrule any in one line):**
+1. The pyramids are true pyramids and are NOT climbed (a real face is too steep for the walker). A zigzag stair up one face is possible.
+2. The King's Chamber keeps the door to the Turning Tomb (his earlier yes); it is walked and stays as built.
+3. Khafre grew to 42 m and Menkaure to 24.5 m so the three keep something of their real proportions; the queens' pyramids are new.
+4. The Sphinx stays parts-built until a model exists.
