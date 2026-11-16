@@ -4738,9 +4738,13 @@ once that first district is fleshed out and knows what shared assets it can use 
   line clear of the board rack, the torches' flame; NINE MORE PEOPLE on mondo's new rule ("There need to be more NPCs", 11-16): homosapiens
   on the Boardwalk, at the huts, the lifeguard hut, the court and the Dunes bench, a chef at the hot dog stand, hippies in the Palms and at
   the north camp, a pirate by the headland's boats. No line was written for them. NOT SEEN: the people (playtest_city.js draws no cast).
-- **NEEDS A MODEL (nothing stood in):** hammocks, a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, a towel lying on the sand.
-- **WAITS FOR MONDO:** his look at the whole district; whether the huts' three trades (SURF, BEACH HUT, FLOATS: the first build's reading of
-  "a row of huts") are what he wants; whether the Shore gets a fight / residents with routines once the NPC spawn system (npc-system.md) lands.
+- **THE SNOW CONE STAND + THE NIGHT (11-16, mondo: "looks good, make one of the huts a snow cone stand ... there is night and day cycle in
+  the game already"):** the middle hut (was the sleeping hut) is SNOW CONES: a serving shelf and striped awning at its window, stools, a
+  menu board (Cherry, Lime, Blue), a giant cone on the ridge; inside the counter and till, syrups on a steel bench, two fridges, cool
+  boxes. Seen by day and at 22:30. The night was never off (see the kit); ten real lights added so the Shore is lit after dark.
+- **NEEDS A MODEL (nothing stood in):** hammocks, a windbreak, a sandcastle, gulls, coconuts, a surf-side shower, a towel lying on the
+  sand, an ice shaver and paper cones for the stand.
+- **WAITS FOR MONDO:** his look at the whole district; whether the Shore gets a fight / residents with routines once the NPC spawn system (npc-system.md) lands.
 - **WAITS FOR THE TOOL ROW (notes on claims.md):** the open west edge, the sky's waterspout + night bodies by day, the dunes' grey cliff bands.
 
 ## THE BEACH, THE ZONE KIT — what the next district threads can use (started 2026-11-16 by the Shore pilot; finished with its last pass)
@@ -4774,8 +4778,13 @@ once that first district is fleshed out and knows what shared assets it can use 
   glow, no light) on a drawn rope at `G + 2.3`. Put several torches in ONE `look` row when the sand under them is level (a row = three
   meshes; twelve rows of one torch is thirty-six).
 - **NO HOOK FOR A DISTRICT (zone-wide, the tool row's or the engine's):** SOUND (a walked room has no sound bed of its own in the data:
-  surf, gulls, rigging would be new work in audio.js + the shell), PARTICLES (spray at the rocks, gulls wheeling), NIGHT (the sea shell is
-  day only: `night: 0`, so the glows never get their dusk).
+  surf, gulls, rigging would be new work in audio.js + the shell), PARTICLES (spray at the rocks, gulls wheeling).
+- **NIGHT WORKS (corrected 11-16; the pilot first wrote "day only", a misreading of the shell's `night: 0` field, and mondo asked why):**
+  the Beach rides the world clock like every outdoor room (data.js `hqRoomClock`; only `HQ_WORLD_CLOCK.still` rooms do not). Look at it
+  after dark in the probe with `"eval": "hqClockSet(22.5)", "settle": 2500` on a view (it holds for the views after it). What night
+  showed: drawn glow (bulbs, lanterns, lit windows, a hut's lit ceiling) reads well but LIGHTS NOTHING, so the places people sit need a
+  real light: `cave_torch` (a standing torch, a 9 m light, a blocker: `P` on a square's middle) and `brazier` (a fire basket, the same
+  light). The Shore has eight torches and two braziers. `round_table` is a huge meeting table with twelve chairs, not a cafe table.
 - **WATER ON THE SAND:** `feat({ k: 'dip', x, z, r, h })` on sand that stands 0.6 m up, with r 3.4-5.2 m and h 1.5-1.7 m, is a pool the room's
   own sea stands in (waded). A smaller or shallower dip shows no water.
 - **DUNE DRESSING:** `psxg_dead_bush_1/2` read as dry dune scrub; `feat({ k: 'rail', x0, z0, x1, z1, model: 'ranch' })` is a timber
