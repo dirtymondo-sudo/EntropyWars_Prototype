@@ -7804,7 +7804,19 @@ File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node b
   winter trees on the west edge land past the Pass Gate.
 - **FPS** at the proof view (the Pass Gate from the east, x -227.5 z -108.5 face 270; llvmpipe, so only the counts compare): before 101 calls / 117 k triangles;
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles; after pass 3 231 calls / 384 k triangles (the yard's props and the horse); after pass 4 248 calls / 256 k triangles (the tree fix took the stray pines out of the view); after pass 5 246 calls / 255 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
-- **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
+- **THE MODEL PASS (mondo 11-16, the wish-list models; one pass on top of the five, then STOPPED again).** `docs/plans/WISHLIST_MODELS_ADDED.md`
+read end to end. Every model this district asked for is placed (rats and spiders too); the stand-ins are out.
+- **PLACED, the asks:** `beam_pump` on the Pump Ledge (in place of `centrifugal_pump` + `gate_valve`) with a `valve_wheel`; `head_wheel`
+  beside the Chimney's stump (the old hoist); `rail_section` x 6 down the drift from the Chimney's hall to a `buffer_stop` at the Flood's
+  bank, a `mine_cart` in each plot on them (the drift's two boards made way); `ore_heap` at the firebox (in place of the sacks) and at the
+  crystal seam; `anvil` in the engine bay (in place of the hand truck); `wheelbarrow`; four `pickaxe`; six `rat`, four `spider`, off the paths.
+- **PLACED, from the rest of the list:** `wooden_ladder` (for the library ladder), `wooden_barrel`, `rope_coils`, `bellows` at the firebox,
+  `oars` + a `mooring_bollard` at the beached boat, `sleeping_bag` + `kettle` + `firewood_stack` at the camp, `moss_clump` at the stump's
+  foot (where the potted fern was refused), a `hooded_statue` between the niches.
+- **FRAME RATE** (the Flood view, paired, 20 s counts): 1.55 before the pass, 1.70 with it (inside the noise; these models are light).
+- **SEEN** on eight views. The cart's own model carries a short piece of track; the beam pump reads well from the corridor.
+
+**FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   after pass 1 166 calls / 193 k triangles; after pass 2 197 calls / 212 k triangles (the frame rate in the probe went UP run to run, 0.4 to 2.6: it measures the container, not the room).
 - **PASS 3, THE DRESSING + WHO IS THERE** (about ninety small rows, every one placed by hand; `lit()` = decor with `noBlock`, the zone kit's rule):
 - the engine bay (jerrycans, nails on the bench, shovels, three sticks of dynamite, bricks at the firebox), the Ledge (a valve holder), the
@@ -7847,9 +7859,20 @@ bare tank, so the last pass went there:
   skulls, and the `fern` (a potted house plant).
 - **FRAME RATE, final** (the Flood view x -63 z -51 face 180, llvmpipe, frames counted over 20 s after a 25 s pause): the first build 1.55
   to 1.60, all five passes 1.60.
-- **WHAT I WOULD DO NEXT:** dust in the shaft's light + embers at the firebox (needs the air hook), a water sound, the eight models on the
-  NEEDS A MODEL list (a mine cart on rails down the drift first), lines for the four new residents (his to write), a second look at the
+- **WHAT I WOULD DO NEXT:** dust in the shaft's light + embers at the firebox (needs the air hook), a water sound, lines for the four new residents (his to write), a second look at the
   drawn washes on his Firefox (it renders brighter).
+
+**THE MODEL PASS (mondo 11-16, the wish-list models; one pass on top of the five, then STOPPED again).** `docs/plans/WISHLIST_MODELS_ADDED.md`
+read end to end. Every model this district asked for is placed (rats and spiders too); the stand-ins are out.
+- **PLACED, the asks:** `beam_pump` on the Pump Ledge (in place of `centrifugal_pump` + `gate_valve`) with a `valve_wheel`; `head_wheel`
+  beside the Chimney's stump (the old hoist); `rail_section` x 6 down the drift from the Chimney's hall to a `buffer_stop` at the Flood's
+  bank, a `mine_cart` in each plot on them (the drift's two boards made way); `ore_heap` at the firebox (in place of the sacks) and at the
+  crystal seam; `anvil` in the engine bay (in place of the hand truck); `wheelbarrow`; four `pickaxe`; six `rat`, four `spider`, off the paths.
+- **PLACED, from the rest of the list:** `wooden_ladder` (for the library ladder), `wooden_barrel`, `rope_coils`, `bellows` at the firebox,
+  `oars` + a `mooring_bollard` at the beached boat, `sleeping_bag` + `kettle` + `firewood_stack` at the camp, `moss_clump` at the stump's
+  foot (where the potted fern was refused), a `hooded_statue` between the niches.
+- **FRAME RATE** (the Flood view, paired, 20 s counts): 1.55 before the pass, 1.70 with it (inside the noise; these models are light).
+- **SEEN** on eight views. The cart's own model carries a short piece of track; the beam pump reads well from the corridor.
 
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, sections 6, 7, 8, 10, 12b, 13 + pack-claims.md + the zone kit; keys checked in the live catalogue; `*` = no Mountains district has placed it):
   rocks `hw_stone`..`hw_stone_5`, `psxg_rock_1..4`*, `psxg_stepping_stone_1/2`*, `menhir`*, `sarsen`*, `cave_stone` · camp `camping_tent`, `meshy_camping_tent`*, `cot`,
@@ -11796,9 +11819,20 @@ bare tank, so the last pass went there:
   skulls, and the `fern` (a potted house plant).
 - **FRAME RATE, final** (the Flood view x -63 z -51 face 180, llvmpipe, frames counted over 20 s after a 25 s pause): the first build 1.55
   to 1.60, all five passes 1.60.
-- **WHAT I WOULD DO NEXT:** dust in the shaft's light + embers at the firebox (needs the air hook), a water sound, the eight models on the
-  NEEDS A MODEL list (a mine cart on rails down the drift first), lines for the four new residents (his to write), a second look at the
+- **WHAT I WOULD DO NEXT:** dust in the shaft's light + embers at the firebox (needs the air hook), a water sound, lines for the four new residents (his to write), a second look at the
   drawn washes on his Firefox (it renders brighter).
+
+**THE MODEL PASS (mondo 11-16, the wish-list models; one pass on top of the five, then STOPPED again).** `docs/plans/WISHLIST_MODELS_ADDED.md`
+read end to end. Every model this district asked for is placed (rats and spiders too); the stand-ins are out.
+- **PLACED, the asks:** `beam_pump` on the Pump Ledge (in place of `centrifugal_pump` + `gate_valve`) with a `valve_wheel`; `head_wheel`
+  beside the Chimney's stump (the old hoist); `rail_section` x 6 down the drift from the Chimney's hall to a `buffer_stop` at the Flood's
+  bank, a `mine_cart` in each plot on them (the drift's two boards made way); `ore_heap` at the firebox (in place of the sacks) and at the
+  crystal seam; `anvil` in the engine bay (in place of the hand truck); `wheelbarrow`; four `pickaxe`; six `rat`, four `spider`, off the paths.
+- **PLACED, from the rest of the list:** `wooden_ladder` (for the library ladder), `wooden_barrel`, `rope_coils`, `bellows` at the firebox,
+  `oars` + a `mooring_bollard` at the beached boat, `sleeping_bag` + `kettle` + `firewood_stack` at the camp, `moss_clump` at the stump's
+  foot (where the potted fern was refused), a `hooded_statue` between the niches.
+- **FRAME RATE** (the Flood view, paired, 20 s counts): 1.55 before the pass, 1.70 with it (inside the noise; these models are light).
+- **SEEN** on eight views. The cart's own model carries a short piece of track; the beam pump reads well from the corridor.
 
 **FITS THIS DISTRICT** (MODEL_LIST.md read end to end, all sections, + pack-claims.md; every key checked against the live catalogue).
 Not used anywhere in the Sewers before this district's passes unless marked *:
@@ -11816,8 +11850,7 @@ _corner / _cross)` `psx_pipes_holder_1` `gate_valve`* `wheel` · LIGHT `cave_tor
 `ocean_anglerfish` `ocean_crab` `tentacle` `hawk_moth` `luna_moth` `crow` · GROWTH `mushroom2`* `fae_toadstool` `woods_glowcap` `fern`
 `ocean_seaweed(_2/_3)` `kelp` `woods_thornvine` `meshy_dead_snag` `psx_cobweb_1/2/4/5`* `hw_web(_2/_3)` · BOATS `rowboat` `meshy_rowboat`
 `ship_anchor` `fishing_net_wall` · SIGNS `signpost`* `missing_board` `radiation_sign`.
-**NEEDS A MODEL** (not in the game, not on R2; the Mine pack's `Rails` piece was never cut out): pickaxe, mine cart + its rails, ore / coal
-heap, wheelbarrow, anvil, a pulley / head wheel, a cast-iron beam pump, rats, spiders.
+**NEEDS A MODEL:** nothing left. All nine asks came with the wish-list models and are placed (THE MODEL PASS above): pickaxe, mine cart + rails, ore heap, wheelbarrow, anvil, head wheel, beam pump, rats, spiders.
 
 **DECISIONS MADE FOR MONDO** (overrule any in one line):
 1. The Chimney is a daylight shaft over a 3.9 m brick stump you can climb, not the old bare 3.9 m column.
