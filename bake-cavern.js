@@ -202,8 +202,8 @@ const spaces = [];
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(cy + j) * W + cx + i] = 1;
       spaces.push({ k: 'space', x: r2(gx(cx) + w * C / 2), z: r2(gz(cy) + h * C / 2), w: w * C, d: h * C }); } }
 /* ── THE PAINT: one sheet a square (eight sheets, the game's cap) ── */
-const PAL = ['cave_floor', 'obsidian', 'concrete_floor', 'dungeon_2', 'crystal', 'grass_dark_fantasy', 'dirt_2', 'marble_light'], PCH = { o: 0, x: 0, w: 0, b: 0, h: 1, l: 1, f: 2, u: 3, c: 4, q: 4, g: 5, d: 6, s: 6, m: 7 }, paint = new Uint8Array(W * Hh);
-for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x], d = distAt(x, y); paint[y * W + x] = ('wb'.includes(ch) && d === 'H') ? 6 : ('wb'.includes(ch) && d === 'A') ? 7 : (PCH[ch] || 0); }
+const PAL = ['obsidian', 'concrete_floor', 'dungeon_2', 'crystal', 'grass_dark_fantasy', 'dirt_2', 'marble_light', 'desert'], PCH = { o: 0, x: 0, w: 0, b: 0, h: 1, l: 1, f: 2, u: 3, c: 4, q: 4, g: 5, d: 6, m: 7, s: 8 }   /* 0 = the room's own cave floor; v = PAL[v - 1] */, paint = new Uint8Array(W * Hh);
+for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x], d = distAt(x, y); paint[y * W + x] = ('wb'.includes(ch) && d === 'H') ? 8 : ('wb'.includes(ch) && d === 'A') ? 7 : (PCH[ch] || 0); }
 
 /* ── checks: every prop key and unit exists; nothing stands in the rock; every plot is reached from the Crossroads through the plan's
    openings (a level change is crossed only on an opening's own squares; lava is never walked) ── */

@@ -104,10 +104,6 @@ PLOTS.forEach(p => { if (p.d === 'K') return; rect(p, 0, 0, N - 1, N - 1, FLOOR[
   [[0, -1, 'n'], [0, 1, 's'], [-1, 0, 'w'], [1, 0, 'e']].forEach(([dx, dy, side]) => { const q = at(p.x + dx, p.y + dy); if (q && q.d === p.d) return;
     for (let i = 0; i < N; i++) { const thick = 1 + (rnd() < 0.45 ? 1 : 0) + (p.d === 'H' && rnd() < 0.2 ? 1 : 0);
       for (let k = 0; k < thick; k++) { if (side === 'n') set(p, i, k, 'x'); if (side === 's') set(p, i, N - 1 - k, 'x'); if (side === 'w') set(p, k, i, 'x'); if (side === 'e') set(p, N - 1 - k, i, 'x'); } } }); });
-/* a terrace line inside Hollow Earth is broken rock, not a ruled edge: outcrops on the high side (the ports are opened again below) */
-PLOTS.forEach(p => { if (p.d !== 'H') return; [[0, 1, 's'], [1, 0, 'e'], [0, -1, 'n'], [-1, 0, 'w']].forEach(([dx, dy, side]) => { const q = at(p.x + dx, p.y + dy); if (!q || q.d !== 'H' || q.level >= p.level) return;
-    for (let i = 0; i < N; i++) if (rnd() < 0.55) { if (side === 's') set(p, i, N - 1, 'x'); if (side === 'e') set(p, N - 1, i, 'x'); if (side === 'n') set(p, i, 0, 'x'); if (side === 'w') set(p, 0, i, 'x'); } }); });
-
 /* ── K THE CAVERN: chambers in the rock ── */
 const K = n => plot[n];
 { let p;

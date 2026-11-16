@@ -18,7 +18,7 @@ module.exports = {
         for (let ly = 3; ly <= 5; ly++) for (let lx = 3; lx <= 5; lx++) { const q = ctx.sq(SPIRE, lx, ly); ctx.taken.add(q[0] + ':' + q[1]); }
         ctx.feat({ k: 'plateau', x, z, w: 10.5, d: 10.5, h: ctx.r2(ctx.plot[SPIRE].base + 0.9), edge: 0.1 });
         ctx.feat({ k: 'arch', id: 'cav:spire', x, z, rot: 0, base: ctx.r2(ctx.plot[SPIRE].base + 0.9), parts: [
-            { s: 'cyl', p: [0, 0, 0], r: 3.4, r2: 2.2, h: 9, seg: 6, key: 'crystal', tint: 0xcff6ff, glow: 0.55 }, { s: 'cyl', p: [0, 9, 0], r: 2.2, r2: 0.15, h: 27, seg: 6, key: 'crystal', tint: 0xdffaff, glow: 0.75 },
+            { s: 'cyl', p: [0, 0, 0], r: 3.4, r2: 2.2, h: 9, seg: 6, key: 'crystal', tint: 0xe8fbff, glow: 1.1 }, { s: 'cyl', p: [0, 9, 0], r: 2.2, r2: 0.15, h: 27, seg: 6, key: 'crystal', tint: 0xf0fdff, glow: 1.5 },
             { s: 'cyl', p: [2.6, 0, 1.4], r: 1.1, r2: 0.1, h: 11, seg: 5, key: 'crystal', tint: 0xa8e8ff, glow: 0.5 }, { s: 'cyl', p: [-2.4, 0, -1.8], r: 1.3, r2: 0.1, h: 14, seg: 5, key: 'crystal', tint: 0xb8f0e8, glow: 0.5 }, { s: 'cyl', p: [-1.2, 0, 2.8], r: 0.9, r2: 0.1, h: 8, seg: 5, key: 'crystal', tint: 0xc8d8ff, glow: 0.5 } ] });
         const bt = (ctx.O.agartha.c || []).find(c => c.id === 'battle'), b = ctx.sq('P04-04', 3, 8);
         if (bt) { ctx.taken.add(b[0] + ':' + b[1]); ctx.counters.push(Object.assign({}, bt, { id: 'battle_agartha', x: ctx.gcx(b[0]), z: ctx.gcz(b[1]), plateY: 2.35 })); }
@@ -26,7 +26,7 @@ module.exports = {
     dress(ctx) {
         const put = (key, id, lx, ly, o) => { if (ctx.free(id, lx, ly)) ctx.P(key, id, lx, ly, o); };
         /* columns down both sides of the paved ways (a marble square with paving beside it), every third square */
-        ctx.plots.forEach(p => { ctx.squares(p.id, 'm').forEach(q => { if ((q[0] + q[1]) % 3 || q[0] < 1 || q[1] < 1 || q[0] > 10 || q[1] > 10) return; const t = ctx.sq(p.id, q[0], q[1]);
+        ctx.plots.forEach(p => { ctx.squares(p.id, 'm').forEach(q => { if ((q[0] + q[1]) % 5 || q[0] < 1 || q[1] < 1 || q[0] > 10 || q[1] > 10) return; const t = ctx.sq(p.id, q[0], q[1]);
             if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(d => (ctx.cell[t[1] + d[1]] || [])[t[0] + d[0]] === 'q')) put('greek_column', p.id, q[0], q[1]); }); });
         const scatter = (key, id, n, f) => { const sq = ctx.squares(id, 'm').filter(q => ctx.free(id, q[0], q[1]) && q[0] > 0 && q[1] > 0 && q[0] < 11 && q[1] < 11); for (let i = 0; i < n && sq.length; i++) { const q = sq.splice(Math.floor(ctx.rnd() * sq.length), 1)[0]; ctx.P(key, id, q[0], q[1], f ? f() : {}); } };
         ctx.plots.forEach(p => scatter('meshy_crystal_shards', p.id, 4, () => ({ h: ctx.r2(1.2 + ctx.rnd() * 3.2), face: Math.round(ctx.rnd() * 360) })));
