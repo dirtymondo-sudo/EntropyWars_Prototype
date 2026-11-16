@@ -21,8 +21,7 @@ module.exports = {
         for (let ly = 4; ly <= 7; ly++) for (let lx = 4; lx <= 7; lx++) { const q = ctx.sq(SUN, lx, ly); ctx.taken.add(q[0] + ':' + q[1]); }
         ctx.feat({ k: 'arch', id: 'cav:sun', x, z, rot: 0, base: 1.75, parts: [
             { s: 'cyl', p: [0, 0, 0], r: 2.6, r2: 0.7, h: 21, seg: 10, key: 'rocks_5', tint: 0xbcb9aa },
-            { s: 'dome', p: [0, 28.2, 0], r: 6.5, h: 6.5, seg: 24, rings: 8, tint: 0xfff0b8, glow: 1, ds: true }, { s: 'dome', p: [0, 28.2, 0], r: 6.5, h: -6.5, seg: 24, rings: 8, tint: 0xffe9a0, glow: 1, ds: true },
-            { s: 'dome', p: [0, 28.2, 0], r: 8.2, h: 8.2, seg: 20, rings: 6, tint: 0xffc860, glow: 0.5, ds: true, kind: 'glass' }, { s: 'dome', p: [0, 28.2, 0], r: 8.2, h: -8.2, seg: 20, rings: 6, tint: 0xffc860, glow: 0.5, ds: true, kind: 'glass' } ] });
+            { s: 'dome', p: [0, 28.2, 0], r: 6.5, h: 6.5, seg: 24, rings: 8, tint: 0xffe9a8, glow: 1.5, ds: true }, { s: 'dome', p: [0, 28.2, 0], r: 6.5, h: -6.5, seg: 24, rings: 8, tint: 0xffdf90, glow: 1.5, ds: true }, ] });
         /* the BATTLE marker of the old Inner Sun, on the Country */
         const bt = (ctx.O.innersun.c || []).find(c => c.id === 'battle'), b = ctx.sq('P02-03', 8, 8);
         if (bt) { ctx.taken.add(b[0] + ':' + b[1]); ctx.counters.push(Object.assign({}, bt, { x: ctx.gcx(b[0]), z: ctx.gcz(b[1]), plateY: 2.35 })); }
@@ -31,7 +30,7 @@ module.exports = {
             for (let i = 0; i < n && sq.length; i++) { const q = sq.splice(Math.floor(ctx.rnd() * sq.length), 1)[0], t = ctx.sq(id, q[0], q[1]); ctx.taken.add(t[0] + ':' + t[1]);
                 ctx.feat({ k: 'tree', x: ctx.gcx(t[0]), z: ctx.gcz(t[1]), kind: kinds[Math.floor(ctx.rnd() * kinds.length)], h: ctx.r2(h0 + ctx.rnd() * (h1 - h0)), r: 0.8 }); } };
         wood('P00-03', ['tree_3', 'tree_52'], 12, 12, 18); wood('P01-02', ['fae_cap', 'fae_cap_2'], 12, 3.5, 8); wood('P00-04', ['tree_52', 'palm'], 6, 8, 13); wood('P01-03', ['tree_3'], 4, 10, 14);
-        wood('P02-04', ['palm', 'fae_bloom_tree'], 7, 4, 7); wood('P00-05', ['palm'], 6, 6, 9); wood('P02-05', ['palm', 'tree_52'], 5, 6, 10); wood('P01-05', ['palm'], 4, 6, 9); wood('P02-03', ['tree_52'], 3, 9, 12); wood('P01-04', ['palm'], 4, 5, 8);
+        wood('P02-04', ['palm', 'fae_bloom_tree'], 7, 4, 7); wood('P00-05', ['palm'], 6, 6, 9); wood('P02-05', ['palm', 'tree_52'], 5, 6, 10); wood('P01-05', ['palm'], 4, 6, 9); wood('P01-04', ['palm'], 4, 5, 8);
     },
     dress(ctx) {
         const put = (key, id, lx, ly, o) => { if (ctx.free(id, lx, ly)) ctx.P(key, id, lx, ly, o); };
