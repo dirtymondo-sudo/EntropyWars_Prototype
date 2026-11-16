@@ -5228,6 +5228,46 @@ that first district is fleshed out and knows what shared assets it can use for t
   `_hqGrassTick` keeps the grass field off a building tier (`plateau` + `bld`) as it does off a `texbuilding`: tufts grew on the deck.
 - Not done in this pass: the district at night, the Drive and the Lawn (dressing), the Crypt's inside (interiors).
 
+### PASS 2, THE INTERIORS (seen in the cloud browser)
+- The house is not a walk-in out here (its five floors are the old rooms behind the tool's door), so the district's one inside is THE CRYPT:
+  a stone floor slab over the lawn (the room's lawn noise came up through a walk-in's own floor), the sarcophagus on a dais on a square's
+  middle, burial niches in two tiers down both side walls between pilasters on the square lines (some sealed with a slab), the demon in a dim
+  green recess, an iron ring of eight candles, candelabra, a coffin and an open coffin on squares' middles, urns, skulls, cobwebs, a chain, two
+  bats, grave lights on the pilasters, and a lit vault (a walk-in's own ceiling draws black: a thin stone deck with `glow: 0.3` under it).
+- THE TREEHOUSE's deck: a telescope, a crate, a rocking chair in the hut.
+
+### PASS 3, THE DRESSING (seen in the cloud browser)
+- THIRTEEN LAMP POSTS, drawn (`lampPost(sx, sy, side)` in H.js: an iron post at a walk's edge against the corn, the lantern out over the walk): the
+  Drive, the cross path, the gazebo's path, the Lawn's walk. No collision needed: they hug the bank.
+- The house's grounds: the porch's rocking chair and crate, a cauldron and crates in the back yard, a small grave under a wooden cross, six bats
+  round the tower, crows on the ridge and a bay's gable. The Lawn: a swing, urns, stepping stones to the fountain. The gate's round: a bench, an
+  urn, pumpkins. The gazebo: a bench and candles inside. Both graveyards: slabs between the stones, more graves on the far rows, stone crosses,
+  stepping stones down each aisle, crows on the wall, bats.
+- TWO SIGNS (`a.sign`): `REQUIESCAT IN PACE` carved on the Crypt's frieze (font `cinzel`), a `KEEP OUT` board on the gate's pier read from the corn
+  track (font `fell`). No made-up names anywhere.
+- `plan()` also opens square (8, 66): the corn's bank cut across the Crypt's portico.
+
+### PASS 4, THE ATMOSPHERE (seen in the cloud browser, day and night)
+- **THE AIR BY DISTRICT (bake-estate.js, one shared change, noted on the board):** a district file may export `airZones()` = [{ sx0, sy0, sx1, sy1
+  (its own squares, the end exclusive), kind, color, n, speed, wind }]; the tool writes `shell.atmos.zones` (the Woods' and the Desert's way). With
+  no zone from any file the shell line is byte for byte what it was. With one, the zone's own air (HQ_ATMOS_SITES.prebuilt_skinwalker: fireflies
+  160) is kept as a last zone over the whole room. H: grave-light motes (`0x9fffc8`, 110) over the Crypt and both graveyards, a slow grey dust
+  (130) round the house, the lawn and the gazebo; the gate, the treehouse and the Drive keep the fireflies.
+- **THE LIGHTS:** a room has ten real prop lights for all four districts, given in row order (the districts' `dress` runs C, L, H, R). H keeps
+  three (the two torches at the house's walk, one in the Graveyard); every other torch, the brazier and the fountain carry `noLight` and only
+  glow. Lamps, lanterns and windows are drawn glow.
+- **NIGHT:** seen with the probe's clock (`"eval": "window._hqClockHour=function(){return 22.0}"` + `"settle": 3000` on a view; later views stay at
+  night): lit windows, lamps and torches carry the district; the sky is the tool's.
+- **NO SOUND:** a walked room has no per-district sound bed (the Desert's Western Town found the same); nothing was added.
+
+### PASS 5, THE POLISH: what is still open
+- The lamps' and grave lights' glass is a plain lit box (pale at `glow: 0.7`): a lantern model would do better (the NEEDS A MODEL list in H.js).
+- The Graveyard's ground is one bare dirt sheet (the paint is the tool's: `p` squares are `dirt_2`); grass between the rows needs a paint rule.
+- The door row's own leaf surround shows as a thin strip inside the vestibule's doorway; the door row is the tool's.
+- The people stand on spots with no lines but the ghost's and the ghoul's (lines are mondo's to give).
+- `hw_web` never seen standing; `psx_wooden_crate_3` drew as a blank box in the probe (the `_4` and `_6` crates are fine); `lion_statue` is a
+  tawny lion, not stone (not placed).
+
 ## THE ESTATE, THE ZONE KIT (2026-11-16, written by the pilot district H; for the three district threads that follow)
 
 Read this before dressing C, L or R. It grows with each of H's passes.
@@ -5254,6 +5294,18 @@ Read this before dressing C, L or R. It grows with each of H's passes.
 - **DRAWN PIECES HAVE NO COLLISION:** an `arch` / `look` is seen only. Give it `blk()` walls or stand it on squares nobody walks.
 - **PROBING:** a view needs its own `y` (the compiled ground: `hqTerrainHeight(hqTerrainInfo(room), x, z)`); first person (`fp: true`) with a
   small upward pitch shows a building best; one run of 13 views takes about 3 minutes.
+- **A ROW'S `y`:** under 1 m it is a lift over the ground; 1 m and over it is a HEIGHT over the room's level 0. So a thing hung in the air or on
+  a wall carries its plot's ground: level x 1.75 m + the height you want (a cobweb at `y: 2.8` on a level-2 plot lies on the floor).
+- **A PROP INSIDE A WALK-IN** carries `floor: true` (else, near a wall, it stands on the wall's top). Lay a floor slab part over the lawn inside.
+- **THE LIGHT BUDGET:** ten real prop lights for the whole room, in row order (C, L, H, R). H takes three. Suggested share: C 2, L 2, H 3, R 3;
+  every other `cave_torch` / `brazier` / `fountain` / `campfire` / `candle_ring` gets `noLight: true` (it still glows).
+- **THE AIR:** export `airZones()` from your file (PASS 4 above). Kinds: dust, embers, fireflies, snow, rain, spores, ash, motes.
+- **SIGNS:** `a.sign(words, x, y, z, w, h, ink, ground, font, { ry })` in a building's or a look's parts; fonts used here: `cinzel` (carved
+  stone), `fell` (old painted boards). Plain words only, never a made-up name.
+- **LAMP POSTS:** copy `lampPost(sx, sy, side)` from H.js `dress` (side = the walk's edge the post stands on: W, E, N, S). It wants to move into
+  the tool as `ctx.lampPost` once a second district uses it (board note first).
+- **NIGHT IN A PROBE:** `"eval": "window._hqClockHour=function(){return 22.0}"` + `"settle": 3000` on one view.
+- **KNOWN BAD PIECES:** `hw_web` (unseen since its fix), `psx_wooden_crate_3` (blank box), `lion_statue` (a tawny lion, not stone).
 - **STILL MISSING ZONE-WIDE:** corn stalks (Meshy, waits), a lamp post model, night never seen on screen, no residents with routines, lines for
   most of the people.
 
