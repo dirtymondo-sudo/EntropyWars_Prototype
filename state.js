@@ -66,7 +66,7 @@
             // CHAMP REWORK Phase 4 (2026-09-07): the §5.1 batch — DoTs
             // (haunted, corroded), regen buffs (stoneform, blessed), the
             // control / link / marker rows and the stance carriers.
-            'haunted','corroded','grievous','feared','possessed','infected','stoneform',
+            'haunted','corroded','radioactive','grievous','feared','possessed','infected','stoneform',
             'soulBound','voodoo','shadowRealm','tethered','incendiary','sparkling',
             'levitating','blessed','monster','extendedClips','carForm','mechaForm',
             // 2026-07-23 yeti rework: frozen (hard CC with thaw-outs), blind
@@ -5290,7 +5290,8 @@
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
                 if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '') + 'v' + ((typeof getUnitVisionRange === 'function') ? getUnitVisionRange(u) : 0)
-                    + (u._realmPartnerId && typeof shadowRealmKey === 'function' && shadowRealmKey(u) ? 'r' : '');
+                    + (u._realmPartnerId && typeof shadowRealmKey === 'function' && shadowRealmKey(u) ? 'r' : '')
+                    + (u.status && u.status.radioactive > 0 ? 'g' : '');   // ☢ a Radioactive unit glows through fog (map.js computeVisibleTiles)
             }
 
             if (state.wards) {
@@ -5317,7 +5318,8 @@
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
                 if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '') + 'v' + ((typeof getUnitVisionRange === 'function') ? getUnitVisionRange(u) : 0)
-                    + (u._realmPartnerId && typeof shadowRealmKey === 'function' && shadowRealmKey(u) ? 'r' : '');
+                    + (u._realmPartnerId && typeof shadowRealmKey === 'function' && shadowRealmKey(u) ? 'r' : '')
+                    + (u.status && u.status.radioactive > 0 ? 'g' : '');   // ☢ a Radioactive unit glows through fog (map.js computeVisibleTiles)
             }
             if (state.wards) {
                 for (const w of state.wards) key += '|w' + w.x + ',' + w.y + ':' + w.owner;

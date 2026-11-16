@@ -2802,10 +2802,12 @@
                 cost += ((unit.hp || 0) < (unit.maxHp || 0) ? 5 : 0);
             }
         } else if (terr === 'sludge') {
-            /* ☢ RADIOACTIVE SLUDGE (11-16): a turn ended in it gives CORRODED (data.js TERRAIN_RULES.sludge turnStatus), costed
-               like the bog's poison: the rounds it adds × Corroded's 44 a round */
-            const cs = (unit.status && unit.status.corroded) || 0;
-            if (cs < 2) cost += (2 - cs) * _ghHit(unit, 44, 'poison');
+            /* ☢ RADIOACTIVE SLUDGE (11-16): a turn ended in it adds a RADIOACTIVE stack (data.js STATUS_DEFS.radioactive: 20 a
+               stack a round, up to 3, one drains each round out of the sludge). Costed as the next round's tick at the new
+               stack count plus the extra it leaves to drain afterwards. */
+            const _rd = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS.radioactive) || { maxStacks: 3, dotPerStack: 20 };
+            const rs = Math.min(_rd.maxStacks || 3, ((unit.status && unit.status.radioactive) || 0) + 1);
+            cost += _ghHit(unit, (_rd.dotPerStack || 20) * rs, null) + (rs > 1 ? _ghHit(unit, (_rd.dotPerStack || 20) * (rs - 1), null) : 0);
         } else if (terr === 'plague_flesh') {
             const ps = (unit.status && unit.status.poison) || 0;
             if (unit.race !== 'necromancer' && ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');

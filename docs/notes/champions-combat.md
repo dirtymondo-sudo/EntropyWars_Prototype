@@ -5402,3 +5402,20 @@ of Poison; no race is immune by terrain, the status's own immunities apply; flye
 poison-element tile. Not in battle.js `_BOG_TERRAIN` (fire on it does nothing more: it already corrodes). Paintable in the map editor's Liquids tab.
 Where it is and how it looks: areas-complexes.md "THE SEWERS, DISTRICT R".
 
+
+## THE RADIOACTIVE STATUS (2026-11-16)
+mondo, on the Sewers' sludge liquid (the district R thread had it give Corroded): picked "Radiation: its own status" over
+keeping or renaming Corroded, named it **Radioactive**, and ruled "it counting for poison spell bonus damage is weird ... it
+needs its own bonus spells". Options paper: /mnt/project-files/proposals/SLUDGE_RADIATION_PROPOSALS_20261116.md.
+- data.js STATUS_DEFS.radioactive (☢️ RAD): the value is STACKS, not rounds (`stack: 'add'`, `maxStacks: 3`, `ownTick`).
+  battle.js applyStatusPayload adds each landing's stacks up to the cap; _tickAllStatusDurations skips `ownTick`; the
+  full-round hold skips it (_STATUS_HOLD_SKIP). onRoundEnd: `dotPerStack` 20 x stacks (DEF ignored, level-scaled), then one
+  stack drains unless the unit stands on the ground in sludge (battle.js `_unitInSludge`, window-exposed).
+- No countsAs: Poison / Burn payoffs do not pay on it. No spell gives or pays on it yet (proposed, waiting on mondo).
+- Water / rain do not touch it (no douse). A cleanse clears it like any debuff.
+- THE GLOW: map.js computeVisibleTiles `_addGlowingUnits` adds every Radioactive unit's square for every viewer (after the
+  smoke drop, solo path too); state.js fog caches key it ('g'); battle.js isUnitConcealedFrom: Radioactive cannot hide
+  (like Marked). Status rides the state-sync, so the guest computes the same glow locally.
+- TERRAIN_RULES.sludge turnStatus = { id: 'radioactive', duration: 1, stacks: true }: the tile card says "adds a stack (up
+  to 3)". ai.js aiHazardPenaltyAt prices the next tick at the new stack count plus the drain after.
+- Numbers (20 a stack, 3 stacks, drain 1) were the thread's proposal, shown to mondo before the build; his to change.

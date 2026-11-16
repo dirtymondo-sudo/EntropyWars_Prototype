@@ -3960,7 +3960,7 @@ function _HrlgRmbIcon() {
 const _HRLG_SB_COLORS = {
   // damage over time
   burn:'#e8590c',lava_burn:'#b33c00',poison:'#9b59b6',bleed:'#7a0010',
-  corroded:'#a4d43a',infected:'#7fb84a',incendiary:'#ff8040',
+  corroded:'#a4d43a',radioactive:'#a6ff2a',infected:'#7fb84a',incendiary:'#ff8040',
   // control
   silence:'#5d6dbe',stun:'#f39c12',stagger:'#e67e22',root:'#8b5a2b',
   frozen:'#7fd7ff',blind:'#4b6584',charm:'#e84393',taunt:'#ff8a50',
