@@ -63184,6 +63184,163 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     SPELL_MAP['raceAncientMagic'] = { impact: 'f4Ancient_impact' };
 
+    /* ════ THE TECH CEO (2026-11-16, the new races' polish thread; mondo: "unique fun strategic playstyles"): the three takeover casts
+       had no look at all, only a floating word. Each one now shows WHOSE the thing was and whose it is now, in Riot's side colours
+       from the viewer's own seat (his side cyan-blue, the other side pink-orange): a seen-from-the-enemy Acquisition goes cyan to
+       pink, so the player losing the coil reads it at once. battle.js _ceoCast fires one 'aura' a cast (relayed; the guest finds
+       the CEO's side from the body at sx, sy). Never covers a body: everything stays on the floor or flies low and small.
+       · Acquisition: a signed contract flies from the CEO to the square; the old side's ring snaps shut and his side's opens,
+         with a short column of his colour.
+       · Disrupt: every square of the 3×3 glitches between the two colours, a scan bar sweeps it, then it settles in his.
+       · Layoffs: each scrapped asset becomes a cardboard box that flies back to him; blue MP motes land on his body. ════ */
+    var _CEO_ALLY = [0x1deeff, 0x1d63ff], _CEO_ENEMY = [0xfd1674, 0xf9590f];
+    function _ceoSides(p) {
+        var vp = 1, cp = null;
+        try { vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : ((window._NET && window._NET.online && window._NET.myPlayer) || 1); } catch (e) {}
+        try {
+            var st = (typeof state !== 'undefined' && state) ? state : (window.GAME && window.GAME.state);
+            var us = (st && st.units) || [];
+            for (var i = 0; i < us.length; i++) { var u = us[i]; if (u && !u.dead && u.x === p.sx && u.y === p.sy) { cp = u.player; break; } }
+        } catch (e) {}
+        var mine = cp == null ? true : cp === vp;
+        return { mine: mine, now: mine ? _CEO_ALLY : _CEO_ENEMY, was: mine ? _CEO_ENEMY : _CEO_ALLY };
+    }
+    function _ceoContractTex() {
+        return _pzTex('ceo-contract', 96, 128, function (g, w, h) {
+            g.fillStyle = '#f6f3ea'; g.fillRect(0, 0, w, h);
+            g.strokeStyle = '#1b1d24'; g.lineWidth = 3; g.strokeRect(2, 2, w - 4, h - 4);
+            g.fillStyle = '#1b1d24'; g.font = 'bold 15px sans-serif'; g.textAlign = 'center'; g.fillText('ACQUIRED', w / 2, 22);
+            g.fillStyle = 'rgba(27,29,36,0.55)';
+            for (var i = 0; i < 6; i++) g.fillRect(12, 34 + i * 11, w - 24 - (i % 3) * 10, 3);
+            g.strokeStyle = '#1b1d24'; g.lineWidth = 2; g.beginPath(); g.moveTo(14, 112); g.bezierCurveTo(30, 96, 40, 122, 56, 104); g.stroke();
+            g.fillStyle = '#d8a84a'; g.beginPath(); g.arc(w - 22, 106, 13, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#9a6e1e'; g.beginPath(); g.arc(w - 22, 106, 7, 0, Math.PI * 2); g.fill();
+        });
+    }
+    function _ceoBoxTex() {
+        return _pzTex('ceo-box', 64, 64, function (g, w, h) {
+            g.fillStyle = '#b98a52'; g.fillRect(0, 0, w, h);
+            g.fillStyle = 'rgba(90,60,30,0.25)'; for (var i = 0; i < 10; i++) g.fillRect(0, i * 7, w, 2);
+            g.fillStyle = '#d9c9a0'; g.fillRect(w / 2 - 5, 0, 10, h);
+            g.strokeStyle = 'rgba(70,45,20,0.8)'; g.lineWidth = 3; g.strokeRect(1, 1, w - 2, h - 2);
+        });
+    }
+    function _ceoTileRing(F, x, y, color, parent) {
+        var wp = _worldPos(x, y), ts = F.ts;
+        var m = _pzMesh(new THREE.RingGeometry(ts * 0.56, ts * 0.7, 4, 1, Math.PI / 4), _pzGlow(color), parent || F.g, wp.x - F.wp.x, wp.y - F.wp.y + ts * 0.03, wp.z - F.wp.z);
+        m.rotation.x = -Math.PI / 2;
+        return m;
+    }
+    function _ceoOff() { return _catOff('spells'); }
+    _PZ_SIGS.ceoAcquire = function (p) {
+        if (_ceoOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('ceoAcq', 400)) return;
+        var S = _ceoSides(p), from = (p.sx != null) ? { x: p.sx, y: p.sy } : _pzFrom(tx, ty, p), seenT = _pzSeen(tx, ty), seenC = _pzSeen(from.x, from.y);
+        var fly = Math.max(260, Math.min(520, 90 * (Math.abs(tx - from.x) + Math.abs(ty - from.y))));
+        /* the contract leaves his hand: a paper card turning end over end, his colour trailing */
+        if (seenC || seenT) {
+            var card = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), _pzSolid(0xffffff, _ceoContractTex(), { side: THREE.DoubleSide }));
+            var ts0 = _worldPos(tx, ty).ts; card.scale.set(ts0 * 0.42, ts0 * 0.56, 1); card.material.opacity = 1; card.renderOrder = 160;
+            _pzFly(from.x, from.y, tx, ty, card, { ms: fly, arc: 0.25, h0: ts0 * 0.9, h1: ts0 * 0.35, tail: 140, hideOnLand: true,
+                spin: function (el, o, t) { o.rotation.z = t * Math.PI * 3; },
+                trail: { sprite: 'spark', tint: S.now[0], every: 26, size: 9 } });
+        }
+        if (!seenT) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, oldR = _ceoTileRing(F, tx, ty, S.was[0]), newR = _ceoTileRing(F, tx, ty, S.now[0]);
+        var col = _pzMesh(new THREE.CylinderGeometry(ts * 0.36, ts * 0.42, ts * 1.4, 4, 1, true), _pzGlow(S.now[1]), F.g, 0, ts * 0.7, 0); col.rotation.y = Math.PI / 4;
+        var fill = _pzMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), _pzGlow(S.now[0]), F.g, 0, ts * 0.02, 0); fill.rotation.x = -Math.PI / 2;
+        var hit = false;
+        _sigRunOwned(F.g, fly + 1100, function (el) {
+            var e = el - fly;
+            /* before the card lands the old owner's ring breathes on the square, so the eye finds what is being bought */
+            oldR.material.opacity = e < 0 ? 0.8 * _sigClamp01(el / 120) : 0.8 * (1 - _sigClamp01(e / 180));
+            oldR.scale.setScalar(e < 0 ? 1 + 0.05 * Math.sin(el * 0.03) : Math.max(0.05, 1 - _sigEaseInCubic(_sigClamp01(e / 180))));
+            var o = _sigEaseOutBack(_sigClamp01((e - 120) / 300));
+            newR.scale.setScalar(Math.max(0.01, o)); newR.material.opacity = e < 120 ? 0 : 0.95 * (1 - _sigClamp01((e - 760) / 340));
+            col.scale.set(1, Math.max(0.01, _sigEaseOutCubic(_sigClamp01((e - 100) / 220))), 1); col.position.y = ts * 0.7 * col.scale.y;
+            col.material.opacity = e < 100 ? 0 : 0.6 * (1 - _sigClamp01((e - 320) / 420));
+            fill.material.opacity = e < 100 ? 0 : 0.5 * (1 - _sigClamp01((e - 200) / 800));
+            if (!hit && e >= 100) { hit = true; _sigSparks(tx, ty, 'spark', 12, { z: ts * 0.3, vxy: 150, tint: S.now[0], vz0: 80, vz1: 260 }); }
+        });
+    };
+    _PZ_SIGS.ceoDisrupt = function (p) {
+        if (_ceoOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('ceoDis', 400)) return;
+        var S = _ceoSides(p), tiles = (Array.isArray(p.tiles) && p.tiles.length) ? p.tiles : [{ x: tx, y: ty }];
+        if (!tiles.some(function (t) { return _pzSeen(t.x, t.y); })) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cells = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var t = tiles[i]; if (!_pzSeen(t.x, t.y)) continue;
+            var wp = _worldPos(t.x, t.y), ox = wp.x - F.wp.x, oy = wp.y - F.wp.y + ts * 0.04, oz = wp.z - F.wp.z;
+            var a = _pzMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), _pzGlow(S.was[0]), F.g, ox, oy, oz); a.rotation.x = -Math.PI / 2;
+            var b = _pzMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), _pzGlow(S.now[0]), F.g, ox, oy + 0.5, oz); b.rotation.x = -Math.PI / 2;
+            var rim = _ceoTileRing(F, t.x, t.y, S.now[1]);
+            var bits = [];
+            for (var k = 0; k < 3; k++) {
+                var q = _pzMesh(new THREE.BoxGeometry(ts * 0.16, ts * 0.16, ts * 0.16), _pzGlow(k % 2 ? S.now[0] : S.was[0]), F.g, ox + rn(-0.3, 0.3) * ts, oy, oz + rn(-0.3, 0.3) * ts);
+                bits.push({ m: q, x: q.position.x, z: q.position.z, vy: rn(0.9, 1.6) * ts, d: rn(0, 220) });
+            }
+            cells.push({ a: a, b: b, rim: rim, bits: bits, ox: ox, oz: oz, ph: rn(0, 6), seed: Math.floor(rn(0, 1000)) });
+        }
+        var R = (p.aoeRadius != null ? p.aoeRadius : 1) + 0.5;
+        var bar = _pzMesh(new THREE.PlaneGeometry(ts * 2 * R, ts * 0.16), _pzGlow(0xffffff), F.g, 0, ts * 0.12, 0); bar.rotation.x = -Math.PI / 2;
+        _sigShake('light');
+        _sigRunOwned(F.g, 1500, function (el) {
+            /* 0-520 ms the squares flicker between the two sides on a stepped clock (a glitch, not a fade); then his colour holds */
+            var step = Math.floor(el / 55);
+            for (var j = 0; j < cells.length; j++) {
+                var C = cells[j], glitch = el < 520, flip = ((step + C.seed) % 3) === 0;
+                var on = _pzEnv(el, 0, 60, 1000, 1500);
+                C.a.material.opacity = glitch ? (flip ? 0 : 0.6 * on) : 0;
+                C.b.material.opacity = glitch ? (flip ? 0.65 * on : 0.1 * on) : 0.45 * on;
+                var jx = glitch && flip ? rn(-0.06, 0.06) * ts : 0;
+                C.a.position.x = C.ox + jx; C.b.position.x = C.ox - jx;
+                C.rim.material.opacity = el < 520 ? 0 : 0.9 * on;
+                for (var k = 0; k < C.bits.length; k++) {
+                    var B = C.bits[k], tt = Math.max(0, el - B.d) / 1000;
+                    B.m.position.y = ts * 0.06 + B.vy * tt - ts * 2.2 * tt * tt;
+                    B.m.material.opacity = el < B.d ? 0 : 0.9 * (1 - _sigClamp01((el - B.d) / 650));
+                    B.m.rotation.set(tt * 6, tt * 4, 0);
+                }
+            }
+            var s = _sigClamp01((el - 120) / 520);
+            bar.position.z = ts * R * (2 * s - 1); bar.material.opacity = el < 120 || s >= 1 ? 0 : 0.7;
+        });
+    };
+    _PZ_SIGS.ceoLayoffs = function (p) {
+        if (_ceoOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('ceoLay', 400)) return;
+        var S = _ceoSides(p), tiles = Array.isArray(p.tiles) ? p.tiles.slice(0, 8) : [], last = 0;
+        tiles.forEach(function (t, i) {
+            if (!_pzSeen(t.x, t.y) && !_pzSeen(tx, ty)) return;
+            var wp = _worldPos(t.x, t.y), ts = wp.ts, d = i * 120, fly = Math.max(300, Math.min(600, 80 * (Math.abs(tx - t.x) + Math.abs(ty - t.y))));
+            last = Math.max(last, d + 260 + fly);
+            var box = new THREE.Group(), mat = _pzSolid(0xffffff, _ceoBoxTex()); mat.opacity = 1;
+            _pzMesh(new THREE.BoxGeometry(ts * 0.46, ts * 0.34, ts * 0.38), mat, box);
+            _fxDelay(function () {
+                if (_suppressed()) return;
+                if (_pzSeen(t.x, t.y)) {
+                    _sigShockRing3D(t.x, t.y, { color: S.now[0], r0: ts * 0.1, r1: ts * 0.55, ms: 300, torus: false });
+                    _sigSparks(t.x, t.y, 'spark', 6, { z: ts * 0.25, vxy: 120, tint: S.now[1], vz0: 60, vz1: 200 });
+                }
+                _pzFly(t.x, t.y, tx, ty, box, { ms: fly, arc: 0.45, h0: ts * 0.3, h1: ts * 0.4, tail: 80, hideOnLand: true,   // lands at his chest, under the floating words
+                    spin: function (el, o, k) { o.rotation.y = k * 5; o.scale.setScalar(1 - 0.5 * k); },
+                    trail: { sprite: 'spark-blue', every: 34, size: 7 } });
+            }, d + 200);
+        });
+        if (!_pzSeen(tx, ty)) return;
+        /* the MP lands on him: blue motes rise off his body, then a ring of his side's colour */
+        _fxDelay(function () {
+            if (_suppressed()) return;
+            var ts = _worldPos(tx, ty).ts;
+            _sigSparks(tx, ty, 'spark-blue', 16, { z: ts * 0.1, vxy: 40, vz0: 120, vz1: 260, gravity: -60 });
+            _sigShockRing3D(tx, ty, { color: S.now[0], r0: ts * 0.2, r1: ts * 0.75, ms: 420 });
+        }, Math.max(500, last));
+    };
+    EFFECTS['ceoAcquisition_aura'] = _pzDef('ceoAcquire', { pzOwn: true, aoeRadius: 0 });
+    EFFECTS['ceoDisrupt_aura']     = _pzDef('ceoDisrupt', { pzOwn: true, aoeRadius: 1 });
+    EFFECTS['ceoLayoffs_aura']     = _pzDef('ceoLayoffs', { pzOwn: true, aoeRadius: 0 });
+    SPELL_MAP['nrAcquisition'] = { aura: 'ceoAcquisition_aura' };
+    SPELL_MAP['nrDisrupt']     = { aura: 'ceoDisrupt_aura' };
+    SPELL_MAP['nrLayoffs']     = { aura: 'ceoLayoffs_aura' };
+
     /* ════ FLAT EARTH — the disc itself (the ice wall round its rim) comes down flat out of the sky onto the target and
        the ground round it is pressed flat (a dust ring); it borrowed the bomb's explosion ════ */
     EFFECTS['f4FlatEarth_impact'] = _pzDef('f4FlatEarth', { shake: 'hard', layers: [

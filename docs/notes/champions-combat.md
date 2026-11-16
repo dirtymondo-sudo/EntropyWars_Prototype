@@ -5486,6 +5486,20 @@ mirrors, _visionWards, warpRunes; owner fields `ownerPlayer|owner|player` (numbe
 - Probe 11-16: the enemy's Tesla Coil acquired (owner 2 → 1), an empty square refused, the enemy Smoke Screen disrupted (2 → 1),
   Layoffs scrapped the coil for +50 MP; 0 page errors. Model `…/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb` + `tech_ceo.png`.
   Known: the turtleneck shows the Meshy texture-seam specks (as banker / politician / lifeguard).
+- THE CEO POLISH (2026-11-16, mondo: "work on their spell pools and spell vfx ... unique fun strategic playstyles, but still balanced";
+  thread cmsg_01XWpxyTn3nnw98znVzKdFjsFPgcTzJantoqmq4McVhjZG). The loop: lay a Tesla Coil (his T1 tree) or buy the enemy's things,
+  then Layoffs them for MP + a stage. Fixes, all inside his own kit:
+  - **Layoffs gives +1 INT stage** (was ATK): every damage spell in his pool (Blue Screen, Classified Weapon, Singularity) is magic and
+    his ATK is 50, so the ATK stage did nothing.
+  - **He only buys what his side can see** (battle.js `_ceoSeesTile`): Acquisition on a fogged square, or on an enemy trap nobody on his
+    team has found (`_revealedTo[player]`), reads "nothing the enemy owns stands on that square". Before, the free refusal was a probe
+    for hidden traps and fogged squares, and the CPU's `_ceoPlan` read rows it could not see. A bought trap stays known to the side
+    that set it (`_revealedTo[old owner]`). Quetzalcoatl's body rows (`serpentOf`) are not for sale.
+  - **Disrupt breaks enemy terrain**: a timed-terrain patch's owner changed nothing in play, so the enemy's patches in the 3×3 now go
+    back to the ground they were at once (`expiresRound = 0` + `_tickTimedTerrain`). Zones still change hands (their rims flip).
+  - VFX: spells-vfx.md "THE TECH CEO".
+  - Probe (VS CPU, 8×8 arena, viewer P1): hidden trap refused, found trap bought (owner 2 → 1, still seen by P2), fogged square refused,
+    coil bought, enemy zone taken (rim pink → cyan) + its swamp square back to grass, Layoffs ×3 +INT 1 / ATK 0; 0 page errors.
 
 ### 5. THE MAGICIAN (Disaster City, Entertainment, specialist, family `stagemagic`)
 The style: a hidden trick. **Sleight of Hand** (T1, self) sets STATUS_DEFS `trickSet` (3 rounds); the trick is `unit._trick`, in turn
