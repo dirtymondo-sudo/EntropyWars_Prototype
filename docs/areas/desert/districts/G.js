@@ -37,11 +37,18 @@
    - THE SPHINX: a real sculpted one (the parts-built one reads as blocks up close). A camel. Fallen casing blocks. A temple's columns (papyrus capitals).
 
    KNOWN MISSING OR WRONG:
-   - THE DIG's two trenches have no ramp (a 1 m step down): pass 3. THE CANYON MOUTH (P11-08) opens on sand: the canyon to Western Town was cut by the move.
+   - PASS 3 (dressing, 11-16): the Dig has an earth ramp into each trench, rope posts, planks, a finds table, a wagon; the causeway has a stone
+     kerb and a small pillared hall; the oasis has eleven palms, a well, reeds, a boat, flamingos, the cloth tent; braziers line the path to the
+     Tomb Door; rubble lies at the pyramids' feet; the Sand Sea half covers a giant foot, a boat, bones; seven more natives.
+   - PASS 4 (atmosphere, 11-16): `airZones()` (dust on the Sand Sea, round the pyramids and on the causeway; embers on the Tomb Door path; fireflies
+     over the oasis), a lit torch core on every door jamb and hall post, the capstone glows; seen at dusk and at night.
+   - The Robbers' Tunnel's link door stands as a bare slab on open sand (a rock mouth round it: pass 5). THE CANYON MOUTH (P11-08) opens on sand: the canyon to Western Town was cut by the move.
    - The pyramids are not climbed any more (the first build's walked tiers and stairs went with the true shape). No temple, no causeway paving beyond
      the layout's stone squares.
    - The room's scatter (the tool's: stones, snags) can land beside a pyramid's foot; the east and south edges show pine mountains (the tool's edges).
-   - The pyramid's inside: the Turning Tomb door was seen, not walked through: pass 2. The first views of a probe run in there come out black.
+   - The pyramid's inside (PASS 2, 11-16): the Turning Tomb door is WALKED (in, and back out to the King's Chamber). The King's Chamber has its north
+     wall, a granite lining under gold bands, treasure; torches in every passage. Still bare: the walls carry no carving (no hieroglyph sheet
+     exists), the floor sheet is grey. The first views of a probe run in there come out black.
    - Rows outside this file that must agree with it: `links.gobekli_giza.b`, `siteRooms.entry.prebuilt_giza` (the tool prints their places as "ends").
    - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS). The doors' frames are the engine's grey frame with a green lamp.
    - STONE: `bricks_1` under an arch part needs `gain` 2.7 to read as pale limestone in the sun (1.9 and under draws mud brown).
@@ -87,12 +94,14 @@ exports.ground = ctx => { bind(ctx);
         B(0, 0, r2(deep / 2 - 0.1), w, h, deep, undefined, { key: undefined, uv: undefined, gain: 1, tint: 0x0a0806 });                             // the dark
         B(-(w / 2 + 0.45), 0, r2(deep / 2 - 0.3), 0.9, h, deep, GRAN); B(w / 2 + 0.45, 0, r2(deep / 2 - 0.3), 0.9, h, deep, GRAN);                 // the jambs
         B(0, h, r2(deep / 2 - 0.3), w + 1.8, 0.55, deep, LIME);                                                                                     // the lintel
+        /* PASS 4: a torch on each jamb (a bracket + a lit core; no lamp: the room's ten lights are spent) */
+        for (const sd of [-1, 1]) { B(sd * (w / 2 + 0.45), 1.75, -0.2, 0.12, 0.5, 0.12, DARK, { key: undefined, uv: undefined, gain: 1 }); B(sd * (w / 2 + 0.45), 2.25, -0.2, 0.2, 0.32, 0.2, 0xffb040, { key: undefined, uv: undefined, gain: 1, glow: 1 }); }
         if (chevron) { const G = (sw, sh, dp, tint) => parts.push({ s: 'roof', form: 'gable', ry: n ? 90 : 0, p: n ? [lx, h + 0.55, r2(lz + dp)] : [r2(lx + dp), h + 0.55, lz], size: [1.4, sh, sw], key: 'bricks_1', tint, gain: GAIN, uv: [1.75, 1.75] });
             G(w + 1.8, 1.7, 0.42, LIME2); G(w - 0.2, 1.05, 0.3, GRAN); } }
     /* THE GREAT PYRAMID on four plots: 77 m at the foot (22 squares), 49 m to the tip of its gold capstone. Its three doors and Room 444's
        bay door stand in stone mouths at its foot. */
     { const cx = gx(84), cz = gx(84), G = pyramid('great', cx, cz, 77, { top: 44.2 });
-      G.parts.push({ s: 'roof', form: 'pyramid', p: [0, G.y, 0], size: [G.w, r2(G.w / 2 * SLOPE), G.w], key: 'gold', uv: 3.5, roof: true });                // the capstone, in the better gold
+      G.parts.push({ s: 'roof', form: 'pyramid', p: [0, G.y, 0], size: [G.w, r2(G.w / 2 * SLOPE), G.w], key: 'gold', uv: 3.5, roof: true, glow: 0.45 });                // the capstone, in the better gold
       mouth(G.parts, gc(87) - cx, -38.5, 'n', 2.6, 2.6, true);                                                                                    // the door `pyramid`
       mouth(G.parts, -38.5, gx(79) - cz, 'w', 3.4, 3.0, true);                                                                                    // Room 444's bay door (the Tomb Door)
       mouth(G.parts, -38.5, gc(81) - cz, 'w', 1.5, 2.3, false);                                                                                   // the door `tombside`, the turning stone
@@ -139,12 +148,70 @@ exports.ground = ctx => { bind(ctx);
     /* THE SAND SEA, the Robbers' Tunnel, the Tomb Door */
     P('sarcophagus', 54, 89, { face: 20, y: -0.3 }); dec('skull_pile', 62, 90); dec('skull', 50, 91); P('cave_stone', 66, 88, {}); P('cave_stone', 58, 92, {});
     dec('skull_pile', 92, 66); dec('paper_sheet', 91, 68, { y: 0.01 }); P('brazier', 71, 77, {}); P('brazier', 71, 80, {}); P('signpost', 70, 82, { face: 270 });
+    /* ════ PASS 3, THE DRESSING (2026-11-16): every plot gets a reason to be there. New lights are all `noLight` (the room has ten). ════ */
+    const NL = { noLight: true };
+    /* THE DIG: an earth ramp into each trench (they were a 1 m step down), rope posts round them, planks across, the finds table */
+    feat({ k: 'ramp', x0: gx(75), z0: gc(50), x1: gx(73), z1: gc(50), w: 3.5, h0: -1, h1: 0, edge: 0.3, key: 'dirt_2' });
+    feat({ k: 'ramp', x0: gx(80), z0: gc(56), x1: gx(82), z1: gc(56), w: 3.5, h0: -1, h1: 0, edge: 0.3, key: 'dirt_2' });
+    for (let i = 74; i <= 79; i += 1.25) { Pm('rope_stanchion', gx(i), gx(50) - 0.5, {}); Pm('rope_stanchion', gx(i), gx(51) + 0.5, {}); Pm('rope_stanchion', gx(i + 2), gx(56) - 0.5, {}); Pm('rope_stanchion', gx(i + 2), gx(57) + 0.5, {}); }
+    Pm('footbridge', gx(77), gc(50), { face: 90, y: 0.05 }); Pm('footbridge', gx(78), gc(56), { face: 90, y: 0.05 });
+    P('map_table', 79, 53, { face: 30 }); dec('folding_chair', 78, 54); dec('folding_chair', 80, 54); P('film_camera', 75, 54, { face: 60 });
+    dec('greek_amphora', 79, 52); dec('greek_amphora', 76, 53); dec('psx_wooden_crate_1', 77, 54); dec('psx_wooden_crate_3', 82, 57); dec('psx_wooden_crate_6', 74, 57); dec('hw_shovel', 76, 51); dec('hw_shovel', 79, 57);
+    dec('wooden_bucket', 77, 51); dec('wooden_bucket', 81, 55); dec('meshy_rope', 80, 51); dec('meshy_burlap_sack', 83, 53); dec('meshy_burlap_sack', 83, 54); dec('railway_lantern', 78, 55, NL); dec('skull', 77, 50, { y: -1 }); dec('femur', 79, 56, { y: -1 });
+    dec('greek_amphora', 75, 50, { y: -1 }); P('covered_wagon', 74, 59, { face: 90 }); P('horse_brown', 77, 59, { face: 270 }); dec('cot', 83, 51); dec('field_radio', 82, 54);
+    /* THE CANYON MOUTH + THE ROBBERS' TUNNEL: rock fall at the canyon's foot, the robbers' leavings by the tunnel */
+    [[88, 56, 'hw_stone_2'], [92, 57, 'hw_stone_4'], [89, 58, 'psxg_rock_3'], [93, 55, 'hw_stone'], [86, 57, 'psxg_rock_1'], [91, 59, 'hw_stone_5'], [87, 59, 'psxg_dead_bush_1'], [94, 58, 'psxg_dead_bush_2'], [85, 55, 'psxg_dead_bush_2']].forEach(q => dec(q[2], q[0], q[1]));
+    dec('crow', 88, 57, { y: 0.9 }); dec('crow', 92, 58); P('signpost', 89, 59, { face: 0 });
+    dec('psx_wooden_crate_2', 93, 67); dec('psx_wooden_crate_3', 93, 68); dec('meshy_rope', 92, 69); dec('hw_shovel', 90, 68); dec('money_sacks', 94, 67); dec('meshy_burlap_sack', 94, 70); dec('railway_lantern', 92, 67, NL); dec('wooden_bucket', 90, 70);
+    dec('psx_gold_bar_pcs_1', 93, 70); dec('greek_amphora', 89, 66); dec('hw_stone_3', 88, 64); dec('psxg_rock_2', 86, 62); dec('psxg_dead_bush_1', 87, 68);
+    /* THE CAUSEWAY: a low stone kerb either side of the paving, and a small pillared hall beside it in sight of the Sphinx (granite posts and
+       lintels, the valley temple's way of building: six posts on whole squares, beams over them, a paved floor) */
+    { const K = []; for (const x of [gx(53) - 0.3, gx(55) + 0.3]) for (const q of [[48, 53], [55, 76]]) K.push({ s: 'box', p: [r2(x), 0, gx((q[0] + q[1]) / 2)], size: [0.55, 0.38, r2((q[1] - q[0]) * C)], key: 'bricks_1', tint: LIME2, gain: GAIN, uv: [1.75, 1.75] });
+      feat({ k: 'arch', id: 'des:giza:kerb', x: 0, z: 0, y: 0, parts: K }); }
+    { const T = [], B = (x, y, z, w, h, d, tint) => T.push({ s: 'box', p: [r2(x), y, r2(z)], size: [w, h, d], key: 'bricks_1', tint, gain: GAIN, uv: [1.75, 1.75] });
+      for (const i of [56, 58]) for (const j of [49, 51]) { B(gc(i), 0, gc(j), 1.5, 4.4, 1.5, 0xb87a5c); ring(gc(i) - 0.8, gc(j) - 0.8, gc(i) + 0.8, gc(j) + 0.8, 4); setRect(i, j, i + 1, j + 1, 'B'); }
+      for (const j of [49, 51]) B(gx(57.5), 4.4, gc(j), 10.2, 0.9, 1.7, 0xb87a5c); for (const i of [56, 58]) B(gc(i), 5.3, gx(50.5), 1.7, 0.6, 10.2, LIME);
+      B(gx(57.5), 5.9, gx(50.5), 10.6, 0.35, 10.6, LIME2); B(gx(57.5), -0.02, gx(50.5), 11.2, 0.14, 11.2, LIME2);
+      for (const i of [56, 58]) for (const j of [49, 51]) { T.push({ s: 'box', p: [gc(i), 3.2, r2(gc(j) + (j === 49 ? 0.82 : -0.82))], size: [0.14, 0.45, 0.14], tint: DARK }, { s: 'box', p: [gc(i), 3.65, r2(gc(j) + (j === 49 ? 0.82 : -0.82))], size: [0.2, 0.3, 0.2], tint: 0xffb040, glow: 1 }); }   // PASS 4: a torch on each post
+      feat({ k: 'arch', id: 'des:giza:hall', x: 0, z: 0, y: 0, parts: T });
+      for (let j = 49; j <= 51; j++) for (let i = 56; i <= 58; i++) ctx.setPaint(i, j, 'bricks_1');
+      P('stone_altar', 57, 50, { face: 90 }); dec('item_censer', 57, 50, { y: 0.96 }); dec('greek_amphora', 57, 49); dec('greek_amphora', 57, 51); dec('cat', 58, 50); }
+    /* THE SPHINX's forecourt and THE OBELISKS */
+    dec('cat', 73, 51); dec('tomb_plaque', 73, 50); dec('hw_stone_2', 61, 49); dec('hw_stone_4', 68, 54, {}); dec('psxg_rock_4', 64, 48);
+    dec('tomb_plaque', 51, 64); dec('tomb_plaque', 56, 67); dec('hw_stone', 49, 66); dec('hw_stone_3', 58, 64); dec('greek_amphora', 53, 63); dec('greek_amphora', 54, 68); P('stone_altar', 53, 66, { face: 0 }); dec('crow', 50, 62, { y: 7 });
+    /* THE OASIS: more palms, the well, reeds at the bank, a boat pulled up, birds, a carpet camp and the old cloth tent */
+    [[48, 78, 4.9], [59, 75, 4.5], [52, 83, 5.1], [57, 73, 4.3], [49, 74, 4.7]].forEach(q => feat({ k: 'tree', x: gc(q[0]), z: gc(q[1]), kind: 'palm', h: q[2], r: 1.3 }));
+    P('ancient_well', 58, 77, {}); Pm('rowboat', gx(51), gx(82.3), { face: 30 }); for (const q of [[50.2, 77.2], [51.4, 80.6], [56.6, 80.4], [56.9, 76.6], [52.4, 75.3], [55.3, 82]]) Pm('ocean_seaweed', gx(q[0]), gx(q[1]), { face: Math.round(rnd() * 360) });
+    Pm('flamingo', gx(52.2), gx(76.4), { face: 120 }); Pm('flamingo', gx(55.6), gx(81), { face: 300 }); Pm('flamingo', gx(51.2), gx(79.6), { face: 60 }); Pm('meshy_frog', gx(56.4), gx(77.4), {});
+    P('fortune_teller_tent', 58, 82, { face: 315 }); Pm('psx_carpet_mp_1', gx(56.5), gx(84.3), { face: 20, y: 0.02 }); Pm('rug_round', gx(59), gx(80.2), { y: 0.02 }); dec('greek_amphora', 59, 83); dec('wooden_bucket', 57, 78); dec('cauldron', 56, 83); Pm('meshy_campfire_ring', gx(57.2), gx(83.2), NL);
+    P('horse_black', 49, 82, { face: 80 }); P('hitching_rail', 49, 83, { face: 0 });
+    /* THE TOMB DOOR: the path to it between braziers and plaques */
+    for (const i of [62, 65, 68]) { P('brazier', i, 76, NL); P('brazier', i, 79, NL); } dec('tomb_plaque', 63, 76); dec('tomb_plaque', 67, 79); dec('cat', 66, 78); dec('greek_amphora', 70, 76); dec('hw_stone_2', 64, 81); dec('skull', 66, 82);
+    /* rubble at the pyramids' feet (blocks that came down the faces) */
+    [[72, 75, 'hw_stone_5'], [71.6, 86, 'hw_stone_4'], [72, 90, 'ocean_rock_3'], [78, 72, 'hw_stone_2'], [92, 72, 'hw_stone_5'], [95.4, 80, 'hw_stone_3'], [95.4, 88, 'hw_stone_4'], [71.5, 68, 'hw_stone_2'], [71.5, 62, 'hw_stone_5'], [80, 59, 'hw_stone_3'], [84.4, 63, 'hw_stone'], [84.4, 69, 'hw_stone_4'],
+     [61.5, 63, 'hw_stone_2'], [69, 63, 'hw_stone_3'], [64, 68, 'hw_stone'], [60.5, 70, 'hw_stone_5'], [66.6, 71.6, 'psxg_rock_2']].forEach(q => Pm(q[2], gx(q[0]), gx(q[1]), { face: Math.round(rnd() * 360) }));
+    /* THE SAND SEA: what the dunes half cover */
+    P('meshy_giant_foot', 60, 90, { face: 40 }); Pm('rowboat', gx(52), gx(93), { face: 70, y: -0.25 }); P('dinosaur_skeleton', 66, 92, { face: 200, y: -0.35 }); P('obelisk', 56, 87, { h: 3.2, face: 30 }); Pm('sea_chest', gx(63.4), gx(87.5), { face: 140, y: -0.3 });
+    P('trap_coffin_wood', 50, 87, { face: 120, y: -0.15 }); dec('skull', 53, 90); dec('femur', 55, 90); dec('ulna', 61, 93); dec('skull_pile', 69, 94); dec('greek_amphora', 58, 89, { y: -0.3 }); dec('hw_stone_4', 64, 94); dec('psxg_dead_bush_1', 49, 94); dec('psxg_dead_bush_2', 67, 86); dec('psxg_dead_bush_1', 57, 95);
+    dec('crow', 60, 91, { y: 2.3 }); dec('anatomy_skeleton', 62, 88, { y: -0.6 });
+    /* more of the people who already live here (no new race, no new lines) */
+    native('skeleton', 64, 90, 300); native('mummy', 67, 73, 180); native('anubis', 74, 50, 90); native('skeleton', 91, 63, 200); native('mummy', 52, 68, 0); native('anubis', 60, 78, 270); native('djinn', 54, 73, 180);
     native('anubis', 76, 54, 200, sayOf(O_GIZA, 'anubis')); native('annunaki', 86, 70, 270, sayOf(O_GIZA, 'annunaki')); native('skeleton', 79, 55, 300, sayOf(O_GIZA, 'skeleton'));
     native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist')); native('mummy', 69, 80, 270); native('djinn', 55, 84, 0);
 };
 
 /* THE DESERT'S INSIDES (2026-11-15): the three ways into the Great Pyramid's inside. The entrance in the north face beside the North Stair, the
    slab beside the Tomb Door in the west face (Room 444's own door stays where it is), the Robbers' Cut (hidden) further north. */
+/* PASS 4, THE AIR (the tool's air hook; home squares): wind-blown dust over the Sand Sea and round the pyramids, a little on the causeway,
+   embers along the braziers to the Tomb Door, fireflies over the oasis */
+exports.airZones = () => [
+    { sx0: 48, sy0: 84, sx1: 72, sy1: 96, kind: 'dust', color: 0xf0d8a0, n: 220, speed: 1.0, wind: 1.9 },
+    { sx0: 72, sy0: 60, sx1: 96, sy1: 96, kind: 'dust', color: 0xe8d0a0, n: 130, speed: 0.8, wind: 1.3 },
+    { sx0: 48, sy0: 48, sx1: 72, sy1: 60, kind: 'dust', color: 0xe8d0a0, n: 80, wind: 1.1 },
+    { sx0: 60, sy0: 74, sx1: 72, sy1: 82, kind: 'embers', color: 0xffa040, n: 50 },
+    { sx0: 48, sy0: 72, sx1: 60, sy1: 84, kind: 'fireflies', color: 0xd8ff90, n: 45 },
+];
+
 exports.doors = ctx => { bind(ctx);
     const fx = r2(gx(73) - 0.45), nz = r2(gx(73) - 0.45);
     doors.push({ id: 'pyramid', wall: 'free', x: gc(87), z: nz, face: 0, leaf: 'leaf_frame_only', label: 'THE GREAT PYRAMID', sub: 'THE NORTH FACE · THE WAY IN', action: { room: 'site_prebuilt_giza_pyramid', at: 'north' },
@@ -216,13 +283,32 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       R.B('brazier', 6, 1, 0); R.dec('cave_torch', 7.75, 3.3, 0); R.dec('cave_torch', 9.5, 4.75, 0); R.dec('skull', 3.4, 2.6, 40); R.dec('cave_stone', 1.5, 2.3, 0); R.dec('psx_cobweb_2', 4.5, 2.2, 0, { y: L1 + 2.2 });
       R.dec('cave_torch', 0.4, 8.25, 0); R.dec('trap_sarcophagus_lid', 2.4, 8.7, 70);
       /* the Queen's Chamber */
-      R.B('stone_altar', 1, 5, 90); R.B('stone_urn', 1, 4, 0); R.B('stone_urn', 4, 4, 0); R.dec('brazier', 4.5, 6.5, 0); R.dec('item_heart_scales', 1.5, 5.5, 90, { y: L1 + 1.0 }); R.dec('psx_cobweb_4', 1.2, 4.2, 0, { y: L1 + 2.6 });
+      R.B('stone_altar', 1, 5, 90); R.B('greek_amphora', 1, 4, 0); R.B('greek_amphora', 4, 4, 0); R.dec('brazier', 4.5, 6.5, 0); R.dec('item_heart_scales', 1.5, 5.5, 90, { y: L1 + 1.0 }); R.dec('psx_cobweb_4', 1.2, 4.2, 0, { y: L1 + 2.6 });
       /* the Gallery's foot and head */
       R.dec('cave_torch', 10.25, 4.8, 0); R.dec('cave_torch', 4.4, 10.6, 0);                                                      // (nine lights in all: the Pit has one of them)
       /* the King's Chamber: the sarcophagus, the gold */
-      R.B('sarcophagus', 7, 12, 90); R.B('brazier', 5, 11, 0); R.B('brazier', 9, 11, 0); R.B('stone_urn', 5, 13, 0); R.dec('sea_chest', 9.4, 13.5, 200); R.dec('psx_gold_bar_pcs_1', 8.8, 13.6, 30); R.dec('skull', 6.4, 13.6, 100);
+      R.B('sarcophagus', 7, 12, 90); R.B('brazier', 5, 11, 0); R.B('brazier', 9, 11, 0); R.B('greek_amphora', 5, 13, 0); R.dec('sea_chest', 9.4, 13.5, 200); R.dec('psx_gold_bar_pcs_1', 8.8, 13.6, 30); R.dec('skull', 6.4, 13.6, 100);
       /* the Relieving Chambers */
       R.dec('skull_pile', 2, 13.4, 0); R.dec('paper_sheet', 3.4, 12.6, 30, { y: L3 + 0.01 }); R.dec('psx_cobweb_5', 1.3, 12.3, 0, { y: L3 + 1.6 });
+      /* PASS 2, THE INTERIORS (2026-11-16): what the first build left bare. The King's Chamber was open on its north side (a drop onto the
+         Pit's roof): it has its north wall now. Its walls are lined in red granite under a band of the better gold; two small obelisks flank the door
+         to the Turning Tomb; the gold lies about. Torches stand in every passage (`noLight`: the room's ten lights are spent; a torch's own
+         glow still draws). The urns with ferns in them are amphorae. */
+      R.wall('u', 11, 5, 10, { key: STONE, tint: 0xd8a888, base: L2, h: 5.6 });
+      { const GR = 0xe0aa8a, band = (u, v, w, d) => { R.box(u, v, L2, w, 5.6, d, STONE, GR, { uv: [3.5, 1.75], glow: 0.18 }); R.box(u, v, L2 + 3.3, w + (d < 0.2 ? 0 : 0.06), 0.32, d + (d < 0.2 ? 0.06 : 0), 'gold', null, { glow: 0.35 }); R.box(u, v, L2 + 0.9, w + (d < 0.2 ? 0 : 0.04), 0.1, d + (d < 0.2 ? 0.04 : 0), 'gold', null, { glow: 0.35 }); };
+        band(7.5, 13.95, 17.4, 0.08); band(7.5, 11.1, 17.4, 0.08); }
+      R.B('obelisk', 6, 13, 0, { h: 2.8 }); R.B('obelisk', 8, 13, 0, { h: 2.8 });
+      R.box(7.5, 11.2, L2, 17.4, 0.45, 0.8, STONE, 0xe0aa8a, { uv: [3.5, 1.75], glow: 0.18 });                                          // a granite bench along the north wall (it hides the floor's dark edge)
+      R.dec('money_sacks', 9.5, 12.5, 40); R.dec('psx_gold_bar_pcs_1', 9.1, 13.2, 80); R.dec('psx_gold_bar_pcs_1', 5.6, 12.4, 10); R.dec('psx_gold_bar_pcs_1', 6.5, 11.4, 140); R.dec('greek_amphora', 9.6, 11.5, 0); R.dec('item_censer', 8.4, 11.4, 0);
+      R.dec('trap_sarcophagus_lid', 8.3, 12.9, 100);
+      /* the Queen's Chamber: the feather beside the scales, a second sarcophagus, the cat */
+      R.dec('item_maat_feather', 1.5, 5.2, 30, { y: L1 + 1.0 }); R.B('sarcophagus', 3, 6, 0); R.dec('cat', 3.4, 4.5, 200); R.dec('greek_amphora', 2.5, 4.3, 0); R.dec('candleRing', 2.6, 5.4, 0, { noLight: true });
+      /* the entrance: two pillars and a plaque; the passages: torches, bones */
+      R.dec('psx_pillar_1', 6.25, 1.6, 0); R.dec('psx_pillar_1', 7.75, 1.6, 0); R.dec('tomb_plaque', 7.7, 0.5, 200);
+      for (const q of [[6.3, 3.6], [8.6, 2.4], [11.6, 3.4], [5.5, 5.5], [2.6, 7.5], [1.4, 2.6], [6.3, 6.6], [7.7, 8.2], [4.4, 9.4], [9.6, 10.6], [10.3, 12.6], [5.4, 11.4], [9.6, 13.6], [1.4, 13.5]]) R.dec('cave_torch', q[0], q[1], 0, { noLight: true });
+      R.dec('femur', 2.4, 2.6, 70); R.dec('skull', 5.2, 2.4, 10); R.dec('femur', 6.6, 9.6, 30); R.dec('ulna', 7.4, 10.5, 120); R.dec('psx_cobweb_1', 0.3, 2.2, 0, { y: L1 + 2.4 }); R.dec('psx_cobweb_2', 11.7, 2.3, 0, { y: L1 + 2.6 });
+      R.dec('bat_black', 6.2, 9.8, 0, { y: 3.6 }); R.dec('bat_brown', 8.2, 10.3, 90, { y: 3.9 }); R.dec('bat_grey', 4.8, 10.4, 200, { y: 3.3 });
+      R.dec('wall_chains', 9.9, 9.5, 270, { y: 2.0 }); R.dec('meshy_burlap_sack', 2.3, 13.5, 0); R.dec('femur', 3.6, 13.3, 50);
       R.who('mummy', 8.6, 12.4, 270); R.who('anubis', 6.4, 11.5, 135);
       R.doors.push(
           { id: 'north', wall: 'n', x: R.X(7), leaf: 'leaf_frame_only', label: 'GIZA', sub: 'THE NORTH FACE · THE WAY OUT', action: { room: 'site_prebuilt_area51_desert', at: 'pyramid' },
@@ -245,8 +331,8 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
             "label: 'GIZA · INSIDE THE GREAT PYRAMID',", "sub: 'THE DESCENT · THE PIT · THE QUEEN’S CHAMBER · THE GRAND GALLERY · THE KING’S CHAMBER',", "kind: 'box', site: 'prebuilt_giza', part: 'pyramid',",
             "shell: hqBunkerShell({ w: " + PY.W + ", d: " + PY.D + ", h: 18, wallH: 18, plate: { x: " + PY.spawn.x + ", z: " + r2(-PY.D / 2 + 1.2) + ", y: 6.2 },",
             "                       floor: 'bricks_1', wall: 'bricks_1', dado: 'bricks_1', ceiling: 'bricks_1',",
-            "                       floorColor: 0xc8b890, wallColor: 0xc8b890, dadoColor: 0xb8a880, ceilColor: 0x8a7a60,",
-            "                       mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, ambient: 0.8 }, fog: { color: 0x2a2014, density: 0.008 }, look: HQ_ROOM_LOOKS.plateau }),",
+            "                       floorColor: 0xf0d8a8, wallColor: 0xf0d8a8, dadoColor: 0xdcc090, ceilColor: 0xa89068,",
+            "                       mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, ambient: 0.95 }, fog: { color: 0x2a2014, density: 0.008 }, look: HQ_ROOM_LOOKS.plateau }),",
             "parti: 'Passages two squares wide cut through one mass of stone on three levels: down to the Pit, level to the Queen, up the Grand Gallery to the King.',",
         ], terrain: ["res: 0.4375, floor: 'bricks_1', cliff: 'bricks_1', path: 'bricks_1',", "noise: { amp: 0, scale: 5 }, crag: false,"] },
     ];

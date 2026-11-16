@@ -67,9 +67,12 @@
      Through probe-fast.js every leaf draws (Hangar 18: 13 door groups, 13 with a mesh; seen on screen). Nothing to fix in the door code.
    FOUND AND CLOSED (11-16): "the White Rooms crash the headless browser with the telepath in" was the old SwiftShader probe too. Through
      probe-fast.js (llvmpipe) the room loaded twice with him in, 20 pictures, no crash, and he draws. Nothing was changed for it.
+   THE MODEL LIST PASS (11-16): ~60 pieces the game already had are placed (the jet's tug and stairs, the moon landing set on the Dry Lake west,
+     silos in the fuel dump, cryo tubes + caskets in the lab, the lathe, the time machine in the stores, hospital and office pieces). `iso_tank`
+     is a cryo casket: it no longer stands in as a fuel tank. The list of what fits and is not placed: areas-complexes.md "THE ZONE KIT".
    NEVER USE: `steel_table` outside a lab (it carries a blood stain), `round_table` (Camelot's, four metres of oak).
    NEEDS A MODEL (none in the catalogue; nothing stands in for them): a boom gate arm (drawn from boxes today), a windsock, a jeep / humvee,
-     a helicopter, a radar antenna that turns, a flag on a pole, a missile cart / launch stand (the two missiles lie on the ground).
+     a helicopter, a radar antenna that turns, a flag on a pole, a missile cart / launch stand (the two missiles lie on the ground). Checked against MODEL_LIST.md 11-16: none of these is in it.
 
    THE HOOKS (bake-desert.js "THE DISTRICT FILES" has the whole list of what ctx holds; each hook is optional):
      buildings(ctx)  the walk-in / shut buildings: building(id, [sx0, sy0, sx1, sy1, side], h, opts, parts) -> a handle (at, face, cx, cz)
@@ -226,7 +229,9 @@ exports.furnish = ctx => { bind(ctx);
       for (const B of [BARR_A, BARR_B]) { hang(B, 'notice_board', 'f', 3.0, 1.5); hang(B, 'fire_extinguisher', 'f', -3.4, 1.0); hang(B, 'exit_sign', 'f', -0.87, 2.4); hang(B, 'hook_rail_long', 'l', 7.2, 1.6); hang(B, 'wall_clock', 'b', 0, 2.0); }
       hang(MESS, 'notice_board', 'l', 4, 1.5); hang(MESS, 'world_clocks', 'b', -6, 2.6); hang(MESS, 'exit_sign', 'f', -0.87, 2.5); hang(MESS, 'fire_extinguisher', 'r', 5, 1.0); hang(MESS, 'breaker_panel', 'r', -6.5, 1.5); hang(MESS, 'picture_round_a', 'l', -3, 1.9); hang(MESS, 'hook_rail_long', 'f', 5.6, 1.6);
       hang(RADAR, 'star_chart', 'l', -2, 1.7); hang(RADAR, 'breaker_panel', 'r', -2.6, 1.5); hang(RADAR, 'world_clocks', 'b', -1.75, 2.5); hang(RADAR, 'fire_extinguisher', 'f', 2.6, 1.0); hang(RADAR, 'keypad', 'f', -2.4, 1.3); }
-    put(RADAR, 'folding_chair', 2.4, 3.2, { face: 90 }); put(RADAR, 'cable_drum', -4.2, 4.0, { face: 20 }); 
+    put(POST, 'riot_gear_rack', -3.5, 1.75, { face: 90 }); put(POST, 'psx_walkie_talkie_1', -0.5, -1.5, { y: 0.78 }); put(POST, 'psx_keycard_1', 0.8, -1.4, { y: 0.78 }); put(POST, 'psx_potted_cactus_mp_1', 0.9, -1.8, { y: 0.78 });
+    put(RADAR, 'retro_control_panel', -3.5, 3.5, { face: 90 }); put(RADAR, 'reel_to_reel', 4.3, -1.6, { face: 270 }); put(BARR_B, 'psx_old_mattress_mp_1', 4.2, 2.6, { face: 80 }); put(MESS, 'psx_potted_cactus_mp_1', -5.2, -1.6, { y: 0.88 });
+    put(RADAR, 'folding_chair', 2.4, 3.2, { face: 90 }); put(RADAR, 'cable_drum', 1.2, -4.2, { face: 20 }); 
 };
 
 exports.ground = ctx => { bind(ctx);
@@ -239,7 +244,7 @@ exports.ground = ctx => { bind(ctx);
     /* THE APRON: the old flight line's trucks, the bus, the sandbags, the fire truck */
     Pm('car_truck', gc(15), gc(64), { face: 90 }); Pm('car_truck', gc(15), gc(67), { face: 90 }); Pm('car_truck', gc(15), gc(70), { face: 90 }); Pm('school_bus', gc(20), gc(72), { face: 0 }); Pm('fire_truck', gc(33), gc(72), { face: 90 });
     [[19, 64], [19, 68], [23, 64], [23, 68]].forEach(q => Pm('meshy_sandbags', gc(q[0]), gc(q[1]), { h: 1.6 })); P('bus_shelter', 22, 74, { face: 180 }); P('flood_mast', 13, 63, {}); P('flood_mast', 34, 63, {}); P('flood_mast', 13, 74, {}); P('flood_mast', 34, 74, {});
-    dec('traffic_cone', 25, 70); dec('traffic_cone', 27, 71); dec('cinder_block', 17, 73); P('iso_tank', 32, 65, {});
+    dec('traffic_cone', 25, 70); dec('traffic_cone', 27, 71); dec('cinder_block', 17, 73); P('air_compressor', 32, 65, {});
     /* THE TOWER: the old flight line's own tower rows (the base, the drum, the fire escape, the ladder, the rails, the mast), moved here whole */
     { const dx = gx(29.5) + 11.375, dz = gx(66) + 16.625, sh = f => { const o = JSON.parse(JSON.stringify(f));
           ['x', 'x0', 'x1'].forEach(k => { if (typeof o[k] === 'number') o[k] = r2(o[k] + dx); }); ['z', 'z0', 'z1'].forEach(k => { if (typeof o[k] === 'number') o[k] = r2(o[k] + dz); });
@@ -301,7 +306,7 @@ exports.ground = ctx => { bind(ctx);
     feat({ k: 'wall', x0: gc(36), z0: gc(63), x1: gc(44), z1: gc(63), h: 2.4, t: 0.8, key: CONC, tint: '#c8bca0' });
     /* THE FUEL DUMP: three tank containers in a concrete bund, its mouth at the south-east corner */
     [[gc(36), gc(56), gc(43), gc(56)], [gc(36), gc(56), gc(36), gc(59)], [gc(36), gc(59), gx(42), gc(59)], [gc(43), gc(56), gc(43), gx(60)]].forEach(q => feat({ k: 'wall', x0: q[0], z0: q[1], x1: q[2], z1: q[3], h: 1.1, t: 0.6, key: CONC, tint: '#c8bca0' }));
-    [38, 40, 42].forEach(x => Pm('iso_tank', gx(x), gx(58), {}));
+    [38.5, 41.5].forEach(x => Pm('ind_silo', gx(x), gx(58), {}));   // (THE MODEL LIST 11-16: `iso_tank` is a cryo casket, not a fuel tank; the pack's silo is)
     { const a = sheet(); a.box(0, 0, 0, 0.12, 2.6, 0.12, null, STEEL, { n: 2, step: [3.2, 0, 0] }); a.sign('FUEL · NO SMOKING · NO OPEN FLAME', 1.6, 1.7, 0.03, 3.2, 0.8, '#23262b', '#d8b020', 'stencil'); a.sign('FUEL · NO SMOKING · NO OPEN FLAME', 1.6, 1.7, -0.03, 3.2, 0.8, '#23262b', '#d8b020', 'stencil', { ry: 180 });
       feat({ k: 'arch', id: 'des:a51:fuel', x: gx(37.5), z: gc(60) + 1.2, parts: a.P }); }
     /* RUNWAY 33's concrete: the taxiway from the apron (the strip of sand between them was unpaved), the hangar's own apron as wide as its door,
@@ -350,6 +355,16 @@ exports.ground = ctx => { bind(ctx);
       feat({ k: 'arch', id: 'des:a51:lights', x: gx(2), z: gx(76), parts: a.P }); }
     /* the thing in the crater is still on: a pale green disc under it, on the dip's floor */
     feat({ k: 'arch', id: 'des:a51:craterglow', x: gx(40.5), z: gx(78.5), parts: [{ s: 'cyl', p: [0, 0.05, 0], r: 3.4, h: 0.04, seg: 24, tint: 0x3fae84, glow: 0.7 }] });
+    /* ── THE MODEL LIST (11-16, mondo: "look at the model list right now to see what else they could add"): pieces the game already had ── */
+    /* the flight line's own kit: the tug on the jet's nose, the boarding stairs at its side, a compressor, a welding cart, tyres, the seat that left it */
+    Pm('aircraft_tug', gx(23.6), gx(78), { face: 270 }); Pm('maintenance_stairs', gx(20), gx(76.6), { face: 180 }); dec('welding_cart', 21, 71); dec('tire_stack', 31, 73); dec('tire_stack', 30, 73); dec('meshy_ejection_seat', 24, 76);
+    dec('psx_jerrycan_1', 16, 65); dec('psx_jerrycan_1_1', 16, 68); dec('psx_jerrycan_1', 38, 61); dec('utility_box', 23, 62); dec('utility_box', 32, 61); P('power_pole', 12, 55, {}); P('power_pole', 32, 55, {});
+    dec('dog', 4, 56, { face: 0 }); dec('crow', 26, 53); dec('crow', 22, 51);
+    Pm('car_ambulance', gx(28), gc(87), { face: 90 });                                                                       // in the wing's yard
+    /* THE DRY LAKE, west: what the rings are for. The lander on its mark, the astronaut, the film lights and the chair (the camera was here already) */
+    Pm('lunar_lander', gx(6), gx(90), {}); Pm('astronaut', gx(6) + 3.2, gx(90) + 2.2, { face: 250 }); Pm('studio_light', gx(6) - 5.5, gx(90) + 4.5, { face: 60 }); Pm('studio_light', gx(6) + 5.5, gx(90) + 5, { face: 300 }); Pm('directors_chair', gx(6) - 2, gx(90) + 7.5, { face: 0 }); Pm('studio_camera', gx(6) + 1, gx(90) + 7.8, { face: 0 });
+    /* THE DRY LAKE, east + the crater: what came down with it */
+    P('satellite', 41, 87, { face: 40 }); P('hullplate', 37, 84, { face: 20 }); dec('mars_rover', 44, 86);
     native('men in black', 15, 85, 0); native('mad scientist', 37, 79, 90);
     native('men in black', 3, 57, 0, sayOf(O_GATE, 'men in black')); native('marksman', 7, 52, 270, sayOf(O_GATE, 'marksman')); native('men in black', 21, 73, 270, sayOf(O_LINE, 'men in black'));
     native('spy', 30, 62, 180); native('bligblog', 38, 82, 0); native('grey', 41, 74, 200);
@@ -453,7 +468,7 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       /* PARTS CAGE */
       R.B('psx_shelf_mp_2', 0, 4, 90); R.B('psx_shelf_mp_3', 0, 6, 90); R.B('wrapped_pallet', 2, 5, 0); R.dec('psx_supply_crate_1', 1.5, 6.5, 20); R.dec('cardboard_boxes', 3.3, 4.5, 60);
       /* FUEL STORE (the vent behind the tanks) */
-      R.B('iso_tank', 0, 7, 90); R.B('iso_tank', 0, 9, 90); R.B('gas_cylinder_rack', 2, 9, 0); R.dec('psx_metal_barrel_mp_2', 1.5, 7.4, 0); R.dec('psx_metal_barrel_mp_3', 2.4, 7.5, 0); R.dec('radiation_sign', 3.6, 9.5, 270, { y: 1.3 });
+      R.B('gas_cylinder_rack', 0, 7, 90); R.B('gas_cylinder_rack', 0, 9, 90); R.B('gas_cylinder_rack', 2, 9, 0); R.dec('psx_jerrycan_1', 1.4, 8.5, 20); R.dec('psx_jerrycan_1_1', 1.7, 8.8, 70);   // (the two `iso_tank`s were cryo caskets: they stand in the lab now) R.dec('psx_metal_barrel_mp_2', 1.5, 7.4, 0); R.dec('psx_metal_barrel_mp_3', 2.4, 7.5, 0); R.dec('radiation_sign', 3.6, 9.5, 270, { y: 1.3 });
       /* CRASH TENDER: the fire truck on two squares' width, nose out */
       R.props.push({ key: 'fire_truck', x: R.X(20), z: R.Z(2), face: 270 }); for (let u = 19; u < 22; u++) for (let v = 1; v < 3; v++) R.block[u + ',' + v] = 'fire_truck';
       R.B('hose_rack', 21, 0, 180); R.B('turnout_gear_rack', 19, 3, 0); R.dec('traffic_cone', 18.5, 0.5); R.dec('traffic_cone', 18.5, 3.5);
@@ -492,6 +507,14 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       hung(R, 'metal_shelving', 0.05, 5, 90, 0); hung(R, 'wall_shelf', 2, 0.05, 0, 1.5);
       for (const q of [[4.5, 1.5, 4.5, 10], [17.5, 1.5, 17.5, 10], [4.5, 1.5, 17.5, 1.5]]) R.box((q[0] + q[2]) / 2, (q[1] + q[3]) / 2, 0.012, Math.max(0.12, (q[2] - q[0]) * 3.5), 0.01, Math.max(0.12, (q[3] - q[1]) * 3.5), null, 0xd8b020);   // the yellow walkway lines down both sides and across the door end
       R.dec('psx_supply_crate_1_2', 7.5, 13.4, 20); R.dec('papers_b', 11.4, 12.4, 40, { y: 0.01 }); R.dec('cardboard_boxes', 9.5, 10.6, 10); R.dec('office_plant', 4.6, 13.5); R.dec('trash_bin', 12.5, 13.4); R.dec('cardboard_boxes', 21.4, 13.4, 30);
+      /* THE MODEL LIST (11-16): the lab's cryo tubes and the two caskets, a fume hood, glassware, a microscope; the shop's lathe, press and hoist;
+         the tug and the boarding stairs on the floor; the thing in the stores; the office's evidence board and tape deck; the racks in the lockers */
+      R.B('meshy_molten_cryo_tube', 13, 13, 90); R.B('meshy_molten_cryo_tube', 17, 11, 270); R.B('meshy_molten_cryo_tube', 13, 11, 90); R.B('iso_tank', 16, 13, 0); R.B('iso_tank', 14, 13, 0);
+      R.dec('fume_hood', 14.5, 10.25, 0); R.dec('lab_glassware', 17.4, 10.3, 270, { y: 0.78 }); R.dec('microscope', 17.5, 10.75, 270, { y: 0.78 }); R.dec('iv_stand', 14.3, 11.4); R.dec('anatomy_skeleton', 16.4, 10.3, 0);
+      R.B('metal_lathe', 1, 0, 0, { nu: 2 }); R.dec('drill_press', 3.5, 0.4, 0); R.dec('chain_hoist', 0.5, 2.2, 90); R.dec('welding_cart', 3.4, 3.5, 200); R.dec('tire_stack', 0.4, 0.5); hung(R, 'gauge_board', 2.6, 0.05, 0, 1.4);
+      R.B('aircraft_tug', 8, 1, 90); R.B('maintenance_stairs', 9, 5, 90); R.dec('air_compressor', 5.5, 8.5, 30); R.B('time_machine', 20, 6, 270); R.dec('meshy_ejection_seat', 16.5, 3.4, 200); R.dec('scba_rack', 18.4, 0.4, 0);
+      R.dec('evidence_board', 11.6, 13.7, 180); R.dec('reel_to_reel', 9.35, 11.6, 90); R.dec('photocopier', 12.5, 11.5, 270); R.dec('psx_potted_cactus_mp_1', 10.8, 11.3, 0, { y: 0.78 }); hung(R, 'mugshot_wall', 8.95, 11.5, 270, 0.4);
+      R.dec('riot_gear_rack', 2.5, 10.3, 0); R.dec('scba_rack', 1.5, 13.6, 180); R.dec('psx_keycard_1_authorization_level_3', 10.3, 11.6, 40, { y: 0.78 }); R.dec('psx_dosimeter_1', 17.3, 10.6, 0, { y: 0.78 });
       tidy(R, 'the hangar');
       R.doors.push(
           { id: 'white', wall: 'e', z: R.Z(12.5), leaf: 'leaf_hospital', label: 'THE WHITE ROOMS', sub: 'THE WING · PSYCHIATRIC · QUIET PLEASE', action: { room: 'site_prebuilt_area51_ward', at: 'hangar' },
@@ -557,7 +580,7 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       /* SHOWERS, SERVICE (the storm drain's grate) */
       R.B('shower_stall', 12, 8, 90); R.B('shower_stall', 13, 8, 180); R.dec('floor_drain', 13, 7.3); R.B('sink_row', 13, 6, 0); R.B('ind_vent', 15, 6, 270); R.dec('drain_grate', 15.3, 7.5); R.B('psx_metal_barrel_mp_1', 14, 8, 0); R.dec('pallet_jack', 14.7, 6.5, 200);
       /* DOCTOR: the office, the vent */
-      R.B('exec_desk', 14, 10, 180); R.dec('exec_chair', 14.5, 9.6, 180); R.B('chesterfield_sofa', 12, 11, 90); R.dec('library_shelf_full', 15.8, 11.3, 270);                // (it stood a square out from the wall, its back to the room) R.dec('banker_lamp', 14.3, 10.5, 0, { y: 0.78 }); R.dec('vent_grille', 14.5, 11.85, 180, { y: 2.2 }); R.dec('globe_lamp', 13.5, 9.4);
+      R.B('exec_desk', 14, 10, 180); R.dec('exec_chair', 14.5, 9.6, 180); R.B('therapy_chaise', 12, 11, 0);   /* (THE MODEL LIST: the game has the couch a psychiatrist has; a chesterfield stood here) */ R.dec('library_shelf_full', 15.8, 11.3, 270);                // (it stood a square out from the wall, its back to the room) R.dec('banker_lamp', 14.3, 10.5, 0, { y: 0.78 }); R.dec('vent_grille', 14.5, 11.85, 180, { y: 2.2 }); R.dec('globe_lamp', 13.5, 9.4);
       /* THE DAYROOM: the TV, the tables, the plant nobody waters */
       R.B('psx_tv_table_1', 11, 11, 270); R.dec('tube_tv', 11.5, 11.5, 270, { y: 0.55 }); R.B('curved_couch', 9, 11, 90); R.B('tulip_table', 6, 9, 0); R.B('tulip_table', 8, 9, 0);                                                              // (never `round_table`: that is Camelot's, four metres of oak)
       for (const q of [[6.5, 8.9, 0], [6.5, 10.1, 180], [5.9, 9.5, 90], [8.5, 10.1, 180], [9.1, 9.5, 270], [7.9, 9.5, 90]]) R.dec('molded_chair', q[0], q[1], q[2]);
@@ -578,6 +601,12 @@ exports.rooms = kit => { const { mk, r2, C, T, DW, DH, U, GLS, CHAIN, GRILL, STE
       hung(R, 'notice_board', 8.5, 11.95, 180, 1.5); hung(R, 'wall_clock', 6.5, 8.05, 0, 2.6); hung(R, 'picture_round_b', 5.05, 10, 90, 1.7); hung(R, 'picture_round_c', 9.5, 8.05, 0, 1.7); hung(R, 'hand_dryer', 12.05, 7.4, 90, 1.2); hung(R, 'hook_rail', 13, 8.95, 180, 1.6);
       R.dec('water_cooler', 11.6, 8.5, 270); R.dec('card_catalogue', 15.75, 1.2, 270); for (let i = 0; i < 6; i++) R.dec('filing_cabinet', 12.45 + i * 0.5, 0.3, 0); R.dec('cardboard_boxes', 12.5, 2.5, 30); R.dec('office_plant', 6.4, 2.6); R.dec('trash_bin', 5.5, 8.5);
       R.box(11.3, 4, 0.012, 0.12, 0.01, 27.3, null, 0x3a7cff); R.box(8.5, 7.5, 0.012, 22.4, 0.01, 0.12, null, 0x3a7cff); R.box(3.5, 4, 0.012, 0.12, 0.01, 27.3, null, 0xc82a20);   // blue down the lane and the cross hall, red down the cell row
+      /* THE MODEL LIST (11-16): a steel toilet in every cell, the frame everyone walks through at the yard gate, the drip and the skeleton in
+         Treatment, the tape deck and the copier in Records, pills on the station's desk, the laundry cart in Service */
+      for (let v = 0; v < 8; v++) R.dec('steel_toilet', 0.3, v + 0.78, 90);
+      R.dec('metal_detector', 11, 1.3, 0); R.dec('number_dispenser', 9.6, 0.4, 0); R.dec('iv_stand', 13.4, 4.4); R.dec('anatomy_skeleton', 12.5, 3.4, 90); R.dec('meshy_syringe', 15.4, 5.3, 30, { y: 0.78 }); R.dec('psx_pills_bottle_1', 15.6, 5.6, 0, { y: 0.78 });
+      R.dec('reel_to_reel', 12.4, 1.7, 90); R.dec('photocopier', 14.4, 2.5, 180); R.dec('microfiche_reader', 13.4, 2.6, 180, { y: 0.0 }); R.dec('psx_pills_bottle_2', 7.6, 5.3, 0, { y: 0.78 }); R.dec('psx_pills_packet_1', 7.3, 5.2, 50, { y: 0.78 }); R.dec('iv_stand', 9.4, 4.5);
+      R.B('laundry_cart', 15, 8, 0); R.dec('hospital_bed', 13.3, 5.4, 90); R.dec('psx_old_mattress_mp_1', 4.4, 0.5, 80);
       tidy(R, 'the white rooms');
       R.doors.push(
           { id: 'hangar', wall: 'e', z: R.Z(10.5), leaf: 'leaf_hospital', label: 'HANGAR 18', sub: 'BACK TO THE HANGAR', action: { room: 'site_prebuilt_area51_hangar', at: 'white' },

@@ -11345,7 +11345,7 @@
                 urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(58,58,64,0.5)',
                 wasteland:'rgba(140,120,80,0.35)', cave_entrance:'rgba(70,60,50,0.45)',
                 barrier_passage:'rgba(140,140,200,0.2)', cloud:'rgba(200,210,230,0.3)',
-                purple_grass:'rgba(120,60,140,0.4)', purple_bog:'rgba(100,50,120,0.45)', blood:'rgba(150,12,22,0.62)',
+                purple_grass:'rgba(120,60,140,0.4)', purple_bog:'rgba(100,50,120,0.45)', sludge:'rgba(166,255,42,0.6)', blood:'rgba(150,12,22,0.62)',
                 scorched:'rgba(60,50,40,0.45)', poison:'rgba(80,160,60,0.45)',
                 mushroom:'rgba(160,80,120,0.4)', obsidian:'rgba(40,35,50,0.5)',
                 well:'rgba(70,130,180,0.4)', road:'rgba(150,140,120,0.35)',
@@ -13061,7 +13061,7 @@
 
         function liquidFamilyOf(t) {
             if (t === 'water' || t === 'deep_water') return 'water';
-            if (t === 'poison' || t === 'poison_bog' || t === 'purple_bog') return 'poison';
+            if (t === 'poison' || t === 'poison_bog' || t === 'purple_bog' || t === 'sludge') return 'poison';   // sludge (11-16): the radioactive sludge runs like the bogs
             if (t === 'swamp' || t === 'oil') return 'oil';
             if (t === 'lava') return 'lava';
             if (t === 'blood') return 'blood';   // 🩸 THE BLOOD POOL (2026-10-21): Blood Rain's puddles
@@ -19022,6 +19022,8 @@
             'training_floor',
             // 2026-10-26 — append-only: the Blood Pool, paintable in the Liquids tab (data.js MF_TID mirrors it)
             'blood',
+            // 2026-11-16 — append-only: the radioactive sludge (data.js MF_TID mirrors it)
+            'sludge',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -19116,7 +19118,7 @@
             { label: 'Lava', keys: ['lava'] },
             /* 🧪 THE LIQUIDS (2026-10-26): every liquid that isn't water or lava, each in its own liquid sheet (sprites.js
                TERRAIN_SPRITES); the Blood Pool is paintable here too (ME_TERRAIN_IDS end) */
-            { label: 'Liquids', keys: ['poison','poison_bog','purple_bog','swamp','oil','blood'] },
+            { label: 'Liquids', keys: ['poison','poison_bog','purple_bog','sludge','swamp','oil','blood'] },
             { label: 'Mountain', keys: ['mountain','mountain_2','cliff'] },
             { label: 'Cave', keys: ['cave_floor','cave_wall','cave_entrance'] },
             { label: 'Foliage', keys: ['forest','forest_2','leaves','leaves_2','leaves_3','leaves_4','leaves_5','ruins'] },
