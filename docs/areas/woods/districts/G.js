@@ -44,7 +44,12 @@ module.exports = {
     wood: ['tree_2', 8, 0.03],
     /* THE TREE ZONES (terrain.gen.zones, the thicket by district) and THE AIR BY DISTRICT (shell.atmos.zones): boxes in plots, zoneOf(x0, y0, x1, y1) */
     treeZones: ctx => [Object.assign(ctx.zoneOf(3, 0, 6, 3), { kinds: ['tree_55', 'tree_55', 'tree_56', 'tree_6', 'tree_55'], treeH: [6.5, 9.5] })],           // dark spruce, a bare one among them
-    airZones: ctx => [Object.assign(ctx.zoneOf(3, 0, 6, 3), { kind: 'motes', color: 0xc8a8ff, n: 320 })],
+    /* PASS 4: the air by plot (boxes in metres, the district's violet motes last): fireflies over the Lake, warm sparks over the Fire and before the Owl,
+       pale spores on the Mound, ash under the Dead Tree. (No `embers` zone: that kind rises from EVERY fire prop in the room, other districts' too.) */
+    airZones: ctx => { const { gx } = ctx, B = (c0, r0, c1, r1, o) => Object.assign({ x0: gx(c0), z0: gx(r0), x1: gx(c1), z1: gx(r1) }, o);
+        return [B(52, 1, 68, 10, { kind: 'fireflies', n: 110 }), B(37, 25, 44, 32, { kind: 'motes', color: 0xff9a40, n: 46, speed: 1.6 }), B(64, 16, 70, 23, { kind: 'motes', color: 0xffb060, n: 40, speed: 1.4 }),
+            B(39, 2, 47, 10, { kind: 'spores', color: 0xc8ffe0, n: 50 }), B(63, 28, 70, 34, { kind: 'ash', n: 70 }),
+            Object.assign(ctx.zoneOf(3, 0, 6, 3), { kind: 'motes', color: 0xc8a8ff, n: 300 })]; },
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
@@ -280,5 +285,27 @@ module.exports = {
             sm('crow', gc(65), gc(29), { y: up(gc(65), gc(29), 1.2), floor: true, face: 30 }); sm('crow', gc(67) + 0.9, gc(32) + 0.7, { face: 220 }); sm('crow', gc(64) + 0.9, gc(32) - 0.5, { face: 80 }); }
           /* scatter, non-blockers only (a scatter row may land on a path): dead bushes and small mushrooms over the whole district (sow rows in build re-throw nobody) */
           ctx.sow('psxg_dead_bush_1', 16, [54, 18], 60); ctx.sow('psxg_dead_bush_2', 12, [54, 18], 60); ctx.sow('mushroom', 18, [54, 18], 60, { h: 0.35, r0: 0.2 }); }
+        /* ═══ PASS 4 · THE ATMOSPHERE ═══ (drawn glow only: the room's ten real lights are the old torches and fires; nothing here adds a light)
+           The air by plot is airZones above. Here: lantern posts along the trails, bulbs and paper lanterns on the Stage, the owl's eyes, candles afloat on the Lake. */
+        { const AMB = 0xffc070, byPlot = {}, inG = (cx, cy) => cx >= 36 && cx < 72 && cy >= 0 && cy < 36, at = (cx, cy) => inG(cx, cy) ? cell[cy][cx] : 't';
+          /* THE LANTERN POSTS: a post in the trees' edge beside a path, about one every four squares of wood edge, leaning its lamp over the path (never on a path square) */
+          let nPost = 0;
+          for (let cy = 1; cy < 35; cy++) for (let cx = 37; cx < 71; cx++) { if (at(cx, cy) !== 't' || (cx * 7 + cy * 13) % 4 !== 0) continue;
+              const d = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(q => at(cx + q[0], cy + q[1]) === 'p'); if (!d) continue;
+              const px = Math.floor(cx / 12), py = Math.floor(cy / 12), O = byPlot[px + ':' + py] || (byPlot[px + ':' + py] = { x: gx(px * 12 + 6), z: gx(py * 12 + 6), parts: [] }), parts = O.parts;   // one arch row a plot (a row is drawn by its own origin's distance)
+              const x = gc(cx) + d[0] * 1.35 - O.x, z = gc(cy) + d[1] * 1.35 - O.z, y = r2(ground(x + O.x, z + O.z));
+              parts.push(box(x, y - 0.2, z, 0.16, 3.1, 0.16, WD2, DARK), box(x + d[0] * 0.4, y + 2.74, z + d[1] * 0.4, d[0] ? 0.9 : 0.1, 0.1, d[1] ? 0.9 : 0.1, WD2, DARK),
+                  box(x + d[0] * 0.75, y + 2.36, z + d[1] * 0.75, 0.24, 0.34, 0.24, null, AMB, { glow: 1 }), box(x + d[0] * 0.75, y + 2.7, z + d[1] * 0.75, 0.3, 0.05, 0.3, WD2, DARK)); nPost++; }
+          ctx.count.gPosts = nPost;
+          Object.keys(byPlot).sort().forEach(k => features.push({ k: 'arch', id: 'woods:G:lanterns:' + k.replace(':', '-'), x: byPlot[k].x, z: byPlot[k].z, y: 0, parts: byPlot[k].parts })); }
+        { const q = centre('P04-01'), ox = gx(q[0]), oz = gx(q[1] - 1), y0 = r2(ground(ox, oz)), T = 1.75, H = 5.4;   // THE STAGE: a string of bulbs under the front beam, three paper lanterns in the shell
+          features.push({ k: 'arch', id: 'woods:G:stage:lights', x: ox, z: oz, y: y0, parts: [
+              box(-6.0, T + H - 0.48, 3.3, 0.14, 0.16, 0.14, null, 0xffd9a0, { glow: 1, n: 13, step: [1.0, 0, 0] }), box(0, T + H - 0.36, 3.3, 12.4, 0.03, 0.03, null, BLACK) ] });
+          [-3.4, 0, 3.4].forEach(dx => props.push({ key: 'paper_lantern', x: r2(ox + dx), z: r2(oz + 0.6), y: r2(y0 + T + H - 1.3), floor: true, noLight: true })); }
+        { const q = centre('P05-01'), ox = gx(q[0]), oz = gx(q[1]), y0 = r2(ground(ox, oz));   // THE OWL: its eyes burn (two small drawn glows; the statue's own stone is untouched)
+          features.push({ k: 'arch', id: 'woods:G:owl:eyes', x: ox, z: r2(oz - 1.0), y: y0, parts: [-0.6, 0.6].map(dx => box(dx, 1.75 + 8.3, 1.78, 0.34, 0.34, 0.1, null, 0xff8a20, { glow: 1 })) }); }   // measured on the model: the face's front is 1.8 m before the owl's middle at 10 m tall, the eyes 8.5 m up, 0.6 m off the middle (two tries seen first: inside the head, then on the brow)
+        { const bx = gx(61), bz = gc(5);   // THE LAKE: candles afloat round the effigy's boat and off the jetty's head
+          [[1.9, 1.2], [-1.6, 1.7], [2.6, -1.0], [-2.4, -1.3], [0.3, 2.6], [-0.4, -2.5], [4.2, 0.6], [-4.4, 0.4]].forEach(d => props.push({ key: 'candle', x: r2(bx + d[0]), z: r2(bz + d[1]), y: -0.28, noLight: true }));
+          [[1.6, -1.4], [2.4, 0.9], [3.4, -0.3]].forEach(d => props.push({ key: 'candle', x: r2(gx(57) + 1.75 + d[0]), z: r2(gc(6) + d[1]), y: -0.28, noLight: true })); }
     },
 };
