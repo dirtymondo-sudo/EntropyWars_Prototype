@@ -11862,7 +11862,18 @@ const ThreeRenderer = (function () {
        row-0 square: across both body squares, its head toward him (toward row 0 from row 1), ~2.3 squares long. Row 1 draws an
        empty group so the plain wall marker never shows. null while the file streams. */
     var _NP_SERPENT_URL = 'https://cdn.entropywars.net/Assets/characters/races/aztec/feathered_serpent.glb';
-    function _buildSerpentBody3D(x, y) {
+    /* THE RIOT PASS on the body (the Quetzalcoatl pass, 2026-11-16): each body square is ringed in its side's colours from the
+       viewer's seat (yours cyan-blue, the other side's pink-orange), so a wall of serpent reads as friend or foe at a glance */
+    function _buildSerpentBody3D(x, y, ownerPlayer) {
+        var g = _buildSerpentBodyModel3D(x, y);
+        var ramp = g ? _rvTeamRim(ownerPlayer) : null;
+        if (!ramp) return g;
+        var outer = new THREE.Group(), rim = _rvTrapRim(x, y, ramp);
+        rim._ew_groundDecal = true;
+        outer.add(g); outer.add(rim);
+        return outer;
+    }
+    function _buildSerpentBodyModel3D(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var segs = (state._deployedObjects || []).filter(function (o) { return o && o.spellId === 'nrFeatheredSerpent' && o.hp > 0; });
         var me = null;
@@ -14907,6 +14918,7 @@ const ThreeRenderer = (function () {
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
             if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
+            if (u.status && u.status.submerged > 0) h = _hashInt(h, 31);   // 🐊 going under / surfacing re-seats the body (_submergedSink)
         }
         h = _hashVal(h, state.selectedUnitId || '');
         h = _hashStr(h, state.nametagMode || 'name');
@@ -15590,7 +15602,13 @@ const ThreeRenderer = (function () {
                     ? state.boardTerrain[unit.y][unit.x] : '';
 
         var tKey = (terrain || '').replace(/_\d+$/, '');
-        return SUBMERSION_DEPTH[tKey] || 0;
+        return _submergedSink(unit, SUBMERSION_DEPTH[tKey] || 0);
+    }
+    /* 🐊 SUBMERGED (2026-11-16, the Sewer Gator's Submerge): under the surface only its back and eyes show. Only its own side
+       ever draws it (the other side's renderer hides a concealed body), as the usual cloak ghost, now sunk to the eyes. */
+    var SUBMERGED_SINK = 0.32;   // under the tile's own wade depth (deep water 0.45 → 0.77)
+    function _submergedSink(unit, base) {
+        return (unit && unit.status && unit.status.submerged > 0) ? base + SUBMERGED_SINK : base;
     }
 
     function _getSubmersionForTile(tx, ty) {
@@ -15607,6 +15625,8 @@ const ThreeRenderer = (function () {
     function _updateSubmersionClip(ue, tx, ty, surfY, ts) {
         if (!ue || !ue.group) return;
         var depth = _getSubmersionForTile(tx, ty);
+        var _su = (ue.group._ew_unitId != null && _unitById) ? _unitById.get(ue.group._ew_unitId) : null;   // 🐊 a Submerged gator stays under
+        if (_su && _su.x === tx && _su.y === ty) depth = _submergedSink(_su, depth);
         var sink = depth * ts * UNIT_SPRITE_SIZE_RATIO;
         ue.group._ew_subSink = sink;
     }
@@ -38571,6 +38591,7 @@ const ThreeRenderer = (function () {
         spaceship: 'Meshy_AI_spaceship_0727195825_texture.glb',
         clock:     'Meshy_AI_analog_clock_realist_0727195259_texture.glb',
         gclock:    'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',
+        bank_cash: 'psxmp/items_and_weapons/cash_1.glb',   // THE BANKER SIGNATURES (2026-11-16): the PSX Mega Pack's banded stack of dollar bills (Line of Credit, Foreclose, the bad loan)
         skateboard: 'Meshy_AI_a_skateboard_0915212313_texture.glb',   // SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck under the rider — 1.0 long along X, 0.29 wide, 0.17 tall (the wheels down); MODEL_INDEX §3d
         /* THE 2026-09-22 BATCH (seventeen Meshy models on R2 Assets/misc/ — MODEL_INDEX §3q). Every one is placed through a
            DOOR_HQ.catalogue row (`base: 'misc'`, the file named there) — the keys here are the register and the board's own
@@ -39290,7 +39311,7 @@ const ThreeRenderer = (function () {
        never finds it gone) and its sheets capped at 1024. Returns one settle check per key (true once landed or failed). */
     /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (Assets/world/hq/models/:
        the lunar lander, which the Lunar Lander flies; the Mars rover): the room's own url, so a room that places it and a cast share one cache entry */
-    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1 };
+    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1, beach_life_ring: 1 };   // + THE LIFEGUARD's rescue ring (2026-11-16)
     function _spellCatUrl(key) {
         if (!_SPELL_CAT_KEYS[key] || typeof DOOR_HQ === 'undefined' || !DOOR_HQ.catalogue) return null;
         var cat = DOOR_HQ.catalogue[key];

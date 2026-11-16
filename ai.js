@@ -6425,6 +6425,23 @@
                 s += 30 * v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= _teR).length;
             }
             if (spell.spawnDecoy) s += 40;
+            /* 🛟 THE LIFEGUARD (2026-11-16): On Duty is worth the allies in her 4 that the next hits could kill; Three Whistles
+               (massRescue) the allies it would haul in (under hpPct, within radius), the lower the better — and 0 with
+               none, so the CPU never wastes it (the engine refuses that cast too). */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'onDuty')) {
+                const _odNear = g.aliveUnitsFor(unit.player).filter(a => a && a.id !== target.id && !a.dead
+                    && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 4);
+                let _odS = 0;
+                for (const a of _odNear) { const t = v.threatFn(a.x, a.y, a.z); if (t.totalDmg >= a.hp) _odS += 120; else if (t.totalDmg >= a.hp * 0.5) _odS += 40; else _odS += 10; }
+                s += _odS;
+            }
+            if (spell.massRescue) {
+                const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;
+                const _mrIn = g.aliveUnitsFor(unit.player).filter(a => a && a.id !== unit.id && !a.dead && a.maxHp > 0
+                    && a.hp / a.maxHp < _mrP && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= _mrR);
+                if (!_mrIn.length) return 0;
+                for (const a of _mrIn) s += 70 + 120 * (1 - a.hp / a.maxHp);
+            }
             // Buffs need a fight to matter.
             const threatened = v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 10);
             if (!threatened) s *= 0.25;

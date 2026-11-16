@@ -3813,3 +3813,68 @@ Rules: champions-combat.md "THE ASTRAL BODY".
 - THE RULE THAT CAME WITH IT (his pick on the card, "extras pay Entropy"): champions-combat.md "EVERY EXTRA SOURCE".
 - Seen on screen (real casts, Grave Chill): super effective, super effective + combo, combo on a resisted type, resisted
   only. Built but NOT seen on screen: basic attack crit, counter, the guest's view, Action Cam off, multi-target spells.
+
+## THE LIFEGUARD (2026-11-16, three-vfx-effects.js, before "THE SPACE PROPS")
+Her red-and-white ring is the Beach pack's lifebuoy (data.js catalogue `beach_life_ring`; three-renderer.js `_SPELL_CAT_KEYS` +
+the spell warm list `_SPELL_MISC_KEYS`); a striped torus in the same colours stands in while the file streams. Rings that tell the
+side follow THE RIOT PASS from the viewer's seat (cyan-blue yours, pink-red theirs); the buoy stays red and white.
+- Rescue Tube (`pull` intent, the battle.js rope stays): the buoy is thrown on an arc, drops over the ally's waist and rides in
+  with the body (it eases to the ally's board square from the yank on; the model group stays on the old square during a
+  displacement tween, so getUnitWorldPos left it behind); a splash at the bite.
+- On Duty (`aura`): three whistle rings at head height, the buoy held up, then the watch ring runs out to 4 squares.
+- CPR (`aura`): a red heart pumps three times on the chest (a ring each), the breath ring, then the green heal.
+- The save + every Three Whistles haul: `fireGeometry('nrOnDuty:save', x, y, 0, { fromX, fromY, owner, delay })` (relayed to the
+  guest by online.js): the buoy drops over the saved ally, a splash + side ring, one whistle ring from her.
+- Three Whistles: `fireGeometry('nrThreeWhistles:blow', …, radius)`: three big whistle rings + three floor rings to her reach.
+
+## THE MAGICIAN (2026-11-16, the new races; mondo: "work on their spell pools and spell vfx")
+Code: three-vfx-effects.js block "MAGICIAN" right after the Mime rows (same `pzSig` / `_pzDef` hook, helpers `_mg*`). Canvas
+textures (the stage deck's back, the ace of spades, a dove in two wing frames, the saw blade) + R2 terrain sheets (leather hat,
+wood crate, the better gold via `gold.png`). No screen flash. Every ring's colour = the Magician's SIDE from the viewer's seat
+(`_mgSide`: yours `#1deeff`, theirs `#fd1674`; gold with EW_NO_RIOT_VFX(_C)); the spell keeps stage purple / red / white / gold.
+- **Sleight of Hand** (aura on him): a white glove fans five face-down cards beside his shoulder, closes to one, turns it face down and
+  it goes up his sleeve; ring at 980 ms. The SAME look for every trick (the other side must not read the trick off the VFX).
+- **Pick a Card** (impact): a fan of face-down cards opens over the victim's head, one rises, turns over to the A♠ and comes down onto its chest.
+- **Saw in Half** (impact, the number): the cabinet's gold frame snaps up round the victim (panels 14 % so the body stays in
+  sight), the blade crosses at the waist from his side and passes the middle at 120 ms, a white cut line opens, the top slides.
+- The tricks springing (battle.js `_magicianFx` → `VFX3D.fire('impact', '_magic*', {tx, ty, owner})`, relayed as vfx3d and fog
+  gated on the guest by the square): `_magicDoves` (puff + nine flapping doves + feathers on the aimed square), `_magicVanishOut`
+  (puff + his top hat hanging in the air, spinning down, pop) / `_magicVanishIn` (sparkle column on the beat he reappears,
+  380 ms), `_magicBox` (a wood crate with gold edges takes the blow, shakes, its sides fall open on him) / `_magicPoof` (the
+  ally's side of the swap).
+
+## THE BANKER SIGNATURES (2026-11-16, thread "Polish Banker spells and VFX")
+mondo: "Work on their spell pools and spell vfx". three-vfx-effects.js block "THE BANKER SIGNATURES" (after the bligblog/spy
+block), the `pzSig` hook, helpers `_bk*`. Visuals only.
+- Line of Credit `aura` (the ally, as the loan lands): a gold IOU seal on the floor (reads upright from the lens), stacks of
+  dollar bills flutter down round the ally, green-gold sparks.
+- Short Sell `impact` (fires on the release, debuff path): a solid red stock chart draws itself over the foe's head (above the
+  nameplate) with a "▼ SHORT" tag, crashes, and an orange arrow drops into the body as Shorted lands (~600 ms). Solid, not
+  additive: additive red washed pale over grass.
+- Foreclose `bolt` (pzOwn, timed on flyMs): a gavel (wood + gilt sheets, no gavel model exists: MODEL_LIST §10 G11) rises up
+  and out to the SIDE of the victim across the lens (behind it, a high camera lost the raise), swings down on the hit, rests
+  40 ms, gone by +380 ms so the number reads; a red FORECLOSED stamp on the floor; bills fly out; a Shorted victim also spills
+  gold coins + a second red ring (the combo reads).
+- The settling, fired by the engine through ThreeVFXEffects.fire (relayed to the guest): `collect` (data.js debt onRemove: coins
+  hop borrower → banker, green-gold glow), `badLoan` (the borrower went down: bills fall round the banker and burn to ash),
+  `payout` (battle.js _settleBankOnDeath: a coin fountain + green arrow at the short-seller). Each draws only the ends the
+  viewer sees (_pzSeen).
+- Models: `bank_cash` = PSX Mega Pack `cash_1.glb` (three-renderer _MISC_GLB, warmed in _SPELL_MISC_KEYS; colour lifted ×1.6,
+  the dollar sheet is dark under the grade). The pack's coin_mp_1 is a dark bronze cut of the money sheet (read black): coins
+  are discs in the gilt sheet (`_bkCoin`).
+- Proof: shots in /mnt/project-files/banker-pass/ (a close camera with performance.now frozen at set delays, + a real VS CPU
+  cast of each spell). Probe scripts in the same folder.
+
+## THE TECH CEO (2026-11-16, the new races' polish thread cmsg_01XWpxyTn3nnw98znVzKdFjsFPgcTzJantoqmq4McVhjZG)
+Acquisition, Disrupt and Layoffs had no look, only a floating word. three-vfx-effects.js "THE TECH CEO" (`_PZ_SIGS.ceoAcquire / ceoDisrupt /
+ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura' a cast with `sx/sy` (the CEO) and `tiles`.
+- SIDE COLOURS from the viewer's own seat (Riot guide): his side cyan-blue, the other side pink-orange (`_ceoSides`: the CEO's side = the
+  body at sx, sy, so the guest works it out from the relayed params). What the enemy loses reads pink to them.
+- Acquisition: a paper contract (canvas card, ACQUIRED + a gold seal) flies end over end from him to the square; the old side's square
+  ring breathes, snaps shut on the landing, his side's ring opens with a short column + floor flash.
+- Disrupt: every square of the 3×3 glitches between the two colours on a stepped clock (55 ms), a white scan bar sweeps it, small cubes
+  spit up, then it settles in his colour with a rim on each square.
+- Layoffs: each scrapped asset pops a ring and becomes a cardboard box (canvas texture) that flies to his chest (under the floating
+  words), blue MP motes rise off him, then his side's ring.
+- Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
+
