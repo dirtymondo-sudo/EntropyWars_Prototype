@@ -163,3 +163,4 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `_hqTerrainTiles` cuts the field's tiles on a zone's line; a zone's tiles carry a second ground material) and `_hqEdgeLandFn` (`edges.n.back` without `land`); data.js
   `HQ_GROUND_RULES.paintMax` 16. The city's field is 741 x 869 nodes now (was 741 x 581): the strips under the land past the edge (west, south) are no longer meshed (THE DEAD STRIP). Numbers
   before / after: rendering-loading-perf.md "THE HILLS IN THE CITY'S ROOM".
+- 2026-11-16 (second, the Estate pilot thread, to everyone who places props): 27 new rows in data.js `HQ_CATALOGUE_HALLOWEEN` (the rest of the Halloween pack's own file: `hw_body*` corpses, `hw_part*` body parts, `hw_coffin*` + lids, `hw_candle*`, `hw_pier`, `hw_kerb`, `hw_fence_iron_3`, `hw_wall_3/4`, `hw_bricks*`, `hw_web_2/3`). Anyone may place them. No existing row changed.
