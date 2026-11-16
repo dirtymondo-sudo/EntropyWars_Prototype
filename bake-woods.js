@@ -91,10 +91,11 @@ const LINK_ENDS = { streets_drain: ['b', spur('P05-03', 'e'), 'THE CULVERT · UP
 door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILHEAD', sub: 'THE SNOWLINE · THE TRAIL UP', action: { room: 'site_prebuilt_shasta_mountains', at: 'woods' },
     desc: 'The trail keeps climbing after the trees give up. There is snow on it from here.' });
 /* NO UNEXPLAINED DEAD ENDS (2026-11-15, mondo): a secret TRAIL gets no waymark post, so its path just stopped at the trees. The three secret ways show what they are now:
-   the adit and the members' tunnel are tunnel mouths, the looking-glass way is a hollow tree. Still draughts (on no plate, on the map once found). */
-door('lemuria', 'P01-00', 'n', { way: 'tunnel', secret: true, label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_agartha_crystalcity', at: 'link_shasta_lemuria' },
+   each is a hollow tree (the Woods' own way, as the path back to Room 420). NOT a `tunnel`: a tunnel end in this open room builds a big stone block on the wall
+   (seen in the probe 11-16: the "castle wall" mondo walked through, and a black shaft over the trees). Still draughts (on no plate, on the map once found). */
+door('lemuria', 'P01-00', 'n', { way: 'hollowtree', secret: true, label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_agartha_crystalcity', at: 'link_shasta_lemuria' },
     desc: 'A draught out of the rock shelf, warmer than the snow above it.' });
-door('lodge', 'P05-00', 'e', { way: 'tunnel', secret: true, label: 'THE LODGE · THE HALLS', sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN', action: { room: 'site_prebuilt_lodge_halls', at: 'link_grove_lodge' },
+door('lodge', 'P05-00', 'e', { way: 'hollowtree', secret: true, label: 'THE LODGE · THE HALLS', sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN', action: { room: 'site_prebuilt_lodge_halls', at: 'link_grove_lodge' },
     desc: 'A tunnel under the lake shore that nobody admits to.' });
 door('lookingglass', 'P05-02', 'e', { way: 'hollowtree', secret: true, label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_camelot_kingdom', at: 'deadtree' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the garden is a district of the kingdom room now (was the old garden room)
    
@@ -435,7 +436,9 @@ else { const anchor = '        /* ── THE CLEARING — the crossroads of the 
 /* THE LINKS' WOODS ENDS: each link in LINK_ENDS gets its `a:` / `b:` line rewritten onto this room's east wall (a walked tunnel, no door: NO DOORS IN THE WOODS) */
 Object.keys(LINK_ENDS).forEach(id => { const [side, z, sub] = LINK_ENDS[id], i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('link not found: ' + id);
     const re = new RegExp('\\n( +)' + side + ": \\{ site: 'prebuilt_fairy_forest'[^\\n]*"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Woods end on link ' + id);
-    const line = '\n' + m[1] + side + ": { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: " + z + ", way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, sub: '" + sub + "' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)";
+    /* NO TUNNEL BLOCKS (2026-11-16, mondo: "what is this big castle wall thing ... clipping into the bridges and I can walk through it"): a `tunnel` passage on this open
+       room's wall is a stone housing 6 m deep standing in the trees. The two drains are plain trail ends now (a waymark post names them); the secret one is a hollow tree. */
+    const line = '\n' + m[1] + side + ": { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: " + z + ", way: '" + (id === 'woods_sewer' ? 'hollowtree' : 'trail') + "', sub: '" + sub + "' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)";
     src = src.slice(0, i + m.index) + line + src.slice(i + m.index + m[0].length); });
 fs.writeFileSync(file, src);
 console.log('data.js: site_prebuilt_fairy_forest_plots written (' + block.length + ' bytes)');
