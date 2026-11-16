@@ -5400,7 +5400,8 @@ that first district is fleshed out and knows what shared assets it can use for t
 - **THE GRAVEYARDS REDONE (mondo 11-16: "this doesn't really look like a graveyard, do better").** What was wrong: one stone every second
   3.5 m square on bare ground reads as a field with a few stones. A churchyard is crowded. Now: `grave(sx, sy, face, big)` sets THREE graves side
   by side on every square of a stone row (the middle one on the square's middle and blocking, its two neighbours `noBlock` decor 1.17 m either
-  side), each a different stone, turned up to 11 degrees out of true, one in ten a small timber cross; rows stand back to back. The Graveyard has
+  side), each a different stone, turned up to 11 degrees out of true; rows stand back to back (stones only: a `wooden_cross` set beside
+  a grave drew 3 m tall whatever its `h` said). The Graveyard has
   four rows (66, 67, 69, 71: about 95 stones), the Family Plot two of the big graves (slabs, raised graves) and the angel at the aisle's head.
   Both yards are lawn (`plan()`), dirt only on the middle aisle from the lych gate and the Graveyard's cross aisle at the obelisk. Two small
   tomb houses (drawn, a ghost wall each) in the Graveyard's north corners; an open grave with its coffin, lid and shovel. Fresh mounds are gone
