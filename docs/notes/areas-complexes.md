@@ -7609,6 +7609,32 @@ car_suv, car_cop, false_window, pool_lounger, observation_window, meshy_tesla_co
   `…_a_black_SUV_…`: a fallback only today), `UFO_Low_Poly.fbx`. In downloaded packs but not cut: the Molten SciFi pack (`Air_Con`, bunk beds,
   `Hydroponics_Lamp`), the Mine pack's `Rails`, a `Ladder` (House / Playground packs).
 
+## THE D.U.M.B., SUB-LEVEL 7 — the pilot district, pass by pass (2026-11-16, second side; file `docs/areas/dumb/districts/S.js`, 6 plots)
+
+The zone's pilot (ZONE_THREAD_BRIEF.md step 7). Proof views (playtest_city.js, the room `site_prebuilt_dumb_base`): the hub `x -12 z 12 y 0.05 face 45`,
+Corridor Five `x 1.75 z -30 face 180`, the east spoke `x 30 z 0 face 90`. FPS on the probe's software renderer BEFORE the pilot (the first build):
+hub 1.25, Corridor Five 2.13, the east spoke 2.0, the Platform 2.0.
+
+### PASS 1, THE STRUCTURE + THE LANDMARKS (seen in the cloud browser, 22 views)
+- **THE TOWER** (the Hub, P03-03): a 10.5 m plateau on the hub's middle four squares, no stair ("How do they get up?" "They do not."). Its skin is
+  drawn: concrete panels with a reveal every 3.5 m, a hazard skirt, a lit slit on each face 8 m up (someone is up there), a red band, a beacon on
+  the cap, a 7 on every face. The plateau is 15 cm INSIDE the skin (a plateau's foot slopes out and showed through as a dark base).
+- **THE HUB:** a steel gallery 3.5 m up along the west and the east wall, a stair up each from the south; a hazard portal to each of the four
+  spokes; RESEARCH / COMMAND / LEVEL P3 / LEVEL -6 painted on the floor and over the portals; four `concrete_pillar`; drawn wall lamps.
+- **THE CHAMBERS** stand behind walls with a long window (a kit wall = sill + glass `pane` + head) and a `leaf_security` door, numbered 01 to 04.
+  01 THE DROP: a tier 3.5 m up its stair, three sides railed, a red X below the fourth. 03 THE PIT: a `plateau` with `sink: true`, 1.75 m down,
+  a stair INSIDE it (a ramp from -1.75 to 0: a ramp outside a sink is under the floor), a grindable rail on the rim, a red line of light at the
+  bottom, DO NOT THINK ABOUT THE PIT on the floor. 02 THE CATWALK: two towers, the plank (a 1.75 m `bridge`), a stair up one, a `climb` down the
+  other, MAX LOAD: ONE. 04 OBSERVATION: a deck along the south wall behind an upper wall with three `observation_window`; the chamber is empty.
+- **CORRIDOR FIVE:** a three-square lane (the Healing Zone in it), two rooms west and four closets east behind doors (empty until pass 2);
+  portals to the Range's and the Comms Room's stairs.
+- **LEVEL -6:** rock lining (`rocks_5`, gain 2.6: 1.5 read black), a concrete collar and a hazard lintel round the Cavern's blast door, THE VENT.
+- **THE STAIR:** the level numbers 2 to 6 down both walls, each beside a 5 m slot of light, SUB-LEVEL 7 over the foot, the two side rooms' doors.
+- **FOUND, for every district of this zone:** (1) an `arch` row WITHOUT `y` stands on the ground under its ORIGIN; a plot whose middle is a
+  plateau (the Tower) lifted the whole plot's lining, roof and signs 10.5 m. The tool writes `y: plot.base` now. (2) A part's `ry`: 0 looks
+  south, 180 north, -90 EAST, 90 west: a sign on a west wall is `-90`. (3) Ceilings in a dark sheet read black: `ceilGain` 2.0 on concrete.
+- FPS after the pass: hub 1.25, Corridor Five 2.0, the east spoke 2.0 (no cost).
+
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
 
 mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
@@ -13553,3 +13579,55 @@ Copy from `docs/areas/antarctica/districts/S.js`. A helper all six want belongs 
 - **WHAT I WOULD DO NEXT:** his look first. Then pass 4 on the Mare with whatever models he has made; the district threads for the
   nine free districts (Mars' Cydonia is the strongest after the Mare: the Face and the Pyramid already read from the air); the Earth
   in the Moon's sky; the Catwalk on the Terrace.
+- **PASS 3, DRESSING** (seen: the camp, the South Gate, the Plain, the altar; FPS settled 1.00. HOW TO READ THE FPS HERE: take it on the LAST
+  view of a probe, after the others; a reading in the first seconds after "room ready" came out at 0.10 because models were still landing).
+  About 100 props, all from the lists below: the Solstice Camp (a covered wagon, four tents, prayer flags + string lights, bedrolls, packs,
+  wood pile + block, a table, cauldron, barrel, taiko + harp, a dog, two tiki torches); the visitors' side (a rope line of `rope_stanchion`
+  up the fork, three `lesson_sign` plaques, a `trail_sign`, a `brochure_rack` by Room 56's frame, a horse at a `hitching_rail`); the Plain
+  (small flowers at each barrow's foot, eight `leafy_bush`, ten rabbits, two cows, a goat on a barrow, butterflies, an eagle circling over the
+  stones on `hover` + `swim`, an owl on a station stone, six more crows); candles, two candelabra and a `ritual_circle` at the altar; ward
+  totems at the Heel Stone; lantern posts at the Long Barrow; five painted trees on the edges.
+- **FITS THIS DISTRICT (the lists read end to end: MODEL_LIST.md, the live catalogue, pack-claims.md; keys that exist today):**
+  STONES `sarsen` `trilithon` `menhir` `cave_stone` `stone_altar` `decor_stone_arch` `hw_stone` .. `hw_stone_5` `psxg_rock_1-4`
+  `psxg_stepping_stone_1/2` · BARROWS `sarcophagus` `trap_sarcophagus_box` `skull_pile` `cattle_skull` `stone_urn` `greek_amphora` `tomb_plaque`
+  `culvert_mouth` `catacomb_wall` `psx_cobweb_*` · RITUAL `ritual_circle` `candle_ring` `hw_candles(_2)` `candelabra` `cauldron` `item_ward_totem`
+  `item_hagstone` `crystal_cluster` `meshy_crystal_shard(s)` `sword_stone` · FIRE `brazier` `cave_torch` `tiki_torch` `wall_torch` `campfire`
+  `lantern_post` `paper_lantern` · CAMP `camping_tent` `meshy_camping_tent` `canvas_tent` `covered_wagon` `sleeping_bag` `backpack` `picnic_table`
+  `firewood_stack` `axe_chopping_block` `fur_rug` `beach_cooler` `wooden_barrel` `directors_chair` `folding_chair` `prayer_flags` `string_lights`
+  `hammock` · MUSIC `instrument_drum / _guitar(_lying) / _tambourine / _maracas / _seed_pod / _harp / _whistle` `taiko_drum` · VISITORS
+  `rope_stanchion` `lesson_sign` `trail_sign` `signpost` `brochure_rack` `hitching_rail` `ticket_booth` `bus_shelter` `transit_bus` ·
+  BEASTS `decor_sheep` `rabbit` `cow` `goat` `horse_brown` `dog` `crow` `eagle` `owl_perched` `butterfly` `monarch` `grasshopper` `ladybug`
+  · PLANTS `leafy_bush` `fern` `woods_healflower` `fae_flower_small_*` `psxg_dead_bush_1/2` `stump` `fallen_log`; trees `tree_52..56`
+  (painted), `tree_3`, dead `tree_5` · GROUND (eight sheets a room, no more) `grass_2` `marble_light` (the chalk) `dirt_2` `cobblestone`.
+  NOT USED ON PURPOSE: `skull` / `femur` / `ulna` (half a million triangles each), `ocean_rock_*` (black on land), `sword_stone` (a story
+  piece: mondo's call), `ticket_booth` / `transit_bus` (a visitor centre would be an invented building).
+
+
+## THE AFTERLIFE, THE BASILICA — the zone's pilot district, pass by pass (2026-11-16, second side; file `docs/areas/afterlife/districts/B.js`)
+
+The Vatican's district B, six plots. The idea: St Peter's at its own scale. At most five passes (mondo 11-16), each a merged PR, each seen.
+
+### FITS THIS DISTRICT (MODEL_LIST.md searched for church, chapel, cathedral, altar, pew, organ, candle, saint, statue, stained, bell, relic,
+pulpit, censer, bible, gothic, bust, urn, tapestry, throne, lectern, angel, painting, carpet, stanchion, gold; the live catalogue for sizes)
+IN THE CATALOGUE, PLACED: `greek_column` (the nave: the heavy model is kept for these 22 only), `catholic_pew`, `church_pew`, `stone_altar`,
+`royal_throne`, `lectern`, `church_podium`, `confessional_booth`, `angel_statue`, `brazier`, `stained_glass`, `holy_tapestry`,
+`hooded_statue` + `god_statue` (the attic's figures, the steps' two). IN THE CATALOGUE, FOR THE NEXT PASSES: `candelabra`, `meshy_bible`,
+`rope_stanchion`, `weeping_angel`, `holy_carpet`, `church_wall` (a gothic wall bay, 4 m), `painting_portrait`, `item_censer`,
+`decor_organ_pipe_white` (3 m: an organ), `banner`, `crystal_chandelier`, `candle_ring`, `hw_candles`, `tomb_plaque`, `sarcophagus`,
+`stone_urn`, `ships_bell`, `psx_half_arc_pillar_*` (the PSX pack's arch pillars), `instrument_harp / cello`. NOT FOUND ANYWHERE: a baldachin, a
+pipe organ case, a pietà, kneelers, a holy water stoup, votive candle racks, a papal altar, mosaics (NEEDS A MODEL below).
+
+### PASS 1, THE EXTERIORS (live; seen on screen, 6 views)
+- THE BODY: every outer wall wears a plinth course, giant pilasters every 7 m, two tiers of dark windows with sills and heads, a string
+  course at 11 m and a cornice; the apse is a true curve with its own cornice and a lead half dome. White stone = the plaster sheet, pale,
+  `glow` 0.4 to 0.5 (without the glow a drawn face in shade goes olive in this room's amber look).
+- THE DOME: a stepped drum, 16 columns and 16 windows round it, a cornice, the lead dome (16 m), the lantern with its own ring of 8 columns,
+  the gilt ball and cross: 62 m to the cross. Two small domes on the nave's shoulders.
+- THE FRONT: eight giant columns on pedestals (17 m), the entablature with the inscription, the pediment over the middle, the attic and
+  its windows, the balustrade's plinths with THIRTEEN FIGURES (`hooded_statue` x 12, `god_statue` in the middle), a window and a balcony
+  over each doorway, door surrounds, and two tall figures on pedestals at the ends of the steps.
+- THE DOORS SWING: four double leaves in the front's doorways (the tool's new `ctx.door`: a `doorsOnly` carrier row, the castle's way).
+- The Square's obelisk is rose marble now (the rock sheet read as cracked mud).
+- FPS (the gate view, software GPU): 1.2 before, 1.5 after (the pass is drawn parts in one row: about 150,000 triangles more).
+- OPEN after pass 1: the inside is bare walls and a dark gilt ceiling (pass 2); the flanks' yards are empty cobbles (pass 3); no light of
+  its own (pass 4).
