@@ -875,8 +875,10 @@ function apply(ctx) {
     /* 21 the carports: the Loading / parking plot's south band, three in a row */
     { const z = gx(11 * N + 10.55); takeRect(9, 11, 1, 10, 10, 10); [1, 3, 4, 6, 7, 9, 10].forEach(c => take(9 * N + c, 11 * N + 9));   // (the parked cars keep their squares: 2, 5, 8)
       [2.5, 6, 9.5].forEach((c, i) => push('bay-carport' + (i + 1), gx(9 * N + c), z, 180, B.carport(10.5))); }
-    /* 22 the harbour master: the Boardwalk exit's south-west yard, its front to the road */
-    { const x = gx(11 * N + 4), z = gx(11 * N + 10), W = 7, D = 7; takeRect(11, 11, 3, 9, 4, 10);
+    /* 22 the harbour master: the Boardwalk exit's south-west yard, its front to the road. THE ROAD AUDIT (mondo 11-15): the coast road was cut
+       through the plot's squares 4..7 after this was placed on squares 3..4, so the east half of the office stood in the road's west lane (the
+       trucks drove through its desk). Two squares west: squares 1..2, the pavement (square 3) left clear. */
+    { const x = gx(11 * N + 2), z = gx(11 * N + 10), W = 7, D = 7; takeRect(11, 11, 1, 9, 2, 10);
       const hm = { k: 'texbuilding', id: 'dc:bay-harbourmaster', x: r3(x), z: r3(z), w: W, d: D, rot: 180, storeys: 1, seed: 7711, skin: false, hollow: true, door: 2 }; lateRows.push(hm); byId[hm.id] = hm; push('bay-harbourmaster', x, z, 180, B.harbour(W, D, doorLx(W, 2))); }
     beach(ctx, push, ghost);
     interiors(ctx, byId, push);
