@@ -11,16 +11,26 @@
      P03-02  The South Shore        level 0  picnic ground
      P04-02  The Lake, south        level 0  water, lily pads
      P05-02  The Marsh              level 0  wet ground, frogs
-   WHAT STANDS HERE TODAY: the Lake (one pool 98 x 82 m, 1 m deep, waded and swum, a rock in its middle), the long dock from the west
-     shore, THE BOATHOUSE (walk-in: a rowboat, a sea chest, a lantern) with its slip, the Marsh's two pools, a picnic ground on the
-     South Shore (benches, a campfire, folding chairs), rowboats, logs, frogs, moths, dead snags, seven trees, and the Loch Ness Monster
-     in the water south of the rock (mondo's OK 11-15).
+   WHAT STANDS HERE TODAY (pass 1, the exteriors, 2026-11-16; seen in the cloud browser):
+     - THE LAKE: one pool 98 x 82 m, 1 m deep, waded and swum. THE ROCK in its middle = eight rocks of the ocean pack standing on the bed (6 m the tallest).
+     - THE DOCK from the west shore, two squares wide, with a head across its end (bench, brass telescope, a boat tied up), piles with pale caps down
+       both sides, four iron lamp posts. THE SLIP from the Boathouse out over the water, THE JETTY on the east bank, THE BOARDWALK over the Marsh's
+       south pool: all decks on piles, boards painted under every one (the grass field grows through a deck on lawn).
+     - THE BOATHOUSE (walk-in by the south door): weathered boards on a stone footing, a tin gable roof, the two boat doors on the lake side at the
+       head of the slip (drawn shut), a loft hatch and hoist beam, sashed windows (two lit), a stove pipe, lanterns, BOATHOUSE over the door.
+       Inside (not dressed yet, pass 2): a rowboat, a sea chest, a lantern, a bucket, a crate.
+     - THE PICNIC SHELTER on the South Shore (drawn: four posts on square middles, a shingle roof, two plank tables, PICNIC AREA read from the lake),
+       the playground pack's swing, slide and sandbox beside it, benches, a campfire, folding chairs.
+     - THE GROUND: gravel shingle on the North Shore (plan char `s`, the tool's one new paint letter), mud at the Reeds and round the Marsh's pools.
+     - the Marsh's two pools, rowboats, logs, frogs, moths, dead snags, seven trees, and the Loch Ness Monster (mondo's OK 11-15): it WALKS THE BED,
+       its neck and back out of the water, wandering south of the rock (seen on screen 11-16).
    MISSING / WAITING:
-     - not seen on screen: the Loch Ness Monster in 1 m of water, the Boathouse's inside, the Lake at night.
-     - the plan's own words are not built yet: The Reeds has no reeds, The Lake, south has no lily pads, The North Shore has no
-       shingle beach dressing, The Lake, east has no far bank of its own.
-     - the water is one flat pool: no shore line dressing, no mist, nothing "big under it" but the unit.
+     - pass 2 interiors (the Boathouse's inside), pass 3 dressing (reeds, lily pads, shore line, fish, the Marsh), pass 4 atmosphere (mist, night), pass 5.
      - no residents with routines, no encounter table (mondo's baked tables).
+   NEEDS A MODEL (nothing on R2 or in any pack file, MODEL_LIST.md searched 11-16: reed, cattail, bulrush, lily, duck, swan, heron, pier, canoe):
+     - reeds / cattails (pass 3 will try the ocean pack's seaweed in the shallows and say how it reads), a duck or a heron, a mooring bollard with rope,
+       oars, a fishing rod, a lighter grey lake rock (the ocean pack's rocks draw near black; a prop row takes no tint).
+   REMOVED 11-16: `dockring` by the Boathouse. It is the Meshy SPACESHIP docking ring (4.5 m), placed by its name as if it were a mooring ring.
    THE HOOKS (bake-estate.js "THE DISTRICT FILES"; a file exports any of these, each is called with this district's own ctx):
      plan(ctx)    first of all: change the plan's squares (ctx.setRect(x0, y0, x1, y1, ch); 'c' = corn, anything else is walked).
      houses(ctx)  the main buildings (ctx.building: a hollow texbuilding + its drawn look; ctx.put: a prop in a building's own frame).
@@ -50,7 +60,8 @@ module.exports = {
             if (x >= 47 && x <= 62) { if (e < 1.52 - 0.13 * ((x * 7 + y * 3) % 3)) cell[y][x] = 's'; }            // THE NORTH SHORE: shingle (`s` = the gravel sheet), a ragged upper edge
             else if (x < 47 && e < 1.4 - 0.1 * ((x * 5 + y) % 3)) cell[y][x] = 'p'; }                              // THE REEDS: mud at the water's edge
         for (let y = 23; y < 36; y++) for (let x = 59; x < 72; x++) { const m = M(x, y); if (m >= 0.8 && m < 1.75 - 0.15 * ((x * 3 + y * 5) % 3) && E(x, y) >= 1 && free(x, y)) cell[y][x] = 'p'; }   // THE MARSH: mud round both pools
-        setRect(45, 31, 48, 34, 'j'); setRect(68, 9, 70, 10, 'j');                                                  // boards: the picnic shelter's floor, the landing at the Boathouse's door
+        setRect(45, 31, 48, 34, 'j'); setRect(68, 9, 70, 10, 'j');
+        setRect(36, 17, 50, 19, 'j'); setRect(48, 16, 50, 20, 'j'); setRect(58, 7, 67, 8, 'j'); setRect(65, 17, 71, 18, 'j'); setRect(60, 31, 72, 32, 'j');   // boards under every deck (the grass field grew up through the planks)                                                  // boards: the picnic shelter's floor, the landing at the Boathouse's door
     },
     houses(ctx) { const { building, put, U, WD, WD2, COR, GLS } = ctx;
         /* THE BOATHOUSE (walk-in; THE EXTERIOR PASS 2026-11-16): weathered grey boards on a stone footing, corner boards, a tin gable roof with its ends to the
@@ -147,6 +158,9 @@ module.exports = {
         tree(38, 1, 'tree', 7.5); tree(70, 2, 'tree_2', 8); tree(37, 33, 'tree', 7); tree(47, 34, 'tree_2', 7.5); tree(58, 33, 'tree', 8); tree(70, 14, 'tree_2', 7); tree(70, 21, 'tree', 7.5);
         npc.push({ x: gc(54), z: gc(23), face: 0, race: 'loch ness monster' });                                                    // in the water, south of the rock (mondo's OK 11-15)
         /* on the dock's head: a bench looking down the lake, a boat tied up beside it */
+        /* THE MODEL LIST FIRST (mondo 11-16): the playground pack's swing, slide and sandbox on the South Shore, the brass telescope on the dock's head */
+        P('play_swing', 50, 32, { face: 0 }); P('play_slide', 53, 32, { face: 90 }); props.push({ key: 'play_sandbox', x: r2(gc(51) + 0.9), z: r2(gc(34) - 0.4), span: 3, face: 10 });
+        P('brass_telescope', 49, 19, { face: 100 });
         P('park_bench', 48, 16, { face: 180 }); props.push({ key: 'rowboat', x: r2(gx(50) + 1.4), z: gc(18), y: 0.95, face: 5 });
     },
 };
