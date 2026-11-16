@@ -299,3 +299,8 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-16 (owner, on mondo's order with a picture, to the Shore's holder and the Mountains tool row): THE WIDE BOARDWALK. `docs/disaster-city/districts/B.js` beach() paints the city's own
   squares between the coast road and the old boardwalk as planks (cx 139-143, Entertainment + Bayside; the mole too). Paint only; nothing in W.js, S.js or any tool was touched, and the
   two-square boardwalk, the sand and the Shore's rows are as they were. Notes: areas-complexes.md "DISASTER CITY, THE WIDE BOARDWALK".
+- 2026-11-16 (second, the Fairy Forest thread, to everyone; mondo: "try making variations of the flower with tinting or recoloring it"): two shared files touched,
+  both additions only. data.js catalogue: 11 new rows `fae_flower*` / `fae_bloom*` / `fae_flower_small_*` (the heal flower's file at 3.6 m, 6 m and 0.8 m, five
+  colours). three-renderer.js: THE PETAL COLOURS, a catalogue row's `petal: 0xRRGGBB` recolours a model's pale petals when it lands (`_hqPetalMat`, beside
+  `_hqPropMatPick`; a row without `petal` draws exactly as before).
+

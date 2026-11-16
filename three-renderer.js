@@ -67046,6 +67046,38 @@ const ThreeRenderer = (function () {
        them as Lambert + linear map (same treatment as the unit models).
        Converted materials are shared across instances and flagged so
        _disposeR leaves them alone. */
+    /* THE PETAL COLOURS (2026-11-16, mondo on the Fairy Forest: "try making variations of the flower with tinting or recoloring it"): a
+       catalogue row's `petal: 0xRRGGBB` recolours the PALE parts of its model's sheet (bright, nearly colourless texels: a white
+       flower's petals) and leaves the rest (the stem, the leaves, the yellow heart, the dirt) as painted. Done once per sheet + colour
+       on a canvas when the model lands: the file on R2 is never touched, and it needs no shader (both renderers). A sheet that cannot be
+       read (no image yet, a tainted canvas) keeps its own colours. Viewer-local dressing: nothing on `state`, nothing relayed. */
+    var _hqPetalCache = {};
+    function _hqPetalMat(mat, color) {
+        if (!mat || !mat.map || !mat.map.image || typeof document === 'undefined') return mat;
+        var key = mat.uuid + '|' + color, hit = _hqPetalCache[key]; if (hit) return hit;
+        var out = mat;
+        try {
+            var img = mat.map.image, w = Math.min(1024, img.width || 0), h = Math.min(1024, img.height || 0); if (!(w > 0 && h > 0)) return mat;
+            var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+            var cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, w, h);
+            var id = cx.getImageData(0, 0, w, h), d = id.data, tr = ((color >> 16) & 255) / 255, tg = ((color >> 8) & 255) / 255, tb = (color & 255) / 255;
+            for (var i = 0; i < d.length; i += 4) {
+                var r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                if (mx < 96) continue;
+                var sat = (mx - mn) / mx, k = Math.max(0, Math.min(1, (0.34 - sat) / 0.16)) * Math.max(0, Math.min(1, (mx - 96) / 64));   // pale and bright = a petal
+                if (k <= 0) continue;
+                d[i] = r * (1 - k + k * tr); d[i + 1] = g * (1 - k + k * tg); d[i + 2] = b * (1 - k + k * tb);
+            }
+            cx.putImageData(id, 0, 0);
+            var tex = new THREE.CanvasTexture(cv), sm0 = mat.map;
+            tex.flipY = (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) ? false : sm0.flipY;
+            tex.wrapS = sm0.wrapS; tex.wrapT = sm0.wrapT; tex.encoding = sm0.encoding; tex.magFilter = sm0.magFilter; tex.minFilter = sm0.minFilter; tex.generateMipmaps = sm0.generateMipmaps;
+            tex.offset.copy(sm0.offset); tex.repeat.copy(sm0.repeat); tex.needsUpdate = true;
+            out = mat.clone(); out.map = tex; out._ew_shared = true;
+        } catch (e) { out = mat; }
+        _hqPetalCache[key] = out;
+        return out;
+    }
     function _hqPropMatPick(node, sm) {
         if (!sm) return null;
         var cached = _hqPropMatCache.get(sm.uuid);
@@ -80577,7 +80609,7 @@ const ThreeRenderer = (function () {
             var instO = {
                 anim: (p.anim != null) ? p.anim : cat.anim, nose: cat.turn || 0,
                 swim: swimM ? { r: (swimM.r || 2) * U * fs, v: (swimM.v || 1) * U * fs, bob: (swimM.bob || 0) * U, dir: swimM.dir || ((Math.round(((p.x || 0) + (p.z || 0)) * 4) & 1) ? -1 : 1) } : null,
-                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : _hqPropMatPick,
+                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : (cat.petal != null ? function (n, mm) { return _hqPetalMat(_hqPropMatPick(n, mm) || mm, cat.petal); } : _hqPropMatPick),   // THE PETAL COLOURS
                 still: !!(cat.statue != null || p.statue != null),   // THE STATUES (2026-11-15, Chicago): a cast animal holds its pose
                 onDone: function (g, s, bb) {
                     /* `lay`: the model is authored on edge (rugs) — turn its
