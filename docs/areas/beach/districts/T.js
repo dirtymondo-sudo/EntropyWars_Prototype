@@ -29,7 +29,8 @@
    lookout's rock, a timber stair, a rail, a straw roof, a flag); water steps and a parapet on the Lighthouse Rock; the Maelstrom's foam
    arms, sea stacks and turning wreckage; Flight 19's hull plates at No Fixed Position; THE SHACK (walk-in) on the Island Beach; the
    Jetty's piles and cargo; more on the Wreck Islet, the Reef and the Sandbar.
-   STILL MISSING: the Shack's inside (pass 2); nothing seen under water or at night; 15 no-name plots are open water; the Triangle's
+   PASS 2 (seen): the Shack's inside (it stands at 143-144 x 94-96 now, off the fight's sand); the Keeper's Store on the Lighthouse Rock (walk-in).
+   STILL MISSING: nothing seen at night; the probe's camera does not go under water; 15 no-name plots are open water; the Triangle's
    edge is not marked on the sea; no residents with routines; mondo's open question: a Deep-to-Area-51 way.
    THE SQUARES: the island is sx 140-155 (rows 84-95) and 132-152 (rows 96-107); the Lagoon's water is sx 136-140, rows 98-106.
    THE HOOKS (all optional; bake-beach.js "THE DISTRICT FILES" runs each stage for S, H, O, T in that order):
@@ -52,7 +53,8 @@
 'use strict';
 const B_WRECK = [99, 89];
 const T_LOOKOUT = { y: 5.4, foot: 1.1 };   // the lookout's top and its stair's foot, metres over the sea (the foot = the dune's own height there: checked on the compiled room)
-const T_SHACK = [147, 103];                // the shack's north-west square (3 x 2, its door north to the camp fire)   // the plan's building square: the old wreck (a prop on sand). The lighthouse's squares are ctx.LIGHT (the tool's: the tape lies there)
+const T_CEIL = { shack: 2.45, store: 2.4 };   // each walk-in's own ceiling AS SEEN from inside (the zone kit: not the row's h)
+const T_SHACK = [143, 94];                 // the shack's north-west square (2 x 3, its door east to the palm grove). NOT by the camp: data.js HQ_AREA_MARKERS stands Room 345's fight on square 148,104 (seen: its rings lay inside the first shack)   // the plan's building square: the old wreck (a prop on sand). The lighthouse's squares are ctx.LIGHT (the tool's: the tape lies there)
 module.exports = {
 tailor(ctx) {
     const { C, N, W, H, OY, gx, gz, mx, mz, r2, rnd, cell, setRect, plot, Pxy, flat, taken, spot, feat, props, building, put, look, P, dec, afloat, swimmer, under, palm, native, sayOf, O_SEA, O_HARB, U, WD, WD2, SHG, FLR, GLS, COR, BRK, SHUT, CORR, PAINT, MAEL, POOL, BAY, GANG, SP, SHIP, PIER_END, LIGHT } = ctx;   // eslint-disable-line no-unused-vars
@@ -95,12 +97,11 @@ build(ctx) {
     /* THE LIGHTHOUSE ROCK: water steps up its east face (the way to the tape), a parapet round its top */
     const RK = 3.4;
     feat({ k: 'ramp', absY: true, x0: gx(74), z0: mz(102), x1: r2(gx(70) - 0.5), z1: mz(102), w: C, h0: -1.8, h1: RK, stairs: true, model: 'external', edge: 0.1 });
-    { const ring = [[70, 103], [70, 104], [69, 104], [69, 105], [68, 105], [68, 106], [65, 106], [65, 105], [64, 105], [64, 104], [63, 104], [63, 101], [64, 101], [64, 100], [65, 100], [65, 99], [68, 99], [68, 100], [69, 100], [69, 101], [70, 101], [70, 102]];
-      feat({ k: 'rail', pts: ring.map(q => [r2(gx(q[0]) + (q[0] > 66.5 ? -0.3 : 0.3)), r2(gz(q[1]) + (q[1] > 102.5 ? -0.3 : 0.3))]), y: RK, model: 'parapet' }); }
+    { const q = (x, y, ix, iz) => [r2(gx(x) + ix * 0.3), r2(gz(y) + iz * 0.3)];   // inset 0.3 m from the rock's edge; open at the steps (square 69,102) and where the store's own walls stand (67-68 x 100)
+      feat({ k: 'rail', pts: [q(70, 103, -1, -1), q(70, 104, -1, -1), q(69, 104, -1, -1), q(69, 105, -1, -1), q(68, 105, -1, -1), q(68, 106, -1, -1), q(65, 106, 1, -1), q(65, 105, 1, -1), q(64, 105, 1, -1), q(64, 104, 1, -1), q(63, 104, 1, -1), q(63, 101, 1, 1), q(64, 101, 1, 1), q(64, 100, 1, 1), q(65, 100, 1, 1), q(65, 99, 1, 1), q(68, 99, -1, 1), q(68, 100, -1, 0)], y: RK, model: 'parapet' });
+      feat({ k: 'rail', pts: [q(69, 101, 0, 1), q(70, 101, -1, 1), q(70, 102, -1, 0)], y: RK, model: 'parapet' }); }
     works('rock', gx(66.5), gz(102.5), T => {
         flag(T, gx(64) + 0.9, RK, gz(104) - 0.9, 6.0, 0xe8483c);                                                               // a storm flag
-        T.box(gx(68) - 0.4, RK, gz(100) + 1.1, 2.4, 2.1, 1.7, CORR, WHITE, { gain: 3.2, uv: [2.4, 2.4] }); T.roof('shed', gx(68) - 0.4, RK + 2.1, gz(100) + 1.1, 2.8, 0.5, 2.1, CORR, 0xe8483c, { gain: 2.6 });   // the keeper's oil store (drawn, shut)
-        T.box(gx(68) - 0.4, RK, gz(100) + 1.97, 0.8, 1.8, 0.04, null, 0x3a60a8);
     });
 
     /* THE MAELSTROM: the link's own funnel is 9 m wide. Round it: arms of foam turning in on the hole, drawn on the water */
@@ -119,8 +120,21 @@ build(ctx) {
         T.box(gx(135) + 0.3, 1.45, gz(89) + 0.2, 21.0, 0.05, 0.05, null, ROPE);
     });
 
-    /* THE SHACK on the Island Beach (walk-in): a wrecker's board shack by the camp fire, its door to the fire. Its inside: pass 2. */
-    const SHK = building('t_shack', [T_SHACK[0], T_SHACK[1], T_SHACK[0] + 3, T_SHACK[1] + 2, 'N'], 3.0, { leaf: 'leaf_stable' }, (a, w, d, door) => {
+    /* ── PASS 2, THE INSIDES (2026-11-16). `inside` and `In` are the Shore's (S.js, copied unchanged but for the names; the zone kit: a coat
+       3.5 cm in front of each inner wall, a white dado, a LIT ceiling 5 cm under the building's own, daylit windows; a prop inside takes
+       `floor: true` and a `y` of 1 or more is typed over the building's own ground G). ── */
+    const inside = (a, w, d, h, tint, door, wins) => { const W2 = w / 2, D2 = d / 2, e = 0.335, Hc = h, lit = { gain: 2.9, glow: 0.16, uv: [2.4, 2.4], kind: 'wall' };
+        const Q = (x, y, z, qw, qh, ry, key, tn, o) => a.P.push(Object.assign({ s: 'quad', p: [r2(x), r2(y), r2(z)], size: [r2(qw), r2(qh)], ry, key, tint: tn }, o));
+        const coat = (y0, hh, tn, o) => { Q(0, y0, -D2 + e, w - 2 * e, hh, 0, CORR, tn, o); Q(0, y0, D2 - e, w - 2 * e, hh, 180, CORR, tn, Object.assign({}, o, y0 < 2.2 ? { hole: [r2(-door.lx), r2(door.cw + 0.12), r2(2.25 - y0)] } : null));
+            Q(-W2 + e, y0, 0, d - 2 * e, hh, 270, CORR, tn, o); Q(W2 - e, y0, 0, d - 2 * e, hh, 90, CORR, tn, o); };
+        coat(1.0, Hc - 1.0, tint, lit); coat(0, 1.0, WHITE, Object.assign({}, lit, { gain: 3.2 }));
+        a.box(0, Hc - 0.05, 0, w - 0.66, 0.04, d - 0.66, CORR, 0xfff6e2, { glow: 0.45, gain: 3.0, under: true, roof: true, top: false, ds: true, uv: [2.4, 2.4] });
+        (wins || []).forEach(q => { const [wl, al, y, ww, wh] = q, at = wl === 'f' ? [al, D2 - e - 0.03, 180] : wl === 'l' ? [-W2 + e + 0.03, al, 270] : wl === 'r' ? [W2 - e - 0.03, al, 90] : [al, -D2 + e + 0.03, 0];
+            const nx = wl === 'l' ? 1 : wl === 'r' ? -1 : 0, nz = wl === 'b' ? 1 : wl === 'f' ? -1 : 0;
+            Q(at[0], y - 0.1, at[1], ww + 0.24, wh + 0.2, at[2], null, WHITE, { kind: 'wall' }); Q(at[0] + nx * 0.02, y, at[1] + nz * 0.02, ww, wh, at[2], GLS, 0xdcf0ff, { glow: 0.8, win: 'keep', uv: 'fit' }); }); };
+    const FY = 0.14, In = (B, G, key, lx, lz, face, y, o) => { const yy = FY + (y || 0); put(B, key, lx, lz, Object.assign({ face: face || 0, floor: true, y: r2(yy < 1 ? yy : G + yy) }, o)); };
+    /* THE SHACK (walk-in), where the Jetty's path meets the island: a wrecker's board shack, its door east to the palm grove, its back window to the Lagoon */
+    const SHK = building('t_shack', [T_SHACK[0], T_SHACK[1], T_SHACK[0] + 2, T_SHACK[1] + 3, 'E'], 3.0, { leaf: 'leaf_stable' }, (a, w, d, door) => {
         a.shell(w, 2.7, d, CORR, 0x6fc4b8, door, [2.4, 2.4], 2.7); a.frame(door, d, null, WHITE);
         a.roof('shed', 0, 2.7, 0, w + 0.8, 0.7, d + 0.9, COR, RUST, { gain: 1.9 });
         a.box(0, 0, d / 2 + 0.9, w + 0.3, 0.16, 1.8, FLR, 0xd8c4a0, { uv: [1.75, 1.75] });                                    // a plank step along the front
@@ -128,8 +142,27 @@ build(ctx) {
         a.box(0, 2.3, d / 2 + 1.66, w, 0.12, 0.12, null, 0xe8e0d0); a.roof('shed', 0, 2.36, d / 2 + 0.95, w + 0.6, 0.4, 2.2, CORR, STRAW, { gain: 2.4 });
         const wx = door.lx > 0 ? -w / 4 : w / 4;                                                                             // a window on the front, beside the door: dark glass, a white frame
         a.box(wx, 1.0, d / 2 + 0.06, 1.44, 1.16, 0.06, null, WHITE); a.box(wx, 1.08, d / 2 + 0.09, 1.2, 1.0, 0.04, GLS, 0x9cc4e0, { uv: 'fit', win: 'keep', glow: 0.3 });
+        inside(a, w, d, T_CEIL.shack, 0x8fd8cc, door, [['f', wx, 1.08, 1.2, 1.0], ['b', 0, 1.2, 1.6, 0.9]]);
+        a.box(0, 1.1, -d / 2 - 0.06, 1.84, 1.1, 0.06, null, WHITE); a.box(0, 1.2, -d / 2 - 0.09, 1.6, 0.9, 0.04, GLS, 0x9cc4e0, { uv: 'fit', win: 'keep', glow: 0.3 });   // the back window, to the sea
+        for (const z of [-1.75, 1.75]) a.box(0, T_CEIL.shack - 0.24, z, w - 0.7, 0.18, 0.16, PLK, BEAM, { roof: true, uv: [1, 1] });                                       // tie beams
+        a.box(-w / 2 + 0.34 + 0.2, 1.5, -1.2, 0.36, 0.05, 2.4, PLK, BEAM, { uv: [1, 1] }); a.box(-w / 2 + 0.34 + 0.2, 2.0, -1.2, 0.36, 0.05, 2.4, PLK, BEAM, { uv: [1, 1] });   // two shelves on the west wall
     });
-    ctx.T_SHK = SHK;
+    /* THE SHACK'S INSIDE: 3 x 2 squares, middles at (-3.5 | 0 | 3.5, -1.75 | 1.75) in its own frame; the door's square (front, middle) stays clear */
+    { const G = 2.0, I = (key, lx, lz, face, y, o) => In(SHK, G, key, lx, lz, face, y, o);
+      I('dorm_bed', 3.9, -2.2, 90); I('footlocker', 2.3, -2.5, 0); I('psx_glass_bottle_2', 3.0, -1.2, 40); I('greek_amphora', 4.5, 2.5, 0); I('greek_amphora', 3.9, 2.7, 120);
+      I('psx_table_large_2', -1.2, -2.2, 0); I('psx_chair_mp_3', -1.2, -1.1, 180); I('railway_lantern', -1.5, -2.3, 0, 0.96); I('psx_glass_bottle_2', -0.8, -2.2, 0, 0.96); I('psx_wooden_crate_1', -4.4, 0.9, 10); I('ship_model', -4.4, 0.9, 90, 0.36); I('psx_metal_barrel_mp_1', -4.4, 2.3, 0); I('money_sacks', -3.3, 2.6, 200); I('sea_chest', 1.6, 2.5, 180);
+      I('fishing_net_wall', 2.2, -3.05, 0, 1.2); I('arms_trophy', -2.6, -3.05, 0, 1.75); I('ship_wheel', 4.8, 0.2, 270, 1.5); I('ships_bell', 0.9, 3.05, 180, 1.7); I('meshy_hanging_lantern', 0, 0, 0, 2.0);
+      I('meshy_rope', -4.75, -1.8, 90, 1.56); I('item_spyglass', -4.75, -0.9, 90, 1.56); I('psx_gold_bar_pcs_1', -4.75, -1.3, 90, 2.06); }
+    /* THE KEEPER'S STORE on the Lighthouse Rock (walk-in, 2 x 1 squares, its door south to the light): white boards, a red tin roof */
+    const STO = building('t_store', [67, 100, 69, 101, 'S'], 2.8, { leaf: 'leaf_beige_wood' }, (a, w, d, door) => {
+        a.shell(w, 2.5, d, CORR, WHITE, door, [2.4, 2.4], 3.2); a.frame(door, d, null, 0x3a60a8);
+        a.roof('shed', 0, 2.5, 0, w + 0.6, 0.55, d + 0.6, CORR, 0xe8483c, { gain: 2.6 });
+        a.box(door.lx > 0 ? -w / 4 : w / 4, 1.2, d / 2 + 0.06, 1.24, 0.96, 0.06, null, 0x3a60a8); a.box(door.lx > 0 ? -w / 4 : w / 4, 1.28, d / 2 + 0.09, 1.0, 0.8, 0.04, GLS, 0x9cc4e0, { uv: 'fit', win: 'keep', glow: 0.3 });
+        inside(a, w, d, T_CEIL.store, WHITE, door, [['f', door.lx > 0 ? -w / 4 : w / 4, 1.28, 1.0, 0.8]]);
+    });
+    { const G = 3.4, I = (key, lx, lz, face, y, o) => In(STO, G, key, lx, lz, face, y, o);
+      I('psx_metal_barrel_mp_1', 2.7, -0.9, 0); I('psx_metal_barrel_mp_2', 2.0, -1.0, 30); I('psx_jerrycan_1', 2.8, 0.2, 80); I('psx_jerrycan_1', 2.3, 0.5, 200); I('psx_wooden_crate_1', -2.6, -0.9, 0); I('field_radio', -2.6, -0.9, 0, 0.36);
+      I('beach_life_ring', 0.4, -1.3, 0, 1.5); I('meshy_rope', -2.9, 0.6, 90); I('railway_lantern', -1.6, -1.0, 0); }
 },
 
 place(ctx) {
@@ -169,7 +202,7 @@ place(ctx) {
     /* THE REEF: three more corals, kelp and anemones in the deeper water round it, rocks through the surface */
     for (const k of ['ocean_coral_4', 'ocean_coral_5', 'ocean_coral_7']) feat({ k: 'scatter', key: k, n: 9, x: mx(113), z: mz(90), r: 15, seed: k.length * 11 + k.charCodeAt(12), sea: true });
     [[106, 84], [121, 86], [122, 95], [107, 95], [115, 98]].forEach(q => sea('kelp', q[0], q[1], { h: 2.6, y: -3.4, hover: 0 }));   // (seen: 4.5 m kelp in the shallows stood out of the water like reeds) [[112, 86], [116, 89], [111, 91]].forEach(q => sea('anemone', q[0], q[1]));
-    sea('ocean_rock_3', 111, 87, { h: 2.2 }); sea('ocean_rock_9', 117, 92, { h: 1.8 }); sea('ocean_rock_5', 114, 90, { h: 1.6 });
+    sea('ocean_rock_3', 111, 87, { h: 2.2 }); sea('ocean_rock_3', 117, 92, { h: 1.7 }); sea('ocean_rock_3', 114, 90, { h: 1.3 });   // (seen: a round rock given `h` 1.8 is a black slab 8 m wide)
     /* THE SANDBAR: driftwood and a beached boat */
     dec('fallen_log', 120, 72); dec('meshy_rowboat', 128, 72); dec('psxg_rock_1', 124, 73); dec('ocean_starfish', 125, 72); dec('ocean_crab', 127, 73); dec('dead_snag', 118, 73);
     /* THE ISLAND: the lookout's glass and signal fire, the Jetty's cargo, the camp, wreckage on the Island Beach, scrub on the dune */
