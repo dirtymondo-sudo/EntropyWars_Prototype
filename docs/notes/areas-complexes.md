@@ -6052,3 +6052,25 @@ mondo 11-16: "can we also work on a way to make waterfalls, which we will use el
     (west), not east: six signs written before this were facing their walls (the guard post's side names, the east fence's plates, the
     hangar's fire exit) and are turned. `iso_tank` is a 1.3 m tank, not a container.
 
+## THE DESERT, GIZA — the district thread (2026-11-16, second side; file `docs/areas/desert/districts/G.js`)
+
+**PASS 1, THE EXTERIORS.** mondo on the first build (step boxes 14 m high, a steel stair): "those pyramids look like fucking ass. and they are way
+too short ... you didn't even get the shape right". So:
+- **A PYRAMID IS A TRUE PYRAMID** (`pyramid(name, cx, cz, foot, o)` in G.js): four straight faces at the real slope (51.8 degrees, rise 1.272 to
+  1), built course by course: each course a `bricks_1` box 1.225 m high, 0.96 m in from the one under it (40 boxes for 49 m; cheap). One `arch`
+  row a monument (`des:giza:<name>`, `y: 0`). The Great Pyramid: 77 m foot, 49 m with its capstone in the better gold (`key: 'gold'`). Khafre:
+  42 m, 26.7 m, the top third a smooth `roof` pyramid in white stucco (its casing). Menkaure: 24.5 m, the lowest courses red granite. Three
+  queens' pyramids of 7 m. A step pyramid on the squares (a tier a square high and a square in, 45 degrees) was tried first and is NOT Giza.
+- **NOT CLIMBED.** A face over 45 degrees is past the walker's `maxSlope`; the first build's walked tiers and stairs are gone. Each pyramid has a
+  ring of thin unseen walls at its foot (`ring()`: `wall` rows with `ghost: true`). A THICK ghost wall has round ends and blocks past its own
+  corners (it shut a stair 5 m away): fence a mass with four thin ones.
+- **A DOOR IN A LEANING FACE** needs upright stones: `mouth(parts, lx, lz, dir, w, h, chevron)` = two granite jambs, a lintel, the dark behind,
+  two pairs of leaning stones over it. The three pyramid doors and Room 444's bay door stand in mouths; no door moved.
+- **THE STONE:** `bricks_1` under an arch part draws mud brown up to `gain` 1.9, whatever the tint; `gain: 2.7` with a pale tint reads as
+  limestone in the sun. The `desert` sheet and `urban:ConcretePanels1a` were no lighter.
+- **THE SPHINX** is rebuilt from parts on 9 x 3 whole squares (it stood half a square off the grid) and still reads as blocks: NEEDS A MODEL.
+- **CHECKED:** offline, a flood on the walker's rule (`hqTerrainFeet`) from the causeway reaches all five door pads; no spot inside a pyramid or
+  the Sphinx is reached. **SEEN** through probe-fast.js, nine views. FPS at the proof view (x 96, z 110, face 115; llvmpipe, so only the
+  before / after counts): before 2.3 (327 calls, 946 k triangles), after 2.0 to 2.3 (301 calls, 739 k triangles).
+- **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
+  scatter and the pine mountains on the east and south edges are the tool row's.
