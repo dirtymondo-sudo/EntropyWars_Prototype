@@ -7,7 +7,9 @@
    PASS 1, EXTERIORS: the Lander at its real size with its flag, camera and blast mark; the Habitat as a white pressure module with an
    airlock porch, portholes, a stripe, tanks, a mast, a solar field and a power hut; the Dish at its real size with its control cabin and
    cable run; tyre tracks and footprints on the dust; a crashed probe, boulders; the equipment yard.
-   PASS 2, INTERIORS: the Habitat's inside: a lit ceiling, the bunk room (six bunks, two lived in), the galley, the lab. */
+   PASS 2, INTERIORS: the Habitat's inside: a lit ceiling, the bunk room (six bunks, two lived in), the galley, the lab.
+   PASS 3, DRESSING + AIR + POLISH: the Standing Door's approach, an escape pod and a spent engine down on the open dust, the Dish's
+   cabin, two more people, dust in the air over the Mare. STOPPED after pass 3: waits mondo's look. */
 'use strict';
 const WHITE = 0xe9ebee, GREY = 0x9aa0aa, DARK = 0x3a3e46, RED = 0xb8442e, GOLD = 0xc9a23a, CELL = 0x3a64c8;
 
@@ -85,6 +87,13 @@ exports.dress = (c) => {
     /* ── boulders on the open dust (the D.O.O.R. kit's asteroids as moon rock) and standing stones ── */
     [[32, 38, 'asteroid_a', 40], [46, 37, 'asteroid_b', 200], [56, 26, 'asteroid_a', 120], [16, 40, 'asteroid_b', 300], [24, 44, 'asteroid_a', 10], [55, 42, 'asteroid_b', 80], [18, 37, 'asteroid_a', 220]].forEach(q => c.P(q[2], q[0], q[1], { face: q[3] }));
     [[33, 38], [49, 34], [47, 44], [22, 41], [26, 38], [54, 38], [57, 30], [15, 44]].forEach(q => c.dec('cave_stone', q[0], q[1]));
+    /* ── PASS 3, DRESSING: the Standing Door's approach, what came down on the open dust, the Dish's cabin ── */
+    c.P('flood_mast', 28, 43, { noLight: true }); c.dec('cave_stone', 32, 44); c.dec('cave_stone', 29, 42); c.dec('traffic_cone', 31, 44);
+    c.P('telescope', 34, 37, { face: 330 }); c.dec('psx_supply_crate_1_2', 37, 44); c.dec('psx_metal_barrel_mp_3', 42, 37);
+    c.P('escapepod', 54, 43, { face: 250 }); c.grime('scorch', 54, 43, 3.2); c.line(54.5, 43.5, 57.2, 44.6, 0.9, 0x3c3e44); c.dec('astronaut', 52, 44, { face: 100 }); c.dec('psx_supply_crate_1_empty', 53, 45);
+    c.P('rocket_engine', 19, 42, { face: 70 }); c.grime('scorch', 19, 42, 3.4); c.dec('hullplate', 21, 44, { face: 200 }); c.dec('cave_stone', 17, 41);
+    c.P('ind_container', 49, 9, { face: 0 }); c.dec('cable_drum', 50, 12); c.dec('psx_supply_crate_1', 55, 6); c.dec('traffic_cone', 53, 12);
+    c.dec('psx_supply_crate_1_3', 52, 28); c.dec('cave_stone', 50, 31); c.dec('cave_stone', 53, 27); c.line(52.3, 30.4, 52.9, 33.5, 0.14, 0x50535a); c.line(52.45, 30.4, 53.05, 33.5, 0.14, 0x50535a);   // somebody walked from the rover to the probe
     /* ── THE HABITAT's INSIDE (pass 2). "Rated for six. There are two of us": six bunks, two of them lived in. Its frame: x along the
        front (the door at 0), +z toward the door. West = the bunk room, middle = the galley, east = the lab. ── */
     const G = 0.02;
@@ -102,4 +111,14 @@ exports.people = (c) => {
     c.native('grey', 41, 44, 30, c.sayOf('grey', 0));            // "The footprint was there in the previous frame."
     c.native('men in black', 50, 20, 180, c.sayOf('men in black', 0));   // "The habitat is rated for six."
     c.native('barbarella', 44, 37, 220);                          // her home (DOOR_TEXT.POINT_OF_ENTRY)
+    c.native('men in black', 34, 43, 60);                         // the second of the two, at the camera
+    c.native('grey', 51, 12, 200);                                // at the Dish's consoles
 };
+
+/* PASS 3, THE AIR: with a zone a room draws only its zones, so the Moon's own slow dust (data.js HQ_ATMOS_SITES.prebuilt_moon) is kept
+   over the whole Mare, and a little more hangs where things move: round the Lander and along the rover's tracks */
+exports.airZones = () => [
+    { sx0: 12, sy0: 36, sx1: 60, sy1: 48, kind: 'dust', color: 0xd0d4dc, speed: 0.3, n: 70 },
+    { sx0: 48, sy0: 0, sx1: 60, sy1: 36, kind: 'dust', color: 0xd0d4dc, speed: 0.3, n: 50 },
+    { sx0: 34, sy0: 36, sx1: 46, sy1: 46, kind: 'dust', color: 0xe6e8ee, speed: 0.5, n: 40 },
+];
