@@ -5219,6 +5219,21 @@ Animals: `horse`, `horse_brown`, `horse_black`, `cow`, `chicken`, `crow`. PSX gr
 `stump`, `skull`, `skull_pile`, `dead_snag`, `wooden_bucket`, `meshy_burlap_sack`, `psx_wooden_crate_2/3/6`, `psx_metal_barrel_mp_1/2`,
 `rocking_chair`, `iron_garden_bench`, `signpost`, `meshy_hanging_lantern`, `railway_lantern`, `money_sacks`, `spell_dynamite`, `sea_chest`.
 Inside: the list in "THE INTERIORS PASS".
+**FOUND IN MODEL_LIST.md ON THE SECOND LOOK (11-16, mondo's "look at the model list right now"; the pilot had searched the catalogue by
+key only and missed all of these).** Placed in W.js and seen: Halloween pack `hw_coffin`, `hw_coffin_2`, `hw_coffin_lid`, `hw_coffin_lid_2`,
+`hw_body`, `hw_body_rising` (a hand and head out of a grave), `hw_stone`, `hw_stone_1`, `hw_stone_3` (headstones), `hw_part`, `hw_candle`.
+Animals (section 7c): `dog`, `cat`, `wolf` (reads as a coyote on the range), `eagle` (it circles: give it `y`), `rabbit`, `decor_sheep`,
+`bat_black` / `bat_brown` / `bat_grey`. mondo's Meshy: `cauldron` (a camp pot, a quench tub), `meshy_tongs`, `meshy_rope`, `femur`, `ulna`,
+`revolver`, `shotgun`, `confessional_booth`, `stained_glass`. PSX Mega Pack small things: `psx_cobweb_1/2`, `psx_cash_1..6`, `psx_coin_mp_1`,
+`psx_ashtray_1`, `psx_plate_mp_1`, `psx_meat_1`, `psx_butcher_knife_mp_1`, `psx_padlock_1`, `psx_ammo_box_1`, `psx_shotgun_ammo_1`,
+`psx_photo_frame_mp_1`, `psx_painting_1`, `psx_open_book_mp_1`. Not placed yet, worth a look for Giza / the Circus / Area 51: `hw_tree*`
+(bare trees 5.6 to 7.2 m), `hw_wall*` + `hw_fence_iron*` + `hw_gate_leaf*`, `hw_web*`, `psx_beam_*`, `psx_bars_metal_*`, `lion`, `giraffe`,
+`elephant` (the Circus), `sarcophagus`, `obelisk`, `menhir` (Giza), `brass_telescope`, `ship_cannon`, `meshy_sandbags`, `military_tank`.
+**A PACK FILE WITH MORE IN IT THAN ITS ROWS:** the Elbolilloduro MINE pack (`mine/Minas/Models/Mines.fbx`, bake-pack-pieces.py job `mine`)
+has ONE catalogue row (`locker`). A mine scene should hold carts, rails, props and timbering: exactly the Desert's missing mine pieces.
+Cutting them needs Blender and the unzipped pack (neither is in a district thread's container; the pack is not on R2): a job for a thread
+that has them, BEFORE any Meshy prompt for a mine cart. The same holds for the Survival pack (3 rows) and the Trailer Park pack (7 rows).
+
 **WRONG FOR THIS ZONE (they look like something else):** `form_counter` (an office form stand), `round_table` (Camelot's 5.2 m table),
 `mobius_bar` (a modern red bar), `cell_bars` and `psx_shelf_mp_2` (drew as black slabs), `culvert_mouth` (a sewer), `luggage_cart` anywhere but
 a hotel, `cave_stone` (a 2 m standing stone), `camping_tent` (modern nylon).
