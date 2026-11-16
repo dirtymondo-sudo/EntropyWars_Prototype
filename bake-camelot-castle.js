@@ -128,7 +128,7 @@ const ceil = (u0, v0, u1, v1, y, key, tint, both) => { R.ceil(u0, v0, u1, v1, r2
 const solid = (u0, v0, u1, v1, h) => R.F.push({ k: 'plateau', x: X((u0 + u1) / 2), z: Z((v0 + v1) / 2), w: r2((u1 - u0) * C), d: r2((v1 - v0) * C), h, edge: 0.1 });
 /* a flight on the field: from the line `from` up to the line `to` (squares along u) on the row whose middle is v; `leave` = it starts on a slab */
 function flight(from, to, v, h0, h1, leave) { R.lvl = h0; const dir = Math.sign(to - from), sl = (h1 - h0) / (Math.abs(to - from) * C + 0.4), back = leave ? 0.5 : 0;
-    R.F.push({ k: 'ramp', x0: r2(X(from) - dir * back), z0: Z(v), x1: r2(X(to) + dir * 0.4), z1: Z(v), w: C, h0: r2(h0 - back * sl), h1, stairs: true, model: 'stone', edge: 0 });
+    R.F.push({ k: 'ramp', x0: r2(X(from) - dir * back), z0: Z(v), x1: r2(X(to) + dir * 0.4), z1: Z(v), w: C, h0: r2(h0 - back * sl), h1, stairs: true, model: 'stone', edge: 0, key: 'cobblestone', side: 'castle_wall', runner: { color: 0xa01e2c } });   // (its own sheets: a keyless flight wears the shell's green floor colour)
     for (let u = Math.min(from, to); u < Math.max(from, to); u++) R.block[R.sq(u, v)] = 'stair'; }
 /* a column: drawn round, weighs a short ghost wall */
 function column(u, v, L, h, r, tint) { R.P.push({ s: 'cyl', p: [X(u), L, Z(v)], r: r || 0.45, h, seg: 12, key: WALL, tint: tint != null ? tint : PALE }, { s: 'cyl', p: [X(u), L, Z(v)], r: (r || 0.45) + 0.18, h: 0.5, seg: 12, key: WALL, tint: STONE2 }, { s: 'cyl', p: [X(u), r2(L + h - 0.5), Z(v)], r: (r || 0.45) + 0.18, h: 0.5, seg: 12, key: WALL, tint: STONE2 });

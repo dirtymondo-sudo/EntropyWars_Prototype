@@ -66,7 +66,7 @@ const tier = (q, h) => { const m = mid(q); feat({ k: 'plateau', x: m[0], z: m[1]
 tier(Q.hill, T1); tier(Q.upper, T2);
 /* a flight runs north or south along the middle line; its head goes 0.4 m into the step it climbs so no seam is left at the top */
 const flight = (q, up, h0, h1) => { const x = r2((g(q[0]) + g(q[2])) / 2), zf = up === 'N' ? g(q[3]) : g(q[1]), zh = up === 'N' ? g(q[1]) - 0.4 : g(q[3]) + 0.4;
-    feat({ k: 'ramp', x0: x, z0: zf, x1: x, z1: r2(zh), w: (q[2] - q[0]) * C, h0, h1, stairs: true, model: 'stone', edge: 0.2 }); };
+    feat({ k: 'ramp', x0: x, z0: zf, x1: x, z1: r2(zh), w: (q[2] - q[0]) * C, h0, h1, stairs: true, model: 'stone', edge: 0.2, key: 'cobblestone', side: 'castle_wall', runner: { color: 0xa01e2c } }); };   // (its own sheets: a keyless flight wears the path under the shell's GREEN floor colour; the royal runner up the middle)
 flight(Q.grandStair, 'N', 0, T1); flight(Q.upperStair, 'N', T1, T2); flight(Q.backStair, 'S', 0, T2);
 const rail = (x0, z0, x1, z1, y) => feat({ k: 'rail', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), y, model: 'parapet' });
 /* a step's four edges, `gapN` / `gapS` = the squares a stair leaves open on its north / south edge */
@@ -215,7 +215,7 @@ const ARMOURY = lodge('armoury', Q.armoury, 'W', { leafDouble: false }, (a, w, d
   for (const x of [sx0 - 0.1, sx1 + 0.1]) { const p = L(x, sz); for (let i = 0; i < NG; i++) a.box(p[0], 0, p[1] + 1.75 + i * 3.5, 0.9, r2(T1 * (NG - i - 0.5) / NG + 1.0), 3.5, WALL, STONE2); }   // the Grand Stair's cheek walls, stepping down with it
   { const ux0 = g(Q.upperStair[0]), ux1 = g(Q.upperStair[2]), uz = g(Q.upper[3]);
     for (const x of [ux0 - 0.1, ux1 + 0.1]) { const p = L(x, uz); for (let i = 0; i < NU; i++) a.box(p[0], T1, p[1] + 1.75 + i * 3.5, 0.8, r2((T2 - T1) * (NU - i - 0.5) / NU + 1.0), 3.5, WALL, STONE2);
-        const q = L(x, uz + NU * 3.5 + 0.4); a.box(q[0], T1, q[1], 1.2, 2.6, 1.2, WALL, STONE3); a.cyl(q[0], T1 + 2.6, q[1], 0.5, 0.5, null, GOLD, { seg: 8, r2: 0.2 }); } }
+        const q = L(x, uz + NU * 3.5 + 0.4); a.box(q[0], T1, q[1], 1.2, 2.6, 1.2, WALL, STONE3); a.roof('pyramid', q[0], T1 + 2.6, q[1], 1.4, 0.8, 1.4, WALL, STONE2); } }
   /* THE LISTS: a tilt rail either side of the middle line (red and white, the lances' side), on sand */
   for (const s of [-1, 1]) { const p = L(MX + s * 24.5, g(55)); 
       feat({ k: 'wall', x0: r2(MX + s * 24.5 - 10.5), z0: g(55), x1: r2(MX + s * 24.5 + 10.5), z1: g(55), h: 1.15, t: 0.22, key: 'wood' });   // THE TILT: a plank barrier (the engine's own rail is a modern handrail)
