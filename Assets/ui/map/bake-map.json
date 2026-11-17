@@ -308,5 +308,45 @@
   "v": "2f0117fc24",
   "bytes": 1212,
   "s": "1.9"
+ },
+ "site_prebuilt_gobekli_ow_henge": {
+  "id": "site_prebuilt_gobekli_ow_henge",
+  "nx": 36,
+  "nz": 36,
+  "h0": -1.22,
+  "hs": 0.25,
+  "v": "1e510d9760",
+  "bytes": 834,
+  "s": "0.8"
+ },
+ "site_prebuilt_gobekli_ow_line": {
+  "id": "site_prebuilt_gobekli_ow_line",
+  "nx": 144,
+  "nz": 36,
+  "h0": -1.13,
+  "hs": 0.25,
+  "v": "7173797cde",
+  "bytes": 1626,
+  "s": "1.1"
+ },
+ "site_prebuilt_gobekli_ow_bugs": {
+  "id": "site_prebuilt_gobekli_ow_bugs",
+  "nx": 84,
+  "nz": 60,
+  "h0": -0.83,
+  "hs": 0.25,
+  "v": "7caaea823b",
+  "bytes": 1651,
+  "s": "1.2"
+ },
+ "site_prebuilt_gobekli_ow_babel": {
+  "id": "site_prebuilt_gobekli_ow_babel",
+  "nx": 84,
+  "nz": 96,
+  "h0": -1.79,
+  "hs": 0.25,
+  "v": "2c2a8cbb17",
+  "bytes": 874,
+  "s": "3.5"
  }
 }
