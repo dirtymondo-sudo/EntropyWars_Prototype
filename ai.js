@@ -594,6 +594,8 @@
             if (opts.rawBase == null) raw += _spellPowerOf(g, unit, sp);
             // 🛹 Board Slam (`momentumSpend`): the Skater's banked Momentum lands as a second blow (battle.js _runPostEffects)
             if (opts.rawBase == null && sp.momentumSpend && unit._momentum > 0) raw += sp.momentumSpend * Math.min(6, unit._momentum);
+            // ⛪ Celibacy (`summonPenalty`): N more for every summon the target's side has on the board (battle.js _runPostEffects)
+            if (opts.rawBase == null && sp.summonPenalty > 0 && typeof window._popeSummonBonus === 'function') raw += window._popeSummonBonus(sp, tg);
             damageType = sp.damageType === 'magic' ? 'magic' : 'physical';
             ignoreArmor = !!sp.ignoreArmor;
         } else {
@@ -1128,6 +1130,16 @@
             if (!booked) return 40;
             const notYet = (tg.ap || 0) > 0 && !tg.hasActed ? 1 : 0.3;
             return tuneW(g, 'ccOutputFactor') * unitThreatOutput(g, tg, unit) * notYet + 60 + (unitIsHealerKit(tg) ? 80 : 0);
+        }
+        /* ⛪ CELIBACY (the Pope, 2026-11-17): worth it on a unit that carries a summon (a pet, the dead, a turret) it could still
+           cast; nothing on a unit with none */
+        if (id === 'celibate') {
+            let n = 0;
+            try { n = (tg.spells || []).filter(s => s && typeof window._isSummonSpell === 'function' && window._isSummonSpell(s)).length; } catch (e) {}
+            if (!n) return 0;
+            try { if (g.unitHasStatus(tg, 'celibate')) return 0; } catch (e) {}
+            if (_aiStatusBlocked(g, tg, id)) return 0;   // the Ghoul's Pure Negativity shrugs it off
+            return 70 + 30 * Math.min(2, n);
         }
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
         if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial

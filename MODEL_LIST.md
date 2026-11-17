@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1211 |
+| Meshy AI | no | 1213 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -172,6 +172,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | police officer · prebuilt_cyberpunk · male (skin) | `Assets/characters/races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | politician — creator look also baked | `Assets/characters/races/politician/Meshy_AI_politician_realisti_biped_Animation_Running_withSkin.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | politician (female) — creator look also baked | `Assets/characters/races/politician/female/Meshy_AI_politician_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the women; mondo 2026-11-16) |
+| pope | `Assets/characters/races/pope/male/Meshy_AI_pope2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW CHARACTERS, mondo 2026-11-17; playable as THE POPE) |
 | popstar (female) | `Assets/characters/races/popstar/Meshy_AI_a_blonde_popstar_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | priest — creator look also baked | `Assets/characters/races/priest/Meshy_AI_priest_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | priest (female) — creator look also baked | `Assets/characters/races/homosapien/female/whitemage/Meshy_AI_sexy_nun_girl_realis_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3008,6 +3009,12 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | pd_lever | `Assets/world/props/meshy/pd_lever.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; the plot dungeons, mondo 2026-11-15: "Make a new lever"; originals in project files dungeons/meshy/) |
+
+### Meshy AI, made by Claude through the Meshy API (the Pope's Popemobile, 2026-11-17; concept + prompt in project files pope-race/) — Meshy AI (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| popemobile | `Assets/world/props/meshy/popemobile.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (the Pope's Popemobile, 2026-11-17; concept + prompt in project files pope-race/) |
 
 ### Spear (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 

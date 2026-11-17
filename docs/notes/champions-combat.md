@@ -5820,3 +5820,24 @@ residents in their zones.
   slips, LATE FEE stamp; OVERDUE stamp + red ring on a Silenced foe). Probe 11-17 (real TDM, 0 page errors): Shush silenced, cd 2;
   Late Fee 557 on the silenced Knight vs 343 plain; Overdue renewed Hurricane Party (3 foes hit + Wet, 75 MP, cd 3) and Sponsored
   (+2 ATK/INT on the ally). Proof /mnt/project-files/librarian-polish/.
+
+## THE POPE (2026-11-17, thread cmsg_01XWpxyTn3nnw98znVzKdFjsNqsMAutYPM6qbM24DRQHKz)
+mondo's kit, word for word: "Popemobile can stay, axe the other 2. Let's do Thoughts and Prayers, a small healing and regen
+spell. Celibacy, which prevents an enemy from summoning (counter to antperson and ringmaster, etc.), and does damage per every
+summon the enemy has on the map. Excommunication which removes an enemies buffs a does damage." No passive rule (Infallible was
+not approved, not built). Race 'pope' (human/divine, support, Vatican City, light resist / psychic weak, finisher White Smoke).
+- nrThoughtsAndPrayers T1: heal 10 % + regen 2, range 3.
+- nrPopemobile T2: a dash on a STRAIGHT LINE only (`straightLine: true`: range tiles = caster's row + column, an off-line aim =
+  'range'), 4 squares, then the bulletproof glass: a 150 shield (`selfShieldAfter`, through spellShieldGainFor) kept on
+  `unit._popeGlass`; whatever is left is taken off when the Pope's next activation starts (battle.js `_popeGlassEnds`).
+  The ride: `_RIDE_CASTS.nrPopemobile` mounts him standing (`_MOUNT_VEHICLES.popemobile`, `stand: true`, file nose = -X so
+  `yaw: PI/2`) in R2 `Assets/world/props/meshy/popemobile.glb` (Meshy, catalogue row `popemobile`).
+- nrExcommunication T2: `purgeFirst` (strips buffs, raised stages and shield like Annihilation) then 100 light.
+- nrCelibacy T3: 60 light + `summonPenalty: 55` per summon the target's side has on the map (`state.turrets` summon/zombie/
+  turret rows; `_popeSummonCount`), and status `celibate` 2 rounds: `spellBlockReason` blocks every summon spell
+  (`_isSummonSpell`: summonUnit / raiseDead / deployTurret / summonDef) with "⛪ Celibate". AI: the damage guess adds
+  `_popeSummonBonus`; ccDenialValue values celibate only on a target that has summon spells and is not immune.
+- Looks: Meshy pope2 rig, idle/walk = 100STYLE ArmsBehindBack (lib 6); Celibacy plays MAL5 Finger_Wag_No (`animClip.ts` is
+  honoured since this PR). VFX (three-vfx-effects.js "THE POPE"): a gold cross + halo over the healed, church doors shutting on
+  the excommunicated, a padlock over the celibate with small padlocks flying in from each enemy summon, a glint on the glass.
+Proof: /mnt/project-files/pope-race/proof/.

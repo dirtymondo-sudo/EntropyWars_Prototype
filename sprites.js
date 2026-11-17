@@ -151,6 +151,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/pope/', 'Assets/characters/races/pope/'],   // 2026-11-17 THE POPE
   ['Assets/Sprites/Races/lifeguard/', 'Assets/characters/races/lifeguard/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/knight/', 'Assets/characters/races/knight/'],   // 2026-11-16 THE NEW RACES (the male knight)
   ['Assets/Sprites/Races/shaman/', 'Assets/characters/races/shaman/'],   // 2026-11-16 THE NEW RACES (the male shaman)
@@ -557,6 +558,7 @@ const RACE_SPRITE_GENDERS = {
   'karate frog': 'male',   // 2026-11-17 THE NEW RACES 2
   'samurai slug': 'male',   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 'male',   // 2026-11-17 THE NEW RACES 2
+  'pope': 'male',   // 2026-11-17 THE POPE
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -734,6 +736,7 @@ const _CHARACTER_SPRITES = {
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
@@ -2631,6 +2634,17 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'physical',
     }),
   },
+  'pope': {   // ⛪ THE POPE (2026-11-17): the round-2 model (no shoulder cape, the robe rides the hips; models-assets.md "THE NEW CHARACTERS, 11-17")
+    male: _mkUAL('pope', 'pope2', {
+      model: `${_S}/Races/pope/male/Meshy_AI_pope2_Running.glb`,
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+      /* his body language: hands behind his back at rest and on the walk (the 100STYLE mocap), the raised-hand blessing of
+         castHeal on his heals; Celibacy wags the finger (its row's animClip) */
+      lib: { idle: { clip: 'S100_ArmsBehindBack_Idle', lib: 6 },
+             walk: { clip: 'S100_ArmsBehindBack_Walk', lib: 6, ts: 2.75 } },
+    }),
+  },
   'lifeguard': {   // red swimsuit, rescue cross (THE NEW RACES 2026-11-16)
     female: _mkUAL('lifeguard', 'lifeguard_f', {
       model: `${_S}/Races/lifeguard/female/Meshy_AI_lifeguard_f_Running.glb`,
@@ -3443,7 +3457,7 @@ function registerSpellAnimClips(defs) {
     for (const t of tables) {
       if (t.lc[slot]) continue;
       t.lc[slot] = { clip: d.animClip.name, lib, defer: true };
-      if (!t.lt[slot]) t.lt[slot] = 1;
+      if (!t.lt[slot]) t.lt[slot] = (d.animClip.ts > 0 ? d.animClip.ts : 1);   // ⛪ a row may set the clip's pace (the Pope's 5 s finger wag at 2.5×)
       isNew = true;
     }
     if (isNew) added++;
@@ -6883,6 +6897,7 @@ const RACE_SPRITES = {
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
