@@ -12200,3 +12200,14 @@ What the pass found and changed, one group a PR. The finished world is listed in
     placed rooms were rebaked: 16 pictures were stale, 3 are new, 16 pictures of retired rooms are deleted. THE ZONE SHEET draws every
     room of a zone at `zx, zy` whatever its layer: the North Pole (zy -28), Heaven, the Catacombs and Hell still had the old sheet's
     places and lay over the roads; they are set clear of the surface rooms now.
+- **PR 2 also**: THE NORTH POLE'S WALLS: its room had no `edges` row, so the world ended flat at the village fence; bake-mountains.js now
+  writes `edges: { world: true, reach: 440, ways: [w = the sleigh road, n] }` like every other One World room. THE GUTTER DOOR: the city end
+  of the storm drain (`link_streets_drain`) stood inside the boathouse's wall (arrival = stuck); `JOIN.streets_drain` moved two squares to
+  the Canal walk. THE ROAD THROUGH THE FENCE: the Circus lot's ranch rail closed all three highway exits (the walker stopped 1 m short of the
+  edge); bake-desert.js now cuts every `rail` row a block brought with it where a seam door's road crosses the room's wall (the road's own
+  width; ghost walls of buildings are never cut; `CUT_EXTRA` keeps the feature count check true).
+- **What the walk found that is NOT a fault** (do not chase again): the Snowy Pass trail (`site_ow_l6`) "not moving" was the probe walking with
+  the renderer switched off; with it on both ends cross. Giza's east road (`ow_v_17_32`) lands 3.7 m from the Great Pyramid's foot: a walk
+  job that starts 5 m inside the door starts INSIDE the pyramid's ring of unseen walls; the door itself works both ways. A door whose prompt
+  says `[WALK IN]` opens by walking into it, one that says `[E]` needs the key: the probe presses E only when the prompt asks.
+

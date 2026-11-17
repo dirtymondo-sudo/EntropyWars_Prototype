@@ -272,3 +272,185 @@ Redwood Trail + the Ritual Ground now and the Estate's is the Haunted House + th
 interim doors). The Stair lands in the Clearing (`hubs.woods.room`). Sections A and B above describe the 36-plot rooms as they were on 11-16:
 for these two zones read `docs/plans/one-world/TEST_SLICE_REPORT.md` and areas-complexes.md "ONE WORLD, THE TEST SLICE" instead.
 
+## ONE WORLD, BUILT (2026-11-17, BUILD_PLAN phase 5: the whole-world pass)
+Every zone (phase 3), every route, walk and island (phase 4) stands at its One World (v13) place and the whole-world pass has walked the seams.
+Sections A to D above are the 11-16 world (zones behind doors) and are HISTORY; this section is the world as it stands. The plan and its sheets:
+`docs/plans/one-world/` (README, BUILD_PLAN, plots.json). The pass's own notes: areas-complexes.md "ONE WORLD PHASE 5".
+
+**How the world is walked.** A plot is 42 m; a place's corner is given in plots, x east and y south, the city's north-west corner near 0,0.
+Two places that touch are joined by a ROAD or TRAIL that runs off the edge: you walk on, one loading card, and stand on the same road on the
+other side (seam doors `ow_v_<x>_<y>` / `ow_h_<x>_<y>`, the same id on both sides). What you see past an edge is the neighbour's ground
+(`terrain.edges.world`). The underground (Sewers, Catacombs, Hell, the tunnels, the Cavern, Agartha, the D.U.M.B.) lies under the surface at the
+same plot numbers and is reached by stairs, wells, gutters and lifts; the Deep is under the sea, reached by the Beach's submarine and the Bermuda
+upwelling; Heaven is over the Vatican (the observatory, the Pilgrim cloud from Olympus); the islands and Antarctica are reached by boat; the Astral
+Realm and the Internet by a screen in the D.U.M.B.; Outer Space by the rocket. The map's GO to a zone lands at that zone's hub place
+(`DOOR_HQ.hubs`), and an old save in a room that no longer exists lands in the room that replaced it (`DOOR_HQ.retired`).
+
+**The long walks, in loading cards** (shortest way by road, phase 5): Camelot to the Beach 5 (the Old Road, the Vatican, the River Road, the city,
+the harbour); Camelot to Giza 11 by the south (Clearing, Corn Fields, County Lane, the Ranch, Ranch Road, Western Town, the Desert Highway, the
+Circus, the Highway again); the Snowy Pass (Ski Lodge) to Area 51 11; Stonehenge to the North Pole 7; the North Pole to Antarctica 4 (the Frozen
+Sea, the Looking-glass Garden's boat, Pirates' Cove, the boat south).
+
+**Joined in phase 5** (two road rooms that belong together and are smaller than the city = one room): the Polar Trail (`site_ow_r5`, was two),
+the Coast Road (`site_ow_r10`, was two), the River Road + the Shasta Road (`site_ow_r1`, R2 folded in). Districts of one zone were NOT joined:
+measured memory of a single district is already at the 1.4 GB line (the Ranch, Western Town, Area 51). **Taken away in phase 5** (stand-in doors
+from before the routes): Shasta to the Hills and to the Woods, the Redwood Trail to Shasta, the Vatican's Pilgrim Stair to Olympus, the North
+Pole's sleigh door to Camelot. Kept on purpose (story doors, not stand-ins): the lodge painting to Olympus, the Grove's lodge door, the Ranch's
+Room 1954, the looking-glass / dead tree pair, the wells.
+
+**Every place, where it stands, how you leave it** (written by the pass from data.js; plots x east, y south):
+
+**DISASTER CITY**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| DISASTER CITY | `site_prebuilt_downtown_streets` | x 0..16, y -3..14 | 183 | THE RIVER ROAD (walk on); THE BEACH (a door); DISASTER CITY (a door); THE RANCH (a door); THE RITUAL GROUND (a door); THE BADLANDS HIGHWAY (road); THE VALLEY ROAD (road); THE CLEARING (gutter); MOUNT OLYMPUS (painting); + 8 doors to insides / DOOR HQ |
+
+**HEAVEN + HELL + VATICAN**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| HEAVEN | `site_prebuilt_heaven_plots` | ABOVE THE VATICAN | 26 | MOUNT OLYMPUS (cloud); THE VATICAN (cloud); + 2 doors to insides / DOOR HQ |
+| THE VATICAN | `site_prebuilt_vatican_plots` | x -12..-7, y -9..-3 | 33 | THE RIVER ROAD (a trail gap); THE OLD ROAD (a trail gap); THE PILGRIM WAY (a trail gap); THE CATACOMBS (a door); HEAVEN (telescope); + 2 doors to insides / DOOR HQ |
+| THE CATACOMBS | `site_prebuilt_vatican_under` | under, x -10..-8, y -5..-4 | 6 | THE VATICAN (a door); THE TUNNEL-WAY TUNNEL (a trail gap); HELL (a door) |
+| HELL | `site_prebuilt_hell_plots` | under, x -10..-7, y -10..-7 | 16 | THE CATACOMBS (a door); THE CAVERN (tunnel); + 1 door to insides / DOOR HQ |
+| THE RIVER ROAD | `site_ow_r1` | x -6..1, y -14..-3 | 38 | THE VATICAN (walk on); DISASTER CITY (walk on); MOUNT SHASTA (walk on) |
+
+**THE MOUNTAINS**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE NORTH POLE | `site_prebuilt_northpole_plots` | x 0..3, y -28..-25 | 16 | THE POLAR TRAIL (walk on); THE FROZEN SEA (trail); + 2 doors to insides / DOOR HQ |
+| THE SKI LODGE · THE SNOWY PASS | `site_prebuilt_shasta_ow_lodge` | x -23..-14, y -22..-14 | 29 | THE TRAIL (a trail gap); MOUNT OLYMPUS (a trail gap); THE TRAIL (walk on); THE POLAR TRAIL (walk on) |
+| MOUNT OLYMPUS | `site_prebuilt_shasta_ow_olympus` | x -14..-5, y -18..-13 | 19 | THE SKI LODGE (a trail gap); MOUNT SHASTA (walk on); THE PILGRIM WAY (a trail gap); HEAVEN (cloud); DISASTER CITY (painting); + 1 door to insides / DOOR HQ |
+| MOUNT SHASTA | `site_prebuilt_shasta_ow_shasta` | x -4..2, y -21..-15 | 20 | MOUNT OLYMPUS (walk on); THE RIVER ROAD (a trail gap); AGARTHA (a door); + 1 door to insides / DOOR HQ |
+| THE PILGRIM WAY | `site_ow_r3` | x -11..-9, y -13..-10 | 10 | THE VATICAN (a trail gap); MOUNT OLYMPUS (a trail gap) |
+| THE POLAR TRAIL | `site_ow_r5` | x -13..-1, y -27..-21 | 36 | THE SKI LODGE (walk on); THE NORTH POLE (walk on) |
+
+**THE WOODS**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE CLEARING | `site_prebuilt_fairy_forest_ow_clearing` | x -17..-6, y 0..4 | 19 | THE CORN FIELDS (a trail gap); THE OLD ROAD (a trail gap); THE RITUAL GROUND (a trail gap); THE TRAIL (a trail gap); THE VALLEY ROAD (a trail gap); THE TUNNEL-WAY TUNNEL (well); DISASTER CITY (trail); DISASTER CITY (trail); + 3 doors to insides / DOOR HQ |
+| THE REDWOOD TRAIL | `site_prebuilt_fairy_forest_ow_redwood` | x -17..-16, y -9..-2 | 9 | AGARTHA (trail); THE OLD ROAD (a trail gap); THE TRAIL (a trail gap) |
+| THE RITUAL GROUND | `site_prebuilt_fairy_forest_ow_ritual` | x -22..-17, y 2..10 | 18 | THE FOREST (a trail gap); THE CLEARING (a trail gap); THE HAUNTED HOUSE (a trail gap); DISASTER CITY (trail); + 2 doors to insides / DOOR HQ |
+| THE TRAIL · THE SNOWLINE TO THE TREE LINE | `site_ow_l3` | x -17..-17, y -14..-10 | 5 | THE REDWOOD TRAIL (a trail gap); THE SKI LODGE (a trail gap) |
+| THE TRAIL · WEST TO CAMELOT | `site_ow_l4` | x -19..-17, y 0..0 | 3 | THE CLEARING (a trail gap); THE FAIRY FOREST (trail) |
+| THE VALLEY ROAD | `site_ow_r6` | x -12..-1, y 3..5 | 26 | THE CLEARING (walk on); DISASTER CITY (road) |
+
+**CAMELOT KINGDOM**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| CAMELOT KINGDOM | `site_prebuilt_camelot_kingdom` | x -29..-24, y -3..2 | 36 | THE SNOWY PINES (a trail gap); THE LOOKING-GLASS GARDEN (a trail gap); THE FAIRY FOREST (a trail gap); THE FOREST (a trail gap); THE OLD ROAD (walk on); THE STONE PATH (a trail gap); + 7 doors to insides / DOOR HQ |
+| THE SNOWY PINES | `site_prebuilt_camelot_ow_pines` | x -26..-25, y -10..-4 | 8 | CAMELOT KINGDOM (a trail gap); THE TRAIL (a trail gap) |
+| THE LOOKING-GLASS GARDEN | `site_prebuilt_camelot_ow_garden` | x -33..-30, y -1..1 | 6 | THE ASTRAL REALM (a door); CAMELOT KINGDOM (a trail gap); THE FROZEN SEA (boat); PIRATES' COVE (boat); + 1 door to insides / DOOR HQ |
+| THE FAIRY FOREST | `site_prebuilt_camelot_ow_fairy` | x -23..-20, y -1..1 | 6 | CAMELOT KINGDOM (a trail gap); THE TRAIL (trail) |
+| THE FOREST | `site_prebuilt_camelot_ow_forest` | x -26..-23, y 3..7 | 9 | THE RITUAL GROUND (a trail gap); CAMELOT KINGDOM (a trail gap) |
+| THE TRAIL · THE PINES TO THE SKI LODGE | `site_ow_l6` | x -25..-23, y -16..-11 | 8 | THE SNOWY PINES (a trail gap); THE SKI LODGE (walk on) |
+| THE STONE PATH | `site_ow_r12` | x -30..-28, y -6..-4 | 8 | STONEHENGE (a trail gap); CAMELOT KINGDOM (a trail gap) |
+| THE OLD ROAD | `site_ow_r4` | x -23..-13, y -5..-1 | 26 | CAMELOT KINGDOM (walk on); THE VATICAN (walk on); THE REDWOOD TRAIL (a trail gap); THE CLEARING (a trail gap) |
+
+**THE ESTATE**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| COUNTY LANE · THE LAKE | `site_prebuilt_skinwalker_ow_lake` | x -14..-10, y 10..17 | 25 | THE CORN FIELDS (walk on); THE RANCH (walk on) |
+| THE RANCH ROAD | `site_ow_r8` | x -10..-3, y 20..25 | 23 | THE RANCH (walk on); WESTERN TOWN (walk on) |
+| THE CORN FIELDS | `site_prebuilt_skinwalker_ow_corn` | x -14..-13, y 5..10 | 12 | THE CLEARING (a trail gap); COUNTY LANE (walk on); THE WEST TUNNEL (well) |
+| THE HAUNTED HOUSE | `site_prebuilt_skinwalker_ow_house` | x -22..-20, y 11..16 | 9 | THE RITUAL GROUND (a trail gap); + 2 doors to insides / DOOR HQ |
+| THE RANCH | `site_prebuilt_skinwalker_ow_ranch` | x -12..-10, y 18..22 | 10 | COUNTY LANE (walk on); THE RANCH ROAD (walk on); DISASTER CITY (a door); + 1 door to insides / DOOR HQ |
+
+**THE DESERT**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE CIRCUS | `site_prebuilt_area51_ow_circus` | x 6..8, y 21..23 | 9 | THE DESERT HIGHWAY (walk on); THE DESERT HIGHWAY (walk on); THE BADLANDS HIGHWAY (walk on); + 2 doors to insides / DOOR HQ |
+| WESTERN TOWN | `site_prebuilt_area51_ow_town` | x -4..-1, y 26..29 | 16 | THE DESERT HIGHWAY (walk on); THE RANCH ROAD (walk on); THE DESERT HIGHWAY (walk on) |
+| AREA 51 | `site_prebuilt_area51_desert` | x 2..5, y 33..36 | 16 | THE D.U.M.B. (a door); THE DESERT HIGHWAY (walk on); THE DESERT HIGHWAY (walk on); + 1 door to insides / DOOR HQ |
+| GIZA | `site_prebuilt_area51_ow_giza` | x 13..16, y 29..32 | 16 | THE DESERT HIGHWAY (walk on); THE DESERT HIGHWAY (walk on); THE COAST ROAD (walk on); THE DELTA CAUSEWAY (walk on); LEYLINES (a door); + 4 doors to insides / DOOR HQ |
+| THE DELTA CAUSEWAY | `site_ow_r11` | x 17..20, y 31..33 | 8 | GIZA (walk on); LEYLINES (walk on) |
+| THE BADLANDS HIGHWAY | `site_ow_r9` | x 6..7, y 12..20 | 18 | THE CIRCUS (walk on); DISASTER CITY (road) |
+| THE DESERT HIGHWAY | `site_ow_dh1` | x -2..5, y 22..25 | 20 | THE CIRCUS (walk on); WESTERN TOWN (walk on) |
+| THE DESERT HIGHWAY | `site_ow_dh2` | x -2..1, y 30..34 | 14 | WESTERN TOWN (walk on); AREA 51 (walk on) |
+| THE DESERT HIGHWAY | `site_ow_dh3` | x 6..12, y 31..34 | 18 | AREA 51 (walk on); GIZA (walk on) |
+| THE DESERT HIGHWAY | `site_ow_dh4` | x 9..14, y 22..28 | 22 | GIZA (walk on); THE CIRCUS (walk on) |
+
+**THE BEACH**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE BEACH | `site_prebuilt_bermuda_beach` | x 12..19, y 2..11 | 80 | DISASTER CITY (a door); THE COAST ROAD (walk on); THE VOLCANO ISLAND (boat); LEYLINES (boat); THE BERMUDA TRIANGLE (boat); + 1 door to insides / DOOR HQ |
+| THE BERMUDA TRIANGLE | `site_prebuilt_bermuda_ow_triangle` | x 32..40, y 0..6 | 63 | THE DEEP (whirlpool); THE BEACH (boat); + 2 doors to insides / DOOR HQ |
+| THE VOLCANO ISLAND | `site_prebuilt_bermuda_ow_volcano` | x 22..27, y -19..-14 | 36 | THE BEACH (boat); THE FROZEN SEA (boat) |
+| PIRATES' COVE | `site_prebuilt_bermuda_ow_cove` | x -30..-28, y 31..33 | 9 | THE LOOKING-GLASS GARDEN (boat); ANTARCTICA (boat) |
+| THE FROZEN SEA | `site_prebuilt_bermuda_ow_frozen` | x 0..3, y -30..-29 | 8 | THE VOLCANO ISLAND (boat); THE LOOKING-GLASS GARDEN (boat); THE NORTH POLE (trail) |
+| THE COAST ROAD | `site_ow_r10` | x 15..17, y 12..28 | 38 | THE BEACH (walk on); GIZA (walk on) |
+
+**LEYLINES**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| LEYLINES · THE LINE | `site_prebuilt_gobekli_ow_line` | x 19..30, y 29..31 | 18 | LEYLINES (walk on); THE DELTA CAUSEWAY (walk on); BUG COLONY (walk on); GIZA (a door); + 1 door to insides / DOOR HQ |
+| LEYLINES · BABEL + TECHNOTICLAN | `site_prebuilt_gobekli_ow_babel` | x 28..34, y 29..36 | 29 | LEYLINES (walk on); BUG COLONY (walk on); AGARTHA (a door); ANTARCTICA (boat); THE BEACH (boat); + 2 doors to insides / DOOR HQ |
+| STONEHENGE | `site_prebuilt_gobekli_ow_henge` | x -31..-29, y -9..-7 | 9 | THE STONE PATH (a trail gap); + 1 door to insides / DOOR HQ |
+| BUG COLONY | `site_prebuilt_gobekli_ow_bugs` | x 21..27, y 32..36 | 15 | LEYLINES (walk on); LEYLINES (walk on); + 2 doors to insides / DOOR HQ |
+
+**ANTARCTICA**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| ANTARCTICA | `site_prebuilt_antarctica_plots` | x 0..5, y 46..51 | 36 | AGARTHA (a door); THE CAVERN (a door); PIRATES' COVE (boat); LEYLINES (boat); + 2 doors to insides / DOOR HQ |
+
+**THE SEWERS**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| DISASTER CITY · THE SEWERS | `site_prebuilt_downtown_underworld` | under, x 1..17, y 1..16 | 65 | DISASTER CITY (a door); THE D.U.M.B. (a trail gap); THE DEEP (a trail gap); THE TUNNEL-WAY TUNNEL (a trail gap); THE CLEARING (a door); THE CAVERN (a door); + 4 doors to insides / DOOR HQ |
+
+**THE CAVERN**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE CAVERN | `site_prebuilt_hollow_earth_cavern` | under, x -8..-3, y 7..12 | 24 | THE WEST TUNNEL (a trail gap); THE TUNNEL-WAY TUNNEL (a trail gap); ANTARCTICA (a door); DISASTER CITY (a door); HELL (tunnel); THE D.U.M.B. (a door); + 3 doors to insides / DOOR HQ |
+| AGARTHA | `site_prebuilt_hollow_earth_ow_agartha` | under, x -19..-15, y -12..-9 | 15 | THE REDWOOD TRAIL (trail); THE LONG TUNNEL (a trail gap); MOUNT SHASTA (a door); ANTARCTICA (a door); LEYLINES (a door); + 1 door to insides / DOOR HQ |
+| THE WEST TUNNEL | `site_prebuilt_hollow_earth_ow_west` | under, x -15..-9, y 2..12 | 18 | THE CAVERN (a trail gap); THE LONG TUNNEL (a trail gap); THE CORN FIELDS (well) |
+| THE LONG TUNNEL | `site_prebuilt_hollow_earth_ow_long` | under, x -15..-15, y -8..1 | 10 | THE WEST TUNNEL (a trail gap); AGARTHA (a trail gap) |
+| THE TUNNEL-WAY TUNNEL | `site_prebuilt_hollow_earth_ow_tunnelway` | under, x -9..0, y -4..9 | 34 | THE CAVERN (a trail gap); DISASTER CITY (a trail gap); THE CATACOMBS (a trail gap); THE CLEARING (well) |
+
+**THE D.U.M.B.**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE D.U.M.B. | `site_prebuilt_dumb_base` | under, x 0..6, y 11..17 | 49 | DISASTER CITY (a trail gap); AREA 51 (a door); THE ASTRAL REALM (screen); THE INTERNET (screen); THE CAVERN (a door); + 6 doors to insides / DOOR HQ |
+
+**THE DEEP**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE DEEP · ATLANTIS + THE TRENCH | `site_prebuilt_atlantis_deep` | under, x 35..42, y 1..16 | 31 | THE DEEP (a door); + 2 doors to insides / DOOR HQ |
+| THE DEEP · THE SEA FLOOR | `site_prebuilt_atlantis_ow_floor` | under, x 18..20, y 5..7 | 9 | THE DEEP (a door); DISASTER CITY (a trail gap); THE BERMUDA TRIANGLE (upwelling); + 1 door to insides / DOOR HQ |
+
+**OUTER SPACE**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| OUTER SPACE | `site_prebuilt_moon_plots` | THE SOLAR SYSTEM | 600 | ; + 17 doors to insides / DOOR HQ |
+
+**THE ASTRAL REALM**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE ASTRAL REALM | `site_prebuilt_lookingglass_realm` | off the map | 45 | THE LOOKING-GLASS GARDEN (a door); THE D.U.M.B. (screen); + 4 doors to insides / DOOR HQ |
+
+**THE INTERNET**
+
+| Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
+|---|---|---|---|---|
+| THE INTERNET | `site_prebuilt_internet_web` | BESIDE THE ASTRAL REALM | 71 | THE D.U.M.B. (screen) |
+
+**Known and left** (phase 5, for mondo to rule on): the city's own horizon (north mountains, west forest, south desert) and the Beach's and
+Antarctica's are still hand-set, not the neighbours' ground (the row "THE WORLD'S EDGES" on claims.md holds them); the Shasta Road's old stubs in
+the Hills and on Shasta, the Pilgrim Stair's foot on Olympus and the Pole's south sleigh road end without a door now; Giza's east road arrives
+3.7 m from the Great Pyramid's foot; the Beach's and Leylines' zone sheets on the map span far islands.
+
