@@ -5179,12 +5179,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shake           = beamDef.shake;
 
         var _vcSB = spellId === 'swordBeam' && _vcOn();   /* THE VFX CLEANUP B2: Sword Beam is its wave, not the generic laser + white charge */
-        if (chargeMs > 0 && !_vcSB) {
+        var _vcKit = _beamKitFor(spellId);                /* B3: THE BEAM KIT in place of the generic laser (its charge rode the windup) */
+        if (chargeMs > 0 && !_vcSB && !_vcKit) {
             var cPx = tilePx(fromX, fromY);
             var cZT = unitSurfaceZ(fromX, fromY) + unitZBoost();
             _spawn({
                 x: cPx.x, y: cPx.y, z: cZT,
-                mode: 'billboard', sprite: 'flash',
+                mode: 'billboard', sprite: 'flash', tint: _vcOn() ? _beamKitCols(_beamKitGlow(spellId), {}).glow : null,   /* B3: the charge blink in the beam's colour */
                 ml: chargeMs + 60,
                 size0: ts * 0.45, size1: ts * 0.12,
                 opacity0: 0.95, opacity1: 0,
@@ -5211,7 +5212,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                beam def's configured pixel thickness so wide "wave" beams stay
                chunky. Falls back to flat sprite quads only without a 3D scene. */
             var _laserThick = Math.max(0.6, (beamThickness / 14));
-            var _laserOk = _vcSB ? true : _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
+            var _laserOk = _vcSB ? true : _vcKit ? _beamKit3D(fromX, fromY, _lastTile.x, _lastTile.y, {
+                kit: _vcKit, glow: _bc.glow, beamMs: beamMs, thickness: _laserThick,
+                startW: _startW || undefined, endW: _endW || undefined,
+            }) : _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
                 core: _bc.core, glow: _bc.glow, beamMs: beamMs, thickness: _laserThick,
                 shake: shake || false,
                 startW: _startW || undefined, endW: _endW || undefined,
@@ -6384,6 +6388,171 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
     }
 
+    /* ════════════════════════════════════════════════════════════════════
+       THE BEAM KIT (THE VFX CLEANUP B3, 2026-11-17, docs/plans/vfx-cleanup/VFX_CLEANUP_PLAN.md section 4)
+       mondo: "We need better beams and lasers, think epic anime ki blast or scifi laser blasters or harry potter
+       spell duels." The generic laser was a white rod with a glow and a white blob for a charge. A kit beam has
+       1 a CHARGE at the hand (the cast's windup: rings closing on the hand, motes pulled in, a ball growing),
+       2 FIRE + HOLD (the front lances out behind a front ball; a hot core in the spell's colour, a DARK edge round
+         it so it reads on a bright floor, a wide glow, the energy sheath flowing down it, a muzzle bloom),
+       3 an IMPACT of its own (a splash thrown back off the last square, a ring flat on the floor).
+       The colour is the spell's (_crBeamPalette), never white: the core is normal-blended, so the stack cannot
+       add up to white. Styles are starting looks, not boxes (mondo 11-17): `ki` thick + a heavy front ball,
+       `blaster` narrow + fast rings, `wand` an unsteady stream shedding sparks. _VC_BEAM = which spell wears what.
+       Same inputs and the same clock as the laser it replaces (beamMs, the 3D line), so battle.js and the camera
+       are untouched; it rides the relayed beam / windup beats. Off with the rest: EW_NO_VFX_CLEANUP. */
+    var _VC_BEAM = {
+        railgun:          { style: 'blaster', thick: 0.8,  rings: 5 },
+        raceHeatRay:      { style: 'blaster', thick: 0.9,  rings: 3, col: 0xff5a1e },
+        raceLaserBeam:    { style: 'blaster', thick: 0.75, rings: 4, col: 0xff2a1a },            /* Heat Vision */
+        racePlasmaCannon: { style: 'blaster', thick: 1.25, rings: 3, head: 0.6 },
+        sigOrichalcumRay: { style: 'blaster', thick: 0.9,  rings: 3, col: 0xffa63a },            /* the lost metal: red-gold */
+        raceKiWave:       { style: 'ki',      thick: 1.2,  rings: 2 },
+        racePsychicBeam:  { style: 'wand',    thick: 0.8 },
+        raceEntropicBeam: { style: 'wand',    thick: 0.9,  col: 0x8a5cff },
+        raceBalefulGaze:  { style: 'wand',    thick: 0.85, col: 0xc23aff },
+        raceJudgmentBeam: { style: 'wand',    thick: 1.0,  col: 0xffc23a }
+    };
+    var _beamKitChargeAt = {};
+    function _beamKitFor(spellId) { return (_vcOn() && spellId && _VC_BEAM[spellId]) || null; }
+    function _beamKitCols(glow, K) {
+        var g = _vcTone(K.col != null ? K.col : (glow != null ? glow : 0x66aaff), null, 0.62, 0.92), r = _vcRgb(g);
+        var hot = (Math.round(r[0] + (235 - r[0]) * 0.28) << 16) | (Math.round(r[1] + (235 - r[1]) * 0.28) << 8) | Math.round(r[2] + (235 - r[2]) * 0.28);
+        var dark = (Math.round(r[0] * 0.16) << 16) | (Math.round(r[1] * 0.16) << 8) | Math.round(r[2] * 0.16);
+        return { glow: g, hot: hot, dark: dark };
+    }
+    function _beamKitGlow(spellId) {
+        try { var m = SPELL_MAP[spellId], bd = m && EFFECTS[m.beam]; return _crBeamPalette(spellId, bd || {}).glow; } catch (e) { return 0x66aaff; }
+    }
+    /* beat 1: the charge at the caster's hand, for the cast's windup */
+    function _beamKitCharge(tx, ty, ms, spellId) {
+        var K = _beamKitFor(spellId); if (!K) return;
+        var scene = _getVFXScene(); if (!scene || _suppressed()) return;
+        var C = _beamKitCols(_beamKitGlow(spellId), K);
+        var w = _worldTorso(tx, ty), ts = w.ts || (_cfg().tileSize || 128);
+        ms = Math.max(250, Math.min(2600, ms || 450));   /* the whole windup: it charges until it fires */
+        var ck = tx + ',' + ty, nowT = performance.now();   /* the windup beat can arrive twice for one cast: one charge */
+        if (_beamKitChargeAt[ck] && nowT - _beamKitChargeAt[ck] < 400) return; _beamKitChargeAt[ck] = nowT;
+        var k = K.style === 'ki' ? 1.5 : K.style === 'wand' ? 0.75 : 1;
+        var mk = function (col, add) { var m = _sigMagicOrbMat(col, _sigGlowTex()); if (!add) m.blending = THREE.NormalBlending; var sp = new THREE.Sprite(m); sp.geometry._ew_shared = true; sp.position.set(w.x, w.y, w.z); _vfxAdd(scene, sp); return sp; };
+        var ball = mk(C.glow, true), pinch = mk(C.dark, false), ringTex = _sigRingTex(), rings = [];
+        ball.renderOrder = 211; pinch.renderOrder = 212;
+        for (var i = 0; i < 3; i++) {
+            var r = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, color: new THREE.Color(C.glow), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+            r.geometry._ew_shared = true; r.position.set(w.x, w.y, w.z); r.renderOrder = 210; _vfxAdd(scene, r); rings.push(r);
+        }
+        var entry = { meshes: [ball, pinch].concat(rings), done: false };
+        _animate3D(entry, ms + 90, function (el) {
+            var t = Math.min(1, el / ms), out = el > ms ? 1 - (el - ms) / 90 : 1;
+            var bs = ts * k * (0.10 + 0.30 * t) * (1 + 0.08 * Math.sin(el * 0.02));
+            ball.scale.set(bs, bs, 1); ball.material.opacity = 0.9 * out;
+            pinch.scale.set(bs * 0.34, bs * 0.34, 1); pinch.material.opacity = 0.85 * t * out;
+            for (var j = 0; j < rings.length; j++) {
+                var rt = (el / 520 + j / 3) % 1, rs = ts * k * (0.95 - 0.8 * rt);
+                rings[j].scale.set(rs, rs, 1); rings[j].material.opacity = 0.75 * rt * out;
+            }
+        });
+        if (_canSpawn()) {
+            var sp0 = _worldToSpawn(w);
+            for (var n = 0; n < (K.style === 'ki' ? 16 : 9); n++) {
+                var a = rn(0, 6.2832), rr = ts * rn(0.5, 1.0) * k;
+                _spawn({ x: sp0.x + Math.cos(a) * rr, y: sp0.y + Math.sin(a) * rr, z: sp0.z + rn(-ts * 0.2, ts * 0.3),
+                    mode: 'billboard', sprite: 'spark-blue', tint: C.glow, ml: Math.min(900, ms) * rn(0.5, 0.95),
+                    seek: { x: sp0.x, y: sp0.y, z: sp0.z, ms: Math.min(900, ms) * rn(0.5, 0.9), ease: 'in', spiralDeg: 150 },
+                    size0: rn(4, 8), size1: 1.5, opacity0: 0.9, opacity1: 0.4 });
+            }
+        }
+    }
+    /* beats 2 + 3: the beam and its impact (same line + clock as _spawnLaserBeam3D) */
+    function _beamKit3D(fromTx, fromTy, toTx, toTy, o) {
+        var scene = _getVFXScene(); if (!scene) return false;
+        o = o || {}; var K = o.kit || {};
+        var a = o.startW || _worldTorso(fromTx, fromTy), b = o.endW || _worldTorso(toTx, toTy);
+        var ts = a.ts || (_cfg().tileSize || 128);
+        var start = new THREE.Vector3(a.x, a.y, a.z), end = new THREE.Vector3(b.x, b.y, b.z);
+        var dir = new THREE.Vector3().subVectors(end, start), length = dir.length() || 1; dir.normalize();
+        var quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        var C = _beamKitCols(o.glow, K), st = K.style || 'blaster';
+        var thick = (o.thickness != null ? o.thickness : 1) * (K.thick || 1), beamMs = o.beamMs != null ? o.beamMs : 440;
+        function cyl(radius, color, opacity, order, add) {
+            var m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(color),
+                transparent: true, opacity: 0, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false }));
+            m.position.copy(start); m.quaternion.copy(quat); m.scale.set(0.01, 0.01, 0.01); m.renderOrder = order; _vfxAdd(scene, m);
+            return { mesh: m, mat: m.material, baseR: radius, baseOp: opacity };
+        }
+        var glow = cyl(ts * 0.15 * thick, C.glow, 0.15, 210, true);
+        var edge = cyl(ts * 0.062 * thick, C.dark, 0.72, 212, false);
+        var core = cyl(ts * 0.036 * thick, C.hot, 1.0, 213, false);
+        var shMat = _sigEnergyMat(C.glow, { opacity: 0.5, gain: 1.1, s1x: st === 'wand' ? 0.22 : 0.05, s1y: -1.9, s2x: st === 'wand' ? -0.3 : -0.06, s2y: -0.9,
+            scale1: st === 'ki' ? 1.4 : 2.2, scale2: 1.0, vFadeLo: 0.03, vFadeHi: 0.96 });
+        var sh = { mesh: new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16, 1, true), shMat), mat: shMat, baseR: ts * 0.10 * thick, baseOp: 0.5, energy: true };
+        sh.mesh.position.copy(start); sh.mesh.quaternion.copy(quat); sh.mesh.scale.set(0.01, 0.01, 0.01); sh.mesh.renderOrder = 211; _vfxAdd(scene, sh.mesh);
+        var layers = [glow, sh, edge, core];
+        var ringN = K.rings != null ? K.rings : 0, rings = [];
+        if (ringN > 0) {
+            var rq = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir), rtex = _sigRingTex();
+            for (var ri = 0; ri < ringN; ri++) {
+                var rMat = _sigMat(C.glow, { map: rtex }), rMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), rMat);
+                rMesh.quaternion.copy(rq); rMesh.position.copy(start); rMesh.renderOrder = 214; _vfxAdd(scene, rMesh);
+                rings.push({ mesh: rMesh, mat: rMat, off: ri / ringN });
+            }
+        }
+        var spr = function (col, order) { var sp = new THREE.Sprite(_sigMagicOrbMat(col, _sigGlowTex())); sp.geometry._ew_shared = true; sp.position.copy(start); sp.renderOrder = order; _vfxAdd(scene, sp); return sp; };
+        var head = spr(C.glow, 215), muzzle = spr(C.glow, 215);
+        var headK = (K.head != null ? K.head : (st === 'ki' ? 0.95 : st === 'wand' ? 0.42 : 0.36)) * thick;
+        var lanceMs = Math.min(st === 'ki' ? 150 : 110, beamMs * 0.24), fadeMs = Math.max(120, beamMs * 0.32), holdEnd = beamMs - fadeMs;
+        var entry = { meshes: [glow.mesh, sh.mesh, edge.mesh, core.mesh, head, muzzle], done: false };
+        for (var rM = 0; rM < rings.length; rM++) entry.meshes.push(rings[rM].mesh);
+        _animate3D(entry, beamMs, function (el) {
+            var ext = el < lanceMs ? (1 - Math.pow(1 - el / lanceMs, 3)) : 1, curLen = length * ext;
+            var mid = start.clone().addScaledVector(dir, curLen * 0.5);
+            var op = el < holdEnd ? 1 : Math.max(0, 1 - (el - holdEnd) / fadeMs);
+            /* the stream's life: a ki wave swells slowly, a blaster hums, a wand stream is never steady */
+            var fl = st === 'wand' ? 1 + 0.22 * Math.sin(el * 0.071) * Math.sin(el * 0.023 + 1.3) : st === 'ki' ? 1 + 0.10 * Math.sin(el * 0.02) : 1 + 0.06 * Math.sin(el * 0.09);
+            var thin = el < holdEnd ? 1 : 0.35 + 0.65 * op;          /* it thins away as it dies (the laser bloomed out) */
+            for (var i = 0; i < layers.length; i++) {
+                var L = layers[i], r = L.baseR * thin * (L === core ? 1 : fl);
+                L.mesh.position.copy(mid); L.mesh.scale.set(r, curLen, r);
+                if (L.energy) { _sigEnergyTick(L.mat, el, op < 1 ? (1 - op) * 0.8 : 0); L.mat.uniforms.uOpacity.value = L.baseOp * op; }
+                else L.mat.opacity = L.baseOp * op;
+            }
+            for (var q = 0; q < rings.length; q++) {
+                var R2 = rings[q], rt = (R2.off + el / Math.max(1, beamMs * (st === 'blaster' ? 0.3 : 0.6))) % 1;
+                R2.mesh.position.copy(start).addScaledVector(dir, curLen * rt);
+                var rs = ts * (st === 'ki' ? 0.34 : 0.2) * (0.8 + 0.4 * Math.sin(rt * Math.PI)) * thick;
+                R2.mesh.scale.set(rs, rs, 1); R2.mat.opacity = 0.75 * op * Math.sin(rt * Math.PI);
+            }
+            head.position.copy(start).addScaledVector(dir, curLen);
+            var hs = ts * headK * (el < lanceMs ? 1 : 0.8 + 0.12 * Math.sin(el * 0.05)) * thin;
+            head.scale.set(hs, hs, 1); head.material.opacity = 0.9 * op;
+            var mz = ts * 0.42 * thick * (1 + 0.5 * Math.max(0, 1 - el / 160)) * thin;
+            muzzle.scale.set(mz, mz, 1); muzzle.material.opacity = 0.7 * op;
+        });
+        /* beat 3: the impact, as the front arrives. The splash goes BACK and to the sides, so the body and its number stay clear */
+        _fxDelay(function () {
+            if (_suppressed() || !_canSpawn()) return;
+            try { _sigShockRing3D(toTx, toTy, { color: C.glow, r0: ts * 0.12, r1: ts * (st === 'ki' ? 1.25 : 0.85), ms: 320, height: 3 }); } catch (e) {}
+            var sS = _worldToSpawn(a), eS = _worldToSpawn(b), dx = sS.x - eS.x, dy = sS.y - eS.y, dl = Math.sqrt(dx * dx + dy * dy) || 1; dx /= dl; dy /= dl;
+            var nS = st === 'ki' ? 22 : 12;
+            for (var n = 0; n < nS; n++) {
+                var side = rn(-1, 1), v = rn(160, 380);
+                _spawn({ x: eS.x, y: eS.y, z: eS.z + rn(-ts * 0.1, ts * 0.2),
+                    vx: (dx * 0.75 - dy * side) * v, vy: (dy * 0.75 + dx * side) * v, vz: rn(40, 260),
+                    mode: 'billboard', sprite: 'spark-blue', tint: n % 3 ? C.glow : C.hot, ml: rn(220, 460),
+                    size0: rn(4, 9) * Math.min(1.4, thick), size1: 1, opacity0: 1, opacity1: 0, gravity: 380, drag: 1.4 });
+            }
+            if (st === 'wand') {   /* the stream sheds sparks down its length */
+                for (var m = 0; m < 12; m++) {
+                    var tt = rn(0.1, 0.95), px = sS.x + (eS.x - sS.x) * tt, py = sS.y + (eS.y - sS.y) * tt, pz = sS.z + (eS.z - sS.z) * tt, sd = rn(-1, 1) < 0 ? -1 : 1;
+                    _spawn({ x: px, y: py, z: pz, vx: -dy * sd * rn(40, 130), vy: dx * sd * rn(40, 130), vz: rn(-10, 110),
+                        mode: 'billboard', sprite: 'spark-blue', tint: C.glow, ml: rn(240, Math.max(260, beamMs)), size0: rn(3, 6), size1: 0.5,
+                        opacity0: 0.95, opacity1: 0, gravity: 120, drag: 1.2 });
+                }
+            }
+        }, lanceMs);
+        return true;
+    }
+
     function _spawnLaserBeam3D(fromTx, fromTy, toTx, toTy, opts) {
         var scene = _getVFXScene();
         if (!scene) return false;
@@ -6426,7 +6595,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         var glow = mkCyl(ts * 0.17 * thick, glowColor, 0.24, 210);
+        /* THE VFX CLEANUP (B3): the line spells still on this laser lose its white core: the spell's colour, hot, normal-blended */
+        if (_vcOn()) coreColor = _beamKitCols(glowColor, {}).hot;
         var core = mkCyl(ts * 0.034 * thick, coreColor, 0.98, 212);
+        if (_vcOn()) core.mat.blending = THREE.NormalBlending;
         var layers = [glow, core];
 
         /* mid sheath: scrolling energy-noise shell — power visibly FLOWS
@@ -22646,7 +22818,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var _physCast = _isKineticFam || _isGunSpell(spellId)
             || (_wDef && _wDef.damageType === 'physical');
 
-        if (!_physCast && !P.noOrb) {   /* noOrb: nature casts call vines, not a glass orb (THE NATURE PASS) */
+        if (!_physCast && !P.noOrb && !_beamKitFor(spellId)) {   /* noOrb: nature casts call vines, not a glass orb (THE NATURE PASS); a kit beam charges its own ball */
             try {
                 /* body-sized (2026-11-06 audit, playtest C8): a SQUARE-sized orb was twice the caster on the 3.5 m squares */
                 var _obk = _bodyK();
@@ -22660,6 +22832,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 });
             } catch (e) {}
         }
+
+        /* THE BEAM KIT (B3): a kit beam charges at the hand for the windup */
+        if (_beamKitFor(spellId)) { try { _beamKitCharge(tx, ty, holdMs, spellId); } catch (e) { console.error('[VFX] beam charge failed ' + (e && e.message)); } }
 
         /* THE WATER PASS: a water caster gathers a ball of water instead of the glass orb */
         if (P.water && !_physCast) { try { _wvGather(tx, ty, params.tx, params.ty, holdMs, T.orbScale); } catch (e) {} }
@@ -25707,14 +25882,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ts = _cfg().tileSize || 128;
         var ring = (P && P.ring != null) ? P.ring : 0xb69cff;
         var orb = (P && P.orb != null) ? P.orb : ring;
-        try {
+        /* THE VFX CLEANUP (B3): the sigil disc only for the schools that draw on the ground (_VC_RUNE), the light column only
+           for the light itself (divine) and never white-cored. It stood, a rune + a white pillar, on every capstone (Railgun). */
+        var _vcB = _vcOn(), _vcArch = (_rvCtx && _rvCtx.arch) || null;
+        if (!_vcB || _VC_RUNE[_vcArch]) try {
             _sigMagicCircle3D(tx, ty, {
                 color: ring, color2: orb, radiusPx: ts * 1.55,
                 growMs: 180, holdMs: 620, fadeMs: 320, opacity: 0.7, spin: 0.0022, height: 3,
             });
         } catch (e) {}
-        try {
-            _sigLightPillar3D(tx, ty, { color: orb, coreColor: 0xffffff, radius: ts * 0.24, height: ts * 6.5, ms: 640 });
+        if (!_vcB || _vcArch === 'divine') try {
+            _sigLightPillar3D(tx, ty, { color: orb, coreColor: _vcB ? orb : 0xffffff, radius: ts * 0.24, height: ts * 6.5, ms: 640 });
         } catch (e) {}
     }
 
