@@ -57748,6 +57748,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        small and fly off the body, the glint sits on its edge; nothing is
        full-screen and nothing stands between the lens and the body. ══════ */
     var _MTL = { steel: 0xdfe6ee, rim: 0xeaf2ff, spark: 0xffa848, hot: 0xfff4e2, glint: 0xf4f8ff, shard: 0xd8dee8 };
+    /* THE VFX SWEEP, B7a (2026-11-17): the stamp's three near-white pieces in metal's own two colours. The glint and the cog's rim
+       flare are steel blue, the hot sparks and the hit flash are the grinder's amber. The steel itself (cog, shards) stays steel.
+       One glint a hit (it was two or three on the big ones). `EW_NO_VFX_CLEANUP` = the old values. */
+    var _MTL_VC = { rim: 0x6fa8e6, hot: 0xf0b25a, glint: 0x86b8ee, cog: 0x8296ae };
+    function _mtlC(k) { return (_vcOn() && _MTL_VC[k] != null) ? _MTL_VC[k] : _MTL[k]; }
     _THEME_MAP.metal = { core: 'steel-spark', trail: 'steel-spark', burst: 'spark', ring: 'target-ring', glow: 0xe6eef8 };
     _ELEMENT_THEME.metal = 'metal';
     _STAGE_ARCHETYPES.metal = { orb: 0xdfe6ef, ring: 0xe8eef6, flash: '#f2f6ff', mote: 'steel-spark', glyph: false, slash: false,
@@ -57837,7 +57842,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        ms (a click with a little overshoot), holds and fades. dir = which way it turns. ── */
     function _mtlCog(x, y, o) {
         var F = _nrvFrame(x, y), ts = F.ts, r = o.r || ts * 0.6, ms = o.ms || 1100, tick = o.tick || 150, dir = o.dir || 1;
-        var steelM = _sigMat(0xffffff, { map: _mtlCogTex(), normal: true }), rimM = _sigMat(_MTL.rim, { map: _mtlCogRimTex() });
+        var steelM = _sigMat(_vcOn() ? _MTL_VC.cog : 0xffffff, { map: _mtlCogTex(), normal: true }), rimM = _sigMat(_mtlC('rim'), { map: _mtlCogRimTex() });
         var geo = new THREE.PlaneGeometry(2, 2);
         var steel = new THREE.Mesh(geo, steelM); steel.rotation.x = -Math.PI / 2; steel.renderOrder = 162; F.g.add(steel);
         var rim = new THREE.Mesh(geo.clone(), rimM); rim.rotation.x = -Math.PI / 2; rim.renderOrder = 163; F.g.add(rim);
@@ -57867,7 +57872,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ux = 0, uz = 0;
         if (fx != null && (fx !== tx || fy !== ty)) { var ln = _nrvLine(F, { x: fx, y: fy }, tx, ty); ux = -ln.ux; uz = -ln.uz; }
         var hy = ts * (o.h != null ? o.h : 0.5), sp = o.speed || 1, cd0 = _nbCamDir(F);   /* the sparks leave the lens side of the body, never from inside it */
-        var orange = _pzGlow(_MTL.spark), hot = _pzGlow(_MTL.hot), rod = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true);
+        var orange = _pzGlow(_MTL.spark), hot = _pzGlow(_mtlC('hot')), rod = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true);
         var sparks = [], n = o.sparks || 0, nFloor = Math.round(n * 0.3), UP = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
         for (var i = 0; i < n; i++) {
             var fl = i >= n - nFloor, a = rn(0, 6.2832), v = ts * rn(2.2, 5.0) * sp, push = ts * rn(2.0, 4.4) * sp;
@@ -57889,7 +57894,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var glints = [], cd = _nbCamDir(F), px = -cd.z, pz = cd.x;
         (o.glints || []).forEach(function (g) {
-            var size = g.size || ts * 0.5, spr = _pzSpr(_MTL.glint, size, F.g, _mtlGlintTex()), side = g.side || 1;
+            var size = g.size || ts * 0.5, spr = _pzSpr(_mtlC('glint'), size, F.g, _mtlGlintTex()), side = g.side || 1;
             spr.position.set(px * ts * 0.3 * side + cd.x * ts * 0.1, ts * (g.h != null ? g.h : 0.74), pz * ts * 0.3 * side + cd.z * ts * 0.1);
             glints.push({ s: spr, size: size, at: g.delay || 0, ms: g.ms || 360 });
         });
@@ -58009,7 +58014,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var cogR = ts * Math.min(2.4, (aoe ? 0.55 + 0.75 * aoe : 0.6 + 0.1 * rank));
         if (mk === 'cog' || aoe) _mtlCog(tx, ty, { r: cogR, ms: 950 + 180 * rank, tick: rank >= 2 ? 110 : 140, dir: -1, opacity: hostile ? 0.82 : 0.7, rimOp: hostile ? 0.55 : 0.45 });
         var glints = [{ size: ts * (0.34 + 0.04 * rank), side: 1, delay: 60 }];
-        if (rank >= 2) glints.push({ size: ts * 0.26, side: -1, h: 0.5, delay: 200 });
+        if (rank >= 2 && !_vcOn()) glints.push({ size: ts * 0.26, side: -1, h: 0.5, delay: 200 });
         if (!hostile) { _mtlHit(tx, ty, null, null, { glints: glints }); return; }
         if (spellId === 'raceAnchor') _mtlAnchorDrop(tx, ty);
         var fx = self ? null : params.sx, fy = self ? null : params.sy, nSp = [14, 20, 28, 36][rank] || 20;
@@ -58019,7 +58024,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigCrescentSlash3D(tx, ty, { size: ts * (1.05 + 0.1 * rank), ms: 240, dir: 1, yaw: yaw, pitch: -0.55, color: _MTL.glint });
             _fxDelay(function () { if (!_suppressed()) _sigCrescentSlash3D(tx, ty, { size: ts * (0.95 + 0.1 * rank), ms: 240, dir: -1, yaw: yaw + 1.2, pitch: 0.55, color: _MTL.rim }); }, 90);
             nSp = Math.round(nSp * 0.6);
-            glints.push({ size: ts * 0.3, side: -1, h: 0.9, delay: 120 });
+            if (!_vcOn()) glints.push({ size: ts * 0.3, side: -1, h: 0.9, delay: 120 });
         } else if (mk === 'gun') {
             /* the shot: quick ricochet sparks off the side it struck and a puff of grit at the feet */
             nSp = Math.round(nSp * 0.7);
@@ -58028,7 +58033,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 ml: 520, size0: ts * 0.22, size1: ts * 0.5, opacity0: 0.55, opacity1: 0 });
         } else if (mk === 'line') nSp = Math.round(nSp * 0.5);
         _mtlHit(tx, ty, fx, fy, { sparks: nSp, speed: (mk === 'gun' ? 1.35 : 1) + 0.12 * rank, glints: glints, shards: mk === 'cog' ? (rank >= 3 ? 10 : (rank >= 2 ? 6 : 0)) : 0 });
-        if (_canSpawn()) { var c = tilePx(tx, ty); _spawn({ x: c.x, y: c.y, z: unitSurfaceZ(tx, ty) + ts * 0.5, mode: 'billboard', sprite: 'flash', tint: _MTL.hot,
+        if (_canSpawn()) { var c = tilePx(tx, ty); _spawn({ x: c.x, y: c.y, z: unitSurfaceZ(tx, ty) + ts * 0.5, mode: 'billboard', sprite: 'flash', tint: _mtlC('hot'),
             ml: 90, size0: ts * (0.36 + 0.06 * rank), size1: ts * 0.12, opacity0: 0.85, opacity1: 0 }); }
     }
     /* every impact of a metal spell spits a few sparks off the body it hit (once per tile per beat) */
@@ -62948,10 +62953,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (add) { m.map = tex; m.blending = THREE.AdditiveBlending; }
         return m;
     }
+    /* THE VFX SWEEP, B7a (2026-11-17): metal's wash read nearly white (Railgun): its stain was a pale grey-blue under a bright
+       sheet. Now a gunmetal stain with the circuit lines in a deep steel blue: element -> [bright sheet colour, stain colour]. */
+    var _NZ_VC = { metal: [0x0c2a58, 0x1a2230] };
     function _nzWash(tiles, el, rank, o) {
         o = o || {};
         var R = _NZ[el]; if (!R || !_canSpawn()) return null;
         if (_vcOn()) { R = R.slice(); R[1] = _vcTone(R[1], R[3], 0.5, 0.92); }   /* THE VFX CLEANUP: the pale sheets (wind, metal, sonic, ice) in their mid tone */
+        if (_vcOn() && _NZ_VC[el]) { R[1] = _NZ_VC[el][0]; R[3] = _NZ_VC[el][1]; }   /* THE VFX SWEEP, B7a: a sheet that still read white gets both its colours here */
         var live = [];
         for (var i = 0; i < tiles.length && live.length < 25; i++) { var tt = tiles[i]; if (tt && tt.x != null && _pzSeen(tt.x, tt.y)) live.push(tt); }
         if (!live.length) return null;
