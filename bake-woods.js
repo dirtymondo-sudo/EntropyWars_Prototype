@@ -124,7 +124,7 @@ door('estate', 'P01-05', 's', { way: 'trail', label: 'THE ESTATE · THE CORN FIE
    (Disaster City's gutter) on the Storm Drain plot, `sewers_drain` (the city sewers) on the Outfall, `woods_sewer` (the HQ tunnel) on the Tunnel Way */
 const LINK_ENDS = { streets_drain: ['b', spur('P05-03', 'e'), 'THE CULVERT · UP TO THE STREET'], sewers_drain: ['b', spur('P05-04', 'e'), 'THE CULVERT · INTO THE SEWERS'] };
 /* THE MOUNTAINS ON PLOTS (2026-11-15): the Snowline's trail goes on up: Mount Shasta's Trailhead (bake-mountains.js room, its `woods` door) */
-door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILHEAD', sub: 'THE SNOWLINE · THE TRAIL UP', action: { room: 'site_prebuilt_shasta_mountains', at: 'woods' },   // ONE WORLD, PHASE 3 (2026-11-17): the Mountains zone thread retires this room into Mount Shasta's own room, door `woods` kept, so this lands either way
+door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILHEAD', sub: 'THE SNOWLINE · THE TRAIL UP', action: { room: 'site_prebuilt_shasta_ow_shasta', at: 'woods' },   // ONE WORLD, PHASE 3 (2026-11-17): the Trailhead stands in Mount Shasta's own room (the Mountains zone thread)
    
     desc: 'The trail keeps climbing after the trees give up. There is snow on it from here.' });
 /* NO UNEXPLAINED DEAD ENDS (2026-11-15, mondo): a secret TRAIL gets no waymark post, so its path just stopped at the trees. The three secret ways show what they are now:
