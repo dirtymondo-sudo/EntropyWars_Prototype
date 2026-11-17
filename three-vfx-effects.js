@@ -4928,10 +4928,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var stagger = isCenter ? 0 : 40 + (Math.abs(off.dx) + Math.abs(off.dy)) * 35;
                 _fxDelay(function() {
                     if (_suppressed()) return;
+                    /* THE VFX CLEANUP: only the middle square flashes */
+                    var _te = (tileEffect && !isCenter) ? _vcNoFlash(tileEffect) : tileEffect;
                     if (tileEffect && aoeRadius > 0) {
-                        _spawnEffect(tileEffect, { tx: ttx, ty: tty });
+                        _spawnEffect(_te, { tx: ttx, ty: tty });
                     } else if (tileEffect && aoeRadius === 0 && !centerEffect) {
-                        _spawnEffect(tileEffect, { tx: ttx, ty: tty });
+                        _spawnEffect(_te, { tx: ttx, ty: tty });
                     }
                     if (isCenter && centerEffect) {
                         _spawnEffect(centerEffect, { tx: ttx, ty: tty });
@@ -9994,6 +9996,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _sigFlashEl = null;
     var _SIG_FLASH_MAX = 0.3;     /* THE CLEAR BODIES: the brightest a full-screen flash / rush-line layer may get */
     function _sigScreenFlash(color, ms, peak) {
+        color = _vcCol(color);   /* THE VFX CLEANUP */
         if (_VS.on) { _vsFx('flash', { color: color, ms: ms, peak: peak }); return; }
         try {
             if (typeof document === 'undefined') return;
@@ -10071,6 +10074,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── magic circle: spinning double rune-disc, grow → hold → fade ────── */
     function _sigMagicCircle3D(tx, ty, opts) {
         opts = opts || {};
+        /* THE VFX CLEANUP: a heal, a mana gift or a buff draws no rune on the ground (mondo 11-17); `keepRune` = this spell's circle IS its look */
+        if (!opts.keepRune && _vcOn() && _rvCtx && _VC_NO_RUNE[_rvCtx.arch]) return null;
         var scene = _getVFXScene(); if (!scene) return null;
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
@@ -10138,6 +10143,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── expanding ground shockwave ring + air-ripple torus ─────────────── */
     function _sigShockRing3D(tx, ty, opts) {
         opts = opts || {};
+        if (_vcOn() && _vcNearWhite(opts.color)) opts = Object.assign({}, opts, { color: _vcCol(opts.color) });   /* THE VFX CLEANUP */
         var scene = _getVFXScene(); if (!scene) return null;
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
@@ -10279,6 +10285,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── anime speed-line impact burst ───────────────────────────────────── */
     function _sigSpeedBurst3D(tx, ty, opts) {
         opts = opts || {};
+        if (_vcOn() && _vcNearWhite(opts.color)) opts = Object.assign({}, opts, { color: _vcCol(opts.color) });   /* THE VFX CLEANUP */
         var scene = _getVFXScene(); if (!scene) return null;
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
@@ -10476,6 +10483,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        the cut. Same signature as v1 — every call site upgrades free. */
     function _sigCrescentSlash3D(tx, ty, opts) {
         opts = opts || {};
+        if (_vcOn() && _vcNearWhite(opts.color)) opts = Object.assign({}, opts, { color: _vcCol(opts.color) });   /* THE VFX CLEANUP */
         var scene = _getVFXScene(); if (!scene) return null;
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
@@ -10519,7 +10527,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         group.add(echo);
 
         /* white-hot glint riding the leading tip of the arc */
-        var glintMat = _sigMagicOrbMat(0xffffff, _sigGlowTex());
+        /* THE VFX CLEANUP: the glint takes the arc's own colour (it was white-hot on every cut) */
+        var glintMat = _sigMagicOrbMat(_vcOn() && opts.color != null ? opts.color : 0xffffff, _sigGlowTex());
         var glint = new THREE.Sprite(glintMat);
         var tipLocal = new THREE.Vector3(Math.cos(span / 2 * dir) * R, Math.sin(span / 2 * dir) * R, 0);
         glint.position.copy(tipLocal);
@@ -10559,7 +10568,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var op = (t < 0.08 ? t / 0.08 : 1 - t * t);
             mat.opacity = op;
             mat2.opacity = op * 0.5;
-            glintMat.opacity = Math.max(0, 1 - t * 1.8);
+            glintMat.opacity = opts.noGlint ? 0 : Math.max(0, 1 - t * 1.8);
             var gs = size * (0.3 - 0.16 * t);
             glint.scale.set(gs, gs, 1);
         });
@@ -13714,12 +13723,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     _sigSparks(tx, ty, opts.sparkSprite || 'steel-spark', p.heavy ? 22 : 10);
                     if (p.heavy) {
                         _sigShake(opts.shake || 'hard');
-                        _sigScreenFlash('#ffffff', 120, opts.flashPeak != null ? opts.flashPeak : 0.26);
+                        /* THE VFX CLEANUP: the finisher's flash, burst and third cut in the combo's own colour (they were white); rush lines on an ultimate only */
+                        var _vcF = _vcOn(), _vcFc = _vcF ? color : 0xffffff;
+                        _sigScreenFlash(_vcF ? _sigCss(color) : '#ffffff', 120, opts.flashPeak != null ? opts.flashPeak : 0.26);
                         _sigShockRing3D(tx, ty, { color: color, r1: ts * (opts.ringTiles != null ? opts.ringTiles : 1.7) });
-                        _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
-                        _sigSpeedLinesFx({ color: _sigCss(color), ms: 340, peak: 0.3 });
+                        _sigSpeedBurst3D(tx, ty, { color: _vcFc });
+                        if (!_vcF || (_rvCtx && _rvCtx.w === 'ultimate')) _sigSpeedLinesFx({ color: _sigCss(color), ms: 340, peak: 0.3 });
                         _sigCrescentSlash3D(tx, ty, {
-                            color: 0xffffff, yaw: hYaw + 1.1, dir: -p.dir, ms: 300, size: ts * 1.3,
+                            color: _vcFc, noGlint: _vcF, yaw: hYaw + 1.1, dir: -p.dir, ms: 300, size: ts * 1.3,
                         });
                         if (_canSpawn()) {
                             var cpx = tilePx(tx, ty);
@@ -21948,6 +21959,95 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        the function online.js wraps for the host→guest relay. Staging a new
        spell therefore costs zero online work — same as impact VFX. */
 
+    /* ════════════════════════════════════════════════════════════════════
+       THE VFX CLEANUP, B0 + B1 (2026-11-17, docs/plans/vfx-cleanup/VFX_CLEANUP_PLAN.md)
+       mondo: "take out all of these generic basic white vfx that crowd the screen", and the runes "spammed everywhere
+       ... a simple healing spell doesnt need a rune underneath it". The white was traced in the code (the plan's
+       section 1): it is the SHARED layers every spell gets, not the spells' own looks. So:
+       · a spell with its OWN look (_vcOwn) lands with the grade + the shake + its element's mark only: no generic
+         screen flash, rush lines, shock ring, crescent, sparks, glass orb, speed burst, aftershock, bloom or pillar;
+       · a spell with no own look keeps the burst as its look, in its archetype's mid tone (_vcPal: never near-white),
+         a screen flash only on heavy + ultimate, rush lines only on an ultimate or a ki attack, the speed burst only
+         on ki / kinetic;
+       · the cast rune under the caster only for the magic that calls for one (_VC_RUNE), and never where the cast's
+         own squares lie round the caster (it sat under the noise wash);
+       · a shared helper handed near-white takes the casting spell's colour (_vcCol); an area spell flashes its middle
+         square only (_vcNoFlash); a blade spell's mark is its scar, not the noise wash.
+       NOT touched: THE HIT BLINK (the victim's body flashing white is the hit, three-renderer.js), damage numbers,
+       team rims, the tile glow, any spell's own signature shapes. Looks only; every layer rides the relayed fire().
+       Off (today's look back, live): window.EW_NO_VFX_CLEANUP = true. */
+    function _vcOn() { try { return !(typeof window !== 'undefined' && window.EW_NO_VFX_CLEANUP); } catch (e) { return true; } }
+    var _vcOwnC = {};
+    function _vcOwn(spellId) {
+        if (!spellId) return false;
+        if (_vcOwnC[spellId] != null) return _vcOwnC[spellId];
+        var own = false;
+        try {
+            own = !!(_geom3D(spellId) || _GO_SIG[spellId] || _GO_BEAM[spellId] || _FX2_BURST[spellId] || _F4_OWN[spellId]);
+            if (!own) { var m = SPELL_MAP[spellId]; if (m) for (var k in m) { var d = EFFECTS[m[k]]; if (d && d.pzSig && _PZ_SIGS[d.pzSig]) { own = true; break; } } }
+        } catch (e) { own = false; }
+        return (_vcOwnC[spellId] = own);
+    }
+    function _vcRgb(c) { var v = (typeof c === 'string') ? parseInt(c.replace('#', ''), 16) : (c | 0); return [(v >> 16) & 255, (v >> 8) & 255, v & 255]; }
+    function _vcNearWhite(c) { if (c == null) return false; if (typeof c === 'string' && c.charAt(0) !== '#') return false; var r = _vcRgb(c); return !(r[0] !== r[0]) && Math.min(r[0], r[1], r[2]) >= 0xd0; }
+    function _vcHue(r) { var mx = Math.max(r[0], r[1], r[2]), mn = Math.min(r[0], r[1], r[2]), d = mx - mn; if (!d) return -1;
+        var h = mx === r[0] ? ((r[1] - r[2]) / d) % 6 : mx === r[1] ? (r[2] - r[0]) / d + 2 : (r[0] - r[1]) / d + 4; return (h * 60 + 360) % 360; }
+    /* the colour at no less than `sMin` saturation and no more than `vMax` value; a grey takes `hueFrom`'s hue; the same type comes back */
+    function _vcTone(c, hueFrom, sMin, vMax) {
+        if (c == null) return c;
+        var r = _vcRgb(c), mx = Math.max(r[0], r[1], r[2]) / 255, mn = Math.min(r[0], r[1], r[2]) / 255;
+        var sat = mx ? (mx - mn) / mx : 0, h = sat > 0.03 ? _vcHue(r) : -1;
+        if (h < 0 && hueFrom != null) h = _vcHue(_vcRgb(hueFrom));
+        if (h < 0) h = 210;
+        var S = Math.max(sat, sMin), V = Math.min(mx, vMax != null ? vMax : 0.92);
+        var C = V * S, X = C * (1 - Math.abs((h / 60) % 2 - 1)), m0 = V - C, q = Math.floor(h / 60) % 6;
+        var o = q === 0 ? [C, X, 0] : q === 1 ? [X, C, 0] : q === 2 ? [0, C, X] : q === 3 ? [0, X, C] : q === 4 ? [X, 0, C] : [C, 0, X];
+        var n = (Math.round((o[0] + m0) * 255) << 16) | (Math.round((o[1] + m0) * 255) << 8) | Math.round((o[2] + m0) * 255);
+        return (typeof c === 'string') ? '#' + ('00000' + n.toString(16)).slice(-6) : n;
+    }
+    /* an archetype's palette with the white taken out (the support families keep theirs: a blessing was never the clutter) */
+    var _vcPalC = {};
+    function _vcPal(arch, P) {
+        if (!P || P.support) return P;
+        if (_vcPalC[arch]) return _vcPalC[arch];
+        var o = {}; for (var k in P) o[k] = P[k];
+        o.ring = _vcTone(P.ring, P.orb, 0.55, 0.92);
+        o.flash = _vcTone(P.flash, P.orb, 0.45, 0.92);
+        o.lineColor = _vcTone(P.lineColor, P.orb, 0.40, 0.92);
+        o.orb = _vcTone(P.orb, P.ring, 0.40, 0.92);
+        if (P.moteTint != null) o.moteTint = _vcTone(P.moteTint, P.orb, 0.40, 0.92);
+        return (_vcPalC[arch] = o);
+    }
+    /* a shared helper handed near-white draws in the casting spell's colour (the riot context's light); no spell casting = as given */
+    function _vcCol(c) {
+        if (!_vcOn() || !_vcNearWhite(c)) return c;
+        var L = _rvCtx && _rvCtx.light; if (!L || _vcNearWhite(L)) return c;
+        var t = _vcTone(L, null, 0.45, 0.92);
+        return (typeof c === 'string') ? t : parseInt(String(t).replace('#', ''), 16);
+    }
+    /* the cast rune: the schools whose magic is drawn on the ground (a heal, a buff, a fire or a mind cast is not) */
+    var _VC_RUNE = { arcane: 1, unholy: 1, hex: 1, psychicHex: 1, blood: 1, divine: 1 };
+    /* the blessings: no rune from any helper, the spell's own signature included (_sigMagicCircle3D) */
+    var _VC_NO_RUNE = { heal: 1, mana: 1, aura: 1, psychicAid: 1, bloodAura: 1 };
+    function _vcRuneOK(info, spellId, params, sx, sy) {
+        if (!_vcOn()) return true;
+        if (!_VC_RUNE[info.archetype]) return false;
+        var d = _spellDefFor(spellId) || {};
+        if (d.aoeOriginSelf) return false;
+        var tl = params && params.tiles;
+        if (Array.isArray(tl)) for (var i = 0; i < tl.length; i++) if (tl[i] && Math.abs(tl[i].x - sx) <= 1 && Math.abs(tl[i].y - sy) <= 1) return false;
+        return true;
+    }
+    /* an area's outer squares draw their recipe without its flash layers (one flash per hit, on the middle) */
+    function _vcNoFlash(def) {
+        if (!def || !def.layers || !_vcOn()) return def;
+        if (def._vcNF) return def._vcNF;
+        var L = def.layers.filter(function (l) { return !(l && (l.sprite === 'flash' || l.sprite === 'muzzle-flash')); });
+        var o = L.length === def.layers.length ? def : Object.assign({}, def, { layers: L });
+        try { Object.defineProperty(def, '_vcNF', { value: o, enumerable: false }); } catch (e) {}
+        return o;
+    }
+
     /* Per-archetype palette + flavour. `orb`/`ring`/`flash` are hexes; the
        string knobs pick which primitive shapes the beat. Keep entries
        small — the weight tier scales counts, sizes and timings. */
@@ -22446,15 +22546,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         else _stageInfoCache = {};
     }
     function stageInfo(spellId) {
+        var _vcNow = _vcOn();   /* THE VFX CLEANUP: the switch flips live, so the cache is per state */
+        if (_stageInfoCache.__vc !== _vcNow) { _stageInfoCache = { __vc: _vcNow }; _vcOwnC = {}; }
         if (_stageInfoCache[spellId]) return _stageInfoCache[spellId];
         var def = _spellDefFor(spellId);
         var weight = _stageWeight(spellId, def);
         var archetype = _stageArchetype(spellId, def);
+        var _palArch = _STAGE_ARCHETYPES[archetype] ? archetype : 'arcane';
         var info = {
             weight: weight,
             archetype: archetype,
             tier: _STAGE_TIERS[weight] || _STAGE_TIERS.standard,
-            palette: _STAGE_ARCHETYPES[archetype] || _STAGE_ARCHETYPES.arcane
+            palette: _vcNow ? _vcPal(_palArch, _STAGE_ARCHETYPES[_palArch]) : _STAGE_ARCHETYPES[_palArch]
         };
         _stageInfoCache[spellId] = info;
         return info;
@@ -22565,7 +22668,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE WATER PASS: a water caster gathers a ball of water instead of the glass orb */
         if (P.water && !_physCast) { try { _wvGather(tx, ty, params.tx, params.ty, holdMs, T.orbScale); } catch (e) {} }
 
-        if (P.glyph && T.glyph && !_physCast) {
+        if (P.glyph && T.glyph && !_physCast && _vcRuneOK(info, spellId, params, tx, ty)) {   /* THE VFX CLEANUP: the rune only where the magic calls for one */
             try {
                 _sigMagicCircle3D(tx, ty, {
                     radiusPx: ts * (0.85 + 0.30 * T.orbScale),
@@ -23061,12 +23164,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var _physHit = P.slash || P.groundRush || P.heavyLand || _isGunSpell(spellId)
             || (_bDef && _bDef.damageType === 'physical');
 
+        /* THE VFX CLEANUP: a spell with its own look lands on that look (_vcS); one without keeps the burst, trimmed (_vc) */
+        var _vc = _vcOn(), _vcS = _vc && _vcOwn(spellId), _vcRank = _TIER_ORDER[info.weight] || 0;
+        var _vcKi = info.archetype === 'ki' || info.archetype === 'kinetic';
+
         /* full-viewport kiss of light — small on pokes, a real hit on ults */
-        try { _sigScreenFlash(P.flash, T.flashPeak > 0.3 ? 190 : 130, T.flashPeak); } catch (e) {}
+        if (!_vcS && !(_vc && _vcRank < 2)) { try { _sigScreenFlash(P.flash, T.flashPeak > 0.3 ? 190 : 130, T.flashPeak); } catch (e) {} }
 
         /* anime rush lines: the "nothing else exists right now" backdrop.
            Heavy and up only — on every cheap spell it would be noise. */
-        if (T.lines > 0) {
+        if (T.lines > 0 && !_vcS && !(_vc && _vcRank < 3 && info.archetype !== 'ki')) {
             try {
                 _sigSpeedLinesFx({
                     count: T.lines, color: P.lineColor,
@@ -23077,7 +23184,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         if (_canSpawn()) {
-            try {
+            if (!_vcS) try {
                 _sigShockRing3D(tx, ty, {
                     color: P.ring,
                     r0: ts * 0.16,
@@ -23095,13 +23202,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* THE CAPSTONE BLOOM (2026-09-13): the shared ultimate stamp —
                a sigil disc + a light column in the archetype's colour under
                every capstone's burst, whatever recipe it wears on top. */
-            if (_isCapstoneSpell(spellId, _bDef)) {
+            if (!_vcS && _isCapstoneSpell(spellId, _bDef)) {
                 try { _sigCapstoneBloom3D(tx, ty, P); } catch (e) {}
             }
 
             /* kinetic archetypes carve a slash instead of blooming a ring —
                a dash or a leap should read as a CUT through the target */
-            if (P.slash) {
+            if (P.slash && !_vcS) {
                 try {
                     _sigCrescentSlash3D(tx, ty, {
                         color: P.ring,
@@ -23115,7 +23222,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 } catch (e) {}
             }
 
-            try {
+            if (!_vcS) try {
                 _sigSparks(tx, ty, P.mote, T.sparks, {
                     vxy: P.gentle ? 90 : 200,
                     vz0: P.gentle ? 40 : 70,
@@ -23132,7 +23239,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                identically; now it's the signature of a BIG magical hit.
                Physical hits take a hard anime speed-burst frame instead. */
             var _bRank = _TIER_ORDER[info.weight] || 0;
-            if (!_physHit && _bRank >= 2 && !P.noOrb && !(_f4OwnLook(spellId) && !_f4Off())) {   /* noOrb: the nature roots / vines are the big hit (THE NATURE PASS); FX-4: no glass dome over a hit with its own look */
+            if (!_vcS && !_physHit && _bRank >= 2 && !P.noOrb && !(_f4OwnLook(spellId) && !_f4Off())) {   /* noOrb: the nature roots / vines are the big hit (THE NATURE PASS); FX-4: no glass dome over a hit with its own look */
                 try {
                     _sigOrbBurst3D(tx, ty, {
                         mode: 'out', color: P.orb,
@@ -23142,7 +23249,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     });
                 } catch (e) {}
             }
-            if (_physHit && _bRank >= 1) {
+            if (_physHit && _bRank >= 1 && !_vcS && (!_vc || _vcKi)) {
                 try {
                     _sigSpeedBurst3D(tx, ty, {
                         color: P.ring, ms: 240,
@@ -23152,7 +23259,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
 
             /* kinetic heavies rake a SECOND, mirrored crescent — the X-slash */
-            if (P.slash && _bRank >= 2) {
+            if (P.slash && _bRank >= 2 && !_vcS) {
                 window.setTimeout(function () {
                     if (_suppressed()) return;
                     try {
@@ -23168,7 +23275,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             /* heavy+ aftershock — a second, faster ring chasing the first,
                so big hits land in WAVES instead of one pulse */
-            if (_bRank >= 2) {
+            if (_bRank >= 2 && !_vcS) {
                 window.setTimeout(function () {
                     if (_suppressed() || !_canSpawn()) return;
                     try {
@@ -23211,7 +23318,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
 
             /* a light pillar sells divine hits without any new assets */
-            if (P.pillar && _TIER_ORDER[info.weight] >= 2 && !(_f4OwnLook(spellId) && !_f4Off())) {   /* FX-4: not over a light hit with its own look */
+            if (!_vcS && P.pillar && _TIER_ORDER[info.weight] >= 2 && !(_f4OwnLook(spellId) && !_f4Off())) {   /* FX-4: not over a light hit with its own look */
                 try { _sigLightPillar3D(tx, ty, { color: P.orb, height: ts * 5.5, radius: ts * 0.38, ms: 720 }); } catch (e) {}
             }
         }
@@ -54542,6 +54649,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _wdStage(phase, spellId, p) {
         if (_catOff('spells') || !p) return;
         var d = _spellDefFor(spellId); if (!d || d.element !== 'wind') return;
+        if (_vcOn() && _crIsBlade(spellId)) return;   /* THE VFX CLEANUP: a wind BLADE spell keeps its cuts clear of the gust + mark */
         if (phase === 'windup') { if (p.sx != null && !p.mark && _pzSeen(p.sx, p.sy)) _wdGather(p.sx, p.sy, p.holdMs); return; }
         if (phase !== 'burst' || p.tx == null) return;
         var own = _WD_BURST[spellId];
@@ -62535,6 +62643,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _nzWash(tiles, el, rank, o) {
         o = o || {};
         var R = _NZ[el]; if (!R || !_canSpawn()) return null;
+        if (_vcOn()) { R = R.slice(); R[1] = _vcTone(R[1], R[3], 0.5, 0.92); }   /* THE VFX CLEANUP: the pale sheets (wind, metal, sonic, ice) in their mid tone */
         var live = [];
         for (var i = 0; i < tiles.length && live.length < 25; i++) { var tt = tiles[i]; if (tt && tt.x != null && _pzSeen(tt.x, tt.y)) live.push(tt); }
         if (!live.length) return null;
@@ -62572,6 +62681,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!_nzOn() || _suppressed() || _catOff('spells') || !params) return;
         var d = _spellDefFor(spellId) || {}, el = d.vfxElement || d.element || null;
         if (!el || !_NZ[el] || d.type !== 'damage') return;
+        if (_vcOn() && _crIsBlade(spellId)) return;   /* THE VFX CLEANUP: a blade's mark is its scar */
         var key = params.glowKey || ('c' + params.sx + ',' + params.sy);
         if (phase === 'windup') { _nzFoot[key] = Array.isArray(params.tiles) && params.tiles.length ? params.tiles : null; return; }
         if (phase !== 'burst' || params.tx == null) return;
@@ -67393,7 +67503,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var si = null;
         try { si = stageInfo(spellId); } catch (e) { si = null; }
         if (!si) return null;
-        var c = { w: si.weight || 'standard', light: (si.palette && si.palette.flash) || null, staged: !!staged };
+        var c = { w: si.weight || 'standard', light: (si.palette && si.palette.flash) || null, staged: !!staged, arch: si.archetype || null };
         var A = _rvAreaFor(spellId, params, aoeRadius);
         if (A) c.area = A;
         /* THE HIT SIDE part 4: a fire spell's signature meshes are tamed (_hsFireNow) */

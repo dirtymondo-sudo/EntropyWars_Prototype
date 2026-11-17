@@ -86077,6 +86077,7 @@ const HQ_CITY_RESIDENTS = {
     roadCost: 2.5, stepM: 0.35, doorGapM: 0.95,                    // the route map: a carriageway square costs more (the pavement first); a step the walk takes; the narrowest gap walked
     potterH: [0.35, 0.9], wanderH: [0.12, 0.45], patrolH: [0.03, 0.15], wanderR: 26, errandR: 14,   // pauses (game hours) inside / out / on patrol; how far a wander leg reaches
     beach: [256, -72, 304, 78],                                    // x0 z0 x1 z1 (room metres): the sand east of Bayside (written by bake-disaster-city.js: it moves with Bayside)
+    walkOn: ['dc:skate:pad'],   // plateaus the residents walk on (THE WALKED PADS): the Bayside skate park's pad, where the Skaters spend their shift
     districts: { C: [0, 0], F: [1, 0], E: [2, 0], U: [0, 1], H: [1, 1], B: [2, 1], R: [0, 2], S: [1, 2], I: [2, 2] },   // a district's first plot (×4), where it stands now (written by bake-disaster-city.js from docs/disaster-city/move.js)
     homes: { R: [0, 0], C: [1, 0], F: [2, 0], U: [0, 1], H: [1, 1], E: [2, 1], I: [0, 2], S: [1, 2], B: [2, 2] },   // THE DISTRICT MOVE (2026-11-15): the block a district was BUILT on. A plot's id names it by its home place ('P08-04' = the Casino, home x 8 · y 4); the plot stands at its home place moved by its district's move (hqCityPlotAt)
     fronts: {
@@ -86093,7 +86094,6 @@ const HQ_CITY_RESIDENTS = {
         { race: 'ki fighter', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[21, 4, 'S', 'home'], [5, 12, 'W', 'b:P03-01-B1'], [13, 17, 'W', 'b:P03-00-B1'], [17, 21, 'O', 'p:P01-02']] },
         { race: 'swordfighter', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P03-01-B1'], [18, 23, 'O', 'p:P01-01']] },
         { race: 'gangster', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[5, 13, 'S', 'home'], [14, 20, 'W', 'b:P02-03-B1'], [21, 5, 'O', 'b:P08-04-B1']] },
-        { race: 'homosapien', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P01-00-B2'], [18, 23, 'O', 'p:P02-00']] },
         { race: 'conspiracy theorist', home: 'P02-01-B1', homeName: 'Tenement', day: [[4, 12, 'S', 'home'], [13, 19, 'W', 'b:P00-06-B1'], [19, 23, 'O', 'b:P01-06-B1'], [23, 4, 'P', 'd:R']] },
         { race: 'cult leader', home: 'P02-01-B1', homeName: 'Tenement', day: [[1, 9, 'S', 'home'], [10, 16, 'W', 'b:P00-01-B1'], [16, 21, 'O', 'p:P01-02'], [21, 1, 'P', 'p:P00-03']] },
         { race: 'firefighter', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[22, 6, 'S', 'home'], [7, 19, 'W', 'b:P04-00-B1'], [19, 22, 'O', 'b:P03-00-B1']] },
@@ -86140,7 +86140,7 @@ const HQ_CITY_RESIDENTS = {
         { race: 'pirate', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[4, 12, 'S', 'home'], [13, 20, 'W', 'b:P09-08-B3'], [20, 3, 'O', 'beach']] },
         { race: 'chef', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[21, 4, 'S', 'home'], [5, 15, 'W', 'b:P09-09-B1'], [15, 19, 'O', 'p:P08-09']] },
         { race: 'hippie', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[0, 8, 'S', 'home'], [9, 17, 'W', 'p:P08-09'], [17, 23, 'O', 'beach']] },
-        { race: 'ghost', home: 'P08-08-B1', homeName: 'Waterfront hotel', noBed: true, day: [[6, 21, 'S', 'home'], [22, 5, 'P', 'b:P08-08-B1']] },
+        { race: 'ghost', home: 'P08-08-B1', homeName: 'Waterfront hotel', noBed: true, day: [[5, 22, 'S', 'home'], [22, 5, 'P', 'b:P08-08-B1']] }   /* (mondo 11-17: it haunts the hotel and never leaves it: the two blocks meet, no hour out in the street) */,
     ],
 };
 /* ══ THE NPC SPAWN SYSTEM (2026-11-16, mondo: "NPCs climb with player level. I want to get rid of that ... There should be set
@@ -86194,11 +86194,10 @@ const HQ_SPAWN_RULES = {
                 { race: 'chef', d: 'E', n: 1, work: 'p:P08-05', homes: ['P11-06-B2'] },
                 { race: 'chef', d: 'B', n: 1, work: 'b:P09-09-B1', homes: ['P10-09-B2'] },
                 { race: 'firefighter', d: 'C', n: 2, work: 'b:P04-00-B1', homes: ['P00-01-B2', 'P07-04-B2'] },
-                /* ordinary people, one more in eight districts */
-                { race: 'homosapien', d: 'C', n: 1, work: 'd:C', homes: ['P07-04-B2'] }, { race: 'homosapien', d: 'F', n: 1, work: 'd:F', homes: ['P10-01-B2'] },
-                { race: 'homosapien', d: 'U', n: 1, work: 'd:U', homes: ['P00-04-B1'] }, { race: 'homosapien', d: 'H', n: 1, work: 'd:H', homes: ['P07-04-B2'] },
-                { race: 'homosapien', d: 'E', n: 1, work: 'd:E', homes: ['P11-06-B2'] }, { race: 'homosapien', d: 'S', n: 1, work: 'd:S', homes: ['P06-09-B2'] },
-                { race: 'homosapien', d: 'I', n: 1, work: 'd:I', homes: ['P02-09-B2'] }, { race: 'homosapien', d: 'B', n: 1, work: 'd:B', homes: ['P10-09-B2'] },
+                /* THE BAYSIDE LIST (mondo 11-17): the Homosapien is no race any more and lives nowhere; Bayside gets the units whose own rows name it */
+                { race: 'lifeguard', d: 'B', n: 2, h: [7, 11], work: 'beach', homes: ['P10-09-B2'] },
+                { race: 'skater', d: 'B', n: 2, h: [11, 15], work: 'f:dc:skate:pad', homes: ['P10-09-B2'] },
+                { race: 'florida man', d: 'B', n: 1, h: [15], work: 'beach', homes: ['P10-09-B2'] },
                 { race: 'gangster', d: 'R', n: 2, work: 'd:R', homes: ['P02-01-B1', 'P00-02-B2'] },
                 { race: 'zombie', d: 'U', n: 2, work: 'd:U', patrol: true, homes: ['P00-04-B1'] },
                 { race: 'hippie', d: 'B', n: 2, work: 'p:P08-09', homes: ['P10-09-B2'] },
@@ -86217,9 +86216,9 @@ const HQ_SPAWN_RULES = {
             ],
             /* a race's tier in this room (a race not named = defaultTier); `race|gender` names one gender */
             races: {
-                'police officer': 'common', 'chef': 'common', 'homosapien': 'common', 'gangster': 'common', 'zombie': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
+                'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'gangster': 'common', 'zombie': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
                 'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'telepath': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon',
-                'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'pirate': 'uncommon', 'politician': 'uncommon',
+                'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'pirate': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon',
                 'ki fighter': 'rare', 'swordfighter': 'rare', 'men in black': 'rare', 'halfdemon': 'rare', 'mad scientist': 'rare', 'reptilian': 'rare', 'ringmaster': 'rare', 'juggernaut': 'rare',
                 'knight': 'rare', 'astronaut': 'rare', 'popstar': 'rare', 'eagleman': 'rare', 'nephilim': 'rare', 'time cop': 'rare',
                 'cult leader': 'veryRare', 'general': 'veryRare', 'ghost': 'veryRare',
@@ -86264,10 +86263,10 @@ function hqSpawnExpand() {
     C.list.forEach(r => { count[r.race] = (count[r.race] || 0) + (r.gender && count[r.race] ? 0 : 1); });   // a male + female pair is one 'a'
     let made = 0, k = 0;
     R.people.forEach(row => {
-        if (!row || !row.race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(row.race) < 0 && row.race !== 'homosapien')) return;
+        if (!row || !row.race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(row.race) < 0)) return;
         for (let i = 0; i < (row.n | 0); i++) {
             const idx = count[row.race] = (count[row.race] || 0) + 1;
-            const h = R.shifts[k++ % R.shifts.length], home = row.homes[i % row.homes.length];
+            const h = Array.isArray(row.h) ? row.h[i % row.h.length] : R.shifts[k++ % R.shifts.length], home = row.homes[i % row.homes.length];   // (`h`: this row's own shift starts, one a variant; else the next of `shifts`)
             C.list.push({ race: row.race, v: String.fromCharCode(96 + Math.min(26, idx)), dist: row.d, home, homeName: (R.homeNames && R.homeNames[home]) || home,
                           day: [[H(h + 16), to(h + 24), 'S', 'home'], [H(h), to(h + 9), row.patrol ? 'P' : 'W', row.work], [H(h + 10), to(h + 15), 'O', 'd:' + row.d]] });
             made++;
@@ -86291,12 +86290,14 @@ function hqCityGrid(roomId) {
     const sqOf = (x, z) => { const i = Math.floor((x - x0) / res), j = Math.floor((z - z0) / res); return (i < 0 || j < 0 || i >= nx || j >= nz) ? -1 : j * nx + i; };
     const F = T.features || [], slopeFn = (typeof hqTerrainSlopeFn === 'function') ? hqTerrainSlopeFn(T) : null, base = +T.base || 0;
     const sinks = F.filter(f => f.k === 'plateau' && f.sink), decks = F.filter(f => f.k === 'deck');
+    const tops = F.filter(f => f.k === 'plateau' && !f.sink && f.w && f.d && (R.walkOn || []).indexOf(f.id) >= 0);   // THE WALKED PADS (2026-11-17): a flat pad the residents walk on (the skate park), by id in HQ_CITY_RESIDENTS.walkOn; every other plateau is a block
     const inRect = (f, x, z, m) => Math.abs(x - f.x) <= f.w / 2 - (m || 0) && Math.abs(z - f.z) <= f.d / 2 - (m || 0);
     const segD = (px, pz, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz; let t = L2 ? ((px - ax) * dx + (pz - az) * dz) / L2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - ax - dx * t, pz - az - dz * t); };
     const onDeck = (x, z) => decks.find(f => segD(x, z, f.x0, f.z0, f.x1, f.z1) <= (f.w || 2) / 2);
     const groundAt = (x, z) => {
         const dk = onDeck(x, z); if (dk) return +dk.y || 0;
         for (let k = sinks.length - 1; k >= 0; k--) if (inRect(sinks[k], x, z)) return +sinks[k].h;
+        for (let k = 0; k < tops.length; k++) if (inRect(tops[k], x, z)) return +tops[k].h || 0;
         return base + (slopeFn ? slopeFn(x, z) : 0);
     };
     const walk = new Uint8Array(N).fill(1), bid = new Int16Array(N).fill(-1), cover = new Uint16Array(N * 2), force = new Uint8Array(N * 2);
@@ -86345,7 +86346,7 @@ function hqCityGrid(roomId) {
                 if (B.inner >= 0 && bid[B.inner] < 0) { bid[B.inner] = bld.length; B.cells.push(B.inner); }
                 if (B.id) byB[B.id] = bld.length;
                 bld.push(B);
-            } else if (f.k === 'plateau' && !f.sink) blockRect(f.x, f.z, f.w, f.d, 0, 0.15);
+            } else if (f.k === 'plateau' && !f.sink) { if (tops.indexOf(f) < 0) blockRect(f.x, f.z, f.w, f.d, 0, 0.15); }
             else if (f.k === 'wall' || f.k === 'rail') {
                 if (f.lift) return;
                 if (typeof f.y === 'number') { const g = groundAt((f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2), top = f.absY ? f.y : f.y + g; if (top - g > 5 || top - g < 0.45) return; }
@@ -86542,7 +86543,7 @@ function hqCityPts(G, cells, from, to) {
 function hqResidentPlace(G, r, place) {
     const R = HQ_CITY_RESIDENTS, room = DOOR_HQ.rooms[G.roomId] || {}, sq = k => ({ x: G.x0 + (k % G.nx + 0.5) * G.res, z: G.z0 + (Math.floor(k / G.nx) + 0.5) * G.res });
     if (place === 'home') place = /^p:|^d:|^beach/.test(r.home) ? r.home : 'b:' + r.home;
-    const m = /^(b|p|d|road|spot):(.+)$/.exec(place) || (place === 'beach' ? ['', 'beach', ''] : null); if (!m) return null;
+    const m = /^(b|p|d|road|spot|f):(.+)$/.exec(place) || (place === 'beach' ? ['', 'beach', ''] : null); if (!m) return null;
     const plotSquares = (px, py) => { const out = [], ox = Math.round((-252 - G.x0) / G.res), oz = Math.round((-252 - G.z0) / G.res); for (let j = 0; j < 12; j++) for (let i = 0; i < 12; i++) { const k = (oz + py * 12 + j) * G.nx + ox + px * 12 + i; if (k >= 0 && k < G.N) out.push(k); } return out; };
     const area = (cells, car) => { const c = cells.filter(k => G.comp[k] && G.bid[k] < 0 && (!car || G.walk[k] === 2)); if (!c.length) return null; const at = c[Math.floor(c.length / 2)], p = sq(at); return { kind: 'area', at, x: p.x, z: p.z, cells: c, car: !!car }; };
     if (m[1] === 'b') {
@@ -86576,6 +86577,7 @@ function hqResidentPlace(G, r, place) {
     if (m[1] === 'p') { const pm = /^P(\d\d)-(\d\d)$/.exec(m[2]), at = pm && hqCityPlotAt(+pm[1], +pm[2]); return at ? area(plotSquares(at[0], at[1])) : null; }
     if (m[1] === 'd' || m[1] === 'road') { let c = []; m[2].split('').forEach(L => { const o = R.districts[L]; if (o) for (let py = 0; py < 4; py++) for (let px = 0; px < 4; px++) c = c.concat(plotSquares(o[0] * 4 + px, o[1] * 4 + py)); }); return area(c, m[1] === 'road'); }
     if (m[1] === 'beach') { const b = R.beach, c = []; for (let k = 0; k < G.N; k++) { const p = sq(k); if (p.x >= b[0] && p.x <= b[2] && p.z >= b[1] && p.z <= b[3]) c.push(k); } return area(c); }
+    if (m[1] === 'f') { const f = ((room.terrain && room.terrain.features) || []).find(q => q && q.id === m[2] && q.w && q.d); if (!f) return null; const c = []; for (let k = 0; k < G.N; k++) { const p = sq(k); if (Math.abs(p.x - f.x) <= f.w / 2 && Math.abs(p.z - f.z) <= f.d / 2) c.push(k); } return area(c); }   // 'f:<feature id>': the walked squares of one terrain feature (the skate park's pad)
     if (m[1] === 'spot') { const sp = (room.npcSpots || []).find(s => s && s.race === m[2] && s.x != null); if (!sp) return null; const at = hqCityNearest(G, sp.x, sp.z || 0); return at < 0 ? null : { kind: 'spot', at, x: sp.x, z: sp.z || 0, face: sp.face || 0, spot: sp }; }
     return null;
 }
@@ -87001,7 +87003,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "cyborg", w: 2 },
         { race: "firefighter", w: 2 },
         { race: "gangster", w: 2 },
-        { race: "homosapien", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "kaiju", w: 2 },
         { race: "king kong", w: 2 },
@@ -87057,7 +87058,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "clown", w: 2 },
         { race: "firefighter", w: 2 },
         { race: "gangster", w: 2 },
-        { race: "homosapien", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
         { race: "king kong", w: 2 },
@@ -87098,7 +87098,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "clown", w: 2 },
         { race: "firefighter", w: 2 },
         { race: "gangster", w: 2 },
-        { race: "homosapien", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
         { race: "king kong", w: 2 },
@@ -87139,7 +87138,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "clown", w: 2 },
         { race: "firefighter", w: 2 },
         { race: "gangster", w: 2 },
-        { race: "homosapien", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
         { race: "king kong", w: 2 },
@@ -87180,7 +87178,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "clown", w: 2 },
         { race: "firefighter", w: 2 },
         { race: "gangster", w: 2 },
-        { race: "homosapien", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
         { race: "king kong", w: 2 },
@@ -87221,7 +87218,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "clown", w: 2 },
         { race: "firefighter", w: 2 },
         { race: "gangster", w: 2 },
-        { race: "homosapien", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
         { race: "king kong", w: 2 },
@@ -87262,7 +87258,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "clown", w: 2 },
         { race: "firefighter", w: 2 },
         { race: "gangster", w: 2 },
-        { race: "homosapien", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
         { race: "king kong", w: 2 },
@@ -87303,7 +87298,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "clown", w: 2 },
         { race: "firefighter", w: 2 },
         { race: "gangster", w: 2 },
-        { race: "homosapien", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
         { race: "king kong", w: 2 },
