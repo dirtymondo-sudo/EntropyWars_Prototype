@@ -339,11 +339,11 @@ const M = makeRoom({ id: MTN, tag: 'mtn', files: ['P', 'K', 'S', 'O'], streams: 
 { const R = M, { put, dec, tree, native, building, look, S, door, mx, mz, gx, gz, props, feat, cell } = R;
   /* ── THE WAYS ── */
   /* (2026-11-17, One World phase 4.1) the Pass Gate `pass` to the North Pole is gone: the Polar Trail (route R5) walks from the Ridge to the Pole now */
-  door('woods', 'P13-07', 's', Object.assign({ way: 'trail', action: { room: 'site_prebuilt_fairy_forest_plots', at: 'shasta' } }, DOORWORDS('THE WOODS · THE SNOWLINE', 'THE TRAILHEAD · DOWN INTO THE TREES', 'The trail goes down out of the pines into older trees. It is warmer down there, and nothing else about it is better.')));
+  /* (2026-11-17, One World phase 5) the Trailhead's `woods` door (a jump down to the Redwood Trail, 13 plots away) is gone: the trail down from the Trailhead is the Canyon Trail (R2, seam ow_h_m3_m14 on this same side); the Redwood Trail goes up to the Snowy Pass by the wild link L3 */
   { const p = R.byId['P12-00']; for (let ly = 0; ly <= 7; ly++) for (const lx of [7, 8]) cell[p.ly * N + ly][p.lx * N + lx] = 'm'; }   // THE GRAND STAIR goes on up through the cloud to the room's north wall
   const WAY = { heaven: R.spur('P12-00', 'n', 'm'), vatican: R.spur('P11-03', 's', 'm') };
   /* THE HOLLYWOOD HILLS (plan 2): Shasta's east side walks on into the Hills (the city's mountain road lands there now, not at the Lodge Yard) */
-  door('hills', 'P15-02', 'e', Object.assign({ way: 'road', action: { room: CITY, at: 'shasta' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SHASTA ROAD · EAST TO THE SIGN', 'The snow stops at a cattle grid. Past it the road is dry, the brush is brown, and a row of very large letters stands with its back to you.')));
+  /* (2026-11-17, One World phase 5) the `hills` door (the Shasta Road, a jump east to the Hollywood Hills) is gone with the Hills' `shasta`: the Hills are walked to by the Canyon Trail (R2) and the River Road (R1) */
   /* (2026-11-17, One World phase 4.1) the `saddle` door to the Hills' ridge is gone: that ridge way is the River Road's (route R1) now; the Hills are reached by the Canyon Trail (R2) */
 
   runDistricts(R, 'apply'); runDistricts(R, 'build');   // THE DISTRICT FILES: everything that stands on the plots
