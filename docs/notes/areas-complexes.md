@@ -10761,6 +10761,7 @@ Bake order: `node bake-leylines.js`, then `node bake-route.js L14`, then `node b
 - Proof pictures: `docs/plans/one-world/proof/leylines_*.jpg`.
 
 ## BUG COLONY, THE GIANT TREE + THE ANT NEST (2026-11-17, owner side, the Leylines One World thread)
+- **LATER (mondo 11-17: "fine for now but that tree looks terrible ... will need exterior/interior passes later")**: an exterior pass (remake the Giant Tree first) and an interior pass (Hive + Ant Nest) are on the plan: docs/plans/one-world/BUILD_PLAN.md "Phase 6: the dressing passes".
 mondo 11-17: "i imagined the bug colony being more underground. One could be the hive with hexagonal geometry ..., one could be anthill that has an
 entrance above ground as a big mound" + "let's make a giant beehive on a giant tree above ground, and the anthill underground"; plan v1
 (`/mnt/project-files/leylines-one-world/bug-colony/bug_colony_plan_v1.png`) OK'd with "i dont think the ant pile and the bee hive should be so
