@@ -19336,7 +19336,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 broke = true;
                 /* the snap: aberration kick, flash, spectrum shards */
                 try { if (p && p.spellGradeKick) p.spellGradeKick(14, 260); } catch (e) {}
-                _sigScreenFlash('#f0c8ff', 150, 0.32);
+                if (!_vcOn()) _sigScreenFlash('#f0c8ff', 150, 0.32);   /* THE VFX SWEEP, B9b: the cage breaking is the hit, no pale screen flash */
                 _sigShake('hard');
                 try { if (p && p.bloomPulse) p.bloomPulse(0.7, 380); } catch (e) {}
                 var cpx = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
@@ -19352,7 +19352,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     });
                 }
                 _sigShockRing3D(tx, ty, { color: 0xcc66ff, r1: ts * 2.0, ms: 420 });
-                _sigSpeedBurst3D(tx, ty, { color: 0xff9cff });
+                if (!_vcOn()) _sigSpeedBurst3D(tx, ty, { color: 0xff9cff });   /* B9b: the shards are the burst */
             }
 
             /* the pieces fly */
@@ -19451,8 +19451,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the EXTRA-LONG imploding orb telegraph — everything they are,
            contracting */
         _sigOrbBurst3D(tx, ty, {
-            mode: 'in', color: 0xffffff, ms: implodeMs,
-            r0: ts * 0.10, r1: ts * 1.6, opacity: 0.85
+            mode: 'in', color: _vcOn() ? 0xff7ae4 : 0xffffff, ms: implodeMs,   /* THE VFX SWEEP, B9b: the shell in the trip's pink, thin enough to see the body through (it was a white ball over the target and its number) */
+            r0: ts * 0.10, r1: ts * 1.6, opacity: _vcOn() ? 0.45 : 0.85
         });
         _sigChargeSpiral3D(tx, ty, {
             count: 18, r0: ts * 0.9, r1: ts * 1.8, ms: implodeMs * 0.9,
@@ -19485,11 +19485,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var p = _post();
             try { if (p && p.spellGradeKick) p.spellGradeKick(14, 280); } catch (e) {}
             _sigOrbBurst3D(tx, ty, {
-                mode: 'out', color: 0xffffff, ms: 620,
-                r0: ts * 0.12, r1: ts * 1.95, opacity: 0.9
+                mode: 'out', color: _vcOn() ? 0xff7ae4 : 0xffffff, ms: 620,   /* B9b */
+                r0: ts * 0.12, r1: ts * 1.95, opacity: _vcOn() ? 0.4 : 0.9
             });
-            try { _sigSpectrumBurst3D(tx, ty, { radiusPx: ts * 1.8 }); } catch (e) {}
-            _sigScreenFlash('#ffffff', 300, 0.5);
+            try { _sigSpectrumBurst3D(tx, ty, _vcOn() ? { radiusPx: ts * 1.8, flashPeak: 0 } : { radiusPx: ts * 1.8 }); } catch (e) {}
+            if (!_vcOn()) _sigScreenFlash('#ffffff', 300, 0.5);   /* B9b: the spectrum burst is the release, no screen flash */
             _sigShake('hard');
             try { if (p && p.bloomPulse) p.bloomPulse(0.85, 460); } catch (e) {}
             /* the pieces of the self, scattering — pure white, then the world
@@ -19602,11 +19602,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _fxDelay(function () {
             if (_suppressed() || _catOff('spells')) return;
             _sigOrbBurst3D(tx, ty, {
-                mode: 'out', color: 0xbfefff, ms: 380,
+                mode: 'out', color: _vcOn() ? 0x5fd0f4 : 0xbfefff, ms: 380,   /* THE VFX SWEEP, B9b: the clock's own blue, no pale shell */
                 r0: ts * 0.1, r1: ts * 0.95, opacity: 0.7
             });
             _sigShockRing3D(tx, ty, { color: 0x7fe8ff, r1: ts * 1.5, ms: 380 });
-            _sigScreenFlash('#bfefff', 160, 0.22);
+            if (!_vcOn()) _sigScreenFlash('#bfefff', 160, 0.22);
             _sigShake('soft');
         }, Math.max(320, ms * 0.55));
     }
@@ -22415,6 +22415,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _vcRuneOK(info, spellId, params, sx, sy) {
         if (!_vcOn()) return true;
         if (!_VC_RUNE[info.archetype] || _VC_PORTAL[spellId]) return false;   /* B5: a portal spell's portal is its mark */
+        if (_VC_RUNE_NOT_B9B[spellId]) return false;   /* THE VFX SWEEP, B9b: a spell of a rune school that is not rune magic itself */
         /* B4: a spell fired from a gun (a ray gun's hex is still a gun shot) draws no rune under the shooter */
         try { if (_SIG_GUN_FOR[spellId] || _SIG_LINE_GUN_FOR[spellId] || _isGunSpell(spellId)) return false; } catch (e) {}
         var d = _spellDefFor(spellId) || {};
@@ -52015,7 +52016,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var d = _sigEaseInCubic(_sigClamp01((el - ms + 120) / 120)), lv = _pzEnv(el, ms - 120, ms - 100, ms + 200, ms + 520);
             bot.set(0, ts * 2.4 - ts * 2.4 * d, 0); _pzSpan(lance, top, bot); _pzSpan(halo, top, bot); lance.material.opacity = lv; halo.material.opacity = 0.45 * lv;
             crack.material.opacity = 0.9 * _pzEnv(el, ms, ms + 60, ms + 600, ms + 1000); crack.scale.setScalar(0.5 + 0.5 * _sigEaseOutCubic(_sigClamp01((el - ms) / 160)));
-            if (!hit && el >= ms) { hit = true; _spawnEffect(EFFECTS['pzOath_land'], { tx: tx, ty: ty }); _sigScreenFlash('#e8d8ff', 140, 0.3); }
+            if (!hit && el >= ms) { hit = true; _spawnEffect(EFFECTS['pzOath_land'], { tx: tx, ty: ty }); if (!_vcOn()) _sigScreenFlash('#e8d8ff', 140, 0.3); }   /* THE VFX SWEEP, B9b: the lance + the crack are the hit */
         });
     };
     SPELL_MAP['pzNothingUnseen'] = { aura: 'pzUnseen_aura' };
@@ -55948,7 +55949,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var spin = _sigEaseInCubic(_sigClamp01(el / 900)) * Math.PI * 2 * 3;   /* three hours */
             hands[0].rotation.z = -spin / 12; hands[1].rotation.z = -spin;
             beam.material.opacity = 0.35 * (el > 900 && el < 1350 ? (Math.floor(el / 70) % 2 ? 1 : 0.3) : 0);
-            if (el > 900 && el < 930) _sigScreenFlash('#e8fff4', 180, 0.25);
+            if (el > 900 && el < 930 && !_vcOn()) _sigScreenFlash('#e8fff4', 180, 0.25);   /* THE VFX SWEEP, B9b: the beam blinks, the screen does not */
         });
     }
     /* TISSUE SAMPLE: the probe comes down, the vial fills green and floats back to the grey */
@@ -66990,7 +66991,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (seenT) {
                     _sigShockRing3D(tx, ty, { color: S[0], r0: ts * 0.15, r1: ts * 0.75, ms: 360 });
                     _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 170, tint: _BBR.violet, vz0: 40, vz1: 200, gravity: 260 });
-                    _sigSparks(tx, ty, 'spark', 5, { z: ts * 0.9, vxy: 120, tint: 0xffffff, vz0: 60, vz1: 220, gravity: 260 });
+                    _sigSparks(tx, ty, 'spark', 5, { z: ts * 0.9, vxy: 120, tint: _vcOn() ? S[0] : 0xffffff, vz0: 60, vz1: 220, gravity: 260 });   /* B9b */
                     _shake('light');
                 }
             }
@@ -67015,7 +67016,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shellM = _pzGlow(_BBR.violet), shell = _pzMesh(new THREE.SphereGeometry(1, 28, 18), shellM, F.g, 0, Y, 0);
         var rimM = _pzGlow(_BBR.pale), rim = _pzMesh(new THREE.TorusGeometry(1, 0.025, 6, 48), rimM, F.g, 0, Y, 0);
         var rim2M = _pzGlow(S[0]), rim2 = _pzMesh(new THREE.TorusGeometry(1, 0.02, 6, 48), rim2M, F.g, 0, Y, 0);
-        var pt = _pzSpr(0xffffff, ts * 0.5, F.g); pt.position.set(0, Y, 0);
+        var pt = _pzSpr(_vcOn() ? _BBR.violet : 0xffffff, ts * 0.5, F.g); pt.position.set(0, Y, 0);   /* THE VFX SWEEP, B9b: the point the room falls into is the void's violet, not a white flare */
         var motes = _bbMotes(F, 26, 0.62, 1.05, _BBR.violet);
         var floorM = _pzSolid(0xffffff, _bbVoidTex(), { depthWrite: false }), floor = _pzMesh(new THREE.CircleGeometry(ts * 0.62, 36), floorM, F.g, 0, ts * 0.03, 0); floor.rotation.x = -Math.PI / 2;
         var R = ts * 0.8, CL = 150, hit = false;
@@ -67563,7 +67564,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (!slammed && el >= SLAM) {
                 slammed = true; _sigShake('light');
                 _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.2, r1: ts * 0.8, ms: 320 });
-                _sigSparks(tx, ty, 'spark', 10, { z: ts * 1.5, vxy: 160, tint: 0xffffff, vz0: 10, vz1: 90 });
+                _sigSparks(tx, ty, 'spark', 10, { z: ts * 1.5, vxy: 160, tint: _vcOn() ? C.a : 0xffffff, vz0: 10, vz1: 90 });   /* B9b */
             }
             var wk = _sigClamp01((el - SLAM - 40) / 260);
             word.material.opacity = _pzEnv(el, SLAM + 40, SLAM + 120, 1200, 1550);
@@ -67601,7 +67602,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.2, r1: ts * 1.0, ms: 380 });
                 if (hushed) _sigShockRing3D(tx, ty, { color: _LIB.red, r0: ts * 0.3, r1: ts * 1.4, ms: 520 });
                 slips = _libSlips(F, hushed ? 12 : 6, Y0);
-                _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 200, tint: 0xffffff, vz0: 30, vz1: 140 });
+                _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 200, tint: _vcOn() ? (hushed ? _LIB.red : C.a) : 0xffffff, vz0: 30, vz1: 140 });   /* B9b: sparks in the stamp's colour */
             }
             var se = el - ms;
             if (slips) _libSlipsTick(slips, se, Y0, 1700, ts);
@@ -74535,6 +74536,35 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceConsumingDark: _l5(_l5ConsumingDark3D), raceInfernalDecree: _l5(_l5InfernalDecree3D), raceOutOfTheDark: _l5(_l5OutOfTheDark3D), raceSleepParalysis: _l5(_l5SleepParalysis3D), raceSoulSuck: _l5(_l5SoulSuck3D),
     });
     /* ═════════ END THE OWN LOOKS, L5 ═════════ */
+
+    /* ════ THE VFX SWEEP, B9b (2026-11-17, docs/plans/vfx-cleanup/SWEEP_BRIEF.md; list batches/B9b.txt: psychic + unholy) ════
+       The generic white left inside each spell's own look. The in-place edits carry a "B9b" comment where they sit; this block
+       holds the two tables. Everything is behind _vcOn() (window.EW_NO_VFX_CLEANUP = true = the old look). Looks only.
+       · _VC_RUNE_NOT_B9B: spells of a rune school (psychicHex, unholy) that are NOT rune magic: a debunking, a phone, a thrown
+         bone, a kiss, a roar. No circle under the caster (mondo: "that should be preserved for magic spells where it makes sense").
+       · _B9B_TINT: a white / near-white ring or flash in a spell's own particle recipe, in the spell's own colour. The recipe
+         keeps its layer (every hit square still flashes); only the colour changes, read live so the switch works. */
+    var _VC_RUNE_NOT_B9B = {
+        /* psychicHex: none of these is drawn on the ground */
+        pzDebunked: 1, goMissingTime: 1, raceRatiod: 1, sigScrape: 1, nrShhh: 1
+    };
+    var _B9B_TINT = {
+        /* recipe id: [[layer index, sprite (a check), the colour]] */
+        sigUncannySmile_center: [[0, 'shockwave', 0xff2030]],        /* the smile's ring in its eye red (it was bone white) */
+        nrPinPrick_impact: [[0, 'flash', 0xe8a0b4]]                  /* the pin's glint in the doll's lace pink */
+    };
+    (function () {
+        for (var id in _B9B_TINT) {
+            var d = EFFECTS[id], rows = _B9B_TINT[id];
+            if (!d || !d.layers) { try { console.warn('[VFX] B9b: no recipe ' + id); } catch (e) {} continue; }
+            for (var i = 0; i < rows.length; i++) (function (L, sprite, col) {
+                if (!L || L.sprite !== sprite) { try { console.warn('[VFX] B9b: layer moved in ' + id); } catch (e) {} return; }
+                var old = L.tint;
+                try { Object.defineProperty(L, 'tint', { configurable: true, enumerable: true, get: function () { return _vcOn() ? col : old; }, set: function (v) { old = v; } }); } catch (e) {}
+            })(d.layers[rows[i][0]], rows[i][1], rows[i][2]);
+        }
+    })();
+    /* ═════════ END THE VFX SWEEP, B9b ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
        THE OWN LOOKS, L6: fire, wind and sound (2026-11-17, mondo: "any spells that dont have a look of their own need

@@ -4848,3 +4848,37 @@ The 54 spells the code trace left alone were shot too, to catch what a trace mis
   cast them. Fire for Effect, Extinction Event and Nuclear Option land a round or two later: only the cast was shot.
 - None of the 14 old-laser line spells and none of the single-spell leads of the brief are on this list.
 - Frames: `docs/plans/vfx-cleanup/img/sweep/B8b_part2_changed.jpg` (the two, after), `B8b_part2_nochange_1..4.jpg`.
+
+## THE VFX SWEEP, B9b, part 1: the psychic half (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B9b.txt` lines 1-51)
+Brief: docs/plans/vfx-cleanup/SWEEP_BRIEF.md. The white was traced in the code (each spell's signature + its particle
+recipes), then the changed spells were shot before and after. All behind `EW_NO_VFX_CLEANUP`; looks only. The two tables
+live in the block "THE VFX SWEEP, B9b" (after THE OWN LOOKS, L5): `_VC_RUNE_NOT_B9B` (read by `_vcRuneOK`: a spell of a
+rune school that is not rune magic gets no circle under the caster) and `_B9B_TINT` (a white ring or flash layer of a
+spell's own recipe, in the spell's colour, read live). In-place edits carry a "B9b" comment.
+**Changed (15):**
+- **Ego Death** (`_sigEgoDeath3D`): the imploding and the bursting shell were a white ball over the target and its number
+  (opacity 0.85 / 0.9); now the trip's pink `0xff7ae4` at 0.45 / 0.4, so the body and the number show through. No white
+  screen flash (its own, and the spectrum burst's: `flashPeak: 0` passed). The spectrum burst's white core is in the
+  shared helper `_sigSpectrumBurst3D` and stays.
+- **Mind Shatter** (`_sigMindShatter3D`): no pale lilac screen flash, no speed burst; the cage, the shards and the ring stay.
+- **Paradox** (`_sigTimeRewind3D`): no pale screen flash; the bursting shell in the clock's blue (was `0xbfefff`). The
+  circle stays: it is the clock face.
+- **The Oath Broken**: no screen flash on the lance's landing.
+- **Missing Time**: no mint screen flash when the beam blinks; no cast rune.
+- **Late Fee, Thought Spike, Shush**: their white sparks in the spell's own colour (the stamp's / the side's).
+- **Vacuum Collapse**: the point the room falls into is the void's violet (it was a white flare that grew to 1.4 squares).
+- **Uncanny Smile**: the ring round the android in its eye red (it was bone white). **Pin Prick**: the pin's glint in lace pink.
+- **No cast rune** (psychicHex is a rune school, these are not rune magic): Debunked, Missing Time, Ratio'd, Scrape, Shhh!.
+**Checked, nothing to change (36):** Dream Siphon, Eternal Slumber, Every Eye at Once, Existential Dread, Familiar Voice,
+Far Sight, Final Exam, Jewelled Toys, Kinetic Hurl, Look Behind You, Mental Static, Migraine, Mind Blank (the blank is the
+spell), Nightmare Pulse, Overfit, Probe, Psychosis (its flash is its own purple), Rewind, Telekinetic Slam, The Sermon,
+The Whole House Shakes, Things That Go Bump, Tissue Sample, Visible Language, Contact High, Fast Forward, Nordic Accord,
+Observer Effect, Psychic Barrier, Pull My String, Sad Backstory, Spirit Guide, Telepathic Link, Deneuralizer (the white
+flash IS the spell), Doomscroll, Invisible Box (glass).
+- Frames (before on top, after under): `docs/plans/vfx-cleanup/img/sweep/b9b_p1_*.jpg`. Seen: Ego Death, Mind Shatter,
+  Paradox (the screen wash gone), Ratio'd / Missing Time / Scrape (no rune). NOT seen on a frame, the change is too
+  short or too small for frames 0.45 s apart: the Oath's and Missing Time's screen flash, the three spells' sparks, the
+  Vacuum point, the Smile's ring, the pin's glint; Debunked and Shhh! showed no rune in the before frames either.
+- Not on this list although the thread's order named them: Jackpot, Shattered Mirror (B9a), Love Ray (B4). Left alone.
+- For the cleanup thread (shared helpers, not touched): `_sigSpectrumBurst3D`'s white core; `_sigGasCloud3D` lays a
+  `_sigMagicCircle3D` under every gas cloud (Heat Death, Shambling Horde) on squares the noise wash also covers.
