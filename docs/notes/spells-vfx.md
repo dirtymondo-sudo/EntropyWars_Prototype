@@ -5191,3 +5191,20 @@ these was ONE thing: the purple cast rune under the caster, on a referee's card 
 - **Seen, not mine:** the pale squares over an area during the windup are the aim tiles (the tile glow), not a spell layer.
 - **Not seen:** Campaign Promise, Mean Mug and Constrict have no look of their own (the support burst only); an enemy's cast; online.
 - Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part2_a.jpg, B9a_part2_b.jpg.
+
+## THE VFX SWEEP, B9a, part 3: hex, the other 31 (2026-11-17, three-vfx-effects.js; Mirror Splinter ... Wither Starlight in `batches/B9a.txt`)
+Same method and switch as parts 1 and 2.
+- **The cast rune off (`_VC_SPELL_NO_RUNE`, 27):** Mirror Splinter, Misdirection, Naughty List, Outbreak, Pick a Card, Pixie Prank,
+  Predictive Model, Red Eyes, Selfie Flash, Short Sell, Showdown, Smoke Screen, Spiked Martini, Spotlight, Stacked Deck, Stasis Beam,
+  Steal from the Rich, Stutter, Surveillance, System Analysis, The Hat Man, The Kool-Aid, Throw Down the Gauntlet, Vow of Silence,
+  Wanted Poster, White Christmas, Wither Starlight. **Kept (rune magic): Mummify** (Anubis' rite), **Polymorph, Spellsteal** (the
+  wizard's), **Star Crossed** (the fortune teller's tarot; its own circle under the card stays too).
+- **Star Crossed** (`_sigTarotReversed3D`): no screen flash when the card turns over.
+- **Checked beyond the rune, nothing to change:** all 31. What is pale in them is the thing itself: Selfie Flash (the flash IS the
+  spell), Spotlight (a spotlight), Mummify's linen, Pick a Card's cards, Wanted Poster's paper, Spiked Martini's glass, Mirror Splinter's
+  glass, Smoke Screen's smoke, Naughty List's scroll.
+- **Seen, not mine:** Stasis Beam's beam is a near-white dotted line from battle.js's spiral projectile (the f4 look calls it "gold-white",
+  the Nordic's light); it is not in three-vfx-effects.js and was left.
+- **Not seen:** Predictive Model's after frames (the run caught the boot screen; its only change is the rune table row); Misdirection,
+  Stacked Deck, Stutter, Surveillance have no look of their own (the support burst only); an enemy's cast; online.
+- Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part3_a.jpg, B9a_part3_b.jpg.
