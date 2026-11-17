@@ -23,6 +23,7 @@ const REPO = __dirname, DRY = process.argv.includes('--dry-run');
 const PLAN = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/areas/dumb/layout.json'), 'utf8'));
 const C = 3.5, N = 12, GX = PLAN.cols, GY = PLAN.rows, W = N * GX, Hh = N * GY, HX = W * C / 2, HZ = Hh * C / 2, LEVEL = 1.75, T = 0.3, DW = 1.75, DH = 2.2;
 const ROOM = 'site_prebuilt_dumb_base', PART = 'base';
+const OW = { wx: 0, wy: 11 };   // THE ONE WORLD: the room's north-west plot on the world grid (the East Gantry P06-05 -> 6,16)
 const OLD = { motorpool: 'site_prebuilt_dumb_motorpool', sublevel7: 'site_prebuilt_dumb_sublevel7', dreamlab: 'site_prebuilt_dumb_dreamlab', clonevats: 'site_prebuilt_dumb_clonevats',
     warroom: 'site_prebuilt_dumb_warroom', bunker: 'site_prebuilt_dumb_bunker', ring: 'site_prebuilt_cern_ring', ward: 'site_prebuilt_area51_ward' };
 const r2 = v => Math.round(v * 100) / 100, gx = c => r2(-HX + c * C), gz = c => r2(-HZ + c * C), gcx = c => r2(-HX + (c + 0.5) * C), gcz = c => r2(-HZ + (c + 0.5) * C);
@@ -317,6 +318,10 @@ L.push("        " + ROOM + ": {");
 L.push("            label: 'THE D.U.M.B.',");
 L.push("            sub: 'LEVEL P3 · SUB-LEVEL 7 · RESEARCH · COMMAND · CERN, THE RING · THE BASE EVERY BASE IS UNDER',");
 L.push("            kind: 'box', site: 'prebuilt_dumb', part: '" + PART + "',");
+/* THE ONE WORLD (2026-11-17, BUILD_PLAN phase 3 wave B; mondo 11-17: "Connected/bigger rooms is better. If the room is smaller than disaster city
+   than dont even ask, just make it one room"): the base stays ONE room, under the city's south-west, its Level P3 on v13's row (dP 5,14): the East
+   Gantry stands on world plot 6,16, where the underground walk U5 from the Running Tunnels arrives on its east side (phase 4.4 opens it). */
+L.push("            world: { hub: 'dumb', layer: 'under', wx: " + OW.wx + ", wy: " + OW.wy + " },");
 L.push("            shell: hqBunkerShell({ w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: " + SH + ", wallH: " + SH + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(plot['P03-05'].base + 3.4) + " },");
 L.push("                                   mood: { lamp: 0xff3838, glow: 0xff5040, strip: 0xdfe8ff, light: 0xdfe8ff, ambient: 0.55 }, fog: { color: 0x0c0e12, density: 0.006 } }),");
 L.push("            parti: 'A base in a ring: the collider tunnel runs round all of it, the tunnel every base is on runs straight across its south, and one long stair goes down from the tram platform to the hub every department is off.',");

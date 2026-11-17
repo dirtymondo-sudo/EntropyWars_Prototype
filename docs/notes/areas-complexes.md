@@ -11581,3 +11581,14 @@ do NOT move: they bake byte for byte as before.
 - NOT DONE: nothing was walked by a player from end to end (the tool's walk check reaches every plot); the solid cloud under the Gate, the Fields and the City
   still reads as one mass from below (as before the move).
 
+## ONE WORLD, THE D.U.M.B. STAYS ONE ROOM (2026-11-17, BUILD_PLAN phase 3 wave B; the owner's One World D.U.M.B. thread)
+v13 drew the D.U.M.B. as five bases apart on the tube (P3 by the city, Command under Area 51, Research under the Barn, Sub-Level 7 under Shasta, CERN's
+Ring under Stonehenge). mondo, the same morning, as a rule for every zone: "Connected/bigger rooms is better. If the room is smaller than disaster city than
+dont even ask, just make it one room". The base is 7 x 7 plots (Disaster City is 17 x 18), so it STAYS ONE ROOM, as built on 11-16, with every plot,
+stair, ladder and way out where it was. What changed: one line, `world: { hub: 'dumb', layer: 'under', wx: 0, wy: 11 }` (bake-dumb.js `OW`): the room
+stands under the city's south-west, Level P3 on v13's dP row, the East Gantry (P06-05) on world plot 6,16, where U5 from the Running Tunnels arrives on
+its east side. Nothing retired (the id is the same). The census (`docs/areas/dumb/move/before.json`): nothing missing, 0 extra. `node bake-map.js
+site_prebuilt_dumb_base` rewrote the table (bake-map.js's own ZONES row still says `wait`; the room's `world` wins). The bases' v13 places on the map
+(Command, Research, Sub-Level 7, the Ring) are not used; the ways down the map names (the Shasta lift, the barn hatch, the quarry shaft) are not built yet
+and would all land in this room. The clean bake on 11-17 changed one label (the White Rooms' yard gate reads AREA 51: the old ward literal the Desert
+rewrites); kept.
