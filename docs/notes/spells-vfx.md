@@ -4835,6 +4835,70 @@ Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look
   direct path and its frames missed the beat); Crusade's arms after their last dimming (gain .55, opacity .32: the one
   frame caught was after the cross had faded); the guest's seat; anything with `EW_NO_VFX_CLEANUP` on.
 
+
+## THE VFX SWEEP, B6a, part 1 (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B6a.txt`: 93 aura buffs, wards and blessings + 3 divine)
+The generic white left inside each spell's OWN effect, traced in the code (SWEEP_BRIEF.md). All behind `EW_NO_VFX_CLEANUP`.
+- **What the white was here.** These are support spells: the stage burst draws nothing for them and their palette is the
+  kept `aura` one. What was left is the OLD shared buff recipe still drawing under a spell that has its own look since:
+  an untinted `flash` (three-vfx.js paints it the aura palette's cream), a pale gold `halo-ring` under a ward of another
+  colour, a holy pillar under a spell that is not holy; plus a few near-white colours in a spell's own signature.
+- **The block "THE VFX SWEEP, B6a"** (end of the file): `_s6a(spell, 'aura', { drop, tint, max, noPillar })` makes a COPY of
+  the spell's recipe (`s6a_<spell>_<recipe>`, centre + per-square recipes too) and `_fireAura` draws the copy while the
+  cleanup is on (`_s6aFx`). The old recipes are not edited (other spells share them), so the switch gives the old look
+  back live. A per-square `flash` is never dropped by the helper, only tinted. `_S6A_AURA` = a power shroud
+  (`_POWER_AURA_SPELLS`) in the spell's colour. The rest is one line at each spell (grep "THE VFX SWEEP, B6a").
+- **`gentle: true` on `_sigSonicBoom3D`** (an opt that was already there) = the rings without the screen flash, the WHITE
+  speed burst, the shake and the sparks. Howl and Swarm Signal pass it and add their own shake (Howl its sparks too).
+
+| Spell | What changed |
+|---|---|
+| Iron Bulwark `raceIronBulwark` | the wide shout ring is steel blue `0x6f8fb8` (it was a wide WHITE ring, `0xc9d3de`); no cream flash at the general (the shield rings are the look) |
+| Iron Dome `shieldBash` | the dome reads as iron: wire `0x8aa2c0` at 0.36, inner `0x7f93ab`, outer `0x5f7088` (it was a white wire cage, `0xdce6f0` at 0.5, over the whole squad) |
+| Howl `raceHowl` | rings moon blue `0x86b4ff` (were `0xbbddff`), no screen flash, no white speed burst; recipe flash + both rings moon blue; the power shroud is handed `0x6f9cf0` (was `0xbfd4e8`), but it still reads as a pale pool under the wolf on the frames: the shroud is three-renderer.js EWPowerAura's, not changed here |
+| Swarm Signal `raceSwarmSignal` | the amber rings without the screen flash and the white speed burst; its flash amber `0xffc05a` |
+| Sheltering Wings `sigShelteringWings` | the light pillar's core warm gold `0xffe2a0`, not pure white (the wings, the halo and the pillar stay: it is an angel) |
+| Hop On `nrHopOn` | the two horn "beep" rings are his red (`_DB.red`), they were two white rings |
+| Tarot Draw `raceTarotDraw` | no screen flash when the card bursts (`noFlash` on `_sigTarotDraw3D`, which only this spell and one capstone call); one violet flash `0xb890ff` in place of three pastel ones |
+| Plot Armor `racePlotArmor` | the three sacred rings are off (they drew white whatever colour they were handed and hid the body); the shields + the pink burst are the look; its flash pink `0xff9ae0` |
+| Mimicry `raceMimicry` | the shell is violet and thinner (`0xa860f0`, hot `0xc890ff`, opacity 0.3; it was white-hot at 0.55 and covered the caster for half a second). The rainbow burst round it (`_sigSpectrumBurst3D`, a shared helper with a white-hot core) is unchanged and is still bright |
+| Fortify `fortify` | no holy pillar and no cream flash under the shield wall; its ring and light motes are the shields' blue `0x88bbff` |
+| Holy Bulwark `raceHolyBulwark`, Luminous Shield `raceLuminousShield` | no cream flash at the centre (the gold dome, the holy light and the gold rings stay) |
+| Shield Maiden `raceShieldMaiden` | no cream flash; the floor ring is her shields' blue `0x8fb4f0` |
+| Hellfire Crown `raceHellfireCrown`, Royal Decree `raceRoyalDecree` | no cream flash under the crown |
+| Ayahuasca Retreat `raceAyahuascaRetreat` | no cream flash; the floor ring is the brew's violet `0xbb66ff` |
+| Stone Skin `raceStoneSkin` | the pale gold ring is off (the signature has its own stone ring) |
+| Astral Barrier `raceAstralBarrier`, Pupil Shield `racePupilShield` | the floor ring in the dome's own colour (`0xb894ff`, `0x8a9cff`), it was the pale gold one |
+| Rally Command `raceRallyCommand` | every square keeps its flash, in the order's orange `0xff9a4a`; the light motes orange |
+| Oath of Valor `raceOathOfValor` | its flash gold `0xffd870` (was near white `0xfff0c0`) |
+| Inservice `nrInservice` | the ring on every square of the diamond is her red `0xff8a8a` (was near white `0xffe6e0`) |
+| Tailwind `raceTailwind` | the centre ring mint `0x8fe0cc` (was near white `0xd8f0ff`) |
+
+- **White that stays because it is the thing:** Blurry Photo's camera flash; Salt-Proof Stance's salt; Death Pact's skull;
+  Rapture's sacred rings and holy pillar (a seraph's own light); Called by Name's gold light; the lifeguard's whistle rings
+  (On Duty, Inservice: her white and red); Grind's grinding sparks; Lawn Ornament's glint and flowers; Sleight of Hand's
+  glove and cards; Crystal Coffin's star glint; Overtinker's steel gear.
+- **Checked, nothing to change (code traced; all but the L4 ones also on a baseline sheet):** the 27 with an L4 own look written
+  today (Anthem, Apex Roar, Audible, Awakening, Black Budget, Black Guard, Blessing, Fairy Dust, Firewall Protocol, Go
+  Ape, Incendiary Rounds, Light Shield, Monster Serum, Nitro Boost, Overcalculate, both Overclocks, Pep Talk, Phase
+  Shift, Prayer, Protect, Siege Mode, Sparkle, Stoneform, Thick Hide, Tin Foil Hat, Wish Granted: no white in them; not
+  reshot here, the L4 thread shot them); Azazel's Forge, Bath Salts, Bipod, Blurry Photo, Called by Name, Camouflage,
+  Can't Stop Me, Collection Plate, Crystal Coffin, Death Pact, Dig In, Double Down, Emet, Encore, Everybody Up, Extended
+  Clips, Feathered Serpent, Filter, Forward March, Grind, Invulnerable, Kawarimi, Lawn Ornament, Mantra, On Duty, Orchid
+  Disguise, Overtinker, Premonition, Prophecy Fulfilled, Rapture, Rescue Line, Saddle Up, Salt-Proof Stance, Scabbard of
+  Excalibur, Sermon, Sleight of Hand, Sponsored, Submerge, Take Root, Tax Exempt, Thirty Minutes or Less, Three Whistles,
+  Updraft, Ancient Magic, Blue Beam, Celibacy.
+- **Seen on these spells but shared, so not touched (for the cleanup thread):** (1) on every buffed ally, a stack of pale
+  gold rings round the body and a cream square under it (the buff rings + the tile glow); (2) the gold swirl disc under
+  every caster in the windup; (3) `_sigSonicBoom3D`'s speed burst is hard `0xffffff` and `_vcCol` passes near-white
+  through when the casting spell's palette is a support one (its `light` is cream), so `_sigScreenFlash` /
+  `_sigShockRing3D` / `_sigSpeedBurst3D` handed white still draw white on any aura / heal / mana spell;
+  (4) `_sigSacredRings3D` draws its three rings white whatever `color` it is handed (Rapture, Plot Armor before this);
+  (5) `_sigSpectrumBurst3D` has a white-hot core (Mimicry's remaining bright centre); (6) Howl's teal screen wash + violet
+  rings are the sonic pass's roar, Updraft's white twist is the wind pass (`_wdUpdraft`): B7's; (7) the recipes name a
+  `buff-aura` pillar sprite that three-vfx.js does not define.
+- Frames: `docs/plans/vfx-cleanup/img/sweep/b6a_part1_before_after.jpg` + `b6a_part1_after.jpg` (llvmpipe, 1920 x 1080
+  crops, frames 300 ms apart). NOT seen: anything shorter than 300 ms between two frames (the dropped flashes are 220 ms:
+  their absence is read from the recipe copies, not from a frame), the guest's seat, `EW_NO_VFX_CLEANUP` on.
 ## THE VFX SWEEP, B8a, part 1: blood + earth (2026-11-17, three-vfx-effects.js block "THE VFX SWEEP, B8a"; list `batches/B8a.txt`, 83 spells)
 Thread B8a of the sweeps (docs/plans/vfx-cleanup/SWEEP_BRIEF.md). All 83 already had a look of their own (`_vcOwn`), so the
 stage burst was already the grade + shake for every one; what was left was white inside each spell's OWN recipe / signature.
@@ -4958,3 +5022,43 @@ flash IS the spell), Doomscroll, Invisible Box (glass).
 - Not on this list although the thread's order named them: Jackpot, Shattered Mirror (B9a), Love Ray (B4). Left alone.
 - For the cleanup thread (shared helpers, not touched): `_sigSpectrumBurst3D`'s white core; `_sigGasCloud3D` lays a
   `_sigMagicCircle3D` under every gas cloud (Heat Death, Shambling Horde) on squares the noise wash also covers.
+
+## THE VFX SWEEP, B10, part 1: bodies and tech (2026-11-17, three-vfx-effects.js block "THE VFX SWEEP, B10" + marked lines)
+List `docs/plans/vfx-cleanup/batches/B10.txt` (112 spells: human, kinetic, grapple, skyfall, rig, tech, alien). All 112 were
+traced in the code (each one's recipes, its own look, every near-white literal in them) and shot once at 0.45 s a frame.
+All 112 have a look of their own today (`_vcOwn`), so the shared stage burst was already off for every one of them: what
+was left is small. Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look). Looks only.
+- **The recipe layers** (`_B10_LAYERS`: recipe -> [sprite, old tint, new tint | 'skip']; it writes the same `vcTint` /
+  `vcOff` layer tags B8a's `_b8Tint` writes, read by the emitter). A near-white hit flash takes the spell's colour, it is
+  never removed; a second flash on the same spot is dropped. Hydraulic Punch (steam blue; its second, pure white flash
+  off; Tail Whip shares the recipe), Grapple Arm (steel blue), Place Bomb (every square's flash + the ring in the blast's
+  orange, they drew cream; the middle's second flash off), Executive Order (the seal's gold), Saw in Half (spark gold),
+  Feral Dive (leaf green flash + ring), Drive-By (muzzle yellow), Stampede (dust amber: the hit, the six streaks, the
+  ring), Chivalry (the shield's blue), Spring Snare (steel), Stuffed Double (straw), Predator Drop (a vampire's rake is
+  blood red; it was pale green).
+- **Divine Swoop** (`_spell3DGeometry.raceDivineSwoop`): the pale speed burst and the screen flash are off; the silver cut
+  (a shade deeper) and its ring are the swoop.
+- **Meteor**: no pale speed burst and no screen flash on the landing; the rock, the fire, the ring and the circle stay
+  (the circle is the Black Mage's own cast and the mark of where it lands).
+- **Nebula** (`_sigSupernova3D`, its only spell): the white-out of the board is a short gold blink (0.6 -> 0.2), the shell
+  is half as solid so the bodies read through it, the white second ring and the white pillar are star gold.
+- **Megazord Blast** (`_CAP_SIGS`): each lance's hot core is its ranger's colour made light and the lances no longer burn
+  out to white (gain 1.8 -> 0.95), the charge is red, the blast light gold, the white screen flash off.
+- **Checked, nothing to change (95):** every other spell on the list. Their whites are the thing itself (paper, a contract,
+  a library card, chalk, snow, ice, a pie's cream, a referee's lines, feathers, steam, a lure's bulb, a saw blade) or go
+  through `_vcCol` already (Flat Earth's, Gator Toss's and Timeout's rings).
+- **Ice Slide (the brief's lead):** the flat white slab in the frames is the ICE TERRAIN the spell leaves
+  (`leaveTerrain: 'ice'`, three-renderer.js), not a VFX; L3's strip lies on it for about a second. Left alone.
+- **Could not judge on frames, code only:** the self-centred dashes and rig casts resolve before the runner's first frame
+  (Blitz, Body Check, Bull Rush, Dark Feather, Drive-By, Giant Stride, Lunar Lander, Popemobile, Quickdraw, Ram Charge,
+  both Rampages, Ride-By, Shadow Infiltration, Sleigh Dash, Sprint, Stampede, Vault, Fifty Times, Suplex, Horn Toss, the
+  traps and deploys). The recoloured flashes last about 0.1 s and are not in a frame either.
+- **Seen, not mine (for the threads that hold them):** the METAL noise wash is still white static on every square (Runaway
+  Train about 14 discs, Tether Line, Grapple Arm, Electromagnet, Shoulder Through, Quickdraw) and the metal stamp puts a
+  giant pale cog under Lasso / Round Up (B7's leads); the WIND wash on Dust Devil (white-mint blobs on every square; sand
+  would suit it); the explosion kit's cream ring on every blast (Place Bomb, Mortar Salvo, Artillery Strike, Rocket Fist);
+  a white light column on the lifted body at the start of the three sky throws (Dragon Toss, Infernal Hurl, To the Moon)
+  and a cream crescent where a leap lands (Abominable Ambush, Grotesque Dive): source not found in this file's spell code
+  (three-renderer.js's carry / leap?); Transform's gold halo is the shared buff burst (`_buff_div_burst_center`).
+- No line spell of the brief's list is on B10 (Piercing Arrow, Bullet Pass, Shockwave Clap and Ki Charge are on B3's list).
+- Frames: docs/plans/vfx-cleanup/img/sweep/b10_p1_*.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
