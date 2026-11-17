@@ -26684,6 +26684,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var gold = 0xffe9a8, white = 0xfff8e8;
+        if (_vcOn()) { gold = 0xffc84a; white = 0xffe08a; }   /* THE VFX SWEEP B6b: the cross of light and its column burned to flat white over the caster and the bodies on the arms: a deeper gold, a gold-hot */
         try { _sigLightPillar3D(tx, ty, { color: gold, coreColor: _b6bCore(0xffd875), radius: ts * 0.5, height: ts * 7, ms: 1000 }); } catch (e) {}   /* THE VFX SWEEP B6b */
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y + 4, wp.z);
