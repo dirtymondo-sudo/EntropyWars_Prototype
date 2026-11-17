@@ -71996,6 +71996,227 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceSevenYears: _l5(_l5SevenYears3D), raceShatteredMirror: _l5(_l5ShatteredMirror3D), racePrismMirror: _l5(_l5PrismFold3D), racePulseLattice: _l5(_l5PulseLattice3D),
         raceTuneFrequency: _l5(_l5TuneFrequency3D), raceRangefinder: _l5(_l5Rangefinder3D),
     });
+    /* PART 3, the mind: BOO a wailing sheet-ghost bursts out of them with the word · CUT THE CORD the silver cord over the
+       head is snipped: the top whips away, the stump drops · DOSED the floor rings under the feet melt and turn against each
+       other, a dizzy spiral over the head, bubbles · DREAM SIPHON a ribbon of sleep runs to the dreameater with little moons
+       riding it · ETERNAL SLUMBER a crescent moon sinks over the area and a Z lifts off every square · FAR SIGHT a violet eye
+       opens over the square, looks about, shuts · NIGHTMARE PULSE a ring of fangs closes round the nine squares and the dream
+       is drunk back · PROBE a needle of light from above and a scan ring that reads the body down and up · HYPNOTIC PULSE
+       a turning spiral over the area and one over every square · DEATH GAZE a red slit eye opens over the victim and its ray pins them. */
+    Object.assign(_L5C, { ghost: 0xd8f0e8, psi: 0xb48cff, psiD: 0x5a3ab0, cord: 0xcfd4ff, acidL: 0xb6ff3a, acidV: 0xd04aff, acidY: 0xffe14a, dream: 0x8a7cff,
+        moon: 0xffe9a0, night: 0x5a4ae0, nightD: 0x1a0a3a, scan: 0x8affc0, doom: 0xd0141e, doomD: 0x12060a });
+    /* a flat eye that faces the camera: dark, a rim and an iris of light; userData.lid.scale.y opens it, .iris / .pupil look about */
+    function _l5Eye(parent, w, iris, slit) {
+        var g = new THREE.Group(); g.quaternion.copy(_goCamQuat(g.quaternion)); parent.add(g);
+        var lid = new THREE.Group(); g.add(lid); var parts = [];
+        function almond(W, H) { var sh = new THREE.Shape(); sh.moveTo(-W / 2, 0); sh.quadraticCurveTo(0, H, W / 2, 0); sh.quadraticCurveTo(0, -H, -W / 2, 0); return new THREE.ShapeGeometry(sh, 16); }
+        function add(mesh, op, ord) { _goAdd(lid, mesh, op); mesh.material.depthTest = false; mesh.renderOrder = ord; parts.push(mesh); return mesh; }
+        add(new THREE.Mesh(almond(w * 1.14, w * 0.6), _goA(iris, 0)), 0.9, 160);
+        add(new THREE.Mesh(almond(w, w * 0.5), _finBasic(0x0a0610, { opacity: 0, depthWrite: false })), 0.95, 161);
+        var ir = add(new THREE.Mesh(new THREE.CircleGeometry(w * 0.2, 24), _finBasic(iris, { opacity: 0, depthWrite: false })), 1, 162);
+        var pu = add(new THREE.Mesh(new THREE.CircleGeometry(w * 0.09, 16), _finBasic(0x050308, { opacity: 0, depthWrite: false })), 1, 163); if (slit) pu.scale.set(0.38, 2.1, 1);
+        g.userData = { lid: lid, iris: ir, pupil: pu, parts: parts };
+        return g;
+    }
+    function _l5Look(eye, dx) { eye.userData.iris.position.x = dx; eye.userData.pupil.position.x = dx; }
+    /* a crescent (a moon) in the XY plane, horns to +x */
+    function _l5Crescent(R) {
+        var sh = new THREE.Shape(), a0 = 2.0, c = 0.5 * R, tx = Math.cos(a0) * R, ty = Math.sin(a0) * R, r = Math.hypot(tx - c, ty), b0 = Math.atan2(ty, tx - c), n = 16;
+        for (var i = 0; i <= n; i++) { var a = a0 + (Math.PI * 2 - 2 * a0) * i / n; if (i) sh.lineTo(Math.cos(a) * R, Math.sin(a) * R); else sh.moveTo(Math.cos(a) * R, Math.sin(a) * R); }
+        for (var j = 1; j <= n; j++) { var b = (Math.PI * 2 - b0) - (Math.PI * 2 - 2 * b0) * j / n; sh.lineTo(c + Math.cos(b) * r, Math.sin(b) * r); }
+        sh.closePath(); return new THREE.ShapeGeometry(sh);
+    }
+    function _l5BooTex() {
+        return _sigTex('l5-boo', 128, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S); ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.moveTo(S * 0.18, S * 0.95); ctx.lineTo(S * 0.18, S * 0.42); ctx.bezierCurveTo(S * 0.18, S * 0.02, S * 0.82, S * 0.02, S * 0.82, S * 0.42); ctx.lineTo(S * 0.82, S * 0.95);
+            for (var i = 0; i < 4; i++) { ctx.lineTo(S * (0.82 - 0.16 * i - 0.08), S * 0.82); ctx.lineTo(S * (0.82 - 0.16 * (i + 1)), S * 0.95); }
+            ctx.closePath(); ctx.fill();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath(); ctx.ellipse(S * 0.36, S * 0.36, S * 0.07, S * 0.1, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(S * 0.64, S * 0.36, S * 0.07, S * 0.1, 0, 0, 7); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(S * 0.5, S * 0.63, S * 0.1, S * 0.16, 0, 0, 7); ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+        });
+    }
+    function _l5SpiralTex() {
+        return _sigTex('l5-hypno', 256, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = S * 0.055; ctx.lineCap = 'round';
+            for (var arm = 0; arm < 2; arm++) { ctx.beginPath(); for (var i = 0; i <= 160; i++) { var t = i / 160, a = t * Math.PI * 5 + arm * Math.PI, r = t * S * 0.46; if (i) ctx.lineTo(S / 2 + Math.cos(a) * r, S / 2 + Math.sin(a) * r); else ctx.moveTo(S / 2, S / 2); } ctx.stroke(); }
+        });
+    }
+    /* BOO (ghost): the oldest one: a wailing sheet-ghost bursts out of them, mouth first, and the word goes with it */
+    function _l5Boo3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, gh = _finSprite(_L5C.ghost, _l5BooTex(), ts, 161); F.g.add(gh);
+        var word = _goWord(F.g, 'BOO!', '#d8f0e8', ts * 2.3, ts * 1.6, 'Georgia, serif');
+        _goSpray(F, 8, { sprite: 'shadow-wisp', tint: _L5C.ghost, ly: ts * 0.7, r: 16, v: 110, vz0: 20, vz1: 120, g: -20, s0: 10, s0b: 16, s1: 26, op: 0.5, ml0: 450, ml1: 800 });
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var out = _sigEaseOutBack(_sigClamp01(el / 240)), jit = el < 620 ? Math.sin(el * 0.11) * ts * 0.03 : 0, sz = ts * (0.35 + 1.25 * out);
+            gh.scale.set(sz, sz * (1 + 0.12 * Math.sin(el * 0.02)), 1); gh.position.set(jit, ts * (0.7 + 0.45 * out), 0);
+            gh.material.opacity = 0.42 * Math.min(1, el / 60) * (1 - _sigClamp01((el - 480) / 480));
+            var w = _sigEaseOutBack(_sigClamp01((el - 110) / 200)); word.scale.set(ts * 1.6 * w, ts * 0.8 * w, 1); word.position.set(-jit * 2, ts * (2.2 + 0.25 * _sigClamp01(el / 900)), 0);
+            word.material.opacity = el > 110 ? 1 - _sigClamp01((el - 800) / 400) : 0;
+        });
+    }
+    /* CUT THE CORD (dreameater): the silver cord that ties a spirit to its body stands over the head; it is snipped, the top whips away */
+    function _l5CutTheCord3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, y0 = ts * 1.15, yc = ts * 1.95, y1 = ts * 3.1;
+        function cord(a, b, ph) { var pts = []; for (var i = 0; i <= 10; i++) { var t = i / 10; pts.push(new THREE.Vector3(Math.sin(t * 5 + ph) * ts * 0.07 * Math.sin(t * Math.PI), a + (b - a) * t, Math.cos(t * 4 + ph) * ts * 0.05 * Math.sin(t * Math.PI))); } return new THREE.CatmullRomCurve3(pts); }
+        var loG = new THREE.Group(); loG.position.y = y0; F.g.add(loG); var hiG = new THREE.Group(); hiG.position.y = yc; F.g.add(hiG);
+        var lo = [_l5Tube(loG, cord(0, yc - y0, 0), ts * 0.045, _goA(_L5C.cord, 0), 0.95, 20), _l5Tube(loG, cord(0, yc - y0, 0), ts * 0.09, _goA(_L5C.psi, 0), 0.45, 20)];
+        var hi = [_l5Tube(hiG, cord(0, y1 - yc, 2), ts * 0.045, _goA(_L5C.cord, 0), 0.95, 20), _l5Tube(hiG, cord(0, y1 - yc, 2), ts * 0.09, _goA(_L5C.psi, 0), 0.45, 20)];
+        var face = _l5Face(F.g, yc), blades = [];
+        for (var s = -1; s <= 1; s += 2) { var b = _l5Cut(face, ts * 0.9, ts * 0.06, _L5C.cord, 1, true); b.material.depthTest = false; b.renderOrder = 162; b.userData.s = s; blades.push(b); }
+        var gl = _l5Glint(F.g, ts, ts * 0.7, _L5C.glint); gl.position.y = yc;
+        var total = 1400, CUT = 330, snip = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var e = el - CUT, shut = _sigEaseInCubic(_sigClamp01((el - 150) / (CUT - 150)));
+            for (var i = 0; i < 2; i++) blades[i].rotation.z = blades[i].userData.s * 0.75 * (1 - shut);
+            _goShow(blades, el < 150 ? 0 : e < 0 ? 1 : 1 - _sigClamp01(e / 160));
+            var sway = Math.sin(el * 0.01) * 0.06; loG.rotation.z = sway; hiG.rotation.z = e < 0 ? sway : sway + e * 0.002;
+            _goShow(lo, Math.min(1, el / 120) * (e < 0 ? 1 : 1 - _sigClamp01((e - 250) / 500))); loG.scale.y = e < 0 ? 1 : Math.max(0.12, 1 - 0.88 * _sigEaseOutCubic(_sigClamp01(e / 420)));
+            _goShow(hi, Math.min(1, el / 120) * (e < 0 ? 1 : 1 - _sigClamp01(e / 420))); if (e > 0) hiG.position.y = yc + ts * 1.6 * _sigEaseOutCubic(_sigClamp01(e / 420));
+            var g = _sigClamp01(e / 380); gl.scale.setScalar(0.3 + Math.sin(g * Math.PI)); _goShow(gl.userData.parts, (g > 0 && g < 1) ? Math.sin(g * Math.PI) : 0);
+            if (!snip && e >= 0) { snip = true; _goSpray(F, 8, { sprite: 'psi-pulse', tint: _L5C.psi, ly: yc, r: 6, v: 90, vz0: -40, vz1: 80, g: 0, s0: 6, s0b: 11, ml0: 300, ml1: 600 }); }
+        });
+    }
+    /* a closed ring whose rim wobbles n times round (a melting floor ring, a wave band) */
+    function _l5WobbleRing(R, n, amp, rad, flat) {
+        var pts = [], N = 96;
+        for (var i = 0; i < N; i++) { var a = i / N * Math.PI * 2, rr = flat ? R * (1 + amp * Math.sin(a * n)) : R; pts.push(new THREE.Vector3(Math.cos(a) * rr, flat ? 0 : Math.sin(a * n) * amp, Math.sin(a) * rr)); }
+        return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 192, rad, 5, true);
+    }
+    /* DOSED: something in the drink: the floor under the feet melts in three rings that turn against each other, the head spins */
+    function _l5Dosed3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, rings = [], cols = [_L5C.acidL, _L5C.acidV, _L5C.acidY];
+        for (var i = 0; i < 3; i++) { var m = _goAdd(F.g, new THREE.Mesh(_l5WobbleRing(ts * (0.26 + 0.14 * i), 5 + i * 2, 0.14, ts * 0.022, true), _goA(cols[i], 0)), 0.95); m.position.y = 3 + i; rings.push(m); }
+        var face = _l5Face(F.g, ts * 1.42), pts = [];
+        for (var j = 0; j <= 60; j++) { var t = j / 60, a = t * Math.PI * 5; pts.push(new THREE.Vector3(Math.cos(a) * ts * 0.24 * t, Math.sin(a) * ts * 0.24 * t, 0)); }
+        var spin = _l5Tube(face, new THREE.CatmullRomCurve3(pts), ts * 0.02, _goA(_L5C.acidV, 0), 1, 80); spin.material.depthTest = false; spin.renderOrder = 162;
+        var total = 1800, last = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 500);
+            for (var i = 0; i < 3; i++) { var m = rings[i], w = 1 + 0.16 * Math.sin(el * 0.006 + i * 2); m.rotation.y = el * 0.0028 * (i % 2 ? -1 : 1); m.scale.set(w, 1, 2 - w); }
+            _goShow(rings, k); spin.rotation.z = -el * 0.011; spin.material.opacity = k;
+            if (el - last > 150 && el < total - 500) { last = el; _goSpray(F, 1, { sprite: 'bubble', tint: cols[Math.floor(el / 150) % 3], ly: ts * 0.9, r: 26, v: 14, vz0: 40, vz1: 90, g: -30, s0: 6, s0b: 12, ml0: 600, ml1: 1000 }); }
+        });
+    }
+    /* DREAM SIPHON (dreameater): a ribbon of sleep runs from the head to the dreameater, little moons riding it */
+    function _l5DreamSiphon3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts;
+        var cloud = _goGlow(F.g, _L5C.dream, ts * 0.9, 0, ts * 1.3, 0, 0.7), parts = [], moons = [], cv = null;
+        if (F.far) {
+            cv = _l5Arc(F, ts * 1.3, ts * 1.1, ts * 0.22, ts * 0.2);
+            parts.push(_l5Tube(F.g, cv, ts * 0.045, _goA(_L5C.dream, 0), 0.8, 40), _l5Tube(F.g, cv, ts * 0.018, _goA(_L5C.cord, 0), 0.9, 40));
+            for (var i = 0; i < 5; i++) { var m = _goAdd(F.g, new THREE.Mesh(_l5Crescent(ts * 0.2), _finBasic(_L5C.moon, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 1); m.material.depthTest = false; m.renderOrder = 162; m.quaternion.copy(_goCamQuat(m.quaternion)); m.userData.d = 180 + i * 190; moons.push(m); }
+        }
+        _goSpray(F, 6, { sprite: 'star', tint: _L5C.moon, ly: ts * 1.3, r: 14, v: 60, vz0: 10, vz1: 80, g: -10, s0: 5, s0b: 9, ml0: 500, ml1: 900 });
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 100, total, 450);
+            cloud.material.opacity = 0.7 * k * (1 - 0.6 * _sigClamp01(el / 1200)); cloud.scale.setScalar(ts * (0.9 - 0.4 * _sigClamp01(el / 1200)));
+            _goShow(parts, k * (0.8 + 0.2 * Math.sin(el * 0.02)));
+            for (var i = 0; i < moons.length; i++) { var t = _sigClamp01((el - moons[i].userData.d) / 620); moons[i].position.copy(cv.getPoint(t)); moons[i].material.opacity = (t > 0 && t < 1) ? Math.min(1, t * 8) * (1 - t * t * t) * k : 0; }
+        });
+    }
+    /* ETERNAL SLUMBER (dreameater): a crescent moon sinks over the area, every square goes night-blue and a Z lifts off it */
+    function _l5EternalSlumber3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 2, sq = _l5Squares(F, tx, ty, R, _L5C.night, 620, 0.55), zs = [];
+        var moon = _goAdd(F.g, new THREE.Mesh(_l5Crescent(ts * 0.7), _finBasic(_L5C.moon, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 1); moon.material.depthTest = false; moon.renderOrder = 162; moon.quaternion.copy(_goCamQuat(moon.quaternion));
+        var halo = _goGlow(F.g, _L5C.night, ts * 2.6, 0, 0, 0, 0.6);
+        for (var q = 0; q < sq.length; q++) { var z = _goWord(F.g, 'Z', '#cfc8ff', 0, ts * 0.9, 'Georgia, serif'); z.userData.p = sq[q].position; z.userData.d = 180 + ((q * 7) % 11) * 55; zs.push(z); }
+        var total = 2000;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 150, total, 550), sink = _sigEaseOutCubic(_sigClamp01(el / 900));
+            moon.position.y = ts * (3.4 - 0.9 * sink); halo.position.y = moon.position.y; moon.material.opacity = k; halo.material.opacity = 0.6 * k;
+            _l5SquaresTick(sq, el);
+            for (var i = 0; i < zs.length; i++) { var z = zs[i], t = _sigClamp01((el - z.userData.d) / 1000), p = z.userData.p, s = ts * (0.5 + 0.5 * t); z.scale.set(s, s * 0.5, 1); z.position.set(p.x + Math.sin(t * 5 + i) * ts * 0.1, p.y + ts * (0.9 + 0.9 * t), p.z); z.material.opacity = (t > 0 && t < 1) ? Math.sin(t * Math.PI) : 0; }
+        });
+    }
+    /* FAR SIGHT: an eye of violet light opens over the square, looks about, and shuts; a thread of sight runs back to the seer */
+    function _l5FarSight3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, eye = _l5Eye(F.g, ts * 1.0, _L5C.psi), ring = _goRing(F.g, _L5C.psi, ts * 0.44, ts * 0.48, 3, 0.8, 40);
+        eye.position.y = ts * 1.15;
+        var thread = F.far ? _l5Tube(F.g, _l5Arc(F, ts * 1.15, ts * 1.2, ts * 0.3, 0), ts * 0.012, _goA(_L5C.psi, 0), 0.7, 40) : null;
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 220)) * (1 - _sigEaseInCubic(_sigClamp01((el - 1350) / 200)));
+            eye.userData.lid.scale.y = Math.max(0.03, open); _goShow(eye.userData.parts, Math.min(1, el / 80) * (el < 1550 ? 1 : 0));
+            _l5Look(eye, Math.sin((el - 250) * 0.0058) * ts * 0.16 * (el > 250 ? 1 : 0));
+            var o = _sigClamp01((el - 200) / 900); ring.scale.setScalar(1 + 1.4 * o); ring.material.opacity = (o > 0 && o < 1) ? 0.8 * (1 - o) : 0;
+            if (thread) thread.material.opacity = 0.7 * _goEnv(el, 150, 1500, 300) * (el < 1500 ? 1 : 0);
+        });
+    }
+    /* NIGHTMARE PULSE (dreameater): the dream finishes eating: a ring of fangs comes up round the nine squares and shuts, and it is drunk back */
+    function _l5NightmarePulse3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, R = r != null ? r : 1, sq = _l5Squares(F, tx, ty, R, _L5C.psiD, 560, 0.6), fangs = [], parts = [], Rr = ts * (R + 0.5) * 1.12, N = 14;
+        for (var i = 0; i < N; i++) {
+            var a = i / N * Math.PI * 2, hinge = new THREE.Group(); hinge.position.set(Math.cos(a) * Rr, 2, Math.sin(a) * Rr); hinge.rotation.y = Math.PI / 2 - a; F.g.add(hinge);
+            var h = ts * (i % 2 ? 0.95 : 0.7);
+            parts.push(_goAdd(hinge, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.15, h, 4).translate(0, h / 2, 0), _goM(_L5C.nightD)), 1));
+            parts.push(_goAdd(hinge, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.19, h * 1.06, 4).translate(0, h / 2, 0), _goA(_L5C.psi, 0)), 0.4));
+            fangs.push(hinge);
+        }
+        var beads = [];
+        if (F.far) for (var b = 0; b < 8; b++) { var s = _goGlow(F.g, _L5C.psi, ts * 0.2, 0, 0, 0, 0.95); s.userData.p0 = sq[(b * 4) % sq.length].position; s.userData.d = 520 + b * 70; beads.push(s); }
+        var total = 1700, ln = F.ln;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 220)), bite = _sigEaseInCubic(_sigClamp01((el - 230) / 150)) * (1 - _sigClamp01((el - 700) / 500));
+            for (var i = 0; i < fangs.length; i++) { fangs[i].scale.y = Math.max(0.02, up); fangs[i].rotation.x = -(0.2 + 0.85 * bite); }
+            _goShow(parts, _goEnv(el, 40, total, 500)); _l5SquaresTick(sq, el, 330);
+            for (var b = 0; b < beads.length; b++) { var s = beads[b], t = _sigClamp01((el - s.userData.d) / 600), e = t * t, p = s.userData.p0; s.position.set(p.x + (ln.dx - p.x) * e, ts * 0.5 + (ln.dy + ts * 0.4) * e + ts * 0.7 * Math.sin(t * Math.PI), p.z + (ln.dz - p.z) * e); s.material.opacity = (t > 0 && t < 1) ? 0.95 * Math.min(1, t * 8) : 0; }
+        });
+    }
+    /* PROBE (grey): a needle of light comes down on the head and a scan ring reads the body, down and back up, ticking as it goes */
+    function _l5Probe3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, H = ts * 2.4;
+        var needle = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.03, H, 8, 1, true).translate(0, ts * 1.2 + H / 2, 0), _goA(_L5C.scan, 0)), 0.95);
+        var tip = _goGlow(F.g, _L5C.scan, ts * 0.3, 0, ts * 1.2, 0, 0.9);
+        var ring = _goRing(F.g, _L5C.scan, ts * 0.42, ts * 0.47, 0, 0.95, 40), disc = _goRing(F.g, _L5C.scan, 0, ts * 0.42, 0, 0.14, 40), ticks = [];
+        for (var i = 0; i < 6; i++) { var tk = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * (i % 2 ? 0.2 : 0.12), ts * 0.022), _goA(_L5C.scan, 0)), 0.9); tk.position.set(0, ts * (1.15 - i * 0.2), 0); tk.userData.y = 1.15 - i * 0.2; tk.quaternion.copy(_goCamQuat(tk.quaternion)); tk.translateX(ts * 0.62); ticks.push(tk); }
+        var total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 60, total, 400), t = _sigClamp01((el - 150) / 1100), tri = t < 0.5 ? t * 2 : 2 - t * 2, y = ts * (1.2 - 1.12 * tri);
+            ring.position.y = y; disc.position.y = y; _goShow([ring, disc, needle], k); tip.material.opacity = 0.9 * k * (0.7 + 0.3 * Math.sin(el * 0.05));
+            for (var i = 0; i < ticks.length; i++) ticks[i].material.opacity = 0.9 * k * ((t < 0.5 ? (1.2 - 1.12 * tri) <= ticks[i].userData.y + 0.05 : true) && el > 150 ? 1 : 0);
+        });
+    }
+    /* HYPNOTIC PULSE (occulus): everything that looks back stops: a great spiral turns over the area and a small one over every square */
+    function _l5HypnoticPulse3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, sq = _l5Squares(F, tx, ty, R, _L5C.psi, 560, 0.45), sp = [];
+        function spiral(size, c, op) { var m = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(size, size), _finBasic(c, { additive: true, opacity: 0, side: THREE.DoubleSide, map: _l5SpiralTex() })), op); m.material.depthTest = false; m.renderOrder = 161; m.quaternion.copy(_goCamQuat(m.quaternion)); return m; }
+        var big = spiral(ts * 2.4, _L5C.psi, 0.9); big.position.y = ts * 2.5;
+        for (var q = 0; q < sq.length; q++) { var m = spiral(ts * 0.62, _L5C.acidV, 0.85), p = sq[q].position; m.position.set(p.x, p.y + ts * 1.35, p.z); sp.push(m); }
+        var total = 1800;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 500), pulse = 1 + 0.1 * Math.sin(el * 0.012);
+            big.rotateZ(-0.09); big.scale.setScalar(pulse * (0.4 + 0.6 * _sigEaseOutBack(_sigClamp01(el / 260)))); big.material.opacity = 0.9 * k;
+            for (var i = 0; i < sp.length; i++) { sp[i].rotateZ(0.12); sp[i].material.opacity = 0.85 * k * (el > 160 ? 1 : 0); }
+            _l5SquaresTick(sq, el);
+        });
+    }
+    /* DEATH GAZE (occulus): a red slit eye opens over the victim, its ray pins them to a black disc, and it shuts */
+    function _l5DeathGaze3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, EY = ts * 2.6, eye = _l5Eye(F.g, ts * 1.7, _L5C.doom, true); eye.position.y = EY;
+        var H = EY - ts * 0.7;
+        var ray = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.2, H, 14, 1, true).translate(0, ts * 0.7 + H / 2, 0), _goA(_L5C.doom, 0)), 0.55);
+        var core = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.07, H, 10, 1, true).translate(0, ts * 0.7 + H / 2, 0), _finBasic(_L5C.doomD, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.9);
+        var disc = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.5, 32), _finBasic(_L5C.doomD, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.85); disc.rotation.x = -Math.PI / 2; disc.position.y = 2.5;
+        var rim = _goRing(F.g, _L5C.doom, ts * 0.46, ts * 0.52, 3.2, 0.95, 40);
+        var total = 1600, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 200)) * (1 - _sigEaseInCubic(_sigClamp01((el - 1250) / 200)));
+            eye.userData.lid.scale.y = Math.max(0.03, open); _goShow(eye.userData.parts, Math.min(1, el / 80) * (el < 1450 ? 1 : 0));
+            var rk = el > 160 ? (1 - _sigClamp01((el - 900) / 300)) : 0;
+            ray.material.opacity = 0.55 * rk * (0.7 + 0.3 * Math.sin(el * 0.06)); core.material.opacity = 0.9 * rk;
+            var dk = el > 160 ? _goEnv(el - 160, 100, 1300, 400) : 0; disc.material.opacity = 0.85 * dk; rim.material.opacity = 0.95 * dk; rim.scale.setScalar(1 + 0.06 * Math.sin(el * 0.02));
+            if (!hit && el >= 170) { hit = true; _goSpray(F, 10, { sprite: 'dark-flame', tint: _L5C.doom, ly: ts * 0.5, r: 16, v: 60, vz0: 60, vz1: 190, g: -20, s0: 7, s0b: 12, ml0: 400, ml1: 750 }); }
+        });
+    }
+    Object.assign(_GO_SIG, {
+        raceBoo: _l5(_l5Boo3D), raceCutTheCord: _l5(_l5CutTheCord3D), raceDosed: _l5(_l5Dosed3D), raceDreamSiphon: _l5(_l5DreamSiphon3D), raceEternalSlumber: _l5(_l5EternalSlumber3D),
+        raceFarSight: _l5(_l5FarSight3D), raceNightmarePulse: _l5(_l5NightmarePulse3D), raceProbe: _l5(_l5Probe3D), raceHypnoticPulse: _l5(_l5HypnoticPulse3D), raceDeathGaze: _l5(_l5DeathGaze3D),
+    });
     /* ═════════ END THE OWN LOOKS, L5 ═════════ */
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
