@@ -916,6 +916,8 @@ function getR2RaceSpriteUrl(race, gender, cls) {
 
 function getBattleMapSpriteUrl(unit) {
     if (!unit) return '';
+    /* 🤳 THE FILTER: the other side draws a filtered unit with the swapped ally's sprite */
+    if (unit.status && unit.status.filtered > 0 && typeof window !== 'undefined' && typeof window.ewDrawnUnit === 'function') unit = window.ewDrawnUnit(unit);
 
     if (unit._spriteOverride) return unit._spriteOverride;
 
@@ -1234,11 +1236,11 @@ const SPELL_ANIM_VERBS = {
   smash: ['raceSasquatchSmash', 'raceColossalCrush', 'racePrimalSmash', 'skullCrack', 'raceAvalancheStrike',
     'raceNoMercy', 'racePoliceNightstick', 'raceHydraulicCrush', 'raceGiantSmash'],
   sweep: ['raceDinoTailWhip'],
-  jab: ['raceRoboPunch', 'raceFrozenPunch', 'raceHydraulicPunch', 'reallyGoodPunch', 'raceRocketFist', 'haymaker'],
+  jab: ['raceRoboPunch', 'raceFrozenPunch', 'raceHydraulicPunch', 'reallyGoodPunch', 'raceRocketFist', 'haymaker', 'nrTongueLash'],   // 🐸 the tongue snaps out on the jab
   rally: ['raceOathOfValor', 'raceRoyalDecree'],
   slash: ['sentaiRedSlash', 'raceSyntheticBlade', 'sneakSlash'],
   doubleSlash: ['crossSlash', 'bladeWaltz'],
-  roundhouse: ['raceBigKick'],
+  roundhouse: ['raceBigKick', 'nrLeapfrog'],   // 🐸 the Karate Frog pass (2026-11-17): the kick before the vault
   // the clips that CARRY THE BODY (UAL_SLOTS `travel`): the clip's own
   // run / jump / lunge moves the unit, so the board's strike leap, dive arc
   // or sprint is skipped for these (battle.js _clipOwnsTravel)
@@ -1247,7 +1249,7 @@ const SPELL_ANIM_VERBS = {
   leapSlash: ['judgment', 'raceExcaliburStrike'],
   leapPunch: ['raceSeismicLeap', 'raceTitanDrop', 'raceCliffCharge', 'raceHeroicLeap', 'raceDragonFist',
     'raceDarkJustice'],
-  flyKick: ['racePredatorLeap', 'raceFeralDive', 'raceDivineSwoop', 'raceSkyTackle', 'racePopStageDive'],
+  flyKick: ['racePredatorLeap', 'raceFeralDive', 'raceDivineSwoop', 'raceSkyTackle', 'racePopStageDive', 'nrFlyingKick'],
 };
 const _SPELL_VERB_BY_ID = {};
 for (const _v in SPELL_ANIM_VERBS) for (const _id of SPELL_ANIM_VERBS[_v]) _SPELL_VERB_BY_ID[_id] = _v;
@@ -6791,6 +6793,11 @@ const RACE_PORTRAITS = {
 
 function getUnitPortraitArtUrl(unit) {
   if (!unit || !unit.race) return null;
+  /* 🤳 THE FILTER (2026-11-17, the Influencer): a filtered unit shows the swapped ally's face on the other side's screen */
+  if (unit.status && unit.status.filtered > 0 && typeof window !== 'undefined' && typeof window.ewDrawnUnit === 'function') {
+    const _lk = window.ewDrawnUnit(unit);
+    if (_lk !== unit) unit = _lk._lookId != null ? Object.assign({}, _lk, { id: _lk._lookId }) : _lk;
+  }
   /* THE MODEL PORTRAITS (2026-11-12): a unit that wears a model of its own (a creator look, or a story character's rig,
      `appearance.cast`: Agent Locke) shows that model's face, photographed off its Head bone (three-renderer.js THE PORTRAIT
      STUDIO). null until the photo is in: the race's art / the sprite's face stands in, then the HUD repaints. */
@@ -6807,6 +6814,10 @@ function getUnitPortraitArtUrl(unit) {
    without art gets one by default), or show the whole sprite: undefined = keep the art. */
 function getUnitPortraitUrl(unit) {
   const art = getUnitPortraitArtUrl(unit);
+  if (unit && unit.status && unit.status.filtered > 0 && typeof window !== 'undefined' && typeof window.ewDrawnUnit === 'function') {
+    const _lk = window.ewDrawnUnit(unit);   // 🤳 THE FILTER: the face cut from the swapped ally's sprite
+    if (_lk !== unit) unit = _lk._lookId != null ? Object.assign({}, _lk, { id: _lk._lookId }) : _lk;
+  }
   if (unit && unit.race && typeof window !== 'undefined' && window.EWFaces) {
     try { const f = window.EWFaces.url(unit, art); if (f !== undefined) return f; } catch (e) {}
   }
