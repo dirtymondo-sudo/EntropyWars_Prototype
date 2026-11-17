@@ -85,8 +85,9 @@ victim's body flashing white), a snow spell's snow, a holy spell's own light sha
 **Hard limits (all calls):**
 1. **No pure white** on any spell layer. A hot core takes the spell's colour with its brightest channel at or under 92 %
    (the Riot value rule already in three-vfx.js `_RV_VALUE_MAX`). White is reserved for the hit blink.
-2. **One flash per hit**, body-sized or smaller, on the impact frame only. An area spell does not flash every square: its
-   mark (scorch, crack, noise wash, scar) is the per-square read.
+2. **One flash per hit square**, body-sized or smaller, on the impact frame only. **An area spell flashes EVERY square it
+   hits** (mondo 11-17: "that is the whole point of the flash to show where the damage hits"); the flash takes the spell's
+   colour, it is not removed.
 3. **No full-screen flash** on STRIP spells. On REPLACE spells only on heavy + ultimate, in the element colour, and it keeps
    its hole round the target (it already does).
 4. **Rush lines and speed bursts** only where the spell's own look calls for them (a finisher, a ki attack), never as the
@@ -347,6 +348,11 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
    lot? ... it should just be in the code." The trace is section 1 + `SPELL_TABLE.md` + `tools/audit.js`. Pictures are only
    the after check (section 7).
 3. **The runes** under the caster are generic clutter too: section 3 item 8.
+4. **Every square an area spell hits keeps its flash** (hard limit 2). "i didnt want you to literally take out everything
+   white."
+5. **Every spell with no look of its own gets one** (the 315 REPLACE rows): "any spells that dont have a look of their own
+   need one, start a thread or multiple threads to give them." A recoloured generic burst is the stopgap, not the answer.
+   The threads: `docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`.
 
 **Built in B0 + B1 (three-vfx-effects.js, block "THE VFX CLEANUP, B0 + B1"):**
 - `window.EW_NO_VFX_CLEANUP = true` = today's look back, live.
@@ -359,7 +365,7 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 - `_vcCol` = `_sigScreenFlash`, `_sigShockRing3D`, `_sigSpeedBurst3D`, `_sigCrescentSlash3D` handed near-white draw in the
   casting spell's colour. The crescent's tip glint takes the arc's colour (`noGlint` turns it off).
 - `_sigSlashCombo3D`'s heavy finisher: flash, speed burst and third cut in the combo's own colour; rush lines on an ultimate only.
-- An area spell's outer squares draw their recipe without its flash layers (`_vcNoFlash`, `_emitAoeBursts`).
+- (Taken back the same day: B1 first drew an area's outer squares without their flash. mondo: every hit square flashes.)
 - The noise wash: every sheet at a mid tone; a blade spell gets no wash and no wind gust / mark (its scar is its mark).
 - The cast rune: section 3 item 8.
 

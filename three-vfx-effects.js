@@ -4928,12 +4928,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var stagger = isCenter ? 0 : 40 + (Math.abs(off.dx) + Math.abs(off.dy)) * 35;
                 _fxDelay(function() {
                     if (_suppressed()) return;
-                    /* THE VFX CLEANUP: only the middle square flashes */
-                    var _te = (tileEffect && !isCenter) ? _vcNoFlash(tileEffect) : tileEffect;
+                    /* every square that is hit flashes: the flash shows where the damage lands (mondo 11-17) */
                     if (tileEffect && aoeRadius > 0) {
-                        _spawnEffect(_te, { tx: ttx, ty: tty });
+                        _spawnEffect(tileEffect, { tx: ttx, ty: tty });
                     } else if (tileEffect && aoeRadius === 0 && !centerEffect) {
-                        _spawnEffect(_te, { tx: ttx, ty: tty });
+                        _spawnEffect(tileEffect, { tx: ttx, ty: tty });
                     }
                     if (isCenter && centerEffect) {
                         _spawnEffect(centerEffect, { tx: ttx, ty: tty });
@@ -21971,8 +21970,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
          on ki / kinetic;
        · the cast rune under the caster only for the magic that calls for one (_VC_RUNE), and never where the cast's
          own squares lie round the caster (it sat under the noise wash);
-       · a shared helper handed near-white takes the casting spell's colour (_vcCol); an area spell flashes its middle
-         square only (_vcNoFlash); a blade spell's mark is its scar, not the noise wash.
+       · a shared helper handed near-white takes the casting spell's colour (_vcCol); a blade spell's mark is its scar, not the noise wash.
+       · EVERY square an area spell hits still flashes: the flash shows where the damage lands (mondo 11-17).
        NOT touched: THE HIT BLINK (the victim's body flashing white is the hit, three-renderer.js), damage numbers,
        team rims, the tile glow, any spell's own signature shapes. Looks only; every layer rides the relayed fire().
        Off (today's look back, live): window.EW_NO_VFX_CLEANUP = true. */
@@ -22038,16 +22037,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (Array.isArray(tl)) for (var i = 0; i < tl.length; i++) if (tl[i] && Math.abs(tl[i].x - sx) <= 1 && Math.abs(tl[i].y - sy) <= 1) return false;
         return true;
     }
-    /* an area's outer squares draw their recipe without its flash layers (one flash per hit, on the middle) */
-    function _vcNoFlash(def) {
-        if (!def || !def.layers || !_vcOn()) return def;
-        if (def._vcNF) return def._vcNF;
-        var L = def.layers.filter(function (l) { return !(l && (l.sprite === 'flash' || l.sprite === 'muzzle-flash')); });
-        var o = L.length === def.layers.length ? def : Object.assign({}, def, { layers: L });
-        try { Object.defineProperty(def, '_vcNF', { value: o, enumerable: false }); } catch (e) {}
-        return o;
-    }
-
     /* Per-archetype palette + flavour. `orb`/`ring`/`flash` are hexes; the
        string knobs pick which primitive shapes the beat. Keep entries
        small — the weight tier scales counts, sizes and timings. */

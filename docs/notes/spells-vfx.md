@@ -4111,8 +4111,9 @@ docs/plans/vfx-cleanup/ (section 10 = what was built and what he changed). Looks
   `_sigCrescentSlash3D`) draws in the casting spell's colour; with no spell casting it is drawn as given. The crescent's
   tip glint takes the arc's colour (`noGlint: true` = none). `_sigSlashCombo3D`'s heavy finisher: its flash, speed burst
   and third cut in the combo's colour, rush lines on an ultimate only.
-- **One flash per area:** `_emitAoeBursts` draws the outer squares' recipe without its `flash` / `muzzle-flash` layers
-  (`_vcNoFlash`); the middle square keeps it.
+- **Every hit square flashes** (mondo 11-17, the same day: "that is the whole point of the flash to show where the damage
+  hits"). B1 first drew an area's outer squares without their flash layers; that was taken back. Never strip the
+  per-square flash.
 - **The noise wash:** every sheet's bright colour at a mid tone (`_nzWash`); a blade spell (`_crIsBlade`) gets no wash and
   no wind gather / mark: its scar is its mark.
 - **THE CAST RUNE:** `_stageWindup`'s circle under the caster was on every non-physical spell of a `glyph` archetype (377
