@@ -4980,3 +4980,43 @@ flash IS the spell), Doomscroll, Invisible Box (glass).
 - Not on this list although the thread's order named them: Jackpot, Shattered Mirror (B9a), Love Ray (B4). Left alone.
 - For the cleanup thread (shared helpers, not touched): `_sigSpectrumBurst3D`'s white core; `_sigGasCloud3D` lays a
   `_sigMagicCircle3D` under every gas cloud (Heat Death, Shambling Horde) on squares the noise wash also covers.
+
+## THE VFX SWEEP, B10, part 1: bodies and tech (2026-11-17, three-vfx-effects.js block "THE VFX SWEEP, B10" + marked lines)
+List `docs/plans/vfx-cleanup/batches/B10.txt` (112 spells: human, kinetic, grapple, skyfall, rig, tech, alien). All 112 were
+traced in the code (each one's recipes, its own look, every near-white literal in them) and shot once at 0.45 s a frame.
+All 112 have a look of their own today (`_vcOwn`), so the shared stage burst was already off for every one of them: what
+was left is small. Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look). Looks only.
+- **The recipe layers** (`_B10_LAYERS`: recipe -> [sprite, old tint, new tint | 'skip']; it writes the same `vcTint` /
+  `vcOff` layer tags B8a's `_b8Tint` writes, read by the emitter). A near-white hit flash takes the spell's colour, it is
+  never removed; a second flash on the same spot is dropped. Hydraulic Punch (steam blue; its second, pure white flash
+  off; Tail Whip shares the recipe), Grapple Arm (steel blue), Place Bomb (every square's flash + the ring in the blast's
+  orange, they drew cream; the middle's second flash off), Executive Order (the seal's gold), Saw in Half (spark gold),
+  Feral Dive (leaf green flash + ring), Drive-By (muzzle yellow), Stampede (dust amber: the hit, the six streaks, the
+  ring), Chivalry (the shield's blue), Spring Snare (steel), Stuffed Double (straw), Predator Drop (a vampire's rake is
+  blood red; it was pale green).
+- **Divine Swoop** (`_spell3DGeometry.raceDivineSwoop`): the pale speed burst and the screen flash are off; the silver cut
+  (a shade deeper) and its ring are the swoop.
+- **Meteor**: no pale speed burst and no screen flash on the landing; the rock, the fire, the ring and the circle stay
+  (the circle is the Black Mage's own cast and the mark of where it lands).
+- **Nebula** (`_sigSupernova3D`, its only spell): the white-out of the board is a short gold blink (0.6 -> 0.2), the shell
+  is half as solid so the bodies read through it, the white second ring and the white pillar are star gold.
+- **Megazord Blast** (`_CAP_SIGS`): each lance's hot core is its ranger's colour made light and the lances no longer burn
+  out to white (gain 1.8 -> 0.95), the charge is red, the blast light gold, the white screen flash off.
+- **Checked, nothing to change (95):** every other spell on the list. Their whites are the thing itself (paper, a contract,
+  a library card, chalk, snow, ice, a pie's cream, a referee's lines, feathers, steam, a lure's bulb, a saw blade) or go
+  through `_vcCol` already (Flat Earth's, Gator Toss's and Timeout's rings).
+- **Ice Slide (the brief's lead):** the flat white slab in the frames is the ICE TERRAIN the spell leaves
+  (`leaveTerrain: 'ice'`, three-renderer.js), not a VFX; L3's strip lies on it for about a second. Left alone.
+- **Could not judge on frames, code only:** the self-centred dashes and rig casts resolve before the runner's first frame
+  (Blitz, Body Check, Bull Rush, Dark Feather, Drive-By, Giant Stride, Lunar Lander, Popemobile, Quickdraw, Ram Charge,
+  both Rampages, Ride-By, Shadow Infiltration, Sleigh Dash, Sprint, Stampede, Vault, Fifty Times, Suplex, Horn Toss, the
+  traps and deploys). The recoloured flashes last about 0.1 s and are not in a frame either.
+- **Seen, not mine (for the threads that hold them):** the METAL noise wash is still white static on every square (Runaway
+  Train about 14 discs, Tether Line, Grapple Arm, Electromagnet, Shoulder Through, Quickdraw) and the metal stamp puts a
+  giant pale cog under Lasso / Round Up (B7's leads); the WIND wash on Dust Devil (white-mint blobs on every square; sand
+  would suit it); the explosion kit's cream ring on every blast (Place Bomb, Mortar Salvo, Artillery Strike, Rocket Fist);
+  a white light column on the lifted body at the start of the three sky throws (Dragon Toss, Infernal Hurl, To the Moon)
+  and a cream crescent where a leap lands (Abominable Ambush, Grotesque Dive): source not found in this file's spell code
+  (three-renderer.js's carry / leap?); Transform's gold halo is the shared buff burst (`_buff_div_burst_center`).
+- No line spell of the brief's list is on B10 (Piercing Arrow, Bullet Pass, Shockwave Clap and Ki Charge are on B3's list).
+- Frames: docs/plans/vfx-cleanup/img/sweep/b10_p1_*.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
