@@ -68459,6 +68459,410 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         nrMorningStar: function (tx, ty) { return _qzMorningStar3D(tx, ty); },
     });
 
+    /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+       THE OWN LOOKS, L2 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells that dont have a look
+       of their own need one"). Thread L2's list: metal, tech, rig, lightning (docs/plans/vfx-cleanup/own-look/L2.txt).
+       Each spell here had only the shared stage burst at its hit. It now draws a piece that is its own (its name, its
+       line of description, its weapon) on the relayed staging 'burst' beat (_FX2_BURST, so the guest draws it too and
+       _vcOwn() turns the generic burst off). Looks only: no rule, no data, nothing on `state`.
+       Fog: a piece at the target draws only where the viewer sees that square; a piece at the caster only where the
+       viewer sees the caster (else the look aims from the target's own square, no direction leaks).
+       Colours are mid tones (no near-white), never the team rims' cyan-blue / pink-orange.
+       The kit: _o2Tex (a white canvas shape, tinted by its material) · _o2Spr (a shape that faces the lens) · _o2Rod
+       (a straight streak: a tracer, a needle, a shaft) · _o2Squares (every hit square's flash, ONE signature run).
+       ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+    var _O2C = { brass: 0xe0a83c, amber: 0xeb9a2a, lime: 0xa6e84a, dot: 0xe83a2a, lead: 0x8fa6c4, rust: 0xd8763a,
+                 powder: 0x9a9488, ivory: 0xd8cfae, noon: 0xe6b422, hot: 0xf08a30, cash: 0x6fbf5a };
+    function _o2Reg(id, fn) {
+        _FX2_BURST[id] = function (p) { if (!p || p.tx == null || p.ty == null || _catOff('spells')) return; fn(p); };
+    }
+    function _o2Tex(key, size, draw) {
+        return _sigTex('o2-' + key, size, function (g, S) {
+            g.clearRect(0, 0, S, S); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
+            draw(g, S, S / 2);
+        });
+    }
+    function _o2Spr(parent, tex, color, size, x, y, z, flat) {
+        var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(color), transparent: true, opacity: 0,
+            depthWrite: false, depthTest: false, blending: flat ? THREE.NormalBlending : THREE.AdditiveBlending }));
+        s.scale.set(size, size, 1); s.position.set(x || 0, y || 0, z || 0); s.renderOrder = 161; parent.add(s); return s;
+    }
+    function _o2Rod(parent, color, w) {
+        var m = new THREE.Mesh(new THREE.CylinderGeometry(w, w, 1, 5, 1, true), _goA(color, 0));
+        m.renderOrder = 160; m.visible = false; parent.add(m); return m;
+    }
+    /* a rod drawn as a window [k0, k1] of the segment a → b (a tracer sliding down its line) */
+    var _o2Va = null, _o2Vb = null;
+    function _o2Slide(rod, a, b, k0, k1) {
+        if (!_o2Va) { _o2Va = new THREE.Vector3(); _o2Vb = new THREE.Vector3(); }
+        k0 = _sigClamp01(k0); k1 = _sigClamp01(k1);
+        if (k1 - k0 < 0.002) { rod.visible = false; return; }
+        _o2Va.copy(a).lerp(b, k0); _o2Vb.copy(a).lerp(b, k1); _pzSpan(rod, _o2Va, _o2Vb);
+    }
+    /* the caster's square a look may aim from: seen and not the target's own, else one square "west" (no leak) */
+    function _o2From(p) {
+        if (p.sx != null && p.sy != null && !(p.sx === p.tx && p.sy === p.ty) && _pzSeen(p.sx, p.sy)) return { x: p.sx, y: p.sy, seen: true };
+        return { x: p.tx - 1, y: p.ty, seen: false };
+    }
+    /* the hit's frame + the shot's line (ux / uz point back at the shooter) + s, the level direction across it */
+    function _o2Base(p) {
+        var F = _nrvFrame(p.tx, p.ty), fr = _o2From(p), ln = _nrvLine(F, fr, p.tx, p.ty);
+        return { F: F, g: F.g, ts: F.ts, fr: fr, ln: ln, ux: ln.ux, uz: ln.uz, sx: -ln.uz, sz: ln.ux };
+    }
+    /* every hit square flashes in the spell's colour: one run for the whole list ({x, y, d: delay ms}) */
+    function _o2Squares(list, color, o) {
+        o = o || {};
+        var seen = [], i;
+        for (i = 0; i < list.length; i++) if (_pzSeen(list[i].x, list[i].y)) seen.push(list[i]);
+        if (!seen.length) return null;
+        var F = _nrvFrame(seen[0].x, seen[0].y), ts = F.ts, ms = o.ms || 340, pk = o.op != null ? o.op : 0.5, last = 0, qs = [];
+        for (i = 0; i < seen.length; i++) {
+            var wp = _worldPos(seen[i].x, seen[i].y), m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.94, ts * 0.94), _goA(color, 0));
+            m.rotation.x = -Math.PI / 2; m.position.set(wp.x - F.wp.x, wp.y - F.wp.y + 2.5, wp.z - F.wp.z); m.renderOrder = 157;
+            m.userData.d = seen[i].d || 0; last = Math.max(last, m.userData.d); F.g.add(m); qs.push(m);
+        }
+        return _sigRunOwned(F.g, last + ms + 30, function (el) {
+            for (var q = 0; q < qs.length; q++) { var t = el - qs[q].userData.d; qs[q].material.opacity = (t < 0 || t > ms) ? 0 : pk * (t < 45 ? t / 45 : 1 - (t - 45) / (ms - 45)); }
+        });
+    }
+    function _o2Sparks(F, n, tint, y, o) {
+        o = o || {};
+        _goSpray(F, n, { sprite: o.sprite || 'spark', tint: tint, ly: y, r: o.r != null ? o.r : 6, v: o.v || 170, vz0: o.vz0 != null ? o.vz0 : 20, vz1: o.vz1 != null ? o.vz1 : 170,
+            g: o.g != null ? o.g : 520, s0: o.s0 || 4, s0b: o.s0b || 8, ml0: o.ml0 || 220, ml1: o.ml1 || 480, lx: o.lx, lz: o.lz, op: o.op });
+    }
+
+    /* ── the canvases ── */
+    function _o2EyeTex() {   /* an eye's two lids */
+        return _o2Tex('eye', 256, function (g, S, c) {
+            g.lineWidth = 7; g.beginPath(); g.moveTo(S * 0.06, c); g.quadraticCurveTo(c, c - S * 0.46, S * 0.94, c); g.quadraticCurveTo(c, c + S * 0.46, S * 0.06, c); g.stroke();
+            g.lineWidth = 3; for (var i = 0; i < 5; i++) { var x = S * (0.26 + i * 0.12), up = S * (0.2 + 0.07 * Math.sin(i / 4 * Math.PI)); g.beginPath(); g.moveTo(x, c - up); g.lineTo(x + (i - 2) * 4, c - up - S * 0.07); g.stroke(); }
+        });
+    }
+    function _o2IrisTex() {   /* its iris: a ring, a cross-hair pupil */
+        return _o2Tex('iris', 128, function (g, S, c) {
+            g.lineWidth = 7; g.beginPath(); g.arc(c, c, S * 0.36, 0, 6.2832); g.stroke();
+            g.lineWidth = 4; var a = S * 0.1, b = S * 0.46;
+            g.beginPath(); g.moveTo(c - b, c); g.lineTo(c - a, c); g.moveTo(c + a, c); g.lineTo(c + b, c); g.moveTo(c, c - b); g.lineTo(c, c - a); g.moveTo(c, c + a); g.lineTo(c, c + b); g.stroke();
+            g.beginPath(); g.arc(c, c, S * 0.045, 0, 6.2832); g.fill();
+        });
+    }
+    function _o2MilTex() {   /* a rifle scope's fine cross with its mil dots and range ticks */
+        return _o2Tex('mil', 256, function (g, S, c) {
+            g.lineWidth = 2.5; var gap = S * 0.05, far = S * 0.48;
+            g.beginPath(); g.moveTo(c - far, c); g.lineTo(c - gap, c); g.moveTo(c + gap, c); g.lineTo(c + far, c); g.moveTo(c, c - far); g.lineTo(c, c - gap); g.moveTo(c, c + gap); g.lineTo(c, c + far); g.stroke();
+            for (var i = 1; i <= 4; i++) { var d = S * 0.09 * i + gap; [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (v) { g.beginPath(); g.arc(c + v[0] * d, c + v[1] * d, 3.4, 0, 6.2832); g.fill(); }); }
+            g.lineWidth = 6; g.beginPath(); g.moveTo(c - far, c); g.lineTo(c - S * 0.4, c); g.moveTo(c + S * 0.4, c); g.lineTo(c + far, c); g.moveTo(c, c + S * 0.4); g.lineTo(c, c + far); g.stroke();
+            g.lineWidth = 1.5; for (var k = 1; k <= 3; k++) { var yy = c + S * 0.11 * k, w = S * (0.07 - 0.015 * k); g.beginPath(); g.moveTo(c - w, yy); g.lineTo(c + w, yy); g.stroke(); }
+        });
+    }
+    function _o2ScopeTex() {   /* a scope's tube seen from behind: the ring, four posts that stop short of the middle */
+        return _o2Tex('scope', 256, function (g, S, c) {
+            g.lineWidth = 9; g.beginPath(); g.arc(c, c, S * 0.44, 0, 6.2832); g.stroke();
+            g.lineWidth = 3; g.beginPath(); g.arc(c, c, S * 0.3, 0, 6.2832); g.stroke();
+            g.lineWidth = 11; var a = S * 0.44, b = S * 0.2;
+            g.beginPath(); g.moveTo(c - a, c); g.lineTo(c - b, c); g.moveTo(c + a, c); g.lineTo(c + b, c); g.moveTo(c, c + a); g.lineTo(c, c + b); g.stroke();
+            g.lineWidth = 4; g.beginPath(); g.moveTo(c, c - a); g.lineTo(c, c - b); g.stroke();
+        });
+    }
+    function _o2CrackTex() {   /* a break: jagged cracks out of one point */
+        return _o2Tex('crack', 128, function (g, S, c) {
+            var rnd = _sigRand(0x6b6e); g.lineWidth = 4;
+            for (var i = 0; i < 7; i++) {
+                var a = i / 7 * 6.2832 + rnd() * 0.5, r = 0, x = c, y = c; g.beginPath(); g.moveTo(c, c);
+                for (var s = 0; s < 3; s++) { r += S * (0.1 + rnd() * 0.07); a += (rnd() - 0.5) * 0.9; x = c + Math.cos(a) * r; y = c + Math.sin(a) * r; g.lineTo(x, y); }
+                g.stroke();
+            }
+        });
+    }
+    function _o2ChevTex() {   /* one chevron, point up */
+        return _o2Tex('chev', 64, function (g, S, c) { g.lineWidth = 9; g.beginPath(); g.moveTo(S * 0.14, S * 0.7); g.lineTo(c, S * 0.28); g.lineTo(S * 0.86, S * 0.7); g.stroke(); });
+    }
+    function _o2StarTex() {   /* a tin star: five points, a ball on each, a hole shot through the middle */
+        return _o2Tex('star5', 256, function (g, S, c) {
+            g.beginPath();
+            for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, r = S * (i % 2 ? 0.19 : 0.43); g[i ? 'lineTo' : 'moveTo'](c + Math.cos(a) * r, c + Math.sin(a) * r); }
+            g.closePath(); g.fill();
+            for (var k = 0; k < 5; k++) { var b = -Math.PI / 2 + k * 2 * Math.PI / 5; g.beginPath(); g.arc(c + Math.cos(b) * S * 0.45, c + Math.sin(b) * S * 0.45, S * 0.04, 0, 6.2832); g.fill(); }
+            g.globalCompositeOperation = 'destination-out';
+            g.beginPath(); g.arc(c, c, S * 0.075, 0, 6.2832); g.fill();
+            g.lineWidth = 3; for (var q = 0; q < 6; q++) { var d = q * 1.05 + 0.3; g.beginPath(); g.moveTo(c + Math.cos(d) * S * 0.075, c + Math.sin(d) * S * 0.075); g.lineTo(c + Math.cos(d) * S * 0.14, c + Math.sin(d) * S * 0.14); g.stroke(); }
+        });
+    }
+    function _o2CylTex() {   /* a revolver's cylinder seen from the front: six chambers round the pin */
+        return _o2Tex('cyl', 256, function (g, S, c) {
+            g.lineWidth = 8; g.beginPath(); g.arc(c, c, S * 0.45, 0, 6.2832); g.stroke();
+            g.lineWidth = 5; for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; g.beginPath(); g.arc(c + Math.cos(a) * S * 0.27, c + Math.sin(a) * S * 0.27, S * 0.095, 0, 6.2832); g.stroke(); }
+            g.beginPath(); g.arc(c, c, S * 0.06, 0, 6.2832); g.fill();
+            g.lineWidth = 6; for (var k = 0; k < 6; k++) { var b = k * Math.PI / 3 + Math.PI / 6; g.beginPath(); g.arc(c + Math.cos(b) * S * 0.47, c + Math.sin(b) * S * 0.47, S * 0.05, b + 1.6, b + 4.7); g.stroke(); }
+        });
+    }
+    function _o2NoonTex() {   /* a clock face: the ring, twelve marks, a sun's short rays outside it */
+        return _o2Tex('noon', 256, function (g, S, c) {
+            g.lineWidth = 6; g.beginPath(); g.arc(c, c, S * 0.33, 0, 6.2832); g.stroke();
+            for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6; g.lineWidth = i % 3 ? 3 : 6; g.beginPath(); g.moveTo(c + Math.cos(a) * S * 0.27, c + Math.sin(a) * S * 0.27); g.lineTo(c + Math.cos(a) * S * 0.31, c + Math.sin(a) * S * 0.31); g.stroke(); }
+            g.lineWidth = 5; for (var k = 0; k < 16; k++) { var b = k * Math.PI / 8, r1 = S * (k % 2 ? 0.43 : 0.48); g.beginPath(); g.moveTo(c + Math.cos(b) * S * 0.38, c + Math.sin(b) * S * 0.38); g.lineTo(c + Math.cos(b) * r1, c + Math.sin(b) * r1); g.stroke(); }
+        });
+    }
+    function _o2HandTex() {   /* a clock hand, pointing up from the middle */
+        return _o2Tex('hand', 128, function (g, S, c) { g.lineWidth = 7; g.beginPath(); g.moveTo(c, c); g.lineTo(c, S * 0.1); g.stroke(); g.beginPath(); g.arc(c, c, 6, 0, 6.2832); g.fill(); });
+    }
+
+    /* ════ THE GUNS (part 1) ════ */
+
+    /* DEAD EYE — the eye: an amber eye opens on the body, squints down to a slit as the iris tightens on one point,
+       and that point is where the shot lands. It stays a beat: they are Marked. */
+    _o2Reg('deadEye', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.66;
+        var lid = _o2Spr(B.g, _o2EyeTex(), _O2C.amber, ts * 1.15, 0, y, 0), iris = _o2Spr(B.g, _o2IrisTex(), _O2C.brass, ts * 0.5, 0, y, 0);
+        var pin = _pzSpr(_O2C.hot, ts * 0.34, B.g); pin.position.set(0, y, 0);
+        _fxDelay(function () { if (!_suppressed()) _o2Sparks(B.F, 9, _O2C.brass, y, { v: 190 }); }, 250);
+        _sigRunOwned(B.g, 1150, function (el) {
+            var k = _goEnv(el, 70, 1150, 380), sq = _sigEaseOutCubic(_sigClamp01((el - 110) / 170));
+            lid.scale.set(ts * 1.15, ts * 1.15 * (1 - 0.56 * sq), 1); lid.material.opacity = 0.95 * k;
+            iris.scale.setScalar(ts * (0.5 - 0.24 * sq)); iris.material.opacity = k; iris.material.rotation = (1 - sq) * 0.8;
+            pin.material.opacity = 0.95 * _pzEnv(el, 240, 280, 360, 640);
+        });
+    });
+
+    /* PRECISION SHOT — the scope: a fine lime cross with its mil dots dials in on the body (it turns and tightens),
+       then one needle goes clean through and out the far side. */
+    _o2Reg('precisionShot', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.62;
+        var ret = _o2Spr(B.g, _o2MilTex(), _O2C.lime, ts * 1.6, 0, y, 0), nd = _o2Rod(B.g, 0xc8e86a, ts * 0.016);
+        var a = new THREE.Vector3(B.ux * ts * 1.0, y, B.uz * ts * 1.0), b = new THREE.Vector3(-B.ux * ts * 1.7, y, -B.uz * ts * 1.7);
+        var hit = false;
+        _sigRunOwned(B.g, 1000, function (el) {
+            var k = _goEnv(el, 60, 1000, 300), dial = _sigEaseOutCubic(_sigClamp01(el / 260));
+            ret.scale.setScalar(ts * (1.6 - 0.85 * dial)); ret.material.rotation = (1 - dial) * 0.9; ret.material.opacity = 0.95 * k;
+            var t = (el - 260) / 150;
+            if (t < 0) { nd.visible = false; return; }
+            if (!hit) { hit = true; _o2Sparks(B.F, 6, _O2C.lime, y, { v: 120, lx: -B.ux * 10, lz: -B.uz * 10 }); }
+            _o2Slide(nd, a, b, t < 1 ? t - 0.4 : 0.37 + 0.63 * _sigClamp01((el - 410) / 260), t); nd.material.opacity = 0.9 * (1 - _sigClamp01((el - 410) / 260));
+        });
+    });
+
+    /* TAKE AIM — the sniper's scope at the head: a red tube ring with its posts clicks in three steps down onto the
+       head, the red dot sits there and beats. It holds: the shot is still to come. */
+    _o2Reg('headshot', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 1.0, SC = [1.45, 1.05, 0.74, 0.52];
+        var sc = _o2Spr(B.g, _o2ScopeTex(), _O2C.dot, ts * SC[0], 0, y, 0), dot = _pzSpr(_O2C.dot, ts * 0.16, B.g); dot.position.set(0, y, 0);
+        _sigRunOwned(B.g, 1500, function (el) {
+            var k = _goEnv(el, 60, 1500, 360), st = Math.min(3, Math.floor(el / 120)), into = _sigEaseOutCubic(_sigClamp01((el - st * 120) / 70));
+            sc.scale.setScalar(ts * (st ? SC[st - 1] + (SC[st] - SC[st - 1]) * into : SC[0]));
+            sc.material.opacity = 0.9 * k;
+            dot.material.opacity = el < 360 ? 0 : k * (0.6 + 0.4 * Math.sin((el - 360) * 0.02));
+        });
+    });
+
+    /* KNEECAP SHOT — low: the round goes through at the knee, a break cracks open there, and two chevrons drop from
+       the hip to the floor as the leg gives (Rooted). */
+    _o2Reg('kneecapShot', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.24, kx = B.sx * ts * 0.08, kz = B.sz * ts * 0.08;
+        var crack = _o2Spr(B.g, _o2CrackTex(), _O2C.ivory, ts * 0.2, kx, y, kz), rod = _o2Rod(B.g, _O2C.brass, ts * 0.02);
+        var a = new THREE.Vector3(B.ux * ts * 0.9 + kx, y + ts * 0.1, B.uz * ts * 0.9 + kz), b = new THREE.Vector3(-B.ux * ts * 0.7 + kx, y - ts * 0.12, -B.uz * ts * 0.7 + kz);
+        var ch = [];
+        for (var i = 0; i < 2; i++) { var c = _o2Spr(B.g, _o2ChevTex(), _O2C.brass, ts * 0.3, kx, 0, kz); c.material.rotation = Math.PI; ch.push(c); }
+        _o2Sparks(B.F, 7, _O2C.ivory, y, { v: 110, vz1: 90 });
+        _goSpray(B.F, 3, { sprite: 'dust-puff', tint: 0xb8a88c, ly: 4, r: 10, v: 40, vz0: 5, vz1: 30, g: 0, s0: ts * 0.12, s0b: ts * 0.2, s1: ts * 0.34, ml0: 420, ml1: 700, op: 0.5 });
+        _sigRunOwned(B.g, 950, function (el) {
+            var k = _goEnv(el, 40, 950, 320), t = el / 110;
+            _o2Slide(rod, a, b, t - 0.45, t); rod.material.opacity = t > 1.45 ? 0 : 0.9;
+            crack.scale.setScalar(ts * (0.2 + 0.36 * _sigEaseOutCubic(_sigClamp01((el - 60) / 160)))); crack.material.opacity = el < 60 ? 0 : 0.95 * k;
+            for (var i = 0; i < 2; i++) {
+                var d = _sigEaseOutCubic(_sigClamp01((el - 150 - i * 110) / 380));
+                ch[i].position.y = ts * (0.62 - 0.5 * d); ch[i].material.opacity = (el < 150 + i * 110) ? 0 : 0.85 * k * (1 - d * 0.5);
+            }
+        });
+    });
+
+    /* DOUBLE PUMP — two barrels: two cones of shot, one after the other, spread out of one point and pepper the body
+       in two rings of pocks, a wad of powder smoke rolling off each. */
+    _o2Reg('doubleShot', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.6, rods = [], GAP = 170, FLY = 95;
+        var muz = new THREE.Vector3(B.ux * ts * 1.05, y, B.uz * ts * 1.05);
+        for (var v = 0; v < 2; v++) for (var i = 0; i < 9; i++) {
+            var a = i / 8 * 6.2832 + v * 0.39, r = i === 8 ? 0 : ts * (v ? 0.2 : 0.3);
+            var ox = Math.cos(a) * r, oy = Math.sin(a) * r * 0.9, rod = _o2Rod(B.g, v ? _O2C.hot : _O2C.amber, ts * 0.013);
+            rod.userData = { t0: v * GAP, to: new THREE.Vector3(B.sx * ox - B.ux * ts * 0.55, y + oy, B.sz * ox - B.uz * ts * 0.55), px: B.sx * ox, py: y + oy, pz: B.sz * ox };
+            rods.push(rod);
+        }
+        function volley(v) {
+            if (_suppressed()) return;
+            for (var i = 0; i < 9; i++) { var R = rods[v * 9 + i].userData; _pzP(B.F, R.px, R.py, R.pz, { sprite: 'spark', tint: v ? _O2C.hot : _O2C.amber, ml: 260, size0: 9, size1: 2, opacity0: 1 }); }
+            _goSpray(B.F, 2, { sprite: 'smoke-soft', tint: _O2C.powder, ly: y, r: 12, v: 30, vz0: 10, vz1: 40, g: -10, s0: ts * 0.22, s0b: ts * 0.3, s1: ts * 0.5, ml0: 520, ml1: 820, op: 0.42 });
+        }
+        _fxDelay(function () { volley(0); }, FLY * 0.6); _fxDelay(function () { volley(1); }, GAP + FLY * 0.6);
+        _sigRunOwned(B.g, GAP + FLY + 220, function (el) {
+            for (var i = 0; i < rods.length; i++) { var R = rods[i], t = (el - R.userData.t0) / FLY; if (t < 0 || t > 1.5) { R.visible = false; continue; } _o2Slide(R, muz, R.userData.to, t - 0.5, t); R.material.opacity = 0.95; }
+        });
+    });
+
+    /* CROSSFIRE — two lines of fire cross on the target: tracers run both ways down each diagonal, one diagonal a beat
+       after the other, every square of the X flashes brass and the crossing stays scored on the floor. */
+    _o2Reg('crossfire', function (p) {
+        var def = _spellDefFor('crossfire') || {}, R = def.crossRadius || 1, sq = [{ x: p.tx, y: p.ty, d: 0 }], i, s;
+        for (i = 1; i <= R; i++) for (s = 0; s < 4; s++) sq.push({ x: p.tx + (s & 1 ? i : -i), y: p.ty + (s & 2 ? i : -i), d: (s === 0 || s === 3) ? 40 : 150 });
+        _o2Squares(sq, _O2C.brass, { op: 0.5, ms: 360 });
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, y = ts * 0.58, rods = [], scars = [];
+        for (var d = 0; d < 2; d++) {
+            var w = _worldPos(p.tx + 1, p.ty + (d ? -1 : 1)), vx = (w.x - F.wp.x) * (R + 0.75), vz = (w.z - F.wp.z) * (R + 0.75);
+            for (var e = 0; e < 2; e++) {
+                var rod = _o2Rod(F.g, e ? _O2C.hot : _O2C.brass, ts * 0.017), sg = e ? -1 : 1;
+                rod.userData = { t0: d * 110 + e * 35, a: new THREE.Vector3(vx * sg, y + e * ts * 0.06, vz * sg), b: new THREE.Vector3(-vx * sg, y + e * ts * 0.06, -vz * sg) };
+                rods.push(rod);
+            }
+            var sc = _o2Rod(F.g, _O2C.brass, ts * 0.012); sc.userData = { t0: d * 110 + 60, a: new THREE.Vector3(vx * 0.62, 3, vz * 0.62), b: new THREE.Vector3(-vx * 0.62, 3, -vz * 0.62) }; scars.push(sc);
+        }
+        _fxDelay(function () { if (!_suppressed()) _o2Sparks(F, 8, _O2C.brass, y, { v: 200 }); }, 70);
+        _fxDelay(function () { if (!_suppressed()) _o2Sparks(F, 8, _O2C.hot, y, { v: 200 }); }, 180);
+        _sigRunOwned(F.g, 900, function (el) {
+            for (var i = 0; i < rods.length; i++) { var Rr = rods[i], t = (el - Rr.userData.t0) / 150; if (t < 0 || t > 1.4) { Rr.visible = false; continue; } _o2Slide(Rr, Rr.userData.a, Rr.userData.b, t - 0.4, t); Rr.material.opacity = 0.95; }
+            for (var j = 0; j < scars.length; j++) { var S = scars[j], u = el - S.userData.t0; if (u < 0) { S.visible = false; continue; } _o2Slide(S, S.userData.a, S.userData.b, 0, 1); S.material.opacity = 0.7 * (1 - _sigClamp01((u - 300) / 480)); }
+        });
+    });
+
+    /* LONG RIFLE — black powder: the ball is there at once, and what is left is the long straight line of grey powder
+       smoke hanging from the muzzle to the mark, a bloom of it at the muzzle, a dull lead ring where the ball struck. */
+    _o2Reg('raceQuickDraw', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.62, ln = B.ln;
+        var ring = _o2Spr(B.g, _sigRingTex(), _O2C.lead, ts * 0.2, 0, y, 0), line = _o2Rod(B.g, _O2C.powder, ts * 0.022);
+        var b = new THREE.Vector3(0, y, 0), a = B.fr.seen ? new THREE.Vector3(ln.dx - B.ux * ts * 0.45, ln.dy + ts * 0.7, ln.dz - B.uz * ts * 0.45) : new THREE.Vector3(B.ux * ts * 1.3, y + ts * 0.03, B.uz * ts * 1.3);
+        var n = Math.max(3, Math.min(12, Math.round(a.distanceTo(b) / (ts * 0.42))));
+        for (var i = 0; i <= n; i++) {
+            var k = i / n, big = (i === 0 && B.fr.seen) ? 2.1 : 1;
+            _pzP(B.F, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k, { sprite: 'smoke-soft', tint: _O2C.powder, ml: rn(900, 1300) + (1 - k) * 200, size0: ts * 0.09 * big, size1: ts * 0.3 * big,
+                vx: rn(-8, 8), vy: rn(-8, 8), vz: rn(6, 22), drag: 0.6, opacity0: 0.5, opacity1: 0 });
+        }
+        _o2Sparks(B.F, 6, _O2C.lead, y, { v: 130, sprite: 'steel-spark' });
+        _sigRunOwned(B.g, 620, function (el) {
+            _o2Slide(line, a, b, 0, 1); line.material.opacity = 0.75 * (1 - _sigClamp01(el / 200));
+            ring.scale.setScalar(ts * (0.2 + 0.62 * _sigEaseOutCubic(_sigClamp01(el / 300)))); ring.material.opacity = 0.9 * (1 - _sigClamp01((el - 120) / 420));
+        });
+    });
+
+    /* SLAP LEATHER — the fastest hand: a flat shot from the hip, and a tin star punched onto the chest with the hole
+       already through its middle, spinning to a stop. Dust kicks off the shooter's heel. */
+    _o2Reg('raceSlapLeather', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.64, ln = B.ln;
+        var star = _o2Spr(B.g, _o2StarTex(), _O2C.brass, ts * 0.2, 0, y, 0, true), hole = _pzSpr(_O2C.hot, ts * 0.22, B.g); hole.position.set(0, y, 0);
+        var rod = _o2Rod(B.g, _O2C.hot, ts * 0.02), b = new THREE.Vector3(0, y, 0);
+        var a = B.fr.seen ? new THREE.Vector3(ln.dx - B.ux * ts * 0.35, ln.dy + ts * 0.4, ln.dz - B.uz * ts * 0.35) : new THREE.Vector3(B.ux * ts * 1.2, ts * 0.45, B.uz * ts * 1.2);
+        if (B.fr.seen) _pzP(B.F, ln.dx + B.ux * ts * 0.15, ln.dy + 4, ln.dz + B.uz * ts * 0.15, { sprite: 'dust-puff', tint: 0xb89c78, ml: 520, size0: ts * 0.14, size1: ts * 0.42, vz: 14, opacity0: 0.55 });
+        _o2Sparks(B.F, 8, _O2C.brass, y, { v: 180 });
+        _sigRunOwned(B.g, 900, function (el) {
+            var k = _goEnv(el, 30, 900, 320), pop = _sigEaseOutBack(_sigClamp01(el / 190));
+            _o2Slide(rod, a, b, el / 80 - 0.5, el / 80); rod.material.opacity = el > 120 ? 0 : 0.95;
+            star.scale.setScalar(ts * (0.2 + 0.5 * pop)); star.material.rotation = (1 - _sigEaseOutCubic(_sigClamp01(el / 420))) * 2.2; star.material.opacity = 0.95 * k;
+            hole.material.opacity = 0.9 * (1 - _sigClamp01(el / 260));
+        });
+    });
+
+    /* FAN THE HAMMER — six shots from the hip: the revolver's cylinder lies on the floor under the cowboy and turns a
+       chamber a shot, six tracers fan out round him one after the other, and each square next to him flashes as the
+       fan passes it. */
+    _o2Reg('raceFanTheHammer', function (p) {
+        var cx = p.sx != null ? p.sx : p.tx, cy = p.sy != null ? p.sy : p.ty, def = _spellDefFor('raceFanTheHammer') || {}, R = def.aoeRadius || 1;
+        var F = _nrvFrame(cx, cy), ts = F.ts, sq = [], STEP = 62, x, y;
+        for (x = -R; x <= R; x++) for (y = -R; y <= R; y++) {
+            if (!x && !y) continue;
+            var w = _worldPos(cx + x, cy + y), an = Math.atan2(w.z - F.wp.z, w.x - F.wp.x); if (an < 0) an += 6.2832;
+            sq.push({ x: cx + x, y: cy + y, d: Math.round(an / 6.2832 * 6 * STEP) });
+        }
+        _o2Squares(sq, _O2C.hot, { op: 0.5, ms: 300 });
+        if (!_pzSeen(cx, cy)) return;
+        var cyl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), _goA(_O2C.brass, 0)); cyl.material.map = _o2CylTex(); cyl.material.needsUpdate = true;
+        cyl.rotation.x = -Math.PI / 2; cyl.position.y = 3; cyl.renderOrder = 158; F.g.add(cyl);
+        var rods = [], hy = ts * 0.52;
+        for (var i = 0; i < 6; i++) {
+            var a = (i + 0.5) * Math.PI / 3, rod = _o2Rod(F.g, i % 2 ? _O2C.hot : _O2C.amber, ts * 0.02);
+            rod.userData = { t0: i * STEP, a: new THREE.Vector3(Math.cos(a) * ts * 0.34, hy, Math.sin(a) * ts * 0.34), b: new THREE.Vector3(Math.cos(a) * ts * (R + 0.45), hy + ts * 0.06, Math.sin(a) * ts * (R + 0.45)) };
+            rods.push(rod);
+            (function (a, i) { _fxDelay(function () { if (!_suppressed()) { _pzP(F, Math.cos(a) * ts * 0.36, hy, Math.sin(a) * ts * 0.36, { sprite: 'spark', tint: _O2C.hot, ml: 150, size0: ts * 0.16, size1: 3, opacity0: 0.95 });
+                _pzP(F, Math.cos(a) * ts * 0.4, hy, Math.sin(a) * ts * 0.4, { sprite: 'smoke-soft', tint: _O2C.powder, ml: 620, size0: ts * 0.1, size1: ts * 0.3, vx: Math.cos(a) * 30, vy: Math.sin(a) * 30, vz: 16, opacity0: 0.4 }); } }, i * STEP); })(a, i);
+        }
+        _sigRunOwned(F.g, 6 * STEP + 520, function (el) {
+            var k = _goEnv(el, 50, 6 * STEP + 520, 300), st = Math.min(6, el / STEP), whole = Math.floor(st), part = _sigEaseOutCubic(_sigClamp01((st - whole) * 2.2));
+            cyl.rotation.z = -(whole + part) * Math.PI / 3; cyl.material.opacity = 0.8 * k;
+            for (var i = 0; i < 6; i++) { var Rr = rods[i], t = (el - Rr.userData.t0) / 90; if (t < 0 || t > 1.5) { Rr.visible = false; continue; } _o2Slide(Rr, Rr.userData.a, Rr.userData.b, t - 0.55, t); Rr.material.opacity = 0.95; }
+        });
+    });
+
+    /* HIGH NOON — the clock over their head: a brass face ringed with the sun's rays, the long hand ticks up to join
+       the short one at twelve, and on the stroke a shaft of noon light drops straight down the body (no shadow at
+       noon). The trick shot itself is the bullet's flight, already there. */
+    _o2Reg('raceHighNoon', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, y = ts * 1.72;
+        var face = _o2Spr(F.g, _o2NoonTex(), _O2C.noon, ts * 0.86, 0, y, 0), hr = _o2Spr(F.g, _o2HandTex(), _O2C.noon, ts * 0.34, 0, y, 0), mn = _o2Spr(F.g, _o2HandTex(), _O2C.amber, ts * 0.5, 0, y, 0);
+        var shaft = _o2Rod(F.g, _O2C.noon, ts * 0.05), core = _o2Rod(F.g, 0xebcf6a, ts * 0.016), top = new THREE.Vector3(0, y - ts * 0.3, 0), bot = new THREE.Vector3(0, 2, 0), struck = false;
+        var pool = _goRing(F.g, _O2C.noon, ts * 0.05, ts * 0.3, 2.5, 0.7, 28);
+        _sigRunOwned(F.g, 1250, function (el) {
+            var k = _goEnv(el, 90, 1250, 340), tick = Math.min(4, Math.floor(el / 75)), noon = el >= 300;
+            face.material.opacity = 0.95 * k; face.material.rotation = el * 0.0004; hr.material.opacity = k; mn.material.opacity = k; mn.material.rotation = (4 - tick) * 0.13;
+            if (noon && !struck) { struck = true; _o2Sparks(F, 10, _O2C.noon, ts * 0.6, { v: 170, sprite: 'sparkle' }); }
+            var s = _pzEnv(el, 300, 340, 520, 800);
+            _o2Slide(shaft, top, bot, 0, noon ? 1 : 0); shaft.material.opacity = 0.4 * s; _o2Slide(core, top, bot, 0, noon ? 1 : 0); core.material.opacity = 0.9 * s;
+            pool.scale.setScalar(1 + 1.6 * _sigEaseOutCubic(_sigClamp01((el - 300) / 380))); pool.material.opacity = 0.7 * s;
+        });
+    });
+
+    /* SCATTER SHOT — no aim: lead goes everywhere. Stray pellets streak past the body at every angle, three find it,
+       the rest kick grit out of the floor round its feet. Where the strays go is read off the square (both screens). */
+    _o2Reg('riderScatterShot', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, seed = p.tx * 7 + p.ty * 13, rods = [];
+        var muz = new THREE.Vector3(B.ux * ts * 1.1, ts * 0.62, B.uz * ts * 1.1);
+        for (var i = 0; i < 10; i++) {
+            var a = seed * 0.7 + i * 2.39996, hit = i < 3, r = hit ? ts * 0.1 : ts * (0.34 + 0.32 * ((i * 37 + seed) % 5) / 4), low = !hit && i % 2;
+            var ox = Math.cos(a) * r, oy = low ? 0 : ts * 0.6 + Math.sin(a) * r * 0.8, rod = _o2Rod(B.g, hit ? _O2C.rust : _O2C.lead, ts * (hit ? 0.016 : 0.012));
+            var end = new THREE.Vector3(B.sx * ox - B.ux * ts * (low ? 0.1 + 0.25 * (i % 3) : 0.9), low ? 2 : oy, B.sz * ox - B.uz * ts * (low ? 0.1 + 0.25 * (i % 3) : 0.9));
+            rod.userData = { t0: (i * 53) % 130, to: end, low: low, hit: hit, done: false }; rods.push(rod);
+        }
+        _sigRunOwned(B.g, 520, function (el) {
+            for (var i = 0; i < rods.length; i++) {
+                var R = rods[i], U = R.userData, t = (el - U.t0) / 100;
+                if (t < 0 || t > 1.5) { R.visible = false; } else { _o2Slide(R, muz, U.to, t - 0.45, t); R.material.opacity = 0.9; }
+                if (t >= (U.hit ? 0.55 : 1) && !U.done) {
+                    U.done = true;
+                    if (U.low) _pzP(B.F, U.to.x, 4, U.to.z, { sprite: 'dust-puff', tint: 0xb0a48e, ml: 480, size0: ts * 0.08, size1: ts * 0.26, vz: 30, opacity0: 0.6 });
+                    else if (U.hit) _pzP(B.F, U.to.x * 0.12, ts * 0.6, U.to.z * 0.12, { sprite: 'spark', tint: _O2C.rust, ml: 240, size0: 11, size1: 2, opacity0: 1 });
+                }
+            }
+        });
+    });
+
+    /* STICK-UP — hands up: two brass chevrons jump up beside the victim's shoulders, and what they were carrying leaves
+       them: bundles of bills (the banker's model, when it is in memory) arc off them into the gangster's hand. */
+    _o2Reg('raceHitALick', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, ch = [];
+        for (var i = -1; i <= 1; i += 2) for (var j = 0; j < 2; j++) { var c = _o2Spr(B.g, _o2ChevTex(), _O2C.brass, ts * 0.26, B.sx * ts * 0.36 * i, 0, B.sz * ts * 0.36 * i); c.userData = { d: j * 90 }; ch.push(c); }
+        if (B.fr.seen) for (var n = 0; n < 3; n++) (function (n) {
+            _fxDelay(function () {
+                if (_suppressed()) return;
+                var bill = null; try { bill = _bkModel('bank_cash', ts * 0.17); } catch (e) { bill = null; }
+                if (!bill) return;
+                var mats = bill.userData.mats || [];
+                _pzFly(p.tx, p.ty, B.fr.x, B.fr.y, bill, { ms: 420, arc: 0.5, h0: ts * 0.7, h1: ts * 0.55, hideOnLand: true,
+                    spin: function (el, o, t) { o.rotation.x = el * 0.012; o.rotation.z = el * 0.007 + n; for (var m = 0; m < mats.length; m++) mats[m].opacity = Math.min(1, el / 60) * (t < 1 ? 1 : 0); } });
+            }, 160 + n * 110);
+        })(n);
+        _o2Sparks(B.F, 5, _O2C.cash, ts * 0.6, { v: 90, sprite: 'sparkle', g: 200 });
+        _sigRunOwned(B.g, 900, function (el) {
+            var k = _goEnv(el, 40, 900, 300);
+            for (var i = 0; i < ch.length; i++) { var t = el - ch[i].userData.d, up = _sigEaseOutBack(_sigClamp01(t / 220)); ch[i].position.y = ts * (0.78 + 0.3 * up + (ch[i].userData.d ? 0.16 : 0)); ch[i].material.opacity = t < 0 ? 0 : 0.9 * k; }
+        });
+    });
+    /* ═════════ END THE OWN LOOKS, L2 ═════════ */
+
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
         _rvFloorAt: _rvFloorAt,
