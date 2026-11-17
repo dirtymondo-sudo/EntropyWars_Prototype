@@ -9986,6 +9986,30 @@ planet, went to the Outer Space thread.)
   - Proof 11-17: `/mnt/project-files/rubiks-cube/proof/` (from the bridge, from the side, the stair, the top). Not yet checked on screen:
     walking the stair end to end, and a fight starting on the top.
 
+- **THE CUBE, PASS 2 (11-17, the "Improve the Rubik's cube battle map" thread; mondo: "The spell previews are messed up ... when i moved to
+  another face of the cube, from that unit's perspective that face should become the top. Instead i was walking sideways ... isnt
+  there a whole thing ... that shuffles the cube in between rounds ... i want the player and enemies to be able to turn rubick's cube
+  themselves as part of their turn"):**
+  - THE PREVIEWS ON TOP (three-renderer.js `_cubePushBack`): every move / spell / aim plate lies a hair over its square, and on the flat
+    stickers the two fought for depth at the battle camera's distance (plates mostly hidden, flickering). The cube's sticker + core
+    materials are polygon-offset back. The hand turn's preview styles: `_OVERLAY_STYLE.cubeTurn` / `cubeTurnLand`.
+  - THE NEW TOP, MID-TURN (battle.js `_cubeSettleTick`, a 150 ms timer armed in `cubeStart`): the moment a HUMAN's acting fighter stands
+    still on another face (walk done, nothing executing, the cube's own swing done) the frame is laid round that face (cubeFocus), the
+    cube tumbles it up and the camera jumps with the frame (`_cubeAfterMidTurnRelay`). Never for a CPU fighter mid-plan (its planned
+    squares would move under it); never on the online guest. The camera orbit stops at tilt 82 on the cube (past level it craned up
+    into the sky and lost the cube).
+  - THE TURN YOU SEE (round end, `cubeEndOfRound`): eorFocusCamera pulls back over the top face (relayed), the picture holds the slice
+    550 ms then swings it 1.5 s under a banner "The cube turns" (three-renderer.js `_cubeBanner`, built on both screens from the synced
+    record), and `hasBlockingAnims` counts the swing + the tumble (`cubeBusy`), so the round waits for it. The FIRST slice of a match was
+    never animated before (sliceVer started at 0 = "never seen"); `_cubeR.seen` fixes it.
+  - TURN CUBE BY HAND (battle.js `doCubeTurn`, `cubeHandSlice`, `cubeHandOptions`, `cubeTurnProblem`, `CUBE_HAND`): a root verb on the
+    cube (hud.js "Turn cube", before Guard) opens four rows named by the way the squares slide ON SCREEN (`_hrlgCubeScreenArrow`); hovering
+    a row lights the ring (cyan) and the square you land on (gold). LEFT / RIGHT turn the row through your square, UP / DOWN the column;
+    everyone on the ring rides it, you too (then THE NEW TOP). Cost 1 AP, once a turn, does not end the turn (my pick, asked mondo).
+    Online: online.js wraps doCubeTurn like Guard (`game-action` engine `doCubeTurn`). THE CPU (battle.js `_cubeAiPick`, called at the
+    top of runComputerTurn): takes the turn when it brings at least one more enemy within its move + range (plus a small pull-closer
+    term) and leaves an AP to act; doCubeTurn lays the frame round its face after the swing and hands back to the CPU.
+
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
