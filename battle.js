@@ -377,6 +377,7 @@
             if (p.execMult != null) dmg = Math.floor(dmg * p.execMult);
             if (p.waterMult != null) dmg = Math.floor(dmg * p.waterMult);
             if (p.sneakMult != null) dmg = Math.floor(dmg * p.sneakMult);
+            if (p.backMult != null) dmg = Math.floor(dmg * p.backMult);   // 🥷 Shadow Step: always from behind (the Backstab ×)
             return { dmg, echoed, echoDmg };
         }
 
@@ -2540,6 +2541,7 @@
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, spell.chargeStyle ? 320 : 200, spell.chargeStyle ? { escStyle: spell.chargeStyle } : { leap: true });
                     if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
+                    if (unit.race === 'delivery boy') _deliveryDrop(unit, fromX, fromY, { delayMs: _skipVisuals() ? 0 : 200 });   // 🛵 his rider hops off once the hop lands
                     if (spell.slimeLane) { _sigVfxGeom('nrIaiDraw:lane', landTile.x, landTile.y, 0, { fromX, fromY, owner: unit.player }); _slugLane(unit, fromX, fromY, spell); }   // 🐌 Iai Draw slimes its lane
                     /* THE LOG ORDER (forced movement playtest 2026-11-07 E4 / M3: Gore Charge, Land Ho, Rook): the charge
                        and what its landing did read BEFORE the hit it carried in */
@@ -2599,7 +2601,10 @@
             const _swH = (spell.hinge && unit._swingHinge && unit._swingHinge.spellId === spell.id) ? unit._swingHinge : null;
             if (spell.hinge) delete unit._swingHinge;
             if (spell.leapOver && target && !unit.dead && !_clashPinned) _frogLeapOver(unit, target);   // 🐸 Leapfrog
+            if (spell.voodooSelf > 0 && target && !unit.dead) _dollPin(unit, target, spell);   // 🪆 Pin Prick ties the victim to the doll
+            if (spell.viralSpread && target) _influencerRatioSpread(unit, target, spell);   // 📱 Ratio
             if (spell.pushDistance && target && !target.dead && !unit.dead && !_chessTook
+                && target._kawarimiKey !== unit.id + '|' + _protectActionSeq   // 🥷 the blow hit a log: nothing to shove
                 && (spell.kind === 'damage' || spell.kind === 'tackle')
                 && !(typeof _isClashMode === 'function' && _isClashMode())) {
                 const _swDir = _swH ? swingDoorPushDir(_swH.x, _swH.y, target.x, target.y) : null;
@@ -2795,6 +2800,8 @@
                 }
                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 addLog(`${_ctName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
+                /* 🛵 THE RIDE-ALONG: a Doorstep Dash carries his rider into the fight; it hops off beside him once the slide lands */
+                if (unit.race === 'delivery boy') _deliveryDrop(unit, fromX, fromY, { delayMs: _skipVisuals() ? 0 : chargeMs });
                 if (spell.slimeLane) { _sigVfxGeom('nrIaiDraw:lane', landTile.x, landTile.y, 0, { fromX, fromY, owner: unit.player }); _slugLane(unit, fromX, fromY, spell); }   // 🐌 Iai Draw slimes its lane
                 scheduleBoardRender();
             };
@@ -3258,6 +3265,10 @@
             const _pcMult = (unit && typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'spellCostMult') : undefined;
             if (base > 0 && _pcMult && _pcMult !== 1) base = Math.max(1, Math.round(base * _pcMult));
             const delta = (unit && typeof getStatusMpCostDelta === 'function') ? getStatusMpCostDelta(unit) : 0;
+            /* 🧾 TAX EXEMPT (the Televangelist, 2026-11-17): a status's mpCostMult (0.5) on the whole bill, Picked a Card's +40 too */
+            let _scm = 1;
+            if (unit && typeof getActiveStatusKeys === 'function') for (const k of getActiveStatusKeys(unit)) { const m = STATUS_DEFS[k]?.mpCostMult; if (m > 0) _scm *= m; }
+            if (_scm !== 1 && base + delta > 0) return Math.max(1, Math.round((base + delta) * _scm));
             return Math.max(0, base + delta);
         }
         window.getSpellMpCostFor = getSpellMpCostFor;
@@ -7219,7 +7230,13 @@
                     waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water')
                         ? 1.5 : null,
                     sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null,
+                    backMult: (spell.blinkBehind && unit._ssBehind) ? FACING_BACK_DMG_MULT : null,   // 🥷 Shadow Step: he strikes from behind
                 });
+                if (spell.blinkBehind && unit._ssBehind) {
+                    unit._matchBackstabs = (unit._matchBackstabs || 0) + 1;
+                    addLog(`🥷 BACKSTAB! ${_ctName(unit)} strikes ${_ctName(target)} from behind (+25% damage)!`);
+                    showFloatingTextForUnit(target, `BACKSTAB ×${+FACING_BACK_DMG_MULT.toFixed(2)}`, 'crit', { durationMs: 1100, jitterY: -14 });
+                }
                 const _hitCrit = _spellCritRoll(unit, spell, _riders.dmg, target);   // THE SPELL AUDIT Batch D: Loaded Dice
                 const damage = _hitCrit.dmg;
                 const _wasJammed = !!spell.jammedArc && unitHasStatus(target, 'jammed');   // Daisy Chain judges before the hit
@@ -7260,7 +7277,7 @@
                         sourceUnit: unit,
                         allowMarkBonus: false,
                         ignoreArmor: !!spell.ignoreArmor,
-                        noRangeMult: !!spell.chessPiece,   // ♟ THE CHESS PIECE: the piece strikes in person, from wherever its line began
+                        noRangeMult: !!spell.chessPiece || !!spell.blinkBehind,   // 🥷 Shadow Step strikes in person too   // ♟ THE CHESS PIECE: the piece strikes in person, from wherever its line began
                         statusEffects: spell.statusFirst ? null : spell.statusEffects,
                         statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,
                         damageType: spell.damageType || 'magic',
@@ -7657,11 +7674,23 @@
                 && window.ThreeVFXEffects.hasMapping(spell.id, 'impact');
 
             const _logSink = _multiHitLogSink();   // ONE CAST, ONE LINE
+            /* 🥷 THE NINJA (2026-11-17): an `ownHitFx` row draws each hit itself (the star / the clone, three-vfx-effects.js
+               '<id>:hit' through fireGeometry, which online.js relays) `hitLeadMs` before the damage, and never re-fires
+               the bolt / leap */
+            const _ownFx = !!spell.ownHitFx;
+            const _lead = _ownFx ? actionMs(spell.hitLeadMs || 0) : 0;
+            const _fx0 = unit.x, _fy0 = unit.y;
             hits.forEach((base, idx) => {
-                const hitTime = idx * hitGap; // relative to impactDelay
+                const hitTime = idx * hitGap + _lead; // relative to impactDelay
 
+                if (_ownFx) {
+                    window.setTimeout(() => {
+                        if (target.dead || state.phase !== 'battle' || _skipVisuals()) return;
+                        try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.fireGeometry) window.ThreeVFXEffects.fireGeometry(spell.id + ':hit', target.x, target.y, 0, { fromX: _fx0, fromY: _fy0, idx: idx, n: hits.length, flyMs: _lead }); } catch (e) {}
+                    }, Math.max(0, hitTime - _lead));
+                }
                 // Subsequent hits: re-fire projectile/leap before each hit
-                if (idx > 0) {
+                if (idx > 0 && !_ownFx) {
                     window.setTimeout(() => {
                         if (target.dead) return;
                         if (_useStrikeLeap) {
@@ -10951,7 +10980,7 @@
             if (payload.id === 'tethered') target._tetherDragDmg = (payload.dragDamagePerTile > 0) ? payload.dragDamagePerTile : null;
             if (payload.id === 'haunted' && payload.restless) target._hauntRestless = true;
             if (payload.id === 'soulBound' && payload.partnerId) target._boundToId = payload.partnerId;
-            if (payload.id === 'voodoo' && payload.allyId) target._voodooAllyId = payload.allyId;
+            if (payload.id === 'voodoo' && payload.allyId) { target._voodooAllyId = payload.allyId; target._voodooEcho = payload.echo > 0 ? payload.echo : null; }   // 🪆 Pin Prick ties it to the doll at its own share
             if (payload.id === 'shadowRealm' && payload.partnerId) target._realmPartnerId = payload.partnerId;
             if (meta.control && sourceUnit) {
                 target._controllerPlayer = sourceUnit.player;
@@ -14062,6 +14091,95 @@
             if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
             return true;
         }
+        /* 🥷 THE NINJA (2026-11-17, mondo OK'd the kit: "add a ninja clone ju jitsu spell ... like catgirl's ninefold scratch").
+           KAWARIMI: a Substituted ninja's first enemy blow (the enemy acting now, never a tick) lands on a log; he reappears on
+           the free square straight behind the attacker, at its back (his next basic attack on it is a Backstab under the
+           facing rule). The rest of that same attack (_protectActionSeq) keeps hitting the log: a multi-hit's later hits, its
+           riders. SHADOW STEP (`blinkBehind`): he blinks to the free square most behind his target (its facing) and strikes;
+           from the back arc the hit is ×FACING_BACK_DMG_MULT. Host-side; positions + statuses state-sync, the looks go through
+           fireGeometry (relayed, fog-gated by the square), the floating text relays (RULE #2). */
+        function _ninjaFree(x, y, notId) {
+            return isInside(x, y) && canOccupy(x, y)
+                && !state.units.some(u => u && !u.dead && u.id !== notId && u.x === x && u.y === y);
+        }
+        function _ninjaFx(id, x, y, extra) {
+            if (_skipVisuals() || state.phase !== 'battle') return;
+            try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.fireGeometry) window.ThreeVFXEffects.fireGeometry(id, x, y, 0, extra || {}); } catch (e) {}
+        }
+        /* the square behind the attacker, seen from the ninja (the attacker faces him): straight behind first, then the
+           squares round the attacker by how far behind they sit; never one in front of it */
+        function _ninjaBehindAttacker(src, ninja) {
+            let ax = src.x - ninja.x, ay = src.y - ninja.y;
+            const len = Math.hypot(ax, ay) || 1; ax /= len; ay /= len;
+            let best = null;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const x = src.x + dx, y = src.y + dy;
+                if ((x === ninja.x && y === ninja.y) || !_ninjaFree(x, y, ninja.id)) continue;
+                const dot = (dx * ax + dy * ay) / Math.hypot(dx, dy);
+                if (dot < -0.01) continue;
+                if (!best || dot > best.dot) best = { x, y, dot };
+            }
+            return best;
+        }
+        function _ninjaKawarimi(target, src) {
+            if (!target || !src || target.dead || target._dying) return false;
+            const key = src.id + '|' + _protectActionSeq;
+            if (target._kawarimiKey === key) return true;   // the same attack: still the log
+            if (!unitHasStatus(target, 'substitute') || !isEnemyUnit(src, target)) return false;
+            if (state._blitzActiveUnitId != null && state._blitzActiveUnitId !== src.id) return false;   // a blow, not a tick
+            clearStatus(target, 'substitute');
+            target._kawarimiKey = key;
+            const fx = target.x, fy = target.y;
+            const land = _ninjaBehindAttacker(src, target);
+            showFloatingTextAtTile(fx, fy, '🪵 KAWARIMI', 'protect-block', { durationMs: 1200 });
+            if (land) {
+                target.x = land.x; target.y = land.y;
+                if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
+                animateDisplacement(target, fx, fy, land.x, land.y, actionMs(380), { escStyle: 'blink', delayMs: actionMs(120) });
+                faceStrikeTarget(target, src);
+                resolveTileArrival(target, { via: 'displaced' });
+                addLog(`🪵 Kawarimi! ${_ctName(src)}'s blow lands on a log — ${_ctName(target)} is standing behind ${_ctName(src)}.`);
+            } else {
+                addLog(`🪵 Kawarimi! ${_ctName(src)}'s blow lands on a log — ${_ctName(target)} had nowhere behind ${_ctName(src)} to go and stays put.`);
+            }
+            _ninjaFx('nrKawarimi:swap', land ? land.x : fx, land ? land.y : fy, { fromX: fx, fromY: fy, uid: target.id });
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            markDirty('hud', 'selectedUnit');
+            return true;
+        }
+        /* SHADOW STEP's landing: the free square beside the target most behind it (its facing). { x, y, behind } or null
+           (nothing free beside it). The caster's own square counts as free. The forecast and the cast read the same. */
+        function ninjaShadowLanding(unit, target) {
+            if (!unit || !target) return null;
+            const f = getUnitFacing(target);
+            let best = null;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const x = target.x + dx, y = target.y + dy;
+                if (!_ninjaFree(x, y, unit.id)) continue;
+                /* the strike travels from (x,y) to the target: its dot with the target's facing (1 = dead behind) */
+                const dot = (-dx * f.dx - dy * f.dy) / Math.hypot(dx, dy);
+                const d = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (!best || dot > best.dot + 1e-6 || (Math.abs(dot - best.dot) <= 1e-6 && d < best.d)) best = { x, y, dot, d };
+            }
+            return best ? { x: best.x, y: best.y, behind: best.dot >= 0.70 } : null;
+        }
+        window.ninjaShadowLanding = ninjaShadowLanding;
+        function _ninjaShadowStep(unit, target, land) {
+            const fx = unit.x, fy = unit.y;
+            unit._ssBehind = !!land.behind;
+            if (fx !== land.x || fy !== land.y) {
+                unit.x = land.x; unit.y = land.y;
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(land.x, land.y, unit.z);
+                unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(land.x - fx) + Math.abs(land.y - fy);
+                animateDisplacement(unit, fx, fy, land.x, land.y, actionMs(260), { escStyle: 'blink' });
+                _ninjaFx('nrShadowStep:blink', land.x, land.y, { fromX: fx, fromY: fy, uid: unit.id });
+                resolveTileArrival(unit, { via: 'self' });
+            }
+            faceStrikeTarget(unit, target);
+            addLog(`🥷 ${_ctName(unit)} steps through the shadows to ${coordLabel(land.x, land.y)}${land.behind ? `, behind ${_ctName(target)}` : `, beside ${_ctName(target)} (nothing free behind it)`}.`);
+        }
         /* 💼 THE TECH CEO (2026-11-16, the new races; mondo added it): ownership of the board's objects. Three `cleanseArea` tile
            casts carry a flag each: `acquire` (every enemy-owned summon, deployed object, trap, bomb, mirror, ward or rune on the
            square now works for the CEO), `disrupt` (every enemy zone or timed terrain over the 3×3 changes hands), `layoffs`
@@ -14326,8 +14444,26 @@
             } catch (e) {}
         }
         /* 🛵 THE RIDE-ALONG (the Delivery Boy): an ally Riding with him gets off on the free square beside him nearest where it
-           got on when he finishes a walk (finishMoveAt). A rider that walks off on its own first just gets off. */
-        function _deliveryDrop(unit, fx, fy) {
+           got on when he finishes a walk (finishMoveAt) or a Doorstep Dash (_runPostEffects, `opts.delayMs` = the dash's slide).
+           A rider that walks off on its own first just gets off. THE POLISH (2026-11-17, mondo: "flesh out their unique spells
+           ... make sure that any new mechanics are tested out and work as intended"): the rider must still be on his back, so
+           one knocked or pulled away from the square he set off from (more than 1 away, any way) falls off where it is; a body
+           pinned to the ground (Rooted / Charmed / Roped / Frozen / Stoneform / Climbing, the move-spell rule) or a colossal one
+           never rides; the hop off starts from HIS square (the renderer drew it on his back for the ride, three-renderer.js
+           THE RIDE-ALONG) and fires 'nrHopOn:drop' (relayed by online.js like every fireGeometry). */
+        const _RIDE_PINNED = ['root', 'charm', 'tethered', 'frozen', 'stoneform', 'climbing', 'exited', 'captured'];
+        function _deliveryRideBlock(a) {
+            if (!a) return 'gone';
+            const k = _RIDE_PINNED.find(s => a.status && a.status[s] > 0);
+            if (k) return moveBlockWord(a) || (STATUS_DEFS[k] && STATUS_DEFS[k].label) || k;
+            if (getUnitDisplaceWeightClass(a) === 'colossal') return 'far too big';
+            return null;
+        }
+        function _deliveryFx(id, x, y, extra) {
+            if (_skipVisuals() || state.phase !== 'battle') return;
+            try { const V = window.ThreeVFXEffects; if (V && typeof V.fireGeometry === 'function') V.fireGeometry(id, x, y, 0, extra || {}); } catch (e) {}
+        }
+        function _deliveryDrop(unit, fx, fy, opts) {
             if (!unit || !Array.isArray(state.units)) return;
             if (unit.race !== 'delivery boy') {
                 if (unit.status && unit.status.riding > 0) clearStatus(unit, 'riding');
@@ -14335,9 +14471,22 @@
             }
             if (!_nrAlive(unit) || (unit.x === fx && unit.y === fy)) return;
             const riders = state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a._rideWithId === unit.id && a.status && a.status.riding > 0);
+            /* finishMoveAt runs as the walk STARTS: the hop off waits for the walk tween to land (like the ledge-drop damage) */
+            const _walkLeft = (!_skipVisuals() && !_bufferingRoundEvents && _walkAnimActive && _walkAnimUnitId === unit.id)
+                ? Math.max(0, _walkAnimEndAt - Date.now()) : 0;
+            const _dropMs = (opts && opts.delayMs) || _walkLeft;
             for (const a of riders) {
                 const ox = a.x, oy = a.y;
                 clearStatus(a, 'riding');
+                if (Math.max(Math.abs(ox - fx), Math.abs(oy - fy)) > 1) {
+                    addLog(`🛵 ${_ctName(a)} was no longer on ${_ctName(unit)}'s back: it stays where it is.`, undefined, undefined, { actor: unit });
+                    continue;
+                }
+                const _blk = _deliveryRideBlock(a);
+                if (_blk) {
+                    addLog(`🛵 ${_ctName(a)} cannot ride along (${String(_blk).toLowerCase()}): it stays where it was.`, undefined, undefined, { actor: unit });
+                    continue;
+                }
                 const sq = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
                     .map(([dx, dy]) => ({ x: unit.x + dx, y: unit.y + dy }))
                     .filter(q => _nrFreeSquare(q.x, q.y))
@@ -14345,12 +14494,48 @@
                 if (!sq[0]) { addLog(`🛵 No room to get off beside ${_ctName(unit)}: ${_ctName(a)} stays where it was.`); continue; }
                 a.x = sq[0].x; a.y = sq[0].y;
                 if (typeof nearestWalkableZ === 'function') a.z = nearestWalkableZ(a.x, a.y, a.z);
-                animateDisplacement(a, ox, oy, a.x, a.y, 320, { leap: true });
+                a._trackTilesMoved = (a._trackTilesMoved || 0) + Math.abs(a.x - ox) + Math.abs(a.y - oy);
+                /* the hop off his back: from his square to the drop square (after the dash's slide, if a dash carried it) */
+                animateDisplacement(a, unit.x, unit.y, a.x, a.y, 320, { leap: true, delayMs: _dropMs });
                 resolveTileArrival(a, { via: 'self' });
-                addLog(`🛵 ${_ctName(a)} hops off ${_ctName(unit)}'s scooter at ${coordLabel(a.x, a.y)}.`, undefined, undefined, { actor: unit });
-                if (!_skipVisuals()) showFloatingTextForUnit(a, '🛵 DROPPED OFF', 'buff', { durationMs: 1000 });
+                addLog(`🛵 ${_ctName(a)} hops off ${_ctName(unit)}'s back at ${coordLabel(a.x, a.y)}.`, undefined, undefined, { actor: unit });
+                _deliveryFx('nrHopOn:drop', a.x, a.y, { fromX: unit.x, fromY: unit.y, owner: a.player, delay: _dropMs + 300 });
+                if (!_skipVisuals()) {
+                    const _ft = () => { if (!a.dead) showFloatingTextForUnit(a, '🛵 DROPPED OFF', 'buff', { durationMs: 1000 }); };
+                    if (_dropMs + 300 > 0) window.setTimeout(_ft, _dropMs + 300); else _ft();
+                }
             }
         }
+        /* 🛵 THIRTY MINUTES OR LESS (the Delivery Boy's capstone, data.js nrThirtyMinutes `rideAlong`): up to `max` allies beside
+           him (any of the 8 squares; the most hurt first) climb on, the Riding status from him, the same ride as Hop On. */
+        function _deliveryLoadList(unit, spell) {
+            const ra = spell && spell.rideAlong;
+            if (!ra || !unit || !Array.isArray(state.units)) return [];
+            return state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a.player === unit.player && !a._isCube && !a._summonStatic
+                    && Math.max(Math.abs(a.x - unit.x), Math.abs(a.y - unit.y)) === 1 && !_deliveryRideBlock(a))
+                .sort((p, q) => (p.hp / Math.max(1, p.maxHp)) - (q.hp / Math.max(1, q.maxHp)))
+                .slice(0, ra.max || 2);
+        }
+        function _deliveryLoadUp(unit, spell) {
+            const list = _deliveryLoadList(unit, spell);
+            for (const a of list) {
+                applyStatusPayload(a, { id: 'riding', duration: 1 }, `${spell.name}: `, unit);
+                _deliveryFx('nrHopOn', a.x, a.y, { fromX: unit.x, fromY: unit.y });
+            }
+            if (list.length) addLog(`🛵 ${list.map(a => _ctName(a)).join(' and ')} ${list.length === 1 ? 'climbs' : 'climb'} on ${_ctName(unit)}'s back.`, undefined, undefined, { actor: unit });
+            return list.length;
+        }
+        window._deliveryLoadList = _deliveryLoadList;
+        /* the square _deliveryDrop would give `rider` if he ended a walk on (x, y) (his own square frees as he leaves it); the
+           CPU's ride planner reads it (ai.js THE RIDE-ALONG) */
+        window._deliveryDropPreview = function (unit, x, y, rider) {
+            if (!unit || !rider || !isInside(x, y)) return null;
+            const sq = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+                .map(([dx, dy]) => ({ x: x + dx, y: y + dy }))
+                .filter(q => isInside(q.x, q.y) && canOccupy(q.x, q.y) && (!unitAt(q.x, q.y) || unitAt(q.x, q.y) === unit))
+                .sort((p, q) => (Math.abs(p.x - rider.x) + Math.abs(p.y - rider.y)) - (Math.abs(q.x - rider.x) + Math.abs(q.y - rider.y)));
+            return sq[0] || null;
+        };
         /* 🙌 THE TITHE (the Televangelist): while his Collection Plate is out, 15% of every heal that lands within 3 of him (on
            either team; never his own heals, never a heal on him) is taken off the heal and goes in his plate (unit._plate).
            Miracle (`spendPlate`) heals the plate on top of its own heal and empties it (spellHealAmountFor + the heal cast). */
@@ -14363,24 +14548,119 @@
             if (cut <= 0) return 0;
             pastor._plate = (pastor._plate || 0) + cut;
             addLog(`🙌 ${_ctName(pastor)} passes the plate: ${cut} HP of the heal on ${_ctName(target)} goes in the collection (${pastor._plate} in the plate).`);
-            if (!_skipVisuals()) showFloatingTextForUnit(pastor, `🙌 +${cut}`, 'buff', { durationMs: 900 });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(pastor, `🙌 PLATE ${pastor._plate}`, 'buff', { durationMs: 900 });   // the running total (the plate has no other read-out)
+                /* THE TELEVANGELIST PASS VFX (2026-11-17): the cut's coins hop from the healed body into the plate (fire() is relayed) */
+                try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('skim', 'nrCollectionPlate', { fromX: target.x, fromY: target.y, tx: pastor.x, ty: pastor.y, cut }); } catch (e) {}
+            }
             return cut;
         }
         /* 📱 GOING VIRAL (the Influencer): a Viral unit shares 30% of every hit it takes with each of its own teammates within 2
            (applyDamageToUnit; the shared hits do not spread again). */
         function _viralShare(target, dmg, opts) {
             if (!(dmg > 0) || !target || !(target.status && target.status.viral > 0) || (opts && opts._viralShare) || !Array.isArray(state.units)) return;
+            state._lastViralHitId = target.id;   // 📱 Ratio reads it: the target was Viral when this hit landed (it may be down now)
             const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && a.player === target.player
                 && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 2);
             if (!mates.length) return;
             const share = Math.max(1, Math.round(dmg * 0.3));
-            for (const a of mates) {
+            /* THE INFLUENCER POLISH (2026-11-17, found in a real CPU match):
+               · the share is a flat 30%: it no longer carries the hitter (its ATK stages, the type matchup, STAB re-applied to a
+                 number that already had them: a 154 share read 347 "super effective"). The hitter is credited the way a DoT
+                 credits its caster (_lastDamageSourceId), so a kill by a share still counts for them.
+               · a multi-hit cast (Ninefold Scratch) shares every hit but writes ONE line a teammate with the total (a sink per
+                 teammate on the cast's own sink, flushed with it), and draws the link once.
+               · the share is drawn (three-vfx-effects.js 'nrGoViral:share'): a pink link from the viral unit to each teammate it
+                 hits, a heart riding it; fired for both seats (fireGeometry is relayed, fog-gated). */
+            const src = (opts && opts.sourceUnit) || null;
+            const sink = (opts && opts.logSink) || null;
+            if (sink && !sink._viral) sink._viral = {};
+            mates.forEach((a, i) => {
+                const ms = sink ? (sink._viral[a.id] || (sink._viral[a.id] = _multiHitLogSink())) : null;
+                if (ms) ms.last = !!sink.last;
+                if (!ms || !ms.hits) _sigVfxGeom('nrGoViral:share', a.x, a.y, 0, { fromX: target.x, fromY: target.y, owner: target.player, delay: i * 90 });
+                if (src && src.player !== a.player) a._lastDamageSourceId = src.id;
                 applyDamageToUnit(a, share, `📱 ${unitDisplayName(target)} went viral: `, {
-                    sourceUnit: (opts && opts.sourceUnit) || null, ignoreArmor: true, damageType: 'dot',
-                    consumeMarked: false, allowMarkBonus: false, noPress: true, _viralShare: true
+                    ignoreArmor: true, damageType: 'dot', typeEffect: 'neutral',
+                    consumeMarked: false, allowMarkBonus: false, noPress: true, _viralShare: true, logSink: ms || undefined
                 });
-            }
+            });
         }
+        /* 📱 RATIO (the Influencer's capstone, `viralSpread`): after the hit, a target that was Viral when it landed spreads the tag
+           to every teammate within `radius` of it (`duration` rounds; a longer Viral already on a teammate is kept). */
+        function _influencerRatioSpread(caster, target, spell) {
+            const vs = spell && spell.viralSpread;
+            if (!vs || !target || !Array.isArray(state.units)) return 0;
+            const was = (target.status && target.status.viral > 0) || state._lastViralHitId === target.id;
+            state._lastViralHitId = null;
+            if (!was) return 0;
+            const r = vs.radius || 2;
+            const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && a.player === target.player
+                && !(a.status && a.status.viral > (vs.duration || 1))
+                && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= r);
+            mates.forEach((a, i) => {
+                applyStatusPayload(a, { id: 'viral', duration: vs.duration || 1 }, `${spell.name} → `, caster);
+                _sigVfxGeom('nrGoViral:share', a.x, a.y, 0, { fromX: target.x, fromY: target.y, owner: target.player, delay: 200 + i * 110, spread: 1 });
+            });
+            if (mates.length) addLog(`📱 ${_ctSp(spell.name)}: the pile-on spreads. ${mates.length} ${mates.length === 1 ? 'teammate' : 'teammates'} of ${_ctName(target)} go${mates.length === 1 ? 'es' : ''} Viral.`);
+            return mates.length;
+        }
+        /* 🤳 FILTER (the Influencer, `filterSwap`): the ally and the nearest ally of another look (race or gender) trade looks. The
+           look is drawn for the other side only (window.ewDrawnUnit: sprites.js portraits + sprites, three-renderer.js models,
+           unitDisplayName for the name); both units wear the `filtered` status. Ids + copies on the units, never objects. */
+        function _influencerFilterPartner(target) {
+            if (!target || !Array.isArray(state.units)) return null;
+            let best = null, bd = 1e9;
+            for (const a of state.units) {
+                if (!_nrAlive(a) || a.id === target.id || a.player !== target.player || !a.race) continue;
+                if (a._isBoss || a.isBoss || a._isCube || a._isSummon || a.summonedBy != null || a._summonerId != null) continue;
+                if (a.race === target.race && (a.gender || 'male') === (target.gender || 'male')) continue;
+                const d = Math.abs(a.x - target.x) + Math.abs(a.y - target.y);
+                if (d < bd || (d === bd && String(a.id) < String(best.id))) { best = a; bd = d; }
+            }
+            return best;
+        }
+        function _influencerFilter(caster, target, spell) {
+            const partner = _influencerFilterPartner(target);
+            if (!partner || !_nrAlive(target)) return false;
+            const dur = ((spell.statusEffects || []).find(e => e && e.id === 'filtered') || {}).duration || 2;
+            if (!(target.status && target.status.filtered > 0)) applyStatusPayload(target, { id: 'filtered', duration: dur }, `${spell.name}: `, caster);
+            applyStatusPayload(partner, { id: 'filtered', duration: dur }, `${spell.name}: `, caster);
+            /* the pair ends together (found in the CPU match: the caster's half, landed on her own turn, outlived the other by a
+               round and two of the same face stood on the board): both take the longer count */
+            const _frF = u => !!(u._stFresh && typeof u._stFresh === 'object' && u._stFresh.filtered === state.round);
+            if (_frF(target) || _frF(partner)) for (const u of [target, partner]) { if (!u._stFresh || typeof u._stFresh !== 'object') u._stFresh = {}; u._stFresh.filtered = state.round; }
+            const _fv = Math.max(target.status.filtered || 0, partner.status.filtered || 0);
+            target.status.filtered = _fv; partner.status.filtered = _fv;
+            const tr = target.race, tg = target.gender || 'male';
+            target._filterLookId = partner.id; target._filterRace = partner.race; target._filterGender = partner.gender || 'male';
+            partner._filterLookId = target.id; partner._filterRace = tr; partner._filterGender = tg;
+            _sigVfxGeom('nrFilter:swap', partner.x, partner.y, 0, { fromX: target.x, fromY: target.y, owner: target.player });
+            /* the names on the line are the real ones: only the caster's side reads it */
+            const _tn = (typeof getRaceLabel === 'function') ? getRaceLabel(tr, tg) : tr;
+            const _pn = (typeof getRaceLabel === 'function') ? getRaceLabel(partner.race, partner.gender) : partner.race;
+            addLog(`🤳 ${_ctSp(spell.name)}: the ${_tn} and the ${_pn} swap faces. The other side sees each as the other for ${dur} rounds.`, null, null, { seats: [caster.player] });
+            if (typeof markDirty === 'function') { markDirty('units'); markDirty('hud'); }
+            return true;
+        }
+        /* the look `unit` is drawn with on the viewer's screen: the unit itself, or (Filtered, seen by the other side) a copy
+           wearing the swapped ally's race, gender and creator look. `viewer` defaults to the local seat. Display only. */
+        function ewDrawnUnit(unit, viewer) {
+            if (!unit || !(unit.status && unit.status.filtered > 0) || !unit._filterRace) return unit;
+            if (typeof window !== 'undefined' && window.EW_NO_FILTER_LOOK) return unit;
+            const vp = viewer != null ? viewer : ((typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1);
+            if (unit.player === vp) return unit;
+            const src = (unit._filterLookId != null && typeof unitFromId === 'function') ? unitFromId(unit._filterLookId) : null;
+            const look = Object.assign({}, unit, { race: unit._filterRace, gender: unit._filterGender || 'male', _spriteOverride: null, _spriteFlipX: unit._spriteFlipX });
+            look.appearance = (src && src.race === unit._filterRace) ? src.appearance : null;
+            look._heroSpriteUrl = (src && src.race === unit._filterRace) ? src._heroSpriteUrl : null;
+            look.name = (src && src.race === unit._filterRace) ? src.name : null;
+            if (src && look.appearance) look._lookId = src.id;   // the portrait studio photographs the swapped ally's own face
+            try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[look.race] && Array.isArray(RACE_PROFILES[look.race].types)) look.types = RACE_PROFILES[look.race].types.slice(); } catch (e) {}
+            look._ewFilterLook = true;
+            return look;
+        }
+        if (typeof window !== 'undefined') window.ewDrawnUnit = ewDrawnUnit;
         /* 🟥 THE RED CARD (the Referee): a card on a unit that already has a Yellow Card (STATUS_DEFS.yellowCard.onApply)
            sends it off: the `exited` status (untargetable, no move, no action) until its next turn starts, with no door;
            window._doorExitReturn's sent-off branch brings it back on the same square. Bosses are never sent off. */
@@ -14407,6 +14687,18 @@
             return _FLORIDA_HEADLINES[_nrHash(String(unit && unit.id) + '|' + (state.round || 0)) % _FLORIDA_HEADLINES.length];
         }
         window._floridaHeadline = _floridaHeadline;
+        /* 📰 the day's paper (11-17 polish): when his turn starts the headline he got is said over his head and in the log, so
+           both seats read which one is live before opening the menu (floating text rides the relay; once a round a unit) */
+        function _floridaTurnStart(unit) {
+            if (!_nrAlive(unit) || unit._fmPaperRound === state.round) return;
+            const own = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(s => s && s.floridaHeadline);
+            if (!own.length) return;
+            unit._fmPaperRound = state.round;
+            const id = _floridaHeadline(unit), sp = own.find(s => s.id === id);
+            const nm = sp ? sp.name : ((typeof RACE_ABILITIES !== 'undefined' && (RACE_ABILITIES['florida man'] || []).find(s => s.id === id)) || {}).name || id;
+            addLog(`📰 TODAY'S HEADLINE for ${_ctName(unit)}: ${nm}${sp ? '' : ' (not in his kit: no headline spell today)'}.`, undefined, undefined, { actor: unit });
+            if (!_skipVisuals() && typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '📰 ' + String(nm).toUpperCase(), sp ? 'buff' : 'debuff', { durationMs: 1500 });
+        }
         /* 🧠 THE FLUCTUATION (the Boltzmann Brain): it never walks or jumps (unitMoveBlockedByStatus: 'Bodiless'); at every
            round end it is somewhere else, a free square 2-4 away picked by its id and the round.
            THE BOLTZMANN BRAIN PASS (2026-11-17):
@@ -14477,9 +14769,123 @@
                 if (!u || !u.race) continue;
                 if (u.race === 'wendigo') _wendigoHunger(u);
                 else if (u.race === 'boltzmann brain') _boltzmannFluctuate(u);
+                else if (u.race === 'haunted doll') _dollCreep(u);
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
             }
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+        }
+        /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
+           moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
+           state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
+           Notes: docs/notes/champions-combat.md "THE HAUNTED DOLL". */
+        /* is `e` looking at the doll? = the doll is in e's front cone (the facing arcs: getAttackArc from the doll is 'front') */
+        function _dollWatchedBy(e, doll) {
+            if (!e || !doll || e.dead || e._dying) return false;
+            if (unitHasStatus(e, 'blind') || unitHasStatus(e, 'sleep') || unitHasStatus(e, 'stun') || unitHasStatus(e, 'exited') || unitHasStatus(e, 'captured')) return false;
+            return getAttackArc(doll, e) === 'front';
+        }
+        window._dollWatchedBy = _dollWatchedBy;
+        /* the square at the target's back (its facing reversed), else any free square beside it farthest from where it looks */
+        function _dollBehindSquare(target, doll) {
+            if (!target) return null;
+            const f = getUnitFacing(target);
+            const bx = target.x - Math.round(f.dx || 0), by = target.y - Math.round(f.dy || 0);
+            if ((bx !== target.x || by !== target.y) && isInside(bx, by) && canOccupy(bx, by) && !unitAt(bx, by)) return { x: bx, y: by };
+            if (doll && bx === doll.x && by === doll.y) return { x: bx, y: by };
+            return null;
+        }
+        window._dollBehindSquare = _dollBehindSquare;
+        /* 🪆 NOBODY'S LOOKING (_nrRoundEnd): no enemy within 5 looking at it → up to 2 cardinal steps toward the nearest enemy, free */
+        function _dollCreep(u) {
+            if (!_nrAlive(u) || u.race !== 'haunted doll') return;
+            if (unitHasStatus(u, 'exited') || unitHasStatus(u, 'captured') || unitMoveBlockedByStatus(u)) return;
+            if (typeof _isClashMode === 'function' && _isClashMode()) return;
+            const foes = getHostileUnits(u.player, u).filter(e => _nrAlive(e) && !unitHasStatus(e, 'exited') && !unitHasStatus(e, 'captured'));
+            if (!foes.length) return;
+            const near = foes.filter(e => Math.abs(e.x - u.x) + Math.abs(e.y - u.y) <= 5);
+            const watcher = near.find(e => _dollWatchedBy(e, u));
+            if (watcher) {
+                if (!_skipVisuals()) showFloatingTextForUnit(u, '👁 WATCHED', 'debuff', { durationMs: 900 });
+                return;
+            }
+            const d2 = (x, y, e) => Math.abs(e.x - x) + Math.abs(e.y - y);
+            const prey = foes.slice().sort((a, b) => d2(u.x, u.y, a) - d2(u.x, u.y, b) || String(a.id).localeCompare(String(b.id)))[0];
+            if (d2(u.x, u.y, prey) <= 1) return;
+            const path = [];
+            let cx = u.x, cy = u.y, cz = u.z ?? 0;
+            for (let step = 0; step < 2; step++) {
+                let best = null;
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = cx + dx, ny = cy + dy;
+                    if (!_nrFreeSquare(nx, ny)) continue;
+                    const nz = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, cz) : cz;
+                    if (Math.abs((nz ?? 0) - cz) > 1) continue;
+                    if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(cx, cy, nx, ny, cz, nz)) continue;
+                    const d = d2(nx, ny, prey);
+                    if (d >= d2(cx, cy, prey)) continue;
+                    if (!best || d < best.d) best = { x: nx, y: ny, z: nz, d };
+                }
+                if (!best) break;
+                path.push({ x: best.x, y: best.y });
+                cx = best.x; cy = best.y; cz = best.z ?? cz;
+                if (best.d <= 1) break;
+            }
+            if (!path.length) return;
+            const fx = u.x, fy = u.y;
+            u.x = cx; u.y = cy; u.z = cz;
+            setUnitFacing(u, prey.x - u.x, prey.y - u.y);
+            if (!_skipVisuals()) {
+                animateDisplacementPath(u, fx, fy, path, 260);
+                _sigVfxGeom('hdCreep', u.x, u.y, path.length, { fromX: fx, fromY: fy, owner: u.player });
+            }
+            resolveTileArrival(u, { via: 'self' });
+            addLog(`🪆 Nobody was looking: ${_ctName(u)} creeps ${path.length} square${path.length !== 1 ? 's' : ''} closer to ${_ctName(prey)}.`);
+        }
+        /* 🪆 Pin Prick (`voodooSelf`): the victim wears Voodoo tied to the doll at the row's share (_procLinks echoes it) */
+        function _dollPin(unit, target, spell) {
+            if (!target || target.dead || target._dying || target.hp <= 0) return;   // a kill hit leaves no status
+            applyStatusPayload(target, { id: 'voodoo', duration: 2, allyId: unit.id, echo: spell.voodooSelf }, `${spell.name}: `, unit);
+            if (unitHasStatus(target, 'voodoo')) addLog(`🪆 ${_ctName(target)} is pinned to ${_ctName(unit)}: ${Math.round(spell.voodooSelf * 100)}% of every hit on the doll comes back on it.`);
+        }
+        /* 🪆 PULL MY STRING: the voice box's line (the id + the round, like the Florida Man's headline) */
+        const _DOLL_LINES = ['play', 'friend', 'hug', 'kill'];
+        function _dollStringLine(unit) {
+            return _DOLL_LINES[_nrHash(String(unit && unit.id) + '|' + (state.round || 0) + '|string') % _DOLL_LINES.length];
+        }
+        window._dollStringLine = _dollStringLine;
+        const _DOLL_SAY = { play: "Let's play!", friend: 'Will you be my friend?', hug: 'Hug me!', kill: "I'm going to kill you." };
+        function _dollPullString(unit, spell) {
+            const cfg = spell.pullString || {};
+            const near = (r) => getHostileUnits(unit.player, unit)
+                .filter(e => _nrAlive(e) && !unitHasStatus(e, 'exited') && !unitHasStatus(e, 'captured') && Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= r)
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) || String(a.id).localeCompare(String(b.id)))[0] || null;
+            let line = _dollStringLine(unit);
+            let foe = line === 'friend' ? near(cfg.charmRange || 3) : line === 'hug' ? near(cfg.hugRange || 4) : line === 'kill' ? near(cfg.killRange || 4) : null;
+            if (line === 'hug' && foe && (foe._isBoss || foe.isBoss || foe._isCube || Math.abs(foe.x - unit.x) + Math.abs(foe.y - unit.y) <= 1)) foe = null;
+            if (line !== 'play' && !foe) line = 'play';
+            const say = _DOLL_SAY[line];
+            addLog(`🪆 ${_ctName(unit)} pulls its string: "${say}"`, undefined, undefined, { actor: unit });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, `“${say}”`, line === 'kill' ? 'damage' : 'buff', { durationMs: 1300 });
+                _sigVfxGeom('nrPullString:' + line, unit.x, unit.y, 0, { owner: unit.player, toX: foe ? foe.x : undefined, toY: foe ? foe.y : undefined });
+            }
+            if (line === 'play') {
+                const amt = Math.round((unit.maxHp || 0) * (cfg.healPct || 0.25));
+                const got = applyHealingToUnit(unit, amt, unit);
+                if (got > 0) addLog(`🪆 ${_ctName(unit)} plays by itself and mends ${got} HP.`);
+            } else if (line === 'friend') {
+                applyStatusPayload(foe, { id: 'charm', duration: 1 }, `${spell.name}: `, unit);
+            } else if (line === 'hug') {
+                const dx = Math.sign(unit.x - foe.x), dy = Math.sign(unit.y - foe.y);
+                const dist = Math.max(Math.abs(unit.x - foe.x), Math.abs(unit.y - foe.y)) - 1;
+                if (dist > 0) resolveForcedSlide(foe, dx, dy, dist, { byUnit: unit, label: `${spell.name}: `, perStepMs: 120, delayMs: actionMs(250) });
+                addLog(`🪆 ${_ctName(unit)} wants a hug: ${_ctName(foe)} is dragged in.`);
+            } else if (line === 'kill') {
+                const sp = spellPowerOf(unit, spell);
+                const killSpell = Object.assign({}, spell, { kind: 'damage', type: 'damage', damageType: 'magic', dmg: cfg.killDmg || 150, statusEffects: [] });
+                _applyAoeDamage(unit, killSpell, [{ x: foe.x, y: foe.y }], (cfg.killDmg || 150) + sp, sp, { rngRange: 30, minDmg: 32 });
+            }
+            markDirty('board', 'hud', 'selectedUnit');
         }
         /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free.
            THE KARATE FROG PASS (2026-11-17): the square comes from frogLeapLanding (the forecast shows the same landing), a
@@ -15056,7 +15462,7 @@
             body.status = {};
             body.statStageMods = [];
             body.ap = 0; body.movesThisTurn = 0;
-            for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId',
+            for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_voodooEcho', '_fearSourceId', '_tetherCasterId',
                 '_spellsUsedThisTurn', '_possessAfter', '_possessAfterSrcId', '_mounted', '_astralBodyId']) delete body[k];
             unit._astralBodyId = body.id;
             unit._astralCord = Math.max(1, cfg.cord || 6) + (Number(unitPassiveValue(unit, 'astralCordBonus')) || 0);   // + Silver Cord
@@ -15095,7 +15501,7 @@
             for (const m of ['_statusSrc', '_stHold', '_stFresh']) {
                 if (body[m] && typeof body[m] === 'object') { unit[m] = Object.assign({}, body[m], unit[m] || {}); delete unit[m].sleep; }
             }
-            for (const k of ['_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId']) if (body[k] != null && unit[k] == null) unit[k] = body[k];
+            for (const k of ['_boundToId', '_voodooAllyId', '_voodooEcho', '_fearSourceId', '_tetherCasterId']) if (body[k] != null && unit[k] == null) unit[k] = body[k];
             if (Array.isArray(body.statStageMods) && body.statStageMods.length) unit.statStageMods = (unit.statStageMods || []).concat(body.statStageMods);
             if (body._lastDamageSourceId && !unit._lastDamageSourceId) unit._lastDamageSourceId = body._lastDamageSourceId;
             _astralMoveCarried(body.id, unit.id);
@@ -15271,7 +15677,7 @@
                 for (const e of state.units) {
                     if (!e || e.dead || e._dying || e.id === target.id) continue;
                     if (e._voodooAllyId !== target.id || !unitHasStatus(e, 'voodoo')) continue;
-                    _echo(e, vdDef.linkEcho || 0.5, e._statusSrc && e._statusSrc.voodoo, 'Voodoo', vdDef.icon || '🪆');
+                    _echo(e, (e._voodooEcho > 0 ? e._voodooEcho : 0) || vdDef.linkEcho || 0.5, e._statusSrc && e._statusSrc.voodoo, 'Voodoo', vdDef.icon || '🪆');   // 🪆 Pin Prick's own share (_voodooEcho)
                 }
             }
         }
@@ -27431,8 +27837,8 @@
             const el = document.createElement('div');
             el.className = 'acam-chrome';
             el.innerHTML = `
-        <div class="acam-bar acam-bar-top"><div class="acam-bar-name"></div></div>
-        <div class="acam-bar acam-bar-bot"></div>
+        <div class="acam-bar acam-bar-top"><div class="acam-news-live">LIVE</div><div class="acam-bar-name"></div></div>
+        <div class="acam-bar acam-bar-bot"><div class="acam-news"><div class="acam-news-row"><span class="acam-news-tag">BREAKING NEWS</span><span class="acam-news-head"></span></div><div class="acam-news-ticker"><span class="acam-news-tick"></span></div></div></div>
         <div class="acam-vignette"></div>
         <div class="acam-speedlines"></div>
         <div class="acam-flash"></div>
@@ -27444,6 +27850,19 @@
             (document.getElementById('game-viewport') || document.body).appendChild(el);
             _acChromeEl = el;
             return el;
+        }
+
+        const _AC_NEWS = {
+            'Gator Toss': 'FLORIDA MAN THROWS ALLIGATOR',
+            'Bath Salts': 'FLORIDA MAN FOUND NAKED ON OVERPASS',
+            'Hurricane Party': 'FLORIDA MAN REFUSES TO EVACUATE',
+            'Breaking News': 'FLORIDA MAN STRIKES AGAIN',
+        };
+        function _acNewsFor(name) {
+            if (!name || !_AC_NEWS[name]) return null;
+            const others = Object.keys(_AC_NEWS).filter(k => k !== name).map(k => _AC_NEWS[k]);
+            const ticker = [...others, 'NOBODY CAN EXPLAIN WHAT HAPPENED NEXT', 'LOCAL MAN MAKES THE NEWS EVERY SINGLE DAY'].join('   ★   ');
+            return { head: _AC_NEWS[name], ticker: ticker + '   ★   ' + ticker };
         }
 
         function showActionCamChrome(opts = {}) {
@@ -27459,6 +27878,18 @@
             if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
             el.classList.remove('light', 'hiding', 'finisher', 'dmg-linger');
             if (!opts.heavy) el.classList.add('light');
+            /* 📰 THE BROADCAST (mondo 2026-11-17: "the black top and bottom bars ... convert those to the breaking news lower
+               third, like an actual broadcast"): the Florida Man's casts and his finisher turn the letterbox into a news
+               broadcast: the top bar a LIVE bug + the spell name, the bottom bar a lower third (BREAKING NEWS tab, the
+               headline, a running ticker) that slides in from the left. Keyed on the shot's name, so the guest's own
+               chrome (the shot is relayed) dresses the same way. styles-cinematic.css "THE BROADCAST". */
+            const _news = _acNewsFor(opts.name);
+            el.classList.toggle('news', !!_news);
+            if (_news) {
+                const h = el.querySelector('.acam-news-head'), t = el.querySelector('.acam-news-tick');
+                if (h) h.textContent = _news.head;
+                if (t) { t.textContent = _news.ticker; t.classList.remove('run'); void t.offsetWidth; t.classList.add('run'); }
+            }
             // Heal-flavored shots (heals / potions / revives) restyle the
             // corner readout green and re-label it — the healing twin of the
             // TOTAL DMG counter, fed by applyHealingToUnit via
@@ -41892,9 +42323,12 @@
             sink.hits++;
             sink.total += Math.max(0, dmg | 0);
             if (!sink.note && typeNote) sink.note = typeNote;
-            if (sink.last || (target.hp | 0) <= 0 || target.dead || target._dying) _multiHitLogFlush(sink);
+            if (sink.last || (target.hp | 0) <= 0 || target.dead || target._dying) _multiHitLogFlush(sink, true);
         }
-        function _multiHitLogFlush(sink) {
+        function _multiHitLogFlush(sink, keepShares) {
+            /* 📱 the viral shares' lines (_viralShare): a share sink flushes itself on the cast's last hit; the caller's own flush
+               (after the hit returns) writes any a cast that ended early left open. Never from inside the hit: its shares come after. */
+            if (sink && sink._viral && !keepShares) Object.keys(sink._viral).forEach(k => _multiHitLogFlush(sink._viral[k]));
             if (!sink || sink.done || !sink.hits || !sink.target) return;
             sink.done = true;
             const t = sink.target;
@@ -41932,6 +42366,11 @@
             // ── 🎩 Switcheroo: a Magician's box takes the next enemy hit on an ally ──
             if (damage > 0 && opts.sourceUnit && !opts._chivalryRedirected && _magicianSwitcheroo(target, opts.sourceUnit)) {
                 /* a blow on an empty box is a whiff: no press refund (the Protect rule) */
+                if (_pressDamageCollector && !opts.noPress && opts.sourceUnit.id === _pressDamageCollector.casterId) _pressDamageCollector.hits.push({ evaded: true });
+                return false;
+            }
+            // ── 🥷 Kawarimi: a Substituted ninja leaves a log; the rest of that same attack keeps hitting the log ──
+            if (damage > 0 && opts.sourceUnit && !opts._chivalryRedirected && _ninjaKawarimi(target, opts.sourceUnit)) {
                 if (_pressDamageCollector && !opts.noPress && opts.sourceUnit.id === _pressDamageCollector.casterId) _pressDamageCollector.hits.push({ evaded: true });
                 return false;
             }
@@ -43016,6 +43455,7 @@
         /* A charge (chargeToTarget rows, Brave Charge…): the open tile beside the target nearest the caster. */
         function chargeLandingTile(unit, target, spell) {
             if (spell && spell.chessPiece) return chessStrikeSquare(unit, spell, target);   // ♟ the square before it down the piece's line
+            if (spell && spell.blinkBehind) { const _bb = _dollBehindSquare(target, unit); if (_bb) return _bb; }   // 🪆 Look Behind You: the square at its back
             const adj = [
                 { x: target.x - 1, y: target.y }, { x: target.x + 1, y: target.y },
                 { x: target.x, y: target.y - 1 }, { x: target.x, y: target.y + 1 }
@@ -43876,7 +44316,7 @@
                 } else target = enemyAt(x, y, z);
                 if (!target) return;
                 const dt = spell.damageType || 'magic';
-                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor, noRangeMult: !!spell.chessPiece });   // ♟ a piece strikes in person: no falloff
+                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor, noRangeMult: !!spell.chessPiece || !!spell.blinkBehind });   // ♟ a piece strikes in person: no falloff
                 /* the charge lands first when the cast plays as a charge (doSpell's own test) — the hit is then from beside */
                 const chargeFirst = chargeStrikesFirst(unit, spell, target);
                 const _clash = _isClashMode();
@@ -43902,7 +44342,8 @@
                         execMult: (spell.executeBonusPct && target.maxHp > 0 && (target.hp / target.maxHp) < 0.5) ? 1 + spell.executeBonusPct : null,
                         waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : null,
                         /* the ambush ×1.5: doSpell stamps _sneakStrikeBonus only at the cast, from the cloak the caster wears now */
-                        sneakMult: (spell.sneakBonus && (unit._sneakStrikeBonus || unitHasStatus(unit, 'invisible'))) ? 1.5 : null
+                        sneakMult: (spell.sneakBonus && (unit._sneakStrikeBonus || unitHasStatus(unit, 'invisible'))) ? 1.5 : null,
+                        backMult: (spell.blinkBehind && (ninjaShadowLanding(unit, target) || {}).behind) ? FACING_BACK_DMG_MULT : null   // 🥷 Shadow Step lands behind its target
                     }).dmg;
                     const [m, l, hgh] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32);
                     const _hp0 = target.hp;
@@ -49464,6 +49905,8 @@
             if ((spell.kind === 'pull' || spell.kind === 'swap') && spell.allyOnly && u.id === unit.id) return false;
             /* 💰 `noSelf` (THE BANKER PASS 2026-11-16: Line of Credit): the cast only takes another unit, never the caster */
             if (spell.noSelf && u.id === unit.id) return false;
+            /* 🪆 `unwatched` (Look Behind You): only a unit that is not looking at the doll (_dollWatchedBy) */
+            if (spell.unwatched && !u.dead && u.id !== unit.id && _dollWatchedBy(u, unit)) return false;
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
@@ -53509,6 +53952,12 @@
 
         function unitDisplayName(unit) {
             if (!unit) return 'Unit';
+            /* 🤳 FILTER: a filtered unit is named as the ally it swapped faces with, on every screen and in every log line
+               (the log is written once on the host and read by both seats, so the real name would give it away) */
+            if (unit.status && unit.status.filtered > 0 && unit._filterRace && !(typeof window !== 'undefined' && window.EW_NO_FILTER_LOOK)) {
+                const _fs = (unit._filterLookId != null && typeof unitFromId === 'function') ? unitFromId(unit._filterLookId) : null;
+                unit = Object.assign({}, unit, { race: unit._filterRace, gender: unit._filterGender || 'male', name: (_fs && _fs.race === unit._filterRace) ? _fs.name : null });
+            }
             const mode = state.nametagMode || 'race';
             // THE JOBS REMOVAL (the user 2026-09-27): the 'job' nametag mode showed unit.cls — there is no job, and the
             // neutral class is never shown, so a stale 'job' setting reads as 'race'.
@@ -64365,6 +64814,7 @@
                     window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo) ? 0 : 900);
                     return;
                 }
+                if (nextUnit.race === 'florida man' || (nextUnit.spells || []).some(sp => sp && sp.floridaHeadline)) { try { _floridaTurnStart(nextUnit); } catch (e) {} }   // 📰 today's headline
 
                 /* 😱 Feared (CHAMP REWORK Phase 4, STATUS_DEFS fear): the
                    activation is the flight — one engine-driven move away from
@@ -82223,6 +82673,16 @@
                     return 0;
                 }
             }
+            /* 🪆 `unwatched` (Look Behind You): a target looking at the doll is refused before any MP, AP or cooldown is spent */
+            if (spell.unwatched) {
+                const _uwT = unitAt(x, y, z) || unitAt(x, y);
+                if (_uwT && _uwT.id !== unit.id && !_uwT.dead && _dollWatchedBy(_uwT, unit)) {
+                    addLog(`${_ctName(_uwT)} is watching — ${_ctSp(spell.name)} needs it to look away.`, _clickSeat());
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             /* 💰 `noSelf` (THE BANKER PASS 2026-11-16): a direct call aimed at the caster's own square is refused before any
                MP, AP or cooldown is spent (the lists already leave the caster out, spellTargetUsableOn) */
             if (spell.noSelf) {
@@ -82779,6 +83239,19 @@
                     window.setTimeout(() => {
                         _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                     }, impactDelay);
+                } else if (spell.blinkBehind) {
+                    /* 🥷 SHADOW STEP: the blink first, then the strike from the square beside the target */
+                    const _ssLand = ninjaShadowLanding(unit, target);
+                    if (!_ssLand) {
+                        addLog(`🥷 There is no free square beside ${_ctName(target)} to step into.`, _clickSeat());
+                        playErrorSfx();
+                        return 0;
+                    }
+                    _ninjaShadowStep(unit, target, _ssLand);
+                    const _ssSpell = Object.assign({}, spell, { _animOverride: { travel: 'strikeLeap' } });
+                    completionDelay = executeSpellAnimation(
+                        unit, _ssSpell, target, { x, y },
+                        effectiveSpellCost, spellPower, finishAction, spellApCost);
                 } else if (chargeStrikesFirst(unit, spell, target)) {
                     // Charge-to-target melee (Brave Charge, …): rush the gap in
                     // third-person and strike on arrival, following the caster.
@@ -82800,6 +83273,10 @@
                 panelFocusTarget = _healResult.target;
                 const _ht = _healResult.target;
                 const { amount: healAmount, preScaled: _healPreScaled } = spellHealAmountFor(unit, spell, _ht);   // THE SUPPORT FORECAST reads the same
+                /* THE TELEVANGELIST PASS VFX (2026-11-17): Miracle's plate pours out of his hand and lands on the ally as the heal does */
+                if (spell.spendPlate && unit._plate > 0 && !_skipVisuals()) {
+                    try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('payout', spell.id, { fromX: unit.x, fromY: unit.y, tx: _ht.x, ty: _ht.y, plate: unit._plate, ms: Math.max(300, _healResult.applyAt || 0) }); } catch (e) {}
+                }
                 // The HP lands when the gift ARRIVES (support cinematic beat 2)
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
@@ -82855,12 +83332,40 @@
                 completionDelay = Math.max(completionDelay, _shResult.completionDelay);
             } else if (spell.kind === 'buff') {
                 /* 🛟 Three Whistles with nobody to pull in is refused before anything is spent */
+                /* 🤳 Filter with nobody of another look to swap faces with is refused before anything is spent */
+                if (spell.filterSwap) {
+                    const _flT = unitAt(x, y, z) || unitAt(x, y);
+                    if (_flT && isAllyUnit(_flT, unit) && !_influencerFilterPartner(_flT)) {
+                        if (!_silentReject) {
+                            addLog(`${_ctSp(spell.name)}: no ally of another race to swap faces with.`, _clickSeat());
+                            playErrorSfx();
+                        }
+                        return 0;
+                    }
+                }
                 if (spell.massRescue && !_lifeguardRescueList(unit, spell).length) {
                     if (!_silentReject) {
                         addLog(`${_ctSp(spell.name)}: no ally within ${spell.massRescue.radius || 4} is under ${Math.round((spell.massRescue.hpPct || 0.5) * 100)}% HP.`, _clickSeat());
                         playErrorSfx();
                     }
                     return 0;
+                }
+                /* 🛵 Thirty Minutes or Less with nobody beside him to carry is refused before anything is spent */
+                if (spell.rideAlong && !_deliveryLoadList(unit, spell).length) {
+                    if (!_silentReject) {
+                        addLog(`${_ctSp(spell.name)}: no ally beside ${_ctName(unit)} can climb on.`, _clickSeat());
+                        playErrorSfx();
+                    }
+                    return 0;
+                }
+                /* 🛵 Hop On: a body pinned to the ground (Rooted, Frozen, Roped...) or a colossal one cannot ride */
+                if (spell.statusEffects && spell.statusEffects.some(se => se && se.id === 'riding')) {
+                    const _hoT = unitAt(x, y, z) || unitAt(x, y);
+                    const _hoBlk = _hoT && _hoT.player === unit.player ? _deliveryRideBlock(_hoT) : null;
+                    if (_hoBlk) {
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: ${_ctName(_hoT)} cannot ride along (${String(_hoBlk).toLowerCase()}).`, _clickSeat()); playErrorSfx(); }
+                        return 0;
+                    }
                 }
                 // Phase 4 migration: buff uses ally support pipeline
                 const _buffResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
@@ -82950,6 +83455,9 @@
                     if (spell.spawnDecoy && !unit.dead) _spawnCasterDecoy(unit, spell);
                     if (spell.timedStatBonus) _applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft (the Quickened status)
                     if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
+                    if (spell.pullString && !unit.dead) _dollPullString(unit, spell);   // 🪆 Pull My String
+                    if (spell.rideAlong && !unit.dead) _deliveryLoadUp(unit, spell);   // 🛵 Thirty Minutes or Less
+                    if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');
                     renderIfDirty();
@@ -84910,6 +85418,13 @@
                        never read the row's statusEffects. They land on an ENEMY partner only. */
                     if (spell.statusEffects && spell.statusEffects.length && isEnemyUnit(target, unit) && !target.dead) {
                         applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    }
+                    /* 🪆 Play With Me (`faceAway`, the Haunted Doll): the partner lands with its back to the doll (the facing is real and
+                       state-synced: Nobody's Looking and Look Behind You read it) */
+                    if (spell.faceAway && !target.dead) {
+                        setUnitFacing(target, target.x - unit.x, target.y - unit.y);
+                        setUnitFacing(unit, target.x - unit.x, target.y - unit.y);
+                        addLog(`🪆 ${_ctName(target)} turns round, and the doll is behind it.`);
                     }
 
                     if (!state.cameraDisabled && camera._cineShotId == null) {

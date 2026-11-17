@@ -3498,6 +3498,56 @@
 }
 .acam-chrome:not(.light) .acam-spell-name { display: none; }
 
+/* 📰 THE BROADCAST (mondo 2026-11-17, the Florida Man): his casts + his finisher turn the letterbox into a TV news broadcast.
+   battle.js _acNewsFor sets `.news` and the text. Top bar: no black, a red LIVE bug + the spell name. Bottom bar: a lower third
+   (red BREAKING NEWS tab, the headline on white, a navy ticker running under it) that slides in from the left, set in from the
+   frame's edges like a real one. The yield logic (_acYield*) reads the bar's own rect, so a number under it still steps aside. */
+.acam-news, .acam-news-live { display: none; }
+.acam-chrome.news .acam-bar { display: block; }
+.acam-chrome.news .acam-spell-name { display: none; }
+.acam-chrome.news .acam-bar-top { background: #0c1a3a; box-shadow: inset 0 -3px 0 #d0101e; }   /* still hides the scoreboard, as the black bar did */
+.acam-chrome.news .acam-news-live {
+    display: block; position: absolute; left: 3.5%; top: 50%; transform: translateY(-50%);
+    background: #d0101e; color: #fff; font: 900 clamp(11px, 2.2vh, 18px)/1 Impact, 'Arial Black', sans-serif;
+    letter-spacing: .12em; padding: .35em .6em .3em 1.5em; border-radius: 2px;
+}
+.acam-chrome.news .acam-news-live::before {
+    content: ''; position: absolute; left: .55em; top: 50%; width: .5em; height: .5em; margin-top: -.25em; border-radius: 50%;
+    background: #fff; animation: acamLiveBlink 1s steps(2, start) infinite;
+}
+@keyframes acamLiveBlink { to { visibility: hidden; } }
+.acam-chrome.news .acam-bar-name {
+    left: calc(3.5% + clamp(70px, 9vh, 110px)); border-left-color: #d0101e;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, .9);
+    font-family: 'Arial Black', Impact, sans-serif; letter-spacing: .06em;
+}
+.acam-chrome.news .acam-bar-bot {
+    left: 3%; right: 18%; bottom: 5%; height: auto; background: none;
+    transform: translateX(-115%); transition: transform .5s cubic-bezier(.22, 1, .36, 1);
+}
+.acam-chrome.news.active .acam-bar-bot { transform: translateX(0); }
+.acam-chrome.news .acam-news { display: flex; flex-direction: column; box-shadow: 0 4px 14px rgba(0, 0, 0, .55); }
+.acam-news-row { display: flex; align-items: stretch; }
+.acam-news-tag {
+    flex: none; display: flex; align-items: center; background: #d0101e; color: #fff;
+    font: 900 clamp(13px, 2.9vh, 26px)/1 Impact, 'Arial Black', sans-serif; letter-spacing: .06em;
+    padding: .45em .7em; white-space: nowrap;
+}
+.acam-news-head {
+    flex: 1 1 auto; min-width: 0; display: flex; align-items: center; background: #f4f4f2; color: #0c1a3a;
+    font: 900 clamp(14px, 3.4vh, 32px)/1.1 'Arial Black', 'Helvetica Neue', Arial, sans-serif; text-transform: uppercase;
+    padding: .3em .7em; overflow-wrap: anywhere;
+}
+.acam-news-ticker { position: relative; overflow: hidden; background: #0c1a3a; height: clamp(16px, 3vh, 26px); }
+.acam-news-tick {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%); white-space: nowrap; color: #ffd84a; padding-left: 1em;
+    font: 700 clamp(10px, 1.9vh, 16px)/1 Arial, sans-serif; letter-spacing: .04em;
+}
+.acam-news-tick.run { animation: acamTicker 30s linear infinite; }
+/* the text is written twice (battle.js _acNewsFor): half its width round is one seamless loop, readable from the first frame */
+@keyframes acamTicker { from { transform: translate(0, -50%); } to { transform: translate(-50%, -50%); } }
+@media (prefers-reduced-motion: reduce) { .acam-news-tick.run { animation: none; } }
+
 /* ── Edge darkening: the frame dims around the actors ── */
 .acam-vignette {
     position: absolute;

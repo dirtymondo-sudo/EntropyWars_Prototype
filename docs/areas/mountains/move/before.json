@@ -1,0 +1,1740 @@
+{
+ "rooms": [
+  "site_prebuilt_shasta_mountains"
+ ],
+ "plots": {
+  "The Ski Lodge": {
+   "props": {
+    "chimney_smoke": 1,
+    "hearth_fire": 1,
+    "antler_trophy": 1,
+    "firewood_stack": 2,
+    "chesterfield_sofa": 1,
+    "psx_coffee_table_1": 1,
+    "fur_rug": 1,
+    "xmas_cocoa": 4,
+    "xmas_cocoa_2": 1,
+    "wingback_chair": 2,
+    "psx_armchair_1": 1,
+    "table_lamp": 1,
+    "psx_glass_bottle_1": 5,
+    "psx_glass_bottle_2": 5,
+    "xmas_champagne": 4,
+    "bar_stool": 5,
+    "xmas_punch": 1,
+    "cash_register": 1,
+    "beer_taps": 1,
+    "stock_pots": 1,
+    "psx_dinner_table_1": 4,
+    "xmas_cookies": 1,
+    "psx_chair_mp_3": 16,
+    "xmas_punch_2": 1,
+    "xmas_bake": 1,
+    "xmas_carvery": 1,
+    "locker": 4,
+    "locker_bench": 1,
+    "scarf_rack": 1,
+    "rug_office": 1,
+    "arcade_cabinet": 1,
+    "pinball_machine": 1,
+    "jukebox": 1,
+    "pool_table": 1,
+    "air_hockey_table": 1,
+    "dartboard": 1,
+    "trophy_case": 1,
+    "xmas_tree": 1,
+    "xmas_gift": 1,
+    "xmas_gift_2": 1,
+    "xmas_gift_3": 1,
+    "notice_board": 1,
+    "wall_clock": 1,
+    "brochure_rack": 1,
+    "xmas_wreath": 1,
+    "xmas_garland": 1,
+    "painting_landscape": 2,
+    "painting_seascape": 1,
+    "espresso_machine": 1,
+    "coffee_maker": 1,
+    "footlocker": 1,
+    "ski_rack": 2,
+    "ski_boots": 3,
+    "snowshoes": 1,
+    "claw_machine": 1,
+    "chess_set_game": 1,
+    "psx_carpet_mp_1": 1,
+    "ticket_booth": 1,
+    "rope_stanchion": 2,
+    "campfire": 1,
+    "park_bench": 2,
+    "safety_netting": 3,
+    "generator": 1,
+    "cable_drum": 1,
+    "pa_speaker": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "wrapped_pallet": 1,
+    "psx_wooden_crate_2": 1,
+    "psx_wooden_crate_5": 1,
+    "hand_truck": 1,
+    "metal_trash_can": 1,
+    "lantern_post": 4,
+    "axe_chopping_block": 1,
+    "hot_tub": 1,
+    "wooden_barrel": 1,
+    "snow_heap": 1,
+    "string_lights": 6
+   },
+   "features": {
+    "texbuilding#mtn:lodge": 1,
+    "wall": 8,
+    "arch#mtn:lodge:look": 1,
+    "arch#mtn:liftBottom": 1
+   },
+   "doors": {
+    "lift_bottom": 1
+   },
+   "natives": {}
+  },
+  "The Rental Hut": {
+   "props": {
+    "cash_register": 1,
+    "brochure_rack": 1,
+    "snowboard": 10,
+    "skateboard": 4,
+    "ski_rack": 2,
+    "tool_chest": 1,
+    "tool_pegboard": 1,
+    "locker": 2,
+    "locker_bench": 1,
+    "key_rack": 1,
+    "wall_clock": 1,
+    "scarf_rack": 1,
+    "rug_office": 1,
+    "ski_boots": 3,
+    "sunglasses_spinner": 1,
+    "footlocker": 1,
+    "xmas_snowman": 1,
+    "safety_netting": 6,
+    "metal_trash_can": 1,
+    "lantern_post": 2,
+    "piste_groomer": 1,
+    "snowmobile": 1,
+    "snow_heap": 2
+   },
+   "features": {
+    "texbuilding#mtn:rental": 1,
+    "wall": 7,
+    "arch#mtn:rental:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Top Station": {
+   "props": {
+    "radio_console": 1,
+    "field_radio": 1,
+    "xmas_cocoa_2": 1,
+    "table_lamp": 1,
+    "psx_chair_mp_3": 1,
+    "wood_stove": 1,
+    "kettle": 1,
+    "chimney_smoke": 1,
+    "firewood_stack": 1,
+    "hospital_bed": 1,
+    "fire_extinguisher": 1,
+    "stretcher": 1,
+    "ice_axe": 1,
+    "backpack": 1,
+    "locker_bench": 2,
+    "notice_board": 1,
+    "wall_clock": 1,
+    "railway_lantern": 1,
+    "rug_office": 1,
+    "map_table": 1,
+    "breaker_panel": 1,
+    "punch_clock": 1,
+    "gauge_board": 1,
+    "rotary_phone": 1,
+    "item_binoculars": 1,
+    "psx_walkie_talkie_1": 1,
+    "psx_bandage_mp_1": 1,
+    "footlocker": 1,
+    "coin_telescope": 1,
+    "park_bench": 1,
+    "pa_speaker": 1,
+    "xmas_snowman_3": 1,
+    "psx_wooden_crate_3": 1,
+    "psx_metal_barrel_mp_0": 1,
+    "lantern_post": 2,
+    "snowmobile": 1,
+    "rescue_sled": 1,
+    "trail_sign": 1,
+    "weather_mast": 1,
+    "cairn": 1,
+    "snow_heap": 2
+   },
+   "features": {
+    "texbuilding#mtn:topstation": 1,
+    "wall": 4,
+    "tree:pine": 3,
+    "tree:xmas_snow_pine_3": 1,
+    "arch#mtn:topstation:look": 1,
+    "arch#mtn:liftTop": 1,
+    "arch#mtn:liftLine": 1,
+    "arch#mtn:runPipe": 1
+   },
+   "doors": {
+    "lift_top": 1
+   },
+   "natives": {}
+  },
+  "The Temple": {
+   "props": {
+    "god_statue": 1,
+    "stone_altar": 1,
+    "tripod_bowl": 4,
+    "angel_statue": 2,
+    "marble_bust": 4,
+    "greek_couch": 1,
+    "lyre": 1,
+    "laurel_wreath": 1,
+    "oil_lamp": 1,
+    "lectern": 1,
+    "votive_stand": 1,
+    "giant_hourglass": 1,
+    "greek_amphora": 3,
+    "stone_urn": 3,
+    "candelabra": 2,
+    "lion_statue": 2,
+    "white_cloud": 1
+   },
+   "features": {
+    "texbuilding#mtn:temple": 1,
+    "wall": 29,
+    "arch#mtn:temple:look": 1,
+    "arch#mtn:oly:fire:cella:-1": 1,
+    "arch#mtn:oly:fire:cella:1": 1,
+    "arch#mtn:oly:pl:P11-00:3:9": 1,
+    "arch#mtn:oly:pl:P11-00:8:9": 1,
+    "arch#mtn:oly:fire:P11-00:3:9": 1,
+    "arch#mtn:oly:fire:P11-00:8:9": 1
+   },
+   "doors": {
+    "link_lodge_olympus": 1
+   },
+   "natives": {
+    "seraphim": 1
+   }
+  },
+  "The Warming Hut": {
+   "props": {
+    "hearth_fire": 1,
+    "locker_bench": 1,
+    "rocking_chair": 1,
+    "fur_rug": 1,
+    "psx_wooden_crate_2": 2,
+    "wooden_bucket": 1,
+    "cot": 2,
+    "footlocker": 2,
+    "psx_pillow_mp_1": 2,
+    "psx_carpet_mp_1": 1,
+    "scarf_rack": 1,
+    "hook_rail": 1,
+    "psx_table_large_2": 1,
+    "psx_chair_mp_3": 3,
+    "xmas_cocoa": 2,
+    "psx_open_book_mp_1": 1,
+    "railway_lantern": 1,
+    "kettle": 1,
+    "backpack": 1,
+    "snowshoes": 2,
+    "ice_axe": 1,
+    "kitchen_range": 1,
+    "stock_pots": 1,
+    "psx_shelf_mp_5": 1,
+    "psx_canned_food_mp_1": 2,
+    "turnout_gear_rack": 1,
+    "field_radio": 1,
+    "psx_supply_crate_1": 1,
+    "notice_board": 1,
+    "map_table": 1,
+    "brazier": 1,
+    "firewood_stack": 2,
+    "icicles": 4,
+    "chimney_smoke": 1,
+    "outhouse": 1,
+    "fallen_log": 1,
+    "trail_sign": 1,
+    "lantern_post": 2,
+    "axe_chopping_block": 1,
+    "ski_rack": 1,
+    "snowmobile": 1,
+    "kennel": 1,
+    "snow_heap": 1,
+    "snow_sled": 1,
+    "dog": 1,
+    "xmas_snowman_3": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "hw_shovel": 1
+   },
+   "features": {
+    "texbuilding#mtn:hut": 1,
+    "arch#mtn:hut:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Pass Gate": {
+   "props": {
+    "hearth_fire": 1,
+    "cauldron": 1,
+    "rocking_chair": 1,
+    "psx_bed_1": 1,
+    "footlocker": 1,
+    "fur_rug": 1,
+    "kettle": 1,
+    "snowshoes": 1,
+    "psx_table_large_2": 1,
+    "psx_chair_mp_3": 1,
+    "psx_open_book_mp_1": 1,
+    "table_lamp": 1,
+    "coffee_mug": 1,
+    "key_rack": 1,
+    "rifle_rack": 1,
+    "scarf_rack": 1,
+    "psx_wooden_crate_2": 1,
+    "timber_gate": 2,
+    "hw_stone_3": 1,
+    "psxg_rock_2": 1,
+    "trail_sign": 1,
+    "railway_lantern": 1,
+    "cave_torch": 1,
+    "brazier": 1,
+    "icicles": 4,
+    "chimney_smoke": 1,
+    "hitching_rail": 1,
+    "horse_brown": 1,
+    "hw_straw": 1,
+    "lantern_post": 2,
+    "psx_metal_barrel_mp_0": 1,
+    "psx_wooden_crate_4": 1,
+    "hw_shovel": 1,
+    "xmas_snowman_2": 1,
+    "meshy_sandbags": 1,
+    "crow": 1
+   },
+   "features": {
+    "texbuilding#mtn:gatehouse": 1,
+    "arch#mtn:gatehouse:look": 1,
+    "arch#mtn:passgate": 1
+   },
+   "doors": {
+    "pass": 1
+   },
+   "natives": {}
+  },
+  "The Ridge": {
+   "props": {
+    "cot": 2,
+    "radio_console": 1,
+    "psx_supply_crate_1": 3,
+    "psx_jerrycan_1": 2,
+    "psx_metal_barrel_mp_0": 1,
+    "psx_bandage_mp_1": 1,
+    "psx_pills_bottle_1": 1,
+    "item_flare_gun": 1,
+    "fire_extinguisher": 1,
+    "stretcher": 1,
+    "sleeping_bag": 1,
+    "backpack": 1,
+    "ice_axe": 1,
+    "hw_stone_4": 1,
+    "eagle": 1,
+    "psxg_rock_2": 1,
+    "cave_torch": 1,
+    "cross": 1,
+    "bell_frame": 1,
+    "raven_perch": 1,
+    "snowshoes": 1,
+    "psxg_dead_bush_1": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "texbuilding#mtn:shelter": 1,
+    "rail:ranch": 1,
+    "arch#mtn:shelter:look": 1,
+    "arch#mtn:pole:P05-00:5:3": 1,
+    "arch#mtn:pole:P05-00:8:3": 1,
+    "arch#mtn:pole:P05-00:11:3": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Frozen Tarn": {
+   "props": {
+    "wood_stove": 1,
+    "kettle": 1,
+    "psx_chair_mp_1": 3,
+    "wooden_bucket": 2,
+    "psx_fish_skeleton_mp_1": 2,
+    "lobster_traps": 2,
+    "beach_cooler": 2,
+    "footlocker": 1,
+    "fishing_net_wall": 1,
+    "ice_fishing_hole": 2,
+    "icicles": 2,
+    "chimney_smoke": 1,
+    "canvas_tent": 1,
+    "drying_fish": 1,
+    "fishing_rod": 2,
+    "oars": 1,
+    "river_fish": 2,
+    "ice_block": 2,
+    "campfire": 1,
+    "sea_chest": 1,
+    "rowboat": 1
+   },
+   "features": {
+    "texbuilding#mtn:icehut": 1,
+    "arch#mtn:icehut:look": 1,
+    "arch#mtn:tarn": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The High Pass": {
+   "props": {
+    "cairn": 2,
+    "prayer_flags": 4,
+    "brazier": 2,
+    "menhir": 1,
+    "cave_stone": 1,
+    "sarsen": 1,
+    "stone_urn": 1,
+    "votive_stand": 1,
+    "lit_candle": 2,
+    "gong": 1,
+    "milestone": 1,
+    "snow_heap": 1,
+    "psxg_rock_1": 2,
+    "psxg_rock_2": 3,
+    "psxg_rock_3": 2,
+    "psxg_rock_4": 1,
+    "crow": 1,
+    "psxg_stepping_stone_1": 1,
+    "psxg_stepping_stone_2": 1
+   },
+   "features": {
+    "arch#mtn:highpass": 1
+   },
+   "doors": {},
+   "natives": {
+    "yeti": 1
+   }
+  },
+  "The Switchbacks": {
+   "props": {
+    "signpost": 1,
+    "hw_stone_5": 1,
+    "psxg_rock_1": 1,
+    "campfire": 1,
+    "rescue_sled": 1,
+    "stretcher": 1,
+    "pickaxe": 1,
+    "ice_axe": 1,
+    "sleeping_bag": 1,
+    "mountain_goat": 1,
+    "meshy_rope": 1,
+    "psx_supply_crate_1": 1,
+    "psx_jerrycan_1": 1,
+    "psxg_dead_tree_2": 1,
+    "dead_snag": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_rock_3": 1,
+    "yellow_pole": 1
+   },
+   "features": {
+    "rail:wood_fence": 1,
+    "arch#mtn:wayshelter": 1,
+    "arch#mtn:pole:P06-01:4:6": 1,
+    "arch#mtn:pole:P06-01:2:7": 1,
+    "arch#mtn:pole:P06-01:6:7": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ridge, west": {
+   "props": {
+    "flag_pole": 1,
+    "weather_mast": 1,
+    "mountain_goat": 1,
+    "brass_telescope": 1,
+    "hw_stone_2": 1,
+    "psxg_rock_3": 1,
+    "brazier": 1,
+    "park_bench": 1,
+    "psxg_dead_tree_1": 1,
+    "psxg_dead_bush_2": 1,
+    "crow": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "arch#mtn:lookout": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ridge, east": {
+   "props": {
+    "lattice_pylon": 1,
+    "windsock": 1,
+    "dish": 1,
+    "psxg_rock_1": 1,
+    "cable_drum": 1,
+    "gas_cylinder_rack": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "psxg_dead_bush_2": 1
+   },
+   "features": {
+    "arch#mtn:mast": 1,
+    "arch#mtn:pole:P06-00:2:3": 1,
+    "arch#mtn:pole:P06-00:5:3": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Rope Bridge": {
+   "props": {
+    "rope_bridge": 1,
+    "signpost": 1,
+    "meshy_rope": 1,
+    "lantern_post": 1,
+    "psx_wooden_crate_1": 1,
+    "psx_supply_crate_1": 1
+   },
+   "features": {
+    "rail:ranch": 4,
+    "arch#mtn:bridgeboard": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Sleigh Bend": {
+   "props": {
+    "brazier": 1,
+    "sleigh": 2,
+    "hw_straw": 1,
+    "hw_straw_2": 1,
+    "xmas_snowman": 1,
+    "hitching_rail": 1,
+    "reindeer": 2,
+    "snow_sled": 1,
+    "milestone": 1,
+    "xmas_gift": 1,
+    "money_sacks": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "arch#mtn:sleighshed": 1,
+    "arch#mtn:sleightracks": 1
+   },
+   "doors": {},
+   "natives": {
+    "yeti": 1
+   }
+  },
+  "The Tree Line, west": {
+   "props": {
+    "firewood_stack": 2,
+    "axe_chopping_block": 1,
+    "fallen_log": 1,
+    "dead_snag": 1,
+    "canvas_tent": 1,
+    "bear": 1,
+    "owl_perched": 1,
+    "campfire": 1,
+    "wolf": 3,
+    "skull": 1,
+    "femur": 1,
+    "trap_bear_open": 1,
+    "psx_hand_saw_1": 1
+   },
+   "features": {
+    "arch#mtn:woodcamp": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Tree Line": {
+   "props": {
+    "camping_tent": 2,
+    "campfire": 1,
+    "meshy_fallen_log": 1,
+    "meshy_stump": 2,
+    "cauldron": 1,
+    "backpack": 1,
+    "kettle": 1,
+    "ice_axe": 1,
+    "snowshoes": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "sleeping_bag": 1,
+    "rabbit": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "yeti": 1
+   }
+  },
+  "The Chairlift": {
+   "props": {
+    "riser_1": 2,
+    "snow_gun": 1
+   },
+   "features": {
+    "rail:pipe": 2,
+    "wall": 6,
+    "tree:xmas_snow_pine_2": 1,
+    "tree:pine": 5,
+    "tree:xmas_snow_pine_3": 1,
+    "tree:xmas_snow_pine": 1,
+    "arch#mtn:lift2": 1,
+    "arch#mtn:lift3": 1,
+    "arch#mtn:slowJump": 1,
+    "arch#mtn:slowJump2": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Bunny Slope": {
+   "props": {
+    "xmas_snowman_2": 1,
+    "traffic_cone": 3,
+    "rabbit": 2,
+    "xmas_snowman": 1,
+    "lantern_post": 2,
+    "flood_mast": 1,
+    "fox": 1,
+    "snow_sled": 1
+   },
+   "features": {
+    "wall": 2,
+    "tree:pine": 3,
+    "tree:xmas_snow_pine_2": 1,
+    "arch#mtn:runBunny": 1,
+    "arch#mtn:slowBunny": 1,
+    "arch#mtn:polesBunny": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Lodge Yard": {
+   "props": {
+    "signpost": 1,
+    "park_bench": 2,
+    "xmas_tree_plain": 1,
+    "sleigh": 1,
+    "dog": 1,
+    "crow": 1,
+    "city_bench": 1,
+    "psx_wooden_crate_1": 1,
+    "traffic_barrel": 2,
+    "lantern_post": 4,
+    "trail_sign": 1,
+    "flag_pole": 1,
+    "picnic_table": 2,
+    "snow_heap": 2
+   },
+   "features": {
+    "arch#mtn:lampFlames": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Run-Out": {
+   "props": {
+    "signpost": 1,
+    "fallen_log": 1,
+    "snow_gun": 1,
+    "deer": 1
+   },
+   "features": {
+    "tree:xmas_snow_pine": 3,
+    "tree:pine": 7,
+    "tree:xmas_snow_pine_2": 1,
+    "tree:xmas_snow_pine_3": 1,
+    "wall": 2,
+    "arch#mtn:slowBlack": 1,
+    "arch#mtn:slowBlack2": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Black Run": {
+   "props": {
+    "wolf": 1,
+    "stump": 1,
+    "flood_mast": 1,
+    "snow_gun": 1
+   },
+   "features": {
+    "tree:pine": 7,
+    "tree:xmas_snow_pine_3": 2,
+    "tree:xmas_snow_pine": 2,
+    "tree:xmas_snow_pine_2": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Black Run, top": {
+   "props": {
+    "crow": 1,
+    "owl_perched": 1
+   },
+   "features": {
+    "tree:pine": 10,
+    "wall": 1,
+    "tree:xmas_snow_pine": 1,
+    "tree:xmas_snow_pine_2": 1,
+    "arch#mtn:runBlack": 1,
+    "arch#mtn:polesBlack": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Big Jump": {
+   "props": {
+    "flood_mast": 1
+   },
+   "features": {
+    "ramp": 1,
+    "wall": 5,
+    "tree:pine": 7,
+    "tree:xmas_snow_pine_3": 1,
+    "tree:xmas_snow_pine": 1,
+    "arch#mtn:lift0": 1,
+    "arch#mtn:lift1": 1,
+    "arch#mtn:runJump": 1,
+    "arch#mtn:polesJumpA": 1,
+    "arch#mtn:polesJumpB": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Slalom": {
+   "props": {
+    "flood_mast": 1,
+    "snow_gun": 1
+   },
+   "features": {
+    "wall": 1,
+    "tree:xmas_snow_pine_2": 1,
+    "tree:pine": 2,
+    "tree:xmas_snow_pine_3": 1,
+    "arch#mtn:gate0": 1,
+    "arch#mtn:gate1": 1,
+    "arch#mtn:gate2": 1,
+    "arch#mtn:gate3": 1,
+    "arch#mtn:gate4": 1,
+    "arch#mtn:runSlalom": 1,
+    "arch#mtn:polesSlalom": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Summit": {
+   "props": {
+    "cave_stone": 3,
+    "signpost": 1,
+    "white_cloud": 4,
+    "menhir": 3,
+    "sarsen": 2,
+    "cairn": 1,
+    "sea_vent": 1,
+    "telescope": 1,
+    "psxg_rock_1": 1,
+    "psxg_rock_2": 2,
+    "psxg_rock_3": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "psxg_rock_4": 1,
+    "eagle": 1,
+    "meshy_rope": 1,
+    "chimney_smoke": 1,
+    "weather_mast": 1,
+    "snow_heap": 1,
+    "raven_perch": 1,
+    "prayer_flags": 1,
+    "backpack": 1,
+    "ice_axe": 1,
+    "snowshoes": 1
+   },
+   "features": {
+    "arch#mtn:summit:register": 1
+   },
+   "doors": {},
+   "natives": {
+    "nordic": 1
+   }
+  },
+  "Shastina": {
+   "props": {
+    "cave_stone": 1,
+    "cairn": 1,
+    "psxg_rock_1": 3,
+    "psxg_rock_2": 2,
+    "psxg_rock_3": 1,
+    "psx_supply_crate_1": 1,
+    "meshy_rope": 1,
+    "crow": 1,
+    "psxg_rock_4": 1,
+    "snow_heap": 1,
+    "mountain_goat": 1,
+    "backpack": 1,
+    "ice_axe": 1,
+    "snowshoes": 1
+   },
+   "features": {
+    "arch#mtn:wands": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Glacier": {
+   "props": {
+    "ocean_rock_5": 1,
+    "ice_block": 5,
+    "psxg_rock_1": 2,
+    "meshy_crystal_shards": 2,
+    "meshy_crystal_shard": 1,
+    "psxg_rock_2": 1,
+    "psxg_rock_3": 1,
+    "hw_shovel": 1,
+    "meshy_rope": 1,
+    "psxg_rock_4": 1,
+    "snow_heap": 2,
+    "ice_axe": 1,
+    "backpack": 1,
+    "snow_sled": 1,
+    "icicles": 1
+   },
+   "features": {
+    "pool:water": 1
+   },
+   "doors": {
+    "saddle": 1
+   },
+   "natives": {
+    "yeti": 1
+   }
+  },
+  "The Red Banks": {
+   "props": {
+    "cave_stone": 2,
+    "ocean_rock_4": 1,
+    "psxg_rock_1": 3,
+    "signpost": 1,
+    "psxg_rock_2": 1,
+    "psxg_dead_bush_2": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_rock_3": 1,
+    "psxg_rock_4": 1,
+    "ocean_rock_7": 1,
+    "mountain_goat": 1,
+    "burnt_tree": 1
+   },
+   "features": {
+    "wall": 3,
+    "arch#mtn:redbanks:3:4": 1,
+    "arch#mtn:redbanks:3:6": 1,
+    "arch#mtn:redbanks:4:7": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Helen Lake": {
+   "props": {
+    "camping_tent": 2,
+    "campfire": 1,
+    "sea_chest": 1,
+    "hearth_fire": 1,
+    "chimney_smoke": 1,
+    "cot": 2,
+    "psx_pillow_mp_1": 2,
+    "psx_dinner_table_1": 1,
+    "xmas_cocoa": 1,
+    "psx_canned_food_mp_1": 3,
+    "psx_flashlight_1": 1,
+    "psx_chair_mp_1": 2,
+    "meshy_rope": 3,
+    "footlocker": 1,
+    "psx_supply_crate_1": 2,
+    "stock_pots": 2,
+    "hw_shovel": 3,
+    "rug_round": 1,
+    "notice_board": 1,
+    "ship_lantern": 1,
+    "psx_bandage_mp_1": 1,
+    "rowboat": 1,
+    "fallen_log": 1,
+    "xmas_snowman": 1,
+    "ice_fishing_hole": 1,
+    "fishing_rod": 1,
+    "beach_cooler": 1,
+    "psx_fish_skeleton_mp_1": 1,
+    "wooden_bucket": 1,
+    "psxg_rock_2": 1,
+    "psx_wooden_crate_1": 1,
+    "lantern_post": 1,
+    "psx_painting_1": 1,
+    "wall_shelf": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "snow_heap": 1,
+    "rescue_sled": 1,
+    "axe_chopping_block": 1,
+    "sleeping_bag": 3,
+    "backpack": 3,
+    "oars": 1,
+    "kettle": 2,
+    "snowshoes": 2,
+    "ice_axe": 2,
+    "river_fish": 1,
+    "icicles": 4,
+    "firewood_stack": 1,
+    "antler_trophy": 1
+   },
+   "features": {
+    "texbuilding#mtn:climbers": 1,
+    "arch#mtn:climbers:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "yeti": 1
+   }
+  },
+  "The Steam Vents": {
+   "props": {
+    "cave_stone": 2,
+    "ore_heap": 1,
+    "sea_vent": 3,
+    "crystal_cluster": 1,
+    "cave_torch": 2,
+    "rope_stanchion": 3,
+    "psx_metal_barrel_mp_1": 1,
+    "meshy_crystal_shards": 1,
+    "meshy_crystal_shard": 1,
+    "psxg_rock_1": 1,
+    "psxg_rock_2": 1,
+    "ocean_rock_7": 1,
+    "psx_wooden_crate_4": 1,
+    "hw_shovel": 1,
+    "psxg_rock_3": 1,
+    "chimney_smoke": 5,
+    "lantern_post": 1,
+    "mine_cart": 1,
+    "pickaxe": 1,
+    "wheelbarrow": 1,
+    "wooden_barrel": 1,
+    "rail_section": 1
+   },
+   "features": {
+    "pool:water": 1,
+    "arch#mtn:adit:frame": 1
+   },
+   "doors": {
+    "link_shasta_lemuria": 1
+   },
+   "natives": {
+    "nordic": 1
+   }
+  },
+  "Avalanche Gulch": {
+   "props": {
+    "ocean_rock_6": 1,
+    "ocean_rock_7": 1,
+    "fallen_log": 3,
+    "dead_snag": 1,
+    "psxg_rock_1": 4,
+    "hollow_dead_tree": 1,
+    "psxg_rock_2": 1,
+    "stump": 1,
+    "psxg_dead_bush_2": 1,
+    "psxg_rock_3": 1,
+    "psxg_rock_4": 1,
+    "lantern_post": 1,
+    "burnt_tree": 1,
+    "snow_heap": 1,
+    "stretcher": 1,
+    "ice_axe": 1,
+    "backpack": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Fork": {
+   "props": {
+    "signpost": 2,
+    "cairn": 1,
+    "park_bench": 1,
+    "psxg_rock_1": 3,
+    "psx_metal_barrel_mp_1": 1,
+    "psx_supply_crate_1": 1,
+    "meshy_campfire_ring": 1,
+    "crow": 1,
+    "psxg_rock_2": 2,
+    "psxg_rock_3": 1,
+    "meshy_rope": 1,
+    "psxg_rock_4": 1,
+    "lantern_post": 2,
+    "trail_sign": 1,
+    "snow_heap": 2,
+    "backpack": 1,
+    "sleeping_bag": 1,
+    "prayer_flags": 1,
+    "kettle": 1
+   },
+   "features": {
+    "wall": 2,
+    "arch#mtn:fork:windbreak": 1,
+    "arch#mtn:boards": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Scree": {
+   "props": {
+    "cave_stone": 1,
+    "ocean_rock_8": 1,
+    "psxg_rock_1": 7,
+    "signpost": 1,
+    "hitching_rail": 1,
+    "psxg_rock_2": 2,
+    "psxg_rock_3": 2,
+    "psxg_rock_4": 2,
+    "psxg_dead_bush_2": 1,
+    "psxg_dead_bush_1": 1,
+    "mountain_goat": 1,
+    "snow_heap": 1,
+    "milestone": 1
+   },
+   "features": {},
+   "doors": {
+    "hills": 1
+   },
+   "natives": {}
+  },
+  "Bunny Flat": {
+   "props": {
+    "campfire": 1,
+    "camping_tent": 2,
+    "park_bench": 1,
+    "signpost": 1,
+    "fallen_log": 1,
+    "hearth_fire": 1,
+    "chimney_smoke": 1,
+    "couples_bed": 1,
+    "psx_dinner_table_1": 1,
+    "psx_meat_1": 1,
+    "psx_fish_skeleton_mp_1": 1,
+    "psx_canned_food_mp_1": 2,
+    "stump": 5,
+    "psx_armchair_1": 1,
+    "fur_rug": 1,
+    "stock_pots": 2,
+    "sea_chest": 1,
+    "psx_shelf_mp_2": 1,
+    "beach_cooler": 2,
+    "meshy_burlap_sack": 2,
+    "fishing_net_wall": 1,
+    "psx_photo_frame_mp_1": 1,
+    "wooden_bucket": 1,
+    "hollow_dead_tree": 1,
+    "hitching_rail": 1,
+    "rabbit": 5,
+    "trap_bear_shut": 1,
+    "woods_healflower": 3,
+    "fern": 3,
+    "psx_wooden_crate_1": 1,
+    "lantern_post": 2,
+    "psx_painting_1": 1,
+    "wall_shelf": 1,
+    "skull": 1,
+    "picnic_table": 1,
+    "axe_chopping_block": 1,
+    "deer": 1,
+    "backpack": 3,
+    "sleeping_bag": 1,
+    "kettle": 2,
+    "wild_flowers": 2,
+    "moss_clump": 1,
+    "owl_perched": 1,
+    "firewood_stack": 1,
+    "antler_trophy": 2
+   },
+   "features": {
+    "texbuilding#mtn:bigfoot": 1,
+    "arch#mtn:bigfoot:look": 1
+   },
+   "doors": {
+    "bay": 1
+   },
+   "natives": {
+    "bigfoot": 1
+   }
+  },
+  "Panther Meadows": {
+   "props": {
+    "candle_ring": 2,
+    "instrument_drum": 3,
+    "instrument_tambourine": 1,
+    "instrument_guitar_lying": 1,
+    "brazier": 1,
+    "cot": 1,
+    "psx_coffee_table_1": 2,
+    "crystalBall": 1,
+    "tarotDeck": 1,
+    "hw_candles": 5,
+    "rug_round": 2,
+    "item_ward_totem": 2,
+    "item_wizard_staff": 1,
+    "psx_shelf_mp_2": 1,
+    "item_potion_flask": 2,
+    "instrument_maracas": 1,
+    "instrument_seed_pod": 1,
+    "item_censer": 2,
+    "psx_planter_pot_mp_1_full": 1,
+    "fern": 4,
+    "cauldron": 1,
+    "psx_pillow_mp_1": 5,
+    "psx_carpet_mp_1": 1,
+    "wing_chun_dummy": 2,
+    "punching_bag": 1,
+    "dojo_weapon_rack": 1,
+    "taiko_drum": 1,
+    "xmas_cocoa": 2,
+    "candelabra": 2,
+    "privacy_screen": 1,
+    "paper_lantern": 4,
+    "spear": 1,
+    "carved_totem_pole": 1,
+    "stump": 3,
+    "menhir": 1,
+    "fallen_log": 1,
+    "mountain_lion": 1,
+    "woods_healflower": 7,
+    "monarch": 2,
+    "blue_morpho": 1,
+    "swallowtail": 1,
+    "mushroom2": 1,
+    "meshy_crystal_shard": 1,
+    "lantern_post": 3,
+    "woods_glowcap": 1,
+    "psx_painting_1": 2,
+    "wall_shelf": 1,
+    "psx_sword_mp_1": 1,
+    "wooden_bucket": 1,
+    "gong": 2,
+    "stone_lantern": 2,
+    "picnic_table": 1,
+    "prayer_flags": 3,
+    "wild_flowers": 6,
+    "moss_clump": 2,
+    "sleeping_bag": 1,
+    "backpack": 1,
+    "kettle": 2,
+    "antler_trophy": 1,
+    "fur_rug": 1,
+    "firewood_stack": 1
+   },
+   "features": {
+    "texbuilding#mtn:shaman": 1,
+    "texbuilding#mtn:dojo": 1,
+    "arch#mtn:shaman:look": 1,
+    "arch#mtn:dojo:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "shaman": 1,
+    "ki fighter": 1,
+    "hippie": 1
+   }
+  },
+  "The Old Lava": {
+   "props": {
+    "cave_stone": 1,
+    "dead_snag": 3,
+    "ocean_rock_3": 1,
+    "ocean_rock_4": 1,
+    "hollow_dead_tree": 1,
+    "ocean_rock_2": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_dead_bush_2": 1,
+    "fern": 3,
+    "ocean_rock_7": 1,
+    "ocean_rock_9": 1,
+    "ocean_rock_5": 1,
+    "psxg_rock_1": 1,
+    "crow": 1,
+    "ocean_rock_6": 1,
+    "burnt_tree": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Last Trees": {
+   "props": {
+    "fallen_log": 2,
+    "stump": 3,
+    "dead_snag": 2,
+    "signpost": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_dead_bush_2": 1,
+    "crow": 1,
+    "fern": 2,
+    "psxg_rock_1": 1,
+    "psxg_rock_2": 1,
+    "burnt_tree": 1,
+    "owl_perched": 1,
+    "moss_clump": 1,
+    "wild_flowers": 1,
+    "milestone": 1
+   },
+   "features": {
+    "tree:pine_2": 3
+   },
+   "doors": {},
+   "natives": {
+    "tree person": 1
+   }
+  },
+  "The Lookout": {
+   "props": {
+    "park_bench": 1,
+    "lesson_sign": 1,
+    "map_table": 1,
+    "item_binoculars": 1,
+    "brass_telescope": 1,
+    "radio_console": 1,
+    "cot": 1,
+    "psx_pillow_mp_1": 1,
+    "psx_bedside_table_1": 1,
+    "field_radio": 1,
+    "psx_chair_mp_1": 1,
+    "star_chart": 1,
+    "gauge_board": 1,
+    "fire_extinguisher": 1,
+    "hose_rack": 1,
+    "coffee_mug": 1,
+    "footlocker": 1,
+    "ship_lantern": 1,
+    "hw_fence": 3,
+    "telescope": 1,
+    "dish": 1,
+    "stump": 1,
+    "timber_lookout": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "eagle": 1,
+    "fern": 2,
+    "psxg_rock_1": 1,
+    "woods_healflower": 1,
+    "psx_wooden_crate_1": 1,
+    "crow": 1,
+    "lantern_post": 2,
+    "psx_painting_1": 1,
+    "notice_board": 1,
+    "psx_wooden_crate_4": 1,
+    "picnic_table": 1,
+    "weather_mast": 1,
+    "fire_danger_sign": 1,
+    "hawk": 1,
+    "wild_flowers": 1,
+    "moss_clump": 1,
+    "backpack": 1,
+    "wood_stove": 1,
+    "firewood_stack": 1,
+    "kettle": 1,
+    "sleeping_bag": 1,
+    "antler_trophy": 1
+   },
+   "features": {
+    "texbuilding#mtn:lookout": 1,
+    "arch#mtn:lookout:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Switchback, upper": {
+   "props": {
+    "cave_stone": 1,
+    "hitching_rail": 1,
+    "fallen_log": 1,
+    "park_bench": 1,
+    "stump": 1,
+    "fern": 3,
+    "woods_healflower": 2,
+    "psxg_rock_1": 1,
+    "rabbit": 1,
+    "psxg_rock_2": 1,
+    "monarch": 1,
+    "lantern_post": 1,
+    "deer": 1,
+    "fox": 1,
+    "moss_clump": 1,
+    "wild_flowers": 1,
+    "milestone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Boulder Field": {
+   "props": {
+    "cave_stone": 5,
+    "sarsen": 1,
+    "psxg_rock_1": 6,
+    "menhir": 1,
+    "psxg_rock_2": 2,
+    "psxg_rock_3": 1,
+    "fern": 3,
+    "crow": 1,
+    "meshy_rope": 1,
+    "psxg_rock_4": 1,
+    "lake_rock": 1,
+    "moss_clump": 2,
+    "backpack": 1,
+    "hawk": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "gnome": 1
+   }
+  },
+  "The Switchback, lower": {
+   "props": {
+    "fallen_log": 2,
+    "hitching_rail": 1,
+    "stump": 1,
+    "hollow_tree": 1,
+    "fern": 3,
+    "rabbit": 1,
+    "woods_healflower": 1,
+    "psxg_rock_2": 1,
+    "mushroom2": 1,
+    "woods_glowcap": 2,
+    "psxg_rock_1": 1,
+    "lantern_post": 1,
+    "bear": 1,
+    "moss_clump": 1,
+    "wild_flowers": 1,
+    "milestone": 1,
+    "hedgehog": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Trailhead": {
+   "props": {
+    "signpost": 1,
+    "campfire": 1,
+    "trail_sign": 1,
+    "outhouse": 1,
+    "hearth_fire": 1,
+    "chimney_smoke": 1,
+    "map_table": 1,
+    "item_binoculars": 1,
+    "papers_a": 1,
+    "radio_console": 1,
+    "office_locker": 2,
+    "brochure_rack": 1,
+    "rocking_chair": 1,
+    "rug_round": 1,
+    "dog": 1,
+    "psx_bedside_table_1": 1,
+    "coffee_maker": 1,
+    "coffee_mug": 1,
+    "psx_chair_mp_1": 1,
+    "notice_board": 1,
+    "key_rack": 1,
+    "wall_clock": 1,
+    "fire_extinguisher": 1,
+    "psx_wooden_crate_1": 1,
+    "psx_flashlight_1": 1,
+    "hitching_rail": 1,
+    "horse_brown": 1,
+    "fallen_log": 1,
+    "stump": 1,
+    "power_pole": 1,
+    "metal_trash_can": 1,
+    "psx_wooden_crate_4": 1,
+    "meshy_burlap_sack": 1,
+    "fern": 1,
+    "woods_healflower": 1,
+    "wooden_bucket": 1,
+    "psx_metal_barrel_mp_1": 2,
+    "rabbit": 1,
+    "lantern_post": 2,
+    "park_bench": 1,
+    "psx_painting_1": 1,
+    "star_chart": 1,
+    "picnic_table": 1,
+    "fire_danger_sign": 1,
+    "camper_van": 1,
+    "axe_chopping_block": 1,
+    "mailbox": 1,
+    "saddle": 1,
+    "backpack": 2,
+    "wooden_barrel": 1,
+    "wild_flowers": 1,
+    "moss_clump": 1,
+    "firewood_stack": 1,
+    "antler_trophy": 1,
+    "kettle": 1
+   },
+   "features": {
+    "texbuilding#mtn:ranger": 1,
+    "arch#mtn:ranger:look": 1,
+    "arch#mtn:trailhead:gate": 1
+   },
+   "doors": {
+    "woods": 1
+   },
+   "natives": {}
+  },
+  "The Upper Shelf": {
+   "props": {
+    "cave_stone": 1,
+    "sea_chest": 1,
+    "meshy_camping_tent": 1,
+    "campfire": 1,
+    "fallen_log": 1,
+    "stump": 1,
+    "instrument_guitar": 1,
+    "hw_candles": 1,
+    "fern": 2,
+    "beach_cooler": 1,
+    "rabbit": 1,
+    "woods_healflower": 2,
+    "psx_pillow_mp_1": 1,
+    "stock_pots": 1,
+    "lantern_post": 1,
+    "prayer_flags": 1,
+    "sleeping_bag": 1,
+    "backpack": 1,
+    "kettle": 1,
+    "wild_flowers": 1,
+    "moss_clump": 1,
+    "deer": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "hippie": 1
+   }
+  },
+  "The Spring": {
+   "props": {
+    "stone_altar": 1,
+    "item_censer": 1,
+    "meshy_crystal_shard": 1,
+    "hw_candles": 4,
+    "votive_stand": 1,
+    "candelabra": 2,
+    "greek_amphora": 3,
+    "wooden_bucket": 2,
+    "rug_round": 1,
+    "ships_bell": 1,
+    "candle_ring": 1,
+    "fallen_log": 1,
+    "stump": 1,
+    "psxg_stepping_stone_1": 2,
+    "psxg_stepping_stone_2": 2,
+    "fern": 4,
+    "meshy_frog": 2,
+    "woods_glowcap": 4,
+    "blue_morpho": 1,
+    "woods_healflower": 2,
+    "lantern_post": 2,
+    "brazier": 1,
+    "psx_painting_1": 1,
+    "stone_lantern": 1,
+    "lake_rock": 1,
+    "reeds": 3,
+    "heron": 1,
+    "stepping_stones": 1,
+    "moss_clump": 2,
+    "wild_flowers": 2,
+    "lit_candle": 1,
+    "prayer_flags": 1
+   },
+   "features": {
+    "texbuilding#mtn:shrine": 1,
+    "pool:water": 1,
+    "deck": 1,
+    "wall": 1,
+    "arch#mtn:shrine:look": 1,
+    "arch#mtn:spring:head": 1
+   },
+   "doors": {},
+   "natives": {
+    "hippie": 1
+   }
+  },
+  "The Twelve Thrones": {
+   "props": {
+    "royal_throne": 12,
+    "tripod_bowl": 1,
+    "owl_statue": 1,
+    "spear": 1,
+    "spell_shield": 1,
+    "lyre": 1,
+    "laurel_wreath": 1,
+    "peacock": 1,
+    "greek_couch": 1,
+    "greek_amphora": 2,
+    "brass_orrery": 1,
+    "item_drinking_cup": 1,
+    "giant_hourglass": 1,
+    "eagle": 1,
+    "white_cloud": 4
+   },
+   "features": {
+    "arch#mtn:oly:thrones": 1,
+    "arch#mtn:oly:fire:P10-00:5:4": 1
+   },
+   "doors": {},
+   "natives": {
+    "valkraye": 1
+   }
+  },
+  "The Sacred Way": {
+   "props": {
+    "angel_statue": 1,
+    "marble_bust": 1,
+    "stone_urn": 2,
+    "tripod_bowl": 1,
+    "greek_amphora": 1
+   },
+   "features": {
+    "wall": 1,
+    "arch#mtn:oly:pl:P10-02:3:3": 1,
+    "arch#mtn:oly:pl:P10-02:6:3": 1,
+    "arch#mtn:oly:pl:P10-02:5:6": 1,
+    "arch#mtn:oly:way": 1,
+    "arch#mtn:oly:fire:P10-02:2:3": 1
+   },
+   "doors": {},
+   "natives": {
+    "angel": 1,
+    "nephilim": 1
+   }
+  },
+  "The Stadium": {
+   "props": {
+    "decor_trophy_cup": 1,
+    "tripod_bowl": 2,
+    "laurel_wreath": 1,
+    "greek_column": 4,
+    "greek_amphora": 2,
+    "arms_trophy": 1,
+    "spear": 2,
+    "spell_shield": 2,
+    "instrument_drum": 1,
+    "meshy_trumpet": 1,
+    "chariot": 1,
+    "discus_rack": 2
+   },
+   "features": {
+    "wall": 10,
+    "arch#mtn:oly:stadium": 1,
+    "arch#mtn:oly:pl:P10-01:1:5": 1,
+    "arch#mtn:oly:pl:P10-01:1:3": 1,
+    "arch#mtn:oly:pl:P10-01:1:7": 1,
+    "arch#mtn:oly:fire:P10-01:1:3": 1,
+    "arch#mtn:oly:fire:P10-01:1:7": 1
+   },
+   "doors": {},
+   "natives": {
+    "cyclops": 1,
+    "minotaur": 1,
+    "giant": 1
+   }
+  },
+  "The Colonnade": {
+   "props": {
+    "greek_column": 10,
+    "fountain": 1,
+    "marble_bust": 4,
+    "brass_orrery": 1,
+    "greek_couch": 2,
+    "lyre": 1,
+    "potted_plant": 3,
+    "stone_urn": 1,
+    "butterfly": 1,
+    "monarch": 1
+   },
+   "features": {
+    "arch#mtn:oly:colonnade": 1,
+    "arch#mtn:oly:pl:P11-01:4:4": 1,
+    "arch#mtn:oly:pl:P11-01:8:4": 1,
+    "arch#mtn:oly:pl:P11-01:4:8": 1,
+    "arch#mtn:oly:pl:P11-01:8:8": 1,
+    "arch#mtn:oly:pl:P11-01:5:8": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Amphitheatre": {
+   "props": {
+    "lectern": 1,
+    "lyre": 1,
+    "instrument_drum": 1,
+    "tripod_bowl": 2,
+    "instrument_tambourine_up": 1,
+    "meshy_trumpet": 1,
+    "instrument_whistle": 1,
+    "greek_amphora": 2
+   },
+   "features": {
+    "wall": 16,
+    "arch#mtn:oly:theatre": 1,
+    "arch#mtn:oly:fire:P11-02:2:6": 1,
+    "arch#mtn:oly:fire:P11-02:7:6": 1
+   },
+   "doors": {
+    "bay_olympus": 1
+   },
+   "natives": {
+    "chosen one": 1
+   }
+  },
+  "The Terraces": {
+   "props": {
+    "grape_trellis": 12,
+    "fountain": 1,
+    "greek_amphora": 4,
+    "stone_urn": 1,
+    "ancient_well": 1,
+    "psx_wooden_crate_2": 1,
+    "psx_wooden_crate_1": 1,
+    "greek_couch": 1,
+    "wooden_barrel": 2,
+    "woven_baskets": 1,
+    "sundial": 1,
+    "cypress_tree": 2,
+    "wild_flowers": 2,
+    "butterfly": 2,
+    "monarch": 1,
+    "bee": 2,
+    "psx_planter_pot_mp_1_full": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "orb of light": 1
+   }
+  },
+  "The Olive Grove": {
+   "props": {
+    "olive_tree": 7,
+    "decor_sheep": 4,
+    "rabbit": 1,
+    "greek_amphora": 2,
+    "psx_wooden_crate_3": 1,
+    "greek_couch": 1,
+    "beehive": 1,
+    "goat": 1,
+    "wild_flowers": 3,
+    "butterfly": 1,
+    "bee": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "unicorn": 1
+   }
+  },
+  "The Pilgrim Stair": {
+   "props": {
+    "lion_statue": 2,
+    "tripod_bowl": 1,
+    "stone_altar": 1,
+    "votive_stand": 1,
+    "lit_candle": 4,
+    "oil_lamp": 1,
+    "item_censer": 1,
+    "iron_garden_bench": 1,
+    "stone_urn": 1
+   },
+   "features": {
+    "arch#mtn:oly:fire:P11-03:2:8": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Goat Track": {
+   "props": {
+    "cave_stone": 1,
+    "brass_telescope": 1,
+    "menhir": 1,
+    "mountain_goat": 3,
+    "cypress_tree": 1,
+    "psxg_rock_2": 1,
+    "psxg_rock_3": 1,
+    "eagle": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "occulus": 1
+   }
+  },
+  "The Cloud Line": {
+   "props": {
+    "white_cloud": 5
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "watcher": 1
+   }
+  },
+  "The Grand Stair": {
+   "props": {
+    "white_cloud": 3
+   },
+   "features": {},
+   "doors": {
+    "link_heaven_olympus": 1
+   },
+   "natives": {}
+  },
+  "The Half-Pipe": {
+   "props": {},
+   "features": {
+    "ramp": 8
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "(no name 7,7)": {
+   "props": {},
+   "features": {},
+   "doors": {
+    "link_vatican_olympus": 1
+   },
+   "natives": {}
+  }
+ },
+ "lines": 2,
+ "totals": {
+  "props": 1496,
+  "features": 303,
+  "doors": 12,
+  "natives": 27,
+  "lines": 2,
+  "plots": 57
+ }
+}

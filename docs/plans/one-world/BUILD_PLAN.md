@@ -112,7 +112,7 @@ and everything on it. Rerun node bake-map.js for the new rooms and --put their p
 
 | Wave | Zone | What changes | Tool and district files |
 |---|---|---|---|
-| A | The Woods (36) | four districts become paths: the Clearing hub, the Redwood Trail up to the Snowy Pass, the Ritual Ground ring, Dead Man's Cave the creek (skip what the slice moved) | `bake-woods.js`, `docs/areas/woods/districts/C T G M.js` |
+| A | The Woods (36) — **BUILT 2026-11-17** (areas-complexes.md "THE WOODS, ONE WORLD PHASE 3") | four districts become paths: the Clearing hub, the Redwood Trail up to the Snowy Pass, the Ritual Ground ring, Dead Man's Cave the creek (skip what the slice moved) | `bake-woods.js`, `docs/areas/woods/districts/C T G M.js` |
 | A | Camelot Kingdom (64) | castle + village stay; the Snowy Pines north, the Looking-Glass Garden west to the coast, the Fairy Forest east to the Spring, the Forest south | `bake-camelot.js`, `docs/areas/camelot/districts/N L F W.js` |
 | A | The Estate (36) | the Haunted House as a drive, the Ranch south with the barn hatch; Corn Fields + Lake from the slice | `bake-estate.js`, `docs/areas/estate/districts/C L H R.js` |
 | A | The Mountains (96) | Olympus, the Snowy Pass, the Ski Lodge, Shasta as climbs along the range; the North Pole stays | `bake-mountains.js`, `docs/areas/mountains/districts/O P K S.js` |

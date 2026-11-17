@@ -1771,9 +1771,17 @@
         const g = G();
         let priority = 0;
 
-        priority += 0.4 * unitThreatOutput(g, target, unit);      // dangerous first
-        if (unitIsHealerKit(target)) priority += 110;             // support core first
-        priority += Math.min(90, (target.intStat || target.int || 0) * 0.8);
+        /* 🤳 THE FILTER (2026-11-17, the Influencer): an enemy wearing a filter is judged by the ally it looks like (its kit,
+           its threat, its INT): the CPU is fooled the way a player is. Only the look; its HP and the hit itself stay true. */
+        let seen = target;
+        if (target.player !== unit.player && target.status && target.status.filtered > 0 && target._filterLookId != null
+            && !(typeof window !== 'undefined' && window.EW_NO_FILTER_LOOK)) {
+            const lk = (g.state.units || []).find(u => u && u.id === target._filterLookId);
+            if (lk && lk.race === target._filterRace) seen = lk;
+        }
+        priority += 0.4 * unitThreatOutput(g, seen, unit);      // dangerous first
+        if (unitIsHealerKit(seen)) priority += 110;             // support core first
+        priority += Math.min(90, (seen.intStat || seen.int || 0) * 0.8);
 
         // Team focus + invested damage: convert pokes into kills.
         if (v && v.focus && target.id === v.focus.id) priority += tuneW(g, 'focusCommitBonus');
@@ -4879,6 +4887,14 @@
         }
         if (!opts.splash) val += getTargetPriority(tg, unit, v) * 0.35;
         if (!sp && arc === 'back') val += 40;   // undodgeable + uncounterable
+        /* 📱 GOING VIRAL (2026-11-17): a hit on a Viral unit also hits each of its teammates within 2 for 30% (battle.js
+           _viralShare); RATIO (viralSpread) then tags those teammates too */
+        if (tg.status && tg.status.viral > 0) {
+            const _vm = (g.state.units || []).filter(a => a && !a.dead && a.id !== tg.id && a.player === tg.player
+                && Math.abs(a.x - tg.x) + Math.abs(a.y - tg.y) <= 2);
+            for (const a of _vm) val += Math.min(est * 0.3, effHp(a)) * landP * 0.9;
+            if (sp && sp.viralSpread) val += 45 * _vm.length;
+        }
         return { est, val };
     }
 
@@ -5906,7 +5922,17 @@
         return 0;
     }
     function scoreSpell(unit, spell, target, v) {
-        const base = _scoreSpellCore(unit, spell, target, v);
+        let base = _scoreSpellCore(unit, spell, target, v);
+        /* 📰 TODAY'S HEADLINE (the Florida Man, 11-17 polish): a headline spell is castable only today, so the CPU takes it over a
+           plain hit when it is worth anything at all (it sat on Bath Salts in a test match and the round was lost) */
+        if (spell.floridaHeadline && base > 0) {
+            base = base * 1.3 + 30;
+            /* Bath Salts does not end the turn and an attack does: buffed first, the same turn's hit still lands (the CPU moved
+               and hit instead, every Bath Salts day). Worth the hit it powers up, when AP is left for one. */
+            const g = G();
+            const ends = g && g.TargetQuery && g.TargetQuery.spellEndsTurn ? g.TargetQuery.spellEndsTurn(spell) : true;
+            if (!ends && spell.statStageBoost && target && target.id === unit.id && (unit.ap || 0) >= (g.TargetQuery.apCost(spell) || 1) + 1) base += 260;
+        }
         if (!(base > 0) || !target || !_isForcedSpell(spell) || spell.kind === 'skyThrow' || spell.allyOnly) return base;
         const g = G();
         const fv = _forcedMoveValue(g, unit, spell, target, v);
@@ -6316,8 +6342,10 @@
 
         // ── healing / support family ──
         if (kind === 'heal' && target) {
-            const amt = spell.healPct ? Math.floor((target.maxHp || 0) * spell.healPct)   // THE SPELL AUDIT B: Time Rewind heals a share of max HP
+            let amt = spell.healPct ? Math.floor((target.maxHp || 0) * spell.healPct)   // THE SPELL AUDIT B: Time Rewind heals a share of max HP
                 : (spell.healAmt != null ? spell.healAmt : (spell.heal || 24));
+            /* 🙌 THE TELEVANGELIST PASS (2026-11-17): Miracle heals the whole collection plate on top (battle.js spellHealAmountFor) */
+            if (spell.spendPlate) amt += Math.max(0, unit._plate || 0);
             let _hs = healValue(g, unit, target, amt, v);
             // THE SPELL AUDIT D: Divine Light also sears every enemy beside the healed ally
             if (spell.healAdjacentDamage) {
@@ -6431,6 +6459,19 @@
             const _agNear = v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 4);
             return _agNear ? Math.min(160, 30 + _agT.totalDmg * 0.3) : 0;
         }
+        /* 🛵 THE RIDE-ALONG (2026-11-17, the Delivery Boy polish): Hop On / Thirty Minutes or Less are worth the best drop his
+           walk this turn can give the riders (_rideBestAI: a hurt rider carried out of the hits, a healthy one carried into
+           reach), never more than nothing when he cannot walk after the cast. */
+        if (kind === 'buff' && (spell.rideAlong || (target && (spell.statusEffects || []).some(e => e && e.id === 'riding')))) {
+            if (!g.canUnitMove(unit) || (unit.ap || 0) < g.AP_COST_ACTION * 2) return 0;
+            const _riders = spell.rideAlong
+                ? ((typeof window._deliveryLoadList === 'function') ? window._deliveryLoadList(unit, spell) : [])
+                : [target];
+            if (!_riders.length || _riders.some(a => !a || a.id === unit.id)) return 0;
+            const _rb = _rideBestAI(g, unit, _riders, v);
+            if (!_rb || _rb.score < 30) return 0;
+            return Math.min(260, _rb.score * 0.85 + (spell.rideAlong ? 25 : 10));
+        }
         /* 👁 OBSERVER EFFECT (the Boltzmann Brain pass, 2026-11-17): holding the square is free value when the square is a good
            perch (an enemy within its spells' reach, none within 2, the hits coming here well under its HP) and the turn still has
            the AP to shoot after it (it does not count as the turn's spell, so it goes FIRST: scored over any attack). */
@@ -6452,8 +6493,15 @@
                 const t = v.threatFn(target.x, target.y, target.z);
                 s += Math.min(300, t.totalDmg * 0.7);
             }
+            /* 🥷 THE NINJA (2026-11-17): Kawarimi (`substitute`) eats the next blow like Protect and puts him at the hitter's
+               back; worth it under threat, nothing if he already holds one */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'substitute')) {
+                if (g.unitHasStatus(target, 'substitute')) return 0;
+                const t = v.threatFn(target.x, target.y, target.z);
+                s += Math.min(260, t.totalDmg * 0.6) + 20;
+            }
             for (const eff of (spell.statusEffects || [])) {
-                if (!eff || !eff.id || eff.id === 'protect') continue;
+                if (!eff || !eff.id || eff.id === 'protect' || eff.id === 'substitute') continue;
                 s += _friendlyStatusValue(g, unit, target, eff, v);   // regen/haste-style friendly riders
             }
             // THE SPELL AUDIT D: a buff row's barrier (Ki Charge), its taunt (Shield Maiden), its decoy (Mimicry)
@@ -6463,6 +6511,16 @@
                 s += 30 * v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= _teR).length;
             }
             if (spell.spawnDecoy) s += 40;
+            /* 🤳 FILTER (2026-11-17): a face swap needs an ally of another look (the engine refuses it otherwise); it pays most
+               when one of the two is the support core the other side would hunt */
+            if (spell.filterSwap) {
+                if (target.status && target.status.filtered > 0) return 0;
+                const _fp = g.aliveUnitsFor(unit.player).filter(a => a && !a.dead && a.id !== target.id && a.race
+                    && !(a.race === target.race && (a.gender || 'male') === (target.gender || 'male')));
+                if (!_fp.length) return 0;
+                _fp.sort((a, b) => (Math.abs(a.x - target.x) + Math.abs(a.y - target.y)) - (Math.abs(b.x - target.x) + Math.abs(b.y - target.y)));
+                s += 35 + ((unitIsHealerKit(target) || unitIsHealerKit(_fp[0])) ? 55 : 0);
+            }
             /* 🛟 THE LIFEGUARD (2026-11-16): On Duty is worth the allies in her 4 that the next hits could kill; Three Whistles
                (massRescue) the allies it would haul in (under hpPct, within radius), the lower the better — and 0 with
                none, so the CPU never wastes it (the engine refuses that cast too). */
@@ -6482,6 +6540,34 @@
                 if (_near) return 0;
                 const _close = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
                 s += (_close ? 70 : 35) + 25 * (3 - _bn);
+            }
+            /* 🪆 THE HAUNTED DOLL (2026-11-17): Pull My String is a gamble on four lines (a heal, a Charm, a pull, a big hit). The CPU
+               plays it blind, as a player does (it never peeks at _dollStringLine): worth more with an enemy in reach and when hurt. */
+            if (spell.pullString) {
+                const _psR = (spell.pullString.killRange || 4);
+                const _psNear = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= _psR);
+                const _psHurt = unit.maxHp > 0 ? 1 - unit.hp / unit.maxHp : 0;
+                return (_psNear ? 85 : 20) + Math.round(80 * _psHurt);
+            }
+            /* 🙌 THE TELEVANGELIST PASS (2026-11-17): Collection Plate (`tithe`) only pays while heals land within 3 of him: worth
+               it with healers (either team) or hurt allies near him, nothing when it is already out or nobody near can heal */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'tithe')) {
+                if (g.unitHasStatus(target, 'tithe')) return 0;
+                const _tvNear = g.aliveUnitsFor(target.player).concat(v.visibleEnemies || []).filter(u => u && !u.dead && u.id !== target.id   /* fog: only the foes it sees */
+                    && Math.abs(u.x - target.x) + Math.abs(u.y - target.y) <= 4);
+                const _tvHealers = _tvNear.filter(u => unitIsHealerKit(u)).length;
+                const _tvHurt = _tvNear.filter(u => u.player === target.player && u.hp < u.maxHp * 0.7).length;
+                if (!_tvHealers && !_tvHurt) return 0;
+                s += 25 + 45 * _tvHealers + 15 * _tvHurt;
+            }
+            /* 🧾 Tax Exempt (`taxExempt`, half MP on every spell, 2 rounds): worth the MP it saves the target on its next casts */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'taxExempt')) {
+                if (g.unitHasStatus(target, 'taxExempt')) return 0;
+                const _txCosts = (target.spells || []).map(sp => (sp && sp.cost) || 0).filter(c => c > 0).sort((a, b) => b - a);
+                if (!_txCosts.length) return 0;
+                const _txSave = (_txCosts[0] + (_txCosts[1] || 0)) * 0.5;
+                const _txShort = (target.mp || 0) < _txCosts[0] ? 1.5 : 1;   // it cannot afford its best spell at full price
+                s += Math.min(140, _txSave * 0.8 * _txShort);
             }
             if (spell.massRescue) {
                 const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;
@@ -6543,6 +6629,14 @@
         // ── control family ──
         if (kind === 'debuff' && target) {
             let s = statusRiderValue(g, unit, target, spell, v);
+            /* 📱 GO VIRAL (2026-11-17): worth the teammates within 2 its hits would also reach (0 alone: the tag does nothing) */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'viral')) {
+                if (target.status && target.status.viral > 0) return 0;
+                const _vm = (g.state.units || []).filter(a => a && !a.dead && a.id !== target.id && a.player === target.player
+                    && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 2).length;
+                if (!_vm) return 0;
+                s += 55 * _vm;
+            }
             if (spell.statStageBoost) {
                 // Bound-aware (floored stats contribute nothing), and stacking
                 // is a real line of play now (no stage cap): a follow-up
@@ -7278,6 +7372,43 @@
     // End-tile danger is charged centrally in aiTakeTurn.
     // ═════════════════════════════════════════════════════════════════════
 
+    /* 🛵 THE RIDE-ALONG (the Delivery Boy, 2026-11-17): what a drop square is worth to a rider. A hurt rider (under 45% HP)
+       is worth the hits it leaves behind; a healthy one the squares it gains on the nearest enemy (it keeps its own turn),
+       less what the drop square costs it. */
+    function _rideDropValueAI(g, rider, sq, v) {
+        if (!sq || !v.visibleEnemies.length) return 0;
+        const hpP = (rider.hp || 0) / Math.max(1, rider.maxHp || 1);
+        const tNow = v.threatFn(rider.x, rider.y, rider.z).totalDmg || 0;
+        const tNew = v.threatFn(sq.x, sq.y, rider.z).totalDmg || 0;
+        if (hpP < 0.45) return (tNow - tNew) * 0.6 + (tNow >= rider.hp && tNew < rider.hp ? 120 : 0);
+        let dN = Infinity, dA = Infinity;
+        for (const e of v.visibleEnemies) {
+            dN = Math.min(dN, Math.abs(rider.x - e.x) + Math.abs(rider.y - e.y));
+            dA = Math.min(dA, Math.abs(sq.x - e.x) + Math.abs(sq.y - e.y));
+        }
+        if (dA < 1) return 0;
+        return (dN - dA) * 24 - Math.max(0, tNew - tNow) * 0.15;
+    }
+    /* the best walk for him with these riders on his back: { score, x, y, z } over his move tiles (his own danger counted) */
+    function _rideBestAI(g, unit, riders, v) {
+        const prev = (typeof window !== 'undefined') ? window._deliveryDropPreview : null;
+        if (typeof prev !== 'function' || !riders || !riders.length) return null;
+        const tiles = _aiMoveTiles(g, unit);
+        let best = null;
+        for (const t of tiles) {
+            if (t.x === unit.x && t.y === unit.y) continue;
+            let sc = 0;
+            for (const r of riders) {
+                if (Math.max(Math.abs(r.x - unit.x), Math.abs(r.y - unit.y)) > 1) continue;
+                sc += _rideDropValueAI(g, r, prev(unit, t.x, t.y, r), v);
+            }
+            sc -= tileDangerCost(g, unit, v, t.x, t.y, t.z) * 0.4;
+            sc -= aiHazardPenaltyAt(unit, t.x, t.y) * 2;
+            if (!best || sc > best.score) best = { score: sc, x: t.x, y: t.y, z: t.z };
+        }
+        return best;
+    }
+
     function scoreMoves(unit, v, out) {
         const g = G();
         if (_skipMove || !g.canUnitMove(unit)) return;
@@ -7296,6 +7427,15 @@
         if ((unit.ap || 0) >= g.AP_COST_ACTION * 2 && _aiDiff().jointSearch) {
             const sup = _jointSupportSearch(unit, moveTiles, v);
             if (sup && sup.score > 0) out.push({ type: 'move', x: sup.x, y: sup.y, z: sup.z, score: sup.score, _joint: true, _jointFor: sup._for });
+        }
+
+        // 1c) 🛵 THE RIDE-ALONG: an ally is on his back (Hop On) — the walk that drops it where it does the most
+        if (unit.race === 'delivery boy') {
+            const _riders = v.allies.filter(a => a && !a.dead && a._rideWithId === unit.id && g.unitHasStatus(a, 'riding'));
+            if (_riders.length) {
+                const _rb = _rideBestAI(g, unit, _riders, v);
+                if (_rb && _rb.score > 0) out.push({ type: 'move', x: _rb.x, y: _rb.y, z: _rb.z, score: 90 + _rb.score, _ride: true });
+            }
         }
 
         // 2) hazard flee: standing on a telegraphed blast / burning ground?

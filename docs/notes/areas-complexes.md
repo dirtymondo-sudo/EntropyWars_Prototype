@@ -10711,6 +10711,55 @@ the glade, old Downtown...) and every old room a zone bake still reads for lines
 -leylines). NOT old sites (no plot room holds them), left alone: Cyberpunk City (a future reskin of the whole city), Camelot's sky castle, the city's insides (tower
 lobby, mall, showroom, platform, supply closet), the Bermuda Island board, the Spaceship, the Dutchman, the Haunted House floors, DOOR HQ, the puzzle dungeons.
 
+## LEYLINES, THE ONE WORLD MOVE — four rooms at their v13 places (2026-11-17, owner side, the Leylines One World thread; BUILD_PLAN phase 3 wave A)
+The brief's row: "districts round the plateau, the ley line from Giza through all of them (moved, not reshaped)". `bake-leylines.js` builds the 9 x 7 home room
+exactly as before (no district file changed; a clean bake changed no byte of data.js before the move), then THE ONE WORLD MOVE stands the plots with `ow-move.js`.
+The old room `site_prebuilt_gobekli_ancient` is in `DOOR_HQ.retired` (-> the Line) and its literal is gone (the LEYLINES63 markers hold the new rooms).
+
+| Room | What | World plots | Box | Plots | Written by |
+|---|---|---|---|---|---|
+| `site_prebuilt_gobekli_ow_line` | THE LINE: Göbekli Tepe (G) + the Ley Line (Y) east of it | 19..30 x 29..31 | 12 x 3 | 18 | `bake-leylines.js` |
+| `site_prebuilt_gobekli_ow_babel` | Babel (T), the wild link L16 (2 plots, rule 4: the tool lays them), Technoticlan (Z) | 28..34 x 29..36 | 7 x 8 | 29 | `bake-leylines.js` |
+| `site_prebuilt_gobekli_ow_bugs` | the wild link L14, Bug Colony (B), the wild link L15 | 21..27 x 32..36 | 7 x 5 | 15 | `node bake-route.js L14` (`docs/areas/routes/L14.json`: `with` L15, `join` B from `bake-leylines.js --export ow_bugs`) |
+| `site_prebuilt_gobekli_ow_henge` | Stonehenge (S), alone on the plain north-west | -31..-29 x -9..-7 | 3 x 3 | 9 | `bake-leylines.js` |
+
+Bake order: `node bake-leylines.js`, then `node bake-route.js L14`, then `node bake-map.js <the four rooms>` and `--put` the pictures.
+- **Why these four** (the room-splitting rule): G + Y is twelve plots in one straight row west to east, the limit; Babel stands right past the line's East Mouth but
+  would make the row sixteen, so it is a card (`ow_v_31_30`, open ground both sides). T + L16 + Z = 29 plots (the limit is 30). L14 is four plots, so the route
+  kit writes its room and takes Bug Colony in; L15 (two plots) rides along (`with`). Stonehenge touches nothing of its zone.
+- **THE SEAMS** (every one `way: 'open'`: farmland, scrub and the line's paving, no portal): `ow_v_31_30` the Line's east wall (z 0, the line's own row) <-> free on
+  Babel's Kiln (`open: 11`); `ow_h_21_32` the Line's south wall on the Dry Slope <-> the kit's trail north end (`open: 5`); `ow_v_28_34` the Garden Islets on
+  Babel's west wall <-> the kit's L15 east end (`open: 5`). The seam doors stand at the same world point on both sides (checked).
+- **THE BOX'S EMPTY CELLS.** Leylines was open ground with no `gen`. A re-laid room's box has scenery cells, so each room now has `gen: plan` (look trees, no trees)
+  with a `space` over every plot square: a scenery cell is ground you see and never walk. It wears the map's kind there (dry scrub and sand the desert sheet,
+  grass the floor) and a line of stoppers on its side of the plot line (bushes, rocks, dead bushes by kind; never within four squares of a seam). The engine's plan
+  pass sealed and rescued nothing in any of the four rooms (`hqTerrainCompile(...).gen`: sealed 0, rescued 0, carved 0).
+- **A CELL OF THE BOX THAT IS ANOTHER LEYLINES ROOM'S PLOT** (Babel's box holds the line's last three plots, 28..30 x 30) is drawn as that plot's own ground,
+  heights and paint, never walked: from Babel you see the line run on west.
+- **THE HEIGHTS**: each plot's corners as they stood at home; a corner two plots share = their mean, the difference eased over four squares into each plot; scenery
+  corners take the mean of the set ones round them. Every plot is reached on foot from the spawn (the home rule: no step over 0.3 of a square's width).
+- **THE PAINT** stays at half squares (each plot's 24 x 24 block copied). The route kit now reads a joined district's paint at half squares (`paintHalf` in the export,
+  bake-route.js A JOINED DISTRICT PAINTED AT HALF SQUARES; every other route bakes byte for byte as before).
+- **THE WAYS** (the hand rows the tool checks): Room 9600 (`bay`) = the Line, free on the First Doorway; Room 56 (`bay56`) = Stonehenge, free by the South Gate;
+  Room 11 (`bay11`) = Babel, FREE now on the Workers' Town's south side (scenery past it; it was the room's south wall); Room 2012 (`bay2012`) = Babel's south wall at
+  the Portcullis; link `gobekli_giza` a = the Line's west wall, z 0 (Göbekli Tepe's middle row, where the line's row meets the wall; the map's way to Giza is route
+  R11, phase 4.3, which meets Göbekli Tepe at 19,31 / 20,31); link `technoticlan_agartha` a = Babel's room, free, still under the Ball Court. `hubs.ley.room`, the
+  stage zone `ley`, the day table and `HQ_AREA_MARKERS` name the new rooms.
+- **STONEHENGE HAS NO WAY ON FOOT YET**: route R12, the Stone Path (phase 4.1), meets its south side at -30..-29, -6. Room 56's frame is its door meanwhile. The quarry
+  shaft way down (`under.ways`, to the D.U.M.B.) is not built.
+- **THE STRAYS**: the barrows' ring ditches (districts/S.js) start due east, so the mover's anchor (the middle point) lay due west, over the line in Bug Colony's squares
+  at home: the tool now anchors a row of points on its own district's squares for the move (A RING OR A LINE IS ITS DISTRICT'S); the census lists two `ridge` under
+  The Tall Grass as missing and two extra under The Barrows. One ring at the south end (86,33) reached into the Ley Line's squares at home and now runs a few metres
+  past Stonehenge's south line (the terrain stops there). One lake row on The Lake ends on a plot line and is counted under the next plot (25 lake rows before and after).
+- **NOT RESHAPED, SO STILL TRUE**: the gold forks run from each district toward where the line ran at home. Göbekli Tepe's fork ends on its south side, where route R11
+  will arrive; Babel's runs to its north side, Technoticlan's to the North Causeway's north side, Bug Colony's to the Ant Road's south side, Stonehenge's to the
+  South Gate: each ends at scenery. The Ley Line's own stubs to the old forks end at its north and south sides. A design pass (mondo's call) could turn the forks
+  toward the trails.
+- **CENSUS** (`docs/areas/leylines/move/before.json`; `node ow-census.js --diff docs/areas/leylines/move/before.json <the four rooms>`): all 684 props, 24 natives and
+  21 lines are there. The five MISSING lines are the ones above (the room-wide cave stones now a row a room, the two ring ditches, the Giza tunnel's door on Göbekli
+  Tepe's west wall, the one lake row). The extras are the seams, the stoppers, the trail plots and the kit's dressing.
+- Proof pictures: `docs/plans/one-world/proof/leylines_*.jpg`.
+
 ## ONE WORLD, THE ZONE MOVES — the foundation's rules for every zone thread (2026-11-17, mondo's approved map v13)
 The design is `docs/plans/one-world/` (README.md, BUILD_PLAN.md, the page, the sheets). This section is what phase 1 (the
 foundation thread) built and the rules phases 2 to 5 follow. Only walkable plots get built (districts, roads, wild links);
@@ -11154,3 +11203,188 @@ open ground shows as a dark hole in a clump of trees (it needs a seam look with 
 `node playtest_city.js <room> '<views>' --loglen=1400`; a view's `"eval"` prints `ThreeRenderer.hq.perf()` (calls, triangles, `mem`); pass each
 view the ground's own height (`hqTerrainCompile(room, id).hFn(x, z)`); the fight: `node playtest_handover.js <room> --at=x,z[,y] --race=<unit>`
 (both options added for the slice). Walk lengths: the shortest line over the room's `space` rows, door to door, at 2.4 and 4.6 m/s.
+
+## THE WOODS, ONE WORLD PHASE 3 — the Redwood Trail and the Ritual Ground stand at v13 (2026-11-17, BUILD_PLAN wave A, the Woods zone thread)
+Every Woods district now stands at its One World place; the old room `site_prebuilt_fairy_forest_plots` is in `DOOR_HQ.retired` (-> the Redwood Trail's
+room, which holds its arrival, the Creek, lower). Nothing of a district file changed; only plots moved, with everything on them.
+
+| Room | What | World plots | Box | Built by |
+|---|---|---|---|---|
+| `site_prebuilt_fairy_forest_ow_clearing` | the slice's Clearing + Dead Man's Cave, plus the wild link L1 (one plot, -16,0: rule 4) | -17..-6 x 0..4 | 12 x 5 | `bake-woods.js` |
+| `site_prebuilt_fairy_forest_ow_redwood` | THE REDWOOD TRAIL (T), 9 plots: the Snowline at the top, down the west column to the Meadow, the east column to the Creek, lower | -17..-16 x -9..-2 | 2 x 8 | `bake-woods.js` |
+| `site_prebuilt_fairy_forest_ow_ritual` | THE RITUAL GROUND (G), the ring round its empty middle (-21,7 is no plot), + L2 (7 plots from the Clearing) + L5 (2 plots on to the Estate's Iron Gate) | -22..-17 x 2..10 | 6 x 9 | `bake-woods.js` |
+| `site_ow_l3` | wild link L3, the Snowline up to the Snowy Pass (was the kit's proof room; `proof` dropped, ends given) | -17 x -14..-10 | 1 x 5 | `bake-route.js L3` |
+| `site_ow_l4` | wild link L4, the Clearing west to Camelot's Fairy Forest | -19..-17 x 0 | 3 x 1 | `bake-route.js L4` |
+
+Why this split (the room-splitting rule): the Clearing's room is full by the triangle number, so the Redwood Trail cannot join it; T + L3 would be 13 plots tall
+(the box is 12 at most); L4 + the Clearing would be 14 wide. L1 touches only the Clearing (the Old Road's plot -16,-1, route R4, phase 4.1, lies between L1 and the
+Creek, lower), so it is in the Clearing's room. L7 (-23,6) is Camelot's link (gen.js LINKS 'cam') and stands in Camelot's Forest room.
+
+**What the tool learned** (`bake-woods.js` THE ONE WORLD MOVE): (1) a STAND entry's `links: LINK(id, level)` = a wild link's plots laid by this tool in that room: forest,
+a three-square trail from each joint through the plot's middle (hub 6, 6), and ONE place beside the trail from ow-places.js (forest kinds; never one the room has
+until they run out; the plot is named "The trail, <place>"); seams and ends on a link plot are keyed by its world plot, `'-17,2:N'`. (2) `doorAt: { <door id>: { plot,
+side } }` moves a door whose side became a joint (the Shelf's `lemuria`, the Snowline's `shasta`: both on the east side now). (3) `bay: { id, plot, side }` places
+DOOR HQ's bay door (the Grove's `bay_grove`, the lake's west shore, north side) and the writer rewrites its siteRooms row (room + free place). (4) `strayOpen: [id]`
+opens the off-plot squares under a district building that stood across two home plots which no longer touch (THE CAMP HOUSE, G.js: its east square lies on the
+ring's empty middle; 2 squares opened, the house and everything in it where G.js put them). (5) the tool's decks stop at the room's wall. (6) `KIT_ENDS`: a link end
+another tool writes (woods_camelot).
+
+**The route kit learned** (`bake-route.js`): `ends: { '<seam id>': { link: '<link id>', side: 'a' } }` = a two-way link stands on that end (no seam door), and the
+kit rewrites the link's end to this room. L4's west end is `woods_camelot` end a (id kept); Camelot's thread puts end b on The Spring's east side.
+
+**Seams and doors** (ids; walked in the probe: T -> the Clearing and the Ritual Ground -> the Clearing, both arrive at their door):
+
+| Seam id | Between | Note |
+|---|---|---|
+| `ow_h_m16_0` | the Clearing (L1's north side) and the Redwood Trail (the Creek, lower's south side) | INTERIM: jumps R4's plot -16,-1. The phase 4.1 thread builds R4 and re-points both ends |
+| `ow_h_m17_2` | the Clearing (Deep woods, west, south) and L2's first plot (Ritual Ground room) | was the interim door to the old room |
+| `ow_h_m17_1` | the Clearing (Deep woods, west, north) and L4 | the Clearing's door is where woods_camelot stood; L4's is on its plot's middle |
+| `ow_h_m17_m9` | the Redwood Trail (the Snowline, north) and L3 | |
+| `ow_v_m16_m14` | L3's north end and the Mountains' Tree Line, west | the Mountains thread's room `site_prebuilt_shasta_ow_lodge` |
+| `ow_h_m21_11` | L5's south end and the Estate's Iron Gate | the Estate thread's room `site_prebuilt_skinwalker_ow_house` |
+| `ow_v_m22_6` | the Mound's west side and L7 | Camelot's `site_prebuilt_camelot_ow_forest` |
+
+Re-pointed by hand: the Cavern's `woods` door (bake-cavern.js + data.js, at `lemuria`) and the Mountains' Trailhead `woods` door (data.js, at `shasta`) -> the
+Redwood Trail's room; Camelot's `deadtree` door (data.js) -> the Ritual Ground's room (both zone threads change their tools in their own PRs). The Woods' `shasta`
+door names Shasta's own room `site_prebuilt_shasta_ow_shasta` (at `woods`). `lookingglass` names
+Camelot's Forest room (`deadtree`). Links moved with their plots: `grove_lodge` (the lake's east shore, north side now; its east side is L2) and `woods_ritual`
+(the Owl's west side: the ring's middle; its east side is the Stage).
+
+**Census** (`node ow-census.js --diff docs/areas/woods/move/before_tg.json site_prebuilt_fairy_forest_ow_redwood site_prebuilt_fairy_forest_ow_ritual`): every prop
+(641, now 681 with the link places) and every native (9) is in. What it lists as MISSING, all answered: the room-wide scatter rows (one a room now), the district
+scatter discs split per plot, 9 forest-mass trees where a new trail was laid, and the two interim seam doors of the old room (renamed / moved: `ow_h_m16_1` is
+`ow_h_m16_0`, `ow_h_m17_2` stands on L2's plot).
+
+**Proof** (probe-fast, no page errors): `docs/plans/one-world/proof/woods_redwood_creek.jpg`, `woods_ritual_l2.jpg`, `woods_l3.jpg`, `woods_l4.jpg`.
+Loading in the probe: the Redwood Trail 59 s (169 files), the Ritual Ground 53 s (207), L3 41 s, L4 32 s. Not measured: draw calls / triangles at the heaviest view.
+
+**Open, for mondo or a later pass**: the creek of the Redwood Trail still runs off the east wall of the Creek, lower and the Creek, upper (it flowed on into the
+Ritual Ground at home); the bridge on the Creek, lower now ends at that water. The camp house's east end stands over the ring's empty middle.
+
+## THE MOUNTAINS, THE ONE WORLD MOVE — the range at its v13 places, three rooms (2026-11-17, BUILD_PLAN phase 3 wave A; the owner's One World Mountains thread)
+`bake-mountains.js` still builds the 12 x 8 HOME room the district files were written for (its checks run as before), then THE ONE WORLD MOVE
+(the end of the tool) stands the plots at their `docs/plans/one-world/plots.json` places with `ow-move.js` and writes THREE rooms in place of
+`site_prebuilt_shasta_mountains` (no longer written). The North Pole room did not move (its `pass` door now names the Lodge room).
+
+| Room | What | World box (x, y) | Plots |
+|---|---|---|---|
+| `site_prebuilt_shasta_ow_lodge` | THE SKI LODGE (K) + wild link L9 "The Traverse" + THE SNOWY PASS (P) | -23..-14 x -22..-14 (10 x 9) | 29 |
+| `site_prebuilt_shasta_ow_olympus` | wild link L10 "The Saddle Path" + MOUNT OLYMPUS (O) + wild link L11 "The Long Descent" | -14..-5 x -18..-13 (10 x 6) | 19 |
+| `site_prebuilt_shasta_ow_shasta` | MOUNT SHASTA (S) | -4..2 x -21..-15 (7 x 7) | 20 |
+
+- **Why this split** (the room-splitting rule): K + L9 + P touch and make 29 plots; adding L10 + O would be 48. L10 is two plots, so by rule 4 it
+  joins a district's room: Olympus's. O + L11 + S would be 39, so Shasta stands alone. Each room is inside the 12 x 12 box and 30 plots.
+- **What the move lays again** (the tool's own, never a district's): the box's other cells wear the map's ground (forest = trees `t`, peak / rock /
+  alpine = rock `r` that climbs from the trail's edge, anything else = deep drift `k`: nobody walks them); every two plots that touch now and did not
+  stand that way at home get ONE crossing, a trail from each plot's hub (the home's THE PORTS rule; 12, 13 and 5 joints); the heights (`heightsOf`,
+  the home's rule on the plots as they stand, the ski columns still graded without shelves); paint; tree zones; the air zones a plot at a time; the
+  Stadium's lane marks; the levelled building squares. A trail stub to a home neighbour that is gone ends at the rock (not closed).
+- **The wild links' plots are this tool's** (L9 and L11 sit inside their rooms' boxes, L10 by rule 4): each a snowfield in a rock rim, the trail across
+  it, ONE place beside it (`ow-places.js`, ideas, plain): L9 the trapper's camp, the mine cart, the snowman, the camp, the marker stones; L10 the carved
+  pole, the marker stones; L11 the camp, the trapper's camp, the mine cart, the snowman, the boundary stone. The plot names ("The Traverse, the
+  snowman") and the three link names are ideas of Claude's, marked; rename in `LINKPLOTS`. Levels graded end to end.
+- **The seams**: `ow_v_m14_m14` (the Tree Line | L10, trail) and `ow_v_m4_m15` (L11 | the Upper Shelf, open, 5 m) join my rooms. `ow_v_m16_m14` on the
+  Tree Line, west's west side -> `site_ow_l3` (the Woods thread gives L3 its end there). `ow_v_m22_m16` on the Lodge Yard's west side -> `site_ow_l6`
+  (Camelot's L6): written only when that room is in data.js; if Camelot merges after this PR, rerun `node bake-mountains.js` and the door appears.
+- **Doors kept**: `pass` (the Pass Gate, free now; INTERIM until R5 the Polar Trail is built from the Ridge, east), `lift_top` / `lift_bottom` (both in
+  the Lodge room, re-pointed there), `woods` (the Trailhead, south wall, INTERIM: names the Woods' room `site_prebuilt_fairy_forest_ow_redwood` once it
+  exists, else the old Woods room), `hills` + `saddle` (Shasta's east wall, INTERIM until R2). Links re-pointed by part: `shasta_lemuria` (ow_shasta),
+  `heaven_olympus`, `vatican_olympus`, `lodge_olympus` (ow_olympus); bay doors `prebuilt_shasta` -> Shasta's room, `prebuilt_olympus` -> Olympus's.
+  The Pilgrim Stair's link end stood on the old room's far south wall, past four plots of rock; it is on the Pilgrim Stair's own south side now.
+- **Retired**: `site_prebuilt_shasta_mountains` -> the SHASTA room, because every door of another zone that names it has its `at` there (the Woods'
+  `shasta` -> `woods`, the city's Hills `shasta` -> `hills`, `ridge` -> `saddle`: NOT edited, they land through `retired`; the Woods thread re-points
+  its own, the Hills row's holder may change N.js's `MTN`). `site_prebuilt_shasta_slopes` -> Shasta, `site_prebuilt_olympus_summit` -> Olympus.
+  `DOOR_HQ.hubs.mountains.room` = Shasta's room. The day table and `HQ_AREA_MARKERS` have a row each.
+- **Census** (`node ow-census.js --diff docs/areas/mountains/move/before.json` + the three rooms): every prop (1,496), feature (303), native (27) and
+  line there; the one MISSING line is the census reading the Pilgrim Stair's link on the old wall's empty cell (it is on the Pilgrim Stair now).
+  Extra: the 12 places and the seam doors.
+- **The one stray**: Shasta's footbridge `deck` on The Spring (S.js line 158) ran 1.75 m into The Lookout; the Lookout stands elsewhere now, so it
+  ends at the rock on the Spring's south side. For S.js's holder (not edited here).
+- **Not done**: the Lodge's chairlift line: the Rental Hut stands between the Chairlift plot and the Ski Lodge on v13 (the lift's pieces each stayed
+  on their own plots, no stray, but its line now passes over the Rental Hut: look at it). R2, R3, R5 (phase 4.1) will replace the interim doors.
+
+## ONE WORLD, THE ESTATE RE-LAID (2026-11-17, BUILD_PLAN phase 3 wave A; mondo said yes to taking the second side's Estate rows, plots moved only)
+Every Estate district now stands at its v13 place. The slice had moved the Corn Fields and the Lake; this thread moved the Haunted House (H) and the Ranch (R)
+with `bake-estate.js` THE ONE WORLD MOVE (`ow-move.js`), no district file edited. Four rooms:
+
+| Room | What | World plots | Box | Plots | Written by |
+|---|---|---|---|---|---|
+| `site_prebuilt_skinwalker_ow_corn` | the Corn Fields + R7's three fields (the slice, unchanged byte for byte) | -14..-13 x 5..10 | 2 x 6 | 12 | `bake-estate.js` |
+| `site_prebuilt_skinwalker_ow_lake` | County Lane + L8 + the Lake (the slice; only its Ranch seam re-pointed) | -14..-10 x 10..17 | 5 x 8 | 25 | `bake-route.js R7` |
+| `site_prebuilt_skinwalker_ow_house` | THE HAUNTED HOUSE: the Iron Gate, the Drive, the Lawn, the house between the Gazebo and the Treehouse, the Graveyard, the Family Plot, the Crypt | -22..-20 x 11..16 | 3 x 6 | 9 | `bake-estate.js` |
+| `site_prebuilt_skinwalker_ow_ranch` | THE RANCH + R8's one plot in its box (`Ranch Road, the bee yard`, a field like County Lane's) | -12..-10 x 18..22 | 3 x 5 | 10 | `bake-estate.js` |
+
+- **The splitting rule.** The Ranch touches the Lake (the Ranch Gate under The Lake, south), but the Lake's room has 25 plots: 25 + 10 > 30, so the Ranch
+  is its own room, joined door to door on `ow_h_m11_18` (the interim seam of the slice, now landing on the Ranch Gate; open ground, `way: 'open'`, 6 m).
+  The house stands alone in the forest: the wild link L5 (-21,9 · -21,10, zone the Woods, two plots) belongs to the Woods' Ritual Ground room by rule 4
+  (two zones never join), so the house's only seam is the Iron Gate's north side, `ow_h_m21_11`, a `trail` door to `site_prebuilt_fairy_forest_ow_ritual`
+  (the Woods thread's room; it writes the other side, agreed between the threads 11-17).
+- **R8's plot -10,18** lies alone between the Lake, the Ranch Gate and the Barn (rule 4: the district's room's). It is dressed like the corn's lane fields
+  (grass in a rim of corn, sunflowers, wild flowers, a milestone, a ranch fence, one place: the bee yard) by the same code (`fields: true` on a STAND row).
+  R8's other 23 plots are phase 4.2's; its room meets the Ranch at -10,21 / -9,20 (the Windmill, the Pasture): that thread adds both sides of that seam.
+- **Joints across the line.** The corn's rule joined only plots one OVER the other; the house and the ranch have plots side by side, so their STAND rows
+  join east-west too (`ewJoin` / `fields`). The corn's room is unchanged by this (its two columns are joined by the lane).
+- **THE STABLE DOOR (Room 512's bay)** stood on the Yard's south wall. The Yard is inside the Ranch's room now (the Paddock stands south of it), so the door
+  is on the room's own south wall at the Cow Field's foot (`bay: { plot: 'P05-05', k: 5 }`: a two-square track cut up to the field's open ground);
+  data.js `siteRooms.entry.prebuilt_skinwalker` = `{ room: '…_ow_ranch', door: { id: 'bay', wall: 's', x: 0 } }`. Room 13's door (`bay13`), the
+  saloon door (`ranch_lodge` end b) and the house's front door moved with their plots; the rows were rewritten (the tool checks them).
+- **THE HOUSES PAST THE CORN** (H.js sets two rim houses OUTSIDE the home room): they move with the plot they lie past. One fell on the house room's south
+  line (its plot, the Family Plot, has the Crypt south of it now); the tool sets such a piece past the room's wall on the nearest outside side of its
+  plot, as far out as before (printed as a STRAY: `abandoned_house` past the Crypt's south wall at -42,168). No other stray.
+- **Retired:** `site_prebuilt_skinwalker_estate` -> the Ranch (the stable door's room); `site_prebuilt_haunted_grounds` -> the house (was -> the old room).
+  `hubs.ranch.room` = the Corn Fields. The Haunted Hall's front door, the day table and `HQ_AREA_MARKERS` name the new rooms. Doors of live rooms naming
+  a retired room: none. Barn hatch (`under.ways`, the Barn -10,19 down to the D.U.M.B.'s Research): no door exists today; the D.U.M.B. thread (wave B)
+  writes the link, its Estate end on The Barn's plot in `…_ow_ranch`.
+- **The census** (`node ow-census.js --diff docs/areas/estate/move/before_hr.json site_prebuilt_skinwalker_ow_house site_prebuilt_skinwalker_ow_ranch`):
+  props 746 -> 755, natives 14 -> 14, every line kept. What it lists: 6 ranch rails + 2 walls that lie ON a plot line and are counted on the box cell
+  past it now (the same pieces); the abandoned house above; the room-wide scatter rows (the tool's, one a room); the field's own dressing (new plot);
+  the moved `bay` and `ow_h_m11_18` doors. Nothing lost.
+- **Measured** (probe-fast, standing at the gate 16 m up looking down the room, right after the load): the house 835 calls / 1.93 M triangles, 934 MB
+  (models 715 + rigs 219), ready in 72 s; the ranch 1,695 / 4.0 M, 1,628 MB (1,456 + 172), ready in 76 s. The old 18-plot room, same probe, a view over
+  its ranch half: 1,118 / 3.0 M, ~1,300 MB (its notes: 1,348 to 1,638). The ranch's view down its five plots is the heaviest: under the 2,500 / 12 M
+  caps, and at the top of the old room's memory range, not over it. Pictures: `docs/plans/one-world/proof/estate_house_drive.jpg`,
+  `estate_ranch_gate.jpg`.
+## THE DESERT, THE ONE WORLD MOVE (2026-11-17, BUILD_PLAN phase 3 wave A; the owner's Desert thread)
+mondo 11-17: the Desert is RE-LAID, not "stays" (v13 stands its four districts apart). `node bake-desert.js` builds the Desert in its HOME FRAME as
+before (the 12 x 12 room of the Highway, squares 0..144; no district file changed), then THE ONE WORLD MOVE (the tail of the tool) stands it as FIVE rooms:
+
+| Room | What | World plots | Box |
+|---|---|---|---|
+| `site_prebuilt_area51_ow_circus` | THE CIRCUS (district C), 9 plots | 6..8 x 21..23 | 3 x 3 |
+| `site_prebuilt_area51_ow_town` | WESTERN TOWN (W), 16 plots | -4..-1 x 26..29 | 4 x 4 |
+| `site_prebuilt_area51_desert` | AREA 51 (A), 16 plots: THE OLD ROOM ID, kept on purpose | 2..5 x 33..36 | 4 x 4 |
+| `site_prebuilt_area51_ow_giza` | GIZA (G), 16 plots | 13..16 x 29..32 | 4 x 4 |
+| `site_prebuilt_area51_highway` | THE HIGHWAY (R), 87 plots, NOT MOVED (`wait` row in bake-map.js, drawn at 6,35 clear of the districts) | - | 12 x 12, the four blocks masked out |
+
+- **Why Area 51 keeps the old id**: every door that names `site_prebuilt_area51_desert` from another room (Hangar 18's big door, the White Rooms'
+  yard gate and storm drain in the D.U.M.B., `docs/areas/dumb/districts/R.js`) asks for an Area 51 door (`hangar`, `ward`, `stormdrain`), so they all
+  still land and no other zone's file was touched. The Highway, which 4.2 retires, took the new id.
+- **A block moves WHOLE** (its plots keep their places to each other), so nothing is a stray but one: Western Town's Boot Hill `hill` reaches a little
+  past the block onto the old Open Desert plot (it stands at the room's edge now; left as it is). The fences are moved uncut (the mover cuts a rail /
+  wall at every plot line for plots that part; here none part, so the tool moves them itself by the mover's anchor rule).
+- **The Highway's room** keeps the home frame exactly (nothing on it moved: the tool refuses if it does). Each block a district left is a mesa (a 5.25 m
+  shelf, its middle 8.75: the rock's own rule), so the room ends at rock where a district stood. Its sides stay hand-written (it is not on the grid).
+- **Re-laid by the tool, per room**: the room-wide scatter rows (stones, skulls, snags; a share of the 144 plots each; `off`, Area 51's paved ground,
+  only in Area 51's room), the paint and the lane paint cut a room at a time, the air (W.js `airZones`), `edges: { world: true, reach: 440 }` + the
+  saguaros past the line, `sky.landmarks: 'world'`.
+- **THE SEAMS (INTERIM until phase 4.2 builds the Desert Highway's legs)**: each district meets the Highway's room where its own road met the Highway in the
+  home frame, an open seam (`way: 'open'`): `ow_v_9_23` the Circus road (the Circus' east wall, z 49; Exit 2's Circus Road), `ow_v_m4_29` Exit 3 into
+  Western Town (its west wall, z 61.25), `ow_h_2_33` the Long Straight into Area 51 (its north wall, x -77), `ow_h_13_29` the Giza Road onto the
+  causeway (Giza's north wall, x -63). The Highway's ends are free doors half a square inside its plots. The ids are the world seam ids of the
+  DISTRICT's side, so 4.2 re-points only the Highway's end (v13's legs meet the Circus west + east, Western Town north + south, Area 51 west + east,
+  Giza east + north: 4.2 moves each seam to where its leg meets, or adds the others).
+- **Rows outside the block, re-pointed by hand (the tool refuses to write when one drifts)**: link `gobekli_giza` end b = `part: 'ow_giza', wall: 'e',
+  z: -10.5` (the Robbers' Tunnel); link `downtown_desert` end b = `part: 'highway'` (Exit 1); `siteRooms.entry.prebuilt_giza` (Room 444's Tomb Door)
+  = Giza's room at 3, 24.5; the Tunnel's `carnival` door and the Mandela Room's `mirrors` door = the Circus' room; `DOOR_HQ.retired`: the old Giza
+  plateau -> Giza's room, the old carnival -> the Circus' room (the old gate and flight line stay -> Area 51); `hubs.desert.room` = the Highway (the way
+  in from the city); the day table, `HQ_AREA_MARKERS` and `HQ_AREA_ENCOUNTERS` have a row for every room. `bake-desert-insides.js` points the Great
+  Pyramid's three ways out (`pyramid`, `tombside`, `cut`) at Giza's room by door id (G.js still names the old id; not edited). Every door into or
+  out of the five rooms resolves (a load-data walk of every live room's doors).
+- **The census** (`docs/areas/desert/move/before.json`, `node ow-census.js --diff docs/areas/desert/move/before.json <the five rooms>`): 1,749 props,
+  41 natives, 13 lines of talk, every plot's features and doors as before; MISSING = only the three room-wide scatter rows, now one a room (stones 130 / skulls 26 /
+  snags 22 before, 129 / 27 / 20 after, by rounding); extra = the eight seam doors and the eight mesa rows.
+- **Seen and walked (probe-fast, 11-17)**: every room loaded with no page error; every seam walked one way into the next room (the Circus, Western
+  Town, Area 51 and Giza out to the Highway; the Highway into the Circus). Measured at an overview from 18 to 30 m up (calls / triangles, models +
+  rigs MB): the Circus seen, Western Town 677 / 1.36 M, 1,431 MB · Area 51 1,066 / 1.11 M, 1,400 MB · Giza 338 / 1.14 M, 1,156 MB · the Highway
+  517 / 0.77 M, 679 MB; all far under rule 5 (2,500 / 12 M, 1.4 GB is the line the old 144-plot room already stood near). Pictures:
+  `docs/plans/one-world/proof/desert_*.jpg`.
