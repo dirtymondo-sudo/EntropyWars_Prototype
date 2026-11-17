@@ -73,7 +73,7 @@ const run = async () => {
   const spawn = await page.evaluate((room) => DOOR_HQ.rooms[room].spawn, room);
   const list = views.length ? views : [Object.assign({ name: 'spawn', fp: false, dist: 4.2, pitch: -0.2 }, spawn)];
   for (const v of list) {
-    await page.evaluate((v) => { try { if (window._hqPauseDrop) window._hqPauseDrop(); if (window._hqResume) window._hqResume(); } catch (e) {} ThreeRenderer.hq.dev.teleport(v); if (v.eval) { try { eval(v.eval); } catch (e) { console.log('[HQ] eval failed', e); } } }, v);
+    await page.evaluate((v) => { try { if (window._hqPauseDrop) window._hqPauseDrop(); if (window._hqResume) window._hqResume(); } catch (e) {} if (!v.keep) ThreeRenderer.hq.dev.teleport(v);   /* "keep": true = stay where the last view left the walker (2026-11-17) */ if (v.eval) { try { eval(v.eval); } catch (e) { console.log('[HQ] eval failed', e); } } }, v);
     await fast.settle(page, v.settle);   // two drawn frames of the new view (or "settle": <ms> on the view)
     await page.evaluate(() => { try { if (window._hqPauseDrop) window._hqPauseDrop(); const pz = document.getElementById('hqPause'); if (pz) pz.style.display = 'none'; } catch (e) {} });
     /* "walk": { "key": "w", "max": 90000 } on a view (2026-11-17, the One World seams): after the picture's place is set, hold the key until the room changes (a seam or a

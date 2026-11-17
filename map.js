@@ -1869,6 +1869,23 @@
             const len = Math.max(0, Math.min(100, pct));
             return `<circle class="${cls}" cx="50" cy="50" r="${r}" pathLength="100" fill="none" stroke="${stroke}" style="stroke-dasharray:${len.toFixed(2)} 100;transform:rotate(90deg)"/>`;
         }
+        /* THE EYE BY THE PORTRAIT (NPC encounters step 2, 2026-11-17, mondo: "eyes on player and red ! on npcs", "eye can be by the portrait"): ONE eye
+           beside the lead's portrait, the battle nameplate's own (three-renderer.js `tp-eye`: the same character, colours and slash). Closed (green,
+           slashed) = nobody who would act sees you; open (amber) = a Guard, a mugger or the Ghost does. three-renderer.js _hqTickAware reports through
+           opts.onAware; no eye where no fight can start (DOOR HQ, an online seat). Local only: nothing relayed, the walk is local. */
+        let _hqAware = { on: false, seen: false };
+        function _hqAwareEyeSvg() {
+            if (!_hqAware.on) return '';
+            return `<g class="hq-dock-eye${_hqAware.seen ? '' : ' hidden'}"><title>${_hqAware.seen ? 'Someone who would act sees you' : 'Nobody who would act sees you'}</title>`
+                + `<text x="124" y="60" text-anchor="middle">👁</text><line class="hq-dock-eye-slash" x1="106" y1="60" x2="142" y2="40"/></g>`;
+        }
+        function _hqAwareEvent(ev) {
+            const was = _hqAware; _hqAware = { on: !!(ev && ev.on), seen: !!(ev && ev.seen) };
+            if (was.on !== _hqAware.on) { _hqFillDock(); return; }
+            const g = document.querySelector('#hqDock .hq-dock-eye'); if (!g) { _hqFillDock(); return; }
+            g.classList.toggle('hidden', !_hqAware.seen);
+            const t = g.querySelector('title'); if (t) t.textContent = _hqAware.seen ? 'Someone who would act sees you' : 'Nobody who would act sees you';
+        }
         function _hqFillDock() {
             const el = _hqEl('hqDock'); if (!el) return;
             let rec = null;
@@ -1886,7 +1903,7 @@
                 const tip = name + (v.down ? ' · DOWN' : (full ? ' · FULL' : ` · HP ${v.hp} / ${v.hpMax}` + (v.mpMax > 0 ? ` · MP ${v.mp} / ${v.mpMax}` : '')));
                 const low = !v.down && hpPct <= 30;
                 const cid = 'hqDockClip' + i;
-                return `<div class="hq-dock-pp${i === 0 ? ' lead' : ''}${v.down ? ' down' : ''}${low ? ' low' : ''}" title="${_hqEsc(tip)}">`
+                return `<div class="hq-dock-pp${i === 0 ? ' lead' : ''}${i === 0 && _hqAware.on ? ' has-eye' : ''}${v.down ? ' down' : ''}${low ? ' low' : ''}" title="${_hqEsc(tip)}">`
                     + `<svg viewBox="0 0 100 100"><defs><clipPath id="${cid}"><circle cx="50" cy="50" r="30.5"/></clipPath></defs>`
                     + `<circle class="hq-dock-track" cx="50" cy="50" r="43"/><circle class="hq-dock-track mp" cx="50" cy="50" r="36.5"/>`
                     + _hqDockArc(43, hpPct, low ? '#ff4a4a' : '#2ed158', 'hq-dock-arc hp')
@@ -1894,7 +1911,7 @@
                     + `<circle class="hq-dock-bezel" cx="50" cy="50" r="31.7"/>`
                     + `<g clip-path="url(#${cid})"><circle class="hq-dock-disc" cx="50" cy="50" r="30.5"/>`
                     + (po ? `<image href="${_hqEsc(po.url)}" x="19.5" y="19.5" width="61" height="61" preserveAspectRatio="${po.kind === 'sprite' ? 'xMidYMax meet' : 'xMidYMid slice'}"/>` : '')
-                    + `</g>${v.down ? '<text x="50" y="60" text-anchor="middle" class="hq-dock-skull">☠</text>' : ''}</svg>`
+                    + `</g>${v.down ? '<text x="50" y="60" text-anchor="middle" class="hq-dock-skull">☠</text>' : ''}${i === 0 ? _hqAwareEyeSvg() : ''}</svg>`
                     /* straight HP / MP bars under the portrait: hidden unless the UI Maker's "Health bars" gives the party
                        portraits bars instead of (or as well as) the rings (hud.js barsCss shows them) */
                     + `<span class="hq-dock-bars" style="display:none"><span class="hq-dock-bar hp"><i style="width:${hpPct.toFixed(1)}%"></i></span>`
@@ -2183,6 +2200,9 @@
                     /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
                     onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
                     onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,
+                    /* THE AWARENESS (NPC encounters step 2, 2026-11-17): the eye by the portrait. Story walk only: where a strike could start a fight, never from an online seat */
+                    awareOk: function () { try { return _hqEncounterEnabled() && _hqEncounterRoomOkNow() && !(typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()); } catch (e) { return false; } },
+                    onAware: (typeof _hqAwareEvent === 'function') ? _hqAwareEvent : null,
                     /* SKATEBOARDING (HQ plan 9.8): the issue (standard issue while HQ_SKATE_RULES.free) and the ride's beats (the trick line, the sounds, the banked line) */
                     skate: (typeof _hqSkateOpts === 'function') ? _hqSkateOpts(profile) : null,
                     onSkate: (typeof _hqSkateEvent === 'function') ? _hqSkateEvent : null,
