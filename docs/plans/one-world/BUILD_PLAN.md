@@ -141,7 +141,7 @@ they join, rerun node bake-map.js. One picture a route.
 
 | Thread | Part | Plots |
 |---|---|---|
-| 4.1 | North routes: R1 River Road, R2 Canyon Trail, R3 Pilgrim Way, R4 Old Road, R5 Polar Trail, R12 Stone Path | 118 |
+| 4.1 | North routes: R1 River Road, R2 Canyon Trail, R3 Pilgrim Way, R4 Old Road, R5 Polar Trail, R12 Stone Path. **BUILT 2026-11-17** (7 rooms; areas-complexes.md "ONE WORLD, THE NORTH ROUTES") | 118 |
 | 4.2 | South routes: R6 Valley Road, R8 Ranch Road, R9 Badlands Highway, the Desert Highway (74 plots, re-routed between the Desert's districts after its wave A thread) | 68 |
 | 4.3 | Coast + islands: R10 Coast Road, R11 Delta Causeway, the new islands (Pirates' Cove, the Frozen Sea, the Volcano Island's move, the Triangle's move), the Round Voyage stops (part 1 BUILT 11-17: R10, R11, the Beach's move with the Triangle + the grown Volcano Island, the first two boat legs; notes areas-complexes.md "ONE WORLD, THE COAST + THE ISLANDS") | 46 + 60 |
 | 4.4 | Below + between: the underground walks (98: the Bone Passage secret walk, the Outfall, the Holding Cells to the tunnel way), the Freight Line late-game ride, the Colosseum (9), the Internet (36) | 143 |

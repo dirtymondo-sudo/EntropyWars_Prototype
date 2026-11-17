@@ -29576,7 +29576,8 @@ const ThreeRenderer = (function () {
                     sx: mesh.position.x + Math.sin(ry) * fwd * cosP,
                     sy: mesh.position.y + (mesh._ew_pivotUp || 0) + Math.sin(rp) * fwd,
                     sz: mesh.position.z + Math.cos(ry) * fwd * cosP,
-                    tx: tp2.x, ty: tp2.y + spriteH * 0.45, tz: tp2.z
+                    tx: tp2.x, ty: tp2.y + spriteH * 0.45, tz: tp2.z,
+                    own: turret.owner === _viewerPlayerNum(), tgt: best.id   /* THE SIGHT LASERS: whose it is + who it holds */
                 });
             }
         });
@@ -29604,6 +29605,8 @@ const ThreeRenderer = (function () {
         if (entry.beamMat) entry.beamMat.dispose();
         if (entry.glowMat) entry.glowMat.dispose();
         if (entry.dotMat) entry.dotMat.dispose();
+        if (entry.edge && entry.edge.geometry) entry.edge.geometry.dispose();
+        if (entry.edgeMat) entry.edgeMat.dispose();
     }
 
     function _clearLaserBeams() {
@@ -29628,8 +29631,13 @@ const ThreeRenderer = (function () {
         glow.renderOrder = 9039; beam.renderOrder = 9040; dot.renderOrder = 9041;
         var root = new THREE.Group();
         root.add(glow); root.add(beam); root.add(dot);
+        /* THE SIGHT LASERS (VFX cleanup B3, 2026-11-17): a dark sleeve round the core so the line reads on a bright floor */
+        var edgeMat = new THREE.MeshBasicMaterial({ color: 0x06080c, transparent: true, opacity: 0.55, depthWrite: false });
+        var edge = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.07, ts * 0.07, 1, 6, 1, true), edgeMat);
+        edge.renderOrder = 9039; root.add(edge);
         _laserBeamGroup.add(root);
-        var entry = { root: root, beam: beam, glow: glow, dot: dot, beamMat: beamMat, glowMat: glowMat, dotMat: dotMat, phase: (key.length * 1.7) % 6.283 };
+        var entry = { root: root, beam: beam, glow: glow, dot: dot, beamMat: beamMat, glowMat: glowMat, dotMat: dotMat, phase: (key.length * 1.7) % 6.283,
+            edge: edge, edgeMat: edgeMat, born: performance.now() / 1000, tgt: null };
         _laserBeams.set(key, entry);
         return entry;
     }
@@ -29666,7 +29674,8 @@ const ThreeRenderer = (function () {
                 /* Muzzle-height origin on the sniper, chest-height end on the target. */
                 wanted[ds.sourceUnitId + '>' + ds.markedUnitId] = {
                     sx: sp.x, sy: sp.y + spriteH0 * 0.62, sz: sp.z,
-                    tx: tp.x, ty: tp.y + spriteH0 * 0.45, tz: tp.z
+                    tx: tp.x, ty: tp.y + spriteH0 * 0.45, tz: tp.z,
+                    own: ds.sourcePlayer === _viewerPlayerNum(), tgt: ds.markedUnitId
                 };
             }
         }
@@ -29710,6 +29719,21 @@ const ThreeRenderer = (function () {
             var entry = _laserBeams.get(key) || _buildLaserEntry(key);
             var sx = w.sx, sy = w.sy, sz = w.sz;
             var tx = w.tx, ty = w.ty, tz = w.tz;
+            /* THE SIGHT LASERS (VFX cleanup B3; mondo 11-17: cyan-blue for your own / friendly sights, red-pink for an enemy's,
+               from the viewer's seat). THE LOCK: a sight that takes a new target searches (the line sweeps round it, the dot
+               wide), then snaps steady and ticks once. Looks only, drawn per client from what it already sees. Old look:
+               window.EW_NO_VFX_CLEANUP. */
+            var vcS = !(typeof window !== 'undefined' && window.EW_NO_VFX_CLEANUP), lockK = 1, tick = 0;
+            if (vcS) {
+                if (entry.tgt !== w.tgt) { entry.tgt = w.tgt; entry.born = now; }
+                var age = now - entry.born;
+                lockK = Math.min(1, age / 0.55);
+                if (age >= 0.55 && age < 0.72) tick = 1 - (age - 0.55) / 0.17;
+                var amp = (CONFIG.tileSize || BASE_TILE) * 0.55 * (1 - lockK) * (1 - lockK);
+                tx += Math.sin(now * 17 + entry.phase) * amp; ty += Math.sin(now * 23 + entry.phase * 2) * amp * 0.5; tz += Math.cos(now * 19 + entry.phase) * amp;
+                var colS = w.own ? 0x35c8ff : 0xff3358;
+                if (entry._col !== colS) { entry._col = colS; entry.beamMat.color.setHex(colS); entry.glowMat.color.setHex(colS); entry.dotMat.color.setHex(colS); }
+            } else if (entry._col !== 0xff2222) { entry._col = 0xff2222; entry.beamMat.color.setHex(0xff2222); entry.glowMat.color.setHex(0xff2222); entry.dotMat.color.setHex(0xff3333); }
             _laserDirVec.set(tx - sx, ty - sy, tz - sz);
             var len = _laserDirVec.length();
             if (len < 0.001) { entry.root.visible = false; continue; }
@@ -29717,16 +29741,19 @@ const ThreeRenderer = (function () {
             _laserDirVec.multiplyScalar(1 / len);
             entry.beam.position.set((sx + tx) / 2, (sy + ty) / 2, (sz + tz) / 2);
             entry.beam.quaternion.setFromUnitVectors(_laserUpVec, _laserDirVec);
-            entry.beam.scale.set(1, len, 1);
+            var thinS = vcS ? 0.45 : 1;   /* a sight is a thin line, not a ribbon */
+            entry.beam.scale.set(thinS, len, thinS);
             entry.glow.position.copy(entry.beam.position);
             entry.glow.quaternion.copy(entry.beam.quaternion);
-            entry.glow.scale.set(1, len, 1);
+            entry.glow.scale.set(thinS, len, thinS);
             entry.dot.position.set(tx, ty, tz);
             /* Subtle pulse so it reads as an active sight, not level geometry. */
             entry.beamMat.opacity = 0.72 + 0.22 * Math.sin(now * 9 + entry.phase);
             entry.glowMat.opacity = 0.10 + 0.08 * Math.sin(now * 9 + entry.phase);
             var dScale = 1 + 0.25 * Math.sin(now * 6 + entry.phase);
+            if (vcS) dScale = (lockK < 1 ? 1 + 1.5 * (1 - lockK) : 0.85 + 0.12 * Math.sin(now * 6 + entry.phase)) + 0.9 * tick;
             entry.dot.scale.set(dScale, dScale, dScale);
+            if (entry.edge) { entry.edge.visible = vcS; entry.edge.position.copy(entry.beam.position); entry.edge.quaternion.copy(entry.beam.quaternion); entry.edge.scale.set(thinS, len, thinS); }
         }
     }
 
