@@ -1,0 +1,66 @@
+{
+ "about": "THE DESERT HIGHWAY, LEG 3 (One World BUILD_PLAN phase 4.2, 2026-11-17): Area 51's north-east corner (outside the fence) east and north to Giza's west side, in the dunes south of the oasis. The design page: 'wells and a caravan stop on it' (the caravan stop is here).",
+ "hub": "desert",
+ "label": "THE DESERT HIGHWAY",
+ "sub": "THE DESERT · AREA 51 TO GIZA · 18 PLOTS",
+ "line": [
+  [
+   5.9,
+   33.3
+  ],
+  [
+   6.5,
+   33.3
+  ],
+  [
+   7.2,
+   34.0
+  ],
+  [
+   9.6,
+   34.0
+  ],
+  [
+   10.0,
+   33.6
+  ],
+  [
+   10.0,
+   32.4
+  ],
+  [
+   10.4,
+   32.04
+  ],
+  [
+   13.1,
+   32.04
+  ]
+ ],
+ "cars": {
+  "n": 3,
+  "speed": 10
+ },
+ "ends": {
+  "ow_v_6_33": {
+   "room": "site_prebuilt_area51_desert",
+   "label": "AREA 51",
+   "sub": "THE DESERT HIGHWAY · THE FENCE",
+   "desc": "A fence runs off south as far as you can see. KEEP OUT, every fifty metres."
+  },
+  "ow_v_13_32": {
+   "room": "site_prebuilt_area51_ow_giza",
+   "label": "GIZA",
+   "sub": "THE DESERT HIGHWAY · INTO THE DUNES",
+   "desc": "The highway runs into the dunes. There are pyramids past them."
+  }
+ },
+ "places": {
+  "7,34": false,
+  "8,34": false
+ },
+ "names": {
+  "7,34": "the caravan stop",
+  "8,34": "the caravan stop, the well"
+ }
+}

@@ -353,6 +353,8 @@ const STAND = [
           'P00-04:S': { room: R_RIT, label: 'THE RITUAL GROUND', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
           /* the wild link L4 comes in on Deep woods, west, from the north: its own route room (bake-route.js L4); the link woods_camelot is on L4's west end now */
           'P00-04:N': { room: 'site_ow_l4', label: 'THE TRAIL WEST · CAMELOT', sub: 'THE TRAIL · WEST TO CAMELOT', desc: 'The path goes west under the trees towards the castle.' },
+          /* ONE WORLD PHASE 4.2 (2026-11-17, the south routes thread): the Valley Road (route R6, `node bake-route.js R6`) starts on the Tunnel Way's south side */
+          'P05-05:S': { room: 'site_ow_r6', k: 5, label: 'THE VALLEY ROAD', sub: 'THE PATH SOUTH · THE ROAD TO THE CITY', desc: 'The trees thin out. A dirt road runs south and east down a green valley.' },
       },
       links: LINK('L1', 2),
       /* the joint between the two districts is the main trail, on the Culvert's own crossing (squares 7 to 9); the Gully's cabin stands on the bed's line, so the
