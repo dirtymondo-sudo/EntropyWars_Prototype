@@ -4385,3 +4385,22 @@ itself: the generic stage burst (ring, flash, sparks, speed burst) no longer dra
 
 After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part4.jpg`.
 
+## THE OWN LOOKS, L5, part 1: blood and flesh (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5")
+Thread L5 of the own-looks job (docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; list `own-look/L5.txt`, 41 spells: psychic, unholy,
+arcane, anomaly, blood, mind). Every look is a `_GO_SIG[id]` drawn on the relayed staging burst (so `_vcOwn(id)` is true and
+the generic stage burst stops; the guest draws it too), built on the G-O kit, wrapped by `_l5()` (nothing on a square the
+viewer cannot see; off: `window.EW_DISABLE_OWN_LOOKS_L5 = true`). The block's own pieces: `_l5Frame` (the hit square + the
+line back to the caster), `_l5Squares` (every square of an area flashes in the spell's colour), `_l5Jag` (a jagged floor
+strip: cracks, skid marks), `_l5Arc` / `_l5Tube` (a cord between two bodies), `_l5Face` / `_l5Cut` (flat marks across a body).
+- **Bat Swarm** (`_l5BatFeed3D`): the 3D bats were its only own piece; now the nine bitten squares flash arterial red and beads of blood fly back to the vampire.
+- **Brutal Slam** (`_l5BrutalSlam3D`): eight bleeding cracks split the floor round the juggernaut; each of the eight squares flashes and spits blood.
+- **Curb Stomp** (`_l5CurbStomp3D`): a boot print stamped in blood past the body (tread and heel), teeth skittering off.
+- **Gore Charge** (`_l5GoreCharge3D`): two horn gouges toss up through the body, bone at the tips, the blood going up with them.
+- **Lifetap** (`_l5Lifetap3D`): two fang holes at the neck and a red vein to the vampire's mouth with blood pulsing along it.
+- **Symbiotic Drain** (`_l5SymbioticDrain3D`): three black tendrils whip out of the host into the wound and swallow lumps back.
+- **Absorb** (`_l5Absorb3D`): an oil-black pool with a violet-green sheen opens under the feet, pseudopods climb the legs, a blob slides home.
+- **Carrion Feast** (`_l5CarrionFlies3D`): the pieces already fly to the ghoul (`_BP_ON_BURST`); flies lift off the remains and the stink rises. No rune (a heal).
+- **Frenzy** (`_l5Frenzy3D`): three fast claw rakes, each from a new side.
+- **Grab** (`_l5GraveGrip3D`): the hand already comes up (`_BP_ON_BURST`); the grave floor cracks open under the feet, rot-green in the cracks.
+- **Mandible Strike** (`_l5Mandibles3D`): the mantid's jaws, a pair of toothed green sickles, shear shut on the body three times.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part1.jpg.
