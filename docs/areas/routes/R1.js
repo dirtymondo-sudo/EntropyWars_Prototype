@@ -21,7 +21,7 @@ module.exports = {
         console.log('the Tiber: ' + gone.length + ' scattered pieces kept off the water (' + [...new Set(gone)].join(', ') + ')');
         for (let i = F.length - 1; i >= 0; i--) { const f = F[i]; if (f.k === 'tree' && dSeg(f.x, f.z) < CLEAR) F.splice(i, 1); else if (f.k === 'rail' && dSeg((f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2) < CLEAR + 8) F.splice(i, 1); }
         /* the west bank between the gate and the river: a walk down it from the road into the lower meadow, kept clear (three squares either side of the plot line) */
-        const sq = (x, z) => [Math.floor((x + HX) / C), Math.floor((z + HZ) / C)], bankX = m([-5.333, 0])[0] - CLEAR, lineY = N;
+        const sq = (x, z) => [Math.floor((x + HX) / C), Math.floor((z + HZ) / C)], bankX = m([-5.333, 0])[0] - CLEAR, lineY = (-3 - BY0) * N;   // (the plot line y -3. It was N, true only while the room's box began at row -4; One World phase 5 stands the Canyon Trail in this room, so the box begins at row -14)
         const onWalk = (x, z) => { const q = sq(x, z); return x < bankX && Math.abs(q[1] + 0.5 - lineY) <= 3; };
         for (let i = props.length - 1; i >= 0; i--) if (onWalk(props[i].x, props[i].z)) props.splice(i, 1);
         for (let i = F.length - 1; i >= 0; i--) if (F[i].k === 'tree' && onWalk(F[i].x, F[i].z)) F.splice(i, 1);
