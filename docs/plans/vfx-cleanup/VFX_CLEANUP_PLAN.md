@@ -433,6 +433,19 @@ Also 11-17: the kit beam is narrower and deeper in colour (a wide beam def made 
 `_VC_WHITE_OK` keeps the camera / flashbulb spells' flashes white (Sasquatch Smash, Paparazzi Flash, Neuralyzer, Selfie
 Flash, Out of the Dark, Blurry Photo, Cryptid Vanish, Deneuralizer): white because it is the thing.
 
+**COLOUR-TRUE (11-17, mondo: "why are things white when they are given a color. That is not right. Fix it."):** the
+cause was in the shared glow materials, not the spells. (1) `_sigEnergyMat` and `_sigOrbShellMat` mix toward a `hot`
+colour that DEFAULTED TO PURE WHITE, at a gain of 1.6: every light pillar, beam sheath and dome had a white heart
+whatever colour it was handed (only fire had been exempted, 11-11). (2) `_sigLightPillar3D`'s core and
+`_sigSacredRings3D`'s core defaulted to white / cream. (3) Additive layers of a PALE colour add up to white on each
+other and on the lit floor. (4) `_vcCol` skipped heal / mana / buff spells because their palette is itself pale.
+Fixed in those helpers (`_vcTrue`, `_vcHot`, `_vcTrueOn`): the shell's colour is given enough saturation to keep its hue
+when stacked, its hot colour is its own lighter tone, the gain is capped at 1.25, the pillar's core and the sacred
+rings are normal-blended in their colour, an untinted sprite column takes the spell's colour, the shock ring keeps its
+hue, and the pale palettes are toned instead of skipped. `_VC_WHITE_OK` spells are left as given. Frames:
+img/colour_true_before.jpg / colour_true_after.jpg (Divine Smite, Absolution, Judgment, Hallelujah, Rapture, Ki Wave).
+Still pale after it: Hallelujah's first beat (`_capRing` + the columns as they form).
+
 **The sweeps (B6a-B10) run as nine threads from 11-17:** brief `docs/plans/vfx-cleanup/SWEEP_BRIEF.md`.
 **The own-look threads:** L1-L5 reported their lists done and merged on 11-17 (notes: spells-vfx.md "THE OWN LOOKS, L<n>").
 

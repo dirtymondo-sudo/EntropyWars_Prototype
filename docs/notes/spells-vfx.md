@@ -5229,3 +5229,25 @@ Same method and switch. Neither school is a rune school, so no cast rune was in 
 - **THE LIST IS DONE: 109 of 109** (parts 1-4) + the Love Ray lead. For the cleanup thread, the three one-line changes in shared code are
   listed in claims.md (the B9a row) and in part 1 above.
 - Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part4.jpg.
+
+
+## COLOUR-TRUE: a thing handed a colour draws in that colour (2026-11-17, three-vfx-effects.js)
+mondo: "why are things white when they are given a color. That is not right. Fix it." (the sweeps had reported the light
+pillar, the sacred rings and the support rings as white whatever colour they were handed).
+- **Why:** `_SIG_ENERGY_FS` / `_SIG_ORB_FS` draw `mix(uColor, uHot, n^2.2) * uGain`, and `opts.hot` defaulted to
+  `0xffffff` with `gain` 1.6 (`_sigEnergyMat`, `_sigOrbShellMat`); `_sigLightPillar3D`'s `coreColor` defaulted to white,
+  `_sigSacredRings3D`'s to `0xfff2c8`; additive layers of a pale colour sum to white on each other and on a lit floor;
+  `_vcCol` returned white unchanged when the casting spell's palette was pale (heal, mana, aura).
+- **`_vcTrueOn()`** = the cleanup is on and the casting spell is not in `_VC_WHITE_OK`. **`_vcTrue(col, sMin)`** = the
+  colour at no less than `sMin` saturation, value capped 92 %. **`_vcHot(col, k)`** = its own lighter tone.
+- `_sigEnergyMat`: colour `_vcTrue(.., 0.72)`, `hot` = `_vcHot(colour, 0.2)` when not given or near-white, gain capped
+  1.25. `_sigOrbShellMat`: the same at 0.6 / 0.25.
+- `_sigLightPillar3D`: colour toned, the core = `_vcHot` and NORMAL blending (`_vcCore`).
+- `_sigSacredRings3D`: the rings and the core NORMAL blending in the toned colour.
+- `_sigShockRing3D`: its colour `_vcTrue(.., 0.62)`.
+- `_fireAuraMapped`'s sprite column (`pillarSprite`): untinted = the casting spell's colour.
+- `_vcCol`: a pale palette is toned, not skipped.
+- Off with the rest: `EW_NO_VFX_CLEANUP`. Seen before / after: docs/plans/vfx-cleanup/img/colour_true_*.jpg.
+- Not done: `_capRing` (Hallelujah's first beat still reads pale), `_sigSpectrumBurst3D`'s white core (a spectrum is
+  white light: left), `_sigMat` itself (it also carries textured props, where white means "the texture as it is").
+

@@ -10060,6 +10060,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigEnergyMat(color, opts) {
         _ewNodeRegister();
         opts = opts || {};
+        var _vt = _vcTrueOn();
+        if (_vt) {   /* COLOUR-TRUE: the shell's own colour, and a hot heart of that colour (it was pure white) */
+            /* additive shells stack on each other AND on the lit floor: only a colour with a low third channel keeps its hue there */
+            color = _vcTrue(color != null ? color : 0x88bbff, 0.72);
+            opts = Object.assign({}, opts, { hot: (opts.hot == null || _vcNearWhite(opts.hot)) ? _vcHot(color, 0.2) : _vcTrue(opts.hot, 0.5),
+                gain: Math.min(1.25, opts.gain != null ? opts.gain : 1.6) });
+        }
         var c = new THREE.Color(color != null ? color : 0x88bbff);
         var c2 = new THREE.Color(opts.hot != null ? opts.hot : 0xffffff);
         /* THE HIT SIDE part 4 (THE TAME FIRE): a fire spell's shell keeps its reds, oranges and yellows — no white heart,
@@ -10510,6 +10517,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigShockRing3D(tx, ty, opts) {
         opts = opts || {};
         if (_vcOn() && _vcNearWhite(opts.color)) opts = Object.assign({}, opts, { color: _vcCol(opts.color) });   /* THE VFX CLEANUP */
+        /* COLOUR-TRUE: an additive ring of a pale colour on a lit floor reads white; it keeps its hue with a low third channel */
+        if (_vcTrueOn() && typeof opts.color === 'number') opts = Object.assign({}, opts, { color: _vcTrue(opts.color, 0.62) });
         var scene = _getVFXScene(); if (!scene) return null;
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
@@ -10695,6 +10704,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var r = opts.radius != null ? opts.radius : ts * 0.42;
         var ms = opts.ms != null ? opts.ms : 900;
         var color = opts.color != null ? opts.color : 0xffe9a8;
+        if (_vcTrueOn()) {   /* COLOUR-TRUE: the column in its colour, its core that colour's hot tone (the core defaulted to white) */
+            color = _vcTrue(color, 0.72);
+            opts = Object.assign({}, opts, { coreColor: (opts.coreColor == null || _vcNearWhite(opts.coreColor)) ? _vcHot(color, 0.25) : _vcTrue(opts.coreColor, 0.5), _vcCore: true });
+        }
 
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y, wp.z);
@@ -10720,7 +10733,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var aura = new THREE.Mesh(geo.clone(), matAura);
         aura.position.y = h / 2; aura.renderOrder = 156;
         group.add(aura);
-        var matCore = _sigMat(opts.coreColor != null ? opts.coreColor : 0xffffff);
+        var matCore = _sigMat(opts.coreColor != null ? opts.coreColor : 0xffffff, opts._vcCore ? { normal: true } : null);   /* COLOUR-TRUE: a normal-blended core cannot add up to white */
         var core = new THREE.Mesh(geo.clone(), matCore);
         core.position.y = h / 2; core.renderOrder = 158;
         group.add(core);
@@ -11075,6 +11088,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigOrbShellMat(color, opts) {
         _ewNodeRegister();
         opts = opts || {};
+        if (_vcTrueOn()) {   /* COLOUR-TRUE: the orb shell too (its hot colour + rim defaulted to white) */
+            color = _vcTrue(color != null ? color : 0x9a7cff, 0.6);
+            opts = Object.assign({}, opts, { hot: (opts.hot == null || _vcNearWhite(opts.hot)) ? _vcHot(color, 0.25) : _vcTrue(opts.hot, 0.5) });
+        }
         var c = new THREE.Color(color != null ? color : 0x9a7cff);
         var c2 = new THREE.Color(opts.hot != null ? opts.hot : 0xffffff);
         return new THREE.ShaderMaterial({
@@ -16740,6 +16757,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ts = wp.ts;
         var color = opts.color != null ? opts.color : 0xffd875;
         var coreColor = opts.coreColor != null ? opts.coreColor : 0xfff2c8;
+        if (_vcTrueOn()) { color = _vcTrue(color, 0.58); coreColor = _vcNearWhite(coreColor) || opts.coreColor == null ? _vcHot(color, 0.25) : _vcTrue(coreColor, 0.3); }   /* COLOUR-TRUE: three additive rings of a pale gold summed to white */
         var R = ts * (opts.radiusTiles != null ? opts.radiusTiles : 0.85);
         var lift = opts.lift != null ? opts.lift : ts * (opts.sky ? 2.6 : 0.9);
         var growMs = opts.growMs != null ? opts.growMs : 260;
@@ -16751,7 +16769,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var rings = [];
         var nR = opts.count != null ? opts.count : 3;
         for (var i = 0; i < nR; i++) {
-            var rm = _sigMat(color);
+            var rm = _sigMat(color, _vcTrueOn() ? { normal: true } : null);   /* COLOUR-TRUE: additive gold over a lit floor read white */
             var rr = R * (0.55 + i * 0.3);
             var ring = new THREE.Mesh(new THREE.TorusGeometry(rr, R * 0.045, 8, 42), rm);
             ring.rotation.set(i * 1.1 + 0.4, i * 0.7, i * 0.5);
@@ -16759,7 +16777,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             g.add(ring);
             rings.push({ mesh: ring, mat: rm, axis: i });
         }
-        var coreMat = _sigMat(coreColor);
+        var coreMat = _sigMat(coreColor, _vcTrueOn() ? { normal: true } : null);
         var core = new THREE.Mesh(new THREE.OctahedronGeometry(R * 0.22, 0), coreMat);
         core.renderOrder = 163;
         g.add(core);
@@ -22151,7 +22169,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 h1: auraDef.pillarH1 != null ? auraDef.pillarH1 : pillarH * 1.2,
                 opacity0: auraDef.pillarOpacity0 != null ? auraDef.pillarOpacity0 : 0.9,
                 opacity1: auraDef.pillarOpacity1 != null ? auraDef.pillarOpacity1 : 0,
-                tint: auraDef.pillarTint != null ? auraDef.pillarTint : undefined,   /* FX-3: a blood buff's column is crimson */
+                /* FX-3: a blood buff's column is crimson. COLOUR-TRUE: an untinted column takes the casting spell's colour (it was white) */
+                tint: auraDef.pillarTint != null ? auraDef.pillarTint : (function () { var t = _vcTrueOn() ? _vcCol(0xffffff) : 0xffffff; return t === 0xffffff ? undefined : t; })(),
             });
         }
 
@@ -22428,12 +22447,24 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return (_vcPalC[arch] = o);
     }
     /* a shared helper handed near-white draws in the casting spell's colour (the riot context's light); no spell casting = as given */
+    /* COLOUR-TRUE (mondo 11-17: "why are things white when they are given a color. That is not right. Fix it."). Three shared
+       pieces burned to white whatever colour a spell handed them: the energy shell's `hot` colour defaulted to pure white
+       at a gain of 1.6 (_sigEnergyMat: light pillars, beam sheaths, domes), the pillar's and the sacred rings' cores
+       defaulted to white / cream, and nested additive shells of a PALE colour add up to white. So, with the cleanup on:
+       _vcTrue(col) = the colour with enough saturation that stacking it keeps its hue, _vcHot(col) = its own lighter tone
+       for a hot heart (never white). A spell whose white is the thing itself (_VC_WHITE_OK) is left as given. */
+    function _vcTrueOn() { return _vcOn() && !(_rvCtx && _rvCtx.keepWhite); }
+    function _vcTrue(col, sMin) { return (col == null || typeof col !== 'number') ? col : _vcTone(col, null, sMin != null ? sMin : 0.5, 0.92); }
+    function _vcHot(col, k) {
+        var r = _vcRgb(_vcTrue(col != null ? col : 0x88bbff)); k = k != null ? k : 0.32;
+        return (Math.round(r[0] + (235 - r[0]) * k) << 16) | (Math.round(r[1] + (235 - r[1]) * k) << 8) | Math.round(r[2] + (235 - r[2]) * k);
+    }
     /* white because it IS the thing (mondo 11-17: not "just anything that is white"): a camera's flash, a flashbulb, a pen-light */
     var _VC_WHITE_OK = { raceOutOfTheDark: 1, raceSasquatchSmash: 1, sigBlurryPhoto: 1, goNeuralyzer: 1, raceDeneuralizer: 1, pzPaparazziFlash: 1, nrSelfieFlash: 1, raceCryptidVanish: 1 };
     function _vcCol(c) {
         if (!_vcOn() || !_vcNearWhite(c)) return c;
         if (_rvCtx && _rvCtx.keepWhite) return c;
-        var L = _rvCtx && _rvCtx.light; if (!L || _vcNearWhite(L)) return c;
+        var L = _rvCtx && _rvCtx.light; if (!L) return c;   /* a pale palette (heal, mana, a buff) is toned below, not skipped */
         var t = _vcTone(L, null, 0.45, 0.92);
         return (typeof c === 'string') ? t : parseInt(String(t).replace('#', ''), 16);
     }
