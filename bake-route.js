@@ -247,6 +247,16 @@ for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
     paint[y * W + x] = pal(ch === 'p' ? (lookSq[y][x] === 'highway' ? ASPH : kitOf(kindAt(x, y)).path) : (ch === 's' || ch === 'm') ? SHOULDER : k.floor);
 }
 
+/* A JOINED DISTRICT PAINTED AT HALF SQUARES (2026-11-17, the Leylines zone thread: Bug Colony's rings and paths are painted at the ground mesh's own
+   1.75 m step): the export's `paintHalf: true` = its paint is 2W x 2D. Then this room's paint is written at half squares too (the kit's own squares
+   twice over), so the district's ground comes in as it was drawn. */
+const PR = JOIN && JOIN.paintHalf ? 2 : 1;
+let paintOut = paint;
+if (PR === 2) { paintOut = new Uint8Array(4 * W * Dq);
+    for (let y = 0; y < 2 * Dq; y++) for (let x = 0; x < 2 * W; x++) { const sx = x >> 1, sy = y >> 1;
+        if (foreign(sx, sy)) { const pi = JOIN.paint[(y - 2 * FOY) * (2 * JOIN.W) + (x - 2 * FOX)]; paintOut[y * 2 * W + x] = pal(pi ? JOIN.pal[pi - 1] : JOIN.floor); } else paintOut[y * 2 * W + x] = paint[sy * W + sx]; } }
+if (PAL.length > 8) console.log('WARNING: ' + PAL.length + ' ground sheets (the game draws eight; a ninth draws as the floor): ' + PAL.join(', '));
+
 /* ── placing things ── */
 const F = [], props = [], doors = [], marks = [], npc = [], taken = new Set(), errs = [];
 const feat = o => { F.push(o); return o; };
@@ -443,7 +453,7 @@ if ((JOIN && JOIN.grassField) || grounds.some(k => KIT[PJ.ground.key[Object.keys
 L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
 L.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(ENDS.filter(e => e.onWall).map(e => ({ side: e.side, at: e.along }))) + " },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + slope.toString('base64') + "' } },");
-L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
+L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + (C / PR) + ", x0: " + r2(-HX + C / (2 * PR)) + ", z0: " + r2(-HZ + C / (2 * PR)) + ", nx: " + (W * PR) + ", nz: " + (Dq * PR) + ", d: '" + Buffer.from(paintOut).toString('base64') + "' },");
 L.push("                /* every square that is not a `space` is ground nobody walks: a forest plot grows its trees there, open ground grows nothing */");
 L.push("                gen: { kind: 'plan', look: 'trees', seed: " + (hashStr(ID) % 97) + ", rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + (anyMass ? Math.min(2400, 220 * PLOTS.length) : 0) + ", treeH: [5.5, 8.5], kinds: " + J(KIT.forest.treeKinds) + ", zones: " + J(zones) + " },");
 if (marks.length) L.push("                marks: " + J(marks) + ",");
