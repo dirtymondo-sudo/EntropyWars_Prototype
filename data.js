@@ -94782,6 +94782,176 @@ const EW_CREDITS = {
 };
 if (typeof window !== 'undefined') window.EW_CREDITS = EW_CREDITS;
 
+
+/* ═══ THE CUBE (2026-11-17, mondo's design doc "Two Worlds, One Combat Grid", Map B "the rotating cube arena") ═══════════════
+   A Rubik's cube floating in the Astral Realm, fought on ALL SIX FACES (mondo 11-17: "the entire point is that turning of the
+   cube changes unit positions. If we must rewrite every one of them specifically for this map then that is what we must do").
+   Plan + pictures: /mnt/project-files/rubiks-cube/THE_CUBE_PLAN.md; notes: docs/notes/areas-complexes.md "THE CUBE".
+   THE IDEA IN CODE: every rule of the game runs on a flat board, so the cube is never a new board type. The cube's 6 x N x N
+   squares (SLOTS: a point on its surface + the face's normal, fixed for the whole fight) are laid out flat as a FRAME: the
+   face of the fighter who acts in the middle, the four faces round it folded out (a cross), the far face under the south arm,
+   the cube's corners empty ('blank'). The board is the frame (3N x 4N squares). When the next fighter stands on another face
+   the frame is laid again round THAT face (battle.js _cubeRelay moves every square-keyed thing on `state` with its slot), and
+   at the end of every round one SLICE turns a quarter turn: the slots in it move round the cube and everything on them rides
+   along (the fighters too). The picture (three-renderer.js THE CUBE) folds the flat frame back into the cube as it draws.
+   Canonical cube space: X east, Y south, Z up; a cubie (i, j, k) fills [i, i+1] x [j, j+1] x [k, k+1], 0 <= i, j, k < N. */
+const CUBE_RULES = {
+    N: 8,                     // squares a face side (mondo: "7x7 or 8x8"; 8 = the arenas' board)
+    /* the six faces = six places of the Realm (ground the game has, no new rule) */
+    faces: {
+        U: { n: [0, 0, 1],  terrain: 'marble_light', name: 'Marble' },
+        D: { n: [0, 0, -1], terrain: 'gold',         name: 'Gold' },
+        E: { n: [1, 0, 0],  terrain: 'wood_planks',  name: 'Library' },
+        W: { n: [-1, 0, 0], terrain: 'lava',         name: 'Nightmare' },
+        S: { n: [0, 1, 0],  terrain: 'water',        name: 'Sea' },
+        N: { n: [0, -1, 0], terrain: 'grass',        name: 'Hollow Tree' },
+    },
+    core: 'obsidian',         // the cube's inside, the floor of a hole where a piece broke off
+    /* THE MISSING PIECES (mondo 11-17: "the cube could have missing pieces to match, which would give it more interesting
+       terrain"): surface cubies that broke off (they float round the cube in the Realm). A hole is one square deep. */
+    missing: [
+        [5, 2, 7], [2, 5, 7], [6, 6, 7],                 // pits in the top
+        [7, 7, 7], [0, 0, 0],                            // bitten-off corners
+        [3, 7, 7], [0, 4, 0], [7, 0, 3],                 // notches on edges
+        [7, 4, 3], [4, 7, 2], [0, 3, 5], [2, 0, 4],     // pits in the sides
+        [5, 5, 0], [3, 0, 6], [6, 3, 0], [0, 6, 2],
+    ],
+    spawnFaces: { 1: 'S', 2: 'N' },   // each side starts on its own face (the frame starts round the top)
+    turnEvery: 1,             // a slice turns at the end of every round
+    warnRounds: 1,            // and is shown a whole round before (the doc's "telegraphed" mode)
+};
+const _CUBE_FACE_OF = (m) => { for (const k in CUBE_RULES.faces) { const n = CUBE_RULES.faces[k].n; if (n[0] === m[0] && n[1] === m[1] && n[2] === m[2]) return k; } return null; };
+const _cv = {
+    dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+    neg: (a) => [-a[0], -a[1], -a[2]],
+    eq: (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2],
+    add: (a, b, s) => [a[0] + b[0] * s, a[1] + b[1] * s, a[2] + b[2] * s],
+};
+/* every slot of an N cube: id, centre point p (canonical, half-integers), normal n, the cubie under it */
+function cubeSlots(N) {
+    const out = [];
+    for (const f in CUBE_RULES.faces) {
+        const n = CUBE_RULES.faces[f].n;
+        const ax = n[0] ? 0 : n[1] ? 1 : 2, a1 = (ax + 1) % 3, a2 = (ax + 2) % 3;
+        for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+            const p = [0, 0, 0];
+            p[ax] = n[ax] > 0 ? N : 0; p[a1] = i + 0.5; p[a2] = j + 0.5;
+            const c = _cv.add(p, n, -0.5);
+            out.push({ id: f + ':' + p.join(','), face: f, p, n, cubie: [Math.floor(c[0]), Math.floor(c[1]), Math.floor(c[2])] });
+        }
+    }
+    return out;
+}
+const cubeSlotKey = (p, n) => (_CUBE_FACE_OF(n) || '?') + ':' + p.join(',');
+/* THE FRAME: the flat board laid round the face `basis.n`; basis.ex / basis.ey = the cube directions the board's +x / +y point
+   along on that face. Returns { W, H, at[y][x] = slot id | null, cell{ id: { x, y, tx, ty } } } (tx / ty = the cube direction a
+   step of +x / +y takes on that square, for turning a facing with it). */
+function cubeFrame(N, basis) {
+    const { n, ex, ey } = basis, h = N / 2, W = 3 * N, H = 4 * N;
+    const at = Array.from({ length: H }, () => Array(W).fill(null)), cell = {};
+    for (const s of cubeSlots(N)) {
+        const r = [s.p[0] - h, s.p[1] - h, s.p[2] - h], m = s.n;
+        const u = _cv.dot(r, ex) + h, v = _cv.dot(r, ey) + h, d = h - _cv.dot(r, n);
+        let x, y, tx, ty;
+        if (_cv.eq(m, n)) { x = N + Math.floor(u); y = N + Math.floor(v); tx = ex; ty = ey; }
+        else if (_cv.eq(m, ex)) { x = 2 * N + Math.floor(d); y = N + Math.floor(v); tx = _cv.neg(n); ty = ey; }
+        else if (_cv.eq(m, _cv.neg(ex))) { x = N - 1 - Math.floor(d); y = N + Math.floor(v); tx = n; ty = ey; }
+        else if (_cv.eq(m, ey)) { x = N + Math.floor(u); y = 2 * N + Math.floor(d); tx = ex; ty = _cv.neg(n); }
+        else if (_cv.eq(m, _cv.neg(ey))) { x = N + Math.floor(u); y = N - 1 - Math.floor(d); tx = ex; ty = n; }
+        else { x = N + Math.floor(u); y = 3 * N + Math.floor(h - _cv.dot(r, ey)); tx = ex; ty = _cv.neg(ey); }
+        at[y][x] = s.id; cell[s.id] = { x, y, tx, ty, face: s.face };
+    }
+    return { W, H, N, basis, at, cell };
+}
+/* the basis that puts face `m` in the middle, tumbling the cube one quarter (or a half) from `b` */
+function cubeBasisFor(b, m) {
+    const { n, ex, ey } = b, ng = _cv.neg;
+    if (_cv.eq(m, n)) return b;
+    if (_cv.eq(m, ex)) return { n: ex, ex: ng(n), ey };
+    if (_cv.eq(m, ng(ex))) return { n: ng(ex), ex: n, ey };
+    if (_cv.eq(m, ey)) return { n: ey, ex, ey: ng(n) };
+    if (_cv.eq(m, ng(ey))) return { n: ng(ey), ex, ey: n };
+    return { n: ng(n), ex, ey: ng(ey) };
+}
+const CUBE_BASIS_TOP = { n: [0, 0, 1], ex: [1, 0, 0], ey: [0, 1, 0] };
+/* a quarter turn about axis a (0 x, 1 y, 2 z), +1 = counter-clockwise looking down the axis from + */
+function _cubeRot(v, a, dir) {
+    const o = v.slice(), i = (a + 1) % 3, j = (a + 2) % 3;
+    o[i] = -dir * v[j]; o[j] = dir * v[i];
+    return o;
+}
+/* THE SLICE TURN: { a, layer, dir } -> slot id -> { id (where it lands), R(v) } for the slots in the slice */
+function cubeSliceMove(N, slice) {
+    const h = N / 2, map = {};
+    for (const s of cubeSlots(N)) {
+        if (s.cubie[slice.a] !== slice.layer) continue;
+        const r = [s.p[0] - h, s.p[1] - h, s.p[2] - h];
+        const r2 = _cubeRot(r, slice.a, slice.dir), n2 = _cubeRot(s.n, slice.a, slice.dir);
+        map[s.id] = cubeSlotKey([r2[0] + h, r2[1] + h, r2[2] + h], n2);
+    }
+    return map;
+}
+/* old frame (+ an optional slice turn) -> new frame, per board square: where it goes and how a facing turns with it.
+   Returns { W, H, to[y][x] = { x, y, m: [a, b, c, d] } | null } (m = the 2 x 2 matrix taking an old (dx, dy) to the new one). */
+function cubeCellMap(fOld, fNew, slice) {
+    const N = fOld.N, mv = slice ? cubeSliceMove(N, slice) : null;
+    const to = Array.from({ length: fOld.H }, () => Array(fOld.W).fill(null));
+    for (const id in fOld.cell) {
+        const a = fOld.cell[id], dest = (mv && mv[id]) || id, b = fNew.cell[dest];
+        if (!b) continue;
+        const R = (v) => (mv && mv[id]) ? _cubeRot(v, slice.a, slice.dir) : v;
+        const txA = R(a.tx), tyA = R(a.ty);
+        to[a.y][a.x] = { x: b.x, y: b.y, m: [_cv.dot(txA, b.tx), _cv.dot(tyA, b.tx), _cv.dot(txA, b.ty), _cv.dot(tyA, b.ty)] };
+    }
+    return { W: fOld.W, H: fOld.H, to };
+}
+/* the cube's slots of a cubie that broke off (the pits) — by slot id */
+function cubePitSlots(N, missing) {
+    const gone = new Set((missing || []).map(c => c.join(','))), out = {};
+    for (const s of cubeSlots(N)) if (gone.has(s.cubie.join(','))) out[s.id] = true;
+    return out;
+}
+/* the next slice to turn (deterministic from the round + the match seed, so host and guest agree) */
+function cubePickSlice(N, round, seed) {
+    let x = ((round * 2654435761) ^ (seed | 0)) >>> 0;
+    const rnd = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
+    return { a: Math.floor(rnd() * 3), layer: Math.floor(rnd() * N), dir: rnd() < 0.5 ? 1 : -1 };
+}
+/* the faces a fighter on slot `id` sees (mondo 11-17: "your sight should only be on the face you are standing on, unless you
+   are on the edge, then you can see the face that shares the edge. corner would let you see 3 faces. And team vision should
+   still work the exact same") */
+function cubeSeenFaces(N, id) {
+    const s = cubeSlots(N).find(t => t.id === id);
+    if (!s) return null;
+    const out = [s.face];
+    for (let a = 0; a < 3; a++) {
+        if (s.n[a]) continue;
+        if (s.cubie[a] === 0) out.push(_CUBE_FACE_OF(a === 0 ? [-1, 0, 0] : a === 1 ? [0, -1, 0] : [0, 0, -1]));
+        if (s.cubie[a] === N - 1) out.push(_CUBE_FACE_OF(a === 0 ? [1, 0, 0] : a === 1 ? [0, 1, 0] : [0, 0, 1]));
+    }
+    return out;
+}
+/* the board the fight starts on: the frame round the top, each square's ground + height (a hole = one lower), both sides'
+   seats in the middle of their own faces (map.js _ewCubeRegister turns it into the PREBUILT_MAPS row) */
+function cubeBoardSpec(teamSize) {
+    const R = CUBE_RULES, N = R.N, fr = cubeFrame(N, CUBE_BASIS_TOP), pits = cubePitSlots(N, R.missing);
+    const terrain = Array.from({ length: fr.H }, () => Array(fr.W).fill('blank'));
+    const heights = Array.from({ length: fr.H }, () => Array(fr.W).fill(0));
+    for (const id in fr.cell) {
+        const c = fr.cell[id];
+        terrain[c.y][c.x] = pits[id] ? R.core : R.faces[c.face].terrain;
+        heights[c.y][c.x] = pits[id] ? 0 : 1;
+    }
+    const seats = (face) => {
+        const cells = Object.keys(fr.cell).filter(id => fr.cell[id].face === face && !pits[id] && R.faces[face].terrain !== 'lava').map(id => fr.cell[id]);
+        const mx = cells.reduce((s, c) => s + c.x, 0) / cells.length, my = cells.reduce((s, c) => s + c.y, 0) / cells.length;
+        cells.sort((a, b) => (Math.abs(a.x - mx) + Math.abs(a.y - my)) - (Math.abs(b.x - mx) + Math.abs(b.y - my)) || a.x - b.x || a.y - b.y);
+        return cells.slice(0, Math.max(1, teamSize | 0) * 2).filter((c, i) => i % 2 === 0).slice(0, teamSize).map(c => ({ x: c.x, y: c.y }));
+    };
+    return { W: fr.W, H: fr.H, N, terrain, heights, spawns: { 1: seats(R.spawnFaces[1]), 2: seats(R.spawnFaces[2]) } };
+}
+if (typeof window !== 'undefined') Object.assign(window, { CUBE_RULES, cubeBoardSpec, cubeSlots, cubeFrame, cubeBasisFor, cubeSliceMove, cubeCellMap, cubePitSlots, cubePickSlice, cubeSeenFaces, CUBE_BASIS_TOP, cubeSlotKey });
+
 /* ═══ THE DATA PANEL'S DIFF LAYER — EWDataMods (2026-10-08, mondo: "a live data panel" + "an item editor") ═══════════════
    One F9 window (ui.js "THE DATA PANEL") edits the rules tables below WHILE THE GAME RUNS. Same model as EWRaceMods: the
    tables as data.js ships them stay the truth; the edits live in localStorage (EW_DATA_MODS_LS_KEY) as a sparse list of

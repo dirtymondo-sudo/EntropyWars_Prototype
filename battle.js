@@ -28856,6 +28856,9 @@
                         return cur + (tgt - cur) * f;
                     };
 
+                    /* THE CUBE (2026-11-17): the acting face is always the cube's top; the camera looks at it (a square on a side
+                       face is folded under the edge, so its flat place on the frame is empty air) */
+                    if (state && state._cube && state._cube.N) { const _cN = state._cube.N; this.x = Math.max(_cN, Math.min(2 * _cN, this.x)); this.y = Math.max(_cN, Math.min(2 * _cN, this.y)); }
                     if (!this._smoothInited) {
                         this._smoothTilt = this.tilt;
                         this._smoothYaw = this.yaw;
@@ -59356,6 +59359,7 @@
             const reserved = new Set();
             Object.values(SPAWNS).flat().forEach(pos => reserved.add(posKey(pos.x, pos.y)));
             initMap(groundBoard, reserved);
+            try { cubeStart(); } catch (e) { console.warn('[CUBE] start', e); state._cube = null; }   // THE CUBE: the cube's record (null on any other board)
 
             for (const u of state.units) {
                 if (u.dead) continue;
@@ -62340,6 +62344,135 @@
         }
         window.fieldCellRoof = fieldCellRoof;
 
+        /* ═══ THE CUBE — the rules side (2026-11-17, mondo's design doc "Two Worlds, One Combat Grid", Map B) ═══════════════════════
+           data.js THE CUBE has the geometry; three-renderer.js THE CUBE draws it. The board is the FRAME (the cube's faces laid flat
+           round one face); every rule of the game runs on it as it is. Two things move squares:
+           - THE RELAY: when the fighter up next stands on another face, the frame is laid again round THAT face (cubeFocus), so the
+             fighter acts in the middle of a flat board with every face beside theirs folded out round it.
+           - THE TURN: at the end of every round the warned slice turns a quarter turn (cubeEndOfRound); every square in it, and
+             everything on the squares (the fighters too), goes round the cube with it.
+           Both are one remap of `state` (_cubeRemapState): every board grid, every "x,y" key and every object holding a square
+           moves with its slot, and a facing turns with it. state._cube = { N, basis, seed, next, ver, last } rides the sync, so
+           the guest's picture follows (RULE #2: nothing here runs on the guest; it mirrors the host's state). */
+        const _cubeFrames = {};
+        function _cubeModeOn() { const m = (typeof GAME_MODES !== 'undefined') ? GAME_MODES[activeGameMode] : null; return !!(m && m.cube); }
+        function cubeOn() { return !!(state && state._cube && state._cube.N && typeof cubeFrame === 'function'); }
+        function _cubeFrame(b) { const k = b.n + '|' + b.ex + '|' + b.ey; return _cubeFrames[k] || (_cubeFrames[k] = cubeFrame(CUBE_RULES.N, b)); }
+        function cubeFrameNow() { return cubeOn() ? _cubeFrame(state._cube.basis) : null; }
+        function cubeSlotAt(x, y) { const f = cubeFrameNow(); return (f && f.at[y]) ? f.at[y][x] : null; }
+        function cubeFaceAt(x, y) { const id = cubeSlotAt(x, y); return id ? id.split(':')[0] : null; }
+        /* startMatch, after the board is laid: the cube's record (the frame starts round the top) */
+        function cubeStart() {
+            if (!_cubeModeOn() || typeof cubeFrame !== 'function') { state._cube = null; return; }
+            const N = CUBE_RULES.N, seed = Math.floor(engineRng() * 1e9);
+            state._cube = { N, basis: CUBE_BASIS_TOP, seed, ver: 1, last: null, next: cubePickSlice(N, 1, seed) };
+        }
+        /* the faces a fighter standing on (x, y) sees (data.js cubeSeenFaces): own face; on an edge square also the face across
+           it; on a corner square all three. Team vision unions them as it always did (mondo 11-17) */
+        const _cubeSeenMemo = {};
+        function cubeSightBlocked(x1, y1, x2, y2) {
+            if (!cubeOn()) return false;
+            const a = cubeSlotAt(x1, y1), b = cubeSlotAt(x2, y2);
+            if (!a || !b) return false;
+            const seen = _cubeSeenMemo[a] || (_cubeSeenMemo[a] = cubeSeenFaces(state._cube.N, a) || []);
+            return seen.indexOf(b.split(':')[0]) < 0;
+        }
+        /* THE REMAP: one pass over `state` moving every square-keyed thing with its slot. cm.to[y][x] = { x, y, m } (data.js
+           cubeCellMap; m turns a facing). Squares off the cube (the frame's blank corners) never move. */
+        const _CUBE_SKIP = { _cube: 1, logEntries: 1, _fullLogEntries: 1, logDialogue: 1, battleDialogueQueue: 1, partyMeta: 1, partyNames: 1, partyBuilds: 1, loadouts: 1, controllers: 1, autoPlayers: 1 };
+        const _CUBE_PAIRS = [['x', 'y'], ['tx', 'ty'], ['fromX', 'fromY'], ['toX', 'toY'], ['targetX', 'targetY'], ['startX', 'startY'], ['endX', 'endY'], ['originX', 'originY'],
+                             ['_prevX', '_prevY'], ['prevX', 'prevY'], ['lastX', 'lastY'], ['homeX', 'homeY'], ['spawnX', 'spawnY'], ['cx', 'cy'], ['ax', 'ay'], ['bx', 'by']];
+        function _cubeRemapState(cm) {
+            const W = cm.W, H = cm.H, to = cm.to, seen = new WeakSet();
+            let moved = 0;
+            const inB = (x, y) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < W && y < H;
+            const isGrid = (v) => Array.isArray(v) && v.length === H && v.every(r => Array.isArray(r) && r.length === W);
+            const remapGrid = (g) => { const out = g.map(r => r.slice()); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const t = to[y][x]; if (t) out[t.y][t.x] = g[y][x]; } return out; };
+            const keyRe = /^(\d+),(\d+)((?:,.*)?)$/;
+            const isKeyMap = (o) => { const ks = Object.keys(o); return ks.length > 0 && ks.every(k => keyRe.test(k)); };
+            const turnDir = (t, d) => { if (!d || typeof d.dx !== 'number' || typeof d.dy !== 'number') return d; return Object.assign({}, d, { dx: t.m[0] * d.dx + t.m[1] * d.dy, dy: t.m[2] * d.dx + t.m[3] * d.dy }); };
+            function walk(o, depth) {
+                if (!o || typeof o !== 'object' || seen.has(o) || depth > 9) return;
+                if (o instanceof Set || o instanceof Map || ArrayBuffer.isView(o)) return;
+                seen.add(o);
+                if (Array.isArray(o)) { for (let i = 0; i < o.length; i++) { const v = o[i]; if (isGrid(v)) o[i] = remapGrid(v); else walk(v, depth + 1); } return; }
+                let mine = null;
+                for (const [kx, ky] of _CUBE_PAIRS) {
+                    if (!(kx in o) || !(ky in o) || !inB(o[kx], o[ky])) continue;
+                    const t = to[o[ky]][o[kx]]; if (!t) continue;
+                    if (kx === 'x') mine = t;
+                    o[kx] = t.x; o[ky] = t.y; moved++;
+                }
+                if (mine && o.facing) o.facing = turnDir(mine, o.facing);
+                for (const k of Object.keys(o)) {
+                    if (depth === 0 && _CUBE_SKIP[k]) continue;
+                    const v = o[k];
+                    if (!v || typeof v !== 'object') continue;
+                    if (isGrid(v)) { o[k] = remapGrid(v); moved++; continue; }
+                    if (!Array.isArray(v) && !(v instanceof Set) && !(v instanceof Map) && isKeyMap(v)) {
+                        const out = {};
+                        for (const kk of Object.keys(v)) { const m = keyRe.exec(kk), x = +m[1], y = +m[2], t = inB(x, y) ? to[y][x] : null; out[t ? (t.x + ',' + t.y + m[3]) : kk] = v[kk]; walk(v[kk], depth + 1); }
+                        o[k] = out; moved++; continue;
+                    }
+                    walk(v, depth + 1);
+                }
+            }
+            walk(state, 0);
+            /* the Sets of "x,y" keys (fog reveals and the like) */
+            for (const k of Object.keys(state)) {
+                const v = state[k];
+                if (!(v instanceof Set) || !v.size) continue;
+                const arr = [...v]; if (!arr.every(s => typeof s === 'string' && keyRe.test(s))) continue;
+                state[k] = new Set(arr.map(s => { const m = keyRe.exec(s), x = +m[1], y = +m[2], t = inB(x, y) ? to[y][x] : null; return t ? (t.x + ',' + t.y + m[3]) : s; }));
+            }
+            return moved;
+        }
+        function _cubeRelay(basisNew, slice) {
+            const C = state._cube, fOld = _cubeFrame(C.basis), fNew = _cubeFrame(basisNew);
+            const cm = cubeCellMap(fOld, fNew, slice || null);
+            const oldBasis = C.basis;
+            const moved = _cubeRemapState(cm);
+            C.basis = basisNew; C.ver = (C.ver || 0) + 1;
+            C.last = { ver: C.ver, from: oldBasis, slice: slice || null };
+            if (slice) C.lastSlice = { ver: C.ver, slice: slice };   // the picture swings the slice (the guest reads it off the sync)
+            state._terrainVersion = (state._terrainVersion || 0) + 1;
+            state._heightVersion = (state._heightVersion || 0) + 1;
+            state._voxelVersion = (state._voxelVersion || 0) + 1;
+            state._wallVersion = (state._wallVersion || 0) + 1;
+            try { if (window.RenderBus) window.RenderBus.emit('fog:dirty', {}); } catch (e) {}
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.cubeRelaid) ThreeRenderer.cubeRelaid(); } catch (e) { console.warn('[CUBE] the picture', e); }
+            return moved;
+        }
+        /* THE RELAY: the frame round the face the fighter stands on */
+        function cubeFocus(unit) {
+            if (!cubeOn() || !unit || unit.dead) return false;
+            const id = cubeSlotAt(unit.x, unit.y); if (!id) return false;
+            const face = id.split(':')[0], n = CUBE_RULES.faces[face].n, b = state._cube.basis;
+            if (n[0] === b.n[0] && n[1] === b.n[1] && n[2] === b.n[2]) return false;
+            _cubeRelay(cubeBasisFor(b, n), null);
+            return true;
+        }
+        /* THE TURN (end of every round): the warned slice turns; the next one is picked and warned */
+        function cubeEndOfRound() {
+            if (!cubeOn()) return false;
+            const C = state._cube, every = Math.max(1, CUBE_RULES.turnEvery | 0);
+            if ((state.round % every) !== 0 || !C.next) return false;
+            const sl = C.next;
+            _cubeRelay(C.basis, sl);
+            C.turns = (C.turns || 0) + 1;
+            C.next = cubePickSlice(C.N, state.round + 1, C.seed);
+            try { addLog('🧊 THE CUBE TURNS: a slice goes round, and everyone on it with it.'); } catch (e) {}
+            return true;
+        }
+        /* the squares of the warned slice in the current frame (the picture glows them; the CPU steps off or onto them) */
+        function cubeWarnedCells() {
+            if (!cubeOn() || !state._cube.next) return [];
+            const f = cubeFrameNow(), mv = cubeSliceMove(state._cube.N, state._cube.next), out = [];
+            for (const id in mv) { const c = f.cell[id]; if (c) out.push({ x: c.x, y: c.y }); }
+            return out;
+        }
+        Object.assign(window, { cubeOn, cubeStart, cubeFocus, cubeEndOfRound, cubeSlotAt, cubeFaceAt, cubeFrameNow, cubeWarnedCells, cubeSightBlocked, _cubeRelay });
+
         function startMatch() {
             state.startTime = Date.now();
             const _labSeed = _labPairSeed();
@@ -64301,6 +64434,7 @@
                     _checkFrozenThaws();
                     /* 🚪 THE ONE-WAY DOOR: every holding door counts down; a seal can end the fight (wipeout) */
                     if (captureDoorHoldTick() > 0) { checkWin(); if (state.winner || _eorMine !== _eorChainGen) return; }
+                    try { cubeEndOfRound(); } catch (e) { console.warn('[CUBE] the turn', e); }   // THE CUBE: the warned slice turns, everyone on it rides
                     state.round += 1;
                     _checkComebackArmed();
                     tickMatchClock();
@@ -64937,6 +65071,7 @@
                 _releaseSkyThrowGrab();
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
+                try { cubeFocus(nextUnit); } catch (e) { console.warn('[CUBE] relay', e); }   // THE CUBE: the frame round this fighter's face
                 _popeGlassEnds(nextUnit);   // ⛪ the Popemobile's glass comes down when his next turn starts
                 if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
@@ -69956,6 +70091,7 @@
                     state._skippedUnit = null;
                     state._blitzActiveUnitId = unitId;
                     state.activePlayer = unit.player;
+                    try { cubeFocus(unit); } catch (e) {}   // THE CUBE
 
                 } else {
 
