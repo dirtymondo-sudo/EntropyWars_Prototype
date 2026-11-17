@@ -4880,8 +4880,9 @@ The generic white left inside each spell's OWN effect, traced in the code (SWEEP
 - **Checked, nothing to change (code traced; all but the L4 ones also on a baseline sheet):** the 27 with an L4 own look written
   today (Anthem, Apex Roar, Audible, Awakening, Black Budget, Black Guard, Blessing, Fairy Dust, Firewall Protocol, Go
   Ape, Incendiary Rounds, Light Shield, Monster Serum, Nitro Boost, Overcalculate, both Overclocks, Pep Talk, Phase
-  Shift, Prayer, Protect, Siege Mode, Sparkle, Stoneform, Thick Hide, Tin Foil Hat, Wish Granted: no white in them; not
-  reshot here, the L4 thread shot them); Azazel's Forge, Bath Salts, Bipod, Blurry Photo, Called by Name, Camouflage,
+  Shift, Prayer, Protect, Siege Mode, Sparkle, Stoneform, Thick Hide, Tin Foil Hat, Wish Granted: their looks were read
+  in the L4 block: no shared white helper, no pale colour except the white base of a painted picture; not reshot here,
+  the L4 thread shot them); Azazel's Forge, Bath Salts, Bipod, Blurry Photo, Called by Name, Camouflage,
   Can't Stop Me, Collection Plate, Crystal Coffin, Death Pact, Dig In, Double Down, Emet, Encore, Everybody Up, Extended
   Clips, Feathered Serpent, Filter, Forward March, Grind, Invulnerable, Kawarimi, Lawn Ornament, Mantra, On Duty, Orchid
   Disguise, Overtinker, Premonition, Prophecy Fulfilled, Rapture, Rescue Line, Saddle Up, Salt-Proof Stance, Scabbard of
