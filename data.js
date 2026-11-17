@@ -10549,14 +10549,24 @@ const RACE_ABILITIES = {
           desc: 'FLORIDA MAN REFUSES TO EVACUATE. Deals MEDIUM physical damage to All Enemies in a 3x3 area within 3 and leaves them Wet. Only on the rounds it is the headline.' },
     ],
     'boltzmann brain': [
-        /* THE FLUCTUATION: the one race that never walks. It has no move; at every round end it appears on a random free square within 4 (seeded by the round and its id, so host and guest agree; battle.js _boltzmannFluctuate from processEndOfRoundStatuses). It has no skeleton: the model floats. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        /* THE FLUCTUATION: the one race that never walks. It has no move; at every round end it appears on a random free square 2-4 away (a safe one when it can: no lava, deep water or enemy zone; Observer Effect keeps it where it is) (seeded by the round and its id, so host and guest agree; battle.js _boltzmannFluctuate from processEndOfRoundStatuses). It has no skeleton: the model floats. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
         { id: 'nrThoughtSpike', name: 'Thought Spike', tier: 1, families: ['fluctuation'], cost: 25, apCost: 1, spellType: 'alien',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 120, range: 5,
           desc: 'A single stray thought, very sharp. Deals MEDIUM magic damage to a Single Enemy within 5.' },
-        { id: 'nrExistentialDread', name: 'Existential Dread', tier: 2, families: ['fluctuation'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+        /* THE BOLTZMANN BRAIN PASS (2026-11-17): cooldown 2 -> 3, the T2 mass-fear median (Death Rattle, Treeline Scream, KNEEL):
+           a 3x3 that cannot act every other round was the strongest lock of its tier. */
+        { id: 'nrExistentialDread', name: 'Existential Dread', tier: 2, families: ['fluctuation'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'alien',
           element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, range: 4, aoeRadius: 1,
           statusEffects: [{ id: 'feared', duration: 1 }],
-          desc: 'What if none of this is real? Fears All Enemies in a 3x3 area within 4 for 1 round. Cooldown: 2 rounds.' },
+          desc: 'What if none of this is real? Fears All Enemies in a 3x3 area within 4 for 1 round. Cooldown: 3 rounds.' },
+        /* THE OBSERVER EFFECT (the Boltzmann Brain pass, 2026-11-17, mondo: "unique fun strategic playstyle"): the one say the
+           player has over the fluctuation. A brain that is watched stays where it is: no jump at this round end (battle.js
+           _boltzmannFluctuate reads `observed`). It does not count as the turn's spell (`observe`, spellSkipsCastCap), so a
+           good perch can be held AND shot from the same turn; cooldown 2 = every other round end at most. */
+        { id: 'nrObserverEffect', name: 'Observer Effect', tier: 1, families: ['fluctuation'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          element: 'psychic', type: 'buff', kind: 'buff', range: 0, observe: true,
+          statusEffects: [{ id: 'observed', duration: 1 }],
+          desc: 'It looks at itself, and the wave collapses. It stays on this square at the end of this round instead of fluctuating. Does not count as the spell for the turn. Cooldown: 2 rounds.' },
         { id: 'nrVacuumCollapse', name: 'Vacuum Collapse', tier: 3, families: ['fluctuation'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'alien',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 175, range: 6,
           desc: 'The universe was never stable. Deals HEAVY magic damage to a Single Enemy within 6. Cooldown: 2 rounds.' },
@@ -14334,6 +14344,14 @@ const STATUS_DEFS = {
             if (typeof addLog === 'function') addLog(`🦗 ${typeof unitDisplayName === 'function' ? unitDisplayName(unit) : 'The brood'} grows louder under the ground (Brood ${unit._brood}).`);
             if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, `🦗 BROOD ${unit._brood}`, 'buff', { durationMs: 1000 });
         }
+    },
+    /* 👁 OBSERVED (the Boltzmann Brain pass, 2026-11-17): Observer Effect; the brain does not fluctuate at this round end
+       (battle.js _boltzmannFluctuate). Both sides see it, so both know where it will be. */
+    observed: {
+        icon: '👁', glyph: '👁', short: 'OBS', label: 'Observed',
+        colorText: 'observed — it stays where it is',
+        kind: 'buff', category: 'buff', stack: 'max',
+        iconSrc: createStatusIconDataUri('👁', '#18142a', '#e8e0ff', '#8a7aff')
     },
     bodiless: {
         icon: '🧠', glyph: '🧠', short: 'BOD', label: 'Bodiless',
@@ -23283,7 +23301,7 @@ const SPELL_FAMILIES = {
         glyph: '🧠',
         color: '#5a4ad8',
         kind: 'signature',
-        desc: 'A random thought in an empty universe: a spike of thought, a dread that spreads, and a vacuum that collapses.',
+        desc: 'A random thought in an empty universe: a spike of thought, a dread that spreads, a vacuum that collapses, and the one look that holds it still.',
         unique: 'boltzmann brain',
         identity: { who: ['Boltzmann Brain', 'Fluctuation', 'Floating Mind'], adj: ['Spontaneous', 'Improbable', 'Staring'], look: ['a glowing floating brain', 'one huge staring eye', 'dangling nerve tendrils'], vibe: ['is somewhere else every round', 'thinks you out of existence'] }
     },
@@ -25671,6 +25689,7 @@ const RACE_SPELL_EXCLUDES = {
     barbarella: ['raceDisintegrator', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceAgentVanish'],
     'bee queen': ['raceTunnelNetwork', 'raceInfectiousBite', 'raceSplash'],
     bigfoot: ['raceNimbleDodge', 'raceVault'],
+    'boltzmann brain': ['racePhaseWalk', 'raceDimensionalFold'],   // THE BOLTZMANN BRAIN PASS 2026-11-17: both move the caster, and it never moves itself (they were dead picks, always greyed 'Bodiless')
     'black goo': ['raceFormicAcid', 'raceInfectiousBite', 'raceSymbioteArmor', 'raceWebSwing'],
     'bunny girl': ['rampage', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceBorrowedClaw', 'raceShedSkin'],
     catgirl: ['rampage', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace'],

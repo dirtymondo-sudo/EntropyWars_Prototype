@@ -5769,6 +5769,23 @@ Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo ha
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
 (cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
+- **THE BOLTZMANN BRAIN PASS (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new
+  mechanics are tested out and work as intended")**, thread cmsg_01XWpxyTn3nnw98znVzKdFjsH9oWgzPy7wwhJEhrsf2fQY:
+  - OBSERVER EFFECT (new, `nrObserverEffect`, tier 1, 25 MP, 1 AP, cd 2, self `buff`, `observe: true`, status `observed`): the one say
+    the player has over the fluctuation. At this round end it stays on its square (`_boltzmannFluctuate` spends the status there; a
+    1-round status otherwise lives until the caster's next turn ends and held it through TWO round ends, which with cd 2 = never
+    moving). It skips the one-spell cap (`spellSkipsCastCap`), so hold-and-shoot is one turn (cast it first: a damaging spell ends the turn).
+    CPU (ai.js, the buff scorer): casts it first (score 400+) when the square is a perch: an enemy within 5, none within 2, the hits
+    coming under 40 % of its HP, AP for a shot after. Seen in a real CPU match: Observer, then Vacuum Collapse, held one round end.
+  - THE JUMP: lands on a SAFE square when there is one (no lava / deep-water tick, no enemy zone status: predictMoveHazardDamage +
+    predictZoneStatusesAt; hidden traps not looked at, that would leak them). The log line is `actor`-tagged and fog-checked like
+    any line with squares in it; the look is two fires (`nrFluctuation:out` / `:in`), each fog-gated on its own end (the legacy
+    teleport drew both ends for anyone who saw either).
+  - Dead picks out: Phase Walk + Dimensional Fold (both move the caster: always greyed 'Bodiless') in RACE_SPELL_EXCLUDES.
+  - Existential Dread cooldown 2 -> 3 (the T2 mass-fear median: Death Rattle, Treeline Scream, KNEEL; Feared = cannot act).
+  - Stats kept: POWER 548, #92 of 154 (median 563).
+  - Proof + probes: /mnt/project-files/boltzmann-brain-polish/ (probe/p3_show.js = frozen-clock looks + the rules in a CPU match).
+
 
 ## THE WENDIGO PASS (2026-11-17, thread "Polish Wendigo spells and VFX", mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
 - THE PLAYSTYLE: a hunter that has to keep eating. Rend (Bleed 2 rounds) sets up Feast, which now carries

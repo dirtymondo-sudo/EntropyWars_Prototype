@@ -3893,6 +3893,19 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
 - Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
 
 
+## THE BOLTZMANN BRAIN (2026-11-17, the Boltzmann Brain pass)
+three-vfx-effects.js block "THE BOLTZMANN BRAIN" (after THE TECH CEO, helpers `_bb*`, `pzSig` hook). Violet thought + the black of an
+empty universe; every ring that says whose it is uses the Riot side colours from the viewer's seat (`_bbSide`).
+- Thought Spike (`bolt`, pzOwn, on flyMs): a needle grows at the brain and flies to the head, the thought line behind it; on the hit a
+  ring round the head, violet + white shards, a side ring on the floor.
+- Vacuum Collapse (`bolt`, pzOwn): a side-colour line marks the victim, a thin false-vacuum shell (8 % fill, two turning rims) swells
+  round the body over a starry floor disc and collapses into a point on the hit; violet + side floor rings.
+- Existential Dread (`aoe`, pzOwn): each square of the 3x3 goes starry black with a side-colour rim (rippling out from the middle);
+  an eye opens 2 squares over the middle, its pupil narrows, it shuts.
+- Observer Effect (`aura`): a smaller eye over the brain, a side-colour frame drops from 2.2x onto its square, four posts: pinned.
+- The jump (fireGeometry, relayed): `nrFluctuation:out` motes sucked into a point that blinks out, `:in` a point that bursts into
+  a shell + motes, `:hold` the eye blinks once over the frame. Each end gates on `_pzSeen`.
+
 ## THE REFEREE (2026-11-17, thread "Polish Referee spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx")
 Officiating had only the generic looks. three-vfx-effects.js "THE REFEREE" (right after THE TECH CEO; `_PZ_SIGS.rf*`, helpers `_rf*`).
 Cards keep their own colours (solid yellow / red, read on grass); rings and floor marks are the Referee's SIDE from the viewer's seat
