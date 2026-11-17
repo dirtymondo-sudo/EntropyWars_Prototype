@@ -14299,11 +14299,32 @@
         }
         window._floridaHeadline = _floridaHeadline;
         /* 🧠 THE FLUCTUATION (the Boltzmann Brain): it never walks or jumps (unitMoveBlockedByStatus: 'Bodiless'); at every
-           round end it is somewhere else, a free square within 4 picked by its id and the round. */
+           round end it is somewhere else, a free square 2-4 away picked by its id and the round.
+           THE BOLTZMANN BRAIN PASS (2026-11-17):
+           · OBSERVED (Observer Effect) = it stays put at this round end (the status is spent there): the one say the player has over where it goes.
+           · a SAFE square when there is one: no lava / deep water tick waiting, no enemy zone's status (the same rules the move
+             preview shows, predictMoveHazardDamage + predictZoneStatusesAt). Hidden traps are not looked at (that would leak them).
+           · the look: its own (three-vfx-effects.js THE FLUCTUATION): it stops existing on the old square and blinks into being
+             on the new one, two separate fires so each end is fog-gated on its own (the guest's relay gates each anchor; the host
+             draws only what its viewer sees). The legacy teleport drew BOTH ends for anyone who saw either one.
+           · the log line names the squares only to its own side and to a side that sees it (o.actor + the usual fog check). */
         function _unitIsBodiless(unit) { return !!unit && unit.race === 'boltzmann brain'; }
+        function _boltzmannSafe(u, x, y) {
+            try { if (predictMoveHazardDamage(u, x, y) > 0) return false; } catch (e) {}
+            try { if (predictZoneStatusesAt(u, x, y).length) return false; } catch (e) {}
+            return true;
+        }
         function _boltzmannFluctuate(u) {
             if (!_nrAlive(u) || !_unitIsBodiless(u) || unitHasStatus(u, 'exited') || unitHasStatus(u, 'captured')) return;
             if (typeof _isClashMode === 'function' && _isClashMode()) return;
+            if (unitHasStatus(u, 'observed')) {
+                /* the look holds it for THIS round end only: spent here (a 1-round status otherwise lives until the caster's next
+                   turn ends, which held it through two round ends and, with the 2-round cooldown, for good) */
+                clearStatus(u, 'observed');
+                addLog(`👁 ${_ctName(u)} is observed and stays where it is.`, null, null, { actor: u });
+                if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireGeometry) ThreeVFXEffects.fireGeometry('nrFluctuation:hold', u.x, u.y, 0, { owner: u.player });
+                return;
+            }
             const sq = [];
             for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
                 const d = Math.abs(dx) + Math.abs(dy);
@@ -14311,13 +14332,20 @@
                 if (_nrFreeSquare(u.x + dx, u.y + dy)) sq.push({ x: u.x + dx, y: u.y + dy });
             }
             if (!sq.length) return;
-            const t = sq[_nrHash(String(u.id) + '|' + (state.round || 0) + '|bb') % sq.length];
+            const safe = sq.filter(q => _boltzmannSafe(u, q.x, q.y));
+            const pool = safe.length ? safe : sq;
+            const t = pool[_nrHash(String(u.id) + '|' + (state.round || 0) + '|bb') % pool.length];
             const fx = u.x, fy = u.y;
             u.x = t.x; u.y = t.y;
             if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(t.x, t.y, u.z);
-            if (!_skipVisuals()) _vfxTeleport(fx, fy, t.x, t.y);
+            if (!_skipVisuals()) {
+                if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireGeometry
+                    && ThreeVFXEffects.fireGeometry('nrFluctuation:out', fx, fy, 0, { owner: u.player })) {
+                    ThreeVFXEffects.fireGeometry('nrFluctuation:in', t.x, t.y, 0, { owner: u.player, fromX: fx, fromY: fy });
+                } else _vfxTeleport(fx, fy, t.x, t.y);
+            }
             resolveTileArrival(u, { via: 'self' });
-            addLog(`🧠 ${_ctName(u)} stops existing at ${coordLabel(fx, fy)} and fluctuates into being at ${coordLabel(t.x, t.y)}.`);
+            addLog(`🧠 ${_ctName(u)} stops existing at ${coordLabel(fx, fy)} and fluctuates into being at ${coordLabel(t.x, t.y)}.`, null, null, { actor: u });
         }
         /* 🦌 THE HUNGER (the Wendigo): a round in which it dealt no damage to an enemy (unit._fedRound, applyDamageToUnit)
            costs it 8% of its max HP at the round end, never below 1 */
@@ -48677,7 +48705,7 @@
         /* C1 (mondo 2026-10-29): Tune Frequency "doesn't use the spell slot" — like a setup placement it never counts
            toward (or is blocked by) the one-spell-a-turn cap; its own 1-round cooldown keeps it to once a round. */
         function spellSkipsCastCap(spell) {
-            return spellIsSetupPlacement(spell) || (!!spell && spell.kind === 'tuneFrequency');
+            return spellIsSetupPlacement(spell) || (!!spell && (spell.kind === 'tuneFrequency' || spell.observe === true));   // 👁 Observer Effect (the Boltzmann Brain pass)
         }
         // Any spell that grants Protect ends the caster's turn outright —
         // shielding up IS the whole turn (no protect-then-act / protect-then-move).

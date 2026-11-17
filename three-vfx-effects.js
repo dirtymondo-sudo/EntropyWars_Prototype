@@ -64438,6 +64438,283 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['nrDisrupt']     = { aura: 'ceoDisrupt_aura' };
     SPELL_MAP['nrLayoffs']     = { aura: 'ceoLayoffs_aura' };
 
+    /* ════ THE BOLTZMANN BRAIN (2026-11-17, the Boltzmann Brain pass; mondo: "flesh out their unique spells and spell
+       animations/vfx"): a mind that blinked into being out of nothing. Its four casts and its round-end jump had only the
+       generic psychic look; now each has its own, in one language: violet thought, the black of an empty universe, and Riot's
+       SIDE colours from the viewer's own seat for every ring that tells whose it is (yours cyan-blue, theirs pink-orange).
+       Nothing stands in front of a body or its number: the eye hangs high over an area, the bubble is a thin shell gone
+       before the number, the needle is a line.
+       · Thought Spike (`bolt`, pzOwn, timed on flyMs): a needle of light grows at the brain's eye and flies straight to the
+         victim's head; on the hit a ring of thought round the head and a few shards.
+       · Vacuum Collapse (`bolt`, pzOwn): a thin line of its colour marks the victim, a bubble of false vacuum swells round the
+         body, then collapses into a point on the hit (the number lands on the implosion), a black-and-violet floor ring.
+       · Existential Dread (`aoe`): every square of the 3x3 goes black with stars (the empty universe under them), a huge eye
+         opens high over the middle and looks down, then shuts; each square's rim in the brain's side colour.
+       · Observer Effect (`aura`): the same eye opens over the brain and a square frame snaps down onto its square: pinned.
+       · THE FLUCTUATION (battle.js _boltzmannFluctuate, through fireGeometry so the guest gets it from the relay):
+         'nrFluctuation:out' = the brain stops existing (motes sucked into a point that blinks out), 'nrFluctuation:in' = it
+         blinks into being (a point bursts into a shell), 'nrFluctuation:hold' = it was observed (the eye blinks once).
+         Out and in are two fires so each end is fog-gated on its own (_pzSeen here, the relay's anchor on the guest). ════ */
+    var _BB = { ally: [0x1deeff, 0x1d63ff], enemy: [0xfd1674, 0xf9590f], violet: 0x8a6aff, pale: 0xe8e0ff, deep: 0x3a1a9a, void: 0x07040f };
+    function _bbViewer() { try { return (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1; } catch (e) { return 1; } }
+    function _bbOwnerAt(x, y) {
+        try { var us = state.units || []; for (var i = 0; i < us.length; i++) { var u = us[i]; if (u && !u.dead && u.x === x && u.y === y) return u.player; } } catch (e) {}
+        return null;
+    }
+    function _bbSide(owner) {
+        var mine = owner == null ? true : owner === _bbViewer();
+        try { if (window.EW_NO_RIOT_VFX || window.EW_NO_RIOT_VFX_C) return [_BB.violet, _BB.deep]; } catch (e) {}
+        return mine ? _BB.ally : _BB.enemy;
+    }
+    function _bbOff() { return _catOff('spells'); }
+    /* the eye: almond white, violet iris, black pupil (the pupil is its own mesh, so it can narrow) */
+    function _bbEyeTex() {
+        return _pzTex('bb-eye', 256, 128, function (g, w, h) {
+            g.fillStyle = '#f4efff'; g.beginPath(); g.moveTo(6, h / 2); g.quadraticCurveTo(w / 2, -h * 0.28, w - 6, h / 2); g.quadraticCurveTo(w / 2, h * 1.28, 6, h / 2); g.fill();
+            var gr = g.createRadialGradient(w / 2, h / 2, 6, w / 2, h / 2, 52); gr.addColorStop(0, '#d9c8ff'); gr.addColorStop(0.55, '#8a5aff'); gr.addColorStop(1, '#2a0a6a');
+            g.fillStyle = gr; g.beginPath(); g.arc(w / 2, h / 2, 50, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = '#1a0838'; g.lineWidth = 7; g.beginPath(); g.moveTo(6, h / 2); g.quadraticCurveTo(w / 2, -h * 0.28, w - 6, h / 2); g.quadraticCurveTo(w / 2, h * 1.28, 6, h / 2); g.stroke();
+        });
+    }
+    function _bbPupilTex() {
+        return _pzTex('bb-pupil', 64, 64, function (g, w, h) { g.fillStyle = '#05010c'; g.beginPath(); g.arc(32, 32, 30, 0, Math.PI * 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc(22, 22, 7, 0, Math.PI * 2); g.fill(); });
+    }
+    /* the empty universe: black with a scatter of stars (drawn once, the same every run) */
+    function _bbVoidTex() {
+        return _pzTex('bb-void', 128, 128, function (g, w, h) {
+            g.fillStyle = '#07040f'; g.fillRect(0, 0, w, h);
+            var r = _sigRand(4242);
+            for (var i = 0; i < 70; i++) { var a = 0.35 + r() * 0.65; g.fillStyle = r() < 0.25 ? 'rgba(190,160,255,' + a + ')' : 'rgba(255,255,255,' + a + ')'; var s = r() < 0.12 ? 2.4 : 1.2; g.fillRect(r() * w, r() * h, s, s); }
+        });
+    }
+    /* the eye in the frame F at height y (ts units), width wid; returns { o, set(open, look) } */
+    function _bbEye(F, y, wid) {
+        var ts = F.ts, o = new THREE.Group(); o.position.set(0, ts * y, 0); F.g.add(o);
+        var eye = _pzMesh(new THREE.PlaneGeometry(ts * wid, ts * wid * 0.5), _pzSolid(0xffffff, _bbEyeTex(), { side: THREE.DoubleSide, depthWrite: false }), o);
+        var pup = _pzMesh(new THREE.PlaneGeometry(ts * wid * 0.17, ts * wid * 0.17), _pzSolid(0xffffff, _bbPupilTex(), { side: THREE.DoubleSide, depthWrite: false }), o, 0, 0, ts * 0.01);
+        var halo = _pzSpr(_BB.violet, ts * wid * 1.5, o);
+        eye.renderOrder = 162; pup.renderOrder = 163;
+        return { o: o, set: function (open, pupil, a) {
+            _pzFace(o);
+            eye.scale.set(1, Math.max(0.02, open), 1); eye.material.opacity = a;
+            pup.scale.set(pupil, pupil * Math.max(0.02, Math.min(1, open * 1.4)), 1); pup.material.opacity = open > 0.25 ? a : 0;
+            halo.material.opacity = 0.35 * a * open;
+        } };
+    }
+    /* a square outline on a tile, in the frame F (lies on the floor) */
+    function _bbSquare(F, x, y, color, inset) {
+        var wp = _worldPos(x, y), ts = F.ts, k = inset || 0.5;
+        var m = _pzMesh(new THREE.RingGeometry(ts * (k - 0.07) * Math.SQRT2, ts * k * Math.SQRT2, 4, 1, Math.PI / 4), _pzGlow(color), F.g, wp.x - F.wp.x, wp.y - F.wp.y + ts * 0.035, wp.z - F.wp.z);
+        m.rotation.x = -Math.PI / 2;
+        return m;
+    }
+    /* motes on a sphere round (0, y, 0) that fly IN to the middle (dir -1) or OUT from it (dir 1) */
+    function _bbMotes(F, n, y, r, color) {
+        var ts = F.ts, list = [];
+        for (var i = 0; i < n; i++) {
+            var u = rn(-1, 1), a = rn(0, 6.283), s = Math.sqrt(1 - u * u);
+            var sp = _pzSpr(i % 3 ? color : 0xffffff, ts * rn(0.07, 0.12), F.g);
+            list.push({ s: sp, x: Math.cos(a) * s, y: u, z: Math.sin(a) * s, r: ts * r * rn(0.75, 1.1), d: rn(0, 90) });
+        }
+        return { tick: function (k, dir, alpha) {
+            for (var j = 0; j < list.length; j++) {
+                var M = list[j], kk = dir < 0 ? 1 - k : k, rr = M.r * kk;
+                M.s.position.set(M.x * rr, ts * y + M.y * rr * 0.8, M.z * rr);
+                M.s.material.opacity = alpha;
+            }
+        } };
+    }
+
+    /* THOUGHT SPIKE: the needle */
+    EFFECTS['bbThoughtSpike_bolt'] = _pzDef('bbSpike', { pzOwn: true });
+    _PZ_SIGS.bbSpike = function (p) {
+        if (_bbOff()) return;
+        var tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
+        var from = _pzFrom(tx, ty, p), seenC = _pzSeen(from.x, from.y), seenT = _pzSeen(tx, ty);
+        if (!seenC && !seenT) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 320, S = _bbSide(_bbOwnerAt(from.x, from.y));
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty);
+        var A = { x: ln.dx, y: ln.dy + ts * 0.85, z: ln.dz }, B = { x: 0, y: ts * 1.0, z: 0 };
+        var GROW = Math.min(140, ms * 0.35);
+        var needleM = _pzGlow(_BB.pale), needle = _pzMesh(new THREE.CylinderGeometry(0, ts * 0.085, 1, 6), needleM, F.g);
+        var coreM = _pzGlow(_BB.violet), core = _pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.035, 1, 6), coreM, F.g);
+        var trailM = _pzGlow(S[0]), trail = _pzMesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.018, 1, 5), trailM, F.g);
+        var tip = _pzSpr(_BB.violet, ts * 0.5, F.g), hit = false;
+        var headRing = _pzMesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.025, 6, 32), _pzGlow(S[0]), F.g, 0, ts * 1.0, 0); headRing.rotation.x = -Math.PI / 2;
+        return _sigRunOwned(F.g, ms + 900, function (el) {
+            /* 0..GROW: the needle grows out of the eye pointing at the victim; then it flies (ease-in), the line of thought behind it */
+            var g = _sigClamp01(el / GROW), f = _sigClamp01((el - GROW) / Math.max(60, ms - GROW)); f = f * f;
+            var len = ts * (0.2 + 0.6 * g);
+            var hx = A.x + (B.x - A.x) * f, hy = A.y + (B.y - A.y) * f, hz = A.z + (B.z - A.z) * f;
+            var dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z, dl = Math.max(1, Math.hypot(dx, dy, dz));
+            var tail = { x: hx - dx / dl * len, y: hy - dy / dl * len, z: hz - dz / dl * len };
+            var on = el < ms ? 1 : 0;
+            _pzSpan(needle, tail, { x: hx, y: hy, z: hz }); _pzSpan(core, tail, { x: hx, y: hy, z: hz });
+            needleM.opacity = 0.95 * on * g; coreM.opacity = 0.9 * on * g;
+            tip.position.set(hx, hy, hz); tip.material.opacity = 0.8 * on * g;
+            _pzSpan(trail, A, { x: hx, y: hy, z: hz }); trailM.opacity = el < ms ? 0.35 * g : 0.35 * (1 - _sigClamp01((el - ms) / 160));
+            if (!hit && el >= ms) {
+                hit = true;
+                if (seenT) {
+                    _sigShockRing3D(tx, ty, { color: S[0], r0: ts * 0.15, r1: ts * 0.75, ms: 360 });
+                    _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 170, tint: _BB.violet, vz0: 40, vz1: 200, gravity: 260 });
+                    _sigSparks(tx, ty, 'spark', 5, { z: ts * 0.9, vxy: 120, tint: 0xffffff, vz0: 60, vz1: 220, gravity: 260 });
+                    _shake('light');
+                }
+            }
+            var e = el - ms;
+            headRing.material.opacity = (seenT && e > 0) ? 0.85 * (1 - _sigClamp01(e / 520)) : 0;
+            headRing.scale.setScalar(e > 0 ? 0.6 + 1.0 * _sigEaseOutCubic(_sigClamp01(e / 420)) : 0.01);
+        });
+    };
+
+    /* VACUUM COLLAPSE: the false vacuum swells round the body and collapses on the hit */
+    EFFECTS['bbVacuumCollapse_bolt'] = _pzDef('bbVacuum', { pzOwn: true });
+    _PZ_SIGS.bbVacuum = function (p) {
+        if (_bbOff()) return;
+        var tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
+        var from = _pzFrom(tx, ty, p), seenC = _pzSeen(from.x, from.y), seenT = _pzSeen(tx, ty);
+        if (!seenC && !seenT) return;
+        var ms = Math.max(360, p.flyMs > 0 ? p.flyMs : 480), S = _bbSide(_bbOwnerAt(from.x, from.y));
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty), Y = ts * 0.62;
+        var lineM = _pzGlow(S[0]), line = _pzMesh(new THREE.CylinderGeometry(ts * 0.01, ts * 0.01, 1, 5), lineM, F.g);
+        _pzSpan(line, { x: ln.dx, y: ln.dy + ts * 0.85, z: ln.dz }, { x: 0, y: Y, z: 0 });
+        if (!seenT) return _sigRunOwned(F.g, 400, function (el) { lineM.opacity = 0.45 * _pzEnv(el, 0, 60, 160, 380); });
+        var shellM = _pzGlow(_BB.violet), shell = _pzMesh(new THREE.SphereGeometry(1, 28, 18), shellM, F.g, 0, Y, 0);
+        var rimM = _pzGlow(_BB.pale), rim = _pzMesh(new THREE.TorusGeometry(1, 0.025, 6, 48), rimM, F.g, 0, Y, 0);
+        var rim2M = _pzGlow(S[0]), rim2 = _pzMesh(new THREE.TorusGeometry(1, 0.02, 6, 48), rim2M, F.g, 0, Y, 0);
+        var pt = _pzSpr(0xffffff, ts * 0.5, F.g); pt.position.set(0, Y, 0);
+        var motes = _bbMotes(F, 26, 0.62, 1.05, _BB.violet);
+        var floorM = _pzSolid(0xffffff, _bbVoidTex(), { depthWrite: false }), floor = _pzMesh(new THREE.CircleGeometry(ts * 0.62, 36), floorM, F.g, 0, ts * 0.03, 0); floor.rotation.x = -Math.PI / 2;
+        var R = ts * 0.8, CL = 150, hit = false;
+        return _sigRunOwned(F.g, ms + 1300, function (el) {
+            lineM.opacity = 0.5 * _pzEnv(el, 0, 60, ms * 0.4, ms * 0.7);
+            /* the swell: a thin shell, the body stays in sight (8 % fill), two rings turning on it */
+            var sw = _sigEaseOutCubic(_sigClamp01(el / ms)), c = _sigClamp01((el - ms) / CL), r = el < ms ? R * (0.08 + 0.92 * sw) : R * (1 - _sigEaseInCubic(c));
+            var on = el < ms + CL ? 1 : 0;
+            shell.scale.setScalar(Math.max(0.01, r)); shellM.opacity = 0.09 * on * (0.5 + 0.5 * sw);
+            rim.scale.setScalar(Math.max(0.01, r)); rim.rotation.set(el * 0.004, el * 0.003, 0.6); rimM.opacity = 0.8 * on;
+            rim2.scale.setScalar(Math.max(0.01, r * 0.98)); rim2.rotation.set(1.2 + el * 0.003, -el * 0.004, 0); rim2M.opacity = 0.6 * on;
+            pt.material.opacity = el < ms ? 0.25 + 0.25 * Math.sin(el * 0.05) : 0.95 * (1 - _sigClamp01((el - ms - CL) / 160));
+            pt.scale.setScalar(ts * (el < ms + CL ? 0.25 : 0.25 + 1.2 * _sigClamp01((el - ms - CL) / 160)));
+            motes.tick(el < ms ? 1 : c, -1, el < ms ? 0.6 * sw : 0.9 * (1 - c));
+            floorM.opacity = 0.75 * _pzEnv(el, 0, ms * 0.5, ms + CL + 200, ms + CL + 900);
+            floor.scale.setScalar(Math.max(0.05, el < ms + CL ? sw : 1 - 0.6 * _sigClamp01((el - ms - CL) / 700)));
+            if (!hit && el >= ms + CL * 0.7) {
+                hit = true;
+                _sigShockRing3D(tx, ty, { color: _BB.violet, r0: ts * 0.1, r1: ts * 1.15, ms: 420 });
+                _sigShockRing3D(tx, ty, { color: S[0], r0: ts * 0.2, r1: ts * 0.9, ms: 520, torus: false });
+                _sigSparks(tx, ty, 'spark', 14, { z: ts * 0.6, vxy: 220, tint: _BB.pale, vz0: 30, vz1: 160, gravity: 200 });
+                _shake('normal');
+            }
+        });
+    };
+
+    /* EXISTENTIAL DREAD: the empty universe under the 3x3 and the eye over it */
+    EFFECTS['bbExistentialDread_aoe'] = _pzDef('bbDread', { pzOwn: true, aoeRadius: 1 });
+    _PZ_SIGS.bbDread = function (p) {
+        if (_bbOff()) return;
+        var cx = p.tx != null ? p.tx : p.cx, cy = p.ty != null ? p.ty : p.cy; if (cx == null || !_pzOnce('bbDread', 500)) return;
+        var rad = p.aoeRadius != null ? p.aoeRadius : 1, from = _pzFrom(cx, cy, p), S = _bbSide(_bbOwnerAt(from.x, from.y));
+        var F = _nrvFrame(cx, cy), ts = F.ts, cells = [], any = false;
+        for (var dx = -rad; dx <= rad; dx++) for (var dy = -rad; dy <= rad; dy++) {
+            var x = cx + dx, y = cy + dy; if (!_pzSeen(x, y)) continue;
+            if (typeof isInside === 'function') { try { if (!isInside(x, y)) continue; } catch (e) {} }
+            any = true;
+            var wp = _worldPos(x, y);
+            var pm = _pzSolid(0xffffff, _bbVoidTex(), { depthWrite: false }), pl = _pzMesh(new THREE.PlaneGeometry(ts * 0.94, ts * 0.94), pm, F.g, wp.x - F.wp.x, wp.y - F.wp.y + ts * 0.025, wp.z - F.wp.z);
+            pl.rotation.x = -Math.PI / 2; pl.rotation.z = (Math.abs(dx * 7 + dy * 3) % 4) * Math.PI / 2;
+            cells.push({ pm: pm, rim: _bbSquare(F, x, y, S[0], 0.47), d: (Math.abs(dx) + Math.abs(dy)) * 70 });
+        }
+        if (!any) { _sigDisposeGroup(F.g); return; }
+        var eyeSeen = _pzSeen(cx, cy), eye = eyeSeen ? _bbEye(F, 2.0, 1.1) : null;
+        _sigShake('light');
+        return _sigRunOwned(F.g, 2000, function (el) {
+            for (var i = 0; i < cells.length; i++) {
+                var C = cells[i], a = _pzEnv(el, C.d, C.d + 220, 1350, 1900);
+                C.pm.opacity = 0.82 * a; C.rim.material.opacity = 0.95 * a;
+            }
+            if (eye) {
+                /* opens 200..460, the pupil narrows on the look (600..760), holds, shuts 1300..1500 */
+                var open = el < 200 ? 0 : el < 460 ? _sigEaseOutBack(_sigClamp01((el - 200) / 260)) : el < 1300 ? 1 : 1 - _sigClamp01((el - 1300) / 200);
+                var pupil = 1.2 - 0.6 * _sigEaseOutCubic(_sigClamp01((el - 600) / 160));
+                eye.set(Math.max(0.02, open), pupil, open > 0.02 ? 1 : 0);
+                eye.o.position.y = ts * (2.0 + 0.05 * Math.sin(el * 0.006));
+            }
+        });
+    };
+
+    /* OBSERVER EFFECT: the eye opens over the brain and a frame snaps down onto its square */
+    EFFECTS['bbObserverEffect_aura'] = _pzDef('bbObserve', { pzOwn: true, aoeRadius: 0 });
+    function _bbPin(tx, ty, owner, ms, blinkOnly) {
+        if (_bbOff() || !_pzSeen(tx, ty)) return null;
+        var S = _bbSide(owner), F = _nrvFrame(tx, ty), ts = F.ts, eye = _bbEye(F, 1.4, 0.6);
+        var frame = _bbSquare(F, tx, ty, S[0], 0.5), frame2 = blinkOnly ? null : _bbSquare(F, tx, ty, _BB.violet, 0.42);
+        var posts = [];
+        if (!blinkOnly) for (var i = 0; i < 4; i++) {
+            var ax = (i & 1 ? 1 : -1) * ts * 0.44, az = (i & 2 ? 1 : -1) * ts * 0.44;
+            posts.push(_pzMesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.018, ts * 0.5, 5), _pzGlow(S[0]), F.g, ax, ts * 0.25, az));
+        }
+        var snapped = false;
+        return _sigRunOwned(F.g, ms, function (el) {
+            var open = blinkOnly ? (el < 120 ? el / 120 : el < 380 ? 1 - 0.95 * Math.sin((el - 120) / 260 * Math.PI) : el < 600 ? 1 : 1 - _sigClamp01((el - 600) / 200))
+                : (el < 300 ? _sigEaseOutBack(_sigClamp01(el / 300)) : el < ms - 300 ? 1 : 1 - _sigClamp01((el - (ms - 300)) / 200));
+            eye.set(Math.max(0.02, open), 0.9, open > 0.02 ? 1 : 0);
+            /* the frame drops from 2.2x onto the square at 420 ms (pinned), holds, fades */
+            var k = _sigClamp01((el - 180) / 240), sc = blinkOnly ? 1 : 2.2 - 1.2 * _sigEaseInCubic(k);
+            frame.scale.setScalar(sc); frame.material.opacity = blinkOnly ? 0.85 * _pzEnv(el, 0, 120, 500, 800) : 0.95 * _pzEnv(el, 180, 260, ms - 500, ms - 100);
+            if (frame2) { frame2.material.opacity = 0.7 * _pzEnv(el, 420, 480, ms - 500, ms - 100); }
+            for (var i = 0; i < posts.length; i++) { posts[i].material.opacity = 0.8 * _pzEnv(el, 420, 470, ms - 600, ms - 200); posts[i].scale.y = Math.max(0.01, _sigEaseOutBack(_sigClamp01((el - 420) / 200))); }
+            if (!snapped && !blinkOnly && el >= 420) { snapped = true; _sigShockRing3D(tx, ty, { color: S[0], r0: ts * 0.2, r1: ts * 0.7, ms: 300 }); _sigSparks(tx, ty, 'spark', 8, { z: ts * 0.05, vxy: 90, tint: _BB.violet, vz0: 40, vz1: 140, gravity: 260 }); }
+        });
+    }
+    _PZ_SIGS.bbObserve = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('bbObs', 400)) return;
+        _bbPin(tx, ty, _bbOwnerAt(tx, ty), 1500, false);
+    };
+
+    /* THE FLUCTUATION: out (it stops existing), in (it blinks into being), hold (it was observed) */
+    function _bbOut(tx, ty, r, ex) {
+        if (_bbOff() || !_pzSeen(tx, ty) || !_getVFXScene()) return true;
+        var S = _bbSide(ex && ex.owner), F = _nrvFrame(tx, ty), ts = F.ts, motes = _bbMotes(F, 30, 0.75, 1.0, _BB.violet);
+        var ghostM = _pzGlow(_BB.violet), ghost = _pzMesh(new THREE.SphereGeometry(ts * 0.42, 22, 14), ghostM, F.g, 0, ts * 0.75, 0);
+        var pt = _pzSpr(0xffffff, ts * 0.4, F.g); pt.position.set(0, ts * 0.75, 0);
+        var ring = _bbSquare(F, tx, ty, S[0], 0.48), done = false;
+        return _sigRunOwned(F.g, 900, function (el) {
+            var k = _sigEaseInCubic(_sigClamp01(el / 320));
+            motes.tick(k, -1, 0.9 * (1 - _sigClamp01((el - 300) / 120)));
+            ghost.scale.setScalar(Math.max(0.01, 1 - k)); ghostM.opacity = 0.3 * (1 - k);
+            pt.material.opacity = el < 320 ? 0.5 + 0.5 * k : 1 - _sigClamp01((el - 320) / 140);
+            pt.scale.setScalar(ts * (el < 320 ? 0.4 - 0.25 * k : 0.15 + 0.6 * _sigClamp01((el - 320) / 140)));
+            ring.material.opacity = 0.9 * _pzEnv(el, 0, 80, 360, 800); ring.scale.setScalar(1 - 0.5 * _sigClamp01(el / 800));
+            if (!done && el >= 330) { done = true; _sigShockRing3D(tx, ty, { color: _BB.violet, r0: ts * 0.5, r1: ts * 0.08, ms: 260, torus: false }); }
+        }) || true;
+    }
+    function _bbIn(tx, ty, r, ex) {
+        if (_bbOff() || !_pzSeen(tx, ty) || !_getVFXScene()) return true;
+        var S = _bbSide(ex && ex.owner), F = _nrvFrame(tx, ty), ts = F.ts, motes = _bbMotes(F, 30, 0.75, 1.1, _BB.violet);
+        var shellM = _pzGlow(_BB.violet), shell = _pzMesh(new THREE.SphereGeometry(1, 22, 14), shellM, F.g, 0, ts * 0.75, 0);
+        var pt = _pzSpr(0xffffff, ts * 0.6, F.g); pt.position.set(0, ts * 0.75, 0);
+        var ring = _bbSquare(F, tx, ty, S[0], 0.48), D = 160, rung = false;
+        return _sigRunOwned(F.g, 1200, function (el) {
+            /* 0..160 a point of light where nothing was; 160.. it bursts: motes out, a shell swells and fades, its side's square */
+            var k = _sigEaseOutCubic(_sigClamp01((el - D) / 420));
+            pt.material.opacity = el < D ? el / D : 1 - _sigClamp01((el - D) / 260);
+            pt.scale.setScalar(ts * (el < D ? 0.15 + 0.3 * el / D : 0.45 + 0.5 * _sigClamp01((el - D) / 260)));
+            motes.tick(k, 1, el < D ? 0 : 0.9 * (1 - _sigClamp01((el - D - 250) / 300)));
+            shell.scale.setScalar(Math.max(0.01, ts * 0.85 * k)); shellM.opacity = el < D ? 0 : 0.14 * (1 - k);
+            ring.material.opacity = 0.95 * _pzEnv(el, D, D + 80, 800, 1150); ring.scale.setScalar(0.4 + 0.6 * _sigEaseOutBack(_sigClamp01((el - D) / 260)));
+            if (!rung && el >= D) { rung = true; _sigShockRing3D(tx, ty, { color: S[0], r0: ts * 0.15, r1: ts * 0.95, ms: 380 }); _sigSparks(tx, ty, 'spark', 8, { z: ts * 0.75, vxy: 160, tint: _BB.pale, vz0: 20, vz1: 140, gravity: 160 }); }
+        }) || true;
+    }
+    function _bbHold(tx, ty, r, ex) { _bbPin(tx, ty, ex && ex.owner, 900, true); return true; }
+    Object.assign(_spell3DGeometry, { 'nrFluctuation:out': _bbOut, 'nrFluctuation:in': _bbIn, 'nrFluctuation:hold': _bbHold });
+    SPELL_MAP['nrThoughtSpike']     = { bolt: 'bbThoughtSpike_bolt' };
+    SPELL_MAP['nrVacuumCollapse']   = { bolt: 'bbVacuumCollapse_bolt' };
+    SPELL_MAP['nrExistentialDread'] = { aoe: 'bbExistentialDread_aoe' };
+    SPELL_MAP['nrObserverEffect']   = { aura: 'bbObserverEffect_aura' };
+    /* ═════════ END THE BOLTZMANN BRAIN ═════════ */
+
     /* ════ FLAT EARTH — the disc itself (the ice wall round its rim) comes down flat out of the sky onto the target and
        the ground round it is pressed flat (a dust ring); it borrowed the bomb's explosion ════ */
     EFFECTS['f4FlatEarth_impact'] = _pzDef('f4FlatEarth', { shake: 'hard', layers: [

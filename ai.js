@@ -6406,6 +6406,19 @@
             const _agNear = v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 4);
             return _agNear ? Math.min(160, 30 + _agT.totalDmg * 0.3) : 0;
         }
+        /* 👁 OBSERVER EFFECT (the Boltzmann Brain pass, 2026-11-17): holding the square is free value when the square is a good
+           perch (an enemy within its spells' reach, none within 2, the hits coming here well under its HP) and the turn still has
+           the AP to shoot after it (it does not count as the turn's spell, so it goes FIRST: scored over any attack). */
+        if (kind === 'buff' && spell.observe) {
+            if (!target || target.id !== unit.id || g.unitHasStatus(unit, 'observed')) return 0;
+            if ((unit.ap || 0) < 2 * (spell.apCost || 1)) return 0;
+            const _obD = e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+            const _obIn = v.visibleEnemies.filter(e => !e.dead && _obD(e) <= 5).length;
+            if (!_obIn || v.visibleEnemies.some(e => !e.dead && _obD(e) <= 2)) return 0;
+            const _obT = v.threatFn(unit.x, unit.y, unit.z);
+            if (_obT.totalDmg >= unit.hp * 0.4) return 0;
+            return 400 + 20 * Math.min(3, _obIn);
+        }
         if (kind === 'buff' && target) {
             if (g.unitHasStatus(target, 'protect')) return 0;
             let s = buffStageValue(g, unit, target, spell, v);
