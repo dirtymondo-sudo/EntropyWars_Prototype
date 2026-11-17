@@ -420,6 +420,9 @@ NOT built: THE AIR DOOR calling the kit (left untouched, so the cutscene is unch
 (it moves ANOTHER unit: the two squares are the victim's and the destination, not the caster's; needs its own wiring);
 the doors, summons, raise dead and rifts on the list (decision 3: only where it makes sense, spell by spell).
 
+**The sweeps (B6a-B10) run as nine threads from 11-17:** brief `docs/plans/vfx-cleanup/SWEEP_BRIEF.md`.
+**The own-look threads:** L1-L5 reported their lists done and merged on 11-17 (notes: spells-vfx.md "THE OWN LOOKS, L<n>").
+
 **Corrected 11-17:** the own-look lists called 240 spells "no look". About 129 of them have their ELEMENT's pass (fire,
 ice, water, nature, wind, metal, earth, sonic, blood, psychic) and only lack a spell-specific piece; 62 have no element
 at all. The threads were told: bare ones first, the element pass is the base, add only what makes it that spell.
