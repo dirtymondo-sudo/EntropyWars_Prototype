@@ -4087,3 +4087,40 @@ Blade. Its VFX handlers are left in place, unused.
 - Online: rides the relayed shot (the guest's own showActionCamChrome dresses the same). Kill switch `window.EW_NO_RACE_LOOKS`.
 - Proof: /mnt/project-files/spell-overlays/race_looks_proof.jpg; probe /mnt/project-files/spell-overlays/probe/looks.js
   (`TIMES=900,1700 node looks.js [race_key,...]`, `WAIT0=12000` waits out the match intro).
+
+
+## THE VFX CLEANUP, B0 + B1: the generic white off the shared layers + the cast rune (2026-11-17, three-vfx-effects.js)
+mondo: "take out all of these generic basic white vfx that crowd the screen and the animations", "I am very specifically
+talking about the white vfx that are spammed on all the spells, not just anything that is white", "can you not just trace
+which white vfx are spammed a lot? ... it should just be in the code", and the runes: "a simple healing spell doesnt need a
+god damn satanic green rune underneath it. that should be preserved for magic spells where it makes sense. and it also
+clashes with the abstact/noise textures that get drawn on damaging tiles". Plan + per-spell table:
+docs/plans/vfx-cleanup/ (section 10 = what was built and what he changed). Looks only, no rule reads any of it.
+- **Off switch:** `window.EW_NO_VFX_CLEANUP = true` (live; `stageInfo`'s cache is per state).
+- **THE HIT BLINK is not touched** (the body flashing white is the hit). Nor the numbers, the rims, the tile glow.
+- **A spell with its own look** (`_vcOwn`: an A-F geometry, a G-O / P-Z / FX-2 signature, an FX-4 own look; 615 spells):
+  `_stageBurst` draws only the grade, the shake and the element's own mark (frost stamp, water mark, snow, the sky-drop
+  dust). No screen flash, rush lines, shock ring, capstone bloom, crescent, sparks, glass orb, speed burst, aftershock, pillar.
+- **A spell with none** keeps the burst as its look: the screen flash on heavy + ultimate only, rush lines on an ultimate
+  or a `ki` spell only, the speed burst on `ki` / `kinetic` only.
+- **The colours** (`_vcPal`, inside `stageInfo`): each damage archetype's ring / flash / rush-line / orb / mote tint with
+  its saturation raised to a floor (0.40-0.55) and its value capped at 92 %; a grey takes the orb's hue (metal = steel blue,
+  lightning's `0xffffff` ring = blue, wind = mint, divine = gold). The support palettes are kept. Because three-vfx.js
+  tints every untinted flash particle from the palette's `flash` (the riot context's `light`), those follow.
+- **Near-white handed to a shared helper** (`_vcCol`: `_sigScreenFlash`, `_sigShockRing3D`, `_sigSpeedBurst3D`,
+  `_sigCrescentSlash3D`) draws in the casting spell's colour; with no spell casting it is drawn as given. The crescent's
+  tip glint takes the arc's colour (`noGlint: true` = none). `_sigSlashCombo3D`'s heavy finisher: its flash, speed burst
+  and third cut in the combo's colour, rush lines on an ultimate only.
+- **One flash per area:** `_emitAoeBursts` draws the outer squares' recipe without its `flash` / `muzzle-flash` layers
+  (`_vcNoFlash`); the middle square keeps it.
+- **The noise wash:** every sheet's bright colour at a mid tone (`_nzWash`); a blade spell (`_crIsBlade`) gets no wash and
+  no wind gather / mark: its scar is its mark.
+- **THE CAST RUNE:** `_stageWindup`'s circle under the caster was on every non-physical spell of a `glyph` archetype (377
+  spells). Now only `_VC_RUNE` (arcane, unholy, hex, psychicHex, blood, divine: 147), and never when one of the cast's
+  squares is on or beside the caster. `_sigMagicCircle3D` itself draws nothing while a heal / mana / buff spell is
+  casting (`_VC_NO_RUNE`; the riot context now carries `arch`), so Heal's green circle (its whole A-F "signature") is gone.
+  A spell whose circle IS its look passes `keepRune: true`.
+- Not done here: the element stamps' own pale colours (metal glints, wind gather, sonic rings: with their sweep, B7), the
+  generic laser (B3), white inside a spell's own signature shapes (the per-spell batches).
+- Online: every layer rides `fire()` / the stage beats, which are relayed; nothing new on `state`.
+
