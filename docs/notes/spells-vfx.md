@@ -5208,3 +5208,24 @@ Same method and switch as parts 1 and 2.
 - **Not seen:** Predictive Model's after frames (the run caught the boot screen; its only change is the rune table row); Misdirection,
   Stacked Deck, Stutter, Surveillance have no look of their own (the support burst only); an enemy's cast; online.
 - Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part3_a.jpg, B9a_part3_b.jpg.
+
+## THE VFX SWEEP, B9a, part 4: mind + psychic, and the list is done (2026-11-17, three-vfx-effects.js; the last 20 of `batches/B9a.txt`)
+Same method and switch. Neither school is a rune school, so no cast rune was in play here; the white was inside the looks.
+- **Bad Trip** (`_sigBadTrip3D`): no pink screen flash (0.24); the skulls, the neon grid and the kaleidoscope are the trip.
+- **Call the Ancestors**: no pale screen flash (0.3) when the elders strike; the ring in spirit blue `0x5fc4e8` (was `0xbfeaff`). The
+  elders stay pale: they are ghosts.
+- **Ascension Day**: the light is the spell and stays; only its core is warm `0xffe2a0`, not pure white.
+- **Air Mail**: the landing keeps its dust ring; the 1.4-square pale ring over it is off.
+- **Shatter the Lattice**: its ring in the lattice's violet `0x8a5cf0` (was pale lilac `0xe0c8ff`).
+- **Hypnotic Pulse**: the fallback detonation no longer fires under its spiral (part 1's `aoe()` fix; it has an `impact` row but no `aoe` row).
+- **Aneurysm, Boo, Crushing Will, Devour the Dream**: no imploding telegraph orb before the hit (part 1's change), nothing else.
+- **Checked, nothing to change (10):** Cosmic Sight, Omni-Vision (the eye's sigil under the seer is the scan itself), Pulse Lattice,
+  Rangefinder, Trick Room (the checkered room), Tune Frequency, Amethyst Lull, Counting Sheep, Cut the Cord (the cord is silver), Dosed.
+- **Seen, left (the psychic element pass is not a sweep's to touch):** a pink clock-like sigil lies on the hit squares of Counting Sheep and
+  Ascension Day, under the psychic noise wash: the rune-under-the-wash clash mondo named, for the cleanup thread. Ascension Day's column is
+  one square wide and covers the three bodies for about a second; left because the light is the spell: his call.
+- **Could not judge:** Shatter the Lattice, Pulse Lattice and Tune Frequency did not cast on the audit board (no lattice up), so the
+  Shatter ring's new colour is from the code only. Rangefinder and Prism Mirror cast on a tile click, before the first frame.
+- **THE LIST IS DONE: 109 of 109** (parts 1-4) + the Love Ray lead. For the cleanup thread, the three one-line changes in shared code are
+  listed in claims.md (the B9a row) and in part 1 above.
+- Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part4.jpg.
