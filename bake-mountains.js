@@ -540,7 +540,7 @@ const LINKS = {
     shasta_lemuria: ['a', "{ site: 'prebuilt_shasta', part: '" + aL.S.part + "', wall: 'free', x: " + aL.x + ", z: " + aL.z + ", face: " + M.anchors.lemuria.face + ", sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN' }"],
     heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aH.S.part + "', wall: 'n', x: " + aH.x + ", sub: 'THE GRAND STAIR · UP INTO HEAVEN' }"],
     lodge_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aP.S.part + "', wall: 'free', x: " + aP.x + ", z: " + aP.z + ", face: " + M.anchors.painting.face + " }"],
-    vatican_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aV.S.part + "', wall: 's', x: " + aV.x + ", sub: 'THE PILGRIM STAIR · DOWN TO THE VATICAN' }"],
+    /* vatican_olympus: gone 2026-11-17 (One World phase 5): the Pilgrim Way (R3) is the walk down to the Vatican; the Pilgrim Stair's foot on the south wall has no door */
 };
 const ENTRY = {
     prebuilt_shasta: "{ room: '" + aBS.S.id + "', door: { id: 'bay', wall: 'free', x: " + aBS.x + ", z: " + aBS.z + ", face: " + M.anchors.bayShasta.face + " } }",

@@ -71,7 +71,7 @@ V.rect(25, 37, 36, 46, 'c', 0); V.ell(30.5, 41.5, 2.6, 2.6, 'm', 0);            
 V.rect(37, 37, 47, 46, 'g', 0); V.rect(37, 41, 47, 42, 'd', 0); V.rect(42, 37, 43, 46, 'd', 0); V.ell(42.5, 41.5, 2.2, 2.2, 'w', -0.6);   // THE FOUNTAIN's court
 V.ways = [
     { id: 'link_bureau_vatican', kind: 'link', wall: 'free', sx: 60, sy: 3, face: 180, name: 'DOOR HQ, the Bureau of Continuity (the painting)', note: 'the painting of "a colonnade and a square" hangs under the north colonnade' },
-    { id: 'link_vatican_olympus', kind: 'link', wall: 'n', sx: 42, name: 'The Mountains: Mount Olympus (the Pilgrim Stair)' },
+    /* (2026-11-17, One World phase 5) `link_vatican_olympus` (the Pilgrim Stair, a jump from the cortile's north wall to Mount Olympus) is gone: the Pilgrim Way (route R3) walks from the Colosseum's north hedge to Olympus. It was listed here AND on the Colosseum with `unless: 'site_ow_r3'`; this copy had no `unless`, so the jump never dropped */
     { id: 'bay', kind: 'bay', wall: 'free', sx: 30, sy: 11, face: 180, name: 'DOOR HQ: the Vatican\'s bay door ("the archive service door")' },
     { id: 'crypt', kind: 'door', wall: 'free', sx: 14, sy: 24, face: 90, name: 'down: the Catacombs (the white door behind the altar)' },
     { id: 'well', kind: 'door', wall: 'free', sx: 30, sy: 41, face: 180, name: 'down: the Catacombs (the Cistern, down the rope)' },

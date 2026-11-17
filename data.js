@@ -32652,11 +32652,7 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_heaven', part: 'plots', wall: 'free', x: -131.25, z: 155.75, face: 0, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },   // HEAVEN ON PLOTS (2026-11-16): ONE WORLD (2026-11-17): moved to the foot of the Stairway ("The Stairway, up from Olympus"), free, beside the telescope's frame; bake-afterlife.js checks this row   // THE NEW HEAVEN (2026-11-03): off the east terrace
           b: { site: 'prebuilt_shasta', part: 'ow_olympus', wall: 'n', x: -14, sub: 'THE GRAND STAIR · UP INTO HEAVEN' },   // THE MOUNTAINS ON PLOTS: written by bake-mountains.js
           why: 'a gate of cloud between the two managements; the stair only goes up, which is a problem for whoever is on top', note: 'a gate of cloud', draft: true },
-        /* THE MOUNTAINS ON PLOTS (2026-11-15): THE PILGRIM STAIR, from the cortile's north wall up the back of the mountain to Olympus (the Vatican stands at the foot of the range) */
-        { id: 'vatican_olympus', route: 'divine', way: 'trail',
-          a: { site: 'prebuilt_vatican', part: 'plots', wall: 'n', x: -21, sub: 'THE PILGRIM WAY · UP MOUNT OLYMPUS' },   // THE COLOSSEUM (2026-11-17, One World 4.4): the plaza's north opening (the Pilgrim Way, route R3, takes this place); was the Terrace's gate; bake-afterlife.js checks this row
-          b: { site: 'prebuilt_shasta', part: 'ow_olympus', wall: 's', x: -70, sub: 'THE PILGRIM STAIR · DOWN TO THE VATICAN' },   // THE MOUNTAINS ON PLOTS: written by bake-mountains.js
-          why: 'the stair behind the cortile was cut for pilgrims who had the wrong mountain and were too polite to say', note: 'the other management is uphill', draft: true },
+        /* vatican_olympus (THE PILGRIM STAIR, a jump from the Vatican to Mount Olympus) — GONE 2026-11-17 (One World phase 5): the Pilgrim Way (route R3, `site_ow_r3`) is walked from the Colosseum's north hedge up to Olympus */
         /* vatican_heaven — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
         /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the crypt link RE-POINTED off the two board rooms onto the
            parts — the catacombs' east wall IS the warm wall, the pit's west wall its other side (one row edit, the

@@ -1059,13 +1059,6 @@
      "note": "the painting of \"a colonnade and a square\" hangs under the north colonnade"
     },
     {
-     "id": "link_vatican_olympus",
-     "kind": "link",
-     "wall": "n",
-     "sx": 42,
-     "name": "The Mountains: Mount Olympus (the Pilgrim Stair)"
-    },
-    {
      "id": "bay",
      "kind": "bay",
      "wall": "free",
