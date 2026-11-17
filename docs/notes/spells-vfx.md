@@ -5024,6 +5024,32 @@ flash IS the spell), Doomscroll, Invisible Box (glass).
 - For the cleanup thread (shared helpers, not touched): `_sigSpectrumBurst3D`'s white core; `_sigGasCloud3D` lays a
   `_sigMagicCircle3D` under every gas cloud (Heat Death, Shambling Horde) on squares the noise wash also covers.
 
+## THE VFX SWEEP, B7b, part 2: the 36 water spells; the list is done (2026-11-17, three-vfx-effects.js)
+Before / after: `docs/plans/vfx-cleanup/img/sweep/B7b_part2.jpg`. Part 1 = the section above (wind + sonic).
+- **The water noise sheet** (`_NZ_VC.water = 0x2a86e0`, beside `_nzWash`): at the cleanup's mid tone it read ice-white over
+  the bodies on every water area (Bloom, Whirlpool, Depth Charge, Tail Sweep, Tsunami's lane). A full water blue now;
+  every hit square still wears its sheet.
+- **Changed spell (1):** Tidal Slam: the geyser was a white-cored column 0.7 squares wide over the caster and its ring
+  near white: the column narrower with a water-blue core, the ring a full blue. Its top still blooms pale (two added
+  cylinders): it is the foam of the geyser, left.
+- **Checked, nothing to change (33):** Abyss Jaws, Bloom, Call of the Deep, Dashed on the Rocks, Depth Charge, Eightfold
+  Lash, Enlil's Deluge (the pale flash is the storm cloud's lightning), Fire Hose (white = the jet's foam; the grey disc
+  is the truck's parking shadow), Five-Armed Crush, Fluoride Water, Great Flood (see below), Holy Water, Into the Bog,
+  Land Ho, Long Neck, Maelstrom, Muck Grab, Nematocyst Net, Pull Them Under, Rescue Tube, Sailor's Lure, Spout, Sting,
+  Tail Sweep, Tentacle Lash, Tongue Lash, Tsunami (white = the wave's foam), Tube Feet, Walk the Plank, Water Jet,
+  Watering Can, Whirlpool. What is pale on them is water (foam, spray, the crown splash + ripples of `_wvMark`, the
+  element's base) or the sheet above.
+- **Could not judge (3):** Out of the Loch ("must be above the target"), Poseidon's Wrath ("no enemies are standing in
+  water"), Drag Under ("no water close enough"): the audit board has no water / height, the cast never lands.
+- **Leads, not closed:**
+  - Great Flood: about 0.3 s after the hit a hard-edged WHITE DISC a square wide sits in the middle of the flood for
+    about 0.6 s and the flooded squares turn white with it. It is not the spell's recipe (`raceFlood_aura` emptied: still
+    there), not the noise sheet (recoloured: still white) and not the ring wave's shape. Not traced further; likely the
+    new water squares themselves (the terrain change), outside this file's spell code.
+  - Watering Can's "big tan ring" (the brief): not found on a frame every 300 ms. What shows is the caster's own gold
+    active ring pulsing, L1's small shower + two small ripples, and the water mark's ripples (`_wvMark` from
+    `_stageBurst`, about a square wide, pale blue): that mark on a quiet utility cast is the cleanup thread's call.
+
 ## THE VFX SWEEP, B10, part 1: bodies and tech (2026-11-17, three-vfx-effects.js block "THE VFX SWEEP, B10" + marked lines)
 List `docs/plans/vfx-cleanup/batches/B10.txt` (112 spells: human, kinetic, grapple, skyfall, rig, tech, alien). All 112 were
 traced in the code (each one's recipes, its own look, every near-white literal in them) and shot once at 0.45 s a frame.
