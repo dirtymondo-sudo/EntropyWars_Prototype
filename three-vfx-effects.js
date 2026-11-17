@@ -64959,6 +64959,199 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _spell3DGeometry['nrBoardSlam'].hitMs = 220;
 
+    /* ══ THE WENDIGO'S LOOKS (2026-11-17, the new races 2: Rend, Feast, Frost Howl + THE HUNGER) ══════════════════════════
+       The three casts shipped on the stock family looks (a plain slash, the plain drain, no howl at all). Each gets its own
+       piece here, in the Wendigo's own colours: bone, frost, old blood. The one team mark per piece is drawn in the VIEWER's
+       side colours (the Riot pass: own side cyan-blue, the other side pink-orange), so "whose monster is that" reads at once.
+         · Rend (`hitMs`: the damage lands on the third claw): three long icicle claws rake across the target one after the
+           other, ice chips and blood fly off the last one, a frost crack opens on the floor.
+         · Feast (`hitMs`: the damage lands on the bite): an antlered skull's two rows of bone teeth come together on the
+           target's body; old blood bursts out (a far bigger burst when the target was Bleeding: the bonus); the life
+           drains home on the stock drain hop.
+         · Frost Howl (an aoe, `geom3D`): the scream rings out from its head over the 2 squares round it, the snow blows out
+           flat along the floor, the edge of the reach is drawn once in the seat colour; frost mist on every square caught.
+         · The Hunger (battle.js _wendigoHunger fires 'wdHunger' through fireGeometry, which online.js relays): a round it
+           fed on nothing, the cold comes back INTO it: dark frost wisps spiral down into the body, its ribs show in frost.
+       Small, low, short: the caster, the target, the hit and the number stay clear. Looks only. Kill-switch:
+       window.EW_NO_WENDIGO_VFX. */
+    var _WD = { bone: 0xe8e0cc, frost: 0xd8f4ff, ice: 0x8fd8ff, blood: 0x8a0a14, dark: 0x1a2a3a };
+    function _wdOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_WENDIGO_VFX); }
+    function _wdSeat(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    /* a long thin glow blade lying in the group's x/y plane: a claw streak, `L` long */
+    function _wdStreak(col, L, w, solid) {
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(L, w), _finBasic(col, { additive: !solid, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() }));
+        m.renderOrder = 159;
+        return m;
+    }
+
+    /* ── REND: three icicle claws, one after the other, the last throws ice and blood ── */
+    EFFECTS['wdRend_impact'] = { layers: [
+        { count: 7, sprite: 'blood-fleck', ml: [360, 620], offsetXY: 10, z: [34, 60], vxRange: 150, vyRange: 150, vzRange: [30, 130], gravity: 340, drag: 0.9, size0: [4, 7], size1: 2, delayMs: 190 },
+        { count: 6, sprite: 'ice-shard', ml: [380, 640], offsetXY: 8, z: [36, 62], vxRange: 170, vyRange: 170, vzRange: [40, 150], gravity: 380, drag: 0.8, size0: [6, 10], size1: 2, tint: 0xd8f4ff, delayMs: 190 },
+    ] };
+    SPELL_MAP['nrRend'] = { impact: 'wdRend_impact' };
+    _spell3DGeometry['nrRend'] = function (tx, ty, r, x) {
+        if (_wdOff() || !_pzSeen(tx, ty)) return;
+        x = x || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var C = _wdSeat(_fx5UnitAt(from.x, from.y));
+        /* the rake plane faces the lens, a little in front of the body, so the claws cross it side to side on screen */
+        var cd = _nbCamDir(F), hold = new THREE.Group(); hold.rotation.y = Math.atan2(cd.x, cd.z); F.g.add(hold);
+        var claws = [];
+        for (var i = 0; i < 3; i++) {
+            var cg = new THREE.Group();
+            cg.position.set(0, ts * (0.5 + (1 - i) * 0.13), ts * (0.22 + 0.03 * i));
+            cg.rotation.z = (i % 2 ? 1 : -1) * 0.55 + rn(-0.08, 0.08);
+            var core = _wdStreak(_WD.frost, ts * 0.95, ts * 0.075, true), edge = _wdStreak(i === 1 ? C.b : C.a, ts * 1.1, ts * 0.22);
+            cg.add(edge); cg.add(core); hold.add(cg);
+            claws.push({ g: cg, core: core, edge: edge, at: i * 75 });
+        }
+        var hit = false, HIT = 190;
+        _sigRunOwned(F.g, 760, function (el) {
+            for (var j = 0; j < claws.length; j++) {
+                var K = claws[j], k = _sigClamp01((el - K.at) / 110);
+                /* the wipe: the blade draws from one side to the other, then thins and fades */
+                K.g.scale.set(Math.max(0.01, _sigEaseOutCubic(k)), 1 - 0.6 * _sigClamp01((el - K.at - 150) / 300), 1);
+                K.g.position.x = -ts * 0.45 * (1 - _sigEaseOutCubic(k));
+                var op = _pzEnv(el, K.at, K.at + 40, K.at + 170, K.at + 480);
+                K.core.material.opacity = 0.9 * op; K.edge.material.opacity = 0.75 * op;
+            }
+            if (el >= HIT && !hit) {
+                hit = true;
+                _capRing(tx, ty, C.a, 0.6, 320, 3);
+                _capShards(tx, ty, 'ice', { n: 4, lite: true, height: 0.45 });
+            }
+        });
+    };
+    _spell3DGeometry['nrRend'].hitMs = 190;
+
+    /* ── FEAST: the skull's teeth come together on the body, old blood bursts out, the life drains home ── */
+    EFFECTS['wdFeast_impact'] = { layers: [
+        { count: 9, sprite: 'blood-fleck', ml: [380, 680], offsetXY: 10, z: [30, 58], vxRange: 160, vyRange: 160, vzRange: [40, 160], gravity: 360, drag: 0.9, size0: [4, 8], size1: 2, delayMs: 260 },
+        { count: 3, sprite: 'blood-mist', ml: [520, 820], offsetXY: 8, z: [30, 50], vxRange: 40, vyRange: 40, vzRange: [10, 40], drag: 0.6, size0: [20, 28], size1: [40, 56], opacity0: 0.55, delayMs: 260 },
+    ] };
+    SPELL_MAP['nrFeast'] = { impact: 'wdFeast_impact', drainHop: 'lifeDrain_drainHop' };
+    _spell3DGeometry['nrFeast'] = function (tx, ty, r, x) {
+        if (_wdOff() || !_pzSeen(tx, ty)) return;
+        x = x || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var C = _wdSeat(_fx5UnitAt(from.x, from.y)), tu = _fx5UnitAt(tx, ty);
+        var bled = false;
+        try { bled = !!(tu && typeof unitHasStatus === 'function' && unitHasStatus(tu, 'bleed')); } catch (e) {}
+        var bone = _pzSolid(_WD.bone, _sigTerrainTex('enamel.png', 1, 1)), hold = new THREE.Group();
+        hold.rotation.y = Math.atan2(ln.dx, ln.dz); hold.position.y = ts * 0.5; F.g.add(hold);
+        /* two curved rows of teeth round the body's front (the caster's side), upper row points down, lower row up */
+        var up = new THREE.Group(), lo = new THREE.Group(); hold.add(up); hold.add(lo);
+        var N = 7, R = ts * 0.32, TS = ts * 1.4;   /* TS: the teeth's own scale */
+        for (var i = 0; i < N; i++) {
+            var a = (i / (N - 1) - 0.5) * Math.PI * 0.95, px = Math.sin(a) * R, pz = Math.cos(a) * R;
+            var big = (i === 1 || i === N - 2) ? 1.6 : 1;   /* the two fangs */
+            var tu1 = _pzMesh(new THREE.ConeGeometry(TS * 0.026 * big, TS * 0.12 * big, 5), bone, up, px, -TS * 0.04 * big, pz); tu1.rotation.x = Math.PI;
+            _pzMesh(new THREE.ConeGeometry(TS * 0.024 * big, TS * 0.1 * big, 5), bone, lo, px, TS * 0.035 * big, pz);
+        }
+        /* the antlers above the bite: two branching tines in bone, a ghost of the head over the target */
+        var ant = new THREE.Group(); ant.position.set(0, ts * 0.42, R * 0.5); hold.add(ant);
+        for (var s = -1; s <= 1; s += 2) {
+            var beam = _pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.02, ts * 0.42, 5), bone, ant, s * ts * 0.12, ts * 0.12, 0);
+            beam.rotation.z = -s * 0.6;
+            for (var t = 0; t < 2; t++) {
+                var tine = _pzMesh(new THREE.CylinderGeometry(ts * 0.008, ts * 0.013, ts * 0.17, 4), bone, ant, s * ts * (0.16 + t * 0.07), ts * (0.18 + t * 0.09), 0);
+                tine.rotation.z = s * 0.35;
+            }
+        }
+        var glow = _pzSpr(C.a, ts * 0.5, hold); glow.position.set(0, 0, R * 0.6);
+        var HIT = 260, hit = false, OPEN = ts * 0.22;
+        _sigRunOwned(F.g, 1100, function (el) {
+            var fin = _pzEnv(el, 0, 80, 760, 1060);
+            bone.opacity = fin;
+            var shut = _sigEaseInCubic(_sigClamp01((el - 60) / (HIT - 60)));
+            var bounce = el > HIT ? Math.sin(_sigClamp01((el - HIT) / 220) * Math.PI) * 0.12 : 0;
+            up.position.y = OPEN * (1 - shut) + OPEN * bounce;
+            lo.position.y = -OPEN * (1 - shut) - OPEN * bounce;
+            ant.position.y = ts * 0.42 + ts * 0.05 * (1 - shut);
+            glow.material.opacity = 0.5 * _pzEnv(el, HIT - 40, HIT, HIT + 80, HIT + 420);
+            if (el >= HIT && !hit) {
+                hit = true;
+                _capRing(tx, ty, C.a, 0.7, 360, 4);
+                if (bled) {   /* the bonus reads: the Bleeding body bursts */
+                    _capPuff(tx, ty, 'blood-fleck', 14, { r: 0.18, h: 0.45, out: 170, vz0: 120, vz1: 300, gravity: 520, s0: 5, s1: 9, sEnd: 2, ml0: 420, ml1: 760 });
+                    _capRing(tx, ty, _WD.blood, 0.95, 460, 6);
+                }
+            }
+        });
+    };
+    _spell3DGeometry['nrFeast'].hitMs = 260;
+
+    /* ── FROST HOWL: the scream rings out from its head, snow blows out flat, the reach drawn once in the seat colour ── */
+    EFFECTS['wdFrostHowl_tile'] = { layers: [
+        { count: 2, anchor: 'floor', sprite: 'frost-mist', ml: [600, 900], offsetXY: 22, z: [4, 14], vxRange: 30, vyRange: 30, vzRange: [5, 20], drag: 0.5, size0: [26, 36], size1: [48, 64], opacity0: 0.45, tint: 0xd8f4ff, delayMs: 160 },
+        { count: 3, sprite: 'snowflake', ml: [500, 800], offsetXY: 26, z: [16, 50], vxRange: 60, vyRange: 60, vzRange: [-20, 30], drag: 0.4, size0: [5, 8], size1: 2, tint: 0xffffff, delayMs: 160 },
+    ] };
+    EFFECTS['wdFrostHowl_aoe'] = { aoeRadius: 2, impactTileEffect: 'wdFrostHowl_tile', geom3D: true };
+    SPELL_MAP['nrFrostHowl'] = { aoe: 'wdFrostHowl_aoe' };
+    _spell3DGeometry['nrFrostHowl'] = function (tx, ty, r) {
+        if (_wdOff() || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, C = _wdSeat(_fx5UnitAt(tx, ty)), reach = (r > 0 ? r : 2) + 0.5;
+        /* the scream: four rings out of its head, tilting down as they spread */
+        var rings = [];
+        for (var i = 0; i < 4; i++) {
+            var rg = _pzMesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.025, 6, 40), _pzGlow(i % 2 ? _WD.ice : _WD.frost), F.g, 0, ts * 0.85, 0);
+            rg.rotation.x = Math.PI / 2; rings.push({ m: rg, at: i * 110 });
+        }
+        /* the reach: one flat ring at the edge in the seat colour (who screamed), drawn once */
+        var edge = _pzMesh(new THREE.RingGeometry(ts * (reach - 0.06), ts * reach, 64), _pzGlow(C.a), F.g, 0, ts * 0.04, 0);
+        edge.rotation.x = -Math.PI / 2;
+        var frost = _pzMesh(new THREE.RingGeometry(ts * 0.3, ts * reach, 64), _pzGlow(_WD.frost, _sigTerrainTex('ice.png', 2, 2)), F.g, 0, ts * 0.03, 0);
+        frost.rotation.x = -Math.PI / 2;
+        /* the snow blown out flat from its feet */
+        if (_canSpawn()) for (var n = 0; n < 26; n++) {
+            var a = (n / 26) * Math.PI * 2 + rn(-0.12, 0.12), sp = rn(260, 420);
+            _spawn({ x: F.c.x + Math.cos(a) * ts * 0.2, y: F.c.y + Math.sin(a) * ts * 0.2, z: F.bz + rn(8, 30), mode: 'billboard', sprite: n % 3 ? 'snowflake' : 'frost-mist',
+                tint: 0xffffff, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(-10, 30), drag: 1.6,
+                ml: rn(520, 820), size0: n % 3 ? rn(5, 8) : rn(18, 26), size1: n % 3 ? 2 : 40, opacity0: n % 3 ? 0.95 : 0.4, opacity1: 0 });
+        }
+        _sigRunOwned(F.g, 1300, function (el) {
+            for (var j = 0; j < rings.length; j++) {
+                var R = rings[j], k = _sigClamp01((el - R.at) / 620), e = _sigEaseOutCubic(k);
+                R.m.scale.setScalar(0.4 + (reach / 0.3) * e);
+                R.m.position.y = ts * (0.85 - 0.7 * e);
+                R.m.material.opacity = 0.7 * _pzEnv(el, R.at, R.at + 50, R.at + 260, R.at + 620);
+            }
+            var g = _sigEaseOutCubic(_sigClamp01(el / 420));
+            frost.scale.setScalar(0.2 + 0.8 * g);
+            frost.material.opacity = 0.14 * _pzEnv(el, 0, 120, 700, 1250);
+            edge.material.opacity = 0.75 * _pzEnv(el, 280, 380, 820, 1250);
+        });
+    };
+
+    /* ── THE HUNGER: the cold comes back into it — dark frost wisps spiral down into the body, its ribs show in frost ── */
+    _spell3DGeometry['wdHunger'] = function (tx, ty) {
+        if (_wdOff() || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, C = _wdSeat(_fx5UnitAt(tx, ty));
+        var ribs = [];
+        for (var i = 0; i < 4; i++) {
+            var rb = _pzMesh(new THREE.TorusGeometry(ts * (0.17 - i * 0.015), ts * 0.012, 4, 24, Math.PI * 1.3), _pzGlow(_WD.frost), F.g, 0, ts * (0.62 - i * 0.07), 0);
+            rb.rotation.x = Math.PI / 2; rb.rotation.z = Math.PI * 0.35; ribs.push(rb);
+        }
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.36, ts * 0.42, 40), _pzGlow(C.a), F.g, 0, ts * 0.04, 0);
+        ring.rotation.x = -Math.PI / 2;
+        var t0 = 0;
+        _sigRunOwned(F.g, 1200, function (el) {
+            /* the wisps: born out round it, they spiral in and down onto the body */
+            if (el < 700 && el - t0 > 45 && _canSpawn()) {
+                t0 = el;
+                var a = rn(0, Math.PI * 2), d = ts * rn(0.45, 0.6);
+                _spawn({ x: F.c.x + Math.cos(a) * d, y: F.c.y + Math.sin(a) * d, z: F.bz + ts * rn(0.6, 0.95), mode: 'billboard', sprite: 'shadow-wisp',
+                    tint: _WD.dark, vx: -Math.cos(a) * d * 1.6 - Math.sin(a) * 60, vy: -Math.sin(a) * d * 1.6 + Math.cos(a) * 60, vz: -ts * 0.5, drag: 0.4,
+                    ml: rn(480, 620), size0: rn(14, 20), size1: 4, opacity0: 0.8, opacity1: 0 });
+            }
+            var op = _pzEnv(el, 250, 420, 800, 1150);
+            for (var j = 0; j < ribs.length; j++) ribs[j].material.opacity = 0.7 * op * (0.75 + 0.25 * Math.sin(el * 0.02 + j));
+            ring.scale.setScalar(1.15 - 0.3 * _sigEaseOutCubic(_sigClamp01(el / 700)));
+            ring.material.opacity = 0.7 * _pzEnv(el, 0, 120, 700, 1150);
+        });
+    };
+
     /* the floor under a vfx px spot (three-vfx.js keeps an atmosphere particle above it when it steps back) */
     var _rvFloorMemo = new Map(), _rvFloorAt0 = 0;
     function _rvFloorAt(px, py) {
