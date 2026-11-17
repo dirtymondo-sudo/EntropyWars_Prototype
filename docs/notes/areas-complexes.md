@@ -10010,6 +10010,19 @@ planet, went to the Outer Space thread.)
     top of runComputerTurn): takes the turn when it brings at least one more enemy within its move + range (plus a small pull-closer
     term) and leaves an AP to act; doCubeTurn lays the frame round its face after the swing and hands back to the CPU.
 
+- **THE CUBE, THE TURN ARROWS (11-17, same thread; mondo: "are there previews for up left right and down? and are they actually
+  relative to the player? what if the player is facing diagonally? come on. there has to be absolutely no confusion").** Nothing in the
+  TURN CUBE menu depends on which way the fighter faces. Each of the four choices has a colour (three-renderer.js `CUBE_TURN_COLORS`:
+  up cyan, down pink, left yellow, right green, the same in the menu and on the board). With the menu open, `cubeTurnArrows(unit, hot)`
+  lays a long outlined arrow on each square beside the fighter, drawn over cars and fighters (no depth test); the lit choice (the row
+  under the mouse, or the cursor row with keys: hud.js' cursor-row preview now covers the `cubeTurn` panel) burns bright and bigger,
+  the others dim, and every square of the sliding ring in line with the fighter wears a small arrow in its colour (THE CONVEYOR; the far
+  side of the ring keeps only the ring tint). The rows are named by the way the squares slide ON SCREEN from the camera now
+  (hud.js `_hrlgCubeScreenDir`, eight words: a diagonal camera reads "Slide up-right"), sorted clockwise from up-left, the whole row
+  wears its colour (`catColor`) with a dark arrow icon turned to that exact angle; orbiting the camera renames them (the renderer pings
+  `ew-state-change` on a 10 degree yaw / tilt step while the arrows are up). Bug fixed on the way: `ThreeRenderer` is a script-level
+  const, not `window.ThreeRenderer`, so the first cut of the names fell back to the board's own words. Proof
+  /mnt/project-files/rubiks-cube/proof3/.
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
