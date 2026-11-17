@@ -461,6 +461,10 @@ const SEAMS = [
 ];
 /* the ways out of the zone, and the link ends (data.js DOOR_HQ.links: this tool writes their Camelot ends) */
 const OUT = {
+    /* THE NORTH ROUTES (One World phase 4.1, 2026-11-17): R4 the Old Road leaves the East Row, north eastward (a highway: open ground, no portal); R12 the Stone Path
+       comes down from Stonehenge onto the North Row, west. `ifRoom` = written only once the route's room stands. */
+    [KROOM]: [ { plot: 'P06-02', side: 'E', k: [5, 6], id: 'ow_v_m23_m2', way: 'open', open: 16, room: 'site_ow_r4', ifRoom: 1, label: 'THE OLD ROAD', sub: 'THE EAST ROW · EAST OUT OF THE TOWN', desc: 'Past the last houses the road widens into the Old Road and runs east through the forest.' },
+               { plot: 'P02-01', side: 'N', k: [5, 6], id: 'ow_h_m28_m3', way: 'trail', room: 'site_ow_r12', ifRoom: 1, label: 'THE STONE PATH', sub: 'THE NORTH ROW · UP TO THE STONES', desc: 'A path goes north into the woods, and up out of them onto a bare plain.' } ],
     [R_PINES]: [ { plot: 'P07-00', side: 'N', k: [5, 6], id: 'ow_h_m25_m10', way: 'trail', room: R_L6, label: 'THE TRAIL · THE MOUNTAINS', sub: 'THE PASS · UP TO THE SKI LODGE', desc: 'The trail goes on north through the Pass, up out of the pines towards the mountains.' },
                  { plot: 'P07-00', side: 'E', link: 'northpole_camelot', end: 'b' } ],
     [R_FAIRY]: [ { plot: 'P07-05', side: 'E', link: 'woods_camelot', end: 'b' } ],
@@ -530,9 +534,11 @@ SEAMS.forEach(s => { const oA = roomOf(s.a[0]), oB = roomOf(s.b[0]), A = oA.R.of
     oB.doorsOut.push(Object.assign({ id }, doorAt(oB, B, s.b[2], ks), { way: s.way, label: s.lb[0], sub: s.lb[1], action: { room: s.a[0], at: id }, desc: s.lb[2] })); });
 /* 3. the ways out of the zone + the link ends */
 Object.keys(OUT).forEach(rid => { const o = roomOf(rid); OUT[rid].forEach(w => { const e = o.R.ofHome[w.plot]; if (!e) throw new Error('no plot ' + w.plot + ' in ' + rid);
+    if (w.ifRoom && !vm.runInContext('!!DOOR_HQ.rooms.' + w.room, D)) { console.log('seam ' + w.id + ': ' + w.room + ' is not in the game yet, no door written'); return; }
     const ks = w.k || pickK(openK(o, e, w.side), []); apron(o, e, w.side, ks); leg(o, e, w.side, ks[Math.floor((ks.length - 1) / 2)]);
     const d = doorAt(o, e, w.side, ks);
     if (w.link) { LINKS_OUT[w.link] = [w.end, Object.assign({ part: o.S.part }, d)]; return; }
+    if (w.open) d.passage = Object.assign(d.passage || {}, { w: w.open });
     if (w.id !== o.R.seamId(e, w.side)) throw new Error('the seam id of ' + w.plot + ' ' + w.side + ' is ' + o.R.seamId(e, w.side) + ', not ' + w.id);
     o.doorsOut.push(Object.assign({ id: w.id }, d, { way: w.way, label: w.label, sub: w.sub, action: { room: w.room, at: w.id }, desc: w.desc })); }); });
 /* the link ends that moved with their plots (the tool's own list, `ENDS` below the home room) */

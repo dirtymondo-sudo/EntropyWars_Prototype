@@ -1,0 +1,124 @@
+{
+  "about": "ROUTE R4, THE OLD ROAD (One World phase 4.1, the owner's north routes thread, 2026-11-17): the highway from Camelot's East Row, north through the forest past the Woods to the Vatican's west gate. ONE room, 26 plots (11 x 5 box, the longest straight row 9 plots: inside the room-splitting rule). It runs east on the line between rows -2 and -1, drops into the middle of row -1 past the Redwood Trail's last plot (-16,-2), turns north on the line x -14 and east again into the Vatican's west gate (y -3.92, the gate beside the west tower). THE FORK (the design's R4b): two short footpaths cross the road from the Woods: at -15.46 the trail from the wild link L1 (the Clearing, south) to the Redwood Trail's Creek, lower (north), and at -13.54 the top of the Clearing's Stair. PLACES (ow-places.js, every name an idea of Claude's): the design page gives 'a crossroads inn and standing stones between Camelot and the Vatican': the inn stands at the fork, the stones half way to Camelot; the rest are the kit's pick. Four plots carry no place, the road fills them: the castle end (-23,-2, one plot wide), the drop into row -1 (-17,-1) and the fork (-16,-1, -15,-1).",
+  "hub": "kingdom",
+  "room": "site_ow_r4",
+  "part": "ow_r4",
+  "label": "THE OLD ROAD",
+  "sub": "THE HIGHWAY · CAMELOT TO THE VATICAN · 26 PLOTS",
+  "line": [
+    [
+      -24.1,
+      -1.5
+    ],
+    [
+      -22.3,
+      -1.5
+    ],
+    [
+      -21.8,
+      -1.0
+    ],
+    [
+      -17.4,
+      -1.0
+    ],
+    [
+      -16.8,
+      -0.5
+    ],
+    [
+      -14.6,
+      -0.5
+    ],
+    [
+      -14,
+      -1.1
+    ],
+    [
+      -14,
+      -3.4
+    ],
+    [
+      -13.4,
+      -3.917
+    ],
+    [
+      -11.9,
+      -3.917
+    ]
+  ],
+  "with": [
+    {
+      "id": "R4",
+      "from": 13,
+      "to": 13,
+      "look": "trail",
+      "line": [
+        [
+          -15.458,
+          -2.1
+        ],
+        [
+          -15.458,
+          0.1
+        ]
+      ]
+    },
+    {
+      "id": "R4",
+      "from": 17,
+      "to": 17,
+      "look": "trail",
+      "line": [
+        [
+          -13.542,
+          -0.62
+        ],
+        [
+          -13.542,
+          0.1
+        ]
+      ]
+    }
+  ],
+  "ends": {
+    "ow_v_m23_m2": {
+      "room": "site_prebuilt_camelot_kingdom",
+      "label": "CAMELOT KINGDOM",
+      "sub": "THE EAST ROW · INTO THE TOWN",
+      "desc": "The road narrows between the first houses of the town."
+    },
+    "ow_v_m12_m4": {
+      "room": "site_prebuilt_vatican_plots",
+      "label": "THE VATICAN",
+      "sub": "THE WEST GATE · THE GARDENS",
+      "desc": "The road ends at a gate in a high wall. Behind it are hedges and a stump of a bell tower."
+    },
+    "ow_h_m16_m1": {
+      "room": "site_prebuilt_fairy_forest_ow_redwood",
+      "label": "THE REDWOOD TRAIL",
+      "sub": "THE TRAIL NORTH · UP UNDER THE OLD TREES",
+      "desc": "Across the road a trail climbs north under trees too big to be this close to a road."
+    },
+    "ow_h_m16_0": {
+      "room": "site_prebuilt_fairy_forest_ow_clearing",
+      "label": "THE WOODS · THE CLEARING",
+      "sub": "THE TRAIL SOUTH · DOWN TO THE CROSSROADS",
+      "desc": "A trail goes south off the road into the woods."
+    },
+    "ow_h_m14_0": {
+      "room": "site_prebuilt_fairy_forest_ow_clearing",
+      "label": "THE WOODS · THE CLEARING",
+      "sub": "THE STAIR · DOWN INTO THE CLEARING",
+      "desc": "A stair of roots and stones goes down off the road into a clearing."
+    }
+  },
+  "places": {
+    "-17,-2": "inn",
+    "-20,-2": "menhirs",
+    "-16,-1": false,
+    "-15,-1": false,
+    "-23,-2": false,
+    "-17,-1": false
+  }
+}

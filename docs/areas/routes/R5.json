@@ -1,0 +1,67 @@
+{
+  "about": "ROUTE R5, THE POLAR TRAIL (One World phase 4.1, the owner's north routes thread, 2026-11-17): a trail from the Mountains' ridge (the Lodge's room; seam ow_v_m13_m22) east and north across the tundra to the North Pole's west wall (seam ow_v_0_m27). 36 plots = TWO rooms by the room-splitting rule (30 plots at most): bake it twice, `--from 0 --to 17` (site_ow_r5_0_17, the ridge to the frozen lake) and `--from 18 --to 35` (site_ow_r5_18_35, on north to the Pole); the two meet on the line y -23. It replaces the Pass Gate doors (`pass`) that jumped from the Lodge to the Pole. PLACES (ow-places.js, every name an idea of Claude's): the page gives a frozen lake and a mountain hut; the rest are the kit's picks by the ground.",
+  "hub": "mountains",
+  "part": "ow_r5",
+  "label": "THE POLAR TRAIL",
+  "sub": "THE TRAIL · THE MOUNTAINS TO THE NORTH POLE · 36 PLOTS",
+  "line": [
+    [
+      -13.1,
+      -21.5
+    ],
+    [
+      -12.0,
+      -21.5
+    ],
+    [
+      -12.0,
+      -22.0
+    ],
+    [
+      -6.5,
+      -22.0
+    ],
+    [
+      -6.5,
+      -26.0
+    ],
+    [
+      -1.0,
+      -26.0
+    ],
+    [
+      0.1,
+      -26.5
+    ]
+  ],
+  "ends": {
+    "ow_v_m13_m22": {
+      "room": "site_prebuilt_shasta_ow_lodge",
+      "label": "THE MOUNTAINS · THE RIDGE",
+      "sub": "THE SNOWY PASS · BACK UP THE RANGE",
+      "desc": "The tundra climbs into rock and snow: the ridge at the top of the Snowy Pass."
+    },
+    "ow_v_0_m27": {
+      "room": "site_prebuilt_northpole_plots",
+      "label": "THE NORTH POLE · THE VILLAGE",
+      "sub": "THE WEST WAY · INTO THE VILLAGE",
+      "desc": "Lit windows ahead, candy-striped posts, and a big striped pole in the middle of it all."
+    },
+    "ow_h_m7_m23": {
+      "room": "site_ow_r5_18_35",
+      "label": "THE POLAR TRAIL",
+      "sub": "ON NORTH TO THE POLE",
+      "desc": "The cairns go on north across the snow.",
+      "back": {
+        "room": "site_ow_r5_0_17",
+        "label": "THE POLAR TRAIL",
+        "sub": "BACK SOUTH TO THE RIDGE",
+        "desc": "The cairns go back south across the snow, towards the mountains."
+      }
+    }
+  },
+  "places": {
+    "-9,-22": "icepond",
+    "-6,-26": "hut"
+  }
+}

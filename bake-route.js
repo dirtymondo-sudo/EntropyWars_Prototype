@@ -374,7 +374,8 @@ props.forEach(p => { if (CAT[p.key] && CAT[p.key].walk) return; TRAFFIC.forEach(
 const OW = { at: (x, y) => { try { return D.hqOwAt(x, y, 'surface'); } catch (e) { return null; } } };
 const open = [], LINK_AT = [];
 ENDS.forEach(e => {
-    const s = (SPEC.ends || {})[e.id], found = OW.at(e.past[0], e.past[1]), to = (s && s.room) || (found && found.room !== ROOM && found.room) || null;
+    /* `back` (2026-11-17, R5): a split route's seam between its own two rooms; the stretch that the end's `room` names reads `back` instead */
+    const s0 = (SPEC.ends || {})[e.id], s = s0 && s0.room === ROOM && s0.back ? Object.assign({}, s0, s0.back) : s0, found = OW.at(e.past[0], e.past[1]), to = (s && s.room) || (found && found.room !== ROOM && found.room) || null;
     const g = groundAt(e.past[0], e.past[1]);
     /* A LINK'S END ON A SEAM (2026-11-17, the Woods zone thread): the spec's `ends: { '<seam id>': { link: '<DOOR_HQ.links id>', side: 'a' | 'b' } }` = that
        two-way link stands on this end (its id kept: woods_camelot on L4's west end), so no seam door is written; the link's end is moved here (below) */
@@ -419,6 +420,7 @@ const SPQ = (ENDS[0] && ENDS[0].sq) || pathSq[0] || [0, 0];
   const cold = PLOTS.filter(p => { const x0 = (p[0] - BX0) * N, y0 = (p[1] - BY0) * N; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(y0 + ly) * W + x0 + lx]) return false; return true; });
   if (cold.length) errs.push('plots not reached on foot: ' + cold.map(p => p.join(',')).join(' '));
   pathSq.forEach(([x, y]) => { if (!seen[y * W + x]) errs.push('the path is cut at ' + x + ',' + y); });
+  if (process.env.ROUTE_WHO) props.concat(F).forEach(p => { const x = Math.floor(((p.x != null ? p.x : 0) + HX) / C), y = Math.floor(((p.z != null ? p.z : 0) + HZ) / C); if (process.env.ROUTE_WHO.split(';').some(q => q === x + ',' + y)) console.log('WHO', x, y, p.key || p.k, p.kind || ''); });
   if (process.env.ROUTE_DUMP) console.log(cell.map((r, y) => r.map((ch, x) => blocked.has(x + ':' + y) ? 'o' : walked(x, y) && !seen[y * W + x] ? '!' : ch).join('')).join('\n'));
   if (steep) console.log('steep steps not crossed: ' + steep); }
 npc.forEach(n => { if (vm.runInContext('AVAILABLE_RACES', D).indexOf(n.race) < 0) errs.push('not a unit: ' + n.race); });
@@ -452,7 +454,15 @@ const SKY = { forest: { tint: 0xa9c4dc, fog: 0xb4c6b6, density: 0.009, clouds: 0
     scrub: { tint: 0xd8c08a, fog: 0xd6c298, density: 0.009, clouds: 0.1, light: 0xfff0d0, ambient: 0.6 }, desert: { tint: 0xd9b46a, fog: 0xd8b370, density: 0.012, clouds: 0.05, light: 0xfff0d0, ambient: 0.62 },
     snow: { tint: 0x9fc4e8, fog: 0xbfd8ea, density: 0.006, clouds: 0.35, light: 0xf0f6ff, ambient: 0.6 }, rock: { tint: 0xa8bcd4, fog: 0xc0c8d0, density: 0.007, clouds: 0.35, light: 0xfff4e6, ambient: 0.56 } }[major];
 const hex = n => '0x' + n.toString(16).padStart(6, '0');
-const SP = { x: gcx(SPQ[0]), z: gcz(SPQ[1]) }, face = ENDS[0] ? ({ n: 180, s: 0, w: 90, e: 270 })[ENDS[0].side] : 180;
+/* THE SPAWN STANDS BESIDE THE ROAD (2026-11-17, phase 4.2 follow-up; mondo's rule: NPCs never block a path): a room's spawn is also the stop its
+   walkers arrive at and pause on when its ends are open seams (three-renderer.js _hqRoundsStops: an open seam is no door stop, so every arrival lands on
+   the spawn). On the path it parked a crowd in the road at the Ranch end of R8 and the walker could not get by. It is the nearest square to the
+   first end that is open ground, two squares clear of the path; the path's own end square only when there is none (a spec's `spawnOnPath: true` keeps it). */
+const SPQ2 = (() => { if (SPEC.spawnOnPath) return SPQ; for (let r = 3; r <= 14; r++) { let best = null, bd = 1e9;
+    for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const x = SPQ[0] + i, y = SPQ[1] + j;
+        if (x < 1 || y < 1 || x >= W - 1 || y >= Dq - 1 || !free(x, y) || nearPath(x, y, 2) || Math.abs(hAt(x, y) - hAt(SPQ[0], SPQ[1])) > 1.5) continue; const d = Math.hypot(i, j); if (d < bd) { bd = d; best = [x, y]; } }
+    if (best) return best; } return SPQ; })();
+const SP = { x: gcx(SPQ2[0]), z: gcz(SPQ2[1]) }, face = SPQ2 !== SPQ ? Math.round(((Math.atan2(SPQ[0] - SPQ2[0], -(SPQ[1] - SPQ2[1])) * 180 / Math.PI) + 360) % 360) : ENDS[0] ? ({ n: 180, s: 0, w: 90, e: 270 })[ENDS[0].side] : 180;
 const pidOf = (c, r) => 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0');
 const names = PLOTS.map((p, i) => [pidOf(p[0] - BX0, p[1] - BY0), (partOfPlot(p).src.name || 'The trail') + ', ' + ((SPEC.names || {})[p[0] + ',' + p[1]] ? SPEC.names[p[0] + ',' + p[1]] : PLACE_AT[p[0] + ',' + p[1]] ? PLACE_AT[p[0] + ',' + p[1]].name : PJ.ground.key[groundAt(p[0], p[1]).c].label.toLowerCase()), 'R', 0])
     .concat(JOIN ? JOIN.plots.map(q => [pidOf(JOIN.wx + q.col - BX0, JOIN.wy + q.row - BY0), q.name, q.district, q.level]) : []);
