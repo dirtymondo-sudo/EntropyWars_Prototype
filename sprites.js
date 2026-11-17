@@ -699,7 +699,7 @@ const _CHARACTER_SPRITES = {
   'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
   'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
-  'mole man': `${_S}/Races/mole_man/male/mole_man.png`,   // 2026-11-16 — cut from its own model
+  'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f.png`,   // 2026-11-16 — cut from her own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
@@ -6723,7 +6723,7 @@ const RACE_SPRITES = {
   'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
   'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
-  'mole man': `${_S}/Races/mole_man/male/mole_man.png`,   // 2026-11-16 — cut from its own model
+  'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f.png`,   // 2026-11-16 — cut from her own model
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite

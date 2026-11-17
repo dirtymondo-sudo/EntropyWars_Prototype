@@ -2032,3 +2032,19 @@ metres, polys, prompt; batches 1 = asked by 3+ districts, 2 animals + plants, 3 
   shards; 3 tries, the smooth ball kept), hedgehog, willow, oars, windbreak, hot tub. NOT MADE: papyrus, whale bones, gold pile (Meshy shards twice;
   `rejected/`), wheat patch (Meshy server error twice). Meshy foliage tends to come out as flat shards: ask for "solid", "painted in the texture".
 - Facing is as Meshy made it (animals stand along z); check before lining one up.
+
+## THE PIXEL SPRITES FROM SPRITE AI (2026-11-17, mondo)
+Race map sprites are 128x128 (the unit fits the square, feet at the bottom). mondo works backwards now: Meshy model first, then
+the sprite from its Meshy concept art (`/mnt/project-files/new-races/concepts/<key>.png`). Sprite AI (sprite-ai.art) is reachable
+from cloud threads: the proxy injects his key for host `sprite-ai.art` only (NOT `www.`), JSON-RPC MCP at
+`https://sprite-ai.art/api/mcp` (header `Accept: application/json, text/event-stream`). Its MCP has no image-to-pixel-art or resize
+tool, so the recipe that won (Mole Man, mondo picked it):
+1. Locally: cut the concept's grey background (flood fill from the border over light low-saturation pixels), crop, fit the figure
+   into 128x128 feet-down, hard alpha. `sprite_import` it (free).
+2. `sprite_restyle` that id: mode `restyle`, tier `normal` (2 tokens), `palette_extras: 4`, `size: 160`, a prompt asking for clean
+   pixel art with crisp outlines and naming EVERY colour/item to keep ("BROWN leather apron, not overalls"). Without the colour list
+   and the small palette it repainted his apron as blue overalls; restyle draws the figure at ~80 % of the canvas, hence 160.
+3. Cut a 128x128 square around the figure, feet on the bottom row (no scaling). Upload to the race folder under a NEW name
+   (`<race>_px.png`; asset URLs are not ?v= tagged) and point both sprites.js entries at it.
+`sprite_generate` with `reference_asset_id` (1 token) is more faithful but painterly; mondo prefers the restyle look.
+Done: Mole Man (`mole_man_px.png`). The other 2026-11-16 races still have model cuts (80x128).
