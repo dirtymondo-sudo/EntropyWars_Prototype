@@ -10868,15 +10868,71 @@ test slice measures them and corrects this list.
   (it reads the map now). Picture: `docs/plans/one-world/proof/edges_from_above.jpg` (left to right: the L3 trail with the
   forest south of it and the range across its top; the Vatican in the forest with the Tiber's meadow east and the range
   north; the North Pole on the tundra with the sea north and east).
-- **WHICH ROOMS READ THE MAP TODAY: only the route kit's.** No built zone was switched in this pass (their sides belong to
-  their own tools). What the map puts past each placed room, against what the room wears today:
+- **WHICH ROOMS READ THE MAP TODAY: the route kit's, and the Vatican** (11-17: `bake-afterlife.js`, the Vatican's terrain
+  line; it had no edges at all. Seen on screen: the forest behind its wall, green country with trees past the east gate:
+  `docs/plans/one-world/proof/vatican_east_gate.jpg`, `vatican_forest_behind.jpg`; the other three afterlife rooms came out
+  byte for byte the same). The other built zones were not switched (their sides belong to their own tools and threads).
+  What the map puts past each placed room, against what the room wears:
 
   | Room | The map says | It wears today |
   |---|---|---|
   | Disaster City (with the Hills) | north: foothills (grass) then the range; west: forest and open woodland; south: scrub then badlands; east: the Beach's room | north mountain, west forest, south desert, east coast |
   | The North Pole | tundra on every side (snow), the sea a few plots north and east | mountain on every side |
-  | The Vatican | forest north, south and west; the Tiber's meadow (grass) east | no `terrain.edges` at all |
+  | The Vatican | forest north, south and west; the Tiber's meadow (grass) east | reads the map since 11-17 (was: no `terrain.edges` at all) |
   | Antarctica | the sea on every side | mountain north, east, west; coast south |
 
   Switching a room = `edges: { world: true, reach: 440 }` in its bake (keep its `inset`, `sign`, `land` keys: they still
   work), a rebake and one picture. A re-laid room (phase 3) gets it in the same PR as its move.
+
+### ONE WORLD, HOW A ZONE MOVES (the rules for every phase 2 / phase 3 thread)
+mondo: "Districts keep every plot and everything on them; only where the plots stand changes." The city already moved its
+districts once without losing a building (above, "DISASTER CITY, THE DISTRICT MOVE"); this is that method, plot by plot.
+1. **Start clean.** Take the zone's rows on the board (tool + every district file you touch). `git fetch origin main && git
+   merge origin/main`, then run the zone's bake on the clean tree: it must change no byte of data.js. If it does, someone's
+   bake is unmerged: stop and say so on the board.
+2. **Count before.** `node ow-census.js <old room> > docs/areas/<zone>/move/before.json` (commit it). It counts what stands on
+   every plot, by the plot's NAME: props by key, terrain features by kind, doors by id, natives by race.
+3. **Read your rows in plots.json.** For each district: `plots[]` = `{ n, x, y, was }`. `was` is the plot's id in the old room
+   (where it was BUILT, its home); `x, y` is where it stands in v13. A PLOT'S NAME CARRIES OVER; its id is its place in its
+   room's own grid, so it changes: the new room writes `P<col>-<row>` of its own box in `plots.names`, with the old name.
+4. **Split by the room-splitting rule** (above): which districts share a room, which stand alone, which links join a room.
+   Each new room's box = the bounding box of its plots; `world: { hub, layer, wx, wy }`; `plots.mask` when the box has cells
+   that are not plots.
+5. **THE HOME FRAME: the district files do not change.** A district file keeps writing its home squares and plot ids. The
+   zone's tool runs the hooks on the home layout as it does today, then MOVES THE RESULT plot by plot:
+   - the square maps (the plan's cells, the heights, the paint): each plot's 12 x 12 block is copied to its new place;
+   - every piece (a prop, a feature, a door, a native, a mark) moves with the plot its ANCHOR stands on (a prop's x, z; a
+     feature's middle; a rail or wall's midpoint), by (new plot corner − home plot corner). Nothing is turned;
+   - a piece that lies across two home plots which no longer stand the same way to each other (a fence along a line, a
+     bridge, a pool over two plots) is a STRAY: the tool must print every stray, and the thread re-places each by hand in the
+     district file (a `v13` branch of that hook). Never drop one silently;
+   - the tool's own shared pieces (a creek across districts, the zone's trails, the outer wall, the scatter rows) are written
+     again for the new layout: they are the tool's, not a district's.
+6. **Where plots part and meet.** Two plots that touched and no longer do: the opening between them closes (the room's edge
+   stop on that side). Two plots that touch now and did not: cut a walk opening (the city's `seams`: walk / road / close). A
+   path district is walked in the order of its `plots[]`.
+7. **Stitch.** Doors between rooms = seam-id pairs (the room-splitting rule 6). Routes and links: `node bake-route.js <id>`
+   with `docs/areas/routes/<ID>.json` `ends`. Ways down / up go on the plots `under.ways` names. Every row of `DOOR_HQ.links`
+   that ends in the zone keeps its id; re-point only YOUR end, and leave a dated note on the board for the other end's holder.
+   The edges: `terrain.edges: { world: true, reach: 440 }` and `sky.landmarks: 'world'`.
+8. **Retire the old room in the same PR** (the rule of "THE OLD SITES RETIRED"):
+   - `DOOR_HQ.retired['<old room>'] = '<the new room that holds its arrival>'` (the district with the hub's door / the old
+     spawn). map.js sends Continue, the map's GO and any old link there, and keeps a door id the new room still has: KEEP
+     EVERY DOOR ID;
+   - an old room that became SEVERAL rooms: `retired` names one of them, so every door in ANOTHER room that names the old
+     room (`action: { room: '<old>', at: '<id>' }`) is re-pointed by hand to the new room that now has `<id>`. Find them with
+     `grep -n "<old room>" data.js` and the zone bakes; check with a walk of every door (`load-data.js`): no door of a live
+     room may name a retired room;
+   - `DOOR_HQ.hubs[<hub>].room`, `siteRooms.entry` rows and the bay doors point at the new rooms;
+   - the old literal: delete it, unless a PvP board is cut from it (`HQ_ARENA_RULES`; then rerun `node bake-arenas.js`) or
+     another bake still reads it for lines / anchors: then it stays, door-less and never entered;
+   - no old-save guards (CLAUDE.md: mondo does not want save migration): `retired` is the whole of it.
+9. **The map.** `node bake-map.js <each new room>` (its picture + the table; a retired room leaves the table by itself, a
+   room with `world` joins it by itself), then `node sync-zip.js --put` the pictures the tool prints.
+10. **Count after.** `node ow-census.js --diff docs/areas/<zone>/move/before.json <every new room>`: "nothing missing". Extra
+    pieces are fine (seam doors, edge stops); a MISSING line is a lost piece: find it before the PR.
+11. **Prove and write down.** `node --check`; one probe-fast picture a new room with the `[EW BUILD]` HEAD; the zone's own
+    notes section gets the move (what stands where, the strays you re-placed, the links you re-pointed); the board rows.
+What phase 1 did NOT decide, for the test slice to settle: the walk speed against the distances, whether a route room needs
+residents, how a fight is cut on a trail plot (a route plot has at least a 10 x 12 square clearing beside the path), and
+the real memory and frame numbers of rule 5.
