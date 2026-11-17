@@ -10472,10 +10472,17 @@ const RACE_ABILITIES = {
         { id: 'nrHopOn', name: 'Hop On', tier: 2, families: ['delivery'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'buff', kind: 'buff', range: 1, noSelf: true,
           statusEffects: [{ id: 'riding', duration: 1 }],
-          desc: 'A Single Ally beside him climbs on the back. When he finishes his next walk this turn, the ally gets off on the free square beside him nearest where it got on. It keeps its own turn. Cooldown: 2 rounds.' },
+          desc: 'A Single Ally beside him climbs on his back. When he finishes his next walk or Doorstep Dash, the ally hops off on the free square beside him nearest where it got on. It keeps its own turn. Not on a Rooted, Charmed, Roped or Frozen ally. Cooldown: 2 rounds.' },
         { id: 'nrDoorstepDash', name: 'Doorstep Dash', tier: 3, families: ['delivery'], cost: 75, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 130, range: 3, chargeToTarget: true,
-          desc: 'Rings the bell with his shoulder. Charges a Single Enemy up to 3 squares away and deals MEDIUM physical damage.' },
+          desc: 'Rings the bell with his shoulder. Charges a Single Enemy up to 3 squares away and deals MEDIUM physical damage. Anyone on his back hops off beside him.' },
+        /* THIRTY MINUTES OR LESS (2026-11-17, the Delivery Boy's capstone; mondo: "flesh out their unique spells"): the whole order
+           at once. Up to two allies beside him (any of the 8 squares, the most hurt first) climb on (Riding, the Hop On ride), and he
+           is Quickened (+1 MOV) for the run. Refused with nobody beside him. battle.js _deliveryLoadUp. */
+        { id: 'nrThirtyMinutes', name: 'Thirty Minutes or Less', tier: 4, families: ['delivery'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 0, noDamage: true,
+          rideAlong: { max: 2 }, timedStatBonus: { move: 1, rounds: 1 },
+          desc: 'The whole order at once. Up to two allies beside him climb on his back and he gets +1 MOV for 1 round. When he finishes his next walk or Doorstep Dash, they hop off beside him. Cooldown: 4 rounds.' },
     ],
     'librarian': [
         /* THE RENEWAL: the one race that casts its allies' spells. Overdue renews the last spell a teammate cast this match (battle.js state._lastAllySpell, written where every cast is recorded; resolved like the old Mimic). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
@@ -14259,7 +14266,7 @@ const STATUS_DEFS = {
         }
     },
     /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters). Ids only on units (RULE #2).
-       riding: on the Delivery Boy's back; his next finished walk drops it beside him (battle.js _deliveryDrop).
+       riding: on the Delivery Boy's back; his next finished walk or Doorstep Dash drops it beside him (battle.js _deliveryDrop).
        tithe: the Televangelist's plate is out; battle.js applyHealingToUnit skims 15% of heals within 3 into unit._plate.
        viral: every hit it takes also hits its teammates within 2 for 30% (battle.js _viralShare).
        yellowCard: booked; a second card on a booked unit is a RED CARD: off the board until its next turn (battle.js _refereeRedCard).
@@ -14526,7 +14533,7 @@ const STATUS_LIBRARY_DESCS = {
     serpentForm: 'The head of a 3-square feathered serpent: the body follows its path and blocks every other unit; it cannot be pushed or pulled; a hit on the body hits the head.',
     coiled:    'In the serpent\'s coils: cannot move and is squeezed for 45 at every round end.',
     onDuty:    'On watch: the first ally within 4 that takes a killing blow holds on at 1 HP and is hauled beside her. Spent on the first save.',
-    riding:     'On the Delivery Boy\'s back: when he finishes his next walk, it gets off on the free square beside him.',
+    riding:     'On the Delivery Boy\'s back: when he finishes his next walk or Doorstep Dash, it hops off on the free square beside him.',
     tithe:      'Collection Plate: 15% of every heal that lands within 3 of the Televangelist (not his own) goes in his plate. Miracle spends it.',
     viral:      'Going viral: every hit it takes also hits each of its teammates within 2 for 30% of the damage.',
     yellowCard: 'Booked: a second card on this unit is a RED CARD. It is sent off until its next turn starts: it cannot move, act or be targeted.',
@@ -21251,7 +21258,7 @@ const RACE_TREE = {
     'magician':      ['raceBorrowedClaw', ['raceShedSkin', 'raceCharm'], ['raceSkinSwap', 'racePopSpotlight'], 'raceMimicry'],   // 2026-11-16
     'mole man':      ['raceTremorStomp', ['sharedFissure', 'raceCryptidVanish'], ['groundSlam', 'raceBrutalSlam'], 'raceQuake'],   // 2026-11-16
     'quetzalcoatl':  ['raceWingGust', ['raceCrosswind', 'raceDivineLight'], ['raceTailwind', 'raceDivineSmite'], 'raceSupernova'],   // 2026-11-16
-    'delivery boy':  ['raceSprint', ['healingSeed', 'raceNimbleDodge'], ['raceVault', 'raceHitALick'], 'raceBumperCrop'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'delivery boy':  ['nrHotAndFresh', 'nrHopOn', 'nrDoorstepDash', 'nrThirtyMinutes'],   // 2026-11-17 THE DELIVERY BOY POLISH: his own four rungs (the borrowed row carried none of his signature spells, so a default / CPU kit had no Hop On)
     'librarian':     ['raceSacredGeometry', 'raceZigguratProtocol', 'raceOvercharge', 'raceWeighTheHeart'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'televangelist': ['raceCultTithe', ['heal1', 'racePopSpotlight'], ['raceCultKoolAid', 'protect1'], 'raceHallelujah'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'influencer':    ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
@@ -23195,7 +23202,7 @@ const SPELL_FAMILIES = {
         glyph: '🛵',
         color: '#c8342c',
         kind: 'signature',
-        desc: 'Thirty minutes or less: a hot meal for an ally, a ride on the back for another, and the door kicked in on the way out.',
+        desc: 'Thirty minutes or less: a hot meal for an ally, a ride on the back for another, the door kicked in on the way out, and the whole order delivered at once.',
         unique: 'delivery boy',
         identity: { who: ['Delivery Boy', 'Courier', 'Driver'], adj: ['Hurried', 'Tip-hungry', 'Sweaty'], look: ['a red cap worn backwards', 'a red polo with a name tag', 'an insulated delivery bag'], vibe: ['brings a friend along for the ride', 'is never late twice'] }
     },

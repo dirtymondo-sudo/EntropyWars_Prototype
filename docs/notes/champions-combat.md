@@ -5688,6 +5688,7 @@ The rules (battle.js block "THE NEW RACES 2", before _lifeguardSave; statuses da
 dormant / bodiless):
 - 🛵 Delivery Boy, THE RIDE-ALONG: Hop On (range 1, `riding`, unit._rideWithId); his next finished walk drops the rider on the
   free square beside him nearest where it got on (`_deliveryDrop`, finishMoveAt). A rider that walks first just gets off.
+  Polished 11-17: see "THE DELIVERY BOY POLISH" below (the ride drawn on his back, Doorstep Dash drops too, the capstone).
 - 📚 Librarian, THE RENEWAL: Overdue (utility) recasts `state._lastAllySpell[player]` (written at the cast record; never a
   Librarian's own cast, never Mimic/Overdue) through the old Mimic resolver (healPct heals use the row's percent).
 - 🙌 Televangelist, THE TITHE: Collection Plate (`tithe`, 3 rounds): `_titheSkim` in applyHealingToUnit takes 15% of every heal
@@ -5716,3 +5717,25 @@ Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo ha
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
 (cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
+
+## THE DELIVERY BOY POLISH (2026-11-17, thread "Polish Delivery Boy spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+What was wrong: the ride did not show (the ally stood on its own square through his whole walk, then jumped from there);
+his RACE_TREE row was borrowed rungs, so a default or CPU Delivery Boy carried none of his own spells (no Hop On); the CPU
+had no idea what a ride was for; a rider knocked away still teleported back to him; Doorstep Dash dropped nobody.
+- THE RIDE ON SCREEN: three-renderer.js THE RIDE-ALONG (looks only): while he travels (walk, dash) the Riding ally hops up
+  onto his back, sits astride (the horse's chair sit + straddle), faces his way, rides the path; battle.js `_deliveryDrop`
+  hops it off from HIS square (`nrHopOn:drop` look). Fog: an enemy carrier's rider shows only where the viewer sees him.
+  Kill switch `window.EW_NO_RIDE_ALONG`.
+- RULES (battle.js "THE RIDE-ALONG"): Doorstep Dash drops the rider too, beside him at the victim, after the slide (both
+  charge paths: `_runPostEffects` and the chase-cam `_runCharge`). A rider more than 1 square (any way) from where he set
+  off was knocked off: it stays where it is. A pinned body never rides (`_deliveryRideBlock`: Rooted, Charmed, Roped,
+  Frozen, Stoneform, Climbing, Exited, Captured; and colossal bodies, the shove rule): Hop On on one is refused, a rider
+  that became pinned stays put.
+- THIRTY MINUTES OR LESS (new capstone, tier 4, cd 4, `rideAlong: { max: 2 }` + `timedStatBonus` +1 MOV): up to two allies
+  beside him (8 squares, most hurt first) climb on at once (`_deliveryLoadUp`); refused with nobody beside him.
+- HIS OWN TREE: `['nrHotAndFresh', 'nrHopOn', 'nrDoorstepDash', 'nrThirtyMinutes']`.
+- THE CPU (ai.js "THE RIDE-ALONG"): Hop On / the capstone score the best drop his walk can give (`_rideBestAI` over his move
+  tiles, `window._deliveryDropPreview` = the engine's drop square): a hurt rider (< 45%) = the hits it leaves behind, a
+  healthy one = squares gained on the nearest enemy; 0 when he cannot walk after the cast. With a rider aboard, scoreMoves
+  adds the best ride walk (90 + its value).
+- Stats unchanged (support median). Proof: /mnt/project-files/delivery-boy-polish/.

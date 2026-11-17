@@ -64959,6 +64959,247 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _spell3DGeometry['nrBoardSlam'].hitMs = 220;
 
+    /* ══ THE DELIVERY BOY (2026-11-17, thread "Polish Delivery Boy spells and VFX"; mondo: "flesh out their unique spells and
+       spell animations/vfx") ══ The Delivery family had no look of its own (the generic heal orb, the gold buff rings, the
+       plain charge). Now every piece is his trade, on the P-Z hook (an EFFECTS def names a `pzSig`). The side reads from the
+       viewer's seat (THE RIOT PASS): rings that say whose it is run cyan-blue for your side, pink-orange for the other
+       (_dbSide); the props keep their own colours (the kraft pizza box, the red delivery livery, the white steam).
+         HOT AND FRESH (`bolt`, pzOwn, timed on flyMs; the heal's projectile): a pizza box (canvas cardboard, his red HOT &
+           FRESH print) is tossed end over end to the ally, lands flat at its feet, the lid flips open, steam curls up and
+           the side's ring opens under it (`aura` on arrival: the green heal motes).
+         HOP ON (`aura` on the ally as the buff lands, and fireGeometry 'nrHopOn' per ally from Thirty Minutes or Less):
+           two quick horn beeps (rings at his head), a chevron over the ally pointing at him, a side ring under each of them.
+           The ride itself is three-renderer.js THE RIDE-ALONG (the ally drawn on his back while he travels).
+         THE DROP ('nrHopOn:drop', battle.js _deliveryDrop, after the hop off): a dust puff where it lands, the side ring and
+           one bell "ding" ring at its head.
+         DOORSTEP DASH (`impact`, on the strike): a ding-dong (two bell rings at shoulder height), splinters off the shoulder
+           (the door he went through), side-coloured speed streaks down the lane he ran, a shock ring.
+         THIRTY MINUTES OR LESS (`aura`, on him): a delivery timer (a clock face, its red hand sweeping a full turn in
+           400 ms) over his head, then the side ring out past the squares beside him.
+       Every piece rides fire() / fireGeometry, which online.js relays (RULE #2), and draws only where the viewer sees the
+       square (_pzSeen). Visuals only. Kill switch: window.EW_NO_DELIVERY_VFX (falls back to the generic looks). */
+    function _dbOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_DELIVERY_VFX); }
+    function _dbSide(u) { return _fx5Mine(u) ? { a: 0x1deeff, b: 0x3a7bff } : { a: 0xfd1674, b: 0xff9a3a }; }
+    var _DB = { kraft: 0xd8b07a, red: 0xd8302a, steam: 0xf4f4f0, bell: 0xfff2b0, heal: 0x8affc0 };
+    function _dbLidTex() {
+        return _pzTex('db-lid', 256, 256, function (g, w, h) {
+            g.fillStyle = '#c99d62'; g.fillRect(0, 0, w, h);
+            g.strokeStyle = 'rgba(90,60,30,0.55)'; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10);
+            g.strokeStyle = 'rgba(90,60,30,0.18)'; g.lineWidth = 2;
+            for (var i = 0; i < 26; i++) { g.beginPath(); g.moveTo(0, i * 10 + 3); g.lineTo(w, i * 10 + 1); g.stroke(); }   /* the corrugation */
+            g.fillStyle = '#d8302a'; g.beginPath(); g.arc(w / 2, h * 0.43, 70, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#c99d62'; g.beginPath(); g.arc(w / 2, h * 0.43, 54, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#d8302a'; g.beginPath(); g.moveTo(w / 2, h * 0.43 - 40); g.lineTo(w / 2 + 36, h * 0.43 + 26); g.lineTo(w / 2 - 36, h * 0.43 + 26); g.closePath(); g.fill();   /* a slice */
+            g.fillStyle = '#d8302a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 34px Impact, "Arial Black", sans-serif';
+            g.fillText('HOT & FRESH', w / 2, h * 0.84);
+            g.globalCompositeOperation = 'multiply'; g.fillStyle = 'rgba(150,100,40,0.35)';
+            for (var k = 0; k < 5; k++) { g.beginPath(); g.arc(30 + Math.random() * 196, 30 + Math.random() * 196, 6 + Math.random() * 10, 0, Math.PI * 2); g.fill(); }   /* the grease */
+            g.globalCompositeOperation = 'source-over';
+        });
+    }
+    function _dbSideTex() {
+        return _pzTex('db-side', 128, 32, function (g, w, h) {
+            g.fillStyle = '#b8894f'; g.fillRect(0, 0, w, h);
+            g.fillStyle = 'rgba(80,50,25,0.4)'; for (var i = 0; i < w; i += 6) g.fillRect(i, 0, 2, h);   /* the flute showing at the cut edge */
+        });
+    }
+    function _dbClockTex() {
+        return _pzTex('db-clock', 256, 256, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#d8302a'; g.beginPath(); g.arc(128, 128, 112, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#fbf6ee'; g.beginPath(); g.arc(128, 128, 98, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = '#2a1a14'; g.lineCap = 'round';
+            for (var i = 0; i < 12; i++) { var a = i / 12 * Math.PI * 2; g.lineWidth = i % 3 ? 4 : 8; g.beginPath(); g.moveTo(128 + Math.sin(a) * 80, 128 - Math.cos(a) * 80); g.lineTo(128 + Math.sin(a) * 92, 128 - Math.cos(a) * 92); g.stroke(); }
+            g.fillStyle = '#2a1a14'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 40px Impact, "Arial Black", sans-serif';
+            g.fillText('30', 128, 92); g.font = 'bold 22px Impact, "Arial Black", sans-serif'; g.fillText('MIN', 128, 172);
+        });
+    }
+    function _dbChevronTex() {
+        return _pzTex('db-chev', 128, 128, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(16, 34); g.lineTo(64, 82); g.lineTo(112, 34); g.lineTo(112, 62); g.lineTo(64, 110); g.lineTo(16, 62); g.closePath(); g.fill();
+        });
+    }
+    /* a pizza box `d` across: kraft sides, the printed lid on a hinge at the back edge; { g, lid, fade(op) } */
+    function _dbBox(d) {
+        var g = new THREE.Group(), mats = [], hgt = d * 0.16;
+        var side = _pzSolid(0xffffff, _dbSideTex()), bottom = _pzSolid(0xc99d62, null), lidTop = _pzSolid(0xffffff, _dbLidTex(), { side: THREE.DoubleSide }), inside = _pzSolid(0xd8a868, null, { side: THREE.DoubleSide });
+        mats.push(side, bottom, lidTop, inside);
+        var base = _pzMesh(new THREE.BoxGeometry(d, hgt, d), [side, side, bottom, bottom, side, side], g, 0, hgt / 2, 0);
+        _pzMesh(new THREE.PlaneGeometry(d * 0.86, d * 0.86), inside, g, 0, hgt + 0.5, 0).rotation.x = -Math.PI / 2;
+        var hinge = new THREE.Group(); hinge.position.set(0, hgt, -d / 2); g.add(hinge);
+        var lid = _pzMesh(new THREE.PlaneGeometry(d, d), lidTop, hinge, 0, 0.6, d / 2); lid.rotation.x = -Math.PI / 2;
+        base.renderOrder = 158;
+        return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+    }
+    function _dbUnitId(x, y) { var u = _fx5UnitAt(x, y); return u ? u.id : null; }
+    function _dbHeadH(x, y, ts) {
+        var id = _dbUnitId(x, y);
+        try { if (id != null && ThreeRenderer.getUnitVisualHeight) { var h = ThreeRenderer.getUnitVisualHeight(id); if (h > 0) return h; } } catch (e) {}
+        return ts * 0.5;
+    }
+    /* a thin ring at a height over a square (a horn beep, a bell) */
+    function _dbRing(x, y, col, r1, ms, hMul, delay) {
+        if (!_pzSeen(x, y)) return;
+        var ts = _worldPos(x, y).ts, h = _dbHeadH(x, y, ts) * (hMul != null ? hMul : 0.92);
+        _fxDelay(function () { if (_suppressed()) return; try { _sigShockRing3D(x, y, { r0: ts * 0.1, r1: ts * r1, ms: ms || 320, color: col, height: h }); } catch (e) {} }, delay || 0);
+    }
+
+    /* ════ HOT AND FRESH — the box is tossed to the ally, lands, the lid flips up, the steam rolls out ════ */
+    EFFECTS['nrHotAndFresh_bolt'] = _pzDef('dbHotBox', { pzOwn: true });
+    EFFECTS['nrHotAndFresh_aura'] = { layers: [
+        { count: 10, sprite: 'heal-glow', ml: [700, 1100], offsetXY: 22, z: [20, 70], tint: _DB.heal, vzRange: [40, 90], size0: [6, 10], size1: 3, opacity0: 0.85, delayMs: 260 },
+    ] };
+    _PZ_SIGS.dbHotBox = function (p) {
+        if (_dbOff()) return;
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(260, p.flyMs || 420), seeA = _pzSeen(fx, fy), seeB = _pzSeen(tx, ty);
+        if (!seeA && !seeB) return;
+        var ts0 = _worldPos(tx, ty).ts, ally = _fx5UnitAt(tx, ty), side = _dbSide(ally);
+        /* the flight: a closed box spinning end over end (drawn from the release only if the viewer sees him) */
+        if (seeA) {
+            var fly = _dbBox(ts0 * 0.34); fly.fade(1); fly.hinge.rotation.x = 0;
+            _pzFly(fx, fy, tx, ty, fly.g, { ms: ms, arc: 0.45, h0: ts0 * 0.55, h1: ts0 * 0.1, face: true, hideOnLand: true,
+                trail: { sprite: 'smoke-soft', tint: _DB.steam, every: 45, size: 10 },
+                spin: function (el, obj) { obj.rotation.x = el * 0.016; } });
+        }
+        if (!seeB) return;
+        /* the landing: at the ally's feet, toward the side it came from, flat; the lid flips back, the steam rises */
+        _fxDelay(function () {
+            if (_suppressed()) return;
+            var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty);
+            var B = _dbBox(ts * 0.34); F.g.add(B.g);
+            B.g.position.set(ln.ux * ts * 0.3, 0, ln.uz * ts * 0.3); B.g.rotation.y = Math.atan2(ln.ux, ln.uz);
+            _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.18, r1: ts * 0.8, ms: 420, height: 4 });
+            _capPuff(tx, ty, 'dust-puff', 5, { r: 0.3, h: 0.03, out: 90, vz0: 5, vz1: 25, s0: 10, s1: 16, sEnd: 30, op: 0.4 });
+            var lastS = 0;
+            _sigRunOwned(F.g, 1500, function (el) {
+                var drop = _sigClamp01(el / 90);
+                B.g.position.y = ts * 0.08 * (1 - drop);
+                B.hinge.rotation.x = -1.9 * _sigEaseOutBack(_sigClamp01((el - 110) / 260));   /* the lid flips up and back */
+                B.fade(_pzEnv(el, -1, 0, 1100, 1500));
+                if (el > 160 && el < 1050 && el - lastS > 55) {
+                    lastS = el;
+                    _pzP(F, ln.ux * ts * 0.3 + rn(-0.1, 0.1) * ts, ts * 0.1, ln.uz * ts * 0.3 + rn(-0.1, 0.1) * ts,
+                        { sprite: 'smoke-soft', tint: _DB.steam, ml: rn(700, 1000), size0: rn(10, 16), size1: rn(28, 40), vz: rn(50, 90), vx: rn(-10, 10), vy: rn(-10, 10), drag: 0.6, opacity0: 0.55, wander: { amp: 14, freq: 1.4 } });
+                }
+            });
+        }, ms);
+    };
+
+    /* ════ HOP ON — two horn beeps, a chevron over the ally pointing at him, a side ring under each ════ */
+    EFFECTS['nrHopOn_aura'] = _pzDef('dbHop', { pzOwn: true });
+    _PZ_SIGS.dbHop = function (p) {
+        if (_dbOff()) return;
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var from = (p.fromX != null) ? { x: p.fromX, y: p.fromY } : _sigCasterPos(tx, ty);
+        _dbHop3D(tx, ty, from);
+    };
+    function _dbHop3D(tx, ty, from) {
+        var ally = _fx5UnitAt(tx, ty), side = _dbSide(ally);
+        if (from && _pzSeen(from.x, from.y)) {
+            _dbRing(from.x, from.y, 0xffffff, 0.7, 260, 0.95, 0);   /* beep */
+            _dbRing(from.x, from.y, 0xffffff, 0.7, 260, 0.95, 170);   /* beep */
+            try { _sigShockRing3D(from.x, from.y, { color: side.a, r0: _worldPos(from.x, from.y).ts * 0.2, r1: _worldPos(from.x, from.y).ts * 0.7, ms: 420, height: 4 }); } catch (e) {}
+        }
+        if (!_pzSeen(tx, ty)) return true;
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _dbHeadH(tx, ty, ts);
+        _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.2, r1: ts * 0.75, ms: 420, height: 4 });
+        var to = from ? _afTo(F, from.x, from.y) : new THREE.Vector3(1, 0, 0), yaw = Math.atan2(to.x, to.z);
+        var chev = _pzMesh(new THREE.PlaneGeometry(ts * 0.34, ts * 0.34), _pzGlow(side.a, _dbChevronTex()), F.g, 0, h * 1.18, 0);
+        var hold = new THREE.Group(); F.g.add(hold); hold.add(chev); chev.position.set(0, 0, 0); hold.position.set(0, h * 1.18, 0);
+        chev.rotation.set(-Math.PI / 2, 0, 0); hold.rotation.y = yaw;   /* the chevron lies flat over the head, its point toward him */
+        chev.material.side = THREE.DoubleSide;
+        return _sigRunOwned(F.g, 1200, function (el) {
+            var k = (el % 520) / 520;
+            chev.position.z = ts * 0.22 * k;
+            chev.material.opacity = 0.9 * _pzEnv(el, 0, 80, 950, 1200) * (1 - k * 0.6);
+            chev.scale.setScalar(0.8 + 0.3 * _sigEaseOutBack(_sigClamp01(el / 200)));
+        });
+    }
+    _spell3DGeometry['nrHopOn'] = function (tx, ty, r, x) {
+        if (_dbOff()) return false;
+        x = x || {};
+        return _dbHop3D(tx, ty, x.fromX != null ? { x: x.fromX, y: x.fromY } : _sigCasterPos(tx, ty)) || true;
+    };
+    /* THE DROP: the hop off lands — dust, the side ring, one bell ding at its head */
+    _spell3DGeometry['nrHopOn:drop'] = function (tx, ty, r, x) {
+        if (_dbOff()) return false;
+        x = x || {};
+        var run = function () {
+            if (_suppressed() || !_pzSeen(tx, ty)) return;
+            var u = (x.owner != null) ? { player: x.owner } : _fx5UnitAt(tx, ty), side = _dbSide(u), ts = _worldPos(tx, ty).ts;   /* the owner rides the relay: the guest may not have the body on this square yet */
+            _capPuff(tx, ty, 'dust-puff', 7, { r: 0.35, h: 0.04, out: 140, vz0: 5, vz1: 30, s0: 12, s1: 20, sEnd: 38, op: 0.45 });
+            try { _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.2, r1: ts * 0.9, ms: 440, height: 4 }); } catch (e) {}
+            _dbRing(tx, ty, _DB.bell, 0.55, 300, 1.05, 60);
+        };
+        if (x.delay > 0) _fxDelay(run, x.delay); else run();
+        return true;
+    };
+
+    /* ════ DOORSTEP DASH — ding-dong at the shoulder, splinters, speed streaks down his lane ════ */
+    EFFECTS['nrDoorstepDash_impact'] = _pzDef('dbDash', { shake: 'normal', layers: [
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [320, 560], offsetXY: 12, z: [2, 10], vxRange: 110, vyRange: 110, vzRange: [20, 60], gravity: 80, drag: 0.9, size0: [12, 20], size1: [30, 46], opacity0: 0.5 },
+    ] });
+    _PZ_SIGS.dbDash = function (p) {
+        if (_dbOff()) return;
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var from = (p.fromX != null) ? { x: p.fromX, y: p.fromY } : _sigCasterPos(tx, ty);
+        var me = from ? _fx5UnitAt(from.x, from.y) : null, side = _dbSide(me);
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _dbHeadH(tx, ty, ts);
+        _dbRing(tx, ty, _DB.bell, 0.6, 260, 0.62, 0);     /* ding */
+        _dbRing(tx, ty, _DB.bell, 0.85, 340, 0.62, 200);  /* dong */
+        try { _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.2, r1: ts * 1.0, ms: 420, height: 4 }); } catch (e) {}
+        _capShards(tx, ty, 'wood', { n: 6, lite: true, height: 0.55 });
+        /* the streaks: down the lane he ran (from the square before the victim back toward where he set off) */
+        var ln = from ? _nrvLine(F, from, tx, ty) : { ux: 1, uz: 0, L: ts };
+        var streaks = [], cols = [side.a, side.b, 0xffffff];
+        for (var i = 0; i < 5; i++) {
+            var len = ts * rn(1.0, 1.8), m = _pzMesh(new THREE.PlaneGeometry(len, ts * 0.035), _pzGlow(cols[i % 3], _sigGlowTex()), F.g);
+            m.material.side = THREE.DoubleSide;
+            var off = (i - 2) * ts * 0.1, d0 = ts * 0.7 + len / 2;
+            m.position.set(ln.ux * d0 - ln.uz * off, h * rn(0.25, 0.75), ln.uz * d0 + ln.ux * off);
+            m.rotation.y = -Math.atan2(ln.uz, ln.ux);
+            streaks.push({ m: m, d0: d0, off: off, at: i * 25 });
+        }
+        return _sigRunOwned(F.g, 700, function (el) {
+            for (var j = 0; j < streaks.length; j++) {
+                var S = streaks[j], k = _sigClamp01((el - S.at) / 600);
+                var d = S.d0 + ts * 0.6 * k;
+                S.m.position.x = ln.ux * d - ln.uz * S.off; S.m.position.z = ln.uz * d + ln.ux * S.off;
+                S.m.scale.x = 1 - 0.6 * k;
+                S.m.material.opacity = 0.75 * (1 - k) * (el > S.at ? 1 : 0);
+            }
+        });
+    };
+
+    /* ════ THIRTY MINUTES OR LESS — the delivery timer over his head sweeps once, then his side's ring ════ */
+    EFFECTS['nrThirtyMinutes_aura'] = _pzDef('dbThirty', { pzOwn: true });
+    _PZ_SIGS.dbThirty = function (p) {
+        if (_dbOff()) return;
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var me = _fx5UnitAt(tx, ty), side = _dbSide(me);
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _dbHeadH(tx, ty, ts);
+        var face = _finSprite(0xffffff, _dbClockTex(), ts * 0.42, 160); face.material.blending = THREE.NormalBlending; face.position.y = h * 1.32; F.g.add(face);
+        var handM = _pzSolid(0xd8302a, null, { depthWrite: false }); handM.depthTest = false;
+        var hand = _pzMesh(new THREE.BoxGeometry(ts * 0.018, ts * 0.13, ts * 0.006), handM, null);
+        var handPivot = new THREE.Group(); handPivot.position.y = h * 1.32; F.g.add(handPivot);
+        hand.position.y = ts * 0.06; handPivot.add(hand); hand.renderOrder = 162;
+        _fxDelay(function () { if (_suppressed()) return; try { _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.3, r1: ts * 1.6, ms: 560, height: 4 }); } catch (e) {} _dbRing(tx, ty, _DB.bell, 0.6, 300, 1.32, 0); }, 420);
+        return _sigRunOwned(F.g, 1300, function (el) {
+            var pop = _sigEaseOutBack(_sigClamp01(el / 180)), op = _pzEnv(el, 0, 80, 1000, 1300);
+            face.scale.set(ts * 0.42 * pop, ts * 0.42 * pop, 1); face.material.opacity = op;
+            var cam = _pzCam(); if (cam) handPivot.quaternion.copy(cam.quaternion);   /* the hand turns in the face's plane (the face is a sprite) */
+            handPivot.rotateZ(-Math.PI * 2 * _sigClamp01((el - 60) / 400));
+            handPivot.scale.setScalar(pop); handM.opacity = op;
+        });
+    };
+    Object.assign(SPELL_MAP, {
+        nrHotAndFresh:   { bolt: 'nrHotAndFresh_bolt', aura: 'nrHotAndFresh_aura' },
+        nrHopOn:         { aura: 'nrHopOn_aura' },
+        nrDoorstepDash:  { impact: 'nrDoorstepDash_impact' },
+        nrThirtyMinutes: { aura: 'nrThirtyMinutes_aura' },
+    });
+
     /* the floor under a vfx px spot (three-vfx.js keeps an atmosphere particle above it when it steps back) */
     var _rvFloorMemo = new Map(), _rvFloorAt0 = 0;
     function _rvFloorAt(px, py) {

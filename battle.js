@@ -2539,6 +2539,7 @@
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
                     if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
+                    if (unit.race === 'delivery boy') _deliveryDrop(unit, fromX, fromY, { delayMs: _skipVisuals() ? 0 : 200 });   // 🛵 his rider hops off once the hop lands
                     /* THE LOG ORDER (forced movement playtest 2026-11-07 E4 / M3: Gore Charge, Land Ho, Rook): the charge
                        and what its landing did read BEFORE the hit it carried in */
                     _logLift(hitMark, _chM);
@@ -2782,6 +2783,8 @@
                 }
                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 addLog(`${_ctName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
+                /* 🛵 THE RIDE-ALONG: a Doorstep Dash carries his rider into the fight; it hops off beside him once the slide lands */
+                if (unit.race === 'delivery boy') _deliveryDrop(unit, fromX, fromY, { delayMs: _skipVisuals() ? 0 : chargeMs });
                 scheduleBoardRender();
             };
             if (_chargeDelay > 0) window.setTimeout(_runCharge, _chargeDelay);
@@ -14222,8 +14225,26 @@
         function _nrAlive(u) { return !!u && !u.dead && !u._dying && u.hp > 0; }
         function _nrFreeSquare(x, y) { return isInside(x, y) && canOccupy(x, y) && !unitAt(x, y); }
         /* 🛵 THE RIDE-ALONG (the Delivery Boy): an ally Riding with him gets off on the free square beside him nearest where it
-           got on when he finishes a walk (finishMoveAt). A rider that walks off on its own first just gets off. */
-        function _deliveryDrop(unit, fx, fy) {
+           got on when he finishes a walk (finishMoveAt) or a Doorstep Dash (_runPostEffects, `opts.delayMs` = the dash's slide).
+           A rider that walks off on its own first just gets off. THE POLISH (2026-11-17, mondo: "flesh out their unique spells
+           ... make sure that any new mechanics are tested out and work as intended"): the rider must still be on his back, so
+           one knocked or pulled away from the square he set off from (more than 1 away, any way) falls off where it is; a body
+           pinned to the ground (Rooted / Charmed / Roped / Frozen / Stoneform / Climbing, the move-spell rule) or a colossal one
+           never rides; the hop off starts from HIS square (the renderer drew it on his back for the ride, three-renderer.js
+           THE RIDE-ALONG) and fires 'nrHopOn:drop' (relayed by online.js like every fireGeometry). */
+        const _RIDE_PINNED = ['root', 'charm', 'tethered', 'frozen', 'stoneform', 'climbing', 'exited', 'captured'];
+        function _deliveryRideBlock(a) {
+            if (!a) return 'gone';
+            const k = _RIDE_PINNED.find(s => a.status && a.status[s] > 0);
+            if (k) return moveBlockWord(a) || (STATUS_DEFS[k] && STATUS_DEFS[k].label) || k;
+            if (getUnitDisplaceWeightClass(a) === 'colossal') return 'far too big';
+            return null;
+        }
+        function _deliveryFx(id, x, y, extra) {
+            if (_skipVisuals() || state.phase !== 'battle') return;
+            try { const V = window.ThreeVFXEffects; if (V && typeof V.fireGeometry === 'function') V.fireGeometry(id, x, y, 0, extra || {}); } catch (e) {}
+        }
+        function _deliveryDrop(unit, fx, fy, opts) {
             if (!unit || !Array.isArray(state.units)) return;
             if (unit.race !== 'delivery boy') {
                 if (unit.status && unit.status.riding > 0) clearStatus(unit, 'riding');
@@ -14231,9 +14252,19 @@
             }
             if (!_nrAlive(unit) || (unit.x === fx && unit.y === fy)) return;
             const riders = state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a._rideWithId === unit.id && a.status && a.status.riding > 0);
+            const _dropMs = (opts && opts.delayMs) || 0;
             for (const a of riders) {
                 const ox = a.x, oy = a.y;
                 clearStatus(a, 'riding');
+                if (Math.max(Math.abs(ox - fx), Math.abs(oy - fy)) > 1) {
+                    addLog(`🛵 ${_ctName(a)} was no longer on ${_ctName(unit)}'s back: it stays where it is.`, undefined, undefined, { actor: unit });
+                    continue;
+                }
+                const _blk = _deliveryRideBlock(a);
+                if (_blk) {
+                    addLog(`🛵 ${_ctName(a)} cannot ride along (${String(_blk).toLowerCase()}): it stays where it was.`, undefined, undefined, { actor: unit });
+                    continue;
+                }
                 const sq = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
                     .map(([dx, dy]) => ({ x: unit.x + dx, y: unit.y + dy }))
                     .filter(q => _nrFreeSquare(q.x, q.y))
@@ -14241,12 +14272,48 @@
                 if (!sq[0]) { addLog(`🛵 No room to get off beside ${_ctName(unit)}: ${_ctName(a)} stays where it was.`); continue; }
                 a.x = sq[0].x; a.y = sq[0].y;
                 if (typeof nearestWalkableZ === 'function') a.z = nearestWalkableZ(a.x, a.y, a.z);
-                animateDisplacement(a, ox, oy, a.x, a.y, 320, { leap: true });
+                a._trackTilesMoved = (a._trackTilesMoved || 0) + Math.abs(a.x - ox) + Math.abs(a.y - oy);
+                /* the hop off his back: from his square to the drop square (after the dash's slide, if a dash carried it) */
+                animateDisplacement(a, unit.x, unit.y, a.x, a.y, 320, { leap: true, delayMs: _dropMs });
                 resolveTileArrival(a, { via: 'self' });
-                addLog(`🛵 ${_ctName(a)} hops off ${_ctName(unit)}'s scooter at ${coordLabel(a.x, a.y)}.`, undefined, undefined, { actor: unit });
-                if (!_skipVisuals()) showFloatingTextForUnit(a, '🛵 DROPPED OFF', 'buff', { durationMs: 1000 });
+                addLog(`🛵 ${_ctName(a)} hops off ${_ctName(unit)}'s back at ${coordLabel(a.x, a.y)}.`, undefined, undefined, { actor: unit });
+                _deliveryFx('nrHopOn:drop', a.x, a.y, { fromX: unit.x, fromY: unit.y, owner: a.player, delay: _dropMs + 300 });
+                if (!_skipVisuals()) {
+                    const _ft = () => { if (!a.dead) showFloatingTextForUnit(a, '🛵 DROPPED OFF', 'buff', { durationMs: 1000 }); };
+                    if (_dropMs + 300 > 0) window.setTimeout(_ft, _dropMs + 300); else _ft();
+                }
             }
         }
+        /* 🛵 THIRTY MINUTES OR LESS (the Delivery Boy's capstone, data.js nrThirtyMinutes `rideAlong`): up to `max` allies beside
+           him (any of the 8 squares; the most hurt first) climb on, the Riding status from him, the same ride as Hop On. */
+        function _deliveryLoadList(unit, spell) {
+            const ra = spell && spell.rideAlong;
+            if (!ra || !unit || !Array.isArray(state.units)) return [];
+            return state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a.player === unit.player && !a._isCube && !a._summonStatic
+                    && Math.max(Math.abs(a.x - unit.x), Math.abs(a.y - unit.y)) === 1 && !_deliveryRideBlock(a))
+                .sort((p, q) => (p.hp / Math.max(1, p.maxHp)) - (q.hp / Math.max(1, q.maxHp)))
+                .slice(0, ra.max || 2);
+        }
+        function _deliveryLoadUp(unit, spell) {
+            const list = _deliveryLoadList(unit, spell);
+            for (const a of list) {
+                applyStatusPayload(a, { id: 'riding', duration: 1 }, `${spell.name}: `, unit);
+                _deliveryFx('nrHopOn', a.x, a.y, { fromX: unit.x, fromY: unit.y });
+            }
+            if (list.length) addLog(`🛵 ${list.map(a => _ctName(a)).join(' and ')} ${list.length === 1 ? 'climbs' : 'climb'} on ${_ctName(unit)}'s back.`, undefined, undefined, { actor: unit });
+            return list.length;
+        }
+        window._deliveryLoadList = _deliveryLoadList;
+        /* the square _deliveryDrop would give `rider` if he ended a walk on (x, y) (his own square frees as he leaves it); the
+           CPU's ride planner reads it (ai.js THE RIDE-ALONG) */
+        window._deliveryDropPreview = function (unit, x, y, rider) {
+            if (!unit || !rider || !isInside(x, y)) return null;
+            const sq = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+                .map(([dx, dy]) => ({ x: x + dx, y: y + dy }))
+                .filter(q => isInside(q.x, q.y) && canOccupy(q.x, q.y) && (!unitAt(q.x, q.y) || unitAt(q.x, q.y) === unit))
+                .sort((p, q) => (Math.abs(p.x - rider.x) + Math.abs(p.y - rider.y)) - (Math.abs(q.x - rider.x) + Math.abs(q.y - rider.y)));
+            return sq[0] || null;
+        };
         /* 🙌 THE TITHE (the Televangelist): while his Collection Plate is out, 15% of every heal that lands within 3 of him (on
            either team; never his own heals, never a heal on him) is taken off the heal and goes in his plate (unit._plate).
            Miracle (`spendPlate`) heals the plate on top of its own heal and empties it (spellHealAmountFor + the heal cast). */
@@ -82551,6 +82618,23 @@
                     }
                     return 0;
                 }
+                /* 🛵 Thirty Minutes or Less with nobody beside him to carry is refused before anything is spent */
+                if (spell.rideAlong && !_deliveryLoadList(unit, spell).length) {
+                    if (!_silentReject) {
+                        addLog(`${_ctSp(spell.name)}: no ally beside ${_ctName(unit)} can climb on.`, _clickSeat());
+                        playErrorSfx();
+                    }
+                    return 0;
+                }
+                /* 🛵 Hop On: a body pinned to the ground (Rooted, Frozen, Roped...) or a colossal one cannot ride */
+                if (spell.statusEffects && spell.statusEffects.some(se => se && se.id === 'riding')) {
+                    const _hoT = unitAt(x, y, z) || unitAt(x, y);
+                    const _hoBlk = _hoT && _hoT.player === unit.player ? _deliveryRideBlock(_hoT) : null;
+                    if (_hoBlk) {
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: ${_ctName(_hoT)} cannot ride along (${String(_hoBlk).toLowerCase()}).`, _clickSeat()); playErrorSfx(); }
+                        return 0;
+                    }
+                }
                 // Phase 4 migration: buff uses ally support pipeline
                 const _buffResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
                     errorMsg: 'Choose a living ally for that spell.'
@@ -82639,6 +82723,7 @@
                     if (spell.spawnDecoy && !unit.dead) _spawnCasterDecoy(unit, spell);
                     if (spell.timedStatBonus) _applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft (the Quickened status)
                     if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
+                    if (spell.rideAlong && !unit.dead) _deliveryLoadUp(unit, spell);   // 🛵 Thirty Minutes or Less
                     markDirty('hud');
                     renderIfDirty();
                 }, _buffResult.applyAt || 0);
