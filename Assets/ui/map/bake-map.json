@@ -211,13 +211,13 @@
  },
  "site_prebuilt_lookingglass_realm": {
   "id": "site_prebuilt_lookingglass_realm",
-  "nx": 72,
-  "nz": 72,
+  "nx": 120,
+  "nz": 156,
   "h0": 1.29,
   "hs": 0.25,
-  "v": "a320f41cc0",
-  "bytes": 1406,
-  "s": "1.8"
+  "v": "8a2433f04e",
+  "bytes": 1666,
+  "s": "4.6"
  },
  "site_prebuilt_downtown_underworld": {
   "id": "site_prebuilt_downtown_underworld",
