@@ -50,6 +50,27 @@ The review is `REVIEW.md` beside this file. His answers, in his order:
 | 10 | The Superhero as city-wide backup | Leave it for the wanted system. | Nothing now. |
 | 11 | Step 1a | Starts in a fresh thread once these answers are in this file. | Step 1a is free to start. |
 
+### Round 3 of his answers (2026-11-17, to step 1a's seven questions; `STEP-1A.md`)
+
+| # | Topic | His answer | What it changes |
+|---|---|---|---|
+| 1 | Who wears a mark / the 8 bodies | "i dont like this whole only 8 bodies being drawn rule, that seems very limiting ... for a populated area i dont see why we can do like 20". | Built 11-17: `HQ_CITY_RESIDENTS` `drawn` 20, `drawnLow` 20 (the weak-PC cut of answer 8 is gone with it), `bodies` 26. Found: with 80 residents the most ever within 70 m is 12, so seeing 20 needs more residents, not a higher limit. Who wears a mark was not answered in words: the pick stands until he says otherwise (every NPC you can strike within 25 m). |
+| 2 | The Ghost | Territorial inside the hotel. | As proposed. It never leaves the hotel (built). |
+| 3 | The Pirate's group | No group. | As proposed. |
+| 4 | The mugging | "flat chance per gameday, the other way is too complicated right now". | No health or level test. A flat chance per game day; the number is a PROPOSAL for step 4. The level gap rule (8) still holds. |
+| 5 | A lost quest fight | "yes fights should lose you gold". | Every lost story fight costs gold, quest fights too. |
+| 6 | People passing through | "that is the price for getting in a fight in view of police. Im not too worried about the levels right now, all that stuff is fluid". | Races with an example in 3.1 get that temper now, wherever they walk. Levels are not tuned in this plan. |
+| 7 | The cost of a lost fight | The first way. | 8 gold x the strongest enemy's level, never more than he holds; a retreat costs nothing. Step 4. |
+
+**Round 4 (2026-11-17, in chat):**
+- **The lines:** "these lines are fine for now". The 12 lines of `STEP-1A.md` section 4 are approved for step 1b.
+- **THE EYE IS ON THE PLAYER** ("yes, eyes on player and red ! on npcs", as in Skyrim and the battle): one eye by the player, closed = nobody who
+  would act sees you, open = someone does (Guards, muggers, the Ghost count; harmless people do not). The red `!` stays over the NPC that is coming
+  for you or will step in. This REPLACES "an eye over every NPC" in answer 1 of round 1, in 4.1 and in step 1a's pictures. The mock-up is redone
+  and shown to him before step 2 builds it.
+- **The city:** at least 144 residents (150 built), cops in every district but Southside and on a city-wide beat: `docs/notes/npc-system.md` "THE 144 + THE BEAT".
+- **He cannot see the repo's plan files:** anything that needs his answer or OK is put to him in chat, in full.
+
 How to read the marks:
 
 | Mark | Means |

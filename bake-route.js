@@ -65,6 +65,9 @@ if (!ID) { console.error('bake-route: which route? `node bake-route.js --list` p
 const SRC = SOURCES[ID];
 const specFile = path.join(REPO, 'docs/areas/routes', ID + '.json'), hookFile = path.join(REPO, 'docs/areas/routes', ID + '.js');
 const SPEC = fs.existsSync(specFile) ? JSON.parse(fs.readFileSync(specFile, 'utf8')) : {};
+/* ONE SPEC, SEVERAL ROOMS (2026-11-17, One World 4.3: the Coast Road is 38 plots, two rooms by the room-splitting rule): the spec's `stretches: { '<from>_<to>':
+   { line, ends, places, label, sub, … } }` = the keys for the room `--from <from> --to <to>` writes, laid over the spec's own */
+if (SPEC.stretches && arg('--from') != null) { const st = SPEC.stretches[arg('--from') + '_' + arg('--to')]; if (!st) { console.error('bake-route: the spec has no stretch ' + arg('--from') + '_' + arg('--to')); process.exit(1); } Object.assign(SPEC, st); }
 const HOOK = fs.existsSync(hookFile) ? require(hookFile) : null;
 const LOOK = arg('--look', SPEC.look || SRC.look);
 if (!{ trail: 1, road: 1, highway: 1 }[LOOK]) { console.error('bake-route: look must be trail, road or highway'); process.exit(1); }

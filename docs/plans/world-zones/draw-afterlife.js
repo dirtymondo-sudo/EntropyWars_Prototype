@@ -53,6 +53,7 @@ V.rect(1, 1, 12, 12, 'h', 2.6);                                                 
 { const walk = (x0, y0, x1, y1) => V.rect(x0, y0, x1, y1, 'g', 0);
   walk(2, 2, 11, 3); walk(2, 2, 3, 11); walk(2, 10, 11, 11); walk(10, 4, 11, 11); walk(4, 4, 11, 5); walk(4, 4, 5, 9); walk(4, 8, 9, 9); walk(8, 6, 9, 9);
   walk(6, 6, 9, 7); walk(6, 6, 7, 7); walk(6, 11, 7, 12); walk(6, 10, 7, 11); }                                                    // one way in (south), the heart at 6,6
+V.rect(0, 24, 2, 26, 'd', 0);                                                       // THE WEST GATE (One World, route R4 the Old Road): a gap in the wall, the walk in
 V.rect(4, 23, 7, 26, 'T', 5.25);                                                    // THE CAMPANILE: "the campanile is a stump"
 V.rect(2, 16, 10, 17, 'd', 0); V.rect(5, 13, 6, 23, 'd', 0); V.rect(5, 26, 6, 46, 'd', 0); V.rect(2, 40, 11, 41, 'd', 0);
 /* P · THE PALACE (3 plots, north of the Basilica): the Observatory on its mount, the Archive, the Courtyard with the Terrace + the Pilgrim Stair */
@@ -75,7 +76,10 @@ V.ways = [
     { id: 'crypt', kind: 'door', wall: 'free', sx: 14, sy: 24, face: 90, name: 'down: the Catacombs (the white door behind the altar)' },
     { id: 'well', kind: 'door', wall: 'free', sx: 30, sy: 41, face: 180, name: 'down: the Catacombs (the Cistern, down the rope)' },
     { id: 'link_observatory_stair', kind: 'link', wall: 'free', sx: 17, sy: 4, face: 180, name: 'up: Heaven (the telescope, the Stair in the Sky)' },
-    { id: 'gate', kind: 'gate', wall: 'e', sy: 24, name: 'Disaster City: the Civic Center gate (CLOSED; the city is owner side: a note, no link)' },
+    /* THE ONE WORLD SEAMS (2026-11-17, phase 4.1 the north routes, written here by the 4.4 thread): a door pair with one id at both ends, each
+       written only when its route's room stands. The east gate is OPEN now (was the closed Civic Center gate): the River Road crosses the Tiber */
+    { id: 'ow_v_m6_m4', kind: 'seam', wall: 'e', sy: 24, room: 'site_ow_r1', name: 'The River Road (route R1): the east gate, over the Tiber to the city', label: 'THE RIVER ROAD', sub: 'THE EAST GATE · OVER THE TIBER TO THE CITY' },
+    { id: 'ow_v_m12_m4', kind: 'seam', wall: 'w', sy: 25, room: 'site_ow_r4', name: 'The Old Road (route R4): the west gate, to Camelot and the Woods', label: 'THE OLD ROAD', sub: 'THE WEST GATE · TO CAMELOT AND THE WOODS' },
 ];
 V.plots = [
     [0, 0, 'G', 'The Hedge Maze', 'the hedges "planted as a maze"; where the gardener gets lost', 'Cortile: the hedges (the gardener\'s lines)'],
@@ -102,6 +106,39 @@ V.plots = [
     [3, 3, 'C', 'The Fountain', 'the fountain that "runs on consecrated water"; the gardener', 'Cortile: THE FOUNTAIN'],
     [4, 3, 'S', 'The Colonnade, south-west', 'the south arc of columns', 'Bureau painting'],
     [5, 3, 'S', 'The Colonnade, south-east', 'the south arc of columns', 'Bureau painting'],
+];
+
+/* ════════ THE COLOSSEUM (2026-11-17, One World phase 4.4; the map's district `col`, 3 x 3 plots at world -11..-9 x -9..-7, straight
+   north of the Vatican under Mount Olympus): the arena of the ultimate holy city, drawn as the real one stands: an oval, an arcade round it on
+   the ground, the stands rising in six tiers, a podium wall round the sand, a gate at each end of the long axis (north and south). The Vatican's
+   own wall is its south side; the Pilgrim Stair's gate (the Courtyard's terrace, 1.75 m) is reached by a flight up from the plaza.
+   Its own small grid (36 x 36 squares): `bake-afterlife.js` THE ONE WORLD MOVE stands the Vatican three plots south and lays this grid on the
+   room's columns 1-3, rows 0-2. Names of the plots are mine (marked). ════════ */
+const COL_T = 0.875, O = grid(3, 3, 'c', 0);
+{ const cx = 18, cy = 16, rx = 15.5, ry = 12.5;
+  for (let y = 0; y < 36; y++) for (let x = 0; x < 36; x++) { const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, r = Math.sqrt(dx * dx + dy * dy);
+      if (r > 1) continue;
+      if (r <= 0.48) O.set(x, y, 'a', 0);                                                          // THE ARENA: sand
+      else if (r <= 0.55) O.set(x, y, 'p', 3.5);                                                   // THE PODIUM: the wall round the sand
+      else if (r <= 0.89) O.set(x, y, 'e', COL_T * Math.min(6, 1 + Math.floor((r - 0.55) / 0.057)));   // THE STANDS: six tiers, a short step each
+      else O.set(x, y, 'k', 0); }                                                                  // THE ARCADE: the ring walk under the outer wall
+  [17, 18].forEach(x => { for (let y = 0; y < 36; y++) { const c = O.k[y][x]; if (c === 'p' || c === 'e') O.set(x, y, 'm', 0); } });
+  for (let y = 0; y < 36; y++) for (let x = 0; x < 36; x++) if (O.k[y][x] === 'e') { const d = x < 17 ? 17 - x : x - 18; O.h[y][x] = Math.min(O.h[y][x], COL_T * d); }   // the gates' flanks step up into the stands, a tier a square (the way onto the tiers)   // THE TWO GATES: the Gate of Life (north) + the Gate of Death (south), through the stands to the sand
+  O.rect(0, 0, 36, 1, 'h', 2.6); O.rect(0, 0, 1, 36, 'h', 2.6); O.rect(35, 0, 36, 36, 'h', 2.6);   // the plaza's hedges (the land past them is the map's own)
+  O.rect(17, 0, 19, 1, 'c', 0);                                                                     // the north opening (the Pilgrim Way comes in here)
+  O.stair(29, 31, 31, 36, 'S', 0, 1.75, 's', { model: 'stone', key: 'marble_light' }); }           // THE PILGRIM STAIR, the foot: up to the gate in the Vatican's wall
+O.ways = [{ id: 'link_vatican_olympus', kind: 'link', wall: 'n', sx: 18, name: 'The Mountains: Mount Olympus (the Pilgrim Way, north; the stand-in until route R3 stands)', unless: 'site_ow_r3' },
+    { id: 'ow_h_m10_m9', kind: 'seam', wall: 'n', sx: 18, room: 'site_ow_r3', name: 'The Pilgrim Way (route R3): north up to Mount Olympus', label: 'THE PILGRIM WAY', sub: 'THE COLOSSEUM · NORTH UP TO MOUNT OLYMPUS', desc: 'A worn path leaves the plaza and goes north into the trees, past little shrines.' }];
+O.plots = [
+    [0, 0, 'O', 'The Plaza, north-west (label mine)', 'the plaza and the arcade\'s north-west curve', 'plots.json district col'],
+    [1, 0, 'O', 'The Gate of Life (label mine)', 'the north gate; the Pilgrim Way to Olympus comes in at the plaza\'s north opening', 'plots.json district col'],
+    [2, 0, 'O', 'The Plaza, north-east (label mine)', 'the plaza and the arcade\'s north-east curve', 'plots.json district col'],
+    [0, 1, 'O', 'The Stands, west (label mine)', 'the west stands: six tiers', 'plots.json district col'],
+    [1, 1, 'O', 'The Arena (label mine)', 'LANDMARK: the sand inside the podium wall', 'plots.json district col'],
+    [2, 1, 'O', 'The Stands, east (label mine)', 'the east stands: six tiers', 'plots.json district col'],
+    [0, 2, 'O', 'The Plaza, south-west (label mine)', 'the plaza by the Vatican\'s wall', 'plots.json district col'],
+    [1, 2, 'O', 'The Gate of Death (label mine)', 'the south gate', 'plots.json district col'],
+    [2, 2, 'O', 'The Pilgrim Stair (label mine)', 'the flight up to the gate in the Vatican\'s wall (the Courtyard\'s terrace)', 'plots.json district col'],
 ];
 
 /* ════════ THE CATACOMBS: the dungeon under the Basilica. 3 x 2 plots (126 x 84 m), roofed. ════════ */
@@ -256,7 +293,8 @@ const DISTRICTS = {
     B: ['The Basilica', 'vatican'], S: ['The Square', 'vatican'], P: ['The Palace', 'vatican'], C: ['The Cloister', 'vatican'], G: ['The Gardens', 'vatican'],
     K: ['The Catacombs', 'catacombs'],
     R: ['The Rim', 'hell'], D: ['The Descent', 'hell'], L: ['The Bowl', 'hell'], W: ['The Walkways', 'hell'],
-    T: ['The Stairway', 'heaven'], A: ['The Gate', 'heaven'], F: ['The Cloud Fields', 'heaven'], Y: ['The City', 'heaven'] };
+    T: ['The Stairway', 'heaven'], A: ['The Gate', 'heaven'], F: ['The Cloud Fields', 'heaven'], Y: ['The City', 'heaven'],
+    O: ['The Colosseum', 'vatican'] };   // (O builds AFTER the Vatican's One World move, on the moved room: bake-afterlife.js)
 const LEGEND = {
     vatican: { X: 'the wall (8.75 m; its towers 12.25 m)', c: 'cobbles', m: 'marble', k: 'colonnade / arcade (walked between the columns)', o: 'the obelisk\'s plinth', w: 'a fountain\'s basin', B: 'a building\'s floor (walk-in)', s: 'steps', g: 'lawn', d: 'garden walk', h: 'hedge (2.6 m)', T: 'the Campanile\'s stump', t: 'terrace', q: 'the Cistern\'s shaft' },
     catacombs: { X: 'solid (brick to the roof)', f: 'floor', s: 'steps', w: 'water' },
@@ -279,6 +317,11 @@ ROOMS.forEach(R => { const G = R.G;
     out.rooms.push({ key: R.key, room: R.room, label: R.label, cols: G.cols, rows: G.rows, legend: LEGEND[R.key], plots, cells: G.k.map(r => r.join('')),
         heights: G.h.map(r => r.map(v => Math.round(v * 100)).join(',')), heightsUnit: 'centimetres, one a square, rows north to south',
         stairs: G.stairs, slopes: G.slopes, bridges: G.bridges, climbs: G.climbs, ways: G.ways }); });
+{ const plots = O.plots.map(p => { let s = 0, n = 0; for (let y = p[1] * N; y < p[1] * N + N; y++) for (let x = p[0] * N; x < p[0] * N + N; x++) if ('hp'.indexOf(O.k[y][x]) < 0) { s += O.h[y][x]; n++; }
+      return { id: pid(p[0], p[1]), name: p[3], d: p[2], level: n ? Math.round(s / n / LEVEL) : 0, what: p[4], from: p[5] }; });
+  out.colosseum = { note: 'laid on the Vatican room\'s columns 1-3, rows 0-2 by bake-afterlife.js THE ONE WORLD MOVE', cols: 3, rows: 3, at: [1, 0],
+      legend: { c: 'cobbles (the plaza)', h: 'hedge (2.6 m)', k: 'the arcade (the ring walk)', e: 'the stands (six tiers, 0.875 m a step)', p: 'the podium wall (3.5 m)', a: 'the arena\'s sand', m: 'a gate\'s way through the stands', s: 'steps' },
+      plots, cells: O.k.map(r => r.join('')), heights: O.h.map(r => r.map(v => Math.round(v * 100)).join(',')), stairs: O.stairs, slopes: O.slopes, ways: O.ways }; }
 const json = JSON.stringify(out, null, 1).replace(/\[\n\s+("[^"]*"|-?[\d.]+)(,\n\s+("[^"]*"|-?[\d.]+)){0,3}\n\s+\]/g, m => m.replace(/\n\s+/g, ' '));
 fs.writeFileSync(path.join(__dirname, 'heaven-hell-vatican-layout-2.json'), json + '\n');
 const areaDir = path.join(__dirname, '../../areas/afterlife'); fs.mkdirSync(areaDir, { recursive: true }); fs.writeFileSync(path.join(areaDir, 'layout.json'), json + '\n');
@@ -287,7 +330,7 @@ const areaDir = path.join(__dirname, '../../areas/afterlife'); fs.mkdirSync(area
 const COL = { X: '#8d7b62', c: '#b9b2a2', m: '#ebe6da', k: '#d9cfb6', o: '#c9a74a', w: '#3f7fc4', B: '#7a5236', s: '#f4e9c4', g: '#5f9a4f', d: '#b59a6c', h: '#27603a', T: '#8a6f52', t: '#cfc6b0', q: '#2c2f33',
     f: '#6f6658', R: '#33211d', r: '#7a4030', p: '#8f5236', a: '#8a8580', L: '#f0621e', '.': '#7fb0e6', K: '#f8fbff' };
 const HCOL = { X: '#141012', c: '#d8d2c6', m: '#e9e3d6', s: '#f1e2b0', w: '#3f7fc4', f: '#857a68' };   // the Catacombs / Heaven read differently
-const DCOL = { B: '#e8c66a', S: '#e9e3d6', P: '#c79a5e', C: '#8fb37a', G: '#5f9a4f', K: '#9a8f7c', R: '#a34a34', D: '#c0683e', L: '#f0621e', W: '#d99a3a', T: '#9cc4f0', A: '#f4e9c4', F: '#eaf2ff', Y: '#e8c66a' };
+const DCOL = { B: '#e8c66a', S: '#e9e3d6', P: '#c79a5e', C: '#8fb37a', G: '#5f9a4f', K: '#9a8f7c', R: '#a34a34', D: '#c0683e', L: '#f0621e', W: '#d99a3a', T: '#9cc4f0', A: '#f4e9c4', F: '#eaf2ff', Y: '#e8c66a', O: '#d8b48a' };
 const S = 11, PAD = 30, TOP = 96, o = [], esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const T = (x, y, s, size, fill, w, anchor) => o.push(`<text x="${x}" y="${y}" font-size="${size}" fill="${fill || '#e8e4da'}"${w ? ` font-weight="${w}"` : ''}${anchor ? ` text-anchor="${anchor}"` : ''}>${esc(s)}</text>`);
 let X = PAD; const frames = [];

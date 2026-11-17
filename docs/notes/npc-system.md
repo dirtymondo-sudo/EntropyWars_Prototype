@@ -83,8 +83,23 @@ the game anymore ... we need to fix that first. Go through all races in the game
   grid walks on (`hqCityGrid` blocked every plateau; the skate park's pad `dc:skate:pad` stands at the boardwalk's level).
 - **The Ghost never leaves the hotel:** its two blocks meet now (`[5, 22, S]`, `[22, 5, P]`); the hour between them was spent on the pavement.
   Checked headless: 0 of 1,200 samples of its day outside the building.
+- **THE BODY LIMIT (mondo 11-17, the same day):** `drawn` 8 -> 20, `drawnLow` 4 -> 20 (the same on every machine), `bodies` 14 -> 26. No frame rate could be read in the cloud browser: F3 on the walk on his machine is the check; it is one number to turn down. The most residents ever within 70 m is 12 today, so the street fills only with more residents.
 - **Every race and where it lives:** `docs/plans/npc-encounters/RACE-HOMES.md`, for mondo to mark. 22 races are placed nowhere (20 of them
   the races of 11-16 / 11-17). Nobody else is placed before his marks.
+
+## THE 144 + THE BEAT (2026-11-17, the NPC encounters thread, on mondo's word)
+
+mondo 11-17: "there should be at least 144 residents if there are 144 plots. like minimum"; "a cop works the whole city ... obviously university
+and sports should have some cops too" (none in Southside).
+- **150 residents** (was 80): every district 16 or more (Financial and Entertainment 18, University and Sports 17). 70 new `people` rows' worth at
+  the END of the list, so no older variant changed its shift.
+- **The city's races that stood nowhere have homes:** Banker x 2, Tech CEO, Magician x 2, Influencer x 2, Delivery Boy x 4, Librarian x 2,
+  Referee x 2, Ninja, Super Sentai, Cursed TV (the Pawnshop court). The Ninja's and the Cursed TV's districts and Industrial's mix are guesses.
+- **Cops: 22**, in every district but Southside (Civic 6, Hero Plaza 4, two in each other). **`beat`** on a `people` row (and on the first
+  Police Officer's own row): after its shift the unit patrols those districts (`'CFEUHBSI'`, all but Southside) in place of time out at home,
+  on long legs (`HQ_CITY_RESIDENTS.beatR` 90 m). Headless: a cop stands in 2 to 5 districts over a day.
+- With `drawn` 20 the most people ever within 70 m is 17. No frame rate was read (cloud browser): F3 on his machine.
+- All counts, tiers and work places are PROPOSALS.
 
 ## The short table
 

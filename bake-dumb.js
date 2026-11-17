@@ -187,6 +187,12 @@ run('plan');      // what a district changes on the plan's squares, before anyth
 
 OPEN.forEach(o => { for (let m = -1; m <= 1; m++) for (const t of [o.line - 1, o.line]) { const sx = o.ns ? o.mid + m : t, sy = o.ns ? t : o.mid + m; if (!open(sx, sy)) throw new Error('opening ' + o.a + ' / ' + o.b + ': square ' + sx + ',' + sy + ' is rock'); } });
 
+/* ── THE GANTRY TUNNEL (2026-11-17, One World phase 4.4, the walk U5 from the Sewers' Running Tunnels): the tunnel's east end is dug through the
+   East Gantry's last four squares (rows 62..65, the track on 63) to the room's east wall, where the door pair `ow_v_7_16` joins the Sewers'
+   Gantry Tunnel (bake-sewers.js WSEAM). ── */
+{ const p = plot['P06-05']; for (let y = 62; y <= 65; y++) for (let x = p.sx + 8; x < p.sx + N; x++) if (cell[y][x] === 'x') cell[y][x] = y === 63 ? 'j' : 'o';
+  doors.push({ id: 'ow_v_7_16', way: 'trail', wall: 'e', z: gcz(64), leaf: 'leaf_bulkhead', wide: true, label: 'DISASTER CITY · THE SEWERS', sub: 'THE GANTRY TUNNEL · WEST UNDER THE CITY TO THE RUNNING TUNNELS', action: { room: 'site_prebuilt_downtown_underworld', at: 'ow_v_7_16' }, desc: '' }); }
+
 /* ── THE WAYS OUT (ten, all in the game before the rebuild; plan: layout `ways`). Two bay doors (data.js DOOR_HQ.siteRooms.entry wears them),
    four links (DOOR_HQ.links holds the place; WANT below checks every row), four doors of the White Rooms (their far ends are the Desert's).
    A `free` way stands on a square against the rock: `face` 0 looks south, 90 west, 180 north, 270 east. ── */
@@ -201,6 +207,9 @@ const WAY = {
     dumb_astral: fw('P01-02', 3, 2, 0),                                                                        // the dream screen
     yard: fw('P01-01', 2 + 11, 0, 0), stormdrain: fw('P02-01', 5, 7, 90), hangar: fw('P02-01', 5, 10, 90), vent: fw('P02-01', 4, 11, 180),   // the White Rooms' four (the block's squares 11,0 · 15,7 · 15,10 · 14,11)
 };
+/* THE FREIGHT LINE (2026-11-17, One World phase 4.4; plots.json `under.rides`: "a ride, no plots; opens after the D.U.M.B."): a door pair from the
+   Sewers' Power Station Drain to Level −6 (Sub-Level 7), clearance L6 (the game's highest door gate), `freight_line` at both ends. */
+{ const w = fw('P03-01', 2, 3, 270); doors.push({ id: 'freight_line', wall: 'free', x: w.x, z: w.z, face: w.face, leaf: 'leaf_vault', wide: true, minClearance: 6, label: 'THE FREIGHT LINE', sub: 'THE FREIGHT LINE · TO THE SEWERS\' RADIOACTIVE DRAIN · CLEARANCE L6', action: { room: 'site_prebuilt_downtown_underworld', at: 'freight_line' }, desc: '' }); }
 Object.keys(WAY).forEach(k => { const w = WAY[k]; WAYSPOT[k] = w.wall === 'free' ? { sx: w.sx, sy: w.sy, x: w.x, z: w.z, face: w.face } : { wall: w.wall, at: w.at }; });
 
 run('build');     // rooms, galleries, platforms: what a district raises or lays on its plots
