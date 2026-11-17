@@ -1,0 +1,275 @@
+{
+ "rooms": [
+  "site_prebuilt_heaven_plots"
+ ],
+ "plots": {
+  "The Stair in the Sky": {
+   "props": {
+    "greek_column": 2,
+    "angel_statue": 1,
+    "lectern": 1,
+    "brazier": 2
+   },
+   "features": {
+    "plateau": 9
+   },
+   "doors": {
+    "link_observatory_stair": 1,
+    "link_skycastle_stair": 1
+   },
+   "natives": {
+    "chosen one": 1
+   }
+  },
+  "The First Flight": {
+   "props": {
+    "greek_column": 2,
+    "park_bench": 1
+   },
+   "features": {
+    "ramp": 1,
+    "plateau": 5,
+    "pool:water": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Second Flight": {
+   "props": {
+    "greek_column": 2,
+    "brazier": 1
+   },
+   "features": {
+    "ramp": 2,
+    "plateau": 3
+   },
+   "doors": {},
+   "natives": {
+    "angel": 1
+   }
+  },
+  "The Third Flight": {
+   "props": {
+    "greek_column": 2,
+    "brazier": 2
+   },
+   "features": {
+    "plateau": 7
+   },
+   "doors": {},
+   "natives": {
+    "seraphim": 1
+   }
+  },
+  "The Long Way": {
+   "props": {
+    "angel_statue": 1
+   },
+   "features": {
+    "plateau": 6
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Long Way, north": {
+   "props": {
+    "brazier": 1,
+    "angel_statue": 1
+   },
+   "features": {
+    "plateau": 3
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Gate, east": {
+   "props": {
+    "pearly_gate": 1,
+    "greek_column": 2,
+    "angel_statue": 1,
+    "brazier": 1
+   },
+   "features": {
+    "plateau": 3,
+    "wall": 1,
+    "arch#aft:heaven:bank": 1,
+    "arch#aft:heaven:marble": 1
+   },
+   "doors": {},
+   "natives": {
+    "valkraye": 1
+   }
+  },
+  "The Gate, west": {
+   "props": {
+    "greek_column": 2,
+    "angel_statue": 1,
+    "instrument_harp": 1,
+    "brazier": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 1
+   },
+   "doors": {},
+   "natives": {
+    "angel": 1
+   }
+  },
+  "The Book": {
+   "props": {
+    "lectern": 1,
+    "instrument_harp": 1,
+    "brazier": 1
+   },
+   "features": {
+    "plateau": 4,
+    "wall": 2
+   },
+   "doors": {},
+   "natives": {
+    "seraphim": 1
+   }
+  },
+  "The Top of the Stair": {
+   "props": {
+    "brazier": 1
+   },
+   "features": {
+    "ramp": 1,
+    "plateau": 3,
+    "wall": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Sun": {
+   "props": {
+    "brazier": 2,
+    "instrument_harp": 1,
+    "angel_statue": 1,
+    "park_bench": 1
+   },
+   "features": {
+    "ramp:marble_light": 1,
+    "plateau": 2
+   },
+   "doors": {},
+   "natives": {
+    "angel": 1
+   }
+  },
+  "The Cloud Fields": {
+   "props": {
+    "brazier": 2,
+    "instrument_harp": 1,
+    "angel_statue": 1,
+    "park_bench": 1
+   },
+   "features": {
+    "ramp:marble_light": 1,
+    "plateau": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Terraces": {
+   "props": {
+    "instrument_harp": 1
+   },
+   "features": {
+    "ramp:marble_light": 1,
+    "plateau": 7
+   },
+   "doors": {},
+   "natives": {
+    "seraphim": 1
+   }
+  },
+  "The Cloud Paths": {
+   "props": {
+    "lectern": 1,
+    "greek_column": 2
+   },
+   "features": {
+    "plateau": 10
+   },
+   "doors": {
+    "link_heaven_olympus": 1
+   },
+   "natives": {
+    "valkraye": 1
+   }
+  },
+  "The Towers, west": {
+   "props": {
+    "castle_tower": 6
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "Room 777, west": {
+   "props": {
+    "castle_tower": 2,
+    "instrument_harp": 1,
+    "angel_statue": 1,
+    "brazier": 1,
+    "iron_garden_bench": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "angel": 1
+   }
+  },
+  "Room 777, east": {
+   "props": {
+    "castle_tower": 3,
+    "instrument_harp": 1,
+    "angel_statue": 1,
+    "concierge_podium": 1,
+    "crystal_chandelier": 1,
+    "iron_garden_bench": 1
+   },
+   "features": {
+    "plateau": 1,
+    "texbuilding#aft:room777": 1,
+    "arch#aft:room777:look": 1
+   },
+   "doors": {
+    "bay": 1
+   },
+   "natives": {}
+  },
+  "The Towers, east": {
+   "props": {
+    "castle_tower": 5,
+    "brazier": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "seraphim": 1
+   }
+  },
+  "The Fall, north": {
+   "props": {},
+   "features": {
+    "ramp": 1,
+    "plateau": 3
+   },
+   "doors": {},
+   "natives": {}
+  }
+ },
+ "lines": 8,
+ "totals": {
+  "props": 73,
+  "features": 88,
+  "doors": 4,
+  "natives": 11,
+  "lines": 8,
+  "plots": 19
+ }
+}
