@@ -54,8 +54,7 @@ const ZONES = [
     { hub: 'dumb', layout: 'dumb', rooms: [{ room: 'site_prebuilt_dumb_base', layer: 'under', wx: 1, wy: 33, zx: 0, zy: 0, note: 'UNDER AREA 51', wait: 1 }] },
     { hub: 'deep', layout: 'deep', rooms: [{ room: 'site_prebuilt_atlantis_deep', layer: 'under', wx: 18, wy: 4, zx: 0, zy: 0, note: 'UNDER THE SEA', wait: 1 }] },
     { hub: 'space', layout: 'space', rooms: [
-        { room: 'site_prebuilt_moon_plots', layer: 'off', zx: 0, zy: 0 }, { room: 'site_prebuilt_mars_plots', layer: 'off', zx: 7, zy: 0 },
-        { room: 'site_prebuilt_saturn_plots', layer: 'off', zx: 14, zy: 0 }, { room: 'site_prebuilt_singularity_plots', layer: 'off', zx: 20, zy: 0 }] },
+        { room: 'site_prebuilt_moon_plots', layer: 'off', zx: 0, zy: 0, note: 'THE SOLAR SYSTEM' }] },   // THE SPACESHIP YOU FLY (2026-11-17): the four worlds are one room (bake-space.js)
     { hub: 'astral', layout: 'astral', rooms: [{ room: 'site_prebuilt_lookingglass_realm', layer: 'off', zx: 0, zy: 0 }] },
 ];
 /* ── THE WORLD'S GROUND + SIGHTS (2026-11-17): what every plot of the disc is made of, and the far places a room may see.

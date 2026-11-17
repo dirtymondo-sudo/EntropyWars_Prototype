@@ -5815,12 +5815,13 @@
                 case 'board': {
                     if (h) h.classList.add('helm');
                     _hqSkateSfx('seaBoard', 0.5);
-                    const k = ev.vehicle === 'sub' ? 'sub' : 'boat';
-                    if (!_hqSeaToasted[k]) { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 3600); }
+                    const k = ev.vehicle === 'sub' ? 'sub' : ev.vehicle === 'ship' ? 'ship' : 'boat';
+                    if (!_hqSeaToasted[k]) { _hqSeaToasted[k] = true; _hqToast(k === 'ship' ? '<b>THE SPACESHIP</b><span>W / S THRUST · A / D TURN · SPACE UP · C DOWN · FLY INTO A GOLD BEACON TO LAND</span>' : k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 4200); }
                     _hqFillStrip(_hqProfile());
                     break;
                 }
                 case 'disembark': if (h) h.classList.remove('helm'); _hqSkateSfx('seaBoard', 0.35); _hqFillStrip(_hqProfile()); break;
+                case 'land': _hqToast('<b>LANDED</b><span>' + String(ev.label || '').replace(/[<>&]/g, '') + ' · E AT THE SHIP TAKES OFF AGAIN</span>', 3600); break;   // THE SPACESHIP (2026-11-17)
                 case 'under': break;
                 case 'throttle': break;
             }

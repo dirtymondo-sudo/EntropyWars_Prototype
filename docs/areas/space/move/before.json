@@ -1,0 +1,699 @@
+{
+ "rooms": [
+  "site_prebuilt_moon_plots",
+  "site_prebuilt_mars_plots",
+  "site_prebuilt_saturn_plots",
+  "site_prebuilt_singularity_plots"
+ ],
+ "plots": {
+  "The Lander": {
+   "props": {
+    "lunar_lander_full": 1,
+    "flood_mast": 1,
+    "radio_console": 1,
+    "psx_supply_crate_1": 1,
+    "cable_drum": 1,
+    "psx_supply_crate_1_4": 1,
+    "cardboard_boxes": 1,
+    "traffic_cone": 1,
+    "asteroid_b": 1,
+    "cave_stone": 1,
+    "psx_supply_crate_1_2": 1,
+    "psx_metal_barrel_mp_3": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "grey": 1,
+    "barbarella": 1
+   }
+  },
+  "The Standing Door": {
+   "props": {
+    "studio_camera": 1,
+    "signpost": 1,
+    "asteroid_a": 2,
+    "cave_stone": 4,
+    "flood_mast": 1,
+    "traffic_cone": 1,
+    "telescope": 1
+   },
+   "features": {
+    "arch#spc:moon:flag:look": 1
+   },
+   "doors": {
+    "bay": 1
+   },
+   "natives": {
+    "men in black": 1
+   }
+  },
+  "The Tracks": {
+   "props": {
+    "mars_rover": 2,
+    "satellite": 1,
+    "asteroid_a": 1,
+    "cave_stone": 4,
+    "psx_supply_crate_1_3": 1,
+    "traffic_cone": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "droid": 1
+   }
+  },
+  "The Habitat": {
+   "props": {
+    "generator": 1,
+    "cable_drum": 2,
+    "flood_mast": 2,
+    "signpost": 1,
+    "ind_container": 1,
+    "psx_supply_crate_1": 2,
+    "psx_supply_crate_1_2": 2,
+    "psx_metal_barrel_mp_1": 2,
+    "psx_metal_barrel_mp_2": 1,
+    "traffic_cone": 3,
+    "cot": 6,
+    "psx_supply_crate_1_4": 1,
+    "psx_supply_crate_1_3": 1,
+    "retro_radio": 1,
+    "steel_table": 2,
+    "folding_chair": 5,
+    "coffee_mug": 1,
+    "mini_fridge": 1,
+    "retro_console": 1,
+    "radio_console": 1,
+    "crt_terminal": 1,
+    "meshy_molten_cryo_tube": 2,
+    "iso_tank": 1,
+    "meteorite_plinth": 1,
+    "bare_bulb": 1,
+    "psx_ceiling_lamp_1_on": 3
+   },
+   "features": {
+    "texbuilding#spc:moon:habitat": 1,
+    "arch#spc:moon:habitat:look": 1,
+    "arch#spc:moon:solar1:look": 1,
+    "arch#spc:moon:solar2:look": 1,
+    "arch#spc:moon:solar3:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "men in black": 1,
+    "grey": 1
+   }
+  },
+  "The Dish": {
+   "props": {
+    "dish_big": 1,
+    "radio_console": 1,
+    "retro_console": 1,
+    "flood_mast": 1,
+    "traffic_barrel": 1,
+    "psx_supply_crate_1_3": 1,
+    "ind_container": 1,
+    "psx_supply_crate_1": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Mare, west": {
+   "props": {
+    "asteroid_b": 1,
+    "asteroid_a": 1,
+    "cave_stone": 3,
+    "rocket_engine": 1,
+    "hullplate": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Mare, east": {
+   "props": {
+    "asteroid_b": 1,
+    "cave_stone": 1,
+    "escapepod": 1,
+    "astronaut": 1,
+    "psx_supply_crate_1_empty": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Rim, west": {
+   "props": {
+    "flood_mast": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Terrace": {
+   "props": {
+    "flood_mast": 1,
+    "lesson_sign": 1,
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {
+    "link_moon_derelict": 1
+   },
+   "natives": {}
+  },
+  "The Antenna Platform": {
+   "props": {
+    "dish": 1,
+    "retro_console": 1,
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Overlook": {
+   "props": {
+    "brass_telescope": 1,
+    "signpost": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Crater, west": {
+   "props": {
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Crater, east": {
+   "props": {
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Crater, south": {
+   "props": {
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "mantid": 1
+   }
+  },
+  "The Crater, south-west": {
+   "props": {
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Crater": {
+   "props": {
+    "warning_tape": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "voidweaver": 1
+   }
+  },
+  "The Saucer": {
+   "props": {
+    "saucer_lg": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Dig": {
+   "props": {
+    "flood_mast": 2,
+    "warning_tape": 2,
+    "ind_container": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Sound Stage": {
+   "props": {
+    "lunar_lander": 1,
+    "studio_light": 2,
+    "film_camera": 1,
+    "directors_chair": 1,
+    "generator": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "men in black": 1
+   }
+  },
+  "The Bore": {
+   "props": {
+    "signpost": 1
+   },
+   "features": {},
+   "doors": {
+    "link_cydonia_mare": 1
+   },
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Pyramid, stair": {
+   "props": {
+    "brass_telescope": 1,
+    "signpost": 1,
+    "obelisk": 1,
+    "cave_stone": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Arch": {
+   "props": {
+    "signpost": 1,
+    "cave_stone": 1,
+    "telescope": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Face, chin": {
+   "props": {
+    "flood_mast": 1,
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "martian": 1
+   }
+  },
+  "The Face, east cheek": {
+   "props": {
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Pyramid, west": {
+   "props": {
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Canyon, west": {
+   "props": {
+    "cave_stone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Canyon": {
+   "props": {
+    "cave_stone": 1,
+    "crystal_cluster": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Canyon under the Arch": {
+   "props": {
+    "cave_stone": 1,
+    "crystal_cluster": 1,
+    "campfire": 1,
+    "cot": 1,
+    "sea_chest": 1
+   },
+   "features": {
+    "bridge": 1
+   },
+   "doors": {},
+   "natives": {
+    "droid": 1
+   }
+  },
+  "The Canals": {
+   "props": {
+    "cave_stone": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "martian": 1
+   }
+  },
+  "The Canyon Mouth": {
+   "props": {
+    "cave_stone": 1,
+    "crystal_cluster": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Rover Bay": {
+   "props": {
+    "mars_rover": 1,
+    "steel_table": 1,
+    "crt_terminal": 1,
+    "iso_tank": 1,
+    "flood_mast": 2,
+    "cardboard_boxes": 1,
+    "traffic_barrel": 1
+   },
+   "features": {
+    "texbuilding#spc:mars:roverbay": 1,
+    "arch#spc:mars:roverbay:look": 1
+   },
+   "doors": {
+    "link_mars_derelict": 1
+   },
+   "natives": {}
+  },
+  "The Dunes, east": {
+   "props": {
+    "decor_tripod_machine": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Airlock": {
+   "props": {
+    "signpost": 2,
+    "campfire": 1,
+    "cot": 1,
+    "folding_chair": 1,
+    "flood_mast": 1,
+    "escapepod": 1
+   },
+   "features": {},
+   "doors": {
+    "bay": 2
+   },
+   "natives": {
+    "martian": 1
+   }
+  },
+  "The Pyramid, east foot": {
+   "props": {},
+   "features": {
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Face, mouth": {
+   "props": {},
+   "features": {},
+   "doors": {
+    "link_cydonia_mare": 1
+   },
+   "natives": {}
+  },
+  "The Camp": {
+   "props": {
+    "camping_tent": 2,
+    "campfire": 2,
+    "cot": 2,
+    "sea_chest": 2,
+    "steel_table": 2,
+    "crt_terminal": 2,
+    "signpost": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "grey": 1,
+    "watcher": 1
+   }
+  },
+  "The Eye, north-west": {
+   "props": {
+    "crystal_cluster": 1,
+    "telescope": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Eye, north-east": {
+   "props": {
+    "crystal_cluster": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Eye, south-west": {
+   "props": {
+    "crystal_cluster": 1,
+    "warning_tape": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Eye, south-east": {
+   "props": {
+    "crystal_cluster": 2,
+    "warning_tape": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "black goo": 1
+   }
+  },
+  "The Plateau": {
+   "props": {
+    "flood_mast": 1,
+    "star_projector": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Rim Walk": {
+   "props": {
+    "flood_mast": 1,
+    "signpost": 1
+   },
+   "features": {},
+   "doors": {
+    "link_saturn_singularity": 1
+   },
+   "natives": {
+    "watcher": 1
+   }
+  },
+  "The Docking Shelf": {
+   "props": {
+    "flood_mast": 2,
+    "signpost": 1,
+    "dish": 1,
+    "asteroid_a": 1,
+    "lunar_lander": 1,
+    "iso_tank": 1
+   },
+   "features": {},
+   "doors": {
+    "link_derelict_saturn": 1
+   },
+   "natives": {
+    "android": 1
+   }
+  },
+  "The Ring Plane": {
+   "props": {
+    "asteroid_a": 1,
+    "asteroid_b": 1,
+    "crystal_cluster": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Ring Shard": {
+   "props": {
+    "crystal_cluster": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "Zero Volume, south-east": {
+   "props": {
+    "floating_orb": 1,
+    "crystal_cluster": 2,
+    "warning_tape": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "cosmic wraith": 1
+   }
+  },
+  "Zero Volume, north-west": {
+   "props": {
+    "crystal_cluster": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "shadow entity": 1
+   }
+  },
+  "The Drop": {
+   "props": {
+    "crystal_cluster": 2,
+    "warning_tape": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "Zero Volume": {
+   "props": {
+    "crystal_cluster": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Screen": {
+   "props": {
+    "star_projector": 1
+   },
+   "features": {},
+   "doors": {
+    "link_observatorium_singularity": 1
+   },
+   "natives": {}
+  },
+  "The Accretion Rim, north": {
+   "props": {
+    "telescope": 1,
+    "crystal_cluster": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "occulus": 1
+   }
+  },
+  "The Accretion Rim, south": {
+   "props": {
+    "brass_telescope": 1,
+    "flood_mast": 1,
+    "signpost": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Accretion Rim, west": {
+   "props": {
+    "asteroid_a": 1,
+    "crystal_cluster": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Accretion Rim, south-west": {
+   "props": {
+    "asteroid_b": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "cosmic wraith": 1
+   }
+  },
+  "The Accretion Rim, south-east": {
+   "props": {
+    "asteroid_a": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Standing Frame": {
+   "props": {
+    "flood_mast": 1,
+    "crystal_cluster": 1
+   },
+   "features": {},
+   "doors": {
+    "bay": 1
+   },
+   "natives": {}
+  },
+  "The Frame": {
+   "props": {
+    "flood_mast": 1
+   },
+   "features": {},
+   "doors": {
+    "link_saturn_singularity": 1
+   },
+   "natives": {}
+  },
+  "The Accretion Rim, north-west": {
+   "props": {
+    "crystal_cluster": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Accretion Rim, east": {
+   "props": {
+    "crystal_cluster": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  }
+ },
+ "lines": 4,
+ "totals": {
+  "props": 233,
+  "features": 10,
+  "doors": 12,
+  "natives": 28,
+  "lines": 4,
+  "plots": 59
+ }
+}

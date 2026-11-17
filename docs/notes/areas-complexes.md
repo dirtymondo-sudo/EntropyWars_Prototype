@@ -11652,3 +11652,41 @@ WORLD MOVE (after the home room is built and checked, as before) writes FIVE roo
 - **NOT DONE (phase 4.4)**: U12 (from the Holding Cells) meets the Tunnel-Way Tunnel's north side, seam `ow_h_m7_2`; U13 (the Bone Passage) ends at
   -4,9, a rock cell of the Cavern room's box, beside Hollow Earth's Sunken Garden (-4,10). The Bone Passage, the Outfall and the Freight Line are 4.4's.
   Rule 5 numbers of the tunnel rooms were not probed for frame rate (small, closed); the Cavern room is the 11-16 room minus Agartha.
+
+## OUTER SPACE, THE SOLAR SYSTEM — the Spaceship you fly (2026-11-17, owner, the One World OUTER SPACE thread, BUILD_PLAN phase 3 wave B)
+mondo 11-17: "the plan was to be able to fly to these planets in outer space"; "pressing a button and walking out of the ship is not
+flying"; his OK ("okay") on the flying plan `/mnt/project-files/space-one-world/outer_space_flying_plan.png`; and his rule from the
+Astral thread: "Connected/bigger rooms is better. If the room is smaller than disaster city than dont even ask, just make it one room".
+- **ONE ROOM.** `site_prebuilt_moon_plots` is now the whole solar system, 12 x 12 plots (504 m, Disaster City's size). `bake-space.js`
+  builds the four worlds exactly as before (district files untouched) and stands each as one block of its own plots: the Moon at plots
+  0,0, Mars 7,0, Saturn 0,8, the Singularity 8,8. LOW ORBIT is one new plot at 5,6 (a rock rim, a metal pad, the ship's berth). Every
+  other square is THE VOID (`terrain.void`, height -60, `sharp: true` = the field stops at the void's edge, no slope hung off a world).
+  `terrain.outer: false` and no room sides / bottom (`_hqBuildRoomSides` skips a room with `space`): you look down past the worlds at
+  the stars, the Earth and the Sun.
+- **`room.space`** (written by the bake; three-renderer.js `_hqBuildSpace` draws it): `planets` (a ball under each world, its top 3 m
+  under the world's lowest ground, its sheet and the baked sunlight in its vertices; Saturn's ring, the Singularity's hot rim, the Earth
+  with its land and air), `mesas` (the rock flank under each world's edge down into its ball; Low Orbit's tapers to a point), `sun`,
+  `beacons` (one gold ring + name over each district's landing, the 10 collar spots of draw-space.js LANDINGS + Low Orbit), `berth`,
+  `launch` (where the Bridge's stick lands you), `ceil` (the ship's ceiling).
+- **THE SHIP.** Catalogue `spaceship_fly` (the Meshy spaceship GLB, `vehicle: 'ship'`) stands at the berth. three-renderer.js THE
+  SPACESHIP: E boards it (or the stick on the Bridge, link `ship_stick`, lands you at the berth and aboard), W / S thrust (it keeps its
+  way and eases off), A / D turn (it banks), SPACE / C up / down (it pitches); its limits are the room's box, `space.ceil`, the ground
+  under it, rock, blocking props, and the planet balls. Fly into a beacon's ring (within 9 m across, under 26 m over its ground) and it
+  sets down on that district's pad and you step off by the district's collar door; E at the ship takes off again. E aboard over ground
+  steps off anywhere. HQ_SEA_DEFAULT `ship` holds the numbers. A model vehicle is never batched, chunked or merged (`_ew_pd`,
+  `_ew_pcNo`), so it draws wherever it flies. Viewer-local like every vehicle: nothing on `state`, nothing relayed (RULE #2).
+- **THE NAV CONSOLE stays** as the shortcut: the collar lists 12 landings, each labelled with its world (`landing` on the link, e.g.
+  'MARS · CYDONIA'); 7 new collar links (`mare_derelict`, `farside_derelict`, `cydonia_derelict`, `canyon_derelict`, `hexagon_derelict`,
+  `rim_derelict`, `drop_derelict`) + `orbit_derelict` (Low Orbit).
+- **Retired** (DOOR_HQ.retired -> `site_prebuilt_moon_plots`): `site_prebuilt_mars_plots`, `…_saturn_plots`, `…_singularity_plots`
+  (and the older `…_mars_cydonia`, `…_saturn_hexagon`, `…_singularity_horizon` now point here). The two links between worlds
+  (`cydonia_mare`, `saturn_singularity`) would join a room to itself, so they are the room's own door pairs now: THE BORE
+  (`bore_face` / `bore_farside`) and THE FRAME (`frame_rim` / `frame_singularity`). The bays are `bay` (Moon), `bay_mars`,
+  `bay_saturn`, `bay_singularity` (siteRooms.entry of each old site points at them).
+- **Count:** `docs/areas/space/move/before.json` (the four old rooms) and `after.txt`: props 233 -> 234 (+ the ship), natives 28 = 28,
+  features 10 = 10, plots 59 -> 60 (+ Low Orbit); the only MISSING lines are those renamed door ids.
+- **Map:** bake-map.js has one space row now (`room.world` note 'THE SOLAR SYSTEM'); `Assets/ui/map/site_prebuilt_moon_plots.png`.
+- **Probe:** `ThreeRenderer.hq.dev.ship({x, y, z, yaw, v, camYaw, dist, pitch, keys})` moves the flown ship; `hq.vehicles()` /
+  `hq.board(id)`; `hq.dev.hqScene()` = the walk's scene.
+- **From Antarctica:** the Collar still opens on the ship's airlock; walk to the Bridge, take the stick, and you are aboard in Low Orbit.
+- **Later (not built, mondo's plan):** floating outside the ship, fights in space, asteroids to dodge.

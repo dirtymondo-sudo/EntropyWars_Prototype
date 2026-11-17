@@ -72778,6 +72778,7 @@ const ThreeRenderer = (function () {
            · 3 a float flight's run over THE GROUND UNDER (GHa, from data.js info.GD: drawn on the ground under it, no hole under the stair) */
         var underFloat = function (mx, mz) {
             if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return 2;   // THE VOID: no ground drawn between the islands
+            if (info.void && info.void.sharp) { var hr = res * 0.5; if (hqTerrainVoidAt(info, mx - hr, mz - hr) || hqTerrainVoidAt(info, mx + hr, mz - hr) || hqTerrainVoidAt(info, mx - hr, mz + hr) || hqTerrainVoidAt(info, mx + hr, mz + hr)) return 2; }   // THE SOLAR SYSTEM (2026-11-17): a quad with a corner over the void goes (no sheet hung from a world's edge)
             var ring = 0;
             for (var fi = 0; fi < floats.length; fi++) {
                 var f = floats[fi];
@@ -72906,7 +72907,7 @@ const ThreeRenderer = (function () {
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
         else if (S.open && room.terrain.outer !== false && !_hqEdgeLandOn(room) && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
         else if (S.open && room.terrain.outer !== false && !_hqEdgeLandOn(room)) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
-        else if (S.open) { try { _hqBuildRoomSides(room, info, G, TM); } catch (e) { console.warn('[HQ] the room\'s sides failed', e); } }   // JUST THE ROOM (2026-10-28)
+        else if (S.open && !room.space) { try { _hqBuildRoomSides(room, info, G, TM); } catch (e) { console.warn('[HQ] the room\'s sides failed', e); } }   // JUST THE ROOM (2026-10-28)
         if (_hqSliceDue()) yield;
         /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
         var fluidMats = {}, fluidKeys = [];
@@ -72985,6 +72986,7 @@ const ThreeRenderer = (function () {
         if (info.floats && info.floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, info.floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
         if (info.builts && info.builts.length) { try { _hqBuildBuiltStairs(room, info, G, TM); } catch (e) { console.warn('[HQ] the built stairs failed', e); } }
         if (info.void && !info.void.holesOnly) { try { _hqBuildVoidGlow(room, info, G); } catch (e) { console.warn('[HQ] the void glow failed', e); } }
+        if (room.space) { try { _hqBuildSpace(room, G); } catch (e) { console.warn('[HQ] the solar system failed', e); } }   // THE SPACESHIP (2026-11-17): the balls, the Sun, the beacons
         if (info.holes) { try { _hqBuildHoles(room, info, G, TM); } catch (e) { console.warn('[HQ] the gaps failed', e); } }   // THE GAPS (2026-10-28)
         if (_hqSliceDue()) yield;
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
@@ -81236,6 +81238,7 @@ const ThreeRenderer = (function () {
             }
             G.add(grp);
             if (p.pd) { grp._ew_pd = true; grp._ew_noInstance = true; } _hq.props.push({ key: p.key, grp: grp, row: p });
+            if (cat.vehicle) { grp._ew_noInstance = true; grp._ew_noBatch = true; grp._ew_pd = true; grp._ew_pcNo = true; try { _hqVehicleRegister(p, cat, grp, y); } catch (e) { console.warn('[HQ] vehicle', e); } }   // THE SPACESHIP (2026-11-17): a model vehicle (the flown ship) boards like the proc ones; it moves, so never batched
             try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
         };
         var rows = (room.props || []).concat(_hq.terrainScatter || []);
@@ -86676,15 +86679,17 @@ const ThreeRenderer = (function () {
         exitDepth: 0.95,
         boat: { v: 8.5, rev: 2.0, accel: 1.4, drag: 0.6, turn: 1.15, turnMin: 0.35, draft: 0.55, bob: 0.08, boardReach: 3.6, seat: { x: 0, y: 0.5, z: -0.5 }, camDist: 7.0, len: 4.6, beam: 1.7 },
         sub:  { v: 6.0, rev: 2.5, accel: 1.2, drag: 0.8, turn: 0.95, turnMin: 0.5, vertV: 2.4, r: 1.6, boardReach: 4.0, seat: { x: 0, y: 0.55, z: 0.2 }, camDist: 8.5, len: 6.2 },
+        /* THE SPACESHIP YOU FLY (2026-11-17, Outer Space's solar system): no water; the room's box, its ground and the planet balls are the hull's limits */
+        ship: { v: 34, rev: 8, accel: 0.7, drag: 0.5, turn: 1.25, turnMin: 0.55, vertV: 14, r: 2.2, boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 18, len: 8.0, beam: 4.0, land: 9, landH: 26 },
         keys: { dive: 'c', rise: 'space', board: 'e' },
-        labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE' },
+        labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP' },
     };
     function _hqSeaRules() {
         var DEF = (typeof HQ_SEA_DEFAULT !== 'undefined') ? HQ_SEA_DEFAULT : { boat: {}, sub: {} };   // a sandbox may eval this alone
         var R = (typeof HQ_SEA_RULES !== 'undefined') ? HQ_SEA_RULES : ((typeof window !== 'undefined' && window.HQ_SEA_RULES) || null);
         if (!R) return DEF;
         var o = Object.assign({}, DEF, R);
-        o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {});
+        o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {}); o.ship = Object.assign({}, DEF.ship || {}, R.ship || {});
         o.labels = Object.assign({}, DEF.labels || {}, R.labels || {});
         return o;
     }
@@ -86837,8 +86842,8 @@ const ThreeRenderer = (function () {
         if (!_hq) return;
         _hq.boats = _hq.boats || [];
         var U = _hqUnits(), R = _hqSeaRules(), kind = cat.vehicle;
-        _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: y, yaw: grp.rotation.y,
-                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
+        _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
+                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'ship' ? 'TAKE THE STICK · W / S THRUST · A / D TURN · SPACE UP · C DOWN · FLY INTO A GOLD BEACON TO LAND' : kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
     }
     function _hqVehicleFind(id) { var B = (_hq && _hq.boats) || []; for (var i = 0; i < B.length; i++) if (B[i].id === id) return B[i]; return null; }
     /* E on a moored vehicle: aboard. E aboard: off. */
@@ -86884,6 +86889,7 @@ const ThreeRenderer = (function () {
     /* the hull's probes clear? the skiff: water deeper than its draft; the sub: the column round it */
     function _hqHullFree(V, R, x, z, y) {
         var H = _hq, S = H.room.shell, ti = H.terrain, sea = _hqSea();
+        if (V.kind === 'ship') return _hqShipHullFree(V, R, x, z, y);
         if (!ti || !sea) return false;
         var L = (R.len || 4.6) / 2, B = (R.beam || 1.7) / 2, fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = Math.cos(V.yaw), rz = -Math.sin(V.yaw);
         var probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
@@ -86927,6 +86933,7 @@ const ThreeRenderer = (function () {
         if (Math.abs(V.v) < 0.03 && !thr) V.v = 0;
         var rate = R.turn * ((R.turnMin != null ? R.turnMin : 0.35) + (1 - (R.turnMin != null ? R.turnMin : 0.35)) * Math.min(1, Math.abs(V.v) / R.v));
         if (V.kind === 'sub') rate = R.turn;
+        if (V.kind === 'ship') { _hqTickShip(dt, V, R, thr, turn, vert); return; }
         var dl = -turn * rate * dt * (V.v < -0.2 ? -1 : 1);
         if (dl) { V.yaw += dl; H.cam.yaw -= dl; }
         var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw);
@@ -86986,6 +86993,185 @@ const ThreeRenderer = (function () {
             return;
         }
         H.seaWayLatch = null;
+    }
+    /* ══ THE SPACESHIP (2026-11-17, Outer Space's solar system; mondo: "the plan was to be able to fly to these planets in outer space",
+       his OK on the flying plan) ════════════════════════════════════════════════════════════════════════════════════════════════
+       A catalogue prop with `vehicle: 'ship'` (spaceship_fly) in a room with `room.space` is flown by hand: W / S thrust (it keeps its
+       way: space has no drag worth the name, it eases off slowly), A / D turn, SPACE / C up / down, the hull banks into a turn and pitches
+       with a climb. Its limits: the room's box and `space.ceil`, the ground under it (a world's plots), the rock, the props that block,
+       and the planet balls (`space.planets`, never flown into). A GOLD BEACON (`space.beacons`, one over each district's landing) sets the
+       ship down: fly into its ring (within `ship.land` m across, under `ship.landH` m over its ground) and the ship settles on the pad and
+       you step off. E aboard (anywhere over ground) steps off too; E by the moored ship boards it. The Bridge's stick lands you at the berth
+       and aboard (`space.launch`, _hqSpaceArrive). Viewer-local like every vehicle: nothing on `state`, nothing relayed (RULE #2). */
+    function _hqSpace() { return (_hq && _hq.room && _hq.room.space) || null; }
+    function _hqShipHullFree(V, R, x, z, y) {
+        var H = _hq, S = H.room.shell, sp = _hqSpace() || {}, ti = H.terrain; if (!ti) return false;
+        var L = (R.len || 8) / 2, B = (R.beam || 4) / 2, fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = Math.cos(V.yaw), rz = -Math.sin(V.yaw);
+        if (y > (sp.ceil || 120)) return false;
+        var P = sp.planets || [];
+        for (var q = 0; q < P.length; q++) { var pq = P[q]; if (Math.hypot(x - pq.x, y - pq.y, z - pq.z) < pq.r + (R.r || 2.2) + 1) return false; }
+        if (sp.sun && Math.hypot(x - sp.sun.x, y - sp.sun.y, z - sp.sun.z) < sp.sun.r * 1.3) return false;
+        var probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
+        for (var i = 0; i < probes.length; i++) {
+            var px = x + fx * probes[i][0] + rx * probes[i][1], pz = z + fz * probes[i][0] + rz * probes[i][1];
+            if (Math.abs(px) > S.w / 2 - 1 || Math.abs(pz) > S.d / 2 - 1) return false;
+            var g = hqTerrainHeight(ti, px, pz), yb = y - (R.r || 2.2);
+            if (!(ti.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(ti, px, pz))) {
+                if (yb < g + 0.3) return false;
+                var w = hqTerrainWallAt(ti, px, pz, 0.3); if (w && yb < w.top) return false;
+                if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, px, pz, 0) && yb < hqTerrainSolidTop(ti, px, pz)) return false;
+                if (Math.hypot(px - (V.rec.x0 || 0), pz - (V.rec.z0 || 0)) > (R.len || 8) && !_hqAirClearOfBlockers(px, pz, yb)) return false;   // its own berth's block never holds it
+            }
+        }
+        return true;
+    }
+    function _hqTickShip(dt, V, R, thr, turn, vert) {
+        var H = _hq, pl = H.player, U = _hqUnits(), sp = _hqSpace() || {};
+        var target = thr > 0 ? R.v : (thr < 0 ? -R.rev : 0);
+        V.v += (target - V.v) * (1 - Math.exp(-dt * (thr ? R.accel : R.drag)));
+        if (Math.abs(V.v) < 0.05 && !thr) V.v = 0;
+        var rate = R.turn * (R.turnMin + (1 - R.turnMin) * Math.min(1, Math.abs(V.v) / R.v));
+        var dl = -turn * rate * dt * (V.v < -0.2 ? -1 : 1);
+        if (dl) { V.yaw += dl; H.cam.yaw -= dl; }
+        var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), nx = V.x + fx * V.v * dt, nz = V.z + fz * V.v * dt;
+        var vt = vert * (R.vertV || 14);
+        V.vy += (vt - V.vy) * (1 - Math.exp(-dt * 2.4));
+        var ny = V.y + V.vy * dt;
+        if (_hqShipHullFree(V, R, V.x, V.z, ny)) V.y = ny; else V.vy = 0;
+        if (_hqShipHullFree(V, R, nx, nz, V.y)) { V.x = nx; V.z = nz; }
+        else if (_hqShipHullFree(V, R, nx, V.z, V.y)) { V.x = nx; V.v *= 0.6; }
+        else if (_hqShipHullFree(V, R, V.x, nz, V.y)) { V.z = nz; V.v *= 0.6; }
+        else V.v *= 0.2;
+        V.pitch += ((-V.vy / (R.vertV || 14)) * 0.25 - V.pitch) * Math.min(1, dt * 3);
+        V.roll += ((-turn * 0.35 * Math.min(1, Math.abs(V.v) / R.v)) - V.roll) * Math.min(1, dt * 3);
+        var grp = V.rec.grp;
+        grp.position.set(V.x * U, V.y * U, V.z * U);
+        if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ';
+        grp.rotation.set(V.pitch, V.yaw, V.roll);
+        var st = R.seat || { x: 0, y: 1.6, z: 0 }, cY = Math.cos(V.yaw), sY = Math.sin(V.yaw);
+        pl.x = V.x + st.x * cY + st.z * sY; pl.z = V.z - st.x * sY + st.z * cY; pl.y = V.y + st.y;
+        pl.visY = pl.y; pl.yaw = pl.targetYaw = V.yaw; pl.moving = false; pl.running = false; pl.air = false; pl.vy = 0;
+        pl.velX = fx * V.v; pl.velZ = fz * V.v; pl.velY = V.vy;
+        if (pl.entry && pl.entry.group) { pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U); pl.entry.group.visible = false; }   // the pilot sits inside the hull
+        if ((thr !== 0) !== !!V.thr) { V.thr = thr !== 0; _hqSeaEmit({ kind: 'throttle', on: V.thr, vehicle: 'ship' }); }
+        /* THE BEACONS: fly into one and the ship sets down on its pad */
+        var BC = sp.beacons || [];
+        if (V.skipBeacon === undefined) {   // the beacon it took off from is not a landing until the ship has left it
+            V.skipBeacon = null;
+            for (var j = 0; j < BC.length; j++) if (Math.hypot(V.x - BC[j].x, V.z - BC[j].z) < (R.land || 9) * 1.6) V.skipBeacon = BC[j].id;
+        }
+        for (var i = 0; i < BC.length; i++) {
+            var b = BC[i], d = Math.hypot(V.x - b.x, V.z - b.z);
+            if (b.id === V.skipBeacon) { if (d > (R.land || 9) * 1.6) V.skipBeacon = null; continue; }
+            if (d > (R.land || 9) || V.y > (b.ground || 0) + (R.landH || 26)) continue;
+            _hqShipLand(b); return;
+        }
+    }
+    function _hqShipLand(b) {
+        var H = _hq, V = H.vehicle; if (!V || !V.on) return;
+        var pad = b.pad || b;
+        V.x = pad.x; V.z = pad.z; V.y = (b.ground || 0) + 1.2; V.v = 0; V.vy = 0; V.pitch = 0; V.roll = 0;
+        if (pad.yaw != null) { var dy = pad.yaw - V.yaw; V.yaw = pad.yaw; H.cam.yaw -= dy; }
+        var U = _hqUnits(), grp = V.rec.grp; grp.position.set(V.x * U, V.y * U, V.z * U); grp.rotation.set(0, V.yaw, 0);
+        if (H.player && H.player.entry && H.player.entry.group) H.player.entry.group.visible = true;
+        _hqDisembark();
+        _hqSeaEmit({ kind: 'land', vehicle: 'ship', label: b.label });
+    }
+    /* the stick: arriving at the berth from the Bridge, you are aboard (once a visit) */
+    function _hqSpaceArrive() {
+        var H = _hq, sp = _hqSpace(); if (!H || !sp || !sp.launch || H._spaceArrived || !H.player) return;
+        H._spaceArrived = true;
+        if (Math.hypot(H.player.x - sp.launch.x, H.player.z - sp.launch.z) > 4) return;
+        var B = H.boats || [], best = null;
+        for (var i = 0; i < B.length; i++) if (B[i].kind === 'ship' && (!best || Math.hypot(B[i].x - H.player.x, B[i].z - H.player.z) < Math.hypot(best.x - H.player.x, best.z - H.player.z))) best = B[i];
+        if (best) { _hqBoard(best.id); if (H.vehicle) { H.vehicle.y += 6; H.vehicle.vy = 4; } }
+    }
+    /* THE SOLAR SYSTEM'S LOOK: a ball under each world (its own sheet, a ring round Saturn, a hot rim round the Singularity), the Earth
+       under the berth, the Sun far below in the middle, a gold ring + a name over each beacon (they turn slowly; a ticker) */
+    function _hqBuildSpace(room, G) {
+        var sp = room.space; if (!sp) return;
+        var U = _hqUnits(), H = _hq;
+        /* a shared sheet repeats by the geometry's own UVs (a clone of a sheet still loading draws blank on r128) */
+        /* the room's own copy of a sheet: the shared one is re-tiled by the field (THE ONE PIXEL DENSITY), and a plain clone of a
+           sheet still loading stays blank on r128, so the copy takes the picture once it has landed */
+        var own = function (key) {
+            var src = _hzTex(key); if (!src) return null;
+            var t = new THREE.Texture(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = src.anisotropy || 1;
+            if (src.encoding != null) t.encoding = src.encoding; if (src.colorSpace) t.colorSpace = src.colorSpace;
+            var done = false, sync = function () { if (done) return; var im = src.image; if (im && (im.width || im.naturalWidth)) { t.image = im; t.needsUpdate = true; done = true; } };
+            sync(); if (!done && H && H.tickers) H.tickers.push(sync);
+            return t;
+        };
+        var uvTile = function (geo, ru, rv) { var a = geo.attributes.uv; for (var q = 0; q < a.count; q++) a.setXY(q, a.getX(q) * ru, a.getY(q) * rv); a.needsUpdate = true; geo._ew_wuvOwner = true; return geo; };   // a planet keeps its own metres (THE ONE PIXEL DENSITY would tile it to a blur)
+        /* the sunlight on a ball, baked in its vertices (the room's own lights are the walk's; a ball lit by them reads as a flat disc):
+           one fixed light from high over the system, a dark side that never goes black */
+        var LD = new THREE.Vector3(0.8, 0.35, 0.5).normalize();
+        var shade = function (geo, amb) {
+            geo.computeVertexNormals(); var nA = geo.attributes.normal, cols = new Float32Array(nA.count * 3);
+            for (var q = 0; q < nA.count; q++) { var d = nA.getX(q) * LD.x + nA.getY(q) * LD.y + nA.getZ(q) * LD.z, k = amb + (1 - amb) * Math.max(0, d); cols[q * 3] = cols[q * 3 + 1] = cols[q * 3 + 2] = k; }
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); return geo;
+        };
+        var ball = function (b, seg) {
+            var tex = b.tex ? own(b.tex) : null;
+            var m = new THREE.MeshLambertMaterial({ map: tex || null, color: b.color != null ? b.color : 0xffffff, vertexColors: true });
+            m.emissive = new THREE.Color(b.color != null ? b.color : 0x888888).multiplyScalar(0.3); m.onBeforeCompile = _ewVColorEmissiveHook;   // the baked sunlight shades the glow too
+            var mesh = new THREE.Mesh(shade(uvTile(new THREE.SphereGeometry(b.r * U, seg || 48, Math.round((seg || 48) * 0.66)), Math.max(2, Math.round(b.r / 40)), Math.max(1, Math.round(b.r / 80))), 0.12), m);
+            mesh.position.set(b.x * U, b.y * U, b.z * U); mesh.renderOrder = 0; G.add(mesh); return mesh;
+        };
+        (sp.planets || []).forEach(function (b) {
+            var m = ball(b);
+            if (b.land != null) {   // the Earth: green land patches on the blue
+                for (var k = 0; k < 7; k++) { var a = k * 2.1, e = 0.6 + (k % 3) * 0.25, rr = b.r * (0.24 + (k % 2) * 0.12);
+                    var lm = new THREE.Mesh(new THREE.SphereGeometry(rr * U, 16, 10), new THREE.MeshBasicMaterial({ color: b.land })); lm.scale.y = 0.18;
+                    var dir = new THREE.Vector3(Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e)).normalize();
+                    lm.position.copy(dir.clone().multiplyScalar(b.r * 0.97 * U)); lm.lookAt(dir.clone().multiplyScalar(b.r * 2 * U)); lm.rotateX(Math.PI / 2); m.add(lm); }
+                var atm = new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.06 * U, 40, 26), new THREE.MeshBasicMaterial({ color: 0x8cc8ff, transparent: true, opacity: 0.18, depthWrite: false })); m.add(atm);
+            }
+            if (b.ring) {
+                var rg = new THREE.Mesh(new THREE.RingGeometry(b.r * 1.35 * U, b.r * 2.1 * U, 96, 1), new THREE.MeshBasicMaterial({ map: null, color: b.ring.color, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
+                rg.rotation.x = -Math.PI / 2 + 0.32; rg.position.set(b.x * U, (b.y + b.r * 0.35) * U, b.z * U); G.add(rg);
+            }
+            if (b.rim != null) {
+                var rm = new THREE.Mesh(new THREE.TorusGeometry(b.r * 1.08 * U, b.r * 0.05 * U, 10, 96), new THREE.MeshBasicMaterial({ color: b.rim }));
+                rm.rotation.x = Math.PI / 2; rm.position.set(b.x * U, (b.y + b.r * 0.62) * U, b.z * U); G.add(rm);
+            }
+        });
+        /* the worlds' rock flanks: a square frustum from the block's edge down into its ball (Low Orbit's tapers to a point) */
+        (sp.mesas || []).forEach(function (m) {
+            var h = m.top - m.bottom; if (!(h > 0)) return;
+            var geo = new THREE.CylinderGeometry(1, m.taper != null ? m.taper : 0.85, h * U, 4, Math.max(2, Math.round(h / 8)), true);
+            geo.rotateY(Math.PI / 4); geo.scale(m.hx * Math.SQRT2 * U, 1, m.hz * Math.SQRT2 * U);
+            uvTile(geo, Math.max(4, Math.round((m.hx + m.hz) * 4 / 10)), Math.max(2, Math.round(h / 10)));
+            var mat = new THREE.MeshLambertMaterial({ map: own(m.rock || 'moon_3'), color: 0x6a6a76, side: THREE.DoubleSide, vertexColors: true });
+            mat.emissive = new THREE.Color(0x26262e);   // (THE SOLAR SYSTEM: no room sides / bottom either: the void is open space down to the Sun) mat.onBeforeCompile = _ewVColorEmissiveHook;
+            geo = geo.toNonIndexed(); geo._ew_wuvOwner = true; shade(geo, 0.3);
+            var mesh = new THREE.Mesh(geo, mat); mesh.position.set(m.x * U, (m.bottom + h / 2) * U, m.z * U); G.add(mesh);
+        });
+        if (sp.sun) {
+            var sun = new THREE.Mesh(new THREE.SphereGeometry(sp.sun.r * U, 48, 32), new THREE.MeshBasicMaterial({ color: sp.sun.color || 0xffc46a }));
+            sun.position.set(sp.sun.x * U, sp.sun.y * U, sp.sun.z * U); G.add(sun);
+            var halo = new THREE.Mesh(new THREE.SphereGeometry(sp.sun.r * 1.35 * U, 40, 26), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.22, depthWrite: false })); halo.position.copy(sun.position); G.add(halo);
+            var sl = new THREE.PointLight(0xffd8a0, 0.6, 0); sl.position.copy(sun.position); G.add(sl);
+        }
+        /* the beacons */
+        var rings = [];
+        (sp.beacons || []).forEach(function (b) {
+            var y = (b.ground || 0) + 14;
+            var gr = new THREE.Group(); gr.position.set(b.x * U, y * U, b.z * U);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(7 * U, 0.45 * U, 10, 48), new THREE.MeshBasicMaterial({ color: 0xffd36a }));
+            gr.add(ring);
+            var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * U, 0.35 * U, 14 * U, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd36a, transparent: true, opacity: 0.35, depthWrite: false }));
+            beam.position.y = -7 * U; gr.add(beam);
+            var tt = null; try { tt = _hzTextTex('beacon|' + b.label, [b.label], { w: 1024, h: 128, color: '#ffd36a', bg: 'rgba(8,6,2,0.72)', border: '#ffd36a' }); } catch (e) { tt = null; }
+            if (tt) { var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tt, transparent: true, depthWrite: false })); spr.scale.set(40 * U, 5 * U, 1); spr.position.y = 12 * U; gr.add(spr); }
+            G.add(gr); rings.push(ring);
+        });
+        if (H) H._spaceRings = rings;
+    }
+    function _hqTickSpace(dt) {
+        var H = _hq; if (!H || !H._spaceRings) return;
+        var t = (performance.now() - H.t0) / 1000;
+        for (var i = 0; i < H._spaceRings.length; i++) { var r = H._spaceRings[i]; r.rotation.y = t * 0.6 + i; r.rotation.x = Math.PI / 2 + Math.sin(t * 0.8 + i) * 0.15; }
     }
     /* ── THE LOOK UNDER THE SURFACE ── */
     var _hqRayTexC = null;
@@ -88240,6 +88426,7 @@ const ThreeRenderer = (function () {
         /* SKATEBOARDING (HQ plan 9.8): on the board the frame is the rider's */
         if (H.ride && H.ride.on) { _hqTickRide(dt); return; }
         /* THE DEEP (2026-09-18): aboard the skiff / the bathyscaphe the frame is the helm's; in deep water it is the swimmer's */
+        if (H._spaceRings) { _hqTickSpace(dt); if (H.ready && !H._spaceArrived) _hqSpaceArrive(); }   // THE SPACESHIP (2026-11-17)
         if (H.vehicle && H.vehicle.on) { _hqTickVehicle(dt); return; }
         if (pl.swim) { _hqTickSwim(dt); return; }
         if (pl.climb) { _hqTickClimb(dt); return; }   // THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): on a ladder / rope / vine the frame is the climb's
@@ -97872,6 +98059,7 @@ const ThreeRenderer = (function () {
         dev: {
             /* the live scene graph (repo probes: playtest_maps.js PROBE) */
             scene: function () { return scene; },
+            hqScene: function () { return _hq ? _hq.scene : null; },   // the walk's own scene (THE SPACESHIP probe, 2026-11-17)
             /* the WebGL renderer (shader diagnostics from a probe — THE WORLD, 2026-09-13) */
             renderer: function () { return renderer; },
             /* THE STILL MATRICES: the last scene walk (objects seen, kept, remade, run by their own method) */
@@ -97891,6 +98079,15 @@ const ThreeRenderer = (function () {
             reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             cityMarks: function (tbl, stop) { if (!_hq || !_hq.roomDef) return false; if (tbl) Object.keys(tbl).forEach(function (k) { HQ_CITY_PROP_MARKS[k] = tbl[k]; }); if (stop) HQ_CITY_STOP_MARK = stop; _hqBuildCityMarks(_hq.roomDef, _hq.terrain, _hq.shellGroup); return (_hq.cityMarks || []).length; },   // THE CITY MARKS: rebuild the street plates (tuning probe)
+            /* THE SPACESHIP, for a probe (2026-11-17): set the flown ship's x / y / z / yaw / v (and hold keys: o.keys {w, a, d, space, c}) */
+            ship: function (o) {
+                var V = _hq && _hq.vehicle; if (!V || !V.on) return null; o = o || {};
+                ['x', 'y', 'z', 'yaw', 'v', 'vy'].forEach(function (k) { if (o[k] != null) V[k] = o[k]; });
+                if (o.camYaw != null) _hq.cam.yaw = o.camYaw;
+                if (o.keys) Object.keys(o.keys).forEach(function (k) { _hq.keys[k] = !!o.keys[k]; });
+                if (o.dist != null) _hq.cam.dist = o.dist; if (o.pitch != null) _hq.cam.pitch = o.pitch;
+                _hq.dirty = true; return { kind: V.kind, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v };
+            },
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
                 o = o || {};
