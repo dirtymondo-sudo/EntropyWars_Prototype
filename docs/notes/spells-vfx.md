@@ -4538,3 +4538,27 @@ The fire pass already burns each hit square (the fire mark, kept); each spell ad
 - Baphomet's Rite: his blood runs to the square in a line of drops and two great horns of dark fire (solid tapered tubes, standing across the lens) curl up over the 3x3. No rune on the hit squares.
 - Seen on screen: frames `docs/plans/vfx-cleanup/img/own-look/L6_part2_*.jpg`. Under the fire mark's flames the fire area spells' own pieces are the quieter layer; Dynamite's column is the weakest read of the 17.
 
+
+## THE OWN LOOKS, L2, part 2: steel in the hand + the current (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L2")
+Fourteen more of `own-look/L2.txt`, same wiring as part 1 (`_o2Reg` = a `_FX2_BURST` row on the relayed burst beat).
+New kit pieces: `_o2Flat` (a shape lying on the square, on its own pivot), `_o2Area` (a square area's squares with a
+delay each, for `_o2Squares`), `_o2Carry` (small things lifted off the victim and carried down the line to the caster).
+Several of these already had a piece the audit did not count (the ninja's stars, the saucer fleet from battle.js, the
+shield model's ram, the grapple's rope): those stay, the look adds what was missing and turns the generic burst off.
+- Knife Throw: a leaf of steel stands in the body along the throw, shivering to a stop; a thin red line where it went in.
+- Shuriken: the three stars stay pinned where they struck (high, low, middle), each finishing its turn.
+- Shield Bash: the shield's outline slams up under the chin and tips back; the clang rings off both sides in arcs.
+- Elbow Grease: no light at all: a thick smear of brown shop grease wiped across the body, drops off its end, sweat off the worker.
+- Swipe: a violet hand-line brushes past; three gold buff arrows lift off the victim and run down the line to the thief.
+- Plunder: a red X scored on the floor under the victim; gold coins (the banker's gilt coin) arc off into the pirate's hand.
+- Grapple: a steel grapnel drops its flukes into the landing square, turns and sets; grit and a bite ring.
+- Kill Mode: red target corners snap shut on the robot, a red radar hand turns once round him, each square of the 5x5 flashes red as it passes.
+- War of the Worlds: every square of the 5x5 flashes heat-ray orange, row after row (the saucers were already there).
+- Disintegrator: acid-green bands round the body break up from the feet and blow away upward with green ash.
+- EMP Burst: two violet rings run out over the floor from the engineer, each square goes violet as the first crosses it, static where it passed.
+- EMP Grenade: a violet wire dome swells over the 3x3 and snaps off; every square flashes violet; static jitters after.
+- Taser Bolt: two wires to two darts in the chest; yellow current crawls over the body in fits while they hold.
+- Yellow Thunder: a yellow thunderbolt on every square of the 3x3, the middle first; each square flashes yellow under its bolt.
+- Every area spell here flashes EVERY square it hits in its own colour (`_o2Squares`), one run for the whole area.
+- Proof: docs/plans/vfx-cleanup/img/own-look/L2_part2_after.jpg (the burst beat fired on the audit board, two frames a
+  spell: the real-cast frames are 0.45 s apart and miss most of these; real casts were run too, no errors).
