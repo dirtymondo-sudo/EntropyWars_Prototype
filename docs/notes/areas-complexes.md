@@ -9986,6 +9986,30 @@ planet, went to the Outer Space thread.)
   - Proof 11-17: `/mnt/project-files/rubiks-cube/proof/` (from the bridge, from the side, the stair, the top). Not yet checked on screen:
     walking the stair end to end, and a fight starting on the top.
 
+- **THE CUBE, PASS 2 (11-17, the "Improve the Rubik's cube battle map" thread; mondo: "The spell previews are messed up ... when i moved to
+  another face of the cube, from that unit's perspective that face should become the top. Instead i was walking sideways ... isnt
+  there a whole thing ... that shuffles the cube in between rounds ... i want the player and enemies to be able to turn rubick's cube
+  themselves as part of their turn"):**
+  - THE PREVIEWS ON TOP (three-renderer.js `_cubePushBack`): every move / spell / aim plate lies a hair over its square, and on the flat
+    stickers the two fought for depth at the battle camera's distance (plates mostly hidden, flickering). The cube's sticker + core
+    materials are polygon-offset back. The hand turn's preview styles: `_OVERLAY_STYLE.cubeTurn` / `cubeTurnLand`.
+  - THE NEW TOP, MID-TURN (battle.js `_cubeSettleTick`, a 150 ms timer armed in `cubeStart`): the moment a HUMAN's acting fighter stands
+    still on another face (walk done, nothing executing, the cube's own swing done) the frame is laid round that face (cubeFocus), the
+    cube tumbles it up and the camera jumps with the frame (`_cubeAfterMidTurnRelay`). Never for a CPU fighter mid-plan (its planned
+    squares would move under it); never on the online guest. The camera orbit stops at tilt 82 on the cube (past level it craned up
+    into the sky and lost the cube).
+  - THE TURN YOU SEE (round end, `cubeEndOfRound`): eorFocusCamera pulls back over the top face (relayed), the picture holds the slice
+    550 ms then swings it 1.5 s under a banner "The cube turns" (three-renderer.js `_cubeBanner`, built on both screens from the synced
+    record), and `hasBlockingAnims` counts the swing + the tumble (`cubeBusy`), so the round waits for it. The FIRST slice of a match was
+    never animated before (sliceVer started at 0 = "never seen"); `_cubeR.seen` fixes it.
+  - TURN CUBE BY HAND (battle.js `doCubeTurn`, `cubeHandSlice`, `cubeHandOptions`, `cubeTurnProblem`, `CUBE_HAND`): a root verb on the
+    cube (hud.js "Turn cube", before Guard) opens four rows named by the way the squares slide ON SCREEN (`_hrlgCubeScreenArrow`); hovering
+    a row lights the ring (cyan) and the square you land on (gold). LEFT / RIGHT turn the row through your square, UP / DOWN the column;
+    everyone on the ring rides it, you too (then THE NEW TOP). Cost 1 AP, once a turn, does not end the turn (my pick, asked mondo).
+    Online: online.js wraps doCubeTurn like Guard (`game-action` engine `doCubeTurn`). THE CPU (battle.js `_cubeAiPick`, called at the
+    top of runComputerTurn): takes the turn when it brings at least one more enemy within its move + range (plus a small pull-closer
+    term) and leaves an AP to act; doCubeTurn lays the frame round its face after the swing and hands back to the CPU.
+
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
@@ -11785,9 +11809,35 @@ Proposal + mock-ups: `/mnt/project-files/space-round-planets/`.
   beacon's ring (it stands on the ball, 14 m up its `up`) and it sets down on the pad (the flat net) and you step off on the ball; E at
   the ship takes off from where the ball really is (over the pad, upright).
 - **THE MOON (first, 11-17):** 6 x 4 plots (was 5 x 4): the old content stands where it was (no district file changed); the new column
-  P05-.. is plain dust in district M (labels mine: The Limb, east · The Limb, south-east · The Top · The Top, south). Ball at
-  (110, 20, 0): east of Low Orbit, between Mars and the Singularity, clear of every block, ball and Saturn's ring.
-- **NOT YET:** Mars, Saturn and the Singularity (each needs a 6 x 4 net: their blocks are 5 x 4 and 4 x 4); new planets (his card:
-  after the round worlds); fights on a curved board (the board's squares, highlights and picking are flat today; a fight on the Moon
-  is not checked yet); the lighting on a far face uses the flat normals; NPCs that wander over a cut seam
-  are not carried; the map picture (`Assets/ui/map/site_prebuilt_moon_plots.png`) shows the flat net.
+  P05-.. is plain dust in district M (labels mine: The Limb, east · The Limb, south-east · The Top · The Top, south).
+- **MARS, SATURN, THE SINGULARITY (part 2, 11-17, mondo: "go ahead and do the other ones and make the room bigger"):** their flat maps
+  stay as they were (the layout's `flat`: cells, heights, plots, ways; the district files keep their own squares and plot ids) and are
+  WRAPPED onto a bigger ball: `docs/plans/world-zones/space-ball.js` (shared by draw-space.js and bake-space.js) lays the map round the
+  ball from the middle of one face at its true size (azimuthal equidistant: every distance from the map's middle kept), and each net
+  square reads the ground under its middle, so the ground meets itself over every seam with no stitching. Mars: faces of 36 squares
+  (9 x 6 plots, R 80 m), the map on the first belt face, its rock border gone, dunes all the way round. Saturn: faces of 48 (12 x 8
+  plots, R 107 m), the Hexagon on the NORTH POLE; the storm walls still close it, so the rest of the ball is a cloud deck you see but
+  do not reach (80 plots, left out of the names by the walk check). The Singularity: faces of 36 (9 x 6, R 80 m), the bowl on the
+  SOUTH POLE (the Drop points down), its rock ring gone, the rest of the ball black glass (obsidian; its old rim sheet, lava, does
+  not draw on a walk's ground and showed as plain moon dust). bake-space.js builds each district on
+  the flat map as before, then `toBall()` CARRIES it: the ground is read again after the districts built (a building's levelled ground
+  goes with it), pieces on a square's middle (P, on, native: tagged `_mid`) land on the middle of the ball's square under them (the
+  next free one when taken), decor lands where it falls, everything turned with the ground; a building keeps its squares (middle
+  carried, turn snapped to a quarter turn, everything inside it goes along); lines, decals and air zones carried; the stairs, bridges
+  and doors are the layout's (draw-space.js carried them). A plot of the ball no foot reaches is left out of the names (said in the log).
+  New plots beyond an old map: "<World>, open ground N" (labels mine). The plot ids are two digits now (P10-03).
+- **THE BIGGER ROOM (part 2):** 24 x 15 plots (1008 x 630 m), sky 380 m (ship ceiling 370). The nets lie where nothing is drawn: Saturn
+  [1,1], Mars [14,1], the Singularity [14,8], the Moon [1,10], Low Orbit [9,12]; a plot of void round every net, because the room's own
+  walls standing in a net were bent onto the ball (giant grey slabs on Mars, seen and fixed 11-17). The balls (ROUNDC): Saturn (-210, 150, -10) with its
+  ring (1.4-2.05 R, `round[i].ring`), Mars (270, 110, -165), the Singularity (270, 135, 110) with its accretion disc (`round[i].rim`,
+  1.25-2.1 R), the Moon (20, 215, 150). three-renderer.js draws a round world's ring / rim round `c`, kept flat. No `space.planets`
+  left but the Earth under Low Orbit. Nets never touch (a shared edge's ground was drawn as a slab stretched between two balls).
+  THE EIGHT SHEETS: the walk's ground draws 8 sheets at most (`paint.pal.slice(0, 8)`, a ninth falls back to the floor: the round
+  Singularity drew as moon dust), so compose() gives the floor + the void 0 and merges desert -> mars, ice -> cloud_thick, storm ->
+  obsidian, lava -> crystal; it throws if a ninth sheet comes back.
+  THE SKY STAYS FLAT: in a round-worlds room the sky dome, the sky group and the landmarks are kept out of the bend (`_ewPlKeepFlat`
+  on build + again every 500 ms in `_ewPlTick`); a bent dome drew dark panels and streaked stars on the WebGL2 fallback. Some dark
+  sky panels still show on that fallback (seen 11-17 on the Moon + Saturn views); the default renderer is clean.
+- **NOT YET:** new planets (his card: after the round worlds); fights on a curved board (the board's squares, highlights and picking
+  are flat today; a fight on a ball is not checked yet); the lighting on a far face uses the flat normals; NPCs that wander over a
+  cut seam are not carried; the map picture (`Assets/ui/map/site_prebuilt_moon_plots.png`) shows the flat nets.
