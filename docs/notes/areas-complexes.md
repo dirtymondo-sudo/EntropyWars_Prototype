@@ -9965,6 +9965,10 @@ planet, went to the Outer Space thread.)
   the battle square is a core square with the sticker at 0.86 on it, a hole's sides are core. Never give the cube's faces a second look.
   Every sticker is `marble_light` tinted (white, yellow, orange, red, blue, green); mondo 11-17: NO lava or water PICTURE either (the first
   fix kept them tinted and he called it out).
+  THE NO-FLICKER SQUARE (mondo 11-17: flicker + dark marks on the tiles while the camera moves): the core was a whole square with the
+  sticker a hair above it (z-fighting). Now a battle square = a core FRAME + the sticker filling its hole, one plane, no overlap; a hole's
+  floor is the core material (obsidian's sheet has lava veins). The map card's picture reads PREBUILT_MAPS.the_cube.colors (the sticker
+  colours; map.js preview takes a map's own `colors` grid before the terrain colours).
 - **IN THE ASTRAL REALM (BUILT 11-17, bake-astral.js THE CUBE):** two new plots south of the Cloud Bridge's middle (district S, plot rows
   2-3 of column 0: 'The Broken Stair' + 'The Cube'), nothing touching the cube. The cube is the proc prop `ew_rubiks_cube` (three-renderer.js
   `_ewCubeProp`, catalogue span 28 m, origin = the middle of its top): 8 x 8 x 8 cubies of 3.5 m, a dark core, one sticker a square in its
