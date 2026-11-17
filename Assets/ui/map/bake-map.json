@@ -55,9 +55,9 @@
   "nz": 120,
   "h0": -0.05,
   "hs": 0.25,
-  "v": "6420591ca8",
-  "bytes": 1119,
-  "s": "4.7"
+  "v": "f3c40aeae1",
+  "bytes": 1120,
+  "s": "3.6"
  },
  "site_prebuilt_area51_desert": {
   "id": "site_prebuilt_area51_desert",
@@ -125,19 +125,19 @@
   "nz": 24,
   "h0": -0.5,
   "hs": 0.25,
-  "v": "c6f5248970",
-  "bytes": 230,
-  "s": "0.8"
+  "v": "ffc3eb63bd",
+  "bytes": 233,
+  "s": "1.5"
  },
  "site_prebuilt_vatican_plots": {
   "id": "site_prebuilt_vatican_plots",
   "nx": 72,
-  "nz": 48,
+  "nz": 84,
   "h0": -0.18,
   "hs": 0.25,
-  "v": "e2f077edf2",
-  "bytes": 642,
-  "s": "2.4"
+  "v": "33f6a4fa2d",
+  "bytes": 1005,
+  "s": "3.6"
  },
  "site_prebuilt_atlantis_deep": {
   "id": "site_prebuilt_atlantis_deep",
@@ -165,9 +165,9 @@
   "nz": 84,
   "h0": -1.75,
   "hs": 0.25,
-  "v": "541c317c87",
-  "bytes": 732,
-  "s": "9.8"
+  "v": "fbff8fa322",
+  "bytes": 748,
+  "s": "27.8"
  },
  "site_prebuilt_mars_plots": {
   "id": "site_prebuilt_mars_plots",
@@ -221,13 +221,13 @@
  },
  "site_prebuilt_downtown_underworld": {
   "id": "site_prebuilt_downtown_underworld",
-  "nx": 84,
-  "nz": 96,
+  "nx": 204,
+  "nz": 192,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "7ee5e7685a",
-  "bytes": 792,
-  "s": "15.8"
+  "v": "5360c0afcf",
+  "bytes": 1686,
+  "s": "280.3"
  },
  "site_ow_r7_3_14": {
   "id": "site_ow_r7_3_14",
@@ -527,7 +527,7 @@
   "hs": 0.25,
   "v": "c94d332d7d",
   "bytes": 720,
-  "s": "0.2"
+  "s": "0.6"
  },
  "site_prebuilt_hollow_earth_ow_long": {
   "id": "site_prebuilt_hollow_earth_ow_long",
@@ -541,13 +541,13 @@
  },
  "site_prebuilt_hollow_earth_ow_tunnelway": {
   "id": "site_prebuilt_hollow_earth_ow_tunnelway",
-  "nx": 36,
-  "nz": 96,
+  "nx": 120,
+  "nz": 168,
   "h0": 0,
   "hs": 0.25,
-  "v": "10217b72db",
-  "bytes": 190,
-  "s": "1.0"
+  "v": "45aa3d9001",
+  "bytes": 563,
+  "s": "20.9"
  },
  "site_prebuilt_hollow_earth_ow_agartha": {
   "id": "site_prebuilt_hollow_earth_ow_agartha",
@@ -618,5 +618,25 @@
   "v": "3f8205d2bd",
   "bytes": 650,
   "s": "0.5"
+ },
+ "site_prebuilt_bermuda_ow_frozen": {
+  "id": "site_prebuilt_bermuda_ow_frozen",
+  "nx": 48,
+  "nz": 24,
+  "h0": -0.05,
+  "hs": 0.25,
+  "v": "d3dd16353d",
+  "bytes": 326,
+  "s": "0.3"
+ },
+ "site_prebuilt_bermuda_ow_cove": {
+  "id": "site_prebuilt_bermuda_ow_cove",
+  "nx": 36,
+  "nz": 36,
+  "h0": -0.03,
+  "hs": 0.25,
+  "v": "5a38c9ff8b",
+  "bytes": 461,
+  "s": "0.3"
  }
 }

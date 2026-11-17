@@ -4186,3 +4186,90 @@ named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in
 - `_l1Stones(F, mat)` = loose stones with gravity that bounce once and lie where they stop (the kit of this part).
 - A decal on a square the earth noise wash covers is hidden by the wash: put a hit square's own piece above the ground.
 - The capture harness' frames are about 0.9 s apart round the hit: a piece shorter than that may not be in any frame.
+
+## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
+
+Thread L4 of the own-looks job (`docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`, list `own-look/L4.txt`). mondo: "any spells that
+dont have a look of their own need one".
+
+- **The wiring (`_l4Wire(id, intent, fn)`):** the signature is a `_PZ_SIGS` entry on a new def `l4<Id>_<intent>` with
+  `pzOwn`, put in `SPELL_MAP[id]` on the intent the battle already fires. The shared recipe the spell borrowed (the white
+  pillar, the pale flash layers, the ring) no longer draws, and `_vcOwn(id)` is true by itself, so its generic stage burst stops.
+- **Nothing on the floor** for a heal or a buff (no rune, no circle).
+- **THE NAMEPLATE RULE (found on the first frames):** a unit's plate sits right over its head and covers anything drawn
+  there. A look lives ON and ROUND the body (feet to head) and to its sides, never above the head.
+- **The caster** on an `aura` beat (it only carries the target's tile) = `_l4Caster()`, the unit whose turn it is.
+- Checking a look: the batch harness is far out (a body is about 40 px). For a close read: `bash /tmp/sv/start.sh`, then a
+  real cast with `SV.prep(id, { target })` + `SV.cast()` on the paused clock and a crop round the target, 150 ms apart.
+
+| Spell | What it draws now |
+|---|---|
+| Blessing `raceBlessing` | a gold cross signed over the chest sinks into it; three drops of gold run down the body |
+| Prayer `racePrayer` | a vault of light: six gold ribs rise round the ally and meet over the head, the shell shows once, the keystone glints |
+| Protect `protect1` | three pale gold kite shields swing in round the ally, close ranks and lock, facing out |
+| Inner Peace `cleanse` | a lotus opens at the heart and rises away; the dark that clung to the body lifts off and thins out |
+| Heal All `healAll` | the healer throws the light: a string of green beads arcs to every ally and bursts into rising crosses |
+| Pink Healing `sentaiPinkHeal` | a pink ribbon winds up the body, a heart pops on the chest and beats twice, small hearts float off |
+| Repair `repair` | a field weld: two weld points crawl over the plating spitting orange sparks; a hex nut turns home in three clicks, green light |
+| Séance `raceSpiritChannel` | three pale spirits circle down and pass into the ally, each leaving its light in the body |
+| Tidal Blessing `raceTidalBlessing` | two bands of sea water wind up from the feet with bubbles; a pearl breaks into drops on the head |
+| Adrenaline Rush `raceAdrenalineRush` | a red heart line across the chest, the heart thumps lub-dub twice, the blood races up the body |
+| Wish Granted `raceWishGranted` | lamp smoke coils up round the ally and closes at the head, where the wish star turns once and sheds gold |
+| Awakening `raceAwakening` | the dark shell bursts off the body in shards, a turning sunburst of gold opens behind it, a halo rights itself over the head |
+
+After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part1.jpg`.
+
+## THE VFX CLEANUP, B3 part 1: THE BEAM KIT (2026-11-17, three-vfx-effects.js)
+mondo: "We need better beams and lasers, think epic anime ki blast or scifi laser blasters or harry potter spell duels."
+- **`_VC_BEAM`** = which spell wears the kit and how (`style` ki / blaster / wand, `thick`, `rings`, `col`, `head`). Ten
+  today: railgun, raceHeatRay, raceLaserBeam (Heat Vision), racePlasmaCannon, sigOrichalcumRay, raceKiWave,
+  racePsychicBeam, raceEntropicBeam, raceBalefulGaze, raceJudgmentBeam. To put another line spell on it: one row.
+  The styles are starting looks, not boxes (mondo 11-17); a spell that fits none gets its own.
+- **`_beamKitCharge(tx, ty, holdMs, spellId)`**, called by `_stageWindup` (so it rides the relayed windup beat): a ball
+  growing at the caster's torso with a dark pinch in its middle, three rings closing on it, motes pulled in. It lasts the
+  whole windup (`holdMs`, about 2 s in a real cast). The glass orb is not drawn for a kit spell. The beat can arrive twice
+  for one cast: the second within 0.4 s on the same square is dropped (`_beamKitChargeAt`).
+- **`_beamKit3D(fromTx, fromTy, toTx, toTy, { kit, glow, beamMs, thickness, startW, endW })`**, called by
+  `_fireBeamMapped` in place of `_spawnLaserBeam3D` (same line, same clock, so battle.js is untouched): glow cylinder
+  (additive, low), the energy sheath, a DARK edge and a hot core (both NORMAL blending: the stack cannot add up to white),
+  rings riding the line, a front ball, a muzzle bloom; it thins as it dies. Colours = `_beamKitCols` from the spell's
+  beam palette (`_crBeamPalette`) or the row's `col`. Impact at the lance's end: `_sigShockRing3D` flat on the floor +
+  sparks thrown back toward the caster; a `wand` sheds sparks down its length.
+- **The old laser** (`_spawnLaserBeam3D`, the 14 line spells still on it): core = the spell's colour, hot, normal
+  blending; `_fireBeamMapped`'s charge blink tinted. Not removed: several of those spells would be left with nothing.
+- **THE CAPSTONE BLOOM** (`_sigCapstoneBloom3D`): the sigil disc only for `_VC_RUNE` archetypes, the column only for
+  divine and in the orb colour (it was a rune + a white-cored pillar on every capstone's hit).
+- Capture: `sv-run.js --dense` = a frame every tick for the first 3 s; `--w 1920 --h 1080` + a crop to see a line spell
+  (the line camera stands far off). Frames: docs/plans/vfx-cleanup/img/b3_*.jpg.
+- Open: the sight lasers + the turret blast (three-renderer.js), the clash (B4), Sword Beam onto the kit if wanted.
+## THE OWN LOOKS, L4, part 2: the divine hits and the hexes (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
+
+- **An area spell (`_l4WireArea`)** gets an `aoe` def of its own: `impactTileEffect` = the spell's own tile recipe (one flash in
+  the spell's colour on EVERY hit square) and a `pzSig` with no `pzOwn`, so the per-square flash still runs under the look.
+- **Photon Scatter** is a `barrage`: the battle fires only `bolt` beats for it, never `impact`. Its look rides the bolt beat
+  (`l4RacePhotonScatter_bolt` = the holy bolt with `radiant` off, so the white column it burst into on every enemy is gone)
+  and goes off `flyMs` later at the landing tile.
+- **Horn Light / Unicorn Charge** had no `SPELL_MAP` row at all (the stage burst was their whole look): theirs are `_FX2_BURST`
+  entries on the stage's burst beat.
+- **Anchor** already dropped the anchor model (the metal pass, `_mtlAnchorDrop`), but `_vcOwn` did not know: the chain is new and
+  the generic toss recipe is off. **Implant** keeps its UFO (the G-O pass); the chip, the red light and the pings are new.
+- Other threads' layers that still show on these: the metal pass's floor cog on metal-element casts (Repair, Implant, Anchor),
+  the riot target rings, the stat rings of a stage change. Not L4's to change.
+
+| Spell | What it draws now |
+|---|---|
+| Glitterburst `raceGlitterburst` | the wand pops: a wheel of pink, gold and mint flakes shoots out flat to the edge of the 3×3, hangs twinkling, flutters down; every square flashes pink |
+| Supernova `raceSupernova` | the orb falls in to a point, then a shell of gold fire blows out to the edge with eight turning spikes of light and an ember ring; every square flashes gold; no screen flash |
+| Photon Scatter `racePhotonScatter` | where each ray lands the light splits into six colours that fan out through the body, away from the orb |
+| Horn Light `uniHornLight` | a twist of pearl and violet light winds from the horn to the enemy's eyes and goes off in one hard star |
+| Unicorn Charge `uniUnicornCharge` | a gold horn of light drives through the enemy along the gallop; the gallop's rainbow hangs in the lane behind |
+| Anchor `raceAnchor` | (the anchor model drops, as before) a chain runs taut from the anchor to the body and pulls tight twice |
+| Implant `raceImplant` | a green chip snaps to the back of the head, its red light blinks three times, the tracking signal pings out both sides |
+| Iron Grip `ironGrip` | four iron fingers and a thumb swing shut round the body and squeeze once; rust sparks where they close |
+| Red Eyes `raceRedEyes` | a patch of dark behind the shoulders, two red eyes open in it, stare, blink, narrow shut |
+| Smoke Screen `sharedSmokeScreen` | a grey bank boils out of the middle square and rolls over all nine, thick at the floor |
+| Spellsteal `raceSpellsteal` | a lit page lifts out of the enemy's head, tumbles to the wizard on a violet trail and is gone into his hand |
+| Steal from the Rich `raceStealFromRich` | the purse is cut: gold coins fly in a string from the enemy to Robin Hood |
+
+After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part2.jpg`.
+
