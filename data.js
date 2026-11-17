@@ -1722,6 +1722,7 @@ const TERRAIN_RULES = {
         endTurn(unit) {
             if (typeof canFly === 'function' && canFly(unit)) return null;
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo') return null;
+            if (unit && unit.race === 'samurai slug') return null;   // 🐌 THE SLIME ROAD (2026-11-17): the slime is his
             return { type: 'status', id: this.turnStatus.id, duration: this.turnStatus.duration, text: `${unitDisplayName(unit)} is coated by the ooze` };
         }
     },
@@ -10589,17 +10590,37 @@ const RACE_ABILITIES = {
           desc: 'Off the wall and through the air. Charges a Single Enemy up to 3 squares away, deals HEAVY physical damage and kicks it up to 2 squares back; hitting a wall or a unit deals 40 more. Cooldown: 2 rounds.' },
     ],
     'samurai slug': [
-        /* THE SLIME TRAIL: the one race that paints the squares it walks off. Every square he walks off becomes Black Ooze for 2 rounds (double cost to cross, and it burns; battle.js _slugTrail from finishMoveAt, painted with _paintTimedTerrain). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        /* THE SLIME TRAIL: the one race that paints the squares it walks off. Every square he walks off becomes Black Ooze for 2 rounds (double cost to cross, and it burns; battle.js _slugTrail from finishMoveAt, painted with _paintTimedTerrain). (2026-11-17 THE NEW RACES 2, mondo's picks.)
+           THE SAMURAI SLUG POLISH (2026-11-17, mondo: "flesh out their unique spells ... make sure that any new mechanics are tested"):
+           the playstyle is THE SLIME ROAD. The ooze is his and nobody else's: he crosses Black Ooze at the normal cost and is never
+           Gooed by it (state.js getTerrainMoveCost + battle.js _slugOozeProof); everyone else, his allies too, pays 2 and is Gooed
+           (−1 move, half healing, +25% magic damage taken). So he lays lanes, the enemy has to cross or go round them, and every
+           spell pays on the slime: Slime Slash slicks its square (and, poison, hits ×1.25 off the ooze through THE ELEMENT TERRAINS:
+           no extra bonus of its own — a first cut with a ×1.3 vs Gooed stacked to ×1.6 on the second, 334 → 595 in the probe), Salt-Proof Stance rings him
+           in ooze, Iai Draw leaves its lane slimed, Ronin's Wake cuts every enemy standing in it. The answers: fire (the ooze goes
+           up under whoever stands in it, and he is weak to fire), flyers (never Gooed), range (he is slow, SPD 70), and going round. */
         { id: 'nrSlimeSlash', name: 'Slime Slash', tier: 1, families: ['slugbushido'], cost: 25, apCost: 1, spellType: 'anomaly',
           element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 120, range: 1,
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'A slick cut. Deals MEDIUM physical damage to a Single Enemy beside him and Slows it for 1 round.' },
+          paintTerrain: { terrain: 'swamp', radius: 0, rounds: 2 },
+          desc: 'A slick cut. Deals MEDIUM physical damage to a Single Enemy beside him and Slows it for 1 round. Its square turns to Black Ooze for 2 rounds (poison hits ×1.25 when he or it stands in the ooze).' },
         { id: 'nrSaltProof', name: 'Salt-Proof Stance', tier: 2, families: ['slugbushido'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           type: 'buff', kind: 'buff', range: 0, statStageBoost: { def: 2, mdef: 2 },
-          desc: 'Feet planted, shell up. Raises his DEF and M.DEF by 2 stages. Cooldown: 2 rounds.' },
+          slimeRing: { rounds: 2 },
+          desc: 'Feet planted, shell up. Raises his DEF and M.DEF by 2 stages, and the 4 squares around him turn to Black Ooze for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'nrIaiDraw', name: 'Iai Draw', tier: 3, families: ['slugbushido'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 165, range: 3, chargeToTarget: true,
-          desc: 'Slow until the blade comes out. Charges a Single Enemy up to 3 squares away and deals HEAVY physical damage. Cooldown: 2 rounds.' },
+          slimeLane: { rounds: 2 },
+          desc: 'Slow until the blade comes out. Charges a Single Enemy up to 3 squares away and deals HEAVY physical damage. Every square he crosses turns to Black Ooze for 2 rounds. Cooldown: 2 rounds.' },
+        /* RONIN'S WAKE (2026-11-17, the polish's capstone): the trail pays. Every enemy standing in Black Ooze within 4 of him
+           (any ooze: his trail, a Goo Shot, the map's own) is cut and Rooted for 1 round. Refused with no enemy in the ooze, so
+           it only goes off when the lanes did their job. battle.js `aoeOnTerrain` (getSpellAoeArea keeps only the ooze squares,
+           so the preview, the CPU and the hit read the same squares). */
+        { id: 'nrRoninsWake', name: "Ronin's Wake", tier: 4, families: ['slugbushido'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'anomaly',
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 120, range: 0, aoeOriginSelf: true, aoeRadius: 4, aoeShape: 'diamond',
+          aoeOnTerrain: ['swamp'],
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'One step, one draw, and the slime remembers. Deals MEDIUM physical damage to All Enemies standing in Black Ooze within 4 of him and Roots them for 1 round. Cooldown: 4 rounds.' },
     ],
     'cicada brood': [
         /* THE WAIT: the one race that banks power by hiding. Dig In buries it (`dormant` + Invisible, no move); every round end under the ground adds a Brood stack (up to 3, battle.js _cicadaBrood from processEndOfRoundStatuses); Screech spends the stacks for damage and wakes it. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
@@ -21261,7 +21282,7 @@ const RACE_TREE = {
     'boltzmann brain':['raceEntropicBeam', ['racePsychicBarrier', 'raceGravityWell'], 'raceMindCrush', 'raceHeatDeath'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'wendigo':       ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'karate frog':   [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
-    'samurai slug':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceRollCredits'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'samurai slug':  ['nrSlimeSlash', 'nrSaltProof', 'nrIaiDraw', 'nrRoninsWake'],   // 2026-11-17 THE SAMURAI SLUG POLISH: his own four rungs (the borrowed row was Sad Backstory / Plot Armor / To Be Continued / Roll Credits, none of them a sword or the slime)
     'cicada brood':  ['raceCorrosiveSplash', 'raceBrood', 'raceRot', 'raceSwarmSignal'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
@@ -23286,7 +23307,7 @@ const SPELL_FAMILIES = {
         glyph: '🐌',
         color: '#a8882a',
         kind: 'signature',
-        desc: 'The way of the slug: a slime-slicked cut, a stance salt cannot break, and a draw so fast it closes the distance.',
+        desc: 'The way of the slug: a slime-slicked cut, a stance salt cannot break, a draw so fast it closes the distance, and a wake that cuts everyone caught in his slime.',
         unique: 'samurai slug',
         identity: { who: ['Samurai Slug', 'Slug Ronin', 'Sewer Brother'], adj: ['Slimy', 'Patient', 'Armoured'], look: ['red and black lacquered armour', 'two eye stalks', 'a trail of slime'], vibe: ['leaves slime wherever he goes', 'is slow until he draws'] }
     },

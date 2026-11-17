@@ -3828,6 +3828,19 @@ side follow THE RIOT PASS from the viewer's seat (cyan-blue yours, pink-red thei
 - Inservice (warCry `aura`, radius 2): two whistle rings, a ring on every square of the drill zone, the side ring to its edge.
 - Three Whistles: `fireGeometry('nrThreeWhistles:blow', …, radius)`: three big whistle rings + three floor rings to her reach.
 
+## THE SAMURAI SLUG (2026-11-17, three-vfx-effects.js, right after THE LIFEGUARD)
+Thread "Polish Samurai Slug spells and VFX". Two tones for the slime (the black ooze 0x23261c, its green sheen 0xa8e04a) and the
+blade's white; rings that tell the side follow THE RIOT PASS from the viewer's seat. Helpers `_sl*`; kill-switch `EW_NO_SLUG_VFX`.
+- Slime Slash (`impact`): a green-sheen crescent then a thin white edge through the body; the ooze splats on its square.
+- Salt-Proof Stance (`aura`): six shell plates in the side's colours rise round him, salt grains fall and bounce, a side ring;
+  `fireGeometry('nrSaltProof:ring', x, y, 1, { owner })` (battle.js, relayed): the 4 squares round him splat with ooze in turn.
+- Iai Draw (`impact`, on the charge's arrival): no wind-up, one hairline white cut across the body, the flash a beat after, a flat
+  white crescent; `fireGeometry('nrIaiDraw:lane', landX, landY, 0, { fromX, fromY, owner })` (both charge paths in battle.js): a
+  strip of the side's colour along the lane, then each square splats over.
+- Ronin's Wake (`aoe` with `geom3D`): a side ring to his reach + a sheen ring, then every enemy in the ooze within reach (fog-gated)
+  is cut in turn, nearest first, 110 ms apart: the slime spits up, a white crescent, a green root ring.
+Probe: /mnt/project-files/samurai-slug-polish/probe_slug.js (real VS-CPU TDM; `SLUG_CPU=1` also lets a CPU slug play 3 rounds).
+
 ## THE MAGICIAN (2026-11-16, the new races; mondo: "work on their spell pools and spell vfx")
 Code: three-vfx-effects.js block "MAGICIAN" right after the Mime rows (same `pzSig` / `_pzDef` hook, helpers `_mg*`). Canvas
 textures (the stage deck's back, the ace of spades, a dove in two wing frames, the saw blade) + R2 terrain sheets (leather hat,

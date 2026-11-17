@@ -45260,6 +45260,173 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrOnDuty:save': _lgSave3D, 'nrThreeWhistles:blow': _lgBlow3D,
     });
 
+    /* ══ THE SAMURAI SLUG (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx") ══ THE SLIME ROAD: his
+       ooze is his road and everyone else's bog, and every spell pays on it. The looks keep the slime's two tones (the black ooze
+       0x23261c and its sickly green sheen 0xa8e04a) and the blade's white; the side reads from the viewer's seat (THE RIOT
+       PASS: own side cyan-blue, the other side pink-orange) on the rings and the lane. Small and quick on the body: the caster,
+       the target, the hit and the number stay clear. Kill-switch window.EW_NO_SLUG_VFX.
+         SLIME SLASH (impact): a green-sheen crescent and a thin white edge through the body, the ooze splats on its square.
+         SALT-PROOF STANCE (aura): six shell plates rise round him in his side's colour, salt grains bounce off them;
+           'nrSaltProof:ring' = the four squares round him splat with ooze, one after the other.
+         IAI DRAW (impact): no wind-up, one hairline white cut straight across the body, then the flash;
+           'nrIaiDraw:lane' = the lane he crossed glows in his side's colour and slicks over, square by square.
+         RONIN'S WAKE (aoe, geom3D): a floor ring out to his reach, then every enemy standing in the ooze is cut in turn: the
+           slime spits up, a white crescent, a green root ring. */
+    var _SL_SHEEN = 0xa8e04a, _SL_DARK = 0x23261c, _SL_BLADE = 0xf4f8ff;
+    function _slOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_SLUG_VFX); }
+    function _slSide(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    function _slYaw(fx, fy, tx, ty) { var a = _worldPos(fx, fy), b = _worldPos(tx, ty); return Math.atan2(b.x - a.x, b.z - a.z); }
+    /* the ooze landing on a square: a dark splat on the floor + green droplets thrown up */
+    function _slSplat(tx, ty, big) {
+        if (_afFogHides(tx, ty)) return;
+        _afRecipe(big ? 'nrSlug_splat_big' : 'nrSlug_splat', tx, ty);
+    }
+    EFFECTS['nrSlug_splat'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'inkblot', ml: 900, z: 2, tint: _SL_DARK, size0: 40, size1: 70, opacity0: 0.8 },
+        { count: 6, sprite: 'water-splash', ml: [360, 620], offsetXY: 12, z: [6, 20], tint: _SL_SHEEN, vxRange: 110, vyRange: 110, vzRange: [70, 170], gravity: 520, drag: 0.4, size0: [6, 9], size1: 2, opacity0: 0.9 },
+    ] };
+    EFFECTS['nrSlug_splat_big'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'inkblot', ml: 1100, z: 2, tint: _SL_DARK, size0: 60, size1: 100, opacity0: 0.85 },
+        { count: 10, sprite: 'water-splash', ml: [420, 760], offsetXY: 16, z: [8, 30], tint: _SL_SHEEN, vxRange: 150, vyRange: 150, vzRange: [120, 260], gravity: 560, drag: 0.4, size0: [7, 11], size1: 2, opacity0: 0.95 },
+        { count: 4, sprite: 'poison-bubble', ml: [500, 900], offsetXY: 14, z: [4, 12], tint: _SL_SHEEN, vzRange: [20, 60], size0: [5, 8], size1: 2, opacity0: 0.7 },
+    ] };
+    /* SLIME SLASH */
+    EFFECTS['nrSlimeSlash_impact'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'inkblot', ml: 900, z: 2, tint: _SL_DARK, size0: 44, size1: 80, opacity0: 0.75, delayMs: 60 },
+        { count: 8, sprite: 'water-splash', ml: [380, 640], offsetXY: 10, z: [30, 60], tint: _SL_SHEEN, vxRange: 160, vyRange: 160, vzRange: [60, 180], gravity: 560, drag: 0.5, size0: [6, 10], size1: 2, opacity0: 0.95 },
+    ] };
+    function _slSlash3D(tx, ty, r, o) {
+        if (_slOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var from = _afCaster(tx, ty, o), ts = _worldPos(tx, ty).ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var yaw = _slYaw(from.x, from.y, tx, ty) + Math.PI / 2;
+        try { _sigCrescentSlash3D(tx, ty, { color: _SL_SHEEN, yaw: yaw, height: h * 0.55, size: ts * 1.25, ms: 240, pitch: -0.35, dir: 1 }); } catch (e) {}
+        _fxDelay(function () { try { _sigCrescentSlash3D(tx, ty, { color: _SL_BLADE, yaw: yaw, height: h * 0.58, size: ts * 1.1, ms: 180, pitch: -0.3, dir: 1, flecks: false }); } catch (e) {} }, 40);
+    }
+    /* IAI DRAW: the cut that takes no time — a hairline across the body, the flash a beat after */
+    EFFECTS['nrIaiDraw_impact'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 200, z: 50, size0: 26, size1: 110, tint: 0xffffff, opacity0: 0.7, delayMs: 110 },
+        { count: 10, sprite: 'steel-spark', ml: [180, 360], offsetXY: 6, z: [40, 70], vxRange: 260, vyRange: 260, vzRange: [20, 160], gravity: 300, drag: 1.2, size0: [4, 7], size1: 1, opacity0: 1, delayMs: 110 },
+    ] };
+    function _slIai3D(tx, ty, r, o) {
+        if (_slOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var yaw = _slYaw(from.x, from.y, tx, ty);
+        var line = new THREE.Mesh(new THREE.PlaneGeometry(ts * 2.6, ts * 0.035), _sigMat(_SL_BLADE, { map: _sigGlowTex() }));
+        line.renderOrder = 166;
+        var hold = new THREE.Group(); hold.rotation.y = yaw + Math.PI / 2; hold.position.y = h * 0.5; hold.add(line); F.g.add(hold);
+        var core = new THREE.Mesh(new THREE.PlaneGeometry(ts * 2.2, ts * 0.012), _sigMat(0xffffff));
+        core.renderOrder = 167; hold.add(core);
+        line.rotation.z = core.rotation.z = -0.08;
+        _sigRunOwned(F.g, 520, function (el) {
+            var k = _sigClamp01(el / 70), o2 = _afEnv(el, 0, 30, 160, 520);
+            line.scale.set(0.2 + 0.8 * _sigEaseOutCubic(k), 1 + 2.5 * _sigClamp01((el - 110) / 200), 1);
+            core.scale.set(0.2 + 0.8 * _sigEaseOutCubic(k), 1, 1);
+            line.material.opacity = 0.9 * o2; core.material.opacity = o2;
+        });
+        _fxDelay(function () { try { _sigCrescentSlash3D(tx, ty, { color: _SL_BLADE, yaw: yaw + Math.PI / 2, height: h * 0.5, size: ts * 1.9, ms: 150, pitch: -0.06, dir: -1 }); } catch (e) {} }, 100);
+    }
+    /* the lane he crossed: a strip of his side's colour along the floor, then the squares slick over one by one */
+    function _slLane3D(tx, ty, r, o) {
+        if (_slOff()) return true;
+        o = o || {};
+        if (o.fromX == null) return true;
+        var fx = o.fromX, fy = o.fromY, u = _lgUidAt(tx, ty) != null ? _fx5UnitAt(tx, ty) : null, C = _slSide(u || { player: o.owner });
+        var sq = [], x = fx, y = fy, guard = 0;
+        while ((x !== tx || y !== ty) && guard++ < 24) { sq.push({ x: x, y: y }); var dx = tx - x, dy = ty - y; if (Math.abs(dx) >= Math.abs(dy) && dx) x += Math.sign(dx); else y += Math.sign(dy); }
+        for (var i = 0; i < sq.length; i++) (function (q, i) {
+            if (_afFogHides(q.x, q.y)) return;
+            _fxDelay(function () {
+                try { _sigShockRing3D(q.x, q.y, { r0: _capTs() * 0.1, r1: _capTs() * 0.55, ms: 380, color: C.a, height: 3, torus: false }); } catch (e) {}
+                _slSplat(q.x, q.y, false);
+            }, 60 + i * 70);
+        })(sq[i], i);
+        if (!_afFogHides(fx, fy) && !_afFogHides(tx, ty)) {
+            var F = _nrvFrame(tx, ty), ts = F.ts, a = _afTo(F, fx, fy), L = Math.max(1, Math.hypot(a.x, a.z));
+            var strip = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.22, L + ts * 0.3), _sigMat(C.a, { map: _sigGlowTex() }));
+            strip.rotation.x = -Math.PI / 2; strip.renderOrder = 158;
+            var hold = new THREE.Group(); hold.position.set(a.x / 2, 3, a.z / 2); hold.rotation.y = Math.atan2(a.x, a.z); hold.add(strip); F.g.add(hold);
+            _sigRunOwned(F.g, 800, function (el) { strip.material.opacity = 0.75 * _afEnv(el, 0, 60, 300, 800); });
+        }
+        return true;
+    }
+    /* SALT-PROOF STANCE: the shell up — six plates rise round him, salt grains bounce off them */
+    EFFECTS['nrSaltProof_aura'] = { layers: [
+        { count: 14, sprite: 'sparkle', ml: [500, 900], offsetXY: 26, z: [90, 140], tint: 0xffffff, vzRange: [-120, -40], gravity: 260, drag: 0.6, size0: [3, 5], size1: 2, opacity0: 0.95, delayMs: 160 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 3, tint: _SL_SHEEN, size0: 30, size1: 110, opacity0: 0.45, delayMs: 120 },
+    ] };
+    function _slStance3D(tx, ty, r, o) {
+        if (_slOff() || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, u = _fx5UnitAt(tx, ty), C = _slSide(u), uid = u ? u.id : null, h = _lgBodyH(uid, ts);
+        var plates = [];
+        for (var i = 0; i < 6; i++) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.34, h * 0.9), _sigMat(i % 2 ? C.b : C.a, { map: _sigGlowTex() }));
+            m.renderOrder = 158;
+            var hold = new THREE.Group(); hold.rotation.y = i * Math.PI / 3; m.position.set(0, 0, ts * 0.42); m.rotation.x = -0.18; hold.add(m); F.g.add(hold);
+            plates.push({ h: hold, m: m, a: i * Math.PI / 3 });
+        }
+        _capRing(tx, ty, C.a, 0.8, 420, 4);
+        return _sigRunOwned(F.g, 1300, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 260)), o2 = _afEnv(el, 0, 80, 820, 1300);
+            for (var j = 0; j < plates.length; j++) {
+                var P = plates[j]; P.m.position.y = h * (0.45 * up); P.h.rotation.y = P.a + el * 0.0012;
+                P.m.material.opacity = 0.55 * o2 * (0.8 + 0.2 * Math.sin(el * 0.02 + j));
+            }
+        });
+    }
+    function _slRing3D(tx, ty) {
+        if (_slOff()) return true;
+        var dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+        for (var i = 0; i < 4; i++) (function (q, i) { _fxDelay(function () { _slSplat(q[0], q[1], false); }, 260 + i * 90); })([tx + dirs[i][0], ty + dirs[i][1]], i);
+        return true;
+    }
+    /* RONIN'S WAKE: the floor ring out to his reach, then every enemy in the ooze cut in turn */
+    EFFECTS['nrRoninsWake_aoe'] = { geom3D: true, layers: [] };
+    EFFECTS['nrRoninsWake_cut'] = { layers: [
+        { count: 12, sprite: 'water-splash', ml: [420, 760], offsetXY: 10, z: [4, 20], tint: _SL_SHEEN, vxRange: 80, vyRange: 80, vzRange: [200, 340], gravity: 620, drag: 0.4, size0: [7, 11], size1: 2, opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 900, z: 3, size0: 40, size1: 90, opacity0: 0.8, delayMs: 140 },
+        { sprite: 'flash', ml: 180, z: 50, size0: 24, size1: 80, tint: 0xffffff, opacity0: 0.55, delayMs: 120 },
+    ] };
+    function _slWake3D(tx, ty, r, o) {
+        if (_slOff()) return true;
+        var cu = _fx5UnitAt(tx, ty), C = _slSide(cu), R = (r > 0 ? r : 4) + 0.5, ts = _capTs();
+        if (!_afFogHides(tx, ty)) {
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * R, ms: 620, color: C.a, height: 4 }); } catch (e) {}
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * R * 0.9, ms: 520, color: _SL_SHEEN, height: 3, torus: false }); } catch (e) {} }, 120);
+        }
+        var vs = [];
+        try {
+            for (var i = 0; i < state.units.length; i++) {
+                var u = state.units[i];
+                if (!u || u.dead || !cu || u.player === cu.player) continue;
+                if (Math.abs(u.x - tx) + Math.abs(u.y - ty) > (r > 0 ? r : 4)) continue;
+                if (typeof getTerrainAt === 'function' && getTerrainAt(u.x, u.y) !== 'swamp') continue;
+                if (_afFogHides(u.x, u.y)) continue;
+                vs.push(u);
+            }
+        } catch (e) {}
+        vs.sort(function (a, b) { return (Math.abs(a.x - tx) + Math.abs(a.y - ty)) - (Math.abs(b.x - tx) + Math.abs(b.y - ty)); });
+        vs.forEach(function (u, k) {
+            var x = u.x, y = u.y, h = _lgBodyH(u.id, ts), yaw = _slYaw(tx, ty, x, y) + Math.PI / 2;
+            _fxDelay(function () {
+                _afRecipe('nrRoninsWake_cut', x, y);
+                try { _sigCrescentSlash3D(x, y, { color: _SL_BLADE, yaw: yaw, height: h * 0.5, size: ts * 1.4, ms: 170, pitch: -0.2, dir: k % 2 ? -1 : 1 }); } catch (e) {}
+            }, 200 + k * 110);
+        });
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        nrSlimeSlash: { impact: 'nrSlimeSlash_impact' },
+        nrIaiDraw:    { impact: 'nrIaiDraw_impact' },
+        nrSaltProof:  { aura: 'nrSaltProof_aura' },
+        nrRoninsWake: { aoe: 'nrRoninsWake_aoe' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrSlimeSlash: _slSlash3D, nrIaiDraw: _slIai3D, nrSaltProof: _slStance3D, nrRoninsWake: _slWake3D,
+        'nrIaiDraw:lane': _slLane3D, 'nrSaltProof:ring': _slRing3D,
+    });
+
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the
