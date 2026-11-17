@@ -197,8 +197,8 @@ These are not spells in the table, but they are lasers on the same board and go 
   core + glow with the kit's dark edge, a dot on the body with a small ring, and a **lock beat**: the line sweeps and
   wobbles while it searches, then snaps steady, the dot tightens and ticks once (Take Aim holds locked until the shot
   lands next round). Fog rule unchanged: only drawn where the viewer's own sight sees it (it already checks).
-- **Its colour:** red stays the "something is aiming" colour, but from the viewer's seat: an enemy's sight on you is
-  red-pink (danger), your own turret / Take Aim is cyan-blue, matching the Riot team colours. (Question 5.)
+- **Its colour (mondo 11-17, decided):** cyan-blue for your own / friendly sights (turret, Take Aim, sniper rig), red-pink
+  for an enemy's, from the viewer's seat (the Riot team colours). The guest sees its own side cyan too.
 - **The turret blast** goes on the kit's `blaster` style: a short charge of rings at the barrel while the sight locks, then
   the six-round pulse train (kept, it is the look) with a hot red-orange core at 92 % (no white head), each round landing
   as sparks + a small scorch on the body, the number clear. The kick of the barrel stays.
@@ -306,8 +306,7 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
    want one later?
 4. Portal on summons: everything that summons comes through a small portal, or only the creepy ones (raise dead, brood,
    rifts)?
-5. Sight lasers: red only for an enemy aiming at you and cyan-blue for your own turret / Take Aim, or keep every sight
-   red?
+5. ~~Sight lasers colour~~ DECIDED 11-17: cyan-blue for own / friendly, red-pink for enemy.
 
 ---
 
