@@ -89601,6 +89601,10 @@ const HQ_NPC_TEMPERS = {
             residents: {},
         },
     },
+    /* THE AWARENESS (step 2, 2026-11-17): an NPC whose temper has `watch` SEES the player inside `sightM` metres (on the flat) and `dyM` (up / down) with a
+       clear line between them; the walk asks every `tickMs`. `sayMs` = how long a warning stands over a head. `markH` = the red mark's height as a share
+       of the screen's height (the same at any distance). The numbers are PROPOSALS. */
+    aware: { sightM: 18, dyM: 6, tickMs: 300, sayMs: 3500, markH: 0.05 },
     levelGap: 8,               // an NPC this many levels (or more) under the party never starts a fight (mondo: "8 is fine")
     mug: { perDay: 0.25, goldPerLevel: 8 },   // a flat chance per mugger per game day (mondo 11-17: "flat chance per gameday"; the number is a PROPOSAL); the price = 8 gold x its level
     lossGoldPerLevel: 8,       // a lost story fight (quest fights too): 8 gold x the strongest enemy's level, never more than held; a retreat costs nothing (mondo 11-17)
@@ -89642,6 +89646,36 @@ function hqNpcDefends(guard, victim) {
     if (HQ_NPC_TEMPERS.noDefend.some(r => r[0] === g && r[1] === v)) return false;
     if (hqNpcSameGroup(g, v)) return true;
     return tg.key === 'guard' && !!tv && HQ_NPC_TEMPERS.guardDefends.indexOf(tv.key) >= 0;
+}
+/* THE GROUND a Territorial holds in a room ('b:<building id>') | null: the room's row for its race, in its own district when that is known */
+function hqNpcGround(ch) {
+    const o = (typeof ch === 'string') ? { race: ch } : (ch || {}), R = o.room && HQ_NPC_TEMPERS.rooms[o.room], D = R && R.districts, r = String(o.race || '').toLowerCase();
+    if (!D) return null;
+    if (o.dist && D[o.dist] && D[o.dist].ground && D[o.dist].ground[r]) return D[o.dist].ground[r];
+    for (const k in D) if (D[k].ground && D[k].ground[r]) return D[k].ground[r];
+    return null;
+}
+/* is the point (x, z metres) on that ground? 'b:<id>' = inside that building's footprint on the city's walk map */
+function hqNpcOnGround(roomId, ground, x, z) {
+    const m = /^b:(.+)$/.exec(String(ground || '')); if (!m) return false;
+    let G = null; try { G = hqCityGrid(roomId); } catch (e) { G = null; }
+    if (!G || !G.byB || G.byB[m[1]] == null) return false;
+    const i = Math.floor((x - G.x0) / G.res), j = Math.floor((z - G.z0) / G.res); if (i < 0 || j < 0 || i >= G.nx) return false;
+    const k = j * G.nx + i; return k < G.N && G.bid[k] === G.byB[m[1]];
+}
+/* THE AWARENESS (step 2): what an NPC that SEES the player is to him right now. null = harmless (it does not open the eye); 'watch' = it would act (the
+   eye by the portrait opens); 'alert' = it is coming for him or will step in (the red mark over its head).
+   `ch` = { race, id, room, lvl, dist }; `o` = { aim: the NPC under the player's strike aim { id, race } | null, x, z: the player, partyLevel }.
+   Today's rows: a Guard / Protector watches, and is on alert while the aim is on someone it defends; a Territorial with a ground counts only while the
+   player stands on that ground, and is then on alert (it warns); a mugger or a Brute watches unless the level gap says it never starts a fight. The
+   muggers' and Brutes' own alert (they are coming) is set by step 4, which makes them come. */
+function hqNpcActs(ch, o) {
+    const t = hqNpcTemper(ch); if (!t || !t.watch) return null;
+    o = o || {};
+    if (t.starts === 'defend') return (o.aim && o.aim.id !== ch.id && hqNpcDefends(ch, o.aim)) ? 'alert' : 'watch';
+    if (t.starts === 'ground') { const g = hqNpcGround(ch); if (!g) return 'watch'; return hqNpcOnGround(ch.room, g, o.x, o.z) ? 'alert' : null; }
+    if (ch.lvl > 0 && o.partyLevel > 0 && o.partyLevel - ch.lvl >= HQ_NPC_TEMPERS.levelGap) return null;
+    return 'watch';
 }
 let _hqCityGridCache = null;
 /* THE ROUTE MAP of a room: { nx, nz, x0, z0, res, walk (Uint8: 0 no, 1 ground, 2 road), comp (the walk's own component: 1), openE / openS (Uint8: the

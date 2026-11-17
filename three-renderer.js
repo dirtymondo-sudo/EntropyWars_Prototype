@@ -85922,7 +85922,7 @@ const ThreeRenderer = (function () {
         /* who has a body: the nearest in the street (every 0.4 s) */
         if (now - S.lastPick > 400) {
             S.lastPick = now;
-            var lowPC = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), cap = off ? 0 : (lowPC ? R.drawnLow : R.drawn), cand = [];
+            var cap = off ? 0 : R.drawn, cand = [];   // (NPC encounters step 2, mondo 11-17: "the game is the game": the same bodies on every machine, no weak-PC cut)
             S.list.forEach(function (s) {
                 s.want = false; if (!s.tl || !pl || off) return;
                 var at = hqResidentAt(s.tl, hour - s.lag); s.at = at; if (!at || !at.vis || now < s.hideUntil) return;
@@ -85984,6 +85984,77 @@ const ThreeRenderer = (function () {
             pts.push(ch);
         });
         S.pts = pts;
+    }
+    /* ── THE AWARENESS + THE MARKS (NPC encounters step 2, 2026-11-17; docs/plans/npc-encounters/PLAN.md 4.1, mondo: "eyes on player and red ! on
+       npcs", "eye can be by the portrait") ──
+       Every `aware.tickMs` (data.js HQ_NPC_TEMPERS) the walk asks which NPCs with a body SEE the walker: a temper that watches, inside the sight
+       range, a clear line between the two heads (_hqLosClear), not asleep. data.js hqNpcActs says what each is to him: 'watch' opens the ONE eye by
+       the walker's portrait (map.js, through opts.onAware), 'alert' also stands the red `!` over that NPC's head (a sprite, the same size on screen at
+       any distance, hidden by walls). A Territorial on its ground says its warning once a visit. Story walk only (opts.awareOk: never from an online
+       seat), nothing per machine: the bodies are the same everywhere since the weak-PC cut went. dev: hq.dev.aware(), hq.dev.awareMark(id, on). */
+    var _hqAwareTexC = null;
+    function _hqAwareMarkTex() {
+        if (_hqAwareTexC) return _hqAwareTexC;
+        var c = document.createElement('canvas'); c.width = 64; c.height = 128; var g = c.getContext('2d');
+        g.lineJoin = 'round'; g.lineWidth = 12; g.strokeStyle = '#000'; g.fillStyle = '#ff2a2a';
+        g.beginPath(); g.moveTo(22, 10); g.lineTo(42, 10); g.lineTo(38, 82); g.lineTo(26, 82); g.closePath(); g.stroke(); g.fill();
+        g.beginPath(); g.arc(32, 106, 10, 0, Math.PI * 2); g.stroke(); g.fill();
+        _hqAwareTexC = new THREE.CanvasTexture(c); return _hqAwareTexC;
+    }
+    function _hqAwareSayTex(text) {
+        var c = document.createElement('canvas'), g = c.getContext('2d'), f = '600 34px "IBM Plex Mono", monospace';
+        g.font = f; var w = Math.ceil(g.measureText(text).width) + 36; c.width = w; c.height = 60; g = c.getContext('2d');
+        g.fillStyle = 'rgba(8,7,14,0.88)'; g.fillRect(0, 0, w, 60); g.strokeStyle = '#ff2a2a'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, 57);
+        g.font = f; g.textBaseline = 'middle'; g.fillStyle = '#f4f4f8'; g.fillText(text, 18, 31);
+        var t = new THREE.CanvasTexture(c); t._ewAspect = w / 60; return t;
+    }
+    function _hqAwareDrop(H, rec) { try { if (rec.sp.parent) rec.sp.parent.remove(rec.sp); rec.sp.material.dispose(); if (rec.own) rec.sp.material.map.dispose(); } catch (e) {} }
+    function _hqAwareSprite(H, tex, w, h) {
+        var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, sizeAttenuation: false }));
+        sp.scale.set(w, h, 1); sp.renderOrder = 8; H.charGroup.add(sp); return sp;
+    }
+    function _hqAwareSay(H, ch, text) {
+        var A = HQ_NPC_TEMPERS.aware, st = H.aware; if (!text || !st) return;
+        var tex = _hqAwareSayTex(String(text).replace(/[“”]/g, '')), h = (A.markH || 0.05) * 0.62;
+        st.says.push({ ch: ch, sp: _hqAwareSprite(H, tex, h * tex._ewAspect, h), until: performance.now() + (A.sayMs || 3500), own: true, up: 0.95 });
+    }
+    function _hqTickAware(now) {
+        var H = _hq; if (!H || !H.charGroup) return;
+        var T = (typeof HQ_NPC_TEMPERS !== 'undefined') ? HQ_NPC_TEMPERS : null, A = T && T.aware;
+        var st = H.aware || (H.aware = { next: 0, on: null, seen: null, n: 0, marks: [], says: [], forced: {} });
+        var U = _hqUnits(), pl = H.player, i;
+        /* every frame: the marks and the lines ride their heads */
+        for (i = st.says.length - 1; i >= 0; i--) { var sy = st.says[i]; if (now > sy.until || H.chars.indexOf(sy.ch) < 0 || sy.ch.away) { _hqAwareDrop(H, sy); st.says.splice(i, 1); } }
+        st.marks.concat(st.says).forEach(function (m) { var c = m.ch; m.sp.position.set(c.x * U, (c.visY + (c.heightM || 1.75) + (m.up || 0.45)) * U, c.z * U); });
+        if (now < st.next) return; st.next = now + ((A && A.tickMs) || 300);
+        var on = !!(A && pl && !pl.away && typeof hqNpcActs === 'function' && H.opts && typeof H.opts.awareOk === 'function' && H.opts.awareOk() && !H._sceneCastIds && !H.snap);
+        var n = 0, alert = [];
+        if (on) {
+            var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (c) { return c && c.kind === 'npc' && !!c.race && !c.cast; };
+            var aim = null; try { aim = _hqEncounterAim(); } catch (e) { aim = null; }
+            var plv = 0; try { plv = (typeof hqPartyLevel === 'function') ? hqPartyLevel(H.opts.profile) : 0; } catch (e) { plv = 0; }
+            var room = H.opts.room;
+            for (i = 0; i < H.chars.length; i++) {
+                var ch = H.chars[i];
+                if (ch === pl || ch.away || ch.cleared || ch._resSleep || !okFn(ch)) continue;
+                if (Math.hypot(ch.x - pl.x, ch.z - pl.z) > A.sightM || Math.abs(ch.y - pl.y) > A.dyM) continue;
+                var act = null; try { act = hqNpcActs({ race: ch.race, id: ch.id, room: room, lvl: ch.lvl || 0, dist: ch.resident ? ch.resident.r.dist : null }, { aim: aim, x: pl.x, z: pl.z, partyLevel: plv }); } catch (e) { act = null; }
+                if (!act) continue;
+                if (!_hqLosClear(ch.x, ch.z, ch.y + (ch.heightM || 1.75) * 0.9, pl.x, pl.z, pl.y + 1.5)) continue;
+                n++;
+                if (act === 'alert') {
+                    alert.push(ch);
+                    /* a Territorial on its ground: the warning, once a visit (said again after the walker has been out of its sight) */
+                    if (!ch._awWarned) { ch._awWarned = true; var tp = hqNpcTemper({ race: ch.race, id: ch.id, room: room }); if (tp && tp.starts === 'ground') _hqAwareSay(H, ch, T.lines.warn[ch.race]); }
+                }
+            }
+            H.chars.forEach(function (c) { if (c._awWarned && alert.indexOf(c) < 0) c._awWarned = false; });
+        }
+        H.chars.forEach(function (c) { if (st.forced[c.id] && !c.away && alert.indexOf(c) < 0) alert.push(c); });   // dev.awareMark: a mark held on for a picture
+        for (i = st.marks.length - 1; i >= 0; i--) { var mk = st.marks[i]; if (alert.indexOf(mk.ch) < 0 || H.chars.indexOf(mk.ch) < 0) { _hqAwareDrop(H, mk); st.marks.splice(i, 1); H.dirty = true; } }
+        alert.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, sp: _hqAwareSprite(H, _hqAwareMarkTex(), mh * 0.5, mh) }); H.dirty = true; });
+        st.n = n;
+        if (on !== st.on || (n > 0) !== st.seen) { st.on = on; st.seen = n > 0; if (H.opts && H.opts.onAware) { try { H.opts.onAware({ on: on, seen: n > 0, n: n }); } catch (e) {} } }
     }
     function _hqTickRounds(dt) {
         var H = _hq; if (!H || !H.rounds || !H.rounds.length || _hqRoundsOff()) return;
@@ -91441,6 +91512,7 @@ const ThreeRenderer = (function () {
         try { _hqTickClipBeside(); } catch (e) { if (!_hq._cbWarned) { _hq._cbWarned = true; console.warn('[HQ] clip beside', e); } }   // THE CUT BESIDE
         _hqTickRounds(wdt);
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
+        try { _hqTickAware(now); } catch (e) { if (!H._awWarnedTick) { H._awWarnedTick = true; console.warn('[HQ] the awareness tick', e); } }   // THE AWARENESS + THE MARKS (NPC encounters step 2)
         try { _hqGrassTick(); } catch (e) { if (!H._ggWarned) { H._ggWarned = true; console.warn('[HQ] the grass field tick', e); } }   // THE GRASS FIELD IN A WALKED ROOM (2026-11-15)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
             var _sd = H._sceneDoor, _sn = performance.now();
@@ -99076,6 +99148,9 @@ const ThreeRenderer = (function () {
                         at: at ? { x: at.x, z: at.z, vis: !!at.vis, sleep: !!at.sleep, top: at.top, k: at.k } : null, y: ch ? [ch.y, ch.visY] : null, hasSleepClip: !!(e && e.actions && e.actions.hqSleep), running: run, is3d: !!(e && e.is3d !== false && e.mixer) };
                 });
             },
+            /* THE AWARENESS (NPC encounters step 2): what the eye and the marks say right now; awareMark holds a red mark on one NPC for a picture */
+            aware: function () { var st = _hq && _hq.aware; return st ? { on: st.on, seen: st.seen, n: st.n, marks: st.marks.map(function (m) { return m.ch.id; }), says: st.says.length } : null; },
+            awareMark: function (id, on) { if (!_hq) return false; if (!_hq.aware) _hqTickAware(performance.now()); _hq.aware.forced[id] = on !== false; _hq.aware.next = 0; return true; },
             /* aim the camera at a world point (metres) from where the walker stands */
             lookAt: function (x, z, pitch) {
                 if (!_hq || !_hq.player) return false;
