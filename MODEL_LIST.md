@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1211 |
+| Meshy AI | no | 1212 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
@@ -112,6 +112,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | grey | `Assets/characters/races/grey/male/Meshy_AI_grey_alien_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | halfdemon — creator look also baked | `Assets/characters/races/halfdemon/male/Meshy_AI_rich_business_man_wit_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | halfdemon (female) — creator look also baked | `Assets/characters/races/halfdemon/female/Meshy_AI_hot_fancy_rich_girl_w_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| haunted doll (female) | `Assets/characters/races/haunted_doll/female/Meshy_AI_haunted_doll_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | hippie | `Assets/characters/races/hippie/Meshy_AI_hippie_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | hippie (female) | `Assets/characters/races/hippie/Meshy_AI_hippie_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | homosapien | `Assets/characters/races/homosapien/male/freelancer/Meshy_AI_normal_man_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3324,6 +3325,8 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | italian_building_2 | `Assets/world/props/meshy/Meshy_AI_Italian_building_2_0917035828_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | jupiter | `Assets/world/props/meshy/Meshy_AI_jupiter_realistic_0727195413_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | lantern | `Assets/world/packs/elbolilloduro/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| lib_book | `Assets/world/packs/pizzadoggy_psx_mega_pack/small_props/book_mp_3.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| lib_open_book | `Assets/world/packs/pizzadoggy_psx_mega_pack/small_props/open_book_mp_1.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | library_shelf | `Assets/world/packs/pizzadoggy_psx_mega_pack/furniture/shelf_mp_4.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | library_shelf_full | `Assets/world/props/meshy/Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | menhir | `Assets/world/props/meshy/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |

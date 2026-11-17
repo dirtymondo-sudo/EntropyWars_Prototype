@@ -45812,6 +45812,219 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrIaiDraw:lane': _slLane3D, 'nrSaltProof:ring': _slRing3D,
     });
 
+    /* ══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit + asked for a pull-string spell) ══ A porcelain doll that moves when
+       nobody looks. Her colours: old-lace pink 0xe8a0b4, porcelain white, the black of her glass eyes and a thread red; the side
+       reads from the viewer's seat (THE RIOT PASS: own side cyan-blue, the other side pink-orange) on the thread and the rings.
+       Small and quick on the body: the caster, the target, the hit and the number stay clear. Kill-switch window.EW_NO_DOLL_VFX.
+         PIN PRICK (impact): a silver needle flies the line in 180 ms, a thin thread in the side's colour hangs from the doll to the
+           victim a moment (the Voodoo tie), a pin-prick flash and two drops at the body.
+         PLAY WITH ME ('nrPlayWithMe:swap'): TV static flickers on both squares as the two trade places, a side ring on each.
+         PULL MY STRING (aura + 'nrPullString:<line>'): the string pulls out of her back and snaps back; then the line: play = a
+           pink spin of sparkles, friend = pink hearts float to the friend, hug = a side-coloured thread drags in, kill = the eyes
+           glow red and a red ring goes out.
+         LOOK BEHIND YOU (impact): the lights go out round the victim (a black dome flickers twice), two red eye glints, then one
+           pink crescent across the back.
+         NOBODY'S LOOKING ('hdCreep', the round end): small dark footprints on the squares she crept over, one after the other. */
+    var _HD_LACE = 0xe8a0b4, _HD_WHITE = 0xfff4f0, _HD_RED = 0xff2a3a, _HD_SILVER = 0xd8e4f0;
+    function _hdOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_DOLL_VFX); }
+    function _hdSide(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    function _hdFaceCam(obj) {
+        try { var cam = (!_VS.on && typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (cam && cam.quaternion) obj.quaternion.copy(cam.quaternion); } catch (e) {}
+    }
+    function _hdStaticTex() {
+        return _sigTex('hd-static', 64, function (ctx, S) {
+            var img = ctx.createImageData(S, S), seed = 7;
+            for (var i = 0; i < S * S; i++) {
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+                var v = (seed >> 8) & 255, row = Math.floor(i / S), band = (row % 6 < 2) ? 0.55 : 1;
+                img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = Math.round(v * band);
+                img.data[i * 4 + 3] = 255;
+            }
+            ctx.putImageData(img, 0, 0);
+        });
+    }
+    /* a straight thin strip from (fx,fy) to the frame's tile at height h, faded over ms */
+    function _hdThread(F, fx, fy, h, color, ms, width, grow) {
+        var a = _afTo(F, fx, fy), L = Math.max(1, Math.hypot(a.x, a.z)), ts = F.ts;
+        var strip = new THREE.Mesh(new THREE.PlaneGeometry(width || ts * 0.035, L), _sigMat(color, { map: _sigGlowTex() }));
+        strip.renderOrder = 166;
+        var hold = new THREE.Group(); hold.position.set(a.x / 2, h + a.y * 0.5, a.z / 2); hold.rotation.y = Math.atan2(a.x, a.z);
+        strip.rotation.x = -Math.PI / 2 + Math.atan2(a.y, L); hold.add(strip); F.g.add(hold);
+        return { strip: strip, hold: hold, L: L, run: function (el) {
+            var k = grow ? _sigClamp01(el / grow) : 1;
+            strip.scale.set(1, Math.max(0.02, k), 1); strip.position.z = 0;
+            strip.material.opacity = 0.85 * _afEnv(el, 0, 40, ms * 0.6, ms);
+        } };
+    }
+    /* PIN PRICK */
+    EFFECTS['nrPinPrick_impact'] = { layers: [
+        { sprite: 'flash', ml: 160, z: 55, size0: 10, size1: 44, tint: _HD_WHITE, opacity0: 0.75, delayMs: 170 },
+        { count: 3, sprite: 'blood-drop', ml: [420, 640], offsetXY: 4, z: [50, 60], tint: 0x9a1020, vxRange: 30, vyRange: 30, vzRange: [10, 40], gravity: 420, size0: [4, 6], size1: 3, opacity0: 0.9, delayMs: 180 },
+    ] };
+    function _hdPin3D(tx, ty, r, o) {
+        if (_hdOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.6;
+        var a = _afTo(F, from.x, from.y), L = Math.max(1, Math.hypot(a.x, a.z));
+        var needle = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.03, ts * 0.42), _sigMat(_HD_SILVER, { map: _sigGlowTex() }));
+        needle.renderOrder = 167;
+        var nh = new THREE.Group(); nh.rotation.y = Math.atan2(a.x, a.z); needle.rotation.x = -Math.PI / 2; nh.add(needle); F.g.add(nh);
+        var th = from.fogged ? null : _hdThread(F, from.x, from.y, h, C.a, 1100, ts * 0.02, 180);
+        _sigRunOwned(F.g, 1150, function (el) {
+            var k = _sigClamp01(el / 180);
+            nh.position.set(a.x * (1 - k), h + a.y * (1 - k) * 0.5, a.z * (1 - k));
+            needle.material.opacity = el < 260 ? 0.95 : 0.95 * (1 - _sigClamp01((el - 260) / 200));
+            if (th) th.run(el);
+        });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.45, ms: 380, color: C.a, height: h, torus: true }); } catch (e) {} }, 180);
+    }
+    /* PLAY WITH ME: the static on both squares */
+    function _hdStaticAt(tx, ty, C, delay) {
+        if (_afFogHides(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        var tex = _hdStaticTex();
+        if (tex.wrapS !== THREE.RepeatWrapping) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.needsUpdate = true; }
+        var m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, fog: false, side: THREE.DoubleSide });
+        var pl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.8, h * 1.1), m);
+        pl.renderOrder = 165; pl.position.y = h * 0.55;
+        var hold = new THREE.Group(); hold.add(pl); F.g.add(hold);
+        _hdFaceCam(hold);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 0.65, ms: 420, color: C.a, height: ts * 0.05 }); } catch (e) {} }, delay + 120);
+        _sigRunOwned(F.g, delay + 620, function (el) {
+            _hdFaceCam(hold);
+            var e2 = el - delay; if (e2 < 0) { m.opacity = 0; return; }
+            var fl = (Math.floor(e2 / 45) % 3) === 1 ? 0.25 : 1;
+            tex.offset.set(((e2 * 0.37) % 1), ((e2 * 0.61) % 1));
+            m.opacity = 0.42 * fl * _afEnv(e2, 0, 40, 380, 620);
+        });
+    }
+    function _hdSwap3D(tx, ty, r, o) {
+        if (_hdOff()) return true;
+        o = o || {};
+        var fx = o.fromX != null ? o.fromX : tx - 1, fy = o.fromY != null ? o.fromY : ty, cu = _fx5UnitAt(tx, ty) || _fx5UnitAt(fx, fy), C = _hdSide(cu);
+        _hdStaticAt(fx, fy, C, 0);
+        _hdStaticAt(tx, ty, C, 60);
+        return true;
+    }
+    /* PULL MY STRING: the string pulls out of her back and snaps back */
+    function _hdString3D(tx, ty, r, o) {
+        if (_hdOff() || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, u = _fx5UnitAt(tx, ty), h = _lgBodyH(u ? u.id : null, ts);
+        var f = (u && u.facing) || { dx: 0, dy: 1 };
+        var back = _worldPos(tx - (f.dx || 0), ty - (f.dy || 0)), dir = new THREE.Vector3(back.x - F.wp.x, 0, back.z - F.wp.z).normalize();
+        var cord = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.02, 1), _sigMat(_HD_WHITE, { map: _sigGlowTex() }));
+        cord.renderOrder = 166; cord.rotation.x = -Math.PI / 2;
+        var hold = new THREE.Group(); hold.rotation.y = Math.atan2(dir.x, dir.z); hold.position.y = h * 0.55; hold.add(cord); F.g.add(hold);
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.05, ts * 0.012, 6, 14), _sigMat(_HD_LACE));
+        ring.renderOrder = 167; hold.add(ring);
+        return _sigRunOwned(F.g, 900, function (el) {
+            var out = el < 380 ? _sigEaseOutCubic(_sigClamp01(el / 380)) : 1 - _sigEaseOutBack(_sigClamp01((el - 380) / 220)) * 0.98;
+            var len = Math.max(0.01, ts * 0.85 * out);
+            cord.scale.set(1, len, 1); cord.position.z = ts * 0.12 + len / 2;
+            ring.position.z = ts * 0.12 + len; ring.rotation.y = Math.PI / 2;
+            var o2 = _afEnv(el, 0, 40, 700, 900);
+            cord.material.opacity = 0.9 * o2; ring.material.opacity = 0.95 * o2;
+        });
+    }
+    EFFECTS['hdLine_play'] = { layers: [
+        { count: 14, sprite: 'sparkle', ml: [600, 900], offsetXY: 18, z: [30, 80], tint: _HD_LACE, vxRange: 60, vyRange: 60, vzRange: [40, 110], drag: 0.8, size0: [4, 7], size1: 2, opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 3, tint: 0x8af0a0, size0: 24, size1: 80, opacity0: 0.5 },
+    ] };
+    EFFECTS['hdLine_kill'] = { shake: 'light', layers: [
+        { count: 2, sprite: 'spark', ml: 700, offsetXY: 3, z: [70, 72], tint: _HD_RED, size0: 7, size1: 5, opacity0: 1 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 600, z: 3, tint: _HD_RED, size0: 30, size1: 120, opacity0: 0.6, delayMs: 150 },
+    ] };
+    EFFECTS['hdLine_heart'] = { layers: [
+        { count: 6, sprite: 'petal', ml: [700, 1000], offsetXY: 10, z: [60, 90], tint: 0xff7aa8, vzRange: [30, 70], drag: 0.6, size0: [6, 9], size1: 3, opacity0: 0.95 },
+        { sprite: 'spark-pink', ml: 500, z: 70, size0: 12, size1: 30, opacity0: 0.8 },
+    ] };
+    function _hdLine3D(line) {
+        return function (tx, ty, r, o) {
+            if (_hdOff()) return true;
+            o = o || {};
+            var u = _fx5UnitAt(tx, ty), C = _hdSide(u || { player: o.owner }), ts = _capTs();
+            var hasFoe = o.toX != null && o.toY != null;
+            _fxDelay(function () {
+                if (line === 'play') { if (!_afFogHides(tx, ty)) _afRecipe('hdLine_play', tx, ty); return; }
+                if (line === 'kill') {
+                    if (!_afFogHides(tx, ty)) _afRecipe('hdLine_kill', tx, ty);
+                    if (hasFoe && !_afFogHides(o.toX, o.toY)) _fxDelay(function () { try { _sigShockRing3D(o.toX, o.toY, { r0: ts * 0.2, r1: ts * 0.7, ms: 420, color: _HD_RED, height: ts * 0.05 }); } catch (e) {} }, 260);
+                    return;
+                }
+                if (!hasFoe || _afFogHides(o.toX, o.toY)) return;
+                if (line === 'friend') { _afRecipe('hdLine_heart', o.toX, o.toY); return; }
+                if (line === 'hug' && !_afFogHides(tx, ty)) {
+                    var F = _nrvFrame(o.toX, o.toY), h = _lgBodyH(_lgUidAt(o.toX, o.toY), F.ts) * 0.5;
+                    var th = _hdThread(F, tx, ty, h, C.a, 700, F.ts * 0.03, 160);
+                    _sigRunOwned(F.g, 720, function (el) { th.run(el); });
+                }
+            }, 520);
+            return true;
+        };
+    }
+    /* LOOK BEHIND YOU: the lights go out round the victim */
+    EFFECTS['nrLookBehindYou_impact'] = { shake: 'normal', layers: [
+        { count: 8, sprite: 'shadow-wisp', ml: [500, 800], offsetXY: 16, z: [30, 70], tint: 0x1a1018, vxRange: 60, vyRange: 60, vzRange: [20, 60], size0: [16, 22], size1: [30, 40], opacity0: 0.6 },
+        { sprite: 'flash', ml: 160, z: 50, size0: 20, size1: 80, tint: _HD_LACE, opacity0: 0.55, delayMs: 380 },
+    ] };
+    function _hdBehind3D(tx, ty, r, o) {
+        if (_hdOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), from = _afCaster(tx, ty, o);
+        var cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var dm = new THREE.MeshBasicMaterial({ color: 0x050307, transparent: true, opacity: 0, depthWrite: false, fog: false, side: THREE.BackSide });
+        var dome = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.25, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), dm);
+        dome.renderOrder = 160; F.g.add(dome);
+        var eyes = [];
+        for (var i = 0; i < 2; i++) {
+            var e = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.06, ts * 0.04), _sigMat(_HD_RED, { map: _sigGlowTex() }));
+            e.renderOrder = 168; eyes.push(e);
+        }
+        var eh = new THREE.Group(); eh.position.y = h * 0.62; eyes[0].position.x = -ts * 0.05; eyes[1].position.x = ts * 0.05; eh.add(eyes[0]); eh.add(eyes[1]);
+        var a = _afTo(F, from.x, from.y); eh.position.x = a.x * 0.35; eh.position.z = a.z * 0.35;
+        _hdFaceCam(eh);
+        F.g.add(eh);
+        _sigRunOwned(F.g, 900, function (el) {
+            /* dark, a flicker of light, dark again, then up for the cut (the body + the number stay readable: never past 0.7) */
+            var d = el < 120 ? el / 120 : el < 180 ? 0.35 : el < 360 ? 1 : 1 - _sigClamp01((el - 360) / 240);
+            dm.opacity = 0.7 * d; _hdFaceCam(eh);
+            var eo = el > 150 && el < 420 ? 1 : 0;
+            eyes[0].material.opacity = eyes[1].material.opacity = eo;
+        });
+        var yaw = Math.atan2(a.x, a.z) + Math.PI / 2;
+        _fxDelay(function () {
+            try { _sigCrescentSlash3D(tx, ty, { color: _HD_LACE, yaw: yaw, height: h * 0.55, size: ts * 1.2, ms: 200, pitch: -0.3, dir: 1 }); } catch (e) {}
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.25, r1: ts * 0.8, ms: 460, color: C.a, height: ts * 0.05 }); } catch (e) {}
+        }, 380);
+    }
+    /* NOBODY'S LOOKING: small dark footprints over the squares she crept, one after the other */
+    function _hdCreep3D(tx, ty, n, o) {
+        if (_hdOff()) return true;
+        o = o || {};
+        if (o.fromX == null) return true;
+        var sq = [], x = o.fromX, y = o.fromY, guard = 0;
+        while ((x !== tx || y !== ty) && guard++ < 6) { var dx = tx - x, dy = ty - y; if (Math.abs(dx) >= Math.abs(dy) && dx) x += Math.sign(dx); else y += Math.sign(dy); sq.push({ x: x, y: y }); }
+        sq.unshift({ x: o.fromX, y: o.fromY });
+        sq.forEach(function (q, i) {
+            if (_afFogHides(q.x, q.y)) return;
+            _fxDelay(function () {
+                try { _sigShockRing3D(q.x, q.y, { r0: _capTs() * 0.08, r1: _capTs() * 0.3, ms: 520, color: 0x3a1a28, height: 3, torus: false }); } catch (e) {}
+            }, i * 260);
+        });
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        nrPinPrick:      { impact: 'nrPinPrick_impact' },
+        nrLookBehindYou: { impact: 'nrLookBehindYou_impact' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrPinPrick: _hdPin3D, nrLookBehindYou: _hdBehind3D, nrPullString: _hdString3D,
+        'nrPlayWithMe:swap': _hdSwap3D, hdCreep: _hdCreep3D,
+        'nrPullString:play': _hdLine3D('play'), 'nrPullString:friend': _hdLine3D('friend'),
+        'nrPullString:hug': _hdLine3D('hug'), 'nrPullString:kill': _hdLine3D('kill'),
+    });
+
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the
@@ -53106,9 +53319,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ════ THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX") ════
        Gator Toss, Bath Salts and Hurricane Party shipped on the stock look (a generic bolt, a buff glow, the plain wind ring).
        Each now has its own piece, on the same hooks as the Banker / Sewer Gator blocks above (EFFECTS `pzSig` -> _PZ_SIGS, every
-       intent through fire(), which online.js relays, so the guest draws the same piece; RULE #2), and each cast opens with
-       TODAY'S HEADLINE: a newspaper spins in beside his head (the old film spin) with the day's headline on it, small, to the
-       lens side of him and above the nameplate, gone in 1.6 s. Side colours from the viewer's seat (his side cyan-blue, the other
+       intent through fire(), which online.js relays, so the guest draws the same piece; RULE #2). The day's headline rides the
+       action-cam letterbox, turned into a broadcast lower third (battle.js _acNewsFor, mondo 11-17; it was a spinning
+       newspaper sprite here first). Side colours from the viewer's seat (his side cyan-blue, the other
        side pink-orange, THE RIOT PASS phase C); the spell keeps its own swamp green / salt white / storm grey. Nothing full-screen;
        everything round the body fades so the caster, the target, the hit and the number read. Visuals only.
        · Gator Toss `bolt` (pzOwn, timed on flyMs): a real-proportioned alligator (leather hide, the Sewer Gator's snout and
@@ -53121,44 +53334,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
          the area. Models: the Meshy `flamingo` + `traffic_cone` (_MISC_GLB, warmed in _SPELL_MISC_KEYS). */
     var _FM = { hide: 0x8fbf5a, belly: 0xe0dca0, salt: 0xf6f8ff, rage: 0xff3a1a, rageHi: 0xffa040, regen: 0x6af07a,
         storm: 0x8a96a6, rain: 0xbfe6ff, paper: '#f1ead8' };
-    var _FM_HEADLINES = { nrGatorToss: 'FLORIDA MAN\nTHROWS ALLIGATOR', nrBathSalts: 'FLORIDA MAN FOUND\nNAKED ON OVERPASS',
-        nrHurricaneParty: 'FLORIDA MAN REFUSES\nTO EVACUATE' };
     /* the side ramp of whoever stands on a square: [bright, deep] (own cyan-blue, theirs pink-orange) */
     function _fmSide(sx, sy) {
         var owner = null;
         try { if (!_VS.on && typeof state !== 'undefined' && state.units) for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === sx && u.y === sy) { owner = u.player; break; } } } catch (e) {}
         return _mgSide(owner);
-    }
-    function _fmPaperTex(text) {
-        return _pzTex('fm-paper-' + text, 512, 288, function (g, w, h) {
-            g.fillStyle = _FM.paper; g.fillRect(0, 0, w, h);
-            g.strokeStyle = '#2a2622'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
-            g.fillStyle = '#c81a1a'; g.fillRect(14, 14, w - 28, 54);
-            g.fillStyle = '#ffffff'; g.font = 'bold 40px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-            g.fillText('BREAKING NEWS', w / 2, 42);
-            g.fillStyle = '#16130f'; g.font = 'bold 50px Georgia, "Times New Roman", serif';
-            var L = String(text).split('\n');
-            for (var i = 0; i < L.length; i++) g.fillText(L[i], w / 2, 118 + i * 58, w - 36);
-            /* the columns under the headline: grey type lines */
-            g.fillStyle = 'rgba(40,36,30,0.35)';
-            for (var c = 0; c < 3; c++) for (var r = 0; r < 4; r++) g.fillRect(22 + c * 160, 222 + r * 12, 140 - (r === 3 ? 50 : 0), 5);
-        });
-    }
-    /* TODAY'S HEADLINE: the paper spins in beside his head, holds, folds away */
-    function _fmHeadline(sx, sy, spellId) {
-        var text = _FM_HEADLINES[spellId]; if (!text || sx == null || !_pzSeen(sx, sy)) return;
-        var F = _nrvFrame(sx, sy), ts = F.ts, cd = _nbCamDir(F);
-        var sm = new THREE.SpriteMaterial({ map: _fmPaperTex(text), transparent: true, opacity: 0, depthWrite: false, depthTest: false });
-        var sp = new THREE.Sprite(sm); sp.renderOrder = 175; F.g.add(sp);
-        var W = ts * 1.25, H = W * 288 / 512;
-        sp.position.set(cd.z * ts * 0.95, ts * 2.15, -cd.x * ts * 0.95);   /* to the lens's right of him, over the nameplate */
-        _sigRunOwned(F.g, 1650, function (el) {
-            var k = _sigEaseOutCubic(_sigClamp01(el / 420));
-            var s = Math.max(0.04, k) * (1 - 0.15 * _sigClamp01((el - 1350) / 300));
-            sp.scale.set(W * s, H * s, 1);
-            sm.rotation = (1 - k) * Math.PI * 4;
-            sm.opacity = _pzEnv(el, 0, 120, 1300, 1650);
-        });
     }
     /* a Meshy prop (misc key) at length `len`, its materials faded together (userData.mats) */
     function _fmModel(key, len, lift) {
@@ -53197,7 +53377,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fx = p.fromX, fy = p.fromY, tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
         if (fx == null) { var fr = _pzFrom(tx, ty, p); fx = fr.x; fy = fr.y; }
         var ms = p.flyMs > 0 ? p.flyMs : 480;   /* the engine's flight: the jaws close on the number */
-        _fmHeadline(fx, fy, 'nrGatorToss');
         if (!_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
         var ts0 = _cfg().tileSize || 128, G = _fmGator(ts0), side = _fmSide(fx, fy);
         var wet = false;
@@ -53237,7 +53416,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['fmBathSalts_aura'] = _pzDef('fmBathSalts', { pzOwn: true });
     _PZ_SIGS.fmBathSalts = function (p) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
-        _fmHeadline(tx, ty, 'nrBathSalts');
         if (!_pzSeen(tx, ty)) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, side = _fmSide(tx, ty), cd = _nbCamDir(F);
         /* the crystals: little white shards thrown out of the puff */
@@ -53305,7 +53483,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['fmHurricaneParty_aoe'] = _pzDef('fmHurricane', { pzOwn: true, aoeRadius: 1 });
     _PZ_SIGS.fmHurricane = function (p, id) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
-        if (p.cx != null) _fmHeadline(p.cx, p.cy, 'nrHurricaneParty');
         var at = _nvAoeTiles(id, p, null, 1), r = at.r || 1;
         var seenAny = _pzSeen(tx, ty);
         for (var t0 = 0; t0 < at.offs.length && !seenAny; t0++) if (_pzSeen(tx + at.offs[t0].dx, ty + at.offs[t0].dy)) seenAny = true;
