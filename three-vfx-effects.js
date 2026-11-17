@@ -11168,6 +11168,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         plasma:      { file: 'Meshy_AI_plasma_gun_0713030043_texture.glb',        axis: 'z',
                        tweak: { ry: Math.PI } },
         football:    { file: 'Meshy_AI_american_football_0713030210_texture.glb', axis: 'z' },
+        /* THE PACK PIZZA BOX (2026-11-17, mondo "is there pizza from the model list or asset pack you can use?"): the Pizzeria
+           PSX pack's box (Elbolilloduro, CC0) cut out with its pepperoni pizza: nodes `tray`, `lid` (pivot on the back hinge,
+           +Z) and `pizza`, base on y = 0, 0.70 m across; the Delivery Boy's Hot and Fresh (_dbBox) */
+        pizzaBox:    { url: 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro/ebd_pizzeria_pizza_box.glb', axis: 'flat' },
         /* 2026-09-14: the arrow export comes in tip-BACKWARD like the guns
            (it flew fletching-first and stood point-up in the volley) — the
            baked ry flip puts the head on +Z, where the bow looses it */
@@ -66588,7 +66592,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     /* a pizza box `d` across: kraft sides, the printed lid on a hinge at the back edge; { g, lid, fade(op) } */
-    function _dbBox(d) {
+    function _dbBox(d, withPizza) {
+        var pk = _dbPackBox(d, withPizza);
+        if (pk) return pk;
         var g = new THREE.Group(), mats = [], hgt = d * 0.16;
         var side = _pzSolid(0xffffff, _dbSideTex()), bottom = _pzSolid(0xc99d62, null), lidTop = _pzSolid(0xffffff, _dbLidTex(), { side: THREE.DoubleSide }), inside = _pzSolid(0xd8a868, null, { side: THREE.DoubleSide });
         mats.push(side, bottom, lidTop, inside);
@@ -66597,6 +66603,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var hinge = new THREE.Group(); hinge.position.set(0, hgt, -d / 2); g.add(hinge);
         var lid = _pzMesh(new THREE.PlaneGeometry(d, d), lidTop, hinge, 0, 0.6, d / 2); lid.rotation.x = -Math.PI / 2;
         base.renderOrder = 158;
+        return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+    }
+    /* the pack's box (_WPN_MODELS.pizzaBox) when it has loaded, else null and the drawn box stands in for that cast; its lid
+       opens the same way the drawn one does (hinge.rotation.x < 0 = up and back), the pepperoni pizza inside when `withPizza` */
+    function _dbPackBox(d, withPizza) {
+        if (window.EW_NO_PACK_PIZZA) return null;
+        var e = _wpnLoad('pizzaBox');
+        if (!e || !e.root) return null;
+        var m = e.root.clone(true), mats = [], lid = null, pz = null;
+        m.traverse(function (n) {
+            if (n.name === 'lid') lid = n;
+            if (n.name === 'pizza') pz = n;
+            if (!n.isMesh || !n.material) return;
+            n._ew_pixelate = true;
+            n.material = [].concat(n.material).map(function (mm) { var c = mm.clone(); c.transparent = true; mats.push(c); return c; });
+            if (n.material.length === 1) n.material = n.material[0];
+        });
+        if (!lid) return null;
+        if (pz) pz.visible = !!withPizza;
+        var k = d / 0.70;
+        m.scale.set(k, k, k);
+        m.rotation.y = Math.PI;   // the hinge to the back (−Z), as the drawn box has it
+        var g = new THREE.Group(); g.add(m);
+        var hinge = { rotation: {} };
+        Object.defineProperty(hinge.rotation, 'x', { get: function () { return -lid.rotation.x; }, set: function (v) { lid.rotation.x = -v; } });
         return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
     }
     function _dbUnitId(x, y) { var u = _fx5UnitAt(x, y); return u ? u.id : null; }
@@ -66613,6 +66644,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     /* ════ HOT AND FRESH — the box is tossed to the ally, lands, the lid flips up, the steam rolls out ════ */
+    try { _wpnLoad('pizzaBox', { bg: true }); } catch (e) {}   // warm the pack box behind the scene (a first cast before it lands uses the drawn box)
     EFFECTS['nrHotAndFresh_bolt'] = _pzDef('dbHotBox', { pzOwn: true });
     EFFECTS['nrHotAndFresh_aura'] = { layers: [
         { count: 10, sprite: 'heal-glow', ml: [700, 1100], offsetXY: 22, z: [20, 70], tint: _DB.heal, vzRange: [40, 90], size0: [6, 10], size1: 3, opacity0: 0.85, delayMs: 260 },
@@ -66635,7 +66667,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _fxDelay(function () {
             if (_suppressed()) return;
             var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty);
-            var B = _dbBox(ts * 0.34); F.g.add(B.g);
+            var B = _dbBox(ts * 0.34, true); F.g.add(B.g);
             B.g.position.set(ln.ux * ts * 0.3, 0, ln.uz * ts * 0.3); B.g.rotation.y = Math.atan2(ln.ux, ln.uz);
             _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.18, r1: ts * 0.8, ms: 420, height: 4 });
             _capPuff(tx, ty, 'dust-puff', 5, { r: 0.3, h: 0.03, out: 90, vz0: 5, vz1: 25, s0: 10, s1: 16, sEnd: 30, op: 0.4 });

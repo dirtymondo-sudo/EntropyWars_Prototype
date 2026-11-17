@@ -3886,6 +3886,13 @@ The Delivery family had only the generic looks. Now, on the P-Z hook (`pzSig`), 
 - Hot and Fresh (`bolt`, pzOwn, timed on flyMs = the heal's projectile): a pizza box (canvas: kraft lid, red slice logo,
   HOT & FRESH) tumbles to the ally, lands at its feet toward him, the lid flips up, steam curls out, side ring; the `aura`
   on arrival = green heal motes.
+  THE PACK BOX (11-17, mondo "is there pizza from the model list or asset pack you can use?"): the box is now the Pizzeria
+  PSX pack's (Elbolilloduro, CC0), `Assets/world/packs/elbolilloduro/ebd_pizzeria_pizza_box.glb` (`_WPN_MODELS.pizzaBox`,
+  `_dbPackBox`): nodes `tray`, `lid` (pivot on the back hinge) and `pizza` (the pack's pepperoni pizza, shown when it lands
+  and opens). Cut from Pizzeria_Props.glb (nodes Pizza_box.001 = lid, .002 = tray with the parent's 2.66 scale baked,
+  Pizza_Peperoni) with gltf-transform: /mnt/project-files/delivery-boy-polish/cut-pizza-box.mjs. The canvas box stands in
+  until the GLB has loaded (warmed in the background lane at boot). Kill switch `window.EW_NO_PACK_PIZZA`. The pack also
+  has 11 more pizzas (cheese, ham, mushroom, olive, pepper, pineapple, basil, slices) and a closed box (Pizza_box.003).
 - Hop On (`aura` on the ally; `fireGeometry('nrHopOn')` per ally from Thirty Minutes or Less): two horn-beep rings at his
   head, a side ring under each, a chevron over the ally pointing at him.
 - The drop (`fireGeometry('nrHopOn:drop', x, y, 0, { fromX, fromY, owner, delay })`): dust, side ring, one bell ring.
