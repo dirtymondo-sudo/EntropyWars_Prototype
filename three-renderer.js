@@ -2958,6 +2958,49 @@ const ThreeRenderer = (function () {
         } catch (e) { console.warn('[ThreeRenderer] the height fog patch failed', e); return false; }
     }
     _ewHeightFogPatch();
+    /* THE ROUND WORLDS, THE CLASSIC RENDERER (2026-11-17; the node renderer's twin is _ewPlNodeBend): every vertex shader that projects
+       through three's project_vertex / the sprite shader sends its world point through ewPlBend. The uniforms are plain shared objects
+       (copied by reference into every material, like the height fog's); all zero = the identity, so a ShaderMaterial that never gets
+       them draws exactly as before. The anchor's turn is written as M - I for the same reason. */
+    var _EW_PLU = { on: { x: 0, y: 0, z: 0, w: 0 }, S: { x: 0, y: 0, z: 0, w: 0 }, g: [], c: [], A: { x: 0, y: 0, z: 0, w: 0 }, P: { x: 0, y: 0, z: 0, w: 0 }, M: [{ x: 0, y: 0, z: 0, w: 0 }, { x: 0, y: 0, z: 0, w: 0 }, { x: 0, y: 0, z: 0, w: 0 }] };
+    for (var _plq = 0; _plq < 4; _plq++) { _EW_PLU.g.push({ x: 0, y: 0, z: 0, w: 0 }); _EW_PLU.c.push({ x: 0, y: 0, z: 0, w: 0 }); }
+    (function _ewPlGlslPatch() {
+        if (typeof THREE === 'undefined' || !THREE.ShaderChunk || !THREE.ShaderLib) return;
+        try {
+            var SC = THREE.ShaderChunk, F = [
+                [[-1, 0, 0], [0, 0, 1], [0, -1, 0]], [[0, 0, 1], [1, 0, 0], [0, -1, 0]], [[1, 0, 0], [0, 0, -1], [0, -1, 0]],
+                [[0, 0, -1], [-1, 0, 0], [0, -1, 0]], [[0, -1, 0], [1, 0, 0], [0, 0, -1]], [[0, 1, 0], [1, 0, 0], [0, 0, 1]]];
+            var v3 = function (a) { return 'vec3(' + a.map(function (q) { return q.toFixed(1); }).join(',') + ')'; };
+            var pick = function (j) { var t = v3(F[5][j]); for (var q = 4; q >= 0; q--) t = '(k < ' + (q + 0.5).toFixed(1) + ' ? ' + v3(F[q][j]) + ' : ' + t + ')'; return t; };
+            var U = 'uniform vec4 ewPlOn; uniform vec4 ewPlS; uniform vec4 ewPlA; uniform vec4 ewPlP; uniform vec4 ewPlM0; uniform vec4 ewPlM1; uniform vec4 ewPlM2;\n';
+            for (var i = 0; i < 4; i++) U += 'uniform vec4 ewPlG' + i + '; uniform vec4 ewPlC' + i + ';\n';
+            /* the face: a small piece (every vertex within 0.15 L of its own middle, its middle on the net) is bent by its middle's face
+               (run on past the edge), so a body or a prop on a seam is never torn; the rest (the ground, a long wall) by each vertex's own */
+            var body = 'vec3 ewPlOne( vec3 w, vec3 o, vec4 g, vec4 c, vec3 res ) {\n' +
+                '\tfloat L = g.z, rx = w.x - g.x, rz = w.z - g.y, m = L * 0.3, e = L * 0.001, ox = o.x - g.x, oz = o.z - g.y;\n' +
+                '\tif ( c.w < 0.5 ) return res;\n' +
+                '\tbool useO = ox > - m && ox < 3.0 * L + m && oz > - m && oz < 2.0 * L + m && length( w.xz - o.xz ) < 0.15 * L;\n' +
+                '\tif ( ! useO && ( rx < - e || rx > 3.0 * L + e || rz < - e || rz > 2.0 * L + e ) ) return res;\n' +
+                '\tfloat fx = useO ? ox : rx, fz = useO ? oz : rz;\n' +
+                '\tfloat col = clamp( floor( fx / L ), 0.0, 2.0 ), row = clamp( floor( fz / L ), 0.0, 1.0 ), k = row * 3.0 + col;\n' +
+                '\tfloat a = clamp( ( rx - col * L ) / L * 2.0 - 1.0, -1.6, 1.6 ), b = clamp( ( rz - row * L ) / L * 2.0 - 1.0, -1.6, 1.6 );\n' +
+                '\tvec3 dir = normalize( ' + pick(0) + ' + ' + pick(1) + ' * tan( a * 0.78539816 ) + ' + pick(2) + ' * tan( b * 0.78539816 ) );\n' +
+                '\treturn c.xyz + dir * max( g.w + w.y, g.w * 0.3 );\n}\n' +
+                'vec3 ewPlBend( vec3 w, vec3 o ) {\n#ifdef EW_PL_NOBEND\n\treturn w;\n#endif\n\tif ( ewPlOn.x < 0.5 || ( ewPlS.w > 0.0 && distance( o, ewPlS.xyz ) < ewPlS.w ) ) return w;\n\tvec3 res = w;\n' +
+                '\tres = ewPlOne( w, o, ewPlG0, ewPlC0, res ); res = ewPlOne( w, o, ewPlG1, ewPlC1, res ); res = ewPlOne( w, o, ewPlG2, ewPlC2, res ); res = ewPlOne( w, o, ewPlG3, ewPlC3, res );\n' +
+                '\tvec3 d = res - ewPlA.xyz;\n\treturn ewPlP.xyz + d + vec3( dot( ewPlM0.xyz, d ), dot( ewPlM1.xyz, d ), dot( ewPlM2.xyz, d ) );\n}\n';
+            if (SC.common.indexOf('ewPlBend') < 0) SC.common = SC.common + '\n' + U + '#ifndef EW_PL_FRAG\n' + body + '#endif\n';
+            var pv = 'mvPosition = modelViewMatrix * mvPosition;';
+            if (SC.project_vertex.indexOf(pv) >= 0) SC.project_vertex = SC.project_vertex.replace(pv, 'mvPosition = viewMatrix * vec4( ewPlBend( ( modelMatrix * mvPosition ).xyz, modelMatrix[ 3 ].xyz ), 1.0 );');
+            else console.warn('[ThreeRenderer] the round worlds: project_vertex has no anchor in three.js ' + THREE.REVISION);
+            var spr = THREE.ShaderLib.sprite;
+            if (spr && spr.vertexShader.indexOf('vec4 mvPosition = modelViewMatrix[ 3 ];') >= 0) spr.vertexShader = spr.vertexShader.replace('vec4 mvPosition = modelViewMatrix[ 3 ];', 'vec4 mvPosition = viewMatrix * vec4( ewPlBend( modelMatrix[ 3 ].xyz, modelMatrix[ 3 ].xyz ), 1.0 );');
+            var put = function (u) { u.ewPlOn = { value: _EW_PLU.on }; u.ewPlS = { value: _EW_PLU.S }; u.ewPlA = { value: _EW_PLU.A }; u.ewPlP = { value: _EW_PLU.P }; u.ewPlM0 = { value: _EW_PLU.M[0] }; u.ewPlM1 = { value: _EW_PLU.M[1] }; u.ewPlM2 = { value: _EW_PLU.M[2] };
+                for (var j = 0; j < 4; j++) { u['ewPlG' + j] = { value: _EW_PLU.g[j] }; u['ewPlC' + j] = { value: _EW_PLU.c[j] }; } };
+            for (var k in THREE.ShaderLib) if (THREE.ShaderLib[k] && THREE.ShaderLib[k].uniforms) put(THREE.ShaderLib[k].uniforms);
+            if (THREE.UniformsLib && THREE.UniformsLib.common) put(THREE.UniformsLib.common);
+        } catch (e) { console.warn('[ThreeRenderer] the round worlds patch failed', e); }
+    })();
 
     /* RENDERER_PLAN R2 (2026-10-02): r152 renamed a texture's `encoding` to `colorSpace` and the constants with it (the current
        three.js has no sRGBEncoding at all). One pair of helpers reads / writes whichever spelling this three.js has, so every
@@ -47116,6 +47159,7 @@ const ThreeRenderer = (function () {
         var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
         /* kept across a rebuilt renderer (W4, device lost): the dressed materials, twins and cached Fn graphs read these nodes */
         if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
+        try { _ewPlNodeSetup(r, G); } catch (e) { console.warn('[ThreeRenderer] the round worlds: no node bend', e); }   // THE ROUND WORLDS (2026-11-17)
         _ewNodeTick();
         /* the height fog: the scene's FogExp2 node, with the floor term folded in exactly as the GLSL patch does */
         /* THE ONE FOG (2026-10-12): three keys every lit build on the fog NODE, and a fog node reads one fog object, so each
@@ -47151,6 +47195,7 @@ const ThreeRenderer = (function () {
         var lib = r.library, fm = lib.fromMaterial;
         lib.fromMaterial = function (material) {
             var nm = fm.call(this, material);
+            if (nm && nm !== material && material.userData && material.userData.ewNoBend) nm._ew_noBend = true;   // THE ROUND WORLDS: drawn flat (the sky)
             if (nm && nm !== material) { try { _ewNodeDress(nm, material); } catch (e) { console.warn('[ThreeRenderer] node layer: ' + material.type + ' kept plain', e); } }
             return nm;
         };
@@ -49812,6 +49857,7 @@ const ThreeRenderer = (function () {
         r.render = function (sc, cam) {
             if (!this.initialized) return;
             var shadowPass = !!(sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial);
+            if (!(sc && sc.isQuadMesh)) _ewPlRenderSwitch(this, sc);   // THE ROUND WORLDS (2026-11-17): the walk's scene of a room with round worlds draws bent
             /* WEBGPU_PLAN W3: a QuadMesh is a full-screen pass (the post chain, a node's own target, a blur) — the frame's scene
                renders INSIDE the chain's first one, so it neither counts as a level nor is the frame; a side render (the post's
                model mask) is drawn before the frame and is not it either */
@@ -76058,6 +76104,7 @@ const ThreeRenderer = (function () {
         }
         H.scene.add(group);
         H.sky.group = group;
+        if (room.space && room.space.round) _ewPlKeepFlat(group);   // THE ROUND WORLDS: the sky hangs round the eye, never bent onto a ball
         /* the roster's glow accents breathe under the HQ loop; its materials take the sky's grade once (no per-frame regrade here) */
         _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) { if (kSky !== 1 && p.mesh && p.mesh.parent === group) p.baseScl *= kSky; H.fxPulse.push(p); } });   // a breathing body keeps the ring's scale
         try { _gradeHorizonScenery(H.sky.night, 0, 0); } catch (e) {}
@@ -86856,6 +86903,11 @@ const ThreeRenderer = (function () {
         if (H.portal && H.portal.drawn) { try { _hqPortalDraw(false); } catch (e) {} }
         pl.swim = false; pl.dive = false; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.mvx = 0; pl.mvz = 0; pl.svx = pl.svy = pl.svz = 0;
         H.vehicle = { on: true, kind: b.kind, rec: b, x: b.x, z: b.z, y: b.y, yaw: b.yaw, v: 0, vy: 0, pitch: 0, roll: 0, t: 0, latch: null, thr: 0 };
+        /* THE ROUND WORLDS: a ship moored on a ball's flat net takes off from where the ball really is (over its pad, upright) */
+        if (b.kind === 'ship' && typeof _ewPlAt === 'function') { var pr = _ewPlAt(b.x, b.z);
+            if (pr && _ewPlInRect(pr, b.x, b.z)) { var Bp = _ewPlBend(pr, b.x, (b.y || 0), b.z), ux = Bp[0] - pr.c[0], uy = Bp[1] - pr.c[1], uz = Bp[2] - pr.c[2], ul = Math.hypot(ux, uy, uz) || 1, lift = (pr.top || 6) + 12;
+                H.vehicle.x = Bp[0] + ux / ul * lift; H.vehicle.y = Bp[1] + uy / ul * lift; H.vehicle.z = Bp[2] + uz / ul * lift;
+                if (H.cam) H.cam.init = false; } }
         H.cam.distSaved = H.cam.dist; H.cam.dist = (_hqSeaRules()[b.kind] || {}).camDist || 7;
         _hqSeaEmit({ kind: 'board', vehicle: b.kind, label: b.label });
         H.dirty = true;
@@ -87010,6 +87062,12 @@ const ThreeRenderer = (function () {
         if (y > (sp.ceil || 120)) return false;
         var P = sp.planets || [];
         for (var q = 0; q < P.length; q++) { var pq = P[q]; if (Math.hypot(x - pq.x, y - pq.y, z - pq.z) < pq.r + (R.r || 2.2) + 1) return false; }
+        /* THE ROUND WORLDS: the ball (its ground is up to `top` m over its radius); a net's flat place is empty sky, kept under a lid
+           (the ship never sits in it at the height of its flat ground) */
+        var RW = sp.round || [];
+        for (var rq = 0; rq < RW.length; rq++) { var rw = RW[rq];
+            if (Math.hypot(x - rw.c[0], y - rw.c[1], z - rw.c[2]) < rw.R + (rw.top || 6) + (R.r || 2.2) + 1) return false;
+            if (x > rw.x0 - 6 && x < rw.x0 + 3 * rw.L + 6 && z > rw.z0 - 6 && z < rw.z0 + 2 * rw.L + 6) { if (y < (rw.top || 6) + 16) return false; return true; } }
         if (sp.sun && Math.hypot(x - sp.sun.x, y - sp.sun.y, z - sp.sun.z) < sp.sun.r * 1.3) return false;
         var probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
         for (var i = 0; i < probes.length; i++) {
@@ -87056,14 +87114,17 @@ const ThreeRenderer = (function () {
         if ((thr !== 0) !== !!V.thr) { V.thr = thr !== 0; _hqSeaEmit({ kind: 'throttle', on: V.thr, vehicle: 'ship' }); }
         /* THE BEACONS: fly into one and the ship sets down on its pad */
         var BC = sp.beacons || [];
+        /* a beacon over a round world (`ball`: its pad on the ball, `up`: the ball's up there) is flown into in the round: its ring */
+        var bd = function (b) { if (!b.ball) return Math.hypot(V.x - b.x, V.z - b.z); var u = b.up; return Math.hypot(V.x - (b.ball[0] + u[0] * 14), V.y - (b.ball[1] + u[1] * 14), V.z - (b.ball[2] + u[2] * 14)); };
         if (V.skipBeacon === undefined) {   // the beacon it took off from is not a landing until the ship has left it
             V.skipBeacon = null;
-            for (var j = 0; j < BC.length; j++) if (Math.hypot(V.x - BC[j].x, V.z - BC[j].z) < (R.land || 9) * 1.6) V.skipBeacon = BC[j].id;
+            for (var j = 0; j < BC.length; j++) if (bd(BC[j]) < (R.land || 9) * (BC[j].ball ? 2.4 : 1.6)) V.skipBeacon = BC[j].id;
         }
         for (var i = 0; i < BC.length; i++) {
-            var b = BC[i], d = Math.hypot(V.x - b.x, V.z - b.z);
-            if (b.id === V.skipBeacon) { if (d > (R.land || 9) * 1.6) V.skipBeacon = null; continue; }
-            if (d > (R.land || 9) || V.y > (b.ground || 0) + (R.landH || 26)) continue;
+            var b = BC[i], d = bd(b);
+            if (b.id === V.skipBeacon) { if (d > (R.land || 9) * (b.ball ? 2.4 : 1.6)) V.skipBeacon = null; continue; }
+            if (b.ball) { if (d > (R.land || 9) * 1.4) continue; }
+            else if (d > (R.land || 9) || V.y > (b.ground || 0) + (R.landH || 26)) continue;
             _hqShipLand(b); return;
         }
     }
@@ -87074,6 +87135,7 @@ const ThreeRenderer = (function () {
         if (pad.yaw != null) { var dy = pad.yaw - V.yaw; V.yaw = pad.yaw; H.cam.yaw -= dy; }
         var U = _hqUnits(), grp = V.rec.grp; grp.position.set(V.x * U, V.y * U, V.z * U); grp.rotation.set(0, V.yaw, 0);
         if (H.player && H.player.entry && H.player.entry.group) H.player.entry.group.visible = true;
+        if (b.ball && H.cam) H.cam.init = false;   // THE ROUND WORLDS: down on the ball's flat net, the eye starts again at the feet
         _hqDisembark();
         _hqSeaEmit({ kind: 'land', vehicle: 'ship', label: b.label });
     }
@@ -87090,7 +87152,7 @@ const ThreeRenderer = (function () {
        under the berth, the Sun far below in the middle, a gold ring + a name over each beacon (they turn slowly; a ticker) */
     function _hqBuildSpace(room, G) {
         var sp = room.space; if (!sp) return;
-        var U = _hqUnits(), H = _hq;
+        var U = _hqUnits(), H = _hq, n0 = G.children.length;
         /* a shared sheet repeats by the geometry's own UVs (a clone of a sheet still loading draws blank on r128) */
         /* the room's own copy of a sheet: the shared one is re-tiled by the field (THE ONE PIXEL DENSITY), and a plain clone of a
            sheet still loading stays blank on r128, so the copy takes the picture once it has landed */
@@ -87153,6 +87215,8 @@ const ThreeRenderer = (function () {
             var halo = new THREE.Mesh(new THREE.SphereGeometry(sp.sun.r * 1.35 * U, 40, 26), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.22, depthWrite: false })); halo.position.copy(sun.position); G.add(halo);
             var sl = new THREE.PointLight(0xffd8a0, 0.6, 0); sl.position.copy(sun.position); G.add(sl);
         }
+        /* THE ROUND WORLDS: the balls, rings, flanks and the Sun are drawn where they hang (a ring's far edge can reach over a net's flat place) */
+        if (sp.round && sp.round.length) G.children.slice(n0).forEach(_ewPlKeepFlat);
         /* the beacons */
         var rings = [];
         (sp.beacons || []).forEach(function (b) {
@@ -87167,6 +87231,215 @@ const ThreeRenderer = (function () {
             G.add(gr); rings.push(ring);
         });
         if (H) H._spaceRings = rings;
+    }
+    /* ══ THE ROUND WORLDS (2026-11-17, mondo's two-maps design doc, "Map A — Spherical planet": six N x N cube-face grids projected
+       onto a ball, walked all the way round; his pick "round worlds first"). A round world is laid FLAT in the room like any other
+       ground (`space.round[i]`: x0, z0 = the north-west corner of its net in metres, L = a face's side in metres, R = the ball's radius,
+       c = the ball's middle): six faces of L x L in three columns and two rows. Every rule of the walk (the ground, the walls, the props,
+       the people, the doors) reads the flat net as it always has; only the DRAW bends it: every vertex inside a net is sent onto its
+       ball (the equal-angle cube-sphere: one face = a quarter turn, so a 3.5 m square stays about 3.5 m everywhere). Walking off a face
+       you are carried to the true neighbouring face (THE SEAM, below), so you can go all the way round. While you stand on a ball the
+       whole picture turns about you (THE ANCHOR): round your feet the world is flat as the walk sees it, and it curves away to the
+       horizon. The faces: (col, row) = (0,0) (1,0) (2,0) on top, (0,1) (1,1) (2,1) under; the top row is three faces of the belt
+       joined left to right; (1,1) is the bottom cap, joined under (1,0); (0,1) is the fourth face of the belt and (2,1) the top cap
+       (these two join nothing on the flat net: their every edge is a seam you are carried over). Node renderer only for now (the
+       game's default); the classic renderer draws the net flat. Off: window.EW_NO_ROUND (the nets draw flat where they lie). */
+    var _EW_PL_FACES = [   // [the face's out (n), the flat +x on it (u), the flat +z on it (v)]
+        [[-1, 0, 0], [0, 0, 1], [0, -1, 0]], [[0, 0, 1], [1, 0, 0], [0, -1, 0]], [[1, 0, 0], [0, 0, -1], [0, -1, 0]],
+        [[0, 0, -1], [-1, 0, 0], [0, -1, 0]], [[0, -1, 0], [1, 0, 0], [0, 0, -1]], [[0, 1, 0], [1, 0, 0], [0, 0, 1]]];
+    var _ewPl = { live: false, list: [], u: null, ctx: null, ctx0: null, anchor: null };
+    function _ewPlRound() { var sp = _hq && _hq.room && _hq.room.space; return (sp && sp.round && sp.round.length && !(typeof window !== 'undefined' && window.EW_NO_ROUND)) ? sp.round : null; }
+    /* the planet whose net holds (x, z) metres (a margin of 0.3 L round it), or null */
+    function _ewPlAt(x, z) {
+        var L = _ewPlRound(); if (!L) return null;
+        for (var i = 0; i < L.length; i++) { var p = L[i], m = p.L * 0.3; if (x > p.x0 - m && x < p.x0 + 3 * p.L + m && z > p.z0 - m && z < p.z0 + 2 * p.L + m) return p; }
+        return null;
+    }
+    function _ewPlFaceAt(p, x, z) { var c = Math.max(0, Math.min(2, Math.floor((x - p.x0) / p.L))), r = Math.max(0, Math.min(1, Math.floor((z - p.z0) / p.L))); return r * 3 + c; }
+    function _ewPlInRect(p, x, z) { return x >= p.x0 && x < p.x0 + 3 * p.L && z >= p.z0 && z < p.z0 + 2 * p.L; }
+    /* flat (x, y, z) on face k of planet p → the point on its ball (metres); a, b past ±1 run on over the edge */
+    function _ewPlBendFace(p, k, x, y, z) {
+        var F = _EW_PL_FACES[k], c = k % 3, r = (k / 3) | 0;
+        var a = Math.max(-1.6, Math.min(1.6, (x - p.x0 - c * p.L) / p.L * 2 - 1)), b = Math.max(-1.6, Math.min(1.6, (z - p.z0 - r * p.L) / p.L * 2 - 1));
+        var ta = Math.tan(a * Math.PI / 4), tb = Math.tan(b * Math.PI / 4);
+        var dx = F[0][0] + F[1][0] * ta + F[2][0] * tb, dy = F[0][1] + F[1][1] * ta + F[2][1] * tb, dz = F[0][2] + F[1][2] * ta + F[2][2] * tb;
+        var dl = Math.hypot(dx, dy, dz), rr = Math.max(p.R + y, p.R * 0.3);
+        return [p.c[0] + dx / dl * rr, p.c[1] + dy / dl * rr, p.c[2] + dz / dl * rr];
+    }
+    function _ewPlBend(p, x, y, z) { return _ewPlBendFace(p, _ewPlFaceAt(p, x, z), x, y, z); }
+    /* a point on (or over) the ball → its flat place: { k, x, z, y } */
+    function _ewPlFlat(p, X, Y, Z) {
+        var qx = X - p.c[0], qy = Y - p.c[1], qz = Z - p.c[2], ql = Math.hypot(qx, qy, qz) || 1, best = -2, k = 0;
+        for (var i = 0; i < 6; i++) { var n = _EW_PL_FACES[i][0], d = (qx * n[0] + qy * n[1] + qz * n[2]) / ql; if (d > best) { best = d; k = i; } }
+        var F = _EW_PL_FACES[k], dn = (qx * F[0][0] + qy * F[0][1] + qz * F[0][2]);
+        var su = (qx * F[1][0] + qy * F[1][1] + qz * F[1][2]) / dn, sv = (qx * F[2][0] + qy * F[2][1] + qz * F[2][2]) / dn;
+        var a = Math.atan(su) * 4 / Math.PI, b = Math.atan(sv) * 4 / Math.PI, c = k % 3, r = (k / 3) | 0;
+        return { k: k, x: p.x0 + c * p.L + (a + 1) / 2 * p.L, z: p.z0 + r * p.L + (b + 1) / 2 * p.L, y: ql - p.R };
+    }
+    /* THE ANCHOR: the frame at the walker's feet (the ball's up, the flat +x carried onto the ball), so the draw can turn the world
+       about him: out = P + M (bend(p) - A). Off a ball (aboard the ship, in the void) it is the identity. */
+    function _ewPlAnchorAt(p, k, x, y, z) {
+        var A = _ewPlBendFace(p, k, x, y, z), Ax = _ewPlBendFace(p, k, x + 0.5, y, z), Ay = _ewPlBendFace(p, k, x, y + 0.5, z);
+        var ey = [Ay[0] - A[0], Ay[1] - A[1], Ay[2] - A[2]], l = Math.hypot(ey[0], ey[1], ey[2]); ey = [ey[0] / l, ey[1] / l, ey[2] / l];
+        var ex = [Ax[0] - A[0], Ax[1] - A[1], Ax[2] - A[2]], dd = ex[0] * ey[0] + ex[1] * ey[1] + ex[2] * ey[2];
+        ex = [ex[0] - ey[0] * dd, ex[1] - ey[1] * dd, ex[2] - ey[2] * dd]; l = Math.hypot(ex[0], ex[1], ex[2]); ex = [ex[0] / l, ex[1] / l, ex[2] / l];
+        var ez = [ex[1] * ey[2] - ex[2] * ey[1], ex[2] * ey[0] - ex[0] * ey[2], ex[0] * ey[1] - ex[1] * ey[0]];
+        return { A: A, P: [x, y, z], M: [ex, ey, ez] };
+    }
+    /* the uniforms (scene units), written every frame of a room with round worlds */
+    function _ewPlTick(H) {
+        var L = _ewPlRound(), u = _ewPl.u, C = _EW_PLU, U = _hqUnits(), sv = function (o, x, y, z, w) { o.x = x; o.y = y; o.z = z; o.w = w; };
+        C.on.x = L ? 1 : 0;
+        for (var i = 0; i < 4; i++) {
+            var p = L && L[i];
+            if (p) { sv(C.g[i], p.x0 * U, p.z0 * U, p.L * U, p.R * U); sv(C.c[i], p.c[0] * U, p.c[1] * U, p.c[2] * U, 1); if (u) { u.g[i].value.set(p.x0 * U, p.z0 * U, p.L * U, p.R * U); u.c[i].value.set(p.c[0] * U, p.c[1] * U, p.c[2] * U, 1); } }
+            else { C.c[i].w = 0; if (u) u.c[i].value.w = 0; }
+        }
+        /* THE SHIP IN FLIGHT is drawn where it flies (never bent, whatever flat place its middle is over) */
+        var Vs = H && H.vehicle, fly = !!(L && Vs && Vs.on && Vs.kind === 'ship');
+        sv(C.S, fly ? Vs.x * U : 0, fly ? Vs.y * U : 0, fly ? Vs.z * U : 0, fly ? 14 * U : 0); if (u) u.S.value.set(C.S.x, C.S.y, C.S.z, C.S.w);
+        var an = null, pl = H && H.player;
+        if (L && pl && !(H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship')) {
+            var p0 = _ewPlAt(pl.x, pl.z);
+            if (p0) { var k0 = (H._plFace != null && H._plPlanet === p0) ? H._plFace : _ewPlFaceAt(p0, pl.x, pl.z); an = _ewPlAnchorAt(p0, k0, pl.x, 0, pl.z); }
+        }
+        _ewPl.anchor = an;
+        if (an) { sv(C.A, an.A[0] * U, an.A[1] * U, an.A[2] * U, 1); sv(C.P, an.P[0] * U, an.P[1] * U, an.P[2] * U, 1); for (var mi = 0; mi < 3; mi++) sv(C.M[mi], an.M[mi][0] - (mi === 0 ? 1 : 0), an.M[mi][1] - (mi === 1 ? 1 : 0), an.M[mi][2] - (mi === 2 ? 1 : 0), 0); }
+        else { sv(C.A, 0, 0, 0, 0); sv(C.P, 0, 0, 0, 0); for (var mj = 0; mj < 3; mj++) sv(C.M[mj], 0, 0, 0, 0); }
+        if (!u) { /* the classic renderer */ }
+        else if (an) {
+            u.A.value.set(an.A[0] * U, an.A[1] * U, an.A[2] * U, 1); u.P.value.set(an.P[0] * U, an.P[1] * U, an.P[2] * U, 1);
+            u.M0.value.set(an.M[0][0], an.M[0][1], an.M[0][2], 0); u.M1.value.set(an.M[1][0], an.M[1][1], an.M[1][2], 0); u.M2.value.set(an.M[2][0], an.M[2][1], an.M[2][2], 0);
+        } else {
+            u.A.value.set(0, 0, 0, 0); u.P.value.set(0, 0, 0, 0); u.M0.value.set(1, 0, 0, 0); u.M1.value.set(0, 1, 0, 0); u.M2.value.set(0, 0, 1, 0);
+        }
+        /* the flat bounds of a bent piece say nothing about where it is drawn: nothing in the room is left out by the frustum */
+        if (L && H && H.scene && (!H._plCullT || performance.now() - H._plCullT > 500)) { H._plCullT = performance.now(); H.scene.traverse(function (o) { if (o.frustumCulled) o.frustumCulled = false; if (o.isMesh && !o._ewPlSeen) { o._ewPlSeen = true; try { _ewPlSplitSeams(o, L, U); } catch (e) { console.warn('[HQ] the round worlds: a seam split failed', e); } } }); }
+    }
+    /* a piece drawn as it stands whatever net it hangs over (the sky's bodies): its materials skip the bend (set before their first draw) */
+    function _ewPlKeepFlat(obj) {
+        obj.traverse(function (o) { if (!o.material) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) {
+            m.userData = m.userData || {}; if (m.userData.ewNoBend) return; m.userData.ewNoBend = true; m.defines = Object.assign({}, m.defines || {}, { EW_PL_NOBEND: 1 }); m.needsUpdate = true; }); });
+    }
+    /* THE CUT SEAMS ON A BIG PIECE (the ground, a long wall): a corner on the line between two faces that the flat net does not join
+       belongs to both, so a triangle of one face would be drawn with that corner on the other (a sheet across the ball). Every such
+       corner is copied for each face that uses it and nudged a hair (0.3 % of the way to its triangle's middle) into that face. Once
+       a mesh; small pieces are bent whole by their middle and need none of this. */
+    function _ewPlKey(L, x, z) {
+        for (var i = 0; i < L.length; i++) { var p = L[i]; if (_ewPlInRect(p, x, z)) return i * 6 + _ewPlFaceAt(p, x, z); }
+        return -1;
+    }
+    function _ewPlSplitSeams(o, L, U) {
+        var g = o.geometry, pos = g && g.attributes && g.attributes.position;
+        if (!pos || o.isInstancedMesh || o.isBatchedMesh || o.isSkinnedMesh || g._ewPlSplit || g.morphAttributes && Object.keys(g.morphAttributes).length) return;
+        o.updateWorldMatrix(true, false);
+        if (!g.boundingBox) g.computeBoundingBox();
+        var bb = g.boundingBox.clone().applyMatrix4(o.matrixWorld), x0 = bb.min.x / U, x1 = bb.max.x / U, z0 = bb.min.z / U, z1 = bb.max.z / U;
+        var hit = false; for (var i = 0; i < L.length; i++) { var p = L[i]; if (x1 > p.x0 && x0 < p.x0 + 3 * p.L && z1 > p.z0 && z0 < p.z0 + 2 * p.L) hit = true; }
+        if (!hit) return;
+        var M = o.matrixWorld, Mi = new THREE.Matrix4().copy(M).invert(), v = new THREE.Vector3(), n = pos.count, W = new Float32Array(n * 3), K = new Int32Array(n);
+        for (var q = 0; q < n; q++) { v.fromBufferAttribute(pos, q).applyMatrix4(M); W[q * 3] = v.x / U; W[q * 3 + 1] = v.y / U; W[q * 3 + 2] = v.z / U; K[q] = _ewPlKey(L, W[q * 3], W[q * 3 + 2]); }
+        var idxA = g.index, tri = idxA ? idxA.count : n, add = [], made = {}, idx = idxA ? Array.prototype.slice.call(idxA.array) : null, moved = 0;
+        var cornerAt = function (t, j) { return idx ? idx[t + j] : t + j; };
+        for (var t = 0; t + 2 < tri; t += 3) {
+            var a = cornerAt(t, 0), b = cornerAt(t, 1), c = cornerAt(t, 2);
+            if (K[a] === K[b] && K[b] === K[c]) continue;
+            var cx = (W[a * 3] + W[b * 3] + W[c * 3]) / 3, cy = (W[a * 3 + 1] + W[b * 3 + 1] + W[c * 3 + 1]) / 3, cz = (W[a * 3 + 2] + W[b * 3 + 2] + W[c * 3 + 2]) / 3, kc = _ewPlKey(L, cx, cz);
+            for (var j = 0; j < 3; j++) {
+                var vi = cornerAt(t, j); if (K[vi] === kc) continue;
+                var nx = W[vi * 3] + (cx - W[vi * 3]) * 0.003, nz = W[vi * 3 + 2] + (cz - W[vi * 3 + 2]) * 0.003;
+                if (_ewPlKey(L, nx, nz) !== kc) continue;   // a triangle truly across a seam: left as it is
+                var ny = W[vi * 3 + 1] + (cy - W[vi * 3 + 1]) * 0.003;
+                if (!idx) { v.set(nx * U, ny * U, nz * U).applyMatrix4(Mi); pos.setXYZ(vi, v.x, v.y, v.z); moved++; continue; }
+                var key = vi + ':' + kc, ni = made[key];
+                if (ni == null) { ni = made[key] = n + add.length; add.push([vi, nx, ny, nz]); }
+                idx[t + j] = ni;
+            }
+        }
+        g._ewPlSplit = true;
+        if (!idx) { if (moved) pos.needsUpdate = true; return; }
+        if (!add.length) return;
+        var total = n + add.length;
+        Object.keys(g.attributes).forEach(function (name) {
+            var A = g.attributes[name]; if (A.isInterleavedBufferAttribute) return;
+            var sz = A.itemSize, arr = new A.array.constructor(total * sz); arr.set(A.array.subarray(0, n * sz));
+            for (var r = 0; r < add.length; r++) for (var e = 0; e < sz; e++) arr[(n + r) * sz + e] = A.array[add[r][0] * sz + e];
+            if (name === 'position') for (var r2 = 0; r2 < add.length; r2++) { v.set(add[r2][1] * U, add[r2][2] * U, add[r2][3] * U).applyMatrix4(Mi); arr[(n + r2) * 3] = v.x; arr[(n + r2) * 3 + 1] = v.y; arr[(n + r2) * 3 + 2] = v.z; }
+            var NA = new THREE.BufferAttribute(arr, sz, A.normalized); g.setAttribute(name, NA);
+        });
+        g.setIndex(total > 65535 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1));
+    }
+    /* THE NODE SIDE: the bend as a node graph (four worlds at most), and the patch that draws every node material through it while a
+       room with round worlds is drawn. The renderer's context node is swapped for that draw, so the bent programs are keyed apart
+       from the flat ones (every other room keeps its own, nothing is rebuilt going back). */
+    function _ewPlNodeBend(w, o) {
+        var T = _ewNodeU.T, u = _ewPl.u, res = w, PI4 = Math.PI / 4;
+        var pick = function (j, k) { var r = T.vec3(_EW_PL_FACES[5][j][0], _EW_PL_FACES[5][j][1], _EW_PL_FACES[5][j][2]); for (var q = 4; q >= 0; q--) r = T.select(k.lessThan(q + 0.5), T.vec3(_EW_PL_FACES[q][j][0], _EW_PL_FACES[q][j][1], _EW_PL_FACES[q][j][2]), r); return r; };
+        o = o || w;
+        for (var i = 0; i < 4; i++) {
+            var g = u.g[i], c = u.c[i], L = g.z, rx = w.x.sub(g.x), rz = w.z.sub(g.y), m = L.mul(0.3), e = L.mul(0.001), ox = o.x.sub(g.x), oz = o.z.sub(g.y);
+            var useO = ox.greaterThan(m.negate()).and(ox.lessThan(L.mul(3).add(m))).and(oz.greaterThan(m.negate())).and(oz.lessThan(L.mul(2).add(m))).and(T.length(w.xz.sub(o.xz)).lessThan(L.mul(0.15)));
+            var inV = rx.greaterThan(e.negate()).and(rx.lessThan(L.mul(3).add(e))).and(rz.greaterThan(e.negate())).and(rz.lessThan(L.mul(2).add(e)));
+            var inside = c.w.greaterThan(0.5).and(useO.or(inV)), fx = T.select(useO, ox, rx), fz = T.select(useO, oz, rz);
+            var col = T.clamp(T.floor(fx.div(L)), 0, 2), row = T.clamp(T.floor(fz.div(L)), 0, 1), k = row.mul(3).add(col);
+            var a = T.clamp(rx.sub(col.mul(L)).div(L).mul(2).sub(1), -1.6, 1.6), b = T.clamp(rz.sub(row.mul(L)).div(L).mul(2).sub(1), -1.6, 1.6);
+            var dir = T.normalize(pick(0, k).add(pick(1, k).mul(T.tan(a.mul(PI4)))).add(pick(2, k).mul(T.tan(b.mul(PI4)))));
+            res = T.select(inside, c.xyz.add(dir.mul(T.max(g.w.add(w.y), g.w.mul(0.3)))), res);
+        }
+        var d = res.sub(u.A.xyz);
+        return T.select(u.S.w.greaterThan(0).and(T.distance(o, u.S.xyz).lessThan(u.S.w)), w, u.P.xyz.add(T.vec3(u.M0.xyz.dot(d), u.M1.xyz.dot(d), u.M2.xyz.dot(d))));
+    }
+    function _ewPlNodeSetup(r, G) {
+        var T = G && G.TSL; if (!T || _ewPl.u || !G.NodeMaterial) return;
+        var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
+        _ewPl.u = { g: [V4(), V4(), V4(), V4()], c: [V4(), V4(), V4(), V4()], S: V4(), A: V4(), P: V4(), M0: V4(), M1: V4(), M2: V4() };
+        var NP = G.NodeMaterial.prototype, sv0 = NP.setupPositionView;
+        NP.setupPositionView = function (builder) {
+            if (!_ewPl.live || this._ew_noBend || (this.userData && this.userData.ewNoBend)) return sv0.call(this, builder);
+            var w = T.modelWorldMatrix.mul(T.vec4(T.positionLocal, 1)).xyz, o = T.modelWorldMatrix.mul(T.vec4(0, 0, 0, 1)).xyz;
+            return T.cameraViewMatrix.mul(T.vec4(_ewPlNodeBend(w, o), 1)).xyz;
+        };
+        if (G.SpriteNodeMaterial) {
+            var SP = G.SpriteNodeMaterial.prototype, ss0 = SP.setupPositionView;
+            SP.setupPositionView = function (builder) {
+                var res = ss0.call(this, builder); if (!_ewPl.live || this._ew_noBend || (this.userData && this.userData.ewNoBend)) return res;
+                var pc = T.vec4(this.positionNode ? T.vec3(this.positionNode) : T.vec3(0, 0, 0), 1);
+                var bent = T.cameraViewMatrix.mul(T.vec4(_ewPlNodeBend(T.modelWorldMatrix.mul(pc).xyz, T.modelWorldMatrix.mul(T.vec4(0, 0, 0, 1)).xyz), 1)), flat = T.modelViewMatrix.mul(pc);
+                return res.add(T.vec4(bent.xyz.sub(flat.xyz), 0));
+            };
+        }
+        _ewPl.ctx0 = r.contextNode;
+        try { _ewPl.ctx = T.context(); _ewPl.ctx.value = r.contextNode.value; } catch (e) { _ewPl.ctx = null; }
+    }
+    /* per render call of the node renderer: is this the walk's scene of a room with round worlds? */
+    function _ewPlRenderSwitch(r, sc) {
+        if (!_ewPl.u || !_ewPl.ctx) return;
+        var on = !!(_hq && sc === _hq.scene && _ewPlRound());
+        if (on !== _ewPl.live) { _ewPl.live = on; r.contextNode = on ? _ewPl.ctx : _ewPl.ctx0; }
+    }
+    /* THE SEAM: the walker walked off his face — carried to the true neighbouring face, turned with it (the camera too) */
+    function _hqPlanetSeam(H) {
+        var pl = H && H.player; if (!pl || !_ewPlRound() || (H.vehicle && H.vehicle.on)) { if (H) { H._plFace = null; H._plPlanet = null; } return; }
+        var p = _ewPlAt(pl.x, pl.z);
+        if (!p) { H._plFace = null; H._plPlanet = null; return; }
+        var kNow = _ewPlInRect(p, pl.x, pl.z) ? _ewPlFaceAt(p, pl.x, pl.z) : -1;
+        if (H._plPlanet !== p || H._plFace == null) { H._plPlanet = p; H._plFace = kNow < 0 ? _ewPlFaceAt(p, pl.x, pl.z) : kNow; return; }
+        var k0 = H._plFace; if (kNow === k0) return;
+        var B = _ewPlBendFace(p, k0, pl.x, 0, pl.z), T0 = _ewPlFlat(p, B[0], B[1], B[2]);
+        if (kNow === T0.k && Math.hypot(T0.x - pl.x, T0.z - pl.z) < 0.6) { H._plFace = kNow; return; }   // a seam joined on the flat net: walk on
+        /* the turn: the flat +x at the old place, carried over */
+        var B1 = _ewPlBendFace(p, k0, pl.x + 1, 0, pl.z), T1 = _ewPlFlat(p, B1[0], B1[1], B1[2]);
+        var dlt = Math.atan2(T1.x - T0.x, T1.z - T0.z) - Math.PI / 2, cs = Math.cos(dlt), sn = Math.sin(dlt);
+        var mv = function (x, z) { var dx = x - pl.x, dz = z - pl.z; return [T0.x + dx * cs + dz * sn, T0.z - dx * sn + dz * cs]; };
+        var c = H.cam;
+        if (c && c.init) { var e = mv(c.ex, c.ez), lk = mv(c.lx, c.lz); c.ex = e[0]; c.ez = e[1]; c.lx = lk[0]; c.lz = lk[1]; }
+        if (c) c.yaw -= dlt;
+        pl.yaw += dlt; pl.targetYaw += dlt;
+        if (pl.mvx != null) { var vx = pl.mvx, vz = pl.mvz; pl.mvx = vx * cs + vz * sn; pl.mvz = -vx * sn + vz * cs; }
+        pl.x = T0.x; pl.z = T0.z;
+        var fy = _hqSurface(pl.x, pl.z, null, true); if (fy != null && isFinite(fy)) { pl.y = fy; pl.visY = fy; }
+        var U = _hqUnits(); if (pl.entry && pl.entry.group) pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        H._plFace = T0.k; H.dirty = true;
     }
     function _hqTickSpace(dt) {
         var H = _hq; if (!H || !H._spaceRings) return;
@@ -90471,6 +90744,7 @@ const ThreeRenderer = (function () {
         var editing = _hqEditing(H);   // THE EDITOR (EDITOR_PLAN E0): the walker stands still, the editor's fly camera is the eye
         var _lt = (_lens && _lens.cur) ? performance.now() : 0;   // THE FRAME BREAKDOWN: the ticks' own times
         if (!editing) _hqTickWalker(wdt);
+        if (!editing && H.room && H.room.space && H.room.space.round) _hqPlanetSeam(H);   // THE ROUND WORLDS: off a face, onto the true next one
         _lt = _lensMark('tick: walker', _lt);
         /* THE FIELD stage B (2026-09-16, measured): THE SLIDE's callback runs inside the walker's tick and LEAVES the
            building (_hqEncounterStart → _hqLeave) — the frame must not tick a disposed room's characters; the same
@@ -90534,6 +90808,7 @@ const ThreeRenderer = (function () {
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
         _lightMatchWalk(H);   // THE SAME LIGHT COUNT: the walk carries the board's dark lights
         _lt = _lensMark('tick: lights + shadow + far', _lt);
+        try { _ewPlTick(H); } catch (e) { if (!H._plWarned) { H._plWarned = true; console.warn('[HQ] the round worlds tick', e); } }   // THE ROUND WORLDS: the balls + the anchor at the feet
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
         /* THE ONE MATRIX WALK (2026-11-13, the 144-plot city: 20,700 objects): every render of the frame (the mirrors, the model
            mask's two, the shadow map, the picture) walked the whole scene's matrices again though nothing moves between them.
@@ -90548,7 +90823,7 @@ const ThreeRenderer = (function () {
             if (backHold) { /* held */ }
             else if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
-        } finally { if (mwHold) mwScene.matrixWorldAutoUpdate = true; _hqFogBack(fogHold); }
+        } finally { if (mwHold) mwScene.matrixWorldAutoUpdate = true; _hqFogBack(fogHold); _EW_PLU.on.x = 0; }   // (THE ROUND WORLDS: the classic bend is the walk's draw only)
         /* NO HELD FRAME ON THE WAY BACK (2026-10-25, mondo: "no freeze"): the debrief's last picture fades on the room's first
            drawn frame with the walker in it — the room's files still landing land in the live picture — and THE WAY BACK's ease
            starts with the fade, not at the room's READY */
@@ -98088,6 +98363,8 @@ const ThreeRenderer = (function () {
                 if (o.dist != null) _hq.cam.dist = o.dist; if (o.pitch != null) _hq.cam.pitch = o.pitch;
                 _hq.dirty = true; return { kind: V.kind, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v };
             },
+            /* THE ROUND WORLDS, as a probe reads them (2026-11-17) */
+            round: function () { return { live: _ewPl.live, nodes: !!_ewPl.u, ctx: !!_ewPl.ctx, gpu: _ewGpu, anchor: _ewPl.anchor, face: _hq && _hq._plFace, round: _ewPlRound() }; },
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
                 o = o || {};

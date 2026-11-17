@@ -43,12 +43,43 @@ const bowl = (x, y, cx, cy, R, d) => { const r = Math.hypot(x - cx, y - cy); ret
 const lip = (x, y, cx, cy, R, wdt, h) => { const r = Math.hypot(x - cx, y - cy); return (r >= R && r < R + wdt) ? h * Math.sin(Math.PI * (r - R) / wdt) : 0; };
 /* the rock round a room: `th` squares + up to `nz` more by the dice */
 const border = (A, th, nz, seed) => A.each((x, y) => { const d = Math.min(x, y, A.W - 1 - x, A.H - 1 - y); if (d < th + Math.floor(vnoise(x / 3.1, y / 3.1, seed) * (nz + 1))) A.cell[y][x] = 'x'; });
+/* ROUND (2026-11-17): a round world is laid as a net of six faces, 3 x 2, each 24 x 24 squares (2 x 2 plots); the game bends it onto a
+   ball (three-renderer.js THE ROUND WORLDS, the same face table). Where the flat net does not join two faces that meet on the ball (a cut
+   seam) the ground must meet itself: every corner on a cut seam takes the mean of all the ground that meets there on the ball, and the
+   change runs out over the next three squares into each face. */
+const PL_FACES = [[[-1, 0, 0], [0, 0, 1], [0, -1, 0]], [[0, 0, 1], [1, 0, 0], [0, -1, 0]], [[1, 0, 0], [0, 0, -1], [0, -1, 0]],
+    [[0, 0, -1], [-1, 0, 0], [0, -1, 0]], [[0, -1, 0], [1, 0, 0], [0, 0, -1]], [[0, 1, 0], [1, 0, 0], [0, 0, 1]]];
+const PLF = 24;
+function roundSeams(A) {
+    const PI4 = Math.PI / 4, dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const dirOf = (k, X, Y) => { const f = PL_FACES[k], a = (X - (k % 3) * PLF) / PLF * 2 - 1, b = (Y - Math.floor(k / 3) * PLF) / PLF * 2 - 1, ta = Math.tan(a * PI4), tb = Math.tan(b * PI4);
+        const d = [0, 1, 2].map(i => f[0][i] + f[1][i] * ta + f[2][i] * tb), l = Math.hypot(d[0], d[1], d[2]); return d.map(v => v / l); };
+    const entries = (k, X, Y) => { const c = k % 3, r = Math.floor(k / 3), out = []; for (const [dx, dy] of [[0, 0], [-1, 0], [0, -1], [-1, -1]]) { const x = X + dx, y = Y + dy;
+        if (x < c * PLF || x >= c * PLF + PLF || y < r * PLF || y >= r * PLF + PLF) continue; out.push([x, y, (Y - y) * 2 + (X - x)]); } return out; };
+    const H0 = A.H4.map(r => r.map(q => q.slice())), groups = {};
+    for (let k = 0; k < 6; k++) { const c = k % 3, r = Math.floor(k / 3);
+        for (let Y = r * PLF; Y <= r * PLF + PLF; Y++) for (let X = c * PLF; X <= c * PLF + PLF; X++) {
+            if (X !== c * PLF && X !== c * PLF + PLF && Y !== r * PLF && Y !== r * PLF + PLF) continue;
+            const d = dirOf(k, X, Y), key = d.map(v => Math.round(v * 1e5)).join(','); (groups[key] = groups[key] || []).push([k, X, Y]); } }
+    let cut = 0;
+    Object.values(groups).forEach(G => {
+        if (G.every(m => m[1] === G[0][1] && m[2] === G[0][2])) return;   // joined on the flat net
+        let sum = 0, n = 0; G.forEach(([k, X, Y]) => entries(k, X, Y).forEach(([x, y, ci]) => { sum += H0[y][x][ci]; n++; }));
+        if (!n) return; const tgt = sum / n; cut++;
+        G.forEach(([k, X, Y]) => { const E = entries(k, X, Y); if (!E.length) return; const own = E.reduce((a, e) => a + H0[e[1]][e[0]][e[2]], 0) / E.length, dl = tgt - own; if (Math.abs(dl) < 1e-4) return;
+            E.forEach(([x, y, ci]) => { A.H4[y][x][ci] = tgt; });
+            const c = k % 3, r = Math.floor(k / 3), ins = []; if (X === c * PLF) ins.push([1, 0]); if (X === c * PLF + PLF) ins.push([-1, 0]); if (Y === r * PLF) ins.push([0, 1]); if (Y === r * PLF + PLF) ins.push([0, -1]);
+            ins.forEach(([ix, iy]) => { for (let t = 1; t <= 3; t++) entries(k, X + ix * t, Y + iy * t).forEach(([x, y, ci]) => { A.H4[y][x][ci] += dl * (1 - t / 4); }); }); }); });
+    return cut;
+}
 const plots = (cols, rows, rowsOf) => { const out = []; for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const q = rowsOf[y][x]; out.push({ id: 'P0' + x + '-0' + y, name: q[1], d: q[0], level: q[2] || 0, what: q[3] || '', from: q[4] || 'new plot (label mine)' }); } return out; };
 
 /* ═══ THE MOON — "one small step": the sea of dust, the one big crater, and the side nobody is shown ═══ */
 function moon() {
-    const A = world({ cols: 5, rows: 4 }), CR = { x: 30, y: 21, R: 10, d: 5 };
-    border(A, 2, 1, 11);
+    /* ROUND (2026-11-17, mondo's two-maps design doc + his pick "round worlds first"): 6 x 4 plots = the six faces of a ball, 2 x 2 plots
+       a face (see ROUND below); no rock border (there is no edge: walk off one face and you are on the next). The new column (P05-..) is
+       plain dust. */
+    const A = world({ cols: 6, rows: 4 }), CR = { x: 30, y: 21, R: 10, d: 5 };
     /* the limb: a rock ridge between the far side and the side you are shown, two passes through it */
     A.each((x, y) => { const k = 12 + Math.round((vnoise(y / 4, 0.5, 5) - 0.5) * 2); if (x >= k - 1 && x <= k + 1 && !((y >= 28 && y <= 30) || (y >= 9 && y <= 10))) A.cell[y][x] = 'x'; });
     /* THE TERRACE (the collar stands on it: a door you climb to) and its two ramps; THE ANTENNA PLATFORM under the rim and its ramp */
@@ -69,13 +100,14 @@ function moon() {
     const tr = (pts) => { for (let i = 0; i + 1 < pts.length; i++) { let [x, y] = pts[i]; const [X, Y] = pts[i + 1]; for (;;) { if ('.ce'.includes(A.cell[y][x])) A.cell[y][x] = 'p'; if (x === X && y === Y) break; if (x !== X) x += Math.sign(X - x); else y += Math.sign(Y - y); } } };
     tr([[30, 43], [36, 43]]); tr([[42, 40], [51, 40], [51, 19]]); tr([[51, 15], [51, 11]]); tr([[39, 37], [39, 35]]); tr([[30, 43], [14, 43], [14, 29], [8, 29]]); tr([[8, 29], [8, 40]]); tr([[8, 29], [6, 29], [6, 23]]); tr([[14, 10], [8, 10], [8, 8]]);
     const F = 'F', Cc = 'C', M = 'M';
-    return { id: 'moon', room: 'site_prebuilt_moon_plots', site: 'prebuilt_moon', old: 'site_prebuilt_moon_mare', name: 'The Moon', cols: 5, rows: 4, A,
+    roundSeams(A);
+    return { id: 'moon', room: 'site_prebuilt_moon_plots', site: 'prebuilt_moon', old: 'site_prebuilt_moon_mare', name: 'The Moon', cols: 6, rows: 4, A, round: true,
         districts: { M: 'The Mare', C: 'The Crater', F: 'The Far Side' },
-        plots: plots(5, 4, [
-            [[F, 'The Saucer', 0, 'a saucer on its landing gear in a hollow nobody photographs', 'new plot (label mine): the far-side secrets'], [Cc, 'The Rim, west', 0, 'the west foot of the terrace', 'The Mare: THE RIM'], [Cc, 'The Terrace', 2, 'LANDMARK of the north: the terrace you climb to, the ship\'s collar on it', 'The Mare: THE TERRACE'], [Cc, 'The Antenna Platform', 3, 'the platform under the rim, the antenna', 'The Mare: THE ANTENNA PLATFORM · THE CATWALK'], [M, 'The Dish', 1, 'the dish on its platform', 'The Mare: THE DISH']],
-            [[F, 'The Dig', 0, 'a pit somebody dug, floodlit; the thing they found stands in it', 'new plot (label mine): the far-side secrets'], [Cc, 'The Crater, west', 0, 'the lip and the west wall of the bowl', 'The Mare: THE CRATER'], [Cc, 'The Crater', -3, 'LANDMARK: the one big crater, 70 m across, its central peak', 'The Mare: THE BIG CRATER'], [Cc, 'The Crater, east', 0, 'the lip and the east wall of the bowl', 'The Mare: THE CRATER'], [M, 'The Habitat', 0, 'the habitat, rated for six: a walk-in module', 'The Mare: THE HABITAT']],
-            [[F, 'The Bore', 0, 'the draught: the bore that comes out under the Face on Mars', 'The Mare: THE FAR SIDE'], [Cc, 'The Crater, south-west', 0, 'the south lip', 'The Mare: THE CRATER'], [Cc, 'The Crater, south', 0, 'the south lip, the track up from the Lander', 'The Mare: THE CRATER'], [Cc, 'The Overlook', 1, 'the mound over the crater', 'The Mare: THE OVERLOOK'], [M, 'The Tracks', 0, 'the rover\'s tracks, the rover at the end of them', 'The Mare: the rover']],
-            [[F, 'The Sound Stage', 0, 'a second lander, lights and a camera on a patch of raked dust', 'new plot (label mine): Room 1969 "the footage"'], [M, 'The Mare, west', 0, 'open dust, small craters: room to fight', 'The Mare'], [M, 'The Standing Door', 0, 'the bay\'s door standing without a wall; footprints lead to it', 'the bay door (Room 1969)'], [M, 'The Lander', 0, 'LANDMARK: the lander on its pad, the flag, the footprints', 'The Mare: THE LANDER'], [M, 'The Mare, east', 0, 'open dust under the east rim', 'The Mare']],
+        plots: plots(6, 4, [
+            [[F, 'The Saucer', 0, 'a saucer on its landing gear in a hollow nobody photographs', 'new plot (label mine): the far-side secrets'], [Cc, 'The Rim, west', 0, 'the west foot of the terrace', 'The Mare: THE RIM'], [Cc, 'The Terrace', 2, 'LANDMARK of the north: the terrace you climb to, the ship\'s collar on it', 'The Mare: THE TERRACE'], [Cc, 'The Antenna Platform', 3, 'the platform under the rim, the antenna', 'The Mare: THE ANTENNA PLATFORM · THE CATWALK'], [M, 'The Dish', 1, 'the dish on its platform', 'The Mare: THE DISH'], [M, 'The Limb, east', 0, 'open dust where the Moon turns away', 'new plot (label mine): the round Moon']],
+            [[F, 'The Dig', 0, 'a pit somebody dug, floodlit; the thing they found stands in it', 'new plot (label mine): the far-side secrets'], [Cc, 'The Crater, west', 0, 'the lip and the west wall of the bowl', 'The Mare: THE CRATER'], [Cc, 'The Crater', -3, 'LANDMARK: the one big crater, 70 m across, its central peak', 'The Mare: THE BIG CRATER'], [Cc, 'The Crater, east', 0, 'the lip and the east wall of the bowl', 'The Mare: THE CRATER'], [M, 'The Habitat', 0, 'the habitat, rated for six: a walk-in module', 'The Mare: THE HABITAT'], [M, 'The Limb, south-east', 0, 'open dust where the Moon turns away', 'new plot (label mine): the round Moon']],
+            [[F, 'The Bore', 0, 'the draught: the bore that comes out under the Face on Mars', 'The Mare: THE FAR SIDE'], [Cc, 'The Crater, south-west', 0, 'the south lip', 'The Mare: THE CRATER'], [Cc, 'The Crater, south', 0, 'the south lip, the track up from the Lander', 'The Mare: THE CRATER'], [Cc, 'The Overlook', 1, 'the mound over the crater', 'The Mare: THE OVERLOOK'], [M, 'The Tracks', 0, 'the rover\'s tracks, the rover at the end of them', 'The Mare: the rover'], [M, 'The Top', 0, 'open dust on the top of the ball', 'new plot (label mine): the round Moon']],
+            [[F, 'The Sound Stage', 0, 'a second lander, lights and a camera on a patch of raked dust', 'new plot (label mine): Room 1969 "the footage"'], [M, 'The Mare, west', 0, 'open dust, small craters: room to fight', 'The Mare'], [M, 'The Standing Door', 0, 'the bay\'s door standing without a wall; footprints lead to it', 'the bay door (Room 1969)'], [M, 'The Lander', 0, 'LANDMARK: the lander on its pad, the flag, the footprints', 'The Mare: THE LANDER'], [M, 'The Mare, east', 0, 'open dust under the east rim', 'The Mare'], [M, 'The Top, south', 0, 'open dust on the top of the ball', 'new plot (label mine): the round Moon']],
         ]),
         ways: { bay: { sx: 30, sy: 44, face: 0, kind: 'bay door (Room 1969)' }, moon_derelict: { sx: 28, sy: 3, face: 180, kind: 'the ship\'s collar, on the Terrace' }, cydonia_mare: { sx: 3, sy: 29, face: 90, kind: 'hidden: the bore to Mars (the Face\'s mouth)' } },
         spawn: [30, 42], marker: [33, 36],
@@ -204,7 +236,7 @@ WORLDS.forEach(w => Object.assign(w.ways, LANDINGS[w.id] || {}));
 WORLDS.forEach(w => Object.keys(w.ways).forEach(k => { const q = w.ways[k], f = q.face * Math.PI / 180, dx = Math.round(Math.sin(f)), dy = -Math.round(Math.cos(f));
     for (let i = 0; i <= 3; i++) for (let m = -1; m <= 1; m++) { const x = q.sx + dx * i + (dy ? m : 0), y = q.sy + dy * i + (dx ? m : 0); if (x > 0 && y > 0 && x < w.A.W - 1 && y < w.A.H - 1 && w.A.cell[y][x] === 'x') w.A.cell[y][x] = '.'; } }));
 const i16 = A => { const b = Buffer.alloc(A.W * A.H * 8); for (let y = 0; y < A.H; y++) for (let x = 0; x < A.W; x++) A.H4[y][x].forEach((h, k) => b.writeInt16LE(Math.round(h * 100), (y * A.W + x) * 8 + k * 2)); return b.toString('base64'); };
-const strip = (w, full) => Object.assign({ id: w.id, name: w.name, room: w.room, site: w.site, old: w.old, cols: w.cols, rows: w.rows, districts: w.districts, who: w.who, spawn: w.spawn, marker: w.marker, ways: w.ways, stairs: w.stairs || [], bridges: w.bridges || [], plots: w.plots,
+const strip = (w, full) => Object.assign({ id: w.id, name: w.name, round: !!w.round, room: w.room, site: w.site, old: w.old, cols: w.cols, rows: w.rows, districts: w.districts, who: w.who, spawn: w.spawn, marker: w.marker, ways: w.ways, stairs: w.stairs || [], bridges: w.bridges || [], plots: w.plots,
     cells: w.A.cell.map(r => r.join('')) }, full ? { slope: i16(w.A) } : {});
 const head = { area: 'Outer Space', version: 'plan-3', squareMeters: C, plotCells: N,
     note: 'Four rooms, one a world. Written by docs/plans/world-zones/draw-space.js; bake-space.js reads docs/areas/space/layout.json. Never hand-edit: edit the script and rerun.',
@@ -219,7 +251,7 @@ const S = 9, PAD = 34, GAPX = 40, DCOL = { M: '#cfd3dc', C: '#8d93a3', F: '#5d62
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const o = []; let ox = PAD, rowH = 0, oy = 96; const place = [];
 WORLDS.forEach((w, i) => { if (i === 2) { ox = PAD; oy += rowH + 150; rowH = 0; } place.push([ox, oy]); ox += w.A.W * S + GAPX + 330; rowH = Math.max(rowH, w.A.H * S); });
-const Wd = PAD * 2 + 2 * (60 * S + 330) + GAPX, Ht = oy + rowH + 150;
+const Wd = PAD * 2 + 2 * (66 * S + 330) + GAPX, Ht = oy + rowH + 150;
 o.push(`<rect width="${Wd}" height="${Ht}" fill="#14161a"/>`);
 o.push(`<text x="${PAD}" y="34" fill="#fff" font-size="22" font-weight="bold">OUTER SPACE · plot plan 3 · the redesign · four worlds, a room each · 72 plots, ten districts</text>`);
 o.push(`<text x="${PAD}" y="58" fill="#b8bcc6" font-size="13">Each world is the ultimate version of what people picture there. You reach each exactly as today: the Spaceship's collar, the bays, the links. Flying the ship and floating in space are new mechanics: listed, not built. One square = 3.5 m; a plot = 12 x 12 squares.</text>`);
@@ -252,7 +284,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Wd}" height="${Ht}
 const svgPath = path.join(__dirname, 'outer-space_plot_plan_3.svg'); fs.writeFileSync(svgPath, svg);
 (async () => {
     let pw; try { pw = require('playwright'); } catch (e) { try { pw = require('/opt/node-tools/node_modules/playwright'); } catch (e2) { console.log('no playwright: open the .svg in a browser'); return; } }
-    const b = await pw.chromium.launch(); const pg = await b.newPage({ viewport: { width: Wd, height: Ht } });
+    const b = await pw.chromium.launch(fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}); const pg = await b.newPage({ viewport: { width: Wd, height: Ht } });
     await pg.setContent(`<body style="margin:0;background:#14161a">${svg}</body>`); await pg.screenshot({ path: path.join(__dirname, 'outer-space_plot_plan_3.png') }); await b.close(); fs.unlinkSync(svgPath);
     console.log('wrote outer-space_plot_plan_3.png ' + Wd + 'x' + Ht);
 })();
