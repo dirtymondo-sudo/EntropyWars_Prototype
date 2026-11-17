@@ -564,6 +564,10 @@ const ThreeVFXEffects = (function () {
 
     function aoe(centerTx, centerTy, spellType, spellId, spellName, centerZ) {
         if (_suppressed() || _catOff('aoe') || !_canSpawn()) return;
+        /* THE VFX SWEEP B9a (the Jackpot / Shattered Mirror lead): this is the FALLBACK detonation battle.js fires for an area spell with
+           no 'aoe' recipe and no A-F geometry: eight white flashes, a glass orb and a wide ring. A spell with a look of its own
+           (a G-O / L-thread signature on the hit beat, which already flashes its squares) does not get it on top. */
+        if (spellId && _vcOn() && _vcOwn(spellId)) return;
 
         var ts = _cfg().tileSize || 128;
         var c = tilePx(centerTx, centerTy);
@@ -21242,7 +21246,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* SKINWALKER — a claw that isn't yours, wreathed in stolen arcana */
         raceBorrowedClaw: function(tx, ty) { _sigClawCombo3D(tx, ty, {
             swipes: 2, glowColor: 0xbb66ff, clawTint: 0xded0f0,
-            sparkSprite: 'psi-pulse', heavyFinish: true, markMs: 800,
+            sparkSprite: 'psi-pulse', heavyFinish: true, markMs: 800, plain: _vcOn(),   /* THE VFX SWEEP B9a: a standard hit ends on its claws + the marks (no screen flash, speed burst, end ring, rush lines) */
         }); },
 
         /* MINOTAUR / SIREN — more SONIC BOOM roars & screams */
@@ -22433,9 +22437,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _VC_RUNE = { arcane: 1, unholy: 1, hex: 1, psychicHex: 1, blood: 1, divine: 1 };
     /* the blessings: no rune from any helper, the spell's own signature included (_sigMagicCircle3D) */
     var _VC_NO_RUNE = { heal: 1, mana: 1, aura: 1, psychicAid: 1, bloodAura: 1, ki: 1 };   /* ki (B4): a power-up is an aura, not a rune */
+    /* THE VFX SWEEP (B9a, 11-17): a spell of a rune school that is NOT rune magic draws no cast rune under its caster (mondo: the
+       rune "should be preserved for magic spells where it makes sense"). One id a spell; a sweep thread adds its own ids here.
+       Kept on purpose (rune magic): Annihilation, Arcane Sigil, Crystal Ball, Hocus Pocus. */
+    var _VC_SPELL_NO_RUNE = {
+        /* B9a, arcane: silk, cards, mirrors, a slot machine, a web, a paradox, the winged disk */
+        raceCocoon: 1, raceDeadMansHand: 1, raceHallOfMirrors: 1, raceJackpot: 1, sigKneel: 1, raceMirrorShard: 1, racePrismMirror: 1,
+        raceSevenYears: 1, raceShatteredMirror: 1, raceStrangeLoop: 1, raceWebLaunch: 1,
+        /* the brief's lead: Love Ray is a ray gun, the purple circle under the shooter was this rune */
+        sigLoveRay: 1
+    };
     function _vcRuneOK(info, spellId, params, sx, sy) {
         if (!_vcOn()) return true;
         if (!_VC_RUNE[info.archetype] || _VC_PORTAL[spellId]) return false;   /* B5: a portal spell's portal is its mark */
+        if (_VC_SPELL_NO_RUNE[spellId]) return false;   /* THE VFX SWEEP: not rune magic */
         if (_VC_RUNE_NOT_B9B[spellId]) return false;   /* THE VFX SWEEP, B9b: a spell of a rune school that is not rune magic itself */
         /* B4: a spell fired from a gun (a ray gun's hex is still a gun shot) draws no rune under the shooter */
         try { if (_SIG_GUN_FOR[spellId] || _SIG_LINE_GUN_FOR[spellId] || _isGunSpell(spellId)) return false; } catch (e) {}
@@ -23162,7 +23177,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _teleAt = Math.max(80, holdMs - _teleMs);
             var _ttx = params.tx, _tty = params.ty;
             var _teleRing = P.ring, _teleOrb = P.orb, _teleScale = T.orbScale;
-            var _teleOrbOK = _rank >= 2 && !params.mark && !P.noOrb && !P.iceSigil && !(_f4OwnLook(spellId) && !_f4Off());   /* noOrb: no closing glass orb either (THE BLOOD PASS); THE ICE PASS: no glass orb on an ice victim either */
+            var _teleOrbOK = _rank >= 2 && !params.mark && !P.noOrb && !P.iceSigil && !(_f4OwnLook(spellId) && !_f4Off()) && !(_vcOn() && _vcOwn(spellId));   /* THE VFX SWEEP B9a: nor on any spell with a look of its own (B1's rule for the burst's orb; the closing ring stays) */   /* noOrb: no closing glass orb either (THE BLOOD PASS); THE ICE PASS: no glass orb on an ice victim either */
             window.setTimeout(function () {
                 if (_suppressed() || !_canSpawn()) return;
                 if (_teleOrbOK) {
@@ -44858,7 +44873,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1);
         var disk = _afGlowMesh(new THREE.PlaneGeometry(ts * 2.4, ts * 1.2), 0xb69cff, { map: _afWingDiskTex() }); disk.position.y = ts * 2.6; F.g.add(disk);
         var rings = [];
-        for (var i = 0; i < 3; i++) { var m = _afGlowMesh(new THREE.PlaneGeometry(ts * (rad * 2 + 1.2), ts * (rad * 2 + 1.2)), 0xb69cff, { map: _sigRingTex() }); m.rotation.x = -Math.PI / 2; F.g.add(m); rings.push({ m: m, at: 250 + i * 220 }); }
+        /* THE VFX SWEEP B9a: the pressing rings are GOLD (the makers' disk) and thin enough to see who kneels; they were three stacked lilac rings that drew near-white over the 3 x 3 */
+        var _knC = _vcOn() ? 0xd89a2a : 0xb69cff, _knO = _vcOn() ? 0.42 : 0.7;
+        for (var i = 0; i < 3; i++) { var m = _afGlowMesh(new THREE.PlaneGeometry(ts * (rad * 2 + 1.2), ts * (rad * 2 + 1.2)), _knC, { map: _sigRingTex() }); m.rotation.x = -Math.PI / 2; F.g.add(m); rings.push({ m: m, at: 250 + i * 220 }); }
         var total = 1700;
         return _sigRunOwned(F.g, total, function (el) {
             disk.material.opacity = 0.85 * _afEnv(el, 0, 250, 1200, total); disk.scale.x = 0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(el / 350));
@@ -44866,7 +44883,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < rings.length; i++) {
                 var R = rings[i], k = _sigClamp01((el - R.at) / 420);
                 R.m.position.y = ts * (2.3 - 2.25 * _sigEaseInCubic(k)); R.m.scale.setScalar(1 - 0.15 * k);
-                R.m.material.opacity = (el > R.at && k < 1 ? 0.7 : 0) * (1 - 0.4 * k);
+                R.m.material.opacity = (el > R.at && k < 1 ? _knO : 0) * (1 - 0.4 * k);
             }
             if (el > 1000 && !F.g.userData.shook) { F.g.userData.shook = true; _shake('normal'); }
         });
@@ -45382,7 +45399,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afLoveRay3D(tx, ty, r, o) {
         if (_catOff('spells')) return null;
         var from = _afCaster(tx, ty, o);
-        if (!from.fogged) try { _spawnLaserBeam3D(from.x, from.y, tx, ty, { core: 0xffffff, glow: _AF.vixen, beamMs: 420, thickness: 6 }); } catch (e) {}
+        if (!from.fogged) try { _spawnLaserBeam3D(from.x, from.y, tx, ty, { core: _vcOn() ? 0xff9ac8 : 0xffffff, glow: _AF.vixen, beamMs: 420, thickness: 6 }); } catch (e) {}
         var F = _nrvFrame(tx, ty), ts = F.ts, to = _afTo(F, from.x, from.y), hearts = [];
         for (var i = 0; i < 6; i++) { var h = _finSprite(_AF.vixen, _afHeartTex(), ts * 0.22, 164); F.g.add(h); hearts.push({ s: h, at: i * 60 }); }
         var a = new THREE.Vector3(to.x, to.y + ts * 0.8, to.z), b = new THREE.Vector3(0, ts * 0.8, 0), total = 1100;
@@ -48823,9 +48840,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var r = Math.max(1, P.r || 2);
                 _capEye(P.tx, P.ty, { r: 0.7, h: 2.6, tint: 0xb46cff, hold: 1000 });
                 _capAt(360, function () {
-                    try { _sigSpectrumBurst3D(P.tx, P.ty, { radiusPx: _capTs() * (r + 0.8), ms: 760 }); } catch (e) {}
+                    /* THE VFX SWEEP B9a: the rainbow burst (seven stacked rings + a white core + a white screen flash) drew as one white disc
+                       over the three bodies; the pulse is the eye, its violet ring, the glass and the light */
+                    if (!_vcOn()) try { _sigSpectrumBurst3D(P.tx, P.ty, { radiusPx: _capTs() * (r + 0.8), ms: 760 }); } catch (e) {}
+                    else _fxDelay(function () { _capRing(P.tx, P.ty, 0xa45cf0, r + 0.7, 460); }, 140);
                     _capShards(P.tx, P.ty, 'glass', { n: 12 });
-                    _capRing(P.tx, P.ty, 0xd8b0ff, r + 1.2, 520);
+                    _capRing(P.tx, P.ty, _vcOn() ? 0xa45cf0 : 0xd8b0ff, r + 1.2, 520);
                     _capLight(P.tx, P.ty, 0xc08aff, { i: 2.6, ms: 800, h: 1.6, r: 5 });
                 });
             }
@@ -66085,7 +66105,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_f4Off()) return; var tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, ms = p.flyMs > 0 ? p.flyMs : 300, N = 120, pts = [];
         for (var i = 0; i <= N; i++) { var a = i / N * Math.PI * 2; pts.push(new THREE.Vector3(Math.sin(a) * ts * 0.42, ts * (0.62 + Math.sin(2 * a) * 0.2), Math.sin(a) * Math.cos(a) * ts * 0.42)); }
-        var curve = new THREE.CatmullRomCurve3(pts, true), mat = _pzGlow(_F4.lilac, _f4BandTex()), core = _pzGlow(0xffffff);
+        var curve = new THREE.CatmullRomCurve3(pts, true), mat = _pzGlow(_F4.lilac, _f4BandTex()), core = _pzGlow(_vcOn() ? 0xb894ff : 0xffffff);   /* THE VFX SWEEP B9a: the loop's core in its violet, not white */
         var geo = new THREE.TubeGeometry(curve, 160, ts * 0.03, 6, true), tube = _pzMesh(geo, mat, F.g), inner = _pzMesh(new THREE.TubeGeometry(curve, 160, ts * 0.011, 5, true), core, F.g);
         var idx = geo.index ? geo.index.count : 0;
         return _sigRunOwned(F.g, ms + 1500, function (el) {
@@ -66125,7 +66145,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (go && !shattered) {
                 shattered = true;
                 for (var j = 0; j < mir.length; j += 2) { var o = _nvOff(F, tx, ty); _capShards(tx + Math.round(Math.cos(mir[j].a) * (r + 0.5)), ty + Math.round(Math.sin(mir[j].a) * (r + 0.5)), 'glass', { n: 7, scale: 0.9, height: 0.6 }); }
-                _sigShockRing3D(tx, ty, { color: 0xd8c8ff, r1: ts * (r + 1.2), ms: 420, height: 4, opacity: 0.6 });
+                if (!_vcOn()) _sigShockRing3D(tx, ty, { color: 0xd8c8ff, r1: ts * (r + 1.2), ms: 420, height: 4, opacity: 0.6 });   /* THE VFX SWEEP B9a: the mirrors breaking are the hit, no pale ring over the area */
             }
         });
     };

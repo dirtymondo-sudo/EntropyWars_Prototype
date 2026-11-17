@@ -5137,3 +5137,38 @@ Combined Arms) and shot every 0.12 s.
 - Frames: docs/plans/vfx-cleanup/img/sweep/b10_p2_attack_item_combo.jpg (in it the caster is a black card: the harness
   board's raider sprite did not load; not a game fault I traced).
 - **B10 is done:** 112 spells traced, 17 changed, 95 no change; list of what belongs to other threads in part 1.
+
+## THE VFX SWEEP, B9a, part 1: anomaly + arcane, and the three leads (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B9a.txt`)
+Thread B9a, 109 spells (arcane, hex, anomaly, mind, half the psychic), in four parts. All behind `EW_NO_VFX_CLEANUP`; looks only, nothing on
+`state`, every piece rides `fire()` / the stage beats. Edits sit where each spell is written (grep "THE VFX SWEEP B9a"). Method: a static
+trace of every spell's own code for white (its signature, the helpers it calls, its recipes), a capture of all 109 before, then the changed
+ones again after. The capture frames are 0.45 s apart, so a hit that is over in 0.2 s is judged from the code, not from a frame.
+- **THE CAST RUNE, spell by spell** (`_VC_SPELL_NO_RUNE`, read by `_vcRuneOK`; one hook line beside B9b's `_VC_RUNE_NOT_B9B`): B1 kept the
+  purple circle under the caster for every spell of a rune school. Inside those schools a spell that is not rune magic now draws none.
+  Arcane, off: Cocoon (silk), Dead Man's Hand (cards), Hall of Mirrors, Mirror Shard, Seven Years, Shattered Mirror, Prism Mirror (glass),
+  Jackpot (a slot machine), Kneel (the winged disk is its mark), Strange Loop, Web Shoot. **Kept (rune magic):** Annihilation, Arcane Sigil,
+  Crystal Ball, Hocus Pocus. The thin ring that still closes round a caster is the charge, not the rune.
+- **The lead, Jackpot + Shattered Mirror (the glass orb + the wide ring 0.45 s after the hit): FOUND.** It is `aoe()`, the FALLBACK
+  detonation battle.js fires for an area spell that has no `aoe` recipe and no A-F geometry (battle.js `_vfxAoe` path): eight white
+  flashes, 70 sparks, a ring, a shockwave, `_sigMagicOrb3D` and a 2.2-square `_sigShockRing3D`. An L-thread look sits in `_GO_SIG`, which
+  that path does not know, so both drew. `aoe()` now returns for a spell with a look of its own (`_vcOwn`). The same fix reaches
+  Eyewitness and Hypnotic Pulse (same path) and any other batch's area spell in that state. Each of these looks flashes its own squares.
+- **The lead, Love Ray's purple circle under the shooter:** it was the cast rune (psychicHex is a rune school; `_afLoveRay3D` is not in
+  the gun tables B4 reads). Love Ray is in `_VC_SPELL_NO_RUNE`; its laser core is the ray's pink, not white.
+- **The target telegraph** (`_stageWindup`): the glass orb that implodes on the victim before a heavy / ultimate magic hit no longer
+  draws for a spell with a look of its own (B1's rule for the burst's orb, one condition added to `_teleOrbOK`); the closing ring stays.
+  Seen on Annihilation, Hocus Pocus, Death Gaze. It reaches every batch's own-look heavy magic spell.
+- **Kneel** (`_afKneel3D`): the three pressing rings are gold (`0xd89a2a`, the comment always said gold) at 0.42, they were lilac at 0.7 and
+  drew near-white over the 3 x 3.
+- **Reality Pulse**: the rainbow burst (`_sigSpectrumBurst3D`: seven stacked rings, a white core, a white screen flash) drew as one white
+  disc over the three bodies; it is off for this spell, a second violet ring takes its beat; the eye, the glass and the light are the spell.
+- **Borrowed Claw**: `plain` (B8b's option on `_sigClawCombo3D`): the claws + their marks, no screen flash, speed burst, end ring, rush lines.
+- **Hall of Mirrors**: no pale ring over the area when the mirrors break (the shards are the hit). **Strange Loop**: the ribbon's core violet.
+- **Checked, nothing to change (17):** Chest Pound, Cocktail Hour (its ice is ice), Death Gaze, Eyewitness (the bulb is a bulb), Flying Kick,
+  Harbinger, Leapfrog, Prophecy of Disaster, Sucker Punch, Annihilation, Arcane Sigil, Crystal Ball, Dead Man's Hand, Hocus Pocus, Mirror
+  Shard, Seven Years, Prism Mirror (the last four beyond the rune / the telegraph above). **Not mine to change:** Iai Draw and Ronin's Wake
+  (the Samurai Slug's VFX are held by the polish thread, claims.md; Iai Draw's hit flash is pure white `0xffffff` in `nrIaiDraw_impact`).
+- **Seen, left for the cleanup thread:** the support burst's pale ring on a hex victim; Arcane Sigil's cross reads pale lilac (it is the sigil);
+  Love Ray shows a very wide pale arc across the screen about 1.2 s in (not traced).
+- **Not seen:** Prism Mirror's fold, Mirror Shard's and Borrowed Claw's hit frames (too fast for the frames), an enemy's cast, online.
+- Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part1_hits.jpg, B9a_part1_runes.jpg, B9a_part1_loveRay.jpg (after only).
