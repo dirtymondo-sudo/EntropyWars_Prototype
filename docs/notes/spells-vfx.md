@@ -4204,6 +4204,23 @@ named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in
 - **Quicksand**, **Sandstone Tomb**: named + the sand-gold flash; `_eaQuicksand` / `_eaTomb` unchanged.
 - The harness picks a spell by its NAME in the HUD: two spells with one name (Rampart) = it may cast the other one.
 
+### part 4 (12 spells: nature + poison). After frames: `docs/plans/vfx-cleanup/img/own-look/L1_part4.jpg`. THE LIST IS DONE (49 of 49).
+- **Pollinate**: a slow double spiral of gold pollen winds down onto the square and a gold flower opens flat on it. (No picture: the
+  harness' bee queen has no pollen to spend.)
+- **Sacrifice** (shaman): two strands wind round the body the opposite way, a red one climbing off it and a green one coming down.
+  (No picture: the harness cannot make the two-ally pick.)
+- **Tail Whip** (dinosaur): the tail's sweep, a thick green wedge low over the ground, swings round his side through the victim.
+- **Trunk Throw**: the trunk breaks on the body, long splinters of the same wood fly end over end and lie, leaves come down after.
+- **Web Snare** (voidweaver): a wide web of void silk drops flat over the 3×3 at knee height, sags, four threads pin its corners.
+- **Cannibalize** (zombie): the feast on the remains (`_bpFeast`) stays; sick green motes rise off them to his mouth. (No picture: no corpse on the harness board.)
+- **Goo Shot** (black goo): ropes of black goo stretch from the body to the floor round it, sag and let go one by one.
+- **Kiss of Decay** (demon princess): a print of lips on the victim, rose, turning the green of rot and running; rose motes drift back to her.
+- **Poison Dart**: green veins branch out over the body from the prick and pulse. No dart: the game has no dart model (no stand-in).
+- **Poison Seed**: the seed drops in, the soil closes in a mound, one purple shoot curls up with a bead of venom on its tip.
+- **Splash** (black goo): one low ring of tar jumps off the caster, runs out over the 3×3 and falls flat; every square flashes violet.
+- **Vivisection**: a dotted teal line is ruled across the body, then the cut runs along it, one thin red line, and beads.
+- `_l1Plate(F, tex, w, h, x, y, z, glow)` = an upright picture turned to the lens (the marks on a body: lips, veins, the cut, the chess score).
+
 ## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
 Thread L4 of the own-looks job (`docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`, list `own-look/L4.txt`). mondo: "any spells that
@@ -4539,3 +4556,27 @@ The fire pass already burns each hit square (the fire mark, kept); each spell ad
 - Baphomet's Rite: his blood runs to the square in a line of drops and two great horns of dark fire (solid tapered tubes, standing across the lens) curl up over the 3x3. No rune on the hit squares.
 - Seen on screen: frames `docs/plans/vfx-cleanup/img/own-look/L6_part2_*.jpg`. Under the fire mark's flames the fire area spells' own pieces are the quieter layer; Dynamite's column is the weakest read of the 17.
 
+
+## THE OWN LOOKS, L2, part 2: steel in the hand + the current (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L2")
+Fourteen more of `own-look/L2.txt`, same wiring as part 1 (`_o2Reg` = a `_FX2_BURST` row on the relayed burst beat).
+New kit pieces: `_o2Flat` (a shape lying on the square, on its own pivot), `_o2Area` (a square area's squares with a
+delay each, for `_o2Squares`), `_o2Carry` (small things lifted off the victim and carried down the line to the caster).
+Several of these already had a piece the audit did not count (the ninja's stars, the saucer fleet from battle.js, the
+shield model's ram, the grapple's rope): those stay, the look adds what was missing and turns the generic burst off.
+- Knife Throw: a leaf of steel stands in the body along the throw, shivering to a stop; a thin red line where it went in.
+- Shuriken: the three stars stay pinned where they struck (high, low, middle), each finishing its turn.
+- Shield Bash: the shield's outline slams up under the chin and tips back; the clang rings off both sides in arcs.
+- Elbow Grease: no light at all: a thick smear of brown shop grease wiped across the body, drops off its end, sweat off the worker.
+- Swipe: a violet hand-line brushes past; three gold buff arrows lift off the victim and run down the line to the thief.
+- Plunder: a red X scored on the floor under the victim; gold coins (the banker's gilt coin) arc off into the pirate's hand.
+- Grapple: a steel grapnel drops its flukes into the landing square, turns and sets; grit and a bite ring.
+- Kill Mode: red target corners snap shut on the robot, a red radar hand turns once round him, each square of the 5x5 flashes red as it passes.
+- War of the Worlds: every square of the 5x5 flashes heat-ray orange, row after row (the saucers were already there).
+- Disintegrator: acid-green bands round the body break up from the feet and blow away upward with green ash.
+- EMP Burst: two violet rings run out over the floor from the engineer, each square goes violet as the first crosses it, static where it passed.
+- EMP Grenade: a violet wire dome swells over the 3x3 and snaps off; every square flashes violet; static jitters after.
+- Taser Bolt: two wires to two darts in the chest; yellow current crawls over the body in fits while they hold.
+- Yellow Thunder: a yellow thunderbolt on every square of the 3x3, the middle first; each square flashes yellow under its bolt.
+- Every area spell here flashes EVERY square it hits in its own colour (`_o2Squares`), one run for the whole area.
+- Proof: docs/plans/vfx-cleanup/img/own-look/L2_part2_after.jpg (the burst beat fired on the audit board, two frames a
+  spell: the real-cast frames are 0.45 s apart and miss most of these; real casts were run too, no errors).
