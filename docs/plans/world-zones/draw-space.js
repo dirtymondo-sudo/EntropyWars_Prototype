@@ -80,8 +80,8 @@ function moon() {
        a face (see ROUND below); no rock border (there is no edge: walk off one face and you are on the next). The new column (P05-..) is
        plain dust. */
     const A = world({ cols: 6, rows: 4 }), CR = { x: 30, y: 21, R: 10, d: 5 };
-    /* the limb: a rock ridge between the far side and the side you are shown, two passes through it */
-    A.each((x, y) => { const k = 12 + Math.round((vnoise(y / 4, 0.5, 5) - 0.5) * 2); if (x >= k - 1 && x <= k + 1 && !((y >= 28 && y <= 30) || (y >= 9 && y <= 10))) A.cell[y][x] = 'x'; });
+    /* (the limb, a straight rock ridge between the far side and the side you are shown, is GONE, 2026-11-17: mondo: "a ridge or mountain range ... that looks
+       leftover from the boundaries of a square perimeter, the whole planet should be walkable outside of things that are actually meant to be walls") */
     /* THE TERRACE (the collar stands on it: a door you climb to) and its two ramps; THE ANTENNA PLATFORM under the rim and its ramp */
     A.flat(22, 3, 33, 6, 3.5, 'm'); A.ramp(18, 5, 21, 6, 'e', 0, 3.5); A.ramp(34, 5, 37, 6, 'w', 0, 3.5); A.set(18, 3, 21, 4, 'x'); A.set(34, 3, 37, 4, 'x');
     A.flat(40, 3, 44, 6, 5.25, 'm'); A.ramp(41, 7, 42, 11, 'n', 0, 5.25);
@@ -172,6 +172,8 @@ function saturn() {
     A.ramp(22, 9, 25, 12, 's', 0, 3.5); A.flat(22, 5, 25, 8, 3.5, 'm');          // north: from the Docking Shelf
     A.ramp(9, 30, 12, 31, 'w', 0, 3.5); A.ramp(35, 30, 38, 31, 'e', 0, 3.5);     // south-west, south-east
     A.ramp(22, 36, 25, 39, 'n', 0, 3.5);                                           // south: from the airlock's side
+    /* THE WAYS UP FROM THE CLOUD DECK (2026-11-17: the storm walls are gone, the whole ball is walked): a ramp onto the rim walk, north and south */
+    A.ramp(26, 0, 29, 3, 's', -2, 3.5); A.ramp(26, 44, 29, 47, 'n', -2, 3.5);
     /* THE RING SHARD: a splinter of ring ice fallen across the east rim, 7 m, never climbed */
     for (let i = 0; i < 9; i++) A.flat(36 + Math.floor(i / 3), 13 + i, 37 + Math.floor(i / 3), 13 + i, 7 + (i % 3) * 0.6, 'i');
     /* THE EYE: the storm's eye, a bowl 4 m deep with a floor nobody stands on */
@@ -191,7 +193,7 @@ function saturn() {
         ways: { bay: { sx: 22, sy: 43, face: 0, kind: 'bay door (Room 6)' }, derelict_saturn: { sx: 25, sy: 5, face: 180, kind: 'the ship\'s collar, on the Docking Shelf' }, saturn_singularity: { sx: 5, sy: 23, face: 90, kind: 'the Drop\'s frame: to the Singularity' } },
         spawn: [22, 41], marker: [24, 33],
         who: 'the Grey and the Black Goo (their home); the old room\'s watcher and android',
-        pal: { '.': '#d9c08a', p: '#efe0b8', c: '#a88c5a', h: '#2a2420', m: '#c2a468', r: '#e8d49c', i: '#9fe0e8', x: '#5a4a3a' } };
+        pal: { '.': '#d9c08a', b: '#b89a62', p: '#efe0b8', c: '#a88c5a', h: '#2a2420', m: '#c2a468', r: '#e8d49c', i: '#9fe0e8', x: '#5a4a3a' } };
 }
 
 /* ═══ THE SINGULARITY — the edge of everything: a bowl that falls to a point; nothing comes back up ═══ */
@@ -292,7 +294,7 @@ const strip = (w, full) => Object.assign({ id: w.id, name: w.name, round: !!w.ro
     full && w.flat ? { flat: Object.assign({}, w.flat, { A: undefined, cells: w.flat.A.cell.map(r => r.join('')), slope: i16(w.flat.A) }) } : {});
 const head = { area: 'Outer Space', version: 'plan-3', squareMeters: C, plotCells: N,
     note: 'Four rooms, one a world. Written by docs/plans/world-zones/draw-space.js; bake-space.js reads docs/areas/space/layout.json. Never hand-edit: edit the script and rerun.',
-    legend: { x: 'rock / storm wall / nothing (never walked)', '.': 'ground', p: 'track', c: 'crater, canyon or bowl floor', m: 'mesa, terrace or platform top', r: 'ramp', t: 'pyramid tier', l: 'pad', i: 'ring ice', h: 'the hole\'s floor', e: 'rim, lip or dunes' },
+    legend: { x: 'rock / storm wall / nothing (never walked)', '.': 'ground', p: 'track', c: 'crater, canyon or bowl floor', m: 'mesa, terrace or platform top', r: 'ramp', t: 'pyramid tier', l: 'pad', i: 'ring ice', b: 'cloud belt', h: 'the hole\'s floor', e: 'rim, lip or dunes' },
     notBuilt: ['flying the Spaceship between worlds', 'floating outside the ship', 'the Sun, Earth, the asteroid belt and Low Orbit as places (plan 2)'] };
 fs.mkdirSync(path.join(REPO, 'docs/areas/space'), { recursive: true });
 fs.writeFileSync(path.join(REPO, 'docs/areas/space/layout.json'), JSON.stringify(Object.assign({}, head, { rooms: WORLDS.map(w => strip(w, true)) }), null, 0).replace(/\{"id":"(moon|mars|saturn|singularity)"/g, '\n{"id":"$1"').replace(/"cells":\[/g, '\n"cells":[\n').replace(/","(?=[x.pcmrtlihe]{40,})/g, '",\n"') + '\n');

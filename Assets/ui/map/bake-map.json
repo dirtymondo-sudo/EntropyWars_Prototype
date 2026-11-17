@@ -151,13 +151,13 @@
  },
  "site_prebuilt_moon_plots": {
   "id": "site_prebuilt_moon_plots",
-  "nx": 288,
-  "nz": 180,
-  "h0": -6.37,
+  "nx": 552,
+  "nz": 228,
+  "h0": -6.36,
   "hs": 0.25,
-  "v": "8b2848b4be",
-  "bytes": 10686,
-  "s": "37.9"
+  "v": "3d4c3326bb",
+  "bytes": 18756,
+  "s": "29.4"
  },
  "site_prebuilt_dumb_base": {
   "id": "site_prebuilt_dumb_base",

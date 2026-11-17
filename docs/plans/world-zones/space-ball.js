@@ -12,7 +12,14 @@ const vnoise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), u = 
     return (hash(xi, yi, s) * (1 - f(u)) + hash(xi + 1, yi, s) * f(u)) * (1 - f(v)) + (hash(xi, yi + 1, s) * (1 - f(u)) + hash(xi + 1, yi + 1, s) * f(u)) * f(v); };
 /* which worlds go round: fq = a face's squares, center = the face the map's middle sits on (1 = the face you meet first, 5 = the north
    pole, 4 = the south pole), fill / fillH = the ground beyond the map, xToFill = the map's rock becomes fill too */
-const ROUNDS = { mars: { fq: 36, center: 1, fill: '.', fillH: 0 }, saturn: { fq: 48, center: 5, fill: '.', fillH: -2 }, singularity: { fq: 36, center: 4, fill: 'c', fillH: 0, xToFill: true } };   // (the Singularity: its rock ring goes and the ball beyond the map is black glass, obsidian: the 'e' rim sheet, lava, does not draw on a walk's ground)
+/* BIGGER (2026-11-17, mondo: "i wouldnt mind if they were bigger, especially relative to each other (saturn should be bigger than the moon
+   obviously)"): the Moon keeps its 24 (R 53 m), Mars 36 -> 48 (R 107 m, twice the Moon as it is), the Singularity 36 -> 48, Saturn 48 -> 96
+   (R 214 m, four Moons). `band(d)` = the ground beyond the map by where it lies on the ball (Saturn's belts run round it by latitude). */
+const ROUNDS = { mars: { fq: 48, center: 1, fill: '.', fillH: 0 },
+    saturn: { fq: 96, center: 5, fill: '.', fillH: -2, xToFill: true,   // (11-17: the storm walls are gone: a square crown of grey rock on the pole, and 80 plots nobody reached)
+        band: d => { const lat = Math.asin(Math.max(-1, Math.min(1, d[1]))) * 180 / Math.PI, lon = Math.atan2(d[2], d[0]), a = Math.abs(lat + 2.2 * Math.sin(lon * 3) + 1.2 * Math.sin(lon * 7 + 1));
+            return (a > 9 && a < 17) || (a > 27 && a < 32) || (a > 41 && a < 49) || (a > 58 && a < 62) ? 'b' : '.'; } },
+    singularity: { fq: 48, center: 4, fill: 'c', fillH: 0, xToFill: true } };   // (the Singularity: its rock ring goes and the ball beyond the map is black glass, obsidian: the 'e' rim sheet, lava, does not draw on a walk's ground)
 const v3 = { dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], add: (a, b, k) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k], norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; } };
 function rmKit(fq, center, W0, H0) {
     const R = 2 * fq * C / Math.PI, F = PL_FACES[center], n = F[0], U = F[1], V = F[2], cx0 = W0 / 2, cy0 = H0 / 2, PI4 = Math.PI / 4;
@@ -50,7 +57,7 @@ function sampleNet(o, K, A, asChar) {
             return (q[0] * (1 - fx) + q[1] * fx) * (1 - fy) + (q[2] * (1 - fx) + q[3] * fx) * fy; });
         H4[Y][X] = crn.map(h => Math.round(h * 100) / 100);
         const ch = inMap(sx, sy) ? A.cell(sx, sy) : null;
-        cell[Y][X] = ch != null && !(o.xToFill && ch === 'x') ? (asChar ? asChar(ch) : ch) : o.fill; } }
+        cell[Y][X] = ch != null && !(o.xToFill && ch === 'x') ? (asChar ? asChar(ch) : ch) : (o.band ? o.band(K.dirAt(k, X + 0.5, Y + 0.5)) : o.fill); } }
     return { cell, H4 };
 }
 /* a door on the map (square sx, sy, face) → the net: its square, its face turned with the ground and snapped to a quarter turn */
