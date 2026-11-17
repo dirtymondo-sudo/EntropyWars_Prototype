@@ -312,6 +312,37 @@ Story walk only, and the same on every machine. Plan: `docs/plans/npc-encounters
 - **The weak-PC cut is gone** in `_hqTickResidents` (`cap = R.drawn`; `drawnLow` is no longer read). mondo: "the game is the game".
 - **Probe:** `ThreeRenderer.hq.dev.aware()` = `{ on, seen, n, marks, says }`; `dev.awareMark(id, on)` holds a red mark on one NPC for a picture;
   `dev.chars()` rows carry `race` and `away`; a `playtest_city.js` view may say `"keep": true` (do not move the walker back).
-- **Not built here (no moment for them yet):** the Guards' warning line (it needs a strike that does not start the fight at once: step 3), people stepping
+- **Not built here (no moment for them yet):** the Guards' warning line (BUILT in step 3, the section below), people stepping
   aside (a walker already waits when you stand in its way), who joins a fight (step 8 reads the same awareness).
 
+## THE STRIKE LADDER (NPC encounters step 3, 2026-11-17; REPLACES "one strike starts the fight")
+
+Story walk only; refused from an online seat (map.js `_hqEncounterFire`). Plan: `docs/plans/npc-encounters/PLAN.md` 4.2. Every number is a PROPOSAL.
+
+- **The rule** (data.js `hqNpcStrike(ch, { cornered, peek })` → `'flee' | 'talk' | 'fight'`): a strike takes the next rung of the temper's `ladder`.
+  Civilian / Coward: run, Talk, fight. Territorial / Opportunist: Talk, fight. Guard / Protector / Brute: fight. **No temper = fight on the first strike, as before.**
+- **A strike is** the swing's landing or a standing door's hit (both reach `_hqEncounterFire`, which asks the rule first). Only `'fight'` goes on to the launch.
+- **The run** (three-renderer.js `_hqLadderStruck`, `_hqTickLadder`; `HQ_NPC_TEMPERS.ladder`): 15 m (`runM`) at 2.0 m/s (`runSpeed`; you walk 2.4, run 4.6),
+  the straightest clear way that does not lead toward you (16 directions tried; the city's walk map keeps it out of the sea). It stops early once out of your sight.
+  Then it stands 5 s (`restMs`) facing you and walks back to where its day has it (`backSpeed`). A body on the ladder carries `ch._run`; its rounds / its day
+  leave it alone until it is freed.
+- **Cornered** (`hq.npcCornered(id)`): no clear straight way of 5 m (`cornerM`) away from you. The run is skipped: that strike is the Talk rung.
+- **Talk** (map.js `_hqLadderTalk`, the box in `_hqNpcPanelHtml`, `t._ladderBox`): the subtitle bar with the race's line (`HQ_NPC_TEMPERS.lines.talk`) and
+  `1 · BACK OFF` / `2 · FIGHT`. **E first** opens the same box on any NPC whose temper has a Talk rung: its ordinary line, `1 · NOTED` / `2 · FIGHT`.
+  Keys: 1 or E = back off, 2 = fight, ESC and right click close. FIGHT launches through `hq.encounterEvent(id)` + `_hqEncounterFire({ ladderDone })`.
+  Backing off does not take the strike back: the next strike is the fight.
+- **The day's memory** (data.js `hqNpcMem(room, id)`, in the page, cleared when `hqToday()` changes, not saved with the profile):
+  `{ n, at, fled, talked, struck, warned, saw }`. **The ladder starts over** when a fled NPC has been left alone 30 s (`againMs`) and was not talked to since.
+- **Whoever starts the fight opens round 1:** the run record's `opener: 'npc'` makes battle.js `_afterVSSplash` put the ENEMY lead first
+  (`window._ewEncounterFirstId`); a fight you start is yours as before.
+- **The Guard who sees a strike** (`hqNpcGuardSees`; `HQ_NPC_TEMPERS.guard`): a Guard / Protector within the awareness sight (18 m of you, a clear line, awake)
+  that defends the one you struck (`hqNpcDefends`). First strike it sees that day: its line once ("Hands off. Now." / "Hey! Leave them alone.") and the red `!`
+  for 8 s (`warnMs`). From the second (`strikesSeen`): it comes for you at 2.7 m/s (`chaseSpeed`) wearing the `!`, and starts ITS fight within 1.9 m (`reachM`):
+  it acts first. It gives up past 32 m or after 6 s without seeing you, and walks back. Only strikes that start no fight are witnessed (a strike that starts the
+  fight leaves no time; who joins a fight is step 8).
+- **The prompt and the toast:** `[CLICK] ATTACK` says `· ENGAGE` only when the next strike is the fight; the ENGAGING toast only then too.
+- **Not touched:** quest fights (`_hqEncounterStart(L, null, null)`, their own start), the capture, the carry-over doors.
+- **Probe:** `hq.dev.ladder()` = who runs / comes / holds a mark; `hq.npcCornered(id)`; `hqNpcMem(room, id)`;
+  `window._hqEncounterFire(ThreeRenderer.hq.encounterEvent(id))` = one strike without the swing.
+- **Left for step 4:** muggers' and Brutes' own approach (the chase code here is what they will use), the Ghost's fight after its warning, the level gap on NPC-started fights
+  (a Guard that comes for you is not held by it), the gold lost with a fight.
