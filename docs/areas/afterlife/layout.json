@@ -75,6 +75,11 @@
    "name": "The City",
    "room": "heaven",
    "file": "docs/areas/afterlife/districts/Y.js"
+  },
+  "O": {
+   "name": "The Colosseum",
+   "room": "vatican",
+   "file": "docs/areas/afterlife/districts/O.js"
   }
  },
  "rooms": [
@@ -917,8 +922,8 @@
     "XggggdgggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
     "XggggdgggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
     "XgggTTTggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmoommmmmmmmmmm",
-    "XgggTTTggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmoommmmmmmmmmm",
-    "XgggTTTggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
+    "ddggTTTggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmoommmmmmmmmmm",
+    "ddggTTTggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
     "XggggdgggggdcBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssmmmmmmmmmmmmmmmmmmmmmmmX",
     "XggggdgggggdccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
     "XggggdgggggdcccBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBsssccmmmmmmmmmmmmmmmmmmmmcX",
@@ -967,8 +972,8 @@
     "875,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
     "875,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
     "875,0,0,0,525,525,525,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,90,90,0,0,0,0,0,0,0,0,0,0,0",
-    "875,0,0,0,525,525,525,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,90,90,0,0,0,0,0,0,0,0,0,0,0",
-    "875,0,0,0,525,525,525,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
+    "0,0,0,0,525,525,525,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,90,90,0,0,0,0,0,0,0,0,0,0,0",
+    "0,0,0,0,525,525,525,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
     "875,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
     "875,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
     "875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,175,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,875",
@@ -1097,11 +1102,24 @@
      "name": "up: Heaven (the telescope, the Stair in the Sky)"
     },
     {
-     "id": "gate",
-     "kind": "gate",
+     "id": "ow_v_m6_m4",
+     "kind": "seam",
      "wall": "e",
      "sy": 24,
-     "name": "Disaster City: the Civic Center gate (CLOSED; the city is owner side: a note, no link)"
+     "room": "site_ow_r1",
+     "name": "The River Road (route R1): the east gate, over the Tiber to the city",
+     "label": "THE RIVER ROAD",
+     "sub": "THE EAST GATE · OVER THE TIBER TO THE CITY"
+    },
+    {
+     "id": "ow_v_m12_m4",
+     "kind": "seam",
+     "wall": "w",
+     "sy": 25,
+     "room": "site_ow_r4",
+     "name": "The Old Road (route R4): the west gate, to Camelot and the Woods",
+     "label": "THE OLD ROAD",
+     "sub": "THE WEST GATE · TO CAMELOT AND THE WOODS"
     }
    ]
   },
@@ -1528,5 +1546,206 @@
     }
    ]
   }
- ]
+ ],
+ "colosseum": {
+  "note": "laid on the Vatican room's columns 1-3, rows 0-2 by bake-afterlife.js THE ONE WORLD MOVE",
+  "cols": 3,
+  "rows": 3,
+  "at": [ 1, 0 ],
+  "legend": {
+   "c": "cobbles (the plaza)",
+   "h": "hedge (2.6 m)",
+   "k": "the arcade (the ring walk)",
+   "e": "the stands (six tiers, 0.875 m a step)",
+   "p": "the podium wall (3.5 m)",
+   "a": "the arena's sand",
+   "m": "a gate's way through the stands",
+   "s": "steps"
+  },
+  "plots": [
+   {
+    "id": "P00-00",
+    "name": "The Plaza, north-west (label mine)",
+    "d": "O",
+    "level": 0,
+    "what": "the plaza and the arcade's north-west curve",
+    "from": "plots.json district col"
+   },
+   {
+    "id": "P01-00",
+    "name": "The Gate of Life (label mine)",
+    "d": "O",
+    "level": 0,
+    "what": "the north gate; the Pilgrim Way to Olympus comes in at the plaza's north opening",
+    "from": "plots.json district col"
+   },
+   {
+    "id": "P02-00",
+    "name": "The Plaza, north-east (label mine)",
+    "d": "O",
+    "level": 0,
+    "what": "the plaza and the arcade's north-east curve",
+    "from": "plots.json district col"
+   },
+   {
+    "id": "P00-01",
+    "name": "The Stands, west (label mine)",
+    "d": "O",
+    "level": 1,
+    "what": "the west stands: six tiers",
+    "from": "plots.json district col"
+   },
+   {
+    "id": "P01-01",
+    "name": "The Arena (label mine)",
+    "d": "O",
+    "level": 0,
+    "what": "LANDMARK: the sand inside the podium wall",
+    "from": "plots.json district col"
+   },
+   {
+    "id": "P02-01",
+    "name": "The Stands, east (label mine)",
+    "d": "O",
+    "level": 1,
+    "what": "the east stands: six tiers",
+    "from": "plots.json district col"
+   },
+   {
+    "id": "P00-02",
+    "name": "The Plaza, south-west (label mine)",
+    "d": "O",
+    "level": 0,
+    "what": "the plaza by the Vatican's wall",
+    "from": "plots.json district col"
+   },
+   {
+    "id": "P01-02",
+    "name": "The Gate of Death (label mine)",
+    "d": "O",
+    "level": 0,
+    "what": "the south gate",
+    "from": "plots.json district col"
+   },
+   {
+    "id": "P02-02",
+    "name": "The Pilgrim Stair (label mine)",
+    "d": "O",
+    "level": 0,
+    "what": "the flight up to the gate in the Vatican's wall (the Courtyard's terrace)",
+    "from": "plots.json district col"
+   }
+  ],
+  "cells": [
+   "hhhhhhhhhhhhhhhhhcchhhhhhhhhhhhhhhhh",
+   "hcccccccccccccccccccccccccccccccccch",
+   "hcccccccccccccccccccccccccccccccccch",
+   "hcccccccccccccccccccccccccccccccccch",
+   "hccccccccccckkkkkkkkkkkkccccccccccch",
+   "hccccccccckkkeeeemmeeeekkkccccccccch",
+   "hccccccckkkeeeeeemmeeeeeekkkccccccch",
+   "hcccccckkeeeeeeeemmeeeeeeeekkcccccch",
+   "hccccckkeeeeeeeeemmeeeeeeeeekkccccch",
+   "hcccckkeeeeeeeeppmmppeeeeeeeekkcccch",
+   "hccckkeeeeeeeppaaaaaappeeeeeeekkccch",
+   "hccckeeeeeeepaaaaaaaaaapeeeeeeekccch",
+   "hcckkeeeeeepaaaaaaaaaaaapeeeeeekkcch",
+   "hcckkeeeeepaaaaaaaaaaaaaapeeeeekkcch",
+   "hcckeeeeeepaaaaaaaaaaaaaapeeeeeekcch",
+   "hcckeeeeeppaaaaaaaaaaaaaappeeeeekcch",
+   "hcckeeeeeppaaaaaaaaaaaaaappeeeeekcch",
+   "hcckeeeeeepaaaaaaaaaaaaaapeeeeeekcch",
+   "hcckkeeeeepaaaaaaaaaaaaaapeeeeekkcch",
+   "hcckkeeeeeepaaaaaaaaaaaapeeeeeekkcch",
+   "hccckeeeeeeepaaaaaaaaaapeeeeeeekccch",
+   "hccckkeeeeeeeppaaaaaappeeeeeeekkccch",
+   "hcccckkeeeeeeeeppmmppeeeeeeeekkcccch",
+   "hccccckkeeeeeeeeemmeeeeeeeeekkccccch",
+   "hcccccckkeeeeeeeemmeeeeeeeekkcccccch",
+   "hccccccckkkeeeeeemmeeeeeekkkccccccch",
+   "hccccccccckkkeeeemmeeeekkkccccccccch",
+   "hccccccccccckkkkkkkkkkkkccccccccccch",
+   "hcccccccccccccccccccccccccccccccccch",
+   "hcccccccccccccccccccccccccccccccccch",
+   "hcccccccccccccccccccccccccccccccccch",
+   "hccccccccccccccccccccccccccccsscccch",
+   "hccccccccccccccccccccccccccccsscccch",
+   "hccccccccccccccccccccccccccccsscccch",
+   "hccccccccccccccccccccccccccccsscccch",
+   "hccccccccccccccccccccccccccccsscccch"
+  ],
+  "heights": [
+   "260,260,260,260,260,260,260,260,260,260,260,260,260,260,260,260,260,0,0,260,260,260,260,260,260,260,260,260,260,260,260,260,260,260,260,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,350,263,175,88,0,0,88,175,263,350,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,525,438,350,263,175,88,0,0,88,175,263,350,438,525,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,525,438,438,350,350,263,175,88,0,0,88,175,263,350,350,438,438,525,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,525,438,350,350,263,263,175,175,88,0,0,88,175,175,263,263,350,350,438,525,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,525,438,350,263,263,175,88,88,350,350,0,0,350,350,88,88,175,263,263,350,438,525,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,525,438,350,263,175,175,88,350,350,0,0,0,0,0,0,350,350,88,175,175,263,350,438,525,0,0,0,0,0,260",
+   "260,0,0,0,0,525,438,350,263,175,88,88,350,0,0,0,0,0,0,0,0,0,0,350,88,88,175,263,350,438,525,0,0,0,0,260",
+   "260,0,0,0,0,525,438,350,263,175,88,350,0,0,0,0,0,0,0,0,0,0,0,0,350,88,175,263,350,438,525,0,0,0,0,260",
+   "260,0,0,0,0,438,350,263,175,88,350,0,0,0,0,0,0,0,0,0,0,0,0,0,0,350,88,175,263,350,438,0,0,0,0,260",
+   "260,0,0,0,525,438,350,263,175,88,350,0,0,0,0,0,0,0,0,0,0,0,0,0,0,350,88,175,263,350,438,525,0,0,0,260",
+   "260,0,0,0,525,438,350,263,175,350,350,0,0,0,0,0,0,0,0,0,0,0,0,0,0,350,350,175,263,350,438,525,0,0,0,260",
+   "260,0,0,0,525,438,350,263,175,350,350,0,0,0,0,0,0,0,0,0,0,0,0,0,0,350,350,175,263,350,438,525,0,0,0,260",
+   "260,0,0,0,525,438,350,263,175,88,350,0,0,0,0,0,0,0,0,0,0,0,0,0,0,350,88,175,263,350,438,525,0,0,0,260",
+   "260,0,0,0,0,438,350,263,175,88,350,0,0,0,0,0,0,0,0,0,0,0,0,0,0,350,88,175,263,350,438,0,0,0,0,260",
+   "260,0,0,0,0,525,438,350,263,175,88,350,0,0,0,0,0,0,0,0,0,0,0,0,350,88,175,263,350,438,525,0,0,0,0,260",
+   "260,0,0,0,0,525,438,350,263,175,88,88,350,0,0,0,0,0,0,0,0,0,0,350,88,88,175,263,350,438,525,0,0,0,0,260",
+   "260,0,0,0,0,0,525,438,350,263,175,175,88,350,350,0,0,0,0,0,0,350,350,88,175,175,263,350,438,525,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,525,438,350,263,263,175,88,88,350,350,0,0,350,350,88,88,175,263,263,350,438,525,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,525,438,350,350,263,263,175,175,88,0,0,88,175,175,263,263,350,350,438,525,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,525,438,438,350,350,263,175,88,0,0,88,175,263,350,350,438,438,525,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,525,438,350,263,175,88,0,0,88,175,263,350,438,525,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,350,263,175,88,0,0,88,175,263,350,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260",
+   "260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,260"
+  ],
+  "stairs": [
+   {
+    "x0": 29,
+    "y0": 31,
+    "x1": 31,
+    "y1": 36,
+    "dir": "S",
+    "h0": 0,
+    "h1": 1.75,
+    "model": "stone",
+    "key": "marble_light"
+   }
+  ],
+  "slopes": [],
+  "ways": [
+   {
+    "id": "link_vatican_olympus",
+    "kind": "link",
+    "wall": "n",
+    "sx": 18,
+    "name": "The Mountains: Mount Olympus (the Pilgrim Way, north; the stand-in until route R3 stands)",
+    "unless": "site_ow_r3"
+   },
+   {
+    "id": "ow_h_m10_m9",
+    "kind": "seam",
+    "wall": "n",
+    "sx": 18,
+    "room": "site_ow_r3",
+    "name": "The Pilgrim Way (route R3): north up to Mount Olympus",
+    "label": "THE PILGRIM WAY",
+    "sub": "THE COLOSSEUM · NORTH UP TO MOUNT OLYMPUS",
+    "desc": "A worn path leaves the plaza and goes north into the trees, past little shrines."
+   }
+  ]
+ }
 }

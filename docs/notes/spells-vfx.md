@@ -4200,6 +4200,29 @@ dont have a look of their own need one".
 
 After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part1.jpg`.
 
+## THE VFX CLEANUP, B3 part 1: THE BEAM KIT (2026-11-17, three-vfx-effects.js)
+mondo: "We need better beams and lasers, think epic anime ki blast or scifi laser blasters or harry potter spell duels."
+- **`_VC_BEAM`** = which spell wears the kit and how (`style` ki / blaster / wand, `thick`, `rings`, `col`, `head`). Ten
+  today: railgun, raceHeatRay, raceLaserBeam (Heat Vision), racePlasmaCannon, sigOrichalcumRay, raceKiWave,
+  racePsychicBeam, raceEntropicBeam, raceBalefulGaze, raceJudgmentBeam. To put another line spell on it: one row.
+  The styles are starting looks, not boxes (mondo 11-17); a spell that fits none gets its own.
+- **`_beamKitCharge(tx, ty, holdMs, spellId)`**, called by `_stageWindup` (so it rides the relayed windup beat): a ball
+  growing at the caster's torso with a dark pinch in its middle, three rings closing on it, motes pulled in. It lasts the
+  whole windup (`holdMs`, about 2 s in a real cast). The glass orb is not drawn for a kit spell. The beat can arrive twice
+  for one cast: the second within 0.4 s on the same square is dropped (`_beamKitChargeAt`).
+- **`_beamKit3D(fromTx, fromTy, toTx, toTy, { kit, glow, beamMs, thickness, startW, endW })`**, called by
+  `_fireBeamMapped` in place of `_spawnLaserBeam3D` (same line, same clock, so battle.js is untouched): glow cylinder
+  (additive, low), the energy sheath, a DARK edge and a hot core (both NORMAL blending: the stack cannot add up to white),
+  rings riding the line, a front ball, a muzzle bloom; it thins as it dies. Colours = `_beamKitCols` from the spell's
+  beam palette (`_crBeamPalette`) or the row's `col`. Impact at the lance's end: `_sigShockRing3D` flat on the floor +
+  sparks thrown back toward the caster; a `wand` sheds sparks down its length.
+- **The old laser** (`_spawnLaserBeam3D`, the 14 line spells still on it): core = the spell's colour, hot, normal
+  blending; `_fireBeamMapped`'s charge blink tinted. Not removed: several of those spells would be left with nothing.
+- **THE CAPSTONE BLOOM** (`_sigCapstoneBloom3D`): the sigil disc only for `_VC_RUNE` archetypes, the column only for
+  divine and in the orb colour (it was a rune + a white-cored pillar on every capstone's hit).
+- Capture: `sv-run.js --dense` = a frame every tick for the first 3 s; `--w 1920 --h 1080` + a crop to see a line spell
+  (the line camera stands far off). Frames: docs/plans/vfx-cleanup/img/b3_*.jpg.
+- Open: the sight lasers + the turret blast (three-renderer.js), the clash (B4), Sword Beam onto the kit if wanted.
 ## THE OWN LOOKS, L4, part 2: the divine hits and the hexes (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
 - **An area spell (`_l4WireArea`)** gets an `aoe` def of its own: `impactTileEffect` = the spell's own tile recipe (one flash in
