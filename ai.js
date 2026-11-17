@@ -6330,8 +6330,10 @@
 
         // ── healing / support family ──
         if (kind === 'heal' && target) {
-            const amt = spell.healPct ? Math.floor((target.maxHp || 0) * spell.healPct)   // THE SPELL AUDIT B: Time Rewind heals a share of max HP
+            let amt = spell.healPct ? Math.floor((target.maxHp || 0) * spell.healPct)   // THE SPELL AUDIT B: Time Rewind heals a share of max HP
                 : (spell.healAmt != null ? spell.healAmt : (spell.heal || 24));
+            /* 🙌 THE TELEVANGELIST PASS (2026-11-17): Miracle heals the whole collection plate on top (battle.js spellHealAmountFor) */
+            if (spell.spendPlate) amt += Math.max(0, unit._plate || 0);
             let _hs = healValue(g, unit, target, amt, v);
             // THE SPELL AUDIT D: Divine Light also sears every enemy beside the healed ally
             if (spell.healAdjacentDamage) {
@@ -6519,6 +6521,25 @@
                 if (_near) return 0;
                 const _close = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
                 s += (_close ? 70 : 35) + 25 * (3 - _bn);
+            }
+            /* 🪆 THE HAUNTED DOLL (2026-11-17): Pull My String is a gamble on four lines (a heal, a Charm, a pull, a big hit). The CPU
+               plays it blind, as a player does (it never peeks at _dollStringLine): worth more with an enemy in reach and when hurt. */
+            if (spell.pullString) {
+                const _psR = (spell.pullString.killRange || 4);
+                const _psNear = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= _psR);
+                const _psHurt = unit.maxHp > 0 ? 1 - unit.hp / unit.maxHp : 0;
+                return (_psNear ? 85 : 20) + Math.round(80 * _psHurt);
+            }
+            /* 🙌 THE TELEVANGELIST PASS (2026-11-17): Collection Plate (`tithe`) only pays while heals land within 3 of him: worth
+               it with healers (either team) or hurt allies near him, nothing when it is already out or nobody near can heal */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'tithe')) {
+                if (g.unitHasStatus(target, 'tithe')) return 0;
+                const _tvNear = g.aliveUnitsFor(target.player).concat(v.visibleEnemies || []).filter(u => u && !u.dead && u.id !== target.id   /* fog: only the foes it sees */
+                    && Math.abs(u.x - target.x) + Math.abs(u.y - target.y) <= 4);
+                const _tvHealers = _tvNear.filter(u => unitIsHealerKit(u)).length;
+                const _tvHurt = _tvNear.filter(u => u.player === target.player && u.hp < u.maxHp * 0.7).length;
+                if (!_tvHealers && !_tvHurt) return 0;
+                s += 25 + 45 * _tvHealers + 15 * _tvHurt;
             }
             if (spell.massRescue) {
                 const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;

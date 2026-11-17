@@ -4058,6 +4058,10 @@ function _hrlgStatusChips(unit) {
   /* 🐝 THE POLLEN (battle.js): what the Bee Queen carries, and the Honey it gives her */
   const pol = unit.pollen | 0;
   if (pol > 0) chips.push({ key: 'pollen', label: 'POLLEN ' + pol + '/' + (window.POLLEN_MAX || 3), kind: 'up', title: 'Pollen: +' + pol * 8 + ' ATK, spell power and SPD. Pollinate spends one.' });
+  /* 🙌 THE PLATE (THE TELEVANGELIST PASS 2026-11-17): what is in the collection plate, which Miracle heals on top
+     (battle.js unit._plate, rides the state sync) */
+  const plt = Math.max(0, unit._plate || 0);
+  if (plt > 0 && !unit.dead) chips.push({ key: 'plate', label: 'PLATE ' + plt, kind: 'up', title: 'Collection Plate: Miracle heals ' + plt + ' HP more and empties it.' });
   /* 🦗 THE BROOD (the Cicada Brood, 2026-11-17): the stacks it banked dug in, and what they add to Chorus */
   const brd = unit._brood | 0;
   if (brd > 0) chips.push({ key: 'brood', label: 'BROOD ' + brd + '/3', kind: 'up', title: 'Brood: Chorus deals +' + brd * 45 + ' damage and spends them.' });

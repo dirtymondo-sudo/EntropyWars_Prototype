@@ -3918,8 +3918,12 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
 ## THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX")
 Gator Toss, Bath Salts and Hurricane Party had only the stock looks. three-vfx-effects.js block "THE FLORIDA MAN" (after the Banker
 block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura / aoe rows, all `pzOwn`), helpers `_fm*`. Visuals only.
-- TODAY'S HEADLINE (`_fmHeadline`): every cast spins a newspaper in beside his head (the old film spin): red BREAKING NEWS bar + the
-  spell's headline from its desc. To the lens's right of him, over the nameplate, gone at 1.65 s; never over a target or a number.
+- THE BROADCAST (mondo 11-17: "convert [the letterbox bars] to the breaking news lower third, like an actual broadcast"; it
+  replaced a spinning newspaper sprite): battle.js `_AC_NEWS` / `_acNewsFor` set `.news` on the action-cam chrome for Gator Toss,
+  Bath Salts, Hurricane Party and the finisher Breaking News (keyed on the shot's name, so the guest's relayed shot dresses the
+  same). Top bar = navy with a red LIVE bug + the spell name (still hides the scoreboard); bottom bar = a lower third that slides in
+  from the left: red BREAKING NEWS tab, the headline on white, a navy ticker of his other headlines (text written twice, looped).
+  Bath Salts' light chrome shows the bars too. CSS: styles-cinematic.css "THE BROADCAST".
 - Gator Toss `bolt` (timed on flyMs: the jaws close as the number lands): a code alligator (leather sheet, the Sewer Gator's
   `_gtSnout`, tail, scutes, legs, about one square long) hurled end over end, lands nose down and snaps; blood + dust, his side's
   ring; a Wet victim (the x1.5) also throws a splash crown + a water ring.
@@ -3932,6 +3936,34 @@ block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura
   Proof + probes: /mnt/project-files/florida-man-polish/.
 
 
+## THE TELEVANGELIST (2026-11-17, thread "Polish Televangelist spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+Prosperity Gospel's three casts used the family's generic heal / buff looks. three-vfx-effects.js "THE TELEVANGELIST" (after the
+Tech CEO block; `_PZ_SIGS.tvLay / tvPlate / tvSkim / tvPour / tvMiracle`, helpers `_tv*`, reuses the Banker's `_bkCoin`/`_bkFloor`
+and the CEO's `_ceoSides`/`_ceoTileRing`). Visuals only; the rule (battle.js THE TITHE) is unchanged.
+- Laying On of Hands `aura`: a gold palm presses in beside the ally's head from the side AWAY from the caster in the picture (on his
+  side it covered his body; over the head it would cover the number), a gold sunburst on the floor, motes up the body.
+- Collection Plate `aura` (self): two studio spotlights (purple + gold), the gold plate (gilt bowl, purple velvet with a cross)
+  rises out of his hand to shoulder height beside him (over the head it sat on the nameplate), and every square within 3 (the
+  plate's reach) ripples out from him with a rim in his side's colour from the viewer's seat (cyan-blue / pink-orange).
+- THE SKIM `skim` (battle.js _titheSkim fires it, relayed): gold coins hop from the healed body into his plate (one coin a 12 HP,
+  2-6), a gold ring on him; the floating text now reads `🙌 PLATE <total>` (the plate had no other read-out).
+- Miracle `payout` (fired at the cast by the heal kind when `spendPlate` and the plate is not empty: one coin a 15 HP, 3-16, timed
+  to land on the ally as the heal does; on himself they go up out of the plate and come down on him) + `aura`: a beam of light
+  down from the sky (a gradient sheet that fades going up: a solid column from a high camera lay over the caster), falling rays,
+  a sunburst; bigger with a bigger plate (read from the Televangelist within 4 before the heal empties it).
+- `_tvCoin` = the Banker's gilt disc + a deep-gold glint sprite (a bare 13 px disc was lost on grass at board zoom).
+- Tested in a VS CPU match (probe /mnt/project-files/televangelist-pass/probe/tv.js): Laying On of Hands 30% (402 on 1340), the skim
+  takes 15% of an ally's heal and of an ENEMY's heal within 3 (36 of 240, 28 of 192), the self-heal is never skimmed, Miracle =
+  15% + the whole plate (201 + 28 = 229; self 226 + 120 = 346) and empties it; the Miracle forecast includes the plate.
+  Showcase pictures: show.js / rt.js in the same folder (a slow clock, `__setK(0.1)`, is the way to catch the flying coins; a
+  frozen clock + real setTimeouts loses them).
+- THE PLATE CHIP (hud.js `_hrlgStatusChips`, `key: 'plate'`): `PLATE <n>` while the plate holds anything (both sides read it; unit._plate
+  rides the state sync), title = what Miracle adds.
+- CPU (ai.js): Miracle's heal value counts the plate (`spendPlate`); Collection Plate (`tithe`) scores 25 + 45 a healer (own team or a
+  foe it sees) + 15 a hurt ally within 4, and 0 when nobody near can heal or the plate is already out. Ranked in a staged board
+  (`window._aiRankCandidates`): healers near, plate empty = Laying On of Hands 193 > Collection Plate 93 > Miracle 31; plate 220 +
+  an ally at 30% = Laying On of Hands 271 ≈ Miracle 262; plate out = no Collection Plate. In a 4-round CPU match the AI healed with
+  Laying On of Hands and used a potion; with no healer standing near it never passed the plate (as scored).
 ## THE BOLTZMANN BRAIN (2026-11-17, the Boltzmann Brain pass)
 three-vfx-effects.js block "THE BOLTZMANN BRAIN" (after THE TECH CEO, helpers `_bb*`, `pzSig` hook). Violet thought + the black of an
 empty universe; every ring that says whose it is uses the Riot side colours from the viewer's seat (`_bbSide`).
@@ -4001,4 +4033,18 @@ ripple rings), SPEED in the viewer's side colours (own cyan-blue, other side pin
   real VS CPU casts; frog_ai_probe.js = two CPU frogs in training tempo). On the cloud's software renderer the cast clips run slow
   (the mixer's per-frame step), so the Flying Kick's star can show before his foot there; on a real GPU they should agree
   (the same clip path as Sky Tackle; not measured on a GPU here).
+
+## THE HAUNTED DOLL (2026-11-17, three-vfx-effects.js block "THE HAUNTED DOLL", after THE SAMURAI SLUG)
+Old-lace pink 0xe8a0b4, porcelain white, thread red; the side reads from the viewer's seat (own cyan-blue, enemy pink-orange).
+Small and quick on the body. Kill-switch window.EW_NO_DOLL_VFX.
+- Pin Prick (impact + geom): a silver needle flies the line in 180 ms, a thin side-coloured thread hangs doll -> victim ~1 s
+  (the Voodoo tie), a pin flash + two drops.
+- Play With Me ('nrPlayWithMe:swap', the swap branch's own geometry key): TV static (a canvas noise plane, flickering, facing the
+  camera) on both squares + a side ring.
+- Pull My String (geom on the cast: the string pulls out of her back and snaps back; then 'nrPullString:<line>' from
+  _dollPullString): play = pink sparkles + a green ring; friend = pink petals + a pink spark on the friend; hug = a side thread
+  from the doll to the dragged enemy; kill = two red eye glints, a red ring, a red ring on the victim.
+- Look Behind You (impact + geom): a black half-dome round the victim goes dark, flickers, dark again (never past 0.7 so the body
+  and the number stay readable), two red eye glints on the doll's side, then one pink crescent + the side ring.
+- Nobody's Looking ('hdCreep', round end): faint dark footprint rings on the squares it crept over, one after another.
 
