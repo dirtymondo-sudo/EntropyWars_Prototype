@@ -1,0 +1,54 @@
+{
+ "about": "THE VALLEY ROAD (route R6, One World BUILD_PLAN phase 4.2, 2026-11-17): a dirt road from the Woods' Tunnel Way (Dead Man's Cave, in the Clearing's room) south and east down the Tiber's valley to Disaster City's west side. Its own room: the Clearing's room is full (rule 5) and two zones never join. The map's band also reaches five plots west of the Tunnel Way; the road runs a spur out there to the water mill. The design page: 'down the Tiber valley past the water mill and over the covered bridge to the city'. The city end is the link valley_city (the city's free door just inside its west wall), so no seam door is written there.",
+ "label": "THE VALLEY ROAD",
+ "sub": "THE WOODS · DOWN THE TIBER VALLEY TO THE CITY · 26 PLOTS",
+ "line": [
+  [
+   -6.6,
+   2.9
+  ],
+  [
+   -6.6,
+   3.6
+  ],
+  [
+   -6.2,
+   4.0
+  ],
+  [
+   -5.4,
+   4.0
+  ],
+  [
+   -4.8,
+   4.96
+  ],
+  [
+   0.1,
+   4.96
+  ]
+ ],
+ "ends": {
+  "ow_h_m7_3": {
+   "room": "site_prebuilt_fairy_forest_ow_clearing",
+   "label": "THE CLEARING · THE TUNNEL WAY",
+   "sub": "THE VALLEY ROAD · NORTH INTO THE CREEK",
+   "desc": "The road ends at the trees. A path goes on north into the dry creek."
+  },
+  "ow_v_0_4": {
+   "link": "valley_city",
+   "side": "b"
+  }
+ },
+ "places": {
+  "-6,5": false,
+  "-6,3": false,
+  "-6,4": false
+ },
+ "names": {
+  "-6,5": "the water mill",
+  "-6,4": "the covered bridge",
+  "-12,3": "the turning place",
+  "-6,3": "the Tiber"
+ }
+}

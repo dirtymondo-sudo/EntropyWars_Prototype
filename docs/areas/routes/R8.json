@@ -1,0 +1,62 @@
+{
+ "about": "THE RANCH ROAD (route R8, One World BUILD_PLAN phase 4.2, 2026-11-17): a dirt road from the Estate's Ranch (the Windmill's east side) east across cattle country and south to Western Town's north edge. Its first plot (-10,18) is a field of the Ranch's own room (bake-estate.js, rule 4), so this room starts at plot 1. Its own room: two zones never join. The design page: 'cattle ranges and a crop circle, into Western Town'.",
+ "label": "THE RANCH ROAD",
+ "sub": "THE ESTATE · CATTLE COUNTRY DOWN TO THE DESERT · 23 PLOTS",
+ "from": 1,
+ "line": [
+  [
+   -10.3,
+   20.5
+  ],
+  [
+   -8.5,
+   20.5
+  ],
+  [
+   -7.9,
+   20.96
+  ],
+  [
+   -3.6,
+   20.96
+  ],
+  [
+   -3.0,
+   21.6
+  ],
+  [
+   -3.0,
+   25.4
+  ],
+  [
+   -3.1,
+   26.1
+  ]
+ ],
+ "ends": {
+  "ow_v_m9_20": {
+   "room": "site_prebuilt_skinwalker_ow_ranch",
+   "label": "THE ESTATE · THE RANCH",
+   "sub": "THE RANCH ROAD · WEST TO THE WINDMILL",
+   "desc": "The road runs on west to a windmill and a ranch."
+  },
+  "ow_h_m4_26": {
+   "room": "site_prebuilt_area51_ow_town",
+   "label": "WESTERN TOWN",
+   "sub": "THE RANCH ROAD · SOUTH INTO TOWN",
+   "desc": "The road comes in past Boot Hill to Main Street."
+  }
+ },
+ "room": "site_ow_r8",
+ "part": "ow_r8",
+ "places": {
+  "-10,21": false,
+  "-8,21": false,
+  "-7,21": false
+ },
+ "names": {
+  "-10,21": "the crop circle",
+  "-8,21": "the cattle range",
+  "-7,21": "the cattle range, the trough"
+ }
+}

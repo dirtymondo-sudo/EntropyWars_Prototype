@@ -1,0 +1,58 @@
+{
+ "about": "THE DESERT HIGHWAY, LEG 1 (One World BUILD_PLAN phase 4.2, 2026-11-17): the Circus' west side to Western Town's north side. The old Highway room's Exit 3 pieces stand on it: the lone Door by the road (the opening scene and the main menu's spot) and the bus stop. The design page: 'wells and a caravan stop on it'.",
+ "hub": "desert",
+ "label": "THE DESERT HIGHWAY",
+ "sub": "THE DESERT · THE CIRCUS TO WESTERN TOWN · 20 PLOTS",
+ "line": [
+  [
+   6.1,
+   23.04
+  ],
+  [
+   -0.6,
+   23.04
+  ],
+  [
+   -1.0,
+   23.5
+  ],
+  [
+   -1.0,
+   25.3
+  ],
+  [
+   -1.25,
+   25.7
+  ],
+  [
+   -1.25,
+   26.1
+  ]
+ ],
+ "cars": {
+  "n": 3,
+  "speed": 10
+ },
+ "ends": {
+  "ow_v_6_23": {
+   "room": "site_prebuilt_area51_ow_circus",
+   "label": "THE CIRCUS",
+   "sub": "THE DESERT HIGHWAY · EAST TO THE BIG TOP",
+   "desc": "The highway runs east to a circus on the sand."
+  },
+  "ow_h_m2_26": {
+   "room": "site_prebuilt_area51_ow_town",
+   "label": "WESTERN TOWN",
+   "sub": "THE DESERT HIGHWAY · SOUTH INTO TOWN",
+   "desc": "The asphalt gives out at the town line. Main Street is ahead."
+  }
+ },
+ "places": {
+  "-2,24": false,
+  "-1,25": false
+ },
+ "names": {
+  "-2,24": "the Door",
+  "-1,25": "the bus stop"
+ }
+}
