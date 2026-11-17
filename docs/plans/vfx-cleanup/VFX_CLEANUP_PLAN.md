@@ -386,7 +386,14 @@ Flamethrower, Timber! ...) keep it for now with its core in the spell's colour a
 laser should go from under each is judged with its element's sweep. Also: THE CAPSTONE BLOOM (the sigil disc + the
 white-cored column on every capstone, seen on Railgun) now draws its disc only for the rune schools and its column only
 for divine, never white-cored. The capture runner has `--dense` (a frame every tick) for beams.
-NOT yet: the sight lasers + the turret blast, the clash beats (B4), the metal noise sheet's pale squares (B7).
+NOT yet: the clash beats (B4), the metal noise sheet's pale squares (B7).
+
+**Built in B3, part 2 (the sight lasers, 11-17):** three-renderer.js `_updateLaserSightBeams` / `_buildLaserEntry` (the
+turret's sight and Take Aim's): cyan-blue `0x35c8ff` for the viewer's own, red-pink `0xff3358` for an enemy's (decision 4),
+a thin line with a dark sleeve, and THE LOCK: a sight that takes a new target sweeps round it for 0.55 s with a wide dot,
+then snaps steady and the dot ticks once. The turret blast's untinted white flashes burn red-orange. Seen in frames: Take
+Aim's own-side sight. NOT seen: an enemy's sight, a turret's, the lock sweep itself (it is over before the first frame),
+the guest's seat. NOT built: the gun rig's sniper line on the same look (`_sigGunRig3D`), a charge at the turret's barrel.
 
 **Corrected 11-17:** the own-look lists called 240 spells "no look". About 129 of them have their ELEMENT's pass (fire,
 ice, water, nature, wind, metal, earth, sonic, blood, psychic) and only lack a spell-specific piece; 62 have no element

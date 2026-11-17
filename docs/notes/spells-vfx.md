@@ -4473,6 +4473,57 @@ its generic stage burst stops. Looks only.
 - Online: every layer rides the relayed `burst` beat; nothing on `state`; drawn only where the viewer sees the square.
 - Checked on screen: each spell fired on the audit board and through real casts (frames in `docs/plans/vfx-cleanup/img/own-look/L6_*.jpg`).
 
+
+## THE OWN LOOKS, L3, part 2: the kinetic runs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L3")
+Twelve of the kinetic spells. A dash draws its LANE on battle.js's `<id>:dash` beat (`fireGeometry`, relayed; `_l3Lane`:
+the frame on the launch square, +Z down the run, drawn only when the viewer sees both ends) and is named in `_GO_SIG` so
+`_vcOwn` is true.
+- **Learned on the frames:** a dash's staging `burst` beat fires about a second AFTER the run has landed, and a charge
+  lands ON its target's square (the body is shoved aside). So a dash's hit piece is fired by its own `:dash` beat when
+  the run arrives, on the landing square (`_l3DashHit`), and the late burst beat is told it is done (`_l3Late`, a
+  2.6 s `_pzOnce`); a dash that makes no run still gets the piece from the burst beat. A flat mark on the ground needs
+  y 4 + a polygon offset (`_l3Ink`, `_l3Mark`) or the lane's tile glow covers it.
+- Blitz: the play in chalk (an O where he lined up, the dashed route, the arrowhead), an X chalked on the man he hit, turf
+  flies. Body Check: a six-sided plate of riveted gunmetal slams in from his side, the rivets shear off, two heel skids to
+  where the body stops. Dark Feather: a black cut hangs from where he stood to the body, small black feathers burst, one
+  long feather falls slowly. Drive-By: brass casings down the lane and the ground stitched two strikes a square as the car
+  passes. Giant Stride: one footprint as long as a square at mid-stride and one where he lands, every square on or beside
+  the path flashes dust-gold. Horn Toss: the horns come up under the body in one swing, a column of dust. Ice Slide: a
+  strip of ice runs out under him, snow off both edges, standing shards where he stops. Ram Charge: two black tyre lines
+  in smoke, headlights flare at the bumper, amber and red lens bits. Rampage: a rust-red wake opens square after square,
+  the hit comes apart in scrap under two crossed blows. Ride-By: horseshoe prints in pairs, clods, one big shoe stamped
+  hot under the last body. Shadow Infiltration: dark shapes of him left standing down the lane, a violet needle, the
+  shadow at his feet closes. Sprint: a rabbit's tracks, dust and grass, nothing more.
+- Not mine, seen on the frames: every dash also draws the shared pale crescent of battle.js `_vfxDash`; Sprint wears the
+  wind element's swirl.
+- Frames: docs/plans/vfx-cleanup/img/own-look/l3_part2_*.jpg, l3_raceIceSlide.jpg, l3_raceRideBy.jpg.
+## THE OWN LOOKS, L5, part 4: the dark and the strange (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5"; the list is done)
+New pieces: `_l5Star` (a burst of rays that faces the camera), `_l5Bracket`.
+- **Chest Pound** (`_l5ChestPound3D`): three beats; each throws thump waves out from his chest and every square in reach shakes khaki.
+- **Eyewitness** (`_l5Eyewitness3D`): viewfinder corners close on the area, the flashbulb goes off (pale because it is a bulb), afterimages hang at eye height.
+- **Sucker Punch** (`_l5SuckerPunch3D`): a spiked bruise-and-mustard burst on the blind side of the head, stars circling it. No fist sprite.
+- **Car Toss** (`_l5CarToss3D`): the car itself already flies (the city's model); where it lands the windscreen goes and two skid marks burn on past the body.
+- **Clone Jutsu** (`_l5CloneInk3D`): the eight clones are its look already (`nrCloneJutsu:hit`, the ninja pass); the cast adds an ink ring with a blot where each steps out, and the generic burst stops.
+- **Consuming Dark** (`_l5ConsumingDark3D`): the nine squares go black from the rim inward, a thin violet edge on each.
+- **Infernal Decree** (`_l5InfernalDecree3D`): the court's seal (a horned crown in a ring) burns in the air over the area and a column of dark fire stands on every square. The seal hangs in the air: nothing is drawn on the hit floor.
+- **Out of the Dark** (`_l5OutOfTheDark3D`): the last photo: a frame snaps round them, the bulb, three claws go through it and the frame falls in two.
+- **Sleep Paralysis** (`_l5SleepParalysis3D`): a hunched shadow with two red eyes settles over them and presses down.
+- **Soul Suck** (`_l5SoulSuck3D`): a kiss mark of rouge and the pale soul drawn out along a ribbon to her.
+- Seen in the frames, not mine to change (the cleanup thread's shared layers): Jackpot and Shattered Mirror (arcane, heavy, area) still get a glass orb + a wide ring about 0.45 s after the hit although `_vcOwn` is true for them.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part4.jpg.
+
+## THE VFX CLEANUP, B3 part 2: THE SIGHT LASERS (2026-11-17, three-renderer.js + three-vfx-effects.js)
+mondo 11-17: "those are lasers too"; own / friendly cyan-blue, enemy red-pink, from the viewer's seat.
+- `_updateLaserSightBeams` (the turret's sight from `_updateTurretAim`, Take Aim's from `state._delayedSpells`): each
+  wanted line now carries `own` (owner / source player === `_viewerPlayerNum()`) and `tgt`. Colour `0x35c8ff` own,
+  `0xff3358` enemy. A dark sleeve cylinder (`entry.edge`, normal blending) round the core; the line is 0.45x as thick.
+- THE LOCK: when `tgt` changes the entry's clock restarts: for 0.55 s the far end sweeps round the target (the amplitude
+  dies as a square) and the dot is wide, then steady, and the dot ticks once (0.17 s). Per client, from what it already
+  draws: nothing relayed, the fog checks above it are unchanged.
+- `EW_NO_VFX_CLEANUP` = the old red rod.
+- The turret blast: every untinted `flash` / `muzzle-flash` layer of the `_turretBlast*` recipes is tinted `0xff6a2a`.
+- Seen: Take Aim, own side (docs/plans/vfx-cleanup/img/b3_sight_after.jpg). Not seen: enemy colour, a turret, the sweep,
+  online from the guest's seat. Open: the gun rig's sniper line (`_sigGunRig3D`), a charge at the barrel.
 ## THE OWN LOOKS, L6, part 2: the fire spells (2026-11-17, same block; the list is done, 17 of 17)
 The fire pass already burns each hit square (the fire mark, kept); each spell adds what it IS on top, in `_FX2_BURST`.
 - **Two borrowed blasts replaced:** Dynamite had `raceChassisSlam_aoe` (a robot's slam: rings + electric sparks) and Bomb
