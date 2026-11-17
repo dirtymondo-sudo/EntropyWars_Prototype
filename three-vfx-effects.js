@@ -45352,10 +45352,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells') || _afFogHides(tx, ty)) return null;
         var ts = _worldPos(tx, ty).ts, reach = (r > 0 ? r : 2) + 0.5, n = (p && p.brood != null) ? (p.brood | 0) : 0;
         var uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), side = _lgSide(null, tx, ty), rings = 2 + Math.min(3, n);
-        /* half-strength ring plates: stacked additive plates washed the caster out white */
+        /* torus rings only after the first (its plate at 0.35): stacked additive red-over-green plates washed the caster out white */
         for (var i = 0; i < rings; i++) (function (j) {
             var red = j >= 2;
-            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.45, r1: ts * reach, ms: 600 + (red ? 120 : 0), color: red ? _CB_RED : _CB_GREEN, height: h * (0.8 + 0.12 * (j % 3)), opacity: 0.45 }); } catch (e) {} }, j * 130);
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.45, r1: ts * reach, ms: 600 + (red ? 120 : 0), color: red ? _CB_RED : _CB_GREEN, height: h * (0.8 + 0.12 * (j % 3)), opacity: j === 0 ? 0.35 : 0 }); } catch (e) {} }, j * 130);
         })(i);
         _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * reach, ms: 720, color: side, height: ts * 0.05 }); } catch (e) {} }, 140);
         if (n > 0 && typeof _bugRun === 'function') {
