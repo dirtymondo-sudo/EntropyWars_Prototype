@@ -4021,6 +4021,16 @@ function _hrlgStatusChips(unit) {
       title: (sDef.label || sk) + (_stk ? ' ×' + _stk : '') + (turns > 0 ? ' — ' + turns + ' turn' + (turns > 1 ? 's' : '') + ' left' : ''),
     });
   }
+  /* 🦌 THE HUNGER CHIP (THE WENDIGO PASS 2026-11-17): both sides read whether it has fed this round (battle.js
+     unit._fedRound, set by applyDamageToUnit; it rides the state sync). HUNGRY = no enemy hit yet this round, so the round
+     end takes 8% of its max HP; FED = safe this round. */
+  if (unit.race === 'wendigo' && !unit.dead && typeof state !== 'undefined' && state && state.round != null) {
+    const _fed = unit._fedRound === (state.round || 0);
+    const _cost = Math.min(Math.max(0, (unit.hp || 0) - 1), Math.round((unit.maxHp || 0) * 0.08));
+    chips.push({ key: 'st-hunger', label: _fed ? 'FED' : 'HUNGRY', bg: _fed ? '#3a7a3a' : '#9a1c24',
+      title: _fed ? 'The Hunger — it fed this round: no HP lost at the round end'
+                  : 'The Hunger — it has hit no enemy this round: the round end takes ' + _cost + ' HP (8% of its max)' });
+  }
   /* 🛡 THE CHIVALRY BADGE (battle.js getChivalryGuardian): the pledged ward wears CHV until the oath is spent */
   const chvG = (typeof window.getChivalryGuardian === 'function') ? window.getChivalryGuardian(unit) : null;
   if (chvG) {

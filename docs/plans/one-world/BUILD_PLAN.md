@@ -52,6 +52,9 @@ spec once the kit exists (zone re-layouts, routes). Fable runs on the second acc
     draw calls and 12 M triangles at the heaviest view; 1.4 GB of models + rigs. The full rule, who writes a joined room and how to measure one:
     `docs/notes/areas-complexes.md` "ONE WORLD, THE ROOM-SPLITTING RULE". The slice's two joined rooms are the pattern (`bake-woods.js` `STAND`,
     `docs/areas/routes/R7.json`).
+13. **Open ground has no portal (mondo, 17 Nov).** A seam in open country (salt flat, grass, sand, snow, a road) is `way: 'open'`: you walk off the
+    edge into the next room. An arch only on a forest wall, a cliff or a building. The route kit does it by the ground; a zone tool names it.
+14. **One place on every route plot (mondo, 17 Nov).** The route kit lays it (`ow-places.js`; names are ideas, marked). A route's spec may name them.
 12. **Walk every seam you write.** A door that resolves in data is not a door you can walk through. `playtest_city.js` has a `"walk"` view for it.
 
 ## Phase 1: the foundation (1 thread, Fable)

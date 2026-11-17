@@ -2090,3 +2090,10 @@ Meshy pipeline of `/mnt/project-files/new-races/run.py` (nano-banana-pro concept
   colour named. The male ninja came back WHITE once: a second roll with "everything is black, NOT white" and palette_extras 1 fixed it.
 - Pope: concept v1 looked like a real pope and v2 came out Pixar; "fictional, NOT any real person ... photorealistic AAA game character" worked.
   A stray thin strand hung from his hand (6 triangles, cut).
+- ROUND 2 (mondo: "the pope, mermaid, and siren animations look fucked up"; seen walking in the team-builder stage, probe
+  `/mnt/project-files/new-chars/probe_anim.js`, which also loads a local GLB in place of a race's model): the siren's arms twisted and the
+  mermaid's long hair rode her arms (hair hung beside the arms, so Meshy's rig weighted it to them); the pope's shoulder cape stuck out
+  from his arms. Remade: siren + mermaid with the hair down the BACK, clear of the arms (`..._f2_Running.glb`, siren `siren_f_px2.png`;
+  the mermaid took 3 concept rolls, two came back doll-faced / too old); the pope without the shoulder cape (`Meshy_AI_pope2_Running.glb`,
+  `pope_px2.png`) and his robe's thigh/shin weights moved to the Hips above 10 cm (the robe rides the hips, the shoes keep the feet).
+  RULE for Meshy concepts: long hair always down the back, never beside the arms; no capes or loose shoulder pieces.
