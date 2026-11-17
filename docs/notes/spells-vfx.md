@@ -4593,3 +4593,35 @@ shield model's ram, the grapple's rope): those stay, the look adds what was miss
 - Every area spell here flashes EVERY square it hits in its own colour (`_o2Squares`), one run for the whole area.
 - Proof: docs/plans/vfx-cleanup/img/own-look/L2_part2_after.jpg (the burst beat fired on the audit board, two frames a
   spell: the real-cast frames are 0.45 s apart and miss most of these; real casts were run too, no errors).
+
+
+## THE OWN LOOKS, L3, part 3: the last kinetic spells + the skyfall (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L3")
+The list (`own-look/L3.txt`, 39 spells) is done with this part.
+- Stampede (`raceApexCharge`): three-toed prints as wide as a square down the lane (`:dash`), ferns + earth from each;
+  where it stops the tail sweeps round low in moss green. Titan Drop: a crown of grey stone slabs is driven up round the
+  square one after another, a dust column, the slabs sink back. Vault: the jump stays drawn in the air (a spring-green
+  arc from the take-off to the body), two long hind-foot prints flash, dust.
+- Descending Wrath: a shaft of dark violet where he came down, two burnt wings scorched on the ground either side with
+  ember edges, charred feathers fall. Dragon Toss: three talon rakes torn across the square, two crescents of wing-beat
+  dust. Infernal Hurl: the square splits in a web of cracks that glow like coals, black smoke and cinders. Place Bomb: a
+  red light blinks three times over the charge and three red chevrons close on the square (the blast keeps its own
+  recipes; `<id>:detonate` is NOT defined here: a geometry that returns true would replace the blast). To the Moon: a
+  ring of exhaust rolls out flat, a blue-white flame with shock diamonds, a scorched pad.
+- Named only (they already had looks on other beats, written after the audit table): Fifty Times Its Weight
+  (`sigFiftyTimes:throw`), Lunar Lander (`sigLunarLander:dash`), Popemobile (the car + `nrPopemobile:glass`), Quickdraw
+  (`pzQuickdraw:dash`), Sleigh Dash (`raceSleighDash:dash`). `_vcOwn` is now true for them, so the shared burst stops.
+- **Not seen on a frame:** Dragon Toss, Infernal Hurl and To the Moon. A sky throw is two picks and the harness shoots
+  only the grab, with the camera up in the sky; their pieces ran with no error in the page log, but nobody has looked at
+  them on the ground yet. Horn Toss (part 2) is the same: its second pick (the throw's direction) is not cast by the probe.
+- Frames: docs/plans/vfx-cleanup/img/own-look/l3_part3_*.jpg, l3_raceApexCharge.jpg.
+
+## THE VFX CLEANUP, B4 part 1: the ray guns + the kit blasts (2026-11-17, three-vfx-effects.js)
+- `_sigGunRig3D` `opts.ray`: the ray's core = `_beamKitCols(opts.ray).hot` (it was `0xffffff` in a coloured sleeve).
+- `_vcRuneOK`: no cast rune for a spell in `_SIG_GUN_FOR` / `_SIG_LINE_GUN_FOR` / `_isGunSpell` (Shrink Ray's hex rune
+  under the shooter). `_VC_NO_RUNE` gains `ki`.
+- `_VC_BEAM` rows with `blast: true` are thrown spells, not lines (`_fireBeamMapped` ignores them): `_stageWindup` still
+  draws the kit charge at the hand; `_beamKitBlast(spellId, p)` is their `_FX2_BURST` piece (so `_vcOwn` is true).
+  `chargeOnly` = a power-up (Ki Charge). Rows: raceKiBlast (Ki Volley), raceSpiritBomb, raceKiCharge.
+- Open: the clash; the projectile itself; see the plan's section 10 for the two leftovers (Ki Charge's disc, Love Ray's
+  circle) and L5's untraced orb + ring on Jackpot / Shattered Mirror.
+

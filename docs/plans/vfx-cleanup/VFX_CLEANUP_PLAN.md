@@ -395,6 +395,17 @@ then snaps steady and the dot ticks once. The turret blast's untinted white flas
 Aim's own-side sight. NOT seen: an enemy's sight, a turret's, the lock sweep itself (it is over before the first frame),
 the guest's seat. NOT built: the gun rig's sniper line on the same look (`_sigGunRig3D`), a charge at the turret's barrel.
 
+**Built in B4, part 1 (11-17):** the ray guns' core (`_sigGunRig3D`, Stun / Love / Goop / Shrink Ray) in the ray's own
+colour (it was white); no cast rune under a spell fired from a gun, and none from any helper while a `ki` spell casts;
+`_VC_BEAM` rows with `blast: true` (Ki Volley, Spirit Bomb; Ki Charge `chargeOnly`): the kit's charge at the hand for
+the windup + `_beamKitBlast` on the hit (floor ring, a ball of its light dying on the body, a splash thrown back),
+registered as their FX-2 hit piece so the generic burst stops. Seen in frames: Ki Volley, Ki Charge, Stun Ray, Shrink
+Ray, Love Ray. NOT seen: Spirit Bomb's landing (it lands a round later). OPEN in B4: THE CLASH (not built), the thrown
+shot itself (still each spell's old projectile recipe), Ki Charge's gold ring disc and Love Ray's purple circle (each
+is that spell's own piece: judge in the sweep), Magic Missile / Zap Zap Zap / Space Laser's own white.
+Also open from L5's report: Jackpot and Shattered Mirror still show a glass orb + a wide ring about 0.45 s after the
+hit although they have their own look now; not traced (not `_stageBurst`'s orb, not a cue).
+
 **Corrected 11-17:** the own-look lists called 240 spells "no look". About 129 of them have their ELEMENT's pass (fire,
 ice, water, nature, wind, metal, earth, sonic, blood, psychic) and only lack a spell-specific piece; 62 have no element
 at all. The threads were told: bare ones first, the element pass is the base, add only what makes it that spell.
