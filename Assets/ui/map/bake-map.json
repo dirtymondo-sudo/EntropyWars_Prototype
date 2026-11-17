@@ -55,9 +55,9 @@
   "nz": 120,
   "h0": -0.05,
   "hs": 0.25,
-  "v": "6420591ca8",
-  "bytes": 1119,
-  "s": "4.7"
+  "v": "f3c40aeae1",
+  "bytes": 1120,
+  "s": "3.6"
  },
  "site_prebuilt_area51_desert": {
   "id": "site_prebuilt_area51_desert",
@@ -628,5 +628,25 @@
   "v": "cef018eb3b",
   "bytes": 785,
   "s": "1.4"
+ },
+ "site_prebuilt_bermuda_ow_frozen": {
+  "id": "site_prebuilt_bermuda_ow_frozen",
+  "nx": 48,
+  "nz": 24,
+  "h0": -0.05,
+  "hs": 0.25,
+  "v": "d3dd16353d",
+  "bytes": 326,
+  "s": "0.3"
+ },
+ "site_prebuilt_bermuda_ow_cove": {
+  "id": "site_prebuilt_bermuda_ow_cove",
+  "nx": 36,
+  "nz": 36,
+  "h0": -0.03,
+  "hs": 0.25,
+  "v": "5a38c9ff8b",
+  "bytes": 461,
+  "s": "0.3"
  }
 }
