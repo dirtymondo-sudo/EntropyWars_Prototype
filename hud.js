@@ -19703,7 +19703,7 @@ ${D} .hq-dock-pp > .hq-dock-bars { grid-column: 1; grid-row: 2; }
 ${D} .hq-dock-pp > .hq-dock-tag { grid-column: 2; grid-row: 1 / span 2; justify-self: start; }
 `;
   if (I.dockTag === 'none') css += `${D} .hq-dock-tag { display: none !important; }\n`;
-  else if (I.dockTag === 'under') css += `${D} .hq-dock-pp > .hq-dock-tag { grid-column: 1; grid-row: 3; justify-self: center; align-items: center; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,0.8); }\n`;
+  else if (I.dockTag === 'under') css += `${D} .hq-dock-pp > .hq-dock-tag { grid-column: 1; grid-row: 3; justify-self: center; align-items: center; margin-left: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,0.8); }\n`;
   return css;
 }
 
