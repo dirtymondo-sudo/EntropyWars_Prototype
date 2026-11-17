@@ -68709,6 +68709,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         } catch (e) { console.warn('[VFX] own look (L1) windup failed', spellId, e); }
         _l1FireStage0(phase, spellId, params);
     };
+    /* THE GENERIC AREA DETONATION (aoe(): battle.js' fallback for an area spell with no `aoe` recipe, through
+       playAoeRing: a wide ring, a shockwave, a glass orb and a shock ring in the spellType's colour, tan for a 'human'
+       cast) is not this spell's look either (mondo 11-17, on the Watering Can's tan ring). Two stops: a call that names
+       an L1 spell is dropped here; playAoeRing names no spell, so the two quiet one-square casts it blew up (Watering
+       Can, Pollinate) carry an EMPTY `aoe` recipe of their own (_L1_QUIET, below the looks): battle.js then fires
+       their `aoe` intent, which draws nothing, in place of the ring. */
+    var _l1Aoe0 = aoe;
+    aoe = function (centerTx, centerTy, spellType, spellId) {
+        var f = spellId && _FX2_BURST[spellId];
+        if (f && f._l1 && !_l1Off()) return;
+        return _l1Aoe0.apply(this, arguments);
+    };
     /* the squares the spell hits: the windup's footprint, else the r-square round the target */
     function _l1Area(p, P0, r) {
         if (P0 && P0.tiles && P0.tiles.length > 1) return P0.tiles;
@@ -69381,16 +69393,45 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     });
 
-    /* SPIKE TRAP — it is hidden, so nothing marks where it lies: the look is the laying of it, at the CASTER's own feet
-       (stone spike tips are pushed down into the dirt and the dirt is patted flat). The spring keeps the traps' snap. */
+    /* SPIKE TRAP — the side that lays it SEES it laid: on each square of the patch the trap's own spikes (the traps
+       pack's, the ones that spring) stand half up out of the ground, sink under and the soil closes over them. It is
+       hidden from the other side, so on THEIR screen nothing marks where it lies: they only see the caster push stone
+       tips into the dirt at his own feet. Whose screen: the caster's player against window.getViewerPlayer(). */
+    function _l1ViewerOwns(x, y) {
+        try {
+            if (typeof window.getViewerPlayer !== 'function') return true;
+            var st = window._gameState || (window.GAME && window.GAME.state) || null, u = null;
+            if (st && st.units) for (var i = 0; i < st.units.length; i++) { var c = st.units[i]; if (c && !c.dead && c.x === x && c.y === y) { u = c; break; } }
+            return !!(u && u.player === window.getViewerPlayer());
+        } catch (e) { return false; }
+    }
     _l1Def('raceSpikeTrap', function (p, P0) {
-        var sx = P0 && P0.sx != null ? P0.sx : p.sx, sy = P0 && P0.sy != null ? P0.sy : p.sy; if (sx == null || !_pzSeen(sx, sy)) return;
-        var F = _eaFrame(sx, sy), ts = F.ts, stone = _eaStoneMat(false), cd = _nbCamDir(F), pts = [];
-        for (var i = 0; i < 5; i++) { var a = Math.atan2(cd.z, cd.x) + (i - 2) * 0.5; pts.push({ x: Math.cos(a) * ts * 0.42, y: 0, z: Math.sin(a) * ts * 0.42, h: ts * 0.22, w: ts * 0.05, d: i * 40, rx: 0, rz: 0 }); }
-        var spikes = _eaSpikes(F.g, stone, pts), puffed = false;
-        return _sigRunOwned(F.g, 1100, function (el) {
-            stone.opacity = el < 1080 ? 1 : 0; spikes(el, 120, 360, 420);
-            if (!puffed && el > 520) { puffed = true; for (var j = 0; j < pts.length; j++) _pzP(F, pts[j].x, 3, pts[j].z, { sprite: 'dust-puff', tint: _EA.dust, ml: 520, size0: 8, size1: 24, vz: 10, opacity0: 0.5 }); }
+        var sx = P0 && P0.sx != null ? P0.sx : p.sx, sy = P0 && P0.sy != null ? P0.sy : p.sy; if (sx == null) return;
+        if (_l1ViewerOwns(sx, sy)) {
+            var tiles = (P0 && P0.tiles && P0.tiles.length) ? P0.tiles.slice(0, 4) : [{ x: p.tx, y: p.ty }];
+            var F = _eaFrame(tiles[0].x, tiles[0].y), ts = F.ts, sets = [], tips = [], stone = _eaStoneMat(false);
+            for (var i = 0; i < tiles.length; i++) {
+                var q = tiles[i], c = _eaGOff(F, q.x, q.y), S = _trapsSet('spikes', ts * 0.9, { t: 0, lift: 0.2 });
+                if (S) {
+                    S.group.traverse(function (n) { if (n.isMesh) { n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+                    S.group.position.set(c.x, c.y, c.z); S.group.rotation.y = (q.x * 7 + q.y * 13) % 6; F.g.add(S.group); sets.push({ S: S, d: i * 70, c: c });
+                } else for (var k = 0; k < 4; k++) { var a = k * 1.57 + 0.6; tips.push({ x: c.x + Math.cos(a) * ts * 0.24, y: c.y, z: c.z + Math.sin(a) * ts * 0.24, h: ts * 0.24, w: ts * 0.05, d: i * 70 + k * 25, rx: 0, rz: 0 }); }
+            }
+            var spikes = tips.length ? _eaSpikes(F.g, stone, tips) : null, closed = false;
+            return _sigRunOwned(F.g, 1500, function (el) {
+                for (var i = 0; i < sets.length; i++) { var e = el - sets[i].d, upk = _sigEaseOutBack(_sigClamp01(e / 140)), down = _sigEaseInCubic(_sigClamp01((e - 520) / 480));
+                    sets[i].S.set(Math.max(0, 0.5 * upk * (1 - down))); _trapsFade(sets[i].S, e > 0 ? 1 - _sigClamp01((e - 950) / 200) : 0); }
+                stone.opacity = el < 1480 ? 1 : 0; if (spikes) spikes(el, 140, 560, 460);
+                if (!closed && el > 980) { closed = true; for (var j = 0; j < tiles.length; j++) { var cc = _eaGOff(F, tiles[j].x, tiles[j].y); _pzP(F, cc.x, cc.y + 3, cc.z, { sprite: 'dust-puff', tint: _EA.dust, ml: 600, size0: 12, size1: 38, vz: 10, opacity0: 0.5 }); } }
+            });
+        }
+        if (!_pzSeen(sx, sy)) return;
+        var F2 = _eaFrame(sx, sy), ts2 = F2.ts, stone2 = _eaStoneMat(false), cd = _nbCamDir(F2), pts = [];
+        for (var n = 0; n < 5; n++) { var a2 = Math.atan2(cd.z, cd.x) + (n - 2) * 0.5; pts.push({ x: Math.cos(a2) * ts2 * 0.42, y: 0, z: Math.sin(a2) * ts2 * 0.42, h: ts2 * 0.22, w: ts2 * 0.05, d: n * 40, rx: 0, rz: 0 }); }
+        var sp2 = _eaSpikes(F2.g, stone2, pts), puffed = false;
+        return _sigRunOwned(F2.g, 1100, function (el) {
+            stone2.opacity = el < 1080 ? 1 : 0; sp2(el, 120, 360, 420);
+            if (!puffed && el > 520) { puffed = true; for (var j = 0; j < pts.length; j++) _pzP(F2, pts[j].x, 3, pts[j].z, { sprite: 'dust-puff', tint: _EA.dust, ml: 520, size0: 8, size1: 24, vz: 10, opacity0: 0.5 }); }
         });
     });
 
@@ -69550,8 +69591,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     });
 
-    /* POISON DART — the prick and what spreads from it: green veins branch out over the body from the point the dart
-       went in, pulse twice and sink in (no dart is drawn: the game has no dart model) */
+    /* POISON DART — the dart itself (the traps pack's dart, the one its trap hole fires: the game's own dart model)
+       stands in the victim on the blowpipe's side, quivering, and green veins branch out over the body from where it
+       went in, pulse and sink in. While the pack streams, the veins alone. */
     function _l1VeinTex() {
         return _pzTex('l1-veins', 128, 128, function (g, w, h) {
             var R = _sigRand(4242); g.strokeStyle = '#ffffff'; g.lineCap = 'round';
@@ -69561,14 +69603,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             g.fillStyle = '#ffffff'; g.beginPath(); g.arc(64, 64, 6, 0, 6.283); g.fill();
         });
     }
-    _l1Def('poisonDart', function (p) {
+    _l1Def('poisonDart', function (p, P0) {
         var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
-        var F = _nrvFrame(tx, ty), ts = F.ts, dark = _l1Plate(F, _l1VeinTex(), ts * 0.8, ts * 0.8, 0, ts * 0.62, 0, false), glow = _l1Plate(F, _l1VeinTex(), ts * 0.8, ts * 0.8, 0, ts * 0.62, 0, true);
+        var F = _nrvFrame(tx, ty), ts = F.ts, dark = _l1Plate(F, _l1VeinTex(), ts * 0.66, ts * 0.66, 0, ts * 0.62, 0, false), glow = _l1Plate(F, _l1VeinTex(), ts * 0.66, ts * 0.66, 0, ts * 0.62, 0, true);
         dark.material.color.setHex(0x1f4a12); glow.material.color.setHex(_L1.venom); glow.renderOrder = 163;
         var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.venom, { op: 0.5 });
-        return _sigRunOwned(F.g, 1500, function (el) {
-            var k = 0.25 + 0.75 * _sigEaseOutCubic(_sigClamp01(el / 420)), o = _pzEnv(el, 0, 50, 1000, 1480);
+        var D = _l1Dir(F, p, P0), S = _trapsSet('dart', ts * 0.3, { t: 1, lift: 0.25 }), hold = null;
+        if (S) {
+            try { S.group.children[0].children[0].visible = false; } catch (e) {}   /* the set is the hole + its dart: only the dart flies */
+            S.group.traverse(function (n) { if (n.isMesh) { n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+            hold = new THREE.Group(); hold.add(S.group); F.g.add(hold);
+            hold.position.set(-D.x * ts * 0.5, ts * 0.7, -D.z * ts * 0.5);   /* the tail; the dart's length (its tip is the file's +Y) reaches the body */
+        }
+        var up = new THREE.Vector3(0, 1, 0), aim = new THREE.Vector3();
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var k = 0.25 + 0.75 * _sigEaseOutCubic(_sigClamp01(el / 420)), o = _pzEnv(el, 0, 50, 1150, 1680);
             dark.scale.setScalar(k); glow.scale.setScalar(k); dark.material.opacity = 0.85 * o; glow.material.opacity = o * (0.45 + 0.4 * Math.sin(el * 0.013));
+            if (hold) {
+                var q = Math.sin(el * 0.06) * 0.22 * Math.exp(-el / 260);   /* it quivers where it stuck */
+                aim.set(D.x + D.sx * q, -0.14 + q * 0.5, D.z + D.sz * q).normalize(); hold.quaternion.setFromUnitVectors(up, aim);
+                _trapsFade(S, 1 - _sigClamp01((el - 1300) / 360));
+            }
             flash(el);
         });
     });
@@ -69620,6 +69675,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             flash(el);
         });
     });
+    /* the quiet one-square casts: their own (empty) area recipe, so the generic detonation is never asked for */
+    EFFECTS['l1Quiet_aoe'] = { aoeRadius: 0, layers: [] };
+    ['wateringCan', 'pollinate'].forEach(function (id) { if (!SPELL_MAP[id] || !SPELL_MAP[id].aoe) SPELL_MAP[id] = Object.assign({}, SPELL_MAP[id], { aoe: 'l1Quiet_aoe' }); });
     /* ═════════ END THE OWN LOOKS, L1 ═════════ */
     /* ══ THE OWN LOOKS, L4 (2026-11-17, thread L4 of the own-looks job, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells
        that dont have a look of their own need one"): blessings and curses — the aura buffs, the heals, the divine hits, the hexes

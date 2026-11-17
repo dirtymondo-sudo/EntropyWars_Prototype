@@ -4215,11 +4215,24 @@ named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in
 - **Cannibalize** (zombie): the feast on the remains (`_bpFeast`) stays; sick green motes rise off them to his mouth. (No picture: no corpse on the harness board.)
 - **Goo Shot** (black goo): ropes of black goo stretch from the body to the floor round it, sag and let go one by one.
 - **Kiss of Decay** (demon princess): a print of lips on the victim, rose, turning the green of rot and running; rose motes drift back to her.
-- **Poison Dart**: green veins branch out over the body from the prick and pulse. No dart: the game has no dart model (no stand-in).
+- **Poison Dart**: green veins branch out over the body from the prick and pulse (+ the dart itself: see "the three fixes").
 - **Poison Seed**: the seed drops in, the soil closes in a mound, one purple shoot curls up with a bead of venom on its tip.
 - **Splash** (black goo): one low ring of tar jumps off the caster, runs out over the 3×3 and falls flat; every square flashes violet.
 - **Vivisection**: a dotted teal line is ruled across the body, then the cut runs along it, one thin red line, and beads.
 - `_l1Plate(F, tex, w, h, x, y, z, glow)` = an upright picture turned to the lens (the marks on a body: lips, veins, the cut, the chess score).
+
+### the three fixes (mondo 11-17: "why dont you fix these issues then"). Frames: `docs/plans/vfx-cleanup/img/own-look/L1_fixes.jpg`
+- **Watering Can's tan ring**: it was battle.js `playAoeRing` -> `ThreeVFXEffects.aoe()`, the generic detonation every area spell with no
+  `aoe` recipe gets (a wide ring, a shockwave, a glass orb, a shock ring in the spellType's colour; tan for 'human'). `playAoeRing`
+  passes NO spell id, so it cannot be skipped by id. Fix: Watering Can and Pollinate carry an empty `aoe` recipe (`l1Quiet_aoe`), so
+  battle.js fires their `aoe` intent (draws nothing) in place of the ring. `aoe()` itself also drops a call that names an L1 spell.
+  For the cleanup thread: every OTHER area spell with no `aoe` recipe still gets that detonation.
+- **Poison Dart has its dart**: I was wrong that the game has none. The traps pack's `Trap_Hole_Dart` (the dart its trap hole fires) is
+  cloned through `_trapsSet('dart')` with the hole hidden; it stands in the victim on the blowpipe's side, quivers and fades, the
+  veins (smaller) spread from it. While the pack streams: the veins alone.
+- **Spike Trap is seen being laid**: on the caster's side's screen (`_l1ViewerOwns`: the caster's player against
+  `window.getViewerPlayer()`) the trap's own spikes (the traps pack's set, the one that springs) stand half up on each square of the
+  patch, sink under and the soil closes. The other side still sees only the stone tips at the caster's feet, so the patch stays hidden.
 
 ## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
