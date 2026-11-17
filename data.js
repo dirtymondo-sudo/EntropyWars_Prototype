@@ -385,6 +385,7 @@ const FINISHERS = {
     'karate frog':    { id: 'fin_karate_frog', name: 'Hopping Mad', glyph: '🐸', type: 'human', sig: 'spiritBomb', built: true, tagline: 'RIBBIT', desc: 'A leap off the sewer wall, a flying kick, and the victim is washed down the drain.' },   // 2026-11-17 THE NEW RACES 2 (borrows the spiritBomb staging)
     'samurai slug':   { id: 'fin_samurai_slug', name: 'Slow Death', glyph: '🐌', type: 'human', sig: 'thousandCuts', built: true, tagline: 'PATIENCE', desc: 'He took an hour to cross the room. The cut takes no time at all.' },   // 2026-11-17 THE NEW RACES 2 (borrows the thousandCuts staging)
     'cicada brood':   { id: 'fin_cicada_brood', name: 'Seventeen Years', glyph: '🦗', type: 'alien', sig: 'theColony', built: true, tagline: 'IT WAS ALWAYS HERE', desc: 'The ground opens and the brood comes up singing. The victim is buried for the next seventeen years.' },   // 2026-11-17 THE NEW RACES 2 (borrows the theColony staging)
+    'pope':           { id: 'fin_pope', name: 'White Smoke', glyph: '⛪', type: 'divine', sig: 'excommunicated', built: true, tagline: 'HABEMUS PAPAM', desc: 'The bells ring, a cathedral rises round the victim, the doors slam, and white smoke goes up from the chimney.' },   // 2026-11-17 THE POPE (borrows the excommunicated staging)
     'ninja':          { id: 'fin_ninja', name: 'Thousand Shadows', glyph: '🥷', type: 'human', sig: 'thousandCuts', built: true, tagline: 'YOU NEVER SAW HIM', desc: 'Smoke, a log where he stood, and a dozen of him from every side. The victim falls before the smoke clears.' },   // 2026-11-17 THE NINJA (borrows the thousandCuts staging)
     'haunted doll':   { id: 'fin_haunted_doll', name: 'Lights Out', glyph: '🪆', type: 'anomaly', sig: 'possessedPhoto', built: true, tagline: 'PLAY WITH ME', desc: 'The lights go out. When they come back on, the doll is sitting on the victim\'s chest, and the victim is not moving.' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) (borrows the possessedPhoto staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
@@ -624,6 +625,7 @@ const RACE_ELEMENT_AFFINITY = {
     'karate frog': { water: 'resist', ice: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'samurai slug': { poison: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'cicada brood': { earth: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'pope': { light: 'resist', psychic: 'weak' },   // 2026-11-17 THE POPE
     'ninja': { poison: 'resist', light: 'weak' },   // 2026-11-17 THE NINJA
     'haunted doll': { psychic: 'resist', fire: 'weak' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): porcelain and old lace
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
@@ -2972,6 +2974,10 @@ const RACE_PROFILES = {
         label: 'Cicada Brood',
         types: ['alien', 'anomaly']
     },
+    'pope': {   // 2026-11-17 THE POPE (mondo's character, model PR #1912; kit thread 'Build Pope spells and VFX')
+        label: 'Pope',
+        types: ['human', 'divine']
+    },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
         types: ['anomaly', 'unholy']
@@ -3860,7 +3866,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4009,6 +4015,7 @@ const RACE_CLASS = {
     'karate frog': 'bruiser',   // 2026-11-17 THE NEW RACES 2
     'samurai slug': 'bruiser',   // 2026-11-17 THE NEW RACES 2
     'cicada brood': 'assassin',   // 2026-11-17 THE NEW RACES 2
+    'pope': 'support',   // 2026-11-17 THE POPE
     'ninja': 'assassin',   // 2026-11-17 THE NINJA
     'haunted doll': 'assassin',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'lifeguard': 'support',   // 2026-11-16
@@ -4065,6 +4072,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'karate frog': 'water',   // 2026-11-17 THE NEW RACES 2
     'samurai slug': 'water',   // 2026-11-17 THE NEW RACES 2
     'cicada brood': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'pope': 'grass',   // 2026-11-17 THE POPE
     'ninja': 'tree',   // 2026-11-17 THE NINJA — at home in the trees
     'haunted doll': 'tree',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
@@ -4457,6 +4465,7 @@ const RACE_BASE_STATS = {
     'karate frog':        { hp: 1150, mp: 110, atk: 135, def: 105, mdef:  70, int:  60, vision: 3, crt: 20, spd: 150 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'samurai slug':       { hp: 1450, mp: 100, atk: 130, def: 150, mdef:  80, int:  50, vision: 2, crt: 16, spd: 70 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'cicada brood':       { hp: 1000, mp: 150, atk: 150, def: 110, mdef:  90, int: 110, vision: 3, crt: 24, spd: 120 },   // 2026-11-17 THE NEW RACES 2 — first pass on the assassin median
+    'pope':               { hp: 1150, mp: 210, atk:  40, def: 100, mdef: 150, int: 160, vision: 3, crt: 12, spd: 80 },   // 2026-11-17 THE POPE — first pass on the support median (slow on foot: the Popemobile is his legs)
     'ninja':              { hp:  940, mp: 140, atk: 150, def:  86, mdef:  90, int:  80, vision: 3, crt: 26, spd: 165 },   // 2026-11-17 THE NINJA — first pass on the assassin median (a little faster, a little lighter)
     'haunted doll':       { hp:  880, mp: 180, atk:  70, def:  80, mdef: 110, int: 150, vision: 4, crt: 22, spd: 160 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — fragile and quick, a magic assassin
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
@@ -4625,6 +4634,7 @@ const RACE_PHYSIQUE = {
     'karate frog':         { h: 1.50, w: 70 },   // 2026-11-17 THE NEW RACES 2
     'samurai slug':        { h: 1.70, w: 140 },   // 2026-11-17 THE NEW RACES 2
     'cicada brood':        { h: 1.90, w: 80 },   // 2026-11-17 THE NEW RACES 2
+    'pope':                { h: 1.80, w: 85 },   // 2026-11-17 THE POPE
     'ninja':               { h: 1.72, w: 62 },   // 2026-11-17 THE NINJA
     'haunted doll':        { h: 1.10, w: 18 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
@@ -10726,6 +10736,31 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'The whole brood sings at once. Deals WEAK magic damage to All Enemies within 2 of it, plus 45 more for every Brood stack (HEAVY at 3), and Silences them for 1 round. Spends the stacks and ends Dig In.' },
     ],
+    'pope': [
+        /* THE POPE (2026-11-17, mondo's kit: "Popemobile can stay ... Thoughts and Prayers, a small healing and regen spell. Celibacy, which
+           prevents an enemy from summoning (counter to antperson and ringmaster, etc.), and does damage per every summon the enemy has on the
+           map. Excommunication which removes an enemies buffs and does damage.").
+           CELIBACY is his rule: a `celibate` unit cannot cast a summon (summonUnit / raiseDead / deployTurret / a summonDef row; battle.js
+           _isSummonSpell in spellBlockReason), and the cast deals `summonPenalty` more for every summon the target's team has on the board
+           (battle.js _popeSummonCount: state.turrets pets, zombies, turrets; never plants).
+           POPEMOBILE: a dash that only moves, in a straight line (`straightLine`, spellAimProblem), and a glass shield (`selfShieldAfter`) that
+           comes off when his next turn starts (unit._popeGlass, _popeGlassEnds). EXCOMMUNICATION = Annihilation's purgeFirst at T2. */
+        { id: 'nrThoughtsAndPrayers', name: 'Thoughts and Prayers', tier: 1, families: ['papacy'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'light', type: 'heal', kind: 'heal', range: 3, healPct: 0.1,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Our thoughts and prayers are with them. Heals a Single Ally within 3 for 10% of its max HP and gives it Regen for 2 rounds.' },
+        { id: 'nrPopemobile', name: 'Popemobile', tier: 2, families: ['papacy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          type: 'utility', kind: 'dash', damageType: 'physical', dmg: 0, range: 4, straightLine: true, selfShieldAfter: 150,
+          desc: 'Behind the bulletproof glass. Drives up to 4 squares in a straight line to an empty square, and the glass stays up as a 150 HP shield until his next turn starts. Cooldown: 2 rounds.' },
+        { id: 'nrExcommunication', name: 'Excommunication', tier: 2, families: ['papacy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 4, purgeFirst: true,
+          desc: 'Cast out of the church. Strips every buff, raised stat stage and shield from a Single Enemy within 4, then deals MEDIUM magic damage to what is left. Cooldown: 2 rounds.' },
+        { id: 'nrCelibacy', name: 'Celibacy', tier: 3, families: ['papacy'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'divine',
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 60, range: 4, summonPenalty: 55,
+          animClip: { name: 'Finger_Wag_No', lib: 8, ts: 2.5 },   // the Meshy pull's finger wag (MAL5), 5 s at 2.5x
+          statusEffects: [{ id: 'celibate', duration: 2 }],
+          desc: 'A vow it never took. A Single Enemy within 4 is Celibate for 2 rounds: it cannot summon. Deals WEAK magic damage, plus 55 more for every summon its team has on the board. Cooldown: 3 rounds.' },
+    ],
     'haunted doll': [
         /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
            shelf, and moves when you look away". At every round end, when no enemy within 5 has it in its front cone (the facing
@@ -14474,6 +14509,13 @@ const STATUS_DEFS = {
         kind: 'marker', category: 'status', stack: 'max',
         iconSrc: createStatusIconDataUri('🧠', '#18142a', '#e8e0ff', '#5a4ad8')
     },
+    /* 2026-11-17 THE POPE: celibate = Celibacy's vow: it cannot cast a summon (battle.js _isSummonSpell in spellBlockReason). */
+    celibate: {
+        icon: '⛪', glyph: '⛪', short: 'CEL', label: 'Celibate',
+        colorText: 'celibate — no summoning',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('⛪', '#2a2414', '#fff4d0', '#d8b84a')
+    },
     /* 🛟 ON DUTY (2026-11-16, the Lifeguard): she is watching; battle.js _lifeguardSave spends it on the first ally within 4 that
        takes a killing blow (held at 1 HP, hauled beside her). */
     /* 🪵 SUBSTITUTE (2026-11-17 THE NINJA, Kawarimi): the first enemy blow aimed at him hits a log; he reappears behind the
@@ -14705,6 +14747,7 @@ const STATUS_LIBRARY_DESCS = {
     yellowCard: 'Booked: a second card on this unit is a RED CARD. It is sent off until its next turn starts: it cannot move, act or be targeted.',
     dormant:    'Dug in: cannot move. Every round end under the ground adds a Brood stack (up to 3) that Chorus spends.',
     bodiless:   'A mind with no body: it never walks. At every round end it is somewhere else, on a random free square within 4.',
+    celibate:   'Celibate: it cannot summon (pets, the dead, turrets) while this lasts.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
     minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts, and harder to hit: it dodges basic attacks 25% of the time. Spells still always land.',
@@ -20781,6 +20824,7 @@ const EW_RACE_BIOMES = {
     'karate frog': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
     'samurai slug': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
     'cicada brood': ['ancient', 'forest'],   // 2026-11-17 THE NEW RACES 2 — Leylines, the Bug Colony
+    'pope': ['holy_city', 'urban'],   // 2026-11-17 THE POPE — Vatican City
     'ninja': ['urban', 'clandestine'],   // 2026-11-17 THE NINJA — the rooftops of Disaster City
     'haunted doll': ['gothic'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — The Estate, the Haunted House
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
@@ -21437,6 +21481,7 @@ const RACE_TREE = {
     'karate frog':   [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'samurai slug':  ['nrSlimeSlash', 'nrSaltProof', 'nrIaiDraw', 'nrRoninsWake'],   // 2026-11-17 THE SAMURAI SLUG POLISH: his own four rungs (the borrowed row was Sad Backstory / Plot Armor / To Be Continued / Roll Credits, none of them a sword or the slime)
     'cicada brood':  ['nrDigIn', 'nrBuzz', 'nrScreech', 'raceSwarmSignal'],   // 2026-11-17 THE CICADA POLISH: its own three + Swarm Signal (the borrowed row held none of Dig In / Buzz / Chorus, and Corrosive Splash + Rot are outside its families)
+    'pope':          ['nrThoughtsAndPrayers', 'nrPopemobile', 'nrExcommunication', 'nrCelibacy'],   // 2026-11-17 THE POPE: his own four
     'ninja':         ['nrShuriken', 'nrKawarimi', 'nrShadowStep', 'nrCloneJutsu'],   // 2026-11-17 THE NINJA: his own four
     'haunted doll':  ['nrPinPrick', 'nrPlayWithMe', 'nrPullString', 'nrLookBehindYou'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): its own four
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
@@ -23485,6 +23530,16 @@ const SPELL_FAMILIES = {
         desc: 'Wait, then sing: dig in and grow louder every round, a buzz that rattles, and a chorus that spends it all.',
         unique: 'cicada brood',
         identity: { who: ['Cicada Brood', 'Periodical', 'Singer'], adj: ['Buried', 'Deafening', 'Red-eyed'], look: ['a green and black insect shell', 'huge red eyes', 'folded veined wings'], vibe: ['grows louder every round it waits', 'screeches the whole board silent'] }
+    },
+    papacy: {   // 2026-11-17 THE POPE — the Pope's own
+        id: 'papacy',
+        name: 'Papacy',
+        glyph: '⛪',
+        color: '#d8b84a',
+        kind: 'signature',
+        desc: 'The Holy See: thoughts and prayers, a ride behind bulletproof glass, excommunication, and a vow of celibacy for anyone who summons.',
+        unique: 'pope',
+        identity: { who: ['Pope', 'Holy Father', 'Pontiff'], adj: ['Infallible', 'Gilded', 'Holy'], look: ['white and gold papal robes', 'a tall gold mitre', 'a gold crozier'], vibe: ['rides behind bulletproof glass', 'shuts the summoners down'] }
     },
     hauntedtoy: {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — the Haunted Doll's own
         id: 'hauntedtoy',
@@ -25746,6 +25801,7 @@ const RACE_FAMILIES = {
     'karate frog': ['frogfu', 'martialarts', 'water', 'athleticism'],   // 2026-11-17 THE NEW RACES 2
     'samurai slug': ['slugbushido', 'swordsmanship', 'swordsaint', 'poison'],   // 2026-11-17 THE NEW RACES 2
     'cicada brood': ['brood', 'insectoid', 'sonic', 'colony'],   // 2026-11-17 THE NEW RACES 2
+    'pope': ['papacy', 'holyorders', 'stagepresence'],   // 2026-11-17 THE POPE
     'ninja': ['ninjutsu', 'martialarts', 'spygear', 'athleticism'],   // 2026-11-17 THE NINJA
     'haunted doll': ['hauntedtoy', 'haunted', 'blackmagic', 'trickery'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
@@ -26165,8 +26221,8 @@ function spellLint(d, ctx) {
     const picks = ['animVerb', 'animSlot', 'animClip'].filter(has);
     if (picks.length > 1) hits.push({ rule: 'animPick', level: 'amber', text: `${picks.join(' + ')} — only one animation pick is read: animVerb, then animSlot, then animClip` });
     if (has('animClip') && !(d.animClip && typeof d.animClip === 'object' && typeof d.animClip.name === 'string' && d.animClip.name
-        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 4))
-        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–4 }' });
+        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 8))
+        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–8 }' });
     for (const h of passiveHookLint(d)) hits.push(h);   // THE PASSIVES (Phase 4): the hooks
     if (typeof d.tier === 'number' && (d.tier < 1 || d.tier > 4 || !Number.isInteger(d.tier)))
         hits.push({ rule: 'tierRange', level: 'red', text: `tier ${d.tier} is not 1–4` });
@@ -26372,6 +26428,7 @@ const CAMPAIGN_RACE_PRICES = {
   'karate frog': 400,   // 2026-11-17 THE NEW RACES 2
   'samurai slug': 400,   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 400,   // 2026-11-17 THE NEW RACES 2
+  'pope': 500,   // 2026-11-17 THE POPE
   'ninja': 450,   // 2026-11-17 THE NINJA
   'haunted doll': 450,   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
   'lifeguard': 500,   // 2026-11-16
@@ -28358,6 +28415,7 @@ const DOOR_TEXT = {
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
+        'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
         'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House',   // 2026-11-17 THE NEW RACES 2
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
@@ -76463,6 +76521,7 @@ const HQ_CATALOGUE_ALL = {
     boom_gate: { file: 'world/props/meshy/wishlist/boom_gate.glb', base: 'asset', span: 5.0, foot: 0.63, rect: { hw: 2.5, hd: 0.63 }, block: true, group: 'Meshy props · wish list · Military' },   // A military checkpoint boom barrier gate; 5.0 x 6.35 x 1.27 m (w x h x d)
     flag_pole: { file: 'world/props/meshy/wishlist/flag_pole.glb', base: 'asset', h: 8.0, foot: 0.37, rect: { hw: 2.15, hd: 0.37 }, block: true, group: 'Meshy props · wish list · Military' },   // A tall metal flag pole with a plain grey and white flag; 4.3 x 8.0 x 0.75 m (w x h x d)
     helicopter: { file: 'world/props/meshy/wishlist/helicopter.glb', base: 'asset', span: 16.0, foot: 2.0, rect: { hw: 8.0, hd: 2.0 }, block: true, group: 'Meshy props · wish list · Military' },   // A black military transport helicopter; 16.0 x 4.97 x 4.0 m (w x h x d)
+    popemobile: { file: 'world/props/meshy/popemobile.glb', base: 'asset', span: 4.6, foot: 1.1, rect: { hw: 2.3, hd: 1.15 }, block: true, group: 'Meshy props · wish list · Vehicles' },   // ⛪ THE POPE (2026-11-17): the Pope's ride (his Popemobile spell mounts it, three-renderer.js _MOUNT_VEHICLES); a white kei truck with a glass box on the bed, gold crossed keys on the door; 4.6 x 3.4 x 2.28 m, the nose on -X. Concept + prompt: project files pope-race/
     military_jeep: { file: 'world/props/meshy/wishlist/military_jeep.glb', base: 'asset', span: 4.5, foot: 1.3, rect: { hw: 2.25, hd: 1.3 }, block: true, group: 'Meshy props · wish list · Military' },   // An olive drab military utility vehicle humvee; 4.5 x 1.93 x 2.6 m (w x h x d)
     missile_cart: { file: 'world/props/meshy/wishlist/missile_cart.glb', base: 'asset', span: 5.0, foot: 0.93, rect: { hw: 2.5, hd: 0.93 }, block: true, group: 'Meshy props · wish list · Military' },   // A missile on a wheeled military launch cart stand; 5.0 x 2.07 x 1.87 m (w x h x d)
     radar_antenna: { file: 'world/props/meshy/wishlist/radar_antenna.glb', base: 'asset', h: 5.0, foot: 2.34, block: true, group: 'Meshy props · wish list · Military' },   // A military radar antenna; 6.52 x 5.0 x 4.69 m (w x h x d)

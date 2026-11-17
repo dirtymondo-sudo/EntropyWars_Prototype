@@ -2668,6 +2668,17 @@
                 clearStatus(unit, 'momentum');
                 delete unit._momentum;
             }
+            /* ⛪ Celibacy (`summonPenalty`): N more for every summon the target's team has on the board, a second blow */
+            if (spell.summonPenalty > 0 && target && !target.dead && !target._dying && !unit.dead) {
+                const _cn = _popeSummonCount(target.player);
+                if (_cn > 0) {
+                    addLog(`⛪ ${_ctName(target)}'s side has ${_cn} summon${_cn !== 1 ? 's' : ''} on the board: +${_cn * spell.summonPenalty} damage.`);
+                    applyDamageToUnit(target, _cn * spell.summonPenalty, `⛪ ${spell.name} (${_cn} summon${_cn !== 1 ? 's' : ''}): `, {
+                        sourceUnit: unit, damageType: spell.damageType || 'magic', consumeMarked: false,
+                        spellType: spell.spellType || null, element: classifySpellElement(spell)
+                    });
+                }
+            }
             if (spell.dragIntoLiquid && target && !target.dead && !unit.dead
                 && !(typeof _isClashMode === 'function' && _isClashMode())) _deathRollDrag(unit, target, spell);   // 🐊 Death Roll
             if (spell.erupt && target && !unit.dead
@@ -9700,6 +9711,11 @@
         window.lineSpellHeadingTo = lineSpellHeadingTo;
 
         function getSpellRangeTiles(unit, spell) {
+            /* ⛪ a straight-line row (the Popemobile) reaches only along its own row and column */
+            if (unit && spell && spell.straightLine) {
+                const _slT = getSpellRangeTiles(unit, Object.assign({}, spell, { straightLine: false }));
+                return _slT.filter(t => t.x === unit.x || t.y === unit.y);
+            }
             if (unit && spell && spell.chessPiece) return chessLineTiles(unit, spell.chessPiece);   // ♟ THE CHESS PIECE: the piece's capture lines
             if (unit && spell && spell.prismBlink) return prismBlinkTiles(unit);   // B4: Mirror Blink's reach is the tiles by your prisms
             /* THE DOOR AGENT (2026-09-19): the door kinds' reach is a set of
@@ -14989,6 +15005,51 @@
             if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
             if (n > 0) addLog(`🦗 ${_ctName(unit)} comes up singing: ${n} Brood stack${n !== 1 ? 's' : ''}, +${n * spell.broodSpend} damage.`);
             return n * spell.broodSpend;
+        }
+        /* ⛪ THE POPE (2026-11-17, mondo's kit). CELIBACY: a `celibate` unit cannot cast a summon (spellBlockReason 'Celibate'); a
+           summon = a row that puts a body of its own on the board (summonUnit pets, raiseDead's dead, deployTurret's turrets, a
+           summonDef row). The cast deals `summonPenalty` more for every summon the target's team has on the board: state.turrets
+           alive (pets, zombies, turrets), never a plant. Host-side, like every hit; the status rides the snapshot. */
+        function _isSummonSpell(spell) {
+            if (!spell) return false;
+            return spell.kind === 'summonUnit' || spell.kind === 'raiseDead' || spell.kind === 'deployTurret' || !!spell.summonDef;
+        }
+        window._isSummonSpell = _isSummonSpell;
+        function _popeSummonCount(player) {
+            if (player == null || !Array.isArray(state.turrets)) return 0;
+            return state.turrets.filter(t => t && t.owner === player && (t.hp || 0) > 0 && !t.plant).length;
+        }
+        window._popeSummonCount = _popeSummonCount;
+        function _popeSummonBonus(spell, target) {
+            if (!spell || !(spell.summonPenalty > 0) || !target) return 0;
+            return spell.summonPenalty * _popeSummonCount(target.player);
+        }
+        window._popeSummonBonus = _popeSummonBonus;
+        /* POPEMOBILE: the glass stays up as a shield until his next turn starts; what is left of it then comes off (unit._popeGlass
+           = the part of unit.shield the glass gave; a hit takes the shield from the top, so the glass is what goes first). */
+        function _popeGlassUp(unit, spell) {
+            if (!unit || unit.dead || !(spell && spell.selfShieldAfter > 0)) return;
+            const gain = spellShieldGainFor(unit, { shield: spell.selfShieldAfter, kind: 'buff' }, unit);
+            if (!(gain > 0)) return;
+            unit.shield = (unit.shield || 0) + gain;
+            unit._popeGlass = (unit._popeGlass || 0) + gain;
+            unit._popeGlassShield = unit.shield;
+            addLog(`⛪ ${_ctName(unit)} rides behind the bulletproof glass: a ${gain} HP shield until his next turn.`);
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, `⛪ GLASS +${gain}`, 'buff', { durationMs: 1100 });
+                _sigVfxGeom('nrPopemobile:glass', unit.x, unit.y, 0, { owner: unit.player });   // relayed (online.js fireGeometry)
+            }
+        }
+        function _popeGlassEnds(unit) {
+            if (!unit || !(unit._popeGlass > 0)) return;
+            const taken = Math.max(0, (unit._popeGlassShield || 0) - (unit.shield || 0));   // the hits since took the glass first
+            const left = Math.max(0, Math.min(unit.shield || 0, unit._popeGlass - taken));
+            if (left > 0) {
+                unit.shield = Math.max(0, (unit.shield || 0) - left);
+                addLog(`⛪ ${_ctName(unit)} steps out from behind the glass (${left} HP of shield goes with it).`);
+            }
+            delete unit._popeGlass; delete unit._popeGlassShield;
+            markDirty('hud');
         }
         /* 🛟 THE LIFEGUARD (2026-11-16, the new races): a teammate On Duty within 4 of an ally that just took a killing blow spends
            her watch: the ally holds on at 1 HP and is hauled to the free square beside her nearest it (it stays put if none is free
@@ -44295,6 +44356,11 @@
                     const _echoN = spell.echoLastDealt ? calcSpellHitRiders({ base: 0, echo: target._lastHitDealt || 0, echoCap: 500 }).echoDmg : 0;
                     if (_echoN > 0) hit(target, _echoN, _echoN, _echoN, { damageType: dt, ignoreArmor: true, preScaled: true, exactDamage: true,
                         consumeMarked: false, allowMarkBonus: false, noRangeMult: true }, { tag: 'echo' });
+                    /* ⛪ Celibacy: the per-summon blow (_runPostEffects), so the preview shows it too */
+                    if (spell.summonPenalty > 0) {
+                        const _sb = _popeSummonBonus(spell, target);
+                        if (_sb > 0) hit(target, _sb, _sb, _sb, baseOpts(spell.damageType || 'magic', { consumeMarked: false, allowMarkBonus: false }), { tag: 'summons' });
+                    }
                     /* 🛹 Board Slam: the banked Momentum lands as its second blow (_runPostEffects), so the preview shows it too */
                     if (spell.momentumSpend && (unit._momentum || 0) > 0) {
                         const _mb = spell.momentumSpend * Math.min(6, unit._momentum);
@@ -49505,6 +49571,7 @@
                 if (unitSpellsBlocked(unit)) return 'Silenced';
                 if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';   // 📰 not today's headline
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
+                if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
                 /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
                 if (unitIsSpirit(unit) && (spell.astral || spell.damageType === 'physical')) return 'Projecting';
                 // THE MOVE BLOCK ON SPELLS: a dash / teleport / escape / grapple reel / charge is movement
@@ -51195,6 +51262,7 @@
         function spellAimProblem(unit, spell, x, y, z) {
             if (!unit || !spell) return 'range';
             if (isSpellSelfCast(spell)) return null;
+            if (spell.straightLine && x !== unit.x && y !== unit.y) return 'range';   // ⛪ the Popemobile drives in a straight line
             if (spell.kind === 'line' || spell.kind === 'linePush') {
                 return lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, x, y, (z === undefined) ? null : z) ? null : 'range';
             }
@@ -64610,6 +64678,7 @@
                 _releaseSkyThrowGrab();
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
+                _popeGlassEnds(nextUnit);   // ⛪ the Popemobile's glass comes down when his next turn starts
                 if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
@@ -88692,6 +88761,11 @@
                     playErrorSfx();
                     return 0;
                 }
+                if (spell.straightLine && x !== unit.x && y !== unit.y) {   // ⛪ the Popemobile drives in a straight line
+                    addLog(`${spell.name} drives in a straight line.`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
                 if (dashOnlyMoves(spell)) {   // 🏃 Sprint runs to an empty tile — it never shoves a body aside
                     const _dashBody = unitAt(x, y);
                     if (_dashBody && !_dashBody.dead && _dashBody.id !== unit.id) {
@@ -88917,6 +88991,7 @@
                     if (Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead) {
                         applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                     }
+                    if (spell.selfShieldAfter > 0 && !unit.dead) _popeGlassUp(unit, spell);   // ⛪ the Popemobile's glass
                     if (dashHitCount > 0) {
                         addLog(`${_ctName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
                     } else {

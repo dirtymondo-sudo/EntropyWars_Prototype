@@ -19853,12 +19853,17 @@ const ThreeRenderer = (function () {
     var _MOUNT_VEHICLES = {
         mars_rover:   { h: 1.05, seat: 0.56, z: -0.12 },
         lunar_lander: { h: 1.35, seat: 0.47, z: -0.30, fly: true, stand: true, flip: true, hop: 0.9, bell: 0.08 },
+        /* ⛪ THE POPE (2026-11-17): the Popemobile (Claude's Meshy model, catalogue `popemobile`): a white kei truck with the glass box
+           on its bed. The file's nose is -X (measured), so `yaw` turns it to +Z; he STANDS on the bed inside the box (`seat` = the bed
+           floor, `z` = the box's middle, behind the cab). `h` = its height in rider heights (3.4 m to a 1.8 m Pope). */
+        popemobile:   { h: 1.75, seat: 0.36, z: -0.22, stand: true, yaw: Math.PI / 2 },
     };
     function _vehicleMountBuild(key, ts) {
         var V = _MOUNT_VEHICLES[key];
         var car = V ? _getMiscModelClone(key, ts * V.h, 'bottom') : null;
         if (!car) return null;
         if (V.flip) car.rotation.y += Math.PI;
+        if (V.yaw) car.rotation.y += V.yaw;   // ⛪ a file whose nose is not +Z (the Popemobile)
         car.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.castShadow = true; if (n.material) n.material._ew_mountOwn = true; } });
         var bb = new THREE.Box3().setFromObject(car);
         var body = new THREE.Group(); body.add(car);
@@ -39464,7 +39469,7 @@ const ThreeRenderer = (function () {
        never finds it gone) and its sheets capped at 1024. Returns one settle check per key (true once landed or failed). */
     /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (Assets/world/hq/models/:
        the lunar lander, which the Lunar Lander flies; the Mars rover): the room's own url, so a room that places it and a cast share one cache entry */
-    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1, beach_life_ring: 1 };   // + THE LIFEGUARD's rescue ring (2026-11-16)
+    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1, beach_life_ring: 1, popemobile: 1 };   // ⛪ + the Pope's ride (2026-11-17)   // + THE LIFEGUARD's rescue ring (2026-11-16)
     function _spellCatUrl(key) {
         if (!_SPELL_CAT_KEYS[key] || typeof DOOR_HQ === 'undefined' || !DOOR_HQ.catalogue) return null;
         var cat = DOOR_HQ.catalogue[key];
