@@ -47,6 +47,12 @@ spec once the kit exists (zone re-layouts, routes). Fable runs on the second acc
 9. **Models and names.** `MODEL_LIST.md` and the pack files first. Never invent characters or game rules; new names are
    marked as ideas and kept plain.
 10. **Notes.** Lasting facts go in the matching `docs/notes` file (areas-complexes.md for zones) in the same PR.
+11. **Join more (mondo, 17 Nov, after the test slice).** A card between two places that touch is wrong. Districts, routes and links that touch
+    stand in ONE room, until a number stops you: two zones never join; a box of 12 x 12 plots; 30 plots; 12 plots in one straight open row; 2,500
+    draw calls and 12 M triangles at the heaviest view; 1.4 GB of models + rigs. The full rule, who writes a joined room and how to measure one:
+    `docs/notes/areas-complexes.md` "ONE WORLD, THE ROOM-SPLITTING RULE". The slice's two joined rooms are the pattern (`bake-woods.js` `STAND`,
+    `docs/areas/routes/R7.json`).
+12. **Walk every seam you write.** A door that resolves in data is not a door you can walk through. `playtest_city.js` has a `"walk"` view for it.
 
 ## Phase 1: the foundation (1 thread, Fable)
 

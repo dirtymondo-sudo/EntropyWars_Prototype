@@ -10765,40 +10765,47 @@ the unnamed land between them is scenery seen past the plot edges; Avalon is scr
   `docs/plans/one-world/proof/world_sheet.jpg`).
 
 ### ONE WORLD, THE ROOM-SPLITTING RULE
-When v13 stands a zone's districts apart, this decides which become their own rooms. The numbers come from what runs today
-(the biggest rooms: Disaster City 13 x 15 plots with its own frame-rate work, the Desert 12 x 12, the Beach 14 x 10, the
-Mountains 12 x 8, Camelot 8 x 8) and from data.js `HQ_ENGINE_RULES` (heapMB 700, callsMax 2500, trisMax 1 500 000); the
-test slice measures them and corrects this list.
+**REVISED 2026-11-17 AFTER THE TEST SLICE: JOIN MORE** (mondo read the slice's report: "keep the size ... change the room-splitting rule to join more").
+The first rule gave every district and every route its own room; the walk from the Stair to the Lake was 4.5 minutes and three loading cards. A card
+between two places that touch is wrong. The rule below is the one every zone thread follows; its numbers are measured on the slice's two joined rooms.
 1. **A district is never cut.** All its plots are one room's.
-2. **Joined** = two districts (or a district and a wild link) in one room, only when (a) their plots touch side to side on
-   the map and (b) the joined room stays inside rule 5. The castle + village stay one room; so do the city + its Hills.
-3. **Apart** = everything else: each district its own room. They are joined by a route room (THE ROUTE KIT) or, where their
-   plots touch but rule 5 forbids one room, door to door on the shared plot side.
-4. **No room shorter than 3 plots along its walk** (126 m, about half a minute on foot): a load every 42 m is not a walk.
-   A wild link of 1 or 2 plots is not a room of its own: its plots join the room of its `from` district (the zone's bake
-   adds them to its plan; the kit's ground table in bake-route.js says what to dress them with). A link that shares a plot
-   with a road (plots.json `shares`) ends at the road's room.
-5. **How big a room may get:**
-   - its box: at most 12 x 12 plots (504 m), the Desert's size, the largest room that runs without special work. Disaster
-     City is the one exception (THE CHUNKS, THE CLOSED ROOMS);
-   - a built-up room (buildings, insides, many kinds of prop): at most 64 plots (Camelot's size). Open ground (sand, sea,
-     snow) may fill the 12 x 12 box;
-   - a route room: at most 24 plots and 12 plots on its long side; a longer route is cut into stretches (`bake-route.js
-     --from i --to j`) at a bend or at a district it passes, each stretch 3 plots or more. A bent route whose box is more than
-     three times its plots is cut at the bend (the squares of the whole box are built, scenery cells too);
-   - memory (three-renderer.js THE MEMORY BUDGET, `_mm*`): a room must fit the budget BY ITSELF. Stand in it two minutes; the
-     F3 `MEM` line (`ThreeRenderer.hq.mem()`) must read under `HQ_ENGINE_RULES.heapMB` (700 MB; the phone budget is 320 MB:
-     run once with `window.EW_MEM_MB = 320` and note what it reads). Two neighbouring rooms never have to fit together: the
-     budget drops what nothing drawn wears after `cacheIdleMs` (120 s), so the room you left empties as you walk on. What
-     fills it is the count of DIFFERENT model files and their sheets, not the count of plots: dress from the models the
-     zone already loads before adding new ones;
-   - draw: under `callsMax` 2500 and `trisMax` 1.5 M on F3.
+2. **JOIN FIRST.** Things that touch side to side on the map stand in ONE room: two districts; a district and the route or wild link that ends on it;
+   two routes that meet; a wild link that runs beside its road. Start at the zone's hub district and keep joining what touches until a number in rule 5
+   stops you. The slice: THE CLEARING + DEAD MAN'S CAVE are one room (12 x 5, 18 plots); COUNTY LANE + THE WILD LINK L8 + THE LAKE are one room (5 x 8,
+   25 plots). The Stair to the Lake is one room, a card, the corn, a card, the Lake's room.
+3. **Apart** = what does not touch, or what rule 5 forbids. Each such piece is its own room; they are joined by a route room (THE ROUTE KIT) or, where
+   their plots touch but rule 5 forbids one room, door to door on the shared plot side (rule 6).
+4. **No room shorter than 3 plots along its walk** (126 m, about half a minute on foot). A wild link of 1 or 2 plots, or a route's plots that fill a
+   district's gaps, are never a room of their own: they join the room of the district they touch (the corn holds County Lane's first three plots).
+5. **WHERE JOINING STOPS** (the first number you would break ends the room; cut at a zone's edge first, then at a bend or where a district is passed):
+   - **two zones never join.** A zone's edge is a card (the Woods | the Estate at the Fence Line), and the surface never joins what lies under it;
+   - **the box: 12 x 12 plots at most** (504 m; the squares of the whole box are built, scenery cells too);
+   - **the plots: 30 at most in one room**, districts' and routes' together (the slice's rooms are 18 and 25);
+   - **one straight open row: 12 plots at most.** A long straight view is what costs, not the count: the Clearing + the creek is twelve plots west to
+     east and draws 10.4 M triangles looking down it (the Clearing alone: 7.8 M); the corn's lane, six plots, 6.2 M;
+   - **the draw at the room's heaviest view: 2,500 calls** (`HQ_ENGINE_RULES.callsMax`) **and 12 M triangles** (half of the heaviest room that runs
+     today, the Redwood Trail + the Ritual Ground at 23.5 M). Measured: the Clearing + the creek 1,932 calls / 10.4 M; County Lane + L8 + the Lake
+     671 / 2.7 M. So the Woods' south room is full: the Redwood Trail does not join it;
+   - **memory: 1.4 GB at most**, models + rigs, read after standing two minutes (`ThreeRenderer.hq.perf().mem`: `misc.mb + rigs.mb`). A joined room
+     reads about what its heaviest part read alone, because the model files are shared: the Clearing 1,083 MB, the creek 1,245, joined 1,210; County
+     Lane 1,026, the Lake 999 to 1,226, joined with L8 1,006 to 1,290. No district room reads under `heapMB` 700 (the 18-plot rooms that were never
+     split read 1.3 to 1.7 GB), so 700 is not the test;
+   - a room nobody has measured is not done: probe its heaviest view (the longest straight look) and its memory, and write both in the zone's notes.
+   **WHO WRITES A JOINED ROOM.** Two districts of one zone: the zone's tool, one entry of its stand list with both letters (`bake-woods.js` `STAND`:
+   `letters: ['C', 'M']`); each district keeps its own tree kinds, air and scatter on its own plots. A route with a district: THE ROUTE KIT writes
+   the room and brings the district's plots in (`join: { tool, part }` in the route's spec; the zone's tool hands them over with `--export <part>
+   <file>` and writes no room for that district: `kit: true`). Two routes: the kit, `with: [{ id }]`. Bake order: the zone's tool, then the kit.
 6. **How doors and edges between rooms work:**
-   - two rooms whose plots share a side on the world grid are joined THERE by a pair of `way: 'trail'` doors (no leaf: you walk
-     through the line), one in each room, both with THE SEAM ID as their door id: `ow_v_<x>_<y>` = the north-south line x at
-     row y, `ow_h_<x>_<y>` = the east-west line y at column x (`m` for minus: `ow_h_m17_m9`). `action: { room: <the other
-     room>, at: <the same id> }`. The door is on the room's wall where the seam lies on its box's edge (`wall: 'n'`, `x`),
-     else `wall: 'free'` on the seam with `face` outward;
+   - two rooms whose plots share a side on the world grid are joined THERE by a pair of `way: 'trail'` doors (no leaf: you walk through the line), one
+     in each room, both with THE SEAM ID as their door id: `ow_v_<x>_<y>` = the north-south line x at row y, `ow_h_<x>_<y>` = the east-west line y at
+     column x (`m` for minus: `ow_h_m17_m9`). `action: { room: <the other room>, at: <the same id> }`. The door is on the room's wall where the seam
+     lies on its box's edge (`wall: 'n'`, `x`), else `wall: 'free'` half a square inside the plot;
+   - **A FREE SEAM, THREE THINGS THE SLICE GOT WRONG AND WALKED UNTIL RIGHT** (2026-11-17; `ow-move.js` `FREE_PASS`): (1) a free door's `face` is the
+     way its OPENING faces, INTO the plot (a seam on a plot's north side has `face: 180` and is walked through northward; the foundation's kit and the
+     mover first wrote it outward and every free seam pointed backwards); (2) its `passage: { len: 3, deep: 1.2 }`: the room changes 1.2 m past the
+     door, on the plot's own last square (a wall passage's 10 m lie past the wall; past a free door there is no passage floor); (3) its floor is the
+     ground it stands on (data.js `hqTerrainDoorY`: a free passage has no pad and read 0, so one on a plot above 2.5 m or in a cut never fired).
+     WALK EVERY SEAM YOU WRITE: `node playtest_city.js <room> '[{ …, "walk": { "max": 200000 } }]'` prints `WALK … -> <the room it reached>`;
    - a route crosses a plot side at its middle (a link, 1 plot wide) or on the line between its two columns (a road, 2 wide):
      the district's door goes there, so path meets path;
    - where two rooms touch along several plots, one door pair at the path is enough; the rest of the line keeps each room's
@@ -10962,6 +10969,26 @@ The districts that did NOT move stay in the old room ids, each 6 x 3 plots now: 
 Ground, `site_prebuilt_skinwalker_estate` = the Haunted House + the Ranch. Their plots, pieces and heights are what they were (a home plot's
 squares are copied, never re-thrown); their door ids are kept, so every door of another zone that names them still lands (`shasta`, `lemuria`,
 `lookingglass`, `house`, the bay doors, the links). They are NOT on the world grid yet (`wait` rows in bake-map.js, drawn clear of the slice on the chart).
+
+### THE FIXES AFTER MONDO READ THE REPORT (2026-11-17: "keep the size, and do your fixes FIRST, before any zone thread starts")
+What follows in this section was written when the slice was six rooms. It is FOUR now, and the fixes below are what changed; the mover, the strays
+and the census read as before.
+- **FIX 1, JOIN MORE (the rule above, revised).** `site_prebuilt_fairy_forest_ow_clearing` = THE CLEARING + DEAD MAN'S CAVE, one room, 12 x 5, 18
+  plots (`bake-woods.js` `STAND`, `letters: ['C', 'M']`; the creek's own room id is in `DOOR_HQ.retired`). `site_prebuilt_skinwalker_ow_lake` =
+  COUNTY LANE + THE WILD LINK L8 + THE LAKE, one room, 5 x 8, 25 plots, written by `node bake-route.js R7` (`docs/areas/routes/R7.json`: `with`
+  L8, `join` the Lake from `bake-estate.js --export ow_lake`); `site_ow_r7_3_14` and `site_ow_l8` are retired into it. Each district keeps its own
+  tree kinds, air and scatter on its own plots (a district-wide zone or scatter disc becomes one a plot of that district). Measured: the Woods'
+  room 1,932 calls / 10.4 M triangles at its heaviest view, 1,210 MB, 54 s to load in the probe (the two rooms before: 44 s and 52 s); the lane's
+  room 671 / 2.7 M, 1,006 to 1,290 MB, 55 s (before: 40, 37 and 42 s). Pictures: `docs/plans/one-world/proof/fix1_*.jpg`.
+- **FIX 4, L8** is in the lane's room, so both ways are seen. By the map it starts at The Rows, east and runs down through County Lane's south
+  field: it leaves the corn by ITS OWN gap (seam `ow_h_m13_11`, 21 m east of the lane's `ow_h_m14_11`), crosses the lane at the bend and runs down
+  the west side through the long grass to the Reeds. `docs/areas/routes/R7.js` and `L8.json` are gone (one spec now).
+- **THE FREE SEAMS COULD NOT BE WALKED** (found by walking them in the probe, fixed in the same PR): see rule 6 above, "A FREE SEAM". Until this
+  fix the hollow tree to Room 420, the trail to Camelot, the sewer mouth, the Tunnel Way and both interim trails could be arrived by but not
+  entered from the slice's rooms. Walked after: the Clearing's north trail into the old Woods room, the sewer mouth into the Sewers, the corn's
+  south end into the lane's room and back, the Lake's south shore into the old Estate room.
+- **THE ROUTE KIT'S OWN DRESSING is thrown again when its room changes** (the scatter, the trees in walked ground, the stoppers on a verge that
+  no longer faces scenery): the census lists those under the route's plot names. They are the kit's, not a district's.
 
 ### THE MOVER (`ow-move.js`, repo tooling) and how the two tools use it
 - A zone tool builds its room in THE HOME FRAME exactly as before (no district file changed to move), then calls

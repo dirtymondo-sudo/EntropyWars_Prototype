@@ -245,9 +245,9 @@
   "nz": 72,
   "h0": 1.56,
   "hs": 0.25,
-  "v": "bc0a98dae0",
-  "bytes": 612,
-  "s": "1.6"
+  "v": "2be3e6bd7b",
+  "bytes": 621,
+  "s": "1.5"
  },
  "site_ow_l8": {
   "id": "site_ow_l8",
@@ -261,13 +261,13 @@
  },
  "site_prebuilt_fairy_forest_ow_clearing": {
   "id": "site_prebuilt_fairy_forest_ow_clearing",
-  "nx": 60,
+  "nx": 144,
   "nz": 60,
-  "h0": -0.11,
+  "h0": -3.5,
   "hs": 0.25,
-  "v": "3f58cf8941",
-  "bytes": 1405,
-  "s": "2.5"
+  "v": "4f9d721959",
+  "bytes": 1576,
+  "s": "8.6"
  },
  "site_prebuilt_fairy_forest_ow_creek": {
   "id": "site_prebuilt_fairy_forest_ow_creek",
@@ -281,12 +281,12 @@
  },
  "site_prebuilt_skinwalker_ow_lake": {
   "id": "site_prebuilt_skinwalker_ow_lake",
-  "nx": 36,
-  "nz": 36,
+  "nx": 60,
+  "nz": 96,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "98be29533e",
-  "bytes": 365,
-  "s": "2.2"
+  "v": "38479d0db1",
+  "bytes": 1634,
+  "s": "1.5"
  }
 }

@@ -76,6 +76,18 @@ const run = async () => {
     await page.evaluate((v) => { try { if (window._hqPauseDrop) window._hqPauseDrop(); if (window._hqResume) window._hqResume(); } catch (e) {} ThreeRenderer.hq.dev.teleport(v); if (v.eval) { try { eval(v.eval); } catch (e) { console.log('[HQ] eval failed', e); } } }, v);
     await fast.settle(page, v.settle);   // two drawn frames of the new view (or "settle": <ms> on the view)
     await page.evaluate(() => { try { if (window._hqPauseDrop) window._hqPauseDrop(); const pz = document.getElementById('hqPause'); if (pz) pz.style.display = 'none'; } catch (e) {} });
+    /* "walk": { "key": "w", "max": 90000 } on a view (2026-11-17, the One World seams): after the picture's place is set, hold the key until the room changes (a seam or a
+       passage was walked through) or `max` ms pass; prints WALK <name> <from> -> <to | NO CHANGE> with the metres moved. The picture is taken BEFORE the walk. */
+    if (v.walk) { const f0 = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f0, timeout: 180000 });
+      const pos = () => page.evaluate(() => { const g = ThreeRenderer.hq.dev.playerGroup && ThreeRenderer.hq.dev.playerGroup(); return [ThreeRenderer.hq.room(), g ? +(g.position.x / 73).toFixed(1) : null, g ? +(g.position.z / 73).toFixed(1) : null]; });
+      const a = await pos(), t1 = Date.now(), key = v.walk.key || 'w'; let b = a, last = a;
+      await page.mouse.move(640, 400); if (v.walk.run !== false) await page.keyboard.down('Shift'); await page.keyboard.down(key);   // (running unless "run": false: the software probe's walker is slow)
+      while (Date.now() - t1 < (v.walk.max || 90000)) { await sleep(700); try { b = await pos(); } catch (e) { break; } if (b[0] !== a[0]) break; if (b[1] != null) last = b; }
+      await page.keyboard.up(key); if (v.walk.run !== false) await page.keyboard.up('Shift');
+      console.log('WALK ' + (v.name || 'v') + ' ' + a[0] + ' (' + a[1] + ', ' + a[2] + ') -> ' + (b[0] !== a[0] ? b[0] : 'NO CHANGE') + ' after ' + ((Date.now() - t1) / 1000).toFixed(1) + ' s, last seen at (' + last[1] + ', ' + last[2] + '), ' + Math.hypot(last[1] - a[1], last[2] - a[2]).toFixed(1) + ' m');
+      if (b[0] !== a[0]) { await fast.roomReady(page, { timeout: 240000 }); await page.evaluate(() => { for (const id of ['hqLoad', 'hqPrompt', 'hqStrip', 'hqToast']) { const h = document.getElementById(id); if (h) h.style.display = 'none'; } }); await fast.settle(page, 3000);
+        const f1 = path.join(OUT, room + '_' + (v.name || 'v') + '_arrived.png'); await page.screenshot({ path: f1, timeout: 180000 }); const c = await pos(); console.log('ARRIVED ' + c[0] + ' at (' + c[1] + ', ' + c[2] + ')'); lap('walked ' + (v.name || 'v')); break; }
+      lap('walk ' + (v.name || 'v')); continue; }
     const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f, timeout: 180000 }); lap('shot ' + (v.name || 'v')); console.log('SHOT', f, 'room=' + await page.evaluate(() => (window._hqCurRoom || (ThreeRenderer.hq.dev.room && ThreeRenderer.hq.dev.room()) || '?')));
   }
   console.log('COUNTERS', JSON.stringify(cnt)); console.log('ERRORS', JSON.stringify(errs.slice(0, 8))); console.log('LOGS', JSON.stringify(logs.slice(0, 30))); console.log('PROBES', JSON.stringify(logs.filter(t => /PROBE|diner/i.test(t)).slice(0, 12)));

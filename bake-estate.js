@@ -223,7 +223,7 @@ const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room
     return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n || p.d !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
 const R7 = PJ.routes.find(r => r.id === 'R7'), R7_HERE = [[-13, 5, 'County Lane, the north field'], [-13, 8, 'County Lane, the middle field'], [-13, 10, 'County Lane, the south field']];
 R7_HERE.forEach(q => { if (!R7.plots.some(p => p[0] === q[0] && p[1] === q[1])) throw new Error('plots.json: R7 has no plot ' + q[0] + ',' + q[1]); });
-const R_CORN = 'site_prebuilt_skinwalker_ow_corn', R_LAKE = 'site_prebuilt_skinwalker_ow_lake', R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing', R_R7 = 'site_ow_r7_3_14', R_L8 = 'site_ow_l8';
+const R_CORN = 'site_prebuilt_skinwalker_ow_corn', R_LAKE = 'site_prebuilt_skinwalker_ow_lake', R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing';
 /* the seams: the plot, its side, how many squares along that side from the plot's corner the path crosses (left out: where the plot is open), the room past it */
 const STAND = [
     { id: R_CORN, part: 'ow_corn', label: 'THE CORN FIELDS', sub: 'THE ESTATE · COUNTY LANE · 12 PLOTS', letters: ['C'], world: true, lane: true,
@@ -231,21 +231,24 @@ const STAND = [
       parti: 'Corn you cannot see over, two plots wide and six long, the walk south from the Woods Gate to the Hub: tracks cut through it, and County Lane straight down the middle.',
       seams: [
           { plot: 'P01-00', side: 'N', takes: 'woods', id: 'ow_h_m14_5', room: R_CLEAR, label: 'THE WOODS · THE CLEARING', sub: 'THE FENCE LINE · THE GATE', desc: 'A fence, and a gate in it. The trees start on the other side.' },
-          { plot: 'P01-02', side: 'S', along: 12, id: 'ow_h_m14_11', room: R_R7, label: 'COUNTY LANE', sub: 'THE LANE SOUTH · TO THE LAKE', desc: 'The lane leaves the corn and runs on between open fields.' },
+          { plot: 'P01-02', side: 'S', along: 12, id: 'ow_h_m14_11', room: R_LAKE, label: 'COUNTY LANE', sub: 'THE LANE SOUTH · TO THE LAKE', desc: 'The lane leaves the corn and runs on between open fields.' },
+          /* THE FOOTPATH (the map's wild link L8: from The Rows, east down through County Lane's south field): it leaves the corn by its own gap, 21 m east of the lane's */
+          { cell: [-13, 10], side: 'S', along: 6, id: 'ow_h_m13_11', room: R_LAKE, footpath: true, label: 'THE TRAIL · THE LONG GRASS', sub: 'THE FOOTPATH SOUTH · TO THE LAKE', desc: 'A footpath leaves the field through a gap in the corn, off into grass nobody cuts.' },
       ] },
-    { id: R_LAKE, part: 'ow_lake', label: 'THE LAKE', sub: 'THE ESTATE · 9 PLOTS', letters: ['L'], world: true, list: v13('L'),
+    /* THE JOINING RULE (2026-11-17, mondo after the test slice): County Lane, the wild link L8 and the Lake are ONE room. The route kit writes it
+       (`node bake-route.js R7`, docs/areas/routes/R7.json `join`) and asks this tool for the Lake's plots with `--export ow_lake <file>`: this tool
+       stands the district as before and hands it over; it does not write a room for it (`kit: true`). */
+    { id: R_LAKE, part: 'ow_lake', label: 'THE LAKE', sub: 'THE ESTATE · 9 PLOTS', letters: ['L'], world: true, kit: true, list: v13('L'),
       parti: 'A lake between its shores, nine plots: the reeds and the north shore where the lane comes in, the boathouse, the dock, the marsh, and open water in the middle.',
       seams: [
-          { plot: 'P03-00', side: 'N', along: 12, id: 'ow_h_m12_15', room: R_R7, spawn: true, label: 'COUNTY LANE', sub: 'THE LANE NORTH · TO THE CORN FIELDS', desc: 'The lane climbs away from the water between open fields.' },
-          { plot: 'P03-00', side: 'W', along: 6, id: 'ow_v_m12_15', room: R_L8, label: 'THE TRAIL · THE CORN FIELDS', sub: 'THE FOOTPATH WEST · BACK TO THE CORN', desc: 'A footpath off into the long grass, the way the fishermen come.' },
           /* not moved yet: the Ranch. Its gate stands south of the lake's south shore on the map; until it moves, the way on is the Windmill's track */
-          { plot: 'P04-02', side: 'S', along: 6, id: 'ow_h_m11_18', room: ROOM, label: 'THE RANCH', sub: 'THE SOUTH SHORE · THE TRACK TO THE WINDMILL', desc: 'A track leaves the shore between fence posts.' },
+          { plot: 'P04-02', side: 'S', along: 6, id: 'ow_h_m11_18', room: ROOM, spawn: true, label: 'THE RANCH', sub: 'THE SOUTH SHORE · THE TRACK TO THE WINDMILL', desc: 'A track leaves the shore between fence posts.' },
       ] },
     { id: ROOM, part: 'estate', label: 'THE ESTATE', sub: 'THE HAUNTED HOUSE · THE RANCH · 18 PLOTS', letters: ['H', 'R'], world: false, home: true, list: PLAN.plots.filter(p => p.d === 'H' || p.d === 'R').map(p => ({ id: p.id, wx: p.x, wy: p.y })),
       parti: 'Two districts of nine plots, every plot a twelve by twelve board: a ranch, and a house on its rise with the graveyard below it, in corn you cannot see over.',
       seams: [ { plot: 'P04-03', side: 'N', id: 'ow_h_m11_18', room: R_LAKE, spawn: true, label: 'THE LAKE', sub: 'THE TRACK NORTH · THE SOUTH SHORE', desc: 'The track runs down to water.' } ] },
 ];
-const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 0, E: 90, S: 180, W: 270 };
+const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 };   // a free door on that side of a plot: the way its opening faces, INTO the plot (ow-move.js)
 const ROOMS_OUT = [], STRAYS = [], PLACES = {};
 STAND.forEach(S => {
     const R = MOVER.room(S.list), Wn = R.W, Dn = R.D, c2 = R.cell, chg = new Set();
@@ -258,7 +261,8 @@ STAND.forEach(S => {
     const openK = (e, sd) => { const o = []; for (let k = 0; k < N; k++) { const q = border(e, sd, k); if (openR(q[0], q[1])) o.push(k); } return o; };
     const runs = o => { const out = []; let a = o[0]; for (let i = 1; i <= o.length; i++) if (i === o.length || o[i] !== o[i - 1] + 1) { out.push([a, o[i - 1]]); a = o[i]; } return o.length ? out : []; };
     const nbr = (e, sd) => R.at[(e.col + SIDE4[sd][0]) + ',' + (e.row + SIDE4[sd][1])] || null;
-    const seamOn = (e, sd) => S.seams.some(q => q.plot === e.id && q.side === sd);
+    const seamPlot = sm => sm.cell ? R.at[(sm.cell[0] - R.wx) + ',' + (sm.cell[1] - R.wy)] : R.ofHome[sm.plot];
+    const seamOn = (e, sd) => S.seams.some(q => seamPlot(q) === e && q.side === sd);
     const doorOn = (e, sd) => R.doors.some(d => d.plot === e && d.side === sd.toLowerCase());
     const cnt = { lane: 0, cut: 0, back: 0, rowsOut: 0, rowsIn: 0 };
     if (S.lane) {
@@ -311,7 +315,9 @@ STAND.forEach(S => {
         propsOut.push({ key: 'milestone', x: R.gcx(x0 + 2), z: R.gcz(y0 + 5), face: 270 }); });
     /* the seams: a door on each crossing */
     const takes = S.seams.map(q => q.takes).filter(Boolean), doorsOut = R.doors.filter(d => takes.indexOf(d.id) < 0).map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; }), ways = []; let spSq = null, spFace = 180;
-    S.seams.forEach(sm => { const e = R.ofHome[sm.plot], sd = sm.side; if (!e) throw new Error(S.id + ': no plot ' + sm.plot);
+    S.seams.forEach(sm => { const e = seamPlot(sm), sd = sm.side; if (!e) throw new Error(S.id + ': no plot ' + (sm.plot || sm.cell));
+        /* a footpath's seam: its squares are cut through the field's rim and a path is painted up the field to the plot's north side */
+        if (sm.footpath) { const x0 = e.col * N + sm.along - 1; for (let ly = 0; ly < N; ly++) for (const x of [x0, x0 + 1]) set(x, e.row * N + ly, 'p'); }
         let along = sm.along; const old = sm.takes && R.doors.find(d => d.id === sm.takes);
         if (old) along = ((old.x != null && (sd === 'N' || sd === 'S') ? old.x + R.HX : old.z + R.HZ) / C) - (sd === 'N' || sd === 'S' ? e.col : e.row) * N;
         if (along == null) { const rn = runs(openK(e, sd)).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0]; if (!rn) throw new Error(S.id + ': ' + e.name + ' is not open on its ' + sd + ' side'); along = (rn[0] + rn[1] + 1) / 2; }
@@ -319,9 +325,10 @@ STAND.forEach(S => {
         if (!openR(q[0], q[1])) throw new Error(S.id + ': the seam ' + sm.id + ' stands in the corn at ' + q.join(','));
         const d = { id: sm.id, wall: onWall ? sd.toLowerCase() : 'free' };
         if (onWall) { if (ns) d.x = R.gx(e.col * N + along); else d.z = R.gz(e.row * N + along); ways.push({ side: d.wall, at: ns ? d.x : d.z }); }
-        else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; }
+        else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; d.passage = Object.assign({}, MOVER.FREE_PASS); }   // (ow-move.js A FREE SEAM IS CROSSED ON THE PLOT'S OWN SQUARES)
+        d.plotCol = e.col; d.plotRow = e.row; d.side = sd; d.along = along;   // (for the route kit, when it takes this room in: stripped by the writer)
         doorsOut.push(Object.assign(d, { way: 'trail', label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.id }, desc: sm.desc }));
-        if (sm.spawn || (old && !spSq)) { spSq = [q[0] - SIDE4[sd][0] * 2, q[1] - SIDE4[sd][1] * 2]; spFace = FACE[sd] === 0 ? 180 : FACE[sd] === 180 ? 0 : FACE[sd] === 90 ? 270 : 90; } });
+        if (sm.spawn || (old && !spSq)) { spSq = [q[0] - SIDE4[sd][0] * 2, q[1] - SIDE4[sd][1] * 2]; spFace = FACE[sd]; } });
     if (!spSq || !openR(spSq[0], spSq[1])) throw new Error(S.id + ': no open spawn square');
     /* the hand-written rows of data.js that name a place in the home room: where each stands now */
     [['bay', { wall: 's', x: BAY_X }], ['bay13', Object.assign({ wall: 'free' }, BAY13)], ['well', Object.assign({ wall: 'free' }, WELL)], ['lodge', Object.assign({ wall: 'free' }, LODGE)]].forEach(([k, h]) => {
@@ -347,16 +354,24 @@ STAND.forEach(S => {
         if (same) { o.x0 = r2(z.x0 + e0.dx); o.x1 = r2(z.x1 + e0.dx); o.z0 = r2(z.z0 + e0.dz); o.z1 = r2(z.z1 + e0.dz); } else { o.x0 = -R.HX; o.x1 = R.HX; o.z0 = -R.HZ; o.z1 = R.HZ; } return o; };
     const air = [].concat(...S.letters.map(k => AIR_HOME[k] || [])).map(boxOf).filter(Boolean);
     const lines = (S.letters.indexOf('C') >= 0 ? O_FIELDS.l : []).concat(S.letters.indexOf('H') >= 0 ? O_GROUNDS.l : []);
-    ROOMS_OUT.push({ S, R, feats: spaces2.concat(featsOut), props: propsOut, doors: doorsOut, ways, slope: slope2, paint: paint2, air, lines, sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: spFace },
+    ROOMS_OUT.push({ S, R, c2, hAt, own: featsOut, feats: spaces2.concat(featsOut), props: propsOut, doors: doorsOut, ways, slope: slope2, paint: paint2, air, lines, sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: spFace },
         count: Object.assign({ plots: S.list.length, box: R.cols + 'x' + R.rows, spaces: spaces2.length, props: propsOut.length, features: featsOut.length, doors: doorsOut.length, natives: R.npc.length }, cnt) });
 });
 if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way; each is answered in the notes, "ONE WORLD, THE TEST SLICE"):\n  ' + STRAYS.join('\n  '));
 ROOMS_OUT.forEach(o => console.log(o.S.id + ' ' + JSON.stringify(o.count)));
 
+/* THE EXPORT (the joining rule): `--export <part> <file>` hands one stood district to the route kit as JSON and writes nothing else */
+{ const xi = process.argv.indexOf('--export'); if (xi >= 0) { const o = ROOMS_OUT.find(q => q.S.part === process.argv[xi + 1]); if (!o) throw new Error('no room with part ' + process.argv[xi + 1]);
+    const { S, R } = o, hs = []; for (let y = 0; y <= R.D; y++) for (let x = 0; x <= R.W; x++) hs.push(Math.round(o.hAt(x, y) * 100) / 100);
+    fs.writeFileSync(process.argv[xi + 2], JSON.stringify({ id: S.id, part: S.part, label: S.label, wx: R.wx, wy: R.wy, cols: R.cols, rows: R.rows, W: R.W, D: R.D, fill: 'c',
+        plots: R.order.map(e => ({ col: e.col, row: e.row, name: e.name, district: e.district, level: e.level })), cell: o.c2.map(r => r.join('')), h: hs,
+        floor: 'grass_2', pal: PAL, paint: Array.from(o.paint), features: o.own, props: o.props, npc: R.npc, doors: o.doors, lines: o.lines, air: o.air, grassField: true, sp: o.sp }));
+    process.exit(0); } }
+const stripDoor = d => { const o = Object.assign({}, d); delete o.plotCol; delete o.plotRow; delete o.side; delete o.along; return o; };
 /* ── the rooms ── */
 const L = [];
 L.push("        /* ESTATE36-BEGIN — THE ESTATE ON PLOTS (2026-11-15) + THE ONE WORLD MOVE (2026-11-17: the Corn Fields and the Lake stand at their One World places as rooms of their own): written by `node bake-estate.js` from docs/areas/estate/layout.json + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, a district file or the layout and rerun. */");
-ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
+ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ; if (S.kit) return;   // (the route kit writes this room: THE JOINING RULE)
     const atmos = o.air.length ? " atmos: " + J({ kind: 'fireflies', n: Math.round(160 * Math.max(0.4, S.list.length / 36)), zones: o.air.concat([{ x0: -R.HX, z0: -R.HZ, x1: R.HX, z1: R.HZ, kind: 'fireflies', n: Math.round(160 * Math.max(0.4, S.list.length / 36)) }]) }) + "," : "";
     L.push("        " + S.id + ": {");
     L.push("            label: " + J(S.label) + ",");
@@ -385,7 +400,7 @@ ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
     L.push("                ],");
     L.push("            },");
     L.push("            doors: [");
-    o.doors.forEach(dr => L.push("                " + J(dr) + ","));
+    o.doors.forEach(dr => L.push("                " + J(stripDoor(dr)) + ","));
     L.push("            ],");
     L.push("            counters: [],");
     L.push("            props: [");
@@ -410,9 +425,9 @@ const WANT = [
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const flat = src.replace(/ +/g, ' '), missing = WANT.filter(w => flat.indexOf(w[0]) < 0);
 if (missing.length) { console.log('data.js rows to write by hand:'); missing.forEach(w => console.log('  ' + w[1] + ':  ' + w[0])); if (!DRY) throw new Error('data.js does not point at these rooms yet (see the rows above)'); }
-if (DRY) { ROOMS_OUT.forEach(o => console.log(o.S.id + ' doors ' + JSON.stringify(o.doors.map(d => [d.id, d.wall, d.x, d.z, d.face])) + ' spawn ' + JSON.stringify(o.sp))); process.exit(0); }
+if (DRY) { ROOMS_OUT.forEach(o => console.log(o.S.id + (o.S.kit ? ' (handed to the route kit)' : '') + ' doors ' + JSON.stringify(o.doors.map(d => [d.id, d.wall, d.x, d.z, d.face])) + ' spawn ' + JSON.stringify(o.sp))); process.exit(0); }
 const END = '        /* ESTATE36-END */\n', b0 = src.indexOf('        /* ESTATE36-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const anchor = '        site_prebuilt_skinwalker_fields: {'; const a = src.lastIndexOf('        /*', src.indexOf(anchor)); if (src.indexOf(anchor) < 0 || a < 0) throw new Error('anchor not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
 fs.writeFileSync(file, src);
-console.log('data.js: ' + ROOMS_OUT.map(o => o.S.id).join(', ') + ' written (' + block.length + ' bytes)');
+console.log('data.js: ' + ROOMS_OUT.filter(o => !o.S.kit).map(o => o.S.id).join(', ') + ' written (' + block.length + ' bytes). Then: node bake-route.js R7 (County Lane\'s room takes the Lake in).');
