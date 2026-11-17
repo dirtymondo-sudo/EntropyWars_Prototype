@@ -321,7 +321,7 @@ const NP = makeRoom({ id: POLE, tag: 'pole', files: ['N'], streams: { N: 16 }, p
   /* THE WAYS: the Pass Gate (east, up into the Mountains), the sleigh road south to Camelot's north gate (the link `northpole_camelot`), the bay door of DOOR HQ */
   /* THE POLAR TRAIL (route R5, One World phase 4.1, 2026-11-17): the village's west way. The trail comes in across the tundra from the Mountains' ridge and
      reaches the Pole on its west wall at row -27 (seam ow_v_0_m27); it replaces the Pass Gate (`pass`, east wall), which jumped to the Lodge without a walk */
-  if (vm.runInContext('!!DOOR_HQ.rooms.site_ow_r5_18_35', D)) door('ow_v_0_m27', 'P00-01', 'w', Object.assign({ way: 'open', passage: { len: 3, deep: 1.2, w: 5 }, action: { room: 'site_ow_r5_18_35', at: 'ow_v_0_m27' } }, DOORWORDS('THE POLAR TRAIL', 'THE WEST WAY · ACROSS THE TUNDRA TO THE MOUNTAINS', 'Past the last cottage the snow goes flat and white to the west. A line of cairns marks a trail across it, towards the mountains.')));
+  if (vm.runInContext('!!DOOR_HQ.rooms.site_ow_r5', D)) door('ow_v_0_m27', 'P00-01', 'w', Object.assign({ way: 'open', passage: { len: 3, deep: 1.2, w: 5 }, action: { room: 'site_ow_r5', at: 'ow_v_0_m27' } }, DOORWORDS('THE POLAR TRAIL', 'THE WEST WAY · ACROSS THE TUNDRA TO THE MOUNTAINS', 'Past the last cottage the snow goes flat and white to the west. A line of cairns marks a trail across it, towards the mountains.')));
   const SLEIGH = R.spur('P03-03', 's'), BAY = R.spur('P01-03', 's');
   runDistricts(R, 'apply'); runDistricts(R, 'build');   // THE DISTRICT FILES: everything that stands on the plots
   R.out = { SLEIGH, BAY };
@@ -419,7 +419,7 @@ const STAND = [
               { at: [-15, -14], side: 'E', id: 'ow_v_m14_m14', room: R_OLY, way: 'trail', label: 'MOUNT OLYMPUS · THE SADDLE PATH', sub: 'THE TREE LINE · EAST OVER THE SADDLE', desc: 'A path goes east along the saddle, towards a mountain with something white built on top of it.' },
               { at: [-22, -16], side: 'W', id: 'ow_v_m22_m16', room: 'site_ow_l6', way: 'open', open: 5, label: 'CAMELOT KINGDOM · THE SNOWY PINES', sub: 'THE LODGE YARD · WEST DOWN THE VALLEY', desc: 'Ski tracks give out at the yard’s end. Past them a trail goes west and down, into pines.', ifRoom: 1 },
               /* THE POLAR TRAIL (route R5, One World phase 4.1, 2026-11-17): east off the Ridge, east, across the tundra to the North Pole (it replaces the Pass Gate's `pass` doors) */
-              { at: [-14, -22], side: 'E', k: [5, 6], id: 'ow_v_m13_m22', room: 'site_ow_r5_0_17', way: 'open', open: 5, label: 'THE POLAR TRAIL', sub: 'THE RIDGE · EAST ACROSS THE TUNDRA', desc: 'Past the end of the ridge the snow flattens out into tundra, and a line of cairns goes east towards the Pole.', ifRoom: 1 }] },
+              { at: [-14, -22], side: 'E', k: [5, 6], id: 'ow_v_m13_m22', room: 'site_ow_r5', way: 'open', open: 5, label: 'THE POLAR TRAIL', sub: 'THE RIDGE · EAST ACROSS THE TUNDRA', desc: 'Past the end of the ridge the snow flattens out into tundra, and a line of cairns goes east towards the Pole.', ifRoom: 1 }] },
     { id: R_OLY, part: 'ow_olympus', files: ['O'], label: 'MOUNT OLYMPUS', sub: 'THE MOUNTAINS · THE SADDLE PATH · MOUNT OLYMPUS · THE LONG DESCENT · 19 PLOTS',
       list: L10.concat(v13('mtn'), L11), spawn: ['P10-02', null, null], lines: O_OLYMPUS.l,
       parti: 'The temple mountain on twelve plots above the cloud, with the saddle path coming in from the Snowy Pass and the long descent going on east across the snow to Mount Shasta.',

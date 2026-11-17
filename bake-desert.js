@@ -345,7 +345,7 @@ const STAND = [
         /* THE COAST + THE CAUSEWAY (2026-11-17, One World 4.3, the 4.3 thread's seams, re-written as `seams` rows by the 4.2 thread): R10 the Coast Road
            comes in from the north on Giza's P10-08 (world 15,29), west of the pyramid on the line between 15 and 16; R11 the Delta Causeway from the
            east on P11-11 (world 16,32), on the line between rows 31 and 32. Their side is the route kit's. */
-        { side: 'N', at: [15.5, 29], room: 'site_ow_r10_26_37', open: 11, label: 'THE COAST ROAD', sub: 'NORTH ALONG THE SEA · TO THE BEACH', desc: 'A dirt road runs north off the sand, the sea on its right the whole way.' },
+        { side: 'N', at: [15.5, 29], room: 'site_ow_r10', open: 11, label: 'THE COAST ROAD', sub: 'NORTH ALONG THE SEA · TO THE BEACH', desc: 'A dirt road runs north off the sand, the sea on its right the whole way.' },
         { side: 'E', at: [17, 32], room: 'site_ow_r11', open: 11, label: 'THE DELTA CAUSEWAY', sub: 'EAST OVER THE REED FLATS · TO GÖBEKLI TEPE', desc: 'A dirt road runs east off the sand over the reed flats.' } ] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 }, OPP = { N: 'S', S: 'N', E: 'W', W: 'E' };   // a free door's face = the way its opening faces, INTO its plot (ow-move.js)
