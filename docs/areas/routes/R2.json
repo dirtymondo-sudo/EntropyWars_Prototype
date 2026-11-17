@@ -1,0 +1,61 @@
+{
+  "about": "ROUTE R2, THE CANYON TRAIL (One World phase 4.1, the owner's north routes thread, 2026-11-17): a trail from the River Road's junction (plots 0,-4 and 1,-4, in the River Road's room) north up a dry canyon behind the Hills to the foot of Mount Shasta. ONE room, 22 plots (the list's 2 to 23; 3 x 10). Its south end is the junction's seam ow_h_1_m4. At its top the trail turns west along two more plots (`add`, mondo's yes 2026-11-17: -2,-14 and -3,-14, past plots.json's band) and climbs north into Shasta's Trailhead (-3,-15) on its south side, west of the Woods door (seam ow_h_m3_m14). ONE room, 24 plots. PLACES (ow-places.js, every name an idea of Claude's): the page's ranger station stands at the junction (River Road's room); the rest are the kit's picks by the ground.",
+  "hub": "divine",
+  "room": "site_ow_r2",
+  "part": "ow_r2",
+  "from": 2,
+  "to": 23,
+  "label": "THE CANYON TRAIL",
+  "sub": "THE TRAIL · THE HILLS TO MOUNT SHASTA · 24 PLOTS",
+  "line": [
+    [
+      1.0,
+      -3.9
+    ],
+    [
+      1.0,
+      -8.5
+    ],
+    [
+      0.0,
+      -9.0
+    ],
+    [
+      0.0,
+      -13.5
+    ],
+    [
+      -2.79,
+      -13.5
+    ],
+    [
+      -2.79,
+      -14.1
+    ]
+  ],
+  "ends": {
+    "ow_h_1_m4": {
+      "room": "site_ow_r1",
+      "label": "THE RIVER ROAD",
+      "sub": "THE JUNCTION · DOWN TO THE ROAD",
+      "desc": "The trail comes down out of the canyon onto a highway, by a ranger station."
+    },
+    "ow_h_m3_m14": {
+      "room": "site_prebuilt_shasta_ow_shasta",
+      "label": "MOUNT SHASTA",
+      "sub": "THE TRAILHEAD · UP THE VOLCANO",
+      "desc": "The canyon ends under a big mountain with smoke at the top. A trailhead sign stands where the trail starts up it."
+    }
+  },
+  "places": {},
+  "add": [
+    [
+      -2,
+      -14
+    ],
+    [
+      -3,
+      -14
+    ]
+  ]
+}

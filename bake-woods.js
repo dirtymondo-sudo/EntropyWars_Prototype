@@ -346,9 +346,11 @@ const STAND = [
       parti: 'The south of the Woods in one walk, eighteen plots: the Clearing a cross with the Stair at its north end and the fence line south, and east of it the dry creek, followed down between its banks to the sewer mouth and the storm drain.',
       seams: {
           'P01-05:S': { room: R_CORN, label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', desc: 'A fence, and a gate in it. The corn starts on the other side.', takes: 'estate' },
-          /* ONE WORLD, PHASE 3: the Trail West's way north is the wild link L1 (one plot, in this room); past it lies the Old Road's plot (route R4, BUILD_PLAN phase
-             4.1, not built yet), so L1's north end is an INTERIM door straight to the Redwood Trail's Creek, lower. The 4.1 thread builds R4 and re-points this pair */
-          '-16,0:N': { room: R_RED, id: 'ow_h_m16_0', label: 'THE REDWOOD TRAIL', sub: 'THE TRAIL NORTH · UP UNDER THE OLD TREES', desc: 'The trail climbs north under trees too big to be this close to a road.' },
+          /* ONE WORLD, PHASE 3: the Trail West's way north is the wild link L1 (one plot, in this room); past it lies the Old Road (route R4, BUILD_PLAN phase 4.1:
+             BUILT 2026-11-17, room site_ow_r4). L1 comes out on the road's south verge; the trail crosses it and goes on north to the Redwood Trail */
+          '-16,0:N': { room: 'site_ow_r4', label: 'THE OLD ROAD', sub: 'THE TRAIL NORTH · ACROSS THE OLD ROAD', desc: 'The trail comes out of the trees onto a wide old road, and goes on north across it under much bigger trees.' },
+          /* THE STAIR's north side (One World phase 4.1, 2026-11-17): the Old Road runs past the top of the Stair (the design's fork R4b) */
+          'P02-04:N': { room: 'site_ow_r4', label: 'THE OLD ROAD', sub: 'THE STAIR · UP TO THE OLD ROAD', desc: 'At the top of the Stair the trees open on a wide old road: west to Camelot, east to the Vatican.' },
           /* the wild link L2 starts on Deep woods, west's south side: the Ritual Ground's room */
           'P00-04:S': { room: R_RIT, label: 'THE RITUAL GROUND', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
           /* the wild link L4 comes in on Deep woods, west, from the north: its own route room (bake-route.js L4); the link woods_camelot is on L4's west end now */
@@ -365,8 +367,8 @@ const STAND = [
     { id: R_RED, part: 'ow_redwood', label: 'THE REDWOOD TRAIL', sub: 'THE WOODS · THE REDWOOD TRAIL · 9 PLOTS', letters: ['T'], list: v13('T'), world: true, spawn: 'P02-02',
       parti: 'The Redwood Trail in one walk, nine plots: from the creek under the old trees up past the meadow and the falls to the snow at the top, where the trail goes on to the pass.',
       seams: {
-          /* INTERIM (see the Clearing's L1): the Old Road's plot -16,-1 lies between; the phase 4.1 thread builds R4 and re-points this pair */
-          'P02-02:S': { room: R_CLEAR, id: 'ow_h_m16_0', label: 'THE CLEARING', sub: 'THE TRAIL SOUTH · DOWN TO THE CROSSROADS', desc: 'The trail drops south out of the old trees.' },
+          /* the Old Road's plot -16,-1 lies south (route R4, One World phase 4.1, built 2026-11-17): the trail drops onto the road and on across it to the Clearing */
+          'P02-02:S': { room: 'site_ow_r4', label: 'THE OLD ROAD', sub: 'THE TRAIL SOUTH · DOWN TO THE OLD ROAD', desc: 'The trail drops south out of the old trees onto a wide old road. The Clearing is on the other side.' },
           /* the wild link L3 up to the Snowy Pass (bake-route.js L3) */
           'P00-00:N': { room: 'site_ow_l3', label: 'THE TRAIL UP · THE SNOWY PASS', sub: 'THE SNOWLINE · THE TRAIL UP', desc: 'The trail keeps climbing after the trees give up. There is snow on it from here.' },
       },

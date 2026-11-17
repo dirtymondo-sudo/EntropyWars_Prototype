@@ -11963,6 +11963,39 @@ shared hand pieces `docs/areas/routes/south-kit.js`). Every route is its OWN roo
   (cut there in R9.js). Seen, not fixed: on R8 a group of wandering units stood on the road by the Ranch end and blocked the first walk (walked one
   lane over); the crop circle's pieces read as grey lumps from the ground. Pictures: `docs/plans/one-world/proof/south_*.jpg` (`south_join_*` = the
   room reached). PROBE LESSON: `dev.teleport`'s `face` is a compass heading, 0 = north (-z), 90 = east, 180 = south, 270 = west (NOT a door's face).
+## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
+Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
+`ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).
+| Route | Room | Plots | From → to (seam ids) | Hand-made |
+|---|---|---|---|---|
+| R12 Stone Path (trail) | `site_ow_r12` | 8 | Stonehenge `ow_h_m30_m6` → Camelot castle block `ow_h_m28_m3` | standing stones (`menhirs`) at -29,-6 |
+| R4 Old Road (highway) | `site_ow_r4` | 26 | Camelot east `ow_v_m23_m2` → Vatican west gate `ow_v_m12_m4`; two trail forks: Redwood Trail `ow_h_m16_m1`, the Clearing `ow_h_m16_0` + the Stair `ow_h_m14_0` | wayside inn, standing stones |
+| R1 River Road (highway) | `site_ow_r1` | 14 (+ the R2 junction) | Vatican east gate `ow_v_m6_m4` → the Hills `ow_v_0_m3`; R2 leaves north `ow_h_1_m4` | `R1.js` the Tiber + its bridge; ranger station at the junction |
+| R2 Canyon Trail (trail) | `site_ow_r2` | 24 (list 2-23 + 2 added) | the junction `ow_h_1_m4` → Shasta's Trailhead `ow_h_m3_m14` | — |
+| R3 Pilgrim Way (trail) | `site_ow_r3` | 10 | the Colosseum's north hedge (in the Vatican's room, phase 4.4) `ow_h_m10_m9` → Olympus' Pilgrim Stair `ow_v_m10_m13` | two shrines |
+| R5 Polar Trail (trail) | `site_ow_r5_0_17` + `site_ow_r5_18_35` | 18 + 18 | the Lodge's Ridge `ow_v_m13_m22` → (the two stretches meet on `ow_h_m7_m23`) → the North Pole's west wall `ow_v_0_m27` | frozen lake, mountain hut |
+- **The zone side of each seam** (all `ifRoom`, so a tool rerun before a route exists writes nothing): `bake-camelot.js` OUT (R4, R12; `open` →
+  `passage.w`), `bake-leylines.js` the henge (R12), `bake-woods.js` the Clearing + the Stair + the Redwood Trail (R4), `draw-afterlife.js` ways of
+  kind `seam` + `bake-afterlife.js` (the Vatican's west and east gates + the Colosseum's north hedge; written by the 4.4 thread in PR #1997 with the
+  Vatican's move to 6 x 7; district S.js draws the east gate's bronze leaves OPEN; `link_vatican_olympus` drops itself once R3 stands), `docs/disaster-city/districts/N.js` (the Hills' west way `ridge` IS R1's seam now), `bake-mountains.js` STAND seams (Olympus R3, Shasta R2,
+  the Lodge R5) + the North Pole's new west door. New seam keys in bake-mountains: `k: [..]` = the squares the path crosses on (the route's line),
+  `to` = the door id over there when it is not the seam's own (an interim jump).
+- **Stand-ins replaced**: the Pass Gate `pass` pair (the Lodge ↔ the Pole, a jump) → R5; the Mountains' `saddle` ↔ the Hills' `ridge` → R1 + R2;
+  the Woods ↔ Redwood jump → R4's forks. **Kept**: the city's `shasta` road ↔ Shasta's `hills` (the Hills ↔ Shasta, a road; mondo can say if it should go),
+  Shasta's `woods` door (the Trailhead → the Redwood Trail).
+- **R2 reaches the Trailhead** (mondo's yes, 2026-11-17): its band stopped two plots short (gen.js routes to Shasta's box edge, not its plot); the spec's
+  new `add: [[-2,-14],[-3,-14]]` (bake-route.js) walks it west and up into the Trailhead's south side, seam `ow_h_m3_m14` (squares 2-3, west of
+  the Woods door). 24 plots, box 5 x 10. `gen.js --plots` cannot be rerun any more (it reads today's rooms; the old ones are retired), so plots.json
+  still lists 24 R2 plots ending at -1..0,-14: the 2 added ones live in the spec. Walked both ways.
+- **bake-route.js** gained: `F` in the hooks' CTX; `ROUTE_WHO="x,y;x,y"` prints what stands on those squares; an end's `back: { room, label, sub,
+  desc }` = the words for a split route's own seam seen from the other stretch (R5). **playtest_city.js**: a walk with `"then": true` goes on with the
+  next views in the room it reached, so one run walks a chain of seams.
+- **Walked** (`playtest_city.js` chains, HEAD f252875 + this branch): every one of the 23 joins went through to the right room: R12 both ends both ways;
+  R4 → the Redwood Trail and back, → the Clearing and back, → the Stair, → the Vatican's west gate and back, → Camelot's east gate and back; R1 → the
+  Vatican's east gate, → the Hills (Disaster City); R2 → Shasta's Trailhead and back, → the R1 junction; R3 → Olympus, → the Colosseum and back;
+  R5 → the Ridge and back, its own seam, → the North Pole and back. Pictures: `/mnt/project-files/north-routes/`.
+- **What looks thin**: R5's tundra is wide flat snow with cairns and a few camps (the ground kit's snow places); worth a dressing pass.
+
 - **FOLLOW-UP (same day, mondo's rule "NPCs never block paths")**: (1) THE SPAWN STANDS BESIDE THE ROAD: `bake-route.js` puts a route room's spawn on the
   nearest open square 2+ squares clear of the path (was the path's first end square). With open-seam ends a room has no door stops, so every walker
   arriving or pausing used the spawn: R8's crowd stood in the road at the Ranch end. Rebaked R8 only (walked again: the Ranch end is clear); every other
