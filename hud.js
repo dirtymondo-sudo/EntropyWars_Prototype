@@ -4565,7 +4565,7 @@ function _ewDeckScale() {
   return { s: Math.max(0.55, Math.min(1.25, Math.min(w / 1300, hh / 548) * pref)), c: true };
 }
 /* a menu's name in the breadcrumb / on the plate */
-const _EWD_NAMES = { root: 'COMMAND', spells: 'ABILITIES', items: 'ITEMS', switch: 'SWITCH', tacParty: 'TACTICS', tactics: 'TACTIC',
+const _EWD_NAMES = { root: 'COMMAND', cubeTurn: 'TURN CUBE', spells: 'ABILITIES', items: 'ITEMS', switch: 'SWITCH', tacParty: 'TACTICS', tactics: 'TACTIC',
   entropy: 'ENTROPY', finTargets: 'FINISHER', pings: 'PING', orient: 'ORIENTATION', atkTargets: 'ATTACK', combo: 'COMBO',
   build: 'BUILD', tuneFreq: 'FREQUENCY', aim: 'AIM', itemTargets: 'TARGET', spTargets: 'TARGET' };
 function _ewdUnitById(id) {
@@ -6471,6 +6471,54 @@ function _hrlgSwitchBlades(unit, st) {
   return { title: { icon: '🔄', text: 'Switch', count }, blades };
 }
 
+/* 🧊 THE CUBE TURN MENU (battle.js doCubeTurn, mondo 11-17: "whatever tile they are on they can rotate it left or right or up
+   or down"): four rows, named by the way the squares slide ON SCREEN from where the camera looks (the board's own left / right
+   / up / down turned by the camera's angle). Hovering a row lights the ring that turns (cyan) and the square you land on. */
+function _hrlgCubeScreenArrow(unit, d) {
+  try {
+    const W = window.ThreeRenderer && window.ThreeRenderer.worldToScreen;
+    const a = W && W(unit.x, unit.y, 0), bx = W && W(unit.x + 1, unit.y, 0), by = W && W(unit.x, unit.y + 1, 0);
+    if (a && bx && by) {
+      const vx = d[0] * (bx.x - a.x) + d[1] * (by.x - a.x), vy = d[0] * (bx.y - a.y) + d[1] * (by.y - a.y);
+      return Math.abs(vx) >= Math.abs(vy) ? (vx > 0 ? 'right' : 'left') : (vy > 0 ? 'down' : 'up');
+    }
+  } catch (e) {}
+  return d[0] ? (d[0] > 0 ? 'right' : 'left') : (d[1] > 0 ? 'down' : 'up');
+}
+const _HRLG_CUBE_ARROW = { left: '◀', right: '▶', up: '▲', down: '▼' };
+const _HRLG_CUBE_D = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+function _hrlgCubePreview(unit, op, on) {
+  const R = window.ThreeRenderer;
+  if (!R || !R.setOverlay) return;
+  if (!on) { R.clearOverlay('cubeTurn'); R.clearOverlay('cubeTurnLand'); return; }
+  R.setOverlay('cubeTurn', op.cells, 0x33e0ff, 0.85);
+  try {
+    const mv = window.cubeSliceMove(window.GAME.state._cube.N, op.slice), f = window.cubeFrameNow(), id = window.cubeSlotAt(unit.x, unit.y);
+    const c = id && mv[id] && f.cell[mv[id]];
+    if (c) R.setOverlay('cubeTurnLand', [{ x: c.x, y: c.y }], 0xffd83d, 0.95); else R.clearOverlay('cubeTurnLand');
+  } catch (e) {}
+}
+function _hrlgCubeTurnBlades(unit, st) {
+  const why = typeof window.cubeTurnProblem === 'function' ? window.cubeTurnProblem(unit) : 'Unavailable';
+  const ops = typeof window.cubeHandOptions === 'function' ? window.cubeHandOptions(unit) : [];
+  const order = { up: 0, left: 1, right: 2, down: 3 };
+  const blades = ops.map(op => {
+    const scr = _hrlgCubeScreenArrow(unit, _HRLG_CUBE_D[op.dir]);
+    const ring = (op.dir === 'left' || op.dir === 'right') ? 'row' : 'column';
+    const riders = (st.units || []).filter(u => u && !u.dead && op.cells.some(c => c.x === u.x && c.y === u.y)).length;
+    return {
+      _ord: order[scr], id: 'ct:' + op.dir, icon: _HRLG_CUBE_ARROW[scr],
+      label: 'Turn ' + scr, available: !why, cost: (window.CUBE_HAND && window.CUBE_HAND.ap) || 1,
+      sub: why || ('the ' + ring + ' under you · ' + riders + ' ride' + (riders === 1 ? 's' : '')),
+      hoverIn: () => _hrlgCubePreview(unit, op, true),
+      hoverOut: () => _hrlgCubePreview(unit, op, false),
+      fire: () => { _hrlgCubePreview(unit, op, false); if (!why && typeof window.doCubeTurn === 'function') window.doCubeTurn(unit, op.dir); },
+    };
+  }).sort((a, b) => a._ord - b._ord);
+  if (!blades.length) blades.push({ id: 'none', icon: '🧊', label: 'Nothing to turn here', available: false });
+  return { title: { icon: '🧊', text: 'Turn cube', count: why ? '' : '1 AP' }, blades };
+}
+
 /* ♟ THE TACTICS MENU (battle.js setUnitTactic, mondo 2026-10-23): the root verb TACTICS opens two panels, Persona
    style — the party (every living unit of this side, the acting one first, each with its Tactic) and, beside it, the
    Tactic list for the picked one: MANUAL plus the six jobs the CPU plays (ai.js AI_TACTICS). Picking a Tactic for the
@@ -7461,6 +7509,18 @@ function ActionMenu({ st, hidden }) {
     ? [returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction]
     : [moveAction, ...(climbAction ? [climbAction] : []), returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction];
 
+  // 🧊 TURN THE CUBE (battle.js doCubeTurn, mondo 11-17): on The Cube, turn the row or column under you a quarter turn
+  // (1 AP, once a turn; everything on the ring rides it). Opens the four directions, each previewed on the board.
+  if (typeof window.cubeTurnProblem === 'function' && typeof window.cubeOn === 'function' && window.cubeOn()) {
+    const _ctWhy = window.cubeTurnProblem(unit);
+    actions.splice(Math.max(0, actions.length - 1), 0, {
+      id: 'cubeTurn', label: 'Turn cube', icon: '🧊', cost: (window.CUBE_HAND && window.CUBE_HAND.ap) || 1,
+      available: !_ctWhy && !_actLockKey,
+      selected: menuView === 'cubeTurn',
+      sub: _ctWhy || 'Row or column',
+    });
+  }
+
   // ♟ TACTICS (battle.js setUnitTactic): set this unit or a teammate on a Tactic so the CPU's brain plays its turns.
   // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
   if (typeof setUnitTactic === 'function' && !(typeof window._isDungeonMode === 'function' && window._isDungeonMode())
@@ -7673,6 +7733,7 @@ function ActionMenu({ st, hidden }) {
       case 'astralReturn': if (typeof doAstralReturn === 'function' && typeof getSelectedUnit === 'function') doAstralReturn(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
       case 'tactics': _hrlgTacticPickId = unit.id; if (typeof chooseActionMenu === 'function') chooseActionMenu('tactics'); break;
+      case 'cubeTurn': if (typeof chooseActionMenu === 'function') chooseActionMenu('cubeTurn'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
       case 'teamEscape': if (typeof window.doTeamEscape === 'function' && typeof getSelectedUnit === 'function') window.doTeamEscape(getSelectedUnit()); break;
     }
@@ -7874,6 +7935,9 @@ function ActionMenu({ st, hidden }) {
     panels.push(_mkPanel('items', _hrlgItemBlades(unit, st))); view = 'sub';
   } else if (menuView === 'switch') {
     panels.push(_mkPanel('switch', _hrlgSwitchBlades(unit, st))); view = 'sub';
+  } else if (menuView === 'cubeTurn') {
+    panels.push(_mkPanel('cubeTurn', _hrlgCubeTurnBlades(unit, st), cancelBlade)); view = 'sub';
+    modeLabel = 'TURN THE CUBE — PICK A WAY';
   } else if (menuView === 'tactics') {
     panels.push(_mkPanel('tacParty', _hrlgTacticPartyBlades(unit, st)));
     panels.push(_mkPanel('tactics|' + (_hrlgTacticPickId || unit.id), _hrlgTacticBlades(unit, st))); view = 'sub';

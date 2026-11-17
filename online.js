@@ -985,6 +985,20 @@
             window.doGuard = doGuard;
         }
 
+        /* 🧊 TURN THE CUBE BY HAND (battle.js doCubeTurn, mondo 11-17): engine state (every square of a ring moves, the
+           fighters on it too), so the guest asks the host like Guard; the swing reaches the guest with the state. */
+        const _origDoCubeTurn = (typeof doCubeTurn === 'function') ? doCubeTurn : null;
+        if (_origDoCubeTurn) {
+            doCubeTurn = function(unit, dir) {
+                if (!_isOnline() || state._remoteAction) return _origDoCubeTurn(unit, dir);
+                if (_isHost()) return _hostRunAndSync(_origDoCubeTurn, [unit, dir]);
+                if (!_guestOwnsAction(unit)) return;
+                playSfx('uiConfirm');
+                _emit('game-action', { type: 'engine', fn: 'doCubeTurn', unitId: unit.id, dir: dir });
+            };
+            window.doCubeTurn = doCubeTurn;
+        }
+
         /* 👁 RETURN TO BODY (battle.js doAstralReturn): engine state (a status off, a unit removed, a position), so the
            guest asks the host like Guard. */
         const _origDoAstralReturn = (typeof doAstralReturn === 'function') ? doAstralReturn : null;
@@ -2359,6 +2373,9 @@
                                 break;
                             case 'doAstralReturn':
                                 if (typeof doAstralReturn === 'function') doAstralReturn(engUnit);
+                                break;
+                            case 'doCubeTurn':
+                                if (typeof doCubeTurn === 'function' && /^(left|right|up|down)$/.test(String(data.dir))) doCubeTurn(engUnit, data.dir);
                                 break;
                             case 'cancelSkyThrowGrab':
                                 if (typeof cancelSkyThrowGrab === 'function') cancelSkyThrowGrab(engUnit);
