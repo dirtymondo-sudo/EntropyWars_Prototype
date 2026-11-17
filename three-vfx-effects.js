@@ -68660,7 +68660,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _FX2_BURST[id] = function (p) {
             if (_l1Off() || !p || p.tx == null) return;
             var L = _l1Live[id]; delete _l1Live[id];
-            return fn(p, (L && performance.now() - L.t0 < 12000) ? L.P : null, id);
+            try { return fn(p, (L && performance.now() - L.t0 < 12000) ? L.P : null, id); } catch (e) { console.error('[VFX] own look (L1) failed', id, e && e.message); }
         };
         _FX2_BURST[id]._l1 = true;
         if (wind) _L1_WIND[id] = wind;
@@ -69047,6 +69047,171 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             r2.scale.setScalar(ts * (0.1 + 0.36 * a2)); r2.material.opacity = 0.6 * Math.sin(a2 * Math.PI);
         });
     });
+    /* ── EARTH (part 2). Ten of these already had an earth-pass look (_EA_SIG: the stomps, Fissure, Petrify, Erupt,
+       Cave-In, Rockslide) that the audit could not see, so the generic burst still drew over it: they are named here
+       (the burst stops), every square they hit flashes in their colour, and the three stomps are told apart. ── */
+    _L1.amber = 0xe89a48; _L1.lava = 0xff6a22; _L1.stone = 0xa8a49a; _L1.wood = 0xb8843c; _L1.fur = 0x7a5230;
+    function _l1FlashOnly(color, r, o) {
+        return function (p, P0) {
+            var F = _nrvFrame(p.tx, p.ty), tiles = _l1Area(p, P0, r || 0);
+            return _sigRunOwned(F.g, ((o && o.at) || 0) + 420, _l1Flash(F, tiles, color, o));
+        };
+    }
+    /* loose stones with gravity: add(at, vel, size, t0) · tick(el). They bounce once and lie where they stop. */
+    function _l1Stones(F, mat, grey) {
+        var ts = F.ts, live = [];
+        return {
+            add: function (at, v, s, t0, v2) { var m = _pzMesh(_eaRockGeo(live.length), mat, F.g); m.scale.setScalar(s); m.visible = false; live.push({ m: m, p: at.clone(), v: v.clone(), s: s, t0: t0 || 0, b: 0, sp: rn(-9, 9), rest: false }); },
+            tick: function (el, fadeAt, fadeMs) {
+                for (var i = 0; i < live.length; i++) {
+                    var S = live[i], t = (el - S.t0) / 1000; if (t < 0) { S.m.visible = false; continue; }
+                    S.m.visible = true;
+                    var y = S.p.y + S.v.y * t - 0.5 * ts * 9 * t * t;
+                    if (y < S.s * 0.6 && !S.rest) {
+                        S.p.set(S.p.x + S.v.x * t, S.s * 0.6, S.p.z + S.v.z * t); S.t0 = el; S.b++;
+                        if (S.b >= 2) { S.rest = true; S.v.set(0, 0, 0); } else S.v.set(S.v.x * 0.4, Math.abs(S.v.y - ts * 9 * t) * 0.3, S.v.z * 0.4);
+                        if (S.b === 1) _pzP(F, S.p.x, 4, S.p.z, { sprite: 'dust-puff', tint: grey ? 0xb8b4aa : _EA.dust, ml: rn(380, 600), size0: 10, size1: rn(24, 36), vz: 16, opacity0: 0.5 });
+                        continue;
+                    }
+                    if (S.rest) { S.m.position.copy(S.p); } else { S.m.position.set(S.p.x + S.v.x * t, y, S.p.z + S.v.z * t); S.m.rotation.set(S.sp * t, S.sp * 0.7 * t, 0); }
+                    S.m.scale.setScalar(Math.max(0.001, S.s * (1 - _sigClamp01((el - fadeAt) / fadeMs))));
+                }
+            },
+        };
+    }
+
+    /* BIG KICK — the punt: the sole of a huge foot is stamped on the victim in amber (toes up; a brown one was lost
+       against bigfoot himself) and fades, and clods of turf fly off down the two squares of the kick */
+    _l1Def('raceBigKick', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0);
+        var foot = _afDarkSprite(_L1.amber, _afFootTex(), ts * 0.9); foot.material.depthTest = false; foot.renderOrder = 161;
+        foot.position.set(D.x * ts * 0.08, ts * 0.62, D.z * ts * 0.08); F.g.add(foot);
+        var smat = _eaStoneMat(false), stones = _l1Stones(F, smat, false), flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.amber, { op: 0.5 });
+        for (var i = 0; i < 9; i++) stones.add(new THREE.Vector3(rn(-1, 1) * ts * 0.15, ts * rn(0.1, 0.4), rn(-1, 1) * ts * 0.15),
+            new THREE.Vector3(D.x * ts * rn(1.6, 3.4) + D.sx * ts * rn(-0.7, 0.7), ts * rn(1.2, 2.4), D.z * ts * rn(1.6, 3.4) + D.sz * ts * rn(-0.7, 0.7)), ts * rn(0.035, 0.07), i * 12);
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var k = _sigEaseOutBack(_sigClamp01(el / 110)), o = _pzEnv(el, 0, 40, 420, 1000);
+            foot.scale.set(ts * 0.85 * k, ts * 0.85 * k, 1); foot.material.opacity = 0.75 * o;
+            smat.opacity = el < 1380 ? 1 : 0;
+            stones.tick(el, 950, 400); flash(el);
+        });
+    });
+
+    /* BOULDER HURL — the golem's boulder breaks on the body: it splits into big halves and chunks that fall apart to
+       both sides and lie round the victim for a beat */
+    _l1Def('raceBoulderHurl', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0), mat = _eaStoneMat(false), stones = _l1Stones(F, mat, false);
+        for (var i = 0; i < 7; i++) { var s = (i % 2 ? 1 : -1), big = i < 2;
+            stones.add(new THREE.Vector3(-D.x * ts * 0.2, ts * 0.6, -D.z * ts * 0.2),
+                new THREE.Vector3(D.sx * s * ts * rn(0.8, 1.7) + D.x * ts * rn(-0.2, 0.8), ts * rn(0.8, 1.9), D.sz * s * ts * rn(0.8, 1.7) + D.z * ts * rn(-0.2, 0.8)), ts * (big ? 0.2 : rn(0.07, 0.13)), 0); }
+        var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.amber, { op: 0.5 });
+        return _sigRunOwned(F.g, 1700, function (el) { mat.opacity = el < 1680 ? 1 : 0; stones.tick(el, 1250, 420); flash(el); });
+    });
+
+    /* STONE THROW — the cyclops skips one stone: it glances off the body and bounces on, twice, down the line of the
+       throw, a puff of dust at every bounce */
+    _l1Def('raceStoneThrow', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0), mat = _eaStoneMat(false), m = _pzMesh(_eaRockGeo(1), mat, F.g); m.scale.setScalar(ts * 0.13);
+        var HOPS = [[0, 0.62, 0.55, 0.12, 300], [0.55, 0.12, 1.25, 0.1, 280], [1.25, 0.1, 1.7, 0.08, 220]], puffed = 0, flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.amber, { op: 0.5 });
+        return _sigRunOwned(F.g, 1400, function (el) {
+            mat.opacity = 1 - _sigClamp01((el - 1100) / 280);
+            var t0 = 0, h = HOPS.length - 1, k = 1;
+            for (var i = 0; i < HOPS.length; i++) { if (el < t0 + HOPS[i][4]) { h = i; k = (el - t0) / HOPS[i][4]; break; } t0 += HOPS[i][4]; }
+            var H = HOPS[h], d = ts * (H[0] + (H[2] - H[0]) * k), y = ts * (H[1] + (H[3] - H[1]) * k + Math.sin(k * Math.PI) * (h ? 0.3 : 0.45));
+            m.position.set(D.x * d, y, D.z * d); m.rotation.set(el * 0.02, el * 0.013, 0);
+            if (h > puffed || (h === HOPS.length - 1 && k >= 1 && puffed < HOPS.length)) { puffed = (k >= 1 && h === HOPS.length - 1) ? HOPS.length : h;
+                _pzP(F, D.x * ts * H[0], 4, D.z * ts * H[0], { sprite: 'dust-puff', tint: _EA.dust, ml: 520, size0: 12, size1: 34, vz: 18, opacity0: 0.55 }); }
+            flash(el);
+        });
+    });
+
+    /* STONEFALL — the gargoyle drops its masonry: a run of stones comes straight down out of the air onto the victim
+       one after another and bounces off round it */
+    _l1Def('raceStonefall', function (p) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, mat = _eaStoneMat(false, _EA.grey), stones = _l1Stones(F, mat, true);
+        for (var i = 0; i < 6; i++) { var a = i * 2.4, r = ts * (i ? 0.26 : 0);
+            stones.add(new THREE.Vector3(Math.cos(a) * r, ts * (2.2 + 0.25 * i), Math.sin(a) * r), new THREE.Vector3(Math.cos(a) * ts * 0.5, -ts * 3.2, Math.sin(a) * ts * 0.5), ts * rn(0.09, 0.15), i * 70); }
+        var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.stone, { op: 0.5 });
+        return _sigRunOwned(F.g, 1700, function (el) { mat.opacity = el < 1680 ? 1 : 0; stones.tick(el, 1250, 420); flash(el); });
+    });
+
+    /* CALCIFY — "grey creeps up from their skull as the mind petrifies": a cap of grey stone closes down over the head
+       from the crown to the brow, cracks, and flakes away */
+    _l1Def('raceCalcify', function (p) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, track = _l1Body(F, tx, ty), mat = _eaStoneMat(false, _EA.grey);
+        var geo = new THREE.SphereGeometry(1, 9, 6, 0, Math.PI * 2, 0, Math.PI * 0.62); geo = _eaFacet(geo, 0.5);
+        var cap = _pzMesh(geo, mat, F.g, 0, ts * 0.92, 0), SH = null, broke = false, flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.stone, { op: 0.45 });
+        var stones = _l1Stones(F, mat, true);
+        return _sigRunOwned(F.g, 1700, function (el) {
+            mat.opacity = el < 1680 ? 1 : 0;
+            var k = _sigEaseOutCubic(_sigClamp01(el / 520));
+            cap.visible = el < 950; cap.scale.set(ts * 0.19, ts * (0.04 + 0.2 * k), ts * 0.19); cap.position.y = ts * (1.04 - 0.1 * k) + (el > 800 ? Math.sin(el * 0.09) * 1.5 : 0);
+            if (!broke && el >= 950) { broke = true;
+                for (var i = 0; i < 8; i++) { var a = i / 8 * 6.283; stones.add(new THREE.Vector3(Math.cos(a) * ts * 0.15, ts * 0.95, Math.sin(a) * ts * 0.15), new THREE.Vector3(Math.cos(a) * ts * rn(0.4, 0.9), ts * rn(0.2, 0.8), Math.sin(a) * ts * rn(0.4, 0.9)), ts * rn(0.03, 0.055), el); }
+                _pzP(F, 0, ts * 0.95, 0, { sprite: 'dust-puff', tint: 0xc4c0b8, ml: 600, size0: 16, size1: 44, vz: 20, opacity0: 0.55 }); }
+            stones.tick(el, 1350, 320); flash(el);
+        });
+    });
+
+    /* PETRIFY — the spikes of grey that climb the legs were already its look (_eaPetrify); a statue needs its plinth:
+       a square block of grey stone pushes up under the feet and stays as long as the stone does */
+    _l1Def('racePetrify', function (p) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _eaFrame(tx, ty), ts = F.ts, mat = _eaStoneMat(false, _EA.grey), base = _pzMesh(_eaSlabGeo(), mat, F.g), lip = _pzMesh(_eaSlabGeo(), mat, F.g);
+        var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.stone, { op: 0.5 });
+        return _sigRunOwned(F.g, 2040, function (el) {
+            var k = _sigEaseOutBack(_sigClamp01(el / 260)) * (1 - _sigClamp01((el - 1650) / 360));
+            mat.opacity = el < 2020 ? 1 : 0;
+            base.scale.set(ts * 0.82, Math.max(0.01, ts * 0.07 * k), ts * 0.82); lip.scale.set(ts * 0.66, Math.max(0.01, ts * 0.12 * k), ts * 0.66);
+            flash(el);
+        });
+    });
+
+    /* GROUND SLAM — the floor comes up in plates: a slab of paving tilts up out of each of the eight squares round the
+       caster, hinged on its inner edge, and drops back (the two rolling waves and the crater are _eaStomp's) */
+    _l1Def('groundSlam', function (p, P0) {
+        var tx = p.tx, ty = p.ty, F = _eaFrame(tx, ty), ts = F.ts, tiles = _l1Area(p, P0, 1), mat = _eaStoneMat(false), plates = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var q = tiles[i]; if ((q.x === tx && q.y === ty) || !_pzSeen(q.x, q.y)) continue;
+            var c = _eaGOff(F, q.x, q.y), l = Math.hypot(c.x, c.z) || 1, hinge = new THREE.Group(); hinge.position.set(c.x - c.x / l * ts * 0.36, c.y, c.z - c.z / l * ts * 0.36);
+            hinge.rotation.y = Math.atan2(c.x, c.z); F.g.add(hinge);
+            var m = _pzMesh(_eaSlabGeo(), mat, hinge, 0, 0, ts * 0.36); m.scale.set(ts * 0.74, ts * 0.07, ts * 0.72);
+            plates.push({ h: hinge, d: 30 * plates.length });
+        }
+        var flash = _l1Flash(F, tiles, _L1.amber);
+        return _sigRunOwned(F.g, 1300, function (el) {
+            mat.opacity = _pzEnv(el, 0, 30, 1000, 1280);
+            for (var i = 0; i < plates.length; i++) { var e = el - plates[i].d, up = _sigEaseOutCubic(_sigClamp01(e / 170)) * (1 - _sigEaseInCubic(_sigClamp01((e - 420) / 420))); plates[i].h.rotation.x = -0.6 * up; plates[i].h.children[0].position.y = ts * 0.1 * up; }
+            flash(el);
+        });
+    });
+
+    /* TREMOR STOMP — bigfoot's: his print is pressed into the ground under him, one huge dark footprint with its
+       five toes, and stays a beat after the ring of stones has passed */
+    _l1Def('raceTremorStomp', function (p, P0) {
+        var tx = p.tx, ty = p.ty, F = _eaFrame(tx, ty), ts = F.ts, tiles = _l1Area(p, P0, 1), cd = _nbCamDir(F);
+        var print = _pzMesh(_eaPlaneGeo(), _pzSolid(0x1c120a, _afFootTex(), { depthWrite: false }), F.g, 0, ts * 0.035, 0), rim = _pzMesh(_eaPlaneGeo(), _pzGlow(_L1.amber, _afFootTex()), F.g, 0, ts * 0.03, 0);
+        print.rotation.y = rim.rotation.y = Math.atan2(cd.x, cd.z) + Math.PI; print.renderOrder = 160; rim.renderOrder = 159; print.visible = rim.visible = _pzSeen(tx, ty);
+        var flash = _l1Flash(F, tiles, _L1.amber);
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var k = _sigEaseOutBack(_sigClamp01(el / 130));
+            print.scale.setScalar(ts * 1.5 * k); rim.scale.setScalar(ts * 1.62 * k);
+            print.material.opacity = 0.85 * _pzEnv(el, 0, 60, 1400, 1880); rim.material.opacity = 0.7 * _pzEnv(el, 0, 60, 300, 700);
+            flash(el);
+        });
+    });
+
+    /* the earth-pass looks that only needed naming: the generic burst stops, each hit square flashes in its colour */
+    _l1Def('raceTimberStomp', _l1FlashOnly(_L1.wood, 1));       /* + the splinters and leaves (FX-1) over _eaStomp's ring */
+    _l1Def('nrCaveIn', _l1FlashOnly(_L1.amber, 1));             /* _eaCaveIn: the floor drops into the pit */
+    _l1Def('nrErupt', _l1FlashOnly(_L1.amber, 0));              /* _eaErupt: the mole man bursts up under it */
+    _l1Def('sharedFissure', _l1FlashOnly(_L1.lava, 0));         /* _eaFissure: the ground splits to the lava */
+    _l1Def('raceRockslide', _l1FlashOnly(_L1.amber, 0));        /* _eaCliff: the cliff rears up and comes down */
     /* ═════════ END THE OWN LOOKS, L1 ═════════ */
     /* ══ THE OWN LOOKS, L4 (2026-11-17, thread L4 of the own-looks job, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells
        that dont have a look of their own need one"): blessings and curses — the aura buffs, the heals, the divine hits, the hexes

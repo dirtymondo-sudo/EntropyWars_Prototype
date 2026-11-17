@@ -4168,6 +4168,25 @@ water, ice). The block is "THE OWN LOOKS, L1" at the end of three-vfx-effects.js
 - **Tentacle Lash** (kraken): a dark pool opens beside the victim, the tentacle model comes up, hooks over the body and rides the pull.
 - **Watering Can**: a fine shower falls in a cone on the one square, the soil goes dark and wet, two small rings. (A big tan ring that is
   NOT this look still draws on the cast, before and after this PR; it is not in three-vfx-effects.js' stage burst: for the cleanup thread.)
+
+### part 2 (13 spells: earth, the blows and the ground-breakers). After frames: `docs/plans/vfx-cleanup/img/own-look/L1_part2.jpg`
+Ten of these already had an earth-pass look (`_EA_SIG`) that `_vcOwn` cannot see, so the generic burst still drew over it. They are
+named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in their colour (`_l1FlashOnly`).
+- **Big Kick** (bigfoot): the sole of a huge foot stamped on the victim in amber, clods of turf fly down the two squares of the kick.
+  (The clods show in the frames; the stamp is shorter than the harness' frame gap and is NOT confirmed by a picture.)
+- **Boulder Hurl** (golem): the boulder breaks on the body, two big halves and chunks fall to both sides and lie round it.
+- **Stone Throw** (cyclops): one stone glances off and skips on twice down the line of the throw, dust at every bounce.
+- **Stonefall** (gargoyle): a run of grey stones comes straight down on the victim one after another and bounces off.
+- **Calcify** (gargoyle): a cap of grey stone closes over the head from the crown to the brow, cracks and flakes away.
+- **Petrify**: the climbing spikes (`_eaPetrify`) + a square plinth of grey stone under the feet for as long as the stone holds.
+- **Ground Slam**: a slab of paving tilts up out of each of the eight squares, hinged on its inner edge, and drops back (over `_eaStomp`).
+- **Tremor Stomp** (bigfoot): his huge dark footprint, five toes, pressed into the ground under him (over `_eaStomp`).
+- **Timber Stomp**, **Cave-In**, **Erupt**, **Fissure**, **Rockslide**: named + the flash (wood brown / amber / lava orange); their
+  earth-pass looks are unchanged.
+- `_l1Stones(F, mat)` = loose stones with gravity that bounce once and lie where they stop (the kit of this part).
+- A decal on a square the earth noise wash covers is hidden by the wash: put a hit square's own piece above the ground.
+- The capture harness' frames are about 0.9 s apart round the hit: a piece shorter than that may not be in any frame.
+
 ## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
 Thread L4 of the own-looks job (`docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`, list `own-look/L4.txt`). mondo: "any spells that
