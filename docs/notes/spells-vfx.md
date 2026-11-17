@@ -4720,6 +4720,116 @@ are getters, so the old look comes back live with the switch.
 - Frames (looked at): `docs/plans/vfx-cleanup/img/sweep/B8b_part1_1.jpg`, `_2.jpg` (the hit frame of each of the 28).
   Cannibalize's frame shows no cast (no corpse on the harness board): not seen.
 
+## THE VFX CLEANUP, B4 part 2: THE CLASH + white that is the thing (2026-11-17, three-vfx-effects.js)
+- **THE CLASH** (mondo: "that is worth building then, bc that stuff actually happens"): `_beamKitClashAt(fromX, fromY, dx,
+  dy, range, hitTiles)` returns `{ kind, x, y, col2, edge }` or null: `prism` = a live `state.mirrors` entry on a hit
+  square; `wall` = `hitTiles.length < range` and the next square is inside the board and holds an object
+  (`getObjectAt`) or stands 2+ levels higher (`getHeightAt`); `shield` = the first body on the line with the status
+  `shield` (cyan) or `guarding` (gold). `_fireBeamMapped` passes it to `_beamKit3D` as `o.clash`;
+  `_beamKitClash3D(pt, C, col2, ms, ts, thick)` draws a dark seam, a glow in the other side's colour, two rings turning
+  against each other and sparks of both colours, at that point ON the beam's line, from the front's arrival to 120 ms
+  after the beam. Looks only; deterministic from relayed params + synced state.
+- **`_VC_WHITE_OK`**: spells whose flash IS a camera / flashbulb / pen-light keep it white: the riot context carries
+  `keepWhite` and `_vcCol` leaves near-white alone for them (a sweep thread found Sasquatch Smash's flashbulb recoloured).
+- The kit beam: `thick` capped (1.9 ki, 1.4 others), the hot core nearer its colour, the glow and sheath lower.
+- `_fireBeamMapped` is entered twice for one cast in the capture runner (two log lines per cast); not traced: if that is
+  also true in a real match every beam is drawn twice.
+
+## THE VFX SWEEP, B6b: divine, heal, mana, lightning (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B6b.txt`, 95 spells)
+Brief: docs/plans/vfx-cleanup/SWEEP_BRIEF.md. All 95 spells were read in the code (signature, helpers, recipes); 31 changed.
+Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look). Looks only; nothing on `state`.
+- **The tools** (block "THE VFX SWEEP, B6b", just before THE LIGHTNING PASS):
+  `_b6bFlash(color, ms, peak)` = a signature's full-screen flash, not drawn under the cleanup (plan rule 3);
+  `_b6bCore(colour, old)` = the core colour a spell hands `_sigLightPillar3D` / `_capColumn` (the helper's default core is
+  `0xffffff`): the column's own colour, pale, at 92 %; `_b6bLayers(rows)` = recipe layers recoloured (`vcTint`) or
+  dropped (`vcOff`). `_spawnEffect` skips a `vcOff` layer and `_emitLayer` reads `vcTint` first: any sweep thread may
+  set those two fields on a recipe layer.
+- **What was already right:** `_vcCol` draws a near-white screen flash / ring / speed burst / crescent in the spell's
+  colour, and the untinted `shockwave` / `halo-ring` / holy sprites are cream-gold in the atlas, not white. So the holy
+  rings and lights of the divine and heal spells were left: they are the thing itself.
+- **Part 1, divine (34 on the list, 18 changed):**
+  Chooser of the Slain: the whiteout finisher (screen flash + rush lines + speed burst + two rings) is off; her column
+  is steel blue `0xbcd8ff`, not `0xf2f6ff`. Divine Smite, Wrath of the Watchers, Fallen Grace (the cross's landing),
+  Excalibur Strike (two), Crusade, Merkaba, Revive: the full-screen flash is off. Prism Burst, Judgment, Divine Judgment:
+  the white screen flash is off through the helper's own `flashPeak`. Excalibur Strike: the white speed burst and the
+  white second cut are off (the gold cut + scar, the two circles and the column stay). Star Decree: the whiteout on the
+  star's landing is off (column, ring, crystal shards, light and a shake stay). Column cores in the column's colour:
+  Divine Smite, Wrath (centre + arms), Exorcism, Knights of Round, Excalibur, Judgment, Divine Judgment, Crusade, Revive,
+  Star Decree; Purify's white core cylinder is gold. Crusade: its column was 7 squares tall and half a square wide and
+  lay across the caster as flat white slabs under the battle camera: 3.2 tall, 0.3 wide, a deeper gold. Recipe flashes
+  in the spell's colour: Glitter Bomb (pop + ring pink), Excommunication (gold), Crusade (every square of the cross,
+  gold), Ratio (pink).
+  Needed nothing: Coil, Glint (a white glint is the spell), Glitterburst, Horn Light, Inner Peace, Last Rites,
+  Morning Star, Neuralyzer and Paparazzi Flash (the flash IS the spell), Nothing Unseen, Obsidian Blade, Penance,
+  Photon Scatter, Smite, Supernova, Unicorn Charge.
+- **Part 2, heal + mana (39 on the list, 5 changed):** the pale flash in the middle of Heal, Absolution and Sanctuary is
+  heal green `0x6fe8a0`; Immortal Cycle's white flash is the jelly's cyan; Absolution, Sanctuary and Hallelujah's column
+  cores are gold. Needed nothing: the other 34 (16 have no look of their own and no recipe: the stage's gentle heal
+  beat is all they draw; the rest draw props, leaves, coins, water in their own colours).
+- **Part 3, lightning (22 on the list, 8 changed), THE LEAD:** a white bolt out of the sky on every square was given BY
+  NAME to any spell called emp / thunder (`_LT().strikeFromSky`, two call sites). `_B6B_NO_SKY` stands it down for EMP
+  Burst (`raceEmpPulse`), EMP Grenade, Yellow Thunder and the robot's EMP Burst (`empBurst`): each has its own look.
+  Under them the cream ring / blue blink takes the look's colour (violet for the EMPs, yellow for Yellow Thunder, whose
+  squares still flash, yellow). The robot's EMP Burst: its dome was a white-hot ball at .85 opacity that hid every body
+  and number under it: static blue at .32; its screen flash is off. Classified Weapon: screen flash off. Orbital
+  Strike: column core in the beam's blue. Conduction, Crystal Resonator: the near-white hit flash in the spell's blue /
+  teal. Needed nothing: Bolt from the Blue, Chain Lightning, Static Shock, Tempest, Thunderbolt (the lightning kit: a
+  white-hot channel is lightning itself), Disintegrator, Lag Spike, Noisy Cricket, Shock Prod, Stack Overflow, Static
+  Burst (white TV static is the spell), Taser, Taser Bolt, Topaz Jolt.
+- **For the cleanup thread (shared helpers, not touched here):** `_sigLightPillar3D`'s energy shells still burn to
+  near-white whatever colour they are handed (Divine Smite, Knights of Round, Hallelujah read as white columns; a holy
+  column may be right, but it is the helper's call). `_sigStandSword3D` (Judgment, Divine Judgment) still fires its
+  summon flash, speed burst and second crescent with no option to turn them off (they draw gold through `_vcCol`).
+  `_sigCauldron3D` (Herbal Remedy) keeps a faint green screen flash for the same reason.
+- Proof: `docs/plans/vfx-cleanup/img/sweep/b6b_*.jpg`.
+- Rows of the proof sheets (three frames a spell, top to bottom): `b6b_divine_1` Chooser of the Slain, Divine Smite, Wrath
+  of the Watchers, Exorcism, Knights of Round, Excalibur Strike; `b6b_divine_2` Crusade (before the last fix), Merkaba,
+  Prism Burst, Fallen Grace, Judgment, Divine Judgment; `b6b_divine_3` Star Decree, Revive, Purify, Glitter Bomb,
+  Excommunication, Ratio; `b6b_heal_emp` Crusade (mid fix), Absolution, Sanctuary, Hallelujah, Heal, Immortal Cycle, the
+  robot's EMP Burst with the old white dome; `b6b_lightning` EMP Burst (engineer, old dome), EMP Grenade, Yellow Thunder,
+  Classified Weapon, Orbital Strike, Conduction, Crystal Resonator; `b6b_crusade_emp_after` Crusade and both EMP Bursts
+  after the dome fix. The engineer's EMP Burst draws the same dome as the robot's (both changed with the one edit).
+- NOT seen on a frame: Chooser of the Slain's hit, Star Decree's landing and Revive's hit (the runner cast them by the
+  direct path and its frames missed the beat); Crusade's arms after their last dimming (gain .55, opacity .32: the one
+  frame caught was after the cross had faded); the guest's seat; anything with `EW_NO_VFX_CLEANUP` on.
+
+## THE VFX SWEEP, B8a, part 1: blood + earth (2026-11-17, three-vfx-effects.js block "THE VFX SWEEP, B8a"; list `batches/B8a.txt`, 83 spells)
+Thread B8a of the sweeps (docs/plans/vfx-cleanup/SWEEP_BRIEF.md). All 83 already had a look of their own (`_vcOwn`), so the
+stage burst was already the grade + shake for every one; what was left was white inside each spell's OWN recipe / signature.
+All 83 were traced in the code and shot once; 26 changed, 57 needed nothing. Everything is behind `_vcOn()`
+(`window.EW_NO_VFX_CLEANUP = true` = the old look) except Cave-In's quiet `aoe` row (like L1's Watering Can). Looks only.
+- **The bites and the claws** (Bite, Blood Frenzy, Blood in the Water, Death Roll, Feeding Frenzy, Jurassic Jaw, Love Bite,
+  Maul, Claw Sweep): their callers pass `vcQuiet: true` to `_sigJawsBite3D` / `_sigClawCombo3D`: no rune circle under a bite
+  (a bite is not rune magic), no screen flash, no speed burst. The jaws, the ring in the spell's colour, the blood flecks,
+  the rakes and the shake stay. Rush lines only with `vcLines` (the two ultimates: Jurassic Jaw, Blood Frenzy's last bite).
+  B8b added `plain` to the same two helpers the same hour (the same thing, not switchable): both are kept, `_vcQ` reads either.
+- **White floor rings in the spell's colour** (`_b8Tint` sets the layer's `vcTint`): Quake + Spike the Ball
+  (`raceQuake_impact_center`, tan), Fee Fi Fo Fum, Tremor Stomp + Timber Stomp, Boulder Hurl, Big Kick (it was pale cream),
+  Walls of Camelot (its floor ring, the shields' steel blue). **Brutal Slam** wore the Quake's white ring: it has its own
+  copy now (`b8BrutalSlam_center`, arterial red; `_b8Centre`).
+- **Near-white hit flashes in the spell's colour** (the flash is kept, recoloured): Curb Stomp, Open Vein, Interrogation
+  (blows one and three), Diamond Lance (pure white -> the crystal's blue), Indomitable Will (its ring + three flashes were
+  cream-gold: THE BLOOD BUFFS had missed them; its column's core was near-white pink, now `0xff7a88`).
+- **Colossal Crush**: the dome's white-hot core takes a warm sand colour. **Stone Drop**: its pale ring is stone dust.
+- **Cave-In**: it got battle.js' generic area detonation (a violet ring + orb round the cave-in; `playAoeRing`, see L1 "the
+  three fixes"). It carries an empty `aoe` recipe (`b8Quiet_aoe`) so the cave-in is its look. Seen gone in the frames.
+- **Needed nothing** (57): Arterial Spray, Bat Swarm, Devil's Due, Devour Mankind, Draining Embrace, Eaten Alive,
+  Exsanguinate, Feast, Ghoul's Supper, Giant's Hand, Gnash, Gore Charge, Grave Grip, Hemorrhage, Last Dance, Life Drain,
+  Life Sap, Lifetap, Rotting Claw, Soul Harvest (its pale wisps are the souls), Symbiotic Drain, Tendril Snare, Wear Your
+  Skin, Adrenaline Rush, Blood Ritual, Let It Out, Underdog Spirit, Bishop, Calcify, Clay Crush, Clay Grip, Earthen Grasp,
+  Erupt, Fissure, Ground Slam, King, Knight, Pawn, Petrify, Piledriver (the white is the ring's canvas and ropes), Pocket
+  Sand, Pyramid Protocol, Queen, Quicksand, Rampart (both), Rockslide, Rook, Sandstone Tomb, Sasquatch Smash, Shardstorm,
+  Spike Trap, Stone Throw, Stonefall, Tail Sweep, Underfoot, Baphomet's Rite. The blood sigil under the Blood Magic casts
+  stays (it is rune magic).
+- **For the cleanup thread:** Sasquatch Smash's flashbulb (`_sigScreenFlash('#ffffff')`, "the photo") is a camera flash that
+  IS the spell, but `_vcCol` turns any near-white screen flash into the spell's colour, so it pops tan. Not changed here
+  (the helper is held): it wants a way to say "this white is the thing itself".
+- **Not seen in a frame** (shorter than the harness' frame gap): Diamond Lance's flash, Walls of Camelot's ring, Curb
+  Stomp's and Open Vein's flash colour, Colossal Crush's dome, Jurassic Jaw's snap, the Sasquatch flashbulb. Seen: the
+  bites + Claw Sweep, the tan rings (Quake, Fee Fi Fo Fum), Brutal Slam, Stone Drop, Indomitable Will, Cave-In.
+- No line spell and no single-spell lead of the brief is on this list (they are B8b's and B6-B10's).
+- Frames: docs/plans/vfx-cleanup/img/sweep/B8a_part1.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
+
 
 ## THE VFX SWEEP, B8b, part 2 (2026-11-17, three-vfx-effects.js): the last two + the list is done (82 of 82)
 The 54 spells the code trace left alone were shot too, to catch what a trace misses. It caught one thing:
