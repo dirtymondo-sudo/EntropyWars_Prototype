@@ -229,7 +229,9 @@ The details:
 is 5,000). So a lost story fight takes a little from what you save for units. With an account, the server owns that
 wallet, so step 4 must take the gold on the server side too. Online play is not touched.
 
-## 7. Questions (my pick first)
+## 7. Questions (my pick first). ANSWERED 2026-11-17: `PLAN.md` section 0, round 3
+
+In short: 1 the 8-body limit is raised to 20 (who wears a mark: the pick stands); 2 Territorial inside the hotel; 3 no group; 4 a flat chance per game day; 5 yes; 6 yes; 7 the first way (8 gold x level). Still waiting: his OK on the lines (section 4) and on the marks' pictures (section 5).
 
 1. **Who wears a mark?** Pick: every NPC you can strike within 25 m, so you always know who has seen you (at most 8
    bodies are drawn, so at most 8 marks). Other way: only the ones that can start or join a fight (in Bayside: Police

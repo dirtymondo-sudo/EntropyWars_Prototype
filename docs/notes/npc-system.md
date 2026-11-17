@@ -83,6 +83,7 @@ the game anymore ... we need to fix that first. Go through all races in the game
   grid walks on (`hqCityGrid` blocked every plateau; the skate park's pad `dc:skate:pad` stands at the boardwalk's level).
 - **The Ghost never leaves the hotel:** its two blocks meet now (`[5, 22, S]`, `[22, 5, P]`); the hour between them was spent on the pavement.
   Checked headless: 0 of 1,200 samples of its day outside the building.
+- **THE BODY LIMIT (mondo 11-17, the same day):** `drawn` 8 -> 20, `drawnLow` 4 -> 20 (the same on every machine), `bodies` 14 -> 26. No frame rate could be read in the cloud browser: F3 on the walk on his machine is the check; it is one number to turn down. The most residents ever within 70 m is 12 today, so the street fills only with more residents.
 - **Every race and where it lives:** `docs/plans/npc-encounters/RACE-HOMES.md`, for mondo to mark. 22 races are placed nowhere (20 of them
   the races of 11-16 / 11-17). Nobody else is placed before his marks.
 
