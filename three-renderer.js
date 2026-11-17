@@ -20077,6 +20077,7 @@ const ThreeRenderer = (function () {
                 return;
             }
             var _inSaddle = _updateUnitMount(entry, uid, now);   // THE HORSES
+            if (!_inSaddle && entry._ew_rideSit) _inSaddle = true;   // THE RIDE-ALONG: piggyback on the Delivery Boy's back (the sit clip, no straddle, no lean)
             // ── Motion lean + landing bounce (rigged AND static models) ──
             // Runners bank forward like a sprinter: a touch while walking,
             // harder during a dash/charge, and a lunge-lean during strike
@@ -20166,7 +20167,7 @@ const ThreeRenderer = (function () {
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             if (entry._ew_digSave) _digUndo(entry);       // THE SHOVEL DIG: the same for the left arm's reach
             entry.mixer.update(dt);
-            if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle) _mountStraddle(entry);   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
+            if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle && !entry._ew_rideSit) _mountStraddle(entry);   // a ride-along rider keeps the chair sit: thighs forward round his waist   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
             if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
@@ -29476,6 +29477,8 @@ const ThreeRenderer = (function () {
             if (_knY != null) yaw = _knY;
             var _dgY = _digRecs.size ? _digYaw(uid) : null;   // THE SHOVEL DIG: the body to the dug tile while it digs (looks only)
             if (_dgY != null && _knY == null) yaw = _dgY;
+            var _rdY = _rideRecs.size ? _rideYaw(uid) : null;   // THE RIDE-ALONG: on his back it faces where he faces
+            if (_rdY != null) yaw = _rdY;
 
             // Rate-limited turn toward the target yaw (shortest arc). A brand
             // new entry (or a rebuilt one, e.g. an attack-sprite swap) snaps so
@@ -29487,7 +29490,7 @@ const ThreeRenderer = (function () {
                 var dYaw = yaw - curYaw;
                 if (dYaw > Math.PI) dYaw -= Math.PI * 2;
                 else if (dYaw < -Math.PI) dYaw += Math.PI * 2;
-                var maxStep = UNIT_TURN_RATE * dtSec * ((_knY != null) ? 4 : 1);   // the blow spins the body round fast
+                var maxStep = UNIT_TURN_RATE * dtSec * ((_knY != null) ? 4 : (_rdY != null ? 12 : 1));   // the blow spins the body round fast; a rider swings round onto his back at once
                 if (Math.abs(dYaw) <= maxStep) {
                     curYaw = yaw;
                 } else {
@@ -31387,6 +31390,107 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ══ THE RIDE-ALONG (2026-11-17, the Delivery Boy polish; mondo's rule: "an ally rides on his back and hops off beside him
+       after he walks") ═══════════════════════════════════════════════════════════════════════════════════════════════════
+       Looks only: nothing here touches a rule. An ally Riding (status `riding`, unit._rideWithId = the Delivery Boy; battle.js
+       Hop On / Thirty Minutes or Less) stands on its own square until he sets off; while he travels (a walk, a dash) it is
+       drawn on his back: it hops up from its square (260 ms, an arc), sits astride his waist (the chair sit turned astride,
+       THE STRADDLE), faces where he faces and rides the whole path. At the end battle.js _deliveryDrop clears the status and
+       starts the hop off (a displacement from his square, delayed by a Doorstep Dash's slide): while that tween waits out its
+       delay the rider stays up on his back, then the tween owns the body. Both screens read state (the status + the field
+       sync) and the tweens they already replay, so the guest needs no relay. Fog: an enemy carrier's rider is drawn only
+       where the viewer sees HIM. Kill-switch: window.EW_NO_RIDE_ALONG. */
+    var _rideRecs = new Map();   // riderId -> { cid, on, t0, k, from }
+    var _RIDE_UP_MS = 260;
+    function _rideTravels(cid) {
+        return _walkTweens.has(cid) || _displaceTweens.has(cid) || _clipTravelTweens.has(cid);
+    }
+    function _rideYaw(uid) {
+        var rec = _rideRecs.get(uid);
+        if (!rec || !rec.on) return null;
+        var ce = _getUnitEntry(rec.cid);
+        return (ce && ce.group && ce.group._ew_facingYaw != null && isFinite(ce.group._ew_facingYaw)) ? ce.group._ew_facingYaw : null;
+    }
+    function _rideRelease(uid, rec, keepPos) {
+        var re = _getUnitEntry(uid), ru = _findUnit(uid);
+        if (re) {
+            re._ew_rideSit = false;
+            if (re.group) {
+                for (var i = 0; i < re.group.children.length; i++) if (re.group.children[i]._ew_facingIndicator) re.group.children[i].visible = true;
+                if (!keepPos && ru && !ru.dead) {
+                    var rest = _unitRestPos(ru);
+                    if (rest) { re.group.position.set(rest.x, rest.y, rest.z); re.group._ew_spriteTopY = rest.y + ((CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO) + 4; }
+                }
+                if (ru && state.fogOfWar && _fogVisibleSet && typeof getViewerPlayer === 'function' && ru.player !== getViewerPlayer()) re.group.visible = _fogVisibleSet.has(ru.x + ',' + ru.y);
+            }
+        }
+        _rideRecs.delete(uid);
+    }
+    function _updateRideAlong() {
+        if (typeof window !== 'undefined' && window.EW_NO_RIDE_ALONG) { if (_rideRecs.size) _rideRecs.forEach(function (r, id) { _rideRelease(id, r); }); return; }
+        var us = state.units || [];
+        for (var i = 0; i < us.length; i++) {
+            var a = us[i];
+            if (a && !a.dead && a._rideWithId != null && a.status && a.status.riding > 0 && !_rideRecs.has(a.id))
+                _rideRecs.set(a.id, { cid: a._rideWithId, on: false, t0: 0, lastTrav: 0, from: null });
+        }
+        if (!_rideRecs.size) return;
+        var now = _animNow(), ts = CONFIG.tileSize || BASE_TILE;
+        var vp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
+        _rideRecs.forEach(function (rec, uid) {
+            var ru = _findUnit(uid), cu = _findUnit(rec.cid), re = _getUnitEntry(uid), ce = _getUnitEntry(rec.cid);
+            var riding = !!(ru && !ru.dead && ru.status && ru.status.riding > 0 && ru._rideWithId === rec.cid);
+            var ctrav = !!(cu && !cu.dead && _rideTravels(rec.cid));
+            var dtw = _displaceTweens.get(uid);
+            var waiting = !!(dtw && now < dtw.startTime + (dtw.delayMs || 0));   // the hop off, still waiting out the dash's slide
+            if (ctrav) rec.lastTrav = now;
+            /* he has stopped but the engine's walk end (finishMoveAt → the drop) lands a beat later: hold the seat till then */
+            var settling = rec.on && riding && rec.lastTrav && now - rec.lastTrav < 700;
+            var want = !!(ru && !ru.dead && cu && !cu.dead && re && re.group && ce && ce.group && ((riding && (ctrav || settling)) || (waiting && (rec.on || ctrav))));
+            /* where it stood before he set off: the engine moves its square the instant the walk starts, so the hop up starts
+               from the last frame it was still at rest beside him */
+            if (!rec.on && riding && re && re.group && !ctrav) rec.home = re.group.position.clone();
+            if (!want) {
+                if (rec.on) _rideRelease(uid, rec, !!dtw);
+                else if (!riding) _rideRecs.delete(uid);
+                return;
+            }
+            if (!rec.on) {
+                rec.on = true; rec.t0 = now;
+                rec.from = rec.home || re.group.position.clone();
+                for (var j = 0; j < re.group.children.length; j++) if (re.group.children[j]._ew_facingIndicator) re.group.children[j].visible = false;   // no floor ring at his waist
+            }
+            re._ew_rideSit = true;
+            var cP = ce.group.position;
+            var yaw = (ce.group._ew_facingYaw != null && isFinite(ce.group._ew_facingYaw)) ? ce.group._ew_facingYaw : 0;
+            var cH = ts * UNIT_SPRITE_SIZE_RATIO * ((ce.modelDef && ce.modelDef.heightRatio) || 1);
+            var rH = ts * UNIT_SPRITE_SIZE_RATIO * ((re.modelDef && re.modelDef.heightRatio) || 1);
+            var back = cH * 0.16;
+            var tx = cP.x - Math.sin(yaw) * back, tz = cP.z - Math.cos(yaw) * back;
+            var ty = cP.y + cH * 0.5 - rH * 0.22 + Math.abs(Math.sin(now * 0.018)) * ts * 0.012;   // a little bounce at his pace
+            var k = Math.min(1, (now - rec.t0) / _RIDE_UP_MS), e = 1 - Math.pow(1 - k, 3);
+            var F = rec.from || cP;
+            re.group.position.set(F.x + (tx - F.x) * e, F.y + (ty - F.y) * e + Math.sin(k * Math.PI) * ts * 0.35, F.z + (tz - F.z) * e);
+            re.group._ew_spriteTopY = re.group.position.y + rH + 4;
+            /* fog: an enemy carrier's rider shows only where the viewer sees him */
+            if (vp && _fogVisibleSet && ru.player !== vp) {
+                var cx = Math.round((cP.x - ts / 2) / ts), cz = Math.round((cP.z - ts / 2) / ts);
+                re.group.visible = _fogVisibleSet.has(cx + ',' + cz) && ce.group.visible !== false;
+            }
+        });
+    }
+
+    /* probe: where each rider and its carrier stand in 3D right now */
+    if (typeof window !== 'undefined') window._rideAlongProbe = function () {
+        var out = [];
+        _rideRecs.forEach(function (rec, uid) {
+            var re = _getUnitEntry(uid), ce = _getUnitEntry(rec.cid);
+            var bx = null; try { if (ce && ce.model) { var B = new THREE.Box3().setFromObject(ce.model); bx = [Math.round(B.min.y), Math.round(B.max.y)]; } } catch (e) {}
+            out.push({ id: uid, cid: rec.cid, on: rec.on, r: re && re.group && re.group.position.toArray().map(Math.round), c: ce && ce.group && ce.group.position.toArray().map(Math.round), trav: _rideTravels(rec.cid),
+                ts: CONFIG.tileSize || BASE_TILE, R: UNIT_SPRITE_SIZE_RATIO, chr: ce && ce.modelDef && ce.modelDef.heightRatio, rhr: re && re.modelDef && re.modelDef.heightRatio, box: bx });
+        });
+        return out;
+    };
     function _updateCarryHolds() {
         if (_carryHolds.size === 0) return;
         var now = _animNow();
@@ -34684,6 +34788,7 @@ const ThreeRenderer = (function () {
         _updateCarryHolds();
         _updateThrowTweens();
         _updateClipTravelTweens();
+        _updateRideAlong();   // THE RIDE-ALONG: after every tween wrote its body, the rider sits on the carrier's back
         _updateDeathTweens();
         _updateKeyFx();
         _updateForceFieldFx();

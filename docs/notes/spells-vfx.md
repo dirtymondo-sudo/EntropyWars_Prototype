@@ -3879,6 +3879,22 @@ block), the `pzSig` hook, helpers `_bk*`. Visuals only.
 - Proof: shots in /mnt/project-files/banker-pass/ (a close camera with performance.now frozen at set delays, + a real VS CPU
   cast of each spell). Probe scripts in the same folder.
 
+## THE DELIVERY BOY (2026-11-17, three-vfx-effects.js "THE DELIVERY BOY", after the Skater's Board Slam)
+The Delivery family had only the generic looks. Now, on the P-Z hook (`pzSig`), side rings from the viewer's seat (yours
+`#1deeff`, theirs `#fd1674`, `_dbSide`), the props in their own colours (kraft box, his red print, white steam). Kill switch
+`window.EW_NO_DELIVERY_VFX`.
+- Hot and Fresh (`bolt`, pzOwn, timed on flyMs = the heal's projectile): a pizza box (canvas: kraft lid, red slice logo,
+  HOT & FRESH) tumbles to the ally, lands at its feet toward him, the lid flips up, steam curls out, side ring; the `aura`
+  on arrival = green heal motes.
+- Hop On (`aura` on the ally; `fireGeometry('nrHopOn')` per ally from Thirty Minutes or Less): two horn-beep rings at his
+  head, a side ring under each, a chevron over the ally pointing at him.
+- The drop (`fireGeometry('nrHopOn:drop', x, y, 0, { fromX, fromY, owner, delay })`): dust, side ring, one bell ring.
+- Doorstep Dash (`impact`): ding-dong (two bell rings at shoulder height), wood splinters, side-coloured speed streaks down
+  his lane, shock ring.
+- Thirty Minutes or Less (`aura` on him): a 30 MIN timer face over his head, its red hand sweeps one turn in 400 ms, then
+  the side ring.
+- The ride itself is three-renderer.js THE RIDE-ALONG (champions-combat.md "THE DELIVERY BOY POLISH").
+
 ## THE TECH CEO (2026-11-16, the new races' polish thread cmsg_01XWpxyTn3nnw98znVzKdFjsFPgcTzJantoqmq4McVhjZG)
 Acquisition, Disrupt and Layoffs had no look, only a floating word. three-vfx-effects.js "THE TECH CEO" (`_PZ_SIGS.ceoAcquire / ceoDisrupt /
 ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura' a cast with `sx/sy` (the CEO) and `tiles`.
