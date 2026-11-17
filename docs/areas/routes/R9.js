@@ -27,6 +27,10 @@ module.exports = { dress(ctx) {
             A.sign('MOTEL', 0, 3.7, fd / 2 + 0.3, 3.6, 0.9, '#ff6a5a', '#20140c', 'rye'); } });
     billboard(ctx, 18.2, 60.5, 'S', 'MOTEL · VACANCY', { span: 5, bh: 2.0 });
     at(ctx, 'car_suv', 17.6, 70.5, { face: 0 }); at(ctx, 'park_bench', 18.1, 66.4, { face: 90 }); at(ctx, 'trash_bin', 18.1, 75.2, { face: 0 });
+    /* THE WAYS IN (seen in the browser 11-17: the guard rail ran unbroken past the pumps and the motel, so no car could pull in): the shoulder's
+       rail is taken away where it faces the gas station (west) and the motel (east) */
+    const cut = (x, z0, z1) => { for (let i = ctx.F.length - 1; i >= 0; i--) { const f = ctx.F[i]; if (f.k === 'rail' && f.x0 === f.x1 && Math.abs(f.x0 - x) < 0.5 && Math.max(f.z0, f.z1) > z0 && Math.min(f.z0, f.z1) < z1) ctx.F.splice(i, 1); } };
+    cut(-16.1, ctx.gz(34), ctx.gz(59)); cut(16.1, ctx.gz(61), ctx.gz(78));
     /* THE CITY LIMIT (was the Highway's Exit 1): the green sign, the signpost, a barrel, a skull in the sand */
     ctx.clear(16, 3, 22, 11);
     at(ctx, 'roads_g_sign_003', 17.5, 5.5, { face: 0 }); at(ctx, 'signpost', 19.5, 9.5, { face: 200 }); at(ctx, 'traffic_barrel', 17.2, 10.6, { face: 10 }); at(ctx, 'skull', 21.2, 7.3, { face: 140 });
