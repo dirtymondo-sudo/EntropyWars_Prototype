@@ -4187,6 +4187,23 @@ named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in
 - A decal on a square the earth noise wash covers is hidden by the wash: put a hit square's own piece above the ground.
 - The capture harness' frames are about 0.9 s apart round the hit: a piece shorter than that may not be in any frame.
 
+### part 3 (12 spells: the chess pieces, the walls, the sand, the ball). After frames: `docs/plans/vfx-cleanup/img/own-look/L1_part3.jpg`
+- **Pawn, Knight, Bishop, Rook, Queen, King** (chess piece; one function, `_l1Chess(piece)`): the MOVE is drawn on the board, the squares
+  the piece crossed light one after another as chess squares (ivory / walnut: a file for the rook, a diagonal for the bishop, the L
+  for the knight, one step for king and pawn), and the capture is written beside the taken body the way a score sheet writes it
+  (R×, B×, N×, Q×, K×, a bare × for the pawn). The caster already wears the piece's model, so no second piece is drawn (tried: two
+  white pieces read as a bug). Bishop and Knight could not be cast by the harness (no target on a diagonal / an L on its board): same code, no picture.
+- **Rampart** (`sharedRampart`): squared stone blocks knock down onto the top of the rising wall, two merlons a square, mason's dust.
+  `_l1Courses` (the Snow Fort's bricks, shared). NOT confirmed by a picture: the harness casts the class spell `rampart` under the same name.
+- **Pyramid Protocol** (annunaki): a square of gold light climbs each of the three blocks as it rises and holds on the cap. NOT confirmed
+  by a picture (tile-cast, caught late twice).
+- **Spike the Ball** (quarterback): the football model is driven nose-first into the middle square, kicks back up end over end, turf
+  jumps off every square; the 3×3 flashes pigskin brown.
+- **Spike Trap**: hidden, so nothing marks where it lies: the look is the laying of it at the CASTER's feet (stone tips pushed into
+  the dirt, the dirt patted flat). The spring keeps the traps pack's snap.
+- **Quicksand**, **Sandstone Tomb**: named + the sand-gold flash; `_eaQuicksand` / `_eaTomb` unchanged.
+- The harness picks a spell by its NAME in the HUD: two spells with one name (Rampart) = it may cast the other one.
+
 ## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
 Thread L4 of the own-looks job (`docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`, list `own-look/L4.txt`). mondo: "any spells that
@@ -4420,6 +4437,80 @@ New pieces: `_l5Shard` (a shard of mirror), `_l5Glint` (the light off glass).
 - The capture harness starts its frames about 3 s late on a tile-click cast (Prism Mirror, Rangefinder, Far Sight): shoot those with `--opts` and a `pre` that repeats `VFX3D.fire('burst', id, {tx, ty, sx, sy})`.
 - Frames: docs/plans/vfx-cleanup/img/own-look/L5_part2.jpg.
 
+## THE OWN LOOKS, L5, part 3: the mind (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5")
+New pieces: `_l5Eye` (a flat dark eye with an iris of light; the lid opens, the iris looks about), `_l5Crescent` (a moon), `_l5WobbleRing`.
+- **Boo** (`_l5Boo3D`): a wailing sheet-ghost bursts out of them (pale because it is a ghost, kept see-through) with the word.
+- **Cut the Cord** (`_l5CutTheCord3D`): the silver cord over the head is snipped: two blades close, a glint, the top whips away, the stump drops.
+- **Dosed** (`_l5Dosed3D`): three acid-coloured floor rings melt and turn against each other under the feet, a dizzy spiral over the head, bubbles.
+- **Dream Siphon** (`_l5DreamSiphon3D`): a ribbon of sleep from the head to the dreameater, little moons riding it.
+- **Eternal Slumber** (`_l5EternalSlumber3D`): a crescent moon sinks over the area; all 25 squares flash night-blue and a Z lifts off each.
+- **Far Sight** (`_l5FarSight3D`): a violet eye opens over the square, looks about, shuts; a thread of sight runs back to the seer.
+- **Nightmare Pulse** (`_l5NightmarePulse3D`): a ring of fangs comes up round the nine squares and shuts; the squares flash and the dream is drunk back in beads.
+- **Probe** (`_l5Probe3D`): a needle of light on the head and a scan ring that reads the body down and back up, ticking.
+- **Hypnotic Pulse** (`_l5HypnoticPulse3D`): a great spiral turns over the area and a small one over every square; the squares flash.
+- **Death Gaze** (`_l5DeathGaze3D`): a red slit eye opens over the victim, its ray pins them to a black disc, and it shuts.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part3.jpg.
+## THE OWN LOOKS, L6, part 1: sound + wind (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L6")
+mondo 11-17: "any spells that dont have a look of their own need one". Brief: docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md,
+list `own-look/L6.txt`. Each spell is one function in `_FX2_BURST` (the staging hit, relayed), so `_vcOwn` is true and
+its generic stage burst stops. Looks only.
+- **The kit (`_l6*`, this block only):** `_l6Area` (the squares an area spell hits), `_l6Flash` (EVERY hit square flashes
+  in the spell's colour, staggered by a `delay(tile)`), `_l6Stroke` (a gust stroke flat on the ground), `_l6Go` (one
+  `_sigRun` a spell), `_l6From` (the caster's tile, null when fogged). Colours: `_L6`.
+- **The wind spells bring their own air:** the eight wind ids get `_WD_BURST[id] = false`, so the generic gust + swirl
+  round the target do not draw over them (the wind cast gather and the noise wash stay).
+- Cataclysm Stomp: a star of cracks races out from the foot over the 5x5, lit violet from below; each ring of squares
+  flashes, throws rock and dust as the shock passes it.
+- Meow: pink paw prints pad out over every square in reach, toes pointing away, each pressing in with a bounce. No flash (no damage).
+- Hail Mary: a leather-gold streak drops on the target out of the sky, the ball's spin unwinds up in a double spiral, turf jumps.
+- Long Bomb: the play as drawn up: a dashed chalk route from his arm over the cover to the mark, wiping from his end, and a chalk X on the square.
+- Heroic Leap: the jump hangs behind him as one high arc of air with the cape's red in it; a flat star of air where he lands, inside the square.
+- Sky Tackle: twin vapour trails along his run in; three thin vapour rings break open at the contact, facing down the carry line.
+- Roundhouse Kick: one flat blade of air whips once round him at kick height, the heel a hot point at its head; each of the 8 squares flashes as the heel passes.
+- Simoom: sheets of ochre sand drive across the 3x3 from the caster's side; the squares flash sand-orange as the front crosses; grit hangs after.
+- Splitting Arrow: two arrows (the game's arrow model) fork away past the body on threads of fletching-green air; splinters fly.
+- Wing Attack (`raceWingGust`): a pale wing sweeps round each side of her from behind to before (`_pzWingTex`), feathers shaken loose; each square is struck outward by its gust as the wing passes.
+- Online: every layer rides the relayed `burst` beat; nothing on `state`; drawn only where the viewer sees the square.
+- Checked on screen: each spell fired on the audit board and through real casts (frames in `docs/plans/vfx-cleanup/img/own-look/L6_*.jpg`).
+
+
+## THE OWN LOOKS, L3, part 2: the kinetic runs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L3")
+Twelve of the kinetic spells. A dash draws its LANE on battle.js's `<id>:dash` beat (`fireGeometry`, relayed; `_l3Lane`:
+the frame on the launch square, +Z down the run, drawn only when the viewer sees both ends) and is named in `_GO_SIG` so
+`_vcOwn` is true.
+- **Learned on the frames:** a dash's staging `burst` beat fires about a second AFTER the run has landed, and a charge
+  lands ON its target's square (the body is shoved aside). So a dash's hit piece is fired by its own `:dash` beat when
+  the run arrives, on the landing square (`_l3DashHit`), and the late burst beat is told it is done (`_l3Late`, a
+  2.6 s `_pzOnce`); a dash that makes no run still gets the piece from the burst beat. A flat mark on the ground needs
+  y 4 + a polygon offset (`_l3Ink`, `_l3Mark`) or the lane's tile glow covers it.
+- Blitz: the play in chalk (an O where he lined up, the dashed route, the arrowhead), an X chalked on the man he hit, turf
+  flies. Body Check: a six-sided plate of riveted gunmetal slams in from his side, the rivets shear off, two heel skids to
+  where the body stops. Dark Feather: a black cut hangs from where he stood to the body, small black feathers burst, one
+  long feather falls slowly. Drive-By: brass casings down the lane and the ground stitched two strikes a square as the car
+  passes. Giant Stride: one footprint as long as a square at mid-stride and one where he lands, every square on or beside
+  the path flashes dust-gold. Horn Toss: the horns come up under the body in one swing, a column of dust. Ice Slide: a
+  strip of ice runs out under him, snow off both edges, standing shards where he stops. Ram Charge: two black tyre lines
+  in smoke, headlights flare at the bumper, amber and red lens bits. Rampage: a rust-red wake opens square after square,
+  the hit comes apart in scrap under two crossed blows. Ride-By: horseshoe prints in pairs, clods, one big shoe stamped
+  hot under the last body. Shadow Infiltration: dark shapes of him left standing down the lane, a violet needle, the
+  shadow at his feet closes. Sprint: a rabbit's tracks, dust and grass, nothing more.
+- Not mine, seen on the frames: every dash also draws the shared pale crescent of battle.js `_vfxDash`; Sprint wears the
+  wind element's swirl.
+- Frames: docs/plans/vfx-cleanup/img/own-look/l3_part2_*.jpg, l3_raceIceSlide.jpg, l3_raceRideBy.jpg.
+## THE OWN LOOKS, L5, part 4: the dark and the strange (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5"; the list is done)
+New pieces: `_l5Star` (a burst of rays that faces the camera), `_l5Bracket`.
+- **Chest Pound** (`_l5ChestPound3D`): three beats; each throws thump waves out from his chest and every square in reach shakes khaki.
+- **Eyewitness** (`_l5Eyewitness3D`): viewfinder corners close on the area, the flashbulb goes off (pale because it is a bulb), afterimages hang at eye height.
+- **Sucker Punch** (`_l5SuckerPunch3D`): a spiked bruise-and-mustard burst on the blind side of the head, stars circling it. No fist sprite.
+- **Car Toss** (`_l5CarToss3D`): the car itself already flies (the city's model); where it lands the windscreen goes and two skid marks burn on past the body.
+- **Clone Jutsu** (`_l5CloneInk3D`): the eight clones are its look already (`nrCloneJutsu:hit`, the ninja pass); the cast adds an ink ring with a blot where each steps out, and the generic burst stops.
+- **Consuming Dark** (`_l5ConsumingDark3D`): the nine squares go black from the rim inward, a thin violet edge on each.
+- **Infernal Decree** (`_l5InfernalDecree3D`): the court's seal (a horned crown in a ring) burns in the air over the area and a column of dark fire stands on every square. The seal hangs in the air: nothing is drawn on the hit floor.
+- **Out of the Dark** (`_l5OutOfTheDark3D`): the last photo: a frame snaps round them, the bulb, three claws go through it and the frame falls in two.
+- **Sleep Paralysis** (`_l5SleepParalysis3D`): a hunched shadow with two red eyes settles over them and presses down.
+- **Soul Suck** (`_l5SoulSuck3D`): a kiss mark of rouge and the pale soul drawn out along a ribbon to her.
+- Seen in the frames, not mine to change (the cleanup thread's shared layers): Jackpot and Shattered Mirror (arcane, heavy, area) still get a glass orb + a wide ring about 0.45 s after the hit although `_vcOwn` is true for them.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part4.jpg.
 
 ## THE VFX CLEANUP, B3 part 2: THE SIGHT LASERS (2026-11-17, three-renderer.js + three-vfx-effects.js)
 mondo 11-17: "those are lasers too"; own / friendly cyan-blue, enemy red-pink, from the viewer's seat.
