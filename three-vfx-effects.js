@@ -72595,6 +72595,347 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceConsumingDark: _l5(_l5ConsumingDark3D), raceInfernalDecree: _l5(_l5InfernalDecree3D), raceOutOfTheDark: _l5(_l5OutOfTheDark3D), raceSleepParalysis: _l5(_l5SleepParalysis3D), raceSoulSuck: _l5(_l5SoulSuck3D),
     });
     /* ═════════ END THE OWN LOOKS, L5 ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE OWN LOOKS, L6: fire, wind and sound (2026-11-17, mondo: "any spells that dont have a look of their own need
+       one"; docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md, list own-look/L6.txt). Each spell here had only the shared stage
+       burst; now each draws what it is, on the staging hit (_FX2_BURST, so _vcOwn is true and the generic burst stops).
+       The element passes' cast + mark stay (the wind spells here that bring their own air skip the generic gust,
+       _WD_BURST false). Every area spell flashes each square it hits in its own colour (_l6Flash). Looks only; all of it
+       rides the relayed burst beat, drawn only where the viewer sees the square (_pzSeen). One _sigRun a spell.
+       ═════════════════════════════════════════════════════════════════════ */
+    var _L6 = { stomp: 0xb07cff, stompHot: 0xff9ad8, paw: 0xff8fc2, leather: 0xc98a4a, turf: 0x6f9a4a, chalk: 0xf2e6b8, cape: 0xd8343a,
+        vapor: 0xbfe8ff, kick: 0x7fe0c0, heel: 0xffc45a, sand: 0xe0a04a, sandHot: 0xff8a2a, fletch: 0x8fd8a0, wing: 0xfff0d6, gust: 0x9be7c4 };
+    var _l6QuadG = null;
+    function _l6Quad() { if (!_l6QuadG) { _l6QuadG = new THREE.PlaneGeometry(1, 1); _l6QuadG.rotateX(-Math.PI / 2); _l6QuadG._ew_shared = true; } return _l6QuadG; }
+    /* a square's own flash: soft inside, a brighter rim, so the hit square reads as a square */
+    function _l6SqTex() {
+        return _pzTex('l6-sq', 64, 64, function (g, w, h) {
+            var gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w * 0.72); gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0.12)');
+            g.fillStyle = gr; g.fillRect(3, 3, w - 6, h - 6);
+            g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 3; g.strokeRect(4.5, 4.5, w - 9, h - 9);
+        });
+    }
+    /* the squares an area spell hits: its footprint round (cx, cy), on the board, without `skip` (a self-centred caster) */
+    function _l6Area(id, cx, cy, skipSelf) {
+        var d = _spellDefFor(id) || {}, R = d.aoeRadius || 1, offs = _buildTileOffsets(d.shape || 'square', R), out = [];
+        for (var i = 0; i < offs.length; i++) {
+            var x = cx + offs[i].dx, y = cy + offs[i].dy, ax = Math.abs(offs[i].dx), ay = Math.abs(offs[i].dy);
+            if (!_snOnBoard(x, y) || (skipSelf && !ax && !ay)) continue;
+            /* a barrage reaches by combat distance (battle.js: the 8 round the caster are 1, then Manhattan) */
+            if (d.kind === 'barrage' && Math.max(ax, ay) > 1 && ax + ay > R) continue;
+            out.push({ x: x, y: y, dx: offs[i].dx, dy: offs[i].dy, ring: Math.max(Math.abs(offs[i].dx), Math.abs(offs[i].dy)) });
+        }
+        return out;
+    }
+    /* EVERY HIT SQUARE FLASHES: one flat flash a square in the spell's colour; `delay(tile)` staggers them; `solid` = drawn
+       in its colour over the element's wash (not added to it). Returns tick(el) */
+    function _l6Flash(F, tiles, color, o) {
+        o = o || {};
+        var ts = F.ts, ms = o.ms || 330, qs = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var t = tiles[i]; if (!_pzSeen(t.x, t.y)) continue;
+            var off = _nvOff(F, t.x, t.y), m = _pzMesh(_l6Quad(), o.solid ? _pzSolid(color, _l6SqTex(), { side: THREE.DoubleSide, depthWrite: false }) : _pzGlow(color, _l6SqTex()), F.g, off.x, off.y + ts * 0.045, off.z);
+            m.scale.set(ts * 0.94, 1, ts * 0.94); m.renderOrder = o.solid ? 164 : 156; if (o.solid) m.material.depthTest = false;   /* solid: the colour holds over a pale wash */
+            qs.push({ m: m, d: o.delay ? o.delay(t) : 0 });
+        }
+        return function (el) {
+            for (var i = 0; i < qs.length; i++) {
+                var u = (el - qs[i].d) / ms;
+                qs[i].m.material.opacity = (u <= 0 || u >= 1) ? 0 : (o.op || 0.85) * Math.min(1, u * 9) * (1 - u);
+            }
+        };
+    }
+    /* a gust stroke lying on the ground (u runs tail to head along its length): place() aims it */
+    function _l6Stroke(F, color, glow) {
+        var m = _pzMesh(_l6Quad(), _pzSolid(color, _wdStreakTex(false), { side: THREE.DoubleSide, depthWrite: false }), F.g);
+        var g = _pzMesh(_l6Quad(), _pzGlow(glow != null ? glow : color, _wdStreakTex(false)), m); g.renderOrder = 159;
+        return { m: m, place: function (x, y, z, ux, uz, len, wid, op) {
+            m.position.set(x + ux * len * 0.5, y, z + uz * len * 0.5); m.rotation.y = Math.atan2(-uz, ux); m.scale.set(len, 1, wid);
+            m.material.opacity = op; g.material.opacity = op * 0.6; m.visible = op > 0.004;
+        } };
+    }
+    function _l6Go(F, ms, parts) { return _sigRunOwned(F.g, ms, function (el) { for (var i = 0; i < parts.length; i++) parts[i](el); }); }
+    function _l6Self(p) { return p.sx != null ? { x: p.sx, y: p.sy } : (p.tx != null ? { x: p.tx, y: p.ty } : null); }
+    /* the caster's tile a hit may be drawn from: null when there is none, it is the hit square, or the fog hides it */
+    function _l6From(p) { return (p.sx == null || (p.sx === p.tx && p.sy === p.ty) || !_pzSeen(p.sx, p.sy)) ? null : { x: p.sx, y: p.sy }; }
+
+    /* CATACLYSM STOMP (kaiju): the ground breaks. A star of cracks races out from the foot across the 5x5, lit from
+       below, and each ring of squares jumps as the shock passes it: its flash, its thrown rock, its dust. */
+    _FX2_BURST.raceCataclysmStomp = function (p) {
+        var c = _l6Self(p); if (!c || !_pzSeen(c.x, c.y)) return;
+        var F = _nrvFrame(c.x, c.y), ts = F.ts, tiles = _l6Area('raceCataclysmStomp', c.x, c.y, true), R = 2.5, STEP = 120;
+        var geo = _fpDecalGeo(ts * R * 2), glow = _pzMesh(geo, _pzGlow(_L6.stomp, _pzCrackTex('#ffffff')), F.g, 0, ts * 0.035, 0);
+        var ink = _pzMesh(geo, _pzSolid(0x120a1c, _pzCrackTex('#ffffff'), { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, ts * 0.03, 0);
+        ink.renderOrder = 155; glow.renderOrder = 156; ink.rotation.y = glow.rotation.y = 0.4;
+        var flash = _l6Flash(F, tiles, _L6.stompHot, { delay: function (t) { return t.ring * STEP; }, ms: 360 }), thrown = 0;
+        return _l6Go(F, 1500, [flash, function (el) {
+            var grow = 0.16 + 0.84 * _sigEaseOutCubic(_sigClamp01(el / (STEP * 2.4)));
+            ink.scale.setScalar(grow); glow.scale.setScalar(grow);
+            ink.material.opacity = 0.85 * (1 - _sigClamp01((el - 900) / 600));
+            glow.material.opacity = 0.95 * (1 - _sigClamp01((el - 380) / 800));
+            while (thrown < 2 && el >= (thrown + 1) * STEP) {
+                thrown++;
+                for (var i = 0; i < tiles.length; i++) {
+                    var t = tiles[i]; if (t.ring !== thrown || !_pzSeen(t.x, t.y)) continue;
+                    var o = _nvOff(F, t.x, t.y), L = Math.hypot(t.dx, t.dy) || 1;
+                    for (var k = 0; k < 3; k++) _pzP(F, o.x + rn(-0.3, 0.3) * ts, o.y + ts * 0.05, o.z + rn(-0.3, 0.3) * ts, { sprite: 'rock-debris', ml: rn(420, 700), size0: rn(7, 13), size1: 4,
+                        vx: t.dx / L * rn(30, 90), vy: t.dy / L * rn(30, 90), vz: rn(170, 300), gravity: 620, drag: 0.4, opacity0: 1 });
+                    _pzP(F, o.x, o.y + ts * 0.08, o.z, { sprite: 'dust-puff', tint: 0x8a7a9a, ml: rn(480, 700), size0: 18, size1: 46, vx: t.dx / L * 40, vy: t.dy / L * 40, vz: 26, drag: 1.2, opacity0: 0.5 });
+                }
+            }
+        }]);
+    };
+
+    /* MEOW (catgirl): no hit, a charm. Pink paw prints pad out from her over every square in reach, toes pointing
+       away, each one pressing in with a little bounce. */
+    function _l6PawTex() {
+        return _pzTex('l6-paw', 96, 96, function (g, w, h) {
+            g.fillStyle = '#ffffff';
+            g.beginPath(); g.moveTo(48, 44); g.bezierCurveTo(72, 44, 80, 66, 68, 78); g.bezierCurveTo(58, 86, 38, 86, 28, 78); g.bezierCurveTo(16, 66, 24, 44, 48, 44); g.fill();
+            var toes = [[20, 40, 9], [38, 22, 10], [60, 22, 10], [78, 40, 9]];
+            for (var i = 0; i < toes.length; i++) { g.beginPath(); g.ellipse(toes[i][0], toes[i][1], toes[i][2], toes[i][2] * 1.25, (i - 1.5) * 0.22, 0, Math.PI * 2); g.fill(); }
+        });
+    }
+    _FX2_BURST.raceMeow = function (p) {
+        var c = _l6Self(p); if (!c || !_pzSeen(c.x, c.y)) return;
+        var F = _nrvFrame(c.x, c.y), ts = F.ts, tiles = _l6Area('raceMeow', c.x, c.y, true), paws = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var t = tiles[i]; if (!_pzSeen(t.x, t.y)) continue;
+            var o = _nvOff(F, t.x, t.y), side = (i % 2 ? 1 : -1) * ts * 0.1, a = Math.atan2(o.x, o.z);
+            var ink = _pzMesh(_l6Quad(), _pzSolid(_L6.paw, _l6PawTex(), { side: THREE.DoubleSide, depthWrite: false }), F.g, o.x + Math.cos(a) * side, o.y + ts * 0.04, o.z - Math.sin(a) * side);
+            var gl = _pzMesh(_l6Quad(), _pzGlow(_L6.paw, _l6PawTex()), ink); gl.renderOrder = 159;
+            ink.rotation.y = a + Math.PI; ink.renderOrder = 157;
+            paws.push({ m: ink, g: gl, d: 60 + (Math.hypot(t.dx, t.dy) - 1) * 210 + (i % 2) * 70 });
+        }
+        return _l6Go(F, 1500, [function (el) {
+            for (var i = 0; i < paws.length; i++) {
+                var P = paws[i], u = (el - P.d) / 1000;
+                if (u <= 0 || u >= 1) { P.m.visible = false; continue; }
+                var press = _sigClamp01(u * 8), s = ts * 0.5 * (1.45 - 0.45 * _sigEaseOutCubic(press)), fade = 1 - _sigClamp01((u - 0.55) / 0.45);
+                P.m.visible = true; P.m.scale.set(s, 1, s); P.m.material.opacity = 0.9 * press * fade; P.g.material.opacity = 0.75 * fade * (1 - _sigClamp01((u - 0.1) / 0.3));
+            }
+        }]);
+    };
+
+    /* the wind spells below bring their own air: the generic gust + swirl stay off them */
+    ['raceHailMary', 'raceLongBomb', 'raceHeroicLeap', 'raceSkyTackle', 'raceRoundhouseKick', 'raceSimoom', 'raceSplittingArrow', 'raceWingGust'].forEach(function (id) { _WD_BURST[id] = false; });
+
+    /* HAIL MARY (quarterback): the pass comes down out of the sky. A leather-gold streak drops on the target, the
+       ball's spin unwinds up off the hit in a tight double spiral, and the turf jumps. */
+    _FX2_BURST.raceHailMary = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, H = ts * 3.4;
+        var cg = new THREE.CylinderGeometry(ts * 0.2, ts * 0.02, H, 12, 1, true); cg.translate(0, H / 2, 0);
+        var fall = _pzMesh(cg, _pzGlow(_L6.leather), F.g, 0, ts * 0.5, 0), rib = [];
+        for (var i = 0; i < 2; i++) rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.2, ts * 0.5, ts * 0.15, ts * 2.3, 2.4, i * Math.PI, 40),
+            { w0: ts * 0.07, w1: ts * 0.13, segs: 56, roll: 0.3, twist: 1.2, mat: _wdAirMat(false, 0xffe2b0), glowColor: _L6.leather }));
+        _pzP(F, 0, ts * 0.5, 0, { sprite: 'flash', tint: _L6.leather, ml: 150, size0: ts * 0.6, size1: ts * 0.18, opacity0: 0.8 });
+        for (var k = 0; k < 9; k++) { var a = k / 9 * 6.283 + rn(-0.2, 0.2); _pzP(F, Math.cos(a) * ts * 0.2, ts * 0.06, Math.sin(a) * ts * 0.2, { sprite: k % 3 ? 'mud-chunk' : 'leaf', tint: k % 3 ? 0x6a4a30 : _L6.turf,
+            ml: rn(420, 700), size0: rn(6, 11), size1: 3, vx: Math.cos(a) * rn(40, 110), vy: Math.sin(a) * rn(40, 110), vz: rn(160, 300), gravity: 560, drag: 0.5, opacity0: 1 }); }
+        return _l6Go(F, 900, [function (el) {
+            var d = _sigClamp01(el / 170);
+            fall.scale.set(1 - 0.5 * d, 1 - 0.85 * d, 1 - 0.5 * d); fall.material.opacity = 0.75 * Math.min(1, el / 30) * (1 - d);
+            for (var i = 0; i < 2; i++) { _wdRun(rib[i], el, 50 + i * 40, 560, 0.5); rib[i].op(0.95); }
+        }]);
+    };
+
+    /* LONG BOMB (quarterback): the play as it was drawn up. The chalk route hangs in the air from his arm over the
+       cover to the mark, wiping away from his end, and a chalk X is struck on the square where the ball comes down. */
+    _FX2_BURST.raceLongBomb = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _l6From(p), dashes = [], N = 13;
+        if (from) {
+            var ln = _nrvLine(F, from, tx, ty), A = new THREE.Vector3(ln.dx, ln.dy + ts * 0.9, ln.dz), B = new THREE.Vector3(0, ts * 0.5, 0);
+            var mid = A.clone().add(B).multiplyScalar(0.5); mid.y += Math.max(ts * 1.3, ln.L * 0.42);
+            var curve = new THREE.QuadraticBezierCurve3(A, mid, B), P = new THREE.Vector3(), T = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+            for (var i = 0; i < N; i++) {
+                var u = (i + 0.5) / N; curve.getPoint(u, P); curve.getTangent(u, T);
+                var m = _pzMesh(new THREE.CylinderGeometry(ts * 0.022, ts * 0.022, ln.L / N * 0.52, 5, 1), _pzGlow(_L6.chalk), F.g, P.x, P.y, P.z);
+                m.quaternion.setFromUnitVectors(up, T.normalize()); dashes.push({ m: m, u: u });
+            }
+        }
+        var bars = [];
+        for (var b = 0; b < 2; b++) { var x = _pzMesh(_l6Quad(), _pzGlow(_L6.chalk), F.g, 0, ts * 0.05, 0); x.rotation.y = b ? Math.PI / 4 : -Math.PI / 4; x.renderOrder = 163; x.material.depthTest = false; bars.push(x); }
+        for (var k = 0; k < 8; k++) { var a = k / 8 * 6.283; _pzP(F, Math.cos(a) * ts * 0.15, ts * 0.08, Math.sin(a) * ts * 0.15, { sprite: 'dust-puff', tint: 0xc8b890, ml: rn(380, 560), size0: 12, size1: 30,
+            vx: Math.cos(a) * 95, vy: Math.sin(a) * 95, vz: 18, drag: 3.2, opacity0: 0.55 }); }
+        return _l6Go(F, 1100, [function (el) {
+            for (var i = 0; i < dashes.length; i++) dashes[i].m.material.opacity = 0.85 * Math.min(1, el / 60) * (1 - _sigClamp01((el - 180 - dashes[i].u * 520) / 200));
+            for (var b = 0; b < 2; b++) {
+                var s = _sigEaseOutCubic(_sigClamp01((el - b * 90) / 130));
+                bars[b].scale.set(ts * 0.86 * s, 1, ts * 0.11); bars[b].material.opacity = (s > 0 ? 1 : 0) * (1 - _sigClamp01((el - 650) / 420));
+            }
+        }]);
+    };
+
+    /* HEROIC LEAP (superhero): the landing. His jump hangs behind him as one high arc of air with the cape's red in
+       it, and where he comes down the air bursts flat along the ground in a star, inside the square. */
+    _FX2_BURST.raceHeroicLeap = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _l6From(p), arc = null, spokes = [], N = 8;
+        if (from) {
+            var ln = _nrvLine(F, from, tx, ty), A = new THREE.Vector3(ln.dx, ln.dy + ts * 0.5, ln.dz), B = new THREE.Vector3(ln.ux * ts * 0.3, ts * 0.45, ln.uz * ts * 0.3);
+            var mid = A.clone().add(B).multiplyScalar(0.5); mid.y += ts * 1.5;
+            arc = _wdRibbon(F.g, new THREE.QuadraticBezierCurve3(A, mid, B).getPoints(20), { w0: ts * 0.06, w1: ts * 0.2, segs: 36, roll: 0, mat: _wdAirMat(false, 0xffe8e4), glowColor: _L6.cape });
+        }
+        for (var i = 0; i < N; i++) spokes.push(_l6Stroke(F, 0xe8f6ff, _L6.vapor));
+        _pzP(F, 0, ts * 0.1, 0, { sprite: 'flash', tint: _L6.cape, ml: 140, size0: ts * 0.5, size1: ts * 0.15, opacity0: 0.7 });
+        return _l6Go(F, 760, [function (el) {
+            if (arc) { _wdRun(arc, el + 260, 0, 520, 0.7); arc.op(0.95 * (1 - _sigClamp01((el - 120) / 300))); }
+            var o = _sigEaseOutCubic(_sigClamp01(el / 240)), k = 1 - _sigClamp01((el - 160) / 380);
+            for (var i = 0; i < N; i++) { var a = i / N * 6.283 + 0.39; spokes[i].place(Math.cos(a) * ts * (0.12 + 0.2 * o), ts * 0.05, Math.sin(a) * ts * (0.12 + 0.2 * o), Math.cos(a), Math.sin(a), ts * 0.3, ts * (i % 2 ? 0.1 : 0.15), 0.95 * k); }
+        }]);
+    };
+
+    /* SKY TACKLE (superhero): he hits at flying speed. Twin vapour trails lie along his run in, and at the contact the
+       air breaks in a cone: three thin rings open one after another, facing down the line he carries the body along. */
+    _FX2_BURST.raceSkyTackle = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _l6From(p), ux = 1, uz = 0, trails = [], rings = [];
+        if (from) {
+            var ln = _nrvLine(F, from, tx, ty); ux = -ln.ux; uz = -ln.uz;
+            for (var s = -1; s <= 1; s += 2) {
+                var ox = -uz * s * ts * 0.17, oz = ux * s * ts * 0.17;
+                trails.push(_wdRibbon(F.g, [new THREE.Vector3(ln.dx + ox, ln.dy + ts * 0.72, ln.dz + oz), new THREE.Vector3(ln.dx * 0.5 + ox, ln.dy * 0.5 + ts * 0.74, ln.dz * 0.5 + oz), new THREE.Vector3(ox, ts * 0.72, oz)],
+                    { w0: ts * 0.03, w1: ts * 0.09, segs: 24, roll: Math.PI / 2, mat: _wdAirMat(false, 0xeef8ff), glowColor: _L6.vapor }));
+            }
+        }
+        var dir = new THREE.Vector3(ux, 0, uz), zAx = new THREE.Vector3(0, 0, 1);
+        for (var i = 0; i < 3; i++) { var r = _pzMesh(new THREE.TorusGeometry(1, 0.05, 6, 32), _pzGlow(_L6.vapor), F.g); r.quaternion.setFromUnitVectors(zAx, dir); rings.push(r); }
+        return _l6Go(F, 820, [function (el) {
+            for (var t = 0; t < trails.length; t++) { trails[t].set(_sigClamp01((el - 120) / 520), 1); trails[t].op(0.9 * (1 - _sigClamp01((el - 250) / 450))); }
+            for (var i = 0; i < 3; i++) {
+                var u = (el - i * 70) / 420, R = rings[i];
+                if (u <= 0 || u >= 1) { R.visible = false; continue; }
+                var e = _sigEaseOutCubic(u), rad = ts * (0.16 + (0.3 + 0.13 * i) * e), adv = ts * (0.1 + (0.75 - 0.22 * i) * e);
+                R.visible = true; R.scale.setScalar(rad); R.position.set(ux * adv, ts * 0.72, uz * adv); R.material.opacity = 0.8 * Math.min(1, u * 8) * (1 - u);
+            }
+        }]);
+    };
+
+    /* ROUNDHOUSE KICK (martial arts): the whole turn of the leg. One flat blade of air whips once round him at kick
+       height, the heel a hot point at its head, and each of the eight squares flashes as the heel passes over it. */
+    _FX2_BURST.raceRoundhouseKick = function (p) {
+        var c = _l6Self(p); if (!c || !_pzSeen(c.x, c.y)) return;
+        var F = _nrvFrame(c.x, c.y), ts = F.ts, tiles = _l6Area('raceRoundhouseKick', c.x, c.y, true), SPIN = 430, R = ts * 1.02, pts = [], A0 = -Math.PI * 0.75;
+        for (var i = 0; i <= 40; i++) { var a = A0 + i / 40 * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * R, ts * (0.6 + 0.07 * Math.sin(a - A0)), Math.sin(a) * R)); }
+        var blade = _wdRibbon(F.g, pts, { w0: ts * 0.14, w1: ts * 0.4, segs: 60, roll: Math.PI / 2, mat: _wdAirMat(false, 0xf0fff8), glowColor: _L6.kick });
+        var heel = _pzSpr(_L6.heel, ts * 0.46, F.g);
+        /* a square's place in the turn: the angle from the kick's start, as a share of the full circle */
+        function when(t) { var a = Math.atan2(_nvOff(F, t.x, t.y).z, _nvOff(F, t.x, t.y).x) - A0; a = ((a % 6.2832) + 6.2832) % 6.2832; return a / 6.2832 * SPIN; }
+        var flash = _l6Flash(F, tiles, _L6.kick, { delay: when, ms: 300 });
+        return _l6Go(F, 900, [flash, function (el) {
+            var h = _sigClamp01(el / SPIN);
+            blade.set(Math.max(0, h - 0.7) + _sigClamp01((el - SPIN) / 320) * 0.7, h); blade.op(1 - _sigClamp01((el - SPIN - 80) / 300));
+            var a = A0 + h * Math.PI * 2; heel.position.set(Math.cos(a) * R, ts * (0.6 + 0.07 * Math.sin(a - A0)), Math.sin(a) * R);
+            heel.material.opacity = el < SPIN + 40 ? 0.9 : 0;
+        }]);
+    };
+
+    /* SIMOOM: the hot wind that kills. Sheets of ochre sand drive straight across the 3x3 from the caster's side, low
+       and fast, the squares flashing sand-orange as the front crosses them, and the grit hangs a moment after it. */
+    function _l6SandTex() {
+        return _pzTex('l6-sand', 256, 64, function (g, w, h) {
+            /* u runs tail to head: a long thin tail, a thick head; v across: soft edges; grit punched through it */
+            var gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, 'rgba(224,160,74,0)'); gr.addColorStop(0.55, 'rgba(224,160,74,0.7)'); gr.addColorStop(0.92, 'rgba(255,196,110,0.95)'); gr.addColorStop(1, 'rgba(255,196,110,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.globalCompositeOperation = 'destination-in';
+            var gv = g.createLinearGradient(0, 0, 0, h); gv.addColorStop(0, 'rgba(0,0,0,0)'); gv.addColorStop(0.3, 'rgba(0,0,0,1)'); gv.addColorStop(0.7, 'rgba(0,0,0,1)'); gv.addColorStop(1, 'rgba(0,0,0,0)');
+            g.fillStyle = gv; g.fillRect(0, 0, w, h);
+            g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,0.55)';
+            for (var i = 0; i < 260; i++) g.fillRect((i * 97) % w, (i * 53) % h, 2 + (i % 3), 1);
+            g.globalCompositeOperation = 'source-over';
+        });
+    }
+    _FX2_BURST.raceSimoom = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var tiles = _l6Area('raceSimoom', tx, ty, false), seen = false;
+        for (var q = 0; q < tiles.length; q++) if (_pzSeen(tiles[q].x, tiles[q].y)) { seen = true; break; }
+        if (!seen) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ux = 1, uz = 0, rib = [], N = 9, CROSS = 440;
+        if (p.sx != null && (p.sx !== tx || p.sy !== ty)) { var ln = _nrvLine(F, { x: p.sx, y: p.sy }, tx, ty); ux = -ln.ux; uz = -ln.uz; }
+        for (var i = 0; i < N; i++) {
+            var lat = ((i * 4) % N - (N - 1) / 2) / ((N - 1) / 2) * ts * 1.3, y = ts * (0.14 + 0.1 * (i % 4)), bow = (i % 2 ? 1 : -1) * ts * 0.12;
+            var a = new THREE.Vector3(-ux * ts * 1.7 - uz * lat, y, -uz * ts * 1.7 + ux * lat), b = new THREE.Vector3(ux * ts * 1.7 - uz * lat, y, uz * ts * 1.7 + ux * lat);
+            /* the sheets lie flat, so the lens (high over the board) sees their whole width */
+            var sm = _pzSolid(0xffffff, _l6SandTex(), { side: THREE.DoubleSide, depthWrite: false }); sm.depthTest = false;
+            var Rb = _wdRibbon(F.g, [a, new THREE.Vector3(-uz * (lat + bow), y + ts * 0.08, ux * (lat + bow)), b], { w0: ts * 0.2, w1: ts * 0.3, segs: 26, roll: Math.PI / 2, mat: sm, glow: false });
+            Rb.mesh.renderOrder = 165;
+            rib.push({ R: Rb, d: i * 32 });
+        }
+        /* a square's place along the wind: 0 at the windward edge, 1 at the far one */
+        function along(t) { var o = _nvOff(F, t.x, t.y); return _sigClamp01((o.x * ux + o.z * uz) / (ts * 3) + 0.5); }
+        var flash = _l6Flash(F, tiles, _L6.sand, { delay: function (t) { return along(t) * CROSS * 0.7; }, ms: 520, solid: true, op: 0.9 }), blown = 0, stained = false;
+        return _l6Go(F, 1300, [flash, function (el) {
+            for (var i = 0; i < N; i++) { _wdRun(rib[i].R, el, rib[i].d, CROSS, 0.7); rib[i].R.op(1); }
+            if (!stained && el > 240) { stained = true; try { _nzWash(tiles, 'earth', 3); } catch (e) {} }   /* the sand it leaves: the earth sheet over the wind's */
+            while (blown < 4 && el >= blown * 150) {
+                blown++;
+                for (var k = 0; k < tiles.length; k++) {
+                    var t = tiles[k]; if (!_pzSeen(t.x, t.y)) continue; var o = _nvOff(F, t.x, t.y);
+                    _pzP(F, o.x + rn(-0.4, 0.4) * ts, o.y + ts * rn(0.08, 0.5), o.z + rn(-0.4, 0.4) * ts, { sprite: 'sand-particle', tint: _L6.sand, ml: rn(380, 620), size0: rn(5, 9), size1: 2, vx: ux * rn(240, 380), vy: uz * rn(240, 380), vz: rn(-10, 40), drag: 0.6, opacity0: 0.9 });
+                    if (blown === 4) _pzP(F, o.x, o.y + ts * 0.12, o.z, { sprite: 'dust-puff', tint: 0xc89a5a, ml: rn(600, 800), size0: 26, size1: 50, vx: ux * 30, vy: uz * 30, vz: 8, drag: 1, opacity0: 0.3 });
+                }
+            }
+        }]);
+    };
+
+    /* SPLITTING ARROW (robin hood): the shaft parts on the hit. Two arrows fork away past the body, each on its own
+       thread of air in the fletching's green, and splinters of the split shaft fly. */
+    _FX2_BURST.raceSplittingArrow = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ux = 1, uz = 0, from = _l6From(p), halves = [];
+        if (from) { var ln = _nrvLine(F, from, tx, ty); ux = -ln.ux; uz = -ln.uz; }
+        for (var s = -1; s <= 1; s += 2) {
+            var ang = s * 0.52, dx = ux * Math.cos(ang) - uz * Math.sin(ang), dz = ux * Math.sin(ang) + uz * Math.cos(ang);
+            var A = new THREE.Vector3(0, ts * 0.6, 0), B = new THREE.Vector3(dx * ts * 1.15, ts * 0.72, dz * ts * 1.15);
+            var R = _wdRibbon(F.g, [A, A.clone().lerp(B, 0.5).setY(ts * 0.7), B], { w0: ts * 0.05, w1: ts * 0.11, segs: 20, roll: 0, mat: _wdAirMat(false, 0xeafff0), glowColor: _L6.fletch });
+            var ar = _npInst('arrow', ts * 0.5, 0), G = null;
+            if (ar) { G = new THREE.Group(); G.add(ar.group); G.rotation.y = Math.atan2(dx, dz); F.g.add(G); }
+            halves.push({ R: R, ar: ar, G: G, A: A, B: B });
+        }
+        for (var k = 0; k < 7; k++) _pzP(F, 0, ts * 0.6, 0, { sprite: 'debris', tint: 0xc9a06a, ml: rn(300, 520), size0: rn(4, 8), size1: 2, vx: ux * rn(40, 160) + rn(-70, 70), vy: uz * rn(40, 160) + rn(-70, 70), vz: rn(60, 200), gravity: 480, drag: 0.8, opacity0: 1 });
+        _pzP(F, 0, ts * 0.6, 0, { sprite: 'flash', tint: _L6.fletch, ml: 130, size0: ts * 0.42, size1: ts * 0.12, opacity0: 0.75 });
+        return _l6Go(F, 700, [function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / 380)), k = 1 - _sigClamp01((el - 380) / 300);
+            for (var i = 0; i < 2; i++) {
+                var H = halves[i]; H.R.set(Math.max(0, t - 0.6), t); H.R.op(0.9 * k);
+                if (H.G) { H.G.position.lerpVectors(H.A, H.B, t); H.ar.setFade(k); }
+            }
+        }]);
+    };
+
+    /* WING ATTACK (angel): both wings. A great pale wing sweeps round each side of her from behind to before, the two
+       closing the whole ring, feathers shaken loose, and each square is struck outward by its gust as the wing passes. */
+    _FX2_BURST.raceWingGust = function (p) {
+        var c = _l6Self(p); if (!c || !_pzSeen(c.x, c.y)) return;
+        var F = _nrvFrame(c.x, c.y), ts = F.ts, tiles = _l6Area('raceWingGust', c.x, c.y, true), SWEEP = 460, wings = [], gusts = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var wg = new THREE.PlaneGeometry(ts * 1.6, ts * 1.5); wg.translate(ts * 0.9, ts * 0.6, 0);   /* the root at the shoulder, the feathers fanning up and out */
+            var piv = new THREE.Group(); piv.position.y = ts * 0.5; F.g.add(piv);
+            var solid = _pzMesh(wg, _pzSolid(_L6.wing, _pzWingTex(), { side: THREE.DoubleSide, depthWrite: false }), piv), glow = _pzMesh(wg, _pzGlow(0xffe0b0, _pzWingTex()), piv);
+            solid.rotation.x = glow.rotation.x = -1.2;   /* laid back so the lens sees the fan */
+            wings.push({ piv: piv, solid: solid, glow: glow, s: s });
+        }
+        for (var i = 0; i < tiles.length; i++) { if (_pzSeen(tiles[i].x, tiles[i].y)) gusts.push({ S: _l6Stroke(F, 0xf2fff8, _L6.gust), t: tiles[i] }); }
+        /* the wings start behind her (local -z) and close in front (+z): a square is passed when the wing's angle reaches it */
+        function when(t) { return Math.abs(Math.atan2(t.dx, -t.dy)) / Math.PI * SWEEP; }
+        var flash = _l6Flash(F, tiles, _L6.gust, { delay: when, ms: 320 });
+        try { _pzFeathers(c.x, c.y, _L6.wing, 8, { ms: 950, y: 0.7 }); } catch (e) {}
+        return _l6Go(F, 950, [flash, function (el) {
+            var h = _sigEaseOutCubic(_sigClamp01(el / SWEEP)), k = Math.min(1, el / 50) * (1 - _sigClamp01((el - SWEEP) / 300));
+            for (var w = 0; w < 2; w++) { var W = wings[w]; W.piv.rotation.y = W.s > 0 ? (Math.PI / 2 - h * Math.PI) : (Math.PI / 2 + h * Math.PI); W.solid.material.opacity = k; W.glow.material.opacity = 0.7 * k; }
+            for (var i = 0; i < gusts.length; i++) {
+                var G = gusts[i], u = (el - when(G.t) - 40) / 340, o = _nvOff(F, G.t.x, G.t.y), L = Math.hypot(o.x, o.z) || 1;
+                if (u <= 0 || u >= 1) { G.S.place(0, 0, 0, 1, 0, 1, 1, 0); continue; }
+                var e = _sigEaseOutCubic(u);
+                G.S.place(o.x - o.x / L * ts * (0.35 - 0.5 * e), o.y + ts * 0.06, o.z - o.z / L * ts * (0.35 - 0.5 * e), o.x / L, o.z / L, ts * 0.5, ts * 0.2, 0.9 * Math.min(1, u * 6) * (1 - u));
+            }
+        }]);
+    };
+
+    /* ═════════ END THE OWN LOOKS, L6 ═════════ */
+
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
         _rvFloorAt: _rvFloorAt,

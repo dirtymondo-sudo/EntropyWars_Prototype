@@ -4450,6 +4450,28 @@ New pieces: `_l5Eye` (a flat dark eye with an iris of light; the lid opens, the 
 - **Hypnotic Pulse** (`_l5HypnoticPulse3D`): a great spiral turns over the area and a small one over every square; the squares flash.
 - **Death Gaze** (`_l5DeathGaze3D`): a red slit eye opens over the victim, its ray pins them to a black disc, and it shuts.
 - Frames: docs/plans/vfx-cleanup/img/own-look/L5_part3.jpg.
+## THE OWN LOOKS, L6, part 1: sound + wind (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L6")
+mondo 11-17: "any spells that dont have a look of their own need one". Brief: docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md,
+list `own-look/L6.txt`. Each spell is one function in `_FX2_BURST` (the staging hit, relayed), so `_vcOwn` is true and
+its generic stage burst stops. Looks only.
+- **The kit (`_l6*`, this block only):** `_l6Area` (the squares an area spell hits), `_l6Flash` (EVERY hit square flashes
+  in the spell's colour, staggered by a `delay(tile)`), `_l6Stroke` (a gust stroke flat on the ground), `_l6Go` (one
+  `_sigRun` a spell), `_l6From` (the caster's tile, null when fogged). Colours: `_L6`.
+- **The wind spells bring their own air:** the eight wind ids get `_WD_BURST[id] = false`, so the generic gust + swirl
+  round the target do not draw over them (the wind cast gather and the noise wash stay).
+- Cataclysm Stomp: a star of cracks races out from the foot over the 5x5, lit violet from below; each ring of squares
+  flashes, throws rock and dust as the shock passes it.
+- Meow: pink paw prints pad out over every square in reach, toes pointing away, each pressing in with a bounce. No flash (no damage).
+- Hail Mary: a leather-gold streak drops on the target out of the sky, the ball's spin unwinds up in a double spiral, turf jumps.
+- Long Bomb: the play as drawn up: a dashed chalk route from his arm over the cover to the mark, wiping from his end, and a chalk X on the square.
+- Heroic Leap: the jump hangs behind him as one high arc of air with the cape's red in it; a flat star of air where he lands, inside the square.
+- Sky Tackle: twin vapour trails along his run in; three thin vapour rings break open at the contact, facing down the carry line.
+- Roundhouse Kick: one flat blade of air whips once round him at kick height, the heel a hot point at its head; each of the 8 squares flashes as the heel passes.
+- Simoom: sheets of ochre sand drive across the 3x3 from the caster's side; the squares flash sand-orange as the front crosses; grit hangs after.
+- Splitting Arrow: two arrows (the game's arrow model) fork away past the body on threads of fletching-green air; splinters fly.
+- Wing Attack (`raceWingGust`): a pale wing sweeps round each side of her from behind to before (`_pzWingTex`), feathers shaken loose; each square is struck outward by its gust as the wing passes.
+- Online: every layer rides the relayed `burst` beat; nothing on `state`; drawn only where the viewer sees the square.
+- Checked on screen: each spell fired on the audit board and through real casts (frames in `docs/plans/vfx-cleanup/img/own-look/L6_*.jpg`).
 
 ## THE OWN LOOKS, L5, part 4: the dark and the strange (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5"; the list is done)
 New pieces: `_l5Star` (a burst of rays that faces the camera), `_l5Bracket`.
