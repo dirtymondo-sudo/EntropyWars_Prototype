@@ -70666,7 +70666,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _sigRunOwned(F.g, delay + ms, function (el) { var k = (el - delay) / ms; mat.opacity = k < 0 ? 0 : peak * Math.pow(1 - k, 1.6); });
     }
     /* a flat colour that takes no outline and writes no depth (ropes, chalk, prints) */
-    function _l3Ink(col, map, op) { return _finBasic(col, { opacity: op != null ? op : 0, map: map || null, depthWrite: false, side: THREE.DoubleSide }); }
+    function _l3Ink(col, map, op) { var m = _finBasic(col, { opacity: op != null ? op : 0, map: map || null, depthWrite: false, side: THREE.DoubleSide }); m.polygonOffset = true; m.polygonOffsetFactor = -4; m.polygonOffsetUnits = -4; return m; }
     function _l3StarTex() {
         return _pzTex('l3-star4', 64, 64, function (g, w, h) {
             var c = w / 2; g.fillStyle = '#fff'; g.beginPath();
@@ -71145,6 +71145,401 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* PENALTY (referee) already has its look (THE REFEREE: the whistle, the thrown flag, the three marched yards on
            _BUG_ON_BURST); naming it here only tells _vcOwn so, so the shared burst stops drawing over it */
         nrPenalty: function () { return null; },
+    });
+    /* ── KINETIC (part 2): the runs. A dash draws its lane on battle.js's '<id>:dash' beat (fireGeometry, relayed; the
+       squares it ends on at tx, ty, the launch square in x), and its hit on the burst beat like the rest. A lane is
+       drawn only when the viewer sees both of its ends (no path leaks out of the fog). ── */
+    function _l3Lane(tx, ty, x) {
+        if (_catOff('spells') || !x || x.fromX == null || !_pzSeen(x.fromX, x.fromY) || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(x.fromX, x.fromY), end = _worldPos(tx, ty), dx = end.x - F.wp.x, dz = end.z - F.wp.z, L = Math.hypot(dx, dz);
+        if (L < 1) return null;
+        var G = new THREE.Group(); G.rotation.y = Math.atan2(dx, dz); F.g.add(G);   /* G: +Z = the way of the run, X = across it */
+        var n = Math.max(1, Math.round(L / F.ts)), ux = dx / L, uz = dz / L;
+        return { F: F, ts: F.ts, G: G, L: L, ux: ux, uz: uz, dy: end.y - F.wp.y, n: n, ms: Math.max(200, n * 150),
+            /* a point of the lane (s along, l across) in the frame, for particles */
+            at: function (s, l) { return { x: ux * s + uz * (l || 0), z: uz * s - ux * (l || 0) }; } };
+    }
+    /* a flat mark on the ground of a lane (a print, a chalk line): w across, len along, at s along / l across */
+    function _l3Mark(G, mat, w, len, s, l, yaw) {
+        var g = new THREE.PlaneGeometry(w, len); g.rotateX(-Math.PI / 2);
+        var m = new THREE.Mesh(g, mat); m.position.set(l || 0, 4, s); m.rotation.y = yaw || 0; m.renderOrder = 156; G.add(m); return m;
+    }
+    function _l3LaneDust(Ln, s, l, n, tint) {
+        var p = Ln.at(s, l);
+        _goSpray(Ln.F, n, { sprite: 'dust-puff', tint: tint || _L3C.dust, lx: p.x, lz: p.z, ly: 6, v: 70, vz0: 10, vz1: 60, s0: 10, s1: 30, ml0: 350, ml1: 620, op: 0.5, g: 0 });
+    }
+    /* A DASH'S HIT: the staging burst beat of a dash comes about a second after the run has landed (seen on the frames),
+       so a dash's hit piece is fired by its own '<id>:dash' beat when the run arrives, on the square it lands on (a
+       charge lands ON its target's square and shoves it aside; `charge` = one square further, unused today), and the late
+       burst beat is told it is done. A dash
+       that fires no ':dash' beat (no run to make) still gets the piece from the burst beat. */
+    function _l3DashHit(id, fn, tx, ty, x, charge) {
+        if (_catOff('spells') || !x || x.fromX == null) return;
+        var sx = Math.sign(tx - x.fromX), sy = Math.sign(ty - x.fromY), hx = charge ? tx + sx : tx, hy = charge ? ty + sy : ty;
+        var n = Math.max(Math.abs(tx - x.fromX), Math.abs(ty - x.fromY));
+        _pzOnce('l3hit:' + id, 2600);
+        _fxDelay(function () { if (_suppressed()) return; try { fn(hx, hy, null, { fromX: x.fromX, fromY: x.fromY }); } catch (e) { console.warn('[VFX] L3 dash hit failed', id, e); } }, Math.max(200, n * 150));
+    }
+    function _l3Late(id, fn) { return function (tx, ty, r, x) { return _pzOnce('l3hit:' + id, 2600) ? fn(tx, ty, r, x) : null; }; }
+    /* BLITZ (quarterback) — the play, drawn up in chalk on the grass: an O where he lined up, the dashed route down the
+       lane, the arrowhead; on the hit an X is chalked on the man he hit and the turf flies */
+    _spell3DGeometry['raceBlitz:dash'] = function (tx, ty, dist, x) {
+        _l3DashHit('raceBlitz', _l3Blitz3D, tx, ty, x, false);
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, chalk = _l3Ink(0xf0ece0), dashes = [], nd = Math.max(2, Math.round(Ln.L / (ts * 0.34)));
+        var o = new THREE.Mesh(new THREE.RingGeometry(ts * 0.24, ts * 0.34, 24), chalk); o.rotation.x = -Math.PI / 2; o.position.y = 4; o.renderOrder = 156; G.add(o);
+        for (var i = 0; i < nd; i++) dashes.push(_l3Mark(G, chalk, ts * 0.1, ts * 0.2, ts * 0.36 + (Ln.L - ts * 0.6) * (i + 0.5) / nd, 0));
+        var ag = new THREE.BufferGeometry(); ag.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-ts * 0.24, 4, 0, ts * 0.24, 4, 0, 0, 4, ts * 0.36]), 3));
+        var arrow = new THREE.Mesh(ag, chalk); arrow.position.z = Ln.L - ts * 0.3; arrow.renderOrder = 156; G.add(arrow);
+        var TOTAL = Ln.ms + 1300;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            var run = _sigClamp01(el / Ln.ms); chalk.opacity = 0.85 * _goEnv(el, 60, TOTAL, 500);
+            for (var i = 0; i < dashes.length; i++) dashes[i].visible = (i + 0.5) / nd <= run;
+            arrow.visible = run >= 1;
+        });
+    };
+    function _l3Blitz3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, chalk = _l3Ink(0xf0ece0), X = new THREE.Group(); X.position.y = 4; X.rotation.y = Math.PI / 4; F.g.add(X);
+        _l3Mark(X, chalk, ts * 0.13, ts * 0.85, 0, 0, 0).position.y = 0; _l3Mark(X, chalk, ts * 0.13, ts * 0.85, 0, 0, Math.PI / 2).position.y = 0;
+        _shake('normal');
+        _goSpray(F, 9, { sprite: 'mud-chunk', tint: 0x4a8a3a, ly: 6, r: ts * 0.2, v: 150, vz0: 140, vz1: 380, s0: 7, s1: 4, ml0: 420, ml1: 760, g: 900 });
+        _goSpray(F, 5, { sprite: 'mud-chunk', tint: _L3C.earth, ly: 6, r: ts * 0.2, v: 120, vz0: 100, vz1: 300, s0: 6, s1: 3, ml0: 400, ml1: 700, g: 900 });
+        return _sigRunOwned(F.g, 1300, function (el) { var k = _sigEaseOutBack(_sigClamp01(el / 140)); X.scale.setScalar(0.5 + 0.5 * k); chalk.opacity = 0.9 * _goEnv(el, 40, 1300, 450); });
+    }
+    /* BODY CHECK (juggernaut) — the wall arrives: a six-sided plate of riveted gunmetal slams flat into the body from his
+       side, the rivets shear off, and the body's heels leave two skid marks all the way to where it stops */
+    function _l3BodyCheck3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, null), B = new THREE.Vector3();
+        var P = new THREE.Group(); P.rotation.y = Math.atan2(-S.ux, -S.uz); P.position.set(S.ux * ts * 0.3, ts * 0.55, S.uz * ts * 0.3); F.g.add(P);
+        var plate = _goAdd(P, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.44, ts * 0.44, ts * 0.05, 6).rotateX(Math.PI / 2), _goM(0x6a727c)), 0.95);
+        var rim = _goAdd(P, new THREE.Mesh(new THREE.RingGeometry(ts * 0.4, ts * 0.47, 6), _goA(0xb8c4d0)), 0.7); rim.position.z = ts * 0.03; rim.rotation.z = Math.PI / 6;
+        var rivets = [];
+        for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2 + Math.PI / 6, rv = _goAdd(P, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.035, 6, 5), _goM(0x9aa2ac)), 1);
+            rivets.push({ m: rv, cx: Math.cos(a), cy: Math.sin(a) }); }
+        var sm = _l3Ink(0x241c16), skids = [], fa = new THREE.Vector3(), fb = new THREE.Vector3();
+        for (var q = -1; q <= 1; q += 2) { var sk = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, 1, ts * 0.01), sm); sk.renderOrder = 152; F.g.add(sk); skids.push({ m: sk, s: q }); }
+        _shake('normal');
+        _goSpray(F, 6, { sprite: 'steel-spark', ly: ts * 0.55, v: 170, vz0: 20, vz1: 160, s0: 6, ml0: 180, ml1: 340 });
+        var lastD = 0, TOTAL = 1300;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var hit = _sigEaseOutBack(_sigClamp01(el / 110)), k = 1 - _sigClamp01((el - 260) / 240), t = Math.max(0, el - 90) / 1000;
+            P.scale.setScalar(0.55 + 0.5 * hit); _goShow([plate, rim], k);
+            for (var i = 0; i < rivets.length; i++) { var rv = rivets[i], d = ts * (0.36 + 1.5 * t);
+                rv.m.position.set(rv.cx * d, rv.cy * d - 2 * ts * t * t, ts * (0.04 + 0.5 * t)); }
+            _goShow(rivets.map(function (v) { return v.m; }), 1 - _sigClamp01((el - 420) / 260));
+            track(B); sm.opacity = 0.7 * _goEnv(el, 120, TOTAL, 420);
+            for (var j = 0; j < skids.length; j++) { var ox = -S.uz * skids[j].s * ts * 0.11, oz = S.ux * skids[j].s * ts * 0.11;
+                fa.set(ox, 2, oz); fb.set(B.x + ox, B.y + 2, B.z + oz); _pzSpan(skids[j].m, fa, fb); }
+            if (el > 100 && el < 700 && el - lastD > 90 && _canSpawn()) { lastD = el; _pzP(F, B.x, 6, B.z, { sprite: 'dust-puff', tint: _L3C.dust, ml: rn(350, 600), size0: 9, size1: 26, vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(10, 40), opacity0: 0.45 }); }
+        });
+    }
+    /* DARK FEATHER (chosen one) — he is already there: a black cut hangs in the air from where he stood to the body,
+       small black feathers burst off the hit, and one long black feather is left to fall, slowly, over it */
+    function _l3DarkFeather3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), ft = _pzFeatherTex();
+        var cutM = _l3Ink(0x120a1c), glowM = _goA(0x6a3ad0, 0), cut = null, cglow = null, a = new THREE.Vector3(), b = new THREE.Vector3(0, ts * 0.6, 0);
+        if (S.far) {
+            cut = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.035, 1, ts * 0.035), cutM); cut.renderOrder = 159; F.g.add(cut);
+            cglow = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.1, 1, ts * 0.1), glowM); cglow.renderOrder = 158; F.g.add(cglow);
+            a.set(S.ln.dx, S.ln.dy + ts * 0.6, S.ln.dz); _pzSpan(cut, a, b); _pzSpan(cglow, a, b);
+        }
+        var fm = _l3Ink(0x16101e, ft); fm.side = THREE.DoubleSide;
+        var big = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.2, ts * 0.72), fm); big.renderOrder = 162; F.g.add(big);
+        var halo = _pzSpr(0x7a4ae0, ts * 0.6, F.g), small = [], rnd = _sigRand(tx * 19 + ty * 5 + 1);
+        for (var i = 0; i < 7; i++) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.08, ts * 0.28), fm); m.renderOrder = 161; F.g.add(m);
+            var an = rnd() * Math.PI * 2; small.push({ m: m, vx: Math.cos(an) * (0.5 + rnd()), vz: Math.sin(an) * (0.5 + rnd()), vy: 0.5 + rnd() * 0.9, sp: (rnd() - 0.5) * 0.02 }); }
+        _shake('light');
+        var TOTAL = 1900;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var t = el / 1000, k = _goEnv(el, 60, TOTAL, 400);
+            cutM.opacity = 0.9 * Math.max(0, 1 - el / 420); glowM.opacity = 0.6 * Math.max(0, 1 - el / 300); fm.opacity = 0.95 * k;
+            var u = el / TOTAL; big.position.set(Math.sin(el * 0.0042) * ts * 0.22, ts * (2.0 - 1.6 * u), Math.cos(el * 0.003) * ts * 0.08);
+            big.rotation.set(0.5 * Math.sin(el * 0.0042), el * 0.0016, 0.9 * Math.cos(el * 0.0042));
+            halo.position.copy(big.position); halo.material.opacity = 0.3 * k;
+            for (var i = 0; i < small.length; i++) { var s = small[i];
+                s.m.position.set(s.vx * ts * t * 0.8, ts * 0.6 + s.vy * ts * t - 1.1 * ts * t * t, s.vz * ts * t * 0.8); s.m.rotation.set(el * s.sp, el * 0.006, el * s.sp * 1.7); s.m.visible = el < 1100; }
+        });
+    }
+    _spell3DGeometry['raceDarkFeather:dash'] = function (tx, ty, dist, x) { _l3DashHit('raceDarkFeather', _l3DarkFeather3D, tx, ty, x, false); return null; };
+    /* DRIVE-BY (gangster) — the roll past: brass casings spill from the window all down the lane, and the burst stitches
+       the ground square after square as the car goes by (the shot at the end keeps its own muzzle + hit) */
+    _spell3DGeometry['raceDriveBy:dash'] = function (tx, ty, dist, x) {
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, brass = [], rnd = _sigRand(tx * 11 + ty * 29 + 7), NB = Math.min(12, 3 * Ln.n);
+        for (var i = 0; i < NB; i++) { var m = _goAdd(G, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.016, ts * 0.016, ts * 0.07, 6), _goM(_L3C.brass)), 1);
+            brass.push({ m: m, at: (i + 0.5) / NB, side: (i % 2 ? 1 : -1), vx: 0.5 + rnd() * 0.7, vy: 0.8 + rnd() * 0.6, sp: 0.02 + rnd() * 0.03 }); }
+        var next = 0, TOTAL = Ln.ms + 900;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            var run = el / Ln.ms;
+            for (var i = 0; i < brass.length; i++) { var b = brass[i], e = (el - b.at * Ln.ms) / 1000;
+                if (e < 0) { b.m.material.opacity = 0; continue; }
+                var y = ts * 0.6 + b.vy * ts * e - 2.6 * ts * e * e, land = y <= 3;
+                b.m.position.set(b.side * ts * (0.2 + b.vx * Math.min(e, 0.62)), land ? 3 : y, b.at * Ln.L); b.m.rotation.set(land ? Math.PI / 2 : el * b.sp, 0, land ? b.at * 9 : el * b.sp * 0.7);
+                b.m.material.opacity = 1 - _sigClamp01((e - 0.55) / 0.3); }
+            while (next < Ln.n * 2 && (next + 0.5) / (Ln.n * 2) <= run) {   /* the stitch: two strikes a square */
+                var s = (next + 0.5) / (Ln.n * 2) * Ln.L, p = Ln.at(s, (next % 2 ? 1 : -1) * ts * 0.12); next++;
+                _goSpray(Ln.F, 2, { sprite: 'steel-spark', lx: p.x, lz: p.z, ly: 5, r: 3, v: 80, vz0: 120, vz1: 260, s0: 6, s1: 2, ml0: 150, ml1: 280 });
+                _goSpray(Ln.F, 1, { sprite: 'dust-puff', tint: _L3C.dust, lx: p.x, lz: p.z, ly: 5, r: 3, v: 20, vz0: 60, vz1: 130, s0: 6, s1: 18, ml0: 260, ml1: 420, op: 0.55, g: 0 });
+                _pzP(Ln.F, p.x, 14, p.z, { sprite: 'muzzle-flash', tint: 0xe8b040, ml: 90, size0: 14, size1: 5, opacity0: 0.9 });
+            }
+        });
+    };
+    /* GIANT STRIDE — four of your steps, one of his: one footprint as long as a square is pressed into the lane at
+       mid-stride and one where he lands, the ground jumps, and every square on or beside the path flashes dust-gold */
+    _spell3DGeometry['raceGiantStride:dash'] = function (tx, ty, dist, x) {
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, ft = _afFootTex(), steps = [], tiles = [], seen = {};
+        var marks = Ln.n >= 2 ? [[0.5, -1], [1, 1]] : [[1, 1]];
+        for (var i = 0; i < marks.length; i++) {
+            var m = _l3Mark(G, _l3Ink(0x2a2018, ft), ts * 1.05, ts * 1.5, Ln.L * marks[i][0] - ts * 0.15, marks[i][1] * ts * 0.3, Math.PI); m.scale.x = marks[i][1];
+            var rimM = _goA(0xd8a850, 0), rim = _l3Mark(G, rimM, ts * 1.2, ts * 1.7, Ln.L * marks[i][0] - ts * 0.15, marks[i][1] * ts * 0.3, Math.PI); rim.material.map = ft; rim.position.y = 2; rim.scale.x = marks[i][1];
+            steps.push({ m: m, rim: rim, t: Ln.ms * marks[i][0], s: Ln.L * marks[i][0], l: marks[i][1] * ts * 0.3, done: false });
+        }
+        for (var q = 1; q <= Ln.n; q++) { var cx = Math.round(x.fromX + (tx - x.fromX) * q / Ln.n), cy = Math.round(x.fromY + (ty - x.fromY) * q / Ln.n);
+            for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { if (dx && dy) continue; var kx = cx + dx, ky = cy + dy, key = kx + ',' + ky;
+                if (seen[key] || (kx === x.fromX && ky === x.fromY)) continue; seen[key] = 1; tiles.push({ x: kx, y: ky }); } }
+        _l3Flash(tiles, 0xd8a850, { delay: Ln.ms, peak: 0.5, ms: 420 });
+        var TOTAL = Ln.ms + 1500;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            for (var i = 0; i < steps.length; i++) { var s = steps[i], e = el - s.t;
+                s.m.material.opacity = e < 0 ? 0 : 0.72 * (1 - _sigClamp01((e - 800) / 600)); s.rim.material.opacity = e < 0 ? 0 : 0.7 * Math.max(0, 1 - e / 300);
+                if (!s.done && e >= 0) { s.done = true; _shake(i === steps.length - 1 ? 'heavy' : 'normal'); _l3LaneDust(Ln, s.s, s.l, 10);
+                    var p = Ln.at(s.s, s.l); _goSpray(Ln.F, 6, { sprite: 'rock-debris', lx: p.x, lz: p.z, ly: 6, r: ts * 0.3, v: 150, vz0: 120, vz1: 320, s0: 6, s1: 3, ml0: 400, ml1: 700, g: 900 }); }
+            }
+        });
+    };
+    /* HORN TOSS (minotaur) — a true toss: the head goes down and the horns come up under the body in one hard swing,
+       a column of dust goes up after it and the hooves crack the square */
+    function _l3HornToss3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x);
+        var H = new THREE.Group(); H.rotation.order = 'YXZ'; H.rotation.y = Math.atan2(-S.ux, -S.uz); H.position.set(S.ux * ts * 0.34, ts * 0.12, S.uz * ts * 0.34); F.g.add(H);
+        var horns = [];
+        for (var s = -1; s <= 1; s += 2) { var hg = _l3Horn(ts, ts * 0.8, horns); hg.rotation.order = 'YXZ'; hg.rotation.y = -Math.PI / 2 + s * 0.18; hg.position.set(s * ts * 0.2, 0, 0); H.add(hg); }
+        var arcM = _goA(_L3C.bone, 0), arcs = [];
+        for (var q = -1; q <= 1; q += 2) { var ag = new THREE.TorusGeometry(ts * 0.62, ts * 0.02, 4, 16, Math.PI * 0.55); var am = new THREE.Mesh(ag, arcM); am.rotation.y = Math.PI / 2; am.position.set(q * ts * 0.2, 0, 0); am.renderOrder = 159; H.add(am); arcs.push(am); }
+        _shake('normal');
+        _goSpray(F, 8, { sprite: 'dust-puff', tint: _L3C.dust, ly: 8, r: ts * 0.15, v: 40, vz0: 160, vz1: 420, s0: 12, s1: 34, ml0: 450, ml1: 800, op: 0.55, g: 60 });
+        _goSpray(F, 6, { sprite: 'mud-chunk', tint: _L3C.earth, ly: 6, r: ts * 0.2, v: 140, vz0: 120, vz1: 320, s0: 6, s1: 3, ml0: 400, ml1: 700, g: 900 });
+        var TOTAL = 800;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var sw = _sigEaseOutCubic(_sigClamp01(el / 190)), k = _goEnv(el, 30, TOTAL, 300);
+            H.rotation.x = 0.7 - 1.9 * sw; H.position.y = ts * (0.12 + 0.3 * sw);
+            _goShow(horns, k); arcM.opacity = 0.7 * sw * Math.max(0, 1 - (el - 190) / 260);
+        });
+    }
+    /* ICE SLIDE (yeti) — the slide: a strip of wet ice runs out down the lane under him, snow is thrown up off both
+       edges as he goes, and where he stops the ice breaks up into standing shards */
+    _spell3DGeometry['raceIceSlide:dash'] = function (tx, ty, dist, x) {
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, ice = _finBasic(0xbfe4f4, { opacity: 0, map: _sigTerrainTex('ice.png', 1, Ln.n), depthWrite: false, side: THREE.DoubleSide });
+        var sg = new THREE.PlaneGeometry(ts * 0.8, 1); sg.rotateX(-Math.PI / 2); sg.translate(0, 0, 0.5);
+        var strip = new THREE.Mesh(sg, ice); strip.position.y = 2.5; strip.renderOrder = 152; G.add(strip);
+        var em = _goA(0x9fd8f0, 0), edges = [];
+        for (var s = -1; s <= 1; s += 2) { var eg = new THREE.PlaneGeometry(ts * 0.05, 1); eg.rotateX(-Math.PI / 2); eg.translate(0, 0, 0.5); var e = new THREE.Mesh(eg, em); e.position.set(s * ts * 0.4, 3, 0); e.renderOrder = 153; G.add(e); edges.push(e); }
+        var shards = [], rnd = _sigRand(tx * 7 + ty * 23 + 2);
+        for (var i = 0; i < 7; i++) { var a = i / 7 * Math.PI * 2, h = ts * (0.22 + rnd() * 0.3), m = _goAdd(G, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.06, h, 4), _goM(0xbfe4f4)), 0.9);
+            m.position.set(Math.cos(a) * ts * 0.36, h / 2, Ln.L + Math.sin(a) * ts * 0.36); m.rotation.set(Math.sin(a) * 0.4, rnd() * 3, -Math.cos(a) * 0.4); shards.push(m); }
+        var lastS = 0, broke = false, TOTAL = Ln.ms + 1100;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            var run = _sigClamp01(el / Ln.ms), k = _goEnv(el, 40, TOTAL, 450), len = Math.max(1, Ln.L * run);
+            strip.scale.z = len; ice.opacity = 0.85 * k; edges[0].scale.z = edges[1].scale.z = len; em.opacity = 0.6 * k;
+            if (run < 1 && el - lastS > 45 && _canSpawn()) { lastS = el;
+                for (var s = -1; s <= 1; s += 2) { var p = Ln.at(len, s * ts * 0.36);
+                    _pzP(Ln.F, p.x, 6, p.z, { sprite: 'frost-mist', ml: rn(300, 520), size0: 8, size1: 24, vx: Ln.uz * s * 90 - Ln.ux * 30, vy: -Ln.ux * s * 90 - Ln.uz * 30, vz: rn(60, 150), gravity: 200, opacity0: 0.75 });
+                    _pzP(Ln.F, p.x, 6, p.z, { sprite: 'snowflake', ml: rn(350, 600), size0: 6, size1: 3, vx: Ln.uz * s * 140, vy: -Ln.ux * s * 140, vz: rn(80, 200), gravity: 420, opacity0: 0.95 }); }
+            }
+            var e2 = el - Ln.ms, up = _sigEaseOutBack(_sigClamp01(e2 / 160));
+            for (var i = 0; i < shards.length; i++) shards[i].scale.setScalar(e2 < 0 ? 0.001 : Math.max(0.001, up));
+            _goShow(shards, e2 < 0 ? 0 : 1 - _sigClamp01((e2 - 600) / 400));
+            if (!broke && e2 >= 0) { broke = true; _shake('light'); var q = Ln.at(Ln.L, 0); _goSpray(Ln.F, 8, { sprite: 'ice-shard', lx: q.x, lz: q.z, ly: 8, v: 170, vz0: 80, vz1: 260, s0: 7, s1: 3, ml0: 300, ml1: 560 }); }
+        });
+    };
+    /* RAM CHARGE (honda civic) — the car hits: two black tyre lines are laid down the lane in smoke, and at the bumper
+       the headlights flare, sparks jump and bits of amber and red lens fly */
+    _spell3DGeometry['raceRamCharge:dash'] = function (tx, ty, dist, x) {
+        _l3DashHit('raceRamCharge', _l3RamCharge3D, tx, ty, x, false);
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, rub = _l3Ink(0x141414), lines = [];
+        for (var s = -1; s <= 1; s += 2) { var g = new THREE.PlaneGeometry(ts * 0.09, 1); g.rotateX(-Math.PI / 2); g.translate(0, 0, 0.5); var m = new THREE.Mesh(g, rub); m.position.set(s * ts * 0.2, 2.5, 0); m.renderOrder = 152; G.add(m); lines.push(m); }
+        var lastS = 0, TOTAL = Ln.ms + 1300;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            var run = _sigClamp01(el / Ln.ms), len = Math.max(1, Ln.L * run); lines[0].scale.z = lines[1].scale.z = len; rub.opacity = 0.75 * _goEnv(el, 30, TOTAL, 600);
+            if (run < 1 && el - lastS > 50 && _canSpawn()) { lastS = el;
+                for (var s = -1; s <= 1; s += 2) { var p = Ln.at(len, s * ts * 0.2); _pzP(Ln.F, p.x, 6, p.z, { sprite: 'smoke-soft', tint: 0x9a9a9a, ml: rn(380, 640), size0: 8, size1: 30, vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(20, 70), opacity0: 0.5 }); } }
+        });
+    };
+    function _l3RamCharge3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), lamps = [], bits = [], rnd = _sigRand(tx * 3 + ty * 41 + 9);
+        for (var s = -1; s <= 1; s += 2) { var l = _pzSpr(0xf0d890, ts * 0.7, F.g, _sigBurstTex()); l.position.set(S.ux * ts * 0.4 - S.uz * s * ts * 0.22, ts * 0.3, S.uz * ts * 0.4 + S.ux * s * ts * 0.22); lamps.push(l); }
+        for (var i = 0; i < 10; i++) {
+            var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, ts * 0.07, 0, 0, ts * 0.02, ts * 0.06, 0]), 3));
+            var m = new THREE.Mesh(bg, _goA(i % 2 ? 0xe8901a : 0xc82020, 0)); m.renderOrder = 160; F.g.add(m);
+            bits.push({ m: m, vx: -S.ux * (0.4 + rnd() * 1.2) + (rnd() - 0.5) * 1.4, vz: -S.uz * (0.4 + rnd() * 1.2) + (rnd() - 0.5) * 1.4, vy: 0.6 + rnd() * 1.2, sp: (rnd() - 0.5) * 0.04 });
+        }
+        _shake('normal');
+        _goSpray(F, 8, { sprite: 'steel-spark', lx: S.ux * ts * 0.3, lz: S.uz * ts * 0.3, ly: ts * 0.3, v: 190, vz0: 40, vz1: 240, s0: 6, ml0: 180, ml1: 360 });
+        var TOTAL = 900;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var t = el / 1000, fl = Math.max(0, 1 - el / 320);
+            for (var j = 0; j < lamps.length; j++) { lamps[j].material.opacity = 0.9 * fl; lamps[j].scale.setScalar(ts * (0.45 + 0.5 * _sigClamp01(el / 120))); }
+            for (var i = 0; i < bits.length; i++) { var b = bits[i]; b.m.position.set(S.ux * ts * 0.3 + b.vx * ts * t, Math.max(3, ts * 0.3 + b.vy * ts * t - 2.4 * ts * t * t), S.uz * ts * 0.3 + b.vz * ts * t);
+                b.m.rotation.set(el * b.sp, el * b.sp * 1.3, el * b.sp * 0.7); b.m.material.opacity = 0.95 * (1 - _sigClamp01((el - 500) / 400)); }
+        });
+    }
+    /* RAMPAGE (Raider) — through everything: a rust-red wake is ploughed open square after square down the lane, and at
+       the end the hit comes apart in scrap, bolts and torn plate, under two crossed blows */
+    _spell3DGeometry['raceRampage:dash'] = function (tx, ty, dist, x) {
+        _l3DashHit('raceRampage', _l3Rampage3D, tx, ty, x, false);
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, vs = [];
+        for (var i = 0; i < Ln.n; i++) {
+            var V = new THREE.Group(); V.position.set(0, 3, Ln.L * (i + 0.5) / Ln.n); G.add(V); var mat = _goA(0xb8401e, 0);
+            for (var s = -1; s <= 1; s += 2) { var g = new THREE.PlaneGeometry(ts * 0.1, ts * 0.62); g.rotateX(-Math.PI / 2); g.translate(0, 0, -ts * 0.31);
+                var m = new THREE.Mesh(g, mat); m.material.map = _sigStreakTex(); m.rotation.y = s * 0.62; m.position.z = ts * 0.3; m.renderOrder = 153; V.add(m); }
+            vs.push({ g: V, mat: mat, t: Ln.ms * (i + 0.5) / Ln.n, done: false });
+        }
+        var TOTAL = Ln.ms + 700;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            for (var i = 0; i < vs.length; i++) { var v = vs[i], e = el - v.t;
+                v.mat.opacity = e < 0 ? 0 : 0.9 * Math.max(0, 1 - e / 520); v.g.scale.setScalar(e < 0 ? 0.01 : 0.7 + 0.7 * _sigEaseOutCubic(_sigClamp01(e / 200)));
+                if (!v.done && e >= 0) { v.done = true; _shake('light'); _l3LaneDust(Ln, v.g.position.z, 0, 4, 0xa87858);
+                    var p = Ln.at(v.g.position.z, 0); _goSpray(Ln.F, 3, { sprite: 'debris', tint: 0x8a5a40, lx: p.x, lz: p.z, ly: 6, v: 130, vz0: 80, vz1: 220, s0: 5, s1: 3, ml0: 300, ml1: 520, g: 800 }); }
+            }
+        });
+    };
+    function _l3Rampage3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), scrap = [], rnd = _sigRand(tx * 37 + ty * 3 + 4);
+        var XG = new THREE.Group(); XG.position.y = ts * 0.6; XG.rotation.y = Math.atan2(-S.ux, -S.uz); F.g.add(XG);
+        var bm = _goA(0xb8401e, 0), blows = [];
+        for (var s = -1; s <= 1; s += 2) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.26, ts * 1.5), bm); m.material.map = _sigStreakTex(); m.rotation.z = s * 0.8; m.renderOrder = 160; XG.add(m); blows.push(m);
+            var m2 = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.26, ts * 1.5), bm); m2.rotation.z = s * 0.8; m2.rotation.y = Math.PI / 2; m2.renderOrder = 160; XG.add(m2); }
+        for (var i = 0; i < 12; i++) {
+            var kind = i % 3, geo = kind === 0 ? new THREE.BoxGeometry(ts * 0.12, ts * 0.09, ts * 0.015) : kind === 1 ? new THREE.CylinderGeometry(ts * 0.028, ts * 0.028, ts * 0.03, 6) : new THREE.BoxGeometry(ts * 0.03, ts * 0.11, ts * 0.03);
+            var m3 = _goAdd(F.g, new THREE.Mesh(geo, _goM(kind === 0 ? 0x7a4a34 : 0x6e7278)), 1), a = rnd() * Math.PI * 2;
+            scrap.push({ m: m3, vx: Math.cos(a) * (0.5 + rnd() * 1.4), vz: Math.sin(a) * (0.5 + rnd() * 1.4), vy: 0.9 + rnd() * 1.6, sp: (rnd() - 0.5) * 0.05 });
+        }
+        _shake('heavy');
+        _goSpray(F, 8, { sprite: 'steel-spark', tint: 0xe8802a, ly: ts * 0.6, v: 200, vz0: 40, vz1: 260, s0: 6, ml0: 200, ml1: 380 });
+        var TOTAL = 1000;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var t = el / 1000; bm.opacity = 0.95 * Math.max(0, 1 - el / 300); XG.scale.setScalar(0.6 + 0.6 * _sigEaseOutCubic(_sigClamp01(el / 120)));
+            for (var i = 0; i < scrap.length; i++) { var s = scrap[i]; s.m.position.set(s.vx * ts * t, Math.max(3, ts * 0.6 + s.vy * ts * t - 2.6 * ts * t * t), s.vz * ts * t); s.m.rotation.set(el * s.sp, el * s.sp * 0.8, el * s.sp * 1.4); }
+            _goShow(scrap.map(function (s) { return s.m; }), 1 - _sigClamp01((el - 650) / 350));
+        });
+    }
+    function _l3ShoeTex() {
+        return _pzTex('l3-shoe', 64, 64, function (g, w, h) {
+            g.strokeStyle = '#fff'; g.lineWidth = 12; g.lineCap = 'round'; g.beginPath(); g.arc(w / 2, h * 0.46, w * 0.28, Math.PI * 0.12, Math.PI * 0.88, true); g.stroke();
+        });
+    }
+    /* RIDE-BY — don't stop: the horse's shoes print the lane in pairs, clods fly off every stride, and the last square
+       takes the kick: one big horseshoe stamped hot on the ground under the body */
+    _spell3DGeometry['raceRideBy:dash'] = function (tx, ty, dist, x) {
+        _l3DashHit('raceRideBy', _l3RideBy3D, tx, ty, x, false);
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, st = _l3ShoeTex(), prints = [], NP = Ln.n * 2;
+        for (var i = 0; i < NP; i++) { var s = Ln.L * (i + 0.6) / NP, l = (i % 2 ? 1 : -1) * ts * 0.16;
+            prints.push({ m: _l3Mark(G, _l3Ink(0x2a2018, st), ts * 0.3, ts * 0.3, s, l, Math.PI), t: Ln.ms * (i + 0.6) / NP, s: s, l: l, done: false }); }
+        var TOTAL = Ln.ms + 1300;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            for (var i = 0; i < prints.length; i++) { var p = prints[i], e = el - p.t;
+                p.m.material.opacity = e < 0 ? 0 : 0.8 * (1 - _sigClamp01((e - 700) / 500));
+                if (!p.done && e >= 0) { p.done = true; var q = Ln.at(p.s, p.l);
+                    _goSpray(Ln.F, 2, { sprite: 'mud-chunk', tint: _L3C.earth, lx: q.x, lz: q.z, ly: 5, r: 4, v: 60, vx: -Ln.ux * 90, vy: -Ln.uz * 90, vz0: 120, vz1: 260, s0: 6, s1: 3, ml0: 320, ml1: 560, g: 800 });
+                    _goSpray(Ln.F, 1, { sprite: 'dust-puff', tint: _L3C.dust, lx: q.x, lz: q.z, ly: 5, r: 4, v: 25, vz0: 10, vz1: 40, s0: 8, s1: 22, ml0: 300, ml1: 520, op: 0.45, g: 0 }); }
+            }
+        });
+    };
+    function _l3RideBy3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), G = new THREE.Group(); G.rotation.y = Math.atan2(-S.ux, -S.uz); F.g.add(G);
+        var hot = _goA(0xe08a3a, 0), shoe = _l3Mark(G, hot, ts * 0.95, ts * 0.95, 0, 0, Math.PI); shoe.material.map = _l3ShoeTex(); shoe.position.y = 3.5;
+        var dark = _l3Mark(G, _l3Ink(0x2a2018, _l3ShoeTex()), ts * 0.95, ts * 0.95, 0, 0, Math.PI);
+        _shake('normal');
+        _goSpray(F, 7, { sprite: 'mud-chunk', tint: _L3C.earth, ly: 6, r: ts * 0.2, v: 120, vx: -S.ux * 110, vy: -S.uz * 110, vz0: 120, vz1: 320, s0: 6, s1: 3, ml0: 400, ml1: 700, g: 900 });
+        _goSpray(F, 5, { sprite: 'steel-spark', tint: 0xe08a3a, ly: 10, v: 150, vz0: 40, vz1: 200, s0: 5, ml0: 180, ml1: 340 });
+        return _sigRunOwned(F.g, 1300, function (el) {
+            var k = _sigEaseOutBack(_sigClamp01(el / 130)); G.scale.setScalar(0.6 + 0.4 * k);
+            hot.opacity = 0.95 * Math.max(0, 1 - el / 520); dark.material.opacity = 0.75 * _goEnv(el, 60, 1300, 450);
+        });
+    }
+    /* SHADOW INFILTRATION (halfdemon) — in through the shadows: three dark shapes of him are left standing down the lane
+       and thin away, a violet needle goes in at the body, and the shadow at his feet closes over him */
+    _spell3DGeometry['raceShadowInfiltration:dash'] = function (tx, ty, dist, x) {
+        _l3DashHit('raceShadowInfiltration', _l3ShadowInfil3D, tx, ty, x, false);
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, ghosts = [], NG = Math.max(2, Math.min(4, Ln.n + 1));
+        for (var i = 0; i < NG; i++) {
+            var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(0x0e0818), transparent: true, opacity: 0, depthWrite: false }));
+            sp.scale.set(ts * 0.62, ts * 1.25, 1); sp.position.set(0, ts * 0.55, Ln.L * i / NG); sp.renderOrder = 158; G.add(sp);
+            var rim = _pzSpr(0x6a3ad0, ts * 0.8, G); rim.position.copy(sp.position); rim.scale.set(ts * 0.5, ts * 1.2, 1);
+            ghosts.push({ s: sp, rim: rim, t: Ln.ms * i / NG, done: false });
+        }
+        var TOTAL = Ln.ms + 800;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            for (var i = 0; i < ghosts.length; i++) { var g = ghosts[i], e = el - g.t, o = e < 0 ? 0 : Math.max(0, 1 - e / 620);
+                g.s.material.opacity = 0.9 * o; g.rim.material.opacity = 0.28 * o; g.s.scale.set(ts * 0.62 * (1 - 0.4 * (1 - o)), ts * 1.25, 1);
+                if (!g.done && e >= 0) { g.done = true; var p = Ln.at(g.s.position.z, 0); _goSpray(Ln.F, 3, { sprite: 'shadow-wisp', lx: p.x, lz: p.z, ly: ts * 0.4, v: 25, vz0: 30, vz1: 90, s0: 12, s1: 4, ml0: 400, ml1: 700, g: 0, op: 0.7 }); }
+            }
+        });
+    };
+    function _l3ShadowInfil3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x);
+        var G = new THREE.Group(); G.rotation.y = Math.atan2(-S.ux, -S.uz); G.position.y = ts * 0.62; F.g.add(G);
+        var nm = _goA(0x8a4af0, 0), sg = new THREE.PlaneGeometry(ts * 0.09, ts * 1.3); sg.rotateX(-Math.PI / 2);
+        var n1 = new THREE.Mesh(sg, nm); nm.map = _sigStreakTex(); n1.renderOrder = 160; G.add(n1); var n2 = new THREE.Mesh(sg.clone().rotateZ(Math.PI / 2), nm); n2.renderOrder = 160; G.add(n2);
+        /* the pool: on the square he lands on */
+        var px = tx, py = ty, pool = null, ring = null;
+        if (S.far && _pzSeen(px, py)) {
+            var wp = _worldPos(px, py), dg = new THREE.CircleGeometry(ts * 0.52, 28); dg.rotateX(-Math.PI / 2);
+            pool = new THREE.Mesh(dg, _l3Ink(0x0c0814)); pool.position.set(wp.x - F.wp.x, wp.y - F.wp.y + 2.5, wp.z - F.wp.z); pool.renderOrder = 152; F.g.add(pool);
+            ring = new THREE.Mesh(new THREE.RingGeometry(ts * 0.5, ts * 0.56, 28).rotateX(-Math.PI / 2), _goA(0x6a3ad0, 0)); ring.position.copy(pool.position); ring.position.y += 0.5; ring.renderOrder = 153; F.g.add(ring);
+        }
+        _goSpray(F, 5, { sprite: 'shadow-wisp', ly: ts * 0.6, v: 70, vz0: 10, vz1: 90, s0: 12, s1: 4, ml0: 350, ml1: 600, g: 0, op: 0.75 });
+        var lastW = 0, TOTAL = 1250;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var th = _sigEaseOutCubic(_sigClamp01(el / 100)); n1.position.z = n2.position.z = ts * (-0.7 + 0.9 * th); nm.opacity = 0.95 * Math.max(0, 1 - (el - 80) / 260);
+            if (pool) { var open = _sigEaseOutCubic(_sigClamp01((el - 150) / 220)), shut = _sigEaseInCubic(_sigClamp01((el - 620) / 520)), sc = Math.max(0.001, open * (1 - shut));
+                pool.scale.setScalar(sc); ring.scale.setScalar(sc); pool.material.opacity = 0.85 * open; ring.material.opacity = 0.7 * open * (1 - shut);
+                if (el > 300 && el < 1100 && el - lastW > 110 && _canSpawn()) { lastW = el; _pzP(F, pool.position.x + rn(-ts * 0.25, ts * 0.25) * sc, 8, pool.position.z + rn(-ts * 0.25, ts * 0.25) * sc, { sprite: 'shadow-wisp', ml: rn(400, 700), size0: 12, size1: 4, vz: rn(50, 120), opacity0: 0.7 }); }
+            }
+        });
+    }
+    function _l3PawTex() {
+        return _pzTex('l3-paw', 64, 96, function (g, w, h) {
+            g.fillStyle = '#fff'; g.beginPath(); g.ellipse(w * 0.3, h * 0.36, w * 0.11, h * 0.3, 0, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(w * 0.7, h * 0.36, w * 0.11, h * 0.3, 0, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.arc(w * 0.4, h * 0.82, w * 0.07, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(w * 0.62, h * 0.9, w * 0.07, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* SPRINT (rabbit) — go: a rabbit's tracks, the two long hind feet ahead of the two small fore, hop down the lane with
+       a puff of dust and a few blades of grass at each, and one skid where it stops. Nothing more: it is only a run. */
+    _spell3DGeometry['raceSprint:dash'] = function (tx, ty, dist, x) {
+        var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
+        var ts = Ln.ts, G = Ln.G, pt = _l3PawTex(), hops = [];
+        for (var i = 0; i < Ln.n; i++) { var s = Ln.L * (i + 0.7) / Ln.n; hops.push({ m: _l3Mark(G, _l3Ink(0x2e2418, pt), ts * 0.3, ts * 0.45, s, 0, Math.PI), t: Ln.ms * (i + 0.7) / Ln.n, s: s, done: false }); }
+        var TOTAL = Ln.ms + 1000;
+        return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
+            for (var i = 0; i < hops.length; i++) { var p = hops[i], e = el - p.t;
+                p.m.material.opacity = e < 0 ? 0 : 0.75 * (1 - _sigClamp01((e - 500) / 450));
+                if (!p.done && e >= 0) { p.done = true; _l3LaneDust(Ln, p.s, 0, i === hops.length - 1 ? 5 : 2);
+                    var q = Ln.at(p.s, 0); _goSpray(Ln.F, 3, { sprite: 'leaf', tint: 0x7ac058, lx: q.x, lz: q.z, ly: 5, r: 5, v: 60, vx: -Ln.ux * 70, vy: -Ln.uz * 70, vz0: 80, vz1: 200, s0: 5, s1: 2, ml0: 300, ml1: 520, g: 500 }); }
+            }
+        });
+    };
+
+    Object.assign(_GO_SIG, {
+        raceBodyCheck: _l3BodyCheck3D, raceHornToss: _l3HornToss3D,
+        raceBlitz: _l3Late('raceBlitz', _l3Blitz3D), raceDarkFeather: _l3Late('raceDarkFeather', _l3DarkFeather3D), raceRamCharge: _l3Late('raceRamCharge', _l3RamCharge3D),
+        raceRampage: _l3Late('raceRampage', _l3Rampage3D), raceRideBy: _l3Late('raceRideBy', _l3RideBy3D), raceShadowInfiltration: _l3Late('raceShadowInfiltration', _l3ShadowInfil3D),
+        /* these three are drawn whole by their lane ('<id>:dash' above); the entry tells _vcOwn they have a look */
+        raceDriveBy: function () { return null; }, raceGiantStride: function () { return null; }, raceIceSlide: function () { return null; }, raceSprint: function () { return null; },
     });
     /* ═════════ END THE OWN LOOKS, L3 ═════════ */
 
