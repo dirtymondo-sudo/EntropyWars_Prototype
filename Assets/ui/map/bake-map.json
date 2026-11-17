@@ -245,9 +245,9 @@
   "nz": 72,
   "h0": 1.56,
   "hs": 0.25,
-  "v": "2be3e6bd7b",
+  "v": "390d82f0e4",
   "bytes": 621,
-  "s": "1.5"
+  "s": "1.1"
  },
  "site_ow_l8": {
   "id": "site_ow_l8",
@@ -265,9 +265,9 @@
   "nz": 60,
   "h0": -3.5,
   "hs": 0.25,
-  "v": "4f9d721959",
-  "bytes": 1576,
-  "s": "8.6"
+  "v": "924b6cc51e",
+  "bytes": 1583,
+  "s": "6.1"
  },
  "site_prebuilt_fairy_forest_ow_creek": {
   "id": "site_prebuilt_fairy_forest_ow_creek",
@@ -285,8 +285,8 @@
   "nz": 96,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "38479d0db1",
-  "bytes": 1634,
-  "s": "1.5"
+  "v": "24d7365b55",
+  "bytes": 1656,
+  "s": "1.1"
  }
 }
