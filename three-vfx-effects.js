@@ -46425,13 +46425,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ══ THE CURSED TV (2026-11-17, mondo approved the kit) ══ A haunted set on a rolling cart; every spell is a channel. The set's
        own screen changes channel on the body (three-renderer.js THE CURSED TV); these are what the cast throws out on the board.
        The side reads from the viewer's seat on the rings and threads (THE RIOT PASS: own side cyan-blue, the other side
-       pink-orange); the panels float over the head, never over the body, so the caster, the target, the hit and the number stay
-       clear. Kill-switch window.EW_NO_TV_VFX.
+       pink-orange); the channel cards stand BESIDE the unit (screen right, chest height), never over the body or under the
+       nameplate, so the caster, the target, the hit and the number stay clear. Kill-switch window.EW_NO_TV_VFX.
          STATIC BURST (impact): a white streak of snow down the line, the static flickers on the victim, a white pop + a side ring.
-         EMERGENCY BROADCAST (geometry + aoe): the colour-bar card with EMERGENCY BROADCAST pops up over the set and flickers;
+         EMERGENCY BROADCAST (geometry + aoe): the colour-bar card with EMERGENCY BROADCAST pops up beside the set and flickers;
            three rings in the bar colours (yellow, cyan, magenta) go out to the edge, the side ring on the floor.
-         FAST FORWARD (geometry): the blue VCR screen with FF over the ally, three side rings rising fast up its body.
-         REWIND (geometry): the blue VCR screen with REWIND over the victim, the static on it, side rings closing IN (time
+         FAST FORWARD (geometry, fired from the buff in battle.js): the blue VCR screen with FF beside the ally, three side rings
+           rising fast up its body.
+         REWIND (geometry): the blue VCR screen with REWIND beside the victim, the static on it, side rings closing IN (time
            running backwards) before the replayed hit lands. */
     var _TVX_SNOW = 0xeef4ff, _TVX_Y = 0xd8d800, _TVX_C = 0x00d8d8, _TVX_M = 0xd800d8;
     function _tvxOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_TV_VFX); }
@@ -46466,21 +46467,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var y = 0; y < S; y += 4) g.fillRect(0, y, S, 1);
         });
     }
-    /* a channel card floating over the unit's head, facing the camera: pops open like a set switching on, flickers, fades */
+    /* a channel card beside the unit, facing the camera: to the unit's right on screen at chest height (over the head it sat
+       under the DOM nameplate + portrait and could not be seen), so the body, the nameplate and the number stay clear; it pops
+       open like a set switching on (a line, then the picture), flickers, and shrinks to a dot when it goes off */
+    var _tvxR = null;
+    function _tvxPlace(hold, ts, h) {
+        var right = _tvxR || (_tvxR = new THREE.Vector3());
+        right.set(1, 0, 0);
+        try { var cam = (!_VS.on && typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (cam && cam.quaternion) right.applyQuaternion(cam.quaternion); } catch (e) {}
+        right.y = 0; if (right.lengthSq() < 1e-6) right.set(1, 0, 0); right.normalize();
+        hold.position.set(right.x * ts * 0.85, h * 0.8, right.z * ts * 0.85);
+    }
     function _tvxPanel(tx, ty, tex, o) {
         if (_afFogHides(tx, ty)) return null;
         o = o || {};
         var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts);
-        var m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, fog: false, side: THREE.DoubleSide });
-        var w = ts * (o.w || 0.55), pl = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 0.75), m);
-        pl.renderOrder = 166;
-        var hold = new THREE.Group(); hold.position.y = h * 1.15 + w * 0.7; hold.add(pl); F.g.add(hold);   /* over the nameplate, never on the body */
-        _hdFaceCam(hold);
-        var ms = o.ms || 1000, a0 = o.alpha || 0.9;
+        var m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide });
+        var w = ts * (o.w || 0.8), pl = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 0.75), m);
+        pl.renderOrder = 169;
+        var hold = new THREE.Group(); hold.add(pl); F.g.add(hold);
+        _tvxPlace(hold, ts, h); _hdFaceCam(hold);
+        var ms = o.ms || 1000, a0 = o.alpha || 0.92;
         return _sigRunOwned(F.g, ms, function (el) {
-            _hdFaceCam(hold);
+            _tvxPlace(hold, ts, h); _hdFaceCam(hold);
             var on = _sigClamp01(el / 140), off = _sigClamp01((el - ms + 160) / 160);
-            pl.scale.set(Math.max(0.05, 1 - off * 0.95), Math.max(0.03, on * (1 - off)), 1);   /* on: the picture opens from a line; off: it shrinks to a dot */
+            pl.scale.set(Math.max(0.05, 1 - off * 0.95), Math.max(0.03, on * (1 - off)), 1);
             var fl = (o.flicker && (Math.floor(el / 70) % 6) === 3) ? 0.35 : 1;
             m.opacity = a0 * fl * (el < ms - 160 ? 1 : 1 - off * 0.5);
         });
@@ -46512,7 +46523,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_tvxOff() || _afFogHides(tx, ty)) return null;
         var ts = _worldPos(tx, ty).ts, reach = (r > 0 ? r : 2) + 0.5, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: _cbOwnerNear(tx, ty) });
         var h = _lgBodyH(_lgUidAt(tx, ty), ts);
-        _tvxPanel(tx, ty, _tvxBarsTex(), { w: 0.7, ms: 1500, flicker: true });
+        _tvxPanel(tx, ty, _tvxBarsTex(), { w: 0.9, ms: 1500, flicker: true });
         [_TVX_Y, _TVX_C, _TVX_M].forEach(function (col, j) {
             _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.45, r1: ts * reach, ms: 620, color: col, height: ts * (0.08 + 0.1 * j), opacity: 0.22, torus: j > 0 }); } catch (e) {} }, 180 + j * 140);   /* low + faint: three additive plates at body height washed the set out white */
         });
@@ -46524,7 +46535,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_tvxOff() || _afFogHides(tx, ty)) return null;
         var ts = _worldPos(tx, ty).ts, u = _fx5UnitAt(tx, ty), C = _hdSide(u || { player: (o && o.owner) });
         var h = _lgBodyH(_lgUidAt(tx, ty), ts);
-        _tvxPanel(tx, ty, _tvxVcrTex(false), { ms: 1100 });
+        _tvxPanel(tx, ty, _tvxVcrTex(false), { ms: 1400 });
         for (var i = 0; i < 3; i++) (function (j) {
             _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 0.5, ms: 260, color: j % 2 ? C.b : C.a, height: h * (0.15 + 0.3 * j), torus: true }); } catch (e) {} }, 120 + j * 90);
         })(i);
@@ -46538,7 +46549,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_tvxOff() || _afFogHides(tx, ty)) return null;
         o = o || {};
         var ts = _worldPos(tx, ty).ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
-        _tvxPanel(tx, ty, _tvxVcrTex(true), { ms: 1300, flicker: true });
+        _tvxPanel(tx, ty, _tvxVcrTex(true), { ms: 1600, flicker: true });
         _hdStaticAt(tx, ty, C, 120);
         for (var i = 0; i < 3; i++) (function (j) {
             _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.95, r1: ts * 0.2, ms: 360, color: j % 2 ? C.b : C.a, height: ts * 0.05 }); } catch (e) {} }, j * 150);

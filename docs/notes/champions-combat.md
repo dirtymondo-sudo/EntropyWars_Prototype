@@ -5970,6 +5970,6 @@ Probe /mnt/project-files/ninja-race/probe_ninja.js (NINJA_CPU=1 = a CPU ninja pl
 - Static Burst (T1, range 4, 80 lightning magic + Blind 1), Emergency Broadcast (T2, self nova radius 2, 90 sonic magic + Silence 1,
   CD 3), Fast Forward (T2, ally or self within 4, +1 SPD stage + Quickened +1 MOV 2 rounds, CD 2). Each row's `animSlot` picks the
   channel clip (tvStatic / tvBars / tvFF / tvRewind; models-assets.md "THE CURSED TV").
-- VFX = three-vfx-effects.js "THE CURSED TV" (after THE HAUNTED DOLL; kill-switch `window.EW_NO_TV_VFX`): channel cards float OVER
-  the head (bars + EMERGENCY BROADCAST, the blue VCR screen with FF / REWIND), static on the victim, side rings (own cyan-blue /
+- VFX = three-vfx-effects.js "THE CURSED TV" (after THE HAUNTED DOLL; kill-switch `window.EW_NO_TV_VFX`): channel cards stand BESIDE
+  the unit, screen right at chest height (over the head they sat under the DOM nameplate and could not be seen) (bars + EMERGENCY BROADCAST, the blue VCR screen with FF / REWIND), static on the victim, side rings (own cyan-blue /
   enemy pink-orange), Broadcast's three rings in the bar colours. All through `_spell3DGeometry` + SPELL_MAP (relayed like every cast).
