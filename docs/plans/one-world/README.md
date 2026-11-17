@@ -12,6 +12,7 @@ What is here (copied from the owner project's files so both accounts can read it
 | `one-world-v13.html` | The whole design page (open it in a browser): every sheet, every route with its reason, the zone table, the underground, beyond the map. |
 | `sheets/*.png` | The sheets as pictures: `closeup` (west half, every plot named), `terrain` (ground kinds), `travel` (player's map), `surface` (builder's master map), `underground`, `section`, `beyond`. |
 | `gen.js` | The generator: every district, path, route, wild link, underground walk and island in plot coordinates. `SHAPES` = the plot-by-plot districts (each plot named), `LINKS` = wild links, `ROUTES` = the roads, `UGD` / `UGWALK` / `UGRIDE` / `UGLOOP` / `UGWAYS` = below. `node gen.js` rewrites the SVGs + `mapdata.json` beside it. |
+| `plots.json` | **What the zone threads read** (`node gen.js --plots` writes it; never edit by hand). Every district's plots: name, world plot x, y, and `was` = the plot's id in the game's room today; every route, wild link and underground walk as plot lists in walking order with what each plot `meets`; every way down / up; every island; the ground letter of every plot of the disc. How to use it: `docs/notes/areas-complexes.md` "ONE WORLD, THE ZONE MOVES". |
 | `mapdata.json` | gen.js output: every surface room (`SURF`, with `plots` lists for the shaped districts), islands, route plot counts, district names and zones. |
 | `build-page.js` + `page_v8.src.html` | Rebuild `world-map-redesign.html` from the SVGs (`node gen.js && node build-page.js`). |
 
