@@ -2073,3 +2073,20 @@ DOOR AGENTS (2026-11-17, mondo: "agent belle and the male door agent model, the 
 is a front render of each cast GLB (`Races/maincharacters/Meshy_AI_<Player|Agent_Belle>_biped_Character_output.glb`) in a bare three.js
 page (orthographic, transparent, hemisphere + two key lights), already clean alpha. At 124 px the restyle touched row 0 on both; the
 input at 114 px (more headroom) fixed it. Wired in `_CHARACTER_SPRITES_GENDERED['door agent']` (`door_agent_m_px`, `agent_belle_px`).
+
+## THE NEW CHARACTERS, 11-17 (mondo: male skater, female nordic, siren, mermaid redo, male lifeguard, Pope, Haunted Doll, ninja M + F)
+Meshy pipeline of `/mnt/project-files/new-races/run.py` (nano-banana-pro concept -> meshy-t2.5 image-to-3d a-pose -> rigging), copied to
+`/mnt/project-files/new-chars/` (items.py = the prompts; concepts/, models/, sprites/, proof/, models_sprites_sheet.jpg).
+- IN THE GAME (sprites.js): skater MALE + lifeguard MALE (both races now 'both'), nordic FEMALE (the male stays the creator look), the SIREN's
+  first 3D model, and the MERMAID woman's new model (navy blue to match her sprite; was `hot_mermaid_girl`, which looked like the red-haired
+  female atlantean; old files kept on R2). Sprites: `_NEW_MALE_SPRITES` skater/lifeguard, new `_NEW_FEMALE_SPRITES` (nordic, siren; listed in
+  `_ewMoveArtTables`), RACE_SPRITES siren. The mermaid keeps her blue sprite.
+- NOT IN THE GAME (new characters, model + sprite only, no rules until mondo asks): Pope, Haunted Doll, Ninja M/F, on R2 at
+  `Assets/characters/races/{pope/male, haunted_doll/female, ninja/male, ninja/female}/` (`Meshy_AI_<key>_Running.glb`, `<key>_px.png`).
+- TAILS: Meshy rigs a two-leg skeleton, so a fish tail split when walking. Fix: every leg joint in JOINTS_0 remapped to Hips (the tail moves
+  with the hips, rigid). A tail like that must NOT use the Swim_Idle_Loop idle: it lowers the hips and the unit sank to the shoulders.
+- SPRITES: the concept cut-out failed on pale figures (white suit, white robe, porcelain) and kept floor shadows, so the source was each
+  rigged model's front render (three.js ortho, transparent) fitted to 114 px, `sprite_import`, `sprite_restyle` normal at size 128 with every
+  colour named. The male ninja came back WHITE once: a second roll with "everything is black, NOT white" and palette_extras 1 fixed it.
+- Pope: concept v1 looked like a real pope and v2 came out Pixar; "fictional, NOT any real person ... photorealistic AAA game character" worked.
+  A stray thin strand hung from his hand (6 triangles, cut).
