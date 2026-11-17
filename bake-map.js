@@ -41,7 +41,7 @@ const ZONES = [
     { hub: 'kingdom', layout: 'camelot', rooms: [{ room: 'site_prebuilt_camelot_kingdom', layer: 'surface', wx: -29, wy: -3, zx: 0, zy: 0 }] },
     { hub: 'ranch', layout: 'estate', rooms: [{ room: 'site_prebuilt_skinwalker_estate', layer: 'surface', wx: -22, wy: 12, zx: -22, zy: 12, wait: 1 }] },   // THE TEST SLICE (2026-11-17): the room is the Haunted House + the Ranch now (6 x 3 plots, not moved yet); the Corn Fields and the Lake are rooms of their own (`room.world`)
     { hub: 'desert', layout: 'desert', rooms: [{ room: 'site_prebuilt_area51_highway', layer: 'surface', wx: 6, wy: 35, zx: 0, zy: 0, wait: 1 }] },   // THE ONE WORLD MOVE (2026-11-17): the four districts are rooms of their own (`room.world`; Area 51 keeps the old id); the Highway's room is not moved (BUILD_PLAN 4.2 re-routes it), so it is drawn clear of them, south of Area 51 and Giza
-    { hub: 'beach', layout: 'beach', rooms: [{ room: 'site_prebuilt_bermuda_beach', layer: 'surface', wx: 12, wy: 2, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'beach', layout: 'beach', rooms: [{ room: 'site_prebuilt_bermuda_beach', layer: 'surface', wx: 12, wy: 2, zx: 0, zy: 0 }] },   // THE ONE WORLD MOVE (2026-11-17, phase 4.3): the Beach stands at 12,2 (8 x 10); the Triangle and the Volcano Island are rooms of their own (`room.world`)
     { hub: 'ley', layout: 'leylines', rooms: [{ room: 'site_prebuilt_gobekli_ancient', layer: 'surface', wx: 19, wy: 29, zx: 0, zy: 0, wait: 1 }] },
     { hub: 'antarctica', layout: 'antarctica', rooms: [{ room: 'site_prebuilt_antarctica_plots', layer: 'surface', wx: 0, wy: 46, zx: 0, zy: 0 }] },
     { hub: 'divine', layout: 'afterlife', rooms: [

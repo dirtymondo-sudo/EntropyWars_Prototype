@@ -42,6 +42,13 @@ const PLACES = {
     jetty:      { name: 'the old jetty', kinds: ['saltflat', 'sand'], r: 2, pieces: [['hw_pier', 0, -1, B], ['hw_pier', 0, 0, B], ['hw_pier', 0, 1, B], ['lantern_post', 1, -1, Object.assign({ face: 270, noLight: true }, B)], ['wooden_barrel', -1, 1, B], ['wooden_bucket', 0.8, 0.9]] },
     tower:      { name: 'the water tower', kinds: ['desert', 'saltflat', 'scrub'], r: 2, pieces: [['water_tower_west', 0, 0, B], ['water_trough', 2, 0, { face: 90 }], ['wooden_barrel', -2, 1, B]] },
     markers:    { name: 'the marker stones', kinds: ['desert', 'saltflat', 'rock', 'snow', 'scrub'], r: 1, pieces: [['cairn', 0, 0, B], ['cairn', 1, 1, B], ['cairn', -1, 1, B]] },
+    /* ── the coast (2026-11-17, One World 4.3: the design page gives the Coast Road "cliff tunnel, surf coves, a lookout over the sea" and the Delta
+       Causeway "reed flats"); ideas, plain names, no role ── */
+    surf:       { name: 'the surf rack', kinds: ['sand'], r: 2, pieces: [['surfboard_rack', 0, 0, Object.assign({ face: 180 }, B)], ['surfboard_long', 1.4, 0.9, { face: 70 }], ['beach_towel', -1.2, 1.1, { face: 20 }], ['beach_cooler', -1.4, -0.6]] },
+    lookout:    { name: 'the lookout', kinds: ['sand', 'cliff', 'rock'], r: 2, pieces: [['coin_telescope', 0, 0, Object.assign({ face: 90 }, B)], ['park_bench', -1, 1, Object.assign({ face: 90 }, B)], ['lantern_post', 1, 1, Object.assign({ face: 270, noLight: true }, B)]] },
+    nets:       { name: 'the drying nets', kinds: ['sand'], r: 2, pieces: [['drying_fish', 0, 0, B], ['fish_boxes', 1, 1, B], ['rowboat', -1, 1, Object.assign({ face: 100 }, B)], ['fishing_rod', 1, -1, B]] },
+    reedbed:    { name: 'the reed bed', kinds: ['marsh', 'meadow', 'scrub'], r: 2, pieces: [['reeds', -1, -1, B], ['reeds', 1, 0, B], ['reeds', 0, 1, B], ['heron', 0.4, -0.6, { face: 200 }], ['duck', -1.3, 0.8, { face: 60 }]] },
+    tikis:      { name: 'the torches', kinds: ['sand'], r: 1, pieces: [['tiki_torch', -1, 0, B], ['tiki_torch', 1, 0, B], ['beach_towel', 0.1, 0.6, { face: 90 }]] },
     /* ── snow and ice ── */
     snowman:    { name: 'the snowman', kinds: ['snow'], r: 1, pieces: [['xmas_snowman', 0, 0, Object.assign({ face: 180 }, B)], ['snow_sled', 1.1, 0.7, { face: 40 }], ['snow_heap', -1, 1, B]] },
     trapper:    { name: 'the trapper’s camp', kinds: ['snow'], r: 2, pieces: [['canvas_tent', 0, 0, Object.assign({ face: 200 }, B)], ['meshy_campfire_ring', 1.4, 1.3], ['firewood_stack', -1, 1, Object.assign({ face: 90 }, B)], ['snow_sled', 1.5, -0.8, { face: 300 }]] },
