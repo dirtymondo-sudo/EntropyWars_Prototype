@@ -10794,6 +10794,11 @@ puts the camera UNDER the land: you photograph the sea sheet or the shell floor 
 first, headless: `hqTerrainCompile(DOOR_HQ.rooms[id], id).hFn(x, z)` (load-data.js sandbox), and pass `"y": <that + 0.05>`. `face` 0 looks north, 90 east.
 
 ## THE CITY PROBE — playtest_city.js: the HQ with THE REAL SHEETS (2026-09-17, THE URBAN PACK)
+**THE HAND-OVER PROBE, A FIGHT ON A NAMED SQUARE (2026-11-17, the One World test slice):** `--at=x,z[,y]` stands the walker there before the strike and
+`--race=<unit>` names who is struck (default dinosaur); `EW_SHOTS=<dir>` = where the pictures go. The slice's fight on a trail plot:
+`node playtest_handover.js site_ow_l8 --at=6,-25,0.2 --race=mothman` (12 s to round 1, back after 6.4 s). A room's draw and memory numbers: a view's
+`"eval"` printing `ThreeRenderer.hq.perf()` in playtest_city.js with `--loglen=1400` (calls, triangles, `mem.misc.mb` + `mem.rigs.mb`); frame rate under
+llvmpipe swings 2 to 18 a second in any room and says nothing.
 **THE HAND-OVER PROBE (2026-11-16):** `node playtest_handover.js [room] [--flags=EW_HQ_NO_PARK]` walks a room, strikes
 (`window._hqEncounterFire`), ends the fight (`u.hp = 0; checkWin()`), presses `#encReturnBtn` and comes back; pictures in
 `shots/fight/`, counts (merged meshes, squares, "BACK after N s") and the `[HQ] left / resumed` lines in the log. Use it for any
