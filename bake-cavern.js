@@ -232,56 +232,258 @@ const SPM = { x: gcx(SP[0]), z: gcz(SP[1]) }, CR = plot['P02-01'];
 const SUNS = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].suns === 'function' ? (DISTRICTS[k].suns(CTX[k]) || []) : [])).slice(0, 4);
 /* THE AIR BY DISTRICT (shell.atmos.zones): a file's `airZones(ctx)` = [{ sx0, sy0, sx1, sy1 (squares, the end exclusive), kind, color, n, speed }] */
 const AIR = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].airZones === 'function' ? (DISTRICTS[k].airZones(CTX[k]) || []).map(z => { const q = Object.assign({}, z, { x0: gx(z.sx0), z0: gz(z.sy0), x1: gx(z.sx1), z1: gz(z.sy1) }); delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; }) : []));
-const LINES = [].concat(...Object.keys(O).map(k => O[k].l)), L = [];
-L.push("        /* CAVERN36-BEGIN — THE CAVERN ON PLOTS (2026-11-16): written by `node bake-cavern.js` from docs/areas/cavern/layout.json + districts/<K H A>.js. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. */");
-L.push("        " + ROOM + ": {");
-L.push("            label: 'THE CAVERN',");
-L.push("            sub: 'THE CROSSROADS · HOLLOW EARTH · AGARTHA · EVERYTHING BELOW MEETS HERE',");
-L.push("            kind: 'box', site: '" + SITE + "', part: '" + PART + "',");
-L.push("            shell: { w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: " + SH + ", wallH: " + SH + ", dadoH: 1.1, open: false,");
-L.push("                     floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall', floorColor: 0x8a8278, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x2a2622,");
-L.push("                     pipes: false, strips: false, lights: [], mood: { light: 0xffc078, ambient: " + (PLAN.ambient != null ? PLAN.ambient : 0.24) + ", hero: false }, plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(CR.base + 4.2) + " },");
-L.push("                     fog: { color: 0x0e0b09, density: " + (PLAN.fog != null ? PLAN.fog : 0.007) + " }, look: HQ_ROOM_LOOKS.cave,");
-L.push("                     /* THE BIG LIGHTS (three-renderer.js _hqBoxRoomLamps): the Inner Sun, the Spire, the lava lake */");
-L.push("                     suns: " + J(SUNS) + (AIR.length ? ", atmos: " + J({ kind: 'none', zones: AIR }) : "") + " },");
-L.push("            parti: 'The cave under the crust is a loop over three tiers; its mouth is a ledge over a whole country lit by a sun that never sets; east of the country a city of white terraces steps down to a lake round a spire lit from inside.',");
-L.push("            typology: 'grid',");
-L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + GX + ", nz: " + GY + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.d, p.level])) + " },");
-L.push("            terrain: {");
-L.push("                res: 0.875, floor: 'cave_floor', cliff: 'rocks_5', path: 'dirt_2', stairs: 'wood',");
-L.push("                noise: { amp: 0, scale: 5 }, crag: false, stalactites: false,");
-L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
-L.push("                /* every square that is not a `space` is the rock, up to the crust */");
-L.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'cave_wall', rim: 0, forceGrow: -0.3 },");
-L.push("                features: [");
-features.forEach(f => L.push("                    " + J(f) + ","));
-L.push("                ],");
-L.push("            },");
-L.push("            doors: [");
-doors.forEach(d => L.push("                " + J(d) + ","));
-L.push("            ],");
-L.push("            counters: " + J(counters) + ",");
-L.push("            props: [");
-for (let i = 0; i < props.length; i += 4) L.push("                " + props.slice(i, i + 4).map(J).join(", ") + ",");
-L.push("            ],");
-L.push("            agents: [],");
-L.push("            npcSpots: " + J(npc) + ",");
-L.push("            onlineSpots: [],");
-L.push("            lines: " + J(LINES) + ",");
-L.push("            spawn: { x: " + SPM.x + ", z: " + SPM.z + ", face: 90 },");
-L.push("        },");
+const LINES = [].concat(...Object.keys(O).map(k => O[k].l));
+/* ── THE ROOM WRITER: one room literal (the home room, or a One World room) ── */
+function writeRoom(R) {
+    const L = [];
+    L.push("        " + R.room + ": {");
+    L.push("            label: '" + R.label + "',");
+    L.push("            sub: '" + R.sub.replace(/'/g, "\\'") + "',");
+    L.push("            kind: 'box', site: '" + SITE + "', part: '" + R.part + "',");
+    if (R.world) { L.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex; bake-cavern.js THE ONE WORLD MOVE) */");
+        L.push("            world: { hub: 'cavern', layer: 'under', wx: " + R.world.wx + ", wy: " + R.world.wy + " },"); }
+    L.push("            shell: { w: " + R.w + ", d: " + R.d + ", h: " + R.SH + ", wallH: " + R.SH + ", dadoH: 1.1, open: false,");
+    L.push("                     floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall', floorColor: 0x8a8278, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x2a2622,");
+    L.push("                     pipes: false, strips: false, lights: [], mood: { light: 0xffc078, ambient: " + (PLAN.ambient != null ? PLAN.ambient : 0.24) + ", hero: false }, plate: { x: " + R.plate.x + ", z: " + R.plate.z + ", y: " + R.plate.y + " },");
+    L.push("                     fog: { color: 0x0e0b09, density: " + (PLAN.fog != null ? PLAN.fog : 0.007) + " }, look: HQ_ROOM_LOOKS.cave,");
+    L.push("                     /* THE BIG LIGHTS (three-renderer.js _hqBoxRoomLamps): " + R.sunsNote + " */");
+    L.push("                     suns: " + J(R.suns) + (R.air.length ? ", atmos: " + J({ kind: 'none', zones: R.air }) : "") + " },");
+    L.push("            parti: '" + R.parti.replace(/'/g, "\\'") + "',");
+    L.push("            typology: 'grid',");
+    L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + R.nx + ", nz: " + R.nz + (R.mask ? ", mask: " + J(R.mask) : "") + ", names: " + J(R.names) + " },");
+    L.push("            terrain: {");
+    L.push("                res: 0.875, floor: 'cave_floor', cliff: 'rocks_5', path: 'dirt_2', stairs: 'wood',");
+    L.push("                noise: { amp: 0, scale: 5 }, crag: false, stalactites: false,");
+    L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + R.px0 + ", z0: " + R.pz0 + ", nx: " + R.W + ", nz: " + R.Hh + ", d: '" + Buffer.from(R.paint).toString('base64') + "' },");
+    L.push("                /* every square that is not a `space` is the rock, up to the crust */");
+    L.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'cave_wall', rim: 0, forceGrow: -0.3 },");
+    L.push("                features: [");
+    R.features.forEach(f => L.push("                    " + J(f) + ","));
+    L.push("                ],");
+    L.push("            },");
+    L.push("            doors: [");
+    R.doors.forEach(d => L.push("                " + J(d) + ","));
+    L.push("            ],");
+    L.push("            counters: " + J(R.counters) + ",");
+    L.push("            props: [");
+    for (let i = 0; i < R.props.length; i += 4) L.push("                " + R.props.slice(i, i + 4).map(J).join(", ") + ",");
+    L.push("            ],");
+    L.push("            agents: [],");
+    L.push("            npcSpots: " + J(R.npc) + ",");
+    L.push("            onlineSpots: [],");
+    L.push("            lines: " + J(R.lines) + ",");
+    L.push("            spawn: { x: " + R.spawn.x + ", z: " + R.spawn.z + ", face: " + R.spawn.face + " },");
+    L.push("        },");
+    return L;
+}
+const place = w => "wall: '" + w.wall + "', " + (w.wall === 'free' ? 'x: ' + w.x + ', z: ' + w.z + ', face: ' + w.face + (w.passage ? ', passage: { len: 3, deep: 1.2 }' : '') : (w.wall === 'n' || w.wall === 's' ? 'x: ' : 'z: ') + w.at);
+const OW = !process.env.CAVERN_HOME;
+const HEAD = "        /* CAVERN36-BEGIN — THE CAVERN ON PLOTS (2026-11-16)" + (OW ? " + THE ONE WORLD MOVE (2026-11-17: the Cavern + Hollow Earth, Agartha and the cave tunnels at their One World places)" : "") + ": written by `node bake-cavern.js` from docs/areas/cavern/layout.json + districts/<K H A>.js" + (OW ? " + docs/plans/one-world/plots.json" : "") + ". Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. */";
+let BLOCK, WANT;
+if (!OW) {
+    const L = [HEAD].concat(writeRoom({ room: ROOM, part: PART, label: 'THE CAVERN', sub: 'THE CROSSROADS · HOLLOW EARTH · AGARTHA · EVERYTHING BELOW MEETS HERE', world: null, w: 2 * HX, d: 2 * HZ, SH,
+        plate: { x: SPM.x, z: SPM.z, y: r2(CR.base + 4.2) }, sunsNote: 'the Inner Sun, the Spire, the lava lake', suns: SUNS, air: AIR,
+        parti: 'The cave under the crust is a loop over three tiers; its mouth is a ledge over a whole country lit by a sun that never sets; east of the country a city of white terraces steps down to a lake round a spire lit from inside.',
+        nx: GX, nz: GY, mask: null, names: PLAN.plots.map(p => [p.id, p.name, p.d, p.level]), px0: gcx(0), pz0: gcz(0), W, Hh, paint, features, doors, counters, props, npc, lines: LINES, spawn: { x: SPM.x, z: SPM.z, face: 90 } }));
+    L.push("        /* CAVERN36-END */");
+    BLOCK = L.join('\n') + '\n';
+    console.log(JSON.stringify(count));
+    WANT = Object.keys(WAY).map(k => ["site: '" + SITE + "', part: '" + PART + "', " + place(WAY[k]) + ",", 'link ' + k])
+        .concat(Object.keys(BAY).map(k => [k + ": { room: '" + ROOM + "', door: { id: '" + BAY[k].id + "', " + place(BAY[k]) + " } },", 'DOOR_HQ.siteRooms ' + k]));
+} else {
+/* ══ THE ONE WORLD MOVE (2026-11-17, mondo's approved map v13; docs/plans/one-world/BUILD_PLAN.md phase 3 wave B, the Cavern row: "the
+   Cavern under the Woods + the wells, Hollow Earth under its sun, Agartha under the Lemuria adit; cave walks join them").
+   mondo 11-17: "Connected/bigger rooms is better" and, on this zone, "well i still want the paths". So:
+   - THE CAVERN + HOLLOW EARTH stay one room, every plot where it lay against its neighbours, the block TURNED A QUARTER (270 clockwise seen
+     from above): Hollow Earth + the Mouth fill the sheet's Hollow Earth block exactly (-6..-3 x 10..12), the Cavern is the strip west of it
+     (-8..-7 x 7..12, its loop whole). The old id `site_prebuilt_hollow_earth_cavern`.
+   - AGARTHA stands under the Lemuria adit (-19..-16 x -12..-10), its twelve plots as they lay, TURNED A QUARTER the other way (90) so the
+     Lemuria Stair faces south to the adit; the last three plots of the tunnel north (U9) end in its Upper Terrace. `…_ow_agartha`.
+   - THE CAVE TUNNELS (plots.json `under.walks`; the tunnel look is this tool's, cave rock like the Cavern's): THE WEST TUNNEL (U8 + U10 + the
+     south half of U9, and three plots of mine, -11..-9 x 11, because the Cavern's strip stands three plots east of the sheet's block) with
+     the Estate's well coming down at -14,10; THE LONG TUNNEL (U9's middle, ten plots north); THE TUNNEL-WAY TUNNEL (U11, from Level −6 north
+     to the plot under Dead Man's Cave's Tunnel Way, which a new way up joins). U7 is inside the Cavern + Hollow Earth room now (the Mouth).
+   Every district plot keeps everything on it (ow-move.js); the parted openings: the Country's stair up into Agartha's Lower Terrace (the
+   tunnels are the way now). `CAVERN_HOME=1 node bake-cavern.js` writes the old single room. Notes: areas-complexes.md "THE CAVERN, ONE WORLD". */
+const MVF = require('./ow-move.js'), FREE = MVF({ cols: 1, rows: 1, cell: [[]], fill: 'x', plots: [] }).FREE_PASS;
+const MOVE = MVF({ cols: GX, rows: GY, cell, fill: 'x', plots: PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, name: p.name, district: p.d, level: p.level })), features, props, npc, doors: [] });
+const ROCKSH = SH;
+const TT = { KH: 270, A: 90 };
+const placeKH = p => ({ wx: -8 + p.y, wy: 7 + (GX - 1 - p.x), turn: 270 }), placeA = p => ({ wx: -19 + 3 - (p.y - 2), wy: -12 + (p.x - 3), turn: 90 });
+const T_NAME = { west: 'The West Tunnel', wells: 'The Wells Tunnel', long: 'The Long Tunnel', north: 'The Lemuria Tunnel', way: 'The Tunnel-Way Tunnel' };
+const seq = (a, b, fx) => { const o = []; if (a <= b) for (let i = a; i <= b; i++) o.push(fx(i)); else for (let i = a; i >= b; i--) o.push(fx(i)); return o; };
+/* each room: its district plots (home ids, placed), its tunnel plots (world x, y, name), what joins */
+const ROOMS = [
+    { key: 'KH', room: ROOM, part: PART, label: 'THE CAVERN', sub: 'THE CROSSROADS · THE MOUTH · HOLLOW EARTH UNDER ITS SUN', group: ['K', 'H'], place: placeKH, turn: 270, lines: LINES.filter(l => O.agartha.l.indexOf(l) < 0), spawnAt: ['P02-01', 5, 4],
+      parti: 'The cave under the crust is a loop over three tiers; its mouth is a ledge over a whole country lit by a sun that never sets.', sunsNote: 'the Inner Sun, the lava lake', tunnels: [] },
+    { key: 'A', room: 'site_prebuilt_hollow_earth_ow_agartha', part: 'ow_agartha', label: 'AGARTHA', sub: 'THE CRYSTAL CITY · UNDER THE LEMURIA ADIT · THE TERRACES · THE SPIRE', group: ['A'], place: placeA, turn: 90, lines: O.agartha.l, spawnAt: ['P04-04', 6, 4],
+      parti: 'A city of white terraces under the Lemuria adit steps down round a spire lit from inside to a lake and a plaza; the long tunnel from the Cavern comes in at its upper terrace.', sunsNote: 'the Spire',
+      tunnels: seq(-9, -11, y => [-15, y, T_NAME.north]), tunLevel: 4 },
+    { key: 'W', room: 'site_prebuilt_hollow_earth_ow_west', part: 'ow_west', label: 'THE WEST TUNNEL', sub: 'THE CAVERN · WEST UNDER THE ESTATE · THE WELLS · NORTH TO AGARTHA', group: [], lines: [],
+      parti: 'A cave tunnel west from the Cavern under the Estate: the Estate\'s well comes down into it, and at its west end it turns north for Agartha.', sunsNote: 'none',
+      tunnels: seq(-9, -15, x => [x, 11, T_NAME.west]).concat([[-15, 12, T_NAME.west], [-14, 10, T_NAME.wells]], seq(10, 2, y => [-15, y, T_NAME.west])) },
+    { key: 'L', room: 'site_prebuilt_hollow_earth_ow_long', part: 'ow_long', label: 'THE LONG TUNNEL', sub: 'THE CAVE ROAD NORTH · UNDER THE WOODS · TO AGARTHA', group: [], lines: [],
+      parti: 'The long cave road north under the Woods, from the West Tunnel to Agartha.', sunsNote: 'none', tunnels: seq(1, -8, y => [-15, y, T_NAME.long]) },
+    { key: 'T', room: 'site_prebuilt_hollow_earth_ow_tunnelway', part: 'ow_tunnelway', label: 'THE TUNNEL-WAY TUNNEL', sub: 'FROM LEVEL −6 NORTH · UP INTO DEAD MAN’S CAVE', group: [], lines: [],
+      parti: 'A cave tunnel north from the Cavern\'s Level −6 to the shaft under Dead Man\'s Cave\'s Tunnel Way.', sunsNote: 'none', tunnels: seq(9, 2, y => [-9, y, T_NAME.way]).concat([[-8, 2, T_NAME.way], [-7, 2, T_NAME.way]]) },
+];
+/* where one room meets another: [room key, world plot, side, room key, world plot, side]; the district plot's side is DUG to its open floor */
+const SEAMS = [['KH', [-8, 11], 'W', 'W', [-9, 11], 'E'], ['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['W', [-15, 2], 'N', 'L', [-15, 1], 'S'], ['L', [-15, -8], 'N', 'A', [-15, -9], 'S']];
+/* a district plot joined to a tunnel plot inside one room: [room key, district plot (world), its side, the tunnel plot] */
+const INNER = [['A', [-16, -11], 'E', [-15, -11]]];
+const ROT = { 270: ['W', 'N', 'E', 'S'], 90: ['E', 'S', 'W', 'N'] };   // the home N, E, S, W sides after the turn
+const turnSide = (s, t) => t ? ROT[t]['NESW'.indexOf(s)] : s;
+const mm = v => (v < 0 ? 'm' + (-v) : '' + v), seamId = (x, y, s) => s === 'E' ? 'ow_v_' + mm(x + 1) + '_' + mm(y) : s === 'W' ? 'ow_v_' + mm(x) + '_' + mm(y) : s === 'S' ? 'ow_h_' + mm(x) + '_' + mm(y + 1) : 'ow_h_' + mm(x) + '_' + mm(y);
+const DIRS = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
+const DRYW = 'ohfucgdsmqb';
+ROOMS.forEach(R => {
+    const list = [];
+    PLAN.plots.forEach(p => { if (R.group.includes(p.d)) list.push(Object.assign({ id: p.id }, R.place(p))); });
+    R.tunnels.forEach(t => list.push({ wx: t[0], wy: t[1], name: t[2], district: 'T', level: R.tunLevel || 0, isNew: true }));
+    const M = MOVE.room(list); R.M = M;
+    const W = M.W, Hh = M.D, cellR = M.cell, at = (wx, wy) => M.at[(wx - M.wx) + ',' + (wy - M.wy)];
+    R.at = at; R.open = (x, y) => x >= 0 && y >= 0 && x < W && y < Hh && cellR[y][x] !== 'x';
+    /* THE TUNNELS: a passage three squares wide from each port to the plot's middle, the middle a chamber (its size by the plot's dice) */
+    const rnd = mkRnd(9001 + R.key.charCodeAt(0));
+    const tun = R.tunnels.map(t => at(t[0], t[1]));
+    const ports = e => { const o = []; for (const s of 'NESW') { const q = at(e.wx + DIRS[s][0], e.wy + DIRS[s][1]); if (q && q.district === 'T') o.push(s); }
+        SEAMS.forEach(S => { if (S[0] === R.key && S[1][0] === e.wx && S[1][1] === e.wy) o.push(S[2]); if (S[3] === R.key && S[4][0] === e.wx && S[4][1] === e.wy) o.push(S[5]); });
+        INNER.forEach(I => { if (I[0] === R.key && I[3][0] === e.wx && I[3][1] === e.wy) o.push({ N: 'S', S: 'N', E: 'W', W: 'E' }[I[2]]); });
+        return o; };
+    const dig = (x, y) => { if (x >= 0 && y >= 0 && x < W && y < Hh && cellR[y][x] === 'x') cellR[y][x] = 'o'; };
+    tun.forEach(e => { const sx0 = e.col * N, sy0 = e.row * N, cx = 4 + Math.floor(rnd() * 2), cy = 4 + Math.floor(rnd() * 2), cw = 3 + Math.floor(rnd() * 3), ch = 3 + Math.floor(rnd() * 3);
+        for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) dig(sx0 + Math.min(10, cx - 1 + i), sy0 + Math.min(10, cy - 1 + j));
+        ports(e).forEach(s => { for (let k = 0; k < 7; k++) for (let m = -1; m <= 1; m++) {
+            if (s === 'N') dig(sx0 + 6 + m, sy0 + k); if (s === 'S') dig(sx0 + 6 + m, sy0 + 11 - k); if (s === 'W') dig(sx0 + k, sy0 + 6 + m); if (s === 'E') dig(sx0 + 11 - k, sy0 + 6 + m); } }); });
+    /* a district plot's side dug to its open floor: the row of the side (from 3 to 9) whose first open square is nearest and dry */
+    R.digIn = (wx, wy, side) => { const e = at(wx, wy), sx0 = e.col * N, sy0 = e.row * N, d = DIRS[side], into = [-d[0], -d[1]];
+        let best = null;
+        for (let o = 3; o <= 8; o++) { let x = side === 'E' ? sx0 + 11 : side === 'W' ? sx0 : sx0 + o, y = side === 'S' ? sy0 + 11 : side === 'N' ? sy0 : sy0 + o, k = 0;
+            while (k < N && cellR[y][x] === 'x') { x += into[0]; y += into[1]; k++; }
+            if (k >= N || !DRYW.includes(cellR[y][x])) continue; if (!best || k < best.k || (k === best.k && Math.abs(o - 6) < Math.abs(best.o - 6))) best = { o, k }; }
+        if (!best) throw new Error(R.room + ': no open floor behind the ' + side + ' side of ' + e.name);
+        const o = best.o; for (let k = 0; k <= best.k; k++) for (let m = -1; m <= 1; m++) {
+            if (side === 'E') dig(sx0 + 11 - k, sy0 + o + m); if (side === 'W') dig(sx0 + k, sy0 + o + m); if (side === 'N') dig(sx0 + o + m, sy0 + k); if (side === 'S') dig(sx0 + o + m, sy0 + 11 - k); }
+        return o; };
+});
+const RK = {}; ROOMS.forEach(R => { RK[R.key] = R; });
+/* the inner joins (dug both ways: the tunnel's port was cut above) */
+INNER.forEach(I => { const R = RK[I[0]]; R.digIn(I[1][0], I[1][1], I[2]);
+    const e = R.at(I[1][0], I[1][1]), t = R.at(I[3][0], I[3][1]); if (t.level !== e.level) throw new Error('INNER: the tunnel plot and ' + e.name + ' stand at two levels'); });
+/* THE SEAM DOORS: a pair, one id (the seam id), `way: 'trail'`, on the room's wall where the side lies on it, else free on the plot's last square */
+const EXTRA = {}; ROOMS.forEach(R => { EXTRA[R.key] = []; });
+function seamDoor(R, wp, side, o, id, other) {
+    const e = R.at(wp[0], wp[1]), M = R.M, sx0 = e.col * N, sy0 = e.row * N, onWall = { N: e.row === 0, S: e.row === M.rows - 1, W: e.col === 0, E: e.col === M.cols - 1 }[side];
+    const d = { id, way: 'trail', leaf: null, label: other.label, sub: other.label + ' · ' + (other.key === 'KH' || other.key === 'A' ? 'THE TUNNEL IN' : 'THE TUNNEL ON'), action: { room: other.room, at: id }, desc: '' };
+    const ax = M.gcx(sx0 + o), az = M.gcz(sy0 + o);
+    if (onWall) { d.wall = side.toLowerCase(); if (side === 'N' || side === 'S') d.x = ax; else d.z = az; }
+    else { d.wall = 'free'; d.passage = Object.assign({}, FREE);
+        if (side === 'N') { d.x = ax; d.z = M.gcz(sy0); d.face = 180; } else if (side === 'S') { d.x = ax; d.z = M.gcz(sy0 + N - 1); d.face = 0; }
+        else if (side === 'W') { d.x = M.gcx(sx0); d.z = az; d.face = 90; } else { d.x = M.gcx(sx0 + N - 1); d.z = az; d.face = 270; } }
+    return d;
+}
+const SEAMLIST = [];
+SEAMS.forEach(S => { const A = RK[S[0]], B = RK[S[3]], ea = A.at(S[1][0], S[1][1]), eb = B.at(S[4][0], S[4][1]), id = seamId(S[1][0], S[1][1], S[2]);
+    if (id !== seamId(S[4][0], S[4][1], S[5])) throw new Error('seam ' + id + ' is not one line');
+    const oa = ea.district === 'T' ? 6 : A.digIn(S[1][0], S[1][1], S[2]), ob = eb.district === 'T' ? 6 : B.digIn(S[4][0], S[4][1], S[5]);
+    EXTRA[A.key].push(seamDoor(A, S[1], S[2], oa, id, B)); EXTRA[B.key].push(seamDoor(B, S[4], S[5], ob, id, A)); SEAMLIST.push(id + ' ' + A.room + ' <-> ' + B.room); });
+
+/* THE WAYS OUT, moved with their plots: a wall way stays a wall door where its side still lies on the new room's wall, else it is free on the
+   plot's line; a free way moves with its plot. The Estate's well is the one re-pointed: it comes down in the West Tunnel at -14,10 (v13). */
+const roomOfHome = id => ROOMS.find(R => R.M.ofHome[id]);
+const homeWallPt = w => [w.wall === 'free' ? w.x : w.wall === 'w' ? -HX + C / 2 : w.wall === 'e' ? HX - C / 2 : w.at, w.wall === 'free' ? w.z : w.wall === 'n' ? -HZ + C / 2 : w.wall === 's' ? HZ - C / 2 : w.at];
+function moveWay(w) {
+    const p0 = homeWallPt(w), hp = MOVE.homePlot(p0[0], p0[1]), R = roomOfHome(hp.id), e = R.M.ofHome[hp.id], q = R.M.toRoom(p0[0], p0[1]);
+    if (w.wall === 'free') return { R, wall: 'free', x: q[0], z: q[1], face: ((w.face || 0) + R.turn) % 360 };
+    const s = turnSide({ n: 'N', s: 'S', w: 'W', e: 'E' }[w.wall], R.turn), on = { N: e.row === 0, S: e.row === R.M.rows - 1, W: e.col === 0, E: e.col === R.M.cols - 1 }[s];
+    if (on) return { R, wall: s.toLowerCase(), at: (s === 'N' || s === 'S') ? q[0] : q[1] };
+    return { R, wall: 'free', x: q[0], z: q[1], face: { N: 180, S: 0, W: 90, E: 270 }[s], passage: true };   // its side is inside the box now (a tunnel plot widened it): free on the plot's line
+}
+const WAYS = {}; Object.keys(WAY).forEach(k => { WAYS[k] = moveWay(WAY[k]); });
+{ const R = RK.W, e = R.at(-14, 10), sx = e.col * N + 6, sy = e.row * N + 5; if (!R.open(sx, sy)) throw new Error('the wells\' square is not open');
+  WAYS.well_skinwalker = { R, wall: 'free', x: R.M.gcx(sx), z: R.M.gcz(sy), face: 180 }; }
+const BAYS = {}; Object.keys(BAY).forEach(k => { BAYS[k] = Object.assign({ id: BAY[k].id }, moveWay(BAY[k])); });
+/* the room doors: `dungeon` (the Oubliette) and `woods` (the Lemuria Stair) move with their plots */
+const RDOORS = {}; ROOMS.forEach(R => { RDOORS[R.key] = []; });
+doors.forEach(d => { const w = d.wall === 'free' ? d : { wall: d.wall, at: (d.wall === 'n' || d.wall === 's') ? d.x : d.z }, m = moveWay(w), o = Object.assign({}, d);
+    delete o.x; delete o.z; o.wall = m.wall; if (m.wall === 'free') { o.x = m.x; o.z = m.z; o.face = m.face; if (m.passage) o.passage = Object.assign({}, FREE); } else if (m.wall === 'n' || m.wall === 's') o.x = m.at; else o.z = m.at;
+    const keep = ['id', 'wall', 'x', 'z', 'face'], out = {}; keep.forEach(k => { if (o[k] != null) out[k] = o[k]; }); Object.keys(o).forEach(k => { if (!(k in out)) out[k] = o[k]; });
+    RDOORS[m.R.key].push(out); });
+/* THE WAY UP AT THE TUNNEL WAY (new, v13 "tunnel way ↑ Dead Man's Cave"): a ladder at the north end of the Tunnel-Way Tunnel up into the creek's Tunnel Way */
+{ const R = RK.T, e = R.at(-7, 2), sx = e.col * N + 5, sy = e.row * N + 4; if (!R.open(sx, sy)) throw new Error('the Tunnel Way\'s square is not open');
+  WAYS.tunnelway_cavern = { R, wall: 'free', x: R.M.gcx(sx), z: R.M.gcz(sy), face: 180, side: 'b' }; }
+
+/* ── derive every room, write it ── */
+const DSUNS = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].suns === 'function' ? (DISTRICTS[k].suns(CTX[k]) || []).map(s => Object.assign({ d: k }, s)) : []));
+const DAIR = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].airZones === 'function' ? (DISTRICTS[k].airZones(CTX[k]) || []).map(z => { const q = Object.assign({}, z, { x0: gx(z.sx0), z0: gz(z.sy0), x1: gx(z.sx1), z1: gz(z.sy1) }); delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; }) : []));
+const L = [HEAD], TOTAL = { props: 0, natives: 0, features: 0 }, strayDrop = [];
+const PARTED_RAMP = (f, R) => f.k === 'ramp' && R.M.strays.length >= 0;
+ROOMS.forEach(R => {
+    const M = R.M, W = M.W, Hh = M.D, cellR = M.cell, open = R.open;
+    const tunPlots = M.order.filter(e => e.district === 'T');
+    /* the pieces that came with the plots; a ramp whose two ends left each other (the Country's stair up into Agartha) is dropped (the census lists it) */
+    const isStray = f => { if (f.k !== 'ramp' && f.k !== 'fall') return false; const a = M.plotOfSq(Math.floor((f.x0 != null ? f.x0 : f.x) / C + W / 2), Math.floor((f.z0 != null ? f.z0 : f.z) / C + Hh / 2)), b = M.plotOfSq(Math.floor((f.x1 != null ? f.x1 : f.x) / C + W / 2), Math.floor((f.z1 != null ? f.z1 : f.z) / C + Hh / 2)); return !a || !b || (a.district === 'T') !== (b.district === 'T') || (a.home && b.home && R.group.indexOf(a.district) < 0); };
+    const feats0 = M.features.filter(f => { if (isStray(f)) { strayDrop.push(R.room + ': ' + f.k + ' at ' + (f.x0 != null ? f.x0 + ',' + f.z0 : f.x + ',' + f.z)); return false; } return true; });
+    /* the tunnel plots: a plateau at their level (Agartha's: its Upper Terrace's), the rock roof and stalactites as over the Cavern */
+    const TUNF = [], grnd = mkRnd(77 + R.key.charCodeAt(0)), ROCKS = ['psxg_rock_1', 'psxg_rock_2', 'psxg_rock_3', 'psxg_rock_4', 'ocean_rock_5', 'cave_stone'], tProps = [];
+    const base = e => r2((e.level || 0) * LEVEL), tunTop = e => r2(base(e) + CEIL);
+    tunPlots.forEach((e, i) => { const sx0 = e.col * N, sy0 = e.row * N, ox = M.gx(sx0) + N * C / 2, oz = M.gz(sy0) + N * C / 2;
+        if (base(e)) TUNF.push({ k: 'plateau', x: r2(ox), z: r2(oz), w: N * C, d: N * C, h: base(e), edge: 0.15 });
+        const parts = [{ s: 'box', p: [0, CEIL, 0], size: [N * C, r2(Math.max(4, (R.group.length ? ROCKSH : r2(CEIL + 6)) - base(e) - CEIL)), N * C], top: false, under: true, key: 'cave_wall', tint: 0x4a443e, uv: 7 }];
+        const sq = []; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (open(sx0 + lx, sy0 + ly)) sq.push([lx, ly]);
+        for (let k = 0; k < Math.min(8, sq.length / 5); k++) { const q = sq[Math.floor(grnd() * sq.length)], len = r2(0.8 + grnd() * 1.6), r = r2(0.2 + grnd() * 0.3);
+            parts.push({ s: 'cyl', p: [r2(M.gcx(sx0 + q[0]) - ox), r2(CEIL - len), r2(M.gcz(sy0 + q[1]) - oz)], r: 0.03, r2: r, h: len, seg: 6, key: 'cave_wall', tint: ROCK[Math.floor(grnd() * ROCK.length)], uv: 3.5 }); }
+        TUNF.push({ k: 'arch', id: 'cav:ow:' + e.wx + '_' + e.wy + ':roof', x: r2(ox), z: r2(oz), rot: 0, base: base(e), parts });
+        /* a torch at a bend of the passage (one in three lit: the room's ten lights), rocks along the walls */
+        const wallSq = sq.filter(q => { let n = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!open(sx0 + q[0] + dx, sy0 + q[1] + dy)) n++; return n >= 2; });
+        if (wallSq.length) { const q = wallSq[Math.floor(grnd() * wallSq.length)]; tProps.push({ key: 'cave_torch', x: M.gcx(sx0 + q[0]), z: M.gcz(sy0 + q[1]), y: base(e), noLight: i % 3 !== 0, _sq: q, _e: e }); }
+        for (let k = 0; k < 2 && wallSq.length > 2; k++) { const q = wallSq[Math.floor(grnd() * wallSq.length)]; if (tProps.some(p => p._e === e && p._sq === q)) continue;
+            tProps.push({ key: ROCKS[Math.floor(grnd() * ROCKS.length)], x: r2(M.gcx(sx0 + q[0]) + (grnd() - 0.5) * 1.2), z: r2(M.gcz(sy0 + q[1]) + (grnd() - 0.5) * 1.2), face: Math.round(grnd() * 360), h: r2(0.8 + grnd() * 0.9), noBlock: true, _sq: q, _e: e }); } });
+    tProps.forEach(p => { delete p._sq; delete p._e; if (!p.y) delete p.y; });
+    const spaces = M.spaces(open), feats = spaces.concat(feats0, TUNF);
+    /* the paint, as the home room's (a tunnel square: the cave floor) */
+    const paintR = new Uint8Array(W * Hh); for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const ch = cellR[y][x], e = M.plotOfSq(x, y), d = e ? e.district : 'T'; paintR[y * W + x] = ('wb'.includes(ch) && d === 'H') ? 8 : ('wb'.includes(ch) && d === 'A') ? 7 : (PCH[ch] || 0); }
+    /* the walk check: every plot of the room is reached on foot from the spawn's square (open squares; the home check proved the levels) */
+    const sp = R.spawnAt ? M.sq(R.spawnAt[0], R.spawnAt[1], R.spawnAt[2]) : (() => { const e = tunPlots[0]; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (open(e.col * N + lx, e.row * N + ly)) return [e.col * N + lx, e.row * N + ly]; })();
+    if (!open(sp[0], sp[1])) throw new Error(R.room + ': the spawn is not open');
+    { const seen = new Uint8Array(W * Hh), st = [sp], walk = (x, y) => open(x, y) && cellR[y][x] !== 'l'; seen[sp[1] * W + sp[0]] = 1;
+      while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!walk(X, Y) || seen[Y * W + X]) continue; seen[Y * W + X] = 1; st.push([X, Y]); } }
+      const cold = M.order.filter(e => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(e.row * N + ly) * W + e.col * N + lx]) return false; return true; }).map(e => e.name);
+      if (cold.length) throw new Error(R.room + ': plots not reached on foot: ' + cold.join(', ')); }
+    const allProps = M.props.concat(tProps);
+    allProps.forEach(p => { const sx = Math.floor((p.x + M.HX) / C), sy = Math.floor((p.z + M.HZ) / C); if (!open(sx, sy)) throw new Error(R.room + ': ' + p.key + ' stands in the rock at ' + sx + ',' + sy); });
+    const inRoom = (x, z) => R.group.length && M.toRoom(x, z) && M.mapOf(x, z) && R.group.includes(M.mapOf(x, z).district);
+    const suns = DSUNS.filter(s => R.group.includes(s.d)).map(s => { const q = M.toRoom(s.x, s.z), o = Object.assign({}, s, { x: q[0], z: q[1] }); delete o.d; return o; }).slice(0, 4);
+    const air = DAIR.map(z => { const a = M.toRoom(z.x0 + 0.01, z.z0 + 0.01), b = M.toRoom(z.x1 - 0.01, z.z1 - 0.01); if (!a || !b || !inRoom(z.x0 + 0.01, z.z0 + 0.01)) return null; return Object.assign({}, z, { x0: r2(Math.min(a[0], b[0])), z0: r2(Math.min(a[1], b[1])), x1: r2(Math.max(a[0], b[0])), z1: r2(Math.max(a[1], b[1])) }); }).filter(Boolean)
+        .map(z => { const o = Object.assign({}, z); ['x0', 'z0', 'x1', 'z1'].forEach(k => { o[k] = Math.round(o[k] / C * 2) * C / 2; }); return o; });
+    const counters2 = counters.map(c => inRoom(c.x, c.z) ? MOVE.turned ? null : null : null).filter(Boolean);
+    const cnt = counters.filter(c => inRoom(c.x, c.z)).map(c => { const q = M.toRoom(c.x, c.z); return Object.assign({}, c, { x: q[0], z: q[1] }, c.face != null ? { face: (c.face + R.turn) % 360 } : {}); });
+    const spPlot = M.plotOfSq(sp[0], sp[1]), SPMr = { x: M.gcx(sp[0]), z: M.gcz(sp[1]) };
+    const roomDoors = RDOORS[R.key].concat(EXTRA[R.key]);
+    TOTAL.props += M.props.length; TOTAL.natives += M.npc.length;
+    console.log(R.room + ' ' + JSON.stringify({ world: [M.wx, M.wy], box: [M.cols, M.rows], mask: M.mask.join('/'), plots: M.order.length, features: feats.length, props: allProps.length, natives: M.npc.length, doors: roomDoors.length }));
+    L.push.apply(L, writeRoom({ room: R.room, part: R.part, label: R.label, sub: R.sub, world: { wx: M.wx, wy: M.wy }, w: 2 * M.HX, d: 2 * M.HZ, SH: R.group.length ? SH : r2(Math.max.apply(null, tunPlots.map(tunTop)) + 6),
+        plate: { x: SPMr.x, z: SPMr.z, y: r2(base(spPlot) + 4.2) }, sunsNote: R.sunsNote, suns, air, parti: R.parti, nx: M.cols, nz: M.rows, mask: M.mask.indexOf('.') >= 0 || M.mask.some(r => r.indexOf('.') >= 0) ? M.mask : null,
+        names: M.order.map(e => [M.pid(e), e.name, e.district, e.level]), px0: M.gcx(0), pz0: M.gcz(0), W, Hh, paint: paintR, features: feats, doors: roomDoors, counters: cnt, props: allProps, npc: M.npc, lines: R.lines,
+        spawn: { x: SPMr.x, z: SPMr.z, face: R.key === 'KH' ? (90 + 270) % 360 : 0 } }));
+});
 L.push("        /* CAVERN36-END */");
-const block = L.join('\n') + '\n';
-console.log(JSON.stringify(count));
-/* the rows in data.js that hold a place in this room (written by hand there): the tool refuses to bake when one has drifted */
-const place = w => "wall: '" + w.wall + "', " + (w.wall === 'free' ? 'x: ' + w.x + ', z: ' + w.z + ', face: ' + w.face : (w.wall === 'n' || w.wall === 's' ? 'x: ' : 'z: ') + w.at);
-const WANT = Object.keys(WAY).map(k => ["site: '" + SITE + "', part: '" + PART + "', " + place(WAY[k]) + ",", 'link ' + k])
-    .concat(Object.keys(BAY).map(k => [k + ": { room: '" + ROOM + "', door: { id: '" + BAY[k].id + "', " + place(BAY[k]) + " } },", 'DOOR_HQ.siteRooms ' + k]));
+BLOCK = L.join('\n') + '\n';
+if (TOTAL.props !== props.length || TOTAL.natives !== npc.length) throw new Error('the move lost pieces: props ' + props.length + ' -> ' + TOTAL.props + ', natives ' + npc.length + ' -> ' + TOTAL.natives);
+const strays = [].concat(...ROOMS.map(R => R.M.strays.map(s => R.room + ': ' + s)));
+if (strays.length) console.log('STRAYS (a piece across two plots that no longer stand the same way; moved with its anchor):\n  ' + strays.join('\n  '));
+if (strayDrop.length) console.log('DROPPED (an opening between plots that parted):\n  ' + strayDrop.join('\n  '));
+console.log('SEAMS:\n  ' + SEAMLIST.join('\n  ') + '\n  for phase 4.4: the Tunnel-Way Tunnel\'s north side ' + seamId(-7, 2, 'N') + ' (U12 from the Holding Cells)');
+const placeOf = w => "site: '" + SITE + "', part: '" + w.R.part + "', " + place(w) + (w.wall === 'free' && w.R.key !== 'KH' && w.R.key !== 'A' ? '' : '') + ",";
+WANT = Object.keys(WAYS).map(k => [placeOf(WAYS[k]), 'link ' + k, k])
+    .concat(Object.keys(BAYS).map(k => [k + ": { room: '" + BAYS[k].R.room + "', door: { id: '" + BAYS[k].id + "', " + place(BAYS[k]) + " } },", 'DOOR_HQ.siteRooms ' + k, null]));
+
+}
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const flat = src.replace(/ +/g, ' '), missing = WANT.filter(w => flat.indexOf(w[0]) < 0);
-if (missing.length) { console.log('data.js rows to write by hand:'); missing.forEach(w => console.log('  ' + w[1] + ':  ' + w[0])); if (!DRY) throw new Error('data.js does not point at this room yet (see the rows above)'); }
+if (missing.length) { console.log('data.js rows to write by hand:'); missing.forEach(w => console.log('  ' + w[1] + ':  ' + w[0])); if (!DRY) throw new Error('data.js does not point at these rooms yet (see the rows above)'); }
 if (DRY) process.exit(0);
 const END = '        /* CAVERN36-END */\n', b0 = src.indexOf('        /* CAVERN36-BEGIN'), b1 = src.indexOf(END);
-if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
-else { const anchor = '        site_prebuilt_hollow_earth_gallery: {'; const a = src.indexOf(anchor); if (a < 0) throw new Error('anchor not found in data.js'); const ls = src.lastIndexOf('\n', src.lastIndexOf('/* ── THE CAVERN — the big one', a)) + 1; src = src.slice(0, ls) + block + src.slice(ls); }
+if (b0 < 0 || b1 < b0) throw new Error('CAVERN36 markers not found in data.js');
+src = src.slice(0, b0) + BLOCK + src.slice(b1 + END.length);
 fs.writeFileSync(file, src);

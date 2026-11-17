@@ -1,0 +1,737 @@
+{
+ "rooms": [
+  "site_prebuilt_hollow_earth_cavern"
+ ],
+ "plots": {
+  "The Gallery": {
+   "props": {
+    "greek_column": 2,
+    "meshy_crystal_shards": 4,
+    "brazier": 1
+   },
+   "features": {
+    "plateau": 1
+   },
+   "doors": {},
+   "natives": {
+    "nordic": 1
+   }
+  },
+  "The Upper Terrace": {
+   "props": {
+    "greek_column": 4,
+    "meshy_crystal_shards": 4,
+    "brass_telescope": 1,
+    "lectern": 1
+   },
+   "features": {
+    "plateau": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Adit Terrace": {
+   "props": {
+    "greek_column": 5,
+    "meshy_crystal_shards": 4,
+    "brazier": 1
+   },
+   "features": {
+    "plateau": 1
+   },
+   "doors": {},
+   "natives": {
+    "machine elves": 1
+   }
+  },
+  "The Lower Terrace": {
+   "props": {
+    "greek_column": 4,
+    "meshy_crystal_shards": 4
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 1,
+    "ramp:marble_light": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Spire": {
+   "props": {
+    "greek_column": 4,
+    "meshy_crystal_shards": 4
+   },
+   "features": {
+    "plateau": 2,
+    "ramp:marble_light": 1,
+    "arch#cav:spire": 1
+   },
+   "doors": {},
+   "natives": {
+    "crystal guardian": 1
+   }
+  },
+  "The Lemuria Stair": {
+   "props": {
+    "greek_column": 5,
+    "meshy_crystal_shards": 4,
+    "stone_altar": 1,
+    "candleRing": 1
+   },
+   "features": {
+    "plateau": 1,
+    "ramp:marble_light": 1
+   },
+   "doors": {
+    "woods": 1,
+    "link_shasta_lemuria": 1
+   },
+   "natives": {}
+  },
+  "The Plaza": {
+   "props": {
+    "greek_column": 5,
+    "meshy_crystal_shards": 4,
+    "fountain": 1,
+    "iron_garden_bench": 2,
+    "garden_ring": 1
+   },
+   "features": {
+    "ramp:marble_light": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The East Gate": {
+   "props": {
+    "greek_column": 4,
+    "meshy_crystal_shards": 4
+   },
+   "features": {
+    "ramp:marble_light": 1
+   },
+   "doors": {
+    "link_technoticlan_agartha": 1
+   },
+   "natives": {}
+  },
+  "The Pier": {
+   "props": {
+    "greek_column": 4,
+    "meshy_crystal_shards": 4,
+    "skiff": 1,
+    "sea_chest": 1
+   },
+   "features": {
+    "stream:deep_water": 8,
+    "deck": 1
+   },
+   "doors": {},
+   "natives": {
+    "loch ness monster": 1
+   }
+  },
+  "The Inner Gate": {
+   "props": {
+    "greek_column": 5,
+    "meshy_crystal_shards": 4,
+    "brazier": 2,
+    "pearly_gate": 1
+   },
+   "features": {},
+   "doors": {
+    "bay_agartha": 1
+   },
+   "natives": {
+    "crystal guardian": 1
+   }
+  },
+  "The Admiral's Tunnel": {
+   "props": {
+    "greek_column": 3,
+    "meshy_crystal_shards": 4,
+    "garden_ring": 1
+   },
+   "features": {},
+   "doors": {
+    "link_antarctica_polar": 1
+   },
+   "natives": {}
+  },
+  "The Lake": {
+   "props": {
+    "meshy_crystal_shards": 4
+   },
+   "features": {
+    "stream:deep_water": 4,
+    "stream": 1,
+    "ramp:marble_light": 1,
+    "fall": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Crystal Forest": {
+   "props": {
+    "meshy_crystal_shards": 16,
+    "crystal_cluster": 4
+   },
+   "features": {
+    "plateau": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Mushroom Shelf": {
+   "props": {
+    "mushroom2": 8,
+    "woods_glowcap": 8
+   },
+   "features": {
+    "plateau": 1,
+    "tree:fae_cap": 6,
+    "tree:fae_cap_2": 6
+   },
+   "doors": {},
+   "natives": {
+    "goblin": 1
+   }
+  },
+  "The Inner Sun": {
+   "props": {
+    "stone_altar": 1,
+    "brazier": 2
+   },
+   "features": {
+    "ramp:wood": 1,
+    "plateau": 1,
+    "ramp": 1,
+    "arch#cav:sun": 1,
+    "tree:palm": 4
+   },
+   "doors": {},
+   "natives": {
+    "gnome": 1
+   }
+  },
+  "The Giant's Steps": {
+   "props": {
+    "royal_throne": 1,
+    "meshy_giant_foot": 1
+   },
+   "features": {
+    "plateau": 1,
+    "ramp:wood": 1,
+    "tree:tree_3": 4
+   },
+   "doors": {},
+   "natives": {
+    "giant": 1
+   }
+  },
+  "The Nesting Ground": {
+   "props": {
+    "dinosaur_skeleton": 1,
+    "ocean_rock_5": 6,
+    "hw_straw": 4
+   },
+   "features": {
+    "tree:palm": 6
+   },
+   "doors": {},
+   "natives": {
+    "dinosaur": 1
+   }
+  },
+  "The Sunken Garden": {
+   "props": {
+    "anthill": 1,
+    "ant": 4
+   },
+   "features": {
+    "tree:fae_bloom_tree": 4,
+    "tree:palm": 3
+   },
+   "doors": {},
+   "natives": {
+    "antperson": 1
+   }
+  },
+  "The Country": {
+   "props": {
+    "campfire": 1,
+    "signpost": 1,
+    "sea_chest": 1
+   },
+   "features": {
+    "ramp:wood": 3
+   },
+   "doors": {},
+   "natives": {
+    "dinosaur": 1
+   }
+  },
+  "The Hot Spring": {
+   "props": {
+    "campfire": 1
+   },
+   "features": {
+    "stream": 6,
+    "ramp:wood": 1,
+    "fall": 1,
+    "tree:palm": 2,
+    "tree:tree_52": 4
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Old Trees": {
+   "props": {
+    "fallen_log": 1,
+    "hollow_tree": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 3,
+    "ramp:wood": 1,
+    "tree:tree_52": 10,
+    "tree:tree_3": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Jetty": {
+   "props": {
+    "rowboat": 1
+   },
+   "features": {
+    "stream:deep_water": 10,
+    "deck": 1,
+    "tree:palm": 4
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Polar Opening": {
+   "props": {
+    "signpost": 1
+   },
+   "features": {
+    "tree:tree_52": 2,
+    "tree:palm": 3
+   },
+   "doors": {
+    "bay": 1,
+    "link_hollow_byrd": 1
+   },
+   "natives": {
+    "reptilian": 1
+   }
+  },
+  "The Fissure": {
+   "props": {
+    "cave_torch": 2,
+    "candleRing": 1,
+    "sea_vent": 1,
+    "decor_stone_arch": 1,
+    "skull_pile": 1,
+    "hw_candles": 1,
+    "asteroid_b": 1,
+    "hw_part_1": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "hw_stone_2": 2,
+    "psx_cobweb_1": 2,
+    "chimney_smoke": 2
+   },
+   "features": {
+    "plateau": 1,
+    "stream:lava": 4,
+    "arch#cav:P00-00:rock": 1,
+    "arch#cav:P00-00:roof": 1
+   },
+   "doors": {
+    "link_cave_hell": 1
+   },
+   "natives": {
+    "ghoul": 1
+   }
+  },
+  "The Hot Shelf": {
+   "props": {
+    "cave_torch": 2,
+    "sea_vent": 2,
+    "asteroid_b": 1,
+    "asteroid_a": 1,
+    "skull": 1,
+    "psx_fish_skeleton_mp_1": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "hw_stone_2": 2,
+    "psx_cobweb_1": 2,
+    "chimney_smoke": 2
+   },
+   "features": {
+    "plateau": 1,
+    "stream:lava": 5,
+    "arch#cav:P01-00:rock": 1,
+    "arch#cav:P01-00:roof": 1
+   },
+   "doors": {},
+   "natives": {
+    "reptilian": 1
+   }
+  },
+  "The Spur": {
+   "props": {
+    "cave_torch": 2,
+    "mooring_bollard": 4,
+    "asteroid_a": 1,
+    "sea_vent": 1,
+    "warning_tape": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "hw_stone_2": 2,
+    "psx_cobweb_1": 1,
+    "chimney_smoke": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream:lava": 3,
+    "deck": 1,
+    "ramp:wood": 1,
+    "arch#cav:P02-00:rock": 1,
+    "rail": 2,
+    "arch#cav:P02-00:roof": 1
+   },
+   "doors": {},
+   "natives": {
+    "antperson": 1
+   }
+  },
+  "Level −6": {
+   "props": {
+    "cave_torch": 2,
+    "bare_bulb": 2,
+    "cardboard_boxes": 1,
+    "paper_sheet": 1,
+    "breaker_panel": 3,
+    "security_camera": 1,
+    "vent_grille": 1,
+    "locker": 2,
+    "utility_box": 1,
+    "exit_sign": 1,
+    "radiation_sign": 1,
+    "pipe_run": 4,
+    "item_police_barricade": 2,
+    "meshy_sandbags": 2,
+    "retro_control_panel": 1,
+    "footlocker": 1,
+    "psx_supply_crate_1": 2,
+    "psx_metal_barrel_mp_1": 1,
+    "rifle_rack": 1,
+    "psx_ammo_box_1": 1,
+    "psx_walkie_talkie_1": 1,
+    "traffic_cone": 1,
+    "flicker_tube": 2
+   },
+   "features": {
+    "plateau": 1,
+    "arch#cav:level6": 1,
+    "arch#cav:P03-00:roof": 1
+   },
+   "doors": {
+    "link_cave_dumb": 1
+   },
+   "natives": {
+    "men in black": 1
+   }
+  },
+  "The High Tier": {
+   "props": {
+    "cave_torch": 2,
+    "menhir": 2,
+    "sarsen": 2,
+    "trilithon": 1,
+    "cardboard_boxes": 1,
+    "paper_sheet": 1,
+    "telescope": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "cave_stone": 2,
+    "psx_cobweb_1": 2,
+    "crystal_cluster": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#cav:P04-00:rock": 1,
+    "arch#cav:P04-00:roof": 1
+   },
+   "doors": {},
+   "natives": {
+    "reptilian": 1
+   }
+  },
+  "The Oubliette": {
+   "props": {
+    "cave_torch": 2,
+    "stocks": 1,
+    "cot": 2,
+    "psx_old_mattress_mp_1": 2,
+    "skull_pile": 2,
+    "candleRing": 1,
+    "trap_iron_maiden": 1,
+    "wall_chains": 3,
+    "trap_chain_draped": 1,
+    "hw_body": 1,
+    "skull": 1,
+    "hw_part_3": 1,
+    "floor_drain": 1,
+    "key": 1,
+    "hw_candles": 2,
+    "rat": 3,
+    "cauldron": 1,
+    "psx_cobweb_1": 2,
+    "psx_cobweb_2": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1
+   },
+   "features": {
+    "plateau": 1,
+    "ramp:wood": 1,
+    "arch#cav:P05-00:rock": 1,
+    "wall:dungeon_3": 7,
+    "dip": 4,
+    "arch#cav:P05-00:roof": 1
+   },
+   "doors": {
+    "dungeon": 1,
+    "link_workings_oubliette": 1
+   },
+   "natives": {
+    "ghoul": 1
+   }
+  },
+  "The River Chamber": {
+   "props": {
+    "cave_torch": 2,
+    "rowboat": 1,
+    "mooring_piles": 1,
+    "mooring_bollard": 1,
+    "reeds": 2,
+    "psx_fish_skeleton_mp_1": 1,
+    "wooden_barrel": 1,
+    "mushroom2": 1,
+    "woods_glowcap": 3,
+    "fae_toadstool": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "cave_stone": 2,
+    "psx_cobweb_1": 2,
+    "crystal_cluster": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 3,
+    "stream:deep_water": 1,
+    "deck": 1,
+    "arch#cav:P00-01:rock": 1,
+    "arch#cav:P00-01:roof": 1
+   },
+   "doors": {},
+   "natives": {
+    "goblin": 1
+   }
+  },
+  "The Crossroads": {
+   "props": {
+    "cave_torch": 2,
+    "lantern_post": 4,
+    "trail_sign": 3,
+    "sea_chest": 1,
+    "backpack": 1,
+    "cardboard_boxes": 1,
+    "paper_sheet": 2,
+    "cave_stone": 3,
+    "sarsen": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "psx_cobweb_1": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 1,
+    "arch#cav:P02-01:rock": 1,
+    "arch#cav:needle": 1,
+    "wall": 1,
+    "arch#cav:P02-01:roof": 1
+   },
+   "doors": {
+    "link_well_cellar": 1
+   },
+   "natives": {
+    "ghoul": 1,
+    "gnome": 1
+   }
+  },
+  "The Terrace": {
+   "props": {
+    "cave_torch": 2,
+    "reeds": 3,
+    "meshy_frog": 1,
+    "ocean_rock_8": 1,
+    "ocean_rock_11": 1,
+    "woods_glowcap": 2,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "cave_stone": 2,
+    "psx_cobweb_1": 2,
+    "chimney_smoke": 2,
+    "crystal_cluster": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 4,
+    "ramp:wood": 1,
+    "arch#cav:P03-01:rock": 1,
+    "arch#cav:P03-01:roof": 1
+   },
+   "doors": {},
+   "natives": {
+    "gnome": 1
+   }
+  },
+  "The Shelf": {
+   "props": {
+    "cave_torch": 2,
+    "canvas_tent": 1,
+    "campfire": 1,
+    "firewood_stack": 1,
+    "wooden_barrel": 1,
+    "sleeping_bag": 1,
+    "backpack": 1,
+    "ship_lantern": 1,
+    "pickaxe": 1,
+    "psx_wooden_crate_2": 1,
+    "reeds": 1,
+    "woods_glowcap": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "cave_stone": 2,
+    "psx_cobweb_1": 2
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 4,
+    "ramp:wood": 1,
+    "fall": 1,
+    "arch#cav:P04-01:rock": 1,
+    "arch#cav:P04-01:roof": 1
+   },
+   "doors": {},
+   "natives": {
+    "gnome": 2
+   }
+  },
+  "The Crystal Adit": {
+   "props": {
+    "cave_torch": 2,
+    "meshy_crystal_shards": 6,
+    "crystal_cluster": 2,
+    "mine_cart": 1,
+    "pickaxe": 2,
+    "anvil": 1,
+    "signal_lever_frame": 1,
+    "paper_sheet": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 1,
+    "ramp:wood": 1,
+    "arch#cav:P05-01:rock": 1,
+    "arch#cav:adit": 1,
+    "arch#cav:P05-01:roof": 1
+   },
+   "doors": {},
+   "natives": {
+    "gnome": 1
+   }
+  },
+  "The Mouth": {
+   "props": {
+    "cave_torch": 2,
+    "candleRing": 1,
+    "campfire": 1,
+    "signpost": 1,
+    "lantern_post": 1,
+    "canvas_tent": 1,
+    "sleeping_bag": 1,
+    "backpack": 1,
+    "firewood_stack": 1,
+    "brass_telescope": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "cave_stone": 1,
+    "psx_cobweb_1": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#cav:P02-02:rock": 1,
+    "rail": 2,
+    "arch#cav:P02-02:roof": 1
+   },
+   "doors": {
+    "link_well_skinwalker": 1
+   },
+   "natives": {
+    "reptilian": 1
+   }
+  },
+  "The Long Ramp": {
+   "props": {
+    "psx_wooden_crate_1": 1,
+    "psx_wooden_crate_2": 1,
+    "cable_drum": 1,
+    "hand_truck": 1,
+    "meshy_burlap_sack": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 1,
+    "ramp:wood": 1,
+    "arch#cav:P01-01:rock": 1,
+    "arch#cav:P01-01:roof": 1
+   },
+   "doors": {},
+   "natives": {
+    "goblin": 1
+   }
+  }
+ },
+ "lines": 19,
+ "totals": {
+  "props": 437,
+  "features": 218,
+  "doors": 13,
+  "natives": 27,
+  "lines": 19,
+  "plots": 36
+ }
+}
