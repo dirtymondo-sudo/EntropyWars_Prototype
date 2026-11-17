@@ -719,7 +719,7 @@ exports.build = ctx => {
         add('H10-01', 1.5, 7.6, 0, 1); add('H06-02', 1.5, 8.4, 0, -1); add('H10-02', 4.5, 3.5, 1, 0); }
       console.warn('[the Hills] lamps ' + n); }
     /* THE WAYS OUT west (the old room's west wall doors): `shasta` to Mount Shasta (the Mountains' `hills` door leads here: bake-mountains.js), the ridge onto the River Road */
-    ctx.doors.push(Object.assign({ id: 'shasta', wall: 'free', x: r2(gx(0) + 1.75), z: R.out.shasta, face: 270, leaf: null, way: 'road', action: { room: MTN, at: 'hills' } }, DOORWORDS('MOUNT SHASTA', 'THE SHASTA ROAD · WEST INTO THE SNOW', 'The road climbs west out of the brush. Somewhere past the cattle grid it stops being dry.')));
+    /* (2026-11-17, One World phase 5) the `shasta` door (the Shasta Road, a jump west to Mount Shasta 12 plots away) is gone: Mount Shasta is walked to by the River Road's junction and the Canyon Trail (R2). The road's west spur stays as it was laid (district content) */
     /* THE RIVER ROAD (One World phase 4.1, 2026-11-17): the ridge's way west is the seam into route R1 (room `site_ow_r1`, the highway over the Tiber to the
        Vatican); the plot west of the Hills' row -3 is the road's. Mount Shasta's `saddle` door that led here is gone (the Canyon Trail, R2, goes north from the road) */
     ctx.doors.push(Object.assign({ id: 'ow_v_0_m3', wall: 'free', x: r2(gx(0) + 1.75), z: R.out.ridge, face: 90, leaf: null, way: 'open', passage: { len: 3, deep: 1.2, w: 16 }, action: { room: 'site_ow_r1', at: 'ow_v_0_m3' } }, DOORWORDS('THE RIVER ROAD', 'THE WEST RIDGE · THE ROAD TO THE VATICAN', 'The crest trail meets a wide road going west, down across the meadows to a river and a walled city with a dome.')));
