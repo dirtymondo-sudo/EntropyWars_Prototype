@@ -11592,3 +11592,42 @@ site_prebuilt_dumb_base` rewrote the table (bake-map.js's own ZONES row still sa
 (Command, Research, Sub-Level 7, the Ring) are not used; the ways down the map names (the Shasta lift, the barn hatch, the quarry shaft) are not built yet
 and would all land in this room. The clean bake on 11-17 changed one label (the White Rooms' yard gate reads AREA 51: the old ward literal the Desert
 rewrites); kept.
+
+## THE CAVERN, ONE WORLD — the Cavern + Hollow Earth turned onto their place, Agartha under the Lemuria adit, the cave tunnels built (2026-11-17, BUILD_PLAN phase 3 wave B; the owner's Cavern One World thread)
+mondo 11-17, on how a zone splits: "Connected/bigger rooms is better. If the room is smaller than disaster city than dont even ask, just make it
+one room"; on this zone: "well i still want the paths". v13 draws every block 4 x 3, but the Cavern is a 6 x 2 loop (13 plots) and Hollow Earth +
+Agartha are 3 x 4 each, so each piece is TURNED A QUARTER as one rigid block (ow-move.js `turn`): nothing inside parts. `bake-cavern.js` THE ONE
+WORLD MOVE (after the home room is built and checked, as before) writes FIVE rooms, all `layer: 'under'`, hub `cavern` (its `rooms` lists them):
+
+| Room | What | World plots | Box | Plots |
+|---|---|---|---|---|
+| `site_prebuilt_hollow_earth_cavern` (the old id, part `cavern`) | THE CAVERN (the strip, -8..-7 x 7..12) + HOLLOW EARTH and THE MOUTH (the sheet's Hollow Earth block exactly, -6..-3 x 10..12), turned 270 (clockwise from above) | -8..-3 x 7..12 | 6 x 6 (12 rock cells) | 24 |
+| `site_prebuilt_hollow_earth_ow_agartha` | AGARTHA turned 90 (the Lemuria Stair faces south, to the adit) + the last three plots of the tunnel north (U9), level 4, into the Upper Terrace's east side | -19..-15 x -12..-9 | 5 x 4 | 15 |
+| `site_prebuilt_hollow_earth_ow_west` | THE WEST TUNNEL: U8 + U10 (the Wells Tunnel, -14,10) + U9's south half, + three plots of mine (-11..-9 x 11: the Cavern strip stands three plots east of the sheet's block) | -15..-9 x 2..12 | 7 x 11 | 18 |
+| `site_prebuilt_hollow_earth_ow_long` | THE LONG TUNNEL: U9's middle, north under the Woods | -15 x -8..1 | 1 x 10 | 10 |
+| `site_prebuilt_hollow_earth_ow_tunnelway` | THE TUNNEL-WAY TUNNEL: U11, from Level −6 north, then east to the plot under Dead Man's Cave's Tunnel Way | -9..-7 x 2..9 | 3 x 8 | 10 |
+
+- **The turn**: home plot (col, row) -> Cavern room (row, 5 − col), the sides N E S W -> W N E S; Agartha local (c, r) -> (3 − r, c), sides -> E S W N.
+  `CAVERN_HOME=1 node bake-cavern.js` writes the old unturned room (byte for byte the 11-16 room: checked).
+- **THE TUNNEL LOOK (this tool's, not the route kit's: the kit refuses underground walks)**: every tunnel plot is rock but a passage three squares wide
+  from each port (the plot side's middle, squares 5..7) to a chamber in the plot's middle (3 to 5 squares a side, by the plot's dice), the Cavern's
+  rock roof block at 5.25 m with up to eight stalactites, a `cave_torch` at a bend (one in three lit), two rocks (`psxg_rock_1..4`, `ocean_rock_5`,
+  `cave_stone`) along the walls. Plot names are plain labels of mine: The West Tunnel, The Wells Tunnel, The Long Tunnel, The Lemuria Tunnel,
+  The Tunnel-Way Tunnel. Where a tunnel meets a district plot, the district plot's side is DUG three wide to its nearest dry open floor (`digIn`).
+- **SEAMS** (door pairs, `way: 'trail'`, the seam id at both ends): `ow_v_m8_11` (the Hot Shelf | the West Tunnel), `ow_v_m8_9` (Level −6 | the
+  Tunnel-Way Tunnel), `ow_h_m15_2` (the West Tunnel | the Long Tunnel), `ow_h_m15_m8` (the Long Tunnel | Agartha's tunnel plots).
+- **WAYS OUT** moved with their plots (only the Cavern's ends; the tool checks every row): `cave_hell`, `cave_dumb` (both W wall), `workings_oubliette`
+  (N wall), `hollow_byrd` (E wall), `well_cellar` (free, the Crossroads) in the Cavern room; `antarctica_polar` (W wall), `shasta_lemuria` and
+  `technoticlan_agartha` (free on the plots' south lines: the tunnel plots widened the box) in Agartha's; the bays `bay` (the Polar Opening, E wall)
+  and `bay_agartha` (the Inner Gate, W wall); the doors `dungeon` (the Oubliette) and `woods` (the Lemuria Stair, Agartha's room; the Woods'
+  `lemuria` door names it). RE-POINTED by v13: `well_skinwalker` comes down in the Wells Tunnel (-14,10, under the Estate's Hub), not the Mouth.
+  NEW: `tunnelway_cavern` (the creek's Tunnel Way, a free spot beside the drain, down a ladder to the Tunnel-Way Tunnel's north end).
+- **RETIRED**: `site_prebuilt_agartha_crystalcity` -> Agartha's room (the other seven old rooms still -> the Cavern room); `still` (no clock) lists the new rooms.
+- **THE CENSUS** (`docs/areas/cavern/move/before.json`; `node ow-census.js --diff … <the five rooms>`): props 437 -> 437 + the tunnels' own,
+  natives 27 -> 27, lines 19 -> 19; streams, falls, decks, ramps counted room by room: equal, but ONE stair: the Country's flight up into Agartha's
+  Lower Terrace (the plots parted; its port is a short dead end on the Cavern room's north rock). The other MISSING lines are pieces that lie ON a plot
+  line (three falls, five streams): after the turn the census counts them on the plot across the line (the same piece, the other name).
+- **The map**: `node bake-map.js` for the five rooms (pictures `Assets/ui/map/site_prebuilt_hollow_earth_{cavern,ow_agartha,ow_west,ow_long,ow_tunnelway}.png`).
+- **NOT DONE (phase 4.4)**: U12 (from the Holding Cells) meets the Tunnel-Way Tunnel's north side, seam `ow_h_m7_2`; U13 (the Bone Passage) ends at
+  -4,9, a rock cell of the Cavern room's box, beside Hollow Earth's Sunken Garden (-4,10). The Bone Passage, the Outfall and the Freight Line are 4.4's.
+  Rule 5 numbers of the tunnel rooms were not probed for frame rate (small, closed); the Cavern room is the 11-16 room minus Agartha.
