@@ -3751,7 +3751,7 @@
        (`shell.open`). The sliders marked live move the view as they are dragged (the dome reads them every frame) and land as ONE undo
        step on the release; everything else rebuilds the room. The CLOCK previews an hour in a room on the world clock (the view only:
        the player's saved hour is not touched). ══════════════════════════════════════════════════════════════════════════════ */
-    var SKY_SCENERY = ['none', 'cosmic', 'divine', 'infernal', 'ruins', 'pyramids', 'crystals', 'orbs', 'eyes', 'islands', 'city', 'space', 'dark', 'sea', 'wreckage', 'wonder', 'holosim'];
+    var SKY_SCENERY = ['none', 'cosmic', 'divine', 'infernal', 'ruins', 'pyramids', 'crystals', 'orbs', 'eyes', 'islands', 'city', 'space', 'deepspace', 'dark', 'sea', 'wreckage', 'wonder', 'holosim'];
     var SKY_MARKS = ['tower', 'gate', 'dome', 'castle', 'skycastle', 'stairway', 'waterspout', 'whale', 'eye'];   // 'mountain' + 'peak' (the cone mountains) removed 2026-11-03
     var SKY_ATMOS = ['dust', 'embers', 'fireflies', 'snow', 'rain', 'spores', 'ash', 'motes'];
     var SKY_LIVE = { 'sky.day': 1, 'sky.clouds': 1, 'sky.stars': 1, 'sky.nebula': 1, 'sky.tintAmt': 1, 'sky.fog.amount': 1, 'sky.fog.top': 1, 'sky.fog.band': 1, 'sky.fog.density': 1 };

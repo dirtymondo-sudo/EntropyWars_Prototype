@@ -11857,6 +11857,63 @@ Proposal + mock-ups: `/mnt/project-files/space-round-planets/`.
   are flat today; a fight on a ball is not checked yet); the lighting on a far face uses the flat normals; NPCs that wander over a
   cut seam are not carried; the map picture (`Assets/ui/map/site_prebuilt_moon_plots.png`) shows the flat nets.
 
+## OUTER SPACE, FAR APART + BIGGER — the worlds spread out, grown, opened and dressed (2026-11-17, mondo's Outer Space spacing + look session)
+mondo 11-17: "Go ahead and make outerspace better. The planets are way too close together. There is a ridge or mountain range on one of
+them that looks leftover from the boundaries of a square perimeter, the whole planet should be walkable outside of things that are actually
+meant to be walls/barriers. The planets also dont really look that good right now, and i wouldnt mind if they were bigger, especially
+relative to each other (saturn should be bigger than the moon obviously). Just keep improving and iterating on outerspace."
+- **BIGGER (space-ball.js ROUNDS).** The Moon keeps 24 squares a face (R 53 m). Mars 36 -> 48 (R 107 m, twice the Moon as it is), the
+  Singularity 36 -> 48 (R 107 m), Saturn 48 -> 96 (R 214 m, four Moons). The flat maps and the district files are untouched: a bigger
+  ball has more open ground round the same map. The Earth under Low Orbit is 290 m (was 55 m, smaller than the Moon).
+- **FAR APART (bake-space.js SYS + ROUNDC, `space.box`).** The nets (the walk's ground, never drawn where they lie) are packed in a room
+  of 46 x 19 plots: Saturn [1,1], Mars [26,1], the Singularity [26,10], the Moon [39,10], Low Orbit [42,3]. The balls hang in a box of
+  open space far bigger than the room, `space.box` { x0 -1750, x1 1500, z0 -1350, z1 1750, y0 -260 }, ceiling 890 m: the box is the
+  ship's limit now, not the room's sides (three-renderer.js _hqShipHullFree; `_hqRoomExtentM` holds the box, so the sky ring and the far
+  plane stand past it). Middles: the Moon (640, 210, 60), Mars (60, 300, -640), the Singularity (-150, 120, 1050), Saturn (-950, 400, 300).
+  From the berth (819, 0, -252): the Moon 420 m, Mars 900 m, the Singularity 1,600 m, Saturn 1,900 m (before: 150 to 400 m between any two).
+  The Sun stands far off east and high (2760, 1210, 1725; it was under the middle), and the balls' daylight comes from it.
+- **THE SHIP.** v 34 -> 46 m/s, up / down 14 -> 22, and SHIFT (the walk's run key) is THE BURNER, x 3.4, for the long legs (Saturn from
+  the berth in about 12 s). The two hints say SHIFT BURNER. Viewer-local as before, nothing relayed.
+- **OPENED (the walls nobody meant).** (1) The Moon's LIMB is gone: a straight rock ridge three squares thick down the whole net
+  (draw-space.js moon()), the old line between the far side and the Mare; on a ball it was a wall across the world. (2) Saturn's STORM
+  WALLS are gone (`xToFill`): on the ball they were a square crown of grey rock round the pole, and they shut 80 plots off. The cloud deck
+  is walked all the way round now (384 plots named, was 64) and two ramps climb from it onto the rim walk, north and south of the
+  Hexagon. The plots keep their names ("The Storm Walls, north" ...). (3) Low Orbit's rock rim is gone (a square ridge round the berth).
+  What still blocks is what was built to block: the terrace's side rocks, the crater's peak, the mesas, the pyramid, the ring shard.
+- **THE LOOK (three-renderer.js _hqBuildSpace).** Saturn's deck is sand gold with pale cloud belts by latitude (ROUNDS.saturn.band, the
+  square char `b`; it wore mars_2, a brown ball). Its rings are drawn sheets, the C, B and A rings with the dark division, inner edge
+  out (they were one flat beige disc); the Singularity's disc burns white at the hole to red at its rim, additive. THE NIGHT SIDE: a
+  dark veil over the half of each ball turned from the Sun (the bent ground is lit with flat normals, so a far ball read as a flat
+  disc); it clears the ground by what the depth buffer can tell apart at that distance and fades out as you come down. A thin edge of
+  air on Mars, Saturn and the Earth; the Earth has cloud. Every world's NAME hangs over it, the same size on screen at any distance.
+  A beacon's name plate shows within about 430 m only (from far off three 40 m black plates barred the small Moon).
+- **THE BODIES FOLLOW THE ANCHOR (`H._spaceBodies`, _hqSpaceBodiesTick).** Every ball, ring, veil, halo, the Earth and the Sun hang in
+  one group that takes the walker's anchor turn (out = P + M (x - A)), as the bent ground does in the shader. Before, standing on any
+  world, every ring and the Earth stayed where they hung while the balls turned away from them: Saturn seen from the Moon had no ring.
+  Standing on Saturn's cloud deck the rings now arch over you.
+- **THE SKY.** `sky.scenery: 'deepspace'` (new roster, _hzThemeRoster): `space` without its model planets, star and small solar system
+  (a cartoon ringed planet drifting among the real worlds read as one more of them). Fog density 0.0015 -> 0.0004 (Saturn went grey at 2 km).
+- **THE STEP OFF AT A BEACON.** _hqDisembark's pick (fore of the hull) was the collar door's own square: the walker stood inside the door's
+  block and the screen was black until he walked. _hqShipLand now stands him two squares out on the door's open side, the eye looking
+  back at the ship and the collar.
+- **THE GROUND'S COST.** `terrain.res` 0.875 -> 1.75 and `terrain.tileM: 168` (new, read by _hqTerrainTiles: this room's ground is never
+  left out by the frustum, so 32 m tiles were 1,200 draws a frame). Measured in the cloud browser, on the Moon: 5.27 M triangles /
+  1,679 calls before -> 3.04 M / 1,074 after, with 2.6 times the ground.
+- **THE SEAMS.** Two pale lines along every cut seam of a ball are gone: the void square beside a net wears its neighbour's sheet
+  (bake-space.js compose; the paint blends half a square), and the last line of a net is no cliff (the 60 m fall to the void painted
+  the cliff sheet there: three-renderer.js `plEdge`).
+- **THE EIGHT SHEETS** now: desert, cloud_thick, mars, mars_2, moon_3, the metal plate, obsidian, crystal (moon_2 gives way to moon_3;
+  desert is its own again: Saturn's deck and Mars' dunes).
+- **`node bake-space.js --rows`** (new): moves the rows in data.js that name a place in this room (the links' world ends, the four bays,
+  the area marker) to where the worlds stand now; without it they are only checked, as before.
+- **Probe:** `ThreeRenderer.hq.dev.hqCam()` = the walk's camera. A ship view needs the ship's `yaw` (sin, cos) AND `camYaw` (the heading,
+  atan2(dx, -dz)). A beacon skips the ship that was put inside its ring in the same call as boarding (it reads as "took off from here").
+- **Seen on screen** (playtest_city.js, llvmpipe): the Moon's far side with no ridge, Saturn's deck with the rings overhead and the
+  Hexagon open, Mars, the Singularity's rim after a beacon landing, the berth, every world from the ship. **Not checked:** a fight on
+  the bigger balls, NPCs over a seam (as before), the frame rate on a real machine, mondo's Firefox.
+- **DECISIONS MADE FOR MONDO:** the sizes (Mars = 2 Moons, Saturn = 4); Saturn's storm walls opened (they were the old thread's wall,
+  but a square of rock on a ball); the burner on SHIFT; the fake sky planets out of this room.
+
 ## ONE WORLD 4.4, THE UNDERGROUND WALKS + THE FREIGHT LINE (2026-11-17, BUILD_PLAN phase 4 row 4.4, the owner's thread)
 What the map's `under.walks` asked for, and where each one is now (plots.json is the list; the plot names on the walks are mine, marked):
 - **THE SEWERS ARE ONE ROOM AGAIN** (`site_prebuilt_downtown_underworld`, 17 x 16 plots, mask in the room): the walks U1-U5 + U14 are plots
@@ -11895,6 +11952,27 @@ What the map's `under.walks` asked for, and where each one is now (plots.json is
   now: S.js swings its leaves in, the ghost wall is gone), `ow_v_m12_m4` R4 at a new gap in the west wall (rows 24-25 home).
 - **A PROBE WALKS SLOWLY HERE** (llvmpipe, a big room with 1,800 edge trees): 3 m in 10 s on flat cobbles, so a walk that "stops" after
   2 m on the stair is the frame rate, not a wall (`ThreeRenderer.hq.dev.walk()` reads velX 4.6). Give a walk here 45 s.
+## THE INTERNET ON PLOTS (2026-11-17, One World phase 4.4, BUILD_PLAN row 4.4: "the Internet (36)"; the owner's 4.4 thread)
+mondo OK'd the four districts 11-17 ("that is okay" to: the Feed, a long boulevard of giant scrolling screens; the Forums, plazas of message
+boards; the Server Farm, aisles of racks and cables; the Dark Web, a lower, darker level underneath; reached from the D.U.M.B.'s server rooms).
+Every plot name is mine (labels, marked "(label mine)" in the layout). The Internet is "beyond" on the One World sheet (beside the Astral Realm);
+HQ_ZONE_MAP lists it as layer `off`, hub `internet`.
+- ONE ROOM `site_prebuilt_internet_web` (site `prebuilt_internet`, part `web`), 6 x 6 plots, NO GROUND: the Astral Realm's machinery (data.js
+  `terrain.void` + float plateaus, the void's glow green, the sky locked to night (`sky.lock`, off the world clock: the inside of the net has no sun) with the scenery `holosim`, thin tile undersides (no hanging rock), the Dark Web painted `holo_red` (dark tile, red rims), the look `HQ_ROOM_LOOKS.internet`). Tool `bake-internet.js`
+  (markers INTERNET36-BEGIN / -END, written before ASTRAL36), plan `docs/plans/world-zones/draw-internet.js` -> `docs/areas/internet/layout.json`
+  + `internet_plot_plan.png`; districts `docs/areas/internet/districts/S|F|B|D.js` (the Astral Realm's file API: plan, build, dress, people,
+  airZones; ctx.look / put / P / dec / native / claim / rimRail; `sign()` on a sheet = a `txt:` panel). One thread a file.
+- THE PLAN: S the Server Farm (NW) is ONE floor at level 8, the data hall (style `slab`; a lower-case port letter in the layout = a WIDE join,
+  the two floors run into each other); aisles = rows / columns 5-6 of every plot. F the Feed (NE): the boulevard (row 1, style `blvd`, level 10,
+  walk rows 4-7) with twelve post screens; six side plots. B the Forums (SE), levels 8-11. D the Dark Web (SW) sinks 7 -> 1, under the hall.
+  A narrow join of one level = a bridge plateau over the two edge squares; of two levels = floating steps (the draw file refuses steeper).
+- THE WAY IN: link `dumb_internet` (way `screen`, route `internet`): `a` = the D.U.M.B. Control Room's north wall between the servers (bake-dumb.js
+  WAY.dumb_internet, plot P03-00 square 6,1), `b` = the Login Screen (P00-00, its north edge). Both tools refuse to bake when the row drifts.
+  The hub's healing ring stands at the spawn (data.js `hubs.internet`). DOOR HQ's monitor (page v8: "opens from a monitor in DOOR HQ") is NOT built.
+- LANDMARKS: the Cloud (P01-01, a cloud wired into the racks), the For You Page (P05-01, a phone on end with an eye), the Mod Tower (P03-05, 22 m,
+  the ban hammer), the Bottom (P00-05, a ring of dead televisions). Big drawn pieces are `solid()` in each file: squares claimed + ghost walls.
+- NOT YET: the screens scroll (still pictures), blinking racks, sound, the DOOR HQ monitor.
+
 ## ONE WORLD, THE COAST + THE ISLANDS (2026-11-17, BUILD_PLAN phase 4.3, part 1; the owner's One World 4.3 thread)
 What the first PR of 4.3 built (part 2 = Pirates' Cove, the Frozen Sea and the rest of the Round Voyage):
 - **R11 THE DELTA CAUSEWAY** `site_ow_r11` (4 x 3 plots at 17,31; `docs/areas/routes/R11.json`): Giza's east side (seam `ow_v_17_32`, `bake-desert.js` STAND `more`) over
@@ -11963,6 +12041,36 @@ shared hand pieces `docs/areas/routes/south-kit.js`). Every route is its OWN roo
   (cut there in R9.js). Seen, not fixed: on R8 a group of wandering units stood on the road by the Ranch end and blocked the first walk (walked one
   lane over); the crop circle's pieces read as grey lumps from the ground. Pictures: `docs/plans/one-world/proof/south_*.jpg` (`south_join_*` = the
   room reached). PROBE LESSON: `dev.teleport`'s `face` is a compass heading, 0 = north (-z), 90 = east, 180 = south, 270 = west (NOT a door's face).
+
+## OUTER SPACE, PASS 2 — no panels, no pilot, no square, the Cube over Saturn, a real black hole (2026-11-17, mondo's Outer Space session)
+mondo 11-17, on the first pass: "Why ... are there 2 panels that say 'the spaceship' and they are both crowded with ai slop text and
+controls. Remove the clutter, dont need the controls. 2nd of all if i am flying the spaceship then we dont need the ... character model
+standing up and clipping through it. In the last screenshot you sent, I still see a square map, wtf is that. Its supposed to be a planet.
+Also the Saturnian Cubes are a huge piece of lore and combat in this game, so saturn need to be a lot more epic and detailed and have an
+ominous floating black cube above it's hexagonal storm at the pole. The singularity looks too much like Jupiter. Really they all need
+another pass because they do not look good from afar."
+- **NO PANELS ABOARD (his rule now: no control text on the flown ship).** map.js: no toast on boarding the ship, and `_hqSetPrompt` shows
+  nothing for the aboard prompt of a ship (E still steps off). The moored ship's prompt has no sub line; LANDED names the place only.
+- **NO PILOT.** The walker's own tick (three-renderer.js, `ch.kind === 'player'`) drew the body again every frame after the helm hid it:
+  it now stays out while a ship is flown.
+- **NO SQUARE: THE BERTH IS ON THE MOON.** "Low Orbit", a flat square plot of rock with the ship on it, is gone. The pad is on the top of
+  the Moon (draw-space.js moon(): squares 62..67 x 27..32, plot "The Berth", was "The Top"); `ship_stick` and `orbit_derelict` are the
+  Moon's own ways; the beacon `orbit` reads THE MOON · THE BERTH and carries `ball` / `up`. Nothing in the room is flat any more
+  (`space.mesas` is empty).
+- **SATURN.** THE BLACK CUBE: the Main Hall's cube (its black, its lit glyphs, `_hqGlyphTexture`), 72 m a side, standing on a corner
+  170 m over the north pole, turning slowly, a thin shaft of its light down into the storm's eye (three-renderer.js _hqBuildSpace,
+  `rec.cube`). Seen from every world; in the Hexagon it hangs over your head. THE HEXAGON STORM: six-sided rings of cloud round the
+  pole out to 47 degrees north with two black walls of storm (`k`), then belts in three tones (gold `.`, pale `b`, dark `d` = mars_2)
+  with white ovals in the dark belts and a dark south cap (space-ball.js ROUNDS.saturn.band, SAT_BELTS, SAT_OVALS). All walked.
+- **THE SINGULARITY IS A BLACK HOLE.** From afar a black disc edge to edge (`LOOK.singularity.hole`: a sheet held before the ball, so no
+  lit obsidian shows), a thin white ring of bent light round it, and a disc that is one smooth fall from white to deep red torn by
+  winding streaks, turning slowly (it was banded like a planet's rings). The sheet fades as you come down; the ground is as before.
+- **FROM AFAR.** THE LIMB: every other ball has a sheet held between the eye and it, clear in the middle, dark to the edge, sized
+  each frame to the ball's outline (_hqSpaceBodiesTick), so it reads as a ball from every side. Mars has white caps (`w`) and dark
+  country (`d`); the Moon has maria (`d`), read on the ball so they cross the seams.
+- **Seen on screen:** the berth on the Moon, the Cube from space and from the Hexagon, the hole, all four from 2.4 km with no panel and
+  no pilot. **Not checked:** the frame rate on a real machine; the Cube has no part in a fight yet (it is a sight).
+
 ## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
 Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
 `ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).
@@ -11971,7 +12079,7 @@ Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/area
 | R12 Stone Path (trail) | `site_ow_r12` | 8 | Stonehenge `ow_h_m30_m6` → Camelot castle block `ow_h_m28_m3` | standing stones (`menhirs`) at -29,-6 |
 | R4 Old Road (highway) | `site_ow_r4` | 26 | Camelot east `ow_v_m23_m2` → Vatican west gate `ow_v_m12_m4`; two trail forks: Redwood Trail `ow_h_m16_m1`, the Clearing `ow_h_m16_0` + the Stair `ow_h_m14_0` | wayside inn, standing stones |
 | R1 River Road (highway) | `site_ow_r1` | 14 (+ the R2 junction) | Vatican east gate `ow_v_m6_m4` → the Hills `ow_v_0_m3`; R2 leaves north `ow_h_1_m4` | `R1.js` the Tiber + its bridge; ranger station at the junction |
-| R2 Canyon Trail (trail) | `site_ow_r2` | 22 (list 2-23) | the junction `ow_h_1_m4` → Shasta's Trailhead (INTERIM jump, below) | — |
+| R2 Canyon Trail (trail) | `site_ow_r2` | 24 (list 2-23 + 2 added) | the junction `ow_h_1_m4` → Shasta's Trailhead `ow_h_m3_m14` | — |
 | R3 Pilgrim Way (trail) | `site_ow_r3` | 10 | the Colosseum's north hedge (in the Vatican's room, phase 4.4) `ow_h_m10_m9` → Olympus' Pilgrim Stair `ow_v_m10_m13` | two shrines |
 | R5 Polar Trail (trail) | `site_ow_r5_0_17` + `site_ow_r5_18_35` | 18 + 18 | the Lodge's Ridge `ow_v_m13_m22` → (the two stretches meet on `ow_h_m7_m23`) → the North Pole's west wall `ow_v_0_m27` | frozen lake, mountain hut |
 - **The zone side of each seam** (all `ifRoom`, so a tool rerun before a route exists writes nothing): `bake-camelot.js` OUT (R4, R12; `open` →
@@ -11981,10 +12089,12 @@ Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/area
   the Lodge R5) + the North Pole's new west door. New seam keys in bake-mountains: `k: [..]` = the squares the path crosses on (the route's line),
   `to` = the door id over there when it is not the seam's own (an interim jump).
 - **Stand-ins replaced**: the Pass Gate `pass` pair (the Lodge ↔ the Pole, a jump) → R5; the Mountains' `saddle` ↔ the Hills' `ridge` → R1 + R2;
-  the Woods ↔ Redwood jump → R4's forks. **Kept**: the city's `shasta` road ↔ Shasta's `hills` (the Hills ↔ Shasta, until R2 reaches the Trailhead),
+  the Woods ↔ Redwood jump → R4's forks. **Kept**: the city's `shasta` road ↔ Shasta's `hills` (the Hills ↔ Shasta, a road; mondo can say if it should go),
   Shasta's `woods` door (the Trailhead → the Redwood Trail).
-- **R2's top is a gap on the map**: its last plots (-1..0, -14) do not touch Shasta; two scenery plots lie between them and the Trailhead (-3,-15).
-  Until mondo decides, the top door (`ow_h_0_m14`) leads to Shasta's `ow_h_m3_m14` on the Trailhead's south side (squares 2-3, west of `woods`).
+- **R2 reaches the Trailhead** (mondo's yes, 2026-11-17): its band stopped two plots short (gen.js routes to Shasta's box edge, not its plot); the spec's
+  new `add: [[-2,-14],[-3,-14]]` (bake-route.js) walks it west and up into the Trailhead's south side, seam `ow_h_m3_m14` (squares 2-3, west of
+  the Woods door). 24 plots, box 5 x 10. `gen.js --plots` cannot be rerun any more (it reads today's rooms; the old ones are retired), so plots.json
+  still lists 24 R2 plots ending at -1..0,-14: the 2 added ones live in the spec. Walked both ways.
 - **bake-route.js** gained: `F` in the hooks' CTX; `ROUTE_WHO="x,y;x,y"` prints what stands on those squares; an end's `back: { room, label, sub,
   desc }` = the words for a split route's own seam seen from the other stretch (R5). **playtest_city.js**: a walk with `"then": true` goes on with the
   next views in the room it reached, so one run walks a chain of seams.

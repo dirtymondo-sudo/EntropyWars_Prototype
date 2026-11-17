@@ -151,13 +151,13 @@
  },
  "site_prebuilt_moon_plots": {
   "id": "site_prebuilt_moon_plots",
-  "nx": 288,
-  "nz": 180,
-  "h0": -6.37,
+  "nx": 552,
+  "nz": 228,
+  "h0": -6.36,
   "hs": 0.25,
-  "v": "8b2848b4be",
-  "bytes": 10686,
-  "s": "37.9"
+  "v": "e717be5646",
+  "bytes": 20487,
+  "s": "31.5"
  },
  "site_prebuilt_dumb_base": {
   "id": "site_prebuilt_dumb_base",
@@ -165,9 +165,9 @@
   "nz": 84,
   "h0": -1.75,
   "hs": 0.25,
-  "v": "fbff8fa322",
-  "bytes": 748,
-  "s": "27.8"
+  "v": "627a973bc1",
+  "bytes": 749,
+  "s": "15.2"
  },
  "site_prebuilt_mars_plots": {
   "id": "site_prebuilt_mars_plots",
@@ -619,6 +619,16 @@
   "bytes": 650,
   "s": "0.5"
  },
+ "site_prebuilt_internet_web": {
+  "id": "site_prebuilt_internet_web",
+  "nx": 72,
+  "nz": 72,
+  "h0": 1.75,
+  "hs": 0.25,
+  "v": "cef018eb3b",
+  "bytes": 785,
+  "s": "1.7"
+ },
  "site_prebuilt_bermuda_ow_frozen": {
   "id": "site_prebuilt_bermuda_ow_frozen",
   "nx": 48,
@@ -731,13 +741,13 @@
  },
  "site_ow_r2": {
   "id": "site_ow_r2",
-  "nx": 36,
+  "nx": 60,
   "nz": 120,
-  "h0": -0.77,
+  "h0": -0.91,
   "hs": 0.25,
-  "v": "79d30da678",
-  "bytes": 1532,
-  "s": "1.3"
+  "v": "c63963c142",
+  "bytes": 2193,
+  "s": "0.9"
  },
  "site_ow_r4": {
   "id": "site_ow_r4",

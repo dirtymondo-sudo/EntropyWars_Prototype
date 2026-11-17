@@ -205,6 +205,7 @@ const WAY = {
     garage_motorpool: fw('P01-05', 2, 9, 270),                                                                 // the ramp up to the garage (secret)
     cave_dumb: fw('P03-01', 2, 6, 270),                                                                        // LEVEL -6: the blast door in the rock
     dumb_astral: fw('P01-02', 3, 2, 0),                                                                        // the dream screen
+    dumb_internet: fw('P03-00', 6, 1, 180),                                                                      // THE INTERNET (One World 4.4, 2026-11-17): the screen between the Control Room's servers
     yard: fw('P01-01', 2 + 11, 0, 0), stormdrain: fw('P02-01', 5, 7, 90), hangar: fw('P02-01', 5, 10, 90), vent: fw('P02-01', 4, 11, 180),   // the White Rooms' four (the block's squares 11,0 · 15,7 · 15,10 · 14,11)
 };
 /* THE FREIGHT LINE (2026-11-17, One World phase 4.4; plots.json `under.rides`: "a ride, no plots; opens after the D.U.M.B."): a door pair from the
@@ -366,7 +367,7 @@ console.log(JSON.stringify(count));
 /* the rows in data.js that hold a place in this room (written by hand there): the tool refuses to bake when one has drifted */
 const end = id => { const w = WAY[id]; return "site: 'prebuilt_dumb', part: '" + PART + "', wall: '" + w.wall + "', " + (w.wall === 'free' ? 'x: ' + w.x + ', z: ' + w.z + ', face: ' + w.face : (w.wall === 'n' || w.wall === 's' ? 'x: ' : 'z: ') + w.at) + ','; };
 const ent = id => { const w = WAY[id]; return "room: '" + ROOM + "', door: { id: '" + id + "', wall: '" + w.wall + "', " + (w.wall === 'free' ? 'x: ' + w.x + ', z: ' + w.z + ', face: ' + w.face : (w.wall === 'n' || w.wall === 's' ? 'x: ' : 'z: ') + w.at) + ' }'; };
-const WANT = ['area51_dumb', 'garage_motorpool', 'cave_dumb', 'dumb_astral'].map(k => [end(k), 'link ' + k]).concat([[ent('bay'), 'siteRooms.entry.prebuilt_dumb'], [ent('bay_cern'), 'siteRooms.entry.prebuilt_cern']]);
+const WANT = ['area51_dumb', 'garage_motorpool', 'cave_dumb', 'dumb_astral', 'dumb_internet'].map(k => [end(k), 'link ' + k]).concat([[ent('bay'), 'siteRooms.entry.prebuilt_dumb'], [ent('bay_cern'), 'siteRooms.entry.prebuilt_cern']]);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const flat = src.replace(/ +/g, ' '), missing = WANT.filter(w => flat.indexOf(w[0]) < 0);
 if (missing.length) { console.log('data.js rows to write by hand:'); missing.forEach(w => console.log('  ' + w[1] + ':  ' + w[0])); if (!DRY && !process.env.DUMB_FIRST) throw new Error('data.js does not point at this room yet (see the rows above)'); }
