@@ -124,7 +124,8 @@ door('estate', 'P01-05', 's', { way: 'trail', label: 'THE ESTATE · THE CORN FIE
    (Disaster City's gutter) on the Storm Drain plot, `sewers_drain` (the city sewers) on the Outfall, `woods_sewer` (the HQ tunnel) on the Tunnel Way */
 const LINK_ENDS = { streets_drain: ['b', spur('P05-03', 'e'), 'THE CULVERT · UP TO THE STREET'], sewers_drain: ['b', spur('P05-04', 'e'), 'THE CULVERT · INTO THE SEWERS'] };
 /* THE MOUNTAINS ON PLOTS (2026-11-15): the Snowline's trail goes on up: Mount Shasta's Trailhead (bake-mountains.js room, its `woods` door) */
-door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILHEAD', sub: 'THE SNOWLINE · THE TRAIL UP', action: { room: 'site_prebuilt_shasta_mountains', at: 'woods' },
+door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILHEAD', sub: 'THE SNOWLINE · THE TRAIL UP', action: { room: 'site_prebuilt_shasta_mountains', at: 'woods' },   // ONE WORLD, PHASE 3 (2026-11-17): the Mountains zone thread retires this room into Mount Shasta's own room, door `woods` kept, so this lands either way
+   
     desc: 'The trail keeps climbing after the trees give up. There is snow on it from here.' });
 /* NO UNEXPLAINED DEAD ENDS (2026-11-15, mondo): a secret TRAIL gets no waymark post, so its path just stopped at the trees. The three secret ways show what they are now:
    each is a plain signposted trail and no longer secret (2026-11-16, mondo on the hollow-tree way's ball-crowned stand-in: "get rid of those and delete them from the game";
@@ -139,7 +140,8 @@ door('lemuria', 'P01-00', 'n', { way: 'trail', label: 'AGARTHA · THE CRYSTAL CI
 LINK_ENDS.grove_lodge = ['a', spur('P05-00', 'e'), 'THE MEMBERS\u2019 TUNNEL · UNDER THE LAWN TO THE CLUB'];
 LINK_ENDS.woods_ritual = ['a', spur('P05-01', 'e'), 'THE CIRCLE · ROOM 333'];
 const GROVE_BAY_X = spur('P04-00', 'n');
-door('lookingglass', 'P05-02', 'e', { way: 'trail', label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_camelot_kingdom', at: 'deadtree' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the garden is a district of the kingdom room now (was the old garden room)
+door('lookingglass', 'P05-02', 'e', { way: 'trail', label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_camelot_ow_forest', at: 'deadtree' },   // ONE WORLD, PHASE 3 (2026-11-17): the Dead Tree's Hole stands in Camelot's Forest room (the Camelot zone thread)
+      // CAMELOT KINGDOM ON PLOTS (2026-11-15): the garden is a district of the kingdom room now (was the old garden room)
    
     desc: 'Past the dead tree the ground is the wrong colour.' });
 LINK_ENDS.woods_sewer = ['a', spur('P05-05', 'e'), 'THE DRAIN · INTO THE TUNNEL'];
@@ -326,6 +328,15 @@ const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 't', plots
 const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === 'site_prebuilt_fairy_forest_plots' && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Woods district ' + letter);
     return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n || p.district !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
 const R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing', R_REST = 'site_prebuilt_fairy_forest_plots', R_CORN = 'site_prebuilt_skinwalker_ow_corn';
+/* ONE WORLD, PHASE 3 (2026-11-17, BUILD_PLAN wave A, the Woods zone thread): the Redwood Trail and the Ritual Ground leave the old room (R_REST, now in
+   DOOR_HQ.retired) for their v13 places, and the Woods' wild links are built. R_RED = the Redwood Trail alone (9 plots: it cannot join the Clearing, whose
+   room is full by the triangle number, nor L3, which would make the box 13 plots tall). R_RIT = the Ritual Ground + the wild links L2 (from the Clearing)
+   and L5 (on to the Estate's Iron Gate), 18 plots. L1 (one plot, the Trail West's way north) stands in the Clearing's room (rule 4). L3 and L4 are route rooms
+   of the kit (`node bake-route.js L3`, `L4`). */
+const R_RED = 'site_prebuilt_fairy_forest_ow_redwood', R_RIT = 'site_prebuilt_fairy_forest_ow_ritual', R_HOUSE = 'site_prebuilt_skinwalker_ow_house', R_CAMW = 'site_prebuilt_camelot_ow_forest';
+/* a wild link's own plot, laid by this tool in a district's room (room-splitting rule 4): `key` = its world plot, 'x,y'; forest, a trail through its middle and
+   ONE place beside the path (ow-places.js, THE PLACES: every name an idea of Claude's) */
+const LINK = (id, level) => PJ.links.find(l => l.id === id).plots.map((q, i) => ({ key: q[0] + ',' + q[1], wx: q[0], wy: q[1], name: 'The trail', district: 'L', link: id, level: Array.isArray(level) ? level[i] : level, isNew: true }));
 /* the seams: '<home plot id>:<side>' -> the room past that side. `at` = the door's id over there (the seam's own id when left out);
    `k` = the square of the plot's side the path crosses on (left out: where the plot is open already, else its middle) */
 const STAND = [
@@ -335,27 +346,58 @@ const STAND = [
       parti: 'The south of the Woods in one walk, eighteen plots: the Clearing a cross with the Stair at its north end and the fence line south, and east of it the dry creek, followed down between its banks to the sewer mouth and the storm drain.',
       seams: {
           'P01-05:S': { room: R_CORN, label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', desc: 'A fence, and a gate in it. The corn starts on the other side.', takes: 'estate' },
-          /* not moved yet: the Redwood Trail and the Ritual Ground. Their trails leave the Clearing where the map's wild links L1 and L2 will (the links' own plots are the Woods thread's) */
-          'P00-03:N': { room: R_REST, at: 'ow_h_m16_1', label: 'THE REDWOOD TRAIL', sub: 'THE TRAIL NORTH · UP UNDER THE OLD TREES', desc: 'The trail climbs north under trees too big to be this close to a road.' },
-          'P00-04:S': { room: R_REST, at: 'ow_h_m17_2', label: 'THE RITUAL GROUND', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
+          /* ONE WORLD, PHASE 3: the Trail West's way north is the wild link L1 (one plot, in this room); past it lies the Old Road's plot (route R4, BUILD_PLAN phase
+             4.1, not built yet), so L1's north end is an INTERIM door straight to the Redwood Trail's Creek, lower. The 4.1 thread builds R4 and re-points this pair */
+          '-16,0:N': { room: R_RED, id: 'ow_h_m16_0', label: 'THE REDWOOD TRAIL', sub: 'THE TRAIL NORTH · UP UNDER THE OLD TREES', desc: 'The trail climbs north under trees too big to be this close to a road.' },
+          /* the wild link L2 starts on Deep woods, west's south side: the Ritual Ground's room */
+          'P00-04:S': { room: R_RIT, label: 'THE RITUAL GROUND', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
+          /* the wild link L4 comes in on Deep woods, west, from the north: its own route room (bake-route.js L4); the link woods_camelot is on L4's west end now */
+          'P00-04:N': { room: 'site_ow_l4', label: 'THE TRAIL WEST · CAMELOT', sub: 'THE TRAIL · WEST TO CAMELOT', desc: 'The path goes west under the trees towards the castle.' },
       },
-      /* the trail to Camelot comes in on Deep woods, west, from the north (the map's wild link L4); it stood on the Trail West's west side, which has a plot past it now */
-      ends: { woods_camelot: { plot: 'P00-04', side: 'N' } },
+      links: LINK('L1', 2),
       /* the joint between the two districts is the main trail, on the Culvert's own crossing (squares 7 to 9); the Gully's cabin stands on the bed's line, so the
          walk passes north of it; the way on to the Storm Drain passes north of the sewer mouth's head; the Sewer Mouth's way south starts on its south rim */
       cross: { 'P02-05|P03-03': [7, 8, 9], 'P04-03|P04-04': [3, 4, 5], 'P03-05|P05-04': [3, 4, 5], 'P05-04|P05-03': [3, 4, 5] }, from: { 'P05-04:S': [3, 8] } },
-    { id: R_REST, part: 'plots', label: 'THE WOODS', sub: 'THE REDWOOD TRAIL · THE RITUAL GROUND · 18 PLOTS', letters: ['T', 'G'], list: PLAN.plots.filter(p => p.district === 'T' || p.district === 'G').map(p => ({ id: p.id, wx: p.x, wy: p.y })), world: false, spawn: 'P02-02', home: true,
-      parti: 'Two districts of nine plots, every plot a twelve by twelve board: clearings joined by dirt paths through forest you cannot enter, climbing from the creek to the snow.',
+    /* THE REDWOOD TRAIL (district T), 9 plots in one walk: the Snowline at the top, north under the range, down the west column to the Meadow, then the
+       east column down to the Creek, lower (v13 -17..-16 x -9..-2) */
+    { id: R_RED, part: 'ow_redwood', label: 'THE REDWOOD TRAIL', sub: 'THE WOODS · THE REDWOOD TRAIL · 9 PLOTS', letters: ['T'], list: v13('T'), world: true, spawn: 'P02-02',
+      parti: 'The Redwood Trail in one walk, nine plots: from the creek under the old trees up past the meadow and the falls to the snow at the top, where the trail goes on to the pass.',
       seams: {
-          'P02-02:S': { room: R_CLEAR, id: 'ow_h_m16_1', label: 'THE CLEARING', sub: 'THE TRAIL SOUTH · DOWN TO THE CROSSROADS', desc: 'The trail drops south out of the old trees.' },
-          'P03-02:S': { room: R_CLEAR, id: 'ow_h_m17_2', label: 'THE CLEARING', sub: 'THE PATH SOUTH · AWAY FROM THE FIRE', desc: 'A narrow path out between the trees, away from the fire.' },
-      } },
+          /* INTERIM (see the Clearing's L1): the Old Road's plot -16,-1 lies between; the phase 4.1 thread builds R4 and re-points this pair */
+          'P02-02:S': { room: R_CLEAR, id: 'ow_h_m16_0', label: 'THE CLEARING', sub: 'THE TRAIL SOUTH · DOWN TO THE CROSSROADS', desc: 'The trail drops south out of the old trees.' },
+          /* the wild link L3 up to the Snowy Pass (bake-route.js L3) */
+          'P00-00:N': { room: 'site_ow_l3', label: 'THE TRAIL UP · THE SNOWY PASS', sub: 'THE SNOWLINE · THE TRAIL UP', desc: 'The trail keeps climbing after the trees give up. There is snow on it from here.' },
+      },
+      /* two doors whose side is a joint now (the Shelf's north side is the Snowline; the Snowline's north is L3): each moves to a side with forest past it */
+      doorAt: { lemuria: { plot: 'P01-00', side: 'E' }, shasta: { plot: 'P00-00', side: 'E' } } },
+    /* THE RITUAL GROUND (district G), the ring round its hollow middle, with the wild link L2 from the Clearing (seven plots, down the column x -17 and west
+       along row 6 to the Stage and the lake's east shore) and L5 on south to the Estate's Iron Gate (two plots) */
+    { id: R_RIT, part: 'ow_ritual', label: 'THE RITUAL GROUND', sub: 'THE WOODS · THE RITUAL GROUND · 18 PLOTS', letters: ['G'], list: v13('G'), world: true, spawn: 'P04-01',
+      parti: 'The Ritual Ground, nine plots in a ring round a hollow nobody built on, and the two trails that reach it: the long path down from the Clearing, and the short one on south to the iron gate of the Estate.',
+      links: LINK('L2', [1, 2, 2, 3, 3, 4, 4]).concat(LINK('L5', 3)),
+      seams: {
+          '-17,2:N': { room: R_CLEAR, label: 'THE CLEARING', sub: 'THE PATH NORTH · AWAY FROM THE FIRE', desc: 'A narrow path out between the trees, away from the fire.' },
+          '-21,10:S': { room: R_HOUSE, label: 'THE ESTATE · THE IRON GATE', sub: 'THE PATH SOUTH · THE GATE', desc: 'The path ends at an iron gate in a wall. There is a house behind it.' },
+          /* the wild link L7 (Camelot's: it stands in Camelot's Forest room) meets the Mound's west side */
+          'P03-00:W': { room: R_CAMW, label: 'CAMELOT · THE FOREST', sub: 'THE PATH WEST · UNDER THE OLD OAKS', desc: 'The path goes west into an older forest.' },
+      },
+      /* the two link ends whose east side is a joint now (the Stage, L2): the members' tunnel on the lake's north shore, Room 333's circle in the ring's hollow middle */
+      ends: { grove_lodge: { plot: 'P05-00', side: 'N' }, woods_ritual: { plot: 'P05-01', side: 'W' } },
+      bay: { id: 'bay_grove', plot: 'P04-00', side: 'N' },
+      /* THE CAMP HOUSE (districts/G.js) stood across the Tents and the Stage, which do not touch now: its east square lies on the ring's hollow cell. That
+         square is opened under the house (its floor, walked inside its walls) so nothing grows in it; the house and everything in it stay where G.js put them */
+      strayOpen: ['woods:G:camphouse'] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 180, E: 270, S: 0, W: 90 };   // a free door on that side of a plot: the way its opening faces, INTO the plot (ow-move.js)
 const strip = f => { if (f.mass == null && f.wide == null) return f; const o = Object.assign({}, f); delete o.mass; delete o.wide; return o; };
-const ROOMS_OUT = [], LINKS_OUT = {}, STRAYS = [];
+const ROOMS_OUT = [], LINKS_OUT = {}, STRAYS = [], BAYS_OUT = {}, PLACES_OUT = [];
+const OWP = require('./ow-places.js');
+/* link ends another tool writes (THE ROUTE KIT's room L4 holds woods_camelot's Woods end since phase 3; set by hand in data.js, see the link's comment) */
+const KIT_ENDS = { woods_camelot: 1 };
 STAND.forEach(S => {
-    const R = MOVER.room(S.list), Wn = R.W, Dn = R.D, c2 = R.cell;
+    const R = MOVER.room(S.list.concat(S.links || [])), Wn = R.W, Dn = R.D, c2 = R.cell;
+    /* a plot by its home id, or a link's own plot by its world plot 'x,y' */
+    const byKey = k => R.ofHome[k] || Object.values(R.at).find(e => e.isNew && e.wx + ',' + e.wy === k) || null;
     R.strays.forEach(t => STRAYS.push(S.label + ': ' + t));
     const inR = (x, y) => x >= 0 && y >= 0 && x < Wn && y < Dn, openR = (x, y) => inR(x, y) && c2[y][x] !== 't';
     const sqOf = (x, z) => [Math.floor((x + R.HX) / C + 1e-9), Math.floor((z + R.HZ) / C + 1e-9)];
@@ -381,7 +423,7 @@ STAND.forEach(S => {
                 if (stood.has(x + ':' + y)) { kept++; return; }
                 if (was === 't' && c2[y][x] === 'p') { c2[y][x] = 't'; reverted++; } else if (was === 'w' && c2[y][x] === 'b') { c2[y][x] = 'w'; reverted++; } }); }); });
     /* 2. a new leg: from the plot's hub (or the square the spec names) to square k of a side, three squares wide, the home's own dog-leg */
-    const leg = (e, sd, k) => { const hub = (S.from || {})[e.id + ':' + sd] || HUBS[e.id], hx = e.col * N + hub[0], hy = e.row * N + hub[1]; k = Math.max(1, Math.min(N - 2, k)); const [tx, ty] = border(e, sd, k);
+    const leg = (e, sd, k) => { const hub = (S.from || {})[e.id + ':' + sd] || HUBS[e.id] || [6, 6], hx = e.col * N + hub[0], hy = e.row * N + hub[1]; k = Math.max(1, Math.min(N - 2, k)); const [tx, ty] = border(e, sd, k);
         if (sd === 'N' || sd === 'S') { run(hx, hy, tx, hy, 3); run(tx, hy, tx, ty, 3); } else { run(hx, hy, hx, ty, 3); run(hx, ty, tx, ty, 3); } laid++; };
     const mid = a => a[Math.floor((a.length - 1) / 2)];
     /* 3. two plots that touch now: one crossing. Where either is open on that side already, the other opens on the same squares */
@@ -403,21 +445,50 @@ STAND.forEach(S => {
         return d; };
     const doorsOut = R.doors.filter(d => !Object.keys(S.seams || {}).some(k => S.seams[k].takes === d.id)).map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; });
     const ways = [];
-    Object.keys(S.seams || {}).forEach(key => { const [pid, sd] = key.split(':'), e = R.ofHome[pid], sm = S.seams[key]; if (!e) throw new Error('seam on a plot that is not in ' + S.id + ': ' + key);
+    Object.keys(S.seams || {}).forEach(key => { const [pid, sd] = key.split(':'), e = byKey(pid), sm = S.seams[key]; if (!e) throw new Error('seam on a plot that is not in ' + S.id + ': ' + key);
         const id = sm.id || R.seamId(e, sd), d = crossing(e, sd, sm.k);
         if (sm.open) d.passage = Object.assign(d.passage || {}, { w: sm.open });   // THE OPEN SEAM (data.js DOOR_HQ.ways.open): `open: <metres wide>` on a seam in open country; the Woods' seams are all forest
         doorsOut.push(Object.assign({ id }, d, { way: sm.open ? 'open' : 'trail', label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.at || id }, desc: sm.desc || 'The path goes on.' }));
         if (d.wall !== 'free') ways.push({ side: d.wall, at: d.x != null ? d.x : d.z }); });
+    /* 4b. a door whose side became a joint (ONE WORLD, PHASE 3): it moves to the side the spec names (the door keeps its id and everything else) */
+    Object.keys(S.doorAt || {}).forEach(id => { const o = S.doorAt[id], dd = doorsOut.find(q => q.id === id), e = byKey(o.plot); if (!dd || !e) throw new Error(S.id + ': doorAt ' + id + ' has no door or no plot');
+        const c = crossing(e, o.side, o.k); ['wall', 'x', 'z', 'face', 'passage'].forEach(k => delete dd[k]); Object.assign(dd, c); if (c.wall !== 'free') ways.push({ side: c.wall, at: c.x != null ? c.x : c.z }); });
+    /* 4c. DOOR HQ's bay door on this room (siteRooms.entry): on the side the spec names */
+    if (S.bay) { const e = byKey(S.bay.plot), c = crossing(e, S.bay.side, S.bay.k); BAYS_OUT[S.bay.id] = { room: S.id, d: c }; if (c.wall !== 'free') ways.push({ side: c.wall, at: c.x != null ? c.x : c.z }); }
     /* 5. the links that end in this room (data.js DOOR_HQ.links): the tool's own (LINK_ENDS, on the home room's east wall) and the two written by hand */
     const HOME_ENDS = Object.assign({ woods_stair: ['a', { wall: 'free', x: -17.5, z: 55.5, face: 180 }], woods_camelot: ['a', { wall: 'w', z: 3.5 }] }, ...Object.keys(LINK_ENDS).map(id => ({ [id]: [LINK_ENDS[id][0], { wall: 'e', z: LINK_ENDS[id][1] }] })));
     Object.keys(HOME_ENDS).forEach(id => { const [side, h] = HOME_ENDS[id], ov = (S.ends || {})[id];
-        if (ov) { const e = R.ofHome[ov.plot], d = crossing(e, ov.side, ov.k); LINKS_OUT[id] = [side, Object.assign({ part: S.part }, d)]; if (d.wall !== 'free') ways.push({ side: d.wall, at: d.x != null ? d.x : d.z }); return; }
+        if (KIT_ENDS[id]) return;
+        if (ov) { const e = byKey(ov.plot), d = crossing(e, ov.side, ov.k); LINKS_OUT[id] = [side, Object.assign({ part: S.part }, d)]; if (d.wall !== 'free') ways.push({ side: d.wall, at: d.x != null ? d.x : d.z }); return; }
         if (STAND.some(o => (o.ends || {})[id])) return;                    // placed by hand in another room
         const hx = h.wall === 'w' ? -HALF + 0.5 : h.wall === 'e' ? HALF - 0.5 : h.x, hz = h.wall === 'n' ? -HALF + 0.5 : h.wall === 's' ? HALF - 0.5 : h.z, hp = MOVER.homePlot(hx, hz), e = R.ofHome[hp.id]; if (!e) return;
         if (h.wall === 'free') { LINKS_OUT[id] = [side, { part: S.part, wall: 'free', x: r2(h.x + e.dx), z: r2(h.z + e.dz), face: h.face }]; return; }
         const onWall = (h.wall === 'e' && e.col === R.cols - 1) || (h.wall === 'w' && e.col === 0);
         LINKS_OUT[id] = [side, onWall ? { part: S.part, wall: h.wall, z: r2(h.z + e.dz) } : { part: S.part, wall: 'free', x: r2((h.wall === 'e' ? HALF - C / 2 : -HALF + C / 2) + e.dx), z: r2(h.z + e.dz), face: h.wall === 'e' ? 270 : 90, passage: MOVER.FREE_PASS }];
         if (onWall) ways.push({ side: h.wall, at: r2(h.z + e.dz) }); });
+    /* 5b. THE PLACES (ONE WORLD, THE ROUTE KIT's rule, ow-places.js): every link plot this tool lays carries one small place beside its trail, on forest
+       squares it opens (a 5 x 5 patch touching the path; a 3 x 3 when none fits). Never the same twice running; the plot takes the place's name */
+    { const forest = OWP.forKind({ kind: 'forest', kit: 'forest' }), usedP = new Set(); let last = null;
+      R.order.filter(e => e.isNew).forEach(e => { const x0 = e.col * N, y0 = e.row * N, free = (r, cx, cy) => { let touch = false;
+              for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = x0 + cx + dx, y = y0 + cy + dy; if (cx + dx < 0 || cy + dy < 0 || cx + dx > N - 1 || cy + dy > N - 1 || c2[y][x] !== 't') return false; }
+              for (let dy = -r - 1; dy <= r + 1; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) { const x = x0 + cx + dx, y = y0 + cy + dy; if (inR(x, y) && (c2[y][x] === 'p' || c2[y][x] === 'b')) touch = true; } return touch; };
+          let got = null;
+          for (const r of [2, 1]) { const ids = forest.filter(id => OWP.PLACES[id].r === r && id !== last); let best = null;
+              for (let cy = r; cy <= N - 1 - r; cy++) for (let cx = r; cx <= N - 1 - r; cx++) if (free(r, cx, cy)) { const dd = Math.abs(cx - 5.5) + Math.abs(cy - 5.5); if (!best || dd < best[0]) best = [dd, cx, cy]; }
+              if (best && ids.length) { const fresh = ids.filter(id => !usedP.has(id)); got = [OWP.PLACES[(fresh.length ? fresh : ids)[0]], best[1], best[2]]; break; } }
+          if (!got) throw new Error(S.id + ': NO PLACE on the link plot ' + e.wx + ',' + e.wy);
+          const [pl, cx, cy] = got, r = pl.r; last = pl.id; usedP.add(pl.id);
+          for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) c2[y0 + cy + dy][x0 + cx + dx] = 'g';
+          OWP.lay(pl, x0 + cx, y0 + cy, { P: (key, sx, sy, o) => R.props.push(Object.assign({ key, x: R.gcx(sx), z: R.gcz(sy) }, o || {})), at: (key, fx, fy, o) => R.props.push(Object.assign({ key, x: R.gx(fx), z: R.gz(fy) }, o || {})) });
+          e.name = 'The trail, ' + pl.name; PLACES_OUT.push(e.wx + ',' + e.wy + ' ' + pl.id); });
+      R.names = R.order.map(e => [R.pid(e), e.name, e.district, e.level]); }
+    /* 5c. a district building that stands partly off its plots (a STRAY the spec answers): the squares under it are opened, so no tree grows in its rooms */
+    (S.strayOpen || []).forEach(id => { const f = R.features.find(q => q.id === id); if (!f) throw new Error(S.id + ': strayOpen ' + id + ' not found');
+        const a = sqOf(f.x - f.w / 2 + 0.01, f.z - f.d / 2 + 0.01), b = sqOf(f.x + f.w / 2 - 0.01, f.z + f.d / 2 - 0.01); let n = 0;
+        for (let y = a[1]; y <= b[1]; y++) for (let x = a[0]; x <= b[0]; x++) if (inR(x, y) && !R.plotOfSq(x, y) && c2[y][x] === 't') { c2[y][x] = 'g'; n++; }
+        STRAYS.push(S.label + ': ' + id + ' answered: ' + n + ' square(s) under it opened off its plot'); });
+    /* the tool's decks (over a run of bridge squares) stop at the room's wall */
+    R.features.forEach(f => { if (f.k !== 'deck') return; ['x0', 'x1'].forEach(k => { f[k] = Math.max(-R.HX, Math.min(R.HX, f[k])); }); ['z0', 'z1'].forEach(k => { f[k] = Math.max(-R.HZ, Math.min(R.HZ, f[k])); }); });
     /* 6. nobody is cut off: every open pocket the legs miss gets its own one-square path to the nearest reached square (the home's rule), then every plot must be reached */
     const sp0 = (() => { const c = centre(S.spawn), e = R.ofHome[S.spawn]; return [c[0] - e.home.x * N + e.col * N, c[1] - e.home.y * N + e.row * N]; })();
     const spSq = S.spawn === 'P02-04' ? [sp0[0], sp0[1] + 2] : sp0;
@@ -463,6 +534,7 @@ STAND.forEach(S => {
 });
 if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way; each is answered in the notes, "ONE WORLD, THE TEST SLICE"):\n  ' + STRAYS.join('\n  '));
 ROOMS_OUT.forEach(o => console.log(o.S.id + ' ' + JSON.stringify(o.count)));
+if (PLACES_OUT.length) console.log('places: ' + PLACES_OUT.join(' · '));
 
 /* ── the rooms ── */
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/'/g, "\\'").replace(/"/g, "'");
@@ -518,8 +590,9 @@ Object.keys(LINKS_OUT).forEach(id => { const [side, e] = LINKS_OUT[id], i = src.
     const re = new RegExp('(\\n +' + side + ": \\{ site: 'prebuilt_fairy_forest', part: )'[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Woods end on link ' + id);
     const head = m[1] + "'" + e.part + "', wall: '" + e.wall + "'" + (e.x != null ? ', x: ' + e.x : '') + (e.z != null ? ', z: ' + e.z : '') + (e.face != null ? ', face: ' + e.face : '') + (e.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
     src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); });
-{ const re = /(prebuilt_bohemian_grove: +\{ room: 'site_prebuilt_fairy_forest_plots', door: \{ id: 'bay_grove', wall: 'n', x: )[-\d.]+/; if (!re.test(src)) throw new Error('the Bohemian Grove bay row (siteRooms.entry) not found');
-  src = src.replace(re, '$1' + GROVE_BAY_X); }   // DOOR HQ's Bohemian Grove bay door (2026-11-16)
+/* DOOR HQ's Bohemian Grove bay door (2026-11-16; ONE WORLD, PHASE 3: on the Ritual Ground's room, the lake's west shore, its north side) */
+{ const b = BAYS_OUT.bay_grove, d = b && b.d, re = /(prebuilt_bohemian_grove: +\{ room: ')[a-z0-9_]+(', door: \{ id: 'bay_grove', )wall: '[a-z]+'(?:, (?:x|z|face): -?[\d.]+)+(?:, passage: \{ len: 3, deep: 1\.2 \})?/; if (!d || !re.test(src)) throw new Error('the Bohemian Grove bay row (siteRooms.entry) not found');
+  src = src.replace(re, '$1' + b.room + "$2wall: '" + d.wall + "'" + (d.x != null ? ', x: ' + d.x : '') + (d.z != null ? ', z: ' + d.z : '') + (d.face != null ? ', face: ' + d.face : '') + (d.passage ? ', passage: { len: 3, deep: 1.2 }' : '')); }
 /* DOOR HQ's hollow tree (siteRooms.entry.prebuilt_fairy_forest wears the Clearing's `forest` door) */
 { const o = ROOMS_OUT.find(q => q.S.id === R_CLEAR), d = o.doors.find(q => q.id === 'forest'), re = /(prebuilt_fairy_forest: +\{ room: ')[a-z0-9_]+(', door: \{ id: 'forest', )wall: '[a-z]+'(?:, (?:x|z|face): -?[\d.]+)+(?:, passage: \{ len: 3, deep: 1\.2 \})?/; if (!d || !re.test(src)) throw new Error('the hollow tree row (siteRooms.entry.prebuilt_fairy_forest) not found');
   src = src.replace(re, '$1' + R_CLEAR + "$2wall: '" + d.wall + "'" + (d.x != null ? ', x: ' + d.x : '') + (d.z != null ? ', z: ' + d.z : '') + (d.face != null ? ', face: ' + d.face : '') + (d.passage ? ', passage: { len: 3, deep: 1.2 }' : '')); }

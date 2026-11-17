@@ -340,10 +340,14 @@ if (HOOK && typeof HOOK.dress === 'function') HOOK.dress(CTX);
 
 /* ── THE DOORS at the ends: the spec's word, or the placed room the map finds past the line ── */
 const OW = { at: (x, y) => { try { return D.hqOwAt(x, y, 'surface'); } catch (e) { return null; } } };
-const open = [];
+const open = [], LINK_AT = [];
 ENDS.forEach(e => {
     const s = (SPEC.ends || {})[e.id], found = OW.at(e.past[0], e.past[1]), to = (s && s.room) || (found && found.room !== ROOM && found.room) || null;
     const g = groundAt(e.past[0], e.past[1]);
+    /* A LINK'S END ON A SEAM (2026-11-17, the Woods zone thread): the spec's `ends: { '<seam id>': { link: '<DOOR_HQ.links id>', side: 'a' | 'b' } }` = that
+       two-way link stands on this end (its id kept: woods_camelot on L4's west end), so no seam door is written; the link's end is moved here (below) */
+    if (s && s.link) { const sq = e.onWall ? { wall: e.side, [e.side === 'n' || e.side === 's' ? 'x' : 'z']: e.along } : { wall: 'free', x: gcx(e.sq[0]), z: gcz(e.sq[1]), face: e.side === 'n' ? 180 : e.side === 'e' ? 270 : e.side === 's' ? 0 : 90, passage: FREE_PASS };
+        LINK_AT.push([s.link, s.side || 'a', sq]); return; }
     if (!to) { open.push(e.id + '  ' + e.side + ' side, world plot ' + e.past.join(',') + ' (' + g.kind + '): no room stands there yet'); return; }
     /* THE OPEN SEAM (data.js DOOR_HQ.ways.open; mondo: no portal in open country, arches only on forest walls, cliffs and buildings): a road's or a
        highway's end is open (the road runs on); a trail's end is open where the ground on both sides of the line is open (grass, scrub, desert, snow),
@@ -482,5 +486,10 @@ if (src.indexOf(BOX0) < 0) {
 const END = '        /* OWROUTE ' + ID + STRETCH + '-END */\n', b0 = src.indexOf('        /* OWROUTE ' + ID + STRETCH + '-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const at = src.indexOf(BOX1); src = src.slice(0, at) + block + src.slice(at); }
+/* the links that stand on this room's ends: the end's site, part and place are rewritten; the rest of its line (its sub, its way) is kept */
+LINK_AT.forEach(([id, side, q]) => { const i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('bake-route: no link ' + id);
+    const re = new RegExp('(\\n +' + side + ": \\{ site: )'[a-z0-9_]+', part: '[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('bake-route: link ' + id + ' has no end ' + side);
+    const head = m[1] + "'" + SITE + "', part: '" + (SPEC.part || ('ow_' + ID.toLowerCase() + STRETCH)) + "', wall: '" + q.wall + "'" + (q.x != null ? ', x: ' + q.x : '') + (q.z != null ? ', z: ' + q.z : '') + (q.face != null ? ', face: ' + q.face : '') + (q.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
+    src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); console.log('link ' + id + ' end ' + side + ' -> ' + ROOM + ' ' + JSON.stringify(q)); });
 fs.writeFileSync(file, src);
 console.log('data.js: ' + ROOM + ' written (' + block.length + ' bytes). Then: node --check data.js' + (SPEC.proof ? ' (a proof room: not on the map).' : '; node bake-map.js ' + ROOM + ' (its map picture + its row in HQ_ZONE_MAP).'));

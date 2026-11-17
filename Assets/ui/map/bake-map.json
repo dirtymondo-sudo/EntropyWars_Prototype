@@ -265,9 +265,9 @@
   "nz": 60,
   "h0": -3.5,
   "hs": 0.25,
-  "v": "924b6cc51e",
-  "bytes": 1583,
-  "s": "6.1"
+  "v": "fe68d7735e",
+  "bytes": 1613,
+  "s": "6.3"
  },
  "site_prebuilt_fairy_forest_ow_creek": {
   "id": "site_prebuilt_fairy_forest_ow_creek",
@@ -288,5 +288,45 @@
   "v": "24d7365b55",
   "bytes": 1656,
   "s": "1.1"
+ },
+ "site_ow_l4": {
+  "id": "site_ow_l4",
+  "nx": 36,
+  "nz": 12,
+  "h0": -0.41,
+  "hs": 0.25,
+  "v": "6e9a8d76df",
+  "bytes": 255,
+  "s": "0.1"
+ },
+ "site_ow_l3": {
+  "id": "site_ow_l3",
+  "nx": 12,
+  "nz": 60,
+  "h0": -0.44,
+  "hs": 0.25,
+  "v": "6150464d64",
+  "bytes": 390,
+  "s": "0.2"
+ },
+ "site_prebuilt_fairy_forest_ow_redwood": {
+  "id": "site_prebuilt_fairy_forest_ow_redwood",
+  "nx": 24,
+  "nz": 96,
+  "h0": 2.6,
+  "hs": 0.25,
+  "v": "5a278d6550",
+  "bytes": 1376,
+  "s": "2.3"
+ },
+ "site_prebuilt_fairy_forest_ow_ritual": {
+  "id": "site_prebuilt_fairy_forest_ow_ritual",
+  "nx": 72,
+  "nz": 108,
+  "h0": 1.66,
+  "hs": 0.25,
+  "v": "190656fa99",
+  "bytes": 2804,
+  "s": "5.1"
  }
 }

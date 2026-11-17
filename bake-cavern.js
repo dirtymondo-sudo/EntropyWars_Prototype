@@ -130,7 +130,7 @@ const BAY = { prebuilt_hollow_earth: Object.assign({ id: 'bay' }, wayAt('P02-05'
 { const od = O.oubliette.d.find(d => d.id === 'dungeon') || {}, w = wayAt('P05-00', 7, 2, 'n');
   doors.push({ id: 'dungeon', wall: 'n', x: w.at, leaf: null, secret: true, label: od.label || 'A DRAUGHT', sub: od.sub || 'THE WALL MOVES', action: { room: 'dungeon', at: 'oubliette' }, desc: od.desc || '' });
   const t = wayAt('P05-03', 9, 9, 'e');
-  doors.push({ id: 'woods', wall: 'e', z: t.at, way: 'trail', leaf: null, label: 'THE WOODS', sub: 'THE TRAIL UP · OUT UNDER THE REDWOODS', action: { room: 'site_prebuilt_fairy_forest_plots', at: 'lemuria' }, desc: '' }); }
+  doors.push({ id: 'woods', wall: 'e', z: t.at, way: 'trail', leaf: null, label: 'THE WOODS', sub: 'THE TRAIL UP · OUT UNDER THE REDWOODS', action: { room: 'site_prebuilt_fairy_forest_ow_redwood', at: 'lemuria' }, desc: '' }); }
 
 run('build');     // rooms, terraces, landmarks: what a district raises or lays on its plots
 run('dress');     // props
