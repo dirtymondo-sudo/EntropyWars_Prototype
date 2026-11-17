@@ -4664,3 +4664,21 @@ The last seven of `own-look/L2.txt` (stage look `tech`). All 48 of L2's spells n
   cleanup thread's (plan batch B7). The lightning areas (EMP Burst, EMP Grenade, Yellow Thunder) keep their old
   white arc webs and EMP Burst its white dome from their own aoe recipes; the own looks draw with them. Fan the Hammer's
   burst beat fires 1.1 s before its hits land (battle.js timing, not a look).
+
+## THE VFX CLEANUP, B5 part 1: THE PORTAL KIT (2026-11-17, three-vfx-effects.js)
+mondo: "the portal from the cutscene ... i like the look of that portal and that technique or look should be incorporated
+into more vfx"; and 11-17: only where something really comes through from somewhere else.
+- **`_portalKit3D(tx, ty, { ms, scale, col, col2, hostile, flat, smoke, lift })`**: THE AIR DOOR's technique without the
+  door (`_sigAirDoor3D` itself is untouched). Sprites (so it faces the camera; the rings turn through
+  `material.rotation`) or, with `flat`, planes on the floor: glow, ring 1, ring 2 the other way, a NORMAL-blended dark
+  centre `0x07040d`. Opens 240 ms (ease-out-back), stands `ms`, closes 280 ms. Smoke (`smoke-soft`, dark) falls out of it,
+  sparks of its colour crawl round the rim.
+- **`_VC_PORTAL`** = the spells; `_vcPortalStage(phase, spellId, p)` in `_fireStage`: `windup` = a portal at the caster's
+  square for the hold, `burst` = one at `p.tx, p.ty` when that is another square. Both ends gated by `_pzSeen` (fog).
+  Colour: the row's `col` / `col2`, else `_vcPortalHostile` (the unit on the caster's square is not the viewer's) picks
+  the bruise `0xc23aff` / `0xff5ab8` over teal `_DOOR_FX.teal` / `_DOOR_FX.light`.
+- A `_VC_PORTAL` spell counts as having its own look (`_vcOwn`) and gets no cast rune.
+- Seen only by firing the stage by hand (the runner's `--opts` pre hook, a `setInterval` of
+  `ThreeVFXEffects.fire('windup', id, {...})`): a real teleport cast is over before the runner's first frame.
+- Open: `teleport` (moves another unit), the air door on the kit, doors / summons / rifts.
+
