@@ -136,7 +136,10 @@ const vnoise = (x, y, k) => { const x0 = Math.floor(x), y0 = Math.floor(y), fx =
 
 /* ── THE PATH: the band's middle line, in squares of this room ── */
 const WIDE = SRC.wide;
-const LINE = SRC.legs.map(p => [(p[0] - BX0 + WIDE / 2) * N, (p[1] - BY0 + WIDE / 2) * N]);
+/* THE LINE BY HAND (2026-11-17, the test slice): the spec's `line` = the path's own middle line in world plot coordinates ([x, y] corners, fractions allowed), for a
+   stretch whose band's middle is not where the path can run (County Lane's bend: the corn's room holds the plots north of it). It must start and end OUTSIDE the
+   plot list, so each end is found. Left out: the band's middle, from the map's legs. */
+const LINE = SPEC.line ? SPEC.line.map(p => [(p[0] - BX0) * N, (p[1] - BY0) * N]) : SRC.legs.map(p => [(p[0] - BX0 + WIDE / 2) * N, (p[1] - BY0 + WIDE / 2) * N]);
 const cell = []; for (let y = 0; y < Dq; y++) { cell.push(new Array(W).fill(' ')); }   // ' ' scenery, 'v' verge, 'g' walked ground, 'p' the path, 's' shoulder, 'm' median
 for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) if (plotOf(x, y) >= 0) cell[y][x] = 'g';
 const pathPts = [];   // the path's own line, every quarter square: [x, y, dirx, diry, inside]
@@ -159,6 +162,9 @@ const pathPts = [];   // the path's own line, every quarter square: [x, y, dirx,
       if (plotOf(x, y) < 0) continue; const d = Math.hypot(x + 0.5 - px, y + 0.5 - py);
       if (LOOK === 'highway') { if (d <= 0.5) cell[y][x] = 'm'; else if (d <= LK.hw && cell[y][x] !== 'm') cell[y][x] = 'p'; else if (d <= LK.hw + 1 && cell[y][x] === 'g') cell[y][x] = 's'; }
       else if (d <= LK.hw) cell[y][x] = 'p'; } }); }
+/* THE PLAN BY HAND (2026-11-17): the hook file's plan(ctx) may lay more path squares before the verge, the heights and the paint are read (a footpath off the road
+   to a side door): ctx.path(sx, sy) makes a square of a route plot path */
+if (HOOK && typeof HOOK.plan === 'function') HOOK.plan({ ID, ROOM, LOOK, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, plotOf, path: (x, y) => { if (plotOf(x, y) >= 0) cell[y][x] = 'p'; } });
 /* the verge: the outer squares of a route plot on every side that faces scenery (a square of the path stays the path: an end) */
 for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
     if (cell[y][x] !== 'g') continue;

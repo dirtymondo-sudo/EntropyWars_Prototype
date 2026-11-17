@@ -21,6 +21,7 @@ const CT = { '.js': 'application/javascript', '.css': 'text/css' };
 const args = process.argv.slice(2).filter(a => !a.startsWith('--')), flags = process.argv.slice(2).filter(a => a.startsWith('--'));
 const flag = (k, d) => { const f = flags.find(x => x === '--' + k || x.startsWith('--' + k + '=')); if (!f) return d; const v = f.split('=')[1]; return v === undefined ? true : v; };
 const room = args[0] || 'site_prebuilt_downtown_streets'; const views = JSON.parse(args[1] || '[]'); const noGltf = !!flag('nogltf', false); const WAIT = Number(flag('wait', 22000));
+const RACE = String(flag('race', 'dinosaur'));
 const EXE = fast.EXE;
 const run = async () => {
   const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || null;
@@ -85,6 +86,8 @@ const run = async () => {
     var ov = [].slice.call(document.querySelectorAll('body *')).filter(function (e) { var cs = getComputedStyle(e); return (cs.position === 'fixed' || cs.position === 'absolute') && e.offsetWidth > 900 && e.offsetHeight > 500 && cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05; }).map(function (e) { var cs = getComputedStyle(e); return (e.id || e.className || e.tagName).toString().slice(0, 30) + ' z' + cs.zIndex + ' o' + cs.opacity + ' bg' + cs.backgroundColor; }).slice(0, 12);
     var cv = document.querySelector('canvas'); 
     return { player: pg ? [pg.position.x / 73, pg.position.y / 73, pg.position.z / 73, pg.visible, pg.children.length] : null, camInScene: !!cam, dbg: dbg, overlays: ov, canvases: [].slice.call(document.querySelectorAll('canvas')).map(function (c) { var cs = getComputedStyle(c); return (c.id || c.className) + ' ' + c.width + 'x' + c.height + ' ' + cs.display + ' o' + cs.opacity + ' p:' + (c.parentNode && (c.parentNode.id || c.parentNode.className)); }) }; })()`);
+  /* --at=x,z[,y]: stand the walker there first (a fight on a named square, e.g. a trail plot of a route room); --race=<unit>: who is struck (default dinosaur) */
+  if (flag('at', false)) { const q = String(flag('at', '')).split(',').map(Number); await ev(`ThreeRenderer.hq.dev.teleport({ x: ${q[0]}, z: ${q[1]}, y: ${q[2] || 0}, face: 180, fp: false, dist: 6, pitch: -0.25 }), 1`); }
   await fast.settle(page, 0, 6);
   console.log('WALK', JSON.stringify(await stat()));
   await shot('1_walk_before');
@@ -95,7 +98,7 @@ const run = async () => {
   console.log('DIAG-BEFORE', JSON.stringify(await diag()));
   await shot('2_walk_merged');
   // the strike
-  console.log('STRIKE', JSON.stringify(await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; var x = g.x / 73, z = g.z / 73 + 3.5, y = 0; window._hqEncounterFire({ target: { kind: 'npc', id: 'probe-1', race: 'dinosaur', x: x, z: z, y: y }, x: x, z: z, y: y, gesture: 'attack' }); return 1; })()`)));
+  console.log('STRIKE', JSON.stringify(await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; var x = g.x / 73, z = g.z / 73 + 3.5, y = 0; window._hqEncounterFire({ target: { kind: 'npc', id: 'probe-1', race: '${RACE}', x: x, z: z, y: y }, x: x, z: z, y: y, gesture: 'attack' }); return 1; })()`)));
   let t1 = Date.now();
   while (Date.now() - t1 < 180000) { const s2 = await stat(); if (s2 && s2.phase === 'battle') break; await sleep(1500); }
   lap('battle phase'); await sleep(Number(flag('fight', 12000)));

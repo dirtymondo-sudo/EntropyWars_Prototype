@@ -31,3 +31,15 @@ What the zone threads use, all explained in `docs/notes/areas-complexes.md` "ONE
 - `bake-route.js`: the route kit (highway, road, trail), dressed by each plot's ground kind. Proof: `proof/trail_L3_*.jpg`.
 - `terrain.edges.world`: a room's horizon is the map's own ground, plot by plot. Proof: `proof/edges_from_above.jpg`.
 - `ow-census.js`: the count before and after a move, so nothing on a plot is lost.
+
+## The test slice (phase 2, built and walked 17 Nov 2026)
+`TEST_SLICE_REPORT.md` = what was built, the walk times, the draw and memory numbers a room, what the horizon shows, the fight on a trail
+plot, and what felt wrong. **Read it before any phase 3 or 4 work.** Six rooms stand at their v13 places: the Clearing, Dead Man's Cave (the
+dry creek), the Corn Fields with County Lane down their middle, County Lane's road to the Lake, the wild link L8, the Lake.
+- `ow-move.js` (repo root): the plot mover. A zone tool builds its home room as before, then stands plots at their world places with it.
+- `bake-woods.js` and `bake-estate.js` each end in THE ONE WORLD MOVE: the pattern for every other zone tool.
+- `docs/areas/routes/R7.json` + `R7.js`, `L8.json`: the route kit's specs for the slice.
+- `docs/areas/woods/move/before.json`, `docs/areas/estate/move/before.json`: the counts before the move.
+- Notes: `docs/notes/areas-complexes.md` "ONE WORLD, THE TEST SLICE" (the mover, the strays, the seams, the corrected rule 5).
+Phases 3 to 5 wait for mondo's OK on the report; its "What it settles" asks him one thing: join more rooms, or keep the split as it is.
+

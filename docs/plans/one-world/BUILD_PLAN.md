@@ -73,6 +73,8 @@ Don't move any zone yet; that is the test slice's job. Prove the route kit on on
 
 ## Phase 2: the test slice (1 thread, Fable)
 
+**BUILT 17 Nov 2026.** Report: `TEST_SLICE_REPORT.md` (read it before phase 3 or 4). The brief below is kept as it was given.
+
 ```
 Build and walk the One World test slice. Read docs/plans/one-world/README.md + BUILD_PLAN.md, the foundation notes
 ("ONE WORLD, THE ZONE MOVES" in docs/notes/areas-complexes.md) and plots.json first. Take the claims rows for the Woods

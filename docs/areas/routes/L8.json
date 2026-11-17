@@ -1,0 +1,10 @@
+{
+  "about": "THE WILD LINK L8 (One World): the footpath from the Corn Fields to the Lake, four plots of trail beside County Lane. The test slice (BUILD_PLAN phase 2, 2026-11-17): the slice's fight is on its second plot.",
+  "hub": "ranch",
+  "label": "THE TRAIL · THE LONG GRASS",
+  "sub": "THE CORN FIELDS TO THE LAKE · 4 PLOTS",
+  "ends": {
+    "ow_h_m13_12": { "room": "site_ow_r7_3_14", "label": "COUNTY LANE", "sub": "THE FOOTPATH NORTH · BACK TO THE LANE", "desc": "The footpath climbs back to the lane." },
+    "ow_v_m12_15": { "room": "site_prebuilt_skinwalker_ow_lake", "label": "THE LAKE", "sub": "THE FOOTPATH EAST · THE REEDS", "desc": "The grass gives way to reeds, and the reeds to water." }
+  }
+}

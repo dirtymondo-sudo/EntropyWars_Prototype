@@ -10834,6 +10834,11 @@ test slice measures them and corrects this list.
 - **By hand.** `docs/areas/routes/<ID>.json` (label, hub, look, a stretch, the ends, `proof`) and `docs/areas/routes/<ID>.js`
   (`module.exports = { dress(ctx) { … } }`: the places on the way, a well, a mill, a camp, a climb, a ford; ctx carries the
   tool's helpers `P`, `dec`, `tree`, `feat`, `cell`, `walked`, `free`, `hAt`). One file a route, so two threads never clash.
+- **THE LINE BY HAND + THE PLAN BY HAND (2026-11-17, the test slice).** The spec's `line: [[x, y], …]` = the path's own middle line in world plot coordinates
+  (corners, fractions allowed) for a stretch whose band's middle is not where the path can run; it must start and end OUTSIDE the plot list so each end is found
+  (County Lane: the map's legs start inside the corn and stop a plot short of the Lake). The hook file's `plan(ctx)` runs before the verge, the heights and the
+  paint are read: `ctx.path(sx, sy)` makes a square of a route plot path (County Lane's footpath to the wild link L8; its door is pushed in `dress`).
+  A SEAM'S ID ON A 2-WIDE ROAD names the column the path's line falls in (`ow_h_m14_11`, not `m13`): read the kit's `ends` print before writing the other room's side.
 - **It refuses** a list with no plots of its own, an underground walk (the tunnel look is phase 4.4's to add), a prop key or
   tree kind that is not in the game, anything standing on the path, a path that is cut, a plot nobody can walk to.
 - **THE PROOF** (`docs/areas/routes/L3.json`, room `site_ow_l3`, `proof: true`): wild link L3, five plots from the Redwood
@@ -10843,7 +10848,7 @@ test slice measures them and corrects this list.
   (the bend east at the top: the way on is a low rock pass, the range on the left), `trail_L3_above.jpg`. No door leads to
   the room and it is not on the map; the Woods zone thread drops `proof` and gives it its ends.
 - NOT DONE YET, by design: heights that climb (the map has no height per plot: a climb is hand work in the hook), residents
-  and fights on a route (the test slice fights once on a trail plot), cars on a highway (`terrain.traffic`, the Desert's way).
+  on a route (a fight on a trail plot works: "ONE WORLD, THE TEST SLICE"), cars on a highway (`terrain.traffic`, the Desert's way).
 
 ### ONE WORLD, THE HORIZON READS THE MAP (`terrain.edges.world`, three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`)
 - **`edges: { world: true, reach: 440 }`** = the sides are not written, they are read. The room stands on the world grid
@@ -10859,6 +10864,9 @@ test slice measures them and corrects this list.
   over it wherever the map has land.
 - **`edges.ways: [{ side, at }]`** (the kit writes its ends): where a path leaves the room for the next one, the land stays
   low and open for a stretch: rock lies down as a pass floor, forest opens to grass; about 30 m wide, 150 m out.
+- **THE FAR SIGHTS STAND PAST THE ROOM (2026-11-17, the test slice; three-renderer.js `_hqBuildLandmarks`)**: every landmark was set on the 82 m sky disc, so in a
+  room wider than that a world sight stood INSIDE the room (Disaster City's towers in Dead Man's Cave's ravine, the Vatican's dome on the corn's north field). A world
+  sight (`id: 'ow:…'`) now stands at the room's own reach + 80 m and is grown by the same share. A room's hand-written landmarks are as they were.
 - **The true neighbours**: `sky.landmarks: 'world'` (or `sights: 'world'` beside a room's own list) = the far places of
   `HQ_ZONE_MAP.world.sights` within 34 plots stand on the horizon at their TRUE BEARING from the room, smaller with the
   distance (data.js `hqOwLandmarks`; today: Disaster City's skyline, the Vatican's dome, Camelot's castle; a new sight = one
@@ -10936,3 +10944,132 @@ districts once without losing a building (above, "DISASTER CITY, THE DISTRICT MO
 What phase 1 did NOT decide, for the test slice to settle: the walk speed against the distances, whether a route room needs
 residents, how a fight is cut on a trail plot (a route plot has at least a 10 x 12 square clearing beside the path), and
 the real memory and frame numbers of rule 5.
+ALL FOUR ARE SETTLED BELOW ("ONE WORLD, THE TEST SLICE", WHAT IT SETTLED).
+
+## ONE WORLD, THE TEST SLICE — built and walked (2026-11-17, BUILD_PLAN phase 2; mondo: "this decides whether the size and spacing stay")
+The south Woods and the north Estate stand at their One World v13 places. Six rooms where two districts of two zones stood inside 36-plot rooms:
+
+| Room (data.js) | What | World plots | Box | Built by |
+|---|---|---|---|---|
+| `site_prebuilt_fairy_forest_ow_clearing` | THE CLEARING (Woods district C), 9 plots in a cross | -17..-13 x 0..4 | 5 x 5 | `bake-woods.js` |
+| `site_prebuilt_fairy_forest_ow_creek` | DEAD MAN'S CAVE (Woods district M), the dry creek, 9 plots | -12..-6 x 0..2 | 7 x 3 | `bake-woods.js` |
+| `site_prebuilt_skinwalker_ow_corn` | THE CORN FIELDS (Estate district C) + R7's three plots in its gaps, 12 plots | -14..-13 x 5..10 | 2 x 6 | `bake-estate.js` |
+| `site_ow_r7_3_14` | COUNTY LANE (route R7, plots 3 to 14), a road | -14..-11 x 10..14 | 4 x 5 | `bake-route.js R7` |
+| `site_ow_l8` | THE TRAIL (wild link L8), a footpath, 4 plots | -13 x 12..15 | 1 x 4 | `bake-route.js L8` |
+| `site_prebuilt_skinwalker_ow_lake` | THE LAKE (Estate district L), 9 plots as they stood | -12..-10 x 15..17 | 3 x 3 | `bake-estate.js` |
+
+The districts that did NOT move stay in the old room ids, each 6 x 3 plots now: `site_prebuilt_fairy_forest_plots` = the Redwood Trail + the Ritual
+Ground, `site_prebuilt_skinwalker_estate` = the Haunted House + the Ranch. Their plots, pieces and heights are what they were (a home plot's
+squares are copied, never re-thrown); their door ids are kept, so every door of another zone that names them still lands (`shasta`, `lemuria`,
+`lookingglass`, `house`, the bay doors, the links). They are NOT on the world grid yet (`wait` rows in bake-map.js, drawn clear of the slice on the chart).
+
+### THE MOVER (`ow-move.js`, repo tooling) and how the two tools use it
+- A zone tool builds its room in THE HOME FRAME exactly as before (no district file changed to move), then calls
+  `require('./ow-move.js')({ cols, rows, cell, fill, plots, features, props, npc, doors }).room([{ id: <home plot>, wx, wy }, …])` once a new room.
+  It returns the room's box, its squares (each plot's 12 x 12 block copied), its pieces (moved by the plot their anchor stands on: `ow-census.js`'s
+  own anchor rule), its doors (a wall door whose side is no longer on a wall becomes `wall: 'free'`, half a square inside the plot, `face` outward),
+  the strays, `levels()` (the Woods' level rule on the plots as they stand now), `spaces()`, `seamId()`.
+- What the mover does by itself: a `stream` row is cut where it leaves the room's plots; a fence (`rail`, `wall`) is cut at every plot line it
+  crosses and a fence lying ON a line is the north / west plot's; a district-wide `scatter` disc (wider than a plot) becomes a row over the whole
+  new room with the same count when its plots parted, and stays a disc when they did not; room-wide scatter rows are the tool's (rewritten per
+  room by the room's share of the 36 plots).
+- **The Woods (`bake-woods.js` THE ONE WORLD MOVE)**: the tool records every leg it lays (`LEGS`: plot, side, squares; `HUBS`; `CELL0` = the
+  squares before any path). In a moved room (1) a leg to a side with nobody past it goes back to forest, except a square a piece stands on or
+  beside (a lamp post in the trees holds its path); (2) every two plots that touch now get ONE crossing: where either is open on that line the
+  other opens on the same squares, else the middle; both get a leg from their hub, three squares wide (a moved district is a path: every joint
+  is the main trail); (3) a seam to another room gets a leg and a `way: 'trail'` door on the crossing's middle; (4) pockets the legs miss are
+  tied with a one-square path (the home's own rule) and every plot must be reached; (5) a forest-mass tree (`mass: 1`, stripped by the writer)
+  leaves a square a path was laid over. The spec table is `STAND` (rooms, seams, `cross` = the squares a joint crosses on, `from` = a leg's own
+  start, `ends` = a link end placed by hand).
+- **The Estate (`bake-estate.js` THE ONE WORLD MOVE)**: the corn is the wall, tracks are plan squares, so: (1) COUNTY LANE is cut four squares wide
+  down the line between the Corn Fields' two columns, north field to south wall; (2) R7's three plots in the district's gaps are open fields
+  inside a rim of corn (grass, sunflowers, wild flowers, a milestone, a ranch fence with its gap: the route kit's farmland, written by the tool);
+  (3) two plots one over the other get a joint where either is open, joined along the line when the two openings stand apart; (4) a track that
+  led to a plot which is no longer there goes back to corn while it is a plain corridor nothing stands on (most are dressed, so most stay: see
+  WHAT FELT WRONG); (5) THE CORN ROWS (C.js's `corn_row` at the foot of the bank) leave where their bank went and are set, by C.js's own rule,
+  where a bank is new. The Lake is a straight move: nine plots, same places to each other.
+- **Heights**: a moved room lays the levels again on its own plots (a box cell that is no plot takes the nearest plot's level). The rooms that
+  did not move sample the home ground, so nothing in them rose or sank.
+
+### THE STRAYS AND WHAT WAS RE-PLACED BY HAND
+- **Dead Man's Cave, the ravine** (districts/M.js): the cut lay across The Dry Creek, lower and The Sewer Mouth, which no longer touch (the
+  Hollow and the Gully stand between them). The whole cut stands on The Sewer Mouth's own plot now: its first square a level landing, the ramp
+  down the next four (`RAMP`), the deep bed the last seven (`RAVINE`); `BED` = every square of the bed. The ramp counts as "missing" on the
+  lower plot and "extra" on the Sewer Mouth in the census. The bed's dumped pieces between x 87 and 101 m stand on the ramp's edges now.
+- **The Gully's cabin stands on the bed's line**, so the walk passes north of it (`cross: 'P03-05|P05-04': [3, 4, 5]`) onto the Sewer Mouth's
+  north rim; the way on to the Storm Drain passes north of the sewer mouth's head; the way south to the Tunnel Way starts on the south rim.
+- **The mouths**: the Storm Drain's is still on the room's east wall. The sewer mouth (link `sewers_drain`) and the Tunnel Way's (link
+  `woods_sewer`) stand inside the room now (`wall: 'free'`, face east), because a plot or forest lies past them.
+- **The trail to Camelot** (link `woods_camelot`) stood on The Trail West's west side, which has Deep woods, west past it now. Its end is on
+  Deep woods, west, north side: where the map's wild link L4 comes in.
+- **The Scarecrow's yard fence** lies on its south line: it moved with the Scarecrow (the census, which rounds the other way, lists it under
+  The Farm Track before and The Circles after). One fence along a track from The Circles, west into The Rows, west was cut in two at the line.
+- A `dip` (the dry wash's sag) on The Dry Creek, upper reaches a metre into the lower plot: left where it is. One stream point alone on The
+  Culvert was dropped (a one-point run draws nothing).
+
+### THE CENSUS (docs/areas/woods/move/before.json, docs/areas/estate/move/before.json)
+`node ow-census.js --diff docs/areas/woods/move/before.json site_prebuilt_fairy_forest_plots site_prebuilt_fairy_forest_ow_clearing site_prebuilt_fairy_forest_ow_creek`
+and the same for the Estate's three rooms. Every prop (1,148 and 1,729), every native (17 and 20) and every line of talk is there. What the
+diff lists, all of it the tool's own or answered above: the room-wide scatter rows (one a room now); the district scatters that became
+room-wide rows; 7 forest-mass trees a new leg was laid over; the ramp; the seam doors (extra) and the two doors they replace (`estate`,
+`woods`); `link_woods_camelot` on its new plot; in the corn, 29 `corn_row` out and 61 in, 3 milestones, the fields' fences and flowers, three new
+plots. The tool prints "piece(s) MISSING" because it cannot know these; read the list, not the count.
+
+### THE SEAMS (room-splitting rule 6) AND THE DOORS
+| Seam id | Between | Where |
+|---|---|---|
+| `ow_v_m12_1` | the Clearing (Deep woods, east) and the creek (The Culvert) | both rooms' walls, the crossing on squares 7 to 9 |
+| `ow_h_m14_5` | the Clearing (The Fence Line) and the Corn Fields (The Woods Gate) | both walls; the two gates stand 3.5 m apart along the line (each kept its own) |
+| `ow_h_m14_11` | the Corn Fields (the lane's south end) and County Lane | the corn's south wall on the lane's middle; free in the lane's room |
+| `ow_h_m13_12` | County Lane (the footpath off the bend) and the trail L8 | free in the lane's room (`docs/areas/routes/R7.js`), L8's north wall |
+| `ow_h_m12_15` | County Lane and the Lake (The Reeds / The North Shore line) | both walls |
+| `ow_v_m12_15` | the trail L8 and the Lake (The Reeds, west side) | both walls |
+| `ow_h_m16_1`, `ow_h_m17_2` | the Clearing and the old Woods room (not moved): the Redwood Trail from The Trail West's north side, the Ritual Ground from Deep woods, west's south side | INTERIM: they stand where the map's links L1 and L2 leave the Clearing and jump the links' own plots; the Woods thread builds L1 / L2 and re-points them |
+| `ow_h_m11_18` | the Lake (The Lake, south) and the old Estate room (The Windmill's track) | INTERIM: the map puts The Ranch Gate there; the Estate thread re-points it |
+
+A seam's id on a 2-wide road is the kit's: it names the column the path's line falls in (`ow_h_m14_11`, `ow_h_m12_15`), so read the kit's
+`ends` print before writing the district's side. Links re-pointed (ids kept): `woods_stair` + `woods_camelot` -> the Clearing; `streets_drain`,
+`sewers_drain`, `woods_sewer` -> the creek; `well_skinwalker` -> the Corn Fields (the Hub); `grove_lodge`, `woods_ritual`, `ranch_lodge` and the
+bay doors `bay`, `bay13`, `bay_grove` stay in the old rooms (new z). DOOR HQ: `hubs.woods.room` = the Clearing (the Stair lands there);
+`siteRooms.entry.prebuilt_fairy_forest` wears the Clearing's `forest` door (free now, on Deep woods, east); `retired`: the old Clearing ->
+the Clearing, the old Dead Man's Cave -> the creek, the old Corn Fields -> the Corn Fields. The day table (HQ sky by room) and
+`HQ_AREA_MARKERS` have a row for each new room.
+
+### THE ROUTE KIT, what the slice added (`bake-route.js`)
+- **`line`** in a route's spec: the path's own middle line in world plot coordinates, for a stretch whose band's middle is not where the path
+  can run. It must start and end outside the plot list so each end is found. County Lane: `[[-13, 10.9], [-13, 11.5], [-11, 11.5], [-11, 15.1]]`
+  (the map's legs stop one plot short of the Lake and start inside the corn).
+- **`plan(ctx)`** in a route's hook file: lays more path squares before the verge, the heights and the paint are read (`ctx.path(sx, sy)`).
+  County Lane's hook cuts the footpath to L8 and adds its door in `dress`.
+- A road's plots that fill a district's gaps (fewer than 3 together) are that district's room's, by rule 4: the district's tool builds them.
+
+### WHAT IT SETTLED (the open points of phase 1)
+- **Walk speed against the distances**: 2.4 m/s walking, 4.6 m/s running; a plot is 17.5 s / 9 s. The Stair to the Lake by County Lane is 665 m
+  (4:37 / 2:25), by the corn's tracks and L8 675 m; the creek from the Culvert to the Storm Drain 308 m (2:08 / 1:07). The size is not the
+  problem; the count of loading cards is (three between the Stair and the Lake).
+- **Does a route room need residents?** No: the spawn system fills it by its hub (three Mothmen on L8, locals on the lane).
+- **How a fight is cut on a trail plot**: nothing to add. One fight on L8's second plot against a Mothman (`node playtest_handover.js site_ow_l8 --at=6,-25,0.2
+  --race=mothman`): the board is cut from the plot's grass where the walker stands, 12 s from the strike to round 1, back on the trail 6.4 s after the
+  win, no errors. Not tried: a fight on the path itself, on the lane, beside a fence.
+- **The real numbers of rule 5** (probe: calls / triangles at the heaviest view, memory = models + rigs): the Clearing 1,512 / 7.8 M, 1,083 MB after
+  standing 2.5 minutes · the creek 586 / 2.1 M, 1,245 MB · the corn 1,562 / 6.2 M, 1,090 to 1,369 MB · County Lane 405 / 2.2 M, 1,026 MB · L8 239 /
+  1.0 M, 687 MB · the Lake 413 / 0.79 M, 999 to 1,226 MB. The rooms they came from, as they stand now (18 plots each): the Woods 2,586 / 23.5 M,
+  1,301 to 1,685 MB · the Estate 1,082 / 2.9 M, 1,348 to 1,638 MB. So: **no district room reads under `heapMB` 700 or `trisMax` 1.5 M, old or
+  new; every moved room is lighter than the room it left.** RULE 5 CORRECTED: a re-laid room's test is "not heavier than the room it came
+  out of" (run both in one probe: `ThreeRenderer.hq.perf()`), not the 700 MB line. What costs is a long straight view (the corn's lane, the
+  Clearing's west to east row), not the plot count; the land past the room's line is about a fifth of a forest view.
+- **THE ROOM-SPLITTING RULE, what the walk says** (for mondo to decide; the report's point 1): join more. Two districts or a district and its
+  route that touch and stay inside the box and plot limits should be ONE room, because a card every 90 seconds chops the walk. The Clearing +
+  the creek (12 x 5, 18 plots) and County Lane + L8 + the Lake (5 x 8, 25 plots) both fit. Nothing was joined in the slice itself: it was
+  built to the rule as written so the rule could be judged.
+
+### WHAT FELT WRONG, AND WHERE IT IS WRITTEN
+`docs/plans/one-world/TEST_SLICE_REPORT.md` (ten points, with the pictures in `docs/plans/one-world/proof/slice_*.jpg`). The ones a zone thread
+will meet again: a district built round one long piece (the creek's bed) moves but needs a design pass after; a road through a district
+runs down plot edges where the district's own pieces stand; a dressed track is never closed by the tool, so it ends at the bank; a seam in
+open ground shows as a dark hole in a clump of trees (it needs a seam look with no portal); the kit's salt flat is bare.
+
+### HOW TO PROBE A MOVED ROOM
+`node playtest_city.js <room> '<views>' --loglen=1400`; a view's `"eval"` prints `ThreeRenderer.hq.perf()` (calls, triangles, `mem`); pass each
+view the ground's own height (`hqTerrainCompile(room, id).hFn(x, z)`); the fight: `node playtest_handover.js <room> --at=x,z[,y] --race=<unit>`
+(both options added for the slice). Walk lengths: the shortest line over the room's `space` rows, door to door, at 2.4 and 4.6 m/s.

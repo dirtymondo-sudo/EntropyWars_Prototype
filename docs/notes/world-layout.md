@@ -264,3 +264,11 @@ Realm, Antarctica, Outer Space last.
 - THE DOOR CHECK for this zone (`hqWorldGraph` + each room's doors read after the bake): every one of the seven links and three bay doors resolves to a room that exists, both
   ways; the Vatican and its Catacombs are joined by two door pairs (`crypt` <> `stair`, `well` <> `well`). Loose ends: the Cavern's end of `cave_hell` still stands in the old
   vent room's frame until the Cavern thread re-points it (their end; a board note); `skycastle_stair`'s far end is Camelot's old sky castle room (owner side, waits mondo).
+
+## ONE WORLD, THE TEST SLICE IS BUILT (2026-11-17)
+The first zones stand at their One World (v13) places: the Clearing, Dead Man's Cave (the dry creek), the Corn Fields with County Lane, County
+Lane's road, the wild link L8 and the Lake are six rooms of their own on the world grid (data.js `room.world`). The Woods' old room id is the
+Redwood Trail + the Ritual Ground now and the Estate's is the Haunted House + the Ranch (6 x 3 plots each, not moved, joined to the slice by
+interim doors). The Stair lands in the Clearing (`hubs.woods.room`). Sections A and B above describe the 36-plot rooms as they were on 11-16:
+for these two zones read `docs/plans/one-world/TEST_SLICE_REPORT.md` and areas-complexes.md "ONE WORLD, THE TEST SLICE" instead.
+

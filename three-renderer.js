@@ -75483,11 +75483,17 @@ const ThreeRenderer = (function () {
             if (!m) return;
             try { _hqWorldUV(m); } catch (e) { console.warn('[HQ] landmark UVs', l.kind, e); }   // THE WORLD-SCALE UVs: one rock sheet per ~9 m, never one per 55
             var a = (l.deg || 0) * Math.PI / 180, rad = discR * ((l.dist != null) ? l.dist : 0.9);
-            var x = Math.sin(a) * rad, z = -Math.cos(a) * rad, y = ((l.y != null) ? l.y : -0.03) * discR;
+            /* THE FAR SIGHTS STAND PAST THE ROOM (2026-11-17, the One World test slice): a world sight (`id: 'ow:…'`, data.js hqOwLandmarks) was set on the 82 m disc like
+               every landmark, so in a room wider than that it stood INSIDE the room (Disaster City's towers in Dead Man's Cave's ravine; the old Woods switched its
+               landmarks off for the same reason). It stands past the room's own reach now (the sky ring's rule: the room's extent + HQ_SKY_CLEAR_M) and is grown by
+               the same share, so it reads the same size on the horizon. A room's own hand-written landmarks are untouched. */
+            var far = 1; if (l.id && String(l.id).indexOf('ow:') === 0) { var rm = H.room || (H.opts && typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms[H.opts.room]) || null; if (rm) far = Math.max(1, (_hqRoomExtentM(rm) + HQ_SKY_CLEAR_M) * U / rad); }
+            rad *= far; if (far > 1) m.scale.multiplyScalar(far);
+            var x = Math.sin(a) * rad, z = -Math.cos(a) * rad, y = ((l.y != null) ? l.y : -0.03) * discR * far;
             m.position.set(x, y, z);
             m.rotation.y = Math.atan2(-x, -z);   // face the room
             m._ew_landmark = l.kind; m._ew_landmarkId = l.id || null;
-            _stampHorizonHaze(m, rad, y, discR);
+            _stampHorizonHaze(m, rad, y, discR * far);
             group.add(m);
             if (H.sky && H.sky.clockLamps) m.traverse(function (o) { if (o._ew_night && o.material && o.material.color) { o._ew_glowC = o.material.color.clone(); H.sky.clockLamps.push(o); } });   // THE WORLD CLOCK: its lit windows are night lamps
         });
