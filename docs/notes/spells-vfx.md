@@ -4848,3 +4848,38 @@ The 54 spells the code trace left alone were shot too, to catch what a trace mis
   cast them. Fire for Effect, Extinction Event and Nuclear Option land a round or two later: only the cast was shot.
 - None of the 14 old-laser line spells and none of the single-spell leads of the brief are on this list.
 - Frames: `docs/plans/vfx-cleanup/img/sweep/B8b_part2_changed.jpg` (the two, after), `B8b_part2_nochange_1..4.jpg`.
+
+## THE VFX SWEEP, B7b, part 1: the wind + sonic leads, the 19 sonic spells, the 19 wind spells (2026-11-17, three-vfx-effects.js)
+Thread B7b (list `docs/plans/vfx-cleanup/batches/B7b.txt`: sonic 19, water 36, wind 19; no ice or metal on it, and none of
+the 14 old-laser line spells). Everything behind `_vcOn()`. Before / after: `docs/plans/vfx-cleanup/img/sweep/B7b_part1.jpg`.
+- **THE WIND LEAD (every wind spell):** `_wdGather` (the swirl + coils round the caster) and `_wdMark` (the gust + swirl on
+  the hit) drew in white air over a pale mint glow. They draw in a mid mint now (`_WDC`: air `0x7fe3bd`, glow `0x35b88a`,
+  motes `0x9fe8cc`). The family's own looks (the lane gust, the twister, the eye wall, Squall's blade) keep their white
+  air: that is the wind itself.
+- **THE SONIC LEAD (every sonic spell):** `_snRing` (every ring of the stamp, the cast, the hit, the shout, the lane) was
+  an additive pale lavender `0xc4a6ff` that added up to white: a full violet `0x8a55ff` (`_SNC`, `_snWaveC()`); the level
+  meter's top cells `0xb08cff` (were `0xf2ecff`). Notes, the ink rim and the clash pink are as they were.
+- **The wind + sonic noise sheets** (`_nzWash`, table `_NZ_VC` beside it): at the cleanup's mid tone the bright sheet still
+  read white (nine white static squares under Roundhouse Kick, the same on Arrow Volley, Simoom, Host-Fetter). Wind
+  `0x22a070`, sonic `0x8e4ae6`. Every hit square still wears its sheet. It is an added sheet on a lit floor, so it is
+  still light, but it is mint / violet now, not white.
+- **Changed spells (7):**
+  - Crowd Surge (`raceSpaceDisco`): the spectrum burst's white-hot core + three lights at 2.6 covered the dance floor in
+    white: lights at 1.5, the burst is two rings in the disco's pink + blue, sparkles pink.
+  - Requiem: rings a full violet, no screen flash, the column thinner and violet through (its core was near white).
+  - Polyphemus Bellow (`sigBellow`): four cream-white rings over the area -> three, in the eye's amber.
+  - Resonance Pulse: was a white bloom (pale rings + screen flash + a second ring + a rune under the noise sheet): its
+    rings a full blue, no screen flash, no second ring, no rune.
+  - Deafening Wail: no screen flash (it hazed the whole screen pale blue); the rings are the scream.
+  - Lullaby: no rune circle under a song; the hush rings stay.
+  - Valkyrie Spear: the seal circle read as a white disc a square and a half wide under the body for 0.7 s: gone; the
+    planted spear, its thin light (a full blue) and one ring off the plant are the seal.
+- **Checked, nothing of their own to change (30; the leads above reach all of them):** Emergency Broadcast, Excessive
+  Machine, Gibberish, Lure of the Deep, Meow, Mic Drop, Screech, Shiver Down the Spine, Siren Song, Sonic Boom, Stadium
+  Show (its flash is the stage lights coming on, already in the spell's pink through `_vcCol`), Stage Dive, The Last
+  Trumpet · Arrow Volley, Eye of the Storm, Hail Mary, Heroic Leap, Host-Fetter, Long Bomb, Ride to Valhalla, Roundhouse
+  Kick, Simoom, Sky Tackle, Splitting Arrow, Squall, Stoop Dive, Talon Rake, Tornado (white funnel = the wind), Twisted
+  Wish, Wing Attack.
+- **Could not judge:** Hurricane Party (the harness cannot cast it: its spell row is not found).
+- Not seen: any of this from the guest's seat (all of it rides `fire()` / the stage beats, nothing on `state`); frames
+  are 450 ms apart, so a piece shorter than that between two frames was not seen.
