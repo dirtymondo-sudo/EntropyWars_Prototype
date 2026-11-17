@@ -5699,6 +5699,12 @@ dormant / bodiless):
 - 🟥 Referee, THE RED CARD: Card = `yellowCard` 3 rounds + Marked; a card on a booked unit (STATUS_DEFS.yellowCard.onApply,
   `refreshed`) calls `_refereeRedCard`: the `exited` status 1 round with unit._sentOff (no door); `_doorExitReturn`'s sent-off
   branch puts it back on the field where it stood, no Stagger. Bosses / cubes are never sent off.
+  POLISH (2026-11-17, thread "Polish Referee spells and VFX"): `exited` ends at the round's end, so a red card on a unit still to act
+  this round costs it that turn; on one that already acted it is only off the field (untargetable) until the round ends: time it.
+  The CPU knows this (ai.js ccDenialValue `yellowCard`: booking = 40, the red card = a hard hold on a unit still to act, 0.3 of it
+  on one that acted; findSpellTarget sends a `refereeCard` cast to a booked enemy first). The second card no longer also logs
+  "is booked" (applyStatusPayload skips its line when onApply took the status off). A shielded target now says WHY
+  (battle.js `_realmShieldLine`: sent off / out through a door / held behind a door / Shadow Realm; it said Shadow Realm for all).
 - 📰 Florida Man, TODAY'S HEADLINE: his three rows carry `floridaHeadline`; spellBlockReason greys the two that are not
   `_floridaHeadline(unit)` ("Not today"), a hash of the unit id + round, so the guest's menu agrees with no relay.
 - 🧠 Boltzmann Brain, THE FLUCTUATION: never walks or jumps (`_unitIsBodiless` in unitMoveBlockedByStatus / moveBlockWord
@@ -5709,10 +5715,59 @@ dormant / bodiless):
   max HP at the round end, never below 1 (`_wendigoHunger`).
 - 🐸 Karate Frog, LEAPFROG: `leapOver` (in _runPostEffects + spellMovesCaster) lands him on the square straight behind the target.
 - 🐌 Samurai Slug, THE SLIME TRAIL: every square he walks off becomes Black Ooze (`swamp`) for 2 rounds (`_slugTrail`, finishMoveAt).
+  THE SAMURAI SLUG POLISH (2026-11-17, mondo: "flesh out their unique spells ... make sure that any new mechanics are tested out and
+  work as intended"). The playstyle: THE SLIME ROAD. The ooze is his: he crosses Black Ooze at a plain step's cost (state.js
+  getTerrainMoveCost) and is never Gooed by it (battle.js `_slugOozeProof` in the arrival chain's enterStatus, data.js
+  TERRAIN_RULES.swamp.endTurn, ai.js hazard cost); everyone else, his allies too, pays 2 and is Gooed. He lays lanes; the enemy
+  crosses or goes round. Answers: fire (the ooze goes up, he is fire-weak), flyers, range (SPD 70), going round.
+  Changes: **Slime Slash** + `paintTerrain` (the struck square turns to ooze 2 rounds); it is poison, so THE ELEMENT TERRAINS
+  already give ×1.25 when he or it stands in the ooze (a ×1.3 vs Gooed was tried and dropped: stacked to ×1.6, 334 → 595).
+  **Salt-Proof Stance** + `slimeRing` (`_slugRing`: the 4 squares round him, walls respected). **Iai Draw** + `slimeLane`
+  (`_slugLane`: the squares he charged across, both charge paths). **Ronin's Wake** (new T4, `nrRoninsWake`, 90 MP, cd 4, self,
+  diamond 4, 120 physical + Root 1): every enemy standing in Black Ooze within 4. `aoeOnTerrain: ['swamp']` = getSpellAoeArea
+  keeps only those squares (`_aoeTerrainFilter`; ui.js getSpellAoeFootprint and ai.js getSpellAoeAreaAI read it too, so preview,
+  hit, CPU agree); `_selfNovaEnemyOnly` refuses it with nobody in the ooze. RACE_TREE samurai slug = his own four (the borrowed row
+  was Sad Backstory / Plot Armor / To Be Continued / Roll Credits). Stats unchanged.
+  Probe 11-17 (real VS-CPU TDM, 0 page errors): walk paints 2 squares, cost 1 for him / 2 for a foe, swamp endTurn null for him;
+  Iai Draw slimed its lane; Slime Slash 271, then 360 on the ooze (×1.25); stance ring 4/4 + DEF +2; Wake refused with nobody in
+  the ooze, then 282 + Rooted on the foe in the ooze, the foe on grass untouched; a CPU slug cast Wake (2 foes), Iai Draw, Slime Slash.
 - 🦗 Cicada Brood, THE WAIT: Dig In = `dormant` (blockMove, onRoundEnd +1 Brood to 3) + Invisible; Screech (`broodSpend` 45)
   adds 45 a stack in the plain AoE resolver (`_broodSpend`), spends them and ends Dig In.
+- 🦗 THE CICADA POLISH (2026-11-17, thread "Polish Cicada Brood spells and VFX", mondo: "flesh out their unique spells and spell
+  animations/vfx and make sure that any new mechanics are tested out and work as intended"). Found in a real VS-CPU battle:
+  (1) THE STACKS NEVER GREW: processEndOfRoundStatuses only runs the onRoundEnd of keys in state.js `_STATUS_EFFECT_IDS`, and
+  `dormant` is not one. Now battle.js `_cicadaBrood` runs STATUS_DEFS.dormant.onRoundEnd from `_nrRoundEnd` (do NOT also add
+  dormant to that set: it would tick twice, and the round-end camera would dive onto a unit the enemy cannot see).
+  (2) STUCK IN THE GROUND: an attack / offensive spell / reveal took Invisible off but left `dormant` (no move, still stacking).
+  invisible.onRemove clears dormant now (the Gator's Submerged + the Mole Man's burrow pattern); the banked stacks stay.
+  (3) THE KIT: RACE_TREE held four borrowed rungs (Corrosive Splash + Rot outside its families) and raceDefaultKit gave neither
+  Buzz nor the T3; now Dig In, Buzz, Chorus, Swarm Signal. (4) THE NAME: the sonic family has a T2 `raceScreech` "Screech" in
+  the same pool and the menu finds a spell by its name, so the T3 (`nrScreech`, id kept) is CHORUS (a brood's song).
+  ai.js: Dig In is worth 35-70 + 25 a missing stack while no enemy is in Chorus' reach (0 at 3 stacks / dug in); Chorus scores
+  its banked bonus. hud.js: the BROOD n/3 chip. Numbers unchanged (Chorus 90 +45 a stack = 225 at 3, Deafening Wail 125 no
+  cooldown is the line; it pays three idle rounds and an enemy that saw the dig knows the square). VFX: spells-vfx.md
+  "THE CICADA BROOD".
 Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo had 10 stretched triangles from a claw to the foot
 (degenerated, edge > 0.15 m) and the Samurai Slug's tail was skinned to the legs (blended to Hips for z < 0.32, y < 0.85);
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
 (cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
+
+## THE WENDIGO PASS (2026-11-17, thread "Polish Wendigo spells and VFX", mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+- THE PLAYSTYLE: a hunter that has to keep eating. Rend (Bleed 2 rounds) sets up Feast, which now carries
+  `bonusVsStatus: { status: 'bleed', mult: 1.3 }` (the engine's own status-combo rule: "⚗ Combo! … ×1.3", +2 AP the first time
+  in a turn), and the bigger bite heals more (60% of the real HP taken). Frost Howl Slows + Fears the ring round it: the
+  frightened flee slowly, so the Wendigo runs them down next round to feed. Proved in a VS-CPU board: Rend 350 + Bleed; Feast on
+  the Bleeding target 548 (heal 329) vs 380 (heal 228) on a clean one; Frost Howl 194 + 224, both Slowed + Feared.
+- THE HUNGER CHIP (hud.js `_hrlgStatusChips`): the Wendigo always wears FED (green) or HUNGRY (red) in its status chips, title
+  = the HP the round end will take. Reads `unit._fedRound` against `state.round` (rides the state sync, so the guest reads it too).
+- THE HUNGER'S LOOK: `_wendigoHunger` fires `_sigVfxGeom('wdHunger', …)` (fireGeometry, relayed by online.js, fog-gated).
+- Stats: HP 1350 → 1250 (POWER 887 → 862 = the median 811 + 6 %; a fed Wendigo pays no tax, so it sat too high at +9 %).
+- THE LOOKS (three-vfx-effects.js "THE WENDIGO'S LOOKS", after the Skater's; kill-switch `window.EW_NO_WENDIGO_VFX`): bone,
+  frost, old blood, one mark per piece in the viewer's seat colours. Rend = three icicle claws raking across the body facing the
+  lens (`hitMs` 190), ice chips + blood; Feast = an antlered skull's two rows of bone teeth closing on the body (`hitMs` 260),
+  a bigger blood burst when the target was Bleeding, the stock drain hop home; Frost Howl = four scream rings out of its head
+  tilting down over the reach, the snow blown out flat, the reach edge once in the seat colour, frost mist per square (aoe
+  `geom3D`); the Hunger = frost ribs showing on its chest, dark wisps spiralling in, a seat-colour ring closing under it.
+- Probe recipe: /mnt/project-files/wendigo-pass/probe/ (wd.js = the VS-CPU board, every cast + the real round end; show.js = the
+  looks on a frozen clock).

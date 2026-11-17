@@ -14699,6 +14699,10 @@
                 const mcy = (spell.aoeOriginSelf && casterUnit && spell.kind !== 'bomb') ? casterUnit.y : ty;
                 return aoeMaskTiles(spell.aoeMask, mcx, mcy, bw(), bh());
             }
+            if (spell.kind === 'aoe' && spell.aoeOnTerrain && typeof window._aoeTerrainFilter === 'function') {   // 🐌 Ronin's Wake: the ooze squares only
+                const _sp = Object.assign({}, spell); delete _sp.aoeOnTerrain;
+                return window._aoeTerrainFilter(spell, getSpellAoeFootprint(_sp, tx, ty, casterUnit));
+            }
             if (spell.kind === 'aoe') {
                 const cx = spell.aoeOriginSelf ? casterUnit.x : tx;
                 const cy = spell.aoeOriginSelf ? casterUnit.y : ty;
