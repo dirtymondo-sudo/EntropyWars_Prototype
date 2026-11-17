@@ -12110,3 +12110,19 @@ Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/area
   route takes it at its next bake (`spawnOnPath: true` in a spec keeps the old place). (2) R8's CROP CIRCLE is the Estate's `corn_row` now: standing corn
   a row a square, a circle 31 m across pressed flat, nine rows left standing in a ring inside, `ritual_circle` + a dip at its heart (the Halloween pack's
   farmland read as grey lumps). Pictures `proof/south_r8_crop.jpg`, `south_r8_corn.jpg`.
+
+## ONE WORLD PHASE 5 — the whole-world pass (2026-11-17, BUILD_PLAN phase 5; mondo's own account, branch `claude/one-world-phase5`)
+What the pass found and changed, one group a PR. The finished world is listed in `docs/notes/world-layout.md` "ONE WORLD, BUILT".
+- **PR 1, THE STAND-IN JUMP DOORS ARE GONE.** Two door pairs from before the routes still jumped across the map:
+  the Hills' `shasta` ↔ Mount Shasta's `hills` (the Shasta Road, 12 plots apart; the Hills' end still named the retired room
+  `site_prebuilt_shasta_mountains`) and the Trailhead's `woods` ↔ the Redwood Trail's `shasta` (13 plots apart). Both are dropped in
+  their tools (`docs/disaster-city/districts/N.js` THE WAYS OUT, `bake-mountains.js` THE WAYS, `bake-woods.js` + its `doorAt`).
+  What walks there now: the Hills to Shasta = the River Road's junction + the Canyon Trail (R2, seam `ow_h_m3_m14` on the Trailhead's
+  south side, beside where `woods` stood); the Redwood Trail's top = the wild link L3 to the Snowy Pass (`ow_h_m17_m9`, the same plot side).
+  LEFT AS LAID (district content, not a seam): the Shasta Road's west spur on the Hills' plot H00-01 and the road to Shasta's east wall on
+  P15-02 now end at the room's line with no door. A dressing pass should close or sign them.
+- **How the pass walks a door** (the probe is not in the repo: tests and check tools are not kept): for every door of every placed room
+  whose `action.room` is another world room, enter the room with `--nogltf`, stand 5 m inside the door facing it (`hqTerrainDoorLanding`
+  for the height), hold `w` + `shift` through `ThreeRenderer.hq.dev.press` with the renderer's `render` switched off (the walker then
+  runs at full speed on the software GPU: 14 m in 4 s, was 36 s), read `ThreeRenderer.hq.room()` until it changes, then compare where the
+  walker stands with the far door's landing and walk on 3 s to see the walker is free. About 25 s a door; Disaster City 80 s.
