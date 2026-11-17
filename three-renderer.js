@@ -73942,11 +73942,49 @@ const ThreeRenderer = (function () {
                the line wanders with the distance from the room (nothing moves on the room's own line: the edge stops and seams hold);
              · the mountains' foot is no longer one wall at one distance: it steps in and out along the side (spurs and gullies).
            `edges.straight: true` = the old ruler lines (a kill switch per room); `EW_HQ_STRAIGHT_EDGES` = for every room. */
-        var KINDS = ['mountain', 'forest', 'desert', 'coast', 'scrub', 'mesa'];
+        /* THE HORIZON READS THE MAP (2026-11-17, One World foundation; mondo's approved map v13, docs/plans/one-world):
+             · two more kinds, for ground the map has and the six above could not draw: 'grass' = open green country (meadow, farmland,
+               foothills) that rolls gently on from the edge's height, a tree here and there; 'snow' = the same roll in white (tundra, ice).
+               Both are side kinds like the others (`n: { kind: 'snow' }`);
+             · `edges.world: true` = THE SIDES ARE NOT WRITTEN, THEY ARE READ: the room stands on the world's plot grid (data.js THE ONE
+               WORLD: hqOwRoom), and the land at every point past its line is the kind of the WORLD PLOT under that point
+               (HQ_ZONE_MAP.world, hqOwGround(x, y).edge): forest where the map has forest, the range where it has rock, the sea where it
+               has sea, plot by plot out to `reach`. The line between two plots' kinds lies on the plot line, about 17 m soft, and wanders
+               like every other line. A room with no place on the map (or `EW_HQ_NO_WORLD_EDGES`) reads its sides as before. */
+        var KINDS = ['mountain', 'forest', 'desert', 'coast', 'scrub', 'mesa', 'grass', 'snow'];
         var WANDER = !(E.straight || (typeof window !== 'undefined' && window.EW_HQ_STRAIGHT_EDGES));
+        var OW = (function () {
+            try {
+                if (!E.world || (typeof window !== 'undefined' && window.EW_HQ_NO_WORLD_EDGES) || typeof hqOwRoom !== 'function') return null;
+                var q = hqOwRoom(info.roomId); if (!q || q.layer !== 'surface') return null;
+                var memo = new Map(), sea = false;
+                var kindAt = function (ix, iy) { var k = ix * 4099 + iy, v = memo.get(k); if (v === undefined) { v = hqOwGround(ix, iy).edge || 'grass'; if (KINDS.indexOf(v) < 0) v = 'grass'; memo.set(k, v); } return v; };
+                var rp = Math.ceil((+E.reach || 440) / 42) + 1;
+                for (var yy = q.wy - rp; yy < q.wy + q.rows + rp && !sea; yy++) for (var xx = q.wx - rp; xx < q.wx + q.cols + rp; xx++) if (kindAt(xx, yy) === 'coast') { sea = true; break; }
+                return { wx: q.wx, wy: q.wy, hw: room.shell.w / 2, hd: room.shell.d / 2, kindAt: kindAt, sea: sea };
+            } catch (e) { return null; }
+        })();
+        var WAYS = (OW && Array.isArray(E.ways) && E.ways.length) ? E.ways : null;
+        var worldW = function (x, z, dist, wob) {
+            var W = { mountain: 0, forest: 0, desert: 0, coast: 0, scrub: 0, mesa: 0, grass: 0, snow: 0 };
+            if (WANDER && wob) { var k = Math.min(26, (dist || 0) * 0.45); x += wob * k; z += Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 95 + 31.7, z / 95 + 12.2) - 0.5) * 3.2)) * k; }
+            var fx = OW.wx + (x + OW.hw) / 42 - 0.5, fy = OW.wy + (z + OW.hd) / 42 - 0.5, ix = Math.floor(fx), iy = Math.floor(fy);
+            var u = sm((fx - ix - 0.3) / 0.4), v = sm((fy - iy - 0.3) / 0.4);
+            W[OW.kindAt(ix, iy)] += (1 - u) * (1 - v); W[OW.kindAt(ix + 1, iy)] += u * (1 - v); W[OW.kindAt(ix, iy + 1)] += (1 - u) * v; W[OW.kindAt(ix + 1, iy + 1)] += u * v;
+            /* THE WAY ON (`edges.ways: [{ side, at }]`, the route kit's ends): where a path leaves the room for the next one, the land stays
+               low and open for a stretch: no rock face, no tree line across the way you are about to walk (the rock stays rock but lies
+               down as a pass floor, `W.way`; forest and table land give way to grass), fading out sideways over ~30 m and outward over ~150 m */
+            if (WAYS) for (var wi = 0; wi < WAYS.length; wi++) {
+                var wy0 = WAYS[wi], hzs = (wy0.side === 'n' || wy0.side === 's'), lat = Math.abs((hzs ? x : z) - (+wy0.at || 0)), out = wy0.side === 'n' ? R.z0 - z : wy0.side === 's' ? z - R.z1 : wy0.side === 'w' ? R.x0 - x : x - R.x1;
+                if (out < -1 || lat > 34 || out > 150) continue;
+                var tw = (1 - sm((lat - 10) / 22)) * (1 - sm((out - 70) / 80));
+                if (tw > 0) { W.way = Math.max(W.way || 0, tw); W.grass += (W.forest + W.mesa) * tw; W.forest *= 1 - tw; W.mesa *= 1 - tw; }
+            }
+            return W;
+        };
         /* a side's kinds at a point along it (x for n / s, z for w / e); `dist` = how far past the room, `wob` = the point's own wander (-1 … 1) */
         var sideW = function (k, along, dist, wob) {
-            var S0 = sd(k), W = { mountain: 0, forest: 0, desert: 0, coast: 0, scrub: 0, mesa: 0 }, c = S0.cap, t = 0, by = S0.beyond;
+            var S0 = sd(k), W = { mountain: 0, forest: 0, desert: 0, coast: 0, scrub: 0, mesa: 0, grass: 0, snow: 0 }, c = S0.cap, t = 0, by = S0.beyond;
             if (WANDER && wob) along += wob * Math.min(95, (dist || 0) * 1.15);
             if (c && c.kind && c.len > 0) {
                 var horiz = (k === 'n' || k === 's'), a0 = horiz ? R.x0 : R.z0, a1 = horiz ? R.x1 : R.z1;
@@ -73993,7 +74031,8 @@ const ThreeRenderer = (function () {
             var liftUp = 0.45 * sm(d / 1.2), liftDn = 0.25 * (1 - sm(d / 0.6));
             var kx = x < cx ? 'w' : 'e', kz = z < cz ? 'n' : 's', W;
             var wob = WANDER ? Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 95 + 11.3, z / 95 + 5.9) - 0.5) * 3.2)) : 0;
-            if (ez <= 1e-6) W = sideW(kx, cz, d, wob); else if (ex <= 1e-6) W = sideW(kz, cx, d, wob);
+            if (OW) W = worldW(x, z, d, wob);
+            else if (ez <= 1e-6) W = sideW(kx, cz, d, wob); else if (ex <= 1e-6) W = sideW(kz, cx, d, wob);
             else { var tq = ex / (ex + ez), s = sm(tq + 1.2 * wob * tq * (1 - tq) * sm(d / 40)), A = sideW(kz, cx, d, wob), B = sideW(kx, cz, d, wob); W = {}; KINDS.forEach(function (q) { W[q] = A[q] * (1 - s) + B[q] * s; }); }
             /* a step between two plots' levels at the edge is taken up in the land's first metres: past them the land stands on the HIGHER ground either side */
             var eHi = eH;
@@ -74004,6 +74043,7 @@ const ThreeRenderer = (function () {
                 var rg = 1 - Math.abs(2 * _hqEdgeFbm(x / 190 + 3.1, z / 190 + 1.7) - 1), rg2 = 1 - Math.abs(2 * _hqEdgeFbm(x / 70 + 9, z / 70 + 4) - 1);
                 var dF = WANDER ? d * (0.5 + 1.0 * _hqEdgeFbm(x / 38 + 21.7, z / 38 + 2.3)) : d;   // the foot steps in and out along the side (was one wall, 14 m off, the whole way)
                 var yM = e2 + 30 * sm(dF / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift;
+                if (W.way > 0) yM = e2 + lift + (1 - W.way) * (yM - e2 - lift) + W.way * 1.4 * _hqEdgeFbm(x / 40 + 7.7, z / 40 + 3.1) * sm(d / 30);   // THE WAY ON: the pass floor
                 if (LAND && z < R.z0 && LAND.back !== 1) yM = e2 + lift + LAND.back * (yM - e2 - lift);
                 else if (!LAND && sd('n').back != null && (WANDER ? z < R.z0 + 45 : z < R.z0)) yM = e2 + lift + (WANDER ? 1 + (+sd('n').back - 1) * sm((R.z0 + 45 - z) / 90) : +sd('n').back) * (yM - e2 - lift);   // (eased in over 90 m across the north line: it was a step, a wall along the line west of the room)   // THE HOLLYWOOD HILLS ARE PART OF THE CITY (2026-11-16): a north side may say `back` by itself = how much of the made-up range stands past it (the city: 0.35, a low dry ridge behind the real Hills' crest)   // …and beside the real land's ends the old range is as low as behind it (no tall peak left standing over the bay)
                 if (LAND && z < R.z0) {   // THE REAL LAND PAST THE EDGE: the other room's ground from the line out to its own back edge, the range on behind it
@@ -74025,9 +74065,13 @@ const ThreeRenderer = (function () {
                 mesaT = Math.max(mesaT, W.mesa * table);
                 y += W.mesa * ((e2 + lift) * (1 - km) + (0.9 + 1.6 * _hqEdgeFbm(x / 60 + 3.3, z / 60 + 7.7) * sm(d / 60) + 8 * scree + tall * table) * km); }
             if (W.coast > 0) { var kc = sm((d - 1) / 9); y += W.coast * ((e2 - liftDn) * (1 - kc) + Math.min(e2, seaY - 2.6) * kc); }   // (no lift: a sea bed never rises past the field)
+            if (W.grass > 0) { var kg = sm(d / 14), rollG = 3.4 * _hqEdgeFbm(x / 62 + 5.1, z / 62 + 2.7) * sm(d / 40) + 10 * _hqEdgeFbm(x / 170 + 1.3, z / 170 + 8.8) * sm((d - 90) / 240);
+                y += W.grass * ((e2 + lift) * (1 - kg) + (e2 * (1 - 0.6 * sm((d - 30) / 160)) + 0.45 + rollG) * kg); }
+            if (W.snow > 0) { var kn = sm(d / 14), rollS = 2.4 * _hqEdgeFbm(x / 70 + 9.4, z / 70 + 3.6) * sm(d / 40) + 13 * _hqEdgeFbm(x / 190 + 4.2, z / 190 + 6.1) * sm((d - 90) / 240);
+                y += W.snow * ((e2 + lift) * (1 - kn) + (e2 * (1 - 0.6 * sm((d - 30) / 160)) + 0.45 + rollS) * kn); }
             return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null, mesa: mesaT, side: (ez <= 1e-6 || ex > ez) ? kx : kz };
         };
-        return { R: R, at: at, seaY: seaY, reach: +E.reach || 440 };
+        return { R: R, at: at, seaY: seaY, reach: +E.reach || 440, world: OW ? { sea: OW.sea } : null };
     }
     /* a room whose land past the edge is THE NATURAL EDGES' (no outer ground of the field's sheet, no sea sheet past the field: the land brings its own) */
     function _hqEdgeLandOn(room) { return !!(room && room.terrain && room.terrain.edges && room.shell && room.shell.open && !(typeof window !== 'undefined' && window.EW_HQ_NO_EDGE_LAND)); }
@@ -74063,13 +74107,14 @@ const ThreeRenderer = (function () {
             var W = P.W, c = [0, 0, 0], add = function (w, r, g, b) { c[0] += w * r; c[1] += w * g; c[2] += w * b; };
             if (P.land === 'grass') return [0.86, 0.9, 0.8];
             add(W.mountain, 0.92, 0.9, 0.88); add(W.forest, 0.62, 0.74, 0.56); add(W.desert, 1, 0.96, 0.86); add(W.coast, 0.8, 0.74, 0.66);
-            add(W.scrub || 0, 0.84, 0.8, 0.64); add(W.mesa || 0, 1, 0.96, 0.86);
+            add(W.scrub || 0, 0.84, 0.8, 0.64); add(W.mesa || 0, 1, 0.96, 0.86); add(W.grass || 0, 0.8, 0.88, 0.62); add(W.snow || 0, 0.97, 0.98, 1);
             if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }   // the tables: red rock in bands
             return c;
         };
         var keyOf = function (P, x, z, yTop) {   // yTop = the piece's highest corner (a far piece is up to 60 m long: one that climbs out of the sea is rock, not a slab of beach sand up a cliff)
             var W = P.W, k = 'grass', b = W.forest;
             if (W.mountain > b) { k = 'rock'; b = W.mountain; } if (W.desert > b) { k = 'desert'; b = W.desert; } if (W.scrub > b) { k = 'desert'; b = W.scrub; } if (W.mesa > b) { k = P.mesa > 0.25 ? 'rock' : 'desert'; b = W.mesa; } if (W.coast > b) { k = (P.y > F.seaY + 0.3 || (yTop != null && yTop > F.seaY + 4) || (P.eH > F.seaY + 0.5 && P.d < 16)) ? 'cliff' : 'desert'; }   // a high edge falls to the sea as a rock cliff; the bed is sand
+            if ((W.grass || 0) > b) { k = 'grass'; b = W.grass; } if ((W.snow || 0) > b) { k = 'snow'; b = W.snow; }   // THE HORIZON READS THE MAP: open green country wears the grass sheet, tundra and ice the plain white
             if (k === 'rock' && !(P.mesa > 0.25) && P.y - P.eH > 150 + 30 * _hqEdgeNoise(x / 30, z / 30)) k = 'snow';
             if (P.land) k = (P.y < F.seaY + 0.4 || (P.land === 'desert' && P.y < F.seaY + 4)) ? 'desert' : (P.land === 'desert' ? 'rock' : P.land);   // THE REAL LAND PAST THE EDGE: the other room's own rock / grass / sand
             return k;
@@ -74121,15 +74166,18 @@ const ThreeRenderer = (function () {
         /* the sea runs on over the coast: the room's own sheet and height past the field (east, and the two ends the land falls into it) */
         var seaKey = (info.sea && info.sea.key) || 'water', seaG = null;
         var anyCoast = ['n', 's', 'w', 'e'].some(function (k) { var s0 = E[k]; return s0 && (s0.kind === 'coast' || (s0.cap && s0.cap.kind === 'coast') || (s0.beyond && s0.beyond.kind === 'coast')); });
+        var worldSea = !!(F.world && F.world.sea);   // THE HORIZON READS THE MAP: the map has sea within reach of this room: the sea's sheet lies all round it (the land stands over it wherever the map has land)
+        if (worldSea) anyCoast = true;
         if (anyCoast && typeof fluidMatFor === 'function') {
             try {
                 var sMat = fluidMatFor(seaKey); sMat.side = THREE.DoubleSide;
                 var hxF = info.halfW - 0.5, hzF = info.halfD - 0.5, rr = F.reach, rects = [];
                 var coastOn = function (k) { var s0 = E[k]; return !!(s0 && (s0.kind === 'coast' || (s0.beyond && s0.beyond.kind === 'coast'))); }, capLen = function (k, end) { var s0 = E[k]; return (s0 && s0.cap && s0.cap.kind === 'coast' && s0.cap.at === end) ? (+s0.cap.len || 0) + (+s0.cap.off || 0) + 30 + (E.straight ? 0 : 110) : 0; };   // (+110: THE WANDERING LINES may carry the shore that much further along the side)
-                if (coastOn('e')) { rects.push([hxF, -hzF - rr, hxF + rr, hzF + rr]); var ln = capLen('n', 'e'), ls = capLen('s', 'e'); if (ln) rects.push([hxF - ln - (+((E.e || {}).inset) || 0), -hzF - rr, hxF, -hzF]); if (ls) rects.push([hxF - ls - (+((E.e || {}).inset) || 0), hzF, hxF, hzF + rr]); }
-                if (coastOn('w')) rects.push([-hxF - rr, -hzF - rr, -hxF, hzF + rr]);
-                if (coastOn('n')) rects.push([-hxF, -hzF - rr, hxF, -hzF]);
-                if (coastOn('s')) rects.push([-hxF, hzF, hxF, hzF + rr]);
+                if (worldSea) rects.push([-hxF - rr, -hzF - rr, hxF + rr, -hzF], [-hxF - rr, hzF, hxF + rr, hzF + rr], [-hxF - rr, -hzF, -hxF, hzF], [hxF, -hzF, hxF + rr, hzF]);
+                else if (coastOn('e')) { rects.push([hxF, -hzF - rr, hxF + rr, hzF + rr]); var ln = capLen('n', 'e'), ls = capLen('s', 'e'); if (ln) rects.push([hxF - ln - (+((E.e || {}).inset) || 0), -hzF - rr, hxF, -hzF]); if (ls) rects.push([hxF - ls - (+((E.e || {}).inset) || 0), hzF, hxF, hzF + rr]); }
+                if (!worldSea && coastOn('w')) rects.push([-hxF - rr, -hzF - rr, -hxF, hzF + rr]);
+                if (!worldSea && coastOn('n')) rects.push([-hxF, -hzF - rr, hxF, -hzF]);
+                if (!worldSea && coastOn('s')) rects.push([-hxF, hzF, hxF, hzF + rr]);
                 seaG = new THREE.Group(); seaG.name = 'hq_edge_sea';
                 rects.forEach(function (q) {
                     var w = (q[2] - q[0]) * U, d = (q[3] - q[1]) * U; if (!(w > 0 && d > 0)) return;
@@ -74151,7 +74199,7 @@ const ThreeRenderer = (function () {
         /* THE TREES: the forest's tall trees to 60 m (the fog has them by then), thinning; a skirt of pines on the mountains' feet */
         var planted = 0;
         if (typeof plantTree === 'function') {
-            var r = _mulberry32(0x0ed6e5), kindsF = ['pine', 'pine', 'tree_4', 'pine', 'tree', 'tree_4'], kindsM = ['pine', 'pine', 'pine_2'];
+            var r = _mulberry32(0x0ed6e5), kindsF = ['pine', 'pine', 'tree_4', 'pine', 'tree', 'tree_4'], kindsM = ['pine', 'pine', 'pine_2'], kindsG = ['tree', 'tree_4', 'tree_3'], kindsS = ['xmas_snow_pine', 'xmas_snow_pine_2', 'pine'];
             var hOf = function (m) { return m * U / TM / 1.07; };   // _nrTree: target = TM × h × (0.85 … 1.3)
             var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
             var X0 = R.x0 - 62, X1 = R.x1 + 62, Z0 = R.z0 - 62, Z1 = R.z1 + 62, stp = 4.2;
@@ -74163,6 +74211,8 @@ const ThreeRenderer = (function () {
                 var thin = P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;
                 if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
+                else if ((P.W.grass || 0) > 0.6 && P.d > 4) { if (c2 > 0.045 * thin) continue; plantTree(kindsG[(d2 * kindsG.length) | 0], hOf(6 + d2 * 5), px, pz, P.y * U); planted++; }   // open green country: a tree here and there
+                else if ((P.W.snow || 0) > 0.6 && P.d > 4) { if (c2 > 0.03 * thin) continue; plantTree(kindsS[(d2 * kindsS.length) | 0], hOf(5.5 + d2 * 4), px, pz, P.y * U); planted++; }   // tundra: a few snow pines
                 else if ((P.W.scrub || 0) + (P.W.mesa || 0) + P.W.desert > 0.6 && P.d > 4) {   // THE DRY LAND'S PLANTS: a scrub side grows dead trees by itself; any dry side grows what its `plants: { kinds, p, h: [lo, hi] }` says (the room's own cactus runs on past its line)
                     var PL = (E[P.side] || {}).plants || ((P.W.scrub || 0) > 0.5 ? { kinds: ['tree_5', 'tree_6', 'tree_5', 'pine_2'], p: 0.09, h: [3, 6.5] } : null);
                     if (!PL || !PL.kinds || !PL.kinds.length || c2 > (PL.p || 0.08) * thin) continue;

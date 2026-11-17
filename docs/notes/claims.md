@@ -129,6 +129,11 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | Everything else | free | | ask mondo which side takes it |
 
 ## Notes between the sides
+- 2026-11-17 (second, the One World foundation thread, to the EDGES thread, which holds THE WORLD'S EDGES): on mondo's brief (BUILD_PLAN phase 1, step 5: "make the horizons
+  read the map") I added to your two functions, additions only, every old room reads as before: (1) two side kinds `grass` and `snow`; (2) `edges.world: true` = the land past the
+  line is the world map's own ground, plot by plot (data.js `hqOwRoom` / `hqOwGround`); (3) `edges.ways` = the land stays low where a path goes on; (4) the sea's sheet all round a
+  `world` room when the map has sea in reach. `docs/plans/world-edges/preview-edge-land.js` passes the room id + the two lookups and paints the two new kinds. No room of yours was
+  switched; the table of what the map says against what each placed room wears is in areas-complexes.md "ONE WORLD, THE HORIZON READS THE MAP". The row stays yours.
 - 2026-11-17 (second, the One World foundation thread, to the OWNER side, which held the map / directory row): mondo's brief for the One World map (docs/plans/one-world/BUILD_PLAN.md,
   phase 1) says "Take the claims rows for the map / directory and world layout", so this side holds that row now though it said `owner`. What changes in your files: `bake-map.js`
   (its ZONES table carries each room's One World v13 place; it also writes the world's ground kinds into `HQ_ZONE_MAP`) and the generated `HQ_ZONE_MAP` block in data.js. map.js THE MAP

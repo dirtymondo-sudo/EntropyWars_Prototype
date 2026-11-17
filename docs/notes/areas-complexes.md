@@ -10806,3 +10806,77 @@ test slice measures them and corrects this list.
    - a side with no room past it is scenery: `terrain.edges.world` draws the map's own ground there (below);
    - a way down or up stays a `wall: 'free'` door as today (a stair, a well, a lift) on the plot plots.json `under.ways`
      names; its row in `DOOR_HQ.links` keeps its id, only the end that moved is re-pointed.
+
+### ONE WORLD, THE ROUTE KIT (`bake-route.js`)
+- `node bake-route.js <id> [--look trail|road|highway] [--from i --to j] [--dry-run]` writes ONE walkable route room into
+  data.js from a plot list of plots.json: a route (R1 … R12), a wild link (L1 … L16) or a Desert Highway leg (DH1 … DH4).
+  `--list` prints every id with its look, plot count and ground letters. `ROUTE_DUMP=1` prints the walked map.
+  The room is `site_ow_<id>` between `OWROUTE <ID>-BEGIN / -END`, inside the block `ONE WORLD ROUTES-BEGIN / -END` of
+  DOOR_HQ.rooms. Never hand-edit between the markers.
+- **Three looks.** `highway`: two carriageways of asphalt (7 squares), lane paint (`terrain.marks`), sand shoulders, guard
+  rails in runs, Roads-pack signs. `road`: a dirt road 3 squares wide, a ranch fence along the green stretches, a milestone a
+  plot. `trail`: a footpath 2 squares wide that wanders, cairns, a trail sign at each end. A wild link is a trail one plot wide.
+- **Six ground kinds**, read per plot from the map (`ground.key[letter].kit`), each with its sheet, its path sheet, the trees
+  in the walked ground, its scatter and its line of stoppers (the table `KIT` at the top of the tool, tones in `TONE`):
+  forest (the Retro Tree Pack's painted trees, ferns, logs, stumps, moss), grass (birches, wild flowers, bushes, rocks),
+  scrub (bare trees, dead bushes, tumbleweed, a cattle skull), desert (saguaros, skulls, stones), snow (snow pines, snow
+  heaps, rocks), rock (rocks, standing stones, a snag, pines). Every key is in the catalogue already (MODEL_LIST.md §6: PSX
+  graveyard pack, Meshy wish list, Roads pack, Retro Tree Pack, Christmas pack): no new model.
+- **What the room is.** Its box = the plot list's bounding box; `world` = where it stands; `plots.mask` = which cells are
+  plots. The path runs down the band's middle and crosses every plot side at its middle, so two rooms meet path to path.
+  Every square of a route plot is walked except a one-square verge on each side that faces scenery; the verge carries the
+  line of stoppers (never a made-up wall); in forest the trees are the line. Paint by the plot's kind, ragged where two
+  kinds meet. Heights are low rolling noise on WORLD squares (two rooms' grounds roll on the same noise), the path eased flat.
+- **The ends.** Where the path leaves the list it meets another room; the kit prints each seam id (`ow_h_m17_m9`) and
+  writes the `way: 'trail'` door when that room is known: the spec's `ends: { '<seam id>': { room, at } }`, or a placed room
+  the map finds past the line. With no room there yet it writes no door and says so: the zone thread adds the pair when its
+  room stands.
+- **By hand.** `docs/areas/routes/<ID>.json` (label, hub, look, a stretch, the ends, `proof`) and `docs/areas/routes/<ID>.js`
+  (`module.exports = { dress(ctx) { … } }`: the places on the way, a well, a mill, a camp, a climb, a ford; ctx carries the
+  tool's helpers `P`, `dec`, `tree`, `feat`, `cell`, `walked`, `free`, `hAt`). One file a route, so two threads never clash.
+- **It refuses** a list with no plots of its own, an underground walk (the tunnel look is phase 4.4's to add), a prop key or
+  tree kind that is not in the game, anything standing on the path, a path that is cut, a plot nobody can walk to.
+- **THE PROOF** (`docs/areas/routes/L3.json`, room `site_ow_l3`, `proof: true`): wild link L3, five plots from the Redwood
+  Trail's Snowline up to the Snowy Pass's Tree Line, ground forest · forest · forest · foothills · alpine. Seen on screen
+  (probe-fast, HEAD of the PR, no page errors; loaded in 29 to 34 s, 56 files): `docs/plans/one-world/proof/trail_L3_forest.jpg`
+  (the south end, in the forest), `trail_L3_foothills.jpg` (the trees thin, rocks, the range ahead), `trail_L3_pass.jpg`
+  (the bend east at the top: the way on is a low rock pass, the range on the left), `trail_L3_above.jpg`. No door leads to
+  the room and it is not on the map; the Woods zone thread drops `proof` and gives it its ends.
+- NOT DONE YET, by design: heights that climb (the map has no height per plot: a climb is hand work in the hook), residents
+  and fights on a route (the test slice fights once on a trail plot), cars on a highway (`terrain.traffic`, the Desert's way).
+
+### ONE WORLD, THE HORIZON READS THE MAP (`terrain.edges.world`, three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`)
+- **`edges: { world: true, reach: 440 }`** = the sides are not written, they are read. The room stands on the world grid
+  (`hqOwRoom`), and the land at every point past its line is the kind of the WORLD PLOT under that point
+  (`HQ_ZONE_MAP.world`, `hqOwGround(x, y).edge`): forest where the map has forest, the range where it has rock, sea where it
+  has sea, plot by plot out to `reach`. The line between two plots' kinds lies on the plot line, about 17 m soft, and
+  wanders like every other line. A room with no place on the map (or `window.EW_HQ_NO_WORLD_EDGES`) reads its sides as before.
+- **Two new edge kinds** for ground the six old ones could not draw, usable as hand-written side kinds too
+  (`n: { kind: 'snow' }`): `grass` = open green country (meadow, farmland, foothills) rolling gently on from the edge's
+  height, the grass sheet, a tree here and there; `snow` = the same roll in plain white (tundra, ice), a few snow pines.
+  The map's 18 ground kinds fold into the eight edge kinds in bake-map.js `EDGE_OF`.
+- **The sea**: when the map has sea within reach, the sea's sheet lies all round the room at its own height; the land stands
+  over it wherever the map has land.
+- **`edges.ways: [{ side, at }]`** (the kit writes its ends): where a path leaves the room for the next one, the land stays
+  low and open for a stretch: rock lies down as a pass floor, forest opens to grass; about 30 m wide, 150 m out.
+- **The true neighbours**: `sky.landmarks: 'world'` (or `sights: 'world'` beside a room's own list) = the far places of
+  `HQ_ZONE_MAP.world.sights` within 34 plots stand on the horizon at their TRUE BEARING from the room, smaller with the
+  distance (data.js `hqOwLandmarks`; today: Disaster City's skyline, the Vatican's dome, Camelot's castle; a new sight = one
+  row in bake-map.js `SIGHTS` + a builder in `_hqLandmarkBuilders` if its kind is new). A neighbour ROOM right past a line is
+  a door pair (the room-splitting rule 6), and its ground shows as the map's kind there.
+- **Try it without a browser**: `node docs/plans/world-edges/preview-edge-land.js <room> out.ppm ['{"world":true,"reach":440}']`
+  (it reads the map now). Picture: `docs/plans/one-world/proof/edges_from_above.jpg` (left to right: the L3 trail with the
+  forest south of it and the range across its top; the Vatican in the forest with the Tiber's meadow east and the range
+  north; the North Pole on the tundra with the sea north and east).
+- **WHICH ROOMS READ THE MAP TODAY: only the route kit's.** No built zone was switched in this pass (their sides belong to
+  their own tools). What the map puts past each placed room, against what the room wears today:
+
+  | Room | The map says | It wears today |
+  |---|---|---|
+  | Disaster City (with the Hills) | north: foothills (grass) then the range; west: forest and open woodland; south: scrub then badlands; east: the Beach's room | north mountain, west forest, south desert, east coast |
+  | The North Pole | tundra on every side (snow), the sea a few plots north and east | mountain on every side |
+  | The Vatican | forest north, south and west; the Tiber's meadow (grass) east | no `terrain.edges` at all |
+  | Antarctica | the sea on every side | mountain north, east, west; coast south |
+
+  Switching a room = `edges: { world: true, reach: 440 }` in its bake (keep its `inset`, `sign`, `land` keys: they still
+  work), a rebake and one picture. A re-laid room (phase 3) gets it in the same PR as its move.
