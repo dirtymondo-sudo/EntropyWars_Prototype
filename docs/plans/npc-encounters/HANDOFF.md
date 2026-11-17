@@ -51,13 +51,8 @@ Nothing of the encounter system itself (tempers, marks, ladder, muggings, giving
 
 ## 5. Next steps, in order
 
-<<<<<<< HEAD
-1. Section 1's check.
-2. **Step 1b: DONE 11-17.** The draft is in data.js right after `hqSpawnExpand()` (loaded headless: every race name exists; a Police Officer defends a Chef, not a Pirate; the Ghost is Territorial). The draft file is deleted. 28 races that live in the city have no temper yet (they behave as today): Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee. They wait for their district's pass. What it was (all its inputs are approved): the tempers, groups, lines and numbers into data.js as `HQ_NPC_TEMPERS` + `hqNpcTemper`,
-=======
 1. ~~Section 1's check.~~ Done (section 1).
-2. **Step 1b** (all its inputs are approved): the tempers, groups, lines and numbers into data.js as `HQ_NPC_TEMPERS` + `hqNpcTemper`,
->>>>>>> origin/main
+2. **Step 1b: DONE 11-17.** The draft is in data.js right after `hqSpawnExpand()` (loaded headless: every race name exists; a Police Officer defends a Chef, not a Pirate; the Ghost is Territorial). The draft file is deleted. 28 races that live in the city have no temper yet (they behave as today): Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee. They wait for their district's pass. What it was (all its inputs are approved): the tempers, groups, lines and numbers into data.js as `HQ_NPC_TEMPERS` + `hqNpcTemper`,
    `hqNpcGroup`, `hqNpcSameGroup`, `hqNpcDefends`; nothing reads them yet. A full draft is `STEP-1B-DRAFT.js.txt` beside this file (written,
    never loaded or checked): put it after `hqSpawnExpand()` in data.js, `node --check`, bump the `?v=` token, merge, `node sync-zip.js --upload`.
 3. **Step 2** (awareness + the marks): his OK is given (the eye by the portrait, the red `!` over the NPC). Build it after step 1b; a proof picture goes to him in chat.
