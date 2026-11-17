@@ -48568,10 +48568,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             charge: function (P) { _capCharge(P, 0x4fa8e0, { sprite: 'bubble' }); },
             hit: function (P) {
                 var r = Math.max(1, P.r || 1);
-                _capColumn(P.tx, P.ty, 0x4fa8e0, 4.2, 0.7, 700, 0xd8f4ff);
+                /* B7b (the VFX sweep): the geyser was a white-cored column 0.7 squares wide over the caster and its ring
+                   near white: the column narrower with a water-blue core, the ring a full blue */
+                var vc = _vcOn();
+                _capColumn(P.tx, P.ty, 0x4fa8e0, 4.2, vc ? 0.5 : 0.7, 700, vc ? 0x6fc0f0 : 0xd8f4ff);
                 _capPuff(P.tx, P.ty, 'water-splash', 16, { r: 0.5, out: 30, vz0: 300, vz1: 520, gravity: 700, s0: 16, s1: 28, ml0: 700, ml1: 1000 });
                 _capAt(520, function () {
-                    _capRing(P.tx, P.ty, 0xbfe8ff, r + 1.4, 560, 2);
+                    _capRing(P.tx, P.ty, vc ? 0x4fb0f0 : 0xbfe8ff, r + 1.4, 560, 2);
                     _capPuff(P.tx, P.ty, 'water-splash', 14, { r: r, out: 200, vz0: 30, vz1: 90, gravity: 300, s0: 16, s1: 26 });
                     _capLight(P.tx, P.ty, 0x6fbfff, { i: 2.4, ms: 700, h: 0.4, r: 4 });
                     _sigShake('hard');
@@ -63056,7 +63059,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* THE VFX SWEEP, B7b (2026-11-17): wind and sonic's bright sheet still read white at a mid tone (nine white static
        squares under Roundhouse Kick): a full mint / a full violet. Every hit square still wears its sheet. */
-    var _NZ_VC = { wind: 0x22a070, sonic: 0x8e4ae6 };
+    var _NZ_VC = { wind: 0x22a070, sonic: 0x8e4ae6, water: 0x2a86e0 };   /* water (part 2): its sheet read ice-white over the bodies (Bloom, Fluoride Water, Whirlpool) */
     function _nzWash(tiles, el, rank, o) {
         o = o || {};
         var R = _NZ[el]; if (!R || !_canSpawn()) return null;
