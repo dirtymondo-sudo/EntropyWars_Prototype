@@ -41,13 +41,13 @@
  },
  "site_prebuilt_camelot_kingdom": {
   "id": "site_prebuilt_camelot_kingdom",
-  "nx": 96,
-  "nz": 96,
+  "nx": 72,
+  "nz": 72,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "1e9ec3fc76",
-  "bytes": 1396,
-  "s": "7.3"
+  "v": "4745781773",
+  "bytes": 795,
+  "s": "5.1"
  },
  "site_prebuilt_bermuda_beach": {
   "id": "site_prebuilt_bermuda_beach",
@@ -288,5 +288,55 @@
   "v": "24d7365b55",
   "bytes": 1656,
   "s": "1.1"
+ },
+ "site_prebuilt_camelot_ow_garden": {
+  "id": "site_prebuilt_camelot_ow_garden",
+  "nx": 48,
+  "nz": 36,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "220a5031b6",
+  "bytes": 336,
+  "s": "0.5"
+ },
+ "site_prebuilt_camelot_ow_pines": {
+  "id": "site_prebuilt_camelot_ow_pines",
+  "nx": 24,
+  "nz": 84,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "ee37e58117",
+  "bytes": 256,
+  "s": "0.5"
+ },
+ "site_prebuilt_camelot_ow_fairy": {
+  "id": "site_prebuilt_camelot_ow_fairy",
+  "nx": 48,
+  "nz": 36,
+  "h0": -0.8,
+  "hs": 0.25,
+  "v": "036f4bd3f3",
+  "bytes": 319,
+  "s": "0.5"
+ },
+ "site_ow_l6": {
+  "id": "site_ow_l6",
+  "nx": 36,
+  "nz": 72,
+  "h0": -0.78,
+  "hs": 0.25,
+  "v": "c9d76d710b",
+  "bytes": 1003,
+  "s": "0.3"
+ },
+ "site_prebuilt_camelot_ow_forest": {
+  "id": "site_prebuilt_camelot_ow_forest",
+  "nx": 48,
+  "nz": 60,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "7e28d732cc",
+  "bytes": 353,
+  "s": "0.5"
  }
 }
