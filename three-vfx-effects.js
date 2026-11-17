@@ -21576,7 +21576,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigShockRing3D(tx, ty, { color: 0x88cc55, r1: ts0 * 1.2, ms: 320 });
             _sigSparks(tx, ty, 'blood-splat', 8, { vxy: 160, vz0: 30, vz1: 150 });
             _sigSparks(tx, ty, 'dust-puff', 8, { vxy: 120, vz0: 10, vz1: 60, gravity: 60 });
-            _sigScreenFlash('#ccffaa', 90, 0.10);
+            if (!_vcOn()) _sigScreenFlash('#ccffaa', 90, 0.10);   /* THE VFX SWEEP, B9b */
             _sigShake('normal');
         },
 
@@ -49932,7 +49932,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             face.material.opacity = 0.55 * vis;
             hands[0].rotation.y = -Math.PI * 1.6 * (1 - sweep); hands[1].rotation.y = -0.5 * (1 - sweep);
             hands[0].children[0].material.opacity = hands[1].children[0].material.opacity = 0.9 * vis;
-            if (el >= 560 && !toll) { toll = true; _sigShockRing3D(tx, ty, { color: _PZ.grave, r1: R * 1.2, ms: 520 }); _sigScreenFlash('#c8ffb8', 160, 0.25); }
+            if (el >= 560 && !toll) { toll = true; _sigShockRing3D(tx, ty, { color: _PZ.grave, r1: R * 1.2, ms: 520 }); if (!_vcOn()) _sigScreenFlash('#c8ffb8', 160, 0.25); }   /* THE VFX SWEEP, B9b: the bell's ring is the toll, no pale screen flash */
             for (var j = 0; j < skulls.length; j++) {
                 var S = skulls[j], dance = _sigClamp01((el - 600) / 900), a = S.a + dance * Math.PI * 1.5;
                 var c = Math.cos(a), sn = Math.sin(a), d = (Math.abs(c) + Math.abs(sn)) || 1, rr = ts * 2 * (el > 1350 ? 1 - _sigClamp01((el - 1350) / 300) * 0.4 : 1);
@@ -74614,12 +74614,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
          keeps its layer (every hit square still flashes); only the colour changes, read live so the switch works. */
     var _VC_RUNE_NOT_B9B = {
         /* psychicHex: none of these is drawn on the ground */
-        pzDebunked: 1, goMissingTime: 1, raceRatiod: 1, sigScrape: 1, nrShhh: 1
+        pzDebunked: 1, goMissingTime: 1, raceRatiod: 1, sigScrape: 1, nrShhh: 1,
+        /* unholy (part 2): a body, a bite, a breath, a kiss, a thrown thing, a song, a flock. The decrees, the curses, the
+           voodoo, the soul work, the dark itself and the Egyptian rites keep their circle. */
+        raceAbsorb: 1, raceBoneBarrage: 1, raceBrokenHalo: 1, raceCarrionFeast: 1, raceCrowStorm: 1, udDeathRattle: 1,
+        raceDragonfear: 1, mmEmbalm: 1, pzLastKiss: 1, raceSleepParalysis: 1, raceSoulSuck: 1, pzStolenVitality: 1,
+        raceRigormortis: 1, raceDarkLullaby: 1, raceHeatDeath: 1
     };
     var _B9B_TINT = {
         /* recipe id: [[layer index, sprite (a check), the colour]] */
         sigUncannySmile_center: [[0, 'shockwave', 0xff2030]],        /* the smile's ring in its eye red (it was bone white) */
-        nrPinPrick_impact: [[0, 'flash', 0xe8a0b4]]                  /* the pin's glint in the doll's lace pink */
+        nrPinPrick_impact: [[0, 'flash', 0xe8a0b4]],                 /* the pin's glint in the doll's lace pink */
+        /* part 2, unholy: the cream-white ring (an untinted shockwave / halo-ring) each of these laid on the floor */
+        raceBoneBarrage_impact_center: [[0, 'shockwave', 0x9a80c0]],
+        raceDarkDominion_impact_center: [[1, 'shockwave', 0x8a4aff]],
+        raceDemonicRoar_impact_center: [[0, 'shockwave', 0xff3322]],     /* Demonic Roar (+ Labyrinth Roar's second ring) */
+        raceLabyrinthRoar_impact_center: [[0, 'shockwave', 0xcc8844]],
+        raceDreadAura_aura_center: [[0, 'halo-ring', 0x8833cc]],
+        raceShadowBind_impact: [[0, 'halo-ring', 0x8844cc]],
+        raceInfernalDecree_impact_center: [[1, 'shockwave', 0xff5a2a]],  /* Infernal Decree + Cataclysm Decree */
+        _selfHeal_unholy_burst_center: [[0, 'halo-ring', 0x8a3ac8]],     /* Carrion Feast (its only user) */
+        raceCurseOfMisfortune_impact: [[1, 'flash', 0x9a7cff]],          /* three pale-blue flashes -> the curse's violet */
+        nrShadowStep_impact: [[0, 'flash', 0x8a6ad8]],                   /* a square-sized pure white flash -> shadow violet */
+        raceContract_impact: [[0, 'flash', 0xffd24a]]                    /* Soul Bind, Voodoo (and Contract): bone white -> the ink's gold */
     };
     (function () {
         for (var id in _B9B_TINT) {

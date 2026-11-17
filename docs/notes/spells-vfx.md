@@ -5090,6 +5090,31 @@ was left is small. Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = t
 - No line spell of the brief's list is on B10 (Piercing Arrow, Bullet Pass, Shockwave Clap and Ki Charge are on B3's list).
 - Frames: docs/plans/vfx-cleanup/img/sweep/b10_p1_*.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
 
+## THE VFX SWEEP, B9b, part 2: the unholy half + the list is done (2026-11-17, three-vfx-effects.js; `batches/B9b.txt` lines 52-108)
+Same method and the same two tables as part 1 (block "THE VFX SWEEP, B9b"). All behind `EW_NO_VFX_CLEANUP`; looks only.
+**Changed (28):**
+- **No cast rune** (`_VC_RUNE_NOT_B9B`; unholy is a rune school, these are a body, a bite, a breath, a kiss, a thrown
+  thing, a song, a flock): Absorb, Bone Barrage, Broken Halo, Carrion Feast, Crow Storm, Death Rattle, Dragonfear, Embalm,
+  Last Kiss, Sleep Paralysis, Soul Suck, Stolen Vitality, Rigormortis, Dark Lullaby, Heat Death.
+  **The rune stays** (rune magic): Ammit Devours, Weigh the Heart, Curse of the Tomb (the Egyptian rites), Cataclysm
+  Decree, Infernal Decree, Dark Dominion, Consuming Dark, Family Curse, Needle Work, Voodoo, Soul Bind, Shadow Crush, The Reaping.
+- **The cream-white floor ring in the spell's colour** (`_B9B_TINT`; an untinted `shockwave` / `halo-ring` layer of the
+  spell's own recipe): Bone Barrage (violet), Dark Dominion (violet), Demonic Roar (its red), Labyrinth Roar (its amber,
+  + Demonic Roar's ring it borrows), Dread Aura, Shadow Crush, Infernal Decree + Cataclysm Decree (fire orange), Carrion Feast.
+- **A white / pale flash in the spell's colour:** Shadow Step (a square-sized pure white flash, now shadow violet),
+  Family Curse (three pale-blue flashes, now the curse's violet), Soul Bind + Voodoo (bone white, now the ink's gold;
+  the recipe `raceContract_impact` is shared with Contract on B9a's list, which gets the same gold).
+- **No pale screen flash:** Danse Macabre (the bell's toll), Zombie Rush.
+**Checked, nothing to change (29):** Ammit Devours, Bone Toss, Car Toss, Clone Jutsu, Consuming Dark, Corner of Your Eye,
+Curse of the Tomb, Demonic Claw, Evil Eye, Fear, Frenzy, Grab, Grave Whisper, KNEEL, Linen Bind (linen), Marrowstorm
+(bone), Needle Work, No Mercy, Out of the Dark, Rend, Scare Off, Shambling Horde, Skull Crack (bone), Skyscraper Toss,
+Terror Pounce, The Reaping, Tithe, Treeline Scream, Weigh the Heart. Their white helper calls (the jaws', the claw
+combo's and the sonic boom's speed burst and third cut) are already drawn in the spell's colour by `_vcCol` (B1).
+- Frames (before on top, after under): `docs/plans/vfx-cleanup/img/sweep/b9b_p2_*.jpg`. Seen: the rune gone on Broken
+  Halo, Carrion Feast, Dragonfear, Embalm, Sleep Paralysis, Soul Suck, Stolen Vitality; the roars' rings red / amber.
+  NOT seen on a frame (0.45 s apart misses them, or the before frame had no rune at that tick either): the other eight
+  runes, the other rings, the four flashes, the two screen flashes. Those rest on the code trace.
+- B9b is done: 108 of 108 (43 changed, 65 nothing). Open for the cleanup thread: see part 1's last line.
 
 ## THE VFX SWEEP, B10, part 2: the last check: basic attacks, items, combos (2026-11-17, battle.js)
 Not in any table; one of each was fired by hand on the audit board (`doAttack`, `doItem` healPotion, `doComboAttack`
