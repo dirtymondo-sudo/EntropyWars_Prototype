@@ -28858,7 +28858,11 @@
 
                     /* THE CUBE (2026-11-17): the acting face is always the cube's top; the camera looks at it (a square on a side
                        face is folded under the edge, so its flat place on the frame is empty air) */
-                    if (state && state._cube && state._cube.N) { const _cN = state._cube.N; this.x = Math.max(_cN, Math.min(2 * _cN, this.x)); this.y = Math.max(_cN, Math.min(2 * _cN, this.y)); }
+                    if (state && state._cube && state._cube.N) { const _cN = state._cube.N; this.x = Math.max(_cN, Math.min(2 * _cN, this.x)); this.y = Math.max(_cN, Math.min(2 * _cN, this.y));
+                        /* the orbit stays on the cube (mondo 11-17: "the camera was behaving all funky when i tried to rotate to see the
+                           tiles i could move to"): past level the camera craned up into the sky and lost the cube; it stops just short
+                           of level, looking across the top at the side faces */
+                        if (this.tilt > 82) this.tilt = 82; }
                     if (!this._smoothInited) {
                         this._smoothTilt = this.tilt;
                         this._smoothYaw = this.yaw;
@@ -62366,6 +62370,38 @@
             if (!_cubeModeOn() || typeof cubeFrame !== 'function') { state._cube = null; return; }
             const N = CUBE_RULES.N, seed = Math.floor(engineRng() * 1e9);
             state._cube = { N, basis: CUBE_BASIS_TOP, seed, ver: 1, last: null, next: cubePickSlice(N, 1, seed) };
+            _cubeSettleArm();
+        }
+        /* THE NEW TOP, MID-TURN (mondo 11-17: "when i moved to another face of the cube, from that unit's perspective that face
+           should become the top. Instead i was walking sideways"): the frame used to be laid round a fighter's face only when its
+           turn began, so a fighter who walked (or was carried) over an edge acted on from a side face. Now, the moment the acting
+           fighter stands still on another face (its walk done, no action playing, the cube's own swing done), the frame is laid
+           round that face: the cube tumbles so it comes up, and the camera follows the fighter. Host / single player only (the
+           guest mirrors the state, and the tumble with it). */
+        let _cubeSettleTimer = null;
+        function _cubeIsGuest() { try { return typeof isOnlineMatch === 'function' && isOnlineMatch() && window._NET && window._NET.role === 'guest'; } catch (e) { return false; } }
+        function _cubeSettleArm() { if (!_cubeSettleTimer) _cubeSettleTimer = setInterval(() => { try { _cubeSettleTick(); } catch (e) { console.warn('[CUBE] settle', e); } }, 150); }
+        function _cubeSettleTick() {
+            if (!cubeOn()) { if (!_cubeModeOn() && _cubeSettleTimer) { clearInterval(_cubeSettleTimer); _cubeSettleTimer = null; } return; }
+            if (state.phase !== 'battle' || state.winner || _cubeIsGuest()) return;
+            if (state._walkAnimActive || state._actionExecuting || _roundAdvanceInProgress) return;
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.cubeBusy && ThreeRenderer.cubeBusy()) return;
+            const u = state.units.find(q => q.id === state._blitzActiveUnitId);
+            if (!u || u.dead) return;
+            /* the CPU's own fighters: never between the steps of a plan it already made in this frame's squares (its hand turn
+               lays the frame itself, doCubeTurn) */
+            if (state.aiThinking || state.controllers?.[u.player] === CTRL.AI || state.autoPlayers?.[u.player]) return;
+            if (cubeFocus(u)) _cubeAfterMidTurnRelay(u);
+        }
+        function _cubeAfterMidTurnRelay(u) {
+            window._ewHlCache = null;   // the reach the menu shows is the new frame's
+            try {
+                if (typeof camera !== 'undefined' && camera && !state.cameraDisabled) {
+                    camera.x = u.x; camera.y = u.y;
+                    camera._smoothX = u.x; camera._smoothY = u.y;   // the frame moved under the camera: no glide across it
+                }
+            } catch (e) {}
+            try { markDirty('board', 'actions', 'hud'); renderIfDirty(); } catch (e) {}
         }
         /* the faces a fighter standing on (x, y) sees (data.js cubeSeenFaces): own face; on an edge square also the face across
            it; on a corner square all three. Team vision unions them as it always did (mondo 11-17) */
@@ -62458,11 +62494,122 @@
             const C = state._cube, every = Math.max(1, CUBE_RULES.turnEvery | 0);
             if ((state.round % every) !== 0 || !C.next) return false;
             const sl = C.next;
+            /* THE TURN YOU SEE (mondo 11-17: "isnt there a whole thing ... that shuffles the cube in between rounds"; it turned,
+               but at the speed of a blink while the camera was elsewhere): the camera pulls back over the cube first, the
+               picture holds the slice a beat, swings it slowly with a banner, and the round waits for the swing
+               (ThreeRenderer.hasBlockingAnims counts it). The camera move is eorFocusCamera's, relayed to the guest. */
+            try { if (typeof eorFocusCamera === 'function') eorFocusCamera(1.5 * C.N - 0.5, 1.5 * C.N - 0.5, { zoom: 0.5, duration: 450 }); } catch (e) {}
+            C.lastBy = null;
             _cubeRelay(C.basis, sl);
             C.turns = (C.turns || 0) + 1;
             C.next = cubePickSlice(C.N, state.round + 1, C.seed);
             try { addLog('🧊 THE CUBE TURNS: a slice goes round, and everyone on it with it.'); } catch (e) {}
             return true;
+        }
+        /* ═══ TURN THE CUBE BY HAND (mondo 11-17: "i want the player and enemies to be able to turn rubick's cube themselves as
+           part of their turn if they want; whatever tile they are on they can rotate it left or right or up or down") ═══
+           The acting fighter turns the row or the column through its own square a quarter turn: LEFT / RIGHT turn the row
+           (the squares slide along board x), UP / DOWN the column (along board y). Everything on that ring goes round with it,
+           the fighter too (the frame is then laid round the face it lands on, THE NEW TOP). Costs CUBE_HAND.ap AP, once per
+           turn, and does not end the turn. The CPU weighs it like any action (ai.js THE CUBE BY HAND). */
+        const CUBE_HAND = { ap: 1 };
+        const _CUBE_HAND_DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+        /* the slice a turn from (x, y) in board direction `dir` is: the ring through the square, turning so the square's
+           sticker moves one quarter toward `dir` */
+        function cubeHandSlice(x, y, dir) {
+            if (!cubeOn() || !_CUBE_HAND_DIRS[dir]) return null;
+            const id = cubeSlotAt(x, y); if (!id) return null;
+            const f = cubeFrameNow(), c = f.cell[id], s = cubeSlots(state._cube.N).find(t => t.id === id);
+            if (!c || !s) return null;
+            const d = _CUBE_HAND_DIRS[dir];
+            /* the cube direction the square moves along, and the axis it turns about (the other in-face direction) */
+            const mvDir = d[0] ? c.tx.map(v => v * d[0]) : c.ty.map(v => v * d[1]);
+            const axV = d[0] ? c.ty : c.tx;
+            const a = axV[0] ? 0 : axV[1] ? 1 : 2;
+            const layer = s.cubie[a];
+            /* +1 or -1: the one whose quarter turn takes the face's normal onto mvDir (the sticker slides that way) */
+            const n = s.n, i = (a + 1) % 3, j = (a + 2) % 3;
+            const rot = (dd) => { const o = n.slice(); o[i] = -dd * n[j]; o[j] = dd * n[i]; return o; };
+            const r1 = rot(1), dirSign = (r1[0] === mvDir[0] && r1[1] === mvDir[1] && r1[2] === mvDir[2]) ? 1 : -1;
+            return { a, layer, dir: dirSign };
+        }
+        /* the squares (current frame) a slice carries */
+        function cubeSliceCells(sl) {
+            if (!cubeOn() || !sl) return [];
+            const f = cubeFrameNow(), mv = cubeSliceMove(state._cube.N, sl), out = [];
+            for (const id in mv) { const c = f.cell[id]; if (c) out.push({ x: c.x, y: c.y }); }
+            return out;
+        }
+        function cubeTurnProblem(unit) {
+            if (!cubeOn()) return 'Not on the cube';
+            if (!unit || unit.dead) return 'Down';
+            if (state._blitzActiveUnitId !== unit.id) return 'Not this unit\'s turn';
+            if ((unit.ap || 0) < CUBE_HAND.ap) return 'No AP';
+            if (unit._cubeTurnedRound === state.round) return 'Once a turn';
+            if (!cubeSlotAt(unit.x, unit.y)) return 'Not on the cube';
+            const lock = typeof unitActionBlockKey === 'function' ? unitActionBlockKey(unit) : null;
+            if (lock) return (STATUS_DEFS[lock] && STATUS_DEFS[lock].colorText) || 'Cannot act';
+            return null;
+        }
+        /* the four choices for the HUD and the CPU: { dir, slice, cells } */
+        function cubeHandOptions(unit) {
+            if (!unit || !cubeOn()) return [];
+            return Object.keys(_CUBE_HAND_DIRS).map(dir => { const sl = cubeHandSlice(unit.x, unit.y, dir); return sl ? { dir, slice: sl, cells: cubeSliceCells(sl) } : null; }).filter(Boolean);
+        }
+        function doCubeTurn(unit, dir) {
+            const why = cubeTurnProblem(unit);
+            if (why) { if (!state.autoPlayers?.[unit && unit.player]) addLog('Cannot turn the cube: ' + why + '.'); return false; }
+            const sl = cubeHandSlice(unit.x, unit.y, dir); if (!sl) return false;
+            try { pushUndoSnapshot(true); } catch (e) {}
+            spendAP(unit, CUBE_HAND.ap);
+            unit._cubeTurnedRound = state.round;
+            state.actionMode = null; state.pendingTarget = null; state.actionMenuView = 'root';
+            state._cube.lastBy = { id: unit.id, dir };
+            _cubeRelay(state._cube.basis, sl);
+            window._ewHlCache = null;
+            try { addLog('🧊 ' + _ctName(unit) + ' turns the cube ' + dir.toUpperCase() + ': the ' + (dir === 'left' || dir === 'right' ? 'row' : 'column') + ' goes round, and everyone on it with it.'); } catch (e) {}
+            try { playSfx('uiConfirm'); } catch (e) {}
+            markDirty('board', 'actions', 'hud', 'teams', 'selectedUnit');
+            renderIfDirty();
+            /* the turn goes on once the swing is done: THE NEW TOP lays the frame round the fighter's face if the ring carried
+               it, then a spent unit hands over and the CPU plays on */
+            const _gen = _blitzTurnGen;
+            setTimeout(() => {
+                if (_gen !== _blitzTurnGen || state.winner || state._blitzActiveUnitId !== unit.id) return;
+                let relaid = false;
+                try { if (!unit.dead && cubeFocus(unit)) { relaid = true; _cubeAfterMidTurnRelay(unit); } } catch (e) {}
+                setTimeout(() => {
+                    if (_gen !== _blitzTurnGen || state.winner || state._blitzActiveUnitId !== unit.id) return;
+                    try {
+                        if ((unit.ap || 0) <= 0 || unit.dead) endUnitIfDone(unit);
+                        else if (state.controllers?.[unit.player] === CTRL.AI) maybeTriggerComputerTurn();
+                    } catch (e) {}
+                }, relaid ? 850 : 50);
+            }, 1250);
+            return true;
+        }
+        /* THE CPU'S HAND TURN: worth it when the ring brings enemies into this fighter's reach (move + range) that were out of
+           it, or pulls them closer; never when it would leave no AP to act on what it brought */
+        function _cubeAiPick(unit) {
+            if (cubeTurnProblem(unit) || (unit.ap || 0) < CUBE_HAND.ap + 1) return null;
+            const f = cubeFrameNow(), N = state._cube.N;
+            const reach = (typeof getEffectiveMove === 'function' ? getEffectiveMove(unit) : 3) + Math.max(1, typeof getEffectiveRange === 'function' ? getEffectiveRange(unit) : 1);
+            const foes = state.units.filter(u => u && !u.dead && u.id !== unit.id && (typeof isEnemyUnit === 'function' ? isEnemyUnit(unit, u) : u.player !== unit.player));
+            if (!foes.length) return null;
+            const d = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+            const before = foes.reduce((s, e) => s + (d(unit, e) <= reach ? 1 : 0), 0);
+            const dBefore = foes.reduce((s, e) => s + Math.min(2 * reach, d(unit, e)), 0);
+            let best = null;
+            for (const op of cubeHandOptions(unit)) {
+                const mv = cubeSliceMove(N, op.slice);
+                const at = (u) => { const id = cubeSlotAt(u.x, u.y), to = id && mv[id], c = to && f.cell[to]; return c ? { x: c.x, y: c.y } : { x: u.x, y: u.y }; };
+                const me = at(unit);
+                const inR = foes.reduce((s, e) => s + (d(me, at(e)) <= reach ? 1 : 0), 0);
+                const dAfter = foes.reduce((s, e) => s + Math.min(2 * reach, d(me, at(e))), 0);
+                const score = (inR - before) + 0.08 * (dBefore - dAfter);
+                if (score >= 1 && (!best || score > best.score)) best = { dir: op.dir, score };
+            }
+            return best;
         }
         /* the squares of the warned slice in the current frame (the picture glows them; the CPU steps off or onto them) */
         function cubeWarnedCells() {
@@ -62471,7 +62618,8 @@
             for (const id in mv) { const c = f.cell[id]; if (c) out.push({ x: c.x, y: c.y }); }
             return out;
         }
-        Object.assign(window, { cubeOn, cubeStart, cubeFocus, cubeEndOfRound, cubeSlotAt, cubeFaceAt, cubeFrameNow, cubeWarnedCells, cubeSightBlocked, _cubeRelay });
+        Object.assign(window, { cubeOn, cubeStart, cubeFocus, cubeEndOfRound, cubeSlotAt, cubeFaceAt, cubeFrameNow, cubeWarnedCells, cubeSightBlocked, _cubeRelay,
+            CUBE_HAND, cubeHandSlice, cubeSliceCells, cubeTurnProblem, cubeHandOptions, doCubeTurn });
 
         function startMatch() {
             state.startTime = Date.now();
@@ -69536,6 +69684,18 @@
                live step's plan (hold / approach / attack / guard), never the AI. */
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutCpuTurn === 'function') {
                 try { if (window._tutCpuTurn(unit)) return; } catch (e) { console.error('[Tutorial] dummy turn failed:', e); }
+            }
+
+            /* 🧊 THE CUBE BY HAND (mondo 11-17: "Make the CPU use it too"): first, would turning its row / column bring the fight
+               to it? (the turn goes on after the swing: doCubeTurn hands back to the CPU) */
+            if (cubeOn() && unit._cubeTurnedRound !== state.round) {
+                let pick = null;
+                try { pick = _cubeAiPick(unit); } catch (e) { console.warn('[CUBE] cpu pick', e); }
+                if (pick) {
+                    clearAiSafetyTimer(); state.aiThinking = false;
+                    if (doCubeTurn(unit, pick.dir)) return;
+                    state.aiThinking = true;
+                }
             }
 
             if (typeof window.aiTakeTurn === 'function') {

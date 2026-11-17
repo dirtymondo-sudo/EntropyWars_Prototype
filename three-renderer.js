@@ -23520,7 +23520,10 @@ const ThreeRenderer = (function () {
         /* THE SEARCH MAP (battle.js syncSearchMap): the hovered Inspect's real footprint, a solid plate; the tiles the
            team already searched, a grey wash */
         'searchFoot':          { fill: 0.78, edgeGlow: 1.45, inset: 1.0 },
-        'searchMap':           { fill: 0.55, edgeGlow: 0.5 }
+        'searchMap':           { fill: 0.55, edgeGlow: 0.5 },
+        /* THE CUBE BY HAND (hud.js _hrlgCubePreview): the ring that turns, and the square the turner lands on */
+        'cubeTurn':            { fill: 0.62, edgeGlow: 1.4, inset: 1.0 },
+        'cubeTurnLand':        { fill: 0.55, edgeGlow: 1.3, dots: 1 }
     };
 
     /* Shared yellow-corner cursor material — stamped on top of whichever tile
@@ -25756,6 +25759,9 @@ const ThreeRenderer = (function () {
     /* THE TUMBLE / THE SLICE TURN: read the record each frame (host and guest alike) */
     function _cubeWatch(now) {
         var C = state._cube, G = _cubeGeo(), bk = _cubeBasisKey(C.basis), changed = false;
+        /* the first look at a match's cube: what already happened is not replayed (a guest joining, a reload) — but every
+           slice from here on swings (the first round's turn used to be skipped: sliceVer started at 0 = "never seen") */
+        if (_cubeR.basisKey === null && !_cubeR.seen) { _cubeR.seen = true; _cubeR.sliceVer = (C.lastSlice && C.lastSlice.ver) || 0; }
         if (_cubeR.basisKey !== bk) {
             if (_cubeR.basis && !window.EW_CUBE_NO_ANIM) {
                 /* A0 takes the new layout to the old one: the new face starts where it was and rises to the top */
@@ -25767,11 +25773,16 @@ const ThreeRenderer = (function () {
         }
         var LS = C.lastSlice;
         if (LS && LS.ver > _cubeR.sliceVer) {
-            if (_cubeR.sliceVer && !window.EW_CUBE_NO_ANIM) {
+            if (!window.EW_CUBE_NO_ANIM) {
                 var mv = cubeSliceMove(C.N, LS.slice), F = cubeFrameNow(), cells = {};
                 for (var id in mv) { var c = F.cell[mv[id]]; if (c) cells[c.x + ',' + c.y] = 1; }
                 var ax = new THREE.Vector3(LS.slice.a === 0 ? 1 : 0, LS.slice.a === 1 ? 1 : 0, LS.slice.a === 2 ? 1 : 0);
-                _cubeR.slice = { cells: cells, ax: ax, dir: LS.slice.dir, t0: now + (_cubeR.tumble ? 0 : 0), ms: 900 };
+                /* THE TURN YOU SEE (mondo 11-17): a beat where the slice sits in its old place (the camera arrives), then a slow
+                   swing; ms counts from t0 to the end (the lead included) */
+                var by = C.lastBy, byU = by ? (state.units || []).find(function (u) { return u.id === by.id; }) : null;
+                var lead = by ? 150 : 550, swing = by ? 1000 : 1500;
+                _cubeR.slice = { cells: cells, ax: ax, dir: LS.slice.dir, t0: now, lead: lead, ms: lead + swing };
+                _cubeBanner(byU ? ((typeof unitDisplayName === 'function' ? unitDisplayName(byU) : (byU.name || 'A fighter')) + ' turns the cube') : 'The cube turns', lead + swing + 250);
             }
             _cubeR.sliceVer = LS.ver; changed = true;
         }
@@ -25788,7 +25799,7 @@ const ThreeRenderer = (function () {
             T = _cubeAbout(new THREE.Matrix4().makeRotationFromQuaternion(q), G.c.x, G.c.y, G.c.z);
         }
         if (_cubeR.slice) {
-            var k = 1 - _cubeEase((now - _cubeR.slice.t0) / _cubeR.slice.ms), M = _cubeBasisM(C.basis);
+            var _sl = _cubeR.slice, k = 1 - _cubeEase((now - _sl.t0 - (_sl.lead || 0)) / (_sl.ms - (_sl.lead || 0))), M = _cubeBasisM(C.basis);
             /* the slice starts a quarter back (in cube space) and swings home */
             var R = new THREE.Matrix4().makeRotationAxis(_cubeR.slice.ax, -k * _cubeR.slice.dir * Math.PI / 2);
             S = _cubeAbout(M.clone().multiply(R).multiply(M.clone().transpose()), G.c.x, G.c.y, G.c.z);
@@ -25823,7 +25834,7 @@ const ThreeRenderer = (function () {
     }
     /* each frame, before the draw */
     function _cubeFoldFrame(now) {
-        if (!_cubeOnR()) { if (_cubeR.touched.length) _cubeUnfoldAll(); _cubeR.basisKey = null; _cubeR.basis = null; _cubeR.sliceVer = 0; return; }
+        if (!_cubeOnR()) { if (_cubeR.touched.length) _cubeUnfoldAll(); _cubeR.basisKey = null; _cubeR.basis = null; _cubeR.sliceVer = 0; _cubeR.seen = false; return; }
         var W = _cubeWatch(now), ts = W.ts, gs = _cubeBoardGroups(), lc = new THREE.Matrix4(), m = new THREE.Matrix4();
         if (fogGroup) fogGroup.visible = false;   // THE FOG SHEET lies flat over the frame: the cube's sight hides the bodies instead
         var lists = gs.map(function (g) { return g ? g.children : []; });
@@ -25927,7 +25938,36 @@ const ThreeRenderer = (function () {
         var F = _cubeFoldAt(tx, ty); if (F) v.applyMatrix4(F);
         return v;
     }
-    function cubeRelaid() { _objectsDirty = true; }
+    function cubeRelaid() {
+        _objectsDirty = true;
+        /* start the swing / tumble now (not on the next drawn frame), so a wait that asks cubeBusy() right after sees it */
+        try { if (_cubeOnR()) _cubeWatch(performance.now()); } catch (e) {}
+    }
+    /* is the cube's picture still moving (the slice swing, its lead-in, the tumble)? */
+    function cubeBusy() {
+        if (!_cubeR.slice && !_cubeR.tumble) return false;
+        var now = performance.now();
+        return !!((_cubeR.slice && now - _cubeR.slice.t0 < _cubeR.slice.ms) || (_cubeR.tumble && now - _cubeR.tumble.t0 < _cubeR.tumble.ms));
+    }
+    /* THE TURN'S BANNER: a plate over the board while a slice swings (both screens build it from the synced record) */
+    var _cubeBannerEl = null, _cubeBannerT = null;
+    function _cubeBanner(text, ms) {
+        try {
+            if (!_cubeBannerEl || !_cubeBannerEl.isConnected) {
+                _cubeBannerEl = document.createElement('div');
+                _cubeBannerEl.id = 'ewCubeTurnBanner';
+                _cubeBannerEl.style.cssText = 'position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:961;pointer-events:none;'
+                    + 'background:rgba(0,0,0,0.9);color:#ffffff;border:2px solid #ffffff;padding:8px 26px;font-family:DotGothic16,monospace;'
+                    + 'font-size:22px;letter-spacing:0.16em;text-transform:uppercase;white-space:nowrap;opacity:0;transition:opacity 180ms ease;'
+                    + 'text-shadow:0 0 10px rgba(80,220,255,0.8)';
+                (document.getElementById('game-viewport') || document.body).appendChild(_cubeBannerEl);
+            }
+            _cubeBannerEl.textContent = text;
+            _cubeBannerEl.style.opacity = '1';
+            clearTimeout(_cubeBannerT);
+            _cubeBannerT = setTimeout(function () { if (_cubeBannerEl) _cubeBannerEl.style.opacity = '0'; }, ms);
+        } catch (e) {}
+    }
 
     function worldToScreen(tileX, tileY, yOffset) {
         var cam = ThreeCamera.getCamera();
@@ -54655,7 +54695,8 @@ const ThreeRenderer = (function () {
         /* a body still on a throw arc (sky throws, drops, storm hurls) is a body still moving: the turn waits for its
            landing (2026-11-07, playtest H3 — the kill's close-up opened over the next unit's menu) */
         return _projTweens.length > 0 || _tetherTweens.length > 0 || _walkTweens.size > 0 || _displaceTweens.size > 0
-            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0 || _throwTweens.size > 0;
+            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0 || _throwTweens.size > 0
+            || cubeBusy();   // THE CUBE: the turn waits for the slice's swing and the tumble
     }
     function hasDecorAnims() {
         return _floatTweens.length > 0 || _hitFxTweens.length > 0 || _deathTweens.size > 0;
@@ -79524,9 +79565,14 @@ const ThreeRenderer = (function () {
         var look = (R && R.look) || d[0], tint = (R && R.tint != null) ? R.tint : d[1];
         var tex = _hzTex(look), mat = new THREE.MeshPhongMaterial({ map: tex || null, color: tint, shininess: 30 });
         mat.emissive = new THREE.Color(tint).multiplyScalar(0.18); mat.name = 'ew_cube_' + f;
+        _cubePushBack(mat);
         return (_cubeFaceMats[f] = mat);
     }
-    function _cubeCore() { return _cubeCoreMat || (_cubeCoreMat = new THREE.MeshPhongMaterial({ color: 0x15141c, shininess: 60, specular: 0x333344 })); }
+    /* THE PREVIEWS ON TOP (mondo 11-17: "The spell previews are messed up"): a move / spell / aim plate lies a hair over its
+       square, and on the cube's flat stickers the two fought for the same depth from the battle camera's distance (the
+       plates flickered in and out, mostly hidden). The cube's own surfaces are pushed back in depth instead. */
+    function _cubePushBack(m) { m.polygonOffset = true; m.polygonOffsetFactor = 2; m.polygonOffsetUnits = 6; return m; }
+    function _cubeCore() { return _cubeCoreMat || (_cubeCoreMat = _cubePushBack(new THREE.MeshPhongMaterial({ color: 0x15141c, shininess: 60, specular: 0x333344 }))); }
     function _ewCubeProp(U, whole, p) {
         var g = new THREE.Group(), s = 3.5, R = (typeof CUBE_RULES !== 'undefined') ? CUBE_RULES : null;
         var DIRS = { U: [0, 1, 0], D: [0, -1, 0], E: [1, 0, 0], W: [-1, 0, 0], S: [0, 0, 1], N: [0, 0, -1] };
@@ -99833,7 +99879,7 @@ const ThreeRenderer = (function () {
         elevY: function (z) { return z * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO; },
 
         showIntentBadges, clearIntentBadges, showPressMarks, clearPressMarks, dropPressMarksOn, worldToScreen, headRoomPx,
-        cubeRelaid, cubeCellOf, cubeFoldPoint,   // THE CUBE
+        cubeRelaid, cubeCellOf, cubeFoldPoint, cubeBusy,   // THE CUBE
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,
