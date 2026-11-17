@@ -10677,7 +10677,7 @@ const RACE_ABILITIES = {
           vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 4, blinkBehind: true, animVerb: 'kick',
           desc: 'Gone, then behind you. Blinks to the square behind a Single Enemy within 4, past units and walls, and deals HEAVY physical damage from behind (a Backstab). Needs a free square behind it. Cooldown: 2 rounds.' },
         { id: 'nrCloneJutsu', name: 'Clone Jutsu', tier: 4, families: ['ninjutsu'], cost: 100, apCost: 1, cooldownRounds: 3, spellType: 'human',
-          vfxElement: 'shadow', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 3, hitDamages: [44, 44, 44, 44, 44, 44, 44, 44],
+          vfxElement: 'shadow', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 3, hitDamages: [52, 52, 52, 52, 52, 52, 52, 52],
           ownHitFx: true, hitLeadMs: 260, animVerb: 'channel', _animOverride: { travel: 'none' },
           desc: 'One hand sign and there are eight of him. Shadow clones burst out of smoke round a Single Enemy within 3 and strike in turn: SEVERE physical damage across 8 hits. Cooldown: 3 rounds.' },
     ],

@@ -3963,3 +3963,14 @@ ripple rings), SPEED in the viewer's side colours (own cyan-blue, other side pin
   (the mixer's per-frame step), so the Flying Kick's star can show before his foot there; on a real GPU they should agree
   (the same clip path as Sky Tackle; not measured on a GPU here).
 
+
+## THE NINJA'S LOOKS (2026-11-17)
+three-vfx-effects.js "THE NINJA" (after the Samurai Slug); kill-switch window.EW_NO_NINJA_VFX; every look through fireGeometry
+(relayed to the guest, fog-gated by the square). No blade: steel stars, ink-violet smoke (0x2a2238 / 0xb9a8ff), a log, his own body.
+Side colours from the viewer's seat (Riot pass). 'nrShuriken:hit' = a spinning four-point star (ShapeGeometry) hand -> body with
+a side-coloured streak, steel sparks. Kawarimi aura = leaves + lilac ring; 'nrKawarimi:swap' = smoke + the pack's `fallen_log`
+stood on end where the blow landed, it tips over and fades (the status' onApply warms the model); a puff + side ring where he steps
+out. 'nrShadowStep:blink' = an ink-tinted body double (_finDouble) fading where he stood, a side-coloured floor line, smoke at both
+ends; its impact = a white + side-coloured crescent chop. 'nrCloneJutsu:hit' = one clone a hit: his own model (_finDouble, the
+caster as `o.unit`, a kick / punch slot played once, tinted 32 % ink) pops out of smoke on a ring round the target, lunges in, the
+hit flashes, it fades; a side ring on the first. Proof /mnt/project-files/ninja-race/.
