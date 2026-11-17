@@ -11204,6 +11204,63 @@ open ground shows as a dark hole in a clump of trees (it needs a seam look with 
 view the ground's own height (`hqTerrainCompile(room, id).hFn(x, z)`); the fight: `node playtest_handover.js <room> --at=x,z[,y] --race=<unit>`
 (both options added for the slice). Walk lengths: the shortest line over the room's `space` rows, door to door, at 2.4 and 4.6 m/s.
 
+## THE WOODS, ONE WORLD PHASE 3 — the Redwood Trail and the Ritual Ground stand at v13 (2026-11-17, BUILD_PLAN wave A, the Woods zone thread)
+Every Woods district now stands at its One World place; the old room `site_prebuilt_fairy_forest_plots` is in `DOOR_HQ.retired` (-> the Redwood Trail's
+room, which holds its arrival, the Creek, lower). Nothing of a district file changed; only plots moved, with everything on them.
+
+| Room | What | World plots | Box | Built by |
+|---|---|---|---|---|
+| `site_prebuilt_fairy_forest_ow_clearing` | the slice's Clearing + Dead Man's Cave, plus the wild link L1 (one plot, -16,0: rule 4) | -17..-6 x 0..4 | 12 x 5 | `bake-woods.js` |
+| `site_prebuilt_fairy_forest_ow_redwood` | THE REDWOOD TRAIL (T), 9 plots: the Snowline at the top, down the west column to the Meadow, the east column to the Creek, lower | -17..-16 x -9..-2 | 2 x 8 | `bake-woods.js` |
+| `site_prebuilt_fairy_forest_ow_ritual` | THE RITUAL GROUND (G), the ring round its empty middle (-21,7 is no plot), + L2 (7 plots from the Clearing) + L5 (2 plots on to the Estate's Iron Gate) | -22..-17 x 2..10 | 6 x 9 | `bake-woods.js` |
+| `site_ow_l3` | wild link L3, the Snowline up to the Snowy Pass (was the kit's proof room; `proof` dropped, ends given) | -17 x -14..-10 | 1 x 5 | `bake-route.js L3` |
+| `site_ow_l4` | wild link L4, the Clearing west to Camelot's Fairy Forest | -19..-17 x 0 | 3 x 1 | `bake-route.js L4` |
+
+Why this split (the room-splitting rule): the Clearing's room is full by the triangle number, so the Redwood Trail cannot join it; T + L3 would be 13 plots tall
+(the box is 12 at most); L4 + the Clearing would be 14 wide. L1 touches only the Clearing (the Old Road's plot -16,-1, route R4, phase 4.1, lies between L1 and the
+Creek, lower), so it is in the Clearing's room. L7 (-23,6) is Camelot's link (gen.js LINKS 'cam') and stands in Camelot's Forest room.
+
+**What the tool learned** (`bake-woods.js` THE ONE WORLD MOVE): (1) a STAND entry's `links: LINK(id, level)` = a wild link's plots laid by this tool in that room: forest,
+a three-square trail from each joint through the plot's middle (hub 6, 6), and ONE place beside the trail from ow-places.js (forest kinds; never one the room has
+until they run out; the plot is named "The trail, <place>"); seams and ends on a link plot are keyed by its world plot, `'-17,2:N'`. (2) `doorAt: { <door id>: { plot,
+side } }` moves a door whose side became a joint (the Shelf's `lemuria`, the Snowline's `shasta`: both on the east side now). (3) `bay: { id, plot, side }` places
+DOOR HQ's bay door (the Grove's `bay_grove`, the lake's west shore, north side) and the writer rewrites its siteRooms row (room + free place). (4) `strayOpen: [id]`
+opens the off-plot squares under a district building that stood across two home plots which no longer touch (THE CAMP HOUSE, G.js: its east square lies on the
+ring's empty middle; 2 squares opened, the house and everything in it where G.js put them). (5) the tool's decks stop at the room's wall. (6) `KIT_ENDS`: a link end
+another tool writes (woods_camelot).
+
+**The route kit learned** (`bake-route.js`): `ends: { '<seam id>': { link: '<link id>', side: 'a' } }` = a two-way link stands on that end (no seam door), and the
+kit rewrites the link's end to this room. L4's west end is `woods_camelot` end a (id kept); Camelot's thread puts end b on The Spring's east side.
+
+**Seams and doors** (ids; walked in the probe: T -> the Clearing and the Ritual Ground -> the Clearing, both arrive at their door):
+
+| Seam id | Between | Note |
+|---|---|---|
+| `ow_h_m16_0` | the Clearing (L1's north side) and the Redwood Trail (the Creek, lower's south side) | INTERIM: jumps R4's plot -16,-1. The phase 4.1 thread builds R4 and re-points both ends |
+| `ow_h_m17_2` | the Clearing (Deep woods, west, south) and L2's first plot (Ritual Ground room) | was the interim door to the old room |
+| `ow_h_m17_1` | the Clearing (Deep woods, west, north) and L4 | the Clearing's door is where woods_camelot stood; L4's is on its plot's middle |
+| `ow_h_m17_m9` | the Redwood Trail (the Snowline, north) and L3 | |
+| `ow_v_m16_m14` | L3's north end and the Mountains' Tree Line, west | the Mountains thread's room `site_prebuilt_shasta_ow_lodge` |
+| `ow_h_m21_11` | L5's south end and the Estate's Iron Gate | the Estate thread's room `site_prebuilt_skinwalker_ow_house` |
+| `ow_v_m22_6` | the Mound's west side and L7 | Camelot's `site_prebuilt_camelot_ow_forest` |
+
+Re-pointed by hand: the Cavern's `woods` door (bake-cavern.js + data.js, at `lemuria`) and the Mountains' Trailhead `woods` door (data.js, at `shasta`) -> the
+Redwood Trail's room; Camelot's `deadtree` door (data.js) -> the Ritual Ground's room (both zone threads change their tools in their own PRs). The Woods' `shasta`
+door names Shasta's own room `site_prebuilt_shasta_ow_shasta` (at `woods`). `lookingglass` names
+Camelot's Forest room (`deadtree`). Links moved with their plots: `grove_lodge` (the lake's east shore, north side now; its east side is L2) and `woods_ritual`
+(the Owl's west side: the ring's middle; its east side is the Stage).
+
+**Census** (`node ow-census.js --diff docs/areas/woods/move/before_tg.json site_prebuilt_fairy_forest_ow_redwood site_prebuilt_fairy_forest_ow_ritual`): every prop
+(641, now 681 with the link places) and every native (9) is in. What it lists as MISSING, all answered: the room-wide scatter rows (one a room now), the district
+scatter discs split per plot, 9 forest-mass trees where a new trail was laid, and the two interim seam doors of the old room (renamed / moved: `ow_h_m16_1` is
+`ow_h_m16_0`, `ow_h_m17_2` stands on L2's plot).
+
+**Proof** (probe-fast, no page errors): `docs/plans/one-world/proof/woods_redwood_creek.jpg`, `woods_ritual_l2.jpg`, `woods_l3.jpg`, `woods_l4.jpg`.
+Loading in the probe: the Redwood Trail 59 s (169 files), the Ritual Ground 53 s (207), L3 41 s, L4 32 s. Not measured: draw calls / triangles at the heaviest view.
+
+**Open, for mondo or a later pass**: the creek of the Redwood Trail still runs off the east wall of the Creek, lower and the Creek, upper (it flowed on into the
+Ritual Ground at home); the bridge on the Creek, lower now ends at that water. The camp house's east end stands over the ring's empty middle.
+
 ## THE MOUNTAINS, THE ONE WORLD MOVE — the range at its v13 places, three rooms (2026-11-17, BUILD_PLAN phase 3 wave A; the owner's One World Mountains thread)
 `bake-mountains.js` still builds the 12 x 8 HOME room the district files were written for (its checks run as before), then THE ONE WORLD MOVE
 (the end of the tool) stands the plots at their `docs/plans/one-world/plots.json` places with `ow-move.js` and writes THREE rooms in place of
