@@ -1118,6 +1118,17 @@
     // Value of denying tg's actions with status `id` for `dur` rounds.
     function ccDenialValue(g, unit, tg, id, dur, v) {
         if (!tg || tg.dead) return 0;
+        /* 🟥 THE RED CARD (the Referee, 2026-11-17 polish): a Yellow Card on a unit that already has one sends it off until its
+           next turn starts (battle.js _refereeRedCard). Booking is a setup; the second card is a missed turn (worth a hard
+           hold on a unit still to act this round, far less on one that already acted: it is back at the round's end). */
+        if (id === 'yellowCard') {
+            if (tg._isBoss || tg.isBoss || tg._isCube) return 10;
+            let booked = false;
+            try { booked = g.unitHasStatus(tg, 'yellowCard'); } catch (e) {}
+            if (!booked) return 40;
+            const notYet = (tg.ap || 0) > 0 && !tg.hasActed ? 1 : 0.3;
+            return tuneW(g, 'ccOutputFactor') * unitThreatOutput(g, tg, unit) * notYet + 60 + (unitIsHealerKit(tg) ? 80 : 0);
+        }
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
         if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial
         const output = unitThreatOutput(g, tg, unit);
@@ -9257,8 +9268,14 @@
             // Debuffs: prefer targets still missing at least one rider status.
             if (kind === 'debuff' && (spell.statusEffects || []).length) {
                 const fresh = inRange.filter(e =>
-                    (spell.statusEffects || []).some(f => f && f.id && !g.unitHasStatus(e.enemy, f.id)));
+                    (spell.statusEffects || []).some(f => f && f.id && !g.unitHasStatus(e.enemy, f.id))
+                    || (spell.refereeCard && g.unitHasStatus(e.enemy, 'yellowCard')));   // 🟥 the second card is the red card
+                /* 🟥 the Referee's Card goes to the booked enemy first (the red card), else anyone not yet booked */
                 if (fresh.length) inRange = fresh;
+                if (spell.refereeCard) {
+                    const booked = inRange.filter(e => g.unitHasStatus(e.enemy, 'yellowCard') && !(e.enemy._isBoss || e.enemy.isBoss || e.enemy._isCube));
+                    if (booked.length) inRange = booked;
+                }
             }
             // Elemental tile fallback: no enemy in direct range, but a
             // reactive tile might still reach one.
