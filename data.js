@@ -374,6 +374,17 @@ const FINISHERS = {
     'magician':       { id: 'fin_magician', name: 'The Prestige', glyph: '🎩', type: 'human', sig: 'motionCarries', built: true, tagline: 'AND FOR MY FINAL TRICK', desc: 'A curtain drops over the victim, a drumroll, the curtain lifts, and there is nobody there at all.' },   // 2026-11-16 THE NEW RACES
     'mole man':       { id: 'fin_mole_man', name: 'Six Feet Under', glyph: '⛏', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'MIND THE GAP', desc: 'The ground goes soft under the victim, two huge claws reach up out of the dirt, and it is pulled down and the hole filled in.' },   // 2026-11-16 THE NEW RACES — borrows the surfacing staging
     'quetzalcoatl':   { id: 'fin_quetzalcoatl', name: 'The Fifth Sun', glyph: '🐍', type: 'divine', sig: 'motionCarries', built: true, tagline: 'THE SUN MUST BE FED', desc: 'The feathered serpent rises behind its king, coils the victim in green and gold, and lifts it up the temple steps toward the sun.' },   // 2026-11-16 THE NEW RACES
+    'delivery boy':   { id: 'fin_delivery_boy', name: 'Contactless Delivery', glyph: '🛵', type: 'human', sig: 'driveBy', built: true, tagline: 'LEFT AT THE DOOR', desc: 'A horn, a blur and a bag on the step. The order was the victim, and it has been delivered.' },   // 2026-11-17 THE NEW RACES 2 (borrows the driveBy staging)
+    'librarian':      { id: 'fin_librarian', name: 'Permanent Record', glyph: '📚', type: 'anomaly', sig: 'eventHorizon', built: true, tagline: 'SHHH', desc: 'Every overdue book comes due at once. The shelves fold over the victim and the card is stamped for good.' },   // 2026-11-17 THE NEW RACES 2 (borrows the eventHorizon staging)
+    'televangelist':  { id: 'fin_televangelist', name: 'Faith Healing', glyph: '🙌', type: 'divine', sig: 'excommunicated', built: true, tagline: 'BE HEALED', desc: 'A palm on the forehead, a shout into the headset mic, and the victim is healed right out of the match.' },   // 2026-11-17 THE NEW RACES 2 (borrows the excommunicated staging)
+    'influencer':     { id: 'fin_influencer', name: 'Cancelled', glyph: '📱', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'LIKE AND SUBSCRIBE', desc: 'One post, ten million shares. By the time the ring light fades the victim has been cancelled out of existence.' },   // 2026-11-17 THE NEW RACES 2 (borrows the farewellTour staging)
+    'referee':        { id: 'fin_referee', name: 'Ejected', glyph: '🟥', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU\'RE OUTTA HERE', desc: 'The whistle, the red card, the long walk. The victim is escorted off the field and does not come back.' },   // 2026-11-17 THE NEW RACES 2 (borrows the bookEm staging)
+    'florida man':    { id: 'fin_florida_man', name: 'Breaking News', glyph: '📰', type: 'human', sig: 'driveBy', built: true, tagline: 'FLORIDA MAN STRIKES AGAIN', desc: 'Nobody can explain what happened next. The victim is tomorrow\'s headline.' },   // 2026-11-17 THE NEW RACES 2 (borrows the driveBy staging)
+    'boltzmann brain':{ id: 'fin_boltzmann_brain', name: 'Spontaneous Existence', glyph: '🧠', type: 'alien', sig: 'heatDeath', built: true, tagline: 'I THINK, THEREFORE I AM', desc: 'For one moment the brain imagines a universe without the victim in it, and the universe agrees.' },   // 2026-11-17 THE NEW RACES 2 (borrows the heatDeath staging)
+    'wendigo':        { id: 'fin_wendigo', name: 'Insatiable', glyph: '🦌', type: 'unholy', sig: 'fullMoon', built: true, tagline: 'IT IS STILL HUNGRY', desc: 'The antlers come down out of the snow. When it is done, it is hungrier than when it started.' },   // 2026-11-17 THE NEW RACES 2 (borrows the fullMoon staging)
+    'karate frog':    { id: 'fin_karate_frog', name: 'Hopping Mad', glyph: '🐸', type: 'human', sig: 'spiritBomb', built: true, tagline: 'RIBBIT', desc: 'A leap off the sewer wall, a flying kick, and the victim is washed down the drain.' },   // 2026-11-17 THE NEW RACES 2 (borrows the spiritBomb staging)
+    'samurai slug':   { id: 'fin_samurai_slug', name: 'Slow Death', glyph: '🐌', type: 'human', sig: 'thousandCuts', built: true, tagline: 'PATIENCE', desc: 'He took an hour to cross the room. The cut takes no time at all.' },   // 2026-11-17 THE NEW RACES 2 (borrows the thousandCuts staging)
+    'cicada brood':   { id: 'fin_cicada_brood', name: 'Seventeen Years', glyph: '🦗', type: 'alien', sig: 'theColony', built: true, tagline: 'IT WAS ALWAYS HERE', desc: 'The ground opens and the brood comes up singing. The victim is buried for the next seventeen years.' },   // 2026-11-17 THE NEW RACES 2 (borrows the theColony staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -600,6 +611,17 @@ const RACE_ELEMENT_AFFINITY = {
     'sewer gator': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'mole man': { earth: 'resist', light: 'weak' },   // 2026-11-16 — lives in the dirt, hates the sun
     'quetzalcoatl': { light: 'resist', wind: 'resist', ice: 'weak' },   // 2026-11-16 — the morning star and the wind
+    'delivery boy': { wind: 'resist', ice: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'librarian': { psychic: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'televangelist': { light: 'resist', psychic: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'influencer': { light: 'resist', water: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'referee': { wind: 'resist', lightning: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'florida man': { water: 'resist', ice: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'boltzmann brain': { psychic: 'resist', lightning: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'wendigo': { ice: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'karate frog': { water: 'resist', ice: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'samurai slug': { poison: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'cicada brood': { earth: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -2897,6 +2919,50 @@ const RACE_PROFILES = {
         label: 'Quetzalcoatl',
         types: ['divine']
     },
+    'delivery boy': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Delivery Boy',
+        types: ['human']
+    },
+    'librarian': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Librarian',
+        types: ['human']
+    },
+    'televangelist': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Televangelist',
+        types: ['human', 'divine']
+    },
+    'influencer': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Influencer',
+        types: ['human']
+    },
+    'referee': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Referee',
+        types: ['human']
+    },
+    'florida man': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Florida Man',
+        types: ['human']
+    },
+    'boltzmann brain': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Boltzmann Brain',
+        types: ['alien', 'anomaly']
+    },
+    'wendigo': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Wendigo',
+        types: ['unholy', 'anomaly']
+    },
+    'karate frog': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Karate Frog',
+        types: ['anomaly']
+    },
+    'samurai slug': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Samurai Slug',
+        types: ['anomaly']
+    },
+    'cicada brood': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
+        label: 'Cicada Brood',
+        types: ['alien', 'anomaly']
+    },
     'lifeguard': {   // 2026-11-16 THE NEW RACES (mondo asked for a female lifeguard)
         label: 'Lifeguard',
         types: ['human']
@@ -3781,7 +3847,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3919,6 +3985,17 @@ const RACE_CLASS = {
     'magician': 'specialist',   // 2026-11-16
     'mole man': 'bruiser',   // 2026-11-16
     'quetzalcoatl': 'tank',   // 2026-11-16
+    'delivery boy': 'support',   // 2026-11-17 THE NEW RACES 2
+    'librarian': 'support',   // 2026-11-17 THE NEW RACES 2
+    'televangelist': 'healer',   // 2026-11-17 THE NEW RACES 2
+    'influencer': 'support',   // 2026-11-17 THE NEW RACES 2
+    'referee': 'specialist',   // 2026-11-17 THE NEW RACES 2
+    'florida man': 'bruiser',   // 2026-11-17 THE NEW RACES 2
+    'boltzmann brain': 'caster',   // 2026-11-17 THE NEW RACES 2
+    'wendigo': 'bruiser',   // 2026-11-17 THE NEW RACES 2
+    'karate frog': 'bruiser',   // 2026-11-17 THE NEW RACES 2
+    'samurai slug': 'bruiser',   // 2026-11-17 THE NEW RACES 2
+    'cicada brood': 'assassin',   // 2026-11-17 THE NEW RACES 2
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -3962,6 +4039,17 @@ const AVAILABLE_ITEM_TYPES = ['', 'healPotion', 'manaPotion', 'scanner'];
 const RACE_TERRAIN_PREFERENCE = {
     'sewer gator': 'deep_water',   // 2026-11-16 THE NEW RACES — at home in deep water (never drowns: map.js unitIsDeepWaterAdapted)
     'mole man': 'wasteland',   // 2026-11-16 THE NEW RACES — at home in bare dirt
+    'delivery boy': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'librarian': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'televangelist': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'influencer': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'referee': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'florida man': 'water',   // 2026-11-17 THE NEW RACES 2
+    'boltzmann brain': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'wendigo': 'mountain',   // 2026-11-17 THE NEW RACES 2
+    'karate frog': 'water',   // 2026-11-17 THE NEW RACES 2
+    'samurai slug': 'water',   // 2026-11-17 THE NEW RACES 2
+    'cicada brood': 'grass',   // 2026-11-17 THE NEW RACES 2
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4341,6 +4429,17 @@ const RACE_BASE_STATS = {
     'magician':           { hp: 1100, mp: 190, atk:  70, def:  95, mdef: 125, int: 170, vision: 3, crt: 22, spd: 115 },   // 2026-11-16 THE NEW RACES — first pass on the specialist median
     'mole man':           { hp: 1450, mp: 110, atk: 150, def: 150, mdef:  85, int:  45, vision: 3, crt: 15, spd: 105 },   // 2026-11-16 THE NEW RACES — first pass on the bruiser median
     'quetzalcoatl':       { hp: 1350, mp: 120, atk: 115, def: 160, mdef:  85, int: 100, vision: 3, crt: 12, spd:  90 },   // 2026-11-16 THE NEW RACES; the Quetzalcoatl pass (same day): the first pass read POWER 745, #1 of 143 races (tank median 1200 HP, 83 M DEF, 46 M ATK) → 609, mid-tank, because the body walls and the push / pull immunity are worth power the number can't see
+    'delivery boy':       { hp: 1050, mp: 180, atk:  95, def:  90, mdef: 100, int: 140, vision: 3, crt: 20, spd: 140 },   // 2026-11-17 THE NEW RACES 2 — first pass on the support median
+    'librarian':          { hp: 1000, mp: 230, atk:  20, def:  90, mdef: 160, int: 190, vision: 3, crt: 20, spd: 70 },   // 2026-11-17 THE NEW RACES 2 — first pass on the support median
+    'televangelist':      { hp: 1150, mp: 220, atk:  30, def: 100, mdef: 150, int: 190, vision: 3, crt: 20, spd: 60 },   // 2026-11-17 THE NEW RACES 2 — first pass on the healer median
+    'influencer':         { hp: 900, mp: 220, atk:  30, def:  85, mdef: 130, int: 180, vision: 3, crt: 22, spd: 95 },   // 2026-11-17 THE NEW RACES 2 — first pass on the support median
+    'referee':            { hp: 1150, mp: 150, atk:  95, def: 110, mdef: 100, int: 110, vision: 4, crt: 20, spd: 110 },   // 2026-11-17 THE NEW RACES 2 — first pass on the specialist median
+    'florida man':        { hp: 1300, mp: 110, atk: 140, def: 110, mdef:  70, int:  40, vision: 3, crt: 24, spd: 120 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
+    'boltzmann brain':    { hp: 950, mp: 240, atk:  10, def:  70, mdef: 170, int: 210, vision: 5, crt: 22, spd: 60 },   // 2026-11-17 THE NEW RACES 2 — first pass on the caster median
+    'wendigo':            { hp: 1350, mp: 90, atk: 150, def: 100, mdef:  60, int:  30, vision: 3, crt: 18, spd: 130 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
+    'karate frog':        { hp: 1150, mp: 110, atk: 135, def: 105, mdef:  70, int:  60, vision: 3, crt: 20, spd: 150 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
+    'samurai slug':       { hp: 1450, mp: 100, atk: 130, def: 150, mdef:  80, int:  50, vision: 2, crt: 16, spd: 70 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
+    'cicada brood':       { hp: 1000, mp: 150, atk: 150, def: 110, mdef:  90, int: 110, vision: 3, crt: 24, spd: 120 },   // 2026-11-17 THE NEW RACES 2 — first pass on the assassin median
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4496,6 +4595,17 @@ const RACE_PHYSIQUE = {
     'magician':            { h: 1.82, w: 78 },   // 2026-11-16
     'mole man':            { h: 1.65, w: 120 },   // 2026-11-16
     'quetzalcoatl':        { h: 1.90, w: 95 },   // 2026-11-16
+    'delivery boy':        { h: 1.75, w: 70 },   // 2026-11-17 THE NEW RACES 2
+    'librarian':           { h: 1.68, w: 58 },   // 2026-11-17 THE NEW RACES 2
+    'televangelist':       { h: 1.78, w: 95 },   // 2026-11-17 THE NEW RACES 2
+    'influencer':          { h: 1.70, w: 55 },   // 2026-11-17 THE NEW RACES 2
+    'referee':             { h: 1.80, w: 85 },   // 2026-11-17 THE NEW RACES 2
+    'florida man':         { h: 1.80, w: 105 },   // 2026-11-17 THE NEW RACES 2
+    'boltzmann brain':     { h: 1.60, w: 20 },   // 2026-11-17 THE NEW RACES 2
+    'wendigo':             { h: 2.60, w: 120 },   // 2026-11-17 THE NEW RACES 2
+    'karate frog':         { h: 1.50, w: 70 },   // 2026-11-17 THE NEW RACES 2
+    'samurai slug':        { h: 1.70, w: 140 },   // 2026-11-17 THE NEW RACES 2
+    'cicada brood':        { h: 1.90, w: 80 },   // 2026-11-17 THE NEW RACES 2
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -10354,6 +10464,157 @@ const RACE_ABILITIES = {
           element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 5, dayMult: 1.4,
           desc: 'Venus rises as a spear of light. Deals MEDIUM magic damage to a Single Enemy within 5, 40% more in the daytime (the day and night clock).' },
     ],
+    'delivery boy': [
+        /* THE RIDE-ALONG: the one race that carries an ally. Hop On puts a teammate on the back (status `riding`); the next walk he finishes drops it on the free square beside him (battle.js _deliveryDrop from finishMoveAt). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrHotAndFresh', name: 'Hot and Fresh', tier: 1, families: ['delivery'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'fire', type: 'heal', kind: 'heal', range: 3, healPct: 0.25,
+          desc: 'Still hot. Heals a Single Ally within 3 for 25% of their max HP.' },
+        { id: 'nrHopOn', name: 'Hop On', tier: 2, families: ['delivery'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 1, noSelf: true,
+          statusEffects: [{ id: 'riding', duration: 1 }],
+          desc: 'A Single Ally beside him climbs on the back. When he finishes his next walk this turn, the ally gets off on the free square beside him nearest where it got on. It keeps its own turn. Cooldown: 2 rounds.' },
+        { id: 'nrDoorstepDash', name: 'Doorstep Dash', tier: 3, families: ['delivery'], cost: 75, apCost: 1, spellType: 'human',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 130, range: 3, chargeToTarget: true,
+          desc: 'Rings the bell with his shoulder. Charges a Single Enemy up to 3 squares away and deals MEDIUM physical damage.' },
+    ],
+    'librarian': [
+        /* THE RENEWAL: the one race that casts its allies' spells. Overdue renews the last spell a teammate cast this match (battle.js state._lastAllySpell, written where every cast is recorded; resolved like the old Mimic). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrShush', name: 'Shush', tier: 1, families: ['library'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'One finger to the lips. Silences a Single Enemy within 4 for 1 round.' },
+        { id: 'nrOverdue', name: 'Overdue', tier: 2, families: ['library'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'utility', kind: 'utility', range: 4,
+          desc: 'Renews the last spell a teammate cast this match and casts it herself on a target within 4: a damage spell on an enemy, a heal or buff on an ally, a debuff on an enemy. Cooldown: 3 rounds.' },
+        { id: 'nrLateFee', name: 'Late Fee', tier: 3, families: ['library'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 140, range: 4,
+          bonusVsStatus: { status: 'silence', mult: 1.5 },
+          desc: 'The fine is steep. Deals MEDIUM magic damage to a Single Enemy within 4. Deals bonus damage to Silenced targets.' },
+    ],
+    'televangelist': [
+        /* THE TITHE: the one race that skims other heals. Collection Plate (status `tithe`): 15% of every heal that lands within 3 of him, either team, is taken off and goes in his plate (unit._plate); Miracle heals the plate on top of its own (battle.js applyHealingToUnit + spellHealAmountFor). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrLayingOnHands', name: 'Laying On of Hands', tier: 1, families: ['prosperity'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'light', type: 'heal', kind: 'heal', range: 1, healPct: 0.3,
+          desc: 'A palm on the forehead. Heals a Single Ally beside him for 30% of their max HP.' },
+        { id: 'nrCollectionPlate', name: 'Collection Plate', tier: 2, families: ['prosperity'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'divine',
+          type: 'buff', kind: 'buff', range: 0,
+          statusEffects: [{ id: 'tithe', duration: 3 }],
+          desc: 'Passes the plate for 3 rounds. 15% of every heal that lands within 3 of him, on either team (not his own), is taken off the heal and put in his plate. Miracle spends it. Cooldown: 3 rounds.' },
+        { id: 'nrMiracle', name: 'Miracle', tier: 3, families: ['prosperity'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          element: 'light', type: 'heal', kind: 'heal', range: 4, healPct: 0.15, spendPlate: true,
+          desc: 'Rise and walk. Heals a Single Ally within 4 for 15% of their max HP plus everything in the collection plate, then empties it. Cooldown: 2 rounds.' },
+    ],
+    'influencer': [
+        /* GOING VIRAL: the one race whose mark spreads a hit. A Viral unit shares 30% of every hit it takes with each of its own teammates within 2 (battle.js _viralShare in applyDamageToUnit). The doc's Filter (a disguise) needs the renderer to draw a fake unit for one side only; this ships first. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrSelfieFlash', name: 'Selfie Flash', tier: 1, families: ['socialmedia'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'light', type: 'debuff', kind: 'debuff', range: 3,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'Say cheese. Blinds a Single Enemy within 3 for 1 round.' },
+        { id: 'nrGoViral', name: 'Go Viral', tier: 2, families: ['socialmedia'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'debuff', kind: 'debuff', range: 5,
+          statusEffects: [{ id: 'viral', duration: 2 }],
+          desc: 'Tags a Single Enemy within 5 for 2 rounds. Every hit it takes also hits each of its teammates within 2 for 30% of the damage. Cooldown: 2 rounds.' },
+        { id: 'nrSponsored', name: 'Sponsored', tier: 3, families: ['socialmedia'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 3, statStageBoost: { atk: 2, int: 2 },
+          desc: 'A brand deal for a friend. Raises a Single Ally\'s ATK and INT by 2 stages. Cooldown: 2 rounds.' },
+    ],
+    'referee': [
+        /* THE CARDS: the one race that sends a unit off the field. Card gives Yellow Card for 3 rounds; a card on a unit that already has one is a RED CARD: it is sent off (cannot move, act or be targeted) until its next turn starts (the `exited` status, no door; battle.js _refereeCard + _doorExitReturn's sent-off branch). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrCard', name: 'Card', tier: 1, families: ['officiating'], cost: 25, apCost: 1, cooldownRounds: 1, spellType: 'human',
+          type: 'debuff', kind: 'debuff', range: 4, refereeCard: true,
+          statusEffects: [{ id: 'yellowCard', duration: 3 }, { id: 'marked', duration: 1 }],
+          desc: 'A Yellow Card for a Single Enemy within 4 (3 rounds) and Marked. A second card on a unit that already has a Yellow Card is a RED CARD: it is sent off until its next turn starts (it cannot move, act or be targeted). Cooldown: 1 round.' },
+        { id: 'nrPenalty', name: 'Penalty', tier: 2, families: ['officiating'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 2, pushDistance: 3, collisionBonus: 40,
+          desc: 'Fifteen yards. Deals WEAK physical damage to a Single Enemy within 2 and marches it up to 3 squares back; hitting a wall or a unit deals 40 more. Cooldown: 2 rounds.' },
+        { id: 'nrTimeout', name: 'Timeout', tier: 3, families: ['officiating'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'debuff', kind: 'aoe', noDamage: true, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'root', duration: 1 }, { id: 'silence', duration: 1 }],
+          desc: 'The clock stops. Roots and Silences All Enemies in a 3x3 area within 4 for 1 round. Cooldown: 3 rounds.' },
+    ],
+    'florida man': [
+        /* THE HEADLINE: the one race that does not choose. Each round one of his three is the day's headline and the other two are greyed (Not today); which one is fixed by his id and the round, so host and guest agree (battle.js _floridaHeadline in getSpellBlockReason). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrGatorToss', name: 'Gator Toss', tier: 1, families: ['floridaman'], cost: 25, apCost: 1, spellType: 'human', floridaHeadline: true,
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 3,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'FLORIDA MAN THROWS ALLIGATOR. Deals MEDIUM physical damage to a Single Enemy within 3 and leaves it Bleeding for 2 rounds. Only on the rounds it is the headline.' },
+        { id: 'nrBathSalts', name: 'Bath Salts', tier: 2, families: ['floridaman'], cost: 50, apCost: 1, spellType: 'human', floridaHeadline: true,
+          type: 'buff', kind: 'buff', range: 0, statStageBoost: { atk: 2, spd: 2 },
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'FLORIDA MAN FOUND NAKED ON OVERPASS. Raises his ATK and SPD by 2 stages and he Regenerates for 2 rounds. Only on the rounds it is the headline.' },
+        { id: 'nrHurricaneParty', name: 'Hurricane Party', tier: 3, families: ['floridaman'], cost: 75, apCost: 1, spellType: 'human', floridaHeadline: true,
+          element: 'wind', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 120, range: 3, aoeRadius: 1,
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'FLORIDA MAN REFUSES TO EVACUATE. Deals MEDIUM physical damage to All Enemies in a 3x3 area within 3 and leaves them Wet. Only on the rounds it is the headline.' },
+    ],
+    'boltzmann brain': [
+        /* THE FLUCTUATION: the one race that never walks. It has no move; at every round end it appears on a random free square within 4 (seeded by the round and its id, so host and guest agree; battle.js _boltzmannFluctuate from processEndOfRoundStatuses). It has no skeleton: the model floats. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrThoughtSpike', name: 'Thought Spike', tier: 1, families: ['fluctuation'], cost: 25, apCost: 1, spellType: 'alien',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 120, range: 5,
+          desc: 'A single stray thought, very sharp. Deals MEDIUM magic damage to a Single Enemy within 5.' },
+        { id: 'nrExistentialDread', name: 'Existential Dread', tier: 2, families: ['fluctuation'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'What if none of this is real? Fears All Enemies in a 3x3 area within 4 for 1 round. Cooldown: 2 rounds.' },
+        { id: 'nrVacuumCollapse', name: 'Vacuum Collapse', tier: 3, families: ['fluctuation'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 175, range: 6,
+          desc: 'The universe was never stable. Deals HEAVY magic damage to a Single Enemy within 6. Cooldown: 2 rounds.' },
+    ],
+    'wendigo': [
+        /* THE HUNGER: the one race that starves. A round in which it dealt no damage costs it 8% of its max HP at the round end (never below 1); a round it fed costs nothing (battle.js _wendigoHunger from processEndOfRoundStatuses; unit._fedRound set in applyDamageToUnit). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrRend', name: 'Rend', tier: 1, families: ['wendigo'], cost: 25, apCost: 1, spellType: 'unholy',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 120, range: 1,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Claws like icicles. Deals MEDIUM physical damage to a Single Enemy beside it and leaves it Bleeding for 2 rounds.' },
+        { id: 'nrFeast', name: 'Feast', tier: 2, families: ['wendigo'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
+          element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'physical', dmg: 140, range: 1, drainPct: 0.6,
+          desc: 'It eats. Deals MEDIUM physical damage to a Single Enemy beside it and heals for 60% of the damage dealt. Cooldown: 2 rounds.' },
+        { id: 'nrFrostHowl', name: 'Frost Howl', tier: 3, families: ['wendigo'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
+          element: 'ice', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 100, range: 0, aoeRadius: 2,
+          statusEffects: [{ id: 'slow', duration: 1 }, { id: 'feared', duration: 1 }],
+          desc: 'A scream on the wind. Deals WEAK magic damage to All Enemies within 2 of it, Slows them and Fears them for 1 round. Cooldown: 2 rounds.' },
+    ],
+    'karate frog': [
+        /* THE LEAPFROG: the one race that vaults over what it hits. Leapfrog lands him on the square straight behind his target (battle.js _frogLeapOver, the `leapOver` field in _runPostEffects). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrLeapfrog', name: 'Leapfrog', tier: 1, families: ['frogfu'], cost: 25, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 110, range: 1, leapOver: true,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'A kick and a vault. Deals MEDIUM physical damage to a Single Enemy beside him, Staggers it, and he lands on the square straight behind it if that square is free.' },
+        { id: 'nrTongueLash', name: 'Tongue Lash', tier: 2, families: ['frogfu'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 90, range: 4, pullDistance: 3,
+          desc: 'Thwip. Deals WEAK physical damage to a Single Enemy within 4 and drags it up to 3 squares toward him. Cooldown: 2 rounds.' },
+        { id: 'nrFlyingKick', name: 'Flying Kick', tier: 3, families: ['frogfu'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 150, range: 3, chargeToTarget: true, pushDistance: 2, collisionBonus: 40,
+          desc: 'Off the wall and through the air. Charges a Single Enemy up to 3 squares away, deals HEAVY physical damage and kicks it up to 2 squares back; hitting a wall or a unit deals 40 more. Cooldown: 2 rounds.' },
+    ],
+    'samurai slug': [
+        /* THE SLIME TRAIL: the one race that paints the squares it walks off. Every square he walks off becomes Black Ooze for 2 rounds (double cost to cross, and it burns; battle.js _slugTrail from finishMoveAt, painted with _paintTimedTerrain). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrSlimeSlash', name: 'Slime Slash', tier: 1, families: ['slugbushido'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 120, range: 1,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'A slick cut. Deals MEDIUM physical damage to a Single Enemy beside him and Slows it for 1 round.' },
+        { id: 'nrSaltProof', name: 'Salt-Proof Stance', tier: 2, families: ['slugbushido'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'buff', kind: 'buff', range: 0, statStageBoost: { def: 2, mdef: 2 },
+          desc: 'Feet planted, shell up. Raises his DEF and M.DEF by 2 stages. Cooldown: 2 rounds.' },
+        { id: 'nrIaiDraw', name: 'Iai Draw', tier: 3, families: ['slugbushido'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 165, range: 3, chargeToTarget: true,
+          desc: 'Slow until the blade comes out. Charges a Single Enemy up to 3 squares away and deals HEAVY physical damage. Cooldown: 2 rounds.' },
+    ],
+    'cicada brood': [
+        /* THE WAIT: the one race that banks power by hiding. Dig In buries it (`dormant` + Invisible, no move); every round end under the ground adds a Brood stack (up to 3, battle.js _cicadaBrood from processEndOfRoundStatuses); Screech spends the stacks for damage and wakes it. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrDigIn', name: 'Dig In', tier: 1, families: ['brood'], cost: 25, apCost: 1, cooldownRounds: 3, spellType: 'alien',
+          element: 'earth', type: 'buff', kind: 'buff', range: 0,
+          statusEffects: [{ id: 'dormant', duration: 3 }, { id: 'invisible', duration: 3 }],
+          desc: 'Digs in and waits, for up to 3 rounds: Invisible and unable to move. Every round end under the ground adds a Brood stack (up to 3). Attacking brings it up. Cooldown: 3 rounds.' },
+        { id: 'nrBuzz', name: 'Buzz', tier: 2, families: ['brood'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          element: 'sonic', type: 'debuff', kind: 'aoe', noDamage: true, range: 3, aoeRadius: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'A drone you feel in your teeth. Staggers All Enemies in a 3x3 area within 3. Cooldown: 2 rounds.' },
+        { id: 'nrScreech', name: 'Screech', tier: 3, families: ['brood'], cost: 75, apCost: 1, spellType: 'alien',
+          element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 90, range: 0, aoeRadius: 2, broodSpend: 45,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'The chorus. Deals WEAK magic damage to All Enemies within 2 of it, plus 45 more for every Brood stack, and Silences them for 1 round. Spends the stacks and ends Dig In.' },
+    ],
     'lifeguard': [
         /* ON DUTY (2026-11-16, the new races; mondo asked for a female lifeguard): the one race that saves a life. While she is On
            Duty, the first ally within 4 of her that takes a killing blow holds on at 1 HP and is hauled to the square beside her.
@@ -13997,6 +14258,61 @@ const STATUS_DEFS = {
             applyDamageToUnit(unit, 45, `🐍 The coils squeeze ${unitDisplayName(unit)}: `, { ignoreArmor: true, damageType: 'dot', consumeMarked: false });
         }
     },
+    /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters). Ids only on units (RULE #2).
+       riding: on the Delivery Boy's back; his next finished walk drops it beside him (battle.js _deliveryDrop).
+       tithe: the Televangelist's plate is out; battle.js applyHealingToUnit skims 15% of heals within 3 into unit._plate.
+       viral: every hit it takes also hits its teammates within 2 for 30% (battle.js _viralShare).
+       yellowCard: booked; a second card on a booked unit is a RED CARD: off the board until its next turn (battle.js _refereeRedCard).
+       dormant: the Cicada Brood dug in: no move, a Brood stack every round end (up to 3), Screech spends them.
+       bodiless: never applied; the word a greyed MOVE shows for the Boltzmann Brain (battle.js unitMoveBlockKey). */
+    riding: {
+        icon: '🛵', glyph: '🛵', short: 'RID', label: 'Riding',
+        colorText: 'riding on the back',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🛵', '#2a1414', '#ffe0d8', '#c8342c'),
+        onApply(unit, src) { unit._rideWithId = src ? src.id : null; },
+        onRemove(unit) { delete unit._rideWithId; }
+    },
+    tithe: {
+        icon: '🙌', glyph: '🙌', short: 'TTH', label: 'Collection Plate',
+        colorText: 'passing the collection plate',
+        kind: 'buff', category: 'buff', stack: 'max',
+        iconSrc: createStatusIconDataUri('🙌', '#24142a', '#f4e0ff', '#a060d0')
+    },
+    viral: {
+        icon: '📱', glyph: '📱', short: 'VIR', label: 'Viral',
+        colorText: 'going viral — its hits are shared',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('📱', '#2a1424', '#ffe0f4', '#d04a9a')
+    },
+    yellowCard: {
+        icon: '🟨', glyph: '🟨', short: 'YEL', label: 'Yellow Card',
+        colorText: 'booked',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🟨', '#2a2614', '#fff8c0', '#d8c020'),
+        onApply(unit, src, info) {
+            if (info && info.refreshed && typeof _refereeRedCard === 'function') _refereeRedCard(unit, src);
+        }
+    },
+    dormant: {
+        icon: '🦗', glyph: '🦗', short: 'DRM', label: 'Dug In',
+        colorText: 'dug in and waiting',
+        kind: 'buff', category: 'buff', stack: 'max',
+        blockMove: true,
+        iconSrc: createStatusIconDataUri('🦗', '#1c2414', '#e8ffd0', '#4a7a2a'),
+        onRoundEnd(unit) {
+            if (unit.dead || unit._dying) return;
+            unit._brood = Math.min(3, (unit._brood || 0) + 1);
+            if (typeof addLog === 'function') addLog(`🦗 ${typeof unitDisplayName === 'function' ? unitDisplayName(unit) : 'The brood'} grows louder under the ground (Brood ${unit._brood}).`);
+            if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, `🦗 BROOD ${unit._brood}`, 'buff', { durationMs: 1000 });
+        }
+    },
+    bodiless: {
+        icon: '🧠', glyph: '🧠', short: 'BOD', label: 'Bodiless',
+        colorText: 'bodiless',
+        kind: 'marker', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🧠', '#18142a', '#e8e0ff', '#5a4ad8')
+    },
     /* 🛟 ON DUTY (2026-11-16, the Lifeguard): she is watching; battle.js _lifeguardSave spends it on the first ally within 4 that
        takes a killing blow (held at 1 HP, hauled beside her). */
     onDuty: {
@@ -14210,6 +14526,12 @@ const STATUS_LIBRARY_DESCS = {
     serpentForm: 'The head of a 3-square feathered serpent: the body follows its path and blocks every other unit; it cannot be pushed or pulled; a hit on the body hits the head.',
     coiled:    'In the serpent\'s coils: cannot move and is squeezed for 45 at every round end.',
     onDuty:    'On watch: the first ally within 4 that takes a killing blow holds on at 1 HP and is hauled beside her. Spent on the first save.',
+    riding:     'On the Delivery Boy\'s back: when he finishes his next walk, it gets off on the free square beside him.',
+    tithe:      'Collection Plate: 15% of every heal that lands within 3 of the Televangelist (not his own) goes in his plate. Miracle spends it.',
+    viral:      'Going viral: every hit it takes also hits each of its teammates within 2 for 30% of the damage.',
+    yellowCard: 'Booked: a second card on this unit is a RED CARD. It is sent off until its next turn starts: it cannot move, act or be targeted.',
+    dormant:    'Dug in: cannot move. Every round end under the ground adds a Brood stack (up to 3) that Screech spends.',
+    bodiless:   'A mind with no body: it never walks. At every round end it is somewhere else, on a random free square within 4.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
     minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts, and harder to hit: it dodges basic attacks 25% of the time. Spells still always land.',
@@ -20275,6 +20597,17 @@ const EW_RACE_BIOMES = {
     'magician': ['urban', 'neon_city'],   // 2026-11-16 — Disaster City, Entertainment (the casino stages)
     'mole man': ['inner_earth', 'underground_base'],   // 2026-11-16 — Hollow Earth, the tunnels under everything
     'quetzalcoatl': ['ancient', 'divine'],   // 2026-11-16 — Leylines, Technoticlan
+    'delivery boy': ['urban'],   // 2026-11-17 THE NEW RACES 2 — Disaster City, Hero Plaza
+    'librarian': ['urban'],   // 2026-11-17 THE NEW RACES 2 — Disaster City, University (the library)
+    'televangelist': ['holy_city', 'urban'],   // 2026-11-17 THE NEW RACES 2 — Vatican, the Square
+    'influencer': ['urban', 'neon_city'],   // 2026-11-17 THE NEW RACES 2 — Disaster City, Entertainment
+    'referee': ['stadium', 'urban'],   // 2026-11-17 THE NEW RACES 2 — Disaster City, Sports + Culture
+    'florida man': ['tropical', 'urban'],   // 2026-11-17 THE NEW RACES 2 — Disaster City, Bayside
+    'boltzmann brain': ['space', 'astral'],   // 2026-11-17 THE NEW RACES 2 — Outer Space, the Singularity
+    'wendigo': ['forest', 'polar'],   // 2026-11-17 THE NEW RACES 2 — The Mountains, the Snowy Pass
+    'karate frog': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
+    'samurai slug': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
+    'cicada brood': ['ancient', 'forest'],   // 2026-11-17 THE NEW RACES 2 — Leylines, the Bug Colony
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -20918,6 +21251,17 @@ const RACE_TREE = {
     'magician':      ['raceBorrowedClaw', ['raceShedSkin', 'raceCharm'], ['raceSkinSwap', 'racePopSpotlight'], 'raceMimicry'],   // 2026-11-16
     'mole man':      ['raceTremorStomp', ['sharedFissure', 'raceCryptidVanish'], ['groundSlam', 'raceBrutalSlam'], 'raceQuake'],   // 2026-11-16
     'quetzalcoatl':  ['raceWingGust', ['raceCrosswind', 'raceDivineLight'], ['raceTailwind', 'raceDivineSmite'], 'raceSupernova'],   // 2026-11-16
+    'delivery boy':  ['raceSprint', ['healingSeed', 'raceNimbleDodge'], ['raceVault', 'raceHitALick'], 'raceBumperCrop'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'librarian':     ['raceSacredGeometry', 'raceZigguratProtocol', 'raceOvercharge', 'raceWeighTheHeart'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'televangelist': ['raceCultTithe', ['heal1', 'racePopSpotlight'], ['raceCultKoolAid', 'protect1'], 'raceHallelujah'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'influencer':    ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'referee':       ['raceBulletPass', ['racePoliceTaser', 'raceAudible'], 'racePoliceCuffs', 'raceHailMary'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'florida man':   ['raceStompOut', ['raceHitALick', 'raceSprint'], ['raceVault', 'skullCrack'], 'rampage'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'boltzmann brain':['raceEntropicBeam', ['racePsychicBarrier', 'raceGravityWell'], 'raceMindCrush', 'raceHeatDeath'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'wendigo':       ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'karate frog':   [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'samurai slug':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceRollCredits'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'cicada brood':  ['raceCorrosiveSplash', 'raceBrood', 'raceRot', 'raceSwarmSignal'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -22844,6 +23188,116 @@ const SPELL_FAMILIES = {
         desc: 'Ownership as a weapon: buy out the enemy\'s things, break their zones and lay off what you no longer need.',
         unique: 'tech ceo',
         identity: { who: ['Tech CEO', 'Founder', 'Visionary'], adj: ['Disruptive', 'Venture-backed', 'Smug'], look: ['a black turtleneck', 'white sneakers', 'a very calm smile'], vibe: ['acquires whatever you build', 'lays off his own summons for a stage up'] }
+    },
+    delivery: {   // 2026-11-17 THE NEW RACES 2 — the Delivery Boy's own
+        id: 'delivery',
+        name: 'Delivery',
+        glyph: '🛵',
+        color: '#c8342c',
+        kind: 'signature',
+        desc: 'Thirty minutes or less: a hot meal for an ally, a ride on the back for another, and the door kicked in on the way out.',
+        unique: 'delivery boy',
+        identity: { who: ['Delivery Boy', 'Courier', 'Driver'], adj: ['Hurried', 'Tip-hungry', 'Sweaty'], look: ['a red cap worn backwards', 'a red polo with a name tag', 'an insulated delivery bag'], vibe: ['brings a friend along for the ride', 'is never late twice'] }
+    },
+    library: {   // 2026-11-17 THE NEW RACES 2 — the Librarian's own
+        id: 'library',
+        name: 'Library',
+        glyph: '📚',
+        color: '#3a5a8a',
+        kind: 'signature',
+        desc: 'Quiet, please: a hush that silences, a renewal of the last spell an ally used, and a late fee for the noisy.',
+        unique: 'librarian',
+        identity: { who: ['Librarian', 'Archivist', 'Curator'], adj: ['Prim', 'Bookish', 'Unimpressed'], look: ['cat-eye glasses', 'a green cardigan', 'a pencil through her bun'], vibe: ['renews the last spell your team cast', 'silences the loud ones'] }
+    },
+    prosperity: {   // 2026-11-17 THE NEW RACES 2 — the Televangelist's own
+        id: 'prosperity',
+        name: 'Prosperity Gospel',
+        glyph: '🙌',
+        color: '#7a3aa8',
+        kind: 'signature',
+        desc: 'Sow a seed: a laying on of hands, a collection plate that skims every heal nearby, and a miracle paid for by the plate.',
+        unique: 'televangelist',
+        identity: { who: ['Televangelist', 'Faith Healer', 'Preacher'], adj: ['Sweaty', 'Gold-plated', 'Anointed'], look: ['a shiny purple suit', 'a gold tie and chains', 'a headset microphone'], vibe: ['takes a cut of every heal', 'pays for the miracle with your tithes'] }
+    },
+    socialmedia: {   // 2026-11-17 THE NEW RACES 2 — the Influencer's own
+        id: 'socialmedia',
+        name: 'Social Media',
+        glyph: '📱',
+        color: '#d04a9a',
+        kind: 'signature',
+        desc: 'Content is king: a flash that blinds, a tag that makes a foe go viral, and a sponsorship for a friend.',
+        unique: 'influencer',
+        identity: { who: ['Influencer', 'Content Creator', 'Brand Ambassador'], adj: ['Glossy', 'Trending', 'Filtered'], look: ['a ring light on her belt', 'sunglasses pushed up on her head', 'a designer handbag'], vibe: ['makes you go viral', 'sponsors her friends'] }
+    },
+    officiating: {   // 2026-11-17 THE NEW RACES 2 — the Referee's own
+        id: 'officiating',
+        name: 'Officiating',
+        glyph: '🟨',
+        color: '#d8c020',
+        kind: 'signature',
+        desc: 'Rules are rules: a card that becomes a red card, a penalty that marches a foe back, and a timeout that stops play.',
+        unique: 'referee',
+        identity: { who: ['Referee', 'Official', 'Umpire'], adj: ['Stern', 'Striped', 'Impartial'], look: ['a black and white striped shirt', 'a whistle on a cord', 'red and yellow cards in the pocket'], vibe: ['sends you off with a second card', 'marches you back fifteen yards'] }
+    },
+    floridaman: {   // 2026-11-17 THE NEW RACES 2 — the Florida Man's own
+        id: 'floridaman',
+        name: 'Florida Man',
+        glyph: '📰',
+        color: '#2aa8b8',
+        kind: 'signature',
+        desc: 'Today\'s headline: an alligator thrown, a bath-salt rage, a hurricane party. One of them happens today, and he does not get to pick.',
+        unique: 'florida man',
+        identity: { who: ['Florida Man', 'Local Man', 'Suspect'], adj: ['Sunburnt', 'Shirtless', 'Unhinged'], look: ['a mullet and sunglasses', 'jean shorts and flip-flops', 'a fanny pack'], vibe: ['throws whatever is nearest', 'makes the news every single day'] }
+    },
+    fluctuation: {   // 2026-11-17 THE NEW RACES 2 — the Boltzmann Brain's own
+        id: 'fluctuation',
+        name: 'Fluctuation',
+        glyph: '🧠',
+        color: '#5a4ad8',
+        kind: 'signature',
+        desc: 'A random thought in an empty universe: a spike of thought, a dread that spreads, and a vacuum that collapses.',
+        unique: 'boltzmann brain',
+        identity: { who: ['Boltzmann Brain', 'Fluctuation', 'Floating Mind'], adj: ['Spontaneous', 'Improbable', 'Staring'], look: ['a glowing floating brain', 'one huge staring eye', 'dangling nerve tendrils'], vibe: ['is somewhere else every round', 'thinks you out of existence'] }
+    },
+    wendigo: {   // 2026-11-17 THE NEW RACES 2 — the Wendigo's own
+        id: 'wendigo',
+        name: 'Wendigo',
+        glyph: '🦌',
+        color: '#8aa8c0',
+        kind: 'signature',
+        desc: 'The hunger never ends: a rending claw, a feast that feeds it, and a howl that freezes the blood.',
+        unique: 'wendigo',
+        identity: { who: ['Wendigo', 'Starved One', 'Antlered Thing'], adj: ['Starving', 'Frostbitten', 'Towering'], look: ['a deer skull with huge antlers', 'skin stretched over bones', 'long black claws'], vibe: ['must hit every round or starve', 'eats to heal'] }
+    },
+    frogfu: {   // 2026-11-17 THE NEW RACES 2 — the Karate Frog's own
+        id: 'frogfu',
+        name: 'Frog Fu',
+        glyph: '🐸',
+        color: '#3a9a3a',
+        kind: 'signature',
+        desc: 'Leap and strike: a kick that vaults over its target, a tongue that drags a foe in, and a flying kick off the wall.',
+        unique: 'karate frog',
+        identity: { who: ['Karate Frog', 'Frog Master', 'Sewer Brother'], adj: ['Slimy', 'Disciplined', 'Bouncy'], look: ['a white gi with a black belt', 'a red bandana', 'big golden eyes'], vibe: ['vaults over whoever he hits', 'drags you in with his tongue'] }
+    },
+    slugbushido: {   // 2026-11-17 THE NEW RACES 2 — the Samurai Slug's own
+        id: 'slugbushido',
+        name: 'Slug Bushido',
+        glyph: '🐌',
+        color: '#a8882a',
+        kind: 'signature',
+        desc: 'The way of the slug: a slime-slicked cut, a stance salt cannot break, and a draw so fast it closes the distance.',
+        unique: 'samurai slug',
+        identity: { who: ['Samurai Slug', 'Slug Ronin', 'Sewer Brother'], adj: ['Slimy', 'Patient', 'Armoured'], look: ['red and black lacquered armour', 'two eye stalks', 'a trail of slime'], vibe: ['leaves slime wherever he goes', 'is slow until he draws'] }
+    },
+    brood: {   // 2026-11-17 THE NEW RACES 2 — the Cicada Brood's own
+        id: 'brood',
+        name: 'Brood',
+        glyph: '🦗',
+        color: '#4a7a2a',
+        kind: 'signature',
+        desc: 'Wait, then sing: dig in and grow louder every round, a buzz that rattles, and a screech that spends it all.',
+        unique: 'cicada brood',
+        identity: { who: ['Cicada Brood', 'Periodical', 'Singer'], adj: ['Buried', 'Deafening', 'Red-eyed'], look: ['a green and black insect shell', 'huge red eyes', 'folded veined wings'], vibe: ['grows louder every round it waits', 'screeches the whole board silent'] }
     },
     lifesaving: {   // 2026-11-16 THE NEW RACES — the Lifeguard's own
         id: 'lifesaving',
@@ -25084,6 +25538,17 @@ const RACE_FAMILIES = {
     'magician': ['stagemagic', 'trickery', 'stagepresence', 'seduction'],   // 2026-11-16
     'mole man': ['burrowing', 'livingstone', 'cryptid', 'dirtyfighting'],   // 2026-11-16
     'quetzalcoatl': ['featheredserpent', 'ancientknowledge', 'skygods', 'royalty'],   // 2026-11-16
+    'delivery boy': ['delivery', 'athleticism', 'chef', 'streetsmarts'],   // 2026-11-17 THE NEW RACES 2
+    'librarian': ['library', 'academia', 'ancientknowledge', 'meditation'],   // 2026-11-17 THE NEW RACES 2
+    'televangelist': ['prosperity', 'holyorders', 'cult', 'stagepresence'],   // 2026-11-17 THE NEW RACES 2
+    'influencer': ['socialmedia', 'popidol', 'stagepresence', 'seduction'],   // 2026-11-17 THE NEW RACES 2
+    'referee': ['officiating', 'football', 'policeprocedure', 'teamwork'],   // 2026-11-17 THE NEW RACES 2
+    'florida man': ['floridaman', 'dirtyfighting', 'streetsmarts', 'athleticism'],   // 2026-11-17 THE NEW RACES 2
+    'boltzmann brain': ['fluctuation', 'cosmic', 'psychic', 'fractal'],   // 2026-11-17 THE NEW RACES 2
+    'wendigo': ['wendigo', 'apexpredator', 'cryptid', 'ice'],   // 2026-11-17 THE NEW RACES 2
+    'karate frog': ['frogfu', 'martialarts', 'water', 'athleticism'],   // 2026-11-17 THE NEW RACES 2
+    'samurai slug': ['slugbushido', 'swordsmanship', 'swordsaint', 'poison'],   // 2026-11-17 THE NEW RACES 2
+    'cicada brood': ['brood', 'insectoid', 'sonic', 'colony'],   // 2026-11-17 THE NEW RACES 2
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -25696,6 +26161,17 @@ const CAMPAIGN_RACE_PRICES = {
   'magician': 500,   // 2026-11-16
   'mole man': 500,   // 2026-11-16
   'quetzalcoatl': 600,   // 2026-11-16
+  'delivery boy': 300,   // 2026-11-17 THE NEW RACES 2
+  'librarian': 300,   // 2026-11-17 THE NEW RACES 2
+  'televangelist': 400,   // 2026-11-17 THE NEW RACES 2
+  'influencer': 350,   // 2026-11-17 THE NEW RACES 2
+  'referee': 300,   // 2026-11-17 THE NEW RACES 2
+  'florida man': 300,   // 2026-11-17 THE NEW RACES 2
+  'boltzmann brain': 800,   // 2026-11-17 THE NEW RACES 2
+  'wendigo': 500,   // 2026-11-17 THE NEW RACES 2
+  'karate frog': 400,   // 2026-11-17 THE NEW RACES 2
+  'samurai slug': 400,   // 2026-11-17 THE NEW RACES 2
+  'cicada brood': 400,   // 2026-11-17 THE NEW RACES 2
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -27680,6 +28156,7 @@ const DOOR_TEXT = {
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
+        'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe',   // 2026-11-17 THE NEW RACES 2
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',

@@ -5676,3 +5676,43 @@ sprites.js: RACE_MODELS_3D `male:` rows, `_NEW_MALE_SPRITES` (read first by getR
 for cyborg / mummy / swordfighter / mime / mermaid / succubus (the rest were `both` already but had no male model, so the 3D-only
 roster offered only the woman). data.js RACE_PROFILES labelMale: Merman, Incubus. No male Meshy knight existed before (the female
 knight + King Arthur only). Probe 11-16: all 15 drawn as 3D models with their own sprites + labels, 0 page errors.
+
+## THE NEW RACES 2 (2026-11-17, thread cmsg_01XWpxyTn3nnw98znVzKdFjsDHFgcJVn5weGXFasUcmtg6 "Brainstorm new characters for every zone")
+mondo picked them from the zone characters list (his names, never renamed): Delivery Boy, Librarian (F), Televangelist (the B
+concept, purple suit), Influencer (F), Referee, Florida Man, Boltzmann Brain, Wendigo, Karate Frog, Samurai Slug, Cicada Brood.
+Each = one race, a signature family of three `nr*` spells (tiers 1-3) + ONE new rule. Data rows sit just above `'lifeguard'` in
+every race table (FINISHERS borrow an existing staging sig; RACE_TREE rungs borrowed from their families; prices 300-800).
+Homes (POINT_OF_ENTRY / EW_RACE_BIOMES): Downtown x4 (Hero Plaza, University library, Entertainment, Bayside), Football Stadium,
+Vatican City, The Singularity, Mount Shasta (Snowy Pass), The Sewers x2 (the TMNT parody), Göbekli Tepe (Leylines bug colony).
+The rules (battle.js block "THE NEW RACES 2", before _lifeguardSave; statuses data.js riding / tithe / viral / yellowCard /
+dormant / bodiless):
+- 🛵 Delivery Boy, THE RIDE-ALONG: Hop On (range 1, `riding`, unit._rideWithId); his next finished walk drops the rider on the
+  free square beside him nearest where it got on (`_deliveryDrop`, finishMoveAt). A rider that walks first just gets off.
+- 📚 Librarian, THE RENEWAL: Overdue (utility) recasts `state._lastAllySpell[player]` (written at the cast record; never a
+  Librarian's own cast, never Mimic/Overdue) through the old Mimic resolver (healPct heals use the row's percent).
+- 🙌 Televangelist, THE TITHE: Collection Plate (`tithe`, 3 rounds): `_titheSkim` in applyHealingToUnit takes 15% of every heal
+  landing within 3 of him (either team; not his own heals, not heals on him) into unit._plate; Miracle (`spendPlate`) adds the
+  plate in spellHealAmountFor (the forecast reads it) and empties it after the heal.
+- 📱 Influencer, GOING VIRAL: a `viral` unit shares 30% of every hit with its teammates within 2 (`_viralShare`, after the
+  Lifeguard save; shared hits carry `_viralShare` so they never spread). The doc's Filter (disguise) is NOT built: it needs the
+  renderer to draw a fake unit for one side only.
+- 🟥 Referee, THE RED CARD: Card = `yellowCard` 3 rounds + Marked; a card on a booked unit (STATUS_DEFS.yellowCard.onApply,
+  `refreshed`) calls `_refereeRedCard`: the `exited` status 1 round with unit._sentOff (no door); `_doorExitReturn`'s sent-off
+  branch puts it back on the field where it stood, no Stagger. Bosses / cubes are never sent off.
+- 📰 Florida Man, TODAY'S HEADLINE: his three rows carry `floridaHeadline`; spellBlockReason greys the two that are not
+  `_floridaHeadline(unit)` ("Not today"), a hash of the unit id + round, so the guest's menu agrees with no relay.
+- 🧠 Boltzmann Brain, THE FLUCTUATION: never walks or jumps (`_unitIsBodiless` in unitMoveBlockedByStatus / moveBlockWord
+  'Bodiless' / unitMoveBlockKey 'bodiless'; casts that move the caster are greyed too, so its tree has no Phase Walk). Every
+  round end (`_nrRoundEnd` in processEndOfRoundStatuses) it appears on a free square 2-4 away, picked by hash. Model = the
+  unrigged Meshy file, `clips: {}`, yawOffset PI (its eye looks down -Z in the file).
+- 🦌 Wendigo, THE HUNGER: a round in which it dealt no damage to an enemy (unit._fedRound, set in applyDamageToUnit) costs it 8%
+  max HP at the round end, never below 1 (`_wendigoHunger`).
+- 🐸 Karate Frog, LEAPFROG: `leapOver` (in _runPostEffects + spellMovesCaster) lands him on the square straight behind the target.
+- 🐌 Samurai Slug, THE SLIME TRAIL: every square he walks off becomes Black Ooze (`swamp`) for 2 rounds (`_slugTrail`, finishMoveAt).
+- 🦗 Cicada Brood, THE WAIT: Dig In = `dormant` (blockMove, onRoundEnd +1 Brood to 3) + Invisible; Screech (`broodSpend` 45)
+  adds 45 a stack in the plain AoE resolver (`_broodSpend`), spends them and ends Dig In.
+Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo had 10 stretched triangles from a claw to the foot
+(degenerated, edge > 0.15 m) and the Samurai Slug's tail was skinned to the legs (blended to Hips for z < 0.32, y < 0.85);
+originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
+(cut from the Meshy thumbnail). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
+residents in their zones.
