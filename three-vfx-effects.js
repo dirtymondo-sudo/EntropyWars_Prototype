@@ -564,6 +564,10 @@ const ThreeVFXEffects = (function () {
 
     function aoe(centerTx, centerTy, spellType, spellId, spellName, centerZ) {
         if (_suppressed() || _catOff('aoe') || !_canSpawn()) return;
+        /* THE VFX SWEEP B9a (the Jackpot / Shattered Mirror lead): this is the FALLBACK detonation battle.js fires for an area spell with
+           no 'aoe' recipe and no A-F geometry: eight white flashes, a glass orb and a wide ring. A spell with a look of its own
+           (a G-O / L-thread signature on the hit beat, which already flashes its squares) does not get it on top. */
+        if (spellId && _vcOn() && _vcOwn(spellId)) return;
 
         var ts = _cfg().tileSize || 128;
         var c = tilePx(centerTx, centerTy);
@@ -3202,8 +3206,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function _emitLayer(layer, count, centerPx, baseZFloor, baseZTorso, autoTint) {
         var baseZ = (layer.anchor === 'torso') ? baseZTorso : baseZFloor;
-        var tint = (layer.vcTint != null && _vcOn()) ? layer.vcTint   /* THE VFX SWEEP: a recipe layer's colour under the cleanup */
-                 : layer.tint != null ? layer.tint
+        var lt0 = (layer.vcTint !== undefined && _vcOn()) ? layer.vcTint : layer.tint;   /* THE VFX SWEEP: a recipe layer's colour under the cleanup (null = untinted = the casting spell's own light) */
+        var tint = lt0 != null ? lt0
                  : ((autoTint != null && _NEUTRAL_SPRITES[layer.sprite]) ? autoTint : null);
         for (var i = 0; i < count; i++) {
             var offXY = layer.offsetXY || 0;
@@ -13256,7 +13260,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         burst = true;
                         _sigSparks(tx, ty, 'divine-sparkle', 18,
                             { vxy: 110, vz0: 120, vz1: 260, gravity: -40 });
-                        _sigScreenFlash('#e6ccff', 120, 0.12);
+                        if (!(opts && opts.noFlash)) _sigScreenFlash('#e6ccff', 120, 0.12);
                     }
                 } else {
                     cd.inst.setFade(e);
@@ -13315,7 +13319,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 pivot.rotation.z = Math.PI * _sigEaseOutCubic(t2);   /* the reversal */
                 if (!flared && t2 > 0.85) {
                     flared = true;
-                    _sigScreenFlash('#a570e6', 130, 0.14);
+                    if (!_vcOn()) _sigScreenFlash('#a570e6', 130, 0.14);   /* THE VFX SWEEP B9a: the card turning over is the beat, no screen flash */
                     _sigSparks(tx, ty, 'psi-pulse', 12, { vxy: 90, vz0: -40, vz1: 40, gravity: 90 });
                 }
             } else if (el < inMs + flipMs + holdMs) {
@@ -14456,8 +14460,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var total = openMs + snapMs + clenchMs + fadeMs;
         var gapOpen = R * 1.15, gapShut = R * 0.22;
 
-        /* THE VFX SWEEP B8b: `plain: true` = the jaws, their ring and the flecks only (no summon circle under a bite, no screen flash, no speed burst) */
-        if (!opts.plain) _sigMagicCircle3D(tx, ty, {
+        /* THE VFX SWEEP, B8a + B8b: a caller's `vcQuiet` (off with the cleanup switch) or `plain` = the bite is the jaws, the
+           ring, the blood and the shake (no rune under a bite, no screen flash, no speed burst; rush lines only with
+           `vcLines`, an ultimate) */
+        var _vcQ = (_vcOn() && !!opts.vcQuiet) || !!opts.plain;
+        if (!_vcQ) _sigMagicCircle3D(tx, ty, {
             color: opts.circleColor != null ? opts.circleColor : 0x881111,
             radiusPx: ts * 0.95 * scale, growMs: 100, holdMs: openMs + snapMs + clenchMs,
             fadeMs: 200, spin: 0.006, opacity: 0.7,
@@ -14480,10 +14487,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (!snapped) {
                     snapped = true;
                     _sigShake(opts.shake || 'normal');
-                    if (opts.shake === 'hard' && !opts.plain) _sigSpeedLinesFx({ color: _sigCss(color), ms: 320, peak: 0.28 });
-                    if (!opts.plain) _sigScreenFlash(_sigCss(color), 110, opts.flashPeak != null ? opts.flashPeak : 0.16);
+                    if (opts.shake === 'hard' && (!_vcQ || (opts.vcLines && !opts.plain))) _sigSpeedLinesFx({ color: _sigCss(color), ms: 320, peak: 0.28 });
+                    if (!_vcQ) _sigScreenFlash(_sigCss(color), 110, opts.flashPeak != null ? opts.flashPeak : 0.16);
                     _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.3 * scale, ms: 360 });
-                    if (!opts.plain) _sigSpeedBurst3D(tx, ty, { color: 0xffffff, ms: 200 });
+                    if (!_vcQ) _sigSpeedBurst3D(tx, ty, { color: 0xffffff, ms: 200 });
                     _sigSparks(tx, ty, opts.sparkSprite || 'blood-fleck', 16, { vxy: 170, vz0: 40, vz1: 200, gravity: 380 });
                 }
                 var elC = el - openMs - snapMs;
@@ -14687,8 +14694,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         _sigSparks(tx, ty, opts.sparkSprite || 'blood-fleck', 8, { vxy: 190, vz0: 30, vz1: 170, gravity: 320 });
                         _sigShake('soft');
                         if (k === swipes.length - 1 && !opts.plain) {   /* THE VFX SWEEP B8b: `plain: true` = the claws and their cuts only */
+                            if (!(_vcOn() && opts.vcQuiet)) {   /* THE VFX SWEEP, B8a: the rakes are the look */
                             _sigSpeedBurst3D(tx, ty, { color: color, ms: 220 });
                             _sigScreenFlash(_sigCss(color), 110, opts.flashPeak != null ? opts.flashPeak : 0.12);
+                            }
                             if (opts.heavyFinish) {
                                 _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.5 * scale });
                                 _sigShake('normal');
@@ -18267,7 +18276,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     lidVy = ts * 0.014;
                     _sigSparks(tx, ty, 'ice-shard', 16, { vxy: 220, vz0: 120, vz1: 380, gravity: 300, z: S });
                     _sigSparks(tx, ty, 'frost-mist', 8, { vxy: 90, vz0: 40, vz1: 140, gravity: -20, z: S });
-                    _sigScreenFlash('#cfeaff', 140, 0.16);
+                    if (!_vcOn()) _sigScreenFlash('#cfeaff', 140, 0.16);
                 }
                 var t3 = (el - dropMs - settleMs - rattleMs) / burstMs;
                 if (packMats) { var jp = 1 + 0.35 * Math.sin(Math.min(1, t3 * 2) * Math.PI * 0.5); body.scale.set(jp, jp, jp); body.rotation.y += 0.05; }
@@ -19177,7 +19186,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _sigSparks(tx, ty, 'psi-pulse', 14, { vxy: 170, vz0: 40, vz1: 200, gravity: 40, z: 12 });
         _sigSparks(tx, ty, 'spark-pink', 10, { vxy: 210, vz0: 60, vz1: 240, gravity: 30, z: 14 });
         _sigSparks(tx, ty, 'acid-green', 8, { vxy: 140, vz0: 30, vz1: 170, gravity: 20, z: 10 });
-        _sigScreenFlash('#ff4de0', 230, 0.24);
+        if (!_vcOn()) _sigScreenFlash('#ff4de0', 230, 0.24);   /* THE VFX SWEEP B9a: the trip is its skulls + kaleidoscope, no screen flash */
         _sigShake('soft');
         try {
             if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.4, 380);
@@ -19331,7 +19340,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 broke = true;
                 /* the snap: aberration kick, flash, spectrum shards */
                 try { if (p && p.spellGradeKick) p.spellGradeKick(14, 260); } catch (e) {}
-                _sigScreenFlash('#f0c8ff', 150, 0.32);
+                if (!_vcOn()) _sigScreenFlash('#f0c8ff', 150, 0.32);   /* THE VFX SWEEP, B9b: the cage breaking is the hit, no pale screen flash */
                 _sigShake('hard');
                 try { if (p && p.bloomPulse) p.bloomPulse(0.7, 380); } catch (e) {}
                 var cpx = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
@@ -19347,7 +19356,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     });
                 }
                 _sigShockRing3D(tx, ty, { color: 0xcc66ff, r1: ts * 2.0, ms: 420 });
-                _sigSpeedBurst3D(tx, ty, { color: 0xff9cff });
+                if (!_vcOn()) _sigSpeedBurst3D(tx, ty, { color: 0xff9cff });   /* B9b: the shards are the burst */
             }
 
             /* the pieces fly */
@@ -19446,8 +19455,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the EXTRA-LONG imploding orb telegraph — everything they are,
            contracting */
         _sigOrbBurst3D(tx, ty, {
-            mode: 'in', color: 0xffffff, ms: implodeMs,
-            r0: ts * 0.10, r1: ts * 1.6, opacity: 0.85
+            mode: 'in', color: _vcOn() ? 0xff7ae4 : 0xffffff, ms: implodeMs,   /* THE VFX SWEEP, B9b: the shell in the trip's pink, thin enough to see the body through (it was a white ball over the target and its number) */
+            r0: ts * 0.10, r1: ts * 1.6, opacity: _vcOn() ? 0.45 : 0.85
         });
         _sigChargeSpiral3D(tx, ty, {
             count: 18, r0: ts * 0.9, r1: ts * 1.8, ms: implodeMs * 0.9,
@@ -19480,11 +19489,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var p = _post();
             try { if (p && p.spellGradeKick) p.spellGradeKick(14, 280); } catch (e) {}
             _sigOrbBurst3D(tx, ty, {
-                mode: 'out', color: 0xffffff, ms: 620,
-                r0: ts * 0.12, r1: ts * 1.95, opacity: 0.9
+                mode: 'out', color: _vcOn() ? 0xff7ae4 : 0xffffff, ms: 620,   /* B9b */
+                r0: ts * 0.12, r1: ts * 1.95, opacity: _vcOn() ? 0.4 : 0.9
             });
-            try { _sigSpectrumBurst3D(tx, ty, { radiusPx: ts * 1.8 }); } catch (e) {}
-            _sigScreenFlash('#ffffff', 300, 0.5);
+            try { _sigSpectrumBurst3D(tx, ty, _vcOn() ? { radiusPx: ts * 1.8, flashPeak: 0 } : { radiusPx: ts * 1.8 }); } catch (e) {}
+            if (!_vcOn()) _sigScreenFlash('#ffffff', 300, 0.5);   /* B9b: the spectrum burst is the release, no screen flash */
             _sigShake('hard');
             try { if (p && p.bloomPulse) p.bloomPulse(0.85, 460); } catch (e) {}
             /* the pieces of the self, scattering — pure white, then the world
@@ -19597,11 +19606,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _fxDelay(function () {
             if (_suppressed() || _catOff('spells')) return;
             _sigOrbBurst3D(tx, ty, {
-                mode: 'out', color: 0xbfefff, ms: 380,
+                mode: 'out', color: _vcOn() ? 0x5fd0f4 : 0xbfefff, ms: 380,   /* THE VFX SWEEP, B9b: the clock's own blue, no pale shell */
                 r0: ts * 0.1, r1: ts * 0.95, opacity: 0.7
             });
             _sigShockRing3D(tx, ty, { color: 0x7fe8ff, r1: ts * 1.5, ms: 380 });
-            _sigScreenFlash('#bfefff', 160, 0.22);
+            if (!_vcOn()) _sigScreenFlash('#bfefff', 160, 0.22);
             _sigShake('soft');
         }, Math.max(320, ms * 0.55));
     }
@@ -19750,7 +19759,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var p = _post();
 
         /* the world whites out and the storm arrives */
-        _sigWhiteout3D(tx, ty, { color: 0xdff2ff, sparkSprite: 'frost-crystal' });
+        /* THE VFX SWEEP, B7a: the opening mega-flash (white screen, rush lines, speed burst, two rings) was the generic finisher; the
+           storm, the grade and the cage are the spell. Its frost sparks and the shake stay. */
+        if (_vcOn()) { _sigShake('hard'); _sigSparks(tx, ty, 'frost-crystal', 18, { vxy: 260, vz0: 60, vz1: 260, gravity: 240 }); }
+        else _sigWhiteout3D(tx, ty, { color: 0xdff2ff, sparkSprite: 'frost-crystal' });
         _sigSnowfall3D(tx, ty, { radiusTiles: 1.7, count: 34, ms: ms, swirl: true });
 
         /* deep-freeze grade: victim spotlit, the frame goes arctic and STILL
@@ -19820,7 +19832,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 broke = true;
                 /* the stillness ends: LATTICE FAILURE */
                 try { if (p && p.spellGradeKick) p.spellGradeKick(12, 240); } catch (e) {}
-                _sigScreenFlash('#dff2ff', 180, 0.4);
+                if (!_vcOn()) _sigScreenFlash('#dff2ff', 180, 0.4);
                 _sigShake('hard');
                 try { if (p && p.bloomPulse) p.bloomPulse(0.75, 420); } catch (e) {}
                 var cpx = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
@@ -19844,9 +19856,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         opacity0: 0.6, opacity1: 0, gravity: -20, drag: 0.6
                     });
                 }
-                _sigShockRing3D(tx, ty, { color: 0xbfefff, r1: ts * 2.1, ms: 440 });
+                _sigShockRing3D(tx, ty, { color: _vcOn() ? 0x3f9be0 : 0xbfefff, r1: ts * 2.1, ms: 440 });
                 window.setTimeout(function () {
-                    if (_suppressed()) return;
+                    if (_suppressed() || _vcOn()) return;   /* B7a: one ice-blue ring, not a second white one */
                     _sigShockRing3D(tx, ty, { color: 0xffffff, r1: ts * 1.5, ms: 360, height: ts * 0.5 });
                 }, 110);
             }
@@ -20514,19 +20526,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 novaFired = true;
                 /* SUPERNOVA */
                 try { if (p && p.spellGradeKick) p.spellGradeKick(13, 300); } catch (e) {}
-                _sigScreenFlash('#fff6dd', 380, 0.6);
+                /* THE VFX SWEEP B10 (Nebula is this helper's only spell): the star's own burst is the light; the screen-wide
+                   wash is a short gold blink, not a white-out of the board */
+                if (_vcOn()) _sigScreenFlash('#ffc860', 220, 0.2); else _sigScreenFlash('#fff6dd', 380, 0.6);
                 _sigShake('hard');
                 try { if (p && p.bloomPulse) p.bloomPulse(1.0, 520); } catch (e) {}
                 _sigOrbBurst3D(tx, ty, {
-                    mode: 'out', color: 0xffe9a8, ms: 640,
-                    r0: ts * 0.15, r1: blastR * 1.15, height: hover, opacity: 0.9
+                    mode: 'out', color: _vcOn() ? 0xffc860 : 0xffe9a8, ms: 640,
+                    r0: ts * 0.15, r1: blastR * 1.15, height: hover, opacity: _vcOn() ? 0.5 : 0.9   /* B10: the bodies read through the shell */
                 });
                 _sigShockRing3D(tx, ty, { color: 0xffd77a, r1: blastR * 1.3, ms: 520 });
                 window.setTimeout(function () {
                     if (_suppressed()) return;
-                    _sigShockRing3D(tx, ty, { color: 0xffffff, r1: blastR * 0.9, ms: 420, height: ts * 0.5 });
+                    _sigShockRing3D(tx, ty, { color: _vcOn() ? 0xffd77a : 0xffffff, r1: blastR * 0.9, ms: 420, height: ts * 0.5 });
                 }, 120);
-                try { _sigLightPillar3D(tx, ty, { color: 0xfff0c0, height: ts * 6.0, radius: ts * 0.5, ms: 820 }); } catch (e) {}
+                try { _sigLightPillar3D(tx, ty, _vcOn() ? { color: 0xffc050, coreColor: 0xffd77a, height: ts * 6.0, radius: ts * 0.36, ms: 820 } : { color: 0xfff0c0, height: ts * 6.0, radius: ts * 0.5, ms: 820 }); } catch (e) {}
                 if (_canSpawn()) {
                     var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
                     /* starfire thrown across the whole blast */
@@ -20909,9 +20923,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         },
         raceResonancePulse:  function(tx, ty, r) {
             var ts0 = _cfg().tileSize || 128;
+            /* B7b: the pulse was a white bloom (pale rings + a screen flash + a rune + the sonic stamp, all added up):
+               its rings in a full blue, no screen flash, no second ring, no rune under the noise sheet */
+            var vc = _vcOn();
             _sigSonicBoom3D(tx, ty, {
-                color: 0x9fd8ff, rings: 3, radiusTiles: (r != null ? r : 2) * 0.95, height: 0.4,
+                color: vc ? 0x4f9cff : 0x9fd8ff, rings: 3, radiusTiles: (r != null ? r : 2) * 0.95, height: 0.4, flashPeak: vc ? 0 : null,
             });
+            if (vc) return;
             _sigShockRing3D(tx, ty, { color: 0x9fd8ff, r1: ts0 * (r != null ? r : 2), ms: 520 });
             _sigMagicCircle3D(tx, ty, {
                 color: 0x88bbff, radiusPx: ts0 * 1.05,
@@ -21032,6 +21050,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _fxDelay(function() {
                 if (_suppressed()) return;
                 _sigShockRing3D(tx, ty, { color: 0xffaa55, r1: ts0 * 2.4, ms: 520 });
+                if (_vcOn()) return;   /* THE VFX SWEEP B10: the rock, its fire and its ring are the landing (no pale speed burst, no screen flash) */
                 _sigSpeedBurst3D(tx, ty, { color: 0xffcc88 });
                 _sigScreenFlash('#ffd9a8', 200, 0.32);
             }, dm || 700);
@@ -21130,24 +21149,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceBite: function(tx, ty) { _sigJawsBite3D(tx, ty, {
             /* the wolf FEEDS — long clench while the drain hops home */
             scale: 1.0, glowColor: 0xdd2222, gumTint: 0x7a1d1d, clenchMs: 420,
-            circleColor: 0x991111, sparkSprite: 'blood-fleck', flashPeak: 0.15,
+            circleColor: 0x991111, sparkSprite: 'blood-fleck', flashPeak: 0.15, vcQuiet: true,
         }); },
         raceBloodFrenzy: function(tx, ty) {
             /* smell blood → two frantic rakes, then the jaws slam shut */
             _sigClawCombo3D(tx, ty, {
                 swipes: 2, glowColor: 0xff2222, clawTint: 0xe8d8c8,
-                sparkSprite: 'blood-fleck', swipeMs: 52, markMs: 450,
+                sparkSprite: 'blood-fleck', swipeMs: 52, markMs: 450, vcQuiet: true,
             });
             window.setTimeout(function () {
                 if (_suppressed()) return;
                 _sigJawsBite3D(tx, ty, {
                     scale: 1.05, glowColor: 0xff2222, clenchMs: 240,
-                    shake: 'hard', flashPeak: 0.2,
+                    shake: 'hard', flashPeak: 0.2, vcQuiet: true, vcLines: true,
                 });
             }, 260);
         },
         raceHowl: function(tx, ty) {
             /* moonlit howl — icy echo rings rolling off across the board */
+            /* THE VFX SWEEP, B6a: the rings in moon blue (they were near white), no screen flash and no white speed burst (`gentle`) */
+            if (_vcOn()) {
+                _sigSonicBoom3D(tx, ty, { color: 0x86b4ff, rings: 4, ringGapMs: 170, radiusTiles: 2.3, gentle: true });
+                _sigShake('normal');
+                _sigSparks(tx, ty, 'spark-blue', 10, { vxy: 200, vz0: 40, vz1: 170, gravity: 300 });
+                return;
+            }
             _sigSonicBoom3D(tx, ty, {
                 color: 0xbbddff, rings: 4, ringGapMs: 170, radiusTiles: 2.3,
                 shake: 'normal', flashPeak: 0.12, sparkSprite: 'spark-blue',
@@ -21182,7 +21208,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceLoveBite: function(tx, ty) { _sigJawsBite3D(tx, ty, {
             scale: 0.6, glowColor: 0xff77bb, gumTint: 0xbb4477, toothTint: 0xffffff,
             hideTint: 0x77364a, circleColor: 0xcc5599, sparkSprite: 'spark-pink',
-            flashPeak: 0.08, clenchMs: 180,
+            flashPeak: 0.08, clenchMs: 180, vcQuiet: true,
         }); },
 
         /* HALF-DEMON — one massive raking demon claw */
@@ -21206,7 +21232,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* DINO — the tyrant-king chomp; armor is a suggestion */
         raceJurassicJaw: function(tx, ty) { _sigJawsBite3D(tx, ty, {
             scale: 1.55, glowColor: 0xff6622, gumTint: 0x7a3018, toothTint: 0xf5ecd0,
-            circleColor: 0xaa4411, clenchMs: 380, shake: 'hard', flashPeak: 0.24,
+            circleColor: 0xaa4411, clenchMs: 380, shake: 'hard', flashPeak: 0.24, vcQuiet: true, vcLines: true,
         }); },
         raceApexPounce: function(tx, ty) { _sigJawsBite3D(tx, ty, {
             scale: 1.25, glowColor: 0xff8822, gumTint: 0x6b2a14, toothTint: 0xf5ecd0,
@@ -21220,7 +21246,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* SKINWALKER — a claw that isn't yours, wreathed in stolen arcana */
         raceBorrowedClaw: function(tx, ty) { _sigClawCombo3D(tx, ty, {
             swipes: 2, glowColor: 0xbb66ff, clawTint: 0xded0f0,
-            sparkSprite: 'psi-pulse', heavyFinish: true, markMs: 800,
+            sparkSprite: 'psi-pulse', heavyFinish: true, markMs: 800, plain: _vcOn(),   /* THE VFX SWEEP B9a: a standard hit ends on its claws + the marks (no screen flash, speed burst, end ring, rush lines) */
         }); },
 
         /* MINOTAUR / SIREN — more SONIC BOOM roars & screams */
@@ -21232,7 +21258,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* the siren's scream — the melody itself breaks */
             color: 0x66ddff, rings: 4, ringGapMs: 130, radiusTiles: (r || 2) + 0.6,
             notes: 3, broken: true, noteColor: 0x99eeff,
-            shake: 'hard', flashPeak: 0.2, sparkSprite: 'spark-blue',
+            shake: 'hard', flashPeak: _vcOn() ? 0 : 0.2, sparkSprite: 'spark-blue',   /* B7b: no screen flash; the rings are the scream */
         }); },
 
         /* HARBINGER — the bard's kit sings in giant spectral notes */
@@ -21241,6 +21267,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                broken notes: harmony torn apart. THE debuff showpiece —
                reads at any zoom (the old effect was a 55px flash). */
             var ts0 = _cfg().tileSize || 128;
+            /* THE VFX SWEEP B9a: a sour chord is not rune magic: the two rune circles go, the jagged rings + the broken notes are the spell */
+            if (!_vcOn()) {
             _sigMagicCircle3D(tx, ty, {
                 color: 0xcc55ff, radiusPx: ts0 * 1.3, holdMs: 850,
                 spin: 0.010, rise: 26, opacity: 0.8,
@@ -21249,10 +21277,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 color: 0xff44aa, radiusPx: ts0 * 0.85, holdMs: 850,
                 spin: -0.014, height: 26, opacity: 0.7,
             });
+            }
             _sigSonicBoom3D(tx, ty, {
                 color: 0xcc55ff, rings: 4, ringGapMs: 140, radiusTiles: 2.1,
                 notes: 4, broken: true, noteColor: 0xff66dd, noteScale: 1.1,
-                shake: 'normal', flashPeak: 0.17, sparkSprite: 'spark-pink',
+                shake: 'normal', flashPeak: _vcOn() ? 0 : 0.17, sparkSprite: 'spark-pink',   /* THE VFX SWEEP B9a: no screen flash */
             });
         },
         lullaby: function(tx, ty) {
@@ -21261,7 +21290,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 gentle: true, color: 0xbb99ff, rings: 2, ringGapMs: 260,
                 radiusTiles: 1.4, notes: 4, noteColor: 0xddbbff,
             });
-            _sigMagicCircle3D(tx, ty, {
+            if (!_vcOn()) _sigMagicCircle3D(tx, ty, {   /* B7b: a lullaby is a song, not rune magic; the hush rings (snLullaby) are its mark */
                 color: 0x9977ee, radiusPx: (_cfg().tileSize || 128) * 0.95,
                 holdMs: 1000, spin: 0.0012, opacity: 0.5, rise: 30,
             });
@@ -21320,7 +21349,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }); },
         raceInkCloud: function(tx, ty, r) { _sigGasCloud3D(tx, ty, {
             color: 0x3355aa, coreColor: 0x223377, gentle: true,
-            radiusTiles: (r || 1) + 0.6, count: 12, ms: 1500,
+            radiusTiles: (r || 1) + 0.6, count: 12, ms: 1500, noPool: _vcOn(),   /* THE VFX SWEEP B9a: ink, no circle of light under it */
         }); },
         raceExhaustCloud: function(tx, ty, r) { _sigGasCloud3D(tx, ty, {
             color: 0x99aa77, coreColor: 0x778855, gentle: true,
@@ -21470,7 +21499,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* STAR CROSSED — the reversed card. */
         raceStarCrossed: function(tx, ty) { _sigTarotReversed3D(tx, ty); },
         /* TAROT DRAW — the full spread. */
-        raceTarotDraw: function(tx, ty) { _sigTarotDraw3D(tx, ty); },
+        raceTarotDraw: function(tx, ty) { _sigTarotDraw3D(tx, ty, _vcOn() ? { noFlash: true } : undefined); },   /* THE VFX SWEEP, B6a: the card is the look, no screen flash */
         /* REMOTE VIEW — the scrying card over the far tile. */
         remoteView: function(tx, ty, r) { _sigTarotScry3D(tx, ty, r); },
         /* A REALLY GOOD PUNCH — it is. */
@@ -21554,7 +21583,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigShockRing3D(tx, ty, { color: 0x88cc55, r1: ts0 * 1.2, ms: 320 });
             _sigSparks(tx, ty, 'blood-splat', 8, { vxy: 160, vz0: 30, vz1: 150 });
             _sigSparks(tx, ty, 'dust-puff', 8, { vxy: 120, vz0: 10, vz1: 60, gravity: 60 });
-            _sigScreenFlash('#ccffaa', 90, 0.10);
+            if (!_vcOn()) _sigScreenFlash('#ccffaa', 90, 0.10);   /* THE VFX SWEEP, B9b */
             _sigShake('normal');
         },
 
@@ -21566,9 +21595,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceChassisSlam: function(tx, ty, r) {
             var ts0 = _cfg().tileSize || 128;
             var R = Math.max(1, r != null ? r : 2);
-            _sigScreenFlash('#ffddaa', 140, 0.18);
+            if (!_vcOn()) _sigScreenFlash('#ffddaa', 140, 0.18);   /* THE VFX SWEEP, B7a: the lasers and the sparks are Kill Mode; no screen flash, no speed burst, no white laser core */
             _sigShake('hard');
-            _sigSpeedBurst3D(tx, ty, { color: 0xffcc66 });
+            if (!_vcOn()) _sigSpeedBurst3D(tx, ty, { color: 0xffcc66 });
             /* muzzle storm right at the chassis */
             _sigSparks(tx, ty, 'muzzle-flash', 10, { vxy: 90, vz0: 60, vz1: 200, z: ts0 * 0.4 });
             _sigSparks(tx, ty, 'steel-spark', 26, { vxy: 480, vz0: 20, vz1: 160, gravity: 300 });
@@ -21585,15 +21614,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     _sigShockRing3D(tx, ty, { color: glow, r1: ts0 * (0.9 + R), ms: 420 });
                 }, delay);
             };
-            wave(8, 0,            0xffffff, 0xff3344, 0.8, 0);    /* red combat lasers */
-            wave(8, Math.PI / 8,  0xd6fff4, 0x2fe6c0, 0.7, 170);  /* cyan plasma sweep */
+            wave(8, 0,            _vcOn() ? 0xff8a92 : 0xffffff, 0xff3344, 0.8, 0);    /* red combat lasers */
+            wave(8, Math.PI / 8,  _vcOn() ? 0x8af0dc : 0xd6fff4, 0x2fe6c0, 0.7, 170);  /* cyan plasma sweep */
             wave(8, Math.PI / 16, 0xfff2cc, 0xffaa33, 1.0, 340);  /* cannon volley */
             /* spent casings + heat venting once the guns wind down */
             window.setTimeout(function () {
                 if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
                 _sigSparks(tx, ty, 'steel-spark', 18, { vxy: 420, vz0: 30, vz1: 140, gravity: 320 });
                 _sigSparks(tx, ty, 'smoke', 8, { vxy: 60, vz0: 20, vz1: 80, gravity: -20 });
-                _sigScreenFlash('#aaffee', 120, 0.14);
+                if (!_vcOn()) _sigScreenFlash('#aaffee', 120, 0.14);
             }, 400);
         },
 
@@ -21634,7 +21663,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     if (!slammed) {
                         slammed = true;
                         _sigShake('hard');
-                        _sigScreenFlash('#cfe0ff', 110, 0.16);
+                        if (!_vcOn()) _sigScreenFlash('#cfe0ff', 110, 0.16);
                         _sigShockRing3D(tx, ty, { color: 0x9fd0ff, r1: ts0 * 1.5, ms: 380 });
                         _sigSparks(tx, ty, 'steel-spark', 22, { vxy: 300, vz0: 40, vz1: 220 });
                         _sigSparks(tx, ty, 'dust-puff', 10, { vxy: 140, vz0: 10, vz1: 60, gravity: 60 });
@@ -21739,7 +21768,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         },
         racePlotArmor: function(tx, ty) {
             _sigShieldRing3D(tx, ty, { glowColor: 0xffd875, count: 4, holdMs: 800, radiusTiles: 0.75 });
-            _sigSacredRings3D(tx, ty, { color: 0xffe9a8, holdMs: 800, radiusTiles: 0.9 });
+            /* THE VFX SWEEP, B6a: the three sacred rings drew white whatever colour they were handed and hid the body; the
+               shields + the pink burst are the look */
+            if (!_vcOn()) _sigSacredRings3D(tx, ty, { color: 0xffe9a8, holdMs: 800, radiusTiles: 0.9 });
         },
         /* cast beat: freeze-frame on the victim + the manga end-card */
         'raceToBeContinued:mark': function(tx, ty) {
@@ -21825,10 +21856,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            churning inside a counter-spinning witch-ring. */
         raceColdSpot: function(tx, ty, r) {
             _sigGasCloud3D(tx, ty, {
-                color: 0x9fd8e8, coreColor: 0xdff4ff, gentle: true,
-                radiusTiles: (r != null ? r : 1) + 0.5, count: 14, ms: 1700,
+                color: _vcOn() ? 0x6fb4d8 : 0x9fd8e8, coreColor: _vcOn() ? 0x8fc4e6 : 0xdff4ff, gentle: true,   /* THE VFX SWEEP B9a: cold blue fog, it drew near-white over the bodies */
+                radiusTiles: (r != null ? r : 1) + 0.5, count: 14, ms: 1700, noPool: _vcOn(),
             });
-            _sigMagicCircle3D(tx, ty, {
+            /* THE VFX SWEEP B9a: a ghost's cold is not rune magic, and the circle lay on the zone's own squares */
+            if (!_vcOn()) _sigMagicCircle3D(tx, ty, {
                 color: 0x88ccee, radiusPx: (_cfg().tileSize || 128) * 1.25,
                 holdMs: 1200, spin: -0.0024, opacity: 0.55,
             });
@@ -21875,10 +21907,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            a silver crescent arc. (Valkyrie Spear keeps its spear prison.) */
         raceDivineSwoop: function(tx, ty) {
             var ts0 = _cfg().tileSize || 128;
-            _sigSpeedBurst3D(tx, ty, { color: 0xcfe4ff });
-            _sigCrescentSlash3D(tx, ty, { color: 0xbbddff, yaw: rn(0, Math.PI * 2), dir: 1, ms: 260, size: ts0 * 1.5 });
+            var _vcDS = _vcOn();   /* THE VFX SWEEP B10: the swoop is its silver cut + its ring (the pale speed burst and the screen flash were any spell's) */
+            if (!_vcDS) _sigSpeedBurst3D(tx, ty, { color: 0xcfe4ff });
+            _sigCrescentSlash3D(tx, ty, { color: _vcDS ? 0x8fbcf0 : 0xbbddff, yaw: rn(0, Math.PI * 2), dir: 1, ms: 260, size: ts0 * 1.5 });
             _sigShockRing3D(tx, ty, { color: 0x99ccff, r1: ts0 * 1.5, ms: 380 });
-            _sigScreenFlash('#cfe4ff', 110, 0.14);
+            if (!_vcDS) _sigScreenFlash('#cfe4ff', 110, 0.14);
         },
         /* VALKRAYE — Chooser of the Slain: Valhalla reaches down. Whiteout,
            the armillary, a long pale pillar — and the soul walks back. */
@@ -22051,7 +22084,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigRegenPulse3D(tx, ty, { color: 0xa8ffc4, ms: 900 });
         },
         provoke: function(tx, ty) {
-            _sigSonicBoom3D(tx, ty, { color: 0xff9944, rings: 3, radiusTiles: 1.2 });
+            _sigSonicBoom3D(tx, ty, { color: 0xff9944, rings: 3, radiusTiles: 1.2, flashPeak: _vcOn() ? 0 : undefined });   /* THE VFX SWEEP B9a: the shout is its rings, no screen flash */
         },
     };
 
@@ -22083,11 +22116,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            every _POWER_AURA_SPELLS id has one) */
         if (_POWER_AURA_SPELLS[spellId] && params.tx != null && params.ty != null &&
             window.EWPowerAura && typeof window.EWPowerAura.burst === 'function') {
-            try { window.EWPowerAura.burst(params.tx, params.ty, _POWER_AURA_SPELLS[spellId]); } catch (e) {}
+            try { window.EWPowerAura.burst(params.tx, params.ty, (_vcOn() && _S6A_AURA[spellId]) || _POWER_AURA_SPELLS[spellId]); } catch (e) {}   /* THE VFX SWEEP, B6a: a pale shroud in the spell's colour */
         }
 
         var auraEffectId = SPELL_MAP[spellId] && SPELL_MAP[spellId].aura;
         if (!auraEffectId) return;
+        auraEffectId = _s6aFx(spellId, 'aura', auraEffectId);   /* THE VFX SWEEP, B6a: the recipe with its generic white off */
         var auraDef = EFFECTS[auraEffectId];
         if (!auraDef) return;
 
@@ -22407,9 +22441,33 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _VC_RUNE = { arcane: 1, unholy: 1, hex: 1, psychicHex: 1, blood: 1, divine: 1 };
     /* the blessings: no rune from any helper, the spell's own signature included (_sigMagicCircle3D) */
     var _VC_NO_RUNE = { heal: 1, mana: 1, aura: 1, psychicAid: 1, bloodAura: 1, ki: 1 };   /* ki (B4): a power-up is an aura, not a rune */
+    /* THE VFX SWEEP (B9a, 11-17): a spell of a rune school that is NOT rune magic draws no cast rune under its caster (mondo: the
+       rune "should be preserved for magic spells where it makes sense"). One id a spell; a sweep thread adds its own ids here.
+       Kept on purpose (rune magic): Annihilation, Arcane Sigil, Crystal Ball, Hocus Pocus, Contract, Forsaken, Hex of Agony,
+       Mark of the Beast, Mummify, Polymorph, Spellsteal, Star Crossed. */
+    var _VC_SPELL_NO_RUNE = {
+        /* B9a, arcane: silk, cards, mirrors, a slot machine, a web, a paradox, the winged disk */
+        raceCocoon: 1, raceDeadMansHand: 1, raceHallOfMirrors: 1, raceJackpot: 1, sigKneel: 1, raceMirrorShard: 1, racePrismMirror: 1,
+        raceSevenYears: 1, raceShatteredMirror: 1, raceStrangeLoop: 1, raceWebLaunch: 1,
+        /* B9a, hex (part 2): a thrown thing, a shout, a gadget, a cloud, a trick, a ghost: none of them is drawn on the ground */
+        raceAnchor: 1, raceBlueScreen: 1, provoke: 1, raceCampaignPromise: 1, nrCard: 1, raceCharm: 1, raceColdSpot: 1, raceConstrict: 1,
+        goDesignateTarget: 1, discordance: 1, nrEagleEye: 1, raceExhaustCloud: 1, raceFilibuster: 1, goFlowerInTheBarrel: 1,
+        pzFreezePolice: 1, nrGoViral: 1, sharedGravityCrush: 1, raceHaunt: 1, raceHogtie: 1, raceImplant: 1, raceInkCloud: 1, ironGrip: 1,
+        sigLampSmoke: 1, sharedLowGravity: 1, raceMeanMug: 1, raceMemoryLeak: 1,
+        /* B9a, hex (part 3) */
+        goMirrorSplinter: 1, raceMisdirection: 1,
+        raceNaughtyList: 1, raceOutbreak: 1, nrPickACard: 1, sigPixiePrank: 1, racePredictiveModel: 1, raceRedEyes: 1, nrSelfieFlash: 1,
+        nrShortSell: 1, sigShowdown: 1, sharedSmokeScreen: 1, spySpikedMartini: 1, racePopSpotlight: 1, raceStackedDeck: 1,
+        raceStasisBeam: 1, raceStealFromRich: 1, raceStutter: 1, raceSurveillance: 1, raceSystemAnalysis: 1, pzHatMan: 1,
+        raceCultKoolAid: 1, goThrowDownTheGauntlet: 1, goVowOfSilence: 1, pzWantedPoster: 1, raceWhiteChristmas: 1, sigWitherStarlight: 1,
+        /* the brief's lead: Love Ray is a ray gun, the purple circle under the shooter was this rune */
+        sigLoveRay: 1
+    };
     function _vcRuneOK(info, spellId, params, sx, sy) {
         if (!_vcOn()) return true;
         if (!_VC_RUNE[info.archetype] || _VC_PORTAL[spellId]) return false;   /* B5: a portal spell's portal is its mark */
+        if (_VC_SPELL_NO_RUNE[spellId]) return false;   /* THE VFX SWEEP: not rune magic */
+        if (_VC_RUNE_NOT_B9B[spellId]) return false;   /* THE VFX SWEEP, B9b: a spell of a rune school that is not rune magic itself */
         /* B4: a spell fired from a gun (a ray gun's hex is still a gun shot) draws no rune under the shooter */
         try { if (_SIG_GUN_FOR[spellId] || _SIG_LINE_GUN_FOR[spellId] || _isGunSpell(spellId)) return false; } catch (e) {}
         var d = _spellDefFor(spellId) || {};
@@ -23135,7 +23193,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _teleAt = Math.max(80, holdMs - _teleMs);
             var _ttx = params.tx, _tty = params.ty;
             var _teleRing = P.ring, _teleOrb = P.orb, _teleScale = T.orbScale;
-            var _teleOrbOK = _rank >= 2 && !params.mark && !P.noOrb && !P.iceSigil && !(_f4OwnLook(spellId) && !_f4Off());   /* noOrb: no closing glass orb either (THE BLOOD PASS); THE ICE PASS: no glass orb on an ice victim either */
+            var _teleOrbOK = _rank >= 2 && !params.mark && !P.noOrb && !P.iceSigil && !(_f4OwnLook(spellId) && !_f4Off()) && !(_vcOn() && _vcOwn(spellId));   /* THE VFX SWEEP B9a: nor on any spell with a look of its own (B1's rule for the burst's orb; the closing ring stays) */   /* noOrb: no closing glass orb either (THE BLOOD PASS); THE ICE PASS: no glass orb on an ice victim either */
             window.setTimeout(function () {
                 if (_suppressed() || !_canSpawn()) return;
                 if (_teleOrbOK) {
@@ -27394,7 +27452,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             else if (el >= 1150) {
                 if (!landed) {
                     landed = true;
-                    try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.15, r1: ts * 1.4, ms: 380, height: 4 }); } catch (e) {}
+                    if (!_vcOn()) try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.15, r1: ts * 1.4, ms: 380, height: 4 }); } catch (e) {}   /* THE VFX SWEEP B9a: the landing is its dust ring; the wide pale ring over it is off */
                     _doorSwallowDust(tx, ty, ts);
                     if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('heavy');
                 }
@@ -42271,7 +42329,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _crLight(c.x, c.y, floorZ + ts * 0.5 * S, 0xff8a3a,
                 { intensity: 3.6 * Math.min(1.6, S), ms: 720, radius: 4.2 * Math.min(2, S), attack: 30 });
         }
-        try { _sigShockRing3D(tx, ty, { color: 0xffc27a, r1: ts * 1.9 * S, ms: 440 }); } catch (e) {}
+        /* THE VFX SWEEP B8b: `noRing: true` = no shock ring (a spell that goes up square by square drew one pale ring a square) */
+        if (!o.noRing) try { _sigShockRing3D(tx, ty, { color: 0xffc27a, r1: ts * 1.9 * S, ms: 440 }); } catch (e) {}
         if (_canSpawn()) {
             _spawn({ x: c.x, y: c.y, z: floorZ + 1, mode: 'world', sprite: 'scorch',
                      ml: lite ? 3200 : 5200, size0: ts * 1.05 * S, size1: ts * 1.25 * S, opacity0: 0.92, opacity1: 0 });
@@ -43744,7 +43803,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var halo = _afGlowMesh(new THREE.TorusGeometry(ts * 0.22, ts * 0.025, 6, 32), _AF.gold); halo.rotation.x = Math.PI / 2; halo.position.y = ts * 1.32; F.g.add(halo); mats.push([halo.material, 0.9]);
         var total = 1800;
-        try { _sigLightPillar3D(tx, ty, { height: 360, radius: ts * 0.3, ms: 900, color: _AF.gold, coreColor: 0xffffff }); } catch (e) {}
+        try { _sigLightPillar3D(tx, ty, { height: 360, radius: ts * 0.3, ms: 900, color: _AF.gold, coreColor: _vcOn() ? 0xffe2a0 : 0xffffff }); } catch (e) {}   /* THE VFX SWEEP, B6a: a warm core, not a white one */
         return _sigRunOwned(F.g, total, function (el) {
             var open = _sigEaseOutBack(_sigClamp01(el / 380)), fold = _sigClamp01((el - 520) / 520);
             for (var w = 0; w < wings.length; w++) {
@@ -44223,7 +44282,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afAscension3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, rad = r != null ? r : 1, robes = [];
-        try { _sigLightPillar3D(tx, ty, { height: 900, radius: ts * (0.6 + rad * 0.35), ms: 1500, color: _AF.pale, coreColor: 0xffffff }); } catch (e) {}
+        try { _sigLightPillar3D(tx, ty, { height: 900, radius: ts * (0.6 + rad * 0.35), ms: 1500, color: _AF.pale, coreColor: _vcOn() ? 0xffe2a0 : 0xffffff }); } catch (e) {}   /* THE VFX SWEEP B9a: the light IS the spell; only its core is warm, not pure white */
         var spots = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]];
         for (var i = 0; i < spots.length; i++) {
             var rb = _nrvRobe(ts); rb.position.set(spots[i][0] * ts * rad * 0.7, 0, spots[i][1] * ts * rad * 0.7); rb.scale.setScalar(0.7);
@@ -44830,7 +44889,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1);
         var disk = _afGlowMesh(new THREE.PlaneGeometry(ts * 2.4, ts * 1.2), 0xb69cff, { map: _afWingDiskTex() }); disk.position.y = ts * 2.6; F.g.add(disk);
         var rings = [];
-        for (var i = 0; i < 3; i++) { var m = _afGlowMesh(new THREE.PlaneGeometry(ts * (rad * 2 + 1.2), ts * (rad * 2 + 1.2)), 0xb69cff, { map: _sigRingTex() }); m.rotation.x = -Math.PI / 2; F.g.add(m); rings.push({ m: m, at: 250 + i * 220 }); }
+        /* THE VFX SWEEP B9a: the pressing rings are GOLD (the makers' disk) and thin enough to see who kneels; they were three stacked lilac rings that drew near-white over the 3 x 3 */
+        var _knC = _vcOn() ? 0xd89a2a : 0xb69cff, _knO = _vcOn() ? 0.42 : 0.7;
+        for (var i = 0; i < 3; i++) { var m = _afGlowMesh(new THREE.PlaneGeometry(ts * (rad * 2 + 1.2), ts * (rad * 2 + 1.2)), _knC, { map: _sigRingTex() }); m.rotation.x = -Math.PI / 2; F.g.add(m); rings.push({ m: m, at: 250 + i * 220 }); }
         var total = 1700;
         return _sigRunOwned(F.g, total, function (el) {
             disk.material.opacity = 0.85 * _afEnv(el, 0, 250, 1200, total); disk.scale.x = 0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(el / 350));
@@ -44838,7 +44899,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < rings.length; i++) {
                 var R = rings[i], k = _sigClamp01((el - R.at) / 420);
                 R.m.position.y = ts * (2.3 - 2.25 * _sigEaseInCubic(k)); R.m.scale.setScalar(1 - 0.15 * k);
-                R.m.material.opacity = (el > R.at && k < 1 ? 0.7 : 0) * (1 - 0.4 * k);
+                R.m.material.opacity = (el > R.at && k < 1 ? _knO : 0) * (1 - 0.4 * k);
             }
             if (el > 1000 && !F.g.userData.shook) { F.g.userData.shook = true; _shake('normal'); }
         });
@@ -44907,7 +44968,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1);
         var eye = _afDarkSprite(0xffffff, _afEyeTex('cyclops', '#d8a020', false), ts * 0.9); eye.position.y = ts * 2.0; F.g.add(eye);
-        for (var i = 0; i < 4; i++) _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * (rad + 1.2), ms: 420, color: 0xffe0a0, height: ts * 0.9 }); } catch (e) {} }, 200 + i * 150);
+        /* B7b: four cream-white rings over the whole area: three, in the eye's amber */
+        var vc = _vcOn();
+        for (var i = 0; i < (vc ? 3 : 4); i++) _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * (rad + 1.2), ms: 420, color: vc ? 0xe09a22 : 0xffe0a0, height: ts * 0.9 }); } catch (e) {} }, 200 + i * 150);
         var total = 1300;
         return _sigRunOwned(F.g, total, function (el) {
             var open = _sigEaseOutBack(_sigClamp01(el / 220));
@@ -45352,7 +45415,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afLoveRay3D(tx, ty, r, o) {
         if (_catOff('spells')) return null;
         var from = _afCaster(tx, ty, o);
-        if (!from.fogged) try { _spawnLaserBeam3D(from.x, from.y, tx, ty, { core: 0xffffff, glow: _AF.vixen, beamMs: 420, thickness: 6 }); } catch (e) {}
+        if (!from.fogged) try { _spawnLaserBeam3D(from.x, from.y, tx, ty, { core: _vcOn() ? 0xff9ac8 : 0xffffff, glow: _AF.vixen, beamMs: 420, thickness: 6 }); } catch (e) {}
         var F = _nrvFrame(tx, ty), ts = F.ts, to = _afTo(F, from.x, from.y), hearts = [];
         for (var i = 0; i < 6; i++) { var h = _finSprite(_AF.vixen, _afHeartTex(), ts * 0.22, 164); F.g.add(h); hearts.push({ s: h, at: i * 60 }); }
         var a = new THREE.Vector3(to.x, to.y + ts * 0.8, to.z), b = new THREE.Vector3(0, ts * 0.8, 0), total = 1100;
@@ -46263,7 +46326,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells') || _afFogHides(tx, ty)) return null;
         var ts = _worldPos(tx, ty).ts, reach = (r > 0 ? r : 1) + 0.5;
         for (var i = 0; i < 6; i++) (function (j) {
-            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * reach * (0.8 + 0.08 * (j % 3)), ms: 300, color: j % 2 ? _CB_DRONE : _CB_PALE, height: ts * (0.35 + 0.12 * ((j * 7) % 3)), torus: j % 2 === 0 }); } catch (e) {} }, j * 90);
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * reach * (0.8 + 0.08 * (j % 3)), ms: 300, color: j % 2 ? _CB_DRONE : (_vcOn() ? _CB_GREEN : _CB_PALE), height: ts * (0.35 + 0.12 * ((j * 7) % 3)), torus: j % 2 === 0 }); } catch (e) {} }, j * 90);   /* B7a: the pale ring in cicada green */
         })(i);
         _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * reach, ms: 520, color: _lgSide(_cbOwnerNear(tx, ty), tx, ty), height: ts * 0.05 }); } catch (e) {} }, 120);
         return true;
@@ -48095,9 +48158,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             },
             hit: function (P) {
                 var r = Math.max(1, P.r || 2);
-                try { _sigSonicBoom3D(P.sx, P.sy, { color: 0xc49aff, rings: 4, ringGapMs: 120, radiusTiles: r + 0.5 }); } catch (e) {}
+                var vc = _vcOn();   /* B7b: the rings in a full violet, no screen flash, the column thinner and violet through (its core was white) */
+                try { _sigSonicBoom3D(P.sx, P.sy, { color: vc ? 0x9a6bff : 0xc49aff, rings: 4, ringGapMs: 120, radiusTiles: r + 0.5, flashPeak: vc ? 0 : null }); } catch (e) {}
                 try { _sigMusicNotes3D(P.sx, P.sy, { count: 6, color: 0xd6b8ff, broken: true, scale: 1.3 }); } catch (e) {}
-                _capColumn(P.sx, P.sy, 0x7a4adf, 5, 0.34, 900, 0xe6d8ff);
+                _capColumn(P.sx, P.sy, vc ? 0x6a3ad8 : 0x7a4adf, 5, vc ? 0.24 : 0.34, 900, vc ? 0x7a4adf : 0xe6d8ff);
                 _capLight(P.sx, P.sy, 0xa77aff, { i: 2.6, ms: 900, h: 1.2, r: 4 });
                 _capPuff(P.sx, P.sy, 'shadow-wisp', 10, { r: r * 0.8, out: 120, vz0: 20, vz1: 60, s0: 20, s1: 34, sEnd: 50, op: 0.5 });
             }
@@ -48128,7 +48192,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             hit: function (P) {
                 _capShards(P.tx, P.ty, 'stone', { n: 14, scale: 1.3 });
                 _capSpikes(P.tx, P.ty, { ring: 0.8, n: 7, h: 0.45, w: 0.18, holdMs: 800, jitter: 60 });
-                _capRing(P.tx, P.ty, 0xd8d0c0, 1.8, 500, 3);
+                _capRing(P.tx, P.ty, _vcOn() ? 0xc0ae90 : 0xd8d0c0, 1.8, 500, 3);   /* THE VFX SWEEP, B8a: stone dust, not a pale ring */
                 _capPuff(P.tx, P.ty, 'dust-puff', 12, { r: 0.8, out: 160, s0: 24, s1: 40, sEnd: 70, op: 0.55, ml0: 800, ml1: 1300 });
                 _capLight(P.tx, P.ty, 0xffe0b0, { i: 1.8, ms: 500, h: 0.4 });
             }
@@ -48168,7 +48232,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _capShards(P.sx, P.sy, 'glass', { n: 12, height: 0.6 });
                 try { _sigSpectrumBurst3D(P.sx, P.sy, { radiusPx: _capTs() * 1.1, ms: 700 }); } catch (e) {}
                 try { _sigStatRings3D(P.sx, P.sy, { dir: 1, rings: 4, color: 0xe6a8ff, ms: 720 }); } catch (e) {}
-                _capShell(P.sx, P.sy, { color: 0xc07aff, hot: 0xffe0ff, r0: 0.3, r1: 0.62, h: 0.55, squash: 1.5, grow: 260, hold: 420, fade: 420, op: 0.55 });
+                /* THE VFX SWEEP, B6a: the shell in its violet and thinner (its white-hot face covered the caster for half a second) */
+                if (_vcOn()) _capShell(P.sx, P.sy, { color: 0xa860f0, hot: 0xc890ff, gain: 1.0, r0: 0.3, r1: 0.62, h: 0.55, squash: 1.5, grow: 260, hold: 420, fade: 420, op: 0.3 });
+                else _capShell(P.sx, P.sy, { color: 0xc07aff, hot: 0xffe0ff, r0: 0.3, r1: 0.62, h: 0.55, squash: 1.5, grow: 260, hold: 420, fade: 420, op: 0.55 });
                 _capLight(P.sx, P.sy, 0xe8a8ff, { i: 2.2, ms: 800, h: 0.8 });
             }
         },
@@ -48177,7 +48243,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceSwarmSignal: {
             charge: function (P) { _capCharge(P, 0xffc05a, { sprite: 'ember' }); },
             hit: function (P) {
-                try { _sigSonicBoom3D(P.sx, P.sy, { color: 0xffc85a, rings: 3, ringGapMs: 160, radiusTiles: 2.6, height: 0.9 }); } catch (e) {}
+                /* THE VFX SWEEP, B6a: `gentle` = the amber rings without the screen flash and the white speed burst */
+                try { _sigSonicBoom3D(P.sx, P.sy, { color: 0xffc85a, rings: 3, ringGapMs: 160, radiusTiles: 2.6, height: 0.9, gentle: _vcOn() }); if (_vcOn()) _sigShake('normal'); } catch (e) {}
                 _capLight(P.sx, P.sy, 0xffb040, { i: 2.0, ms: 800, h: 1.0, r: 4 });
                 var al = (P.tiles || []).filter(function (t) { return t.x !== P.sx || t.y !== P.sy; }).slice(0, 6);
                 al.forEach(function (t, i) {
@@ -48248,7 +48315,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             charge: function (P) { _capCharge(P, 0xd0b890, { sprite: 'dust-puff', sigil: false, i: 1.2 }); },
             hit: function (P) {
                 _capShell(P.tx, P.ty, { color: 0xc8b89a, hot: 0xfff4e0, r0: 1.6, r1: 1.5, h: 3.0, squash: 0.08, grow: 1, hold: 1, fade: 1, op: 0 });
-                _capShell(P.tx, P.ty, { color: 0xe0d0b0, hot: 0xffffff, r0: 0.4, r1: 1.7, dome: true, squash: 0.25, grow: 220, hold: 120, fade: 520, op: 0.7, flow: 0.6 });
+                _capShell(P.tx, P.ty, { color: 0xe0d0b0, hot: _vcOn() ? 0xffd9a0 : 0xffffff, r0: 0.4, r1: 1.7, dome: true, squash: 0.25, grow: 220, hold: 120, fade: 520, op: 0.7, flow: 0.6 });
                 _capShards(P.tx, P.ty, 'stone', { n: 14, scale: 1.4 });
                 _capSpikes(P.tx, P.ty, { ring: 1.2, n: 9, h: 0.38, w: 0.22, holdMs: 900 });
                 _capRing(P.tx, P.ty, 0xfff0d0, 2.4, 560, 2);
@@ -48554,10 +48621,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             charge: function (P) { _capCharge(P, 0x4fa8e0, { sprite: 'bubble' }); },
             hit: function (P) {
                 var r = Math.max(1, P.r || 1);
-                _capColumn(P.tx, P.ty, 0x4fa8e0, 4.2, 0.7, 700, 0xd8f4ff);
+                /* B7b (the VFX sweep): the geyser was a white-cored column 0.7 squares wide over the caster and its ring
+                   near white: the column narrower with a water-blue core, the ring a full blue */
+                var vc = _vcOn();
+                _capColumn(P.tx, P.ty, 0x4fa8e0, 4.2, vc ? 0.5 : 0.7, 700, vc ? 0x6fc0f0 : 0xd8f4ff);
                 _capPuff(P.tx, P.ty, 'water-splash', 16, { r: 0.5, out: 30, vz0: 300, vz1: 520, gravity: 700, s0: 16, s1: 28, ml0: 700, ml1: 1000 });
                 _capAt(520, function () {
-                    _capRing(P.tx, P.ty, 0xbfe8ff, r + 1.4, 560, 2);
+                    _capRing(P.tx, P.ty, vc ? 0x4fb0f0 : 0xbfe8ff, r + 1.4, 560, 2);
                     _capPuff(P.tx, P.ty, 'water-splash', 14, { r: r, out: 200, vz0: 30, vz1: 90, gravity: 300, s0: 16, s1: 26 });
                     _capLight(P.tx, P.ty, 0x6fbfff, { i: 2.4, ms: 700, h: 0.4, r: 4 });
                     _sigShake('hard');
@@ -48570,9 +48640,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             charge: function (P) { _capCharge(P, 0xff6ad8, { sprite: 'spark-pink', sigilColor: 0x6ad8ff }); },
             hit: function (P) {
                 var r = Math.max(1, P.r || 2), ts = _capTs(), c = tilePx(P.sx, P.sy), z = unitSurfaceZ(P.sx, P.sy);
-                var cols = [0xff4ad8, 0x4ad8ff, 0xffe04a];
+                var cols = [0xff4ad8, 0x4ad8ff, 0xffe04a], vc = _vcOn();
+                /* B7b: three lights at 2.6 added up to white over the dance floor, and the spectrum burst's white-hot
+                   core covered its middle: the lights lower, and two rings in the disco's pink + blue for the burst */
                 cols.forEach(function (col, i) {
-                    var h = _crLight(c.x, c.y, z + ts * 1.2, col, { intensity: 2.6, radius: 3.6, ms: 1500, attack: 60, hold: 900 });
+                    var h = _crLight(c.x, c.y, z + ts * 1.2, col, { intensity: vc ? 1.5 : 2.6, radius: 3.6, ms: 1500, attack: 60, hold: 900 });
                     if (h) {
                         var t0 = performance.now();
                         var mover = function () {
@@ -48586,8 +48658,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     }
                 });
                 _capSigil(P.sx, P.sy, 0xff6ad8, r + 0.5, 1500, { color2: 0x6ad8ff, spin: 0.006, op: 0.7 });
-                try { _sigSpectrumBurst3D(P.sx, P.sy, { radiusPx: ts * (r + 0.8), ms: 800 }); } catch (e) {}
-                _capPuff(P.sx, P.sy, 'divine-sparkle', 18, { r: r, out: 20, vz0: 20, vz1: 80, s0: 5, s1: 9, ml0: 900, ml1: 1500, tint: 0xffd8ff });
+                if (!vc) { try { _sigSpectrumBurst3D(P.sx, P.sy, { radiusPx: ts * (r + 0.8), ms: 800 }); } catch (e) {} }
+                else { try { _sigShockRing3D(P.sx, P.sy, { color: 0xff4ad8, r0: ts * 0.3, r1: ts * (r + 0.8), ms: 620, opacity: 0.8 }); _capAt(140, function () { _sigShockRing3D(P.sx, P.sy, { color: 0x4ad8ff, r0: ts * 0.3, r1: ts * (r + 0.5), ms: 620, opacity: 0.7 }); }); } catch (e) {} }
+                _capPuff(P.sx, P.sy, 'divine-sparkle', 18, { r: r, out: 20, vz0: 20, vz1: 80, s0: 5, s1: 9, ml0: 900, ml1: 1500, tint: vc ? 0xff9ae4 : 0xffd8ff });
             }
         },
         /* Mitosis — THE SPLIT: a gloss-black bubble swells round the goo,
@@ -48742,19 +48815,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            rangers' colours converge from the sky onto the target and it
            goes up in the full blast */
         sentaiMegazordBlast: {
-            charge: function (P) { _capCharge(P, 0xffffff, { sprite: 'spark-pink', sigilColor: 0xff3a3a }); },
+            charge: function (P) { _capCharge(P, _vcOn() ? 0xff5a4a : 0xffffff, { sprite: 'spark-pink', sigilColor: 0xff3a3a }); },
             hit: function (P) {
                 var cols = [0xff3a3a, 0x3a7aff, 0xffe03a, 0x3aff6a, 0xff7ad8];
+                /* THE VFX SWEEP B10: five COLOURS: each lance's hot core is its ranger's colour made light (they all burned
+                   white and read as five white rays), the blast light is gold and the white screen flash is off */
+                var _vcM = _vcOn(), hots = [0xff9a8a, 0x9ac0ff, 0xffe88a, 0x9aff9a, 0xffb0e8];
                 var B = _capTorso(P.tx, P.ty, 0), ts = _capTs();
                 cols.forEach(function (col, i) {
                     var a = i / 5 * Math.PI * 2 + rn(-0.1, 0.1);
                     var A = new THREE.Vector3(B.x + Math.cos(a) * ts * 3.2, B.y + ts * 4.2, B.z + Math.sin(a) * ts * 3.2);
-                    _capAt(i * 50, function () { _capLance(A, B, { color: col, hot: 0xffffff, w: 0.07, ms: 620, grow: 90, fade: 220 }); });
+                    _capAt(i * 50, function () { _capLance(A, B, { color: col, hot: _vcM ? hots[i] : 0xffffff, gain: _vcM ? 0.95 : 0, w: 0.07, ms: 620, grow: 90, fade: 220 }); });
                 });
                 _capAt(300, function () {
                     cols.forEach(function (col, i) { _capAt(i * 60, function () { _capRing(P.tx, P.ty, col, 1.4 + i * 0.35, 460, 4 + i * 6); }); });
-                    _capLight(P.tx, P.ty, 0xffffff, { i: 3.6, ms: 700, h: 0.8, r: 5 });
-                    _sigScreenFlash('#ffffff', 160, 0.25);
+                    _capLight(P.tx, P.ty, _vcM ? 0xffc860 : 0xffffff, { i: _vcM ? 2.4 : 3.6, ms: 700, h: 0.8, r: 5 });
+                    if (!_vcM) _sigScreenFlash('#ffffff', 160, 0.25);
                 });
             }
         },
@@ -48780,9 +48856,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var r = Math.max(1, P.r || 2);
                 _capEye(P.tx, P.ty, { r: 0.7, h: 2.6, tint: 0xb46cff, hold: 1000 });
                 _capAt(360, function () {
-                    try { _sigSpectrumBurst3D(P.tx, P.ty, { radiusPx: _capTs() * (r + 0.8), ms: 760 }); } catch (e) {}
+                    /* THE VFX SWEEP B9a: the rainbow burst (seven stacked rings + a white core + a white screen flash) drew as one white disc
+                       over the three bodies; the pulse is the eye, its violet ring, the glass and the light */
+                    if (!_vcOn()) try { _sigSpectrumBurst3D(P.tx, P.ty, { radiusPx: _capTs() * (r + 0.8), ms: 760 }); } catch (e) {}
+                    else _fxDelay(function () { _capRing(P.tx, P.ty, 0xa45cf0, r + 0.7, 460); }, 140);
                     _capShards(P.tx, P.ty, 'glass', { n: 12 });
-                    _capRing(P.tx, P.ty, 0xd8b0ff, r + 1.2, 520);
+                    _capRing(P.tx, P.ty, _vcOn() ? 0xa45cf0 : 0xd8b0ff, r + 1.2, 520);
                     _capLight(P.tx, P.ty, 0xc08aff, { i: 2.6, ms: 800, h: 1.6, r: 5 });
                 });
             }
@@ -48955,7 +49034,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             hit: function (P) {
                 if (!_fx5Seen(P.sx, P.sy)) return;
                 var R = _fx5Reach(P), al = _fx5Allies(P, R);
-                _capRing(P.sx, P.sy, 0xc9d3de, R + 0.4, 460, 4);
+                _capRing(P.sx, P.sy, _vcOn() ? 0x6f8fb8 : 0xc9d3de, R + 0.4, 460, 4);   /* THE VFX SWEEP, B6a: the shout ring in steel blue (it was a wide white ring) */
                 for (var i = 0; i < al.length; i++) (function (a, k) {
                     _capAt(80 + k * 70, function () {
                         try { _sigShieldRing3D(a.x, a.y, { glowColor: 0xb8c6d6, count: 3, scale: 0.5, holdMs: 700, radiusTiles: 0.55 }); } catch (e) {}
@@ -49025,8 +49104,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'raceCosmicSight':  function (tx, ty, r, p) { _capRun('raceCosmicSight', tx, ty, r, p); },
         /* IRON DOME (shieldBash — the id kept from the old row): a steel dome over the area, not the tower-shield bash */
         'shieldBash':       function (tx, ty, r) { _spawnDome3D(tx, ty, r != null ? r : 2, {
-            outerColor: 0x8a96a6, innerColor: 0xc6d2de, wireColor: 0xdce6f0,
-            wireSegments: 12, wireRings: 6, outerOpacity: 0.28, innerOpacity: 0.16, wireOpacity: 0.5, wireRotSpeed: 0.0002,
+            /* THE VFX SWEEP, B6a: the dome reads as iron (blue-grey steel), not a white wire cage over the whole squad */
+            outerColor: _vcOn() ? 0x5f7088 : 0x8a96a6, innerColor: _vcOn() ? 0x7f93ab : 0xc6d2de, wireColor: _vcOn() ? 0x8aa2c0 : 0xdce6f0,
+            wireSegments: 12, wireRings: 6, outerOpacity: 0.28, innerOpacity: 0.16, wireOpacity: _vcOn() ? 0.36 : 0.5, wireRotSpeed: 0.0002,
         }); },
         /* the two barriers that had no dome while every other area shield did (Holy Bulwark, Luminous Shield) */
         'racePupilShield':  function (tx, ty, r) { _spawnDome3D(tx, ty, r != null ? r : 1, {
@@ -49888,7 +49968,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             face.material.opacity = 0.55 * vis;
             hands[0].rotation.y = -Math.PI * 1.6 * (1 - sweep); hands[1].rotation.y = -0.5 * (1 - sweep);
             hands[0].children[0].material.opacity = hands[1].children[0].material.opacity = 0.9 * vis;
-            if (el >= 560 && !toll) { toll = true; _sigShockRing3D(tx, ty, { color: _PZ.grave, r1: R * 1.2, ms: 520 }); _sigScreenFlash('#c8ffb8', 160, 0.25); }
+            if (el >= 560 && !toll) { toll = true; _sigShockRing3D(tx, ty, { color: _PZ.grave, r1: R * 1.2, ms: 520 }); if (!_vcOn()) _sigScreenFlash('#c8ffb8', 160, 0.25); }   /* THE VFX SWEEP, B9b: the bell's ring is the toll, no pale screen flash */
             for (var j = 0; j < skulls.length; j++) {
                 var S = skulls[j], dance = _sigClamp01((el - 600) / 900), a = S.a + dance * Math.PI * 1.5;
                 var c = Math.cos(a), sn = Math.sin(a), d = (Math.abs(c) + Math.abs(sn)) || 1, rr = ts * 2 * (el > 1350 ? 1 - _sigClamp01((el - 1350) / 300) * 0.4 : 1);
@@ -50238,7 +50318,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < plates.length; i++) plates[i].g.position.x = plates[i].s * gap;
             plateM.opacity = hz.opacity = pist.opacity = _pzEnv(el, 0, 100, 950, 1250);
             if (!hit && el >= 270) {
-                hit = true; _sigShake('hard'); _sigScreenFlash('#fff4dc', 120, 0.25);
+                hit = true; _sigShake('hard'); if (!_vcOn()) _sigScreenFlash('#fff4dc', 120, 0.25);
                 _sigSparks(tx, ty, 'steel-spark', 18, { z: ts * 0.5, vxy: 260 }); _sigSparks(tx, ty, 'spark-elec', 8, { z: ts * 0.6, vxy: 180 });
             }
         });
@@ -50352,7 +50432,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 E.s.position.set(E.x * (1 - sw), ts * (-0.3 + 1.0 * rise) - ts * 0.2 * sw, E.z * (1 - sw));
                 E.s.material.opacity = 0.75 * rise * (1 - _sigClamp01((el - 900) / 200)); E.s.scale.set(ts * 0.6 * (1 - 0.5 * sw), ts * 1.2 * (1 - 0.3 * sw), 1);
             }
-            if (!hit && el >= 960) { hit = true; _sigShockRing3D(tx, ty, { color: 0xbfeaff, r1: ts * 1.9, ms: 520 }); _sigScreenFlash('#cfefff', 160, 0.3); _sigShake('normal'); }
+            if (!hit && el >= 960) { hit = true; _sigShockRing3D(tx, ty, { color: _vcOn() ? 0x5fc4e8 : 0xbfeaff, r1: ts * 1.9, ms: 520 }); if (!_vcOn()) _sigScreenFlash('#cfefff', 160, 0.3); _sigShake('normal'); }   /* THE VFX SWEEP B9a: no pale screen flash; the ring in spirit blue (the elders stay pale: they are ghosts) */
         });
     };
     SPELL_MAP['pzSpiritAnimal']     = { aura: 'pzSpiritAnimal_aura' };
@@ -51310,7 +51390,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* it smells it: the jaws close and the red spreads like it's underwater */
     _PZ_SIGS.bloodWater = function (p) {
         if (p.tx == null) return;
-        try { _sigJawsBite3D(p.tx, p.ty, { glowColor: 0xff3040, scale: 1.1 }); } catch (e) {}
+        try { _sigJawsBite3D(p.tx, p.ty, { glowColor: 0xff3040, scale: 1.1, vcQuiet: true }); } catch (e) {}
         /* THE OCEAN PACK (2026-10-27): mondo's shark breaches out of the floor on the caster's side, over the victim at the bite
            (the blood at 260 ms), and dives back in beyond them */
         if (!_pzSeen(p.tx, p.ty) || !_canSpawn()) return;
@@ -51341,8 +51421,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var finM = _pzSolid(_PZ.shark, _sigTerrainTex('leather.png', 1, 1), { side: THREE.DoubleSide });
         _pzMesh(new THREE.ShapeGeometry(sh), finM, fin);
         var lastS = 0;
-        _fxDelay(function () { if (!_suppressed()) try { _sigJawsBite3D(tx, ty, { glowColor: 0xff3040, scale: 0.9 }); } catch (e) {} }, 380);
-        _fxDelay(function () { if (!_suppressed()) try { _sigJawsBite3D(tx, ty, { glowColor: 0xff2030, scale: 1.25 }); } catch (e) {} }, 620);
+        _fxDelay(function () { if (!_suppressed()) try { _sigJawsBite3D(tx, ty, { glowColor: 0xff3040, scale: 0.9, vcQuiet: true }); } catch (e) {} }, 380);
+        _fxDelay(function () { if (!_suppressed()) try { _sigJawsBite3D(tx, ty, { glowColor: 0xff2030, scale: 1.25, vcQuiet: true }); } catch (e) {} }, 620);
         /* THE OCEAN PACK (2026-10-27): mondo's shark swims the fin's circle sunk to its back, then lunges up through the victim at
            the first bite and comes round for the second; the built fin stays the stand-in while the file streams */
         var list = [], len = ts * 1.4, ring = function (el) { var t = _sigClamp01(el / 420), a = t * Math.PI * 2.2; return [a, ts * 0.75 * (1 - 0.4 * t)]; };
@@ -52009,7 +52089,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var d = _sigEaseInCubic(_sigClamp01((el - ms + 120) / 120)), lv = _pzEnv(el, ms - 120, ms - 100, ms + 200, ms + 520);
             bot.set(0, ts * 2.4 - ts * 2.4 * d, 0); _pzSpan(lance, top, bot); _pzSpan(halo, top, bot); lance.material.opacity = lv; halo.material.opacity = 0.45 * lv;
             crack.material.opacity = 0.9 * _pzEnv(el, ms, ms + 60, ms + 600, ms + 1000); crack.scale.setScalar(0.5 + 0.5 * _sigEaseOutCubic(_sigClamp01((el - ms) / 160)));
-            if (!hit && el >= ms) { hit = true; _spawnEffect(EFFECTS['pzOath_land'], { tx: tx, ty: ty }); _sigScreenFlash('#e8d8ff', 140, 0.3); }
+            if (!hit && el >= ms) { hit = true; _spawnEffect(EFFECTS['pzOath_land'], { tx: tx, ty: ty }); if (!_vcOn()) _sigScreenFlash('#e8d8ff', 140, 0.3); }   /* THE VFX SWEEP, B9b: the lance + the crack are the hit */
         });
     };
     SPELL_MAP['pzNothingUnseen'] = { aura: 'pzUnseen_aura' };
@@ -54665,6 +54745,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             g.fillStyle = 'rgba(255,240,210,0.35)'; g.beginPath(); g.moveTo(12, 22); g.lineTo(34, 9); g.lineTo(40, 24); g.lineTo(18, 32); g.closePath(); g.fill();
         });
     }
+    /* THE VFX SWEEP, B7b (2026-11-17): the gather + the mark every wind spell wears drew in white air over a pale mint
+       glow: a mid mint now (the family's own looks, the lane, the twister, the eye, keep their white air: that IS the wind) */
+    var _WDC = { air: 0x7fe3bd, glow: 0x35b88a, mote: 0x9fe8cc };
     function _wdAirMat(grit, color) { var m = _pzSolid(color != null ? color : 0xffffff, _wdStreakTex(grit), { side: THREE.DoubleSide, depthWrite: false }); return m; }
 
     var _wdUp = null;
@@ -54722,7 +54805,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var m = _pzMesh(new THREE.PlaneGeometry(size, size), _pzSolid(color != null ? color : 0xffffff, _wdSwirlTex(), { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, F.ts * 0.05, 0);
         m.rotation.x = -Math.PI / 2; m.renderOrder = 160;
         /* the glow twin rides the same plane (a child), its opacity following the swirl's */
-        var gm = _pzGlow(_WD.mint, _wdSwirlTex()), gl = _pzMesh(m.geometry, gm, m), mo = 0; gl.renderOrder = 161;
+        var gm = _pzGlow(color === _WDC.air ? _WDC.glow : _WD.mint, _wdSwirlTex()), gl = _pzMesh(m.geometry, gm, m), mo = 0; gl.renderOrder = 161;
         Object.defineProperty(m.material, 'opacity', { configurable: true, get: function () { return mo; }, set: function (v) { mo = v; gm.opacity = v * 0.6; } });
         return m;
     }
@@ -54757,14 +54840,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         o = o || {};
         if (!_pzOnce('wdMark' + tx + ',' + ty, 260)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, r = Math.max(0, Math.min(3, o.r || 0)), rib = [], mats = [];
-        var sw = _wdSwirl(F, ts * (0.95 + r * 1.25));
+        var vc = _vcOn(), ac = vc ? _WDC.air : null, gc = vc ? _WDC.glow : null, mc = vc ? _WDC.mote : _WD.air;
+        var sw = _wdSwirl(F, ts * (0.95 + r * 1.25), ac);
         for (var i = 0; i < 3; i++) {
-            var m = _wdAirMat(false); mats.push(m);
-            rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.36, ts * 0.3, ts * 0.06, ts * 1.15, 1.25, i * 2.094 + rn(-0.2, 0.2), 30), { w0: ts * 0.1, w1: ts * 0.16, segs: 44, roll: 0.25, twist: 1.6, mat: m }));
+            var m = _wdAirMat(false, ac); mats.push(m);
+            rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.36, ts * 0.3, ts * 0.06, ts * 1.15, 1.25, i * 2.094 + rn(-0.2, 0.2), 30), { w0: ts * 0.1, w1: ts * 0.16, segs: 44, roll: 0.25, twist: 1.6, mat: m, glowColor: gc }));
         }
         for (var k = 0; k < (r >= 1 ? 4 : 0); k++) {
-            var m2 = _wdAirMat(false); mats.push(m2);
-            rib.push(_wdRibbon(F.g, _wdHelix(ts * (r + 0.42), ts * (r + 0.3), ts * 0.12, ts * 0.36, 0.42, k * Math.PI / 2, 16), { w0: ts * 0.1, w1: ts * 0.2, segs: 28, roll: Math.PI / 2 - 0.3, mat: m2 }));
+            var m2 = _wdAirMat(false, ac); mats.push(m2);
+            rib.push(_wdRibbon(F.g, _wdHelix(ts * (r + 0.42), ts * (r + 0.3), ts * 0.12, ts * 0.36, 0.42, k * Math.PI / 2, 16), { w0: ts * 0.1, w1: ts * 0.2, segs: 28, roll: Math.PI / 2 - 0.3, mat: m2, glowColor: gc }));
         }
         var puffed = false;
         return _sigRunOwned(F.g, 820, function (el) {
@@ -54773,8 +54857,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var j = 0; j < rib.length; j++) { _wdRun(rib[j], el, j < 3 ? j * 50 : 60 + (j - 3) * 35, j < 3 ? 520 : 420, 0.6); rib[j].op(0.95); }
             if (!puffed && el > 60) {
                 puffed = true;
-                _wdMotes(F, 0, ts * 0.4, 0, 6, { r: ts * 0.25, v: 120, vz0: 40, vz1: 140, s0: 7 });
-                if (r >= 1) for (var q = 0; q < 8; q++) { var a = q / 8 * Math.PI * 2; _wdMotes(F, Math.cos(a) * ts * (r + 0.3), ts * 0.15, Math.sin(a) * ts * (r + 0.3), 1, { sprite: 'smoke-soft', tint: _WD.air, s0: 16, s1: 30, v: 30, vx: -Math.sin(a) * 120, vy: Math.cos(a) * 120, op: 0.45, ml0: 500, ml1: 800 }); }
+                _wdMotes(F, 0, ts * 0.4, 0, 6, { r: ts * 0.25, v: 120, vz0: 40, vz1: 140, s0: 7, tint: mc });
+                if (r >= 1) for (var q = 0; q < 8; q++) { var a = q / 8 * Math.PI * 2; _wdMotes(F, Math.cos(a) * ts * (r + 0.3), ts * 0.15, Math.sin(a) * ts * (r + 0.3), 1, { sprite: 'smoke-soft', tint: mc, s0: 16, s1: 30, v: 30, vx: -Math.sin(a) * 120, vy: Math.cos(a) * 120, op: 0.45, ml0: 500, ml1: 800 }); }
             }
         });
     }
@@ -54782,10 +54866,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _wdGather(sx, sy, holdMs) {
         if (!_pzOnce('wdGather' + sx + ',' + sy, 400)) return null;
         var F = _nrvFrame(sx, sy), ts = F.ts, total = Math.max(520, Math.min(1100, holdMs || 800)), rib = [], mats = [];
-        var sw = _wdSwirl(F, ts * 1.0);
+        var vc = _vcOn(), ac = vc ? _WDC.air : null;
+        var sw = _wdSwirl(F, ts * 1.0, ac);
         for (var i = 0; i < 2; i++) {
-            var m = _wdAirMat(false); mats.push(m);
-            rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.62, ts * 0.22, ts * 0.04, ts * 1.05, 1.1, i * Math.PI + 0.6, 26), { w0: ts * 0.06, w1: ts * 0.12, segs: 36, roll: 0.3, twist: 1.4, mat: m }));
+            var m = _wdAirMat(false, ac); mats.push(m);
+            rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.62, ts * 0.22, ts * 0.04, ts * 1.05, 1.1, i * Math.PI + 0.6, 26), { w0: ts * 0.06, w1: ts * 0.12, segs: 36, roll: 0.3, twist: 1.4, mat: m, glowColor: vc ? _WDC.glow : null }));
         }
         return _sigRunOwned(F.g, total, function (el) {
             var out = _sigClamp01((el - total + 260) / 260);
@@ -55942,7 +56027,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var spin = _sigEaseInCubic(_sigClamp01(el / 900)) * Math.PI * 2 * 3;   /* three hours */
             hands[0].rotation.z = -spin / 12; hands[1].rotation.z = -spin;
             beam.material.opacity = 0.35 * (el > 900 && el < 1350 ? (Math.floor(el / 70) % 2 ? 1 : 0.3) : 0);
-            if (el > 900 && el < 930) _sigScreenFlash('#e8fff4', 180, 0.25);
+            if (el > 900 && el < 930 && !_vcOn()) _sigScreenFlash('#e8fff4', 180, 0.25);   /* THE VFX SWEEP, B9b: the beam blinks, the screen does not */
         });
     }
     /* TISSUE SAMPLE: the probe comes down, the vial fills green and floats back to the grey */
@@ -57828,6 +57913,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        small and fly off the body, the glint sits on its edge; nothing is
        full-screen and nothing stands between the lens and the body. ══════ */
     var _MTL = { steel: 0xdfe6ee, rim: 0xeaf2ff, spark: 0xffa848, hot: 0xfff4e2, glint: 0xf4f8ff, shard: 0xd8dee8 };
+    /* THE VFX SWEEP, B7a (2026-11-17): the stamp's three near-white pieces in metal's own two colours. The glint and the cog's rim
+       flare are steel blue, the hot sparks and the hit flash are the grinder's amber. The steel itself (cog, shards) stays steel.
+       One glint a hit (it was two or three on the big ones). `EW_NO_VFX_CLEANUP` = the old values. */
+    var _MTL_VC = { rim: 0x6fa8e6, hot: 0xf0b25a, glint: 0x86b8ee, cog: 0x8296ae };
+    function _mtlC(k) { return (_vcOn() && _MTL_VC[k] != null) ? _MTL_VC[k] : _MTL[k]; }
     _THEME_MAP.metal = { core: 'steel-spark', trail: 'steel-spark', burst: 'spark', ring: 'target-ring', glow: 0xe6eef8 };
     _ELEMENT_THEME.metal = 'metal';
     _STAGE_ARCHETYPES.metal = { orb: 0xdfe6ef, ring: 0xe8eef6, flash: '#f2f6ff', mote: 'steel-spark', glyph: false, slash: false,
@@ -57917,7 +58007,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        ms (a click with a little overshoot), holds and fades. dir = which way it turns. ── */
     function _mtlCog(x, y, o) {
         var F = _nrvFrame(x, y), ts = F.ts, r = o.r || ts * 0.6, ms = o.ms || 1100, tick = o.tick || 150, dir = o.dir || 1;
-        var steelM = _sigMat(0xffffff, { map: _mtlCogTex(), normal: true }), rimM = _sigMat(_MTL.rim, { map: _mtlCogRimTex() });
+        var steelM = _sigMat(_vcOn() ? _MTL_VC.cog : 0xffffff, { map: _mtlCogTex(), normal: true }), rimM = _sigMat(_mtlC('rim'), { map: _mtlCogRimTex() });
         var geo = new THREE.PlaneGeometry(2, 2);
         var steel = new THREE.Mesh(geo, steelM); steel.rotation.x = -Math.PI / 2; steel.renderOrder = 162; F.g.add(steel);
         var rim = new THREE.Mesh(geo.clone(), rimM); rim.rotation.x = -Math.PI / 2; rim.renderOrder = 163; F.g.add(rim);
@@ -57947,7 +58037,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ux = 0, uz = 0;
         if (fx != null && (fx !== tx || fy !== ty)) { var ln = _nrvLine(F, { x: fx, y: fy }, tx, ty); ux = -ln.ux; uz = -ln.uz; }
         var hy = ts * (o.h != null ? o.h : 0.5), sp = o.speed || 1, cd0 = _nbCamDir(F);   /* the sparks leave the lens side of the body, never from inside it */
-        var orange = _pzGlow(_MTL.spark), hot = _pzGlow(_MTL.hot), rod = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true);
+        var orange = _pzGlow(_MTL.spark), hot = _pzGlow(_mtlC('hot')), rod = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true);
         var sparks = [], n = o.sparks || 0, nFloor = Math.round(n * 0.3), UP = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
         for (var i = 0; i < n; i++) {
             var fl = i >= n - nFloor, a = rn(0, 6.2832), v = ts * rn(2.2, 5.0) * sp, push = ts * rn(2.0, 4.4) * sp;
@@ -57969,7 +58059,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var glints = [], cd = _nbCamDir(F), px = -cd.z, pz = cd.x;
         (o.glints || []).forEach(function (g) {
-            var size = g.size || ts * 0.5, spr = _pzSpr(_MTL.glint, size, F.g, _mtlGlintTex()), side = g.side || 1;
+            var size = g.size || ts * 0.5, spr = _pzSpr(_mtlC('glint'), size, F.g, _mtlGlintTex()), side = g.side || 1;
             spr.position.set(px * ts * 0.3 * side + cd.x * ts * 0.1, ts * (g.h != null ? g.h : 0.74), pz * ts * 0.3 * side + cd.z * ts * 0.1);
             glints.push({ s: spr, size: size, at: g.delay || 0, ms: g.ms || 360 });
         });
@@ -58089,7 +58179,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var cogR = ts * Math.min(2.4, (aoe ? 0.55 + 0.75 * aoe : 0.6 + 0.1 * rank));
         if (mk === 'cog' || aoe) _mtlCog(tx, ty, { r: cogR, ms: 950 + 180 * rank, tick: rank >= 2 ? 110 : 140, dir: -1, opacity: hostile ? 0.82 : 0.7, rimOp: hostile ? 0.55 : 0.45 });
         var glints = [{ size: ts * (0.34 + 0.04 * rank), side: 1, delay: 60 }];
-        if (rank >= 2) glints.push({ size: ts * 0.26, side: -1, h: 0.5, delay: 200 });
+        if (rank >= 2 && !_vcOn()) glints.push({ size: ts * 0.26, side: -1, h: 0.5, delay: 200 });
         if (!hostile) { _mtlHit(tx, ty, null, null, { glints: glints }); return; }
         if (spellId === 'raceAnchor') _mtlAnchorDrop(tx, ty);
         var fx = self ? null : params.sx, fy = self ? null : params.sy, nSp = [14, 20, 28, 36][rank] || 20;
@@ -58099,7 +58189,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigCrescentSlash3D(tx, ty, { size: ts * (1.05 + 0.1 * rank), ms: 240, dir: 1, yaw: yaw, pitch: -0.55, color: _MTL.glint });
             _fxDelay(function () { if (!_suppressed()) _sigCrescentSlash3D(tx, ty, { size: ts * (0.95 + 0.1 * rank), ms: 240, dir: -1, yaw: yaw + 1.2, pitch: 0.55, color: _MTL.rim }); }, 90);
             nSp = Math.round(nSp * 0.6);
-            glints.push({ size: ts * 0.3, side: -1, h: 0.9, delay: 120 });
+            if (!_vcOn()) glints.push({ size: ts * 0.3, side: -1, h: 0.9, delay: 120 });
         } else if (mk === 'gun') {
             /* the shot: quick ricochet sparks off the side it struck and a puff of grit at the feet */
             nSp = Math.round(nSp * 0.7);
@@ -58108,7 +58198,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 ml: 520, size0: ts * 0.22, size1: ts * 0.5, opacity0: 0.55, opacity1: 0 });
         } else if (mk === 'line') nSp = Math.round(nSp * 0.5);
         _mtlHit(tx, ty, fx, fy, { sparks: nSp, speed: (mk === 'gun' ? 1.35 : 1) + 0.12 * rank, glints: glints, shards: mk === 'cog' ? (rank >= 3 ? 10 : (rank >= 2 ? 6 : 0)) : 0 });
-        if (_canSpawn()) { var c = tilePx(tx, ty); _spawn({ x: c.x, y: c.y, z: unitSurfaceZ(tx, ty) + ts * 0.5, mode: 'billboard', sprite: 'flash', tint: _MTL.hot,
+        if (_canSpawn()) { var c = tilePx(tx, ty); _spawn({ x: c.x, y: c.y, z: unitSurfaceZ(tx, ty) + ts * 0.5, mode: 'billboard', sprite: 'flash', tint: _mtlC('hot'),
             ml: 90, size0: ts * (0.36 + 0.06 * rank), size1: ts * 0.12, opacity0: 0.85, opacity1: 0 }); }
     }
     /* every impact of a metal spell spits a few sparks off the body it hit (once per tile per beat) */
@@ -62087,12 +62177,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ONE SOUND RING — a glow ring over its ink rim; set(r, op) = radius in world units + opacity */
     var _snGeo = null, _snZ = null;
+    /* THE VFX SWEEP, B7b (2026-11-17): the rings every sonic spell wears were a pale lavender glow (near white once
+       two overlap): a full violet now, and the meter's top cells with them */
+    var _SNC = { wave: 0x8a55ff, hot: 0xb08cff };
+    function _snWaveC() { return _vcOn() ? _SNC.wave : _SN.wave; }
     function _snRing(parent, jag) {
         if (!_snGeo) { _snGeo = new THREE.PlaneGeometry(1, 1); _snGeo._ew_shared = true; _snZ = new THREE.Vector3(0, 0, 1); }
         var g = new THREE.Group(); parent.add(g);
         var inkM = _pzSolid(_SN.ink, _snInkTex(), { side: THREE.DoubleSide, depthWrite: false });
         var ink = _pzMesh(_snGeo, inkM, g); ink.renderOrder = 157;
-        var glowM = _pzGlow(_SN.wave, jag ? _snJagTex() : _snRingTex());
+        var glowM = _pzGlow(_snWaveC(), jag ? _snJagTex() : _snRingTex());
         _pzMesh(_snGeo, glowM, g);
         g.visible = false;
         return {
@@ -62176,7 +62270,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var pos = [], uv = [], col = [], idx = [], c0 = new THREE.Color(_SN.deep), cT = new THREE.Color();
         for (var r = 0; r < rows; r++) {
             var y0 = r * ch * 1.18, y1 = y0 + ch, v = pos.length / 3;
-            cT.copy(c0).lerp(new THREE.Color(r >= rows - 2 ? _SN.clash : _SN.hot), r / (rows - 1));
+            cT.copy(c0).lerp(new THREE.Color(r >= rows - 2 ? _SN.clash : _vcOn() ? _SNC.hot : _SN.hot), r / (rows - 1));
             pos.push(-cw / 2, y0, 0, cw / 2, y0, 0, cw / 2, y1, 0, -cw / 2, y1, 0);
             uv.push(0, 0, 1, 0, 1, 1, 0, 1);
             for (var q = 0; q < 4; q++) col.push(cT.r, cT.g, cT.b);
@@ -62302,7 +62396,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var G = new THREE.Group(); F.g.add(G); var rs = [];
             for (var i = 0; i < 3; i++) {
                 var R = _snRing(G, true); _snFlat(R); R.g.position.y = ts * (0.25 + 0.27 * i);
-                R.g.children[1].material.color.setHex(s ? _SN.clash : _SN.wave); rs.push(R);
+                R.g.children[1].material.color.setHex(s ? _SN.clash : _snWaveC()); rs.push(R);
             }
             St.push({ G: G, rs: rs, sp: s ? -0.006 : 0.008, tilt: s ? 0.32 : -0.28 });
         }
@@ -63028,10 +63122,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (add) { m.map = tex; m.blending = THREE.AdditiveBlending; }
         return m;
     }
+    /* THE VFX SWEEP, B7b (2026-11-17): wind and sonic's bright sheet still read white at a mid tone (nine white static
+       squares under Roundhouse Kick): a full mint / a full violet. Every hit square still wears its sheet.
+       THE VFX SWEEP, B7a (same day): metal's read nearly white too (Railgun): its stain was a pale grey-blue under a bright
+       sheet. A pair = [bright sheet colour, stain colour]: metal is circuit lines in a deep steel blue over a gunmetal stain.
+       B7b part 2: water's sheet read ice-white over the bodies (Bloom, Whirlpool, Depth Charge): a full water blue. */
+    var _NZ_VC = { wind: 0x22a070, sonic: 0x8e4ae6, metal: [0x0c2a58, 0x1a2230], water: 0x2a86e0 };
     function _nzWash(tiles, el, rank, o) {
         o = o || {};
         var R = _NZ[el]; if (!R || !_canSpawn()) return null;
-        if (_vcOn()) { R = R.slice(); R[1] = _vcTone(R[1], R[3], 0.5, 0.92); }   /* THE VFX CLEANUP: the pale sheets (wind, metal, sonic, ice) in their mid tone */
+        if (_vcOn()) {   /* THE VFX CLEANUP: the pale sheets (wind, metal, sonic, ice) in their mid tone, or the sweep's own colour(s) */
+            var vz = _NZ_VC[el]; R = R.slice();
+            if (Array.isArray(vz)) { R[1] = vz[0]; R[3] = vz[1]; } else R[1] = vz != null ? vz : _vcTone(R[1], R[3], 0.5, 0.92);
+        }
         var live = [];
         for (var i = 0; i < tiles.length && live.length < 25; i++) { var tt = tiles[i]; if (tt && tt.x != null && _pzSeen(tt.x, tt.y)) live.push(tt); }
         if (!live.length) return null;
@@ -64630,7 +64733,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── MAUL: the jaws lock and shake (the Bite jaws, held long, the head shaking) ── */
     SPELL_MAP['raceMaul'] = Object.assign({}, SPELL_MAP['raceMaul'], { impact: '_slashMelee_impact' });
     _spell3DGeometry.raceMaul = function (tx, ty) {
-        _sigJawsBite3D(tx, ty, { scale: 1.1, glowColor: 0xdd2222, gumTint: 0x7a1d1d, clenchMs: 620, circleColor: 0x991111, sparkSprite: 'blood-fleck', flashPeak: 0.1, shake: 'hard' });
+        _sigJawsBite3D(tx, ty, { scale: 1.1, glowColor: 0xdd2222, gumTint: 0x7a1d1d, clenchMs: 620, circleColor: 0x991111, sparkSprite: 'blood-fleck', flashPeak: 0.1, shake: 'hard', vcQuiet: true });
         _fx3BloodSpin(tx, ty, 520, 700, 0.6);
     };
     /* blood thrown off a body in a turning ring (Maul's shake, Death Roll's roll) */
@@ -64653,7 +64756,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        and the roots of the Root hold them on the floor ── */
     SPELL_MAP['raceDeathRoll'] = Object.assign({}, SPELL_MAP['raceDeathRoll'], { impact: '_slashMelee_impact' });
     _spell3DGeometry.raceDeathRoll = function (tx, ty) {
-        _sigJawsBite3D(tx, ty, { scale: 1.3, glowColor: 0xc81a1a, gumTint: 0x5a1414, toothTint: 0xe8dcc0, hideTint: 0x3a4a2a, clenchMs: 820, circleColor: 0x7a1010, sparkSprite: 'blood-fleck', flashPeak: 0.1, shake: 'hard' });
+        _sigJawsBite3D(tx, ty, { scale: 1.3, glowColor: 0xc81a1a, gumTint: 0x5a1414, toothTint: 0xe8dcc0, hideTint: 0x3a4a2a, clenchMs: 820, circleColor: 0x7a1010, sparkSprite: 'blood-fleck', flashPeak: 0.1, shake: 'hard', vcQuiet: true });
         _fx3BloodSpin(tx, ty, 300, 900, 1);
     };
     /* ── CLAW SWEEP: both arms, every direction — a claw rake on each side of the werewolf, round the clock ── */
@@ -64668,7 +64771,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var x = cx + o[0], y = cy + o[1];
             _fxDelay(function () {
                 if (_suppressed() || !_pzSeen(x, y)) return;
-                try { _sigClawCombo3D(x, y, { swipes: 1, glowColor: 0xff2a2a, clawTint: 0xe8d8c8, sparkSprite: 'blood-fleck', swipeMs: 60, markMs: 420, scale: 0.9, yaw: Math.atan2(o[0], o[1]) + Math.PI / 2 }); } catch (e) {}
+                try { _sigClawCombo3D(x, y, { swipes: 1, glowColor: 0xff2a2a, clawTint: 0xe8d8c8, sparkSprite: 'blood-fleck', swipeMs: 60, markMs: 420, scale: 0.9, yaw: Math.atan2(o[0], o[1]) + Math.PI / 2, vcQuiet: true }); } catch (e) {}
             }, i * 70);
         });
     };
@@ -65254,7 +65357,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 });
             });
             _capAt(260, function () {
-                _capColumn(P.sx, P.sy, 0xd8142e, 4.5, 0.32, 1000, 0xffc0c8);
+                _capColumn(P.sx, P.sy, 0xd8142e, 4.5, 0.32, 1000, _vcOn() ? 0xff7a88 : 0xffc0c8);   /* THE VFX SWEEP, B8a: no near-white core in the blood column */
                 try { _sigStatRings3D(P.sx, P.sy, { dir: 1, rings: 3, color: 0xff3048, ms: 700 }); } catch (e) {}
                 _capPuff(P.sx, P.sy, 'ember', 16, { r: 0.4, out: 20, vz0: 90, vz1: 200, s0: 4, s1: 8, ml0: 800, ml1: 1300, wander: 16, tint: 0xff3048 });
             });
@@ -65335,6 +65438,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _VS_DROP = 220;
     function _fx1ValkyrieSeal(tx, ty) {
         var ts = _cfg().tileSize || 128;
+        /* B7b (the VFX sweep): the seal circle read as a white disc a square and a half wide under the body, for 0.7 s:
+           the planted spear, its thin light in a full blue and one ring off the plant are the seal now */
+        if (_vcOn()) {
+            try { _sigLightPillar3D(tx, ty, { color: 0x5fa8ff, coreColor: 0x9fd0ff, radius: ts * 0.07, height: ts * 3.2, ms: 420 }); } catch (e) {}
+            try { _sigShockRing3D(tx, ty, { color: 0x5fa8ff, r0: ts * 0.15, r1: ts * 0.95, ms: 420, opacity: 0.7 }); } catch (e) {}
+            _sigSparks(tx, ty, 'divine-sparkle', 10, { vxy: 170, vz0: 60, vz1: 200, gravity: 300, z: ts * 0.55 });
+            return;
+        }
         try { _sigLightPillar3D(tx, ty, { color: 0xbfe0ff, radius: ts * 0.07, height: ts * 3.2, ms: 420 }); } catch (e) {}
         try { _sigMagicCircle3D(tx, ty, { color: 0x99ccff, radiusPx: ts * 1.3, holdMs: 700, spin: 0.004, opacity: 0.75 }); } catch (e) {}
         _sigSparks(tx, ty, 'divine-sparkle', 14, { vxy: 170, vz0: 60, vz1: 200, gravity: 300, z: ts * 0.55 });
@@ -65552,7 +65663,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _fxDelay(function () { if (!_suppressed() && _pzSeen(tx, ty)) _sigSparks(tx, ty, 'spark', 14, { vxy: 120, vz0: 40, vz1: 140, gravity: 300, z: 30 }); }, Math.max(0, hold - 160));
                 for (var oy = -R2; oy <= R2; oy++) for (var ox = -R2; ox <= R2; ox++) (function (bx, by, ring, n) {
                     if (ring === 2 && (n % 2)) return;                       /* every other tile of the outer ring */
-                    _fxDelay(function () { if (!_suppressed() && _pzSeen(bx, by)) _crExplosion(bx, by, { lite: ring > 0, scale: ring ? 0.85 : 1 }); }, Math.max(0, hold - 60) + ring * 140 + (n % 3) * 30);
+                    _fxDelay(function () { if (!_suppressed() && _pzSeen(bx, by)) _crExplosion(bx, by, { lite: ring > 0, scale: ring ? 0.85 : 1, noRing: ring > 0 && _vcOn() }); }, Math.max(0, hold - 60) + ring * 140 + (n % 3) * 30);
                 })(tx + ox, ty + oy, Math.max(Math.abs(ox), Math.abs(oy)), (ox + R2) + (oy + R2) * (2 * R2 + 1));
             }
             /* BURNOUT ("it burns itself down"), INFERNO ("the heart of a firestorm"), THRONE OF ASHES (the court burns):
@@ -66010,7 +66121,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_f4Off()) return; var tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, ms = p.flyMs > 0 ? p.flyMs : 300, N = 120, pts = [];
         for (var i = 0; i <= N; i++) { var a = i / N * Math.PI * 2; pts.push(new THREE.Vector3(Math.sin(a) * ts * 0.42, ts * (0.62 + Math.sin(2 * a) * 0.2), Math.sin(a) * Math.cos(a) * ts * 0.42)); }
-        var curve = new THREE.CatmullRomCurve3(pts, true), mat = _pzGlow(_F4.lilac, _f4BandTex()), core = _pzGlow(0xffffff);
+        var curve = new THREE.CatmullRomCurve3(pts, true), mat = _pzGlow(_F4.lilac, _f4BandTex()), core = _pzGlow(_vcOn() ? 0xb894ff : 0xffffff);   /* THE VFX SWEEP B9a: the loop's core in its violet, not white */
         var geo = new THREE.TubeGeometry(curve, 160, ts * 0.03, 6, true), tube = _pzMesh(geo, mat, F.g), inner = _pzMesh(new THREE.TubeGeometry(curve, 160, ts * 0.011, 5, true), core, F.g);
         var idx = geo.index ? geo.index.count : 0;
         return _sigRunOwned(F.g, ms + 1500, function (el) {
@@ -66050,7 +66161,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (go && !shattered) {
                 shattered = true;
                 for (var j = 0; j < mir.length; j += 2) { var o = _nvOff(F, tx, ty); _capShards(tx + Math.round(Math.cos(mir[j].a) * (r + 0.5)), ty + Math.round(Math.sin(mir[j].a) * (r + 0.5)), 'glass', { n: 7, scale: 0.9, height: 0.6 }); }
-                _sigShockRing3D(tx, ty, { color: 0xd8c8ff, r1: ts * (r + 1.2), ms: 420, height: 4, opacity: 0.6 });
+                if (!_vcOn()) _sigShockRing3D(tx, ty, { color: 0xd8c8ff, r1: ts * (r + 1.2), ms: 420, height: 4, opacity: 0.6 });   /* THE VFX SWEEP B9a: the mirrors breaking are the hit, no pale ring over the area */
             }
         });
     };
@@ -66153,7 +66264,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _PZ_SIGS.f4Shatter = function (p) {
         if (_f4Off()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
         _capShards(tx, ty, 'crystal', { n: 11, scale: 1.2, height: 0.6 });
-        try { _sigShockRing3D(tx, ty, { color: 0xe0c8ff, r1: (_cfg().tileSize || 128) * 1.6, ms: 380, height: 4, opacity: 0.6 }); } catch (e) {}
+        try { _sigShockRing3D(tx, ty, { color: _vcOn() ? 0x8a5cf0 : 0xe0c8ff, r1: (_cfg().tileSize || 128) * 1.6, ms: 380, height: 4, opacity: 0.6 }); } catch (e) {}   /* THE VFX SWEEP B9a: the lattice's violet (was pale lilac) */
     };
     SPELL_MAP['raceShatterLattice'] = { impact: 'f4Shatter_impact' };
 
@@ -66984,7 +67095,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (seenT) {
                     _sigShockRing3D(tx, ty, { color: S[0], r0: ts * 0.15, r1: ts * 0.75, ms: 360 });
                     _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 170, tint: _BBR.violet, vz0: 40, vz1: 200, gravity: 260 });
-                    _sigSparks(tx, ty, 'spark', 5, { z: ts * 0.9, vxy: 120, tint: 0xffffff, vz0: 60, vz1: 220, gravity: 260 });
+                    _sigSparks(tx, ty, 'spark', 5, { z: ts * 0.9, vxy: 120, tint: _vcOn() ? S[0] : 0xffffff, vz0: 60, vz1: 220, gravity: 260 });   /* B9b */
                     _shake('light');
                 }
             }
@@ -67009,7 +67120,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shellM = _pzGlow(_BBR.violet), shell = _pzMesh(new THREE.SphereGeometry(1, 28, 18), shellM, F.g, 0, Y, 0);
         var rimM = _pzGlow(_BBR.pale), rim = _pzMesh(new THREE.TorusGeometry(1, 0.025, 6, 48), rimM, F.g, 0, Y, 0);
         var rim2M = _pzGlow(S[0]), rim2 = _pzMesh(new THREE.TorusGeometry(1, 0.02, 6, 48), rim2M, F.g, 0, Y, 0);
-        var pt = _pzSpr(0xffffff, ts * 0.5, F.g); pt.position.set(0, Y, 0);
+        var pt = _pzSpr(_vcOn() ? _BBR.violet : 0xffffff, ts * 0.5, F.g); pt.position.set(0, Y, 0);   /* THE VFX SWEEP, B9b: the point the room falls into is the void's violet, not a white flare */
         var motes = _bbMotes(F, 26, 0.62, 1.05, _BBR.violet);
         var floorM = _pzSolid(0xffffff, _bbVoidTex(), { depthWrite: false }), floor = _pzMesh(new THREE.CircleGeometry(ts * 0.62, 36), floorM, F.g, 0, ts * 0.03, 0); floor.rotation.x = -Math.PI / 2;
         var R = ts * 0.8, CL = 150, hit = false;
@@ -67557,7 +67668,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (!slammed && el >= SLAM) {
                 slammed = true; _sigShake('light');
                 _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.2, r1: ts * 0.8, ms: 320 });
-                _sigSparks(tx, ty, 'spark', 10, { z: ts * 1.5, vxy: 160, tint: 0xffffff, vz0: 10, vz1: 90 });
+                _sigSparks(tx, ty, 'spark', 10, { z: ts * 1.5, vxy: 160, tint: _vcOn() ? C.a : 0xffffff, vz0: 10, vz1: 90 });   /* B9b */
             }
             var wk = _sigClamp01((el - SLAM - 40) / 260);
             word.material.opacity = _pzEnv(el, SLAM + 40, SLAM + 120, 1200, 1550);
@@ -67595,7 +67706,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.2, r1: ts * 1.0, ms: 380 });
                 if (hushed) _sigShockRing3D(tx, ty, { color: _LIB.red, r0: ts * 0.3, r1: ts * 1.4, ms: 520 });
                 slips = _libSlips(F, hushed ? 12 : 6, Y0);
-                _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 200, tint: 0xffffff, vz0: 30, vz1: 140 });
+                _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 200, tint: _vcOn() ? (hushed ? _LIB.red : C.a) : 0xffffff, vz0: 30, vz1: 140 });   /* B9b: sparks in the stamp's colour */
             }
             var se = el - ms;
             if (slips) _libSlipsTick(slips, se, Y0, 1700, ts);
@@ -68301,8 +68412,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _dbHop3D(tx, ty, from) {
         var ally = _fx5UnitAt(tx, ty), side = _dbSide(ally);
         if (from && _pzSeen(from.x, from.y)) {
-            _dbRing(from.x, from.y, 0xffffff, 0.7, 260, 0.95, 0);   /* beep */
-            _dbRing(from.x, from.y, 0xffffff, 0.7, 260, 0.95, 170);   /* beep */
+            _dbRing(from.x, from.y, _vcOn() ? _DB.red : 0xffffff, 0.7, 260, 0.95, 0);   /* beep (THE VFX SWEEP, B6a: his red, not a white ring) */
+            _dbRing(from.x, from.y, _vcOn() ? _DB.red : 0xffffff, 0.7, 260, 0.95, 170);   /* beep */
             try { _sigShockRing3D(from.x, from.y, { color: side.a, r0: _worldPos(from.x, from.y).ts * 0.2, r1: _worldPos(from.x, from.y).ts * 0.7, ms: 420, height: 4 }); } catch (e) {}
         }
         if (!_pzSeen(tx, ty)) return true;
@@ -68723,13 +68834,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the scream: four rings out of its head, tilting down as they spread */
         var rings = [];
         for (var i = 0; i < 4; i++) {
-            var rg = _pzMesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.025, 6, 40), _pzGlow(i % 2 ? _WD.ice : _WD.frost), F.g, 0, ts * 0.85, 0);
+            var rg = _pzMesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.025, 6, 40), _pzGlow(_vcOn() ? (i % 2 ? 0x2f7fd0 : 0x1f5aa8) : (i % 2 ? _WD.ice : _WD.frost)), F.g, 0, ts * 0.85, 0);   /* B7a: the rings grow to thick bands of added light, which read white: deep ice blue */
             rg.rotation.x = Math.PI / 2; rings.push({ m: rg, at: i * 110 });
         }
         /* the reach: one flat ring at the edge in the seat colour (who screamed), drawn once */
         var edge = _pzMesh(new THREE.RingGeometry(ts * (reach - 0.06), ts * reach, 64), _pzGlow(C.a), F.g, 0, ts * 0.04, 0);
         edge.rotation.x = -Math.PI / 2;
-        var frost = _pzMesh(new THREE.RingGeometry(ts * 0.3, ts * reach, 64), _pzGlow(_WD.frost, _sigTerrainTex('ice.png', 2, 2)), F.g, 0, ts * 0.03, 0);
+        var frost = _pzMesh(new THREE.RingGeometry(ts * 0.3, ts * reach, 64), _pzGlow(_vcOn() ? 0x2f6cb4 : _WD.frost, _sigTerrainTex('ice.png', 2, 2)), F.g, 0, ts * 0.03, 0);   /* B7a: the sheet of frost was a flat white disc over the whole reach (added light on a grey floor): deep ice blue */
         frost.rotation.x = -Math.PI / 2;
         /* the snow blown out flat from its feet */
         if (_canSpawn()) for (var n = 0; n < 26; n++) {
@@ -68743,7 +68854,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var R = rings[j], k = _sigClamp01((el - R.at) / 620), e = _sigEaseOutCubic(k);
                 R.m.scale.setScalar(0.4 + (reach / 0.3) * e);
                 R.m.position.y = ts * (0.85 - 0.7 * e);
-                R.m.material.opacity = 0.7 * _pzEnv(el, R.at, R.at + 50, R.at + 260, R.at + 620);
+                R.m.material.opacity = (_vcOn() ? 0.5 : 0.7) * _pzEnv(el, R.at, R.at + 50, R.at + 260, R.at + 620);
             }
             var g = _sigEaseOutCubic(_sigClamp01(el / 420));
             frost.scale.setScalar(0.2 + 0.8 * g);
@@ -69940,6 +70051,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _b8bTint('raceWebSnare_impact_center', 1, 'halo-ring', 0x9a7ad8);      /* Web Snare: the ring under the web in void silk */
     _b8bTint('pvFlask_impact', 0, 'flash', 0xa8f060);                      /* Acid Flask, Chemical Concoction: the break flashes acid green */
     _b8bTint('raceToxicNova_impact_center', 0, 'shockwave', 0x7ee040);     /* Toxic Nova, Plandemic, Splash: a green ring */
+    /* part 2. CLUSTER ROCKETS (+ Mortar Salvo, the same recipe): nine rockets drew nine pale shock rings over the 3x3; the
+       centre blast keeps its ring, a square's own blast goes up without one. (Chain Reaction: the same, where it is cast.) */
+    (function () { try { var b = EFFECTS['raceMortarSalvo_impact_tile'] && EFFECTS['raceMortarSalvo_impact_tile']._crBoom;
+        if (b) Object.defineProperty(b, 'noRing', { enumerable: true, configurable: true, get: function () { return _vcOn(); } }); } catch (e) {} })();
     /* TAIL WHIP wore the robot's Hydraulic Punch on the hit (two white flashes, steam, steel sparks). Its own: the dirt the
        tail throws. No flash layer: L1's look flashes the square in leaf green. */
     EFFECTS['b8bTailWhip_impact'] = { layers: [
@@ -74526,6 +74641,52 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     });
     /* ═════════ END THE OWN LOOKS, L5 ═════════ */
 
+    /* ════ THE VFX SWEEP, B9b (2026-11-17, docs/plans/vfx-cleanup/SWEEP_BRIEF.md; list batches/B9b.txt: psychic + unholy) ════
+       The generic white left inside each spell's own look. The in-place edits carry a "B9b" comment where they sit; this block
+       holds the two tables. Everything is behind _vcOn() (window.EW_NO_VFX_CLEANUP = true = the old look). Looks only.
+       · _VC_RUNE_NOT_B9B: spells of a rune school (psychicHex, unholy) that are NOT rune magic: a debunking, a phone, a thrown
+         bone, a kiss, a roar. No circle under the caster (mondo: "that should be preserved for magic spells where it makes sense").
+       · _B9B_TINT: a white / near-white ring or flash in a spell's own particle recipe, in the spell's own colour. The recipe
+         keeps its layer (every hit square still flashes); only the colour changes, read live so the switch works. */
+    var _VC_RUNE_NOT_B9B = {
+        /* psychicHex: none of these is drawn on the ground */
+        pzDebunked: 1, goMissingTime: 1, raceRatiod: 1, sigScrape: 1, nrShhh: 1,
+        /* unholy (part 2): a body, a bite, a breath, a kiss, a thrown thing, a song, a flock. The decrees, the curses, the
+           voodoo, the soul work, the dark itself and the Egyptian rites keep their circle. */
+        raceAbsorb: 1, raceBoneBarrage: 1, raceBrokenHalo: 1, raceCarrionFeast: 1, raceCrowStorm: 1, udDeathRattle: 1,
+        raceDragonfear: 1, mmEmbalm: 1, pzLastKiss: 1, raceSleepParalysis: 1, raceSoulSuck: 1, pzStolenVitality: 1,
+        raceRigormortis: 1, raceDarkLullaby: 1, raceHeatDeath: 1
+    };
+    var _B9B_TINT = {
+        /* recipe id: [[layer index, sprite (a check), the colour]] */
+        sigUncannySmile_center: [[0, 'shockwave', 0xff2030]],        /* the smile's ring in its eye red (it was bone white) */
+        nrPinPrick_impact: [[0, 'flash', 0xe8a0b4]],                 /* the pin's glint in the doll's lace pink */
+        /* part 2, unholy: the cream-white ring (an untinted shockwave / halo-ring) each of these laid on the floor */
+        raceBoneBarrage_impact_center: [[0, 'shockwave', 0x9a80c0]],
+        raceDarkDominion_impact_center: [[1, 'shockwave', 0x8a4aff]],
+        raceDemonicRoar_impact_center: [[0, 'shockwave', 0xff3322]],     /* Demonic Roar (+ Labyrinth Roar's second ring) */
+        raceLabyrinthRoar_impact_center: [[0, 'shockwave', 0xcc8844]],
+        raceDreadAura_aura_center: [[0, 'halo-ring', 0x8833cc]],
+        raceShadowBind_impact: [[0, 'halo-ring', 0x8844cc]],
+        raceInfernalDecree_impact_center: [[1, 'shockwave', 0xff5a2a]],  /* Infernal Decree + Cataclysm Decree */
+        _selfHeal_unholy_burst_center: [[0, 'halo-ring', 0x8a3ac8]],     /* Carrion Feast (its only user) */
+        raceCurseOfMisfortune_impact: [[1, 'flash', 0x9a7cff]],          /* three pale-blue flashes -> the curse's violet */
+        nrShadowStep_impact: [[0, 'flash', 0x8a6ad8]],                   /* a square-sized pure white flash -> shadow violet */
+        raceContract_impact: [[0, 'flash', 0xffd24a]]                    /* Soul Bind, Voodoo (and Contract): bone white -> the ink's gold */
+    };
+    (function () {
+        for (var id in _B9B_TINT) {
+            var d = EFFECTS[id], rows = _B9B_TINT[id];
+            if (!d || !d.layers) { try { console.warn('[VFX] B9b: no recipe ' + id); } catch (e) {} continue; }
+            for (var i = 0; i < rows.length; i++) (function (L, sprite, col) {
+                if (!L || L.sprite !== sprite) { try { console.warn('[VFX] B9b: layer moved in ' + id); } catch (e) {} return; }
+                var old = L.tint;
+                try { Object.defineProperty(L, 'tint', { configurable: true, enumerable: true, get: function () { return _vcOn() ? col : old; }, set: function (v) { old = v; } }); } catch (e) {}
+            })(d.layers[rows[i][0]], rows[i][1], rows[i][2]);
+        }
+    })();
+    /* ═════════ END THE VFX SWEEP, B9b ═════════ */
+
     /* ═════════════════════════════════════════════════════════════════════
        THE OWN LOOKS, L6: fire, wind and sound (2026-11-17, mondo: "any spells that dont have a look of their own need
        one"; docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md, list own-look/L6.txt). Each spell here had only the shared stage
@@ -75064,6 +75225,197 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }]);
     };
     /* ═════════ END THE OWN LOOKS, L6 ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE VFX SWEEP, B7a (2026-11-17, docs/plans/vfx-cleanup/SWEEP_BRIEF.md; list batches/B7a.txt: ice, metal, sonic)
+       What a spell's own recipe still drew in generic white. Everything behind _vcOn() (EW_NO_VFX_CLEANUP = the old look).
+       1. THE HIT FLASH KEEPS ITS SQUARE, NOT ITS WHITE: a recipe's `flash` that was tinted white takes `vcTint`
+          (_emitLayer reads it): null = the casting spell's own light (three-vfx.js gives an untinted flash the palette's).
+       2. THE GENERIC AREA DETONATION (aoe(): battle.js' playAoeRing fallback: a wide ring, a cream shockwave, a glass orb
+          and a shock ring) is not the look of a spell that has one. playAoeRing names no spell, so the windup beat's
+          spell is remembered for a few seconds (the beats are relayed, so both screens drop the same call). THIS is the
+          "glass orb + wide ring, source not found" of the brief (Jackpot, Shattered Mirror, the Watering Can's tan ring):
+          a sweep adds its spell to _VC_NO_AOE.
+       ═════════════════════════════════════════════════════════════════════ */
+    (function () {
+        function tint(effectId, sprite, from, to) {
+            var d = EFFECTS[effectId]; if (!d || !d.layers) return;
+            for (var i = 0; i < d.layers.length; i++) { var l = d.layers[i]; if (l && l.sprite === sprite && l.tint === from) l.vcTint = to; }
+        }
+        tint('racePoliceCuffs_impact', 'flash', 0xffffff, null);
+        tint('racePoliceLockdown_center', 'flash', 0xf4f8ff, null);
+        tint('racePoliceNightstick_impact', 'flash', 0xfff4dc, null);
+        tint('sigPiledriver_impact', 'flash', 0xf4f8ff, null);
+        tint('pzThousandCuts_impact', 'flash', 0xf2f6ff, null);
+        tint('sigHalligan_impact', 'flash', 0xfff4dc, null);
+        tint('raceGrapple_impact', 'flash', 0xe8e0d0, null);
+        tint('sigThroughTheWall_impact', 'flash', 0xfff0e0, 0xd8a078);     /* brick dust */
+        tint('sigDestinyFulfilled_impact', 'flash', 0xfff4d6, 0xffd76a);   /* the chosen one's gold, as its sparkles */
+        tint('spyGarroteWatch_impact', 'steel-spark', 0xffffff, null);
+    })();
+    var _VC_NO_AOE = { crossfire: 1, raceGlacialSlam: 1, nrBuzz: 1 }, _vcCastLast = null;
+    var _b7aFireStage0 = _fireStage;
+    _fireStage = function (phase, spellId, params) {
+        if (phase === 'windup' && spellId) _vcCastLast = { id: spellId, t: performance.now() };
+        return _b7aFireStage0.apply(this, arguments);
+    };
+    var _b7aAoe0 = aoe;
+    aoe = function (centerTx, centerTy, spellType, spellId) {
+        var id = spellId || (_vcCastLast && performance.now() - _vcCastLast.t < 6000 ? _vcCastLast.id : null);
+        if (id && _VC_NO_AOE[id] && _vcOn()) return;
+        return _b7aAoe0.apply(this, arguments);
+    };
+    /* ══ THE VFX SWEEP, B6a (2026-11-17, docs/plans/vfx-cleanup/SWEEP_BRIEF.md; list batches/B6a.txt: the buffs, wards and blessings) ══
+       mondo: "take out all of these generic basic white vfx that crowd the screen and the animations and either replace them or just
+       leave them be", "not just anything that is white". What was left on these spells after B0-B5 is the OLD shared buff recipe that
+       still draws under a spell's own look: an untinted `flash` (the riot pass paints it the aura palette's cream), a pale gold
+       `halo-ring` under a ward of another colour, a holy pillar under a spell that is not holy.
+       A swept recipe is a COPY (`s6a_<spell>_<recipe>`) drawn in place of the old one while the cleanup is on (_vcOn; off =
+       window.EW_NO_VFX_CLEANUP = true, the old recipe as it was). The old recipes are not edited: other spells share them.
+         drop:   { sprite: 1 }      the layer goes when it is untinted or pale
+         tint:   { sprite: 0x.. }   the layer takes the spell's own colour when it is untinted or pale (a saturated tint is kept)
+         max:    { sprite: n }      no more than n layers of that sprite
+         noPillar                   the recipe's column is not drawn
+       The same spec runs through the recipe's centre and per-square recipes. A per-square flash is never dropped: it is tinted.
+       The other half of the sweep is in place at each spell's own signature (search "THE VFX SWEEP, B6a"). Looks only; everything
+       rides the relayed fire(), nothing on state. Notes: docs/notes/spells-vfx.md "THE VFX SWEEP, B6a". */
+    var _S6A_FX = {};
+    var _S6A_AURA = { raceHowl: { color: 0x6f9cf0, durationMs: 2000 } };   /* the power shroud (_POWER_AURA_SPELLS) in moon blue, it was near white */
+    function _s6aFx(spellId, intent, effId) { var m = _S6A_FX[spellId]; return (m && m[intent] && _vcOn()) ? m[intent] : effId; }
+    function _s6aPale(t) { if (t == null) return true; var r = _vcRgb(t); return Math.min(r[0], r[1], r[2]) >= 0xa0; }
+    function _s6aClone(spellId, effId, o, isTile) {
+        var d = EFFECTS[effId]; if (!d) return effId;
+        var nid = 's6a_' + spellId + '_' + effId, n = {}, seen = {}, out = [];
+        for (var k in d) n[k] = d[k];
+        var L = d.layers || [];
+        for (var i = 0; i < L.length; i++) {
+            var l = L[i], sp = l.sprite, pale = _s6aPale(l.tint);
+            if (pale && o.drop && o.drop[sp] && !(isTile && sp === 'flash')) continue;
+            if (o.max && o.max[sp] != null) { seen[sp] = (seen[sp] || 0) + 1; if (seen[sp] > o.max[sp]) continue; }
+            if (pale && o.tint && o.tint[sp] != null) { var c = {}; for (var q in l) c[q] = l[q]; c.tint = o.tint[sp]; l = c; }
+            out.push(l);
+        }
+        n.layers = out;
+        if (o.noPillar) n.pillarSprite = null;
+        if (d.impactCenterEffect) n.impactCenterEffect = _s6aClone(spellId, d.impactCenterEffect, o, false);
+        if (d.impactTileEffect) n.impactTileEffect = _s6aClone(spellId, d.impactTileEffect, o, true);
+        EFFECTS[nid] = n;
+        return nid;
+    }
+    function _s6a(spellId, intent, o) {
+        var m = SPELL_MAP[spellId]; if (!m || typeof m[intent] !== 'string' || !EFFECTS[m[intent]]) return;
+        (_S6A_FX[spellId] = _S6A_FX[spellId] || {})[intent] = _s6aClone(spellId, m[intent], o, false);
+    }
+    /* part 1: the wards and the commands */
+    _s6a('raceIronBulwark',      'aura', { drop: { flash: 1 } });                                              /* the shields are the look */
+    _s6a('raceHolyBulwark',      'aura', { drop: { flash: 1 } });                                              /* the gold dome + its holy light stay */
+    _s6a('raceLuminousShield',   'aura', { drop: { flash: 1 } });
+    _s6a('fortify',              'aura', { drop: { flash: 1 }, noPillar: true, tint: { 'holy-light': 0x88bbff, 'halo-ring': 0x88bbff } });   /* a Tank's shield wall, not a holy pillar */
+    _s6a('raceShieldMaiden',     'aura', { drop: { flash: 1 }, tint: { 'halo-ring': 0x8fb4f0 } });
+    _s6a('raceHellfireCrown',    'aura', { drop: { flash: 1 } });                                              /* black fire, no cream flash in it */
+    _s6a('raceRoyalDecree',      'aura', { drop: { flash: 1 } });
+    _s6a('raceAyahuascaRetreat', 'aura', { drop: { flash: 1 }, tint: { 'halo-ring': 0xbb66ff } });
+    _s6a('raceStoneSkin',        'aura', { drop: { 'halo-ring': 1 } });                                        /* its stone ring is in the signature */
+    _s6a('raceAstralBarrier',    'aura', { tint: { 'halo-ring': 0xb894ff } });                                 /* the ring in the dome's violet */
+    _s6a('racePupilShield',      'aura', { tint: { 'halo-ring': 0x8a9cff } });
+    _s6a('raceRallyCommand',     'aura', { tint: { flash: 0xff9a4a, 'holy-light': 0xffb060 } });               /* every square keeps its flash, in the order's orange */
+    _s6a('raceSwarmSignal',      'aura', { tint: { flash: 0xffc05a } });
+    _s6a('raceHowl',             'aura', { tint: { flash: 0x86b4ff, 'halo-ring': 0x86b4ff } });                /* moon blue */
+    _s6a('raceTarotDraw',        'aura', { tint: { flash: 0xb890ff }, max: { flash: 1 } });                    /* one violet flash, not three pastel ones */
+    _s6a('raceOathOfValor',      'aura', { tint: { flash: 0xffd870 } });
+    _s6a('racePlotArmor',        'aura', { tint: { flash: 0xff9ae0 } });
+    _s6a('nrInservice',          'aura', { tint: { 'halo-ring': 0xff8a8a } });                                 /* a ring on every square of the diamond: her red, not white */
+    _s6a('raceTailwind',         'aura', { tint: { 'halo-ring': 0x8fe0cc } });
+    /* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+       THE VFX SWEEP, B10: bodies and tech (2026-11-17, docs/plans/vfx-cleanup/SWEEP_BRIEF.md, list batches/B10.txt:
+       human, kinetic, grapple, skyfall, rig, tech, alien). mondo: "take out all of these generic basic white vfx that
+       crowd the screen", "not just anything that is white", "every square that is hit [must] flash".
+       What is here: the near-white flash / ring LAYERS left inside these spells' own particle recipes, in the spell's
+       own colour (the flash stays: it shows where the hit lands), or off where a recipe flashed the same spot twice.
+       _B10_LAYERS: recipe -> [sprite, the tint it has (null = none), the new tint | 'skip'] (first layer that matches,
+       `all` = every one). The tags (a layer's `vcTint` / `vcOff`, the same ones B8a's _b8Tint writes) are read by the emitter only while _vcOn(), so
+       window.EW_NO_VFX_CLEANUP = true is the old look. Looks only; every layer rides the relayed fire().
+       Notes: docs/notes/spells-vfx.md "THE VFX SWEEP, B10". ═════════════════════════════════════════════════════════ */
+    var _B10_LAYERS = {
+        /* Hydraulic Punch (also Tail Whip's recipe): one steam-blue flash, not a white one and a second pure white one */
+        raceHydraulicPunch_impact: [['flash', 0xe8f0f8, 0x9cc4e4], ['flash', 0xffffff, 'skip']],
+        sigGrappleArm_pull:        [['flash', 0xd8f0ff, 0x6fb4ea]],
+        /* Place Bomb: every square's flash in the blast's orange (it drew cream); the middle flashed twice */
+        placeBomb_impact_tile:     [['flash', null, 0xff9a3c]],
+        placeBomb_impact_center:   [['flash', null, 0xff9a3c], ['flash', null, 'skip'], ['shockwave', null, 0xff8844]],
+        raceExecutiveOrder_impact: [['flash', 0xf4f0e8, 0xe8c040]],                 /* the seal's gold */
+        nbSawInHalf_impact:        [['flash', 0xffffff, 0xffc860]],                 /* the saw's sparks */
+        raceFeralDive_impact:      [['flash', 0xeaffea, 0x9ad86a], ['shockwave', 0xc8e8b8, 0x86b860]],
+        raceDriveBy_impact:        [['flash', 0xfff2c0, 0xffc04a]],                 /* a muzzle's yellow */
+        raceApexCharge_impact:     [['flash', 0xffe8c0, 0xf0a850], ['flash', 0xfff4d8, 0xe8b468], ['shockwave', 0xe8c890, 0xd89c50]],
+        raceChivalry_burst:        [['flash', 0xd8e8ff, 0x88b0ff]],
+        raceLucidTrap_burst:       [['flash', 0xdfe6ee, 0x8fa8c8]],
+        raceStuffedDouble_burst:   [['flash', 0xfff0d0, 0xe8c060]],                 /* straw */
+        racePredatorDrop_impact:   [['flash', 0xd8ffd0, 0xd8283c], ['flash', 0xeaffea, 0xe03a4a]]   /* a vampire's rake is blood red (it was pale green) */
+    };
+    (function () {
+        try {
+            for (var id in _B10_LAYERS) {
+                var d = EFFECTS[id], rows = _B10_LAYERS[id]; if (!d || !d.layers) continue;
+                var used = [];
+                for (var r = 0; r < rows.length; r++) for (var i = 0; i < d.layers.length; i++) {
+                    var L = d.layers[i];
+                    if (used[i] || L.sprite !== rows[r][0] || (rows[r][1] == null ? L.tint != null : L.tint !== rows[r][1])) continue;
+                    used[i] = 1;
+                    if (rows[r][2] === 'skip') L.vcOff = true; else L.vcTint = rows[r][2];
+                    break;
+                }
+            }
+        } catch (e) {}
+    })();
+    /* ═════════ END THE VFX SWEEP, B10 ═════════ */
+
+    /* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+       THE VFX SWEEP, B8a (2026-11-17, docs/plans/vfx-cleanup/SWEEP_BRIEF.md; list batches/B8a.txt: blood, earth, one
+       fire spell). What is left spell by spell after the shared passes: a white ring or a near-white hit flash a
+       spell's OWN recipe still draws takes the spell's colour (the per-square flash is never removed, it is
+       recoloured). The bites + claws (vcQuiet) are at _sigJawsBite3D / _sigClawCombo3D and their callers.
+       _b8Tint(recipe, sprite, was, colour): every layer of that recipe with that sprite and that tint (null = an
+       untinted one) reads `colour` while the cleanup is on and its old tint with window.EW_NO_VFX_CLEANUP = true
+       (the layer's `vcTint`, which the emitter reads in place of its tint while the cleanup is on). Looks only. Notes: docs/notes/spells-vfx.md "THE VFX SWEEP, B8a". */
+    function _b8Tint(recipe, sprite, was, colour) {
+        var d = EFFECTS[recipe]; if (!d || !Array.isArray(d.layers)) return 0;
+        var n = 0;
+        d.layers.forEach(function (L) {
+            if (!L || L.sprite !== sprite || L._b8) return;
+            var old = L.tint;
+            if (was == null ? old != null : old !== was) return;
+            L.vcTint = colour; L._b8 = 1; n++;   /* the emitter reads vcTint while the cleanup is on */
+        });
+        return n;
+    }
+    /* a recipe's centre burst swapped for a copy of its own while the cleanup is on (a recipe two elements share) */
+    function _b8Centre(recipe, copyId, from) {
+        var d = EFFECTS[recipe], src = EFFECTS[from]; if (!d || !src || d.impactCenterEffect !== from) return;
+        EFFECTS[copyId] = Object.assign({}, src, { layers: (src.layers || []).map(function (L) { return Object.assign({}, L); }) });
+        try { Object.defineProperty(d, 'impactCenterEffect', { enumerable: true, configurable: true, get: function () { return _vcOn() ? copyId : from; } }); } catch (e) {}
+    }
+    /* part 1 · blood */
+    _b8Centre('raceBrutalSlam_aoe', 'b8BrutalSlam_center', 'raceQuake_impact_center');   /* Brutal Slam wore the Quake's white floor ring: its own, arterial red */
+    _b8Tint('b8BrutalSlam_center', 'shockwave', null, 0xa00a20);
+    _b8Tint('raceStompOut_impact', 'flash', 0xfff0cc, 0xff6a7a);                         /* Curb Stomp: the hit flash in blood, not cream-white */
+    _b8Tint('bdOpenVein_impact', 'flash', 0xffe0e0, 0xff6a7a);                           /* Open Vein */
+    _b8Tint('sigInterrogation_impact', 'flash', 0xfff0e0, 0xff8a7a);                     /* Interrogation: blows one and three */
+    _b8Tint('raceIndomitableWill_aura', 'target-ring', 0xffd9a0, 0xff4a5a);              /* Indomitable Will: THE BLOOD BUFFS left its ring + flashes cream-gold */
+    _b8Tint('raceIndomitableWill_aura', 'flash', 0xffe0b0, 0xff7a88);
+    /* part 1 · earth: the white floor rings are dust, the colour of the ground they come off */
+    _b8Tint('raceQuake_impact_center', 'shockwave', null, 0xc8a070);                     /* Quake, Spike the Ball */
+    _b8Tint('raceTitanStep_impact_center', 'shockwave', null, 0xc8a070);                 /* Fee Fi Fo Fum */
+    _b8Tint('raceTremorStomp_impact_center', 'shockwave', null, 0xd8b070);               /* Tremor Stomp, Timber Stomp */
+    _b8Tint('raceBoulderHurl_impact', 'shockwave', null, 0xc8a070);                      /* Boulder Hurl */
+    _b8Tint('raceBigKick_impact', 'shockwave', 0xfff0b8, 0xd8a860);                      /* Big Kick */
+    _b8Tint('sigDiamondLance_impact', 'flash', 0xffffff, 0xb8f0ff);                      /* Diamond Lance: the flash in the crystal's own blue */
+    _b8Tint('raceShieldWall_burst', 'target-ring', null, 0x8fa4dd);                      /* Walls of Camelot: the floor ring in the shields' steel blue */
+    /* Cave-In: battle.js gave it the generic area detonation (a violet ring + orb round the cave-in; playAoeRing passes no
+       spell id, see THE OWN LOOKS, L1 "the three fixes"): an empty `aoe` recipe of its own, so its look is the cave-in */
+    if (!EFFECTS['b8Quiet_aoe']) EFFECTS['b8Quiet_aoe'] = { aoeRadius: 0, layers: [] };
+    ['nrCaveIn'].forEach(function (id) { if (!SPELL_MAP[id] || !SPELL_MAP[id].aoe) SPELL_MAP[id] = Object.assign({}, SPELL_MAP[id], { aoe: 'b8Quiet_aoe' }); });
+    /* ═════════ END THE VFX SWEEP, B8a ═════════ */
 
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell

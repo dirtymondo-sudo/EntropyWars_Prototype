@@ -6090,6 +6090,12 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-dock-disc { fill: #100e19; }
 .hq-dock-skull { font-size: 30px; fill: #e8e4d8; paint-order: stroke; stroke: #000; stroke-width: 2px; }
 .hq-dock-pp.down image { filter: grayscale(1) brightness(0.45); }
+/* THE EYE BY THE PORTRAIT (NPC encounters step 2): the battle nameplate's eye (three-renderer.js .tp-eye: amber open, green slashed when hidden) */
+.hq-dock-eye text { font-size: 30px; fill: #f0d060; filter: drop-shadow(0 0 3px rgba(255,180,80,0.8)) drop-shadow(0 1px 1px #000); }
+.hq-dock-eye .hq-dock-eye-slash { display: none; stroke: #7fd8a0; stroke-width: 3.5; stroke-linecap: round; filter: drop-shadow(0 0 2px #000); }
+.hq-dock-eye.hidden text { fill: #7fd8a0; opacity: 0.85; filter: drop-shadow(0 0 3px rgba(60,160,100,0.7)) drop-shadow(0 1px 1px #000); }
+.hq-dock-eye.hidden .hq-dock-eye-slash { display: block; }
+.hq-dock-pp.lead.has-eye .hq-dock-tag { margin-left: 30px; }
 .hq-dock-pp.low .hq-dock-arc.hp { animation: hqDockLow 0.9s ease-in-out infinite; }
 @keyframes hqDockLow { 50% { opacity: 0.45; } }
 .hq-dock-tag { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; padding: 4px 12px 4px 10px; border-radius: var(--hq-r-pill, 999px); background: var(--hq-plate-scan, none), var(--hq-plate-bg, rgba(5,5,8,0.85)); border: 1px solid var(--hq-plate-edge, rgba(255,255,255,0.2)); box-shadow: var(--hq-frame, none); }
