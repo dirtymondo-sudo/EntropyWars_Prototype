@@ -141,13 +141,13 @@
  },
  "site_prebuilt_atlantis_deep": {
   "id": "site_prebuilt_atlantis_deep",
-  "nx": 60,
-  "nz": 60,
-  "h0": 12.05,
+  "nx": 96,
+  "nz": 192,
+  "h0": -0.17,
   "hs": 0.25,
-  "v": "9645c47a20",
-  "bytes": 1306,
-  "s": "0.4"
+  "v": "4a43a29675",
+  "bytes": 4690,
+  "s": "1.6"
  },
  "site_prebuilt_moon_plots": {
   "id": "site_prebuilt_moon_plots",
@@ -527,6 +527,6 @@
   "hs": 0.25,
   "v": "c94d332d7d",
   "bytes": 720,
-  "s": "0.3"
+  "s": "0.2"
  }
 }

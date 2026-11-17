@@ -11513,3 +11513,39 @@ writes the old single room (the home writer is byte for byte what it was). No di
   (no such room: the route kit's room is `site_ow_l4`), so the link stood nowhere; it names `room: 'site_ow_l4'` now. `bake-mountains.js` was rerun so its
   `ifRoom` door `ow_v_m22_m16` (the Lodge yard -> L6) is written now that `site_ow_l6` stands (the same run also re-pointed Shasta's `woods` door off the
   retired `site_prebuilt_fairy_forest_plots`, the tool's own row).
+
+## ONE WORLD, THE DEEP RE-LAID (2026-11-17, BUILD_PLAN phase 3 wave B; mondo said yes to taking the second side's Deep rows, plots moved only)
+BUILD_PLAN's row: "Atlantis under the Triangle, the Sea Floor off the Harbour, the Trench towards the rim, joined by the sub". `node bake-deep.js` builds the
+home 8 x 5 room as before (no district file changed), then THE ONE WORLD MOVE (`ow-move.js`) stands its plots at their v13 places (plots.json `under.districts`
+deepA, deepS, deepT). mondo 11-17 (the Astral thread, a rule for every zone): "Connected/bigger rooms is better. If the room is smaller than disaster city than
+dont even ask, just make it one room". So TWO rooms, each a drowned room (`hqAbyssShell`, `terrain.sea.under`) with `world: { hub: 'deep', layer: 'under' }`:
+
+| Room | Part | What | World box | Plots |
+|---|---|---|---|---|
+| `site_prebuilt_atlantis_deep` (the OLD id) | `deep` | Atlantis (C + R, the ring city whole, as it lay) + the open floor + the Trench (T, as it lay) | 35..42 x 1..16 (8 x 16) | 31 |
+| `site_prebuilt_atlantis_ow_floor` | `ow_floor` | The Sea Floor, S | 18..20 x 5..7 (3 x 3) | 9 |
+
+- **ATLANTIS + THE TRENCH IN ONE ROOM, THE OLD ID**, so the vault door, the drowned stair, the Temple's inside, the bay door (H-20 lands in the inside),
+  `hubs.deep` and the heal zone keep their room (their coordinates changed with the box). The city stands at 35..39 x 1..5: plots.json's sheet rect is 5 x 4 =
+  20 cells for 21 plots and the ring needs its fifth row. Its four corner cells (where the Sea Floor's corner plots stood) carry the plan's ring where it
+  crossed them and plain sea floor round it. The Trench stands at 41..42 x 12..16. Every other cell of the box is THE OPEN FLOOR: sand at the floor's level
+  with rocks and weed (two scatter rows a cell), no plot (`plots.mask` '.'), swum over from the city's south-east to the Trench's Shelf. The box is smaller
+  than Disaster City (128 cells against 12 x 15), so it is one room by his rule; the Sea Floor is 17 plots west (one box would be 25 x 16): its own room.
+- **THE SEA FLOOR, LAID BY THIS TOOL** (plots.json gives its nine plots loose): the old west column stays touching end to end, bent round the 3 x 3:
+  row 5 the Kelp Forest, the Wreck, the Sea Floor; the Upwelling below the Sea Floor, the Reef Wall below that; the Station under the Kelp Forest (as it was),
+  the Spire in the middle, the Drowned Circle and the Dunes along the south (the Dunes beside the Reef Wall, as they were). The Wreck stands on 19,5, the
+  Dutchman's Hold's way down (`under.ways`). One line of `SEA_PLACE` in the tool moves a plot. The city's ring that crossed the four corner plots is sea floor
+  here, at the plot's own level.
+- **THE SUB** (plots.json `under.rides`, no plots): one door pair, id `deep_sub_floor` at both ends: the Station, beside the bathyscaphe <> the Harbour.
+  Bulkhead doors standing on the floor, like the wreck's hatch. The Sea Floor's spawn is its sub door's square. (The sub from Atlantis to the Trench is a
+  swim now.)
+- **THE WAYS OUT**, ids kept, only the Deep's ends moved: `bermuda_abyss` b = the Upwelling in the Sea Floor's room (part `ow_floor`), `revenge_atlantis` b =
+  the wreck's hatch there. Their far ends (the Beach's Maelstrom, the Dutchman's hold) did not move. The vortex way down from the Triangle (`under.ways`,
+  "the vortex", 36.8,1.5 over Atlantis) is not built: the Triangle is phase 4.3's.
+- **ROWS BY HAND** (the tool checks them): the two link ends, `hubs.deep.rooms`, `HQ_HEAL_ZONE.rooms.deep`, the Spire's tape find spot and its sonar tape
+  (both on the Sea Floor's room now), the sky's `still` list, `HQ_AREA_ENCOUNTERS` (the Sea Floor meets the Deep's own units).
+- **THE COUNT**: `node ow-census.js --diff docs/areas/deep/move/before.json site_prebuilt_atlantis_deep site_prebuilt_atlantis_ow_floor` = "nothing missing"
+  (the extras: the open floor's scatter rows, the sub's two doors, one city wall row cut where it crossed a plot line). No strays. 266 props, 27 natives,
+  before and after. data.js grew by about 190 KB (the 8 x 16 box's height and paint sheets).
+- **NOT DONE, by design**: `terrain.edges.world` (an under room has walls and water; the Sewers did the same); the Outfall walk U14 (Sewers to the Sea Floor)
+  is phase 4.4's. bake-map.js's ZONES row for the Deep still says `wait` (a room's own `world` wins).
