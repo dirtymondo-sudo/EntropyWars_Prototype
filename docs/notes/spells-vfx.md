@@ -4076,7 +4076,7 @@ cam, black and white), Cowboy (wide bars, sepia, Rye title, a film-title tagline
 in Japanese, the spell's Japanese title, the line in Japanese with an English fansub, the ending's staff roll up the right side;
 Sad Backstory = flashback), Karate Frog (badly dubbed 70s kung fu: poster title, ENGLISH DUBBED, a late subtitle + "[mouth keeps
 moving]"), Cursed TV (the screen becomes the set: bezel, scanlines, green OSD channel + volume; race key 'cursed tv', its kit
-was not merged yet, so it switches on when that race lands). Dropped by him: Referee VAR, Tech CEO keynote, AI chat, Delivery Boy.
+was not merged yet, so it switches on when that race lands). Dropped by him: Referee VAR, Tech CEO keynote, AI chat. Delivery Boy (added the same day, his "yes"): a food delivery app card, the headline per spell, the steps, the ETA counting down (`data-clock-from`), the driver note, tip chips.
 To Be Continued was SCRAPPED from the Swordfighter (his words: "i lowkey kinda hate that spell"); its RACE_TREE rung 3 = Blessed
 Blade. Its VFX handlers are left in place, unused.
 - Code: battle.js `_AC_LOOK_RACES` / `_AC_LOOK_TEXT` / `_acLookFor` / `_acLookHtml` / `_acApplyLook`, called from

@@ -414,7 +414,8 @@ if (JOIN) { const sh = (o) => { const q = Object.assign({}, o); if (q.x != null 
     JOIN.props.forEach(q => props.push(sh(q))); JOIN.npc.forEach(q => npc.push(sh(q))); (JOIN.lines || []).forEach(l => LINES_OUT.push(l));
     (JOIN.air || []).forEach(z => AIR.push(Object.assign({}, z, { x0: r2(z.x0 + FMX), x1: r2(z.x1 + FMX), z0: r2(z.z0 + FMZ), z1: r2(z.z1 + FMZ) })));
     /* its doors: on this room's wall where its plot's side lies on the box's edge, else free (crossed on the plot's own squares) */
-    JOIN.doors.forEach(d => { const o = Object.assign({}, d), col = JOIN.wx + d.plotCol - BX0, row = JOIN.wy + d.plotRow - BY0, sd = d.side, ns = sd === 'N' || sd === 'S';
+    /* (2026-11-17) a district's own door with no plot side (Bug Colony's hive + nest) stays where it stands, moved with the district */
+    JOIN.doors.forEach(d => { if (!d.side) { doors.push(sh(d)); return; } const o = Object.assign({}, d), col = JOIN.wx + d.plotCol - BX0, row = JOIN.wy + d.plotRow - BY0, sd = d.side, ns = sd === 'N' || sd === 'S';
         ['plotCol', 'plotRow', 'side', 'along', 'x', 'z', 'face', 'passage'].forEach(k => delete o[k]); const keepW = d.way === 'open' && d.passage && d.passage.w ? { w: d.passage.w } : null;
         const onWall = (sd === 'N' && row === 0) || (sd === 'S' && row === ROWS - 1) || (sd === 'W' && col === 0) || (sd === 'E' && col === COLS - 1);
         const bx = sd === 'W' ? col * N : sd === 'E' ? col * N + N - 1 : col * N + Math.max(0, Math.min(N - 1, Math.floor(d.along - 0.01))), by = sd === 'N' ? row * N : sd === 'S' ? row * N + N - 1 : row * N + Math.max(0, Math.min(N - 1, Math.floor(d.along - 0.01)));

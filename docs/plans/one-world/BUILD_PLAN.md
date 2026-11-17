@@ -25,6 +25,7 @@ clashes.
 | 3B. Re-lay the zones below and off the map | 6 | Opus | wave 3A merged |
 | 4. New plots: routes, islands, underground walks, the Colosseum, the Internet | 4 | Opus | phase 2 OK'd; beside 3B |
 | 5. Whole-world pass: joins, frame rate, memory, map sheets, a walk end to end | 1 | Fable | everything else merged |
+| 6. Dressing passes: an exterior pass + an interior pass on every re-laid zone (list below) | one a zone | Opus | phase 5 merged |
 
 Fable for the threads that design or judge (foundation, test slice, final pass); Opus for the ones that follow a clear
 spec once the kit exists (zone re-layouts, routes). Fable runs on the second account.
@@ -160,3 +161,20 @@ docs/plans/one-world/README.md + BUILD_PLAN.md and the reports of every phase fi
 5. Free every claims row the build used; write "ONE WORLD, BUILT" in docs/notes/world-layout.md.
 Report with pictures, numbers, and a short list of what still feels wrong.
 ```
+
+## Phase 6: the dressing passes (one thread a zone, after phase 5)
+
+mondo 11-17 (on the new Bug Colony): "that is fine for now but that tree looks terrible and this will definitely need
+exterior/interior passes later, make sure thats in the plan". Phases 3 + 4 move and lay plots; how a place LOOKS gets
+its own passes once the world stands. Every zone gets an EXTERIOR pass (buildings, landmarks, ground, props, the
+rules in owner-rules.md) and, where it has insides, an INTERIOR pass (atmosphere, light, props, missing models listed
+then made, like Disaster City's second insides pass). Named items, add to this list as they come up:
+
+- **Leylines, Bug Colony (district B, `docs/areas/leylines/districts/B.js`)**:
+  - EXTERIOR: the Giant Tree looks terrible (mondo 11-17). Remake it as a real tree, not drawn cylinders and domes: a
+    proper trunk model or a built mesh in bark, real boughs, a leaf canopy (look at the painted trees,
+    areas-complexes.md "THE PAINTED TREES", and MODEL_LIST.md for a big tree first). Also check the shelf-fungus walk,
+    the Hive's shell, the Anthill mound, the Meadow and the Bee Yard.
+  - INTERIOR: the Hive (`site_prebuilt_gobekli_hive`) is dim and brownish (brighter honey-gold light, real brood
+    cells, honey); the Ant Nest (`site_prebuilt_gobekli_nest`) has drawn eggs and larvae, so make models for them.
+

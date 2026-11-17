@@ -10760,6 +10760,37 @@ Bake order: `node bake-leylines.js`, then `node bake-route.js L14`, then `node b
   Tepe's west wall, the one lake row). The extras are the seams, the stoppers, the trail plots and the kit's dressing.
 - Proof pictures: `docs/plans/one-world/proof/leylines_*.jpg`.
 
+## BUG COLONY, THE GIANT TREE + THE ANT NEST (2026-11-17, owner side, the Leylines One World thread)
+- **LATER (mondo 11-17: "fine for now but that tree looks terrible ... will need exterior/interior passes later")**: an exterior pass (remake the Giant Tree first) and an interior pass (Hive + Ant Nest) are on the plan: docs/plans/one-world/BUILD_PLAN.md "Phase 6: the dressing passes".
+mondo 11-17: "i imagined the bug colony being more underground. One could be the hive with hexagonal geometry ..., one could be anthill that has an
+entrance above ground as a big mound" + "let's make a giant beehive on a giant tree above ground, and the anthill underground"; plan v1
+(`/mnt/project-files/leylines-one-world/bug-colony/bug_colony_plan_v1.png`) OK'd with "i dont think the ant pile and the bee hive should be so
+close together, at least put them opposite of each other". So: the tree in the north-west plot, the anthill in the south-east plot.
+- **THE MAP** (`docs/plans/world-zones/draw-leylines.js`, rerun, then the bakes): anchors `tree` (was `hive`), `anthill` (66, 30, r 6, 9 m; was 54, 12,
+  7 m), flowers / tall grass moved up; plot names P03-00 The Giant Tree, P04-00 The Meadow, P04-01 The Ant Trail, P05-02 The Anthill (were The Hive,
+  The Anthill, The Ant Tunnels, The Meadow). plots.json keeps the old names (gen.js reads the retired room); bake-leylines.js `v13` lets district B's
+  names differ. Nothing outside Bug Colony's squares changed (the map's cells: 573 squares, all in B).
+- **THE GIANT TREE** (districts/B.js): the trunk = a `plateau` r 7 m, 48 m (bark cylinders, furrows, four boughs, a canopy of `leaves` domes to 50 m).
+  THE ROOT STAIR = four round shelves (r 6.125 m, 13.125 m out) south 3.5 m, west 7, north 10.5, east 14, a wooden stair (`ramp`, stairs) between each
+  and the first flight up from the ground west of the south shelf; bracket fungus (`mushroom` sheet) round each shelf. THE HIVE hangs off the east
+  bough over the Meadow (drawn: comb tile `urban:TileHexagons3a`, honey drips); its door (`hive`, free, on the east shelf's edge) goes in.
+- **THE ANTHILL**: the mound (heights), the anthill model on top, the way in = door `nest` (free) at its west foot (5 squares out), a dark mouth drawn.
+- **A DISTRICT'S OWN DOORS** (new in the tool): `exports.ways(ctx)` = free doors in home metres; the mover moves them with their plot and they are
+  written on the room the district stands in. bake-route.js keeps a joined district's door that has no plot side where it stands (the kit's room).
+- **THE INSIDES** (new in the tool): `exports.insides(ctx)` = rooms of their own on whole squares, `h[y][x]` = the floor in metres or null = solid to the
+  roof. The tool writes a closed box room with a height field (a solid square has sheer sides to the roof, a floor square's corners are the mean of the
+  floor squares round it, so a tunnel dropping 3.5 m over four squares is a slope) and checks every floor square is reached from the door.
+  - `site_prebuilt_gobekli_hive` (23 x 25 squares, roof 10.5 m): seven hexagon chambers on whole squares (rows 3 5 7 7 7 5 3 wide), a wall of wax
+    between each pair with a one-square gap: the Queen (middle), the Nursery (brood cells, drawn, capped and open), the Honey (a hollow 0.55 m deep
+    with honey drawn over it: you wade it; NOT a liquid: there is no honey liquid in the game), Pollen (heaps), Wax (candles), Guard, the Door
+    (east wall, back out onto the shelf). Every solid square = a block of the hexagon tile up to the roof.
+  - `site_prebuilt_gobekli_nest` (24 x 26 squares, roof 14 m): earth tunnels two squares wide, three floors (7 m, 3.5 m, 0): the Way In (the door on
+    the north wall, up out of the mound), the Fungus Garden (glowcaps), the Larder (leaf-carrying ants), the Nursery (eggs + larvae drawn: white domes),
+    the Midden, the Queen's Chamber at the bottom (the ant queen model, 3.4 m, eggs round her).
+- People: the bee queen on the east shelf + two in the hive; the antperson at the anthill + two in the nest; the mantid in the tall grass.
+- NOT YET: eggs, larvae, honey drips as models (drawn shapes stand in); a honey liquid; webs beyond two; nothing rides up the tree (you climb).
+- Bake order: `node docs/plans/world-zones/draw-leylines.js` (map), `node bake-leylines.js`, `node bake-route.js L14`, `node bake-map.js site_prebuilt_gobekli_ow_bugs`.
+
 ## ONE WORLD, THE ZONE MOVES — the foundation's rules for every zone thread (2026-11-17, mondo's approved map v13)
 The design is `docs/plans/one-world/` (README.md, BUILD_PLAN.md, the page, the sheets). This section is what phase 1 (the
 foundation thread) built and the rules phases 2 to 5 follow. Only walkable plots get built (districts, roads, wild links);
