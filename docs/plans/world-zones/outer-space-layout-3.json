@@ -63,6 +63,18 @@
      "sy": 29,
      "face": 90,
      "kind": "hidden: the bore to Mars (the Face's mouth)"
+    },
+    "mare_derelict": {
+     "sx": 50,
+     "sy": 41,
+     "face": 180,
+     "kind": "the ship's collar: the Mare, by the Lander"
+    },
+    "farside_derelict": {
+     "sx": 8,
+     "sy": 6,
+     "face": 180,
+     "kind": "the ship's collar: the Far Side, by the Saucer"
     }
    },
    "stairs": [],
@@ -320,6 +332,18 @@
      "sy": 17,
      "face": 90,
      "kind": "hidden: the Face's mouth, the bore to the Moon's far side"
+    },
+    "cydonia_derelict": {
+     "sx": 37,
+     "sy": 8,
+     "face": 180,
+     "kind": "the ship's collar: Cydonia, under the Pyramid"
+    },
+    "canyon_derelict": {
+     "sx": 53,
+     "sy": 25,
+     "face": 180,
+     "kind": "the ship's collar: the Canyon Mouth"
     }
    },
    "stairs": [
@@ -594,6 +618,12 @@
      "sy": 23,
      "face": 90,
      "kind": "the Drop's frame: to the Singularity"
+    },
+    "hexagon_derelict": {
+     "sx": 15,
+     "sy": 28,
+     "face": 180,
+     "kind": "the ship's collar: the Hexagon, by the Eye"
     }
    },
    "stairs": [],
@@ -818,6 +848,18 @@
      "sy": 5,
      "face": 180,
      "kind": "hidden: the screen, DOOR HQ's observatory"
+    },
+    "rim_derelict": {
+     "sx": 4,
+     "sy": 22,
+     "face": 90,
+     "kind": "the ship's collar: the Accretion Rim, west"
+    },
+    "drop_derelict": {
+     "sx": 29,
+     "sy": 17,
+     "face": 180,
+     "kind": "the ship's collar: the Drop, on the last shelf"
     }
    },
    "stairs": [],

@@ -190,6 +190,16 @@ function singularity() {
 
 /* ═══ write ═══ */
 const WORLDS = [moon(), mars(), saturn(), singularity()];
+/* THE LANDINGS (2026-11-17, One World v13, BUILD_PLAN phase 3: "each world's districts become landing sites the Spaceship flies between"):
+   every district gets the ship's collar of its own. The Crater (the Terrace), the Rover Bay and the Ring Shard (the Docking Shelf) had one;
+   these seven are new, each a DOOR_HQ.links row docked on the collar (`<district>_derelict`), on a level clear square of its own district. */
+const LANDINGS = {
+    moon: { mare_derelict: { sx: 50, sy: 41, face: 180, kind: 'the ship\'s collar: the Mare, by the Lander' }, farside_derelict: { sx: 8, sy: 6, face: 180, kind: 'the ship\'s collar: the Far Side, by the Saucer' } },
+    mars: { cydonia_derelict: { sx: 37, sy: 8, face: 180, kind: 'the ship\'s collar: Cydonia, under the Pyramid' }, canyon_derelict: { sx: 53, sy: 25, face: 180, kind: 'the ship\'s collar: the Canyon Mouth' } },
+    saturn: { hexagon_derelict: { sx: 15, sy: 28, face: 180, kind: 'the ship\'s collar: the Hexagon, by the Eye' } },
+    singularity: { rim_derelict: { sx: 4, sy: 22, face: 90, kind: 'the ship\'s collar: the Accretion Rim, west' }, drop_derelict: { sx: 29, sy: 17, face: 180, kind: 'the ship\'s collar: the Drop, on the last shelf' } },
+};
+WORLDS.forEach(w => Object.assign(w.ways, LANDINGS[w.id] || {}));
 /* no way out stands in the border rock: the door's square, the two beside it and three squares in front of it are open */
 WORLDS.forEach(w => Object.keys(w.ways).forEach(k => { const q = w.ways[k], f = q.face * Math.PI / 180, dx = Math.round(Math.sin(f)), dy = -Math.round(Math.cos(f));
     for (let i = 0; i <= 3; i++) for (let m = -1; m <= 1; m++) { const x = q.sx + dx * i + (dy ? m : 0), y = q.sy + dy * i + (dx ? m : 0); if (x > 0 && y > 0 && x < w.A.W - 1 && y < w.A.H - 1 && w.A.cell[y][x] === 'x') w.A.cell[y][x] = '.'; } }));
