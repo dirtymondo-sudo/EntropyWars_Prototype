@@ -14,7 +14,7 @@ Asked by mondo on 2026-11-17 (thread "Clean up generic white spell VFX"):
 > and: "the orange red slashes looked good and i want to keep"
 
 Files in this folder:
-- `PLAN.md` (this) · `SPELL_TABLE.md` (all 986 castable spells: the white layers found on each, its rule, its batch)
+- `VFX_CLEANUP_PLAN.md` (this) · `SPELL_TABLE.md` (all 986 castable spells: the white layers found on each, its rule, its batch)
 - `batches/<batch>.txt` (spell ids, one per line, ready for the capture harness) · `img/` (the frames below)
 - `tools/` (the audit script, the table writer, the throwaway mock-up patch, the capture runner patched to launch through
   `probe-fast.js`). Repo-only reference, never uploaded to R2.
