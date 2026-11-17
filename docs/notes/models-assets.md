@@ -2069,3 +2069,7 @@ dark pixels dilated, holes filled, eroded back. Restyle at 128, then shift the s
 with figure pixels on row 0 (politician, swordfighter needed a second roll). NO SOURCE ART yet: male skater, male lifeguard
 (both races are women only), female nordic (no model), DOOR agent male + female (creator looks), male ghost (the Halloween pack's
 sheet ghost, no concept). Files: `/mnt/project-files/sprite-ai-test/batch3-20261117/`.
+DOOR AGENTS (2026-11-17, mondo: "agent belle and the male door agent model, the default character"): no concept art, so the source
+is a front render of each cast GLB (`Races/maincharacters/Meshy_AI_<Player|Agent_Belle>_biped_Character_output.glb`) in a bare three.js
+page (orthographic, transparent, hemisphere + two key lights), already clean alpha. At 124 px the restyle touched row 0 on both; the
+input at 114 px (more headroom) fixed it. Wired in `_CHARACTER_SPRITES_GENDERED['door agent']` (`door_agent_m_px`, `agent_belle_px`).
