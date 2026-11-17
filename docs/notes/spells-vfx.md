@@ -4794,3 +4794,40 @@ Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look
 - NOT seen on a frame: Chooser of the Slain's hit, Star Decree's landing and Revive's hit (the runner cast them by the
   direct path and its frames missed the beat); Crusade's arms after their last dimming (gain .55, opacity .32: the one
   frame caught was after the cross had faded); the guest's seat; anything with `EW_NO_VFX_CLEANUP` on.
+
+## THE VFX SWEEP, B8a, part 1: blood + earth (2026-11-17, three-vfx-effects.js block "THE VFX SWEEP, B8a"; list `batches/B8a.txt`, 83 spells)
+Thread B8a of the sweeps (docs/plans/vfx-cleanup/SWEEP_BRIEF.md). All 83 already had a look of their own (`_vcOwn`), so the
+stage burst was already the grade + shake for every one; what was left was white inside each spell's OWN recipe / signature.
+All 83 were traced in the code and shot once; 26 changed, 57 needed nothing. Everything is behind `_vcOn()`
+(`window.EW_NO_VFX_CLEANUP = true` = the old look) except Cave-In's quiet `aoe` row (like L1's Watering Can). Looks only.
+- **The bites and the claws** (Bite, Blood Frenzy, Blood in the Water, Death Roll, Feeding Frenzy, Jurassic Jaw, Love Bite,
+  Maul, Claw Sweep): their callers pass `vcQuiet: true` to `_sigJawsBite3D` / `_sigClawCombo3D`: no rune circle under a bite
+  (a bite is not rune magic), no screen flash, no speed burst. The jaws, the ring in the spell's colour, the blood flecks,
+  the rakes and the shake stay. Rush lines only with `vcLines` (the two ultimates: Jurassic Jaw, Blood Frenzy's last bite).
+  B8b added `plain` to the same two helpers the same hour (the same thing, not switchable): both are kept, `_vcQ` reads either.
+- **White floor rings in the spell's colour** (`_b8Tint` sets the layer's `vcTint`): Quake + Spike the Ball
+  (`raceQuake_impact_center`, tan), Fee Fi Fo Fum, Tremor Stomp + Timber Stomp, Boulder Hurl, Big Kick (it was pale cream),
+  Walls of Camelot (its floor ring, the shields' steel blue). **Brutal Slam** wore the Quake's white ring: it has its own
+  copy now (`b8BrutalSlam_center`, arterial red; `_b8Centre`).
+- **Near-white hit flashes in the spell's colour** (the flash is kept, recoloured): Curb Stomp, Open Vein, Interrogation
+  (blows one and three), Diamond Lance (pure white -> the crystal's blue), Indomitable Will (its ring + three flashes were
+  cream-gold: THE BLOOD BUFFS had missed them; its column's core was near-white pink, now `0xff7a88`).
+- **Colossal Crush**: the dome's white-hot core takes a warm sand colour. **Stone Drop**: its pale ring is stone dust.
+- **Cave-In**: it got battle.js' generic area detonation (a violet ring + orb round the cave-in; `playAoeRing`, see L1 "the
+  three fixes"). It carries an empty `aoe` recipe (`b8Quiet_aoe`) so the cave-in is its look. Seen gone in the frames.
+- **Needed nothing** (57): Arterial Spray, Bat Swarm, Devil's Due, Devour Mankind, Draining Embrace, Eaten Alive,
+  Exsanguinate, Feast, Ghoul's Supper, Giant's Hand, Gnash, Gore Charge, Grave Grip, Hemorrhage, Last Dance, Life Drain,
+  Life Sap, Lifetap, Rotting Claw, Soul Harvest (its pale wisps are the souls), Symbiotic Drain, Tendril Snare, Wear Your
+  Skin, Adrenaline Rush, Blood Ritual, Let It Out, Underdog Spirit, Bishop, Calcify, Clay Crush, Clay Grip, Earthen Grasp,
+  Erupt, Fissure, Ground Slam, King, Knight, Pawn, Petrify, Piledriver (the white is the ring's canvas and ropes), Pocket
+  Sand, Pyramid Protocol, Queen, Quicksand, Rampart (both), Rockslide, Rook, Sandstone Tomb, Sasquatch Smash, Shardstorm,
+  Spike Trap, Stone Throw, Stonefall, Tail Sweep, Underfoot, Baphomet's Rite. The blood sigil under the Blood Magic casts
+  stays (it is rune magic).
+- **For the cleanup thread:** Sasquatch Smash's flashbulb (`_sigScreenFlash('#ffffff')`, "the photo") is a camera flash that
+  IS the spell, but `_vcCol` turns any near-white screen flash into the spell's colour, so it pops tan. Not changed here
+  (the helper is held): it wants a way to say "this white is the thing itself".
+- **Not seen in a frame** (shorter than the harness' frame gap): Diamond Lance's flash, Walls of Camelot's ring, Curb
+  Stomp's and Open Vein's flash colour, Colossal Crush's dome, Jurassic Jaw's snap, the Sasquatch flashbulb. Seen: the
+  bites + Claw Sweep, the tan rings (Quake, Fee Fi Fo Fum), Brutal Slam, Stone Drop, Indomitable Will, Cave-In.
+- No line spell and no single-spell lead of the brief is on this list (they are B8b's and B6-B10's).
+- Frames: docs/plans/vfx-cleanup/img/sweep/B8a_part1.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
