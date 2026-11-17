@@ -81,13 +81,13 @@
  },
  "site_prebuilt_heaven_plots": {
   "id": "site_prebuilt_heaven_plots",
-  "nx": 48,
-  "nz": 60,
+  "nx": 84,
+  "nz": 96,
   "h0": 3.5,
   "hs": 0.25,
-  "v": "0250da57b5",
-  "bytes": 503,
-  "s": "2.4"
+  "v": "bb0d1a12dc",
+  "bytes": 597,
+  "s": "2.5"
  },
  "site_prebuilt_antarctica_plots": {
   "id": "site_prebuilt_antarctica_plots",
@@ -142,12 +142,12 @@
  "site_prebuilt_atlantis_deep": {
   "id": "site_prebuilt_atlantis_deep",
   "nx": 96,
-  "nz": 60,
-  "h0": -0.18,
+  "nz": 192,
+  "h0": -0.17,
   "hs": 0.25,
-  "v": "a3db37d2a7",
-  "bytes": 2643,
-  "s": "0.7"
+  "v": "4a43a29675",
+  "bytes": 4690,
+  "s": "1.4"
  },
  "site_prebuilt_moon_plots": {
   "id": "site_prebuilt_moon_plots",
@@ -167,7 +167,7 @@
   "hs": 0.25,
   "v": "541c317c87",
   "bytes": 732,
-  "s": "13.9"
+  "s": "9.8"
  },
  "site_prebuilt_mars_plots": {
   "id": "site_prebuilt_mars_plots",
@@ -217,7 +217,7 @@
   "hs": 0.25,
   "v": "8a2433f04e",
   "bytes": 1666,
-  "s": "4.6"
+  "s": "5.0"
  },
  "site_prebuilt_downtown_underworld": {
   "id": "site_prebuilt_downtown_underworld",
@@ -508,5 +508,25 @@
   "v": "63f3360a33",
   "bytes": 142,
   "s": "1.5"
+ },
+ "site_prebuilt_atlantis_ow_trench": {
+  "id": "site_prebuilt_atlantis_ow_trench",
+  "nx": 24,
+  "nz": 60,
+  "h0": -0.2,
+  "hs": 0.25,
+  "v": "a927d51932",
+  "bytes": 813,
+  "s": "0.2"
+ },
+ "site_prebuilt_atlantis_ow_floor": {
+  "id": "site_prebuilt_atlantis_ow_floor",
+  "nx": 36,
+  "nz": 36,
+  "h0": 12.05,
+  "hs": 0.25,
+  "v": "c94d332d7d",
+  "bytes": 720,
+  "s": "0.2"
  }
 }
