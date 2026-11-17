@@ -86,7 +86,7 @@ const run = async () => {
       await page.keyboard.up(key); if (v.walk.run !== false) await page.keyboard.up('Shift');
       console.log('WALK ' + (v.name || 'v') + ' ' + a[0] + ' (' + a[1] + ', ' + a[2] + ') -> ' + (b[0] !== a[0] ? b[0] : 'NO CHANGE') + ' after ' + ((Date.now() - t1) / 1000).toFixed(1) + ' s, last seen at (' + last[1] + ', ' + last[2] + '), ' + Math.hypot(last[1] - a[1], last[2] - a[2]).toFixed(1) + ' m');
       if (b[0] !== a[0]) { await fast.roomReady(page, { timeout: 240000 }); await page.evaluate(() => { for (const id of ['hqLoad', 'hqPrompt', 'hqStrip', 'hqToast']) { const h = document.getElementById(id); if (h) h.style.display = 'none'; } }); await fast.settle(page, 3000);
-        const f1 = path.join(OUT, room + '_' + (v.name || 'v') + '_arrived.png'); await page.screenshot({ path: f1, timeout: 180000 }); const c = await pos(); console.log('ARRIVED ' + c[0] + ' at (' + c[1] + ', ' + c[2] + ')'); lap('walked ' + (v.name || 'v')); break; }
+        const f1 = path.join(OUT, room + '_' + (v.name || 'v') + '_arrived.png'); await page.screenshot({ path: f1, timeout: 180000 }); const c = await pos(); console.log('ARRIVED ' + c[0] + ' at (' + c[1] + ', ' + c[2] + ')'); lap('walked ' + (v.name || 'v')); if (v.walk.then) continue; break; }   // "then": true = go on with the next views in the room it reached (a chain of seams in one run, 2026-11-17)
       lap('walk ' + (v.name || 'v')); continue; }
     const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f, timeout: 180000 }); lap('shot ' + (v.name || 'v')); console.log('SHOT', f, 'room=' + await page.evaluate(() => (window._hqCurRoom || (ThreeRenderer.hq.dev.room && ThreeRenderer.hq.dev.room()) || '?')));
   }

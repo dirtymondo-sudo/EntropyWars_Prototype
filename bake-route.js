@@ -374,7 +374,8 @@ props.forEach(p => { if (CAT[p.key] && CAT[p.key].walk) return; TRAFFIC.forEach(
 const OW = { at: (x, y) => { try { return D.hqOwAt(x, y, 'surface'); } catch (e) { return null; } } };
 const open = [], LINK_AT = [];
 ENDS.forEach(e => {
-    const s = (SPEC.ends || {})[e.id], found = OW.at(e.past[0], e.past[1]), to = (s && s.room) || (found && found.room !== ROOM && found.room) || null;
+    /* `back` (2026-11-17, R5): a split route's seam between its own two rooms; the stretch that the end's `room` names reads `back` instead */
+    const s0 = (SPEC.ends || {})[e.id], s = s0 && s0.room === ROOM && s0.back ? Object.assign({}, s0, s0.back) : s0, found = OW.at(e.past[0], e.past[1]), to = (s && s.room) || (found && found.room !== ROOM && found.room) || null;
     const g = groundAt(e.past[0], e.past[1]);
     /* A LINK'S END ON A SEAM (2026-11-17, the Woods zone thread): the spec's `ends: { '<seam id>': { link: '<DOOR_HQ.links id>', side: 'a' | 'b' } }` = that
        two-way link stands on this end (its id kept: woods_camelot on L4's west end), so no seam door is written; the link's end is moved here (below) */
@@ -419,6 +420,7 @@ const SPQ = (ENDS[0] && ENDS[0].sq) || pathSq[0] || [0, 0];
   const cold = PLOTS.filter(p => { const x0 = (p[0] - BX0) * N, y0 = (p[1] - BY0) * N; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(y0 + ly) * W + x0 + lx]) return false; return true; });
   if (cold.length) errs.push('plots not reached on foot: ' + cold.map(p => p.join(',')).join(' '));
   pathSq.forEach(([x, y]) => { if (!seen[y * W + x]) errs.push('the path is cut at ' + x + ',' + y); });
+  if (process.env.ROUTE_WHO) props.concat(F).forEach(p => { const x = Math.floor(((p.x != null ? p.x : 0) + HX) / C), y = Math.floor(((p.z != null ? p.z : 0) + HZ) / C); if (process.env.ROUTE_WHO.split(';').some(q => q === x + ',' + y)) console.log('WHO', x, y, p.key || p.k, p.kind || ''); });
   if (process.env.ROUTE_DUMP) console.log(cell.map((r, y) => r.map((ch, x) => blocked.has(x + ':' + y) ? 'o' : walked(x, y) && !seen[y * W + x] ? '!' : ch).join('')).join('\n'));
   if (steep) console.log('steep steps not crossed: ' + steep); }
 npc.forEach(n => { if (vm.runInContext('AVAILABLE_RACES', D).indexOf(n.race) < 0) errs.push('not a unit: ' + n.race); });
