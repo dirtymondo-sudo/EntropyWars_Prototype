@@ -338,5 +338,25 @@
   "v": "7e28d732cc",
   "bytes": 353,
   "s": "0.5"
+ },
+ "site_prebuilt_skinwalker_ow_ranch": {
+  "id": "site_prebuilt_skinwalker_ow_ranch",
+  "nx": 36,
+  "nz": 60,
+  "h0": 1.67,
+  "hs": 0.25,
+  "v": "d5cd692e33",
+  "bytes": 828,
+  "s": "2.0"
+ },
+ "site_prebuilt_skinwalker_ow_house": {
+  "id": "site_prebuilt_skinwalker_ow_house",
+  "nx": 36,
+  "nz": 72,
+  "h0": 3.42,
+  "hs": 0.25,
+  "v": "2f0117fc24",
+  "bytes": 1212,
+  "s": "1.9"
  }
 }
