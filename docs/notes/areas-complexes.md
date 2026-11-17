@@ -9921,6 +9921,47 @@ mondo was shown three layouts (picture `/mnt/project-files/astral-one-world/astr
   when a row drifts (it moves the WAY points with their plots).
 - Map picture remade (`node bake-map.js site_prebuilt_lookingglass_realm`, uploaded). Proof: `docs/plans/one-world/proof/astral_*.jpg`.
 
+## THE CUBE — a Rubik's cube fought on all six faces (2026-11-17, owner side, the Rubik's cube thread)
+
+mondo 11-17: "add a 7x7 or 8x8 or something rubick's cube map, probably will be put in the astral realm. Use the concept from this design
+doc (Two Worlds, One Combat Grid, Map B the rotating cube arena), improve upon it and make it better and tailor it for our game". Then:
+"the entire point is that turning of the cube changes unit positions. If we must rewrite every one of them specifically for this map then
+that is what we must do"; sight: "only on the face you are standing on, unless you are on the edge, then you can see the face that shares
+the edge. corner would let you see 3 faces. And team vision should still work the exact same"; the place: floating in the Astral Realm,
+"floating broken off pieces of a rubick's cube ... and the cube could have missing pieces to match"; "the piece steps need to ascend upward,
+because the cube is high in the air". Plan + pictures: `/mnt/project-files/rubiks-cube/THE_CUBE_PLAN.md` (+ 5 pngs). (Map A, the sphere
+planet, went to the Outer Space thread.)
+
+- **THE MAP:** 8 x 8 x 8 (CUBE_RULES.N), six faces of 8 x 8 squares = 384 squares. Faces = six grounds the game has: U Marble
+  (`marble_light`), D Gold, E Library (`wood_planks`), W Nightmare (`lava`: the whole face burns, on purpose), S Sea (`water`), N Hollow Tree
+  (`grass`). 16 MISSING PIECES (CUBE_RULES.missing: pits, bitten corners, edge notches): a hole is one square deep, its floor the dark core
+  (`obsidian`). They ride the slices, so the ground changes every round. VS CPU map list "The Cube" (Team Deathmatch, 4 a side); the online
+  pools never deal it. P1 starts on the Sea face, P2 on the Hollow Tree face (opposite).
+- **THE RULE OF IT (data.js THE CUBE + battle.js THE CUBE):** the game never learns a new board. The board is the FRAME, the cube laid flat
+  as a cross (3N x 4N = 24 x 32 squares): the acting fighter's face in the middle, the four faces round it folded out, the far face under
+  the south arm, the corners `blank`. Every rule (moving, jumping, range, shapes, knockback, liquids, the CPU) runs on it as it is.
+  THE RELAY (`cubeFocus`, at each activation): when the fighter up next stands on another face the frame is laid again round that face;
+  `_cubeRemapState` moves EVERY square-keyed thing on `state` with its square (board grids, "x,y" key maps and Sets, any object with an
+  x/y-like pair, a facing turned with its square). THE TURN (`cubeEndOfRound`, before `state.round += 1`): the warned slice (`state._cube.next`,
+  picked a round ahead from the match seed, `cubePickSlice`) turns a quarter; its squares and whatever is on them (fighters too) go round
+  the cube. Four turns of a slice put everything back (checked). The sight rule = `cubeSightBlocked` at the top of map.js
+  `isVisionBlockedByTerrain` (`cubeSeenFaces`). state.js's fog caches key on `state._cube.ver`.
+- **THE PICTURE (three-renderer.js THE CUBE):** the ground is one piece a square (`_cubeTerrainBuild`: a top, walls down into a pit, the
+  warned slice glowing cyan). Each frame `_cubeFoldFrame` sets every board child's own matrix = THE FOLD of its arm x its position (the
+  five arms' folds, `_cubeFolds`), so the draw, the labels and the clicks' raycast all see the folded cube; pieces a spell adds straight
+  to the scene fold too (`_cubeLooseKids`). THE TUMBLE (the frame laid round another face: the cube turns so that face comes up, 0.75 s)
+  and THE SLICE SWING (0.9 s) are read off `state._cube.basis` / `.lastSlice`, so the online guest (who only mirrors state) sees them.
+  Clicks: three-camera.js `_tileHitResult` reads the piece's own square (`ThreeRenderer.cubeCellOf`). worldToScreen folds. The camera stays
+  over the top face (battle.js camera clamp). The merged grass sheet and the flat fog sheet are off on the cube (the sight rule hides bodies).
+- **CHECKED ON SCREEN 11-17** (`shots/cube/`, probe through probe-fast.js): the cube with its holes, side faces, the warned strip; the relay
+  each time the other side acts; a full round with the slice turn carrying a fighter from the top face onto the east face; clicks on the
+  two visible side faces pick their own squares; the side acting sees only its own face.
+- **KNOWN, NOT YET DONE:** the CPU does not read the warned slice yet (it plays the frame as a flat board); spells' own big sheets that sit
+  at the world's origin are not folded (seen: the end-of-round spawn-zone rings of fighters on a hidden face float flat beside the cube); the cube in the Astral Realm (below) is the next PR.
+- **IN THE ASTRAL REALM (planned, mondo's picks):** floating high over the middle of the Cloud Bridge, nothing touching it; its broken-off
+  pieces float round it, and a winding stair of them climbs from the bridge to its top, each one level higher than the last (picture
+  `5_the_broken_cube.png`). Meeting a native on its top starts the fight on all six faces.
+
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting

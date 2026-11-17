@@ -11442,6 +11442,38 @@
         window._ewBattleMapsSync = _ewBattleMapsSync;
         window.addEventListener('ew-battle-maps', () => { try { _ewBattleMapsSync(); } catch (e) { console.warn('[BATTLE MAP] the map list', e); } });
         try { _ewBattleMapsSync(); } catch (e) {}
+        /* THE CUBE (2026-11-17, mondo's "Two Worlds, One Combat Grid" Map B; data.js THE CUBE): the Rubik's cube fought on all six faces.
+           Its board is the FRAME (data.js cubeBoardSpec: the cube's faces laid flat round the top, 3N x 4N, the corners blank); battle.js
+           THE CUBE lays it again round each fighter's face and turns a slice every round, three-renderer.js THE CUBE folds it into the cube.
+           A map card ("The Cube", VS CPU, Team Deathmatch only); the online pools never deal it. */
+        function _ewCubeRegister() {
+            if (typeof window.cubeBoardSpec !== 'function' || typeof GAME_MODES === 'undefined' || typeof PREBUILT_MAPS === 'undefined') return;
+            const id = 'the_cube', n = 4, B = window.cubeBoardSpec(n);
+            const tid = (k) => { const i = ME_TERRAIN_IDS.indexOf(k); return i > 0 ? i : 0; };
+            PREBUILT_MAPS[id] = {
+                w: B.W, h: B.H,
+                grid: B.terrain.map(r => r.map(k => k === 'blank' ? 0 : tid(k))),
+                objects: B.terrain.map(r => r.map(() => [])),
+                heightMap: B.heights.map(r => r.slice()),
+                spawns: { 1: B.spawns[1].slice(), 2: B.spawns[2].slice() },
+            };
+            const builds = []; for (let i = 0; i < n; i++) builds.push(UNIT_CLASS);
+            GAME_MODES[id] = {
+                id, label: 'The Cube', desc: 'A Rubik\'s cube floating in the Astral Realm: fight on all six faces; a slice turns every round and carries whoever stands on it',
+                boardSize: Math.max(B.W, B.H), boardWidth: B.W, boardHeight: B.H, teamSize: n,
+                winHourglasses: 2, hiddenItemSpawns: 0,
+                blitzMode: true, hasTowers: false, isPrebuilt: true, isDelta: true, cube: true, tier: 3, biomes: [],
+                terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
+                spawns: { 1: B.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: B.spawns[2].map(p => ({ x: p.x, y: p.y })) },
+                defaultBuilds: { 1: builds.slice(), 2: builds.slice() },
+            };
+            const row = { modeId: id, name: 'The Cube', size: B.N + '×' + B.N + '×6', team: n, floors: false, w: B.W, h: B.H, isPrebuilt: true, isDelta: true, cube: true, tier: 3, biomes: [] };
+            const i = MS_MAP_LIST.findIndex(r => r.modeId === id);
+            if (i >= 0) MS_MAP_LIST[i] = row; else MS_MAP_LIST.push(row);
+            const L = MULTIPLAYER_MODES.tdm && MULTIPLAYER_MODES.tdm.compatibleMaps; if (L && L.indexOf(id) < 0) L.push(id);
+        }
+        /* after this file has run (the terrain id list, ME_TERRAIN_IDS, is declared further down) */
+        setTimeout(() => { try { _ewCubeRegister(); } catch (e) { console.warn('[CUBE] the map card', e); } }, 0);
 
         let _msSelectedGM = 0;
         let _msSelectedMap = 0;   // default card: Mount Shasta (first roster map)
@@ -15714,6 +15746,7 @@
         }
 
         function isVisionBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ) {
+            if (state._cube && typeof cubeSightBlocked === 'function' && cubeSightBlocked(x1, y1, x2, y2)) return true;   // THE CUBE: own face, + the face across an edge / corner you stand on (mondo 11-17)
             // Diagonal neighbours are point-blank too (CHEBYSHEV) — you can always
             // see the tile right beside you, diagonal or cardinal, so neither is
             // ever vision-blocked by terrain... unless a solid edge wall stands
@@ -17603,7 +17636,8 @@
                the spawn zones"). Use the authored spawn tiles verbatim — no
                terrain edits — exactly like Mystery Dungeon. */
             if (typeof activeGameMode !== 'undefined'
-                && (activeGameMode === '_custom_editor' || activeGameMode === '_custom_community')
+                && (activeGameMode === '_custom_editor' || activeGameMode === '_custom_community'
+                    || (typeof GAME_MODES !== 'undefined' && GAME_MODES[activeGameMode] && GAME_MODES[activeGameMode].cube))   // THE CUBE: each side on its own face
                 && sp1.length > 0 && sp2.length > 0) {
                 state.spawnZones = {
                     1: sp1.map(p => ({ x: p.x, y: p.y, z: p.z })),

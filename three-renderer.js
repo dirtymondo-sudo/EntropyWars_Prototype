@@ -4756,6 +4756,8 @@ const ThreeRenderer = (function () {
 
     function tileTopY(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        /* THE CUBE: the frame's height as it is (the fold turns it over the edge) */
+        if (state && state._cube && _cubeOnR()) { var _cH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : 0; return _cH * ts * ELEV_STEP_RATIO; }
         /* THE SEAMLESS FIELD (2026-09-22): a box room's field stands on the ROOM'S ground — the raster's real tops */
         var _fgY = _fieldGroundTop(x, y);
         if (_fgY !== null) return _fgY;
@@ -5286,6 +5288,17 @@ const ThreeRenderer = (function () {
         var lavaTiles = [];
         /* THE SEAMLESS FIELD (2026-09-22 — THE TRUE GROUND): the room drawn round the window IS the ground; no voxel
            column is built (the walls are the shell's, the slab the gallery's, a table its own top) */
+        /* THE CUBE (2026-11-17): the cube's own ground, one piece a square, folded as it is drawn */
+        if (_cubeOnR()) {
+            _clearGroup(terrainGroup); tileMeshes.clear();
+            try { _cubeTerrainBuild(ts); } catch (e) { console.warn('[CUBE] the ground failed', e); }
+            _lastBoardW = _bw; _lastBoardH = _bh; _lastBuiltTileSize = ts;
+            _lastTerrainVersion = state._terrainVersion || 0; _lastHeightVersion = state._heightVersion || 0; _lastVoxelVersion = state._voxelVersion || 0;
+            _objectsDirty = true; _lavaMeshCache = null; _canopyMeshCache = null;
+            if (ThreePost && ThreePost.setShadowFrame) { var _cbW = _bw * ts, _cbH = _bh * ts; ThreePost.setShadowFrame(_cbW / 2, _cbH / 2, Math.sqrt(_cbW * _cbW + _cbH * _cbH) / 2 + ts * 3); }
+            _shadowsDirty = true;
+            return;
+        }
         if (_fieldGround()) {
             _clearGroup(terrainGroup); tileMeshes.clear();
             _deltaPatchTops = {}; _liquidFlowTops = {};   // THE SKIN LINE: no tile-board sheet survives into a field
@@ -10554,6 +10567,7 @@ const ThreeRenderer = (function () {
             _disposeR(_terrainDecoGroup);
         }
         _terrainDecoGroup = new THREE.Group();
+        if (_cubeOnR()) return;   // THE CUBE: no merged grass sheet (it would lie flat over the frame, not on the cube)
 
         var _bw = (typeof bw === 'function') ? bw() : 0;
         var _bh = (typeof bh === 'function') ? bh() : 0;
@@ -25687,6 +25701,215 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ═══ THE CUBE — the picture (2026-11-17, mondo's Rubik's cube map; the rules: battle.js THE CUBE, the geometry: data.js) ═══
+       The rules run on a flat FRAME (the acting fighter's face in the middle, the four faces round it folded out in a cross,
+       the far face under the south arm). The picture folds it back into the cube as it draws: every child of the board groups
+       (terrain cells, units, highlights, props, projectiles, hit marks) is turned over the cube's edges by the arm its square
+       lies on (_cubeFoldAt). Each frame the child's own matrix = THE FOLD x its position / turn / size (matrixAutoUpdate off),
+       so every later walk (the draw, the labels, the clicks' raycast) sees the folded cube. Two moves are animated: THE
+       TUMBLE when the frame is laid round another face (the whole cube turns so the new face comes up) and THE SLICE TURN at
+       the end of a round (the slice's squares and the fighters on them swing a quarter round). Both are read off state._cube
+       (basis, lastSlice), so the online guest, who only mirrors state, sees the same (RULE #2). */
+    var _cubeR = { key: null, folds: null, basisKey: null, basis: null, tumble: null, sliceVer: 0, slice: null, touched: [], pick: null, warnGrp: null };
+    function _cubeOnR() { try { return typeof cubeOn === 'function' && !!cubeOn(); } catch (e) { return false; } }
+    function _cubeBasisKey(b) { return b ? (b.n + '|' + b.ex + '|' + b.ey) : ''; }
+    /* world <- cube (centred): world x = r . ex, world y = r . n, world z = r . ey (board +y = world +z) */
+    function _cubeBasisM(b) { var m = new THREE.Matrix4(); m.set(b.ex[0], b.ex[1], b.ex[2], 0, b.n[0], b.n[1], b.n[2], 0, b.ey[0], b.ey[1], b.ey[2], 0, 0, 0, 0, 1); return m; }
+    function _cubeGeo() {
+        var ts = CONFIG.tileSize || BASE_TILE, N = state._cube.N, y0 = ts * ELEV_STEP_RATIO;
+        return { ts: ts, N: N, y0: y0, c: new THREE.Vector3(1.5 * N * ts, y0 - N * ts / 2, 1.5 * N * ts) };
+    }
+    function _cubeAbout(rot, px, py, pz) {
+        return new THREE.Matrix4().makeTranslation(px, py, pz).multiply(rot).multiply(new THREE.Matrix4().makeTranslation(-px, -py, -pz));
+    }
+    /* the five arms' folds (the middle face is drawn as it lies) */
+    function _cubeFolds() {
+        var G = _cubeGeo(), k = G.ts + '|' + G.N;
+        if (_cubeR.key === k && _cubeR.folds) return _cubeR.folds;
+        var ts = G.ts, N = G.N, y0 = G.y0, H = Math.PI / 2;
+        var s = _cubeAbout(new THREE.Matrix4().makeRotationX(H), 0, y0, 2 * N * ts);
+        _cubeR.folds = {
+            n: _cubeAbout(new THREE.Matrix4().makeRotationX(-H), 0, y0, N * ts),
+            s: s,
+            f: s.clone().multiply(_cubeAbout(new THREE.Matrix4().makeRotationX(H), 0, y0, 3 * N * ts)),
+            e: _cubeAbout(new THREE.Matrix4().makeRotationZ(-H), 2 * N * ts, y0, 0),
+            w: _cubeAbout(new THREE.Matrix4().makeRotationZ(H), N * ts, y0, 0)
+        };
+        _cubeR.key = k;
+        return _cubeR.folds;
+    }
+    function _cubeArm(tx, ty, N) {
+        if (ty >= N && ty < 2 * N) return tx < 0 ? null : tx < N ? 'w' : tx < 2 * N ? 'c' : tx < 3 * N ? 'e' : null;
+        if (tx < N || tx >= 2 * N) return null;
+        if (ty >= 0 && ty < N) return 'n';
+        if (ty >= 2 * N && ty < 3 * N) return 's';
+        if (ty >= 3 * N && ty < 4 * N) return 'f';
+        return null;
+    }
+    var _cubeTmpM = null, _cubeTmpA = null;
+    /* the fold for a square of the frame (null = drawn as it lies) */
+    function _cubeFoldAt(tx, ty) {
+        var a = _cubeArm(tx, ty, state._cube.N);
+        return (a && a !== 'c') ? _cubeFolds()[a] : null;
+    }
+    function _cubeEase(t) { t = Math.max(0, Math.min(1, t)); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+    /* THE TUMBLE / THE SLICE TURN: read the record each frame (host and guest alike) */
+    function _cubeWatch(now) {
+        var C = state._cube, G = _cubeGeo(), bk = _cubeBasisKey(C.basis), changed = false;
+        if (_cubeR.basisKey !== bk) {
+            if (_cubeR.basis && !window.EW_CUBE_NO_ANIM) {
+                /* A0 takes the new layout to the old one: the new face starts where it was and rises to the top */
+                var A0 = _cubeBasisM(_cubeR.basis).multiply(_cubeBasisM(C.basis).transpose());
+                var q0 = new THREE.Quaternion().setFromRotationMatrix(A0);
+                _cubeR.tumble = { q0: q0, t0: now, ms: 750 };
+            }
+            _cubeR.basisKey = bk; _cubeR.basis = C.basis; changed = true;
+        }
+        var LS = C.lastSlice;
+        if (LS && LS.ver > _cubeR.sliceVer) {
+            if (_cubeR.sliceVer && !window.EW_CUBE_NO_ANIM) {
+                var mv = cubeSliceMove(C.N, LS.slice), F = cubeFrameNow(), cells = {};
+                for (var id in mv) { var c = F.cell[mv[id]]; if (c) cells[c.x + ',' + c.y] = 1; }
+                var ax = new THREE.Vector3(LS.slice.a === 0 ? 1 : 0, LS.slice.a === 1 ? 1 : 0, LS.slice.a === 2 ? 1 : 0);
+                _cubeR.slice = { cells: cells, ax: ax, dir: LS.slice.dir, t0: now + (_cubeR.tumble ? 0 : 0), ms: 900 };
+            }
+            _cubeR.sliceVer = LS.ver; changed = true;
+        }
+        if (changed) {
+            /* the bodies stand where the remap put them (no walk across the frame) */
+            try { rebuildUnits(); } catch (e) {}
+            _objectsDirty = true;
+        }
+        if (_cubeR.tumble && now - _cubeR.tumble.t0 > _cubeR.tumble.ms) _cubeR.tumble = null;
+        if (_cubeR.slice && now - _cubeR.slice.t0 > _cubeR.slice.ms) _cubeR.slice = null;
+        var T = null, S = null;
+        if (_cubeR.tumble) {
+            var q = _cubeR.tumble.q0.clone().slerp(new THREE.Quaternion(), _cubeEase((now - _cubeR.tumble.t0) / _cubeR.tumble.ms));
+            T = _cubeAbout(new THREE.Matrix4().makeRotationFromQuaternion(q), G.c.x, G.c.y, G.c.z);
+        }
+        if (_cubeR.slice) {
+            var k = 1 - _cubeEase((now - _cubeR.slice.t0) / _cubeR.slice.ms), M = _cubeBasisM(C.basis);
+            /* the slice starts a quarter back (in cube space) and swings home */
+            var R = new THREE.Matrix4().makeRotationAxis(_cubeR.slice.ax, -k * _cubeR.slice.dir * Math.PI / 2);
+            S = _cubeAbout(M.clone().multiply(R).multiply(M.clone().transpose()), G.c.x, G.c.y, G.c.z);
+        }
+        return { T: T, S: S, ts: G.ts };
+    }
+    var _CUBE_GROUP_NAMES = ['terrainGroup', 'highlightGroup', 'objectGroup', 'wallGroup', 'unitGroup', 'projectileGroup', 'floatTextGroup', 'hitFxGroup'];
+    var _CUBE_SCENE_GROUPS = { spawnZoneOverlays: 1, sanctuaryWalls: 1, ew_plates: 1 };   // + the nexus walls and bars below
+    function _cubeBoardGroups() {
+        var out = [terrainGroup, highlightGroup, objectGroup, wallGroup, unitGroup, projectileGroup, floatTextGroup, hitFxGroup];
+        if (scene) for (var i = 0; i < scene.children.length; i++) if (_CUBE_SCENE_GROUPS[scene.children[i].name]) out.push(scene.children[i]);
+        if (_terrainDecoGroup) out.push(_terrainDecoGroup);
+        if (_nexusWallGroup) out.push(_nexusWallGroup);
+        if (_nexusBarGroup) out.push(_nexusBarGroup);
+        return out;
+    }
+    /* the loose pieces a spell or a pulse adds straight to the scene: folded by where they stand like the rest (never a light,
+       a camera, the sky, a sheet at the world's origin or the board groups themselves) */
+    function _cubeLooseKids(gs) {
+        var out = [];
+        if (!scene) return out;
+        for (var i = 0; i < scene.children.length; i++) {
+            var o = scene.children[i];
+            if (gs.indexOf(o) >= 0 || o === fogGroup || o === weatherGroup || o.isLight || o.isCamera || o.isPoints || o.isCSS2DObject) continue;
+            if (o.name && /sky|horizon|moon|sun|star/i.test(o.name)) continue;
+            var hasLight = false; o.traverse(function (q) { if (q.isLight) hasLight = true; });
+            if (hasLight) continue;
+            if (!o.position.x && !o.position.z) continue;
+            out.push(o);
+        }
+        return out;
+    }
+    /* each frame, before the draw */
+    function _cubeFoldFrame(now) {
+        if (!_cubeOnR()) { if (_cubeR.touched.length) _cubeUnfoldAll(); _cubeR.basisKey = null; _cubeR.basis = null; _cubeR.sliceVer = 0; return; }
+        var W = _cubeWatch(now), ts = W.ts, gs = _cubeBoardGroups(), lc = new THREE.Matrix4(), m = new THREE.Matrix4();
+        if (fogGroup) fogGroup.visible = false;   // THE FOG SHEET lies flat over the frame: the cube's sight hides the bodies instead
+        var lists = gs.map(function (g) { return g ? g.children : []; });
+        lists.push(_cubeLooseKids(gs));
+        for (var gi = 0; gi < lists.length; gi++) {
+            var kids = lists[gi];
+            for (var i = 0; i < kids.length; i++) {
+                var o = kids[i];
+                if (o.isCSS2DObject) continue;
+                var tx = Math.floor(o.position.x / ts), ty = Math.floor(o.position.z / ts);
+                if (o._ew_cubeCell) { tx = o._ew_cubeCell.x; ty = o._ew_cubeCell.y; }
+                var F = _cubeFoldAt(tx, ty), inS = W.S && _cubeR.slice.cells[tx + ',' + ty];
+                if (!F && !W.T && !inS && !o._ew_cubeFold) continue;
+                lc.compose(o.position, o.quaternion, o.scale);
+                m.identity();
+                if (W.T) m.multiply(W.T);
+                if (inS) m.multiply(W.S);
+                if (F) m.multiply(F);
+                o.matrix.multiplyMatrices(m, lc);
+                o.matrixAutoUpdate = false; o.matrixWorldNeedsUpdate = true;
+                if (!o._ew_cubeFold) { o._ew_cubeFold = true; _cubeR.touched.push(o); }
+            }
+        }
+    }
+    function _cubeUnfoldAll() {
+        for (var i = 0; i < _cubeR.touched.length; i++) { var o = _cubeR.touched[i]; o._ew_cubeFold = false; o.matrixAutoUpdate = true; o.matrixWorldNeedsUpdate = true; }
+        _cubeR.touched = [];
+        if (fogGroup) fogGroup.visible = true;
+    }
+    /* THE CUBE'S GROUND: one piece a square (so each folds with its square): its top, and a wall down to a lower square of
+       the same face (the pits where a piece broke off). The warned slice glows (THE WARNING, a whole round before it turns). */
+    var _cubeQuadGeo = null;
+    function _cubeTerrainBuild(ts) {
+        var N = state._cube.N, F = cubeFrameNow(); if (!F) return;
+        if (!_cubeQuadGeo || _cubeQuadGeo.ts !== ts) {
+            var top = new THREE.PlaneGeometry(ts, ts); top.rotateX(-Math.PI / 2); top._ew_shared = true;
+            var wall = new THREE.PlaneGeometry(ts, ts); wall._ew_shared = true;   // faces +z, centred
+            _cubeQuadGeo = { ts: ts, top: top, wall: wall };
+        }
+        var warned = {};
+        try { (cubeWarnedCells() || []).forEach(function (c) { warned[c.x + ',' + c.y] = 1; }); } catch (e) {}
+        var warnMat = new THREE.MeshBasicMaterial({ color: 0x33e0ff, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
+        _cubeR.warnMat = warnMat;
+        var hAt = function (x, y) { return (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : ((state.boardHeights[y] || [])[x] || 0); };
+        var face = function (x, y) { var id = F.at[y] && F.at[y][x]; return id ? id.split(':')[0] : null; };
+        var NB = [[1, 0, Math.PI / 2], [-1, 0, -Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
+        for (var y = 0; y < F.H; y++) for (var x = 0; x < F.W; x++) {
+            var fc = face(x, y); if (!fc) continue;
+            var h = hAt(x, y), tKey = (typeof getTerrainAt === 'function' ? getTerrainAt(x, y) : null) || 'obsidian';
+            var mats = _buildBeveledMaterials(tKey, tKey);
+            var grp = new THREE.Group(); grp.position.set(x * ts + ts / 2, 0, y * ts + ts / 2);
+            grp._ew_cubeCell = { x: x, y: y };
+            var q = new THREE.Mesh(_cubeQuadGeo.top, mats[2]); q.position.y = h * ts * ELEV_STEP_RATIO;
+            q.receiveShadow = true; q.userData.tileX = x; q.userData.tileY = y; q._ew_cubeCell = { x: x, y: y };
+            grp.add(q);
+            if (warned[x + ',' + y]) {
+                var wq = new THREE.Mesh(_cubeQuadGeo.top, warnMat); wq.position.y = h * ts * ELEV_STEP_RATIO + ts * 0.02; wq.renderOrder = 5; wq._ew_cubeCell = { x: x, y: y };
+                wq.raycast = function () {};
+                grp.add(wq);
+            }
+            for (var k = 0; k < 4; k++) {
+                var nx = x + NB[k][0], ny = y + NB[k][1];
+                if (face(nx, ny) !== fc) continue;
+                var nh = hAt(nx, ny); if (nh >= h) continue;
+                var sideKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined' && TERRAIN_SIDE_SPRITES[tKey]) || tKey;
+                for (var lv = nh; lv < h; lv++) {
+                    var w = new THREE.Mesh(_cubeQuadGeo.wall, _buildBeveledMaterials(sideKey, sideKey)[0]);
+                    w.rotation.y = NB[k][2];
+                    w.position.set(NB[k][0] * ts / 2, (lv + 0.5) * ts * ELEV_STEP_RATIO, NB[k][1] * ts / 2);
+                    w._ew_cubeCell = { x: x, y: y }; w.castShadow = true; w.receiveShadow = true;
+                    grp.add(w);
+                }
+            }
+            terrainGroup.add(grp);
+        }
+    }
+    /* the frame's square under a hit on the cube (three-camera.js THE CLICKS reads it before the flat world point) */
+    function cubeCellOf(obj) { for (var o = obj; o; o = o.parent) if (o._ew_cubeCell) return o._ew_cubeCell; return null; }
+    /* a square's folded point (worldToScreen and anything placed in screen space) */
+    function cubeFoldPoint(v, tx, ty) {
+        if (!_cubeOnR()) return v;
+        var F = _cubeFoldAt(tx, ty); if (F) v.applyMatrix4(F);
+        return v;
+    }
+    function cubeRelaid() { _objectsDirty = true; }
+
     function worldToScreen(tileX, tileY, yOffset) {
         var cam = ThreeCamera.getCamera();
         if (!cam || !canvas) return null;
@@ -25695,6 +25918,7 @@ const ThreeRenderer = (function () {
         var wy = tileTopY(tileX, tileY) + (yOffset || 0);
         var wz = tileY * ts + ts / 2;
         _projVec2.set(wx, wy, wz);
+        if (state && state._cube) cubeFoldPoint(_projVec2, tileX, tileY);   // THE CUBE: a square on a side face is drawn folded
         _projVec2.project(cam);
         if (_projVec2.z > 1) return null;
         var cw = canvas.clientWidth, ch = canvas.clientHeight;
@@ -53681,6 +53905,7 @@ const ThreeRenderer = (function () {
                    are hidden for the duration (see showSplitscreen). */
                 _ssRenderFrame();
             } else {
+                try { if (state && (state._cube || _cubeR.touched.length)) _cubeFoldFrame(_frameNow || performance.now()); } catch (e) { console.warn('[CUBE] the fold', e); }   // THE CUBE: fold the frame into the cube
                 _quietBefore(cam);   // THE QUIET COMPILE: a piece whose shader is still building sits this frame out — the frame draws
                 /* THE ONE MATRIX WALK, THE FIGHT'S (2026-11-15, mondo's F3 in a fight in Disaster City: "mask: setup + lights + sort
                    8.0 · scene: setup + lights + sort 3.5"): each render of a battle frame (the model mask's, the picture) walked every
@@ -99512,6 +99737,7 @@ const ThreeRenderer = (function () {
         elevY: function (z) { return z * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO; },
 
         showIntentBadges, clearIntentBadges, showPressMarks, clearPressMarks, dropPressMarksOn, worldToScreen, headRoomPx,
+        cubeRelaid, cubeCellOf, cubeFoldPoint,   // THE CUBE
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,
