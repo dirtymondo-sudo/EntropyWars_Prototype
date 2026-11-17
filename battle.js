@@ -14559,7 +14559,7 @@
             const say = _DOLL_SAY[line];
             addLog(`🪆 ${_ctName(unit)} pulls its string: "${say}"`, undefined, undefined, { actor: unit });
             if (!_skipVisuals()) {
-                showFloatingTextForUnit(unit, `“${say}”`, line === 'kill' ? 'damage' : 'buff', { durationMs: 1600 });
+                showFloatingTextForUnit(unit, `“${say}”`, line === 'kill' ? 'damage' : 'buff', { durationMs: 1300 });
                 _sigVfxGeom('nrPullString:' + line, unit.x, unit.y, 0, { owner: unit.player, toX: foe ? foe.x : undefined, toY: foe ? foe.y : undefined });
             }
             if (line === 'play') {
