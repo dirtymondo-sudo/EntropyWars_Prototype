@@ -4363,3 +4363,25 @@ itself: the generic stage burst (ring, flash, sparks, speed burst) no longer dra
   - Stick-Up: brass chevrons jump up beside the victim's shoulders (hands up); bundles of bills (the banker's `bank_cash` model, only when it is in memory) arc off them to the gangster.
 - Colours: brass / amber / lime / scope red / rust / powder grey, all mid tones; no team cyan-blue or pink-orange.
 - Proof: docs/plans/vfx-cleanup/img/own-look/L2_part1_after.jpg (real casts through the HUD on the audit board).
+## THE OWN LOOKS, L4, part 4: the self buffs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4"). L4 is done: 46 of 46.
+
+- A self buff fires `aura` on the caster's own tile, about 900 ms into the cast. The caster's plate is over its head, so
+  these sit on the body and at its side (the lens's right: `_l4Right()`).
+- `overclock` (the robot's row) and `raceOverclock` (the Engineer school's row) are the same spell under two ids: one look.
+- Monster Serum keeps its syringe prop (`_npStage`); the swelling is new.
+
+| Spell | What it draws now |
+|---|---|
+| Go Ape `raceApeFury` | he beats his chest: four thumps, left fist, right fist, each a burst on the chest and a jolt, hotter every time |
+| Incendiary Rounds `raceIncendiaryRounds` | five brass rounds stand up in a row at his side, their tips light one by one, the row drops home with embers |
+| Monster Serum `raceMonsterSerum` | (the syringe, as before) the body's green outline swells in three lurches and the serum boils off in bubbles |
+| Nitro Boost `raceNitroBoost` | the rev needle swings round its dial into the red at his side; two jets of violet nitrous flame stand out behind |
+| Overcalculate `raceOvercalculate` | three columns of amber digits pour up round the body, twice over, and close on "= OK" at the chest |
+| Overclock `overclock` / `raceOverclock` | a ring of tick marks at the waist spins up faster and faster, yellow arcs jump off, every tick flares at full speed |
+| Phase Shift `racePhaseShift` | the body's image splits into five upright violet slivers that slide apart, shiver and go out one by one |
+| Siege Mode `raceSiegeMode` | four hazard-yellow struts swing out and slam into the floor, dust jumps, a targeting bracket opens wide and locks |
+| Stoneform `raceStoneform` | five courses of grey rock close round the body feet to head with grit, set hard, then thin to show him again |
+| Thick Hide `raceThickHide` | brown scutes thud on over the body in two rows all the way round; their edges catch the light as they set |
+
+After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part4.jpg`.
+
