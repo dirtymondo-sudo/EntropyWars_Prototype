@@ -2112,3 +2112,16 @@ Meshy pipeline of `/mnt/project-files/new-races/run.py` (nano-banana-pro concept
   wheels spin), cast, castAOE (bars), castSupport (FF), castMelee (ram), castUltimate (stand by -> bars), hit (no signal), death
   (the line, the dot, it tips over) + the spell slots tvStatic / tvBars / tvFF / tvRewind.
 - Sprite `cursed_tv_px.png` (same folder) = Sprite AI restyle of a straight-on render (mondo: face head on like the other sprites).
+## THE ROBOT REDESIGN (2026-11-17, mondo: "all look more unique, distinct silhouettes")
+The machine races were four near-identical white chrome humanoids. mondo picked from three concept rounds
+(`/mnt/project-files/robot-races/`: current/, concepts/, concepts_options_sheet.jpg, round3_sheet.jpg, models_sheet.jpg):
+- Robot F = round 1 option 1 (red + graphite factory-line robot, amber visor); Robot M = her male counterpart (round 3).
+- Cyborg F = round 2 option 2 made hotter (long hair, crop top, cargo pants, robot gauntlet fists; no dreads/buzzcut/"cyberpunk hair").
+- Mech F = her first 3D model, the female counterpart of the in-game mecha (round 3 redo: flat feet, no heels, no skirt plates).
+- Cyborg M (11-16), AI F and Glitch M keep their models. Android + Droid SCRAPPED for new models (stay sprite-only races; nothing deleted).
+Files on R2 (old models kept): `Races/robot/{male,female}/Meshy_AI_robot_{m2,f2}_Running.glb`, `Races/cyborg/female/Meshy_AI_cyborg_f2_Running.glb`,
+`Races/mech/female/Meshy_AI_mech_f2_Running.glb`; sprites `<same folder>/<key>_px.png` (Sprite AI restyle of the cut concept, palette_extras 2-4;
+the first Robot M restyle came back WHITE: name the colour + "NOT white" + palette_extras 2). Robot F had a stray thin rod by the hip (3 sliver
+triangles); degenerated in all three files (originals in models/orig/). Pipeline = new-chars run.py (concept nano-banana-pro -> meshy-t2.5 a-pose -> rig).
+Robot F lost the old "chassis walk" lib override (Idle_5 / Running walk): she uses the female defaults now (mondo 11-17: "no stiff walk").
+Mech F sprite redone as `mech_f2_px2.png` from a straight-on front render of her model (the concept was turned; mondo: "face straight").

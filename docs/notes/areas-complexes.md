@@ -11549,3 +11549,35 @@ dont even ask, just make it one room". So TWO rooms, each a drowned room (`hqAby
   before and after. data.js grew by about 190 KB (the 8 x 16 box's height and paint sheets).
 - **NOT DONE, by design**: `terrain.edges.world` (an under room has walls and water; the Sewers did the same); the Outfall walk U14 (Sewers to the Sea Floor)
   is phase 4.4's. bake-map.js's ZONES row for the Deep still says `wait` (a room's own `world` wins).
+
+## HEAVEN, THE ONE WORLD MOVE — the districts stand apart over open sky (2026-11-17, BUILD_PLAN phase 3 wave B; the owner's One World Heaven thread)
+mondo picked the layout on a card ("Rising north-east", 11-17 10:13 UTC): plots.json gives Heaven no world plot (`beyond.heaven`: "cloud districts apart above
+the Vatican, cloud paths between"), so the layout follows the design sheet `docs/plans/one-world/sheets/beyond.png`. Hell, the Catacombs and the Vatican
+do NOT move: they bake byte for byte as before.
+- **ONE ROOM, the same id** `site_prebuilt_heaven_plots` (the preferred method: nothing to retire, Continue / the map's GO / the bay door land as before),
+  7 x 8 plots with a mask, 26 plots = the 20 district plots + 6 cloud path plots. One room by the room-splitting rule (the paths touch both ends) and by
+  mondo's 11-17 rule ("connected, bigger rooms are better; smaller than Disaster City = one room").
+  | District | Home rows | Now (cols x rows) |
+  |---|---|---|
+  | Y The City | row 0 | cols 3-6, row 0 (the highest cloud, north-east) |
+  | F The Cloud Fields | row 1 | cols 2-5, row 2 |
+  | A The Gate | row 2 | cols 0-3, row 4 |
+  | T The Stairway | rows 3-4 | cols 0-3, rows 6-7 (the foot stays the south-west corner) |
+- **THE CLOUD PATHS (the tool's, names labels of mine):** the Cloud Bridge (0,5) from the third landing to the foot of the fourth flight, 3 squares wide at
+  19.25 m; the Cloud Path west / middle / east (1..3,3) from the Gate's opening north, east over open sky and north into the Fields' marble way, 2 wide at
+  24.5 m; the City Path west / east (3..4,1) from the head of the Fields' stair north onto the city's cloud, 2 wide at 28 m. They FLOAT (a puff under them).
+  The Terraces' top step no longer meets the city (the plots parted): it is a lookout now.
+- **HOW (bake-afterlife.js THE ONE WORLD MOVE, `OW_HEAVEN`):** the districts build in the home frame (the 4 x 5 plan; draw-afterlife.js and the district
+  files unchanged), then `ow-move.js` stands each plot at its new place with everything on it; a drawn piece's parts move each with its own plot; the clouds,
+  the marble, the flights and the pool are cut again from the moved squares. No stray. The output loop writes each room from `R.PLAN` (Heaven's = the moved plan).
+- **LINKS (ids kept, only Heaven's ends moved):** `heaven_olympus` a = the foot of the Stairway, free at square (4, 92) facing north (plots.json: "The Stairway,
+  up from Olympus"; was the Cloud Paths' east wall; Olympus' b untouched); `observatory_stair` b (south wall) and `skycastle_stair` b (west wall) ride with the
+  foot; the bay door rides with the City (`siteRooms.entry.prebuilt_heaven`).
+- **THE COUNT** (`docs/areas/afterlife/move/before.json`, `node ow-census.js --diff … site_prebuilt_heaven_plots`): all 73 props, 11 natives, 4 doors and 8 lines
+  are in; what it lists is the tool's own cloud plateaus cut again on the new squares, the room's marble sheet (one drawn row, its anchor on another plot now)
+  and the Gate's two ghost walls cut at plot lines. 1,733 walked squares (was 1,603 + the 130 path squares; the same 42 unreached cloud squares as before).
+- **SEEN ON SCREEN** (probe-fast, no page error, room ready in 39 s): `docs/plans/one-world/proof/heaven_path.jpg` (from the Cloud Path, the City and Room 777
+  across open sky), `heaven_gate.jpg`. The map picture is remade (`Assets/ui/map/site_prebuilt_heaven_plots.png`).
+- NOT DONE: nothing was walked by a player from end to end (the tool's walk check reaches every plot); the solid cloud under the Gate, the Fields and the City
+  still reads as one mass from below (as before the move).
+
