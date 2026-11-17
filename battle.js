@@ -2596,6 +2596,7 @@
             /* 🚪 SWING DOOR: the push is straight away from the HINGE the player picked (doSpell stamped it) */
             const _swH = (spell.hinge && unit._swingHinge && unit._swingHinge.spellId === spell.id) ? unit._swingHinge : null;
             if (spell.hinge) delete unit._swingHinge;
+            if (spell.leapOver && target && !unit.dead && !_clashPinned) _frogLeapOver(unit, target);   // 🐸 Leapfrog
             if (spell.pushDistance && target && !target.dead && !unit.dead && !_chessTook
                 && (spell.kind === 'damage' || spell.kind === 'tackle')
                 && !(typeof _isClashMode === 'function' && _isClashMode())) {
@@ -11125,6 +11126,7 @@
             _expireStatusHolds({ roundEnd: true });   // ⏳ THE FULL ROUND: a hold whose round this was ends before any tick
             /* ⚗️ R4: a Burn / Poison a terrain wrote straight onto the unit (Plague Flesh) meets the other one here, before the tick */
             for (const _cu of (state.units || [])) _chemicalFireMerge(_cu);
+            _nrRoundEnd();   // 🦌🧠 THE NEW RACES 2: the Wendigo's hunger, the Boltzmann Brain's fluctuation
 
             const affected = state.units.filter(u => {
                 if (_unitIsDown(u)) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
@@ -14208,6 +14210,177 @@
         window._gatorAtHomeInSludge = _gatorAtHomeInSludge;
         /* _runPostEffects for a `dragIntoLiquid` spell (Death Roll): the victim goes into the nearest free liquid square beside
            the gator or beside itself (deep water first), then gets Drowning (applyStatusPayload bounces it outside deep water). */
+        /* ═══ THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters): one new rule a race. Host-side: the HP,
+           the squares, the statuses and the unit fields state-sync to the guest; only ids are stored (RULE #2). The Florida
+           Man's headline and the Boltzmann Brain's square come from _nrHash (the unit id + the round), so host and guest
+           agree without a relay. Notes: docs/notes/champions-combat.md "THE NEW RACES 2". */
+        function _nrHash(str) {
+            let h = 2166136261;
+            for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+            return h >>> 0;
+        }
+        function _nrAlive(u) { return !!u && !u.dead && !u._dying && u.hp > 0; }
+        function _nrFreeSquare(x, y) { return isInside(x, y) && canOccupy(x, y) && !unitAt(x, y); }
+        /* 🛵 THE RIDE-ALONG (the Delivery Boy): an ally Riding with him gets off on the free square beside him nearest where it
+           got on when he finishes a walk (finishMoveAt). A rider that walks off on its own first just gets off. */
+        function _deliveryDrop(unit, fx, fy) {
+            if (!unit || !Array.isArray(state.units)) return;
+            if (unit.race !== 'delivery boy') {
+                if (unit.status && unit.status.riding > 0) clearStatus(unit, 'riding');
+                return;
+            }
+            if (!_nrAlive(unit) || (unit.x === fx && unit.y === fy)) return;
+            const riders = state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a._rideWithId === unit.id && a.status && a.status.riding > 0);
+            for (const a of riders) {
+                const ox = a.x, oy = a.y;
+                clearStatus(a, 'riding');
+                const sq = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+                    .map(([dx, dy]) => ({ x: unit.x + dx, y: unit.y + dy }))
+                    .filter(q => _nrFreeSquare(q.x, q.y))
+                    .sort((p, q) => (Math.abs(p.x - ox) + Math.abs(p.y - oy)) - (Math.abs(q.x - ox) + Math.abs(q.y - oy)));
+                if (!sq[0]) { addLog(`🛵 No room to get off beside ${_ctName(unit)}: ${_ctName(a)} stays where it was.`); continue; }
+                a.x = sq[0].x; a.y = sq[0].y;
+                if (typeof nearestWalkableZ === 'function') a.z = nearestWalkableZ(a.x, a.y, a.z);
+                animateDisplacement(a, ox, oy, a.x, a.y, 320, { leap: true });
+                resolveTileArrival(a, { via: 'self' });
+                addLog(`🛵 ${_ctName(a)} hops off ${_ctName(unit)}'s scooter at ${coordLabel(a.x, a.y)}.`, undefined, undefined, { actor: unit });
+                if (!_skipVisuals()) showFloatingTextForUnit(a, '🛵 DROPPED OFF', 'buff', { durationMs: 1000 });
+            }
+        }
+        /* 🙌 THE TITHE (the Televangelist): while his Collection Plate is out, 15% of every heal that lands within 3 of him (on
+           either team; never his own heals, never a heal on him) is taken off the heal and goes in his plate (unit._plate).
+           Miracle (`spendPlate`) heals the plate on top of its own heal and empties it (spellHealAmountFor + the heal cast). */
+        function _titheSkim(target, amount, sourceUnit, opts) {
+            if (!(amount > 0) || !target || (opts && opts._fromPlate) || !Array.isArray(state.units)) return 0;
+            const pastor = state.units.find(p => _nrAlive(p) && p.status && p.status.tithe > 0 && p.id !== target.id
+                && !(sourceUnit && sourceUnit.id === p.id) && Math.abs(p.x - target.x) + Math.abs(p.y - target.y) <= 3);
+            if (!pastor) return 0;
+            const cut = Math.floor(amount * 0.15);
+            if (cut <= 0) return 0;
+            pastor._plate = (pastor._plate || 0) + cut;
+            addLog(`🙌 ${_ctName(pastor)} passes the plate: ${cut} HP of the heal on ${_ctName(target)} goes in the collection (${pastor._plate} in the plate).`);
+            if (!_skipVisuals()) showFloatingTextForUnit(pastor, `🙌 +${cut}`, 'buff', { durationMs: 900 });
+            return cut;
+        }
+        /* 📱 GOING VIRAL (the Influencer): a Viral unit shares 30% of every hit it takes with each of its own teammates within 2
+           (applyDamageToUnit; the shared hits do not spread again). */
+        function _viralShare(target, dmg, opts) {
+            if (!(dmg > 0) || !target || !(target.status && target.status.viral > 0) || (opts && opts._viralShare) || !Array.isArray(state.units)) return;
+            const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && a.player === target.player
+                && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 2);
+            if (!mates.length) return;
+            const share = Math.max(1, Math.round(dmg * 0.3));
+            for (const a of mates) {
+                applyDamageToUnit(a, share, `📱 ${unitDisplayName(target)} went viral: `, {
+                    sourceUnit: (opts && opts.sourceUnit) || null, ignoreArmor: true, damageType: 'dot',
+                    consumeMarked: false, allowMarkBonus: false, noPress: true, _viralShare: true
+                });
+            }
+        }
+        /* 🟥 THE RED CARD (the Referee): a card on a unit that already has a Yellow Card (STATUS_DEFS.yellowCard.onApply)
+           sends it off: the `exited` status (untargetable, no move, no action) until its next turn starts, with no door;
+           window._doorExitReturn's sent-off branch brings it back on the same square. Bosses are never sent off. */
+        function _refereeRedCard(unit, src) {
+            if (!_nrAlive(unit) || unit._isBoss || unit.isBoss || unit._isCube) return;
+            if (unitHasStatus(unit, 'exited') || unitHasStatus(unit, 'captured')) return;
+            clearStatus(unit, 'yellowCard');
+            unit._sentOff = true;
+            const ok = applyStatusPayload(unit, { id: 'exited', duration: 1, quiet: true }, '', src || null);
+            if (!ok) { delete unit._sentOff; return; }
+            if ((unit.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(unit);
+            addLog(`🟥 RED CARD! ${_ctName(unit)} is sent off until its next turn.`, undefined, undefined, src ? { actor: src } : undefined);
+            if (!_skipVisuals()) showFloatingTextForUnit(unit, '🟥 RED CARD', 'debuff', { durationMs: 1400 });
+        }
+        /* 📰 TODAY'S HEADLINE (the Florida Man): each round one of his three is the headline and the other two are greyed
+           ("Not today"), picked by his id and the round (TargetQuery.spellBlockReason) */
+        const _FLORIDA_HEADLINES = ['nrGatorToss', 'nrBathSalts', 'nrHurricaneParty'];
+        function _floridaHeadline(unit) {
+            return _FLORIDA_HEADLINES[_nrHash(String(unit && unit.id) + '|' + (state.round || 0)) % _FLORIDA_HEADLINES.length];
+        }
+        window._floridaHeadline = _floridaHeadline;
+        /* 🧠 THE FLUCTUATION (the Boltzmann Brain): it never walks or jumps (unitMoveBlockedByStatus: 'Bodiless'); at every
+           round end it is somewhere else, a free square within 4 picked by its id and the round. */
+        function _unitIsBodiless(unit) { return !!unit && unit.race === 'boltzmann brain'; }
+        function _boltzmannFluctuate(u) {
+            if (!_nrAlive(u) || !_unitIsBodiless(u) || unitHasStatus(u, 'exited') || unitHasStatus(u, 'captured')) return;
+            if (typeof _isClashMode === 'function' && _isClashMode()) return;
+            const sq = [];
+            for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+                const d = Math.abs(dx) + Math.abs(dy);
+                if (d < 2 || d > 4) continue;
+                if (_nrFreeSquare(u.x + dx, u.y + dy)) sq.push({ x: u.x + dx, y: u.y + dy });
+            }
+            if (!sq.length) return;
+            const t = sq[_nrHash(String(u.id) + '|' + (state.round || 0) + '|bb') % sq.length];
+            const fx = u.x, fy = u.y;
+            u.x = t.x; u.y = t.y;
+            if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(t.x, t.y, u.z);
+            if (!_skipVisuals()) _vfxTeleport(fx, fy, t.x, t.y);
+            resolveTileArrival(u, { via: 'self' });
+            addLog(`🧠 ${_ctName(u)} stops existing at ${coordLabel(fx, fy)} and fluctuates into being at ${coordLabel(t.x, t.y)}.`);
+        }
+        /* 🦌 THE HUNGER (the Wendigo): a round in which it dealt no damage to an enemy (unit._fedRound, applyDamageToUnit)
+           costs it 8% of its max HP at the round end, never below 1 */
+        function _wendigoHunger(u) {
+            if (!_nrAlive(u) || u.race !== 'wendigo' || u._fedRound === (state.round || 0)) return;
+            if (unitHasStatus(u, 'exited') || unitHasStatus(u, 'captured')) return;
+            const loss = Math.min(u.hp - 1, Math.round((u.maxHp || 0) * 0.08));
+            if (!(loss > 0)) return;
+            u.hp -= loss;
+            addLog(`🦌 ${_ctName(u)} fed on nothing this round: the hunger takes ${loss} HP.`);
+            if (!_skipVisuals()) showFloatingTextForUnit(u, `-${loss} 🦌 HUNGER`, 'damage', { durationMs: 1100 });
+        }
+        /* the round end (processEndOfRoundStatuses, before the status ticks) */
+        function _nrRoundEnd() {
+            if (!Array.isArray(state.units)) return;
+            for (const u of state.units.slice()) {
+                if (!u || !u.race) continue;
+                if (u.race === 'wendigo') _wendigoHunger(u);
+                else if (u.race === 'boltzmann brain') _boltzmannFluctuate(u);
+            }
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+        }
+        /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free */
+        function _frogLeapOver(unit, target) {
+            if (!unit || !target) return;
+            const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
+            if (!dx && !dy) return;
+            const bx = target.x + dx, by = target.y + dy;
+            if (!_nrFreeSquare(bx, by)) { addLog(`🐸 ${_ctName(unit)} has no room to land behind ${_ctName(target)}.`); return; }
+            const fx = unit.x, fy = unit.y;
+            unit.x = bx; unit.y = by;
+            if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(bx, by, unit.z);
+            unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 2;
+            animateDisplacement(unit, fx, fy, bx, by, 280, { leap: true });
+            if (!target.dead) faceStrikeTarget(unit, target);
+            resolveTileArrival(unit, { via: 'self' });
+            addLog(`🐸 ${_ctName(unit)} leapfrogs over ${_ctName(target)} to ${coordLabel(bx, by)}.`);
+        }
+        /* 🐌 THE SLIME TRAIL (the Samurai Slug): every square he walks off becomes Black Ooze for 2 rounds (finishMoveAt) */
+        function _slugTrail(unit, fx, fy, trail) {
+            if (!_nrAlive(unit) || unit.race !== 'samurai slug') return;
+            const sq = [{ x: fx, y: fy }].concat(Array.isArray(trail) ? trail : []);
+            const seen = new Set();
+            let n = 0;
+            for (const t of sq) {
+                if (!t || (t.x === unit.x && t.y === unit.y)) continue;
+                const k = t.x + ',' + t.y;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                n += _paintTimedTerrain(t.x, t.y, { terrain: 'swamp', radius: 0, rounds: 2 }, unit, null, t.z != null ? t.z : unit.z) || 0;
+            }
+            if (n) addLog(`🐌 ${_ctName(unit)} leaves a trail of slime: ${n} square${n !== 1 ? 's' : ''} of Black Ooze for 2 rounds.`);
+        }
+        /* 🦗 THE BROOD (the Cicada Brood): Screech (`broodSpend`) adds its N for every Brood stack, spends them and ends Dig In */
+        function _broodSpend(unit, spell) {
+            if (!unit || !spell || !(spell.broodSpend > 0)) return 0;
+            const n = unit._brood || 0;
+            unit._brood = 0;
+            if (unitHasStatus(unit, 'dormant')) clearStatus(unit, 'dormant');
+            if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
+            if (n > 0) addLog(`🦗 ${_ctName(unit)} comes up singing: ${n} Brood stack${n !== 1 ? 's' : ''}, +${n * spell.broodSpend} damage.`);
+            return n * spell.broodSpend;
+        }
         /* 🛟 THE LIFEGUARD (2026-11-16, the new races): a teammate On Duty within 4 of an ally that just took a killing blow spends
            her watch: the ally holds on at 1 HP and is hauled to the free square beside her nearest it (it stays put if none is free
            or it is beside her already). One save per On Duty. Host-side (applyDamageToUnit); the HP, the square and the status
@@ -16760,8 +16933,11 @@
                     }
                 }
             }
-            const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
+            let actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
             if (actual <= 0) return 0;
+            /* 🙌 THE TITHE: a Collection Plate within 3 takes its 15% (_titheSkim) */
+            const _titheCut = _titheSkim(target, actual, sourceUnit, opts);
+            if (_titheCut > 0) { actual -= _titheCut; if (actual <= 0) return 0; }
             target.hp = Math.min(target.maxHp, target.hp + actual);
             astralSyncHp();   // 👁 one HP bar for a body and its spirit
             if (sourceUnit) sourceUnit._trackHealDone = (sourceUnit._trackHealDone || 0) + actual;
@@ -41784,6 +41960,7 @@
                 astralSyncHp();   // 👁 one HP bar for a body and its spirit
                 target._tookDamageThisRound = true;
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
+                if (sourceUnit && sourceUnit.race === 'wendigo' && sourceUnit.player !== target.player) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -42163,6 +42340,7 @@
                 if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             }
             if (target.hp <= 0) _lifeguardSave(target);   // 🛟 a Lifeguard On Duty pulls an ally out of a killing blow
+            if (finalDamage > 0) _viralShare(target, finalDamage, opts);   // 📱 a Viral unit's hit is shared
 
             if (opts.statusEffects || opts.status) {
                 let _stFx = opts.statusEffects || opts.status;
@@ -42709,6 +42887,7 @@
             const preScaled = !!spell.healPct;
             if (preScaled) amount = Math.floor(target.maxHp * spell.healPct);
             if (spell.lowHpBonus && target.hp / target.maxHp < 0.4) amount += spell.lowHpBonus;
+            if (spell.spendPlate && unit) amount += Math.max(0, unit._plate || 0);   // 🙌 Miracle heals the collection plate too
             // Tinker (passive row, the `repairMult` hook, mult — was the Engineer job, THE JOBS REMOVAL 2026-09-27): Repair heals 20% more.
             if (spell.id === 'repair') { const rm = unitPassiveMult(unit, 'repairMult') || 1; if (rm !== 1) amount = Math.round(amount * rm); }
             return { amount, preScaled };
@@ -46427,6 +46606,8 @@
             _skaterBankMove(unit, _originX, _originY, x, y, dist, opts.trail);   // 🛹 a straight roll banks Momentum
             _serpentFollow(unit, _originX, _originY, opts.trail);   // 🐍 the serpent's body follows the path
             _magicianVanish(unit);   // 🎩 Vanishing Act: an enemy ended beside a Magician with it set
+            _deliveryDrop(unit, _originX, _originY);   // 🛵 the Delivery Boy drops his rider off
+            _slugTrail(unit, _originX, _originY, opts.trail);   // 🐌 the Samurai Slug's slime trail
 
             if (!_wasAirborne) {
                 /* 🦴 Bone-pile looting — ending a move on an enemy's remains rifles
@@ -48350,6 +48531,7 @@
            this too, which also kills the jump-then-cast / jump-then-attack
            approaches a click on an enemy used to offer a rooted unit. */
         function unitMoveBlockedByStatus(unit) {
+            if (_unitIsBodiless(unit)) return true;   // 🧠 the Boltzmann Brain never walks
             return !!(unit && unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove));
         }
         window.unitMoveBlockedByStatus = unitMoveBlockedByStatus;
@@ -48367,6 +48549,7 @@
                 || k === 'tackle' || k === 'doorBreach') return true;
             if (k === 'teleport') return !spell.teleportAnyUnit;
             if (spell.chargeToTarget || spell.swapOnHit) return true;
+            if (spell.leapOver) return true;   // 🐸 Leapfrog lands him behind the target
             if (spell.erupt) return true;   // ⛏ Erupt tunnels the Mole Man to the victim's side (the Mole Man pass, 2026-11-16)
             if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) return true;
             return false;
@@ -48375,6 +48558,7 @@
         /* the player-facing word for what pins the unit ('Rooted', 'Charmed', 'Roped', 'Frozen' …), null = free */
         const _MOVE_BLOCK_WORDS = { root: 'Rooted', charm: 'Charmed', tethered: 'Roped', stun: 'Stunned', sleep: 'Asleep', frozen: 'Frozen', stoneform: 'Stoneform', climbing: 'Climbing' };
         function moveBlockWord(unit) {
+            if (_unitIsBodiless(unit)) return 'Bodiless';
             if (!unit || !unit.status) return null;
             const k = getActiveStatusKeys(unit).find(s => STATUS_DEFS[s]?.blockMove);
             if (!k) return null;
@@ -48388,6 +48572,7 @@
            (the "cannot act" doAttack / doSpell already refuse on). statusLockWord = the one word a button fits:
            a one-word colorText ('rooted', 'charmed', 'stunned'), else the label ('Frozen', 'Stoneform'). */
         function unitMoveBlockKey(unit) {
+            if (_unitIsBodiless(unit)) return 'bodiless';
             if (!unit || !unit.status) return null;
             return getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockMove) || null;
         }
@@ -48650,6 +48835,7 @@
             spellBlockReason(unit, spell) {
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
+                if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';   // 📰 not today's headline
                 /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
                 if (unitIsSpirit(unit) && (spell.astral || spell.damageType === 'physical')) return 'Projecting';
                 // THE MOVE BLOCK ON SPELLS: a dash / teleport / escape / grapple reel / charge is movement
@@ -75131,6 +75317,12 @@
                door (or where it stood if the twin is gone), Staggered. */
             window._doorExitReturn = function(unit) {
                 if (!unit || unit.dead) return;
+                /* 🟥 a red card (_refereeRedCard) has no door: the unit walks back on where it stood */
+                if (unit._sentOff) {
+                    delete unit._sentOff; delete unit._exited;
+                    addLog(`🟥 ${_ctName(unit)} is back on the field at ${coordLabel(unit.x, unit.y)}.`);
+                    return;
+                }
                 const door = unit._exitDoorId ? doorById(unit._exitDoorId) : null;
                 const tw = door ? doorTwin(door) : null;
                 let land = null;
@@ -82082,6 +82274,11 @@
                 }
 
                 state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
+                /* 📚 Overdue renews the last spell a teammate (not a Librarian) cast */
+                if (spell.id !== 'nrOverdue' && spell.id !== 'mimic' && unit.race !== 'librarian') {
+                    if (!state._lastAllySpell) state._lastAllySpell = {};
+                    state._lastAllySpell[unit.player] = { spellId: spell.id, caster: unit.id };
+                }
                 _markSpellUsedThisTurn(unit, spell, _placementStruck);
                 // Damaging casts — and Protect-granting casts — end the turn
                 // (only a press hands AP back); other support casts spend
@@ -82296,6 +82493,7 @@
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
                     const healed = applyHealingToUnit(_ht, healAmount, unit, _healPreScaled ? { preScaled: true } : {});
+                    if (spell.spendPlate && unit._plate > 0) { addLog(`🙌 ${_ctName(unit)} spends the collection plate (${unit._plate}).`); unit._plate = 0; }
                     /* THE SPELL AUDIT (2026-09-30): a heal row's `cleanse` (a count, 99 = all) was never read here —
                        Herbal Remedy, Séance, Absolution and Tidal Blessing all promise it. */
                     let _hcGone = [];
@@ -83471,7 +83669,7 @@
                 window.setTimeout(() => {
                     const area = getSpellAoeArea(spell, x, y);
                     const hitCount = _applyAoeDamage(unit, spell, area,
-                        (spell.dmg || 0) + spellPower, spellPower, {
+                        (spell.dmg || 0) + spellPower + _broodSpend(unit, spell), spellPower, {
                             waterBonus: spell.waterBonus,
                             rngRange: 40, minDmg: 32,
                             deformCenter: { x, y },
@@ -86686,11 +86884,12 @@
                         }
                     });
                     completionDelay = _plLand + actionMs(500);
-                } else if (spell.id === 'mimic') {
-
-                    const lastSpell = state._lastSpellCast;
+                } else if (spell.id === 'mimic' || spell.id === 'nrOverdue') {
+                    /* 📚 OVERDUE (the Librarian, 2026-11-17) renews her team's last spell (state._lastAllySpell) the Mimic way */
+                    const _overdue = spell.id === 'nrOverdue';
+                    const lastSpell = _overdue ? ((state._lastAllySpell || {})[unit.player] || null) : state._lastSpellCast;
                     if (!lastSpell) {
-                        addLog('No spell has been cast yet this match to mimic.', _clickSeat());
+                        addLog(_overdue ? 'Overdue: nobody on your team has cast a spell yet.' : 'No spell has been cast yet this match to mimic.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -86703,14 +86902,14 @@
                     playSfx('manaRegen');
                     _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
-                    addLog(`${_ctName(unit)} mimics ${mimicSpell.name} at full power!`);
+                    addLog(_overdue ? `📚 ${_ctName(unit)} renews ${mimicSpell.name}. It is overdue.` : `${_ctName(unit)} mimics ${mimicSpell.name} at full power!`);
 
                     const target = (unitAt(x, y, z) || unitAt(x, y));
                     if (mimicSpell.kind === 'damage' && target && isEnemyUnit(target, unit)) {
                         const dmg = Math.max(24, Math.floor((mimicSpell.dmg || 80) + spellPower));
                         applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} mimics ${mimicSpell.name}: `, { sourceUnit: unit, damageType: mimicSpell.damageType || 'magic', spellType: mimicSpell.spellType || null });
                     } else if (mimicSpell.kind === 'heal' && target && isAllyUnit(target, unit)) {
-                        const healAmt = Math.max(24, Math.floor((mimicSpell.heal || 80) + spellPower));
+                        const healAmt = (_overdue && mimicSpell.healPct) ? Math.floor(target.maxHp * mimicSpell.healPct) : Math.max(24, Math.floor((mimicSpell.heal || 80) + spellPower));
                         applyHealingToUnit(target, healAmt, unit);
                         addLog(`Mimic heals ${_ctName(target)} for ${healAmt}.`);
                     } else if (mimicSpell.kind === 'buff' && target && isAllyUnit(target, unit)) {

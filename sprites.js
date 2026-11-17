@@ -140,6 +140,17 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/tech_ceo/', 'Assets/characters/races/tech_ceo/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/magician/', 'Assets/characters/races/magician/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/mole_man/', 'Assets/characters/races/mole_man/'],   // 2026-11-16 THE NEW RACES
+  ['Assets/Sprites/Races/delivery_boy/', 'Assets/characters/races/delivery_boy/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/referee/', 'Assets/characters/races/referee/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/florida_man/', 'Assets/characters/races/florida_man/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/boltzmann_brain/', 'Assets/characters/races/boltzmann_brain/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/wendigo/', 'Assets/characters/races/wendigo/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/lifeguard/', 'Assets/characters/races/lifeguard/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/knight/', 'Assets/characters/races/knight/'],   // 2026-11-16 THE NEW RACES (the male knight)
   ['Assets/Sprites/Races/shaman/', 'Assets/characters/races/shaman/'],   // 2026-11-16 THE NEW RACES (the male shaman)
@@ -535,6 +546,17 @@ const RACE_SPRITE_GENDERS = {
   'magician': 'male',   // 2026-11-16
   'mole man': 'male',   // 2026-11-16
   'quetzalcoatl': 'male',   // 2026-11-16
+  'delivery boy': 'male',   // 2026-11-17 THE NEW RACES 2
+  'librarian': 'female',   // 2026-11-17 THE NEW RACES 2
+  'televangelist': 'male',   // 2026-11-17 THE NEW RACES 2
+  'influencer': 'female',   // 2026-11-17 THE NEW RACES 2
+  'referee': 'male',   // 2026-11-17 THE NEW RACES 2
+  'florida man': 'male',   // 2026-11-17 THE NEW RACES 2
+  'boltzmann brain': 'male',   // 2026-11-17 THE NEW RACES 2
+  'wendigo': 'male',   // 2026-11-17 THE NEW RACES 2
+  'karate frog': 'male',   // 2026-11-17 THE NEW RACES 2
+  'samurai slug': 'male',   // 2026-11-17 THE NEW RACES 2
+  'cicada brood': 'male',   // 2026-11-17 THE NEW RACES 2
   'lifeguard': 'female',   // 2026-11-16
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -701,6 +723,17 @@ const _CHARACTER_SPRITES = {
   'magician': `${_S}/Races/magician/male/magician_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
+  'delivery boy': `${_S}/Races/delivery_boy/male/delivery_boy.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'librarian': `${_S}/Races/librarian/female/librarian.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'televangelist': `${_S}/Races/televangelist/male/televangelist.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'influencer': `${_S}/Races/influencer/female/influencer.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'referee': `${_S}/Races/referee/male/referee.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'florida man': `${_S}/Races/florida_man/male/florida_man.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'boltzmann brain': `${_S}/Races/boltzmann_brain/male/boltzmann_brain.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'wendigo': `${_S}/Races/wendigo/male/wendigo.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'karate frog': `${_S}/Races/karate_frog/male/karate_frog.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
@@ -2486,6 +2519,82 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'magic',
+    }),
+  },
+  /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters): Meshy image-to-3d (meshy-t2.5, a-pose) from a
+     nano-banana-pro concept, rigged by the Meshy rigging API. The Boltzmann Brain has no body to rig: a still model.
+     Sources + scripts: /mnt/project-files/new-races-2/. */
+  'delivery boy': {
+    male: _mkUAL('delivery_boy', 'delivery_boy', {
+      model: `${_S}/Races/delivery_boy/male/Meshy_AI_delivery_boy_Running.glb`,
+      heightRatio: 1.0,
+      basicAttackKind: 'physical',
+    }),
+  },
+  'librarian': {
+    female: _mkUAL('librarian', 'librarian_f', {
+      model: `${_S}/Races/librarian/female/Meshy_AI_librarian_f_Running.glb`,
+      heightRatio: 0.95,
+      basicAttackKind: 'magic',
+    }),
+  },
+  'televangelist': {
+    male: _mkUAL('televangelist', 'televangelist', {
+      model: `${_S}/Races/televangelist/male/Meshy_AI_televangelist_Running.glb`,
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
+  },
+  'influencer': {
+    female: _mkUAL('influencer', 'influencer_f', {
+      model: `${_S}/Races/influencer/female/Meshy_AI_influencer_f_Running.glb`,
+      heightRatio: 0.95,
+      basicAttackKind: 'magic',
+    }),
+  },
+  'referee': {
+    male: _mkUAL('referee', 'referee', {
+      model: `${_S}/Races/referee/male/Meshy_AI_referee_Running.glb`,
+      heightRatio: 1.02,
+      basicAttackKind: 'physical',
+    }),
+  },
+  'florida man': {
+    male: _mkUAL('florida_man', 'florida_man', {
+      model: `${_S}/Races/florida_man/male/Meshy_AI_florida_man_Running.glb`,
+      heightRatio: 1.0,
+      basicAttackKind: 'physical',
+    }),
+  },
+  'boltzmann brain': {
+    male: { model: `${_S}/Races/boltzmann_brain/male/Meshy_AI_boltzmann_brain.glb`, clips: {}, heightRatio: 0.7, yawOffset: Math.PI, basicAttackKind: 'magic' },   // the eye looks down -Z in the file
+  },
+  'wendigo': {
+    male: _mkUAL('wendigo', 'wendigo', {
+      model: `${_S}/Races/wendigo/male/Meshy_AI_wendigo_Running.glb`,
+      heightRatio: 1.45,
+      basicAttackKind: 'physical',
+    }),
+  },
+  'karate frog': {
+    male: _mkUAL('karate_frog', 'karate_frog', {
+      model: `${_S}/Races/karate_frog/male/Meshy_AI_karate_frog_Running.glb`,
+      heightRatio: 0.85,
+      basicAttackKind: 'physical',
+    }),
+  },
+  'samurai slug': {
+    male: _mkUAL('samurai_slug', 'samurai_slug', {
+      model: `${_S}/Races/samurai_slug/male/Meshy_AI_samurai_slug_Running.glb`,
+      heightRatio: 0.95,
+      basicAttackKind: 'physical',
+    }),
+  },
+  'cicada brood': {
+    male: _mkUAL('cicada_brood', 'cicada_brood', {
+      model: `${_S}/Races/cicada_brood/male/Meshy_AI_cicada_brood_Running.glb`,
+      heightRatio: 1.1,
+      basicAttackKind: 'physical',
     }),
   },
   'lifeguard': {   // red swimsuit, rescue cross (THE NEW RACES 2026-11-16)
@@ -6724,6 +6833,17 @@ const RACE_SPRITES = {
   'magician': `${_S}/Races/magician/male/magician_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
+  'delivery boy': `${_S}/Races/delivery_boy/male/delivery_boy.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'librarian': `${_S}/Races/librarian/female/librarian.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'televangelist': `${_S}/Races/televangelist/male/televangelist.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'influencer': `${_S}/Races/influencer/female/influencer.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'referee': `${_S}/Races/referee/male/referee.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'florida man': `${_S}/Races/florida_man/male/florida_man.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'boltzmann brain': `${_S}/Races/boltzmann_brain/male/boltzmann_brain.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'wendigo': `${_S}/Races/wendigo/male/wendigo.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'karate frog': `${_S}/Races/karate_frog/male/karate_frog.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
+  'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood.png`,   // 2026-11-17 THE NEW RACES 2 — cut from its own model
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
