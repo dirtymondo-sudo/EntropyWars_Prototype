@@ -5694,8 +5694,7 @@ dormant / bodiless):
   landing within 3 of him (either team; not his own heals, not heals on him) into unit._plate; Miracle (`spendPlate`) adds the
   plate in spellHealAmountFor (the forecast reads it) and empties it after the heal.
 - 📱 Influencer, GOING VIRAL: a `viral` unit shares 30% of every hit with its teammates within 2 (`_viralShare`, after the
-  Lifeguard save; shared hits carry `_viralShare` so they never spread). The doc's Filter (disguise) is NOT built: it needs the
-  renderer to draw a fake unit for one side only.
+  Lifeguard save; shared hits carry `_viralShare` so they never spread). Filter (disguise) is built since THE INFLUENCER POLISH below.
 - 🟥 Referee, THE RED CARD: Card = `yellowCard` 3 rounds + Marked; a card on a booked unit (STATUS_DEFS.yellowCard.onApply,
   `refreshed`) calls `_refereeRedCard`: the `exited` status 1 round with unit._sentOff (no door); `_doorExitReturn`'s sent-off
   branch puts it back on the field where it stood, no Stagger. Bosses / cubes are never sent off.
@@ -5775,6 +5774,48 @@ Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo ha
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
 (cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
+- **THE BOLTZMANN BRAIN PASS (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new
+  mechanics are tested out and work as intended")**, thread cmsg_01XWpxyTn3nnw98znVzKdFjsH9oWgzPy7wwhJEhrsf2fQY:
+  - OBSERVER EFFECT (new, `nrObserverEffect`, tier 1, 25 MP, 1 AP, cd 2, self `buff`, `observe: true`, status `observed`): the one say
+    the player has over the fluctuation. At this round end it stays on its square (`_boltzmannFluctuate` spends the status there; a
+    1-round status otherwise lives until the caster's next turn ends and held it through TWO round ends, which with cd 2 = never
+    moving). It skips the one-spell cap (`spellSkipsCastCap`), so hold-and-shoot is one turn (cast it first: a damaging spell ends the turn).
+    CPU (ai.js, the buff scorer): casts it first (score 400+) when the square is a perch: an enemy within 5, none within 2, the hits
+    coming under 40 % of its HP, AP for a shot after. Seen in a real CPU match: Observer, then Vacuum Collapse, held one round end.
+  - THE JUMP: lands on a SAFE square when there is one (no lava / deep-water tick, no enemy zone status: predictMoveHazardDamage +
+    predictZoneStatusesAt; hidden traps not looked at, that would leak them). The log line is `actor`-tagged and fog-checked like
+    any line with squares in it; the look is two fires (`nrFluctuation:out` / `:in`), each fog-gated on its own end (the legacy
+    teleport drew both ends for anyone who saw either).
+  - Dead picks out: Phase Walk + Dimensional Fold (both move the caster: always greyed 'Bodiless') in RACE_SPELL_EXCLUDES.
+  - Existential Dread cooldown 2 -> 3 (the T2 mass-fear median: Death Rattle, Treeline Scream, KNEEL; Feared = cannot act).
+  - Stats kept: POWER 548, #92 of 154 (median 563).
+  - Proof + probes: /mnt/project-files/boltzmann-brain-polish/ (probe/p3_show.js = frozen-clock looks + the rules in a CPU match).
+
+
+## THE INFLUENCER POLISH (2026-11-17, thread "Polish Influencer spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+- THE SHARE FIX: `_viralShare` passed the hitter's type / STAB / ATK into each mate's share (a 154 hit shared 347 "super effective").
+  The share is now a flat 30 % of the damage dealt: no sourceUnit, `typeEffect:'neutral'`, ignoreArmor; the kill credit goes
+  through `a._lastDamageSourceId = src.id`. Multi-hit casts: one log line per mate ("… (9 hits)"), via a per-mate sub-sink
+  `sink._viral[id]` that `_multiHitLogFlush` flushes. `state._lastViralHitId` = the last viral unit hit (Ratio reads it, because a
+  killing hit or a status wearing off in the same cast must not lose the spread).
+- FILTER (tier 2, beside Sponsored; `filterSwap`): a single ally within 4 and the NEAREST living ally of ANOTHER race+gender (no
+  boss, cube or summon; `_influencerFilterPartner`) trade looks for 2 rounds (`filtered` status on both, `_filterLookId/Race/Gender`).
+  Both halves end together (shared `_stFresh` + the higher count), so two identical faces never stand on the board. No partner =
+  refused before any cost ("Filter: no ally of another race to swap faces with."). THE DRAWN UNIT: battle.js `ewDrawnUnit(unit,
+  viewer)` returns, for the OTHER seat only, a copy wearing the partner's race / gender / appearance / sprite / portrait / types;
+  sprites.js portraits + map sprite, three-renderer.js (model, creator rig, plate race, the rebuild hashes carry `flt:`), hud.js
+  race line + types and `unitDisplayName` all read it. Own side sees the truth. Known, on purpose: the 🤳 status badge stays
+  visible to the enemy (the honest read + counterplay); inspector stats are not disguised; log lines name the disguise for
+  everyone. Kill-switch `window.EW_NO_FILTER_LOOK = true`.
+- RATIO'D (tier 4, new; `viralSpread {radius 2, duration 1}`): MEDIUM light magic hit at range 5; on a Viral target every
+  teammate within 2 also goes Viral for 1 round (`_influencerRatioSpread`, in `_runPostEffects`). The kit is now Selfie Flash →
+  Go Viral → Sponsored / Filter → Ratio'd (RACE_TREE; the borrowed popstar rungs left).
+- THE CPU (ai.js): Go Viral = 55 per foe mate within 2 (0 alone / already viral); Filter 35 (+55 when either half is a healer, 0
+  with no partner); a hit on a viral foe adds the share per mate, Ratio +45 per mate it would spread to; `getTargetPriority`
+  judges a filtered foe by the unit it LOOKS like (what a player sees).
+- Proof (VS-CPU TDM, 0 page errors; /mnt/project-files/influencer-polish/): Selfie blinds; Ratio 163 on the viral target, 49 flat
+  to each mate, 2 mates go Viral; Sponsored +2/+2; Filter refusal costs 0 MP; enemy view draws the Influencer as the Catgirl and
+  back, own view real; all wear off; the CPU cast Filter and Ratio itself.
 
 ## THE WENDIGO PASS (2026-11-17, thread "Polish Wendigo spells and VFX", mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
 - THE PLAYSTYLE: a hunter that has to keep eating. Rend (Bleed 2 rounds) sets up Feast, which now carries
@@ -5809,3 +5850,6 @@ residents in their zones.
   slips, LATE FEE stamp; OVERDUE stamp + red ring on a Silenced foe). Probe 11-17 (real TDM, 0 page errors): Shush silenced, cd 2;
   Late Fee 557 on the silenced Knight vs 343 plain; Overdue renewed Hurricane Party (3 foes hit + Wet, 75 MP, cd 3) and Sponsored
   (+2 ATK/INT on the ally). Proof /mnt/project-files/librarian-polish/.
+- **THE FLOATING BRAIN (mondo 11-17, "can we name it something else ... Floating Brain, Sentient Brain ..."):** the Boltzmann Brain shows
+  as **Floating Brain** (RACE_PROFILES label, the race blurbs in ui.js + party-builder.js, the fluctuation family's names). The race id
+  stays `'boltzmann brain'` (saves, server lists, R2 folders, every table key); code comments keep the old name.

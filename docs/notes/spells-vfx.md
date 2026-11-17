@@ -3909,6 +3909,19 @@ block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura
   Proof + probes: /mnt/project-files/florida-man-polish/.
 
 
+## THE BOLTZMANN BRAIN (2026-11-17, the Boltzmann Brain pass)
+three-vfx-effects.js block "THE BOLTZMANN BRAIN" (after THE TECH CEO, helpers `_bb*`, `pzSig` hook). Violet thought + the black of an
+empty universe; every ring that says whose it is uses the Riot side colours from the viewer's seat (`_bbSide`).
+- Thought Spike (`bolt`, pzOwn, on flyMs): a needle grows at the brain and flies to the head, the thought line behind it; on the hit a
+  ring round the head, violet + white shards, a side ring on the floor.
+- Vacuum Collapse (`bolt`, pzOwn): a side-colour line marks the victim, a thin false-vacuum shell (8 % fill, two turning rims) swells
+  round the body over a starry floor disc and collapses into a point on the hit; violet + side floor rings.
+- Existential Dread (`aoe`, pzOwn): each square of the 3x3 goes starry black with a side-colour rim (rippling out from the middle);
+  an eye opens 2 squares over the middle, its pupil narrows, it shuts.
+- Observer Effect (`aura`): a smaller eye over the brain, a side-colour frame drops from 2.2x onto its square, four posts: pinned.
+- The jump (fireGeometry, relayed): `nrFluctuation:out` motes sucked into a point that blinks out, `:in` a point that bursts into
+  a shell + motes, `:hold` the eye blinks once over the frame. Each end gates on `_pzSeen`.
+
 ## THE REFEREE (2026-11-17, thread "Polish Referee spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx")
 Officiating had only the generic looks. three-vfx-effects.js "THE REFEREE" (right after THE TECH CEO; `_PZ_SIGS.rf*`, helpers `_rf*`).
 Cards keep their own colours (solid yellow / red, read on grass); rings and floor marks are the Referee's SIDE from the viewer's seat
@@ -3925,6 +3938,17 @@ the head across the lens toward his side (`_rfCardAnchor`), never over the body 
 - OFF THE FIELD (three-renderer.js, before the realm branch): any `exited` unit (red card or the DOOR Gun's EXIT) is drawn as a
   shade (`OFF_FIELD_OPACITY` 0.3, outline off) for both sides, fog still rules an enemy's. It still holds its square (unitAt).
 Proof: /mnt/project-files/referee-polish/.
+
+## THE INFLUENCER (2026-11-17, thread "Polish Influencer spells and VFX")
+three-vfx-effects.js "THE INFLUENCER" (after THE LIFEGUARD; geometry `_inf*`). Rings / corners in the caster's SIDE colour (`_lgSide`).
+- Selfie Flash: a white flash star at her phone height + viewfinder corners on the target (the phone prop `item_smartphone`, in
+  `_SPELL_MISC_KEYS`, shows when loaded; never a stand-in).
+- Go Viral: hearts + share arcs burst off the target, a ring. THE SHARE (`nrGoViral:share`, battle.js `_viralShare`, first share hit
+  per mate only): a link line from the hit unit to each mate, small hearts, a ring; Ratio's spread fires it with `spread:1`.
+- Sponsored: a gold #AD badge over the ally + aura. Filter / the swap (`nrFilter:swap`): a camera-facing ring light on the ally and
+  two glints that trade places between the pair.
+- Ratio'd: speech bubbles piling down onto the target + a ring.
+Proof sheets: /mnt/project-files/influencer-polish/vfx_sheet_*.jpg.
 
 ## THE CICADA BROOD (2026-11-17, three-vfx-effects.js block "THE CICADA BROOD", before "THE SPACE PROPS")
 Shell green over black + red eyes; the area rings in the side colour from the viewer's seat (THE RIOT PASS). No screen flash.

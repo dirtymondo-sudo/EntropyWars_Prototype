@@ -14892,6 +14892,7 @@ const ThreeRenderer = (function () {
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
+            if (u.status && u.status.filtered > 0 && u._filterRace) h = _hashStr(h, 'flt:' + u._filterRace + ':' + (u._filterGender || '') + ':' + _viewerPlayerNum());   // 🤳 THE FILTER
             if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
         }
         h = _hashVal(h, state.selectedUnitId || '');
@@ -14917,6 +14918,7 @@ const ThreeRenderer = (function () {
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
+            if (u.status && u.status.filtered > 0 && u._filterRace) h = _hashStr(h, 'flt:' + u._filterRace + ':' + (u._filterGender || '') + ':' + _viewerPlayerNum());   // 🤳 THE FILTER
             if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
             if (u.status && u.status.submerged > 0) h = _hashInt(h, 31);   // 🐊 going under / surfacing re-seats the body (_submergedSink)
         }
@@ -19174,7 +19176,8 @@ const ThreeRenderer = (function () {
         // such a rig on the battle board rendered every unit at ~45% size
         // (second game onward, once the GLBs resolve synchronously from
         // cache). A rig baked for a different tile size is stale: re-bake.
-        var appearanceKey = (def.creatorBase || def.mpfbBody) ? JSON.stringify(def.raceLook || normalizeCharacterAppearance(unit.appearance)) : '';   // (THE RACE LOOKS: the look the def dresses)   // (THE MPFB BODIES 2026-11-01: a new height re-bakes)
+        var _lkApp = ((typeof window.ewDrawnUnit === 'function') ? window.ewDrawnUnit(unit) : unit).appearance;   // 🤳 THE FILTER: the swapped ally's look
+        var appearanceKey = (def.creatorBase || def.mpfbBody) ? JSON.stringify(def.raceLook || normalizeCharacterAppearance(_lkApp)) : '';   // (THE RACE LOOKS: the look the def dresses)   // (THE MPFB BODIES 2026-11-01: a new height re-bakes)
         if (_rig && (_rig.ts !== ts || (_rig.bodyK > 0 ? _rig.bodyK : 1) !== UNIT_SPRITE_SIZE_RATIO) && _rig.appearanceKey === appearanceKey && !_rigCarryOff()) _rigRescale(_rig, ts);   // THE BODIES CARRY OVER: rescaled, not re-baked
         if (_rig && (_rig.ts !== ts || _rig.appearanceKey !== appearanceKey)) {
             _disposeModelRig(_rig);
@@ -19257,7 +19260,7 @@ const ThreeRenderer = (function () {
                 -bb.min.y * s,                        // feet on the tile top
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
-            var appearanceRig = def.creatorBase ? _createAppearanceRig(m, def.raceLook || unit.appearance, true) : null;   // THE RACE LOOKS: a race's baked look when the unit has none
+            var appearanceRig = def.creatorBase ? _createAppearanceRig(m, def.raceLook || _lkApp, true) : null;   // THE RACE LOOKS: a race's baked look when the unit has none
             if (appearanceRig && !appearanceRig.dressed()) m.visible = false;   // THE DRESSED REVEAL: shown (and the stand-in dropped) once the look is on (_unitRevealDressed)
             inner.add(m);
             wrap.add(inner);
@@ -20193,9 +20196,12 @@ const ThreeRenderer = (function () {
 
         // Rigged 3D model race (RACE_MODELS_3D)? The sprite pipeline below is
         // skipped entirely unless the GLB failed for good (no loading slab).
+        /* 🤳 THE FILTER (2026-11-17, the Influencer): a filtered unit is drawn on the other side's screen as the ally it swapped
+           faces with (battle.js ewDrawnUnit: race, gender, creator look; the structural serial rebuilds it when that flips) */
+        var _lookU = (typeof window.ewDrawnUnit === 'function') ? window.ewDrawnUnit(unit) : unit;
         var _m3dDef = (typeof getRace3DModel === 'function'
                        && typeof THREE.GLTFLoader === 'function')
-            ? getRace3DModel(unit.race, unit.gender || 'male', unit.appearance) : null;
+            ? getRace3DModel(_lookU.race, _lookU.gender || 'male', _lookU.appearance) : null;
         /* Sprite-override state (transform sprites, sentai color swaps…):
            a def may map override URLs to alternate 3D FORMS — the honda
            civic's def.overrideForms swaps the sedan for the rigged robot on
@@ -20233,7 +20239,7 @@ const ThreeRenderer = (function () {
             // Warm up animated sprite-sheet textures (if this race has any) so
             // they're decoded and GPU-ready by the time the unit attacks/casts.
             if (typeof getRaceSpriteAnimations === 'function') {
-                var _anims = getRaceSpriteAnimations(unit.race, unit.gender);
+                var _anims = getRaceSpriteAnimations(_lookU.race, _lookU.gender);
                 if (_anims) {
                     if (_anims.attack) getTexture(_anims.attack);
                     if (_anims.spell) getTexture(_anims.spell);
@@ -21152,6 +21158,7 @@ const ThreeRenderer = (function () {
        never a bare lowercase race key. */
     function _plateRaceLabel(u) {
         if (!u || !u.race) return '';
+        if (typeof window.ewDrawnUnit === 'function') u = window.ewDrawnUnit(u);   // 🤳 THE FILTER
         if (typeof getRaceLabel === 'function') return getRaceLabel(u.race, u.gender);
         return u.race.charAt(0).toUpperCase() + u.race.slice(1);
     }
