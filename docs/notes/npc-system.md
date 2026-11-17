@@ -289,3 +289,29 @@ the same district and a shifted day (a cop on the day shift, one on the night sh
 
 1. The level numbers per district and tier, and the counts per unit (the shipped ones are my proposal). The city's top level.
 2. `drawn` 8 → 12 bodies near you: worth it on his machine and his friend's PC? (An FPS reading on the walk decides.)
+
+## THE AWARENESS + THE MARKS (NPC encounters step 2, 2026-11-17; mondo: "eyes on player and red ! on npcs", "eye can be by the portrait, okay to build")
+
+Story walk only, and the same on every machine. Plan: `docs/plans/npc-encounters/PLAN.md` 4.1.
+
+- **The data** (data.js, with step 1b's `HQ_NPC_TEMPERS`): `aware: { sightM 18, dyM 6, tickMs 300, sayMs 3500, markH 0.05 }` (all PROPOSALS), `hqNpcActs(ch, o)`,
+  `hqNpcGround(ch)`, `hqNpcOnGround(room, ground, x, z)`.
+- **Who sees you:** an NPC with a body, a temper that has `watch` (Guard, Protector, Territorial, Opportunist, Brute), inside 18 m on the flat and 6 m up or down,
+  a clear line between the heads (`_hqLosClear`), not asleep. Civilians and Cowards never count.
+- **What it is to you** (`hqNpcActs`): `null`, `'watch'` or `'alert'`.
+  - Guard / Protector: `watch`; `alert` while your strike aim is on someone it defends (`hqNpcDefends`: its group, or for a Guard a Civilian / Coward).
+  - Territorial with a ground row (Bayside's Ghost, `b:P08-08-B1` = the Waterfront hotel): nothing while you are off its ground, `alert` while you stand on it.
+    It says its warning line once a visit ("Get out."), over its head.
+  - Opportunist / Brute: `watch`, unless it is 8 or more levels under the party (`levelGap`: it never starts a fight, so it does not count).
+    Their own `alert` ("it is coming") belongs to step 4, which makes them come.
+- **The eye** (map.js `_hqAwareEvent`, `_hqAwareEyeSvg`, drawn inside the lead portrait's own svg in `_hqFillDock`; styles-base.css `.hq-dock-eye`): one eye right
+  of the lead's portrait. Green with a slash = nobody who would act sees you; amber and open = someone does. The battle nameplate's own character, colours and
+  slash (three-renderer.js `.tp-eye`). No eye where a strike cannot start a fight (DOOR HQ, an online seat): `opts.awareOk`.
+- **The red `!`** (three-renderer.js `_hqTickAware`): a sprite over the head of every `alert` NPC, the same size on screen at any distance (5 % of the screen's
+  height), hidden by walls.
+- **The weak-PC cut is gone** in `_hqTickResidents` (`cap = R.drawn`; `drawnLow` is no longer read). mondo: "the game is the game".
+- **Probe:** `ThreeRenderer.hq.dev.aware()` = `{ on, seen, n, marks, says }`; `dev.awareMark(id, on)` holds a red mark on one NPC for a picture;
+  `dev.chars()` rows carry `race` and `away`; a `playtest_city.js` view may say `"keep": true` (do not move the walker back).
+- **Not built here (no moment for them yet):** the Guards' warning line (it needs a strike that does not start the fight at once: step 3), people stepping
+  aside (a walker already waits when you stand in its way), who joins a fight (step 8 reads the same awareness).
+

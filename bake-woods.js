@@ -124,9 +124,7 @@ door('estate', 'P01-05', 's', { way: 'trail', label: 'THE ESTATE · THE CORN FIE
    (Disaster City's gutter) on the Storm Drain plot, `sewers_drain` (the city sewers) on the Outfall, `woods_sewer` (the HQ tunnel) on the Tunnel Way */
 const LINK_ENDS = { streets_drain: ['b', spur('P05-03', 'e'), 'THE CULVERT · UP TO THE STREET'], sewers_drain: ['b', spur('P05-04', 'e'), 'THE CULVERT · INTO THE SEWERS'] };
 /* THE MOUNTAINS ON PLOTS (2026-11-15): the Snowline's trail goes on up: Mount Shasta's Trailhead (bake-mountains.js room, its `woods` door) */
-door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILHEAD', sub: 'THE SNOWLINE · THE TRAIL UP', action: { room: 'site_prebuilt_shasta_ow_shasta', at: 'woods' },   // ONE WORLD, PHASE 3 (2026-11-17): the Trailhead stands in Mount Shasta's own room (the Mountains zone thread)
-   
-    desc: 'The trail keeps climbing after the trees give up. There is snow on it from here.' });
+/* (2026-11-17, One World phase 5) the Snowline's `shasta` door (a jump to Mount Shasta's Trailhead, 13 plots away) is gone: the trail up from the Snowline is the wild link L3 to the Snowy Pass (seam ow_h_m17_m9, on this same side) */
 /* NO UNEXPLAINED DEAD ENDS (2026-11-15, mondo): a secret TRAIL gets no waymark post, so its path just stopped at the trees. The three secret ways show what they are now:
    each is a plain signposted trail and no longer secret (2026-11-16, mondo on the hollow-tree way's ball-crowned stand-in: "get rid of those and delete them from the game";
    the path back to Room 420 is a trail end too). NOT a `tunnel`: a tunnel end in this open room builds a big stone block on the wall
@@ -373,7 +371,7 @@ const STAND = [
           'P00-00:N': { room: 'site_ow_l3', label: 'THE TRAIL UP · THE SNOWY PASS', sub: 'THE SNOWLINE · THE TRAIL UP', desc: 'The trail keeps climbing after the trees give up. There is snow on it from here.' },
       },
       /* two doors whose side is a joint now (the Shelf's north side is the Snowline; the Snowline's north is L3): each moves to a side with forest past it */
-      doorAt: { lemuria: { plot: 'P01-00', side: 'E' }, shasta: { plot: 'P00-00', side: 'E' } } },
+      doorAt: { lemuria: { plot: 'P01-00', side: 'E' } } },
     /* THE RITUAL GROUND (district G), the ring round its hollow middle, with the wild link L2 from the Clearing (seven plots, down the column x -17 and west
        along row 6 to the Stage and the lake's east shore) and L5 on south to the Estate's Iron Gate (two plots) */
     { id: R_RIT, part: 'ow_ritual', label: 'THE RITUAL GROUND', sub: 'THE WOODS · THE RITUAL GROUND · 18 PLOTS', letters: ['G'], list: v13('G'), world: true, spawn: 'P04-01',
