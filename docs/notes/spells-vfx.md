@@ -3879,3 +3879,13 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
   words), blue MP motes rise off him, then his side's ring.
 - Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
 
+## THE CICADA BROOD (2026-11-17, three-vfx-effects.js block "THE CICADA BROOD", before "THE SPACE PROPS")
+Shell green over black + red eyes; the area rings in the side colour from the viewer's seat (THE RIOT PASS). No screen flash.
+- Dig In (`aura`): clods + dust burst up, an earth ring, a dark burrow mouth opens under it and closes (1.9 s), a thin side ring.
+- The Brood pulse (`fireGeometry('nrDigIn:pulse', x, y, stacks, { onlyPlayer: owner })` from battle.js `_cicadaBrood`): one green
+  ring per stack out of the ground + a small red one; only its own side sees it (the enemy must not learn where it waits).
+- Buzz (`aoe` 3x3): six fast thin rings tremble over the area at mixed heights, dust shivers off each square, the side ring.
+- Chorus (`aoe` r 2 round it): 3 rings of sound at head height + 2 red ones per Brood stack spent, the side ring on the floor;
+  with stacks, 4 grasshoppers a stack leap out of the ground (mondo's insects, THE INSECTS `_bugRun`). The stack count is read
+  at the cast (battle.js `_fireAoeVfx` puts `brood` in the relayed fire() params; `_fireAoeMapped` hands the params to a
+  geometry that sets `wantsParams`).

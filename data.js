@@ -10601,19 +10601,23 @@ const RACE_ABILITIES = {
           desc: 'Slow until the blade comes out. Charges a Single Enemy up to 3 squares away and deals HEAVY physical damage. Cooldown: 2 rounds.' },
     ],
     'cicada brood': [
-        /* THE WAIT: the one race that banks power by hiding. Dig In buries it (`dormant` + Invisible, no move); every round end under the ground adds a Brood stack (up to 3, battle.js _cicadaBrood from processEndOfRoundStatuses); Screech spends the stacks for damage and wakes it. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        /* THE WAIT: the one race that banks power by hiding. Dig In buries it (`dormant` + Invisible, no move); every round end under the ground adds a Brood stack (up to 3, battle.js _cicadaBrood from _nrRoundEnd); Chorus spends the stacks for damage and wakes it. (2026-11-17 THE NEW RACES 2, mondo's picks.)
+           THE CICADA POLISH (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics
+           are tested out and work as intended"): the stacks never grew (dormant's onRoundEnd sat outside the round-end status list), an
+           attack or a reveal left it stuck in the ground and still stacking, and the T3 was a second "Screech" (the sonic family has one,
+           and the menu finds a spell by its name): it is CHORUS now (same id), the cicadas' own word for the song of a whole brood. */
         { id: 'nrDigIn', name: 'Dig In', tier: 1, families: ['brood'], cost: 25, apCost: 1, cooldownRounds: 3, spellType: 'alien',
           element: 'earth', type: 'buff', kind: 'buff', range: 0,
-          statusEffects: [{ id: 'dormant', duration: 3 }, { id: 'invisible', duration: 3 }],
-          desc: 'Digs in and waits, for up to 3 rounds: Invisible and unable to move. Every round end under the ground adds a Brood stack (up to 3). Attacking brings it up. Cooldown: 3 rounds.' },
+          statusEffects: [{ id: 'dormant', duration: 4 }, { id: 'invisible', duration: 4 }],   // 4 = three round ends under the ground (3 wore off after the second: one Dig In could never reach Brood 3)
+          desc: 'Digs in and waits, for up to 3 rounds: Invisible and unable to move. Every round end under the ground adds a Brood stack (up to 3); Chorus spends them. Attacking, an offensive spell or being revealed brings it up early (the stacks it banked stay). Cooldown: 3 rounds.' },
         { id: 'nrBuzz', name: 'Buzz', tier: 2, families: ['brood'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'alien',
           element: 'sonic', type: 'debuff', kind: 'aoe', noDamage: true, range: 3, aoeRadius: 1,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'A drone you feel in your teeth. Staggers All Enemies in a 3x3 area within 3. Cooldown: 2 rounds.' },
-        { id: 'nrScreech', name: 'Screech', tier: 3, families: ['brood'], cost: 75, apCost: 1, spellType: 'alien',
-          element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 90, range: 0, aoeRadius: 2, broodSpend: 45,
+        { id: 'nrScreech', name: 'Chorus', tier: 3, families: ['brood'], cost: 75, apCost: 1, spellType: 'alien',
+          element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 90, range: 0, aoeRadius: 2, aoeOriginSelf: true, broodSpend: 45,
           statusEffects: [{ id: 'silence', duration: 1 }],
-          desc: 'The chorus. Deals WEAK magic damage to All Enemies within 2 of it, plus 45 more for every Brood stack, and Silences them for 1 round. Spends the stacks and ends Dig In.' },
+          desc: 'The whole brood sings at once. Deals WEAK magic damage to All Enemies within 2 of it, plus 45 more for every Brood stack (HEAVY at 3), and Silences them for 1 round. Spends the stacks and ends Dig In.' },
     ],
     'lifeguard': [
         /* ON DUTY (2026-11-16, the new races; mondo asked for a female lifeguard): the one race that saves a life. While she is On
@@ -14096,6 +14100,7 @@ const STATUS_DEFS = {
         onRemove(unit) {
             if (unit && unit.status && unit.status.submerged > 0 && typeof clearStatus === 'function') clearStatus(unit, 'submerged');
             if (unit && unit.status && unit.status.burrowed > 0 && typeof clearStatus === 'function') clearStatus(unit, 'burrowed');   // ⛏ the Mole Man surfaces
+            if (unit && unit.status && unit.status.dormant > 0 && typeof clearStatus === 'function') clearStatus(unit, 'dormant');   // 🦗 the Cicada Brood comes up (2026-11-17)
         },
         iconSrc: createStatusIconDataUri('🌿', '#1a3a1a', '#d6ffd6', '#5ad45a')
     },
@@ -14263,7 +14268,8 @@ const STATUS_DEFS = {
        tithe: the Televangelist's plate is out; battle.js applyHealingToUnit skims 15% of heals within 3 into unit._plate.
        viral: every hit it takes also hits its teammates within 2 for 30% (battle.js _viralShare).
        yellowCard: booked; a second card on a booked unit is a RED CARD: off the board until its next turn (battle.js _refereeRedCard).
-       dormant: the Cicada Brood dug in: no move, a Brood stack every round end (up to 3), Screech spends them.
+       dormant: the Cicada Brood dug in: no move, a Brood stack every round end (up to 3, battle.js _cicadaBrood), Chorus spends them.
+         Losing its Invisible (an attack, an offensive spell, a reveal) brings it up: invisible.onRemove clears dormant.
        bodiless: never applied; the word a greyed MOVE shows for the Boltzmann Brain (battle.js unitMoveBlockKey). */
     riding: {
         icon: '🛵', glyph: '🛵', short: 'RID', label: 'Riding',
@@ -14530,7 +14536,7 @@ const STATUS_LIBRARY_DESCS = {
     tithe:      'Collection Plate: 15% of every heal that lands within 3 of the Televangelist (not his own) goes in his plate. Miracle spends it.',
     viral:      'Going viral: every hit it takes also hits each of its teammates within 2 for 30% of the damage.',
     yellowCard: 'Booked: a second card on this unit is a RED CARD. It is sent off until its next turn starts: it cannot move, act or be targeted.',
-    dormant:    'Dug in: cannot move. Every round end under the ground adds a Brood stack (up to 3) that Screech spends.',
+    dormant:    'Dug in: cannot move. Every round end under the ground adds a Brood stack (up to 3) that Chorus spends.',
     bodiless:   'A mind with no body: it never walks. At every round end it is somewhere else, on a random free square within 4.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
@@ -21261,7 +21267,7 @@ const RACE_TREE = {
     'wendigo':       ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'karate frog':   [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'samurai slug':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceRollCredits'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
-    'cicada brood':  ['raceCorrosiveSplash', 'raceBrood', 'raceRot', 'raceSwarmSignal'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'cicada brood':  ['nrDigIn', 'nrBuzz', 'nrScreech', 'raceSwarmSignal'],   // 2026-11-17 THE CICADA POLISH: its own three + Swarm Signal (the borrowed row held none of Dig In / Buzz / Chorus, and Corrosive Splash + Rot are outside its families)
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -23295,7 +23301,7 @@ const SPELL_FAMILIES = {
         glyph: '🦗',
         color: '#4a7a2a',
         kind: 'signature',
-        desc: 'Wait, then sing: dig in and grow louder every round, a buzz that rattles, and a screech that spends it all.',
+        desc: 'Wait, then sing: dig in and grow louder every round, a buzz that rattles, and a chorus that spends it all.',
         unique: 'cicada brood',
         identity: { who: ['Cicada Brood', 'Periodical', 'Singer'], adj: ['Buried', 'Deafening', 'Red-eyed'], look: ['a green and black insect shell', 'huge red eyes', 'folded veined wings'], vibe: ['grows louder every round it waits', 'screeches the whole board silent'] }
     },

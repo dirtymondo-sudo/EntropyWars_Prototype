@@ -5852,7 +5852,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var _aoeGeom = _geom3D(spellId);
         if (_aoeGeom) {
-            _aoeGeom(tx, ty, aoeRadius);
+            _aoeGeom(tx, ty, aoeRadius, _aoeGeom.wantsParams ? params : undefined);   // `wantsParams` (2026-11-17, Chorus): the fire() params ride along
         }
 
         if (_aoeGeom && _aoeGeom.landMs > 0) {
@@ -45258,6 +45258,123 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     Object.assign(_spell3DGeometry, {
         nrRescueTube: _lgTube3D, nrInservice: _lgInservice3D, nrOnDuty: _lgDuty3D, nrCPR: _lgCpr3D,
         'nrOnDuty:save': _lgSave3D, 'nrThreeWhistles:blow': _lgBlow3D,
+    });
+
+    /* ══ THE CICADA BROOD (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx") ══ The brood's colours are
+       its shell (green over black) and its red eyes; the side reads from the viewer's seat (THE RIOT PASS: cyan-blue yours, pink-red
+       theirs) on the rings that tell where a spell reaches. The song itself is drawn as rings of sound at head height.
+         DIG IN (aura, self): the ground breaks open round it (clods + a dust ring), a dark burrow mouth opens under it and closes
+           over it as it goes down; one thin ring in its side's colour.
+         THE BROOD PULSE ('nrDigIn:pulse', battle.js _cicadaBrood, every round end it waits): a ring of green per stack ripples out
+           of the ground over it, drawn ONLY for its own side (`onlyPlayer`: the enemy must not see where it waits).
+         BUZZ (aoe 3x3): the drone: six fast thin rings tremble out over the area, jittering, the dust shivers off every square.
+         CHORUS (aoe round it, r 2): the whole brood sings: three rings of sound out to the area's edge, two more per Brood stack it
+           spends (the red-eyed ones), the side ring on the floor to the edge; with stacks the brood comes up out of the ground
+           (four grasshoppers a stack leap out of it: mondo's insects, the nearest to a cicada in the set). */
+    var _CB_GREEN = 0x8ad44a, _CB_PALE = 0xe6ffd0, _CB_RED = 0xff3a2a, _CB_EARTH = 0x8a6a3a, _CB_DRONE = 0xd8e86a;
+    function _cbDiscTex() {
+        return _sigTex('cb-burrow', 128, function (ctx, S) {
+            var g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+            g.addColorStop(0, 'rgba(10,8,4,1)'); g.addColorStop(0.62, 'rgba(26,20,10,0.95)'); g.addColorStop(0.8, 'rgba(70,52,26,0.7)'); g.addColorStop(1, 'rgba(70,52,26,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+        });
+    }
+    EFFECTS['nrDigIn_aura'] = { layers: [
+        { count: 12, sprite: 'mud-chunk', ml: [520, 820], offsetXY: 18, z: [6, 20], tint: 0x6a5232, vxRange: 170, vyRange: 170, vzRange: [140, 260], gravity: 620, drag: 0.3, spriteSpin: 4, size0: [7, 11], size1: [5, 8], opacity0: 0.95 },
+        { count: 6, sprite: 'dust-puff', ml: [700, 1100], offsetXY: 30, z: [4, 14], tint: 0xb89a6a, vxRange: 60, vyRange: 60, vzRange: [10, 40], size0: [18, 26], size1: [40, 60], opacity0: 0.55 },
+        { count: 5, sprite: 'rock-debris', ml: [500, 760], offsetXY: 14, z: [6, 16], tint: 0x8a7656, vxRange: 130, vyRange: 130, vzRange: [120, 220], gravity: 600, drag: 0.3, spriteSpin: 5, size0: [5, 8], size1: [4, 6], opacity0: 0.9, delayMs: 80 },
+    ] };
+    EFFECTS['nrBuzz_tile'] = { layers: [
+        { count: 3, sprite: 'dust-puff', ml: [380, 600], offsetXY: 30, z: [2, 10], tint: 0xc8b88a, vxRange: 40, vyRange: 40, vzRange: [20, 60], size0: [10, 14], size1: [22, 30], opacity0: 0.45 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 420, z: 3, tint: _CB_DRONE, size0: 30, size1: 90, opacity0: 0.45, delayMs: 60 },
+    ] };
+    EFFECTS['nrBuzz_center'] = { layers: [
+        { count: 5, sprite: 'wave-anim', ml: [300, 480], offsetXY: 6, z: [50, 80], tint: _CB_DRONE, vxRange: 120, vyRange: 120, drag: 1.2, size0: [10, 14], size1: [30, 44], opacity0: 0.6 },
+    ] };
+    _afAoeDef('nrBuzz_aoe', 1, 'square', 'nrBuzz_tile', 'nrBuzz_center');
+    EFFECTS['nrScreech_tile'] = { layers: [
+        { count: 2, sprite: 'dust-puff', ml: [420, 700], offsetXY: 30, z: [2, 10], tint: 0xc8b88a, vxRange: 50, vyRange: 50, vzRange: [20, 60], size0: [10, 14], size1: [24, 34], opacity0: 0.45 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 520, z: 3, tint: _CB_GREEN, size0: 24, size1: 96, opacity0: 0.5, delayMs: 120 },
+    ] };
+    EFFECTS['nrScreech_center'] = { layers: [
+        { count: 4, sprite: 'wave-anim', ml: [360, 560], offsetXY: 30, z: [90, 120], tint: _CB_GREEN, vxRange: 260, vyRange: 260, drag: 1.1, size0: [8, 12], size1: [22, 30], opacity0: 0.4 },   /* small + out off the body: the caster stays in sight */
+        { count: 6, sprite: 'spark', ml: [400, 650], offsetXY: 14, z: [70, 110], tint: _CB_RED, vxRange: 90, vyRange: 90, vzRange: [20, 60], size0: [4, 6], size1: 2, opacity0: 0.85 },
+    ] };
+    _afAoeDef('nrScreech_aoe', 2, 'square', 'nrScreech_tile', 'nrScreech_center');
+    Object.assign(SPELL_MAP, {
+        nrDigIn:   { aura: 'nrDigIn_aura' },
+        nrBuzz:    { aoe: 'nrBuzz_aoe' },
+        nrScreech: { aoe: 'nrScreech_aoe' },
+    });
+    /* DIG IN: the ground breaks open round it, the burrow mouth opens under it and closes over it */
+    function _cbDigIn3D(tx, ty) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = _lgSide(null, tx, ty);
+        try { _sigShockRing3D(tx, ty, { r0: ts * 0.25, r1: ts * 1.1, ms: 620, color: _CB_EARTH, height: ts * 0.04 }); } catch (e) {}
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 0.75, ms: 520, color: side, height: ts * 0.05 }); } catch (e) {} }, 380);
+        var m = new THREE.MeshBasicMaterial({ map: _cbDiscTex(), transparent: true, opacity: 0, depthWrite: false, fog: false });
+        var disc = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.5, 28), m);
+        disc.rotation.x = -Math.PI / 2; disc.position.y = ts * 0.02; disc.renderOrder = 6; F.g.add(disc);
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 320)), close = _sigClamp01((el - 1200) / 600);
+            var k = Math.max(0.05, open * (1 - 0.85 * close));
+            disc.scale.set(k, k, 1);
+            m.opacity = 0.9 * _afEnv(el, 0, 80, 1300, total);
+        });
+    }
+    /* THE BROOD PULSE (its own side only): a ring per stack ripples up out of the ground over it */
+    function _cbPulse3D(tx, ty, n) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts, k = Math.max(1, Math.min(3, n | 0));
+        for (var i = 0; i < k; i++) _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.12, r1: ts * 0.8, ms: 520, color: _CB_GREEN, height: ts * 0.05 }); } catch (e) {} }, i * 200);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.45, ms: 420, color: _CB_RED, height: ts * 0.3 }); } catch (e) {} }, k * 200);
+        return true;
+    }
+    /* BUZZ: the drone — six fast thin rings tremble out over the 3x3 */
+    function _cbBuzz3D(tx, ty, r) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, reach = (r > 0 ? r : 1) + 0.5;
+        for (var i = 0; i < 6; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * reach * (0.8 + 0.08 * (j % 3)), ms: 300, color: j % 2 ? _CB_DRONE : _CB_PALE, height: ts * (0.35 + 0.12 * ((j * 7) % 3)), torus: j % 2 === 0 }); } catch (e) {} }, j * 90);
+        })(i);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * reach, ms: 520, color: _lgSide(_cbOwnerNear(tx, ty), tx, ty), height: ts * 0.05 }); } catch (e) {} }, 120);
+        return true;
+    }
+    /* the caster of a spell aimed at a tile: the active unit (the side ring of a spell aimed at an empty square) */
+    function _cbOwnerNear(tx, ty) {
+        try { var id = state._blitzActiveUnitId, us = state.units; for (var i = 0; i < us.length; i++) if (us[i] && us[i].id === id) return us[i].player; } catch (e) {}
+        return null;
+    }
+    /* CHORUS: three rings of sound out to the edge, two more per Brood stack it spends (red-eyed), the side ring on the floor;
+       with stacks the brood comes up out of the ground and leaps out */
+    function _cbChorus3D(tx, ty, r, p) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, reach = (r > 0 ? r : 2) + 0.5, n = (p && p.brood != null) ? (p.brood | 0) : 0;
+        var uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), side = _lgSide(null, tx, ty), rings = 2 + Math.min(3, n);
+        /* half-strength ring plates: stacked additive plates washed the caster out white */
+        for (var i = 0; i < rings; i++) (function (j) {
+            var red = j >= 2;
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.45, r1: ts * reach, ms: 600 + (red ? 120 : 0), color: red ? _CB_RED : _CB_GREEN, height: h * (0.8 + 0.12 * (j % 3)), opacity: 0.45 }); } catch (e) {} }, j * 130);
+        })(i);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * reach, ms: 720, color: side, height: ts * 0.05 }); } catch (e) {} }, 140);
+        if (n > 0 && typeof _bugRun === 'function') {
+            var list = [], cnt = 4 * Math.min(3, n), ms = 2200;
+            for (var k = 0; k < cnt; k++) (function (q) {
+                var a = q / cnt * Math.PI * 2 + rn(-0.25, 0.25), dl = rn(0, 260), hopMs = rn(300, 380), hopLen = ts * rn(0.7, 0.95), R = ts * reach;
+                var at = function (e) { var j = Math.floor(e / (hopMs + 120)), f = e - j * (hopMs + 120), hk = f < hopMs ? f / hopMs : 1, d = ts * 0.2 + (j + hk) * hopLen; if (d > R) return null; return { d: d, air: f < hopMs ? Math.sin(hk * Math.PI) : 0 }; };
+                var spot = function (e) { var s = at(e); return s ? [Math.cos(a) * s.d, ts * 0.02 + s.air * ts * 0.55, Math.sin(a) * s.d] : null; };
+                var face = function () { return [Math.cos(a) * ts * 9, ts * 0.02, Math.sin(a) * ts * 9]; };
+                list.push({ key: q % 2 ? 'grasshopper_brown' : 'grasshopper', size: 0.5, at: dl, path: function (e) { var s = at(e); return s && s.air < 0.15 ? spot(e) : null; }, face: face });
+                list.push({ key: 'grasshopper_jump', size: 0.52, at: dl, path: function (e) { var s = at(e); return s && s.air >= 0.15 ? spot(e) : null; }, face: face });
+            })(k);
+            try { _bugRun(tx, ty, list, ms); } catch (e) {}
+        }
+        return true;
+    }
+    _cbChorus3D.wantsParams = true;
+    Object.assign(_spell3DGeometry, {
+        nrDigIn: _cbDigIn3D, nrBuzz: _cbBuzz3D, nrScreech: _cbChorus3D, 'nrDigIn:pulse': _cbPulse3D,
     });
 
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
