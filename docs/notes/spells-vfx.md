@@ -4511,3 +4511,17 @@ New pieces: `_l5Star` (a burst of rays that faces the camera), `_l5Bracket`.
 - **Soul Suck** (`_l5SoulSuck3D`): a kiss mark of rouge and the pale soul drawn out along a ribbon to her.
 - Seen in the frames, not mine to change (the cleanup thread's shared layers): Jackpot and Shattered Mirror (arcane, heavy, area) still get a glass orb + a wide ring about 0.45 s after the hit although `_vcOwn` is true for them.
 - Frames: docs/plans/vfx-cleanup/img/own-look/L5_part4.jpg.
+
+## THE VFX CLEANUP, B3 part 2: THE SIGHT LASERS (2026-11-17, three-renderer.js + three-vfx-effects.js)
+mondo 11-17: "those are lasers too"; own / friendly cyan-blue, enemy red-pink, from the viewer's seat.
+- `_updateLaserSightBeams` (the turret's sight from `_updateTurretAim`, Take Aim's from `state._delayedSpells`): each
+  wanted line now carries `own` (owner / source player === `_viewerPlayerNum()`) and `tgt`. Colour `0x35c8ff` own,
+  `0xff3358` enemy. A dark sleeve cylinder (`entry.edge`, normal blending) round the core; the line is 0.45x as thick.
+- THE LOCK: when `tgt` changes the entry's clock restarts: for 0.55 s the far end sweeps round the target (the amplitude
+  dies as a square) and the dot is wide, then steady, and the dot ticks once (0.17 s). Per client, from what it already
+  draws: nothing relayed, the fog checks above it are unchanged.
+- `EW_NO_VFX_CLEANUP` = the old red rod.
+- The turret blast: every untinted `flash` / `muzzle-flash` layer of the `_turretBlast*` recipes is tinted `0xff6a2a`.
+- Seen: Take Aim, own side (docs/plans/vfx-cleanup/img/b3_sight_after.jpg). Not seen: enemy colour, a turret, the sweep,
+  online from the guest's seat. Open: the gun rig's sniper line (`_sigGunRig3D`), a charge at the barrel.
+
