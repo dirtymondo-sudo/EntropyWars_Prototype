@@ -1,4 +1,4 @@
-# NPC ENCOUNTERS: where it stands, for the next thread (2026-11-17, after steps 1b and 2)
+# NPC ENCOUNTERS: where it stands, for the next thread (2026-11-17, after steps 1b, 2 and 3)
 
 Read this first, then `PLAN.md` section 0 (four rounds of mondo's answers; they win over everything below them), then `STEP-1A.md`.
 **mondo cannot see repo files.** Anything that needs his answer or OK goes to him IN CHAT, in full (tables, lines, pictures sent as files).
@@ -29,7 +29,14 @@ heavy (a headless `load-data.js` script) beside the probe. With the file cache w
 | **Step 1b:** the tempers, groups, lines and numbers | data.js `HQ_NPC_TEMPERS`, `hqNpcTemper`, `hqNpcGroup`, `hqNpcSameGroup`, `hqNpcDefends` (after `hqSpawnExpand()`) |
 | **Step 2:** awareness + the marks: the eye by the lead's portrait (green slashed / amber open), the red `!` over an alert NPC, the Ghost's warning | data.js `HQ_NPC_TEMPERS.aware`, `hqNpcActs`, `hqNpcGround`, `hqNpcOnGround`; three-renderer.js `_hqTickAware`; map.js `_hqAwareEvent`, `_hqFillDock`; styles-base.css `.hq-dock-eye`; notes `docs/notes/npc-system.md` "THE AWARENESS + THE MARKS" |
 
-Not built yet: the ladder, the muggings, giving up, everything from step 3 on. A strike still starts the fight at once.
+| **Step 3:** the strike ladder (REPLACES the one-strike fight): the run, cornered, the Talk box (E first too), the day's memory, the door strike, whoever starts opens round 1, the Guard who sees a strike (warning line, then it comes for you and starts its own fight) | data.js `HQ_NPC_TEMPERS.ladder` / `.guard`, `hqNpcStrike`, `hqNpcMem`, `hqNpcTalks`, `hqNpcGuardSees`; three-renderer.js `_hqLadderStruck`, `_hqTickLadder`, `hq.npcCornered` / `npcStruck` / `encounterEvent`; map.js `_hqEncounterFire` (the ladder in front of the launch), `_hqLadderTalk`, `_hqLadderFight`; battle.js `_afterVSSplash` (`opener`); notes `docs/notes/npc-system.md` "THE STRIKE LADDER" |
+
+Not built yet: the muggings, Brutes coming at you, giving up, everything from step 4 on. A race with no temper still fights on the first strike.
+
+**Step 3's PROPOSALS, put to mondo in chat 11-17 (no answer yet; all are data rows, change them freely):** the run 15 m at 2.0 m/s, cornered = no clear 5 m away
+from you, rest 5 s, the ladder starts over after 30 s left alone; E first shows the NPC's ordinary line with NOTED / FIGHT (the approved Talk lines are answers
+to a strike); keys 1 / E = back off, 2 = fight; the Guard warns at the first strike it sees and comes at the second (2.7 m/s, fight within 1.9 m, gives up past
+32 m or 6 s unseen); the day's memory lives in the page (a reload forgets it) and "day" is the calendar day, as the beaten-today ledger.
 
 **What step 2 could not show in a picture** (say it to mondo if he asks): the red `!` in the proof picture was held on a Police Officer with
 `dev.awareMark` (the real trigger, a Guard who sees you while your aim is on someone it defends, was checked headless through `hqNpcActs`,
@@ -60,12 +67,10 @@ code path was run by day with a Chef standing in for it in the page only.
 ## 5. Next steps, in order
 
 1. ~~The check~~, ~~step 1b~~, ~~step 2~~: done 11-17 (sections 1 and 2).
-2. **Step 3, the strike ladder** (PLAN.md section 6, row 3; REPLACES the one-strike fight): the short run, cornered skips it, the Talk
-   panel (E first too), the third strike starts the fight; the door strike; whoever starts the fight opens round 1; the day's memory per id.
-   It reads `hqNpcTemper(ch).ladder` and the lines in `HQ_NPC_TEMPERS.lines.talk`. It also makes the moment for the Guards' warning line
-   ("Hands off. Now."), which step 2 left out because a strike still starts the fight at once.
+2. ~~Step 3, the strike ladder~~: done 11-17 (section 2).
 3. **Step 4**: NPC-started fights. It sets the muggers' and Brutes' own `alert` (today `hqNpcActs` gives them `watch` only) and the
-   Ghost's fight after its warning.
+   Ghost's fight after its warning. Step 3 left it the tools: a body with `ch._run = { mode: 'chase', home }` comes for the walker and starts its
+   own fight (`onEncounter` with `npcStart`, the enemy opens round 1); the level gap (8) and the gold lost with a fight are still to build.
 4. Then 5a, 6a, 6b, the GATE (he plays Bayside), S beside them.
 5. 28 races that live in the city have no temper yet (Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee; they behave as today and never open the eye):
    they wait for their district's pass, which needs mondo's marks like Bayside's did.

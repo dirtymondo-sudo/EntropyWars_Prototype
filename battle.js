@@ -62864,7 +62864,7 @@
             window._ewEncounterFirstId = null;
             try {
                 const _erF = _encRun();
-                if (_erF && !state.devAutoSim) { const _sf = _erF.field && _erF.field.seats && _erF.field.seats.lead; const _lf = _encLeadUnit(getViewerPlayer(), _sf && _sf[getViewerPlayer()]); if (_lf) window._ewEncounterFirstId = _lf.id; }
+                if (_erF && !state.devAutoSim) { const _sf = _erF.field && _erF.field.seats && _erF.field.seats.lead; const _fp = (_erF.opener === 'npc') ? (getViewerPlayer() === 1 ? 2 : 1) : getViewerPlayer(); const _lf = _encLeadUnit(_fp, _sf && _sf[_fp]); if (_lf) window._ewEncounterFirstId = _lf.id; }   // WHOEVER STARTS THE FIGHT OPENS ROUND 1 (NPC encounters step 3, mondo 11-17): `opener: 'npc'` = an NPC that came for the officer (a Guard that saw a strike), its lead acts first
             } catch (e) { window._ewEncounterFirstId = null; }
             if (getActiveGameMode().blitzMode) {
                 _applyRoundStartPassives();

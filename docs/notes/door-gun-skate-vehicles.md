@@ -665,6 +665,7 @@ archers strike when their arrows land (the pulse's timer). The report is the swi
 drawn (`if (drawn && !ev.door)`). Gates: map.js `_hqGunOpts().strike.ok` (a wild room, the encounter switch),
 `HQ_GUN_RULES.strike` = armed `armMs` 3000 after entry (a fight's return never re-engages at once), the native within
 `maxM` 12 m of the walker, one strike per `cooldownMs` 4000, and a refused launch (the party down…) backs off 11 s more.
+**REPLACED 2026-11-17 (NPC encounters step 3): a standing door's hit is ONE STRIKE OF THE NPC'S LADDER (mondo: yes), not a fight at once: a Civilian runs from the first, Talks at the second. Notes: `docs/notes/npc-system.md` "THE STRIKE LADDER".**
 **THE CARRY** (data.js `hqGunDoorCarry`, filed by map.js `_hqEncounterStart` on `_hqEncounterRun.carry`): every
 standing door on the fight's board (`hqFieldTransform(field.board).inside`, same floor ±3 m) goes onto its cell with its
 hits and its facing (`hqGunDoorBoardFace`: board x = room x, board y = room z). No board (a rotated-seat fight) carries
