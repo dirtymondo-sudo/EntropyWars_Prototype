@@ -146,7 +146,7 @@ function buildTable(S, rasters) {
     const H = S.DOOR_HQ, Z = { v: 2, sq: SQ, plot: PLOT, kinds: KINDS, world: buildWorld(), zones: {} };
     /* a room that says its own place (`room.world`): into its hub's zone; it replaces a row of the table above */
     const zones = ZONES.map(z => Object.assign({}, z, { rooms: z.rooms.map(r => Object.assign({}, r)) }));
-    Object.keys(H.rooms).forEach(id => { const w = H.rooms[id] && H.rooms[id].world; if (!w || !w.hub) return;
+    Object.keys(H.rooms).forEach(id => { const w = H.rooms[id] && H.rooms[id].world; if (!w || !w.hub || w.proof) return;   // (proof: a room baked to try a tool, off the map)
         let z = zones.find(q => q.hub === w.hub); if (!z) { z = { hub: w.hub, layout: null, rooms: [] }; zones.push(z); }
         const row = { room: id, layer: w.layer || 'surface', wx: w.wx, wy: w.wy, zx: w.zx != null ? w.zx : w.wx, zy: w.zy != null ? w.zy : w.wy }; if (w.note) row.note = w.note;
         const i = z.rooms.findIndex(r => r.room === id); if (i >= 0) z.rooms[i] = Object.assign({}, z.rooms[i], row, { wait: undefined }); else z.rooms.push(row); });
