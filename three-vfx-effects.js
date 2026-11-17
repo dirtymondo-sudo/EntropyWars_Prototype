@@ -21746,8 +21746,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         },
         racePlotArmor: function(tx, ty) {
             _sigShieldRing3D(tx, ty, { glowColor: 0xffd875, count: 4, holdMs: 800, radiusTiles: 0.75 });
-            /* THE VFX SWEEP, B6a: the rings in the spell's own pink (pale cream drew as three white rings round the body) */
-            _sigSacredRings3D(tx, ty, _vcOn() ? { color: 0xff7ad0, coreColor: 0xffa8e0, holdMs: 800, radiusTiles: 0.9 } : { color: 0xffe9a8, holdMs: 800, radiusTiles: 0.9 });
+            /* THE VFX SWEEP, B6a: the three sacred rings drew white whatever colour they were handed and hid the body; the
+               shields + the pink burst are the look */
+            if (!_vcOn()) _sigSacredRings3D(tx, ty, { color: 0xffe9a8, holdMs: 800, radiusTiles: 0.9 });
         },
         /* cast beat: freeze-frame on the victim + the manga end-card */
         'raceToBeContinued:mark': function(tx, ty) {
@@ -22091,7 +22092,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            every _POWER_AURA_SPELLS id has one) */
         if (_POWER_AURA_SPELLS[spellId] && params.tx != null && params.ty != null &&
             window.EWPowerAura && typeof window.EWPowerAura.burst === 'function') {
-            try { window.EWPowerAura.burst(params.tx, params.ty, _POWER_AURA_SPELLS[spellId]); } catch (e) {}
+            try { window.EWPowerAura.burst(params.tx, params.ty, (_vcOn() && _S6A_AURA[spellId]) || _POWER_AURA_SPELLS[spellId]); } catch (e) {}   /* THE VFX SWEEP, B6a: a pale shroud in the spell's colour */
         }
 
         var auraEffectId = SPELL_MAP[spellId] && SPELL_MAP[spellId].aura;
@@ -48177,7 +48178,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _capShards(P.sx, P.sy, 'glass', { n: 12, height: 0.6 });
                 try { _sigSpectrumBurst3D(P.sx, P.sy, { radiusPx: _capTs() * 1.1, ms: 700 }); } catch (e) {}
                 try { _sigStatRings3D(P.sx, P.sy, { dir: 1, rings: 4, color: 0xe6a8ff, ms: 720 }); } catch (e) {}
-                _capShell(P.sx, P.sy, { color: 0xc07aff, hot: 0xffe0ff, r0: 0.3, r1: 0.62, h: 0.55, squash: 1.5, grow: 260, hold: 420, fade: 420, op: 0.55 });
+                /* THE VFX SWEEP, B6a: the shell in its violet and thinner (its white-hot face covered the caster for half a second) */
+                if (_vcOn()) _capShell(P.sx, P.sy, { color: 0xa860f0, hot: 0xc890ff, gain: 1.0, r0: 0.3, r1: 0.62, h: 0.55, squash: 1.5, grow: 260, hold: 420, fade: 420, op: 0.3 });
+                else _capShell(P.sx, P.sy, { color: 0xc07aff, hot: 0xffe0ff, r0: 0.3, r1: 0.62, h: 0.55, squash: 1.5, grow: 260, hold: 420, fade: 420, op: 0.55 });
                 _capLight(P.sx, P.sy, 0xe8a8ff, { i: 2.2, ms: 800, h: 0.8 });
             }
         },
@@ -75091,6 +75094,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        The other half of the sweep is in place at each spell's own signature (search "THE VFX SWEEP, B6a"). Looks only; everything
        rides the relayed fire(), nothing on state. Notes: docs/notes/spells-vfx.md "THE VFX SWEEP, B6a". */
     var _S6A_FX = {};
+    var _S6A_AURA = { raceHowl: { color: 0x6f9cf0, durationMs: 2000 } };   /* the power shroud (_POWER_AURA_SPELLS) in moon blue, it was near white */
     function _s6aFx(spellId, intent, effId) { var m = _S6A_FX[spellId]; return (m && m[intent] && _vcOn()) ? m[intent] : effId; }
     function _s6aPale(t) { if (t == null) return true; var r = _vcRgb(t); return Math.min(r[0], r[1], r[2]) >= 0xa0; }
     function _s6aClone(spellId, effId, o, isTile) {
