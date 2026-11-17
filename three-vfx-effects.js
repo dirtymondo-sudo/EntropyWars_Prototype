@@ -64438,6 +64438,279 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['nrDisrupt']     = { aura: 'ceoDisrupt_aura' };
     SPELL_MAP['nrLayoffs']     = { aura: 'ceoLayoffs_aura' };
 
+    /* ════ THE TELEVANGELIST (2026-11-17, the new races' polish thread "Polish Televangelist spells and VFX"; mondo: "flesh out their
+       unique spells and spell animations/vfx"): Prosperity Gospel's three casts had only the family's generic heal and buff looks.
+       The plate is the race: everything here shows where the money goes. Gold + white light for the heals, his purple for his stage,
+       Riot's side colours (from the viewer's own seat: his side cyan-blue, the other side pink-orange) for the reach of the plate.
+       · Laying On of Hands (`aura`): a glowing palm presses in at head height from HIS side (never over the head, where the number
+         rises), a gold sunburst on the floor, white-gold motes up the body.
+       · Collection Plate (`aura`, self): two studio spotlights snap on over him, the gold plate rises out of his hand and spins,
+         and the squares the plate reaches (within 3) ripple out from him with a rim in his side's colour.
+       · THE SKIM (`skim`, battle.js _titheSkim): gold coins hop from the healed body into his plate.
+       · Miracle (`payout` at the cast, battle.js heal kind, and `aura` on the ally): the plate pours: one coin a 15 HP flies from his
+         hand to the ally and lands as the heal does; then a pillar of light comes down from the sky, bigger with a bigger plate.
+       Every piece rides fire() (online.js relays it) and draws only what the viewer's fog shows (_pzSeen). Visuals only. ════ */
+    var _TV = { gold: 0xffd27a, goldHot: 0xfff0b8, white: 0xffffff, purple: 0xa060d0, purpleDeep: 0x5a2a88 };
+    function _tvOff() { return _catOff('spells'); }
+    /* the open palm, drawn once in white (tinted by the material) */
+    function _tvPalmTex() {
+        return _pzTex('tv-palm', 256, 256, function (g, w, h) {
+            g.fillStyle = '#ffffff';
+            var rr = function (x, y, ww, hh, r) { g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + ww - r, y); g.quadraticCurveTo(x + ww, y, x + ww, y + r); g.lineTo(x + ww, y + hh - r); g.quadraticCurveTo(x + ww, y + hh, x + ww - r, y + hh); g.lineTo(x + r, y + hh); g.quadraticCurveTo(x, y + hh, x, y + hh - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath(); g.fill(); };
+            rr(70, 112, 116, 118, 40);                       /* the palm */
+            rr(72, 40, 24, 96, 12); rr(101, 22, 25, 110, 12); rr(131, 26, 25, 106, 12); rr(160, 46, 23, 90, 11);   /* four fingers */
+            g.save(); g.translate(76, 168); g.rotate(-0.85); rr(-14, -70, 28, 84, 13); g.restore();   /* the thumb */
+            /* the soft edge: a glow pass round the shape */
+            g.globalCompositeOperation = 'destination-over'; g.shadowColor = 'rgba(255,255,255,0.9)'; g.shadowBlur = 18;
+            rr(70, 112, 116, 118, 40); g.globalCompositeOperation = 'source-over'; g.shadowBlur = 0;
+        });
+    }
+    /* a sunburst of rays for the floor, drawn once */
+    function _tvBurstTex() {
+        return _pzTex('tv-burst', 256, 256, function (g, w, h) {
+            var c = 128, grd = g.createRadialGradient(c, c, 8, c, c, 124);
+            grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.35, 'rgba(255,255,255,0.55)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = grd;
+            for (var i = 0; i < 16; i++) {
+                var a = i / 16 * Math.PI * 2, wa = i % 2 ? 0.07 : 0.12;
+                g.beginPath(); g.moveTo(c, c); g.lineTo(c + Math.cos(a - wa) * 124, c + Math.sin(a - wa) * 124); g.lineTo(c + Math.cos(a + wa) * 124, c + Math.sin(a + wa) * 124); g.closePath(); g.fill();
+            }
+            g.beginPath(); g.arc(c, c, 34, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* the beam's sheet: bright at the foot, gone by the top (canvas top = the cylinder's top), soft at the seams */
+    function _tvBeamTex() {
+        return _pzTex('tv-beam', 64, 256, function (g, w, h) {
+            var grd = g.createLinearGradient(0, 0, 0, h);
+            grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.55, 'rgba(255,255,255,0.35)'); grd.addColorStop(1, 'rgba(255,255,255,1)');
+            g.fillStyle = grd; g.fillRect(0, 0, w, h);
+        });
+    }
+    /* the plate's velvet: purple with a gold ring, drawn once */
+    function _tvVelvetTex() {
+        return _pzTex('tv-velvet', 128, 128, function (g, w, h) {
+            var grd = g.createRadialGradient(64, 64, 6, 64, 64, 64);
+            grd.addColorStop(0, '#9a52c8'); grd.addColorStop(0.8, '#4a1c70'); grd.addColorStop(1, '#2a0c40');
+            g.fillStyle = grd; g.fillRect(0, 0, w, h);
+            g.strokeStyle = '#e8c070'; g.lineWidth = 3; g.beginPath(); g.arc(64, 64, 40, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = '#e8c070'; g.font = 'bold 34px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('✝', 64, 66);
+        });
+    }
+    /* the collection plate: a gilt bowl with the velvet in it (local y up), every material fadable */
+    function _tvPlate(ts) {
+        var g = new THREE.Group(), gilt = _finBasic(0xffffff, { map: _finTex('gold') }), vel = _finBasic(0xffffff, { map: _tvVelvetTex() });
+        gilt.opacity = vel.opacity = 0;
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.2, ts * 0.07, 24, 1, true), gilt, g);   /* the bowl's wall */
+        _pzMesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.025, 6, 28), gilt, g, 0, ts * 0.035, 0).rotation.x = Math.PI / 2;   /* the rim */
+        var v = _pzMesh(new THREE.CircleGeometry(ts * 0.21, 24), vel, g, 0, -ts * 0.03, 0); v.rotation.x = -Math.PI / 2;
+        _pzMesh(new THREE.CircleGeometry(ts * 0.2, 24), gilt, g, 0, -ts * 0.036, 0).rotation.x = Math.PI / 2;   /* its gilt underside */
+        g.userData.mats = [gilt, vel];
+        return g;
+    }
+    /* a coin that reads at board zoom: the gilt disc plus a gold glint that draws over everything (a bare 13 px disc was lost
+       on the grass), both in userData.mats so _bkFade fades them together */
+    function _tvCoin(ts) {
+        var c = _bkCoin(ts * 0.15), gl = _finSprite(0xffa020, _sigGlowTex(), ts * 0.3, 161);   /* a deep gold: additive pale gold read white */
+        c.add(gl); c.userData.mats.push(gl.material);
+        return c;
+    }
+    /* coins hop from tile a to tile b one after another (the Banker's hop, with the readable coin); only when an end is seen */
+    function _tvCoinHop(a, b, n, o) {
+        o = o || {};
+        if (!_pzSeen(a.x, a.y) && !_pzSeen(b.x, b.y)) return;
+        var ts0 = _cfg().tileSize || 128;
+        for (var i = 0; i < n; i++) (function (i) {
+            _fxDelay(function () {
+                if (_suppressed()) return;
+                var c = _tvCoin(ts0); _bkFade(c, 1);
+                _pzFly(a.x, a.y, b.x, b.y, c, { ms: o.ms || 460, arc: o.arc != null ? o.arc : 0.55, h0: ts0 * (o.h0 != null ? o.h0 : 0.7), h1: ts0 * (o.h1 != null ? o.h1 : 0.75), hideOnLand: true, face: false,
+                    trail: { sprite: 'sparkle', tint: _TV.gold, every: 40, size: 8 },
+                    spin: function (el, obj) { obj.children[0] && (obj.children[0].rotation.x = el * 0.02, obj.children[0].rotation.z = el * 0.013); } });
+            }, i * (o.gap || 70));
+        })(i);
+    }
+    /* the viewer's side colours for a unit standing on (sx, sy): [rim, deep] */
+    function _tvSide(sx, sy) {
+        var S = _ceoSides({ sx: sx, sy: sy });
+        return S.now;
+    }
+
+    /* ════ LAYING ON OF HANDS — the palm presses in from his side, the light runs up the body ════ */
+    EFFECTS['nrLayingOnHands_aura'] = _pzDef('tvLay', { pzOwn: true });
+    _PZ_SIGS.tvLay = function (p) {
+        if (_tvOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('tvLay', 300)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), cd = _nbCamDir(F);
+        /* the hand comes in on the picture's plane at the forehead's height, beside the head, from the side AWAY from the caster
+           in the picture (on his side it covered his body), never over the head (the number rises there) */
+        var side = { x: -cd.z, z: cd.x };
+        if (side.x * ln.ux + side.z * ln.uz > 0) { side.x = -side.x; side.z = -side.z; }
+        var palmM = _pzSolid(0xffe9a8, _tvPalmTex(), { side: THREE.DoubleSide, depthWrite: false }), palm = _pzMesh(new THREE.PlaneGeometry(ts * 0.56, ts * 0.56), palmM, F.g);
+        palm.renderOrder = 162;
+        var haloM = _pzGlow(_TV.gold, _sigGlowTex()), halo = _pzMesh(new THREE.PlaneGeometry(ts * 0.8, ts * 0.8), haloM, F.g);
+        var burst = _bkFloor(F, _tvBurstTex(), ts * 1.5, ts * 1.5, _TV.gold, true), glow = _bkFloor(F, _sigGlowTex(), ts * 1.3, ts * 1.3, _TV.goldHot, true);
+        var headY = ts * 1.05, hit = false, lastS = 0, PRESS = 220;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var k = _sigEaseOutCubic(_sigClamp01(el / PRESS)), out = _sigClamp01((el - PRESS - 160) / 260);
+            var d = ts * (0.85 - 0.5 * k + 0.25 * out);   /* from 0.85 out to 0.35 beside the head, then away */
+            palm.position.set(side.x * d, headY + ts * 0.05 * (1 - k), side.z * d);
+            _pzFace(palm); palm.rotateZ(side.x * cd.z - side.z * cd.x > 0 ? 0.35 : -0.35);   /* tipped toward the head */
+            palmM.opacity = 0.95 * _pzEnv(el, 0, 90, PRESS + 160, PRESS + 420);
+            halo.position.copy(palm.position); _pzFace(halo);
+            haloM.opacity = 0.35 * _pzEnv(el, 0, 120, PRESS + 120, PRESS + 420);
+            if (!hit && el >= PRESS) {
+                hit = true; _sigShockRing3D(tx, ty, { color: _TV.gold, r0: ts * 0.15, r1: ts * 0.8, ms: 380 });
+                for (var s = 0; s < 8; s++) { var sa = s / 8 * Math.PI * 2; _pzP(F, side.x * ts * 0.4, headY, side.z * ts * 0.4, { sprite: 'sparkle', tint: s % 2 ? _TV.goldHot : _TV.white, ml: rn(260, 400), size0: rn(7, 10), size1: 1, vx: Math.cos(sa) * 150, vy: Math.sin(sa) * 150, vz: rn(-20, 60), drag: 2, opacity0: 1 }); }
+            }
+            var be = el - PRESS;
+            burst.scale.setScalar(be < 0 ? 0.05 : Math.max(0.05, _sigEaseOutBack(_sigClamp01(be / 260))));
+            burst.rotation.z = el * 0.0006;
+            burst.material.opacity = be < 0 ? 0 : 0.7 * _pzEnv(be, 0, 60, 600, 1200);
+            glow.material.opacity = 0.4 * _pzEnv(el, 0, 160, 800, 1400);
+            if (el > PRESS && el < 1100 && el - lastS > 60) {
+                lastS = el; var a = rn(0, 6.28), r = ts * rn(0.12, 0.36);
+                _pzP(F, Math.cos(a) * r, ts * rn(0.05, 0.4), Math.sin(a) * r, { sprite: 'sparkle', tint: rn(0, 1) > 0.5 ? _TV.goldHot : _TV.white, ml: rn(600, 900), size0: rn(5, 8), size1: 1, vz: rn(90, 160), opacity0: 0.95 });
+            }
+        });
+    };
+
+    /* ════ COLLECTION PLATE — the spotlights snap on, the plate rises and spins, the reach of the plate ripples out ════ */
+    EFFECTS['nrCollectionPlate_aura'] = _pzDef('tvPlate', { pzOwn: true });
+    _PZ_SIGS.tvPlate = function (p) {
+        if (_tvOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('tvPlate', 400)) return;
+        var R = 3, side = _tvSide(tx, ty), seenMe = _pzSeen(tx, ty);
+        var F = _nrvFrame(tx, ty), ts = F.ts, cells = [];
+        /* the reach: every square within 3 (the plate's rule), a rim on each in his side's colour, rippling out by distance */
+        for (var dx = -R; dx <= R; dx++) for (var dy = -R; dy <= R; dy++) {
+            var dd = Math.abs(dx) + Math.abs(dy); if (dd === 0 || dd > R) continue;
+            var cx = tx + dx, cy = ty + dy; if (!_pzSeen(cx, cy)) continue;
+            if (typeof state !== 'undefined' && state && state.width && (cx < 0 || cy < 0 || cx >= state.width || cy >= state.height)) continue;
+            var rim = _ceoTileRing(F, cx, cy, side[0]); rim.material.opacity = 0;
+            var wp = _worldPos(cx, cy), fill = _pzMesh(new THREE.PlaneGeometry(ts * 0.86, ts * 0.86), _pzGlow(side[1]), F.g, wp.x - F.wp.x, wp.y - F.wp.y + ts * 0.025, wp.z - F.wp.z); fill.rotation.x = -Math.PI / 2;
+            cells.push({ rim: rim, fill: fill, at: 380 + dd * 110, edge: dd === R });
+        }
+        var spots = [], plate = null, pg = null, glow = null, pside = { x: 1, z: 0 };
+        if (seenMe) {
+            /* two studio spotlights from above, crossing on him (purple + gold), open cones */
+            for (var i = 0; i < 2; i++) {
+                var cm = _pzGlow(i ? _TV.gold : _TV.purple), cone = _pzMesh(new THREE.CylinderGeometry(ts * 0.08, ts * 0.62, ts * 4.2, 20, 1, true), cm, F.g);
+                var cdir = _nbCamDir(F), sx2 = (i ? 1 : -1) * -cdir.z, sz2 = (i ? 1 : -1) * cdir.x;   /* one each side across the lens */
+                /* the lamp hangs up and out to one side; the wide end of the cone sits on him */
+                var top = new THREE.Vector3(sx2 * ts * 1.2, ts * 4.2, sz2 * ts * 1.2);
+                cone.position.copy(top).multiplyScalar(0.5);
+                cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), top.clone().normalize());
+                cone.scale.set(1, top.length() / (ts * 4.2), 1);
+                spots.push({ m: cm, at: i * 90 });
+            }
+            pg = new THREE.Group(); F.g.add(pg); plate = _tvPlate(ts); pg.add(plate);
+            var cdp = _nbCamDir(F); pside = { x: -cdp.z, z: cdp.x };
+            glow = _bkFloor(F, _sigGlowTex(), ts * 1.4, ts * 1.4, _TV.gold, true);
+        }
+        _sigShake('light');
+        return _sigRunOwned(F.g, 2200, function (el) {
+            for (var s = 0; s < spots.length; s++) spots[s].m.opacity = 0.22 * _pzEnv(el, spots[s].at, spots[s].at + 50, 1300, 1900) * (el - spots[s].at < 120 ? 1.6 : 1);
+            if (plate) {
+                var up = _sigEaseOutBack(_sigClamp01((el - 80) / 420));
+                pg.position.set(pside.x * ts * 0.5 * up, ts * (0.6 + 0.55 * up), pside.z * ts * 0.5 * up);   /* out of his hand to shoulder height, beside him (over the head it sat on the nameplate) */
+                plate.rotation.y = el * 0.006; plate.rotation.x = 0.35 + Math.sin(el * 0.004) * 0.08;
+                _bkFade(plate, _pzEnv(el, 60, 200, 1500, 2000));
+                glow.material.opacity = 0.45 * _pzEnv(el, 0, 160, 1200, 1800);
+                if (el > 300 && el < 1500 && (el | 0) % 7 === 0) _pzP(F, rn(-0.25, 0.25) * ts, pg.position.y + ts * 0.05, rn(-0.25, 0.25) * ts, { sprite: 'sparkle', tint: _TV.goldHot, ml: rn(400, 650), size0: rn(5, 8), size1: 1, vz: rn(30, 70), opacity0: 0.9 });
+            }
+            for (var c = 0; c < cells.length; c++) {
+                var C = cells[c], e = el - C.at;
+                var pop = e < 0 ? 0 : _sigEaseOutBack(_sigClamp01(e / 240));
+                C.rim.scale.setScalar(Math.max(0.01, pop));
+                C.rim.material.opacity = e < 0 ? 0 : (C.edge ? 0.95 : 0.6) * _pzEnv(e, 0, 80, 900, 1500);
+                C.fill.material.opacity = e < 0 ? 0 : 0.28 * _pzEnv(e, 0, 60, 200, 700);
+            }
+        });
+    };
+
+    /* the skim: gold coins hop from the healed body into the plate, a little gold flash on him when they land */
+    EFFECTS['nrCollectionPlate_skim'] = _pzDef('tvSkim', { pzOwn: true });
+    _PZ_SIGS.tvSkim = function (p) {
+        if (_tvOff()) return; var tx = p.tx, ty = p.ty, fx = p.fromX, fy = p.fromY; if (tx == null || fx == null) return;
+        var n = Math.max(2, Math.min(6, Math.round((p.cut || 0) / 12) + 1)), gap = 70, ms = 440;
+        _tvCoinHop({ x: fx, y: fy }, { x: tx, y: ty }, n, { ms: ms, gap: gap, h1: 1.1 });   /* into the plate at his hand */
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, land = ms + (n - 1) * gap;
+        var glow = _bkFloor(F, _sigGlowTex(), ts * 1.1, ts * 1.1, _TV.gold, true), rung = false;
+        return _sigRunOwned(F.g, land + 700, function (el) {
+            glow.material.opacity = 0.45 * _pzEnv(el, ms - 60, ms + 40, land + 150, land + 600);
+            if (!rung && el >= ms) { rung = true; _sigShockRing3D(tx, ty, { color: _TV.gold, r0: ts * 0.15, r1: ts * 0.6, ms: 300 }); }
+        });
+    };
+
+    /* ════ MIRACLE — the plate pours out of his hand onto the ally (one coin a 15 HP), then the light comes down from the sky ════ */
+    EFFECTS['nrMiracle_payout'] = _pzDef('tvPour', { pzOwn: true });
+    _PZ_SIGS.tvPour = function (p) {
+        if (_tvOff()) return; var tx = p.tx, ty = p.ty, fx = p.fromX, fy = p.fromY; if (tx == null || fx == null) return;
+        var n = Math.max(3, Math.min(16, Math.round((p.plate || 0) / 15))), arrive = Math.max(300, p.ms || 600);
+        var fly = Math.min(560, Math.max(320, arrive * 0.6)), gap = Math.min(45, Math.max(18, (arrive - fly) / n)), start = Math.max(0, arrive - fly - gap * (n - 1));
+        var same = fx === tx && fy === ty;
+        if (!same) { _fxDelay(function () { if (!_suppressed()) _tvCoinHop({ x: fx, y: fy }, { x: tx, y: ty }, n, { ms: fly, gap: gap, h0: 1.0, h1: 1.2, arc: 0.4 }); }, start); return; }
+        /* on himself: the coins go up out of the plate and come down on him */
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, coins = [];
+        for (var i = 0; i < n; i++) { var c = _tvCoin(ts); F.g.add(c); coins.push({ c: c, a: rn(0, 6.28), r: ts * rn(0.1, 0.35), at: start + i * gap, ph: rn(0, 6) }); }
+        return _sigRunOwned(F.g, arrive + 500, function (el) {
+            for (var j = 0; j < coins.length; j++) {
+                var C = coins[j], t = _sigClamp01((el - C.at) / Math.max(200, arrive - C.at));
+                var y = ts * (1.0 + 1.6 * Math.sin(t * Math.PI * 0.85)) - ts * 0.8 * t;
+                C.c.position.set(Math.cos(C.a) * C.r * (1 - t * 0.6), y, Math.sin(C.a) * C.r * (1 - t * 0.6));
+                C.c.rotation.set(el * 0.015 + C.ph, 0, el * 0.011);
+                _bkFade(C.c, el < C.at ? 0 : _pzEnv(el, C.at, C.at + 40, arrive - 40, arrive + 60));
+            }
+        });
+    };
+    EFFECTS['nrMiracle_aura'] = _pzDef('tvMiracle', { pzOwn: true });
+    _PZ_SIGS.tvMiracle = function (p) {
+        if (_tvOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('tvMiracle', 400)) return;
+        /* how much was in the plate (read now: the heal empties it a moment later): a bigger plate, a bigger light */
+        var plate = 0;
+        try {
+            var st = (typeof state !== 'undefined' && state) ? state : (window.GAME && window.GAME.state);
+            (st && st.units || []).forEach(function (u) { if (u && !u.dead && u.race === 'televangelist' && (u._plate || 0) > plate && Math.abs(u.x - tx) + Math.abs(u.y - ty) <= 4) plate = u._plate; });
+        } catch (e) {}
+        var big = Math.min(1, plate / 200);
+        var F = _nrvFrame(tx, ty), ts = F.ts, H = ts * 3.4;
+        /* the beam fades out going up (a gradient sheet), so from a high camera it never lies over the bodies behind it */
+        var colM = _pzGlow(_TV.gold, _tvBeamTex()), col = _pzMesh(new THREE.CylinderGeometry(ts * (0.34 + 0.12 * big), ts * (0.4 + 0.14 * big), H, 24, 1, true), colM, F.g, 0, H / 2, 0);
+        var coreM = _pzGlow(_TV.goldHot, _tvBeamTex()), core = _pzMesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.06, H, 12, 1, true), coreM, F.g, 0, H / 2, 0);
+        var burst = _bkFloor(F, _tvBurstTex(), ts * (1.5 + 0.5 * big), ts * (1.5 + 0.5 * big), _TV.gold, true), glow = _bkFloor(F, _sigGlowTex(), ts * 1.6, ts * 1.6, _TV.gold, true);
+        var rays = [];
+        for (var i = 0; i < 6 + Math.round(6 * big); i++) {
+            var a = i / (6 + Math.round(6 * big)) * Math.PI * 2, rM = _pzGlow(_TV.gold), ray = _pzMesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.025, ts * 2.2, 5), rM, F.g);
+            rays.push({ m: rM, o: ray, a: a, r: ts * (0.7 + 0.2 * (i % 2)), d: i * 30 });
+        }
+        _sigShake(big > 0.5 ? 'normal' : 'light');
+        _sigShockRing3D(tx, ty, { color: _TV.gold, r0: ts * 0.2, r1: ts * (1.0 + 0.6 * big), ms: 460 });
+        var lastS = 0;
+        return _sigRunOwned(F.g, 1900, function (el) {
+            /* the column comes DOWN from the sky (scaled from its top), holds, then thins away; the number sits inside a see-through glow */
+            var dn = _sigEaseOutCubic(_sigClamp01(el / 260));
+            col.scale.set(1 - 0.5 * _sigClamp01((el - 900) / 700), Math.max(0.01, dn), 1 - 0.5 * _sigClamp01((el - 900) / 700)); col.position.y = H - H / 2 * dn;
+            core.scale.set(1, Math.max(0.01, dn), 1); core.position.y = col.position.y;
+            colM.opacity = (0.14 + 0.08 * big) * _pzEnv(el, 0, 80, 600, 1200);
+            coreM.opacity = 0.3 * _pzEnv(el, 0, 60, 200, 500);
+            burst.scale.setScalar(Math.max(0.05, _sigEaseOutBack(_sigClamp01((el - 180) / 300)))); burst.rotation.z = -el * 0.0005;
+            burst.material.opacity = 0.6 * _pzEnv(el, 180, 260, 1000, 1700);
+            glow.material.opacity = 0.3 * _pzEnv(el, 100, 260, 1000, 1700);
+            for (var j = 0; j < rays.length; j++) {
+                var Rr = rays[j], k = _sigClamp01((el - 200 - Rr.d) / 700);
+                Rr.o.position.set(Math.cos(Rr.a + el * 0.0012) * Rr.r, ts * (2.6 - 1.6 * k), Math.sin(Rr.a + el * 0.0012) * Rr.r);
+                Rr.m.opacity = 0.55 * _pzEnv(el, 200 + Rr.d, 260 + Rr.d, 700 + Rr.d, 1000 + Rr.d);
+            }
+            if (el > 150 && el < 1400 && el - lastS > 45) {
+                lastS = el; var sa = rn(0, 6.28), sr = ts * rn(0.1, 0.55);
+                _pzP(F, Math.cos(sa) * sr, ts * rn(0.1, 0.4), Math.sin(sa) * sr, { sprite: 'sparkle', tint: rn(0, 1) > 0.4 ? _TV.goldHot : _TV.white, ml: rn(700, 1000), size0: rn(6, 9), size1: 1, vz: rn(100, 180), opacity0: 0.95 });
+            }
+        });
+    };
+    SPELL_MAP['nrLayingOnHands']   = { aura: 'nrLayingOnHands_aura' };
+    SPELL_MAP['nrCollectionPlate'] = { aura: 'nrCollectionPlate_aura', skim: 'nrCollectionPlate_skim' };
+    SPELL_MAP['nrMiracle']         = { aura: 'nrMiracle_aura', payout: 'nrMiracle_payout' };
+
     /* ════ FLAT EARTH — the disc itself (the ice wall round its rim) comes down flat out of the sky onto the target and
        the ground round it is pressed flat (a dust ring); it borrowed the bomb's explosion ════ */
     EFFECTS['f4FlatEarth_impact'] = _pzDef('f4FlatEarth', { shake: 'hard', layers: [
