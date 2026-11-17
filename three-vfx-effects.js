@@ -67574,6 +67574,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty);
             var B = _dbBox(ts * 0.34, true); F.g.add(B.g);
             B.g.position.set(ln.ux * ts * 0.3, 0, ln.uz * ts * 0.3); B.g.rotation.y = Math.atan2(ln.ux, ln.uz);
+            /* the lid opens AWAY from the lens, so every seat looks into the open box (mondo 11-17: "the lid flips open the
+               wrong way" when the box went the other way across the screen); each screen turns it for its own camera */
+            var _lc = _pzCam();
+            if (_lc) { var _lx = _lc.position.x - (F.wp.x + B.g.position.x), _lz = _lc.position.z - (F.wp.z + B.g.position.z); if (_lx || _lz) B.g.rotation.y = Math.atan2(_lx, _lz); }
             _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.18, r1: ts * 0.8, ms: 420, height: 4 });
             _capPuff(tx, ty, 'dust-puff', 5, { r: 0.3, h: 0.03, out: 90, vz0: 5, vz1: 25, s0: 10, s1: 16, sEnd: 30, op: 0.4 });
             var lastS = 0;
