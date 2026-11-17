@@ -21267,6 +21267,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                broken notes: harmony torn apart. THE debuff showpiece —
                reads at any zoom (the old effect was a 55px flash). */
             var ts0 = _cfg().tileSize || 128;
+            /* THE VFX SWEEP B9a: a sour chord is not rune magic: the two rune circles go, the jagged rings + the broken notes are the spell */
+            if (!_vcOn()) {
             _sigMagicCircle3D(tx, ty, {
                 color: 0xcc55ff, radiusPx: ts0 * 1.3, holdMs: 850,
                 spin: 0.010, rise: 26, opacity: 0.8,
@@ -21275,10 +21277,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 color: 0xff44aa, radiusPx: ts0 * 0.85, holdMs: 850,
                 spin: -0.014, height: 26, opacity: 0.7,
             });
+            }
             _sigSonicBoom3D(tx, ty, {
                 color: 0xcc55ff, rings: 4, ringGapMs: 140, radiusTiles: 2.1,
                 notes: 4, broken: true, noteColor: 0xff66dd, noteScale: 1.1,
-                shake: 'normal', flashPeak: 0.17, sparkSprite: 'spark-pink',
+                shake: 'normal', flashPeak: _vcOn() ? 0 : 0.17, sparkSprite: 'spark-pink',   /* THE VFX SWEEP B9a: no screen flash */
             });
         },
         lullaby: function(tx, ty) {
@@ -21346,7 +21349,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }); },
         raceInkCloud: function(tx, ty, r) { _sigGasCloud3D(tx, ty, {
             color: 0x3355aa, coreColor: 0x223377, gentle: true,
-            radiusTiles: (r || 1) + 0.6, count: 12, ms: 1500,
+            radiusTiles: (r || 1) + 0.6, count: 12, ms: 1500, noPool: _vcOn(),   /* THE VFX SWEEP B9a: ink, no circle of light under it */
         }); },
         raceExhaustCloud: function(tx, ty, r) { _sigGasCloud3D(tx, ty, {
             color: 0x99aa77, coreColor: 0x778855, gentle: true,
@@ -21853,10 +21856,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            churning inside a counter-spinning witch-ring. */
         raceColdSpot: function(tx, ty, r) {
             _sigGasCloud3D(tx, ty, {
-                color: 0x9fd8e8, coreColor: 0xdff4ff, gentle: true,
-                radiusTiles: (r != null ? r : 1) + 0.5, count: 14, ms: 1700,
+                color: _vcOn() ? 0x6fb4d8 : 0x9fd8e8, coreColor: _vcOn() ? 0x8fc4e6 : 0xdff4ff, gentle: true,   /* THE VFX SWEEP B9a: cold blue fog, it drew near-white over the bodies */
+                radiusTiles: (r != null ? r : 1) + 0.5, count: 14, ms: 1700, noPool: _vcOn(),
             });
-            _sigMagicCircle3D(tx, ty, {
+            /* THE VFX SWEEP B9a: a ghost's cold is not rune magic, and the circle lay on the zone's own squares */
+            if (!_vcOn()) _sigMagicCircle3D(tx, ty, {
                 color: 0x88ccee, radiusPx: (_cfg().tileSize || 128) * 1.25,
                 holdMs: 1200, spin: -0.0024, opacity: 0.55,
             });
@@ -22080,7 +22084,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigRegenPulse3D(tx, ty, { color: 0xa8ffc4, ms: 900 });
         },
         provoke: function(tx, ty) {
-            _sigSonicBoom3D(tx, ty, { color: 0xff9944, rings: 3, radiusTiles: 1.2 });
+            _sigSonicBoom3D(tx, ty, { color: 0xff9944, rings: 3, radiusTiles: 1.2, flashPeak: _vcOn() ? 0 : undefined });   /* THE VFX SWEEP B9a: the shout is its rings, no screen flash */
         },
     };
 
@@ -22439,11 +22443,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _VC_NO_RUNE = { heal: 1, mana: 1, aura: 1, psychicAid: 1, bloodAura: 1, ki: 1 };   /* ki (B4): a power-up is an aura, not a rune */
     /* THE VFX SWEEP (B9a, 11-17): a spell of a rune school that is NOT rune magic draws no cast rune under its caster (mondo: the
        rune "should be preserved for magic spells where it makes sense"). One id a spell; a sweep thread adds its own ids here.
-       Kept on purpose (rune magic): Annihilation, Arcane Sigil, Crystal Ball, Hocus Pocus. */
+       Kept on purpose (rune magic): Annihilation, Arcane Sigil, Crystal Ball, Hocus Pocus, Contract, Forsaken, Hex of Agony,
+       Mark of the Beast. */
     var _VC_SPELL_NO_RUNE = {
         /* B9a, arcane: silk, cards, mirrors, a slot machine, a web, a paradox, the winged disk */
         raceCocoon: 1, raceDeadMansHand: 1, raceHallOfMirrors: 1, raceJackpot: 1, sigKneel: 1, raceMirrorShard: 1, racePrismMirror: 1,
         raceSevenYears: 1, raceShatteredMirror: 1, raceStrangeLoop: 1, raceWebLaunch: 1,
+        /* B9a, hex (part 2): a thrown thing, a shout, a gadget, a cloud, a trick, a ghost: none of them is drawn on the ground */
+        raceAnchor: 1, raceBlueScreen: 1, provoke: 1, raceCampaignPromise: 1, nrCard: 1, raceCharm: 1, raceColdSpot: 1, raceConstrict: 1,
+        goDesignateTarget: 1, discordance: 1, nrEagleEye: 1, raceExhaustCloud: 1, raceFilibuster: 1, goFlowerInTheBarrel: 1,
+        pzFreezePolice: 1, nrGoViral: 1, sharedGravityCrush: 1, raceHaunt: 1, raceHogtie: 1, raceImplant: 1, raceInkCloud: 1, ironGrip: 1,
+        sigLampSmoke: 1, sharedLowGravity: 1, raceMeanMug: 1, raceMemoryLeak: 1,
         /* the brief's lead: Love Ray is a ray gun, the purple circle under the shooter was this rune */
         sigLoveRay: 1
     };
