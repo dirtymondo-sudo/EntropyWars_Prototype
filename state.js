@@ -5288,7 +5288,8 @@
 
             let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '')
                 + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id   // Blind / Jammed acting: its own sight only
-                + '|R' + ((typeof realmViewKey === 'function' && realmViewKey()) || '');   // 🌑 a Shadow Realm turn is its own screen
+                + '|R' + ((typeof realmViewKey === 'function' && realmViewKey()) || '')   // 🌑 a Shadow Realm turn is its own screen
+                + '|C' + ((state._cube && state._cube.ver) || '');   // THE CUBE: a relay / a turn moves every square
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
@@ -5316,7 +5317,8 @@
 
             let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '')
                 + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id   // Blind / Jammed acting: its own sight only
-                + '|R' + ((typeof realmViewKey === 'function' && realmViewKey()) || '');   // 🌑 a Shadow Realm turn is its own screen
+                + '|R' + ((typeof realmViewKey === 'function' && realmViewKey()) || '')   // 🌑 a Shadow Realm turn is its own screen
+                + '|C' + ((state._cube && state._cube.ver) || '');   // THE CUBE: a relay / a turn moves every square
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];

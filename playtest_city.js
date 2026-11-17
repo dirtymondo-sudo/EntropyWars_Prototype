@@ -19,7 +19,7 @@ const NPM_MIRROR = [
 ];
 const CT = { '.js': 'application/javascript', '.css': 'text/css' };
 const args = process.argv.slice(2).filter(a => !a.startsWith('--')), flags = process.argv.slice(2).filter(a => a.startsWith('--'));
-const flag = (k, d) => { const f = flags.find(x => x === '--' + k || x.startsWith('--' + k + '=')); if (!f) return d; const v = f.split('=')[1]; return v === undefined ? true : v; };
+const flag = (k, d) => { const f = flags.find(x => x === '--' + k || x.startsWith('--' + k + '=')); if (!f) return d; const i = f.indexOf('='); return i < 0 ? true : f.slice(i + 1); };   // (2026-11-17: the value keeps its own '=' signs: a --pre script has them)
 const room = args[0] || 'site_prebuilt_downtown_streets'; const views = JSON.parse(args[1] || '[]'); const noGltf = !!flag('nogltf', false); const WAIT = Number(flag('wait', 22000));
 const EXE = fast.EXE;
 const run = async () => {
@@ -54,7 +54,7 @@ const run = async () => {
   if (flag('flags', '')) await page.addInitScript((fl) => { fl.split(',').forEach(k => { if (k) window[k] = true; }); }, String(flag('flags', '')));
   page.on('pageerror', e => errs.push(String(e && e.message || e).slice(0, 240)));
   page.on('console', m => { const t = m.text(); if (process.env.EW_LIVE_LOG && /\[HQ\]/.test(t)) console.log('LIVE', t.slice(0, 200)); if (/\[HQ\]|failed|error|diner|warn/i.test(t) && !/tabletop .* has nothing under it/.test(t)) logs.push(t.slice(0, Number(flag('loglen', 240)))); });
-  await page.goto('http://localhost:3000/?hq&nomenu3d', { waitUntil: 'commit', timeout: 60000 });
+  await page.goto('http://localhost:3000/?hq&nomenu3d' + (flag('gpu', false) ? '&ew_gpu=' + flag('gpu', '') : ''), { waitUntil: 'commit', timeout: 60000 });
   const t0 = Date.now(); let ok = false;
   while (Date.now() - t0 < 120000) { try { const st = await page.evaluate(() => [document.readyState, typeof window._hqEnter, typeof ThreeRenderer !== 'undefined' && !!ThreeRenderer.hq]); if (st[1] === 'function' && st[2]) { ok = true; break; } } catch (e) {} await sleep(800); }
   if (!ok) { console.log('page never ready', errs.slice(0, 5)); await browser.close(); process.exit(1); }

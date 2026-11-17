@@ -1827,6 +1827,11 @@ const ThreeCamera = (function () {
             /* for a cube-wall hit, the open tile IN FRONT of the struck wall */
             isSideFace: false, sideTileX: null, sideTileY: null
         };
+        /* THE CUBE (2026-11-17): the cube is drawn folded, so the world point is not the frame's square; each piece knows its own */
+        if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.cubeCellOf && typeof state !== 'undefined' && state && state._cube) {
+            const cc = ThreeRenderer.cubeCellOf(hit.object);
+            if (cc) { res.tileX = cc.x; res.tileY = cc.y; res.fracX = 0.5; res.fracY = 0.5; return res; }
+        }
         /* A wall hit has a horizontal normal AND straddles a tile boundary —
            props (tree planes, torch sticks…) also have horizontal normals but
            their hit points sit inside the tile, so both floors agree. */
