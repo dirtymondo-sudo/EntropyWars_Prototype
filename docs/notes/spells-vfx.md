@@ -4682,3 +4682,42 @@ into more vfx"; and 11-17: only where something really comes through from somewh
   `ThreeVFXEffects.fire('windup', id, {...})`): a real teleport cast is over before the runner's first frame.
 - Open: `teleport` (moves another unit), the air door on the kit, doors / summons / rifts.
 
+
+
+## THE VFX SWEEP, B8b, part 1 (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B8b.txt`: fire, nature, poison, 82 spells)
+The generic white left inside each spell's OWN effect, traced in the code (SWEEP_BRIEF.md). All behind `EW_NO_VFX_CLEANUP`.
+Edits sit where each spell is written (grep "THE VFX SWEEP B8b"); recipe layers are repainted from the block
+"THE VFX SWEEP, B8b" (after the L1 block): `_b8bTint(effect, layer, sprite, tint)` and `_b8bMap(spell, intent, recipe)`
+are getters, so the old look comes back live with the switch.
+- **Three shared helpers took an opt-in knob** (nothing else in them changed; any sweep thread may pass it):
+  `_sigJawsBite3D` + `_sigClawCombo3D` `plain: true` = no summon circle under the bite, no screen flash, no speed burst
+  (the jaws / claws, their ring, their cuts and the flecks stay); `_sigGasCloud3D` `noPool: true` = no magic circle
+  under the cloud.
+- **The bites** (Pounce, Infectious Bite, Ghoulish Bite, Venom Fang): `plain`. **Unmasked**: its claw combo `plain`.
+- **Toxic Nova**: `noPool` (the circle sat under the poison noise wash); its ground ring green (it was the pale
+  untinted ring). **Plandemic**, **Splash**: the same green ring; Plandemic also loses the sigil under the scientist and
+  the one under the cloud, and its virus bodies' core is green.
+- **Burnout**: no screen flash, the second ring orange. **Nuclear Pulse**: no screen flash (the blue dome + ring are it).
+- **Extinction Event**, **Morning Star**: the fire column's core in fire / gold (they were white); Morning Star's landing
+  flash gold. The falling star itself stays white: it is the star.
+- **Shuttle Launch**: the pale second ring off (the exhaust rolling out over the ground is the piece).
+- **Nuclear Option**: no red rune on the target (the warning lights + the drop's own target ring stay); the blast ring
+  orange. The white-out stays: it is the bomb.
+- **Fireball**, **Cluster Rockets** (+ Mortar Salvo, same recipe): the ground ring burns orange.
+- **Fae Ring**: no screen flash. Its circle stays: the ring IS the spell.
+- **Wrath of the Wild**: the fissures' core green. **Ruler Smack**: the smack's crack in the ruler's wood colour.
+- **Ape Fury**: the two chest-beat rings + the smash ring in the dust's tan (near-white before).
+- **Leech Seed**: no sigil under the caster or the victim; the drain line's core green.
+- **From the Treeline**, **Overrun**: the hit flash in leaf green / ant amber. **Web Snare**: the ring under the web in
+  void silk. **Acid Flask**, **Chemical Concoction**: the break's flash acid green.
+- **Tail Whip** wore the robot's Hydraulic Punch on the hit (two white flashes, steam, steel sparks): its own recipe now
+  (`b8bTailWhip_impact`: dirt, dust, leaves; L1's look flashes the square). **Cannibalize** wore Raise Dead's burst (a pale
+  halo ring, a flash, a holy pillar): `b8bCannibalize_burst` keeps the dark flame, mist and blood only.
+- **Left on purpose:** the families' own ground rings (the druid ring under Overgrowth / Bumper Crop / Wrath of the Wild,
+  the fire circle under Combust / Inferno, the hazard ring under Venom Burst / Miasma): coloured, drawn for those spells.
+  Solar Flare's screen flash (the flare is the spell), Nuclear Option's white-out, Morning Star's white star, Web Snare's
+  white silk, Shuttle Launch's white exhaust, Hot Pan's steam, the bites' teeth, the flask's glass.
+- **Seen, not mine:** Cluster Rockets lands under five or six overlapping tan rings: they come from the explosion kit
+  (`_crExplosion` through `_crBoom`), one a rocket, not from the recipe ring this part recoloured. For the cleanup thread.
+- Frames (looked at): `docs/plans/vfx-cleanup/img/sweep/B8b_part1_1.jpg`, `_2.jpg` (the hit frame of each of the 28).
+  Cannibalize's frame shows no cast (no corpse on the harness board): not seen.
