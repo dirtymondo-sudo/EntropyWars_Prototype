@@ -141,7 +141,8 @@ const ThreeVFXEffects = (function () {
         raceSaddleUp: { ms: 3200 },                                 // the horse comes in on the cast; the buff keeps the rider up (battle.js unit._mounted)
         pzRideToValhalla: { key: 'horse', lance: true },            // the valkyrie's white horse (THE SPEAR: her spear couched)
         raceLasso: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRustle: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRoundUp: { riders: _RIDE_COWBOYS, ms: 2800 },
-        sigLunarLander: { vehicle: 'lunar_lander', ms: 1600 }       // THE SPACE PROPS (2026-10-27): the astronaut flies the lander (mondo: "i meant the lunar lander")
+        sigLunarLander: { vehicle: 'lunar_lander', ms: 1600 },      // THE SPACE PROPS (2026-10-27): the astronaut flies the lander (mondo: "i meant the lunar lander")
+        nrPopemobile: { vehicle: 'popemobile', ms: 2200 }            // ⛪ THE POPE (2026-11-17): he drives up in the Popemobile, standing in the glass box
     };
     function _rideWindup(spellId, p) {
         var R = _RIDE_CASTS[spellId];
@@ -45267,6 +45268,172 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrOnDuty:save': _lgSave3D, 'nrThreeWhistles:blow': _lgBlow3D,
     });
 
+    /* ══ THE POPE (2026-11-17, mondo's kit: Thoughts and Prayers, Popemobile, Celibacy, Excommunication) ══ Painted shapes in code
+       (canvas textures, no sim fire): the Vatican's gold and white, and the side colour from the viewer's seat (THE RIOT PASS: your
+       side cyan-blue, the other pink-red) on every floor ring.
+         THOUGHTS AND PRAYERS (aura on the ally): a gold cross lifts off the chest and rises away, a halo ring at the head, a few
+           motes of light, a floor ring in the caster's side colour.
+         EXCOMMUNICATION (impact): the church doors swing shut in front of the target (two carved wooden leaves, gold studs), the bell
+           rings (gold rings), the leaves are gone, and the stripped buffs fly off it as gold shards.
+         CELIBACY (impact): a gold padlock drops onto the chest and snaps shut; every summon on the target's side gets its own small
+           padlock that flies over to the target, one after another (the per-summon damage, made readable). Fogged summons are never
+           drawn (no positions leak).
+         POPEMOBILE: he rides the Meshy Popemobile (three-renderer.js _MOUNT_VEHICLES, via _RIDE_CASTS); the glass going up as the
+           shield ('nrPopemobile:glass', battle.js _popeGlassUp) is a glint over the box and a ring in his side colour. */
+    var _PP_GOLD = 0xffd56a;
+    function _ppCrossTex() {
+        return _sigTex('pp-cross', 128, function (g, S) {
+            g.fillStyle = '#ffffff';
+            g.fillRect(S * 0.42, S * 0.06, S * 0.16, S * 0.88);   // the upright
+            g.fillRect(S * 0.18, S * 0.26, S * 0.64, S * 0.15);   // the bar, a third down
+        });
+    }
+    function _ppPadlockTex() {
+        return _sigTex('pp-padlock', 128, function (g, S) {
+            g.lineWidth = S * 0.1; g.strokeStyle = '#d9dde4';
+            g.beginPath(); g.arc(S / 2, S * 0.42, S * 0.2, Math.PI, 0); g.lineTo(S * 0.7, S * 0.5); g.moveTo(S * 0.3, S * 0.42); g.lineTo(S * 0.3, S * 0.5); g.stroke();   // the shackle
+            var gr = g.createLinearGradient(0, S * 0.48, 0, S * 0.92); gr.addColorStop(0, '#ffe58a'); gr.addColorStop(1, '#b8861e');
+            g.fillStyle = gr; g.fillRect(S * 0.2, S * 0.48, S * 0.6, S * 0.44);   // the body
+            g.fillStyle = '#5a3a0a'; g.beginPath(); g.arc(S / 2, S * 0.64, S * 0.055, 0, Math.PI * 2); g.fill(); g.fillRect(S * 0.475, S * 0.66, S * 0.05, S * 0.14);   // the keyhole
+        });
+    }
+    function _ppDoorTex() {
+        return _sigTex('pp-door', 128, function (g, S) {
+            g.fillStyle = '#5a3418'; g.fillRect(0, 0, S, S);
+            for (var i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#6a3e1e' : '#4e2c12'; g.fillRect(i * S / 4, 0, S / 4 - 2, S); }   // the planks
+            g.strokeStyle = '#e8c060'; g.lineWidth = S * 0.05; g.strokeRect(S * 0.04, S * 0.04, S * 0.92, S * 0.92);   // the gilt edge
+            g.fillStyle = '#ffd86a';
+            for (var r = 0; r < 4; r++) for (var c = 0; c < 3; c++) { g.beginPath(); g.arc(S * (0.25 + c * 0.25), S * (0.2 + r * 0.2), S * 0.03, 0, Math.PI * 2); g.fill(); }   // the studs
+            g.fillStyle = '#ffe9a8'; g.fillRect(S * 0.82, S * 0.46, S * 0.1, S * 0.1);   // the ring pull
+        });
+    }
+    function _ppSide(owner, tx, ty) { return _lgSide(owner, tx, ty); }
+    function _ppOwnerAt(x, y) {
+        try { var us = state.units; for (var i = 0; i < us.length; i++) { var u = us[i]; if (u && !u.dead && u.x === x && u.y === y) return u.player; } } catch (e) {}
+        return null;
+    }
+    EFFECTS['nrThoughtsAndPrayers_aura'] = { layers: [
+        { count: 9, sprite: 'heal-glow', ml: [700, 1100], offsetXY: 20, z: [30, 80], tint: 0xfff0b0, vzRange: [30, 80], size0: [5, 9], size1: 2, opacity0: 0.85, delayMs: 260 },
+        { count: 5, sprite: 'sparkle', ml: [500, 900], offsetXY: 18, z: [70, 110], tint: 0xffe28a, vzRange: [10, 40], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 120 },
+    ] };
+    EFFECTS['nrExcommunication_impact'] = { layers: [
+        { count: 14, sprite: 'sparkle', ml: [420, 760], offsetXY: 10, z: [40, 90], tint: 0xffd56a, vxRange: 240, vyRange: 240, vzRange: [40, 180], gravity: 300, drag: 0.5, size0: [5, 9], size1: 2, opacity0: 0.95, delayMs: 520 },
+        { sprite: 'flash', ml: 220, z: 60, size0: 30, size1: 110, tint: 0xfff2c8, opacity0: 0.5, delayMs: 420 },
+    ] };
+    EFFECTS['nrCelibacy_impact'] = { layers: [
+        { count: 8, sprite: 'sparkle', ml: [400, 700], offsetXY: 12, z: [50, 80], tint: 0xffe28a, vxRange: 120, vyRange: 120, vzRange: [20, 90], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 300 },
+    ] };
+    Object.assign(SPELL_MAP, {
+        nrThoughtsAndPrayers: { aura: 'nrThoughtsAndPrayers_aura' },
+        nrExcommunication:    { impact: 'nrExcommunication_impact' },
+        nrCelibacy:           { impact: 'nrCelibacy_impact' },
+    });
+    /* THOUGHTS AND PRAYERS: the cross rises off the ally, the halo rings at the head, the caster's side colour on the floor */
+    function _ppPrayers3D(tx, ty) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), side = _ppSide(_ppOwnerAt(tx, ty), tx, ty);
+        var cross = _afDarkSprite(_PP_GOLD, _ppCrossTex(), h * 0.4); cross.material.depthTest = false; cross.renderOrder = 160; F.g.add(cross);   // drawn over the body
+        var glow = _finSprite(0xfff0b0, _ppCrossTex(), h * 0.5, 159); F.g.add(glow);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.12, r1: ts * 0.5, ms: 520, color: _PP_GOLD, height: h * 1.05 }); } catch (e) {} }, 120);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.25, r1: ts * 1.1, ms: 700, color: side, height: ts * 0.05 }); } catch (e) {} }, 240);
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid), up = _sigClamp01(el / total);
+            var y = feet.y + h * (1.15 + 0.9 * up * up);   // over the head, then up and away
+            cross.position.set(feet.x, y, feet.z); glow.position.copy(cross.position);
+            var o = _afEnv(el, 0, 160, 1300, total);
+            cross.material.opacity = 0.95 * o; glow.material.opacity = 0.45 * o;
+        });
+    }
+    /* EXCOMMUNICATION: the doors shut in the caster's face of the target, the bell, then the stripped buffs fly off as gold */
+    function _ppExcommunicate3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var from = _afCaster(tx, ty, o), L = _nrvLine(F, from, tx, ty);
+        var casterOwner = (o.fromX != null) ? _ppOwnerAt(o.fromX, o.fromY) : null;
+        var side = _ppSide(casterOwner, from.x, from.y);
+        var hold = new THREE.Group(); hold.rotation.y = Math.atan2(L.ux, L.uz); F.g.add(hold);   // +Z faces the caster
+        var dw = h * 0.42, dh = h * 1.25, mats = [], leaves = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var hinge = new THREE.Group(); hinge.position.set(s * dw, 0, ts * 0.32); hold.add(hinge);
+            var m = _finBasic(0xffffff, { opacity: 0, side: THREE.DoubleSide, map: _ppDoorTex() }); mats.push(m);
+            var leaf = new THREE.Mesh(new THREE.PlaneGeometry(dw, dh), m); leaf.position.set(-s * dw / 2, dh / 2, 0); hinge.add(leaf);
+            leaves.push({ hinge: hinge, s: s });
+        }
+        _fxDelay(function () {
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 0.9, ms: 420, color: _PP_GOLD, height: h * 0.9 }); } catch (e) {}
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.3, ms: 620, color: side, height: ts * 0.05 }); } catch (e) {}
+        }, 420);
+        var total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid); hold.position.copy(feet);
+            var shut = _sigEaseOutBack(_sigClamp01(el / 380));
+            for (var i = 0; i < leaves.length; i++) leaves[i].hinge.rotation.y = leaves[i].s * (Math.PI / 2) * (1 - shut);   // open (edge-on) → shut across the front
+            var op = _afEnv(el, 0, 80, 1000, 1300);
+            for (var k = 0; k < mats.length; k++) { mats[k].opacity = op; mats[k].depthWrite = op > 0.6; }
+        });
+    }
+    /* CELIBACY: the padlock snaps shut on the target; one small padlock flies over from every summon on its side */
+    function _ppCelibacy3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), owner = _ppOwnerAt(tx, ty);
+        var casterOwner = (o.fromX != null) ? _ppOwnerAt(o.fromX, o.fromY) : null;
+        var side = _ppSide(casterOwner, o.fromX != null ? o.fromX : tx, o.fromX != null ? o.fromY : ty);
+        var lock = _afDarkSprite(0xffffff, _ppPadlockTex(), h * 0.42); lock.material.depthTest = false; lock.renderOrder = 160; F.g.add(lock);
+        var glow = _finSprite(_PP_GOLD, _ppPadlockTex(), h * 0.6, 159); F.g.add(glow);
+        var flyers = [];
+        try {
+            var tur = (state && state.turrets) || [];
+            for (var i = 0; i < tur.length; i++) {
+                var t = tur[i];
+                if (!t || t.owner !== owner || !((t.hp || 0) > 0) || t.plant || _afFogHides(t.x, t.y)) continue;
+                var sp = _afDarkSprite(0xffffff, _ppPadlockTex(), h * 0.28); sp.material.depthTest = false; sp.renderOrder = 160; F.g.add(sp);
+                flyers.push({ sp: sp, a: _afTo(F, t.x, t.y), t0: 520 + flyers.length * 140 });
+            }
+        } catch (e) {}
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.6, ms: 300, color: _PP_GOLD, height: h * 0.6 }); } catch (e) {} }, 260);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.2, ms: 600, color: side, height: ts * 0.05 }); } catch (e) {} }, 280);
+        var total = Math.max(1900, 520 + flyers.length * 140 + 900);
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid);
+            var drop = _sigEaseOutBack(_sigClamp01(el / 260));
+            var snap = (el > 260 && el < 360) ? 1 + 0.25 * Math.sin((el - 260) / 100 * Math.PI) : 1;
+            lock.position.set(feet.x, feet.y + h * (1.2 + 0.8 * (1 - drop)), feet.z); glow.position.copy(lock.position);   // over the head, clear of the body
+            lock.scale.set(h * 0.42 * snap, h * 0.42 * snap, 1);
+            var op = _afEnv(el, 0, 60, total - 450, total);
+            lock.material.opacity = 0.98 * op; glow.material.opacity = 0.35 * op;
+            for (var j = 0; j < flyers.length; j++) {
+                var f = flyers[j], k = _sigClamp01((el - f.t0) / 420);
+                if (el < f.t0 - 200) { f.sp.material.opacity = 0; continue; }
+                var a = f.a.clone(); a.y += h * 0.9;
+                var b = feet.clone(); b.y += h * 1.2;
+                f.sp.position.copy(_afArc(a, b, ts * 0.8, k));
+                f.sp.material.opacity = k >= 1 ? Math.max(0, 1 - (el - f.t0 - 420) / 160) : 0.95 * _sigClamp01((el - f.t0 + 200) / 200);
+            }
+        });
+    }
+    /* THE GLASS: the Popemobile's glass goes up as his shield (battle.js _popeGlassUp; relayed) */
+    function _ppGlass3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), side = _ppSide(o.owner != null ? o.owner : _ppOwnerAt(tx, ty), tx, ty);
+        try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.0, ms: 560, color: side, height: ts * 0.05 }); } catch (e) {}
+        var glint = _finSprite(0xffffff, _afStarTex(4), h * 0.7, 160); F.g.add(glint);
+        var total = 900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid), k = _sigClamp01(el / 600);
+            glint.position.set(feet.x + ts * 0.25 * (k - 0.5), feet.y + h * (1.6 - 1.0 * k), feet.z);
+            glint.material.opacity = 0.9 * _afEnv(el, 0, 120, 480, total);
+            glint.material.rotation = el * 0.004;
+        });
+    }
+    Object.assign(_spell3DGeometry, {
+        nrThoughtsAndPrayers: _ppPrayers3D, nrExcommunication: _ppExcommunicate3D, nrCelibacy: _ppCelibacy3D,
+        'nrPopemobile:glass': _ppGlass3D,
+    });
+
     /* ══ THE INFLUENCER (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx") ══ Her looks are the feed:
        a phone (the Meshy hand prop `item_smartphone`, warmed with the spell library; no file = no phone, NO STAND-INS), the
        camera flash, hearts and share links, a ring light. Side colours from the viewer's seat (THE RIOT PASS): a ring or link
@@ -67407,6 +67574,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty);
             var B = _dbBox(ts * 0.34, true); F.g.add(B.g);
             B.g.position.set(ln.ux * ts * 0.3, 0, ln.uz * ts * 0.3); B.g.rotation.y = Math.atan2(ln.ux, ln.uz);
+            /* the lid opens AWAY from the lens, so every seat looks into the open box (mondo 11-17: "the lid flips open the
+               wrong way" when the box went the other way across the screen); each screen turns it for its own camera */
+            var _lc = _pzCam();
+            if (_lc) { var _lx = _lc.position.x - (F.wp.x + B.g.position.x), _lz = _lc.position.z - (F.wp.z + B.g.position.z); if (_lx || _lz) B.g.rotation.y = Math.atan2(_lx, _lz); }
             _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.18, r1: ts * 0.8, ms: 420, height: 4 });
             _capPuff(tx, ty, 'dust-puff', 5, { r: 0.3, h: 0.03, out: 90, vz0: 5, vz1: 25, s0: 10, s1: 16, sEnd: 30, op: 0.4 });
             var lastS = 0;

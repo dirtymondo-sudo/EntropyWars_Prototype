@@ -1,0 +1,1930 @@
+{
+ "rooms": [
+  "site_prebuilt_area51_desert"
+ ],
+ "plots": {
+  "The Saloon": {
+   "props": {
+    "bar_stool": 6,
+    "psx_glass_bottle_1": 3,
+    "psx_glass_bottle_2": 4,
+    "cash_register": 1,
+    "decor_piano": 1,
+    "crystal_chandelier": 1,
+    "blackjack_table": 1,
+    "roulette_table": 1,
+    "psx_dinner_table_1": 4,
+    "psx_chair_mp_3": 12,
+    "slot_machine": 1,
+    "wooden_barrel": 3,
+    "painting_portrait": 1,
+    "barber_chair": 2,
+    "barber_mirror": 2,
+    "barber_pole": 2,
+    "iron_garden_bench": 2,
+    "wooden_bucket": 1,
+    "psx_cash_3": 2,
+    "psx_coin_mp_1": 3,
+    "psx_ashtray_1": 3,
+    "psx_cash_2": 1,
+    "revolver": 1,
+    "shotgun": 1,
+    "psx_plate_mp_1": 1,
+    "cat": 1,
+    "antler_trophy": 1,
+    "psx_wooden_crate_2": 2,
+    "rocking_chair": 2,
+    "psx_potted_cactus_mp_1": 1,
+    "meshy_hanging_lantern": 2,
+    "horse_black": 1,
+    "outhouse": 1,
+    "fallen_log": 1,
+    "axe_chopping_block": 1,
+    "psx_hand_saw_1": 1,
+    "psxg_dead_bush_2": 1,
+    "dog": 1,
+    "water_trough": 1,
+    "tumbleweed": 2,
+    "wanted_poster": 1,
+    "firewood_stack": 1,
+    "hitching_rail": 2
+   },
+   "features": {
+    "texbuilding#des:saloon": 1,
+    "texbuilding#des:barber": 1,
+    "arch#des:saloon:look": 1,
+    "arch#des:barber:look": 1,
+    "wall:urban:WoodGeneric1a": 3
+   },
+   "doors": {},
+   "natives": {
+    "cowboy": 1
+   }
+  },
+  "The Bank": {
+   "props": {
+    "vault": 1,
+    "exec_desk": 2,
+    "psx_chair_mp_3": 3,
+    "floor_safe": 2,
+    "money_sacks": 2,
+    "money_counter": 1,
+    "psx_gold_bar_pcs_1": 2,
+    "psx_cash_1": 1,
+    "iron_garden_bench": 4,
+    "potted_plant": 1,
+    "wall_clock": 2,
+    "painting_landscape": 1,
+    "platform_scale": 1,
+    "psxg_rock_3": 1,
+    "psxg_rock_4": 1,
+    "psx_wooden_crate_2": 3,
+    "notice_board": 1,
+    "telegraph_key": 2,
+    "wooden_barrel": 1,
+    "meshy_burlap_sack": 1,
+    "meshy_hanging_lantern": 3,
+    "psxg_dead_bush_1": 1,
+    "wanted_poster": 1,
+    "hand_cart": 1,
+    "hitching_rail": 2
+   },
+   "features": {
+    "texbuilding#des:bank": 1,
+    "texbuilding#des:assay": 1,
+    "texbuilding#des:telegraph": 1,
+    "arch#des:bank:look": 1,
+    "arch#des:assay:look": 1,
+    "arch#des:telegraph:look": 1,
+    "wall:urban:WoodGeneric1a": 4
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Jail": {
+   "props": {
+    "cot": 3,
+    "wooden_bucket": 3,
+    "exec_desk": 1,
+    "psx_chair_mp_3": 1,
+    "rifle_rack": 1,
+    "mugshot_wall": 1,
+    "footlocker": 1,
+    "key_rack": 1,
+    "rocking_chair": 2,
+    "trap_coffin_open": 1,
+    "trap_coffin_lid": 2,
+    "hw_shovel": 1,
+    "hw_candles": 1,
+    "wooden_cross": 1,
+    "hw_coffin": 1,
+    "hw_body": 1,
+    "hw_coffin_2": 2,
+    "hw_coffin_lid": 1,
+    "psx_cobweb_1": 2,
+    "hw_candle": 1,
+    "hw_part": 1,
+    "revolver": 1,
+    "psx_shotgun_ammo_1": 1,
+    "psx_ammo_box_1": 1,
+    "psx_padlock_1": 3,
+    "wanted_poster": 4,
+    "handcuffs": 1,
+    "psx_wooden_crate_2": 1,
+    "wooden_barrel": 1,
+    "psxg_coffin": 2,
+    "notice_board": 1,
+    "meshy_hanging_lantern": 2,
+    "cattle_skull": 1,
+    "hw_coffin_lid_2": 1,
+    "tumbleweed": 1,
+    "hearse_carriage": 1,
+    "hitching_rail": 2
+   },
+   "features": {
+    "texbuilding#des:jail": 1,
+    "texbuilding#des:undertaker": 1,
+    "arch#des:jail:look": 1,
+    "arch#des:undertaker:look": 1,
+    "wall:urban:WoodGeneric1a": 6,
+    "arch#des:w:gate": 1,
+    "rail:ranch": 2
+   },
+   "doors": {},
+   "natives": {
+    "sheriff": 1
+   }
+  },
+  "The Church": {
+   "props": {
+    "church_pew": 6,
+    "stone_altar": 1,
+    "wooden_cross": 1,
+    "lectern": 1,
+    "meshy_bible": 1,
+    "candle_ring": 1,
+    "hw_candles": 1,
+    "hw_candles_2": 1,
+    "decor_piano": 1,
+    "confessional_booth": 1,
+    "stained_glass": 1,
+    "psx_open_book_mp_1": 1,
+    "hw_fence": 4,
+    "psxg_dead_bush_2": 1,
+    "psxg_dead_tree_2": 1,
+    "iron_garden_bench": 1,
+    "bell_frame": 1
+   },
+   "features": {
+    "texbuilding#des:church": 1,
+    "arch#des:church:look": 1,
+    "wall:urban:WoodGeneric1a": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The General Store": {
+   "props": {
+    "cash_register": 1,
+    "psx_canned_food_mp_1": 1,
+    "psx_canned_food_mp_2": 1,
+    "psx_canned_food_mp_3": 1,
+    "psx_canned_food_mp_4": 1,
+    "platform_scale": 1,
+    "bread_rack": 1,
+    "wooden_barrel": 5,
+    "meshy_burlap_sack": 4,
+    "psx_wooden_crate_2": 2,
+    "psx_wooden_crate_3": 1,
+    "psx_wooden_crate_6": 2,
+    "rocking_chair": 1,
+    "psx_meat_1": 1,
+    "psx_butcher_knife_mp_1": 1,
+    "psx_ammo_box_1": 1,
+    "meshy_rope": 1,
+    "cauldron": 1,
+    "wood_stove": 1,
+    "woven_baskets": 1,
+    "horse_brown": 1,
+    "hw_pumpkin": 1,
+    "hw_pumpkin_2": 1,
+    "meshy_hanging_lantern": 1,
+    "covered_wagon": 1,
+    "outhouse": 1,
+    "fallen_log": 1,
+    "axe_chopping_block": 1,
+    "cat": 1,
+    "water_trough": 1,
+    "tumbleweed": 1,
+    "wanted_poster": 1,
+    "firewood_stack": 1,
+    "hitching_rail": 2
+   },
+   "features": {
+    "texbuilding#des:store": 1,
+    "arch#des:store:look": 1,
+    "wall:urban:WoodGeneric1a": 1,
+    "arch#des:w:lamps": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Stables": {
+   "props": {
+    "horse": 2,
+    "horse_brown": 1,
+    "horse_black": 1,
+    "hw_straw_2": 2,
+    "hw_straw": 5,
+    "meshy_burlap_sack": 2,
+    "wooden_bucket": 4,
+    "psx_wooden_crate_2": 1,
+    "wooden_barrel": 5,
+    "wooden_ladder": 1,
+    "hw_shovel": 2,
+    "meshy_tongs": 1,
+    "cauldron": 1,
+    "psx_cobweb_2": 2,
+    "meshy_rope": 2,
+    "psx_cobweb_1": 1,
+    "cat": 1,
+    "forge": 1,
+    "anvil": 1,
+    "bellows": 1,
+    "grindstone": 1,
+    "hay_bale": 18,
+    "saddle": 2,
+    "pitchfork": 1,
+    "psx_hand_saw_1": 1,
+    "tool_chest": 1,
+    "ladder_wall_rack": 1,
+    "signpost": 1,
+    "chicken": 3,
+    "meshy_hanging_lantern": 2,
+    "psxg_dead_bush_1": 1,
+    "water_trough": 2,
+    "rooster": 1,
+    "hitching_rail": 2
+   },
+   "features": {
+    "texbuilding#des:stables": 1,
+    "texbuilding#des:smith": 1,
+    "arch#des:stables:look": 1,
+    "arch#des:smith:look": 1,
+    "wall:urban:WoodGeneric1a": 5
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Hotel": {
+   "props": {
+    "key_rack": 1,
+    "cash_register": 1,
+    "psx_armchair_1": 2,
+    "psx_coffee_table_1": 1,
+    "psx_carpet_mp_1": 1,
+    "potted_plant": 2,
+    "painting_landscape": 1,
+    "wall_clock": 1,
+    "psx_bed_4_1": 1,
+    "psx_bedside_table_1": 4,
+    "hw_candles": 2,
+    "psx_wardrobe_mp_1": 4,
+    "rug_round": 2,
+    "psx_armchair_2": 2,
+    "psx_bed_4_3": 1,
+    "psx_bed_4_2": 1,
+    "psx_bed_4_4": 1,
+    "psx_photo_frame_mp_1": 2,
+    "psx_painting_1": 2,
+    "antler_trophy": 1,
+    "wooden_barrel": 2,
+    "rocking_chair": 1,
+    "luggage_cart": 1,
+    "meshy_hanging_lantern": 1,
+    "outhouse": 1,
+    "telegraph_pole": 1,
+    "clothes_line": 1,
+    "hitching_rail": 2
+   },
+   "features": {
+    "texbuilding#des:hotel": 1,
+    "arch#des:hotel:look": 1,
+    "wall:urban:WoodGeneric1a": 13
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Gate": {
+   "props": {
+    "tanker_desk": 1,
+    "crt_terminal": 1,
+    "folding_chair": 1,
+    "rifle_rack": 1,
+    "office_locker": 1,
+    "clipboard": 1,
+    "notice_board": 1,
+    "keypad": 1,
+    "fire_extinguisher": 1,
+    "riot_gear_rack": 1,
+    "psx_walkie_talkie_1": 1,
+    "psx_keycard_1": 1,
+    "psx_potted_cactus_mp_1": 1,
+    "cage_lamp": 1,
+    "strobe_lamp": 1,
+    "radiation_sign": 1,
+    "flood_mast": 2,
+    "traffic_barrel": 3,
+    "car_cop": 1,
+    "military_jeep": 1,
+    "security_camera": 1,
+    "roads_g_sign_005": 1,
+    "meshy_sandbags": 1,
+    "item_police_barricade": 1,
+    "traffic_cone": 2,
+    "psx_ammo_box_1": 1,
+    "dog": 1,
+    "boom_gate": 2,
+    "flag_pole": 1,
+    "lattice_pylon": 1,
+    "chain_fence": 3,
+    "tumbleweed": 1,
+    "yucca": 1,
+    "agave": 1
+   },
+   "features": {
+    "texbuilding#des:guardpost": 1,
+    "texbuilding#des:wt_gate": 1,
+    "plateau": 1,
+    "arch#des:guardpost:in": 1,
+    "arch#des:guardpost:look": 1,
+    "arch#des:wt_gate:look": 1,
+    "arch#des:a51:gate": 1,
+    "arch#des:a51:fence_n": 1
+   },
+   "doors": {},
+   "natives": {
+    "men in black": 1,
+    "marksman": 1
+   }
+  },
+  "The Ridge": {
+   "props": {
+    "dorm_bed": 8,
+    "footlocker": 15,
+    "psx_bedside_table_1": 1,
+    "retro_radio": 1,
+    "rug_round": 1,
+    "cot": 6,
+    "chalkboard": 1,
+    "wall_clock": 2,
+    "psx_old_mattress_mp_1": 1,
+    "pool_table": 1,
+    "film_camera": 1,
+    "cardboard_boxes": 2,
+    "psx_metal_barrel_mp_1": 1,
+    "power_pole": 1,
+    "crow": 1,
+    "picnic_table": 1,
+    "backpack": 1,
+    "tumbleweed": 1,
+    "agave": 1
+   },
+   "features": {
+    "plateau": 12,
+    "texbuilding#des:barracks_a": 1,
+    "texbuilding#des:barracks_b": 1,
+    "arch#des:barracks_a:in": 1,
+    "arch#des:barracks_b:in": 1,
+    "arch#des:barracks_a:look": 1,
+    "arch#des:barracks_b:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Apron": {
+   "props": {
+    "office_locker": 3,
+    "rifle_rack": 1,
+    "locker_bench": 1,
+    "psx_table_large_2": 1,
+    "field_radio": 1,
+    "folding_chair": 2,
+    "weight_bench": 1,
+    "mini_fridge": 1,
+    "cardboard_boxes": 1,
+    "notice_board": 2,
+    "fire_extinguisher": 2,
+    "exit_sign": 2,
+    "hook_rail_long": 2,
+    "cage_lamp": 2,
+    "dartboard": 1,
+    "car_truck": 3,
+    "meshy_sandbags": 4,
+    "flood_mast": 1,
+    "city_bench": 1,
+    "trash_bin": 1,
+    "hand_truck": 1,
+    "jet_engine_stand": 1,
+    "psx_ammo_box_mp_1": 1,
+    "welding_cart": 1,
+    "psx_jerrycan_1": 1,
+    "psx_jerrycan_1_1": 1,
+    "utility_box": 1,
+    "helicopter": 1,
+    "antenna_dish": 1,
+    "bbq_grill": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Fence": {
+   "props": {
+    "serving_line": 1,
+    "round_fridge": 1,
+    "mini_fridge": 1,
+    "psx_dinner_table_1": 4,
+    "cafeteria_chair": 16,
+    "meal_tray": 2,
+    "meal_tray_empty": 2,
+    "now_serving_sign": 1,
+    "wet_floor_sign": 1,
+    "notice_board": 1,
+    "world_clocks": 1,
+    "fire_extinguisher": 1,
+    "breaker_panel": 1,
+    "picture_round_a": 1,
+    "psx_potted_cactus_mp_1": 1,
+    "food_trolley": 1,
+    "security_camera": 1,
+    "flood_mast": 1,
+    "camping_tent": 1,
+    "camper_van": 1,
+    "folding_chair": 2,
+    "telescope": 1,
+    "retro_radio": 1,
+    "item_binoculars": 1,
+    "dumpster": 1,
+    "wrapped_pallet": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "psx_wooden_crate_2": 1,
+    "military_jeep": 1,
+    "car_cop": 1,
+    "hose_rack": 1,
+    "power_pole": 1,
+    "crow": 1,
+    "coin_telescope": 1,
+    "tumbleweed": 2,
+    "yucca": 1,
+    "cattle_skull": 1,
+    "vulture": 1,
+    "saguaro_cactus": 1
+   },
+   "features": {
+    "wall:urban:MetalFenceChainlink1": 1,
+    "texbuilding#des:mess": 1,
+    "plateau": 1,
+    "arch#des:mess:in": 1,
+    "arch#des:mess:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Tower": {
+   "props": {
+    "vending_machine": 2,
+    "psx_vending_machine_1": 1,
+    "trash_bin": 1,
+    "exit_sign": 1,
+    "hook_rail_long": 1,
+    "flood_mast": 1,
+    "traffic_cone": 2,
+    "air_compressor": 1,
+    "floating_orb": 1,
+    "park_bench": 1,
+    "wrapped_pallet": 1,
+    "forklift": 1,
+    "psx_supply_crate_1_3": 1,
+    "pallet_jack": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "utility_box": 1,
+    "flag_pole": 1,
+    "military_jeep": 1
+   },
+   "features": {
+    "plateau": 2,
+    "ramp:fire_escape": 1,
+    "rail:pipe": 1,
+    "rail:balusters_b": 4,
+    "arch#des:a51:tower": 1
+   },
+   "doors": {},
+   "natives": {
+    "marksman": 1,
+    "spy": 1
+   }
+  },
+  "The Dish": {
+   "props": {
+    "radio_console": 1,
+    "server_rack": 2,
+    "map_table": 1,
+    "monitor_stack": 1,
+    "computer_chair_grey": 1,
+    "tanker_desk": 1,
+    "crt_terminal": 1,
+    "star_chart": 1,
+    "breaker_panel": 1,
+    "world_clocks": 1,
+    "fire_extinguisher": 1,
+    "keypad": 1,
+    "retro_control_panel": 1,
+    "reel_to_reel": 1,
+    "folding_chair": 1,
+    "cable_drum": 3,
+    "cage_lamp": 1,
+    "dish": 1,
+    "flood_mast": 1,
+    "psx_metal_barrel_mp_0": 1,
+    "ind_container": 1,
+    "radar_antenna": 1,
+    "chain_fence": 1,
+    "antenna_dish": 1
+   },
+   "features": {
+    "texbuilding#des:radar": 1,
+    "plateau": 1,
+    "arch#des:radar:in": 1,
+    "arch#des:radar:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Hangar 18": {
+   "props": {
+    "strobe_lamp": 2,
+    "military_tank": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "pallet_jack": 1
+   },
+   "features": {
+    "texbuilding#des:hangar": 1,
+    "arch#des:hangar:look": 1
+   },
+   "doors": {
+    "hangar": 1
+   },
+   "natives": {
+    "men in black": 1
+   }
+  },
+  "The Big Top": {
+   "props": {
+    "rug_round": 1,
+    "mirror_ball": 1,
+    "decor_armour_plinth": 3,
+    "beach_ball": 1,
+    "ship_cannon": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "hw_straw": 2,
+    "hw_straw_2": 1,
+    "drum_kit": 1,
+    "instrument_drum": 1,
+    "decor_piano": 1,
+    "music_stand": 1,
+    "meshy_trumpet": 1,
+    "pa_speaker": 2,
+    "followspot": 2,
+    "rope_stanchion": 6,
+    "library_ladder": 2,
+    "ball_cart": 1,
+    "bleacher_stand": 8,
+    "trapeze_rig": 1,
+    "ring_of_fire": 1,
+    "unicycle": 1,
+    "juggling_pins": 1,
+    "top_hat": 1,
+    "gong": 1,
+    "balloons": 1,
+    "wooden_ladder": 1,
+    "hay_bale": 2,
+    "wooden_barrel": 1,
+    "circus_posters": 1,
+    "meshy_sandbags": 6,
+    "air_compressor": 1,
+    "gas_cylinder_rack": 1,
+    "psx_jerrycan_1": 1
+   },
+   "features": {
+    "arch#des:bigtop:look": 1,
+    "wall:urban:WoodGeneric1a": 36
+   },
+   "doors": {},
+   "natives": {
+    "bunny girl": 1
+   }
+  },
+  "The Midway": {
+   "props": {
+    "arcade_cabinet": 2,
+    "pinball_machine": 2,
+    "claw_machine": 2,
+    "jukebox": 1,
+    "slot_machine": 1,
+    "money_wheel": 2,
+    "air_hockey_table": 1,
+    "plush_prizes": 13,
+    "dartboard": 1,
+    "balloons": 3,
+    "cash_register": 2,
+    "bar_stool": 1,
+    "trash_bin": 3,
+    "psx_glass_bottle_1": 4,
+    "psx_glass_bottle_2": 3,
+    "beach_ball": 2,
+    "psx_tin_can_mp_1_rusty": 6,
+    "football": 1,
+    "beach_swim_ring": 3,
+    "psx_lollipop_mp_1": 3,
+    "xmas_gift": 1,
+    "xmas_gift_3": 1,
+    "xmas_cookies": 1,
+    "psx_cash_1": 1,
+    "xmas_gift_2": 1,
+    "decor_trophy_cup": 1,
+    "psx_wooden_crate_2": 1,
+    "garbage_bags": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "psx_wooden_crate_3": 1,
+    "garbage_bag": 1,
+    "psx_wooden_crate_6": 1,
+    "cardboard_boxes": 1,
+    "park_bench": 4,
+    "metal_trash_can": 1,
+    "pa_speaker": 1,
+    "newspaper_bundles": 1,
+    "solo_cup": 2,
+    "paper_sheet": 1,
+    "papers_a": 1,
+    "string_lights": 5,
+    "cotton_candy_cart": 1,
+    "hand_cart": 1,
+    "tumbleweed": 1,
+    "popcorn_cart": 1,
+    "hot_dog_stand": 1,
+    "carnival_tent": 1,
+    "high_striker": 1
+   },
+   "features": {
+    "texbuilding#des:arcade": 1,
+    "arch#des:arcade:look": 1,
+    "wall:urban:WoodGeneric1a": 6,
+    "rail:ranch": 1
+   },
+   "doors": {},
+   "natives": {
+    "mime": 1,
+    "chef": 1,
+    "ringmaster": 1,
+    "giant": 1,
+    "catgirl": 1
+   }
+  },
+  "The Lady Who Knows": {
+   "props": {
+    "specimen_shelf": 1,
+    "anatomy_skeleton": 1,
+    "trap_iron_maiden": 1,
+    "dream_eye": 1,
+    "museum_vitrine": 1,
+    "skull": 2,
+    "meshy_tesla_coil": 1,
+    "giant_hourglass": 1,
+    "bird_cage": 1,
+    "crow": 2,
+    "rope_stanchion": 6,
+    "mugshot_wall": 1,
+    "candelabra": 3,
+    "psx_carpet_mp_1": 1,
+    "cat": 1,
+    "cauldron": 1,
+    "psx_potted_cactus_mp_1": 1,
+    "beach_life_ring": 1,
+    "ocean_rock": 1,
+    "ocean_rock_3": 1,
+    "park_bench": 2,
+    "wooden_bucket": 1,
+    "decor_armour_plinth": 1,
+    "meshy_microphone": 1,
+    "trash_bin": 1,
+    "iron_lamp_post": 1,
+    "string_lights": 1,
+    "picnic_table": 1,
+    "patio_umbrella": 1,
+    "parrot": 1,
+    "hookah": 1,
+    "lit_candle": 1,
+    "fortune_tent": 1
+   },
+   "features": {
+    "texbuilding#des:sideshow": 1,
+    "arch#des:sideshow:look": 1,
+    "pool:water": 1,
+    "rail:ranch": 4
+   },
+   "doors": {},
+   "natives": {
+    "cyclops": 1,
+    "fortune teller": 1,
+    "mermaid": 1
+   }
+  },
+  "The Mirrors": {
+   "props": {
+    "funhouse_mirror": 21,
+    "cheval_mirror": 1,
+    "dream_eye": 1,
+    "mirror_ball": 1,
+    "lava_lamp_floor": 1,
+    "xmas_punch": 1,
+    "solo_cup": 3,
+    "cash_register": 1,
+    "beach_cooler": 1,
+    "park_bench": 3,
+    "trash_bin": 2,
+    "iron_lamp_post": 2,
+    "circus_posters": 2,
+    "rope_stanchion": 2,
+    "hot_dog_stand": 1,
+    "metal_trash_can": 1,
+    "signpost": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_rock_2": 1,
+    "balloons": 2,
+    "cotton_candy_cart": 1,
+    "picnic_table": 1,
+    "tumbleweed": 1
+   },
+   "features": {
+    "texbuilding#des:mirrors": 1,
+    "arch#des:mirrors:look": 1,
+    "wall:urban:WoodGeneric1a": 15,
+    "rail:ranch": 3
+   },
+   "doors": {
+    "mirrors": 1
+   },
+   "natives": {
+    "wizard": 1
+   }
+  },
+  "The Wheel": {
+   "props": {
+    "ferris_wheel_big": 1,
+    "punching_bag": 1,
+    "rope_stanchion": 3,
+    "park_bench": 4,
+    "decor_ferris_gondola": 1,
+    "tool_chest": 1,
+    "trash_bin": 1,
+    "play_swing": 1,
+    "play_slide": 1,
+    "play_sandbox": 1,
+    "beach_ball": 1,
+    "teacups": 1,
+    "boxing_ring": 1,
+    "speed_bag": 1,
+    "boxing_gloves": 1,
+    "wooden_bucket": 1,
+    "balloons": 1,
+    "market_stall": 1,
+    "camper_van": 1,
+    "tumbleweed": 1
+   },
+   "features": {
+    "wall:urban:WoodGeneric1a": 2
+   },
+   "doors": {},
+   "natives": {
+    "luchador": 1,
+    "gnome": 1
+   }
+  },
+  "The Horses": {
+   "props": {
+    "carousel": 1,
+    "covered_wagon": 1,
+    "psx_wooden_crate_2": 2,
+    "psx_wooden_crate_3": 1,
+    "hw_straw_2": 1,
+    "cable_drum": 1,
+    "meshy_rope": 1,
+    "rope_stanchion": 2,
+    "decor_carousel_horse": 2,
+    "tool_chest": 1,
+    "decor_organ_pipe_white": 5,
+    "decor_piano": 1,
+    "taiko_drum": 1,
+    "park_bench": 2,
+    "trash_bin": 1,
+    "iron_lamp_post": 2,
+    "balloons": 1,
+    "paper_lantern": 1
+   },
+   "features": {
+    "wall:urban:WoodGeneric1a": 1,
+    "rail:ranch": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Animals": {
+   "props": {
+    "horse": 1,
+    "horse_black": 1,
+    "elephant": 1,
+    "giraffe": 1,
+    "cage_wagon": 1,
+    "lion": 1,
+    "psx_wooden_crate_2": 2,
+    "meshy_burlap_sack": 3,
+    "hw_straw": 3,
+    "hw_straw_2": 2,
+    "wooden_bucket": 3,
+    "cauldron": 1,
+    "psx_meat_1": 1,
+    "flamingo": 3,
+    "hitching_rail": 1,
+    "horse_brown": 1,
+    "decor_sheep": 1,
+    "hand_truck": 1,
+    "hw_shovel": 1,
+    "dog": 1,
+    "chicken": 2,
+    "signpost": 1,
+    "park_bench": 1,
+    "trash_bin": 1,
+    "camel": 1,
+    "peacock": 1,
+    "hay_rack": 1,
+    "hay_bale": 3,
+    "water_trough": 2,
+    "saddle": 1,
+    "wheelbarrow": 1,
+    "pitchfork": 1
+   },
+   "features": {
+    "rail:ranch": 17,
+    "arch#des:c:yard": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Wagons": {
+   "props": {
+    "carnival_tent": 2,
+    "trailer_home_6": 1,
+    "psx_wooden_crate_3": 1,
+    "instrument_tambourine": 1,
+    "covered_wagon": 2,
+    "car_truck": 1,
+    "campfire": 1,
+    "fallen_log": 2,
+    "cauldron": 1,
+    "instrument_guitar_lying": 1,
+    "folding_chair": 2,
+    "solo_cup": 1,
+    "costume_rack": 1,
+    "makeup_vanity": 1,
+    "privacy_screen": 1,
+    "sea_chest": 1,
+    "footlocker": 1,
+    "directors_chair": 1,
+    "dumbbell_rack": 1,
+    "weight_bench": 1,
+    "medicine_ball_rack": 1,
+    "outhouse": 2,
+    "tire_stack": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "cat": 1,
+    "chicken": 1,
+    "garbage_bags": 1,
+    "clothes_line": 2,
+    "canvas_tent": 2,
+    "cheval_mirror": 1,
+    "unicycle": 1,
+    "juggling_pins": 1,
+    "wooden_barrel": 2
+   },
+   "features": {
+    "rail:ranch": 1
+   },
+   "doors": {},
+   "natives": {
+    "clown": 1
+   }
+  },
+  "The Ticket Booth": {
+   "props": {
+    "rope_stanchion": 4,
+    "circus_posters": 2,
+    "park_bench": 2,
+    "trash_bin": 1,
+    "outhouse": 2,
+    "item_police_barricade": 1,
+    "traffic_cone": 1,
+    "covered_wagon": 1,
+    "sea_chest": 1,
+    "psx_wooden_crate_3": 1,
+    "signpost": 1,
+    "iron_lamp_post": 2,
+    "newspaper_bundles": 1,
+    "paper_sheet": 1,
+    "balloons": 1,
+    "drinking_fountain": 1,
+    "tumbleweed": 1,
+    "ticket_booth": 1
+   },
+   "features": {
+    "rail:ranch": 2
+   },
+   "doors": {
+    "tunnel": 1
+   },
+   "natives": {
+    "clown": 1
+   }
+  },
+  "Boot Hill": {
+   "props": {
+    "psx_cross_mp_2": 3,
+    "psxg_dirt_grave": 9,
+    "cross": 3,
+    "psxg_tombstone_3": 3,
+    "psxg_dead_tree_1": 1,
+    "skull": 1,
+    "trap_coffin_lid": 1,
+    "hw_shovel": 1,
+    "crow": 2,
+    "hw_stone_3": 1,
+    "hw_stone": 1,
+    "hw_stone_1": 1,
+    "hw_body_rising": 1,
+    "hw_coffin": 1,
+    "hw_coffin_lid": 1,
+    "femur": 1,
+    "ulna": 1,
+    "eagle": 1,
+    "vulture": 1
+   },
+   "features": {
+    "hill": 1,
+    "rail:ranch": 5,
+    "arch#des:w:boothill": 1
+   },
+   "doors": {},
+   "natives": {
+    "skeleton": 1
+   }
+  },
+  "The Windmill": {
+   "props": {
+    "decor_windpump_tower": 1,
+    "decor_windpump_wheel": 1,
+    "ancient_well": 1,
+    "wooden_bucket": 1,
+    "cow": 1,
+    "hw_crop_2": 3,
+    "hw_crop": 3,
+    "hw_scarecrow": 1,
+    "hw_shovel": 1,
+    "hw_pumpkin_3": 1,
+    "chicken": 1,
+    "plough": 1,
+    "water_tower_west": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Mine": {
+   "props": {
+    "wooden_barrel": 2,
+    "psx_wooden_crate_2": 1,
+    "railway_lantern": 1,
+    "psx_wooden_crate_3": 1,
+    "hw_shovel": 1,
+    "spell_dynamite": 1,
+    "psxg_rock_1": 1,
+    "psxg_rock_2": 2,
+    "psxg_rock_3": 1,
+    "meshy_burlap_sack": 1,
+    "meshy_hanging_lantern": 1,
+    "bat_black": 1,
+    "bat_brown": 1,
+    "bat_grey": 1,
+    "psx_cobweb_1": 1,
+    "psx_cobweb_2": 1,
+    "mine_cart": 1,
+    "buffer_stop": 1,
+    "ore_heap": 1,
+    "head_wheel": 1,
+    "canvas_tent": 1,
+    "pickaxe": 2,
+    "wheelbarrow": 1
+   },
+   "features": {
+    "plateau": 4,
+    "arch#des:w:mine": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Main Street": {
+   "props": {
+    "ancient_well": 1,
+    "wooden_bucket": 2,
+    "psxg_dead_bush_2": 1,
+    "psxg_dead_bush_1": 1,
+    "crow": 1,
+    "tumbleweed": 1,
+    "gallows": 1,
+    "lantern_post": 2,
+    "yucca": 1,
+    "saguaro_cactus": 1
+   },
+   "features": {
+    "pool:water": 1
+   },
+   "doors": {},
+   "natives": {
+    "cowboy": 1
+   }
+  },
+  "The Corral": {
+   "props": {
+    "horse_black": 1,
+    "cow": 2,
+    "wooden_bucket": 2,
+    "crow": 1,
+    "hw_straw": 1,
+    "hw_straw_2": 1,
+    "chicken": 1,
+    "meshy_rope": 2,
+    "water_trough": 1,
+    "tumbleweed": 1,
+    "telegraph_pole": 2,
+    "hay_rack": 1,
+    "hay_bale": 2,
+    "saddle": 1
+   },
+   "features": {
+    "rail:ranch": 5,
+    "arch#des:w:wire": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Wagon Camp": {
+   "props": {
+    "campfire": 1,
+    "canvas_tent": 2,
+    "sea_chest": 1,
+    "instrument_guitar_lying": 1,
+    "fallen_log": 2,
+    "wooden_barrel": 1,
+    "psx_wooden_crate_2": 1,
+    "meshy_burlap_sack": 1,
+    "wooden_bucket": 1,
+    "meshy_hanging_lantern": 1,
+    "hitching_rail": 1,
+    "horse": 1,
+    "horse_brown": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_rock_2": 1,
+    "dog": 1,
+    "cauldron": 1,
+    "water_trough": 1,
+    "kettle": 1,
+    "lizard": 1,
+    "agave": 1,
+    "covered_wagon": 2,
+    "saguaro_cactus": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "Open range": {
+   "props": {
+    "cattle_skull": 3,
+    "psx_fish_skeleton_mp_1": 1,
+    "dead_snag": 2,
+    "cow": 5,
+    "psxg_dead_bush_2": 3,
+    "psxg_dead_bush_1": 3,
+    "psxg_rock_1": 1,
+    "psxg_rock_4": 1,
+    "psxg_rock_2": 1,
+    "rabbit": 1,
+    "coyote": 2,
+    "decor_sheep": 2,
+    "femur": 1,
+    "ulna": 1,
+    "tumbleweed": 1,
+    "vulture": 1,
+    "hawk": 1,
+    "rattlesnake": 1,
+    "scorpion": 1,
+    "agave": 1,
+    "yucca": 1
+   },
+   "features": {
+    "plateau": 2,
+    "rail:ranch": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Trail In": {
+   "props": {
+    "signpost": 1,
+    "psxg_rock_1": 1,
+    "psxg_dead_bush_1": 1,
+    "cattle_skull": 1,
+    "psxg_rock_3": 1,
+    "dead_snag": 1,
+    "psxg_dead_bush_2": 1,
+    "psx_wooden_crate_2": 1,
+    "rabbit": 1,
+    "tumbleweed": 1,
+    "lantern_post": 1,
+    "rattlesnake": 1,
+    "lizard": 1,
+    "yucca": 1,
+    "agave": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Canyon": {
+   "props": {
+    "skull_pile": 1,
+    "campfire": 1,
+    "cot": 1,
+    "money_sacks": 1,
+    "psx_wooden_crate_2": 1,
+    "spell_dynamite": 1,
+    "wooden_barrel": 1,
+    "shotgun": 1,
+    "horse_black": 1,
+    "meshy_hanging_lantern": 1,
+    "psx_glass_bottle_1": 1,
+    "skull": 1,
+    "eagle": 1,
+    "femur": 1,
+    "ulna": 1
+   },
+   "features": {
+    "plateau": 11
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Fence, east": {
+   "props": {
+    "flood_mast": 1,
+    "ind_silo": 2,
+    "valve_wheel": 2,
+    "tumbleweed": 2,
+    "yucca": 1,
+    "agave": 1,
+    "coyote": 1
+   },
+   "features": {
+    "texbuilding#des:wt_ne": 1,
+    "arch#des:wt_ne:look": 1,
+    "arch#des:a51:fence_e": 1,
+    "wall:urban:ConcretePanels1a": 4
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Runway 33": {
+   "props": {
+    "school_bus": 1,
+    "bus_shelter": 1,
+    "flood_mast": 3,
+    "cinder_block": 1,
+    "fighter_jet": 1,
+    "missile_cart": 1,
+    "traffic_cone": 4,
+    "rocket_engine": 1,
+    "psx_supply_crate_1": 1,
+    "psx_wooden_crate_2": 1,
+    "aircraft_tug": 1,
+    "maintenance_stairs": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "men in black": 1
+   }
+  },
+  "Runway 33, east": {
+   "props": {
+    "fire_truck": 1,
+    "flood_mast": 5,
+    "hand_truck": 1,
+    "forklift": 1,
+    "tire_stack": 2,
+    "meshy_ejection_seat": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Pens": {
+   "props": {
+    "military_tank": 4,
+    "psx_metal_barrel_mp_1": 1,
+    "psx_metal_barrel_mp_3": 1,
+    "gas_cylinder_rack": 1,
+    "traffic_cone": 1,
+    "psx_jerrycan_1": 1
+   },
+   "features": {
+    "wall:urban:ConcretePanels1a": 4,
+    "arch#des:a51:fuel": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Runway 33, west": {
+   "props": {
+    "flood_mast": 2,
+    "weather_mast": 1,
+    "windsock": 1
+   },
+   "features": {
+    "texbuilding#des:radome": 1,
+    "arch#des:radome:look": 1,
+    "arch#des:a51:rwy33": 1,
+    "arch#des:a51:lights": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Crater": {
+   "props": {
+    "saucer_lg": 1,
+    "warning_tape": 4,
+    "traffic_cone": 3,
+    "followspot": 2,
+    "film_camera": 1,
+    "radiation_sign": 1,
+    "escapepod": 1,
+    "windsock": 1,
+    "radiation_drum": 3,
+    "burnt_tree": 1
+   },
+   "features": {
+    "wall:urban:MetalFenceChainlink1": 1,
+    "texbuilding#des:wt_e": 1,
+    "arch#des:wt_e:look": 1,
+    "dip": 1,
+    "arch#des:a51:craterglow": 1
+   },
+   "doors": {},
+   "natives": {
+    "mad scientist": 1,
+    "bligblog": 1,
+    "grey": 1
+   }
+  },
+  "The Dry Lake": {
+   "props": {
+    "flood_mast": 2,
+    "traffic_cone": 4,
+    "film_camera": 1,
+    "warning_tape": 1,
+    "radiation_sign": 1,
+    "lunar_lander": 1,
+    "astronaut": 1,
+    "studio_light": 2,
+    "directors_chair": 1,
+    "studio_camera": 1,
+    "radiation_drum": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Dry Lake, east": {
+   "props": {
+    "flood_mast": 2,
+    "psx_supply_crate_1_empty": 1,
+    "missile_cart": 1,
+    "meshy_sandbags": 2,
+    "psx_ammo_box_1": 1,
+    "psx_ammo_box_mp_2": 1,
+    "psx_supply_crate_1_2": 1,
+    "traffic_barrel": 1,
+    "satellite": 1,
+    "hullplate": 1,
+    "mars_rover": 1,
+    "military_jeep": 1,
+    "tumbleweed": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Yard": {
+   "props": {
+    "radiation_sign": 1,
+    "psx_supply_crate_1": 1,
+    "psx_supply_crate_1_2": 1,
+    "metro_bench": 1,
+    "wheelchair": 1,
+    "trash_bin": 1,
+    "wet_floor_sign": 1,
+    "car_ambulance": 1
+   },
+   "features": {
+    "wall:urban:MetalFenceChainlink1": 5,
+    "texbuilding#des:wing": 1,
+    "arch#des:wing:look": 1
+   },
+   "doors": {
+    "ward": 1,
+    "stormdrain": 1
+   },
+   "natives": {}
+  },
+  "The Robbers' Tunnel": {
+   "props": {
+    "brazier": 2,
+    "skull_pile": 1,
+    "paper_sheet": 1,
+    "psx_wooden_crate_2": 1,
+    "psx_wooden_crate_3": 1,
+    "meshy_rope": 1,
+    "hw_shovel": 1,
+    "money_sacks": 1,
+    "meshy_burlap_sack": 1,
+    "railway_lantern": 1,
+    "wooden_bucket": 1,
+    "psx_gold_bar_pcs_1": 1,
+    "greek_amphora": 1,
+    "hw_stone_3": 1,
+    "psxg_rock_2": 1,
+    "psxg_dead_bush_1": 1,
+    "casing_block": 1,
+    "hw_stone_4": 1,
+    "jackal_statue": 2,
+    "wooden_barrel": 1,
+    "pickaxe": 1,
+    "rope_coils": 1,
+    "oil_lamp": 1,
+    "golden_idol": 1
+   },
+   "features": {
+    "plateau": 8,
+    "wall:bricks_1": 8
+   },
+   "doors": {
+    "link_gobekli_giza": 1
+   },
+   "natives": {
+    "skeleton": 1,
+    "annunaki": 1,
+    "conspiracy theorist": 1
+   }
+  },
+  "The Great Pyramid, north-east": {
+   "props": {
+    "obelisk": 2,
+    "casing_block": 2
+   },
+   "features": {
+    "wall:bricks_1": 1
+   },
+   "doors": {
+    "pyramid": 1
+   },
+   "natives": {}
+  },
+  "The Sphinx": {
+   "props": {
+    "sphinx": 1,
+    "pharaoh_statue": 2,
+    "hw_stone_2": 1,
+    "hw_stone_4": 1,
+    "psxg_rock_4": 1,
+    "saguaro_cactus": 1
+   },
+   "features": {
+    "wall:bricks_1": 4
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Dig": {
+   "props": {
+    "brazier": 2,
+    "campfire": 1,
+    "canvas_tent": 2,
+    "cardboard_boxes": 2,
+    "sarcophagus": 1,
+    "paper_sheet": 1,
+    "psx_wooden_crate_2": 1,
+    "trap_sarcophagus_box": 1,
+    "rope_stanchion": 20,
+    "footbridge": 2,
+    "map_table": 1,
+    "folding_chair": 2,
+    "film_camera": 1,
+    "greek_amphora": 3,
+    "psx_wooden_crate_1": 1,
+    "psx_wooden_crate_3": 1,
+    "psx_wooden_crate_6": 1,
+    "hw_shovel": 2,
+    "wooden_bucket": 2,
+    "meshy_rope": 1,
+    "meshy_burlap_sack": 2,
+    "railway_lantern": 1,
+    "skull": 1,
+    "femur": 1,
+    "covered_wagon": 1,
+    "camel": 1,
+    "cot": 1,
+    "field_radio": 1,
+    "cat": 1,
+    "tomb_plaque": 1,
+    "casing_block": 1,
+    "sieve_table": 1,
+    "wheelbarrow": 2,
+    "pickaxe": 2,
+    "wooden_ladder": 2,
+    "wooden_barrel": 2,
+    "canopic_jars": 1,
+    "kettle": 1,
+    "hand_cart": 1,
+    "rope_coils": 1,
+    "backpack": 1,
+    "oil_lamp": 1
+   },
+   "features": {
+    "wall:bricks_1": 1,
+    "plateau": 2,
+    "ramp:dirt_2": 2
+   },
+   "doors": {},
+   "natives": {
+    "anubis": 2,
+    "skeleton": 1
+   }
+  },
+  "The Obelisks": {
+   "props": {
+    "obelisk": 4,
+    "brazier": 2,
+    "tomb_plaque": 2,
+    "hw_stone": 1,
+    "hw_stone_3": 1,
+    "greek_amphora": 2,
+    "stone_altar": 1,
+    "crow": 1,
+    "papyrus_column": 6,
+    "cat_statue": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "mummy": 1
+   }
+  },
+  "The Causeway": {
+   "props": {
+    "signpost": 1,
+    "stone_altar": 1,
+    "item_censer": 1,
+    "greek_amphora": 2,
+    "cat": 1,
+    "papyrus_column": 2,
+    "cat_statue": 1,
+    "golden_idol": 1,
+    "tripod_bowl": 2,
+    "oil_lamp": 1,
+    "canopic_jars": 1,
+    "saguaro_cactus": 1
+   },
+   "features": {
+    "arch#des:giza:look": 1,
+    "arch#des:giza:kerb": 1,
+    "wall:bricks_1": 16,
+    "arch#des:giza:hall": 1,
+    "arch#des:giza:tunnel": 1,
+    "arch#des:giza:boards": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Oasis": {
+   "props": {
+    "sea_chest": 1,
+    "ancient_well": 1,
+    "rowboat": 1,
+    "reeds": 9,
+    "flamingo": 3,
+    "meshy_frog": 1,
+    "fortune_teller_tent": 1,
+    "rug_round": 1,
+    "greek_amphora": 1,
+    "wooden_bucket": 1,
+    "cauldron": 1,
+    "meshy_campfire_ring": 1,
+    "camel": 1,
+    "hitching_rail": 1,
+    "papyrus_column": 2,
+    "saguaro_cactus": 1
+   },
+   "features": {
+    "pool:water": 1,
+    "tree:palm": 11
+   },
+   "doors": {},
+   "natives": {
+    "djinn": 1
+   }
+  },
+  "The Sand Sea": {
+   "props": {
+    "sarcophagus": 1,
+    "skull": 2,
+    "cave_stone": 1,
+    "psx_carpet_mp_1": 1,
+    "camel": 1,
+    "rowboat": 1,
+    "obelisk": 1,
+    "trap_coffin_wood": 1,
+    "femur": 1,
+    "greek_amphora": 1,
+    "psxg_dead_bush_1": 2,
+    "market_stall": 2,
+    "woven_baskets": 1,
+    "hookah": 1,
+    "oil_lamp": 1,
+    "wooden_barrel": 1,
+    "fallen_column": 2,
+    "scorpion": 1,
+    "cobra": 1,
+    "cattle_skull": 1,
+    "casing_block": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "djinn": 1
+   }
+  },
+  "The Sand Sea, east": {
+   "props": {
+    "skull_pile": 2,
+    "cave_stone": 1,
+    "casing_block": 1,
+    "meshy_giant_foot": 1,
+    "dinosaur_skeleton": 1,
+    "sea_chest": 1,
+    "ulna": 1,
+    "hw_stone_4": 1,
+    "psxg_dead_bush_2": 1,
+    "crow": 1,
+    "anatomy_skeleton": 1,
+    "fallen_column": 1,
+    "papyrus_column": 1,
+    "vulture": 1,
+    "scorpion": 1,
+    "canopic_jars": 1,
+    "camel": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "skeleton": 1
+   }
+  },
+  "The Tomb Door": {
+   "props": {
+    "brazier": 8,
+    "signpost": 1,
+    "tomb_plaque": 2,
+    "cat": 1,
+    "greek_amphora": 1,
+    "hw_stone_2": 1,
+    "skull": 1,
+    "jackal_statue": 2,
+    "pharaoh_statue": 2,
+    "cat_statue": 1,
+    "woven_baskets": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "mummy": 2,
+    "anubis": 1
+   }
+  },
+  "The Canyon Mouth": {
+   "props": {
+    "hw_stone_2": 1,
+    "hw_stone_4": 1,
+    "psxg_rock_3": 1,
+    "hw_stone": 1,
+    "psxg_rock_1": 1,
+    "hw_stone_5": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_dead_bush_2": 2,
+    "crow": 2,
+    "signpost": 1,
+    "vulture": 1,
+    "cairn": 1,
+    "scorpion": 1
+   },
+   "features": {
+    "plateau": 11
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Great Pyramid, north-west": {
+   "props": {
+    "casing_block": 1,
+    "hw_stone_2": 1
+   },
+   "features": {},
+   "doors": {
+    "tombside": 1,
+    "cut": 1,
+    "bay": 1
+   },
+   "natives": {}
+  },
+  "The Great Pyramid, south-west": {
+   "props": {
+    "casing_block": 2
+   },
+   "features": {
+    "wall:bricks_1": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Great Pyramid, south-east": {
+   "props": {
+    "casing_block": 2
+   },
+   "features": {
+    "arch#des:giza:great": 1,
+    "wall:bricks_1": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Menkaure": {
+   "props": {
+    "hw_stone_3": 1,
+    "casing_block": 5,
+    "hw_stone_2": 1
+   },
+   "features": {
+    "arch#des:giza:menkaure": 1,
+    "wall:bricks_1": 16,
+    "arch#des:giza:queen62": 1,
+    "arch#des:giza:queen65": 1,
+    "arch#des:giza:queen68": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Rest Stop": {
+   "props": {
+    "city_gas_canopy": 1,
+    "car_truck": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "Open Desert": {
+   "props": {
+    "city_gas_store": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "park_bench": 1,
+    "trash_bin": 1,
+    "trailer_home_2": 1,
+    "trailer_home_5": 1,
+    "garbage_bag": 1,
+    "car_suv": 1,
+    "saguaro_cactus": 103
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Highway": {
+   "props": {
+    "city_gas_sign": 1,
+    "traffic_cone": 1,
+    "crashed_car": 1,
+    "skull": 1,
+    "saguaro_cactus": 7
+   },
+   "features": {
+    "arch#des:sign:0": 1,
+    "arch#des:sign:1": 1,
+    "arch#des:sign:2": 1,
+    "arch#des:sign:3": 1,
+    "arch#des:sign:5": 1,
+    "arch#des:sign:6": 1,
+    "arch#des:sign:8": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Exit 1 · Disaster City": {
+   "props": {
+    "roads_g_sign_003": 1,
+    "signpost": 1,
+    "traffic_barrel": 1,
+    "skull": 1
+   },
+   "features": {},
+   "doors": {
+    "link_downtown_desert": 1
+   },
+   "natives": {}
+  },
+  "The Door": {
+   "props": {
+    "leaf_shabby_wood": 1,
+    "paper_sheet": 1,
+    "bus_shelter": 1,
+    "bus_stop_sign": 1,
+    "saguaro_cactus": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Frontage Road": {
+   "props": {
+    "signpost": 1,
+    "school_bus": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Bus Stop": {
+   "props": {
+    "trailer_home_1": 1,
+    "folding_chair": 2,
+    "retro_radio": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Trailers": {
+   "props": {
+    "trailer_home_3": 1,
+    "dish": 1,
+    "campfire": 1,
+    "saguaro_cactus": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "conspiracy theorist": 1
+   }
+  },
+  "The End of the Road, east": {
+   "props": {
+    "signpost": 1,
+    "traffic_barrel": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The End of the Road": {
+   "props": {
+    "traffic_barrel": 1,
+    "saguaro_cactus": 1
+   },
+   "features": {
+    "arch#des:sign:7": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Long Straight": {
+   "props": {
+    "saguaro_cactus": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Circus Road": {
+   "props": {
+    "saguaro_cactus": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Bend, east": {
+   "props": {
+    "saguaro_cactus": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Giza Road": {
+   "props": {
+    "saguaro_cactus": 3
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Base Road": {
+   "props": {
+    "saguaro_cactus": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "Khafre": {
+   "props": {},
+   "features": {
+    "arch#des:giza:khafre": 1,
+    "wall:bricks_1": 3
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "(the room)": {
+   "props": {},
+   "features": {
+    "scatter:cave_stone x130": 1,
+    "scatter:skull x26": 1,
+    "scatter:dead_snag x22": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Overpass": {
+   "props": {},
+   "features": {
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Overpass, east": {
+   "props": {},
+   "features": {
+    "ramp": 1,
+    "bridge:urban:RoadGeneric1a": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Exit 2 · The Circus": {
+   "props": {},
+   "features": {
+    "arch#des:sign:4": 1
+   },
+   "doors": {},
+   "natives": {}
+  }
+ },
+ "lines": 13,
+ "totals": {
+  "props": 1749,
+  "features": 380,
+  "doors": 11,
+  "natives": 41,
+  "lines": 13,
+  "plots": 76
+ }
+}

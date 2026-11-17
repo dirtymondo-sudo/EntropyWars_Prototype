@@ -64,7 +64,8 @@ const gx = c => r2(-HALF + c * C), gc = c => r2(-HALF + (c + 0.5) * C);
    royalBanner() above is the kit's too (sheet().banner): one banner for the whole kingdom. */
 const g = gx, X = s => g(s + CX0), Z = s => g(s + CY0);   // g: a square's west / north edge (the same as gx); X / Z: the old castle squares (building() below still places with them)
 const F = [], props = [], doors = [], npc = [], arch = [], marks = [];
-const feat = o => F.push(J(o) + ','), raw = s => F.push(s + ','), note = s => F.push('/* ' + s + ' */');
+const feat = o => F.push({ o }), raw = s => F.push({ s }), note = s => F.push({ c: s });   // (2026-11-17, THE ONE WORLD MOVE: the rows are kept as objects so the mover can stand them; written out as text at the end, byte for byte as before)
+const rowText = f => f.o ? J(f.o) + ',' : f.s != null ? f.s + ',' : '/* ' + f.c + ' */';
 const Q = PLAN.castle, T1 = 3.5, T2 = 7, MX = g(48);
 const mid = q => [r2((g(q[0]) + g(q[2])) / 2), r2((g(q[1]) + g(q[3])) / 2)];
 
@@ -357,7 +358,7 @@ M.push("                noise: { amp: 0, scale: 8 },");
 M.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + W + ", nz: " + W + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 M.push("                gen: { kind: 'plan', look: 'trees', seed: 64, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: 3200, treeH: [5.5, 8.5], kinds: ['tree', 'tree_2', 'tree_3', 'tree', 'tree_5', 'tree_2'], zones: " + J(ZONES) + " },");
 M.push("                features: [");
-F.forEach(f => M.push("                    " + f));
+F.forEach(f => M.push("                    " + rowText(f)));
 M.push("                ],");
 M.push("                marks: " + J(marks) + ",");
 M.push("            },");
@@ -380,8 +381,296 @@ console.log('kingdom ' + JSON.stringify(count));
 /* the ends data.js carries by hand (DOOR_HQ.links, siteRooms.entry): printed so a moved path is seen */
 const ENDS = { mirror_lookingglass: { wall: 'free', x: gc(7), z: gc(51), face: 180 }, bay: { wall: 's', x: BAYX }, woods_camelot: { wall: 'e', z: WAYS.trail }, northpole_camelot: { wall: 'n', x: WAYS.sleigh }, haunted_camelot: ends.haunted_camelot, well_camelot: ends.well_camelot };
 console.log('ends ' + JSON.stringify(ENDS));
+
+/* ══ THE ONE WORLD MOVE (2026-11-17, mondo's approved map v13; docs/plans/one-world/BUILD_PLAN.md phase 3, wave A, the Camelot row:
+   "castle + village stay; the Snowy Pines north, the Looking-Glass Garden west to the coast, the Fairy Forest east to the Spring, the Forest south").
+   Everything above builds the kingdom in THE HOME FRAME, the 8 x 8 room the six district files were written for. Nothing above changed (the
+   kingdom room above is still made, byte for byte, and `--home` writes it as it was). Here the result is stood where the One World map puts it
+   (docs/plans/one-world/plots.json; the mover = ow-move.js), FIVE rooms by the room-splitting rule (docs/notes/areas-complexes.md "ONE WORLD,
+   THE ROOM-SPLITTING RULE": a district is never cut; two zones never join; 30 plots a room):
+     THE CASTLE + THE VILLAGE (K, T: 36 plots, one district on the map) keep the room id site_prebuilt_camelot_kingdom, 6 x 6 at -29,-3. Its
+       plots stand as they stood to each other, so every piece keeps its place (the box is the home's middle 6 x 6: dx = dz = 0). Over 30 plots:
+       the rule's first line wins (it is one district). Its four ways out are seams into the four woods' rooms.
+     THE SNOWY PINES (N, 8)         -> site_prebuilt_camelot_ow_pines, a path north from the north gate, 2 x 7 at -26,-10; the trail L6 north to the
+                                       Mountains is the route kit's room site_ow_l6 (bake-route.js L6, after this tool)
+     THE LOOKING-GLASS GARDEN (L, 6) -> site_prebuilt_camelot_ow_garden, a path west from the west gate, 4 x 3 at -33,-1
+     THE FAIRY FOREST (F, 6)        -> site_prebuilt_camelot_ow_fairy, a path east from the east gate to the Spring, 4 x 3 at -23,-1; the trail L4 on to
+                                       the Woods' Clearing is the Woods zone's room site_ow_l4 (the link woods_camelot is that seam)
+     THE FOREST (W, 8) + L7 (1)     -> site_prebuilt_camelot_ow_forest, a path south from the drawbridge, 4 x 5 at -26,3; L7 (one plot, rule 4: it joins
+                                       the district it touches) is built here and leads on to the Woods' Ritual Ground
+   A plot keeps its name, its squares and every piece on it; its id is its place in its new room's grid. What is laid again is the tool's own:
+   the joints between plots that touch now and did not (a trail three squares wide from each plot's own open ground), the open ground, the
+   paint, the tree mass's kinds and the air (each box cut to the plots it covered and moved with them), the doors on the seams, the link ends.
+   Rules: docs/notes/areas-complexes.md "ONE WORLD, HOW A ZONE MOVES" + "CAMELOT KINGDOM, THE ONE WORLD MOVE". ══ */
+const OW_HOME = process.argv.includes('--home');
+const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plots.json'), 'utf8'));
+const OWP = require('./ow-places.js');
+const KROOM = 'site_prebuilt_camelot_kingdom', R_PINES = 'site_prebuilt_camelot_ow_pines', R_GARDEN = 'site_prebuilt_camelot_ow_garden', R_FAIRY = 'site_prebuilt_camelot_ow_fairy', R_FOREST = 'site_prebuilt_camelot_ow_forest';
+const R_RITUAL = 'site_prebuilt_fairy_forest_ow_ritual', R_L6 = 'site_ow_l6';
+const RITUAL_STANDS = /\bsite_prebuilt_fairy_forest_ow_ritual: \{/.test(fs.readFileSync(path.join(__dirname, 'data.js'), 'utf8'));   // the Woods zone thread writes that room; rerun this tool after it lands
+const v13 = id => { const d = PJ.districts.find(q => q.id === id); if (!d || !d.today || d.today.room !== KROOM) throw new Error('plots.json has no Camelot district ' + id);
+    return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
+/* THE DRAWN ROWS WIDE AS A DISTRICT: a drawn row (`k: 'arch'`) whose parts stand on several plots (a district's whole dressing in one row,
+   `cam:w:forest`, `cam:l:garden`, `cam:n:dress`) is cut into one row a plot (`<id>@<plot>`), each part where it stood, so each moves with its plot.
+   THE RIDGE (`cam:n:ridge`, the crags along the room's north edge, the rank past it and the Pass round the sleigh road): a part of the edge ranks
+   stays only where the side it backs still faces the open map (no plot past it); THE PASS (the two gate crags, the cleft, the snow, the far
+   peak) stands as one piece on the path's north end, round the trail L6 leaves by. */
+const HHALF = HALF;
+const homeOf = (x, z) => plot['P' + String(Math.max(0, Math.min(G - 1, Math.floor((x + HHALF) / PL)))).padStart(2, '0') + '-' + String(Math.max(0, Math.min(G - 1, Math.floor((z + HHALF) / PL)))).padStart(2, '0')];
+const partXZ = (a, p) => { const q = (a.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), lx = p.p ? p.p[0] : 0, lz = p.p ? p.p[2] : 0; return [a.x + lx * c - lz * s, a.z + lx * s + lz * c]; };
+const SOLIDC = ch => ch === 't' || ch === 'T' || ch === 'h', ROADS = 'picbm';
+const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 180, E: 270, S: 0, W: 90 };
+const LETTER = { K: 'c', T: 'c', N: 'i', L: 'm', F: 'p', W: 'p', R: 'p' };   // the ground a new joint is laid in: the snow road, the garden's marble walk, the woods' dirt
+/* THE STAND LIST: the rooms, what stands in each, its seams to the others. A seam: '<home plot>:<side>' on both sides, `k` = the squares of the
+   side the way crosses on (left out: where both are open already, else the plot's middle). `way`: 'trail' (an arch in the trees) or 'open'. */
+const L7 = (() => { const l = PJ.links.find(q => q.id === 'L7'); if (!l || l.plots.length !== 1) throw new Error('plots.json: L7 is not one plot'); return { wx: l.plots[0][0], wy: l.plots[0][1] }; })();
+/* a spawn's face: 0 north (-z), 90 east, 180 south, 270 west (data.js HQ_HEAL_ZONE: ahead = sin, -cos); each wood room's spawn stands by its seam to the block and faces away from it, into the wood */
+const STAND = [
+    { id: KROOM, part: 'kingdom', label: 'CAMELOT KINGDOM', sub: 'THE CASTLE · THE VILLAGE · THE TOWN WALL · THE MOAT · 36 PLOTS', list: v13('cam'), letters: ['K', 'T'], block: true,
+      parti: 'A castle in the middle of its village, one wall round them both and a moat round the wall; four roads leave by the four gates into four woods: snowy pines to the north, a forest that glows to the east, a hedge garden to the west, the forest and the road home to the south.',
+      spawn: [43, 81], face: 0 },
+    { id: R_PINES, part: 'ow_pines', label: 'THE SNOWY PINES', sub: 'CAMELOT · THE SLEIGH ROAD NORTH · 8 PLOTS', list: v13('camN'), letters: ['N'], spawn: 'P04-00', face: 0,
+      parti: 'The snowy pines north of the moat as one walk: the sleigh road climbs north from the castle’s north gate through eight plots of snow and pines, past the huts, the frozen pond and the cave, to the Pass where the trail goes on into the mountains.' },
+    { id: R_GARDEN, part: 'ow_garden', label: 'THE LOOKING-GLASS GARDEN', sub: 'CAMELOT · THE HEDGES WEST OF THE MOAT · 6 PLOTS', list: v13('camL'), letters: ['L'], spawn: 'P00-02', face: 270,
+      parti: 'The hedge garden west of the moat as one walk: in from the west gate across the lawn, the chessboard with a hedge to either side, the mirror, and at the far end the tea party.' },
+    { id: R_FAIRY, part: 'ow_fairy', label: 'THE FAIRY FOREST', sub: 'CAMELOT · THE GLOWING WOODS EAST OF THE MOAT · 6 PLOTS', list: v13('camF'), letters: ['F'], spawn: 'P07-02', face: 90,
+      parti: 'The forest that glows, east of the moat, as one walk: out of the east gate past the knoll to the pond, the fairy ring between its two knolls, the woods trail and the spring, where the trail goes on east to the Woods.' },
+    { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAMELOT · THE CROWN’S ROAD SOUTH · 9 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', face: 180,
+      parti: 'The forest south of the moat as one walk: the Crown’s Road down from the drawbridge, the glades, the woodcutter’s hut and the dead tree, and east a trail on through the trees to the Woods’ Ritual Ground.' },
+];
+/* which plots move the same way (one room, one shift): a drawn row is cut only between plots that do not */
+const MOVE_OF = {}, CLASS_HEAD = {};
+STAND.forEach(S => S.list.forEach(p => { if (!p.id || p.isNew) return; const h = plot[p.id], c = S.id + ':' + (p.wx - h.x) + ',' + (p.wy - h.y); MOVE_OF[p.id] = c; if (!CLASS_HEAD[c]) CLASS_HEAD[c] = p.id; }));
+PLAN.plots.forEach(p => { if (!MOVE_OF[p.id]) throw new Error('the One World move leaves out ' + p.id + ' ' + p.name); });
+const SPLIT = [], RIDGE = { parts: [], pass: [] };
+F.forEach(f => { const a = f.o; if (!a || a.k !== 'arch' || !Array.isArray(a.parts) || !a.parts.length) return;
+    if (a.id === 'cam:n:ridge') { a.parts.forEach(p => { const [x, z] = partXZ(a, p); (Math.abs(x) < 16 && z < -HHALF + 14 ? RIDGE.pass : RIDGE.parts).push(p); }); f.ridge = a; return; }
+    const by = {}; a.parts.forEach(p => { const [x, z] = partXZ(a, p), h = homeOf(x, z), c = MOVE_OF[h.id]; (by[c] || (by[c] = [])).push(p); });
+    const ids = Object.keys(by).map(c => CLASS_HEAD[c]); if (ids.length < 2) return;   // every part on plots that move the same way: the row moves whole
+    if (a.rot) { SPLIT.push(a.id + ' (turned ' + a.rot + ', ' + ids.length + ' plots: left whole on ' + homeOf(a.x, a.z).name + ')'); return; }
+    f.split = Object.keys(by).map(c => { const id = CLASS_HEAD[c], h = plot[id], cx = r2(-HHALF + (h.x + 0.5) * PL), cz = r2(-HHALF + (h.y + 0.5) * PL);
+        return Object.assign({}, a, { id: a.id + '@' + id, x: cx, z: cz, parts: by[c].map(p => Object.assign({}, p, { p: [r2(p.p[0] + a.x - cx), p.p[1], r2(p.p[2] + a.z - cz)] })) }); }); });
+const FO = [].concat(...F.filter(f => f.o && !f.ridge).map(f => f.split || [f.o]));
+const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 't', plots: PLAN.plots, features: FO, props, npc, doors });
+/* the seams between the rooms (both sides are this tool's) */
+const SEAMS = [
+    { a: [KROOM, 'P04-01', 'N'], b: [R_PINES, 'P04-00', 'S'], k: [1, 2, 3], ch: 'i', way: 'trail', la: ['THE SNOWY PINES', 'THE NORTH GATE · THE SLEIGH ROAD NORTH', 'The road out of the north gate turns to snow under the pines.'], lb: ['CAMELOT KINGDOM', 'THE SLEIGH ROAD · SOUTH TO THE NORTH GATE', 'The road comes down out of the pines to the moat and the north gate.'] },
+    { a: [KROOM, 'P01-04', 'W'], b: [R_GARDEN, 'P00-02', 'E'], ch: 'p', way: 'trail', la: ['THE LOOKING-GLASS GARDEN', 'THE WEST GATE · THE HEDGES', 'Past the ring road the hedges start, cut very square.'], lb: ['CAMELOT KINGDOM', 'THE LAWN · BACK TO THE WEST GATE', 'Through the hedge, the ring road round the moat and the west gate.'] },
+    { a: [KROOM, 'P06-04', 'E'], b: [R_FAIRY, 'P07-02', 'W'], ch: 'p', way: 'trail', la: ['THE FAIRY FOREST', 'THE EAST GATE · THE GLOWING WOODS', 'The trees past the ring road are lit from inside.'], lb: ['CAMELOT KINGDOM', 'THE POND · BACK TO THE EAST GATE', 'Out of the glowing trees, the ring road and the east gate.'] },
+    { a: [KROOM, 'P04-06', 'S'], b: [R_FOREST, 'P03-07', 'N'], k: [6, 7], ch: 'p', way: 'trail', la: ['THE FOREST', 'THE CROWN’S ROAD · SOUTH INTO THE FOREST', 'The ring road meets the Crown’s Road going south into the forest.'], lb: ['CAMELOT KINGDOM', 'THE CROWN’S ROAD · NORTH TO THE MOAT', 'The road runs north out of the trees to the moat.'] },
+];
+/* the ways out of the zone, and the link ends (data.js DOOR_HQ.links: this tool writes their Camelot ends) */
+const OUT = {
+    [R_PINES]: [ { plot: 'P07-00', side: 'N', k: [5, 6], id: 'ow_h_m25_m10', way: 'trail', room: R_L6, label: 'THE TRAIL · THE MOUNTAINS', sub: 'THE PASS · UP TO THE SKI LODGE', desc: 'The trail goes on north through the Pass, up out of the pines towards the mountains.' },
+                 { plot: 'P07-00', side: 'E', link: 'northpole_camelot', end: 'b' } ],
+    [R_FAIRY]: [ { plot: 'P07-05', side: 'E', link: 'woods_camelot', end: 'b' } ],
+    [R_FOREST]: [ { plot: 'L7', side: 'E', id: 'ow_v_m22_6', way: 'trail', room: R_RITUAL, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL EAST · THE MOUND', desc: 'A trail east through the trees, worn by feet going one way.' } ],
+};
+const ROOMS_OUT = [], STRAYS = SPLIT.map(s => 'a drawn row over several plots, turned: ' + s), LINKS_OUT = {}, CNT = {};
+const roomOf = id => ROOMS_OUT.find(o => o.S.id === id);
+STAND.forEach(S => {
+    const R = MOVER.room(S.list.map(p => p.isNew ? { wx: p.wx, wy: p.wy, name: p.name, district: p.district, level: 0 } : p));
+    R.strays.forEach(t => STRAYS.push(S.label + ': ' + t));
+    S.list.forEach(p => { if (p.isNew) { const e = R.at[(p.wx - R.wx) + ',' + (p.wy - R.wy)]; e.id = p.link; e.link = p.link; R.ofHome[p.link] = e; } });
+    const Wn = R.W, Dn = R.D, c2 = R.cell, inR = (x, y) => x >= 0 && y >= 0 && x < Wn && y < Dn;
+    const openR = (x, y) => inR(x, y) && !!R.plotOfSq(x, y) && !SOLIDC(c2[y][x]);
+    /* the paint: each plot's own block, as the home painted it */
+    const pnt = new Uint8Array(Wn * Dn);
+    R.order.forEach(e => { if (!e.home) return; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) pnt[(e.row * N + ly) * Wn + e.col * N + lx] = paint[(e.home.y * N + ly) * W + e.home.x * N + lx]; });
+    /* a new plot (L7): the woods' forest, a clearing in its middle for the place */
+    R.order.forEach(e => { if (e.home) return; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) c2[e.row * N + ly][e.col * N + lx] = (lx >= 3 && lx <= 8 && ly >= 3 && ly <= 8 && (lx - 5.5) * (lx - 5.5) + (ly - 5.5) * (ly - 5.5) < 9) ? 'g' : 't'; });
+    const sqOf = (x, z) => [Math.floor((x + R.HX) / C + 1e-9), Math.floor((z + R.HZ) / C + 1e-9)];
+    const stood = new Set(); R.props.forEach(p => stood.add(sqOf(p.x, p.z).join(':'))); R.npc.forEach(n => stood.add(sqOf(n.x, n.z).join(':')));
+    R.features.forEach(f => { if (f.x != null && f.k !== 'tree' && f.k !== 'scatter' && f.k !== 'space' && f.k !== 'arch') stood.add(sqOf(f.x, f.z).join(':')); });
+    ROOMS_OUT.push({ S, R, c2, pnt, openR, inR, sqOf, stood, extraF: [], extraP: [], doorsOut: [], ways: [], laid: 0, joints: 0 });
+});
+/* ── the joints and legs (every room): a border square of a plot side, a plot's own open ground (its hub), a leg = a dog-leg trail from the hub to the side, 3 wide ── */
+const border = (e, sd, k) => sd === 'N' ? [e.col * N + k, e.row * N] : sd === 'S' ? [e.col * N + k, e.row * N + N - 1] : sd === 'W' ? [e.col * N, e.row * N + k] : [e.col * N + N - 1, e.row * N + k];
+function hubOf(o, e) { let best = null; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const x = e.col * N + lx, y = e.row * N + ly; if (!o.openR(x, y) || o.c2[y][x] === 'w' || (o.apronSq && o.apronSq.has(x + ':' + y))) continue;
+        const d = Math.hypot(lx - 5.5, ly - 5.5) - (ROADS.indexOf(o.c2[y][x]) < 0 ? 0.6 : 0); if (!best || d < best[0]) best = [d, x, y]; }
+    if (!best) throw new Error(o.S.id + ': no open ground on ' + e.name); return [best[1], best[2]]; }
+function lay(o, e, x, y, ch) { if (!o.inR(x, y) || o.R.plotOfSq(x, y) !== e) return; if (SOLIDC(o.c2[y][x])) { o.c2[y][x] = ch; o.laid++; o.pnt[y * o.R.W + x] = ch === 'i' ? 6 : ch === 'm' ? 5 : ch === 'c' ? 4 : 3; } }
+const letterOf = e => LETTER[e.district] || 'p';
+/* is the border square (bx, by) reached from the plot's hub inside the plot? */
+function reachIn(o, e, bx, by) { const h = hubOf(o, e), seen = new Set([h.join(':')]), st = [h];
+    while (st.length) { const [x, y] = st.pop(); if (x === bx && y === by) return true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy, k = X + ':' + Y; if (!seen.has(k) && o.openR(X, Y) && o.R.plotOfSq(X, Y) === e && o.c2[Y][X] !== 'w') { seen.add(k); st.push([X, Y]); } } }
+    return false; }
+function leg(o, e, sd, k, ch0) { const [tx, ty] = border(e, sd, k); if (reachIn(o, e, tx, ty)) return;
+    const [hx, hy] = hubOf(o, e), ch = ch0 || letterOf(e), run = (x0, y0, x1, y1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) { const x = n ? Math.round(x0 + (x1 - x0) * i / n) : x0, y = n ? Math.round(y0 + (y1 - y0) * i / n) : y0; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) lay(o, e, x + a, y + b, ch); } };
+    if (sd === 'N' || sd === 'S') { run(hx, hy, tx, hy); run(tx, hy, tx, ty); } else { run(hx, hy, hx, ty); run(hx, ty, tx, ty); } }
+const openK = (o, e, sd) => { const r = []; for (let k = 0; k < N; k++) { const q = border(e, sd, k); if (o.openR(q[0], q[1])) r.push(k); } return r; };
+function pickK(oa, ob) { const both = oa.filter(k => ob.indexOf(k) >= 0), src = both.length >= 2 ? both : (oa.length ? oa : ob);
+    if (!src.length) return [5, 6, 7];
+    let best = [src[0], src[0]], a = src[0]; for (let i = 1; i <= src.length; i++) { if (i === src.length || src[i] !== src[i - 1] + 1) { if (src[i - 1] - a > best[1] - best[0]) best = [a, src[i - 1]]; a = src[i]; } }
+    const m = Math.round((best[0] + best[1]) / 2); return [Math.max(1, m - 1), m, Math.min(N - 2, m + 1)].filter((v, i, s) => s.indexOf(v) === i); }
+/* THE APRON: a door is walked into head-on, so its squares are open three deep straight in from the side (a leg alone may reach the border square
+   sideways along the wall: the first walk of the north gate hit the pines one square in) */
+const INW = { N: [0, 1], S: [0, -1], W: [1, 0], E: [-1, 0] };
+function apron(o, e, sd, ks, ch) { const A = o.apronSq || (o.apronSq = new Set()); ks.forEach(k => { const q = border(e, sd, k); for (let d = 0; d < 3; d++) { const x = q[0] + INW[sd][0] * d, y = q[1] + INW[sd][1] * d; if (o.inR(x, y) && SOLIDC(o.c2[y][x])) A.add(x + ':' + y); lay(o, e, x, y, ch || letterOf(e)); } }); }   // (a hub is never an apron square: the leg still runs from the plot's own ground)
+function crossK(oA, A, sd, oB, B, ks, chA, chB) { const o2 = OPP[sd]; apron(oA, A, sd, ks, chA); apron(oB, B, o2, ks, chB);
+    const m = ks[Math.floor((ks.length - 1) / 2)]; leg(oA, A, sd, m, chA); leg(oB, B, o2, m, chB); }
+/* 1. inside each room: two plots that touch now and did not touch that way at home get one crossing */
+ROOMS_OUT.forEach(o => { if (o.S.block) return; const R = o.R;
+    R.order.forEach(A => ['E', 'S'].forEach(sd => { const B = R.at[(A.col + SIDE4[sd][0]) + ',' + (A.row + SIDE4[sd][1])]; if (!B) return;
+        if (A.home && B.home && B.home.x - A.home.x === SIDE4[sd][0] && B.home.y - A.home.y === SIDE4[sd][1]) return;   // they touched that way at home: the joint is as it was
+        crossK(o, A, sd, o, B, pickK(openK(o, A, sd), openK(o, B, OPP[sd]))); o.joints++; })); });
+/* 2. the seams between the rooms: the crossing on both sides, a `trail` door pair with the seam's id on its middle */
+function doorAt(o, e, sd, ks) { (o.usedSides || (o.usedSides = new Set())).add(e.col + ',' + e.row + ':' + sd); const R = o.R, along = (ks[0] + ks[ks.length - 1] + 1) / 2, ns = sd === 'N' || sd === 'S';
+    const onWall = (sd === 'N' && e.row === 0) || (sd === 'S' && e.row === R.rows - 1) || (sd === 'W' && e.col === 0) || (sd === 'E' && e.col === R.cols - 1);
+    const q = border(e, sd, Math.floor(along - 0.01)), d = { wall: onWall ? sd.toLowerCase() : 'free' };
+    if (onWall) { if (ns) d.x = R.gx(e.col * N + along); else d.z = R.gz(e.row * N + along); if (onWall) o.ways.push({ side: d.wall, at: ns ? d.x : d.z }); }
+    else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; d.passage = Object.assign({}, MOVER.FREE_PASS); }
+    return d; }
+SEAMS.forEach(s => { const oA = roomOf(s.a[0]), oB = roomOf(s.b[0]), A = oA.R.ofHome[s.a[1]], B = oB.R.ofHome[s.b[1]];
+    if (!A || !B) throw new Error('seam on a plot not in its room: ' + s.a.join(':') + ' | ' + s.b.join(':'));
+    if (A.wx + SIDE4[s.a[2]][0] !== B.wx || A.wy + SIDE4[s.a[2]][1] !== B.wy) throw new Error('the seam ' + s.a.join(':') + ' | ' + s.b.join(':') + ' does not touch on the map');
+    const ks = s.k || pickK(openK(oA, A, s.a[2]), openK(oB, B, s.b[2])); crossK(oA, A, s.a[2], oB, B, ks, s.ch);
+    const id = oA.R.seamId(A, s.a[2]);
+    oA.doorsOut.push(Object.assign({ id }, doorAt(oA, A, s.a[2], ks), { way: s.way, label: s.la[0], sub: s.la[1], action: { room: s.b[0], at: id }, desc: s.la[2] }));
+    oB.doorsOut.push(Object.assign({ id }, doorAt(oB, B, s.b[2], ks), { way: s.way, label: s.lb[0], sub: s.lb[1], action: { room: s.a[0], at: id }, desc: s.lb[2] })); });
+/* 3. the ways out of the zone + the link ends */
+Object.keys(OUT).forEach(rid => { const o = roomOf(rid); OUT[rid].forEach(w => { const e = o.R.ofHome[w.plot]; if (!e) throw new Error('no plot ' + w.plot + ' in ' + rid);
+    const ks = w.k || pickK(openK(o, e, w.side), []); apron(o, e, w.side, ks); leg(o, e, w.side, ks[Math.floor((ks.length - 1) / 2)]);
+    const d = doorAt(o, e, w.side, ks);
+    if (w.link) { LINKS_OUT[w.link] = [w.end, Object.assign({ part: o.S.part }, d)]; return; }
+    if (w.id !== o.R.seamId(e, w.side)) throw new Error('the seam id of ' + w.plot + ' ' + w.side + ' is ' + o.R.seamId(e, w.side) + ', not ' + w.id);
+    o.doorsOut.push(Object.assign({ id: w.id }, d, { way: w.way, label: w.label, sub: w.sub, action: { room: w.room, at: w.id }, desc: w.desc })); }); });
+/* the link ends that moved with their plots (the tool's own list, `ENDS` below the home room) */
+{ const HOME_LINKS = { mirror_lookingglass: ['b', { wall: 'free', x: gc(7), z: gc(51), face: 180 }], haunted_camelot: ['b', ends.haunted_camelot], well_camelot: ['a', ends.well_camelot] };
+  Object.keys(HOME_LINKS).forEach(id => { const [side, h] = HOME_LINKS[id], hp = MOVER.homePlot(h.x, h.z), o = ROOMS_OUT.find(q => q.R.ofHome[hp.id]), e = o.R.ofHome[hp.id];
+      LINKS_OUT[id] = [side, Object.assign({ part: o.S.part }, h, { x: r2(h.x + e.dx), z: r2(h.z + e.dz) })]; }); }
+/* 4. the doors the rooms carry from home (the mover stood them): the palace's four, the mirror, the dead tree */
+ROOMS_OUT.forEach(o => { o.R.doors.forEach(d => { const q = Object.assign({}, d); delete q.side; delete q.plot;
+    if (q.id === 'deadtree') q.action = RITUAL_STANDS ? { room: R_RITUAL, at: 'lookingglass' } : q.action;   // (until the Woods' move lands, the door keeps the Woods room it had)   // THE DEAD TREE: the Woods' Ritual Ground stands in its own room now (the Woods zone thread, 2026-11-17)
+    o.doorsOut.unshift(q); }); });
+/* 5. THE RIDGE + THE PASS (district N's `cam:n:ridge`, stood as said above) */
+{ const o = roomOf(R_PINES), R = o.R, rows = [], keep = [], drop = [];
+  const a0 = F.find(f => f.ridge).ridge;
+  RIDGE.parts.forEach(p => { const [x, z] = partXZ(a0, p), h = homeOf(x, z), e = R.ofHome[h.id]; if (!e) { drop.push(p); return; }
+      const out = z < -HHALF + 14 ? 'N' : x < -HHALF + 14 ? 'W' : x > HHALF - 14 ? 'E' : null;   // the edge ranks: the 14 m along the home room's north, west and east edges (and past them)
+      const past = out && R.at[(e.col + SIDE4[out][0]) + ',' + (e.row + SIDE4[out][1])];
+      if (out && past) { drop.push(p); return; }
+      (keep[h.id] || (keep[h.id] = [])).push(p); });
+  Object.keys(keep).forEach(id => { const h = plot[id], e = R.ofHome[id], cx = r2(-HHALF + (h.x + 0.5) * PL), cz = r2(-HHALF + (h.y + 0.5) * PL);
+      rows.push(Object.assign({}, a0, { id: 'cam:n:ridge@' + id, x: r2(cx + e.dx), z: r2(cz + e.dz), parts: keep[id].map(p => Object.assign({}, p, { p: [r2(p.p[0] + a0.x - cx), p.p[1], r2(p.p[2] + a0.z - cz)] })) })); });
+  /* the Pass: home x 0 (the sleigh road's middle) on the north wall -> the north end's north side, on the line the trail L6 leaves by */
+  const e = R.ofHome['P07-00'], px = R.gx(e.col * N + 6), pz = R.gz(e.row * N);
+  rows.push(Object.assign({}, a0, { id: 'cam:n:pass', x: px, z: pz, parts: RIDGE.pass.map(p => Object.assign({}, p, { p: [r2(p.p[0] + a0.x - 0), p.p[1], r2(p.p[2] + a0.z + HHALF)] })) }));
+  o.extraF.push(...rows); CNT.ridge = { kept: RIDGE.parts.length - drop.length, left: drop.length, pass: RIDGE.pass.length };
+  if (drop.length) STRAYS.push('THE SNOWY PINES: ' + drop.length + ' of the ridge’s ' + RIDGE.parts.length + ' edge-rank parts left out: they backed a side that has a plot of the path past it now (they would stand in the path)'); }
+/* 6. L7's place (the route kit's rule, ow-places.js: every route plot carries one) */
+{ const o = roomOf(R_FOREST), e = o.R.ofHome.L7, pl = OWP.PLACES.camp, x0 = e.col * N, y0 = e.row * N; e.name = 'The Forest Trail, ' + pl.name;
+  OWP.lay(pl, x0 + 5, y0 + 5, { P: (key, sx, sy, q) => o.extraP.push(Object.assign({ key, x: o.R.gcx(sx), z: o.R.gcz(sy) }, q || {})), at: (key, fx, fy, q) => o.extraP.push(Object.assign({ key, x: o.R.gx(fx), z: o.R.gz(fy) }, q || {})) });
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = x0 + 5 + dx, y = y0 + 5 + dy; if (SOLIDC(o.c2[y][x])) o.c2[y][x] = 'g'; }
+  o.extraP.forEach(p => o.stood.add(o.sqOf(p.x, p.z).join(':'))); }
+/* 6b. THE DEAD ENDS GO BACK TO THE TREES: a plot side with nobody past it now (no plot, no door) closes. A lane of road squares that ran to it
+   through the trees (a corridor: solid on both hands) goes back to the plot's own forest, square by square from the side inward, until it
+   meets open ground (a clearing, a court) or the way between the plot's own open ground and a side that is used. A square a piece stands on
+   stays. (The Woods' rule, THE ONE WORLD MOVE in bake-woods.js; here read off the squares, the Camelot plan records no legs.) */
+const FILL = { N: 'T', L: 'h' }, GROUNDI = {}; DISTRICTS.forEach(m => { if (m.ground) GROUNDI[m._cmFile] = PAL.indexOf(m.ground) + 1; });
+ROOMS_OUT.forEach(o => { if (o.S.block) return; const R = o.R; let back = 0;
+    const used = (e, sd) => !!R.at[(e.col + SIDE4[sd][0]) + ',' + (e.row + SIDE4[sd][1])] || o.doorsOut.some(d => d.wall !== 'free' ? false : false) || (o.usedSides && o.usedSides.has(e.col + ',' + e.row + ':' + sd));
+    R.order.forEach(e => { const dead = ['N', 'S', 'W', 'E'].filter(sd => !used(e, sd)); if (!dead.length) return;
+        /* the needed squares: the shortest walk inside the plot from its open ground to every open square of a used side */
+        const hub = hubOf(o, e), key = (x, y) => x + ':' + y, par = new Map([[key(hub[0], hub[1]), null]]), st = [hub];
+        for (let i = 0; i < st.length; i++) { const [x, y] = st[i]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy, k = key(X, Y); if (!par.has(k) && o.openR(X, Y) && R.plotOfSq(X, Y) === e) { par.set(k, key(x, y)); st.push([X, Y]); } } }
+        const need = new Set(); ['N', 'S', 'W', 'E'].filter(sd => dead.indexOf(sd) < 0).forEach(sd => { for (let k = 0; k < N; k++) { const q = border(e, sd, k); let c = key(q[0], q[1]); if (!par.has(c)) continue; while (c && !need.has(c)) { need.add(c); c = par.get(c); } } });
+        const fill = FILL[e.district] || 't', solid = (x, y) => !o.inR(x, y) || R.plotOfSq(x, y) !== e || SOLIDC(o.c2[y][x]);
+        dead.forEach(sd => { const ns = sd === 'N' || sd === 'S', inward = SIDE4[OPP[sd]];
+            /* the runs of open road squares along the side */
+            let runs = [], a = null; for (let k = 0; k <= N; k++) { const q = k < N ? border(e, sd, k) : null, rd = q && o.openR(q[0], q[1]) && ROADS.indexOf(o.c2[q[1]][q[0]]) >= 0 && o.c2[q[1]][q[0]] !== 'b';
+                if (rd && a == null) a = k; if (!rd && a != null) { runs.push([a, k - 1]); a = null; } }
+            runs.filter(r => r[1] - r[0] <= 3).forEach(r => { for (let d = 0; d < N; d++) {
+                const sqs = []; for (let k = r[0]; k <= r[1]; k++) { const q = border(e, sd, k); sqs.push([q[0] + inward[0] * d, q[1] + inward[1] * d]); }
+                if (sqs.some(q => !o.openR(q[0], q[1]) || ROADS.indexOf(o.c2[q[1]][q[0]]) < 0 || o.c2[q[1]][q[0]] === 'b' || need.has(key(q[0], q[1])) || o.stood.has(key(q[0], q[1])))) break;
+                const s0 = sqs[0], s1 = sqs[sqs.length - 1], l0 = ns ? [s0[0] - 1, s0[1]] : [s0[0], s0[1] - 1], l1 = ns ? [s1[0] + 1, s1[1]] : [s1[0], s1[1] + 1];
+                if (!solid(l0[0], l0[1]) || !solid(l1[0], l1[1])) break;   // the lane meets open ground: it stops here
+                sqs.forEach(q => { o.c2[q[1]][q[0]] = fill; o.pnt[q[1] * R.W + q[0]] = fill === 'T' ? 1 : fill === 'h' ? 7 : (GROUNDI[e.district] || 0); back++; }); } }); }); });
+    o.back = back; });
+/* 7. nobody is cut off: a pocket of open ground the joints miss gets a one-square path to the nearest reached square of its own plot; then every plot is reached from the spawn */
+ROOMS_OUT.forEach(o => { const R = o.R, Wn = R.W, Dn = R.D, wet = (x, y) => o.c2[y][x] === 'w';
+    const sp = Array.isArray(o.S.spawn) ? [o.S.spawn[0] - 12, o.S.spawn[1] - 12] : hubOf(o, R.ofHome[o.S.spawn]); o.spSq = sp;
+    let seen = null, tied = 0;
+    for (let pass = 0; pass < 120; pass++) { seen = new Uint8Array(Wn * Dn); const q = [sp]; if (!o.openR(sp[0], sp[1])) throw new Error(o.S.id + ': the spawn square is not open'); seen[sp[1] * Wn + sp[0]] = 1;
+        for (let i = 0; i < q.length; i++) { const [x, y] = q[i]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (o.openR(X, Y) && !wet(X, Y) && !seen[Y * Wn + X]) { seen[Y * Wn + X] = 1; q.push([X, Y]); } } }
+        let lost = null; for (let cy = 0; cy < Dn && !lost; cy++) for (let cx = 0; cx < Wn; cx++) if (o.openR(cx, cy) && !wet(cx, cy) && !seen[cy * Wn + cx] && /[gsmp]/.test(o.c2[cy][cx])) { lost = [cx, cy]; break; }
+        if (!lost || o.S.block) break;
+        const lp = R.plotOfSq(lost[0], lost[1]); let best = null, bd = 1e9; q.forEach(c => { if (R.plotOfSq(c[0], c[1]) !== lp) return; const dd = Math.abs(c[0] - lost[0]) + Math.abs(c[1] - lost[1]); if (dd < bd) { bd = dd; best = c; } });
+        if (!best) q.forEach(c => { const dd = Math.abs(c[0] - lost[0]) + Math.abs(c[1] - lost[1]); if (dd < bd) { bd = dd; best = c; } });
+        const ch = letterOf(lp), step = (x, y) => { const e = R.plotOfSq(x, y); if (e && SOLIDC(o.c2[y][x])) { o.c2[y][x] = ch; o.pnt[y * Wn + x] = ch === 'i' ? 6 : ch === 'm' ? 5 : 3; } };
+        for (let x = Math.min(lost[0], best[0]); x <= Math.max(lost[0], best[0]); x++) step(x, lost[1]); for (let y = Math.min(lost[1], best[1]); y <= Math.max(lost[1], best[1]); y++) step(best[0], y);
+        tied++; if (pass === 119 && !process.env.CAM_NOTHROW) throw new Error(o.S.id + ': could not tie every pocket (' + lost.join(',') + ' to ' + best.join(',') + ', ' + o.c2[lost[1]][lost[0]] + ')'); }
+    const cold = R.order.filter(e => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(e.row * N + ly) * Wn + e.col * N + lx]) return false; return true; }).map(e => e.name);
+    if (cold.length && !process.env.CAM_NOTHROW) throw new Error(o.S.id + ': plots not reached: ' + cold.join(', '));
+    o.tied = tied;
+    if (process.env.CAM_DUMP) console.log('\n' + o.S.id + '\n' + o.c2.map((r, cy) => r.map((ch, cx) => !R.plotOfSq(cx, cy) ? '.' : o.stood.has(cx + ':' + cy) && !SOLIDC(ch) ? 'o' : o.openR(cx, cy) && !wet(cx, cy) && !seen[cy * Wn + cx] ? '!' : SOLIDC(ch) ? ' ' : ch).join('')).join('\n')); });
+if (STRAYS.length) console.log('STRAYS (each is answered in the notes, "CAMELOT KINGDOM, THE ONE WORLD MOVE"):\n  ' + STRAYS.join('\n  '));
+
+/* 8. the rooms, written: each plot's pieces where the mover stood them, the tree mass and the air cut to the plots, the land past the lines read off the map */
+const clip = (z, o) => { const out = []; o.R.order.forEach(e => { if (!e.home) return; const hx0 = -HHALF + e.home.x * PL, hz0 = -HHALF + e.home.y * PL, x0 = Math.max(z.x0, hx0), x1 = Math.min(z.x1, hx0 + PL), z0 = Math.max(z.z0, hz0), z1 = Math.min(z.z1, hz0 + PL);
+    if (x1 - x0 < 0.01 || z1 - z0 < 0.01) return; const q = Object.assign({}, z, { x0: r2(x0 + e.dx), x1: r2(x1 + e.dx), z0: r2(z0 + e.dz), z1: r2(z1 + e.dz) });
+    if (z.n != null) q.n = Math.max(1, Math.round(z.n * (x1 - x0) * (z1 - z0) / ((z.x1 - z.x0) * (z.z1 - z.z0)))); out.push(q); }); return out; };
+const inBlock = (x, z) => { const h = MOVER.homePlot(x, z); return !!roomOf(KROOM).R.ofHome[h.id]; };
+const OUTB = [];
+ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
+    const spaces = R.spaces(o.openR), sp = { x: R.gcx(o.spSq[0]), z: R.gcz(o.spSq[1]) };
+    let rows;
+    if (S.block) { rows = []; F.forEach(f => { if (f.s != null || f.c != null) { rows.push(f); return; } if (f.ridge) return;
+            (f.split || [f.o]).forEach(a => { const q = MOVER.anchor(a); if (!q || inBlock(q[0], q[1])) rows.push({ o: a }); }); });
+        rows = spaces.map(o2 => ({ o: o2 })).concat(rows.filter(f => !(f.o && f.o.k === 'space'))); }
+    else rows = spaces.concat(R.features, o.extraF).map(a => ({ o: a }));
+    const zones = [].concat(...ZONES.map(z => clip(z, o))), air = [].concat(...AIR.map(z => clip(z, o)));
+    const atmos = air.length ? ", atmos: " + J({ kind: 'embers', n: Math.max(40, Math.round(160 * S.list.length / 64)), tier: 'open', zones: air.concat([{ x0: -R.HX, z0: -R.HZ, x1: R.HX, z1: R.HZ, kind: 'embers', n: Math.max(40, Math.round(160 * S.list.length / 64)) }]) }) : "";
+    const mk = S.block ? marks : [], lines = S.block ? OLD.l : S.id === R_GARDEN ? OG.l : [], P2 = R.props.concat(o.extraP);
+    check(P2, R.npc);
+    const M2 = [];
+    M2.push("        " + S.id + ": {");
+    M2.push("            label: " + J(S.label) + ",");
+    M2.push("            sub: " + J(S.sub) + ",");
+    M2.push("            kind: 'box', site: 'prebuilt_camelot', part: " + J(S.part) + ",");
+    M2.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex) */");
+    M2.push("            world: { hub: 'kingdom', layer: 'surface', wx: " + R.wx + ", wy: " + R.wy + " },");
+    M2.push("            shell: (s => { s.sky.sights = 'world'; return s; })(hqCastleShell({ w: " + w + ", d: " + d + ", plate: { x: " + sp.x + ", z: " + sp.z + ", y: 4.4 }, forest: null" + atmos + " })),   // the far places at their true bearings beside the sky castle; no treeline ring (the land past the lines is the map's)");
+    M2.push("            parti: " + J(S.parti) + ",");
+    M2.push("            typology: 'grid',");
+    M2.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + R.cols + ", nx: " + R.cols + ", nz: " + R.rows + ", mask: " + J(R.mask) + ", names: " + J(R.order.map(e => [R.pid(e), e.name, e.district, e.level])) + " },");
+    M2.push("            terrain: {");
+    M2.push("                res: 1.75, floor: 'grass_2', cliff: 'castle_wall', path: 'cobblestone',");
+    M2.push("                noise: { amp: 0, scale: 8 },");
+    M2.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
+    M2.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(o.ways) + " },");
+    M2.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + R.gcx(0) + ", z0: " + R.gcz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.pnt).toString('base64') + "' },");
+    M2.push("                gen: { kind: 'plan', look: 'trees', seed: 64, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + Math.max(300, Math.round(3200 * S.list.length / 64)) + ", treeH: [5.5, 8.5], kinds: ['tree', 'tree_2', 'tree_3', 'tree', 'tree_5', 'tree_2'], zones: " + J(zones) + " },");
+    M2.push("                features: [");
+    rows.forEach(f => M2.push("                    " + rowText(f)));
+    M2.push("                ],");
+    M2.push("                marks: " + J(mk) + ",");
+    M2.push("            },");
+    M2.push("            doors: [");
+    o.doorsOut.forEach(dr => M2.push("                " + J(dr) + ","));
+    M2.push("            ],");
+    M2.push("            counters: [],");
+    M2.push("            props: [");
+    for (let i = 0; i < P2.length; i += 4) M2.push("                " + P2.slice(i, i + 4).map(J).join(", ") + ",");
+    M2.push("            ],");
+    M2.push("            agents: [],");
+    M2.push("            npcSpots: " + J(R.npc) + ",");
+    M2.push("            onlineSpots: [],");
+    M2.push("            lines: " + J(lines) + ",");
+    M2.push("            spawn: { x: " + sp.x + ", z: " + sp.z + ", face: " + (S.face || 0) + " },");
+    M2.push("        },");
+    OUTB.push(M2.join('\n'));
+    console.log(S.id + ' ' + JSON.stringify({ plots: S.list.length, box: R.cols + 'x' + R.rows, world: [R.wx, R.wy], joints: o.joints, laid: o.laid, deadEndsBack: o.back, tied: o.tied, spaces: spaces.length, features: rows.length, props: P2.length, doors: o.doorsOut.length, natives: R.npc.length, zones: zones.length, air: air.length })); });
+if (CNT.ridge) console.log('the ridge ' + JSON.stringify(CNT.ridge));
+console.log('links ' + JSON.stringify(LINKS_OUT));
+const owBlock = "        /* CAMELOT-KINGDOM-BEGIN — CAMELOT KINGDOM ON PLOTS, PLAN 3 (2026-11-15) + THE ONE WORLD MOVE (2026-11-17: the castle + the village and the four woods stand at their One World places, five rooms): written by `node bake-camelot.js` from docs/areas/camelot/layout.json + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, a district file or the layout and rerun. */\n" + OUTB.join('\n') + "\n        /* CAMELOT-KINGDOM-END */\n";
 if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
-src = splice(src, kingdomBlock, 'CAMELOT-KINGDOM', '        site_prebuilt_camelot_ward: {');
+src = splice(src, OW_HOME ? kingdomBlock : owBlock, 'CAMELOT-KINGDOM', '        site_prebuilt_camelot_ward: {');
+/* THE LINKS' CAMELOT ENDS (data.js DOOR_HQ.links): each link's `a:` / `b:` line gets its room (part) and its place rewritten; the rest of the line (its sub, its passage) is kept */
+if (!OW_HOME) Object.keys(LINKS_OUT).forEach(id => { const [side, e] = LINKS_OUT[id], i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('link not found: ' + id);
+    const re = new RegExp('(\\n +' + side + ": \\{ site: 'prebuilt_camelot', part: )'[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Camelot end on link ' + id);
+    const head = m[1] + "'" + e.part + "', wall: '" + e.wall + "'" + (e.x != null ? ', x: ' + e.x : '') + (e.z != null ? ', z: ' + e.z : '') + (e.face != null ? ', face: ' + e.face : '') + (e.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
+    src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); });
 fs.writeFileSync(file, src);
-console.log('data.js: site_prebuilt_camelot_kingdom (' + kingdomBlock.length + ' bytes) written');
+console.log('data.js: ' + (OW_HOME ? 'site_prebuilt_camelot_kingdom, THE HOME FRAME (' + kingdomBlock.length : ROOMS_OUT.map(o => o.S.id).join(', ') + ' (' + owBlock.length) + ' bytes) written');
