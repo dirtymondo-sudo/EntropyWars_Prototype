@@ -3886,6 +3886,13 @@ The Delivery family had only the generic looks. Now, on the P-Z hook (`pzSig`), 
 - Hot and Fresh (`bolt`, pzOwn, timed on flyMs = the heal's projectile): a pizza box (canvas: kraft lid, red slice logo,
   HOT & FRESH) tumbles to the ally, lands at its feet toward him, the lid flips up, steam curls out, side ring; the `aura`
   on arrival = green heal motes.
+  THE PACK BOX (11-17, mondo "is there pizza from the model list or asset pack you can use?"): the box is now the Pizzeria
+  PSX pack's (Elbolilloduro, CC0), `Assets/world/packs/elbolilloduro/ebd_pizzeria_pizza_box.glb` (`_WPN_MODELS.pizzaBox`,
+  `_dbPackBox`): nodes `tray`, `lid` (pivot on the back hinge) and `pizza` (the pack's pepperoni pizza, shown when it lands
+  and opens). Cut from Pizzeria_Props.glb (nodes Pizza_box.001 = lid, .002 = tray with the parent's 2.66 scale baked,
+  Pizza_Peperoni) with gltf-transform: /mnt/project-files/delivery-boy-polish/cut-pizza-box.mjs. The canvas box stands in
+  until the GLB has loaded (warmed in the background lane at boot). Kill switch `window.EW_NO_PACK_PIZZA`. The pack also
+  has 11 more pizzas (cheese, ham, mushroom, olive, pepper, pineapple, basil, slices) and a closed box (Pizza_box.003).
 - Hop On (`aura` on the ally; `fireGeometry('nrHopOn')` per ally from Thirty Minutes or Less): two horn-beep rings at his
   head, a side ring under each, a chevron over the ally pointing at him.
 - The drop (`fireGeometry('nrHopOn:drop', x, y, 0, { fromX, fromY, owner, delay })`): dust, side ring, one bell ring.
@@ -4027,6 +4034,17 @@ ripple rings), SPEED in the viewer's side colours (own cyan-blue, other side pin
   (the mixer's per-frame step), so the Flying Kick's star can show before his foot there; on a real GPU they should agree
   (the same clip path as Sky Tackle; not measured on a GPU here).
 
+
+## THE NINJA'S LOOKS (2026-11-17)
+three-vfx-effects.js "THE NINJA" (after the Samurai Slug); kill-switch window.EW_NO_NINJA_VFX; every look through fireGeometry
+(relayed to the guest, fog-gated by the square). No blade: steel stars, ink-violet smoke (0x2a2238 / 0xb9a8ff), a log, his own body.
+Side colours from the viewer's seat (Riot pass). 'nrShuriken:hit' = a spinning four-point star (ShapeGeometry) hand -> body with
+a side-coloured streak, steel sparks. Kawarimi aura = leaves + lilac ring; 'nrKawarimi:swap' = smoke + the pack's `fallen_log`
+stood on end where the blow landed, it tips over and fades (the status' onApply warms the model); a puff + side ring where he steps
+out. 'nrShadowStep:blink' = an ink-tinted body double (_finDouble) fading where he stood, a side-coloured floor line, smoke at both
+ends; its impact = a white + side-coloured crescent chop. 'nrCloneJutsu:hit' = one clone a hit: his own model (_finDouble, the
+caster as `o.unit`, a kick / punch slot played once, tinted 32 % ink) pops out of smoke on a ring round the target, lunges in, the
+hit flashes, it fades; a side ring on the first. Proof /mnt/project-files/ninja-race/.
 ## THE HAUNTED DOLL (2026-11-17, three-vfx-effects.js block "THE HAUNTED DOLL", after THE SAMURAI SLUG)
 Old-lace pink 0xe8a0b4, porcelain white, thread red; the side reads from the viewer's seat (own cyan-blue, enemy pink-orange).
 Small and quick on the body. Kill-switch window.EW_NO_DOLL_VFX.
