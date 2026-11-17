@@ -83472,6 +83472,8 @@
                         _bBoost = Object.assign({}, _bBoost || {}, { [_shPick]: spell.stageHigherOf.n || 1 });
                     }
                     if (_bBoost) applyStatStageBoost(_bt, _bBoost, `${spell.name}: `, unit);
+                    /* 📺 Fast Forward: the VCR's FF screen over the ally (three-vfx-effects.js THE CURSED TV; fireGeometry is relayed) */
+                    if (spell.id === 'nrFastForward' && !_bt.dead) _sigVfxGeom('nrFastForward', _bt.x, _bt.y, 0, { owner: unit.player, fromX: unit.x, fromY: unit.y });
                     /* THE SPELL AUDIT Batch D: a buff row's `shield` (Ki Charge's ki barrier) — HP-space like the shield
                        kind: supportScale'd to the recipient, capped at shieldCapPct (50%) of max HP. */
                     if (spell.shield > 0) {

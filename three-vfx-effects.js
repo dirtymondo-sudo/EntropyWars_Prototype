@@ -46472,9 +46472,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         o = o || {};
         var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts);
         var m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, fog: false, side: THREE.DoubleSide });
-        var w = ts * (o.w || 0.62), pl = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 0.75), m);
+        var w = ts * (o.w || 0.55), pl = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 0.75), m);
         pl.renderOrder = 166;
-        var hold = new THREE.Group(); hold.position.y = h * 1.08 + w * 0.42; hold.add(pl); F.g.add(hold);
+        var hold = new THREE.Group(); hold.position.y = h * 1.15 + w * 0.7; hold.add(pl); F.g.add(hold);   /* over the nameplate, never on the body */
         _hdFaceCam(hold);
         var ms = o.ms || 1000, a0 = o.alpha || 0.9;
         return _sigRunOwned(F.g, ms, function (el) {
@@ -46502,19 +46502,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* EMERGENCY BROADCAST */
     EFFECTS['nrEmergencyBroadcast_tile'] = { layers: [
-        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 480, z: 3, tint: _TVX_Y, size0: 20, size1: 80, opacity0: 0.4, delayMs: 160 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 480, z: 3, tint: _TVX_Y, size0: 20, size1: 70, opacity0: 0.25, delayMs: 160 },
     ] };
     EFFECTS['nrEmergencyBroadcast_center'] = { layers: [
-        { count: 4, sprite: 'wave-anim', ml: [360, 540], offsetXY: 30, z: [90, 120], tint: _TVX_C, vxRange: 240, vyRange: 240, drag: 1.1, size0: [8, 12], size1: [22, 30], opacity0: 0.35 },
+        { count: 3, sprite: 'wave-anim', ml: [360, 540], offsetXY: 30, z: [100, 130], tint: _TVX_C, vxRange: 240, vyRange: 240, drag: 1.1, size0: [6, 10], size1: [16, 22], opacity0: 0.25 },
     ] };
     _afAoeDef('nrEmergencyBroadcast_aoe', 2, 'square', 'nrEmergencyBroadcast_tile', 'nrEmergencyBroadcast_center');
     function _tvxBroadcast3D(tx, ty, r) {
         if (_tvxOff() || _afFogHides(tx, ty)) return null;
         var ts = _worldPos(tx, ty).ts, reach = (r > 0 ? r : 2) + 0.5, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: _cbOwnerNear(tx, ty) });
         var h = _lgBodyH(_lgUidAt(tx, ty), ts);
-        _tvxPanel(tx, ty, _tvxBarsTex(), { w: 0.8, ms: 1500, flicker: true });
+        _tvxPanel(tx, ty, _tvxBarsTex(), { w: 0.7, ms: 1500, flicker: true });
         [_TVX_Y, _TVX_C, _TVX_M].forEach(function (col, j) {
-            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.45, r1: ts * reach, ms: 620, color: col, height: h * (0.55 + 0.15 * j), opacity: 0.5, torus: j > 0 }); } catch (e) {} }, 180 + j * 140);
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.45, r1: ts * reach, ms: 620, color: col, height: ts * (0.08 + 0.1 * j), opacity: 0.22, torus: j > 0 }); } catch (e) {} }, 180 + j * 140);   /* low + faint: three additive plates at body height washed the set out white */
         });
         _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * reach, ms: 720, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 220);
         return true;
@@ -46531,6 +46531,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return true;
     }
     /* REWIND */
+    EFFECTS['nrRewind_impact'] = { layers: [
+        { sprite: 'flash', ml: 180, z: 55, size0: 14, size1: 48, tint: 0x6a86ff, opacity0: 0.55, delayMs: 80 },
+    ] };
     function _tvxRewind3D(tx, ty, r, o) {
         if (_tvxOff() || _afFogHides(tx, ty)) return null;
         o = o || {};
@@ -46545,6 +46548,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     Object.assign(SPELL_MAP, {
         nrStaticBurst:        { impact: 'nrStaticBurst_impact' },
         nrEmergencyBroadcast: { aoe: 'nrEmergencyBroadcast_aoe' },
+        nrRewind:             { impact: 'nrRewind_impact' },
     });
     Object.assign(_spell3DGeometry, {
         nrStaticBurst: _tvxStatic3D, nrEmergencyBroadcast: _tvxBroadcast3D, nrFastForward: _tvxFF3D, nrRewind: _tvxRewind3D,
