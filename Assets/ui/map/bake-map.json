@@ -288,5 +288,35 @@
   "v": "24d7365b55",
   "bytes": 1656,
   "s": "1.1"
+ },
+ "site_prebuilt_shasta_ow_olympus": {
+  "id": "site_prebuilt_shasta_ow_olympus",
+  "nx": 120,
+  "nz": 72,
+  "h0": 1.7,
+  "hs": 0.25,
+  "v": "d3882d2130",
+  "bytes": 8761,
+  "s": "2.2"
+ },
+ "site_prebuilt_shasta_ow_shasta": {
+  "id": "site_prebuilt_shasta_ow_shasta",
+  "nx": 84,
+  "nz": 84,
+  "h0": -0.07,
+  "hs": 0.25,
+  "v": "36b42b8511",
+  "bytes": 6348,
+  "s": "2.8"
+ },
+ "site_prebuilt_shasta_ow_lodge": {
+  "id": "site_prebuilt_shasta_ow_lodge",
+  "nx": 120,
+  "nz": 108,
+  "h0": -0.07,
+  "hs": 0.25,
+  "v": "306504a4bd",
+  "bytes": 12175,
+  "s": "4.0"
  }
 }
