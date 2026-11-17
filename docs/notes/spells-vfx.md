@@ -4187,6 +4187,23 @@ named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in
 - A decal on a square the earth noise wash covers is hidden by the wash: put a hit square's own piece above the ground.
 - The capture harness' frames are about 0.9 s apart round the hit: a piece shorter than that may not be in any frame.
 
+### part 3 (12 spells: the chess pieces, the walls, the sand, the ball). After frames: `docs/plans/vfx-cleanup/img/own-look/L1_part3.jpg`
+- **Pawn, Knight, Bishop, Rook, Queen, King** (chess piece; one function, `_l1Chess(piece)`): the MOVE is drawn on the board, the squares
+  the piece crossed light one after another as chess squares (ivory / walnut: a file for the rook, a diagonal for the bishop, the L
+  for the knight, one step for king and pawn), and the capture is written beside the taken body the way a score sheet writes it
+  (R×, B×, N×, Q×, K×, a bare × for the pawn). The caster already wears the piece's model, so no second piece is drawn (tried: two
+  white pieces read as a bug). Bishop and Knight could not be cast by the harness (no target on a diagonal / an L on its board): same code, no picture.
+- **Rampart** (`sharedRampart`): squared stone blocks knock down onto the top of the rising wall, two merlons a square, mason's dust.
+  `_l1Courses` (the Snow Fort's bricks, shared). NOT confirmed by a picture: the harness casts the class spell `rampart` under the same name.
+- **Pyramid Protocol** (annunaki): a square of gold light climbs each of the three blocks as it rises and holds on the cap. NOT confirmed
+  by a picture (tile-cast, caught late twice).
+- **Spike the Ball** (quarterback): the football model is driven nose-first into the middle square, kicks back up end over end, turf
+  jumps off every square; the 3×3 flashes pigskin brown.
+- **Spike Trap**: hidden, so nothing marks where it lies: the look is the laying of it at the CASTER's feet (stone tips pushed into
+  the dirt, the dirt patted flat). The spring keeps the traps pack's snap.
+- **Quicksand**, **Sandstone Tomb**: named + the sand-gold flash; `_eaQuicksand` / `_eaTomb` unchanged.
+- The harness picks a spell by its NAME in the HUD: two spells with one name (Rampart) = it may cast the other one.
+
 ## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
 Thread L4 of the own-looks job (`docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`, list `own-look/L4.txt`). mondo: "any spells that
