@@ -6481,8 +6481,15 @@
                 const t = v.threatFn(target.x, target.y, target.z);
                 s += Math.min(300, t.totalDmg * 0.7);
             }
+            /* 🥷 THE NINJA (2026-11-17): Kawarimi (`substitute`) eats the next blow like Protect and puts him at the hitter's
+               back; worth it under threat, nothing if he already holds one */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'substitute')) {
+                if (g.unitHasStatus(target, 'substitute')) return 0;
+                const t = v.threatFn(target.x, target.y, target.z);
+                s += Math.min(260, t.totalDmg * 0.6) + 20;
+            }
             for (const eff of (spell.statusEffects || [])) {
-                if (!eff || !eff.id || eff.id === 'protect') continue;
+                if (!eff || !eff.id || eff.id === 'protect' || eff.id === 'substitute') continue;
                 s += _friendlyStatusValue(g, unit, target, eff, v);   // regen/haste-style friendly riders
             }
             // THE SPELL AUDIT D: a buff row's barrier (Ki Charge), its taunt (Shield Maiden), its decoy (Mimicry)
@@ -6521,6 +6528,14 @@
                 if (_near) return 0;
                 const _close = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
                 s += (_close ? 70 : 35) + 25 * (3 - _bn);
+            }
+            /* 🪆 THE HAUNTED DOLL (2026-11-17): Pull My String is a gamble on four lines (a heal, a Charm, a pull, a big hit). The CPU
+               plays it blind, as a player does (it never peeks at _dollStringLine): worth more with an enemy in reach and when hurt. */
+            if (spell.pullString) {
+                const _psR = (spell.pullString.killRange || 4);
+                const _psNear = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= _psR);
+                const _psHurt = unit.maxHp > 0 ? 1 - unit.hp / unit.maxHp : 0;
+                return (_psNear ? 85 : 20) + Math.round(80 * _psHurt);
             }
             /* 🙌 THE TELEVANGELIST PASS (2026-11-17): Collection Plate (`tithe`) only pays while heals land within 3 of him: worth
                it with healers (either team) or hurt allies near him, nothing when it is already out or nobody near can heal */

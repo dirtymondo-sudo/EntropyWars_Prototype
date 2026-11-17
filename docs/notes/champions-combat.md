@@ -5818,6 +5818,42 @@ had no idea what a ride was for; a rider knocked away still teleported back to h
   - Proof + probes: /mnt/project-files/boltzmann-brain-polish/ (probe/p3_show.js = frozen-clock looks + the rules in a CPU match).
 
 
+## THE HAUNTED DOLL (2026-11-17, thread "Build Haunted Doll spells and VFX"; mondo OK'd the kit and asked for "some sort of wind up spell like those dolls where you pull the string and it says or does something")
+The model + 128 px sprite came first (PR #1910, models-assets.md "THE NEW CHARACTERS, 11-17"); this made it a race. Rows sit
+just after the Cicada Brood in every race table (anomaly/unholy, class assassin, magic, fragile + quick: HP 880, INT 150,
+SPD 160; psychic resist, fire weak; home The Haunted House; price 450; finisher borrows possessedPhoto). Its own family
+`hauntedtoy`; RACE_TREE = its four. Rules = battle.js block "THE HAUNTED DOLL" (before LEAPFROG):
+- 🪆 NOBODY'S LOOKING (`_dollCreep`, from `_nrRoundEnd`): at every round end, if no living enemy within 5 has it in its FRONT
+  cone (`_dollWatchedBy` = getAttackArc(doll, e) === 'front'; a Blind / Asleep / Stunned enemy is not watching), it creeps up
+  to 2 cardinal squares toward the nearest enemy (free squares, a climb of 1, edge walls respected) and turns to face it.
+  Watched = "👁 WATCHED", it stays. Pinned (Rooted, Charmed …), Clash, exited/captured = no creep.
+- Pin Prick (T1, 70 magic, r4, `voodooSelf: 0.3`): `_dollPin` (in _runPostEffects) puts the existing Voodoo status on the
+  victim tied to the doll (`allyId` = the doll) for 2 rounds with its own share: payload `echo` -> unit `_voodooEcho`, read by
+  `_procLinks` (other Voodoo keeps STATUS_DEFS.voodoo.linkEcho 0.5). A kill hit leaves no status.
+- Play With Me (T2, swap, r3, cd 2, enemy only like Infernal Waltz, `faceAway`): after the swap the enemy is turned with its
+  back to the doll (the real facing, state-synced). An ally swap was in the first proposal; enemy-only is what shipped (the
+  swap targeting, forecast and CPU are built per side; say so if he wants allies too).
+- Pull My String (T2, self buff, cd 2, `pullString`): `_dollStringLine` = _nrHash(id + round + 'string') picks one of four
+  lines (host + guest agree, like the Florida Man's headline); `_dollPullString` plays it: "Let's play!" heal 25% max HP;
+  "Will you be my friend?" Charm 1 round on the nearest enemy within 3; "Hug me!" resolveForcedSlide pulls the nearest enemy
+  within 4 to its side (no boss/cube); "I'm going to kill you." 150 + spell power magic on the nearest enemy within 4
+  (_applyAoeDamage on its one square). A line with nobody in reach falls back to "Let's play!". The lines are Claude's text.
+  ai.js plays it blind (85 with an enemy in 4, 20 without, + up to 80 when hurt); it never peeks at the line.
+- Look Behind You (T3, 150 magic, r5, Feared 1, `chargeToTarget` + `blinkBehind` + `unwatched`): only on a target NOT looking at
+  the doll (spellTargetUsableOn + a doSpell refusal "X is watching — … needs it to look away."); chargeLandingTile returns
+  `_dollBehindSquare` (the square at the target's back) when free, else the usual side square.
+- THE STOP-MOTION (three-renderer.js, unit model mixer): a model def's `stepFps` (the doll: 9) banks the frame time and advances
+  the mixer in steps, so every clip jerks like a puppet; the board tweens stay smooth. Kill-switch window.EW_NO_STOP_MOTION.
+  heightRatio 0.72 (a child-sized doll).
+Online: all host-side; the creep path rides the relayed animateDisplacementPath, its footprints + every look ride fireGeometry
+(relayed). Proof: /mnt/project-files/haunted-doll/ (probe.js = a real VS-CPU TDM, a doll on each side; haunted_doll_proof.jpg;
+cpu_log.txt). Measured 11-17, 0 page errors: Pin Prick put Voodoo (echo 0.3, tied to the doll) on the foe, and a hit on the doll
+echoed back on it; Play With Me swapped and left the foe with its back to the doll (arc 'back', not watching); Look Behind You
+was refused on a foe facing the doll ("is watching") and then landed behind a foe looking away, 303-340 + Feared; Pull My String
+played all four lines (heal +310 = 25%, Charm, a pull from 3 to 1 square, 298-336 damage). In 5 CPU rounds the CPU doll crept
+(2, 2, 1 squares) on rounds nobody watched it, refused LBY on a watcher and cast it on a foe looking away. Probe gotcha: a
+script that calls doSpell again during a charge spell's cinematic gets a second cast (the once-a-turn mark lands at the end of
+the deferred charge); the UI and the CPU wait for _actionExecuting, so players cannot, but a harness must wait too.
 ## THE INFLUENCER POLISH (2026-11-17, thread "Polish Influencer spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
 - THE SHARE FIX: `_viralShare` passed the hitter's type / STAB / ATK into each mate's share (a 154 hit shared 347 "super effective").
   The share is now a flat 30 % of the damage dealt: no sourceUnit, `typeEffect:'neutral'`, ignoreArmor; the kill credit goes
@@ -5879,3 +5915,21 @@ had no idea what a ride was for; a rider knocked away still teleported back to h
 - **THE FLOATING BRAIN (mondo 11-17, "can we name it something else ... Floating Brain, Sentient Brain ..."):** the Boltzmann Brain shows
   as **Floating Brain** (RACE_PROFILES label, the race blurbs in ui.js + party-builder.js, the fluctuation family's names). The race id
   stays `'boltzmann brain'` (saves, server lists, R2 folders, every table key); code comments keep the old name.
+
+## THE NINJA (2026-11-17, thread cmsg_01XWpxyTn3nnw98znVzKdFjsHLkqP9JfLhbVUrP2feEoYY "Build Ninja spells and VFX")
+mondo had the Meshy models made (male + female, the woman in a sexy ninja costume, NO weapons; PR #1910) and OK'd the kit proposal
+in the thread, adding "a ninja clone ju jitsu spell where he makes a bunch of clones and they all attack, kind of like catgirl's
+ninefold scratch". One race, both looks (`'ninja'`, sprites.js gender 'both'; the man's sprite in the race tables, the woman's in
+_NEW_FEMALE_SPRITES; R2 `Assets/characters/races/ninja/{male,female}/`). Assassin, home Downtown (the rooftops), family `ninjutsu`.
+THE RULE, KAWARIMI (status `substitute`, battle.js block "THE NINJA" before the Tech CEO): while Substituted, the first enemy blow
+aimed at him (the enemy acting now; burns / poison / zone ticks never) lands on a log, no damage, no status; he reappears on the free
+square straight behind the attacker, facing its back (`_ninjaBehindAttacker`: straight behind first, never in front), so his next
+basic attack on it is a Backstab under the facing rule. The rest of that same attack (`_protectActionSeq` key on
+`unit._kawarimiKey`) keeps hitting the log: a multi-hit's later hits, a shove (`_runPostEffects` push skipped).
+The four: Shuriken (T1, multiHit 3 x 32, range 4), Kawarimi (T2, self, cd 3), Shadow Step (T3, 140, range 4, cd 2,
+`blinkBehind`: doSpell blinks him to `ninjaShadowLanding` = the free square beside the target most behind its FACING, then strikes;
+from the back arc the hit is x FACING_BACK_DMG_MULT through calcSpellHitRiders `backMult`, the forecast reads the same landing,
+no range falloff; nothing free behind = beside it, no Backstab; nothing free at all = refused), Clone Jutsu (T4, multiHit 8 x 52,
+range 3, cd 3; ~ Ninefold Scratch's 414). `ownHitFx` (+ `hitLeadMs`) on a multiHit row: _applyMultiHitDamage fires
+'<id>:hit' through fireGeometry per hit and never re-fires the bolt. CPU: ai.js values Kawarimi like Protect (threat x 0.6).
+Probe /mnt/project-files/ninja-race/probe_ninja.js (NINJA_CPU=1 = a CPU ninja plays 4 rounds).

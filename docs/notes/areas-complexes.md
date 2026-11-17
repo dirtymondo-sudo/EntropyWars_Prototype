@@ -11203,3 +11203,45 @@ open ground shows as a dark hole in a clump of trees (it needs a seam look with 
 `node playtest_city.js <room> '<views>' --loglen=1400`; a view's `"eval"` prints `ThreeRenderer.hq.perf()` (calls, triangles, `mem`); pass each
 view the ground's own height (`hqTerrainCompile(room, id).hFn(x, z)`); the fight: `node playtest_handover.js <room> --at=x,z[,y] --race=<unit>`
 (both options added for the slice). Walk lengths: the shortest line over the room's `space` rows, door to door, at 2.4 and 4.6 m/s.
+
+## ONE WORLD, THE ESTATE RE-LAID (2026-11-17, BUILD_PLAN phase 3 wave A; mondo said yes to taking the second side's Estate rows, plots moved only)
+Every Estate district now stands at its v13 place. The slice had moved the Corn Fields and the Lake; this thread moved the Haunted House (H) and the Ranch (R)
+with `bake-estate.js` THE ONE WORLD MOVE (`ow-move.js`), no district file edited. Four rooms:
+
+| Room | What | World plots | Box | Plots | Written by |
+|---|---|---|---|---|---|
+| `site_prebuilt_skinwalker_ow_corn` | the Corn Fields + R7's three fields (the slice, unchanged byte for byte) | -14..-13 x 5..10 | 2 x 6 | 12 | `bake-estate.js` |
+| `site_prebuilt_skinwalker_ow_lake` | County Lane + L8 + the Lake (the slice; only its Ranch seam re-pointed) | -14..-10 x 10..17 | 5 x 8 | 25 | `bake-route.js R7` |
+| `site_prebuilt_skinwalker_ow_house` | THE HAUNTED HOUSE: the Iron Gate, the Drive, the Lawn, the house between the Gazebo and the Treehouse, the Graveyard, the Family Plot, the Crypt | -22..-20 x 11..16 | 3 x 6 | 9 | `bake-estate.js` |
+| `site_prebuilt_skinwalker_ow_ranch` | THE RANCH + R8's one plot in its box (`Ranch Road, the bee yard`, a field like County Lane's) | -12..-10 x 18..22 | 3 x 5 | 10 | `bake-estate.js` |
+
+- **The splitting rule.** The Ranch touches the Lake (the Ranch Gate under The Lake, south), but the Lake's room has 25 plots: 25 + 10 > 30, so the Ranch
+  is its own room, joined door to door on `ow_h_m11_18` (the interim seam of the slice, now landing on the Ranch Gate; open ground, `way: 'open'`, 6 m).
+  The house stands alone in the forest: the wild link L5 (-21,9 · -21,10, zone the Woods, two plots) belongs to the Woods' Ritual Ground room by rule 4
+  (two zones never join), so the house's only seam is the Iron Gate's north side, `ow_h_m21_11`, a `trail` door to `site_prebuilt_fairy_forest_ow_ritual`
+  (the Woods thread's room; it writes the other side, agreed between the threads 11-17).
+- **R8's plot -10,18** lies alone between the Lake, the Ranch Gate and the Barn (rule 4: the district's room's). It is dressed like the corn's lane fields
+  (grass in a rim of corn, sunflowers, wild flowers, a milestone, a ranch fence, one place: the bee yard) by the same code (`fields: true` on a STAND row).
+  R8's other 23 plots are phase 4.2's; its room meets the Ranch at -10,21 / -9,20 (the Windmill, the Pasture): that thread adds both sides of that seam.
+- **Joints across the line.** The corn's rule joined only plots one OVER the other; the house and the ranch have plots side by side, so their STAND rows
+  join east-west too (`ewJoin` / `fields`). The corn's room is unchanged by this (its two columns are joined by the lane).
+- **THE STABLE DOOR (Room 512's bay)** stood on the Yard's south wall. The Yard is inside the Ranch's room now (the Paddock stands south of it), so the door
+  is on the room's own south wall at the Cow Field's foot (`bay: { plot: 'P05-05', k: 5 }`: a two-square track cut up to the field's open ground);
+  data.js `siteRooms.entry.prebuilt_skinwalker` = `{ room: '…_ow_ranch', door: { id: 'bay', wall: 's', x: 0 } }`. Room 13's door (`bay13`), the
+  saloon door (`ranch_lodge` end b) and the house's front door moved with their plots; the rows were rewritten (the tool checks them).
+- **THE HOUSES PAST THE CORN** (H.js sets two rim houses OUTSIDE the home room): they move with the plot they lie past. One fell on the house room's south
+  line (its plot, the Family Plot, has the Crypt south of it now); the tool sets such a piece past the room's wall on the nearest outside side of its
+  plot, as far out as before (printed as a STRAY: `abandoned_house` past the Crypt's south wall at -42,168). No other stray.
+- **Retired:** `site_prebuilt_skinwalker_estate` -> the Ranch (the stable door's room); `site_prebuilt_haunted_grounds` -> the house (was -> the old room).
+  `hubs.ranch.room` = the Corn Fields. The Haunted Hall's front door, the day table and `HQ_AREA_MARKERS` name the new rooms. Doors of live rooms naming
+  a retired room: none. Barn hatch (`under.ways`, the Barn -10,19 down to the D.U.M.B.'s Research): no door exists today; the D.U.M.B. thread (wave B)
+  writes the link, its Estate end on The Barn's plot in `…_ow_ranch`.
+- **The census** (`node ow-census.js --diff docs/areas/estate/move/before_hr.json site_prebuilt_skinwalker_ow_house site_prebuilt_skinwalker_ow_ranch`):
+  props 746 -> 755, natives 14 -> 14, every line kept. What it lists: 6 ranch rails + 2 walls that lie ON a plot line and are counted on the box cell
+  past it now (the same pieces); the abandoned house above; the room-wide scatter rows (the tool's, one a room); the field's own dressing (new plot);
+  the moved `bay` and `ow_h_m11_18` doors. Nothing lost.
+- **Measured** (probe-fast, standing at the gate 16 m up looking down the room, right after the load): the house 835 calls / 1.93 M triangles, 934 MB
+  (models 715 + rigs 219), ready in 72 s; the ranch 1,695 / 4.0 M, 1,628 MB (1,456 + 172), ready in 76 s. The old 18-plot room, same probe, a view over
+  its ranch half: 1,118 / 3.0 M, ~1,300 MB (its notes: 1,348 to 1,638). The ranch's view down its five plots is the heaviest: under the 2,500 / 12 M
+  caps, and at the top of the old room's memory range, not over it. Pictures: `docs/plans/one-world/proof/estate_house_drive.jpg`,
+  `estate_ranch_gate.jpg`.

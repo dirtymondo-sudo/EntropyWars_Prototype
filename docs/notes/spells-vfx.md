@@ -3886,6 +3886,13 @@ The Delivery family had only the generic looks. Now, on the P-Z hook (`pzSig`), 
 - Hot and Fresh (`bolt`, pzOwn, timed on flyMs = the heal's projectile): a pizza box (canvas: kraft lid, red slice logo,
   HOT & FRESH) tumbles to the ally, lands at its feet toward him, the lid flips up, steam curls out, side ring; the `aura`
   on arrival = green heal motes.
+  THE PACK BOX (11-17, mondo "is there pizza from the model list or asset pack you can use?"): the box is now the Pizzeria
+  PSX pack's (Elbolilloduro, CC0), `Assets/world/packs/elbolilloduro/ebd_pizzeria_pizza_box.glb` (`_WPN_MODELS.pizzaBox`,
+  `_dbPackBox`): nodes `tray`, `lid` (pivot on the back hinge) and `pizza` (the pack's pepperoni pizza, shown when it lands
+  and opens). Cut from Pizzeria_Props.glb (nodes Pizza_box.001 = lid, .002 = tray with the parent's 2.66 scale baked,
+  Pizza_Peperoni) with gltf-transform: /mnt/project-files/delivery-boy-polish/cut-pizza-box.mjs. The canvas box stands in
+  until the GLB has loaded (warmed in the background lane at boot). Kill switch `window.EW_NO_PACK_PIZZA`. The pack also
+  has 11 more pizzas (cheese, ham, mushroom, olive, pepper, pineapple, basil, slices) and a closed box (Pizza_box.003).
 - Hop On (`aura` on the ally; `fireGeometry('nrHopOn')` per ally from Thirty Minutes or Less): two horn-beep rings at his
   head, a side ring under each, a chevron over the ally pointing at him.
 - The drop (`fireGeometry('nrHopOn:drop', x, y, 0, { fromX, fromY, owner, delay })`): dust, side ring, one bell ring.
@@ -3911,8 +3918,12 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
 ## THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX")
 Gator Toss, Bath Salts and Hurricane Party had only the stock looks. three-vfx-effects.js block "THE FLORIDA MAN" (after the Banker
 block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura / aoe rows, all `pzOwn`), helpers `_fm*`. Visuals only.
-- TODAY'S HEADLINE (`_fmHeadline`): every cast spins a newspaper in beside his head (the old film spin): red BREAKING NEWS bar + the
-  spell's headline from its desc. To the lens's right of him, over the nameplate, gone at 1.65 s; never over a target or a number.
+- THE BROADCAST (mondo 11-17: "convert [the letterbox bars] to the breaking news lower third, like an actual broadcast"; it
+  replaced a spinning newspaper sprite): battle.js `_AC_NEWS` / `_acNewsFor` set `.news` on the action-cam chrome for Gator Toss,
+  Bath Salts, Hurricane Party and the finisher Breaking News (keyed on the shot's name, so the guest's relayed shot dresses the
+  same). Top bar = navy with a red LIVE bug + the spell name (still hides the scoreboard); bottom bar = a lower third that slides in
+  from the left: red BREAKING NEWS tab, the headline on white, a navy ticker of his other headlines (text written twice, looped).
+  Bath Salts' light chrome shows the bars too. CSS: styles-cinematic.css "THE BROADCAST".
 - Gator Toss `bolt` (timed on flyMs: the jaws close as the number lands): a code alligator (leather sheet, the Sewer Gator's
   `_gtSnout`, tail, scutes, legs, about one square long) hurled end over end, lands nose down and snaps; blood + dust, his side's
   ring; a Wet victim (the x1.5) also throws a splash crown + a water ring.
@@ -4022,4 +4033,29 @@ ripple rings), SPEED in the viewer's side colours (own cyan-blue, other side pin
   real VS CPU casts; frog_ai_probe.js = two CPU frogs in training tempo). On the cloud's software renderer the cast clips run slow
   (the mixer's per-frame step), so the Flying Kick's star can show before his foot there; on a real GPU they should agree
   (the same clip path as Sky Tackle; not measured on a GPU here).
+
+
+## THE NINJA'S LOOKS (2026-11-17)
+three-vfx-effects.js "THE NINJA" (after the Samurai Slug); kill-switch window.EW_NO_NINJA_VFX; every look through fireGeometry
+(relayed to the guest, fog-gated by the square). No blade: steel stars, ink-violet smoke (0x2a2238 / 0xb9a8ff), a log, his own body.
+Side colours from the viewer's seat (Riot pass). 'nrShuriken:hit' = a spinning four-point star (ShapeGeometry) hand -> body with
+a side-coloured streak, steel sparks. Kawarimi aura = leaves + lilac ring; 'nrKawarimi:swap' = smoke + the pack's `fallen_log`
+stood on end where the blow landed, it tips over and fades (the status' onApply warms the model); a puff + side ring where he steps
+out. 'nrShadowStep:blink' = an ink-tinted body double (_finDouble) fading where he stood, a side-coloured floor line, smoke at both
+ends; its impact = a white + side-coloured crescent chop. 'nrCloneJutsu:hit' = one clone a hit: his own model (_finDouble, the
+caster as `o.unit`, a kick / punch slot played once, tinted 32 % ink) pops out of smoke on a ring round the target, lunges in, the
+hit flashes, it fades; a side ring on the first. Proof /mnt/project-files/ninja-race/.
+## THE HAUNTED DOLL (2026-11-17, three-vfx-effects.js block "THE HAUNTED DOLL", after THE SAMURAI SLUG)
+Old-lace pink 0xe8a0b4, porcelain white, thread red; the side reads from the viewer's seat (own cyan-blue, enemy pink-orange).
+Small and quick on the body. Kill-switch window.EW_NO_DOLL_VFX.
+- Pin Prick (impact + geom): a silver needle flies the line in 180 ms, a thin side-coloured thread hangs doll -> victim ~1 s
+  (the Voodoo tie), a pin flash + two drops.
+- Play With Me ('nrPlayWithMe:swap', the swap branch's own geometry key): TV static (a canvas noise plane, flickering, facing the
+  camera) on both squares + a side ring.
+- Pull My String (geom on the cast: the string pulls out of her back and snaps back; then 'nrPullString:<line>' from
+  _dollPullString): play = pink sparkles + a green ring; friend = pink petals + a pink spark on the friend; hug = a side thread
+  from the doll to the dragged enemy; kill = two red eye glints, a red ring, a red ring on the victim.
+- Look Behind You (impact + geom): a black half-dome round the victim goes dark, flickers, dark again (never past 0.7 so the body
+  and the number stay readable), two red eye glints on the doll's side, then one pink crescent + the side ring.
+- Nobody's Looking ('hdCreep', round end): faint dark footprint rings on the squares it crept over, one after another.
 
