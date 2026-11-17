@@ -11428,3 +11428,13 @@ writes the old single room (the home writer is byte for byte what it was). No di
 - **The census** (`node ow-census.js --diff docs/areas/camelot/move/before.json <the five rooms>`): **nothing missing**; props 1,758 -> 1,763 (L7's camp),
   natives 28 -> 28, lines 6 -> 6. ow-census.js learned two answers (2026-11-17): a row cut by the mover counts as `split` (into N rows), a door whose
   id stands on another plot now as `moved`; here the five arch rows, the `bay` and the two link ends.
+- **Every seam door has an APRON**: its squares are open three deep straight in from the side (`apron()` in the tool). The first walk of the north gate
+  stopped one square in: the leg had reached the door square sideways along the wall and the pines stood straight ahead. An apron square is never a
+  plot's hub (the leg still runs from the plot's own ground).
+- **Walked** (`playtest_city.js` `"walk"`, HEAD 8e9b363): the block's north gate -> the Pines (22 m); the Pines' Pass -> L6; the garden -> the block's
+  west gate; the Fairy Forest -> the east gate; the Forest -> the south road; L6 -> the Pines; after the Woods + Mountains merges (HEAD b67d07c) the
+  Fairy Forest -> L4 (link `woods_camelot`) and L6 -> the Ski Lodge. Pictures: `/mnt/project-files/camelot-one-world/`.
+- **Two fixes beside the move** (both rows free): link `woods_camelot`'s Woods end named `part: 'ow_l4'`, which resolves to `site_prebuilt_fairy_forest_ow_l4`
+  (no such room: the route kit's room is `site_ow_l4`), so the link stood nowhere; it names `room: 'site_ow_l4'` now. `bake-mountains.js` was rerun so its
+  `ifRoom` door `ow_v_m22_m16` (the Lodge yard -> L6) is written now that `site_ow_l6` stands (the same run also re-pointed Shasta's `woods` door off the
+  retired `site_prebuilt_fairy_forest_plots`, the tool's own row).
