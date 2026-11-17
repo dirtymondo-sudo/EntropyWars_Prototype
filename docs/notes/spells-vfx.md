@@ -3892,6 +3892,22 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
   words), blue MP motes rise off him, then his side's ring.
 - Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
 
+## THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX")
+Gator Toss, Bath Salts and Hurricane Party had only the stock looks. three-vfx-effects.js block "THE FLORIDA MAN" (after the Banker
+block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura / aoe rows, all `pzOwn`), helpers `_fm*`. Visuals only.
+- TODAY'S HEADLINE (`_fmHeadline`): every cast spins a newspaper in beside his head (the old film spin): red BREAKING NEWS bar + the
+  spell's headline from its desc. To the lens's right of him, over the nameplate, gone at 1.65 s; never over a target or a number.
+- Gator Toss `bolt` (timed on flyMs: the jaws close as the number lands): a code alligator (leather sheet, the Sewer Gator's
+  `_gtSnout`, tail, scutes, legs, about one square long) hurled end over end, lands nose down and snaps; blood + dust, his side's
+  ring; a Wet victim (the x1.5) also throws a splash crown + a water ring.
+- Bath Salts `aura`: white salt puff off his face + crystals, then red-orange rage streaks climb his body (SOLID, not additive: an
+  additive red washed pale over grass), red eye glints, speed lines blow back away from the lens, green Regen motes, his side's ring.
+- Hurricane Party `aoe` (fires with the damage, so the splash is at 120 ms): a squat storm-grey twister (`_wdFunnel` now takes
+  `o.color / o.color2`, default unchanged) with rain, the Meshy `flamingo` + `traffic_cone` (warmed in _SPELL_MISC_KEYS), beer cans
+  and confetti going round; a splash on every square of the 3x3 (Wet), his side's rim round the area.
+- Probe note: the CSS floating numbers run on real time, so a slowed `performance.now` probe shows them before the 3D hit.
+  Proof + probes: /mnt/project-files/florida-man-polish/.
+
 
 ## THE BOLTZMANN BRAIN (2026-11-17, the Boltzmann Brain pass)
 three-vfx-effects.js block "THE BOLTZMANN BRAIN" (after THE TECH CEO, helpers `_bb*`, `pzSig` hook). Violet thought + the black of an
@@ -3922,6 +3938,17 @@ the head across the lens toward his side (`_rfCardAnchor`), never over the body 
 - OFF THE FIELD (three-renderer.js, before the realm branch): any `exited` unit (red card or the DOOR Gun's EXIT) is drawn as a
   shade (`OFF_FIELD_OPACITY` 0.3, outline off) for both sides, fog still rules an enemy's. It still holds its square (unitAt).
 Proof: /mnt/project-files/referee-polish/.
+
+## THE INFLUENCER (2026-11-17, thread "Polish Influencer spells and VFX")
+three-vfx-effects.js "THE INFLUENCER" (after THE LIFEGUARD; geometry `_inf*`). Rings / corners in the caster's SIDE colour (`_lgSide`).
+- Selfie Flash: a white flash star at her phone height + viewfinder corners on the target (the phone prop `item_smartphone`, in
+  `_SPELL_MISC_KEYS`, shows when loaded; never a stand-in).
+- Go Viral: hearts + share arcs burst off the target, a ring. THE SHARE (`nrGoViral:share`, battle.js `_viralShare`, first share hit
+  per mate only): a link line from the hit unit to each mate, small hearts, a ring; Ratio's spread fires it with `spread:1`.
+- Sponsored: a gold #AD badge over the ally + aura. Filter / the swap (`nrFilter:swap`): a camera-facing ring light on the ally and
+  two glints that trade places between the pair.
+- Ratio'd: speech bubbles piling down onto the target + a ring.
+Proof sheets: /mnt/project-files/influencer-polish/vfx_sheet_*.jpg.
 
 ## THE CICADA BROOD (2026-11-17, three-vfx-effects.js block "THE CICADA BROOD", before "THE SPACE PROPS")
 Shell green over black + red eyes; the area rings in the side colour from the viewer's seat (THE RIOT PASS). No screen flash.

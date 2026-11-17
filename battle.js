@@ -2599,6 +2599,7 @@
             const _swH = (spell.hinge && unit._swingHinge && unit._swingHinge.spellId === spell.id) ? unit._swingHinge : null;
             if (spell.hinge) delete unit._swingHinge;
             if (spell.leapOver && target && !unit.dead && !_clashPinned) _frogLeapOver(unit, target);   // 🐸 Leapfrog
+            if (spell.viralSpread && target) _influencerRatioSpread(unit, target, spell);   // 📱 Ratio
             if (spell.pushDistance && target && !target.dead && !unit.dead && !_chessTook
                 && (spell.kind === 'damage' || spell.kind === 'tackle')
                 && !(typeof _isClashMode === 'function' && _isClashMode())) {
@@ -14354,17 +14355,108 @@
            (applyDamageToUnit; the shared hits do not spread again). */
         function _viralShare(target, dmg, opts) {
             if (!(dmg > 0) || !target || !(target.status && target.status.viral > 0) || (opts && opts._viralShare) || !Array.isArray(state.units)) return;
+            state._lastViralHitId = target.id;   // 📱 Ratio reads it: the target was Viral when this hit landed (it may be down now)
             const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && a.player === target.player
                 && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 2);
             if (!mates.length) return;
             const share = Math.max(1, Math.round(dmg * 0.3));
-            for (const a of mates) {
+            /* THE INFLUENCER POLISH (2026-11-17, found in a real CPU match):
+               · the share is a flat 30%: it no longer carries the hitter (its ATK stages, the type matchup, STAB re-applied to a
+                 number that already had them: a 154 share read 347 "super effective"). The hitter is credited the way a DoT
+                 credits its caster (_lastDamageSourceId), so a kill by a share still counts for them.
+               · a multi-hit cast (Ninefold Scratch) shares every hit but writes ONE line a teammate with the total (a sink per
+                 teammate on the cast's own sink, flushed with it), and draws the link once.
+               · the share is drawn (three-vfx-effects.js 'nrGoViral:share'): a pink link from the viral unit to each teammate it
+                 hits, a heart riding it; fired for both seats (fireGeometry is relayed, fog-gated). */
+            const src = (opts && opts.sourceUnit) || null;
+            const sink = (opts && opts.logSink) || null;
+            if (sink && !sink._viral) sink._viral = {};
+            mates.forEach((a, i) => {
+                const ms = sink ? (sink._viral[a.id] || (sink._viral[a.id] = _multiHitLogSink())) : null;
+                if (ms) ms.last = !!sink.last;
+                if (!ms || !ms.hits) _sigVfxGeom('nrGoViral:share', a.x, a.y, 0, { fromX: target.x, fromY: target.y, owner: target.player, delay: i * 90 });
+                if (src && src.player !== a.player) a._lastDamageSourceId = src.id;
                 applyDamageToUnit(a, share, `📱 ${unitDisplayName(target)} went viral: `, {
-                    sourceUnit: (opts && opts.sourceUnit) || null, ignoreArmor: true, damageType: 'dot',
-                    consumeMarked: false, allowMarkBonus: false, noPress: true, _viralShare: true
+                    ignoreArmor: true, damageType: 'dot', typeEffect: 'neutral',
+                    consumeMarked: false, allowMarkBonus: false, noPress: true, _viralShare: true, logSink: ms || undefined
                 });
-            }
+            });
         }
+        /* 📱 RATIO (the Influencer's capstone, `viralSpread`): after the hit, a target that was Viral when it landed spreads the tag
+           to every teammate within `radius` of it (`duration` rounds; a longer Viral already on a teammate is kept). */
+        function _influencerRatioSpread(caster, target, spell) {
+            const vs = spell && spell.viralSpread;
+            if (!vs || !target || !Array.isArray(state.units)) return 0;
+            const was = (target.status && target.status.viral > 0) || state._lastViralHitId === target.id;
+            state._lastViralHitId = null;
+            if (!was) return 0;
+            const r = vs.radius || 2;
+            const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && a.player === target.player
+                && !(a.status && a.status.viral > (vs.duration || 1))
+                && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= r);
+            mates.forEach((a, i) => {
+                applyStatusPayload(a, { id: 'viral', duration: vs.duration || 1 }, `${spell.name} → `, caster);
+                _sigVfxGeom('nrGoViral:share', a.x, a.y, 0, { fromX: target.x, fromY: target.y, owner: target.player, delay: 200 + i * 110, spread: 1 });
+            });
+            if (mates.length) addLog(`📱 ${_ctSp(spell.name)}: the pile-on spreads. ${mates.length} ${mates.length === 1 ? 'teammate' : 'teammates'} of ${_ctName(target)} go${mates.length === 1 ? 'es' : ''} Viral.`);
+            return mates.length;
+        }
+        /* 🤳 FILTER (the Influencer, `filterSwap`): the ally and the nearest ally of another look (race or gender) trade looks. The
+           look is drawn for the other side only (window.ewDrawnUnit: sprites.js portraits + sprites, three-renderer.js models,
+           unitDisplayName for the name); both units wear the `filtered` status. Ids + copies on the units, never objects. */
+        function _influencerFilterPartner(target) {
+            if (!target || !Array.isArray(state.units)) return null;
+            let best = null, bd = 1e9;
+            for (const a of state.units) {
+                if (!_nrAlive(a) || a.id === target.id || a.player !== target.player || !a.race) continue;
+                if (a._isBoss || a.isBoss || a._isCube || a._isSummon || a.summonedBy != null || a._summonerId != null) continue;
+                if (a.race === target.race && (a.gender || 'male') === (target.gender || 'male')) continue;
+                const d = Math.abs(a.x - target.x) + Math.abs(a.y - target.y);
+                if (d < bd || (d === bd && String(a.id) < String(best.id))) { best = a; bd = d; }
+            }
+            return best;
+        }
+        function _influencerFilter(caster, target, spell) {
+            const partner = _influencerFilterPartner(target);
+            if (!partner || !_nrAlive(target)) return false;
+            const dur = ((spell.statusEffects || []).find(e => e && e.id === 'filtered') || {}).duration || 2;
+            if (!(target.status && target.status.filtered > 0)) applyStatusPayload(target, { id: 'filtered', duration: dur }, `${spell.name}: `, caster);
+            applyStatusPayload(partner, { id: 'filtered', duration: dur }, `${spell.name}: `, caster);
+            /* the pair ends together (found in the CPU match: the caster's half, landed on her own turn, outlived the other by a
+               round and two of the same face stood on the board): both take the longer count */
+            const _frF = u => !!(u._stFresh && typeof u._stFresh === 'object' && u._stFresh.filtered === state.round);
+            if (_frF(target) || _frF(partner)) for (const u of [target, partner]) { if (!u._stFresh || typeof u._stFresh !== 'object') u._stFresh = {}; u._stFresh.filtered = state.round; }
+            const _fv = Math.max(target.status.filtered || 0, partner.status.filtered || 0);
+            target.status.filtered = _fv; partner.status.filtered = _fv;
+            const tr = target.race, tg = target.gender || 'male';
+            target._filterLookId = partner.id; target._filterRace = partner.race; target._filterGender = partner.gender || 'male';
+            partner._filterLookId = target.id; partner._filterRace = tr; partner._filterGender = tg;
+            _sigVfxGeom('nrFilter:swap', partner.x, partner.y, 0, { fromX: target.x, fromY: target.y, owner: target.player });
+            /* the names on the line are the real ones: only the caster's side reads it */
+            const _tn = (typeof getRaceLabel === 'function') ? getRaceLabel(tr, tg) : tr;
+            const _pn = (typeof getRaceLabel === 'function') ? getRaceLabel(partner.race, partner.gender) : partner.race;
+            addLog(`🤳 ${_ctSp(spell.name)}: the ${_tn} and the ${_pn} swap faces. The other side sees each as the other for ${dur} rounds.`, null, null, { seats: [caster.player] });
+            if (typeof markDirty === 'function') { markDirty('units'); markDirty('hud'); }
+            return true;
+        }
+        /* the look `unit` is drawn with on the viewer's screen: the unit itself, or (Filtered, seen by the other side) a copy
+           wearing the swapped ally's race, gender and creator look. `viewer` defaults to the local seat. Display only. */
+        function ewDrawnUnit(unit, viewer) {
+            if (!unit || !(unit.status && unit.status.filtered > 0) || !unit._filterRace) return unit;
+            if (typeof window !== 'undefined' && window.EW_NO_FILTER_LOOK) return unit;
+            const vp = viewer != null ? viewer : ((typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1);
+            if (unit.player === vp) return unit;
+            const src = (unit._filterLookId != null && typeof unitFromId === 'function') ? unitFromId(unit._filterLookId) : null;
+            const look = Object.assign({}, unit, { race: unit._filterRace, gender: unit._filterGender || 'male', _spriteOverride: null, _spriteFlipX: unit._spriteFlipX });
+            look.appearance = (src && src.race === unit._filterRace) ? src.appearance : null;
+            look._heroSpriteUrl = (src && src.race === unit._filterRace) ? src._heroSpriteUrl : null;
+            look.name = (src && src.race === unit._filterRace) ? src.name : null;
+            if (src && look.appearance) look._lookId = src.id;   // the portrait studio photographs the swapped ally's own face
+            try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[look.race] && Array.isArray(RACE_PROFILES[look.race].types)) look.types = RACE_PROFILES[look.race].types.slice(); } catch (e) {}
+            look._ewFilterLook = true;
+            return look;
+        }
+        if (typeof window !== 'undefined') window.ewDrawnUnit = ewDrawnUnit;
         /* 🟥 THE RED CARD (the Referee): a card on a unit that already has a Yellow Card (STATUS_DEFS.yellowCard.onApply)
            sends it off: the `exited` status (untargetable, no move, no action) until its next turn starts, with no door;
            window._doorExitReturn's sent-off branch brings it back on the same square. Bosses are never sent off. */
@@ -14391,6 +14483,18 @@
             return _FLORIDA_HEADLINES[_nrHash(String(unit && unit.id) + '|' + (state.round || 0)) % _FLORIDA_HEADLINES.length];
         }
         window._floridaHeadline = _floridaHeadline;
+        /* 📰 the day's paper (11-17 polish): when his turn starts the headline he got is said over his head and in the log, so
+           both seats read which one is live before opening the menu (floating text rides the relay; once a round a unit) */
+        function _floridaTurnStart(unit) {
+            if (!_nrAlive(unit) || unit._fmPaperRound === state.round) return;
+            const own = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(s => s && s.floridaHeadline);
+            if (!own.length) return;
+            unit._fmPaperRound = state.round;
+            const id = _floridaHeadline(unit), sp = own.find(s => s.id === id);
+            const nm = sp ? sp.name : ((typeof RACE_ABILITIES !== 'undefined' && (RACE_ABILITIES['florida man'] || []).find(s => s.id === id)) || {}).name || id;
+            addLog(`📰 TODAY'S HEADLINE for ${_ctName(unit)}: ${nm}${sp ? '' : ' (not in his kit: no headline spell today)'}.`, undefined, undefined, { actor: unit });
+            if (!_skipVisuals() && typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '📰 ' + String(nm).toUpperCase(), sp ? 'buff' : 'debuff', { durationMs: 1500 });
+        }
         /* 🧠 THE FLUCTUATION (the Boltzmann Brain): it never walks or jumps (unitMoveBlockedByStatus: 'Bodiless'); at every
            round end it is somewhere else, a free square 2-4 away picked by its id and the round.
            THE BOLTZMANN BRAIN PASS (2026-11-17):
@@ -41831,9 +41935,12 @@
             sink.hits++;
             sink.total += Math.max(0, dmg | 0);
             if (!sink.note && typeNote) sink.note = typeNote;
-            if (sink.last || (target.hp | 0) <= 0 || target.dead || target._dying) _multiHitLogFlush(sink);
+            if (sink.last || (target.hp | 0) <= 0 || target.dead || target._dying) _multiHitLogFlush(sink, true);
         }
-        function _multiHitLogFlush(sink) {
+        function _multiHitLogFlush(sink, keepShares) {
+            /* 📱 the viral shares' lines (_viralShare): a share sink flushes itself on the cast's last hit; the caller's own flush
+               (after the hit returns) writes any a cast that ended early left open. Never from inside the hit: its shares come after. */
+            if (sink && sink._viral && !keepShares) Object.keys(sink._viral).forEach(k => _multiHitLogFlush(sink._viral[k]));
             if (!sink || sink.done || !sink.hits || !sink.target) return;
             sink.done = true;
             const t = sink.target;
@@ -53441,6 +53548,12 @@
 
         function unitDisplayName(unit) {
             if (!unit) return 'Unit';
+            /* 🤳 FILTER: a filtered unit is named as the ally it swapped faces with, on every screen and in every log line
+               (the log is written once on the host and read by both seats, so the real name would give it away) */
+            if (unit.status && unit.status.filtered > 0 && unit._filterRace && !(typeof window !== 'undefined' && window.EW_NO_FILTER_LOOK)) {
+                const _fs = (unit._filterLookId != null && typeof unitFromId === 'function') ? unitFromId(unit._filterLookId) : null;
+                unit = Object.assign({}, unit, { race: unit._filterRace, gender: unit._filterGender || 'male', name: (_fs && _fs.race === unit._filterRace) ? _fs.name : null });
+            }
             const mode = state.nametagMode || 'race';
             // THE JOBS REMOVAL (the user 2026-09-27): the 'job' nametag mode showed unit.cls — there is no job, and the
             // neutral class is never shown, so a stale 'job' setting reads as 'race'.
@@ -64296,6 +64409,7 @@
                     window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo) ? 0 : 900);
                     return;
                 }
+                if (nextUnit.race === 'florida man' || (nextUnit.spells || []).some(sp => sp && sp.floridaHeadline)) { try { _floridaTurnStart(nextUnit); } catch (e) {} }   // 📰 today's headline
 
                 /* 😱 Feared (CHAMP REWORK Phase 4, STATUS_DEFS fear): the
                    activation is the flight — one engine-driven move away from
@@ -82786,6 +82900,17 @@
                 completionDelay = Math.max(completionDelay, _shResult.completionDelay);
             } else if (spell.kind === 'buff') {
                 /* 🛟 Three Whistles with nobody to pull in is refused before anything is spent */
+                /* 🤳 Filter with nobody of another look to swap faces with is refused before anything is spent */
+                if (spell.filterSwap) {
+                    const _flT = unitAt(x, y, z) || unitAt(x, y);
+                    if (_flT && isAllyUnit(_flT, unit) && !_influencerFilterPartner(_flT)) {
+                        if (!_silentReject) {
+                            addLog(`${_ctSp(spell.name)}: no ally of another race to swap faces with.`, _clickSeat());
+                            playErrorSfx();
+                        }
+                        return 0;
+                    }
+                }
                 if (spell.massRescue && !_lifeguardRescueList(unit, spell).length) {
                     if (!_silentReject) {
                         addLog(`${_ctSp(spell.name)}: no ally within ${spell.massRescue.radius || 4} is under ${Math.round((spell.massRescue.hpPct || 0.5) * 100)}% HP.`, _clickSeat());
@@ -82881,6 +83006,7 @@
                     if (spell.spawnDecoy && !unit.dead) _spawnCasterDecoy(unit, spell);
                     if (spell.timedStatBonus) _applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft (the Quickened status)
                     if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
+                    if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');
                     renderIfDirty();

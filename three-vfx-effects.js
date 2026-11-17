@@ -11834,6 +11834,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                          giantFoot: 1024, ejectionSeat: 1024, shield: 1024, sack: 1024,   /* THE NEW PROPS: the big ones */
                          fangs: 1024 };   /* THE FANGS: a bite's jaws fill the action camera */
     var _SPELL_MISC_KEYS = ['bank_cash',   /* THE BANKER SIGNATURES (2026-11-16): the PSX Mega Pack's bundle of bills */
+                            'flamingo', 'traffic_cone',   /* THE FLORIDA MAN (2026-11-17): Hurricane Party's lawn flamingo + cone */
                             'moon', 'cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'mushroom', 'mushroom2',
                             'pine', 'demon_statue', 'pearly_gate', 'white_cloud', 'tentacle', 'tentacle2',
                             'italian_building', 'italian_building_2',   /* Skyscraper Toss (spell look audit 2026-10-26) */
@@ -11844,6 +11845,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'satellite', 'space_shuttle', 'space_station', 'hullplate', 'lunar_lander',   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
                             'church_building', 'catholic_pew', 'church_pew', 'church_podium', 'field_goal_post', 'skull_pile',
                             'beach_life_ring',   /* THE LIFEGUARD (2026-11-16): her rescue ring */
+                            'item_smartphone',   /* THE INFLUENCER (2026-11-17): her phone (Selfie Flash) */
                             'lib_book', 'lib_open_book'];   /* THE LIBRARIAN (2026-11-17): the PSX Mega Pack's books (Overdue, Shush, Late Fee) */   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gilt.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
@@ -45261,6 +45263,271 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrOnDuty:save': _lgSave3D, 'nrThreeWhistles:blow': _lgBlow3D,
     });
 
+    /* ══ THE INFLUENCER (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx") ══ Her looks are the feed:
+       a phone (the Meshy hand prop `item_smartphone`, warmed with the spell library; no file = no phone, NO STAND-INS), the
+       camera flash, hearts and share links, a ring light. Side colours from the viewer's seat (THE RIOT PASS): a ring or link
+       runs cyan-blue when the unit it marks is on your side, pink-red when it is on the other; her own pink is the feed's.
+       Nothing covers a body: the brackets and badges sit round and over the head, the hearts are small and quick.
+         SELFIE FLASH (debuff): the phone comes up at her face, the flash pops on it, a white star bursts on the target's face
+           and four viewfinder corners snap shut round its body.
+         GO VIRAL (debuff): hearts and share links stream from her to the target, then a burst of hearts and a ring at its feet.
+         THE SHARE ('nrGoViral:share', battle.js _viralShare / Ratio's spread): a pink arc from the viral unit to each teammate
+           it hits, a heart riding it, a small ring where it lands.
+         SPONSORED (buff): a gold #AD badge pops over the ally, gold motes rain round it.
+         FILTER (buff) + THE SWAP ('nrFilter:swap'): a ring light stands up behind each of the two, flashes, and two glints
+           trade places along the arc between them.
+         RATIO (damage): speech bubbles pile down onto the target from above, then the hit ring. */
+    var _INF_PINK = 0xff4fa8, _INF_WHITE = 0xfff4fa, _INF_GOLD = 0xffcf4a;
+    function _infBadgeTex(key, text, bg, ink) {
+        return _pzTex('inf-' + key, 128, 64, function (g, w, h) {
+            g.fillStyle = bg; g.beginPath();
+            if (g.roundRect) g.roundRect(4, 6, w - 8, h - 12, 14); else g.rect(4, 6, w - 8, h - 12);
+            g.fill();
+            g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 4; g.stroke();
+            g.fillStyle = ink; g.font = 'bold 34px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText(text, w / 2, h / 2 + 1);
+        });
+    }
+    function _infBubbleTex() {
+        return _pzTex('inf-bubble', 96, 80, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.beginPath();
+            if (g.roundRect) g.roundRect(4, 4, w - 8, h - 26, 14); else g.rect(4, 4, w - 8, h - 26);
+            g.fill();
+            g.beginPath(); g.moveTo(22, h - 23); g.lineTo(16, h - 4); g.lineTo(40, h - 23); g.fill();
+            g.fillStyle = '#ff3d96';
+            for (var i = 0; i < 3; i++) { g.beginPath(); g.arc(28 + i * 20, (h - 22) / 2 + 2, 6, 0, Math.PI * 2); g.fill(); }
+        });
+    }
+    function _infShareTex() {
+        return _sigTex('inf-share', 128, function (g, S) {
+            g.strokeStyle = '#ffffff'; g.fillStyle = '#ffffff'; g.lineWidth = S * 0.07;
+            var a = [S * 0.72, S * 0.24], b = [S * 0.28, S * 0.5], c = [S * 0.72, S * 0.76];
+            g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.stroke();
+            [a, b, c].forEach(function (p) { g.beginPath(); g.arc(p[0], p[1], S * 0.13, 0, Math.PI * 2); g.fill(); });
+        });
+    }
+    function _infUnitAt(tx, ty) {
+        try { var us = state.units; for (var i = 0; i < us.length; i++) { var u = us[i]; if (u && !u.dead && u.x === tx && u.y === ty) return u; } } catch (e) {}
+        return null;
+    }
+    /* the phone at the caster's face, turned toward the target; null while the file streams */
+    function _infPhone(h) {
+        var raw = null;
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) raw = ThreeRenderer.getMiscModelClone('item_smartphone', h * 0.22, 'center'); } catch (e) { raw = null; }
+        if (!raw) return null;
+        var mats = [];
+        raw.traverse(function (n) { if (n.isMesh && n.material) { n.material = n.material.clone(); n.material.transparent = true; mats.push(n.material); } });
+        var g = new THREE.Group(); g.add(raw);
+        return { g: g, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+    }
+    /* a floor ring in the side colour of the unit standing there (or `owner`) */
+    function _infRing(tx, ty, owner, r1, ms, delay) {
+        var side = _lgSide(owner != null ? owner : null, tx, ty), ts = _worldPos(tx, ty).ts;
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * (r1 || 0.9), ms: ms || 520, color: side, height: ts * 0.05 }); } catch (e) {} }, delay || 0);
+    }
+    /* a pink arc a → b with `n` sprites riding it (hearts / shares), over `ms` */
+    function _infArc(F, a, b, h, tex, n, ms, size, color, t0) {
+        var sprs = [];
+        for (var i = 0; i < n; i++) { var s = _finSprite(color || _INF_PINK, tex, size, 162); F.g.add(s); sprs.push(s); }
+        return function (el) {
+            for (var i = 0; i < sprs.length; i++) {
+                var k = _sigClamp01((el - (t0 || 0) - i * 70) / ms);
+                var p = _afArc(a, b, h, k); sprs[i].position.copy(p);
+                sprs[i].material.opacity = (k > 0 && k < 1) ? 0.95 * Math.min(1, k * 6) * Math.min(1, (1 - k) * 6) : 0;
+            }
+        };
+    }
+    EFFECTS['nrSelfieFlash_impact'] = { layers: [
+        { sprite: 'flash', ml: 220, z: 70, size0: 30, size1: 110, tint: 0xffffff, opacity0: 0.7, delayMs: 260 },
+        { count: 8, sprite: 'sparkle', ml: [380, 620], offsetXY: 14, z: [60, 100], tint: 0xffffff, vxRange: 110, vyRange: 110, vzRange: [20, 70], drag: 1.1, size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 260 },
+    ] };
+    EFFECTS['nrGoViral_impact'] = { layers: [
+        { count: 6, sprite: 'sparkle', ml: [500, 800], offsetXY: 16, z: [40, 90], tint: 0xff8ac8, vzRange: [40, 90], size0: [4, 6], size1: 2, opacity0: 0.85, delayMs: 520 },
+    ] };
+    EFFECTS['nrRatio_impact'] = { layers: [
+        { sprite: 'flash', ml: 240, z: 50, size0: 30, size1: 100, tint: 0xffd6ec, opacity0: 0.55, delayMs: 560 },
+        { count: 10, sprite: 'sparkle', ml: [420, 700], offsetXY: 16, z: [30, 80], tint: _INF_PINK, vxRange: 160, vyRange: 160, vzRange: [40, 120], gravity: 220, drag: 0.8, size0: [5, 8], size1: 2, opacity0: 0.9, delayMs: 560 },
+    ] };
+    EFFECTS['nrSponsored_aura'] = { layers: [
+        { count: 12, sprite: 'sparkle', ml: [700, 1100], offsetXY: 22, z: [100, 150], tint: _INF_GOLD, vzRange: [-70, -30], size0: [4, 7], size1: 2, opacity0: 0.95, delayMs: 260 },
+    ] };
+    EFFECTS['nrFilter_aura'] = { layers: [
+        { count: 10, sprite: 'sparkle', ml: [600, 1000], offsetXY: 20, z: [30, 110], tint: 0xffd0ee, vzRange: [10, 50], spriteSpin: 6, size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 300 },
+    ] };
+    Object.assign(SPELL_MAP, {
+        nrSelfieFlash: { impact: 'nrSelfieFlash_impact' },
+        nrGoViral:     { impact: 'nrGoViral_impact' },
+        nrRatio:       { impact: 'nrRatio_impact' },
+        nrSponsored:   { aura: 'nrSponsored_aura' },
+        nrFilter:      { aura: 'nrFilter_aura' },
+    });
+    /* SELFIE FLASH: the phone up at her face, the flash on it at 260 ms, a star on the target's face, the viewfinder snaps shut */
+    function _infSelfie3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, tu = _infUnitAt(tx, ty), h = _lgBodyH(tu ? tu.id : null, ts);
+        var from = _afCaster(tx, ty, o), cu = _infUnitAt(from.x, from.y), ch = _lgBodyH(cu ? cu.id : null, ts);
+        var ca = _afTo(F, from.x, from.y), dir = new THREE.Vector3(-ca.x, 0, -ca.z); if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0); dir.normalize();
+        var P = from.fogged ? null : _infPhone(ch);
+        if (P) { P.g.position.set(ca.x + dir.x * ts * 0.22, ca.y + ch * 0.86, ca.z + dir.z * ts * 0.22); P.g.rotation.y = Math.atan2(dir.x, dir.z); F.g.add(P.g); }
+        var pf = from.fogged ? null : _finSprite(0xffffff, _afStarTex(4), ts * 0.5, 163);
+        if (pf) { pf.position.set(ca.x + dir.x * ts * 0.3, ca.y + ch * 0.88, ca.z + dir.z * ts * 0.3); F.g.add(pf); }
+        var star = _finSprite(0xffffff, _afStarTex(4), ts * 0.9, 163); star.position.set(0, h * 0.85, 0); F.g.add(star);
+        /* the viewfinder: four L corners round the body, in the target's side colour */
+        var side = _lgSide(tu ? tu.player : null, tx, ty), corners = [], cm = [];
+        for (var i = 0; i < 4; i++) {
+            var cg = new THREE.Group(), m = _sigMat(side);
+            cg.add(new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.22, ts * 0.035), m), new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.035, ts * 0.22), m));
+            cg.children[0].position.x = (i % 2 ? -1 : 1) * ts * 0.0925; cg.children[1].position.y = (i < 2 ? -1 : 1) * ts * 0.0925;
+            cg.userData = { sx: i % 2 ? 1 : -1, sy: i < 2 ? 1 : -1 }; F.g.add(cg); corners.push(cg); cm.push(m);
+        }
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            if (P) { var up = _sigEaseOutBack(_sigClamp01(el / 220)); P.g.position.y = ca.y + ch * (0.6 + 0.26 * up); P.fade(_afEnv(el, 0, 90, 700, 950)); }
+            if (pf) { var fk = _afEnv(el, 240, 270, 300, 520); pf.material.opacity = fk; pf.scale.set(ts * (0.4 + 0.6 * fk), ts * (0.4 + 0.6 * fk), 1); }
+            var sk = _afEnv(el, 270, 300, 360, 700); star.material.opacity = sk; star.scale.set(ts * (0.5 + 0.7 * sk), ts * (0.5 + 0.7 * sk), 1);
+            var snap = _sigClamp01((el - 280) / 160), sp = 1.8 - 0.8 * (snap * snap * (3 - 2 * snap)), co = _afEnv(el, 280, 340, 900, 1200);
+            for (var i = 0; i < corners.length; i++) {
+                var c = corners[i];
+                c.position.set(c.userData.sx * ts * 0.36 * sp, h * 0.5 + c.userData.sy * h * 0.52 * sp, 0);
+                c.quaternion.copy(_camQuat());
+                cm[i].opacity = 0.9 * co;
+            }
+        });
+    }
+    function _camQuat() {
+        try { var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (cam) return cam.quaternion; } catch (e) {}
+        return new THREE.Quaternion();
+    }
+    /* GO VIRAL: hearts and share links stream from her to the target, then a burst of hearts and its side's ring */
+    function _infViral3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, tu = _infUnitAt(tx, ty), h = _lgBodyH(tu ? tu.id : null, ts);
+        var from = _afCaster(tx, ty, o), cu = _infUnitAt(from.x, from.y), ch = _lgBodyH(cu ? cu.id : null, ts);
+        var a = _afTo(F, from.x, from.y); a.y += ch * 0.8;
+        var b = new THREE.Vector3(0, h * 0.75, 0);
+        var stream = from.fogged ? null : _infArc(F, a, b, ts * 0.8, _afHeartTex(), 4, 380, ts * 0.22, _INF_PINK, 0);
+        var stream2 = from.fogged ? null : _infArc(F, a, b, ts * 1.1, _infShareTex(), 2, 420, ts * 0.2, _INF_WHITE, 60);
+        _infRing(tx, ty, tu ? tu.player : null, 1.0, 560, 520);
+        var burst = [];
+        for (var i = 0; i < 7; i++) {
+            var s = _finSprite(i % 3 ? _INF_PINK : _INF_WHITE, i % 3 ? _afHeartTex() : _infShareTex(), ts * 0.2, 162);
+            var ang = i / 7 * Math.PI * 2; s.userData = { vx: Math.cos(ang), vz: Math.sin(ang) }; F.g.add(s); burst.push(s);
+        }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            if (stream) stream(el); if (stream2) stream2(el);
+            var k = _sigClamp01((el - 520) / 800);
+            for (var i = 0; i < burst.length; i++) {
+                var s = burst[i];
+                s.position.set(s.userData.vx * ts * 0.55 * k, h * (0.8 + 0.55 * k), s.userData.vz * ts * 0.55 * k);
+                s.material.opacity = el < 520 ? 0 : 0.95 * (1 - k);
+            }
+        });
+    }
+    /* THE SHARE: a pink arc from the viral unit to the teammate it hits, a heart riding it, a small ring where it lands */
+    function _infShare3D(tx, ty, r, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var run = function () {
+            if (_afFogHides(tx, ty)) return null;
+            var F = _nrvFrame(tx, ty), ts = F.ts, mu = _infUnitAt(tx, ty), h = _lgBodyH(mu ? mu.id : null, ts);
+            var fromSeen = o.fromX != null && !_afFogHides(o.fromX, o.fromY);
+            var a = fromSeen ? _afTo(F, o.fromX, o.fromY) : new THREE.Vector3(0, 0, 0); a.y += h * 0.8;
+            var b = new THREE.Vector3(0, h * 0.7, 0);
+            var line = fromSeen ? _infArc(F, a, b, ts * 0.6, o.spread ? _infShareTex() : _afHeartTex(), o.spread ? 2 : 3, 300, ts * 0.22, _INF_PINK, 0) : null;
+            /* the link itself: a thin glowing strip along the arc, so the pair reads even in a still frame */
+            var strip = null;
+            if (fromSeen) {
+                var pts = []; for (var i = 0; i <= 16; i++) pts.push(_afArc(a, b, ts * 0.6, i / 16));
+                strip = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: _lgSide(o.owner != null ? o.owner : null, tx, ty), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+                strip.renderOrder = 161; F.g.add(strip);
+            }
+            _infRing(tx, ty, o.owner != null ? o.owner : (mu ? mu.player : null), 0.75, 420, 280);
+            var total = 900;
+            return _sigRunOwned(F.g, total, function (el) {
+                if (line) line(el);
+                if (strip) strip.material.opacity = 0.85 * _afEnv(el, 0, 80, 420, 760);
+            });
+        };
+        if (o.delay > 0) { _fxDelay(run, o.delay); return true; }
+        return run() || true;
+    }
+    /* SPONSORED: a gold #AD badge pops over the ally's head and bobs, a gold ring at its feet */
+    function _infSponsor3D(tx, ty) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, tu = _infUnitAt(tx, ty), h = _lgBodyH(tu ? tu.id : null, ts);
+        var badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: _infBadgeTex('ad', '#AD', '#ffcf4a', '#3a2400'), transparent: true, opacity: 0, depthWrite: false }));
+        badge.renderOrder = 163; F.g.add(badge);
+        _infRing(tx, ty, tu ? tu.player : null, 0.9, 600, 200);
+        var total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var pop = _sigEaseOutBack(_sigClamp01((el - 120) / 260));
+            badge.scale.set(ts * 0.5 * pop, ts * 0.25 * pop, 1);
+            badge.position.set(0, h * 1.18 + Math.sin(el * 0.008) * ts * 0.03, 0);
+            badge.material.opacity = _afEnv(el, 120, 200, 1200, total);
+        });
+    }
+    /* a ring light stood up behind a body (a glowing torus facing the lens) that flashes once at `flashAt` */
+    function _infRingLight(F, at, h, ts, flashAt) {
+        var m = _sigMat(_INF_WHITE), ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.035, 8, 32), m);
+        ring.renderOrder = 157; F.g.add(ring);
+        return function (el) {
+            var q = _camQuat(), back = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
+            ring.position.set(at.x + back.x * ts * 0.25, at.y + h * 0.82, at.z + back.z * ts * 0.25); ring.quaternion.copy(q);
+            var on = _afEnv(el, 0, 160, 900, 1200), fl = _afEnv(el, flashAt, flashAt + 40, flashAt + 80, flashAt + 300);
+            m.opacity = 0.55 * on + 0.45 * fl; ring.scale.setScalar(1 + 0.25 * fl);
+        };
+    }
+    /* FILTER (the cast on the ally): its ring light; THE SWAP draws the second one and the two glints trading places */
+    function _infFilter3D(tx, ty) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, tu = _infUnitAt(tx, ty), h = _lgBodyH(tu ? tu.id : null, ts);
+        var rl = _infRingLight(F, new THREE.Vector3(0, 0, 0), h, ts, 380);
+        return _sigRunOwned(F.g, 1250, function (el) { rl(el); });
+    }
+    function _infSwap3D(tx, ty, r, o) {
+        o = o || {};
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, pu = _infUnitAt(tx, ty), h = _lgBodyH(pu ? pu.id : null, ts);
+        var rl = _infRingLight(F, new THREE.Vector3(0, 0, 0), h, ts, 380);
+        var fromSeen = o.fromX != null && !_afFogHides(o.fromX, o.fromY);
+        var a = fromSeen ? _afTo(F, o.fromX, o.fromY) : null, b = new THREE.Vector3(0, h * 0.85, 0);
+        var g1 = null, g2 = null;
+        if (a) { a.y += h * 0.85; g1 = _finSprite(0xffd0ee, _afStarTex(4), ts * 0.42, 163); g2 = _finSprite(0xffd0ee, _afStarTex(4), ts * 0.42, 163); F.g.add(g1); F.g.add(g2); }
+        return _sigRunOwned(F.g, 1250, function (el) {
+            rl(el);
+            if (!g1) return;
+            var k = _sigClamp01((el - 420) / 420), kk = k * k * (3 - 2 * k), op = (el > 420 && el < 900) ? 0.95 : 0;
+            g1.position.copy(_afArc(a, b, ts * 0.7, kk)); g2.position.copy(_afArc(b, a, -ts * 0.4, kk));
+            g1.material.opacity = op; g2.material.opacity = op;
+        });
+    }
+    /* RATIO: speech bubbles pile down onto the target from above (the replies), then the hit ring at 560 ms */
+    function _infRatio3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, tu = _infUnitAt(tx, ty), h = _lgBodyH(tu ? tu.id : null, ts);
+        var bs = [];
+        for (var i = 0; i < 8; i++) {
+            var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: _infBubbleTex(), transparent: true, opacity: 0, depthWrite: false }));
+            var ang = i * 2.39996; s.userData = { x: Math.cos(ang) * ts * (0.25 + 0.1 * (i % 3)), z: Math.sin(ang) * ts * (0.25 + 0.1 * (i % 3)), t0: i * 55 };
+            s.renderOrder = 162; F.g.add(s); bs.push(s);
+        }
+        _infRing(tx, ty, tu ? tu.player : null, 1.1, 520, 560);
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < bs.length; i++) {
+                var s = bs[i], k = _sigClamp01((el - s.userData.t0) / 380), land = k * k;
+                s.position.set(s.userData.x * (1 - 0.4 * land), h * (2.2 - 1.1 * land), s.userData.z * (1 - 0.4 * land));
+                s.scale.set(ts * 0.3, ts * 0.25, 1);
+                s.material.opacity = el < s.userData.t0 ? 0 : 0.95 * _afEnv(el, s.userData.t0, s.userData.t0 + 60, 640, 900);
+            }
+        });
+    }
+    Object.assign(_spell3DGeometry, {
+        nrSelfieFlash: _infSelfie3D, nrGoViral: _infViral3D, nrSponsored: _infSponsor3D, nrFilter: _infFilter3D, nrRatio: _infRatio3D,
+        'nrGoViral:share': _infShare3D, 'nrFilter:swap': _infSwap3D,
+    });
+
     /* ══ THE CICADA BROOD (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx") ══ The brood's colours are
        its shell (green over black) and its red eyes; the side reads from the viewer's seat (THE RIOT PASS: cyan-blue yours, pink-red
        theirs) on the rings that tell where a spell reaches. The song itself is drawn as rings of sound at head height.
@@ -52836,6 +53103,277 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ═════════ END THE BANKER SIGNATURES ═════════ */
 
+    /* ════ THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX") ════
+       Gator Toss, Bath Salts and Hurricane Party shipped on the stock look (a generic bolt, a buff glow, the plain wind ring).
+       Each now has its own piece, on the same hooks as the Banker / Sewer Gator blocks above (EFFECTS `pzSig` -> _PZ_SIGS, every
+       intent through fire(), which online.js relays, so the guest draws the same piece; RULE #2), and each cast opens with
+       TODAY'S HEADLINE: a newspaper spins in beside his head (the old film spin) with the day's headline on it, small, to the
+       lens side of him and above the nameplate, gone in 1.6 s. Side colours from the viewer's seat (his side cyan-blue, the other
+       side pink-orange, THE RIOT PASS phase C); the spell keeps its own swamp green / salt white / storm grey. Nothing full-screen;
+       everything round the body fades so the caster, the target, the hit and the number read. Visuals only.
+       · Gator Toss `bolt` (pzOwn, timed on flyMs): a real-proportioned alligator (leather hide, the Sewer Gator's snout and
+         teeth, a tapered tail, four legs) is hurled end over end in a high arc; on the landing its jaws snap on the victim, blood
+         and dust, then it drops off beside the body and is gone by +620 ms. A Wet victim (the x1.5) also throws a ring of water.
+       · Bath Salts `aura`: a puff of white salt bursts off his face, crystals fly out, then he goes red: rage streaks run up his
+         body, two red eye glints, speed lines blow back off him and green Regen motes rise; his side's ring on the floor.
+       · Hurricane Party `aoe`: a squat grey twister stands over the 3x3 with rain driving through it and the party going round in
+         it (a lawn flamingo, a traffic cone, beer cans, confetti); each square splashes on the hit (Wet), his side's rim round
+         the area. Models: the Meshy `flamingo` + `traffic_cone` (_MISC_GLB, warmed in _SPELL_MISC_KEYS). */
+    var _FM = { hide: 0x8fbf5a, belly: 0xe0dca0, salt: 0xf6f8ff, rage: 0xff3a1a, rageHi: 0xffa040, regen: 0x6af07a,
+        storm: 0x8a96a6, rain: 0xbfe6ff, paper: '#f1ead8' };
+    var _FM_HEADLINES = { nrGatorToss: 'FLORIDA MAN\nTHROWS ALLIGATOR', nrBathSalts: 'FLORIDA MAN FOUND\nNAKED ON OVERPASS',
+        nrHurricaneParty: 'FLORIDA MAN REFUSES\nTO EVACUATE' };
+    /* the side ramp of whoever stands on a square: [bright, deep] (own cyan-blue, theirs pink-orange) */
+    function _fmSide(sx, sy) {
+        var owner = null;
+        try { if (!_VS.on && typeof state !== 'undefined' && state.units) for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === sx && u.y === sy) { owner = u.player; break; } } } catch (e) {}
+        return _mgSide(owner);
+    }
+    function _fmPaperTex(text) {
+        return _pzTex('fm-paper-' + text, 512, 288, function (g, w, h) {
+            g.fillStyle = _FM.paper; g.fillRect(0, 0, w, h);
+            g.strokeStyle = '#2a2622'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
+            g.fillStyle = '#c81a1a'; g.fillRect(14, 14, w - 28, 54);
+            g.fillStyle = '#ffffff'; g.font = 'bold 40px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText('BREAKING NEWS', w / 2, 42);
+            g.fillStyle = '#16130f'; g.font = 'bold 50px Georgia, "Times New Roman", serif';
+            var L = String(text).split('\n');
+            for (var i = 0; i < L.length; i++) g.fillText(L[i], w / 2, 118 + i * 58, w - 36);
+            /* the columns under the headline: grey type lines */
+            g.fillStyle = 'rgba(40,36,30,0.35)';
+            for (var c = 0; c < 3; c++) for (var r = 0; r < 4; r++) g.fillRect(22 + c * 160, 222 + r * 12, 140 - (r === 3 ? 50 : 0), 5);
+        });
+    }
+    /* TODAY'S HEADLINE: the paper spins in beside his head, holds, folds away */
+    function _fmHeadline(sx, sy, spellId) {
+        var text = _FM_HEADLINES[spellId]; if (!text || sx == null || !_pzSeen(sx, sy)) return;
+        var F = _nrvFrame(sx, sy), ts = F.ts, cd = _nbCamDir(F);
+        var sm = new THREE.SpriteMaterial({ map: _fmPaperTex(text), transparent: true, opacity: 0, depthWrite: false, depthTest: false });
+        var sp = new THREE.Sprite(sm); sp.renderOrder = 175; F.g.add(sp);
+        var W = ts * 1.25, H = W * 288 / 512;
+        sp.position.set(cd.z * ts * 0.95, ts * 2.15, -cd.x * ts * 0.95);   /* to the lens's right of him, over the nameplate */
+        _sigRunOwned(F.g, 1650, function (el) {
+            var k = _sigEaseOutCubic(_sigClamp01(el / 420));
+            var s = Math.max(0.04, k) * (1 - 0.15 * _sigClamp01((el - 1350) / 300));
+            sp.scale.set(W * s, H * s, 1);
+            sm.rotation = (1 - k) * Math.PI * 4;
+            sm.opacity = _pzEnv(el, 0, 120, 1300, 1650);
+        });
+    }
+    /* a Meshy prop (misc key) at length `len`, its materials faded together (userData.mats) */
+    function _fmModel(key, len, lift) {
+        var g = null;
+        try { g = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) ? ThreeRenderer.getMiscModelClone(key, 1, 'center') : null; } catch (e) { g = null; }
+        if (!g) return null;
+        g.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(g), sz = new THREE.Vector3(); bb.getSize(sz);
+        var mx = Math.max(sz.x, sz.y, sz.z) || 1, mats = [], inner = new THREE.Group(); inner.add(g); g.scale.multiplyScalar(len / mx);
+        g.traverse(function (n) { if (n.isMesh) { n.material = n.material.clone(); n.material.transparent = true; n.material.opacity = 0; if (lift) n.material.color.setScalar(lift); n.renderOrder = 160; n.frustumCulled = false; mats.push(n.material); } });
+        inner.userData.mats = mats;
+        return inner;
+    }
+    /* the alligator: body + head (the Sewer Gator's snout) along +z, the tail along -z, four splayed legs. Returns { g, S, mats } */
+    function _fmGator(ts) {
+        var hide = _pzSolid(_FM.hide, _sigTerrainTex('leather.png', 1, 1)), belly = _pzSolid(_FM.belly, _sigTerrainTex('leather.png', 1, 1));
+        ts = ts * 0.75;   /* the whole beast a little over a square nose to tail */
+        var g = new THREE.Group(), BL = ts * 0.62, BW = ts * 0.26;
+        var body = _pzMesh(new THREE.SphereGeometry(1, 12, 8), hide, g, 0, 0, 0); body.scale.set(BW * 0.5, BW * 0.3, BL * 0.5);
+        var bel = _pzMesh(new THREE.SphereGeometry(1, 12, 6), belly, g, 0, -BW * 0.06, 0); bel.scale.set(BW * 0.42, BW * 0.24, BL * 0.46);
+        /* the ridge: a row of low scutes down the back */
+        for (var i = 0; i < 7; i++) { var sc = _pzMesh(new THREE.ConeGeometry(ts * 0.024, ts * 0.05, 4), hide, g, 0, BW * 0.3, BL * (0.36 - i * 0.12)); sc.rotation.y = Math.PI / 4; }
+        var tail = _pzMesh(new THREE.ConeGeometry(BW * 0.34, BL * 0.95, 8), hide, g, 0, 0, -BL * 0.92); tail.rotation.x = -Math.PI / 2; tail.scale.set(1, 1, 0.55);
+        for (var lx = -1; lx <= 1; lx += 2) for (var lz = -1; lz <= 1; lz += 2) {
+            var leg = _pzMesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.04, ts * 0.17, 6), hide, g, lx * BW * 0.52, -BW * 0.16, lz * BL * 0.3);
+            leg.rotation.z = lx * 0.9;
+        }
+        var S = _gtSnout(ts * 0.62); S.g.position.set(0, 0, BL * 0.46); g.add(S.g);
+        S.mats[0].color.setHex(_FM.hide);   /* the snout's hide matches the body (the Sewer Gator's is darker) */
+        return { g: g, S: S, mats: [hide, belly].concat(S.mats) };
+    }
+
+    /* ── GATOR TOSS ── */
+    EFFECTS['fmGatorToss_bolt'] = _pzDef('fmGatorToss', { pzOwn: true });
+    _PZ_SIGS.fmGatorToss = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
+        if (fx == null) { var fr = _pzFrom(tx, ty, p); fx = fr.x; fy = fr.y; }
+        var ms = p.flyMs > 0 ? p.flyMs : 480;   /* the engine's flight: the jaws close on the number */
+        _fmHeadline(fx, fy, 'nrGatorToss');
+        if (!_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
+        var ts0 = _cfg().tileSize || 128, G = _fmGator(ts0), side = _fmSide(fx, fy);
+        var wet = false;
+        try { var vid = _sigUnitIdAt(tx, ty); if (vid != null) for (var u = 0; u < state.units.length; u++) { var su = state.units[u]; if (su && su.id === vid && su.status && su.status.wet > 0) { wet = true; break; } } } catch (e) {}
+        for (var m = 0; m < G.mats.length; m++) G.mats[m].opacity = 1;
+        var spinG = new THREE.Group(); spinG.add(G.g);
+        _pzFly(fx, fy, tx, ty, spinG, { ms: ms, arc: 0.75, h0: ts0 * 0.9, h1: ts0 * 1.0, tail: 640,
+            trail: { sprite: 'dust-puff', tint: 0xcfc2a6, every: 45, size: 10 },
+            spin: function (el, obj, t) {
+                if (t < 1) { obj.rotation.x = t * Math.PI * 2.5; G.S.up.rotation.x = -0.5 - 0.25 * Math.sin(el * 0.03); G.S.lo.rotation.x = 0.3; }
+            },
+            landTick: function (e2, obj) {
+                /* the snap on the body (0-90), hold (to 260), then it drops off beside the body and fades by 620 */
+                obj.rotation.x = Math.PI * 2.5;   /* nose down onto the body */
+                var snap = _sigClamp01(e2 / 90);
+                G.S.up.rotation.x = -0.75 * (1 - snap); G.S.lo.rotation.x = 0.35 * (1 - snap);
+                var drop = _sigEaseInCubic(_sigClamp01((e2 - 260) / 300));
+                obj.position.y = -ts0 * 0.9 * drop;
+                var op = 1 - _sigClamp01((e2 - 420) / 200);
+                for (var q = 0; q < G.mats.length; q++) G.mats[q].opacity = op;
+            },
+            onLand: function () {
+                if (!_pzSeen(tx, ty)) return;
+                try { _sigShake('normal'); } catch (e) {}
+                _sigShockRing3D(tx, ty, { color: side[0], r0: ts0 * 0.2, r1: ts0 * 0.95, ms: 360, opacity: 0.7 });
+                _sigSparks(tx, ty, 'blood-fleck', 14, { vxy: 160, vz0: 40, vz1: 200, gravity: 380, z: ts0 * 0.6 });
+                _sigSparks(tx, ty, 'dust-puff', 8, { vxy: 120, vz0: 10, vz1: 60, gravity: 0 });
+                if (wet) {
+                    var F = _nrvFrame(tx, ty);
+                    _gtSplash(F, { c: 0x2ab8c8, foam: 0xd8fbff }, 16, { r: 0.3, v0: 110, v1: 200, vz0: 160, vz1: 300 });
+                    _sigShockRing3D(tx, ty, { color: 0xd8fbff, r0: ts0 * 0.3, r1: ts0 * 1.25, ms: 480, opacity: 0.6 });
+                }
+            } });
+    };
+
+    /* ── BATH SALTS ── */
+    EFFECTS['fmBathSalts_aura'] = _pzDef('fmBathSalts', { pzOwn: true });
+    _PZ_SIGS.fmBathSalts = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        _fmHeadline(tx, ty, 'nrBathSalts');
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = _fmSide(tx, ty), cd = _nbCamDir(F);
+        /* the crystals: little white shards thrown out of the puff */
+        var crys = [], cm = _pzSolid(_FM.salt, _sigTerrainTex('ice.png', 1, 1));
+        for (var i = 0; i < 12; i++) {
+            var a = rn(0, 6.28), c = _pzMesh(new THREE.OctahedronGeometry(ts * rn(0.025, 0.045), 0), cm, F.g, 0, ts * 1.45, 0);
+            crys.push({ m: c, vx: Math.cos(a) * ts * rn(0.6, 1.1), vz: Math.sin(a) * ts * rn(0.6, 1.1), vy: ts * rn(0.6, 1.4), ph: rn(0, 6) });
+        }
+        /* the rage: tall thin streaks running up round his body */
+        var streaks = [], rm = _pzSolid(_FM.rage, null, { side: THREE.DoubleSide, depthWrite: false }), rm2 = _pzSolid(_FM.rageHi, null, { side: THREE.DoubleSide, depthWrite: false });   /* solid: an additive red washes pale over grass */
+        for (var k = 0; k < 12; k++) {
+            var ang = k / 12 * Math.PI * 2, st = _pzMesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.36), k % 2 ? rm2 : rm, F.g, Math.cos(ang) * ts * 0.36, 0, Math.sin(ang) * ts * 0.36);
+            streaks.push({ m: st, ph: k * 0.29 });
+        }
+        var eyes = [];
+        for (var e = -1; e <= 1; e += 2) eyes.push(_pzSpr(_FM.rage, ts * 0.12, F.g));
+        var ring = _bkFloor(F, _sigGlowTex(), ts * 1.4, ts * 1.4, side[0], true);
+        var rung = false, lastP = 0, lastS = 0;
+        /* the salt puff off his face */
+        for (var s = 0; s < 10; s++) {
+            var sa = rn(0, 6.28);
+            _pzP(F, Math.cos(sa) * ts * 0.1, ts * 1.45, Math.sin(sa) * ts * 0.1, { sprite: 'smoke-soft', tint: _FM.salt, ml: rn(700, 1000), size0: rn(26, 38), size1: rn(60, 80),
+                vx: Math.cos(sa) * rn(40, 90), vy: Math.sin(sa) * rn(40, 90), vz: rn(10, 50), drag: 0.85, opacity0: 0.95 });
+        }
+        _sigSparks(tx, ty, 'sparkle', 10, { vxy: 120, vz0: 60, vz1: 160, gravity: 120 });
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var cam = _pzCam();
+            for (var j = 0; j < crys.length; j++) {
+                var C = crys[j], t = el / 1000, y = ts * 1.45 + C.vy * t - ts * 3.2 * t * t;
+                C.m.position.set(C.vx * t, Math.max(ts * 0.03, y), C.vz * t);
+                C.m.rotation.set(el * 0.01 + C.ph, el * 0.013, 0);
+            }
+            cm.opacity = 0.95 * _pzEnv(el, 0, 40, 650, 900);
+            /* the rage comes at 300: streaks climb his body in a loop */
+            var rage = _pzEnv(el, 300, 420, 1250, 1650);
+            rm.opacity = 0.9 * rage; rm2.opacity = 0.85 * rage;
+            for (var q = 0; q < streaks.length; q++) {
+                var S = streaks[q], h = ((el * 0.0022 + S.ph) % 1);
+                S.m.position.y = ts * (0.15 + 1.3 * h); S.m.scale.y = 0.6 + 0.6 * Math.sin(h * Math.PI);
+                if (cam) S.m.quaternion.copy(cam.quaternion);
+            }
+            for (var w = 0; w < eyes.length; w++) {
+                var off = (w ? 1 : -1) * ts * 0.06;
+                eyes[w].position.set(cd.x * ts * 0.16 + cd.z * off, ts * 1.55, cd.z * ts * 0.16 - cd.x * off);
+                eyes[w].material.opacity = 0.95 * _pzEnv(el, 360, 440, 1200, 1500) * (0.75 + 0.25 * Math.sin(el * 0.04));
+            }
+            if (!rung && el >= 320) { rung = true; _sigShockRing3D(tx, ty, { color: _FM.rage, r0: ts * 0.2, r1: ts * 0.9, ms: 360, opacity: 0.6 }); }
+            ring.material.opacity = 0.5 * _pzEnv(el, 300, 420, 1100, 1600);
+            ring.scale.setScalar(0.7 + 0.3 * _sigEaseOutCubic(_sigClamp01((el - 300) / 400)));
+            /* speed lines blown back off him (away from the lens: never across his face) */
+            if (el > 380 && el < 1250 && el - lastS > 60) {
+                lastS = el; var ya = rn(0.2, 1.4);
+                _pzP(F, -cd.x * ts * 0.2 + cd.z * rn(-0.3, 0.3) * ts, ts * ya, -cd.z * ts * 0.2 - cd.x * rn(-0.3, 0.3) * ts, { sprite: 'spark', tint: _FM.rageHi,
+                    ml: rn(240, 380), size0: rn(5, 8), size1: 1, vx: -cd.x * 260, vy: -cd.z * 260, vz: rn(-10, 20), drag: 1, opacity0: 0.9 });
+            }
+            /* Regen motes */
+            if (el > 600 && el < 1500 && el - lastP > 90) {
+                lastP = el; var ma = rn(0, 6.28), mr = ts * rn(0.15, 0.38);
+                _pzP(F, Math.cos(ma) * mr, ts * rn(0.1, 0.5), Math.sin(ma) * mr, { sprite: 'heal-glow', tint: _FM.regen, ml: rn(600, 900), size0: rn(6, 9), size1: 2, vz: rn(60, 110), opacity0: 0.85 });
+            }
+        });
+    };
+
+    /* ── HURRICANE PARTY ── */
+    EFFECTS['fmHurricaneParty_aoe'] = _pzDef('fmHurricane', { pzOwn: true, aoeRadius: 1 });
+    _PZ_SIGS.fmHurricane = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        if (p.cx != null) _fmHeadline(p.cx, p.cy, 'nrHurricaneParty');
+        var at = _nvAoeTiles(id, p, null, 1), r = at.r || 1;
+        var seenAny = _pzSeen(tx, ty);
+        for (var t0 = 0; t0 < at.offs.length && !seenAny; t0++) if (_pzSeen(tx + at.offs[t0].dx, ty + at.offs[t0].dy)) seenAny = true;
+        if (!seenAny) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = ts * (r + 0.5);
+        var side = p.cx != null ? _fmSide(p.cx, p.cy) : _mgSide(null);
+        var fn = _wdFunnel(F, { n: 9, h: ts * 2.1, r0: 0.25, r1: r + 0.45, turns: 2.0, chips: 8, color: 0x5d6878, color2: 0x8a96a6 });
+        var sw = _wdSwirl(F, R * 1.7, _FM.storm);
+        /* the party going round: the flamingo, a cone, cans, confetti */
+        var junk = [], cand = [['flamingo', ts * 0.55, 1.0], ['traffic_cone', ts * 0.32, 1.25]];
+        for (var c = 0; c < cand.length; c++) { var mdl = _fmModel(cand[c][0], cand[c][1], cand[c][2]); if (mdl) { F.g.add(mdl); junk.push({ o: mdl, a: c * Math.PI, h: 0.25 + c * 0.3, r: 0.75, sp: 0.006 - c * 0.001 }); } }
+        var canM = _finBasic(0xd8dde4, { map: _sigTerrainTex('metal.png', 1, 1) }); canM.opacity = 0;
+        var bandM = _finBasic(0xc81a1a, { map: _sigTerrainTex('metal.png', 1, 1) }); bandM.opacity = 0;
+        for (var b = 0; b < 3; b++) {
+            var cg = new THREE.Group();
+            _pzMesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.045, ts * 0.13, 10), canM, cg);
+            _pzMesh(new THREE.CylinderGeometry(ts * 0.047, ts * 0.047, ts * 0.05, 10), bandM, cg);
+            cg.userData.mats = [canM, bandM]; F.g.add(cg);
+            junk.push({ o: cg, a: 1.1 + b * 2.1, h: 0.15 + b * 0.27, r: 0.55 + 0.15 * b, sp: 0.008 + b * 0.0015 });
+        }
+        var conf = [], COLS = [0xff3aa0, 0xffd23a, 0x3ad0ff, 0x6af07a, 0xff8a1a];
+        for (var k = 0; k < 18; k++) {
+            var mm = _finBasic(COLS[k % COLS.length], { map: _sigTerrainTex('parchment.png', 1, 1), side: THREE.DoubleSide }); mm.opacity = 0;
+            var pc = _pzMesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.03), mm, F.g); conf.push({ m: pc, mat: mm, a: rn(0, 6.28), h: rn(0, 1), r: rn(0.3, 1.0), sp: rn(0.006, 0.012) });
+        }
+        var HIT = 120, hit = false, lastR = 0, TOTAL = 1900;   /* the engine fires the aoe on the damage: the splash lands with the numbers */
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 260)), lift = _sigEaseInCubic(_sigClamp01((el - 1350) / 500));
+            fn.S.scale.set(1 + lift * 0.4, Math.max(0.02, up), 1 + lift * 0.4); fn.S.position.y = lift * ts * 1.2;
+            fn.tick(el, 0.85 * (1 - lift), 0.012, lift * 3);
+            sw.rotation.z = -el * 0.008; sw.scale.setScalar(0.7 + 0.3 * _sigEaseOutCubic(_sigClamp01(el / 400))); sw.material.opacity = 0.4 * (1 - _sigClamp01((el - 1200) / 500));
+            var jv = _pzEnv(el, 60, 220, 1250, 1600);
+            for (var j = 0; j < junk.length; j++) {
+                var J = junk[j], a = J.a + el * J.sp * 1.4, hh = ts * (0.3 + 1.1 * ((J.h + el * 0.0003) % 1)) + lift * ts * 1.2, rr = ts * J.r * (r + 0.3);
+                J.o.position.set(Math.cos(a) * rr, hh, Math.sin(a) * rr);
+                J.o.rotation.set(el * 0.004 + j, el * 0.007, el * 0.003 * (j % 2 ? 1 : -1));
+                _bkFade(J.o, jv);
+            }
+            canM.opacity = bandM.opacity = jv;
+            for (var q = 0; q < conf.length; q++) {
+                var C = conf[q], ca = C.a + el * C.sp, ch = ts * (0.15 + 2.0 * ((C.h + el * 0.0005) % 1)), cr = ts * C.r * (r + 0.4);
+                C.m.position.set(Math.cos(ca) * cr, ch, Math.sin(ca) * cr); C.m.rotation.set(el * 0.02 + q, el * 0.017, 0);
+                C.mat.opacity = jv;
+            }
+            /* the rain driving across the area */
+            if (el < 1400 && el - lastR > 30 && _canSpawn()) {
+                lastR = el;
+                for (var d = 0; d < 3; d++) _pzP(F, rn(-1, 1) * R, ts * rn(1.8, 2.6), rn(-1, 1) * R, { sprite: 'water-splash', tint: _FM.rain, ml: rn(260, 380), size0: rn(4, 6), size1: 3,
+                    vx: 120, vy: 60, vz: -620, drag: 1, opacity0: 0.8 });
+            }
+            if (!hit && el >= HIT) {
+                hit = true;
+                try { _sigShake('light'); } catch (e) {}
+                for (var s = 0; s < at.offs.length; s++) {
+                    var o = at.offs[s], X = tx + o.dx, Y = ty + o.dy; if (!_pzSeen(X, Y)) continue;
+                    var F2 = _nrvFrame(X, Y); _gtSplash(F2, { c: 0x2ab8c8, foam: 0xd8fbff }, 8, { r: 0.25, v0: 70, v1: 140, vz0: 120, vz1: 220 });
+                }
+                if (_pzSeen(tx, ty)) _gtSplash(F, { c: 0x2ab8c8, foam: 0xd8fbff }, 10, { r: 0.25, v0: 70, v1: 140, vz0: 120, vz1: 220 });
+                _sigShockRing3D(tx, ty, { color: side[0], r0: ts * 0.3, r1: R * 1.25, ms: 460, opacity: 0.65 });
+            }
+        });
+    };
+    SPELL_MAP['nrGatorToss']      = { bolt: 'fmGatorToss_bolt' };
+    SPELL_MAP['nrBathSalts']      = { aura: 'fmBathSalts_aura' };
+    SPELL_MAP['nrHurricaneParty'] = { aoe: 'fmHurricaneParty_aoe' };
+
+    /* ═════════ END THE FLORIDA MAN ═════════ */
+
     /* ═════════════════════════════════════════════════════════════════════
        THE WIND PASS (2026-10-25, mondo: "the nature spells look great now,
        can you do a similar thread on each element, giving them a consistent
@@ -53133,7 +53671,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ts = F.ts, S = new THREE.Group(); F.g.add(S);
         var n = o.n || 7, H = o.h || ts * 2.6, rib = [], mats = [], chips = [];
         for (var i = 0; i < n; i++) {
-            var m = _wdAirMat(i % 3 === 2, i % 3 === 2 ? _WD.grit : null); mats.push(m);
+            var m = _wdAirMat(i % 3 === 2, o.color != null ? (i % 3 === 2 ? o.color2 || o.color : o.color) : (i % 3 === 2 ? _WD.grit : null)); mats.push(m);   /* o.color: a tinted twister (THE FLORIDA MAN's storm grey) */
             rib.push(_wdRibbon(S, _wdHelix(ts * (o.r0 || 0.16), ts * (o.r1 || 0.9), 0, H, o.turns || 2.3, i / n * Math.PI * 2, 46),
                 { w0: ts * 0.07, w1: ts * 0.3, segs: 70, roll: 0.15, twist: 0.4, mat: m }));
         }

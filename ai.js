@@ -1759,9 +1759,17 @@
         const g = G();
         let priority = 0;
 
-        priority += 0.4 * unitThreatOutput(g, target, unit);      // dangerous first
-        if (unitIsHealerKit(target)) priority += 110;             // support core first
-        priority += Math.min(90, (target.intStat || target.int || 0) * 0.8);
+        /* 🤳 THE FILTER (2026-11-17, the Influencer): an enemy wearing a filter is judged by the ally it looks like (its kit,
+           its threat, its INT): the CPU is fooled the way a player is. Only the look; its HP and the hit itself stay true. */
+        let seen = target;
+        if (target.player !== unit.player && target.status && target.status.filtered > 0 && target._filterLookId != null
+            && !(typeof window !== 'undefined' && window.EW_NO_FILTER_LOOK)) {
+            const lk = (g.state.units || []).find(u => u && u.id === target._filterLookId);
+            if (lk && lk.race === target._filterRace) seen = lk;
+        }
+        priority += 0.4 * unitThreatOutput(g, seen, unit);      // dangerous first
+        if (unitIsHealerKit(seen)) priority += 110;             // support core first
+        priority += Math.min(90, (seen.intStat || seen.int || 0) * 0.8);
 
         // Team focus + invested damage: convert pokes into kills.
         if (v && v.focus && target.id === v.focus.id) priority += tuneW(g, 'focusCommitBonus');
@@ -4867,6 +4875,14 @@
         }
         if (!opts.splash) val += getTargetPriority(tg, unit, v) * 0.35;
         if (!sp && arc === 'back') val += 40;   // undodgeable + uncounterable
+        /* 📱 GOING VIRAL (2026-11-17): a hit on a Viral unit also hits each of its teammates within 2 for 30% (battle.js
+           _viralShare); RATIO (viralSpread) then tags those teammates too */
+        if (tg.status && tg.status.viral > 0) {
+            const _vm = (g.state.units || []).filter(a => a && !a.dead && a.id !== tg.id && a.player === tg.player
+                && Math.abs(a.x - tg.x) + Math.abs(a.y - tg.y) <= 2);
+            for (const a of _vm) val += Math.min(est * 0.3, effHp(a)) * landP * 0.9;
+            if (sp && sp.viralSpread) val += 45 * _vm.length;
+        }
         return { est, val };
     }
 
@@ -5894,7 +5910,17 @@
         return 0;
     }
     function scoreSpell(unit, spell, target, v) {
-        const base = _scoreSpellCore(unit, spell, target, v);
+        let base = _scoreSpellCore(unit, spell, target, v);
+        /* 📰 TODAY'S HEADLINE (the Florida Man, 11-17 polish): a headline spell is castable only today, so the CPU takes it over a
+           plain hit when it is worth anything at all (it sat on Bath Salts in a test match and the round was lost) */
+        if (spell.floridaHeadline && base > 0) {
+            base = base * 1.3 + 30;
+            /* Bath Salts does not end the turn and an attack does: buffed first, the same turn's hit still lands (the CPU moved
+               and hit instead, every Bath Salts day). Worth the hit it powers up, when AP is left for one. */
+            const g = G();
+            const ends = g && g.TargetQuery && g.TargetQuery.spellEndsTurn ? g.TargetQuery.spellEndsTurn(spell) : true;
+            if (!ends && spell.statStageBoost && target && target.id === unit.id && (unit.ap || 0) >= (g.TargetQuery.apCost(spell) || 1) + 1) base += 260;
+        }
         if (!(base > 0) || !target || !_isForcedSpell(spell) || spell.kind === 'skyThrow' || spell.allyOnly) return base;
         const g = G();
         const fv = _forcedMoveValue(g, unit, spell, target, v);
@@ -6451,6 +6477,16 @@
                 s += 30 * v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= _teR).length;
             }
             if (spell.spawnDecoy) s += 40;
+            /* 🤳 FILTER (2026-11-17): a face swap needs an ally of another look (the engine refuses it otherwise); it pays most
+               when one of the two is the support core the other side would hunt */
+            if (spell.filterSwap) {
+                if (target.status && target.status.filtered > 0) return 0;
+                const _fp = g.aliveUnitsFor(unit.player).filter(a => a && !a.dead && a.id !== target.id && a.race
+                    && !(a.race === target.race && (a.gender || 'male') === (target.gender || 'male')));
+                if (!_fp.length) return 0;
+                _fp.sort((a, b) => (Math.abs(a.x - target.x) + Math.abs(a.y - target.y)) - (Math.abs(b.x - target.x) + Math.abs(b.y - target.y)));
+                s += 35 + ((unitIsHealerKit(target) || unitIsHealerKit(_fp[0])) ? 55 : 0);
+            }
             /* 🛟 THE LIFEGUARD (2026-11-16): On Duty is worth the allies in her 4 that the next hits could kill; Three Whistles
                (massRescue) the allies it would haul in (under hpPct, within radius), the lower the better — and 0 with
                none, so the CPU never wastes it (the engine refuses that cast too). */
@@ -6531,6 +6567,14 @@
         // ── control family ──
         if (kind === 'debuff' && target) {
             let s = statusRiderValue(g, unit, target, spell, v);
+            /* 📱 GO VIRAL (2026-11-17): worth the teammates within 2 its hits would also reach (0 alone: the tag does nothing) */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'viral')) {
+                if (target.status && target.status.viral > 0) return 0;
+                const _vm = (g.state.units || []).filter(a => a && !a.dead && a.id !== target.id && a.player === target.player
+                    && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 2).length;
+                if (!_vm) return 0;
+                s += 55 * _vm;
+            }
             if (spell.statStageBoost) {
                 // Bound-aware (floored stats contribute nothing), and stacking
                 // is a real line of play now (no stage cap): a follow-up

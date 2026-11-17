@@ -5694,8 +5694,7 @@ dormant / bodiless):
   landing within 3 of him (either team; not his own heals, not heals on him) into unit._plate; Miracle (`spendPlate`) adds the
   plate in spellHealAmountFor (the forecast reads it) and empties it after the heal.
 - 📱 Influencer, GOING VIRAL: a `viral` unit shares 30% of every hit with its teammates within 2 (`_viralShare`, after the
-  Lifeguard save; shared hits carry `_viralShare` so they never spread). The doc's Filter (disguise) is NOT built: it needs the
-  renderer to draw a fake unit for one side only.
+  Lifeguard save; shared hits carry `_viralShare` so they never spread). Filter (disguise) is built since THE INFLUENCER POLISH below.
 - 🟥 Referee, THE RED CARD: Card = `yellowCard` 3 rounds + Marked; a card on a booked unit (STATUS_DEFS.yellowCard.onApply,
   `refreshed`) calls `_refereeRedCard`: the `exited` status 1 round with unit._sentOff (no door); `_doorExitReturn`'s sent-off
   branch puts it back on the field where it stood, no Stagger. Bosses / cubes are never sent off.
@@ -5707,6 +5706,12 @@ dormant / bodiless):
   (battle.js `_realmShieldLine`: sent off / out through a door / held behind a door / Shadow Realm; it said Shadow Realm for all).
 - 📰 Florida Man, TODAY'S HEADLINE: his three rows carry `floridaHeadline`; spellBlockReason greys the two that are not
   `_floridaHeadline(unit)` ("Not today"), a hash of the unit id + round, so the guest's menu agrees with no relay.
+  POLISH (11-17, thread "Polish Florida Man spells and VFX"): `_floridaTurnStart` (battle.js, at the start of his activation, after
+  the tower damage) says the day's headline over his head ("📰 GATOR TOSS", relayed floating text) and in the log, once a round;
+  a unit whose kit lacks the headline spell is told so (no fallback pick: equipping one headline must not make it castable every
+  round). Gator Toss got `bonusVsStatus: wet x1.5`, so Hurricane Party (Wet 2 rounds) sets up a later Gator Toss: the headline
+  order makes it a plan across rounds, not a same-turn combo. Tested in a VS-CPU match with both leads Florida Men: every cast
+  matched its headline, the CPU took the Wet toss on its own. Stats unchanged.
 - 🧠 Boltzmann Brain, THE FLUCTUATION: never walks or jumps (`_unitIsBodiless` in unitMoveBlockedByStatus / moveBlockWord
   'Bodiless' / unitMoveBlockKey 'bodiless'; casts that move the caster are greyed too, so its tree has no Phase Walk). Every
   round end (`_nrRoundEnd` in processEndOfRoundStatuses) it appears on a free square 2-4 away, picked by hash. Model = the
@@ -5787,6 +5792,31 @@ residents in their zones.
   - Proof + probes: /mnt/project-files/boltzmann-brain-polish/ (probe/p3_show.js = frozen-clock looks + the rules in a CPU match).
 
 
+## THE INFLUENCER POLISH (2026-11-17, thread "Polish Influencer spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+- THE SHARE FIX: `_viralShare` passed the hitter's type / STAB / ATK into each mate's share (a 154 hit shared 347 "super effective").
+  The share is now a flat 30 % of the damage dealt: no sourceUnit, `typeEffect:'neutral'`, ignoreArmor; the kill credit goes
+  through `a._lastDamageSourceId = src.id`. Multi-hit casts: one log line per mate ("… (9 hits)"), via a per-mate sub-sink
+  `sink._viral[id]` that `_multiHitLogFlush` flushes. `state._lastViralHitId` = the last viral unit hit (Ratio reads it, because a
+  killing hit or a status wearing off in the same cast must not lose the spread).
+- FILTER (tier 2, beside Sponsored; `filterSwap`): a single ally within 4 and the NEAREST living ally of ANOTHER race+gender (no
+  boss, cube or summon; `_influencerFilterPartner`) trade looks for 2 rounds (`filtered` status on both, `_filterLookId/Race/Gender`).
+  Both halves end together (shared `_stFresh` + the higher count), so two identical faces never stand on the board. No partner =
+  refused before any cost ("Filter: no ally of another race to swap faces with."). THE DRAWN UNIT: battle.js `ewDrawnUnit(unit,
+  viewer)` returns, for the OTHER seat only, a copy wearing the partner's race / gender / appearance / sprite / portrait / types;
+  sprites.js portraits + map sprite, three-renderer.js (model, creator rig, plate race, the rebuild hashes carry `flt:`), hud.js
+  race line + types and `unitDisplayName` all read it. Own side sees the truth. Known, on purpose: the 🤳 status badge stays
+  visible to the enemy (the honest read + counterplay); inspector stats are not disguised; log lines name the disguise for
+  everyone. Kill-switch `window.EW_NO_FILTER_LOOK = true`.
+- RATIO'D (tier 4, new; `viralSpread {radius 2, duration 1}`): MEDIUM light magic hit at range 5; on a Viral target every
+  teammate within 2 also goes Viral for 1 round (`_influencerRatioSpread`, in `_runPostEffects`). The kit is now Selfie Flash →
+  Go Viral → Sponsored / Filter → Ratio'd (RACE_TREE; the borrowed popstar rungs left).
+- THE CPU (ai.js): Go Viral = 55 per foe mate within 2 (0 alone / already viral); Filter 35 (+55 when either half is a healer, 0
+  with no partner); a hit on a viral foe adds the share per mate, Ratio +45 per mate it would spread to; `getTargetPriority`
+  judges a filtered foe by the unit it LOOKS like (what a player sees).
+- Proof (VS-CPU TDM, 0 page errors; /mnt/project-files/influencer-polish/): Selfie blinds; Ratio 163 on the viral target, 49 flat
+  to each mate, 2 mates go Viral; Sponsored +2/+2; Filter refusal costs 0 MP; enemy view draws the Influencer as the Catgirl and
+  back, own view real; all wear off; the CPU cast Filter and Ratio itself.
+
 ## THE WENDIGO PASS (2026-11-17, thread "Polish Wendigo spells and VFX", mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
 - THE PLAYSTYLE: a hunter that has to keep eating. Rend (Bleed 2 rounds) sets up Feast, which now carries
   `bonusVsStatus: { status: 'bleed', mult: 1.3 }` (the engine's own status-combo rule: "⚗ Combo! … ×1.3", +2 AP the first time
@@ -5820,3 +5850,6 @@ residents in their zones.
   slips, LATE FEE stamp; OVERDUE stamp + red ring on a Silenced foe). Probe 11-17 (real TDM, 0 page errors): Shush silenced, cd 2;
   Late Fee 557 on the silenced Knight vs 343 plain; Overdue renewed Hurricane Party (3 foes hit + Wet, 75 MP, cd 3) and Sponsored
   (+2 ATK/INT on the ally). Proof /mnt/project-files/librarian-polish/.
+- **THE FLOATING BRAIN (mondo 11-17, "can we name it something else ... Floating Brain, Sentient Brain ..."):** the Boltzmann Brain shows
+  as **Floating Brain** (RACE_PROFILES label, the race blurbs in ui.js + party-builder.js, the fluctuation family's names). The race id
+  stays `'boltzmann brain'` (saves, server lists, R2 folders, every table key); code comments keep the old name.
