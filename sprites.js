@@ -564,6 +564,7 @@ const RACE_SPRITE_GENDERS = {
   'pope': 'male',   // 2026-11-17 THE POPE
   'ninja': 'both',   // 2026-11-17 THE NINJA (male + female)
   'haunted doll': 'female',   // 2026-11-17 THE HAUNTED DOLL
+  'cursed tv': 'male',   // 2026-11-17 THE CURSED TV (one set; the model def sits under male)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -744,6 +745,7 @@ const _CHARACTER_SPRITES = {
   'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
   'ninja': `${_S}/Races/ninja/male/ninja_m_px.png`,   // 2026-11-17 THE NINJA — 128x128 pixel sprite (Sprite AI restyle of its Meshy model); the woman's is _NEW_FEMALE_SPRITES
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (Sprite AI restyle of its model render, PR #1910)
+  'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
@@ -6948,6 +6950,7 @@ const RACE_SPRITES = {
   'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
   'ninja': `${_S}/Races/ninja/male/ninja_m_px.png`,   // 2026-11-17 THE NINJA — 128x128 pixel sprite (Sprite AI restyle of its Meshy model); the woman's is _NEW_FEMALE_SPRITES
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (PR #1910)
+  'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite

@@ -7272,6 +7272,7 @@
                     addLog(`🚪 ${_ctName(target)} goes into the door and falls ${spell.dropTiles} levels out of the one over their head.`);
                 }
                 const _sitHas = _statusIfTargetHasArmed(spell, target);
+                const _rwTape = spell.rewindTape > 0 ? _tvTapeAmount(target, spell) : 0;   // 📺 Rewind: read the tape before this hit lands on it
                 applyDamageToUnit(target, damage,
                     `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -7299,6 +7300,16 @@
                 if (_riders.echoed && !target.dead && !target._dying) {
                     target._lastDamageSourceId = unit.id;
                     applyDamageToUnit(target, _riders.echoDmg, `⏪ ${spell.name} replays ${unitDisplayName(target)}'s last blow back at it: `, {
+                        damageType: spell.damageType || 'magic',
+                        ignoreArmor: true, preScaled: true, exactDamage: true,
+                        consumeMarked: false, allowMarkBonus: false, noRangeMult: true,
+                        floatKind: 'combo'
+                    });
+                }
+                /* 📺 REWIND (the Cursed TV): last round's tape plays back on it, a second hit of exactly that number (capped) */
+                if (_rwTape > 0 && !target.dead && !target._dying) {
+                    target._lastDamageSourceId = unit.id;
+                    applyDamageToUnit(target, _rwTape, `⏪ ${spell.name} plays back ${unitDisplayName(target)}'s last round: `, {
                         damageType: spell.damageType || 'magic',
                         ignoreArmor: true, preScaled: true, exactDamage: true,
                         consumeMarked: false, allowMarkBonus: false, noRangeMult: true,
@@ -14771,9 +14782,20 @@
                 else if (u.race === 'boltzmann brain') _boltzmannFluctuate(u);
                 else if (u.race === 'haunted doll') _dollCreep(u);
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
+                /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
+                if (u._tapeNow || u._tapeLast) { u._tapeLast = u._tapeNow || 0; u._tapeNow = 0; }
             }
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
         }
+        /* ═══ THE CURSED TV (2026-11-17, mondo approved the kit) ═══ THE TAPE: applyDamageToUnit adds every point a unit takes to
+           `_tapeNow`; _nrRoundEnd rolls it into `_tapeLast`. Rewind (`rewindTape`: the cap as a share of max HP) plays the tape back
+           as a second exact hit (THE REPLAY's apply: no DEF, no multipliers, the caster credited). Plain numbers on the unit, so they
+           state-sync to the guest with the rest of it. Notes: docs/notes/champions-combat.md "THE CURSED TV". */
+        function _tvTapeAmount(target, spell) {
+            if (!target || !spell || !(spell.rewindTape > 0)) return 0;
+            return Math.max(0, Math.min(Math.round(target._tapeLast || 0), Math.round((target.maxHp || 0) * spell.rewindTape)));
+        }
+        window._tvTapeAmount = _tvTapeAmount;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -42663,6 +42685,7 @@
                 astralSyncHp();   // 👁 one HP bar for a body and its spirit
                 target._tookDamageThisRound = true;
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
+                target._tapeNow = (target._tapeNow || 0) + finalDamage;   // 📺 THE TAPE: what it took this round (the Cursed TV's Rewind plays last round's back)
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sourceUnit.player !== target.player) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
@@ -44356,6 +44379,10 @@
                     const _echoN = spell.echoLastDealt ? calcSpellHitRiders({ base: 0, echo: target._lastHitDealt || 0, echoCap: 500 }).echoDmg : 0;
                     if (_echoN > 0) hit(target, _echoN, _echoN, _echoN, { damageType: dt, ignoreArmor: true, preScaled: true, exactDamage: true,
                         consumeMarked: false, allowMarkBonus: false, noRangeMult: true }, { tag: 'echo' });
+                    /* 📺 Rewind: the tape played back, a second exact hit */
+                    const _rwN = spell.rewindTape ? _tvTapeAmount(target, spell) : 0;
+                    if (_rwN > 0) hit(target, _rwN, _rwN, _rwN, { damageType: dt, ignoreArmor: true, preScaled: true, exactDamage: true,
+                        consumeMarked: false, allowMarkBonus: false, noRangeMult: true }, { tag: 'rewind' });
                     /* ⛪ Celibacy: the per-summon blow (_runPostEffects), so the preview shows it too */
                     if (spell.summonPenalty > 0) {
                         const _sb = _popeSummonBonus(spell, target);
@@ -49570,6 +49597,7 @@
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
                 if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';   // 📰 not today's headline
+                if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
                 if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
                 /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
@@ -49907,6 +49935,8 @@
             if (spell.noSelf && u.id === unit.id) return false;
             /* 🪆 `unwatched` (Look Behind You): only a unit that is not looking at the doll (_dollWatchedBy) */
             if (spell.unwatched && !u.dead && u.id !== unit.id && _dollWatchedBy(u, unit)) return false;
+            /* 📺 `rewindTape` (Rewind): only a unit with something on last round's tape */
+            if (spell.rewindTape > 0 && !u.dead && !(_tvTapeAmount(u, spell) > 0)) return false;
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
@@ -82668,6 +82698,16 @@
                 const _imT = unitAt(x, y, z) || unitAt(x, y);
                 if (_imT && !_imT.dead && spellBouncesOffImmune(spell, _imT) && !spellTargetUsableOn(unit, spell, _imT)) {
                     addLog(`${_ctName(_imT)} is immune — ${_ctSp(spell.name)} would do nothing.`);
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
+            /* 📺 `rewindTape` (Rewind): a target with nothing on last round's tape is refused before any MP, AP or cooldown is spent */
+            if (spell.rewindTape > 0) {
+                const _rwT = unitAt(x, y, z) || unitAt(x, y);
+                if (_rwT && _rwT.id !== unit.id && !_rwT.dead && !(_tvTapeAmount(_rwT, spell) > 0)) {
+                    addLog(`📼 Nothing on ${_ctName(_rwT)}'s tape: it took no damage last round.`, _clickSeat());
                     state._teleportingUnitId = null;
                     playErrorSfx();
                     return 0;
