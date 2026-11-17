@@ -1,0 +1,9 @@
+{
+  "about": "WILD LINK L6 (One World, the Camelot zone thread, 2026-11-17): the trail from the Snowy Pines' north end (Camelot, the Pass) up through the forest and the snowline to the Mountains' Ski Lodge. Its own room: joined to the Snowy Pines it would make a box 13 plots tall (the room-splitting rule's 12 x 12 box). The south end is Camelot's seam ow_h_m25_m10 (bake-camelot.js writes the Pines' side); the east end is the Mountains' seam ow_v_m22_m16 into the Ski Lodge's room, which the Mountains zone thread writes (site_prebuilt_shasta_ow_lodge).",
+  "hub": "kingdom",
+  "label": "THE TRAIL · THE PINES TO THE SKI LODGE",
+  "ends": {
+    "ow_h_m25_m10": { "room": "site_prebuilt_camelot_ow_pines", "at": "ow_h_m25_m10", "label": "THE SNOWY PINES", "sub": "THE PASS · DOWN TO THE SLEIGH ROAD", "desc": "The trail drops out of the trees through the Pass, and the sleigh road runs on south to Camelot." },
+    "ow_v_m22_m16": { "room": "site_prebuilt_shasta_ow_lodge", "at": "ow_v_m22_m16", "label": "THE SKI LODGE", "sub": "THE MOUNTAINS · ON TO THE LODGE", "desc": "Over the last rise the snow opens out and the lodge's lights are below." }
+  }
+}

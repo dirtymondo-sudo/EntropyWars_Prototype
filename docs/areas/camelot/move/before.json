@@ -1,0 +1,1888 @@
+{
+ "rooms": [
+  "site_prebuilt_camelot_kingdom"
+ ],
+ "plots": {
+  "The Stables": {
+   "props": {
+    "horse": 1,
+    "horse_brown": 2,
+    "horse_black": 1,
+    "meshy_burlap_sack": 5,
+    "psx_wooden_crate_3": 1,
+    "iron_garden_bench": 1,
+    "planter": 1,
+    "chimney_smoke": 1,
+    "wooden_barrel": 4,
+    "hearth_fire": 1,
+    "sea_chest": 1,
+    "psx_shelf_mp_2": 1,
+    "library_shelf_full": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "rug_round": 1,
+    "candelabra": 1,
+    "painting_portrait": 1,
+    "bread_rack": 1,
+    "cave_torch": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "texbuilding#cam:stables": 1,
+    "texbuilding#cam:hill_drum_2": 1,
+    "arch#cam:stables:look": 1,
+    "tree:tree_2": 1,
+    "tree:tree_4": 1,
+    "texbuilding#cam:house_24": 1,
+    "texbuilding#cam:house_28": 1,
+    "arch#cam:house_24:look": 1,
+    "arch#cam:house_28:look": 1,
+    "wall": 6
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Barracks": {
+   "props": {
+    "armour_stand": 8,
+    "dojo_weapon_rack": 2,
+    "map_table": 1,
+    "sea_chest": 2,
+    "psx_wooden_crate_2": 1,
+    "brazier": 1,
+    "iron_garden_bench": 1,
+    "planter": 1,
+    "wooden_barrel": 3,
+    "library_shelf_full": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "rug_round": 1,
+    "candelabra": 1,
+    "painting_portrait": 1,
+    "meshy_burlap_sack": 3,
+    "psx_shelf_mp_2": 1,
+    "bread_rack": 1,
+    "hand_cart": 1,
+    "cave_torch": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "texbuilding#cam:armoury": 1,
+    "texbuilding#cam:hill_drum_3": 1,
+    "arch#cam:armoury:look": 1,
+    "tree:tree_2": 1,
+    "tree:tree_4": 1,
+    "texbuilding#cam:house_25": 1,
+    "texbuilding#cam:house_29": 1,
+    "arch#cam:house_25:look": 1,
+    "arch#cam:house_29:look": 1,
+    "wall": 6
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Lists": {
+   "props": {
+    "sword_stone": 1,
+    "brazier": 3,
+    "lion_statue": 1,
+    "fountain": 1,
+    "planter": 2,
+    "armour_stand": 2,
+    "camping_tent": 1,
+    "stocks": 1,
+    "psx_wooden_crate_2": 1,
+    "wooden_barrel": 1,
+    "woven_baskets": 1,
+    "cave_torch": 1
+   },
+   "features": {
+    "ramp:cobblestone": 2,
+    "rail:parapet": 2,
+    "texbuilding#cam:keep_tower_3": 1,
+    "texbuilding#cam:door_turret_1": 1,
+    "texbuilding#cam:stair_drum_1": 1,
+    "wall:wood": 1,
+    "arch#cam:town_roofs": 1,
+    "arch#cam:houses:in": 1,
+    "arch#cam:village:street": 1,
+    "arch#cam:l:garden": 1,
+    "arch#cam:n:ridge": 1,
+    "arch#cam:n:dress": 1,
+    "arch#cam:w:forest": 1
+   },
+   "doors": {
+    "link_well_camelot": 1
+   },
+   "natives": {
+    "knight": 1,
+    "swordfighter": 1,
+    "robinhood": 1
+   }
+  },
+  "The Bailey": {
+   "props": {
+    "brazier": 3,
+    "lion_statue": 1,
+    "fountain": 1,
+    "planter": 2,
+    "armour_stand": 2,
+    "camping_tent": 1,
+    "stocks": 1,
+    "psx_wooden_crate_2": 1,
+    "woven_baskets": 1,
+    "cave_torch": 1
+   },
+   "features": {
+    "rail:parapet": 2,
+    "texbuilding#cam:keep_tower_2": 1,
+    "texbuilding#cam:door_turret_0": 1,
+    "texbuilding#cam:stair_drum_0": 1,
+    "wall:wood": 1
+   },
+   "doors": {
+    "portal": 1,
+    "postern": 1
+   },
+   "natives": {
+    "knight": 1
+   }
+  },
+  "The Market": {
+   "props": {
+    "lion_statue": 1,
+    "wooden_barrel": 4,
+    "cauldron": 1,
+    "hearth_fire": 2,
+    "meshy_burlap_sack": 6,
+    "psx_wooden_crate_2": 1,
+    "trestle_table": 1,
+    "psx_plate_mp_1": 1,
+    "wall_torch": 1,
+    "antler_trophy": 1,
+    "fur_rug": 1,
+    "library_shelf_full": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "rug_round": 1,
+    "candelabra": 1,
+    "painting_portrait": 1,
+    "sea_chest": 1,
+    "chimney_smoke": 1,
+    "market_stall": 1,
+    "ancient_well": 1,
+    "horse_brown": 1,
+    "covered_wagon": 1,
+    "hitching_rail": 1,
+    "water_trough": 1,
+    "hay_rack": 1,
+    "kennel": 1,
+    "firewood_stack": 1,
+    "axe_chopping_block": 1,
+    "brazier": 2,
+    "signpost": 1,
+    "lantern_post": 1,
+    "dog": 1
+   },
+   "features": {
+    "texbuilding#cam:house_35": 1,
+    "texbuilding#cam:house_39": 1,
+    "texbuilding#cam:house_42": 1,
+    "arch#cam:house_35:look": 1,
+    "arch#cam:house_39:look": 1,
+    "arch#cam:house_42:look": 1,
+    "wall": 8
+   },
+   "doors": {},
+   "natives": {
+    "knight": 2
+   }
+  },
+  "The Inn": {
+   "props": {
+    "lion_statue": 1,
+    "chimney_smoke": 2,
+    "wooden_barrel": 10,
+    "stock_pots": 1,
+    "bread_rack": 2,
+    "dog": 1,
+    "trestle_table": 3,
+    "candle": 2,
+    "candle_ring": 2,
+    "instrument_harp": 1,
+    "instrument_drum": 1,
+    "instrument_violin_lying": 1,
+    "instrument_whistle": 1,
+    "psx_plate_mp_1": 3,
+    "candelabra": 2,
+    "wall_torch": 4,
+    "hearth_fire": 2,
+    "psx_wooden_crate_2": 1,
+    "psx_wooden_crate_1": 1,
+    "meshy_burlap_sack": 3,
+    "library_shelf_full": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "rug_round": 1,
+    "painting_portrait": 1,
+    "market_stall": 1,
+    "stocks": 1,
+    "outhouse": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "texbuilding#cam:inn": 1,
+    "texbuilding#cam:house_36": 1,
+    "texbuilding#cam:house_40": 1,
+    "arch#cam:inn:look": 1,
+    "arch#cam:house_36:look": 1,
+    "arch#cam:house_40:look": 1,
+    "wall": 8,
+    "arch#cam:inn:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "North Street": {
+   "props": {
+    "planter": 1,
+    "brazier": 1,
+    "wooden_barrel": 7,
+    "chimney_smoke": 1,
+    "hw_straw": 2,
+    "wooden_bucket": 1,
+    "meshy_burlap_sack": 3,
+    "hearth_fire": 1,
+    "sea_chest": 1,
+    "psx_shelf_mp_2": 1,
+    "signpost": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "rail:parapet": 2,
+    "texbuilding#cam:house_2": 1,
+    "texbuilding#cam:house_3": 1,
+    "texbuilding#cam:house_12": 1,
+    "arch#cam:house_2:look": 1,
+    "arch#cam:house_3:look": 1,
+    "arch#cam:house_12:look": 1,
+    "wall": 4,
+    "tree:tree_2": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "North Street, east": {
+   "props": {
+    "planter": 1,
+    "brazier": 1,
+    "wooden_barrel": 5,
+    "hw_straw": 1,
+    "wooden_bucket": 1,
+    "meshy_burlap_sack": 4,
+    "library_shelf_full": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "rug_round": 1,
+    "candelabra": 1,
+    "painting_portrait": 1,
+    "psx_shelf_mp_2": 1,
+    "milestone": 1,
+    "lantern_post": 1,
+    "cat": 1
+   },
+   "features": {
+    "ramp:cobblestone": 1,
+    "rail:parapet": 2,
+    "texbuilding#cam:house_4": 1,
+    "texbuilding#cam:house_5": 1,
+    "texbuilding#cam:house_13": 1,
+    "texbuilding#cam:house_14": 1,
+    "arch#cam:house_4:look": 1,
+    "arch#cam:house_5:look": 1,
+    "arch#cam:house_13:look": 1,
+    "arch#cam:house_14:look": 1,
+    "wall": 6,
+    "tree:tree_4": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "North Row, west": {
+   "props": {
+    "chimney_smoke": 2,
+    "hearth_fire": 1,
+    "beehive": 1,
+    "hw_scarecrow": 1,
+    "campfire": 1,
+    "femur": 2,
+    "skull": 2,
+    "bat_black": 1,
+    "psx_meat_1": 1,
+    "psx_fish_skeleton_mp_1": 1,
+    "psxg_dead_tree_1": 1
+   },
+   "features": {
+    "wall:castle_wall": 69,
+    "rail:parapet": 1,
+    "wall": 7,
+    "arch#cam:n:cave": 1
+   },
+   "doors": {},
+   "natives": {
+    "yeti": 1
+   }
+  },
+  "North Street, west": {
+   "props": {
+    "wooden_barrel": 8,
+    "hw_straw": 2,
+    "wooden_bucket": 1,
+    "meshy_burlap_sack": 4,
+    "library_shelf_full": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "rug_round": 1,
+    "candelabra": 1,
+    "painting_portrait": 1,
+    "sea_chest": 2,
+    "psx_shelf_mp_2": 1,
+    "lantern_post": 2
+   },
+   "features": {
+    "texbuilding#cam:hill_drum_0": 1,
+    "tree:tree_2": 2,
+    "texbuilding#cam:house_0": 1,
+    "texbuilding#cam:house_1": 1,
+    "texbuilding#cam:house_10": 1,
+    "texbuilding#cam:house_11": 1,
+    "arch#cam:house_0:look": 1,
+    "arch#cam:house_1:look": 1,
+    "arch#cam:house_10:look": 1,
+    "arch#cam:house_11:look": 1,
+    "wall": 8
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "North Row, east": {
+   "props": {
+    "chimney_smoke": 1,
+    "hearth_fire": 1,
+    "sunflowers": 1,
+    "hw_pumpkin_3": 1,
+    "sarsen": 2,
+    "menhir": 2,
+    "trilithon": 1,
+    "hw_candles": 1,
+    "hw_candles_2": 1,
+    "hw_candle": 1,
+    "crow": 3,
+    "raven_perch": 1
+   },
+   "features": {
+    "wall:castle_wall": 69,
+    "rail:parapet": 1,
+    "wall": 6,
+    "hill": 1,
+    "arch#cam:n:stones": 1
+   },
+   "doors": {},
+   "natives": {
+    "krampus": 1
+   }
+  },
+  "The Postern Lane": {
+   "props": {
+    "wooden_barrel": 8,
+    "hw_straw": 4,
+    "wooden_bucket": 1,
+    "meshy_burlap_sack": 4,
+    "sea_chest": 2,
+    "hearth_fire": 1,
+    "psx_shelf_mp_2": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "cow": 1,
+    "chicken": 3,
+    "decor_sheep": 2,
+    "rabbit": 2,
+    "crow": 1,
+    "water_trough": 1,
+    "pitchfork": 1,
+    "fence_with_gate": 9,
+    "pig": 1,
+    "goat": 1,
+    "rooster": 1,
+    "hay_rack": 1,
+    "hay_cart": 1,
+    "hay_bale": 1,
+    "lantern_post": 2
+   },
+   "features": {
+    "texbuilding#cam:hill_drum_1": 1,
+    "tree:tree_2": 1,
+    "texbuilding#cam:house_6": 1,
+    "texbuilding#cam:house_7": 1,
+    "texbuilding#cam:house_15": 1,
+    "arch#cam:house_6:look": 1,
+    "arch#cam:house_7:look": 1,
+    "arch#cam:house_15:look": 1,
+    "wall": 6,
+    "tree:tree_4": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "East Row, north": {
+   "props": {
+    "wooden_barrel": 8,
+    "hearth_fire": 1,
+    "hw_straw": 2,
+    "meshy_burlap_sack": 2,
+    "firewood_stack": 1
+   },
+   "features": {
+    "wall:castle_wall": 69,
+    "rail:parapet": 1,
+    "texbuilding#cam:house_9": 1,
+    "texbuilding#cam:house_17": 1,
+    "arch#cam:house_9:look": 1,
+    "arch#cam:house_17:look": 1,
+    "wall": 8
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Keep": {
+   "props": {
+    "chimney_smoke": 1,
+    "wooden_barrel": 4,
+    "hearth_fire": 2,
+    "psx_shelf_mp_2": 2,
+    "meshy_burlap_sack": 2,
+    "sea_chest": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "rail:parapet": 2,
+    "texbuilding#cam:wing_tower_f0": 1,
+    "texbuilding#cam:wing_tower_r0": 1,
+    "tree:tree_4": 2,
+    "tree:tree_2": 2,
+    "texbuilding#cam:house_18": 1,
+    "texbuilding#cam:house_21": 1,
+    "arch#cam:house_18:look": 1,
+    "arch#cam:house_21:look": 1,
+    "wall": 5
+   },
+   "doors": {
+    "link_haunted_camelot": 1
+   },
+   "natives": {}
+  },
+  "The East Gate": {
+   "props": {
+    "wooden_barrel": 4,
+    "hw_straw": 1,
+    "meshy_burlap_sack": 1,
+    "signpost": 1,
+    "cave_torch": 1
+   },
+   "features": {
+    "wall:castle_wall": 65,
+    "rail:parapet": 1,
+    "texbuilding#cam:house_23": 1,
+    "arch#cam:house_23:look": 1,
+    "wall": 4
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "East Row": {
+   "props": {
+    "wooden_barrel": 4,
+    "hearth_fire": 1,
+    "hw_straw": 1,
+    "meshy_burlap_sack": 1,
+    "cave_torch": 1,
+    "milestone": 1
+   },
+   "features": {
+    "bridge:wood#east_bridge": 1,
+    "wall:castle_wall": 78,
+    "rail:parapet": 1,
+    "bridge:castle_wall#town_gate_e": 1,
+    "bridge:castle_wall#town_gate_e_front": 1,
+    "texbuilding#cam:house_27": 1,
+    "texbuilding#cam:house_31": 1,
+    "arch#cam:house_27:look": 1,
+    "arch#cam:house_31:look": 1,
+    "wall": 7
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "West Row": {
+   "props": {
+    "chimney_smoke": 1,
+    "hw_straw": 1,
+    "wooden_bucket": 1,
+    "wooden_barrel": 2,
+    "meshy_burlap_sack": 2,
+    "hearth_fire": 1,
+    "cave_torch": 1,
+    "milestone": 1
+   },
+   "features": {
+    "bridge:wood#west_bridge": 1,
+    "wall:castle_wall": 78,
+    "rail:parapet": 1,
+    "bridge:castle_wall#town_gate_w": 1,
+    "bridge:castle_wall#town_gate_w_front": 1,
+    "texbuilding#cam:house_26": 1,
+    "texbuilding#cam:house_30": 1,
+    "arch#cam:house_26:look": 1,
+    "arch#cam:house_30:look": 1,
+    "wall": 5
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "East Row, south": {
+   "props": {
+    "wooden_barrel": 7,
+    "hw_straw": 1,
+    "meshy_burlap_sack": 2,
+    "hearth_fire": 1,
+    "plough": 1
+   },
+   "features": {
+    "wall:castle_wall": 56,
+    "rail:parapet": 1,
+    "texbuilding#cam:house_33": 1,
+    "arch#cam:house_33:look": 1,
+    "wall": 5
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Chapel": {
+   "props": {
+    "wooden_barrel": 5,
+    "stone_altar": 1,
+    "candle": 2,
+    "angel_statue": 2,
+    "cave_torch": 2,
+    "church_podium": 1,
+    "meshy_bible": 1,
+    "confessional_booth": 1,
+    "candelabra": 2,
+    "holy_tapestry": 2,
+    "floor_runner": 4,
+    "catholic_pew": 12,
+    "wall_torch": 6,
+    "stone_urn": 1,
+    "hw_candles": 3,
+    "bread_rack": 1,
+    "psx_wooden_crate_2": 1,
+    "psx_wooden_crate_1": 1,
+    "meshy_burlap_sack": 3,
+    "sea_chest": 1,
+    "psx_shelf_mp_2": 1,
+    "market_stall": 1,
+    "cross": 7,
+    "psxg_tombstone_2": 1,
+    "psxg_tombstone_1": 1,
+    "psxg_iron_gate_1": 1,
+    "crow": 1,
+    "weeping_angel": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "texbuilding#cam:chapel": 1,
+    "texbuilding#cam:house_34": 1,
+    "texbuilding#cam:house_38": 1,
+    "arch#cam:chapel:look": 1,
+    "arch#cam:house_34:look": 1,
+    "arch#cam:house_38:look": 1,
+    "wall": 7,
+    "arch#cam:chapel:in": 1,
+    "tree:tree_2": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Smithy": {
+   "props": {
+    "wooden_barrel": 4,
+    "forge": 1,
+    "bellows": 1,
+    "hearth_fire": 1,
+    "water_trough": 1,
+    "anvil": 1,
+    "grindstone": 1,
+    "meshy_tongs": 1,
+    "spell_shield": 2,
+    "sword": 1,
+    "psx_sword_mp_1": 2,
+    "armour_stand": 3,
+    "dojo_weapon_rack": 1,
+    "sea_chest": 2,
+    "psx_wooden_crate_2": 1,
+    "psx_wooden_crate_1": 1,
+    "meshy_burlap_sack": 4,
+    "wooden_bucket": 2,
+    "ore_heap": 1,
+    "horse_black": 1,
+    "hw_straw": 2,
+    "wall_torch": 6,
+    "library_shelf_full": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "rug_round": 1,
+    "candelabra": 1,
+    "painting_portrait": 1,
+    "psx_shelf_mp_2": 1,
+    "chimney_smoke": 1,
+    "market_stall": 1,
+    "brazier": 1,
+    "firewood_stack": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "texbuilding#cam:smithy": 1,
+    "texbuilding#cam:house_37": 1,
+    "texbuilding#cam:house_41": 1,
+    "arch#cam:smithy:look": 1,
+    "arch#cam:house_37:look": 1,
+    "arch#cam:house_41:look": 1,
+    "wall": 9,
+    "arch#cam:smithy:in": 1,
+    "tree:tree_4": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The North Gate": {
+   "props": {
+    "hearth_fire": 1,
+    "cave_torch": 1,
+    "beehive": 1,
+    "wheelbarrow": 1,
+    "hw_pumpkin": 1,
+    "lantern_post": 1,
+    "fence_with_gate": 2
+   },
+   "features": {
+    "wall:castle_wall": 65,
+    "rail:parapet": 1,
+    "wall": 6
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "West Row, north": {
+   "props": {
+    "hw_straw": 2,
+    "wooden_bucket": 2,
+    "wooden_barrel": 2,
+    "meshy_burlap_sack": 2,
+    "firewood_stack": 1,
+    "axe_chopping_block": 1
+   },
+   "features": {
+    "wall:castle_wall": 69,
+    "rail:parapet": 1,
+    "texbuilding#cam:house_8": 1,
+    "texbuilding#cam:house_16": 1,
+    "arch#cam:house_8:look": 1,
+    "arch#cam:house_16:look": 1,
+    "wall": 6
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Kitchen": {
+   "props": {
+    "library_shelf_full": 2,
+    "rug_round": 2,
+    "candelabra": 2,
+    "painting_portrait": 2,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 2,
+    "wooden_barrel": 1,
+    "meshy_burlap_sack": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "rail:parapet": 2,
+    "texbuilding#cam:wing_tower_f1": 1,
+    "texbuilding#cam:wing_tower_r1": 1,
+    "tree:tree_4": 3,
+    "tree:tree_2": 1,
+    "texbuilding#cam:house_19": 1,
+    "texbuilding#cam:house_22": 1,
+    "arch#cam:house_19:look": 1,
+    "arch#cam:house_22:look": 1,
+    "wall": 5
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The West Gate": {
+   "props": {
+    "hw_straw": 1,
+    "wooden_bucket": 1,
+    "wooden_barrel": 1,
+    "meshy_burlap_sack": 1,
+    "signpost": 1,
+    "cave_torch": 1
+   },
+   "features": {
+    "wall:castle_wall": 65,
+    "rail:parapet": 1,
+    "texbuilding#cam:house_20": 1,
+    "arch#cam:house_20:look": 1,
+    "wall": 3
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "West Row, south": {
+   "props": {
+    "hw_straw": 2,
+    "wooden_bucket": 2,
+    "wooden_barrel": 1,
+    "meshy_burlap_sack": 1,
+    "psxg_tombstone_1": 1,
+    "psxg_tombstone_2": 1,
+    "psxg_tombstone_3": 1,
+    "hw_grave": 1,
+    "hw_coffin": 1,
+    "hw_shovel": 1,
+    "crow": 1,
+    "raven_perch": 1
+   },
+   "features": {
+    "wall:castle_wall": 56,
+    "rail:parapet": 1,
+    "texbuilding#cam:house_32": 1,
+    "arch#cam:house_32:look": 1,
+    "wall": 4
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "North Row": {
+   "props": {
+    "cave_torch": 1,
+    "sunflowers": 1,
+    "hw_pumpkin_2": 1,
+    "lantern_post": 1,
+    "snow_heap": 3,
+    "fence_with_gate": 2
+   },
+   "features": {
+    "bridge:wood#north_bridge": 1,
+    "wall:castle_wall": 90,
+    "bridge:castle_wall#town_gate_n": 1,
+    "bridge:castle_wall#town_gate_n_front": 1,
+    "rail:parapet": 1,
+    "wall": 5
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Crown's Road": {
+   "props": {
+    "brazier": 2,
+    "signpost": 1,
+    "rabbit": 3,
+    "stump": 1,
+    "fern": 5,
+    "lantern_post": 5,
+    "milestone": 2,
+    "ancient_well": 1,
+    "wooden_bucket": 1,
+    "cross": 1,
+    "hw_candles": 1,
+    "hw_candle": 1,
+    "woods_healflower": 2,
+    "covered_wagon": 1,
+    "horse_brown": 1,
+    "meshy_burlap_sack": 3,
+    "psx_wooden_crate_2": 1,
+    "psx_wooden_crate_4": 1,
+    "wooden_barrel": 1,
+    "water_trough": 1,
+    "hitching_rail": 1,
+    "psxg_rock_3": 1,
+    "psxg_rock_4": 2,
+    "psxg_rock_1": 1,
+    "hw_stone": 1,
+    "psxg_rock_2": 2,
+    "moss_clump": 2,
+    "meshy_stump": 2,
+    "wild_flowers": 4,
+    "woods_thornvine": 1,
+    "bee": 1,
+    "butterfly": 1,
+    "ladybug": 1,
+    "crow": 1,
+    "hw_straw_2": 1,
+    "hedgehog": 1
+   },
+   "features": {
+    "wall": 1,
+    "tree:tree_52": 2
+   },
+   "doors": {
+    "bay": 1
+   },
+   "natives": {
+    "knight": 1
+   }
+  },
+  "The Hedges, north": {
+   "props": {
+    "iron_lamp_post": 2,
+    "flamingo": 3,
+    "rose_bed": 2,
+    "wooden_ladder": 1,
+    "card_soldier": 3,
+    "wooden_bucket": 2,
+    "butterfly": 1,
+    "bumblebee": 1,
+    "ladybug": 1,
+    "crow": 1,
+    "tarot": 1,
+    "tarot2": 1,
+    "tarotDeck": 1
+   },
+   "features": {
+    "arch#cam:hedge:P00-01": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Lawn": {
+   "props": {
+    "iron_lamp_post": 1,
+    "flamingo": 4,
+    "garden_ring": 1,
+    "pocket_watch": 1,
+    "rabbit": 1,
+    "park_bench": 1,
+    "iron_garden_bench": 1,
+    "rose_bed": 16,
+    "lifeguard_chair": 1,
+    "hedgehog": 4,
+    "croquet_mallet": 3,
+    "peacock": 1,
+    "dodo": 1,
+    "leafy_bush": 2,
+    "wild_flowers": 5,
+    "swallowtail": 1,
+    "blue_morpho": 1
+   },
+   "features": {
+    "arch#cam:hedge:P00-02": 1,
+    "board": 1,
+    "tree:chess_rook_dark": 2,
+    "tree:chess_king_dark": 1,
+    "tree:chess_pawn_dark": 8,
+    "tree:chess_bishop_dark": 2,
+    "tree:chess_knight_dark": 2,
+    "tree:chess_bishop": 3,
+    "tree:chess_knight": 1,
+    "tree:chess_pawn": 3,
+    "tree:chess_queen": 1
+   },
+   "doors": {},
+   "natives": {
+    "gnome": 1,
+    "chess piece": 2,
+    "rabbit": 1
+   }
+  },
+  "The Chessboard": {
+   "props": {
+    "iron_lamp_post": 6,
+    "royal_throne": 1,
+    "signpost": 1,
+    "bird_bath": 1,
+    "garden_gate": 1,
+    "tulip_table": 1,
+    "chess_set_game": 1,
+    "teal_chair": 2,
+    "brass_telescope": 1,
+    "leafy_bush": 1,
+    "floor_runner": 3,
+    "card_soldier": 2,
+    "brazier": 1,
+    "rose_bed": 8,
+    "wild_flowers": 8,
+    "fern": 3,
+    "woods_healflower": 2,
+    "potted_plant": 1,
+    "psx_potted_cactus_mp_1": 1,
+    "palm_tree": 1,
+    "psx_dinner_table_1": 1,
+    "item_potion_flask": 1,
+    "psx_glass_bottle_1": 1,
+    "house_key": 1,
+    "xmas_cookies": 1,
+    "psx_planter_pot_mp_1_full": 1,
+    "psx_open_book_mp_1": 1,
+    "office_plant": 1,
+    "wooden_bucket": 1,
+    "hw_shovel": 1,
+    "bird_cage": 1,
+    "psx_chair_mp_3": 1,
+    "monarch": 2,
+    "blue_morpho": 1,
+    "swallowtail": 1,
+    "crystal_chandelier": 1,
+    "stone_urn": 5,
+    "psxg_stepping_stone_1": 3,
+    "psxg_stepping_stone_2": 2,
+    "crow": 2,
+    "candelabra": 2,
+    "sword": 1,
+    "spell_shield": 1
+   },
+   "features": {
+    "arch#cam:hedge:P00-03": 1,
+    "tree:chess_pawn": 4,
+    "tree:chess_bishop": 2,
+    "tree:chess_rook": 2,
+    "tree:chess_king": 2,
+    "tree:chess_knight": 1,
+    "tree:chess_king_dark": 1,
+    "tree:chess_queen_dark": 1,
+    "tree:chess_queen": 1,
+    "tree:chess_knight_dark": 1,
+    "texbuilding#cam:lglass": 1,
+    "wall": 4,
+    "arch#cam:lglass:look": 1,
+    "arch#cam:lglass:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "ice queen": 1
+   }
+  },
+  "The Mirror": {
+   "props": {
+    "iron_lamp_post": 5,
+    "mushroom": 1,
+    "caterpillar": 1,
+    "fae_toadstool": 2,
+    "fountain": 1,
+    "angel_statue": 1,
+    "gclock": 1,
+    "giant_hourglass": 1,
+    "psx_door_1_loose": 1,
+    "psx_door_2_loose": 1,
+    "psx_door_4_loose": 1,
+    "pocket_watch": 1,
+    "mushroom2": 2,
+    "chimney_smoke": 1,
+    "cheval_mirror": 3,
+    "hookah": 1,
+    "blue_morpho": 1,
+    "luna_moth": 1,
+    "caterpillar_bug": 1,
+    "chrysalis": 1,
+    "crow": 1,
+    "marble_bust": 2,
+    "item_hand_mirror": 1,
+    "meshy_frog": 1,
+    "key": 1,
+    "house_key": 1,
+    "psx_photo_frame_mp_1": 1,
+    "item_potion_flask": 1
+   },
+   "features": {
+    "arch#cam:hedge:P00-04": 1,
+    "wall": 2
+   },
+   "doors": {
+    "mirror": 1,
+    "link_mirror_lookingglass": 1
+   },
+   "natives": {
+    "dreameater": 1,
+    "mushroom girl": 1
+   }
+  },
+  "The Tea Party": {
+   "props": {
+    "iron_lamp_post": 5,
+    "psx_table_large_2": 3,
+    "psx_table_large_2_1": 3,
+    "psx_chair_mp_3": 1,
+    "wingback_chair": 2,
+    "psx_chair_mp_5": 1,
+    "teal_chair": 4,
+    "psx_armchair_1": 1,
+    "psx_chair_mp_1": 1,
+    "psx_chair_mp_3_2": 1,
+    "psx_armchair_2": 1,
+    "psx_chair_mp_5_1": 1,
+    "psx_chair_mp_2": 1,
+    "royal_throne": 1,
+    "teapot": 3,
+    "teacups": 2,
+    "wedding_cake": 1,
+    "xmas_cookies": 1,
+    "xmas_gingerbread": 1,
+    "xmas_flan": 1,
+    "candelabra": 1,
+    "xmas_punch": 1,
+    "xmas_cocoa": 1,
+    "pocket_watch": 1,
+    "psx_plate_mp_1": 4,
+    "coffee_mug": 4,
+    "paper_lantern": 3,
+    "chimney_smoke": 2,
+    "decor_music_box_dancer": 1,
+    "cat": 1,
+    "top_hat": 2,
+    "lit_candle": 2,
+    "balloons": 2,
+    "raven_perch": 1,
+    "string_lights": 2,
+    "mushroom2": 1,
+    "mushroom": 1,
+    "rose_bed": 4,
+    "wild_flowers": 1,
+    "butterfly": 1,
+    "swallowtail": 1,
+    "crow": 1,
+    "xmas_gift": 2,
+    "xmas_gift_2": 1,
+    "xmas_gift_3": 2,
+    "xmas_gift_4": 1,
+    "instrument_violin_lying": 1,
+    "instrument_tambourine": 1,
+    "instrument_guitar_lying": 1,
+    "item_drinking_cup": 3,
+    "tarotDeck": 1,
+    "xmas_champagne": 1,
+    "psx_book_mp_1": 1,
+    "woods_glowcap": 3
+   },
+   "features": {
+    "arch#cam:hedge:P00-05": 1,
+    "wall": 1
+   },
+   "doors": {},
+   "natives": {
+    "fairy": 1,
+    "catgirl": 1
+   }
+  },
+  "The Hedges, south": {
+   "props": {
+    "iron_lamp_post": 3,
+    "mushroom2": 4,
+    "mushroom": 2,
+    "bird_cage": 1,
+    "stone_urn": 2,
+    "monarch": 1,
+    "crow": 1,
+    "woods_glowcap": 7,
+    "meshy_frog": 1,
+    "sundial": 1,
+    "fern": 4,
+    "psxg_rock_3": 1,
+    "psxg_rock_4": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "arch#cam:hedge:P00-06": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Pond": {
+   "props": {
+    "butterfly": 1,
+    "blue_morpho": 1,
+    "swallowtail": 2,
+    "monarch": 1,
+    "fae_mushroom": 1,
+    "lake_rock": 7,
+    "meshy_frog": 2,
+    "woods_glowcap": 15,
+    "fern": 2,
+    "anthill": 1,
+    "ant": 1,
+    "ant_leaf": 1,
+    "ladybug": 1,
+    "grasshopper": 1,
+    "reeds": 8,
+    "willow_tree": 1,
+    "swan": 2,
+    "duck": 3,
+    "heron": 1,
+    "dragonfly": 4,
+    "wild_flowers": 3,
+    "leafy_bush": 2,
+    "moss_clump": 2,
+    "fae_bloom_pink": 1,
+    "fae_flower_blue": 1,
+    "fae_flower_gold": 1,
+    "fae_flower_violet": 2,
+    "fae_flower_small_pink": 1,
+    "fae_flower_small_blue": 1
+   },
+   "features": {
+    "pool:water": 1,
+    "deck": 1,
+    "tree:tree_53": 2,
+    "arch#cam:f:pond": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Fairy Ring": {
+   "props": {
+    "fae_toadstool": 12,
+    "instrument_harp": 1,
+    "woods_glowcap": 27,
+    "signpost": 1,
+    "psxg_stepping_stone_1": 1,
+    "psxg_stepping_stone_2": 1,
+    "lake_rock": 1,
+    "fern": 2,
+    "caterpillar_bug": 1,
+    "hawk_moth": 2,
+    "menhir": 1,
+    "firefly": 5,
+    "wild_flowers": 4,
+    "leafy_bush": 1,
+    "fae_bloom": 1,
+    "fae_flower_pink": 1,
+    "fae_flower_violet": 1,
+    "fae_flower_small_violet": 1,
+    "fae_flower_small_pink": 1
+   },
+   "features": {
+    "tree:tree_53": 1,
+    "arch#cam:f:ring": 1
+   },
+   "doors": {},
+   "natives": {
+    "fairy": 1
+   }
+  },
+  "The Spring": {
+   "props": {
+    "lake_rock": 4,
+    "woods_healflower": 6,
+    "meshy_frog": 1,
+    "fern": 6,
+    "rabbit": 1,
+    "psxg_stepping_stone_1": 2,
+    "psxg_stepping_stone_2": 1,
+    "meshy_crystal_shards": 1,
+    "meshy_crystal_shard": 1,
+    "woods_glowcap": 15,
+    "stump": 1,
+    "ladybug": 2,
+    "bumblebee": 2,
+    "bee": 2,
+    "monarch": 1,
+    "reeds": 3,
+    "willow_tree": 1,
+    "duck": 1,
+    "dragonfly": 2,
+    "wild_flowers": 3,
+    "leafy_bush": 2,
+    "moss_clump": 2,
+    "deer": 1,
+    "hedgehog": 1,
+    "fae_flower": 1,
+    "fae_flower_pink": 1,
+    "fae_flower_blue": 1,
+    "fae_bloom_pink": 1,
+    "fae_flower_small_violet": 1,
+    "fae_flower_small_blue": 1,
+    "fae_flower_small_pink": 1
+   },
+   "features": {
+    "pool:water": 1,
+    "wall": 1,
+    "tree:tree_53": 2,
+    "arch#cam:f:spring": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Woods Trail": {
+   "props": {
+    "fae_mushroom": 3,
+    "fae_toadstool": 2,
+    "luna_moth": 1,
+    "signpost": 1,
+    "psxg_stepping_stone_1": 5,
+    "psxg_stepping_stone_2": 4,
+    "lake_rock": 3,
+    "woods_glowcap": 14,
+    "fern": 3,
+    "fallen_log": 1,
+    "grasshopper_brown": 1,
+    "caterpillar_bug": 1,
+    "chrysalis": 1,
+    "blue_morpho": 1,
+    "rabbit": 1,
+    "menhir": 1,
+    "wild_flowers": 3,
+    "leafy_bush": 3,
+    "moss_clump": 2,
+    "hedgehog": 1,
+    "fae_flower_gold": 1,
+    "fae_bloom_violet": 1,
+    "fae_flower_blue": 1,
+    "fae_flower_pink": 1,
+    "fae_flower_small_violet": 1,
+    "fae_flower_small_blue": 1,
+    "fae_flower_small_pink": 1
+   },
+   "features": {
+    "tree:tree_53": 1
+   },
+   "doors": {
+    "link_woods_camelot": 1
+   },
+   "natives": {
+    "unicorn": 1,
+    "mushroom girl": 1
+   }
+  },
+  "The Knoll, north": {
+   "props": {
+    "stump": 1,
+    "woods_glowcap": 12,
+    "fern": 1,
+    "luna_moth": 1,
+    "rabbit": 1,
+    "wild_flowers": 1,
+    "leafy_bush": 1,
+    "moss_clump": 1,
+    "owl_perched": 1,
+    "fae_flower_gold": 1,
+    "fae_flower_small_blue": 1,
+    "fae_flower_small_pink": 1
+   },
+   "features": {
+    "hill": 1,
+    "tree:tree_52": 1,
+    "arch#cam:f:knolln": 1
+   },
+   "doors": {},
+   "natives": {
+    "gnome": 1
+   }
+  },
+  "The Knoll, south": {
+   "props": {
+    "fallen_log": 1,
+    "meshy_crystal_shards": 1,
+    "meshy_crystal_shard": 2,
+    "woods_glowcap": 5,
+    "fern": 4,
+    "grasshopper": 1,
+    "moss_clump": 2,
+    "fox": 1,
+    "fae_flower_blue": 1,
+    "fae_flower_small_violet": 1,
+    "wild_flowers": 1,
+    "psxg_rock_2": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "hill": 1,
+    "wall": 1,
+    "arch#cam:f:knolls": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Sleigh Road": {
+   "props": {
+    "sleigh": 1,
+    "reindeer": 2,
+    "lantern_post": 3,
+    "snow_heap": 2,
+    "xmas_gift": 1,
+    "xmas_gift_2": 1,
+    "xmas_gift_4": 1,
+    "meshy_burlap_sack": 2,
+    "snow_sled": 1,
+    "psxg_rock_1": 1,
+    "psxg_rock_3": 1,
+    "crow": 1,
+    "cairn": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Snowfield": {
+   "props": {
+    "hitching_rail": 1,
+    "horse_black": 1,
+    "hearth_fire": 1,
+    "meshy_hanging_lantern": 1,
+    "psx_bed_5_4": 1,
+    "fur_rug": 1,
+    "psx_chair_mp_1": 1,
+    "dog": 1,
+    "xmas_cocoa": 2,
+    "candle": 1,
+    "xmas_stocking": 1,
+    "xmas_stocking_2": 1,
+    "xmas_wreath": 1,
+    "psx_plate_mp_1": 2,
+    "item_drinking_cup": 2,
+    "firewood_stack": 2,
+    "kettle": 1,
+    "wooden_barrel": 2,
+    "meshy_burlap_sack": 2,
+    "psx_wooden_crate_5": 1,
+    "spear": 1,
+    "xmas_gift": 1,
+    "xmas_gift_3": 2,
+    "lantern_post": 2,
+    "snow_heap": 8,
+    "covered_wagon": 1,
+    "hay_rack": 1,
+    "hay_bale": 1,
+    "water_trough": 1,
+    "eagle": 1,
+    "xmas_tree": 1,
+    "xmas_gift_2": 1,
+    "psxg_rock_2": 1,
+    "psxg_rock_4": 1,
+    "wolf": 3,
+    "milestone": 1,
+    "mountain_goat": 1,
+    "icicles": 2,
+    "chimney_smoke": 1
+   },
+   "features": {
+    "texbuilding#cam:n_wayhut": 1,
+    "wall": 2,
+    "arch#cam:n_wayhut:look": 1,
+    "arch#cam:n_wayhut:in": 1
+   },
+   "doors": {
+    "link_northpole_camelot": 1
+   },
+   "natives": {}
+  },
+  "The Snowfield, west": {
+   "props": {
+    "skull_pile": 1,
+    "ulna": 1,
+    "lantern_post": 1,
+    "snow_heap": 3,
+    "bat_grey": 1,
+    "psxg_dead_tree_2": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "bigfoot": 1
+   }
+  },
+  "The Snowfield, east": {
+   "props": {
+    "sarsen": 2,
+    "xmas_snowman_2": 1,
+    "lantern_post": 1,
+    "snow_heap": 1,
+    "rabbit": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "Snowy pines, north-west": {
+   "props": {
+    "campfire": 1,
+    "stump": 2,
+    "hearth_fire": 1,
+    "meshy_hanging_lantern": 1,
+    "psx_bed_5_4": 1,
+    "fur_rug": 1,
+    "rocking_chair": 1,
+    "cauldron": 1,
+    "psx_hand_saw_1": 2,
+    "meshy_rope": 1,
+    "psx_nails_1": 1,
+    "candle": 2,
+    "firewood_stack": 3,
+    "antler_trophy": 1,
+    "wooden_barrel": 1,
+    "trap_bear_base": 1,
+    "trap_bear_jaw": 1,
+    "meshy_burlap_sack": 1,
+    "psx_wooden_crate_5": 1,
+    "wooden_bucket": 1,
+    "xmas_wreath_2": 1,
+    "lantern_post": 1,
+    "snow_heap": 1,
+    "axe_chopping_block": 1,
+    "hand_cart": 1,
+    "snow_sled": 1,
+    "snowshoes": 1,
+    "owl_perched": 1,
+    "meshy_stump": 2,
+    "fallen_log": 1,
+    "rabbit": 1,
+    "crow": 1,
+    "icicles": 2,
+    "chimney_smoke": 2
+   },
+   "features": {
+    "texbuilding#cam:n_cabin": 1,
+    "wall": 2,
+    "arch#cam:n_cabin:look": 1,
+    "arch#cam:n_cabin:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Snowy pines, north-east": {
+   "props": {
+    "stump": 1,
+    "xmas_snowman_3": 1,
+    "lantern_post": 1,
+    "snow_heap": 1,
+    "ice_fishing_hole": 1,
+    "fishing_rod": 1,
+    "fox": 1,
+    "psx_chair_mp_1": 1,
+    "psx_fish_skeleton_mp_1": 1,
+    "wooden_bucket": 1,
+    "crow": 2,
+    "psxg_dead_tree_1": 1,
+    "psxg_dead_bush_1": 2,
+    "psxg_dead_bush_2": 1
+   },
+   "features": {
+    "arch#cam:n:pond": 1
+   },
+   "doors": {},
+   "natives": {
+    "ice queen": 1
+   }
+  },
+  "The Snowy Pines, west": {
+   "props": {
+    "lantern_post": 1,
+    "snow_heap": 1,
+    "rabbit": 1,
+    "crow": 1,
+    "deer": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Snowy Pines, east": {
+   "props": {
+    "lantern_post": 2,
+    "snow_heap": 2,
+    "rabbit": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Glade, west": {
+   "props": {
+    "fallen_log": 1,
+    "firewood_stack": 3,
+    "owl_perched": 1,
+    "psx_hand_saw_1": 1,
+    "hand_cart": 1,
+    "wheelbarrow": 1,
+    "wild_flowers": 4,
+    "fern": 15,
+    "hw_stone": 2,
+    "moss_clump": 1,
+    "psxg_rock_4": 1,
+    "psxg_rock_3": 1,
+    "chicken": 1,
+    "hw_pumpkin": 1,
+    "hw_pumpkin_2": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Forest Road, west": {
+   "props": {
+    "stump": 2,
+    "meshy_stump": 1,
+    "hearth_fire": 1,
+    "cauldron": 1,
+    "sea_chest": 1,
+    "meshy_burlap_sack": 1,
+    "psx_plate_mp_1": 1,
+    "psx_meat_1": 1,
+    "lit_candle": 1,
+    "psx_butcher_knife_mp_1": 1,
+    "firewood_stack": 2,
+    "psx_hand_saw_1": 1,
+    "xmas_hammer": 1,
+    "meshy_rope": 1,
+    "wooden_bucket": 1,
+    "floor_runner": 1,
+    "kettle": 1,
+    "antler_trophy": 1,
+    "woven_baskets": 1,
+    "wall_torch": 1,
+    "chimney_smoke": 1,
+    "axe_chopping_block": 1,
+    "kennel": 1,
+    "dog": 1,
+    "fern": 9,
+    "hw_stone": 2,
+    "moss_clump": 3,
+    "wild_flowers": 4,
+    "psxg_rock_3": 1,
+    "woods_thornvine": 1,
+    "bumblebee": 1,
+    "monarch": 1,
+    "anthill": 1,
+    "ant": 2,
+    "hw_straw": 1,
+    "hw_straw_2": 1,
+    "chicken": 2,
+    "beehive": 1,
+    "leafy_bush": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "hill": 1,
+    "tree:tree_52": 2,
+    "texbuilding#cam:w_hut": 1,
+    "arch#cam:w_hut:look": 1,
+    "wall": 4,
+    "arch#cam:w_hut:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "tree person": 1,
+    "rabbit": 1
+   }
+  },
+  "The Glade, east": {
+   "props": {
+    "fallen_log": 2,
+    "campfire": 1,
+    "medieval_pavilion": 2,
+    "wooden_barrel": 1,
+    "hay_rack": 1,
+    "woven_baskets": 1,
+    "cauldron": 1,
+    "psx_wooden_crate_2": 1,
+    "spear": 1,
+    "spell_shield": 1,
+    "meshy_burlap_sack": 1,
+    "horse_black": 1,
+    "psxg_rock_3": 4,
+    "fern": 8,
+    "hw_stone": 1,
+    "moss_clump": 2,
+    "wild_flowers": 4,
+    "psxg_stepping_stone_1": 2,
+    "psxg_stepping_stone_2": 1,
+    "swallowtail": 1,
+    "instrument_drum": 1,
+    "instrument_violin_lying": 1,
+    "wooden_bucket": 1,
+    "fox": 1,
+    "leafy_bush": 1,
+    "lantern_post": 1,
+    "chimney_smoke": 1
+   },
+   "features": {
+    "hill": 1,
+    "tree:tree_52": 1
+   },
+   "doors": {},
+   "natives": {
+    "robinhood": 1
+   }
+  },
+  "Deep forest, south-east": {
+   "props": {
+    "fern": 11,
+    "stump": 1,
+    "menhir": 4,
+    "sarsen": 1,
+    "stone_altar": 1,
+    "psxg_rock_2": 2,
+    "wild_flowers": 4,
+    "hw_stone": 1,
+    "psxg_rock_1": 2,
+    "psxg_rock_4": 1,
+    "moss_clump": 1,
+    "signpost": 1,
+    "psxg_stepping_stone_2": 2,
+    "psxg_stepping_stone_1": 1,
+    "woods_thornvine": 1,
+    "butterfly": 1,
+    "hw_candles": 1,
+    "hw_candle": 1,
+    "item_wizard_staff": 1,
+    "wolf": 1,
+    "crow": 2,
+    "deer": 1,
+    "leafy_bush": 1,
+    "cairn": 1,
+    "lantern_post": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "wizard": 1
+   }
+  },
+  "The Drawbridge": {
+   "props": {
+    "lantern_post": 4,
+    "lion_statue": 2,
+    "fern": 8,
+    "wild_flowers": 2,
+    "hw_stone": 3,
+    "meshy_stump": 1,
+    "psxg_rock_4": 1,
+    "deer": 1,
+    "leafy_bush": 2
+   },
+   "features": {
+    "bridge:wood#drawbridge": 1,
+    "wall:castle_wall": 85,
+    "bridge:castle_wall#town_gate_s": 1,
+    "bridge:castle_wall#town_gate_s_front": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Dead Tree's Hole": {
+   "props": {
+    "crow": 2,
+    "psxg_dead_bush_1": 2,
+    "psxg_dead_bush_2": 1,
+    "meshy_dead_tree_with_a_dark_hole": 1,
+    "hollow_dead_tree": 1,
+    "fern": 11,
+    "psxg_rock_3": 2,
+    "psxg_rock_4": 1,
+    "moss_clump": 2,
+    "hw_stone": 1,
+    "signpost": 1,
+    "raven_perch": 1,
+    "cairn": 1,
+    "lantern_post": 1
+   },
+   "features": {
+    "tree:tree_5": 3,
+    "tree:tree_6": 2
+   },
+   "doors": {
+    "deadtree": 1
+   },
+   "natives": {}
+  },
+  "South Row, west": {
+   "props": {
+    "rowboat": 1,
+    "meshy_rope": 1,
+    "psxg_rock_1": 1,
+    "fern": 3,
+    "psxg_rock_2": 1,
+    "psxg_rock_4": 1,
+    "meshy_frog": 1,
+    "reeds": 6,
+    "heron": 1,
+    "dragonfly": 1,
+    "fishing_rod": 1,
+    "oars": 1,
+    "willow_tree": 1
+   },
+   "features": {
+    "wall:castle_wall": 70,
+    "rail:parapet": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "South Row": {
+   "props": {
+    "meshy_rowboat": 1,
+    "meshy_rope": 1,
+    "fern": 5,
+    "psxg_rock_1": 2,
+    "meshy_frog": 1,
+    "reeds": 5,
+    "duck": 2,
+    "dragonfly": 1
+   },
+   "features": {
+    "wall:castle_wall": 69,
+    "rail:parapet": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Forest Road": {
+   "props": {
+    "fern": 11,
+    "psxg_rock_1": 2,
+    "hw_stone": 2,
+    "psxg_rock_2": 1,
+    "psxg_rock_4": 2,
+    "wild_flowers": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Forest Road, east": {
+   "props": {
+    "fern": 8,
+    "meshy_stump": 3,
+    "psxg_rock_2": 3,
+    "hw_stone": 2,
+    "moss_clump": 1,
+    "wild_flowers": 1,
+    "psxg_rock_4": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The South-West Tower": {
+   "props": {
+    "fern": 3,
+    "meshy_stump": 2,
+    "psxg_rock_1": 1,
+    "reeds": 2
+   },
+   "features": {
+    "wall:castle_wall": 55,
+    "bridge:castle_wall#town_tower_sw_lintel": 1,
+    "spiral#town_tower_sw_stair": 1,
+    "bridge:wood_planks#town_tower_sw_deck": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "South Row, east": {
+   "props": {
+    "fern": 4,
+    "moss_clump": 1,
+    "meshy_stump": 1,
+    "hw_stone": 1,
+    "reeds": 4,
+    "drying_fish": 1,
+    "willow_tree": 1
+   },
+   "features": {
+    "wall:castle_wall": 70,
+    "rail:parapet": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The South-East Tower": {
+   "props": {
+    "psxg_rock_3": 1,
+    "fern": 3,
+    "psxg_rock_1": 1,
+    "reeds": 2
+   },
+   "features": {
+    "stream:deep_water": 1,
+    "wall:castle_wall": 56,
+    "bridge:castle_wall#town_tower_se_lintel": 1,
+    "spiral#town_tower_se_stair": 1,
+    "bridge:wood_planks#town_tower_se_deck": 1,
+    "rail:parapet": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Great Hall": {
+   "props": {},
+   "features": {
+    "plateau": 2,
+    "texbuilding#cam:keep": 1,
+    "texbuilding#cam:east_wing": 1,
+    "texbuilding#cam:keep_tower_1": 1,
+    "arch#cam:keep:look": 1,
+    "arch#cam:east_wing:look": 1,
+    "arch#cam:hill": 1
+   },
+   "doors": {
+    "guard": 1
+   },
+   "natives": {}
+  },
+  "The Orchard": {
+   "props": {},
+   "features": {
+    "texbuilding#cam:west_wing": 1,
+    "texbuilding#cam:keep_tower_0": 1,
+    "arch#cam:west_wing:look": 1
+   },
+   "doors": {
+    "kitchen": 1
+   },
+   "natives": {}
+  },
+  "The North-East Tower": {
+   "props": {},
+   "features": {
+    "stream:deep_water": 1,
+    "wall:castle_wall": 60,
+    "bridge:castle_wall#town_tower_ne_lintel": 1,
+    "spiral#town_tower_ne_stair": 1,
+    "bridge:wood_planks#town_tower_ne_deck": 1,
+    "rail:parapet": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The North-West Tower": {
+   "props": {},
+   "features": {
+    "wall:castle_wall": 59,
+    "bridge:castle_wall#town_tower_nw_lintel": 1,
+    "spiral#town_tower_nw_stair": 1,
+    "bridge:wood_planks#town_tower_nw_deck": 1
+   },
+   "doors": {},
+   "natives": {}
+  }
+ },
+ "lines": 6,
+ "totals": {
+  "props": 1758,
+  "features": 1819,
+  "doors": 12,
+  "natives": 28,
+  "lines": 6,
+  "plots": 64
+ }
+}

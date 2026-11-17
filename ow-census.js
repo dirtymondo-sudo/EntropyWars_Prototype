@@ -51,9 +51,17 @@ const total = c => Object.values(c.plots).reduce((t, p) => { ['props', 'features
 now.totals = Object.assign(total(now), { lines: now.lines, plots: Object.keys(now.plots).length });
 if (!before) { console.log(JSON.stringify(now, null, 1)); process.exit(0); }
 let missing = 0, extra = 0;
+/* (2026-11-17, the Camelot move) two answers the count gives on its own, so a thread does not explain them by hand:
+   SPLIT — a drawn row the mover cut at the plot lines comes back as `<id>@<plot id>` rows on each plot it covered; the old row counts as found.
+   MOVED — a door whose id stands on another plot now (a link end stood on the new room's edge, the entry bay on its new wall) counts as moved. */
+const splitOf = {}, doorAt = {};
+Object.keys(now.plots).forEach(n => { Object.keys(now.plots[n].features).forEach(k => { const m = /^(.*)@P\d+-\d+$/.exec(k); if (m) splitOf[m[1]] = (splitOf[m[1]] || 0) + now.plots[n].features[k]; });
+    Object.keys(now.plots[n].doors).forEach(k => { (doorAt[k] || (doorAt[k] = [])).push(n); }); });
 const names = [...new Set(Object.keys(before.plots).concat(Object.keys(now.plots)))].sort();
 names.forEach(n => { const a = before.plots[n] || { props: {}, features: {}, doors: {}, natives: {} }, b = now.plots[n] || { props: {}, features: {}, doors: {}, natives: {} }, lines = [];
-    ['props', 'features', 'doors', 'natives'].forEach(g => { [...new Set(Object.keys(a[g]).concat(Object.keys(b[g])))].sort().forEach(k => { const d = (b[g][k] || 0) - (a[g][k] || 0); if (d < 0) { missing -= d; lines.push('  MISSING ' + (-d) + ' x ' + g + ' ' + k); } else if (d > 0) { extra += d; lines.push('  extra   ' + d + ' x ' + g + ' ' + k); } }); });
+    ['props', 'features', 'doors', 'natives'].forEach(g => { [...new Set(Object.keys(a[g]).concat(Object.keys(b[g])))].sort().forEach(k => { const d = (b[g][k] || 0) - (a[g][k] || 0); if (d < 0 && g === 'features' && splitOf[k]) lines.push('  split   ' + (-d) + ' x ' + g + ' ' + k + ' (into ' + splitOf[k] + ' rows, one a plot)');
+                else if (d < 0 && g === 'doors' && (doorAt[k] || []).some(o => o !== n && !(before.plots[o] && before.plots[o].doors[k]))) lines.push('  moved   ' + (-d) + ' x ' + g + ' ' + k + ' (now on ' + doorAt[k].filter(o => o !== n).join(', ') + ')');
+                else if (d < 0) { missing -= d; lines.push('  MISSING ' + (-d) + ' x ' + g + ' ' + k); } else if (d > 0) { extra += d; lines.push('  extra   ' + d + ' x ' + g + ' ' + k); } }); });
     if (!before.plots[n]) lines.unshift('  (a plot the old room did not have)'); if (!now.plots[n]) lines.unshift('  (THE PLOT IS GONE)');
     if (lines.length) console.log(n + '\n' + lines.join('\n')); });
 if (now.lines < before.lines) { console.log('MISSING ' + (before.lines - now.lines) + ' lines of talk (room.lines)'); missing += before.lines - now.lines; }
