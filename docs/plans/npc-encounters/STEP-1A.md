@@ -1,6 +1,8 @@
 # NPC ENCOUNTERS, STEP 1A: Bayside, for mondo to mark up (2026-11-17, Fable)
 
-Design only. Nothing here is built and no game file changed. Every row is a PROPOSAL until you mark it.
+**REV 2 (2026-11-17, after mondo read rev 1):** the Bayside list was wrong and is fixed in the game first (his words and the pass over all 157 races: `RACE-HOMES.md`). The Homosapien is gone; the Lifeguard, the Skater and Florida Man live here; the Ghost never leaves the hotel. The tables below are redone for that list. The pictures are from rev 1 and still show the marks rightly.
+
+Design only. Nothing of the encounter system is built. Every row is a PROPOSAL until you mark it.
 Plan: `PLAN.md` (rev 6) beside this file. Your answers of 11-17 are followed as written.
 
 **How to mark it:** write OK, or the change, beside any row. The seven questions at the end are the ones I could not
@@ -8,16 +10,16 @@ settle from your answers; my pick is first on each.
 
 ## 0. The short version
 
-- **Who lives in Bayside** (checked in data.js, not the plan's list): 12 people of 7 races. Chef × 2, Hippie × 3,
-  Homosapien × 1, Police Officer × 2, Pirate × 2, Popstar × 1, Ghost × 1.
-- **Tempers:** 7 Civilians (Chef, Hippie, Homosapien, Popstar), 2 Guards (Police Officer), 2 Opportunists (Pirate),
-  1 Territorial (Ghost). No Brute, no Coward, no Protector lives here.
-- **Only three people in Bayside can start a fight on their own:** the two Pirates (the mugging, mostly at night on the
-  beach, where their day already puts them) and the Ghost (in the Waterfront hotel at night, after one warning).
+- **Who lives in Bayside** (data.js, after today's fix): 16 people of 9 races. Chef × 2, Hippie × 3, Police Officer × 2,
+  Pirate × 2, Lifeguard × 2, Skater × 2, Florida Man × 1, Popstar × 1, Ghost × 1.
+- **Tempers:** 8 Civilians (Chef, Hippie, Skater, Popstar), 4 Guards (Police Officer, Lifeguard), 3 Opportunists (Pirate,
+  Florida Man), 1 Territorial (Ghost). No Brute, no Coward, no Protector lives here.
+- **Only four people in Bayside can start a fight on their own:** the two Pirates and Florida Man (the mugging) and the
+  Ghost (inside the Waterfront hotel at night, after one warning).
 - **The marks:** the battle's own eye, closed and open, and one red exclamation mark. Pictures in section 5.
 - **A lost fight costs 8 gold × the strongest enemy's level**, never more than you hold. A Chef 40, a Pirate 72, the
   Ghost 144. A retreat costs nothing.
-- **9 spoken lines** in all for Bayside, plus 7 button words.
+- **12 spoken lines** in all for Bayside, plus 7 button words.
 
 Two things the data showed that the plan did not know:
 
@@ -34,11 +36,13 @@ Levels and places are read from `HQ_CITY_RESIDENTS` and `hqSpawnLevel` on main t
 |---|---|---|---|---|---|---|
 | Chef | 2 | 5 | Food hall (work), Street market, home | **Civilian** | Works a kitchen. Runs, then talks, then fights. | none |
 | Hippie | 3 | 6 to 8 | Street market (work), the beach, home | **Civilian** | Peaceful by nature. The plan's own example. | none |
-| Homosapien | 1 | 7 | Walks the district | **Civilian** | The ordinary person. | none |
+| Skater | 2 | 5 to 10 | The skate park by the boardwalk | **Civilian** | The plan's own example. | none |
 | Popstar | 1 | 13 | Sleeps at the Waterfront hotel; works in Entertainment | **Civilian** | Famous, not a fighter by habit. In Bayside she is only at the hotel or passing. | none |
 | Police Officer | 2 | 7 | Police staging (one day shift, one night shift), then walks the district | **Guard** | Your rule: cops protect civilians. Fights on the first strike. | none |
+| Lifeguard | 2 | 5 to 10 | The beach, by day | **Guard** | On watch over the beach. The plan's own example. | none |
 | Pirate | 2 | 9 | West shops by day, the beach by night | **Opportunist** | Robs you when you look weak, talks first. This is Bayside's mugger. | none |
-| Ghost | 1 | 18 | Inside the Waterfront hotel, out in it from 22:00 to 05:00 | **Territorial** | It haunts one place. It warns once, then fights if you stay. | none |
+| Florida Man | 1 | 8 to 12 | The beach from the afternoon into the night | **Opportunist** | The plan's own example. Bayside's other mugger. | none |
+| Ghost | 1 | 18 | Inside the Waterfront hotel at every hour (your word: it never leaves); seen walking its halls from 22:00 to 05:00 | **Territorial** | It haunts one place. It warns once, then fights if you stay. | none |
 
 Notes on the picks:
 
@@ -61,9 +65,11 @@ Three rules, the first two from the plan, the third yours (answer 12):
 |---|---|---|
 | Chef | none | A Police Officer who sees it (rule 3). The other Chef runs. |
 | Hippie | none | A Police Officer who sees it. The other Hippies run. |
-| Homosapien | none | A Police Officer who sees it. |
+| Skater | none | A Police Officer or Lifeguard who sees it. The other Skater runs. |
 | Popstar | Show people | A Police Officer who sees it. No other Show people live here. |
-| Police Officer | Emergency | The other Police Officer if it sees it (same race, and a Guard). |
+| Police Officer | Emergency | The other Police Officer, and a Lifeguard (same group), if they see it. |
+| Lifeguard | Emergency | The other Lifeguard, and a Police Officer, if they see it. |
+| Florida Man | Street | Nobody. No other of Street lives here, and he is an Opportunist himself. |
 | Pirate | none | Nobody. The other Pirate is an Opportunist: it never joins (your round 2, answer 7); it may come for you afterwards if you came out weak. |
 | Ghost | The dead | Nobody. No other of The dead live here. |
 
@@ -79,17 +85,17 @@ In Disaster City the people are fixed rows with homes and days, so the mix is no
 
 | Temper | People | Share | Starts a fight on its own |
 |---|---|---|---|
-| Civilian | 7 | 58 % | never |
-| Guard | 2 | 17 % | only after it sees you strike a Civilian or a cop |
-| Opportunist | 2 | 17 % | when you look weak (the mugging) |
-| Territorial | 1 | 8 % | when you stay on its ground after the warning |
+| Civilian | 8 | 50 % | never |
+| Guard | 4 | 25 % | only after it sees you strike a Civilian or one of its group |
+| Opportunist | 3 | 19 % | when you look weak (the mugging) |
+| Territorial | 1 | 6 % | when you stay on its ground after the warning |
 | Brute, Coward, Protector | 0 | 0 % | |
 
 PROPOSAL for the data row (step 1b): a district's row holds only what differs from the rows above it. For Bayside:
 
 | Setting | Value | Why |
 |---|---|---|
-| Who may start a fight | Pirate, Ghost | Read from the tempers; nothing extra to write. |
+| Who may start a fight | Pirate, Florida Man, Ghost | Read from the tempers; nothing extra to write. |
 | The Ghost's ground | The Waterfront hotel (its home building, where its patrol already is) | Territorial needs a place. |
 | "You look weak" (the Pirate's test) | The first shift is at half health or less, **and** the party's level is not above the Pirate's | Stops a mugging every time a full-health party walks by. Question 4. |
 | One try a game day | A Pirate that mugged you (paid or fought) does not try again until the next game day | Your words: "enough to feel alive, never annoying". Uses the day's memory of plan 4.7. |
@@ -99,7 +105,7 @@ Nothing changes who lives in Bayside. That is the spawn system thread's row.
 
 ## 4. The lines (you approve every one)
 
-The fewest the system needs for these seven units: 9 spoken lines. Short and plain on purpose. Change any of them.
+The fewest the system needs for these nine units: 12 spoken lines. Short and plain on purpose. Change any of them.
 
 **Talk, after the second strike or when you press E first.** One line a race. Buttons: `BACK OFF` / `FIGHT`.
 
@@ -107,15 +113,17 @@ The fewest the system needs for these seven units: 9 spoken lines. Short and pla
 |---|---|
 | Chef | “Hey! What was that for?” |
 | Hippie | “Not cool, man.” |
-| Homosapien | “What is your problem?” |
+| Skater | “What is your problem?” |
 | Popstar | “Do you know who I am?” |
 | Pirate | “You want a fight? Say so.” |
+| Florida Man | “You want some? Come on.” |
 
 **Warning.** Said once, over the head, no panel.
 
 | Unit | When | Line |
 |---|---|---|
 | Police Officer | It sees you strike someone and has not reached you yet | “Hands off. Now.” |
+| Lifeguard | The same | “Hey! Leave them alone.” |
 | Ghost | You step into the hotel at night | “Get out.” |
 
 **The mugging.** The Pirate walks up and Talks. Buttons: `PAY 72` / `FIGHT` (72 = 8 gold × its level 9).
@@ -123,6 +131,7 @@ The fewest the system needs for these seven units: 9 spoken lines. Short and pla
 | Unit | Line |
 |---|---|
 | Pirate | “Nice shoes. Empty your pockets.” |
+| Florida Man | “Give me your wallet.” |
 
 **Giving up.** One line shared by every unit, shown when you Talk to a unit that gave up.
 Buttons: `TAKE THE PAY-OFF` / `ARREST` / `LET IT GO`.
@@ -192,7 +201,7 @@ Your rule (11-17): "every loss should lose you money".
 | You lose to | Level | Gold lost |
 |---|---|---|
 | Chef | 5 | 40 |
-| Police Officer, Hippie, Homosapien | 7 | 56 |
+| Police Officer, Hippie, Lifeguard, Skater | about 7 | 56 |
 | Pirate | 9 | 72 |
 | Popstar | 13 | 104 |
 | Ghost | 18 | 144 |
@@ -220,13 +229,15 @@ The details:
 is 5,000). So a lost story fight takes a little from what you save for units. With an account, the server owns that
 wallet, so step 4 must take the gold on the server side too. Online play is not touched.
 
-## 7. Questions (my pick first)
+## 7. Questions (my pick first). ANSWERED 2026-11-17: `PLAN.md` section 0, round 3
+
+In short: 1 the 8-body limit is raised to 20 (who wears a mark: the pick stands); 2 Territorial inside the hotel; 3 no group; 4 a flat chance per game day; 5 yes; 6 yes; 7 the first way (8 gold x level). Still waiting: his OK on the lines (section 4) and on the marks' pictures (section 5).
 
 1. **Who wears a mark?** Pick: every NPC you can strike within 25 m, so you always know who has seen you (at most 8
    bodies are drawn, so at most 8 marks). Other way: only the ones that can start or join a fight (in Bayside: Police
-   Officer, Pirate, Ghost), which is quieter but hides who is a witness.
-2. **The Ghost:** Territorial in the Waterfront hotel, one warning? Pick: yes. Other way: Brute (attacks on sight,
-   level 18, in the first district).
+   Officer, Lifeguard, Pirate, Florida Man, Ghost), which is quieter but hides who is a witness.
+2. **The Ghost:** it never leaves the hotel (your word, built). Territorial inside it, one warning? Pick: yes. Other
+   way: Brute (attacks on sight, level 18, in the first district).
 3. **The Pirate in no named group?** Pick: yes, no group; cops do not defend Pirates. Other way: add it to "Street"
    with the Gangster.
 4. **When does a Pirate mug you?** Pick: your first shift is at half health or less and your level is not above its

@@ -51,13 +51,13 @@
  },
  "site_prebuilt_bermuda_beach": {
   "id": "site_prebuilt_bermuda_beach",
-  "nx": 168,
+  "nx": 96,
   "nz": 120,
   "h0": -0.05,
   "hs": 0.25,
-  "v": "c9b2155236",
-  "bytes": 1878,
-  "s": "3.8"
+  "v": "6420591ca8",
+  "bytes": 1119,
+  "s": "4.7"
  },
  "site_prebuilt_area51_desert": {
   "id": "site_prebuilt_area51_desert",
@@ -377,7 +377,7 @@
   "hs": 0.25,
   "v": "7173797cde",
   "bytes": 1626,
-  "s": "1.1"
+  "s": "1.0"
  },
  "site_prebuilt_gobekli_ow_bugs": {
   "id": "site_prebuilt_gobekli_ow_bugs",
@@ -477,7 +477,7 @@
   "hs": 0.25,
   "v": "8b379b0343",
   "bytes": 333,
-  "s": "0.3"
+  "s": "0.4"
  },
  "site_prebuilt_downtown_ow_cells": {
   "id": "site_prebuilt_downtown_ow_cells",
@@ -568,5 +568,55 @@
   "v": "f22705b9a1",
   "bytes": 339,
   "s": "3.7"
+ },
+ "site_ow_r11": {
+  "id": "site_ow_r11",
+  "nx": 48,
+  "nz": 36,
+  "h0": -1.11,
+  "hs": 0.25,
+  "v": "d4caacc5be",
+  "bytes": 725,
+  "s": "0.4"
+ },
+ "site_prebuilt_bermuda_ow_volcano": {
+  "id": "site_prebuilt_bermuda_ow_volcano",
+  "nx": 72,
+  "nz": 72,
+  "h0": -0.03,
+  "hs": 0.25,
+  "v": "4248f01344",
+  "bytes": 1251,
+  "s": "1.3"
+ },
+ "site_prebuilt_bermuda_ow_triangle": {
+  "id": "site_prebuilt_bermuda_ow_triangle",
+  "nx": 108,
+  "nz": 84,
+  "h0": -0.04,
+  "hs": 0.25,
+  "v": "982885964b",
+  "bytes": 584,
+  "s": "2.0"
+ },
+ "site_ow_r10_0_25": {
+  "id": "site_ow_r10_0_25",
+  "nx": 36,
+  "nz": 132,
+  "h0": -1.15,
+  "hs": 0.25,
+  "v": "6cc4a168a3",
+  "bytes": 1791,
+  "s": "1.0"
+ },
+ "site_ow_r10_26_37": {
+  "id": "site_ow_r10_26_37",
+  "nx": 24,
+  "nz": 72,
+  "h0": -0.87,
+  "hs": 0.25,
+  "v": "3f8205d2bd",
+  "bytes": 650,
+  "s": "0.5"
  }
 }

@@ -4087,3 +4087,84 @@ Blade. Its VFX handlers are left in place, unused.
 - Online: rides the relayed shot (the guest's own showActionCamChrome dresses the same). Kill switch `window.EW_NO_RACE_LOOKS`.
 - Proof: /mnt/project-files/spell-overlays/race_looks_proof.jpg; probe /mnt/project-files/spell-overlays/probe/looks.js
   (`TIMES=900,1700 node looks.js [race_key,...]`, `WAIT0=12000` waits out the match intro).
+
+
+## THE VFX CLEANUP, B0 + B1: the generic white off the shared layers + the cast rune (2026-11-17, three-vfx-effects.js)
+mondo: "take out all of these generic basic white vfx that crowd the screen and the animations", "I am very specifically
+talking about the white vfx that are spammed on all the spells, not just anything that is white", "can you not just trace
+which white vfx are spammed a lot? ... it should just be in the code", and the runes: "a simple healing spell doesnt need a
+god damn satanic green rune underneath it. that should be preserved for magic spells where it makes sense. and it also
+clashes with the abstact/noise textures that get drawn on damaging tiles". Plan + per-spell table:
+docs/plans/vfx-cleanup/ (section 10 = what was built and what he changed). Looks only, no rule reads any of it.
+- **Off switch:** `window.EW_NO_VFX_CLEANUP = true` (live; `stageInfo`'s cache is per state).
+- **THE HIT BLINK is not touched** (the body flashing white is the hit). Nor the numbers, the rims, the tile glow.
+- **A spell with its own look** (`_vcOwn`: an A-F geometry, a G-O / P-Z / FX-2 signature, an FX-4 own look; 615 spells):
+  `_stageBurst` draws only the grade, the shake and the element's own mark (frost stamp, water mark, snow, the sky-drop
+  dust). No screen flash, rush lines, shock ring, capstone bloom, crescent, sparks, glass orb, speed burst, aftershock, pillar.
+- **A spell with none** keeps the burst as its look: the screen flash on heavy + ultimate only, rush lines on an ultimate
+  or a `ki` spell only, the speed burst on `ki` / `kinetic` only.
+- **The colours** (`_vcPal`, inside `stageInfo`): each damage archetype's ring / flash / rush-line / orb / mote tint with
+  its saturation raised to a floor (0.40-0.55) and its value capped at 92 %; a grey takes the orb's hue (metal = steel blue,
+  lightning's `0xffffff` ring = blue, wind = mint, divine = gold). The support palettes are kept. Because three-vfx.js
+  tints every untinted flash particle from the palette's `flash` (the riot context's `light`), those follow.
+- **Near-white handed to a shared helper** (`_vcCol`: `_sigScreenFlash`, `_sigShockRing3D`, `_sigSpeedBurst3D`,
+  `_sigCrescentSlash3D`) draws in the casting spell's colour; with no spell casting it is drawn as given. The crescent's
+  tip glint takes the arc's colour (`noGlint: true` = none). `_sigSlashCombo3D`'s heavy finisher: its flash, speed burst
+  and third cut in the combo's colour, rush lines on an ultimate only.
+- **Every hit square flashes** (mondo 11-17, the same day: "that is the whole point of the flash to show where the damage
+  hits"). B1 first drew an area's outer squares without their flash layers; that was taken back. Never strip the
+  per-square flash.
+- **The noise wash:** every sheet's bright colour at a mid tone (`_nzWash`); a blade spell (`_crIsBlade`) gets no wash and
+  no wind gather / mark: its scar is its mark.
+- **THE CAST RUNE:** `_stageWindup`'s circle under the caster was on every non-physical spell of a `glyph` archetype (377
+  spells). Now only `_VC_RUNE` (arcane, unholy, hex, psychicHex, blood, divine: 147), and never when one of the cast's
+  squares is on or beside the caster. `_sigMagicCircle3D` itself draws nothing while a heal / mana / buff spell is
+  casting (`_VC_NO_RUNE`; the riot context now carries `arch`), so Heal's green circle (its whole A-F "signature") is gone.
+  A spell whose circle IS its look passes `keepRune: true`.
+- Not done here: the element stamps' own pale colours (metal glints, wind gather, sonic rings: with their sweep, B7), the
+  generic laser (B3), white inside a spell's own signature shapes (the per-spell batches).
+- Online: every layer rides `fire()` / the stage beats, which are relayed; nothing new on `state`.
+
+
+## THE VFX CLEANUP, B2: the blades (2026-11-17, three-vfx-effects.js)
+mondo's three examples + the other sword combos. All behind `EW_NO_VFX_CLEANUP` like B1.
+- **Blade Waltz** (`_sigBladeWaltz3D`): the third cut in the blades' colour with no tip glint (it was white); the end
+  beat is the shake only (the ring, the white speed burst and the blue screen flash covered the cuts).
+- **`_sigSlashCombo3D`** (Dragon Slash, Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed
+  Blade): no summon circle behind the sword, no opening screen flash; the heavy finisher = the cut + its ring + its scar
+  (no screen flash, no speed burst, no rush lines). Dragon Slash's orange is unchanged.
+- **Sword Beam** (`_sigSwordWave3D`, mondo: "match the sword cuts"): wave `0xff5a2a`, core `0xffa060`, embers + a red
+  `_crSlashScar` on each square as the wave passes, no end speed burst; `_fireBeamMapped` skips the generic laser and the
+  white charge flash for it (`_vcSB`). The wave still takes 0.24 s to cross: the capture frames (0.45 s apart) do not
+  catch it; its real beam is B3.
+- Frames: docs/plans/vfx-cleanup/img/b2_*.jpg.
+
+## THE OWN LOOKS, L1 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; list `own-look/L1.txt`, 49 spells)
+mondo 11-17: "any spells that dont have a look of their own need one". Thread L1 = ground and growth (earth, nature, poison,
+water, ice). The block is "THE OWN LOOKS, L1" at the end of three-vfx-effects.js (`_l1*`, `_L1*`).
+- **How a look is wired:** `_l1Def(id, fn(p, P0, id), windupFn?)` puts the look in `_FX2_BURST[id]` (the relayed burst beat),
+  so `_vcOwn(id)` is true and the generic stage burst stops by itself. The burst beat carries no tiles, so a wrapper round
+  `_fireStage` keeps the WINDUP's `{ sx, sy, tx, ty, tiles, hold }` per spell (`P0`: the footprint, and where a charge
+  started from). An optional third argument draws on the windup (Land Ho's wave).
+- **The shared pieces of the block:** `_l1Flash(F, tiles, colour)` = every hit square lights once in the spell's colour;
+  `_l1Area(p, P0, r)` = the squares hit; `_l1Dir(F, p, P0)` = the way the blow travels + its side; `_l1Body(F, tx, ty)` =
+  where the body that stood on the square is NOW (a pull drags the look along; `_pzTrack` could not find a pulled body by
+  its square on the burst beat); snow = `_l1SnowMat` / `_l1Lump` / `_l1SplatTex` / `_l1Powder`.
+- **Off:** `window.EW_DISABLE_OWN_LOOKS_L1 = true`.
+- **Capture note:** a tile-cast spell (Snow Fort) is sometimes caught late by the harness ("hud-tile", 6 frames); a second
+  run takes the "direct" path and shows the cast.
+
+### part 1 (12 spells: the ice + water rows). After frames: `docs/plans/vfx-cleanup/img/own-look/L1_part1.jpg`
+- **Avalanche Strike** (yeti): lumps of packed snow tumble down the lane past both sides of the victim, a drift is left at its feet.
+- **Dark Justice** (antihero): two black strokes with a red edge cross the victim out (an X), one after the other; a red square under it.
+- **Frozen Punch** (yeti): a fist of ice (four crystal knuckles on a slab) drives in from his side, holds, bursts into shards.
+- **Glacial Slam**: a crown of glacier plates breaks out of the eight squares round the caster, leaning out (lens side low), then shatters.
+- **Grave Chill** (skeleton): the game's skull model, cold blue, lifts out of the body and fades upward; grave mist spills low.
+- **Snow Fort**: bricks of packed snow drop course by course onto the top of the rising wall (they ride its live height), then powder.
+- **Snowball Volley** (santa): nine snowballs come down out of the lob one after another, each bursts into a white splat on its square.
+- **Eightfold Lash**: eight thin whips of water rise in a ring and crack in on the body one after another.
+- **Fluoride Water** (conspiracy theorist): a thin stream pours down on the middle square, a mint-green ring runs out over the 3×3, mint bubbles fizz.
+- **Land Ho** (pirate): a bow wave runs down the lane with the charge (windup, as long as the charge takes), a V of spray on the hit.
+- **Tentacle Lash** (kraken): a dark pool opens beside the victim, the tentacle model comes up, hooks over the body and rides the pull.
+- **Watering Can**: a fine shower falls in a cone on the one square, the soil goes dark and wet, two small rings. (A big tan ring that is
+  NOT this look still draws on the cast, before and after this PR; it is not in three-vfx-effects.js' stage burst: for the cleanup thread.)

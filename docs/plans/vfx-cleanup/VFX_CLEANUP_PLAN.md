@@ -1,6 +1,6 @@
 # VFX CLEANUP: take the generic white off every spell, a real beam kit, the portal look
 
-**Status: PLAN, waiting for mondo's OK. Nothing in the game is changed by this PR.**
+**Status: STARTED 2026-11-17. B0 + B1 (the shared layers + the cast rune) are built; B2 onward are open. Section 10 = what mondo changed in the plan on 11-17 (no white meter, the runes) and where each batch stands.**
 Asked by mondo on 2026-11-17 (thread "Clean up generic white spell VFX"):
 
 > "Blade Waltz has a lot of white vfx that i think takes away from the spell, like i can hardly even see the sword or the
@@ -78,11 +78,16 @@ Each spell gets one of four calls (the table's starting call; the batch confirms
 | **BEAM** (25) | a line spell on the generic laser | moves onto the new beam kit (section 4) |
 | **LEAVE** (98) | heals / buffs / hexes with no white in them | nothing; the sheet just confirms it |
 
+**White means the generic layers, not the colour (mondo 11-17).** The target is the shared white VFX that every spell
+gets, the ones section 1 traced in the code. A thing that is white because it IS the thing stays: THE HIT BLINK (the
+victim's body flashing white), a snow spell's snow, a holy spell's own light shape, the damage numbers.
+
 **Hard limits (all calls):**
 1. **No pure white** on any spell layer. A hot core takes the spell's colour with its brightest channel at or under 92 %
    (the Riot value rule already in three-vfx.js `_RV_VALUE_MAX`). White is reserved for the hit blink.
-2. **One flash per hit**, body-sized or smaller, on the impact frame only. An area spell does not flash every square: its
-   mark (scorch, crack, noise wash, scar) is the per-square read.
+2. **One flash per hit square**, body-sized or smaller, on the impact frame only. **An area spell flashes EVERY square it
+   hits** (mondo 11-17: "that is the whole point of the flash to show where the damage hits"); the flash takes the spell's
+   colour, it is not removed.
 3. **No full-screen flash** on STRIP spells. On REPLACE spells only on heavy + ultimate, in the element colour, and it keeps
    its hole round the target (it already does).
 4. **Rush lines and speed bursts** only where the spell's own look calls for them (a finisher, a ki attack), never as the
@@ -120,6 +125,15 @@ batches after it are mostly checking and small fixes.
 6. **`_sigSpeedBurst3D` / `_sigScreenFlash` / `_sigShockRing3D`** callers that pass white get the spell's colour. The
    helpers themselves refuse near-white input when the cleanup is on (fall back to the caller's spell palette).
 7. **Element stamps**: metal glints, wind gather + mark, sonic rings in their element mid tones.
+8. **The cast rune** (mondo 11-17: "these runes that get drawn alot underneath the player ... a simple healing spell
+   doesnt need a god damn satanic green rune underneath it. that should be preserved for magic spells where it makes
+   sense. and it also clashes with the abstact/noise textures that get drawn on damaging tiles"). Traced: `_stageWindup`
+   drew `_sigMagicCircle3D` under the caster of EVERY non-physical spell whose archetype has `glyph: true` (arcane, fire,
+   divine, unholy, anomaly, heal, mana, hex, mind, aura, psychic, blood): 377 spells. Now only the schools whose magic is
+   drawn on the ground keep it (`_VC_RUNE`: arcane, unholy, hex, blood, divine; 147 spells), and never when the cast's own
+   squares lie on or beside the caster (a self-centred area: the rune sat under the noise wash). A spell's OWN circle (60
+   `_sigMagicCircle3D` calls inside signatures) is checked spell by spell in the sweeps with the same two questions:
+   is this magic that draws on the ground, and does it sit under a noise wash.
 
 Proof for B1: one sheet of 16 spells across all archetypes, before (switch on) / after, plus the white meter (section 7).
 
@@ -253,9 +267,9 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 
 | Batch | What | Spells | Proof | Model note |
 |---|---|---|---|---|
-| **B0** | The switch `EW_NO_VFX_CLEANUP`, the white meter (section 7), the capture runner launching through `probe-fast.js` (`tools/harness/sv-run.js`, done) | 0 | the meter's numbers for his three spells, today | small; one short thread, low-medium effort |
-| **B1** | The shared changes (section 3) | reaches ~840 | 16-spell before / after sheet across archetypes + meter totals | the most important step: high effort, read section 1 first, look at every frame |
-| **B2** | Blades: his examples first (Blade Waltz, Dragon Slash), Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed Blade. Sword Beam gets its interim cleanup here and its beam in B3 | 9 | before / after per spell, the hit frame cropped to the target | medium-high effort; his orange-red stays |
+| **B0** | The switch `EW_NO_VFX_CLEANUP`, the capture runner launching through `probe-fast.js` (`tools/harness/sv-run.js`). DONE 11-17. No white meter (section 10) | 0 | none | done |
+| **B1** | The shared changes (section 3) + the cast rune. DONE 11-17 except item 7 (the element stamps go with their element's sweep, B7) | reaches ~840 | after frames of a spread of spells, looked at | the most important step: high effort, read section 1 first, look at every frame |
+| **B2** | DONE 11-17 (section 10). Blades: his examples first (Blade Waltz, Dragon Slash), Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed Blade. Sword Beam gets its interim cleanup here and its beam in B3 | 9 | before / after per spell, the hit frame cropped to the target | medium-high effort; his orange-red stays |
 | **B3** | The beam kit (section 4) + the 25 generic-laser spells + a check of the other line spells + the sight lasers (turret, Take Aim, sniper rig) and the turret blast | 47 + the turret / sight lasers | per style: the four beats in one strip; every converted spell's sheet | design work: high effort, the longest step |
 | **B4** | Blasts, bolts, wand duels on the same kit + the clash beats | 16 | clash frame at a prism and at a shield | high effort |
 | **B5** | The portal kit + the door / teleport / summon / rift spells | 81 | the ambush cutscene frame unchanged + before / after sheets | high effort |
@@ -270,14 +284,16 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 - First `git fetch origin main && git merge origin/main` (RULE #1d) and `node fresh-check.js`.
 - Read this plan, the batch's rows in `SPELL_TABLE.md`, and `docs/notes/spells-vfx.md` (the Riot pass, THE CLEAR BODIES,
   THE HIT BLINK) before touching a helper.
-- Shoot the batch BEFORE changing anything (switch on), fix, shoot AFTER in the same harness, look at every frame yourself.
-  A spell whose after frame is worse goes back to before for that spell and is listed in the reply.
+- What to remove comes from the CODE (the table + `tools/audit.js`), not from pictures (mondo 11-17). Fix, then shoot the
+  batch AFTER in the harness and look at every frame yourself: the only question for a picture is whether the spell still
+  reads well with the generic layers gone (not empty, not worse). A before frame (the switch) only when a comparison is
+  needed to judge that. A spell whose after frame is worse is fixed or goes back for that spell, and is listed in the reply.
 - Never delete a spell, its prop, its model or a signature: this is about layers. Never repaint his textures.
 - Change the shared helper rather than 40 call sites, but never a helper's look for a spell outside the batch without
   saying so (B1 is the only batch that changes everything on purpose).
 - `node --check three-vfx-effects.js` (and any other JS touched) before the PR. No tests, no CI (his rule).
 - Notes: a section per batch in `docs/notes/spells-vfx.md` ("THE VFX CLEANUP, B<n>"), short.
-- Reply to mondo: the before / after sheet, the meter numbers, the `[EW BUILD]` HEAD, the uploaded files + sha256[:8].
+- Reply to mondo: the after frames, the `[EW BUILD]` HEAD, the uploaded files + sha256[:8].
 
 ---
 
@@ -289,11 +305,8 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
   `python3 /tmp/sv/sv-report.py /tmp/sv/<batch> --title <batch>` for the sheets. One real cast per spell on the spell
   audit board through the real HUD, frames every ~0.4 s. Both launchers (`sv-run.js` for batches, `sv-ctl.js`
   + `start.sh` + `e.sh` for one spell by hand) go through `probe-fast.js`, the project rule since 11-16. One browser at a time.
-- **Before and after in one run**: `--opts` with `{"<id>": {"pre": "window.EW_NO_VFX_CLEANUP = true"}}` for the before pass.
-- **The white meter** (B0): for each shot, the share of pixels inside the target's screen box (`ThreeRenderer.unitScreenBox`,
-  already in the harness's frame info) and inside 2 squares round it that are near-white (all channels > 220). Reported per
-  spell as the peak over the cast. The target is a batch's spells all going DOWN with the hit and the number still readable;
-  a spell whose number of near-white pixels rises is a regression.
+- **A before frame when one is needed**: `--opts` with `{"<id>": {"pre": "window.EW_NO_VFX_CLEANUP = true"}}`.
+- **No white meter (mondo 11-17, section 10).** Nothing counts white pixels: what is generic is known from the code.
 - **Pictures for mondo**: the hit frame cropped to caster + target, before left, after right (like `img/ba_*.jpg`), and the
   overview sheets in `/mnt/project-files/vfx-cleanup/<batch>/`.
 
@@ -323,3 +336,57 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 - `tools/table.js` writes `SPELL_TABLE.md` and `batches/*.txt` from it.
 - `tools/mockpatch.py` is the throwaway patch used for the mock-up frames (applied, shot, reverted; never merged).
 - Frames: same spell audit board, `?ew_gpu=webgl2`, Mesa llvmpipe, 1280 x 720. Main `da261dc`.
+
+---
+
+## 10. Changes to the plan on 11-17 (the build thread) + where the batches stand
+
+**From mondo, 11-17, after reading the plan:**
+1. **The hit blink is not part of this, and "white" is not the target.** "I am very specifically talking about the white
+   vfx that are spammed on all the spells, not just anything that is white." See the note under the four calls in section 2.
+2. **No white meter, no pictures to prove something is white.** "can you not just trace which white vfx are spammed a
+   lot? ... it should just be in the code." The trace is section 1 + `SPELL_TABLE.md` + `tools/audit.js`. Pictures are only
+   the after check (section 7).
+3. **The runes** under the caster are generic clutter too: section 3 item 8.
+4. **Every square an area spell hits keeps its flash** (hard limit 2). "i didnt want you to literally take out everything
+   white."
+5. **Every spell with no look of its own gets one** (the 315 REPLACE rows): "any spells that dont have a look of their own
+   need one, start a thread or multiple threads to give them." A recoloured generic burst is the stopgap, not the answer.
+   The threads: `docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`.
+
+**Built in B0 + B1 (three-vfx-effects.js, block "THE VFX CLEANUP, B0 + B1"):**
+- `window.EW_NO_VFX_CLEANUP = true` = today's look back, live.
+- `_vcOwn(spellId)` = the spell has its own look (the same test the audit used: 615 spells). Its stage burst is now the
+  grade + the shake + its element's mark only.
+- `_vcPal` = every damage archetype's ring / flash / rush-line / orb colour at a mid tone (saturation raised, value
+  capped at 92 %), computed, so an archetype added later is covered. The support palettes (heal, mana, hex, aura ...) are kept.
+- A spell with no own look: screen flash only on heavy + ultimate, rush lines only on an ultimate or a ki spell, the
+  speed burst only on ki / kinetic.
+- `_vcCol` = `_sigScreenFlash`, `_sigShockRing3D`, `_sigSpeedBurst3D`, `_sigCrescentSlash3D` handed near-white draw in the
+  casting spell's colour. The crescent's tip glint takes the arc's colour (`noGlint` turns it off).
+- `_sigSlashCombo3D`'s heavy finisher: flash, speed burst and third cut in the combo's own colour; rush lines on an ultimate only.
+- (Taken back the same day: B1 first drew an area's outer squares without their flash. mondo: every hit square flashes.)
+- The noise wash: every sheet at a mid tone; a blade spell gets no wash and no wind gust / mark (its scar is its mark).
+- The cast rune: section 3 item 8.
+
+**Built in B2 (the blades, 11-17):** Blade Waltz ends on its three cuts + the shake (its white third cut, white speed
+burst, ring and blue screen flash are off). `_sigSlashCombo3D` (Dragon Slash, Brave Charge, Cross Slash, Sneak Slash, Red
+Slash, Synthetic Blade, Blessed Blade): no summon circle, no opening screen flash, and the heavy finisher is the cut +
+its ring + its scar (no screen flash, speed burst or rush lines). Sword Beam: the wave is the Swordmaster's orange-red
+(`0xff5a2a`, core `0xffa060`), leaves a red scar + embers on every square down the line, and the generic laser + white
+charge flash no longer draw under it. Its wave still crosses the line in 0.24 s: the real beam is B3.
+
+**Corrected 11-17:** the own-look lists called 240 spells "no look". About 129 of them have their ELEMENT's pass (fire,
+ice, water, nature, wind, metal, earth, sonic, blood, psychic) and only lack a spell-specific piece; 62 have no element
+at all. The threads were told: bare ones first, the element pass is the base, add only what makes it that spell.
+
+**Suggestions from the build thread (not decided; mondo's call):**
+- Show mondo B2 (his three examples) before the element sweeps start, so the direction is checked on 9 spells, not 900.
+- B3 is two jobs: the beam kit + the 25 laser spells (three-vfx-effects.js), and the sight lasers + the turret blast
+  (three-renderer.js). Two threads would be safer than one.
+- Re-run `tools/audit.js` + `tools/table.js` at the start of each batch: races added after 11-17 are not in the table.
+- B11: delete the switch and the old branches once he has OK'd the look (the Riot switch is still in the code months later).
+- The table covers castable spells only. Basic attacks, items and combo hits use some of the same helpers and should get
+  one look in B10.
+- An enemy's teleport portal (B5) at a square the viewer's fog hides must not draw (RULE #2).
+- New beam beats (charge, hold) have no sound yet.
