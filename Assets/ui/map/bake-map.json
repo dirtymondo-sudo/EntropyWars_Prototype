@@ -55,9 +55,9 @@
   "nz": 120,
   "h0": -0.05,
   "hs": 0.25,
-  "v": "6420591ca8",
-  "bytes": 1119,
-  "s": "4.7"
+  "v": "f3c40aeae1",
+  "bytes": 1120,
+  "s": "3.6"
  },
  "site_prebuilt_area51_desert": {
   "id": "site_prebuilt_area51_desert",
@@ -125,19 +125,19 @@
   "nz": 24,
   "h0": -0.5,
   "hs": 0.25,
-  "v": "c6f5248970",
-  "bytes": 230,
-  "s": "0.8"
+  "v": "ffc3eb63bd",
+  "bytes": 233,
+  "s": "1.5"
  },
  "site_prebuilt_vatican_plots": {
   "id": "site_prebuilt_vatican_plots",
   "nx": 72,
-  "nz": 48,
+  "nz": 84,
   "h0": -0.18,
   "hs": 0.25,
-  "v": "e2f077edf2",
-  "bytes": 642,
-  "s": "2.4"
+  "v": "33f6a4fa2d",
+  "bytes": 1005,
+  "s": "3.6"
  },
  "site_prebuilt_atlantis_deep": {
   "id": "site_prebuilt_atlantis_deep",
@@ -165,9 +165,9 @@
   "nz": 84,
   "h0": -1.75,
   "hs": 0.25,
-  "v": "541c317c87",
-  "bytes": 732,
-  "s": "9.8"
+  "v": "fbff8fa322",
+  "bytes": 748,
+  "s": "27.8"
  },
  "site_prebuilt_mars_plots": {
   "id": "site_prebuilt_mars_plots",
@@ -221,13 +221,13 @@
  },
  "site_prebuilt_downtown_underworld": {
   "id": "site_prebuilt_downtown_underworld",
-  "nx": 84,
-  "nz": 96,
+  "nx": 204,
+  "nz": 192,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "7ee5e7685a",
-  "bytes": 792,
-  "s": "15.8"
+  "v": "5360c0afcf",
+  "bytes": 1686,
+  "s": "280.3"
  },
  "site_ow_r7_3_14": {
   "id": "site_ow_r7_3_14",
@@ -527,7 +527,7 @@
   "hs": 0.25,
   "v": "c94d332d7d",
   "bytes": 720,
-  "s": "0.2"
+  "s": "0.6"
  },
  "site_prebuilt_hollow_earth_ow_long": {
   "id": "site_prebuilt_hollow_earth_ow_long",
@@ -541,13 +541,13 @@
  },
  "site_prebuilt_hollow_earth_ow_tunnelway": {
   "id": "site_prebuilt_hollow_earth_ow_tunnelway",
-  "nx": 36,
-  "nz": 96,
+  "nx": 120,
+  "nz": 168,
   "h0": 0,
   "hs": 0.25,
-  "v": "10217b72db",
-  "bytes": 190,
-  "s": "1.0"
+  "v": "45aa3d9001",
+  "bytes": 563,
+  "s": "20.9"
  },
  "site_prebuilt_hollow_earth_ow_agartha": {
   "id": "site_prebuilt_hollow_earth_ow_agartha",
@@ -618,5 +618,95 @@
   "v": "3f8205d2bd",
   "bytes": 650,
   "s": "0.5"
+ },
+ "site_prebuilt_bermuda_ow_frozen": {
+  "id": "site_prebuilt_bermuda_ow_frozen",
+  "nx": 48,
+  "nz": 24,
+  "h0": -0.05,
+  "hs": 0.25,
+  "v": "d3dd16353d",
+  "bytes": 326,
+  "s": "0.3"
+ },
+ "site_prebuilt_bermuda_ow_cove": {
+  "id": "site_prebuilt_bermuda_ow_cove",
+  "nx": 36,
+  "nz": 36,
+  "h0": -0.03,
+  "hs": 0.25,
+  "v": "5a38c9ff8b",
+  "bytes": 461,
+  "s": "0.3"
+ },
+ "site_ow_dh1": {
+  "id": "site_ow_dh1",
+  "nx": 96,
+  "nz": 48,
+  "h0": -0.98,
+  "hs": 0.25,
+  "v": "3359a03764",
+  "bytes": 1127,
+  "s": "0.8"
+ },
+ "site_ow_r8": {
+  "id": "site_ow_r8",
+  "nx": 96,
+  "nz": 72,
+  "h0": -0.88,
+  "hs": 0.25,
+  "v": "757a064edc",
+  "bytes": 2190,
+  "s": "1.0"
+ },
+ "site_ow_r9": {
+  "id": "site_ow_r9",
+  "nx": 24,
+  "nz": 108,
+  "h0": -0.91,
+  "hs": 0.25,
+  "v": "36eb29e9ef",
+  "bytes": 1036,
+  "s": "1.1"
+ },
+ "site_ow_r6": {
+  "id": "site_ow_r6",
+  "nx": 144,
+  "nz": 36,
+  "h0": -0.74,
+  "hs": 0.25,
+  "v": "a84b1291e8",
+  "bytes": 1368,
+  "s": "1.7"
+ },
+ "site_ow_dh2": {
+  "id": "site_ow_dh2",
+  "nx": 48,
+  "nz": 60,
+  "h0": -0.53,
+  "hs": 0.25,
+  "v": "d356a18906",
+  "bytes": 730,
+  "s": "0.7"
+ },
+ "site_ow_dh3": {
+  "id": "site_ow_dh3",
+  "nx": 84,
+  "nz": 48,
+  "h0": -0.59,
+  "hs": 0.25,
+  "v": "a28570f0b4",
+  "bytes": 1053,
+  "s": "0.9"
+ },
+ "site_ow_dh4": {
+  "id": "site_ow_dh4",
+  "nx": 72,
+  "nz": 84,
+  "h0": -0.63,
+  "hs": 0.25,
+  "v": "4026491297",
+  "bytes": 1650,
+  "s": "1.0"
  }
 }

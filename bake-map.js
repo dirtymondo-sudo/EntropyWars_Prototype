@@ -40,13 +40,13 @@ const ZONES = [
     { hub: 'woods', layout: 'woods', rooms: [{ room: 'site_prebuilt_fairy_forest_plots', layer: 'surface', wx: -22, wy: -9, zx: -22, zy: -9, wait: 1 }] },   // THE TEST SLICE (2026-11-17): the room is the Redwood Trail + the Ritual Ground now (6 x 3 plots, not moved yet); the Clearing and Dead Man's Cave are rooms of their own (`room.world`), so the waiting room is drawn clear of them
     { hub: 'kingdom', layout: 'camelot', rooms: [{ room: 'site_prebuilt_camelot_kingdom', layer: 'surface', wx: -29, wy: -3, zx: 0, zy: 0 }] },
     { hub: 'ranch', layout: 'estate', rooms: [{ room: 'site_prebuilt_skinwalker_estate', layer: 'surface', wx: -22, wy: 12, zx: -22, zy: 12, wait: 1 }] },   // THE TEST SLICE (2026-11-17): the room is the Haunted House + the Ranch now (6 x 3 plots, not moved yet); the Corn Fields and the Lake are rooms of their own (`room.world`)
-    { hub: 'desert', layout: 'desert', rooms: [{ room: 'site_prebuilt_area51_highway', layer: 'surface', wx: 6, wy: 35, zx: 0, zy: 0, wait: 1 }] },   // THE ONE WORLD MOVE (2026-11-17): the four districts are rooms of their own (`room.world`; Area 51 keeps the old id); the Highway's room is not moved (BUILD_PLAN 4.2 re-routes it), so it is drawn clear of them, south of Area 51 and Giza
+    { hub: 'desert', layout: 'desert', rooms: [] },   // ONE WORLD 4.2 (2026-11-17): every Desert room says its own place (`room.world`): the four districts and the roads between them (site_ow_dh1..dh4, site_ow_r9); the Highway's room is retired
     { hub: 'beach', layout: 'beach', rooms: [{ room: 'site_prebuilt_bermuda_beach', layer: 'surface', wx: 12, wy: 2, zx: 0, zy: 0 }] },   // THE ONE WORLD MOVE (2026-11-17, phase 4.3): the Beach stands at 12,2 (8 x 10); the Triangle and the Volcano Island are rooms of their own (`room.world`)
     { hub: 'ley', layout: 'leylines', rooms: [{ room: 'site_prebuilt_gobekli_ancient', layer: 'surface', wx: 19, wy: 29, zx: 0, zy: 0, wait: 1 }] },
     { hub: 'antarctica', layout: 'antarctica', rooms: [{ room: 'site_prebuilt_antarctica_plots', layer: 'surface', wx: 0, wy: 46, zx: 0, zy: 0 }] },
     { hub: 'divine', layout: 'afterlife', rooms: [
         { room: 'site_prebuilt_heaven_plots', layer: 'off', zx: 0, zy: 0, note: 'ABOVE THE VATICAN' },
-        { room: 'site_prebuilt_vatican_plots', layer: 'surface', wx: -12, wy: -6, zx: 6, zy: 0 },
+        { room: 'site_prebuilt_vatican_plots', layer: 'surface', wx: -12, wy: -9, zx: 6, zy: 0 },   // (One World 4.4: the Colosseum stands north of the Vatican in its room; the room says its own place, `room.world`)
         { room: 'site_prebuilt_vatican_under', layer: 'under', wx: -10, wy: -5, zx: 6, zy: 6, note: 'UNDER THE VATICAN' },
         { room: 'site_prebuilt_hell_plots', layer: 'under', wx: -10, wy: -10, zx: 14, zy: 0, note: 'UNDER THE COLOSSEUM' }] },
     { hub: 'underworld', layout: 'sewers', rooms: [{ room: 'site_prebuilt_downtown_underworld', layer: 'under', wx: 3, wy: 4, zx: 0, zy: 0, note: 'UNDER DISASTER CITY', wait: 1 }] },

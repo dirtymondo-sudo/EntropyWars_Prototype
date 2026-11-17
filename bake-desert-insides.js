@@ -90,7 +90,7 @@ ROOMS.forEach(r => check(r.name, r.R));
 /* THE ONE WORLD MOVE (2026-11-17, bake-desert.js): the Desert is five rooms now. `site_prebuilt_area51_desert` is Area 51's room (the old id), so a
    district file's door back out that names it and asks for a door another room holds now (Giza's pyramid, tombside, cut) is pointed at that
    room here, by the door id, read from data.js as bake-desert.js wrote it. The district files are not changed. Run bake-desert.js first. */
-{ const OLD = 'site_prebuilt_area51_desert', OUT = ['site_prebuilt_area51_ow_circus', 'site_prebuilt_area51_ow_town', OLD, 'site_prebuilt_area51_ow_giza', 'site_prebuilt_area51_highway'];
+{ const OLD = 'site_prebuilt_area51_desert', OUT = ['site_prebuilt_area51_ow_circus', 'site_prebuilt_area51_ow_town', OLD, 'site_prebuilt_area51_ow_giza'];   // (the Highway's room retired 11-17, BUILD_PLAN 4.2)
   const holder = {}; OUT.forEach(id => { const ds = JSON.parse(vm.runInContext('JSON.stringify(((DOOR_HQ.rooms[' + JSON.stringify(id) + '] || {}).doors || []).map(d => d.id))', D)); ds.forEach(k => { if (!holder[k]) holder[k] = id; }); });
   ROOMS.forEach(r => (r.R.doors || []).forEach(d => { const a = d.action; if (!a || a.room !== OLD || !a.at) return; const to = holder[a.at];
       if (!to) throw new Error(r.name + ': its door ' + d.id + ' asks for ' + a.at + ', which no Desert room has (run node bake-desert.js first)');
