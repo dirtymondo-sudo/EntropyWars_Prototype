@@ -57,7 +57,10 @@ const SET = {
     vatican: { site: 'prebuilt_vatican', part: 'plots', mark: 'VATICAN', air: { kind: 'dust', color: 0xffe8c0 }, sub: 'THE BASILICA · THE SQUARE · THE PALACE · THE CLOISTER · THE GARDENS', solid: 'XhT', wet: 'w', hole: 'q',
         pal: ['cobblestone', 'marble_light', 'marble', 'grass_2', 'dirt_2', 'leaves_3', 'bricks_3', 'gold', 'marble_2', 'dungeon'],
         paint: { c: 1, m: 2, k: 3, o: 9, w: 3, B: 3, s: 2, g: 4, d: 5, h: 6, T: 7, t: 2, X: 7, q: 10 },
-        terrain: "res: 0.875, floor: 'cobblestone', cliff: 'bricks_3', path: 'marble_light', base: 0, noise: { amp: 0.02, scale: 9 }, crag: false,",   // (0.875: a wall's or a hedge's face leans a quarter of a square, not a half)
+        /* THE HORIZON READS THE MAP (2026-11-17, One World foundation): the Vatican stands at world plot -12,-6 (it does not move in v13), so the land past its wall is
+           the map's own: the western forest north, south and west, the Tiber's meadow east, the range far to the north (three-renderer.js _hqEdgeLandFn `world`).
+           It had no `terrain.edges` before (the field's own sheet ran on past the wall). */
+        terrain: "res: 0.875, floor: 'cobblestone', cliff: 'bricks_3', path: 'marble_light', base: 0, noise: { amp: 0.02, scale: 9 }, crag: false, backdrop: false, edges: { world: true, reach: 440 },",   // (0.875: a wall's or a hedge's face leans a quarter of a square, not a half)
         shell: R => "hqVaticanShell({ w: " + R.WM + ", d: " + R.DM + ", fogD: 0.006, plate: " + J(R.plate) + R.atmos() + " })",
         parti: 'The holy city as the real one stands: the Basilica in the west under its dome, the oval Square east of it inside two arcs of columns, the gate in the east wall, the palace north, the cloister south, the gardens behind the apse.' },
     catacombs: { site: 'prebuilt_vatican', part: 'under', mark: 'CATACOMBS', air: { kind: 'dust', color: 0xffe8c0 }, sub: 'THE CRYPT · THE DESCENT · THE LOCULI · THE CISTERN · THE FONT · THE WARM WALL', solid: 'X', wet: 'w', hole: '', plan: true,

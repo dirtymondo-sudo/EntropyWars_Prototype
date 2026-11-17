@@ -21,3 +21,13 @@ mondo's decisions on it:
 - Districts keep every plot and everything on them; only where the plots stand changes.
 - Avalon is scrapped (17 Nov). Names marked "mine" in the page are placeholders by Claude.
 - Numbers: about 1,173 plots in the game today; 577 stay as they are, 596 get re-laid out, 501 are new.
+
+## The foundation (phase 1, built 17 Nov 2026)
+What the zone threads use, all explained in `docs/notes/areas-complexes.md` "ONE WORLD, THE ZONE MOVES":
+- `plots.json` (above): every walkable plot, with the plot id each one has in the game today.
+- data.js `HQ_ZONE_MAP`: every room's world place (`wx, wy`; `wait: 1` = not moved yet), the ground letter of every plot of the
+  disc, and the lookups `hqOwRoom` / `hqOwAt` / `hqOwPast` / `hqOwNear` (a room's neighbours and what lies past each edge).
+- The room-splitting rule: which districts share a room, the seam-id door pairs, how big a room may get.
+- `bake-route.js`: the route kit (highway, road, trail), dressed by each plot's ground kind. Proof: `proof/trail_L3_*.jpg`.
+- `terrain.edges.world`: a room's horizon is the map's own ground, plot by plot. Proof: `proof/edges_from_above.jpg`.
+- `ow-census.js`: the count before and after a move, so nothing on a plot is lost.
