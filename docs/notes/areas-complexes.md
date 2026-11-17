@@ -11994,3 +11994,9 @@ Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/area
   R5 → the Ridge and back, its own seam, → the North Pole and back. Pictures: `/mnt/project-files/north-routes/`.
 - **What looks thin**: R5's tundra is wide flat snow with cairns and a few camps (the ground kit's snow places); worth a dressing pass.
 
+- **FOLLOW-UP (same day, mondo's rule "NPCs never block paths")**: (1) THE SPAWN STANDS BESIDE THE ROAD: `bake-route.js` puts a route room's spawn on the
+  nearest open square 2+ squares clear of the path (was the path's first end square). With open-seam ends a room has no door stops, so every walker
+  arriving or pausing used the spawn: R8's crowd stood in the road at the Ranch end. Rebaked R8 only (walked again: the Ranch end is clear); every other
+  route takes it at its next bake (`spawnOnPath: true` in a spec keeps the old place). (2) R8's CROP CIRCLE is the Estate's `corn_row` now: standing corn
+  a row a square, a circle 31 m across pressed flat, nine rows left standing in a ring inside, `ritual_circle` + a dip at its heart (the Halloween pack's
+  farmland read as grey lumps). Pictures `proof/south_r8_crop.jpg`, `south_r8_corn.jpg`.
