@@ -11389,6 +11389,50 @@ before (the 12 x 12 room of the Highway, squares 0..144; no district file change
   517 / 0.77 M, 679 MB; all far under rule 5 (2,500 / 12 M, 1.4 GB is the line the old 144-plot room already stood near). Pictures:
   `docs/plans/one-world/proof/desert_*.jpg`.
 
+## ONE WORLD, THE SEWERS SPREAD UNDER THE CITY (2026-11-17, BUILD_PLAN phase 3 wave A; the owner's One World Sewers thread)
+mondo 11-17, asked whether the maze should stay one room or spread as the map draws it: "so they're connected by tunnels, but aren't sewers literally
+tunnels? I dont see what the issue is. It basically is still all connected". So the five districts stand at their v13 places (plots.json
+`under.districts` sewW sewT sewH sewO sewR), every plot moved with everything on it by `bake-sewers.js` THE ONE WORLD MOVE (`ow-move.js`), no district
+file edited. The home 6 x 5 frame is still built first and checked (`SEWERS_HOME=1 node bake-sewers.js --dry-run` prints its counts: byte for byte
+the 11-16 room's). FOUR rooms, all `layer: 'under'`, hub `underworld` (its `rooms` list names the four: they share Downtown's site):
+
+| Room | What | World plots | Box | Plots |
+|---|---|---|---|---|
+| `site_prebuilt_downtown_underworld` (the old id, part `underworld`) | THE SEWERS (W) in its 6 x 3 rect as it lay in the plan + THE RUNNING TUNNELS (T) down the column east of it | 3..9 x 4..11 | 7 x 8 | 24 |
+| `site_prebuilt_downtown_ow_cells` | THE HOLDING CELLS: the Guardroom, the Drunk Tank | 1..2 x 1 | 2 x 1 | 2 |
+| `site_prebuilt_downtown_ow_workings` | THE OLD WORKINGS: the Chimney, the Old Workings | 1..2 x 10 | 2 x 1 | 2 |
+| `site_prebuilt_downtown_ow_drain` | THE RADIOACTIVE DRAIN: the Power Station Drain, the Sludge Pit | 10..11 x 1 | 2 x 1 | 2 |
+
+- **W** stands as it lay (home col c, row r -> world 3 + c, 4 + r). The squares H and O held are its three SOLID plots (3,4 · 4,4 · 3,5) and one empty
+  cell (4,5). The Outfall stays under the Docks' Outfall (its fall kept) at 8,7: the one W plot outside the sheet's 6 x 3, inside the room's box.
+- **T, TURNED.** The sheet stands T as a 1 x 6 column (9, 6..11); its line ran west-east. The five plots of the line turn a quarter (270, counter-
+  clockwise, as one rigid piece: the Depot at the top, 9,6; then the Loop Line, the Crossing, the Loop Line, the Ghost Station at 9,10). The Loop
+  Line's south spur (P03-04) stands at its foot, 9,11, NOT turned: the Ghost Station's old west end meets its track square to square. `ow-move.js`
+  learned `turn` for this (a list entry's `turn: 90 | 180 | 270`, clockwise: squares and every piece turn about the plot's middle, a heading `face`,
+  an arch's / building's `rot`, a box's w / d; plots turned and moved alike count as standing the same way, so nothing between them is a stray).
+  Every other caller is unchanged (the Woods and Estate bakes write byte for byte the same data.js).
+- **THE ONE CUT OPENING.** The Depot's Maintenance Hatch stair (its old north side, its west now) climbs into the Docks' Outfall beside it: three
+  squares dug in the Docks' Outfall's east edge, the ramp written as every stair of the plan (`JOINED` in the tool). That is the way from the
+  sewers to the tunnels now. The Culverts' (P04-02) old hatch port is a short dead end.
+- **WHERE PLOTS PARTED, A DOOR** (`PARTED`; the walks of phase 4.4 replace them: U1 W-T, U2 W-H, U3 W-O, U4 W-R, U12 H to the creek's tunnel
+  way): the cell door (Precinct Drain W <-> Drunk Tank E), the trap (Drunk Tank S <-> Old Workings N), the Adit (Storm Drain N <-> Chimney S), the
+  drain stair (the spur P03-04 E <-> Power Station Drain W), the Outfall's doorway (Outfall S <-> Sludge Pit N). Each a door pair with ONE id at both
+  ends (`sew_cell_door`, `sew_trap`, `sew_adit`, `sew_power_stair`, `sew_outfall_door`), on the plot's own port (squares 5..7 of the side): on the
+  room's wall when the side is on it, else free half a square in. The stair / ladder / rope those openings had are gone (the census lists them).
+  **The well at the Junction** lost the Crossing under it (the tunnels stand east now): its port is a dead end; the Crossing's rope is gone.
+- **THE WAYS OUT** moved with their plots (the tool checks every link row): `pump` (the city's sewer door) N wall · `sewers_drain` (Dead Man's
+  Cave's culvert, the Woods' end untouched) W wall z -61.25 · `docks_sewer` / `stadium_sewers` free on their plots' east lines · `tunnels_platform` S
+  wall under the spur · `tunnels_works` E wall at the Loop Line (its old place, the Ghost Station's west end, is the seam to the spur now) ·
+  `well_garden` free in the Loop Line, turned · `cells_dungeon` the Cells' W wall · `workings_oubliette` the Workings' W wall · `sewers_power` the
+  Drain's S wall. Only the Sewers' ends changed; nothing retired (the old id IS the main room).
+- **The census** (`node ow-census.js --diff docs/areas/sewers/move/before.json` + the four rooms): props 1,518 -> 1,518, natives 23 -> 23, lines kept.
+  MISSING = only the tool's own pieces of the parted openings (the cell door's stair, the trap's rope, the Adit's ladder, the well's rope, the drain
+  stair) and `link_tunnels_works` (moved from the Ghost Station to the Loop Line). Extra = the door pairs, the joined stair's rails.
+- **The map:** `node bake-map.js` for the four rooms (pictures `Assets/ui/map/site_prebuilt_downtown_{underworld,ow_cells,ow_workings,ow_drain}.png`).
+- NOT DONE: the walks U1-U4, U5 (T to the D.U.M.B.'s P3), U12 and the Outfall loop U14 (phase 4.4); the creek's tunnel way still leads to DOOR HQ's
+  tunnel (`woods_sewer`), not to the Cells (that is U12's job). The tunnels' own design pass after the turn (signals and boards read for an
+  east-west line are turned with it).
+
 ## ONE WORLD, CAMELOT KINGDOM RE-LAID (2026-11-17, BUILD_PLAN phase 3 wave A; mondo said yes to taking the second side's Camelot rows, plots moved only)
 v13: "castle + village stay; the Snowy Pines north, the Looking-Glass Garden west to the coast, the Fairy Forest east to the Spring, the Forest
 south". `bake-camelot.js` THE ONE WORLD MOVE (`ow-move.js`) writes FIVE rooms in place of the one 8 x 8 room; `node bake-camelot.js --home` still

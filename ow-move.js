@@ -17,7 +17,11 @@
        R.strays                 pieces that lay across two plots which no longer stand the same way to each other (printed by the tool)
        R.toRoom(homeX, homeZ)   a home point -> the room's point (by the plot it stands on), or null
        R.sq(id, lx, ly)         a plot-local square -> the room's square
-   Nothing is turned. A stream row is cut where it leaves the room's plots. A scatter disc wider than a plot (a district's own
+   Nothing is turned, unless a plot's list entry says `turn` (2026-11-17, the Sewers' Running Tunnels: 90, 180 or 270 degrees clockwise,
+   seen from above): its squares, and every piece anchored on it, turn about its middle onto its new place (points, lines, a box's w / d,
+   a heading `face`, an arch's or a building's `rot`). Plots turned and moved alike (a rigid group: the same turn, one line of plots that
+   stays one line) count as standing the same way to each other, so nothing that crosses between them is a stray.
+   A stream row is cut where it leaves the room's plots. A scatter disc wider than a plot (a district's own
    scatter) becomes a row over the whole room with the same count. */
 'use strict';
 const C = 3.5, N = 12, PL = N * C;
@@ -52,11 +56,28 @@ module.exports = function mover(H) {
         return [];
     }
     function shifted(f, dx, dz) {
+        if (dx && typeof dx === 'object') { const e = dx; if (!e.turn) return shifted(f, e.dx, e.dz); return turned(f, e); }
         const o = Object.assign({}, f);
         if (o.x != null && o.z != null) { o.x = r2(o.x + dx); o.z = r2(o.z + dz); }
         if (o.x0 != null) { o.x0 = r2(o.x0 + dx); o.x1 = r2(o.x1 + dx); o.z0 = r2(o.z0 + dz); o.z1 = r2(o.z1 + dz); }
         if (Array.isArray(o.pts)) o.pts = o.pts.map(q => Array.isArray(q) ? [r2(q[0] + dx), r2(q[1] + dz)].concat(q.slice(2)) : Object.assign({}, q, { x: r2(q.x + dx), z: r2(q.z + dz) }));
         if (Array.isArray(o.off)) o.off = [r2(o.off[0] + dx), r2(o.off[1] + dz), r2(o.off[2] + dx), r2(o.off[3] + dz)];
+        return o;
+    }
+    /* a turned plot: every point through the plot's own map (e.map), headings + the turn, a box's w / d swapped on a quarter turn */
+    const TURNED_HEADING = ['face', 'rot'];
+    function turned(f, e) {
+        const o = Object.assign({}, f), m = e.map, q = (e.turn / 90) % 2 === 1;
+        if (o.x != null && o.z != null) { const p = m(o.x, o.z); o.x = r2(p[0]); o.z = r2(p[1]); }
+        if (o.x0 != null) { const a = m(o.x0, o.z0), b = m(o.x1, o.z1); o.x0 = r2(a[0]); o.z0 = r2(a[1]); o.x1 = r2(b[0]); o.z1 = r2(b[1]); }
+        if (Array.isArray(o.pts)) o.pts = o.pts.map(qq => { const P = Array.isArray(qq) ? qq : [qq.x, qq.z], n = m(P[0], P[1]); return Array.isArray(qq) ? [r2(n[0]), r2(n[1])].concat(qq.slice(2)) : Object.assign({}, qq, { x: r2(n[0]), z: r2(n[1]) }); });
+        if (Array.isArray(o.off)) { const a = m(o.off[0], o.off[1]), b = m(o.off[2], o.off[3]); o.off = [r2(Math.min(a[0], b[0])), r2(Math.min(a[1], b[1])), r2(Math.max(a[0], b[0])), r2(Math.max(a[1], b[1]))]; }
+        if (q && o.w != null && o.d != null && o.k !== 'texbuilding' && o.k !== 'arch') { const w = o.w; o.w = o.d; o.d = w; }
+        if (q && o.rz != null && o.r != null && o.k !== 'arch') { const r = o.r; o.r = o.rz; o.rz = r; }
+        /* a heading: a prop's / unit's / climb's / fall's `face`; an arch's or a building's `rot` (both degrees clockwise) */
+        if (o.k === 'arch' || o.k === 'texbuilding') o.rot = ((o.rot || 0) + e.turn) % 360;
+        else if (o.face != null || o.k == null || o.k === 'climb' || o.k === 'fall') o.face = (((o.face || 0) + e.turn) % 360 + 360) % 360;
+        else if (o.rot != null) o.rot = ((o.rot || 0) + e.turn) % 360;
         return o;
     }
     function room(list) {
@@ -68,7 +89,13 @@ module.exports = function mover(H) {
             if (at[col + ',' + row]) throw new Error('ow-move: two plots on ' + p.wx + ',' + p.wy);
             at[col + ',' + row] = e;
             if (h) { e.dx = r2((-RX + col * PL) - (-HX + h.x * PL)); e.dz = r2((-RZ + row * PL) - (-HZ + h.y * PL)); ofHome[h.id] = e;
-                for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) cell[row * N + ly][col * N + lx] = H.cell[h.y * N + ly][h.x * N + lx]; } });
+                e.turn = (((p.turn || 0) % 360) + 360) % 360; if (e.turn % 90) throw new Error('ow-move: turn ' + p.turn + ' (90, 180 or 270)');
+                const ca = Math.round(Math.cos(e.turn * Math.PI / 180)), sa = Math.round(Math.sin(e.turn * Math.PI / 180)), hcx = -HX + (h.x + 0.5) * PL, hcz = -HZ + (h.y + 0.5) * PL, ncx = -RX + (col + 0.5) * PL, ncz = -RZ + (row + 0.5) * PL;
+                e.map = (x, z) => { const u = x - hcx, v = z - hcz; return [ncx + u * ca - v * sa, ncz + u * sa + v * ca]; };
+                /* the sign of the plot's map: two plots with the same turn and the same image of (0, 0) stand the same way to each other */
+                { const o = e.map(0, 0); e.sig = e.turn + ':' + r2(o[0]) + ':' + r2(o[1]); }
+                for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const c0 = lx - 5.5, c1 = ly - 5.5, tx = Math.round(c0 * ca - c1 * sa + 5.5), ty = Math.round(c0 * sa + c1 * ca + 5.5);
+                    cell[row * N + ty][col * N + tx] = H.cell[h.y * N + ly][h.x * N + lx]; } } });
         const mine = (x, z) => { const h = homePlot(x, z); return h ? ofHome[h.id] || null : null; };
         const order0 = list.map(p => at[(p.wx - wx) + ',' + (p.wy - wy)]);
         const strays = [], features = [], props = [], npc = [], doors = [];
@@ -78,7 +105,7 @@ module.exports = function mover(H) {
             if (f.k === 'scatter' && f.x == null) return;                   // a row over the whole home room is the tool's: written again
             if (f.k === 'stream' && Array.isArray(f.pts)) {                 // cut where it leaves the room's plots; each run moves with its own plot
                 let run = [], e0 = null; const flush = () => { if (run.length >= 2) features.push(Object.assign({}, f, { pts: run })); else if (run.length === 1) strays.push('a stream point alone on ' + e0.name + ' (dropped: a one-point run draws nothing)'); run = []; };
-                f.pts.forEach(q => { const p = pt(q), e = mine(p[0], p[1]); if (!e) { flush(); e0 = null; return; } if (e0 && (e.dx !== e0.dx || e.dz !== e0.dz)) flush(); e0 = e; run.push([r2(p[0] + e.dx), r2(p[1] + e.dz)]); });
+                f.pts.forEach(q => { const p = pt(q), e = mine(p[0], p[1]); if (!e) { flush(); e0 = null; return; } if (e0 && (e.sig !== e0.sig)) flush(); e0 = e; run.push(e.turn ? e.map(p[0], p[1]).map(r2) : [r2(p[0] + e.dx), r2(p[1] + e.dz)]); });
                 flush(); return; }
             if ((f.k === 'rail' || f.k === 'wall') && f.x0 != null) {         // a fence: cut at every plot line it crosses, each run moves with its own plot; one that lies ON a line is the north / west plot's
                 const onX = Math.abs(f.x0 - f.x1) < 1e-6 && Math.abs(((f.x0 + HX) / PL) - Math.round((f.x0 + HX) / PL)) < 1e-6, onZ = Math.abs(f.z0 - f.z1) < 1e-6 && Math.abs(((f.z0 + HZ) / PL) - Math.round((f.z0 + HZ) / PL)) < 1e-6;
@@ -87,28 +114,29 @@ module.exports = function mover(H) {
                 for (let i = 1; i < H.rows; i++) { const Z = -HZ + i * PL, t = (Z - f.z0) / (f.z1 - f.z0); if (isFinite(t) && t > 0.02 / len && t < 1 - 0.02 / len) ts.push(t); }
                 ts.sort((p, q) => p - q);
                 for (let i = 0; i + 1 < ts.length; i++) { const t0 = ts[i], t1 = ts[i + 1], mx = f.x0 + (f.x1 - f.x0) * (t0 + t1) / 2 - (onX ? 0.01 : 0), mz = f.z0 + (f.z1 - f.z0) * (t0 + t1) / 2 - (onZ ? 0.01 : 0), e = mine(mx, mz); if (!e) continue;
-                    features.push(shifted(Object.assign({}, f, { x0: r2(f.x0 + (f.x1 - f.x0) * t0), z0: r2(f.z0 + (f.z1 - f.z0) * t0), x1: r2(f.x0 + (f.x1 - f.x0) * t1), z1: r2(f.z0 + (f.z1 - f.z0) * t1) }), e.dx, e.dz)); }
+                    features.push(shifted(Object.assign({}, f, { x0: r2(f.x0 + (f.x1 - f.x0) * t0), z0: r2(f.z0 + (f.z1 - f.z0) * t0), x1: r2(f.x0 + (f.x1 - f.x0) * t1), z1: r2(f.z0 + (f.z1 - f.z0) * t1) }), e)); }
                 return; }
             const a = anchor(f); if (!a) { strays.push(tell(f) + ' has no place: left where it was'); return; }
             const e = mine(a[0], a[1]); if (!e) return;
-            const together = f.k === 'scatter' && f.r > PL / 2 && [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(q => { const o = mine(Math.max(-HX + 1, Math.min(HX - 1, a[0] + q[0] * f.r * 0.7)), Math.max(-HZ + 1, Math.min(HZ - 1, a[1] + q[1] * f.r * 0.7))); return o && o.dx === e.dx && o.dz === e.dz; });
+            const together = f.k === 'scatter' && f.r > PL / 2 && [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(q => { const o = mine(Math.max(-HX + 1, Math.min(HX - 1, a[0] + q[0] * f.r * 0.7)), Math.max(-HZ + 1, Math.min(HZ - 1, a[1] + q[1] * f.r * 0.7))); return o && o.sig === e.sig; });
             if (f.k === 'scatter' && f.r > PL / 2 && !together) {            // a district's own scatter whose plots stand apart now: a disc a plot of that district, the count shared out (the same total)
                 const mine2 = order0.filter(o => o.district === e.district && o.home), n = f.n || 1; let left = n;
                 mine2.forEach((o, i) => { const k = i === mine2.length - 1 ? left : Math.round(n / mine2.length); left -= k; if (k <= 0) return;
                     const row = Object.assign({}, f, { n: k, seed: (f.seed || 0) + i * 7, x: r2(-RX + o.col * PL + PL / 2), z: r2(-RZ + o.row * PL + PL / 2), r: 23 });
-                    if (Array.isArray(row.off)) { const q = mine((f.off[0] + f.off[2]) / 2, (f.off[1] + f.off[3]) / 2) || e; row.off = shifted({ off: f.off }, q.dx, q.dz).off; }
+                    if (Array.isArray(row.off)) { const q = mine((f.off[0] + f.off[2]) / 2, (f.off[1] + f.off[3]) / 2) || e; row.off = shifted({ k: 'off', off: f.off }, q).off; }
                     row.wide = 1; features.push(row); });
                 return; }
-            const bad = reach(f).map(q => { const h = homePlot(q[0], q[1]), o = h && ofHome[h.id]; return (o && o.dx === e.dx && o.dz === e.dz) ? null : (h ? h.name : '?'); }).filter(Boolean);
+            const bad = reach(f).map(q => { const h = homePlot(q[0], q[1]), o = h && ofHome[h.id]; return (o && o.sig === e.sig) ? null : (h ? h.name : '?'); }).filter(Boolean);
             if (bad.length) strays.push(tell(f) + ' on ' + e.name + ' also lies on ' + [...new Set(bad)].join(', '));
-            features.push(shifted(f, e.dx, e.dz));
+            features.push(shifted(f, e));
         });
-        (H.props || []).forEach(p => { const e = mine(p.x || 0, p.z || 0); if (e) props.push(shifted(p, e.dx, e.dz)); });
-        (H.npc || []).forEach(n => { const e = mine(n.x || 0, n.z || 0); if (e) npc.push(shifted(n, e.dx, e.dz)); });
+        (H.props || []).forEach(p => { const e = mine(p.x || 0, p.z || 0); if (e) props.push(shifted(p, e)); });
+        (H.npc || []).forEach(n => { const e = mine(n.x || 0, n.z || 0); if (e) npc.push(shifted(n, e)); });
         /* a door: on a wall of the home room (x or z along it) or free. Its plot's side either lies on the new room's wall or it does not */
         (H.doors || []).forEach(d => {
             const hx = d.wall === 'w' ? -HX + 0.5 : d.wall === 'e' ? HX - 0.5 : d.x, hz = d.wall === 'n' ? -HZ + 0.5 : d.wall === 's' ? HZ - 0.5 : d.z, e = mine(hx, hz); if (!e) return;
-            if (d.wall === 'free') { doors.push(shifted(d, e.dx, e.dz)); return; }
+            if (d.wall === 'free') { doors.push(shifted(d, e)); return; }
+            if (e.turn) throw new Error('ow-move: a wall door (' + d.id + ') on a turned plot: write it again in the new room');
             const onWall = (d.wall === 'n' && e.row === 0) || (d.wall === 's' && e.row === rows - 1) || (d.wall === 'w' && e.col === 0) || (d.wall === 'e' && e.col === cols - 1), o = Object.assign({}, d);
             if (d.wall === 'n' || d.wall === 's') { o.x = r2(d.x + e.dx); if (!onWall) { o.z = r2((d.wall === 'n' ? -HZ + C / 2 : HZ - C / 2) + e.dz); o.face = d.wall === 'n' ? 180 : 0; o.wall = 'free'; o.passage = Object.assign({}, FREE_PASS, d.passage || {}); } }
             else { o.z = r2(d.z + e.dz); if (!onWall) { o.x = r2((d.wall === 'w' ? -HX + C / 2 : HX - C / 2) + e.dx); o.face = d.wall === 'w' ? 90 : 270; o.wall = 'free'; o.passage = Object.assign({}, FREE_PASS, d.passage || {}); } }
@@ -121,8 +149,9 @@ module.exports = function mover(H) {
             names: order.map(e => [pid(e), e.name, e.district, e.level]),
             gx: c => r2(-RX + c * C), gz: c => r2(-RZ + c * C), gcx: c => r2(-RX + (c + 0.5) * C), gcz: c => r2(-RZ + (c + 0.5) * C),
             plotOfSq: (sx, sy) => (sx < 0 || sy < 0 || sx >= W || sy >= D) ? null : (at[Math.floor(sx / N) + ',' + Math.floor(sy / N)] || null),
-            toRoom: (x, z) => { const e = mine(x, z); return e ? [r2(x + e.dx), r2(z + e.dz)] : null; },
-            sq: (id, lx, ly) => { const e = ofHome[id]; if (!e) throw new Error('ow-move: ' + id + ' is not in this room'); return [e.col * N + lx, e.row * N + ly]; },
+            toRoom: (x, z) => { const e = mine(x, z); return e ? (e.turn ? e.map(x, z).map(r2) : [r2(x + e.dx), r2(z + e.dz)]) : null; },
+            mapOf: (x, z) => mine(x, z),
+            sq: (id, lx, ly) => { const e = ofHome[id]; if (!e) throw new Error('ow-move: ' + id + ' is not in this room'); if (e.turn) { const ca = Math.round(Math.cos(e.turn * Math.PI / 180)), sa = Math.round(Math.sin(e.turn * Math.PI / 180)), c0 = lx - 5.5, c1 = ly - 5.5; lx = Math.round(c0 * ca - c1 * sa + 5.5); ly = Math.round(c0 * sa + c1 * ca + 5.5); } return [e.col * N + lx, e.row * N + ly]; },
             /* THE LEVELS, laid again: the Woods' own rule (flat over a plot's middle four squares, a straight grade over the eight squares to the
                next plot's middle) on the plots as they stand now; a cell of the box that is no plot takes the level of the nearest plot */
             levels(LEVEL) { const lv = [];
@@ -144,5 +173,5 @@ module.exports = function mover(H) {
             seamId(e, side) { const mm = v => (v < 0 ? 'm' + (-v) : '' + v); return side === 'E' ? 'ow_v_' + mm(e.wx + 1) + '_' + mm(e.wy) : side === 'W' ? 'ow_v_' + mm(e.wx) + '_' + mm(e.wy) : side === 'S' ? 'ow_h_' + mm(e.wx) + '_' + mm(e.wy + 1) : 'ow_h_' + mm(e.wx) + '_' + mm(e.wy); },
         };
     }
-    return { room, homePlot, anchor, shifted, C, N, PL, FREE_PASS };
+    return { room, homePlot, anchor, shifted, turned, C, N, PL, FREE_PASS };
 };
