@@ -2945,7 +2945,7 @@ const RACE_PROFILES = {
         types: ['human']
     },
     'boltzmann brain': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
-        label: 'Boltzmann Brain',
+        label: 'Floating Brain',   // mondo 11-17: renamed from Boltzmann Brain (the id stays 'boltzmann brain')
         types: ['alien', 'anomaly']
     },
     'wendigo': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
@@ -23303,7 +23303,7 @@ const SPELL_FAMILIES = {
         kind: 'signature',
         desc: 'A random thought in an empty universe: a spike of thought, a dread that spreads, a vacuum that collapses, and the one look that holds it still.',
         unique: 'boltzmann brain',
-        identity: { who: ['Boltzmann Brain', 'Fluctuation', 'Floating Mind'], adj: ['Spontaneous', 'Improbable', 'Staring'], look: ['a glowing floating brain', 'one huge staring eye', 'dangling nerve tendrils'], vibe: ['is somewhere else every round', 'thinks you out of existence'] }
+        identity: { who: ['Floating Brain', 'Fluctuation', 'Boltzmann Brain'], adj: ['Spontaneous', 'Improbable', 'Staring'], look: ['a glowing floating brain', 'one huge staring eye', 'dangling nerve tendrils'], vibe: ['is somewhere else every round', 'thinks you out of existence'] }
     },
     wendigo: {   // 2026-11-17 THE NEW RACES 2 — the Wendigo's own
         id: 'wendigo',

@@ -5820,3 +5820,6 @@ residents in their zones.
   slips, LATE FEE stamp; OVERDUE stamp + red ring on a Silenced foe). Probe 11-17 (real TDM, 0 page errors): Shush silenced, cd 2;
   Late Fee 557 on the silenced Knight vs 343 plain; Overdue renewed Hurricane Party (3 foes hit + Wet, 75 MP, cd 3) and Sponsored
   (+2 ATK/INT on the ally). Proof /mnt/project-files/librarian-polish/.
+- **THE FLOATING BRAIN (mondo 11-17, "can we name it something else ... Floating Brain, Sentient Brain ..."):** the Boltzmann Brain shows
+  as **Floating Brain** (RACE_PROFILES label, the race blurbs in ui.js + party-builder.js, the fluctuation family's names). The race id
+  stays `'boltzmann brain'` (saves, server lists, R2 folders, every table key); code comments keep the old name.
