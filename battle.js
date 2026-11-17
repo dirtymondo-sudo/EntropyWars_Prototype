@@ -27880,7 +27880,7 @@
         const _AC_LOOK_RACES = {
             'influencer': 'influencer', 'televangelist': 'telethon', 'magician': 'magician',
             'quarterback': 'qb', 'chess piece': 'chess', 'bigfoot': 'trailcam', 'mothman': 'trailcam', 'cowboy': 'western',
-            'swordfighter': 'anime', 'karate frog': 'kungfu', 'cursed tv': 'crt',
+            'swordfighter': 'anime', 'karate frog': 'kungfu', 'cursed tv': 'crt', 'delivery boy': 'delivery',
         };
         const _AC_LOOK_GRADE = { trailcam: 'desat', western: 'sepia', kungfu: 'sepia' };
         const _AC_LOOK_TEXT = {
@@ -27931,6 +27931,15 @@
                 'Tongue Lash': ['THE 36 CHAMBERS OF THE TONGUE', 'You dare insult… my tongue?!', 'mouth keeps moving'],
                 'Flying Kick': ['ENTER THE FROG', 'Hi-YAAAH!', 'mouth still moving, no sound'],
                 _: ['ENTER THE FROG', 'Your kung fu is weak!', 'mouth keeps moving'],
+            },
+            /* the delivery app (mondo 11-17 "yes"): [the card's headline, the step lit (0 placed · 1 cooking · 2 on the way · 3 delivered),
+               the ETA clock's start in seconds (it counts down across the shot), the driver's note] */
+            delivery: {
+                'Hot and Fresh': ['Your order has arrived! 🍕', 3, 0, 'still hot (allegedly)'],
+                'Hop On': ['Your driver picked up a passenger', 2, 720, 'your order is riding shotgun'],
+                'Doorstep Dash': ['Your order is almost there!', 2, 29, 'running late'],
+                'Thirty Minutes or Less': ['Guaranteed in 30 minutes or less', 1, 1800, 'or it\u2019s free*'],
+                _: ['Your order is on the way', 2, 300, 'on his way'],
             },
             crt: { 'Static Burst': '3', 'Emergency Broadcast': '00', 'Fast Forward': '4', 'Rewind': '4', _: '3' },
         };
@@ -28023,6 +28032,18 @@
                 return { cls: 'lk-bars', top: `<div class="lk-kf-dub">ENGLISH DUBBED</div>`,
                     bot: `<div class="lk-kf-sub"><span class="s1">${E(L[1])}</span><span class="s2">[${E(L[2])}]</span></div>`,
                     free: `<div class="lk-film"></div><div class="lk-kf-title">${E(L[0])}</div>` };
+            case 'delivery': {
+                const st = Math.max(0, Math.min(3, L[1] | 0)), labels = ['Placed', 'Cooking', 'On the way', 'Delivered'];
+                const fmt = sec => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+                const steps = labels.map((t, i) => `<div class="${i <= st ? 'on' : ''}"></div>`).join('');
+                const lbls = labels.map((t, i) => `<span class="${i === st ? 'c' : ''}">${t}</span>`).join('');
+                const end = Math.max(0, (L[2] | 0) - 3 - (h % 5));
+                return { cls: 'lk-bars', top: '<div class="lk-dl-app">🛵 <b>Entropy</b>Eats</div>',
+                    bot: `<div class="lk-dl-card"><div class="h"><b>${E(L[0])}</b><span class="eta" ${L[2] ? `data-clock-from="${L[2] | 0}" data-clock-to="${end}"` : ''}>${L[2] ? fmt(L[2] | 0) : 'NOW'}</span></div>
+                        <div class="steps">${steps}</div><div class="lbl">${lbls}</div>
+                        <div class="drv"><span class="who">🛵 <b>Delivery Boy</b> <i>★★★★☆</i> <em>· ${E(L[3])}</em></span>
+                        <span class="tip"><span>15%</span><span class="s">20%</span><span>25%</span></span></div></div>` };
+            }
             case 'crt':
                 return { free: `<div class="lk-crt-glass"></div><div class="lk-crt-bezel"></div>
                     <div class="lk-crt-osd ch">CH ${E(L)}</div><div class="lk-crt-osd nm">${n}</div>
@@ -28030,7 +28051,7 @@
             }
             return null;
         }
-        const _AC_LOOK_KEYS = ['influencer', 'telethon', 'magician', 'qb', 'chess', 'trailcam', 'western', 'anime', 'kungfu', 'crt'];
+        const _AC_LOOK_KEYS = ['delivery', 'influencer', 'telethon', 'magician', 'qb', 'chess', 'trailcam', 'western', 'anime', 'kungfu', 'crt'];
         function _acApplyLook(el, opts, totalMs) {
             _AC_LOOK_KEYS.forEach(k => el.classList.remove('lk-' + k));
             el.classList.remove('lk-on', 'lk-bars', 'lk-flashback');
@@ -28050,6 +28071,18 @@
                     if (!n.isConnected) return;
                     const k = Math.min(1, (performance.now() - t0) / Math.max(400, totalMs * 0.8));
                     n.textContent = pre + Math.round(a + (b - a) * (1 - Math.pow(1 - k, 3))).toLocaleString('en-US');
+                    if (k < 1) requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+            });
+            /* the countdown clocks (the delivery app's ETA): m:ss, down across the shot */
+            el.querySelectorAll('[data-clock-from]').forEach(n => {
+                const a = +n.dataset.clockFrom || 0, b = +n.dataset.clockTo || 0, t0 = performance.now();
+                const step = () => {
+                    if (!n.isConnected) return;
+                    const k = Math.min(1, (performance.now() - t0) / Math.max(400, totalMs * 0.8));
+                    const v = Math.round(a + (b - a) * k);
+                    n.textContent = Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0');
                     if (k < 1) requestAnimationFrame(step);
                 };
                 requestAnimationFrame(step);
