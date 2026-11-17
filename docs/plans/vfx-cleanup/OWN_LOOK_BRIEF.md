@@ -2,8 +2,12 @@
 
 mondo, 2026-11-17: "any spells that dont have a look of their own need one, start a thread or multiple threads to give them."
 
-**The job.** 240 castable spells have no look of their own: at the hit they only draw the shared stage burst (a ring, a
-flash, sparks in their archetype's colour) plus, some of them, a plain particle recipe. Each one gets a look that says
+**The job.** 240 castable spells have no SPELL-SPECIFIC look. About 62 are truly bare (no element: only the shared stage
+burst and maybe a plain particle recipe): do those first. About 129 carry an element whose pass already gives them the
+element's look (fire `_fpStage`, ice `_ivStageBurst`, water `_wvMark`, nature `_npStage`, wind `_wdStage`, metal
+`_mtlStage`, earth `_eaStage`, sonic `_snStage`, blood, psychic, + the noise wash): that pass is their base, keep it, never
+cover or duplicate it, add only the piece that makes it THIS spell, and if it already reads as this spell leave it
+("no change needed"). Each one gets a look that says
 what THIS spell is: its name, its line of description, its race, its weapon or prop, its element.
 (75 more are waiting for the beam kit and the portal kit, plan batches B3 / B4 / B5; they are not in these lists.)
 
