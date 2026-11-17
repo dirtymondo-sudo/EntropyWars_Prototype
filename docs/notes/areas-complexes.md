@@ -11857,6 +11857,63 @@ Proposal + mock-ups: `/mnt/project-files/space-round-planets/`.
   are flat today; a fight on a ball is not checked yet); the lighting on a far face uses the flat normals; NPCs that wander over a
   cut seam are not carried; the map picture (`Assets/ui/map/site_prebuilt_moon_plots.png`) shows the flat nets.
 
+## OUTER SPACE, FAR APART + BIGGER — the worlds spread out, grown, opened and dressed (2026-11-17, mondo's Outer Space spacing + look session)
+mondo 11-17: "Go ahead and make outerspace better. The planets are way too close together. There is a ridge or mountain range on one of
+them that looks leftover from the boundaries of a square perimeter, the whole planet should be walkable outside of things that are actually
+meant to be walls/barriers. The planets also dont really look that good right now, and i wouldnt mind if they were bigger, especially
+relative to each other (saturn should be bigger than the moon obviously). Just keep improving and iterating on outerspace."
+- **BIGGER (space-ball.js ROUNDS).** The Moon keeps 24 squares a face (R 53 m). Mars 36 -> 48 (R 107 m, twice the Moon as it is), the
+  Singularity 36 -> 48 (R 107 m), Saturn 48 -> 96 (R 214 m, four Moons). The flat maps and the district files are untouched: a bigger
+  ball has more open ground round the same map. The Earth under Low Orbit is 290 m (was 55 m, smaller than the Moon).
+- **FAR APART (bake-space.js SYS + ROUNDC, `space.box`).** The nets (the walk's ground, never drawn where they lie) are packed in a room
+  of 46 x 19 plots: Saturn [1,1], Mars [26,1], the Singularity [26,10], the Moon [39,10], Low Orbit [42,3]. The balls hang in a box of
+  open space far bigger than the room, `space.box` { x0 -1750, x1 1500, z0 -1350, z1 1750, y0 -260 }, ceiling 890 m: the box is the
+  ship's limit now, not the room's sides (three-renderer.js _hqShipHullFree; `_hqRoomExtentM` holds the box, so the sky ring and the far
+  plane stand past it). Middles: the Moon (640, 210, 60), Mars (60, 300, -640), the Singularity (-150, 120, 1050), Saturn (-950, 400, 300).
+  From the berth (819, 0, -252): the Moon 420 m, Mars 900 m, the Singularity 1,600 m, Saturn 1,900 m (before: 150 to 400 m between any two).
+  The Sun stands far off east and high (2760, 1210, 1725; it was under the middle), and the balls' daylight comes from it.
+- **THE SHIP.** v 34 -> 46 m/s, up / down 14 -> 22, and SHIFT (the walk's run key) is THE BURNER, x 3.4, for the long legs (Saturn from
+  the berth in about 12 s). The two hints say SHIFT BURNER. Viewer-local as before, nothing relayed.
+- **OPENED (the walls nobody meant).** (1) The Moon's LIMB is gone: a straight rock ridge three squares thick down the whole net
+  (draw-space.js moon()), the old line between the far side and the Mare; on a ball it was a wall across the world. (2) Saturn's STORM
+  WALLS are gone (`xToFill`): on the ball they were a square crown of grey rock round the pole, and they shut 80 plots off. The cloud deck
+  is walked all the way round now (384 plots named, was 64) and two ramps climb from it onto the rim walk, north and south of the
+  Hexagon. The plots keep their names ("The Storm Walls, north" ...). (3) Low Orbit's rock rim is gone (a square ridge round the berth).
+  What still blocks is what was built to block: the terrace's side rocks, the crater's peak, the mesas, the pyramid, the ring shard.
+- **THE LOOK (three-renderer.js _hqBuildSpace).** Saturn's deck is sand gold with pale cloud belts by latitude (ROUNDS.saturn.band, the
+  square char `b`; it wore mars_2, a brown ball). Its rings are drawn sheets, the C, B and A rings with the dark division, inner edge
+  out (they were one flat beige disc); the Singularity's disc burns white at the hole to red at its rim, additive. THE NIGHT SIDE: a
+  dark veil over the half of each ball turned from the Sun (the bent ground is lit with flat normals, so a far ball read as a flat
+  disc); it clears the ground by what the depth buffer can tell apart at that distance and fades out as you come down. A thin edge of
+  air on Mars, Saturn and the Earth; the Earth has cloud. Every world's NAME hangs over it, the same size on screen at any distance.
+  A beacon's name plate shows within about 430 m only (from far off three 40 m black plates barred the small Moon).
+- **THE BODIES FOLLOW THE ANCHOR (`H._spaceBodies`, _hqSpaceBodiesTick).** Every ball, ring, veil, halo, the Earth and the Sun hang in
+  one group that takes the walker's anchor turn (out = P + M (x - A)), as the bent ground does in the shader. Before, standing on any
+  world, every ring and the Earth stayed where they hung while the balls turned away from them: Saturn seen from the Moon had no ring.
+  Standing on Saturn's cloud deck the rings now arch over you.
+- **THE SKY.** `sky.scenery: 'deepspace'` (new roster, _hzThemeRoster): `space` without its model planets, star and small solar system
+  (a cartoon ringed planet drifting among the real worlds read as one more of them). Fog density 0.0015 -> 0.0004 (Saturn went grey at 2 km).
+- **THE STEP OFF AT A BEACON.** _hqDisembark's pick (fore of the hull) was the collar door's own square: the walker stood inside the door's
+  block and the screen was black until he walked. _hqShipLand now stands him two squares out on the door's open side, the eye looking
+  back at the ship and the collar.
+- **THE GROUND'S COST.** `terrain.res` 0.875 -> 1.75 and `terrain.tileM: 168` (new, read by _hqTerrainTiles: this room's ground is never
+  left out by the frustum, so 32 m tiles were 1,200 draws a frame). Measured in the cloud browser, on the Moon: 5.27 M triangles /
+  1,679 calls before -> 3.04 M / 1,074 after, with 2.6 times the ground.
+- **THE SEAMS.** Two pale lines along every cut seam of a ball are gone: the void square beside a net wears its neighbour's sheet
+  (bake-space.js compose; the paint blends half a square), and the last line of a net is no cliff (the 60 m fall to the void painted
+  the cliff sheet there: three-renderer.js `plEdge`).
+- **THE EIGHT SHEETS** now: desert, cloud_thick, mars, mars_2, moon_3, the metal plate, obsidian, crystal (moon_2 gives way to moon_3;
+  desert is its own again: Saturn's deck and Mars' dunes).
+- **`node bake-space.js --rows`** (new): moves the rows in data.js that name a place in this room (the links' world ends, the four bays,
+  the area marker) to where the worlds stand now; without it they are only checked, as before.
+- **Probe:** `ThreeRenderer.hq.dev.hqCam()` = the walk's camera. A ship view needs the ship's `yaw` (sin, cos) AND `camYaw` (the heading,
+  atan2(dx, -dz)). A beacon skips the ship that was put inside its ring in the same call as boarding (it reads as "took off from here").
+- **Seen on screen** (playtest_city.js, llvmpipe): the Moon's far side with no ridge, Saturn's deck with the rings overhead and the
+  Hexagon open, Mars, the Singularity's rim after a beacon landing, the berth, every world from the ship. **Not checked:** a fight on
+  the bigger balls, NPCs over a seam (as before), the frame rate on a real machine, mondo's Firefox.
+- **DECISIONS MADE FOR MONDO:** the sizes (Mars = 2 Moons, Saturn = 4); Saturn's storm walls opened (they were the old thread's wall,
+  but a square of rock on a ball); the burner on SHIFT; the fake sky planets out of this room.
+
 ## ONE WORLD 4.4, THE UNDERGROUND WALKS + THE FREIGHT LINE (2026-11-17, BUILD_PLAN phase 4 row 4.4, the owner's thread)
 What the map's `under.walks` asked for, and where each one is now (plots.json is the list; the plot names on the walks are mine, marked):
 - **THE SEWERS ARE ONE ROOM AGAIN** (`site_prebuilt_downtown_underworld`, 17 x 16 plots, mask in the room): the walks U1-U5 + U14 are plots
@@ -11963,6 +12020,36 @@ shared hand pieces `docs/areas/routes/south-kit.js`). Every route is its OWN roo
   (cut there in R9.js). Seen, not fixed: on R8 a group of wandering units stood on the road by the Ranch end and blocked the first walk (walked one
   lane over); the crop circle's pieces read as grey lumps from the ground. Pictures: `docs/plans/one-world/proof/south_*.jpg` (`south_join_*` = the
   room reached). PROBE LESSON: `dev.teleport`'s `face` is a compass heading, 0 = north (-z), 90 = east, 180 = south, 270 = west (NOT a door's face).
+
+## OUTER SPACE, PASS 2 — no panels, no pilot, no square, the Cube over Saturn, a real black hole (2026-11-17, mondo's Outer Space session)
+mondo 11-17, on the first pass: "Why ... are there 2 panels that say 'the spaceship' and they are both crowded with ai slop text and
+controls. Remove the clutter, dont need the controls. 2nd of all if i am flying the spaceship then we dont need the ... character model
+standing up and clipping through it. In the last screenshot you sent, I still see a square map, wtf is that. Its supposed to be a planet.
+Also the Saturnian Cubes are a huge piece of lore and combat in this game, so saturn need to be a lot more epic and detailed and have an
+ominous floating black cube above it's hexagonal storm at the pole. The singularity looks too much like Jupiter. Really they all need
+another pass because they do not look good from afar."
+- **NO PANELS ABOARD (his rule now: no control text on the flown ship).** map.js: no toast on boarding the ship, and `_hqSetPrompt` shows
+  nothing for the aboard prompt of a ship (E still steps off). The moored ship's prompt has no sub line; LANDED names the place only.
+- **NO PILOT.** The walker's own tick (three-renderer.js, `ch.kind === 'player'`) drew the body again every frame after the helm hid it:
+  it now stays out while a ship is flown.
+- **NO SQUARE: THE BERTH IS ON THE MOON.** "Low Orbit", a flat square plot of rock with the ship on it, is gone. The pad is on the top of
+  the Moon (draw-space.js moon(): squares 62..67 x 27..32, plot "The Berth", was "The Top"); `ship_stick` and `orbit_derelict` are the
+  Moon's own ways; the beacon `orbit` reads THE MOON · THE BERTH and carries `ball` / `up`. Nothing in the room is flat any more
+  (`space.mesas` is empty).
+- **SATURN.** THE BLACK CUBE: the Main Hall's cube (its black, its lit glyphs, `_hqGlyphTexture`), 72 m a side, standing on a corner
+  170 m over the north pole, turning slowly, a thin shaft of its light down into the storm's eye (three-renderer.js _hqBuildSpace,
+  `rec.cube`). Seen from every world; in the Hexagon it hangs over your head. THE HEXAGON STORM: six-sided rings of cloud round the
+  pole out to 47 degrees north with two black walls of storm (`k`), then belts in three tones (gold `.`, pale `b`, dark `d` = mars_2)
+  with white ovals in the dark belts and a dark south cap (space-ball.js ROUNDS.saturn.band, SAT_BELTS, SAT_OVALS). All walked.
+- **THE SINGULARITY IS A BLACK HOLE.** From afar a black disc edge to edge (`LOOK.singularity.hole`: a sheet held before the ball, so no
+  lit obsidian shows), a thin white ring of bent light round it, and a disc that is one smooth fall from white to deep red torn by
+  winding streaks, turning slowly (it was banded like a planet's rings). The sheet fades as you come down; the ground is as before.
+- **FROM AFAR.** THE LIMB: every other ball has a sheet held between the eye and it, clear in the middle, dark to the edge, sized
+  each frame to the ball's outline (_hqSpaceBodiesTick), so it reads as a ball from every side. Mars has white caps (`w`) and dark
+  country (`d`); the Moon has maria (`d`), read on the ball so they cross the seams.
+- **Seen on screen:** the berth on the Moon, the Cube from space and from the Hexagon, the hole, all four from 2.4 km with no panel and
+  no pilot. **Not checked:** the frame rate on a real machine; the Cube has no part in a fight yet (it is a sight).
+
 ## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
 Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
 `ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).
