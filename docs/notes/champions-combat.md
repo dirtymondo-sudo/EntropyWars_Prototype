@@ -5713,6 +5713,23 @@ dormant / bodiless):
 - 🦌 Wendigo, THE HUNGER: a round in which it dealt no damage to an enemy (unit._fedRound, set in applyDamageToUnit) costs it 8%
   max HP at the round end, never below 1 (`_wendigoHunger`).
 - 🐸 Karate Frog, LEAPFROG: `leapOver` (in _runPostEffects + spellMovesCaster) lands him on the square straight behind the target.
+  **THE KARATE FROG PASS (2026-11-17, thread "Polish Karate Frog spells and VFX", mondo: "flesh out their unique spells and spell
+  animations/vfx and make sure that any new mechanics are tested out and work as intended"):** no rule invented, no number changed
+  (his stats sit on the bruiser median, the three rows in line with the T1-T3 strikes). (1) The landing is one picker,
+  battle.js `frogLeapLanding(unit, target)` (window): the square straight behind on his line; `blocked` 'off' / 'taken' / 'high'
+  (a ledge higher than getUnitJumpClimb over where he stands: the jump rule; drops are free). _frogLeapOver and THE FORECAST
+  (forecastSpellPlan, `addMove(unit, …, 'self')`) read it, so the preview shows where he lands. (2) The vault rides the relayed
+  escape path `frogleap` (three-renderer.js _ESC_STYLES / _escStyleAt: a squat, 1.25 squares up over the body, a bent-leg landing),
+  160 ms after the hit: the old `leap: true` never reached the online guest (the displace relay carries escStyle, not leap), who
+  saw a flat glide through the victim. (3) A frog swims: map.js unitIsDeepWaterAdapted lists 'karate frog' (a CPU match had Flying
+  Kick carry both frogs into deep water and drown them). (4) Animations: Leapfrog = `roundhouse` (Roundhouse_Kick), Tongue Lash =
+  `jab` (the tongue snaps out on it), Flying Kick = `flyKick` (Rising_Flying_Kick, the clip carries him, like Sky Tackle); a rig
+  without the clip runs the new `chargeStyle: 'flykick'` path (data field, both charge paths in battle.js; relayed).
+  Also fixed: `kickflip` was missing from _ESC_STYLES, so the Skater's ollie fell back to the plain vault.
+  Probes (VS CPU, real doSpell, /mnt/project-files/karate-frog-pass/): Tongue Lash 4 → pulled 3 to beside him (269); Leapfrog 325
+  + lands behind (Man-at-Arms shrugs off Stagger); Flying Kick 331 + carry + collision 88 + the chain rebound; Rooted greys Leapfrog
+  and Flying Kick. Two CPU frogs, 6 rounds of training tempo: 9 casts of all three, Leapfrog sets up BACKSTAB basic attacks (he
+  lands behind), 0 page errors. Looks: spells-vfx.md "THE KARATE FROG".
 - 🐌 Samurai Slug, THE SLIME TRAIL: every square he walks off becomes Black Ooze (`swamp`) for 2 rounds (`_slugTrail`, finishMoveAt).
   THE SAMURAI SLUG POLISH (2026-11-17, mondo: "flesh out their unique spells ... make sure that any new mechanics are tested out and
   work as intended"). The playstyle: THE SLIME ROAD. The ooze is his: he crosses Black Ooze at a plain step's cost (state.js
@@ -5751,6 +5768,23 @@ Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo ha
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
 (cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
+- **THE BOLTZMANN BRAIN PASS (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new
+  mechanics are tested out and work as intended")**, thread cmsg_01XWpxyTn3nnw98znVzKdFjsH9oWgzPy7wwhJEhrsf2fQY:
+  - OBSERVER EFFECT (new, `nrObserverEffect`, tier 1, 25 MP, 1 AP, cd 2, self `buff`, `observe: true`, status `observed`): the one say
+    the player has over the fluctuation. At this round end it stays on its square (`_boltzmannFluctuate` spends the status there; a
+    1-round status otherwise lives until the caster's next turn ends and held it through TWO round ends, which with cd 2 = never
+    moving). It skips the one-spell cap (`spellSkipsCastCap`), so hold-and-shoot is one turn (cast it first: a damaging spell ends the turn).
+    CPU (ai.js, the buff scorer): casts it first (score 400+) when the square is a perch: an enemy within 5, none within 2, the hits
+    coming under 40 % of its HP, AP for a shot after. Seen in a real CPU match: Observer, then Vacuum Collapse, held one round end.
+  - THE JUMP: lands on a SAFE square when there is one (no lava / deep-water tick, no enemy zone status: predictMoveHazardDamage +
+    predictZoneStatusesAt; hidden traps not looked at, that would leak them). The log line is `actor`-tagged and fog-checked like
+    any line with squares in it; the look is two fires (`nrFluctuation:out` / `:in`), each fog-gated on its own end (the legacy
+    teleport drew both ends for anyone who saw either).
+  - Dead picks out: Phase Walk + Dimensional Fold (both move the caster: always greyed 'Bodiless') in RACE_SPELL_EXCLUDES.
+  - Existential Dread cooldown 2 -> 3 (the T2 mass-fear median: Death Rattle, Treeline Scream, KNEEL; Feared = cannot act).
+  - Stats kept: POWER 548, #92 of 154 (median 563).
+  - Proof + probes: /mnt/project-files/boltzmann-brain-polish/ (probe/p3_show.js = frozen-clock looks + the rules in a CPU match).
+
 
 ## THE INFLUENCER POLISH (2026-11-17, thread "Polish Influencer spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
 - THE SHARE FIX: `_viralShare` passed the hitter's type / STAB / ATK into each mate's share (a 154 hit shared 347 "super effective").
@@ -5795,3 +5829,21 @@ residents in their zones.
   `geom3D`); the Hunger = frost ribs showing on its chest, dark wisps spiralling in, a seat-colour ring closing under it.
 - Probe recipe: /mnt/project-files/wendigo-pass/probe/ (wd.js = the VS-CPU board, every cast + the real round end; show.js = the
   looks on a frozen clock).
+- **THE LIBRARIAN PASS (2026-11-17, thread "Polish Librarian spells and VFX"):** (1) THE LOADED BOOK: Overdue ran the old Mimic
+  resolver (a flat dmg + power hit on one unit; an area spell, a stat raise or anything with its own branch fizzled, no look). Now
+  every Overdue row on a team takes the borrowed spell's whole shape when a teammate casts (battle.js `_overdueLoad`, called at the
+  cast record; keeps its own id / name / tier / AP / cooldown, the borrowed row comes from the teammate's own kit so its upgrades
+  ride), so menus, range wash, forecast and the CPU read the real spell; doSpell casts a copy under the borrowed id
+  (`_overdueCastRow`, `_overdueOf`) so the spell's branch and VFX run. Cooldown + once-a-turn slot keyed on Overdue
+  (`_spellBookKey` in getSpellCooldownRemaining / _markSpellUsedThisTurn / the doves). Price = the borrowed MP, at least 50.
+  Not renewable (`_overdueEligible`): passives, basics, Overdue / Mimic, Submerge / Coil; the Florida Man headline lock is dropped.
+  Greyed "📚 Nothing to renew" until a teammate casts; state._lastAllySpell resets at match start. (2) Shush cooldown 0 -> 2 (every
+  pure silence is cd 2; at 0 one foe stayed silenced for 25 MP a turn). (3) LOOKS (three-vfx-effects.js "THE LIBRARIAN", kill-switch
+  EW_NO_LIBRARIAN_VFX; PSX Mega Pack books `lib_book` / `lib_open_book` in three-renderer _MISC_GLB): Overdue `aura` (book over her,
+  pages turn, RENEWED card), Shush `impact` (rings pulled in, book slams shut, SHHH), Late Fee `bolt` (hardback thrown, date-due
+  slips, LATE FEE stamp; OVERDUE stamp + red ring on a Silenced foe). Probe 11-17 (real TDM, 0 page errors): Shush silenced, cd 2;
+  Late Fee 557 on the silenced Knight vs 343 plain; Overdue renewed Hurricane Party (3 foes hit + Wet, 75 MP, cd 3) and Sponsored
+  (+2 ATK/INT on the ally). Proof /mnt/project-files/librarian-polish/.
+- **THE FLOATING BRAIN (mondo 11-17, "can we name it something else ... Floating Brain, Sentient Brain ..."):** the Boltzmann Brain shows
+  as **Floating Brain** (RACE_PROFILES label, the race blurbs in ui.js + party-builder.js, the fluctuation family's names). The race id
+  stays `'boltzmann brain'` (saves, server lists, R2 folders, every table key); code comments keep the old name.
