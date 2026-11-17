@@ -4625,3 +4625,25 @@ The list (`own-look/L3.txt`, 39 spells) is done with this part.
 - Open: the clash; the projectile itself; see the plan's section 10 for the two leftovers (Ki Charge's disc, Love Ray's
   circle) and L5's untraced orb + ring on Jackpot / Shattered Mirror.
 
+## THE OWN LOOKS, L2, part 3: the rigs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L2")
+The fifteen things set down on a square (`own-look/L2.txt`, stage look `rig`). Same wiring (`_o2Reg`, the burst beat,
+which a deploy fires on the CLICKED square). New kit pieces: `_o2Bubbles` (thin rings that climb or swell) and
+**`_o2OwnCast(p)`**: a HIDDEN thing (Deathtrap, Snare, Spring Snare, Scrap Mine, Jack-in-the-Box) draws its look only on
+the screen of the side that laid it. The burst beat is relayed to the other side whenever it can see the square, so a
+trap-shaped look would have told them what was hidden and on which squares; they now see no look at all there.
+- 5G Tower: the four signal bars over the mast, broadcast arcs leaving it both ways, a sour lime.
+- Chivalry: a gold line from the knight to the ally, a gold shield stands itself up in front of them on the knight's side.
+- Cloning Machine: an amber print head sweeps up the square and leaves a rung of the body at each pass, feet to head.
+- Deathtrap (own side only): a hazard-yellow trapdoor frame over the whole 3x3, its split and hinges; it drops a hand's width as it sets.
+- Deploy Turret: three legs fold out flat, a spark at each foot, the red sight line swings once round.
+- Federation Beacon: a thin shaft of pale gold starlight, rings climbing it, one wide soft ring rolling out to its reach (4).
+- Hologram: a cone of sea-green light opens from a point on the floor, scan lines run up it, the picture tears twice.
+- Jack-in-the-Box (own side only): a spring pressed down coil by coil, two notes of the tune off the crank.
+- Ooze Trail: a black slick with a violet sheen splats and creeps wider; fat drops thrown up.
+- Poison Swamp: a yellow-green pool wells up; bubbles rise through it and burst, each spitting drops.
+- Scrap Mine (own side only): a ring of nails pulls in toward the middle as it arms; one red lamp blinks three times.
+- Snare (own side only): a pale wire loop draws itself down tight round a peg; a glint runs round it.
+- Spring Snare (own side only): two lilac arcs of teeth are cranked open tooth by tooth; leaves drift over them.
+- Stuffed Double: straw bursts up off the square and falls back; two stitched crosses where its eyes are.
+- Tunnel Network: a dark mouth with a ring of dirt in both squares, dashes burrowing across the floor between them.
+- Proof: docs/plans/vfx-cleanup/img/own-look/L2_part3_after.jpg (burst beat on the audit board; real casts of all 15 ran with no errors).
