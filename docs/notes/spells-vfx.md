@@ -4730,3 +4730,13 @@ Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look
   summon flash, speed burst and second crescent with no option to turn them off (they draw gold through `_vcCol`).
   `_sigCauldron3D` (Herbal Remedy) keeps a faint green screen flash for the same reason.
 - Proof: `docs/plans/vfx-cleanup/img/sweep/b6b_*.jpg`.
+- Rows of the proof sheets (three frames a spell, top to bottom): `b6b_divine_1` Chooser of the Slain, Divine Smite, Wrath
+  of the Watchers, Exorcism, Knights of Round, Excalibur Strike; `b6b_divine_2` Crusade (before the last fix), Merkaba,
+  Prism Burst, Fallen Grace, Judgment, Divine Judgment; `b6b_divine_3` Star Decree, Revive, Purify, Glitter Bomb,
+  Excommunication, Ratio; `b6b_heal_emp` Crusade (mid fix), Absolution, Sanctuary, Hallelujah, Heal, Immortal Cycle, the
+  robot's EMP Burst with the old white dome; `b6b_lightning` EMP Burst (engineer, old dome), EMP Grenade, Yellow Thunder,
+  Classified Weapon, Orbital Strike, Conduction, Crystal Resonator; `b6b_crusade_emp_after` Crusade and both EMP Bursts
+  after the dome fix. The engineer's EMP Burst draws the same dome as the robot's (both changed with the one edit).
+- NOT seen on a frame: Chooser of the Slain's hit, Star Decree's landing and Revive's hit (the runner cast them by the
+  direct path and its frames missed the beat); Crusade's arms after their last dimming (gain .55, opacity .32: the one
+  frame caught was after the cross had faded); the guest's seat; anything with `EW_NO_VFX_CLEANUP` on.

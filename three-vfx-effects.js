@@ -26694,7 +26694,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var len = r * ts + ts * 0.5;
             /* FX-WASH (2026-10-26): the arms were knee-high white slabs (.42 × .5 tile, .9) that buried the bodies on
                the cross under a low camera; now a low, thin bar of light along the floor */
-            var m = _sigEnergyMat(gold, { hot: white, opacity: 0.55, gain: 1.3, s1x: -0.9, s1y: 0.0, s2x: -0.4, s2y: 0.1, scale1: 2.0, scale2: 1.0, vFadeLo: 0.02, vFadeHi: 0.98 });
+            var m = _sigEnergyMat(gold, { hot: white, opacity: 0.55, gain: _vcOn() ? 0.55 : 1.3,   /* THE VFX SWEEP B6b: the arms burned to flat white bars */ s1x: -0.9, s1y: 0.0, s2x: -0.4, s2y: 0.1, scale1: 2.0, scale2: 1.0, vFadeLo: 0.02, vFadeHi: 0.98 });
             var mesh = new THREE.Mesh(new THREE.BoxGeometry(1, ts * 0.16, ts * 0.3), m);
             mesh.rotation.y = Math.atan2(dirs[i][1], dirs[i][0]) * -1;
             mesh.position.y = ts * 0.09; mesh.renderOrder = 206;
@@ -26715,7 +26715,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 A.mesh.position.x = A.dx * L / 2;
                 A.mesh.position.z = A.dz * L / 2;
                 _sigEnergyTick(A.mat, el, t > 0.55 ? (t - 0.55) / 0.45 * 0.85 : 0.05);
-                A.mat.uniforms.uOpacity.value = 0.55 * fade;
+                A.mat.uniforms.uOpacity.value = (_vcOn() ? 0.32 : 0.55) * fade;
             }
             if (((el / 60) | 0) !== (((el - 16) / 60) | 0) && fade > 0.3 && _canSpawn()) {
                 var a = arms[(Math.random() * 4) | 0], d = rn(0, a.len);
