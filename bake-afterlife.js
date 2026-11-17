@@ -174,8 +174,9 @@ function finish(R) {
     if (S.float) {
         /* HEAVEN: every run of cloud of one height and one sheet is a floating plateau; the wall of cloud is solid */
         const wetH = (x, y) => S.wet.indexOf(cell[y][x]) >= 0 ? r2(hh[y][x] + 0.45) : hh[y][x];   // (a pool's squares are part of their cloud: the pool row carves its own basin)
-        rects((x, y) => (S.sky.indexOf(cell[y][x]) < 0) && !stairSq.has(x + ':' + y), (a, b, c, d) => wetH(a, b) === wetH(c, d)).forEach(q => {
-            T.push(Object.assign({ k: 'plateau', x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: r2((q[2] - q[0]) * C + 0.1), d: r2((q[3] - q[1]) * C + 0.1), h: wetH(q[0], q[1]), edge: 0.15, top: 'cloud_2' }, q[1] >= S.floatFrom ? { float: true, under: 'cloud' } : {})); });
+        const fl = (x, y) => y >= S.floatFrom || !!(R.floatSq && R.floatSq(x, y));   // (THE ONE WORLD MOVE: the cloud paths float too)
+        rects((x, y) => (S.sky.indexOf(cell[y][x]) < 0) && !stairSq.has(x + ':' + y), (a, b, c, d) => wetH(a, b) === wetH(c, d) && fl(a, b) === fl(c, d)).forEach(q => {
+            T.push(Object.assign({ k: 'plateau', x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: r2((q[2] - q[0]) * C + 0.1), d: r2((q[3] - q[1]) * C + 0.1), h: wetH(q[0], q[1]), edge: 0.15, top: 'cloud_2' }, fl(q[0], q[1]) ? { float: true, under: 'cloud' } : {})); });
         count.clouds = T.length;
         /* the marble: one drawn sheet a run of `m` / `B` squares, lying on its cloud (few plateaus = few draw calls: a plateau a sheet cost 4,000) */
         R.look('marble', 0, 0, 0, 0, a => rects((x, y) => 'mB'.indexOf(cell[y][x]) >= 0, (p, q2, c, d) => hh[q2][p] === hh[d][c]).forEach(q => a.quad(gx((q[0] + q[2]) / 2), hh[q[1]][q[0]] + 0.05, gz((q[1] + q[3]) / 2), (q[2] - q[0]) * C, (q[3] - q[1]) * C, 'marble_light', 0xffffff, { flat: true, uv: 3.5 })));
@@ -269,9 +270,84 @@ STAGES.forEach(stage => Object.keys(LAYOUT.districts).forEach(k => { const m = D
     const rnd = (R['rnd' + k] = R['rnd' + k] || mkRnd(7919 * k.charCodeAt(0))), ctx = Object.assign(Object.create(R), { d: k, rnd, dec: R.decWith(rnd), plots: R.PLAN.plots.filter(p => p.d === k) });
     R._.setD(k); try { m[stage](ctx); } finally { R._.setD(null); } }));
 
+/* ══ THE ONE WORLD MOVE (2026-11-17, docs/plans/one-world/BUILD_PLAN.md phase 3 wave B; mondo picked "Rising north-east"): HEAVEN'S DISTRICTS
+   STAND APART over open sky, rising north-east like the design sheet (sheets/beyond.png), with cloud paths between them. Hell, the Catacombs and
+   the Vatican do not move. The districts still build in THE HOME FRAME (the 4 x 5 plan above; their files are unchanged); then every plot is
+   stood at its new place with ow-move.js, everything on it with it, and the tool's own pieces (the clouds, the marble, the flights, the pool)
+   are cut again from the moved squares. Heaven is "beyond" the map (plots.json `beyond.heaven`): no world plot, so no `world` and no edges.
+   ONE ROOM by the room-splitting rule (the paths touch both ends): 20 district plots + 6 path plots = 26, box 7 x 8 plots.
+   `at` = each district's shift in plots; `paths` = the new path plots (names are labels of mine) and the cloud squares on them (the new frame,
+   rects end-exclusive, at their height); `ways` = a way that does not simply ride with its plot. Notes: areas-complexes.md "HEAVEN, THE ONE WORLD MOVE". */
+const OW_HEAVEN = { cols: 7, rows: 8, at: { Y: [3, 0], F: [2, 1], A: [0, 2], T: [0, 3] },
+    paths: [
+        { col: 0, row: 5, name: 'The Cloud Bridge (label mine)', what: 'the cloud path from the third landing up to the foot of the fourth flight' },
+        { col: 1, row: 3, name: 'The Cloud Path, west (label mine)', what: 'the cloud path north out of the Gate' },
+        { col: 2, row: 3, name: 'The Cloud Path, middle (label mine)', what: 'the cloud path east over open sky' },
+        { col: 3, row: 3, name: 'The Cloud Path, east (label mine)', what: 'the cloud path north into the Cloud Fields' },
+        { col: 3, row: 1, name: 'The City Path, west (label mine)', what: 'the cloud path from the Fields\' stair up to the City' },
+        { col: 4, row: 1, name: 'The City Path, east (label mine)', what: 'the cloud path from the Fields\' stair up to the City' } ],
+    cloud: [[5, 60, 8, 72, 19.25], [23, 40, 25, 48, 24.5], [23, 40, 48, 42, 24.5], [46, 36, 48, 42, 24.5], [47, 12, 49, 24, 28]],
+    /* "The Stairway, up from Olympus" (plots.json beyond.heaven.up): the Grand Stair's gate of cloud lands at the foot of the stair, beside the telescope's frame */
+    ways: { link_heaven_olympus: { wall: 'free', sx: 4, sy: 92, face: 0 } } };
+{
+    const HP = LAYOUT.rooms.find(p => p.key === 'heaven'), R0 = ROOMS.heaven, O = OW_HEAVEN, Wn = O.cols * N, Hn = O.rows * N;
+    const home = HP.plots.map(p => ({ id: p.id, x: +p.id.slice(1, 3), y: +p.id.slice(4, 6), name: p.name, district: p.d, level: p.level }));
+    const late = new Set(R0._.LATE);
+    const MV = require('./ow-move.js')({ cols: HP.cols, rows: HP.rows, cell: R0.cell, fill: '.', plots: home,
+        features: R0.F.concat(R0._.LATE.map(f => Object.assign({ _late: 1 }, f))), props: R0.props, npc: R0.npc, doors: [] });
+    const list = home.map(p => ({ id: p.id, wx: p.x + O.at[p.district][0], wy: p.y + O.at[p.district][1] }))
+        .concat(O.paths.map(q => ({ wx: q.col, wy: q.row, name: q.name, district: 'R', level: 0 })));
+    const M = MV.room(list);
+    if (M.cols !== O.cols || M.rows !== O.rows) throw new Error('heaven: the move\'s box is ' + M.cols + ' x ' + M.rows);
+    /* the squares + heights, plot by plot; then the cloud paths */
+    const cells = [], hts = []; for (let y = 0; y < Hn; y++) { cells.push(new Array(Wn).fill('.')); hts.push(new Array(Wn).fill(0)); }
+    const shiftOf = d => [O.at[d][0] * N, O.at[d][1] * N];
+    home.forEach(p => { const [dx, dy] = shiftOf(p.district); for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const hx = p.x * N + lx, hy = p.y * N + ly;
+        cells[hy + dy][hx + dx] = R0.cell[hy][hx]; hts[hy + dy][hx + dx] = R0.hh[hy][hx]; } });
+    const pathSq = new Set();
+    O.cloud.forEach(([x0, y0, x1, y1, v]) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (cells[y][x] !== '.' && hts[y][x] !== v) throw new Error('heaven: a cloud path lands on ' + cells[y][x] + ' at ' + x + ',' + y);
+        if (!M.at[Math.floor(x / N) + ',' + Math.floor(y / N)]) throw new Error('heaven: a cloud path off the plots at ' + x + ',' + y);
+        if (cells[y][x] === '.') pathSq.add(x + ':' + y); cells[y][x] = 'c'; hts[y][x] = v; } });
+    const dOfSq = (sx, sy) => HP.plots.find(p => p.id === 'P' + String(Math.floor(sx / N)).padStart(2, '0') + '-' + String(Math.floor(sy / N)).padStart(2, '0')).d;
+    const stairs = HP.stairs.map(s => { const [dx, dy] = shiftOf(dOfSq(s.x0, s.y0)); if (dOfSq(s.x1 - 1, s.y1 - 1) !== dOfSq(s.x0, s.y0)) throw new Error('heaven: a flight across two districts');
+        return Object.assign({}, s, { x0: s.x0 + dx, x1: s.x1 + dx, y0: s.y0 + dy, y1: s.y1 + dy }); });
+    const plots = M.order.map(e => { const hp = e.home ? HP.plots.find(p => p.id === e.id) : null, q = O.paths.find(q => q.col === e.col && q.row === e.row);
+        return { id: M.pid(e), name: e.name, d: e.district, level: e.level, what: hp ? hp.what : q.what, from: hp ? hp.from : 'new (One World, 2026-11-17)' }; });
+    /* the ways: a wall way rides with its plot (still on its wall? keep it, else free on that side); O.ways overrides */
+    const ways = HP.ways.map(w => { if (O.ways[w.id]) return Object.assign({ id: w.id, kind: w.kind, name: w.name }, O.ways[w.id]);
+        if (w.wall === 'free') { const [dx, dy] = shiftOf(dOfSq(w.sx, w.sy)); return Object.assign({}, w, { sx: w.sx + dx, sy: w.sy + dy }); }
+        const hsx = w.wall === 'w' ? 0 : w.wall === 'e' ? HP.cols * N - 1 : w.sx, hsy = w.wall === 'n' ? 0 : w.wall === 's' ? HP.rows * N - 1 : w.sy, [dx, dy] = shiftOf(dOfSq(hsx, hsy)), nx = hsx + dx, ny = hsy + dy;
+        const on = (w.wall === 'w' && nx === 0) || (w.wall === 'e' && nx === Wn - 1) || (w.wall === 'n' && ny === 0) || (w.wall === 's' && ny === Hn - 1);
+        if (!on) throw new Error('heaven: way ' + w.id + ' left its wall: give it an O.ways row');
+        return Object.assign({}, w, w.sx != null ? { sx: w.sx + dx } : {}, w.sy != null ? { sy: w.sy + dy } : {}); });
+    const PLAN2 = Object.assign({}, HP, { cols: O.cols, rows: O.rows, plots, cells: cells.map(r => r.join('')), heights: hts.map(r => r.map(v => Math.round(v * 100)).join(',')), stairs, ways, mask: M.mask });
+    const R = makeRoom(PLAN2); ROOMS.heaven = R;
+    /* the Stairway's clouds float (home sy 31 on = the fourth flight and below); the cloud paths float too */
+    R.S = Object.assign({}, R.S, { floatFrom: 31 + O.at.A[1] * N });
+    R.floatSq = (x, y) => pathSq.has(x + ':' + y);
+    ways.forEach(w => { WAYS['heaven:' + w.id] = w.wall === 'free' ? freeAt(R, w) : wallAt(R, w); if (w.wall === 'free') R.take(w.sx, w.sy); });
+    /* every piece moves with the plot its anchor stands on (ow-move); a drawn piece's parts each with their own plot */
+    const mv = (x, z) => { const q = M.toRoom(x, z); if (!q) throw new Error('heaven: a piece off the plots at ' + x + ',' + z); return q; };
+    M.features.forEach(f => { const g = Object.assign({}, f); delete g._late; (f._late ? R._.LATE : R.F).push(g); });
+    R.props.push(...M.props); R.npc.push(...M.npc);
+    R0.ARCH.forEach(a => { const c = Math.cos((a.rot || 0) * Math.PI / 180), s = Math.sin((a.rot || 0) * Math.PI / 180), q0 = mv(a.x, a.z), dx0 = q0[0] - a.x, dz0 = q0[1] - a.z;
+        const parts = a.parts.map(pt => { const wx = a.x + pt.p[0] * c - pt.p[2] * s, wz = a.z + pt.p[0] * s + pt.p[2] * c, q = M.toRoom(wx, wz) || [wx + dx0, wz + dz0], ex = q[0] - wx - dx0, ez = q[1] - wz - dz0;
+            if (Math.abs(ex) < 1e-6 && Math.abs(ez) < 1e-6) return pt;
+            return Object.assign({}, pt, { p: [r2(pt.p[0] + ex * c + ez * s), pt.p[1], r2(pt.p[2] - ex * s + ez * c)] }); });
+        R.ARCH.push(Object.assign({}, a, { x: q0[0], z: q0[1], parts })); });
+    R0.marks.forEach(m => { const ax = m.x != null ? m.x : (m.x0 + m.x1) / 2, az = m.z != null ? m.z : (m.z0 + m.z1) / 2, q = mv(ax, az), dx = q[0] - ax, dz = q[1] - az, o = Object.assign({}, m);
+        if (o.x != null) { o.x = r2(o.x + dx); o.z = r2(o.z + dz); } if (o.x0 != null) { o.x0 = r2(o.x0 + dx); o.x1 = r2(o.x1 + dx); o.z0 = r2(o.z0 + dz); o.z1 = r2(o.z1 + dz); } R.marks.push(o); });
+    R0.counters.forEach(c0 => { const q = mv(c0.x, c0.z); R.counters.push(Object.assign({}, c0, { x: q[0], z: q[1] })); });
+    R0.inner.forEach(d => { const q = mv(d.x, d.z); R.inner.push(Object.assign({}, d, { x: q[0], z: q[1] })); });
+    if (R0.doors.length) throw new Error('heaven: the home room has doors of its own: move them');
+    const [sdx, sdy] = shiftOf('T'); R.spawnSq = [R0.spawnSq[0] + sdx, R0.spawnSq[1] + sdy];
+    R.plate = { x: R.mx(R.spawnSq[0]), z: R.mz(R.spawnSq[1] - 0), y: R0.plate.y };
+    Object.assign(R.count, R0.count); R._.strays.push(...R0._.strays); R._.errs.push(...R0._.errs);
+    if (M.strays.length) console.log('heaven, the move: pieces across plots that part:\n  ' + M.strays.join('\n  '));
+}
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const LINES = { vatican: OLD.vatican_basilica.l.concat(OLD.vatican_library.l, OLD.vatican_courtyard.l, OLD.vatican_observatory.l), catacombs: OLD.vatican_catacombs.l, hell: OLD.hell_pit.l.concat(OLD.hell_walkways.l), heaven: OLD.heaven_stair.l.concat(OLD.heaven_gate.l) };
-LAYOUT.rooms.forEach(PLAN => { const R = ROOMS[PLAN.key], S = R.S, fin = finish(R), Ln = [];
+LAYOUT.rooms.forEach(P0 => { const R = ROOMS[P0.key], PLAN = R.PLAN, S = R.S, fin = finish(R), Ln = [];   // (R.PLAN: Heaven's is the moved plan)
     R.props.forEach(p => { if (!CAT[p.key]) R._.errs.push('not in the catalogue: ' + p.key); });
     R.npc.forEach(n => { if (RACES.indexOf(n.race) < 0) R._.errs.push('not a unit: ' + n.race); });
     if (R._.strays.length) console.log(PLAN.key + ': pieces a district stood on another district\'s squares:\n  ' + R._.strays.join('\n  '));
@@ -286,7 +362,7 @@ LAYOUT.rooms.forEach(PLAN => { const R = ROOMS[PLAN.key], S = R.S, fin = finish(
     Ln.push("            shell: " + S.shell(R) + ",");
     Ln.push("            parti: '" + S.parti.replace(/'/g, "\\'") + "',");
     Ln.push("            typology: 'grid',");
-    Ln.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + PLAN.cols + ", nz: " + PLAN.rows + ", names: " + J(PLAN.plots.map(p => [p.id, p.name.replace(' (label mine)', ''), p.d, p.level])) + " },");
+    Ln.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + PLAN.cols + ", nz: " + PLAN.rows + (PLAN.mask ? ", nx: " + PLAN.cols + ", mask: " + J(PLAN.mask) : "") + ", names: " + J(PLAN.plots.map(p => [p.id, p.name.replace(' (label mine)', ''), p.d, p.level])) + " },");
     Ln.push("            terrain: {");
     Ln.push("                " + S.terrain);
     if (R.marks.length) Ln.push("                marks: " + J(R.marks) + ",");

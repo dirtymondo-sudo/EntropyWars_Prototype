@@ -157,12 +157,50 @@ run('people');    // the people
 if (strays.length) console.log('pieces a district stood on another district\'s squares (ask that district\'s thread):\n  ' + strays.join('\n  '));
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
 
+/* ── THE ONE WORLD MOVE (2026-11-17, BUILD_PLAN phase 3 wave B; mondo picked "C, a chain, as the sheet draws it" and "if the room is smaller than
+   disaster city ... just make it one room"). The v13 sheet: "the Sea of Possibility, the Library and the Nightmare each get an island far apart in the
+   void, with two crossings between them". Everything above is THE HOME FRAME (the 6 x 6 grid the district files write in, unchanged); here ow-move.js
+   stands the plots apart in ONE room, plot by plot with everything on them:
+     the Sea where it was; the Library 4 plots west (the CLOUD BRIDGE, 4 new plots: the Near Shore's west port -> the Reading Room's east port, level 8
+     rising to 10); the Nightmare south of the Library (the WAY DOWN, 3 new plots: the Returns' south port -> the Back of the Closet's north port,
+     level 8 sinking to 5). The four old cross-district joins (`cross: true` in the layout) are gone: two of their ports start the crossings, the other
+     four ports (the Closet S, the Fortune Tent E, the Stairs Down W, the Hollow Tree N) end at the island's edge over the void.
+   The islands, the bridges, the steps, the paint and the reach check are cut again from the moved squares. ── */
+const MOVER = require('./ow-move.js')({ cols: GX, rows: GY, cell, fill: '.', plots: PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, name: p.name, district: p.d, level: p.level })),
+    features: POOLS.concat(F, ARCH), props, npc, doors });
+const SHIFT = { S: [0, 0], L: [-4, 0], N: [-7, 7] };
+const XNEW = [   /* the crossings' own plots (names mine, plain): [world-frame x, y, name, level] in walking order */
+    ['B', 1, 1, 'The Cloud Bridge, sea end', 8], ['B', 0, 1, 'The Cloud Bridge', 9], ['B', -1, 1, 'The Cloud Bridge, far over', 9], ['B', -2, 1, 'The Cloud Bridge, library end', 10],
+    ['D', -3, 5, 'The Way Down, library end', 7], ['D', -3, 6, 'The Way Down', 6], ['D', -3, 7, 'The Way Down, nightmare end', 5]];
+const RM = MOVER.room(PLAN.plots.map(p => ({ id: p.id, wx: p.x + SHIFT[p.d][0], wy: p.y + SHIFT[p.d][1] }))
+    .concat(XNEW.map(x => ({ wx: x[1], wy: x[2], name: x[3], district: x[0] === 'B' ? 'S' : 'N', level: x[4], cross: x[0] }))));
+if (RM.strays.length) console.log('strays (pieces over two plots that stand apart now):\n  ' + RM.strays.join('\n  '));
+const RW = RM.W, RD = RM.D, RX = RM.HX, RZ = RM.HZ, cellR = RM.cell, X = RM.gx, Z = RM.gz;
+const NP = {}; RM.order.forEach(e => { e.sx = e.col * N; e.sy = e.row * N; e.base = r2(e.level * LEVEL); e.pid = RM.pid(e); NP[e.col + ',' + e.row] = e; });
+const npOf = id => RM.ofHome[id];
+const XPL = RM.order.filter(e => e.isNew);
+XNEW.forEach((x, i) => { XPL[i].cross = x[0]; });
+/* the openings now: the home ones inside a district + the crossings chained */
+const OPEN2 = PLAN.openings.filter(o => !o.cross).map(o => [npOf(o.a), npOf(o.b)]);
+const chain = (from, list, to) => { let prev = from; list.forEach(e => { OPEN2.push([prev, e]); prev = e; }); OPEN2.push([prev, to]); };
+chain(npOf('P02-01'), XPL.filter(e => e.cross === 'B'), npOf('P01-01'));
+chain(npOf('P01-04'), XPL.filter(e => e.cross === 'D'), npOf('P04-01'));
+/* a crossing plot: a two-square cloud walk down its middle from side to side */
+XPL.forEach(e => { const nbr = OPEN2.filter(o => o[0] === e || o[1] === e).map(o => o[0] === e ? o[1] : o[0]);
+    nbr.forEach(o => { const dx = o.col - e.col, dy = o.row - e.row;
+        for (let t = 0; t < 7; t++) for (const m of [5, 6]) { const LX = dx ? (dx > 0 ? 5 + t : 6 - t) : m, LY = dy ? (dy > 0 ? 5 + t : 6 - t) : m; cellR[e.sy + LY][e.sx + LX] = 'k'; } }); });
+/* a port with no join left: its edge squares are open sky */
+const sideOf = (e, o) => o.col > e.col ? 'E' : o.col < e.col ? 'W' : o.row > e.row ? 'S' : 'N';
+RM.order.forEach(e => { const has = new Set(OPEN2.filter(o => o[0] === e || o[1] === e).map(o => sideOf(e, o[0] === e ? o[1] : o[0])));
+    for (let t = 0; t < N; t++) [['N', t, 0], ['S', t, N - 1], ['W', 0, t], ['E', N - 1, t]].forEach(([sd, lx, ly]) => { if (!has.has(sd) && cellR[e.sy + ly][e.sx + lx] === 'k') cellR[e.sy + ly][e.sx + lx] = '.'; }); });
+const openR = (x, y) => x >= 0 && y >= 0 && x < RW && y < RD && cellR[y][x] !== '.';
+
 /* ── THE ISLANDS: every plot's squares as float plateaus at the plot's height (greedy rectangles). A rectangle runs 0.4 m into a
    neighbour square that is island too (two plateaus that only touch leave a notch on the line) and stops on the square's line at the sky.
    The biggest rectangle of a plot hangs the island's rock; the others hang a short one, so the island tapers to one point. ── */
 const ISLE = [];
-PLAN.plots.forEach(p => { const used = new Uint8Array(N * N), rects = [], isl = (lx, ly) => lx >= 0 && ly >= 0 && lx < N && ly < N && open(p.sx + lx, p.sy + ly) && !(cell[p.sy + ly][p.sx + lx] === 'k' && (lx === 0 || ly === 0 || lx === N - 1 || ly === N - 1));
-    const inner = (lx, ly) => isl(lx, ly) && cell[p.sy + ly][p.sx + lx] === 'k';
+RM.order.forEach(p => { const used = new Uint8Array(N * N), rects = [], isl = (lx, ly) => lx >= 0 && ly >= 0 && lx < N && ly < N && openR(p.sx + lx, p.sy + ly) && !(cellR[p.sy + ly][p.sx + lx] === 'k' && (lx === 0 || ly === 0 || lx === N - 1 || ly === N - 1));
+    const inner = (lx, ly) => isl(lx, ly) && cellR[p.sy + ly][p.sx + lx] === 'k';
     for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { if (!isl(lx, ly) || used[ly * N + lx]) continue; const cloud = inner(lx, ly);
         let w = 1; while (isl(lx + w, ly) && !used[ly * N + lx + w] && inner(lx + w, ly) === cloud) w++;
         let h = 1; rows: while (ly + h < N) { for (let i = 0; i < w; i++) if (!isl(lx + i, ly + h) || used[(ly + h) * N + lx + i] || inner(lx + i, ly + h) !== cloud) break rows; h++; }
@@ -171,7 +209,7 @@ PLAN.plots.forEach(p => { const used = new Uint8Array(N * N), rects = [], isl = 
     const big = rects.filter(r => !r[4]).sort((a, b) => b[2] * b[3] - a[2] * a[3])[0];
     rects.forEach(r => { const [lx, ly, w, h, cloud] = r; let all = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!isl(x, y)) return false; return true; };
         const eW = all(lx - 1, ly, lx - 1, ly + h - 1) ? 0.4 : 0, eE = all(lx + w, ly, lx + w, ly + h - 1) ? 0.4 : 0, eN = all(lx, ly - 1, lx + w - 1, ly - 1) ? 0.4 : 0, eS = all(lx, ly + h, lx + w - 1, ly + h) ? 0.4 : 0;
-        const x0 = gx(p.sx + lx) - eW, x1 = gx(p.sx + lx + w) + eE, z0 = gx(p.sy + ly) - eN, z1 = gx(p.sy + ly + h) + eS;
+        const x0 = X(p.sx + lx) - eW, x1 = X(p.sx + lx + w) + eE, z0 = Z(p.sy + ly) - eN, z1 = Z(p.sy + ly + h) + eS;
         const row = { k: 'plateau', x: r2((x0 + x1) / 2), z: r2((z0 + z1) / 2), w: r2(x1 - x0), d: r2(z1 - z0), h: p.base, edge: 0.15, float: true };
         if (cloud) row.under = 'cloud'; else if (r !== big) row.depth = r2(Math.min(5, 1.5 + 0.5 * Math.max(w, h))); else row.depth = r2(Math.min(14, 4 + 0.9 * Math.max(w, h)));
         ISLE.push(row); });
@@ -179,74 +217,76 @@ PLAN.plots.forEach(p => { const used = new Uint8Array(N * N), rects = [], isl = 
 
 /* ── THE BRIDGES AND THE FLOATING STEPS: one a port pair, over the two gap squares (7 m), two squares wide (7 m) ── */
 const JOIN = [];
-PLAN.openings.forEach(o => { const a = plot[o.a], b = plot[o.b]; if (!a || !b) throw new Error('opening? ' + o.a + ' ' + o.b);
-    const ns = a.x === b.x; if ((ns ? b.y - a.y : b.x - a.x) !== 1 || (ns ? a.x !== b.x : a.y !== b.y)) throw new Error('opening between plots that do not touch: ' + o.a + ' ' + o.b);
-    const line = ns ? gx(b.sy) : gx(b.sx), mid = ns ? gx(a.sx + 6) : gx(a.sy + 6), pt = (along, t) => ns ? { x: along, z: t } : { x: t, z: along };
+OPEN2.forEach(([a0, b0]) => { if (!a0 || !b0) throw new Error('opening to a plot that is not in the room');
+    const ns = a0.col === b0.col, flip = ns ? b0.row < a0.row : b0.col < a0.col, a = flip ? b0 : a0, b = flip ? a0 : b0;
+    if ((ns ? b.row - a.row : b.col - a.col) !== 1 || (ns ? a.col !== b.col : a.row !== b.row)) throw new Error('opening between plots that do not touch: ' + a.pid + ' ' + b.pid);
+    const line = ns ? Z(b.sy) : X(b.sx), mid = ns ? X(a.sx + 6) : Z(a.sy + 6), pt = (along, t) => ns ? { x: along, z: t } : { x: t, z: along };
     if (a.level === b.level) { const c = pt(mid, line); JOIN.push({ k: 'plateau', x: c.x, z: c.z, w: ns ? 2 * C : 2 * C + 0.8, d: ns ? 2 * C + 0.8 : 2 * C, h: a.base, edge: 0.15, float: true, under: 'cloud' }); count.bridges = (count.bridges || 0) + 1; }
     else { const lo = a.level < b.level ? a : b, hi = lo === a ? b : a, sgn = lo === a ? -1 : 1, foot = pt(mid, r2(line + sgn * C)), head = pt(mid, r2(line - sgn * C));
         JOIN.push({ k: 'ramp', x0: foot.x, z0: foot.z, x1: head.x, z1: head.z, w: 2 * C, h0: lo.base, h1: hi.base, stairs: true, float: true }); count.steps = (count.steps || 0) + 1; } });
 
 /* ── THE PAINT: one sheet a square (0 = the room's own astral ground) ── */
-const PAL = ['marble_light', 'carpet_3', 'carpet', 'flesh', 'plague_flesh', 'marble'], PIDX = { g: 0, m: 1, j: 2, c: 3, R: 4, h: 5, k: 1, w: 6, l: 5 }, paint = new Uint8Array(W * Hh);
-for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) paint[y * W + x] = PIDX[cell[y][x]] || 0;
+const PAL = ['marble_light', 'carpet_3', 'carpet', 'flesh', 'plague_flesh', 'marble'], PIDX = { g: 0, m: 1, j: 2, c: 3, R: 4, h: 5, k: 1, w: 6, l: 5 }, paint = new Uint8Array(RW * RD);
+for (let y = 0; y < RD; y++) for (let x = 0; x < RW; x++) paint[y * RW + x] = PIDX[cellR[y][x]] || 0;
 
 /* ── checks: every prop key and unit exists; nothing stands over the void; every plot is walked to from the Frame ── */
 const CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AVAILABLE_RACES', D);
-props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key);
-    const sx = Math.floor((p.x + HALF) / C), sy = Math.floor((p.z + HALF) / C); if (!open(sx, sy) && typeof p.y !== 'number') throw new Error(p.key + ' stands over the void at ' + sx + ',' + sy + ' (give it a y to hang it there)'); });
-npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); });
-const SPs = nearest(plot['P02-00'], 5, 3) || [plot['P02-00'].sx + 5, plot['P02-00'].sy + 4], SP = [plot['P02-00'].sx + 5, plot['P02-00'].sy + 4];
-{ const seen = new Uint8Array(W * Hh), st = [SP]; if (!open(SP[0], SP[1])) throw new Error('the spawn is not open'); seen[SP[1] * W + SP[0]] = 1;
-  while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || seen[Y * W + X]) continue; seen[Y * W + X] = 1; st.push([X, Y]); } }
-  const cold = PLAN.plots.filter(p => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(p.sy + ly) * W + p.sx + lx]) return false; return true; }).map(p => p.id);
-  if (process.env.ASTRAL_DUMP) console.log(cell.map((r, y) => r.map((ch, x) => open(x, y) && !seen[y * W + x] ? '!' : ch === '.' ? ' ' : ch).join('')).join('\n'));
-  if (cold.length) throw new Error('plots not reached on foot: ' + cold.join(' '));
-  let op = 0, un = 0; for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (open(x, y)) { op++; if (!seen[y * W + x]) un++; }
-  /* a walk never ends blocked: every walk square is reached over walk squares only */
+const propsR = RM.props, npcR = RM.npc, doorsR = RM.doors.map(d => { const o = Object.assign({}, d); delete o.plot; delete o.side; return o; });
+propsR.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key);
+    const sx = Math.floor((p.x + RX) / C), sy = Math.floor((p.z + RZ) / C); if (!openR(sx, sy) && typeof p.y !== 'number') throw new Error(p.key + ' stands over the void at ' + sx + ',' + sy + ' (give it a y to hang it there)'); });
+npcR.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); });
+const SPh = [plot['P02-00'].sx + 5, plot['P02-00'].sy + 4], SP = RM.sq('P02-00', 5, 4); void SPh;
+{ const seen = new Uint8Array(RW * RD), st = [SP]; if (!openR(SP[0], SP[1])) throw new Error('the spawn is not open'); seen[SP[1] * RW + SP[0]] = 1;
+  while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X2 = x + dx, Y2 = y + dy; if (!openR(X2, Y2) || seen[Y2 * RW + X2]) continue; seen[Y2 * RW + X2] = 1; st.push([X2, Y2]); } }
+  const cold = RM.order.filter(p => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(p.sy + ly) * RW + p.sx + lx]) return false; return true; }).map(p => p.name);
+  if (process.env.ASTRAL_DUMP) console.log(cellR.map((r, y) => r.map((ch, x) => openR(x, y) && !seen[y * RW + x] ? '!' : ch === '.' ? ' ' : ch).join('')).join('\n'));
+  if (cold.length) throw new Error('plots not reached on foot: ' + cold.join(' | '));
+  let op = 0, un = 0; for (let y = 0; y < RD; y++) for (let x = 0; x < RW; x++) if (openR(x, y)) { op++; if (!seen[y * RW + x]) un++; }
   Object.assign(count, { islandSquares: op, unreachedSquares: un }); }
-void SPs;
-const features = ISLE.concat(JOIN, POOLS, F, ARCH);
-Object.assign(count, { plots: PLAN.plots.length, features: features.length, drawn: ARCH.length, props: props.length, doors: doors.length, natives: npc.length });
+const features = ISLE.concat(JOIN, RM.features);
+Object.assign(count, { plots: RM.order.length, box: RM.cols + ' x ' + RM.rows, features: features.length, drawn: ARCH.length, props: propsR.length, doors: doorsR.length, natives: npcR.length, strays: RM.strays.length });
 
 /* THE AIR BY DISTRICT (three-renderer.js _hqBuildAtmos `shell.atmos.zones`): a district file may export `airZones(ctx)` =
-   [{ sx0, sy0, sx1, sy1 (its own squares, the end exclusive), kind, color, n, speed, wind }]. The realm's own dreaming dust (motes) is
-   kept as a last zone over the whole room, because a room with zones draws only its zones. */
-const AIR = [].concat(...Object.keys(DISTRICTS).filter(k => typeof DISTRICTS[k].airZones === 'function').map(k => (DISTRICTS[k].airZones(CTX[k]) || []).map(z => { const q = Object.assign({}, z, { x0: gx(z.sx0), z0: gx(z.sy0), x1: gx(z.sx1), z1: gx(z.sy1) });
-    delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; })));
-const ATMOS = { kind: 'motes', n: 200, color: 0xd8b4ff, zones: AIR.concat([{ x0: -HALF, z0: -HALF, x1: HALF, z1: HALF, kind: 'motes', n: 200, color: 0xd8b4ff }]) };
+   [{ sx0, sy0, sx1, sy1 (its own squares, the end exclusive), kind, color, n, speed, wind }]. Each zone moves with the plot under its middle.
+   The realm's own dreaming dust (motes) is kept as a last zone over the whole room, because a room with zones draws only its zones. */
+const AIR = [].concat(...Object.keys(DISTRICTS).filter(k => typeof DISTRICTS[k].airZones === 'function').map(k => (DISTRICTS[k].airZones(CTX[k]) || []).map(z => {
+    const x0 = gx(z.sx0), z0 = gx(z.sy0), x1 = gx(z.sx1), z1 = gx(z.sy1), m = RM.toRoom((x0 + x1) / 2, (z0 + z1) / 2); if (!m) return null;
+    const dx = m[0] - (x0 + x1) / 2, dz = m[1] - (z0 + z1) / 2, q = Object.assign({}, z, { x0: r2(x0 + dx), z0: r2(z0 + dz), x1: r2(x1 + dx), z1: r2(z1 + dz) });
+    delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; }).filter(Boolean)));
+const ATMOS = { kind: 'motes', n: 200, color: 0xd8b4ff, zones: AIR.concat([{ x0: -RX, z0: -RZ, x1: RX, z1: RZ, kind: 'motes', n: 260, color: 0xd8b4ff }]) };
 void AIRQ;
 
 /* ── the room ── */
-const TOP = Math.max.apply(null, PLAN.plots.map(p => p.base)), SPM = { x: gx(SP[0] + 1), z: gc(SP[1]) };
+const TOP = Math.max.apply(null, RM.order.map(p => p.base)), SPM = { x: X(SP[0] + 1), z: RM.gcz(SP[1]) }, PLATE = RM.toRoom(gx(plot['P02-00'].sx + 6), gx(plot['P02-00'].sy + 4) + C / 2);
 const LINES = O.sea.l.concat(O.library.l, O.nightmare.l), L = [];
-L.push("        /* ASTRAL36-BEGIN — THE ASTRAL REALM ON PLOTS (2026-11-16): written by `node bake-astral.js` from docs/areas/astral/layout.json + districts/<S L N>.js. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. */");
+L.push("        /* ASTRAL36-BEGIN — THE ASTRAL REALM ON PLOTS (2026-11-16; ONE WORLD 2026-11-17: three islands far apart, two crossings): written by `node bake-astral.js` from docs/areas/astral/layout.json + districts/<S L N>.js. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. */");
 L.push("        " + ROOM + ": {");
 L.push("            label: 'THE ASTRAL REALM',");
-L.push("            sub: 'THE SEA OF POSSIBILITY · THE LIBRARY OF UNTHOUGHT THINGS · THE NIGHTMARE · 36 ISLANDS OVER THE VOID',");
+L.push("            sub: 'THE SEA OF POSSIBILITY · THE LIBRARY OF UNTHOUGHT THINGS · THE NIGHTMARE · THREE ISLANDS FAR APART IN THE VOID',");
 L.push("            kind: 'box', site: '" + SITE + "', part: '" + PART + "',");
-L.push("            shell: hqAstralShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", h: " + r2(TOP + 14) + ", wallH: " + r2(TOP + 14) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(plot['P02-00'].base + 3.6) + " }, atmos: " + J(ATMOS) + " }),");
-L.push("            parti: 'No ground: thirty-six islands over the void, each at its own height, joined by cloud bridges and floating steps. The Library climbs to the Stacks, the Nightmare sinks to the Maw, the Sea of Possibility winds between them.',");
+L.push("            shell: hqAstralShell({ w: " + r2(2 * RX) + ", d: " + r2(2 * RZ) + ", h: " + r2(TOP + 14) + ", wallH: " + r2(TOP + 14) + ", plate: { x: " + r2(PLATE[0]) + ", z: " + r2(PLATE[1]) + ", y: " + r2(plot['P02-00'].base + 3.6) + " }, atmos: " + J(ATMOS) + " }),");
+L.push("            parti: 'No ground: three islands far apart over the void, the Sea of Possibility, the Library of Unthought Things and the Nightmare. A cloud bridge climbs from the Sea to the Library; the Way Down sinks from the Library to the Nightmare.',");
 L.push("            typology: 'grid',");
-L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", n: " + GX + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.d, p.level])) + " },");
+L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", n: " + RM.cols + ", nx: " + RM.cols + ", nz: " + RM.rows + ", mask: " + J(RM.mask) + ", names: " + J(RM.names) + " },");
 L.push("            terrain: {");
 L.push("                res: 0.875, floor: 'nz_astral_a', cliff: 'crystal', path: 'marble_light',");
 L.push("                noise: { amp: 0, scale: 9 }, outer: { m: 2, keep: 0, lift: -300 },   // no land past the room's edge: the sky all round (outer: false would close the room in a block with a flat bottom)");
 L.push("                /* THE VOID (the old Sea's own): the room's floor is open sky; the islands are the float plateaus above it; a fall puts the walker back on the last ground */");
 L.push("                void: { rock: 'rocks_5', glow: 0x8a4cff, glowY: -26, fall: -8 },");
-L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
+L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + RM.gcx(0) + ", z0: " + RM.gcz(0) + ", nx: " + RW + ", nz: " + RD + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 L.push("                features: [");
 features.forEach(f => L.push("                    " + J(f) + ","));
 L.push("                ],");
 L.push("            },");
 L.push("            doors: [");
-doors.forEach(d => L.push("                " + J(d) + ","));
+doorsR.forEach(d => L.push("                " + J(d) + ","));
 L.push("            ],");
 L.push("            counters: " + J(counters) + ",");
 L.push("            props: [");
-for (let i = 0; i < props.length; i += 4) L.push("                " + props.slice(i, i + 4).map(J).join(", ") + ",");
+for (let i = 0; i < propsR.length; i += 4) L.push("                " + propsR.slice(i, i + 4).map(J).join(", ") + ",");
 L.push("            ],");
 L.push("            agents: [],");
-L.push("            npcSpots: " + J(npc) + ",");
+L.push("            npcSpots: " + J(npcR) + ",");
 L.push("            onlineSpots: [],");
 L.push("            lines: " + J(LINES) + ",");
 L.push("            spawn: { x: " + SPM.x + ", z: " + SPM.z + ", face: 180 },");
@@ -255,7 +295,7 @@ L.push("        /* ASTRAL36-END */");
 const block = L.join('\n') + '\n';
 console.log(JSON.stringify(count));
 /* the rows in data.js that name a place in this room (written by hand there): the tool refuses to bake when one has drifted */
-const end = id => { const w = WAY[id]; return "b: { site: '" + SITE + "', part: '" + PART + "', wall: 'free', x: " + w.x + ", z: " + w.z + ", face: " + w.face + ","; };
+const end = id => { const q = RM.toRoom(WAY[id].x, WAY[id].z), w = { x: q[0], z: q[1], face: WAY[id].face }; return "b: { site: '" + SITE + "', part: '" + PART + "', wall: 'free', x: " + w.x + ", z: " + w.z + ", face: " + w.face + ","; };
 const WANT = [[end('dumb_astral'), 'link dumb_astral'], [end('attic_nightmare'), 'link attic_nightmare'],
     ["action: { room: '" + ROOM + "', at: 'waiting' }", 'the Waiting Room\'s door `sea`'], ["action: { room: '" + ROOM + "', at: 'library' }", 'the Waiting Room\'s door `library`'], ["action: { room: '" + ROOM + "', at: 'nightmare' }", 'the Waiting Room\'s door `nightmare`']];
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');

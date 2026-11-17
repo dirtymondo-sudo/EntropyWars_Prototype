@@ -123,9 +123,9 @@ and everything on it. Rerun node bake-map.js for the new rooms and --put their p
 | B | The Cavern (36) | the Cavern under the Woods + the wells, Hollow Earth under its sun, Agartha under the Lemuria adit; cave walks join them | `bake-cavern.js`, `docs/areas/cavern/districts/K H A.js` |
 | B | The D.U.M.B. (49) | bases on the tube: P3 by the city, Command under Area 51, Research under the Barn, Sub-Level 7 under Shasta, CERN's Ring under Stonehenge | `bake-dumb.js`, `docs/areas/dumb/districts/K P S R C.js` |
 | B | The Deep (40) | Atlantis under the Triangle, the Sea Floor off the Harbour, the Trench towards the rim, joined by the sub | `bake-deep.js`, `docs/areas/deep/districts/C R S T.js` |
-| B | Heaven (20) | the cloud districts stand apart above the Vatican | `bake-afterlife.js` (Heaven room), its Heaven district files |
+| B | Heaven (20) — **BUILT 2026-11-17** (areas-complexes.md "HEAVEN, THE ONE WORLD MOVE": one room, 26 plots, rising north-east) | the cloud districts stand apart above the Vatican | `bake-afterlife.js` (Heaven room), its Heaven district files |
 | B | Outer Space (72) | each world's districts become landing sites the Spaceship flies between | `bake-space.js`, `docs/areas/space/districts/` |
-| B | The Astral Realm (36) | three islands with two crossings | `bake-astral.js`, `docs/areas/astral/districts/S L N.js` |
+| B | The Astral Realm (36) — **BUILT 2026-11-17** (areas-complexes.md "THE ASTRAL REALM, THE ONE WORLD MOVE"; mondo: one room, the chain Sea · Library · Nightmare) | three islands with two crossings | `bake-astral.js`, `docs/areas/astral/districts/S L N.js` |
 
 The zones that stay as they are only get their world position and edges, which phase 1 does.
 

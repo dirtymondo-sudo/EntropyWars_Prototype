@@ -839,7 +839,7 @@ const _NEW_FEMALE_SPRITES = {
   'ninja': `${_S}/Races/ninja/female/ninja_f_px.png`,   // 2026-11-17 THE NINJA — the female ninja (Sprite AI restyle of her Meshy model)
   'robot': `${_S}/Races/robot/female/robot_f2_px.png`,   // 2026-11-17 THE ROBOT REDESIGN — Sprite AI restyles of the new Meshy concepts
   'cyborg': `${_S}/Races/cyborg/female/cyborg_f2_px.png`,
-  'mech': `${_S}/Races/mech/female/mech_f2_px.png`,
+  'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
 };
 const _NEW_MALE_SPRITES = {
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)

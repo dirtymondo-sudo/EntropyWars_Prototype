@@ -9900,6 +9900,27 @@ Plan 2 was drawn, sent to him and built without waiting (`docs/plans/world-zones
   bed 7 m long for P05-03 (the 2.4 m `royal_bed` now). (5) THOUGHT-FORMS: three or four more kinds (the game has one procedural kind). (6) THE SPIRE: an
   unfinished crystal spire about 26 m with a scaffold, P02-05 (drawn now). (7) A coat rack of hanging coats (the Closet's two sides). (8) A giant eye on a
   stalk taller than `dream_eye` for the Bad Nights. (9) Floating stepping stones with a flat top, 3.5 m, for jumps over the gaps.
+### THE ASTRAL REALM, THE ONE WORLD MOVE (2026-11-17, BUILD_PLAN phase 3 wave B, the owner's Astral One World thread)
+The v13 sheet: "the Sea of Possibility, the Library and the Nightmare each get an island far apart in the void, with two crossings between them".
+mondo was shown three layouts (picture `/mnt/project-files/astral-one-world/astral_layout_options.png`) and picked **C, the chain as the sheet draws it**:
+"Connected/bigger rooms is better. If the room is smaller than disaster city than dont even ask, just make it one room".
+- **One room, the same id** `site_prebuilt_lookingglass_realm` (so every door, link, the map's GO and saves still land; nothing to retire). 10 x 13
+  plots (`plots.mask`), 43 plots: the 36 islands + 7 crossing plots. No world place (the Realm is "beyond" in plots.json); bake-map.js's row stays.
+- **Where the islands stand** (bake-astral.js THE ONE WORLD MOVE, `SHIFT`, through `ow-move.js`): the Sea where it was; the Library 4 plots west; the
+  Nightmare under the Library (7 west, 7 south). The district files still write their home 6 x 6 frame and are NOT edited.
+- **The two crossings** (new plots, names mine, plain): THE CLOUD BRIDGE, four plots west from the Near Shore's west port to the Reading Room's east
+  port, rising 8 -> 9 -> 10 by floating steps; THE WAY DOWN, three plots south from the Returns' south port to the Back of the Closet's north port,
+  sinking 8 -> 7 -> 6 -> 5. A crossing plot is a two-square cloud walk over the void (the old bridge pieces, nothing new). No places on them yet.
+- **Gone** (mondo's pick: "the Closet bridge goes"): the four old cross-district joins (Reading Room <> Near Shore, the Returns <> the Hollow Tree, the
+  Closet <> the Back of the Closet, the Fortune Tent <> the Stairs Down). Their ports that do not start a crossing (the Closet S, the Fortune Tent E,
+  the Stairs Down W, the Hollow Tree N) end at the island's edge over the void: the walk through the Closet now ends on a ledge.
+- **The census** (`docs/areas/astral/move/before.json`, `node ow-census.js --diff …`): every prop (430), native (25), door, drawn piece and line of talk is
+  on its plot. It lists 4 MISSING ramps: exactly those four old joins' floating steps (the tool's own pieces, cut on purpose); everything else missing = 0.
+  Strays 0.
+- **Link ends** (only the b ends, ids kept): `dumb_astral` b x -189, z -68.25; `attic_nightmare` b x -89.25, z 210. The tool still refuses to bake
+  when a row drifts (it moves the WAY points with their plots).
+- Map picture remade (`node bake-map.js site_prebuilt_lookingglass_realm`, uploaded). Proof: `docs/plans/one-world/proof/astral_*.jpg`.
+
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
@@ -11513,3 +11534,82 @@ writes the old single room (the home writer is byte for byte what it was). No di
   (no such room: the route kit's room is `site_ow_l4`), so the link stood nowhere; it names `room: 'site_ow_l4'` now. `bake-mountains.js` was rerun so its
   `ifRoom` door `ow_v_m22_m16` (the Lodge yard -> L6) is written now that `site_ow_l6` stands (the same run also re-pointed Shasta's `woods` door off the
   retired `site_prebuilt_fairy_forest_plots`, the tool's own row).
+
+## ONE WORLD, THE DEEP RE-LAID (2026-11-17, BUILD_PLAN phase 3 wave B; mondo said yes to taking the second side's Deep rows, plots moved only)
+BUILD_PLAN's row: "Atlantis under the Triangle, the Sea Floor off the Harbour, the Trench towards the rim, joined by the sub". `node bake-deep.js` builds the
+home 8 x 5 room as before (no district file changed), then THE ONE WORLD MOVE (`ow-move.js`) stands its plots at their v13 places (plots.json `under.districts`
+deepA, deepS, deepT). mondo 11-17 (the Astral thread, a rule for every zone): "Connected/bigger rooms is better. If the room is smaller than disaster city than
+dont even ask, just make it one room". So TWO rooms, each a drowned room (`hqAbyssShell`, `terrain.sea.under`) with `world: { hub: 'deep', layer: 'under' }`:
+
+| Room | Part | What | World box | Plots |
+|---|---|---|---|---|
+| `site_prebuilt_atlantis_deep` (the OLD id) | `deep` | Atlantis (C + R, the ring city whole, as it lay) + the open floor + the Trench (T, as it lay) | 35..42 x 1..16 (8 x 16) | 31 |
+| `site_prebuilt_atlantis_ow_floor` | `ow_floor` | The Sea Floor, S | 18..20 x 5..7 (3 x 3) | 9 |
+
+- **ATLANTIS + THE TRENCH IN ONE ROOM, THE OLD ID**, so the vault door, the drowned stair, the Temple's inside, the bay door (H-20 lands in the inside),
+  `hubs.deep` and the heal zone keep their room (their coordinates changed with the box). The city stands at 35..39 x 1..5: plots.json's sheet rect is 5 x 4 =
+  20 cells for 21 plots and the ring needs its fifth row. Its four corner cells (where the Sea Floor's corner plots stood) carry the plan's ring where it
+  crossed them and plain sea floor round it. The Trench stands at 41..42 x 12..16. Every other cell of the box is THE OPEN FLOOR: sand at the floor's level
+  with rocks and weed (two scatter rows a cell), no plot (`plots.mask` '.'), swum over from the city's south-east to the Trench's Shelf. The box is smaller
+  than Disaster City (128 cells against 12 x 15), so it is one room by his rule; the Sea Floor is 17 plots west (one box would be 25 x 16): its own room.
+- **THE SEA FLOOR, LAID BY THIS TOOL** (plots.json gives its nine plots loose): the old west column stays touching end to end, bent round the 3 x 3:
+  row 5 the Kelp Forest, the Wreck, the Sea Floor; the Upwelling below the Sea Floor, the Reef Wall below that; the Station under the Kelp Forest (as it was),
+  the Spire in the middle, the Drowned Circle and the Dunes along the south (the Dunes beside the Reef Wall, as they were). The Wreck stands on 19,5, the
+  Dutchman's Hold's way down (`under.ways`). One line of `SEA_PLACE` in the tool moves a plot. The city's ring that crossed the four corner plots is sea floor
+  here, at the plot's own level.
+- **THE SUB** (plots.json `under.rides`, no plots): one door pair, id `deep_sub_floor` at both ends: the Station, beside the bathyscaphe <> the Harbour.
+  Bulkhead doors standing on the floor, like the wreck's hatch. The Sea Floor's spawn is its sub door's square. (The sub from Atlantis to the Trench is a
+  swim now.)
+- **THE WAYS OUT**, ids kept, only the Deep's ends moved: `bermuda_abyss` b = the Upwelling in the Sea Floor's room (part `ow_floor`), `revenge_atlantis` b =
+  the wreck's hatch there. Their far ends (the Beach's Maelstrom, the Dutchman's hold) did not move. The vortex way down from the Triangle (`under.ways`,
+  "the vortex", 36.8,1.5 over Atlantis) is not built: the Triangle is phase 4.3's.
+- **ROWS BY HAND** (the tool checks them): the two link ends, `hubs.deep.rooms`, `HQ_HEAL_ZONE.rooms.deep`, the Spire's tape find spot and its sonar tape
+  (both on the Sea Floor's room now), the sky's `still` list, `HQ_AREA_ENCOUNTERS` (the Sea Floor meets the Deep's own units).
+- **THE COUNT**: `node ow-census.js --diff docs/areas/deep/move/before.json site_prebuilt_atlantis_deep site_prebuilt_atlantis_ow_floor` = "nothing missing"
+  (the extras: the open floor's scatter rows, the sub's two doors, one city wall row cut where it crossed a plot line). No strays. 266 props, 27 natives,
+  before and after. data.js grew by about 190 KB (the 8 x 16 box's height and paint sheets).
+- **NOT DONE, by design**: `terrain.edges.world` (an under room has walls and water; the Sewers did the same); the Outfall walk U14 (Sewers to the Sea Floor)
+  is phase 4.4's. bake-map.js's ZONES row for the Deep still says `wait` (a room's own `world` wins).
+
+## HEAVEN, THE ONE WORLD MOVE — the districts stand apart over open sky (2026-11-17, BUILD_PLAN phase 3 wave B; the owner's One World Heaven thread)
+mondo picked the layout on a card ("Rising north-east", 11-17 10:13 UTC): plots.json gives Heaven no world plot (`beyond.heaven`: "cloud districts apart above
+the Vatican, cloud paths between"), so the layout follows the design sheet `docs/plans/one-world/sheets/beyond.png`. Hell, the Catacombs and the Vatican
+do NOT move: they bake byte for byte as before.
+- **ONE ROOM, the same id** `site_prebuilt_heaven_plots` (the preferred method: nothing to retire, Continue / the map's GO / the bay door land as before),
+  7 x 8 plots with a mask, 26 plots = the 20 district plots + 6 cloud path plots. One room by the room-splitting rule (the paths touch both ends) and by
+  mondo's 11-17 rule ("connected, bigger rooms are better; smaller than Disaster City = one room").
+  | District | Home rows | Now (cols x rows) |
+  |---|---|---|
+  | Y The City | row 0 | cols 3-6, row 0 (the highest cloud, north-east) |
+  | F The Cloud Fields | row 1 | cols 2-5, row 2 |
+  | A The Gate | row 2 | cols 0-3, row 4 |
+  | T The Stairway | rows 3-4 | cols 0-3, rows 6-7 (the foot stays the south-west corner) |
+- **THE CLOUD PATHS (the tool's, names labels of mine):** the Cloud Bridge (0,5) from the third landing to the foot of the fourth flight, 3 squares wide at
+  19.25 m; the Cloud Path west / middle / east (1..3,3) from the Gate's opening north, east over open sky and north into the Fields' marble way, 2 wide at
+  24.5 m; the City Path west / east (3..4,1) from the head of the Fields' stair north onto the city's cloud, 2 wide at 28 m. They FLOAT (a puff under them).
+  The Terraces' top step no longer meets the city (the plots parted): it is a lookout now.
+- **HOW (bake-afterlife.js THE ONE WORLD MOVE, `OW_HEAVEN`):** the districts build in the home frame (the 4 x 5 plan; draw-afterlife.js and the district
+  files unchanged), then `ow-move.js` stands each plot at its new place with everything on it; a drawn piece's parts move each with its own plot; the clouds,
+  the marble, the flights and the pool are cut again from the moved squares. No stray. The output loop writes each room from `R.PLAN` (Heaven's = the moved plan).
+- **LINKS (ids kept, only Heaven's ends moved):** `heaven_olympus` a = the foot of the Stairway, free at square (4, 92) facing north (plots.json: "The Stairway,
+  up from Olympus"; was the Cloud Paths' east wall; Olympus' b untouched); `observatory_stair` b (south wall) and `skycastle_stair` b (west wall) ride with the
+  foot; the bay door rides with the City (`siteRooms.entry.prebuilt_heaven`).
+- **THE COUNT** (`docs/areas/afterlife/move/before.json`, `node ow-census.js --diff … site_prebuilt_heaven_plots`): all 73 props, 11 natives, 4 doors and 8 lines
+  are in; what it lists is the tool's own cloud plateaus cut again on the new squares, the room's marble sheet (one drawn row, its anchor on another plot now)
+  and the Gate's two ghost walls cut at plot lines. 1,733 walked squares (was 1,603 + the 130 path squares; the same 42 unreached cloud squares as before).
+- **SEEN ON SCREEN** (probe-fast, no page error, room ready in 39 s): `docs/plans/one-world/proof/heaven_path.jpg` (from the Cloud Path, the City and Room 777
+  across open sky), `heaven_gate.jpg`. The map picture is remade (`Assets/ui/map/site_prebuilt_heaven_plots.png`).
+- NOT DONE: nothing was walked by a player from end to end (the tool's walk check reaches every plot); the solid cloud under the Gate, the Fields and the City
+  still reads as one mass from below (as before the move).
+
+## ONE WORLD, THE D.U.M.B. STAYS ONE ROOM (2026-11-17, BUILD_PLAN phase 3 wave B; the owner's One World D.U.M.B. thread)
+v13 drew the D.U.M.B. as five bases apart on the tube (P3 by the city, Command under Area 51, Research under the Barn, Sub-Level 7 under Shasta, CERN's
+Ring under Stonehenge). mondo, the same morning, as a rule for every zone: "Connected/bigger rooms is better. If the room is smaller than disaster city than
+dont even ask, just make it one room". The base is 7 x 7 plots (Disaster City is 17 x 18), so it STAYS ONE ROOM, as built on 11-16, with every plot,
+stair, ladder and way out where it was. What changed: one line, `world: { hub: 'dumb', layer: 'under', wx: 0, wy: 11 }` (bake-dumb.js `OW`): the room
+stands under the city's south-west, Level P3 on v13's dP row, the East Gantry (P06-05) on world plot 6,16, where U5 from the Running Tunnels arrives on
+its east side. Nothing retired (the id is the same). The census (`docs/areas/dumb/move/before.json`): nothing missing, 0 extra. `node bake-map.js
+site_prebuilt_dumb_base` rewrote the table (bake-map.js's own ZONES row still says `wait`; the room's `world` wins). The bases' v13 places on the map
+(Command, Research, Sub-Level 7, the Ring) are not used; the ways down the map names (the Shasta lift, the barn hatch, the quarry shaft) are not built yet
+and would all land in this room. The clean bake on 11-17 changed one label (the White Rooms' yard gate reads AREA 51: the old ward literal the Desert
+rewrites); kept.
