@@ -2123,4 +2123,5 @@ Files on R2 (old models kept): `Races/robot/{male,female}/Meshy_AI_robot_{m2,f2}
 `Races/mech/female/Meshy_AI_mech_f2_Running.glb`; sprites `<same folder>/<key>_px.png` (Sprite AI restyle of the cut concept, palette_extras 2-4;
 the first Robot M restyle came back WHITE: name the colour + "NOT white" + palette_extras 2). Robot F had a stray thin rod by the hip (3 sliver
 triangles); degenerated in all three files (originals in models/orig/). Pipeline = new-chars run.py (concept nano-banana-pro -> meshy-t2.5 a-pose -> rig).
-Robot F lost the old "chassis walk" lib override (Idle_5 / Running walk): she uses the female defaults now.
+Robot F lost the old "chassis walk" lib override (Idle_5 / Running walk): she uses the female defaults now (mondo 11-17: "no stiff walk").
+Mech F sprite redone as `mech_f2_px2.png` from a straight-on front render of her model (the concept was turned; mondo: "face straight").
