@@ -80119,6 +80119,37 @@ const ThreeRenderer = (function () {
             for (var bx = xc - M / 2 + 0.6; bx <= xc + M / 2 - 0.5; bx += 1.1) blockers.push({ x: bx, z: zc, r: CW / 2, top: 1.7 });
             return { g: g, motion: motion, ow: W, oh: H, plateY: 1.9, blockers: blockers };
         },
+        /* THE ROUND VOYAGE (2026-11-17, One World phase 4.3): THE BOAT — a short plank mooring on posts out from the shore (the
+           door's -Z, over the water), two bollards with a rope between them, a lantern on its post at the land end, and the boat
+           itself (the catalogue's `rowboat` GLB) alongside the mooring's head, riding the sea's own level. SET SAIL and the next
+           shore loads. The opening is the land end (the walker comes up the planks). */
+        boat: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.8, L = 7.6, DY = 0.35, seaY = -(+ctx.y0 || 0);
+            var plank = _hqMat('dark_woods', 1, 3, { color: 0x8a6a48, shininess: 8 });
+            var post = _hqMat('dark_woods', 1, 2, { color: 0x5a4430, shininess: 6 });
+            var rope = _hqMat('dark_woods', 4, 1, { color: 0xc8b088, shininess: 4 });
+            var deck = _hqBox(W, 0.12, L, plank); deck.position.set(0, DY * U, -(L / 2 - 0.6) * U); g.add(deck);
+            var low = Math.min(seaY - 1.2, -0.6);
+            [-1, 1].forEach(function (sx) { for (var z = 0.4; z > -L + 0.4; z -= 1.75) {
+                var ph = DY - low; var pp = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.12 * U, ph * U, 8), post); pp.position.set(sx * (W / 2 - 0.08) * U, (low + ph / 2) * U, z * U); g.add(pp); } });
+            var head = -L + 0.85, bol = [];
+            [-1, 1].forEach(function (sx) { var b = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * U, 0.16 * U, 0.55 * U, 10), post); b.position.set(sx * (W / 2 - 0.2) * U, (DY + 0.33) * U, head * U); g.add(b); bol.push(b); });
+            var line = new THREE.Mesh(new THREE.CylinderGeometry(0.025 * U, 0.025 * U, (W - 0.4) * U, 6), rope); line.rotation.z = Math.PI / 2; line.position.set(0, (DY + 0.48) * U, head * U); g.add(line);
+            var lp = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.07 * U, 2.0 * U, 8), post); lp.position.set(-(W / 2 - 0.15) * U, (DY + 1.0) * U, 0.3 * U); g.add(lp);
+            var lamp = _hzGlowSprite(0.8 * U, 0xffc870, 0.35, 0.0, 0.0, 0.0); lamp.position.set(-(W / 2 - 0.15) * U, (DY + 2.05) * U, 0.3 * U); g.add(lamp);
+            /* the boat: the catalogue's rowboat alongside the head, bow out to sea */
+            var cat = (typeof _hqData === 'function') ? (((_hqData() || {}).catalogue || {}).rowboat) : null;
+            var hull = new THREE.Group(); hull.position.set((W / 2 + 1.1) * U, (seaY + 0.05) * U, (head - 0.6) * U); g.add(hull);
+            if (cat && cat.file && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
+                var inst = _miscModelInstance(_hqModelUrl(cat), true, 0.95 * U, { matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined });
+                inst.rotation.y = Math.PI / 2 + ((cat.rot || 0) * Math.PI / 180); hull.add(inst);
+            }
+            var motion = { mode: 'way', ow: W, tick: function (k) { lamp.material.opacity = 0.35 + 0.5 * k; } };
+            if (_hq) _hq.tickers.push(function (dt, now) { hull.rotation.z = 0.035 * Math.sin(now * 0.0013); hull.position.y = (seaY + 0.05 + 0.05 * Math.sin(now * 0.0017)) * U; });
+            var blockers = [{ x: W / 2 + 1.1, z: head - 0.6, r: 1.2, top: 1.2 }];
+            return { g: g, motion: motion, ow: W, oh: 1.6, plateY: DY + 2.1, blockers: blockers };
+        },
         /* ── THE SECOND BATCH (2026-09-15 rev 22): six more entryways ──────
            Same contract as the three above: the door's local frame (+Z into
            the room, the origin on the wall plane at the floor — a FREE end
