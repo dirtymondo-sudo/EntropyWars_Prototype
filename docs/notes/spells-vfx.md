@@ -4473,3 +4473,17 @@ its generic stage burst stops. Looks only.
 - Online: every layer rides the relayed `burst` beat; nothing on `state`; drawn only where the viewer sees the square.
 - Checked on screen: each spell fired on the audit board and through real casts (frames in `docs/plans/vfx-cleanup/img/own-look/L6_*.jpg`).
 
+## THE OWN LOOKS, L6, part 2: the fire spells (2026-11-17, same block; the list is done, 17 of 17)
+The fire pass already burns each hit square (the fire mark, kept); each spell adds what it IS on top, in `_FX2_BURST`.
+- **Two borrowed blasts replaced:** Dynamite had `raceChassisSlam_aoe` (a robot's slam: rings + electric sparks) and Bomb
+  Arrow nine of Fireball's `fire1_impact`. Each has a plain square of its own now (`l6Dynamite_aoe`, `l6BombArrow_aoe`:
+  the scorch and what it throws, no ring, no flash layer); the square flash is `_l6Flash`.
+- Dynamite: the ground goes up in one tan column over the centre, a dust skirt rolls out, rock is thrown far, and the stick's red paper comes down in scraps.
+- Bomb Arrow: the fuse's star of yellow sparks, one ring of grey powder smoke opening, the shaft in splinters.
+- Chain Reaction: the reaction hops square to square in a spiral out from the middle of the 5x5, each square popping acid green as a thread of light reaches it from the last.
+- Cluster Rockets: nine thin smoke trails slant down from his side, one into each square, one after another, and hang (its mortar-path rockets are kept).
+- Fire Arrow: simple: the arrow (the game's model) stands in the target, still alight, quivering.
+- Lump of Coal: it stays just Santa throwing coal: the lump breaks into black pieces (the rock model, charred) with fire still in them, and a puff of soot.
+- Baphomet's Rite: his blood runs to the square in a line of drops and two great horns of dark fire (solid tapered tubes, standing across the lens) curl up over the 3x3. No rune on the hit squares.
+- Seen on screen: frames `docs/plans/vfx-cleanup/img/own-look/L6_part2_*.jpg`. Under the fire mark's flames the fire area spells' own pieces are the quieter layer; Dynamite's column is the weakest read of the 17.
+

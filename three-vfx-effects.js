@@ -72709,6 +72709,207 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }]);
     };
 
+    /* ── L6 part 2: the fire spells. The fire pass already burns each hit square (the fire mark); these add what the
+       spell IS on top of that: the dirt, the powder, the chain, the smoke trails, the arrow, the coal, the horns. ── */
+    var _L6F = { dyn: 0xff5a2a, paper: 0xc8262a, dirt: 0x6a4a32, powder: 0xffc45a, powderSmoke: 0x5a544c, acid: 0xb8f03a, acidHot: 0xe8ff7a,
+        rocket: 0xffa030, trail: 0xb8b0a8, soot: 0x1a1612, coalHot: 0xff7a2a, rite: 0xd0202a, horn: 0x7a0c14, hornHot: 0xff5a1e };
+    function _l6Seen(tiles) { for (var i = 0; i < tiles.length; i++) if (_pzSeen(tiles[i].x, tiles[i].y)) return true; return false; }
+
+    /* Dynamite had a robot's slam for its blast (rings + electric sparks) and Bomb Arrow nine of Fireball's own detonation:
+       each gets a plain square of its own (the scorch, what it throws), and the look below is the rest */
+    EFFECTS['l6Dynamite_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, size0: 84, size1: 96, opacity0: 0.85 },
+        { count: 4, sprite: 'mud-chunk', tint: 0x6a4a32, ml: [380, 640], z: 6, offsetXY: 16, vxRange: 110, vyRange: 110, vzRange: [120, 260], gravity: 560, drag: 0.6, size0: [5, 10], size1: 3 },
+        { anchor: 'floor', mode: 'world', sprite: 'dust-puff', tint: 0x8a6a4a, ml: 900, z: 2, size0: 50, size1: 96, opacity0: 0.5 },
+    ] };
+    EFFECTS['l6Dynamite_aoe'] = { aoeRadius: 1, impactTileEffect: 'l6Dynamite_tile', shake: 'hard' };
+    SPELL_MAP['raceDynamite'] = Object.assign({}, SPELL_MAP['raceDynamite'], { aoe: 'l6Dynamite_aoe' });
+    EFFECTS['l6BombArrow_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, size0: 70, size1: 84, opacity0: 0.8 },
+        { count: 3, sprite: 'ember', ml: [320, 600], z: 6, offsetXY: 14, vxRange: 100, vyRange: 100, vzRange: [60, 180], gravity: 300, drag: 1.2, size0: [5, 9], size1: 2 },
+        { count: 1, delayMs: 80, sprite: 'smoke', tint: 0x5a544c, ml: [700, 1000], offsetXY: 12, z: [10, 24], vzRange: [24, 50], drag: 0.5, size0: [26, 36], size1: [60, 84], opacity0: 0.45 },
+    ] };
+    EFFECTS['l6BombArrow_aoe'] = { aoeRadius: 1, impactTileEffect: 'l6BombArrow_tile', shake: 'normal' };
+    SPELL_MAP['raceBombArrow'] = Object.assign({}, SPELL_MAP['raceBombArrow'], { aoe: 'l6BombArrow_aoe' });
+
+    /* DYNAMITE (cowboy): a stick in the dirt. The ground goes up in one brown column over the centre square, a skirt of
+       dust rolls out under it, and the stick's red paper comes down in scraps after. */
+    _FX2_BURST.raceDynamite = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var tiles = _l6Area('raceDynamite', tx, ty, false); if (!_l6Seen(tiles)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, H = ts * 2.5;
+        var cg = new THREE.CylinderGeometry(ts * 0.5, ts * 0.1, H, 14, 1, true); cg.translate(0, H / 2, 0);
+        var col = _pzMesh(cg, _pzSolid(0xa07a50, null, { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, ts * 0.04, 0);
+        var hot = _pzMesh(cg, _pzGlow(_L6F.dyn), F.g, 0, ts * 0.04, 0);
+        col.renderOrder = 168; hot.renderOrder = 169;
+        var flash = _l6Flash(F, tiles, _L6F.dyn, { delay: function (t) { return t.ring * 70; }, ms: 360 });
+        if (_pzSeen(tx, ty)) {
+            for (var i = 0; i < 14; i++) { var a = rn(0, 6.283), v = rn(20, 120); _pzP(F, 0, ts * 0.1, 0, { sprite: i % 2 ? 'mud-chunk' : 'rock-debris', tint: i % 2 ? _L6F.dirt : null, ml: rn(600, 950), size0: rn(7, 14), size1: 4,
+                vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: rn(300, 560), gravity: 760, drag: 0.3, opacity0: 1 }); }
+            for (var d = 0; d < 12; d++) { var b = d / 12 * 6.283; _pzP(F, Math.cos(b) * ts * 0.2, ts * 0.08, Math.sin(b) * ts * 0.2, { sprite: 'dust-puff', tint: 0x8a6a4a, ml: rn(520, 760), size0: 16, size1: 44,
+                vx: Math.cos(b) * 230, vy: Math.sin(b) * 230, vz: 14, drag: 2.6, opacity0: 0.6 }); }
+            _fxDelay(function () { if (_suppressed()) return; for (var k = 0; k < 10; k++) _pzP(F, rn(-0.5, 0.5) * ts, ts * rn(1.1, 1.8), rn(-0.5, 0.5) * ts, { sprite: 'petal', tint: _L6F.paper, ml: rn(800, 1300), size0: rn(5, 8), size1: 4,
+                vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(-90, -40), drag: 0.6, opacity0: 1, wander: { amp: 22, freq: 1.6 } }); }, 260);
+        }
+        return _l6Go(F, 900, [flash, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 180)), k = 1 - _sigClamp01((el - 260) / 520), sag = 1 - 0.35 * _sigClamp01((el - 300) / 500);
+            col.scale.set(0.7 + 0.5 * up, up * sag, 0.7 + 0.5 * up); hot.scale.set(0.5 + 0.3 * up, up * 0.6, 0.5 + 0.3 * up);
+            col.material.opacity = 0.85 * k; hot.material.opacity = 0.7 * (1 - _sigClamp01(el / 260));
+        }]);
+    };
+
+    /* BOMB ARROW (robin hood): a powder charge on an arrowhead. The fuse spits a star of yellow sparks, the charge goes
+       with one round puff of grey powder smoke that opens into a ring, and the shaft is splinters. */
+    _FX2_BURST.raceBombArrow = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var tiles = _l6Area('raceBombArrow', tx, ty, false); if (!_l6Seen(tiles)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, flash = _l6Flash(F, tiles, _L6F.powder, { delay: function (t) { return t.ring * 60; }, ms: 320 });
+        var ring = _pzMesh(new THREE.TorusGeometry(1, 0.16, 8, 36), _pzSolid(0x8a8478, null, { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, ts * 0.45, 0), rays = [];
+        ring.rotation.x = Math.PI / 2; ring.renderOrder = 166;
+        for (var i = 0; i < 10; i++) rays.push(_l6Stroke(F, _L6F.powder, _L6F.powder));
+        if (_pzSeen(tx, ty)) {
+            _pzP(F, 0, ts * 0.5, 0, { sprite: 'flash', tint: _L6F.powder, ml: 140, size0: ts * 0.7, size1: ts * 0.2, opacity0: 0.85 });
+            for (var s = 0; s < 6; s++) _pzP(F, rn(-8, 8), ts * 0.5, rn(-8, 8), { sprite: 'smoke', tint: _L6F.powderSmoke, ml: rn(600, 900), size0: 26, size1: 70, vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(30, 80), drag: 1.2, opacity0: 0.6 });
+            for (var k = 0; k < 8; k++) { var a = rn(0, 6.283); _pzP(F, 0, ts * 0.5, 0, { sprite: 'debris', tint: 0xc9a06a, ml: rn(380, 620), size0: rn(4, 9), size1: 2, vx: Math.cos(a) * rn(120, 260), vy: Math.sin(a) * rn(120, 260), vz: rn(80, 260), gravity: 520, drag: 0.6, opacity0: 1 }); }
+        }
+        return _l6Go(F, 800, [flash, function (el) {
+            var e = _sigEaseOutCubic(_sigClamp01(el / 420));
+            ring.scale.setScalar(ts * (0.2 + 1.1 * e)); ring.material.opacity = 0.6 * Math.min(1, el / 50) * (1 - _sigClamp01((el - 200) / 500));
+            var r = _sigEaseOutCubic(_sigClamp01(el / 200)), rk = 1 - _sigClamp01((el - 90) / 220);
+            for (var i = 0; i < rays.length; i++) { var a = i / rays.length * 6.283 + 0.3; rays[i].place(Math.cos(a) * ts * (0.1 + 0.55 * r), ts * 0.5, Math.sin(a) * ts * (0.1 + 0.55 * r), Math.cos(a), Math.sin(a), ts * 0.42, ts * 0.06, rk); }
+        }]);
+    };
+
+    /* CHAIN REACTION (chemistry): one spark, then the whole table. The reaction hops square to square in a spiral out
+       from the middle, each square popping acid green the moment the thread of light reaches it from the last one. */
+    _FX2_BURST.raceChainReaction = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var tiles = _l6Area('raceChainReaction', tx, ty, false); if (!_l6Seen(tiles)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, HOP = 34, links = [], popped = 0, up = new THREE.Vector3(0, 1, 0);
+        /* the spiral: ring by ring, round each ring in turn */
+        tiles.sort(function (a, b) { return (a.ring - b.ring) || (Math.atan2(a.dy, a.dx) - Math.atan2(b.dy, b.dx)); });
+        for (var i = 0; i < tiles.length; i++) { tiles[i].n = i; tiles[i].o = _nvOff(F, tiles[i].x, tiles[i].y); }
+        for (var j = 1; j < tiles.length; j++) {
+            if (!_pzSeen(tiles[j].x, tiles[j].y) && !_pzSeen(tiles[j - 1].x, tiles[j - 1].y)) continue;
+            var m = _pzMesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, 1, 5, 1), _pzGlow(_L6F.acidHot), F.g);
+            _pzSpan(m, { x: tiles[j - 1].o.x, y: tiles[j - 1].o.y + ts * 0.3, z: tiles[j - 1].o.z }, { x: tiles[j].o.x, y: tiles[j].o.y + ts * 0.3, z: tiles[j].o.z });
+            links.push({ m: m, d: j * HOP });
+        }
+        var flash = _l6Flash(F, tiles, _L6F.acid, { delay: function (t) { return t.n * HOP; }, ms: 420, op: 1 });
+        return _l6Go(F, tiles.length * HOP + 700, [flash, function (el) {
+            for (var i = 0; i < links.length; i++) { var u = (el - links[i].d + HOP) / 170; links[i].m.material.opacity = (u <= 0 || u >= 1) ? 0 : 0.95 * (1 - u); }
+            while (popped < tiles.length && el >= popped * HOP) {
+                var t = tiles[popped++]; if (!_pzSeen(t.x, t.y)) continue;
+                _pzP(F, t.o.x, t.o.y + ts * 0.3, t.o.z, { sprite: 'flash', tint: _L6F.acid, ml: 150, size0: ts * 0.5, size1: ts * 0.14, opacity0: 0.85 });
+                for (var k = 0; k < 3; k++) _pzP(F, t.o.x + rn(-0.2, 0.2) * ts, t.o.y + ts * 0.2, t.o.z + rn(-0.2, 0.2) * ts, { sprite: 'poison-bubble', tint: _L6F.acidHot, ml: rn(300, 520), size0: rn(5, 9), size1: 2, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(120, 260), gravity: 380, drag: 0.6, opacity0: 0.95 });
+            }
+        }]);
+    };
+
+    /* CLUSTER ROCKETS (cyborg): the rack empties. Nine thin smoke trails slant down out of the sky from his side, one
+       into each square, one after another, and hang there drifting after the rockets have gone off. */
+    _FX2_BURST.raceClusterRockets = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var tiles = _l6Area('raceClusterRockets', tx, ty, false); if (!_l6Seen(tiles)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ux = -0.7, uz = -0.7, GAP = 55, trails = [], popped = 0, ORDER = [4, 0, 8, 2, 6, 1, 7, 3, 5];
+        if (p.sx != null && (p.sx !== tx || p.sy !== ty)) { var ln = _nrvLine(F, { x: p.sx, y: p.sy }, tx, ty); ux = ln.ux; uz = ln.uz; }
+        for (var i = 0; i < tiles.length; i++) {
+            var t = tiles[i]; t.n = ORDER.indexOf(i % 9); t.o = _nvOff(F, t.x, t.y);
+            if (!_pzSeen(t.x, t.y)) continue;
+            var top = new THREE.Vector3(t.o.x + ux * ts * 1.5, t.o.y + ts * 3.0, t.o.z + uz * ts * 1.5), bot = new THREE.Vector3(t.o.x, t.o.y + ts * 0.15, t.o.z);
+            var R = _wdRibbon(F.g, [top, top.clone().lerp(bot, 0.5).add(new THREE.Vector3(ux * ts * 0.12, 0, uz * ts * 0.12)), bot], { w0: ts * 0.1, w1: ts * 0.05, segs: 18, roll: 0, mat: _wdAirMat(true, _L6F.trail), glowColor: _L6F.rocket });
+            trails.push({ R: R, d: t.n * GAP });
+        }
+        var flash = _l6Flash(F, tiles, _L6F.rocket, { delay: function (t) { return t.n * GAP + 90; }, ms: 300 });
+        return _l6Go(F, 1500, [flash, function (el) {
+            for (var i = 0; i < trails.length; i++) {
+                var T = trails[i], u = (el - T.d) / 110;
+                if (u <= 0) { T.R.set(0, 0); continue; }
+                T.R.set(0, Math.min(1, u)); T.R.op(0.75 * (1 - _sigClamp01((el - T.d - 500) / 800)));
+            }
+            while (popped < tiles.length && el >= popped * GAP + 90) {
+                var t = null; for (var q = 0; q < tiles.length; q++) if (tiles[q].n === popped) { t = tiles[q]; break; }
+                popped++; if (!t || !_pzSeen(t.x, t.y)) continue;
+                for (var k = 0; k < 5; k++) { var a = rn(0, 6.283); _pzP(F, t.o.x, t.o.y + ts * 0.2, t.o.z, { sprite: 'spark', tint: _L6F.rocket, ml: rn(220, 380), size0: rn(5, 9), size1: 1, vx: Math.cos(a) * rn(120, 240), vy: Math.sin(a) * rn(120, 240), vz: rn(60, 220), gravity: 420, drag: 1, opacity0: 1 }); }
+            }
+        }]);
+    };
+
+    /* FIRE ARROW (robin hood): a simple shot, so a simple look. The arrow stands in the target, still alight: a small
+       flame burns off the shaft and it quivers from the hit. */
+    _FX2_BURST.raceFireArrow = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ux = 0.7, uz = 0.7, from = _l6From(p);
+        if (from) { var ln = _nrvLine(F, from, tx, ty); ux = ln.ux; uz = ln.uz; }
+        var ar = _npInst('arrow', ts * 0.6, 0), G = new THREE.Group(); G.rotation.order = 'YXZ';
+        G.position.set(ux * ts * 0.24, ts * 0.68, uz * ts * 0.24); G.rotation.y = Math.atan2(-ux, -uz); F.g.add(G);
+        if (ar) G.add(ar.group);
+        var V = _fpVolMesh({ x: ux * ts * 0.4, y: ts * 0.66, z: uz * ts * 0.4, h: ts * 0.8, w: ts * 0.34, d: 0, life: 1150, ph: rn(0, 9) }, F.g, _FP);
+        var lit = _pzSpr(_FP.flame, ts * 0.5, F.g); lit.position.set(ux * ts * 0.4, ts * 0.8, uz * ts * 0.4);
+        _fpEmbers(F, ux * ts * 0.3, ts * 0.7, uz * ts * 0.3, 6, _FP, { r: 6, v: 50, vz0: 60, vz1: 160 });
+        return _l6Go(F, 1250, [function (el) {
+            var k = Math.min(1, el / 40) * (1 - _sigClamp01((el - 950) / 280));
+            G.rotation.x = -0.22 + 0.16 * Math.sin(el * 0.06) * Math.exp(-el / 180);
+            if (ar) ar.setFade(k);
+            lit.material.opacity = 0.55 * k * (0.8 + 0.2 * Math.sin(el * 0.05));
+            _fpVol(V, el);
+        }]);
+    };
+
+    /* LUMP OF COAL (santa): it is just Santa throwing coal (mondo's rule), so the look is the coal: the lump breaks on
+       the body into black pieces with the fire still in them, and a puff of soot hangs where it hit. */
+    _FX2_BURST.raceLumpOfCoal = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, bits = [], N = 7, ok = _wpnReady('asteroid2');
+        for (var i = 0; ok && i < N; i++) {
+            var inst = _wpnInstance('asteroid2', ts * rn(0.11, 0.2), { tint: 0x2a1e1a }); if (!inst) break;
+            var a = i / N * 6.283 + rn(-0.3, 0.3), v = rn(0.9, 1.7);
+            var glow = _pzSpr(_L6F.coalHot, ts * 0.24, inst.group); F.g.add(inst.group); inst.setFade(1);
+            bits.push({ inst: inst, glow: glow, vx: Math.cos(a) * v, vz: Math.sin(a) * v, vy: rn(1.6, 3.0), sp: rn(-0.02, 0.02) });
+        }
+        for (var s = 0; s < 5; s++) _pzP(F, rn(-8, 8), ts * 0.6, rn(-8, 8), { sprite: 'smoke', tint: _L6F.soot, ml: rn(700, 1050), size0: 20, size1: 58, vx: rn(-26, 26), vy: rn(-26, 26), vz: rn(20, 60), drag: 0.8, opacity0: 0.7 });
+        _fpEmbers(F, 0, ts * 0.6, 0, 8, _FP, { r: 8, v: 120, vz0: 60, vz1: 220, g: 160 });
+        return _l6Go(F, 800, [function (el) {
+            var t = el / 1000, k = 1 - _sigClamp01((el - 500) / 280);
+            for (var i = 0; i < bits.length; i++) {
+                var B = bits[i], y = ts * (0.6 + B.vy * t - 4.6 * t * t);
+                B.inst.group.position.set(B.vx * ts * t, Math.max(ts * 0.05, y), B.vz * ts * t); B.inst.group.rotation.set(el * B.sp, el * 0.013, 0);
+                B.inst.setFade(k); B.glow.material.opacity = 0.9 * k * (0.6 + 0.4 * Math.sin(el * 0.03 + i));
+            }
+        }]);
+    };
+
+    /* BAPHOMET'S RITE (goatman): he pays in blood and the goat answers. His blood runs to the square in a line of
+       drops, and two great horns of dark fire curl up out of it over the 3x3, burning from root to tip. */
+    _FX2_BURST.raceBaphometsRite = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var tiles = _l6Area('raceBaphometsRite', tx, ty, false); if (!_l6Seen(tiles)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _l6From(p), horns = [], G = new THREE.Group(), cam = _pzCam();
+        /* the horns stand across the lens, so the pair always reads as a pair */
+        if (cam) G.rotation.y = Math.atan2(cam.position.x - F.wp.x, cam.position.z - F.wp.z);
+        F.g.add(G);
+        for (var s = -1; s <= 1; s += 2) {
+            var pts = [[0.28, 0.08], [0.85, 0.7], [1.08, 1.5], [0.8, 2.2], [0.36, 2.5]].map(function (q) { return new THREE.Vector3(s * q[0] * ts, q[1] * ts, 0); });
+            /* a real horn: a tube along the curl, thick at the root and drawn to a point */
+            var curve = new THREE.CatmullRomCurve3(pts), SEG = 28, RAD = 7, tg = new THREE.TubeGeometry(curve, SEG, ts * 0.2, RAD, false), pa = tg.attributes.position, c = new THREE.Vector3();
+            for (var v = 0; v < pa.count; v++) {
+                var u = Math.floor(v / (RAD + 1)) / SEG, f = 1 - 0.92 * u; curve.getPointAt(Math.min(1, u), c);
+                pa.setXYZ(v, c.x + (pa.getX(v) - c.x) * f, c.y + (pa.getY(v) - c.y) * f, c.z + (pa.getZ(v) - c.z) * f);
+            }
+            var body = _pzMesh(tg, _pzSolid(_L6F.horn, null, { side: THREE.DoubleSide, depthWrite: false }), G), heat = _pzMesh(tg, _pzGlow(_L6F.hornHot), G);
+            body.renderOrder = 168; heat.renderOrder = 169;
+            horns.push({ tg: tg, body: body, heat: heat, n: tg.index.count });
+        }
+        if (from) {
+            var ln = _nrvLine(F, from, tx, ty), T = 0.24;
+            for (var d = 0; d < 9; d++) _pzP(F, ln.dx, ln.dy + ts * 0.7, ln.dz, { sprite: 'blood-drop', ml: T * 1000 + d * 22, size0: rn(6, 10), size1: 4, vx: -ln.dx / T * (1 - d * 0.05), vy: -ln.dz / T * (1 - d * 0.05), vz: rn(-10, 30), drag: 0, opacity0: 1, opacity1: 0.6 });
+        }
+        var flash = _l6Flash(F, tiles, _L6F.rite, { delay: function (t) { return 120 + t.ring * 90; }, ms: 420 });
+        return _l6Go(F, 1500, [flash, function (el) {
+            var h = _sigEaseOutCubic(_sigClamp01((el - 120) / 380)), k = 1 - _sigClamp01((el - 950) / 500);
+            for (var i = 0; i < 2; i++) { var Hn = horns[i]; Hn.tg.setDrawRange(0, Math.floor(Hn.n * h / 3) * 3); Hn.body.material.opacity = 0.95 * k; Hn.heat.material.opacity = k * (0.32 + 0.14 * Math.sin(el * 0.03 + i)); }
+        }]);
+    };
     /* ═════════ END THE OWN LOOKS, L6 ═════════ */
 
     return {
