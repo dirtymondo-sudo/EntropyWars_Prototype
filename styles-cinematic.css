@@ -3757,6 +3757,33 @@
 .acam-chrome.active .lk-kf-sub .s1 { animation: lkIn .05s linear calc(var(--lk-ms, 2600ms) * .3) both; }
 .acam-chrome.active .lk-kf-sub .s2 { animation: lkIn .05s linear calc(var(--lk-ms, 2600ms) * .62) both; }
 
+/* DELIVERY BOY — the food delivery app (mondo 11-17): the app's header in the top bar, the order card in the bottom bar
+   (headline per spell, the four steps, the ETA counting down, the driver's rating + note, the tip chips) */
+.lk-dl-app { position: absolute; right: 3.5%; top: 50%; transform: translateY(-50%); color: #fff; white-space: nowrap;
+    font: 400 clamp(12px, 2.6vh, 22px) -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+.lk-dl-app b { color: #ff3008; font-weight: 800; }
+.acam-chrome.lk-delivery .acam-bar-name { font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-weight: 800; letter-spacing: .02em;
+    text-transform: none; border-left-color: #ff3008; text-shadow: none; }
+.acam-chrome.lk-delivery .acam-bar-bot { left: 0; right: 0; bottom: 3%; height: auto; background: none; transform: translateY(160%); }
+.acam-chrome.lk-delivery.active .acam-bar-bot { transform: translateY(0); }
+.lk-dl-card { width: min(640px, 56%); margin: 0 auto; background: #fff; color: #191919; border-radius: 16px; padding: .7em 1.1em .75em;
+    box-shadow: 0 8px 26px rgba(0,0,0,.5); font: 400 clamp(10px, 1.9vh, 16px)/1.2 -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+.lk-dl-card .h { display: flex; justify-content: space-between; align-items: center; gap: 1em; }
+.lk-dl-card .h b { font-size: 1.3em; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lk-dl-card .eta { flex: none; background: #ff3008; color: #fff; font: 700 1.25em 'Share Tech Mono', 'Courier New', monospace; padding: .12em .55em; border-radius: 8px; }
+.lk-dl-card .steps { display: flex; gap: 6px; margin: .65em 0 .35em; }
+.lk-dl-card .steps div { flex: 1; height: 6px; border-radius: 3px; background: #e2e2e2; }
+.lk-dl-card .steps .on { background: #ff3008; }
+.lk-dl-card .lbl { display: flex; justify-content: space-between; font-size: .8em; color: #777; }
+.lk-dl-card .lbl .c { color: #ff3008; font-weight: 700; }
+.lk-dl-card .drv { display: flex; align-items: center; justify-content: space-between; gap: 1em; margin-top: .55em; white-space: nowrap; }
+.lk-dl-card .who { overflow: hidden; text-overflow: ellipsis; }
+.lk-dl-card .who i { font-style: normal; color: #f5a400; }
+.lk-dl-card .who em { font-style: normal; color: #777; }
+.lk-dl-card .tip { display: flex; gap: 6px; flex: none; }
+.lk-dl-card .tip span { border: 2px solid #ddd; border-radius: 999px; padding: .1em .65em; font-weight: 700; }
+.lk-dl-card .tip .s { border-color: #191919; }
+
 /* CURSED TV — the whole screen becomes the set: a plastic bezel, curved glass + scanlines, the green on-screen channel + volume */
 .acam-chrome.lk-crt .acam-bar { display: none; }
 .acam-chrome.lk-crt .acam-title { left: calc(5vw + 3%); top: calc(9vh + 3% + 3.4em); }
