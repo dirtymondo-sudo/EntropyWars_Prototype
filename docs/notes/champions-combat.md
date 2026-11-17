@@ -5709,6 +5709,22 @@ dormant / bodiless):
   max HP at the round end, never below 1 (`_wendigoHunger`).
 - 🐸 Karate Frog, LEAPFROG: `leapOver` (in _runPostEffects + spellMovesCaster) lands him on the square straight behind the target.
 - 🐌 Samurai Slug, THE SLIME TRAIL: every square he walks off becomes Black Ooze (`swamp`) for 2 rounds (`_slugTrail`, finishMoveAt).
+  THE SAMURAI SLUG POLISH (2026-11-17, mondo: "flesh out their unique spells ... make sure that any new mechanics are tested out and
+  work as intended"). The playstyle: THE SLIME ROAD. The ooze is his: he crosses Black Ooze at a plain step's cost (state.js
+  getTerrainMoveCost) and is never Gooed by it (battle.js `_slugOozeProof` in the arrival chain's enterStatus, data.js
+  TERRAIN_RULES.swamp.endTurn, ai.js hazard cost); everyone else, his allies too, pays 2 and is Gooed. He lays lanes; the enemy
+  crosses or goes round. Answers: fire (the ooze goes up, he is fire-weak), flyers, range (SPD 70), going round.
+  Changes: **Slime Slash** + `paintTerrain` (the struck square turns to ooze 2 rounds); it is poison, so THE ELEMENT TERRAINS
+  already give ×1.25 when he or it stands in the ooze (a ×1.3 vs Gooed was tried and dropped: stacked to ×1.6, 334 → 595).
+  **Salt-Proof Stance** + `slimeRing` (`_slugRing`: the 4 squares round him, walls respected). **Iai Draw** + `slimeLane`
+  (`_slugLane`: the squares he charged across, both charge paths). **Ronin's Wake** (new T4, `nrRoninsWake`, 90 MP, cd 4, self,
+  diamond 4, 120 physical + Root 1): every enemy standing in Black Ooze within 4. `aoeOnTerrain: ['swamp']` = getSpellAoeArea
+  keeps only those squares (`_aoeTerrainFilter`; ui.js getSpellAoeFootprint and ai.js getSpellAoeAreaAI read it too, so preview,
+  hit, CPU agree); `_selfNovaEnemyOnly` refuses it with nobody in the ooze. RACE_TREE samurai slug = his own four (the borrowed row
+  was Sad Backstory / Plot Armor / To Be Continued / Roll Credits). Stats unchanged.
+  Probe 11-17 (real VS-CPU TDM, 0 page errors): walk paints 2 squares, cost 1 for him / 2 for a foe, swamp endTurn null for him;
+  Iai Draw slimed its lane; Slime Slash 271, then 360 on the ooze (×1.25); stance ring 4/4 + DEF +2; Wake refused with nobody in
+  the ooze, then 282 + Rooted on the foe in the ooze, the foe on grass untouched; a CPU slug cast Wake (2 foes), Iai Draw, Slime Slash.
 - 🦗 Cicada Brood, THE WAIT: Dig In = `dormant` (blockMove, onRoundEnd +1 Brood to 3) + Invisible; Screech (`broodSpend` 45)
   adds 45 a stack in the plain AoE resolver (`_broodSpend`), spends them and ends Dig In.
 Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo had 10 stretched triangles from a claw to the foot

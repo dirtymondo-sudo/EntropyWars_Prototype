@@ -2822,7 +2822,7 @@
             if (unit.race !== 'necromancer' && ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');
         } else if (terr === 'swamp') {
             let gooProof = false;
-            try { gooProof = typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo'; } catch (e) {}
+            try { gooProof = (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo') || unit.race === 'samurai slug'; } catch (e) {}   // 🐌 the slug's slime is his road
             if (!gooProof && !((unit.status && unit.status.goo) > 1)) cost += 30;
         }
         if (burning && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) {
@@ -10902,6 +10902,10 @@
         return tiles;
     }
     function getSpellAoeAreaAI(spell, cx, cy) {
+        if (spell && spell.aoeOnTerrain && typeof window._aoeTerrainFilter === 'function') {   // 🐌 Ronin's Wake: the ooze squares only
+            const _sp = Object.assign({}, spell); delete _sp.aoeOnTerrain;
+            return window._aoeTerrainFilter(spell, getSpellAoeAreaAI(_sp, cx, cy));
+        }
         if (typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) return aoeMaskTiles(spell.aoeMask, cx, cy);   // THE AOE MASK (§4.7) replaces the radius / shape
         const r = spell.aoeRadius || 1;
         if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
