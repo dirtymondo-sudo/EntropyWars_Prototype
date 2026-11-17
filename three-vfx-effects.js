@@ -68459,6 +68459,573 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         nrMorningStar: function (tx, ty) { return _qzMorningStar3D(tx, ty); },
     });
 
+    /* ════════════════════════════════════════════════════════════════════
+       THE OWN LOOKS, L3 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells that dont have a look of
+       their own need one"). BODIES: the kinetic, human, grapple, skyfall and ki spells that landed on the shared stage
+       burst only. Each gets its own piece on the staging `burst` beat (_GO_SIG: relayed by fire(), drawn at the hit, the
+       caster's tile from the windup beat, nothing from a fogged tile), so _vcOwn() is true for it and the generic burst
+       stops. Looks only: no rule, no state, no roll that decides anything. An area spell flashes every square it hits in
+       its own colour (_l3Flash). Props are the game's own models (the catalogue key); none = no prop.
+       Only this block is L3's; the shared helpers above are not edited. */
+    /* the body a pull / a shove moves: the unit on the cast square, else the nearest one on the way to the caster; the
+       returned fn writes its live offset from the frame (0,0,0 when there is none) */
+    function _l3Track(F, tx, ty, x) {
+        var R = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos) ? ThreeRenderer : null, u = null, o = [0, 0, 0];
+        try {
+            if (R && !_VS.on && typeof state !== 'undefined' && state.units) {
+                var fx = x ? x.fromX : null, fy = x ? x.fromY : null, best = 1e9;
+                for (var i = 0; i < state.units.length; i++) {
+                    var c = state.units[i]; if (!c || c.dead || c.x == null) continue;
+                    if (fx != null && c.x === fx && c.y === fy && !(fx === tx && fy === ty)) continue;
+                    var d = Math.abs(c.x - tx) + Math.abs(c.y - ty);
+                    if (d && fx != null) {   /* moved already: it must stand on the line cast square → caster */
+                        var ax = fx - tx, ay = fy - ty, bx = c.x - tx, by = c.y - ty;
+                        if (ax * by - ay * bx !== 0 || ax * bx + ay * by <= 0 || d > Math.abs(ax) + Math.abs(ay)) continue;
+                    } else if (d) continue;
+                    if (d < best) { best = d; u = c; }
+                }
+            }
+        } catch (e) { u = null; }
+        return function (v) {
+            v.set(0, 0, 0);
+            try { if (u && R.getUnitWorldPos(u.id, o)) v.set(o[0] - F.wp.x, o[1] - F.wp.y, o[2] - F.wp.z); } catch (e) {}
+            return v;
+        };
+    }
+    /* the caster's side of a look: where the hand is (frame-local), the unit line target → caster; `far` false = no
+       caster to draw from (fogged, or the cast is on its own square) */
+    function _l3Side(F, tx, ty, x) {
+        var from = { x: x && x.fromX != null ? x.fromX : tx, y: x && x.fromY != null ? x.fromY : ty };
+        var far = !(from.x === tx && from.y === ty), ln = _nrvLine(F, far ? from : { x: tx - 1, y: ty }, tx, ty), ts = F.ts;
+        return { far: far, from: from, ln: ln, ux: ln.ux, uz: ln.uz, L: ln.L,
+            hand: new THREE.Vector3(ln.dx - ln.ux * ts * 0.3, ln.dy + ts * 0.62, ln.dz - ln.uz * ts * 0.3) };
+    }
+    /* a rope: n straight pieces along a sagging line, the same thickness however long it is; set(A, B, sag, reach 0..1) */
+    function _l3Rope(parent, mat, rad, n) {
+        var geo = new THREE.CylinderGeometry(rad, rad, 1, 5, 1, true), segs = [], a = new THREE.Vector3(), b = new THREE.Vector3();
+        for (var i = 0; i < n; i++) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 158; m.frustumCulled = false; parent.add(m); segs.push(m); }
+        return { segs: segs, set: function (A, B, sag, reach) {
+            if (reach == null) reach = 1;
+            for (var i = 0; i < n; i++) {
+                var t0 = i / n * reach, t1 = (i + 1) / n * reach;
+                a.lerpVectors(A, B, t0); a.y -= sag * Math.sin(t0 * Math.PI); b.lerpVectors(A, B, t1); b.y -= sag * Math.sin(t1 * Math.PI);
+                _pzSpan(segs[i], a, b);
+            }
+        } };
+    }
+    /* a rope loop (a lariat): n pieces round a circle in its own group, so it tilts and spins as one; set(R) */
+    function _l3Loop(parent, mat, rad, n) {
+        var G = new THREE.Group(); parent.add(G);
+        var geo = new THREE.CylinderGeometry(rad, rad, 1, 5, 1, true), segs = [], a = new THREE.Vector3(), b = new THREE.Vector3();
+        for (var i = 0; i < n; i++) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 158; m.frustumCulled = false; G.add(m); segs.push(m); }
+        return { g: G, set: function (R, wob) {
+            for (var i = 0; i < n; i++) {
+                var a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2, w0 = 1 + (wob || 0) * Math.sin(a0 * 2), w1 = 1 + (wob || 0) * Math.sin(a1 * 2);
+                a.set(Math.cos(a0) * R * w0, 0, Math.sin(a0) * R / w0); b.set(Math.cos(a1) * R * w1, 0, Math.sin(a1) * R / w1);
+                _pzSpan(segs[i], a, b);
+            }
+        } };
+    }
+    /* the squares an area spell hits: the game's own area for the row, else the square round the centre */
+    function _l3Area(id, cx, cy, skipCentre) {
+        var d = _spellDefFor(id) || {}, r = d.aoeRadius != null ? d.aoeRadius : 1, out = null;
+        try { if (typeof getSpellAoeArea === 'function') out = getSpellAoeArea(d, cx, cy); } catch (e) { out = null; }
+        if (!out || !out.length) { out = []; for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) out.push({ x: cx + dx, y: cy + dy }); }
+        if (skipCentre) out = out.filter(function (t) { return !(t.x === cx && t.y === cy); });
+        return out;
+    }
+    /* EVERY square the spell hits flashes once, in the spell's colour (mondo 11-17: the flash shows where the damage lands) */
+    function _l3Flash(tiles, color, o) {
+        o = o || {};
+        var live = []; for (var i = 0; i < tiles.length && live.length < 49; i++) { var t = tiles[i]; if (t && _pzSeen(t.x, t.y)) live.push(t); }
+        if (!live.length) return null;
+        var F = _nrvFrame(live[0].x, live[0].y), ts = F.ts, ms = o.ms || 340, delay = o.delay || 0, peak = o.peak != null ? o.peak : 0.6;
+        var mat = _goA(color, 0), geo = new THREE.PlaneGeometry(ts * 0.94, ts * 0.94); geo.rotateX(-Math.PI / 2);
+        for (var j = 0; j < live.length; j++) {
+            var wp = _worldPos(live[j].x, live[j].y), m = new THREE.Mesh(geo, mat);
+            m.position.set(wp.x - F.wp.x, wp.y - F.wp.y + 1.5, wp.z - F.wp.z); m.renderOrder = 151; F.g.add(m);
+        }
+        return _sigRunOwned(F.g, delay + ms, function (el) { var k = (el - delay) / ms; mat.opacity = k < 0 ? 0 : peak * Math.pow(1 - k, 1.6); });
+    }
+    function _l3StarTex() {
+        return _pzTex('l3-star4', 64, 64, function (g, w, h) {
+            var c = w / 2; g.fillStyle = '#fff'; g.beginPath();
+            for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4, r = (i % 2) ? c * 0.16 : c * 0.96; g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r); }
+            g.closePath(); g.fill();
+        });
+    }
+    var _L3C = { straw: 0xc9a24a, strawL: 0xe0c26a, rust: 0x9a5a30, steel: 0x8f96a0, wood: 0x6b4a2a, bone: 0xe0d2ae, hornD: 0x4a3a2a, earth: 0x5a3d22,
+        dust: 0xc8a878, hemp: 0xc9a36b, hempD: 0x8a6a3c, iron: 0x33262a, hot: 0xd01a2a, gold: 0xe8c040, olive: 0x59683a, brass: 0xb08d3c,
+        blast: 0xea7a20, indigo: 0x4a32b8, violet: 0x7a4ae0, starGold: 0xe8c860, paper: 0xece2c8, navy: 0x1e2c6a, jade: 0x58d890, cream: 0xe8dcc0,
+        sepia: 0xc8742a, lance: 0xb98a52, pennant: 0xb81c2a };
+
+    /* ── GRAPPLE ── */
+    /* HARVEST HOOK (scarecrow) — a rusty sickle on a rope of twisted straw: it swings in round the far side of the body,
+       bites, and the straw rope hauls the body home, shedding straw all the way */
+    function _l3HarvestHook3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3(), E = new THREE.Vector3();
+        var strawM = _goM(_L3C.straw, 0), rope = S.far ? _l3Rope(F.g, strawM, ts * 0.02, 10) : null;
+        var K = new THREE.Group(); K.rotation.order = 'YXZ'; F.g.add(K);
+        var bg = new THREE.TorusGeometry(ts * 0.3, ts * 0.026, 5, 20, Math.PI * 1.05); bg.rotateX(-Math.PI / 2);
+        var blade = _goAdd(K, new THREE.Mesh(bg, _goM(_L3C.steel)), 1);
+        var eg = new THREE.TorusGeometry(ts * 0.3, ts * 0.045, 4, 20, Math.PI * 1.05); eg.rotateX(-Math.PI / 2);
+        var edge = _goAdd(K, new THREE.Mesh(eg, _goA(_L3C.rust)), 0.5);
+        var hg = new THREE.CylinderGeometry(ts * 0.022, ts * 0.026, ts * 0.3, 6); hg.rotateX(Math.PI / 2); hg.translate(ts * 0.3, 0, ts * 0.15);
+        var handle = _goAdd(K, new THREE.Mesh(hg, _goM(_L3C.wood)), 1);
+        var yaw = Math.atan2(S.ux, S.uz), bit = false, lastS = 0, TOTAL = 1150;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var k = _goEnv(el, 60, TOTAL, 300), sw = _sigEaseOutCubic(_sigClamp01(el / 150));
+            track(B); K.position.set(B.x, B.y + ts * 0.5, B.z); K.rotation.y = yaw - 2.4 * (1 - sw); K.rotation.x = 0.12 * Math.sin(el * 0.02);
+            _goShow([blade, edge, handle], k); strawM.opacity = k;
+            if (rope) { E.set(B.x + S.ux * ts * 0.36, B.y + ts * 0.5, B.z + S.uz * ts * 0.36); rope.set(S.hand, E, ts * 0.1 * (1 - sw), sw); }
+            if (!bit && el >= 150) {
+                bit = true;
+                _goSpray(F, 10, { sprite: 'leaf', tint: _L3C.strawL, lx: B.x, lz: B.z, ly: ts * 0.5, v: 150, vz0: 40, vz1: 220, s0: 7, s1: 3, ml0: 400, ml1: 800 });
+                _goSpray(F, 4, { sprite: 'steel-spark', tint: _L3C.rust, lx: B.x, lz: B.z, ly: ts * 0.5, v: 120, s0: 5, ml0: 180, ml1: 320 });
+            }
+            if (rope && el > 150 && el < 850 && el - lastS > 70 && _canSpawn()) {   /* the rope sheds straw */
+                lastS = el; var u = Math.random();
+                _pzP(F, S.hand.x + (E.x - S.hand.x) * u, S.hand.y + (E.y - S.hand.y) * u, S.hand.z + (E.z - S.hand.z) * u,
+                    { sprite: 'leaf', tint: _L3C.straw, ml: rn(350, 600), size0: 5, size1: 2, vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(-10, 30), gravity: 260, opacity0: 0.9 });
+            }
+        });
+    }
+    /* a horn: stacked tapering pieces along a curve (it starts along +X and bends up to +Y), bone at the root, dark at the tip */
+    function _l3Horn(ts, len, list) {
+        var g = new THREE.Group(), N = 6, seg = len / N, px = 0, py = 0, a = 0;
+        for (var i = 0; i < N; i++) {
+            var r0 = ts * 0.07 * (1 - i / N), r1 = ts * 0.07 * (1 - (i + 1) / N) + (i === N - 1 ? 0 : 0);
+            var geo = new THREE.CylinderGeometry(Math.max(0.01, r1), r0, seg * 1.08, 7);
+            var m = new THREE.Mesh(geo, _goM(i >= N - 2 ? _L3C.hornD : _L3C.bone));
+            m.position.set(px + Math.cos(a) * seg / 2, py + Math.sin(a) * seg / 2, 0); m.rotation.z = a - Math.PI / 2;
+            _goAdd(g, m, 1); list.push(m);
+            px += Math.cos(a) * seg; py += Math.sin(a) * seg; a += 0.3;
+        }
+        return g;
+    }
+    /* HORN HOOK — the horns come in low either side of the body, scoop it up and drag it home; two furrows are ploughed
+       in the ground along the drag and the hooves throw dust */
+    function _l3HornHook3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3();
+        var H = new THREE.Group(); H.rotation.order = 'YXZ'; H.rotation.y = Math.atan2(-S.ux, -S.uz); F.g.add(H);
+        var horns = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var hg = _l3Horn(ts, ts * 0.72, horns); hg.rotation.order = 'YXZ'; hg.rotation.y = -Math.PI / 2 - s * 0.22; hg.position.set(s * ts * 0.3, ts * 0.22, -ts * 0.42);
+            H.add(hg);
+        }
+        var fm = _goM(_L3C.earth, 0), furrows = [], fa = new THREE.Vector3(), fb = new THREE.Vector3();
+        for (var q = -1; q <= 1; q += 2) { var fg = new THREE.BoxGeometry(ts * 0.07, 1, ts * 0.012); var f = new THREE.Mesh(fg, fm); f.renderOrder = 152; F.g.add(f); furrows.push({ m: f, s: q }); }
+        var hit = false, lastD = 0, TOTAL = 1500;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var inn = _sigEaseOutCubic(_sigClamp01(el / 160)), k = _goEnv(el, 50, 1050, 260);
+            track(B);
+            H.position.set(B.x + S.ux * ts * 0.75 * (1 - inn), B.y, B.z + S.uz * ts * 0.75 * (1 - inn));
+            H.rotation.x = -0.5 * _sigClamp01((el - 160) / 240);   /* the toss of the head: the horns lift */
+            _goShow(horns, k);
+            fm.opacity = 0.75 * _goEnv(el, 200, TOTAL, 400);
+            for (var i = 0; i < furrows.length; i++) {
+                var fr = furrows[i], ox = -S.uz * fr.s * ts * 0.16, oz = S.ux * fr.s * ts * 0.16;
+                fa.set(ox, 2, oz); fb.set(B.x + ox, B.y + 2, B.z + oz); _pzSpan(fr.m, fa, fb);
+            }
+            if (!hit && el >= 160) { hit = true; _shake('light'); _goSpray(F, 8, { sprite: 'dust-puff', tint: _L3C.dust, lx: B.x, lz: B.z, ly: 6, v: 110, vz0: 10, vz1: 70, s0: 12, s1: 34, ml0: 400, ml1: 700, op: 0.6, g: 0 }); }
+            if (el > 200 && el < 900 && el - lastD > 80 && _canSpawn()) {
+                lastD = el; _pzP(F, B.x, 6, B.z, { sprite: 'dust-puff', tint: _L3C.dust, ml: rn(400, 650), size0: 10, size1: 30, vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(10, 40), opacity0: 0.5 });
+                _pzP(F, B.x + rn(-10, 10), 4, B.z + rn(-10, 10), { sprite: 'mud-chunk', tint: _L3C.earth, ml: rn(300, 500), size0: 6, size1: 3, vx: rn(-70, 70), vy: rn(-70, 70), vz: rn(80, 180), gravity: 500, opacity0: 0.9 });
+            }
+        });
+    }
+    /* INFERNAL CONSCRIPTION (demon prince) — pressed into service: an iron collar snaps shut on the neck and a hot chain
+       runs from it to his hand, link by link, a red pulse travelling down it while the body is dragged in */
+    function _l3Conscription3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3(), Nk = new THREE.Vector3();
+        var n = S.far ? Math.max(6, Math.min(20, Math.round(S.L / (ts * 0.17)))) : 0, links = [], ironM = _goM(_L3C.iron, 0);
+        var lg = new THREE.TorusGeometry(ts * 0.055, ts * 0.016, 5, 10), hg = new THREE.TorusGeometry(ts * 0.055, ts * 0.03, 4, 10);
+        var X1 = new THREE.Vector3(1, 0, 0), dir = new THREE.Vector3(), q = new THREE.Quaternion(), roll = new THREE.Quaternion();
+        for (var i = 0; i < n; i++) {
+            var L = new THREE.Group(); L.scale.set(1.5, 1, 1); F.g.add(L);
+            var im = new THREE.Mesh(lg, ironM); im.renderOrder = 158; L.add(im);
+            var hm = new THREE.Mesh(hg, _goA(_L3C.hot, 0)); hm.renderOrder = 159; L.add(hm);
+            links.push({ g: L, hot: hm });
+        }
+        var cg = new THREE.TorusGeometry(ts * 0.17, ts * 0.036, 6, 18); cg.rotateX(-Math.PI / 2);
+        var collar = new THREE.Mesh(cg, ironM); collar.renderOrder = 158; F.g.add(collar);
+        var cg2 = new THREE.TorusGeometry(ts * 0.17, ts * 0.06, 4, 18); cg2.rotateX(-Math.PI / 2);
+        var cglow = new THREE.Mesh(cg2, _goA(_L3C.hot, 0)); cglow.renderOrder = 159; F.g.add(cglow);
+        var shut = false, TOTAL = 1300;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var k = _goEnv(el, 50, TOTAL, 320), out = _sigEaseOutCubic(_sigClamp01(el / 150)), cl = _sigClamp01((el - 90) / 110);
+            track(B); Nk.set(B.x, B.y + ts * 0.8, B.z);
+            ironM.opacity = k;
+            collar.position.copy(Nk); cglow.position.copy(Nk); collar.scale.setScalar(1.9 - 0.9 * cl); cglow.scale.copy(collar.scale);
+            cglow.material.opacity = k * (0.35 + 0.45 * Math.max(0, 1 - (el - 200) / 300) + 0.15 * Math.sin(el * 0.02));
+            if (n) {
+                dir.subVectors(Nk, S.hand); var len = dir.length() || 1; dir.multiplyScalar(1 / len); q.setFromUnitVectors(X1, dir);
+                for (var i = 0; i < n; i++) {
+                    var t = (i + 0.5) / n, Lk = links[i];
+                    if (t > out) { Lk.g.visible = false; continue; }
+                    Lk.g.visible = true;
+                    Lk.g.position.copy(S.hand).addScaledVector(dir, len * t); Lk.g.position.y -= ts * 0.07 * Math.sin(t * Math.PI) * (1 - 0.6 * _sigClamp01(el / 400));
+                    roll.setFromAxisAngle(X1, (i % 2) * Math.PI / 2); Lk.g.quaternion.copy(q).multiply(roll);
+                    Lk.hot.material.opacity = k * (0.12 + 0.6 * Math.max(0, Math.sin(el * 0.016 - (n - i) * 0.6)));
+                }
+            }
+            if (!shut && el >= 200) {
+                shut = true; _shake('light');
+                _goSpray(F, 9, { sprite: 'ember', tint: _L3C.hot, lx: Nk.x, lz: Nk.z, ly: ts * 0.8, v: 130, vz0: 20, vz1: 160, s0: 6, s1: 2, ml0: 300, ml1: 600 });
+                _goSpray(F, 3, { sprite: 'dark-flame', lx: Nk.x, lz: Nk.z, ly: ts * 0.9, v: 30, vz0: 40, vz1: 90, s0: 14, s1: 4, ml0: 400, ml1: 650, g: 0, op: 0.7 });
+            }
+        });
+    }
+    /* LASSO (cowboy) — the lariat: the loop turns over the head, drops, cinches round the body and the rope stays taut to
+       the cowboy's hand while it is hauled in */
+    function _l3Lasso3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3(), E = new THREE.Vector3();
+        var hempM = _goM(_L3C.hemp, 0), loop = _l3Loop(F.g, hempM, ts * 0.022, 18), rope = S.far ? _l3Rope(F.g, hempM, ts * 0.02, 10) : null;
+        var knot = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.04, 6, 5), _goM(_L3C.hempD)), 1);
+        var cinched = false, TOTAL = 1350;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var k = _goEnv(el, 60, TOTAL, 300), drop = _sigEaseInCubic(_sigClamp01((el - 300) / 150));
+            track(B); hempM.opacity = k; _goShow([knot], k);
+            var R = ts * (0.46 - 0.24 * drop), y = ts * (1.3 - 0.8 * drop), sp = el * 0.016 * (1 - drop);
+            loop.g.position.set(B.x, B.y + y, B.z); loop.g.rotation.set(0.28 * (1 - drop) * Math.sin(el * 0.012), sp, 0.28 * (1 - drop) * Math.cos(el * 0.012));
+            loop.set(R, 0.12 * (1 - drop));
+            E.set(B.x + S.ux * R, B.y + y, B.z + S.uz * R); knot.position.copy(E);
+            if (rope) rope.set(S.hand, E, ts * 0.16 * (1 - drop), 1);
+            if (!cinched && el >= 450) {
+                cinched = true;
+                _goSpray(F, 6, { sprite: 'dust-puff', tint: _L3C.dust, lx: B.x, lz: B.z, ly: 6, v: 90, vz0: 10, vz1: 50, s0: 10, s1: 28, ml0: 350, ml1: 600, op: 0.5, g: 0 });
+                _goSpray(F, 5, { sprite: 'debris', tint: _L3C.hemp, lx: B.x, lz: B.z, ly: ts * 0.5, v: 110, vz0: 30, vz1: 140, s0: 4, s1: 2, ml0: 250, ml1: 450 });
+            }
+        });
+    }
+    /* ROUND UP — one great loop: it opens over the cowboy's head, is thrown wide to the edge of the area, lands and is
+       drawn in, sweeping the dust (and everyone inside) to him. Every square flashes in rope amber as it lands. */
+    function _l3RoundUp3D(tx, ty, r, x) {
+        var R0 = (r != null ? r : 2) + 0.45, tiles = _l3Area('raceRoundUp', tx, ty, true);
+        if (!_pzSeen(tx, ty)) { _l3Flash(tiles, _L3C.gold, { delay: 300 }); return null; }
+        var F = _nrvFrame(tx, ty), ts = F.ts, hempM = _goM(_L3C.hemp, 0), loop = _l3Loop(F.g, hempM, ts * 0.03, 36);
+        var hand = new THREE.Vector3(0, ts * 1.05, 0), E = new THREE.Vector3(), rope = _l3Rope(F.g, hempM, ts * 0.022, 8);
+        var landed = false, lastD = 0, TOTAL = 1250;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var k = _goEnv(el, 60, TOTAL, 280), open = _sigEaseOutCubic(_sigClamp01(el / 300)), fall = _sigEaseInCubic(_sigClamp01((el - 200) / 120)), pull = _sigEaseInCubic(_sigClamp01((el - 380) / 520));
+            hempM.opacity = k;
+            var R = ts * (0.35 + (R0 - 0.35) * open) * (1 - 0.72 * pull), y = ts * (1.5 - 1.2 * fall);
+            loop.g.position.set(0, y, 0); loop.g.rotation.set(0.22 * (1 - fall) * Math.sin(el * 0.01), el * 0.012 * (1 - 0.7 * fall), 0.22 * (1 - fall) * Math.cos(el * 0.01));
+            loop.set(R, 0.05 * (1 - fall));
+            E.set(Math.cos(el * 0.012) * R, y, -Math.sin(el * 0.012) * R); rope.set(hand, E, ts * 0.1, 1);
+            if (!landed && el >= 320) { landed = true; _shake('light'); _l3Flash(tiles, _L3C.gold, { peak: 0.5 }); }
+            if (el > 320 && el < 900 && el - lastD > 70 && _canSpawn()) {
+                lastD = el;
+                for (var i = 0; i < 5; i++) { var a = Math.random() * Math.PI * 2;
+                    _pzP(F, Math.cos(a) * R, 6, Math.sin(a) * R, { sprite: 'dust-puff', tint: _L3C.dust, ml: rn(380, 620), size0: 10, size1: 30, vx: -Math.cos(a) * 60, vy: -Math.sin(a) * 60, vz: rn(10, 50), opacity0: 0.5 }); }
+            }
+        });
+    }
+    /* RUSTLE — a thin rope whips out, snags the body, and on the yank a KEY comes off its belt and flies down the rope
+       into the rustler's hand (the pack's own key model; a gold glint alone while the file streams) */
+    function _l3Rustle3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3(), E = new THREE.Vector3(), P = new THREE.Vector3();
+        var hempM = _goM(_L3C.hempD, 0), rope = S.far ? _l3Rope(F.g, hempM, ts * 0.013, 10) : null, loop = _l3Loop(F.g, hempM, ts * 0.013, 12);
+        var kk = null, key = null; try { kk = _crCatKey('key'); } catch (e) { kk = null; }
+        if (kk && _wpnReady(kk)) key = _wpnInstance(kk, ts * 0.26);
+        var KG = new THREE.Group(); KG.rotation.order = 'YXZ'; F.g.add(KG); if (key) { key.group.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; }); KG.add(key.group); key.setFade(0); }
+        var glint = _pzSpr(_L3C.gold, ts * 0.34, F.g, _l3StarTex()), got = false, T0 = 230, FLY = 560, TOTAL = 1100;
+        var to = S.far ? S.hand : new THREE.Vector3(0, ts * 1.9, 0);
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var k = _goEnv(el, 40, 760, 220), out = _sigEaseOutCubic(_sigClamp01(el / 120));
+            track(B); hempM.opacity = k;
+            E.set(B.x + S.ux * ts * 0.2, B.y + ts * 0.48, B.z + S.uz * ts * 0.2);
+            if (rope) rope.set(S.hand, E, ts * 0.05 * Math.sin(el * 0.03) * (1 - _sigClamp01(el / 400)), out);
+            loop.g.position.set(B.x, B.y + ts * 0.48, B.z); loop.set(ts * 0.2 * (out >= 1 ? 1 : 0), 0);
+            var u = _sigClamp01((el - T0) / FLY), on = el >= T0 ? _pzEnv(el, T0, T0 + 60, T0 + FLY - 60, T0 + FLY + 120) : 0;
+            P.set(B.x, B.y + ts * 0.48, B.z).lerp(to, _sigEaseInCubic(u) * 0.5 + u * 0.5); P.y += Math.sin(u * Math.PI) * ts * 0.55;
+            KG.position.copy(P); KG.rotation.set(el * 0.012, el * 0.02, 0); if (key) key.setFade(on);
+            glint.position.copy(P); glint.material.opacity = on * (key ? 0.55 : 0.95) * (0.7 + 0.3 * Math.sin(el * 0.05)); glint.material.rotation = el * 0.004;
+            if (!got && el >= T0) { got = true; _goSpray(F, 6, { sprite: 'divine-sparkle', tint: _L3C.gold, lx: B.x, lz: B.z, ly: ts * 0.5, v: 80, vz0: 30, vz1: 120, s0: 5, s1: 2, ml0: 300, ml1: 520 }); }
+        });
+    }
+
+    /* ── HUMAN ── */
+    /* a shell: olive body, brass band, a pointed nose along +Y */
+    function _l3Shell(ts, list) {
+        var g = new THREE.Group();
+        var b = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.07, ts * 0.07, ts * 0.26, 8), _goM(_L3C.olive)); _goAdd(g, b, 1); list.push(b);
+        var nz = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.16, 8), _goM(_L3C.olive)); nz.position.y = -ts * 0.21; nz.rotation.x = Math.PI; _goAdd(g, nz, 1); list.push(nz);
+        var br = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.074, ts * 0.074, ts * 0.05, 8), _goM(_L3C.brass)); br.position.y = ts * 0.09; _goAdd(g, br, 1); list.push(br);
+        return g;
+    }
+    /* ARTILLERY STRIKE (general) — the fire mission lands: three olive shells come down the gun line one after another,
+       each throws a fountain of earth and smoke with an orange heart, and every square of the 3×3 flashes shell-orange */
+    function _l3Artillery3D(tx, ty, r, x) {
+        var tiles = _l3Area('raceArtilleryStrike', tx, ty), F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x);
+        _l3Flash(tiles, _L3C.blast, { delay: 150, peak: 0.6, ms: 420 });
+        var marks = [[S.uz * 0.8 + S.ux * 0.5, -S.ux * 0.8 + S.uz * 0.5], [0, 0], [-S.uz * 0.8 - S.ux * 0.5, S.ux * 0.8 - S.uz * 0.5]], sh = [], all = [];
+        for (var i = 0; i < 3; i++) {
+            var list = [], g = _l3Shell(ts, list); g.rotation.order = 'YXZ'; g.rotation.y = Math.atan2(S.ux, S.uz); g.rotation.x = -0.5; F.g.add(g);
+            var core = _pzSpr(_L3C.blast, ts * 1.1, F.g);
+            sh.push({ g: g, list: list, core: core, lx: marks[i][0] * ts, lz: marks[i][1] * ts, t: 150 + i * 150, hit: false });
+        }
+        return _sigRunOwned(F.g, 1250, function (el) {
+            for (var i = 0; i < sh.length; i++) {
+                var s = sh[i], u = (el - (s.t - 190)) / 190;
+                if (u < 0 || u >= 1) _goShow(s.list, 0);
+                else { _goShow(s.list, 1); s.g.position.set(s.lx + S.ux * ts * 1.5 * (1 - u), ts * 3.6 * (1 - u) + ts * 0.15, s.lz + S.uz * ts * 1.5 * (1 - u)); }
+                var b = el - s.t; s.core.position.set(s.lx, ts * 0.3, s.lz);
+                s.core.material.opacity = b < 0 ? 0 : 0.8 * Math.max(0, 1 - b / 240); s.core.scale.setScalar(ts * (0.5 + 0.9 * _sigClamp01(b / 200)));
+                if (!s.hit && b >= 0) {
+                    s.hit = true; _shake(i === 1 ? 'normal' : 'light');
+                    if (!_pzSeen(tx, ty)) continue;
+                    _goSpray(F, 10, { sprite: 'mud-chunk', tint: _L3C.earth, lx: s.lx, lz: s.lz, ly: 8, r: 10, v: 110, vz0: 260, vz1: 620, s0: 7, s1: 4, ml0: 500, ml1: 900, g: 900 });
+                    _goSpray(F, 6, { sprite: 'rock-debris', lx: s.lx, lz: s.lz, ly: 8, r: 8, v: 170, vz0: 160, vz1: 420, s0: 6, s1: 3, ml0: 450, ml1: 800, g: 900 });
+                    _goSpray(F, 5, { sprite: 'smoke', tint: 0x4a443c, lx: s.lx, lz: s.lz, ly: 14, r: 12, v: 40, vz0: 60, vz1: 170, s0: 22, s1: 58, ml0: 700, ml1: 1100, g: -20, op: 0.6 });
+                    _goSpray(F, 6, { sprite: 'ember', tint: _L3C.blast, lx: s.lx, lz: s.lz, ly: 10, v: 190, vz0: 90, vz1: 300, s0: 5, s1: 2, ml0: 300, ml1: 600 });
+                }
+            }
+        });
+    }
+    function _l3CosmosTex() {
+        return _pzTex('l3-cosmos', 256, 256, function (g, w, h) {
+            var c = w / 2, gr = g.createRadialGradient(c, c, 4, c, c, c);
+            gr.addColorStop(0, 'rgba(34,18,96,0.95)'); gr.addColorStop(0.55, 'rgba(60,32,150,0.8)'); gr.addColorStop(0.85, 'rgba(110,60,210,0.45)'); gr.addColorStop(1, 'rgba(110,60,210,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            var rnd = _sigRand(0xC05);
+            for (var i = 0; i < 70; i++) { var a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * c * 0.88, s = 0.6 + rnd() * 1.8;
+                g.fillStyle = rnd() < 0.3 ? 'rgba(240,208,110,0.95)' : 'rgba(196,170,255,0.9)'; g.beginPath(); g.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, s, 0, Math.PI * 2); g.fill(); }
+        });
+    }
+    /* COSMIC SLAM (antihero) — the fist comes down and the floor opens on the night sky: a disc of deep indigo full of
+       stars spreads under him, the ground splits in a star of violet cracks, and stars are knocked up out of it */
+    function _l3CosmicSlam3D(tx, ty, r, x) {
+        var tiles = _l3Area('raceCosmicSlam', tx, ty, true);
+        _l3Flash(tiles, _L3C.violet, { peak: 0.55, ms: 420 });
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, RR = ((r != null ? r : 1) + 0.5) * ts;
+        var dg = new THREE.CircleGeometry(1, 40); dg.rotateX(-Math.PI / 2);
+        var disc = new THREE.Mesh(dg, _finBasic(0xffffff, { opacity: 0, map: _l3CosmosTex(), depthWrite: false })); disc.position.y = 2.5; disc.renderOrder = 152; F.g.add(disc);
+        var cm = _goA(_L3C.violet, 0), cracks = [], rnd = _sigRand(tx * 31 + ty * 17 + 5);
+        for (var i = 0; i < 8; i++) {
+            var a = i / 8 * Math.PI * 2 + (rnd() - 0.5) * 0.3, G = new THREE.Group(); G.rotation.y = a; G.position.y = 3.5; F.g.add(G);
+            var px = 0, pz = 0;
+            for (var j = 0; j < 4; j++) {
+                var len = RR * (0.2 + rnd() * 0.12), bend = (rnd() - 0.5) * 0.9, nx = px + Math.cos(bend) * len, nz = pz + Math.sin(bend) * len;
+                var pg = new THREE.PlaneGeometry(1, ts * 0.05 * (1 - j * 0.2)); pg.rotateX(-Math.PI / 2);
+                var m = new THREE.Mesh(pg, cm); m.position.set((px + nx) / 2, 0, (pz + nz) / 2); m.rotation.y = -Math.atan2(nz - pz, nx - px); m.scale.x = Math.hypot(nx - px, nz - pz);
+                m.renderOrder = 153; m.userData.at = j / 4; G.add(m); cracks.push(m); px = nx; pz = nz;
+            }
+        }
+        var stars = [], st = _l3StarTex();
+        for (var q = 0; q < 12; q++) { var sp = _pzSpr(q % 3 ? _L3C.starGold : 0xb89cf0, ts * (0.14 + rnd() * 0.14), F.g, st), sa = rnd() * Math.PI * 2, sr = RR * (0.25 + rnd() * 0.7);
+            stars.push({ s: sp, x: Math.cos(sa) * sr, z: Math.sin(sa) * sr, v: 0.9 + rnd() * 1.3, ph: rnd() * 6 }); }
+        _shake('normal');
+        _goSpray(F, 8, { sprite: 'rock-debris', tint: 0x6a58a8, ly: 6, r: ts * 0.3, v: 180, vz0: 120, vz1: 340, s0: 6, s1: 3, ml0: 400, ml1: 750, g: 800 });
+        var TOTAL = 1300;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var k = _goEnv(el, 60, TOTAL, 420), grow = _sigEaseOutCubic(_sigClamp01(el / 220));
+            disc.scale.setScalar(RR * (0.25 + 0.75 * grow)); disc.material.opacity = 0.9 * k; disc.rotation.y = el * 0.0004;
+            cm.opacity = 0.85 * k * (0.75 + 0.25 * Math.sin(el * 0.03));
+            for (var i = 0; i < cracks.length; i++) cracks[i].visible = grow >= cracks[i].userData.at;
+            for (var j = 0; j < stars.length; j++) { var s = stars[j], u = el / TOTAL;
+                s.s.position.set(s.x, ts * (0.1 + s.v * u * 1.1), s.z); s.s.material.rotation = el * 0.003 + s.ph;
+                s.s.material.opacity = k * (0.55 + 0.45 * Math.sin(el * 0.02 + s.ph)) * Math.min(1, el / 120); }
+        });
+    }
+    function _l3OrderTex() {
+        return _pzTex('l3-order', 256, 320, function (g, w, h) {
+            g.fillStyle = '#ece2c8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#1e2c6a'; g.lineWidth = 5; g.strokeRect(8, 8, w - 16, h - 16);
+            g.fillStyle = '#1e2c6a'; g.textAlign = 'center'; g.font = 'bold 26px Georgia, serif'; g.fillText('EXECUTIVE', w / 2, 48); g.fillText('ORDER', w / 2, 78);
+            g.fillStyle = 'rgba(40,40,60,0.75)'; for (var i = 0; i < 7; i++) g.fillRect(30, 104 + i * 18, (i === 6 ? 110 : w - 60 - (i % 3) * 14), 5);
+            g.strokeStyle = '#141a3c'; g.lineWidth = 3; g.beginPath(); g.moveTo(34, 268);
+            g.bezierCurveTo(60, 232, 70, 296, 92, 256); g.bezierCurveTo(108, 232, 112, 290, 134, 258); g.bezierCurveTo(150, 240, 160, 272, 178, 262); g.stroke();
+        });
+    }
+    function _l3SealTex() {
+        return _pzTex('l3-seal', 128, 128, function (g, w, h) {
+            var c = w / 2; g.fillStyle = '#e8c040'; g.beginPath();
+            for (var i = 0; i < 32; i++) { var a = i * Math.PI / 16, rr = (i % 2) ? c * 0.86 : c * 0.98; g.lineTo(c + Math.cos(a) * rr, c + Math.sin(a) * rr); }
+            g.closePath(); g.fill();
+            g.strokeStyle = '#8a6a14'; g.lineWidth = 4; g.beginPath(); g.arc(c, c, c * 0.66, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = '#8a6a14'; g.beginPath();
+            for (var j = 0; j < 10; j++) { var b = j * Math.PI / 5 - Math.PI / 2, r2 = (j % 2) ? c * 0.2 : c * 0.48; g.lineTo(c + Math.cos(b) * r2, c + Math.sin(b) * r2); }
+            g.closePath(); g.fill();
+        });
+    }
+    /* EXECUTIVE ORDER (politician) — the order itself: the signed page drops in over the squares, the gold seal is
+       stamped on it, and on the stamp every square it names flashes gold and is showered in gold stars */
+    function _l3ExecOrder3D(tx, ty, r, x) {
+        var tiles = _l3Area('raceExecutiveOrder', tx, ty);
+        _l3Flash(tiles, _L3C.gold, { delay: 240, peak: 0.55, ms: 420 });
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var page = new THREE.Sprite(new THREE.SpriteMaterial({ map: _l3OrderTex(), transparent: true, opacity: 0, depthWrite: false, depthTest: false })); page.renderOrder = 162; F.g.add(page);
+        var seal = new THREE.Sprite(new THREE.SpriteMaterial({ map: _l3SealTex(), transparent: true, opacity: 0, depthWrite: false, depthTest: false })); seal.renderOrder = 163; F.g.add(seal);
+        var W = ts * 0.92, H = W * 1.25, stamped = false, TOTAL = 1350;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var k = _goEnv(el, 80, TOTAL, 300), dr = _sigEaseOutBack(_sigClamp01(el / 220)), st = _sigClamp01((el - 180) / 70);
+            var y = ts * (2.9 - 0.8 * dr) - (el > 250 ? ts * 0.05 * Math.max(0, 1 - (el - 250) / 120) : 0);
+            page.position.set(0, y, 0); page.scale.set(W, H, 1); page.material.opacity = 0.97 * k; page.material.rotation = -0.06;
+            seal.position.set(W * 0.24, y - H * 0.3, 0); seal.scale.setScalar(ts * 0.34 * (2.4 - 1.4 * st)); seal.material.opacity = el < 180 ? 0 : k; seal.material.rotation = -0.3;
+            if (!stamped && el >= 250) {
+                stamped = true; _shake('light');
+                for (var i = 0; i < tiles.length; i++) { var t = tiles[i]; if (!_pzSeen(t.x, t.y)) continue; var wp = _worldPos(t.x, t.y);
+                    for (var j = 0; j < 3; j++) _pzP(F, wp.x - F.wp.x + rn(-ts * 0.3, ts * 0.3), ts * rn(0.9, 1.5), wp.z - F.wp.z + rn(-ts * 0.3, ts * 0.3),
+                        { sprite: 'divine-sparkle', tint: _L3C.gold, ml: rn(450, 800), size0: 7, size1: 2, vz: -rn(60, 140), opacity0: 0.95 }); }
+            }
+        });
+    }
+    /* LANCE — the couched lance strikes home and breaks: a steel point drives through the body along the charge, the
+       shaft bursts into long splinters that fly on past it, and the pennant is torn off */
+    function _l3Lance3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), fx = -S.ux, fz = -S.uz, yaw = Math.atan2(fx, fz);
+        var G = new THREE.Group(); G.rotation.y = yaw; G.position.y = ts * 0.58; F.g.add(G);   /* +Z = the way of the charge */
+        var tg = new THREE.ConeGeometry(ts * 0.07, ts * 0.5, 8); tg.rotateX(Math.PI / 2);
+        var tip = _goAdd(G, new THREE.Mesh(tg, _goM(_L3C.steel)), 1);
+        var sg = new THREE.PlaneGeometry(ts * 0.2, ts * 1.5); sg.rotateX(-Math.PI / 2);
+        var spike = _goAdd(G, new THREE.Mesh(sg, _goA(0xd8c890)), 0.8); spike.material.map = _sigStreakTex();
+        var spike2 = _goAdd(G, new THREE.Mesh(sg.clone().rotateZ(Math.PI / 2), _goA(0xd8c890)), 0.8); spike2.material.map = _sigStreakTex();
+        var pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, ts * 0.2, 0, 0, ts * 0.1, -ts * 0.34]), 3)); pg.computeVertexNormals();
+        var pen = _goAdd(G, new THREE.Mesh(pg, _goM(_L3C.pennant)), 1);
+        var shards = [], rnd = _sigRand(tx * 13 + ty * 7 + 3);
+        for (var i = 0; i < 10; i++) {
+            var m = _goAdd(G, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.025, ts * 0.025, ts * (0.16 + rnd() * 0.26)), _goM(i % 3 ? _L3C.lance : 0x8a6238)), 1);
+            shards.push({ m: m, vx: (rnd() - 0.5) * 1.5, vy: 0.3 + rnd() * 1.3, vz: 0.5 + rnd() * 1.9, rx: (rnd() - 0.5) * 0.03, ry: (rnd() - 0.5) * 0.03 });
+        }
+        _shake('normal');
+        _goSpray(F, 6, { sprite: 'dust-puff', tint: _L3C.dust, ly: 6, v: 60, vx: fx * 120, vy: fz * 120, vz0: 10, vz1: 50, s0: 10, s1: 30, ml0: 350, ml1: 600, op: 0.5, g: 0 });
+        _goSpray(F, 5, { sprite: 'steel-spark', ly: ts * 0.58, v: 90, vx: fx * 160, vy: fz * 160, s0: 5, ml0: 160, ml1: 300 });
+        var TOTAL = 950;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var th = _sigEaseOutCubic(_sigClamp01(el / 110)), k = _goEnv(el, 20, TOTAL, 380), t = el / 1000;
+            tip.position.z = ts * (-0.75 + 1.2 * th); _goShow([tip], 1 - _sigClamp01((el - 260) / 200));
+            spike.position.z = spike2.position.z = ts * (-0.3 + 0.9 * th); _goShow([spike, spike2], 1 - _sigClamp01(el / 300));
+            pen.position.set(Math.sin(el * 0.02) * ts * 0.05, ts * (0.1 + 0.5 * t - 0.9 * t * t), ts * (-0.3 - 0.5 * t)); pen.rotation.set(el * 0.006, el * 0.011, 0); _goShow([pen], k);
+            for (var i = 0; i < shards.length; i++) { var s = shards[i];
+                s.m.position.set(s.vx * ts * t, s.vy * ts * t - 2.2 * ts * t * t, ts * 0.15 + s.vz * ts * t); s.m.rotation.set(el * s.rx, el * s.ry, 0); }
+            _goShow(shards.map(function (s) { return s.m; }), el < 60 ? 0 : k);
+        });
+    }
+    /* PRESSURE POINT — two fingers, lights out: the body's line of points lights up jade, two needle jabs land on the
+       chest point, and the points go dark one by one from the head down */
+    function _l3PressurePoint3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), N = 5, nodes = [], rings = [], rt = _sigRingTex();
+        var lm = _goA(_L3C.jade, 0), line = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.008, ts * 0.008, ts * 0.72, 4), lm); line.position.y = ts * 0.6; line.renderOrder = 160; line.material.depthTest = false; F.g.add(line);
+        for (var i = 0; i < N; i++) {
+            var y = ts * (0.96 - i * 0.18);
+            var nd = _pzSpr(_L3C.jade, ts * 0.16, F.g); nd.position.set(0, y, 0); nodes.push(nd);
+            var rg = _pzSpr(_L3C.jade, ts * 0.2, F.g, rt); rg.position.set(0, y, 0); rings.push(rg);
+        }
+        var jm = _goA(0xb8f0d0, 0), jabs = [], a = new THREE.Vector3(), b = new THREE.Vector3(), chest = new THREE.Vector3(0, ts * 0.78, 0);
+        for (var j = 0; j < 2; j++) { var jb = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.004, ts * 0.016, 1, 5), jm); jb.renderOrder = 161; F.g.add(jb); jabs.push(jb); }
+        _goSpray(F, 4, { sprite: 'sparkle', tint: _L3C.jade, ly: ts * 0.78, v: 70, vz0: 0, vz1: 60, s0: 5, s1: 1, ml0: 200, ml1: 360, g: 0 });
+        var TOTAL = 1000;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            lm.opacity = 0.5 * _pzEnv(el, 0, 60, 300, 760);
+            for (var i = 0; i < N; i++) {
+                var off = 260 + i * 110, on = el < off ? Math.min(1, el / 60) * (0.75 + 0.25 * Math.sin(el * 0.05 + i)) : Math.max(0, 1 - (el - off) / 90), pop = _sigClamp01((el - off) / 260);
+                nodes[i].material.opacity = 0.95 * on;
+                rings[i].material.opacity = el < off ? 0 : 0.7 * (1 - pop); rings[i].scale.setScalar(ts * (0.14 + 0.3 * pop));
+            }
+            var u = _sigClamp01(el / 90); jm.opacity = 0.9 * (1 - _sigClamp01((el - 90) / 160));
+            for (var j = 0; j < 2; j++) {
+                var side = (j ? 1 : -1) * ts * 0.035;
+                a.set(S.ux * ts * 0.62 - S.uz * side, ts * 0.78 + (j ? 0.03 : -0.03) * ts, S.uz * ts * 0.62 + S.ux * side).lerp(chest, u * 0.55);
+                b.set(S.ux * ts * 0.62 - S.uz * side, ts * 0.78, S.uz * ts * 0.62 + S.ux * side).lerp(chest, 0.3 + u * 0.68);
+                _pzSpan(jabs[j], a, b);
+            }
+        });
+    }
+    function _l3FilmTex() {
+        return _pzTex('l3-film', 512, 96, function (g, w, h) {
+            g.fillStyle = '#16120e'; g.fillRect(0, 0, w, h);
+            for (var i = 0; i < 8; i++) { g.fillStyle = (i % 2) ? '#8a5a2c' : '#a8733a'; g.fillRect(8 + i * 64, 20, 50, h - 40); }
+            g.fillStyle = '#e8dcc0'; for (var j = 0; j < 22; j++) { g.fillRect(6 + j * 23.5, 5, 11, 9); g.fillRect(6 + j * 23.5, h - 14, 11, 9); }
+        });
+    }
+    function _l3CreditsTex() {
+        return _pzTex('l3-credits', 256, 512, function (g, w, h) {
+            g.fillStyle = 'rgba(10,8,6,0.62)'; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#e8dcc0'; g.textAlign = 'center';
+            var y = 34; for (var i = 0; i < 9; i++) { var big = (i % 3 === 0);
+                if (big) { g.globalAlpha = 0.95; g.fillRect(w / 2 - 46, y, 92, 7); y += 22; }
+                else { g.globalAlpha = 0.7; g.fillRect(40, y, 76, 5); g.fillRect(140, y, 76, 5); y += 16; }
+                if (i % 3 === 2) y += 22; }
+            g.globalAlpha = 1; g.font = 'bold 44px Georgia, serif'; g.fillText('THE END', w / 2, h - 80);
+            g.fillRect(w / 2 - 70, h - 62, 140, 3);
+        });
+    }
+    /* ROLL CREDITS (chosen one) — this is the part where it ends: a strip of film whips across the body as the hit, the
+       frame burns through at the chest, and the credits roll up over the head to THE END */
+    function _l3RollCredits3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var strip = new THREE.Sprite(new THREE.SpriteMaterial({ map: _l3FilmTex(), transparent: true, opacity: 0, depthWrite: false, depthTest: false })); strip.renderOrder = 161; F.g.add(strip);
+        var roll = new THREE.Sprite(new THREE.SpriteMaterial({ map: _l3CreditsTex(), transparent: true, opacity: 0, depthWrite: false, depthTest: false })); roll.renderOrder = 162; F.g.add(roll);
+        var burn = _pzSpr(_L3C.sepia, ts * 0.3, F.g, _sigRingTex()), heart = _pzSpr(_L3C.sepia, ts * 0.5, F.g);
+        burn.position.set(0, ts * 0.62, 0); heart.position.set(0, ts * 0.62, 0);
+        _shake('normal');
+        _goSpray(F, 8, { sprite: 'ember', tint: _L3C.sepia, ly: ts * 0.62, v: 150, vz0: 20, vz1: 200, s0: 5, s1: 2, ml0: 300, ml1: 600 });
+        var TOTAL = 1900;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var w = _sigEaseOutCubic(_sigClamp01(el / 170));
+            strip.position.set(0, ts * 0.62, 0); strip.scale.set(ts * 2.6 * (0.3 + 0.7 * w), ts * 0.42, 1); strip.material.rotation = -0.5 + 0.2 * w; strip.material.opacity = 0.95 * _pzEnv(el, 0, 50, 300, 560);
+            var b = _sigClamp01(el / 520); burn.scale.setScalar(ts * (0.2 + 1.0 * b)); burn.material.opacity = 0.85 * (1 - b); heart.material.opacity = 0.7 * Math.max(0, 1 - el / 260);
+            var u = _sigClamp01((el - 200) / 1500);
+            roll.scale.set(ts * 0.8, ts * 1.6, 1); roll.position.set(0, ts * (1.55 + 0.75 * _sigEaseOutCubic(u)), 0); roll.material.opacity = 0.95 * _pzEnv(el, 200, 420, 1550, TOTAL);
+        });
+    }
+    /* TEAM STRIKE (super sentai) — the whole team hits at once: five strikes in the five rangers' colours cross the body
+       one after another from five sides, each leaving its star, and a five-colour pinwheel snaps shut on the last */
+    var _L3_TEAM = [0xe02a2a, 0x2a5ae0, 0xf0c820, 0x2ab84a, 0x9a4ae0];
+    function _l3TeamStreak(F, i, delay) {
+        var ts = F.ts, a = i * Math.PI * 2 / 5 + 0.3, col = _L3_TEAM[i % 5], G = new THREE.Group(); G.rotation.y = a; G.position.y = ts * (0.42 + 0.1 * (i % 3)); F.g.add(G);
+        var sg = new THREE.PlaneGeometry(ts * 0.17, ts * 1.7); sg.rotateX(-Math.PI / 2);
+        var m1 = new THREE.Mesh(sg, _goA(col, 0)); m1.material.map = _sigStreakTex(); m1.renderOrder = 160; G.add(m1);
+        var m2 = new THREE.Mesh(sg.clone().rotateZ(Math.PI / 2), m1.material); m2.renderOrder = 160; G.add(m2);
+        var star = _pzSpr(col, ts * 0.42, F.g, _l3StarTex()); star.position.set(0, G.position.y, 0);
+        return function (el) {
+            var e = el - delay; if (e < 0) { m1.material.opacity = 0; star.material.opacity = 0; return; }
+            var u = _sigClamp01(e / 130); m1.position.z = m2.position.z = ts * (-1.1 + 1.7 * _sigEaseOutCubic(u));
+            m1.material.opacity = 0.95 * (1 - _sigClamp01((e - 110) / 170));
+            star.material.opacity = e < 90 ? 0 : 0.95 * (1 - _sigClamp01((e - 90) / 300)); star.material.rotation = e * 0.006; star.scale.setScalar(ts * (0.25 + 0.3 * _sigClamp01((e - 90) / 200)));
+        };
+    }
+    function _l3TeamStrike3D(tx, ty, r, x) {
+        if (!_pzSeen(tx, ty)) return null;
+        var n = _pzCount('l3team@' + tx + ',' + ty, 1100), F = _nrvFrame(tx, ty), ts = F.ts;
+        if (n > 0) { var one = _l3TeamStreak(F, n + 2, 0); return _sigRunOwned(F.g, 520, one); }   /* a later hit of the same cast: one more ranger */
+        var ticks = []; for (var i = 0; i < 5; i++) ticks.push(_l3TeamStreak(F, i, i * 95));
+        var W = new THREE.Group(); W.position.y = ts * 0.62; F.g.add(W); var blades = [];
+        for (var j = 0; j < 5; j++) {
+            var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, ts * 0.44, ts * 0.1, 0, ts * 0.3, -ts * 0.13, 0]), 3));
+            var bm = new THREE.Mesh(bg, _goA(_L3_TEAM[j], 0)); bm.rotation.z = j * Math.PI * 2 / 5; bm.renderOrder = 162; bm.material.depthTest = false; W.add(bm); blades.push(bm);
+        }
+        var done = false, T1 = 500, TOTAL = 1050;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            for (var i = 0; i < ticks.length; i++) ticks[i](el);
+            var e = el - T1, o = e < 0 ? 0 : 0.9 * (1 - _sigClamp01((e - 120) / 380));
+            _pzFace(W); W.rotateZ(e * 0.012); W.scale.setScalar(e < 0 ? 0.01 : 0.5 + 0.7 * _sigEaseOutBack(_sigClamp01(e / 160)));
+            for (var j = 0; j < blades.length; j++) blades[j].material.opacity = o;
+            if (!done && e >= 0) { done = true; _shake('light'); }
+        });
+    }
+
+    Object.assign(_GO_SIG, {
+        raceHarvestHook: _l3HarvestHook3D, raceHornHook: _l3HornHook3D, raceInfernalConscription: _l3Conscription3D,
+        raceLasso: _l3Lasso3D, raceRoundUp: _l3RoundUp3D, raceRustle: _l3Rustle3D,
+        raceArtilleryStrike: _l3Artillery3D, raceCosmicSlam: _l3CosmicSlam3D, raceExecutiveOrder: _l3ExecOrder3D,
+        raceLance: _l3Lance3D, racePressurePoint: _l3PressurePoint3D, raceRollCredits: _l3RollCredits3D, sentaiTeamStrike: _l3TeamStrike3D,
+        /* PENALTY (referee) already has its look (THE REFEREE: the whistle, the thrown flag, the three marched yards on
+           _BUG_ON_BURST); naming it here only tells _vcOwn so, so the shared burst stops drawing over it */
+        nrPenalty: function () { return null; },
+    });
+    /* ═════════ END THE OWN LOOKS, L3 ═════════ */
+
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
         _rvFloorAt: _rvFloorAt,
