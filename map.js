@@ -11448,7 +11448,7 @@
            A map card ("The Cube", VS CPU, Team Deathmatch only); the online pools never deal it. */
         function _ewCubeRegister() {
             if (typeof window.cubeBoardSpec !== 'function' || typeof GAME_MODES === 'undefined' || typeof PREBUILT_MAPS === 'undefined') return;
-            const id = 'the_cube', n = 4, B = window.cubeBoardSpec(n);
+            const id = 'the_cube', n = 4, B = window.cubeBoardSpec(8);   // eight seats a side (a party met in the Astral Realm can be bigger than the card's 4)
             const tid = (k) => { const i = ME_TERRAIN_IDS.indexOf(k); return i > 0 ? i : 0; };
             PREBUILT_MAPS[id] = {
                 w: B.W, h: B.H,

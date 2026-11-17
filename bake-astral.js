@@ -171,9 +171,11 @@ const MOVER = require('./ow-move.js')({ cols: GX, rows: GY, cell, fill: '.', plo
 const SHIFT = { S: [0, 0], L: [-4, 0], N: [-7, 7] };
 const XNEW = [   /* the crossings' own plots (names mine, plain): [world-frame x, y, name, level] in walking order */
     ['B', 1, 1, 'The Cloud Bridge, sea end', 8], ['B', 0, 1, 'The Cloud Bridge', 9], ['B', -1, 1, 'The Cloud Bridge, far over', 9], ['B', -2, 1, 'The Cloud Bridge, library end', 10],
-    ['D', -3, 5, 'The Way Down, library end', 7], ['D', -3, 6, 'The Way Down', 6], ['D', -3, 7, 'The Way Down, nightmare end', 5]];
+    ['D', -3, 5, 'The Way Down, library end', 7], ['D', -3, 6, 'The Way Down', 6], ['D', -3, 7, 'The Way Down, nightmare end', 5],
+    /* THE CUBE (2026-11-17, mondo's Rubik's cube): two plots of sky south of the Cloud Bridge's middle; the level is the plot's highest point */
+    ['Q', 0, 2, 'The Broken Stair', 20], ['Q', 0, 3, 'The Cube', 21]];
 const RM = MOVER.room(PLAN.plots.map(p => ({ id: p.id, wx: p.x + SHIFT[p.d][0], wy: p.y + SHIFT[p.d][1] }))
-    .concat(XNEW.map(x => ({ wx: x[1], wy: x[2], name: x[3], district: x[0] === 'B' ? 'S' : 'N', level: x[4], cross: x[0] }))));
+    .concat(XNEW.map(x => ({ wx: x[1], wy: x[2], name: x[3], district: x[0] === 'D' ? 'N' : 'S', level: x[4], cross: x[0] }))));
 if (RM.strays.length) console.log('strays (pieces over two plots that stand apart now):\n  ' + RM.strays.join('\n  '));
 const RW = RM.W, RD = RM.D, RX = RM.HX, RZ = RM.HZ, cellR = RM.cell, X = RM.gx, Z = RM.gz;
 const NP = {}; RM.order.forEach(e => { e.sx = e.col * N; e.sy = e.row * N; e.base = r2(e.level * LEVEL); e.pid = RM.pid(e); NP[e.col + ',' + e.row] = e; });
@@ -193,13 +195,63 @@ XPL.forEach(e => { const nbr = OPEN2.filter(o => o[0] === e || o[1] === e).map(o
 const sideOf = (e, o) => o.col > e.col ? 'E' : o.col < e.col ? 'W' : o.row > e.row ? 'S' : 'N';
 RM.order.forEach(e => { const has = new Set(OPEN2.filter(o => o[0] === e || o[1] === e).map(o => sideOf(e, o[0] === e ? o[1] : o[0])));
     for (let t = 0; t < N; t++) [['N', t, 0], ['S', t, N - 1], ['W', 0, t], ['E', N - 1, t]].forEach(([sd, lx, ly]) => { if (!has.has(sd) && cellR[e.sy + ly][e.sx + lx] === 'k') cellR[e.sy + ly][e.sx + lx] = '.'; }); });
+/* ── THE CUBE (2026-11-17, mondo: "I want it in the astral but i imagine it floating"; "floating broken off pieces of a rubick's cube ...
+   and the cube could have missing pieces to match"; "the piece steps need to ascend upward, because the cube is high in the air").
+   The Rubik's cube the fight is on (data.js CUBE_RULES, battle: areas-complexes.md "THE CUBE") hangs in the sky south of the Cloud Bridge's
+   middle, nothing touching it, its top 21 m over the bridge. THE BROKEN STAIR climbs to it from the bridge: pieces broken off the cube
+   (flat, a square each) with a flight of cloud treads between two, each piece one level over the last. Its top is walked (the top's
+   missing pieces are holes into the dark core); a native met up there fights on all six faces (the room's `cube` row, data.js
+   hqEncounterLaunch). The squares of all this are 'q' (open for the reach check, never an island). ── */
+const CUBE = (() => {
+    const br = RM.order.find(e => e.cross === 'B' && e.name === 'The Cloud Bridge'), st = RM.order.find(e => e.cross === 'Q' && e.name === 'The Broken Stair'), cb = RM.order.find(e => e.cross === 'Q' && e.name === 'The Cube');
+    if (!br || !st || !cb || st.col !== br.col || st.row !== br.row + 1 || cb.col !== br.col || cb.row !== br.row + 2) throw new Error('the cube\'s plots do not stand south of the Cloud Bridge');
+    const n = vm.runInContext('CUBE_RULES.N', D), top = 21, x0 = cb.sx + (N - n) / 2, y0 = cb.sy + (N - n) / 2;
+    const gone = new Set(vm.runInContext('CUBE_RULES.missing', D).filter(c => c[2] === n - 1).map(c => (x0 + c[0]) + ',' + (y0 + c[1])));
+    /* the path: from the bridge's walk (its south lane) south, east along the stair plot's foot, south again to the cube's north-east corner */
+    const path = [], cx = br.sx + 5, ex = x0 + n - 1;
+    for (let y = br.sy + 7; y <= st.sy + 4; y++) path.push([cx, y]);
+    for (let x = cx + 1; x <= ex; x++) path.push([x, st.sy + 4]);
+    for (let y = st.sy + 5; y < y0; y++) path.push([ex, y]);
+    if (path.length % 2 !== 1) throw new Error('the stair must start and end on a flight (' + path.length + ' squares)');
+    const flights = (path.length + 1) / 2, lv0 = top - flights;
+    if (lv0 !== br.level) throw new Error('the stair climbs ' + flights + ' levels from ' + br.level + ' but the top is ' + top);
+    const feats = [], props = [], npc = [];
+    path.forEach(([x, y], i) => { cellR[y][x] = 'q';
+        const lv = lv0 + Math.ceil(i / 2);
+        if (i % 2) { feats.push({ k: 'plateau', x: RM.gcx(x), z: RM.gcz(y), w: C, d: C, h: r2(lv * LEVEL), float: true, bare: true });
+            props.push({ key: 'ew_cube_piece', x: RM.gcx(x), z: RM.gcz(y), y: r2(lv * LEVEL) }); }
+        else { const p = path[i - 1] || [x, y - 1], q = path[i + 1] || [x, y + 1], dx = Math.sign(q[0] - p[0]), dy = Math.sign(q[1] - p[1]);
+            feats.push({ k: 'ramp', x0: r2(RM.gcx(x) - dx * C / 2), z0: r2(RM.gcz(y) - dy * C / 2), x1: r2(RM.gcx(x) + dx * C / 2), z1: r2(RM.gcz(y) + dy * C / 2), w: C, h0: r2(lv * LEVEL), h1: r2((lv + 1) * LEVEL), stairs: true, float: true }); } });
+    /* the top: greedy rectangles over its squares, leaving the holes */
+    const used = new Set();
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) cellR[y0 + j][x0 + i] = gone.has((x0 + i) + ',' + (y0 + j)) ? '.' : 'q';
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const k = (x0 + i) + ',' + (y0 + j); if (used.has(k) || gone.has(k)) continue;
+        let w = 1; while (i + w < n && !used.has((x0 + i + w) + ',' + (y0 + j)) && !gone.has((x0 + i + w) + ',' + (y0 + j))) w++;
+        let h = 1; rows: while (j + h < n) { for (let t = 0; t < w; t++) { const kk = (x0 + i + t) + ',' + (y0 + j + h); if (used.has(kk) || gone.has(kk)) break rows; } h++; }
+        for (let a = 0; a < h; a++) for (let t = 0; t < w; t++) used.add((x0 + i + t) + ',' + (y0 + j + a));
+        feats.push({ k: 'plateau', x: r2((RM.gx(x0 + i) + RM.gx(x0 + i + w)) / 2), z: r2((RM.gz(y0 + j) + RM.gz(y0 + j + h)) / 2), w: r2(w * C), d: r2(h * C), h: r2(top * LEVEL), float: true, bare: true }); }
+    const mid = [RM.gx(x0 + n / 2), RM.gz(y0 + n / 2)];
+    props.push({ key: 'ew_rubiks_cube', x: mid[0], z: mid[1], y: r2(top * LEVEL) });
+    /* the broken-off pieces adrift round it (as many as it is missing), off its sides and under it, none over the stair */
+    let seed = 1117; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+    const nGone = vm.runInContext('CUBE_RULES.missing.length', D), half = n * C / 2;
+    for (let k = 0; k < nGone; k++) { const a = (k + rnd() * 0.6) / nGone * Math.PI * 2, r = half + 5 + rnd() * 9;
+        const px = r2(mid[0] + Math.cos(a) * r), pz = r2(mid[1] + Math.sin(a) * r), py = r2(top * LEVEL - 4 - rnd() * (n * C + 6));
+        const sx = Math.floor((px + RX) / C), sy = Math.floor((pz + RZ) / C); if (cellR[sy] && cellR[sy][sx] && cellR[sy][sx] !== '.') continue;
+        props.push({ key: 'ew_cube_piece', x: px, z: pz, y: py, face: Math.round(rnd() * 360) }); }
+    /* who stands on it (units whose own world is the astral; no lines: no invented words) */
+    [['chess piece', 2, 2, 135], ['glitch', 5, 5, 300], ['voidweaver', 1, 6, 45]].forEach(([race, i, j, face]) => { if (gone.has((x0 + i) + ',' + (y0 + j))) throw new Error('a native over a hole'); npc.push({ x: RM.gcx(x0 + i), z: RM.gcz(y0 + j), face, race }); });
+    const rect = { x0: RM.gx(x0), z0: RM.gz(y0), x1: RM.gx(x0 + n), z1: RM.gz(y0 + n), launch: 'the_cube' };
+    count.cube = { stair: path.length, flights, top: r2(top * LEVEL), pieces: props.length - 1, holes: gone.size };
+    return { feats, props, npc, rect, top };
+})();
 const openR = (x, y) => x >= 0 && y >= 0 && x < RW && y < RD && cellR[y][x] !== '.';
 
 /* ── THE ISLANDS: every plot's squares as float plateaus at the plot's height (greedy rectangles). A rectangle runs 0.4 m into a
    neighbour square that is island too (two plateaus that only touch leave a notch on the line) and stops on the square's line at the sky.
    The biggest rectangle of a plot hangs the island's rock; the others hang a short one, so the island tapers to one point. ── */
 const ISLE = [];
-RM.order.forEach(p => { const used = new Uint8Array(N * N), rects = [], isl = (lx, ly) => lx >= 0 && ly >= 0 && lx < N && ly < N && openR(p.sx + lx, p.sy + ly) && !(cellR[p.sy + ly][p.sx + lx] === 'k' && (lx === 0 || ly === 0 || lx === N - 1 || ly === N - 1));
+RM.order.forEach(p => { if (p.cross === 'Q') return; const used = new Uint8Array(N * N), rects = [], isl = (lx, ly) => lx >= 0 && ly >= 0 && lx < N && ly < N && openR(p.sx + lx, p.sy + ly) && cellR[p.sy + ly][p.sx + lx] !== 'q' && !(cellR[p.sy + ly][p.sx + lx] === 'k' && (lx === 0 || ly === 0 || lx === N - 1 || ly === N - 1));
     const inner = (lx, ly) => isl(lx, ly) && cellR[p.sy + ly][p.sx + lx] === 'k';
     for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { if (!isl(lx, ly) || used[ly * N + lx]) continue; const cloud = inner(lx, ly);
         let w = 1; while (isl(lx + w, ly) && !used[ly * N + lx + w] && inner(lx + w, ly) === cloud) w++;
@@ -231,7 +283,7 @@ for (let y = 0; y < RD; y++) for (let x = 0; x < RW; x++) paint[y * RW + x] = PI
 
 /* ── checks: every prop key and unit exists; nothing stands over the void; every plot is walked to from the Frame ── */
 const CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AVAILABLE_RACES', D);
-const propsR = RM.props, npcR = RM.npc, doorsR = RM.doors.map(d => { const o = Object.assign({}, d); delete o.plot; delete o.side; return o; });
+const propsR = RM.props.concat(CUBE.props), npcR = RM.npc.concat(CUBE.npc), doorsR = RM.doors.map(d => { const o = Object.assign({}, d); delete o.plot; delete o.side; return o; });
 propsR.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key);
     const sx = Math.floor((p.x + RX) / C), sy = Math.floor((p.z + RZ) / C); if (!openR(sx, sy) && typeof p.y !== 'number') throw new Error(p.key + ' stands over the void at ' + sx + ',' + sy + ' (give it a y to hang it there)'); });
 npcR.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); });
@@ -243,7 +295,7 @@ const SPh = [plot['P02-00'].sx + 5, plot['P02-00'].sy + 4], SP = RM.sq('P02-00',
   if (cold.length) throw new Error('plots not reached on foot: ' + cold.join(' | '));
   let op = 0, un = 0; for (let y = 0; y < RD; y++) for (let x = 0; x < RW; x++) if (openR(x, y)) { op++; if (!seen[y * RW + x]) un++; }
   Object.assign(count, { islandSquares: op, unreachedSquares: un }); }
-const features = ISLE.concat(JOIN, RM.features);
+const features = ISLE.concat(JOIN, RM.features, CUBE.feats);
 Object.assign(count, { plots: RM.order.length, box: RM.cols + ' x ' + RM.rows, features: features.length, drawn: ARCH.length, props: propsR.length, doors: doorsR.length, natives: npcR.length, strays: RM.strays.length });
 
 /* THE AIR BY DISTRICT (three-renderer.js _hqBuildAtmos `shell.atmos.zones`): a district file may export `airZones(ctx)` =
@@ -267,6 +319,7 @@ L.push("            kind: 'box', site: '" + SITE + "', part: '" + PART + "',");
 L.push("            shell: hqAstralShell({ w: " + r2(2 * RX) + ", d: " + r2(2 * RZ) + ", h: " + r2(TOP + 14) + ", wallH: " + r2(TOP + 14) + ", plate: { x: " + r2(PLATE[0]) + ", z: " + r2(PLATE[1]) + ", y: " + r2(plot['P02-00'].base + 3.6) + " }, atmos: " + J(ATMOS) + " }),");
 L.push("            parti: 'No ground: three islands far apart over the void, the Sea of Possibility, the Library of Unthought Things and the Nightmare. A cloud bridge climbs from the Sea to the Library; the Way Down sinks from the Library to the Nightmare.',");
 L.push("            typology: 'grid',");
+L.push("            cube: " + J(CUBE.rect) + ",   // THE CUBE: a native met on the Rubik's cube's top fights on the cube (data.js hqEncounterLaunch)");
 L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", n: " + RM.cols + ", nx: " + RM.cols + ", nz: " + RM.rows + ", mask: " + J(RM.mask) + ", names: " + J(RM.names) + " },");
 L.push("            terrain: {");
 L.push("                res: 0.875, floor: 'nz_astral_a', cliff: 'crystal', path: 'marble_light',");

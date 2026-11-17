@@ -9957,10 +9957,23 @@ planet, went to the Outer Space thread.)
   each time the other side acts; a full round with the slice turn carrying a fighter from the top face onto the east face; clicks on the
   two visible side faces pick their own squares; the side acting sees only its own face.
 - **KNOWN, NOT YET DONE:** the CPU does not read the warned slice yet (it plays the frame as a flat board); spells' own big sheets that sit
-  at the world's origin are not folded (seen: the end-of-round spawn-zone rings of fighters on a hidden face float flat beside the cube); the cube in the Astral Realm (below) is the next PR.
-- **IN THE ASTRAL REALM (planned, mondo's picks):** floating high over the middle of the Cloud Bridge, nothing touching it; its broken-off
-  pieces float round it, and a winding stair of them climbs from the bridge to its top, each one level higher than the last (picture
-  `5_the_broken_cube.png`). Meeting a native on its top starts the fight on all six faces.
+  at the world's origin are not folded (seen: the end-of-round spawn-zone rings of fighters on a hidden face float flat beside the cube); the cube in the Astral Realm: built (below).
+- **IN THE ASTRAL REALM (BUILT 11-17, bake-astral.js THE CUBE):** two new plots south of the Cloud Bridge's middle (district S, plot rows
+  2-3 of column 0: 'The Broken Stair' + 'The Cube'), nothing touching the cube. The cube is the proc prop `ew_rubiks_cube` (three-renderer.js
+  `_ewCubeProp`, catalogue span 28 m, origin = the middle of its top): 8 x 8 x 8 cubies of 3.5 m, a dark core, one sticker a square in its
+  face's ground TINTED to the six Rubik's colours (white, yellow, orange, red, blue, green: the Sea's water alone read grey), the
+  CUBE_RULES.missing pieces left out (pits, notches, bitten corners). Its meshes are `_ew_noBatch` (the static batch's look key merged all six
+  faces into one). Its broken pieces are `ew_cube_piece` (one cubie, one to three stickers, seeded by its place).
+  - THE STAIR (mondo 11-17: "the piece steps need to ascend upward, because the cube is high in the air"): 23 squares from the bridge's
+    south lane (level 9) up to the cube's top edge (level 21 = 36.75 m); every other square is a cloud stair flight (`ramp`, stairs) and the
+    squares between are broken pieces to stand on (a bare float plateau + an `ew_cube_piece`), each one level higher than the last.
+  - THE TOP is walkable: bare float plateaus at level 21 over the cube's top face (`f.bare` = the plateau draws nothing, the prop is the
+    picture), the top-layer missing pieces left as holes into the void. 16 more pieces float round the cube. Natives on top: chess piece,
+    glitch, voidweaver.
+  - THE FIGHT: the room literal carries `cube: {x0, z0, x1, z1, launch: 'the_cube'}`; data.js `hqEncounterLaunch` sends any encounter that
+    starts inside that rect to the map 'the_cube' (TDM, no seamless field fight, up to 8 a side; map.js `cubeBoardSpec(8)`).
+  - Proof 11-17: `/mnt/project-files/rubiks-cube/proof/` (from the bridge, from the side, the stair, the top). Not yet checked on screen:
+    walking the stair end to end, and a fight starting on the top.
 
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
