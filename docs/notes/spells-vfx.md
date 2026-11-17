@@ -4139,3 +4139,32 @@ mondo's three examples + the other sword combos. All behind `EW_NO_VFX_CLEANUP` 
   catch it; its real beam is B3.
 - Frames: docs/plans/vfx-cleanup/img/b2_*.jpg.
 
+## THE OWN LOOKS, L1 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; list `own-look/L1.txt`, 49 spells)
+mondo 11-17: "any spells that dont have a look of their own need one". Thread L1 = ground and growth (earth, nature, poison,
+water, ice). The block is "THE OWN LOOKS, L1" at the end of three-vfx-effects.js (`_l1*`, `_L1*`).
+- **How a look is wired:** `_l1Def(id, fn(p, P0, id), windupFn?)` puts the look in `_FX2_BURST[id]` (the relayed burst beat),
+  so `_vcOwn(id)` is true and the generic stage burst stops by itself. The burst beat carries no tiles, so a wrapper round
+  `_fireStage` keeps the WINDUP's `{ sx, sy, tx, ty, tiles, hold }` per spell (`P0`: the footprint, and where a charge
+  started from). An optional third argument draws on the windup (Land Ho's wave).
+- **The shared pieces of the block:** `_l1Flash(F, tiles, colour)` = every hit square lights once in the spell's colour;
+  `_l1Area(p, P0, r)` = the squares hit; `_l1Dir(F, p, P0)` = the way the blow travels + its side; `_l1Body(F, tx, ty)` =
+  where the body that stood on the square is NOW (a pull drags the look along; `_pzTrack` could not find a pulled body by
+  its square on the burst beat); snow = `_l1SnowMat` / `_l1Lump` / `_l1SplatTex` / `_l1Powder`.
+- **Off:** `window.EW_DISABLE_OWN_LOOKS_L1 = true`.
+- **Capture note:** a tile-cast spell (Snow Fort) is sometimes caught late by the harness ("hud-tile", 6 frames); a second
+  run takes the "direct" path and shows the cast.
+
+### part 1 (12 spells: the ice + water rows). After frames: `docs/plans/vfx-cleanup/img/own-look/L1_part1.jpg`
+- **Avalanche Strike** (yeti): lumps of packed snow tumble down the lane past both sides of the victim, a drift is left at its feet.
+- **Dark Justice** (antihero): two black strokes with a red edge cross the victim out (an X), one after the other; a red square under it.
+- **Frozen Punch** (yeti): a fist of ice (four crystal knuckles on a slab) drives in from his side, holds, bursts into shards.
+- **Glacial Slam**: a crown of glacier plates breaks out of the eight squares round the caster, leaning out (lens side low), then shatters.
+- **Grave Chill** (skeleton): the game's skull model, cold blue, lifts out of the body and fades upward; grave mist spills low.
+- **Snow Fort**: bricks of packed snow drop course by course onto the top of the rising wall (they ride its live height), then powder.
+- **Snowball Volley** (santa): nine snowballs come down out of the lob one after another, each bursts into a white splat on its square.
+- **Eightfold Lash**: eight thin whips of water rise in a ring and crack in on the body one after another.
+- **Fluoride Water** (conspiracy theorist): a thin stream pours down on the middle square, a mint-green ring runs out over the 3×3, mint bubbles fizz.
+- **Land Ho** (pirate): a bow wave runs down the lane with the charge (windup, as long as the charge takes), a V of spray on the hit.
+- **Tentacle Lash** (kraken): a dark pool opens beside the victim, the tentacle model comes up, hooks over the body and rides the pull.
+- **Watering Can**: a fine shower falls in a cone on the one square, the soil goes dark and wet, two small rings. (A big tan ring that is
+  NOT this look still draws on the cast, before and after this PR; it is not in three-vfx-effects.js' stage burst: for the cleanup thread.)

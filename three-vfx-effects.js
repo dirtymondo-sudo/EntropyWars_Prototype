@@ -68466,6 +68466,411 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         nrMorningStar: function (tx, ty) { return _qzMorningStar3D(tx, ty); },
     });
 
+    /* ═════════════════════════════════════════════════════════════════════
+       THE OWN LOOKS, L1 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells that dont have a look
+       of their own need one"). Ground and growth: the earth, nature, poison, water and ice spells that only drew the
+       shared stage burst. Each gets a look that says what THIS spell is, on the relayed burst beat (_FX2_BURST, so
+       _vcOwn(id) is true and the generic burst stops by itself). The footprint is kept from the windup beat (the burst
+       carries no tiles). Every square an area spell hits flashes in the spell's own colour (_l1Flash). Nothing on
+       `state`, nothing full-screen, each end drawn only where the viewer sees its tile (_pzSeen).
+       Off: window.EW_DISABLE_OWN_LOOKS_L1 = true. Notes: docs/notes/spells-vfx.md "THE OWN LOOKS, L1". */
+    var _L1 = { snow: 0xffffff, snowSh: 0xa8c8ea, iceFl: 0x6fc4ff, mint: 0x58e0c2, mintDk: 0x1f9c8a, sea: 0x2f8fe0, verdict: 0x1a1030, crimson: 0xe0284a, wet: 0x1c4f86 };
+    var _l1Live = {}, _L1_WIND = {};
+    function _l1Off() { try { return !!window.EW_DISABLE_OWN_LOOKS_L1 || _suppressed() || _catOff('spells'); } catch (e) { return false; } }
+    /* a look on the burst beat: fn(p, P0, id), P0 = the windup's { sx, sy, tx, ty, tiles, hold } or null */
+    function _l1Def(id, fn, wind) {
+        _FX2_BURST[id] = function (p) {
+            if (_l1Off() || !p || p.tx == null) return;
+            var L = _l1Live[id]; delete _l1Live[id];
+            return fn(p, (L && performance.now() - L.t0 < 12000) ? L.P : null, id);
+        };
+        _FX2_BURST[id]._l1 = true;
+        if (wind) _L1_WIND[id] = wind;
+    }
+    var _l1FireStage0 = _fireStage;
+    _fireStage = function (phase, spellId, params) {
+        try {
+            var f = _FX2_BURST[spellId];
+            if (phase === 'windup' && f && f._l1 && params && !params.mark) {
+                var P0 = { sx: params.sx, sy: params.sy, tx: params.tx, ty: params.ty, tiles: Array.isArray(params.tiles) ? params.tiles.slice(0, 30) : null, hold: params.holdMs || 700 };
+                _l1Live[spellId] = { P: P0, t0: performance.now() };
+                if (_L1_WIND[spellId] && !_l1Off() && _stageOK()) _L1_WIND[spellId](P0, spellId);
+            }
+        } catch (e) { console.warn('[VFX] own look (L1) windup failed', spellId, e); }
+        _l1FireStage0(phase, spellId, params);
+    };
+    /* the squares the spell hits: the windup's footprint, else the r-square round the target */
+    function _l1Area(p, P0, r) {
+        if (P0 && P0.tiles && P0.tiles.length > 1) return P0.tiles;
+        var out = []; r = r || 0;
+        for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) out.push({ x: p.tx + dx, y: p.ty + dy });
+        return out;
+    }
+    function _l1SqTex() {
+        return _pzTex('l1-sq', 64, 64, function (g, w, h) {
+            var gr = g.createRadialGradient(32, 32, 6, 32, 32, 44); gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0.15)');
+            g.fillStyle = gr; g.fillRect(3, 3, 58, 58);
+        });
+    }
+    /* THE FLASH: every square the spell hits lights once in the spell's colour. Returns tick(el). */
+    function _l1Flash(F, tiles, color, o) {
+        o = o || {};
+        var mat = _pzGlow(color, _l1SqTex()), n = 0, at = o.at || 0, ms = o.ms || 340;
+        for (var i = 0; i < tiles.length && n < 30; i++) {
+            var q = tiles[i]; if (!q || !_pzSeen(q.x, q.y)) continue; n++;
+            var c = _nvOff(F, q.x, q.y); _pzMesh(_f4Floor(F.ts * 0.94), mat, F.g, c.x, c.y + F.ts * 0.035, c.z).renderOrder = 160;
+        }
+        return function (el) { mat.opacity = (o.op || 0.6) * _pzEnv(el, at, at + 50, at + 110, at + ms); };
+    }
+    /* caster → target on the ground, in the frame of the target: d = the way the blow travels, s = its side */
+    function _l1Dir(F, p, P0) {
+        var fx = P0 && P0.sx != null ? P0.sx : p.sx, fy = P0 && P0.sy != null ? P0.sy : p.sy;
+        if (fx == null || (fx === p.tx && fy === p.ty)) { var cd = _nbCamDir(F); return { x: cd.z, z: -cd.x, sx: -cd.x, sz: -cd.z, L: F.ts, fx: p.tx, fy: p.ty }; }
+        var ln = _nrvLine(F, { x: fx, y: fy }, p.tx, p.ty);
+        return { x: -ln.ux, z: -ln.uz, sx: ln.uz, sz: -ln.ux, L: ln.L, fx: fx, fy: fy };
+    }
+    /* the live body that stood on (tx, ty) at the hit: where it is NOW, in the frame (a pull / a push drags the look along) */
+    function _l1Body(F, tx, ty) {
+        var R = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos) ? ThreeRenderer : null, id = null, o = [0, 0, 0], best = F.ts * 0.8;
+        try {
+            if (R && !_VS.on && typeof state !== 'undefined' && state.units) for (var i = 0; i < state.units.length; i++) {
+                var c = state.units[i]; if (!c || c.dead || !R.getUnitWorldPos(c.id, o)) continue;
+                var d = Math.hypot(o[0] - F.wp.x, o[2] - F.wp.z); if (d < best) { best = d; id = c.id; }
+            }
+        } catch (e) { id = null; }
+        return function () {
+            if (id == null) return null;
+            try { if (!R.getUnitWorldPos(id, o)) return null; } catch (e) { return null; }
+            return { x: o[0] - F.wp.x, y: Math.max(-F.ts, Math.min(F.ts * 2, o[1] + 3 - F.wp.y)), z: o[2] - F.wp.z };
+        };
+    }
+    /* packed snow: lumps and bricks, white on top, blue shade below (snow is white because it is snow) */
+    function _l1SnowMat() { var m = _pzSolid(0xffffff); m.vertexColors = true; return m; }
+    function _l1Lump(detail) { var g = new THREE.IcosahedronGeometry(1, detail || 0); if (g.index) g = g.toNonIndexed(); g.computeVertexNormals(); _ivBake(g, _L1.snowSh, _L1.snow); return g; }
+    function _l1SplatTex() {
+        return _pzTex('l1-splat', 128, 128, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.beginPath();
+            for (var i = 0; i < 22; i++) { var a = i / 22 * Math.PI * 2, r = (i % 2 ? 30 : 46 + ((i * 7) % 5) * 3); g.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r); }
+            g.closePath(); g.fill();
+            g.fillStyle = 'rgba(150,190,235,0.55)'; g.beginPath(); g.arc(70, 70, 20, 0, Math.PI * 2); g.fill();
+        });
+    }
+    function _l1Powder(F, x, y, z, n, r) {
+        for (var i = 0; i < n; i++) _pzP(F, x + rn(-1, 1) * r, y + rn(0, 8), z + rn(-1, 1) * r, { sprite: 'frost-mist', tint: 0xf2f8ff, ml: rn(500, 900), size0: rn(14, 22), size1: rn(34, 52),
+            vx: rn(-50, 50), vy: rn(-50, 50), vz: rn(20, 90), drag: 0.8, opacity0: 0.6 });
+    }
+
+    /* ── ICE ── */
+    /* AVALANCHE STRIKE — "charges into melee in a wall of snow": the slide comes down the lane with the yeti, tumbling
+       lumps of packed snow that roll past both sides of the victim (low: the bodies stay clear) and a drift left at its feet */
+    _l1Def('raceAvalancheStrike', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0), back = Math.min(D.L, ts * 3) + ts * 0.3, R = _sigRand(tx * 31 + ty * 17 + 5);
+        var mat = _l1SnowMat(), geo = _l1Lump(0), lumps = [];
+        for (var i = 0; i < 18; i++) {
+            var sd = (i % 2 ? 1 : -1) * ts * (0.34 + 0.62 * R()), sz = ts * (0.13 + 0.16 * R());
+            var m = _pzMesh(geo, mat, F.g); m.scale.setScalar(sz);
+            lumps.push({ m: m, sd: sd, sz: sz, a: -back * (0.55 + 0.45 * R()), b: ts * (0.25 + 1.0 * R()), d: R() * 160, sp: 6 + 8 * R(), hop: ts * 0.16 * R() });
+        }
+        var drift = _ivDecal(F.g, _l1SplatTex(), ts * 2.3, new THREE.Vector3(0, ts * 0.04, 0), 0xffffff, false);
+        drift.rotation.z = R() * 6.28;
+        var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.iceFl);
+        _l1Powder(F, -D.x * ts * 0.5, ts * 0.1, -D.z * ts * 0.5, 7, ts * 0.5);
+        _fxDelay(function () { if (!_suppressed()) _l1Powder(F, D.x * ts * 0.5, ts * 0.1, D.z * ts * 0.5, 6, ts * 0.6); }, 220);
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var out = _sigClamp01((el - 1150) / 500);
+            mat.opacity = el < 1690 ? 1 : 0;
+            for (var i = 0; i < lumps.length; i++) {
+                var Lm = lumps[i], t = _sigEaseOutCubic(_sigClamp01((el - Lm.d) / 520)), d = Lm.a + (Lm.b - Lm.a) * t;
+                Lm.m.visible = el >= Lm.d;
+                Lm.m.position.set(D.x * d + D.sx * Lm.sd, Lm.sz * 0.8 + Lm.hop * Math.abs(Math.sin(t * 9 + i)) * (1 - t), D.z * d + D.sz * Lm.sd);
+                Lm.m.rotation.set(el * 0.001 * Lm.sp * (1 - t * 0.9), i, el * 0.0007 * Lm.sp * (1 - t * 0.9));
+                Lm.m.scale.setScalar(Math.max(0.001, Lm.sz * (1 - out)));
+            }
+            drift.material.opacity = 0.9 * _pzEnv(el, 120, 420, 1100, 1650); drift.scale.setScalar(0.5 + 0.5 * _sigEaseOutCubic(_sigClamp01((el - 120) / 400)));
+            flash(el);
+        });
+    });
+
+    /* DARK JUSTICE — the verdict: two black strokes with a red edge cross out the victim (an X struck through the name),
+       drawn one after the other, and a red bar of light under its feet */
+    function _l1StrokeTex() {
+        return _pzTex('l1-stroke', 256, 48, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(4, 24); g.quadraticCurveTo(110, 2, 252, 20); g.lineTo(252, 28); g.quadraticCurveTo(110, 46, 4, 24); g.fill();
+        });
+    }
+    _l1Def('raceDarkJustice', function (p) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, tex = _l1StrokeTex(), S = [];
+        for (var i = 0; i < 2; i++) {
+            var edge = _afDarkSprite(_L1.crimson, tex, ts), core = _afDarkSprite(_L1.verdict, tex, ts);
+            edge.material.depthTest = false; core.material.depthTest = false; edge.renderOrder = 160; core.renderOrder = 161;
+            edge.material.rotation = core.material.rotation = (i ? -1 : 1) * 0.82;
+            edge.position.set(0, ts * 0.62, 0); core.position.set(0, ts * 0.62, 0); F.g.add(edge); F.g.add(core);
+            S.push({ e: edge, c: core, d: i * 130 });
+        }
+        var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.crimson, { op: 0.5 });
+        for (var k = 0; k < 7; k++) _pzP(F, rn(-1, 1) * ts * 0.25, ts * rn(0.4, 0.9), rn(-1, 1) * ts * 0.25, { sprite: 'spark', tint: _L1.crimson, ml: rn(300, 520), size0: rn(5, 9), size1: 1, vx: rn(-120, 120), vy: rn(-120, 120), vz: rn(-20, 120), gravity: 300, drag: 1, opacity0: 0.9 });
+        return _sigRunOwned(F.g, 950, function (el) {
+            for (var i = 0; i < 2; i++) {
+                var s = S[i], k = _sigEaseOutCubic(_sigClamp01((el - s.d) / 110)), o = _pzEnv(el, s.d, s.d + 40, 560, 900);
+                s.e.scale.set(ts * 1.5 * k, ts * 0.3, 1); s.c.scale.set(ts * 1.42 * k, ts * 0.17, 1);
+                s.e.material.opacity = 0.95 * o; s.c.material.opacity = o;
+            }
+            flash(el);
+        });
+    });
+
+    /* FROZEN PUNCH — the fist itself is ice: a block of knuckles, four crystals on a slab, drives in from the yeti's
+       side, cracks on the body and bursts into shards (the shatter recipe it already had rides on top) */
+    _l1Def('raceFrozenPunch', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0), K = _ivCrystalGeo(), im = _ivIceMat(), em = _ivEdgeMat();
+        var fist = new THREE.Group(); F.g.add(fist);
+        fist.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(D.x, 0.08, D.z).normalize());
+        var parts = [], side = new THREE.Vector3(1, 0, 0);
+        for (var i = 0; i < 4; i++) parts.push(_ivCrystal(fist, K, im, em, new THREE.Vector3((i - 1.5) * ts * 0.1, 0, (i % 2) * ts * 0.02), ts * 0.075, ts * (0.36 + 0.04 * (i % 3)), null, i * 1.1));
+        parts.push(_ivCrystal(fist, K, im, em, new THREE.Vector3(0, -ts * 0.14, -ts * 0.03), ts * 0.19, ts * 0.36, null, 0.5));
+        var SH = _ivShards(F.g, ts, im), broke = false, HIT = 130, BREAK = 520, flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.iceFl, { at: HIT });
+        return _sigRunOwned(F.g, 1300, function (el) {
+            var t = _sigEaseInCubic(_sigClamp01(el / HIT)), d = -ts * 0.95 + ts * 0.62 * t + (el > HIT ? -ts * 0.05 * _sigClamp01((el - HIT) / 200) : 0);
+            fist.position.set(D.x * d, ts * 0.6, D.z * d);
+            im.opacity = el < 1280 ? 0.94 : 0; em.opacity = el < BREAK ? 0.7 : 0.4 * (1 - _sigClamp01((el - 900) / 380));
+            for (var i = 0; i < parts.length; i++) parts[i].set(el < BREAK ? Math.min(1, 0.4 + el / 70) : 0);
+            if (!broke && el >= BREAK) {
+                broke = true;
+                SH.burst(fist.position.clone(), 16, el, { v: 0.9, up: 1.1, dx: D.x * 1.6, dz: D.z * 1.6, s: 1.5, ms: 900 });
+                _ivGlints(F, fist.position.x, ts * 0.55, fist.position.z, 8, { r: 18, h: 20, v: 60 });
+            }
+            SH.tick(el); flash(el);
+        });
+    });
+
+    /* GLACIAL SLAM — both fists down: a crown of glacier plates breaks up out of the eight squares round the caster,
+       leaning out, the lens-side ones low; they hold a beat and shatter. Every square flashes cold blue. */
+    _l1Def('raceGlacialSlam', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, K = _ivCrystalGeo(null, 4), im = _ivIceMat(), em = _ivEdgeMat(), cd = _nbCamDir(F), plates = [];
+        var tiles = _l1Area(p, P0, 1);
+        for (var i = 0; i < tiles.length; i++) {
+            var q = tiles[i]; if ((q.x === tx && q.y === ty) || !_pzSeen(q.x, q.y)) continue;
+            var c = _nvOff(F, q.x, q.y), l = Math.hypot(c.x, c.z) || 1, ox = c.x / l, oz = c.z / l, front = Math.max(0, ox * cd.x + oz * cd.z);
+            var pl = _ivCrystal(F.g, K, im, em, new THREE.Vector3(c.x * 0.78, c.y - ts * 0.03, c.z * 0.78), ts * 0.2, ts * (0.78 - 0.45 * front), _ivLean(ox, oz, 0.5 + 0.2 * front), Math.atan2(ox, oz) + Math.PI / 4);
+            pl.d = 20 * plates.length; plates.push(pl);
+        }
+        var crack = _ivDecal(F.g, _ivCrackTex(), ts * 2.7, new THREE.Vector3(0, ts * 0.045, 0), _IV.glow, true);
+        var SH = _ivShards(F.g, ts, im), broke = false, BREAK = 620, flash = _l1Flash(F, tiles, _L1.iceFl);
+        _ivMist(F, 0, 4, 0, 6, { r: ts * 0.8, s0: 20, s1: 50 });
+        return _sigRunOwned(F.g, 1700, function (el) {
+            im.opacity = el < 1680 ? 0.93 : 0; em.opacity = 0.6 * (1 - _sigClamp01((el - 1200) / 450));
+            crack.material.opacity = 0.8 * _pzEnv(el, 0, 60, 500, 1100);
+            for (var i = 0; i < plates.length; i++) plates[i].set(el < BREAK ? _sigEaseOutBack(_sigClamp01((el - plates[i].d) / 150)) : 0);
+            if (!broke && el >= BREAK) {
+                broke = true;
+                for (var j = 0; j < plates.length; j++) SH.burst(plates[j].g.position.clone().add(new THREE.Vector3(0, plates[j].h * 0.45, 0)), 5, el, { v: 0.7, up: 0.9, s: 1.3, ms: 850 });
+                _ivGlints(F, 0, ts * 0.2, 0, 12, { r: ts * 0.9, h: 40 });
+            }
+            SH.tick(el); flash(el);
+        });
+    });
+
+    /* GRAVE CHILL — "a skull-shaped bolt of grave cold": where it lands the skull itself (the game's skull model, cold
+       blue) lifts out of the body and fades upward, grave mist spilling low round the feet */
+    _l1Def('raceGraveChill', function (p) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), holder = new THREE.Group(); F.g.add(holder);
+        var inst = _wpnReady('skull') ? _wpnInstance('skull', ts * 0.5, { tint: 0x8fcfff }) : null, spr = null;
+        if (inst) { holder.add(inst.group); holder.rotation.y = Math.atan2(cd.x, cd.z); }
+        else { spr = _pzSpr(0x9fd8ff, ts * 0.6, holder, _pzSkullTex()); }
+        var halo = _pzSpr(_L1.iceFl, ts * 1.1, F.g), flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.iceFl, { op: 0.5 });
+        for (var i = 0; i < 9; i++) { var a = i / 9 * 6.283; _pzP(F, Math.cos(a) * ts * 0.2, 3, Math.sin(a) * ts * 0.2, { sprite: 'frost-mist', tint: 0xb8d8f8, ml: rn(900, 1400), size0: 18, size1: rn(46, 64), vx: Math.cos(a) * 70, vy: Math.sin(a) * 70, vz: 4, drag: 1.2, opacity0: 0.55 }); }
+        return _sigRunOwned(F.g, 1250, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 900)), o = _pzEnv(el, 0, 90, 620, 1200);
+            holder.position.set(0, ts * (0.62 + 0.62 * up), 0); holder.scale.setScalar(0.75 + 0.5 * up);
+            if (inst) inst.setFade(0.85 * o); else spr.material.opacity = 0.9 * o;
+            halo.position.copy(holder.position); halo.material.opacity = 0.35 * o;
+            flash(el);
+        });
+    });
+
+    /* SNOW FORT — "pack it, stack it, duck": bricks of packed snow drop into place course by course along the three
+       squares as the wall comes up, then a puff of powder off the top */
+    _l1Def('raceSnowFort', function (p, P0) {
+        var tiles = (P0 && P0.tiles && P0.tiles.length) ? P0.tiles : [{ x: p.tx, y: p.ty }];
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, mat = _l1SnowMat(), geo = new THREE.BoxGeometry(1, 1, 1), bricks = [], n = 0;
+        geo = geo.toNonIndexed(); geo.computeVertexNormals(); _ivBake(geo, _L1.snowSh, _L1.snow);
+        var a0 = _nvOff(F, tiles[0].x, tiles[0].y), a1 = _nvOff(F, tiles[tiles.length - 1].x, tiles[tiles.length - 1].y), yaw = tiles.length > 1 ? Math.atan2(a1.x - a0.x, a1.z - a0.z) : 0;
+        var ux = Math.sin(yaw), uz = Math.cos(yaw);
+        for (var i = 0; i < tiles.length; i++) {
+            var q = tiles[i]; if (!_pzSeen(q.x, q.y)) continue; n++;
+            var c = _nvOff(F, q.x, q.y);
+            for (var row = 0; row < 3; row++) for (var b = 0; b < 2; b++) {
+                var along = (b - 0.5 + (row % 2 ? 0.25 : -0.25)) * ts * 0.48;
+                var m = _pzMesh(geo, mat, F.g, c.x + ux * along, 0, c.z + uz * along); m.rotation.y = yaw; m.scale.set(ts * 0.3, ts * 0.2, ts * 0.44); m.visible = false;
+                bricks.push({ m: m, up: ts * (0.1 + 0.21 * row), d: row * 110 + i * 45 + b * 30, c: c, q: q });
+            }
+        }
+        if (!n) { _sigDisposeGroup(F.g); return; }
+        var puffed = false, flash = _l1Flash(F, tiles, _L1.iceFl, { op: 0.45 }), gy = {};
+        return _sigRunOwned(F.g, 2300, function (el) {
+            mat.opacity = 1 - _sigClamp01((el - 1750) / 500);
+            for (var i = 0; i < bricks.length; i++) {
+                var B = bricks[i], t = _sigClamp01((el - B.d) / 150), k = B.q.x + ',' + B.q.y; B.m.visible = el >= B.d;
+                if (i % 6 === 0) gy[k] = _worldPos(B.q.x, B.q.y).y - F.wp.y;   /* the wall under them is rising: the courses sit on top of it */
+                B.m.position.y = gy[k] + B.up + ts * 0.5 * (1 - _sigEaseOutBack(t));
+            }
+            if (!puffed && el > 420) { puffed = true; for (var j = 0; j < bricks.length; j += 6) _l1Powder(F, bricks[j].c.x, bricks[j].c.y + ts * 0.6, bricks[j].c.z, 4, ts * 0.3); }
+            flash(el);
+        });
+    });
+
+    /* SNOWBALL VOLLEY — "a fan of snowballs lobbed in a high arc": the snowballs come down out of the lob one after
+       another over the 3×3 and each bursts into a white splat on its square */
+    _l1Def('raceSnowballVolley', function (p, P0) {
+        var tx = p.tx, ty = p.ty, F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0), tiles = _l1Area(p, P0, 1);
+        var mat = _l1SnowMat(), geo = _l1Lump(1), balls = [], ORDER = [4, 0, 8, 2, 6, 1, 7, 3, 5];
+        for (var i = 0; i < 9; i++) {
+            var q = tiles[ORDER[i] % tiles.length]; if (!q || !_pzSeen(q.x, q.y)) continue;
+            var c = _nvOff(F, q.x, q.y), m = _pzMesh(geo, mat, F.g); m.scale.setScalar(ts * 0.17); m.visible = false;
+            var sp = _ivDecal(F.g, _l1SplatTex(), ts * 0.8, new THREE.Vector3(c.x, c.y + ts * 0.04, c.z), 0xffffff, false); sp.rotation.z = i * 1.9;
+            balls.push({ m: m, sp: sp, c: c, d: i * 75, hit: false });
+        }
+        if (!balls.length) { _sigDisposeGroup(F.g); return; }
+        var FALL = 330, flash = _l1Flash(F, tiles, _L1.iceFl, { op: 0.5 });
+        return _sigRunOwned(F.g, 1700, function (el) {
+            mat.opacity = 1;
+            for (var i = 0; i < balls.length; i++) {
+                var B = balls[i], t = (el - B.d) / FALL, k = 1 - _sigClamp01(t);
+                B.m.visible = t >= 0 && t < 1;
+                B.m.position.set(B.c.x - D.x * ts * 1.1 * k, B.c.y + ts * 0.14 + ts * 2.6 * k, B.c.z - D.z * ts * 1.1 * k);
+                if (t >= 1 && !B.hit) { B.hit = true; _l1Powder(F, B.c.x, B.c.y + 4, B.c.z, 3, ts * 0.15); _ivGlints(F, B.c.x, B.c.y + ts * 0.1, B.c.z, 3, { r: 10, h: 12, v: 70 }); }
+                var e2 = el - B.d - FALL;
+                B.sp.material.opacity = e2 < 0 ? 0 : 0.92 * (1 - _sigClamp01((e2 - 800) / 500)); B.sp.scale.setScalar(0.3 + 0.7 * _sigEaseOutBack(_sigClamp01(e2 / 140)));
+            }
+            flash(el);
+        });
+    });
+
+    /* ── WATER ── */
+    /* EIGHTFOLD LASH — "all of them at once": eight thin whips of water rise in a ring round the victim and crack in on
+       it one after another, each pulling back as the next lands */
+    _l1Def('raceEightfoldLash', function (p) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty) || !_pzOnce('l1Eight' + tx + ',' + ty, 700)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, mat = _wvWaterMat(), arms = [], cd = _nbCamDir(F);
+        for (var i = 0; i < 8; i++) {
+            var a = i / 8 * 6.283 + 0.3, ox = Math.cos(a), oz = Math.sin(a), front = Math.max(0, ox * cd.x + oz * cd.z), hh = 1 - 0.35 * front;
+            var pts = [new THREE.Vector3(ox * ts * 0.82, 0, oz * ts * 0.82), new THREE.Vector3(ox * ts * 0.86, ts * 0.5 * hh, oz * ts * 0.86),
+                new THREE.Vector3(ox * ts * 0.6, ts * 1.02 * hh, oz * ts * 0.6), new THREE.Vector3(ox * ts * 0.24, ts * 0.86 * hh, oz * ts * 0.24), new THREE.Vector3(ox * ts * 0.1, ts * (0.4 + 0.25 * (i % 3) / 2), oz * ts * 0.1)];
+            arms.push({ v: _wvStream(F, pts, ts, ts * 0.05, ts * 0.012, mat), d: ((i * 3) % 8) * 62, hit: false, ox: ox, oz: oz });
+            arms[i].v.grow(0, 0);
+        }
+        var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.sea, { op: 0.5 });
+        return _sigRunOwned(F.g, 1150, function (el) {
+            _wvFlow(); mat.opacity = 0.9 * (1 - _sigClamp01((el - 1000) / 140));
+            for (var i = 0; i < arms.length; i++) {
+                var A = arms[i], e = el - A.d;
+                if (e < 0) { A.v.grow(0, 0); continue; }
+                var k1 = _sigEaseOutCubic(_sigClamp01(e / 130)), k0 = _sigEaseInCubic(_sigClamp01((e - 260) / 260));
+                A.v.grow(k0, k1);
+                if (!A.hit && e >= 130) { A.hit = true; _wvDrops(F, A.ox * ts * 0.1, ts * 0.55, A.oz * ts * 0.1, 4, { v0: 40, v1: 120, vz0: 40, vz1: 150, s0: 4 }); }
+            }
+            flash(el);
+        });
+    });
+
+    /* FLUORIDE WATER — what is in the tap: a thin stream pours straight down onto the middle square, a mint-green ring
+       of treated water runs out over the 3×3 and it fizzes, mint bubbles off every square */
+    _l1Def('raceFluorideWater', function (p, P0) {
+        var tx = p.tx, ty = p.ty, F = _nrvFrame(tx, ty), ts = F.ts, tiles = _l1Area(p, P0, 1), see = _pzSeen(tx, ty);
+        var smat = _wvSheetMat(_wvWaterTex(), _L1.mint), stream = _pzMesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.075, ts * 2.4, 8, 1, true), smat, F.g, 0, ts * 1.2, 0);
+        stream.visible = see;
+        var ring = _wvFloorDisc(F, _wvRippleTex(), _L1.mint, ts * 0.05, true), swirl = _wvFloorDisc(F, _wvSpiralTex(), _L1.mintDk, ts * 0.045, false);
+        var flash = _l1Flash(F, tiles, _L1.mint, { op: 0.55, at: 120 }), fizz = 0;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            _wvFlow();
+            var pour = _sigClamp01(el / 140), stop = _sigClamp01((el - 520) / 200);
+            stream.scale.set(1 - 0.8 * stop, 1, 1 - 0.8 * stop); stream.position.y = ts * 1.2 + ts * 2.4 * (1 - pour);
+            smat.opacity = see ? 0.85 * (1 - stop) : 0;
+            var k = _sigEaseOutCubic(_sigClamp01((el - 120) / 520));
+            ring.scale.setScalar(ts * (0.2 + 1.35 * k)); ring.material.opacity = 0.8 * _pzEnv(el, 120, 200, 600, 1000);
+            swirl.scale.setScalar(ts * (0.3 + 1.1 * k)); swirl.rotation.z = el * 0.004; swirl.material.opacity = 0.5 * _pzEnv(el, 150, 350, 900, 1450);
+            if (el > 160 && el < 1000 && el - fizz > 130 && _canSpawn()) {
+                fizz = el;
+                for (var i = 0; i < tiles.length; i++) { var q = tiles[i]; if (!_pzSeen(q.x, q.y) || Math.random() > 0.55) continue; var c = _nvOff(F, q.x, q.y); _wvBubbles(F, c.x, c.y + 3, c.z, 1, { r: ts * 0.3, tint: _L1.mint }); }
+            }
+            flash(el);
+        });
+    });
+
+    /* LAND HO — the pirate comes in on his own bow wave: a curling wave runs down the lane with the charge (the windup
+       beat, as long as the charge takes) and breaks on the victim in a V of spray */
+    _l1Def('raceBoardingRush', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0), flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.sea, { op: 0.5 });
+        for (var s = -1; s <= 1; s += 2) for (var i = 0; i < 7; i++) {
+            var f = 0.25 + i * 0.13;
+            _pzP(F, D.sx * s * ts * 0.12, ts * 0.12, D.sz * s * ts * 0.12, { sprite: 'water-splash', ml: rn(420, 700), size0: rn(8, 14), size1: 3,
+                vx: (D.x * (1.2 - f) + D.sx * s * f * 1.6) * 260, vy: (D.z * (1.2 - f) + D.sz * s * f * 1.6) * 260, vz: rn(120, 260), gravity: 560, drag: 0.5, opacity0: 0.95 });
+        }
+        _wvMist(F, 0, 4, 0, 4, { r: ts * 0.3, s0: 18, s1: 46 });
+        return _sigRunOwned(F.g, 420, flash);
+    }, function (P0) {
+        if (P0.sx == null || P0.tx == null || (P0.sx === P0.tx && P0.sy === P0.ty) || !_pzSeen(P0.sx, P0.sy)) return;
+        var dx = P0.tx - P0.sx, dy = P0.ty - P0.sy, len = Math.max(1, Math.hypot(dx, dy) - 0.4);
+        _wvRunWave(P0.sx, P0.sy, dx, dy, len, { width: 0.9, h: 0.42, ms: Math.max(260, Math.min(900, P0.hold)) });
+    });
+
+    /* TENTACLE LASH — "an arm from below the surface": a dark pool opens beside the victim, the kraken's own arm (its
+       tentacle model) comes up out of it, hooks over the body and goes with it as it is dragged in */
+    _l1Def('raceTentacleLash', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, glb = null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0), B = _nbBehind(F, { ux: -D.x, uz: -D.z });
+        try { if (TR && TR.getMiscModelClone) glb = TR.getMiscModelClone((tx + ty) % 2 ? 'tentacle2' : 'tentacle', ts * 1.15, 'bottom'); } catch (e) { glb = null; }
+        var track = _l1Body(F, tx, ty), ride = new THREE.Group(); F.g.add(ride);
+        var pool = _wvFloorDisc({ g: ride }, _wvSpiralTex(), _WV.abyss, ts * 0.04, false), rim = _wvFloorDisc({ g: ride }, _wvRippleTex(), _L1.sea, ts * 0.05, true);
+        pool.position.set(B.x * ts * 0.42, ts * 0.04, B.z * ts * 0.42); rim.position.copy(pool.position); rim.position.y += 1;
+        var hold = new THREE.Group(); hold.position.copy(pool.position); hold.rotation.order = 'YXZ'; ride.add(hold);
+        if (glb) { glb.rotation.y = Math.atan2(-B.x, -B.z); hold.add(glb); }
+        var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.sea, { op: 0.5 }), last = 0, MS = 1500;
+        return _sigRunOwned(F.g, MS, function (el) {
+            var d = track(); if (d) ride.position.set(d.x, d.y, d.z);
+            var k = _sigEaseOutCubic(_sigClamp01(el / 220)), out = _sigClamp01((el - (MS - 380)) / 360);
+            pool.scale.setScalar(ts * 0.48 * k * (1 - out)); pool.rotation.z = -el * 0.006; pool.material.opacity = 0.85 * k * (1 - out);
+            rim.scale.setScalar(ts * 0.56 * k); rim.material.opacity = 0.6 * k * (1 - out);
+            if (glb) {
+                var up = _sigEaseOutBack(_sigClamp01(el / 260));
+                glb.position.y = -ts * 1.15 * (1 - up) - ts * 1.15 * out;
+                var lean = 0.55 * _sigEaseOutCubic(_sigClamp01((el - 180) / 220));   /* the tip hooks over the body */
+                hold.rotation.x = -B.z * lean; hold.rotation.z = B.x * lean;
+            }
+            if (el - last > 110 && el < MS - 400 && _canSpawn()) { last = el; _pzP(F, ride.position.x + pool.position.x + rn(-1, 1) * ts * 0.2, ts * 0.06, ride.position.z + pool.position.z + rn(-1, 1) * ts * 0.2, { sprite: 'water-splash', ml: rn(300, 480), size0: rn(6, 11), size1: 2, vx: rn(-50, 50), vy: rn(-50, 50), vz: rn(80, 190), gravity: 460, opacity0: 0.9 }); }
+            flash(el);
+        });
+    });
+
+    /* WATERING CAN — a gardener's shower: a fan of fine drops falls in a soft cone onto the one square, the soil goes
+       dark and wet and two small rings spread on it. Nothing loud: it is a watering can. */
+    _l1Def('wateringCan', function (p, P0) {
+        var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = _l1Dir(F, p, P0);
+        var wet = _wvFloorDisc(F, _sigGlowTex(), _L1.wet, ts * 0.04, false), r1 = _wvFloorDisc(F, _wvRippleTex(), _WV.light, ts * 0.05, true), r2 = _wvFloorDisc(F, _wvRippleTex(), _WV.light, ts * 0.052, true);
+        var last = -99, ox = -D.x * ts * 0.45, oz = -D.z * ts * 0.45;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            if (el < 800 && el - last > 45 && _canSpawn()) {
+                last = el;
+                for (var i = 0; i < 3; i++) { var a = rn(0, 6.283), r = rn(0.1, 1);
+                    _pzP(F, ox, ts * 1.0, oz, { sprite: 'water-splash', tint: _WV.light, ml: rn(460, 520), size0: rn(3, 5), size1: 2,
+                        vx: (D.x * ts * 0.45 + Math.cos(a) * r * ts * 0.3) * 2.0, vy: (D.z * ts * 0.45 + Math.sin(a) * r * ts * 0.3) * 2.0, vz: rn(10, 50), gravity: 1100, drag: 0.1, opacity0: 0.95 }); }
+            }
+            wet.scale.setScalar(ts * (0.2 + 0.32 * _sigEaseOutCubic(_sigClamp01((el - 250) / 700)))); wet.material.opacity = 0.6 * _pzEnv(el, 250, 700, 1250, 1680);
+            var a1 = _sigClamp01((el - 380) / 600), a2 = _sigClamp01((el - 700) / 600);
+            r1.scale.setScalar(ts * (0.1 + 0.4 * a1)); r1.material.opacity = 0.7 * Math.sin(a1 * Math.PI);
+            r2.scale.setScalar(ts * (0.1 + 0.36 * a2)); r2.material.opacity = 0.6 * Math.sin(a2 * Math.PI);
+        });
+    });
+    /* ═════════ END THE OWN LOOKS, L1 ═════════ */
+
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
         _rvFloorAt: _rvFloorAt,
