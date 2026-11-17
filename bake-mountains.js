@@ -319,7 +319,9 @@ function finish(R, e) {
 const NP = makeRoom({ id: POLE, tag: 'pole', files: ['N'], streams: { N: 16 }, px0: 0, py0: 0, pw: 4, ph: 4, base: 9, seed: 16, deadLevel: () => 9, rockCap: 12 });
 { const R = NP, { put, dec, tree, native, building, look, S, door, mx, mz, gx, gz, props } = R;
   /* THE WAYS: the Pass Gate (east, up into the Mountains), the sleigh road south to Camelot's north gate (the link `northpole_camelot`), the bay door of DOOR HQ */
-  door('pass', 'P03-01', 'e', Object.assign({ way: 'trail', action: { room: R_LODGE, at: 'pass' } }, DOORWORDS('THE MOUNTAINS · THE SNOWY PASS', 'THE PASS GATE · UP OVER THE RANGE', 'The village road climbs out between two drifts and keeps climbing. The gate at the top is the only way over.')));
+  /* THE POLAR TRAIL (route R5, One World phase 4.1, 2026-11-17): the village's west way. The trail comes in across the tundra from the Mountains' ridge and
+     reaches the Pole on its west wall at row -27 (seam ow_v_0_m27); it replaces the Pass Gate (`pass`, east wall), which jumped to the Lodge without a walk */
+  if (vm.runInContext('!!DOOR_HQ.rooms.site_ow_r5_18_35', D)) door('ow_v_0_m27', 'P00-01', 'w', Object.assign({ way: 'open', passage: { len: 3, deep: 1.2, w: 5 }, action: { room: 'site_ow_r5_18_35', at: 'ow_v_0_m27' } }, DOORWORDS('THE POLAR TRAIL', 'THE WEST WAY · ACROSS THE TUNDRA TO THE MOUNTAINS', 'Past the last cottage the snow goes flat and white to the west. A line of cairns marks a trail across it, towards the mountains.')));
   const SLEIGH = R.spur('P03-03', 's'), BAY = R.spur('P01-03', 's');
   runDistricts(R, 'apply'); runDistricts(R, 'build');   // THE DISTRICT FILES: everything that stands on the plots
   R.out = { SLEIGH, BAY };
@@ -336,13 +338,13 @@ const M = makeRoom({ id: MTN, tag: 'mtn', files: ['P', 'K', 'S', 'O'], streams: 
     trail: p => p.district === 'Mount Olympus' ? 'm' : (p.district === 'Mount Shasta' && p.level <= 11) ? 'p' : 'o' });
 { const R = M, { put, dec, tree, native, building, look, S, door, mx, mz, gx, gz, props, feat, cell } = R;
   /* ── THE WAYS ── */
-  door('pass', 'P04-01', 'w', Object.assign({ way: 'trail', action: { room: POLE, at: 'pass' } }, DOORWORDS('THE NORTH POLE · THE VILLAGE', 'THE PASS GATE · DOWN INTO THE VALLEY', 'A gate of two poles and a crossbar. Past it the trail drops into a white valley with lit windows in it.')));
+  /* (2026-11-17, One World phase 4.1) the Pass Gate `pass` to the North Pole is gone: the Polar Trail (route R5) walks from the Ridge to the Pole now */
   door('woods', 'P13-07', 's', Object.assign({ way: 'trail', action: { room: 'site_prebuilt_fairy_forest_plots', at: 'shasta' } }, DOORWORDS('THE WOODS · THE SNOWLINE', 'THE TRAILHEAD · DOWN INTO THE TREES', 'The trail goes down out of the pines into older trees. It is warmer down there, and nothing else about it is better.')));
   { const p = R.byId['P12-00']; for (let ly = 0; ly <= 7; ly++) for (const lx of [7, 8]) cell[p.ly * N + ly][p.lx * N + lx] = 'm'; }   // THE GRAND STAIR goes on up through the cloud to the room's north wall
   const WAY = { heaven: R.spur('P12-00', 'n', 'm'), vatican: R.spur('P11-03', 's', 'm') };
   /* THE HOLLYWOOD HILLS (plan 2): Shasta's east side walks on into the Hills (the city's mountain road lands there now, not at the Lodge Yard) */
   door('hills', 'P15-02', 'e', Object.assign({ way: 'road', action: { room: CITY, at: 'shasta' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SHASTA ROAD · EAST TO THE SIGN', 'The snow stops at a cattle grid. Past it the road is dry, the brush is brown, and a row of very large letters stands with its back to you.')));
-  door('saddle', 'P15-00', 'e', Object.assign({ way: 'trail', action: { room: CITY, at: 'ridge' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SADDLE · THE RIDGE BEHIND THE LETTERS', 'The ridge trail leaves the ice and follows the crest east. On a clear day you can see the whole city from it, and the back of its name.')));
+  /* (2026-11-17, One World phase 4.1) the `saddle` door to the Hills' ridge is gone: that ridge way is the River Road's (route R1) now; the Hills are reached by the Canyon Trail (R2) */
 
   runDistricts(R, 'apply'); runDistricts(R, 'build');   // THE DISTRICT FILES: everything that stands on the plots
   R.out = WAY;
@@ -415,16 +417,23 @@ const STAND = [
       parti: 'The west of the range in one walk, twenty-nine plots: the ski lodge at the foot of its runs, the traverse east along the snow to the high pass, and the Snowy Pass a trail down the range from the ridge to the tree line.',
       seams: [{ at: [-16, -14], side: 'W', id: 'ow_v_m16_m14', room: 'site_ow_l3', way: 'trail', label: 'THE WOODS · THE REDWOOD TRAIL', sub: 'THE TREE LINE · DOWN INTO THE TREES', desc: 'The trail drops off the snow into the first of the big trees.', ifRoom: 1 },
               { at: [-15, -14], side: 'E', id: 'ow_v_m14_m14', room: R_OLY, way: 'trail', label: 'MOUNT OLYMPUS · THE SADDLE PATH', sub: 'THE TREE LINE · EAST OVER THE SADDLE', desc: 'A path goes east along the saddle, towards a mountain with something white built on top of it.' },
-              { at: [-22, -16], side: 'W', id: 'ow_v_m22_m16', room: 'site_ow_l6', way: 'open', open: 5, label: 'CAMELOT KINGDOM · THE SNOWY PINES', sub: 'THE LODGE YARD · WEST DOWN THE VALLEY', desc: 'Ski tracks give out at the yard’s end. Past them a trail goes west and down, into pines.', ifRoom: 1 }] },
+              { at: [-22, -16], side: 'W', id: 'ow_v_m22_m16', room: 'site_ow_l6', way: 'open', open: 5, label: 'CAMELOT KINGDOM · THE SNOWY PINES', sub: 'THE LODGE YARD · WEST DOWN THE VALLEY', desc: 'Ski tracks give out at the yard’s end. Past them a trail goes west and down, into pines.', ifRoom: 1 },
+              /* THE POLAR TRAIL (route R5, One World phase 4.1, 2026-11-17): east off the Ridge, east, across the tundra to the North Pole (it replaces the Pass Gate's `pass` doors) */
+              { at: [-14, -22], side: 'E', k: [5, 6], id: 'ow_v_m13_m22', room: 'site_ow_r5_0_17', way: 'open', open: 5, label: 'THE POLAR TRAIL', sub: 'THE RIDGE · EAST ACROSS THE TUNDRA', desc: 'Past the end of the ridge the snow flattens out into tundra, and a line of cairns goes east towards the Pole.', ifRoom: 1 }] },
     { id: R_OLY, part: 'ow_olympus', files: ['O'], label: 'MOUNT OLYMPUS', sub: 'THE MOUNTAINS · THE SADDLE PATH · MOUNT OLYMPUS · THE LONG DESCENT · 19 PLOTS',
       list: L10.concat(v13('mtn'), L11), spawn: ['P10-02', null, null], lines: O_OLYMPUS.l,
       parti: 'The temple mountain on twelve plots above the cloud, with the saddle path coming in from the Snowy Pass and the long descent going on east across the snow to Mount Shasta.',
       seams: [{ at: [-14, -14], side: 'W', id: 'ow_v_m14_m14', room: R_LODGE, way: 'trail', label: 'THE SNOWY PASS · THE TREE LINE', sub: 'THE SADDLE PATH · WEST TO THE PASS', desc: 'The path goes back west along the saddle to the pass.' },
-              { at: [-5, -15], side: 'E', id: 'ow_v_m4_m15', room: R_SHASTA, way: 'open', open: 5, label: 'MOUNT SHASTA · THE UPPER SHELF', sub: 'THE LONG DESCENT · EAST TO THE VOLCANO', desc: 'The snow runs on east and down. The mountain ahead is the one that smokes.' }] },
+              { at: [-5, -15], side: 'E', id: 'ow_v_m4_m15', room: R_SHASTA, way: 'open', open: 5, label: 'MOUNT SHASTA · THE UPPER SHELF', sub: 'THE LONG DESCENT · EAST TO THE VOLCANO', desc: 'The snow runs on east and down. The mountain ahead is the one that smokes.' },
+              /* THE PILGRIM WAY (route R3, One World phase 4.1, 2026-11-17): the trail climbs from the south (the Colosseum's ground) to the Pilgrim Stair's east side */
+              { at: [-11, -13], side: 'E', k: [5, 6], id: 'ow_v_m10_m13', room: 'site_ow_r3', way: 'trail', label: 'THE PILGRIM WAY', sub: 'THE PILGRIM STAIR · DOWN THE WAY OF SHRINES', desc: 'A worn path leaves the stair and goes down through the trees, past little shrines.', ifRoom: 1 }] },
     { id: R_SHASTA, part: 'ow_shasta', files: ['S'], label: 'MOUNT SHASTA', sub: 'THE MOUNTAINS · MOUNT SHASTA · 20 PLOTS',
       list: v13('shasta'), spawn: ['P13-03', null, null], lines: O_SHASTA.l,
       parti: 'The volcano on twenty plots: the trail climbs from the trailhead past the lookout and the switchbacks to the meadows, the gulch, the lake and the summit.',
-      seams: [{ at: [-4, -15], side: 'W', id: 'ow_v_m4_m15', room: R_OLY, way: 'open', open: 5, label: 'MOUNT OLYMPUS · THE LONG DESCENT', sub: 'THE UPPER SHELF · WEST ACROSS THE SNOW', desc: 'A line of footprints goes west across the snow, towards a white temple on the next mountain.' }] },
+      seams: [{ at: [-4, -15], side: 'W', id: 'ow_v_m4_m15', room: R_OLY, way: 'open', open: 5, label: 'MOUNT OLYMPUS · THE LONG DESCENT', sub: 'THE UPPER SHELF · WEST ACROSS THE SNOW', desc: 'A line of footprints goes west across the snow, towards a white temple on the next mountain.' },
+              /* THE CANYON TRAIL (route R2, One World phase 4.1, 2026-11-17): INTERIM. The trail's top plots (-1..0, -14) do not touch Shasta on the map (two scenery
+                 plots lie between them and the Trailhead), so this door pair jumps that gap until mondo says how the trail should reach the Trailhead; on squares 2-3, west of the Woods door `woods` */
+              { at: [-3, -15], side: 'S', k: [2, 3], id: 'ow_h_m3_m14', to: 'ow_h_0_m14', room: 'site_ow_r2', way: 'trail', label: 'THE CANYON TRAIL', sub: 'THE TRAILHEAD · DOWN THE CANYON TO THE HILLS', desc: 'A dry trail goes south down a canyon, towards some hills with very large letters on them.', ifRoom: 1 }] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 180, E: 270, S: 0, W: 90 };
 const GROUND = PJ.ground, groundAt = (x, y) => { const r = GROUND.rows[y - GROUND.y0]; return r ? r[x - GROUND.x0] : '~'; };
@@ -464,14 +473,14 @@ STAND.forEach(S => {
     S.seams.forEach(sm => { const e = R.at[(sm.at[0] - R.wx) + ',' + (sm.at[1] - R.wy)]; if (!e) throw new Error(S.id + ': no plot at ' + sm.at + ' for seam ' + sm.id);
         const nb = nbr(e, sm.side); if (nb) throw new Error(S.id + ': seam ' + sm.id + ' on a side with a plot of the same room');
         if (sm.ifRoom && !hasRoom(sm.room)) { console.log('seam ' + sm.id + ' (' + S.id + '): ' + sm.room + ' is not in the game yet, no door written'); return; }
-        let ok = openK(e, sm.side); if (!ok.length) { leg(e, sm.side, e.isNew ? 4 : 5); ok = openK(e, sm.side); }
+        let ok = openK(e, sm.side); if (sm.k) { sm.k.forEach(k => leg(e, sm.side, k)); ok = openK(e, sm.side).filter(k => k >= sm.k[0] - 1 && k <= sm.k[sm.k.length - 1] + 1); } else if (!ok.length) { leg(e, sm.side, e.isNew ? 4 : 5); ok = openK(e, sm.side); }   // `k`: the squares the path crosses on (a route's line, One World phase 4.1)
         let best = [ok[0], ok[0]], a = ok[0]; for (let i = 1; i <= ok.length; i++) { if (i === ok.length || ok[i] !== ok[i - 1] + 1) { if (ok[i - 1] - a > best[1] - best[0]) best = [a, ok[i - 1]]; a = ok[i]; } }
         const along = (best[0] + best[1] + 1) / 2, sd = sm.side, ns = sd === 'N' || sd === 'S', onWall = (sd === 'N' && e.row === 0) || (sd === 'S' && e.row === R.rows - 1) || (sd === 'W' && e.col === 0) || (sd === 'E' && e.col === R.cols - 1);
         const q = border(e, sd, Math.floor(along - 0.01)), d = { id: sm.id, wall: onWall ? sd.toLowerCase() : 'free' };
         if (onWall) { if (ns) d.x = R.gx(e.col * N + along); else d.z = R.gz(e.row * N + along); }
         else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; d.passage = Object.assign({}, MOVER.FREE_PASS); }
         if (sm.way === 'open') d.passage = Object.assign(d.passage || {}, { w: sm.open || 5 });
-        seamDoors.push(Object.assign(d, { way: sm.way, label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.id }, desc: sm.desc }));
+        seamDoors.push(Object.assign(d, { way: sm.way, label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.to || sm.id }, desc: sm.desc }));   // `to`: the door's id over there when it is not this seam's (an interim jump)
         if (onWall) ways.push({ side: d.wall, at: d.x != null ? d.x : d.z }); });
     /* 4. the doors that moved with their plots: a door into the old room goes to the room that has its `at` now; the Trailhead's goes to the Woods' room */
     const doors = R.doors.map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; if (o.wall !== 'free') ways.push({ side: o.wall, at: o.x != null ? o.x : o.z }); return o; }).concat(seamDoors);
