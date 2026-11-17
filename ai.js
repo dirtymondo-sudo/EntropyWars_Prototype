@@ -1118,6 +1118,17 @@
     // Value of denying tg's actions with status `id` for `dur` rounds.
     function ccDenialValue(g, unit, tg, id, dur, v) {
         if (!tg || tg.dead) return 0;
+        /* 🟥 THE RED CARD (the Referee, 2026-11-17 polish): a Yellow Card on a unit that already has one sends it off until its
+           next turn starts (battle.js _refereeRedCard). Booking is a setup; the second card is a missed turn (worth a hard
+           hold on a unit still to act this round, far less on one that already acted: it is back at the round's end). */
+        if (id === 'yellowCard') {
+            if (tg._isBoss || tg.isBoss || tg._isCube) return 10;
+            let booked = false;
+            try { booked = g.unitHasStatus(tg, 'yellowCard'); } catch (e) {}
+            if (!booked) return 40;
+            const notYet = (tg.ap || 0) > 0 && !tg.hasActed ? 1 : 0.3;
+            return tuneW(g, 'ccOutputFactor') * unitThreatOutput(g, tg, unit) * notYet + 60 + (unitIsHealerKit(tg) ? 80 : 0);
+        }
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
         if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial
         const output = unitThreatOutput(g, tg, unit);
@@ -2822,7 +2833,7 @@
             if (unit.race !== 'necromancer' && ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');
         } else if (terr === 'swamp') {
             let gooProof = false;
-            try { gooProof = typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo'; } catch (e) {}
+            try { gooProof = (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo') || unit.race === 'samurai slug'; } catch (e) {}   // 🐌 the slug's slime is his road
             if (!gooProof && !((unit.status && unit.status.goo) > 1)) cost += 30;
         }
         if (burning && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) {
@@ -6005,9 +6016,11 @@
             if (!victims.length) return _allyHealVal;
             /* THE SPELL AUDIT D: a damage zone (zoneTickDamage) is scored as one hit worth ~60% of its ticks (they
                walk out); an area drain (aoeLifeDrain) adds the heal it buys the caster. */
-            const _zoneShim = spell.zoneTickDamage > 0
+            let _zoneShim = spell.zoneTickDamage > 0
                 ? Object.assign({}, spell, { dmg: (spell.dmg || 0) + Math.round(spell.zoneTickDamage * Math.min(spell.zoneDuration || 1, 3) * 0.6) })
                 : spell;
+            /* 🦗 Chorus (`broodSpend`): every Brood stack the caster banked adds its N to the hit */
+            if (spell.broodSpend > 0 && (unit._brood || 0) > 0) _zoneShim = Object.assign({}, _zoneShim, { dmg: (_zoneShim.dmg || 0) + unit._brood * spell.broodSpend });
             let s = 0, first = true, _estSum = 0;
             for (const e of victims) {
                 const hit = scoreOffensiveHit(g, unit, e, _zoneShim, v, { splash: !first });
@@ -6434,6 +6447,16 @@
                 let _odS = 0;
                 for (const a of _odNear) { const t = v.threatFn(a.x, a.y, a.z); if (t.totalDmg >= a.hp) _odS += 120; else if (t.totalDmg >= a.hp * 0.5) _odS += 40; else _odS += 10; }
                 s += _odS;
+            }
+            /* 🦗 THE CICADA POLISH (2026-11-17): Dig In (`dormant`) banks Brood stacks for Chorus. Worth it while the stacks are
+               short and no enemy already stands in Chorus' reach (then it sings instead); nothing at 3 stacks or already dug in. */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'dormant')) {
+                const _bn = target._brood || 0;
+                if (_bn >= 3 || g.unitHasStatus(target, 'dormant')) return 0;
+                const _near = v.visibleEnemies.filter(e => Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) <= 2).length;
+                if (_near) return 0;
+                const _close = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
+                s += (_close ? 70 : 35) + 25 * (3 - _bn);
             }
             if (spell.massRescue) {
                 const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;
@@ -9257,8 +9280,14 @@
             // Debuffs: prefer targets still missing at least one rider status.
             if (kind === 'debuff' && (spell.statusEffects || []).length) {
                 const fresh = inRange.filter(e =>
-                    (spell.statusEffects || []).some(f => f && f.id && !g.unitHasStatus(e.enemy, f.id)));
+                    (spell.statusEffects || []).some(f => f && f.id && !g.unitHasStatus(e.enemy, f.id))
+                    || (spell.refereeCard && g.unitHasStatus(e.enemy, 'yellowCard')));   // 🟥 the second card is the red card
+                /* 🟥 the Referee's Card goes to the booked enemy first (the red card), else anyone not yet booked */
                 if (fresh.length) inRange = fresh;
+                if (spell.refereeCard) {
+                    const booked = inRange.filter(e => g.unitHasStatus(e.enemy, 'yellowCard') && !(e.enemy._isBoss || e.enemy.isBoss || e.enemy._isCube));
+                    if (booked.length) inRange = booked;
+                }
             }
             // Elemental tile fallback: no enemy in direct range, but a
             // reactive tile might still reach one.
@@ -10902,6 +10931,10 @@
         return tiles;
     }
     function getSpellAoeAreaAI(spell, cx, cy) {
+        if (spell && spell.aoeOnTerrain && typeof window._aoeTerrainFilter === 'function') {   // 🐌 Ronin's Wake: the ooze squares only
+            const _sp = Object.assign({}, spell); delete _sp.aoeOnTerrain;
+            return window._aoeTerrainFilter(spell, getSpellAoeAreaAI(_sp, cx, cy));
+        }
         if (typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) return aoeMaskTiles(spell.aoeMask, cx, cy);   // THE AOE MASK (§4.7) replaces the radius / shape
         const r = spell.aoeRadius || 1;
         if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);

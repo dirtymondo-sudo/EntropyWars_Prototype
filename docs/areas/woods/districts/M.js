@@ -38,6 +38,7 @@
                                           (t trees, g grass, p path, s snow, r rock, w water, b bridge)
      dress(ctx), horror(ctx), life(ctx)   the three passes as they were built, run in this order; each starts on its own recorded dice,
                                           so an edit here never moves another district's pieces
+     late(ctx)                            after everything is set down: square changes that must not move a piece (THE BED YOU FOLLOW, below)
      build(ctx)                           after all three: NEW work goes here first (its own dice; nothing that stands is thrown again)
                                           (a sow's seed is the count of feature rows before it: a feature row added in an old pass
                                           re-throws every later scatter of the room, one added in build moves nothing)
@@ -63,7 +64,17 @@ const rock = (x, y, z, r, h, top, seg, tint) => cyl(x, y, z, r, h, ROCK, tint ||
 /* THE ONE WORLD MOVE (2026-11-17, the test slice): on the One World map the Dry Creek's lower plot and the Sewer Mouth no longer touch (the Hollow and the Gully
    stand between them), and the ramp lay across their line. The whole cut stands on the Sewer Mouth's own plot now: its first square is a level landing, the ramp
    runs down the next four (RAMP), the deep bed is the last seven (RAVINE). BED = every square of the bed, cut or not (dirt, walked). */
-const BED = [56, 71, 54, 55], RAMP = [61, 65], RAVINE = [[65, 71, 54, 55]], DEEP = -3.5;
+const BED = [56, 71, 54, 55], RAMP = [61, 65], DEEP = -3.5;
+/* THE BED YOU FOLLOW (2026-11-17, mondo after the test slice: "Dead Man's Cave: the design pass, a sunk creek bed you follow through the Hollow and the Gully,
+   the cabin moved off the line, and give the Rocks' gate somewhere to lead"). On the One World map the creek's plots stand in one row, west to east: the Culvert,
+   the Dry Creek upper and lower, the Hollow, the Gully, the Sewer Mouth. The bed is the two squares 6 and 7 (of 0..11, north to south) of every one of them:
+     THE DRY CREEK, UPPER   out of the dry pipe, east along the trail's south side, level, a sag in the ground (the old line ran off the plot's south side)
+     THE DRY CREEK, LOWER   straight east; on its last four squares it goes down 1.75 m (the ramp: the one way into the bed and out of it)
+     THE HOLLOW, THE GULLY  sunk 1.75 m between two rock walls, a dirt rim along each side (squares 5 and 8) as on the ravine
+     THE SEWER MOUTH        down again from 1.75 to 3.5 m on its first five squares, then the deep ravine to the mouth, as it was
+   The district's files and pieces stand in THE HOME FRAME (where the plots stood before the move), so everything here is written a plot at a time. A sunk piece
+   reaches half a metre past its plot's west and east sides so two pieces meet without a sill (the tool prints them as strays: answered in the notes). */
+const SHALLOW = -1.75, BEDROWS = [6, 7];
 module.exports = {
     id: 'M', name: 'Dead Man\'s Cave',
     ground: 'grass_dark_fantasy',   // THE GROUND BY DISTRICT (bake-woods.js): the dark forest floor, not the room's lawn (mondo's rule: forest floor = grass_dark_fantasy / dirt_2)
@@ -98,6 +109,20 @@ module.exports = {
         /* THE RIMS (mondo 11-16: "I still need to be able to walk along the edges of the creek"): one square of dirt along each rim of the ravine, trail to east wall */
         for (let cx = 56; cx <= 71; cx++) for (const cy of [53, 56]) if (cell[cy][cx] === 't') cell[cy][cx] = 'p';
     },
+    /* THE LATE CUT (bake-woods.js, 2026-11-17): square changes made AFTER every piece is set down, so no piece moves (the helpers stand things on a plot's
+       grass squares: a grass square changed in `cut` would re-seat every piece of its plot). THE BED YOU FOLLOW's squares, the cabin's new ground, the ledge
+       behind the Rocks; the two stubs of the old bed line go back to forest. */
+    late(ctx) {
+        const { plot, cell, N } = ctx, set = (id, lx, ly, ch, only) => { const p = plot[id], x = p.x * N + lx, y = p.y * N + ly; if (!only || only.indexOf(cell[y][x]) >= 0) cell[y][x] = ch; };
+        for (const id of ['P04-05', 'P03-05']) for (let lx = 0; lx < N; lx++) { BEDROWS.forEach(ly => set(id, lx, ly, 'p')); set(id, lx, 5, 'p', 't'); set(id, lx, 8, 'p', 't'); }   // the Hollow, the Gully: the bed and its two rims
+        for (let lx = 0; lx < 8; lx++) BEDROWS.forEach(ly => set('P04-04', lx, ly, 'p'));                                             // the Dry Creek, lower: straight east to the ramp
+        for (let lx = 1; lx <= 7; lx++) { set('P04-03', lx, 8, 'p'); if (lx >= 3) set('P04-03', lx, 9, 'p'); }                          // the Dry Creek, upper: out of the pipe, east
+        set('P04-03', 8, 8, 'p'); set('P04-03', 8, 7, 'p'); for (let lx = 8; lx < N; lx++) BEDROWS.forEach(ly => set('P04-03', lx, ly, 'p'));
+        for (let lx = 3; lx <= 5; lx++) for (const ly of [10, 11]) set('P04-03', lx, ly, 't', 'p');                                  // the old line's stubs: forest again
+        for (let lx = 5; lx <= 6; lx++) for (const ly of [0, 1, 2]) set('P04-04', lx, ly, 't', 'p');
+        for (let lx = 8; lx <= 10; lx++) for (const ly of [0, 1, 2]) set('P03-05', lx, ly, 'g');                                       // THE CABIN's new ground: the Gully's north-east corner, off the bed's line
+        for (let lx = 3; lx <= 8; lx++) set('P03-04', lx, 0, 'r'); set('P03-04', 5, 2, 'r');   // (and the square before the gate: the old trail's leg north went back to forest with the move, so the gate could not be reached)                                                                    // THE BACK OF THE ROCKS: bare rock behind the crag, through the gate
+    },
     /* THE DRESSING: the landmark, the set pieces and the natives (ported from the old rooms) */
     dress(ctx) {
         const { plot, cell, N, C, W, PL, HALF, gx, gc, r2, rnd, features, props, doors, taken, count, h0, centre, put, dec, tree, native, hput, hdec, life, fly, sow, softAt, DIST } = ctx;
@@ -128,7 +153,7 @@ module.exports = {
              a walk-in building made the city's way = one hollow `texbuilding` (skin off: the walls you bump into, the doorway, the swinging leaf, the inside's
              wall / floor / ceiling) + one `k: 'arch'` row for the look. 3 squares along its front x 2 deep, its front to the WEST (the path), a porch on the
              square row before it. Row frame: +x along the front, +z out of the front. The Meshy `woods_cabin` model stays in the catalogue, unused here. */
-          { const cx = gx(X + 10), cz = r2(gx(Y + 5) + 5.25), w = 10.5, d = 7, H = 3.5, E = 0.05, WD = 'urban:WoodGeneric1b', WD2 = 'urban:WoodGeneric1a', SH = 'urban:WoodGeneric2a', FL = 'urban:WoodFlooring1d';
+          { const cx = gx(X + 10), cz = r2(gx(Y) + 5.25) /* (2026-11-17, THE BED YOU FOLLOW: the cabin stood on squares 5 to 7, the bed's line; it stands on 0 to 2 now, its porch on the north bank's path) */, w = 10.5, d = 7, H = 3.5, E = 0.05, WD = 'urban:WoodGeneric1b', WD2 = 'urban:WoodGeneric1a', SH = 'urban:WoodGeneric2a', FL = 'urban:WoodFlooring1d';
             const LOG = 0xcdbb9f, DARK = 0x7d6c58, MOSS = 0x9fb089, STONE = 0xd6d2c4;   // lifted 11-16 (the interior pass): a tint multiplies the sheet and the building tint, the old ones drew near black
             const row = { k: 'texbuilding', id: 'woods:cabin', x: cx, z: cz, w, d, rot: 90, storeys: 1, seed: 1, skin: false, hollow: true, leaf: 'leaf_shabby_wood', keyIn: WD2, floorIn: FL };
             features.push(row);
@@ -212,24 +237,28 @@ module.exports = {
               rock(-7, 3.5, 3.4, 2.3, 1.6, 0.8, 5), rock(10.5, 3.5, 3.5, 2.4, 1.9, 0.9, 6), rock(-7.4, 0, 0.1, 2.9, 5.0, 1.3, 6, T_ROCK2), rock(11.2, 0, 0.2, 3.1, 5.4, 1.4, 7, T_ROCK2),
               rock(-5.2, 0, -2.6, 2.4, 3.4, 1.0, 5, T_ROCK2), rock(6.5, 0, -2.8, 2.9, 4.2, 1.2, 6, T_ROCK2), rock(-9.4, 0, 4.2, 1.7, 2.2, 0.7, 5), rock(13, 0, 4.4, 1.9, 2.6, 0.8, 5),
           ] }); }
-        /* ── THE RAVINE: the dry bed cut 3.5 m down between two rock walls, the ramp down into it from the trail, the rock on its rims ── */
-        { const X0 = q => gx(q[0]), X1 = q => gx(q[1] + 1), Z0 = q => gx(q[2]), Z1 = q => gx(q[3] + 1);
-          RAVINE.forEach((q, i) => features.push({ k: 'plateau', x: r2((X0(q) + X1(q)) / 2 + (i === RAVINE.length - 1 ? 0.5 : 0)), z: r2((Z0(q) + Z1(q)) / 2), w: X1(q) - X0(q) + (i === RAVINE.length - 1 ? 1 : 0), d: Z1(q) - Z0(q), h: DEEP, absY: true, sink: true, edge: 0.25 }));
-          features.push({ k: 'ramp', x0: gx(RAMP[0]), z0: gx(55), x1: gx(RAMP[1]), z1: gx(55), w: 7, h0: 0, h1: DEEP, edge: 0.05, absY: true });   // four squares long, a quarter grade
-          /* the walls' rock skin: one slab a wall run, from the bed to a little over the rim; then boulders along both rims */
-          const inR = (cx, cy) => cy >= 54 && cy <= 55 && cx >= RAMP[0] && cx <= 71, P = [], ox = gx(64), oz = gx(55);   // the ramp's squares and the deep bed's
-          for (let cy = 53; cy <= 56; cy++) for (let cx = 55; cx <= 71; cx++) { if (!inR(cx, cy)) continue;
-              const ramp = cx < RAMP[1], top = ramp ? 0.5 + DEEP * (cx - RAMP[0] + 0.5) / 4 : DEEP;   // on the ramp the wall starts at the ramp's own height
-              [[0, -1], [0, 1], [-1, 0]].forEach(d => { if (inR(cx + d[0], cy + d[1]) || (d[0] && cx === RAMP[0])) return; const ns = d[1] !== 0, x = gc(cx) + d[0] * 1.8 - ox, z = gc(cy) + d[1] * 1.8 - oz;
-                  const apron = cx >= 69; P.push(box(x, top - 0.3, z, ns ? 3.6 : 0.3, 0.42 - top, ns ? 0.3 : 3.6, apron ? CONC : ROCK, apron ? T_CONC : (cx + cy) % 2 ? T_ROCK : T_ROCK2, { uv: [3.5, 3.5] }));
-                  if (!apron && rnd() < 0.45) { const r = 0.3 + rnd() * 0.35; P.push(rock(x + (ns ? (rnd() - 0.5) * 2.6 : 0), 0, z + (ns ? 0 : (rnd() - 0.5) * 2.6), r, 0.25 + rnd() * 0.45, r * 0.5, 5, rnd() < 0.5 ? T_ROCK : T_ROCK2)); } }); }   // small stones on the lip: the rims are walked
-          /* loose stone on the bed */
-          for (let i = 0; i < 9; i++) P.push(rock(gx(RAMP[1]) + rnd() * 13 - ox, DEEP, gx(55) + (rnd() - 0.5) * 2.4 - oz + (rnd() < 0.5 ? -1.6 : 1.6), 0.35 + rnd() * 0.5, 0.3 + rnd() * 0.5, 0.2, 5, T_ROCK2));
-          /* the last three squares before the mouth are a concrete apron (mondo: "a little part at the end that turns into concrete") */
-          P.push(box(gx(69) + 5.25 - ox, DEEP - 0.1, 0, 10.6, 0.16, 7.1, CONC, T_CONC, { uv: [3.5, 3.5] }), box(gx(69) - ox, DEEP - 0.1, 0, 0.35, 0.22, 7.1, CONC, T_CONC));
-          features.push({ k: 'arch', id: 'woods:M:ravine', x: ox, z: oz, y: 0, parts: P });
-          /* the dry wash above the ravine: the old creek line sags a little, so the bare rock reads as a bed */
-          [[49, 28.5], [54, 30.5], [58.5, 34], [59.5, 40], [61, 46], [69, 60.5]].forEach(q => features.push({ k: 'dip', x: q[0], z: q[1], r: 3.2, rz: 3.2, h: 0.7 })); }
+        /* ── THE BED YOU FOLLOW (the top of this file): the cut, the two ramps, the rock on the walls and the rims. A cut is a sunk plateau at its deepest and a ramp
+              laid in it (a ramp only ever RAISES the ground: until 2026-11-17 the ravine's ramp lay on uncut ground and did nothing; the bed ended at a 3.5 m drop) ── */
+        { const SUNK = [['P04-04', 8, 11, SHALLOW, 0, 0.5], ['P04-05', 0, 11, SHALLOW, 0.5, 0.5], ['P03-05', 0, 11, SHALLOW, 0.5, 0.5], ['P05-04', 0, 11, DEEP, 0.5, 1]];   // [plot, first square, last, depth, past its west side m, past its east]
+          const SLOPE = { 'P04-04': [8, 12, 0, SHALLOW, 0], 'P05-04': [0, 5, SHALLOW, DEEP, 0.5] };                                        // the two ramps: [from square line, to, depth there, depth here, start past the west side m]
+          const depthAt = (id, lx) => { const sl = SLOPE[id], dp = SUNK.find(q => q[0] === id)[3]; if (!sl) return dp; const t = Math.max(0, Math.min(1, (lx + 1 - sl[0]) / (sl[1] - sl[0]))); return sl[2] + (sl[3] - sl[2]) * t; };   // at a square's east (deeper) line
+          SUNK.forEach(q => { const p = plot[q[0]], X = p.x * N, Y = p.y * N, x0 = gx(X + q[1]) - q[4], x1 = gx(X + q[2] + 1) + q[5];
+              features.push({ k: 'plateau', x: r2((x0 + x1) / 2), z: gx(Y + 7), w: r2(x1 - x0), d: 7, h: q[3], absY: true, sink: true, edge: 0.25 }); });
+          Object.keys(SLOPE).forEach(id => { const sl = SLOPE[id], p = plot[id], X = p.x * N, Y = p.y * N;
+              features.push({ k: 'ramp', x0: gx(X + sl[0]) - sl[4], z0: gx(Y + 7), x1: gx(X + sl[1]), z1: gx(Y + 7), w: 7, h0: sl[2], h1: sl[3], edge: 0.05, absY: true }); });
+          /* the walls' rock skin, a plot a row: one slab a square of wall, from the bed to a little over the rim; small stones on the lip (the rims are walked); loose stone on the bed */
+          SUNK.forEach(q => { const id = q[0], p = plot[id], X = p.x * N, Y = p.y * N, ox = gx(X + 6), oz = gx(Y + 7), P = [], mouth = id === 'P05-04';
+              for (let lx = q[1]; lx <= q[2]; lx++) { const top = depthAt(id, lx); if (top > -0.4) continue; const apron = mouth && lx >= 9;
+                  [-1, 1].forEach(sd => { const x = gc(X + lx) - ox, z = sd * 3.55;
+                      P.push(box(x, top - 0.3, z, 3.6, 0.42 - top, 0.3, apron ? CONC : ROCK, apron ? T_CONC : (lx + (sd > 0 ? 1 : 0)) % 2 ? T_ROCK : T_ROCK2, { uv: [3.5, 3.5] }));
+                      if (!apron && rnd() < 0.45) { const r = 0.3 + rnd() * 0.35; P.push(rock(x + (rnd() - 0.5) * 2.6, 0, z + sd * 0.1, r, 0.25 + rnd() * 0.45, r * 0.5, 5, rnd() < 0.5 ? T_ROCK : T_ROCK2)); } }); }
+              const n = mouth ? 9 : 5, bx0 = mouth ? gx(X + 5) : gx(X + q[1]), bw = mouth ? 13 : (q[2] - q[1] + 1) * 3.5;
+              for (let i = 0; i < n; i++) P.push(rock(bx0 + rnd() * bw - ox, mouth ? DEEP : q[3], (rnd() - 0.5) * 2.4 + (rnd() < 0.5 ? -1.6 : 1.6), 0.35 + rnd() * 0.5, 0.3 + rnd() * 0.5, 0.2, 5, T_ROCK2));
+              /* the last three squares before the mouth are a concrete apron (mondo: "a little part at the end that turns into concrete") */
+              if (mouth) P.push(box(gx(69) + 5.25 - ox, DEEP - 0.1, 0, 10.6, 0.16, 7.1, CONC, T_CONC, { uv: [3.5, 3.5] }), box(gx(69) - ox, DEEP - 0.1, 0, 0.35, 0.22, 7.1, CONC, T_CONC));
+              features.push({ k: 'arch', id: mouth ? 'woods:M:ravine' : 'woods:M:bed:' + id, x: ox, z: oz, y: 0, parts: P }); });
+          /* the dry wash above the cut: the bed's line sags a little, so the dirt reads as a bed (re-laid 2026-11-17 along the new line: the pipe, east, east) */
+          [[49, 28.5], [56, 31.5], [63, 31.5], [70, 30], [77.5, 26.5], [47, 66.5], [54.5, 66.5], [62, 66.5]].forEach(q => features.push({ k: 'dip', x: q[0], z: q[1], r: 3.2, rz: 3.2, h: 0.7 })); }
         /* ── THE MOUTHS: a way out of the woods underground is a masonry head with BLACKNESS in its arch (mondo 11-16: "it should just be blackness").
               West-facing, on the east wall; the links' own ends are the tool's and stand where they stood. `y` = the foot (the ravine's bed for the sewer mouth). ── */
         const mouth = (id, z, y, ow, hs, H, Wd, key, tint) => { const fan = (x, r, k, t) => ({ s: 'roof', form: 'barrel', p: [x, hs, 0], size: [0.1, r, 2 * r], key: k, tint: t, keyEnd: k, tintEnd: t, uv: [1.75, 1.75], seg: 14 });
@@ -259,7 +288,8 @@ module.exports = {
           hput('P05-04', 'dumpster', -2, -1); hdec('P05-04', 'tire_stack', 1, -1); hdec('P05-04', 'garbage_bags', -1, 0); hdec('P05-04', 'psx_glass_bottle_1', 0, 1); hdec('P05-04', 'fallen_log', 2, 0);
           hdec('P04-04', 'psxg_dead_bush_2', -1, 1); hdec('P04-04', 'psx_tin_can_mp_1_rusty', 0, 0); hdec('P04-03', 'psxg_rock_2', 0, 0); hdec('P04-03', 'psxg_dead_bush_1', 1, 0);
           /* the upper bed: a car that never made it out, tyres, a mattress */
-          props.push({ key: 'crashed_car_2', x: gc(52), z: gc(46), face: 200 }); B('tire_stack', 61.4, 40.6); B('psx_old_mattress_mp_1', 57.2, 41.3); B('psx_glass_bottle_2', 59.3, 43.2); B('psxg_rock_2', 51.2, 29.4); B('psxg_rock_3', 60.8, 47.6);
+          /* (2026-11-17, THE BED YOU FOLLOW: all of these lay on the old line, which ran south off the upper plot; each is moved onto the new line on its own plot) */
+          props.push({ key: 'crashed_car_2', x: gc(54), z: gc(45), face: 250 }); B('tire_stack', 64.4, 34.4); B('psx_old_mattress_mp_1', 59.8, 33.9); B('psx_glass_bottle_2', 50.2, 68.9); B('psxg_rock_2', 51.2, 29.4); B('psxg_rock_3', 53.3, 65.2);
           /* the ravine's bed: a sofa and a television against the south wall, barrels and a crate on the north, tags on both walls */
           B('garbage_bags', 85.2, 68.9); B('psx_sofa_1', 89.5, 68.9, { face: 0 }); B('psx_tv_mp_1', 91.9, 69.0, { face: 300 }); B('psx_glass_bottle_1', 88.1, 68.2); B('psx_glass_bottle_2', 90.6, 67.9); B('psx_tin_can_mp_1_rusty', 89.9, 68.1);
           B('psx_metal_barrel_mp_2', 95.6, 64.1); B('psx_metal_barrel_mp_3', 96.7, 64.3); B('psx_wooden_crate_3', 93.4, 64.2); B('tire_stack', 102.3, 68.9); B('psx_old_mattress_mp_1', 106.4, 64.4, { face: 80 }); B('skateboard', 109.2, 68.6);
@@ -280,7 +310,14 @@ module.exports = {
           hdec('P03-05', 'cat', 2, 3); hput('P03-05', 'ind_skip_full', -4, 3); hdec('P03-05', 'meshy_cinder_block', 1, 4); hdec('P03-05', 'hw_bricks', 3, 4); hdec('P03-05', 'traffic_cone', -1, 3);
           hput('P04-05', 'play_swing', -1, -1); hput('P05-05', 'camping_tent', -1, -1); hdec('P05-05', 'solo_cup', 0, 0); hdec('P05-05', 'meshy_cinder_block', 1, 0);
           B('meshy_sandbags', 116.2, 69.2, { face: 90 }); B('traffic_cone', 115.2, 63.9); B('hw_bricks', 97.8, 68.9); B('meshy_cinder_block', 94.3, 68.8); B('solo_cup', 90.2, 68.4); B('solo_cup', 88.6, 67.7);
-          B('meshy_cinder_block', 58.9, 38.2); B('hw_bricks', 60.2, 45.1); B('hw_part_9', 56.6, 37.4); }
+          B('meshy_cinder_block', 67.5, 28.6); B('hw_bricks', 57.4, 69.3); B('hw_part_9', 65.2, 34.2); }   // (moved with the car, above)
+        /* ── THE BACK OF THE ROCKS (2026-11-17, mondo: "give the Rocks' gate somewhere to lead"; THE NAME AND THE PLACE ARE AN IDEA OF CLAUDE'S, plain on purpose,
+              with no role in the game). On the One World map nothing stands north of the Rocks, so the trail through the crag's gate ended at the trees. Behind
+              the crag is a ledge of bare rock now (six squares, `late` above), where somebody has been sleeping: catalogue pieces only, all new, nothing moved. ── */
+        { const B = (key, x, z, o) => props.push(Object.assign({ key, x: r2(x), z: r2(z), face: Math.round(rnd() * 360) }, o || {}));
+          B('psx_old_mattress_mp_1', 12.6, 43.7, { face: 90 }); B('psx_pillow_mp_1', 11.4, 43.7); B('hw_candles', 14.6, 44.7); B('psx_glass_bottle_1', 15.6, 43.1); B('psx_canned_food_mp_1', 16.2, 44.2);
+          B('railway_lantern', 22.4, 44.9, { noLight: true }); B('solo_cup', 24.3, 43.3); B('skull', 29.4, 43.4); B('psx_wooden_crate_3', 30.2, 44.4);
+          props.push({ key: 'graffiti_wall', x: 26, z: 45.4, face: 0 }); }
         /* ── THE CULVERT: where the creek's water goes under the trail for good, and the dry pipe it once came out of ── */
         { const head = (id, x, z, sd) => features.push({ k: 'arch', id: 'woods:M:' + id, x, z, hug: true, parts: [
               box(0, -1.4, 0, 7, 2.3, 0.6, BRICK, T_BRICK, { uv: [1.75, 1.75] }), box(0, 0.9, 0, 7.4, 0.16, 0.85, CONC, T_CONC), box(-3.8, -1.4, 0, 1, 2.7, 1, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }), box(3.8, -1.4, 0, 1, 2.7, 1, BRICK2, T_BRICK2, { uv: [1.75, 1.75] }),
