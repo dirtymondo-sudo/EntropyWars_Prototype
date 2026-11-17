@@ -9958,6 +9958,11 @@ planet, went to the Outer Space thread.)
   two visible side faces pick their own squares; the side acting sees only its own face.
 - **KNOWN, NOT YET DONE:** the CPU does not read the warned slice yet (it plays the frame as a flat board); spells' own big sheets that sit
   at the world's origin are not folded (seen: the end-of-round spawn-zone rings of fighters on a hidden face float flat beside the cube); the cube in the Astral Realm: built (below).
+- **ONE CUBE, ONE LOOK (mondo 11-17: "why the fuck is there lava and water on the map" + "its the same fucking cube"):** the battle cube
+  first drew each face as a Realm ground with its RULES (lava burned, water was water) and its plain texture, while the Astral cube was
+  drawn by its own code. Now every face's rule ground is `tilefloor` (no rule of its own), CUBE_RULES.faces carry `look` (the picture) +
+  `tint` (the Rubik's colour), and BOTH cubes draw through three-renderer.js `_cubeFaceMat(face)` (sticker) + `_cubeCore()` (the dark core):
+  the battle square is a core square with the sticker at 0.86 on it, a hole's sides are core. Never give the cube's faces a second look.
 - **IN THE ASTRAL REALM (BUILT 11-17, bake-astral.js THE CUBE):** two new plots south of the Cloud Bridge's middle (district S, plot rows
   2-3 of column 0: 'The Broken Stair' + 'The Cube'), nothing touching the cube. The cube is the proc prop `ew_rubiks_cube` (three-renderer.js
   `_ewCubeProp`, catalogue span 28 m, origin = the middle of its top): 8 x 8 x 8 cubies of 3.5 m, a dark core, one sticker a square in its
