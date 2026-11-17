@@ -99170,7 +99170,7 @@ const ThreeRenderer = (function () {
                     return { id: ch.id, kind: ch.kind, label: ch.label, x: +ch.x.toFixed(2), z: +ch.z.toFixed(2), y: +ch.y.toFixed(2),
                         deg: +_hqNormDeg(Math.atan2(ch.x, -ch.z) * 180 / Math.PI).toFixed(1), r: +Math.hypot(ch.x, ch.z).toFixed(2),
                         face: +_hqNormDeg((Math.PI - ch.yaw) * 180 / Math.PI).toFixed(0), pose: ch.pose, anim: e._ew_curAnim || null,
-                        actions: e.actions ? Object.keys(e.actions).length : 0, attached: !!e._ew_modelAttached, heightM: ch.heightM };
+                        actions: e.actions ? Object.keys(e.actions).length : 0, attached: !!e._ew_modelAttached, heightM: ch.heightM, race: ch.race, away: !!ch.away };
                 });
             },
             /* world position (m) of a named bone on a character, and relative to the character's root */
