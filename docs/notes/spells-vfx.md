@@ -4647,3 +4647,20 @@ trap-shaped look would have told them what was hidden and on which squares; they
 - Stuffed Double: straw bursts up off the square and falls back; two stitched crosses where its eyes are.
 - Tunnel Network: a dark mouth with a ring of dirt in both squares, dashes burrowing across the floor between them.
 - Proof: docs/plans/vfx-cleanup/img/own-look/L2_part3_after.jpg (burst beat on the audit board; real casts of all 15 ran with no errors).
+
+## THE OWN LOOKS, L2, part 4: the machines + the list is done (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L2")
+The last seven of `own-look/L2.txt` (stage look `tech`). All 48 of L2's spells now have a look of their own
+(`_vcOwn(id)` is true for each; the generic stage burst no longer draws for any of them).
+- Crash Loop: an amber reload arrow turns three quarters round the body, jerks back to the start under a red cross, three times.
+- Recursive Loop: lilac square frames one inside the other, each turned a little further, the whole stack falling inward.
+- System Crash: every square of the 3x3 flashes terminal green, columns of green blocks come down and stop dead half way, a green cross stamps the middle.
+- Hydraulic Punch: a thick chrome barrel shoots out along the punch, a thinner rod drives out of its end a beat later, steam off both sides of the joint.
+- Rocket Fist: the jet line it rode in on still burns from the robot to the body and gutters out from the far end; smoke hangs along it; a hot ring at the landing.
+- Mortar Salvo: every square of the 3x3 flashes shell orange in the order the salvo walks it, each keeps a scorched ring (the lobbed shells were already there).
+- Transform: six body panels swing out from the chassis, turn over and lock back; the hazard lights blink amber twice.
+- Proof: docs/plans/vfx-cleanup/img/own-look/L2_part4_after.jpg (burst beat on the audit board; real casts of all 7 ran with no errors).
+- Left for whoever comes next (not done, by choice): the shared metal gear (`_mtlStage`) still draws its big grey cog
+  under every metal AREA (Fan the Hammer, Kill Mode, War of the Worlds) and sits over part of those looks; it is the
+  cleanup thread's (plan batch B7). The lightning areas (EMP Burst, EMP Grenade, Yellow Thunder) keep their old
+  white arc webs and EMP Burst its white dome from their own aoe recipes; the own looks draw with them. Fan the Hammer's
+  burst beat fires 1.1 s before its hits land (battle.js timing, not a look).
