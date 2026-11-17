@@ -4125,3 +4125,17 @@ docs/plans/vfx-cleanup/ (section 10 = what was built and what he changed). Looks
   generic laser (B3), white inside a spell's own signature shapes (the per-spell batches).
 - Online: every layer rides `fire()` / the stage beats, which are relayed; nothing new on `state`.
 
+
+## THE VFX CLEANUP, B2: the blades (2026-11-17, three-vfx-effects.js)
+mondo's three examples + the other sword combos. All behind `EW_NO_VFX_CLEANUP` like B1.
+- **Blade Waltz** (`_sigBladeWaltz3D`): the third cut in the blades' colour with no tip glint (it was white); the end
+  beat is the shake only (the ring, the white speed burst and the blue screen flash covered the cuts).
+- **`_sigSlashCombo3D`** (Dragon Slash, Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed
+  Blade): no summon circle behind the sword, no opening screen flash; the heavy finisher = the cut + its ring + its scar
+  (no screen flash, no speed burst, no rush lines). Dragon Slash's orange is unchanged.
+- **Sword Beam** (`_sigSwordWave3D`, mondo: "match the sword cuts"): wave `0xff5a2a`, core `0xffa060`, embers + a red
+  `_crSlashScar` on each square as the wave passes, no end speed burst; `_fireBeamMapped` skips the generic laser and the
+  white charge flash for it (`_vcSB`). The wave still takes 0.24 s to cross: the capture frames (0.45 s apart) do not
+  catch it; its real beam is B3.
+- Frames: docs/plans/vfx-cleanup/img/b2_*.jpg.
+
