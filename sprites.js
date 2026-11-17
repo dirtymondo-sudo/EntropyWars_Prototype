@@ -823,7 +823,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
   'nordic': `${_S}/Races/Nordic/Female/nordic_f_px.png`,
-  'siren': `${_S}/Races/siren/female/siren_f_px.png`,
+  'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
 };
 const _NEW_MALE_SPRITES = {
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
@@ -2053,7 +2053,7 @@ const RACE_MODELS_3D = {
   // The tail is one piece: its leg bones were folded onto the hips so walking never splits it. No swim idle: it lowers the hips and sank her.
   'siren': {
     female: _mkUAL('siren/female', 'siren_f', {
-      model: `${_S}/Races/siren/female/Meshy_AI_siren_f_Running.glb`,
+      model: `${_S}/Races/siren/female/Meshy_AI_siren_f2_Running.glb`,
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
@@ -2276,7 +2276,7 @@ const RACE_MODELS_3D = {
     // — new Meshy model in the sprite's navy blue (hair, corset, tail with glowing spots); tail = hips only, like the siren's.
     // Was _mkUAL('mermaid/female', 'hot_mermaid_girl', …) (files kept on R2).
     female: _mkUAL('mermaid/female', 'mermaid_f', {
-      model: `${_S}/Races/mermaid/female/Meshy_AI_mermaid_f_Running.glb`,
+      model: `${_S}/Races/mermaid/female/Meshy_AI_mermaid_f2_Running.glb`,
       heightRatio: 0.95,
       basicAttackKind: 'magic',
       // (2026-11-17: no swim idle any more — the swim loop lowers the hips, and with the tail bound to the hips she sank into the floor)
@@ -6926,7 +6926,7 @@ const RACE_SPRITES = {
   'antperson': `${_S}/Races/antperson/male/antperson_male.png`,
 
   'mothman': `${_S}/Races/mothman/male/mothman_male.png`,
-  'siren': `${_S}/Races/siren/female/siren_f_px.png`,   // 2026-11-17 — her 128x128 sprite (was siren_female.png)
+  'siren': `${_S}/Races/siren/female/siren_f_px2.png`,   // 2026-11-17 — her 128x128 sprite (was siren_female.png)
   'scarecrow': `${_S}/Races/scarecrow/male/scarecrow_male.png`,
   'glitch': `${_S}/Races/glitch/male/glitch_male.png`,
   'machine elves': `${_S}/Races/machineelves/male/machineelves_male.png`,

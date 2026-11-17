@@ -26894,6 +26894,7 @@ const ThreeRenderer = (function () {
        by a cord in the viewer's team colours (own cyan-blue, enemy pink-orange). Look only: nothing here is a rule.
        Host and guest both read the synced status and ids, so both seats draw it with nothing relayed (RULE #2). */
     var REALM_SEEN_OPACITY = 0.42;
+    var OFF_FIELD_OPACITY = 0.3;   // 🟥🚪 a sent-off / EXITED unit (the `exited` status)
     var ASTRAL_OPACITY = 0.78, ASTRAL_LIFT = 0.16, ASTRAL_OWN_COLOR = 0x4fd8ff, ASTRAL_ENEMY_COLOR = 0xff7a5c;
     var _astralCords = new Map();   // spirit uid → { mesh, key }
     var _astralWhite = null;
@@ -27050,6 +27051,20 @@ const ThreeRenderer = (function () {
                 return;
             }
             if (entry._ew_realmSeen) { entry._ew_realmSeen = false; _setEntrySpriteOpacity(entry, 1); }
+            /* 🟥🚪 OFF THE FIELD (2026-11-17, the Referee polish): a red-carded or door-EXITED unit (the `exited` status) still
+               holds its square but is not in the fight until its next turn: drawn as a faint shade for both sides (fog still
+               rules an enemy's), so nobody reads it as a body that can be hit. Its square stays taken (unitAt). */
+            if (unit.status && unit.status.exited > 0) {
+                entry._ew_offField = true;
+                _setEntrySpriteOpacity(entry, OFF_FIELD_OPACITY);
+                if (unit.player !== vp) {
+                    var _ob = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+                    if (_ob && fog) _ob = _unitLosSeen(unit, vp);
+                    entry.group.visible = _ob && !_isConcealedFromViewer(unit, vp);
+                } else entry.group.visible = true;
+                return;
+            }
+            if (entry._ew_offField) { entry._ew_offField = false; _setEntrySpriteOpacity(entry, 1); }
             if (_rk && unit.player !== vp) {
                 /* in the realm it is just the two of them: the other one is always seen, fog or not */
                 entry.group.visible = !_isConcealedFromViewer(unit, vp);
@@ -79403,6 +79418,7 @@ const ThreeRenderer = (function () {
         trail: function (U, ctx) { return _hqPassageWay(U, ctx); },
         stairway: function (U, ctx) { return _hqPassageWay(U, ctx); },
         cloud: function (U, ctx) { return _hqPassageWay(U, ctx); },
+        open: function (U, ctx) { return _hqPassageWay(U, ctx); },   // THE OPEN SEAM (2026-11-17, One World): a passage with nothing standing in it (data.js DOOR_HQ.ways.open)
         closet: function (U, ctx) {
             var g = new THREE.Group();
             var W = 1.0, H = 2.1, D = 0.7, T = 0.05;
@@ -79864,7 +79880,8 @@ const ThreeRenderer = (function () {
             }
         }
         /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
-        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
+        /* THE OPEN SEAM (2026-11-17, One World: data.js DOOR_HQ.ways.open): nothing stands in open country. No dark. */
+        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open') ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
         for (var i = 0; i < n; i++) {
             var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, 0.7 * Math.pow(t, 2.2));   // (2026-10-05) a dusk that deepens, the way still seen: only the far end is solid
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
@@ -79977,7 +79994,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(pl.y - _hqPassFloor(p, a.depth)) > 2.5) continue;
             var d0 = P.deep * 0.25, k = (a.depth - d0) / Math.max(0.5, P.deep - d0);
             k = k < 0 ? 0 : k > 1 ? 1 : k; k = k * k * (3 - 2 * k);
-            k *= 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black
+            k *= (P.look === 'open') ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
             if (k > dark) { dark = k; col = P.fade; }
             if (a.depth >= P.deep) {
                 if (H.passLatch !== p.door.id && !H.paused && H.opts.onEnterDoor && !HQ_DOOR_LOCKED[p.state]) {
