@@ -5897,7 +5897,14 @@
         let base = _scoreSpellCore(unit, spell, target, v);
         /* 📰 TODAY'S HEADLINE (the Florida Man, 11-17 polish): a headline spell is castable only today, so the CPU takes it over a
            plain hit when it is worth anything at all (it sat on Bath Salts in a test match and the round was lost) */
-        if (spell.floridaHeadline && base > 0) base = base * 1.3 + 30;
+        if (spell.floridaHeadline && base > 0) {
+            base = base * 1.3 + 30;
+            /* Bath Salts does not end the turn and an attack does: buffed first, the same turn's hit still lands (the CPU moved
+               and hit instead, every Bath Salts day). Worth the hit it powers up, when AP is left for one. */
+            const g = G();
+            const ends = g && g.TargetQuery && g.TargetQuery.spellEndsTurn ? g.TargetQuery.spellEndsTurn(spell) : true;
+            if (!ends && spell.statStageBoost && target && target.id === unit.id && (unit.ap || 0) >= (g.TargetQuery.apCost(spell) || 1) + 1) base += 260;
+        }
         if (!(base > 0) || !target || !_isForcedSpell(spell) || spell.kind === 'skyThrow' || spell.allyOnly) return base;
         const g = G();
         const fv = _forcedMoveValue(g, unit, spell, target, v);
