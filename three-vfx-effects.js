@@ -3180,6 +3180,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bats3D = null;
         for (var li = 0; li < effectDef.layers.length; li++) {
             var layer = effectDef.layers[li];
+            if (layer._vcSkip && _vcOn()) continue;   /* THE VFX SWEEP: a layer a sweep took off (the table that tags it is in the sweep's block) */
             if (fireVol && (layer.sprite === 'flame' || layer.sprite === 'flame-hot') &&
                 layer.anchor !== 'torso') continue;
             /* THE BATS (2026-10-27): the flat bat sprites give way to mondo's 3D bats (_batStage flies them) */
@@ -3201,7 +3202,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function _emitLayer(layer, count, centerPx, baseZFloor, baseZTorso, autoTint) {
         var baseZ = (layer.anchor === 'torso') ? baseZTorso : baseZFloor;
-        var tint = layer.tint != null ? layer.tint
+        var _lt = (layer._vcTint != null && _vcOn()) ? layer._vcTint : layer.tint;   /* THE VFX SWEEP: a layer's near-white tint in the spell's own colour */
+        var tint = _lt != null ? _lt
                  : ((autoTint != null && _NEUTRAL_SPRITES[layer.sprite]) ? autoTint : null);
         for (var i = 0; i < count; i++) {
             var offXY = layer.offsetXY || 0;
@@ -20444,7 +20446,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 novaFired = true;
                 /* SUPERNOVA */
                 try { if (p && p.spellGradeKick) p.spellGradeKick(13, 300); } catch (e) {}
-                _sigScreenFlash('#fff6dd', 380, 0.6);
+                /* THE VFX SWEEP B10 (Nebula is this helper's only spell): the star's own burst is the light; the screen-wide
+                   wash is a short gold blink, not a white-out of the board */
+                if (_vcOn()) _sigScreenFlash('#ffc860', 220, 0.2); else _sigScreenFlash('#fff6dd', 380, 0.6);
                 _sigShake('hard');
                 try { if (p && p.bloomPulse) p.bloomPulse(1.0, 520); } catch (e) {}
                 _sigOrbBurst3D(tx, ty, {
@@ -20454,7 +20458,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _sigShockRing3D(tx, ty, { color: 0xffd77a, r1: blastR * 1.3, ms: 520 });
                 window.setTimeout(function () {
                     if (_suppressed()) return;
-                    _sigShockRing3D(tx, ty, { color: 0xffffff, r1: blastR * 0.9, ms: 420, height: ts * 0.5 });
+                    _sigShockRing3D(tx, ty, { color: _vcOn() ? 0xffd77a : 0xffffff, r1: blastR * 0.9, ms: 420, height: ts * 0.5 });
                 }, 120);
                 try { _sigLightPillar3D(tx, ty, { color: 0xfff0c0, height: ts * 6.0, radius: ts * 0.5, ms: 820 }); } catch (e) {}
                 if (_canSpawn()) {
@@ -20962,6 +20966,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _fxDelay(function() {
                 if (_suppressed()) return;
                 _sigShockRing3D(tx, ty, { color: 0xffaa55, r1: ts0 * 2.4, ms: 520 });
+                if (_vcOn()) return;   /* THE VFX SWEEP B10: the rock, its fire and its ring are the landing (no pale speed burst, no screen flash) */
                 _sigSpeedBurst3D(tx, ty, { color: 0xffcc88 });
                 _sigScreenFlash('#ffd9a8', 200, 0.32);
             }, dm || 700);
@@ -21803,10 +21808,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            a silver crescent arc. (Valkyrie Spear keeps its spear prison.) */
         raceDivineSwoop: function(tx, ty) {
             var ts0 = _cfg().tileSize || 128;
-            _sigSpeedBurst3D(tx, ty, { color: 0xcfe4ff });
-            _sigCrescentSlash3D(tx, ty, { color: 0xbbddff, yaw: rn(0, Math.PI * 2), dir: 1, ms: 260, size: ts0 * 1.5 });
+            var _vcDS = _vcOn();   /* THE VFX SWEEP B10: the swoop is its silver cut + its ring (the pale speed burst and the screen flash were any spell's) */
+            if (!_vcDS) _sigSpeedBurst3D(tx, ty, { color: 0xcfe4ff });
+            _sigCrescentSlash3D(tx, ty, { color: _vcDS ? 0x8fbcf0 : 0xbbddff, yaw: rn(0, Math.PI * 2), dir: 1, ms: 260, size: ts0 * 1.5 });
             _sigShockRing3D(tx, ty, { color: 0x99ccff, r1: ts0 * 1.5, ms: 380 });
-            _sigScreenFlash('#cfe4ff', 110, 0.14);
+            if (!_vcDS) _sigScreenFlash('#cfe4ff', 110, 0.14);
         },
         /* VALKRAYE — Chooser of the Slain: Valhalla reaches down. Whiteout,
            the armillary, a long pale pillar — and the soul walks back. */
@@ -48662,19 +48668,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            rangers' colours converge from the sky onto the target and it
            goes up in the full blast */
         sentaiMegazordBlast: {
-            charge: function (P) { _capCharge(P, 0xffffff, { sprite: 'spark-pink', sigilColor: 0xff3a3a }); },
+            charge: function (P) { _capCharge(P, _vcOn() ? 0xff5a4a : 0xffffff, { sprite: 'spark-pink', sigilColor: 0xff3a3a }); },
             hit: function (P) {
                 var cols = [0xff3a3a, 0x3a7aff, 0xffe03a, 0x3aff6a, 0xff7ad8];
+                /* THE VFX SWEEP B10: five COLOURS: each lance's hot core is its ranger's colour made light (they all burned
+                   white and read as five white rays), the blast light is gold and the white screen flash is off */
+                var _vcM = _vcOn(), hots = [0xff9a8a, 0x9ac0ff, 0xffe88a, 0x9aff9a, 0xffb0e8];
                 var B = _capTorso(P.tx, P.ty, 0), ts = _capTs();
                 cols.forEach(function (col, i) {
                     var a = i / 5 * Math.PI * 2 + rn(-0.1, 0.1);
                     var A = new THREE.Vector3(B.x + Math.cos(a) * ts * 3.2, B.y + ts * 4.2, B.z + Math.sin(a) * ts * 3.2);
-                    _capAt(i * 50, function () { _capLance(A, B, { color: col, hot: 0xffffff, w: 0.07, ms: 620, grow: 90, fade: 220 }); });
+                    _capAt(i * 50, function () { _capLance(A, B, { color: col, hot: _vcM ? hots[i] : 0xffffff, w: 0.07, ms: 620, grow: 90, fade: 220 }); });
                 });
                 _capAt(300, function () {
                     cols.forEach(function (col, i) { _capAt(i * 60, function () { _capRing(P.tx, P.ty, col, 1.4 + i * 0.35, 460, 4 + i * 6); }); });
-                    _capLight(P.tx, P.ty, 0xffffff, { i: 3.6, ms: 700, h: 0.8, r: 5 });
-                    _sigScreenFlash('#ffffff', 160, 0.25);
+                    _capLight(P.tx, P.ty, _vcM ? 0xffc860 : 0xffffff, { i: _vcM ? 2.4 : 3.6, ms: 700, h: 0.8, r: 5 });
+                    if (!_vcM) _sigScreenFlash('#ffffff', 160, 0.25);
                 });
             }
         },
@@ -71751,7 +71760,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        edges as he goes, and where he stops the ice breaks up into standing shards */
     _spell3DGeometry['raceIceSlide:dash'] = function (tx, ty, dist, x) {
         var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
-        var ts = Ln.ts, G = Ln.G, ice = _finBasic(0xbfe4f4, { opacity: 0, map: _sigTerrainTex('ice.png', 1, Ln.n), depthWrite: false, side: THREE.DoubleSide });
+        /* THE VFX SWEEP B10: the strip is wet ice you see the floor through (it drew as a flat white slab on top of the ice pass) */
+        var _vcIce = _vcOn();
+        var ts = Ln.ts, G = Ln.G, ice = _finBasic(_vcIce ? 0x5fb4e0 : 0xbfe4f4, { opacity: 0, map: _sigTerrainTex('ice.png', 1, Ln.n), depthWrite: false, side: THREE.DoubleSide });
         var sg = new THREE.PlaneGeometry(ts * 0.8, 1); sg.rotateX(-Math.PI / 2); sg.translate(0, 0, 0.5);
         var strip = new THREE.Mesh(sg, ice); strip.position.y = 2.5; strip.renderOrder = 152; G.add(strip);
         var em = _goA(0x9fd8f0, 0), edges = [];
@@ -71762,7 +71773,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lastS = 0, broke = false, TOTAL = Ln.ms + 1100;
         return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
             var run = _sigClamp01(el / Ln.ms), k = _goEnv(el, 40, TOTAL, 450), len = Math.max(1, Ln.L * run);
-            strip.scale.z = len; ice.opacity = 0.85 * k; edges[0].scale.z = edges[1].scale.z = len; em.opacity = 0.6 * k;
+            strip.scale.z = len; ice.opacity = (_vcIce ? 0.42 : 0.85) * k; edges[0].scale.z = edges[1].scale.z = len; em.opacity = 0.6 * k;
             if (run < 1 && el - lastS > 45 && _canSpawn()) { lastS = el;
                 for (var s = -1; s <= 1; s += 2) { var p = Ln.at(len, s * ts * 0.36);
                     _pzP(Ln.F, p.x, 6, p.z, { sprite: 'frost-mist', ml: rn(300, 520), size0: 8, size1: 24, vx: Ln.uz * s * 90 - Ln.ux * 30, vy: -Ln.ux * s * 90 - Ln.uz * 30, vz: rn(60, 150), gravity: 200, opacity0: 0.75 });
@@ -74882,6 +74893,50 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }]);
     };
     /* ═════════ END THE OWN LOOKS, L6 ═════════ */
+
+    /* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+       THE VFX SWEEP, B10: bodies and tech (2026-11-17, docs/plans/vfx-cleanup/SWEEP_BRIEF.md, list batches/B10.txt:
+       human, kinetic, grapple, skyfall, rig, tech, alien). mondo: "take out all of these generic basic white vfx that
+       crowd the screen", "not just anything that is white", "every square that is hit [must] flash".
+       What is here: the near-white flash / ring LAYERS left inside these spells' own particle recipes, in the spell's
+       own colour (the flash stays: it shows where the hit lands), or off where a recipe flashed the same spot twice.
+       _B10_LAYERS: recipe -> [sprite, the tint it has (null = none), the new tint | 'skip'] (first layer that matches,
+       `all` = every one). The tags are read by _spawnEffect / _emitLayer only while _vcOn(), so
+       window.EW_NO_VFX_CLEANUP = true is the old look. Looks only; every layer rides the relayed fire().
+       Notes: docs/notes/spells-vfx.md "THE VFX SWEEP, B10". ═════════════════════════════════════════════════════════ */
+    var _B10_LAYERS = {
+        /* Hydraulic Punch (also Tail Whip's recipe): one steam-blue flash, not a white one and a second pure white one */
+        raceHydraulicPunch_impact: [['flash', 0xe8f0f8, 0x9cc4e4], ['flash', 0xffffff, 'skip']],
+        sigGrappleArm_pull:        [['flash', 0xd8f0ff, 0x6fb4ea]],
+        /* Place Bomb: every square's flash in the blast's orange (it drew cream); the middle flashed twice */
+        placeBomb_impact_tile:     [['flash', null, 0xff9a3c]],
+        placeBomb_impact_center:   [['flash', null, 0xff9a3c], ['flash', null, 'skip'], ['shockwave', null, 0xff8844]],
+        raceExecutiveOrder_impact: [['flash', 0xf4f0e8, 0xe8c040]],                 /* the seal's gold */
+        nbSawInHalf_impact:        [['flash', 0xffffff, 0xffc860]],                 /* the saw's sparks */
+        raceFeralDive_impact:      [['flash', 0xeaffea, 0x9ad86a], ['shockwave', 0xc8e8b8, 0x86b860]],
+        raceDriveBy_impact:        [['flash', 0xfff2c0, 0xffc04a]],                 /* a muzzle's yellow */
+        raceApexCharge_impact:     [['flash', 0xffe8c0, 0xf0a850], ['flash', 0xfff4d8, 0xe8b468], ['shockwave', 0xe8c890, 0xd89c50]],
+        raceChivalry_burst:        [['flash', 0xd8e8ff, 0x88b0ff]],
+        raceLucidTrap_burst:       [['flash', 0xdfe6ee, 0x8fa8c8]],
+        raceStuffedDouble_burst:   [['flash', 0xfff0d0, 0xe8c060]],                 /* straw */
+        racePredatorDrop_impact:   [['flash', 0xd8ffd0, 0xd8283c], ['flash', 0xeaffea, 0xe03a4a]]   /* a vampire's rake is blood red (it was pale green) */
+    };
+    (function () {
+        try {
+            for (var id in _B10_LAYERS) {
+                var d = EFFECTS[id], rows = _B10_LAYERS[id]; if (!d || !d.layers) continue;
+                var used = [];
+                for (var r = 0; r < rows.length; r++) for (var i = 0; i < d.layers.length; i++) {
+                    var L = d.layers[i];
+                    if (used[i] || L.sprite !== rows[r][0] || (rows[r][1] == null ? L.tint != null : L.tint !== rows[r][1])) continue;
+                    used[i] = 1;
+                    if (rows[r][2] === 'skip') L._vcSkip = true; else L._vcTint = rows[r][2];
+                    break;
+                }
+            }
+        } catch (e) {}
+    })();
+    /* ═════════ END THE VFX SWEEP, B10 ═════════ */
 
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
