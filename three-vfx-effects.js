@@ -48054,7 +48054,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             hit: function (P) {
                 _capShards(P.tx, P.ty, 'stone', { n: 14, scale: 1.3 });
                 _capSpikes(P.tx, P.ty, { ring: 0.8, n: 7, h: 0.45, w: 0.18, holdMs: 800, jitter: 60 });
-                _capRing(P.tx, P.ty, 0xd8d0c0, 1.8, 500, 3);
+                _capRing(P.tx, P.ty, _vcOn() ? 0xc0ae90 : 0xd8d0c0, 1.8, 500, 3);   /* THE VFX SWEEP, B8a: stone dust, not a pale ring */
                 _capPuff(P.tx, P.ty, 'dust-puff', 12, { r: 0.8, out: 160, s0: 24, s1: 40, sEnd: 70, op: 0.55, ml0: 800, ml1: 1300 });
                 _capLight(P.tx, P.ty, 0xffe0b0, { i: 1.8, ms: 500, h: 0.4 });
             }
@@ -65126,7 +65126,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 });
             });
             _capAt(260, function () {
-                _capColumn(P.sx, P.sy, 0xd8142e, 4.5, 0.32, 1000, 0xffc0c8);
+                _capColumn(P.sx, P.sy, 0xd8142e, 4.5, 0.32, 1000, _vcOn() ? 0xff7a88 : 0xffc0c8);   /* THE VFX SWEEP, B8a: no near-white core in the blood column */
                 try { _sigStatRings3D(P.sx, P.sy, { dir: 1, rings: 3, color: 0xff3048, ms: 700 }); } catch (e) {}
                 _capPuff(P.sx, P.sy, 'ember', 16, { r: 0.4, out: 20, vz0: 90, vz1: 200, s0: 4, s1: 8, ml0: 800, ml1: 1300, wander: 16, tint: 0xff3048 });
             });
@@ -74929,6 +74929,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _b8Tint('raceBigKick_impact', 'shockwave', 0xfff0b8, 0xd8a860);                      /* Big Kick */
     _b8Tint('sigDiamondLance_impact', 'flash', 0xffffff, 0xb8f0ff);                      /* Diamond Lance: the flash in the crystal's own blue */
     _b8Tint('raceShieldWall_burst', 'target-ring', null, 0x8fa4dd);                      /* Walls of Camelot: the floor ring in the shields' steel blue */
+    /* Cave-In: battle.js gave it the generic area detonation (a violet ring + orb round the cave-in; playAoeRing passes no
+       spell id, see THE OWN LOOKS, L1 "the three fixes"): an empty `aoe` recipe of its own, so its look is the cave-in */
+    if (!EFFECTS['b8Quiet_aoe']) EFFECTS['b8Quiet_aoe'] = { aoeRadius: 0, layers: [] };
+    ['nrCaveIn'].forEach(function (id) { if (!SPELL_MAP[id] || !SPELL_MAP[id].aoe) SPELL_MAP[id] = Object.assign({}, SPELL_MAP[id], { aoe: 'b8Quiet_aoe' }); });
     /* ═════════ END THE VFX SWEEP, B8a ═════════ */
 
     return {
