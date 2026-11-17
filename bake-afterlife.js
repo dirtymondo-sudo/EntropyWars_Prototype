@@ -249,6 +249,12 @@ const wallAt = (R, w) => w.wall === 'n' || w.wall === 's' ? { wall: w.wall, x: R
 const freeAt = (R, w) => ({ wall: 'free', x: R.mx(w.sx), z: R.mz(w.sy), face: w.face });
 const WAYS = {};
 
+/* THE BONE PASSAGE (2026-11-17, One World phase 4.4, the map's secret walk U13): the Catacombs' east wall is dug two squares at rows 20..21, out of
+   the Font's hall, to the door pair `ow_v_m7_m4` (the Cavern tool's Tunnel-Way room holds the passage, east and down to Hollow Earth). In memory
+   only: THE MAP (draw-afterlife.js) is not changed. */
+{ const P = LAYOUT.rooms.find(r => r.key === 'catacombs'); [20, 21].forEach(y => { [34, 35].forEach(x => { if (P.cells[y][x] !== 'X') throw new Error('the Bone Passage: the Catacombs changed at ' + x + ',' + y);
+      P.cells[y] = P.cells[y].slice(0, x) + 'f' + P.cells[y].slice(x + 1); { const h = P.heights[y].split(','); h[x] = '0'; P.heights[y] = h.join(','); } }); });
+  P.ways = P.ways.concat([{ id: 'ow_v_m7_m4', kind: 'door', wall: 'e', sy: 21, name: 'the Bone Passage (secret): east, then down to Hollow Earth' }]); }
 LAYOUT.rooms.forEach(PLAN => { const R = makeRoom(PLAN); ROOMS[PLAN.key] = R;
     PLAN.ways.forEach(w => { const a = w.wall === 'free' ? freeAt(R, w) : wallAt(R, w); WAYS[PLAN.key + ':' + w.id] = a; if (w.wall === 'free') R.take(w.sx, w.sy); }); });
 const V = ROOMS.vatican, K = ROOMS.catacombs, L = ROOMS.hell, HV = ROOMS.heaven;
@@ -259,6 +265,7 @@ V.plate = { x: V.mx(50), z: V.mz(24), y: 4.6 }; K.plate = { x: K.mx(19), z: K.mz
   V.doors.push(Object.assign({ id: 'crypt' }, WAYS['vatican:crypt'], { leaf: 'leaf_wooden', label: 'THE CATACOMBS', sub: o('crypt').sub || 'THE CRYPT STAIR · DOWN · BEHIND THE ALTAR', action: { room: K.id, at: 'stair' }, desc: o('crypt').desc || '' }));
   V.doors.push(Object.assign({ id: 'well' }, WAYS['vatican:well'], { way: 'well', label: 'THE CATACOMBS', sub: c('well').sub || 'THE WELL · DOWN THE ROPE · THE CATACOMBS', action: { room: K.id, at: 'well' }, desc: c('well').desc || '' }));
   K.doors.push(Object.assign({ id: 'stair' }, WAYS['catacombs:stair'], { leaf: 'leaf_wooden', label: 'THE VATICAN · THE BASILICA', sub: k('stair').sub || 'THE CRYPT STAIR · UP · BEHIND THE ALTAR', action: { room: V.id, at: 'crypt' }, desc: k('stair').desc || '' }));
+  K.doors.push(Object.assign({ id: 'ow_v_m7_m4' }, WAYS['catacombs:ow_v_m7_m4'], { way: 'trail', leaf: 'leaf_frame_only', label: 'THE BONE PASSAGE', sub: 'A GAP IN THE BONES · EAST, THEN DOWN', action: { room: 'site_prebuilt_hollow_earth_ow_tunnelway', at: 'ow_v_m7_m4' }, desc: '' }));
   K.doors.push(Object.assign({ id: 'well' }, WAYS['catacombs:well'], { way: 'well', label: 'THE VATICAN · THE CISTERN', sub: k('well').sub || 'THE CISTERN · UP THE ROPE · THE COURTYARD', action: { room: V.id, at: 'well' }, desc: k('well').desc || '' })); }
 /* the BATTLE markers (the old Basilica's, the old Pit's and the old Cloud Fields' own counters: each site's arena) */
 [[V, 'vatican_basilica', 33, 24], [L, 'hell_pit', 18, 27], [HV, 'heaven_gate', 24, 21]].forEach(([R, old, sx, sy]) => { const c = OLD[old].c.find(c => c.id === 'battle'); if (c) { R.counters.push(Object.assign({}, c, { x: R.mx(sx), z: R.mz(sy) })); R.take(sx, sy); } });

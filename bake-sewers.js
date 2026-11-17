@@ -307,44 +307,72 @@ if (process.env.SEWERS_HOME) {   // the home room as it was before One World (a 
 const MOVE = require('./ow-move.js')({ cols: GX, rows: GY, cell, fill: 'x', plots: PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, name: p.name, district: p.d, level: p.level })),
     features: F, props, npc, doors });
 const T_LINE = { 'P04-03': [9, 6], 'P03-03': [9, 7], 'P02-03': [9, 8], 'P01-03': [9, 9], 'P00-03': [9, 10] };
+/* THE UNDERGROUND WALKS (2026-11-17, BUILD_PLAN phase 4.4; plots.json `under.walks` U1 U2 U3 U4 U5 U14): the culverts between the five districts
+   are built, so the Sewers are ONE room again (mondo 11-17: "Connected/bigger rooms is better. If the room is smaller than disaster city than dont
+   even ask, just make it one room"; the box is 17 x 16 plots, mostly rock). The five parted door pairs of phase 3 are gone: the walks replace them.
+   A walk plot is a brick culvert: a passage three squares wide from each port to a chamber in the plot's middle, under the same vaults and
+   grime as the districts (derive() reads it like any plot). Plain names, mine. One walk plot more than the map: THE WELL FOOT (5,7), where the
+   Junction's rope comes down again (the Crossing it hung over stands east since phase 3) and goes on east into U1.
+   Ends past the room: U5 west into the D.U.M.B.'s East Gantry (seam ow_v_7_16), U14 east into the Sea Floor (ow_v_18_5), the Cells' west side
+   into U12 (ow_v_1_1, the Cavern tool's tunnel). */
+const WALK = [
+    { id: 'U1', name: 'The Loop Culvert', plots: [[6, 7, 0], [6, 8, 0], [6, 9, 0], [7, 9, 0], [8, 9, 0]] },
+    { id: 'WF', name: 'The Well Foot', plots: [[5, 7, 0]] },
+    { id: 'U2', name: 'The Cells Culvert', plots: [[6, 3, 8], [6, 2, 8], [6, 1, 8], [5, 1, 8], [4, 1, 8], [3, 1, 8]] },
+    { id: 'U3', name: 'The Workings Culvert', plots: [[6, 10, 0], [5, 10, 0], [4, 10, 0], [3, 10, 0]] },
+    { id: 'U4', name: 'The Drain Culvert', plots: [[9, 5, 8], [10, 5, 8], [11, 5, 8], [11, 4, 4], [11, 3, 4], [11, 2, 0]] },
+    { id: 'U14', name: 'The Outfall Pipe', plots: [[12, 5, 8], [13, 5, 8], [14, 5, 4], [15, 5, 4], [16, 5, 0], [17, 5, 0]] },
+    { id: 'U5', name: 'The Gantry Tunnel', plots: [[9, 12, 0], [9, 13, 0], [9, 14, 0], [9, 15, 0], [9, 16, 0], [8, 16, 0], [7, 16, 0]] },
+];
+/* every join that is not two walk plots of one walk side by side: [world a, world b, kind, port] (a district plot is named by its home id;
+   kind 'open' = same level, 'stair' / 'climb' = an opening of the plan's kinds; port = the window's middle square along the side, 6 = the middle) */
+const WJOIN = [
+    ['P03-02', [6, 7], 'stair', 6],      // the Culverts (level 4) down to U1
+    [[8, 9], 'P01-03', 'open', 6],       // U1 into the Loop Line's west side (turned: its old north side)
+    ['P02-02', [5, 7], 'climb', 6],      // the Junction's well: the rope down to the Well Foot (the plan's own opening, its foot moved)
+    [[5, 7], [6, 7], 'open', 6],
+    ['P03-00', [6, 3], 'open', 9],       // the Pumping Station's north side (its middle is the `pump` door's spur)
+    [[3, 1], 'P01-00', 'stair', 6],      // up the cell door's stair into the Drunk Tank (the plan's own port)
+    [[6, 9], [6, 10], 'open', 6],        // U3 leaves U1's bend
+    [[3, 10], 'P01-01', 'open', 6],      // into the Old Workings' east side
+    ['P05-01', [9, 5], 'open', 3],       // the East Return's east side (its middle is the stadium's spur)
+    [[11, 2], 'P05-04', 'open', 6],      // into the Sludge Pit's south side
+    [[11, 5], [12, 5], 'open', 6],       // the Outfall Pipe leaves U4
+    ['P03-04', [9, 12], 'open', 9],      // the Loop Line's spur, south side (its middle is the platform's spur)
+];
+/* the seams to the rooms past this one: [walk or district plot, side, port, seam id, door] */
+const WSEAM = [
+    [[7, 16], 'W', 6, 'ow_v_7_16', { leaf: 'leaf_bulkhead', label: 'THE D.U.M.B.', sub: 'THE GANTRY TUNNEL · INTO THE EAST GANTRY', room: 'site_prebuilt_dumb_base' }],
+    [[17, 5], 'E', 6, 'ow_v_18_5', { leaf: 'leaf_bulkhead', label: 'THE DEEP · THE SEA FLOOR', sub: 'THE OUTFALL · THE PIPE RUNS OUT UNDER THE SEA', room: 'site_prebuilt_atlantis_ow_floor' }],
+    /* THE FREIGHT LINE (plots.json `under.rides`, a ride, no plots, late game): the Power Station Drain's north side, to the D.U.M.B.'s Level −6, clearance L6 */
+    ['P04-04', 'N', 6, 'freight_line', { leaf: 'leaf_vault', label: 'THE FREIGHT LINE', sub: 'THE FREIGHT LINE · TO THE D.U.M.B.\'S SUB-LEVEL 7 · CLEARANCE L6', room: 'site_prebuilt_dumb_base', gate: 6 }],
+    ['P00-00', 'W', 9, 'ow_v_1_1', { leaf: 'leaf_cell', label: 'THE CELLS TUNNEL', sub: 'THE GUARDROOM · A TUNNEL WEST UNDER THE CITY', room: 'site_prebuilt_hollow_earth_ow_tunnelway' }],
+];
 const ROOMS = [
-    { room: ROOM, part: PART, name: 'THE SEWERS + THE RUNNING TUNNELS', label: 'DISASTER CITY · THE SEWERS', sub: 'THE CULVERTS · THE RUNNING TUNNELS · EVERY GUTTER DRAINS HERE', spawnAt: ['P02-02', 3, 6], lines: O.sewers.l.concat(O.tunnels.l), seed: 4242,
-      parti: 'A maze under the city: brick culverts that bend, fork and stop, the upper culverts pouring into the lower rooms over three falls; the Running Tunnels down its east side, the old line turned to run south.',
+    { room: ROOM, part: PART, name: 'THE SEWERS', label: 'DISASTER CITY · THE SEWERS', sub: 'THE CULVERTS · THE RUNNING TUNNELS · THE CELLS · THE OLD WORKINGS · THE RADIOACTIVE DRAIN', spawnAt: ['P02-02', 3, 6], lines: O.sewers.l.concat(O.tunnels.l, O.cells.l, O.workings.l), seed: 4242,
+      parti: 'A maze under the city: brick culverts that bend, fork and stop, the upper culverts pouring into the lower rooms over three falls; the Running Tunnels down its east side, the old line turned to run south; long culverts out to the cells, the old mine, the radioactive drain, the sea and the D.U.M.B.',
       place: id => { const p = plot[id]; if (T_LINE[id]) return { wx: T_LINE[id][0], wy: T_LINE[id][1], turn: 270 }; if (id === 'P03-04') return { wx: 9, wy: 11 }; if (id === 'P05-03') return { wx: 8, wy: 7 };
+          if (p.d === 'H') return { wx: 1 + p.x, wy: 1 }; if (p.d === 'O') return { wx: 1 + p.x, wy: 10 }; if (p.d === 'R') return { wx: 10 + (p.x - 4), wy: 1 };
           if (p.d !== 'W') return null; if (p.solid) return { wx: [3, 4, 3][p.x], wy: [4, 4, 5][p.x] }; return { wx: 3 + p.x, wy: 4 + p.y }; } },
-    { room: 'site_prebuilt_downtown_ow_cells', part: 'ow_cells', name: 'THE HOLDING CELLS', label: 'DISASTER CITY · THE HOLDING CELLS', sub: 'THE GUARDROOM · THE DRUNK TANK · SIX CELLS UNDER A PRECINCT THAT FELL DOWN', spawnAt: ['P00-00', 5, 6], lines: O.cells.l, seed: 4243,
-      parti: 'The precinct\'s cells under the city: the guardroom, the corridor of six cells, the drunk tank, a trap in its floor.',
-      place: id => plot[id].d === 'H' ? { wx: 1 + plot[id].x, wy: 1 } : null },
-    { room: 'site_prebuilt_downtown_ow_workings', part: 'ow_workings', name: 'THE OLD WORKINGS', label: 'DISASTER CITY · THE OLD WORKINGS', sub: 'THE CHIMNEY · THE OLD MINE · OLDER THAN THE CITY OVER IT', spawnAt: ['P01-01', 5, 5], lines: O.workings.l, seed: 4244,
-      parti: 'The old mine under the sewers: the Chimney\'s shaft up to the light, the Sump, the Pump Ledge, the portcullis to the oubliette.',
-      place: id => plot[id].d === 'O' ? { wx: 1 + plot[id].x, wy: 10 } : null },
-    { room: 'site_prebuilt_downtown_ow_drain', part: 'ow_drain', name: 'THE RADIOACTIVE DRAIN', label: 'DISASTER CITY · THE RADIOACTIVE DRAIN', sub: 'THE POWER STATION DRAIN · THE SLUDGE PIT · WHERE THE POWER STATION DRAINS', spawnAt: ['P04-04', 5, 5], lines: O.sewers.l, seed: 4245,
-      parti: 'Where the Power station drains: a concrete channel of glowing sludge pouring into the pit, the bulkhead up to the yard.',
-      place: id => plot[id].d === 'R' ? { wx: 10 + (plot[id].x - 4), wy: 1 } : null },
 ];
-/* the openings cut where plots part (each a door pair on the two plots' own lines; `side` = the side of plot `a` the opening is on) */
-const PARTED = [
-    { id: 'sew_cell_door', a: 'P02-00', b: 'P01-00', leaf: 'leaf_cell', name: 'THE CELL DOOR', subA: 'THE CELL DOOR · UP INTO THE HOLDING CELLS', subB: 'THE CELL DOOR · DOWN TO THE PRECINCT DRAIN' },
-    { id: 'sew_trap', a: 'P01-00', b: 'P01-01', leaf: 'leaf_cell', name: 'THE TRAP', subA: 'THE TRAP · DOWN THE ROPE LADDER INTO THE OLD WORKINGS', subB: 'THE TRAP · UP THE ROPE LADDER INTO THE DRUNK TANK' },
-    { id: 'sew_adit', a: 'P00-02', b: 'P00-01', leaf: 'leaf_frame_only', name: 'THE ADIT', subA: 'THE ADIT · DOWN INTO THE OLD WORKINGS', subB: 'THE ADIT · UP TO THE STORM DRAIN' },
-    { id: 'sew_power_stair', a: 'P03-04', b: 'P04-04', leaf: 'leaf_bulkhead', name: 'THE DRAIN STAIR', subA: 'THE STAIR · UP INTO THE POWER STATION DRAIN', subB: 'THE STAIR · DOWN TO THE RUNNING TUNNELS' },
-    { id: 'sew_outfall_door', a: 'P05-03', b: 'P05-04', leaf: 'leaf_bulkhead', name: 'THE SLUDGE DOOR', subA: 'THE DOORWAY · INTO THE SLUDGE PIT', subB: 'THE DOORWAY · INTO THE OUTFALL' },
-];
+const PARTED = [];
 /* the one opening this move cuts: the Depot's hatch stair (P04-03's north side, now its west) climbs into the Docks' Outfall (P05-02's east side) */
 const JOINED = [{ hi: 'P05-02', lo: 'P04-03', kind: 'stair', name: 'the Maintenance Hatch, into the Docks\' Outfall' }];
-const WORLD = {}, OUT = [];
+const WORLD = {}, OUT = [], SIDE = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
 ROOMS.forEach(R => {
     const list = []; PLAN.plots.forEach(p => { const q = R.place(p.id); if (q) list.push(Object.assign({ id: p.id }, q)); });
+    WALK.forEach(w => w.plots.forEach(q => list.push({ wx: q[0], wy: q[1], name: w.name, district: 'U', level: q[2], isNew: true, walk: w.id })));
     const M = MOVE.room(list); R.M = M; R.wx = M.wx; R.wy = M.wy;
-    list.forEach(q => { WORLD[q.id] = { room: R.room, wx: q.wx, wy: q.wy, turn: q.turn || 0 }; });
-    /* the frame's plots: a plot's squares stand at (col, row) of the room; its sides are the turned ones */
-    const fp = {}; M.order.forEach(e => { const h = plot[e.id]; fp[e.id] = { id: e.id, name: h.name, d: h.d, level: h.level, base: h.base, solid: h.solid, col: e.col, row: e.row, sx: e.col * N, sy: e.row * N, turn: e.turn || 0 }; });
+    list.forEach(q => { if (q.id) WORLD[q.id] = { room: R.room, wx: q.wx, wy: q.wy, turn: q.turn || 0 }; });
+    /* the frame's plots: a plot's squares stand at (col, row) of the room; its sides are the turned ones. A walk plot's id is `U<x>_<y>` */
+    const fp = {}; M.order.forEach(e => { if (!e.id) { e.id = 'U' + e.wx + '_' + e.wy; fp[e.id] = { id: e.id, name: e.name, d: 'U', level: e.level, base: r2(e.level * LEVEL), solid: false, col: e.col, row: e.row, sx: e.col * N, sy: e.row * N, turn: 0, walk: true }; return; }
+        const h = plot[e.id]; fp[e.id] = { id: e.id, name: h.name, d: h.d, level: h.level, base: h.base, solid: h.solid, col: e.col, row: e.row, sx: e.col * N, sy: e.row * N, turn: e.turn || 0 }; });
     const at = (c, r) => { const e = M.at[c + ',' + r]; return e ? fp[e.id] : null; };
     const cellR = M.cell;
     /* the openings of the plan still between two plots that touch the same way, and the joins this move cuts */
     const OPENr = [];
     const mkOpen = (A, B, o) => { const ns = A.col === B.col, hi = A.level >= B.level ? A : B, lo = hi === A ? B : A;
-        const line = ns ? Math.max(A.sy, B.sy) : Math.max(A.sx, B.sx), mid = (ns ? A.sx : A.sy) + 6, dx = ns ? 0 : Math.sign(lo.col - hi.col), dy = ns ? Math.sign(lo.row - hi.row) : 0;
+        const line = ns ? Math.max(A.sy, B.sy) : Math.max(A.sx, B.sx), mid = (ns ? A.sx : A.sy) + (o.port != null ? o.port : 6), dx = ns ? 0 : Math.sign(lo.col - hi.col), dy = ns ? Math.sign(lo.row - hi.row) : 0;
         return Object.assign({}, o, { ns, hi, lo, line, mid, dx, dy, rise: r2(hi.base - lo.base) }); };
     OPENi.forEach(o => { const A = fp[o.a], B = fp[o.b]; if (!A || !B || A.turn || B.turn) return;
         const ha = plot[o.a], hb = plot[o.b]; if (A.col - B.col !== ha.x - hb.x || A.row - B.row !== ha.y - hb.y) return;
@@ -357,40 +385,86 @@ ROOMS.forEach(R => {
         /* the lo side: water and track stop three squares short of it (as every stair opening of the plan) */
         for (let m = -1; m <= 1; m++) for (let k = 0; k < 3; k++) { const t = o.line + (o.dx + o.dy > 0 ? k : -1 - k), sx = o.ns ? o.mid + m : t, sy = o.ns ? t : o.mid + m; if ('wsj'.includes(cellR[sy][sx])) cellR[sy][sx] = 'o'; }
         OPENr.push(o); });
+    /* ── THE WALKS, DUG ── */
+    const W = M.W, Hh = M.D, ofXY = (x, y) => at(x - M.wx, y - M.wy), ofRef = r => typeof r === 'string' ? fp[r] : ofXY(r[0], r[1]);
+    const dig = (x, y) => { if (x >= 0 && y >= 0 && x < W && y < Hh && cellR[y][x] === 'x') cellR[y][x] = 'o'; };
+    const sideBetween = (A, B) => B.col > A.col ? 'E' : B.col < A.col ? 'W' : B.row > A.row ? 'S' : 'N';
+    /* a plot's ports, by side: { side: port middle square } */
+    const PORTS = {}; const port = (e, s, o) => { (PORTS[e.id] = PORTS[e.id] || {})[s] = o; };
+    WALK.forEach(w => w.plots.forEach((q, i) => { if (!i) return; const A = ofXY(w.plots[i - 1][0], w.plots[i - 1][1]), B = ofXY(q[0], q[1]);
+        port(A, sideBetween(A, B), 6); port(B, sideBetween(B, A), 6);
+        if (A.level !== B.level) OPENr.push(mkOpen(A, B, { kind: 'stair', name: w.name + ', the steps', i: 100 + OPENr.length })); }));
+    WJOIN.forEach(j => { const A = ofRef(j[0]), B = ofRef(j[1]); if (!A || !B) throw new Error('WJOIN: no plot ' + JSON.stringify(j));
+        if (Math.abs(A.col - B.col) + Math.abs(A.row - B.row) !== 1) throw new Error('WJOIN: ' + A.name + ' and ' + B.name + ' do not touch');
+        port(A, sideBetween(A, B), j[3]); port(B, sideBetween(B, A), j[3]);
+        if (j[2] === 'open') { if (A.level !== B.level) throw new Error('WJOIN: ' + A.name + ' and ' + B.name + ' stand at two levels'); return; }
+        OPENr.push(mkOpen(A, B, { kind: j[2], rope: j[2] === 'climb', name: A.name + ' / ' + B.name, port: j[3], i: 200 + OPENr.length })); });
+    WSEAM.forEach(s => { const e = ofRef(s[0]); port(e, s[1], s[2]); });
+    /* a walk plot: a chamber in the middle, a passage three wide from each port to it. A district plot: the window dug from its side in
+       until the first open square of that lane (its own floor) */
+    const rnd = mkRnd(5150);
+    if (process.env.SEW_PLOTS) process.env.SEW_PLOTS.split(',').forEach(id => { const e = fp[id]; console.log(id + ' ' + e.name + ' L' + e.level); for (let y = 0; y < N; y++) console.log('  ' + cellR[e.sy + y].slice(e.sx, e.sx + N).join('')); });
+    Object.keys(PORTS).forEach(id => { const e = fp[id], sx0 = e.sx, sy0 = e.sy, P2 = PORTS[id];
+        if (e.walk) { const sides = Object.keys(P2), straight = sides.length === 2 && SIDE[sides[0]][0] === -SIDE[sides[1]][0] && SIDE[sides[0]][1] === -SIDE[sides[1]][1] && P2[sides[0]] === P2[sides[1]];
+            let x0 = 4, x1 = 8, y0 = 4, y1 = 8; if (straight) { if (sides[0] === 'N' || sides[0] === 'S') { x0 = P2[sides[0]] - 1; x1 = P2[sides[0]] + 1; } else { y0 = P2[sides[0]] - 1; y1 = P2[sides[0]] + 1; } }
+            else { const g = Math.floor(rnd() * 2); x0 -= g; y0 += g - 1; x1 += 1 - g; y1 += Math.floor(rnd() * 2); }
+            sides.forEach(s => { const o = P2[s]; if (s === 'N' || s === 'S') { x0 = Math.min(x0, o - 1); x1 = Math.max(x1, o + 1); } else { y0 = Math.min(y0, o - 1); y1 = Math.max(y1, o + 1); } });
+            for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) dig(sx0 + x, sy0 + y);
+            sides.forEach(s => { const o = P2[s]; for (let k = 0; k < N; k++) for (let m = -1; m <= 1; m++) {
+                if (s === 'N' && k <= y0) dig(sx0 + o + m, sy0 + k); if (s === 'S' && 11 - k >= y1) dig(sx0 + o + m, sy0 + 11 - k);
+                if (s === 'W' && k <= x0) dig(sx0 + k, sy0 + o + m); if (s === 'E' && 11 - k >= x1) dig(sx0 + 11 - k, sy0 + o + m); } });
+            e.chamber = [x0, y0, x1, y1]; return; }
+        Object.keys(P2).forEach(s => { const o = P2[s], into = [-SIDE[s][0], -SIDE[s][1]];
+            for (let m = -1; m <= 1; m++) { let x = s === 'E' ? sx0 + 11 : s === 'W' ? sx0 : sx0 + o + m, y = s === 'S' ? sy0 + 11 : s === 'N' ? sy0 : sy0 + o + m, k = 0;
+                while (k < N && cellR[y][x] === 'x') { cellR[y][x] = 'o'; x += into[0]; y += into[1]; k++; }
+                if (k >= N) throw new Error(R.room + ': no open floor behind the ' + s + ' side of ' + e.name + ' (lane ' + (o + m) + ')'); } }); });
+    R.WSEAM = WSEAM.map(s => ({ e: ofRef(s[0]), side: s[1], port: s[2], id: s[3], door: s[4] }));
     const decals = DECALS.map(d => { const q = M.toRoom(d.x, d.z); return q ? Object.assign({}, d, { x: q[0], z: q[1] }) : null; }).filter(Boolean);
     const sp = M.sq(R.spawnAt[0], R.spawnAt[1], R.spawnAt[2]);
     R.fr = { name: R.name, cell: cellR, W: M.W, Hh: M.D, plots: Object.values(fp), fp, at, OPEN: OPENr, seed: R.seed, decals, spawn: sp };
+    /* THE WALKS, DRESSED: a lamp in every other chamber (one in three lit), the sewers' own clutter off the middle, a grate or a culvert mouth */
+    const nProps0 = M.props.length, wp = Object.values(fp).filter(p => p.walk), CLUTTER = ['traffic_barrel', 'tire_stack', 'drain_grate', 'culvert_mouth', 'wet_floor_sign', 'mushroom2'];
+    const used = new Set(), free = (x, y) => cellR[y][x] === 'o' && !used.has(x + ':' + y);
+    wp.forEach((p, i) => { const c = p.chamber; if (!c) return;
+        const corners = [[c[0], c[1]], [c[2], c[1]], [c[0], c[3]], [c[2], c[3]]].map(q => [p.sx + q[0], p.sy + q[1]]).filter(q => free(q[0], q[1]));
+        if (i % 2 === 0 && corners.length) { const q = corners[0]; used.add(q[0] + ':' + q[1]); M.props.push({ key: 'cave_torch', x: M.gcx(q[0]), z: M.gcz(q[1]), noLight: i % 3 !== 0 }); }
+        const q2 = corners[corners.length - 1]; if (q2 && free(q2[0], q2[1])) { used.add(q2[0] + ':' + q2[1]); const k = CLUTTER[Math.floor(rnd() * CLUTTER.length)];
+            M.props.push({ key: k, x: r2(M.gcx(q2[0]) + (rnd() - 0.5)), z: r2(M.gcz(q2[1]) + (rnd() - 0.5)), face: Math.round(rnd() * 360) }); }
+        R.fr.decals.push({ kind: rnd() < 0.5 ? 'puddle' : 'grime', x: M.gcx(p.sx + 6), z: M.gcz(p.sy + 6), y: p.base, r: r2(1.2 + rnd()), rot: Math.round(rnd() * 360) }); });
+    R.walkProps = M.props.length - nProps0;
 });
 /* the doors where plots parted: on each plot's own side, on the room's wall when the side lies on it, else free half a square in */
 const sideOf = (A, B) => { const ha = plot[A], hb = plot[B]; return hb.x > ha.x ? 'E' : hb.x < ha.x ? 'W' : hb.y > ha.y ? 'S' : 'N'; };
 const turnSide = (s, t) => { const o = ['N', 'E', 'S', 'W']; return o[(o.indexOf(s) + t / 90) % 4]; };
-function edgeDoor(R, id, side, o) {
-    const e = R.M.ofHome[id], s = turnSide(side, e.turn || 0), wallOn = { N: e.row === 0, S: e.row === R.M.rows - 1, W: e.col === 0, E: e.col === R.M.cols - 1 }[s];
-    const sx0 = e.col * N, sy0 = e.row * N, midX = R.M.gcx(sx0 + 6), midZ = R.M.gcz(sy0 + 6);
-    /* the port's middle square (the plan's ports are squares 5..7 of a side, the middle 6) */
-    const d = Object.assign({}, o);
-    if (wallOn) { d.wall = s.toLowerCase(); if (s === 'N' || s === 'S') d.x = midX; else d.z = midZ; }
-    else { d.wall = 'free'; d.passage = Object.assign({}, MOVE.FREE_PASS);
-        if (s === 'N') { d.x = midX; d.z = R.M.gcz(sy0); d.face = 180; } else if (s === 'S') { d.x = midX; d.z = R.M.gcz(sy0 + N - 1); d.face = 0; }
-        else if (s === 'W') { d.x = R.M.gcx(sx0); d.z = midZ; d.face = 90; } else { d.x = R.M.gcx(sx0 + N - 1); d.z = midZ; d.face = 270; } }
+/* a door on a frame plot's side at a port square: on the room's wall when the side lies on it, else free on the plot's last square, facing in */
+function sideDoor(R, e, s, portSq, o) {
+    const wallOn = { N: e.row === 0, S: e.row === R.M.rows - 1, W: e.col === 0, E: e.col === R.M.cols - 1 }[s], d = Object.assign({}, o);
+    const along = (s === 'N' || s === 'S') ? R.M.gcx(e.sx + portSq) : R.M.gcz(e.sy + portSq);
+    if (wallOn) { d.wall = s.toLowerCase(); if (s === 'N' || s === 'S') d.x = along; else d.z = along; return d; }
+    d.wall = 'free'; d.passage = Object.assign({}, MOVE.FREE_PASS);
+    if (s === 'N') { d.x = along; d.z = R.M.gcz(e.sy); d.face = 180; } else if (s === 'S') { d.x = along; d.z = R.M.gcz(e.sy + N - 1); d.face = 0; }
+    else if (s === 'W') { d.x = R.M.gcx(e.sx); d.z = along; d.face = 90; } else { d.x = R.M.gcx(e.sx + N - 1); d.z = along; d.face = 270; }
     return d;
 }
+function edgeDoor(R, id, side, o) { const e = R.M.ofHome[id]; return sideDoor(R, R.fr.fp[id], turnSide(side, e.turn || 0), 6, o); }
 const roomOf = id => ROOMS.find(R => R.M.ofHome[id]);
 const EXTRA = {}; ROOMS.forEach(R => { EXTRA[R.room] = []; });
 PARTED.forEach(P => { const RA = roomOf(P.a), RB = roomOf(P.b); if (RA === RB) throw new Error(P.id + ': both plots in one room');
     EXTRA[RA.room].push(edgeDoor(RA, P.a, sideOf(P.a, P.b), { id: P.id, leaf: P.leaf, wide: P.leaf === 'leaf_bulkhead', label: RB.name, sub: P.subA, action: { room: RB.room, at: P.id } }));
     EXTRA[RB.room].push(edgeDoor(RB, P.b, sideOf(P.b, P.a), { id: P.id, leaf: P.leaf, wide: P.leaf === 'leaf_bulkhead', label: RA.name, sub: P.subB, action: { room: RA.room, at: P.id } })); });
-/* every square a parted door stands on is dry walkway (its port was cleared by the plan's opening: a fall's port carries water) */
+/* the seams of the walks: a door pair with one id at both ends (the other end is written by the D.U.M.B.'s, the Deep's and the Cavern's tools) */
+ROOMS.forEach(R => R.WSEAM.forEach(s => EXTRA[R.room].push(sideDoor(R, s.e, s.side, s.port, Object.assign(s.door.gate ? { minClearance: s.door.gate } : { way: 'trail' }, { id: s.id, leaf: s.door.leaf, wide: s.door.leaf === 'leaf_bulkhead', label: s.door.label, sub: s.door.sub, action: { room: s.door.room, at: s.id }, desc: '' })))));
+/* every square a door stands on is dry walkway */
 ROOMS.forEach(R => EXTRA[R.room].forEach(d => { if (d.wall !== 'free') return; const sx = Math.floor((d.x + R.M.HX) / C), sy = Math.floor((d.z + R.M.HZ) / C); if (R.fr.cell[sy][sx] === 'x') throw new Error(d.id + ' stands in the wall in ' + R.room); }));
 
 /* THE WAYS OUT, moved: a link's sewer end goes with its plot (on the new room's wall when its side lies on it, else free on the plot's line).
    One is written again because its side is a seam inside the room now: tunnels_works (the Ghost Station's west end is the Loop Line spur's
-   north end now) goes to the Loop Line's old south spur (P03-03, turned: its east side, the room's east wall); the track runs on there. */
+   north end now) goes to the Loop Line's old south spur (P03-03, turned: its east side); the track runs on there. */
 const WAYS = {};
 { const homeSide = { n: 'N', s: 'S', w: 'W', e: 'E' };
   const plotOfWay = k => { const w = WAY[k]; const x = w.wall === 'free' ? w.x : w.wall === 'w' ? -HX + 1 : w.wall === 'e' ? HX - 1 : w.at, z = w.wall === 'free' ? w.z : w.wall === 'n' ? -HZ + 1 : w.wall === 's' ? HZ - 1 : w.at; return MOVE.homePlot(x, z); };
   Object.keys(WAY).forEach(k => { const w = WAY[k], hp = plotOfWay(k), R = roomOf(hp.id);
-      if (k === 'tunnels_works') { const e = R.M.ofHome['P03-03']; if (e.col !== R.M.cols - 1) throw new Error('tunnels_works: the Loop Line is not on the east wall'); WAYS[k] = { R, wall: 'e', at: R.M.gcz(e.row * N + 6) }; return; }
+      if (k === 'tunnels_works') { const e = R.M.ofHome['P03-03']; WAYS[k] = Object.assign({ R }, e.col === R.M.cols - 1 ? { wall: 'e', at: R.M.gcz(e.row * N + 6) } : { wall: 'free', x: R.M.gcx(e.col * N + N - 1), z: R.M.gcz(e.row * N + 6), face: 270 }); return; }
       if (w.wall === 'free') { const q = R.M.toRoom(w.x, w.z), e = R.M.ofHome[hp.id]; WAYS[k] = { R, wall: 'free', x: q[0], z: q[1], face: (((w.face || 0) + (e.turn || 0)) % 360) }; return; }
       /* the spur's place along its wall, through the plot's map, then the side as it stands now */
       const hx = (w.wall === 'n' || w.wall === 's') ? w.at : (w.wall === 'w' ? -HX + C / 2 : HX - C / 2), hz = (w.wall === 'w' || w.wall === 'e') ? w.at : (w.wall === 'n' ? -HZ + C / 2 : HZ - C / 2), q = R.M.toRoom(hx, hz), e = R.M.ofHome[hp.id];
@@ -399,9 +473,10 @@ const WAYS = {};
       else WAYS[k] = { R, wall: 'free', x: q[0], z: q[1], face: { N: 180, S: 0, W: 90, E: 270 }[s] }; });
   /* the docks' manhole: the spur's middle row is the hatch stair's arrival now, so its grate stands one square north of it on the line */
   if (WAYS.docks_sewer.wall === 'free') WAYS.docks_sewer.z = r2(WAYS.docks_sewer.z - C); }
-/* the room door `pump` (the city's sewer door lands on it): on the Pumping Station's north side, the room's north wall */
-{ const R = ROOMS[0], w = WAYS.pump; if (w.R !== R || w.wall !== 'n') throw new Error('pump: not on the Sewers\' north wall');
-  const d = doors.find(x => x.id === 'pump'); d.x = w.at; }
+/* the room door `pump` (the city's sewer door lands on it): on the Pumping Station's north side, free on its line since the Cells Culvert
+   stands north of it (the culvert's port is beside it, squares 8..10) */
+{ const R = ROOMS[0], w = WAYS.pump; if (w.R !== R) throw new Error('pump: not in the Sewers');
+  const d = doors.find(x => x.id === 'pump'); if (w.wall === 'n') d.x = w.at; else { d.wall = 'free'; d.x = w.x; d.z = w.z; d.face = w.face; d.passage = Object.assign({}, MOVE.FREE_PASS); } }
 
 /* ── derive every room, write it ── */
 const L = [], DEC_ROWS = [], TOTAL = { props: 0, natives: 0 };
@@ -413,7 +488,7 @@ ROOMS.forEach((R, ri) => {
     M.props.forEach(p => { const sx = Math.floor((p.x + M.HX) / C), sy = Math.floor((p.z + M.HZ) / C); if (!X.open(sx, sy)) throw new Error(R.room + ': ' + p.key + ' stands in the wall at ' + sx + ',' + sy); });
     const counters2 = counters.map(c => { const q = M.toRoom(c.x, c.z); return q ? Object.assign({}, c, { x: q[0], z: q[1] }) : null; }).filter(Boolean);
     const roomDoors = (ri === 0 ? doors.map(d => d.id === 'pump' ? d : null).filter(Boolean) : []).concat(EXTRA[R.room]);
-    TOTAL.props += M.props.length; TOTAL.natives += M.npc.length;
+    TOTAL.props += M.props.length - (R.walkProps || 0); TOTAL.natives += M.npc.length;
     console.log(R.room + ' ' + JSON.stringify(Object.assign({ world: [M.wx, M.wy], box: [M.cols, M.rows], mask: M.mask.join('/') }, X.count, { features: feats.length, props: M.props.length, natives: M.npc.length, doors: roomDoors.length })));
     if (M.strays.length) console.log('  STRAYS (a piece across two plots that no longer stand the same way):\n    ' + M.strays.join('\n    '));
     const PAL = ['urban:RubberNonSlip3a', 'bricks_2', 'urban:TileGeneric4b', 'urban:ConcreteStriped1e', 'wood_planks', 'urban:TileSubway4a'];
@@ -427,7 +502,7 @@ ROOMS.forEach((R, ri) => {
     L.push("                                  mood: { lamp: 0xbfe8b0, glow: 0x9fd0a0, strip: 0xd8f0c8, light: 0xcfe8c0, ambient: 0.13 }, fog: { color: 0x050806, density: 0.042 }, wallColor: 0x4e4a44, floorColor: 0x6c6e6a }),   // darker than the old rooms (mondo 11-16: \"dark and grimy and scary\")");
     L.push("            parti: '" + R.parti.replace(/'/g, "\\'") + "',");
     L.push("            typology: 'grid',");
-    L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + M.cols + ", nz: " + M.rows + ", mask: " + J(M.mask) + ", names: " + J(M.order.map(e => [M.pid(e), plot[e.id].name, plot[e.id].d, plot[e.id].level])) + " },");
+    L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + M.cols + ", nz: " + M.rows + ", mask: " + J(M.mask) + ", names: " + J(M.order.map(e => [M.pid(e), fr.fp[e.id].name, fr.fp[e.id].d, fr.fp[e.id].level])) + " },");
     L.push("            terrain: {");
     L.push("                res: 0.875, floor: 'urban:ConcreteStriped2c', cliff: 'bricks_2', path: 'urban:RubberNonSlip3a',");
     L.push("                noise: { amp: 0, scale: 5 }, crag: false,");
