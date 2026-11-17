@@ -147,7 +147,7 @@ const WAY = { waiting: wayAt('P02-00', 'N'), mirror: wayAt('P03-00', 'N'), libra
   door('library', { label: 'THE ASTRAL REALM · THE WAITING ROOM', sub: 'THE FRAME · BACK TO THE CHAIRS', action: { room: WAITING, at: 'library' }, desc: 'A frame at the end of the nave with a carpet in it, and chairs. The catalogue would like it noted that you took nothing out.' });
   door('nightmare', { label: 'THE ASTRAL REALM · THE WAITING ROOM', sub: 'THE FRAME · BACK TO THE CHAIRS', action: { room: WAITING, at: 'nightmare' }, desc: 'A frame with a carpet in it, and chairs facing the wall. The sign over them still has your number on it.' });
   /* THE MIRROR (mondo 11-16: "just add some sort of door from th looking garden to the astral sea of possibility"): the far side of the frame in Camelot's Looking-Glass Garden (bake-camelot.js door `mirror`) */
-  door('mirror', { label: 'CAMELOT · THE LOOKING-GLASS GARDEN', sub: 'THE MIRROR · BACK TO THE HEDGES', action: { room: 'site_prebuilt_camelot_kingdom', at: 'mirror' }, desc: 'A mirror frame with no glass in it, standing on an island. Through it: hedges, roses, a lawn. It does not reflect the Sea.' }); }
+  door('mirror', { label: 'CAMELOT · THE LOOKING-GLASS GARDEN', sub: 'THE MIRROR · BACK TO THE HEDGES', action: { room: 'site_prebuilt_camelot_ow_garden', at: 'mirror' }, desc: 'A mirror frame with no glass in it, standing on an island. Through it: hedges, roses, a lawn. It does not reflect the Sea.' }); }
 /* (the healing ring is the hub's own: the game lays it at the hub room's spawn, data.js hubs.astral) */
 
 run('build');     // landmarks, drawn pieces, pools
