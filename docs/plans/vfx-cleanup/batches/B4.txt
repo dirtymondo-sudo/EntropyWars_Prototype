@@ -1,0 +1,16 @@
+pzMagicMissile
+raceAuroraRay
+raceSpiritBomb
+goSolarFlare
+sigSpaceLaser
+pzCounterspell
+sharedShrinkRay
+raceDragonFist
+raceFlurryOfBlows
+raceKiCharge
+raceKiBlast
+raceMissileBarrage
+raceStunRay
+bbZapZapZap
+sigLoveRay
+bbGoopRay

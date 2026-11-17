@@ -1,0 +1,9 @@
+raceBlessedBlade
+sentaiRedSlash
+guardSlash
+sneakSlash
+crossSlash
+raceSyntheticBlade
+dragonSlash
+bladeWaltz
+swordBeam
