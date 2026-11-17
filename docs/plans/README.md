@@ -28,6 +28,7 @@ read them. PROPOSALS are not approved until the owner says so; check the matchin
 ## NPCs
 | File | What it is |
 |---|---|
+| `npc-encounters/HANDOFF.md` | READ FIRST for any NPC encounters work (2026-11-17): where it stands, what is live, mondo's decisions, what waits for him, the next steps. |
 | `npc-encounters/PLAN.md` | NPC ENCOUNTERS (2026-11-17): mondo's concept fitted to the game: tempers per race, the strike ladder, awareness, offers, NPC escape, onlookers, joining fights; built / partly / new per part, a Fable or Opus pick per step, 18 open questions. His original: `npc-encounters/concept-v0.3.md`. Sits on top of `../notes/npc-system.md`. |
 | `npc-encounters/REVIEW.md` | The review of that plan (2026-11-17): step 0's findings in code, the critique from the player's side, a changed build order (Bayside first), 12 questions for mondo. |
 | `npc-encounters/STEP-1A.md` | STEP 1A (2026-11-17), design only, for mondo to mark up: Bayside's seven units with a temper, their groups, the room mix, 9 spoken lines, the three marks over a head (mock-up pictures `step-1a-marks-*`), what a lost fight costs, 7 questions. Nothing is built before his marks. |
