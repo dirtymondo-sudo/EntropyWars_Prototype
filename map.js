@@ -11456,6 +11456,15 @@
                 objects: B.terrain.map(r => r.map(() => [])),
                 heightMap: B.heights.map(r => r.slice()),
                 spawns: { 1: B.spawns[1].slice(), 2: B.spawns[2].slice() },
+                /* the map card's picture: each square in its face's sticker colour (mondo 11-17: the rule ground is one plain floor,
+                   so the terrain colours drew it all one colour); a hole stays the core's dark */
+                colors: (() => {
+                    const fr = window.cubeFrame(B.N, window.CUBE_BASIS_TOP), pits = window.cubePitSlots(B.N, CUBE_RULES.missing);
+                    const out = B.terrain.map(r => r.map(() => null));
+                    for (const sid in fr.cell) { const c = fr.cell[sid], t = CUBE_RULES.faces[c.face].tint;
+                        out[c.y][c.x] = pits[sid] ? 'rgba(21,20,28,0.85)' : ('rgba(' + ((t >> 16) & 255) + ',' + ((t >> 8) & 255) + ',' + (t & 255) + ',0.75)'); }
+                    return out;
+                })(),
             };
             const builds = []; for (let i = 0; i < n; i++) builds.push(UNIT_CLASS);
             GAME_MODES[id] = {
@@ -11715,7 +11724,8 @@
                     if (pbData) {
                         const tid = pbData.grid[mr]?.[mc] || 0;
                         const tKey = (typeof ME_TERRAIN_IDS !== 'undefined' && ME_TERRAIN_IDS[tid]) ? ME_TERRAIN_IDS[tid] : null;
-                        const color = (tKey && _pbTerrainColor[tKey]) ? _pbTerrainColor[tKey] : (tid === 0 ? 'transparent' : 'rgba(80,140,60,0.3)');
+                        const own = pbData.colors && pbData.colors[mr] && pbData.colors[mr][mc];   // a map's own square colours (THE CUBE's stickers)
+                        const color = own || ((tKey && _pbTerrainColor[tKey]) ? _pbTerrainColor[tKey] : (tid === 0 ? 'transparent' : 'rgba(80,140,60,0.3)'));
                         html += `<div class="ms-mc" style="background:${color}"></div>`;
                         continue;
                     }

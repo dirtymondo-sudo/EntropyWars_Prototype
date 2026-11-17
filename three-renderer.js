@@ -25861,7 +25861,21 @@ const ThreeRenderer = (function () {
         if (!_cubeQuadGeo || _cubeQuadGeo.ts !== ts) {
             var top = new THREE.PlaneGeometry(ts, ts); top.rotateX(-Math.PI / 2); top._ew_shared = true;
             var wall = new THREE.PlaneGeometry(ts, ts); wall._ew_shared = true;   // faces +z, centred
-            _cubeQuadGeo = { ts: ts, top: top, wall: wall };
+            /* THE NO-FLICKER SQUARE (mondo 11-17: "a lot of flickering ... all those dark marks on the tiles"): the core used to be a
+               whole square with the sticker a hair above it, two surfaces fighting for the same depth. Now the core is a FRAME round
+               the sticker and the sticker fills the hole, side by side in one plane: nothing overlaps. */
+            var a = ts / 2, b = ts * 0.43, P = [], I = [], U = [];
+            [[-a, -a, a, -b], [-a, b, a, a], [-a, -b, -b, b], [b, -b, a, b]].forEach(function (r) {
+                var o = P.length / 3;
+                P.push(r[0], 0, r[1], r[2], 0, r[1], r[2], 0, r[3], r[0], 0, r[3]);
+                U.push(0, 0, 1, 0, 1, 1, 0, 1);
+                I.push(o, o + 2, o + 1, o, o + 3, o + 2);
+            });
+            var frame = new THREE.BufferGeometry();
+            frame.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); frame.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+            frame.setIndex(I); frame.computeVertexNormals(); frame._ew_shared = true;
+            var sticker = new THREE.PlaneGeometry(2 * b, 2 * b); sticker.rotateX(-Math.PI / 2); sticker._ew_shared = true;
+            _cubeQuadGeo = { ts: ts, top: top, wall: wall, frame: frame, sticker: sticker };
         }
         var warned = {};
         try { (cubeWarnedCells() || []).forEach(function (c) { warned[c.x + ',' + c.y] = 1; }); } catch (e) {}
@@ -25877,11 +25891,11 @@ const ThreeRenderer = (function () {
             var grp = new THREE.Group(); grp.position.set(x * ts + ts / 2, 0, y * ts + ts / 2);
             grp._ew_cubeCell = { x: x, y: y };
             /* the same look as the Astral Realm's cube: the dark core square, the face's sticker on it (a hole = core only) */
-            var q = new THREE.Mesh(_cubeQuadGeo.top, isPit ? _buildBeveledMaterials(tKey, tKey)[2] : _cubeCore()); q.position.y = h * ts * ELEV_STEP_RATIO;
+            var q = new THREE.Mesh(isPit ? _cubeQuadGeo.top : _cubeQuadGeo.frame, _cubeCore()); q.position.y = h * ts * ELEV_STEP_RATIO;
             q.receiveShadow = true; q.userData.tileX = x; q.userData.tileY = y; q._ew_cubeCell = { x: x, y: y };
             grp.add(q);
             if (!isPit) {
-                var st = new THREE.Mesh(_cubeQuadGeo.top, _cubeFaceMat(fc)); st.scale.set(0.86, 1, 0.86); st.position.y = h * ts * ELEV_STEP_RATIO + ts * 0.004;
+                var st = new THREE.Mesh(_cubeQuadGeo.sticker, _cubeFaceMat(fc)); st.position.y = h * ts * ELEV_STEP_RATIO;
                 st.receiveShadow = true; st.userData.tileX = x; st.userData.tileY = y; st._ew_cubeCell = { x: x, y: y };
                 grp.add(st);
             }
