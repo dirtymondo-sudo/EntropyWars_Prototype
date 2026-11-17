@@ -406,6 +406,20 @@ is that spell's own piece: judge in the sweep), Magic Missile / Zap Zap Zap / Sp
 Also open from L5's report: Jackpot and Shattered Mirror still show a glass orb + a wide ring about 0.45 s after the
 hit although they have their own look now; not traced (not `_stageBurst`'s orb, not a cue).
 
+**Built in B5, part 1 (THE PORTAL KIT, 11-17):** `_portalKit3D(tx, ty, o)` + `_VC_PORTAL` + `_vcPortalStage` in
+three-vfx-effects.js: two rings turning against each other, a glow, a dark centre, an ease-out-back open, smoke rolling
+out and down, sparks round the rim, a shrink-away close; `flat: true` lays it on the floor (a hole). Eleven spells: Mirror
+Blink, Instant Transmission, Phase Walk, Shadow Step, Rabbit Hole, Astral Projection, Spirit Walk, Agent Vanish,
+Dimensional Fold, Temporal Shift, Shadow Realm. One portal at the square the cast leaves (the windup beat), one at the
+square it lands on (the hit beat), each only where the viewer sees that square. Colour = the row's, else teal-warm for the
+viewer's own caster and violet-pink for an enemy's. No cast rune under a portal spell.
+SEEN: the portal itself, four colours, upright and flat, fired by hand beside a caster (img/b5_portals.jpg).
+NOT SEEN: a portal inside a real teleport cast. Those casts resolve in about 0.4 s, before the capture runner's first
+frame, so whether both beats land where they should in a real cast is unverified: mondo, or a playtest, must look.
+NOT built: THE AIR DOOR calling the kit (left untouched, so the cutscene is unchanged by construction); `teleport` itself
+(it moves ANOTHER unit: the two squares are the victim's and the destination, not the caster's; needs its own wiring);
+the doors, summons, raise dead and rifts on the list (decision 3: only where it makes sense, spell by spell).
+
 **Corrected 11-17:** the own-look lists called 240 spells "no look". About 129 of them have their ELEMENT's pass (fire,
 ice, water, nature, wind, metal, earth, sonic, blood, psychic) and only lack a spell-specific piece; 62 have no element
 at all. The threads were told: bare ones first, the element pass is the base, add only what makes it that spell.

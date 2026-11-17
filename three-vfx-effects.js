@@ -6389,6 +6389,106 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     /* ════════════════════════════════════════════════════════════════════
+       THE PORTAL KIT (THE VFX CLEANUP B5, 2026-11-17, docs/plans/vfx-cleanup/VFX_CLEANUP_PLAN.md section 5)
+       mondo: "the portal from the cutscene that the door with kit and the shadow entities arrive out of, i like the look
+       of that portal and that technique or look should be incorporated into more vfx." THE AIR DOOR's technique
+       (_sigAirDoor3D, untouched) as a kit: two rings turning against each other, a glow behind them, a DARK centre
+       (normal-blended black-violet: the rings read against darkness, not glare), an ease-out-back open, smoke that rolls
+       out of it and DOWN, sparks of its own light crawling round the rim, a shrink-away close.
+       Only where something really goes through somewhere else (mondo 11-17): _VC_PORTAL = the teleports, the walks
+       between, the rifts. A portal at the square it leaves (the windup) and one at the square it arrives on (the hit
+       beat). Its colour is the spell's when the row gives one, else the team's from the viewer's seat: teal-warm for
+       your own, the bruise (violet-pink) for an enemy's. Each end only where the viewer sees the square (_pzSeen), so
+       an enemy's arrival under the fog draws nothing. Rides the relayed stage beats. Off: EW_NO_VFX_CLEANUP. */
+    var _VC_PORTAL = {
+        raceMirrorBlink:         { col: 0x9fd8ff, col2: 0xe6f6ff },
+        raceInstantTransmission: { col: 0xffc83a, col2: 0xfff0b0, smoke: false },
+        racePhaseWalk:           {},
+        raceShadowStep:          { col: 0x7a3cff, col2: 0x3a1466 },
+        raceRabbitHole:          { flat: true },
+        raceAstralProjection:    { col: 0x8fb4ff, col2: 0xd0c0ff, smoke: false },
+        raceSpiritWalk:          { col: 0x8fe8d0, col2: 0xd8fff0, smoke: false },
+        raceAgentVanish:         {},
+        raceDimensionalFold:     {},
+        raceTemporalShift:       { col: 0xffc060, col2: 0x8fd8ff, smoke: false },
+        raceShadowRealm:         { col: 0x7a3cff, col2: 0x3a1466, scale: 1.25 }
+    };
+    function _vcPortalHostile(sx, sy) {
+        try {
+            if (typeof state === 'undefined' || !state.units || typeof getViewerPlayer !== 'function') return false;
+            var vp = getViewerPlayer();
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === sx && u.y === sy) return u.player !== vp; }
+        } catch (e) {}
+        return false;
+    }
+    /* o: { ms (how long it stands open), scale, col, col2, hostile, flat (it lies on the floor: a hole), smoke (false = none), lift } */
+    function _portalKit3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells') || _suppressed()) return null;
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty), ts = wp.ts, k = o.scale || 1, R = ts * 0.62 * k;
+        var c1 = o.col != null ? o.col : (o.hostile ? 0xc23aff : _DOOR_FX.teal), c2 = o.col2 != null ? o.col2 : (o.hostile ? 0xff5ab8 : _DOOR_FX.light);
+        var y = wp.y + (o.flat ? ts * 0.03 : ts * (o.lift != null ? o.lift : 0.62) * k);
+        var parts = [], flat = !!o.flat;
+        function piece(tex, col, add, size, order) {
+            var obj;
+            if (flat) {
+                var m = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(col), transparent: true, opacity: 0, depthWrite: false, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, side: THREE.DoubleSide });
+                obj = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), m); obj.rotation.x = -Math.PI / 2;
+            } else {
+                var sm = _sigMagicOrbMat(col, tex); if (!add) sm.blending = THREE.NormalBlending;
+                obj = new THREE.Sprite(sm); obj.geometry._ew_shared = true;
+            }
+            obj.position.set(wp.x, y, wp.z); obj.renderOrder = order; obj._pk = size; _vfxAdd(scene, obj); parts.push(obj); return obj;
+        }
+        var glow = piece(_sigGlowTex(), c1, true, R * 2.6, 145);
+        var r1 = piece(_sigRingTex(), c1, true, R * 2.0, 146), r2 = piece(_sigRingTex(), c2, true, R * 1.45, 147);
+        var dark = piece(_sigGlowTex(), 0x07040d, false, R * 1.5, 148);
+        var spin = function (obj, a) { if (flat) obj.rotation.z = a; else obj.material.rotation = a; };
+        var OPEN = 240, hold = Math.max(200, o.ms != null ? o.ms : 600), CLOSE = 280, total = OPEN + hold + CLOSE;
+        var lastS = 0, lastE = 0, sp0 = tilePx(tx, ty), z0 = unitSurfaceZ(tx, ty) + (flat ? 2 : ts * 0.62 * k);
+        _animate3D({ meshes: parts, done: false }, total, function (el) {
+            var pk = _sigEaseOutBack(_sigClamp01(el / OPEN));
+            if (el > OPEN + hold) pk *= 1 - _sigEaseInCubic(_sigClamp01((el - OPEN - hold) / CLOSE));
+            pk = Math.max(0.001, pk);
+            var br = 0.86 + 0.14 * Math.sin(el * 0.006), vis = Math.min(1, pk);
+            for (var i = 0; i < parts.length; i++) { var s2 = parts[i]._pk * pk; parts[i].scale.set(s2, s2, 1); }
+            spin(r1, el * 0.0022); spin(r2, -el * 0.0034);
+            r1.material.opacity = 0.9 * vis * br; r2.material.opacity = 0.65 * vis; glow.material.opacity = 0.42 * vis * br; dark.material.opacity = 0.9 * vis;
+            if (el > OPEN * 0.6 && el < OPEN + hold && _canSpawn()) {
+                if (o.smoke !== false && el - lastS > 90) {   /* the smoke rolls out and down */
+                    lastS = el;
+                    _spawn({ x: sp0.x + rn(-R * 0.3, R * 0.3), y: sp0.y + rn(-R * 0.3, R * 0.3), z: z0 + rn(-R * 0.2, R * 0.2), vx: rn(-14, 14), vy: rn(-14, 14), vz: flat ? rn(20, 50) : rn(-46, -14),
+                        mode: 'billboard', sprite: 'smoke-soft', tint: 0x1a1024, ml: rn(520, 820), size0: R * 0.45, size1: R * 1.1, opacity0: 0.5, opacity1: 0, drag: 0.5 });
+                }
+                if (el - lastE > 120) {                       /* sparks of its own light crawl round the rim */
+                    lastE = el; var a = rn(0, 6.2832);
+                    _spawn({ x: sp0.x + Math.cos(a) * R * 0.9, y: sp0.y + (flat ? Math.sin(a) * R * 0.9 : 0), z: z0 + (flat ? 0 : Math.sin(a) * R * 0.9), vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(-10, 40),
+                        mode: 'billboard', sprite: 'spark-blue', tint: c1, ml: rn(180, 320), size0: rn(4, 7), size1: 1, opacity0: 0.95, opacity1: 0, drag: 2 });
+                }
+            }
+        });
+        return true;
+    }
+    /* the portal spells' two beats */
+    function _vcPortalStage(phase, spellId, p) {
+        if (!_vcOn() || !p) return;
+        var row = _VC_PORTAL[spellId]; if (!row) return;
+        var sx = p.sx != null ? p.sx : p.tx, sy = p.sy != null ? p.sy : p.ty;
+        var o = { col: row.col, col2: row.col2, flat: row.flat, smoke: row.smoke, scale: row.scale, hostile: row.col == null && _vcPortalHostile(sx, sy) };
+        if (phase === 'windup') {
+            if (sx == null || !_pzSeen(sx, sy)) return;
+            o.ms = Math.max(300, Math.min(1600, (p.holdMs || 700) - 200)); _vcPortalFrom[sx + ',' + sy] = { hostile: o.hostile, at: performance.now() };
+            _portalKit3D(sx, sy, o);
+        } else if (phase === 'burst') {
+            if (p.tx == null || (p.tx === sx && p.ty === sy) || !_pzSeen(p.tx, p.ty)) return;
+            var from = _vcPortalFrom[sx + ',' + sy]; if (from && row.col == null) o.hostile = from.hostile;   /* the caster has left its square by now */
+            o.ms = 520; _portalKit3D(p.tx, p.ty, o);
+        }
+    }
+    var _vcPortalFrom = {};
+
+    /* ════════════════════════════════════════════════════════════════════
        THE BEAM KIT (THE VFX CLEANUP B3, 2026-11-17, docs/plans/vfx-cleanup/VFX_CLEANUP_PLAN.md section 4)
        mondo: "We need better beams and lasers, think epic anime ki blast or scifi laser blasters or harry potter
        spell duels." The generic laser was a white rod with a glow and a white blob for a charge. A kit beam has
@@ -22184,7 +22284,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_vcOwnC[spellId] != null) return _vcOwnC[spellId];
         var own = false;
         try {
-            own = !!(_geom3D(spellId) || _GO_SIG[spellId] || _GO_BEAM[spellId] || _FX2_BURST[spellId] || _F4_OWN[spellId]);
+            own = !!(_geom3D(spellId) || _GO_SIG[spellId] || _GO_BEAM[spellId] || _FX2_BURST[spellId] || _F4_OWN[spellId] || _VC_PORTAL[spellId]);
             if (!own) { var m = SPELL_MAP[spellId]; if (m) for (var k in m) { var d = EFFECTS[m[k]]; if (d && d.pzSig && _PZ_SIGS[d.pzSig]) { own = true; break; } } }
         } catch (e) { own = false; }
         return (_vcOwnC[spellId] = own);
@@ -22232,7 +22332,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _VC_NO_RUNE = { heal: 1, mana: 1, aura: 1, psychicAid: 1, bloodAura: 1, ki: 1 };   /* ki (B4): a power-up is an aura, not a rune */
     function _vcRuneOK(info, spellId, params, sx, sy) {
         if (!_vcOn()) return true;
-        if (!_VC_RUNE[info.archetype]) return false;
+        if (!_VC_RUNE[info.archetype] || _VC_PORTAL[spellId]) return false;   /* B5: a portal spell's portal is its mark */
         /* B4: a spell fired from a gun (a ray gun's hex is still a gun shot) draws no rune under the shooter */
         try { if (_SIG_GUN_FOR[spellId] || _SIG_LINE_GUN_FOR[spellId] || _isGunSpell(spellId)) return false; } catch (e) {}
         var d = _spellDefFor(spellId) || {};
@@ -24030,6 +24130,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _fpStage(phase, spellId, params); } catch (e) { console.warn('[VFX] fire mark failed', spellId, e); }
         /* THE NOISE PACKS: the element's noise wash on each square a damage spell hits */
         try { _nzStage(phase, spellId, params); } catch (e) { console.warn('[VFX] noise wash failed', spellId, e); }
+        /* THE PORTAL KIT (VFX cleanup B5): a portal where the spell leaves and one where it arrives */
+        try { _vcPortalStage(phase, spellId, params); } catch (e) { console.error('[VFX] portal kit failed ' + spellId + ' ' + (e && e.message)); }
         /* THE FX-4 PASS: Merkaba forms on the windup and goes off on the burst */
         try { _f4Stage(phase, spellId, params); } catch (e) { console.warn('[VFX] FX-4 stage failed', spellId, e); }
         /* THE NEW PROPS (2026-10-28): mondo's shield / syringe / bible on the same beats */
