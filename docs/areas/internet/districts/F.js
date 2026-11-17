@@ -29,7 +29,7 @@ const POSTS = [
 ];
 /* one post screen: two legs, the frame, the post's three bands, facing +z of its sheet */
 function screen(a, x, post, w, h, y0) { const [who, words, likes, bg, fg] = post;
-    a.box(x - w / 2 + 0.6, 0, -0.3, 0.35, y0, 0.35, STEEL, 0x30343a); a.box(x + w / 2 - 0.6, 0, -0.3, 0.35, y0, 0.35, STEEL, 0x30343a);
+    a.box(x, y0 - 0.5, -0.3, w + 0.8, 0.1, 0.5, null, 0xff5fb0, { glow: 1 }); a.box(x, y0 + h + 0.4, -0.3, w + 0.8, 0.1, 0.5, null, 0xff5fb0, { glow: 1 });   // (plan 3: a post hangs in the air, no legs)
     a.box(x, y0 - 0.25, -0.3, w + 0.5, h + 0.5, 0.4, STEEL, 0x16181c, { glow: 0.1 });
     a.box(x, y0, -0.08, w, h, 0.06, null, bg === '#ffffff' ? 0xf4f4f4 : parseInt(bg.slice(1), 16), { glow: 0.85 });
     a.sign(who, x - w * 0.15, y0 + h - 0.95, 0, w * 0.62, 0.62, fg, '', 'dot', { kind: 'over' });
@@ -78,9 +78,9 @@ exports.build = c => { const C = c.C;
     [[2.6, 2.6, 135], [9.4, 2.6, 225], [2.6, 9.0, 45], [9.4, 9.0, 315], [9.6, 5.9, 270]].forEach(([x, y, ry], i) => c.look('ad' + i, 'P06-02', x, y, ry, a => { const [w, fg, bg] = ADS[i];
         a.box(0, 0, -0.2, 0.3, 2.4, 0.3, STEEL, 0x30343a); a.box(0, 2.4, -0.2, 4.6, 2.6, 0.25, STEEL, 0x16181c); a.sign(w, 0, 2.55, 0, 4.3, 2.3, fg, bg, 'archivo'); a.sign('SPONSORED', 0, 2.0, 0, 2, 0.35, '#dddddd', '', 'dot', { kind: 'over' }); }));
     /* GOING VIRAL (P07-02): the stage everybody wants: the view counter */
-    c.look('viral', 'P07-02', 6, 9.2, 180, a => { a.box(0, 0, 0, 10, 0.5, 4, STEEL, 0x22262c); a.sign('GOING VIRAL', 0, 6.4, 1.5, 8, 1.3, '#ffffff', '#ff2a6a', 'archivo');
+    c.look('viral', 'P07-02', 3, 8.2, 90, a => { a.box(0, 0, 0, 10, 0.5, 4, STEEL, 0x22262c); a.sign('GOING VIRAL', 0, 6.4, 1.5, 8, 1.3, '#ffffff', '#ff2a6a', 'archivo');
         a.box(0, 0.5, 1.6, 8.6, 5.6, 0.3, STEEL, 0x0a0a0c); a.sign('9,999,999 VIEWS', 0, 3.3, 1.8, 8, 1.4, '#7fffd0', '#08221c', 'dot'); a.sign('15 MINUTES LEFT', 0, 1.4, 1.8, 6, 0.9, '#ffe23a', '#08221c', 'dot'); });
-    solid(c, 'P07-02', 3, 8, 8, 9, 7);
+    solid(c, 'P07-02', 2, 7, 3, 9, 7);
 };
 exports.dress = c => {
     /* the stages' kit */

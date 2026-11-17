@@ -11952,7 +11952,52 @@ What the map's `under.walks` asked for, and where each one is now (plots.json is
   now: S.js swings its leaves in, the ghost wall is gone), `ow_v_m12_m4` R4 at a new gap in the west wall (rows 24-25 home).
 - **A PROBE WALKS SLOWLY HERE** (llvmpipe, a big room with 1,800 edge trees): 3 m in 10 s on flat cobbles, so a walk that "stops" after
   2 m on the stair is the frame rate, not a wall (`ThreeRenderer.hq.dev.walk()` reads velX 4.6). Give a walk here 45 s.
-## THE INTERNET ON PLOTS (2026-11-17, One World phase 4.4, BUILD_PLAN row 4.4: "the Internet (36)"; the owner's 4.4 thread)
+## THE INTERNET, PLAN 3 (2026-11-17, the owner's Internet plan 2 thread; replaces the 36-plot first build below)
+mondo 11-17: "Improve the newly added internet ... a lot bigger and better and more detail ... a mix of the astral realm and a cyberpunk city ... a new
+layout and then an exterior pass and an interior pass". **THE LESSON (his words on the first attempt, which had a road with cars, towers, toll booths,
+lamp posts): "You took cyberpunk city way too literally. Why ... are there buildings and cars. Start over."** What he OK'd after ("Sure yes to
+everything, just use common sense"): the Internet is CYBERSPACE, not a place with streets. NO buildings, cars, roads, lamp posts or street furniture.
+Islands shaped like the thing they are; pathways are data (a river of light, the mail); the sky full of letters, numbers and pop-ups; culture as
+landmarks; for the interior pass a few INSIDES OF THINGS; the four first districts stay. "Cyberpunk" is only the look (neon, glitch, holograms).
+- **THE ROOM**: still ONE room `site_prebuilt_internet_web`, now 9 x 9 plots (378 m), 71 built, 10 open sky. Plan `docs/plans/world-zones/draw-internet.js`
+  (plan 3; a plot lists only its E / S joins, the other side is worked out; styles slab | blvd | ribbon | isle | window | round | ragged | small | deck)
+  -> `layout.json` + `internet_plot_plan.png`. Over the 30-plot rule on purpose (it is "beyond", one look over the whole net; watch the draw calls).
+- **NINE DISTRICTS** (`docs/areas/internet/districts/<H S M F V C B K D>.js`, one thread a file; shared pieces `docs/areas/internet/kit.js`: solid,
+  words, popup, popupStand, holo, screen, cable):
+  H THE INFORMATION HIGHWAY (12, level 10): a RIVER OF LIGHT four squares wide, a cross through the room, all of it walk; packets = lit cubes over it.
+    Landmarks THE DESKTOP (the round island at the crossing: a folder, a document, a picture, the bin, the pointer) and THE KEYBOARD (south end).
+    Dial-Up's modem, the Paywall (a wall of gold bars), Fibre's hoops, Buffering's ring, the Backbone's ribs.
+  S THE SERVER FARM (9, as built before) + INSIDE A SERVER (a rack the size of a house on the Hot Aisle, its door open).
+  M THE INBOX (5): envelopes, the hill of 4,096 unread, the Pigeonholes, the Spam Folder's pop-ups. THE MAIL flies from here.
+  F THE FEED (9): the scroll steps DOWN east (13 / 12 / 11); the post screens hang in the air (no legs).
+  V LIVE (6): the Hologram Stage, the Ring Light, Character Select (residents on pedestals), the Lobby's loading ring; insides THE HEADSET (P08-00,
+    the highest tile, level 14: textures not loaded) and THE CHAT ROOM (P06-03).
+  C THE POP-UPS (8, window tiles at eight heights): standing and hanging pop-ups, holo ads, the Captcha, THE SEARCH BAR (landmark), the Checkout's
+    wire cart, the Cookie Banner, Clickbait, the Quarantine (viruses in rings of red light).
+  B THE FORUMS (7) and D THE DARK WEB (9): the first build's pieces at their new plots (not redone yet).
+  K THE MOTHERBOARD (6, terraces 8 / 6 / 4): green board, gold traces (the walks), the Switch Bank, THE PROCESSOR (landmark), the Memory sticks,
+    the Capacitors, the Binary Falls, the Battery.
+- **THE MAIL (new engine piece; data.js bridge compile + three-renderer.js THE MAIL `_hqBuildMovers`)**: a `bridge` feature row with
+  `mover: { to: [dx, dy, dz], travel, dwell, phase }` (+ `hide: true, plain: true, rails: false`) is a slab that flies between two docks, drawn as an
+  envelope. The COMPILED slab itself moves, so every walker rule that reads the bridge layer reads it where it is; a walker on it is carried; its
+  place is read off the wall clock (two players see it at the same spot); a mover is never bucketed in the bridge grid; `_landSafe` is not updated
+  while riding. `window.EW_HQ_NO_MOVERS` holds them at the first dock. In the tool: `ctx.mail(name, plotA, side, plotB, { phase })` (straight across
+  the open sky along the plots' middle line; lays a walk to each dock). FOUR ROUTES: Outbox -> Influencer Stage; Mail Dock -> Bandwidth; Spam Folder
+  -> Mirror Sites; the Battery -> Clickbait. Any room may use the row.
+- **THE SKY (bake-internet.js THE SKY, shared)**: glyph fields (letters, numbers, marks 2-9 m tall; one arch row a region, seven glyph kinds a row =
+  seven draw calls) in every empty plot, high over the tiles and past the room's edge; green `rain` air in the empty plots; eight pop-ups the size
+  of houses; THE GLOBE (wire, south of the Keyboard: no glyph field in its two plots); THE TRACES under the tiles.
+- **TOOL (bake-internet.js) grew**: `look` rows carry `y` (an origin over the sky took the void's height); ctx `sky`, `fill` / `cut` / `walk` (plan
+  stage), `terrace`, `steps`, `building` (an inside of a thing: a hollow `texbuilding` with `y` + an arch shell; `leaf: 'none'` = a bare lit
+  doorway; returns at / put / native / look in its frame), `mail`, `traffic` (unused: no cars), the plot mask (empty plots), nine paint letters.
+  All tiles paint as the lit grid except the Inbox (marble), the Motherboard (metal + drawn green) and the first districts' own sheets.
+- **THE WAY IN** moved with the room's corner: link `dumb_internet` end b = x -178.5, z -183.75 (data.js, by hand; the tool checks it).
+- **SEEN (probe-fast, 11-17)**: the Desktop, the Pop-ups, the Motherboard, the Hologram Stage + chat column, the Headset, the Inbox, the Globe, the
+  whole room from above: no page error.
+- **NOT YET**: the Forums and the Dark Web redone in the new style; the screens scroll; the glyphs drift (arch rows cannot move); sound; DOOR HQ's
+  monitor way in; a map picture for the room (`node bake-map.js` + `--put`).
+
+## THE INTERNET ON PLOTS, THE FIRST BUILD (replaced by PLAN 3 above) (2026-11-17, One World phase 4.4, BUILD_PLAN row 4.4: "the Internet (36)"; the owner's 4.4 thread)
 mondo OK'd the four districts 11-17 ("that is okay" to: the Feed, a long boulevard of giant scrolling screens; the Forums, plazas of message
 boards; the Server Farm, aisles of racks and cables; the Dark Web, a lower, darker level underneath; reached from the D.U.M.B.'s server rooms).
 Every plot name is mine (labels, marked "(label mine)" in the layout). The Internet is "beyond" on the One World sheet (beside the Astral Realm);

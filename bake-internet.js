@@ -44,7 +44,7 @@ const GROUND = { S: 's', F: 'f', B: 'b', D: 'd', H: 'h', M: 'm', V: 'g', C: 'c',
 const F = [], props = [], npc = [], counters = [], ARCH = [], count = {}, taken = new Set(), errs = [], strays = [];
 const feat = o => { F.push(o); return o; };
 /* plan 2: the new districts' floor sheets (terrain keys; a letter of the square map each) */
-const PAINT = { h: 'gunmetal', r: 'urban_street', m: 'marble_light', e: 'aluminium', g: 'carpet_3', y: 'holo', c: 'concrete_floor', n: 'urban_street', t: 'metal_3', i: 'gold_2' };
+const PAINT = { h: 'holo', r: 'holo', m: 'marble_light', e: 'aluminium', g: 'carpet_3', y: 'holo', c: 'aluminium', n: 'holo', t: 'metal_3', i: 'gold_2' };
 const setRect = (x0, y0, x1, y1, ch) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) cell[y][x] = ch; };
 
 /* ── placing things (the Astral Realm's rules). A blocker stands on a square's middle (P / put), never on a walk, never two on one square;
@@ -177,6 +177,40 @@ run('build');
 run('dress');
 run('people');
 
+/* ── THE SKY (plan 3, shared; mondo: "floating numbers and letters in space ... 1s and 0s, binary ... Holographic floating ad boards, some
+   could look like windows pop up viruses"). Everything here hangs in the open sky, drawn only: nobody walks into it.
+   THE GLYPHS: letters, numbers and marks, 2 to 7 m tall, in every empty plot and high over the tiles (one arch row a region, seven kinds of
+   glyph a row, so a region is seven draw calls). THE RAIN: green streaks falling through four empty plots (the `rain` air). THE POP-UPS:
+   eight windows the size of houses hanging off the districts' edges. THE GLOBE: the wire globe south of the Keyboard. THE TRACES: lit
+   lines with square bends running under the tiles from district to district. ── */
+const KIT = require('./docs/areas/internet/kit.js'), SKYAIR = [];
+{ const S = CTX.H, rnd = mkRnd(40961), R = (a, b) => a + rnd() * (b - a), pick = L => L[Math.floor(rnd() * L.length)];
+  const GLY = ['0', '1', '01', '10', '1010', '0110', '@', '#', '{ }', '</>', 'www', 'http://', '.com', '404', '?', 'lol', 'A', 'Z', '7', '&', '%', '$', '*', '=', '+', 'e', 'x', 'Q', '::', '>_', 'OK', 'null', 'NaN', '0x1F', ';)', 'brb'];
+  const COL = ['#7fffd0', '#40e0ff', '#ffffff', '#30ff70', '#ff5fb0', '#b070ff', '#ffe040'];
+  const field = (name, x0, z0, x1, z1, y0, y1, n, col, big) => S.sky('glyphs_' + name, (x0 + x1) / 2, (z0 + z1) / 2, 0, 0, a => { const set = []; while (set.length < 7) { const g = pick(GLY); if (set.indexOf(g) < 0) set.push(g); }
+      for (let i = 0; i < n; i++) { const g = set[i % 7], h = R(big ? 4 : 1.8, big ? 9 : 5.5), w = Math.max(h * 0.6, g.length * h * 0.55); KIT.words(a, g, R(x0, x1) - (x0 + x1) / 2, R(y0, y1), R(z0, z1) - (z0 + z1) / 2, r2(w), r2(h), col, i % 3 ? 'dot' : 'archivo'); } });
+  let k = 0;
+  for (let y = 0; y < GY; y++) for (let x = 0; x < GX; x++) { if (Pxy(x, y) || (x === 4 && y >= 7)) continue; const X0 = gx(x * N) + 3, Z0 = gx(y * N) + 3; field('v' + x + y, X0, Z0, X0 + N * C - 6, Z0 + N * C - 6, 2, 34, 26, COL[k++ % COL.length]);
+      if (k % 2) SKYAIR.push({ x0: X0, z0: Z0, x1: X0 + N * C - 6, z1: Z0 + N * C - 6, kind: 'rain', n: 130, color: 0x30ff70 }); }
+  /* high over the tiles: bigger, fewer */
+  for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) field('hi' + i + j, -HALF + i * 126 + 8, -HALF + j * 126 + 8, -HALF + (i + 1) * 126 - 8, -HALF + (j + 1) * 126 - 8, 42, 70, 12, COL[(i + j * 2) % COL.length], true);
+  /* past the room's edge, all round */
+  [[-HALF - 60, -HALF, -HALF - 8, HALF], [HALF + 8, -HALF, HALF + 60, HALF], [-HALF, -HALF - 60, HALF, -HALF - 8], [-HALF, HALF + 8, HALF, HALF + 60]].forEach((q, i) => field('rim' + i, q[0], q[1], q[2], q[3], -10, 60, 30, COL[(i * 2 + 1) % COL.length], true));
+  /* THE POP-UPS in the sky */
+  const POPS = [[-66, -112, 22, 30, 'Low disk space', ['THE CLOUD IS FULL', 'DELETE 1 PHOTO', 'TO CONTINUE'], ['OK']], [22, -150, 30, -20, 'Notification', ['SOMEBODY YOU DO NOT', 'KNOW LIKED A POST', 'FROM 2014'], ['VIEW']], [-150, 22, 14, 60, 'WARNING', [['37 VIRUSES FOUND', '#c01020'], 'CLICK HERE', 'DO NOT CLICK HERE'], ['OK', 'OK']],
+      [20, 108, 24, 200, 'Are you still there?', ['YOU HAVE BEEN', 'SCROLLING FOR', '9 HOURS'], ['YES', 'YES']], [150, -22, 26, 250, 'Update available', ['VERSION 2 IS THE SAME', 'BUT THE BUTTONS', 'HAVE MOVED'], ['INSTALL']], [-22, 150, 10, 160, 'Fatal error', ['THE OPERATION', 'COMPLETED', 'SUCCESSFULLY'], ['OK']],
+      [108, 150, 22, 190, 'Cookies', ['THIS SKY USES COOKIES'], ['ACCEPT']], [-108, -20, 30, 100, 'Reminder', ['YOUR FREE TRIAL', 'ENDED 6 YEARS AGO'], ['PAY']]];
+  POPS.forEach((q, i) => S.sky('skypop' + i, q[0], q[1], q[2], q[3], a => KIT.popup(a, 0, 0, 0, 12, 8, q[4], q[5], q[6])));
+  /* THE GLOBE: wire, 13 m radius, south of the Keyboard */
+  S.sky('globe', 0, gx(96), 18, 0, a => { const Rr = 13; [-0.8, -0.5, -0.2, 0.2, 0.5, 0.8].forEach(t => { const r = Rr * Math.cos(Math.asin(t)); a.cyl(0, Rr * t, 0, r, 0.22, null, 0x40e0ff, { seg: 28, ri: r - 0.22, glow: 1 }); });
+      a.cyl(0, 0, 0, Rr, 0.3, null, 0x7fffd0, { seg: 32, ri: Rr - 0.3, glow: 1 });
+      for (let m = 0; m < 3; m++) { const ang = m * Math.PI / 3, cx = Math.cos(ang), sz = Math.sin(ang); for (let i = 0; i < 28; i++) { const t = i / 28 * Math.PI * 2; a.box(Math.cos(t) * Rr * cx, Math.sin(t) * Rr - 0.25, Math.cos(t) * Rr * sz, 0.5, 0.5, 0.5, null, 0x40e0ff, { glow: 1 }); } }
+      KIT.words(a, 'WWW', 0, -2.4, 0, 13, 5, '#ffffff', 'archivo'); KIT.words(a, 'WORLD WIDE WEB', 0, -17.5, 0, 16, 1.6, '#7fffd0', 'archivo'); });
+  /* THE TRACES: under the tiles, district to district, square bends */
+  S.sky('traces', 0, 0, 0, 0, a => { const T = [[[-126, 9, -126], [-126, 9, -21], [0, 9, -21], [0, 9, 0]], [[105, 14, -147], [105, 14, -40], [0, 14, -40], [0, 14, 0]], [[105, 11, 105], [105, 11, 30], [0, 11, 30], [0, 11, 0]], [[-147, 2, 126], [-147, 2, 40], [-60, 2, 40], [-60, 12, 40], [0, 12, 40]],
+          [[-84, 6, 63], [-30, 6, 63], [-30, 6, 147], [0, 6, 147]], [[168, 16, -168], [168, 16, 0], [150, 16, 0]], [[-180, 5, 0], [-180, 5, -63], [-150, 5, -63]]];
+      T.forEach((pts, i) => { KIT.cable(a, pts, [0x40e0ff, 0xff5fb0, 0xffe040, 0xff3050, 0x30ff70, 0xb070ff, 0xffffff][i], 0.28); pts.forEach(q => a.box(q[0], q[1] - 0.3, q[2], 0.9, 0.9, 0.9, null, 0xffffff, { glow: 1 })); }); });
+}
 if (strays.length) console.log('pieces a district stood on another district\'s squares (ask that district\'s thread):\n  ' + strays.join('\n  '));
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
 
@@ -236,7 +270,7 @@ Object.assign(count, { plots: PLAN.plots.length, features: features.length, draw
    [{ sx0, sy0, sx1, sy1 (its own squares, the end exclusive), kind, color, n, speed, wind }]. The grid's own drifting bits are a last zone over the room. */
 const AIR = [].concat(...Object.keys(DISTRICTS).filter(k => typeof DISTRICTS[k].airZones === 'function').map(k => (DISTRICTS[k].airZones(CTX[k]) || []).map(z => {
     const q = Object.assign({}, z, { x0: gx(z.sx0), z0: gx(z.sy0), x1: gx(z.sx1), z1: gx(z.sy1) }); delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; })));
-const ATMOS = { kind: 'motes', n: 200, color: 0x7fffd0, zones: AIR.concat([{ x0: -HALF, z0: -HALF, x1: HALF, z1: HALF, kind: 'motes', n: 260, color: 0x7fffd0 }]) };
+const ATMOS = { kind: 'motes', n: 200, color: 0x7fffd0, zones: AIR.concat(SKYAIR, [{ x0: -HALF, z0: -HALF, x1: HALF, z1: HALF, kind: 'motes', n: 260, color: 0x7fffd0 }]) };
 
 /* ── the room ── */
 const TOP = Math.max.apply(null, PLAN.plots.map(p => p.base)), SPM = { x: gc(SP[0]), z: gc(SP[1]) };
