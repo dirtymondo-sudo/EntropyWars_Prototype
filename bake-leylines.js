@@ -242,9 +242,12 @@ F.forEach(f => { const own = OWNER.get(f); if (!own || f.x != null || !Array.isA
     const mid = f.pts[Math.floor(f.pts.length / 2)]; if (sqd(mid) === own) return;
     const cen = [f.pts.reduce((a, q) => a + q[0], 0) / f.pts.length, f.pts.reduce((a, q) => a + q[1], 0) / f.pts.length], at = sqd(cen) === own ? cen : f.pts.find(q => sqd(q) === own);
     if (at) { f.x = r2(at[0]); f.z = r2(at[1]); f._anchor = 1; } });
+/* A DISTRICT'S OWN WAYS IN (2026-11-17, Bug Colony's hive + nest doors): `exports.ways(ctx)` = free doors in home metres; they move with their plot and are
+   written on the room the district stands in (the route kit's room too: the export carries them, bake-route.js keeps a door with no side where it stands) */
+ORDER.forEach(k => { if (typeof DISTRICTS[k].ways === 'function') DISTRICTS[k].ways(CTX[k]).forEach(d => HOMEDOORS.push(Object.assign({ own: k }, d))); });
 const MOVER = require('./ow-move.js')({ cols: GX, rows: GY, cell, fill: ' ', plots: HOMEP, features: F, props, npc, doors: HOMEDOORS });
 const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === ROOM && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Leylines district ' + letter);
-    return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n || p.d !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
+    return d.plots.map(q => { const p = plot[q.was]; if (!p || p.d !== letter || (p.name !== q.n && letter !== 'B')) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); /* (Bug Colony's names changed with its redesign, 11-17: the layout's win; plots.json keeps the old ones, gen.js reads the retired room) */ return { id: q.was, wx: q.x, wy: q.y }; }); };
 const R_LINE = 'site_prebuilt_gobekli_ow_line', R_BABEL = 'site_prebuilt_gobekli_ow_babel', R_BUGS = 'site_prebuilt_gobekli_ow_bugs', R_HENGE = 'site_prebuilt_gobekli_ow_henge';
 const L16 = PJ.links.find(l => l.id === 'L16'); if (!L16 || L16.plots.length !== 2) throw new Error('plots.json: L16 is not two plots any more (rule 4: a link of three or more is the route kit\'s)');
 /* every home plot's world place (to draw a cell of a room's box that is another Leylines room's plot) */
@@ -354,7 +357,8 @@ STAND.forEach(S => {
         d.plotCol = e.col; d.plotRow = e.row; d.side = sd; d.along = along;   // (for the route kit: stripped by the writer)
         doorsOut.push(d); seamDoor[sm.id] = { d, bq }; });
     /* the hand rows (bay doors, links) where their plots stand now */
-    R.doors.forEach(d => { const o = { room: S.id, part: S.part, wall: d.wall }; if (d.wall === 'free') Object.assign(o, { x: d.x, z: d.z, face: d.face }); else if (d.wall === 'n' || d.wall === 's') o.x = d.x; else o.z = d.z;
+    R.doors.forEach(d => { if (d.own) { const o = Object.assign({}, d); delete o.own; delete o.plot; delete o.side; doorsOut.push(o); return; }
+        const o = { room: S.id, part: S.part, wall: d.wall }; if (d.wall === 'free') Object.assign(o, { x: d.x, z: d.z, face: d.face }); else if (d.wall === 'n' || d.wall === 's') o.x = d.x; else o.z = d.z;
         if (d.wall !== 'free' || d.side === 'free' || d.passage == null) delete o.passage; PLACES[d.id] = o; });
     if (S.giza) { const e = R.ofHome[S.giza.plot]; if (e.col !== 0) throw new Error('the Giza tunnel\'s plot is not on the west wall'); PLACES.giza = { room: S.id, part: S.part, wall: 'w', z: R.gz(e.row * N + S.giza.along) }; ways.push({ side: 'w', at: PLACES.giza.z }); }
     /* ── what stands where (to keep the spawn and the walk off it) ── */
@@ -383,6 +387,33 @@ STAND.forEach(S => {
 });
 if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way):\n  ' + STRAYS.join('\n  '));
 ROOMS_OUT.forEach(o => console.log(o.S.id + (o.S.kit ? ' (the route kit writes it)' : '') + ' ' + JSON.stringify(o.count)));
+
+/* ══ THE INSIDES (2026-11-17, Bug Colony's Hive + Ant Nest): a district's `exports.insides(ctx)` = rooms of their own on whole squares (h[y][x] =
+   the floor in metres, null = solid up to the roof). Written here as box rooms with a height field: a solid square stands to the roof with sheer
+   sides, a floor square's corners are the mean of the floor squares round them (so a run of squares climbing 3.5 m over four is a slope you walk).
+   Every floor square must be reached from the door by the walker's step (0.3 of a square). ══ */
+const INSIDES = []; ORDER.forEach(k => { if (typeof DISTRICTS[k].insides === 'function') DISTRICTS[k].insides(CTX[k]).forEach(q => INSIDES.push(q)); });
+INSIDES.forEach(q => { const { W, D, h } = q, fl = (x, y) => x >= 0 && y >= 0 && x < W && y < D && h[y][x] !== null;
+    const corner = (x, y) => { let s = 0, n = 0; [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]].forEach(t => { if (fl(t[0], t[1])) { s += h[t[1]][t[0]]; n++; } }); return n ? s / n : (q.blocks ? 0 : q.wallH); };
+    /* `blocks: true` (the Hive): the solid squares are sheer `plateau` blocks (a run of a row each) standing on a floor-high field, so their sides are
+       walls, never the field's slope (a field cliff leans half a square into the floor and buries a drawn wall) */
+    q.slope = Buffer.alloc(W * D * 8); q.blockRows = [];
+    for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) { const o = (y * W + x) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((t, k) => q.slope.writeInt16LE(Math.round((fl(x, y) || q.blocks ? corner(x + t[0], y + t[1]) : q.wallH) * 100), o + k * 2)); }
+    if (q.blocks) for (let y = 0; y < D; y++) { let x = 0; while (x < W) { if (fl(x, y)) { x++; continue; } let e = x; while (e < W && !fl(e, y)) e++;
+        q.blockRows.push({ k: 'plateau', x: r2((x + (e - x) / 2 - W / 2) * C), z: r2((y + 0.5 - D / 2) * C), w: r2((e - x) * C), d: C, h: q.wallH, edge: 0.05 }); x = e; } }
+    const avg = (x, y) => (corner(x, y) + corner(x + 1, y) + corner(x, y + 1) + corner(x + 1, y + 1)) / 4, at = (sx, sy) => [r2((sx + 0.5 - W / 2) * C), r2((sy + 0.5 - D / 2) * C)];
+    const ds = q.door.sq; if (!fl(ds[0], ds[1])) throw new Error(q.id + ': the door square is solid');
+    const seen = new Uint8Array(W * D), st = [ds]; seen[ds[1] * W + ds[0]] = 1; let floors = 0;
+    for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) if (fl(x, y)) floors++;
+    let got = 1; while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!fl(X, Y) || seen[Y * W + X]) continue;
+        if (Math.abs(avg(X, Y) - avg(x, y)) > 0.3 * C) continue; seen[Y * W + X] = 1; got++; st.push([X, Y]); } }
+    if (got !== floors) { const miss = []; for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) if (fl(x, y) && !seen[y * W + x]) miss.push(x + ',' + y); throw new Error(q.id + ': ' + miss.length + ' floor squares not reached from the door: ' + miss.slice(0, 12).join(' ')); }
+    const dp = at(ds[0], ds[1]), door = Object.assign({ id: q.door.id, wall: q.door.wall }, q.door.wall === 'n' || q.door.wall === 's' ? { x: dp[0] } : { z: dp[1] }, q.door.way ? { way: q.door.way, passage: q.door.passage } : {}, { leaf: q.door.leaf, label: q.door.label, sub: q.door.sub, action: q.door.action, desc: q.door.desc });
+    const inw = { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[q.door.wall], sp = at(ds[0] + inw[0] * 2, ds[1] + inw[1] * 2);
+    Object.assign(q, { floors, doorRow: door, sp: { x: sp[0], z: sp[1], face: { n: 0, s: 180, e: 270, w: 90 }[q.door.wall] }, npcOut: q.npc.map(n => { const p = at(n.sq[0], n.sq[1]); return { x: p[0], z: p[1], face: n.face, race: n.race }; }),
+        dp });
+    q.npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); }); q.props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); });
+    console.log(q.id + ': ' + W + ' x ' + D + ' squares, ' + floors + ' floor squares, all reached from the door; ' + q.looks.length + ' drawn rows, ' + q.props.length + ' props, ' + q.npc.length + ' people'); });
 
 /* THE EXPORT (the joining rule): `--export <part> <file>` hands one stood district to the route kit as JSON and writes nothing else */
 { const xi = process.argv.indexOf('--export'); if (xi >= 0) { const o = ROOMS_OUT.find(q => q.S.part === process.argv[xi + 1]); if (!o) throw new Error('no room with part ' + process.argv[xi + 1]);
@@ -437,6 +468,41 @@ ROOMS_OUT.forEach(o => { const { S, R } = o; if (S.kit) return;
     L.push("            onlineSpots: [],");
     L.push("            lines: " + J(o.lines) + ",");
     L.push("            spawn: { x: " + o.sp.x + ", z: " + o.sp.z + ", face: " + o.sp.face + " },");
+    L.push("        },"); });
+INSIDES.forEach(q => { const w = q.W * C, d = q.D * C, sh = q.shell;
+    L.push("        " + q.id + ": {");
+    L.push("            label: " + J(q.label) + ",");
+    L.push("            sub: " + J(q.sub) + ",");
+    L.push("            kind: 'box', site: 'prebuilt_gobekli', part: " + J(q.part) + ",");
+    L.push("            shell: { w: " + w + ", d: " + d + ", h: " + q.wallH + ", wallH: " + q.wallH + ", dadoH: 1.2, open: false,");
+    L.push("                     floor: " + J(sh.floor) + ", wall: " + J(sh.wall) + ", dado: " + J(sh.wall) + ", trim: " + J(sh.wall) + ", ceiling: " + J(sh.ceiling) + ", ceilTile: 1.75,");
+    L.push("                     floorColor: " + sh.floorColor + ", wallColor: " + sh.wallColor + ", dadoColor: " + sh.wallColor + ", ceilColor: " + sh.ceilColor + ",");
+    L.push("                     pipes: false, strips: false, lights: [],");
+    L.push("                     mood: " + J(q.mood) + ",");
+    L.push("                     fog: " + J(q.fog) + ",");
+    L.push("                     plate: { x: " + q.sp.x + ", z: " + q.sp.z + ", y: " + r2(q.wallH - 2) + " } },");
+    L.push("            terrain: {");
+    L.push("                floor: " + J(q.floor) + ", cliff: " + J(q.cliff) + ", path: " + J(q.floor) + ", noise: { amp: 0 }, crag: false, levelM: 3.5, res: 1.75, backdrop: false,");
+    L.push("                slope: { cells: { res: " + C + ", x0: " + r2(-w / 2) + ", z0: " + r2(-d / 2) + ", nx: " + q.W + ", nz: " + q.D + ", d: '" + q.slope.toString('base64') + "' } },");
+    /* one paint sheet (the floor): a room with slope cells + paint draws its cliffs sheer (three-renderer.js steepCliff) */
+    L.push("                paint: { pal: " + J([q.floor]) + ", t: 'u8', res: " + (C / 2) + ", x0: " + r2(-w / 2 + C / 4) + ", z0: " + r2(-d / 2 + C / 4) + ", nx: " + (2 * q.W) + ", nz: " + (2 * q.D) + ", d: '" + Buffer.alloc(4 * q.W * q.D).toString('base64') + "' },");
+    L.push("                features: [");
+    q.blockRows.forEach(f => L.push("                    " + J(f) + ","));
+    q.looks.forEach(a => L.push("                    " + J({ k: 'arch', id: 'ley:' + a.id + ':look', x: a.x, z: a.z, y: a.y == null ? 0 : a.y, rot: 0, parts: a.parts }) + ","));   // (y: a drawn row stands on the room's floor, never on a solid square's top)
+    L.push("                ],");
+    L.push("            },");
+    L.push("            doors: [");
+    L.push("                " + J(q.doorRow) + ",");
+    L.push("            ],");
+    L.push("            counters: [],");
+    L.push("            props: [");
+    for (let i = 0; i < q.props.length; i += 4) L.push("                " + q.props.slice(i, i + 4).map(J).join(", ") + ",");
+    L.push("            ],");
+    L.push("            agents: [],");
+    L.push("            npcSpots: " + J(q.npcOut) + ",");
+    L.push("            onlineSpots: [],");
+    L.push("            lines: " + J(q.lines) + ",");
+    L.push("            spawn: " + J(q.sp) + ",");
     L.push("        },"); });
 L.push("        /* LEYLINES63-END */");
 const block = L.join('\n') + '\n';

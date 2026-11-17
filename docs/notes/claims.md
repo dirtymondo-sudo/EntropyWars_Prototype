@@ -511,3 +511,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   `ow_v_m4_29` (Western Town, west side), `ow_h_2_33` (Area 51, north side), `ow_h_13_29` (Giza, north side) are INTERIM open seams to the Highway's room at the old exits; re-point
   each district's end to your leg (or move the seam to where the leg meets it) and retire the Highway's room into the leg that holds Exit 1 (`downtown_desert` end b, part `highway`).
   To the D.U.M.B.: nothing of yours was edited; R.js's `site_prebuilt_area51_desert` still names Area 51.
+
+- 2026-11-17 (owner, Leylines thread): Leylines district B (Bug Colony) redesigned on mondo's ask: the Giant Tree + the Hive (NW, P03-00) and the Anthill (SE, P05-02), with two
+  new inside rooms `site_prebuilt_gobekli_hive` + `site_prebuilt_gobekli_nest` (bake-leylines.js writes them from B.js `insides()`; a district's `ways()` adds free doors).
+  `bake-route.js` now keeps a JOIN door that has no plot side (a district's own door) as it is. Notes: areas-complexes.md "BUG COLONY, THE GIANT TREE + THE ANT NEST".

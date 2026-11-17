@@ -33,7 +33,7 @@ const A = {
     mound: { x: 17.5, y: 16.5, flat: 10, foot: 15.5, h: 5.25 },       // Gobekli Tepe: the tell (a flat-topped hill)
     enclosures: [[13, 12, 'A'], [21, 12, 'B'], [13, 20, 'C'], [21, 20, 'D']],   // each a 5 x 5 square ring round this square
     sentinel: { x: 31, y: 5 }, cistern: { x: 31, y: 20 }, doorway: { x: 5, y: 31 }, dig: [[2, 3, 9, 5], [2, 8, 9, 10]],
-    anthill: { x: 54, y: 12, r: 8, h: 7 }, hive: { x: 42, y: 8 }, comb: { x: 42, y: 22 }, flowers: [62, 2, 71, 13], tallgrass: [61, 17, 71, 31], beeyard: [38, 29, 47, 34],
+    anthill: { x: 66, y: 30, r: 6, h: 9 }, tree: { x: 42, y: 6 }, comb: { x: 42, y: 22 }, flowers: [62, 1, 71, 11], tallgrass: [61, 13, 71, 23], beeyard: [38, 29, 47, 34],   // (mondo 11-17: the giant tree + its hive NW, the anthill opposite, SE)
     henge: { x: 92, y: 18, stones: 5.5, bank: 11.5, ditch: 13.5 },    // the circle's middle is a corner where four squares meet
     longbarrow: [73, 2, 81, 5], barrows: [[74, 13], [75, 23], [77, 31]], camp: { x: 102, y: 31 }, heel: { x: 101, y: 8 },
     tower: { x: 24, y: 66, tiers: [24, 18, 12, 6], step: 7 },         // Babel: square tiers (squares a side), 7 m a tier
@@ -62,12 +62,13 @@ rect(26, 16, 31, 18, 'p'); rect(30, 6, 32, 20, 'p');                          //
 /* ── B · BUG COLONY ── */
 disc(A.anthill.x, A.anthill.y, A.anthill.r, 'm');
 rect(A.flowers[0], A.flowers[1], A.flowers[2], A.flowers[3], 'F'); rect(A.tallgrass[0], A.tallgrass[1], A.tallgrass[2], A.tallgrass[3], 'T');
-rect(64, 17, 66, 31, 'p'); rect(61, 23, 71, 25, 'p');                         // the two tracks cut through the tall grass
-disc(A.hive.x + 0.5, A.hive.y + 0.5, 3.4, 'h'); disc(A.comb.x + 0.5, A.comb.y + 0.5, 4.4, 'h');
-rect(41, 11, 44, 18, 'p'); rect(44, 12, 47, 14, 'p');                         // hive > honeycomb, hive > anthill
+rect(64, 13, 66, 23, 'p'); rect(61, 17, 71, 19, 'p');                         // the two tracks cut through the tall grass
+disc(A.tree.x, A.tree.y, 5.2, 'm'); disc(A.comb.x + 0.5, A.comb.y + 0.5, 4.4, 'h');   // the giant tree's roots (earth), the fallen comb
+rect(37, 9, 40, 12, 'p'); rect(38, 11, 40, 18, 'p'); rect(40, 16, 43, 18, 'p');   // the root stair's foot > the fallen comb
+rect(55, 28, 61, 31, 'p');                                                    // the Ant Road > the anthill's way in
 rect(A.beeyard[0], A.beeyard[1], A.beeyard[2], A.beeyard[3], 'p');
 rect(41, 26, 44, 29, 'p'); rect(47, 30, 53, 32, 'p');
-rect(56, 20, 58, 26, 'p'); rect(56, 24, 62, 26, 'p'); rect(61, 6, 63, 8, 'p'); rect(58, 6, 62, 8, 'p');   // the ant roads
+rect(56, 12, 58, 28, 'p'); rect(56, 26, 59, 28, 'p'); rect(48, 6, 62, 8, 'p');   // the ant trail (the flower field > the anthill), the meadow walk
 /* ── S · STONEHENGE ── */
 { const h = A.henge, gapNE = (x, y) => (x + 0.5 - h.x) > 6 && (y + 0.5 - h.y) < -6 && Math.abs((x + 0.5 - h.x) + (y + 0.5 - h.y)) < 2.6, gapS = (x, y) => x >= 90 && x < 94 && y > h.y;
   ring(h.x, h.y, h.ditch - 0.9, h.ditch + 0.6, 'p', (x, y) => gapNE(x, y) || gapS(x, y)); ring(h.x, h.y, h.bank - 0.9, h.bank + 0.6, 'c', (x, y) => gapNE(x, y) || gapS(x, y));
@@ -103,13 +104,13 @@ rect(0, 40, W, 44, 'o'); rect(0, A.line.y0, W, A.line.y1, 'G');
 const M = ' (label mine)';
 const PL = [
     /* row 0 */ ['G', 'The Dig', 'two trenches, tarps, tools', 'Göbekli Tepe: THE DIG'], ['G', 'The Mound', 'the north side of the tell', 'Göbekli Tepe: THE MOUND'], ['G', 'The Sentinel', 'one pillar apart from the rest, on its knoll', 'Göbekli Tepe: THE SENTINEL'],
-    ['B', 'The Hive' + M, 'a hive the size of a house', 'NEW (mondo\'s zone list: Bug Colony)'], ['B', 'The Anthill' + M, 'LANDMARK: the hill, 7 m', 'NEW'], ['B', 'The Flower Field' + M, 'flowers taller than you', 'NEW'],
+    ['B', 'The Giant Tree' + M, 'LANDMARK: a tree 48 m tall, the root stair up it, the Hive on its bough (the way in)', 'NEW (mondo 11-17: a giant beehive on a giant tree)'], ['B', 'The Meadow' + M, 'open grass, butterflies', 'NEW'], ['B', 'The Flower Field' + M, 'flowers taller than you', 'NEW'],
     ['S', 'The Long Barrow', 'the long mound and its stone doorway', 'Stonehenge: the long barrow (the old draught down the line)'], ['S', 'The Bank', 'the chalk bank\'s north side', 'Stonehenge: THE BANK'], ['S', 'The Avenue', 'the chalk avenue to the north-east, the Heel Stone', 'Stonehenge: THE AVENUE'],
     /* row 1 */ ['G', 'The Dig Camp' + M, 'tents, crates, the finds table', 'Göbekli Tepe: the dig\'s camp'], ['G', 'The Four Enclosures', 'LANDMARK: four rings of T-pillars on the tell', 'Göbekli Tepe: FOUR ENCLOSURES · THE T-PILLARS'], ['G', 'The Cistern', 'the oldest well there is', 'Göbekli Tepe: THE CISTERN'],
-    ['B', 'The Honeycomb' + M, 'wax cells you walk between', 'NEW'], ['B', 'The Ant Tunnels' + M, 'the ways into the hill', 'NEW'], ['B', 'The Tall Grass' + M, 'grass over your head, two tracks through it', 'NEW'],
+    ['B', 'The Honeycomb' + M, 'fallen wax cells you walk between', 'NEW'], ['B', 'The Ant Trail' + M, 'the column from the flowers to the hill', 'NEW'], ['B', 'The Tall Grass' + M, 'grass over your head, two tracks through it', 'NEW'],
     ['S', 'The Barrows', 'round burial mounds', 'Stonehenge: THE BARROWS'], ['S', 'The Sarsen Circle', 'LANDMARK: the circle, the trilithons, the altar', 'Stonehenge: THE SARSEN CIRCLE · THE TRILITHONS'], ['S', 'The Ditch', 'the ditch\'s east side', 'Stonehenge: THE DITCH'],
     /* row 2 */ ['G', 'The First Doorway', 'a stone doorway with no wall (Room 9600\'s door)', 'Göbekli Tepe: THE FIRST DOORWAY'], ['G', 'The T-Pillars', 'the south rings, the fork down to the line', 'Göbekli Tepe: THE T-PILLARS'], ['G', 'The Dry Slope' + M, 'dry trees, loose stones', 'Göbekli Tepe: the tell\'s east flank'],
-    ['B', 'The Bee Yard' + M, 'hive boxes in rows', 'NEW'], ['B', 'The Ant Road' + M, 'the fork from the line to the hill', 'NEW'], ['B', 'The Meadow' + M, 'open grass, butterflies', 'NEW'],
+    ['B', 'The Bee Yard' + M, 'hive boxes in rows', 'NEW'], ['B', 'The Ant Road' + M, 'the fork from the line to the hill', 'NEW'], ['B', 'The Anthill' + M, 'LANDMARK: the mound, 9 m, the way down into the Ant Nest', 'NEW (mondo 11-17: the anthill underground)'],
     ['S', 'The Plain', 'open grass, a barrow, sheep', 'Stonehenge: THE PLAIN'], ['S', 'The South Gate' + M, 'the fork up from the line, Room 56\'s frame', 'Stonehenge: the bay door'], ['S', 'The Solstice Camp' + M, 'a fire, drums, a guitar', 'Stonehenge: the camp by the stones'],
     /* row 3 */ ['Y', 'The West Mouth', 'the line comes in from the Desert: the robbers\' tunnel', 'Ley Lines: THE WEST MOUTH + THE SOUTH MOUTH'], ['Y', 'The Niches', 'stone niches either side of the line', 'Ley Lines: THE NICHES'], ['Y', 'The Forks', 'the forks to the tell and the tower', 'Ley Lines: THE FORKS · THE FIRST MOUTH'],
     ['Y', 'The Great Line', 'the line, dead straight', 'Ley Lines: THE GREAT LINE'], ['Y', 'The Nexus', 'LANDMARK: where the lines cross; the Healing Zone', 'Ley Lines: THE NEXUS'], ['Y', 'The Great Line, east', 'the line, dead straight', 'Ley Lines: THE GREAT LINE'],
@@ -139,7 +140,7 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) svg += `<rect x="${OX + 
 const circ = (cx, cy, r, c, w, f) => { svg += `<circle cx="${OX + cx * S}" cy="${OY + cy * S}" r="${r * S}" fill="${f || 'none'}" stroke="${c}" stroke-width="${w}"/>`; };
 circ(A.henge.x, A.henge.y, A.henge.stones, '#30343a', 5); circ(A.henge.x, A.henge.y, 2.6, '#30343a', 4);
 A.enclosures.forEach(e => circ(e[0] + 0.5, e[1] + 0.5, 2.2, '#3a2c20', 3)); circ(A.sentinel.x + 0.5, A.sentinel.y + 0.5, 0.5, '#3a2c20', 3, '#e8e0d0');
-circ(A.anthill.x, A.anthill.y, 1.5, '#2a1c10', 2, '#2a1c10'); circ(A.hive.x + 0.5, A.hive.y + 0.5, 2, '#7a5a10', 3, '#f0c848');
+circ(A.anthill.x, A.anthill.y, 1.5, '#2a1c10', 2, '#2a1c10'); circ(A.tree.x, A.tree.y, 2, '#3a2a10', 3, '#6a4a20');
 for (let gx = 0; gx <= GX; gx++) svg += `<line x1="${OX + gx * PW}" y1="${OY}" x2="${OX + gx * PW}" y2="${OY + H * S}" stroke="#101010" stroke-width="1" opacity="0.55"/>`;
 for (let gy = 0; gy <= GY; gy++) svg += `<line x1="${OX}" y1="${OY + gy * PW}" x2="${OX + W * S}" y2="${OY + gy * PW}" stroke="#101010" stroke-width="1" opacity="0.55"/>`;
 /* the districts' borders */
@@ -155,7 +156,7 @@ T('DISTRICTS (one file each)', 15, '#fff', 1); Object.keys(DIST).forEach(k => { 
 ry += 10; T('GROUND', 15, '#fff', 1); Object.keys(LEGEND).forEach(k => { svg += `<rect x="${RX}" y="${ry - 11}" width="14" height="14" fill="${COL[k]}" stroke="#fff"/>`; svg += `<text x="${RX + 22}" y="${ry}" font-size="12.5" fill="#ddd">${esc(LEGEND[k])}</text>`; ry += 19; });
 ry += 10; T('WAYS', 15, '#fff', 1); [['bay', 'a DOOR HQ room\'s door (exists today, moved)'], ['hidden', 'hidden way to another zone (exists today)']].forEach(q => { svg += `<circle cx="${RX + 7}" cy="${ry - 4}" r="7" fill="${WC[q[0]]}" stroke="#000"/>`; svg += `<text x="${RX + 22}" y="${ry}" font-size="12.5" fill="#ddd">${esc(q[1])}</text>`; ry += 19; });
 ry += 10; T('LANDMARKS (one a district)', 15, '#fff', 1);
-['the four rings of T-pillars on the tell', 'the Anthill, 7 m', 'the Sarsen Circle in its bank and ditch', 'the Nexus on the line', 'the Tower: 84 m foot, four tiers, 28 m', 'the Pyramid on its island: 56 m foot, 18 m'].forEach(s => T('· ' + s, 12.5));
+['the four rings of T-pillars on the tell', 'the Giant Tree (the Hive) + the Anthill (the Nest)', 'the Sarsen Circle in its bank and ditch', 'the Nexus on the line', 'the Tower: 84 m foot, four tiers, 28 m', 'the Pyramid on its island: 56 m foot, 18 m'].forEach(s => T('· ' + s, 12.5));
 ry += 10; T('* = a plain label of mine (no old name)', 12, '#bbb'); T('The line does not bend. Every landmark', 12, '#bbb'); T('stands on a fork of it.', 12, '#bbb');
 const WPX = RX + 330, HPX = OY + H * S + 40;
 svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WPX}" height="${HPX}" font-family="DejaVu Sans, Arial, sans-serif"><rect width="100%" height="100%" fill="#181a18"/>` +
