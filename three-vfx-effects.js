@@ -20525,15 +20525,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _sigShake('hard');
                 try { if (p && p.bloomPulse) p.bloomPulse(1.0, 520); } catch (e) {}
                 _sigOrbBurst3D(tx, ty, {
-                    mode: 'out', color: 0xffe9a8, ms: 640,
-                    r0: ts * 0.15, r1: blastR * 1.15, height: hover, opacity: 0.9
+                    mode: 'out', color: _vcOn() ? 0xffc860 : 0xffe9a8, ms: 640,
+                    r0: ts * 0.15, r1: blastR * 1.15, height: hover, opacity: _vcOn() ? 0.5 : 0.9   /* B10: the bodies read through the shell */
                 });
                 _sigShockRing3D(tx, ty, { color: 0xffd77a, r1: blastR * 1.3, ms: 520 });
                 window.setTimeout(function () {
                     if (_suppressed()) return;
                     _sigShockRing3D(tx, ty, { color: _vcOn() ? 0xffd77a : 0xffffff, r1: blastR * 0.9, ms: 420, height: ts * 0.5 });
                 }, 120);
-                try { _sigLightPillar3D(tx, ty, { color: 0xfff0c0, height: ts * 6.0, radius: ts * 0.5, ms: 820 }); } catch (e) {}
+                try { _sigLightPillar3D(tx, ty, _vcOn() ? { color: 0xffc050, coreColor: 0xffd77a, height: ts * 6.0, radius: ts * 0.36, ms: 820 } : { color: 0xfff0c0, height: ts * 6.0, radius: ts * 0.5, ms: 820 }); } catch (e) {}
                 if (_canSpawn()) {
                     var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
                     /* starfire thrown across the whole blast */
@@ -48761,7 +48761,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 cols.forEach(function (col, i) {
                     var a = i / 5 * Math.PI * 2 + rn(-0.1, 0.1);
                     var A = new THREE.Vector3(B.x + Math.cos(a) * ts * 3.2, B.y + ts * 4.2, B.z + Math.sin(a) * ts * 3.2);
-                    _capAt(i * 50, function () { _capLance(A, B, { color: col, hot: _vcM ? hots[i] : 0xffffff, w: 0.07, ms: 620, grow: 90, fade: 220 }); });
+                    _capAt(i * 50, function () { _capLance(A, B, { color: col, hot: _vcM ? hots[i] : 0xffffff, gain: _vcM ? 0.95 : 0, w: 0.07, ms: 620, grow: 90, fade: 220 }); });
                 });
                 _capAt(300, function () {
                     cols.forEach(function (col, i) { _capAt(i * 60, function () { _capRing(P.tx, P.ty, col, 1.4 + i * 0.35, 460, 4 + i * 6); }); });
@@ -71945,9 +71945,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        edges as he goes, and where he stops the ice breaks up into standing shards */
     _spell3DGeometry['raceIceSlide:dash'] = function (tx, ty, dist, x) {
         var Ln = _l3Lane(tx, ty, x); if (!Ln) return null;
-        /* THE VFX SWEEP B10: the strip is wet ice you see the floor through (it drew as a flat white slab on top of the ice pass) */
-        var _vcIce = _vcOn();
-        var ts = Ln.ts, G = Ln.G, ice = _finBasic(_vcIce ? 0x5fb4e0 : 0xbfe4f4, { opacity: 0, map: _sigTerrainTex('ice.png', 1, Ln.n), depthWrite: false, side: THREE.DoubleSide });
+        var ts = Ln.ts, G = Ln.G, ice = _finBasic(0xbfe4f4, { opacity: 0, map: _sigTerrainTex('ice.png', 1, Ln.n), depthWrite: false, side: THREE.DoubleSide });
         var sg = new THREE.PlaneGeometry(ts * 0.8, 1); sg.rotateX(-Math.PI / 2); sg.translate(0, 0, 0.5);
         var strip = new THREE.Mesh(sg, ice); strip.position.y = 2.5; strip.renderOrder = 152; G.add(strip);
         var em = _goA(0x9fd8f0, 0), edges = [];
@@ -71958,7 +71956,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lastS = 0, broke = false, TOTAL = Ln.ms + 1100;
         return _sigRunOwned(Ln.F.g, TOTAL, function (el) {
             var run = _sigClamp01(el / Ln.ms), k = _goEnv(el, 40, TOTAL, 450), len = Math.max(1, Ln.L * run);
-            strip.scale.z = len; ice.opacity = (_vcIce ? 0.42 : 0.85) * k; edges[0].scale.z = edges[1].scale.z = len; em.opacity = 0.6 * k;
+            strip.scale.z = len; ice.opacity = 0.85 * k; edges[0].scale.z = edges[1].scale.z = len; em.opacity = 0.6 * k;
             if (run < 1 && el - lastS > 45 && _canSpawn()) { lastS = el;
                 for (var s = -1; s <= 1; s += 2) { var p = Ln.at(len, s * ts * 0.36);
                     _pzP(Ln.F, p.x, 6, p.z, { sprite: 'frost-mist', ml: rn(300, 520), size0: 8, size1: 24, vx: Ln.uz * s * 90 - Ln.ux * 30, vy: -Ln.ux * s * 90 - Ln.uz * 30, vz: rn(60, 150), gravity: 200, opacity0: 0.75 });
