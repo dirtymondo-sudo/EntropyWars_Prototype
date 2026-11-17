@@ -11855,6 +11855,44 @@ Proposal + mock-ups: `/mnt/project-files/space-round-planets/`.
   are flat today; a fight on a ball is not checked yet); the lighting on a far face uses the flat normals; NPCs that wander over a
   cut seam are not carried; the map picture (`Assets/ui/map/site_prebuilt_moon_plots.png`) shows the flat nets.
 
+## ONE WORLD 4.4, THE UNDERGROUND WALKS + THE FREIGHT LINE (2026-11-17, BUILD_PLAN phase 4 row 4.4, the owner's thread)
+What the map's `under.walks` asked for, and where each one is now (plots.json is the list; the plot names on the walks are mine, marked):
+- **THE SEWERS ARE ONE ROOM AGAIN** (`site_prebuilt_downtown_underworld`, 17 x 16 plots, mask in the room): the walks U1-U5 + U14 are plots
+  of that room (bake-sewers.js `WALK` / `WJOIN`), so the three rooms wave A parted off (`…_ow_cells`, `…_ow_workings`, `…_ow_drain`) are
+  retired (`DOOR_HQ.retired`). U1 = the Running Tunnels to the Junction well's foot (the well was a dead end; the walk ends it), U2 north to
+  the Cells, U3 west, U4 the Outfall Pipe east and down three levels, U14 on east to the sea, U5 south-west to the D.U.M.B.
+- **THE SEAMS** (one door id at both ends, `way: 'trail'`): `ow_v_7_16` U5 ⇄ the D.U.M.B.'s East Gantry (bake-dumb.js digs the gantry);
+  `ow_v_18_5` U14 ⇄ the Sea Floor's west wall (bake-deep.js); `ow_v_1_1` the Guardroom's west side (port 8: the halls; port 9 ran into the
+  Property Room's cabinet, port 5 is the `cells_dungeon` link's own gap) ⇄ the Tunnel Way (bake-cavern.js, U12 + U13 in its T room); `ow_v_m7_m4` the Catacombs' east wall (dug at rows 20-21 in memory by
+  bake-afterlife.js) ⇄ the Bone Passage in the Tunnel Way (U13, the secret walk). U6 (Catacombs to Hell, 1 plot) stays the old
+  `vatican_hell` link: a one-plot room would only add a loading card.
+- **A WALL DOOR ON A RAISED PLOT CARRIES ITS FLOOR'S `y`** (bake-sewers.js `sideDoor`): with no `y` a wall door stands on the room's ground,
+  14 m under a level-8 floor, and is never seen (the Freight Line's first probe: a bare wall).
+- **THE FREIGHT LINE** (`under.rides`, a ride, no plots, late game): door `freight_line`, the Power Station Drain's north side ⇄ the
+  D.U.M.B.'s Sub-Level 7 (bake-dumb.js `fw('P03-01', 2, 3, 270)`, `leaf_vault`), both ends `minClearance: 6` (L6 is my pick: the game's
+  highest door gate). A probe walks it with `"eval": "window.doorClearance = () => ({ level: 9, title: 'PROBE' })"`.
+
+## THE COLOSSEUM (2026-11-17, One World 4.4; the map's district `col`, 9 plots, world -11..-9 x -9..-7)
+- **IN THE VATICAN'S ROOM** (mondo: smaller than Disaster City = one room): `site_prebuilt_vatican_plots` grows to 6 x 7 plots (world -12..-7
+  x -9..-3, `room.world` in the room; mask `.###..` on rows 0-2). bake-afterlife.js THE VATICAN'S ONE WORLD MOVE: the Vatican's districts
+  still build in THE HOME FRAME (6 x 4, their files unchanged), then every piece moves 36 squares south (z + 63 m, one uniform shift); the
+  Colosseum's grid is laid on columns 1-3, rows 0-2; district O builds last, on the moved room (`LATE_D`). Lawn behind the plaza's hedges
+  fills the rest of rows 0-2 (scenery, never walked; 56 pines).
+- **THE MAP** is draw-afterlife.js `O` (a 36 x 36 grid written as layout.json `colosseum`): an oval (half axes 15.5 x 12.5 squares), the
+  arcade ring `k` on the ground, six tiers `e` (0.875 m a step; the gates' flanks step up a tier a square, the way onto the tiers), the
+  podium `p` (3.5 m, solid), the sand `a`, the two gates' ways `m` on the long axis, the plaza `c` inside hedges `h`, the Pilgrim Stair's
+  foot (squares 41-42 x 31-35, up to the Courtyard terrace's gate at 1.75 m).
+- **THE DISTRICT FILE** `docs/areas/afterlife/districts/O.js` (moved-room squares): the outer wall (48 piers, three storeys of straight
+  arches, the attic; a ghost wall a pier), the podium's rail, the gates' arches, lions, braziers, cages, a chariot, the plaza's benches and
+  urns; fighters, a referee, a ringmaster. Plot names mine. NOT YET: curved arches, the awning, seats, the emperor's box, the trapdoors.
+- **THE WAYS**: `link_vatican_olympus` moved from the Terrace's gate to the plaza's north opening (wall n, x -21): the Pilgrim Way (route R3,
+  phase 4.1) meets the Colosseum's north side at world columns -10/-9, so 4.1 swaps this link for its seam doors there. The other Vatican
+  link ends (`observatory_stair`, `bureau_vatican`, the bay) moved 63 m south with their plots (the rows in data.js, bake-afterlife.js WANT).
+- **THE NORTH ROUTES' SEAMS** (written here for phase 4.1; each door only when its route's room stands, `stands(id)`): `ow_h_m10_m9` R3 on
+  the Colosseum's north opening (then `link_vatican_olympus` and its WANT row drop by themselves), `ow_v_m6_m4` R1 at the east gate (OPEN
+  now: S.js swings its leaves in, the ghost wall is gone), `ow_v_m12_m4` R4 at a new gap in the west wall (rows 24-25 home).
+- **A PROBE WALKS SLOWLY HERE** (llvmpipe, a big room with 1,800 edge trees): 3 m in 10 s on flat cobbles, so a walk that "stops" after
+  2 m on the stair is the frame rate, not a wall (`ThreeRenderer.hq.dev.walk()` reads velX 4.6). Give a walk here 45 s.
 ## ONE WORLD, THE COAST + THE ISLANDS (2026-11-17, BUILD_PLAN phase 4.3, part 1; the owner's One World 4.3 thread)
 What the first PR of 4.3 built (part 2 = Pirates' Cove, the Frozen Sea and the rest of the Round Voyage):
 - **R11 THE DELTA CAUSEWAY** `site_ow_r11` (4 x 3 plots at 17,31; `docs/areas/routes/R11.json`): Giza's east side (seam `ow_v_17_32`, `bake-desert.js` STAND `more`) over
