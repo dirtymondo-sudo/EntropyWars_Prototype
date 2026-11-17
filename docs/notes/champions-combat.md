@@ -5912,6 +5912,45 @@ the deferred charge); the UI and the CPU wait for _actionExecuting, so players c
   slips, LATE FEE stamp; OVERDUE stamp + red ring on a Silenced foe). Probe 11-17 (real TDM, 0 page errors): Shush silenced, cd 2;
   Late Fee 557 on the silenced Knight vs 343 plain; Overdue renewed Hurricane Party (3 foes hit + Wet, 75 MP, cd 3) and Sponsored
   (+2 ATK/INT on the ally). Proof /mnt/project-files/librarian-polish/.
+
+## THE POPE (2026-11-17, thread cmsg_01XWpxyTn3nnw98znVzKdFjsNqsMAutYPM6qbM24DRQHKz)
+mondo's kit, word for word: "Popemobile can stay, axe the other 2. Let's do Thoughts and Prayers, a small healing and regen
+spell. Celibacy, which prevents an enemy from summoning (counter to antperson and ringmaster, etc.), and does damage per every
+summon the enemy has on the map. Excommunication which removes an enemies buffs a does damage." No passive rule (Infallible was
+not approved, not built). Race 'pope' (human/divine, support, Vatican City, light resist / psychic weak, finisher White Smoke).
+- nrThoughtsAndPrayers T1: heal 10 % + regen 2, range 3.
+- nrPopemobile T2: a dash on a STRAIGHT LINE only (`straightLine: true`: range tiles = caster's row + column, an off-line aim =
+  'range'), 4 squares, then the bulletproof glass: a 150 shield (`selfShieldAfter`, through spellShieldGainFor) kept on
+  `unit._popeGlass`; whatever is left is taken off when the Pope's next activation starts (battle.js `_popeGlassEnds`).
+  The ride: `_RIDE_CASTS.nrPopemobile` mounts him standing (`_MOUNT_VEHICLES.popemobile`, `stand: true`, file nose = -X so
+  `yaw: PI/2`) in R2 `Assets/world/props/meshy/popemobile.glb` (Meshy, catalogue row `popemobile`).
+- nrExcommunication T2: `purgeFirst` (strips buffs, raised stages and shield like Annihilation) then 100 light.
+- nrCelibacy T3: 60 light + `summonPenalty: 55` per summon the target's side has on the map (`state.turrets` summon/zombie/
+  turret rows; `_popeSummonCount`), and status `celibate` 2 rounds: `spellBlockReason` blocks every summon spell
+  (`_isSummonSpell`: summonUnit / raiseDead / deployTurret / summonDef) with "⛪ Celibate". AI: the damage guess adds
+  `_popeSummonBonus`; ccDenialValue values celibate only on a target that has summon spells and is not immune.
+- Looks: Meshy pope2 rig, idle/walk = 100STYLE ArmsBehindBack (lib 6); Celibacy plays MAL5 Finger_Wag_No (`animClip.ts` is
+  honoured since this PR). VFX (three-vfx-effects.js "THE POPE"): a gold cross + halo over the healed, church doors shutting on
+  the excommunicated, a padlock over the celibate with small padlocks flying in from each enemy summon, a glint on the glass.
+Proof: /mnt/project-files/pope-race/proof/.
 - **THE FLOATING BRAIN (mondo 11-17, "can we name it something else ... Floating Brain, Sentient Brain ..."):** the Boltzmann Brain shows
   as **Floating Brain** (RACE_PROFILES label, the race blurbs in ui.js + party-builder.js, the fluctuation family's names). The race id
   stays `'boltzmann brain'` (saves, server lists, R2 folders, every table key); code comments keep the old name.
+
+## THE NINJA (2026-11-17, thread cmsg_01XWpxyTn3nnw98znVzKdFjsHLkqP9JfLhbVUrP2feEoYY "Build Ninja spells and VFX")
+mondo had the Meshy models made (male + female, the woman in a sexy ninja costume, NO weapons; PR #1910) and OK'd the kit proposal
+in the thread, adding "a ninja clone ju jitsu spell where he makes a bunch of clones and they all attack, kind of like catgirl's
+ninefold scratch". One race, both looks (`'ninja'`, sprites.js gender 'both'; the man's sprite in the race tables, the woman's in
+_NEW_FEMALE_SPRITES; R2 `Assets/characters/races/ninja/{male,female}/`). Assassin, home Downtown (the rooftops), family `ninjutsu`.
+THE RULE, KAWARIMI (status `substitute`, battle.js block "THE NINJA" before the Tech CEO): while Substituted, the first enemy blow
+aimed at him (the enemy acting now; burns / poison / zone ticks never) lands on a log, no damage, no status; he reappears on the free
+square straight behind the attacker, facing its back (`_ninjaBehindAttacker`: straight behind first, never in front), so his next
+basic attack on it is a Backstab under the facing rule. The rest of that same attack (`_protectActionSeq` key on
+`unit._kawarimiKey`) keeps hitting the log: a multi-hit's later hits, a shove (`_runPostEffects` push skipped).
+The four: Shuriken (T1, multiHit 3 x 32, range 4), Kawarimi (T2, self, cd 3), Shadow Step (T3, 140, range 4, cd 2,
+`blinkBehind`: doSpell blinks him to `ninjaShadowLanding` = the free square beside the target most behind its FACING, then strikes;
+from the back arc the hit is x FACING_BACK_DMG_MULT through calcSpellHitRiders `backMult`, the forecast reads the same landing,
+no range falloff; nothing free behind = beside it, no Backstab; nothing free at all = refused), Clone Jutsu (T4, multiHit 8 x 52,
+range 3, cd 3; ~ Ninefold Scratch's 414). `ownHitFx` (+ `hitLeadMs`) on a multiHit row: _applyMultiHitDamage fires
+'<id>:hit' through fireGeometry per hit and never re-fires the bolt. CPU: ai.js values Kawarimi like Protect (threat x 0.6).
+Probe /mnt/project-files/ninja-race/probe_ninja.js (NINJA_CPU=1 = a CPU ninja plays 4 rounds).

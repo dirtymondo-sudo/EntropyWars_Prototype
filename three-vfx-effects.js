@@ -141,7 +141,8 @@ const ThreeVFXEffects = (function () {
         raceSaddleUp: { ms: 3200 },                                 // the horse comes in on the cast; the buff keeps the rider up (battle.js unit._mounted)
         pzRideToValhalla: { key: 'horse', lance: true },            // the valkyrie's white horse (THE SPEAR: her spear couched)
         raceLasso: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRustle: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRoundUp: { riders: _RIDE_COWBOYS, ms: 2800 },
-        sigLunarLander: { vehicle: 'lunar_lander', ms: 1600 }       // THE SPACE PROPS (2026-10-27): the astronaut flies the lander (mondo: "i meant the lunar lander")
+        sigLunarLander: { vehicle: 'lunar_lander', ms: 1600 },      // THE SPACE PROPS (2026-10-27): the astronaut flies the lander (mondo: "i meant the lunar lander")
+        nrPopemobile: { vehicle: 'popemobile', ms: 2200 }            // ⛪ THE POPE (2026-11-17): he drives up in the Popemobile, standing in the glass box
     };
     function _rideWindup(spellId, p) {
         var R = _RIDE_CASTS[spellId];
@@ -11168,6 +11169,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         plasma:      { file: 'Meshy_AI_plasma_gun_0713030043_texture.glb',        axis: 'z',
                        tweak: { ry: Math.PI } },
         football:    { file: 'Meshy_AI_american_football_0713030210_texture.glb', axis: 'z' },
+        /* THE PACK PIZZA BOX (2026-11-17, mondo "is there pizza from the model list or asset pack you can use?"): the Pizzeria
+           PSX pack's box (Elbolilloduro, CC0) cut out with its pepperoni pizza: nodes `tray`, `lid` (pivot on the back hinge,
+           +Z) and `pizza`, base on y = 0, 0.70 m across; the Delivery Boy's Hot and Fresh (_dbBox) */
+        pizzaBox:    { url: 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro/ebd_pizzeria_pizza_box.glb', axis: 'flat' },
         /* 2026-09-14: the arrow export comes in tip-BACKWARD like the guns
            (it flew fletching-first and stood point-up in the volley) — the
            baked ry flip puts the head on +Z, where the bow looses it */
@@ -45263,6 +45268,172 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrOnDuty:save': _lgSave3D, 'nrThreeWhistles:blow': _lgBlow3D,
     });
 
+    /* ══ THE POPE (2026-11-17, mondo's kit: Thoughts and Prayers, Popemobile, Celibacy, Excommunication) ══ Painted shapes in code
+       (canvas textures, no sim fire): the Vatican's gold and white, and the side colour from the viewer's seat (THE RIOT PASS: your
+       side cyan-blue, the other pink-red) on every floor ring.
+         THOUGHTS AND PRAYERS (aura on the ally): a gold cross lifts off the chest and rises away, a halo ring at the head, a few
+           motes of light, a floor ring in the caster's side colour.
+         EXCOMMUNICATION (impact): the church doors swing shut in front of the target (two carved wooden leaves, gold studs), the bell
+           rings (gold rings), the leaves are gone, and the stripped buffs fly off it as gold shards.
+         CELIBACY (impact): a gold padlock drops onto the chest and snaps shut; every summon on the target's side gets its own small
+           padlock that flies over to the target, one after another (the per-summon damage, made readable). Fogged summons are never
+           drawn (no positions leak).
+         POPEMOBILE: he rides the Meshy Popemobile (three-renderer.js _MOUNT_VEHICLES, via _RIDE_CASTS); the glass going up as the
+           shield ('nrPopemobile:glass', battle.js _popeGlassUp) is a glint over the box and a ring in his side colour. */
+    var _PP_GOLD = 0xffd56a;
+    function _ppCrossTex() {
+        return _sigTex('pp-cross', 128, function (g, S) {
+            g.fillStyle = '#ffffff';
+            g.fillRect(S * 0.42, S * 0.06, S * 0.16, S * 0.88);   // the upright
+            g.fillRect(S * 0.18, S * 0.26, S * 0.64, S * 0.15);   // the bar, a third down
+        });
+    }
+    function _ppPadlockTex() {
+        return _sigTex('pp-padlock', 128, function (g, S) {
+            g.lineWidth = S * 0.1; g.strokeStyle = '#d9dde4';
+            g.beginPath(); g.arc(S / 2, S * 0.42, S * 0.2, Math.PI, 0); g.lineTo(S * 0.7, S * 0.5); g.moveTo(S * 0.3, S * 0.42); g.lineTo(S * 0.3, S * 0.5); g.stroke();   // the shackle
+            var gr = g.createLinearGradient(0, S * 0.48, 0, S * 0.92); gr.addColorStop(0, '#ffe58a'); gr.addColorStop(1, '#b8861e');
+            g.fillStyle = gr; g.fillRect(S * 0.2, S * 0.48, S * 0.6, S * 0.44);   // the body
+            g.fillStyle = '#5a3a0a'; g.beginPath(); g.arc(S / 2, S * 0.64, S * 0.055, 0, Math.PI * 2); g.fill(); g.fillRect(S * 0.475, S * 0.66, S * 0.05, S * 0.14);   // the keyhole
+        });
+    }
+    function _ppDoorTex() {
+        return _sigTex('pp-door', 128, function (g, S) {
+            g.fillStyle = '#5a3418'; g.fillRect(0, 0, S, S);
+            for (var i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#6a3e1e' : '#4e2c12'; g.fillRect(i * S / 4, 0, S / 4 - 2, S); }   // the planks
+            g.strokeStyle = '#e8c060'; g.lineWidth = S * 0.05; g.strokeRect(S * 0.04, S * 0.04, S * 0.92, S * 0.92);   // the gilt edge
+            g.fillStyle = '#ffd86a';
+            for (var r = 0; r < 4; r++) for (var c = 0; c < 3; c++) { g.beginPath(); g.arc(S * (0.25 + c * 0.25), S * (0.2 + r * 0.2), S * 0.03, 0, Math.PI * 2); g.fill(); }   // the studs
+            g.fillStyle = '#ffe9a8'; g.fillRect(S * 0.82, S * 0.46, S * 0.1, S * 0.1);   // the ring pull
+        });
+    }
+    function _ppSide(owner, tx, ty) { return _lgSide(owner, tx, ty); }
+    function _ppOwnerAt(x, y) {
+        try { var us = state.units; for (var i = 0; i < us.length; i++) { var u = us[i]; if (u && !u.dead && u.x === x && u.y === y) return u.player; } } catch (e) {}
+        return null;
+    }
+    EFFECTS['nrThoughtsAndPrayers_aura'] = { layers: [
+        { count: 9, sprite: 'heal-glow', ml: [700, 1100], offsetXY: 20, z: [30, 80], tint: 0xfff0b0, vzRange: [30, 80], size0: [5, 9], size1: 2, opacity0: 0.85, delayMs: 260 },
+        { count: 5, sprite: 'sparkle', ml: [500, 900], offsetXY: 18, z: [70, 110], tint: 0xffe28a, vzRange: [10, 40], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 120 },
+    ] };
+    EFFECTS['nrExcommunication_impact'] = { layers: [
+        { count: 14, sprite: 'sparkle', ml: [420, 760], offsetXY: 10, z: [40, 90], tint: 0xffd56a, vxRange: 240, vyRange: 240, vzRange: [40, 180], gravity: 300, drag: 0.5, size0: [5, 9], size1: 2, opacity0: 0.95, delayMs: 520 },
+        { sprite: 'flash', ml: 220, z: 60, size0: 30, size1: 110, tint: 0xfff2c8, opacity0: 0.5, delayMs: 420 },
+    ] };
+    EFFECTS['nrCelibacy_impact'] = { layers: [
+        { count: 8, sprite: 'sparkle', ml: [400, 700], offsetXY: 12, z: [50, 80], tint: 0xffe28a, vxRange: 120, vyRange: 120, vzRange: [20, 90], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 300 },
+    ] };
+    Object.assign(SPELL_MAP, {
+        nrThoughtsAndPrayers: { aura: 'nrThoughtsAndPrayers_aura' },
+        nrExcommunication:    { impact: 'nrExcommunication_impact' },
+        nrCelibacy:           { impact: 'nrCelibacy_impact' },
+    });
+    /* THOUGHTS AND PRAYERS: the cross rises off the ally, the halo rings at the head, the caster's side colour on the floor */
+    function _ppPrayers3D(tx, ty) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), side = _ppSide(_ppOwnerAt(tx, ty), tx, ty);
+        var cross = _afDarkSprite(_PP_GOLD, _ppCrossTex(), h * 0.4); cross.material.depthTest = false; cross.renderOrder = 160; F.g.add(cross);   // drawn over the body
+        var glow = _finSprite(0xfff0b0, _ppCrossTex(), h * 0.5, 159); F.g.add(glow);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.12, r1: ts * 0.5, ms: 520, color: _PP_GOLD, height: h * 1.05 }); } catch (e) {} }, 120);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.25, r1: ts * 1.1, ms: 700, color: side, height: ts * 0.05 }); } catch (e) {} }, 240);
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid), up = _sigClamp01(el / total);
+            var y = feet.y + h * (1.15 + 0.9 * up * up);   // over the head, then up and away
+            cross.position.set(feet.x, y, feet.z); glow.position.copy(cross.position);
+            var o = _afEnv(el, 0, 160, 1300, total);
+            cross.material.opacity = 0.95 * o; glow.material.opacity = 0.45 * o;
+        });
+    }
+    /* EXCOMMUNICATION: the doors shut in the caster's face of the target, the bell, then the stripped buffs fly off as gold */
+    function _ppExcommunicate3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var from = _afCaster(tx, ty, o), L = _nrvLine(F, from, tx, ty);
+        var casterOwner = (o.fromX != null) ? _ppOwnerAt(o.fromX, o.fromY) : null;
+        var side = _ppSide(casterOwner, from.x, from.y);
+        var hold = new THREE.Group(); hold.rotation.y = Math.atan2(L.ux, L.uz); F.g.add(hold);   // +Z faces the caster
+        var dw = h * 0.42, dh = h * 1.25, mats = [], leaves = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var hinge = new THREE.Group(); hinge.position.set(s * dw, 0, ts * 0.32); hold.add(hinge);
+            var m = _finBasic(0xffffff, { opacity: 0, side: THREE.DoubleSide, map: _ppDoorTex() }); mats.push(m);
+            var leaf = new THREE.Mesh(new THREE.PlaneGeometry(dw, dh), m); leaf.position.set(-s * dw / 2, dh / 2, 0); hinge.add(leaf);
+            leaves.push({ hinge: hinge, s: s });
+        }
+        _fxDelay(function () {
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 0.9, ms: 420, color: _PP_GOLD, height: h * 0.9 }); } catch (e) {}
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.3, ms: 620, color: side, height: ts * 0.05 }); } catch (e) {}
+        }, 420);
+        var total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid); hold.position.copy(feet);
+            var shut = _sigEaseOutBack(_sigClamp01(el / 380));
+            for (var i = 0; i < leaves.length; i++) leaves[i].hinge.rotation.y = leaves[i].s * (Math.PI / 2) * (1 - shut);   // open (edge-on) → shut across the front
+            var op = _afEnv(el, 0, 80, 1000, 1300);
+            for (var k = 0; k < mats.length; k++) { mats[k].opacity = op; mats[k].depthWrite = op > 0.6; }
+        });
+    }
+    /* CELIBACY: the padlock snaps shut on the target; one small padlock flies over from every summon on its side */
+    function _ppCelibacy3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), owner = _ppOwnerAt(tx, ty);
+        var casterOwner = (o.fromX != null) ? _ppOwnerAt(o.fromX, o.fromY) : null;
+        var side = _ppSide(casterOwner, o.fromX != null ? o.fromX : tx, o.fromX != null ? o.fromY : ty);
+        var lock = _afDarkSprite(0xffffff, _ppPadlockTex(), h * 0.42); lock.material.depthTest = false; lock.renderOrder = 160; F.g.add(lock);
+        var glow = _finSprite(_PP_GOLD, _ppPadlockTex(), h * 0.6, 159); F.g.add(glow);
+        var flyers = [];
+        try {
+            var tur = (state && state.turrets) || [];
+            for (var i = 0; i < tur.length; i++) {
+                var t = tur[i];
+                if (!t || t.owner !== owner || !((t.hp || 0) > 0) || t.plant || _afFogHides(t.x, t.y)) continue;
+                var sp = _afDarkSprite(0xffffff, _ppPadlockTex(), h * 0.28); sp.material.depthTest = false; sp.renderOrder = 160; F.g.add(sp);
+                flyers.push({ sp: sp, a: _afTo(F, t.x, t.y), t0: 520 + flyers.length * 140 });
+            }
+        } catch (e) {}
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.6, ms: 300, color: _PP_GOLD, height: h * 0.6 }); } catch (e) {} }, 260);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.2, ms: 600, color: side, height: ts * 0.05 }); } catch (e) {} }, 280);
+        var total = Math.max(1900, 520 + flyers.length * 140 + 900);
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid);
+            var drop = _sigEaseOutBack(_sigClamp01(el / 260));
+            var snap = (el > 260 && el < 360) ? 1 + 0.25 * Math.sin((el - 260) / 100 * Math.PI) : 1;
+            lock.position.set(feet.x, feet.y + h * (1.2 + 0.8 * (1 - drop)), feet.z); glow.position.copy(lock.position);   // over the head, clear of the body
+            lock.scale.set(h * 0.42 * snap, h * 0.42 * snap, 1);
+            var op = _afEnv(el, 0, 60, total - 450, total);
+            lock.material.opacity = 0.98 * op; glow.material.opacity = 0.35 * op;
+            for (var j = 0; j < flyers.length; j++) {
+                var f = flyers[j], k = _sigClamp01((el - f.t0) / 420);
+                if (el < f.t0 - 200) { f.sp.material.opacity = 0; continue; }
+                var a = f.a.clone(); a.y += h * 0.9;
+                var b = feet.clone(); b.y += h * 1.2;
+                f.sp.position.copy(_afArc(a, b, ts * 0.8, k));
+                f.sp.material.opacity = k >= 1 ? Math.max(0, 1 - (el - f.t0 - 420) / 160) : 0.95 * _sigClamp01((el - f.t0 + 200) / 200);
+            }
+        });
+    }
+    /* THE GLASS: the Popemobile's glass goes up as his shield (battle.js _popeGlassUp; relayed) */
+    function _ppGlass3D(tx, ty, r, o) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts), side = _ppSide(o.owner != null ? o.owner : _ppOwnerAt(tx, ty), tx, ty);
+        try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.0, ms: 560, color: side, height: ts * 0.05 }); } catch (e) {}
+        var glint = _finSprite(0xffffff, _afStarTex(4), h * 0.7, 160); F.g.add(glint);
+        var total = 900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var feet = _lgFeet(F, uid), k = _sigClamp01(el / 600);
+            glint.position.set(feet.x + ts * 0.25 * (k - 0.5), feet.y + h * (1.6 - 1.0 * k), feet.z);
+            glint.material.opacity = 0.9 * _afEnv(el, 0, 120, 480, total);
+            glint.material.rotation = el * 0.004;
+        });
+    }
+    Object.assign(_spell3DGeometry, {
+        nrThoughtsAndPrayers: _ppPrayers3D, nrExcommunication: _ppExcommunicate3D, nrCelibacy: _ppCelibacy3D,
+        'nrPopemobile:glass': _ppGlass3D,
+    });
+
     /* ══ THE INFLUENCER (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx") ══ Her looks are the feed:
        a phone (the Meshy hand prop `item_smartphone`, warmed with the spell library; no file = no phone, NO STAND-INS), the
        camera flash, hearts and share links, a ring light. Side colours from the viewer's seat (THE RIOT PASS): a ring or link
@@ -45810,6 +45981,232 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     Object.assign(_spell3DGeometry, {
         nrSlimeSlash: _slSlash3D, nrIaiDraw: _slIai3D, nrSaltProof: _slStance3D, nrRoninsWake: _slWake3D,
         'nrIaiDraw:lane': _slLane3D, 'nrSaltProof:ring': _slRing3D,
+    });
+
+    /* ══ THE NINJA (2026-11-17, mondo OK'd the kit and asked for the clone spell: "makes a bunch of clones and they all attack,
+       kind of like catgirl's ninefold scratch with the multiple hits") ══ No blade anywhere (neither model carries one): steel
+       stars, smoke, a log and his own body. The looks keep two tones of his smoke (ink violet 0x2a2238, a lilac sheen 0xb9a8ff)
+       and the stars' steel white; the side reads from the viewer's seat (THE RIOT PASS: own side cyan-blue, the other side
+       pink-orange) on the streaks, rings and the step line. Small and quick on the body: the caster, the target, the hit and the
+       number stay clear. Kill-switch window.EW_NO_NINJA_VFX. Every look rides fireGeometry (relayed, fog-gated by the square).
+         SHURIKEN ('nrShuriken:hit', one per star): a spinning four-point star from his hand to the body with a short streak in
+           his side's colour, steel sparks on the hit.
+         KAWARIMI (aura): leaves turn round him and a lilac ring; 'nrKawarimi:swap' = where the blow landed, a puff of smoke
+           and a log standing in his place that tips over; where he steps out, a smaller puff and his side's ring.
+         SHADOW STEP ('nrShadowStep:blink'): a dark afterimage of his own body where he stood, fading, a line along the floor
+           in his side's colour to where he lands, smoke at both ends; (impact) a hand chop: a white crescent and a flash.
+         CLONE JUTSU ('nrCloneJutsu:hit', one per clone): his own body (the real model, a little ink-tinted) pops out of smoke
+           on a ring round the target, lunges in on a kick or a punch, the hit flashes, and it goes back to smoke. */
+    var _NJ_INK = 0x2a2238, _NJ_SHEEN = 0xb9a8ff, _NJ_STEEL = 0xe8eef8;
+    function _njOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_NINJA_VFX); }
+    function _njSide(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    function _njUnit(uid, x, y) {
+        try { if (uid != null) for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && u.id === uid) return u; } } catch (e) {}
+        return (x != null) ? _fx5UnitAt(x, y) : null;
+    }
+    EFFECTS['nrNinja_puff'] = { layers: [
+        { count: 9, sprite: 'smoke', ml: [420, 760], offsetXY: 14, z: [10, 70], tint: _NJ_INK, vxRange: 90, vyRange: 90, vzRange: [20, 90], drag: 1.6, size0: [26, 40], size1: [54, 74], opacity0: 0.8 },
+        { count: 5, sprite: 'smoke-soft', ml: [500, 860], offsetXY: 10, z: [20, 60], tint: _NJ_SHEEN, vxRange: 60, vyRange: 60, vzRange: [10, 50], drag: 1.4, size0: [20, 30], size1: [44, 60], opacity0: 0.4 },
+    ] };
+    EFFECTS['nrNinja_puff_small'] = { layers: [
+        { count: 6, sprite: 'smoke', ml: [340, 600], offsetXY: 10, z: [10, 60], tint: _NJ_INK, vxRange: 70, vyRange: 70, vzRange: [20, 70], drag: 1.6, size0: [18, 28], size1: [36, 50], opacity0: 0.75 },
+    ] };
+    EFFECTS['nrNinja_star_hit'] = { layers: [
+        { count: 6, sprite: 'steel-spark', ml: [160, 320], offsetXY: 4, z: [40, 70], vxRange: 220, vyRange: 220, vzRange: [20, 140], gravity: 300, drag: 1.2, size0: [3, 6], size1: 1, opacity0: 1 },
+        { sprite: 'flash', ml: 140, z: 52, size0: 14, size1: 46, tint: 0xffffff, opacity0: 0.55 },
+    ] };
+    /* a flat four-point star, the points out along ±X / ±Z */
+    var _njStarGeo = null;
+    function _njStar(ts) {
+        if (!_njStarGeo) {
+            var sh = new THREE.Shape(), R = 1, r = 0.28;
+            for (var i = 0; i < 8; i++) {
+                var a = i * Math.PI / 4, rr = (i % 2) ? r : R;
+                if (i === 0) sh.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); else sh.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+            }
+            sh.closePath();
+            var hole = new THREE.Path(); hole.absarc(0, 0, 0.1, 0, Math.PI * 2, true); sh.holes.push(hole);
+            _njStarGeo = new THREE.ShapeGeometry(sh); _njStarGeo.rotateX(-Math.PI / 2); _njStarGeo._ew_shared = true;
+        }
+        var m = new THREE.Mesh(_njStarGeo, new THREE.MeshBasicMaterial({ color: _NJ_STEEL, side: THREE.DoubleSide, transparent: true, depthWrite: false, fog: false }));
+        m.scale.setScalar(ts * 0.11);
+        m.renderOrder = 168;
+        return m;
+    }
+    /* SHURIKEN: one star a hit, from his hand to the body, spinning, a streak in his side's colour behind it */
+    function _njShuriken3D(tx, ty, r, o) {
+        if (_njOff()) return true;
+        o = o || {};
+        var from = _nrvFrom(tx, ty, o);
+        if (_afFogHides(tx, ty) && _afFogHides(from.x, from.y)) return true;
+        var F = _nrvFrame(tx, ty), ts = F.ts, caster = _fx5UnitAt(from.x, from.y), C = _njSide(caster);
+        var uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var a = _afTo(F, from.x, from.y); a.y += _lgBodyH(caster ? caster.id : null, ts) * 0.62;
+        var idx = o.idx | 0, side = (idx % 3) - 1;
+        var b = new THREE.Vector3(side * ts * 0.06, h * (0.55 + 0.05 * side), 0);
+        var fly = Math.max(140, o.flyMs || 220);
+        var star = _njStar(ts); F.g.add(star);
+        var trail = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.7), _sigMat(C.a, { map: _sigGlowTex() }));
+        trail.renderOrder = 166;
+        var th = new THREE.Group(); th.add(trail); F.g.add(th);
+        var dir = new THREE.Vector3().subVectors(b, a), L = dir.length() || 1;
+        th.lookAt(dir.clone().normalize()); trail.rotation.x = Math.PI / 2; trail.position.z = -ts * 0.35;
+        var done = false;
+        _sigRunOwned(F.g, fly + 120, function (el) {
+            var k = _sigClamp01(el / fly), p = new THREE.Vector3().lerpVectors(a, b, k);
+            p.y += Math.sin(k * Math.PI) * ts * 0.06 * (1 + side);
+            star.position.copy(p); th.position.copy(p);
+            star.rotation.y = el * 0.05;
+            star.material.opacity = k < 1 ? 1 : Math.max(0, 1 - (el - fly) / 120);
+            trail.material.opacity = 0.75 * (k < 1 ? Math.min(1, el / 40) : Math.max(0, 1 - (el - fly) / 80));
+            trail.scale.y = Math.min(1, L / (ts * 0.7));
+            if (k >= 1 && !done) { done = true; if (!_afFogHides(tx, ty)) _afRecipe('nrNinja_star_hit', tx, ty); }
+        });
+        return true;
+    }
+    /* KAWARIMI's cast: leaves turn round him and a lilac ring */
+    EFFECTS['nrKawarimi_aura'] = { layers: [
+        { count: 12, sprite: 'leaf', ml: [700, 1100], offsetXY: 26, z: [20, 110], tint: 0x9ac46a, vxRange: 80, vyRange: 80, vzRange: [-20, 40], drag: 0.8, size0: [6, 9], size1: [4, 6], opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 3, tint: _NJ_SHEEN, size0: 30, size1: 100, opacity0: 0.5, delayMs: 80 },
+    ] };
+    function _njLog(ts) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, g = null;
+        try { if (TR && TR.getMiscModelClone) g = TR.getMiscModelClone('fallen_log', ts * 0.24, 'center'); } catch (e) { g = null; }
+        if (!g) return null;
+        g.traverse(function (n) { if (n.geometry) n.geometry._ew_shared = true; if (n.material) { n.material.transparent = true; } });
+        return g;
+    }
+    /* the log on the square the blow landed on (tx,ty = where he stepped out, o.from = the log's square) */
+    function _njSwap3D(tx, ty, r, o) {
+        if (_njOff()) return true;
+        o = o || {};
+        var fx = o.fromX != null ? o.fromX : tx, fy = o.fromY != null ? o.fromY : ty;
+        var u = _njUnit(o.uid, tx, ty), C = _njSide(u);
+        if (!_afFogHides(fx, fy)) {
+            _afRecipe('nrNinja_puff', fx, fy);
+            var F = _nrvFrame(fx, fy), ts = F.ts, lg = _njLog(ts);
+            if (lg) {
+                var stand = new THREE.Group(); stand.add(lg);
+                lg.rotation.z = Math.PI / 2;   // the fallen log stood on end, his height or so
+                lg.updateMatrixWorld(true);
+                var bb = new THREE.Box3().setFromObject(lg); lg.position.y -= bb.min.y;
+                var tip = new THREE.Group(); tip.add(stand); F.g.add(tip);
+                var ax = (tx - fx) || 1, az = (ty - fy) || 0; tip.rotation.y = Math.atan2(ax, az);
+                var mats = []; lg.traverse(function (n) { if (n.material) mats.push(n.material); });
+                _sigRunOwned(F.g, 1600, function (el) {
+                    var knock = el < 120 ? 0 : _sigClamp01((el - 380) / 520);
+                    stand.rotation.x = (el < 120 ? 0 : -0.12 * Math.sin(_sigClamp01((el - 120) / 260) * Math.PI)) - knock * knock * 1.45;
+                    var op = el < 1150 ? 1 : Math.max(0, 1 - (el - 1150) / 450);
+                    for (var i = 0; i < mats.length; i++) mats[i].opacity = op;
+                });
+            }
+            try { _sigShockRing3D(fx, fy, { r0: _capTs() * 0.1, r1: _capTs() * 0.6, ms: 420, color: _NJ_SHEEN, height: 3, torus: false }); } catch (e) {}
+        }
+        if ((tx !== fx || ty !== fy) && !_afFogHides(tx, ty)) {
+            _fxDelay(function () {
+                _afRecipe('nrNinja_puff_small', tx, ty);
+                _capRing(tx, ty, C.a, 0.7, 420, 4);
+            }, 140);
+        }
+        return true;
+    }
+    /* SHADOW STEP: the afterimage where he stood, the floor line to where he lands, smoke at both ends */
+    function _njBlink3D(tx, ty, r, o) {
+        if (_njOff()) return true;
+        o = o || {};
+        if (o.fromX == null) return true;
+        var fx = o.fromX, fy = o.fromY, u = _njUnit(o.uid, tx, ty), C = _njSide(u);
+        var seeFrom = !_afFogHides(fx, fy), seeTo = !_afFogHides(tx, ty);
+        if (seeFrom) {
+            _afRecipe('nrNinja_puff_small', fx, fy);
+            var F = _nrvFrame(fx, fy), ts = F.ts;
+            var dbl = u ? _finDouble(fx, fy, ts, { unit: u }) : null;
+            if (dbl && _fdHas(dbl)) {
+                F.g.add(dbl);
+                _fdTint(dbl, _NJ_INK, 0.7);
+                _fdFace(dbl, _worldPos(tx, ty).x - F.wp.x, _worldPos(tx, ty).z - F.wp.z);
+                dbl.userData.onDispose = null;   // the real body is not hidden by an afterimage
+                _sigRunOwned(F.g, 620, function (el) {
+                    _fdTick(dbl, el);
+                    _fdFade(dbl, 0.55 * (1 - _sigClamp01(el / 620)));
+                    dbl.position.y = F.ts * 0.45 + el * 0.0;
+                });
+            }
+        }
+        if (seeFrom && seeTo) {
+            var G = _nrvFrame(tx, ty), a = _afTo(G, fx, fy), L = Math.max(1, Math.hypot(a.x, a.z));
+            var strip = new THREE.Mesh(new THREE.PlaneGeometry(G.ts * 0.16, L), _sigMat(C.a, { map: _sigGlowTex() }));
+            strip.rotation.x = -Math.PI / 2; strip.renderOrder = 158;
+            var hold = new THREE.Group(); hold.position.set(a.x / 2, 3, a.z / 2); hold.rotation.y = Math.atan2(a.x, a.z); hold.add(strip); G.g.add(hold);
+            _sigRunOwned(G.g, 640, function (el) { strip.material.opacity = 0.8 * _afEnv(el, 0, 40, 220, 640); strip.scale.x = 1 - 0.6 * _sigClamp01(el / 640); });
+        }
+        if (seeTo) _fxDelay(function () { _afRecipe('nrNinja_puff_small', tx, ty); }, 120);
+        return true;
+    }
+    /* SHADOW STEP's hit: a bare-hand chop, a white crescent and his side's edge */
+    EFFECTS['nrShadowStep_impact'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 180, z: 50, size0: 24, size1: 96, tint: 0xffffff, opacity0: 0.6, delayMs: 40 },
+        { count: 8, sprite: 'shadow-wisp', ml: [380, 700], offsetXY: 10, z: [30, 80], tint: _NJ_INK, vxRange: 120, vyRange: 120, vzRange: [10, 80], drag: 1.2, size0: [10, 16], size1: [20, 30], opacity0: 0.7 },
+    ] };
+    function _njChop3D(tx, ty, r, o) {
+        if (_njOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var from = _afCaster(tx, ty, o), ts = _worldPos(tx, ty).ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var cu = _fx5UnitAt(from.x, from.y), C = _njSide(cu);
+        var A = _worldPos(from.x, from.y), B = _worldPos(tx, ty), yaw = Math.atan2(B.x - A.x, B.z - A.z) + Math.PI / 2;
+        try { _sigCrescentSlash3D(tx, ty, { color: C.a, yaw: yaw, height: h * 0.62, size: ts * 1.15, ms: 200, pitch: -0.5, dir: 1 }); } catch (e) {}
+        _fxDelay(function () { try { _sigCrescentSlash3D(tx, ty, { color: 0xffffff, yaw: yaw, height: h * 0.64, size: ts * 1.0, ms: 160, pitch: -0.45, dir: 1, flecks: false }); } catch (e) {} }, 30);
+    }
+    /* CLONE JUTSU: one clone a hit, his own body on a ring round the target, a lunge, the hit, back to smoke */
+    var _NJ_CLONE_SLOTS = [['castKick', 'castMelee'], ['castPunch', 'castMelee'], ['castPunchCombo', 'castPunch', 'castMelee'], ['castMeleeCombo', 'castKick', 'castMelee']];
+    function _njClone3D(tx, ty, r, o) {
+        if (_njOff() || _afFogHides(tx, ty)) return true;
+        o = o || {};
+        var from = _nrvFrom(tx, ty, o), caster = _fx5UnitAt(from.x, from.y), C = _njSide(caster);
+        var F = _nrvFrame(tx, ty), ts = F.ts, uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
+        var idx = o.idx | 0, n = Math.max(1, o.n | 0 || 8), lead = Math.max(160, o.flyMs || 260);
+        if (idx === 0) {
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.3, ms: 520, color: C.a, height: 3 }); } catch (e) {}
+        }
+        /* the ring starts on his side and goes round the clock, every other clone across the target */
+        var a0 = Math.atan2(_worldPos(from.x, from.y).x - F.wp.x, _worldPos(from.x, from.y).z - F.wp.z);
+        var step = (Math.PI * 2) / n, ang = a0 + (idx % 2 ? Math.PI : 0) + Math.floor(idx / 2) * step * 2 + (idx % 2 ? step : 0);
+        var R0 = ts * 1.05, R1 = ts * 0.5;
+        var holder = new THREE.Group(); F.g.add(holder);
+        var dbl = caster ? _finDouble(from.x, from.y, ts, { unit: caster, slot: _NJ_CLONE_SLOTS[idx % _NJ_CLONE_SLOTS.length], once: true }) : null;
+        if (dbl && _fdHas(dbl)) {
+            dbl.userData.onDispose = null;   // a clone never hides the real ninja
+            holder.add(dbl);
+            _fdTint(dbl, _NJ_INK, 0.32);
+            _fdFace(dbl, -Math.sin(ang), -Math.cos(ang));
+        }
+        var px = Math.sin(ang), pz = Math.cos(ang), struck = false, life = lead + 380;
+        var wpPuff = { x: tx, y: ty };
+        _afRecipe('nrNinja_puff_small', tx, ty);
+        _sigRunOwned(F.g, life, function (el) {
+            var k = _sigEaseOutCubic(_sigClamp01((el - 60) / Math.max(60, lead - 80))), R = R0 + (R1 - R0) * k;
+            holder.position.set(px * R, 0, pz * R);
+            if (dbl) {
+                _fdTick(dbl, el);
+                var fin = el < 70 ? el / 70 : (el > lead + 160 ? Math.max(0, 1 - (el - lead - 160) / 200) : 1);
+                _fdFade(dbl, 0.9 * fin);
+            }
+            if (!struck && el >= lead) {
+                struck = true;
+                _afRecipe('nrNinja_star_hit', tx, ty);
+                try { _sigCrescentSlash3D(tx, ty, { color: idx % 2 ? 0xffffff : C.a, yaw: ang + Math.PI / 2, height: h * (0.45 + 0.1 * (idx % 3)), size: ts * 0.9, ms: 150, pitch: -0.4 + 0.25 * (idx % 3), dir: idx % 2 ? -1 : 1, flecks: false }); } catch (e) {}
+            }
+        });
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        nrKawarimi:   { aura: 'nrKawarimi_aura' },
+        nrShadowStep: { impact: 'nrShadowStep_impact' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrShadowStep: _njChop3D,
+        'nrShuriken:hit': _njShuriken3D, 'nrCloneJutsu:hit': _njClone3D,
+        'nrKawarimi:swap': _njSwap3D, 'nrShadowStep:blink': _njBlink3D,
     });
 
     /* ══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit + asked for a pull-string spell) ══ A porcelain doll that moves when
@@ -65710,6 +66107,69 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['nrLayingOnHands']   = { aura: 'nrLayingOnHands_aura' };
     SPELL_MAP['nrCollectionPlate'] = { aura: 'nrCollectionPlate_aura', skim: 'nrCollectionPlate_skim' };
     SPELL_MAP['nrMiracle']         = { aura: 'nrMiracle_aura', payout: 'nrMiracle_payout' };
+
+    /* ════ TAX EXEMPT (2026-11-17, mondo's ask): a green TAX EXEMPT stamp slams onto the floor under the unit, a white receipt
+       floats up beside it and is torn in two, and blue mana motes (the MP it will not pay) rise into the body ════ */
+    function _tvExemptTex() {
+        return _pzTex('tv-exempt', 512, 192, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 14; g.strokeRect(14, 14, w - 28, h - 28); g.lineWidth = 5; g.strokeRect(34, 34, w - 68, h - 68);
+            g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 78px Impact, "Arial Black", sans-serif';
+            g.fillText('TAX EXEMPT', w / 2, h / 2 + 4);
+            g.globalCompositeOperation = 'destination-out';
+            for (var i = 0; i < 220; i++) { g.beginPath(); g.arc(Math.random() * w, Math.random() * h, Math.random() * 3 + 0.5, 0, Math.PI * 2); g.fill(); }
+            g.globalCompositeOperation = 'source-over';
+        });
+    }
+    function _tvReceiptTex() {
+        return _pzTex('tv-receipt', 96, 160, function (g, w, h) {
+            g.fillStyle = '#f7f5ee'; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#2a2a2a'; g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.fillText('RECEIPT', w / 2, 18);
+            g.fillStyle = 'rgba(40,40,40,0.6)'; for (var i = 0; i < 8; i++) g.fillRect(10, 30 + i * 12, w - 20 - (i % 3) * 14, 3);
+            g.fillStyle = '#2a2a2a'; g.font = 'bold 12px monospace'; g.fillText('TAX  $0.00', w / 2, h - 18);
+            g.fillStyle = '#f7f5ee'; for (var x = 0; x < w; x += 8) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 4, h - 5); g.lineTo(x + 8, h); g.fill(); }
+        });
+    }
+    EFFECTS['nrTaxExempt_aura'] = _pzDef('tvExempt', { pzOwn: true });
+    _PZ_SIGS.tvExempt = function (p) {
+        if (_tvOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('tvExempt', 300)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), side = { x: -cd.z, z: cd.x };
+        /* the receipt stands on the side AWAY from the caster in the picture (on his side it covered his body) */
+        var from = _pzFrom(tx, ty, p), ln = (from.x !== tx || from.y !== ty) ? _nrvLine(F, from, tx, ty) : null;
+        if (ln && side.x * ln.ux + side.z * ln.uz > 0) { side.x = -side.x; side.z = -side.z; }
+        var stamp = _bkFloor(F, _tvExemptTex(), ts * 1.5, ts * 0.56, 0x6aff96, false);
+        stamp.rotation.z = Math.atan2(cd.x, cd.z) + rn(-0.15, 0.15);   /* reads upright from the lens */
+        var glow = _bkFloor(F, _sigGlowTex(), ts * 1.4, ts * 1.4, 0x3ad06a, true);
+        stamp.renderOrder = 159;
+        /* the receipt: two halves of one slip beside the body (never over the head, where the number sits), torn apart */
+        var halves = [];
+        for (var i = 0; i < 2; i++) {
+            var m = _pzSolid(0xffffff, _tvReceiptTex(), { side: THREE.DoubleSide, depthWrite: false });
+            var geo = new THREE.PlaneGeometry(ts * 0.3, ts * 0.25), uv = geo.attributes.uv;
+            for (var k = 0; k < uv.count; k++) uv.setY(k, uv.getY(k) * 0.5 + (i ? 0 : 0.5));
+            uv.needsUpdate = true;
+            var hm = _pzMesh(geo, m, F.g); hm.renderOrder = 162; halves.push({ m: m, o: hm, dir: i ? -1 : 1 });
+        }
+        var slam = 160, hit = false, lastS = 0;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var sk = _sigClamp01(el / slam);
+            stamp.scale.setScalar(Math.max(0.05, 1.6 - 0.6 * sk));
+            stamp.material.opacity = el < 20 ? 0 : 0.95 * _pzEnv(el, 20, slam, 1100, 1600);
+            glow.material.opacity = 0.4 * _pzEnv(el, slam - 40, slam + 60, 700, 1300);
+            if (!hit && el >= slam) { hit = true; _sigShake('light'); _sigShockRing3D(tx, ty, { color: 0x3ad06a, r0: ts * 0.2, r1: ts * 0.85, ms: 340 }); }
+            var rise = _sigEaseOutCubic(_sigClamp01((el - 120) / 380)), tear = _sigClamp01((el - 600) / 400);
+            for (var j = 0; j < halves.length; j++) {
+                var H = halves[j];
+                H.o.position.set(side.x * ts * 0.5, ts * (0.6 + 0.55 * rise) + H.dir * ts * (0.065 + 0.18 * tear), side.z * ts * 0.62);
+                _pzFace(H.o); H.o.rotateZ(H.dir * 0.5 * tear);
+                H.m.opacity = 0.95 * _pzEnv(el, 120, 220, 900, 1300);
+            }
+            if (el > 250 && el < 1300 && el - lastS > 55) {
+                lastS = el; var a = rn(0, 6.28), r = ts * rn(0.1, 0.4);
+                _pzP(F, Math.cos(a) * r, ts * rn(0.05, 0.3), Math.sin(a) * r, { sprite: 'spark-blue', ml: rn(600, 900), size0: rn(5, 8), size1: 1, vz: rn(90, 160), opacity0: 0.95 });
+            }
+        });
+    };
+    SPELL_MAP['nrTaxExempt'] = { aura: 'nrTaxExempt_aura' };
     /* ════ THE BOLTZMANN BRAIN (2026-11-17, the Boltzmann Brain pass; mondo: "flesh out their unique spells and spell
        animations/vfx"): a mind that blinked into being out of nothing. Its four casts and its round-end jump had only the
        generic psychic look; now each has its own, in one language: violet thought, the black of an empty universe, and Riot's
@@ -67037,7 +67497,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     /* a pizza box `d` across: kraft sides, the printed lid on a hinge at the back edge; { g, lid, fade(op) } */
-    function _dbBox(d) {
+    function _dbBox(d, withPizza) {
+        var pk = _dbPackBox(d, withPizza);
+        if (pk) return pk;
         var g = new THREE.Group(), mats = [], hgt = d * 0.16;
         var side = _pzSolid(0xffffff, _dbSideTex()), bottom = _pzSolid(0xc99d62, null), lidTop = _pzSolid(0xffffff, _dbLidTex(), { side: THREE.DoubleSide }), inside = _pzSolid(0xd8a868, null, { side: THREE.DoubleSide });
         mats.push(side, bottom, lidTop, inside);
@@ -67046,6 +67508,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var hinge = new THREE.Group(); hinge.position.set(0, hgt, -d / 2); g.add(hinge);
         var lid = _pzMesh(new THREE.PlaneGeometry(d, d), lidTop, hinge, 0, 0.6, d / 2); lid.rotation.x = -Math.PI / 2;
         base.renderOrder = 158;
+        return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+    }
+    /* the pack's box (_WPN_MODELS.pizzaBox) when it has loaded, else null and the drawn box stands in for that cast; its lid
+       opens the same way the drawn one does (hinge.rotation.x < 0 = up and back), the pepperoni pizza inside when `withPizza` */
+    function _dbPackBox(d, withPizza) {
+        if (window.EW_NO_PACK_PIZZA) return null;
+        var e = _wpnLoad('pizzaBox');
+        if (!e || !e.root) return null;
+        var m = e.root.clone(true), mats = [], lid = null, pz = null;
+        m.traverse(function (n) {
+            if (n.name === 'lid') lid = n;
+            if (n.name === 'pizza') pz = n;
+            if (!n.isMesh || !n.material) return;
+            n._ew_pixelate = true;
+            n.material = [].concat(n.material).map(function (mm) { var c = mm.clone(); c.transparent = true; mats.push(c); return c; });
+            if (n.material.length === 1) n.material = n.material[0];
+        });
+        if (!lid) return null;
+        if (pz) pz.visible = !!withPizza;
+        var k = d / 0.70;
+        m.scale.set(k, k, k);
+        m.rotation.y = Math.PI;   // the hinge to the back (−Z), as the drawn box has it
+        var g = new THREE.Group(); g.add(m);
+        var hinge = { rotation: {} };
+        Object.defineProperty(hinge.rotation, 'x', { get: function () { return -lid.rotation.x; }, set: function (v) { lid.rotation.x = -v; } });
         return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
     }
     function _dbUnitId(x, y) { var u = _fx5UnitAt(x, y); return u ? u.id : null; }
@@ -67062,6 +67549,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     /* ════ HOT AND FRESH — the box is tossed to the ally, lands, the lid flips up, the steam rolls out ════ */
+    try { _wpnLoad('pizzaBox', { bg: true }); } catch (e) {}   // warm the pack box behind the scene (a first cast before it lands uses the drawn box)
     EFFECTS['nrHotAndFresh_bolt'] = _pzDef('dbHotBox', { pzOwn: true });
     EFFECTS['nrHotAndFresh_aura'] = { layers: [
         { count: 10, sprite: 'heal-glow', ml: [700, 1100], offsetXY: 22, z: [20, 70], tint: _DB.heal, vzRange: [40, 90], size0: [6, 10], size1: 3, opacity0: 0.85, delayMs: 260 },
@@ -67084,8 +67572,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _fxDelay(function () {
             if (_suppressed()) return;
             var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty);
-            var B = _dbBox(ts * 0.34); F.g.add(B.g);
+            var B = _dbBox(ts * 0.34, true); F.g.add(B.g);
             B.g.position.set(ln.ux * ts * 0.3, 0, ln.uz * ts * 0.3); B.g.rotation.y = Math.atan2(ln.ux, ln.uz);
+            /* the lid opens AWAY from the lens, so every seat looks into the open box (mondo 11-17: "the lid flips open the
+               wrong way" when the box went the other way across the screen); each screen turns it for its own camera */
+            var _lc = _pzCam();
+            if (_lc) { var _lx = _lc.position.x - (F.wp.x + B.g.position.x), _lz = _lc.position.z - (F.wp.z + B.g.position.z); if (_lx || _lz) B.g.rotation.y = Math.atan2(_lx, _lz); }
             _sigShockRing3D(tx, ty, { color: side.a, r0: ts * 0.18, r1: ts * 0.8, ms: 420, height: 4 });
             _capPuff(tx, ty, 'dust-puff', 5, { r: 0.3, h: 0.03, out: 90, vz0: 5, vz1: 25, s0: 10, s1: 16, sEnd: 30, op: 0.4 });
             var lastS = 0;

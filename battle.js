@@ -377,6 +377,7 @@
             if (p.execMult != null) dmg = Math.floor(dmg * p.execMult);
             if (p.waterMult != null) dmg = Math.floor(dmg * p.waterMult);
             if (p.sneakMult != null) dmg = Math.floor(dmg * p.sneakMult);
+            if (p.backMult != null) dmg = Math.floor(dmg * p.backMult);   // 🥷 Shadow Step: always from behind (the Backstab ×)
             return { dmg, echoed, echoDmg };
         }
 
@@ -2603,6 +2604,7 @@
             if (spell.voodooSelf > 0 && target && !unit.dead) _dollPin(unit, target, spell);   // 🪆 Pin Prick ties the victim to the doll
             if (spell.viralSpread && target) _influencerRatioSpread(unit, target, spell);   // 📱 Ratio
             if (spell.pushDistance && target && !target.dead && !unit.dead && !_chessTook
+                && target._kawarimiKey !== unit.id + '|' + _protectActionSeq   // 🥷 the blow hit a log: nothing to shove
                 && (spell.kind === 'damage' || spell.kind === 'tackle')
                 && !(typeof _isClashMode === 'function' && _isClashMode())) {
                 const _swDir = _swH ? swingDoorPushDir(_swH.x, _swH.y, target.x, target.y) : null;
@@ -2665,6 +2667,17 @@
                 }
                 clearStatus(unit, 'momentum');
                 delete unit._momentum;
+            }
+            /* ⛪ Celibacy (`summonPenalty`): N more for every summon the target's team has on the board, a second blow */
+            if (spell.summonPenalty > 0 && target && !target.dead && !target._dying && !unit.dead) {
+                const _cn = _popeSummonCount(target.player);
+                if (_cn > 0) {
+                    addLog(`⛪ ${_ctName(target)}'s side has ${_cn} summon${_cn !== 1 ? 's' : ''} on the board: +${_cn * spell.summonPenalty} damage.`);
+                    applyDamageToUnit(target, _cn * spell.summonPenalty, `⛪ ${spell.name} (${_cn} summon${_cn !== 1 ? 's' : ''}): `, {
+                        sourceUnit: unit, damageType: spell.damageType || 'magic', consumeMarked: false,
+                        spellType: spell.spellType || null, element: classifySpellElement(spell)
+                    });
+                }
             }
             if (spell.dragIntoLiquid && target && !target.dead && !unit.dead
                 && !(typeof _isClashMode === 'function' && _isClashMode())) _deathRollDrag(unit, target, spell);   // 🐊 Death Roll
@@ -3252,6 +3265,10 @@
             const _pcMult = (unit && typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'spellCostMult') : undefined;
             if (base > 0 && _pcMult && _pcMult !== 1) base = Math.max(1, Math.round(base * _pcMult));
             const delta = (unit && typeof getStatusMpCostDelta === 'function') ? getStatusMpCostDelta(unit) : 0;
+            /* 🧾 TAX EXEMPT (the Televangelist, 2026-11-17): a status's mpCostMult (0.5) on the whole bill, Picked a Card's +40 too */
+            let _scm = 1;
+            if (unit && typeof getActiveStatusKeys === 'function') for (const k of getActiveStatusKeys(unit)) { const m = STATUS_DEFS[k]?.mpCostMult; if (m > 0) _scm *= m; }
+            if (_scm !== 1 && base + delta > 0) return Math.max(1, Math.round((base + delta) * _scm));
             return Math.max(0, base + delta);
         }
         window.getSpellMpCostFor = getSpellMpCostFor;
@@ -7213,7 +7230,13 @@
                     waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water')
                         ? 1.5 : null,
                     sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null,
+                    backMult: (spell.blinkBehind && unit._ssBehind) ? FACING_BACK_DMG_MULT : null,   // 🥷 Shadow Step: he strikes from behind
                 });
+                if (spell.blinkBehind && unit._ssBehind) {
+                    unit._matchBackstabs = (unit._matchBackstabs || 0) + 1;
+                    addLog(`🥷 BACKSTAB! ${_ctName(unit)} strikes ${_ctName(target)} from behind (+25% damage)!`);
+                    showFloatingTextForUnit(target, `BACKSTAB ×${+FACING_BACK_DMG_MULT.toFixed(2)}`, 'crit', { durationMs: 1100, jitterY: -14 });
+                }
                 const _hitCrit = _spellCritRoll(unit, spell, _riders.dmg, target);   // THE SPELL AUDIT Batch D: Loaded Dice
                 const damage = _hitCrit.dmg;
                 const _wasJammed = !!spell.jammedArc && unitHasStatus(target, 'jammed');   // Daisy Chain judges before the hit
@@ -7254,7 +7277,7 @@
                         sourceUnit: unit,
                         allowMarkBonus: false,
                         ignoreArmor: !!spell.ignoreArmor,
-                        noRangeMult: !!spell.chessPiece,   // ♟ THE CHESS PIECE: the piece strikes in person, from wherever its line began
+                        noRangeMult: !!spell.chessPiece || !!spell.blinkBehind,   // 🥷 Shadow Step strikes in person too   // ♟ THE CHESS PIECE: the piece strikes in person, from wherever its line began
                         statusEffects: spell.statusFirst ? null : spell.statusEffects,
                         statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,
                         damageType: spell.damageType || 'magic',
@@ -7651,11 +7674,23 @@
                 && window.ThreeVFXEffects.hasMapping(spell.id, 'impact');
 
             const _logSink = _multiHitLogSink();   // ONE CAST, ONE LINE
+            /* 🥷 THE NINJA (2026-11-17): an `ownHitFx` row draws each hit itself (the star / the clone, three-vfx-effects.js
+               '<id>:hit' through fireGeometry, which online.js relays) `hitLeadMs` before the damage, and never re-fires
+               the bolt / leap */
+            const _ownFx = !!spell.ownHitFx;
+            const _lead = _ownFx ? actionMs(spell.hitLeadMs || 0) : 0;
+            const _fx0 = unit.x, _fy0 = unit.y;
             hits.forEach((base, idx) => {
-                const hitTime = idx * hitGap; // relative to impactDelay
+                const hitTime = idx * hitGap + _lead; // relative to impactDelay
 
+                if (_ownFx) {
+                    window.setTimeout(() => {
+                        if (target.dead || state.phase !== 'battle' || _skipVisuals()) return;
+                        try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.fireGeometry) window.ThreeVFXEffects.fireGeometry(spell.id + ':hit', target.x, target.y, 0, { fromX: _fx0, fromY: _fy0, idx: idx, n: hits.length, flyMs: _lead }); } catch (e) {}
+                    }, Math.max(0, hitTime - _lead));
+                }
                 // Subsequent hits: re-fire projectile/leap before each hit
-                if (idx > 0) {
+                if (idx > 0 && !_ownFx) {
                     window.setTimeout(() => {
                         if (target.dead) return;
                         if (_useStrikeLeap) {
@@ -9676,6 +9711,11 @@
         window.lineSpellHeadingTo = lineSpellHeadingTo;
 
         function getSpellRangeTiles(unit, spell) {
+            /* ⛪ a straight-line row (the Popemobile) reaches only along its own row and column */
+            if (unit && spell && spell.straightLine) {
+                const _slT = getSpellRangeTiles(unit, Object.assign({}, spell, { straightLine: false }));
+                return _slT.filter(t => t.x === unit.x || t.y === unit.y);
+            }
             if (unit && spell && spell.chessPiece) return chessLineTiles(unit, spell.chessPiece);   // ♟ THE CHESS PIECE: the piece's capture lines
             if (unit && spell && spell.prismBlink) return prismBlinkTiles(unit);   // B4: Mirror Blink's reach is the tiles by your prisms
             /* THE DOOR AGENT (2026-09-19): the door kinds' reach is a set of
@@ -14051,6 +14091,95 @@
             if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
             return true;
         }
+        /* 🥷 THE NINJA (2026-11-17, mondo OK'd the kit: "add a ninja clone ju jitsu spell ... like catgirl's ninefold scratch").
+           KAWARIMI: a Substituted ninja's first enemy blow (the enemy acting now, never a tick) lands on a log; he reappears on
+           the free square straight behind the attacker, at its back (his next basic attack on it is a Backstab under the
+           facing rule). The rest of that same attack (_protectActionSeq) keeps hitting the log: a multi-hit's later hits, its
+           riders. SHADOW STEP (`blinkBehind`): he blinks to the free square most behind his target (its facing) and strikes;
+           from the back arc the hit is ×FACING_BACK_DMG_MULT. Host-side; positions + statuses state-sync, the looks go through
+           fireGeometry (relayed, fog-gated by the square), the floating text relays (RULE #2). */
+        function _ninjaFree(x, y, notId) {
+            return isInside(x, y) && canOccupy(x, y)
+                && !state.units.some(u => u && !u.dead && u.id !== notId && u.x === x && u.y === y);
+        }
+        function _ninjaFx(id, x, y, extra) {
+            if (_skipVisuals() || state.phase !== 'battle') return;
+            try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.fireGeometry) window.ThreeVFXEffects.fireGeometry(id, x, y, 0, extra || {}); } catch (e) {}
+        }
+        /* the square behind the attacker, seen from the ninja (the attacker faces him): straight behind first, then the
+           squares round the attacker by how far behind they sit; never one in front of it */
+        function _ninjaBehindAttacker(src, ninja) {
+            let ax = src.x - ninja.x, ay = src.y - ninja.y;
+            const len = Math.hypot(ax, ay) || 1; ax /= len; ay /= len;
+            let best = null;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const x = src.x + dx, y = src.y + dy;
+                if ((x === ninja.x && y === ninja.y) || !_ninjaFree(x, y, ninja.id)) continue;
+                const dot = (dx * ax + dy * ay) / Math.hypot(dx, dy);
+                if (dot < -0.01) continue;
+                if (!best || dot > best.dot) best = { x, y, dot };
+            }
+            return best;
+        }
+        function _ninjaKawarimi(target, src) {
+            if (!target || !src || target.dead || target._dying) return false;
+            const key = src.id + '|' + _protectActionSeq;
+            if (target._kawarimiKey === key) return true;   // the same attack: still the log
+            if (!unitHasStatus(target, 'substitute') || !isEnemyUnit(src, target)) return false;
+            if (state._blitzActiveUnitId != null && state._blitzActiveUnitId !== src.id) return false;   // a blow, not a tick
+            clearStatus(target, 'substitute');
+            target._kawarimiKey = key;
+            const fx = target.x, fy = target.y;
+            const land = _ninjaBehindAttacker(src, target);
+            showFloatingTextAtTile(fx, fy, '🪵 KAWARIMI', 'protect-block', { durationMs: 1200 });
+            if (land) {
+                target.x = land.x; target.y = land.y;
+                if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
+                animateDisplacement(target, fx, fy, land.x, land.y, actionMs(380), { escStyle: 'blink', delayMs: actionMs(120) });
+                faceStrikeTarget(target, src);
+                resolveTileArrival(target, { via: 'displaced' });
+                addLog(`🪵 Kawarimi! ${_ctName(src)}'s blow lands on a log — ${_ctName(target)} is standing behind ${_ctName(src)}.`);
+            } else {
+                addLog(`🪵 Kawarimi! ${_ctName(src)}'s blow lands on a log — ${_ctName(target)} had nowhere behind ${_ctName(src)} to go and stays put.`);
+            }
+            _ninjaFx('nrKawarimi:swap', land ? land.x : fx, land ? land.y : fy, { fromX: fx, fromY: fy, uid: target.id });
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            markDirty('hud', 'selectedUnit');
+            return true;
+        }
+        /* SHADOW STEP's landing: the free square beside the target most behind it (its facing). { x, y, behind } or null
+           (nothing free beside it). The caster's own square counts as free. The forecast and the cast read the same. */
+        function ninjaShadowLanding(unit, target) {
+            if (!unit || !target) return null;
+            const f = getUnitFacing(target);
+            let best = null;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const x = target.x + dx, y = target.y + dy;
+                if (!_ninjaFree(x, y, unit.id)) continue;
+                /* the strike travels from (x,y) to the target: its dot with the target's facing (1 = dead behind) */
+                const dot = (-dx * f.dx - dy * f.dy) / Math.hypot(dx, dy);
+                const d = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (!best || dot > best.dot + 1e-6 || (Math.abs(dot - best.dot) <= 1e-6 && d < best.d)) best = { x, y, dot, d };
+            }
+            return best ? { x: best.x, y: best.y, behind: best.dot >= 0.70 } : null;
+        }
+        window.ninjaShadowLanding = ninjaShadowLanding;
+        function _ninjaShadowStep(unit, target, land) {
+            const fx = unit.x, fy = unit.y;
+            unit._ssBehind = !!land.behind;
+            if (fx !== land.x || fy !== land.y) {
+                unit.x = land.x; unit.y = land.y;
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(land.x, land.y, unit.z);
+                unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(land.x - fx) + Math.abs(land.y - fy);
+                animateDisplacement(unit, fx, fy, land.x, land.y, actionMs(260), { escStyle: 'blink' });
+                _ninjaFx('nrShadowStep:blink', land.x, land.y, { fromX: fx, fromY: fy, uid: unit.id });
+                resolveTileArrival(unit, { via: 'self' });
+            }
+            faceStrikeTarget(unit, target);
+            addLog(`🥷 ${_ctName(unit)} steps through the shadows to ${coordLabel(land.x, land.y)}${land.behind ? `, behind ${_ctName(target)}` : `, beside ${_ctName(target)} (nothing free behind it)`}.`);
+        }
         /* 💼 THE TECH CEO (2026-11-16, the new races; mondo added it): ownership of the board's objects. Three `cleanseArea` tile
            casts carry a flag each: `acquire` (every enemy-owned summon, deployed object, trap, bomb, mirror, ward or rune on the
            square now works for the CEO), `disrupt` (every enemy zone or timed terrain over the 3×3 changes hands), `layoffs`
@@ -14876,6 +15005,51 @@
             if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
             if (n > 0) addLog(`🦗 ${_ctName(unit)} comes up singing: ${n} Brood stack${n !== 1 ? 's' : ''}, +${n * spell.broodSpend} damage.`);
             return n * spell.broodSpend;
+        }
+        /* ⛪ THE POPE (2026-11-17, mondo's kit). CELIBACY: a `celibate` unit cannot cast a summon (spellBlockReason 'Celibate'); a
+           summon = a row that puts a body of its own on the board (summonUnit pets, raiseDead's dead, deployTurret's turrets, a
+           summonDef row). The cast deals `summonPenalty` more for every summon the target's team has on the board: state.turrets
+           alive (pets, zombies, turrets), never a plant. Host-side, like every hit; the status rides the snapshot. */
+        function _isSummonSpell(spell) {
+            if (!spell) return false;
+            return spell.kind === 'summonUnit' || spell.kind === 'raiseDead' || spell.kind === 'deployTurret' || !!spell.summonDef;
+        }
+        window._isSummonSpell = _isSummonSpell;
+        function _popeSummonCount(player) {
+            if (player == null || !Array.isArray(state.turrets)) return 0;
+            return state.turrets.filter(t => t && t.owner === player && (t.hp || 0) > 0 && !t.plant).length;
+        }
+        window._popeSummonCount = _popeSummonCount;
+        function _popeSummonBonus(spell, target) {
+            if (!spell || !(spell.summonPenalty > 0) || !target) return 0;
+            return spell.summonPenalty * _popeSummonCount(target.player);
+        }
+        window._popeSummonBonus = _popeSummonBonus;
+        /* POPEMOBILE: the glass stays up as a shield until his next turn starts; what is left of it then comes off (unit._popeGlass
+           = the part of unit.shield the glass gave; a hit takes the shield from the top, so the glass is what goes first). */
+        function _popeGlassUp(unit, spell) {
+            if (!unit || unit.dead || !(spell && spell.selfShieldAfter > 0)) return;
+            const gain = spellShieldGainFor(unit, { shield: spell.selfShieldAfter, kind: 'buff' }, unit);
+            if (!(gain > 0)) return;
+            unit.shield = (unit.shield || 0) + gain;
+            unit._popeGlass = (unit._popeGlass || 0) + gain;
+            unit._popeGlassShield = unit.shield;
+            addLog(`⛪ ${_ctName(unit)} rides behind the bulletproof glass: a ${gain} HP shield until his next turn.`);
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, `⛪ GLASS +${gain}`, 'buff', { durationMs: 1100 });
+                _sigVfxGeom('nrPopemobile:glass', unit.x, unit.y, 0, { owner: unit.player });   // relayed (online.js fireGeometry)
+            }
+        }
+        function _popeGlassEnds(unit) {
+            if (!unit || !(unit._popeGlass > 0)) return;
+            const taken = Math.max(0, (unit._popeGlassShield || 0) - (unit.shield || 0));   // the hits since took the glass first
+            const left = Math.max(0, Math.min(unit.shield || 0, unit._popeGlass - taken));
+            if (left > 0) {
+                unit.shield = Math.max(0, (unit.shield || 0) - left);
+                addLog(`⛪ ${_ctName(unit)} steps out from behind the glass (${left} HP of shield goes with it).`);
+            }
+            delete unit._popeGlass; delete unit._popeGlassShield;
+            markDirty('hud');
         }
         /* 🛟 THE LIFEGUARD (2026-11-16, the new races): a teammate On Duty within 4 of an ally that just took a killing blow spends
            her watch: the ally holds on at 1 HP and is hauled to the free square beside her nearest it (it stays put if none is free
@@ -42195,6 +42369,11 @@
                 if (_pressDamageCollector && !opts.noPress && opts.sourceUnit.id === _pressDamageCollector.casterId) _pressDamageCollector.hits.push({ evaded: true });
                 return false;
             }
+            // ── 🥷 Kawarimi: a Substituted ninja leaves a log; the rest of that same attack keeps hitting the log ──
+            if (damage > 0 && opts.sourceUnit && !opts._chivalryRedirected && _ninjaKawarimi(target, opts.sourceUnit)) {
+                if (_pressDamageCollector && !opts.noPress && opts.sourceUnit.id === _pressDamageCollector.casterId) _pressDamageCollector.hits.push({ evaded: true });
+                return false;
+            }
             // ── Chivalry: a pledged knight dashes in and intercepts the next attack on their ward ──
             if (target._guardedBy && !opts._chivalryRedirected && damage > 0) {
                 const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
@@ -44137,7 +44316,7 @@
                 } else target = enemyAt(x, y, z);
                 if (!target) return;
                 const dt = spell.damageType || 'magic';
-                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor, noRangeMult: !!spell.chessPiece });   // ♟ a piece strikes in person: no falloff
+                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor, noRangeMult: !!spell.chessPiece || !!spell.blinkBehind });   // ♟ a piece strikes in person: no falloff
                 /* the charge lands first when the cast plays as a charge (doSpell's own test) — the hit is then from beside */
                 const chargeFirst = chargeStrikesFirst(unit, spell, target);
                 const _clash = _isClashMode();
@@ -44163,7 +44342,8 @@
                         execMult: (spell.executeBonusPct && target.maxHp > 0 && (target.hp / target.maxHp) < 0.5) ? 1 + spell.executeBonusPct : null,
                         waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : null,
                         /* the ambush ×1.5: doSpell stamps _sneakStrikeBonus only at the cast, from the cloak the caster wears now */
-                        sneakMult: (spell.sneakBonus && (unit._sneakStrikeBonus || unitHasStatus(unit, 'invisible'))) ? 1.5 : null
+                        sneakMult: (spell.sneakBonus && (unit._sneakStrikeBonus || unitHasStatus(unit, 'invisible'))) ? 1.5 : null,
+                        backMult: (spell.blinkBehind && (ninjaShadowLanding(unit, target) || {}).behind) ? FACING_BACK_DMG_MULT : null   // 🥷 Shadow Step lands behind its target
                     }).dmg;
                     const [m, l, hgh] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32);
                     const _hp0 = target.hp;
@@ -44176,6 +44356,11 @@
                     const _echoN = spell.echoLastDealt ? calcSpellHitRiders({ base: 0, echo: target._lastHitDealt || 0, echoCap: 500 }).echoDmg : 0;
                     if (_echoN > 0) hit(target, _echoN, _echoN, _echoN, { damageType: dt, ignoreArmor: true, preScaled: true, exactDamage: true,
                         consumeMarked: false, allowMarkBonus: false, noRangeMult: true }, { tag: 'echo' });
+                    /* ⛪ Celibacy: the per-summon blow (_runPostEffects), so the preview shows it too */
+                    if (spell.summonPenalty > 0) {
+                        const _sb = _popeSummonBonus(spell, target);
+                        if (_sb > 0) hit(target, _sb, _sb, _sb, baseOpts(spell.damageType || 'magic', { consumeMarked: false, allowMarkBonus: false }), { tag: 'summons' });
+                    }
                     /* 🛹 Board Slam: the banked Momentum lands as its second blow (_runPostEffects), so the preview shows it too */
                     if (spell.momentumSpend && (unit._momentum || 0) > 0) {
                         const _mb = spell.momentumSpend * Math.min(6, unit._momentum);
@@ -49386,6 +49571,7 @@
                 if (unitSpellsBlocked(unit)) return 'Silenced';
                 if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';   // 📰 not today's headline
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
+                if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
                 /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
                 if (unitIsSpirit(unit) && (spell.astral || spell.damageType === 'physical')) return 'Projecting';
                 // THE MOVE BLOCK ON SPELLS: a dash / teleport / escape / grapple reel / charge is movement
@@ -51076,6 +51262,7 @@
         function spellAimProblem(unit, spell, x, y, z) {
             if (!unit || !spell) return 'range';
             if (isSpellSelfCast(spell)) return null;
+            if (spell.straightLine && x !== unit.x && y !== unit.y) return 'range';   // ⛪ the Popemobile drives in a straight line
             if (spell.kind === 'line' || spell.kind === 'linePush') {
                 return lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, x, y, (z === undefined) ? null : z) ? null : 'range';
             }
@@ -64491,6 +64678,7 @@
                 _releaseSkyThrowGrab();
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
+                _popeGlassEnds(nextUnit);   // ⛪ the Popemobile's glass comes down when his next turn starts
                 if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
@@ -83051,6 +83239,19 @@
                     window.setTimeout(() => {
                         _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                     }, impactDelay);
+                } else if (spell.blinkBehind) {
+                    /* 🥷 SHADOW STEP: the blink first, then the strike from the square beside the target */
+                    const _ssLand = ninjaShadowLanding(unit, target);
+                    if (!_ssLand) {
+                        addLog(`🥷 There is no free square beside ${_ctName(target)} to step into.`, _clickSeat());
+                        playErrorSfx();
+                        return 0;
+                    }
+                    _ninjaShadowStep(unit, target, _ssLand);
+                    const _ssSpell = Object.assign({}, spell, { _animOverride: { travel: 'strikeLeap' } });
+                    completionDelay = executeSpellAnimation(
+                        unit, _ssSpell, target, { x, y },
+                        effectiveSpellCost, spellPower, finishAction, spellApCost);
                 } else if (chargeStrikesFirst(unit, spell, target)) {
                     // Charge-to-target melee (Brave Charge, …): rush the gap in
                     // third-person and strike on arrival, following the caster.
@@ -88560,6 +88761,11 @@
                     playErrorSfx();
                     return 0;
                 }
+                if (spell.straightLine && x !== unit.x && y !== unit.y) {   // ⛪ the Popemobile drives in a straight line
+                    addLog(`${spell.name} drives in a straight line.`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
                 if (dashOnlyMoves(spell)) {   // 🏃 Sprint runs to an empty tile — it never shoves a body aside
                     const _dashBody = unitAt(x, y);
                     if (_dashBody && !_dashBody.dead && _dashBody.id !== unit.id) {
@@ -88785,6 +88991,7 @@
                     if (Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead) {
                         applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                     }
+                    if (spell.selfShieldAfter > 0 && !unit.dead) _popeGlassUp(unit, spell);   // ⛪ the Popemobile's glass
                     if (dashHitCount > 0) {
                         addLog(`${_ctName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
                     } else {

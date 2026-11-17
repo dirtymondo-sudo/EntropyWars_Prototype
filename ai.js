@@ -594,6 +594,8 @@
             if (opts.rawBase == null) raw += _spellPowerOf(g, unit, sp);
             // 🛹 Board Slam (`momentumSpend`): the Skater's banked Momentum lands as a second blow (battle.js _runPostEffects)
             if (opts.rawBase == null && sp.momentumSpend && unit._momentum > 0) raw += sp.momentumSpend * Math.min(6, unit._momentum);
+            // ⛪ Celibacy (`summonPenalty`): N more for every summon the target's side has on the board (battle.js _runPostEffects)
+            if (opts.rawBase == null && sp.summonPenalty > 0 && typeof window._popeSummonBonus === 'function') raw += window._popeSummonBonus(sp, tg);
             damageType = sp.damageType === 'magic' ? 'magic' : 'physical';
             ignoreArmor = !!sp.ignoreArmor;
         } else {
@@ -1128,6 +1130,16 @@
             if (!booked) return 40;
             const notYet = (tg.ap || 0) > 0 && !tg.hasActed ? 1 : 0.3;
             return tuneW(g, 'ccOutputFactor') * unitThreatOutput(g, tg, unit) * notYet + 60 + (unitIsHealerKit(tg) ? 80 : 0);
+        }
+        /* ⛪ CELIBACY (the Pope, 2026-11-17): worth it on a unit that carries a summon (a pet, the dead, a turret) it could still
+           cast; nothing on a unit with none */
+        if (id === 'celibate') {
+            let n = 0;
+            try { n = (tg.spells || []).filter(s => s && typeof window._isSummonSpell === 'function' && window._isSummonSpell(s)).length; } catch (e) {}
+            if (!n) return 0;
+            try { if (g.unitHasStatus(tg, 'celibate')) return 0; } catch (e) {}
+            if (_aiStatusBlocked(g, tg, id)) return 0;   // the Ghoul's Pure Negativity shrugs it off
+            return 70 + 30 * Math.min(2, n);
         }
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
         if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial
@@ -6481,8 +6493,15 @@
                 const t = v.threatFn(target.x, target.y, target.z);
                 s += Math.min(300, t.totalDmg * 0.7);
             }
+            /* 🥷 THE NINJA (2026-11-17): Kawarimi (`substitute`) eats the next blow like Protect and puts him at the hitter's
+               back; worth it under threat, nothing if he already holds one */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'substitute')) {
+                if (g.unitHasStatus(target, 'substitute')) return 0;
+                const t = v.threatFn(target.x, target.y, target.z);
+                s += Math.min(260, t.totalDmg * 0.6) + 20;
+            }
             for (const eff of (spell.statusEffects || [])) {
-                if (!eff || !eff.id || eff.id === 'protect') continue;
+                if (!eff || !eff.id || eff.id === 'protect' || eff.id === 'substitute') continue;
                 s += _friendlyStatusValue(g, unit, target, eff, v);   // regen/haste-style friendly riders
             }
             // THE SPELL AUDIT D: a buff row's barrier (Ki Charge), its taunt (Shield Maiden), its decoy (Mimicry)
@@ -6540,6 +6559,15 @@
                 const _tvHurt = _tvNear.filter(u => u.player === target.player && u.hp < u.maxHp * 0.7).length;
                 if (!_tvHealers && !_tvHurt) return 0;
                 s += 25 + 45 * _tvHealers + 15 * _tvHurt;
+            }
+            /* 🧾 Tax Exempt (`taxExempt`, half MP on every spell, 2 rounds): worth the MP it saves the target on its next casts */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'taxExempt')) {
+                if (g.unitHasStatus(target, 'taxExempt')) return 0;
+                const _txCosts = (target.spells || []).map(sp => (sp && sp.cost) || 0).filter(c => c > 0).sort((a, b) => b - a);
+                if (!_txCosts.length) return 0;
+                const _txSave = (_txCosts[0] + (_txCosts[1] || 0)) * 0.5;
+                const _txShort = (target.mp || 0) < _txCosts[0] ? 1.5 : 1;   // it cannot afford its best spell at full price
+                s += Math.min(140, _txSave * 0.8 * _txShort);
             }
             if (spell.massRescue) {
                 const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;

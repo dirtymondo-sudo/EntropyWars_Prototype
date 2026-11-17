@@ -1,0 +1,1006 @@
+{
+ "rooms": [
+  "site_prebuilt_gobekli_ancient"
+ ],
+ "plots": {
+  "The Four Enclosures": {
+   "props": {
+    "t_pillar": 21,
+    "brazier": 2
+   },
+   "features": {
+    "dip": 4,
+    "arch#ley:gobekli:kerb:A:look": 1,
+    "arch#ley:gobekli:kerb:B:look": 1,
+    "arch#ley:gobekli:kerb:C:look": 1,
+    "arch#ley:gobekli:kerb:D:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Dig Camp (label mine)": {
+   "props": {
+    "t_pillar": 3,
+    "canvas_tent": 3,
+    "campfire": 1,
+    "cardboard_boxes": 2,
+    "paper_sheet": 2,
+    "sea_chest": 1,
+    "folding_chair": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "shaman": 1
+   }
+  },
+  "The Dig": {
+   "props": {
+    "t_pillar": 1,
+    "wheelbarrow": 2,
+    "pickaxe": 2,
+    "hw_shovel": 1,
+    "wooden_bucket": 1,
+    "psx_wooden_crate_1": 2,
+    "cardboard_boxes": 1,
+    "signpost": 1
+   },
+   "features": {
+    "plateau": 2,
+    "ramp:dirt_2": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Mound": {
+   "props": {
+    "t_pillar": 7,
+    "brazier": 2,
+    "dead_snag": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Sentinel": {
+   "props": {
+    "t_pillar": 1,
+    "cave_stone": 1,
+    "brazier": 1,
+    "dead_snag": 1,
+    "psxg_rock_3": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Cistern": {
+   "props": {
+    "ancient_well": 1,
+    "wooden_bucket": 1,
+    "signpost": 1,
+    "cattle_skull": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "annunaki": 1
+   }
+  },
+  "The First Doorway": {
+   "props": {
+    "t_pillar": 2,
+    "signpost": 1,
+    "dead_snag": 1,
+    "psxg_rock_3": 1,
+    "cattle_skull": 1
+   },
+   "features": {},
+   "doors": {
+    "bay": 1
+   },
+   "natives": {
+    "conspiracy theorist": 1
+   }
+  },
+  "The Dry Slope (label mine)": {
+   "props": {
+    "psxg_rock_3": 2,
+    "dead_snag": 3,
+    "cattle_skull": 2
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The T-Pillars": {
+   "props": {
+    "dead_snag": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Ant Tunnels (label mine)": {
+   "props": {
+    "anthill": 1,
+    "ant_queen": 1,
+    "ant_leaf": 2,
+    "ant": 1
+   },
+   "features": {
+    "arch#ley:anthill:mouths:look": 1,
+    "arch#ley:fork:a:20:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "antperson": 1
+   }
+  },
+  "The Ant Road (label mine)": {
+   "props": {
+    "ant_leaf": 4,
+    "ant": 4,
+    "mushroom": 3,
+    "mushroom2": 2,
+    "caterpillar": 1,
+    "signpost": 1
+   },
+   "features": {
+    "arch#ley:fork:a:24:look": 1,
+    "arch#ley:fork:a:28:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Nexus": {
+   "props": {
+    "ant_leaf": 1,
+    "obelisk": 4,
+    "signpost": 1
+   },
+   "features": {
+    "arch#ley:line:4:look": 1,
+    "arch#ley:fork:a:36:look": 1,
+    "arch#ley:nexus:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Meadow (label mine)": {
+   "props": {
+    "ant": 1,
+    "reeds": 23,
+    "butterfly": 12,
+    "mushroom": 1,
+    "mushroom2": 1
+   },
+   "features": {
+    "tree:tree_5": 1
+   },
+   "doors": {},
+   "natives": {
+    "mantid": 1
+   }
+  },
+  "The Flower Field (label mine)": {
+   "props": {
+    "ant_leaf": 1,
+    "fae_flower_small_violet": 7,
+    "fae_flower_gold": 7,
+    "fae_flower_violet": 7,
+    "fae_flower_pink": 8,
+    "fae_flower": 6,
+    "fae_flower_small_pink": 6,
+    "fae_flower_blue": 7,
+    "fae_flower_small_blue": 4
+   },
+   "features": {
+    "tree:tree_3": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Anthill (label mine)": {
+   "props": {
+    "ant": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Tall Grass (label mine)": {
+   "props": {
+    "fae_flower": 1,
+    "fae_flower_small_pink": 3,
+    "fae_flower_violet": 1,
+    "fae_flower_pink": 1,
+    "reeds": 24,
+    "mushroom": 1,
+    "caterpillar": 1
+   },
+   "features": {
+    "ridge": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Bee Yard (label mine)": {
+   "props": {
+    "bee": 12,
+    "bumblebee": 4,
+    "fae_flower_small_pink": 4,
+    "fae_flower_small_blue": 4,
+    "woods_healflower": 4
+   },
+   "features": {
+    "plateau": 8,
+    "tree:tree_5": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Hive (label mine)": {
+   "props": {
+    "bee": 8
+   },
+   "features": {
+    "plateau": 1,
+    "tree:tree_5": 1,
+    "tree:tree_3": 1,
+    "arch#ley:hive:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Honeycomb (label mine)": {
+   "props": {
+    "mushroom": 1,
+    "mushroom2": 1
+   },
+   "features": {
+    "plateau": 20,
+    "tree:tree_3": 1,
+    "arch#ley:comb:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "bee queen": 1
+   }
+  },
+  "The Long Barrow": {
+   "props": {
+    "sarcophagus": 1,
+    "skull_pile": 2,
+    "stone_urn": 3,
+    "greek_amphora": 1,
+    "trap_sarcophagus_box": 1,
+    "cattle_skull": 1,
+    "sea_chest": 1,
+    "paper_sheet": 1,
+    "candle_ring": 1,
+    "psx_cobweb_1": 1,
+    "psx_cobweb_2": 1,
+    "psx_cobweb_4": 1,
+    "cave_torch": 4,
+    "sarsen": 2,
+    "menhir": 2,
+    "cave_stone": 1,
+    "decor_sheep": 2,
+    "lesson_sign": 1,
+    "fae_flower_small_violet": 1,
+    "leafy_bush": 1,
+    "crow": 1,
+    "lantern_post": 2
+   },
+   "features": {
+    "texbuilding#ley:longbarrow": 1,
+    "tree:tree_5": 1,
+    "tree:tree_3": 1,
+    "tree:tree_52": 1,
+    "tree:tree_54": 1,
+    "arch#ley:longbarrow:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Sarsen Circle": {
+   "props": {
+    "sarsen": 18,
+    "psxg_rock_4": 4,
+    "cave_stone": 5,
+    "psxg_rock_2": 1,
+    "trilithon": 5,
+    "menhir": 12,
+    "stone_altar": 1,
+    "crow": 5,
+    "eagle": 1,
+    "hw_candles": 1,
+    "hw_candles_2": 1,
+    "candelabra": 2,
+    "ritual_circle": 1,
+    "cave_torch": 4,
+    "light_shaft": 1
+   },
+   "features": {
+    "arch#ley:henge:fallen:look": 1,
+    "arch#ley:henge:lintels:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "shaman": 1
+   }
+  },
+  "The Ditch": {
+   "props": {
+    "sarsen": 7,
+    "signpost": 1,
+    "decor_sheep": 1,
+    "crow": 2,
+    "leafy_bush": 1,
+    "rabbit": 1
+   },
+   "features": {
+    "ridge": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Bank": {
+   "props": {
+    "menhir": 5,
+    "leafy_bush": 1,
+    "rabbit": 2,
+    "owl_perched": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Solstice Camp (label mine)": {
+   "props": {
+    "menhir": 1,
+    "campfire": 1,
+    "camping_tent": 3,
+    "fallen_log": 1,
+    "instrument_drum": 1,
+    "instrument_guitar_lying": 1,
+    "instrument_tambourine": 1,
+    "instrument_maracas": 1,
+    "instrument_seed_pod": 1,
+    "sea_chest": 1,
+    "paper_sheet": 1,
+    "decor_sheep": 1,
+    "covered_wagon": 1,
+    "canvas_tent": 1,
+    "picnic_table": 1,
+    "firewood_stack": 1,
+    "axe_chopping_block": 1,
+    "wooden_barrel": 1,
+    "cauldron": 1,
+    "sleeping_bag": 3,
+    "fur_rug": 1,
+    "backpack": 1,
+    "beach_cooler": 1,
+    "directors_chair": 2,
+    "taiko_drum": 1,
+    "instrument_harp": 1,
+    "dog": 1,
+    "prayer_flags": 1,
+    "string_lights": 1,
+    "tiki_torch": 2,
+    "hitching_rail": 1,
+    "horse_brown": 1,
+    "leafy_bush": 1,
+    "rabbit": 2,
+    "psxg_rock_1": 1,
+    "psxg_rock_3": 1,
+    "stump": 1
+   },
+   "features": {
+    "tree:tree_5": 1,
+    "tree:tree_56": 1
+   },
+   "doors": {},
+   "natives": {
+    "hippie": 2,
+    "shaman": 1,
+    "knight": 1
+   }
+  },
+  "The South Gate (label mine)": {
+   "props": {
+    "menhir": 1,
+    "brazier": 2,
+    "sarsen": 2,
+    "signpost": 1,
+    "cave_stone": 2,
+    "psxg_rock_1": 1,
+    "decor_sheep": 1,
+    "rope_stanchion": 10,
+    "lesson_sign": 1,
+    "trail_sign": 1,
+    "brochure_rack": 1,
+    "fae_flower_small_pink": 1,
+    "woods_healflower": 1,
+    "leafy_bush": 1,
+    "rabbit": 2,
+    "butterfly": 2,
+    "monarch": 1
+   },
+   "features": {
+    "arch#ley:fork:h:32:look": 1
+   },
+   "doors": {
+    "bay56": 1
+   },
+   "natives": {}
+  },
+  "The Avenue": {
+   "props": {
+    "sarsen": 1,
+    "lesson_sign": 1,
+    "leafy_bush": 1,
+    "psxg_dead_bush_1": 1,
+    "crow": 1,
+    "item_ward_totem": 2,
+    "tiki_torch": 4,
+    "brazier": 2
+   },
+   "features": {
+    "ridge": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Barrows": {
+   "props": {
+    "cave_stone": 2,
+    "psxg_rock_1": 1,
+    "fae_flower_small_pink": 2,
+    "woods_healflower": 1,
+    "fae_flower_small_violet": 1,
+    "leafy_bush": 1,
+    "rabbit": 1,
+    "goat": 1,
+    "psxg_dead_bush_1": 1
+   },
+   "features": {
+    "ridge": 2,
+    "tree:tree_5": 1,
+    "tree:tree_53": 1
+   },
+   "doors": {},
+   "natives": {
+    "conspiracy theorist": 1
+   }
+  },
+  "The Plain": {
+   "props": {
+    "cave_stone": 5,
+    "psxg_rock_1": 3,
+    "decor_sheep": 5,
+    "woods_healflower": 3,
+    "fae_flower_small_blue": 3,
+    "fae_flower_small_violet": 3,
+    "fae_flower_small_pink": 2,
+    "leafy_bush": 1,
+    "rabbit": 2,
+    "cow": 2,
+    "psxg_dead_bush_1": 1,
+    "butterfly": 2,
+    "monarch": 3
+   },
+   "features": {
+    "ridge": 3,
+    "tree:tree_3": 1,
+    "tree:tree_55": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The West Mouth": {
+   "props": {
+    "menhir": 4,
+    "sarsen": 2,
+    "campfire": 1,
+    "sea_chest": 1,
+    "paper_sheet": 1,
+    "cattle_skull": 1
+   },
+   "features": {
+    "arch#ley:line:0:look": 1
+   },
+   "doors": {
+    "link_gobekli_giza": 1
+   },
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Forks": {
+   "props": {
+    "menhir": 4,
+    "signpost": 1
+   },
+   "features": {
+    "arch#ley:line:2:look": 1,
+    "arch#ley:fork:b:44:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "antperson": 1
+   }
+  },
+  "The Great Line": {
+   "props": {
+    "menhir": 4
+   },
+   "features": {
+    "arch#ley:line:3:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "giant": 1
+   }
+  },
+  "The Great Line, east": {
+   "props": {
+    "menhir": 4
+   },
+   "features": {
+    "arch#ley:line:5:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "conspiracy theorist": 1
+   }
+  },
+  "The Forks, east": {
+   "props": {
+    "menhir": 2,
+    "signpost": 1
+   },
+   "features": {
+    "arch#ley:line:6:look": 1,
+    "arch#ley:fork:c:44:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The East Mouth": {
+   "props": {
+    "menhir": 4,
+    "trilithon": 1,
+    "brazier": 2
+   },
+   "features": {
+    "arch#ley:line:8:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "watcher": 1
+   }
+  },
+  "The Niches": {
+   "props": {
+    "brazier": 3,
+    "sarcophagus": 1,
+    "signpost": 1
+   },
+   "features": {
+    "arch#ley:niche:0:look": 1,
+    "arch#ley:niche:1:look": 1,
+    "arch#ley:niche:2:look": 1,
+    "arch#ley:niche:3:look": 1,
+    "arch#ley:line:1:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Niches, east": {
+   "props": {
+    "brazier": 3,
+    "skull_pile": 1,
+    "signpost": 1
+   },
+   "features": {
+    "arch#ley:niche:4:look": 1,
+    "arch#ley:niche:5:look": 1,
+    "arch#ley:niche:6:look": 1,
+    "arch#ley:niche:7:look": 1,
+    "arch#ley:line:7:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Tower, east": {
+   "props": {
+    "babel_crane": 1,
+    "brazier": 3
+   },
+   "features": {
+    "plateau": 4,
+    "ramp:bricks_1": 1,
+    "arch#ley:tower:0:look": 1,
+    "arch#ley:tower:1:look": 1,
+    "arch#ley:tower:2:look": 1,
+    "arch#ley:tower:3:look": 1,
+    "arch#ley:tower:ribs:look": 1,
+    "arch#ley:tower:top:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Tower": {
+   "props": {
+    "sea_chest": 1,
+    "brazier": 1
+   },
+   "features": {
+    "ramp:bricks_1": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Tower, north-west": {
+   "props": {
+    "brazier": 1
+   },
+   "features": {
+    "tree:palm": 3
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The North Stair": {
+   "props": {
+    "brazier": 1,
+    "ancient_well": 1,
+    "signpost": 1
+   },
+   "features": {
+    "ramp:bricks_1": 1,
+    "tree:palm": 2,
+    "arch#ley:fork:b:48:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Tower, south-west": {
+   "props": {
+    "brazier": 1
+   },
+   "features": {
+    "tree:palm": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The South Face (label mine)": {
+   "props": {
+    "brazier": 1
+   },
+   "features": {
+    "ramp:bricks_1": 1,
+    "tree:palm": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Kiln": {
+   "props": {
+    "wheelbarrow": 1,
+    "psx_wooden_crate_1": 1
+   },
+   "features": {
+    "plateau": 2,
+    "ramp:bricks_1": 1,
+    "tree:palm": 1,
+    "arch#ley:kiln:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "golem": 1
+   }
+  },
+  "The Brick Stacks": {
+   "props": {
+    "wheelbarrow": 1,
+    "campfire": 1
+   },
+   "features": {
+    "plateau": 9,
+    "tree:palm": 1,
+    "arch#ley:stack:3:51:look": 1,
+    "arch#ley:stack:5:51:look": 1,
+    "arch#ley:stack:7:51:look": 1,
+    "arch#ley:stack:3:53:look": 1,
+    "arch#ley:stack:5:53:look": 1,
+    "arch#ley:stack:7:53:look": 1,
+    "arch#ley:stack:3:55:look": 1,
+    "arch#ley:stack:5:55:look": 1,
+    "arch#ley:stack:7:55:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Clay Pits": {
+   "props": {
+    "pickaxe": 1,
+    "wooden_bucket": 1,
+    "hw_shovel": 1,
+    "wheelbarrow": 1
+   },
+   "features": {
+    "dip": 2,
+    "tree:palm": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Crane": {
+   "props": {
+    "babel_crane": 1,
+    "sea_chest": 1,
+    "cardboard_boxes": 1,
+    "paper_sheet": 1,
+    "signpost": 1,
+    "babel_house_small": 1,
+    "babel_house_stair": 1
+   },
+   "features": {
+    "tree:palm": 2
+   },
+   "doors": {},
+   "natives": {
+    "giant": 1
+   }
+  },
+  "The Workers' Town (label mine)": {
+   "props": {
+    "babel_house_row": 1,
+    "babel_house_small": 2,
+    "babel_house_yard": 1,
+    "campfire": 1,
+    "greek_amphora": 1,
+    "stone_urn": 1,
+    "signpost": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Barn Door (label mine)": {
+   "props": {
+    "babel_house_stair": 1,
+    "babel_house_row": 1,
+    "babel_house_small": 3,
+    "babel_house_yard": 1,
+    "greek_amphora": 2,
+    "stone_urn": 1,
+    "brazier": 2
+   },
+   "features": {},
+   "doors": {
+    "bay11": 1
+   },
+   "natives": {
+    "conspiracy theorist": 1
+   }
+  },
+  "The Causeway": {
+   "props": {
+    "brazier": 6,
+    "fae_flower_small_pink": 1,
+    "fae_flower_small_blue": 1,
+    "fern": 2,
+    "rowboat": 1,
+    "reeds": 2
+   },
+   "features": {
+    "deck": 1,
+    "tree:palm": 3,
+    "stream:water": 9
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The North Causeway (label mine)": {
+   "props": {
+    "brazier": 2,
+    "signpost": 1,
+    "park_bench": 1
+   },
+   "features": {
+    "ramp:cobblestone": 1,
+    "deck": 1,
+    "stream:water": 3
+   },
+   "doors": {},
+   "natives": {
+    "reptilian": 1
+   }
+  },
+  "The Portcullis": {
+   "props": {
+    "brazier": 2,
+    "stone_altar": 1,
+    "candle_ring": 1,
+    "skull_pile": 3,
+    "rowboat": 1
+   },
+   "features": {
+    "deck": 1,
+    "stream:water": 3
+   },
+   "doors": {
+    "bay2012": 1
+   },
+   "natives": {}
+  },
+  "The Canal": {
+   "props": {
+    "obelisk": 1,
+    "demon_statue": 2,
+    "ritual_circle": 1,
+    "skull_pile": 1
+   },
+   "features": {
+    "ramp:cobblestone": 1,
+    "deck": 1
+   },
+   "doors": {},
+   "natives": {
+    "annunaki": 1
+   }
+  },
+  "The Pyramid": {
+   "props": {
+    "demon_statue": 2,
+    "skull_pile": 1,
+    "lion_statue": 2,
+    "stone_altar": 1,
+    "brazier": 2
+   },
+   "features": {
+    "plateau": 4,
+    "ramp:cobblestone": 4,
+    "arch#ley:pyramid:0:look": 1,
+    "arch#ley:pyramid:1:look": 1,
+    "arch#ley:pyramid:2:look": 1,
+    "arch#ley:pyramid:3:look": 1,
+    "arch#ley:pyramid:lines:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Pyramid, south": {
+   "props": {
+    "sarcophagus": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The West Gate (label mine)": {
+   "props": {
+    "signpost": 1,
+    "campfire": 1,
+    "folding_chair": 1
+   },
+   "features": {
+    "plateau": 1,
+    "ramp:cobblestone": 1,
+    "stream:water": 2,
+    "arch#ley:court:s:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Round Tower (label mine)": {
+   "props": {
+    "brass_telescope": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#ley:roundtower:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "annunaki": 1
+   }
+  },
+  "The Garden Islets (label mine)": {
+   "props": {
+    "fern": 9,
+    "woods_healflower": 4,
+    "fae_flower_small_pink": 5,
+    "fae_flower_small_blue": 4,
+    "reeds": 3
+   },
+   "features": {
+    "deck": 1,
+    "tree:palm": 6,
+    "stream:water": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ball Court": {
+   "props": {
+    "meshy_rowboat": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream:water": 1,
+    "arch#ley:court:n:look": 1,
+    "arch#ley:court:marks:look": 1
+   },
+   "doors": {
+    "link_technoticlan_agartha": 1
+   },
+   "natives": {}
+  },
+  "The Pyramid, east": {
+   "props": {
+    "meshy_rowboat": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#ley:pyramid:shrine:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Reeds (label mine)": {
+   "props": {
+    "reeds": 3
+   },
+   "features": {
+    "tree:palm": 2,
+    "stream:water": 3
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Lake, south (label mine)": {
+   "props": {
+    "sea_chest": 1,
+    "paper_sheet": 1
+   },
+   "features": {
+    "stream:water": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Lake (label mine)": {
+   "props": {},
+   "features": {
+    "stream:water": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "(the room)": {
+   "props": {},
+   "features": {
+    "scatter:cave_stone x70": 1
+   },
+   "doors": {},
+   "natives": {}
+  }
+ },
+ "lines": 21,
+ "totals": {
+  "props": 684,
+  "features": 218,
+  "doors": 6,
+  "natives": 24,
+  "lines": 21,
+  "plots": 63
+ }
+}
