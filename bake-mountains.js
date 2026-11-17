@@ -431,9 +431,9 @@ const STAND = [
       list: v13('shasta'), spawn: ['P13-03', null, null], lines: O_SHASTA.l,
       parti: 'The volcano on twenty plots: the trail climbs from the trailhead past the lookout and the switchbacks to the meadows, the gulch, the lake and the summit.',
       seams: [{ at: [-4, -15], side: 'W', id: 'ow_v_m4_m15', room: R_OLY, way: 'open', open: 5, label: 'MOUNT OLYMPUS · THE LONG DESCENT', sub: 'THE UPPER SHELF · WEST ACROSS THE SNOW', desc: 'A line of footprints goes west across the snow, towards a white temple on the next mountain.' },
-              /* THE CANYON TRAIL (route R2, One World phase 4.1, 2026-11-17): INTERIM. The trail's top plots (-1..0, -14) do not touch Shasta on the map (two scenery
-                 plots lie between them and the Trailhead), so this door pair jumps that gap until mondo says how the trail should reach the Trailhead; on squares 2-3, west of the Woods door `woods` */
-              { at: [-3, -15], side: 'S', k: [2, 3], id: 'ow_h_m3_m14', to: 'ow_h_0_m14', room: 'site_ow_r2', way: 'trail', label: 'THE CANYON TRAIL', sub: 'THE TRAILHEAD · DOWN THE CANYON TO THE HILLS', desc: 'A dry trail goes south down a canyon, towards some hills with very large letters on them.', ifRoom: 1 }] },
+              /* THE CANYON TRAIL (route R2, One World phase 4.1, 2026-11-17): the trail comes up from the south into the Trailhead's south side, on squares 2-3,
+                 west of the Woods door `woods` (R2's spec adds the two plots -2,-14 and -3,-14 that reach here, mondo's yes) */
+              { at: [-3, -15], side: 'S', k: [2, 3], id: 'ow_h_m3_m14', room: 'site_ow_r2', way: 'trail', label: 'THE CANYON TRAIL', sub: 'THE TRAILHEAD · DOWN THE CANYON TO THE HILLS', desc: 'A dry trail goes south down a canyon, towards some hills with very large letters on them.', ifRoom: 1 }] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 180, E: 270, S: 0, W: 90 };
 const GROUND = PJ.ground, groundAt = (x, y) => { const r = GROUND.rows[y - GROUND.y0]; return r ? r[x - GROUND.x0] : '~'; };

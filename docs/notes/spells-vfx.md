@@ -4474,8 +4474,9 @@ its generic stage burst stops. Looks only.
 - **The kit (`_l6*`, this block only):** `_l6Area` (the squares an area spell hits), `_l6Flash` (EVERY hit square flashes
   in the spell's colour, staggered by a `delay(tile)`), `_l6Stroke` (a gust stroke flat on the ground), `_l6Go` (one
   `_sigRun` a spell), `_l6From` (the caster's tile, null when fogged). Colours: `_L6`.
-- **The wind spells bring their own air:** the eight wind ids get `_WD_BURST[id] = false`, so the generic gust + swirl
-  round the target do not draw over them (the wind cast gather and the noise wash stay).
+- **The element pass is the base (the brief's correction, 11-17):** part 1 first switched the wind mark off on the eight
+  wind ids (`_WD_BURST[id] = false`) and laid an earth sheet over Simoom's wind wash. Both taken back the same day: the
+  wind gust + swirl + wash draw on all eight, and each look is only the piece on top. Frames: `L6_part1_wind_*.jpg`.
 - Cataclysm Stomp: a star of cracks races out from the foot over the 5x5, lit violet from below; each ring of squares
   flashes, throws rock and dust as the shock passes it.
 - Meow: pink paw prints pad out over every square in reach, toes pointing away, each pressing in with a bounce. No flash (no damage).
@@ -4484,7 +4485,7 @@ its generic stage burst stops. Looks only.
 - Heroic Leap: the jump hangs behind him as one high arc of air with the cape's red in it; a flat star of air where he lands, inside the square.
 - Sky Tackle: twin vapour trails along his run in; three thin vapour rings break open at the contact, facing down the carry line.
 - Roundhouse Kick: one flat blade of air whips once round him at kick height, the heel a hot point at its head; each of the 8 squares flashes as the heel passes.
-- Simoom: sheets of ochre sand drive across the 3x3 from the caster's side; the squares flash sand-orange as the front crosses; grit hangs after.
+- Simoom: flat sheets of ochre sand drive across the 3x3 from the caster's side, over the wind wash; the squares flash sand as the front crosses; grit hangs after.
 - Splitting Arrow: two arrows (the game's arrow model) fork away past the body on threads of fletching-green air; splinters fly.
 - Wing Attack (`raceWingGust`): a pale wing sweeps round each side of her from behind to before (`_pzWingTex`), feathers shaken loose; each square is struck outward by its gust as the wing passes.
 - Online: every layer rides the relayed `burst` beat; nothing on `state`; drawn only where the viewer sees the square.
@@ -4580,6 +4581,26 @@ shield model's ram, the grapple's rope): those stay, the look adds what was miss
 - Proof: docs/plans/vfx-cleanup/img/own-look/L2_part2_after.jpg (the burst beat fired on the audit board, two frames a
   spell: the real-cast frames are 0.45 s apart and miss most of these; real casts were run too, no errors).
 
+
+## THE OWN LOOKS, L3, part 3: the last kinetic spells + the skyfall (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L3")
+The list (`own-look/L3.txt`, 39 spells) is done with this part.
+- Stampede (`raceApexCharge`): three-toed prints as wide as a square down the lane (`:dash`), ferns + earth from each;
+  where it stops the tail sweeps round low in moss green. Titan Drop: a crown of grey stone slabs is driven up round the
+  square one after another, a dust column, the slabs sink back. Vault: the jump stays drawn in the air (a spring-green
+  arc from the take-off to the body), two long hind-foot prints flash, dust.
+- Descending Wrath: a shaft of dark violet where he came down, two burnt wings scorched on the ground either side with
+  ember edges, charred feathers fall. Dragon Toss: three talon rakes torn across the square, two crescents of wing-beat
+  dust. Infernal Hurl: the square splits in a web of cracks that glow like coals, black smoke and cinders. Place Bomb: a
+  red light blinks three times over the charge and three red chevrons close on the square (the blast keeps its own
+  recipes; `<id>:detonate` is NOT defined here: a geometry that returns true would replace the blast). To the Moon: a
+  ring of exhaust rolls out flat, a blue-white flame with shock diamonds, a scorched pad.
+- Named only (they already had looks on other beats, written after the audit table): Fifty Times Its Weight
+  (`sigFiftyTimes:throw`), Lunar Lander (`sigLunarLander:dash`), Popemobile (the car + `nrPopemobile:glass`), Quickdraw
+  (`pzQuickdraw:dash`), Sleigh Dash (`raceSleighDash:dash`). `_vcOwn` is now true for them, so the shared burst stops.
+- **Not seen on a frame:** Dragon Toss, Infernal Hurl and To the Moon. A sky throw is two picks and the harness shoots
+  only the grab, with the camera up in the sky; their pieces ran with no error in the page log, but nobody has looked at
+  them on the ground yet. Horn Toss (part 2) is the same: its second pick (the throw's direction) is not cast by the probe.
+- Frames: docs/plans/vfx-cleanup/img/own-look/l3_part3_*.jpg, l3_raceApexCharge.jpg.
 
 ## THE VFX CLEANUP, B4 part 1: the ray guns + the kit blasts (2026-11-17, three-vfx-effects.js)
 - `_sigGunRig3D` `opts.ray`: the ray's core = `_beamKitCols(opts.ray).hot` (it was `0xffffff` in a coloured sleeve).

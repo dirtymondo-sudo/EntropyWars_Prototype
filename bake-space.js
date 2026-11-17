@@ -39,13 +39,13 @@ const mkRnd = s => { let v = s >>> 0; return () => { v = (v * 1664525 + 10139042
 /* what each world wears: the ground sheets by square char (0 = the room's floor), the rock, the look of its room */
 const WEAR = {
     moon: { label: 'THE MOON', sub: 'THE MARE · THE CRATER · THE FAR SIDE · 20 PLOTS', floor: 'moon', cliff: 'moon_3', path: 'moon_2', wallH: 4.2, noise: 0.12,
-        pal: { p: 'moon_3', c: 'moon_3', e: 'moon_2', m: 'moon_3', r: 'moon_2', l: 'urban:MetalDiamondPlate1a', B: 'urban:MetalDiamondPlate1a' },   // pilot pass 1: the tracks are the darker sheet (obsidian on the crater floors was tried: black squares with stepped edges; out)
+        pal: { d: 'moon_3', p: 'moon_3', c: 'moon_3', e: 'moon_2', m: 'moon_3', r: 'moon_2', l: 'urban:MetalDiamondPlate1a', B: 'urban:MetalDiamondPlate1a' },   // pilot pass 1: the tracks are the darker sheet (obsidian on the crater floors was tried: black squares with stepped edges; out)
         parti: 'A sea of dust with one lander on it, one big crater north of that with the ship\'s collar on a terrace over it, and a ridge to the west with two passes through to the side nobody is shown.' },
     mars: { label: 'MARS', sub: 'CYDONIA · THE CANYON · THE ROVER BAY · 20 PLOTS', floor: 'mars', cliff: 'mars_2', path: 'moon_2', wallH: 5, noise: 0.14,
-        pal: { p: 'moon_2', c: 'mars_2', e: 'desert', m: 'mars_2', r: 'moon_2', t: 'mars_2', l: 'urban:MetalDiamondPlate1a', B: 'urban:MetalDiamondPlate1a' },
+        pal: { d: 'mars_2', w: 'ice', p: 'moon_2', c: 'mars_2', e: 'desert', m: 'mars_2', r: 'moon_2', t: 'mars_2', l: 'urban:MetalDiamondPlate1a', B: 'urban:MetalDiamondPlate1a' },
         parti: 'The Face and the Pyramid stand on the north plain, a canyon cuts the map in two under an arch between two mesas, and the rover\'s tracks end at a bay on the south plain.' },
-    saturn: { label: 'SATURN', sub: 'THE HEXAGON · THE RING SHARD · 16 PLOTS', floor: 'mars_2', cliff: 'storm', path: 'moon_3', wallH: 7, noise: 0.1,
-        pal: { p: 'moon_3', c: 'storm', h: 'void', m: 'cloud_thick', r: 'moon_3', i: 'ice' },
+    saturn: { label: 'SATURN', sub: 'THE HEXAGON · THE RING SHARD · 16 PLOTS', floor: 'desert', cliff: 'storm', path: 'moon_3', wallH: 7, noise: 0.1,   // (2026-11-17: the deck was mars_2, a brown ball; now sand gold with pale cloud belts, `b`)
+        pal: { b: 'cloud_thick', d: 'mars_2', k: 'storm', p: 'moon_3', c: 'storm', h: 'void', m: 'cloud_thick', r: 'moon_3', i: 'ice' },
         parti: 'A six-sided plateau inside six walls of storm: a rim walk round it, the storm\'s eye sunk in its middle, a splinter of ring ice across the east rim.' },
     singularity: { label: 'THE SINGULARITY', sub: 'THE DROP · THE ACCRETION RIM · 16 PLOTS', floor: 'moon_3', cliff: 'obsidian', path: 'crystal', wallH: 6, noise: 0.1,
         pal: { p: 'crystal', c: 'obsidian', h: 'void', e: 'lava', r: 'obsidian', m: 'crystal' },
@@ -291,10 +291,16 @@ function toBall(P0, R) {
    rooms are retired into it (DOOR_HQ.retired). ══ */
 /* BIGGER (2026-11-17, mondo: "make the room bigger"): every world round, so the room holds four nets (where their ground lies for the
    walk; nothing is drawn there) and the balls hang well apart in a taller sky: 24 x 15 plots, 380 m up */
-const SYS = { cols: 24, rows: 15, place: { saturn: [1, 1], mars: [14, 1], singularity: [14, 8], moon: [1, 10] }, orbit: [9, 12],   // (a plot of void round every net: two nets that touch share their edge's ground, drawn as a slab stretched between two balls)
-    room: 'site_prebuilt_moon_plots', site: 'prebuilt_moon', VOID: -60, ceil: 380 };
-/* THE ROUND WORLDS: where each round world's ball hangs (metres; out in the open, clear of every block's flat place and of the other balls) */
-const ROUNDC = { saturn: [-210, 150, -10], mars: [270, 110, -165], singularity: [270, 135, 110], moon: [20, 215, 150] };
+/* FAR APART + BIGGER (2026-11-17, mondo: "The planets are way too close together ... i wouldnt mind if they were bigger, especially relative
+   to each other (saturn should be bigger than the moon obviously)"): the nets (the walk's ground; nothing is drawn there) are packed in a room
+   of 46 x 19 plots, and the balls hang in a far bigger box of open space (`space.box`, the ship's limits: the room's own box no longer holds
+   the ship). ROUNDC = each ball's middle, metres. From the berth: the Moon 420 m, Mars 900 m, the Singularity 1,600 m, Saturn 1,900 m (they
+   were 150 to 400 m apart, ring to ball). */
+const SYS = { cols: 46, rows: 19, place: { saturn: [1, 1], mars: [26, 1], singularity: [26, 10], moon: [39, 10] },   // (a plot of void round every net: two nets that touch share their edge's ground, drawn as a slab stretched between two balls)
+    room: 'site_prebuilt_moon_plots', site: 'prebuilt_moon', VOID: -60, ceil: 900,
+    box: { x0: -1750, x1: 1500, z0: -1350, z1: 1750, y0: -260 } };
+/* THE ROUND WORLDS: where each round world's ball hangs (metres; out in the open, far from each other) */
+const ROUNDC = { saturn: [-950, 400, 300], mars: [60, 300, -640], singularity: [-150, 120, 1050], moon: [640, 210, 60] };
 const PL_FACES = [[[-1, 0, 0], [0, 0, 1], [0, -1, 0]], [[0, 0, 1], [1, 0, 0], [0, -1, 0]], [[1, 0, 0], [0, 0, -1], [0, -1, 0]],
     [[0, 0, -1], [-1, 0, 0], [0, -1, 0]], [[0, -1, 0], [1, 0, 0], [0, 0, -1]], [[0, 1, 0], [1, 0, 0], [0, 0, 1]]];
 /* the flat net's (x, y, z) → its point on the ball (= three-renderer.js _ewPlBendFace) */
@@ -347,21 +353,20 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
         mesas.push({ x: dx, z: dz, hx: P.HX, hz: P.HZ, top: r2(Math.min(0, edgeLo) - 0.1), bottom: bot, taper: 0.85, rock: 'moon_3' });
         Object.keys(P.WAY).forEach(k => { const w = P.WAY[k]; ways[k + '@' + P.R.id] = { id: k, world: P.R.id, x: r2(w.x + dx), z: r2(w.z + dz), face: w.face, y: r2(P.hC(w.sx, w.sy)), fx: r2(P.gcx(w.fx) + dx), fz: r2(P.gcz(w.fy) + dz), fy: r2(P.hC(w.fx, w.fy)) }; });
     });
-    /* LOW ORBIT: one plot of rock in the middle, the Spaceship's berth (new; no district file) */
-    { const [oc, or] = SYS.orbit, sx0 = oc * N, sy0 = or * N;
-      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const rim = x === 0 || y === 0 || x === N - 1 || y === N - 1, i = (sy0 + y) * BW + sx0 + x; cell[sy0 + y][sx0 + x] = rim ? 'x' : (x >= 3 && x <= 8 && y >= 3 && y <= 8 ? 'l' : '.'); H4[i] = [0, 0, 0, 0]; key[i] = cell[sy0 + y][sx0 + x] === 'l' ? 'urban:MetalDiamondPlate1a' : 'moon_3'; }
-      names.push(['P' + String(oc).padStart(2, '0') + '-' + String(or).padStart(2, '0'), 'Low Orbit', 'O', 0]);
-      const cx = bgcx(sx0 + 6) - C / 2, cz = bgcz(sy0 + 6) - C / 2;
-      SYS.berth = { x: r2(cx), z: r2(cz) };
-      mesas.push({ x: r2(-BHX + (sx0 + N / 2) * C), z: r2(-BHZ + (sy0 + N / 2) * C), hx: N * C / 2, hz: N * C / 2, top: -0.1, bottom: -26, taper: 0.12, rock: 'moon_3' });   // Low Orbit: a rock hanging in space
-      props.push({ key: 'spaceship_fly', x: r2(cx), z: r2(cz), face: 0 });
-      ways['ship_stick@orbit'] = { id: 'ship_stick', world: 'orbit', x: r2(cx), z: r2(cz + 6 * C / 2 + 1.75), face: 180, y: 0 };   // the stick on the bridge lands you at the ship's side (and aboard)
-      ways['orbit_derelict@orbit'] = { id: 'orbit_derelict', world: 'orbit', x: r2(bgcx(sx0 + 2)), z: r2(bgcz(sy0 + 9)), face: 0, y: 0 };   // the hatch back into the ship's airlock (a course on the collar)
-      planets.push({ id: 'earth', name: 'EARTH', x: r2(cx + 70), z: r2(cz + 30), y: -95, r: 55, tex: 'ocean', color: 0x3c78d2, land: 0x4d8a45 });
-      beacons.push({ id: 'orbit', label: 'LOW ORBIT · THE BERTH', x: r2(cx), z: r2(cz), ground: 0, pad: { x: r2(cx), z: r2(cz), yaw: 0 } });
+    /* THE BERTH (2026-11-17, pass 2): the Spaceship waits on its pad on the top of the Moon (draw-space.js moon(): squares 62..67 x 27..32). It
+       stood on "Low Orbit", a square plot of rock hanging by itself: the one flat square map left in a room of balls. The Bridge's stick and
+       the berth's hatch are the Moon's own ways now (`ship_stick`, `orbit_derelict`); the Earth still hangs under it all. */
+    { const M = PIECES.find(P => P.R.id === 'moon'), [pc, pr] = SYS.place.moon, mdx = r2(-BHX + pc * N * C + M.HX), mdz = r2(-BHZ + pr * N * C + M.HZ);
+      const cx = r2(-M.HX + 65 * C + mdx), cz = r2(-M.HZ + 30 * C + mdz), gy = r2(M.hC(64, 29));
+      SYS.berth = { x: cx, z: cz };
+      props.push({ key: 'spaceship_fly', x: cx, z: cz, face: 0 });
+      planets.push({ id: 'earth', name: 'EARTH', x: 929, z: -182, y: -345, r: 290, tex: 'ocean', color: 0x3c78d2, land: 0x4d8a45 });   // (290 m: it was 55 m, smaller than the Moon)
+      const bc = { id: 'orbit', label: 'THE MOON · THE BERTH', x: cx, z: cz, ground: gy, pad: { x: cx, z: cz, yaw: 0 } };
+      const rw = round.find(q => q.id === 'moon'), B = plBend(rw, cx, gy, cz), u = [B[0] - rw.c[0], B[1] - rw.c[1], B[2] - rw.c[2]], ul = Math.hypot(u[0], u[1], u[2]); bc.ball = B.map(r2); bc.up = u.map(v => r2(v / ul));
+      beacons.push(bc);
     }
-    /* the Sun: far below the plane in the middle, a ball of light (never reached) */
-    const SUN = { x: 0, z: 0, y: -260, r: 70, color: 0xffc46a };
+    /* the Sun: far off, a ball of light (never reached) */
+    const SUN = { x: 2760, z: 1725, y: 1210, r: 300, color: 0xffc46a };   // (2026-11-17: far off to the east and high: where the balls' daylight comes from, three-renderer.js _hqBuildSpace)
     /* THE BEACONS: one over each district's landing (the collar spots of draw-space.js; the bay doors are not landings) */
     const LANDING = { mare_derelict: 'THE MOON · THE MARE', moon_derelict: 'THE MOON · THE CRATER', farside_derelict: 'THE MOON · THE FAR SIDE', cydonia_derelict: 'MARS · CYDONIA',
         canyon_derelict: 'MARS · THE CANYON', mars_derelict: 'MARS · THE ROVER BAY', hexagon_derelict: 'SATURN · THE HEXAGON', derelict_saturn: 'SATURN · THE RING SHARD',
@@ -382,14 +387,19 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
     const PAL = [], palOf = k => { let i = PAL.indexOf(k); if (i < 0) { PAL.push(k); i = PAL.length - 1; } return i + 1; }, paint = new Uint8Array(BW * BH);
     /* the walk's ground draws EIGHT sheets at most (three-renderer.js: paint.pal.slice(0, 8); a ninth falls back to the floor, so the
        round Singularity drew as moon dust): the room's floor and the void take 0, and four rare sheets give way to a near one */
-    const MERGE = { moon: null, void: null, desert: 'mars', ice: 'cloud_thick', storm: 'obsidian', lava: 'crystal' };
+    const MERGE = { moon: null, void: null, moon_2: 'moon_3', ice: 'cloud_thick', storm: 'obsidian', lava: 'crystal' };   // (2026-11-17: desert is its own sheet again, Saturn's gold deck and Mars' dunes; the two grey dusts share one)
+    /* THE NETS' EDGES (2026-11-17): the void square beside a net wears its neighbour's sheet (it is never drawn; the paint blends half a
+       square across a line, so every cut seam of a ball showed a pale line of the room's floor sheet, moon dust, over black glass or gold cloud) */
+    { const k2 = key.slice(); for (let y = 0; y < BH; y++) for (let x = 0; x < BW; x++) { const i = y * BW + x; if (key[i] != null || cell[y][x] !== 'v') continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= BW || Y >= BH || cell[Y][X] === 'v' || key[Y * BW + X] == null) continue; k2[i] = key[Y * BW + X]; break; } }
+      for (let i = 0; i < BW * BH; i++) key[i] = k2[i]; }
     for (let i = 0; i < BW * BH; i++) { let k = key[i]; if (k && k in MERGE) k = MERGE[k]; paint[i] = k ? palOf(k) : 0; }
     if (PAL.length > 8) throw new Error('compose: the ground has ' + PAL.length + ' sheets, the renderer draws 8: ' + PAL.join(' '));
     const slope = Buffer.alloc(BW * BH * 8); H4.forEach((q, i) => q.forEach((h, k) => slope.writeInt16LE(Math.round(h * 100), i * 8 + k * 2)));
     if (!CAT.spaceship_fly) throw new Error('catalogue: spaceship_fly (the flown ship) is missing');
     const sing = PIECES.find(P => P.R.id === 'singularity'), moon = PIECES.find(P => P.R.id === 'moon');
-    const SPM = { x: ways['ship_stick@orbit'].x, z: r2(ways['ship_stick@orbit'].z + 2) };
-    const sky = Object.assign({}, sing.OLD.shell.sky, { tint: 0x101830, tintAmt: 0.25, stars: 2.4, nebula: 1.2, fog: { color: 0x05060c, amount: 0.06, top: 0.02, band: 0.3, density: 0.0015 } });
+    const SPM = { x: ways['ship_stick@moon'].x, z: r2(ways['ship_stick@moon'].z + 2) };
+    const sky = Object.assign({}, sing.OLD.shell.sky, { scenery: 'deepspace', tint: 0x101830, tintAmt: 0.25, stars: 2.4, nebula: 1.2, fog: { color: 0x05060c, amount: 0.06, top: 0.02, band: 0.3, density: 0.0004 } });   // (density: was 0.0015, set for worlds 300 m apart; at 2 km Saturn went grey-green)
     const shell = Object.assign({}, moon.OLD.shell, { w: 2 * BHX, d: 2 * BHZ, h: SYS.ceil, wallH: 9, sky, look: sing.OLD.shell.look, plate: { x: SPM.x, z: SPM.z, y: 4.4 } });
     if (AIR.length) shell.atmos = { kind: AIR[0].kind, tier: 'open', zones: AIR };
     /* THE TWO SECRET WAYS that joined two worlds (links cydonia_mare, saturn_singularity until 2026-11-17) have both ends in this room now: a door pair of
@@ -409,13 +419,13 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
     L.push("            kind: 'box', site: '" + SYS.site + "', part: '" + PART + "',");
     L.push("            world: { hub: 'space', layer: 'off', zx: 0, zy: 0, note: 'THE SOLAR SYSTEM' },");
     L.push("            shell: " + J(shell) + ",");
-    L.push("            parti: 'Four round worlds hanging in the dark, each a ball you walk all the way round: Saturn with its ring to the west, Mars and the Singularity with its burning disc to the east, the small Moon high over the middle, the Spaceship\\'s berth in Low Orbit over the Earth, the Sun far below. You fly the ship from one to the next and set it down on a beacon.',");
+    L.push("            parti: 'Four round worlds hanging far apart in the dark, each a ball you walk all the way round: the small Moon over the Earth, the Spaceship\\'s berth on its top, Mars twice its size to the north-west, the Singularity with its burning disc to the south-west, and Saturn, four Moons across, with its rings far out west. You fly the ship from one to the next (SHIFT = the burner) and set it down on a beacon.',");
     L.push("            typology: 'grid',");
     L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + SYS.cols + ", nz: " + SYS.rows + ", names: " + J(names) + ", mask: " + J((() => { const m = []; for (let r = 0; r < SYS.rows; r++) { let s = ''; for (let c = 0; c < SYS.cols; c++) s += names.some(n => n[0] === 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0')) ? '#' : '.'; m.push(s); } return m; })()) + " },");
     L.push("            /* THE SOLAR SYSTEM: what three-renderer.js THE SPACESHIP draws and flies by (the balls, the Sun, the beacons, the ceiling) */");
-    L.push("            space: " + J({ ceil: SYS.ceil - 10, sun: SUN, planets, mesas, round, beacons, berth: SYS.berth, launch: { x: ways['ship_stick@orbit'].x, z: ways['ship_stick@orbit'].z } }) + ",");
+    L.push("            space: " + J({ ceil: SYS.ceil - 10, box: SYS.box, sun: SUN, planets, mesas, round, beacons, berth: SYS.berth, launch: { x: ways['ship_stick@moon'].x, z: ways['ship_stick@moon'].z } }) + ",");
     L.push("            terrain: {");
-    L.push("                res: 0.875, floor: 'moon', cliff: 'moon_3', path: 'moon_2',");
+    L.push("                res: 1.75, tileM: 168, floor: 'moon', cliff: 'moon_3', path: 'moon_2',");   // (res: was 0.875, a quarter of the triangles now; tileM: the ground in 168 m tiles, three-renderer.js _hqTerrainTiles: a tenth of the draws)
     L.push("                noise: { amp: 0.1, scale: 10 }, crag: false, outer: false,");
     L.push("                /* THE VOID: every square between the worlds is open space (its ground lies at " + SYS.VOID + " m, under the lip); a fall puts the walker back on the last ground */");
     L.push("                void: { lip: -20, fall: -24, rock: 'moon_3', glow: 0x0a0c18, glowY: -90, sharp: true },");
@@ -445,16 +455,26 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
     /* the rows in data.js that name a place in this room (written by hand there) */
     Object.keys(ways).forEach(kk => { let k = kk; const w = ways[kk], at = "wall: 'free', x: " + w.x + ", z: " + w.z + ", face: " + w.face + (Math.abs(w.y) > 0.3 ? ', y: ' + w.y : '');
         k = w.id;
-        if (k === 'bay') { const site = 'prebuilt_' + w.world; WANT.push([site + ": { room: '" + SYS.room + "', door: { id: '" + BAY[w.world] + "', " + at + " } }", 'siteRooms.entry.' + site]); }
-        else WANT.push(["{ site: '" + SYS.site + "', part: '" + PART + "', " + at + ",", 'link ' + k + ' (the ' + w.world + ' end)']); });
+        if (k === 'bay') { const site = 'prebuilt_' + w.world; WANT.push([site + ": { room: '" + SYS.room + "', door: { id: '" + BAY[w.world] + "', " + at + " } }", 'siteRooms.entry.' + site, { entry: site }]); }
+        else WANT.push(["{ site: '" + SYS.site + "', part: '" + PART + "', " + at + ",", 'link ' + k + ' (the ' + w.world + ' end)', { link: k }]); });
     DECALROWS.push("    " + SYS.room + ": " + J(DECALS.slice(0, 60)) + ",   // SPACE72-DECALS: written by bake-space.js\n");
-    WANT.push([SYS.room + ": { x: " + SPM.x + ", z: " + SPM.z + " }", 'HQ_AREA_MARKERS.' + SYS.room]);
+    WANT.push([SYS.room + ": { x: " + SPM.x + ", z: " + SPM.z + " }", 'HQ_AREA_MARKERS.' + SYS.room, { marker: 1 }]);
     TOTAL.system = { plots: names.length, props: props.length, natives: npc.length, features: spaces.length + features.length, spaces: spaces.length, planets: planets.length, beacons: beacons.length };
 }
 Object.keys(DISTRICTS).forEach(k => { if (!PLAN.rooms.some(R => R.districts[k])) throw new Error('districts/' + k + '.js is no district of the layout'); });
 const block = BLOCK.join('\n') + '\n';
 console.log(JSON.stringify(TOTAL));
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
+/* `--rows` (2026-11-17): the rows in data.js that name a place in this room (the links' world ends, the bays, the area marker) are moved
+   to where the worlds stand now (a world that grew or moved shifts every one of them); without it they are only checked, as before */
+if (process.argv.includes('--rows')) { let n = 0; const esc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    WANT.forEach(w => { const k = w[2]; if (!k || src.replace(/ +/g, ' ').indexOf(w[0]) >= 0) return; let done = false;
+        if (k.link) { const i = src.indexOf("{ id: '" + k.link + "',"); if (i >= 0) { const j = src.indexOf("\n        { id: '", i + 5), seg = src.slice(i, j < 0 ? i + 2000 : j);
+            const seg2 = seg.replace(new RegExp("\\{ site: '" + SYS.site + "', part: '" + PART + "', wall: 'free', x: [-0-9.]+, z: [-0-9.]+, face: [-0-9.]+(, y: [-0-9.]+)?,"), w[0]); if (seg2 !== seg) { src = src.slice(0, i) + seg2 + src.slice(i + seg.length); done = true; } } }
+        else if (k.entry) { const re = new RegExp(esc(k.entry) + ": \\{ room: '" + SYS.room + "', door: \\{[^}]*\\} \\}"); if (re.test(src)) { src = src.replace(re, w[0]); done = true; } }
+        else if (k.marker) { const re = new RegExp("(\\n    )" + SYS.room + ": \\{ x: [-0-9.]+, z: [-0-9.]+ \\}"); if (re.test(src)) { src = src.replace(re, '$1' + w[0]); done = true; } }
+        if (done) n++; else console.log('--rows: could not place ' + w[1]); });
+    console.log('--rows: ' + n + ' row(s) of data.js moved'); }
 const flat = src.replace(/ +/g, ' '), missing = WANT.filter(w => flat.indexOf(w[0]) < 0);
 if (missing.length) { console.log('data.js rows to write by hand:'); missing.forEach(w => console.log('  ' + w[1] + ':  ' + w[0])); if (!DRY) throw new Error('data.js does not point at these rooms yet (see the rows above)'); }
 if (DRY) process.exit(0);
