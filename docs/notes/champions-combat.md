@@ -5771,3 +5771,18 @@ residents in their zones.
   `geom3D`); the Hunger = frost ribs showing on its chest, dark wisps spiralling in, a seat-colour ring closing under it.
 - Probe recipe: /mnt/project-files/wendigo-pass/probe/ (wd.js = the VS-CPU board, every cast + the real round end; show.js = the
   looks on a frozen clock).
+- **THE LIBRARIAN PASS (2026-11-17, thread "Polish Librarian spells and VFX"):** (1) THE LOADED BOOK: Overdue ran the old Mimic
+  resolver (a flat dmg + power hit on one unit; an area spell, a stat raise or anything with its own branch fizzled, no look). Now
+  every Overdue row on a team takes the borrowed spell's whole shape when a teammate casts (battle.js `_overdueLoad`, called at the
+  cast record; keeps its own id / name / tier / AP / cooldown, the borrowed row comes from the teammate's own kit so its upgrades
+  ride), so menus, range wash, forecast and the CPU read the real spell; doSpell casts a copy under the borrowed id
+  (`_overdueCastRow`, `_overdueOf`) so the spell's branch and VFX run. Cooldown + once-a-turn slot keyed on Overdue
+  (`_spellBookKey` in getSpellCooldownRemaining / _markSpellUsedThisTurn / the doves). Price = the borrowed MP, at least 50.
+  Not renewable (`_overdueEligible`): passives, basics, Overdue / Mimic, Submerge / Coil; the Florida Man headline lock is dropped.
+  Greyed "📚 Nothing to renew" until a teammate casts; state._lastAllySpell resets at match start. (2) Shush cooldown 0 -> 2 (every
+  pure silence is cd 2; at 0 one foe stayed silenced for 25 MP a turn). (3) LOOKS (three-vfx-effects.js "THE LIBRARIAN", kill-switch
+  EW_NO_LIBRARIAN_VFX; PSX Mega Pack books `lib_book` / `lib_open_book` in three-renderer _MISC_GLB): Overdue `aura` (book over her,
+  pages turn, RENEWED card), Shush `impact` (rings pulled in, book slams shut, SHHH), Late Fee `bolt` (hardback thrown, date-due
+  slips, LATE FEE stamp; OVERDUE stamp + red ring on a Silenced foe). Probe 11-17 (real TDM, 0 page errors): Shush silenced, cd 2;
+  Late Fee 557 on the silenced Knight vs 343 plain; Overdue renewed Hurricane Party (3 foes hit + Wet, 75 MP, cd 3) and Sponsored
+  (+2 ATK/INT on the ally). Proof /mnt/project-files/librarian-polish/.

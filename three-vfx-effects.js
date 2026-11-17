@@ -11843,7 +11843,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'firetruck', 'ambulance',   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
                             'satellite', 'space_shuttle', 'space_station', 'hullplate', 'lunar_lander',   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
                             'church_building', 'catholic_pew', 'church_pew', 'church_podium', 'field_goal_post', 'skull_pile',
-                            'beach_life_ring'];   /* THE LIFEGUARD (2026-11-16): her rescue ring */   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
+                            'beach_life_ring',   /* THE LIFEGUARD (2026-11-16): her rescue ring */
+                            'lib_book', 'lib_open_book'];   /* THE LIBRARIAN (2026-11-17): the PSX Mega Pack's books (Overdue, Shush, Late Fee) */   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gilt.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
@@ -64954,6 +64955,241 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        `burst` beat (relayed like every staging beat); the flag is a quick 160 ms toss onto the feet */
     _BUG_ON_BURST['nrPenalty'] = function (tx, ty, p) { _PZ_SIGS.rfPenalty({ tx: tx, ty: ty, fromX: p && p.sx, fromY: p && p.sy, flyMs: 160 }); };
     SPELL_MAP['nrTimeout'] = { aoe: 'rfTimeout_aoe' };
+    /* ════ THE LIBRARIAN (2026-11-17, the Librarian pass; mondo: "flesh out their unique spells and spell animations/vfx"):
+       her three casts had the shared psychic eye + rings (Shush, Late Fee) or nothing at all (Overdue). Each gets a library
+       look now, built on the PSX Mega Pack's own books (Pizza Doggy: `lib_book` = book_mp_3, `lib_open_book` = open_book_mp_1,
+       R2 Assets/world/packs/pizzadoggy_psx_mega_pack/small_props/, warmed with the spells; a book still streaming is left
+       out, never stood in for) + canvas cards and ink stamps. Her side's colour is the Riot one from the viewer's seat (own
+       side cyan-blue, the other side pink-orange); the ink stays red. Everything sits over the head or on the floor: the
+       caster, the target, the hit and the number stay clear.
+       · OVERDUE (`aura` on her as the renewed cast starts, battle.js _overdueFlourish): an open book hangs over her head, three
+         pages turn, the date-due card rises out of it and a RENEWED stamp lands on it; her colour falls into her hands. The
+         borrowed spell then plays its OWN look (the cast runs under its id).
+       · SHUSH (`impact`): the target's noise (three rings round the head) is pulled in to nothing, a book slams shut over
+         the head and SHHH pops off it.
+       · LATE FEE (`bolt`, timed on flyMs): a hardback flies end over end into the victim; date-due slips burst off the body
+         and a red LATE FEE stamp lands on the floor. A Silenced victim (the bonus) gets the OVERDUE stamp, a second red ring
+         and twice the slips: the combo reads.
+       Looks only, on the casts' own intents (fire() is relayed: the guest sees the same, coloured from its own seat), only on
+       tiles the viewer sees. Kill-switch: window.EW_NO_LIBRARIAN_VFX. ════ */
+    var _LIB = { red: 0xd8262a, paper: 0xf6efdc, ink: '#2a1a12' };
+    function _libOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_LIBRARIAN_VFX); }
+    function _libCols(x, y) { var u = (x != null) ? _fx5UnitAt(x, y) : null; return (!u || _fx5Mine(u)) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    /* a pack book sized by its longest side, every material its own + fadable; null until the file has landed */
+    function _libModel(key, len) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, g = null;
+        try { g = (TR && TR.getMiscModelClone) ? TR.getMiscModelClone(key, 1, 'center') : null; } catch (e) { g = null; }
+        if (!g) return null;
+        g.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(g), sz = new THREE.Vector3(); bb.getSize(sz);
+        var mx = Math.max(sz.x, sz.y, sz.z) || 1, mats = [];
+        var inner = new THREE.Group(); inner.add(g); g.scale.multiplyScalar(len / mx);
+        /* unlit, the pack's own sheet (a lit pack book read near black under the battle grade; WebGPU draws a basic material the same) */
+        g.traverse(function (n) { if (n.isMesh) { var o0 = n.material; n.material = new THREE.MeshBasicMaterial({ map: o0 && o0.map || null, color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide }); n.material.color.setScalar(2.1);   /* the pack's old leather covers read black under the battle grade: lifted (the banker's bills: 1.6) */ n.renderOrder = 160; n.frustumCulled = false; mats.push(n.material); } });
+        inner.userData.mats = mats;
+        return inner;
+    }
+    function _libFade(o, a) { var m = o && o.userData.mats; if (!m) return; for (var i = 0; i < m.length; i++) m[i].opacity = a; }
+    /* the date-due card: cream, a red header, ruled lines, three stamped dates in violet ink */
+    function _libCardTex() {
+        return _pzTex('lib-card', 128, 176, function (g, w, h) {
+            g.fillStyle = '#f6efdc'; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#c8282c'; g.fillRect(0, 0, w, 26);
+            g.fillStyle = '#ffffff'; g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('DATE DUE', w / 2, 14);
+            g.strokeStyle = 'rgba(60,90,160,0.55)'; g.lineWidth = 1.5;
+            for (var i = 0; i < 8; i++) { g.beginPath(); g.moveTo(8, 44 + i * 16); g.lineTo(w - 8, 44 + i * 16); g.stroke(); }
+            g.strokeStyle = 'rgba(200,40,44,0.6)'; g.beginPath(); g.moveTo(42, 28); g.lineTo(42, h - 6); g.stroke();
+            g.fillStyle = 'rgba(90,40,140,0.85)'; g.font = 'bold 12px "Courier New", monospace'; g.textAlign = 'left';
+            var d = ['MAR 03', 'APR 17', 'MAY 29'];
+            for (var k = 0; k < d.length; k++) g.fillText(d[k], 50, 38 + k * 16);
+            g.strokeStyle = '#2a1a12'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3);
+        });
+    }
+    /* a page: paper with ruled lines (both faces) */
+    function _libPageTex() {
+        return _pzTex('lib-page', 96, 128, function (g, w, h) {
+            g.fillStyle = '#f3ead2'; g.fillRect(0, 0, w, h);
+            g.fillStyle = 'rgba(40,26,18,0.45)';
+            for (var i = 0; i < 11; i++) g.fillRect(10, 14 + i * 10, w - 20 - (i % 4) * 9, 3);
+            g.strokeStyle = 'rgba(120,90,60,0.6)'; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);
+        });
+    }
+    /* an ink stamp (white, tinted by the material): a double box, the word, worn specks knocked out */
+    function _libStampTex(word) {
+        return _pzTex('lib-stamp-' + word, 512, 192, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 14; g.strokeRect(14, 14, w - 28, h - 28); g.lineWidth = 5; g.strokeRect(34, 34, w - 68, h - 68);
+            g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 84px Impact, "Arial Black", sans-serif';
+            g.fillText(word, w / 2, h / 2 + 4);
+            g.globalCompositeOperation = 'destination-out';
+            for (var i = 0; i < 240; i++) { g.beginPath(); g.arc(Math.random() * w, Math.random() * h, Math.random() * 3 + 0.5, 0, Math.PI * 2); g.fill(); }
+            g.globalCompositeOperation = 'source-over';
+        });
+    }
+    /* a flat piece lying on the floor of frame F, upright from the lens */
+    function _libFloor(F, tex, w, h, color) {
+        var m = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(color), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+        var p = _pzMesh(new THREE.PlaneGeometry(w, h), m, F.g, 0, F.ts * 0.045, 0); p.rotation.x = -Math.PI / 2; p.renderOrder = 157;
+        var cd = _nbCamDir(F); p.rotation.z = Math.atan2(cd.x, cd.z) + rn(-0.15, 0.15);
+        return p;
+    }
+    /* a thin ring (a torus lying flat) at height y */
+    function _libRing(F, r, y, color) {
+        var m = _pzMesh(new THREE.TorusGeometry(1, 0.045, 6, 40), _pzGlow(color), F.g, 0, y, 0);
+        m.rotation.x = Math.PI / 2; m.scale.setScalar(r); return m;
+    }
+    /* date-due slips burst off a body and flutter down */
+    function _libSlips(F, n, y0) {
+        var ts = F.ts, out = [], tex = _libCardTex();
+        for (var i = 0; i < n; i++) {
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.13, ts * 0.18), _pzSolid(0xffffff, tex, { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, y0, 0);
+            var a = rn(0, 6.28), sp = ts * rn(0.5, 1.0);
+            out.push({ m: m, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: ts * rn(0.9, 1.6), ph: rn(0, 6.28), sw: rn(0.004, 0.009), d: rn(0, 80) });
+        }
+        return out;
+    }
+    function _libSlipsTick(L, el, y0, life, ts) {
+        for (var j = 0; j < L.length; j++) {
+            var S = L[j], e = el - S.d, t = Math.max(0, e / 1000);
+            if (e < 0) { S.m.material.opacity = 0; continue; }
+            /* up and out fast, then a slow paper fall (drag), swaying */
+            var k = 1 - Math.exp(-t * 3.2), y = y0 + S.vy * k * 0.55 - S.vy * 0.5 * Math.max(0, t - 0.25) * 0.9;
+            if (y < ts * 0.04) y = ts * 0.04;
+            S.m.position.set(S.vx * k * 0.6 + Math.sin(e * S.sw + S.ph) * ts * 0.05, y, S.vz * k * 0.6 + Math.cos(e * S.sw + S.ph) * ts * 0.05);
+            S.m.rotation.set(Math.sin(e * S.sw + S.ph) * 1.1, e * 0.004 + S.ph, Math.cos(e * S.sw * 1.3) * 0.8);
+            S.m.material.opacity = _pzEnv(e, 0, 40, life - 450, life);
+        }
+    }
+
+    /* ════ OVERDUE — the book opens over her head, its pages turn, the card is stamped RENEWED ════ */
+    EFFECTS['nrOverdue_aura'] = _pzDef('libOverdue', { pzOwn: true, aoeRadius: 0 });
+    _PZ_SIGS.libOverdue = function (p) {
+        if (_libOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('libOd', 400)) return;
+        var C = _libCols(tx, ty), F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F);
+        /* the reader: a group over her head facing the lens, tipped toward it so the pages show */
+        var rd = new THREE.Group(); rd.position.set(0, ts * 1.42, 0); rd.rotation.y = Math.atan2(cd.x, cd.z); F.g.add(rd);
+        var tilt = new THREE.Group(); tilt.rotation.x = 0.95; rd.add(tilt);
+        var book = _libModel('lib_open_book', ts * 0.46); if (book) { book.rotation.y = Math.PI / 2; tilt.add(book); }
+        /* three pages hinge at the spine and turn right to left */
+        var pages = [], pTex = _libPageTex();
+        for (var i = 0; i < 3; i++) {
+            var hinge = new THREE.Group(); hinge.position.y = ts * 0.035; tilt.add(hinge);
+            var pg = _pzMesh(new THREE.PlaneGeometry(ts * 0.19, ts * 0.26), _pzSolid(0xffffff, pTex, { side: THREE.DoubleSide, depthWrite: false }), hinge, ts * 0.095, 0, 0);
+            pg.rotation.x = -Math.PI / 2;
+            pages.push({ h: hinge, m: pg, at: 160 + i * 130 });
+        }
+        var glow = _pzSpr(C.a, ts * 0.6, rd); glow.material.opacity = 0;
+        /* the card rises out of the book; the stamp lands on it */
+        var card = _pzMesh(new THREE.PlaneGeometry(ts * 0.24, ts * 0.33), _pzSolid(0xffffff, _libCardTex(), { side: THREE.DoubleSide, depthWrite: false }), rd, 0, 0, 0);
+        var stamp = _pzMesh(new THREE.PlaneGeometry(ts * 0.29, ts * 0.11), new THREE.MeshBasicMaterial({ map: _libStampTex('RENEWED'), color: new THREE.Color(_LIB.red), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }), card, 0, -ts * 0.04, ts * 0.01);
+        stamp.renderOrder = 162; stamp.rotation.z = rn(-0.25, -0.12);
+        var ring = _libRing(F, ts * 0.2, ts * 0.06, C.a), stamped = false, lastM = 0, mN = 0;
+        _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.15, r1: ts * 0.7, ms: 380 });
+        return _sigRunOwned(F.g, 1650, function (el) {
+            var vis = _pzEnv(el, 0, 140, 1200, 1600), pop = Math.max(0.05, _sigEaseOutBack(_sigClamp01(el / 240)));
+            rd.scale.setScalar(pop); rd.position.y = ts * (1.42 + 0.03 * Math.sin(el * 0.006));
+            _libFade(book, vis); glow.material.opacity = 0.45 * vis;
+            for (var j = 0; j < pages.length; j++) {
+                var P = pages[j], k0 = _sigClamp01((el - P.at) / 300), k = k0 < 0.5 ? 4 * k0 * k0 * k0 : 1 - Math.pow(-2 * k0 + 2, 3) / 2;
+                P.h.rotation.z = Math.PI * k * 0.98; P.h.position.y = ts * (0.035 + 0.12 * Math.sin(Math.PI * k));
+                P.m.material.opacity = el < P.at ? 0 : vis * (k < 1 ? 1 : 0);
+            }
+            /* the card: up out of the pages (560-860 ms), the stamp at 900 */
+            var ck = _sigEaseOutCubic(_sigClamp01((el - 560) / 300));
+            card.position.set(0, ts * (0.05 + 0.34 * ck), ts * 0.02);
+            card.material.opacity = el < 560 ? 0 : vis;
+            var sk = _sigClamp01((el - 900) / 110);
+            stamp.scale.setScalar(el < 900 ? 0.01 : 1 + 0.6 * (1 - sk));
+            stamp.material.opacity = el < 900 ? 0 : 0.95 * vis;
+            if (!stamped && el >= 1010) { stamped = true; _sigShake('light'); _sigSparks(tx, ty, 'spark', 8, { z: ts * 2.0, vxy: 120, tint: C.a, vz0: 20, vz1: 120 }); }
+            /* her colour falls from the book into her hands */
+            if (el > 300 && el < 1150 && el - lastM > 60) {
+                lastM = el; var a = rn(0, 6.28), r = ts * rn(0.05, 0.25);
+                _pzP(F, Math.cos(a) * r, ts * 1.3, Math.sin(a) * r, { sprite: 'spark', tint: (++mN % 2) ? C.a : C.b, ml: rn(420, 620), size0: rn(5, 8), size1: 1, vz: -rn(90, 150), opacity0: 0.95 });
+            }
+            ring.scale.setScalar(ts * (0.25 + 0.4 * _sigClamp01(el / 700))); ring.material.opacity = 0.75 * _pzEnv(el, 0, 120, 700, 1300);
+        });
+    };
+
+    /* ════ SHUSH — the noise round the head is pulled in to nothing, a book slams shut over it: SHHH ════ */
+    EFFECTS['nrShush_impact'] = _pzDef('libShush', { pzOwn: true });
+    _PZ_SIGS.libShush = function (p) {
+        if (_libOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('libSh@' + tx + ',' + ty, 400)) return;
+        var from = _pzFrom(tx, ty, p), C = _libCols(from.x, from.y), F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), HEAD = ts * 1.18;
+        var rings = [];
+        for (var i = 0; i < 3; i++) rings.push({ m: _libRing(F, ts * 0.6, HEAD - ts * 0.12 + i * ts * 0.12, i === 1 ? C.a : C.b), at: i * 90 });
+        var top = new THREE.Group(); top.position.set(0, ts * 1.4, 0); top.rotation.y = Math.atan2(cd.x, cd.z); F.g.add(top);
+        var open = _libModel('lib_open_book', ts * 0.58), shut = _libModel('lib_book', ts * 0.4);
+        if (open) { open.rotation.set(0.9, Math.PI / 2, 0); top.add(open); }
+        if (shut) { shut.rotation.set(0.9, 0, 0); top.add(shut); }
+        var word = _finTextSprite('SHHH...', { ink: '#ffffff', bg: C.a === 0x5fe0ff ? '#1d3fb8' : '#c2185b', font: 'Impact, "Arial Black", sans-serif', fontPx: 120, spriteW: ts * 0.62, opacity: 0 });
+        word.position.set(0, ts * 0.3, 0); top.add(word);
+        var SLAM = 420, slammed = false;
+        return _sigRunOwned(F.g, 1650, function (el) {
+            /* the rings close in on the head (0-420 ms) and wink out */
+            for (var r = 0; r < rings.length; r++) {
+                var R = rings[r], k = _sigClamp01((el - R.at) / (SLAM - R.at));
+                R.m.scale.setScalar(Math.max(0.01, ts * (0.6 - 0.54 * _sigEaseInCubic(k))));
+                R.m.material.opacity = el < R.at ? 0 : 0.85 * (k < 1 ? 1 : Math.max(0, 1 - (el - SLAM) / 120));
+            }
+            /* the open book hangs over the head until the slam; then the shut book, a squash, and SHHH */
+            _libFade(open, el < SLAM ? _pzEnv(el, 0, 120, SLAM - 30, SLAM) : 0);
+            var sk = _sigClamp01((el - SLAM) / 160);
+            _libFade(shut, el < SLAM ? 0 : _pzEnv(el, SLAM, SLAM + 20, 1150, 1550));
+            if (shut) shut.scale.set(1 + 0.25 * (1 - sk), Math.max(0.2, 0.55 + 0.45 * sk), 1 + 0.25 * (1 - sk));
+            if (!slammed && el >= SLAM) {
+                slammed = true; _sigShake('light');
+                _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.2, r1: ts * 0.8, ms: 320 });
+                _sigSparks(tx, ty, 'spark', 10, { z: ts * 1.5, vxy: 160, tint: 0xffffff, vz0: 10, vz1: 90 });
+            }
+            var wk = _sigClamp01((el - SLAM - 40) / 260);
+            word.material.opacity = _pzEnv(el, SLAM + 40, SLAM + 120, 1200, 1550);
+            word.position.y = ts * (0.26 + 0.14 * _sigEaseOutCubic(wk));
+            var ws = ts * 0.62 * Math.max(0.05, _sigEaseOutBack(wk)); word.scale.set(ws, ws * 0.5, 1);
+        });
+    };
+
+    /* ════ LATE FEE — a hardback end over end into the victim, the slips burst off, the red stamp on the floor ════ */
+    EFFECTS['nrLateFee_bolt'] = _pzDef('libLateFee', { pzOwn: true });
+    _PZ_SIGS.libLateFee = function (p) {
+        if (_libOff()) return;
+        var fx = p.fromX, fy = p.fromY, tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 460, from = fx != null ? { x: fx, y: fy } : _pzFrom(tx, ty, p), C = _libCols(from.x, from.y);
+        /* a Silenced victim (read now, before the hit): the fine doubles, the stamp says so */
+        var hushed = false;
+        try { var vid = _sigUnitIdAt(tx, ty); if (vid != null) for (var u = 0; u < state.units.length; u++) { var su = state.units[u]; if (su && su.id === vid && su.status && su.status.silence > 0) { hushed = true; break; } } } catch (e) {}
+        if (_pzSeen(from.x, from.y) || _pzSeen(tx, ty)) {
+            var ts0 = _worldPos(tx, ty).ts, bk = _libModel('lib_book', ts0 * 0.42);
+            if (bk) {
+                _libFade(bk, 1);
+                _pzFly(from.x, from.y, tx, ty, bk, { ms: ms, arc: 0.3, h0: ts0 * 0.95, h1: ts0 * 0.8, hideOnLand: true, face: true,
+                    spin: function (el, o, t) { o.rotation.x = t * Math.PI * 4; },
+                    trail: { sprite: 'spark', tint: C.a, every: 30, size: 8 } });
+            }
+        }
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var stamp = _libFloor(F, _libStampTex(hushed ? 'OVERDUE' : 'LATE FEE'), ts * (hushed ? 1.45 : 1.25), ts * (hushed ? 0.54 : 0.47), _LIB.red);
+        var slips = null, hit = false, Y0 = ts * 0.9;
+        return _sigRunOwned(F.g, ms + 2000, function (el) {
+            if (!hit && el >= ms) {
+                hit = true;
+                _shake(hushed ? 'hard' : 'normal');
+                _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.2, r1: ts * 1.0, ms: 380 });
+                if (hushed) _sigShockRing3D(tx, ty, { color: _LIB.red, r0: ts * 0.3, r1: ts * 1.4, ms: 520 });
+                slips = _libSlips(F, hushed ? 12 : 6, Y0);
+                _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 200, tint: 0xffffff, vz0: 30, vz1: 140 });
+            }
+            var se = el - ms;
+            if (slips) _libSlipsTick(slips, se, Y0, 1700, ts);
+            stamp.material.opacity = se < 0 ? 0 : 0.92 * _pzEnv(se, 0, 40, 1300, 1800);
+            stamp.scale.setScalar(se < 0 ? 0.05 : 1 + 0.35 * (1 - _sigEaseOutCubic(_sigClamp01(se / 140))));
+        });
+    };
+    SPELL_MAP['nrOverdue'] = { aura: 'nrOverdue_aura' };
+    SPELL_MAP['nrShush']   = { impact: 'nrShush_impact' };
+    SPELL_MAP['nrLateFee'] = { bolt: 'nrLateFee_bolt' };
+    _PS_OWN.nrShush = 1; _PS_OWN.nrLateFee = 1;   /* the psychic pass keeps her third eye on the windup; these draw their own hit */
+    /* ═════════ END THE LIBRARIAN ═════════ */
 
     /* ════ FLAT EARTH — the disc itself (the ice wall round its rim) comes down flat out of the sky onto the target and
        the ground round it is pressed flat (a dust ring); it borrowed the bomb's explosion ════ */
