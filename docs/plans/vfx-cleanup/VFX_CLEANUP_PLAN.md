@@ -420,6 +420,19 @@ NOT built: THE AIR DOOR calling the kit (left untouched, so the cutscene is unch
 (it moves ANOTHER unit: the two squares are the victim's and the destination, not the caster's; needs its own wiring);
 the doors, summons, raise dead and rifts on the list (decision 3: only where it makes sense, spell by spell).
 
+**Built in B4, part 2 (THE CLASH, 11-17; mondo first said skip it, then "that is worth building then, bc that stuff
+actually happens"):** `_beamKitClashAt` + `_beamKitClash3D`. Where a kit beam meets (1) a live prism / mirror on its line
+(`state.mirrors`), (2) a wall it stops at (the line ends short of its range and the next square holds an object or steps
+up 2+), or (3) the first SHIELDED or GUARDING body on the line, both colours push at a dark seam with two rings turning
+against each other and sparks of both, from the moment the front gets there until a beat after the beam dies. Read only
+from the beam's own params + synced state, so both screens draw the same; no rule reads it. Kit beams only (the ten in
+`_VC_BEAM`). SEEN: the knot on the line at a guarding body, in test colours (img/b4_clash_test_colours.jpg), and the
+detector returning `shield` for a shielded body. NOT SEEN: the prism and the wall cases; the knot in its real colours is
+hard to tell from Railgun's own impact rings in a frame.
+Also 11-17: the kit beam is narrower and deeper in colour (a wide beam def made a cream band a square wide), and
+`_VC_WHITE_OK` keeps the camera / flashbulb spells' flashes white (Sasquatch Smash, Paparazzi Flash, Neuralyzer, Selfie
+Flash, Out of the Dark, Blurry Photo, Cryptid Vanish, Deneuralizer): white because it is the thing.
+
 **The sweeps (B6a-B10) run as nine threads from 11-17:** brief `docs/plans/vfx-cleanup/SWEEP_BRIEF.md`.
 **The own-look threads:** L1-L5 reported their lists done and merged on 11-17 (notes: spells-vfx.md "THE OWN LOOKS, L<n>").
 
