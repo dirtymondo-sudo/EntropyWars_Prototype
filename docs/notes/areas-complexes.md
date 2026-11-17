@@ -11952,6 +11952,27 @@ What the map's `under.walks` asked for, and where each one is now (plots.json is
   now: S.js swings its leaves in, the ghost wall is gone), `ow_v_m12_m4` R4 at a new gap in the west wall (rows 24-25 home).
 - **A PROBE WALKS SLOWLY HERE** (llvmpipe, a big room with 1,800 edge trees): 3 m in 10 s on flat cobbles, so a walk that "stops" after
   2 m on the stair is the frame rate, not a wall (`ThreeRenderer.hq.dev.walk()` reads velX 4.6). Give a walk here 45 s.
+## THE INTERNET ON PLOTS (2026-11-17, One World phase 4.4, BUILD_PLAN row 4.4: "the Internet (36)"; the owner's 4.4 thread)
+mondo OK'd the four districts 11-17 ("that is okay" to: the Feed, a long boulevard of giant scrolling screens; the Forums, plazas of message
+boards; the Server Farm, aisles of racks and cables; the Dark Web, a lower, darker level underneath; reached from the D.U.M.B.'s server rooms).
+Every plot name is mine (labels, marked "(label mine)" in the layout). The Internet is "beyond" on the One World sheet (beside the Astral Realm);
+HQ_ZONE_MAP lists it as layer `off`, hub `internet`.
+- ONE ROOM `site_prebuilt_internet_web` (site `prebuilt_internet`, part `web`), 6 x 6 plots, NO GROUND: the Astral Realm's machinery (data.js
+  `terrain.void` + float plateaus, the void's glow green, the sky locked to night (`sky.lock`, off the world clock: the inside of the net has no sun) with the scenery `holosim`, thin tile undersides (no hanging rock), the Dark Web painted `holo_red` (dark tile, red rims), the look `HQ_ROOM_LOOKS.internet`). Tool `bake-internet.js`
+  (markers INTERNET36-BEGIN / -END, written before ASTRAL36), plan `docs/plans/world-zones/draw-internet.js` -> `docs/areas/internet/layout.json`
+  + `internet_plot_plan.png`; districts `docs/areas/internet/districts/S|F|B|D.js` (the Astral Realm's file API: plan, build, dress, people,
+  airZones; ctx.look / put / P / dec / native / claim / rimRail; `sign()` on a sheet = a `txt:` panel). One thread a file.
+- THE PLAN: S the Server Farm (NW) is ONE floor at level 8, the data hall (style `slab`; a lower-case port letter in the layout = a WIDE join,
+  the two floors run into each other); aisles = rows / columns 5-6 of every plot. F the Feed (NE): the boulevard (row 1, style `blvd`, level 10,
+  walk rows 4-7) with twelve post screens; six side plots. B the Forums (SE), levels 8-11. D the Dark Web (SW) sinks 7 -> 1, under the hall.
+  A narrow join of one level = a bridge plateau over the two edge squares; of two levels = floating steps (the draw file refuses steeper).
+- THE WAY IN: link `dumb_internet` (way `screen`, route `internet`): `a` = the D.U.M.B. Control Room's north wall between the servers (bake-dumb.js
+  WAY.dumb_internet, plot P03-00 square 6,1), `b` = the Login Screen (P00-00, its north edge). Both tools refuse to bake when the row drifts.
+  The hub's healing ring stands at the spawn (data.js `hubs.internet`). DOOR HQ's monitor (page v8: "opens from a monitor in DOOR HQ") is NOT built.
+- LANDMARKS: the Cloud (P01-01, a cloud wired into the racks), the For You Page (P05-01, a phone on end with an eye), the Mod Tower (P03-05, 22 m,
+  the ban hammer), the Bottom (P00-05, a ring of dead televisions). Big drawn pieces are `solid()` in each file: squares claimed + ghost walls.
+- NOT YET: the screens scroll (still pictures), blinking racks, sound, the DOOR HQ monitor.
+
 ## ONE WORLD, THE COAST + THE ISLANDS (2026-11-17, BUILD_PLAN phase 4.3, part 1; the owner's One World 4.3 thread)
 What the first PR of 4.3 built (part 2 = Pirates' Cove, the Frozen Sea and the rest of the Round Voyage):
 - **R11 THE DELTA CAUSEWAY** `site_ow_r11` (4 x 3 plots at 17,31; `docs/areas/routes/R11.json`): Giza's east side (seam `ow_v_17_32`, `bake-desert.js` STAND `more`) over

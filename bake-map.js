@@ -56,6 +56,7 @@ const ZONES = [
     { hub: 'space', layout: 'space', rooms: [
         { room: 'site_prebuilt_moon_plots', layer: 'off', zx: 0, zy: 0, note: 'THE SOLAR SYSTEM' }] },   // THE SPACESHIP YOU FLY (2026-11-17): the four worlds are one room (bake-space.js)
     { hub: 'astral', layout: 'astral', rooms: [{ room: 'site_prebuilt_lookingglass_realm', layer: 'off', zx: 0, zy: 0 }] },
+    { hub: 'internet', layout: 'internet', rooms: [{ room: 'site_prebuilt_internet_web', layer: 'off', zx: 0, zy: 0, note: 'BESIDE THE ASTRAL REALM' }] },   // THE INTERNET (One World 4.4, 2026-11-17: bake-internet.js)
 ];
 /* ── THE WORLD'S GROUND + SIGHTS (2026-11-17): what every plot of the disc is made of, and the far places a room may see.
    `world.g[y - y0][x - x0]` = the plot's ground letter (plots.json `ground`, 18 kinds + sea, ice, the Ice Wall);
@@ -83,7 +84,7 @@ const KINDS = ['nothing', 'grass', 'dark grass', 'dirt', 'sand', 'snow', 'rock',
 const KIND_RX = [
     [14, /gold|gilded/i], [11, /cloud|heaven|holy|halo/i], [5, /snow|ice|frost|glacier|polar|tundra|igloo/i], [10, /lava|magma|ember/i],
     [9, /scorch|ash|burnt|char|obsidian|basalt|soot|wasteland/i], [12, /mars|rust|red_?rock|clay|terracotta|flesh|storm/i], [13, /crystal|astral|void|nebula|cosmic|gem|glow/i],
-    [15, /metal|steel|grate|plate|iron|chrome|hull|tech|scifi|sci_fi|panel/i],
+    [15, /metal|steel|grate|plate|iron|chrome|hull|tech|scifi|sci_fi|panel|holo|alumin/i],
     [8, /wood|plank|deck|board|parquet|bamboo/i], [7, /^urban:|dungeon|concrete|asphalt|road|slab|tile|cobble|brick|flagstone|marble|pave|sidewalk|stone_floor|floor|carpet|terrazzo|granite|limestone|sandstone_block|street/i],
     [4, /sand|desert|dune|beach|shore/i], [2, /grass_dark|dark_fantasy|swamp|marsh|bog|moss|jungle|fern/i], [1, /grass|lawn|meadow|turf|leaf|leaves|forest|field|hay|corn|crop|garden/i],
     [3, /dirt|mud|soil|earth|path|trail|ground|loam|peat|farm/i], [6, /rock|stone|cliff|rubble|gravel|crater|regolith|moon|lunar|cave|cavern|pebble|boulder|slate/i],

@@ -68811,6 +68811,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         } catch (e) { console.warn('[VFX] own look (L1) windup failed', spellId, e); }
         _l1FireStage0(phase, spellId, params);
     };
+    /* THE GENERIC AREA DETONATION (aoe(): battle.js' fallback for an area spell with no `aoe` recipe, through
+       playAoeRing: a wide ring, a shockwave, a glass orb and a shock ring in the spellType's colour, tan for a 'human'
+       cast) is not this spell's look either (mondo 11-17, on the Watering Can's tan ring). Two stops: a call that names
+       an L1 spell is dropped here; playAoeRing names no spell, so the two quiet one-square casts it blew up (Watering
+       Can, Pollinate) carry an EMPTY `aoe` recipe of their own (_L1_QUIET, below the looks): battle.js then fires
+       their `aoe` intent, which draws nothing, in place of the ring. */
+    var _l1Aoe0 = aoe;
+    aoe = function (centerTx, centerTy, spellType, spellId) {
+        var f = spellId && _FX2_BURST[spellId];
+        if (f && f._l1 && !_l1Off()) return;
+        return _l1Aoe0.apply(this, arguments);
+    };
     /* the squares the spell hits: the windup's footprint, else the r-square round the target */
     function _l1Area(p, P0, r) {
         if (P0 && P0.tiles && P0.tiles.length > 1) return P0.tiles;
@@ -69483,16 +69495,45 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     });
 
-    /* SPIKE TRAP — it is hidden, so nothing marks where it lies: the look is the laying of it, at the CASTER's own feet
-       (stone spike tips are pushed down into the dirt and the dirt is patted flat). The spring keeps the traps' snap. */
+    /* SPIKE TRAP — the side that lays it SEES it laid: on each square of the patch the trap's own spikes (the traps
+       pack's, the ones that spring) stand half up out of the ground, sink under and the soil closes over them. It is
+       hidden from the other side, so on THEIR screen nothing marks where it lies: they only see the caster push stone
+       tips into the dirt at his own feet. Whose screen: the caster's player against window.getViewerPlayer(). */
+    function _l1ViewerOwns(x, y) {
+        try {
+            if (typeof window.getViewerPlayer !== 'function') return true;
+            var st = window._gameState || (window.GAME && window.GAME.state) || null, u = null;
+            if (st && st.units) for (var i = 0; i < st.units.length; i++) { var c = st.units[i]; if (c && !c.dead && c.x === x && c.y === y) { u = c; break; } }
+            return !!(u && u.player === window.getViewerPlayer());
+        } catch (e) { return false; }
+    }
     _l1Def('raceSpikeTrap', function (p, P0) {
-        var sx = P0 && P0.sx != null ? P0.sx : p.sx, sy = P0 && P0.sy != null ? P0.sy : p.sy; if (sx == null || !_pzSeen(sx, sy)) return;
-        var F = _eaFrame(sx, sy), ts = F.ts, stone = _eaStoneMat(false), cd = _nbCamDir(F), pts = [];
-        for (var i = 0; i < 5; i++) { var a = Math.atan2(cd.z, cd.x) + (i - 2) * 0.5; pts.push({ x: Math.cos(a) * ts * 0.42, y: 0, z: Math.sin(a) * ts * 0.42, h: ts * 0.22, w: ts * 0.05, d: i * 40, rx: 0, rz: 0 }); }
-        var spikes = _eaSpikes(F.g, stone, pts), puffed = false;
-        return _sigRunOwned(F.g, 1100, function (el) {
-            stone.opacity = el < 1080 ? 1 : 0; spikes(el, 120, 360, 420);
-            if (!puffed && el > 520) { puffed = true; for (var j = 0; j < pts.length; j++) _pzP(F, pts[j].x, 3, pts[j].z, { sprite: 'dust-puff', tint: _EA.dust, ml: 520, size0: 8, size1: 24, vz: 10, opacity0: 0.5 }); }
+        var sx = P0 && P0.sx != null ? P0.sx : p.sx, sy = P0 && P0.sy != null ? P0.sy : p.sy; if (sx == null) return;
+        if (_l1ViewerOwns(sx, sy)) {
+            var tiles = (P0 && P0.tiles && P0.tiles.length) ? P0.tiles.slice(0, 4) : [{ x: p.tx, y: p.ty }];
+            var F = _eaFrame(tiles[0].x, tiles[0].y), ts = F.ts, sets = [], tips = [], stone = _eaStoneMat(false);
+            for (var i = 0; i < tiles.length; i++) {
+                var q = tiles[i], c = _eaGOff(F, q.x, q.y), S = _trapsSet('spikes', ts * 0.9, { t: 0, lift: 0.2 });
+                if (S) {
+                    S.group.traverse(function (n) { if (n.isMesh) { n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+                    S.group.position.set(c.x, c.y, c.z); S.group.rotation.y = (q.x * 7 + q.y * 13) % 6; F.g.add(S.group); sets.push({ S: S, d: i * 70, c: c });
+                } else for (var k = 0; k < 4; k++) { var a = k * 1.57 + 0.6; tips.push({ x: c.x + Math.cos(a) * ts * 0.24, y: c.y, z: c.z + Math.sin(a) * ts * 0.24, h: ts * 0.24, w: ts * 0.05, d: i * 70 + k * 25, rx: 0, rz: 0 }); }
+            }
+            var spikes = tips.length ? _eaSpikes(F.g, stone, tips) : null, closed = false;
+            return _sigRunOwned(F.g, 1500, function (el) {
+                for (var i = 0; i < sets.length; i++) { var e = el - sets[i].d, upk = _sigEaseOutBack(_sigClamp01(e / 140)), down = _sigEaseInCubic(_sigClamp01((e - 520) / 480));
+                    sets[i].S.set(Math.max(0, 0.5 * upk * (1 - down))); _trapsFade(sets[i].S, e > 0 ? 1 - _sigClamp01((e - 950) / 200) : 0); }
+                stone.opacity = el < 1480 ? 1 : 0; if (spikes) spikes(el, 140, 560, 460);
+                if (!closed && el > 980) { closed = true; for (var j = 0; j < tiles.length; j++) { var cc = _eaGOff(F, tiles[j].x, tiles[j].y); _pzP(F, cc.x, cc.y + 3, cc.z, { sprite: 'dust-puff', tint: _EA.dust, ml: 600, size0: 12, size1: 38, vz: 10, opacity0: 0.5 }); } }
+            });
+        }
+        if (!_pzSeen(sx, sy)) return;
+        var F2 = _eaFrame(sx, sy), ts2 = F2.ts, stone2 = _eaStoneMat(false), cd = _nbCamDir(F2), pts = [];
+        for (var n = 0; n < 5; n++) { var a2 = Math.atan2(cd.z, cd.x) + (n - 2) * 0.5; pts.push({ x: Math.cos(a2) * ts2 * 0.42, y: 0, z: Math.sin(a2) * ts2 * 0.42, h: ts2 * 0.22, w: ts2 * 0.05, d: n * 40, rx: 0, rz: 0 }); }
+        var sp2 = _eaSpikes(F2.g, stone2, pts), puffed = false;
+        return _sigRunOwned(F2.g, 1100, function (el) {
+            stone2.opacity = el < 1080 ? 1 : 0; sp2(el, 120, 360, 420);
+            if (!puffed && el > 520) { puffed = true; for (var j = 0; j < pts.length; j++) _pzP(F2, pts[j].x, 3, pts[j].z, { sprite: 'dust-puff', tint: _EA.dust, ml: 520, size0: 8, size1: 24, vz: 10, opacity0: 0.5 }); }
         });
     });
 
@@ -69652,8 +69693,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     });
 
-    /* POISON DART — the prick and what spreads from it: green veins branch out over the body from the point the dart
-       went in, pulse twice and sink in (no dart is drawn: the game has no dart model) */
+    /* POISON DART — the dart itself (the traps pack's dart, the one its trap hole fires: the game's own dart model)
+       stands in the victim on the blowpipe's side, quivering, and green veins branch out over the body from where it
+       went in, pulse and sink in. While the pack streams, the veins alone. */
     function _l1VeinTex() {
         return _pzTex('l1-veins', 128, 128, function (g, w, h) {
             var R = _sigRand(4242); g.strokeStyle = '#ffffff'; g.lineCap = 'round';
@@ -69663,14 +69705,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             g.fillStyle = '#ffffff'; g.beginPath(); g.arc(64, 64, 6, 0, 6.283); g.fill();
         });
     }
-    _l1Def('poisonDart', function (p) {
+    _l1Def('poisonDart', function (p, P0) {
         var tx = p.tx, ty = p.ty; if (!_pzSeen(tx, ty)) return;
-        var F = _nrvFrame(tx, ty), ts = F.ts, dark = _l1Plate(F, _l1VeinTex(), ts * 0.8, ts * 0.8, 0, ts * 0.62, 0, false), glow = _l1Plate(F, _l1VeinTex(), ts * 0.8, ts * 0.8, 0, ts * 0.62, 0, true);
+        var F = _nrvFrame(tx, ty), ts = F.ts, dark = _l1Plate(F, _l1VeinTex(), ts * 0.66, ts * 0.66, 0, ts * 0.62, 0, false), glow = _l1Plate(F, _l1VeinTex(), ts * 0.66, ts * 0.66, 0, ts * 0.62, 0, true);
         dark.material.color.setHex(0x1f4a12); glow.material.color.setHex(_L1.venom); glow.renderOrder = 163;
         var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.venom, { op: 0.5 });
-        return _sigRunOwned(F.g, 1500, function (el) {
-            var k = 0.25 + 0.75 * _sigEaseOutCubic(_sigClamp01(el / 420)), o = _pzEnv(el, 0, 50, 1000, 1480);
+        var D = _l1Dir(F, p, P0), S = _trapsSet('dart', ts * 0.3, { t: 1, lift: 0.25 }), hold = null;
+        if (S) {
+            try { S.group.children[0].children[0].visible = false; } catch (e) {}   /* the set is the hole + its dart: only the dart flies */
+            S.group.traverse(function (n) { if (n.isMesh) { n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+            hold = new THREE.Group(); hold.add(S.group); F.g.add(hold);
+            hold.position.set(-D.x * ts * 0.5, ts * 0.7, -D.z * ts * 0.5);   /* the tail; the dart's length (its tip is the file's +Y) reaches the body */
+        }
+        var up = new THREE.Vector3(0, 1, 0), aim = new THREE.Vector3();
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var k = 0.25 + 0.75 * _sigEaseOutCubic(_sigClamp01(el / 420)), o = _pzEnv(el, 0, 50, 1150, 1680);
             dark.scale.setScalar(k); glow.scale.setScalar(k); dark.material.opacity = 0.85 * o; glow.material.opacity = o * (0.45 + 0.4 * Math.sin(el * 0.013));
+            if (hold) {
+                var q = Math.sin(el * 0.06) * 0.22 * Math.exp(-el / 260);   /* it quivers where it stuck */
+                aim.set(D.x + D.sx * q, -0.14 + q * 0.5, D.z + D.sz * q).normalize(); hold.quaternion.setFromUnitVectors(up, aim);
+                _trapsFade(S, 1 - _sigClamp01((el - 1300) / 360));
+            }
             flash(el);
         });
     });
@@ -69722,6 +69777,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             flash(el);
         });
     });
+    /* the quiet one-square casts: their own (empty) area recipe, so the generic detonation is never asked for */
+    EFFECTS['l1Quiet_aoe'] = { aoeRadius: 0, layers: [] };
+    ['wateringCan', 'pollinate'].forEach(function (id) { if (!SPELL_MAP[id] || !SPELL_MAP[id].aoe) SPELL_MAP[id] = Object.assign({}, SPELL_MAP[id], { aoe: 'l1Quiet_aoe' }); });
     /* ═════════ END THE OWN LOOKS, L1 ═════════ */
     /* ══ THE OWN LOOKS, L4 (2026-11-17, thread L4 of the own-looks job, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells
        that dont have a look of their own need one"): blessings and curses — the aura buffs, the heals, the divine hits, the hexes
@@ -72830,6 +72888,418 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!bolts.length) return;
         _sigRunOwned(F.g, 760, function (el) {
             for (var i = 0; i < bolts.length; i++) { var t = el - bolts[i].userData.t0; bolts[i].material.opacity = (t < 0 || t > 380) ? 0 : (t < 60 ? 1 : (Math.floor(t / 50) % 2 ? 0.9 : 0.45) * (1 - (t - 60) / 320)); }
+        });
+    });
+    /* ════ PART 3: THE RIGS (things set down on a square) ════
+       A HIDDEN thing (a trap, a mine, the box) shows its look only to the side that laid it: the other side's screen
+       draws nothing here, so the look never tells them what was hidden or where (_o2OwnCast). */
+    _O2C.signal = 0xc8e03a; _O2C.holo = 0x4ae8b0; _O2C.print = 0xe8b84a; _O2C.hazard = 0xd8b02a; _O2C.star = 0xe8d48a; _O2C.toy = 0xd8322a;
+    _O2C.goo = 0x5a3a8a; _O2C.bog = 0x9ac83a; _O2C.wire = 0xb8c0c8; _O2C.dream = 0xa890d8; _O2C.straw = 0xd8b84a; _O2C.dirt = 0x9a6a34; _O2C.laser = 0xe83a2a;
+    function _o2OwnCast(p) {
+        try {
+            if (_VS.on || typeof state === 'undefined' || !state.units) return true;
+            var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1, u = null;
+            for (var i = 0; i < state.units.length; i++) { var c = state.units[i]; if (c && !c.dead && c.x === p.sx && c.y === p.sy) { u = c; break; } }
+            return !u || u.player === vp;
+        } catch (e) { return true; }
+    }
+    function _o2BarsTex() {   /* signal bars: four, each taller */
+        return _o2Tex('bars', 128, function (g, S) { for (var i = 0; i < 4; i++) g.fillRect(S * (0.12 + i * 0.2), S * (0.78 - i * 0.2), S * 0.14, S * (0.14 + i * 0.2)); });
+    }
+    function _o2JawTex() {   /* half a sprung trap: an arc of teeth */
+        return _o2Tex('jaw', 128, function (g, S, c) {
+            g.lineWidth = 11; g.beginPath(); g.arc(c, S * 0.96, S * 0.44, Math.PI, 0); g.stroke();
+            for (var i = 0; i < 7; i++) { var a = Math.PI + (i + 0.5) / 7 * Math.PI, x = c + Math.cos(a) * S * 0.44, y = S * 0.96 + Math.sin(a) * S * 0.44; g.beginPath(); g.moveTo(x - 7, y); g.lineTo(x + Math.cos(a) * S * 0.2, y + Math.sin(a) * S * 0.2); g.lineTo(x + 7, y); g.closePath(); g.fill(); }
+        });
+    }
+    function _o2SpringTex() {   /* a coil spring, side on */
+        return _o2Tex('spring', 128, function (g, S) { g.lineWidth = 9; g.beginPath(); g.moveTo(S * 0.25, S * 0.96); for (var i = 0; i < 7; i++) g.lineTo(S * (i % 2 ? 0.25 : 0.75), S * (0.96 - (i + 1) * 0.13)); g.stroke(); });
+    }
+    function _o2HatchTex() {   /* a trapdoor seen from above: the frame, the split down the middle, four hinges */
+        return _o2Tex('hatch', 256, function (g, S, c) {
+            g.lineWidth = 12; g.setLineDash([26, 14]); g.strokeRect(S * 0.05, S * 0.05, S * 0.9, S * 0.9); g.setLineDash([]);
+            g.lineWidth = 8; g.beginPath(); g.moveTo(c, S * 0.05); g.lineTo(c, S * 0.95); g.stroke();
+            [[0.05, 0.25], [0.05, 0.75], [0.95, 0.25], [0.95, 0.75]].forEach(function (h) { g.fillRect(S * h[0] - 9, S * h[1] - 16, 18, 32); });
+        });
+    }
+    function _o2XTex() {   /* a stitched cross */
+        return _o2Tex('x', 64, function (g, S) { g.lineWidth = 10; g.beginPath(); g.moveTo(S * 0.18, S * 0.18); g.lineTo(S * 0.82, S * 0.82); g.moveTo(S * 0.82, S * 0.18); g.lineTo(S * 0.18, S * 0.82); g.stroke(); });
+    }
+    function _o2BlobTex() {   /* a splat: a round pool with lobes */
+        return _o2Tex('blob', 128, function (g, S, c) {
+            var rnd = _sigRand(0xb10b); g.beginPath(); g.arc(c, c, S * 0.3, 0, 6.2832); g.fill();
+            for (var i = 0; i < 9; i++) { var a = i / 9 * 6.2832 + rnd() * 0.4, d = S * (0.24 + rnd() * 0.12); g.beginPath(); g.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, S * (0.07 + rnd() * 0.07), 0, 6.2832); g.fill(); }
+        });
+    }
+    /* thin rings that climb / swell (bubbles, pulses): returns tick(el) */
+    function _o2Bubbles(F, color, list) {   /* list: {x, z, y0, y1, r0, r1, t0, ms} in tiles / ms */
+        var ts = F.ts, rs = [];
+        for (var i = 0; i < list.length; i++) { var r = _goRing(F.g, color, ts * 0.8, ts, 4, 0.9, 20); r.material.depthTest = false; r.renderOrder = 165; r.userData.b = list[i]; rs.push(r); }
+        return function (el) {
+            for (var i = 0; i < rs.length; i++) { var b = rs[i].userData.b, t = (el - b.t0) / b.ms; if (t < 0 || t > 1) { rs[i].material.opacity = 0; continue; }
+                rs[i].position.set(b.x * ts, 4 + ts * (b.y0 + (b.y1 - b.y0) * t), b.z * ts); rs[i].scale.setScalar(b.r0 + (b.r1 - b.r0) * t); rs[i].material.opacity = 0.9 * (t > 0.8 ? (1 - t) * 5 : 1); }
+        };
+    }
+
+    /* 5G TOWER — the signal comes on: the four signal bars light one after another over the mast, and broadcast arcs
+       leave it both ways, again and again, a sour lime. */
+    _o2Reg('fiveGTower', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, y = ts * 1.05, arcs = [], cam = _pzCam(), rx = 1, rz = 0;
+        if (cam) { var r = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion); rx = r.x; rz = r.z; }
+        var bars = _o2Spr(F.g, _o2BarsTex(), _O2C.signal, ts * 0.7, 0, y, 0);
+        for (var i = 0; i < 6; i++) { var a = _o2Spr(F.g, _o2ArcTex(), _O2C.signal, ts * 0.5, 0, y, 0); a.userData = { s: i % 2 ? 1 : -1, t0: 260 + (i >> 1) * 190 }; if (i % 2 === 0) a.material.rotation = Math.PI; arcs.push(a); }
+        _sigRunOwned(F.g, 1300, function (el) {
+            var k = _goEnv(el, 60, 1300, 320);
+            bars.material.opacity = 0.95 * k; bars.scale.set(ts * 0.7, ts * 0.7, 1);
+            bars.material.color.setHex(Math.floor(el / 90) % 6 === 5 ? 0x8a9a2a : _O2C.signal);
+            for (var i = 0; i < 6; i++) { var A = arcs[i], t = _sigClamp01((el - A.userData.t0) / 460), d = ts * (0.45 + 1.1 * t); A.position.set(rx * A.userData.s * d, y, rz * A.userData.s * d); A.scale.setScalar(ts * (0.4 + 0.7 * t)); A.material.opacity = el < A.userData.t0 ? 0 : 0.9 * (1 - t); }
+        });
+    });
+
+    /* CHIVALRY — the pledge: a gold line runs from the knight to the ally and a gold shield stands itself up in front
+       of them, on the knight's side, and holds there. */
+    _o2Reg('raceChivalry', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, ln = B.ln, y = ts * 0.55;
+        var sh = _o2Spr(B.g, _o2ShieldTex(), _O2C.gold, ts * 0.9, B.ux * ts * 0.42, y, B.uz * ts * 0.42), line = _o2Rod(B.g, _O2C.gold, ts * 0.025);
+        var a = B.fr.seen ? new THREE.Vector3(ln.dx, ln.dy + ts * 0.6, ln.dz) : new THREE.Vector3(B.ux * ts * 1.3, ts * 0.6, B.uz * ts * 1.3), b = new THREE.Vector3(B.ux * ts * 0.42, y, B.uz * ts * 0.42);
+        var ring = _goRing(B.g, _O2C.gold, ts * 0.42, ts * 0.48, 4, 0.7, 36);
+        _sigRunOwned(B.g, 1300, function (el) {
+            var k = _goEnv(el, 80, 1300, 380), up = _sigEaseOutBack(_sigClamp01((el - 180) / 240));
+            _o2Slide(line, a, b, 0, _sigClamp01(el / 200)); line.material.opacity = 0.8 * (1 - _sigClamp01((el - 420) / 400));
+            sh.scale.set(ts * 0.9, ts * 0.9 * Math.max(0.05, up), 1); sh.position.y = y * Math.max(0.3, up); sh.material.opacity = el < 180 ? 0 : 0.95 * k;
+            ring.material.opacity = 0.7 * k;
+        });
+    });
+
+    /* CLONING MACHINE — printed: an amber print head sweeps up the square from the floor and leaves a rung of the
+       body behind it at every pass, feet to head, until the decoy stands; then the rungs let go. */
+    _o2Reg('raceCloneDecoy', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, N = 9, rungs = [], W = [0.3, 0.34, 0.4, 0.5, 0.56, 0.6, 0.5, 0.3, 0.26];
+        for (var i = 0; i < N; i++) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * W[i], ts * 0.05), _goA(_O2C.print, 0)); m.position.y = ts * (0.1 + i * 0.125); m.renderOrder = 160; F.g.add(m); rungs.push(m); }
+        var head = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.8, ts * 0.035), _goA(0xf0d070, 0)); head.renderOrder = 161; F.g.add(head);
+        var RISE = 720;
+        _sigRunOwned(F.g, RISE + 520, function (el) {
+            var cam = _goCamQuat(null), u = _sigClamp01(el / RISE), hy = ts * (0.06 + 1.12 * u), out = 1 - _sigClamp01((el - RISE - 160) / 360);
+            if (cam) head.quaternion.copy(cam); head.position.y = hy; head.material.opacity = u < 1 ? 0.95 : 0;
+            for (var i = 0; i < N; i++) { if (cam) rungs[i].quaternion.copy(cam); rungs[i].material.opacity = rungs[i].position.y < hy ? 0.75 * out * (Math.floor(el / 70 + i) % 5 ? 1 : 0.6) : 0; }
+        });
+    });
+
+    /* DEATHTRAP — the hatch, for the side that laid it only: a hazard-yellow trapdoor frame is drawn over the whole 3×3
+       with its split down the middle and its hinges, it drops a hand's width as it is set, and it is gone: hidden. */
+    _o2Reg('raceDeathtrap', function (p) {
+        if (!_o2OwnCast(p) || !_pzSeen(p.tx, p.ty)) return;
+        var def = _spellDefFor('raceDeathtrap') || {}, n = def.trapSize || 3, F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var h = _o2Flat(F.g, _o2HatchTex(), _O2C.hazard, ts * n * 0.98, 5, 165);
+        _goSpray(F, 6, { sprite: 'dust-puff', tint: 0xb0a48e, ly: 4, r: ts * n * 0.4, v: 30, vz0: 5, vz1: 25, g: 0, s0: ts * 0.1, s0b: ts * 0.16, s1: ts * 0.3, ml0: 420, ml1: 700, op: 0.45 });
+        _sigRunOwned(F.g, 1200, function (el) {
+            var set = _sigClamp01((el - 420) / 140);
+            h.position.y = 5 + ts * 0.12 * (1 - set); h.material.opacity = 0.9 * Math.min(1, el / 100) * (1 - _sigClamp01((el - 700) / 500)) * (el < 420 ? (Math.floor(el / 105) % 2 ? 1 : 0.55) : 1);
+        });
+    });
+
+    /* DEPLOY TURRET — bolted down: three legs fold out flat from the middle of the square, a spark at each foot as it
+       bites, and the turret's red sight line swings once round, looking for something to shoot. */
+    _o2Reg('deployTurret', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, legs = [], O = new THREE.Vector3(0, 5, 0), eye = new THREE.Vector3(0, ts * 0.55, 0), E = new THREE.Vector3();
+        for (var i = 0; i < 3; i++) { var a = i * 2.0944 + 0.5, l = _o2Rod(F.g, _O2C.steel, ts * 0.04); l.material.depthTest = false; l.renderOrder = 164; l.userData = { e: new THREE.Vector3(Math.cos(a) * ts * 0.46, 5, Math.sin(a) * ts * 0.46), lit: false }; legs.push(l); }
+        var sight = _o2Rod(F.g, _O2C.laser, ts * 0.02), dot = _pzSpr(_O2C.laser, ts * 0.2, F.g); dot.position.copy(eye);
+        _sigRunOwned(F.g, 1250, function (el) {
+            var k = _goEnv(el, 40, 1250, 300), out = _sigEaseOutBack(_sigClamp01(el / 220));
+            for (var i = 0; i < 3; i++) { var L = legs[i]; _o2Slide(L, O, L.userData.e, 0, Math.min(1, out)); L.material.opacity = 0.9 * k;
+                if (out >= 1 && !L.userData.lit) { L.userData.lit = true; _pzP(F, L.userData.e.x, 6, L.userData.e.z, { sprite: 'spark', tint: _O2C.brass, ml: 260, size0: 12, size1: 2, opacity0: 1 }); } }
+            var sw = _sigClamp01((el - 300) / 700), a = sw * 6.2832 + 0.5;
+            E.set(Math.cos(a) * ts * 1.6, ts * 0.5, Math.sin(a) * ts * 1.6); _o2Slide(sight, eye, E, 0, 1); sight.material.opacity = (el < 300 || sw >= 1) ? 0 : 0.75; dot.material.opacity = el < 300 ? 0 : 0.95 * k;
+        });
+    });
+
+    /* FEDERATION BEACON — a pylon of starlight: a thin pale-gold shaft stands up out of the square, rings of light
+       climb it one after another, and one wide soft ring rolls out over the floor to show how far its mending reaches. */
+    _o2Reg('raceFederationBeacon', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var def = _spellDefFor('raceFederationBeacon') || {}, R = def.auraRadius || 4, F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var shaft = _o2Rod(F.g, _O2C.star, ts * 0.07), core = _o2Rod(F.g, 0xebe0a8, ts * 0.025), bot = new THREE.Vector3(0, 3, 0), top = new THREE.Vector3(0, ts * 2.4, 0);
+        var climb = _o2Bubbles(F, _O2C.star, [0, 1, 2, 3].map(function (i) { return { x: 0, z: 0, y0: 0.1, y1: 2.1, r0: 0.3, r1: 0.14, t0: 200 + i * 190, ms: 620 }; }));
+        var reach = _goRing(F.g, _O2C.star, ts * 0.93, ts, 4, 0.5, 64);
+        _sigRunOwned(F.g, 1500, function (el) {
+            var k = _goEnv(el, 120, 1500, 420), up = _sigEaseOutCubic(_sigClamp01(el / 280));
+            _o2Slide(shaft, bot, top, 0, up); shaft.material.opacity = 0.35 * k; _o2Slide(core, bot, top, 0, up); core.material.opacity = 0.85 * k;
+            climb(el);
+            var t = _sigClamp01((el - 250) / 900); reach.scale.setScalar(0.2 + (R + 0.3) * _sigEaseOutCubic(t)); reach.material.opacity = el < 250 ? 0 : 0.5 * (1 - t);
+        });
+    });
+
+    /* HOLOGRAM — projected: a cone of sea-green light opens up from a point on the floor, scan lines run up through
+       it, and the picture tears sideways twice before it holds. */
+    _o2Reg('sigHologram', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, lines = [], N = 7;
+        var cone = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.42, ts * 1.25, 14, 1, true), _goA(_O2C.holo, 0)); cone.rotation.x = Math.PI; cone.position.y = ts * 0.625; cone.material.wireframe = true; cone.renderOrder = 159; F.g.add(cone);
+        var emit = _pzSpr(_O2C.holo, ts * 0.4, F.g); emit.position.y = 6;
+        for (var i = 0; i < N; i++) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.6, ts * 0.04), _goA(_O2C.holo, 0)); m.renderOrder = 160; m.userData.ph = i / N; F.g.add(m); lines.push(m); }
+        _sigRunOwned(F.g, 1300, function (el) {
+            var k = _goEnv(el, 80, 1300, 340), cam = _goCamQuat(null), tear = (el > 300 && el < 380) || (el > 620 && el < 680) ? ts * 0.14 : 0;
+            cone.material.opacity = 0.4 * k * (Math.floor(el / 60) % 5 ? 1 : 0.5); cone.rotation.y = el * 0.0015; emit.material.opacity = 0.95 * k;
+            for (var i = 0; i < N; i++) { var L = lines[i], u = (L.userData.ph + el / 900) % 1; if (cam) L.quaternion.copy(cam); L.position.set(tear * (i % 2 ? 1 : -1), ts * (0.1 + 1.1 * u), 0); L.scale.x = 0.35 + 0.65 * u; L.material.opacity = 0.7 * k * Math.sin(u * Math.PI); }
+        });
+    });
+
+    /* JACK-IN-THE-BOX — wound up, for the side that set it only: a spring is pressed down into the square, coil by coil,
+       and two notes of the tune come off the crank. (The painted box and its pop are the spell's own.) */
+    _o2Reg('sigJackInTheBox', function (p) {
+        if (!_o2OwnCast(p) || !_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, notes = [];
+        var sp = _o2Spr(F.g, _o2SpringTex(), _O2C.toy, ts * 0.7, 0, ts * 0.6, 0); sp.center.set(0.5, 0);
+        for (var i = 0; i < 2; i++) { var n = _o2Spr(F.g, _sigNoteTex(false), i ? _O2C.thunder : _O2C.toy, ts * 0.34, ts * (i ? 0.3 : -0.3), 0, 0); n.userData.t0 = 200 + i * 260; notes.push(n); }
+        _sigRunOwned(F.g, 1150, function (el) {
+            var k = _goEnv(el, 50, 1150, 300), st = Math.min(4, Math.floor(el / 150)), sq = 1 - st * 0.2;
+            sp.position.y = 4; sp.scale.set(ts * (0.55 + (1 - sq) * 0.3), ts * 1.1 * sq, 1); sp.material.opacity = 0.95 * k;
+            for (var i = 0; i < 2; i++) { var t = _sigClamp01((el - notes[i].userData.t0) / 600); notes[i].position.y = ts * (0.7 + 0.7 * t); notes[i].material.opacity = (el < notes[i].userData.t0) ? 0 : 0.9 * Math.sin(t * Math.PI); }
+        });
+    });
+
+    /* OOZE TRAIL — the glob lands: a black slick with a violet sheen splats on the square and creeps wider, slow, a few
+       fat drops of it thrown up and falling back in. */
+    _o2Reg('raceOozeTrail', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var sheen = _o2Flat(F.g, _o2BlobTex(), _O2C.goo, ts * 1.6, 4, 163), pool = _o2Flat(F.g, _o2BlobTex(), 0x0c0a12, ts * 1.4, 5, 164);
+        pool.material.blending = THREE.NormalBlending; pool.material.needsUpdate = true;
+        _goSpray(F, 7, { sprite: 'smoke', tint: 0x1a1424, ly: ts * 0.15, r: 10, v: 70, vz0: 120, vz1: 240, g: 620, s0: 9, s0b: 15, s1: 6, ml0: 420, ml1: 700, op: 0.95 });
+        _sigRunOwned(F.g, 1400, function (el) {
+            var k = 1 - _sigClamp01((el - 950) / 450), g = 0.35 + 0.3 * _sigEaseOutBack(_sigClamp01(el / 200)) + 0.35 * _sigClamp01(el / 1100);
+            pool.userData.piv.scale.setScalar(g); sheen.userData.piv.scale.setScalar(g * 1.04); pool.userData.piv.rotation.y = 0.6;
+            pool.material.opacity = 0.92 * k; sheen.material.opacity = 0.8 * k * (0.75 + 0.25 * Math.sin(el * 0.012));
+        });
+    });
+
+    /* POISON SWAMP — it bubbles: a sick yellow-green pool wells up on the square and bubbles rise through it and burst,
+       one after another, each burst spitting a few drops. */
+    _o2Reg('sharedPoisonSwamp', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, pool = _o2Flat(F.g, _o2BlobTex(), _O2C.bog, ts * 1.2, 4, 163), B = [];
+        for (var i = 0; i < 6; i++) { var a = i * 2.39996, d = 0.1 + 0.2 * (i % 3) / 2; B.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, y0: 0.02, y1: 0.3 + 0.1 * (i % 2), r0: 0.05, r1: 0.16 + 0.04 * (i % 3), t0: 120 + i * 150, ms: 380 }); }
+        var bub = _o2Bubbles(F, 0xc8e86a, B);
+        B.forEach(function (b) { _fxDelay(function () { if (!_suppressed()) _pzP(F, b.x * ts, ts * b.y1, b.z * ts, { sprite: 'spark', tint: _O2C.bog, ml: 260, size0: 9, size1: 2, vz: 60, gravity: 400, opacity0: 0.95 }); }, b.t0 + b.ms); });
+        _sigRunOwned(F.g, 1500, function (el) {
+            var k = 1 - _sigClamp01((el - 1050) / 450);
+            pool.userData.piv.scale.setScalar(0.4 + 0.6 * _sigEaseOutCubic(_sigClamp01(el / 420))); pool.material.opacity = 0.6 * k * (0.85 + 0.15 * Math.sin(el * 0.01)); bub(el);
+        });
+    });
+
+    /* SCRAP MINE — nails, powder, a spring, for the side that set it only: a ring of nails lies out round the square,
+       the points pull in toward the middle as it is armed, and one red lamp blinks three times. */
+    _o2Reg('raceScrapMine', function (p) {
+        if (!_o2OwnCast(p) || !_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, nails = [], N = 8;
+        for (var i = 0; i < N; i++) { var a = i / N * 6.2832, n = _o2Rod(F.g, _O2C.rust, ts * 0.045); n.material.depthTest = false; n.renderOrder = 164; n.userData = { c: Math.cos(a), s: Math.sin(a) }; nails.push(n); }
+        var lamp = _pzSpr(_O2C.laser, ts * 0.3, F.g); lamp.position.y = ts * 0.14;
+        var A = new THREE.Vector3(), Bv = new THREE.Vector3();
+        _sigRunOwned(F.g, 1200, function (el) {
+            var k = _goEnv(el, 50, 1200, 300), arm = _sigEaseOutCubic(_sigClamp01((el - 200) / 320));
+            for (var i = 0; i < N; i++) { var U = nails[i].userData, r0 = ts * (0.62 - 0.26 * arm), r1 = ts * (0.3 - 0.18 * arm); A.set(U.c * r0, 5, U.s * r0); Bv.set(U.c * r1, 5, U.s * r1); _o2Slide(nails[i], A, Bv, 0, 1); nails[i].material.opacity = 0.9 * k; }
+            lamp.material.opacity = el < 520 ? 0 : (Math.floor((el - 520) / 110) % 2 ? 0.1 : 0.95) * k;
+        });
+    });
+
+    /* SNARE — a loop of wire, for the side that laid it only: a wide pale wire loop lies on the square, a peg at one
+       side, and it draws itself down small and tight as it is set; a glint runs once round it. */
+    _o2Reg('raceSnare', function (p) {
+        if (!_o2OwnCast(p) || !_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var loop = _goRing(F.g, _O2C.wire, ts * 0.94, ts, 5, 0.9, 40); loop.material.depthTest = false; loop.renderOrder = 165;
+        var peg = _o2Rod(F.g, _O2C.dirt, ts * 0.035), tail = _o2Rod(F.g, _O2C.wire, ts * 0.016), glint = _pzSpr(0xd8d0b0, ts * 0.2, F.g);
+        var P0 = new THREE.Vector3(ts * 0.46, 3, 0), P1 = new THREE.Vector3(ts * 0.46, ts * 0.22, 0), T = new THREE.Vector3();
+        _sigRunOwned(F.g, 1200, function (el) {
+            var k = _goEnv(el, 50, 1200, 320), tight = _sigEaseOutCubic(_sigClamp01((el - 240) / 420)), r = 0.44 - 0.24 * tight, a = el * 0.012;
+            loop.scale.setScalar(r); loop.material.opacity = 0.9 * k;
+            _o2Slide(peg, P0, P1, 0, 1); peg.material.opacity = 0.9 * k; T.set(ts * r, 4, 0); _o2Slide(tail, P0, T, 0, 1); tail.material.opacity = 0.8 * k;
+            glint.position.set(Math.cos(a) * ts * r, 6, Math.sin(a) * ts * r); glint.material.opacity = (el > 240 && el < 760) ? 0.9 : 0;
+        });
+    });
+
+    /* SPRING SNARE — clockwork jaws under the leaves, for the side that set it only: two arcs of teeth lie open on the
+       square, lilac steel, they are cranked wider tooth by tooth (tick, tick, tick), and a few leaves drift down over them. */
+    _o2Reg('raceLucidTrap', function (p) {
+        if (!_o2OwnCast(p) || !_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, jaws = [];
+        for (var i = 0; i < 2; i++) {
+            var hinge = new THREE.Group(), m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.2, ts * 0.6), _goA(_O2C.dream, 0)); m.material.map = _o2JawTex(); m.material.depthTest = false; m.material.needsUpdate = true;
+            m.position.y = ts * 0.3; m.renderOrder = 165; hinge.position.y = 5; hinge.rotation.y = i ? Math.PI : 0; hinge.add(m); F.g.add(hinge); jaws.push({ h: hinge, m: m });
+        }
+        _fxDelay(function () { if (!_suppressed()) _goSpray(F, 5, { sprite: 'leaf', tint: 0x7a8a4a, ly: ts * 0.9, r: ts * 0.35, v: 30, vz0: -60, vz1: -20, g: 60, s0: 7, s0b: 11, s1: 6, ml0: 700, ml1: 1000, op: 0.9 }); }, 420);
+        _sigRunOwned(F.g, 1250, function (el) {
+            var k = _goEnv(el, 50, 1250, 320), st = Math.min(3, Math.floor(el / 150)), into = _sigEaseOutBack(_sigClamp01((el - st * 150) / 90)), open = (st + into) / 4 * (Math.PI / 2 - 0.08);
+            for (var i = 0; i < 2; i++) { jaws[i].h.rotation.x = -open; jaws[i].m.material.opacity = 0.9 * k; }
+        });
+    });
+
+    /* STUFFED DOUBLE — straw: it is stuffed in a hurry, so straw flies. Stalks of it burst up off the square and fall
+       back, and two stitched crosses sit where its eyes are. */
+    _o2Reg('raceStuffedDouble', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, st = [], N = 14, seed = p.tx * 7 + p.ty * 13, cam = _pzCam(), rx = 1, rz = 0;
+        if (cam) { var r = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion); rx = r.x; rz = r.z; }
+        for (var i = 0; i < N; i++) { var a = seed + i * 2.39996, s = _o2Rod(F.g, i % 3 ? _O2C.straw : 0xb8963a, ts * 0.02); s.userData = { c: Math.cos(a), s: Math.sin(a), v: 0.5 + 0.5 * ((i * 37) % 7) / 6, up: 0.9 + 0.7 * ((i * 53) % 5) / 4, tw: a * 3 }; st.push(s); }
+        var eyes = []; for (var e = -1; e <= 1; e += 2) eyes.push(_o2Spr(F.g, _o2XTex(), 0x4a3418, ts * 0.2, rx * e * ts * 0.11, ts * 0.98, rz * e * ts * 0.11, true));
+        var A = new THREE.Vector3(), Bv = new THREE.Vector3();
+        _sigRunOwned(F.g, 1150, function (el) {
+            var t = el / 1000, k = 1 - _sigClamp01((el - 800) / 350);
+            for (var i = 0; i < N; i++) { var U = st[i].userData, d = ts * U.v * 0.9 * Math.min(1, t * 2.2), h = Math.max(4, ts * (0.5 + U.up * t * 2.2 - 3.2 * t * t)), tx = Math.cos(U.tw + el * 0.01) * ts * 0.11, tz = Math.sin(U.tw + el * 0.01) * ts * 0.11;
+                A.set(U.c * d - tx, h - ts * 0.05, U.s * d - tz); Bv.set(U.c * d + tx, h + ts * 0.05, U.s * d + tz); _o2Slide(st[i], A, Bv, 0, 1); st[i].material.opacity = 0.95 * k; }
+            for (var e = 0; e < 2; e++) eyes[e].material.opacity = (el < 250) ? 0 : 0.95 * k;
+        });
+    });
+
+    /* TUNNEL NETWORK — dug: a dark mouth opens in the ant's own square and in the far one, a ring of thrown dirt round
+       each, and a row of dashes burrows across the floor from one to the other. */
+    _o2Reg('raceTunnelNetwork', function (p) {
+        var ends = [{ x: p.tx, y: p.ty }];
+        if (p.sx != null && !(p.sx === p.tx && p.sy === p.ty)) ends.unshift({ x: p.sx, y: p.sy });
+        if (!_pzSeen(ends[0].x, ends[0].y) && !_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(ends[0].x, ends[0].y), ts = F.ts, mouths = [], dash = [], RUN = 520;
+        ends.forEach(function (e, i) {
+            if (!_pzSeen(e.x, e.y)) return;
+            var w = _worldPos(e.x, e.y), g = new THREE.Group(); g.position.set(w.x - F.wp.x, w.y - F.wp.y, w.z - F.wp.z); F.g.add(g);
+            var hole = _o2Flat(g, _sigGlowTex(), 0x0a0806, ts * 0.9, 5, 164); hole.material.blending = THREE.NormalBlending; hole.material.needsUpdate = true;
+            var rim = _goRing(g, _O2C.dirt, ts * 0.36, ts * 0.46, 6, 0.9, 28); rim.material.depthTest = false; rim.renderOrder = 165;
+            mouths.push({ hole: hole, rim: rim, t0: i ? RUN : 0, e: e, lit: false });
+        });
+        if (ends.length > 1) {
+            var w1 = _worldPos(ends[1].x, ends[1].y), dx = w1.x - F.wp.x, dz = w1.z - F.wp.z, dy = w1.y - F.wp.y, n = Math.max(3, Math.round(Math.hypot(dx, dz) / (ts * 0.34)));
+            for (var d = 1; d < n; d++) { var r = _o2Rod(F.g, _O2C.dirt, ts * 0.035), k0 = (d - 0.3) / n, k1 = (d + 0.3) / n; r.material.depthTest = false; r.renderOrder = 164;
+                r.userData = { a: new THREE.Vector3(dx * k0, dy * k0 + 5, dz * k0), b: new THREE.Vector3(dx * k1, dy * k1 + 5, dz * k1), t0: d / n * RUN }; dash.push(r); }
+        }
+        _sigRunOwned(F.g, RUN + 900, function (el) {
+            var k = 1 - _sigClamp01((el - RUN - 500) / 400);
+            for (var i = 0; i < mouths.length; i++) { var M = mouths[i], t = el - M.t0, o = _sigEaseOutBack(_sigClamp01(t / 220));
+                M.hole.userData.piv.scale.setScalar(Math.max(0.01, o)); M.hole.material.opacity = t < 0 ? 0 : 0.95 * k; M.rim.scale.setScalar(Math.max(0.01, o)); M.rim.material.opacity = t < 0 ? 0 : 0.9 * k;
+                if (t >= 0 && !M.lit) { M.lit = true; var Fm = _nrvFrame(M.e.x, M.e.y); _goSpray(Fm, 8, { sprite: 'rock-debris', tint: _O2C.dirt, ly: 6, r: 10, v: 120, vz0: 90, vz1: 220, g: 620, s0: 5, s0b: 9, s1: 3, ml0: 380, ml1: 640 }); } }
+            for (var j = 0; j < dash.length; j++) { var D = dash[j], u = el - D.userData.t0; if (u < 0) { D.visible = false; continue; } _o2Slide(D, D.userData.a, D.userData.b, 0, 1); D.material.opacity = 0.9 * k; }
+        });
+    });
+
+    /* ════ PART 4: THE MACHINES ════ */
+    _O2C.loop = 0xe8a82a; _O2C.recur = 0xb08af0; _O2C.panic = 0x3ae06a; _O2C.chrome = 0xa8b4c0; _O2C.jet = 0xf0782a; _O2C.shell = 0xd88a2a;
+    function _o2LoopTex() {   /* a reload arrow: most of a ring, an arrow head on its end */
+        return _o2Tex('loop', 128, function (g, S, c) {
+            g.lineWidth = 13; g.beginPath(); g.arc(c, c, S * 0.36, 0.5, 5.5); g.stroke();
+            var a = 5.5, x = c + Math.cos(a) * S * 0.36, y = c + Math.sin(a) * S * 0.36; g.save(); g.translate(x, y); g.rotate(a + Math.PI / 2); g.beginPath(); g.moveTo(-S * 0.15, 0); g.lineTo(S * 0.04, -S * 0.15); g.lineTo(S * 0.04, S * 0.15); g.closePath(); g.fill(); g.restore();
+        });
+    }
+    function _o2SquareTex() {   /* a square frame */
+        return _o2Tex('sq', 128, function (g, S) { g.lineWidth = 12; g.strokeRect(S * 0.08, S * 0.08, S * 0.84, S * 0.84); });
+    }
+
+    /* CRASH LOOP — it starts, it dies, it starts again: an amber reload arrow turns round the body, gets three quarters
+       of the way, jerks back to the start with a red cross, and does it again, three times. */
+    _o2Reg('raceCrashLoop', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, y = ts * 0.62, LAP = 330;
+        var loop = _o2Spr(F.g, _o2LoopTex(), _O2C.loop, ts * 1.3, 0, y, 0), x = _o2Spr(F.g, _o2XTex(), _O2C.kill, ts * 0.5, 0, y, 0);
+        _sigRunOwned(F.g, LAP * 3 + 260, function (el) {
+            var k = _goEnv(el, 40, LAP * 3 + 260, 220), u = (el % LAP) / LAP, run = u < 0.72;
+            loop.material.rotation = -(run ? u / 0.72 * 4.7 : 4.7 * (1 - (u - 0.72) / 0.28)); loop.material.opacity = 0.95 * k * (run ? 1 : 0.5);
+            x.material.opacity = (!run && el < LAP * 3) ? 0.95 * k : 0;
+        });
+    });
+
+    /* RECURSIVE LOOP — a call inside a call inside a call: lilac square frames open round the body one inside the
+       other, each turned a little further than the last, and the whole stack keeps falling inward. */
+    _o2Reg('raceRecursiveLoop', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, y = ts * 0.62, N = 6, fr = [], PER = 620;
+        for (var i = 0; i < N; i++) fr.push(_o2Spr(F.g, _o2SquareTex(), i % 2 ? _O2C.recur : 0x8a6ad8, ts, 0, y, 0));
+        _sigRunOwned(F.g, 1250, function (el) {
+            var k = _goEnv(el, 60, 1250, 320);
+            for (var i = 0; i < N; i++) { var u = ((i / N) + el / PER) % 1, s = 1.7 * Math.pow(0.12 / 1.7, u); fr[i].scale.setScalar(ts * s); fr[i].material.rotation = u * 2.4; fr[i].material.opacity = 0.9 * k * Math.min(1, u * 5) * Math.min(1, (1 - u) * 4); }
+        });
+    });
+
+    /* SYSTEM CRASH — fatal exception: every square of the 3×3 flashes terminal green, columns of green blocks come
+       down over them and STOP dead half way, frozen, and a green cross stamps the middle. Everything running stops. */
+    _o2Reg('raceSystemCrash', function (p) {
+        var def = _spellDefFor('raceSystemCrash') || {}, R = def.aoeRadius || 1, sq = _o2Area(p.tx, p.ty, R, function (x, y) { return (x + R) * 50; });
+        _o2Squares(sq, _O2C.panic, { op: 0.5, ms: 380 });
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, cols = [], seed = p.tx * 7 + p.ty * 13;
+        for (var i = 0; i < sq.length; i++) {
+            if (!_pzSeen(sq[i].x, sq[i].y)) continue;
+            var w = _worldPos(sq[i].x, sq[i].y);
+            for (var b = 0; b < 4; b++) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.13, ts * 0.13), _goA(b ? _O2C.panic : 0x9af0a8, 0)); m.renderOrder = 160;
+                m.userData = { x: w.x - F.wp.x + ts * 0.26 * (((i * 3 + seed) % 3) - 1), y0: w.y - F.wp.y, z: w.z - F.wp.z, b: b, stop: 0.35 + 0.4 * ((i * 5 + seed) % 4) / 3, t0: sq[i].d }; F.g.add(m); cols.push(m); }
+        }
+        var x = _o2Spr(F.g, _o2XTex(), _O2C.panic, ts * 1.1, 0, ts * 0.62, 0);
+        _sigRunOwned(F.g, 1300, function (el) {
+            var k = 1 - _sigClamp01((el - 900) / 400), cam = _goCamQuat(null);
+            for (var i = 0; i < cols.length; i++) { var U = cols[i].userData, f = Math.min(U.stop, Math.max(0, (el - U.t0) / 520)); if (cam) cols[i].quaternion.copy(cam);
+                cols[i].position.set(U.x, U.y0 + ts * (1.7 - 1.7 * f + U.b * 0.16), U.z); cols[i].material.opacity = (el < U.t0) ? 0 : 0.85 * k * (f >= U.stop ? 1 : (Math.floor(el / 50 + U.b) % 2 ? 1 : 0.5)); }
+            x.material.opacity = el < 420 ? 0 : 0.95 * k; x.scale.setScalar(ts * (1.1 + 0.5 * (1 - _sigEaseOutCubic(_sigClamp01((el - 420) / 160)))));
+        });
+    });
+
+    /* HYDRAULIC PUNCH — the ram: a thick chrome barrel shoots out along the punch and a second, thinner rod drives out
+       of its end a beat later (the double hit), steam venting off both sides of the joint. */
+    _o2Reg('raceHydraulicPunch', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.62, cyl = _o2Rod(B.g, _O2C.chrome, ts * 0.15), rod = _o2Rod(B.g, 0xc8d0d8, ts * 0.075);
+        var a = new THREE.Vector3(B.ux * ts * 1.05, y, B.uz * ts * 1.05), m = new THREE.Vector3(B.ux * ts * 0.45, y, B.uz * ts * 0.45), b = new THREE.Vector3(-B.ux * ts * 0.25, y, -B.uz * ts * 0.25), vent = false;
+        _sigRunOwned(B.g, 1000, function (el) {
+            var k = 1 - _sigClamp01((el - 640) / 360), o1 = _sigEaseOutCubic(_sigClamp01(el / 110)), o2 = _sigEaseOutBack(_sigClamp01((el - 150) / 110));
+            _o2Slide(cyl, a, m, 0, o1); cyl.material.opacity = 0.9 * k; _o2Slide(rod, m, b, 0, Math.min(1, o2)); rod.material.opacity = el < 150 ? 0 : 0.95 * k;
+            if (el >= 150 && !vent) { vent = true; for (var s = -1; s <= 1; s += 2) for (var q = 0; q < 3; q++) _pzP(B.F, m.x, y, m.z, { sprite: 'smoke-soft', tint: 0xc4ccd4, ml: rn(420, 640), size0: ts * 0.1, size1: ts * 0.36, vx: B.sx * s * rn(90, 170), vy: B.sz * s * rn(90, 170), vz: rn(20, 70), drag: 2, opacity0: 0.75 }); }
+        });
+    });
+
+    /* ROCKET FIST — it flew here: the jet line it rode in on still burns from the robot to the body (orange, guttering
+       out from the far end), smoke rings hang along it, and a hot ring kicks off where the fist landed. */
+    _o2Reg('raceRocketFist', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.62, ln = B.ln, jet = _o2Rod(B.g, _O2C.jet, ts * 0.085), core = _o2Rod(B.g, 0xf0c86a, ts * 0.035);
+        var b = new THREE.Vector3(B.ux * ts * 0.2, y, B.uz * ts * 0.2), a = B.fr.seen ? new THREE.Vector3(ln.dx - B.ux * ts * 0.4, ln.dy + ts * 0.66, ln.dz - B.uz * ts * 0.4) : new THREE.Vector3(B.ux * ts * 1.5, y, B.uz * ts * 1.5);
+        var n = Math.max(2, Math.min(6, Math.round(a.distanceTo(b) / (ts * 0.6)))), list = [];
+        for (var i = 1; i <= n; i++) { var k = i / (n + 1); list.push({ px: a.x + (b.x - a.x) * k, py: a.y + (b.y - a.y) * k, pz: a.z + (b.z - a.z) * k }); }
+        list.forEach(function (q) { _pzP(B.F, q.px, q.py, q.pz, { sprite: 'smoke-soft', tint: 0x9a9488, ml: rn(700, 1000), size0: ts * 0.14, size1: ts * 0.4, vz: rn(8, 24), drag: 0.8, opacity0: 0.6 }); });
+        var ring = _o2Spr(B.g, _sigRingTex(), _O2C.jet, ts * 0.3, 0, y, 0);
+        _o2Sparks(B.F, 8, _O2C.jet, y, { v: 190 });
+        _sigRunOwned(B.g, 1000, function (el) {
+            var gut = _sigClamp01((el - 200) / 700), fl = Math.floor(el / 45) % 2 ? 1 : 0.7;
+            _o2Slide(jet, a, b, gut, 1); jet.material.opacity = 0.75 * fl * (1 - gut * 0.5); _o2Slide(core, a, b, gut, 1); core.material.opacity = 0.95 * fl;
+            ring.scale.setScalar(ts * (0.3 + 0.9 * _sigEaseOutCubic(_sigClamp01(el / 320)))); ring.material.opacity = 0.9 * (1 - _sigClamp01((el - 200) / 600));
+        });
+    });
+
+    /* MORTAR SALVO — where the shells come down: every square of the 3×3 flashes shell orange in the order the salvo
+       walks across it, and each keeps a dark scorched ring for a moment. (The lobbed shells are the spell's own.) */
+    _o2Reg('raceMortarSalvo', function (p) {
+        var def = _spellDefFor('raceMortarSalvo') || {}, R = def.aoeRadius || 1, sq = _o2Area(p.tx, p.ty, R, function (x, y) { return ((x + R) * 3 + (y + R) * 5) % 7 * 55; });
+        _o2Squares(sq, _O2C.shell, { op: 0.55, ms: 360 });
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, rings = [];
+        for (var i = 0; i < sq.length; i++) { if (!_pzSeen(sq[i].x, sq[i].y)) continue; var w = _worldPos(sq[i].x, sq[i].y), r = _goRing(F.g, 0x1a1410, ts * 0.2, ts * 0.34, 4, 0.8, 20);
+            r.material.blending = THREE.NormalBlending; r.material.depthTest = false; r.material.needsUpdate = true; r.renderOrder = 164; r.position.set(w.x - F.wp.x, w.y - F.wp.y + 4, w.z - F.wp.z); r.userData.t0 = sq[i].d + 80; rings.push(r); }
+        if (!rings.length) return;
+        _sigRunOwned(F.g, 1300, function (el) {
+            for (var i = 0; i < rings.length; i++) { var t = el - rings[i].userData.t0; rings[i].scale.setScalar(1 + 0.4 * _sigEaseOutCubic(_sigClamp01(t / 200))); rings[i].material.opacity = t < 0 ? 0 : 0.8 * (1 - _sigClamp01((t - 420) / 420)); }
+        });
+    });
+
+    /* TRANSFORM — the car comes apart and goes back together: six body panels swing out from the chassis, turn over
+       and lock back in at new places, and the hazard lights blink amber twice, left and right. */
+    _o2Reg('raceTransform', function (p) {
+        var cx = p.sx != null ? p.sx : p.tx, cy = p.sy != null ? p.sy : p.ty;
+        if (!_pzSeen(cx, cy)) return;
+        var F = _nrvFrame(cx, cy), ts = F.ts, pan = [], cam = _pzCam(), rx = 1, rz = 0;
+        if (cam) { var r = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion); rx = r.x; rz = r.z; }
+        for (var i = 0; i < 6; i++) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.34, ts * 0.22), _goA(i % 2 ? _O2C.chrome : 0x7f8c9a, 0)); m.material.side = THREE.DoubleSide; m.renderOrder = 160; m.userData = { a: i / 6 * 6.2832, y: ts * (0.3 + 0.28 * (i % 3)) }; F.g.add(m); pan.push(m); }
+        var haz = []; for (var e = -1; e <= 1; e += 2) { var h = _pzSpr(_O2C.loop, ts * 0.34, F.g); h.position.set(rx * e * ts * 0.42, ts * 0.4, rz * e * ts * 0.42); haz.push(h); }
+        _sigRunOwned(F.g, 1200, function (el) {
+            var k = _goEnv(el, 60, 1200, 300), out = Math.sin(_sigClamp01(el / 900) * Math.PI), turn = _sigClamp01(el / 900);
+            for (var i = 0; i < 6; i++) { var U = pan[i].userData, a = U.a + turn * 2.0944, d = ts * (0.3 + 0.5 * out); pan[i].position.set(Math.cos(a) * d, U.y + ts * 0.2 * out * (i % 2 ? 1 : -1), Math.sin(a) * d); pan[i].rotation.set(turn * Math.PI * 2, -a, 0); pan[i].material.opacity = 0.85 * k; }
+            for (var e = 0; e < 2; e++) haz[e].material.opacity = (Math.floor(el / 170) % 2 === 0 && el < 700) ? 0.95 : 0;
         });
     });
     /* ═════════ END THE OWN LOOKS, L2 ═════════ */

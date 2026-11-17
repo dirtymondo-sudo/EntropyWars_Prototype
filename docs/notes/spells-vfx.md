@@ -4215,11 +4215,24 @@ named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in
 - **Cannibalize** (zombie): the feast on the remains (`_bpFeast`) stays; sick green motes rise off them to his mouth. (No picture: no corpse on the harness board.)
 - **Goo Shot** (black goo): ropes of black goo stretch from the body to the floor round it, sag and let go one by one.
 - **Kiss of Decay** (demon princess): a print of lips on the victim, rose, turning the green of rot and running; rose motes drift back to her.
-- **Poison Dart**: green veins branch out over the body from the prick and pulse. No dart: the game has no dart model (no stand-in).
+- **Poison Dart**: green veins branch out over the body from the prick and pulse (+ the dart itself: see "the three fixes").
 - **Poison Seed**: the seed drops in, the soil closes in a mound, one purple shoot curls up with a bead of venom on its tip.
 - **Splash** (black goo): one low ring of tar jumps off the caster, runs out over the 3×3 and falls flat; every square flashes violet.
 - **Vivisection**: a dotted teal line is ruled across the body, then the cut runs along it, one thin red line, and beads.
 - `_l1Plate(F, tex, w, h, x, y, z, glow)` = an upright picture turned to the lens (the marks on a body: lips, veins, the cut, the chess score).
+
+### the three fixes (mondo 11-17: "why dont you fix these issues then"). Frames: `docs/plans/vfx-cleanup/img/own-look/L1_fixes.jpg`
+- **Watering Can's tan ring**: it was battle.js `playAoeRing` -> `ThreeVFXEffects.aoe()`, the generic detonation every area spell with no
+  `aoe` recipe gets (a wide ring, a shockwave, a glass orb, a shock ring in the spellType's colour; tan for 'human'). `playAoeRing`
+  passes NO spell id, so it cannot be skipped by id. Fix: Watering Can and Pollinate carry an empty `aoe` recipe (`l1Quiet_aoe`), so
+  battle.js fires their `aoe` intent (draws nothing) in place of the ring. `aoe()` itself also drops a call that names an L1 spell.
+  For the cleanup thread: every OTHER area spell with no `aoe` recipe still gets that detonation.
+- **Poison Dart has its dart**: I was wrong that the game has none. The traps pack's `Trap_Hole_Dart` (the dart its trap hole fires) is
+  cloned through `_trapsSet('dart')` with the hole hidden; it stands in the victim on the blowpipe's side, quivers and fades, the
+  veins (smaller) spread from it. While the pack streams: the veins alone.
+- **Spike Trap is seen being laid**: on the caster's side's screen (`_l1ViewerOwns`: the caster's player against
+  `window.getViewerPlayer()`) the trap's own spikes (the traps pack's set, the one that springs) stand half up on each square of the
+  patch, sink under and the soil closes. The other side still sees only the stone tips at the caster's feet, so the patch stays hidden.
 
 ## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
@@ -4612,6 +4625,45 @@ The list (`own-look/L3.txt`, 39 spells) is done with this part.
 - Open: the clash; the projectile itself; see the plan's section 10 for the two leftovers (Ki Charge's disc, Love Ray's
   circle) and L5's untraced orb + ring on Jackpot / Shattered Mirror.
 
+## THE OWN LOOKS, L2, part 3: the rigs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L2")
+The fifteen things set down on a square (`own-look/L2.txt`, stage look `rig`). Same wiring (`_o2Reg`, the burst beat,
+which a deploy fires on the CLICKED square). New kit pieces: `_o2Bubbles` (thin rings that climb or swell) and
+**`_o2OwnCast(p)`**: a HIDDEN thing (Deathtrap, Snare, Spring Snare, Scrap Mine, Jack-in-the-Box) draws its look only on
+the screen of the side that laid it. The burst beat is relayed to the other side whenever it can see the square, so a
+trap-shaped look would have told them what was hidden and on which squares; they now see no look at all there.
+- 5G Tower: the four signal bars over the mast, broadcast arcs leaving it both ways, a sour lime.
+- Chivalry: a gold line from the knight to the ally, a gold shield stands itself up in front of them on the knight's side.
+- Cloning Machine: an amber print head sweeps up the square and leaves a rung of the body at each pass, feet to head.
+- Deathtrap (own side only): a hazard-yellow trapdoor frame over the whole 3x3, its split and hinges; it drops a hand's width as it sets.
+- Deploy Turret: three legs fold out flat, a spark at each foot, the red sight line swings once round.
+- Federation Beacon: a thin shaft of pale gold starlight, rings climbing it, one wide soft ring rolling out to its reach (4).
+- Hologram: a cone of sea-green light opens from a point on the floor, scan lines run up it, the picture tears twice.
+- Jack-in-the-Box (own side only): a spring pressed down coil by coil, two notes of the tune off the crank.
+- Ooze Trail: a black slick with a violet sheen splats and creeps wider; fat drops thrown up.
+- Poison Swamp: a yellow-green pool wells up; bubbles rise through it and burst, each spitting drops.
+- Scrap Mine (own side only): a ring of nails pulls in toward the middle as it arms; one red lamp blinks three times.
+- Snare (own side only): a pale wire loop draws itself down tight round a peg; a glint runs round it.
+- Spring Snare (own side only): two lilac arcs of teeth are cranked open tooth by tooth; leaves drift over them.
+- Stuffed Double: straw bursts up off the square and falls back; two stitched crosses where its eyes are.
+- Tunnel Network: a dark mouth with a ring of dirt in both squares, dashes burrowing across the floor between them.
+- Proof: docs/plans/vfx-cleanup/img/own-look/L2_part3_after.jpg (burst beat on the audit board; real casts of all 15 ran with no errors).
+
+## THE OWN LOOKS, L2, part 4: the machines + the list is done (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L2")
+The last seven of `own-look/L2.txt` (stage look `tech`). All 48 of L2's spells now have a look of their own
+(`_vcOwn(id)` is true for each; the generic stage burst no longer draws for any of them).
+- Crash Loop: an amber reload arrow turns three quarters round the body, jerks back to the start under a red cross, three times.
+- Recursive Loop: lilac square frames one inside the other, each turned a little further, the whole stack falling inward.
+- System Crash: every square of the 3x3 flashes terminal green, columns of green blocks come down and stop dead half way, a green cross stamps the middle.
+- Hydraulic Punch: a thick chrome barrel shoots out along the punch, a thinner rod drives out of its end a beat later, steam off both sides of the joint.
+- Rocket Fist: the jet line it rode in on still burns from the robot to the body and gutters out from the far end; smoke hangs along it; a hot ring at the landing.
+- Mortar Salvo: every square of the 3x3 flashes shell orange in the order the salvo walks it, each keeps a scorched ring (the lobbed shells were already there).
+- Transform: six body panels swing out from the chassis, turn over and lock back; the hazard lights blink amber twice.
+- Proof: docs/plans/vfx-cleanup/img/own-look/L2_part4_after.jpg (burst beat on the audit board; real casts of all 7 ran with no errors).
+- Left for whoever comes next (not done, by choice): the shared metal gear (`_mtlStage`) still draws its big grey cog
+  under every metal AREA (Fan the Hammer, Kill Mode, War of the Worlds) and sits over part of those looks; it is the
+  cleanup thread's (plan batch B7). The lightning areas (EMP Burst, EMP Grenade, Yellow Thunder) keep their old
+  white arc webs and EMP Burst its white dome from their own aoe recipes; the own looks draw with them. Fan the Hammer's
+  burst beat fires 1.1 s before its hits land (battle.js timing, not a look).
 
 ## THE VFX CLEANUP, B5 part 1: THE PORTAL KIT (2026-11-17, three-vfx-effects.js)
 mondo: "the portal from the cutscene ... i like the look of that portal and that technique or look should be incorporated
