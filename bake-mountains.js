@@ -377,7 +377,7 @@ const pBlock = finish(NP, { label: 'THE NORTH POLE', sub: 'THE VILLAGE · THE WO
     parti: 'A high white valley on sixteen plots behind the pass: a village round a tree, a workshop with its lights on, a pole with stripes, a lake you can walk on, and drifts too deep to cross anywhere but the road.',
     floor: 'ice', pal: ['ice_1', 'igloo', 'wood_planks'], paintOf: ch => ch === 'i' ? 1 : ch === 'o' ? 2 : 0,
     trees: { snow: { kinds: SNOWPINES, treeH: [5.5, 8] } }, treeDefault: 'snow', maxTrees: 1400, treeKey: () => 'snow',
-    edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'mountain' }, s: { kind: 'mountain' } },
+    edges: { world: true, reach: 440, ways: [{ side: 'w', at: -38.5 }, { side: 'n', at: -61.25 }] },   /* ONE WORLD PHASE 5 (2026-11-17): the land past the Pole's line reads the map (tundra west, south and east, the Frozen Sea north). It was a mountain on all four sides, from when the village stood behind the Pass Gate: the Polar Trail came in across flat tundra and met a mountain wall, and the sea to the north was a ridge. The ways: the Polar Trail's west way, the track north to the Frozen Sea */
     lines: O_POLE.l, spawn: pSpawn, face: 0 });
 [[NP, ['hearth']], [M, ['painting', 'bayOlympus', 'lemuria', 'bayShasta']]].forEach(([R, need]) => need.forEach(k => { const a = R.anchors[k]; if (!a || !isFinite(a.x) || !isFinite(a.z)) throw new Error(R.o.id + ': no anchor `' + k + '` (a district file sets it: THE DISTRICT FILES)'); }));
 
