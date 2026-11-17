@@ -27663,8 +27663,8 @@
             const el = document.createElement('div');
             el.className = 'acam-chrome';
             el.innerHTML = `
-        <div class="acam-bar acam-bar-top"><div class="acam-bar-name"></div></div>
-        <div class="acam-bar acam-bar-bot"></div>
+        <div class="acam-bar acam-bar-top"><div class="acam-news-live">LIVE</div><div class="acam-bar-name"></div></div>
+        <div class="acam-bar acam-bar-bot"><div class="acam-news"><div class="acam-news-row"><span class="acam-news-tag">BREAKING NEWS</span><span class="acam-news-head"></span></div><div class="acam-news-ticker"><span class="acam-news-tick"></span></div></div></div>
         <div class="acam-vignette"></div>
         <div class="acam-speedlines"></div>
         <div class="acam-flash"></div>
@@ -27676,6 +27676,19 @@
             (document.getElementById('game-viewport') || document.body).appendChild(el);
             _acChromeEl = el;
             return el;
+        }
+
+        const _AC_NEWS = {
+            'Gator Toss': 'FLORIDA MAN THROWS ALLIGATOR',
+            'Bath Salts': 'FLORIDA MAN FOUND NAKED ON OVERPASS',
+            'Hurricane Party': 'FLORIDA MAN REFUSES TO EVACUATE',
+            'Breaking News': 'FLORIDA MAN STRIKES AGAIN',
+        };
+        function _acNewsFor(name) {
+            if (!name || !_AC_NEWS[name]) return null;
+            const others = Object.keys(_AC_NEWS).filter(k => k !== name).map(k => _AC_NEWS[k]);
+            const ticker = [...others, 'NOBODY CAN EXPLAIN WHAT HAPPENED NEXT', 'LOCAL MAN MAKES THE NEWS EVERY SINGLE DAY'].join('   ★   ');
+            return { head: _AC_NEWS[name], ticker: ticker + '   ★   ' + ticker };
         }
 
         function showActionCamChrome(opts = {}) {
@@ -27691,6 +27704,18 @@
             if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
             el.classList.remove('light', 'hiding', 'finisher', 'dmg-linger');
             if (!opts.heavy) el.classList.add('light');
+            /* 📰 THE BROADCAST (mondo 2026-11-17: "the black top and bottom bars ... convert those to the breaking news lower
+               third, like an actual broadcast"): the Florida Man's casts and his finisher turn the letterbox into a news
+               broadcast: the top bar a LIVE bug + the spell name, the bottom bar a lower third (BREAKING NEWS tab, the
+               headline, a running ticker) that slides in from the left. Keyed on the shot's name, so the guest's own
+               chrome (the shot is relayed) dresses the same way. styles-cinematic.css "THE BROADCAST". */
+            const _news = _acNewsFor(opts.name);
+            el.classList.toggle('news', !!_news);
+            if (_news) {
+                const h = el.querySelector('.acam-news-head'), t = el.querySelector('.acam-news-tick');
+                if (h) h.textContent = _news.head;
+                if (t) { t.textContent = _news.ticker; t.classList.remove('run'); void t.offsetWidth; t.classList.add('run'); }
+            }
             // Heal-flavored shots (heals / potions / revives) restyle the
             // corner readout green and re-label it — the healing twin of the
             // TOTAL DMG counter, fed by applyHealingToUnit via

@@ -3911,8 +3911,12 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
 ## THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX")
 Gator Toss, Bath Salts and Hurricane Party had only the stock looks. three-vfx-effects.js block "THE FLORIDA MAN" (after the Banker
 block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura / aoe rows, all `pzOwn`), helpers `_fm*`. Visuals only.
-- TODAY'S HEADLINE (`_fmHeadline`): every cast spins a newspaper in beside his head (the old film spin): red BREAKING NEWS bar + the
-  spell's headline from its desc. To the lens's right of him, over the nameplate, gone at 1.65 s; never over a target or a number.
+- THE BROADCAST (mondo 11-17: "convert [the letterbox bars] to the breaking news lower third, like an actual broadcast"; it
+  replaced a spinning newspaper sprite): battle.js `_AC_NEWS` / `_acNewsFor` set `.news` on the action-cam chrome for Gator Toss,
+  Bath Salts, Hurricane Party and the finisher Breaking News (keyed on the shot's name, so the guest's relayed shot dresses the
+  same). Top bar = navy with a red LIVE bug + the spell name (still hides the scoreboard); bottom bar = a lower third that slides in
+  from the left: red BREAKING NEWS tab, the headline on white, a navy ticker of his other headlines (text written twice, looped).
+  Bath Salts' light chrome shows the bars too. CSS: styles-cinematic.css "THE BROADCAST".
 - Gator Toss `bolt` (timed on flyMs: the jaws close as the number lands): a code alligator (leather sheet, the Sewer Gator's
   `_gtSnout`, tail, scutes, legs, about one square long) hurled end over end, lands nose down and snaps; blood + dust, his side's
   ring; a Wet victim (the x1.5) also throws a splash crown + a water ring.
