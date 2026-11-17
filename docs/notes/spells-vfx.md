@@ -4497,3 +4497,17 @@ the frame on the launch square, +Z down the run, drawn only when the viewer sees
 - Not mine, seen on the frames: every dash also draws the shared pale crescent of battle.js `_vfxDash`; Sprint wears the
   wind element's swirl.
 - Frames: docs/plans/vfx-cleanup/img/own-look/l3_part2_*.jpg, l3_raceIceSlide.jpg, l3_raceRideBy.jpg.
+## THE OWN LOOKS, L5, part 4: the dark and the strange (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5"; the list is done)
+New pieces: `_l5Star` (a burst of rays that faces the camera), `_l5Bracket`.
+- **Chest Pound** (`_l5ChestPound3D`): three beats; each throws thump waves out from his chest and every square in reach shakes khaki.
+- **Eyewitness** (`_l5Eyewitness3D`): viewfinder corners close on the area, the flashbulb goes off (pale because it is a bulb), afterimages hang at eye height.
+- **Sucker Punch** (`_l5SuckerPunch3D`): a spiked bruise-and-mustard burst on the blind side of the head, stars circling it. No fist sprite.
+- **Car Toss** (`_l5CarToss3D`): the car itself already flies (the city's model); where it lands the windscreen goes and two skid marks burn on past the body.
+- **Clone Jutsu** (`_l5CloneInk3D`): the eight clones are its look already (`nrCloneJutsu:hit`, the ninja pass); the cast adds an ink ring with a blot where each steps out, and the generic burst stops.
+- **Consuming Dark** (`_l5ConsumingDark3D`): the nine squares go black from the rim inward, a thin violet edge on each.
+- **Infernal Decree** (`_l5InfernalDecree3D`): the court's seal (a horned crown in a ring) burns in the air over the area and a column of dark fire stands on every square. The seal hangs in the air: nothing is drawn on the hit floor.
+- **Out of the Dark** (`_l5OutOfTheDark3D`): the last photo: a frame snaps round them, the bulb, three claws go through it and the frame falls in two.
+- **Sleep Paralysis** (`_l5SleepParalysis3D`): a hunched shadow with two red eyes settles over them and presses down.
+- **Soul Suck** (`_l5SoulSuck3D`): a kiss mark of rouge and the pale soul drawn out along a ribbon to her.
+- Seen in the frames, not mine to change (the cleanup thread's shared layers): Jackpot and Shattered Mirror (arcane, heavy, area) still get a glass orb + a wide ring about 0.45 s after the hit although `_vcOwn` is true for them.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part4.jpg.

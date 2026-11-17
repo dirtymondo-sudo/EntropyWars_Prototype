@@ -72764,6 +72764,231 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceBoo: _l5(_l5Boo3D), raceCutTheCord: _l5(_l5CutTheCord3D), raceDosed: _l5(_l5Dosed3D), raceDreamSiphon: _l5(_l5DreamSiphon3D), raceEternalSlumber: _l5(_l5EternalSlumber3D),
         raceFarSight: _l5(_l5FarSight3D), raceNightmarePulse: _l5(_l5NightmarePulse3D), raceProbe: _l5(_l5Probe3D), raceHypnoticPulse: _l5(_l5HypnoticPulse3D), raceDeathGaze: _l5(_l5DeathGaze3D),
     });
+    /* PART 4, the dark and the strange: CHEST POUND paired thump waves beat out from his chest, three beats, over every square
+       in reach · EYEWITNESS a flashbulb goes off over the area inside viewfinder corners and the afterimages hang at eye height ·
+       SUCKER PUNCH a bruise-coloured spiked burst on the blind side and stars circling the head · CAR TOSS the car flies
+       already; where it lands the windscreen goes and two skid marks are scorched past the body · CLONE JUTSU the clones strike
+       already; an ink ring is brushed round the target with a blot where each of the eight steps out · CONSUMING DARK the nine
+       squares go black from the rim inward, a thin violet edge on each · INFERNAL DECREE the court's seal burns over the area
+       and a column of dark fire stands on every square · OUT OF THE DARK the last photo: a frame snaps round them, the flash,
+       and three claws go through it · SLEEP PARALYSIS a shadow with red eyes sits down on the chest · SOUL SUCK a kiss mark
+       and the pale soul pulled out along a ribbon to her. */
+    Object.assign(_L5C, { thump: 0xc9a86a, bulb: 0xfff2c0, after: 0x9a5cff, afterG: 0x6ad08a, bruise: 0x7a4ab8, mustard: 0xe8c040, rubber: 0x0e0c0c, windscreen: 0xa8d8c8,
+        ink: 0x2a2238, inkSheen: 0xb9a8ff, voidD: 0x06040c, voidE: 0x7a3ad0, court: 0x9632b4, courtHot: 0xff7a3a, photo: 0xe8e0c8, hag: 0x0a0812, hagEye: 0xe01a1a, lips: 0xc81e5a, soul: 0xc8ffe0 });
+    /* an arc of a flat ring standing upright (a thump wave), its middle facing +z */
+    function _l5Bracket(ts, R, w) { return new THREE.RingGeometry(R, R + w, 20, 1, Math.PI / 2 - 0.6, 1.2); }
+    /* CHEST POUND (king kong): three beats; each throws a pair of thump waves out from his chest, and every square in reach shakes */
+    function _l5ChestPound3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 2, sq = _l5Squares(F, tx, ty, R, _L5C.thump, 380, 0.4, true), waves = [];
+        for (var b = 0; b < 3; b++) for (var s = 0; s < 4; s++) {
+            var piv = new THREE.Group(); piv.rotation.y = s * Math.PI / 2 + Math.PI / 4; piv.position.y = ts * 0.85; F.g.add(piv);
+            var m = _goAdd(piv, new THREE.Mesh(_l5Bracket(ts, ts * 0.5, ts * 0.09), _goA(_L5C.thump, 0)), 0.95); m.rotation.x = -Math.PI / 2;   /* laid level, bowing outward */
+            m.userData.d = b * 270; waves.push(m);
+        }
+        var total = 1500, beat = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < waves.length; i++) { var m = waves[i], t = _sigClamp01((el - m.userData.d) / 620), o = _sigEaseOutCubic(t); m.scale.setScalar(0.6 + (R + 0.3) * 2 * o); m.material.opacity = (t > 0 && t < 1) ? 0.95 * (1 - t * t) : 0; }
+            _goShow(sq, 0); for (var b = 0; b < 3; b++) { var e = el - b * 270 - 120; if (e >= 0 && e < 300) _goShow(sq, 1 - e / 300); }
+            if (beat < 3 && el >= beat * 270) { beat++; _goSpray(F, 5, { sprite: 'dust-puff', ly: 6, r: 30, v: 90, vz0: 10, vz1: 50, g: 60, s0: 10, s0b: 16, s1: 26, op: 0.5, ml0: 350, ml1: 600 }); }
+        });
+    }
+    /* a burst of n rays that faces the camera (a flashbulb, a punch) */
+    function _l5Star(parent, n, len, w, c, add) {
+        var g = new THREE.Group(); g.quaternion.copy(_goCamQuat(g.quaternion)); parent.add(g); var parts = [];
+        for (var i = 0; i < n; i++) { var sp = new THREE.Group(); sp.rotation.z = i / n * Math.PI * 2; g.add(sp); var c1 = _l5Cut(sp, len * (i % 2 ? 0.62 : 1), w, c, 1, add); c1.position.x = len * (i % 2 ? 0.31 : 0.5) * 0.9; c1.material.depthTest = false; c1.renderOrder = 162; parts.push(c1); }
+        g.userData.parts = parts; return g;
+    }
+    /* EYEWITNESS: the flashbulb: viewfinder corners close on the area, the bulb goes off, and its afterimages hang where the eyes were */
+    function _l5Eyewitness3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, sq = _l5Squares(F, tx, ty, R, _L5C.bulb, 300, 0.45), H = ts * (R + 0.5), corners = [], blots = [];
+        for (var c = 0; c < 4; c++) {
+            var g = new THREE.Group(); g.position.y = 3.5; g.rotation.y = c * Math.PI / 2; F.g.add(g);
+            var a = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.7, ts * 0.07).translate(-ts * 0.35, 0, 0), _goA(_L5C.bulb, 0)), 0.95); a.rotation.x = -Math.PI / 2; a.position.set(H, 0, H);
+            var b = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.07, ts * 0.7).translate(0, -ts * 0.35, 0), _goA(_L5C.bulb, 0)), 0.95); b.rotation.x = -Math.PI / 2; b.position.set(H, 0, H);
+            corners.push(g); g.userData.parts = [a, b];
+        }
+        var bulb = _l5Star(F.g, 12, ts * 1.5, ts * 0.12, _L5C.bulb, true); bulb.position.y = ts * 1.3; var core = _goGlow(F.g, _L5C.bulb, ts * 1.6, 0, ts * 1.3, 0, 1);
+        for (var q = 0; q < sq.length; q++) { var p = sq[q].position, s = _goGlow(F.g, q % 2 ? _L5C.after : _L5C.afterG, ts * 0.55, p.x, p.y + ts * 1.15, p.z, 0.75); s.userData.ph = q * 1.7; blots.push(s); }
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var cl = _sigEaseOutCubic(_sigClamp01(el / 150)), ck = _goEnv(el, 30, 1100, 400) * (el < 1100 ? 1 : 0);
+            for (var c = 0; c < 4; c++) { corners[c].scale.setScalar(1.35 - 0.35 * cl); _goShow(corners[c].userData.parts, ck); }
+            var f = _sigClamp01((el - 130) / 260); bulb.scale.setScalar(0.4 + 0.9 * f); _goShow(bulb.userData.parts, (el > 130 && f < 1) ? 1 - f : 0); core.material.opacity = (el > 130 && f < 1) ? 1 - f : 0;
+            _l5SquaresTick(sq, el, 130);
+            for (var i = 0; i < blots.length; i++) { var s = blots[i], k = el > 300 ? _goEnv(el - 300, 150, total - 300, 600) : 0; s.material.opacity = 0.75 * k; s.position.y += Math.sin(el * 0.004 + s.userData.ph) * 0.15; s.scale.setScalar(ts * (0.5 + 0.12 * Math.sin(el * 0.006 + s.userData.ph))); }
+        });
+    }
+    /* SUCKER PUNCH: they never saw it: a spiked bruise-coloured burst on the side of the head and stars going round it */
+    function _l5SuckerPunch3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln;
+        var pow = _l5Star(F.g, 10, ts * 0.75, ts * 0.2, _L5C.mustard, false), pow2 = _l5Star(F.g, 10, ts * 0.5, ts * 0.16, _L5C.bruise, false);
+        pow.position.set(-ln.uz * ts * 0.3, ts * 1.15, ln.ux * ts * 0.3); pow2.position.copy(pow.position); pow2.rotateZ(0.3);
+        for (var i = 0; i < pow2.userData.parts.length; i++) pow2.userData.parts[i].renderOrder = 163;
+        var orbit = new THREE.Group(); orbit.position.y = ts * 1.5; orbit.rotation.x = 0.35; F.g.add(orbit); var stars = [];
+        for (var s = 0; s < 4; s++) { var st = _l5Star(orbit, 5, ts * 0.13, ts * 0.07, _L5C.mustard, false); st.userData.a = s / 4 * Math.PI * 2; stars.push(st); }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var p = _sigEaseOutBack(_sigClamp01(el / 130)), pk = 1 - _sigClamp01((el - 260) / 300);
+            pow.scale.setScalar(Math.max(0.05, p)); pow2.scale.setScalar(Math.max(0.05, p)); _goShow(pow.userData.parts, pk); _goShow(pow2.userData.parts, pk);
+            var sk = el > 250 ? _goEnv(el - 250, 120, total - 250, 450) : 0;
+            for (var s = 0; s < stars.length; s++) { var st = stars[s], a = st.userData.a + el * 0.007; st.position.set(Math.cos(a) * ts * 0.36, 0, Math.sin(a) * ts * 0.36); st.quaternion.copy(_goCamQuat(st.quaternion)); st.rotateZ(el * 0.004); _goShow(st.userData.parts, sk); }
+        });
+    }
+    /* CAR TOSS (kaiju): the car itself flies (the city's own model); where it lands the windscreen goes and two skid marks burn on past the body */
+    function _l5CarToss3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln, piv = new THREE.Group(); piv.rotation.y = F.yaw + Math.PI; piv.position.y = 2.5; F.g.add(piv);
+        var marks = [], hot = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var m = _goAdd(piv, new THREE.Mesh(_l5Jag(ts * 1.5, ts * 0.16, s + 5, 8), _finBasic(_L5C.rubber, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.9); m.position.set(s * ts * 0.2, 0, -ts * 0.2); marks.push(m);
+            var h = _goAdd(piv, new THREE.Mesh(_l5Jag(ts * 1.4, ts * 0.11, s + 5, 8), _goA(_L5C.courtHot, 0)), 1); h.position.set(s * ts * 0.2, 1, -ts * 0.2); hot.push(h);
+        }
+        _goSpray(F, 16, { sprite: 'ice-shard', tint: _L5C.windscreen, ly: ts * 0.6, r: 18, v: 210, vz0: 60, vz1: 260, g: 560, s0: 4, s0b: 8, ml0: 400, ml1: 750 });
+        _goSpray(F, 8, { sprite: 'steel-spark', ly: ts * 0.4, r: 14, v: 190, vz0: 40, vz1: 200, g: 420, s0: 4, s0b: 7, ml0: 250, ml1: 500, vx: -ln.ux * 120, vy: -ln.uz * 120 });
+        _goSpray(F, 5, { sprite: 'smoke', tint: 0x2a2622, ly: ts * 0.3, r: 20, v: 40, vz0: 30, vz1: 100, g: -20, s0: 16, s0b: 24, s1: 46, op: 0.6, ml0: 600, ml1: 1000 });
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 200)); piv.scale.set(1, 1, Math.max(0.02, grow));
+            _goShow(marks, _goEnv(el, 40, total, 600)); _goShow(hot, 1 - _sigClamp01((el - 300) / 1100));
+        });
+    }
+    /* CLONE JUTSU (ninja): the clones are his own look ('nrCloneJutsu:hit'); the cast leaves the ink: a brushed ring and a blot where each of the eight steps out */
+    function _l5CloneInk3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, ring = _goAdd(F.g, new THREE.Mesh(new THREE.RingGeometry(ts * 0.98, ts * 1.1, 48, 1, 0, Math.PI * 1.8), _finBasic(_L5C.ink, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.9), blots = [];
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 2.5;
+        for (var i = 0; i < 8; i++) {
+            var a = i / 8 * Math.PI * 2, b = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.17, 7), _finBasic(_L5C.ink, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.9); b.rotation.x = -Math.PI / 2; b.rotation.z = i; b.position.set(Math.sin(a) * ts * 1.05, 3, Math.cos(a) * ts * 1.05);
+            var e = _goRing(F.g, _L5C.inkSheen, ts * 0.17, ts * 0.2, 3.4, 0.7, 7); e.position.x = b.position.x; e.position.z = b.position.z; e.rotation.z = i; b.userData.e = e; b.userData.d = i * 60; blots.push(b);
+        }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 60, total, 600); ring.rotation.z = -_sigEaseOutCubic(_sigClamp01(el / 500)) * 5.5; ring.material.opacity = 0.9 * k * _sigClamp01(el / 200);
+            for (var i = 0; i < blots.length; i++) { var b = blots[i], p = _sigEaseOutBack(_sigClamp01((el - b.userData.d) / 160)); b.scale.setScalar(Math.max(0.02, p)); b.userData.e.scale.setScalar(Math.max(0.02, p)); b.material.opacity = 0.9 * k; b.userData.e.material.opacity = 0.7 * k * (1 - _sigClamp01((el - b.userData.d - 150) / 400)); }
+        });
+    }
+    /* CONSUMING DARK: the dark eats the area from the rim inward: each square goes black with a thin violet edge, the middle last */
+    function _l5ConsumingDark3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, sq = _l5Squares(F, tx, ty, R, _L5C.voidE, 500, 0.5), plates = [];
+        for (var q = 0; q < sq.length; q++) {
+            var p = sq[q].position, ij = sq[q].userData.ij, ring = Math.max(Math.abs(ij[0]), Math.abs(ij[1])), ang = Math.atan2(ij[1], ij[0]);
+            var g = new THREE.Group(); g.position.set(p.x, p.y + 0.6, p.z); F.g.add(g);
+            var pl = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), _finBasic(_L5C.voidD, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.88); pl.rotation.x = -Math.PI / 2;
+            var ed = _goAdd(g, new THREE.Mesh(new THREE.RingGeometry(ts * 0.6, ts * 0.66, 4, 1, Math.PI / 4), _goA(_L5C.voidE, 0)), 0.95); ed.rotation.x = -Math.PI / 2; ed.position.y = 0.6;
+            g.userData.d = (R - ring) * 230 + (ring ? ((ang + Math.PI) / (Math.PI * 2)) * 180 : 0); g.userData.parts = [pl, ed]; plates.push(g);
+        }
+        var total = 1900, last = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < plates.length; i++) { var g = plates[i], e = el - g.userData.d, inK = _sigEaseOutCubic(_sigClamp01(e / 200)); g.scale.setScalar(Math.max(0.02, inK)); _goShow(g.userData.parts, e < 0 ? 0 : 1 - _sigClamp01((el - 1300) / 500)); }
+            _l5SquaresTick(sq, el, R * 230 + 200);
+            if (el - last > 110 && el > 300 && el < 1300) { last = el; var p = sq[Math.floor(el / 110) % sq.length].position; _goSpray(F, 1, { sprite: 'shadow-wisp', tint: _L5C.voidE, lx: p.x, lz: p.z, ly: ts * 0.1, r: 30, v: 16, vz0: 60, vz1: 140, g: -30, s0: 9, s0b: 15, s1: 24, op: 0.7, ml0: 500, ml1: 900 }); }
+        });
+    }
+    /* INFERNAL DECREE (overlord): the court's seal burns in the air over the area and its sentence stands on every square as a column of dark fire */
+    function _l5SealTex() {
+        return _sigTex('l5-seal', 256, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S); ctx.strokeStyle = '#ffffff'; ctx.fillStyle = '#ffffff'; ctx.lineWidth = S * 0.035;
+            ctx.beginPath(); ctx.arc(S / 2, S / 2, S * 0.44, 0, 7); ctx.stroke(); ctx.lineWidth = S * 0.015; ctx.beginPath(); ctx.arc(S / 2, S / 2, S * 0.37, 0, 7); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(S * 0.28, S * 0.62); ctx.lineTo(S * 0.24, S * 0.3); ctx.lineTo(S * 0.38, S * 0.46); ctx.lineTo(S * 0.5, S * 0.24); ctx.lineTo(S * 0.62, S * 0.46); ctx.lineTo(S * 0.76, S * 0.3); ctx.lineTo(S * 0.72, S * 0.62); ctx.closePath(); ctx.fill();   /* the crown, horned */
+            ctx.fillRect(S * 0.28, S * 0.66, S * 0.44, S * 0.05);
+        });
+    }
+    function _l5InfernalDecree3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, sq = _l5Squares(F, tx, ty, R, _L5C.court, 520, 0.55), cols = [];
+        var seal = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.5, ts * 1.5), _finBasic(_L5C.court, { additive: true, opacity: 0, side: THREE.DoubleSide, map: _l5SealTex() })), 1); seal.material.depthTest = false; seal.renderOrder = 161; seal.quaternion.copy(_goCamQuat(seal.quaternion));
+        var hot = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.5, ts * 1.5), _finBasic(_L5C.courtHot, { additive: true, opacity: 0, side: THREE.DoubleSide, map: _l5SealTex() })), 0.8); hot.material.depthTest = false; hot.renderOrder = 162; hot.quaternion.copy(seal.quaternion);
+        for (var q = 0; q < sq.length; q++) {
+            var p = sq[q].position, c = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.1, ts * 0.3, ts * 1.5, 10, 1, true).translate(0, ts * 0.75, 0), _goA(_L5C.court, 0)), 0.55); c.position.set(p.x, p.y, p.z); c.userData.d = 260 + ((q * 5) % 9) * 22; cols.push(c);
+        }
+        var total = 1800, lit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var st = _sigEaseInCubic(_sigClamp01(el / 240)), y = ts * (3.2 - 0.9 * st), sk = _goEnv(el, 60, 1300, 400) * (el < 1300 ? 1 : 0), sc = 1.5 - 0.5 * st;
+            seal.position.y = hot.position.y = y; seal.scale.setScalar(sc); hot.scale.setScalar(sc); seal.material.opacity = sk; hot.material.opacity = 0.8 * sk * (1 - _sigClamp01((el - 240) / 500));
+            for (var i = 0; i < cols.length; i++) { var c = cols[i], e = el - c.userData.d, up = _sigEaseOutCubic(_sigClamp01(e / 180)); c.scale.set(1 + 0.15 * Math.sin(el * 0.03 + i), Math.max(0.02, up), 1 + 0.15 * Math.cos(el * 0.03 + i)); c.material.opacity = e < 0 ? 0 : 0.55 * (1 - _sigClamp01((e - 350) / 600)); }
+            _l5SquaresTick(sq, el, 260);
+            if (!lit && el >= 280) { lit = true; for (var q = 0; q < sq.length; q++) _goSpray(F, 3, { sprite: 'dark-flame', tint: q % 2 ? _L5C.court : _L5C.courtHot, lx: sq[q].position.x, lz: sq[q].position.z, ly: ts * 0.2, r: 22, v: 20, vz0: 90, vz1: 230, g: -40, s0: 9, s0b: 16, ml0: 450, ml1: 850 }); }
+        });
+    }
+    /* OUT OF THE DARK: one clear look, the last photo on the roll: a frame snaps round them, the bulb, and three claws come through it */
+    function _l5OutOfTheDark3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, face = _l5Face(F.g, ts * 0.72), halves = [new THREE.Group(), new THREE.Group()], bars = [];
+        face.add(halves[0]); face.add(halves[1]);
+        function bar(par, w, h, px, py) { var b = _goAdd(par, new THREE.Mesh(new THREE.PlaneGeometry(w, h), _finBasic(_L5C.photo, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.95); b.position.set(px, py, 0); b.material.depthTest = false; b.renderOrder = 160; bars.push(b); }
+        var W = ts * 1.15, H = ts * 1.45, t = ts * 0.09;
+        bar(halves[0], W, t, 0, H / 2); bar(halves[0], t, H * 0.55, -W / 2, H * 0.225); bar(halves[0], t, H * 0.45, W / 2, H * 0.275);
+        bar(halves[1], W, t * 2.4, 0, -H / 2 - t * 0.7); bar(halves[1], t, H * 0.45, -W / 2, -H * 0.275); bar(halves[1], t, H * 0.55, W / 2, -H * 0.225);
+        var bulb = _l5Star(F.g, 10, ts * 1.2, ts * 0.1, _L5C.bulb, true); bulb.position.y = ts * 0.9;
+        var rake = new THREE.Group(); rake.rotation.z = -0.85; face.add(rake); var cuts = [];
+        for (var c = -1; c <= 1; c++) {
+            var d = _l5Cut(rake, ts * 1.9, ts * 0.11, _L5C.hag, 0.95); d.position.y = c * ts * 0.2; d.renderOrder = 163; d.material.depthTest = false;
+            var h = _l5Cut(rake, ts * 1.8, ts * 0.04, _L5C.gore, 1, true); h.position.y = c * ts * 0.2; h.renderOrder = 164; h.material.depthTest = false; cuts.push(d, h);
+        }
+        var total = 1500, torn = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var snap = _sigEaseOutBack(_sigClamp01(el / 120)); face.scale.setScalar(1.5 - 0.5 * snap);
+            var f = _sigClamp01((el - 60) / 220); bulb.scale.setScalar(0.4 + 0.8 * f); _goShow(bulb.userData.parts, (el > 60 && f < 1) ? 1 - f : 0);
+            var e = el - 300, rip = _sigEaseOutCubic(_sigClamp01(e / 90)); rake.scale.set(Math.max(0.02, rip), 1, 1); _goShow(cuts, e < 0 ? 0 : 1 - _sigClamp01((e - 350) / 450));
+            var fall = _sigEaseInCubic(_sigClamp01((e - 60) / 700));
+            halves[0].position.set(-ts * 0.12 * fall, ts * 0.1 * fall, 0); halves[0].rotation.z = 0.25 * fall; halves[1].position.set(ts * 0.14 * fall, -ts * 0.7 * fall, 0); halves[1].rotation.z = -0.5 * fall;
+            _goShow(bars, Math.min(1, el / 50) * (1 - _sigClamp01((e - 250) / 600)));
+            if (!torn && e >= 40) { torn = true; _bdGlobs(F, 0, ts * 0.7, 0, 8, { sp0: 60, sp1: 180, vz0: 40, vz1: 170, stretch: true, s0: 3.5, marks: 4 }); }
+        });
+    }
+    /* SLEEP PARALYSIS (succubus): the weight on your chest: a shadow with two red eyes settles on them and presses down */
+    function _l5HagTex() {
+        return _sigTex('l5-hag', 128, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S); ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.moveTo(S * 0.08, S * 0.98); ctx.bezierCurveTo(S * 0.1, S * 0.55, S * 0.26, S * 0.42, S * 0.36, S * 0.4); ctx.bezierCurveTo(S * 0.3, S * 0.2, S * 0.42, S * 0.06, S * 0.52, S * 0.06);
+            ctx.bezierCurveTo(S * 0.64, S * 0.06, S * 0.72, S * 0.2, S * 0.66, S * 0.4); ctx.bezierCurveTo(S * 0.78, S * 0.44, S * 0.92, S * 0.6, S * 0.94, S * 0.98); ctx.closePath(); ctx.fill();   /* a hunched back, a head, knees drawn up */
+        });
+    }
+    function _l5SleepParalysis3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, g = new THREE.Group(); g.quaternion.copy(_goCamQuat(g.quaternion)); F.g.add(g);
+        var hag = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.1, ts * 1.1), _finBasic(_L5C.hag, { opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _l5HagTex() })), 0.92); hag.material.depthTest = false; hag.renderOrder = 161;
+        var aura = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.22, ts * 1.22), _finBasic(_L5C.psiD || 0x5a3ab0, { additive: true, opacity: 0, side: THREE.DoubleSide, map: _l5HagTex() })), 0.6); aura.material.depthTest = false; aura.renderOrder = 160;
+        var eyes = [];
+        for (var s = -1; s <= 1; s += 2) { var e = _goAdd(g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.035, 10), _finBasic(_L5C.hagEye, { opacity: 0, depthWrite: false })), 1); e.position.set(s * ts * 0.07 + ts * 0.02, ts * 0.33, 1); e.material.depthTest = false; e.renderOrder = 163; eyes.push(e); }
+        var press = _goRing(F.g, _L5C.psiD || 0x5a3ab0, ts * 0.4, ts * 0.5, 3, 0.8, 40);
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 220, total, 500), sit = _sigEaseOutCubic(_sigClamp01(el / 420)), bob = Math.sin(el * 0.006) * ts * 0.02;
+            g.position.y = ts * (2.3 - 0.7 * sit) + bob; _goShow([hag, aura], k); _goShow(eyes, k * (el > 380 ? (Math.floor(el / 90) % 9 ? 1 : 0.2) : 0));
+            var p = ((el % 600) / 600); press.scale.setScalar(1.25 - 0.45 * p); press.material.opacity = el > 420 ? 0.8 * k * p : 0;
+        });
+    }
+    /* SOUL SUCK (succubus): the kiss lands as a mark of rouge and the pale soul is drawn out of the mouth, down a ribbon, to her */
+    function _l5LipsTex() {
+        return _sigTex('l5-lips', 128, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S); ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.moveTo(S * 0.06, S * 0.5); ctx.bezierCurveTo(S * 0.22, S * 0.24, S * 0.4, S * 0.22, S * 0.5, S * 0.34); ctx.bezierCurveTo(S * 0.6, S * 0.22, S * 0.78, S * 0.24, S * 0.94, S * 0.5);
+            ctx.bezierCurveTo(S * 0.76, S * 0.84, S * 0.24, S * 0.84, S * 0.06, S * 0.5); ctx.closePath(); ctx.fill();
+            ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath(); ctx.moveTo(S * 0.14, S * 0.5); ctx.quadraticCurveTo(S * 0.5, S * 0.6, S * 0.86, S * 0.5); ctx.quadraticCurveTo(S * 0.5, S * 0.54, S * 0.14, S * 0.5); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+        });
+    }
+    function _l5SoulSuck3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln;
+        var kiss = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.62, ts * 0.62), _finBasic(_L5C.lips, { opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _l5LipsTex() })), 1); kiss.material.depthTest = false; kiss.renderOrder = 163;
+        kiss.position.set(ln.ux * ts * 0.15, ts * 1.12, ln.uz * ts * 0.15); kiss.quaternion.copy(_goCamQuat(kiss.quaternion)); kiss.rotateZ(-0.25);
+        var cv = F.far ? _l5Arc(F, ts * 1.1, ts * 1.1, ts * 0.3, -ts * 0.18) : null, parts = [], soul = null, tail = [];
+        if (cv) {
+            parts.push(_l5Tube(F.g, cv, ts * 0.02, _goA(_L5C.soul, 0), 0.6, 40));
+            soul = _goGlow(F.g, _L5C.soul, ts * 0.42, 0, 0, 0, 1);
+            for (var i = 0; i < 5; i++) tail.push(_goGlow(F.g, _L5C.soul, ts * (0.3 - 0.045 * i), 0, 0, 0, 0.7 - 0.1 * i));
+        }
+        _goSpray(F, 5, { sprite: 'petal', tint: _L5C.lips, ly: ts * 1.1, r: 10, v: 60, vz0: 10, vz1: 80, g: 80, s0: 5, s0b: 8, ml0: 500, ml1: 900 });
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var pop = _sigEaseOutBack(_sigClamp01(el / 160)); kiss.scale.setScalar(Math.max(0.05, pop)); kiss.material.opacity = Math.min(1, el / 60) * (1 - _sigClamp01((el - 900) / 500));
+            if (cv) {
+                var k = _goEnv(el, 150, total, 400); _goShow(parts, k);
+                var t = _sigClamp01((el - 300) / 900), e = t * t * (3 - 2 * t), on = (t > 0 && t < 1) ? Math.min(1, t * 6) * Math.min(1, (1 - t) * 6) : 0;
+                soul.position.copy(cv.getPoint(e)); soul.material.opacity = on; soul.scale.setScalar(ts * (0.42 + 0.06 * Math.sin(el * 0.03)));
+                for (var i = 0; i < tail.length; i++) { tail[i].position.copy(cv.getPoint(Math.max(0, e - 0.05 * (i + 1)))); tail[i].material.opacity = on * (0.7 - 0.1 * i); }
+            }
+        });
+    }
+    Object.assign(_GO_SIG, {
+        raceChestPound: _l5(_l5ChestPound3D), raceEyewitness: _l5(_l5Eyewitness3D), raceSuckerPunch: _l5(_l5SuckerPunch3D), raceCarToss: _l5(_l5CarToss3D), nrCloneJutsu: _l5(_l5CloneInk3D),
+        raceConsumingDark: _l5(_l5ConsumingDark3D), raceInfernalDecree: _l5(_l5InfernalDecree3D), raceOutOfTheDark: _l5(_l5OutOfTheDark3D), raceSleepParalysis: _l5(_l5SleepParalysis3D), raceSoulSuck: _l5(_l5SoulSuck3D),
+    });
     /* ═════════ END THE OWN LOOKS, L5 ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
