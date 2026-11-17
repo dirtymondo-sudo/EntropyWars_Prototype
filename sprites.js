@@ -837,6 +837,9 @@ const _NEW_FEMALE_SPRITES = {
   'nordic': `${_S}/Races/Nordic/Female/nordic_f_px.png`,
   'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
   'ninja': `${_S}/Races/ninja/female/ninja_f_px.png`,   // 2026-11-17 THE NINJA — the female ninja (Sprite AI restyle of her Meshy model)
+  'robot': `${_S}/Races/robot/female/robot_f2_px.png`,   // 2026-11-17 THE ROBOT REDESIGN — Sprite AI restyles of the new Meshy concepts
+  'cyborg': `${_S}/Races/cyborg/female/cyborg_f2_px.png`,
+  'mech': `${_S}/Races/mech/female/mech_f2_px.png`,
 };
 const _NEW_MALE_SPRITES = {
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
@@ -847,6 +850,7 @@ const _NEW_MALE_SPRITES = {
   'shaman': `${_S}/Races/shaman/male/shaman_m_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'necromancer': `${_S}/Races/necromancer/male/necromancer_m_px.png`,
   'cyborg': `${_S}/Races/cyborg/male/cyborg_m_px.png`,
+  'robot': `${_S}/Races/robot/male/robot_m2_px.png`,   // 2026-11-17 THE ROBOT REDESIGN
   'ki fighter': `${_S}/Races/kifighter/male/ki_fighter_m_px.png`,
   'mummy': `${_S}/Races/mummy/male/mummy_m_px.png`,
   'gargoyle': `${_S}/Races/gargoyle/male/gargoyle_m_px.png`,
@@ -2376,6 +2380,12 @@ const RACE_MODELS_3D = {
       heightRatio: 1.5,
       basicAttackKind: 'ranged',
     }),
+    // 2026-11-17 THE ROBOT REDESIGN: her first 3D model, the female counterpart of the mecha (flat feet, no skirt plates).
+    female: _mkUAL('mech/female', 'mech_f2', {
+      model: `${_S}/Races/mech/female/Meshy_AI_mech_f2_Running.glb`,
+      heightRatio: 1.4,
+      basicAttackKind: 'ranged',
+    }),
   },
   // Minotaur (Raider, bruiser) — brawler sway + heavy fists.
   'minotaur': {
@@ -2940,17 +2950,18 @@ const RACE_MODELS_3D = {
     }),
   },
   // Robot (Warrior, tank) — hydraulic haymakers.
+  // 2026-11-17 THE ROBOT REDESIGN (mondo picked them; Meshy, made + rigged by Claude): one red + graphite factory line, amber visor.
+  // The old white models (futuristic_robot_rea, robot_female) stay on R2.
   'robot': {
-    male: _mkUAL('robot/male', 'futuristic_robot_rea', {
-      heightRatio: 1.05,
+    male: _mkUAL('robot/male', 'robot_m2', {
+      model: `${_S}/Races/robot/male/Meshy_AI_robot_m2_Running.glb`,
+      heightRatio: 1.12,
       basicAttackKind: 'punch',
     }),
-    // Female (2026-09-22 batch) — "robot_female" Character_output (Races/robot/female/). The gendered
-    // idle / walk defaults (Walking_Woman) are overridden: a chassis walks like a chassis.
-    female: _mkUAL('robot/female', 'robot_female', {
+    female: _mkUAL('robot/female', 'robot_f2', {
+      model: `${_S}/Races/robot/female/Meshy_AI_robot_f2_Running.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'punch',
-      lib: { idle: { clip: 'Idle_5', lib: 0 }, walk: { clip: 'Running', lib: 0 } },
     }),
   },
   // Cyborg (Raider, bruiser) — augmented strikes.
@@ -2959,7 +2970,8 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/cyborg/male/Meshy_AI_cyborg_m_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'punch',
     }),
-    female: _mkUAL('cyborg/female', 'hot_girl_futuristic_', {
+    female: _mkUAL('cyborg/female', 'cyborg_f2', {   // 2026-11-17 THE ROBOT REDESIGN: robot gauntlet arms, long hair (old hot_girl_futuristic_ stays on R2)
+      model: `${_S}/Races/cyborg/female/Meshy_AI_cyborg_f2_Running.glb`,
       heightRatio: 0.97,
       basicAttackKind: 'punch',
     }),
