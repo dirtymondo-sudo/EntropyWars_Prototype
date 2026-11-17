@@ -5688,6 +5688,7 @@ The rules (battle.js block "THE NEW RACES 2", before _lifeguardSave; statuses da
 dormant / bodiless):
 - 🛵 Delivery Boy, THE RIDE-ALONG: Hop On (range 1, `riding`, unit._rideWithId); his next finished walk drops the rider on the
   free square beside him nearest where it got on (`_deliveryDrop`, finishMoveAt). A rider that walks first just gets off.
+  Polished 11-17: see "THE DELIVERY BOY POLISH" below (the ride drawn on his back, Doorstep Dash drops too, the capstone).
 - 📚 Librarian, THE RENEWAL: Overdue (utility) recasts `state._lastAllySpell[player]` (written at the cast record; never a
   Librarian's own cast, never Mimic/Overdue) through the old Mimic resolver (healPct heals use the row's percent).
 - 🙌 Televangelist, THE TITHE: Collection Plate (`tithe`, 3 rounds): `_titheSkim` in applyHealingToUnit takes 15% of every heal
@@ -5774,6 +5775,31 @@ Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo ha
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
 (cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
+
+## THE DELIVERY BOY POLISH (2026-11-17, thread "Polish Delivery Boy spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+What was wrong: the ride did not show (the ally stood on its own square through his whole walk, then jumped from there);
+his RACE_TREE row was borrowed rungs, so a default or CPU Delivery Boy carried none of his own spells (no Hop On); the CPU
+had no idea what a ride was for; a rider knocked away still teleported back to him; Doorstep Dash dropped nobody.
+- THE RIDE ON SCREEN: three-renderer.js THE RIDE-ALONG (looks only): while he travels (walk, dash) the Riding ally hops up
+  onto his back (from the square it stood on, `rec.home`), sits piggyback (the chair sit, no straddle), turns to face his
+  way at once, rides the path; battle.js `_deliveryDrop` hops it off from HIS square (`nrHopOn:drop` look). finishMoveAt
+  runs as the walk STARTS, so the hop off waits for the walk tween (`_walkAnimEndAt`, like the ledge-drop damage).
+  Probe: `window._rideAlongProbe()` (rider + carrier 3D positions). Fog: an enemy carrier's rider shows only where the viewer sees him.
+  Kill switch `window.EW_NO_RIDE_ALONG`.
+- RULES (battle.js "THE RIDE-ALONG"): Doorstep Dash drops the rider too, beside him at the victim, after the slide (both
+  charge paths: `_runPostEffects` and the chase-cam `_runCharge`). A rider more than 1 square (any way) from where he set
+  off was knocked off: it stays where it is. A pinned body never rides (`_deliveryRideBlock`: Rooted, Charmed, Roped,
+  Frozen, Stoneform, Climbing, Exited, Captured; and colossal bodies, the shove rule): Hop On on one is refused, a rider
+  that became pinned stays put.
+- THIRTY MINUTES OR LESS (new capstone, tier 4, cd 4, `rideAlong: { max: 2 }` + `timedStatBonus` +1 MOV): up to two allies
+  beside him (8 squares, most hurt first) climb on at once (`_deliveryLoadUp`); refused with nobody beside him.
+- HIS OWN TREE: `['nrHotAndFresh', 'nrHopOn', 'nrDoorstepDash', 'nrThirtyMinutes']`.
+- THE CPU (ai.js "THE RIDE-ALONG"): Hop On / the capstone score the best drop his walk can give (`_rideBestAI` over his move
+  tiles, `window._deliveryDropPreview` = the engine's drop square): a hurt rider (< 45%) = the hits it leaves behind, a
+  healthy one = squares gained on the nearest enemy; 0 when he cannot walk after the cast. With a rider aboard, scoreMoves
+  adds the best ride walk (90 + its value). In a 3-round CPU-vs-CPU probe both CPU Delivery Boys cast Hot and Fresh and
+  never Hop On (no ride beat their other picks); the ride itself is proven by hand.
+- Stats unchanged (support median). Proof: /mnt/project-files/delivery-boy-polish/.
 - **THE BOLTZMANN BRAIN PASS (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new
   mechanics are tested out and work as intended")**, thread cmsg_01XWpxyTn3nnw98znVzKdFjsH9oWgzPy7wwhJEhrsf2fQY:
   - OBSERVER EFFECT (new, `nrObserverEffect`, tier 1, 25 MP, 1 AP, cd 2, self `buff`, `observe: true`, status `observed`): the one say
@@ -5792,6 +5818,42 @@ residents in their zones.
   - Proof + probes: /mnt/project-files/boltzmann-brain-polish/ (probe/p3_show.js = frozen-clock looks + the rules in a CPU match).
 
 
+## THE HAUNTED DOLL (2026-11-17, thread "Build Haunted Doll spells and VFX"; mondo OK'd the kit and asked for "some sort of wind up spell like those dolls where you pull the string and it says or does something")
+The model + 128 px sprite came first (PR #1910, models-assets.md "THE NEW CHARACTERS, 11-17"); this made it a race. Rows sit
+just after the Cicada Brood in every race table (anomaly/unholy, class assassin, magic, fragile + quick: HP 880, INT 150,
+SPD 160; psychic resist, fire weak; home The Haunted House; price 450; finisher borrows possessedPhoto). Its own family
+`hauntedtoy`; RACE_TREE = its four. Rules = battle.js block "THE HAUNTED DOLL" (before LEAPFROG):
+- 🪆 NOBODY'S LOOKING (`_dollCreep`, from `_nrRoundEnd`): at every round end, if no living enemy within 5 has it in its FRONT
+  cone (`_dollWatchedBy` = getAttackArc(doll, e) === 'front'; a Blind / Asleep / Stunned enemy is not watching), it creeps up
+  to 2 cardinal squares toward the nearest enemy (free squares, a climb of 1, edge walls respected) and turns to face it.
+  Watched = "👁 WATCHED", it stays. Pinned (Rooted, Charmed …), Clash, exited/captured = no creep.
+- Pin Prick (T1, 70 magic, r4, `voodooSelf: 0.3`): `_dollPin` (in _runPostEffects) puts the existing Voodoo status on the
+  victim tied to the doll (`allyId` = the doll) for 2 rounds with its own share: payload `echo` -> unit `_voodooEcho`, read by
+  `_procLinks` (other Voodoo keeps STATUS_DEFS.voodoo.linkEcho 0.5). A kill hit leaves no status.
+- Play With Me (T2, swap, r3, cd 2, enemy only like Infernal Waltz, `faceAway`): after the swap the enemy is turned with its
+  back to the doll (the real facing, state-synced). An ally swap was in the first proposal; enemy-only is what shipped (the
+  swap targeting, forecast and CPU are built per side; say so if he wants allies too).
+- Pull My String (T2, self buff, cd 2, `pullString`): `_dollStringLine` = _nrHash(id + round + 'string') picks one of four
+  lines (host + guest agree, like the Florida Man's headline); `_dollPullString` plays it: "Let's play!" heal 25% max HP;
+  "Will you be my friend?" Charm 1 round on the nearest enemy within 3; "Hug me!" resolveForcedSlide pulls the nearest enemy
+  within 4 to its side (no boss/cube); "I'm going to kill you." 150 + spell power magic on the nearest enemy within 4
+  (_applyAoeDamage on its one square). A line with nobody in reach falls back to "Let's play!". The lines are Claude's text.
+  ai.js plays it blind (85 with an enemy in 4, 20 without, + up to 80 when hurt); it never peeks at the line.
+- Look Behind You (T3, 150 magic, r5, Feared 1, `chargeToTarget` + `blinkBehind` + `unwatched`): only on a target NOT looking at
+  the doll (spellTargetUsableOn + a doSpell refusal "X is watching — … needs it to look away."); chargeLandingTile returns
+  `_dollBehindSquare` (the square at the target's back) when free, else the usual side square.
+- THE STOP-MOTION (three-renderer.js, unit model mixer): a model def's `stepFps` (the doll: 9) banks the frame time and advances
+  the mixer in steps, so every clip jerks like a puppet; the board tweens stay smooth. Kill-switch window.EW_NO_STOP_MOTION.
+  heightRatio 0.72 (a child-sized doll).
+Online: all host-side; the creep path rides the relayed animateDisplacementPath, its footprints + every look ride fireGeometry
+(relayed). Proof: /mnt/project-files/haunted-doll/ (probe.js = a real VS-CPU TDM, a doll on each side; haunted_doll_proof.jpg;
+cpu_log.txt). Measured 11-17, 0 page errors: Pin Prick put Voodoo (echo 0.3, tied to the doll) on the foe, and a hit on the doll
+echoed back on it; Play With Me swapped and left the foe with its back to the doll (arc 'back', not watching); Look Behind You
+was refused on a foe facing the doll ("is watching") and then landed behind a foe looking away, 303-340 + Feared; Pull My String
+played all four lines (heal +310 = 25%, Charm, a pull from 3 to 1 square, 298-336 damage). In 5 CPU rounds the CPU doll crept
+(2, 2, 1 squares) on rounds nobody watched it, refused LBY on a watcher and cast it on a foe looking away. Probe gotcha: a
+script that calls doSpell again during a charge spell's cinematic gets a second cast (the once-a-turn mark lands at the end of
+the deferred charge); the UI and the CPU wait for _actionExecuting, so players cannot, but a harness must wait too.
 ## THE INFLUENCER POLISH (2026-11-17, thread "Polish Influencer spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
 - THE SHARE FIX: `_viralShare` passed the hitter's type / STAB / ATK into each mate's share (a 154 hit shared 347 "super effective").
   The share is now a flat 30 % of the damage dealt: no sourceUnit, `typeEffect:'neutral'`, ignoreArmor; the kill credit goes
@@ -5853,3 +5915,21 @@ residents in their zones.
 - **THE FLOATING BRAIN (mondo 11-17, "can we name it something else ... Floating Brain, Sentient Brain ..."):** the Boltzmann Brain shows
   as **Floating Brain** (RACE_PROFILES label, the race blurbs in ui.js + party-builder.js, the fluctuation family's names). The race id
   stays `'boltzmann brain'` (saves, server lists, R2 folders, every table key); code comments keep the old name.
+
+## THE NINJA (2026-11-17, thread cmsg_01XWpxyTn3nnw98znVzKdFjsHLkqP9JfLhbVUrP2feEoYY "Build Ninja spells and VFX")
+mondo had the Meshy models made (male + female, the woman in a sexy ninja costume, NO weapons; PR #1910) and OK'd the kit proposal
+in the thread, adding "a ninja clone ju jitsu spell where he makes a bunch of clones and they all attack, kind of like catgirl's
+ninefold scratch". One race, both looks (`'ninja'`, sprites.js gender 'both'; the man's sprite in the race tables, the woman's in
+_NEW_FEMALE_SPRITES; R2 `Assets/characters/races/ninja/{male,female}/`). Assassin, home Downtown (the rooftops), family `ninjutsu`.
+THE RULE, KAWARIMI (status `substitute`, battle.js block "THE NINJA" before the Tech CEO): while Substituted, the first enemy blow
+aimed at him (the enemy acting now; burns / poison / zone ticks never) lands on a log, no damage, no status; he reappears on the free
+square straight behind the attacker, facing its back (`_ninjaBehindAttacker`: straight behind first, never in front), so his next
+basic attack on it is a Backstab under the facing rule. The rest of that same attack (`_protectActionSeq` key on
+`unit._kawarimiKey`) keeps hitting the log: a multi-hit's later hits, a shove (`_runPostEffects` push skipped).
+The four: Shuriken (T1, multiHit 3 x 32, range 4), Kawarimi (T2, self, cd 3), Shadow Step (T3, 140, range 4, cd 2,
+`blinkBehind`: doSpell blinks him to `ninjaShadowLanding` = the free square beside the target most behind its FACING, then strikes;
+from the back arc the hit is x FACING_BACK_DMG_MULT through calcSpellHitRiders `backMult`, the forecast reads the same landing,
+no range falloff; nothing free behind = beside it, no Backstab; nothing free at all = refused), Clone Jutsu (T4, multiHit 8 x 52,
+range 3, cd 3; ~ Ninefold Scratch's 414). `ownHitFx` (+ `hitLeadMs`) on a multiHit row: _applyMultiHitDamage fires
+'<id>:hit' through fireGeometry per hit and never re-fires the bolt. CPU: ai.js values Kawarimi like Protect (threat x 0.6).
+Probe /mnt/project-files/ninja-race/probe_ninja.js (NINJA_CPU=1 = a CPU ninja plays 4 rounds).

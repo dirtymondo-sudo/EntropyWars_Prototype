@@ -267,7 +267,7 @@
   "hs": 0.25,
   "v": "fe68d7735e",
   "bytes": 1613,
-  "s": "6.3"
+  "s": "6.8"
  },
  "site_prebuilt_fairy_forest_ow_creek": {
   "id": "site_prebuilt_fairy_forest_ow_creek",
@@ -289,6 +289,66 @@
   "bytes": 1656,
   "s": "1.1"
  },
+ "site_prebuilt_skinwalker_ow_ranch": {
+  "id": "site_prebuilt_skinwalker_ow_ranch",
+  "nx": 36,
+  "nz": 60,
+  "h0": 1.67,
+  "hs": 0.25,
+  "v": "d5cd692e33",
+  "bytes": 828,
+  "s": "2.0"
+ },
+ "site_prebuilt_skinwalker_ow_house": {
+  "id": "site_prebuilt_skinwalker_ow_house",
+  "nx": 36,
+  "nz": 72,
+  "h0": 3.42,
+  "hs": 0.25,
+  "v": "2f0117fc24",
+  "bytes": 1212,
+  "s": "1.9"
+ },
+ "site_prebuilt_gobekli_ow_henge": {
+  "id": "site_prebuilt_gobekli_ow_henge",
+  "nx": 36,
+  "nz": 36,
+  "h0": -1.22,
+  "hs": 0.25,
+  "v": "1e510d9760",
+  "bytes": 834,
+  "s": "0.8"
+ },
+ "site_prebuilt_gobekli_ow_line": {
+  "id": "site_prebuilt_gobekli_ow_line",
+  "nx": 144,
+  "nz": 36,
+  "h0": -1.13,
+  "hs": 0.25,
+  "v": "7173797cde",
+  "bytes": 1626,
+  "s": "1.1"
+ },
+ "site_prebuilt_gobekli_ow_bugs": {
+  "id": "site_prebuilt_gobekli_ow_bugs",
+  "nx": 84,
+  "nz": 60,
+  "h0": -0.83,
+  "hs": 0.25,
+  "v": "7caaea823b",
+  "bytes": 1651,
+  "s": "1.2"
+ },
+ "site_prebuilt_gobekli_ow_babel": {
+  "id": "site_prebuilt_gobekli_ow_babel",
+  "nx": 84,
+  "nz": 96,
+  "h0": -1.79,
+  "hs": 0.25,
+  "v": "2c2a8cbb17",
+  "bytes": 874,
+  "s": "3.5"
+ },
  "site_ow_l4": {
   "id": "site_ow_l4",
   "nx": 36,
@@ -297,7 +357,7 @@
   "hs": 0.25,
   "v": "6e9a8d76df",
   "bytes": 255,
-  "s": "0.1"
+  "s": "0.2"
  },
  "site_ow_l3": {
   "id": "site_ow_l3",
@@ -317,7 +377,7 @@
   "hs": 0.25,
   "v": "5a278d6550",
   "bytes": 1376,
-  "s": "2.3"
+  "s": "2.1"
  },
  "site_prebuilt_fairy_forest_ow_ritual": {
   "id": "site_prebuilt_fairy_forest_ow_ritual",
@@ -327,6 +387,6 @@
   "hs": 0.25,
   "v": "190656fa99",
   "bytes": 2804,
-  "s": "5.1"
+  "s": "4.7"
  }
 }
