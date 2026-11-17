@@ -4713,3 +4713,11 @@ are getters, so the old look comes back live with the switch.
 - **Tail Whip** wore the robot's Hydraulic Punch on the hit (two white flashes, steam, steel sparks): its own recipe now
   (`b8bTailWhip_impact`: dirt, dust, leaves; L1's look flashes the square). **Cannibalize** wore Raise Dead's burst (a pale
   halo ring, a flash, a holy pillar): `b8bCannibalize_burst` keeps the dark flame, mist and blood only.
+- **Left on purpose:** the families' own ground rings (the druid ring under Overgrowth / Bumper Crop / Wrath of the Wild,
+  the fire circle under Combust / Inferno, the hazard ring under Venom Burst / Miasma): coloured, drawn for those spells.
+  Solar Flare's screen flash (the flare is the spell), Nuclear Option's white-out, Morning Star's white star, Web Snare's
+  white silk, Shuttle Launch's white exhaust, Hot Pan's steam, the bites' teeth, the flask's glass.
+- **Seen, not mine:** Cluster Rockets lands under five or six overlapping tan rings: they come from the explosion kit
+  (`_crExplosion` through `_crBoom`), one a rocket, not from the recipe ring this part recoloured. For the cleanup thread.
+- Frames (looked at): `docs/plans/vfx-cleanup/img/sweep/B8b_part1_1.jpg`, `_2.jpg` (the hit frame of each of the 28).
+  Cannibalize's frame shows no cast (no corpse on the harness board): not seen.
