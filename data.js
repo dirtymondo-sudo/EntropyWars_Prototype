@@ -90021,6 +90021,15 @@ const HQ_NPC_TEMPERS = {
        clear line between them; the walk asks every `tickMs`. `sayMs` = how long a warning stands over a head. `markH` = the red mark's height as a share
        of the screen's height (the same at any distance). The numbers are PROPOSALS. */
     aware: { sightM: 18, dyM: 6, tickMs: 300, sayMs: 3500, markH: 0.05 },
+    /* THE STRIKE LADDER (step 3, 2026-11-17; PLAN 4.2). A strike walks the temper's `ladder`. The run: `runM` metres at `runSpeed` m/s (the walker walks 2.4), then
+       it stands `restMs` and walks back to its day at `backSpeed`. Cornered = no straight way of `cornerM` metres that does not lead toward the walker: the run is
+       skipped and it Talks. `againMs`: a fled NPC left alone this long has got away, and the next strike starts its ladder over (never more than three strikes).
+       Every number is a PROPOSAL. */
+    ladder: { runM: 15, runSpeed: 2.0, cornerM: 5, restMs: 5000, backSpeed: 1.35, againMs: 30000 },
+    /* THE GUARD WHO SEES A STRIKE (step 3): the first strike it sees that day on someone it defends = its warning line, once, and the red mark for `warnMs`; from
+       strike number `strikesSeen` on it comes for the walker at `chaseSpeed` m/s and starts its own fight within `reachM` metres (it acts first). It gives up past
+       `giveUpM` metres or after `loseMs` without seeing him. PROPOSALS, all of them. */
+    guard: { strikesSeen: 2, warnMs: 8000, chaseSpeed: 2.7, reachM: 1.9, giveUpM: 32, loseMs: 6000 },
     levelGap: 8,               // an NPC this many levels (or more) under the party never starts a fight (mondo: "8 is fine")
     mug: { perDay: 0.25, goldPerLevel: 8 },   // a flat chance per mugger per game day (mondo 11-17: "flat chance per gameday"; the number is a PROPOSAL); the price = 8 gold x its level
     lossGoldPerLevel: 8,       // a lost story fight (quest fights too): 8 gold x the strongest enemy's level, never more than held; a retreat costs nothing (mondo 11-17)
@@ -90033,7 +90042,7 @@ const HQ_NPC_TEMPERS = {
         mug:  { 'pirate': '“Nice shoes. Empty your pockets.”', 'florida man': '“Give me your wallet.”' },
         giveUp: '“Stop. I give up.”',
     },
-    labels: { backOff: 'BACK OFF', fight: 'FIGHT', pay: 'PAY', payOff: 'TAKE THE PAY-OFF', arrest: 'ARREST', letGo: 'LET IT GO', lost: 'LOST', gold: 'GOLD' },
+    labels: { backOff: 'BACK OFF', fight: 'FIGHT', noted: 'NOTED', pay: 'PAY', payOff: 'TAKE THE PAY-OFF', arrest: 'ARREST', letGo: 'LET IT GO', lost: 'LOST', gold: 'GOLD' },
 };
 /* the temper of a walking NPC: { key, ladder, starts, joins, watch } | null (no temper: story cast, or a race not tagged yet).
    `ch` = a race name or { race, id, room }: a resident's own override (rooms[room].residents[id]) wins over its race. */
@@ -90062,6 +90071,44 @@ function hqNpcDefends(guard, victim) {
     if (HQ_NPC_TEMPERS.noDefend.some(r => r[0] === g && r[1] === v)) return false;
     if (hqNpcSameGroup(g, v)) return true;
     return tg.key === 'guard' && !!tv && HQ_NPC_TEMPERS.guardDefends.indexOf(tv.key) >= 0;
+}
+/* ══ THE STRIKE LADDER, the rules (NPC encounters step 3, 2026-11-17; PLAN 4.2 + 4.7) ══
+   THE DAY'S MEMORY: one record per NPC id and room, kept in the page until the day (hqToday) changes: { n: the rungs of its ladder already done, at: the last
+   strike (ms), fled, talked, struck: strikes today, warned: a Guard's warning said, saw: strikes a Guard has seen }. Not saved with the profile. */
+let _hqNpcMemBook = { day: null, by: {} };
+function hqNpcMem(roomId, id, make) {
+    const day = hqToday(); if (_hqNpcMemBook.day !== day) _hqNpcMemBook = { day, by: {} };
+    const k = String(roomId || '') + '|' + String(id || ''); let m = _hqNpcMemBook.by[k];
+    if (!m && make) m = _hqNpcMemBook.by[k] = { n: 0, at: 0, fled: false, talked: false, struck: 0, warned: false, saw: 0 };
+    return m || null;
+}
+/* what the NEXT strike on this NPC does: 'fight' | 'talk' | 'flee'. `ch` = { race, id, room }; `o` = { now (ms), cornered, peek: read only, write nothing }.
+   No temper = 'fight' (as before the ladder). A fled NPC left alone for `againMs` starts over. A cornered NPC skips its run. */
+function hqNpcStrike(ch, o) {
+    o = o || {};
+    const t = hqNpcTemper(ch); if (!t || !Array.isArray(t.ladder) || !t.ladder.length) return 'fight';
+    const L = HQ_NPC_TEMPERS.ladder, now = +o.now || Date.now(), m0 = hqNpcMem(ch.room, ch.id, false);
+    let n = m0 ? m0.n : 0;
+    if (m0 && m0.fled && !m0.talked && now - m0.at >= L.againMs) n = 0;   // it got away: the ladder starts over
+    let rung = t.ladder[Math.min(n, t.ladder.length - 1)], step = 1;
+    if (rung === 'flee' && o.cornered) { const nx = t.ladder[Math.min(n + 1, t.ladder.length - 1)]; if (nx !== 'flee') { rung = nx; step = 2; } }
+    if (o.peek) return rung;
+    const m = hqNpcMem(ch.room, ch.id, true);
+    m.n = Math.min(t.ladder.length, n + step); m.at = now; m.struck++;
+    if (rung === 'flee') { m.fled = true; m.talked = false; } else if (rung === 'talk') m.talked = true;
+    return rung;
+}
+/* E on an NPC: does its box carry FIGHT? (a temper whose ladder has a Talk rung; Guards and Brutes skip Talk) */
+function hqNpcTalks(ch) { const t = hqNpcTemper(ch); return !!(t && t.ladder.indexOf('talk') >= 0); }
+/* the Talk line of a race after a strike ('' = none written: the box shows its ordinary line) */
+function hqNpcTalkLine(race) { return HQ_NPC_TEMPERS.lines.talk[String(race || '').toLowerCase()] || ''; }
+/* A GUARD SEES A STRIKE on `victim`: 'warn' (its line, once that day) | 'come' (it comes for the walker) | null (it does not defend that one) */
+function hqNpcGuardSees(guard, victim, o) {
+    if (!guard || !victim || guard.id === victim.id || !hqNpcDefends(guard, victim)) return null;
+    const m = hqNpcMem(guard.room, guard.id, true); m.saw++;
+    if (m.saw >= HQ_NPC_TEMPERS.guard.strikesSeen) return 'come';
+    if (!m.warned) { m.warned = true; return 'warn'; }
+    return null;
 }
 /* THE GROUND a Territorial holds in a room ('b:<building id>') | null: the room's row for its race, in its own district when that is known */
 function hqNpcGround(ch) {

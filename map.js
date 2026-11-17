@@ -4169,7 +4169,7 @@
                 let aim = null;
                 try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }
                 if (aim && (!t || t.id === aim.id)) {
-                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b><span>${_hqEsc(aim.sub || ('A NATIVE · ' + _hqEncounterBoardCopy()))}</span><i>[CLICK] ATTACK · ENGAGE${t ? ' · [E] TALK' : ''}</i>`;
+                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b><span>${_hqEsc(aim.sub || ('A NATIVE · ' + _hqEncounterBoardCopy()))}</span><i>[CLICK] ATTACK${_hqLadderPeek(aim) === 'fight' ? ' · ENGAGE' : ''}${t ? ' · [E] TALK' : ''}</i>`;
                     el.style.display = '';
                     return;
                 }
@@ -5891,6 +5891,7 @@
             try { playSfx(ev.gesture === 'attack' ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
             if (!ev.armed || !ev.target) return;
             if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return;
+            if (_hqLadderPeek(ev.target) !== 'fight') return;   // THE STRIKE LADDER: this strike makes it run or Talk, it engages nobody
             _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1600);
         }
         function _hqEncounterRoomOkNow() { try { return (typeof window.hqEncounterRoomOk === 'function') ? window.hqEncounterRoomOk(_hqCurRoom) : false; } catch (e) { return false; } }
@@ -5908,13 +5909,62 @@
             if (fieldRoom && room.cave) return 'THE CAVE IS THE BOARD';
             return fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
         }
+        /* THE STRIKE LADDER: what the next strike on this NPC would do, read only ('fight' when it has no temper) */
+        function _hqLadderPeek(t) {
+            try { if (!t || typeof hqNpcStrike !== 'function') return 'fight'; let c = false; try { c = !!ThreeRenderer.hq.npcCornered(t.id); } catch (e) {} return hqNpcStrike({ race: t.race, id: t.id, room: _hqCurRoom }, { peek: true, cornered: c }); } catch (e) { return 'fight'; }
+        }
+        /* may a Talk box here carry FIGHT? (a room where fights start, never from an online seat, an NPC that can be struck and whose temper Talks) */
+        function _hqLadderTalkOk(t) {
+            try {
+                if (!t || t.kind !== 'npc' || !t.race || t.talk || typeof hqNpcTalks !== 'function') return false;
+                if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow() || (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch())) return false;
+                if (typeof hqEncounterCharOk === 'function' && !hqEncounterCharOk(t)) return false;
+                return hqNpcTalks({ race: t.race, id: t.id, room: _hqCurRoom });
+            } catch (e) { return false; }
+        }
+        /* THE TALK BOX of the ladder: opened by the strike that reached the Talk rung (`struck`: the approved line), or by E (the NPC's ordinary line) */
+        function _hqLadderTalk(target, struck) {
+            _hqOpenPanel({ kind: 'npc', id: target.id, race: target.race, gender: target.gender, label: target.label || String(target.race || '').toUpperCase(), sub: target.sub || '', line: target.line || null, _struck: !!struck });
+        }
+        function _hqLadderFight() {
+            const t = _hqPanelTarget; if (!t || !t._ladderBox) return;
+            let ev = null; try { ev = ThreeRenderer.hq.encounterEvent(t.id, (typeof hqEncounterGesture === 'function' && hqEncounterGesture('click')) || 'attack'); } catch (e) { ev = null; }
+            window._hqClosePanel(); _hqInteractHold();
+            if (!ev || !ev.target) return;
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1600);
+            _hqEncounterFire(Object.assign(ev, { ladderDone: true }));
+        }
+        /* its keys (mondo's back keys: ESC and RIGHT CLICK close every box; E leaves what E opened): 1 / E = BACK OFF, 2 = FIGHT */
+        document.addEventListener('keydown', (e) => {
+            const t = _hqPanelTarget; if (!t || !t._ladderBox || e.repeat || e.ctrlKey || e.metaKey || e.altKey || _hqPause || _hqTerm) return;
+            if (performance.now() - _hqPanelAt < 250) return;
+            if (e.key === '2') { e.preventDefault(); e.stopPropagation(); _hqLadderFight(); return; }
+            if (e.key === '1' || e.key === 'e' || e.key === 'E') { e.preventDefault(); e.stopPropagation(); try { playSfx('uiButtonConfirm'); } catch (err) {} window._hqClosePanel(); _hqInteractHold(); }
+        }, true);
         function _hqEncounterFire(ev) {
             if (!ev || !ev.target) return false;
             if (_hqSuspended || state.gameState !== GS.HQ || _hqTerm || _hqPause || _hqPanelTarget) return false;
             if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return false;
             if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
             let drawn = false; try { drawn = ThreeRenderer.hq.portalDrawn(); } catch (e) { drawn = false; }
-            if (drawn && !ev.door) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17) — a standing door's act is the strike itself (DOOR_GUN_PLAN §5.3)
+            if (drawn && !ev.door && !ev.npcStart && !ev.ladderDone) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17) — a standing door's act is the strike itself (DOOR_GUN_PLAN §5.3)
+            /* THE STRIKE LADDER (NPC encounters step 3, 2026-11-17; REPLACES the one-strike fight): a strike (the swing, a standing door's hit) walks the
+               NPC's ladder (data.js hqNpcStrike: 'flee' → 'talk' → 'fight', by its temper; the day's memory per id). Only the 'fight' rung goes on to the
+               launch below. The run and the Guards who saw it are the room's (ThreeRenderer.hq.npcStruck); Talk is the box with BACK OFF / FIGHT. A fight
+               the Talk box starts (`ladderDone`) or an NPC starts itself (`npcStart`: a Guard that came for you) skips the ladder. */
+            if (!ev.ladderDone && !ev.npcStart && typeof hqNpcStrike === 'function') {
+                let rung = 'fight';
+                try {
+                    let cornered = false; try { cornered = !!ThreeRenderer.hq.npcCornered(ev.target.id); } catch (e) { cornered = false; }
+                    rung = hqNpcStrike({ race: ev.target.race, id: ev.target.id, room: _hqCurRoom }, { cornered });
+                } catch (e) { console.warn('[HQ] the strike ladder', e); rung = 'fight'; }
+                if (rung !== 'fight') {
+                    try { ThreeRenderer.hq.npcStruck(ev.target.id, rung); } catch (e) {}
+                    if (rung === 'talk') _hqLadderTalk(ev.target, true);
+                    return true;
+                }
+            }
             /* THE PARTY (2026-09-19): a party with nobody fit to fight never crosses — rest at the ward or heal from the pause menu */
             try {
                 const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
@@ -5929,6 +5979,12 @@
             if (!cr || cr.cleared || !site || cr.site !== site) cr = null;
             const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr, partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) return false;
+            /* WHOEVER STARTS THE FIGHT OPENS ROUND 1 (mondo 11-17): an NPC that came for you acts first (battle.js reads the run's `opener`) */
+            if (ev.npcStart) {
+                L.opener = 'npc';
+                _hqToast(`<b>${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>STEPS IN · ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1800);
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+            }
             /* THE DOOR STRIKE (DOOR_GUN_PLAN §5.3, Phase 4): the door says who it struck */
             if (ev.door) {
                 const dd = (window.DOOR_GUN_DOORS || {})[ev.door.key] || {};
@@ -6073,7 +6129,7 @@
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
-                                       swarm: L.swarm || null, entry: _entryDoor, quest: L.quest || null, sceneOnly: L.sceneOnly || null };   // THE SWARM: battle.js keeps every native on the board · THE QUESTS: the quest's own fight (battle.js seats it round the portal, the commit files it)
+                                       swarm: L.swarm || null, entry: _entryDoor, quest: L.quest || null, sceneOnly: L.sceneOnly || null, opener: L.opener || null };   // THE SWARM: battle.js keeps every native on the board · THE QUESTS: the quest's own fight (battle.js seats it round the portal, the commit files it)
             window._hqEncounterRun.night = _hqClockNightIn(L.room || _hqCurRoom);   // THE WORLD CLOCK (Phase 3): the fight starts at the room's hour — round 1 is night when the sun is down (getCurrentCyclePhase)
             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's standing doors (and a pre-placed capture door) on the
                fight's board go onto their cells before the seats (battle.js encounterCarryDoors); the striking door's act is
@@ -8942,6 +8998,16 @@
             const seg = (!line) ? _hqRingSegHere(room) : null;
             const pool = (seg && seg.lines && seg.lines.length) ? seg.lines : (room && room.lines) || [];
             if (!line && pool.length) line = pool[Math.floor(Math.random() * pool.length)];
+            /* THE STRIKE LADDER (NPC encounters step 3): an NPC whose temper Talks carries FIGHT in its box. After the strike that reached its Talk rung it
+               says its Talk line (data.js HQ_NPC_TEMPERS.lines.talk) and the way out reads BACK OFF; on E it says its ordinary line. */
+            t._ladderBox = false;
+            if (_hqLadderTalkOk(t)) {
+                const LB = (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.labels) || {};
+                if (t._struck) line = ((typeof hqNpcTalkLine === 'function') ? hqNpcTalkLine(t.race) : '') || line;
+                t._ladderBox = true;
+                return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions">`
+                    + `<button class="hq-btn" data-close="1">1 · ${_hqEsc(t._struck ? (LB.backOff || 'BACK OFF') : (LB.noted || 'NOTED'))}</button><button class="hq-btn hq-btn-primary" data-npc-fight="1">2 · ${_hqEsc(LB.fight || 'FIGHT')}</button></div>`;
+            }
             return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
         }
         /* A plain unlocked door with exactly one obvious outcome — a built
@@ -9049,7 +9115,7 @@
             else html = _hqNpcPanelHtml(t);
             body.innerHTML = html + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
             _hqPanelAt = performance.now();
-            if (_hqPanelPlain()) { const ft = body.querySelector('.hq-panel-foot'); if (ft) ft.textContent = 'E · ESC · RIGHT CLICK · CLOSE'; }
+            if (_hqPanelPlain() || t._ladderBox) { const ft = body.querySelector('.hq-panel-foot'); if (ft) ft.textContent = 'E · ESC · RIGHT CLICK · CLOSE'; }
             /* THE MAP is a FULL-SCREEN sheet (the user's rule, 2026-09-16): the
                stage fills the screen, the card + the register ride a side column
                (styles-base.css .hq-panel-map); every other target keeps the card */
@@ -9244,6 +9310,7 @@
             /* THE TALK (2026-10-08): NEXT and the choices */
             const tk = e.target.closest('[data-talk],[data-talk-choice]');
             if (tk) { _hqTalkStep(tk.hasAttribute('data-talk-choice') ? +tk.getAttribute('data-talk-choice') : null); return; }
+            if (e.target.closest('[data-npc-fight]')) { _hqLadderFight(); return; }   // THE STRIKE LADDER: the Talk box's FIGHT
             /* THE CHAIR (Room 1287): a pick swaps the avatar in place */
             const avBtn = e.target.closest('[data-avatar]');
             if (avBtn && !avBtn.disabled) { window._hqPickAvatar(avBtn.getAttribute('data-avatar')); return; }
