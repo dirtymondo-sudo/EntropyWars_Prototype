@@ -4419,6 +4419,20 @@ New pieces: `_l5Shard` (a shard of mirror), `_l5Glint` (the light off glass).
 - **Rangefinder** (`_l5Rangefinder3D`): brackets close on the glassed square, a reticle settles, the count of squares reads out.
 - The capture harness starts its frames about 3 s late on a tile-click cast (Prism Mirror, Rangefinder, Far Sight): shoot those with `--opts` and a `pre` that repeats `VFX3D.fire('burst', id, {tx, ty, sx, sy})`.
 - Frames: docs/plans/vfx-cleanup/img/own-look/L5_part2.jpg.
+
+## THE OWN LOOKS, L5, part 3: the mind (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5")
+New pieces: `_l5Eye` (a flat dark eye with an iris of light; the lid opens, the iris looks about), `_l5Crescent` (a moon), `_l5WobbleRing`.
+- **Boo** (`_l5Boo3D`): a wailing sheet-ghost bursts out of them (pale because it is a ghost, kept see-through) with the word.
+- **Cut the Cord** (`_l5CutTheCord3D`): the silver cord over the head is snipped: two blades close, a glint, the top whips away, the stump drops.
+- **Dosed** (`_l5Dosed3D`): three acid-coloured floor rings melt and turn against each other under the feet, a dizzy spiral over the head, bubbles.
+- **Dream Siphon** (`_l5DreamSiphon3D`): a ribbon of sleep from the head to the dreameater, little moons riding it.
+- **Eternal Slumber** (`_l5EternalSlumber3D`): a crescent moon sinks over the area; all 25 squares flash night-blue and a Z lifts off each.
+- **Far Sight** (`_l5FarSight3D`): a violet eye opens over the square, looks about, shuts; a thread of sight runs back to the seer.
+- **Nightmare Pulse** (`_l5NightmarePulse3D`): a ring of fangs comes up round the nine squares and shuts; the squares flash and the dream is drunk back in beads.
+- **Probe** (`_l5Probe3D`): a needle of light on the head and a scan ring that reads the body down and back up, ticking.
+- **Hypnotic Pulse** (`_l5HypnoticPulse3D`): a great spiral turns over the area and a small one over every square; the squares flash.
+- **Death Gaze** (`_l5DeathGaze3D`): a red slit eye opens over the victim, its ray pins them to a black disc, and it shuts.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part3.jpg.
 ## THE OWN LOOKS, L6, part 1: sound + wind (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L6")
 mondo 11-17: "any spells that dont have a look of their own need one". Brief: docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md,
 list `own-look/L6.txt`. Each spell is one function in `_FX2_BURST` (the staging hit, relayed), so `_vcOwn` is true and
