@@ -208,6 +208,17 @@ function bakeWorld(R) {
    rooms are retired into it (DOOR_HQ.retired). ══ */
 const SYS = { cols: 12, rows: 12, place: { moon: [0, 0], mars: [7, 0], saturn: [0, 8], singularity: [8, 8] }, orbit: [5, 6],
     room: 'site_prebuilt_moon_plots', site: 'prebuilt_moon', VOID: -60, ceil: 140 };
+/* THE ROUND WORLDS: where each round world's ball hangs (metres; out in the open, clear of every block's flat place and of the other balls) */
+const ROUNDC = { moon: [110, 20, 0] };
+const PL_FACES = [[[-1, 0, 0], [0, 0, 1], [0, -1, 0]], [[0, 0, 1], [1, 0, 0], [0, -1, 0]], [[1, 0, 0], [0, 0, -1], [0, -1, 0]],
+    [[0, 0, -1], [-1, 0, 0], [0, -1, 0]], [[0, -1, 0], [1, 0, 0], [0, 0, -1]], [[0, 1, 0], [1, 0, 0], [0, 0, 1]]];
+/* the flat net's (x, y, z) → its point on the ball (= three-renderer.js _ewPlBendFace) */
+function plBend(p, x, y, z) {
+    const col = Math.max(0, Math.min(2, Math.floor((x - p.x0) / p.L))), row = Math.max(0, Math.min(1, Math.floor((z - p.z0) / p.L))), F = PL_FACES[row * 3 + col];
+    const a = (x - p.x0 - col * p.L) / p.L * 2 - 1, b = (z - p.z0 - row * p.L) / p.L * 2 - 1, ta = Math.tan(a * Math.PI / 4), tb = Math.tan(b * Math.PI / 4);
+    const d = [0, 1, 2].map(i => F[0][i] + F[1][i] * ta + F[2][i] * tb), l = Math.hypot(d[0], d[1], d[2]), rr = Math.max(p.R + y, p.R * 0.3);
+    return [0, 1, 2].map(i => p.c[i] + d[i] / l * rr);
+}
 const BAY = { moon: 'bay', mars: 'bay_mars', saturn: 'bay_saturn', singularity: 'bay_singularity' };
 const PIECES = PLAN.rooms.map(bakeWorld);
 {
@@ -216,7 +227,7 @@ const PIECES = PLAN.rooms.map(bakeWorld);
     const cell = []; for (let y = 0; y < BH; y++) cell.push(new Array(BW).fill('v'));
     const H4 = new Array(BW * BH).fill(null).map(() => [SYS.VOID, SYS.VOID, SYS.VOID, SYS.VOID]);
     const key = new Array(BW * BH).fill(null);
-    const names = [], props = [], npc = [], features = [], MARKS = [], DECALS = [], AIR = [], lines = [], ways = {}, planets = [], beacons = [], mesas = [];
+    const names = [], props = [], npc = [], features = [], MARKS = [], DECALS = [], AIR = [], lines = [], ways = {}, planets = [], beacons = [], mesas = [], round = [];
     const sh = (o, dx, dz) => { const q = Object.assign({}, o);
         if (q.pts || q.off) throw new Error('compose: a piece with pts / off: ' + JSON.stringify(o).slice(0, 80));
         ['x', 'x0', 'x1'].forEach(k => { if (typeof q[k] === 'number') q[k] = r2(q[k] + dx); });
@@ -231,6 +242,15 @@ const PIECES = PLAN.rooms.map(bakeWorld);
         (P.OLD.l || []).forEach(l => lines.push(l));
         /* the world's ball: wholly under its block (its top 3 m under the lowest ground that is not void), as wide as the block, so the
            districts stand on the top of a planet like a plateau and the ball curves away under them */
+        /* A ROUND WORLD (2026-11-17, THE ROUND WORLDS): its block is a net of six faces the game bends onto a ball out in the open
+           (`space.round`: x0 z0 = the net's north-west corner, L = a face's side, R = the ball's radius, so one face = a quarter turn,
+           c = its middle, top = its highest ground); no plateau ball, no rock flank */
+        if (P.R.round) { let top = 0; P.H4.forEach(q => q.forEach(h => { if (h > top) top = h; }));
+            const L = 24 * C, c = ROUNDC[P.R.id]; if (!c) throw new Error('compose: no ball place for the round ' + P.R.id);
+            if (P.W !== 3 * 24 || P.Hh !== 2 * 24) throw new Error('compose: a round world is 72 x 48 squares (six faces of 24): ' + P.R.id);
+            round.push({ id: P.R.id, name: P.WR.label, x0: r2(-BHX + sx0 * C), z0: r2(-BHZ + sy0 * C), L, R: r2(L * 2 / Math.PI), c, top: r2(top) });
+            Object.keys(P.WAY).forEach(k => { const w = P.WAY[k]; ways[k + '@' + P.R.id] = { id: k, world: P.R.id, x: r2(w.x + dx), z: r2(w.z + dz), face: w.face, y: r2(P.hC(w.sx, w.sy)), fx: r2(P.gcx(w.fx) + dx), fz: r2(P.gcz(w.fy) + dz), fy: r2(P.hC(w.fx, w.fy)) }; });
+            return; }
         let lowG = 0; P.H4.forEach(q => q.forEach(h => { if (h > -20 && h < lowG) lowG = h; }));
         const half = Math.hypot(P.HX, P.HZ), r = r2(half * 1.05), pl = PLANET[P.R.id];
         planets.push(Object.assign({ id: P.R.id, name: P.WR.label, x: dx, z: dz, y: r2(lowG - 3 - r), r }, pl));
@@ -262,7 +282,9 @@ const PIECES = PLAN.rooms.map(bakeWorld);
         rim_derelict: 'THE SINGULARITY · THE ACCRETION RIM', drop_derelict: 'THE SINGULARITY · THE DROP' };
     Object.keys(LANDING).forEach(k => { const w = Object.values(ways).find(q => q.id === k); if (!w) throw new Error('no landing way ' + k);
         const yaw = (w.face * Math.PI / 180);
-        beacons.push({ id: k, label: LANDING[k], x: w.fx, z: w.fz, ground: w.fy, pad: { x: w.fx, z: w.fz, yaw: r2(yaw) } }); });
+        const bc = { id: k, label: LANDING[k], x: w.fx, z: w.fz, ground: w.fy, pad: { x: w.fx, z: w.fz, yaw: r2(yaw) } };
+        const rw = round.find(q => q.id === w.world); if (rw) { const B = plBend(rw, w.fx, w.fy, w.fz), u = [B[0] - rw.c[0], B[1] - rw.c[1], B[2] - rw.c[2]], ul = Math.hypot(u[0], u[1], u[2]); bc.ball = B.map(r2); bc.up = u.map(v => r2(v / ul)); }
+        beacons.push(bc); });
     /* the open ground (greedy rectangles, the void squares too: they are the sky, never rock) */
     const open = (x, y) => cell[y][x] !== 'x';
     const spaces = []; { const used = new Uint8Array(BW * BH);
@@ -301,7 +323,7 @@ const PIECES = PLAN.rooms.map(bakeWorld);
     L.push("            typology: 'grid',");
     L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + SYS.cols + ", nz: " + SYS.rows + ", names: " + J(names) + ", mask: " + J((() => { const m = []; for (let r = 0; r < SYS.rows; r++) { let s = ''; for (let c = 0; c < SYS.cols; c++) s += names.some(n => n[0] === 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0')) ? '#' : '.'; m.push(s); } return m; })()) + " },");
     L.push("            /* THE SOLAR SYSTEM: what three-renderer.js THE SPACESHIP draws and flies by (the balls, the Sun, the beacons, the ceiling) */");
-    L.push("            space: " + J({ ceil: SYS.ceil - 10, sun: SUN, planets, mesas, beacons, berth: SYS.berth, launch: { x: ways['ship_stick@orbit'].x, z: ways['ship_stick@orbit'].z } }) + ",");
+    L.push("            space: " + J({ ceil: SYS.ceil - 10, sun: SUN, planets, mesas, round, beacons, berth: SYS.berth, launch: { x: ways['ship_stick@orbit'].x, z: ways['ship_stick@orbit'].z } }) + ",");
     L.push("            terrain: {");
     L.push("                res: 0.875, floor: 'moon', cliff: 'moon_3', path: 'moon_2',");
     L.push("                noise: { amp: 0.1, scale: 10 }, crag: false, outer: false,");

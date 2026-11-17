@@ -11690,3 +11690,39 @@ Astral thread: "Connected/bigger rooms is better. If the room is smaller than di
   `hq.board(id)`; `hq.dev.hqScene()` = the walk's scene.
 - **From Antarctica:** the Collar still opens on the ship's airlock; walk to the Bridge, take the stick, and you are aboard in Low Orbit.
 - **Later (not built, mondo's plan):** floating outside the ship, fights in space, asteroids to dodge.
+
+## OUTER SPACE, THE ROUND WORLDS — a ball you walk all the way round (2026-11-17, owner, the Outer Space round-planets thread)
+mondo 11-17: "fix the outer space thread and start new planets ... Use the concept from this design doc, improve upon it and make it better
+and tailor it for our game"; the doc ("Two Worlds, One Combat Grid", Map A, the spherical planet: six N x N cube faces projected onto a
+sphere, four neighbours a cell, the seams precomputed). Asked which new planets first he picked "None yet, round worlds first".
+Proposal + mock-ups: `/mnt/project-files/space-round-planets/`.
+- **THE SHAPE.** A round world is laid FLAT in the room as a NET of six faces, 3 columns x 2 rows, each face 24 x 24 squares (2 x 2
+  plots, 84 m). The faces (col, row): (0,0) (1,0) (2,0) = three faces of the belt, joined left to right on the flat; (1,1) = the bottom
+  cap, joined under (1,0); (0,1) = the fourth belt face and (2,1) = the top cap join nothing on the flat (every edge of theirs is a CUT
+  SEAM). The ball's radius R = 2 L / pi (one face = a quarter turn), so a square stays about 3.5 m everywhere. The Moon: 53.5 m radius,
+  its horizon is near (a small world, on purpose).
+- **THE RULE: THE WALK STAYS FLAT, ONLY THE DRAW BENDS.** Every rule of the walk (ground, walls, props, people, doors, the walk check in
+  the bake) reads the flat net exactly as before. three-renderer.js THE ROUND WORLDS bends the picture: every vertex inside a net goes
+  onto its ball (the equal-angle cube-sphere). A small piece (every vertex within 0.15 L of its middle, its middle on the net) is bent by
+  its middle's face, run on past the face's edge, so a body or a prop on a seam is never torn; the ground and long walls by each
+  vertex's own face (`_ewPlSplitSeams` copies a corner shared by two faces over a cut seam, so no sheet is drawn across the ball).
+  THE ANCHOR: while you stand on a ball the whole picture turns about your feet (out = P + M (bend(p) - A)), so round you the world is
+  flat as the walk sees it and it curves away to a horizon; aboard the ship the anchor is the identity. THE SEAM (`_hqPlanetSeam`):
+  walk off a face over a cut seam and you are carried to the true next face, you and the camera turned with it. Both renderers: the
+  node renderer (TSL, `_ewPlNodeBend`, the bent draw keyed apart by its own context node) and the classic one (the `ewPlBend` GLSL in
+  ShaderChunk common / project_vertex / the sprite shader). The sky's bodies are drawn flat (`_ewPlKeepFlat`). Off: `window.EW_NO_ROUND`.
+- **THE DATA.** draw-space.js: a round world has `round: true`, no rock border, and `roundSeams()` makes the ground meet itself over
+  every cut seam (the mean height on the seam, run out over three squares). bake-space.js writes `room.space.round[]` = { id, x0, z0 =
+  the net's north-west corner, L, R, c = the ball's middle (ROUNDC, out in the open), top = its highest ground }; no plateau ball and no
+  rock flank for a round world; its beacons carry `ball` (the pad on the ball) and `up`.
+- **THE SHIP.** Flies in the real space (never bent: `ewPlS`, the flown ship's middle, is skipped by the bend). The ball is a collider
+  (R + top); a net's flat place is empty sky under a lid (the ship never sits there at its flat ground's height). Fly into a round
+  beacon's ring (it stands on the ball, 14 m up its `up`) and it sets down on the pad (the flat net) and you step off on the ball; E at
+  the ship takes off from where the ball really is (over the pad, upright).
+- **THE MOON (first, 11-17):** 6 x 4 plots (was 5 x 4): the old content stands where it was (no district file changed); the new column
+  P05-.. is plain dust in district M (labels mine: The Limb, east · The Limb, south-east · The Top · The Top, south). Ball at
+  (110, 20, 0): east of Low Orbit, between Mars and the Singularity, clear of every block, ball and Saturn's ring.
+- **NOT YET:** Mars, Saturn and the Singularity (each needs a 6 x 4 net: their blocks are 5 x 4 and 4 x 4); new planets (his card:
+  after the round worlds); fights on a curved board (the board's squares, highlights and picking are flat today; a fight on the Moon
+  is not checked yet); the lighting on a far face uses the flat normals; NPCs that wander over a cut seam
+  are not carried; the map picture (`Assets/ui/map/site_prebuilt_moon_plots.png`) shows the flat net.
