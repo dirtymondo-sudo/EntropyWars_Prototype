@@ -94833,15 +94833,15 @@ if (typeof window !== 'undefined') window.EW_CREDITS = EW_CREDITS;
 const CUBE_RULES = {
     N: 8,                     // squares a face side (mondo: "7x7 or 8x8"; 8 = the arenas' board)
     /* the six faces (mondo 11-17: "its the same fucking cube": the battle cube and the Astral Realm's floating one share ONE look,
-       three-renderer.js _cubeFaceMat). `look` = the ground picture under the sticker, `tint` = its Rubik's colour. The ground's
+       three-renderer.js _cubeFaceMat). `look` = the sticker's picture (ONE clean texture for all six, mondo 11-17: never lava, never water, not even as a picture), `tint` = its Rubik's colour. The ground's
        RULES are one plain floor for every face (tilefloor: no rule of its own; mondo 11-17: no lava, no water on the map). */
     faces: {
         U: { n: [0, 0, 1],  terrain: 'tilefloor', look: 'marble_light', tint: 0xffffff, name: 'White' },
-        D: { n: [0, 0, -1], terrain: 'tilefloor', look: 'gold',         tint: 0xffe070, name: 'Yellow' },
-        E: { n: [1, 0, 0],  terrain: 'tilefloor', look: 'wood_planks',  tint: 0xffa050, name: 'Orange' },
-        W: { n: [-1, 0, 0], terrain: 'tilefloor', look: 'lava',         tint: 0xff6a50, name: 'Red' },
-        S: { n: [0, 1, 0],  terrain: 'tilefloor', look: 'water',        tint: 0x6aa0ff, name: 'Blue' },
-        N: { n: [0, -1, 0], terrain: 'tilefloor', look: 'grass',        tint: 0x80f090, name: 'Green' },
+        D: { n: [0, 0, -1], terrain: 'tilefloor', look: 'marble_light', tint: 0xffd21f, name: 'Yellow' },
+        E: { n: [1, 0, 0],  terrain: 'tilefloor', look: 'marble_light', tint: 0xff7a1a, name: 'Orange' },
+        W: { n: [-1, 0, 0], terrain: 'tilefloor', look: 'marble_light', tint: 0xe02a36, name: 'Red' },
+        S: { n: [0, 1, 0],  terrain: 'tilefloor', look: 'marble_light', tint: 0x2f68ff, name: 'Blue' },
+        N: { n: [0, -1, 0], terrain: 'tilefloor', look: 'marble_light', tint: 0x22b85a, name: 'Green' },
     },
     core: 'obsidian',         // the cube's inside, the floor of a hole where a piece broke off
     /* THE MISSING PIECES (mondo 11-17: "the cube could have missing pieces to match, which would give it more interesting

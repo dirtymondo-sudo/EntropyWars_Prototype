@@ -9963,6 +9963,8 @@ planet, went to the Outer Space thread.)
   drawn by its own code. Now every face's rule ground is `tilefloor` (no rule of its own), CUBE_RULES.faces carry `look` (the picture) +
   `tint` (the Rubik's colour), and BOTH cubes draw through three-renderer.js `_cubeFaceMat(face)` (sticker) + `_cubeCore()` (the dark core):
   the battle square is a core square with the sticker at 0.86 on it, a hole's sides are core. Never give the cube's faces a second look.
+  Every sticker is `marble_light` tinted (white, yellow, orange, red, blue, green); mondo 11-17: NO lava or water PICTURE either (the first
+  fix kept them tinted and he called it out).
 - **IN THE ASTRAL REALM (BUILT 11-17, bake-astral.js THE CUBE):** two new plots south of the Cloud Bridge's middle (district S, plot rows
   2-3 of column 0: 'The Broken Stair' + 'The Cube'), nothing touching the cube. The cube is the proc prop `ew_rubiks_cube` (three-renderer.js
   `_ewCubeProp`, catalogue span 28 m, origin = the middle of its top): 8 x 8 x 8 cubies of 3.5 m, a dark core, one sticker a square in its
