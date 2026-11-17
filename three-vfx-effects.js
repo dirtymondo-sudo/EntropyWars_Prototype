@@ -42194,7 +42194,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _crLight(c.x, c.y, floorZ + ts * 0.5 * S, 0xff8a3a,
                 { intensity: 3.6 * Math.min(1.6, S), ms: 720, radius: 4.2 * Math.min(2, S), attack: 30 });
         }
-        try { _sigShockRing3D(tx, ty, { color: 0xffc27a, r1: ts * 1.9 * S, ms: 440 }); } catch (e) {}
+        /* THE VFX SWEEP B8b: `noRing: true` = no shock ring (a spell that goes up square by square drew one pale ring a square) */
+        if (!o.noRing) try { _sigShockRing3D(tx, ty, { color: 0xffc27a, r1: ts * 1.9 * S, ms: 440 }); } catch (e) {}
         if (_canSpawn()) {
             _spawn({ x: c.x, y: c.y, z: floorZ + 1, mode: 'world', sprite: 'scorch',
                      ml: lite ? 3200 : 5200, size0: ts * 1.05 * S, size1: ts * 1.25 * S, opacity0: 0.92, opacity1: 0 });
@@ -65420,7 +65421,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _fxDelay(function () { if (!_suppressed() && _pzSeen(tx, ty)) _sigSparks(tx, ty, 'spark', 14, { vxy: 120, vz0: 40, vz1: 140, gravity: 300, z: 30 }); }, Math.max(0, hold - 160));
                 for (var oy = -R2; oy <= R2; oy++) for (var ox = -R2; ox <= R2; ox++) (function (bx, by, ring, n) {
                     if (ring === 2 && (n % 2)) return;                       /* every other tile of the outer ring */
-                    _fxDelay(function () { if (!_suppressed() && _pzSeen(bx, by)) _crExplosion(bx, by, { lite: ring > 0, scale: ring ? 0.85 : 1 }); }, Math.max(0, hold - 60) + ring * 140 + (n % 3) * 30);
+                    _fxDelay(function () { if (!_suppressed() && _pzSeen(bx, by)) _crExplosion(bx, by, { lite: ring > 0, scale: ring ? 0.85 : 1, noRing: ring > 0 && _vcOn() }); }, Math.max(0, hold - 60) + ring * 140 + (n % 3) * 30);
                 })(tx + ox, ty + oy, Math.max(Math.abs(ox), Math.abs(oy)), (ox + R2) + (oy + R2) * (2 * R2 + 1));
             }
             /* BURNOUT ("it burns itself down"), INFERNO ("the heart of a firestorm"), THRONE OF ASHES (the court burns):
@@ -69807,6 +69808,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _b8bTint('raceWebSnare_impact_center', 1, 'halo-ring', 0x9a7ad8);      /* Web Snare: the ring under the web in void silk */
     _b8bTint('pvFlask_impact', 0, 'flash', 0xa8f060);                      /* Acid Flask, Chemical Concoction: the break flashes acid green */
     _b8bTint('raceToxicNova_impact_center', 0, 'shockwave', 0x7ee040);     /* Toxic Nova, Plandemic, Splash: a green ring */
+    /* part 2. CLUSTER ROCKETS (+ Mortar Salvo, the same recipe): nine rockets drew nine pale shock rings over the 3x3; the
+       centre blast keeps its ring, a square's own blast goes up without one. (Chain Reaction: the same, where it is cast.) */
+    (function () { try { var b = EFFECTS['raceMortarSalvo_impact_tile'] && EFFECTS['raceMortarSalvo_impact_tile']._crBoom;
+        if (b) Object.defineProperty(b, 'noRing', { enumerable: true, configurable: true, get: function () { return _vcOn(); } }); } catch (e) {} })();
     /* TAIL WHIP wore the robot's Hydraulic Punch on the hit (two white flashes, steam, steel sparks). Its own: the dirt the
        tail throws. No flash layer: L1's look flashes the square in leaf green. */
     EFFECTS['b8bTailWhip_impact'] = { layers: [
