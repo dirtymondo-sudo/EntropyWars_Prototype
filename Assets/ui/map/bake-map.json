@@ -7,17 +7,7 @@
   "hs": 0.25,
   "v": "e0a230a16b",
   "bytes": 481,
-  "s": "9.0"
- },
- "site_prebuilt_fairy_forest_plots": {
-  "id": "site_prebuilt_fairy_forest_plots",
-  "nx": 72,
-  "nz": 36,
-  "h0": 2.86,
-  "hs": 0.25,
-  "v": "fdc79fd470",
-  "bytes": 1945,
-  "s": "5.3"
+  "s": "13.1"
  },
  "site_prebuilt_northpole_plots": {
   "id": "site_prebuilt_northpole_plots",
@@ -25,19 +15,9 @@
   "nz": 48,
   "h0": -0.07,
   "hs": 0.25,
-  "v": "330e8017b8",
-  "bytes": 1093,
-  "s": "1.0"
- },
- "site_prebuilt_shasta_mountains": {
-  "id": "site_prebuilt_shasta_mountains",
-  "nx": 144,
-  "nz": 96,
-  "h0": -0.08,
-  "hs": 0.25,
-  "v": "bd89fbb675",
-  "bytes": 13164,
-  "s": "5.5"
+  "v": "2ead80b24e",
+  "bytes": 1099,
+  "s": "1.7"
  },
  "site_prebuilt_camelot_kingdom": {
   "id": "site_prebuilt_camelot_kingdom",
@@ -47,7 +27,7 @@
   "hs": 0.25,
   "v": "d2ebe686b8",
   "bytes": 795,
-  "s": "5.0"
+  "s": "10.2"
  },
  "site_prebuilt_bermuda_beach": {
   "id": "site_prebuilt_bermuda_beach",
@@ -57,7 +37,7 @@
   "hs": 0.25,
   "v": "f3c40aeae1",
   "bytes": 1120,
-  "s": "3.6"
+  "s": "5.0"
  },
  "site_prebuilt_area51_desert": {
   "id": "site_prebuilt_area51_desert",
@@ -65,19 +45,9 @@
   "nz": 48,
   "h0": -2.35,
   "hs": 0.25,
-  "v": "a04934bca3",
-  "bytes": 767,
-  "s": "0.5"
- },
- "site_prebuilt_skinwalker_estate": {
-  "id": "site_prebuilt_skinwalker_estate",
-  "nx": 72,
-  "nz": 36,
-  "h0": -0.07,
-  "hs": 0.25,
-  "v": "8add610056",
-  "bytes": 1443,
-  "s": "3.7"
+  "v": "1353c9f6f6",
+  "bytes": 769,
+  "s": "0.8"
  },
  "site_prebuilt_heaven_plots": {
   "id": "site_prebuilt_heaven_plots",
@@ -87,7 +57,7 @@
   "hs": 0.25,
   "v": "bb0d1a12dc",
   "bytes": 597,
-  "s": "2.5"
+  "s": "4.5"
  },
  "site_prebuilt_antarctica_plots": {
   "id": "site_prebuilt_antarctica_plots",
@@ -95,9 +65,9 @@
   "nz": 72,
   "h0": 0,
   "hs": 0.25,
-  "v": "56d6729e55",
-  "bytes": 2779,
-  "s": "3.1"
+  "v": "30d103b68d",
+  "bytes": 2781,
+  "s": "4.7"
  },
  "site_prebuilt_downtown_streets": {
   "id": "site_prebuilt_downtown_streets",
@@ -105,19 +75,9 @@
   "nz": 216,
   "h0": -1.46,
   "hs": 0.26,
-  "v": "2fefaafb95",
-  "bytes": 11792,
-  "s": "28.3"
- },
- "site_prebuilt_gobekli_ancient": {
-  "id": "site_prebuilt_gobekli_ancient",
-  "nx": 108,
-  "nz": 84,
-  "h0": -1.8,
-  "hs": 0.25,
-  "v": "18245e5c33",
-  "bytes": 2885,
-  "s": "6.6"
+  "v": "dd970e2629",
+  "bytes": 11784,
+  "s": "42.4"
  },
  "site_prebuilt_vatican_under": {
   "id": "site_prebuilt_vatican_under",
@@ -127,7 +87,7 @@
   "hs": 0.25,
   "v": "ffc3eb63bd",
   "bytes": 233,
-  "s": "1.5"
+  "s": "0.8"
  },
  "site_prebuilt_vatican_plots": {
   "id": "site_prebuilt_vatican_plots",
@@ -137,7 +97,7 @@
   "hs": 0.25,
   "v": "33f6a4fa2d",
   "bytes": 1005,
-  "s": "3.6"
+  "s": "5.6"
  },
  "site_prebuilt_atlantis_deep": {
   "id": "site_prebuilt_atlantis_deep",
@@ -147,7 +107,7 @@
   "hs": 0.25,
   "v": "4a43a29675",
   "bytes": 4690,
-  "s": "1.4"
+  "s": "1.9"
  },
  "site_prebuilt_moon_plots": {
   "id": "site_prebuilt_moon_plots",
@@ -157,7 +117,7 @@
   "hs": 0.25,
   "v": "e717be5646",
   "bytes": 20487,
-  "s": "31.5"
+  "s": "34.0"
  },
  "site_prebuilt_dumb_base": {
   "id": "site_prebuilt_dumb_base",
@@ -165,39 +125,9 @@
   "nz": 84,
   "h0": -1.75,
   "hs": 0.25,
-  "v": "627a973bc1",
-  "bytes": 749,
-  "s": "15.2"
- },
- "site_prebuilt_mars_plots": {
-  "id": "site_prebuilt_mars_plots",
-  "nx": 60,
-  "nz": 48,
-  "h0": -5.35,
-  "hs": 0.25,
-  "v": "a53e404b0c",
-  "bytes": 1653,
-  "s": "2.2"
- },
- "site_prebuilt_saturn_plots": {
-  "id": "site_prebuilt_saturn_plots",
-  "nx": 48,
-  "nz": 48,
-  "h0": -3.89,
-  "hs": 0.25,
-  "v": "d2341cfcc1",
-  "bytes": 1595,
-  "s": "1.1"
- },
- "site_prebuilt_singularity_plots": {
-  "id": "site_prebuilt_singularity_plots",
-  "nx": 48,
-  "nz": 48,
-  "h0": -6.37,
-  "hs": 0.25,
-  "v": "cddeb0b0b4",
-  "bytes": 1593,
-  "s": "1.2"
+  "v": "fbff8fa322",
+  "bytes": 748,
+  "s": "20.4"
  },
  "site_prebuilt_hollow_earth_cavern": {
   "id": "site_prebuilt_hollow_earth_cavern",
@@ -205,9 +135,9 @@
   "nz": 72,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "80ca3fb295",
-  "bytes": 1198,
-  "s": "13.6"
+  "v": "77660714b7",
+  "bytes": 1203,
+  "s": "14.8"
  },
  "site_prebuilt_lookingglass_realm": {
   "id": "site_prebuilt_lookingglass_realm",
@@ -217,7 +147,7 @@
   "hs": 0.25,
   "v": "df9607cee9",
   "bytes": 1792,
-  "s": "3.5"
+  "s": "7.3"
  },
  "site_prebuilt_downtown_underworld": {
   "id": "site_prebuilt_downtown_underworld",
@@ -227,17 +157,7 @@
   "hs": 0.25,
   "v": "5360c0afcf",
   "bytes": 1686,
-  "s": "280.3"
- },
- "site_ow_r7_3_14": {
-  "id": "site_ow_r7_3_14",
-  "nx": 48,
-  "nz": 60,
-  "h0": -0.58,
-  "hs": 0.25,
-  "v": "05f53d30ee",
-  "bytes": 899,
-  "s": "0.5"
+  "s": "194.4"
  },
  "site_prebuilt_skinwalker_ow_corn": {
   "id": "site_prebuilt_skinwalker_ow_corn",
@@ -247,17 +167,7 @@
   "hs": 0.25,
   "v": "390d82f0e4",
   "bytes": 621,
-  "s": "1.1"
- },
- "site_ow_l8": {
-  "id": "site_ow_l8",
-  "nx": 12,
-  "nz": 48,
-  "h0": -0.69,
-  "hs": 0.25,
-  "v": "5591c2d6e3",
-  "bytes": 298,
-  "s": "0.2"
+  "s": "2.6"
  },
  "site_prebuilt_fairy_forest_ow_clearing": {
   "id": "site_prebuilt_fairy_forest_ow_clearing",
@@ -265,19 +175,9 @@
   "nz": 60,
   "h0": -3.5,
   "hs": 0.25,
-  "v": "fe68d7735e",
-  "bytes": 1613,
-  "s": "6.6"
- },
- "site_prebuilt_fairy_forest_ow_creek": {
-  "id": "site_prebuilt_fairy_forest_ow_creek",
-  "nx": 84,
-  "nz": 36,
-  "h0": -3.5,
-  "hs": 0.25,
-  "v": "dfc9917caf",
-  "bytes": 609,
-  "s": "2.4"
+  "v": "29c6d30ad9",
+  "bytes": 1624,
+  "s": "14.6"
  },
  "site_prebuilt_skinwalker_ow_lake": {
   "id": "site_prebuilt_skinwalker_ow_lake",
@@ -287,7 +187,7 @@
   "hs": 0.25,
   "v": "24d7365b55",
   "bytes": 1656,
-  "s": "1.1"
+  "s": "2.6"
  },
  "site_prebuilt_camelot_ow_garden": {
   "id": "site_prebuilt_camelot_ow_garden",
@@ -295,9 +195,9 @@
   "nz": 36,
   "h0": 0,
   "hs": 0.25,
-  "v": "596a1c76d7",
-  "bytes": 338,
-  "s": "0.5"
+  "v": "360dc39449",
+  "bytes": 343,
+  "s": "0.8"
  },
  "site_prebuilt_camelot_ow_pines": {
   "id": "site_prebuilt_camelot_ow_pines",
@@ -307,7 +207,7 @@
   "hs": 0.25,
   "v": "507d974e96",
   "bytes": 254,
-  "s": "0.5"
+  "s": "0.9"
  },
  "site_prebuilt_camelot_ow_fairy": {
   "id": "site_prebuilt_camelot_ow_fairy",
@@ -317,7 +217,7 @@
   "hs": 0.25,
   "v": "495e80480d",
   "bytes": 320,
-  "s": "0.4"
+  "s": "0.6"
  },
  "site_ow_l6": {
   "id": "site_ow_l6",
@@ -337,7 +237,7 @@
   "hs": 0.25,
   "v": "5cb47d5a9b",
   "bytes": 353,
-  "s": "0.6"
+  "s": "1.2"
  },
  "site_prebuilt_skinwalker_ow_ranch": {
   "id": "site_prebuilt_skinwalker_ow_ranch",
@@ -345,9 +245,9 @@
   "nz": 60,
   "h0": 1.67,
   "hs": 0.25,
-  "v": "d5cd692e33",
+  "v": "c7b10bed4d",
   "bytes": 828,
-  "s": "2.0"
+  "s": "2.5"
  },
  "site_prebuilt_skinwalker_ow_house": {
   "id": "site_prebuilt_skinwalker_ow_house",
@@ -357,7 +257,7 @@
   "hs": 0.25,
   "v": "2f0117fc24",
   "bytes": 1212,
-  "s": "1.9"
+  "s": "3.0"
  },
  "site_prebuilt_gobekli_ow_henge": {
   "id": "site_prebuilt_gobekli_ow_henge",
@@ -365,9 +265,9 @@
   "nz": 36,
   "h0": -1.22,
   "hs": 0.25,
-  "v": "1e510d9760",
+  "v": "f07ef3a21b",
   "bytes": 834,
-  "s": "0.8"
+  "s": "0.9"
  },
  "site_prebuilt_gobekli_ow_line": {
   "id": "site_prebuilt_gobekli_ow_line",
@@ -387,7 +287,7 @@
   "hs": 0.25,
   "v": "0b9ea2feb9",
   "bytes": 1677,
-  "s": "1.1"
+  "s": "1.3"
  },
  "site_prebuilt_gobekli_ow_babel": {
   "id": "site_prebuilt_gobekli_ow_babel",
@@ -397,7 +297,7 @@
   "hs": 0.25,
   "v": "2c2a8cbb17",
   "bytes": 874,
-  "s": "3.5"
+  "s": "4.2"
  },
  "site_ow_l4": {
   "id": "site_ow_l4",
@@ -407,7 +307,7 @@
   "hs": 0.25,
   "v": "6e9a8d76df",
   "bytes": 255,
-  "s": "0.2"
+  "s": "0.3"
  },
  "site_ow_l3": {
   "id": "site_ow_l3",
@@ -427,7 +327,7 @@
   "hs": 0.25,
   "v": "5a278d6550",
   "bytes": 1376,
-  "s": "2.3"
+  "s": "3.9"
  },
  "site_prebuilt_fairy_forest_ow_ritual": {
   "id": "site_prebuilt_fairy_forest_ow_ritual",
@@ -437,7 +337,7 @@
   "hs": 0.25,
   "v": "190656fa99",
   "bytes": 2804,
-  "s": "5.1"
+  "s": "9.0"
  },
  "site_prebuilt_area51_ow_circus": {
   "id": "site_prebuilt_area51_ow_circus",
@@ -457,17 +357,7 @@
   "hs": 0.25,
   "v": "089c961a55",
   "bytes": 410,
-  "s": "0.7"
- },
- "site_prebuilt_area51_highway": {
-  "id": "site_prebuilt_area51_highway",
-  "nx": 144,
-  "nz": 144,
-  "h0": -0.07,
-  "hs": 0.25,
-  "v": "fb2c339dce",
-  "bytes": 1019,
-  "s": "1.8"
+  "s": "0.6"
  },
  "site_prebuilt_area51_ow_giza": {
   "id": "site_prebuilt_area51_ow_giza",
@@ -477,47 +367,7 @@
   "hs": 0.25,
   "v": "8b379b0343",
   "bytes": 333,
-  "s": "0.4"
- },
- "site_prebuilt_downtown_ow_cells": {
-  "id": "site_prebuilt_downtown_ow_cells",
-  "nx": 24,
-  "nz": 12,
-  "h0": 15.75,
-  "hs": 0.25,
-  "v": "b105e88a61",
-  "bytes": 148,
-  "s": "0.4"
- },
- "site_prebuilt_downtown_ow_workings": {
-  "id": "site_prebuilt_downtown_ow_workings",
-  "nx": 24,
-  "nz": 12,
-  "h0": -0.8,
-  "hs": 0.25,
-  "v": "4def545def",
-  "bytes": 158,
-  "s": "0.4"
- },
- "site_prebuilt_downtown_ow_drain": {
-  "id": "site_prebuilt_downtown_ow_drain",
-  "nx": 24,
-  "nz": 12,
-  "h0": -0.8,
-  "hs": 0.25,
-  "v": "63f3360a33",
-  "bytes": 142,
-  "s": "1.5"
- },
- "site_prebuilt_atlantis_ow_trench": {
-  "id": "site_prebuilt_atlantis_ow_trench",
-  "nx": 24,
-  "nz": 60,
-  "h0": -0.2,
-  "hs": 0.25,
-  "v": "a927d51932",
-  "bytes": 813,
-  "s": "0.2"
+  "s": "0.5"
  },
  "site_prebuilt_atlantis_ow_floor": {
   "id": "site_prebuilt_atlantis_ow_floor",
@@ -527,7 +377,7 @@
   "hs": 0.25,
   "v": "c94d332d7d",
   "bytes": 720,
-  "s": "0.6"
+  "s": "0.2"
  },
  "site_prebuilt_hollow_earth_ow_long": {
   "id": "site_prebuilt_hollow_earth_ow_long",
@@ -537,7 +387,7 @@
   "hs": 0.25,
   "v": "5e70c0dbed",
   "bytes": 142,
-  "s": "0.5"
+  "s": "0.7"
  },
  "site_prebuilt_hollow_earth_ow_tunnelway": {
   "id": "site_prebuilt_hollow_earth_ow_tunnelway",
@@ -547,7 +397,7 @@
   "hs": 0.25,
   "v": "45aa3d9001",
   "bytes": 563,
-  "s": "20.9"
+  "s": "8.5"
  },
  "site_prebuilt_hollow_earth_ow_agartha": {
   "id": "site_prebuilt_hollow_earth_ow_agartha",
@@ -557,7 +407,7 @@
   "hs": 0.25,
   "v": "648c963db4",
   "bytes": 475,
-  "s": "3.1"
+  "s": "4.4"
  },
  "site_prebuilt_hollow_earth_ow_west": {
   "id": "site_prebuilt_hollow_earth_ow_west",
@@ -567,7 +417,7 @@
   "hs": 0.25,
   "v": "f22705b9a1",
   "bytes": 339,
-  "s": "3.7"
+  "s": "5.0"
  },
  "site_ow_r11": {
   "id": "site_ow_r11",
@@ -577,7 +427,7 @@
   "hs": 0.25,
   "v": "d4caacc5be",
   "bytes": 725,
-  "s": "0.4"
+  "s": "0.6"
  },
  "site_prebuilt_bermuda_ow_volcano": {
   "id": "site_prebuilt_bermuda_ow_volcano",
@@ -585,9 +435,9 @@
   "nz": 72,
   "h0": -0.03,
   "hs": 0.25,
-  "v": "4248f01344",
-  "bytes": 1251,
-  "s": "1.3"
+  "v": "62b14e4b53",
+  "bytes": 1254,
+  "s": "1.8"
  },
  "site_prebuilt_bermuda_ow_triangle": {
   "id": "site_prebuilt_bermuda_ow_triangle",
@@ -595,29 +445,9 @@
   "nz": 84,
   "h0": -0.04,
   "hs": 0.25,
-  "v": "982885964b",
-  "bytes": 584,
-  "s": "2.0"
- },
- "site_ow_r10_0_25": {
-  "id": "site_ow_r10_0_25",
-  "nx": 36,
-  "nz": 132,
-  "h0": -1.15,
-  "hs": 0.25,
-  "v": "6cc4a168a3",
-  "bytes": 1791,
-  "s": "1.0"
- },
- "site_ow_r10_26_37": {
-  "id": "site_ow_r10_26_37",
-  "nx": 24,
-  "nz": 72,
-  "h0": -0.87,
-  "hs": 0.25,
-  "v": "3f8205d2bd",
-  "bytes": 650,
-  "s": "0.5"
+  "v": "43380a7be3",
+  "bytes": 585,
+  "s": "2.2"
  },
  "site_prebuilt_internet_web": {
   "id": "site_prebuilt_internet_web",
@@ -627,7 +457,7 @@
   "hs": 0.25,
   "v": "cef018eb3b",
   "bytes": 785,
-  "s": "1.7"
+  "s": "2.7"
  },
  "site_prebuilt_bermuda_ow_frozen": {
   "id": "site_prebuilt_bermuda_ow_frozen",
@@ -657,7 +487,7 @@
   "hs": 0.25,
   "v": "3359a03764",
   "bytes": 1127,
-  "s": "0.8"
+  "s": "1.0"
  },
  "site_ow_r8": {
   "id": "site_ow_r8",
@@ -665,9 +495,9 @@
   "nz": 72,
   "h0": -0.88,
   "hs": 0.25,
-  "v": "757a064edc",
+  "v": "92c8bfed50",
   "bytes": 2190,
-  "s": "1.0"
+  "s": "1.1"
  },
  "site_ow_r9": {
   "id": "site_ow_r9",
@@ -677,7 +507,7 @@
   "hs": 0.25,
   "v": "36eb29e9ef",
   "bytes": 1036,
-  "s": "1.1"
+  "s": "1.0"
  },
  "site_ow_r6": {
   "id": "site_ow_r6",
@@ -687,7 +517,7 @@
   "hs": 0.25,
   "v": "a84b1291e8",
   "bytes": 1368,
-  "s": "1.7"
+  "s": "1.9"
  },
  "site_ow_dh2": {
   "id": "site_ow_dh2",
@@ -697,7 +527,7 @@
   "hs": 0.25,
   "v": "d356a18906",
   "bytes": 730,
-  "s": "0.7"
+  "s": "0.6"
  },
  "site_ow_dh3": {
   "id": "site_ow_dh3",
@@ -707,7 +537,7 @@
   "hs": 0.25,
   "v": "a28570f0b4",
   "bytes": 1053,
-  "s": "0.9"
+  "s": "1.0"
  },
  "site_ow_dh4": {
   "id": "site_ow_dh4",
@@ -717,7 +547,7 @@
   "hs": 0.25,
   "v": "4026491297",
   "bytes": 1650,
-  "s": "1.0"
+  "s": "1.1"
  },
  "site_ow_r3": {
   "id": "site_ow_r3",
@@ -737,7 +567,7 @@
   "hs": 0.25,
   "v": "e05403c0c7",
   "bytes": 717,
-  "s": "1.3"
+  "s": "0.8"
  },
  "site_ow_r2": {
   "id": "site_ow_r2",
@@ -747,7 +577,7 @@
   "hs": 0.25,
   "v": "c63963c142",
   "bytes": 2193,
-  "s": "0.9"
+  "s": "1.1"
  },
  "site_ow_r4": {
   "id": "site_ow_r4",
@@ -757,7 +587,7 @@
   "hs": 0.25,
   "v": "09d27b564a",
   "bytes": 1945,
-  "s": "2.7"
+  "s": "1.4"
  },
  "site_ow_r12": {
   "id": "site_ow_r12",
@@ -767,26 +597,56 @@
   "hs": 0.25,
   "v": "baa0858d5d",
   "bytes": 458,
-  "s": "0.9"
+  "s": "0.3"
  },
- "site_ow_r5_0_17": {
-  "id": "site_ow_r5_0_17",
-  "nx": 96,
-  "nz": 36,
-  "h0": -0.62,
+ "site_prebuilt_shasta_ow_olympus": {
+  "id": "site_prebuilt_shasta_ow_olympus",
+  "nx": 120,
+  "nz": 72,
+  "h0": 1.7,
   "hs": 0.25,
-  "v": "eefc7c8183",
-  "bytes": 969,
-  "s": "0.7"
+  "v": "ae21373552",
+  "bytes": 8751,
+  "s": "3.6"
  },
- "site_ow_r5_18_35": {
-  "id": "site_ow_r5_18_35",
+ "site_prebuilt_shasta_ow_shasta": {
+  "id": "site_prebuilt_shasta_ow_shasta",
   "nx": 84,
-  "nz": 48,
+  "nz": 84,
+  "h0": -0.07,
+  "hs": 0.25,
+  "v": "01e82613fa",
+  "bytes": 6362,
+  "s": "2.9"
+ },
+ "site_ow_r5": {
+  "id": "site_ow_r5",
+  "nx": 156,
+  "nz": 84,
   "h0": -0.74,
   "hs": 0.25,
-  "v": "129eab3502",
-  "bytes": 969,
-  "s": "0.6"
+  "v": "82a25ddb73",
+  "bytes": 3020,
+  "s": "2.1"
+ },
+ "site_prebuilt_shasta_ow_lodge": {
+  "id": "site_prebuilt_shasta_ow_lodge",
+  "nx": 120,
+  "nz": 108,
+  "h0": -0.07,
+  "hs": 0.25,
+  "v": "de32a0afe9",
+  "bytes": 12159,
+  "s": "6.8"
+ },
+ "site_ow_r10": {
+  "id": "site_ow_r10",
+  "nx": 36,
+  "nz": 204,
+  "h0": -1.17,
+  "hs": 0.25,
+  "v": "8abc5126e3",
+  "bytes": 2640,
+  "s": "1.2"
  }
 }
