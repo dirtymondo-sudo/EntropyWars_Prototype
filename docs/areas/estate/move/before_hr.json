@@ -1,0 +1,671 @@
+{
+ "rooms": [
+  "site_prebuilt_skinwalker_estate"
+ ],
+ "plots": {
+  "The Barn": {
+   "props": {
+    "horse_brown": 2,
+    "horse": 1,
+    "hw_straw": 19,
+    "hw_straw_2": 13,
+    "wooden_bucket": 1,
+    "cow": 2,
+    "meshy_burlap_sack": 3,
+    "psx_supply_crate_1": 1,
+    "wooden_barrel": 2,
+    "psx_wooden_crate_1": 2,
+    "psx_wooden_crate_2": 1,
+    "psx_wooden_crate_4": 1,
+    "platform_scale": 1,
+    "tool_chest": 1,
+    "tire_stack": 3,
+    "psx_jerrycan_1": 2,
+    "psx_car_battery_1": 1,
+    "covered_wagon": 1,
+    "hw_shovel": 1,
+    "broom": 1,
+    "anvil": 1,
+    "grindstone": 1,
+    "wooden_ladder": 1,
+    "cat": 1,
+    "chicken": 2,
+    "chain_hoist": 1,
+    "psx_ceiling_lamp_1_on": 1,
+    "bare_bulb": 1,
+    "iron_lamp_post": 1,
+    "cave_torch": 2,
+    "psx_metal_barrel_mp_1": 1,
+    "ind_silo": 1,
+    "ride_on_mower": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "cinder_block": 1,
+    "hitching_rail": 1,
+    "power_pole": 1,
+    "cattle_skull": 1,
+    "saddle": 2,
+    "pitchfork": 1,
+    "wheelbarrow": 1,
+    "owl_perched": 1
+   },
+   "features": {
+    "texbuilding#est:barn": 1,
+    "wall": 12,
+    "arch#est:barn:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Farmhouse": {
+   "props": {
+    "kitchen_range": 1,
+    "sink": 1,
+    "psx_shelf_mp_2": 1,
+    "bread_rack": 1,
+    "psx_table_large_2": 1,
+    "stock_pots": 1,
+    "pot_rack": 1,
+    "psx_plate_mp_1": 3,
+    "broom": 1,
+    "psx_dinner_table_1": 1,
+    "psx_chair_mp_1": 4,
+    "psx_display_cabinet_mp_1": 1,
+    "retro_radio": 1,
+    "hearth_fire": 1,
+    "psx_tv_table_1": 1,
+    "psx_tv_mp_1": 1,
+    "psx_shelf_mp_3": 1,
+    "cat": 2,
+    "footlocker": 2,
+    "hw_candle_2": 1,
+    "psx_clock_1": 1,
+    "doormat": 1,
+    "umbrella_stand": 1,
+    "rifle_rack": 1,
+    "psx_bed_1": 1,
+    "psx_bedside_table_1": 1,
+    "psx_lamp_1_on": 1,
+    "psx_wardrobe_mp_1": 1,
+    "psx_carpet_mp_1": 1,
+    "psx_ceiling_lamp_1_on": 2,
+    "bare_bulb": 1,
+    "rocking_chair": 1,
+    "dog": 1,
+    "railway_lantern": 1,
+    "chimney_smoke": 1,
+    "iron_lamp_post": 1,
+    "hw_farmland": 2,
+    "hw_crop_2": 3,
+    "hw_crop_3": 3,
+    "hw_crop": 2,
+    "hw_pumpkin_4": 2,
+    "hw_pumpkin": 2,
+    "hw_pumpkin_2": 2,
+    "hw_fence": 13,
+    "power_pole": 1,
+    "outhouse": 1,
+    "metal_trash_can": 1,
+    "garbage_bag": 1,
+    "hw_scarecrow": 1,
+    "psx_planter_pot_mp_1_full": 4,
+    "potted_plant": 2,
+    "iron_garden_bench": 1,
+    "hw_pumpkin_3": 2,
+    "rabbit": 2,
+    "wheelbarrow": 1,
+    "beehive": 3,
+    "bee": 2,
+    "tyre_swing": 1,
+    "kennel": 1,
+    "clothes_line": 1,
+    "sunflowers": 4,
+    "rose_bed": 2,
+    "leafy_bush": 1,
+    "bird_bath": 1,
+    "wild_flowers": 3,
+    "wood_stove": 1,
+    "oil_lamp": 1,
+    "antler_trophy": 1,
+    "firewood_stack": 1
+   },
+   "features": {
+    "texbuilding#est:farmhouse": 1,
+    "wall": 4,
+    "tree:tree_2": 2,
+    "tree:tree": 2,
+    "arch#est:farmhouse:look": 1
+   },
+   "doors": {
+    "link_ranch_lodge": 1
+   },
+   "natives": {}
+  },
+  "The Crypt": {
+   "props": {
+    "sarcophagus": 1,
+    "demon_statue": 1,
+    "psxg_coffin": 1,
+    "trap_coffin_wood": 1,
+    "candelabra": 2,
+    "candle": 3,
+    "candleRing": 1,
+    "skull_pile": 2,
+    "skull": 2,
+    "stone_urn": 2,
+    "hw_candles": 1,
+    "psx_cobweb_1": 1,
+    "psx_cobweb_2": 1,
+    "psx_cobweb_4": 1,
+    "trap_chain_draped": 1,
+    "bat_black": 1,
+    "bat_grey": 1,
+    "cave_torch": 1,
+    "hw_tree_4": 1,
+    "angel_statue": 1
+   },
+   "features": {
+    "texbuilding#est:crypt": 1,
+    "tree:tree_5": 1,
+    "arch#est:crypt:look": 1,
+    "arch#est:lamp10_63:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "necromancer": 1
+   }
+  },
+  "The Iron Gate": {
+   "props": {
+    "hw_gate_leaf": 1,
+    "hw_gate_leaf_2": 1,
+    "cave_torch": 2,
+    "iron_garden_bench": 1,
+    "stone_urn": 1,
+    "hw_pumpkin": 1,
+    "psxg_jack_o_lantern_2": 1,
+    "crow": 1,
+    "psxg_dead_bush_1": 1
+   },
+   "features": {
+    "wall": 2,
+    "tree:pine": 4,
+    "tree:tree_5": 2,
+    "arch#est:irongate:look": 1,
+    "arch#est:lamp22_40:look": 1
+   },
+   "doors": {
+    "bay13": 1
+   },
+   "natives": {}
+  },
+  "The Ranch Gate": {
+   "props": {
+    "braced_gate": 2,
+    "iron_lamp_post": 1,
+    "signpost": 1,
+    "cave_torch": 1,
+    "trailer_home_4": 1,
+    "trailer_home_6": 1,
+    "power_pole": 1,
+    "metal_trash_can": 1,
+    "garbage_bags": 1,
+    "folding_chair": 2,
+    "beach_cooler": 1,
+    "psx_old_mattress_mp_1": 1,
+    "tire_stack": 1,
+    "cinder_block": 1,
+    "garbage_bag": 1,
+    "dog": 1,
+    "mailbox": 1,
+    "antenna_dish": 1,
+    "picnic_table": 1,
+    "bbq_grill": 1
+   },
+   "features": {
+    "wall": 2,
+    "rail:ranch": 2
+   },
+   "doors": {},
+   "natives": {
+    "cowboy": 1,
+    "conspiracy theorist": 1
+   }
+  },
+  "The Yard": {
+   "props": {
+    "water_trough": 1,
+    "iron_lamp_post": 2,
+    "chicken": 11,
+    "campfire": 1,
+    "cardboard_boxes": 1,
+    "anthill": 1,
+    "ant": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "wooden_bucket": 1,
+    "cave_torch": 1,
+    "hw_fence": 16,
+    "water_tower_west": 1,
+    "firewood_stack": 2,
+    "axe_chopping_block": 1,
+    "hw_shovel": 1,
+    "psx_hand_saw_1": 1,
+    "garbage_bag": 1,
+    "cinder_block": 1,
+    "tire_stack": 1,
+    "psx_wooden_crate_4": 1,
+    "meshy_burlap_sack": 1,
+    "tractor": 1,
+    "wheelbarrow": 1,
+    "fence_with_gate": 1,
+    "pig": 3,
+    "rooster": 1
+   },
+   "features": {
+    "texbuilding#est:coop": 1,
+    "wall": 1,
+    "arch#est:ranchfittings:look": 1,
+    "rail:ranch": 4,
+    "arch#est:coop:look": 1
+   },
+   "doors": {
+    "bay": 1
+   },
+   "natives": {}
+  },
+  "The Paddock": {
+   "props": {
+    "fence_with_gate": 1,
+    "water_trough": 1,
+    "iron_lamp_post": 1,
+    "horse_brown": 1,
+    "horse_black": 1,
+    "horse": 1,
+    "wooden_bucket": 1,
+    "hawk": 1,
+    "hay_rack": 1
+   },
+   "features": {
+    "wall": 1,
+    "rail:ranch": 11
+   },
+   "doors": {},
+   "natives": {
+    "cowboy": 1
+   }
+  },
+  "The Pasture": {
+   "props": {
+    "water_trough": 1,
+    "cow": 5,
+    "grasshopper": 1,
+    "grasshopper_jump": 1,
+    "butterfly": 1,
+    "trailer_home_2": 1,
+    "decor_sheep": 7,
+    "hw_straw": 1,
+    "monarch": 1,
+    "bee": 1,
+    "bumblebee": 1,
+    "ladybug": 1,
+    "rabbit": 2,
+    "fallen_log": 1,
+    "stump": 1,
+    "goat": 2,
+    "wild_flowers": 3
+   },
+   "features": {
+    "wall": 1,
+    "tree:tree_2": 1,
+    "tree:tree": 1,
+    "rail:ranch": 5
+   },
+   "doors": {},
+   "natives": {
+    "goatman": 1
+   }
+  },
+  "The Windmill": {
+   "props": {
+    "iron_lamp_post": 1,
+    "decor_windpump_tower": 1,
+    "decor_windpump_wheel": 1,
+    "wooden_bucket": 1,
+    "cave_torch": 1,
+    "duck": 3
+   },
+   "features": {
+    "wall": 1
+   },
+   "doors": {
+    "ow_h_m11_18": 1
+   },
+   "natives": {}
+  },
+  "The Cow Field": {
+   "props": {
+    "iron_lamp_post": 1,
+    "cow": 5,
+    "grasshopper": 1,
+    "hw_straw": 1,
+    "hw_straw_2": 1,
+    "hay_rack": 1
+   },
+   "features": {
+    "wall": 4,
+    "rail:ranch": 4,
+    "tree:tree_2": 1,
+    "tree:tree": 1,
+    "arch#est:cowshed:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "grey": 1
+   }
+  },
+  "The Treehouse": {
+   "props": {
+    "fallen_log": 1,
+    "cave_torch": 1,
+    "telescope": 1,
+    "psx_wooden_crate_4": 1,
+    "rocking_chair": 1,
+    "psxg_dead_bush_1": 1,
+    "mushroom2": 1,
+    "psxg_rock_3": 1,
+    "hw_pumpkin_4": 1
+   },
+   "features": {
+    "plateau#est:treehouse": 1,
+    "climb": 1,
+    "tree:tree_4": 1,
+    "tree:pine": 5,
+    "arch#est:treehouse:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "werewolf": 1
+   }
+  },
+  "The Haunted House": {
+   "props": {
+    "stone_urn": 2,
+    "cave_torch": 2,
+    "planter": 2,
+    "hw_tree": 1,
+    "hw_tree_2": 1,
+    "hollow_dead_tree": 1,
+    "hw_fence_iron": 10,
+    "psxg_jack_o_lantern_1": 1,
+    "psxg_jack_o_lantern_2": 1,
+    "psxg_dead_bush_1": 2,
+    "psxg_dead_bush_2": 3,
+    "hw_pumpkin_2": 1,
+    "rocking_chair": 1,
+    "psx_wooden_crate_4": 2,
+    "broom": 2,
+    "cauldron": 1,
+    "psx_wooden_crate_6": 1,
+    "hw_tree_5": 1,
+    "wooden_cross": 1,
+    "psxg_dirt_grave": 1,
+    "hw_pumpkin_4": 1,
+    "psxg_dead_tree_2": 1,
+    "psxg_rock_2": 1,
+    "bat_black": 2,
+    "bat_grey": 2,
+    "bat_brown": 2,
+    "crow": 4
+   },
+   "features": {
+    "texbuilding#est:house": 1,
+    "wall": 4,
+    "tree:tree_5": 1,
+    "tree:tree_6": 1,
+    "arch#est:house:look": 1
+   },
+   "doors": {
+    "house": 1
+   },
+   "natives": {
+    "vampire": 1
+   }
+  },
+  "The Lawn": {
+   "props": {
+    "fountain": 1,
+    "iron_garden_bench": 2,
+    "hw_tree_3": 1,
+    "brazier": 1,
+    "crow": 2,
+    "play_swing": 1,
+    "stone_urn": 2,
+    "psxg_stepping_stone_1": 2,
+    "psxg_stepping_stone_2": 1,
+    "psxg_dead_bush_1": 2,
+    "psxg_dead_bush_2": 1,
+    "hw_pumpkin_3": 1,
+    "psxg_dead_tree_1": 1
+   },
+   "features": {
+    "tree:tree_6": 1,
+    "tree:pine": 3,
+    "arch#est:lamp31_58:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "ghost": 1
+   }
+  },
+  "The Gazebo": {
+   "props": {
+    "park_bench": 1,
+    "cave_torch": 1,
+    "iron_garden_bench": 1,
+    "hw_candles": 1,
+    "stone_urn": 1,
+    "psxg_dead_bush_2": 1,
+    "psxg_stepping_stone_2": 1,
+    "psxg_stepping_stone_1": 1,
+    "hw_pumpkin_2": 1,
+    "crow": 1,
+    "abandoned_house": 1
+   },
+   "features": {
+    "wall": 6,
+    "tree:tree_5": 1,
+    "tree:tree_6": 1,
+    "tree:pine": 4,
+    "arch#est:gazebo:look": 1,
+    "arch#est:lamp9_53:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "eagleman": 1
+   }
+  },
+  "The Family Plot": {
+   "props": {
+    "hw_stone_3": 4,
+    "hw_stone_2": 1,
+    "hw_grave": 4,
+    "hw_stone_4": 5,
+    "psxg_tombstone_2": 2,
+    "hw_grave_low": 2,
+    "hw_stone_1": 3,
+    "psxg_tombstone_3": 3,
+    "hw_stone_5": 2,
+    "psxg_tombstone_1": 1,
+    "sarcophagus": 1,
+    "hw_part_2": 4,
+    "hw_body_rising": 1,
+    "psxg_dirt_grave": 1,
+    "hw_stone": 2,
+    "angel_statue": 1,
+    "stone_urn": 2,
+    "hw_tree_2": 1,
+    "hw_tree": 1,
+    "hw_part_7": 1,
+    "hw_part_9": 1,
+    "hw_part_1": 1,
+    "hw_part_8": 1,
+    "skull": 3,
+    "hw_part_6": 1,
+    "candle": 1,
+    "hw_candles": 1,
+    "crow": 2,
+    "psxg_stepping_stone_1": 1,
+    "psxg_stepping_stone_2": 1,
+    "psxg_dead_bush_2": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_jack_o_lantern_1": 1,
+    "psxg_wall_pillar": 2,
+    "psxg_iron_gate_1": 1,
+    "psxg_iron_gate_2": 1,
+    "hw_fence_iron": 4,
+    "hw_fence_iron_3": 4,
+    "bat_brown": 1,
+    "abandoned_house": 1
+   },
+   "features": {
+    "tree:pine": 2,
+    "arch#est:lych17:look": 1,
+    "arch#est:lamp22_63:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "ghoul": 1
+   }
+  },
+  "The Graveyard": {
+   "props": {
+    "psxg_tombstone_2": 7,
+    "hw_stone_3": 8,
+    "hw_stone_5": 7,
+    "psxg_tombstone_1": 9,
+    "hw_stone_4": 9,
+    "hw_stone": 3,
+    "hw_stone_1": 11,
+    "hw_stone_2": 13,
+    "psxg_tombstone_3": 7,
+    "hw_tree_2": 1,
+    "hw_tree": 1,
+    "hw_tree_3": 1,
+    "hw_tree_5": 1,
+    "sarcophagus": 2,
+    "hw_part_2": 10,
+    "hw_tree_4": 1,
+    "psxg_dead_tree_2": 1,
+    "cave_torch": 2,
+    "hw_coffin": 2,
+    "hw_coffin_lid": 2,
+    "psxg_dirt_grave": 4,
+    "hw_body": 1,
+    "hw_coffin_2": 1,
+    "hw_coffin_lid_2": 1,
+    "hw_body_2": 2,
+    "hw_body_rising": 1,
+    "hw_shovel": 2,
+    "hw_body_rising_2": 1,
+    "hw_part_1": 5,
+    "hw_part_6": 6,
+    "hw_part_7": 2,
+    "hw_part_8": 9,
+    "hw_part": 2,
+    "hw_part_3": 2,
+    "hw_part_4": 1,
+    "hw_part_9": 1,
+    "skull": 8,
+    "psx_meat_1": 1,
+    "psx_meat_1_1": 1,
+    "stocks": 1,
+    "skull_pile": 2,
+    "crow": 6,
+    "hw_pumpkin": 1,
+    "psxg_jack_o_lantern_2": 1,
+    "psxg_jack_o_lantern_1": 1,
+    "hw_candle": 2,
+    "hw_candle_2": 2,
+    "hw_candles_2": 1,
+    "candle": 1,
+    "psxg_stepping_stone_1": 2,
+    "psxg_stepping_stone_2": 1,
+    "psxg_dead_bush_1": 1,
+    "psxg_dead_bush_2": 1,
+    "psxg_rock_2": 1,
+    "psxg_wall_pillar": 2,
+    "psxg_iron_gate_1": 1,
+    "psxg_iron_gate_2": 1,
+    "hw_fence_iron_3": 4,
+    "hw_fence_iron": 4,
+    "bat_black": 1,
+    "bat_grey": 1
+   },
+   "features": {
+    "wall": 3,
+    "arch#est:lych28:look": 1,
+    "arch#est:obelisk:look": 1,
+    "arch#est:tomb24:look": 1,
+    "arch#est:tomb33:look": 1,
+    "arch#est:lamp26_63:look": 1,
+    "arch#est:lamp34_63:look": 1,
+    "arch#est:lamp30_60:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "undead": 1,
+    "jack o lantern": 1,
+    "zombie": 1
+   }
+  },
+  "The Hay Field": {
+   "props": {
+    "car_truck": 1,
+    "meshy_burlap_sack": 2,
+    "crow": 5,
+    "grasshopper_brown": 1,
+    "hw_straw_2": 10,
+    "hw_straw": 8,
+    "hw_scarecrow_2": 1,
+    "plough": 1,
+    "hay_cart": 1,
+    "pitchfork": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Drive": {
+   "props": {},
+   "features": {
+    "tree:pine": 3,
+    "tree:tree_5": 1,
+    "arch#est:lamp30_42:look": 1,
+    "arch#est:lamp31_44:look": 1,
+    "arch#est:lamp30_46:look": 1,
+    "arch#est:lamp27_40:look": 1,
+    "arch#est:lamp33_40:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "(the room)": {
+   "props": {},
+   "features": {
+    "scatter:stump x4": 1,
+    "scatter:fallen_log x3": 1,
+    "scatter:dead_snag x3": 1
+   },
+   "doors": {},
+   "natives": {}
+  }
+ },
+ "lines": 1,
+ "totals": {
+  "props": 746,
+  "features": 144,
+  "doors": 5,
+  "natives": 14,
+  "lines": 1,
+  "plots": 19
+ }
+}

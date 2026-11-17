@@ -247,6 +247,16 @@ for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
     paint[y * W + x] = pal(ch === 'p' ? (lookSq[y][x] === 'highway' ? ASPH : kitOf(kindAt(x, y)).path) : (ch === 's' || ch === 'm') ? SHOULDER : k.floor);
 }
 
+/* A JOINED DISTRICT PAINTED AT HALF SQUARES (2026-11-17, the Leylines zone thread: Bug Colony's rings and paths are painted at the ground mesh's own
+   1.75 m step): the export's `paintHalf: true` = its paint is 2W x 2D. Then this room's paint is written at half squares too (the kit's own squares
+   twice over), so the district's ground comes in as it was drawn. */
+const PR = JOIN && JOIN.paintHalf ? 2 : 1;
+let paintOut = paint;
+if (PR === 2) { paintOut = new Uint8Array(4 * W * Dq);
+    for (let y = 0; y < 2 * Dq; y++) for (let x = 0; x < 2 * W; x++) { const sx = x >> 1, sy = y >> 1;
+        if (foreign(sx, sy)) { const pi = JOIN.paint[(y - 2 * FOY) * (2 * JOIN.W) + (x - 2 * FOX)]; paintOut[y * 2 * W + x] = pal(pi ? JOIN.pal[pi - 1] : JOIN.floor); } else paintOut[y * 2 * W + x] = paint[sy * W + sx]; } }
+if (PAL.length > 8) console.log('WARNING: ' + PAL.length + ' ground sheets (the game draws eight; a ninth draws as the floor): ' + PAL.join(', '));
+
 /* ── placing things ── */
 const F = [], props = [], doors = [], marks = [], npc = [], taken = new Set(), errs = [];
 const feat = o => { F.push(o); return o; };
@@ -340,10 +350,14 @@ if (HOOK && typeof HOOK.dress === 'function') HOOK.dress(CTX);
 
 /* ── THE DOORS at the ends: the spec's word, or the placed room the map finds past the line ── */
 const OW = { at: (x, y) => { try { return D.hqOwAt(x, y, 'surface'); } catch (e) { return null; } } };
-const open = [];
+const open = [], LINK_AT = [];
 ENDS.forEach(e => {
     const s = (SPEC.ends || {})[e.id], found = OW.at(e.past[0], e.past[1]), to = (s && s.room) || (found && found.room !== ROOM && found.room) || null;
     const g = groundAt(e.past[0], e.past[1]);
+    /* A LINK'S END ON A SEAM (2026-11-17, the Woods zone thread): the spec's `ends: { '<seam id>': { link: '<DOOR_HQ.links id>', side: 'a' | 'b' } }` = that
+       two-way link stands on this end (its id kept: woods_camelot on L4's west end), so no seam door is written; the link's end is moved here (below) */
+    if (s && s.link) { const sq = e.onWall ? { wall: e.side, [e.side === 'n' || e.side === 's' ? 'x' : 'z']: e.along } : { wall: 'free', x: gcx(e.sq[0]), z: gcz(e.sq[1]), face: e.side === 'n' ? 180 : e.side === 'e' ? 270 : e.side === 's' ? 0 : 90, passage: FREE_PASS };
+        LINK_AT.push([s.link, s.side || 'a', sq]); return; }
     if (!to) { open.push(e.id + '  ' + e.side + ' side, world plot ' + e.past.join(',') + ' (' + g.kind + '): no room stands there yet'); return; }
     /* THE OPEN SEAM (data.js DOOR_HQ.ways.open; mondo: no portal in open country, arches only on forest walls, cliffs and buildings): a road's or a
        highway's end is open (the road runs on); a trail's end is open where the ground on both sides of the line is open (grass, scrub, desert, snow),
@@ -443,7 +457,7 @@ if ((JOIN && JOIN.grassField) || grounds.some(k => KIT[PJ.ground.key[Object.keys
 L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
 L.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(ENDS.filter(e => e.onWall).map(e => ({ side: e.side, at: e.along }))) + " },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + slope.toString('base64') + "' } },");
-L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
+L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + (C / PR) + ", x0: " + r2(-HX + C / (2 * PR)) + ", z0: " + r2(-HZ + C / (2 * PR)) + ", nx: " + (W * PR) + ", nz: " + (Dq * PR) + ", d: '" + Buffer.from(paintOut).toString('base64') + "' },");
 L.push("                /* every square that is not a `space` is ground nobody walks: a forest plot grows its trees there, open ground grows nothing */");
 L.push("                gen: { kind: 'plan', look: 'trees', seed: " + (hashStr(ID) % 97) + ", rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + (anyMass ? Math.min(2400, 220 * PLOTS.length) : 0) + ", treeH: [5.5, 8.5], kinds: " + J(KIT.forest.treeKinds) + ", zones: " + J(zones) + " },");
 if (marks.length) L.push("                marks: " + J(marks) + ",");
@@ -482,5 +496,10 @@ if (src.indexOf(BOX0) < 0) {
 const END = '        /* OWROUTE ' + ID + STRETCH + '-END */\n', b0 = src.indexOf('        /* OWROUTE ' + ID + STRETCH + '-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const at = src.indexOf(BOX1); src = src.slice(0, at) + block + src.slice(at); }
+/* the links that stand on this room's ends: the end's site, part and place are rewritten; the rest of its line (its sub, its way) is kept */
+LINK_AT.forEach(([id, side, q]) => { const i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('bake-route: no link ' + id);
+    const re = new RegExp('(\\n +' + side + ": \\{ site: )'[a-z0-9_]+', part: '[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('bake-route: link ' + id + ' has no end ' + side);
+    const head = m[1] + "'" + SITE + "', part: '" + (SPEC.part || ('ow_' + ID.toLowerCase() + STRETCH)) + "', wall: '" + q.wall + "'" + (q.x != null ? ', x: ' + q.x : '') + (q.z != null ? ', z: ' + q.z : '') + (q.face != null ? ', face: ' + q.face : '') + (q.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
+    src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); console.log('link ' + id + ' end ' + side + ' -> ' + ROOM + ' ' + JSON.stringify(q)); });
 fs.writeFileSync(file, src);
 console.log('data.js: ' + ROOM + ' written (' + block.length + ' bytes). Then: node --check data.js' + (SPEC.proof ? ' (a proof room: not on the map).' : '; node bake-map.js ' + ROOM + ' (its map picture + its row in HQ_ZONE_MAP).'));

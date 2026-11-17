@@ -11,7 +11,10 @@
    written in docs/areas/estate/districts/<LETTER>.js (C the Corn Fields, L the Lake, H the Haunted House + Graveyard, R the Ranch), one thread a file.
    This tool keeps what is shared: the plan, the corn wall and its pines, the levels, the paint, the open ground, the ways out, the sky, the checks.
    THE CORN IS THE WALL: the plan's `c` squares are the standing corn (terrain.gen plan / look rock: a 2.2 m bank, the old Corn Fields' own corn);
-   everything else is walked. Squares are (sx 0..72 west to east, sy 0..72 north to south); gx() = a square's west / north line in metres, gc() = its middle. */
+   everything else is walked. Squares are (sx 0..72 west to east, sy 0..72 north to south); gx() = a square's west / north line in metres, gc() = its middle.
+   ONE WORLD (2026-11-17): the home frame above is no room of its own any more. THE ONE WORLD MOVE (below) stands every district at its v13 place: the
+   Corn Fields, the Lake (handed to the route kit: County Lane's room), the Haunted House and the Ranch (phase 3). `site_prebuilt_skinwalker_estate` is
+   retired (DOOR_HQ.retired -> the Ranch). Notes: areas-complexes.md "ONE WORLD, THE ESTATE RE-LAID". */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const REPO = __dirname, DRY = process.argv.includes('--dry-run');
@@ -227,6 +230,9 @@ const OWP = require('./ow-places.js');
 const R7 = PJ.routes.find(r => r.id === 'R7'), R7_HERE = [[-13, 5, 'County Lane, the north field'], [-13, 8, 'County Lane, the middle field'], [-13, 10, 'County Lane, the south field']];   // (each field is renamed for the place that stands on it, below)
 R7_HERE.forEach(q => { if (!R7.plots.some(p => p[0] === q[0] && p[1] === q[1])) throw new Error('plots.json: R7 has no plot ' + q[0] + ',' + q[1]); });
 const R_CORN = 'site_prebuilt_skinwalker_ow_corn', R_LAKE = 'site_prebuilt_skinwalker_ow_lake', R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing';
+const R_HOUSE = 'site_prebuilt_skinwalker_ow_house', R_RANCH = 'site_prebuilt_skinwalker_ow_ranch', R_RITUAL = 'site_prebuilt_fairy_forest_ow_ritual';   // (R_RITUAL: the Woods' room that holds the Ritual Ground + L2 + L5, written by bake-woods.js)
+const R8 = PJ.routes.find(r => r.id === 'R8'), R8_HERE = [[-10, 18, 'Ranch Road, the lake field']];   // R8's one plot in the Ranch's box, alone between the Lake, the gate and the Barn (rule 4: the district's room's)
+R8_HERE.forEach(q => { if (!R8.plots.some(p => p[0] === q[0] && p[1] === q[1])) throw new Error('plots.json: R8 has no plot ' + q[0] + ',' + q[1]); });
 /* the seams: the plot, its side, how many squares along that side from the plot's corner the path crosses (left out: where the plot is open), the room past it */
 const STAND = [
     { id: R_CORN, part: 'ow_corn', label: 'THE CORN FIELDS', sub: 'THE ESTATE · COUNTY LANE · 12 PLOTS', letters: ['C'], world: true, lane: true,
@@ -244,18 +250,44 @@ const STAND = [
     { id: R_LAKE, part: 'ow_lake', label: 'THE LAKE', sub: 'THE ESTATE · 9 PLOTS', letters: ['L'], world: true, kit: true, list: v13('L'),
       parti: 'A lake between its shores, nine plots: the reeds and the north shore where the lane comes in, the boathouse, the dock, the marsh, and open water in the middle.',
       seams: [
-          /* not moved yet: the Ranch. Its gate stands south of the lake's south shore on the map; until it moves, the way on is the Windmill's track */
-          { plot: 'P04-02', side: 'S', along: 6, id: 'ow_h_m11_18', room: ROOM, spawn: true, open: 6, label: 'THE RANCH', sub: 'THE SOUTH SHORE · THE TRACK TO THE WINDMILL', desc: 'A track leaves the shore between fence posts.' },
+          /* the Ranch: its gate stands right south of the lake's south shore (phase 3 moved it there) */
+          { plot: 'P04-02', side: 'S', along: 6, id: 'ow_h_m11_18', room: R_RANCH, spawn: true, open: 6, label: 'THE RANCH', sub: 'THE SOUTH SHORE · THE RANCH GATE', desc: 'A track leaves the shore between fence posts.' },
       ] },
-    { id: ROOM, part: 'estate', label: 'THE ESTATE', sub: 'THE HAUNTED HOUSE · THE RANCH · 18 PLOTS', letters: ['H', 'R'], world: false, home: true, list: PLAN.plots.filter(p => p.d === 'H' || p.d === 'R').map(p => ({ id: p.id, wx: p.x, wy: p.y })),
-      parti: 'Two districts of nine plots, every plot a twelve by twelve board: a ranch, and a house on its rise with the graveyard below it, in corn you cannot see over.',
-      seams: [ { plot: 'P04-03', side: 'N', id: 'ow_h_m11_18', room: R_LAKE, spawn: true, open: 6, label: 'THE LAKE', sub: 'THE TRACK NORTH · THE SOUTH SHORE', desc: 'The track runs down to water.' } ] },
+    /* PHASE 3 (2026-11-17, BUILD_PLAN wave A, the Estate thread): THE HAUNTED HOUSE and THE RANCH stand at their v13 places too, one room each (the
+       room-splitting rule: the Ranch touches the Lake, but the Lake's room holds 25 plots and 25 + 10 is over 30; the house stands alone in the forest,
+       up its own drive from the wild link L5, which is the Woods' and joins the Ritual Ground's room by rule 4). The old room id is retired. */
+    { id: R_HOUSE, part: 'ow_house', label: 'THE HAUNTED HOUSE', sub: 'THE ESTATE · THE DRIVE, THE HOUSE AND THE GRAVEYARD · 9 PLOTS', letters: ['H'], world: true, ewJoin: true, list: v13('H'),
+      parti: 'A house on its rise at the top of a long drive through the corn: the iron gate, the drive, the lawn, the house between its gazebo and its treehouse, the graveyard below it and the crypt at the end.',
+      seams: [
+          /* THE DRIVE IN: the Iron Gate's north side, where the Woods' wild link L5 comes down from the Ritual Ground (the Woods thread writes the other side) */
+          { plot: 'P01-03', side: 'N', id: 'ow_h_m21_11', room: R_RITUAL, spawn: true, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL NORTH · OUT OF THE IRON GATE', desc: 'Past the gate a trail goes off north into the trees.' },
+      ] },
+    { id: R_RANCH, part: 'ow_ranch', label: 'THE RANCH', sub: 'THE ESTATE · THE RANCH · 10 PLOTS', letters: ['R'], world: true, fields: true, fieldPlaces: ['bees'],
+      /* THE STABLE DOOR (Room 512's bay, siteRooms.entry.prebuilt_skinwalker): it stood on the Yard's south wall; the Yard is inside the room now (the Paddock
+         stands south of it), so the door goes on the room's own south wall, at the Cow Field's foot, with a track cut up to the field's open ground */
+      bay: { plot: 'P05-05', k: 5 },
+      list: v13('R').concat(R8_HERE.map(q => ({ wx: q[0], wy: q[1], name: q[2], district: 'R', level: 1 }))),
+      parti: 'A working ranch in the corn, nine plots and the Ranch Road\'s field at its north-east corner: the gate on the lake side, the yard between the barn and the farmhouse, the paddock, the windmill, the pastures and the cow field at the south end.',
+      seams: [ { plot: 'P03-05', side: 'N', id: 'ow_h_m11_18', room: R_LAKE, spawn: true, open: 6, label: 'THE LAKE', sub: 'THE RANCH GATE · THE SOUTH SHORE', desc: 'The track runs down to water.' } ] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 };   // a free door on that side of a plot: the way its opening faces, INTO the plot (ow-move.js)
 const ROOMS_OUT = [], STRAYS = [], PLACES = {};
 STAND.forEach(S => {
     const R = MOVER.room(S.list), Wn = R.W, Dn = R.D, c2 = R.cell, chg = new Set();
     R.strays.forEach(t => STRAYS.push(S.label + ': ' + t));
+    /* THE HOUSES PAST THE CORN (pieces the district files set OUTSIDE the home room, e.g. H.js's two rim houses): they move with the plot they lie
+       past. One that now lands inside the new room's box, or on its wall, is a STRAY: it is set past the room's wall on the nearest side of its own plot
+       that has no plot beside it, as far out as it lay before (printed below; nothing is dropped) */
+    props.forEach(hp => { const ox = Math.max(0, Math.abs(hp.x) - HALF), oz = Math.max(0, Math.abs(hp.z) - HALF); if (!ox && !oz) return;
+        const to = R.toRoom(hp.x, hp.z); if (!to) return; const q = R.props.find(p => p.key === hp.key && p.x === to[0] && p.z === to[1]); if (!q) return;
+        if (Math.abs(q.x) > R.HX + 1 || Math.abs(q.z) > R.HZ + 1) return;
+        const e = R.at[Math.min(R.cols - 1, Math.max(0, Math.floor((q.x + R.HX) / PL))) + ',' + Math.min(R.rows - 1, Math.max(0, Math.floor((q.z + R.HZ) / PL)))];
+        const out = Math.max(ox, oz), cx = -R.HX + (e.col + 0.5) * PL, cz = -R.HZ + (e.row + 0.5) * PL;
+        const sides = [['W', e.col === 0, [-R.HX - out, cz]], ['E', e.col === R.cols - 1, [R.HX + out, cz]], ['N', e.row === 0, [cx, -R.HZ - out]], ['S', e.row === R.rows - 1, [cx, R.HZ + out]]].filter(t => t[1]);
+        if (!sides.length) throw new Error(S.id + ': ' + hp.key + ' past the corn has no outside side on ' + e.name);
+        const w = sides.sort((a, b) => Math.hypot(a[2][0] - q.x, a[2][1] - q.z) - Math.hypot(b[2][0] - q.x, b[2][1] - q.z))[0];
+        STRAYS.push(S.label + ': ' + hp.key + ' (past the corn) fell on the room at ' + q.x + ',' + q.z + ': set past the ' + w[0] + ' wall of ' + e.name + ' at ' + r2(w[2][0]) + ',' + r2(w[2][1]));
+        q.x = r2(w[2][0]); q.z = r2(w[2][1]); });
     const inR = (x, y) => x >= 0 && y >= 0 && x < Wn && y < Dn, openR = (x, y) => inR(x, y) && c2[y][x] !== 'c';
     const set = (x, y, ch) => { if (inR(x, y) && c2[y][x] !== ch) { c2[y][x] = ch; chg.add(x + ':' + y); } };
     const sqOf = (x, z) => [Math.floor((x + R.HX) / C + 1e-9), Math.floor((z + R.HZ) / C + 1e-9)];
@@ -268,9 +300,11 @@ STAND.forEach(S => {
     const seamOn = (e, sd) => S.seams.some(q => seamPlot(q) === e && q.side === sd);
     const doorOn = (e, sd) => R.doors.some(d => d.plot === e && d.side === sd.toLowerCase());
     const cnt = { lane: 0, cut: 0, back: 0, rowsOut: 0, rowsIn: 0 };
-    if (S.lane) {
-        /* THE FIELDS on County Lane's own plots: open grass inside a rim of corn, open to the lane */
+    if (S.lane || S.fields) {
+        /* THE FIELDS on a route's own plots (County Lane's in the corn, the Ranch Road's by the Ranch): open grass inside a rim of corn */
         R.order.filter(e => e.isNew).forEach(e => { for (let ly = 1; ly <= 10; ly++) for (let lx = 2; lx <= 10; lx++) set(e.col * N + lx, e.row * N + ly, 'g'); });
+    }
+    if (S.lane) {
         /* THE LANE: four squares of dirt down the line between the two columns, from the north field to the south wall */
         for (let y = 1; y < Dn; y++) for (let x = Wn / 2 - 2; x < Wn / 2 + 2; x++) if (c2[y][x] === 'c') { set(x, y, 'p'); cnt.lane++; }
     }
@@ -278,10 +312,11 @@ STAND.forEach(S => {
         /* a track cut inward from a side's square until it meets the plot's open ground */
         const inward = (e, sd, k) => { const [bx, by] = border(e, sd, k), dx = -SIDE4[sd][0], dy = -SIDE4[sd][1]; for (let i = 0; i < N; i++) { const x = bx + dx * i, y = by + dy * i; if (R.plotOfSq(x, y) !== e) return; if (openR(x, y)) { if (i) return; continue; } set(x, y, 'p'); cnt.cut++; } };
         /* two plots, one over the other: where either is open on the line the other opens too, joined along the line where the two openings stand apart */
-        R.order.forEach(A => { const B = nbr(A, 'S'); if (!B) return; const oa = openK(A, 'S'), ob = openK(B, 'N'); if (!oa.length && !ob.length) return;
+        [['S', 'N'], ['E', 'W']].forEach(([SA, SB]) => R.order.forEach(A => { if (SA === 'E' && !S.fields && !S.ewJoin) return; const B = nbr(A, SA); if (!B) return; const oa = openK(A, SA), ob = openK(B, SB); if (!oa.length && !ob.length) return;
             let ks = [...new Set(oa.concat(ob))].sort((a, b) => a - b); if (oa.length && ob.length) { const lo = ks[0], hi = ks[ks.length - 1]; ks = []; for (let k = lo; k <= hi; k++) ks.push(k); }
-            ks.forEach(k => { for (const [e, sd] of [[A, 'S'], [B, 'N']]) { const q = border(e, sd, k); if (!openR(q[0], q[1])) { set(q[0], q[1], 'p'); cnt.cut++; } } });
-            if (!oa.length) ob.forEach(k => inward(A, 'S', k)); if (!ob.length) oa.forEach(k => inward(B, 'N', k)); });
+            ks.forEach(k => { for (const [e, sd] of [[A, SA], [B, SB]]) { const q = border(e, sd, k); if (!openR(q[0], q[1])) { set(q[0], q[1], 'p'); cnt.cut++; } } });
+            if (!oa.length) ob.forEach(k => inward(A, SA, k)); if (!ob.length) oa.forEach(k => inward(B, SB, k)); }));
+        if (S.bay) { const e = R.ofHome[S.bay.plot]; if (!e || e.row !== R.rows - 1) throw new Error(S.id + ': the stable door\'s plot is not on the south wall'); [S.bay.k, S.bay.k + 1].forEach(k => inward(e, 'S', k)); }
     }
     {   /* (every room, the plots that did not move too: their tracks north led to the corn and the lake) */
         /* a track that led to a plot which is no longer there: back to corn, from the line inward, while it is a plain corridor nothing stands on */
@@ -311,13 +346,13 @@ STAND.forEach(S => {
             for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { if (!inR(x + dx, y + dy) || openR(x + dx, y + dy) || (x + y) % 3 === 0) continue; if (!chg.has(x + ':' + y) && !chg.has((x + dx) + ':' + (y + dy))) continue;
                 propsOut.push({ key: 'corn_row', x: r2(R.gcx(x) + dx * 1.42 + (dx ? 0 : (rr() - 0.5) * 0.3)), z: r2(R.gcz(y) + dy * 1.42 + (dy ? 0 : (rr() - 0.5) * 0.3)), face: (dx ? 90 : 0) + (rr() < 0.5 ? 180 : 0), noBlock: true }); cnt.rowsIn++; } } }
     const featsOut = R.features.slice();
-    if (S.lane) R.order.filter(e => e.isNew).forEach((e, i) => { const x0 = e.col * N, y0 = e.row * N;
+    if (S.lane || S.fields) R.order.filter(e => e.isNew).forEach((e, i) => { const x0 = e.col * N, y0 = e.row * N;
         /* the fields' own dressing (the route kit's farmland: sunflowers, wild flowers, a milestone on the lane, a ranch fence with its gap): the tool's, not a district's */
         featsOut.push({ k: 'scatter', key: 'sunflowers', n: 5, seed: 700 + i, x: R.gx(x0 + 6.5), z: R.gz(y0 + 6), r: 13, r0: 0.6 }, { k: 'scatter', key: 'wild_flowers', n: 9, seed: 710 + i, x: R.gx(x0 + 6.5), z: R.gz(y0 + 6), r: 14 });
         featsOut.push({ k: 'rail', x0: R.gx(x0 + 2), z0: R.gz(y0 + 1), x1: R.gx(x0 + 2), z1: R.gz(y0 + 4.5), model: 'ranch' }, { k: 'rail', x0: R.gx(x0 + 2), z0: R.gz(y0 + 7.5), x1: R.gx(x0 + 2), z1: R.gz(y0 + 11), model: 'ranch' });
         propsOut.push({ key: 'milestone', x: R.gcx(x0 + 2), z: R.gcz(y0 + 5), face: 270 });
         /* THE PLACE ON THE WAY (ow-places.js: one a route plot; the names are ideas): the hay stack, the bee yard, the rest, off the lane on the field's east side */
-        const pl = OWP.PLACES[['haystack', 'bees', 'rest'][i % 3]]; e.name = 'County Lane, ' + pl.name;
+        const pl = OWP.PLACES[(S.fieldPlaces || ['haystack', 'bees', 'rest'])[i % 3]]; e.name = (S.lane ? 'County Lane, ' : 'Ranch Road, ') + pl.name;
         OWP.lay(pl, x0 + 8, y0 + 4, { P: (key, sx, sy, o) => propsOut.push(Object.assign({ key, x: R.gcx(sx), z: R.gcz(sy) }, o || {})), at: (key, fx, fy, o) => propsOut.push(Object.assign({ key, x: R.gx(fx), z: R.gz(fy) }, o || {})) }); });
     /* the seams: a door on each crossing */
     const takes = S.seams.map(q => q.takes).filter(Boolean), doorsOut = R.doors.filter(d => takes.indexOf(d.id) < 0).map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; }), ways = []; let spSq = null, spFace = 180;
@@ -341,6 +376,7 @@ STAND.forEach(S => {
     /* the hand-written rows of data.js that name a place in the home room: where each stands now */
     [['bay', { wall: 's', x: BAY_X }], ['bay13', Object.assign({ wall: 'free' }, BAY13)], ['well', Object.assign({ wall: 'free' }, WELL)], ['lodge', Object.assign({ wall: 'free' }, LODGE)]].forEach(([k, h]) => {
         const hx = h.x, hz = h.wall === 's' ? HALF - 0.5 : h.z, hp = MOVER.homePlot(hx, hz), e = R.ofHome[hp.id]; if (!e) return;
+        if (k === 'bay' && S.bay) { const eb = R.ofHome[S.bay.plot]; PLACES.bay = { room: S.id, part: S.part, wall: 's', x: r2(R.gx(eb.col * N + S.bay.k + 1)) }; return; }
         PLACES[k] = h.wall === 's' ? { room: S.id, part: S.part, wall: 's', x: r2(h.x + e.dx) } : { room: S.id, part: S.part, wall: 'free', x: r2(h.x + e.dx), z: r2(h.z + e.dz), face: h.face }; });
     /* every plot is reached on foot from the spawn */
     { const seen = new Uint8Array(Wn * Dn), st = [spSq]; seen[spSq[1] * Wn + spSq[0]] = 1; while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (openR(X, Y) && c2[Y][X] !== 'B' && !seen[Y * Wn + X]) { seen[Y * Wn + X] = 1; st.push([X, Y]); } } }

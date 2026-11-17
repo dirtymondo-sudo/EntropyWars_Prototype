@@ -4058,6 +4058,10 @@ function _hrlgStatusChips(unit) {
   /* 🐝 THE POLLEN (battle.js): what the Bee Queen carries, and the Honey it gives her */
   const pol = unit.pollen | 0;
   if (pol > 0) chips.push({ key: 'pollen', label: 'POLLEN ' + pol + '/' + (window.POLLEN_MAX || 3), kind: 'up', title: 'Pollen: +' + pol * 8 + ' ATK, spell power and SPD. Pollinate spends one.' });
+  /* 🙌 THE PLATE (THE TELEVANGELIST PASS 2026-11-17): what is in the collection plate, which Miracle heals on top
+     (battle.js unit._plate, rides the state sync) */
+  const plt = Math.max(0, unit._plate || 0);
+  if (plt > 0 && !unit.dead) chips.push({ key: 'plate', label: 'PLATE ' + plt, kind: 'up', title: 'Collection Plate: Miracle heals ' + plt + ' HP more and empties it.' });
   /* 🦗 THE BROOD (the Cicada Brood, 2026-11-17): the stacks it banked dug in, and what they add to Chorus */
   const brd = unit._brood | 0;
   if (brd > 0) chips.push({ key: 'brood', label: 'BROOD ' + brd + '/3', kind: 'up', title: 'Brood: Chorus deals +' + brd * 45 + ' damage and spends them.' });
@@ -7999,8 +8003,9 @@ function ActionMenu({ st, hidden }) {
   // already IS the race label — the default nametag mode). THE JOBS REMOVAL
   // (the user 2026-09-27): the job label is gone.
   const _lvl = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
-  const _raceLbl = (unit.race && typeof getRaceLabel === 'function')
-    ? getRaceLabel(unit.race, unit.gender)
+  const _lkU = (typeof window.ewDrawnUnit === 'function') ? window.ewDrawnUnit(unit) : unit;   // 🤳 THE FILTER: the swapped look
+  const _raceLbl = (_lkU.race && typeof getRaceLabel === 'function')
+    ? getRaceLabel(_lkU.race, _lkU.gender)
     : (unit.race ? unit.race.charAt(0).toUpperCase() + unit.race.slice(1) : '');
   const subLine = 'Lv' + _lvl
     + (_raceLbl && _raceLbl !== unitName ? ' · ' + String(_raceLbl).toUpperCase() : '');
@@ -8018,7 +8023,7 @@ function ActionMenu({ st, hidden }) {
     view: view, panels: panels, fc: fc,
     roman: roman, unitName: unitName, unitKey: unit.id, apUnit: unit,
     subLine: subLine,
-    unitTypes: (unit.types || []).slice(0, 2),
+    unitTypes: (_lkU.types || unit.types || []).slice(0, 2),
     portraitUrl: _portUrl,
     portraitIsFace: _portIsFace,
     // clicking the clock portrait re-centers the camera on the unit — the

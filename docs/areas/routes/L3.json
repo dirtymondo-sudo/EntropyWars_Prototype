@@ -1,5 +1,19 @@
 {
-  "about": "THE PROOF STRETCH (One World foundation, 2026-11-17): wild link L3, the Redwood Trail's Snowline up to the Snowy Pass's Tree Line. Baked to prove the route kit; no door leads here and it is not on the map. The Woods zone thread (BUILD_PLAN phase 3) drops `proof`, adds `ends` once its rooms stand, and rebakes.",
-  "proof": true,
-  "label": "THE TRAIL · THE SNOWLINE TO THE TREE LINE"
+  "about": "WILD LINK L3 (One World, the Woods zone thread, BUILD_PLAN phase 3, 2026-11-17; was the kit's proof stretch): the Redwood Trail's Snowline north up to the Snowy Pass's Tree Line, west. Its own room (5 plots): it cannot join the Redwood Trail's room (the box would be 13 plots tall) and two zones never join. Ends: the Snowline's north side (seam ow_h_m17_m9, the Redwood Trail's room) and the Tree Line, west's west side (seam ow_v_m16_m14, the Mountains' Ski Lodge room).",
+  "label": "THE TRAIL \u00b7 THE SNOWLINE TO THE TREE LINE",
+  "sub": "THE WOODS \u00b7 UP TO THE SNOWY PASS \u00b7 5 PLOTS",
+  "ends": {
+    "ow_h_m17_m9": {
+      "room": "site_prebuilt_fairy_forest_ow_redwood",
+      "label": "THE REDWOOD TRAIL",
+      "sub": "THE TRAIL DOWN \u00b7 THE SNOWLINE",
+      "desc": "The trail drops back down into the trees."
+    },
+    "ow_v_m16_m14": {
+      "room": "site_prebuilt_shasta_ow_lodge",
+      "label": "THE SNOWY PASS",
+      "sub": "THE TRAIL UP \u00b7 THE TREE LINE",
+      "desc": "The last trees, and the pass above them."
+    }
+  }
 }

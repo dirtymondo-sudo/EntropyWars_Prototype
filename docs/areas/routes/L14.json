@@ -1,0 +1,32 @@
+{
+  "about": "BUG COLONY's ROOM (One World, THE JOINING RULE; the Leylines zone thread, 2026-11-17, BUILD_PLAN phase 3): the wild link L14 (four plots of dry scrub from Göbekli Tepe's Dry Slope south and east), Bug Colony (Leylines district B, nine plots, stood by bake-leylines.js and brought in with `join`) and the wild link L15 (two plots on east to Technoticlan's Garden Islets) are ONE room, 7 x 5, 15 plots, so the walk from the tell to the lake city has one loading card each side of the colony. Bake: node bake-leylines.js, then node bake-route.js L14. PLACES: the kit's pick by ground kind (ow-places.js; every name an idea of Claude's).",
+  "hub": "ley",
+  "site": "prebuilt_gobekli",
+  "room": "site_prebuilt_gobekli_ow_bugs",
+  "part": "ow_bugs",
+  "label": "BUG COLONY",
+  "sub": "LEYLINES · THE TRAIL FROM THE TELL · THE COLONY · THE TRAIL TO THE LAKE · 15 PLOTS",
+  "with": [
+    {
+      "id": "L15"
+    }
+  ],
+  "join": {
+    "tool": "bake-leylines.js",
+    "part": "ow_bugs"
+  },
+  "ends": {
+    "ow_h_21_32": {
+      "room": "site_prebuilt_gobekli_ow_line",
+      "label": "GÖBEKLI TEPE",
+      "sub": "THE TRAIL NORTH · UP TO THE DRY SLOPE",
+      "desc": "The footpath climbs north to the tell."
+    },
+    "ow_v_28_34": {
+      "room": "site_prebuilt_gobekli_ow_babel",
+      "label": "TECHNOTICLAN",
+      "sub": "THE TRAIL EAST · TO THE GARDEN ISLETS",
+      "desc": "The footpath runs on east to the lake."
+    }
+  }
+}
