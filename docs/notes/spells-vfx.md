@@ -4125,3 +4125,49 @@ docs/plans/vfx-cleanup/ (section 10 = what was built and what he changed). Looks
   generic laser (B3), white inside a spell's own signature shapes (the per-spell batches).
 - Online: every layer rides `fire()` / the stage beats, which are relayed; nothing new on `state`.
 
+
+## THE VFX CLEANUP, B2: the blades (2026-11-17, three-vfx-effects.js)
+mondo's three examples + the other sword combos. All behind `EW_NO_VFX_CLEANUP` like B1.
+- **Blade Waltz** (`_sigBladeWaltz3D`): the third cut in the blades' colour with no tip glint (it was white); the end
+  beat is the shake only (the ring, the white speed burst and the blue screen flash covered the cuts).
+- **`_sigSlashCombo3D`** (Dragon Slash, Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed
+  Blade): no summon circle behind the sword, no opening screen flash; the heavy finisher = the cut + its ring + its scar
+  (no screen flash, no speed burst, no rush lines). Dragon Slash's orange is unchanged.
+- **Sword Beam** (`_sigSwordWave3D`, mondo: "match the sword cuts"): wave `0xff5a2a`, core `0xffa060`, embers + a red
+  `_crSlashScar` on each square as the wave passes, no end speed burst; `_fireBeamMapped` skips the generic laser and the
+  white charge flash for it (`_vcSB`). The wave still takes 0.24 s to cross: the capture frames (0.45 s apart) do not
+  catch it; its real beam is B3.
+- Frames: docs/plans/vfx-cleanup/img/b2_*.jpg.
+
+
+
+## THE OWN LOOKS, L3, part 1: the grapples + the human spells (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L3")
+mondo: "any spells that dont have a look of their own need one" (docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md, list `own-look/L3.txt`).
+Each look is a `_GO_SIG[id]` function (the staging `burst` beat, relayed by `fire()`; the caster's square comes from the
+windup beat), so `_vcOwn(id)` is true and the shared stage burst stops for it. Nothing on `state`, no rule touched.
+- **The kit** (L3's own, in the block): `_l3Track` (the live body a pull / shove moves), `_l3Side` (the caster's hand + the
+  line to him; `far` false when he is fogged), `_l3Rope` / `_l3Loop` (a rope / a lariat of straight pieces, one thickness
+  at any length), `_l3Area` (the squares the row hits: battle.js `getSpellAoeArea`, else the square), `_l3Flash` (EVERY
+  hit square flashes once in the spell's colour), `_l3Ink` (a flat colour with no depth write: ropes, chalk, prints).
+- **Learned on the frames:** a tile is about 75 px across at the battle zoom, so a prop under 0.05 tile thick is one dark
+  pixel (the outline pass eats it). Props are drawn about twice "real" size and ropes get `_l3Ink`, not a solid.
+  By the burst beat a PULL has already moved the body (it is beside the caster): the look rides the body from there.
+- Harvest Hook: a big rust-edged sickle swings in round the body on a straw rope, straw flies. Horn Hook: two bone horns
+  come in low either side and lift, two furrows + dust along the drag. Infernal Conscription: an iron collar snaps shut on
+  the neck, a chain of links to his hand with a red pulse running down it. Lasso: the lariat turns over the head, drops and
+  cinches, rope to the hand. Round Up: one great loop opens over the cowboy, lands at the edge of the area and is drawn in;
+  every square flashes rope-amber. Rustle: a thin rope snags the belt and a KEY (the catalogue's `key` model) flies to the
+  rustler's hand, only when he really took one (he carries a Key at the hit; the take happens at the cast).
+- Artillery Strike: three olive shells down the gun line, earth fountains, every square flashes shell-orange (its fireballs
+  were already its own recipe). Cosmic Slam: a disc of indigo night sky with stars opens under him, violet cracks, stars
+  knocked up, every square flashes violet. Executive Order: the signed page drops in over the area, the gold seal is
+  stamped on it, every square flashes gold under a shower of gold stars. Lance: a steel point drives through along the
+  charge, the shaft bursts into long splinters, the pennant is torn off. Pressure Point: the body's line of jade points
+  lights, two needle jabs, the points go dark from the head down. Roll Credits: a strip of film whips across the body, a
+  burn ring opens at the chest, the credits roll up over the head to THE END. Team Strike: five strikes in the five
+  rangers' colours from five sides, a five-colour pinwheel on the last (a later hit of the same cast adds one ranger).
+- Penalty already had the referee's look (`_BUG_ON_BURST`); it is named in `_GO_SIG` only so `_vcOwn` knows.
+- Not mine, seen on the frames: Round Up's metal-element stamp is a giant pale cog under the loop (THE METAL PASS, the
+  cleanup thread's B7); Cosmic Slam's old pink ring (`fire()`'s own special case) still draws over the caster.
+- Frames: docs/plans/vfx-cleanup/img/own-look/l3_*.jpg. Capture tip: the batch runner's frames are 450 ms apart and it
+  misses tile-aimed dashes; `/tmp/sv/start.sh` + `SV.prep(id)` / `SV.cast()` through `e.sh`, a shot every 150 ms, shows them.

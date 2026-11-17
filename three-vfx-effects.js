@@ -5178,7 +5178,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var leaveScorch     = !!beamDef.leaveScorch;
         var shake           = beamDef.shake;
 
-        if (chargeMs > 0) {
+        var _vcSB = spellId === 'swordBeam' && _vcOn();   /* THE VFX CLEANUP B2: Sword Beam is its wave, not the generic laser + white charge */
+        if (chargeMs > 0 && !_vcSB) {
             var cPx = tilePx(fromX, fromY);
             var cZT = unitSurfaceZ(fromX, fromY) + unitZBoost();
             _spawn({
@@ -5210,7 +5211,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                beam def's configured pixel thickness so wide "wave" beams stay
                chunky. Falls back to flat sprite quads only without a 3D scene. */
             var _laserThick = Math.max(0.6, (beamThickness / 14));
-            var _laserOk = _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
+            var _laserOk = _vcSB ? true : _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
                 core: _bc.core, glow: _bc.glow, beamMs: beamMs, thickness: _laserThick,
                 shake: shake || false,
                 startW: _startW || undefined, endW: _endW || undefined,
@@ -13644,14 +13645,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         phases[0].pivot.rotation.z = phases[0].a0;
 
         /* upright summon glyph + a breath of light where the blade appears */
-        _sigMagicCircle3D(tx, ty, {
+        /* THE VFX CLEANUP B2: a sword combo is not a spell circle (no rune under the cuts), and it opens without a screen flash */
+        if (!_vcOn()) _sigMagicCircle3D(tx, ty, {
             color: opts.circleColor != null ? opts.circleColor : color,
             radiusPx: ts * 0.85, height: hubH * 0.75,
             tiltRad: Math.PI / 2, growMs: Math.min(130, summonMs),
             holdMs: Math.max(120, t - summonMs - 200), fadeMs: 220,
             spin: 0.006, opacity: 0.8,
         });
-        _sigScreenFlash(_sigCss(color), 140, 0.10);
+        if (!_vcOn()) _sigScreenFlash(_sigCss(color), 140, 0.10);
 
         _sigRunOwned(group, total, function (el) {
             /* advance to the phase owning this time slice */
@@ -13723,11 +13725,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     if (p.heavy) {
                         _sigShake(opts.shake || 'hard');
                         /* THE VFX CLEANUP: the finisher's flash, burst and third cut in the combo's own colour (they were white); rush lines on an ultimate only */
+                        /* B2: no screen flash, no speed burst, no rush lines: the heavy cut, its ring and its scar are the finisher */
                         var _vcF = _vcOn(), _vcFc = _vcF ? color : 0xffffff;
-                        _sigScreenFlash(_vcF ? _sigCss(color) : '#ffffff', 120, opts.flashPeak != null ? opts.flashPeak : 0.26);
+                        if (!_vcF) _sigScreenFlash('#ffffff', 120, opts.flashPeak != null ? opts.flashPeak : 0.26);
                         _sigShockRing3D(tx, ty, { color: color, r1: ts * (opts.ringTiles != null ? opts.ringTiles : 1.7) });
-                        _sigSpeedBurst3D(tx, ty, { color: _vcFc });
-                        if (!_vcF || (_rvCtx && _rvCtx.w === 'ultimate')) _sigSpeedLinesFx({ color: _sigCss(color), ms: 340, peak: 0.3 });
+                        if (!_vcF) { _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                        _sigSpeedLinesFx({ color: _sigCss(color), ms: 340, peak: 0.3 }); }
                         _sigCrescentSlash3D(tx, ty, {
                             color: _vcFc, noGlint: _vcF, yaw: hYaw + 1.1, dir: -p.dir, ms: 300, size: ts * 1.3,
                         });
@@ -15514,7 +15517,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (!slashFired[s3] && t > 0.3 + s3 * 0.28) {
                     slashFired[s3] = true;
                     _sigCrescentSlash3D(tx, ty, {
-                        color: s3 === 2 ? 0xffffff : color,
+                        color: (s3 === 2 && !_vcOn()) ? 0xffffff : color, noGlint: _vcOn(),   /* THE VFX CLEANUP B2: the third cut in the blades' own colour */
                         yaw: g.rotation.y + s3 * 2.1, dir: s3 % 2 ? -1 : 1,
                         ms: 240, size: ts * 1.25, height: ts * 0.55,
                         scar: true, scarMs: 1200,
@@ -15524,9 +15527,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             if (!endFired && el >= spinMs) {
                 endFired = true;
-                _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.6 });
-                _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
-                _sigScreenFlash('#bbddff', 120, 0.18);
+                if (!_vcOn()) {   /* THE VFX CLEANUP B2: the waltz ends on its cuts + the shake (the white ring, burst and flash covered them) */
+                    _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.6 });
+                    _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                    _sigScreenFlash('#bbddff', 120, 0.18);
+                }
                 _sigShake('normal');
             }
         });
@@ -15541,7 +15546,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lt = hitTiles[hitTiles.length - 1];
         var twp = _worldPos(lt.x, lt.y);
         var ts = fw.ts;
-        var color = 0x99ccff;
+        /* THE VFX CLEANUP B2 (mondo 11-17: "match the sword cuts"): the wave is the Swordmaster's orange-red and leaves the red scars down the line */
+        var _vcW = _vcOn(), color = _vcW ? 0xff5a2a : 0x99ccff;
         var g = new THREE.Group();
         g.position.set(fw.x, fw.y + ts * 0.7, fw.z);
         g.rotation.y = Math.atan2(twp.x - fw.x, twp.z - fw.z);
@@ -15552,7 +15558,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         wave.rotation.z = Math.PI / 2;     /* crescent horns forward */
         wave.renderOrder = 162;
         g.add(wave);
-        var coreMat = _sigMat(0xffffff, { map: _sigCrescentTex() });
+        var coreMat = _sigMat(_vcW ? 0xffa060 : 0xffffff, { map: _sigCrescentTex() });
         var core = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.0, ts * 1.0), coreMat);
         core.rotation.z = Math.PI / 2;
         core.renderOrder = 163;
@@ -15575,13 +15581,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             (function (t2, d) {
                 _fxDelay(function () {
                     if (_suppressed()) return;
-                    _sigSparks(t2.x, t2.y, 'steel-spark', 5, { vxy: 140, vz0: 30, vz1: 130, gravity: 300 });
+                    _sigSparks(t2.x, t2.y, _vcW ? 'ember' : 'steel-spark', 5, { vxy: 140, vz0: 30, vz1: 130, gravity: 300 });
+                    if (_vcW) { try { _crSlashScar(t2.x, t2.y, { yaw: g.rotation.y + Math.PI / 2, R: ts * 0.6 }); } catch (e) {} }
                 }, d);
             })(hitTiles[i], (i + 1) * (travelMs / (hitTiles.length + 1)));
         }
         _fxDelay(function () {
             if (_suppressed()) return;
-            _sigSpeedBurst3D(lt.x, lt.y, { color: color, ms: 240 });
+            if (!_vcW) _sigSpeedBurst3D(lt.x, lt.y, { color: color, ms: 240 });
         }, travelMs);
     }
 
@@ -68547,6 +68554,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         return _sigRunOwned(F.g, delay + ms, function (el) { var k = (el - delay) / ms; mat.opacity = k < 0 ? 0 : peak * Math.pow(1 - k, 1.6); });
     }
+    /* a flat colour that takes no outline and writes no depth (ropes, chalk, prints) */
+    function _l3Ink(col, map, op) { return _finBasic(col, { opacity: op != null ? op : 0, map: map || null, depthWrite: false, side: THREE.DoubleSide }); }
     function _l3StarTex() {
         return _pzTex('l3-star4', 64, 64, function (g, w, h) {
             var c = w / 2; g.fillStyle = '#fff'; g.beginPath();
@@ -68554,7 +68563,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             g.closePath(); g.fill();
         });
     }
-    var _L3C = { straw: 0xc9a24a, strawL: 0xe0c26a, rust: 0x9a5a30, steel: 0x8f96a0, wood: 0x6b4a2a, bone: 0xe0d2ae, hornD: 0x4a3a2a, earth: 0x5a3d22,
+    var _L3C = { straw: 0xc9a24a, strawL: 0xe0c26a, rust: 0x9a5a30, steel: 0x8f96a0, wood: 0x6b4a2a, bone: 0xf0e4c0, hornD: 0x4a3a2a, earth: 0x5a3d22,
         dust: 0xc8a878, hemp: 0xc9a36b, hempD: 0x8a6a3c, iron: 0x33262a, hot: 0xd01a2a, gold: 0xe8c040, olive: 0x59683a, brass: 0xb08d3c,
         blast: 0xea7a20, indigo: 0x4a32b8, violet: 0x7a4ae0, starGold: 0xe8c860, paper: 0xece2c8, navy: 0x1e2c6a, jade: 0x58d890, cream: 0xe8dcc0,
         sepia: 0xc8742a, lance: 0xb98a52, pennant: 0xb81c2a };
@@ -68565,20 +68574,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _l3HarvestHook3D(tx, ty, r, x) {
         if (!_pzSeen(tx, ty)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3(), E = new THREE.Vector3();
-        var strawM = _goM(_L3C.straw, 0), rope = S.far ? _l3Rope(F.g, strawM, ts * 0.02, 10) : null;
+        var strawM = _l3Ink(_L3C.strawL), rope = S.far ? _l3Rope(F.g, strawM, ts * 0.04, 10) : null;
         var K = new THREE.Group(); K.rotation.order = 'YXZ'; F.g.add(K);
-        var bg = new THREE.TorusGeometry(ts * 0.3, ts * 0.026, 5, 20, Math.PI * 1.05); bg.rotateX(-Math.PI / 2);
-        var blade = _goAdd(K, new THREE.Mesh(bg, _goM(_L3C.steel)), 1);
-        var eg = new THREE.TorusGeometry(ts * 0.3, ts * 0.045, 4, 20, Math.PI * 1.05); eg.rotateX(-Math.PI / 2);
-        var edge = _goAdd(K, new THREE.Mesh(eg, _goA(_L3C.rust)), 0.5);
-        var hg = new THREE.CylinderGeometry(ts * 0.022, ts * 0.026, ts * 0.3, 6); hg.rotateX(Math.PI / 2); hg.translate(ts * 0.3, 0, ts * 0.15);
+        var bg = new THREE.TorusGeometry(ts * 0.5, ts * 0.07, 5, 20, Math.PI * 1.05); bg.rotateX(-Math.PI / 2); bg.scale(1, 0.45, 1);
+        var blade = _goAdd(K, new THREE.Mesh(bg, _goM(0xc8d0d8)), 1);
+        var eg = new THREE.TorusGeometry(ts * 0.5, ts * 0.12, 4, 20, Math.PI * 1.05); eg.rotateX(-Math.PI / 2); eg.scale(1, 0.4, 1);
+        var edge = _goAdd(K, new THREE.Mesh(eg, _goA(0xd8742a)), 0.5);
+        var hg = new THREE.CylinderGeometry(ts * 0.05, ts * 0.055, ts * 0.5, 6); hg.rotateX(Math.PI / 2); hg.translate(ts * 0.5, 0, ts * 0.25);
         var handle = _goAdd(K, new THREE.Mesh(hg, _goM(_L3C.wood)), 1);
         var yaw = Math.atan2(S.ux, S.uz), bit = false, lastS = 0, TOTAL = 1150;
         return _sigRunOwned(F.g, TOTAL, function (el) {
             var k = _goEnv(el, 60, TOTAL, 300), sw = _sigEaseOutCubic(_sigClamp01(el / 150));
             track(B); K.position.set(B.x, B.y + ts * 0.5, B.z); K.rotation.y = yaw - 2.4 * (1 - sw); K.rotation.x = 0.12 * Math.sin(el * 0.02);
             _goShow([blade, edge, handle], k); strawM.opacity = k;
-            if (rope) { E.set(B.x + S.ux * ts * 0.36, B.y + ts * 0.5, B.z + S.uz * ts * 0.36); rope.set(S.hand, E, ts * 0.1 * (1 - sw), sw); }
+            if (rope) { E.set(B.x + S.ux * ts * 0.55, B.y + ts * 0.5, B.z + S.uz * ts * 0.55); rope.set(S.hand, E, ts * 0.1 * (1 - sw), sw); }
             if (!bit && el >= 150) {
                 bit = true;
                 _goSpray(F, 10, { sprite: 'leaf', tint: _L3C.strawL, lx: B.x, lz: B.z, ly: ts * 0.5, v: 150, vz0: 40, vz1: 220, s0: 7, s1: 3, ml0: 400, ml1: 800 });
@@ -68595,7 +68604,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _l3Horn(ts, len, list) {
         var g = new THREE.Group(), N = 6, seg = len / N, px = 0, py = 0, a = 0;
         for (var i = 0; i < N; i++) {
-            var r0 = ts * 0.07 * (1 - i / N), r1 = ts * 0.07 * (1 - (i + 1) / N) + (i === N - 1 ? 0 : 0);
+            var r0 = ts * 0.13 * (1 - i / N), r1 = ts * 0.13 * (1 - (i + 1) / N);
             var geo = new THREE.CylinderGeometry(Math.max(0.01, r1), r0, seg * 1.08, 7);
             var m = new THREE.Mesh(geo, _goM(i >= N - 2 ? _L3C.hornD : _L3C.bone));
             m.position.set(px + Math.cos(a) * seg / 2, py + Math.sin(a) * seg / 2, 0); m.rotation.z = a - Math.PI / 2;
@@ -68612,7 +68621,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var H = new THREE.Group(); H.rotation.order = 'YXZ'; H.rotation.y = Math.atan2(-S.ux, -S.uz); F.g.add(H);
         var horns = [];
         for (var s = -1; s <= 1; s += 2) {
-            var hg = _l3Horn(ts, ts * 0.72, horns); hg.rotation.order = 'YXZ'; hg.rotation.y = -Math.PI / 2 - s * 0.22; hg.position.set(s * ts * 0.3, ts * 0.22, -ts * 0.42);
+            var hg = _l3Horn(ts, ts * 1.15, horns); hg.rotation.order = 'YXZ'; hg.rotation.y = -Math.PI / 2 - s * 0.22; hg.position.set(s * ts * 0.36, ts * 0.42, -ts * 0.6);
             H.add(hg);
         }
         var fm = _goM(_L3C.earth, 0), furrows = [], fa = new THREE.Vector3(), fb = new THREE.Vector3();
@@ -68641,8 +68650,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _l3Conscription3D(tx, ty, r, x) {
         if (!_pzSeen(tx, ty)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3(), Nk = new THREE.Vector3();
-        var n = S.far ? Math.max(6, Math.min(20, Math.round(S.L / (ts * 0.17)))) : 0, links = [], ironM = _goM(_L3C.iron, 0);
-        var lg = new THREE.TorusGeometry(ts * 0.055, ts * 0.016, 5, 10), hg = new THREE.TorusGeometry(ts * 0.055, ts * 0.03, 4, 10);
+        var n = S.far ? Math.max(6, Math.min(20, Math.round(S.L / (ts * 0.22)))) : 0, links = [], ironM = _goM(_L3C.iron, 0);
+        var lg = new THREE.TorusGeometry(ts * 0.075, ts * 0.024, 5, 10), hg = new THREE.TorusGeometry(ts * 0.075, ts * 0.045, 4, 10);
         var X1 = new THREE.Vector3(1, 0, 0), dir = new THREE.Vector3(), q = new THREE.Quaternion(), roll = new THREE.Quaternion();
         for (var i = 0; i < n; i++) {
             var L = new THREE.Group(); L.scale.set(1.5, 1, 1); F.g.add(L);
@@ -68650,9 +68659,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var hm = new THREE.Mesh(hg, _goA(_L3C.hot, 0)); hm.renderOrder = 159; L.add(hm);
             links.push({ g: L, hot: hm });
         }
-        var cg = new THREE.TorusGeometry(ts * 0.17, ts * 0.036, 6, 18); cg.rotateX(-Math.PI / 2);
+        var cg = new THREE.TorusGeometry(ts * 0.24, ts * 0.055, 6, 18); cg.rotateX(-Math.PI / 2);
         var collar = new THREE.Mesh(cg, ironM); collar.renderOrder = 158; F.g.add(collar);
-        var cg2 = new THREE.TorusGeometry(ts * 0.17, ts * 0.06, 4, 18); cg2.rotateX(-Math.PI / 2);
+        var cg2 = new THREE.TorusGeometry(ts * 0.24, ts * 0.09, 4, 18); cg2.rotateX(-Math.PI / 2);
         var cglow = new THREE.Mesh(cg2, _goA(_L3C.hot, 0)); cglow.renderOrder = 159; F.g.add(cglow);
         var shut = false, TOTAL = 1300;
         return _sigRunOwned(F.g, TOTAL, function (el) {
@@ -68684,13 +68693,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _l3Lasso3D(tx, ty, r, x) {
         if (!_pzSeen(tx, ty)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3(), E = new THREE.Vector3();
-        var hempM = _goM(_L3C.hemp, 0), loop = _l3Loop(F.g, hempM, ts * 0.022, 18), rope = S.far ? _l3Rope(F.g, hempM, ts * 0.02, 10) : null;
-        var knot = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.04, 6, 5), _goM(_L3C.hempD)), 1);
+        var hempM = _l3Ink(0xe0b878), loop = _l3Loop(F.g, hempM, ts * 0.04, 18), rope = S.far ? _l3Rope(F.g, hempM, ts * 0.035, 10) : null;
+        var knot = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.07, 6, 5), _goM(_L3C.hemp)), 1);
         var cinched = false, TOTAL = 1350;
         return _sigRunOwned(F.g, TOTAL, function (el) {
             var k = _goEnv(el, 60, TOTAL, 300), drop = _sigEaseInCubic(_sigClamp01((el - 300) / 150));
             track(B); hempM.opacity = k; _goShow([knot], k);
-            var R = ts * (0.46 - 0.24 * drop), y = ts * (1.3 - 0.8 * drop), sp = el * 0.016 * (1 - drop);
+            var R = ts * (0.62 - 0.3 * drop), y = ts * (1.3 - 0.8 * drop), sp = el * 0.016 * (1 - drop);
             loop.g.position.set(B.x, B.y + y, B.z); loop.g.rotation.set(0.28 * (1 - drop) * Math.sin(el * 0.012), sp, 0.28 * (1 - drop) * Math.cos(el * 0.012));
             loop.set(R, 0.12 * (1 - drop));
             E.set(B.x + S.ux * R, B.y + y, B.z + S.uz * R); knot.position.copy(E);
@@ -68707,8 +68716,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _l3RoundUp3D(tx, ty, r, x) {
         var R0 = (r != null ? r : 2) + 0.45, tiles = _l3Area('raceRoundUp', tx, ty, true);
         if (!_pzSeen(tx, ty)) { _l3Flash(tiles, _L3C.gold, { delay: 300 }); return null; }
-        var F = _nrvFrame(tx, ty), ts = F.ts, hempM = _goM(_L3C.hemp, 0), loop = _l3Loop(F.g, hempM, ts * 0.03, 36);
-        var hand = new THREE.Vector3(0, ts * 1.05, 0), E = new THREE.Vector3(), rope = _l3Rope(F.g, hempM, ts * 0.022, 8);
+        var F = _nrvFrame(tx, ty), ts = F.ts, hempM = _l3Ink(0xe0b878), loop = _l3Loop(F.g, hempM, ts * 0.05, 36);
+        var hand = new THREE.Vector3(0, ts * 1.05, 0), E = new THREE.Vector3(), rope = _l3Rope(F.g, hempM, ts * 0.04, 8);
         var landed = false, lastD = 0, TOTAL = 1250;
         return _sigRunOwned(F.g, TOTAL, function (el) {
             var k = _goEnv(el, 60, TOTAL, 280), open = _sigEaseOutCubic(_sigClamp01(el / 300)), fall = _sigEaseInCubic(_sigClamp01((el - 200) / 120)), pull = _sigEaseInCubic(_sigClamp01((el - 380) / 520));
@@ -68726,27 +68735,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     /* RUSTLE — a thin rope whips out, snags the body, and on the yank a KEY comes off its belt and flies down the rope
-       into the rustler's hand (the pack's own key model; a gold glint alone while the file streams) */
+       into the rustler's hand (the pack's own key model; a gold glint alone while the file streams; no Key taken = the rope only) */
     function _l3Rustle3D(tx, ty, r, x) {
         if (!_pzSeen(tx, ty)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), track = _l3Track(F, tx, ty, x), B = new THREE.Vector3(), E = new THREE.Vector3(), P = new THREE.Vector3();
-        var hempM = _goM(_L3C.hempD, 0), rope = S.far ? _l3Rope(F.g, hempM, ts * 0.013, 10) : null, loop = _l3Loop(F.g, hempM, ts * 0.013, 12);
+        var hempM = _l3Ink(_L3C.hemp), rope = S.far ? _l3Rope(F.g, hempM, ts * 0.028, 10) : null, loop = _l3Loop(F.g, hempM, ts * 0.028, 12);
+        /* the Key changes hands at the cast (battle.js _stealFromUnit), so by the hit the rustler carries it: no Key on him = nothing was taken, nothing flies */
+        var took = false; try { for (var hi = 0; hi < state.units.length; hi++) { var hu = state.units[hi]; if (hu && !hu.dead && hu.x === S.from.x && hu.y === S.from.y) took = (hu.hourglasses | 0) > 0 || (state.hourglasses || []).some(function (h) { return h && h.carriedBy === hu.id; }); } } catch (e) { took = false; }
         var kk = null, key = null; try { kk = _crCatKey('key'); } catch (e) { kk = null; }
-        if (kk && _wpnReady(kk)) key = _wpnInstance(kk, ts * 0.26);
+        if (took && kk && _wpnReady(kk)) key = _wpnInstance(kk, ts * 0.5);
         var KG = new THREE.Group(); KG.rotation.order = 'YXZ'; F.g.add(KG); if (key) { key.group.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; }); KG.add(key.group); key.setFade(0); }
-        var glint = _pzSpr(_L3C.gold, ts * 0.34, F.g, _l3StarTex()), got = false, T0 = 230, FLY = 560, TOTAL = 1100;
+        var glint = _pzSpr(_L3C.gold, ts * 0.55, F.g, _l3StarTex()), got = false, T0 = 230, FLY = 560, TOTAL = 1100;
         var to = S.far ? S.hand : new THREE.Vector3(0, ts * 1.9, 0);
         return _sigRunOwned(F.g, TOTAL, function (el) {
             var k = _goEnv(el, 40, 760, 220), out = _sigEaseOutCubic(_sigClamp01(el / 120));
             track(B); hempM.opacity = k;
             E.set(B.x + S.ux * ts * 0.2, B.y + ts * 0.48, B.z + S.uz * ts * 0.2);
             if (rope) rope.set(S.hand, E, ts * 0.05 * Math.sin(el * 0.03) * (1 - _sigClamp01(el / 400)), out);
-            loop.g.position.set(B.x, B.y + ts * 0.48, B.z); loop.set(ts * 0.2 * (out >= 1 ? 1 : 0), 0);
-            var u = _sigClamp01((el - T0) / FLY), on = el >= T0 ? _pzEnv(el, T0, T0 + 60, T0 + FLY - 60, T0 + FLY + 120) : 0;
+            loop.g.position.set(B.x, B.y + ts * 0.48, B.z); loop.set(ts * 0.3 * (out >= 1 ? 1 : 0), 0);
+            var u = _sigClamp01((el - T0) / FLY), on = (took && el >= T0) ? _pzEnv(el, T0, T0 + 60, T0 + FLY - 60, T0 + FLY + 120) : 0;
             P.set(B.x, B.y + ts * 0.48, B.z).lerp(to, _sigEaseInCubic(u) * 0.5 + u * 0.5); P.y += Math.sin(u * Math.PI) * ts * 0.55;
             KG.position.copy(P); KG.rotation.set(el * 0.012, el * 0.02, 0); if (key) key.setFade(on);
             glint.position.copy(P); glint.material.opacity = on * (key ? 0.55 : 0.95) * (0.7 + 0.3 * Math.sin(el * 0.05)); glint.material.rotation = el * 0.004;
-            if (!got && el >= T0) { got = true; _goSpray(F, 6, { sprite: 'divine-sparkle', tint: _L3C.gold, lx: B.x, lz: B.z, ly: ts * 0.5, v: 80, vz0: 30, vz1: 120, s0: 5, s1: 2, ml0: 300, ml1: 520 }); }
+            if (!got && el >= T0) { got = true; if (took) _goSpray(F, 6, { sprite: 'divine-sparkle', tint: _L3C.gold, lx: B.x, lz: B.z, ly: ts * 0.5, v: 80, vz0: 30, vz1: 120, s0: 5, s1: 2, ml0: 300, ml1: 520 }); }
         });
     }
 
@@ -68766,7 +68777,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _l3Flash(tiles, _L3C.blast, { delay: 150, peak: 0.6, ms: 420 });
         var marks = [[S.uz * 0.8 + S.ux * 0.5, -S.ux * 0.8 + S.uz * 0.5], [0, 0], [-S.uz * 0.8 - S.ux * 0.5, S.ux * 0.8 - S.uz * 0.5]], sh = [], all = [];
         for (var i = 0; i < 3; i++) {
-            var list = [], g = _l3Shell(ts, list); g.rotation.order = 'YXZ'; g.rotation.y = Math.atan2(S.ux, S.uz); g.rotation.x = -0.5; F.g.add(g);
+            var list = [], g = _l3Shell(ts, list); g.scale.setScalar(1.8); g.rotation.order = 'YXZ'; g.rotation.y = Math.atan2(S.ux, S.uz); g.rotation.x = -0.5; F.g.add(g);
             var core = _pzSpr(_L3C.blast, ts * 1.1, F.g);
             sh.push({ g: g, list: list, core: core, lx: marks[i][0] * ts, lz: marks[i][1] * ts, t: 150 + i * 150, hit: false });
         }
@@ -68863,10 +68874,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts;
         var page = new THREE.Sprite(new THREE.SpriteMaterial({ map: _l3OrderTex(), transparent: true, opacity: 0, depthWrite: false, depthTest: false })); page.renderOrder = 162; F.g.add(page);
         var seal = new THREE.Sprite(new THREE.SpriteMaterial({ map: _l3SealTex(), transparent: true, opacity: 0, depthWrite: false, depthTest: false })); seal.renderOrder = 163; F.g.add(seal);
-        var W = ts * 0.92, H = W * 1.25, stamped = false, TOTAL = 1350;
+        var W = ts * 0.8, H = W * 1.25, stamped = false, TOTAL = 1350;
         return _sigRunOwned(F.g, TOTAL, function (el) {
             var k = _goEnv(el, 80, TOTAL, 300), dr = _sigEaseOutBack(_sigClamp01(el / 220)), st = _sigClamp01((el - 180) / 70);
-            var y = ts * (2.9 - 0.8 * dr) - (el > 250 ? ts * 0.05 * Math.max(0, 1 - (el - 250) / 120) : 0);
+            var y = ts * (3.9 - 0.6 * dr) - (el > 250 ? ts * 0.05 * Math.max(0, 1 - (el - 250) / 120) : 0);
             page.position.set(0, y, 0); page.scale.set(W, H, 1); page.material.opacity = 0.97 * k; page.material.rotation = -0.06;
             seal.position.set(W * 0.24, y - H * 0.3, 0); seal.scale.setScalar(ts * 0.34 * (2.4 - 1.4 * st)); seal.material.opacity = el < 180 ? 0 : k; seal.material.rotation = -0.3;
             if (!stamped && el >= 250) {
@@ -68883,16 +68894,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!_pzSeen(tx, ty)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), fx = -S.ux, fz = -S.uz, yaw = Math.atan2(fx, fz);
         var G = new THREE.Group(); G.rotation.y = yaw; G.position.y = ts * 0.58; F.g.add(G);   /* +Z = the way of the charge */
-        var tg = new THREE.ConeGeometry(ts * 0.07, ts * 0.5, 8); tg.rotateX(Math.PI / 2);
+        var tg = new THREE.ConeGeometry(ts * 0.12, ts * 0.8, 8); tg.rotateX(Math.PI / 2);
         var tip = _goAdd(G, new THREE.Mesh(tg, _goM(_L3C.steel)), 1);
         var sg = new THREE.PlaneGeometry(ts * 0.2, ts * 1.5); sg.rotateX(-Math.PI / 2);
         var spike = _goAdd(G, new THREE.Mesh(sg, _goA(0xd8c890)), 0.8); spike.material.map = _sigStreakTex();
         var spike2 = _goAdd(G, new THREE.Mesh(sg.clone().rotateZ(Math.PI / 2), _goA(0xd8c890)), 0.8); spike2.material.map = _sigStreakTex();
-        var pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, ts * 0.2, 0, 0, ts * 0.1, -ts * 0.34]), 3)); pg.computeVertexNormals();
+        var pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, ts * 0.4, 0, 0, ts * 0.2, -ts * 0.7]), 3)); pg.computeVertexNormals();
         var pen = _goAdd(G, new THREE.Mesh(pg, _goM(_L3C.pennant)), 1);
         var shards = [], rnd = _sigRand(tx * 13 + ty * 7 + 3);
         for (var i = 0; i < 10; i++) {
-            var m = _goAdd(G, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.025, ts * 0.025, ts * (0.16 + rnd() * 0.26)), _goM(i % 3 ? _L3C.lance : 0x8a6238)), 1);
+            var m = _goAdd(G, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.06, ts * 0.06, ts * (0.3 + rnd() * 0.4)), _goM(i % 3 ? 0xd8a868 : 0xa87a44)), 1);
             shards.push({ m: m, vx: (rnd() - 0.5) * 1.5, vy: 0.3 + rnd() * 1.3, vz: 0.5 + rnd() * 1.9, rx: (rnd() - 0.5) * 0.03, ry: (rnd() - 0.5) * 0.03 });
         }
         _shake('normal');
@@ -68914,14 +68925,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _l3PressurePoint3D(tx, ty, r, x) {
         if (!_pzSeen(tx, ty)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, S = _l3Side(F, tx, ty, x), N = 5, nodes = [], rings = [], rt = _sigRingTex();
-        var lm = _goA(_L3C.jade, 0), line = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.008, ts * 0.008, ts * 0.72, 4), lm); line.position.y = ts * 0.6; line.renderOrder = 160; line.material.depthTest = false; F.g.add(line);
+        var lm = _goA(_L3C.jade, 0), line = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 0.72, 4), lm); line.position.y = ts * 0.6; line.renderOrder = 160; line.material.depthTest = false; F.g.add(line);
         for (var i = 0; i < N; i++) {
             var y = ts * (0.96 - i * 0.18);
-            var nd = _pzSpr(_L3C.jade, ts * 0.16, F.g); nd.position.set(0, y, 0); nodes.push(nd);
+            var nd = _pzSpr(_L3C.jade, ts * 0.3, F.g); nd.position.set(0, y, 0); nodes.push(nd);
             var rg = _pzSpr(_L3C.jade, ts * 0.2, F.g, rt); rg.position.set(0, y, 0); rings.push(rg);
         }
         var jm = _goA(0xb8f0d0, 0), jabs = [], a = new THREE.Vector3(), b = new THREE.Vector3(), chest = new THREE.Vector3(0, ts * 0.78, 0);
-        for (var j = 0; j < 2; j++) { var jb = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.004, ts * 0.016, 1, 5), jm); jb.renderOrder = 161; F.g.add(jb); jabs.push(jb); }
+        for (var j = 0; j < 2; j++) { var jb = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.008, ts * 0.035, 1, 5), jm); jb.renderOrder = 161; F.g.add(jb); jabs.push(jb); }
         _goSpray(F, 4, { sprite: 'sparkle', tint: _L3C.jade, ly: ts * 0.78, v: 70, vz0: 0, vz1: 60, s0: 5, s1: 1, ml0: 200, ml1: 360, g: 0 });
         var TOTAL = 1000;
         return _sigRunOwned(F.g, TOTAL, function (el) {
@@ -68929,7 +68940,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < N; i++) {
                 var off = 260 + i * 110, on = el < off ? Math.min(1, el / 60) * (0.75 + 0.25 * Math.sin(el * 0.05 + i)) : Math.max(0, 1 - (el - off) / 90), pop = _sigClamp01((el - off) / 260);
                 nodes[i].material.opacity = 0.95 * on;
-                rings[i].material.opacity = el < off ? 0 : 0.7 * (1 - pop); rings[i].scale.setScalar(ts * (0.14 + 0.3 * pop));
+                rings[i].material.opacity = el < off ? 0 : 0.7 * (1 - pop); rings[i].scale.setScalar(ts * (0.2 + 0.5 * pop));
             }
             var u = _sigClamp01(el / 90); jm.opacity = 0.9 * (1 - _sigClamp01((el - 90) / 160));
             for (var j = 0; j < 2; j++) {
@@ -68976,7 +68987,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             strip.position.set(0, ts * 0.62, 0); strip.scale.set(ts * 2.6 * (0.3 + 0.7 * w), ts * 0.42, 1); strip.material.rotation = -0.5 + 0.2 * w; strip.material.opacity = 0.95 * _pzEnv(el, 0, 50, 300, 560);
             var b = _sigClamp01(el / 520); burn.scale.setScalar(ts * (0.2 + 1.0 * b)); burn.material.opacity = 0.85 * (1 - b); heart.material.opacity = 0.7 * Math.max(0, 1 - el / 260);
             var u = _sigClamp01((el - 200) / 1500);
-            roll.scale.set(ts * 0.8, ts * 1.6, 1); roll.position.set(0, ts * (1.55 + 0.75 * _sigEaseOutCubic(u)), 0); roll.material.opacity = 0.95 * _pzEnv(el, 200, 420, 1550, TOTAL);
+            roll.scale.set(ts * 0.62, ts * 1.24, 1); roll.position.set(0, ts * (1.5 + 0.5 * _sigEaseOutCubic(u)), 0); roll.material.opacity = 0.95 * _pzEnv(el, 200, 420, 1550, TOTAL);
         });
     }
     /* TEAM STRIKE (super sentai) — the whole team hits at once: five strikes in the five rangers' colours cross the body
