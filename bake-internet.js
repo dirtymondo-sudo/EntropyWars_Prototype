@@ -146,7 +146,7 @@ PLAN.plots.forEach(p => { const used = new Uint8Array(N * N), rects = [], isl = 
         const eW = all(X0 - 1, Y0, X0 - 1, Y0 + h - 1) ? 0.4 : 0, eE = all(X0 + w, Y0, X0 + w, Y0 + h - 1) ? 0.4 : 0, eN = all(X0, Y0 - 1, X0 + w - 1, Y0 - 1) ? 0.4 : 0, eS = all(X0, Y0 + h, X0 + w - 1, Y0 + h) ? 0.4 : 0;
         const x0 = gx(X0) - eW, x1 = gx(X0 + w) + eE, z0 = gx(Y0) - eN, z1 = gx(Y0 + h) + eS;
         const row = { k: 'plateau', x: r2((x0 + x1) / 2), z: r2((z0 + z1) / 2), w: r2(x1 - x0), d: r2(z1 - z0), h: p.base, edge: 0.15, float: true };
-        row.depth = r === big ? r2(Math.min(9, 2.5 + 0.5 * Math.max(w, h))) : r2(Math.min(3, 1.2 + 0.3 * Math.max(w, h)));
+        row.depth = r === big ? r2(Math.min(4, 1.6 + 0.2 * Math.max(w, h))) : r2(Math.min(2, 1.0 + 0.15 * Math.max(w, h)));   // (thin tech slabs, not the Astral Realm's hanging rock)
         if (p.d === 'D') row.rock = 'gunmetal_2';
         ISLE.push(row); });
     count.rects = (count.rects || 0) + rects.length; });
@@ -161,7 +161,7 @@ PLAN.openings.forEach(o => { if (o.kind === 'wide') return; const a = plot[o.a],
 
 /* ── THE PAINT: one sheet a square (0 = the room's own floor sheet) ── */
 const PAL = ['tilefloor_2', 'urban:MetalGratingGrid1a', 'holo', 'aluminium', 'checkerboard_2', 'concrete_floor', 'gunmetal_2', 'holo_red', 'metal_2'];
-const PIDX = { s: 1, a: 2, f: 3, v: 4, b: 5, p: 6, d: 7, x: 8, k: 9, w: 0 }, paint = new Uint8Array(W * Hh);
+const PIDX = { s: 1, a: 2, f: 3, v: 4, b: 5, p: 6, d: 8, x: 8, k: 9, w: 0 }, paint = new Uint8Array(W * Hh);   // (the Dark Web: dark tile, red rims, walk and ground alike)
 for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) paint[y * W + x] = PIDX[cell[y][x]] || 0;
 
 /* ── checks: every prop key and unit exists; nothing stands over the void; every plot is walked to from the way in ── */
@@ -188,7 +188,7 @@ const ATMOS = { kind: 'motes', n: 200, color: 0x7fffd0, zones: AIR.concat([{ x0:
 
 /* ── the room ── */
 const TOP = Math.max.apply(null, PLAN.plots.map(p => p.base)), SPM = { x: gc(SP[0]), z: gc(SP[1]) };
-const SKY = { night: 1, tint: 0x04261e, tintAmt: 0.6, stars: 0.6, nebula: 1.2, fog: { color: 0x0a3a30, amount: 0.4, top: 0.06, band: 0.5, density: 0.012 }, scenery: 'holosim', density: 0.9 };
+const SKY = { night: 1, lock: true, tint: 0x04261e, tintAmt: 0.6, stars: 0.6, nebula: 1.2, fog: { color: 0x0a3a30, amount: 0.4, top: 0.06, band: 0.5, density: 0.012 }, scenery: 'holosim', density: 0.9 };
 const L = [];
 L.push("        /* INTERNET36-BEGIN — THE INTERNET ON PLOTS (2026-11-17, One World phase 4.4): written by `node bake-internet.js` from docs/areas/internet/layout.json + districts/<S F B D>.js. Never hand-edit between the markers: edit the tool, the layout or a district file and rerun. */");
 L.push("        " + ROOM + ": {");

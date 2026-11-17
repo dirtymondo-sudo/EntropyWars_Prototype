@@ -205,7 +205,7 @@ const WAY = {
     garage_motorpool: fw('P01-05', 2, 9, 270),                                                                 // the ramp up to the garage (secret)
     cave_dumb: fw('P03-01', 2, 6, 270),                                                                        // LEVEL -6: the blast door in the rock
     dumb_astral: fw('P01-02', 3, 2, 0),                                                                        // the dream screen
-    dumb_internet: fw('P03-00', 6, 1, 0),                                                                      // THE INTERNET (One World 4.4, 2026-11-17): the screen between the Control Room's servers
+    dumb_internet: fw('P03-00', 6, 1, 180),                                                                      // THE INTERNET (One World 4.4, 2026-11-17): the screen between the Control Room's servers
     yard: fw('P01-01', 2 + 11, 0, 0), stormdrain: fw('P02-01', 5, 7, 90), hangar: fw('P02-01', 5, 10, 90), vent: fw('P02-01', 4, 11, 180),   // the White Rooms' four (the block's squares 11,0 · 15,7 · 15,10 · 14,11)
 };
 /* THE FREIGHT LINE (2026-11-17, One World phase 4.4; plots.json `under.rides`: "a ride, no plots; opens after the D.U.M.B."): a door pair from the
